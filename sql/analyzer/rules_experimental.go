@@ -76,7 +76,6 @@ var OnceAfterDefault_Experimental = []Rule{
 	{foldEmptyJoinsId, foldEmptyJoins},
 	{pushFiltersId, pushFilters},
 	{optimizeJoinsId, optimizeJoins},
-	{matchAgainstId, matchAgainst},
 	{generateIndexScansId, generateIndexScans},
 	{finalizeSubqueriesId, finalizeSubqueries},
 	{subqueryIndexesId, applyIndexesFromOuterScope},

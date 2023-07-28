@@ -1095,7 +1095,6 @@ func TestFulltextIndexes(t *testing.T) {
 }
 
 func TestFulltextIndexes_Exp(t *testing.T) {
-	t.Skip()
 	enginetest.TestFulltextIndexes(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
