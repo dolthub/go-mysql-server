@@ -38,7 +38,7 @@ func TestRoleEdgeJson(t *testing.T) {
 	require.Equal(t, `{"FromHost":"localhost","FromUser":"some_role","ToHost":"127.0.0.1","ToUser":"some_user","WithAdminOption":true}`, jsonStr)
 	newRoleEdge, err := (&RoleEdge{}).FromJson(ctx, jsonStr)
 	require.NoError(t, err)
-	require.True(t, testRoleEdge.Equals(ctx, newRoleEdge))
+	require.True(t, RoleEdgeEquals(testRoleEdge, newRoleEdge))
 
 	testSlice := []*RoleEdge{testRoleEdge}
 	jsonData, err := json.Marshal(testSlice)
@@ -48,6 +48,6 @@ func TestRoleEdgeJson(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, newSlice, len(testSlice))
 	for i := range testSlice {
-		require.True(t, testSlice[i].Equals(ctx, newSlice[i]))
+		require.True(t, RoleEdgeEquals(testSlice[i], newSlice[i]))
 	}
 }
