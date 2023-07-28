@@ -85,6 +85,9 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 
 		for _, assertion := range assertions {
 			t.Run(assertion.Query, func(t *testing.T) {
+				if sh, ok := harness.(SkippingHarness); ok && sh.SkipQueryTest(assertion.Query) {
+					t.Skip()
+				}
 				if assertion.Skip {
 					t.Skip()
 				}

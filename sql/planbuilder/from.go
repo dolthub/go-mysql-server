@@ -292,16 +292,6 @@ func columnsToStrings(cols ast.Columns) []string {
 	return res
 }
 
-func (b *Builder) buildAsOf(inScope *scope, asOf ast.Expr) interface{} {
-	var err error
-	asOfExpr := b.buildScalar(inScope, asOf)
-	asOfLit, err := asOfExpr.Eval(b.ctx, nil)
-	if err != nil {
-		b.handleErr(err)
-	}
-	return asOfLit
-}
-
 func (b *Builder) resolveTable(tab, db string, asOf interface{}) *plan.ResolvedTable {
 	table, _, err := b.cat.TableAsOf(b.ctx, db, tab, asOf)
 	if err != nil {
@@ -529,28 +519,9 @@ func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf
 		db = b.ctx.GetCurrentDatabase()
 	}
 
-	var asOfExpr sql.Expression
 	var asOfLit interface{}
-	var asofBindVar bool
 	if asof != nil {
-		asOfExpr = b.buildScalar(inScope, asof.Time)
-		asofBindVar = transform.InspectExpr(asOfExpr, func(expr sql.Expression) bool {
-			_, ok := expr.(*expression.BindVar)
-			return ok
-		})
-		if !asofBindVar {
-			//TODO what does this mean?
-			// special case for AsOf's that use naked identifiers; they are interpreted as UnresolvedColumns
-			if col, ok := asOfExpr.(*expression.UnresolvedColumn); ok {
-				asOfExpr = expression.NewLiteral(col.String(), types.LongText)
-			}
-
-			var err error
-			asOfLit, err = asOfExpr.Eval(b.ctx, nil)
-			if err != nil {
-				b.handleErr(err)
-			}
-		}
+		asOfLit = b.buildAsOfLit(inScope, asof.Time)
 	} else if asof := b.ViewCtx().AsOf; asof != nil {
 		asOfLit = asof
 	}
@@ -604,9 +575,6 @@ func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf
 		rt.Table = ct.AssignCatalog(b.cat)
 	}
 	outScope.node = rt
-	if asofBindVar {
-		outScope.node = plan.NewDeferredAsOfTable(rt, asOfExpr)
-	}
 
 	for _, c := range tab.Schema() {
 		outScope.newColumn(scopeColumn{

@@ -424,6 +424,45 @@ func (b *Builder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *sco
 	return
 }
 
+func (b *Builder) buildAsOfLit(inScope *scope, time ast.Expr) string {
+	expr := b.buildAsOfExpr(inScope, time)
+	res, err := expr.Eval(b.ctx, nil)
+	if err != nil {
+		b.handleErr(err)
+	}
+	asOfVal, ok := res.(string)
+	if ok {
+		return asOfVal
+	}
+
+	err = sql.ErrInvalidAsOfExpression.New(time)
+	b.handleErr(err)
+	return ""
+}
+
+func (b *Builder) buildAsOfExpr(inScope *scope, time ast.Expr) sql.Expression {
+	switch v := time.(type) {
+	case *ast.SQLVal:
+		ret, _, err := types.Text.Convert(v.Val)
+		if err != nil {
+			b.handleErr(err)
+		}
+		return expression.NewLiteral(ret.(string), types.LongText)
+	case *ast.ColName:
+		sysVar, ok := b.buildSysVar(v, ast.SetScope_None)
+		if ok {
+			return sysVar
+		}
+		return expression.NewLiteral(v.Name.String(), types.LongText)
+	case *ast.FuncExpr:
+		return b.buildScalar(inScope, v)
+	default:
+	}
+	err := sql.ErrInvalidAsOfExpression.New(time)
+	b.handleErr(err)
+	return nil
+}
+
 func (b *Builder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 
@@ -433,7 +472,7 @@ func (b *Builder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *sco
 	if s.ShowTablesOpt != nil {
 		dbName = s.ShowTablesOpt.DbName
 		if s.ShowTablesOpt.AsOf != nil {
-			asOf = b.buildScalar(inScope, s.ShowTablesOpt.AsOf)
+			asOf = b.buildAsOfExpr(inScope, s.ShowTablesOpt.AsOf)
 		}
 	}
 

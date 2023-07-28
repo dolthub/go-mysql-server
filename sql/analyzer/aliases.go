@@ -218,7 +218,9 @@ func normalizeExpression(tableAliases TableAliases, e sql.Expression) sql.Expres
 		if field, ok := e.(*expression.GetField); ok {
 			table := strings.ToLower(field.Table())
 			if rt, ok := tableAliases[table]; ok {
-				return field.WithTable(strings.ToLower(rt.Name())), transform.NewTree, nil
+				return field.WithTable(strings.ToLower(rt.Name())).WithName(strings.ToLower(field.Name())), transform.NewTree, nil
+			} else {
+				return field.WithTable(strings.ToLower(field.Table())).WithName(strings.ToLower(field.Name())), transform.NewTree, nil
 			}
 		}
 

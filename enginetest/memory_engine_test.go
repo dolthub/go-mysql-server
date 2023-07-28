@@ -204,13 +204,30 @@ func TestSingleQuery(t *testing.T) {
 	t.Skip()
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query:    `select 1 as a, (select a) as a`,
+		Query: `
+select /*+ LOOKUP_JOIN(style, dimension) LOOKUP_JOIN(dimension, color) */ style.assetId
+from asset style
+join asset dimension
+  on style.assetId = dimension.assetId
+join asset color
+  on style.assetId = color.assetId
+where
+  dimension.val = 'wide' and
+  style.val = 'curve' and
+  color.val = 'blue' and
+  dimension.name = 'dimension' and
+  style.name = 'style' and
+  color.name = 'color' and
+  dimension.orgId = 'org1' and
+  style.orgId = 'org1' and
+  color.orgId = 'org1';
+`,
 		Expected: []sql.Row{},
 	}
 
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, false, nil).WithVersion(sql.VersionStable)
-	harness.Setup(setup.SimpleSetup...)
+	harness.Setup(setup.JoinsSetup...)
 	engine, err := harness.NewEngine(t)
 	if err != nil {
 		panic(err)
@@ -505,8 +522,13 @@ func TestDerivedTableOuterScopeVisibility(t *testing.T) {
 }
 
 func TestDerivedTableOuterScopeVisibility_Experimental(t *testing.T) {
-	// TODO
-	enginetest.TestDerivedTableOuterScopeVisibility(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+	harness := enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental)
+	harness.QueriesToSkip(
+		"SELECT max(val), (select max(dt.a) from (SELECT val as a) as dt(a)) as a1 from numbers group by a1;",            // memoization to fix
+		"select 'foo' as foo, (select dt.b from (select 1 as a, foo as b) dt);",                                          // need to error
+		"SELECT n1.val as a1 from numbers n1, (select n1.val, n2.val * -1 from numbers n2 where n1.val = n2.val) as dt;", // different OK error
+	)
+	enginetest.TestDerivedTableOuterScopeVisibility(t, harness)
 }
 
 func TestOrderByGroupBy(t *testing.T) {

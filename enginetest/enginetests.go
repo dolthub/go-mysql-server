@@ -465,7 +465,7 @@ func TestQueryPlan(t *testing.T, harness Harness, e *sqle.Engine, query, expecte
 		if ctx.Version == sql.VersionExperimental {
 			parsed, err = planbuilder.Parse(ctx, e.Analyzer.Catalog, query)
 		} else {
-			parsed, err = planbuilder.Parse(ctx, e.Analyzer.Catalog, query)
+			parsed, err = parse.Parse(ctx, query)
 		}
 		require.NoError(t, err)
 
@@ -4587,6 +4587,10 @@ func TestVariables(t *testing.T, harness Harness) {
 		{
 			Query:    "SELECT @@GLOBAL.select_into_buffer_size",
 			Expected: []sql.Row{{9002}},
+		},
+		{
+			Query:    "SET GLOBAL select_into_buffer_size = 131072",
+			Expected: []sql.Row{{}},
 		},
 	} {
 		t.Run(assertion.Query, func(t *testing.T) {

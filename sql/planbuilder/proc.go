@@ -81,7 +81,7 @@ func (b *Builder) buildCall(inScope *scope, c *sqlparser.Call) (outScope *scope)
 
 	var asOf sql.Expression = nil
 	if c.AsOf != nil {
-		asOf = b.buildScalar(inScope, c.AsOf)
+		asOf = b.buildAsOfExpr(inScope, c.AsOf)
 	}
 
 	outScope.node = plan.NewCall(

@@ -128,7 +128,8 @@ func (b *Builder) setExprsToExpressions(inScope *scope, e ast.SetVarExprs) []sql
 		//	err := sql.ErrUnknownSystemVariable.New(setExpr.Name.String())
 		//	b.handleErr(err)
 		//}
-		innerExpr, ok := b.simplifySetExpr(setExpr.Name, setExpr.Expr)
+		sysVarType, _ := setVar.Type().(sql.SystemVariableType)
+		innerExpr, ok := b.simplifySetExpr(setExpr.Name, setExpr.Expr, sysVarType)
 		if !ok {
 			innerExpr = b.buildScalar(inScope, setExpr.Expr)
 		}
@@ -197,7 +198,7 @@ func (b *Builder) buildSysVar(colName *ast.ColName, scopeHint ast.SetScope) (sql
 	return nil, false
 }
 
-func (b *Builder) simplifySetExpr(name *ast.ColName, val ast.Expr) (sql.Expression, bool) {
+func (b *Builder) simplifySetExpr(name *ast.ColName, val ast.Expr, sysVarType sql.Type) (sql.Expression, bool) {
 	// can |val| be nested?
 	switch val := val.(type) {
 	case *ast.ColName:
@@ -227,8 +228,17 @@ func (b *Builder) simplifySetExpr(name *ast.ColName, val ast.Expr) (sql.Expressi
 		case ast.KeywordString(ast.FALSE):
 			return expression.NewLiteral(false, types.Boolean), true
 		default:
+		}
+
+		if sysVarType == nil {
 			return nil, false
 		}
+
+		enum, _, err := sysVarType.Convert(setVal)
+		if err != nil {
+			b.handleErr(err)
+		}
+		return expression.NewLiteral(enum, sysVarType), true
 	case *ast.BoolVal:
 		// conv
 		e := expression.NewLiteral(val, types.Text)
