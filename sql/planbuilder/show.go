@@ -74,12 +74,7 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 	var asOf *ast.AsOf
 	var asOfExpr sql.Expression
 	if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
-		//var err error
 		asOfExpr = b.buildScalar(inScope, s.ShowTablesOpt.AsOf)
-		//asOfLit, err = asOfExpr.Eval(b.ctx, nil)
-		//if err != nil {
-		//	b.handleErr(err)
-		//}
 		asOf = &ast.AsOf{Time: s.ShowTablesOpt.AsOf}
 	}
 
@@ -91,7 +86,6 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 		db = b.currentDb().Name()
 	}
 
-	//table = b.resolveTable(s.Table.Name.String(), db, asOfLit)
 	tableName := strings.ToLower(s.Table.Name.String())
 	tableScope, ok := b.buildTablescan(inScope, db, tableName, asOf)
 	if !ok {
@@ -539,16 +533,8 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 	full := s.Full
 	var table sql.Node
 	{
-		//var asOfLit interface{}
-		//var asOfExpr sql.Expression
 		var asOf *ast.AsOf
 		if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
-			//var err error
-			//asOfExpr = b.buildScalar(inScope, s.ShowTablesOpt.AsOf)
-			//asOfLit, err = asOfExpr.Eval(b.ctx, nil)
-			//if err != nil {
-			//	b.handleErr(err)
-			//}
 			asOf = &ast.AsOf{Time: s.ShowTablesOpt.AsOf}
 		}
 
@@ -560,7 +546,6 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 			db = b.currentDb().Name()
 		}
 
-		//table = b.resolveTable(s.Table.Name.String(), db, asOfLit)
 		tableName := strings.ToLower(s.Table.Name.String())
 		tableScope, ok := b.buildTablescan(inScope, db, tableName, asOf)
 		if !ok {

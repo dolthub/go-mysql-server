@@ -118,26 +118,13 @@ func (b *Builder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.
 		}
 		return expression.NewQualifiedStar(strings.ToLower(e.TableName.Name.String()))
 	case *ast.AliasedExpr:
-		var expr sql.Expression
-		//if col, ok := e.Expr.(*ast.ColName); ok {
-		//	localCol, ok := localScope.resolveColumn(col.Qualifier.String(), col.Name.Lowered(), false)
-		//	if ok {
-		//		expr = localCol.scalarGf()
-		//
-		//	}
-		//}
-		if expr == nil {
-			expr = b.buildScalar(inScope, e.Expr)
-		}
-
+		expr := b.buildScalar(inScope, e.Expr)
 		if !e.As.IsEmpty() {
 			return expression.NewAlias(e.As.String(), expr)
 		}
-
 		if selectExprNeedsAlias(e, expr) {
 			return expression.NewAlias(e.InputExpression, expr).AsUnreferencable()
 		}
-
 		return expr
 	default:
 		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(e)))

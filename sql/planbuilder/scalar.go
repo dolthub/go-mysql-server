@@ -72,18 +72,6 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 			}
 			b.handleErr(sql.ErrColumnNotFound.New(v))
 		}
-		//if a, ok := c.scalar.(*expression.Alias); ok && inScope.parent != nil {
-		//	if _, ok := inScope.parent.getExpr(a.Name(), false); ok {
-		//		// parent scope alias
-		//		// TODO we use alias replacement here to inject dependencies into subqueries
-		//		// ex: SELECT 1 as a, (a as a)
-		//		// =>
-		//		//     SELECT 1 as a, ((1 as a) as a)
-		//		// But converting into joins would be less flaky:
-		//		// =>  SELECT 1 as a LATERAL a as a
-		//		return a
-		//	}
-		//}
 		return c.scalarGf()
 	case *ast.FuncExpr:
 		name := v.Name.Lowered()
@@ -197,17 +185,11 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	case *ast.Subquery:
 		sqScope := inScope.push()
 		selectString := ast.String(v.Select)
-		//if c, ok := inScope.subqueries[strings.ToLower(selectString)]; ok {
-		//	return c.scalar
-		//}
 		sqScope.subquery = true
 		selScope := b.buildSelectStmt(sqScope, v.Select)
 		// TODO: get the original select statement, not the reconstruction
 		sq := plan.NewSubquery(selScope.node, selectString)
 		return sq
-		//col := scopeColumn{col: selectString, scalar: sq, typ: sq.Type(), nullable: sq.IsNullable()}
-		//inScope.subqueries[strings.ToLower(selectString)] = col
-		//return col.scalarGf()
 	case *ast.CaseExpr:
 		return b.buildCaseExpr(inScope, v)
 	case *ast.IntervalExpr:

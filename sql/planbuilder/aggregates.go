@@ -245,6 +245,7 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 	}
 
 	if name == "jsonarray" {
+		// TODO we don't have any tests for this
 		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
 			var agg sql.Aggregation
 			agg = aggregation.NewJsonArray(expression.NewLiteral(expression.NewStar(), types.Int64))

@@ -222,7 +222,6 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 				sq = sq.WithColumns(renameCols)
 			}
 
-			// outscope will skip
 			outScope = inScope.push()
 			outScope.node = sq
 
@@ -244,7 +243,6 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 					nullable: c.nullable,
 				})
 			}
-			//b.renameSource(outScope, t.As.String(), renameCols)
 			return
 		case *ast.ValuesStatement:
 			if t.As.IsEmpty() {
@@ -656,24 +654,6 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 	}
 
 	query := view.Definition().Children()[0]
-
-	// If this view is being asked for with an AS OF clause, then attempt to apply it to every table in the view.
-	//if asOf != nil {
-	//	var err error
-	//	query, _, err = applyAsOfToView(query, a, urt.AsOf())
-	//	if err != nil {
-	//		return nil, transform.SameTree, err
-	//	}
-	//}
-
-	// If the view name was qualified with a database name, apply that same qualifier to any tables in it
-	//if urt.Database().Name() != "" {
-	//	query, _, err = applyDatabaseQualifierToView(query, a, urt.Database().Name())
-	//	if err != nil {
-	//		return nil, transform.SameTree, err
-	//	}
-	//}
-
 	n, err := view.Definition().WithChildren(query)
 	if err != nil {
 		b.handleErr(err)

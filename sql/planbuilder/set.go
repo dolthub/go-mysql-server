@@ -122,12 +122,7 @@ func (b *Builder) setExprsToExpressions(inScope *scope, e ast.SetVarExprs) []sql
 				b.handleErr(sql.ErrColumnNotFound.New(setExpr.Name.String()))
 			}
 		}
-		//sysVar, ok := b.buildSysVar(setExpr.Name, setExpr.Scope)
-		//sysVar, ok := b.buildScalar(inScope, setExpr.Name)
-		//if !ok {
-		//	err := sql.ErrUnknownSystemVariable.New(setExpr.Name.String())
-		//	b.handleErr(err)
-		//}
+
 		sysVarType, _ := setVar.Type().(sql.SystemVariableType)
 		innerExpr, ok := b.simplifySetExpr(setExpr.Name, setExpr.Expr, sysVarType)
 		if !ok {

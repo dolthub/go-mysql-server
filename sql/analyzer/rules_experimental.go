@@ -28,7 +28,6 @@ var OnceBeforeDefault_Exp = []Rule{
 	{resolveDropConstraintId, resolveDropConstraint},
 	{resolveAlterColumnId, resolveAlterColumn},
 	{validateDropTablesId, validateDropTables},
-	//{pruneDropTablesId, pruneDropTables}, //TODO
 	{resolveCreateSelectId, resolveCreateSelect},
 	{validateDropConstraintId, validateDropConstraint},
 	{setViewTargetSchemaId, setViewTargetSchema},

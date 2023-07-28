@@ -49,12 +49,6 @@ func fixupAuxiliaryExprs(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 				return n, transform.NewTree, nil
 			}
 			return n, transform.SameTree, nil
-		//case *plan.Set:
-		//	exprs, same, err := fixidx.FixFieldIndexesOnExpressions(scope, a.LogFn(), nil, n.Exprs...)
-		//	if err != nil || same {
-		//		return n, transform.SameTree, err
-		//	}
-		//	return plan.NewSet(exprs), transform.NewTree, nil
 		case *plan.CreateTable:
 			allSame := transform.SameTree
 			if len(n.ChDefs) > 0 {
@@ -93,17 +87,6 @@ func fixupAuxiliaryExprs(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 			}
 			ins.Source = newSource
 			return ins, transform.NewTree, nil
-			//case *plan.InsertInto:
-			//	newN, _, err := fixidx.FixFieldIndexesForExpressions(a.LogFn(), n, scope)
-			//	if err != nil {
-			//		return n, transform.SameTree, err
-			//	}
-			//	newIns := newN.(*plan.InsertInto)
-			//	newIns.OnDupExprs, _, err = fixidx.FixFieldIndexesOnExpressions(scope, a.LogFn(), n.Destination.Schema(), n.OnDupExprs...)
-			//	if err != nil {
-			//		return n, transform.SameTree, err
-			//	}
-			//	return newIns, transform.NewTree, nil
 		}
 	})
 }
