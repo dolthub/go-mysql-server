@@ -29,7 +29,9 @@ func (b *BaseBuilder) buildFlushPrivileges(ctx *sql.Context, n *plan.FlushPrivil
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	err := gts.Persist(ctx)
+	editor := gts.Editor()
+	defer editor.Close()
+	err := gts.Persist(ctx, editor)
 	if err != nil {
 		return nil, err
 	}
@@ -42,10 +44,12 @@ func (b *BaseBuilder) buildDropUser(ctx *sql.Context, n *plan.DropUser, row sql.
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	userTableData := mysqlDb.UserTable().Data()
-	roleEdgesData := mysqlDb.RoleEdgesTable().Data()
+
+	editor := mysqlDb.Editor()
+	defer editor.Close()
+
 	for _, user := range n.Users {
-		existingUser := mysqlDb.GetUser(user.Name, user.Host, false)
+		existingUser := mysqlDb.GetUser(editor, user.Name, user.Host, false)
 		if existingUser == nil {
 			if n.IfExists {
 				continue
@@ -54,29 +58,20 @@ func (b *BaseBuilder) buildDropUser(ctx *sql.Context, n *plan.DropUser, row sql.
 		}
 
 		//TODO: if a user is mentioned in the "mandatory_roles" (users and roles are interchangeable) system variable then they cannot be dropped
-		err := userTableData.Remove(ctx, mysql_db.UserPrimaryKey{
+		editor.RemoveUser(mysql_db.UserPrimaryKey{
 			Host: existingUser.Host,
 			User: existingUser.User,
-		}, nil)
-		if err != nil {
-			return nil, err
-		}
-		err = roleEdgesData.Remove(ctx, mysql_db.RoleEdgesFromKey{
+		})
+		editor.RemoveRoleEdgesFromKey(mysql_db.RoleEdgesFromKey{
 			FromHost: existingUser.Host,
 			FromUser: existingUser.User,
-		}, nil)
-		if err != nil {
-			return nil, err
-		}
-		err = roleEdgesData.Remove(ctx, mysql_db.RoleEdgesToKey{
+		})
+		editor.RemoveRoleEdgesToKey(mysql_db.RoleEdgesToKey{
 			ToHost: existingUser.Host,
 			ToUser: existingUser.User,
-		}, nil)
-		if err != nil {
-			return nil, err
-		}
+		})
 	}
-	if err := mysqlDb.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx, editor); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
@@ -87,30 +82,30 @@ func (b *BaseBuilder) buildRevokeRole(ctx *sql.Context, n *plan.RevokeRole, row 
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	roleEdgesData := mysqlDb.RoleEdgesTable().Data()
+
+	editor := mysqlDb.Editor()
+	defer editor.Close()
+
 	for _, targetUser := range n.TargetUsers {
-		user := mysqlDb.GetUser(targetUser.Name, targetUser.Host, false)
+		user := mysqlDb.GetUser(editor, targetUser.Name, targetUser.Host, false)
 		if user == nil {
 			return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetUser.String("`"))
 		}
 		for _, targetRole := range n.Roles {
-			role := mysqlDb.GetUser(targetRole.Name, targetRole.Host, true)
+			role := mysqlDb.GetUser(editor, targetRole.Name, targetRole.Host, true)
 			if role == nil {
 				return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetRole.String("`"))
 			}
 			//TODO: if a role is mentioned in the "mandatory_roles" system variable then they cannot be revoked
-			err := roleEdgesData.Remove(ctx, mysql_db.RoleEdgesPrimaryKey{
+			editor.RemoveRoleEdge(mysql_db.RoleEdgesPrimaryKey{
 				FromHost: role.Host,
 				FromUser: role.User,
 				ToHost:   user.Host,
 				ToUser:   user.User,
-			}, nil)
-			if err != nil {
-				return nil, err
-			}
+			})
 		}
 	}
-	if err := mysqlDb.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx, editor); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
@@ -121,8 +116,9 @@ func (b *BaseBuilder) buildDropRole(ctx *sql.Context, n *plan.DropRole, row sql.
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	userTableData := mysqlDb.UserTable().Data()
-	roleEdgesData := mysqlDb.RoleEdgesTable().Data()
+
+	editor := mysqlDb.Editor()
+	defer editor.Close()
 	for _, role := range n.Roles {
 		userPk := mysql_db.UserPrimaryKey{
 			Host: role.Host,
@@ -131,36 +127,26 @@ func (b *BaseBuilder) buildDropRole(ctx *sql.Context, n *plan.DropRole, row sql.
 		if role.AnyHost {
 			userPk.Host = "%"
 		}
-		existingRows := userTableData.Get(userPk)
-		if len(existingRows) == 0 {
+		existingUser, ok := editor.GetUser(userPk)
+		if !ok {
 			if n.IfExists {
 				continue
 			}
 			return nil, sql.ErrRoleDeletionFailure.New(role.String("'"))
 		}
-		existingUser := existingRows[0].(*mysql_db.User)
 
 		//TODO: if a role is mentioned in the "mandatory_roles" system variable then they cannot be dropped
-		err := userTableData.Remove(ctx, userPk, nil)
-		if err != nil {
-			return nil, err
-		}
-		err = roleEdgesData.Remove(ctx, mysql_db.RoleEdgesFromKey{
+		editor.RemoveUser(userPk)
+		editor.RemoveRoleEdgesFromKey(mysql_db.RoleEdgesFromKey{
 			FromHost: existingUser.Host,
 			FromUser: existingUser.User,
-		}, nil)
-		if err != nil {
-			return nil, err
-		}
-		err = roleEdgesData.Remove(ctx, mysql_db.RoleEdgesToKey{
+		})
+		editor.RemoveRoleEdgesToKey(mysql_db.RoleEdgesToKey{
 			ToHost: existingUser.Host,
 			ToUser: existingUser.User,
-		}, nil)
-		if err != nil {
-			return nil, err
-		}
+		})
 	}
-	if err := mysqlDb.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx, editor); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
@@ -175,30 +161,30 @@ func (b *BaseBuilder) buildGrantRole(ctx *sql.Context, n *plan.GrantRole, row sq
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	roleEdgesData := mysqlDb.RoleEdgesTable().Data()
+
+	editor := mysqlDb.Editor()
+	defer editor.Close()
+
 	for _, targetUser := range n.TargetUsers {
-		user := mysqlDb.GetUser(targetUser.Name, targetUser.Host, false)
+		user := mysqlDb.GetUser(editor, targetUser.Name, targetUser.Host, false)
 		if user == nil {
 			return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetUser.String("`"))
 		}
 		for _, targetRole := range n.Roles {
-			role := mysqlDb.GetUser(targetRole.Name, targetRole.Host, true)
+			role := mysqlDb.GetUser(editor, targetRole.Name, targetRole.Host, true)
 			if role == nil {
 				return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetRole.String("`"))
 			}
-			err := roleEdgesData.Put(ctx, &mysql_db.RoleEdge{
+			editor.PutRoleEdge(&mysql_db.RoleEdge{
 				FromHost:        role.Host,
 				FromUser:        role.User,
 				ToHost:          user.Host,
 				ToUser:          user.User,
 				WithAdminOption: n.WithAdminOption,
 			})
-			if err != nil {
-				return nil, err
-			}
 		}
 	}
-	if err := mysqlDb.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx, editor); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
@@ -217,12 +203,14 @@ func (b *BaseBuilder) buildRevoke(ctx *sql.Context, n *plan.Revoke, row sql.Row)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
+	editor := mysqlDb.Editor()
+	defer editor.Close()
 	if n.PrivilegeLevel.Database == "*" && n.PrivilegeLevel.TableRoutine == "*" {
 		if n.ObjectType != plan.ObjectType_Any {
 			return nil, sql.ErrGrantRevokeIllegalPrivilege.New()
 		}
 		for _, revokeUser := range n.Users {
-			user := mysqlDb.GetUser(revokeUser.Name, revokeUser.Host, false)
+			user := mysqlDb.GetUser(editor, revokeUser.Name, revokeUser.Host, false)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -242,7 +230,7 @@ func (b *BaseBuilder) buildRevoke(ctx *sql.Context, n *plan.Revoke, row sql.Row)
 			return nil, sql.ErrGrantRevokeIllegalPrivilege.New()
 		}
 		for _, revokeUser := range n.Users {
-			user := mysqlDb.GetUser(revokeUser.Name, revokeUser.Host, false)
+			user := mysqlDb.GetUser(editor, revokeUser.Name, revokeUser.Host, false)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -263,7 +251,7 @@ func (b *BaseBuilder) buildRevoke(ctx *sql.Context, n *plan.Revoke, row sql.Row)
 			return nil, fmt.Errorf("GRANT has not yet implemented object types")
 		}
 		for _, grantUser := range n.Users {
-			user := mysqlDb.GetUser(grantUser.Name, grantUser.Host, false)
+			user := mysqlDb.GetUser(editor, grantUser.Name, grantUser.Host, false)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -272,7 +260,7 @@ func (b *BaseBuilder) buildRevoke(ctx *sql.Context, n *plan.Revoke, row sql.Row)
 			}
 		}
 	}
-	if err := mysqlDb.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx, editor); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
@@ -287,6 +275,8 @@ func (b *BaseBuilder) buildGrant(ctx *sql.Context, n *plan.Grant, row sql.Row) (
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
+	editor := mysqlDb.Editor()
+	defer editor.Close()
 	if n.PrivilegeLevel.Database == "*" && n.PrivilegeLevel.TableRoutine == "*" {
 		if n.ObjectType != plan.ObjectType_Any {
 			return nil, sql.ErrGrantRevokeIllegalPrivilege.New()
@@ -295,7 +285,7 @@ func (b *BaseBuilder) buildGrant(ctx *sql.Context, n *plan.Grant, row sql.Row) (
 			return nil, fmt.Errorf("GRANT has not yet implemented user assumption")
 		}
 		for _, grantUser := range n.Users {
-			user := mysqlDb.GetUser(grantUser.Name, grantUser.Host, false)
+			user := mysqlDb.GetUser(editor, grantUser.Name, grantUser.Host, false)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -321,7 +311,7 @@ func (b *BaseBuilder) buildGrant(ctx *sql.Context, n *plan.Grant, row sql.Row) (
 			return nil, fmt.Errorf("GRANT has not yet implemented user assumption")
 		}
 		for _, grantUser := range n.Users {
-			user := mysqlDb.GetUser(grantUser.Name, grantUser.Host, false)
+			user := mysqlDb.GetUser(editor, grantUser.Name, grantUser.Host, false)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -348,7 +338,7 @@ func (b *BaseBuilder) buildGrant(ctx *sql.Context, n *plan.Grant, row sql.Row) (
 			return nil, fmt.Errorf("GRANT has not yet implemented user assumption")
 		}
 		for _, grantUser := range n.Users {
-			user := mysqlDb.GetUser(grantUser.Name, grantUser.Host, false)
+			user := mysqlDb.GetUser(editor, grantUser.Name, grantUser.Host, false)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -360,7 +350,7 @@ func (b *BaseBuilder) buildGrant(ctx *sql.Context, n *plan.Grant, row sql.Row) (
 			}
 		}
 	}
-	if err := mysqlDb.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx, editor); err != nil {
 		return nil, err
 	}
 
@@ -373,7 +363,9 @@ func (b *BaseBuilder) buildCreateRole(ctx *sql.Context, n *plan.CreateRole, row 
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
 
-	userTableData := mysqlDb.UserTable().Data()
+	editor := mysqlDb.Editor()
+	defer editor.Close()
+
 	for _, role := range n.Roles {
 		userPk := mysql_db.UserPrimaryKey{
 			Host: role.Host,
@@ -382,8 +374,8 @@ func (b *BaseBuilder) buildCreateRole(ctx *sql.Context, n *plan.CreateRole, row 
 		if role.AnyHost {
 			userPk.Host = "%"
 		}
-		existingRows := userTableData.Get(userPk)
-		if len(existingRows) > 0 {
+		_, ok := editor.GetUser(userPk)
+		if ok {
 			if n.IfNotExists {
 				continue
 			}
@@ -391,7 +383,7 @@ func (b *BaseBuilder) buildCreateRole(ctx *sql.Context, n *plan.CreateRole, row 
 		}
 
 		//TODO: When password expiration is implemented, make sure that roles have an expired password on creation
-		err := userTableData.Put(ctx, &mysql_db.User{
+		editor.PutUser(&mysql_db.User{
 			User:                userPk.User,
 			Host:                userPk.Host,
 			PrivilegeSet:        mysql_db.NewPrivilegeSet(),
@@ -402,11 +394,8 @@ func (b *BaseBuilder) buildCreateRole(ctx *sql.Context, n *plan.CreateRole, row 
 			Attributes:          nil,
 			IsRole:              true,
 		})
-		if err != nil {
-			return nil, err
-		}
 	}
-	if err := mysqlDb.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx, editor); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil

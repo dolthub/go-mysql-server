@@ -15,13 +15,14 @@
 package mysql_db
 
 import (
-	"github.com/dolthub/vitess/go/sqltypes"
+	"sync"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/in_mem_table"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // replicaSourceInfoTblName stores the name of the mysql table for persistent storage
@@ -38,27 +39,26 @@ type ReplicaSourceInfoPrimaryKey struct {
 	Channel string
 }
 
-var _ in_mem_table.Key = ReplicaSourceInfoPrimaryKey{}
+type ReplicaSourceInfoPrimaryKeyer struct{}
 
-// KeyFromEntry implements the interface in_mem_table.Key.
-func (r ReplicaSourceInfoPrimaryKey) KeyFromEntry(_ *sql.Context, entry in_mem_table.Entry) (in_mem_table.Key, error) {
-	_, ok := entry.(*ReplicaSourceInfo)
-	if !ok {
-		return nil, errPrimaryKeyUnknownEntry.New(replicaSourceInfoTblName)
-	}
-	return ReplicaSourceInfoPrimaryKey{
-		Channel: "",
-	}, nil
+var _ in_mem_table.Keyer[*ReplicaSourceInfo] = ReplicaSourceInfoPrimaryKeyer{}
+
+func (ReplicaSourceInfoPrimaryKeyer) GetKey(*ReplicaSourceInfo) any {
+	return ReplicaSourceInfoPrimaryKey{}
 }
 
-// KeyFromRow implements the interface in_mem_table.Key.
-func (r ReplicaSourceInfoPrimaryKey) KeyFromRow(_ *sql.Context, row sql.Row) (in_mem_table.Key, error) {
-	if len(row) != len(replicaSourceInfoTblSchema) {
-		return r, errPrimaryKeyUnknownSchema.New(replicaSourceInfoTblName)
-	}
-	return ReplicaSourceInfoPrimaryKey{
-		Channel: "",
-	}, nil
+func NewReplicaSourceInfoIndexedSetTable(lock, rlock sync.Locker) *in_mem_table.IndexedSetTable[*ReplicaSourceInfo] {
+	set := in_mem_table.NewIndexedSet[*ReplicaSourceInfo](ReplicaSourceInfoEquals, []in_mem_table.Keyer[*ReplicaSourceInfo]{ReplicaSourceInfoPrimaryKeyer{}})
+	table := in_mem_table.NewIndexedSetTable[*ReplicaSourceInfo](
+		replicaSourceInfoTblName,
+		replicaSourceInfoTblSchema,
+		sql.Collation_utf8mb3_bin,
+		set,
+		ReplicaSourceInfoOps,
+		lock,
+		rlock,
+	)
+	return table
 }
 
 func init() {

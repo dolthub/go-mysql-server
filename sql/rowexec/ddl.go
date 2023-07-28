@@ -459,7 +459,10 @@ func (b *BaseBuilder) buildCreateUser(ctx *sql.Context, n *plan.CreateUser, row 
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	userTableData := mysqlDb.UserTable().Data()
+
+	editor := mysqlDb.Editor()
+	defer editor.Close()
+
 	for _, user := range n.Users {
 		// replace empty host with any host
 		if user.UserName.Host == "" {
@@ -470,8 +473,8 @@ func (b *BaseBuilder) buildCreateUser(ctx *sql.Context, n *plan.CreateUser, row 
 			Host: user.UserName.Host,
 			User: user.UserName.Name,
 		}
-		existingRows := userTableData.Get(userPk)
-		if len(existingRows) > 0 {
+		_, ok := editor.GetUser(userPk)
+		if ok {
 			if n.IfNotExists {
 				continue
 			}
@@ -489,9 +492,10 @@ func (b *BaseBuilder) buildCreateUser(ctx *sql.Context, n *plan.CreateUser, row 
 				return nil, sql.ErrUserCreationFailure.New(err)
 			}
 		}
+
 		// TODO: attributes should probably not be nil, but setting it to &n.Attribute causes unexpected behavior
 		// TODO: validate all of the data
-		err := userTableData.Put(ctx, &mysql_db.User{
+		editor.PutUser(&mysql_db.User{
 			User:                user.UserName.Name,
 			Host:                user.UserName.Host,
 			PrivilegeSet:        mysql_db.NewPrivilegeSet(),
@@ -503,11 +507,8 @@ func (b *BaseBuilder) buildCreateUser(ctx *sql.Context, n *plan.CreateUser, row 
 			IsRole:              false,
 			Identity:            user.Identity,
 		})
-		if err != nil {
-			return nil, err
-		}
 	}
-	if err := mysqlDb.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx, editor); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
