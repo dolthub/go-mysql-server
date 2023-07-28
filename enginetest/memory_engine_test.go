@@ -566,7 +566,6 @@ func TestColumnAliases(t *testing.T) {
 }
 
 func TestColumnAliases_Experimental(t *testing.T) {
-	// TODO
 	enginetest.TestColumnAliases(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
@@ -962,7 +961,7 @@ func TestCreateTable(t *testing.T) {
 }
 
 func TestCreateTable_Exp(t *testing.T) {
-	t.Skip("different agg types")
+	t.Skip("different agg types -- OK")
 	enginetest.TestCreateTable(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
@@ -987,7 +986,7 @@ func TestRenameColumn(t *testing.T) {
 }
 
 func TestRenameColumn_Exp(t *testing.T) {
-	t.Skip("resolve check error")
+	t.Skip("different check error")
 	enginetest.TestRenameColumn(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
@@ -1082,7 +1081,6 @@ func TestForeignKeys(t *testing.T) {
 }
 
 func TestForeignKeys_Exp(t *testing.T) {
-	t.Skip("need DML to do FKs")
 	for i := len(queries.ForeignKeyTests) - 1; i >= 0; i-- {
 		//TODO: memory tables don't quite handle keyless foreign keys properly
 		if queries.ForeignKeyTests[i].Name == "Keyless CASCADE over three tables" {
@@ -1294,7 +1292,6 @@ func TestAddDropPks(t *testing.T) {
 }
 
 func TestAddDropPks_Exp(t *testing.T) {
-	t.Skip("column defaults")
 	enginetest.TestAddDropPks(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
@@ -1316,7 +1313,6 @@ func TestBlobs(t *testing.T) {
 }
 
 func TestBlobs_Exp(t *testing.T) {
-	t.Skip("inserts, deletes, default expressions, expecting alter table errors")
 	enginetest.TestBlobs(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
@@ -1365,6 +1361,19 @@ func TestValidateSession(t *testing.T) {
 		return sess
 	}
 	enginetest.TestValidateSession(t, enginetest.NewDefaultMemoryHarness(), newSess, &count)
+}
+
+func TestValidateSession_Exp(t *testing.T) {
+	count := 0
+	incrementValidateCb := func() {
+		count++
+	}
+
+	newSess := func(ctx *sql.Context) sql.PersistableSession {
+		sess := memory.NewInMemoryPersistedSessionWithValidationCallback(ctx.Session, incrementValidateCb)
+		return sess
+	}
+	enginetest.TestValidateSession(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental), newSess, &count)
 }
 
 func TestPrepared(t *testing.T) {
