@@ -1,10 +1,12 @@
 package analyzer
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/dolthub/go-mysql-server/sql/memo"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func variable(name string) *memo.ExprGroup {
