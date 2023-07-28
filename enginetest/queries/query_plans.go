@@ -326,7 +326,7 @@ where
 			"     │       │       └─ org1 (longtext)\n" +
 			"     │       └─ TableAlias(dimension)\n" +
 			"     │           └─ IndexedTableAccess(asset)\n" +
-			"     │               ├─ index: [asset.orgId,asset.assetId]\n" +
+			"     │               ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
 			"     │               └─ columns: [orgid assetid name val]\n" +
 			"     └─ Filter\n" +
 			"         ├─ AND\n" +
@@ -342,7 +342,7 @@ where
 			"         │       └─ org1 (longtext)\n" +
 			"         └─ TableAlias(style)\n" +
 			"             └─ IndexedTableAccess(asset)\n" +
-			"                 ├─ index: [asset.orgId,asset.assetId]\n" +
+			"                 ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
 			"                 └─ columns: [orgid assetid name val]\n" +
 			"",
 	},
@@ -1862,15 +1862,17 @@ where exists
 			"     ├─ OrderedDistinct\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [uv.u:0!null]\n" +
-			"     │       └─ LeftOuterLookupJoin\n" +
-			"     │           ├─ Eq\n" +
+			"     │       └─ LeftOuterMergeJoin\n" +
+			"     │           ├─ cmp: Eq\n" +
 			"     │           │   ├─ uv.u:0!null\n" +
 			"     │           │   └─ pq.p:2!null\n" +
-			"     │           ├─ Table\n" +
-			"     │           │   ├─ name: uv\n" +
+			"     │           ├─ IndexedTableAccess(uv)\n" +
+			"     │           │   ├─ index: [uv.u]\n" +
+			"     │           │   ├─ static: [{[NULL, ∞)}]\n" +
 			"     │           │   └─ columns: [u v]\n" +
 			"     │           └─ IndexedTableAccess(pq)\n" +
 			"     │               ├─ index: [pq.p]\n" +
+			"     │               ├─ static: [{[NULL, ∞)}]\n" +
 			"     │               └─ columns: [p q]\n" +
 			"     └─ IndexedTableAccess(ab)\n" +
 			"         ├─ index: [ab.a]\n" +
@@ -2008,49 +2010,47 @@ inner join pq on true
 	left join pq on alias1.a = p
 	where exists (select * from uv where a = u)
 	`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [alias1.a:0!null, alias1.b:1, pq.p:2, pq.q:3]\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [alias1.a:0!null, alias1.b:1, pq.p:2!null, pq.q:3]\n" +
-			"     └─ HashJoin\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ alias1.a:0!null\n" +
-			"         │   └─ uv.u:4!null\n" +
-			"         ├─ LeftOuterHashJoin\n" +
-			"         │   ├─ Eq\n" +
-			"         │   │   ├─ alias1.a:0!null\n" +
-			"         │   │   └─ pq.p:2!null\n" +
-			"         │   ├─ SubqueryAlias\n" +
-			"         │   │   ├─ name: alias1\n" +
-			"         │   │   ├─ outerVisibility: false\n" +
-			"         │   │   ├─ cacheable: true\n" +
-			"         │   │   └─ AntiLookupJoin\n" +
-			"         │   │       ├─ Eq\n" +
-			"         │   │       │   ├─ ab.a:0!null\n" +
-			"         │   │       │   └─ xy.x:2!null\n" +
-			"         │   │       ├─ Table\n" +
-			"         │   │       │   ├─ name: ab\n" +
-			"         │   │       │   └─ columns: [a b]\n" +
-			"         │   │       └─ IndexedTableAccess(xy)\n" +
-			"         │   │           ├─ index: [xy.x]\n" +
-			"         │   │           └─ columns: [x y]\n" +
-			"         │   └─ HashLookup\n" +
-			"         │       ├─ left-key: TUPLE(alias1.a:0!null)\n" +
-			"         │       ├─ right-key: TUPLE(pq.p:0!null)\n" +
-			"         │       └─ CachedResults\n" +
-			"         │           └─ Table\n" +
-			"         │               ├─ name: pq\n" +
-			"         │               └─ columns: [p q]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: TUPLE(alias1.a:0!null)\n" +
-			"             ├─ right-key: TUPLE(uv.u:0!null)\n" +
-			"             └─ CachedResults\n" +
-			"                 └─ OrderedDistinct\n" +
-			"                     └─ Project\n" +
-			"                         ├─ columns: [uv.u:0!null]\n" +
-			"                         └─ Table\n" +
-			"                             ├─ name: uv\n" +
-			"                             └─ columns: [u v]\n" +
+		ExpectedPlan: "LeftOuterHashJoin\n" +
+			" ├─ Eq\n" +
+			" │   ├─ alias1.a:0!null\n" +
+			" │   └─ pq.p:2!null\n" +
+			" ├─ Project\n" +
+			" │   ├─ columns: [alias1.a:0!null, alias1.b:1]\n" +
+			" │   └─ HashJoin\n" +
+			" │       ├─ Eq\n" +
+			" │       │   ├─ alias1.a:0!null\n" +
+			" │       │   └─ uv.u:2!null\n" +
+			" │       ├─ SubqueryAlias\n" +
+			" │       │   ├─ name: alias1\n" +
+			" │       │   ├─ outerVisibility: false\n" +
+			" │       │   ├─ cacheable: true\n" +
+			" │       │   └─ AntiLookupJoin\n" +
+			" │       │       ├─ Eq\n" +
+			" │       │       │   ├─ ab.a:0!null\n" +
+			" │       │       │   └─ xy.x:2!null\n" +
+			" │       │       ├─ Table\n" +
+			" │       │       │   ├─ name: ab\n" +
+			" │       │       │   └─ columns: [a b]\n" +
+			" │       │       └─ IndexedTableAccess(xy)\n" +
+			" │       │           ├─ index: [xy.x]\n" +
+			" │       │           └─ columns: [x y]\n" +
+			" │       └─ HashLookup\n" +
+			" │           ├─ left-key: TUPLE(alias1.a:0!null)\n" +
+			" │           ├─ right-key: TUPLE(uv.u:0!null)\n" +
+			" │           └─ CachedResults\n" +
+			" │               └─ OrderedDistinct\n" +
+			" │                   └─ Project\n" +
+			" │                       ├─ columns: [uv.u:0!null]\n" +
+			" │                       └─ Table\n" +
+			" │                           ├─ name: uv\n" +
+			" │                           └─ columns: [u v]\n" +
+			" └─ HashLookup\n" +
+			"     ├─ left-key: TUPLE(alias1.a:0!null)\n" +
+			"     ├─ right-key: TUPLE(pq.p:0!null)\n" +
+			"     └─ CachedResults\n" +
+			"         └─ Table\n" +
+			"             ├─ name: pq\n" +
+			"             └─ columns: [p q]\n" +
 			"",
 	},
 	{
@@ -2084,17 +2084,19 @@ inner join pq on true
 			"     ├─ columns: [a.i:0!null, a.s:1!null]\n" +
 			"     └─ Filter\n" +
 			"         ├─ b.i:2!null IS NULL\n" +
-			"         └─ LeftOuterLookupJoin\n" +
-			"             ├─ Eq\n" +
+			"         └─ LeftOuterMergeJoin\n" +
+			"             ├─ cmp: Eq\n" +
 			"             │   ├─ a.i:0!null\n" +
 			"             │   └─ b.i:2!null\n" +
 			"             ├─ TableAlias(a)\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: mytable\n" +
+			"             │   └─ IndexedTableAccess(mytable)\n" +
+			"             │       ├─ index: [mytable.i]\n" +
+			"             │       ├─ static: [{[NULL, ∞)}]\n" +
 			"             │       └─ columns: [i s]\n" +
 			"             └─ TableAlias(b)\n" +
 			"                 └─ IndexedTableAccess(mytable)\n" +
 			"                     ├─ index: [mytable.i]\n" +
+			"                     ├─ static: [{[NULL, ∞)}]\n" +
 			"                     └─ columns: [i]\n" +
 			"",
 	},
@@ -2466,50 +2468,50 @@ inner join pq on true
 	{
 		Query: `SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 OR s = s2`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [mytable.i:0!null, othertable.i2:3!null, othertable.s2:2!null]\n" +
+			" ├─ columns: [mytable.i:2!null, othertable.i2:1!null, othertable.s2:0!null]\n" +
 			" └─ LookupJoin\n" +
 			"     ├─ Or\n" +
 			"     │   ├─ Eq\n" +
-			"     │   │   ├─ mytable.i:0!null\n" +
-			"     │   │   └─ othertable.i2:3!null\n" +
+			"     │   │   ├─ mytable.i:2!null\n" +
+			"     │   │   └─ othertable.i2:1!null\n" +
 			"     │   └─ Eq\n" +
-			"     │       ├─ mytable.s:1!null\n" +
-			"     │       └─ othertable.s2:2!null\n" +
+			"     │       ├─ mytable.s:3!null\n" +
+			"     │       └─ othertable.s2:0!null\n" +
 			"     ├─ Table\n" +
-			"     │   ├─ name: mytable\n" +
-			"     │   └─ columns: [i s]\n" +
+			"     │   ├─ name: othertable\n" +
+			"     │   └─ columns: [s2 i2]\n" +
 			"     └─ Concat\n" +
-			"         ├─ IndexedTableAccess(othertable)\n" +
-			"         │   ├─ index: [othertable.s2]\n" +
-			"         │   └─ columns: [s2 i2]\n" +
-			"         └─ IndexedTableAccess(othertable)\n" +
-			"             ├─ index: [othertable.i2]\n" +
-			"             └─ columns: [s2 i2]\n" +
+			"         ├─ IndexedTableAccess(mytable)\n" +
+			"         │   ├─ index: [mytable.s,mytable.i]\n" +
+			"         │   └─ columns: [i s]\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 	},
 	{
 		Query: `SELECT i, i2, s2 FROM mytable INNER JOIN othertable ot ON i = i2 OR s = s2`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [mytable.i:0!null, ot.i2:3!null, ot.s2:2!null]\n" +
+			" ├─ columns: [mytable.i:2!null, ot.i2:1!null, ot.s2:0!null]\n" +
 			" └─ LookupJoin\n" +
 			"     ├─ Or\n" +
 			"     │   ├─ Eq\n" +
-			"     │   │   ├─ mytable.i:0!null\n" +
-			"     │   │   └─ ot.i2:3!null\n" +
+			"     │   │   ├─ mytable.i:2!null\n" +
+			"     │   │   └─ ot.i2:1!null\n" +
 			"     │   └─ Eq\n" +
-			"     │       ├─ mytable.s:1!null\n" +
-			"     │       └─ ot.s2:2!null\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: mytable\n" +
-			"     │   └─ columns: [i s]\n" +
-			"     └─ TableAlias(ot)\n" +
-			"         └─ Concat\n" +
-			"             ├─ IndexedTableAccess(othertable)\n" +
-			"             │   ├─ index: [othertable.s2]\n" +
-			"             │   └─ columns: [s2 i2]\n" +
-			"             └─ IndexedTableAccess(othertable)\n" +
-			"                 ├─ index: [othertable.i2]\n" +
-			"                 └─ columns: [s2 i2]\n" +
+			"     │       ├─ mytable.s:3!null\n" +
+			"     │       └─ ot.s2:0!null\n" +
+			"     ├─ TableAlias(ot)\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: othertable\n" +
+			"     │       └─ columns: [s2 i2]\n" +
+			"     └─ Concat\n" +
+			"         ├─ IndexedTableAccess(mytable)\n" +
+			"         │   ├─ index: [mytable.s,mytable.i]\n" +
+			"         │   └─ columns: [i s]\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -4482,17 +4484,18 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON one_pk.pk = two_pk.pk1 AND one_pk.pk <=> two_pk.pk2`,
-		ExpectedPlan: "LeftOuterLookupJoin\n" +
-			" ├─ AND\n" +
-			" │   ├─ Eq\n" +
-			" │   │   ├─ one_pk.pk:0!null\n" +
-			" │   │   └─ two_pk.pk1:1!null\n" +
-			" │   └─ (one_pk.pk:0!null <=> two_pk.pk2:2!null)\n" +
-			" ├─ Table\n" +
-			" │   ├─ name: one_pk\n" +
+		ExpectedPlan: "LeftOuterMergeJoin\n" +
+			" ├─ cmp: Eq\n" +
+			" │   ├─ one_pk.pk:0!null\n" +
+			" │   └─ two_pk.pk1:1!null\n" +
+			" ├─ sel: (one_pk.pk:0!null <=> two_pk.pk2:2!null)\n" +
+			" ├─ IndexedTableAccess(one_pk)\n" +
+			" │   ├─ index: [one_pk.pk]\n" +
+			" │   ├─ static: [{[NULL, ∞)}]\n" +
 			" │   └─ columns: [pk]\n" +
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"     └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -4514,19 +4517,20 @@ inner join pq on true
 		Query: `SELECT pk,pk1,pk2 FROM one_pk RIGHT JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [one_pk.pk:2, two_pk.pk1:0!null, two_pk.pk2:1!null]\n" +
-			" └─ LeftOuterLookupJoin\n" +
-			"     ├─ AND\n" +
-			"     │   ├─ Eq\n" +
-			"     │   │   ├─ one_pk.pk:2!null\n" +
-			"     │   │   └─ two_pk.pk1:0!null\n" +
-			"     │   └─ Eq\n" +
-			"     │       ├─ one_pk.pk:2!null\n" +
-			"     │       └─ two_pk.pk2:1!null\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: two_pk\n" +
+			" └─ LeftOuterMergeJoin\n" +
+			"     ├─ cmp: Eq\n" +
+			"     │   ├─ two_pk.pk1:0!null\n" +
+			"     │   └─ one_pk.pk:2!null\n" +
+			"     ├─ sel: Eq\n" +
+			"     │   ├─ one_pk.pk:2!null\n" +
+			"     │   └─ two_pk.pk2:1!null\n" +
+			"     ├─ IndexedTableAccess(two_pk)\n" +
+			"     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"     │   └─ columns: [pk1 pk2]\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
 			"         └─ columns: [pk]\n" +
 			"",
 	},
@@ -4657,17 +4661,19 @@ inner join pq on true
 		Query: `SELECT * FROM datetime_table dt1 join datetime_table dt2 on dt1.timestamp_col = dt2.timestamp_col`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [dt1.i:5!null, dt1.date_col:6, dt1.datetime_col:7, dt1.timestamp_col:8, dt1.time_col:9, dt2.i:0!null, dt2.date_col:1, dt2.datetime_col:2, dt2.timestamp_col:3, dt2.time_col:4]\n" +
-			" └─ LookupJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ dt1.timestamp_col:8\n" +
-			"     │   └─ dt2.timestamp_col:3\n" +
+			" └─ MergeJoin\n" +
+			"     ├─ cmp: Eq\n" +
+			"     │   ├─ dt2.timestamp_col:3\n" +
+			"     │   └─ dt1.timestamp_col:8\n" +
 			"     ├─ TableAlias(dt2)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: datetime_table\n" +
+			"     │   └─ IndexedTableAccess(datetime_table)\n" +
+			"     │       ├─ index: [datetime_table.timestamp_col]\n" +
+			"     │       ├─ static: [{[NULL, ∞)}]\n" +
 			"     │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"     └─ TableAlias(dt1)\n" +
 			"         └─ IndexedTableAccess(datetime_table)\n" +
 			"             ├─ index: [datetime_table.timestamp_col]\n" +
+			"             ├─ static: [{[NULL, ∞)}]\n" +
 			"             └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
@@ -4675,17 +4681,19 @@ inner join pq on true
 		Query: `SELECT * FROM datetime_table dt1 join datetime_table dt2 on dt1.date_col = dt2.timestamp_col`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [dt1.i:5!null, dt1.date_col:6, dt1.datetime_col:7, dt1.timestamp_col:8, dt1.time_col:9, dt2.i:0!null, dt2.date_col:1, dt2.datetime_col:2, dt2.timestamp_col:3, dt2.time_col:4]\n" +
-			" └─ LookupJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ dt1.date_col:6\n" +
-			"     │   └─ dt2.timestamp_col:3\n" +
+			" └─ MergeJoin\n" +
+			"     ├─ cmp: Eq\n" +
+			"     │   ├─ dt2.timestamp_col:3\n" +
+			"     │   └─ dt1.date_col:6\n" +
 			"     ├─ TableAlias(dt2)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: datetime_table\n" +
+			"     │   └─ IndexedTableAccess(datetime_table)\n" +
+			"     │       ├─ index: [datetime_table.timestamp_col]\n" +
+			"     │       ├─ static: [{[NULL, ∞)}]\n" +
 			"     │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"     └─ TableAlias(dt1)\n" +
 			"         └─ IndexedTableAccess(datetime_table)\n" +
 			"             ├─ index: [datetime_table.date_col]\n" +
+			"             ├─ static: [{[NULL, ∞)}]\n" +
 			"             └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
@@ -4693,17 +4701,19 @@ inner join pq on true
 		Query: `SELECT * FROM datetime_table dt1 join datetime_table dt2 on dt1.datetime_col = dt2.timestamp_col`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [dt1.i:5!null, dt1.date_col:6, dt1.datetime_col:7, dt1.timestamp_col:8, dt1.time_col:9, dt2.i:0!null, dt2.date_col:1, dt2.datetime_col:2, dt2.timestamp_col:3, dt2.time_col:4]\n" +
-			" └─ LookupJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ dt1.datetime_col:7\n" +
-			"     │   └─ dt2.timestamp_col:3\n" +
+			" └─ MergeJoin\n" +
+			"     ├─ cmp: Eq\n" +
+			"     │   ├─ dt2.timestamp_col:3\n" +
+			"     │   └─ dt1.datetime_col:7\n" +
 			"     ├─ TableAlias(dt2)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: datetime_table\n" +
+			"     │   └─ IndexedTableAccess(datetime_table)\n" +
+			"     │       ├─ index: [datetime_table.timestamp_col]\n" +
+			"     │       ├─ static: [{[NULL, ∞)}]\n" +
 			"     │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"     └─ TableAlias(dt1)\n" +
 			"         └─ IndexedTableAccess(datetime_table)\n" +
 			"             ├─ index: [datetime_table.datetime_col]\n" +
+			"             ├─ static: [{[NULL, ∞)}]\n" +
 			"             └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
@@ -4733,20 +4743,21 @@ inner join pq on true
 			join datetime_table dt2 on dt1.date_col = date(date_sub(dt2.timestamp_col, interval 2 day))
 			order by 1 limit 3 offset 0`,
 		ExpectedPlan: "Limit(3)\n" +
-			" └─ Offset(0)\n" +
-			"     └─ TopN(Limit: [(3 + 0)]; dt1.i ASC)\n" +
-			"         └─ Project\n" +
-			"             ├─ columns: [dt1.i]\n" +
-			"             └─ LookupJoin\n" +
-			"                 ├─ (dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
-			"                 ├─ TableAlias(dt2)\n" +
-			"                 │   └─ Table\n" +
-			"                 │       ├─ name: datetime_table\n" +
-			"                 │       └─ columns: [timestamp_col]\n" +
-			"                 └─ TableAlias(dt1)\n" +
-			"                     └─ IndexedTableAccess(datetime_table)\n" +
-			"                         ├─ index: [datetime_table.date_col]\n" +
-			"                         └─ columns: [i date_col]\n" +
+			" └─ TopN(Limit: [3 (tinyint)]; dt1.i:0!null ASC nullsFirst)\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [dt1.i:1!null]\n" +
+			"         └─ LookupJoin\n" +
+			"             ├─ Eq\n" +
+			"             │   ├─ dt1.date_col:2\n" +
+			"             │   └─ DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY))\n" +
+			"             ├─ TableAlias(dt2)\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: datetime_table\n" +
+			"             │       └─ columns: [timestamp_col]\n" +
+			"             └─ TableAlias(dt1)\n" +
+			"                 └─ IndexedTableAccess(datetime_table)\n" +
+			"                     ├─ index: [datetime_table.date_col]\n" +
+			"                     └─ columns: [i date_col]\n" +
 			"",
 	},
 	{
@@ -4920,35 +4931,32 @@ inner join pq on true
 						ORDER BY 1`,
 		ExpectedPlan: "Sort(one_pk.pk:0!null ASC nullsFirst)\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [one_pk.pk:0!null, tpk.pk1:3!null, tpk2.pk1:1!null, tpk.pk2:4!null, tpk2.pk2:2!null]\n" +
+			"     ├─ columns: [one_pk.pk:2!null, tpk.pk1:0!null, tpk2.pk1:3!null, tpk.pk2:1!null, tpk2.pk2:4!null]\n" +
 			"     └─ LookupJoin\n" +
 			"         ├─ AND\n" +
-			"         │   ├─ AND\n" +
-			"         │   │   ├─ Eq\n" +
-			"         │   │   │   ├─ one_pk.pk:0!null\n" +
-			"         │   │   │   └─ tpk.pk1:3!null\n" +
-			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ (one_pk.pk:0!null - 1 (tinyint))\n" +
-			"         │   │       └─ tpk.pk2:4!null\n" +
+			"         │   ├─ Eq\n" +
+			"         │   │   ├─ (one_pk.pk:2!null - 1 (tinyint))\n" +
+			"         │   │   └─ tpk2.pk1:3!null\n" +
 			"         │   └─ Eq\n" +
-			"         │       ├─ tpk.pk1:3!null\n" +
-			"         │       └─ tpk2.pk2:2!null\n" +
-			"         ├─ LookupJoin\n" +
-			"         │   ├─ AND\n" +
-			"         │   │   ├─ Eq\n" +
-			"         │   │   │   ├─ (one_pk.pk:0!null - 1 (tinyint))\n" +
-			"         │   │   │   └─ tpk2.pk1:1!null\n" +
-			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ one_pk.pk:0!null\n" +
-			"         │   │       └─ tpk2.pk2:2!null\n" +
-			"         │   ├─ Table\n" +
-			"         │   │   ├─ name: one_pk\n" +
-			"         │   │   └─ columns: [pk]\n" +
-			"         │   └─ TableAlias(tpk2)\n" +
-			"         │       └─ IndexedTableAccess(two_pk)\n" +
-			"         │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         │           └─ columns: [pk1 pk2]\n" +
-			"         └─ TableAlias(tpk)\n" +
+			"         │       ├─ one_pk.pk:2!null\n" +
+			"         │       └─ tpk2.pk2:4!null\n" +
+			"         ├─ MergeJoin\n" +
+			"         │   ├─ cmp: Eq\n" +
+			"         │   │   ├─ tpk.pk1:0!null\n" +
+			"         │   │   └─ one_pk.pk:2!null\n" +
+			"         │   ├─ sel: Eq\n" +
+			"         │   │   ├─ (one_pk.pk:2!null - 1 (tinyint))\n" +
+			"         │   │   └─ tpk.pk2:1!null\n" +
+			"         │   ├─ TableAlias(tpk)\n" +
+			"         │   │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │   │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │   │       └─ columns: [pk1 pk2]\n" +
+			"         │   └─ IndexedTableAccess(one_pk)\n" +
+			"         │       ├─ index: [one_pk.pk]\n" +
+			"         │       ├─ static: [{[NULL, ∞)}]\n" +
+			"         │       └─ columns: [pk]\n" +
+			"         └─ TableAlias(tpk2)\n" +
 			"             └─ IndexedTableAccess(two_pk)\n" +
 			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"                 └─ columns: [pk1 pk2]\n" +
@@ -4968,20 +4976,21 @@ inner join pq on true
 			"     │   └─ Eq\n" +
 			"     │       ├─ tpk2.pk2:4!null\n" +
 			"     │       └─ tpk.pk1:1!null\n" +
-			"     ├─ LeftOuterLookupJoin\n" +
-			"     │   ├─ AND\n" +
-			"     │   │   ├─ Eq\n" +
-			"     │   │   │   ├─ one_pk.pk:0!null\n" +
-			"     │   │   │   └─ tpk.pk1:1!null\n" +
-			"     │   │   └─ Eq\n" +
-			"     │   │       ├─ one_pk.pk:0!null\n" +
-			"     │   │       └─ tpk.pk2:2!null\n" +
-			"     │   ├─ Table\n" +
-			"     │   │   ├─ name: one_pk\n" +
+			"     ├─ LeftOuterMergeJoin\n" +
+			"     │   ├─ cmp: Eq\n" +
+			"     │   │   ├─ one_pk.pk:0!null\n" +
+			"     │   │   └─ tpk.pk1:1!null\n" +
+			"     │   ├─ sel: Eq\n" +
+			"     │   │   ├─ one_pk.pk:0!null\n" +
+			"     │   │   └─ tpk.pk2:2!null\n" +
+			"     │   ├─ IndexedTableAccess(one_pk)\n" +
+			"     │   │   ├─ index: [one_pk.pk]\n" +
+			"     │   │   ├─ static: [{[NULL, ∞)}]\n" +
 			"     │   │   └─ columns: [pk]\n" +
 			"     │   └─ TableAlias(tpk)\n" +
 			"     │       └─ IndexedTableAccess(two_pk)\n" +
 			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"     │           └─ columns: [pk1 pk2]\n" +
 			"     └─ TableAlias(tpk2)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
@@ -5003,20 +5012,21 @@ inner join pq on true
 			"     │   └─ Eq\n" +
 			"     │       ├─ tpk2.pk2:4!null\n" +
 			"     │       └─ tpk.pk1:1!null\n" +
-			"     ├─ LeftOuterLookupJoin\n" +
-			"     │   ├─ AND\n" +
-			"     │   │   ├─ Eq\n" +
-			"     │   │   │   ├─ one_pk.pk:0!null\n" +
-			"     │   │   │   └─ tpk.pk1:1!null\n" +
-			"     │   │   └─ Eq\n" +
-			"     │   │       ├─ one_pk.pk:0!null\n" +
-			"     │   │       └─ tpk.pk2:2!null\n" +
-			"     │   ├─ Table\n" +
-			"     │   │   ├─ name: one_pk\n" +
+			"     ├─ LeftOuterMergeJoin\n" +
+			"     │   ├─ cmp: Eq\n" +
+			"     │   │   ├─ one_pk.pk:0!null\n" +
+			"     │   │   └─ tpk.pk1:1!null\n" +
+			"     │   ├─ sel: Eq\n" +
+			"     │   │   ├─ one_pk.pk:0!null\n" +
+			"     │   │   └─ tpk.pk2:2!null\n" +
+			"     │   ├─ IndexedTableAccess(one_pk)\n" +
+			"     │   │   ├─ index: [one_pk.pk]\n" +
+			"     │   │   ├─ static: [{[NULL, ∞)}]\n" +
 			"     │   │   └─ columns: [pk]\n" +
 			"     │   └─ TableAlias(tpk)\n" +
 			"     │       └─ IndexedTableAccess(two_pk)\n" +
 			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"     │           └─ columns: [pk1 pk2]\n" +
 			"     └─ TableAlias(tpk2)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
@@ -5066,7 +5076,7 @@ inner join pq on true
 						RIGHT JOIN two_pk tpk2 ON tpk.pk1=TPk2.pk2 AND tpk.pk2=TPK2.pk1`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [one_pk.pk:4]\n" +
-			" └─ LeftOuterJoin\n" +
+			" └─ LeftOuterHashJoin\n" +
 			"     ├─ AND\n" +
 			"     │   ├─ Eq\n" +
 			"     │   │   ├─ tpk.pk1:2!null\n" +
@@ -5078,21 +5088,26 @@ inner join pq on true
 			"     │   └─ Table\n" +
 			"     │       ├─ name: two_pk\n" +
 			"     │       └─ columns: [pk1 pk2]\n" +
-			"     └─ LeftOuterLookupJoin\n" +
-			"         ├─ AND\n" +
-			"         │   ├─ Eq\n" +
-			"         │   │   ├─ one_pk.pk:4!null\n" +
-			"         │   │   └─ tpk.pk1:2!null\n" +
-			"         │   └─ Eq\n" +
-			"         │       ├─ one_pk.pk:4!null\n" +
-			"         │       └─ tpk.pk2:3!null\n" +
-			"         ├─ TableAlias(tpk)\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: two_pk\n" +
-			"         │       └─ columns: [pk1 pk2]\n" +
-			"         └─ IndexedTableAccess(one_pk)\n" +
-			"             ├─ index: [one_pk.pk]\n" +
-			"             └─ columns: [pk]\n" +
+			"     └─ HashLookup\n" +
+			"         ├─ left-key: TUPLE(tpk2.pk2:1!null, tpk2.pk1:0!null)\n" +
+			"         ├─ right-key: TUPLE(tpk.pk1:0!null, tpk.pk2:1!null)\n" +
+			"         └─ CachedResults\n" +
+			"             └─ LeftOuterMergeJoin\n" +
+			"                 ├─ cmp: Eq\n" +
+			"                 │   ├─ tpk.pk1:2!null\n" +
+			"                 │   └─ one_pk.pk:4!null\n" +
+			"                 ├─ sel: Eq\n" +
+			"                 │   ├─ one_pk.pk:4!null\n" +
+			"                 │   └─ tpk.pk2:3!null\n" +
+			"                 ├─ TableAlias(tpk)\n" +
+			"                 │   └─ IndexedTableAccess(two_pk)\n" +
+			"                 │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 │       └─ columns: [pk1 pk2]\n" +
+			"                 └─ IndexedTableAccess(one_pk)\n" +
+			"                     ├─ index: [one_pk.pk]\n" +
+			"                     ├─ static: [{[NULL, ∞)}]\n" +
+			"                     └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -5131,15 +5146,17 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i`,
-		ExpectedPlan: "LeftOuterLookupJoin\n" +
-			" ├─ Eq\n" +
+		ExpectedPlan: "LeftOuterMergeJoin\n" +
+			" ├─ cmp: Eq\n" +
 			" │   ├─ one_pk.pk:0!null\n" +
 			" │   └─ niltable.i:1!null\n" +
-			" ├─ Table\n" +
-			" │   ├─ name: one_pk\n" +
+			" ├─ IndexedTableAccess(one_pk)\n" +
+			" │   ├─ index: [one_pk.pk]\n" +
+			" │   ├─ static: [{[NULL, ∞)}]\n" +
 			" │   └─ columns: [pk]\n" +
 			" └─ IndexedTableAccess(niltable)\n" +
 			"     ├─ index: [niltable.i]\n" +
+			"     ├─ static: [{[NULL, ∞)}]\n" +
 			"     └─ columns: [i f]\n" +
 			"",
 	},
@@ -5196,18 +5213,19 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i AND f IS NOT NULL`,
-		ExpectedPlan: "LeftOuterLookupJoin\n" +
-			" ├─ AND\n" +
-			" │   ├─ Eq\n" +
-			" │   │   ├─ one_pk.pk:0!null\n" +
-			" │   │   └─ niltable.i:1!null\n" +
-			" │   └─ NOT\n" +
-			" │       └─ niltable.f:2 IS NULL\n" +
-			" ├─ Table\n" +
-			" │   ├─ name: one_pk\n" +
+		ExpectedPlan: "LeftOuterMergeJoin\n" +
+			" ├─ cmp: Eq\n" +
+			" │   ├─ one_pk.pk:0!null\n" +
+			" │   └─ niltable.i:1!null\n" +
+			" ├─ sel: NOT\n" +
+			" │   └─ niltable.f:2 IS NULL\n" +
+			" ├─ IndexedTableAccess(one_pk)\n" +
+			" │   ├─ index: [one_pk.pk]\n" +
+			" │   ├─ static: [{[NULL, ∞)}]\n" +
 			" │   └─ columns: [pk]\n" +
 			" └─ IndexedTableAccess(niltable)\n" +
 			"     ├─ index: [niltable.i]\n" +
+			"     ├─ static: [{[NULL, ∞)}]\n" +
 			"     └─ columns: [i f]\n" +
 			"",
 	},
@@ -5237,15 +5255,17 @@ inner join pq on true
 		ExpectedPlan: "Filter\n" +
 			" ├─ NOT\n" +
 			" │   └─ niltable.f:2 IS NULL\n" +
-			" └─ LeftOuterLookupJoin\n" +
-			"     ├─ Eq\n" +
+			" └─ LeftOuterMergeJoin\n" +
+			"     ├─ cmp: Eq\n" +
 			"     │   ├─ one_pk.pk:0!null\n" +
 			"     │   └─ niltable.i:1!null\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: one_pk\n" +
+			"     ├─ IndexedTableAccess(one_pk)\n" +
+			"     │   ├─ index: [one_pk.pk]\n" +
+			"     │   ├─ static: [{[NULL, ∞)}]\n" +
 			"     │   └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(niltable)\n" +
 			"         ├─ index: [niltable.i]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
 			"         └─ columns: [i f]\n" +
 			"",
 	},
@@ -5257,15 +5277,17 @@ inner join pq on true
 			"     ├─ GreaterThan\n" +
 			"     │   ├─ niltable.i2:2\n" +
 			"     │   └─ 1 (tinyint)\n" +
-			"     └─ LeftOuterLookupJoin\n" +
-			"         ├─ Eq\n" +
+			"     └─ LeftOuterMergeJoin\n" +
+			"         ├─ cmp: Eq\n" +
 			"         │   ├─ one_pk.pk:0!null\n" +
 			"         │   └─ niltable.i:1!null\n" +
-			"         ├─ Table\n" +
-			"         │   ├─ name: one_pk\n" +
+			"         ├─ IndexedTableAccess(one_pk)\n" +
+			"         │   ├─ index: [one_pk.pk]\n" +
+			"         │   ├─ static: [{[NULL, ∞)}]\n" +
 			"         │   └─ columns: [pk]\n" +
 			"         └─ IndexedTableAccess(niltable)\n" +
 			"             ├─ index: [niltable.i]\n" +
+			"             ├─ static: [{[NULL, ∞)}]\n" +
 			"             └─ columns: [i i2 f]\n" +
 			"",
 	},
@@ -5275,15 +5297,17 @@ inner join pq on true
 			" ├─ GreaterThan\n" +
 			" │   ├─ niltable.i:1\n" +
 			" │   └─ 1 (tinyint)\n" +
-			" └─ LeftOuterLookupJoin\n" +
-			"     ├─ Eq\n" +
+			" └─ LeftOuterMergeJoin\n" +
+			"     ├─ cmp: Eq\n" +
 			"     │   ├─ one_pk.pk:0!null\n" +
 			"     │   └─ niltable.i:1!null\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: one_pk\n" +
+			"     ├─ IndexedTableAccess(one_pk)\n" +
+			"     │   ├─ index: [one_pk.pk]\n" +
+			"     │   ├─ static: [{[NULL, ∞)}]\n" +
 			"     │   └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(niltable)\n" +
 			"         ├─ index: [niltable.i]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
 			"         └─ columns: [i f]\n" +
 			"",
 	},
@@ -5291,19 +5315,21 @@ inner join pq on true
 		Query: `SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE c1 > 10`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [one_pk.pk:0!null, niltable.i:2, niltable.f:3]\n" +
-			" └─ LeftOuterLookupJoin\n" +
-			"     ├─ Eq\n" +
+			" └─ LeftOuterMergeJoin\n" +
+			"     ├─ cmp: Eq\n" +
 			"     │   ├─ one_pk.pk:0!null\n" +
 			"     │   └─ niltable.i:2!null\n" +
 			"     ├─ Filter\n" +
 			"     │   ├─ GreaterThan\n" +
 			"     │   │   ├─ one_pk.c1:1\n" +
 			"     │   │   └─ 10 (tinyint)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: one_pk\n" +
+			"     │   └─ IndexedTableAccess(one_pk)\n" +
+			"     │       ├─ index: [one_pk.pk]\n" +
+			"     │       ├─ static: [{[NULL, ∞)}]\n" +
 			"     │       └─ columns: [pk c1]\n" +
 			"     └─ IndexedTableAccess(niltable)\n" +
 			"         ├─ index: [niltable.i]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
 			"         └─ columns: [i f]\n" +
 			"",
 	},
@@ -5314,33 +5340,40 @@ inner join pq on true
 			" └─ Filter\n" +
 			"     ├─ NOT\n" +
 			"     │   └─ niltable.f:1 IS NULL\n" +
-			"     └─ LeftOuterLookupJoin\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ one_pk.pk:2!null\n" +
-			"         │   └─ niltable.i:0!null\n" +
+			"     └─ LeftOuterMergeJoin\n" +
+			"         ├─ cmp: Eq\n" +
+			"         │   ├─ niltable.i:0!null\n" +
+			"         │   └─ one_pk.pk:2!null\n" +
 			"         ├─ Filter\n" +
 			"         │   ├─ NOT\n" +
 			"         │   │   └─ niltable.f:1 IS NULL\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: niltable\n" +
+			"         │   └─ IndexedTableAccess(niltable)\n" +
+			"         │       ├─ index: [niltable.i]\n" +
+			"         │       ├─ static: [{[NULL, ∞)}]\n" +
 			"         │       └─ columns: [i f]\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
+			"             ├─ static: [{[NULL, ∞)}]\n" +
 			"             └─ columns: [pk]\n" +
 			"",
 	},
 	{
 		Query: `SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE pk > 1`,
-		ExpectedPlan: "LeftOuterLookupJoin\n" +
-			" ├─ Eq\n" +
+		ExpectedPlan: "LeftOuterMergeJoin\n" +
+			" ├─ cmp: Eq\n" +
 			" │   ├─ one_pk.pk:0!null\n" +
 			" │   └─ niltable.i:1!null\n" +
-			" ├─ IndexedTableAccess(one_pk)\n" +
-			" │   ├─ index: [one_pk.pk]\n" +
-			" │   ├─ static: [{(1, ∞)}]\n" +
-			" │   └─ columns: [pk]\n" +
+			" ├─ Filter\n" +
+			" │   ├─ GreaterThan\n" +
+			" │   │   ├─ one_pk.pk:0!null\n" +
+			" │   │   └─ 1 (tinyint)\n" +
+			" │   └─ IndexedTableAccess(one_pk)\n" +
+			" │       ├─ index: [one_pk.pk]\n" +
+			" │       ├─ static: [{[NULL, ∞)}]\n" +
+			" │       └─ columns: [pk]\n" +
 			" └─ IndexedTableAccess(niltable)\n" +
 			"     ├─ index: [niltable.i]\n" +
+			"     ├─ static: [{[NULL, ∞)}]\n" +
 			"     └─ columns: [i f]\n" +
 			"",
 	},
@@ -5493,22 +5526,25 @@ inner join pq on true
 	{
 		Query: `SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1+1=b.pk1 AND a.pk2+1=b.pk2 ORDER BY 1,2,3`,
 		ExpectedPlan: "Sort(a.pk1:0!null ASC nullsFirst, a.pk2:1!null ASC nullsFirst, b.pk1:2!null ASC nullsFirst)\n" +
-			" └─ LookupJoin\n" +
-			"     ├─ AND\n" +
-			"     │   ├─ Eq\n" +
-			"     │   │   ├─ (a.pk1:0!null + 1 (tinyint))\n" +
-			"     │   │   └─ b.pk1:2!null\n" +
-			"     │   └─ Eq\n" +
-			"     │       ├─ (a.pk2:1!null + 1 (tinyint))\n" +
-			"     │       └─ b.pk2:3!null\n" +
-			"     ├─ TableAlias(a)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: two_pk\n" +
-			"     │       └─ columns: [pk1 pk2]\n" +
-			"     └─ TableAlias(b)\n" +
-			"         └─ IndexedTableAccess(two_pk)\n" +
-			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             └─ columns: [pk1 pk2]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [a.pk1:2!null, a.pk2:3!null, b.pk1:0!null, b.pk2:1!null]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: Eq\n" +
+			"         │   ├─ b.pk1:0!null\n" +
+			"         │   └─ (a.pk1:2!null + 1 (tinyint))\n" +
+			"         ├─ sel: Eq\n" +
+			"         │   ├─ (a.pk2:3!null + 1 (tinyint))\n" +
+			"         │   └─ b.pk2:1!null\n" +
+			"         ├─ TableAlias(b)\n" +
+			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │       └─ columns: [pk1 pk2]\n" +
+			"         └─ TableAlias(a)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
@@ -5709,15 +5745,17 @@ inner join pq on true
 	{
 		Query: `SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i ORDER BY 1`,
 		ExpectedPlan: "Sort(one_pk.pk:0!null ASC nullsFirst)\n" +
-			" └─ LeftOuterLookupJoin\n" +
-			"     ├─ Eq\n" +
+			" └─ LeftOuterMergeJoin\n" +
+			"     ├─ cmp: Eq\n" +
 			"     │   ├─ one_pk.pk:0!null\n" +
 			"     │   └─ niltable.i:1!null\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: one_pk\n" +
+			"     ├─ IndexedTableAccess(one_pk)\n" +
+			"     │   ├─ index: [one_pk.pk]\n" +
+			"     │   ├─ static: [{[NULL, ∞)}]\n" +
 			"     │   └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(niltable)\n" +
 			"         ├─ index: [niltable.i]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
 			"         └─ columns: [i f]\n" +
 			"",
 	},
@@ -5727,31 +5765,38 @@ inner join pq on true
 			" └─ Filter\n" +
 			"     ├─ NOT\n" +
 			"     │   └─ niltable.f:2 IS NULL\n" +
-			"     └─ LeftOuterLookupJoin\n" +
-			"         ├─ Eq\n" +
+			"     └─ LeftOuterMergeJoin\n" +
+			"         ├─ cmp: Eq\n" +
 			"         │   ├─ one_pk.pk:0!null\n" +
 			"         │   └─ niltable.i:1!null\n" +
-			"         ├─ Table\n" +
-			"         │   ├─ name: one_pk\n" +
+			"         ├─ IndexedTableAccess(one_pk)\n" +
+			"         │   ├─ index: [one_pk.pk]\n" +
+			"         │   ├─ static: [{[NULL, ∞)}]\n" +
 			"         │   └─ columns: [pk]\n" +
 			"         └─ IndexedTableAccess(niltable)\n" +
 			"             ├─ index: [niltable.i]\n" +
+			"             ├─ static: [{[NULL, ∞)}]\n" +
 			"             └─ columns: [i f]\n" +
 			"",
 	},
 	{
 		Query: `SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE pk > 1 ORDER BY 1`,
 		ExpectedPlan: "Sort(one_pk.pk:0!null ASC nullsFirst)\n" +
-			" └─ LeftOuterLookupJoin\n" +
-			"     ├─ Eq\n" +
+			" └─ LeftOuterMergeJoin\n" +
+			"     ├─ cmp: Eq\n" +
 			"     │   ├─ one_pk.pk:0!null\n" +
 			"     │   └─ niltable.i:1!null\n" +
-			"     ├─ IndexedTableAccess(one_pk)\n" +
-			"     │   ├─ index: [one_pk.pk]\n" +
-			"     │   ├─ static: [{(1, ∞)}]\n" +
-			"     │   └─ columns: [pk]\n" +
+			"     ├─ Filter\n" +
+			"     │   ├─ GreaterThan\n" +
+			"     │   │   ├─ one_pk.pk:0!null\n" +
+			"     │   │   └─ 1 (tinyint)\n" +
+			"     │   └─ IndexedTableAccess(one_pk)\n" +
+			"     │       ├─ index: [one_pk.pk]\n" +
+			"     │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │       └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(niltable)\n" +
 			"         ├─ index: [niltable.i]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
 			"         └─ columns: [i f]\n" +
 			"",
 	},
@@ -5782,18 +5827,20 @@ inner join pq on true
 			"     └─ Filter\n" +
 			"         ├─ NOT\n" +
 			"         │   └─ niltable.f:1 IS NULL\n" +
-			"         └─ LeftOuterLookupJoin\n" +
-			"             ├─ Eq\n" +
-			"             │   ├─ one_pk.pk:2!null\n" +
-			"             │   └─ niltable.i:0!null\n" +
+			"         └─ LeftOuterMergeJoin\n" +
+			"             ├─ cmp: Eq\n" +
+			"             │   ├─ niltable.i:0!null\n" +
+			"             │   └─ one_pk.pk:2!null\n" +
 			"             ├─ Filter\n" +
 			"             │   ├─ NOT\n" +
 			"             │   │   └─ niltable.f:1 IS NULL\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: niltable\n" +
+			"             │   └─ IndexedTableAccess(niltable)\n" +
+			"             │       ├─ index: [niltable.i]\n" +
+			"             │       ├─ static: [{[NULL, ∞)}]\n" +
 			"             │       └─ columns: [i f]\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
+			"                 ├─ static: [{[NULL, ∞)}]\n" +
 			"                 └─ columns: [pk]\n" +
 			"",
 	},
@@ -5903,19 +5950,20 @@ inner join pq on true
 	{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3`,
 		ExpectedPlan: "Sort(one_pk.pk:0!null ASC nullsFirst, two_pk.pk1:1 ASC nullsFirst, two_pk.pk2:2 ASC nullsFirst)\n" +
-			" └─ LeftOuterLookupJoin\n" +
-			"     ├─ AND\n" +
-			"     │   ├─ Eq\n" +
-			"     │   │   ├─ one_pk.pk:0!null\n" +
-			"     │   │   └─ two_pk.pk1:1!null\n" +
-			"     │   └─ Eq\n" +
-			"     │       ├─ one_pk.pk:0!null\n" +
-			"     │       └─ two_pk.pk2:2!null\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: one_pk\n" +
+			" └─ LeftOuterMergeJoin\n" +
+			"     ├─ cmp: Eq\n" +
+			"     │   ├─ one_pk.pk:0!null\n" +
+			"     │   └─ two_pk.pk1:1!null\n" +
+			"     ├─ sel: Eq\n" +
+			"     │   ├─ one_pk.pk:0!null\n" +
+			"     │   └─ two_pk.pk2:2!null\n" +
+			"     ├─ IndexedTableAccess(one_pk)\n" +
+			"     │   ├─ index: [one_pk.pk]\n" +
+			"     │   ├─ static: [{[NULL, ∞)}]\n" +
 			"     │   └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"         └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -5941,19 +5989,20 @@ inner join pq on true
 		ExpectedPlan: "Sort(one_pk.pk:0 ASC nullsFirst, two_pk.pk1:1!null ASC nullsFirst, two_pk.pk2:2!null ASC nullsFirst)\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [one_pk.pk:2, two_pk.pk1:0!null, two_pk.pk2:1!null]\n" +
-			"     └─ LeftOuterLookupJoin\n" +
-			"         ├─ AND\n" +
-			"         │   ├─ Eq\n" +
-			"         │   │   ├─ one_pk.pk:2!null\n" +
-			"         │   │   └─ two_pk.pk1:0!null\n" +
-			"         │   └─ Eq\n" +
-			"         │       ├─ one_pk.pk:2!null\n" +
-			"         │       └─ two_pk.pk2:1!null\n" +
-			"         ├─ Table\n" +
-			"         │   ├─ name: two_pk\n" +
+			"     └─ LeftOuterMergeJoin\n" +
+			"         ├─ cmp: Eq\n" +
+			"         │   ├─ two_pk.pk1:0!null\n" +
+			"         │   └─ one_pk.pk:2!null\n" +
+			"         ├─ sel: Eq\n" +
+			"         │   ├─ one_pk.pk:2!null\n" +
+			"         │   └─ two_pk.pk2:1!null\n" +
+			"         ├─ IndexedTableAccess(two_pk)\n" +
+			"         │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"         │   └─ columns: [pk1 pk2]\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
+			"             ├─ static: [{[NULL, ∞)}]\n" +
 			"             └─ columns: [pk]\n" +
 			"",
 	},
@@ -6608,26 +6657,24 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.pk:1!null, a.c1:2, a.c2:3, a.c3:4, a.c4:5, a.c5:6]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ AND\n" +
-			"     │   ├─ Eq\n" +
-			"     │   │   ├─ b.pk:7!null\n" +
-			"     │   │   └─ c.pk:0!null\n" +
-			"     │   └─ Eq\n" +
-			"     │       ├─ b.pk:7!null\n" +
-			"     │       └─ a.pk:1!null\n" +
-			"     ├─ LookupJoin\n" +
-			"     │   ├─ Eq\n" +
-			"     │   │   ├─ a.pk:1!null\n" +
-			"     │   │   └─ c.pk:0!null\n" +
-			"     │   ├─ TableAlias(c)\n" +
-			"     │   │   └─ Table\n" +
-			"     │   │       ├─ name: one_pk\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ b.pk:0!null\n" +
+			"     │   └─ c.pk:7!null\n" +
+			"     ├─ MergeJoin\n" +
+			"     │   ├─ cmp: Eq\n" +
+			"     │   │   ├─ b.pk:0!null\n" +
+			"     │   │   └─ a.pk:1!null\n" +
+			"     │   ├─ TableAlias(b)\n" +
+			"     │   │   └─ IndexedTableAccess(one_pk)\n" +
+			"     │   │       ├─ index: [one_pk.pk]\n" +
+			"     │   │       ├─ static: [{[NULL, ∞)}]\n" +
 			"     │   │       └─ columns: [pk]\n" +
 			"     │   └─ TableAlias(a)\n" +
 			"     │       └─ IndexedTableAccess(one_pk)\n" +
 			"     │           ├─ index: [one_pk.pk]\n" +
+			"     │           ├─ static: [{[NULL, ∞)}]\n" +
 			"     │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"     └─ TableAlias(b)\n" +
+			"     └─ TableAlias(c)\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
 			"             └─ columns: [pk]\n" +
@@ -6861,17 +6908,19 @@ inner join pq on true
 			"         ├─ Eq\n" +
 			"         │   ├─ a.i:2!null\n" +
 			"         │   └─ (c.i:4!null - 1 (tinyint))\n" +
-			"         ├─ LeftOuterLookupJoin\n" +
-			"         │   ├─ Eq\n" +
-			"         │   │   ├─ a.i:2!null\n" +
-			"         │   │   └─ (b.i:1!null + 1 (tinyint))\n" +
+			"         ├─ LeftOuterMergeJoin\n" +
+			"         │   ├─ cmp: Eq\n" +
+			"         │   │   ├─ (b.i:1!null + 1 (tinyint))\n" +
+			"         │   │   └─ a.i:2!null\n" +
 			"         │   ├─ TableAlias(b)\n" +
-			"         │   │   └─ Table\n" +
-			"         │   │       ├─ name: mytable\n" +
+			"         │   │   └─ IndexedTableAccess(mytable)\n" +
+			"         │   │       ├─ index: [mytable.i]\n" +
+			"         │   │       ├─ static: [{[NULL, ∞)}]\n" +
 			"         │   │       └─ columns: [i]\n" +
 			"         │   └─ TableAlias(a)\n" +
 			"         │       └─ IndexedTableAccess(mytable)\n" +
 			"         │           ├─ index: [mytable.i]\n" +
+			"         │           ├─ static: [{[NULL, ∞)}]\n" +
 			"         │           └─ columns: [i s]\n" +
 			"         └─ TableAlias(c)\n" +
 			"             └─ Table\n" +
@@ -6891,17 +6940,19 @@ inner join pq on true
 			"     │   ├─ Eq\n" +
 			"     │   │   ├─ a.i:2!null\n" +
 			"     │   │   └─ (c.i:4!null - 1 (tinyint))\n" +
-			"     │   ├─ LeftOuterLookupJoin\n" +
-			"     │   │   ├─ Eq\n" +
-			"     │   │   │   ├─ a.i:2!null\n" +
-			"     │   │   │   └─ (b.i2:1!null + 1 (tinyint))\n" +
+			"     │   ├─ LeftOuterMergeJoin\n" +
+			"     │   │   ├─ cmp: Eq\n" +
+			"     │   │   │   ├─ (b.i2:1!null + 1 (tinyint))\n" +
+			"     │   │   │   └─ a.i:2!null\n" +
 			"     │   │   ├─ TableAlias(b)\n" +
-			"     │   │   │   └─ Table\n" +
-			"     │   │   │       ├─ name: othertable\n" +
+			"     │   │   │   └─ IndexedTableAccess(othertable)\n" +
+			"     │   │   │       ├─ index: [othertable.i2]\n" +
+			"     │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
 			"     │   │   │       └─ columns: [s2 i2]\n" +
 			"     │   │   └─ TableAlias(a)\n" +
 			"     │   │       └─ IndexedTableAccess(mytable)\n" +
 			"     │   │           ├─ index: [mytable.i]\n" +
+			"     │   │           ├─ static: [{[NULL, ∞)}]\n" +
 			"     │   │           └─ columns: [i s]\n" +
 			"     │   └─ TableAlias(c)\n" +
 			"     │       └─ Table\n" +
@@ -6929,17 +6980,19 @@ inner join pq on true
 			"     │   │   └─ Table\n" +
 			"     │   │       ├─ name: mytable\n" +
 			"     │   │       └─ columns: [i]\n" +
-			"     │   └─ LeftOuterLookupJoin\n" +
-			"     │       ├─ Eq\n" +
-			"     │       │   ├─ a.i:3!null\n" +
-			"     │       │   └─ (b.i2:2!null + 1 (tinyint))\n" +
+			"     │   └─ LeftOuterMergeJoin\n" +
+			"     │       ├─ cmp: Eq\n" +
+			"     │       │   ├─ (b.i2:2!null + 1 (tinyint))\n" +
+			"     │       │   └─ a.i:3!null\n" +
 			"     │       ├─ TableAlias(b)\n" +
-			"     │       │   └─ Table\n" +
-			"     │       │       ├─ name: othertable\n" +
+			"     │       │   └─ IndexedTableAccess(othertable)\n" +
+			"     │       │       ├─ index: [othertable.i2]\n" +
+			"     │       │       ├─ static: [{[NULL, ∞)}]\n" +
 			"     │       │       └─ columns: [s2 i2]\n" +
 			"     │       └─ TableAlias(a)\n" +
 			"     │           └─ IndexedTableAccess(mytable)\n" +
 			"     │               ├─ index: [mytable.i]\n" +
+			"     │               ├─ static: [{[NULL, ∞)}]\n" +
 			"     │               └─ columns: [i s]\n" +
 			"     └─ TableAlias(d)\n" +
 			"         └─ IndexedTableAccess(othertable)\n" +
@@ -7075,11 +7128,11 @@ inner join pq on true
 		Query: `select a.* from one_pk_two_idx a RIGHT JOIN (one_pk_two_idx i JOIN one_pk_three_idx j on i.v1 = j.pk) on a.pk = i.v1 LEFT JOIN (one_pk_two_idx k JOIN one_pk_three_idx l on k.v1 = l.pk) on a.pk = l.v2;`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.pk:2, a.v1:3, a.v2:4]\n" +
-			" └─ LeftOuterJoin\n" +
+			" └─ LeftOuterHashJoin\n" +
 			"     ├─ Eq\n" +
 			"     │   ├─ a.pk:2!null\n" +
 			"     │   └─ l.v2:6\n" +
-			"     ├─ LeftOuterLookupJoin\n" +
+			"     ├─ LeftOuterHashJoin\n" +
 			"     │   ├─ Eq\n" +
 			"     │   │   ├─ a.pk:2!null\n" +
 			"     │   │   └─ i.v1:1\n" +
@@ -7097,24 +7150,32 @@ inner join pq on true
 			"     │   │           ├─ index: [one_pk_two_idx.v1]\n" +
 			"     │   │           ├─ static: [{[NULL, ∞)}]\n" +
 			"     │   │           └─ columns: [v1]\n" +
-			"     │   └─ TableAlias(a)\n" +
-			"     │       └─ IndexedTableAccess(one_pk_two_idx)\n" +
-			"     │           ├─ index: [one_pk_two_idx.pk]\n" +
-			"     │           └─ columns: [pk v1 v2]\n" +
-			"     └─ MergeJoin\n" +
-			"         ├─ cmp: Eq\n" +
-			"         │   ├─ l.pk:5!null\n" +
-			"         │   └─ k.v1:7\n" +
-			"         ├─ TableAlias(l)\n" +
-			"         │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"         │       ├─ index: [one_pk_three_idx.pk]\n" +
-			"         │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │       └─ columns: [pk v2]\n" +
-			"         └─ TableAlias(k)\n" +
-			"             └─ IndexedTableAccess(one_pk_two_idx)\n" +
-			"                 ├─ index: [one_pk_two_idx.v1]\n" +
-			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [v1]\n" +
+			"     │   └─ HashLookup\n" +
+			"     │       ├─ left-key: TUPLE(i.v1:1)\n" +
+			"     │       ├─ right-key: TUPLE(a.pk:0!null)\n" +
+			"     │       └─ CachedResults\n" +
+			"     │           └─ TableAlias(a)\n" +
+			"     │               └─ Table\n" +
+			"     │                   ├─ name: one_pk_two_idx\n" +
+			"     │                   └─ columns: [pk v1 v2]\n" +
+			"     └─ HashLookup\n" +
+			"         ├─ left-key: TUPLE(a.pk:2!null)\n" +
+			"         ├─ right-key: TUPLE(l.v2:1)\n" +
+			"         └─ CachedResults\n" +
+			"             └─ MergeJoin\n" +
+			"                 ├─ cmp: Eq\n" +
+			"                 │   ├─ l.pk:5!null\n" +
+			"                 │   └─ k.v1:7\n" +
+			"                 ├─ TableAlias(l)\n" +
+			"                 │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"                 │       ├─ index: [one_pk_three_idx.pk]\n" +
+			"                 │       ├─ static: [{[NULL, ∞)}]\n" +
+			"                 │       └─ columns: [pk v2]\n" +
+			"                 └─ TableAlias(k)\n" +
+			"                     └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"                         ├─ index: [one_pk_two_idx.v1]\n" +
+			"                         ├─ static: [{[NULL, ∞)}]\n" +
+			"                         └─ columns: [v1]\n" +
 			"",
 	},
 	{
@@ -8725,6 +8786,25 @@ WHERE keyless.c0 IN (
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
 			"             └─ columns: [pk1 pk2 c1]\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM one_pk ORDER BY pk LIMIT 0, 10;`,
+		ExpectedPlan: "Limit(10)\n" +
+			" └─ IndexedTableAccess(one_pk)\n" +
+			"     ├─ index: [one_pk.pk]\n" +
+			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM one_pk ORDER BY pk LIMIT 5, 10;`,
+		ExpectedPlan: "Limit(10)\n" +
+			" └─ Offset(5)\n" +
+			"     └─ IndexedTableAccess(one_pk)\n" +
+			"         ├─ index: [one_pk.pk]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 }
@@ -17986,8 +18066,8 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"             ├─ Project\n" +
 			"             │   ├─ columns: [id:0!null, GXLUB:1!null, LUEVY:2!null, M22QN:3!null, TJPT7:4!null, ARN5P:5!null, XOSD4:6!null, IDE43:7, HMW4H:8, ZBT6R:9, FSDY2:10!null, LT7K6:11, SPPYD:12, QCGTS:13, TEUJA:14, QQV4M:15, FHCYT:16]\n" +
 			"             │   └─ Project\n" +
-			"             │       ├─ columns: [umf.id:0!null as id, bs.id:63!null as GXLUB, CASE  WHEN NOT\n" +
-			"             │       │   └─ TJ5D2.id:25 IS NULL\n" +
+			"             │       ├─ columns: [umf.id:4!null as id, bs.id:0!null as GXLUB, CASE  WHEN NOT\n" +
+			"             │       │   └─ TJ5D2.id:59 IS NULL\n" +
 			"             │       │   THEN Subquery\n" +
 			"             │       │   ├─ cacheable: false\n" +
 			"             │       │   └─ Project\n" +
@@ -17995,7 +18075,7 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"             │       │       └─ Filter\n" +
 			"             │       │           ├─ Eq\n" +
 			"             │       │           │   ├─ nd_for_id_overridden.TW55N:68!null\n" +
-			"             │       │           │   └─ TJ5D2.H4DMT:29\n" +
+			"             │       │           │   └─ TJ5D2.H4DMT:63\n" +
 			"             │       │           └─ TableAlias(nd_for_id_overridden)\n" +
 			"             │       │               └─ IndexedTableAccess(E2I7U)\n" +
 			"             │       │                   ├─ index: [E2I7U.TW55N]\n" +
@@ -18010,14 +18090,14 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"             │       │           │   │   └─ nd_for_id.FGG57:68 IS NULL\n" +
 			"             │       │           │   └─ Eq\n" +
 			"             │       │           │       ├─ nd_for_id.FGG57:68\n" +
-			"             │       │           │       └─ umf.FGG57:2\n" +
+			"             │       │           │       └─ umf.FGG57:6\n" +
 			"             │       │           └─ TableAlias(nd_for_id)\n" +
 			"             │       │               └─ IndexedTableAccess(E2I7U)\n" +
 			"             │       │                   ├─ index: [E2I7U.FGG57]\n" +
 			"             │       │                   ├─ static: [{(NULL, ∞)}]\n" +
 			"             │       │                   └─ columns: [id fgg57]\n" +
 			"             │       │   END as LUEVY, CASE  WHEN Eq\n" +
-			"             │       │   ├─ umf.SYPKF:8\n" +
+			"             │       │   ├─ umf.SYPKF:12\n" +
 			"             │       │   └─ N/A (longtext)\n" +
 			"             │       │   THEN Subquery\n" +
 			"             │       │   ├─ cacheable: true\n" +
@@ -18036,109 +18116,113 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"             │       │       └─ Filter\n" +
 			"             │       │           ├─ Eq\n" +
 			"             │       │           │   ├─ aac.BTXC5:68\n" +
-			"             │       │           │   └─ umf.SYPKF:8\n" +
+			"             │       │           │   └─ umf.SYPKF:12\n" +
 			"             │       │           └─ TableAlias(aac)\n" +
 			"             │       │               └─ IndexedTableAccess(TPXBU)\n" +
 			"             │       │                   ├─ index: [TPXBU.BTXC5]\n" +
 			"             │       │                   └─ columns: [id btxc5]\n" +
-			"             │       │   END as M22QN, umf.TJPT7:6 as TJPT7, umf.ARN5P:7 as ARN5P, umf.XOSD4:13 as XOSD4, umf.IDE43:10 as IDE43, CASE  WHEN NOT\n" +
+			"             │       │   END as M22QN, umf.TJPT7:10 as TJPT7, umf.ARN5P:11 as ARN5P, umf.XOSD4:17 as XOSD4, umf.IDE43:14 as IDE43, CASE  WHEN NOT\n" +
 			"             │       │   └─ Eq\n" +
-			"             │       │       ├─ umf.HMW4H:14\n" +
+			"             │       │       ├─ umf.HMW4H:18\n" +
 			"             │       │       └─ N/A (longtext)\n" +
-			"             │       │   THEN umf.HMW4H:14 ELSE NULL (null) END as HMW4H, CASE  WHEN NOT\n" +
+			"             │       │   THEN umf.HMW4H:18 ELSE NULL (null) END as HMW4H, CASE  WHEN NOT\n" +
 			"             │       │   └─ Eq\n" +
-			"             │       │       ├─ umf.S76OM:15\n" +
+			"             │       │       ├─ umf.S76OM:19\n" +
 			"             │       │       └─ N/A (longtext)\n" +
-			"             │       │   THEN (umf.S76OM:15 + 0 (tinyint)) ELSE NULL (null) END as ZBT6R, CASE  WHEN NOT\n" +
+			"             │       │   THEN (umf.S76OM:19 + 0 (tinyint)) ELSE NULL (null) END as ZBT6R, CASE  WHEN NOT\n" +
 			"             │       │   └─ Eq\n" +
-			"             │       │       ├─ umf.FSDY2:12\n" +
+			"             │       │       ├─ umf.FSDY2:16\n" +
 			"             │       │       └─ N/A (longtext)\n" +
-			"             │       │   THEN umf.FSDY2:12 ELSE VUS (longtext) END as FSDY2, CASE  WHEN NOT\n" +
+			"             │       │   THEN umf.FSDY2:16 ELSE VUS (longtext) END as FSDY2, CASE  WHEN NOT\n" +
 			"             │       │   └─ Eq\n" +
-			"             │       │       ├─ umf.vaf:16\n" +
+			"             │       │       ├─ umf.vaf:20\n" +
 			"             │       │       └─  (longtext)\n" +
-			"             │       │   THEN (umf.vaf:16 + 0 (decimal(2,1))) ELSE NULL (null) END as LT7K6, CASE  WHEN NOT\n" +
+			"             │       │   THEN (umf.vaf:20 + 0 (decimal(2,1))) ELSE NULL (null) END as LT7K6, CASE  WHEN NOT\n" +
 			"             │       │   └─ Eq\n" +
-			"             │       │       ├─ umf.ZROH6:17\n" +
+			"             │       │       ├─ umf.ZROH6:21\n" +
 			"             │       │       └─  (longtext)\n" +
-			"             │       │   THEN (umf.ZROH6:17 + 0 (decimal(2,1))) ELSE NULL (null) END as SPPYD, CASE  WHEN NOT\n" +
+			"             │       │   THEN (umf.ZROH6:21 + 0 (decimal(2,1))) ELSE NULL (null) END as SPPYD, CASE  WHEN NOT\n" +
 			"             │       │   └─ Eq\n" +
-			"             │       │       ├─ umf.QCGTS:18\n" +
+			"             │       │       ├─ umf.QCGTS:22\n" +
 			"             │       │       └─  (longtext)\n" +
-			"             │       │   THEN (umf.QCGTS:18 + 0 (decimal(2,1))) ELSE NULL (null) END as QCGTS, umf.id:0!null as TEUJA, TJ5D2.id:25 as QQV4M, umf.FHCYT:23 as FHCYT]\n" +
-			"             │       └─ LookupJoin\n" +
-			"             │           ├─ Eq\n" +
-			"             │           │   ├─ cla.id:33!null\n" +
-			"             │           │   └─ bs.IXUXU:65\n" +
-			"             │           ├─ LookupJoin\n" +
-			"             │           │   ├─ Eq\n" +
-			"             │           │   │   ├─ umf.T4IBQ:1\n" +
-			"             │           │   │   └─ cla.FTQLQ:34!null\n" +
-			"             │           │   ├─ LeftOuterJoin\n" +
+			"             │       │   THEN (umf.QCGTS:22 + 0 (decimal(2,1))) ELSE NULL (null) END as QCGTS, umf.id:4!null as TEUJA, TJ5D2.id:59 as QQV4M, umf.FHCYT:27 as FHCYT]\n" +
+			"             │       └─ LeftOuterJoin\n" +
+			"             │           ├─ AND\n" +
+			"             │           │   ├─ AND\n" +
 			"             │           │   │   ├─ AND\n" +
-			"             │           │   │   │   ├─ AND\n" +
-			"             │           │   │   │   │   ├─ AND\n" +
-			"             │           │   │   │   │   │   ├─ Eq\n" +
-			"             │           │   │   │   │   │   │   ├─ TJ5D2.SWCQV:30!null\n" +
-			"             │           │   │   │   │   │   │   └─ 0 (tinyint)\n" +
-			"             │           │   │   │   │   │   └─ Eq\n" +
-			"             │           │   │   │   │   │       ├─ TJ5D2.T4IBQ:26!null\n" +
-			"             │           │   │   │   │   │       └─ umf.T4IBQ:1\n" +
-			"             │           │   │   │   │   └─ Eq\n" +
-			"             │           │   │   │   │       ├─ TJ5D2.V7UFH:27!null\n" +
-			"             │           │   │   │   │       └─ umf.FGG57:2\n" +
+			"             │           │   │   │   ├─ Eq\n" +
+			"             │           │   │   │   │   ├─ TJ5D2.SWCQV:64!null\n" +
+			"             │           │   │   │   │   └─ 0 (tinyint)\n" +
 			"             │           │   │   │   └─ Eq\n" +
-			"             │           │   │   │       ├─ TJ5D2.SYPKF:28!null\n" +
-			"             │           │   │   │       └─ umf.SYPKF:8\n" +
-			"             │           │   │   ├─ SubqueryAlias\n" +
-			"             │           │   │   │   ├─ name: umf\n" +
-			"             │           │   │   │   ├─ outerVisibility: false\n" +
-			"             │           │   │   │   ├─ cacheable: true\n" +
-			"             │           │   │   │   └─ Filter\n" +
-			"             │           │   │   │       ├─ AND\n" +
-			"             │           │   │   │       │   ├─ AND\n" +
-			"             │           │   │   │       │   │   ├─ AND\n" +
-			"             │           │   │   │       │   │   │   ├─ HashIn\n" +
-			"             │           │   │   │       │   │   │   │   ├─ NZKPM.id:0!null\n" +
-			"             │           │   │   │       │   │   │   │   └─ TUPLE(1 (longtext), 2 (longtext), 3 (longtext))\n" +
-			"             │           │   │   │       │   │   │   └─ NOT\n" +
-			"             │           │   │   │       │   │   │       └─ Eq\n" +
-			"             │           │   │   │       │   │   │           ├─ NZKPM.ARN5P:7\n" +
-			"             │           │   │   │       │   │   │           └─ N/A (longtext)\n" +
-			"             │           │   │   │       │   │   └─ InSubquery\n" +
-			"             │           │   │   │       │   │       ├─ left: NZKPM.T4IBQ:1\n" +
-			"             │           │   │   │       │   │       └─ right: Subquery\n" +
-			"             │           │   │   │       │   │           ├─ cacheable: true\n" +
-			"             │           │   │   │       │   │           └─ Table\n" +
-			"             │           │   │   │       │   │               ├─ name: YK2GW\n" +
-			"             │           │   │   │       │   │               └─ columns: [ftqlq]\n" +
-			"             │           │   │   │       │   └─ InSubquery\n" +
-			"             │           │   │   │       │       ├─ left: NZKPM.FGG57:2\n" +
-			"             │           │   │   │       │       └─ right: Subquery\n" +
-			"             │           │   │   │       │           ├─ cacheable: true\n" +
-			"             │           │   │   │       │           └─ Filter\n" +
-			"             │           │   │   │       │               ├─ NOT\n" +
-			"             │           │   │   │       │               │   └─ E2I7U.FGG57:25 IS NULL\n" +
-			"             │           │   │   │       │               └─ IndexedTableAccess(E2I7U)\n" +
-			"             │           │   │   │       │                   ├─ index: [E2I7U.FGG57]\n" +
-			"             │           │   │   │       │                   ├─ static: [{(NULL, ∞)}]\n" +
-			"             │           │   │   │       │                   └─ columns: [fgg57]\n" +
-			"             │           │   │   │       └─ IndexedTableAccess(NZKPM)\n" +
-			"             │           │   │   │           ├─ index: [NZKPM.id]\n" +
-			"             │           │   │   │           ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
-			"             │           │   │   │           └─ columns: [id t4ibq fgg57 sshpj nla6o sfj6l tjpt7 arn5p sypkf ivfmk ide43 az6sp fsdy2 xosd4 hmw4h s76om vaf zroh6 qcgts lnfm6 tvawl hdlcl bhhw6 fhcyt qz6vt]\n" +
-			"             │           │   │   └─ TableAlias(TJ5D2)\n" +
-			"             │           │   │       └─ Table\n" +
-			"             │           │   │           ├─ name: SZW6V\n" +
-			"             │           │   │           └─ columns: [id t4ibq v7ufh sypkf h4dmt swcqv ykssu fhcyt]\n" +
-			"             │           │   └─ TableAlias(cla)\n" +
-			"             │           │       └─ IndexedTableAccess(YK2GW)\n" +
-			"             │           │           ├─ index: [YK2GW.FTQLQ]\n" +
-			"             │           │           └─ columns: [id ftqlq tuxml paef5 rucy4 tpnj6 lbl53 nb3qs eo7iv muhjf fm34l ty5rf zhtlh npb7w sx3hh isbnf ya7yb c5ykb qk7kt ffge6 fiigj sh3nc ntena m4aub x5air sab6m g5qi5 zvqvd ykssu fhcyt]\n" +
-			"             │           └─ TableAlias(bs)\n" +
-			"             │               └─ IndexedTableAccess(THNTS)\n" +
-			"             │                   ├─ index: [THNTS.IXUXU]\n" +
-			"             │                   └─ columns: [id nfryn ixuxu fhcyt]\n" +
+			"             │           │   │   │       ├─ TJ5D2.T4IBQ:60!null\n" +
+			"             │           │   │   │       └─ umf.T4IBQ:5\n" +
+			"             │           │   │   └─ Eq\n" +
+			"             │           │   │       ├─ TJ5D2.V7UFH:61!null\n" +
+			"             │           │   │       └─ umf.FGG57:6\n" +
+			"             │           │   └─ Eq\n" +
+			"             │           │       ├─ TJ5D2.SYPKF:62!null\n" +
+			"             │           │       └─ umf.SYPKF:12\n" +
+			"             │           ├─ HashJoin\n" +
+			"             │           │   ├─ Eq\n" +
+			"             │           │   │   ├─ cla.id:29!null\n" +
+			"             │           │   │   └─ bs.IXUXU:2\n" +
+			"             │           │   ├─ TableAlias(bs)\n" +
+			"             │           │   │   └─ Table\n" +
+			"             │           │   │       ├─ name: THNTS\n" +
+			"             │           │   │       └─ columns: [id nfryn ixuxu fhcyt]\n" +
+			"             │           │   └─ HashLookup\n" +
+			"             │           │       ├─ left-key: TUPLE(bs.IXUXU:2)\n" +
+			"             │           │       ├─ right-key: TUPLE(cla.id:25!null)\n" +
+			"             │           │       └─ CachedResults\n" +
+			"             │           │           └─ LookupJoin\n" +
+			"             │           │               ├─ Eq\n" +
+			"             │           │               │   ├─ umf.T4IBQ:5\n" +
+			"             │           │               │   └─ cla.FTQLQ:30!null\n" +
+			"             │           │               ├─ SubqueryAlias\n" +
+			"             │           │               │   ├─ name: umf\n" +
+			"             │           │               │   ├─ outerVisibility: false\n" +
+			"             │           │               │   ├─ cacheable: true\n" +
+			"             │           │               │   └─ Filter\n" +
+			"             │           │               │       ├─ AND\n" +
+			"             │           │               │       │   ├─ AND\n" +
+			"             │           │               │       │   │   ├─ AND\n" +
+			"             │           │               │       │   │   │   ├─ HashIn\n" +
+			"             │           │               │       │   │   │   │   ├─ NZKPM.id:0!null\n" +
+			"             │           │               │       │   │   │   │   └─ TUPLE(1 (longtext), 2 (longtext), 3 (longtext))\n" +
+			"             │           │               │       │   │   │   └─ NOT\n" +
+			"             │           │               │       │   │   │       └─ Eq\n" +
+			"             │           │               │       │   │   │           ├─ NZKPM.ARN5P:7\n" +
+			"             │           │               │       │   │   │           └─ N/A (longtext)\n" +
+			"             │           │               │       │   │   └─ InSubquery\n" +
+			"             │           │               │       │   │       ├─ left: NZKPM.T4IBQ:1\n" +
+			"             │           │               │       │   │       └─ right: Subquery\n" +
+			"             │           │               │       │   │           ├─ cacheable: true\n" +
+			"             │           │               │       │   │           └─ Table\n" +
+			"             │           │               │       │   │               ├─ name: YK2GW\n" +
+			"             │           │               │       │   │               └─ columns: [ftqlq]\n" +
+			"             │           │               │       │   └─ InSubquery\n" +
+			"             │           │               │       │       ├─ left: NZKPM.FGG57:2\n" +
+			"             │           │               │       │       └─ right: Subquery\n" +
+			"             │           │               │       │           ├─ cacheable: true\n" +
+			"             │           │               │       │           └─ Filter\n" +
+			"             │           │               │       │               ├─ NOT\n" +
+			"             │           │               │       │               │   └─ E2I7U.FGG57:25 IS NULL\n" +
+			"             │           │               │       │               └─ IndexedTableAccess(E2I7U)\n" +
+			"             │           │               │       │                   ├─ index: [E2I7U.FGG57]\n" +
+			"             │           │               │       │                   ├─ static: [{(NULL, ∞)}]\n" +
+			"             │           │               │       │                   └─ columns: [fgg57]\n" +
+			"             │           │               │       └─ IndexedTableAccess(NZKPM)\n" +
+			"             │           │               │           ├─ index: [NZKPM.id]\n" +
+			"             │           │               │           ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
+			"             │           │               │           └─ columns: [id t4ibq fgg57 sshpj nla6o sfj6l tjpt7 arn5p sypkf ivfmk ide43 az6sp fsdy2 xosd4 hmw4h s76om vaf zroh6 qcgts lnfm6 tvawl hdlcl bhhw6 fhcyt qz6vt]\n" +
+			"             │           │               └─ TableAlias(cla)\n" +
+			"             │           │                   └─ IndexedTableAccess(YK2GW)\n" +
+			"             │           │                       ├─ index: [YK2GW.FTQLQ]\n" +
+			"             │           │                       └─ columns: [id ftqlq tuxml paef5 rucy4 tpnj6 lbl53 nb3qs eo7iv muhjf fm34l ty5rf zhtlh npb7w sx3hh isbnf ya7yb c5ykb qk7kt ffge6 fiigj sh3nc ntena m4aub x5air sab6m g5qi5 zvqvd ykssu fhcyt]\n" +
+			"             │           └─ TableAlias(TJ5D2)\n" +
+			"             │               └─ Table\n" +
+			"             │                   ├─ name: SZW6V\n" +
+			"             │                   └─ columns: [id t4ibq v7ufh sypkf h4dmt swcqv ykssu fhcyt]\n" +
 			"             └─ BEGIN .. END\n" +
 			"                 ├─ IF BLOCK\n" +
 			"                 │   └─ IF(Or\n" +

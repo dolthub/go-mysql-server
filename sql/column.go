@@ -101,10 +101,15 @@ func (c *Column) DebugString() string {
 }
 
 func (c *Column) Copy() *Column {
+	// This creates a copy of the default, rather than referencing the same pointer
+	def := c.Default
+	if def != nil {
+		def = &(*def)
+	}
 	return &Column{
 		Name:          c.Name,
 		Type:          c.Type,
-		Default:       c.Default,
+		Default:       def,
 		AutoIncrement: c.AutoIncrement,
 		Nullable:      c.Nullable,
 		Source:        c.Source,

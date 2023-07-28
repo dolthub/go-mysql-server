@@ -113,6 +113,7 @@ var OnceAfterDefault = []Rule{
 	{foldEmptyJoinsId, foldEmptyJoins},
 	{pushFiltersId, pushFilters},
 	{optimizeJoinsId, optimizeJoins},
+	{matchAgainstId, matchAgainst},
 	{generateIndexScansId, generateIndexScans},
 	{pruneColumnsId, pruneColumns},
 	{finalizeSubqueriesId, finalizeSubqueries},

@@ -31,6 +31,7 @@ import (
 type JoinPlanTest struct {
 	q       string
 	types   []plan.JoinType
+	indexes []string
 	exp     []sql.Row
 	order   []string
 	skipOld bool
@@ -438,14 +439,16 @@ HAVING count(v) >= 1)`,
 				q: `SELECT * FROM xy WHERE (
       				EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
       				AND EXISTS (SELECT * FROM uv Alias2 WHERE Alias2.u = (xy.x + 2)));`,
-				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeSemiLookup},
+				// These should both be JoinTypeSemiLookup, but for https://github.com/dolthub/go-mysql-server/issues/1893
+				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 2}, {1, 0}},
 			},
 			{
 				q: `SELECT * FROM xy WHERE (
       				EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
       				AND EXISTS (SELECT * FROM uv Alias1 WHERE Alias1.u = (xy.x + 2)));`,
-				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeSemiLookup},
+				// These should both be JoinTypeSemiLookup, but for https://github.com/dolthub/go-mysql-server/issues/1893
+				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 2}, {1, 0}},
 			},
 			{
@@ -890,8 +893,9 @@ join uv d on d.u = c.x`,
 				order: []string{"a", "b", "c", "d"},
 			},
 			{
-				q:     "select /*+ LOOKUP_JOIN(xy,scalarSubq0) */ 1 from xy where x not in (select u from uv)",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterLookup},
+				q: "select /*+ LOOKUP_JOIN(xy,scalarSubq0) */ 1 from xy where x not in (select u from uv)",
+				// This should be JoinTypeSemiLookup, but for https://github.com/dolthub/go-mysql-server/issues/1894
+				types: []plan.JoinType{plan.JoinTypeAntiLookup},
 			},
 			{
 				q:     "select /*+ ANTI_JOIN(xy,scalarSubq0) */ 1 from xy where x not in (select u from uv)",
@@ -912,6 +916,50 @@ join uv d on d.u = c.x`,
 			{
 				q:     "select /*+ SEMI_JOIN(s,scalarSubq0) */ 1 from xy s where x in (select u from uv)",
 				types: []plan.JoinType{plan.JoinTypeSemi},
+			},
+		},
+	},
+	{
+		// This is a regression test for https://github.com/dolthub/go-mysql-server/pull/1889.
+		// We should always prefer a more specific index over a less specific index for lookups.
+		name: "lookup join multiple indexes",
+		setup: []string{
+			"create table lhs (a int, b int, c int);",
+			"create table rhs (a int, b int, c int, d int, index a_idx(a), index abcd_idx(a,b,c,d));",
+			"insert into lhs values (0, 0, 0), (0, 0, 1), (0, 1, 1), (1, 1, 1);",
+			"insert into rhs values " +
+				"(0, 0, 0, 0)," +
+				"(0, 0, 0, 1)," +
+				"(0, 0, 1, 0)," +
+				"(0, 0, 1, 1)," +
+				"(0, 1, 0, 0)," +
+				"(0, 1, 0, 1)," +
+				"(0, 1, 1, 0)," +
+				"(0, 1, 1, 1)," +
+				"(1, 0, 0, 0)," +
+				"(1, 0, 0, 1)," +
+				"(1, 0, 1, 0)," +
+				"(1, 0, 1, 1)," +
+				"(1, 1, 0, 0)," +
+				"(1, 1, 0, 1)," +
+				"(1, 1, 1, 0)," +
+				"(1, 1, 1, 1);",
+		},
+		tests: []JoinPlanTest{
+			{
+				q:       "select rhs.* from lhs left join rhs on lhs.a = rhs.a and lhs.b = rhs.b and lhs.c = rhs.c",
+				types:   []plan.JoinType{plan.JoinTypeLeftOuterLookup},
+				indexes: []string{"abcd_idx"},
+				exp: []sql.Row{
+					{0, 0, 0, 0},
+					{0, 0, 0, 1},
+					{0, 0, 1, 0},
+					{0, 0, 1, 1},
+					{0, 1, 1, 0},
+					{0, 1, 1, 1},
+					{1, 1, 1, 0},
+					{1, 1, 1, 1},
+				},
 			},
 		},
 	},
@@ -1194,6 +1242,9 @@ func TestJoinPlanning(t *testing.T, harness Harness) {
 				if tt.types != nil {
 					evalJoinTypeTest(t, harness, e, tt)
 				}
+				if tt.indexes != nil {
+					evalIndexTest(t, harness, e, tt)
+				}
 				if tt.exp != nil {
 					evalJoinCorrectness(t, harness, e, tt.q, tt.q, tt.exp, tt.skipOld)
 				}
@@ -1225,6 +1276,31 @@ func evalJoinTypeTest(t *testing.T, harness Harness, e *sqle.Engine, tt JoinPlan
 		var cmp []string
 		for _, t := range jts {
 			cmp = append(cmp, t.String())
+		}
+		require.Equal(t, exp, cmp, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(a)))
+	})
+}
+
+func evalIndexTest(t *testing.T, harness Harness, e *sqle.Engine, tt JoinPlanTest) {
+	t.Run(tt.q+" join indexes", func(t *testing.T) {
+		if tt.skipOld {
+			t.Skip()
+		}
+
+		ctx := NewContext(harness)
+		ctx = ctx.WithQuery(tt.q)
+
+		a, err := e.AnalyzeQuery(ctx, tt.q)
+		require.NoError(t, err)
+
+		idxs := collectIndexes(a)
+		var exp []string
+		for _, i := range tt.indexes {
+			exp = append(exp, i)
+		}
+		var cmp []string
+		for _, i := range idxs {
+			cmp = append(cmp, i.ID())
 		}
 		require.Equal(t, exp, cmp, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(a)))
 	})
@@ -1282,6 +1358,35 @@ func collectJoinTypes(n sql.Node) []plan.JoinType {
 	return types
 }
 
+func collectIndexes(n sql.Node) []sql.Index {
+	var indexes []sql.Index
+	transform.Inspect(n, func(n sql.Node) bool {
+		if n == nil {
+			return true
+		}
+		access, ok := n.(*plan.IndexedTableAccess)
+		if ok {
+			indexes = append(indexes, access.Index())
+			return true
+		}
+
+		if ex, ok := n.(sql.Expressioner); ok {
+			for _, e := range ex.Expressions() {
+				transform.InspectExpr(e, func(e sql.Expression) bool {
+					sq, ok := e.(*plan.Subquery)
+					if !ok {
+						return false
+					}
+					indexes = append(indexes, collectIndexes(sq.Query)...)
+					return false
+				})
+			}
+		}
+		return true
+	})
+	return indexes
+}
+
 func evalJoinOrder(t *testing.T, harness Harness, e *sqle.Engine, q string, exp []string, skipOld bool) {
 	t.Run(q+" join order", func(t *testing.T) {
 		if vh, ok := harness.(VersionedHarness); (ok && vh.Version() == sql.VersionStable && skipOld) || (!ok && skipOld) {
@@ -1327,6 +1432,9 @@ func TestJoinPlanningPrepared(t *testing.T, harness Harness) {
 			for _, tt := range tt.tests {
 				if tt.types != nil {
 					evalJoinTypeTestPrepared(t, harness, e, tt, tt.skipOld)
+				}
+				if tt.indexes != nil {
+					evalJoinIndexTestPrepared(t, harness, e, tt, tt.skipOld)
 				}
 				if tt.exp != nil {
 					evalJoinCorrectnessPrepared(t, harness, e, tt.q, tt.q, tt.exp, tt.skipOld)
@@ -1374,6 +1482,46 @@ func evalJoinTypeTestPrepared(t *testing.T, harness Harness, e *sqle.Engine, tt 
 		var cmp []string
 		for _, t := range jts {
 			cmp = append(cmp, t.String())
+		}
+		require.Equal(t, exp, cmp, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(a)))
+	})
+}
+
+func evalJoinIndexTestPrepared(t *testing.T, harness Harness, e *sqle.Engine, tt JoinPlanTest, skipOld bool) {
+	t.Run(tt.q+" join indexes", func(t *testing.T) {
+		if vh, ok := harness.(VersionedHarness); (ok && vh.Version() == sql.VersionStable && skipOld) || (!ok && skipOld) {
+			t.Skip()
+		}
+
+		ctx := NewContext(harness)
+		ctx = ctx.WithQuery(tt.q)
+
+		bindings, err := injectBindVarsAndPrepare(t, ctx, e, tt.q)
+		require.NoError(t, err)
+
+		p, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), tt.q)
+		require.True(t, ok, "prepared statement not found")
+
+		if len(bindings) > 0 {
+			var usedBindings map[string]bool
+			p, usedBindings, err = plan.ApplyBindings(p, bindings)
+			require.NoError(t, err)
+			for binding := range bindings {
+				require.True(t, usedBindings[binding], "unused binding %s", binding)
+			}
+		}
+
+		a, _, err := e.Analyzer.AnalyzePrepared(ctx, p, nil)
+		require.NoError(t, err)
+
+		idxs := collectIndexes(a)
+		var exp []string
+		for _, i := range tt.indexes {
+			exp = append(exp, i)
+		}
+		var cmp []string
+		for _, i := range idxs {
+			cmp = append(cmp, i.ID())
 		}
 		require.Equal(t, exp, cmp, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(a)))
 	})

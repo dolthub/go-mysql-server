@@ -3958,6 +3958,10 @@ Select * from (
 		Expected: []sql.Row{{uint64(65), uint64(65)}},
 	},
 	{
+		Query:    "SELECT 0x12345;",
+		Expected: []sql.Row{{[]uint8{0x1, 0x23, 0x45}}},
+	},
+	{
 		Query:    "SELECT i FROM mytable WHERE i BETWEEN 1 AND 2",
 		Expected: []sql.Row{{int64(1)}, {int64(2)}},
 	},
@@ -4995,6 +4999,20 @@ Select * from (
 		Expected: []sql.Row{
 			{"version_comment", "Dolt"}, {"version_compile_machine", ""}, {"version_compile_os", ""}, {"version_compile_zlib", ""}, {"wait_timeout", 28800}, {"windowing_use_high_precision", 1},
 		},
+	},
+	{
+		Query: `SHOW VARIABLES WHERE "1" and variable_name = 'autocommit'`,
+		Expected: []sql.Row{
+			{"autocommit", 1},
+		},
+	},
+	{
+		Query:    `SHOW VARIABLES WHERE "0" and variable_name = 'autocommit'`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SHOW VARIABLES WHERE "abc" and variable_name = 'autocommit'`,
+		Expected: []sql.Row{},
 	},
 	{
 		Query: `SHOW GLOBAL VARIABLES LIKE '%mode'`,
@@ -8794,14 +8812,6 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query:       "with recursive t (n) as (select (1) from dual union all select n + 1 from t where n < 1002) select sum(n) from t",
 		ExpectedErr: sql.ErrCteRecursionLimitExceeded,
-	},
-	{
-		Query:       `alter table a add fulltext index idx (id)`,
-		ExpectedErr: sql.ErrUnsupportedFeature,
-	},
-	{
-		Query:       `CREATE FULLTEXT INDEX idx ON opening_lines(opening_line)`,
-		ExpectedErr: sql.ErrUnsupportedFeature,
 	},
 	{
 		Query:       `SELECT * FROM datetime_table where date_col >= 'not a valid date'`,

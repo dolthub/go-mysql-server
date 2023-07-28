@@ -246,12 +246,8 @@ const perKeyCostReductionFactor = 0.5
 // A join with a selectivity of k will return k*(n*m) rows.
 // Special case: A join with a selectivity of 0 will return n rows.
 func lookupJoinSelectivity(l *Lookup) float64 {
-	var sel float64 = 1
-	if len(l.Index.SqlIdx().Expressions()) == len(l.KeyExprs) {
-		sel = 0.1
-	} else {
-		sel = math.Pow(perKeyCostReductionFactor, float64(len(l.KeyExprs)))
-	}
+	sel := math.Pow(perKeyCostReductionFactor, float64(len(l.KeyExprs)))
+
 	if !l.Index.SqlIdx().IsUnique() {
 		return sel
 	}
@@ -374,6 +370,12 @@ func (c *carder) cardRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 		}
 		if jp.Op.IsPartial() {
 			return optimisticJoinSel * jp.Left.RelProps.card, nil
+		}
+		if jp.Op.IsLeftOuter() {
+			return math.Max(jp.Left.RelProps.card, optimisticJoinSel*jp.Left.RelProps.card*jp.Right.RelProps.card), nil
+		}
+		if jp.Op.IsRightOuter() {
+			return math.Max(jp.Right.RelProps.card, optimisticJoinSel*jp.Left.RelProps.card*jp.Right.RelProps.card), nil
 		}
 		return optimisticJoinSel * jp.Left.RelProps.card * jp.Right.RelProps.card, nil
 	case *Project:

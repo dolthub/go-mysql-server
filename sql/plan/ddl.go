@@ -18,10 +18,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/fulltext"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type IfNotExistsOption bool
@@ -82,6 +84,10 @@ func (i *IndexDefinition) IsUnique() bool {
 	return i.Constraint == sql.IndexConstraint_Unique
 }
 
+func (i *IndexDefinition) IsFullText() bool {
+	return i.Constraint == sql.IndexConstraint_Fulltext
+}
+
 // ColumnNames returns each column's name without the length property.
 func (i *IndexDefinition) ColumnNames() []string {
 	colNames := make([]string, len(i.Columns))
@@ -89,6 +95,20 @@ func (i *IndexDefinition) ColumnNames() []string {
 		colNames[i] = col.Name
 	}
 	return colNames
+}
+
+// AsIndexDef returns the IndexDefinition as the other form.
+func (i *IndexDefinition) AsIndexDef() sql.IndexDef {
+	//TODO: We should get rid of this IndexDefinition and just use the SQL package one
+	cols := make([]sql.IndexColumn, len(i.Columns))
+	copy(cols, i.Columns)
+	return sql.IndexDef{
+		Name:       i.IndexName,
+		Columns:    cols,
+		Constraint: i.Constraint,
+		Storage:    i.Using,
+		Comment:    i.Comment,
+	}
 }
 
 // TableSpec is a node describing the schema of a table.
@@ -259,13 +279,14 @@ func (c *CreateTable) WithParentForeignKeyTables(refTbls []sql.ForeignKeyTable) 
 	return &nc, nil
 }
 
-func (c *CreateTable) CreateIndexes(ctx *sql.Context, tableNode sql.Table, idxes []*IndexDefinition) error {
+func (c *CreateTable) CreateIndexes(ctx *sql.Context, tableNode sql.Table, idxes []*IndexDefinition) (err error) {
 	idxAlterable, ok := tableNode.(sql.IndexAlterableTable)
 	if !ok {
 		return ErrNotIndexable.New()
 	}
 
 	indexMap := make(map[string]struct{})
+	fulltextIndexes := make([]sql.IndexDef, 0, len(idxes))
 	for _, idxDef := range idxes {
 		indexName := idxDef.IndexName
 		// If the name is empty, we create a new name using the columns provided while appending an ascending integer
@@ -284,6 +305,13 @@ func (c *CreateTable) CreateIndexes(ctx *sql.Context, tableNode sql.Table, idxes
 		} else if _, ok = indexMap[strings.ToLower(idxDef.IndexName)]; ok {
 			return sql.ErrIndexIDAlreadyRegistered.New(idxDef.IndexName)
 		}
+		// We'll create the Full-Text indexes after all others
+		if idxDef.Constraint == sql.IndexConstraint_Fulltext {
+			otherDef := idxDef.AsIndexDef()
+			otherDef.Name = indexName
+			fulltextIndexes = append(fulltextIndexes, otherDef)
+			continue
+		}
 		err := idxAlterable.CreateIndex(ctx, sql.IndexDef{
 			Name:       indexName,
 			Columns:    idxDef.Columns,
@@ -295,6 +323,23 @@ func (c *CreateTable) CreateIndexes(ctx *sql.Context, tableNode sql.Table, idxes
 			return err
 		}
 		indexMap[strings.ToLower(indexName)] = struct{}{}
+	}
+
+	// Evaluate our Full-Text indexes now
+	if len(fulltextIndexes) > 0 {
+		database, ok := c.Db.(fulltext.Database)
+		if !ok {
+			if privDb, ok := c.Db.(mysql_db.PrivilegedDatabase); ok {
+				if database, ok = privDb.Unwrap().(fulltext.Database); !ok {
+					return sql.ErrCreateTableNotSupported.New(c.Db.Name())
+				}
+			} else {
+				return sql.ErrCreateTableNotSupported.New(c.Db.Name())
+			}
+		}
+		if err = fulltext.CreateFulltextIndexes(ctx, database, idxAlterable, nil, fulltextIndexes...); err != nil {
+			return err
+		}
 	}
 
 	return nil
