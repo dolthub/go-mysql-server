@@ -55,6 +55,16 @@ func newMySQLTable(
 	}
 }
 
+// newEmptyMySQLTable returns a new MySQL Table that does not contain any row data. Useful when you only need the
+// schema of a table to exist, and don't need any data in it.
+func newEmptyMySQLTable(name string, sch sql.Schema, db *MySQLDb) *mysqlTable {
+	return &mysqlTable{
+		name: name,
+		db:   db,
+		sch:  sch,
+	}
+}
+
 // Name implements the interface sql.Table.
 func (t *mysqlTable) Name() string {
 	return t.name
@@ -82,6 +92,10 @@ func (t *mysqlTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 
 // PartitionRows implements the interface sql.Table.
 func (t *mysqlTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
+	if t.data == nil {
+		return sql.RowsToRowIter(nil), nil
+	}
+
 	return t.data.ToRowIter(ctx), nil
 }
 

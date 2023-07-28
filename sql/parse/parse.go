@@ -37,6 +37,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -2236,7 +2237,7 @@ func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		case sqlparser.UniqueStr:
 			constraint = sql.IndexConstraint_Unique
 		case sqlparser.FulltextStr:
-			return nil, sql.ErrUnsupportedFeature.New("fulltext keys are unsupported")
+			constraint = sql.IndexConstraint_Fulltext
 		case sqlparser.SpatialStr:
 			constraint = sql.IndexConstraint_Spatial
 		case sqlparser.PrimaryStr:
@@ -2512,9 +2513,7 @@ func ConvertIndexDefs(ctx *sql.Context, spec *sqlparser.TableSpec) (idxDefs []*p
 		} else if idxDef.Info.Spatial {
 			constraint = sql.IndexConstraint_Spatial
 		} else if idxDef.Info.Fulltext {
-			// TODO: We do not support FULLTEXT indexes or keys
-			ctx.Warn(1214, "ignoring fulltext index as they have not yet been implemented")
-			continue
+			constraint = sql.IndexConstraint_Fulltext
 		}
 
 		columns, err := gatherIndexColumns(idxDef.Columns)
@@ -2539,11 +2538,17 @@ func ConvertIndexDefs(ctx *sql.Context, spec *sqlparser.TableSpec) (idxDefs []*p
 
 	for _, colDef := range spec.Columns {
 		if colDef.Type.KeyOpt == colKeyFulltextKey {
-			// TODO: We do not support FULLTEXT indexes or keys
-			ctx.Warn(1214, "ignoring fulltext index as they have not yet been implemented")
-			continue
-		}
-		if colDef.Type.KeyOpt == colKeyUnique || colDef.Type.KeyOpt == colKeyUniqueKey {
+			idxDefs = append(idxDefs, &plan.IndexDefinition{
+				IndexName:  "",
+				Using:      sql.IndexUsing_Default,
+				Constraint: sql.IndexConstraint_Fulltext,
+				Comment:    "",
+				Columns: []sql.IndexColumn{{
+					Name:   colDef.Name.String(),
+					Length: 0,
+				}},
+			})
+		} else if colDef.Type.KeyOpt == colKeyUnique || colDef.Type.KeyOpt == colKeyUniqueKey {
 			idxDefs = append(idxDefs, &plan.IndexDefinition{
 				IndexName:  "",
 				Using:      sql.IndexUsing_Default,
@@ -3711,10 +3716,18 @@ func offsetToOffset(
 	ctx *sql.Context,
 	offset sqlparser.Expr,
 	child sql.Node,
-) (*plan.Offset, error) {
+) (sql.Node, error) {
 	rowCount, err := ExprToExpression(ctx, offset)
 	if err != nil {
 		return nil, err
+	}
+
+	// Check if offset starts at 0, if so, we can just remove the offset node.
+	// Only cast to int8, as a larger int type just means a non-zero offset.
+	if val, err := rowCount.Eval(ctx, nil); err == nil {
+		if v, ok := val.(int8); ok && v == 0 {
+			return child, nil
+		}
 	}
 
 	return plan.NewOffset(rowCount, child), nil
@@ -4228,6 +4241,48 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 			return nil, err
 		}
 		return function.NewExtract(unit, expr), err
+	case *sqlparser.MatchExpr:
+		colTableName := ""
+		cols := make([]sql.Expression, len(v.Columns))
+		for i, selectExpr := range v.Columns {
+			expr, err := selectExprToExpression(ctx, selectExpr)
+			if err != nil {
+				return nil, err
+			}
+			unresolvedCol, ok := expr.(*expression.UnresolvedColumn)
+			if !ok {
+				return nil, sql.ErrFullTextMatchAgainstNotColumns.New()
+			}
+			if len(unresolvedCol.Table()) > 0 {
+				if len(colTableName) == 0 {
+					colTableName = strings.ToLower(unresolvedCol.Table())
+				} else if colTableName != strings.ToLower(unresolvedCol.Table()) {
+					return nil, sql.ErrFullTextMatchAgainstSameTable.New()
+				}
+			}
+			cols[i] = unresolvedCol
+		}
+		expr, err := ExprToExpression(ctx, v.Expr)
+		if err != nil {
+			return nil, err
+		}
+		var searchModifier fulltext.SearchModifier
+		switch v.Option {
+		case sqlparser.NaturalLanguageModeStr, "":
+			searchModifier = fulltext.SearchModifier_NaturalLanguage
+		case sqlparser.NaturalLanguageModeWithQueryExpansionStr:
+			searchModifier = fulltext.SearchModifier_NaturalLangaugeQueryExpansion
+			return nil, fmt.Errorf(`"IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION" is not supported yet`)
+		case sqlparser.BooleanModeStr:
+			searchModifier = fulltext.SearchModifier_Boolean
+			return nil, fmt.Errorf(`"IN BOOLEAN MODE" is not supported yet`)
+		case sqlparser.QueryExpansionStr:
+			searchModifier = fulltext.SearchModifier_QueryExpansion
+			return nil, fmt.Errorf(`"WITH QUERY EXPANSION" is not supported yet`)
+		default:
+			return nil, sql.ErrUnsupportedFeature.New(v.Option)
+		}
+		return expression.NewMatchAgainst(cols, expr, searchModifier), nil
 	}
 }
 
@@ -4344,7 +4399,11 @@ func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 		// use the value as string format to keep precision and scale as defined for DECIMAL data type to avoid rounded up float64 value
 		if ps := strings.Split(string(v.Val), "."); len(ps) == 2 {
 			ogVal := string(v.Val)
-			floatVal := fmt.Sprintf("%v", val)
+			var fmtStr byte = 'f'
+			if strings.Contains(ogVal, "e") {
+				fmtStr = 'e'
+			}
+			floatVal := strconv.FormatFloat(val, fmtStr, -1, 64)
 			if len(ogVal) >= len(floatVal) && ogVal != floatVal {
 				p, s := expression.GetDecimalPrecisionAndScale(ogVal)
 				dt, err := types.CreateDecimalType(p, s)
@@ -4369,13 +4428,16 @@ func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 			v = strings.Trim(v[1:], "'")
 		}
 
-		valBytes := []byte(v)
-		dst := make([]byte, hex.DecodedLen(len(valBytes)))
-		_, err := hex.Decode(dst, valBytes)
+		// pad string to even length
+		if len(v)%2 == 1 {
+			v = "0" + v
+		}
+
+		val, err := hex.DecodeString(v)
 		if err != nil {
 			return nil, err
 		}
-		return expression.NewLiteral(dst, types.LongBlob), nil
+		return expression.NewLiteral(val, types.LongBlob), nil
 	case sqlparser.HexVal:
 		//TODO: binary collation?
 		val, err := v.HexDecode()

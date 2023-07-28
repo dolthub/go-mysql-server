@@ -192,6 +192,10 @@ func (testIndex) IsSpatial() bool {
 	return false
 }
 
+func (testIndex) IsFullText() bool {
+	return false
+}
+
 func (testIndex) Comment() string {
 	return ""
 }

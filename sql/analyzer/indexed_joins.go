@@ -65,6 +65,12 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 				// is not ideal but not the end of the world.
 				reorder = false
 			}
+			if sqa, ok := n.Left().(*plan.SubqueryAlias); ok && sqa.IsLateral {
+				reorder = false
+			}
+			if sqa, ok := n.Right().(*plan.SubqueryAlias); ok && sqa.IsLateral {
+				reorder = false
+			}
 		default:
 		}
 		return n, transform.SameTree, nil
@@ -870,6 +876,9 @@ func transposeRightJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 		case *plan.JoinNode:
 			if n.Op.IsRightOuter() {
 				return plan.NewLeftOuterJoin(n.Right(), n.Left(), n.Filter), transform.NewTree, nil
+			}
+			if n.Op == plan.JoinTypeLateralRight {
+				return plan.NewJoin(n.Right(), n.Left(), plan.JoinTypeLateralLeft, n.Filter), transform.NewTree, nil
 			}
 		default:
 		}

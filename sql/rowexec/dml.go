@@ -21,6 +21,7 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -83,12 +84,6 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 }
 
 func (b *BaseBuilder) buildDeleteFrom(ctx *sql.Context, n *plan.DeleteFrom, row sql.Row) (sql.RowIter, error) {
-	// If an empty table is passed in (potentially from a bad filter) return an empty row iter.
-	// Note: emptyTable could also implement sql.DetetableTable
-	if _, ok := n.Child.(*plan.EmptyTable); ok {
-		return sql.RowsToRowIter(), nil
-	}
-
 	iter, err := b.buildNodeExec(ctx, n.Child, row)
 	if err != nil {
 		return nil, err
@@ -198,6 +193,12 @@ func (b *BaseBuilder) buildDropTable(ctx *sql.Context, n *plan.DropTable, row sq
 				if err = fkTable.DropForeignKey(ctx, fk.Name); err != nil {
 					return nil, err
 				}
+			}
+		}
+
+		if hasFullText(ctx, tbl) {
+			if err = fulltext.DropAllIndexes(ctx, tbl.Table.(sql.IndexAddressableTable), droppable.(fulltext.Database)); err != nil {
+				return nil, err
 			}
 		}
 

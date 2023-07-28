@@ -54,8 +54,14 @@ func (b *Builder) validateJoinTableNames(leftScope, rightScope *scope) {
 }
 
 func (b *Builder) isLateral(te ast.TableExpr) bool {
-	_, ok := te.(*ast.JSONTableExpr)
-	return ok
+	switch t := te.(type) {
+	case *ast.JSONTableExpr:
+		return true
+	case *ast.AliasedTableExpr:
+		return t.Lateral
+	default:
+		return false
+	}
 }
 
 func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *scope) {
@@ -65,7 +71,7 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 
 	// TODO lateral join right will see left outputs
 	rightInScope := inScope
-	if b.isLateral(te.RightExpr) {
+	if b.isLateral(te.RightExpr) && te.Join != ast.RightJoinStr {
 		rightInScope = leftScope
 	}
 	rightScope := b.buildDataSource(rightInScope, te.RightExpr)
@@ -83,7 +89,11 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 
 	// cross join
 	if te.Condition.On == nil || te.Condition.On == ast.BoolVal(true) {
-		outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
+		if rast, ok := te.RightExpr.(*ast.AliasedTableExpr); ok && rast.Lateral {
+			outScope.node = plan.NewJoin(leftScope.node, rightScope.node, plan.JoinTypeLateralCross, expression.NewLiteral(true, types.Boolean))
+		} else {
+			outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
+		}
 		return
 	}
 
@@ -92,11 +102,23 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 	var op plan.JoinType
 	switch strings.ToLower(te.Join) {
 	case ast.JoinStr:
-		op = plan.JoinTypeInner
+		if b.isLateral(te.RightExpr) {
+			op = plan.JoinTypeLateralInner
+		} else {
+			op = plan.JoinTypeInner
+		}
 	case ast.LeftJoinStr:
-		op = plan.JoinTypeLeftOuter
+		if b.isLateral(te.RightExpr) {
+			op = plan.JoinTypeLateralLeft
+		} else {
+			op = plan.JoinTypeLeftOuter
+		}
 	case ast.RightJoinStr:
-		op = plan.JoinTypeRightOuter
+		if b.isLateral(te.RightExpr) {
+			op = plan.JoinTypeLateralRight
+		} else {
+			op = plan.JoinTypeRightOuter
+		}
 	case ast.FullOuterJoinStr:
 		op = plan.JoinTypeFullOuter
 	default:
@@ -192,6 +214,7 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 			fromScope := b.buildSelectStmt(sqScope, e.Select)
 			alias := strings.ToLower(t.As.String())
 			sq := plan.NewSubqueryAlias(alias, ast.String(e.Select), fromScope.node)
+			sq.IsLateral = t.Lateral
 
 			var renameCols []string
 			if len(e.Columns) > 0 {

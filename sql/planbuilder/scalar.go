@@ -742,7 +742,11 @@ func (b *Builder) convertVal(ctx *sql.Context, v *ast.SQLVal) sql.Expression {
 		// use the value as string format to keep precision and scale as defined for DECIMAL data type to avoid rounded up float64 value
 		if ps := strings.Split(string(v.Val), "."); len(ps) == 2 {
 			ogVal := string(v.Val)
-			floatVal := fmt.Sprintf("%v", val)
+			var fmtStr byte = 'f'
+			if strings.Contains(ogVal, "e") {
+				fmtStr = 'e'
+			}
+			floatVal := strconv.FormatFloat(val, fmtStr, -1, 64)
 			if len(ogVal) >= len(floatVal) && ogVal != floatVal {
 				p, s := expression.GetDecimalPrecisionAndScale(ogVal)
 				dt, err := types.CreateDecimalType(p, s)
@@ -767,13 +771,16 @@ func (b *Builder) convertVal(ctx *sql.Context, v *ast.SQLVal) sql.Expression {
 			v = strings.Trim(v[1:], "'")
 		}
 
-		valBytes := []byte(v)
-		dst := make([]byte, hex.DecodedLen(len(valBytes)))
-		_, err := hex.Decode(dst, valBytes)
+		// pad string to even length
+		if len(v)%2 == 1 {
+			v = "0" + v
+		}
+
+		val, err := hex.DecodeString(v)
 		if err != nil {
 			b.handleErr(err)
 		}
-		return expression.NewLiteral(dst, types.LongBlob)
+		return expression.NewLiteral(val, types.LongBlob)
 	case ast.HexVal:
 		//TODO: binary collation?
 		val, err := v.HexDecode()

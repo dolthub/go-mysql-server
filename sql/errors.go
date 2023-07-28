@@ -813,6 +813,30 @@ var (
 	ErrWindowUnsupported = errors.NewKind(
 		"a window function '%s' is in a context where it cannot be evaluated.",
 	)
+
+	// ErrFullTextNotSupported is returned when a table does not support the creation of Full-Text indexes.
+	ErrFullTextNotSupported = errors.NewKind("table does not support FULLTEXT indexes")
+
+	// ErrFullTextDatabaseNotSupported is returned when a database does not support the creation of Full-Text indexes.
+	ErrFullTextDatabaseNotSupported = errors.NewKind("database does not support FULLTEXT indexes")
+
+	// ErrIncompleteFullTextIntegration is returned when some portions of Full-Text are implemented but not all of them
+	ErrIncompleteFullTextIntegration = errors.NewKind("proper Full-Text support requires all interfaces to be implemented")
+
+	// ErrNoFullTextIndexFound is returned when the relevant Full-Text index cannot be found.
+	ErrNoFullTextIndexFound = errors.NewKind("no matching Full-Text index found on table `%s`")
+
+	// ErrFullTextMatchAgainstNotColumns is returned when the provided MATCH(...) columns are not column names.
+	ErrFullTextMatchAgainstNotColumns = errors.NewKind("match columns must be column names")
+
+	// ErrFullTextMatchAgainstSameTable is returned when the provided MATCH(...) columns belong to different tables.
+	ErrFullTextMatchAgainstSameTable = errors.NewKind("match columns must refer to the same table")
+
+	// ErrFullTextDifferentCollations is returned when creating a Full-Text index on columns that have different collations.
+	ErrFullTextDifferentCollations = errors.NewKind("Full-Text index columns must have the same collation")
+
+	// ErrFullTextMissingColumn is returned when a Full-Text column cannot be found.
+	ErrFullTextMissingColumn = errors.NewKind("Full-Text index could not find the column `%s`")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the

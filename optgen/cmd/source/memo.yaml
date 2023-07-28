@@ -30,6 +30,12 @@ exprs:
   - [swapCmp, "bool"]
 - name: "FullOuterJoin"
   join: true
+- name: "LateralCrossJoin"
+  join: true
+- name: "LateralInnerJoin"
+  join: true
+- name: "LateralLeftJoin"
+  join: true
 - name: "TableScan"
   sourceType: "*plan.ResolvedTable"
 - name: "Values"

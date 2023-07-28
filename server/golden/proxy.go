@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	mysql2 "github.com/go-sql-driver/mysql"
 	"github.com/gocraft/dbr/v2"
 	"github.com/sirupsen/logrus"
@@ -198,6 +199,10 @@ func (h MySqlProxy) ComQuery(
 		conn.Errorf("Failed to process MySQL results: %s", err)
 	}
 	return err
+}
+
+func (h MySqlProxy) ParserOptionsForConnection(c *mysql.Conn) (sqlparser.ParserOptions, error) {
+	return sqlparser.ParserOptions{}, nil
 }
 
 func (h MySqlProxy) processQuery(

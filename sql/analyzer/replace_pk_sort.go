@@ -100,7 +100,7 @@ func replacePkSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sor
 		var err error
 		same := transform.SameTree
 		switch c := child.(type) {
-		case *plan.Project, *plan.TableAlias, *plan.ResolvedTable, *plan.Filter, *plan.Limit, *plan.Sort:
+		case *plan.Project, *plan.TableAlias, *plan.ResolvedTable, *plan.Filter, *plan.Limit, *plan.Offset, *plan.Sort:
 			newChildren[i], same, err = replacePkSortHelper(ctx, scope, child, sortNode)
 		default:
 			newChildren[i] = c

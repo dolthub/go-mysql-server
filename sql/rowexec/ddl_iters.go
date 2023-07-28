@@ -32,6 +32,8 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/fulltext"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -315,14 +317,21 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
+	// Full-Text indexes will need to be rebuilt
+	hasFullText := hasFullText(ctx, i.alterable)
+
 	// TODO: replace with different node in analyzer
-	rwt, ok := i.alterable.(sql.RewritableTable)
-	if ok {
+	if rwt, ok := i.alterable.(sql.RewritableTable); ok {
 		rewritten, err := i.rewriteTable(ctx, rwt)
 		if err != nil {
 			return nil, err
 		}
 		if rewritten {
+			if hasFullText {
+				if err = rebuildFullText(ctx, i.alterable.Name(), i.m.Db); err != nil {
+					return nil, err
+				}
+			}
 			return sql.NewRow(types.NewOkResult(0)), nil
 		}
 	}
@@ -337,6 +346,11 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
+	if hasFullText {
+		if err = rebuildFullText(ctx, i.alterable.Name(), i.m.Db); err != nil {
+			return nil, err
+		}
+	}
 	return sql.NewRow(types.NewOkResult(0)), nil
 }
 
@@ -972,6 +986,7 @@ type createPkIter struct {
 	targetSchema sql.Schema
 	columns      []sql.IndexColumn
 	pkAlterable  sql.PrimaryKeyAlterableTable
+	db           sql.Database
 	runOnce      bool
 }
 
@@ -981,12 +996,19 @@ func (c *createPkIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 	c.runOnce = true
 
+	// Full-Text indexes will need to be rebuilt
+	hasFullText := hasFullText(ctx, c.pkAlterable)
+
 	if rwt, ok := c.pkAlterable.(sql.RewritableTable); ok {
 		err := c.rewriteTable(ctx, rwt)
 		if err != nil {
 			return nil, err
 		}
-
+		if hasFullText {
+			if err = rebuildFullText(ctx, c.pkAlterable.Name(), c.db); err != nil {
+				return nil, err
+			}
+		}
 		return sql.NewRow(types.NewOkResult(0)), nil
 	}
 
@@ -995,6 +1017,11 @@ func (c *createPkIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
+	if hasFullText {
+		if err = rebuildFullText(ctx, c.pkAlterable.Name(), c.db); err != nil {
+			return nil, err
+		}
+	}
 	return sql.NewRow(types.NewOkResult(0)), nil
 }
 
@@ -1063,6 +1090,7 @@ func addKeyToSchema(tableName string, schema sql.Schema, columns []sql.IndexColu
 type dropPkIter struct {
 	targetSchema sql.Schema
 	pkAlterable  sql.PrimaryKeyAlterableTable
+	db           sql.Database
 	runOnce      bool
 }
 
@@ -1072,12 +1100,19 @@ func (d *dropPkIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 	d.runOnce = true
 
+	// Full-Text indexes will need to be rebuilt
+	hasFullText := hasFullText(ctx, d.pkAlterable)
+
 	if rwt, ok := d.pkAlterable.(sql.RewritableTable); ok {
 		err := d.rewriteTable(ctx, rwt)
 		if err != nil {
 			return nil, err
 		}
-
+		if hasFullText {
+			if err = rebuildFullText(ctx, d.pkAlterable.Name(), d.db); err != nil {
+				return nil, err
+			}
+		}
 		return sql.NewRow(types.NewOkResult(0)), nil
 	}
 
@@ -1086,6 +1121,11 @@ func (d *dropPkIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
+	if hasFullText {
+		if err = rebuildFullText(ctx, d.pkAlterable.Name(), d.db); err != nil {
+			return nil, err
+		}
+	}
 	return sql.NewRow(types.NewOkResult(0)), nil
 }
 
@@ -1155,6 +1195,9 @@ func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 	i.runOnce = true
 
+	// Full-Text indexes will need to be rebuilt
+	hasFullText := hasFullText(ctx, i.alterable)
+
 	rwt, ok := i.alterable.(sql.RewritableTable)
 	if ok {
 		rewritten, err := i.rewriteTable(ctx, rwt)
@@ -1162,6 +1205,11 @@ func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 		if rewritten {
+			if hasFullText {
+				if err = rebuildFullText(ctx, i.alterable.Name(), i.a.Db); err != nil {
+					return nil, err
+				}
+			}
 			return sql.NewRow(types.NewOkResult(0)), nil
 		}
 	}
@@ -1169,6 +1217,12 @@ func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 	err := i.alterable.AddColumn(ctx, i.a.Column(), i.a.Order())
 	if err != nil {
 		return nil, err
+	}
+
+	if hasFullText {
+		if err = rebuildFullText(ctx, i.alterable.Name(), i.a.Db); err != nil {
+			return nil, err
+		}
 	}
 
 	// We only need to update all table rows if the new column is non-nil
@@ -1509,6 +1563,9 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 	i.runOnce = true
 
+	// Full-Text indexes will need to be rebuilt
+	hasFullText := hasFullText(ctx, i.alterable)
+
 	// drop constraints that reference the dropped column
 	cat, ok := i.alterable.(sql.CheckAlterableTable)
 	if ok {
@@ -1526,6 +1583,11 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 		if rewritten {
+			if hasFullText {
+				if err = rebuildFullText(ctx, i.alterable.Name(), i.d.Db); err != nil {
+					return nil, err
+				}
+			}
 			return sql.NewRow(types.NewOkResult(0)), nil
 		}
 	}
@@ -1535,6 +1597,11 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
+	if hasFullText {
+		if err = rebuildFullText(ctx, i.alterable.Name(), i.d.Db); err != nil {
+			return nil, err
+		}
+	}
 	return sql.NewRow(types.NewOkResult(0)), nil
 }
 
@@ -1788,6 +1855,25 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 				}
 			}
 		}
+		if n.Constraint == sql.IndexConstraint_Fulltext {
+			database, ok := n.Database().(fulltext.Database)
+			if !ok {
+				if privDb, ok := n.Database().(mysql_db.PrivilegedDatabase); ok {
+					if database, ok = privDb.Unwrap().(fulltext.Database); !ok {
+						return sql.ErrIncompleteFullTextIntegration.New()
+					}
+				} else {
+					return sql.ErrIncompleteFullTextIntegration.New()
+				}
+			}
+			return fulltext.CreateFulltextIndexes(ctx, database, indexable, nil, sql.IndexDef{
+				Name:       indexName,
+				Columns:    n.Columns,
+				Constraint: n.Constraint,
+				Storage:    n.Using,
+				Comment:    n.Comment,
+			})
+		}
 		err = indexable.CreateIndex(ctx, sql.IndexDef{
 			Name:       indexName,
 			Columns:    n.Columns,
@@ -1866,6 +1952,68 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 				}
 			}
 		}
+
+		// If we're dropping a Full-Text, then we also need to delete its tables
+		database := n.Database()
+		if addressable, ok := indexable.(sql.IndexAddressableTable); !ok {
+			// If they don't support their creation, then it's safe to assume that they won't have any to delete
+			if _, ok = database.(fulltext.Database); ok {
+				return sql.ErrIncompleteFullTextIntegration.New()
+			}
+		} else {
+			indexes, err := addressable.GetIndexes(ctx)
+			if err != nil {
+				return err
+			}
+			// We need to keep a count of how many Full-Text indexes there are, so that we only delete the config table
+			// once the last index has been deleted.
+			ftCount := 0
+			var ftIndex fulltext.Index
+			lowercaseIndexName := strings.ToLower(n.IndexName)
+			for _, index := range indexes {
+				if strings.ToLower(index.ID()) == lowercaseIndexName {
+					if index.IsFullText() {
+						ftIndex, ok = index.(fulltext.Index)
+						if !ok {
+							return sql.ErrIncompleteFullTextIntegration.New()
+						}
+						ftCount++
+					}
+					break
+				} else if index.IsFullText() {
+					ftCount++
+				}
+			}
+			// We found the index and it is Full-Text, so we need to delete the other tables
+			if ftIndex != nil {
+				dropper, ok := database.(sql.TableDropper)
+				if !ok {
+					return sql.ErrIncompleteFullTextIntegration.New()
+				}
+				tableNames, err := ftIndex.FullTextTableNames(ctx)
+				if err != nil {
+					return err
+				}
+				// We only delete the config table when there are no more Full-Text indexes on the table since its shared
+				if ftCount == 1 {
+					if err = dropper.DropTable(ctx, tableNames.Config); err != nil {
+						return err
+					}
+				}
+				if err = dropper.DropTable(ctx, tableNames.Position); err != nil {
+					return err
+				}
+				if err = dropper.DropTable(ctx, tableNames.DocCount); err != nil {
+					return err
+				}
+				if err = dropper.DropTable(ctx, tableNames.GlobalCount); err != nil {
+					return err
+				}
+				if err = dropper.DropTable(ctx, tableNames.RowCount); err != nil {
+					return err
+				}
+			}
+		}
 		return indexable.DropIndex(ctx, n.IndexName)
 	case plan.IndexAction_Rename:
 		return indexable.RenameIndex(ctx, n.PreviousIndexName, n.IndexName)
@@ -1908,4 +2056,35 @@ func (b *BaseBuilder) executeAlterAutoInc(ctx *sql.Context, n *plan.AlterAutoInc
 	}
 
 	return autoTbl.AutoIncrementSetter(ctx).SetAutoIncrementValue(ctx, n.AutoVal)
+}
+
+// hasFullText returns whether the given table has any Full-Text indexes.
+func hasFullText(ctx *sql.Context, tbl sql.Table) bool {
+	hasFT := false
+	indexAddressable, ok := tbl.(sql.IndexAddressableTable)
+	if ok {
+		indexes, err := indexAddressable.GetIndexes(ctx)
+		if err != nil {
+			panic(err) // really, why would this ever happen
+		}
+		for _, index := range indexes {
+			if index.IsFullText() {
+				hasFT = true
+				break
+			}
+		}
+	}
+	return hasFT
+}
+
+// rebuildFullText rebuilds all Full-Text indexes on the given table.
+func rebuildFullText(ctx *sql.Context, tblName string, db sql.Database) error {
+	updatedTable, ok, err := db.GetTableInsensitive(ctx, tblName)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("cannot find newly updated table `%s`", tblName)
+	}
+	return fulltext.RebuildTables(ctx, updatedTable.(sql.IndexAddressableTable), db.(fulltext.Database))
 }
