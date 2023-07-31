@@ -413,7 +413,9 @@ func (b *Builder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *sco
 			}
 		}
 	}
-
+	if filter == nil {
+		filter = expression.NewLiteral(true, types.Boolean)
+	}
 	outScope.node = plan.NewShowVariables(filter, strings.ToLower(s.Scope) == "global")
 
 	return

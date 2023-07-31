@@ -803,6 +803,9 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 				}
 			}
 		}
+		if filter == nil {
+			filter = expression.NewLiteral(true, types.Boolean)
+		}
 
 		return plan.NewShowVariables(filter, strings.ToLower(s.Scope) == "global"), nil
 	case sqlparser.KeywordString(sqlparser.TABLES):

@@ -4972,6 +4972,9 @@ Select * from (
 		},
 	},
 	{
+		Query: `SHOW VARIABLES`,
+	},
+	{
 		Query: `SHOW VARIABLES LIKE 'gtid_mode'`,
 		Expected: []sql.Row{
 			{"gtid_mode", "OFF"},
