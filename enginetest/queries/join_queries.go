@@ -757,10 +757,50 @@ var JoinScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			// Basic tests
 			{
+				Query: "select * from t1 join t2 using (badcol);",
+				ExpectedErr: sql.ErrUnknownColumn,
+			},
+			{
+				Skip: true,
+				Query: "select i from t1 join t2 using (i);",
+				Expected: []sql.Row{
+					{1},
+					{2},
+				},
+			},
+			{
+				Skip: true,
+				Query: "select j from t1 join t2 using (i);",
+				ExpectedErr: sql.ErrAmbiguousColumnName,
+			},
+			{
+				Skip: true,
+				Query: "select i from t1 natural join t2;",
+				Expected: []sql.Row{
+					{1},
+					{2},
+				},
+			},
+
+			{
+				Query: "select * from t1 join t2 using (i);",
+				Expected: []sql.Row{
+					{1, 10, 30},
+					{2, 20, 20},
+				},
+			},
+			{
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 join t2 using (i);",
 				Expected: []sql.Row{
 					{1, 10, 1, 30},
 					{2, 20, 2, 20},
+				},
+			},
+			{
+				Query: "select * from t1 join t2 using (j);",
+				Expected: []sql.Row{
+					{30, 3, 1},
+					{20, 2, 2},
 				},
 			},
 			{
@@ -771,68 +811,120 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
+				Query: "select * from t1 join t2 using (i, j);",
+				Expected: []sql.Row{
+					{2, 20},
+				},
+			},
+			{
+				Skip: true,
+				Query: "select * from t1 join t2 using (j, i);",
+				Expected: []sql.Row{
+					{2, 20},
+				},
+			},
+			{
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 join t2 using (i, j);",
 				Expected: []sql.Row{
 					{2, 20, 2, 20},
 				},
 			},
+
+			// Left Join
+			{
+				Query: "select * from t1 left join t2 using (i);",
+				Expected: []sql.Row{
+					{1, 10, 30},
+					{2, 20, 20},
+					{3, 30, nil},
+				},
+			},
 			{
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 left join t2 using (i);",
 				Expected: []sql.Row{
-					{1, 10, 1, 30},
-					{2, 20, 2, 20},
+					{1, 10, 1,   30},
+					{2, 20, 2,   20},
 					{3, 30, nil, nil},
+				},
+			},
+			{
+				Query: "select * from t1 left join t2 using (i, j);",
+				Expected: []sql.Row{
+					{1, 10},
+					{2, 20},
+					{3, 30},
 				},
 			},
 			{
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 left join t2 using (i, j);",
 				Expected: []sql.Row{
 					{1, 10, nil, nil},
-					{2, 20, 2, 20},
+					{2, 20, 2,   20},
 					{3, 30, nil, nil},
+				},
+			},
+
+			// Right Join
+			{
+				Skip: true,
+				Query: "select * from t1 right join t2 using (i);",
+				Expected: []sql.Row{
+					{1, 30, 10},
+					{2, 20, 20},
+					{5, 50, nil},
 				},
 			},
 			{
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 right join t2 using (i);",
 				Expected: []sql.Row{
-					{1, 10, 1, 30},
-					{2, 20, 2, 20},
+					{1,   10,  1, 30},
+					{2,   20,  2, 20},
 					{nil, nil, 5, 50},
+				},
+			},
+			{
+				Skip: true,
+				Query: "select * from t1 right join t2 using (j);",
+				Expected: []sql.Row{
+					{30, 1, 10},
+					{20, 2, 20},
+					{50, 5, nil},
+				},
+			},
+			{
+				Query: "select t1.i, t1.j, t2.i, t2.j from t1 right join t2 using (j);",
+				Expected: []sql.Row{
+					{3,   30,  1, 30},
+					{2,   20,  2, 20},
+					{nil, nil, 5, 50},
+				},
+			},
+			{
+				Skip: true,
+				Query: "select * from t1 right join t2 using (i, j);",
+				Expected: []sql.Row{
+					{1, 30},
+					{2, 20},
+					{5, 50},
 				},
 			},
 			{
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 right join t2 using (i, j);",
 				Expected: []sql.Row{
 					{nil, nil, 1, 30},
-					{2, 20, 2, 20},
+					{2,   20,  2, 20},
 					{nil, nil, 5, 50},
 				},
 			},
+
+
+			// Nested Join
 			{
-				// TODO: need to find a better way to handle table names
 				Skip:  true,
 				Query: "select t1.i, t1.j, t2.i, t2.j, t3.i, t3.j from t1 join t2 using (i) join t3 using (i);",
 				Expected: []sql.Row{
 					{1, 10, 1, 30, 1, 200},
 					{2, 20, 2, 20, 2, 20},
-				},
-			},
-
-			{
-				// TODO: need projection to remove the duplicate column(s) from the left table
-				Skip:  true,
-				Query: "select * from t1 join t2 using (i);",
-				Expected: []sql.Row{
-					{1, 10, 30},
-					{2, 20, 20},
-				},
-			},
-			{
-				// TODO: need projection to remove the duplicate column(s) from the left table
-				Skip:  true,
-				Query: "select * from t1 join t2 using (i, j);",
-				Expected: []sql.Row{
-					{2, 20},
 				},
 			},
 
@@ -889,6 +981,7 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 
+			// Broken CTE tests
 			{
 				Skip:        true,
 				Query:       "with cte as (select * from t1 join t2 using (i)) select * from cte;",
