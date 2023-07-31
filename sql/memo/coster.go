@@ -200,7 +200,7 @@ func (c *coster) costRangeHeapJoin(_ *sql.Context, n *RangeHeapJoin, _ sql.Stats
 	// TODO: We can probably get a better estimate somehow.
 	expectedNumberOfOverlappingJoins := r * perKeyCostReductionFactor
 
-	return (l+r)*randIOCostFactor + l*expectedNumberOfOverlappingJoins*(cpuCostFactor), nil
+	return l * expectedNumberOfOverlappingJoins * (seqIOCostFactor), nil
 }
 
 func (c *coster) costLateralCrossJoin(ctx *sql.Context, n *LateralCrossJoin, _ sql.StatsReader) (float64, error) {
