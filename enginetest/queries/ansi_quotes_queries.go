@@ -160,6 +160,11 @@ var AnsiQuotesTests = []ScriptTest{
 				Expected: []sql.Row{{"John", "triggered!"}},
 			},
 			{
+				// Assert that we can read and parse the trigger definition from information_schema
+				Query:    `select action_statement from information_schema.triggers where trigger_name='ansi_quotes_trigger';`,
+				Expected: []sql.Row{{`SET new."data" = 'triggered!'`}},
+			},
+			{
 				// Disable ANSI_QUOTES mode
 				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
 				Expected: []sql.Row{{}},
@@ -172,6 +177,11 @@ var AnsiQuotesTests = []ScriptTest{
 				// Assert the trigger still runs correctly after disabling ANSI_QUOTES mode
 				Query:    `select name, data from t where pk=2;`,
 				Expected: []sql.Row{{"George", "triggered!"}},
+			},
+			{
+				// Assert that we can still read and parse the trigger definition from information_schema
+				Query:    `select action_statement from information_schema.triggers where trigger_name='ansi_quotes_trigger';`,
+				Expected: []sql.Row{{`SET new."data" = 'triggered!'`}},
 			},
 		},
 	},

@@ -1806,6 +1806,8 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO: This should be the SQL_MODE at the time the trigger was created, not the current session's SQL_MODE
 	sysVal, err := ctx.Session.GetSessionVariable(ctx, "sql_mode")
 	if err != nil {
 		return nil, err
@@ -1836,7 +1838,8 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 			var triggerPlans []*plan.CreateTrigger
 			for _, trigger := range triggers {
-				parsedTrigger, err := parse.Parse(ctx, trigger.CreateStatement)
+				parsedTrigger, err := parse.ParseWithOptions(ctx, trigger.CreateStatement,
+					sqlparser.ParserOptions{AnsiQuotes: trigger.AnsiQuotes})
 				if err != nil {
 					return nil, err
 				}
