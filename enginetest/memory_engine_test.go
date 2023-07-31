@@ -248,18 +248,30 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	// t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "renaming views with ALTER TABLE ... RENAME .. statement should fail",
+			Name: "renaming views with RENAME TABLE ... TO .. statement",
 			SetUpScript: []string{
 				"create table t1 (id int primary key, v1 int);",
 				"create view v1 as select * from t1;",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:       "alter table v1 rename to view1",
-					ExpectedErr: sql.ErrNotBaseTable,
+					Query:    "rename table v1 to view1",
+					Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+				},
+				{
+					Query:    "show tables;",
+					Expected: []sql.Row{{"myview"}, {"t1"}, {"view1"}},
+				},
+				{
+					Query:    "rename table view1 to newViewName, t1 to newTableName",
+					Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+				},
+				{
+					Query:    "show tables;",
+					Expected: []sql.Row{{"myview"}, {"newTableName"}, {"newViewName"}},
 				},
 			},
 		},
