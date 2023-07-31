@@ -4972,7 +4972,7 @@ Select * from (
 		},
 	},
 	{
-		Query: `SHOW VARIABLES LIKE 'gtid_mode'`,
+		Query: `SHOW VARIABLES`,
 	},
 	{
 		Query: `SHOW VARIABLES LIKE 'gtid_mode'`,

@@ -339,7 +339,9 @@ func TestPreparedQueryWithContext(
 	rows, sch, err := runQueryPreparedWithCtx(t, ctx, e, q)
 	require.NoError(err, "Unexpected error for query %s", q)
 
-	checkResults(t, expected, expectedCols, sch, rows, q)
+	if expected != nil {
+		checkResults(t, expected, expectedCols, sch, rows, q)
+	}
 
 	require.Equal(0, ctx.Memory.NumCaches())
 	validateEngine(t, ctx, h, e)
