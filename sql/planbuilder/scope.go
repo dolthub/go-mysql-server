@@ -2,7 +2,6 @@ package planbuilder
 
 import (
 	"fmt"
-	"log"
 	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
@@ -15,7 +14,7 @@ import (
 // scope tracks relational dependencies necessary to type check expressions,
 // resolve name definitions, and build relational nodes.
 type scope struct {
-	b      *PlanBuilder
+	b      *Builder
 	parent *scope
 	ast    ast.SQLNode
 	node   sql.Node
@@ -50,7 +49,16 @@ func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn,
 	for _, c := range s.cols {
 		if strings.EqualFold(c.col, col) && (c.table == table || table == "") {
 			if foundCand {
-				err := sql.ErrAmbiguousColumnName.New(col)
+				if !s.b.TriggerCtx().Call && len(s.b.TriggerCtx().UnresolvedTables) > 0 {
+					c, ok := s.triggerCol(table, col)
+					if ok {
+						return c, true
+					}
+				}
+				err := sql.ErrAmbiguousColumnName.New(col, []string{c.table, found.table})
+				if c.table == "" {
+					err = sql.ErrAmbiguousColumnOrAliasName.New(c.col)
+				}
 				s.handleErr(err)
 			}
 			found = c
@@ -70,6 +78,13 @@ func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn,
 		}
 	}
 
+	if !s.b.TriggerCtx().Call && len(s.b.TriggerCtx().UnresolvedTables) > 0 {
+		c, ok := s.triggerCol(table, col)
+		if ok {
+			return c, true
+		}
+	}
+
 	if !checkParent || s.parent == nil {
 		return scopeColumn{}, false
 	}
@@ -82,26 +97,47 @@ func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn,
 	return c, true
 }
 
+// triggerCol is used to hallucinate a new column during trigger DDL
+// when we fail a resolveColumn.
+func (s *scope) triggerCol(table, col string) (scopeColumn, bool) {
+	// hallucinate tablecol
+	for _, t := range s.b.TriggerCtx().UnresolvedTables {
+		if strings.EqualFold(t, table) {
+			col := scopeColumn{table: t, col: col}
+			id := s.newColumn(col)
+			col.id = id
+			return col, true
+		}
+	}
+	if table == "" {
+		col := scopeColumn{col: col}
+		id := s.newColumn(col)
+		col.id = id
+		return col, true
+	}
+	return scopeColumn{}, false
+}
+
 // getExpr returns a columnId if the given expression has
 // been built.
-func (s *scope) getExpr(name string) (columnId, bool) {
+func (s *scope) getExpr(name string, checkCte bool) (columnId, bool) {
 	n := strings.ToLower(name)
 	id, ok := s.exprs[n]
 	if !ok && s.groupBy != nil {
-		id, ok = s.groupBy.outScope.getExpr(n)
+		id, ok = s.groupBy.outScope.getExpr(n, checkCte)
 	}
-	if !ok && s.ctes != nil {
+	if !ok && checkCte && s.ctes != nil {
 		for _, cte := range s.ctes {
-			id, ok = cte.getExpr(n)
+			id, ok = cte.getExpr(n, false)
 			if ok {
 				break
 			}
 		}
 	}
 	// TODO: possibly want to look in parent scopes
-	//if !ok && s.parent != nil {
-	//	return s.parent.getExpr(name)
-	//}
+	if !ok && s.parent != nil {
+		return s.parent.getExpr(name, checkCte)
+	}
 	return id, ok
 }
 
@@ -122,12 +158,13 @@ func (s *scope) setTableAlias(t string) {
 			oldTable = s.cols[i].table
 		}
 		s.cols[i].table = t
-		id, ok := s.getExpr(beforeColStr)
-		if !ok {
-			err := sql.ErrColumnNotFound.New(beforeColStr)
-			s.b.handleErr(err)
+		id, ok := s.getExpr(beforeColStr, true)
+		if ok {
+			//err := sql.ErrColumnNotFound.New(beforeColStr)
+			//s.b.handleErr(err)
+			// todo better way to do projections
+			delete(s.exprs, beforeColStr)
 		}
-		delete(s.exprs, beforeColStr)
 		s.exprs[strings.ToLower(s.cols[i].String())] = id
 	}
 	id, ok := s.tables[oldTable]
@@ -150,11 +187,12 @@ func (s *scope) setColAlias(cols []string) {
 	ids := make([]columnId, len(cols))
 	for i := range s.cols {
 		beforeColStr := s.cols[i].String()
-		id, ok := s.getExpr(beforeColStr)
-		if !ok {
-			log.Println(s.exprs)
-			err := sql.ErrColumnNotFound.New(beforeColStr)
-			s.b.handleErr(err)
+		id, ok := s.getExpr(beforeColStr, true)
+		if ok {
+			//err := sql.ErrColumnNotFound.New(beforeColStr)
+			//s.b.handleErr(err)
+			// todo better way to do projections
+			delete(s.exprs, beforeColStr)
 		}
 		ids[i] = id
 		delete(s.exprs, beforeColStr)
@@ -380,6 +418,11 @@ func (c scopeColumn) empty() bool {
 
 // scalarGf returns a getField reference to this column's expression.
 func (c scopeColumn) scalarGf() sql.Expression {
+	if c.scalar != nil {
+		if p, ok := c.scalar.(*expression.ProcedureParam); ok {
+			return p
+		}
+	}
 	return expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
 }
 

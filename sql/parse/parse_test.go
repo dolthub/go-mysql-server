@@ -3207,15 +3207,15 @@ CREATE TABLE t2
 		},
 		{
 			input: `SHOW VARIABLES`,
-			plan:  plan.NewShowVariables(nil, false),
+			plan:  plan.NewShowVariables(expression.NewLiteral(true, types.Boolean), false),
 		},
 		{
 			input: `SHOW GLOBAL VARIABLES`,
-			plan:  plan.NewShowVariables(nil, true),
+			plan:  plan.NewShowVariables(expression.NewLiteral(true, types.Boolean), true),
 		},
 		{
 			input: `SHOW SESSION VARIABLES`,
-			plan:  plan.NewShowVariables(nil, false),
+			plan:  plan.NewShowVariables(expression.NewLiteral(true, types.Boolean), false),
 		},
 		{
 			input: `SHOW VARIABLES LIKE 'gtid_mode'`,

@@ -513,7 +513,7 @@ func TestQueryPlan(t *testing.T, harness Harness, e *sqle.Engine, query, expecte
 func TestQueryPlanWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt queries.QueryPlanTest, verbose bool) {
 	t.Run(tt.Query, func(t *testing.T) {
 		ctx := NewContext(harness)
-		parsed, err := parse.Parse(ctx, tt.Query)
+		parsed, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, tt.Query)
 		require.NoError(t, err)
 
 		node, err := e.Analyzer.Analyze(ctx, parsed, nil)
@@ -540,69 +540,71 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 		TestScript(t, harness, tt)
 	}
 
-	e := mustNewEngine(t, harness)
-	defer e.Close()
-	ctx := NewContext(harness)
-	RunQueryWithContext(t, e, harness, ctx, "create table members (id int primary key, team text);")
-	RunQueryWithContext(t, e, harness, ctx, "insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');")
+	t.Run("non-deterministic group by", func(t *testing.T) {
+		e := mustNewEngine(t, harness)
+		defer e.Close()
+		ctx := NewContext(harness)
+		RunQueryWithContext(t, e, harness, ctx, "create table members (id int primary key, team text);")
+		RunQueryWithContext(t, e, harness, ctx, "insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');")
 
-	var rowIter sql.RowIter
-	var row sql.Row
-	var err error
-	var rowCount int
+		var rowIter sql.RowIter
+		var row sql.Row
+		var err error
+		var rowCount int
 
-	// group by with any_value or non-strict are non-deterministic (unless there's only one value), so we must accept multiple
-	// group by with any_value()
-	_, rowIter, err = e.Query(ctx, "select any_value(id), team from members group by team order by id")
-	require.NoError(t, err)
-	rowCount = 0
-	for {
-		row, err = rowIter.Next(ctx)
-		if err == io.EOF {
-			break
-		}
-		rowCount++
+		// group by with any_value or non-strict are non-deterministic (unless there's only one value), so we must accept multiple
+		// group by with any_value()
+		_, rowIter, err = e.Query(ctx, "select any_value(id), team from members group by team order by id")
 		require.NoError(t, err)
-		val := row[0].(int32)
-		team := row[1].(string)
-		switch team {
-		case "red":
-			require.True(t, val == 3 || val == 4)
-		case "orange":
-			require.True(t, val == 5 || val == 6 || val == 7)
-		case "purple":
-			require.True(t, val == 8)
-		default:
-			panic("received non-existent team")
+		rowCount = 0
+		for {
+			row, err = rowIter.Next(ctx)
+			if err == io.EOF {
+				break
+			}
+			rowCount++
+			require.NoError(t, err)
+			val := row[0].(int32)
+			team := row[1].(string)
+			switch team {
+			case "red":
+				require.True(t, val == 3 || val == 4)
+			case "orange":
+				require.True(t, val == 5 || val == 6 || val == 7)
+			case "purple":
+				require.True(t, val == 8)
+			default:
+				panic("received non-existent team")
+			}
 		}
-	}
-	require.Equal(t, rowCount, 3)
+		require.Equal(t, rowCount, 3)
 
-	// TODO: this should error; the order by doesn't count towards ONLY_FULL_GROUP_BY
-	_, rowIter, err = e.Query(ctx, "select id, team from members group by team order by id")
-	require.NoError(t, err)
-	rowCount = 0
-	for {
-		row, err = rowIter.Next(ctx)
-		if err == io.EOF {
-			break
-		}
-		rowCount++
+		// TODO: this should error; the order by doesn't count towards ONLY_FULL_GROUP_BY
+		_, rowIter, err = e.Query(ctx, "select id, team from members group by team order by id")
 		require.NoError(t, err)
-		val := row[0].(int32)
-		team := row[1].(string)
-		switch team {
-		case "red":
-			require.True(t, val == 3 || val == 4)
-		case "orange":
-			require.True(t, val == 5 || val == 6 || val == 7)
-		case "purple":
-			require.True(t, val == 8)
-		default:
-			panic("received non-existent team")
+		rowCount = 0
+		for {
+			row, err = rowIter.Next(ctx)
+			if err == io.EOF {
+				break
+			}
+			rowCount++
+			require.NoError(t, err)
+			val := row[0].(int32)
+			team := row[1].(string)
+			switch team {
+			case "red":
+				require.True(t, val == 3 || val == 4)
+			case "orange":
+				require.True(t, val == 5 || val == 6 || val == 7)
+			case "purple":
+				require.True(t, val == 8)
+			default:
+				panic("received non-existent team")
+			}
 		}
-	}
-	require.Equal(t, rowCount, 3)
+		require.Equal(t, rowCount, 3)
+	})
 }
 
 func TestReadOnly(t *testing.T, harness Harness) {
@@ -942,7 +944,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t5 ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t5"
-		parsed, err := parse.Parse(ctx, deleteStr)
+		parsed, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, deleteStr)
 		require.NoError(t, err)
 		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
@@ -971,7 +973,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "INSERT INTO t6parent VALUES (1,1), (2,2)")
 		RunQuery(t, e, harness, "INSERT INTO t6child VALUES (1,1), (2,2)")
 
-		parsed, err := parse.Parse(ctx, "DELETE FROM t6parent")
+		parsed, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, "DELETE FROM t6parent")
 		require.NoError(t, err)
 		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
@@ -999,7 +1001,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t7i ORDER BY 1", []sql.Row{{int64(3), int64(3)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t7"
-		parsed, err := parse.Parse(ctx, deleteStr)
+		parsed, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, deleteStr)
 		require.NoError(t, err)
 		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
@@ -1027,7 +1029,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t8 ORDER BY 1", []sql.Row{{int64(1), int64(4)}, {int64(2), int64(5)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t8"
-		parsed, err := parse.Parse(ctx, deleteStr)
+		parsed, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, deleteStr)
 		require.NoError(t, err)
 		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
@@ -1056,7 +1058,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t9 ORDER BY 1", []sql.Row{{int64(7), int64(7)}, {int64(8), int64(8)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t9 WHERE pk > 0"
-		parsed, err := parse.Parse(ctx, deleteStr)
+		parsed, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, deleteStr)
 		require.NoError(t, err)
 		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
@@ -1083,7 +1085,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t10 ORDER BY 1", []sql.Row{{int64(8), int64(8)}, {int64(9), int64(9)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t10 LIMIT 1000"
-		parsed, err := parse.Parse(ctx, deleteStr)
+		parsed, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, deleteStr)
 		require.NoError(t, err)
 		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
@@ -1110,7 +1112,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t11 ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(9), int64(9)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t11 ORDER BY 1"
-		parsed, err := parse.Parse(ctx, deleteStr)
+		parsed, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, deleteStr)
 		require.NoError(t, err)
 		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
@@ -1141,7 +1143,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t12b ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}}, nil, nil)
 
 		deleteStr := "DELETE t12a, t12b FROM t12a INNER JOIN t12b WHERE t12a.pk=t12b.pk"
-		parsed, err := parse.Parse(ctx, deleteStr)
+		parsed, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, deleteStr)
 		require.NoError(t, err)
 		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
@@ -1817,22 +1819,31 @@ func TestShowTriggers(t *testing.T, harness Harness) {
 }
 
 func TestStoredProcedures(t *testing.T, harness Harness) {
-	for _, script := range queries.ProcedureLogicTests {
-		TestScript(t, harness, script)
-	}
-	for _, script := range queries.ProcedureCallTests {
-		TestScript(t, harness, script)
-	}
-	for _, script := range queries.ProcedureDropTests {
-		TestScript(t, harness, script)
-	}
-	for _, script := range queries.ProcedureShowStatus {
-		TestScript(t, harness, script)
-	}
-	for _, script := range queries.ProcedureShowCreate {
-		TestScript(t, harness, script)
-	}
-
+	t.Run("logic tests", func(t *testing.T) {
+		for _, script := range queries.ProcedureLogicTests {
+			TestScript(t, harness, script)
+		}
+	})
+	t.Run("call tests", func(t *testing.T) {
+		for _, script := range queries.ProcedureCallTests {
+			TestScript(t, harness, script)
+		}
+	})
+	t.Run("drop tests", func(t *testing.T) {
+		for _, script := range queries.ProcedureDropTests {
+			TestScript(t, harness, script)
+		}
+	})
+	t.Run("show status tests", func(t *testing.T) {
+		for _, script := range queries.ProcedureShowStatus {
+			TestScript(t, harness, script)
+		}
+	})
+	t.Run("show create tests", func(t *testing.T) {
+		for _, script := range queries.ProcedureShowCreate {
+			TestScript(t, harness, script)
+		}
+	})
 	harness.Setup(setup.MydbData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
@@ -1841,15 +1852,17 @@ func TestStoredProcedures(t *testing.T, harness Harness) {
 		ctx.SetCurrentDatabase("")
 
 		for _, script := range queries.NoDbProcedureTests {
-			if script.Expected != nil || script.SkipResultsCheck {
-				expectedResult := script.Expected
-				if script.SkipResultsCheck {
-					expectedResult = nil
+			t.Run(script.Query, func(t *testing.T) {
+				if script.Expected != nil || script.SkipResultsCheck {
+					expectedResult := script.Expected
+					if script.SkipResultsCheck {
+						expectedResult = nil
+					}
+					TestQueryWithContext(t, ctx, e, harness, script.Query, expectedResult, nil, nil)
+				} else if script.ExpectedErr != nil {
+					AssertErrWithCtx(t, e, harness, ctx, script.Query, script.ExpectedErr)
 				}
-				TestQueryWithContext(t, ctx, e, harness, script.Query, expectedResult, nil, nil)
-			} else if script.ExpectedErr != nil {
-				AssertErrWithCtx(t, e, harness, ctx, script.Query, script.ExpectedErr)
-			}
+			})
 		}
 
 		TestQueryWithContext(t, ctx, e, harness, "CREATE PROCEDURE mydb.p1() SELECT 5", []sql.Row{{types.OkResult{}}}, nil, nil)
@@ -3479,6 +3492,13 @@ func TestForeignKeys(t *testing.T, harness Harness) {
 	}
 }
 
+func TestFulltextIndexes(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.FulltextTests {
+		TestScript(t, harness, script)
+	}
+}
+
 // todo(max): rewrite this using info schema and []QueryTest
 func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 	require := require.New(t)
@@ -4595,6 +4615,10 @@ func TestVariables(t *testing.T, harness Harness) {
 		{
 			Query:    "SELECT @@GLOBAL.select_into_buffer_size",
 			Expected: []sql.Row{{9002}},
+		},
+		{
+			Query:    "SET GLOBAL select_into_buffer_size = 131072",
+			Expected: []sql.Row{{}},
 		},
 	} {
 		t.Run(assertion.Query, func(t *testing.T) {

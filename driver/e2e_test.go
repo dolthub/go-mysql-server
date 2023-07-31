@@ -19,27 +19,31 @@ func TestQuery(t *testing.T) {
 	var numbers []any
 	var created time.Time
 	var count int
+	var blob []byte
 
 	cases := []struct {
 		Name, Query string
+		Args        []any
 		Pointers    Pointers
 		Expect      Records
 	}{
-		{"Select All", "SELECT * FROM db.person", []any{&id, &name, &email, &numbers, &created}, records},
-		{"Select First", "SELECT * FROM db.person LIMIT 1", []any{&id, &name, &email, &numbers, &created}, records.Rows(0)},
-		{"Select Name", "SELECT name FROM db.person", []any{&name}, records.Columns(1)},
-		{"Select Count", "SELECT COUNT(1) FROM db.person", []any{&count}, Records{{len(records)}}},
+		{"Select All", "SELECT * FROM db.person", nil, []any{&id, &name, &email, &numbers, &created}, records},
+		{"Select First", "SELECT * FROM db.person LIMIT 1", nil, []any{&id, &name, &email, &numbers, &created}, records.Rows(0)},
+		{"Select Name", "SELECT name FROM db.person", nil, []any{&name}, records.Columns(1)},
+		{"Select Count", "SELECT COUNT(1) FROM db.person", nil, []any{&count}, Records{{len(records)}}},
 
-		{"Insert", `INSERT INTO db.person (name, email, phone_numbers, created_at) VALUES ('foo', 'bar', '["baz"]', NOW())`, []any{}, Records{}},
-		{"Select Inserted", "SELECT name, email, phone_numbers FROM db.person WHERE name = 'foo'", []any{&name, &email, &numbers}, Records{{"foo", "bar", []any{"baz"}}}},
+		{"Insert", `INSERT INTO db.person (name, email, phone_numbers, created_at) VALUES ('foo', 'bar', '["baz"]', NOW())`, nil, []any{}, Records{}},
+		{"Select Inserted", "SELECT name, email, phone_numbers FROM db.person WHERE name = 'foo'", nil, []any{&name, &email, &numbers}, Records{{"foo", "bar", []any{"baz"}}}},
 
-		{"Update", "UPDATE db.person SET name = 'asdf' WHERE name = 'foo'", []any{}, Records{}},
-		{"Delete", "DELETE FROM db.person WHERE name = 'asdf'", []any{}, Records{}},
+		{"Update", "UPDATE db.person SET name = 'asdf' WHERE name = 'foo'", nil, []any{}, Records{}},
+		{"Delete", "DELETE FROM db.person WHERE name = 'asdf'", nil, []any{}, Records{}},
+
+		{"Select Binary Args", `SELECT ?`, []any{[]byte{1, 2, 3}}, []any{&blob}, Records{{[]byte{1, 2, 3}}}},
 	}
 
 	for _, c := range cases {
 		t.Run(c.Name, func(t *testing.T) {
-			rows, err := db.Query(c.Query)
+			rows, err := db.Query(c.Query, c.Args...)
 			require.NoError(t, err, "Query")
 
 			var i int

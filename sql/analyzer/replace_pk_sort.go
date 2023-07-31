@@ -67,7 +67,7 @@ func replacePkSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sor
 			if alias, ok := sfAliases[strings.ToLower(pkColNames[i])]; ok && alias == fieldName {
 				continue
 			}
-			if pkColNames[i] != fieldExpr.String() {
+			if strings.ToLower(pkColNames[i]) != strings.ToLower(fieldExpr.String()) {
 				return n, transform.SameTree, nil
 			}
 		}

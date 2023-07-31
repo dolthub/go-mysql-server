@@ -1,10 +1,15 @@
 package analyzer
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/fixidx"
+	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -118,16 +123,16 @@ func convertFiltersToIndexedAccess(
 			filters.markFiltersHandled(handled...)
 			newF := removePushedDownPredicates(ctx, a, n, filters)
 			if newF == nil {
-				return fixidx.FixFieldIndexesForExpressions(a.LogFn(), n, scope)
+				return fixidx.FixFieldIndexesForExpressions(ctx, a.LogFn(), n, scope)
 			}
-			ret, _, err := fixidx.FixFieldIndexesForExpressions(a.LogFn(), newF, scope)
+			ret, _, err := fixidx.FixFieldIndexesForExpressions(ctx, a.LogFn(), newF, scope)
 			if err != nil {
 				return n, transform.SameTree, err
 			}
 			return ret, transform.NewTree, nil
 		case *plan.TableAlias, *plan.ResolvedTable:
 			nameable := n.(sql.NameableNode)
-			ret, same, err, lookup := pushdownIndexesToTable(scope, a, nameable, indexes)
+			ret, same, err, lookup := pushdownIndexesToTable(ctx, scope, a, nameable, indexes)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -142,14 +147,14 @@ func convertFiltersToIndexedAccess(
 			handled = append(handled, handledF...)
 			return ret, transform.NewTree, nil
 		default:
-			return pushdownFixIndices(a, n, scope)
+			return pushdownFixIndices(ctx, a, n, scope)
 		}
 	})
 }
 
 // pushdownIndexesToTable attempts to convert filter predicates to indexes on tables that implement
 // sql.IndexAddressableTable
-func pushdownIndexesToTable(scope *plan.Scope, a *Analyzer, tableNode sql.NameableNode, indexes map[string]*indexLookup) (sql.Node, transform.TreeIdentity, error, *indexLookup) {
+func pushdownIndexesToTable(ctx *sql.Context, scope *plan.Scope, a *Analyzer, tableNode sql.NameableNode, indexes map[string]*indexLookup) (sql.Node, transform.TreeIdentity, error, *indexLookup) {
 	var lookup *indexLookup
 	ret, same, err := transform.Node(tableNode, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
@@ -162,30 +167,47 @@ func pushdownIndexesToTable(scope *plan.Scope, a *Analyzer, tableNode sql.Nameab
 				table = tw.Underlying()
 			}
 			if _, ok := table.(sql.IndexAddressableTable); ok {
-				indexLookup, ok := indexes[tableNode.Name()]
-				if ok && indexLookup.lookup.Index.CanSupport(indexLookup.lookup.Ranges...) {
-					a.Log("table %q transformed with pushdown of index", tableNode.Name())
-					ita, err := plan.NewStaticIndexedAccessForResolvedTable(n, indexLookup.lookup)
-					if plan.ErrInvalidLookupForIndexedTable.Is(err) {
-						return n, transform.SameTree, nil
-					}
-					if err != nil {
-						return nil, transform.SameTree, err
-					}
+				if indexLookup, ok := indexes[strings.ToLower(tableNode.Name())]; ok {
+					if indexLookup.lookup.Index.IsFullText() {
+						matchAgainst, ok := indexLookup.expr.(*expression.MatchAgainst)
+						if !ok {
+							return nil, transform.SameTree, fmt.Errorf("Full-Text index found in filter with unknown expression: %T", indexLookup.expr)
+						}
+						if matchAgainst.KeyCols.Type == fulltext.KeyType_None {
+							return n, transform.SameTree, nil
+						}
+						ret := plan.NewStaticIndexedAccessForFullTextTable(n, indexLookup.lookup, &rowexec.FulltextFilterTable{
+							MatchAgainst: matchAgainst,
+							Table:        n,
+						})
+						// save reference
+						lookup = indexLookup
 
-					// save reference
-					lookup = indexLookup
+						return ret, transform.NewTree, nil
+					} else if indexLookup.lookup.Index.CanSupport(indexLookup.lookup.Ranges...) {
+						a.Log("table %q transformed with pushdown of index", tableNode.Name())
+						ita, err := plan.NewStaticIndexedAccessForResolvedTable(n, indexLookup.lookup)
+						if plan.ErrInvalidLookupForIndexedTable.Is(err) {
+							return n, transform.SameTree, nil
+						}
+						if err != nil {
+							return nil, transform.SameTree, err
+						}
 
-					newExprs, _, err := fixidx.FixFieldIndexesOnExpressions(scope, a.LogFn(), table.Schema(), ita.Expressions()...)
-					if err != nil {
-						return nil, transform.SameTree, err
-					}
-					ret, err := ita.WithExpressions(newExprs...)
-					if err != nil {
-						return nil, transform.SameTree, err
-					}
+						// save reference
+						lookup = indexLookup
 
-					return ret, transform.NewTree, nil
+						newExprs, _, err := fixidx.FixFieldIndexesOnExpressions(scope, a.LogFn(), table.Schema(), ita.Expressions()...)
+						if err != nil {
+							return nil, transform.SameTree, err
+						}
+						ret, err := ita.WithExpressions(newExprs...)
+						if err != nil {
+							return nil, transform.SameTree, err
+						}
+
+						return ret, transform.NewTree, nil
+					}
 				}
 			}
 		}
@@ -200,8 +222,8 @@ func getPredicateExprsHandledByLookup(ctx *sql.Context, a *Analyzer, name string
 	if !ok {
 		return nil, nil
 	}
-	// Spatial Indexes are lossy, so do not remove filter node above the lookup
-	if filteredIdx.IsSpatial() {
+	// Spatial and Full-Text are lossy, so do not remove filter node above the lookup
+	if filteredIdx.IsSpatial() || filteredIdx.IsFullText() {
 		return nil, nil
 	}
 

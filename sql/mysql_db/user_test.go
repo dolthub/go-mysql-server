@@ -48,7 +48,7 @@ func TestUserJson(t *testing.T) {
 	require.NoError(t, err)
 	newUser, err := (User{}).FromJson(ctx, jsonStr)
 	require.NoError(t, err)
-	require.True(t, testUser.Equals(ctx, newUser))
+	require.True(t, UserEquals(testUser, newUser))
 
 	testSlice := []*User{testUser}
 	jsonData, err := json.Marshal(testSlice)
@@ -58,6 +58,6 @@ func TestUserJson(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, newSlice, len(testSlice))
 	for i := range testSlice {
-		require.True(t, testSlice[i].Equals(ctx, newSlice[i]))
+		require.True(t, UserEquals(testSlice[i], newSlice[i]))
 	}
 }

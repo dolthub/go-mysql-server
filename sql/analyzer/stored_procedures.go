@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -51,7 +52,15 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 			}
 
 			for _, procedure := range procedures {
-				parsedProcedure, err := parse.Parse(ctx, procedure.CreateStatement)
+				var parsedProcedure sql.Node
+				if ctx.Version == sql.VersionExperimental {
+					b := planbuilder.New(ctx, a.Catalog)
+					b.ProcCtx().Active = true
+					parsedProcedure, _, _, err = b.Parse(procedure.CreateStatement, false)
+					b.ProcCtx().Active = false
+				} else {
+					parsedProcedure, err = parse.Parse(ctx, procedure.CreateStatement)
+				}
 				if err != nil {
 					return nil, err
 				}
@@ -312,7 +321,23 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				}
 				return nil, transform.SameTree, err
 			}
-			parsedProcedure, err := parse.Parse(ctx, procedure.CreateStatement)
+			var parsedProcedure sql.Node
+			if ctx.Version == sql.VersionExperimental {
+				b := planbuilder.New(ctx, a.Catalog)
+				if call.AsOf() != nil {
+					asOf, err := call.AsOf().Eval(ctx, nil)
+					if err != nil {
+						return n, transform.SameTree, err
+					}
+					b.ViewCtx().AsOf = asOf
+				}
+				b.ProcCtx().Active = true
+				parsedProcedure, _, _, err = b.Parse(procedure.CreateStatement, false)
+				b.ProcCtx().Active = false
+			} else {
+				parsedProcedure, err = parse.Parse(ctx, procedure.CreateStatement)
+			}
+
 			if err != nil {
 				return nil, transform.SameTree, err
 			}

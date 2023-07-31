@@ -265,6 +265,8 @@ func (b *BaseBuilder) buildJoinNode(ctx *sql.Context, n *plan.JoinNode, row sql.
 		return newMergeJoinIter(ctx, b, n, row)
 	case n.Op.IsLateral():
 		return newLateralJoinIter(ctx, b, n, row)
+	case n.Op.IsRange():
+		return newRangeHeapJoinIter(ctx, b, n, row)
 	default:
 		return newJoinIter(ctx, b, n, row)
 	}
