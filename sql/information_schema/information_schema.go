@@ -2044,7 +2044,8 @@ func viewsRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 			if !hasGlobalShowViewPriv && !hasDbShowViewPriv && !privTblSet.Has(PrivilegeType_ShowView) {
 				continue
 			}
-			parsedView, err := parse.Parse(ctx, view.CreateViewStatement)
+			parsedView, err := parse.ParseWithOptions(ctx, view.CreateViewStatement,
+				sqlparser.ParserOptions{AnsiQuotes: view.AnsiQuotes})
 			if err != nil {
 				return nil, err
 			}

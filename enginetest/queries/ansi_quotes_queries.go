@@ -131,6 +131,11 @@ var AnsiQuotesTests = []ScriptTest{
 				Expected: []sql.Row{{"view1", "CREATE VIEW `view1` AS select public_keys.\"public\", public_keys.\"count\" from public_keys", "utf8mb4", "utf8mb4_0900_bin"}},
 			},
 			{
+				// Assert that we can load and parse views for information_schema when ANSI_QUOTES mode is enabled
+				Query:    `select table_name, view_definition from information_schema.views where table_name='view1';`,
+				Expected: []sql.Row{{"view1", `select public_keys."public", public_keys."count" from public_keys`}},
+			},
+			{
 				// Disable ANSI_QUOTES mode
 				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
 				Expected: []sql.Row{{}},
@@ -142,6 +147,11 @@ var AnsiQuotesTests = []ScriptTest{
 			{
 				Query:    `show create table public_keys;`,
 				Expected: []sql.Row{{"public_keys", "CREATE TABLE `public_keys` (\n  `item` int,\n  `type` char(4),\n  `hash` int,\n  `count` int,\n  `public` varchar(8000)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				// Assert that we can still load and parse views for information_schema when ANSI_QUOTES mode is disabled
+				Query:    `select table_name, view_definition from information_schema.views where table_name='view1';`,
+				Expected: []sql.Row{{"view1", `select public_keys."public", public_keys."count" from public_keys`}},
 			},
 		},
 	},
