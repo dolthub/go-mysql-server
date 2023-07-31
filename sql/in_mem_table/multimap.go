@@ -50,6 +50,12 @@ func (m MultiMap[V]) Put(k any, v V) {
 	m.entries[k] = append(m.entries[k], v)
 }
 
+func (m MultiMap[V]) Clear() {
+	for k := range m.entries {
+		delete(m.entries, k)
+	}
+}
+
 func (m MultiMap[V]) Remove(k any, v V) (res V, found bool) {
 	if vs, ok := m.entries[k]; ok {
 		var newvs []V
@@ -151,12 +157,10 @@ func (is IndexedSet[V]) Count() int {
 	return c
 }
 
-func (is *IndexedSet[V]) Clear() {
-	idxs := make([]MultiMap[V], len(is.Keyers))
-	for i := range idxs {
-		idxs[i] = NewMultiMap[V](is.Indexes[i].Equals)
+func (is IndexedSet[V]) Clear() {
+	for _, i := range is.Indexes {
+		i.Clear()
 	}
-	is.Indexes = idxs
 }
 
 func (is IndexedSet[V]) VisitEntries(f func(v V)) {
