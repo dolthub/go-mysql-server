@@ -3528,8 +3528,13 @@ func joinTableExpr(ctx *sql.Context, t *sqlparser.JoinTableExpr) (sql.Node, erro
 		return nil, err
 	}
 
-	if t.Join == sqlparser.NaturalJoinStr {
-		return plan.NewNaturalJoin(left, right), nil
+	switch t.Join {
+	case sqlparser.NaturalJoinStr:
+		return plan.NewUsingJoin(left, right, plan.JoinTypeUsing, nil), nil
+	case sqlparser.NaturalLeftJoinStr:
+		return plan.NewUsingJoin(left, right, plan.JoinTypeUsingLeft, nil), nil
+	case sqlparser.NaturalRightJoinStr:
+		return plan.NewUsingJoin(left, right, plan.JoinTypeUsingRight, nil), nil
 	}
 
 	if t.Condition.On == nil && t.Condition.Using == nil {
@@ -3543,30 +3548,18 @@ func joinTableExpr(ctx *sql.Context, t *sqlparser.JoinTableExpr) (sql.Node, erro
 			return nil, err
 		}
 	} else {
-		condParts := make([]sql.Expression, len(t.Condition.Using))
+		conds := make([]string, len(t.Condition.Using))
 		for i, col := range t.Condition.Using {
-			colName := col.String()
-			var lName string
-			switch l := left.(type) {
-			case sql.Nameable:
-				lName = l.Name()
-			default:
-				lName = l.String()
-			}
-			var rName string
-			switch r := right.(type) {
-			case sql.Nameable:
-				rName = r.Name()
-			default:
-				rName = r.String()
-			}
-			c := expression.NewEquals(
-				expression.NewUnresolvedQualifiedColumn(lName, colName),
-				expression.NewUnresolvedQualifiedColumn(rName, colName),
-			)
-			condParts[i] = c
+			conds[i] = col.String()
 		}
-		cond = expression.JoinAnd(condParts...)
+		switch strings.ToLower(t.Join) {
+		case sqlparser.JoinStr:
+			return plan.NewUsingJoin(left, right, plan.JoinTypeInner, conds), nil
+		case sqlparser.LeftJoinStr:
+			return plan.NewUsingJoin(left, right, plan.JoinTypeLeftOuter, conds), nil
+		case sqlparser.RightJoinStr:
+			return plan.NewUsingJoin(left, right, plan.JoinTypeRightOuter, conds), nil
+		}
 	}
 
 	switch strings.ToLower(t.Join) {
