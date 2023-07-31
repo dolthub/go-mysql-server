@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -137,7 +136,7 @@ func (l *Lead) IsNullable() bool {
 
 // Eval implements sql.Expression
 func (l *Lead) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return nil, analyzererrors.ErrWindowUnsupported.New(l.FunctionName())
+	return nil, sql.ErrWindowUnsupported.New(l.FunctionName())
 }
 
 // Children implements sql.Expression

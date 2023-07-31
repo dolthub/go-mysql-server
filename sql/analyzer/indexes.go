@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -172,7 +173,7 @@ func getIndexes(
 					return result, nil
 				}
 
-				result[getField.Table()] = &indexLookup{
+				result[strings.ToLower(getField.Table())] = &indexLookup{
 					fields:  []sql.Expression{e},
 					indexes: []sql.Index{idx},
 					lookup:  newLookup,
@@ -196,7 +197,7 @@ func getIndexes(
 			return result, nil
 		}
 
-		result[getField.Table()] = lookup
+		result[strings.ToLower(getField.Table())] = lookup
 	case *expression.IsNull:
 		return getIndexes(ctx, ia, expression.NewNullSafeEquals(e.Child, expression.NewLiteral(nil, types.Null)), tableAliases)
 	case *expression.Not:
@@ -240,7 +241,7 @@ func getIndexes(
 					return result, nil
 				}
 
-				result[getField.Table()] = &indexLookup{
+				result[strings.ToLower(getField.Table())] = &indexLookup{
 					fields:  []sql.Expression{getField},
 					indexes: []sql.Index{idx},
 					lookup:  lookup,
@@ -349,7 +350,7 @@ func getIndexes(
 			return nil, err
 		}
 
-		result[getField.Table()] = &indexLookup{
+		result[strings.ToLower(getField.Table())] = &indexLookup{
 			fields:  []sql.Expression{getField},
 			indexes: []sql.Index{idx},
 			lookup:  lookup,
@@ -536,7 +537,7 @@ func getNegatedIndexes(
 		}
 
 		result := indexLookupsByTable{
-			getField.Table(): {
+			strings.ToLower(getField.Table()): {
 				fields:  []sql.Expression{left},
 				indexes: []sql.Index{idx},
 				lookup:  lookup,
@@ -689,6 +690,7 @@ func getMultiColumnIndexes(
 	usedExprs := make(map[sql.Expression]struct{})
 	columnExprs := columnExprsByTable(exprs)
 	for table, exps := range columnExprs {
+		table = strings.ToLower(table)
 		colExprs := make([]sql.Expression, len(exps))
 
 		nilColExpr := false
@@ -716,7 +718,7 @@ func getMultiColumnIndexes(
 				if !ok {
 					continue
 				}
-				exprList[0][i] = gf.WithTable(firstGf.Table())
+				exprList[0][i] = gf.WithTable(strings.ToLower(firstGf.Table()))
 			}
 		}
 		lookup, err := getMultiColumnIndexForExpressions(ctx, ia, table, exprList[0], exps, tableAliases)
@@ -749,7 +751,7 @@ func getMultiColumnIndexes(
 			result[table] = lookup
 		}
 		for _, e := range exps {
-			if _, ok := exprMap[e.col.String()]; ok {
+			if _, ok := exprMap[strings.ToLower(e.col.String())]; ok {
 				usedExprs[e.comparison] = struct{}{}
 			}
 		}
@@ -950,7 +952,7 @@ func extractComparands(colExprs []*joinColExpr) []sql.Expression {
 func findColumns(cols []joinColExpr, column string) []*joinColExpr {
 	var returnedCols []*joinColExpr
 	for _, col := range cols {
-		if col.col.String() == column {
+		if strings.EqualFold(col.col.String(), column) {
 			jce := col
 			returnedCols = append(returnedCols, &jce)
 		}

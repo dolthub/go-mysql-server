@@ -963,6 +963,439 @@ join uv d on d.u = c.x`,
 			},
 		},
 	},
+	{
+		name: "primary key range join",
+		setup: []string{
+			"create table vals (val int primary key)",
+			"create table ranges (min int primary key, max int, unique key(min,max))",
+			"insert into vals values (0), (1), (2), (3), (4), (5), (6)",
+			"insert into ranges values (0,2), (1,3), (2,4), (3,5), (4,6)",
+		},
+		tests: []JoinPlanTest{
+			{
+				q:     "select * from vals join ranges on val between min and max",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{0, 0, 2},
+					{1, 0, 2},
+					{1, 1, 3},
+					{2, 0, 2},
+					{2, 1, 3},
+					{2, 2, 4},
+					{3, 1, 3},
+					{3, 2, 4},
+					{3, 3, 5},
+					{4, 2, 4},
+					{4, 3, 5},
+					{4, 4, 6},
+					{5, 3, 5},
+					{5, 4, 6},
+					{6, 4, 6},
+				},
+			},
+			{
+				q:     "select * from vals join ranges on val > min and val < max",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{1, 0, 2},
+					{2, 1, 3},
+					{3, 2, 4},
+					{4, 3, 5},
+					{5, 4, 6},
+				},
+			},
+			{
+				q:     "select * from vals join ranges on val >= min and val < max",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{0, 0, 2},
+					{1, 0, 2},
+					{1, 1, 3},
+					{2, 1, 3},
+					{2, 2, 4},
+					{3, 2, 4},
+					{3, 3, 5},
+					{4, 3, 5},
+					{4, 4, 6},
+					{5, 4, 6},
+				},
+			},
+			{
+				q:     "select * from vals join ranges on val > min and val <= max",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{1, 0, 2},
+					{2, 0, 2},
+					{2, 1, 3},
+					{3, 1, 3},
+					{3, 2, 4},
+					{4, 2, 4},
+					{4, 3, 5},
+					{5, 3, 5},
+					{5, 4, 6},
+					{6, 4, 6},
+				},
+			},
+			{
+				q:     "select * from vals join ranges on val >= min and val <= max",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{0, 0, 2},
+					{1, 0, 2},
+					{1, 1, 3},
+					{2, 0, 2},
+					{2, 1, 3},
+					{2, 2, 4},
+					{3, 1, 3},
+					{3, 2, 4},
+					{3, 3, 5},
+					{4, 2, 4},
+					{4, 3, 5},
+					{4, 4, 6},
+					{5, 3, 5},
+					{5, 4, 6},
+					{6, 4, 6},
+				},
+			},
+		},
+	},
+	{
+		name: "keyless range join",
+		setup: []string{
+			"create table vals (val int)",
+			"create table ranges (min int, max int)",
+			"insert into vals values (0), (1), (2), (3), (4), (5), (6)",
+			"insert into ranges values (0,2), (1,3), (2,4), (3,5), (4,6)",
+		},
+		tests: []JoinPlanTest{
+			{
+				q:     "select * from vals join ranges on val between min and max",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{0, 0, 2},
+					{1, 0, 2},
+					{1, 1, 3},
+					{2, 0, 2},
+					{2, 1, 3},
+					{2, 2, 4},
+					{3, 1, 3},
+					{3, 2, 4},
+					{3, 3, 5},
+					{4, 2, 4},
+					{4, 3, 5},
+					{4, 4, 6},
+					{5, 3, 5},
+					{5, 4, 6},
+					{6, 4, 6},
+				},
+			},
+			{
+				q:     "select * from vals join ranges on val > min and val < max",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{1, 0, 2},
+					{2, 1, 3},
+					{3, 2, 4},
+					{4, 3, 5},
+					{5, 4, 6},
+				},
+			},
+			{
+				q:     "select * from vals join ranges on min < val and max > val",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{1, 0, 2},
+					{2, 1, 3},
+					{3, 2, 4},
+					{4, 3, 5},
+					{5, 4, 6},
+				},
+			},
+			{
+				q:     "select * from vals join ranges on val >= min and val < max",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{0, 0, 2},
+					{1, 0, 2},
+					{1, 1, 3},
+					{2, 1, 3},
+					{2, 2, 4},
+					{3, 2, 4},
+					{3, 3, 5},
+					{4, 3, 5},
+					{4, 4, 6},
+					{5, 4, 6},
+				},
+			},
+			{
+				q:     "select * from vals join ranges on val > min and val <= max",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{1, 0, 2},
+					{2, 0, 2},
+					{2, 1, 3},
+					{3, 1, 3},
+					{3, 2, 4},
+					{4, 2, 4},
+					{4, 3, 5},
+					{5, 3, 5},
+					{5, 4, 6},
+					{6, 4, 6},
+				},
+			},
+			{
+				q:     "select * from vals join ranges on val >= min and val <= max",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{0, 0, 2},
+					{1, 0, 2},
+					{1, 1, 3},
+					{2, 0, 2},
+					{2, 1, 3},
+					{2, 2, 4},
+					{3, 1, 3},
+					{3, 2, 4},
+					{3, 3, 5},
+					{4, 2, 4},
+					{4, 3, 5},
+					{4, 4, 6},
+					{5, 3, 5},
+					{5, 4, 6},
+					{6, 4, 6},
+				},
+			},
+			{
+				q:     "select * from vals left join ranges on val > min and val < max",
+				types: []plan.JoinType{plan.JoinTypeLeftOuterRangeHeap},
+				exp: []sql.Row{
+					{0, nil, nil},
+					{1, 0, 2},
+					{2, 1, 3},
+					{3, 2, 4},
+					{4, 3, 5},
+					{5, 4, 6},
+					{6, nil, nil},
+				},
+			},
+			{
+				q:     "select * from ranges l join ranges r on l.min > r.min and l.min < r.max",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{1, 3, 0, 2},
+					{2, 4, 1, 3},
+					{3, 5, 2, 4},
+					{4, 6, 3, 5},
+				},
+			},
+			{
+				q:     "select * from vals left join ranges r1 on val > r1.min and val < r1.max left join ranges r2 on r1.min > r2.min and r1.min < r2.max",
+				types: []plan.JoinType{plan.JoinTypeLeftOuterRangeHeap, plan.JoinTypeLeftOuterRangeHeap},
+				exp: []sql.Row{
+					{0, nil, nil, nil, nil},
+					{1, 0, 2, nil, nil},
+					{2, 1, 3, 0, 2},
+					{3, 2, 4, 1, 3},
+					{4, 3, 5, 2, 4},
+					{5, 4, 6, 3, 5},
+					{6, nil, nil, nil, nil},
+				},
+			},
+			{
+				q:     "select * from (select vals.val * 2 as val from vals) as newVals join (select ranges.min * 2 as min, ranges.max * 2 as max from ranges) as newRanges on val > min and val < max;",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{2, 0, 4},
+					{4, 2, 6},
+					{6, 4, 8},
+					{8, 6, 10},
+					{10, 8, 12},
+				},
+			},
+			{
+				// This tests that the RangeHeapJoin node functions correctly even if its rows are iterated over multiple times.
+				q:     "select * from (select 1 union select 2) as l left join (select * from vals join ranges on val > min and val < max) as r on max = max",
+				types: []plan.JoinType{plan.JoinTypeLeftOuter, plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{1, 1, 0, 2},
+					{1, 2, 1, 3},
+					{1, 3, 2, 4},
+					{1, 4, 3, 5},
+					{1, 5, 4, 6},
+					{2, 1, 0, 2},
+					{2, 2, 1, 3},
+					{2, 3, 2, 4},
+					{2, 4, 3, 5},
+					{2, 5, 4, 6},
+				},
+			},
+			{
+				q:     "select * from vals left join (select * from ranges where 0) as newRanges on val > min and val < max;",
+				types: []plan.JoinType{plan.JoinTypeLeftOuterRangeHeap},
+				exp: []sql.Row{
+					{0, nil, nil},
+					{1, nil, nil},
+					{2, nil, nil},
+					{3, nil, nil},
+					{4, nil, nil},
+					{5, nil, nil},
+					{6, nil, nil},
+				},
+			},
+		},
+	},
+	{
+		name: "range join vs good lookup join regression test",
+		setup: []string{
+			"create table vals (val int, filter1 int, filter2 int, filter3 int)",
+			"create table ranges (min int, max int, filter1 int, filter2 int, filter3 int, key filters (filter1, filter2, filter3))",
+			"insert into vals values (0, 0, 0, 0), " +
+				"(1, 0, 0, 0), " +
+				"(2, 0, 0, 0), " +
+				"(3, 0, 0, 0), " +
+				"(4, 0, 0, 0), " +
+				"(5, 0, 0, 0), " +
+				"(6, 0, 0, 0), " +
+				"(0, 0, 0, 1), " +
+				"(1, 0, 0, 1), " +
+				"(2, 0, 0, 1), " +
+				"(3, 0, 0, 1), " +
+				"(4, 0, 0, 1), " +
+				"(5, 0, 0, 1), " +
+				"(6, 0, 0, 1), " +
+				"(0, 0, 1, 0), " +
+				"(1, 0, 1, 0), " +
+				"(2, 0, 1, 0), " +
+				"(3, 0, 1, 0), " +
+				"(4, 0, 1, 0), " +
+				"(5, 0, 1, 0), " +
+				"(6, 0, 1, 0), " +
+				"(0, 0, 1, 1), " +
+				"(1, 0, 1, 1), " +
+				"(2, 0, 1, 1), " +
+				"(3, 0, 1, 1), " +
+				"(4, 0, 1, 1), " +
+				"(5, 0, 1, 1), " +
+				"(6, 0, 1, 1), " +
+				"(0, 1, 0, 0), " +
+				"(1, 1, 0, 0), " +
+				"(2, 1, 0, 0), " +
+				"(3, 1, 0, 0), " +
+				"(4, 1, 0, 0), " +
+				"(5, 1, 0, 0), " +
+				"(6, 1, 0, 0), " +
+				"(0, 1, 0, 1), " +
+				"(1, 1, 0, 1), " +
+				"(2, 1, 0, 1), " +
+				"(3, 1, 0, 1), " +
+				"(4, 1, 0, 1), " +
+				"(5, 1, 0, 1), " +
+				"(6, 1, 0, 1), " +
+				"(0, 1, 1, 0), " +
+				"(1, 1, 1, 0), " +
+				"(2, 1, 1, 0), " +
+				"(3, 1, 1, 0), " +
+				"(4, 1, 1, 0), " +
+				"(5, 1, 1, 0), " +
+				"(6, 1, 1, 0), " +
+				"(0, 1, 1, 1), " +
+				"(1, 1, 1, 1), " +
+				"(2, 1, 1, 1), " +
+				"(3, 1, 1, 1), " +
+				"(4, 1, 1, 1), " +
+				"(5, 1, 1, 1), " +
+				"(6, 1, 1, 1);",
+			"insert into ranges values " +
+				"(0, 2, 0, 0, 0), " +
+				"(1, 3, 0, 0, 0), " +
+				"(2, 4, 0, 0, 0), " +
+				"(3, 5, 0, 0, 0), " +
+				"(4, 6, 0, 0, 0), " +
+				"(0, 2, 0, 0, 1), " +
+				"(1, 3, 0, 0, 1), " +
+				"(2, 4, 0, 0, 1), " +
+				"(3, 5, 0, 0, 1), " +
+				"(4, 6, 0, 0, 1), " +
+				"(0, 2, 0, 1, 0), " +
+				"(1, 3, 0, 1, 0), " +
+				"(2, 4, 0, 1, 0), " +
+				"(3, 5, 0, 1, 0), " +
+				"(4, 6, 0, 1, 0), " +
+				"(0, 2, 0, 1, 1), " +
+				"(1, 3, 0, 1, 1), " +
+				"(2, 4, 0, 1, 1), " +
+				"(3, 5, 0, 1, 1), " +
+				"(4, 6, 0, 1, 1), " +
+				"(0, 2, 1, 0, 0), " +
+				"(1, 3, 1, 0, 0), " +
+				"(2, 4, 1, 0, 0), " +
+				"(3, 5, 1, 0, 0), " +
+				"(4, 6, 1, 0, 0), " +
+				"(0, 2, 1, 0, 1), " +
+				"(1, 3, 1, 0, 1), " +
+				"(2, 4, 1, 0, 1), " +
+				"(3, 5, 1, 0, 1), " +
+				"(4, 6, 1, 0, 1), " +
+				"(0, 2, 1, 1, 0), " +
+				"(1, 3, 1, 1, 0), " +
+				"(2, 4, 1, 1, 0), " +
+				"(3, 5, 1, 1, 0), " +
+				"(4, 6, 1, 1, 0), " +
+				"(0, 2, 1, 1, 1), " +
+				"(1, 3, 1, 1, 1), " +
+				"(2, 4, 1, 1, 1), " +
+				"(3, 5, 1, 1, 1), " +
+				"(4, 6, 1, 1, 1); ",
+		},
+		tests: []JoinPlanTest{
+			{
+				// Test that a RangeHeapJoin won't be chosen over a LookupJoin with a multiple-column index.
+				q:     "select val, min, max, vals.filter1, vals.filter2, vals.filter3 from vals join ranges on val > min and val < max and vals.filter1 = ranges.filter1 and vals.filter2 = ranges.filter2 and vals.filter3 = ranges.filter3",
+				types: []plan.JoinType{plan.JoinTypeLookup},
+				exp: []sql.Row{
+					{1, 0, 2, 0, 0, 0},
+					{2, 1, 3, 0, 0, 0},
+					{3, 2, 4, 0, 0, 0},
+					{4, 3, 5, 0, 0, 0},
+					{5, 4, 6, 0, 0, 0},
+					{1, 0, 2, 0, 0, 1},
+					{2, 1, 3, 0, 0, 1},
+					{3, 2, 4, 0, 0, 1},
+					{4, 3, 5, 0, 0, 1},
+					{5, 4, 6, 0, 0, 1},
+					{1, 0, 2, 0, 1, 0},
+					{2, 1, 3, 0, 1, 0},
+					{3, 2, 4, 0, 1, 0},
+					{4, 3, 5, 0, 1, 0},
+					{5, 4, 6, 0, 1, 0},
+					{1, 0, 2, 0, 1, 1},
+					{2, 1, 3, 0, 1, 1},
+					{3, 2, 4, 0, 1, 1},
+					{4, 3, 5, 0, 1, 1},
+					{5, 4, 6, 0, 1, 1},
+					{1, 0, 2, 1, 0, 0},
+					{2, 1, 3, 1, 0, 0},
+					{3, 2, 4, 1, 0, 0},
+					{4, 3, 5, 1, 0, 0},
+					{5, 4, 6, 1, 0, 0},
+					{1, 0, 2, 1, 0, 1},
+					{2, 1, 3, 1, 0, 1},
+					{3, 2, 4, 1, 0, 1},
+					{4, 3, 5, 1, 0, 1},
+					{5, 4, 6, 1, 0, 1},
+					{1, 0, 2, 1, 1, 0},
+					{2, 1, 3, 1, 1, 0},
+					{3, 2, 4, 1, 1, 0},
+					{4, 3, 5, 1, 1, 0},
+					{5, 4, 6, 1, 1, 0},
+					{1, 0, 2, 1, 1, 1},
+					{2, 1, 3, 1, 1, 1},
+					{3, 2, 4, 1, 1, 1},
+					{4, 3, 5, 1, 1, 1},
+					{5, 4, 6, 1, 1, 1},
+				},
+			},
+		},
+	},
 }
 
 func TestJoinPlanning(t *testing.T, harness Harness) {

@@ -42,6 +42,14 @@ func (u *UpdateJoin) String() string {
 	return pr.String()
 }
 
+// DebugString implements the sql.Node interface.
+func (u *UpdateJoin) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("Update Join")
+	_ = pr.WriteChildren(sql.DebugString(u.Child))
+	return pr.String()
+}
+
 // GetUpdatable returns an updateJoinTable which implements sql.UpdatableTable.
 func (u *UpdateJoin) GetUpdatable() sql.UpdatableTable {
 	return &updatableJoinTable{

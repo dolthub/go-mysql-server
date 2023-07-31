@@ -335,11 +335,18 @@ func validateColumnNotUsedInCheckConstraint(columnName string, checks sql.CheckC
 	var err error
 	for _, check := range checks {
 		_ = transform.InspectExpr(check.Expr, func(e sql.Expression) bool {
-			if unresolvedColumn, ok := e.(*expression.UnresolvedColumn); ok {
-				if columnName == unresolvedColumn.Name() {
-					err = sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)
-					return true
-				}
+			var name string
+			switch e := e.(type) {
+			case *expression.UnresolvedColumn:
+				name = e.Name()
+			case *expression.GetField:
+				name = e.Name()
+			default:
+				return false
+			}
+			if strings.EqualFold(name, columnName) {
+				err = sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)
+				return true
 			}
 			return false
 		})
@@ -360,17 +367,24 @@ func validateColumnSafeToDropWithCheckConstraint(columnName string, checks sql.C
 		hasOtherCol := false
 		hasMatchingCol := false
 		_ = transform.InspectExpr(check.Expr, func(e sql.Expression) bool {
-			if unresolvedColumn, ok := e.(*expression.UnresolvedColumn); ok {
-				if columnName == unresolvedColumn.Name() {
-					if hasOtherCol {
-						err = sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)
-						return true
-					} else {
-						hasMatchingCol = true
-					}
+			var colName string
+			switch e := e.(type) {
+			case *expression.UnresolvedColumn:
+				colName = e.Name()
+			case *expression.GetField:
+				colName = e.Name()
+			default:
+				return false
+			}
+			if strings.EqualFold(columnName, colName) {
+				if hasOtherCol {
+					err = sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)
+					return true
 				} else {
-					hasOtherCol = true
+					hasMatchingCol = true
 				}
+			} else {
+				hasOtherCol = true
 			}
 			return false
 		})

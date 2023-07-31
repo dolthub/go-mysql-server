@@ -43,48 +43,7 @@ type User struct {
 	IsRole bool
 }
 
-var _ in_mem_table.Entry = (*User)(nil)
-
-// NewFromRow implements the interface in_mem_table.Entry.
-func (u *User) NewFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Entry, error) {
-	if err := userTblSchema.CheckRow(row); err != nil {
-		return nil, err
-	}
-	//TODO: once the remaining fields are added, fill those in as well
-	var attributes *string
-	passwordLastChanged := time.Now().UTC()
-	if val, ok := row[userTblColIndex_User_attributes].(string); ok {
-		attributes = &val
-	}
-	if val, ok := row[userTblColIndex_password_last_changed].(time.Time); ok {
-		passwordLastChanged = val
-	}
-	return &User{
-		User:                row[userTblColIndex_User].(string),
-		Host:                row[userTblColIndex_Host].(string),
-		PrivilegeSet:        u.rowToPrivSet(ctx, row),
-		Plugin:              row[userTblColIndex_plugin].(string),
-		Password:            row[userTblColIndex_authentication_string].(string),
-		PasswordLastChanged: passwordLastChanged,
-		Locked:              row[userTblColIndex_account_locked].(uint16) == 2,
-		Attributes:          attributes,
-		Identity:            row[userTblColIndex_identity].(string),
-		IsRole:              false,
-	}, nil
-}
-
-// UpdateFromRow implements the interface in_mem_table.Entry.
-func (u *User) UpdateFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Entry, error) {
-	updatedEntry, err := u.NewFromRow(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-	updatedEntry.(*User).IsRole = u.IsRole
-	return updatedEntry, nil
-}
-
-// ToRow implements the interface in_mem_table.Entry.
-func (u *User) ToRow(ctx *sql.Context) sql.Row {
+func UserToRow(ctx *sql.Context, u *User) (sql.Row, error) {
 	row := make(sql.Row, len(userTblSchema))
 	var err error
 	for i, col := range userTblSchema {
@@ -107,35 +66,71 @@ func (u *User) ToRow(ctx *sql.Context) sql.Row {
 		row[userTblColIndex_User_attributes] = *u.Attributes
 	}
 	u.privSetToRow(ctx, row)
-	return row
+	return row, nil
 }
 
-// Equals implements the interface in_mem_table.Entry.
-func (u *User) Equals(ctx *sql.Context, otherEntry in_mem_table.Entry) bool {
-	otherUser, ok := otherEntry.(*User)
-	if !ok {
-		return false
+func UserFromRow(ctx *sql.Context, row sql.Row) (*User, error) {
+	if err := userTblSchema.CheckRow(row); err != nil {
+		return nil, err
 	}
+	//TODO: once the remaining fields are added, fill those in as well
+	var attributes *string
+	passwordLastChanged := time.Now().UTC()
+	if val, ok := row[userTblColIndex_User_attributes].(string); ok {
+		attributes = &val
+	}
+	if val, ok := row[userTblColIndex_password_last_changed].(time.Time); ok {
+		passwordLastChanged = val
+	}
+	return &User{
+		User:                row[userTblColIndex_User].(string),
+		Host:                row[userTblColIndex_Host].(string),
+		PrivilegeSet:        UserRowToPrivSet(ctx, row),
+		Plugin:              row[userTblColIndex_plugin].(string),
+		Password:            row[userTblColIndex_authentication_string].(string),
+		PasswordLastChanged: passwordLastChanged,
+		Locked:              row[userTblColIndex_account_locked].(uint16) == 2,
+		Attributes:          attributes,
+		Identity:            row[userTblColIndex_identity].(string),
+		IsRole:              false,
+	}, nil
+}
+
+func UserUpdateWithRow(ctx *sql.Context, row sql.Row, u *User) (*User, error) {
+	updatedUser, err := UserFromRow(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	updatedUser.IsRole = u.IsRole
+	return updatedUser, nil
+}
+
+var UserOps = in_mem_table.ValueOps[*User]{
+	ToRow:         UserToRow,
+	FromRow:       UserFromRow,
+	UpdateWithRow: UserUpdateWithRow,
+}
+
+func UserEquals(left, right *User) bool {
 	// IsRole is not tested for equality, as it is additional information
 	//TODO: once the remaining fields are added, fill those in as well
-	if u.User != otherUser.User ||
-		u.Host != otherUser.Host ||
-		u.Plugin != otherUser.Plugin ||
-		u.Password != otherUser.Password ||
-		u.Identity != otherUser.Identity ||
-		!u.PasswordLastChanged.Equal(otherUser.PasswordLastChanged) ||
-		u.Locked != otherUser.Locked ||
-		!u.PrivilegeSet.Equals(otherUser.PrivilegeSet) ||
-		u.Attributes == nil && otherUser.Attributes != nil ||
-		u.Attributes != nil && otherUser.Attributes == nil ||
-		(u.Attributes != nil && *u.Attributes != *otherUser.Attributes) {
+	if left.User != right.User ||
+		left.Host != right.Host ||
+		left.Plugin != right.Plugin ||
+		left.Password != right.Password ||
+		left.Identity != right.Identity ||
+		!left.PasswordLastChanged.Equal(right.PasswordLastChanged) ||
+		left.Locked != right.Locked ||
+		!left.PrivilegeSet.Equals(right.PrivilegeSet) ||
+		left.Attributes == nil && right.Attributes != nil ||
+		left.Attributes != nil && right.Attributes == nil ||
+		(left.Attributes != nil && *left.Attributes != *right.Attributes) {
 		return false
 	}
 	return true
 }
 
-// Copy implements the interface in_mem_table.Entry.
-func (u *User) Copy(ctx *sql.Context) in_mem_table.Entry {
+func UserCopy(u *User) *User {
 	uu := *u
 	uu.PrivilegeSet = NewPrivilegeSet()
 	uu.PrivilegeSet.UnionWith(u.PrivilegeSet)
@@ -143,7 +138,7 @@ func (u *User) Copy(ctx *sql.Context) in_mem_table.Entry {
 }
 
 // FromJson implements the interface in_mem_table.Entry.
-func (u User) FromJson(ctx *sql.Context, jsonStr string) (in_mem_table.Entry, error) {
+func (u User) FromJson(ctx *sql.Context, jsonStr string) (*User, error) {
 	newUser := &User{}
 	if err := json.Unmarshal([]byte(jsonStr), newUser); err != nil {
 		return nil, err
@@ -171,8 +166,7 @@ func (u User) UserHostToString(quote string) string {
 	return fmt.Sprintf("%s%s%s@%s%s%s", quote, user, quote, quote, host, quote)
 }
 
-// rowToPrivSet returns a set of privileges for the given row.
-func (u *User) rowToPrivSet(ctx *sql.Context, row sql.Row) PrivilegeSet {
+func UserRowToPrivSet(ctx *sql.Context, row sql.Row) PrivilegeSet {
 	privSet := NewPrivilegeSet()
 	for i, val := range row {
 		switch i {

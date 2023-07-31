@@ -82,10 +82,11 @@ var JoinQueryTests = []QueryTest{
 			{1, 1},
 		},
 	},
-	{
-		Query:    `with cte1 as (select u, v from cte2 join ab on cte2.u = b), cte2 as (select u,v from uv join ab on u = b where u in (2,3)) select * from xy where (x) not in (select u from cte1) order by 1`,
-		Expected: []sql.Row{{0, 2}, {1, 0}, {3, 3}},
-	},
+	//{
+	// TODO this is invalid, should error
+	//	Query:    `with cte1 as (select u, v from cte2 join ab on cte2.u = b), cte2 as (select u,v from uv join ab on u = b where u in (2,3)) select * from xy where (x) not in (select u from cte1) order by 1`,
+	//	Expected: []sql.Row{{0, 2}, {1, 0}, {3, 3}},
+	//},
 	{
 		Query:    `SELECT (SELECT 1 FROM (SELECT x FROM xy INNER JOIN uv ON (x = u OR y = v) LIMIT 1) r) AS s FROM xy`,
 		Expected: []sql.Row{{1}, {1}, {1}, {1}},
@@ -1106,7 +1107,7 @@ var LateralJoinScriptTests = []ScriptTest{
 			// Lateral Right Join
 			{
 				Query:       "select * from t right join lateral (select * from t1 where t.i != t1.j) as tt on t.i > tt.j",
-				ExpectedErr: sql.ErrTableNotFound, // supposed to me missing column error
+				ExpectedErr: sql.ErrColumnNotFound,
 			},
 			{
 				Query: "select * from t right join lateral (select * from t1) as tt on t.i > tt.j order by t.i, tt.j",

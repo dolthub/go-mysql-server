@@ -20,6 +20,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
 
 	sqle "github.com/dolthub/go-mysql-server"
@@ -29,6 +30,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func NewContext(harness Harness) *sql.Context {
@@ -53,13 +55,26 @@ func newContextSetup(ctx *sql.Context) *sql.Context {
 	}
 
 	// Add our in-session view to the context
-	_ = ctx.GetViewRegistry().Register("mydb",
-		plan.NewSubqueryAlias(
-			"myview",
-			"SELECT * FROM mytable",
-			plan.NewProject([]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("mytable", "mydb")),
-		).AsView("CREATE VIEW myview AS SELECT * FROM mytable"))
+	if ctx.Version == sql.VersionExperimental {
+		_ = ctx.GetViewRegistry().Register("mydb",
+			plan.NewSubqueryAlias(
+				"myview",
+				"SELECT * FROM mytable",
+				plan.NewProject([]sql.Expression{
+					expression.NewGetFieldWithTable(0, types.Int64, "mytable", "i", false),
+					expression.NewGetFieldWithTable(1, types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), "mytable", "s", false),
+				}, plan.NewUnresolvedTable("mytable", "mydb")),
+			).AsView("CREATE VIEW myview AS SELECT * FROM mytable"))
 
+	} else {
+		_ = ctx.GetViewRegistry().Register("mydb",
+			plan.NewSubqueryAlias(
+				"myview",
+				"SELECT * FROM mytable",
+				plan.NewProject([]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("mytable", "mydb")),
+			).AsView("CREATE VIEW myview AS SELECT * FROM mytable"))
+
+	}
 	ctx.ApplyOpts(sql.WithPid(atomic.AddUint64(&pid, 1)))
 
 	// We don't want to show any external procedures in our engine tests, so we exclude them
@@ -103,10 +118,12 @@ func NewBaseSession() *sql.BaseSession {
 func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseProvider) *sqle.Engine {
 	var a *analyzer.Analyzer
 
+	var version sql.AnalyzerVersion
 	if harness.Parallelism() > 1 {
 		a = analyzer.NewBuilder(provider).WithParallelism(harness.Parallelism()).Build()
 	} else if h, ok := harness.(VersionedHarness); ok {
 		a = analyzer.NewDefaultWithVersion(provider, h.Version())
+		version = h.Version()
 	} else {
 		a = analyzer.NewDefault(provider)
 	}
@@ -118,6 +135,9 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseP
 	a.Catalog.InfoSchema = information_schema.NewUpdatableInformationSchemaDatabase()
 
 	engine := sqle.New(a, new(sqle.Config))
+	if version != sql.VersionUnknown {
+		engine.Version = version
+	}
 
 	if idh, ok := harness.(IndexDriverHarness); ok {
 		idh.InitializeIndexDriver(engine.Analyzer.Catalog.AllDatabases(NewContext(harness)))

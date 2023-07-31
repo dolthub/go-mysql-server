@@ -4972,6 +4972,9 @@ Select * from (
 		},
 	},
 	{
+		Query: `SHOW VARIABLES`,
+	},
+	{
 		Query: `SHOW VARIABLES LIKE 'gtid_mode'`,
 		Expected: []sql.Row{
 			{"gtid_mode", "OFF"},
@@ -8618,6 +8621,10 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrInvalidAsOfExpression,
 	},
 	{
+		Query:       "SELECT i FROM myhistorytable AS OF MAX(i)",
+		ExpectedErr: sql.ErrInvalidAsOfExpression,
+	},
+	{
 		Query:       "SELECT pk FROM one_pk WHERE pk > ?",
 		ExpectedErr: sql.ErrUnboundPreparedStatementVariable,
 	},
@@ -8727,11 +8734,11 @@ var ErrorQueries = []QueryErrorTest{
 	// TODO: The following two queries should work. See https://github.com/dolthub/go-mysql-server/issues/542.
 	{
 		Query:       "SELECT SUM(i), i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
-		ExpectedErr: analyzererrors.ErrAggregationUnsupported,
+		ExpectedErr: sql.ErrAggregationUnsupported,
 	},
 	{
 		Query:       "SELECT SUM(i) as sum, i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
-		ExpectedErr: analyzererrors.ErrAggregationUnsupported,
+		ExpectedErr: sql.ErrAggregationUnsupported,
 	},
 	{
 		Query:       "select ((1, 2)) from dual",
@@ -8912,7 +8919,7 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:       "select SUM(*) from dual;",
-		ExpectedErr: analyzererrors.ErrStarUnsupported,
+		ExpectedErr: sql.ErrStarUnsupported,
 	},
 	{
 		Query:          "create table vb_tbl (vb varbinary(123456789));",
