@@ -60,7 +60,7 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		return b.buildShow(inScope, n, query)
 	case *ast.DDL:
 		return b.buildDDL(inScope, query, n)
-	case *ast.MultiAlterDDL:
+	case *ast.AlterTable:
 		return b.buildMultiAlterDDL(inScope, query, n)
 	case *ast.DBDDL:
 		outScope = inScope.push()

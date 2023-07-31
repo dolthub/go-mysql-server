@@ -26,7 +26,7 @@ func (b *PlanBuilder) resolveDb(name string) sql.Database {
 	return database
 }
 
-func (b *PlanBuilder) buildMultiAlterDDL(inScope *scope, query string, c *ast.MultiAlterDDL) (outScope *scope) {
+func (b *PlanBuilder) buildMultiAlterDDL(inScope *scope, query string, c *ast.AlterTable) (outScope *scope) {
 	b.multiDDL = true
 	defer func() {
 		b.multiDDL = false

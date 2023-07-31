@@ -174,7 +174,7 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertShow(ctx, n, query)
 	case *sqlparser.DDL:
 		return convertDDL(ctx, query, n, false)
-	case *sqlparser.MultiAlterDDL:
+	case *sqlparser.AlterTable:
 		return convertMultiAlterDDL(ctx, query, n)
 	case *sqlparser.DBDDL:
 		return convertDBDDL(ctx, n)
@@ -1316,7 +1316,7 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL, multiAlterDDL 
 // 8.  RENAME INDEX
 // 9.  DROP INDEX
 // 10. ADD INDEX
-func convertMultiAlterDDL(ctx *sql.Context, query string, c *sqlparser.MultiAlterDDL) (sql.Node, error) {
+func convertMultiAlterDDL(ctx *sql.Context, query string, c *sqlparser.AlterTable) (sql.Node, error) {
 	statements := make([]sql.Node, 0, len(c.Statements))
 	for i := 0; i < len(c.Statements); i++ {
 		stmts, err := convertAlterTableClause(ctx, query, c.Statements[i])
