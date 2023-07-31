@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -184,7 +185,15 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 		}
 
 		for _, trigger := range triggers {
-			parsedTrigger, err := parse.Parse(ctx, trigger.CreateStatement)
+			var parsedTrigger sql.Node
+			if ctx.Version == sql.VersionExperimental {
+				b := planbuilder.New(ctx, a.Catalog)
+				b.TriggerCtx().Call = true
+				parsedTrigger, _, _, err = b.Parse(trigger.CreateStatement, false)
+				b.TriggerCtx().Call = false
+			} else {
+				parsedTrigger, err = parse.Parse(ctx, trigger.CreateStatement)
+			}
 			if err != nil {
 				return nil, transform.SameTree, err
 			}

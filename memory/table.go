@@ -830,10 +830,7 @@ func (t *Table) addColumnToSchema(ctx *sql.Context, newCol *sql.Column, order *s
 		}
 	}
 
-	for i, newSchCol := range newSch {
-		if i == newColIdx {
-			continue
-		}
+	for _, newSchCol := range newSch {
 		newDefault, _, _ := transform.Expr(newSchCol.Default, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if expr, ok := expr.(*expression.GetField); ok {
 				return expr.WithIndex(newSch.IndexOf(expr.Name(), t.name)), transform.NewTree, nil

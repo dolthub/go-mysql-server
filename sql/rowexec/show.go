@@ -553,7 +553,7 @@ func (b *BaseBuilder) buildShowTriggers(ctx *sql.Context, n *plan.ShowTriggers, 
 	for _, trigger := range n.Triggers {
 		triggerEvent := strings.ToUpper(trigger.TriggerEvent)
 		triggerTime := strings.ToUpper(trigger.TriggerTime)
-		tableName := trigger.Table.(*plan.UnresolvedTable).Name()
+		tableName := trigger.Table.(sql.Nameable).Name()
 		characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
 		if err != nil {
 			return nil, err

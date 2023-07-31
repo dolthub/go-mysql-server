@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -122,9 +123,9 @@ func convertFiltersToIndexedAccess(
 			filters.markFiltersHandled(handled...)
 			newF := removePushedDownPredicates(ctx, a, n, filters)
 			if newF == nil {
-				return fixidx.FixFieldIndexesForExpressions(a.LogFn(), n, scope)
+				return fixidx.FixFieldIndexesForExpressions(ctx, a.LogFn(), n, scope)
 			}
-			ret, _, err := fixidx.FixFieldIndexesForExpressions(a.LogFn(), newF, scope)
+			ret, _, err := fixidx.FixFieldIndexesForExpressions(ctx, a.LogFn(), newF, scope)
 			if err != nil {
 				return n, transform.SameTree, err
 			}
@@ -146,7 +147,7 @@ func convertFiltersToIndexedAccess(
 			handled = append(handled, handledF...)
 			return ret, transform.NewTree, nil
 		default:
-			return pushdownFixIndices(a, n, scope)
+			return pushdownFixIndices(ctx, a, n, scope)
 		}
 	})
 }
@@ -166,7 +167,7 @@ func pushdownIndexesToTable(ctx *sql.Context, scope *plan.Scope, a *Analyzer, ta
 				table = tw.Underlying()
 			}
 			if _, ok := table.(sql.IndexAddressableTable); ok {
-				if indexLookup, ok := indexes[tableNode.Name()]; ok {
+				if indexLookup, ok := indexes[strings.ToLower(tableNode.Name())]; ok {
 					if indexLookup.lookup.Index.IsFullText() {
 						matchAgainst, ok := indexLookup.expr.(*expression.MatchAgainst)
 						if !ok {
@@ -179,7 +180,6 @@ func pushdownIndexesToTable(ctx *sql.Context, scope *plan.Scope, a *Analyzer, ta
 							MatchAgainst: matchAgainst,
 							Table:        n,
 						})
-
 						// save reference
 						lookup = indexLookup
 

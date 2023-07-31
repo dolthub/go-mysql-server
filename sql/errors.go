@@ -796,6 +796,24 @@ var (
 	// ErrDroppedJoinFilters is returned when we removed filters from a join, but failed to re-insert them
 	ErrDroppedJoinFilters = errors.NewKind("dropped filters from join, but failed to re-insert them")
 
+	// ErrInvalidIndexName is called when we try to create an index with an unusable name.
+	ErrInvalidIndexName = errors.NewKind("invalid index name '%s'")
+
+	// ErrStarUnsupported is called for * expressions seen outside: raw projections, count(*), and arrayagg(*)
+	ErrStarUnsupported = errors.NewKind(
+		"a '*' is in a context where it is not allowed.",
+	)
+
+	// ErrAggregationUnsupported is returned when the analyzer has failed
+	// to push down an Aggregation in an expression to a GroupBy node.
+	ErrAggregationUnsupported = errors.NewKind(
+		"an aggregation remained in the expression '%s' after analysis, outside of a node capable of evaluating it; this query is currently unsupported.",
+	)
+
+	ErrWindowUnsupported = errors.NewKind(
+		"a window function '%s' is in a context where it cannot be evaluated.",
+	)
+
 	// ErrFullTextNotSupported is returned when a table does not support the creation of Full-Text indexes.
 	ErrFullTextNotSupported = errors.NewKind("table does not support FULLTEXT indexes")
 

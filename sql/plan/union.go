@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -193,7 +194,11 @@ func (u Union) DebugString() string {
 	_ = pr.WriteNode(fmt.Sprintf("Union %s", distinct))
 	var children []string
 	if len(u.SortFields) > 0 {
-		children = append(children, fmt.Sprintf("sortFields: %s", u.SortFields.ToExpressions()))
+		sFields := make([]string, len(u.SortFields))
+		for i, e := range u.SortFields.ToExpressions() {
+			sFields[i] = sql.DebugString(e)
+		}
+		children = append(children, fmt.Sprintf("sortFields: %s", strings.Join(sFields, ", ")))
 	}
 	if u.Limit != nil {
 		children = append(children, fmt.Sprintf("limit: %s", u.Limit))
