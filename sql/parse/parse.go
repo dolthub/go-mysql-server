@@ -1299,7 +1299,7 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 		return nil, sql.ErrUnsupportedFeature.New(sqlparser.String(c))
 	case sqlparser.RenameStr:
 		return convertRenameTable(ctx, c, false)
-		case sqlparser.TruncateStr:
+	case sqlparser.TruncateStr:
 		return convertTruncateTable(ctx, c)
 	default:
 		return nil, sql.ErrUnsupportedSyntax.New(sqlparser.String(c))
@@ -1402,7 +1402,7 @@ func convertMultiAlterDDL(ctx *sql.Context, query string, c *sqlparser.AlterTabl
 		}
 		return false
 	})
-	
+
 	// TODO: getting two statements for CREATE UNIQUE INDEX here, need to know why
 	return plan.NewBlock(statements), nil
 }
@@ -2128,7 +2128,7 @@ func newColumnAction(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	return nil, sql.ErrUnsupportedFeature.New(sqlparser.String(ddl))
 }
 
-// convertAlterTableClause converts an ALTER TABLE DDL clause into one or more nodes as required. Our planning requires 
+// convertAlterTableClause converts an ALTER TABLE DDL clause into one or more nodes as required. Our planning requires
 // that some single statements are converted into more than one equivalent node (add column, create an index on it)
 func convertAlterTableClause(ctx *sql.Context, query string, ddl *sqlparser.DDL) ([]sql.Node, error) {
 	ddlNodes := make([]sql.Node, 0, 1)
@@ -2225,7 +2225,7 @@ func convertAlterTableClause(ctx *sql.Context, query string, ddl *sqlparser.DDL)
 
 		ddlNodes = append(ddlNodes, renameAction)
 	}
-	
+
 	return ddlNodes, nil
 }
 
@@ -2235,7 +2235,7 @@ func convertAlterConstraint(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, err
 	if err != nil {
 		return nil, err
 	}
-	
+
 	switch strings.ToLower(ddl.ConstraintAction) {
 	case sqlparser.AddStr:
 		switch c := parsedConstraint.(type) {

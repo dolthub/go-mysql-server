@@ -340,18 +340,18 @@ var AlterTableScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "alter table t1 add column j int unique",
+				Query:    "alter table t1 add column j int unique",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "show create table t1",
 				Expected: []sql.Row{{"t1", "CREATE TABLE `t1` (\n" +
-						"  `i` bigint NOT NULL,\n" +
-						"  `s` varchar(20),\n" +
-						"  `j` int,\n" +
-						"  PRIMARY KEY (`i`),\n" +
-						"  UNIQUE KEY `j` (`j`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+					"  `i` bigint NOT NULL,\n" +
+					"  `s` varchar(20),\n" +
+					"  `j` int,\n" +
+					"  PRIMARY KEY (`i`),\n" +
+					"  UNIQUE KEY `j` (`j`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
