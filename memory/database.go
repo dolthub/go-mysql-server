@@ -108,13 +108,24 @@ func (d *BaseDatabase) GetTableNames(ctx *sql.Context) ([]string, error) {
 	return tblNames, nil
 }
 
-func (d *BaseDatabase) CreateFulltextTableNames(ctx *sql.Context, parentTable string, parentIndexName string) (fulltext.IndexTableNames, error) {
+func (d *BaseDatabase) CreateFulltextTableNames(ctx *sql.Context, parentTableName string, parentIndexName string) (fulltext.IndexTableNames, error) {
+	var tablePrefix string
+OuterLoop:
+	for i := uint64(0); true; i++ {
+		tablePrefix = strings.ToLower(fmt.Sprintf("%s_%s_%d", parentTableName, parentIndexName, i))
+		for tableName := range d.tables {
+			if strings.HasPrefix(strings.ToLower(tableName), tablePrefix) {
+				continue OuterLoop
+			}
+		}
+		break
+	}
 	return fulltext.IndexTableNames{
-		Config:      fmt.Sprintf("%s_FTS_CONFIG", parentTable),
-		Position:    fmt.Sprintf("%s_%s_FTS_POSITION", parentTable, parentIndexName),
-		DocCount:    fmt.Sprintf("%s_%s_FTS_DOC_COUNT", parentTable, parentIndexName),
-		GlobalCount: fmt.Sprintf("%s_%s_FTS_GLOBAL_COUNT", parentTable, parentIndexName),
-		RowCount:    fmt.Sprintf("%s_%s_FTS_ROW_COUNT", parentTable, parentIndexName),
+		Config:      fmt.Sprintf("%s_FTS_CONFIG", parentTableName),
+		Position:    fmt.Sprintf("%s_FTS_POSITION", tablePrefix),
+		DocCount:    fmt.Sprintf("%s_FTS_DOC_COUNT", tablePrefix),
+		GlobalCount: fmt.Sprintf("%s_FTS_GLOBAL_COUNT", tablePrefix),
+		RowCount:    fmt.Sprintf("%s_FTS_ROW_COUNT", tablePrefix),
 	}, nil
 }
 

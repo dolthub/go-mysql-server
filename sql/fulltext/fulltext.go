@@ -465,10 +465,14 @@ func CreateFulltextIndexes(ctx *sql.Context, database Database, parent sql.Table
 				return err
 			}
 		}
-		// Get the collation that will be used
+		// Get the collation that will be used, while checking for duplicate columns
 		collation := sql.Collation_Unspecified
+		exists := make(map[string]struct{})
 		for _, indexCol := range fulltextIndex.Columns {
 			indexColNameLower := strings.ToLower(indexCol.Name)
+			if _, ok = exists[indexColNameLower]; ok {
+				return sql.ErrFullTextDuplicateColumn.New(fulltextIndex.Name)
+			}
 			found := false
 			for _, tblCol := range tblSch {
 				if indexColNameLower == strings.ToLower(tblCol.Name) {
@@ -485,6 +489,7 @@ func CreateFulltextIndexes(ctx *sql.Context, database Database, parent sql.Table
 			if !found {
 				return sql.ErrFullTextMissingColumn.New(indexCol.Name)
 			}
+			exists[indexColNameLower] = struct{}{}
 		}
 
 		// Create the additional tables

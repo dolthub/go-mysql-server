@@ -68,7 +68,7 @@ func GenerateCreateTablePrimaryKeyDefinition(pkCols []string) string {
 
 // GenerateCreateTableIndexDefinition returns index definition string for 'CREATE TABLE' statement
 // for given index. This part comes after primary key definition if there is any.
-func GenerateCreateTableIndexDefinition(isUnique, isSpatial bool, indexID string, indexCols []string, comment string) string {
+func GenerateCreateTableIndexDefinition(isUnique, isSpatial, isFullText bool, indexID string, indexCols []string, comment string) string {
 	unique := ""
 	if isUnique {
 		unique = "UNIQUE "
@@ -78,7 +78,12 @@ func GenerateCreateTableIndexDefinition(isUnique, isSpatial bool, indexID string
 	if isSpatial {
 		unique = "SPATIAL "
 	}
-	key := fmt.Sprintf("  %s%sKEY %s (%s)", unique, spatial, QuoteIdentifier(indexID), strings.Join(indexCols, ","))
+
+	fulltext := ""
+	if isFullText {
+		fulltext = "FULLTEXT "
+	}
+	key := fmt.Sprintf("  %s%s%sKEY %s (%s)", unique, spatial, fulltext, QuoteIdentifier(indexID), strings.Join(indexCols, ","))
 	if comment != "" {
 		key = fmt.Sprintf("%s COMMENT '%s'", key, comment)
 	}
