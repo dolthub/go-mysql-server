@@ -1294,7 +1294,7 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL, multiAlterDDL 
 		if c.EventSpec != nil {
 			return convertAlterEvent(ctx, query, c)
 		}
-		return convertAlterTable(ctx, c)
+		return nil, sql.ErrUnsupportedFeature.New(sqlparser.String(c))
 	case sqlparser.RenameStr:
 		return convertRenameTable(ctx, c, multiAlterDDL)
 	case sqlparser.TruncateStr:
@@ -1318,13 +1318,12 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL, multiAlterDDL 
 // 10. ADD INDEX
 func convertMultiAlterDDL(ctx *sql.Context, query string, c *sqlparser.MultiAlterDDL) (sql.Node, error) {
 	statements := make([]sql.Node, 0, len(c.Statements))
-	var err error
 	for i := 0; i < len(c.Statements); i++ {
-		statements, err = normalizeAndConvertDDL(ctx, query, c.Statements[i])
+		stmts, err := convertAlterTableClause(ctx, query, c.Statements[i])
 		if err != nil {
 			return nil, err
 		}
-		statements = append(statements, statements...)
+		statements = append(statements, stmts...)
 	}
 
 	if len(statements) == 1 {
@@ -1401,93 +1400,9 @@ func convertMultiAlterDDL(ctx *sql.Context, query string, c *sqlparser.MultiAlte
 		}
 		return false
 	})
+	
+	// TODO: getting two statements for CREATE UNIQUE INDEX here, need to know why
 	return plan.NewBlock(statements), nil
-}
-
-// normalizeAndConvertDDL converts a DDL statement into one or more nodes as required. Our planning requires that some
-// single statements are converted into more than one equivalent node (add column, create an index on it)
-func normalizeAndConvertDDL(ctx *sql.Context, query string, ddl *sqlparser.DDL) ([]sql.Node, error) {
-	ddlNodes := make([]sql.Node, 0, 1)
-	if ddl.ColumnAction != "" {
-		colAction, err := newColumnAction(ctx, ddl)
-		if err != nil {
-			return nil, err
-		}
-		
-		ddlNodes = append(ddlNodes, colAction)
-
-		if ddl.TableSpec != nil {
-			if len(ddl.TableSpec.Columns) != 1 {
-				return nil, fmt.Errorf("adding multiple columns in ALTER TABLE <table> MODIFY is not currently supported")
-			}
-			for _, column := range ddl.TableSpec.Columns {
-				isUnique, err := isUniqueColumn(ddl.TableSpec, column.Name.String())
-				if err != nil {
-					return nil, fmt.Errorf("on table %s, %w", ddl.Table.String(), err)
-				}
-				
-				// TODO: this is wrong
-				// var comment string
-				// if commentVal := column.Type.Comment; commentVal != nil {
-				// 	comment = commentVal.String()
-				// }
-				
-				columns := []sql.IndexColumn{{Name: column.Name.String()}}
-				if isUnique {
-					createIndex := plan.NewAlterCreateIndex(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), column.Name.String(), sql.IndexUsing_BTree, sql.IndexConstraint_Unique, columns, "")
-					ddlNodes = append(ddlNodes, createIndex)
-				}
-			}
-		}
-	}
-	
-	if ddl.IndexSpec != nil {
-		indexAction, err := convertAlterIndex(ctx, ddl)
-		if err != nil {
-			return nil, err
-		}
-		
-		ddlNodes = append(ddlNodes, indexAction)	
-	}
-
-	if ddl.AutoIncSpec != nil {
-		incrementAction, err := convertAlterAutoIncrement(ddl)
-		if err != nil {
-			return nil, err
-		}
-		
-		ddlNodes = append(ddlNodes, incrementAction)
-	}
-	
-	if ddl.DefaultSpec != nil {
-		defaultAction, err := convertAlterDefault(ctx, ddl)
-		if err != nil {
-			return nil, err
-		}
-		
-		ddlNodes = append(ddlNodes, defaultAction)
-	}
-	
-	if ddl.AlterCollationSpec != nil {
-		collationAction, err := convertAlterCollationSpec(ctx, ddl)
-		if err != nil {
-			return nil, err
-		}
-		
-		ddlNodes = append(ddlNodes, collationAction)
-	}
-	
-	if len(ddlNodes) > 0 {
-		return ddlNodes, nil
-	}
-
-	singleAction, err := convertDDL(ctx, query, ddl, true)
-	if err != nil {
-		return nil, err
-	}
-	
-	ddlNodes = append(ddlNodes, singleAction)
-	return ddlNodes, nil
 }
 
 func convertDBDDL(ctx *sql.Context, c *sqlparser.DBDDL) (sql.Node, error) {
@@ -2211,90 +2126,138 @@ func newColumnAction(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	return nil, sql.ErrUnsupportedFeature.New(sqlparser.String(ddl))
 }
 
-func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
-	
-	// TODO: this is wrong in the case of a column added with an index specified at the same time
-	if ddl.IndexSpec != nil {
-		return convertAlterIndex(ctx, ddl)
-	}
-	if ddl.ConstraintAction != "" && len(ddl.TableSpec.Constraints) == 1 {
-		table := tableNameToUnresolvedTable(ddl.Table)
-		parsedConstraint, err := convertConstraintDefinition(ctx, ddl.TableSpec.Constraints[0])
-		if err != nil {
-			return nil, err
-		}
-		switch strings.ToLower(ddl.ConstraintAction) {
-		case sqlparser.AddStr:
-			switch c := parsedConstraint.(type) {
-			case *sql.ForeignKeyConstraint:
-				c.Database = table.Database().Name()
-				c.Table = table.Name()
-				if c.Database == "" {
-					c.Database = ctx.GetCurrentDatabase()
-				}
-				return plan.NewAlterAddForeignKey(c), nil
-			case *sql.CheckConstraint:
-				return plan.NewAlterAddCheck(table, c), nil
-			default:
-				return nil, sql.ErrUnsupportedFeature.New(sqlparser.String(ddl))
-
-			}
-		case sqlparser.DropStr:
-			switch c := parsedConstraint.(type) {
-			case *sql.ForeignKeyConstraint:
-				databaseName := table.Database().Name()
-				if databaseName == "" {
-					databaseName = ctx.GetCurrentDatabase()
-				}
-				return plan.NewAlterDropForeignKey(databaseName, table.Name(), c.Name), nil
-			case *sql.CheckConstraint:
-				return plan.NewAlterDropCheck(table, c.Name), nil
-			case namedConstraint:
-				return plan.NewDropConstraint(table, c.name), nil
-			default:
-				return nil, sql.ErrUnsupportedFeature.New(sqlparser.String(ddl))
-			}
-		}
-	}
-
+// convertAlterTableClause converts an ALTER TABLE DDL clause into one or more nodes as required. Our planning requires 
+// that some single statements are converted into more than one equivalent node (add column, create an index on it)
+func convertAlterTableClause(ctx *sql.Context, query string, ddl *sqlparser.DDL) ([]sql.Node, error) {
+	ddlNodes := make([]sql.Node, 0, 1)
 	if ddl.ColumnAction != "" {
-		var alteredTable sql.Node
-		alteredTable, err := newColumnAction(ctx, ddl)
+		colAction, err := newColumnAction(ctx, ddl)
 		if err != nil {
 			return nil, err
 		}
+
+		ddlNodes = append(ddlNodes, colAction)
+
+		// For some column additions, we may need to append an additional node
 		if ddl.TableSpec != nil {
 			if len(ddl.TableSpec.Columns) != 1 {
-				return nil, fmt.Errorf("adding multiple columns in ALTER TABLE <table> MODIFY is not currently supported")
+				return nil, sql.ErrUnsupportedFeature.New("unexpected number of columns in a single alter column clause")
 			}
-			for _, column := range ddl.TableSpec.Columns {
-				isUnique, err := isUniqueColumn(ddl.TableSpec, column.Name.String())
-				if err != nil {
-					return nil, fmt.Errorf("on table %s, %w", ddl.Table.String(), err)
-				}
-				var comment string
-				if commentVal := column.Type.Comment; commentVal != nil {
-					comment = commentVal.String()
-				}
-				columns := []sql.IndexColumn{{Name: column.Name.String()}}
-				if isUnique {
-					alteredTable = plan.NewAlterCreateIndex(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), alteredTable, column.Name.String(), sql.IndexUsing_BTree, sql.IndexConstraint_Unique, columns, comment)
-				}
+
+			column := ddl.TableSpec.Columns[0]
+			isUnique, err := isUniqueColumn(ddl.TableSpec, column.Name.String())
+			if err != nil {
+				return nil, fmt.Errorf("on table %s, %w", ddl.Table.String(), err)
+			}
+
+			if isUnique {
+				createIndex := plan.NewAlterCreateIndex(
+					sql.UnresolvedDatabase(ddl.Table.Qualifier.String()),
+					tableNameToUnresolvedTable(ddl.Table),
+					column.Name.String(),
+					sql.IndexUsing_BTree,
+					sql.IndexConstraint_Unique,
+					[]sql.IndexColumn{{Name: column.Name.String()}},
+					"",
+				)
+				ddlNodes = append(ddlNodes, createIndex)
 			}
 		}
-		return alteredTable, nil
+	}
+
+	if ddl.ConstraintAction != "" {
+		if len(ddl.TableSpec.Constraints) != 1 {
+			return nil, sql.ErrUnsupportedFeature.New("unexpected number of constraints in a single alter constraint clause")
+		}
+
+		alterConstraintAction, err := convertAlterConstraint(ctx, ddl)
+		if err != nil {
+			return nil, err
+		}
+
+		ddlNodes = append(ddlNodes, alterConstraintAction)
+	}
+
+	if ddl.IndexSpec != nil {
+		indexAction, err := convertAlterIndex(ctx, ddl)
+		if err != nil {
+			return nil, err
+		}
+
+		ddlNodes = append(ddlNodes, indexAction)
 	}
 
 	if ddl.AutoIncSpec != nil {
-		return convertAlterAutoIncrement(ddl)
+		incrementAction, err := convertAlterAutoIncrement(ddl)
+		if err != nil {
+			return nil, err
+		}
+
+		ddlNodes = append(ddlNodes, incrementAction)
 	}
+
 	if ddl.DefaultSpec != nil {
-		return convertAlterDefault(ctx, ddl)
+		defaultAction, err := convertAlterDefault(ctx, ddl)
+		if err != nil {
+			return nil, err
+		}
+
+		ddlNodes = append(ddlNodes, defaultAction)
 	}
+
 	if ddl.AlterCollationSpec != nil {
-		return convertAlterCollationSpec(ctx, ddl)
+		collationAction, err := convertAlterCollationSpec(ctx, ddl)
+		if err != nil {
+			return nil, err
+		}
+
+		ddlNodes = append(ddlNodes, collationAction)
 	}
-	return nil, sql.ErrUnsupportedFeature.New(sqlparser.String(ddl))
+
+	return ddlNodes, nil
+}
+
+func convertAlterConstraint(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
+	table := tableNameToUnresolvedTable(ddl.Table)
+	parsedConstraint, err := convertConstraintDefinition(ctx, ddl.TableSpec.Constraints[0])
+	if err != nil {
+		return nil, err
+	}
+	
+	switch strings.ToLower(ddl.ConstraintAction) {
+	case sqlparser.AddStr:
+		switch c := parsedConstraint.(type) {
+		case *sql.ForeignKeyConstraint:
+			c.Database = table.Database().Name()
+			c.Table = table.Name()
+			if c.Database == "" {
+				c.Database = ctx.GetCurrentDatabase()
+			}
+			return plan.NewAlterAddForeignKey(c), nil
+		case *sql.CheckConstraint:
+			return plan.NewAlterAddCheck(table, c), nil
+		default:
+			return nil, sql.ErrUnsupportedFeature.New(sqlparser.String(ddl))
+
+		}
+	case sqlparser.DropStr:
+		switch c := parsedConstraint.(type) {
+		case *sql.ForeignKeyConstraint:
+			databaseName := table.Database().Name()
+			if databaseName == "" {
+				databaseName = ctx.GetCurrentDatabase()
+			}
+			return plan.NewAlterDropForeignKey(databaseName, table.Name(), c.Name), nil
+		case *sql.CheckConstraint:
+			return plan.NewAlterDropCheck(table, c.Name), nil
+		case namedConstraint:
+			return plan.NewDropConstraint(table, c.name), nil
+		default:
+			return nil, sql.ErrUnsupportedFeature.New(sqlparser.String(ddl))
+		}
+	default:
+		return nil, sql.ErrUnsupportedFeature.New(sqlparser.String(ddl))
+	}
 }
 
 func tableNameToUnresolvedTable(tableName sqlparser.TableName) *plan.UnresolvedTable {
