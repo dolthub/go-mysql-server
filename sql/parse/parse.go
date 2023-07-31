@@ -174,7 +174,7 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	case *sqlparser.DDL:
 		return convertDDL(ctx, query, n)
 	case *sqlparser.AlterTable:
-		return convertMultiAlterDDL(ctx, query, n)
+		return convertAlterTable(ctx, query, n)
 	case *sqlparser.DBDDL:
 		return convertDBDDL(ctx, n)
 	case *sqlparser.Explain:
@@ -1306,7 +1306,7 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 	}
 }
 
-// convertMultiAlterDDL converts MultiAlterDDL statements
+// convertAlterTable converts AlterTable AST nodes
 // If there are multiple alter statements, they are sorted in order of their precedence and placed inside a plan.Block
 // Currently, the precedence of DDL statements is:
 // 1.  RENAME COLUMN
@@ -1318,7 +1318,7 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 // 8.  RENAME INDEX
 // 9.  DROP INDEX
 // 10. ADD INDEX
-func convertMultiAlterDDL(ctx *sql.Context, query string, c *sqlparser.AlterTable) (sql.Node, error) {
+func convertAlterTable(ctx *sql.Context, query string, c *sqlparser.AlterTable) (sql.Node, error) {
 	statements := make([]sql.Node, 0, len(c.Statements))
 	for i := 0; i < len(c.Statements); i++ {
 		stmts, err := convertAlterTableClause(ctx, query, c.Statements[i])
