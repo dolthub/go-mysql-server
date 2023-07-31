@@ -105,7 +105,7 @@ func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outSc
 	case *ast.DDL:
 		return b.buildDDL(inScope, query, n)
 	case *ast.AlterTable:
-		return b.buildMultiAlterDDL(inScope, query, n)
+		return b.buildAlterTable(inScope, query, n)
 	case *ast.DBDDL:
 		return b.buildDBDDL(inScope, n)
 	case *ast.Explain:

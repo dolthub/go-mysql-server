@@ -33,11 +33,24 @@ func (b *Builder) resolveDb(name string) sql.Database {
 	return database
 }
 
-func (b *Builder) buildMultiAlterDDL(inScope *scope, query string, c *ast.AlterTable) (outScope *scope) {
+func (b *Builder) buildAlterTable(inScope *scope, query string, c *ast.AlterTable) (outScope *scope) {
 	b.multiDDL = true
 	defer func() {
 		b.multiDDL = false
 	}()
+
+	statements := make([]sql.Node, 0, len(c.Statements))
+	for i := 0; i < len(c.Statements); i++ {
+		stmts := b.buildAlterTableClause(inScope, c.Statements[i])
+		statements = append(statements, stmts...)
+	}
+
+	if len(statements) == 1 {
+		outScope = inScope.push()
+		outScope.node = statements[0]
+		return outScope
+	}
+	
 	statementsLen := len(c.Statements)
 	if statementsLen == 1 {
 		return b.buildDDL(inScope, query, c.Statements[0])
@@ -135,14 +148,13 @@ func (b *Builder) buildDDL(inScope *scope, query string, c *ast.DDL) (outScope *
 		if c.EventSpec != nil {
 			return b.buildAlterEvent(inScope, query, c)
 		}
-		return b.buildAlterTable(inScope, c)
+		b.handleErr(sql.ErrUnsupportedFeature.New(ast.String(c)))
 	case ast.RenameStr:
 		return b.buildRenameTable(inScope, c)
 	case ast.TruncateStr:
 		return b.buildTruncateTable(inScope, c)
 	default:
-		err := sql.ErrUnsupportedSyntax.New(ast.String(c))
-		b.handleErr(err)
+		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(c)))
 	}
 	return
 }
@@ -385,7 +397,7 @@ func (b *Builder) isUniqueColumn(tableSpec *ast.TableSpec, columnName string) bo
 
 }
 
-func (b *Builder) buildAlterTable(inScope *scope, ddl *ast.DDL) (outScope *scope) {
+func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) (outScope *scope) {
 	if ddl.IndexSpec != nil {
 		return b.buildAlterIndex(inScope, ddl)
 	}
