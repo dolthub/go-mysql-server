@@ -196,6 +196,42 @@ var AnsiQuotesTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "ANSI_QUOTES: stored procedures",
+		SetUpScript: []string{
+			`SET @@sql_mode='ANSI_QUOTES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
+			`create table t (pk int primary key, name varchar(32), data varchar(100));`,
+			`create procedure AnsiProcedure() BEGIN SELECT "name" from "t" where "pk" = 1; END`,
+			`insert into t values (1, 'John', 'FooBar');`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Assert the procedure runs correctly with ANSI_QUOTES mode enabled
+				Query:    `call AnsiProcedure();`,
+				Expected: []sql.Row{{"John"}},
+			},
+			{
+				// Assert that we can read and parse the procedure definition from information_schema
+				Query:    `select routine_definition from information_schema.routines where routine_name='AnsiProcedure';`,
+				Expected: []sql.Row{{`BEGIN SELECT "name" from "t" where "pk" = 1; END`}},
+			},
+			{
+				// Disable ANSI_QUOTES mode
+				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
+				Expected: []sql.Row{{}},
+			},
+			{
+				// Assert the procedure runs correctly with ANSI_QUOTES mode disabled
+				Query:    `call AnsiProcedure();`,
+				Expected: []sql.Row{{"John"}},
+			},
+			{
+				// Assert that we can read and parse the procedure definition from information_schema
+				Query:    `select routine_definition from information_schema.routines where routine_name='AnsiProcedure';`,
+				Expected: []sql.Row{{`BEGIN SELECT "name" from "t" where "pk" = 1; END`}},
+			},
+		},
+	},
+	{
 		// TODO: How about when we merge? We apply check constraints and column default there, too
 		//       (and they both use the new planbuilder package)
 		Name: "ANSI_QUOTES: column defaults",

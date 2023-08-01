@@ -26,6 +26,7 @@ type StoredProcedureDetails struct {
 	CreateStatement string    // The CREATE statement for this stored procedure.
 	CreatedAt       time.Time // The time that the stored procedure was created.
 	ModifiedAt      time.Time // The time of the last modification to the stored procedure.
+	AnsiQuotes      bool      // True if ANSI_QUOTES sql mode was used when defining this stored procedure.
 }
 
 // ExternalStoredProcedureDetails are the details of an external stored procedure. Compared to standard stored
