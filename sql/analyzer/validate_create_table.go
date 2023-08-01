@@ -149,6 +149,10 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 			}
 			return n, transform.NewTree, nil
 		case *plan.AlterIndex:
+			n, err := nn.WithTargetSchema(sch.Copy())
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
 			indexes, err = validateAlterIndex(ctx, initialSch, sch, n.(*plan.AlterIndex), indexes)
 			if err != nil {
 				return nil, transform.SameTree, err

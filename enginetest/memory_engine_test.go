@@ -273,16 +273,27 @@ func TestSingleScript(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "trigger with signal and user var",
+			Name: "renaming views with RENAME TABLE ... TO .. statement",
 			SetUpScript: []string{
-				"CREATE TABLE sales (year_built int primary key, CONSTRAINT `valid_year_built` CHECK (year_built <= 2022));",
-				"INSERT INTO sales VALUES (1981);",
+				"create table t1 (id int primary key, v1 int);",
+				"create view v1 as select * from t1;",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "UPDATE sales JOIN (SELECT year_built FROM sales) AS t ON sales.year_built = t.year_built SET sales.year_built = 1901;",
-
-					Expected: []sql.Row{},
+					Query:    "rename table v1 to view1",
+					Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+				},
+				{
+					Query:    "show tables;",
+					Expected: []sql.Row{{"myview"}, {"t1"}, {"view1"}},
+				},
+				{
+					Query:    "rename table view1 to newViewName, t1 to newTableName",
+					Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+				},
+				{
+					Query:    "show tables;",
+					Expected: []sql.Row{{"myview"}, {"newTableName"}, {"newViewName"}},
 				},
 			},
 		},
