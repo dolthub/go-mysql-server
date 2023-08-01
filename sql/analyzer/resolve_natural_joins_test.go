@@ -110,28 +110,19 @@ func TestResolveNaturalJoinsColumns(t *testing.T) {
 
 	expected := plan.NewProject(
 		[]sql.Expression{
-			expression.NewUnresolvedQualifiedColumn("t1", "b"),
+			expression.NewUnresolvedQualifiedColumn("t2", "b"),
 		},
-		plan.NewProject(
-			[]sql.Expression{
-				expression.NewGetFieldWithTable(1, types.Int64, "t1", "b", false),
-				expression.NewGetFieldWithTable(2, types.Int64, "t1", "c", false),
-				expression.NewGetFieldWithTable(0, types.Int64, "t1", "a", false),
-				expression.NewGetFieldWithTable(3, types.Int64, "t2", "d", false),
-				expression.NewGetFieldWithTable(6, types.Int64, "t2", "e", false),
-			},
-			plan.NewInnerJoin(
-				plan.NewResolvedTable(left, nil, nil),
-				plan.NewResolvedTable(right, nil, nil),
-				expression.JoinAnd(
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(1, types.Int64, "t1", "b", false),
-						expression.NewGetFieldWithTable(5, types.Int64, "t2", "b", false),
-					),
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(2, types.Int64, "t1", "c", false),
-						expression.NewGetFieldWithTable(4, types.Int64, "t2", "c", false),
-					),
+		plan.NewInnerJoin(
+			plan.NewResolvedTable(left, nil, nil),
+			plan.NewResolvedTable(right, nil, nil),
+			expression.JoinAnd(
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(1, types.Int64, "t1", "b", false),
+					expression.NewGetFieldWithTable(5, types.Int64, "t2", "b", false),
+				),
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(2, types.Int64, "t1", "c", false),
+					expression.NewGetFieldWithTable(4, types.Int64, "t2", "c", false),
 				),
 			),
 		),
