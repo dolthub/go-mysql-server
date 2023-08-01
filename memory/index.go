@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/fulltext"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -33,14 +35,25 @@ type Index struct {
 	Name       string
 	Unique     bool
 	Spatial    bool
+	Fulltext   bool
 	CommentStr string
 	PrefixLens []uint16
+	fulltextInfo
+}
+
+type fulltextInfo struct {
+	PositionTableName    string
+	DocCountTableName    string
+	GlobalCountTableName string
+	RowCountTableName    string
+	fulltext.KeyColumns
 }
 
 var _ sql.Index = (*Index)(nil)
 var _ sql.FilteredIndex = (*Index)(nil)
 var _ sql.OrderedIndex = (*Index)(nil)
 var _ sql.ExtendedIndex = (*Index)(nil)
+var _ fulltext.Index = (*Index)(nil)
 
 func (idx *Index) Database() string                    { return idx.DB }
 func (idx *Index) Driver() string                      { return idx.DriverName }
@@ -82,6 +95,10 @@ func (idx *Index) IsUnique() bool {
 
 func (idx *Index) IsSpatial() bool {
 	return idx.Spatial
+}
+
+func (idx *Index) IsFullText() bool {
+	return idx.Fulltext
 }
 
 func (idx *Index) Comment() string {
@@ -175,6 +192,20 @@ func (idx *Index) ExtendedColumnExpressionTypes() []sql.ColumnExpressionType {
 		}
 	}
 	return cets
+}
+
+func (idx *Index) FullTextTableNames(ctx *sql.Context) (fulltext.IndexTableNames, error) {
+	return fulltext.IndexTableNames{
+		Config:      idx.Tbl.fullTextConfigTableName,
+		Position:    idx.fulltextInfo.PositionTableName,
+		DocCount:    idx.fulltextInfo.DocCountTableName,
+		GlobalCount: idx.fulltextInfo.GlobalCountTableName,
+		RowCount:    idx.fulltextInfo.RowCountTableName,
+	}, nil
+}
+
+func (idx *Index) FullTextKeyColumns(ctx *sql.Context) (fulltext.KeyColumns, error) {
+	return idx.fulltextInfo.KeyColumns, nil
 }
 
 func (idx *Index) ID() string {

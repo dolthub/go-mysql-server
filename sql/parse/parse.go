@@ -37,14 +37,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var (
-	errIncorrectIndexName = errors.NewKind("incorrect index name '%s'")
-
 	errInvalidDescribeFormat = errors.NewKind("invalid format %q for DESCRIBE, supported formats: %s")
 
 	errInvalidSortOrder = errors.NewKind("invalid sort order: %s")
@@ -830,6 +829,9 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 					filter = like
 				}
 			}
+		}
+		if filter == nil {
+			filter = expression.NewLiteral(true, types.Boolean)
 		}
 
 		return plan.NewShowVariables(filter, strings.ToLower(s.Scope) == "global"), nil
@@ -2265,7 +2267,7 @@ func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		case sqlparser.UniqueStr:
 			constraint = sql.IndexConstraint_Unique
 		case sqlparser.FulltextStr:
-			return nil, sql.ErrUnsupportedFeature.New("fulltext keys are unsupported")
+			constraint = sql.IndexConstraint_Fulltext
 		case sqlparser.SpatialStr:
 			constraint = sql.IndexConstraint_Spatial
 		case sqlparser.PrimaryStr:
@@ -2292,7 +2294,7 @@ func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 
 		indexName := ddl.IndexSpec.ToName.String()
 		if strings.ToLower(indexName) == sqlparser.PrimaryStr {
-			return nil, errIncorrectIndexName.New(indexName)
+			return nil, sql.ErrInvalidIndexName.New(indexName)
 		}
 
 		return plan.NewAlterCreateIndex(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), table, indexName, using, constraint, columns, comment), nil
@@ -2541,9 +2543,7 @@ func ConvertIndexDefs(ctx *sql.Context, spec *sqlparser.TableSpec) (idxDefs []*p
 		} else if idxDef.Info.Spatial {
 			constraint = sql.IndexConstraint_Spatial
 		} else if idxDef.Info.Fulltext {
-			// TODO: We do not support FULLTEXT indexes or keys
-			ctx.Warn(1214, "ignoring fulltext index as they have not yet been implemented")
-			continue
+			constraint = sql.IndexConstraint_Fulltext
 		}
 
 		columns, err := gatherIndexColumns(idxDef.Columns)
@@ -2568,11 +2568,17 @@ func ConvertIndexDefs(ctx *sql.Context, spec *sqlparser.TableSpec) (idxDefs []*p
 
 	for _, colDef := range spec.Columns {
 		if colDef.Type.KeyOpt == colKeyFulltextKey {
-			// TODO: We do not support FULLTEXT indexes or keys
-			ctx.Warn(1214, "ignoring fulltext index as they have not yet been implemented")
-			continue
-		}
-		if colDef.Type.KeyOpt == colKeyUnique || colDef.Type.KeyOpt == colKeyUniqueKey {
+			idxDefs = append(idxDefs, &plan.IndexDefinition{
+				IndexName:  "",
+				Using:      sql.IndexUsing_Default,
+				Constraint: sql.IndexConstraint_Fulltext,
+				Comment:    "",
+				Columns: []sql.IndexColumn{{
+					Name:   colDef.Name.String(),
+					Length: 0,
+				}},
+			})
+		} else if colDef.Type.KeyOpt == colKeyUnique || colDef.Type.KeyOpt == colKeyUniqueKey {
 			idxDefs = append(idxDefs, &plan.IndexDefinition{
 				IndexName:  "",
 				Using:      sql.IndexUsing_Default,
@@ -4265,6 +4271,48 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 			return nil, err
 		}
 		return function.NewExtract(unit, expr), err
+	case *sqlparser.MatchExpr:
+		colTableName := ""
+		cols := make([]sql.Expression, len(v.Columns))
+		for i, selectExpr := range v.Columns {
+			expr, err := selectExprToExpression(ctx, selectExpr)
+			if err != nil {
+				return nil, err
+			}
+			unresolvedCol, ok := expr.(*expression.UnresolvedColumn)
+			if !ok {
+				return nil, sql.ErrFullTextMatchAgainstNotColumns.New()
+			}
+			if len(unresolvedCol.Table()) > 0 {
+				if len(colTableName) == 0 {
+					colTableName = strings.ToLower(unresolvedCol.Table())
+				} else if colTableName != strings.ToLower(unresolvedCol.Table()) {
+					return nil, sql.ErrFullTextMatchAgainstSameTable.New()
+				}
+			}
+			cols[i] = unresolvedCol
+		}
+		expr, err := ExprToExpression(ctx, v.Expr)
+		if err != nil {
+			return nil, err
+		}
+		var searchModifier fulltext.SearchModifier
+		switch v.Option {
+		case sqlparser.NaturalLanguageModeStr, "":
+			searchModifier = fulltext.SearchModifier_NaturalLanguage
+		case sqlparser.NaturalLanguageModeWithQueryExpansionStr:
+			searchModifier = fulltext.SearchModifier_NaturalLangaugeQueryExpansion
+			return nil, fmt.Errorf(`"IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION" is not supported yet`)
+		case sqlparser.BooleanModeStr:
+			searchModifier = fulltext.SearchModifier_Boolean
+			return nil, fmt.Errorf(`"IN BOOLEAN MODE" is not supported yet`)
+		case sqlparser.QueryExpansionStr:
+			searchModifier = fulltext.SearchModifier_QueryExpansion
+			return nil, fmt.Errorf(`"WITH QUERY EXPANSION" is not supported yet`)
+		default:
+			return nil, sql.ErrUnsupportedFeature.New(v.Option)
+		}
+		return expression.NewMatchAgainst(cols, expr, searchModifier), nil
 	}
 }
 

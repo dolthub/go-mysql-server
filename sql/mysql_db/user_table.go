@@ -16,6 +16,7 @@ package mysql_db
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -43,68 +44,47 @@ type UserPrimaryKey struct {
 	User string
 }
 
+type UserPrimaryKeyer struct{}
+
+var _ in_mem_table.Keyer[*User] = UserPrimaryKeyer{}
+
+func (UserPrimaryKeyer) GetKey(u *User) any {
+	return UserPrimaryKey{
+		Host: u.Host,
+		User: u.User,
+	}
+}
+
 // UserSecondaryKey is a key that represents the secondary key for the "user" Grant Table, which contains only usernames.
 type UserSecondaryKey struct {
 	User string
 }
 
-var _ in_mem_table.Key = UserPrimaryKey{}
-var _ in_mem_table.Key = UserSecondaryKey{}
+type UserSecondaryKeyer struct{}
 
-// KeyFromEntry implements the interface in_mem_table.Key.
-func (u UserPrimaryKey) KeyFromEntry(ctx *sql.Context, entry in_mem_table.Entry) (in_mem_table.Key, error) {
-	user, ok := entry.(*User)
-	if !ok {
-		return nil, errUserPkEntry
-	}
-	return UserPrimaryKey{
-		Host: user.Host,
-		User: user.User,
-	}, nil
-}
+var _ in_mem_table.Keyer[*User] = UserSecondaryKeyer{}
 
-// KeyFromRow implements the interface in_mem_table.Key.
-func (u UserPrimaryKey) KeyFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Key, error) {
-	if len(row) != len(userTblSchema) {
-		return u, errUserPkRow
-	}
-	host, ok := row[userTblColIndex_Host].(string)
-	if !ok {
-		return u, errUserPkRow
-	}
-	user, ok := row[userTblColIndex_User].(string)
-	if !ok {
-		return u, errUserPkRow
-	}
-	return UserPrimaryKey{
-		Host: host,
-		User: user,
-	}, nil
-}
-
-// KeyFromEntry implements the interface in_mem_table.Key.
-func (u UserSecondaryKey) KeyFromEntry(ctx *sql.Context, entry in_mem_table.Entry) (in_mem_table.Key, error) {
-	user, ok := entry.(*User)
-	if !ok {
-		return nil, errUserSkEntry
-	}
+func (UserSecondaryKeyer) GetKey(u *User) any {
 	return UserSecondaryKey{
-		User: user.User,
-	}, nil
+		User: u.User,
+	}
 }
 
-// KeyFromRow implements the interface in_mem_table.Key.
-func (u UserSecondaryKey) KeyFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Key, error) {
-	if len(row) != len(userTblSchema) {
-		return u, errUserSkRow
-	}
-	user, ok := row[userTblColIndex_User].(string)
-	if !ok {
-		return u, errUserSkRow
-	}
-	return UserSecondaryKey{
-		User: user,
-	}, nil
+func NewUserIndexedSetTable(lock, rlock sync.Locker) (in_mem_table.IndexedSet[*User], *in_mem_table.IndexedSetTable[*User]) {
+	set := in_mem_table.NewIndexedSet[*User](UserEquals, []in_mem_table.Keyer[*User]{
+		UserPrimaryKeyer{},
+		UserSecondaryKeyer{},
+	})
+	table := in_mem_table.NewIndexedSetTable[*User](
+		userTblName,
+		userTblSchema,
+		sql.Collation_utf8mb3_bin,
+		set,
+		UserOps,
+		lock,
+		rlock,
+	)
+	return set, table
 }
 
 // init creates the schema for the "user" Grant Table.
@@ -235,8 +215,8 @@ func init() {
 	}
 }
 
-func addSuperUser(userTable *mysqlTable, username string, host string, password string) {
-	err := userTable.data.Put(sql.NewEmptyContext(), &User{
+func addSuperUser(ed *Editor, username string, host string, password string) {
+	ed.PutUser(&User{
 		User:                username,
 		Host:                host,
 		PrivilegeSet:        NewPrivilegeSetWithAllPrivileges(),
@@ -248,9 +228,6 @@ func addSuperUser(userTable *mysqlTable, username string, host string, password 
 		IsRole:              false,
 		IsSuperUser:         true,
 	})
-	if err != nil {
-		panic(err) // Insertion should never fail so this should never be reached
-	}
 }
 
 // These represent the column indexes of the "user" Grant Table.

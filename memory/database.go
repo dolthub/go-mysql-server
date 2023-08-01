@@ -15,12 +15,13 @@
 package memory
 
 import (
+	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/types"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/fulltext"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Database is an in-memory database.
@@ -44,6 +45,7 @@ var _ sql.StoredProcedureDatabase = (*Database)(nil)
 var _ sql.EventDatabase = (*Database)(nil)
 var _ sql.ViewDatabase = (*Database)(nil)
 var _ sql.CollatedDatabase = (*Database)(nil)
+var _ fulltext.Database = (*Database)(nil)
 
 // BaseDatabase is an in-memory database that can't store views, only for testing the engine
 type BaseDatabase struct {
@@ -104,6 +106,27 @@ func (d *BaseDatabase) GetTableNames(ctx *sql.Context) ([]string, error) {
 	}
 
 	return tblNames, nil
+}
+
+func (d *BaseDatabase) CreateFulltextTableNames(ctx *sql.Context, parentTableName string, parentIndexName string) (fulltext.IndexTableNames, error) {
+	var tablePrefix string
+OuterLoop:
+	for i := uint64(0); true; i++ {
+		tablePrefix = strings.ToLower(fmt.Sprintf("%s_%s_%d", parentTableName, parentIndexName, i))
+		for tableName := range d.tables {
+			if strings.HasPrefix(strings.ToLower(tableName), tablePrefix) {
+				continue OuterLoop
+			}
+		}
+		break
+	}
+	return fulltext.IndexTableNames{
+		Config:      fmt.Sprintf("%s_FTS_CONFIG", parentTableName),
+		Position:    fmt.Sprintf("%s_FTS_POSITION", tablePrefix),
+		DocCount:    fmt.Sprintf("%s_FTS_DOC_COUNT", tablePrefix),
+		GlobalCount: fmt.Sprintf("%s_FTS_GLOBAL_COUNT", tablePrefix),
+		RowCount:    fmt.Sprintf("%s_FTS_ROW_COUNT", tablePrefix),
+	}, nil
 }
 
 func (d *BaseDatabase) GetForeignKeyCollection() *ForeignKeyCollection {
@@ -174,6 +197,7 @@ func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.Pri
 	}
 
 	table := NewTableWithCollation(name, schema, d.fkColl, collation)
+	table.db = d
 	if d.primaryKeyIndexes {
 		table.EnablePrimaryKeyIndexes()
 	}
@@ -189,6 +213,7 @@ func (d *BaseDatabase) CreateIndexedTable(ctx *sql.Context, name string, sch sql
 	}
 
 	table := NewTableWithCollation(name, sch, d.fkColl, collation)
+	table.db = d
 	if d.primaryKeyIndexes {
 		table.EnablePrimaryKeyIndexes()
 	}

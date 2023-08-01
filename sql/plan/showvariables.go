@@ -28,6 +28,7 @@ type ShowVariables struct {
 }
 
 var _ sql.Node = (*ShowVariables)(nil)
+var _ sql.Expressioner = (*ShowVariables)(nil)
 var _ sql.CollationCoercible = (*ShowVariables)(nil)
 
 // NewShowVariables returns a new ShowVariables reference.
@@ -85,3 +86,16 @@ func (*ShowVariables) Schema() sql.Schema {
 
 // Children implements sql.Node interface. The function always returns nil.
 func (*ShowVariables) Children() []sql.Node { return nil }
+
+func (sv *ShowVariables) Expressions() []sql.Expression {
+	return []sql.Expression{sv.Filter}
+}
+
+func (sv *ShowVariables) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(sv, len(exprs), 1)
+	}
+	ret := *sv
+	ret.Filter = exprs[0]
+	return &ret, nil
+}

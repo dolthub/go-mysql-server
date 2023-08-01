@@ -16,6 +16,7 @@ package mysql_db
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 
@@ -58,113 +59,56 @@ type RoleEdgesToKey struct {
 	ToUser string
 }
 
-var _ in_mem_table.Key = RoleEdgesPrimaryKey{}
-var _ in_mem_table.Key = RoleEdgesFromKey{}
-var _ in_mem_table.Key = RoleEdgesToKey{}
+type RoleEdgePrimaryKeyer struct{}
+type RoleEdgeToKeyer struct{}
+type RoleEdgeFromKeyer struct{}
 
-// KeyFromEntry implements the interface in_mem_table.Key.
-func (k RoleEdgesPrimaryKey) KeyFromEntry(ctx *sql.Context, entry in_mem_table.Entry) (in_mem_table.Key, error) {
-	roleEdge, ok := entry.(*RoleEdge)
-	if !ok {
-		return nil, errRoleEdgePkEntry
-	}
+var _ in_mem_table.Keyer[*RoleEdge] = RoleEdgePrimaryKeyer{}
+var _ in_mem_table.Keyer[*RoleEdge] = RoleEdgeToKeyer{}
+var _ in_mem_table.Keyer[*RoleEdge] = RoleEdgeFromKeyer{}
+
+func (RoleEdgePrimaryKeyer) GetKey(r *RoleEdge) any {
 	return RoleEdgesPrimaryKey{
-		FromHost: roleEdge.FromHost,
-		FromUser: roleEdge.FromUser,
-		ToHost:   roleEdge.ToHost,
-		ToUser:   roleEdge.ToUser,
-	}, nil
+		FromHost: r.FromHost,
+		FromUser: r.FromUser,
+		ToHost:   r.ToHost,
+		ToUser:   r.ToUser,
+	}
 }
 
-// KeyFromRow implements the interface in_mem_table.Key.
-func (k RoleEdgesPrimaryKey) KeyFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Key, error) {
-	if len(row) != len(roleEdgesTblSchema) {
-		return k, errRoleEdgePkRow
-	}
-	fromHost, ok := row[roleEdgesTblColIndex_FROM_HOST].(string)
-	if !ok {
-		return k, errRoleEdgePkRow
-	}
-	fromUser, ok := row[roleEdgesTblColIndex_FROM_USER].(string)
-	if !ok {
-		return k, errRoleEdgePkRow
-	}
-	toHost, ok := row[roleEdgesTblColIndex_TO_HOST].(string)
-	if !ok {
-		return k, errRoleEdgePkRow
-	}
-	toUser, ok := row[roleEdgesTblColIndex_TO_USER].(string)
-	if !ok {
-		return k, errRoleEdgePkRow
-	}
-	return RoleEdgesPrimaryKey{
-		FromHost: fromHost,
-		FromUser: fromUser,
-		ToHost:   toHost,
-		ToUser:   toUser,
-	}, nil
-}
-
-// KeyFromEntry implements the interface in_mem_table.Key.
-func (k RoleEdgesFromKey) KeyFromEntry(ctx *sql.Context, entry in_mem_table.Entry) (in_mem_table.Key, error) {
-	roleEdge, ok := entry.(*RoleEdge)
-	if !ok {
-		return nil, errRoleEdgeFkEntry
-	}
-	return RoleEdgesFromKey{
-		FromHost: roleEdge.FromHost,
-		FromUser: roleEdge.FromUser,
-	}, nil
-}
-
-// KeyFromRow implements the interface in_mem_table.Key.
-func (k RoleEdgesFromKey) KeyFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Key, error) {
-	if len(row) != len(roleEdgesTblSchema) {
-		return k, errRoleEdgeFkRow
-	}
-	fromHost, ok := row[roleEdgesTblColIndex_FROM_HOST].(string)
-	if !ok {
-		return k, errRoleEdgeFkRow
-	}
-	fromUser, ok := row[roleEdgesTblColIndex_FROM_USER].(string)
-	if !ok {
-		return k, errRoleEdgeFkRow
-	}
-	return RoleEdgesFromKey{
-		FromHost: fromHost,
-		FromUser: fromUser,
-	}, nil
-}
-
-// KeyFromEntry implements the interface in_mem_table.Key.
-func (k RoleEdgesToKey) KeyFromEntry(ctx *sql.Context, entry in_mem_table.Entry) (in_mem_table.Key, error) {
-	roleEdge, ok := entry.(*RoleEdge)
-	if !ok {
-		return nil, errRoleEdgeTkEntry
-	}
+func (RoleEdgeToKeyer) GetKey(r *RoleEdge) any {
 	return RoleEdgesToKey{
-		ToHost: roleEdge.ToHost,
-		ToUser: roleEdge.ToUser,
-	}, nil
+		ToHost: r.ToHost,
+		ToUser: r.ToUser,
+	}
 }
 
-// KeyFromRow implements the interface in_mem_table.Key.
-func (k RoleEdgesToKey) KeyFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Key, error) {
-	if len(row) != len(roleEdgesTblSchema) {
-		return k, errRoleEdgeTkRow
+func (RoleEdgeFromKeyer) GetKey(r *RoleEdge) any {
+	return RoleEdgesFromKey{
+		FromHost: r.FromHost,
+		FromUser: r.FromUser,
 	}
-	toHost, ok := row[roleEdgesTblColIndex_TO_HOST].(string)
-	if !ok {
-		return k, errRoleEdgeTkRow
-	}
-	toUser, ok := row[roleEdgesTblColIndex_TO_USER].(string)
-	if !ok {
-		return k, errRoleEdgeTkRow
-	}
-	return RoleEdgesToKey{
-		ToHost: toHost,
-		ToUser: toUser,
-	}, nil
+}
+
+func NewRoleEdgesIndexedSetTable(lock, rlock sync.Locker) *in_mem_table.IndexedSetTable[*RoleEdge] {
+	set := in_mem_table.NewIndexedSet[*RoleEdge](
+		RoleEdgeEquals,
+		[]in_mem_table.Keyer[*RoleEdge]{
+			RoleEdgePrimaryKeyer{},
+			RoleEdgeToKeyer{},
+			RoleEdgeFromKeyer{},
+		},
+	)
+	table := in_mem_table.NewIndexedSetTable[*RoleEdge](
+		roleEdgesTblName,
+		roleEdgesTblSchema,
+		sql.Collation_utf8mb3_bin,
+		set,
+		RoleEdgeOps,
+		lock,
+		rlock,
+	)
+	return table
 }
 
 // init creates the schema for the "role_edges" Grant Table.

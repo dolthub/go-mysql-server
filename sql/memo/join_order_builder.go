@@ -268,7 +268,7 @@ func (j *joinOrderBuilder) makeTransitiveEdge(col1, col2 sql.ColumnId) {
 	if eqGroup == nil {
 		eqGroup = j.m.NewExprGroup(eq)
 	}
-	hash := internExpr(eqGroup.Scalar)
+	hash := InternExpr(eqGroup.Scalar)
 	if hash != 0 {
 		j.m.exprs[hash] = eqGroup
 	}

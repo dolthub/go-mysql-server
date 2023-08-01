@@ -17,6 +17,7 @@ package mysql_db
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 
@@ -35,13 +36,52 @@ var (
 	globalGrantsTblSchema sql.Schema
 )
 
-// GlobalGrantsConverter handles the conversion between a stored *User entry and the faux "global_grants" Grant Table.
-type GlobalGrantsConverter struct{}
+func UserAddGlobalGrantsRow(ctx *sql.Context, row sql.Row, user *User) (*User, error) {
+	if len(row) != len(globalGrantsTblSchema) {
+		return nil, errGlobalGrantRow
+	}
 
-var _ in_mem_table.DataEditorConverter = GlobalGrantsConverter{}
+	privilege, ok := row[globalGrantsTblColIndex_PRIV].(string)
+	if !ok {
+		return nil, errGlobalGrantRow
+	}
+	withGrantOption, ok := row[globalGrantsTblColIndex_WITH_GRANT_OPTION].(uint16)
+	if !ok {
+		return nil, errGlobalGrantRow
+	}
 
-// RowToKey implements the interface in_mem_table.DataEditorConverter.
-func (conv GlobalGrantsConverter) RowToKey(ctx *sql.Context, row sql.Row) (in_mem_table.Key, error) {
+	user = UserCopy(user)
+
+	// A value of 1 is equivalent to 'N', a value of 2 is equivalent to 'Y'
+	user.PrivilegeSet.AddGlobalDynamic(withGrantOption == 2, privilege)
+
+	return user, nil
+}
+
+func UserRemoveGlobalGrantsRow(ctx *sql.Context, row sql.Row, user *User) (*User, error) {
+	if len(row) != len(globalGrantsTblSchema) {
+		return nil, errGlobalGrantRow
+	}
+
+	privilege, ok := row[globalGrantsTblColIndex_PRIV].(string)
+	if !ok {
+		return nil, errGlobalGrantRow
+	}
+
+	//TODO: handle "WITH GRANT OPTION"
+	//withGrantOption, ok := row[globalGrantsTblColIndex_WITH_GRANT_OPTION].(uint16)
+	//if !ok {
+	//	return nil, errGlobalGrantRow
+	//}
+
+	user = UserCopy(user)
+
+	user.PrivilegeSet.RemoveGlobalDynamic(privilege)
+
+	return user, nil
+}
+
+func UserFromGlobalGrantsRow(ctx *sql.Context, row sql.Row) (*User, error) {
 	if len(row) != len(globalGrantsTblSchema) {
 		return nil, errGlobalGrantRow
 	}
@@ -53,67 +93,13 @@ func (conv GlobalGrantsConverter) RowToKey(ctx *sql.Context, row sql.Row) (in_me
 	if !ok {
 		return nil, errGlobalGrantRow
 	}
-	return UserPrimaryKey{
+	return &User{
 		Host: host,
 		User: user,
 	}, nil
 }
 
-// AddRowToEntry implements the interface in_mem_table.DataEditorConverter.
-func (conv GlobalGrantsConverter) AddRowToEntry(ctx *sql.Context, row sql.Row, entry in_mem_table.Entry) (in_mem_table.Entry, error) {
-	if len(row) != len(globalGrantsTblSchema) {
-		return nil, errGlobalGrantRow
-	}
-	user, ok := entry.(*User)
-	if !ok {
-		return nil, errGlobalGrantEntry
-	}
-	user = user.Copy(ctx).(*User)
-
-	privilege, ok := row[globalGrantsTblColIndex_PRIV].(string)
-	if !ok {
-		return nil, errGlobalGrantRow
-	}
-	withGrantOption, ok := row[globalGrantsTblColIndex_WITH_GRANT_OPTION].(uint16)
-	if !ok {
-		return nil, errGlobalGrantRow
-	}
-	// A value of 1 is equivalent to 'N', a value of 2 is equivalent to 'Y'
-	user.PrivilegeSet.AddGlobalDynamic(withGrantOption == 2, privilege)
-	return user, nil
-}
-
-// RemoveRowFromEntry implements the interface in_mem_table.DataEditorConverter.
-func (conv GlobalGrantsConverter) RemoveRowFromEntry(ctx *sql.Context, row sql.Row, entry in_mem_table.Entry) (in_mem_table.Entry, error) {
-	if len(row) != len(globalGrantsTblSchema) {
-		return nil, errGlobalGrantRow
-	}
-	user, ok := entry.(*User)
-	if !ok {
-		return nil, errGlobalGrantEntry
-	}
-	user = user.Copy(ctx).(*User)
-
-	privilege, ok := row[globalGrantsTblColIndex_PRIV].(string)
-	if !ok {
-		return nil, errGlobalGrantRow
-	}
-	//TODO: handle "WITH GRANT OPTION"
-	//withGrantOption, ok := row[globalGrantsTblColIndex_WITH_GRANT_OPTION].(uint16)
-	//if !ok {
-	//	return nil, errGlobalGrantRow
-	//}
-	user.PrivilegeSet.RemoveGlobalDynamic(privilege)
-	return user, nil
-}
-
-// EntryToRows implements the interface in_mem_table.DataEditorConverter.
-func (conv GlobalGrantsConverter) EntryToRows(ctx *sql.Context, entry in_mem_table.Entry) ([]sql.Row, error) {
-	user, ok := entry.(*User)
-	if !ok {
-		return nil, errGlobalGrantEntry
-	}
-
+func UserToGlobalGrantsRows(ctx *sql.Context, user *User) ([]sql.Row, error) {
 	var rows []sql.Row
 	for dynamicPriv, _ := range user.PrivilegeSet.globalDynamic {
 		row := make(sql.Row, len(globalGrantsTblSchema))
@@ -130,9 +116,29 @@ func (conv GlobalGrantsConverter) EntryToRows(ctx *sql.Context, entry in_mem_tab
 		row[globalGrantsTblColIndex_PRIV] = strings.ToUpper(dynamicPriv)
 		//TODO: handle "WITH GRANT OPTION"
 		row[globalGrantsTblColIndex_WITH_GRANT_OPTION] = 2
+
+		rows = append(rows, row)
 	}
 
 	return rows, nil
+}
+
+func NewUserGlobalGrantsIndexedSetTable(set in_mem_table.IndexedSet[*User], lock, rlock sync.Locker) *in_mem_table.MultiIndexedSetTable[*User] {
+	table := in_mem_table.NewMultiIndexedSetTable[*User](
+		globalGrantsTblName,
+		globalGrantsTblSchema,
+		sql.Collation_utf8mb3_bin,
+		set,
+		in_mem_table.MultiValueOps[*User]{
+			ToRows:    UserToGlobalGrantsRows,
+			FromRow:   UserFromGlobalGrantsRow,
+			AddRow:    UserAddGlobalGrantsRow,
+			DeleteRow: UserRemoveGlobalGrantsRow,
+		},
+		lock,
+		rlock,
+	)
+	return table
 }
 
 // init creates the schema for the "global_grants" Grant Table.

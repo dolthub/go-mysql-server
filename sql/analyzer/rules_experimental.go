@@ -25,11 +25,10 @@ var OnceBeforeDefault_Exp = []Rule{
 	{validateExprSemId, validateExprSem},
 	{validateCreateProcedureId, validateCreateProcedure},
 	{setTargetSchemasId, setTargetSchemas}, //TODO
-	{loadCheckConstraintsId, loadChecks},   //TODO
+	{resolveDropConstraintId, resolveDropConstraint},
+	{resolveAlterColumnId, resolveAlterColumn},
 	{validateDropTablesId, validateDropTables},
-	{pruneDropTablesId, pruneDropTables}, //TODO
-	{assignCatalogId, assignCatalog},     //TODO
-	{parseColumnDefaultsId, parseColumnDefaults},
+	{resolveCreateSelectId, resolveCreateSelect},
 	{validateDropConstraintId, validateDropConstraint},
 	{setViewTargetSchemaId, setViewTargetSchema},
 	{resolveUnionsId, resolveUnions},
@@ -78,7 +77,6 @@ var OnceAfterDefault_Experimental = []Rule{
 	{pushFiltersId, pushFilters},
 	{optimizeJoinsId, optimizeJoins},
 	{generateIndexScansId, generateIndexScans},
-	//{pruneColumnsId, pruneColumns},
 	{finalizeSubqueriesId, finalizeSubqueries},
 	{subqueryIndexesId, applyIndexesFromOuterScope},
 	{replaceSortPkId, replacePkSort},
@@ -86,6 +84,7 @@ var OnceAfterDefault_Experimental = []Rule{
 	{eraseProjectionId, eraseProjection},
 	{insertTopNId, insertTopNNodes},
 	{applyHashInId, applyHashIn},
+	{resolveInsertRowsId, resolveInsertRows},
 	{resolvePreparedInsertId, resolvePreparedInsert},
 	{applyTriggersId, applyTriggers},
 	{applyProceduresId, applyProcedures},
@@ -97,6 +96,7 @@ var OnceAfterDefault_Experimental = []Rule{
 }
 
 var OnceAfterAll_Experimental = []Rule{
+	{inlineSubqueryAliasRefsId, inlineSubqueryAliasRefs},
 	{cacheSubqueryResultsId, cacheSubqueryResults},
 	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
 	{AutocommitId, addAutocommitNode},

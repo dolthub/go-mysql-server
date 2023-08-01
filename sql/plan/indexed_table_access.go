@@ -114,6 +114,16 @@ func NewStaticIndexedAccessForResolvedTable(rt *ResolvedTable, lookup sql.IndexL
 	}, nil
 }
 
+// NewStaticIndexedAccessForFullTextTable creates an IndexedTableAccess node for Full-Text tables, which have a
+// different behavior compared to other indexed tables.
+func NewStaticIndexedAccessForFullTextTable(rt *ResolvedTable, lookup sql.IndexLookup, ftTable sql.IndexedTable) *IndexedTableAccess {
+	return &IndexedTableAccess{
+		ResolvedTable: rt,
+		lookup:        lookup,
+		Table:         ftTable,
+	}
+}
+
 func (i *IndexedTableAccess) IsStatic() bool {
 	return !i.lookup.IsEmpty()
 }
@@ -493,7 +503,8 @@ func (lb *LookupBuilder) GetLookup(key lookupBuilderKey) (sql.IndexLookup, error
 				lb.rang[i] = sql.NullRangeColumnExpr(lb.cets[i].Type)
 
 			} else {
-				lb.rang[i] = sql.NotNullRangeColumnExpr(lb.cets[i].Type)
+				lb.rang[i].LowerBound = sql.Below{Key: key[i]}
+				lb.rang[i].UpperBound = sql.Above{Key: key[i]}
 			}
 		} else {
 			lb.rang[i].LowerBound = sql.Below{Key: key[i]}

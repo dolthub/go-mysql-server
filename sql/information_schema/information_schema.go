@@ -1191,7 +1191,6 @@ func schemaPrivilegesRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		privSet = mysql_db.NewPrivilegeSet()
 	}
 	if privSet.Has(PrivilegeType_Select) || privSet.Database("mysql").Has(PrivilegeType_Select) {
-		var users = make(map[*mysql_db.User]struct{})
 		db, err := c.Database(ctx, "mysql")
 		if err != nil {
 			return nil, err
@@ -1201,23 +1200,36 @@ func schemaPrivilegesRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		if !ok {
 			return nil, ErrDatabaseNotFound.New("mysql")
 		}
+
 		dbTbl, _, err := mysqlDb.GetTableInsensitive(ctx, "db")
 		if err != nil {
 			return nil, err
 		}
-		ri, err := dbTbl.PartitionRows(ctx, nil)
+
+		var keys []mysql_db.UserPrimaryKey
+		err = iterRows(ctx, dbTbl, func(r Row) error {
+			// mysql.db table will have 'Host', 'Db', 'User' as first 3 columns in string format.
+			keys = append(keys, mysql_db.UserPrimaryKey{
+				Host: r[0].(string),
+				User: r[2].(string),
+			})
+			return nil
+		})
 		if err != nil {
 			return nil, err
 		}
-		for {
-			r, rerr := ri.Next(ctx)
-			if rerr == io.EOF {
-				break
-			}
-			// mysql.db table will have 'Host', 'Db', 'User' as first 3 columns in string format.
-			users[mysqlDb.GetUser(r[2].(string), r[0].(string), false)] = struct{}{}
-		}
 
+		rd := mysqlDb.Reader()
+		defer rd.Close()
+
+		users := make(map[*mysql_db.User]struct{})
+		for _, userKey := range keys {
+			user := mysqlDb.GetUser(rd, userKey.User, userKey.Host, false)
+			if user == nil {
+				continue
+			}
+			users[user] = struct{}{}
+		}
 		for user := range users {
 			grantee := user.UserHostToString("'")
 			for _, privSetDb := range user.PrivilegeSet.GetDatabases() {
@@ -1583,6 +1595,53 @@ func tableConstraintsExtensionsRowIter(ctx *Context, c Catalog) (RowIter, error)
 	return RowsToRowIter(rows...), nil
 }
 
+type partitionIterable interface {
+	Partitions(*Context) (PartitionIter, error)
+	PartitionRows(*Context, Partition) (RowIter, error)
+}
+
+func iterRows(ctx *Context, pii partitionIterable, cb func(Row) error) (rerr error) {
+	pi, err := pii.Partitions(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err := pi.Close(ctx)
+		if rerr == nil {
+			rerr = err
+		}
+	}()
+	for {
+		p, err := pi.Next(ctx)
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		ri, err := pii.PartitionRows(ctx, p)
+		if err != nil {
+			return err
+		}
+		for {
+			r, err := ri.Next(ctx)
+			if err == io.EOF {
+				ri.Close(ctx)
+				break
+			}
+			if err != nil {
+				ri.Close(ctx)
+				return err
+			}
+			err = cb(r)
+			if err != nil {
+				ri.Close(ctx)
+				return err
+			}
+		}
+	}
+}
+
 // tablePrivilegesRowIter implements the sql.RowIter for the information_schema.TABLE_PRIVILEGES table.
 func tablePrivilegesRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
@@ -1591,7 +1650,6 @@ func tablePrivilegesRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		privSet = mysql_db.NewPrivilegeSet()
 	}
 	if privSet.Has(PrivilegeType_Select) || privSet.Database("mysql").Has(PrivilegeType_Select) {
-		var users = make(map[*mysql_db.User]struct{})
 		db, err := c.Database(ctx, "mysql")
 		if err != nil {
 			return nil, err
@@ -1601,23 +1659,35 @@ func tablePrivilegesRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		if !ok {
 			return nil, ErrDatabaseNotFound.New("mysql")
 		}
+
 		tblsPriv, _, err := mysqlDb.GetTableInsensitive(ctx, "tables_priv")
 		if err != nil {
 			return nil, err
 		}
-		ri, err := tblsPriv.PartitionRows(ctx, nil)
+
+		var keys []mysql_db.UserPrimaryKey
+		err = iterRows(ctx, tblsPriv, func(r Row) error {
+			keys = append(keys, mysql_db.UserPrimaryKey{
+				Host: r[0].(string),
+				User: r[2].(string),
+			})
+			return nil
+		})
 		if err != nil {
 			return nil, err
 		}
-		for {
-			r, rerr := ri.Next(ctx)
-			if rerr == io.EOF {
-				break
-			}
-			// mysql.db table will have 'Host', 'Db', 'User' as first 3 columns in string format.
-			users[mysqlDb.GetUser(r[2].(string), r[0].(string), false)] = struct{}{}
-		}
 
+		rd := mysqlDb.Reader()
+		defer rd.Close()
+
+		users := make(map[*mysql_db.User]struct{})
+		for _, userKey := range keys {
+			user := mysqlDb.GetUser(rd, userKey.User, userKey.Host, false)
+			if user == nil {
+				continue
+			}
+			users[user] = struct{}{}
+		}
 		for user := range users {
 			grantee := user.UserHostToString("'")
 			for _, privSetDb := range user.PrivilegeSet.GetDatabases() {
@@ -1944,13 +2014,13 @@ func userAttributesRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 		if !ok {
 			return nil, ErrDatabaseNotFound.New("mysql")
 		}
-		userTbl := mysqlDb.UserTable()
-		userTblData := userTbl.Data()
-		for _, userEntry := range userTblData.ToSlice(ctx) {
-			r := userEntry.ToRow(ctx)
-			// mysql.user table will have 'Host', 'User' as first 2 columns in string format.
-			users[mysqlDb.GetUser(r[1].(string), r[0].(string), false)] = struct{}{}
-		}
+
+		reader := mysqlDb.Reader()
+		defer reader.Close()
+
+		reader.VisitUsers(func(u *mysql_db.User) {
+			users[u] = struct{}{}
+		})
 
 		for user := range users {
 			var attributes interface{}
@@ -1994,13 +2064,13 @@ func userPrivilegesRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 		if !ok {
 			return nil, ErrDatabaseNotFound.New("mysql")
 		}
-		userTbl := mysqlDb.UserTable()
-		userTblData := userTbl.Data()
-		for _, userEntry := range userTblData.ToSlice(ctx) {
-			r := userEntry.ToRow(ctx)
-			// mysql.user table will have 'Host', 'User' as first 2 columns in string format.
-			users[mysqlDb.GetUser(r[1].(string), r[0].(string), false)] = struct{}{}
-		}
+
+		reader := mysqlDb.Reader()
+		defer reader.Close()
+
+		reader.VisitUsers(func(u *mysql_db.User) {
+			users[u] = struct{}{}
+		})
 
 		for user := range users {
 			grantee := user.UserHostToString("'")

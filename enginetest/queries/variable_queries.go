@@ -53,7 +53,7 @@ var VariableQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select @@server_id;",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.Row{{uint32(0)}},
 			},
 			{
 				Query:    "set @@server_id=123;",
@@ -61,6 +61,10 @@ var VariableQueries = []ScriptTest{
 			},
 			{
 				Query:    "set @@GLOBAL.server_id=123;",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "set @@GLOBAL.server_id=0;",
 				Expected: []sql.Row{{}},
 			},
 		},

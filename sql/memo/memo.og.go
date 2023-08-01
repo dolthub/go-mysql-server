@@ -102,6 +102,22 @@ func (r *LookupJoin) JoinPrivate() *JoinBase {
 	return r.JoinBase
 }
 
+type RangeHeapJoin struct {
+	*JoinBase
+	RangeHeap *RangeHeap
+}
+
+var _ RelExpr = (*RangeHeapJoin)(nil)
+var _ JoinRel = (*RangeHeapJoin)(nil)
+
+func (r *RangeHeapJoin) String() string {
+	return FormatExpr(r)
+}
+
+func (r *RangeHeapJoin) JoinPrivate() *JoinBase {
+	return r.JoinBase
+}
+
 type ConcatJoin struct {
 	*JoinBase
 	Concat []*Lookup
@@ -875,6 +891,27 @@ func (r *Tuple) Children() []*ExprGroup {
 	return nil
 }
 
+type Between struct {
+	*scalarBase
+	Value *ExprGroup
+	Min   *ExprGroup
+	Max   *ExprGroup
+}
+
+var _ ScalarExpr = (*Between)(nil)
+
+func (r *Between) ExprId() ScalarExprId {
+	return ScalarExprBetween
+}
+
+func (r *Between) String() string {
+	return FormatExpr(r)
+}
+
+func (r *Between) Children() []*ExprGroup {
+	return nil
+}
+
 type Hidden struct {
 	*scalarBase
 	E      sql.Expression
@@ -910,6 +947,8 @@ func FormatExpr(r exprType) string {
 		return fmt.Sprintf("antijoin %d %d", r.Left.Id, r.Right.Id)
 	case *LookupJoin:
 		return fmt.Sprintf("lookupjoin %d %d", r.Left.Id, r.Right.Id)
+	case *RangeHeapJoin:
+		return fmt.Sprintf("slidingrangejoin %d %d", r.Left.Id, r.Right.Id)
 	case *ConcatJoin:
 		return fmt.Sprintf("concatjoin %d %d", r.Left.Id, r.Right.Id)
 	case *HashJoin:
@@ -986,6 +1025,8 @@ func FormatExpr(r exprType) string {
 			vals[i] = fmt.Sprintf("%d", v.Id)
 		}
 		return fmt.Sprintf("tuple: %s", strings.Join(vals, " "))
+	case *Between:
+		return fmt.Sprintf("between: %d, %d, %d", r.Value.Id, r.Min.Id, r.Max.Id)
 	case *Hidden:
 		return fmt.Sprintf("hidden: %s", r.E)
 	default:
@@ -1010,6 +1051,8 @@ func buildRelExpr(b *ExecBuilder, r RelExpr, input sql.Schema, children ...sql.N
 		result, err = b.buildAntiJoin(r, input, children...)
 	case *LookupJoin:
 		result, err = b.buildLookupJoin(r, input, children...)
+	case *RangeHeapJoin:
+		result, err = b.buildRangeHeapJoin(r, input, children...)
 	case *ConcatJoin:
 		result, err = b.buildConcatJoin(r, input, children...)
 	case *HashJoin:
@@ -1091,6 +1134,8 @@ func buildScalarExpr(b *ExecBuilder, r ScalarExpr, sch sql.Schema) (sql.Expressi
 		return b.buildIsNull(r, sch)
 	case *Tuple:
 		return b.buildTuple(r, sch)
+	case *Between:
+		return b.buildBetween(r, sch)
 	case *Hidden:
 		return b.buildHidden(r, sch)
 	default:

@@ -22,6 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -35,7 +36,7 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 		switch node := n.(type) {
 		case *plan.ShowTriggers:
 			newShowTriggers := *node
-			loadedTriggers, err := loadTriggersFromDb(ctx, newShowTriggers.Database())
+			loadedTriggers, err := loadTriggersFromDb(ctx, a, newShowTriggers.Database())
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -46,7 +47,7 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 			}
 			return &newShowTriggers, transform.NewTree, nil
 		case *plan.DropTrigger:
-			loadedTriggers, err := loadTriggersFromDb(ctx, node.Database())
+			loadedTriggers, err := loadTriggersFromDb(ctx, a, node.Database())
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -72,7 +73,7 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 				dropTableDb = t.Database
 			}
 
-			loadedTriggers, err := loadTriggersFromDb(ctx, dropTableDb)
+			loadedTriggers, err := loadTriggersFromDb(ctx, a, dropTableDb)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -86,7 +87,7 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 			}
 			var triggersForTable []string
 			for _, trigger := range loadedTriggers {
-				if _, ok := lowercasedNames[strings.ToLower(trigger.Table.(*plan.UnresolvedTable).Name())]; ok {
+				if _, ok := lowercasedNames[strings.ToLower(trigger.Table.(sql.Nameable).Name())]; ok {
 					triggersForTable = append(triggersForTable, trigger.TriggerName)
 				}
 			}
@@ -97,7 +98,7 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 	})
 }
 
-func loadTriggersFromDb(ctx *sql.Context, db sql.Database) ([]*plan.CreateTrigger, error) {
+func loadTriggersFromDb(ctx *sql.Context, a *Analyzer, db sql.Database) ([]*plan.CreateTrigger, error) {
 	var loadedTriggers []*plan.CreateTrigger
 	if triggerDb, ok := db.(sql.TriggerDatabase); ok {
 		triggers, err := triggerDb.GetTriggers(ctx)
@@ -105,8 +106,12 @@ func loadTriggersFromDb(ctx *sql.Context, db sql.Database) ([]*plan.CreateTrigge
 			return nil, err
 		}
 		for _, trigger := range triggers {
-			parsedTrigger, err := parse.ParseWithOptions(ctx, trigger.CreateStatement,
-				sqlparser.ParserOptions{AnsiQuotes: trigger.AnsiQuotes})
+			var parsedTrigger sql.Node
+			if ctx.Version == sql.VersionExperimental {
+				parsedTrigger, err = planbuilder.ParseWithOptions(ctx, a.Catalog, trigger.CreateStatement, sqlparser.ParserOptions{AnsiQuotes: trigger.AnsiQuotes})
+			} else {
+				parsedTrigger, err = parse.ParseWithOptions(ctx, trigger.CreateStatement, sqlparser.ParserOptions{AnsiQuotes: trigger.AnsiQuotes})
+			}
 			if err != nil {
 				return nil, err
 			}

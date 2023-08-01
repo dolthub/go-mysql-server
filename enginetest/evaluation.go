@@ -85,6 +85,9 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 
 		for _, assertion := range assertions {
 			t.Run(assertion.Query, func(t *testing.T) {
+				if sh, ok := harness.(SkippingHarness); ok && sh.SkipQueryTest(assertion.Query) {
+					t.Skip()
+				}
 				if assertion.Skip {
 					t.Skip()
 				}
@@ -336,7 +339,9 @@ func TestPreparedQueryWithContext(
 	rows, sch, err := runQueryPreparedWithCtx(t, ctx, e, q)
 	require.NoError(err, "Unexpected error for query %s", q)
 
-	checkResults(t, expected, expectedCols, sch, rows, q)
+	if expected != nil {
+		checkResults(t, expected, expectedCols, sch, rows, q)
+	}
 
 	require.Equal(0, ctx.Memory.NumCaches())
 	validateEngine(t, ctx, h, e)

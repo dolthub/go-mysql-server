@@ -37,7 +37,7 @@ func (g *FrameFactoryGen) genImports() {
 }
 
 func (g *FrameFactoryGen) genNewFrameFactory() {
-	fmt.Fprintf(g.w, "func (b *PlanBuilder) NewFrame(inScope *scope, f *ast.Frame) sql.WindowFrame {\n")
+	fmt.Fprintf(g.w, "func (b *Builder) NewFrame(inScope *scope, f *ast.Frame) sql.WindowFrame {\n")
 	fmt.Fprintf(g.w, "  if f == nil {\n")
 	fmt.Fprintf(g.w, "    return nil\n")
 	fmt.Fprintf(g.w, "  }\n")

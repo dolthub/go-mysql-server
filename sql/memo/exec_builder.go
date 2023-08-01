@@ -133,6 +133,91 @@ func (b *ExecBuilder) buildLookupJoin(j *LookupJoin, input sql.Schema, children 
 	return plan.NewJoin(left, right, j.Op, filters).WithScopeLen(j.g.m.scopeLen), nil
 }
 
+func (b *ExecBuilder) buildRangeHeap(sr *RangeHeap, leftSch, rightSch sql.Schema, children ...sql.Node) (ret sql.Node, err error) {
+	switch n := children[0].(type) {
+	case *plan.Distinct:
+		ret, err = b.buildRangeHeap(sr, leftSch, rightSch, n.Child)
+		ret = plan.NewDistinct(ret)
+	case *plan.Filter:
+		ret, err = b.buildRangeHeap(sr, leftSch, rightSch, n.Child)
+		ret = plan.NewFilter(n.Expression, ret)
+	case *plan.Project:
+		ret, err = b.buildRangeHeap(sr, leftSch, rightSch, n.Child)
+		ret = plan.NewProject(n.Projections, ret)
+	case *plan.Limit:
+		ret, err = b.buildRangeHeap(sr, leftSch, rightSch, n.Child)
+		ret = plan.NewLimit(n.Limit, ret)
+	default:
+		var childNode sql.Node
+		if sr.MinIndex != nil {
+			childNode, err = b.buildIndexScan(sr.MinIndex, rightSch, n)
+		} else {
+			sortExpr, err := b.buildScalar(*sr.MinExpr, rightSch)
+			if err != nil {
+				return nil, err
+			}
+			sf := []sql.SortField{{
+				Column:       sortExpr,
+				Order:        sql.Ascending,
+				NullOrdering: sql.NullsLast, // Due to https://github.com/dolthub/go-mysql-server/issues/1903
+			}}
+			childNode = plan.NewSort(sf, n)
+		}
+
+		if err != nil {
+			return nil, err
+		}
+		ret, err = plan.NewRangeHeap(
+			childNode,
+			leftSch,
+			rightSch,
+			sr.ValueCol.Gf,
+			sr.MinColRef.Gf,
+			sr.MaxColRef.Gf,
+			sr.RangeClosedOnLowerBound,
+			sr.RangeClosedOnUpperBound)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
+func (b *ExecBuilder) buildRangeHeapJoin(j *RangeHeapJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+	leftSch := input[:len(input)-len(j.Right.RelProps.OutputCols())]
+	rightSch := input[len(j.Left.RelProps.OutputCols()):]
+
+	var left sql.Node
+	var err error
+	if j.RangeHeap.ValueIndex != nil {
+		left, err = b.buildIndexScan(j.RangeHeap.ValueIndex, input, children[0])
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		sortExpr, err := b.buildScalar(*j.RangeHeap.ValueExpr, leftSch)
+		if err != nil {
+			return nil, err
+		}
+		sf := []sql.SortField{{
+			Column:       sortExpr,
+			Order:        sql.Ascending,
+			NullOrdering: sql.NullsLast, // Due to https://github.com/dolthub/go-mysql-server/issues/1903
+		}}
+		left = plan.NewSort(sf, children[0])
+	}
+
+	right, err := b.buildRangeHeap(j.RangeHeap, leftSch, rightSch, children[1])
+	if err != nil {
+		return nil, err
+	}
+	filters, err := b.buildFilterConjunction(j.g.m.scope, input, j.Filter...)
+	if err != nil {
+		return nil, err
+	}
+	return plan.NewJoin(left, right, j.Op, filters).WithScopeLen(j.g.m.scopeLen), nil
+}
+
 func (b *ExecBuilder) buildConcatJoin(j *ConcatJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
 	var alias string
 	var name string
@@ -266,11 +351,16 @@ func (b *ExecBuilder) buildMergeJoin(j *MergeJoin, input sql.Schema, children ..
 		return nil, fmt.Errorf("index scan type mismatch")
 	}
 	if j.SwapCmp {
-		cmp, ok := j.Filter[0].(*Equal)
-		if !ok {
-			return nil, fmt.Errorf("unexpected non-equals comparison in merge join")
+		switch cmp := j.Filter[0].(type) {
+		case *Equal:
+			j.Filter[0] = &Equal{Left: cmp.Right, Right: cmp.Left}
+		case *Lt:
+			j.Filter[0] = &Gt{Left: cmp.Right, Right: cmp.Left}
+		case *Leq:
+			j.Filter[0] = &Geq{Left: cmp.Right, Right: cmp.Left}
+		default:
+			return nil, fmt.Errorf("unexpected non-comparison condition in merge join, %T", cmp)
 		}
-		j.Filter[0] = &Equal{Left: cmp.Right, Right: cmp.Left}
 	}
 	filters, err := b.buildFilterConjunction(j.g.m.scope, input, j.Filter...)
 	if err != nil {
@@ -547,6 +637,22 @@ func (b *ExecBuilder) buildTuple(e *Tuple, sch sql.Schema) (sql.Expression, erro
 		}
 	}
 	return expression.NewTuple(values...), nil
+}
+
+func (b *ExecBuilder) buildBetween(e *Between, sch sql.Schema) (sql.Expression, error) {
+	value, err := b.buildScalar(e.Value.Scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	min, err := b.buildScalar(e.Min.Scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	max, err := b.buildScalar(e.Max.Scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	return expression.NewBetween(value, min, max), nil
 }
 
 func (b *ExecBuilder) buildHidden(e *Hidden, sch sql.Schema) (sql.Expression, error) {

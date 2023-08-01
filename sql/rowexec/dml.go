@@ -21,6 +21,7 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -192,6 +193,12 @@ func (b *BaseBuilder) buildDropTable(ctx *sql.Context, n *plan.DropTable, row sq
 				if err = fkTable.DropForeignKey(ctx, fk.Name); err != nil {
 					return nil, err
 				}
+			}
+		}
+
+		if hasFullText(ctx, tbl) {
+			if err = fulltext.DropAllIndexes(ctx, tbl.Table.(sql.IndexAddressableTable), droppable.(fulltext.Database)); err != nil {
+				return nil, err
 			}
 		}
 

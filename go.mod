@@ -10,7 +10,7 @@ require (
 	github.com/go-kit/kit v0.10.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gocraft/dbr/v2 v2.7.2
-	github.com/google/uuid v1.2.0
+	github.com/google/uuid v1.3.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/lestrrat-go/strftime v1.0.4
 	github.com/mitchellh/hashstructure v1.1.0
@@ -25,7 +25,8 @@ require (
 	go.opentelemetry.io/otel/trace v1.7.0
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 	golang.org/x/sync v0.1.0
-	golang.org/x/text v0.3.8
+	golang.org/x/sys v0.6.0
+	golang.org/x/text v0.6.0
 	golang.org/x/tools v0.3.0
 	gopkg.in/src-d/go-errors.v1 v1.0.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -40,11 +41,10 @@ require (
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	golang.org/x/mod v0.7.0 // indirect
-	golang.org/x/sys v0.6.0 // indirect
-	google.golang.org/genproto v0.0.0-20210506142907-4a47615972c2 // indirect
-	google.golang.org/grpc v1.37.0 // indirect
-	google.golang.org/protobuf v1.27.1 // indirect
+	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
+	google.golang.org/grpc v1.53.0 // indirect
+	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect
 )
 
-go 1.19
+go 1.20

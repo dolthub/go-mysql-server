@@ -110,10 +110,10 @@ func (n *DropUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	userTableData := mysqlDb.UserTable().Data()
-	roleEdgesData := mysqlDb.RoleEdgesTable().Data()
+	editor := mysqlDb.Editor()
+	defer editor.Close()
 	for _, user := range n.Users {
-		existingUser := mysqlDb.GetUser(user.Name, user.Host, false)
+		existingUser := mysqlDb.GetUser(editor, user.Name, user.Host, false)
 		if existingUser == nil {
 			if n.IfExists {
 				continue
@@ -122,29 +122,20 @@ func (n *DropUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		}
 
 		//TODO: if a user is mentioned in the "mandatory_roles" (users and roles are interchangeable) system variable then they cannot be dropped
-		err := userTableData.Remove(ctx, mysql_db.UserPrimaryKey{
+		editor.RemoveUser(mysql_db.UserPrimaryKey{
 			Host: existingUser.Host,
 			User: existingUser.User,
-		}, nil)
-		if err != nil {
-			return nil, err
-		}
-		err = roleEdgesData.Remove(ctx, mysql_db.RoleEdgesFromKey{
+		})
+		editor.RemoveRoleEdgesFromKey(mysql_db.RoleEdgesFromKey{
 			FromHost: existingUser.Host,
 			FromUser: existingUser.User,
-		}, nil)
-		if err != nil {
-			return nil, err
-		}
-		err = roleEdgesData.Remove(ctx, mysql_db.RoleEdgesToKey{
+		})
+		editor.RemoveRoleEdgesToKey(mysql_db.RoleEdgesToKey{
 			ToHost: existingUser.Host,
 			ToUser: existingUser.User,
-		}, nil)
-		if err != nil {
-			return nil, err
-		}
+		})
 	}
-	if err := mysqlDb.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx, editor); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil

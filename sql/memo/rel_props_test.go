@@ -214,6 +214,10 @@ func (dummyIndex) IsSpatial() bool {
 	return false
 }
 
+func (dummyIndex) IsFullText() bool {
+	return false
+}
+
 func (dummyIndex) Comment() string {
 	return ""
 }
