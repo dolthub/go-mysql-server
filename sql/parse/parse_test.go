@@ -34,6 +34,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 var showCollationProjection = plan.NewProject([]sql.Expression{
@@ -5040,6 +5041,7 @@ END`,
 
 	for _, tt := range fixtures {
 		t.Run(tt.input, func(t *testing.T) {
+			variables.InitSystemVariables()
 			require := require.New(t)
 			ctx := sql.NewEmptyContext()
 			p, err := Parse(ctx, tt.input)
