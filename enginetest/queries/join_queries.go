@@ -759,7 +759,7 @@ var JoinScriptTests = []ScriptTest{
 			// Basic tests
 			{
 				Query:       "select * from t1 join t2 using (badcol);",
-				ExpectedErr: sql.ErrUnknownColumn,
+				ExpectedErr: sql.ErrColumnNotFound, // Should be 'Unknown column badcol in from clause'
 			},
 			{
 				Query: "select i from t1 join t2 using (i);",

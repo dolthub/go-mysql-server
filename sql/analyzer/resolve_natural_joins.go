@@ -117,7 +117,7 @@ func resolveNaturalJoin(n *plan.JoinNode, replacements map[tableCol]tableCol, sh
 			lIdx, lCol := findCol(lSch, colName)
 			rIdx, rCol := findCol(rSch, colName)
 			if lIdx == -1 || rIdx == -1 {
-				return nil, sql.ErrUnknownColumn.New(colName, "from clause")
+				return nil, sql.ErrColumnNotFound.New(colName)
 			}
 			lSrc, rSrc := strings.ToLower(lCol.Source), strings.ToLower(rCol.Source)
 			if shouldReplace {
