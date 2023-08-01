@@ -769,7 +769,7 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "select j from t1 join t2 using (i);",
+				Query:       "select j from t1 join t2 using (i);",
 				ExpectedErr: sql.ErrAmbiguousColumnName,
 			},
 			{
