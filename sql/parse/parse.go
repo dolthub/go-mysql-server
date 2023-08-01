@@ -1402,7 +1402,7 @@ func convertAlterTable(ctx *sql.Context, query string, c *sqlparser.AlterTable) 
 		}
 		return false
 	})
-	
+
 	return plan.NewBlock(statements), nil
 }
 
