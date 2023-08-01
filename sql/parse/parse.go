@@ -1402,8 +1402,7 @@ func convertAlterTable(ctx *sql.Context, query string, c *sqlparser.AlterTable) 
 		}
 		return false
 	})
-
-	// TODO: getting two statements for CREATE UNIQUE INDEX here, need to know why
+	
 	return plan.NewBlock(statements), nil
 }
 
