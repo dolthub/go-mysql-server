@@ -413,6 +413,73 @@ func (db *MySQLDb) LoadData(ctx *sql.Context, buf []byte) (err error) {
 	return
 }
 
+// OverwriteUsersAndGrantData replaces the users and grant data served by this
+// MySQL DB instance with the data which is present in the provided byte
+// buffer, which is a persisted copy of a MySQLDb created with `Persist`. In
+// contrast to LoadData, it *does* remove current data in the database.
+//
+// This interface is appropriate for replication, when a replica needs to be
+// brought up to date with a primary server.
+//
+// This method does not support the legacy JSON serialization of users and
+// grant data. In contrast to most methods which operate with persisted users
+// and grants in *MySQLDb, this method _does_ restore persisted super users.
+func (db *MySQLDb) OverwriteUsersAndGrantData(ctx *sql.Context, ed *Editor, buf []byte) (err error) {
+	// Recover from panics
+	defer func() {
+		if recover() != nil {
+			err = fmt.Errorf("ill formatted privileges file")
+		}
+	}()
+
+	// Deserialize the flatbuffer
+	serialMySQLDb := serial.GetRootAsMySQLDb(buf, 0)
+
+	// In order to make certain we can read the entire serialized message,
+	// we load it fully into *User and *RoleEdge instances before we mutate
+	// our maps at all.
+	var users []*User
+	var edges []*RoleEdge
+
+	// Load all users
+	for i := 0; i < serialMySQLDb.UserLength(); i++ {
+		serialUser := new(serial.User)
+		if !serialMySQLDb.User(serialUser, i) {
+			continue
+		}
+		users = append(users, LoadUser(serialUser))
+	}
+	for i := 0; i < serialMySQLDb.SuperUserLength(); i++ {
+		serialUser := new(serial.User)
+		if !serialMySQLDb.SuperUser(serialUser, i) {
+			continue
+		}
+		user := LoadUser(serialUser)
+		user.IsSuperUser = true
+		users = append(users, user)
+	}
+
+	// Load all role edges
+	for i := 0; i < serialMySQLDb.RoleEdgesLength(); i++ {
+		serialRoleEdge := new(serial.RoleEdge)
+		if !serialMySQLDb.RoleEdges(serialRoleEdge, i) {
+			continue
+		}
+		edges = append(edges, LoadRoleEdge(serialRoleEdge))
+	}
+
+	ed.reader.users.Clear()
+	ed.reader.roleEdges.Clear()
+	for _, u := range users {
+		ed.PutUser(u)
+	}
+	for _, e := range edges {
+		ed.PutRoleEdge(e)
+	}
+
+	return
+}
+
 // SetPersister sets the custom persister to be used when the MySQL Db tables have been updated and need to be persisted.
 func (db *MySQLDb) SetPersister(persister MySQLDbPersistence) {
 	db.persister = persister
@@ -760,9 +827,12 @@ func (db *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.G
 func (db *MySQLDb) Persist(ctx *sql.Context, ed *Editor) error {
 	// Extract all user entries from table, and sort
 	var users []*User
+	var superUsers []*User
 	ed.VisitUsers(func(u *User) {
 		if !u.IsSuperUser {
 			users = append(users, u)
+		} else {
+			superUsers = append(superUsers, u)
 		}
 	})
 	sort.Slice(users, func(i, j int) bool {
@@ -770,6 +840,12 @@ func (db *MySQLDb) Persist(ctx *sql.Context, ed *Editor) error {
 			return users[i].User < users[j].User
 		}
 		return users[i].Host < users[j].Host
+	})
+	sort.Slice(superUsers, func(i, j int) bool {
+		if superUsers[i].Host == superUsers[j].Host {
+			return superUsers[i].User < superUsers[j].User
+		}
+		return superUsers[i].Host < superUsers[j].Host
 	})
 
 	// Extract all role entries from table, and sort
@@ -812,12 +888,14 @@ func (db *MySQLDb) Persist(ctx *sql.Context, ed *Editor) error {
 	user := serializeUser(b, users)
 	roleEdge := serializeRoleEdge(b, roles)
 	replicaSourceInfo := serializeReplicaSourceInfo(b, replicaSourceInfos)
+	superUser := serializeUser(b, superUsers)
 
 	// Write MySQL DB
 	serial.MySQLDbStart(b)
 	serial.MySQLDbAddUser(b, user)
 	serial.MySQLDbAddRoleEdges(b, roleEdge)
 	serial.MySQLDbAddReplicaSourceInfo(b, replicaSourceInfo)
+	serial.MySQLDbAddSuperUser(b, superUser)
 	mysqlDbOffset := serial.MySQLDbEnd(b)
 
 	// Finish writing

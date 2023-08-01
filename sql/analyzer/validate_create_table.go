@@ -632,9 +632,11 @@ func validateIndexes(ctx *sql.Context, tableSpec *plan.TableSpec) error {
 			if !ok {
 				return sql.ErrUnknownIndexColumn.New(idxCol.Name, idx.IndexName)
 			}
-			err := validatePrefixLength(ctx, schCol, idxCol)
-			if err != nil {
-				return err
+			if !idx.IsFullText() {
+				err := validatePrefixLength(ctx, schCol, idxCol)
+				if err != nil {
+					return err
+				}
 			}
 		}
 		if idx.Constraint == sql.IndexConstraint_Spatial {

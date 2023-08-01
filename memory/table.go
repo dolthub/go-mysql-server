@@ -1585,6 +1585,7 @@ func (t *Table) RenameIndex(ctx *sql.Context, fromIndexName string, toIndexName 
 	if idx, ok := t.indexes[fromIndexName]; ok {
 		delete(t.indexes, fromIndexName)
 		t.indexes[toIndexName] = idx
+		idx.(*Index).Name = toIndexName
 	}
 	return nil
 }

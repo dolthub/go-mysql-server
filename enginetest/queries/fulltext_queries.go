@@ -174,6 +174,27 @@ var FulltextTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "Basic matching 2 UKs Non-Sequential",
+		SetUpScript: []string{
+			"CREATE TABLE test (uk1 BIGINT UNSIGNED NOT NULL, uk2 BIGINT UNSIGNED NOT NULL, v1 VARCHAR(200), v2 VARCHAR(200), UNIQUE KEY (uk1, uk2), FULLTEXT idx (v1, v2));",
+			"INSERT INTO test VALUES (1, 1, 'abc', 'def pqr'), (2, 1, 'ghi', 'jkl'), (3, 1, 'mno', 'mno'), (4, 1, 'stu vwx', 'xyz zyx yzx'), (5, 1, 'ghs', 'mno shg');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
+				Expected: []sql.Row{{uint64(2), uint64(1), "ghi", "jkl"}},
+			},
+			{
+				Query:    "SELECT v2, uk2 FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
+				Expected: []sql.Row{{"jkl", uint64(1)}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl mno');",
+				Expected: []sql.Row{{uint64(2), uint64(1), "ghi", "jkl"}, {uint64(3), uint64(1), "mno", "mno"}, {uint64(5), uint64(1), "ghs", "mno shg"}},
+			},
+		},
+	},
+	{
 		Name: "CREATE INDEX before insertions",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT UNSIGNED PRIMARY KEY, v1 VARCHAR(200), v2 VARCHAR(200));",
@@ -383,6 +404,144 @@ var FulltextTests = []ScriptTest{
 			{ // This is mainly to check for a panic
 				Query:    "DROP TABLE test;",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
+	{
+		Name: "No prefix needed for TEXT columns",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CREATE TABLE `film_text` (`film_id` SMALLINT NOT NULL, `title` VARCHAR(255) NOT NULL, `description` TEXT, PRIMARY KEY (`film_id`), FULLTEXT KEY `idx_title_description` (`title`,`description`));",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
+	{
+		Name: "Rename new table to match old table",
+		SetUpScript: []string{
+			"CREATE TABLE test1 (v1 VARCHAR(200), v2 VARCHAR(200), FULLTEXT idx (v1, v2));",
+			"INSERT INTO test1 VALUES ('abc', 'def');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "RENAME TABLE test1 TO test2;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT * FROM test2 WHERE MATCH(v1, v2) AGAINST ('abc');",
+				Expected: []sql.Row{{"abc", "def"}},
+			},
+			{
+				Query:    "CREATE TABLE test1 (v1 VARCHAR(200), v2 VARCHAR(200), FULLTEXT idx (v1, v2));",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "INSERT INTO test1 VALUES ('ghi', 'jkl');",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT * FROM test1 WHERE MATCH(v1, v2) AGAINST ('abc');",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * FROM test2 WHERE MATCH(v1, v2) AGAINST ('abc');",
+				Expected: []sql.Row{{"abc", "def"}},
+			},
+			{
+				Query:    "SELECT * FROM test1 WHERE MATCH(v1, v2) AGAINST ('jkl');",
+				Expected: []sql.Row{{"ghi", "jkl"}},
+			},
+			{
+				Query:    "SELECT * FROM test2 WHERE MATCH(v1, v2) AGAINST ('jkl');",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "Rename index",
+		SetUpScript: []string{
+			"CREATE TABLE test (v1 VARCHAR(200), v2 VARCHAR(200), FULLTEXT idx (v2, v1));",
+			"INSERT INTO test VALUES ('abc', 'def');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SHOW CREATE TABLE test;",
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `v1` varchar(200),\n  `v2` varchar(200),\n  FULLTEXT KEY `idx` (`v2`,`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "ALTER TABLE test RENAME INDEX idx TO new_idx;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('abc');",
+				Expected: []sql.Row{{"abc", "def"}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE test;",
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `v1` varchar(200),\n  `v2` varchar(200),\n  FULLTEXT KEY `new_idx` (`v2`,`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "Multiple overlapping indexes",
+		SetUpScript: []string{
+			"CREATE TABLE test (v1 TEXT, v2 VARCHAR(200), v3 MEDIUMTEXT, FULLTEXT idx1 (v1, v2), FULLTEXT idx2 (v1, v3), FULLTEXT idx3 (v2, v3));",
+			"INSERT INTO test VALUES ('abc', 'def', 'ghi');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('abc');",
+				Expected: []sql.Row{{"abc", "def", "ghi"}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('def');",
+				Expected: []sql.Row{{"abc", "def", "ghi"}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v3) AGAINST ('abc');",
+				Expected: []sql.Row{{"abc", "def", "ghi"}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v3) AGAINST ('def');",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v3) AGAINST ('ghi');",
+				Expected: []sql.Row{{"abc", "def", "ghi"}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v2, v3) AGAINST ('abc');",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v2, v3) AGAINST ('def');",
+				Expected: []sql.Row{{"abc", "def", "ghi"}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v2, v3) AGAINST ('ghi');",
+				Expected: []sql.Row{{"abc", "def", "ghi"}},
+			},
+		},
+	},
+	{
+		Name: "Duplicate column names",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "CREATE TABLE test (v1 VARCHAR(200), v2 VARCHAR(200), FULLTEXT idx (v1, v1));",
+				ExpectedErr: sql.ErrFullTextDuplicateColumn,
+			},
+		},
+	},
+	{
+		Name: "References missing column",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "CREATE TABLE test (v1 VARCHAR(200), v2 VARCHAR(200), FULLTEXT idx (v3));",
+				ExpectedErr: sql.ErrUnknownIndexColumn,
 			},
 		},
 	},
