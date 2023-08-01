@@ -913,12 +913,17 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 }
 
 func (b *BaseBuilder) buildCreateProcedure(ctx *sql.Context, n *plan.CreateProcedure, row sql.Row) (sql.RowIter, error) {
+	sqlMode, err := sql.LoadSqlMode(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return &createProcedureIter{
 		spd: sql.StoredProcedureDetails{
 			Name:            n.Name,
 			CreateStatement: n.CreateProcedureString,
 			CreatedAt:       n.CreatedAt,
 			ModifiedAt:      n.ModifiedAt,
+			AnsiQuotes:      sqlMode.AnsiQuotes(),
 		},
 		db: n.Database(),
 	}, nil

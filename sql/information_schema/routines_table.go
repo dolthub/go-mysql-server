@@ -18,26 +18,25 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
-
 	. "github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 type routineTable struct {
 	name       string
 	schema     Schema
 	catalog    Catalog
-	procedures map[string][]*plan.Procedure
+	procedures map[string][]StoredProcedureDetails
+
 	// functions
-	rowIter func(*Context, Catalog, map[string][]*plan.Procedure) (RowIter, error)
+	rowIter func(*Context, Catalog, map[string][]StoredProcedureDetails) (RowIter, error)
 }
 
-var (
-	_ Table = (*routineTable)(nil)
-)
+var _ Table = (*routineTable)(nil)
 
 var doltProcedureAliasSet = map[string]interface{}{
 	"dadd":                    nil,
@@ -65,10 +64,8 @@ func (t *routineTable) AssignCatalog(cat Catalog) Table {
 	return t
 }
 
-func (r *routineTable) AssignProcedures(p map[string][]*plan.Procedure) Table {
-	// TODO: should also assign functions
+func (r *routineTable) AssignProcedures(p map[string][]StoredProcedureDetails) {
 	r.procedures = p
-	return r
 }
 
 // Name implements the sql.Table interface.
@@ -109,7 +106,7 @@ func (r *routineTable) PartitionRows(context *Context, partition Partition) (Row
 }
 
 // routinesRowIter implements the sql.RowIter for the information_schema.ROUTINES table.
-func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (RowIter, error) {
+func routinesRowIter(ctx *Context, c Catalog, p map[string][]StoredProcedureDetails) (RowIter, error) {
 	var rows []Row
 	var (
 		securityType    string
@@ -126,6 +123,8 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 		return nil, err
 	}
 
+	// TODO: information_schema.routines should show the SQL_MODE used when the routine was defined,
+	//       not the current session's SQL_MODE
 	sysVal, err := ctx.Session.GetSessionVariable(ctx, "sql_mode")
 	if err != nil {
 		return nil, err
@@ -153,30 +152,43 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 		}
 		dbCollation := plan.GetDatabaseCollation(ctx, db)
 		for _, procedure := range procedures {
+			parsedNode, err := parse.ParseWithOptions(ctx, procedure.CreateStatement,
+				sqlparser.ParserOptions{AnsiQuotes: procedure.AnsiQuotes})
+			if err != nil {
+				return nil, err
+			}
+
+			parsedCreateProcedure, ok := parsedNode.(*plan.CreateProcedure)
+			if !ok {
+				// TODO: fix me
+				panic("uhoh!")
+			}
+
 			// Skip dolt procedure aliases to show in this table
 			if _, isAlias := doltProcedureAliasSet[procedure.Name]; isAlias {
 				continue
 			}
 			// We skip external procedures if the variable to show them is set to false
-			if showExternalProcedures.(int8) == 0 && procedure.IsExternal() {
+			if showExternalProcedures.(int8) == 0 && parsedCreateProcedure.IsExternal() {
 				continue
 			}
 
-			parsedProcedure, err := parse.Parse(ctx, procedure.CreateProcedureString)
+			parsedProcedure, err := parse.ParseWithOptions(ctx, parsedCreateProcedure.CreateProcedureString,
+				sqlparser.ParserOptions{AnsiQuotes: procedure.AnsiQuotes})
 			if err != nil {
 				return nil, err
 			}
 			procedurePlan, ok := parsedProcedure.(*plan.CreateProcedure)
 			if !ok {
-				return nil, ErrProcedureCreateStatementInvalid.New(procedure.CreateProcedureString)
+				return nil, ErrProcedureCreateStatementInvalid.New(parsedCreateProcedure.CreateProcedureString)
 			}
 			routineDef := procedurePlan.BodyString
-			definer := removeBackticks(procedure.Definer)
+			definer := removeBackticks(parsedCreateProcedure.Definer)
 
 			securityType = "DEFINER"
 			isDeterministic = "NO" // YES or NO
 			sqlDataAccess = "CONTAINS SQL"
-			for _, ch := range procedure.Characteristics {
+			for _, ch := range parsedCreateProcedure.Characteristics {
 				if ch == plan.Characteristic_LanguageSql {
 
 				}
@@ -198,41 +210,41 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 				}
 			}
 
-			if procedure.SecurityContext == plan.ProcedureSecurityContext_Invoker {
+			if parsedCreateProcedure.SecurityContext == plan.ProcedureSecurityContext_Invoker {
 				securityType = "INVOKER"
 			}
 			rows = append(rows, Row{
-				procedure.Name,             // specific_name NOT NULL
-				"def",                      // routine_catalog
-				dbName,                     // routine_schema
-				procedure.Name,             // routine_name NOT NULL
-				"PROCEDURE",                // routine_type NOT NULL
-				"",                         // data_type
-				nil,                        // character_maximum_length
-				nil,                        // character_octet_length
-				nil,                        // numeric_precision
-				nil,                        // numeric_scale
-				nil,                        // datetime_precision
-				nil,                        // character_set_name
-				nil,                        // collation_name
-				nil,                        // dtd_identifier
-				"SQL",                      // routine_body NOT NULL
-				routineDef,                 // routine_definition
-				nil,                        // external_name
-				"SQL",                      // external_language NOT NULL
-				"SQL",                      // parameter_style NOT NULL
-				isDeterministic,            // is_deterministic NOT NULL
-				sqlDataAccess,              // sql_data_access NOT NULL
-				nil,                        // sql_path
-				securityType,               // security_type NOT NULL
-				procedure.CreatedAt.UTC(),  // created NOT NULL
-				procedure.ModifiedAt.UTC(), // last_altered NOT NULL
-				sqlMode,                    // sql_mode NOT NULL
-				procedure.Comment,          // routine_comment NOT NULL
-				definer,                    // definer NOT NULL
-				characterSetClient,         // character_set_client NOT NULL
-				collationConnection,        // collation_connection NOT NULL
-				dbCollation.String(),       // database_collation NOT NULL
+				procedure.Name,                // specific_name NOT NULL
+				"def",                         // routine_catalog
+				dbName,                        // routine_schema
+				procedure.Name,                // routine_name NOT NULL
+				"PROCEDURE",                   // routine_type NOT NULL
+				"",                            // data_type
+				nil,                           // character_maximum_length
+				nil,                           // character_octet_length
+				nil,                           // numeric_precision
+				nil,                           // numeric_scale
+				nil,                           // datetime_precision
+				nil,                           // character_set_name
+				nil,                           // collation_name
+				nil,                           // dtd_identifier
+				"SQL",                         // routine_body NOT NULL
+				routineDef,                    // routine_definition
+				nil,                           // external_name
+				"SQL",                         // external_language NOT NULL
+				"SQL",                         // parameter_style NOT NULL
+				isDeterministic,               // is_deterministic NOT NULL
+				sqlDataAccess,                 // sql_data_access NOT NULL
+				nil,                           // sql_path
+				securityType,                  // security_type NOT NULL
+				procedure.CreatedAt.UTC(),     // created NOT NULL
+				procedure.ModifiedAt.UTC(),    // last_altered NOT NULL
+				sqlMode,                       // sql_mode NOT NULL
+				parsedCreateProcedure.Comment, // routine_comment NOT NULL
+				definer,                       // definer NOT NULL
+				characterSetClient,            // character_set_client NOT NULL
+				collationConnection,           // collation_connection NOT NULL
+				dbCollation.String(),          // database_collation NOT NULL
 			})
 		}
 	}
@@ -243,7 +255,7 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 }
 
 // parametersRowIter implements the sql.RowIter for the information_schema.PARAMETERS table.
-func parametersRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (RowIter, error) {
+func parametersRowIter(ctx *Context, c Catalog, p map[string][]StoredProcedureDetails) (RowIter, error) {
 	var rows []Row
 
 	showExternalProcedures, err := ctx.GetSessionVariable(ctx, "show_external_procedures")
@@ -259,16 +271,28 @@ func parametersRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) 
 			continue
 		}
 		for _, procedure := range procedures {
+			parsedNode, err := parse.ParseWithOptions(ctx, procedure.CreateStatement,
+				sqlparser.ParserOptions{AnsiQuotes: procedure.AnsiQuotes})
+			if err != nil {
+				return nil, err
+			}
+
+			parsedCreateProcedure, ok := parsedNode.(*plan.CreateProcedure)
+			if !ok {
+				// TODO: Fix me!
+				panic("uh oh2!")
+			}
+
 			// Skip dolt procedure aliases to show in this table
 			if _, isAlias := doltProcedureAliasSet[procedure.Name]; isAlias {
 				continue
 			}
 			// We skip external procedures if the variable to show them is set to false
-			if showExternalProcedures.(int8) == 0 && procedure.IsExternal() {
+			if showExternalProcedures.(int8) == 0 && parsedCreateProcedure.IsExternal() {
 				continue
 			}
 
-			for i, param := range procedure.Params {
+			for i, param := range parsedCreateProcedure.Params {
 				var (
 					ordinalPos        = uint64(i + 1)
 					datetimePrecision interface{}

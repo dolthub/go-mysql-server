@@ -25,7 +25,7 @@ type RoutineTable interface {
 	sql.Table
 
 	// AssignProcedures assigns a map of db-procedures to the routines table.
-	AssignProcedures(p map[string][]*plan.Procedure) sql.Table
+	AssignProcedures(p map[string][]sql.StoredProcedureDetails)
 	// TODO: also should assign FUNCTIONS
 }
 
@@ -43,26 +43,23 @@ func assignRoutines(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope
 		case *plan.ResolvedTable:
 			nc := *node
 			ct, ok := nc.Table.(RoutineTable)
-
-			var err error
-			scope, err = loadStoredProcedures(ctx, a, n, scope, sel)
-			if err != nil {
-				return nil, false, err
+			if !ok {
+				return node, transform.SameTree, nil
 			}
 
-			dbs := a.Catalog.AllDatabases(ctx)
-			pm := make(map[string][]*plan.Procedure)
-			for _, db := range dbs {
-				if scope != nil && scope.Procedures != nil {
-					pm[db.Name()] = scope.Procedures.AllForDatabase(db.Name())
+			procedureMap := make(map[string][]sql.StoredProcedureDetails)
+			for _, db := range a.Catalog.AllDatabases(ctx) {
+				if storedProcedureDb, ok := db.(sql.StoredProcedureDatabase); ok {
+					procedures, err := storedProcedureDb.GetStoredProcedures(ctx)
+					if err != nil {
+						return node, transform.SameTree, err
+					}
+					procedureMap[db.Name()] = procedures
 				}
 			}
 
-			if ok {
-				nc.Table = ct.AssignProcedures(pm)
-				return &nc, transform.NewTree, nil
-			}
-			return node, transform.SameTree, nil
+			ct.AssignProcedures(procedureMap)
+			return &nc, transform.NewTree, nil
 		default:
 			return node, transform.SameTree, nil
 		}

@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 // loadStoredProcedures loads non-built-in stored procedures for all databases on relevant calls.
@@ -51,7 +52,8 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 			}
 
 			for _, procedure := range procedures {
-				parsedProcedure, err := parse.Parse(ctx, procedure.CreateStatement)
+				parsedProcedure, err := parse.ParseWithOptions(ctx, procedure.CreateStatement,
+					sqlparser.ParserOptions{AnsiQuotes: procedure.AnsiQuotes})
 				if err != nil {
 					return nil, err
 				}
@@ -312,7 +314,8 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				}
 				return nil, transform.SameTree, err
 			}
-			parsedProcedure, err := parse.Parse(ctx, procedure.CreateStatement)
+			parsedProcedure, err := parse.ParseWithOptions(ctx, procedure.CreateStatement,
+				sqlparser.ParserOptions{AnsiQuotes: procedure.AnsiQuotes})
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
