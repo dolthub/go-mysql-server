@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -26,7 +27,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 // loadStoredProcedures loads non-built-in stored procedures for all databases on relevant calls.
@@ -61,7 +61,7 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 					b.ProcCtx().Active = false
 				} else {
 					parsedProcedure, err = parse.ParseWithOptions(ctx, procedure.CreateStatement,
-					sqlparser.ParserOptions{AnsiQuotes: procedure.AnsiQuotes})
+						sqlparser.ParserOptions{AnsiQuotes: procedure.AnsiQuotes})
 				}
 				if err != nil {
 					return nil, err
@@ -338,7 +338,7 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				b.ProcCtx().Active = false
 			} else {
 				parsedProcedure, err = parse.ParseWithOptions(ctx, procedure.CreateStatement,
-				sqlparser.ParserOptions{AnsiQuotes: procedure.AnsiQuotes})
+					sqlparser.ParserOptions{AnsiQuotes: procedure.AnsiQuotes})
 			}
 			if err != nil {
 				return nil, transform.SameTree, err

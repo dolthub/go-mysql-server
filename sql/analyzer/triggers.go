@@ -193,7 +193,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 				b.TriggerCtx().Call = false
 			} else {
 				parsedTrigger, err = parse.ParseWithOptions(ctx, trigger.CreateStatement,
-				sqlparser.ParserOptions{AnsiQuotes: trigger.AnsiQuotes})
+					sqlparser.ParserOptions{AnsiQuotes: trigger.AnsiQuotes})
 			}
 			if err != nil {
 				return nil, transform.SameTree, err

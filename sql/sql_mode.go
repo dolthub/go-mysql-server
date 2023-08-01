@@ -16,8 +16,9 @@ package sql
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"strings"
+
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 // SqlMode encodes the SQL mode string and provides methods for querying the enabled modes.
