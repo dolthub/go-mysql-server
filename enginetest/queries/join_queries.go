@@ -762,7 +762,6 @@ var JoinScriptTests = []ScriptTest{
 				ExpectedErr: sql.ErrUnknownColumn,
 			},
 			{
-				Skip: true,
 				Query: "select i from t1 join t2 using (i);",
 				Expected: []sql.Row{
 					{1},
@@ -770,15 +769,12 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip: true,
 				Query: "select j from t1 join t2 using (i);",
 				ExpectedErr: sql.ErrAmbiguousColumnName,
 			},
 			{
-				Skip: true,
 				Query: "select i from t1 natural join t2;",
 				Expected: []sql.Row{
-					{1},
 					{2},
 				},
 			},
@@ -921,7 +917,6 @@ var JoinScriptTests = []ScriptTest{
 
 			// Nested Join
 			{
-				Skip:  true,
 				Query: "select t1.i, t1.j, t2.i, t2.j, t3.i, t3.j from t1 join t2 using (i) join t3 using (i);",
 				Expected: []sql.Row{
 					{1, 10, 1, 30, 1, 200},

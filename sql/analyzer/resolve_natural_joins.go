@@ -39,24 +39,11 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, node sql.Node, scope *pl
 
 	var replacements = make(map[tableCol]tableCol)
 	return transform.NodeWithCtx(node, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		shouldReplace := false
+		shouldReplace := true
 		if proj, isProj := c.Parent.(*plan.Project); isProj {
 			for _, expr := range proj.Projections {
-				// TODO: if there's qualified you can't replace
-				// TODO: what if there's both??
-				switch e := expr.(type) {
-				case *expression.GetField:
-					if e.Table() == "" {
-						shouldReplace = true
-						break
-					}
-				case *expression.UnresolvedColumn:
-					if e.Table() == "" {
-						shouldReplace = true
-						break
-					}
-				case *expression.Star:
-					shouldReplace = true
+				if isQualifiedExpr(expr) {
+					shouldReplace = false
 					break
 				}
 			}
@@ -81,11 +68,11 @@ func resolveNaturalJoin(n *plan.JoinNode, replacements map[tableCol]tableCol, sh
 		return n, nil
 	}
 
+	// TODO: right joins actually swap left and right
 	var conds, common, left, right []sql.Expression
 	lSch, rSch := n.Left().Schema(), n.Right().Schema()
 	lSchLen := len(lSch)
-
-	// TODO: right joins actually swap left and right
+	usedCols := map[string]struct{}{}
 
 	// if UsingCols is empty, it is a natural join
 	if len(n.UsingCols) == 0 {
@@ -104,8 +91,10 @@ func resolveNaturalJoin(n *plan.JoinNode, replacements map[tableCol]tableCol, sh
 				continue
 			}
 			rSrc, rName := strings.ToLower(rCol.Source), strings.ToLower(rCol.Name)
-			replacements[tableCol{rSrc, rName}] = tableCol{lSrc, lName}
-			replacements[tableCol{"", rName}] = tableCol{lSrc, lName}
+			if shouldReplace {
+				replacements[tableCol{rSrc, rName}] = tableCol{lSrc, lName}
+				replacements[tableCol{"", rName}] = tableCol{lSrc, lName}
+			}
 			rgf := expression.NewGetFieldWithTable(
 				lSchLen+rIdx,
 				rCol.Type,
@@ -115,6 +104,7 @@ func resolveNaturalJoin(n *plan.JoinNode, replacements map[tableCol]tableCol, sh
 			)
 			common = append(common, lgf)
 			conds = append(conds, expression.NewEquals(lgf, rgf))
+			usedCols[lName] = struct{}{}
 		}
 	} else {
 		// TODO: the order of common needs to match left
@@ -126,8 +116,10 @@ func resolveNaturalJoin(n *plan.JoinNode, replacements map[tableCol]tableCol, sh
 				return nil, sql.ErrUnknownColumn.New(colName, "from clause")
 			}
 			lSrc, rSrc := strings.ToLower(lCol.Source), strings.ToLower(rCol.Source)
-			replacements[tableCol{rSrc, colName}] = tableCol{lSrc, colName}
-			replacements[tableCol{"", colName}] = tableCol{lSrc, colName}
+			if shouldReplace {
+				replacements[tableCol{rSrc, colName}] = tableCol{lSrc, colName}
+				replacements[tableCol{"", colName}] = tableCol{lSrc, colName}
+			}
 			lgf := expression.NewGetFieldWithTable(
 				lIdx,
 				lCol.Type,
@@ -144,12 +136,13 @@ func resolveNaturalJoin(n *plan.JoinNode, replacements map[tableCol]tableCol, sh
 			)
 			common = append(common, lgf)
 			conds = append(conds, expression.NewEquals(lgf, rgf))
+			usedCols[colName] = struct{}{}
 		}
 
 		// Add remaining left columns
 		for lIdx, lCol := range lSch {
 			lName := strings.ToLower(lCol.Name)
-			if _, ok := replacements[tableCol{"", lName}]; !ok {
+			if _, ok := usedCols[lName]; !ok {
 				lgf := expression.NewGetFieldWithTable(
 					lIdx,
 					lCol.Type,
@@ -164,8 +157,8 @@ func resolveNaturalJoin(n *plan.JoinNode, replacements map[tableCol]tableCol, sh
 
 	// Add remaining right columns
 	for rIdx, rCol := range rSch {
-		rSrc, rName := strings.ToLower(rCol.Source), strings.ToLower(rCol.Name)
-		if _, ok := replacements[tableCol{rSrc, rName}]; !ok {
+		rName := strings.ToLower(rCol.Name)
+		if _, ok := usedCols[rName]; !ok {
 			rgf := expression.NewGetFieldWithTable(
 				lSchLen+rIdx,
 				rCol.Type,
@@ -210,7 +203,18 @@ func findCol(s sql.Schema, name string) (int, *sql.Column) {
 	return -1, nil
 }
 
-// replaceExpressionsForNaturalJoin unresolves all expressions that refer to columns that are being replaced by a natural join.
+func isQualifiedExpr(expr sql.Expression) bool {
+	switch e := expr.(type) {
+	case *expression.GetField:
+		return e.Table() != ""
+	case *expression.UnresolvedColumn:
+		return e.Table() != ""
+	default:
+		return false
+	}
+}
+
+// replaceExpressionsForNaturalJoin replaces all expressions that refer to columns that are being replaced by a natural join.
 func replaceExpressionsForNaturalJoin(n sql.Node, replacements map[tableCol]tableCol) (sql.Node, transform.TreeIdentity, error) {
 	return transform.OneNodeExprsWithNode(n, func(_ sql.Node, expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := expr.(type) {

@@ -109,6 +109,22 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 			condParts[i] = expression.NewEquals(leftGet, rightGet)
 		}
 		filter = expression.JoinAnd(condParts...)
+
+		conds := make([]string, len(te.Condition.Using))
+		for i, col := range te.Condition.Using {
+			conds[i] = col.String()
+		}
+		switch strings.ToLower(te.Join) {
+		case ast.JoinStr:
+			outScope.node = plan.NewUsingJoin(leftScope.node, rightScope.node, plan.JoinTypeInner, conds)
+		case ast.LeftJoinStr:
+			outScope.node = plan.NewUsingJoin(leftScope.node, rightScope.node, plan.JoinTypeLeftOuter, conds)
+		case ast.RightJoinStr:
+			outScope.node = plan.NewUsingJoin(leftScope.node, rightScope.node, plan.JoinTypeRightOuter, conds)
+		default:
+			b.handleErr(fmt.Errorf("unknown using join type: %s", te.Join))
+		}
+		return outScope
 	}
 
 	var op plan.JoinType
