@@ -270,19 +270,25 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "trigger with signal and user var",
+			Name: "DELETE ME",
 			SetUpScript: []string{
-				"CREATE TABLE sales (year_built int primary key, CONSTRAINT `valid_year_built` CHECK (year_built <= 2022));",
-				"INSERT INTO sales VALUES (1981);",
+				"create table t1 (i int primary key, j int);",
+				"create table t2 (i int primary key, j int);",
+				"create table t3 (i int primary key, j int);",
+				"insert into t1 values (1, 10), (2, 20), (3, 30);",
+				"insert into t2 values (1, 30), (2, 20), (5, 50);",
+				"insert into t3 values (1, 200), (2, 20), (6, 600);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "UPDATE sales JOIN (SELECT year_built FROM sales) AS t ON sales.year_built = t.year_built SET sales.year_built = 1901;",
-
-					Expected: []sql.Row{},
+					Query: "select i from t1 left join t2 using (i);",
+					Expected: []sql.Row{
+						//{1, 10, 1, 30},
+						//{2, 20, 2, 20},
+						//{3, 30, nil, nil},
+					},
 				},
 			},
 		},
@@ -294,32 +300,60 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		engine.Analyzer.Debug = true
-		engine.Analyzer.Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
+	//t.Skip()
+	//var scripts = []queries.ScriptTest{
+	//	{
+	//		Name: "trigger with signal and user var",
+	//		SetUpScript: []string{
+	//			"CREATE TABLE sales (year_built int primary key, CONSTRAINT `valid_year_built` CHECK (year_built <= 2022));",
+	//			"INSERT INTO sales VALUES (1981);",
+	//		},
+	//		Assertions: []queries.ScriptTestAssertion{
+	//			{
+	//				Query: "UPDATE sales JOIN (SELECT year_built FROM sales) AS t ON sales.year_built = t.year_built SET sales.year_built = 1901;",
+	//
+	//				Expected: []sql.Row{},
+	//			},
+	//		},
+	//	},
+	//}
+	//
+	//for _, test := range scripts {
+	//	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+	//	engine, err := harness.NewEngine(t)
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//	engine.Analyzer.Debug = true
+	//	engine.Analyzer.Verbose = true
+	//
+	//	enginetest.TestScriptWithEngine(t, engine, harness, test)
+	//}
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript_Experimental(t *testing.T) {
-	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "lateral join basic",
+			Name: "DELETE ME",
 			SetUpScript: []string{
-				"create table t (i int primary key)",
-				"create table t1 (j int primary key)",
-				"insert into t values (1), (2), (3)",
-				"insert into t1 values (1), (4), (5)",
+				"create table t1 (i int primary key, j int);",
+				"create table t2 (i int primary key, j int);",
+				"create table t3 (i int primary key, j int);",
+				"insert into t1 values (1, 10), (2, 20), (3, 30);",
+				"insert into t2 values (1, 30), (2, 20), (5, 50);",
+				"insert into t3 values (1, 200), (2, 20), (6, 600);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: `WITH RECURSIVE cte(x) AS (SELECT 1 union all SELECT x + 1 from cte where x < 5) SELECT * FROM cte, lateral (select * from t where t.i = cte.x) tt;`,
+					Query: "select t1.i, t1.j, t2.i, t2.j from t1 left join t2 using (i);",
 					Expected: []sql.Row{
-						{1, 1},
-						{2, 2},
-						{3, 3},
+						//{1, 10, 1, 30},
+						//{2, 20, 2, 20},
+						//{3, 30, nil, nil},
 					},
 				},
 			},
@@ -332,10 +366,41 @@ func TestSingleScript_Experimental(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		engine.Analyzer.Debug = true
-		engine.Analyzer.Verbose = true
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
+	//t.Skip()
+	//var scripts = []queries.ScriptTest{
+	//	{
+	//		Name: "lateral join basic",
+	//		SetUpScript: []string{
+	//			"create table t (i int primary key)",
+	//			"create table t1 (j int primary key)",
+	//			"insert into t values (1), (2), (3)",
+	//			"insert into t1 values (1), (4), (5)",
+	//		},
+	//		Assertions: []queries.ScriptTestAssertion{
+	//			{
+	//				Query: `WITH RECURSIVE cte(x) AS (SELECT 1 union all SELECT x + 1 from cte where x < 5) SELECT * FROM cte, lateral (select * from t where t.i = cte.x) tt;`,
+	//				Expected: []sql.Row{
+	//					{1, 1},
+	//					{2, 2},
+	//					{3, 3},
+	//				},
+	//			},
+	//		},
+	//	},
+	//}
+	//
+	//for _, test := range scripts {
+	//	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental)
+	//	engine, err := harness.NewEngine(t)
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//	engine.Analyzer.Debug = true
+	//	engine.Analyzer.Verbose = true
+	//	enginetest.TestScriptWithEngine(t, engine, harness, test)
+	//}
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.

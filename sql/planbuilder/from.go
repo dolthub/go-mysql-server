@@ -78,9 +78,14 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 
 	b.validateJoinTableNames(leftScope, rightScope)
 
-	if strings.EqualFold(te.Join, ast.NaturalJoinStr) {
-		// TODO inline resolve natural join
+	if strings.EqualFold(te.Join, ast.NaturalJoinStr) ||
+		strings.EqualFold(te.Join, ast.NaturalLeftJoinStr) ||
+		strings.EqualFold(te.Join, ast.NaturalRightJoinStr) {
 		return b.buildNaturalJoin(inScope, leftScope, rightScope)
+	}
+
+	if te.Condition.Using != nil {
+		return b.buildUsingJoin(inScope, leftScope, rightScope, te, nil)
 	}
 
 	outScope = inScope.push()
@@ -100,31 +105,6 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 	var filter sql.Expression
 	if te.Condition.On != nil {
 		filter = b.buildScalar(outScope, te.Condition.On)
-	} else {
-		condParts := make([]sql.Expression, len(te.Condition.Using))
-		for i, col := range te.Condition.Using {
-			colName := ast.NewColName(col.String())
-			leftGet := b.buildScalar(leftScope, colName)
-			rightGet := b.buildScalar(rightScope, colName)
-			condParts[i] = expression.NewEquals(leftGet, rightGet)
-		}
-		filter = expression.JoinAnd(condParts...)
-
-		conds := make([]string, len(te.Condition.Using))
-		for i, col := range te.Condition.Using {
-			conds[i] = col.String()
-		}
-		switch strings.ToLower(te.Join) {
-		case ast.JoinStr:
-			outScope.node = plan.NewUsingJoin(leftScope.node, rightScope.node, plan.JoinTypeInner, conds)
-		case ast.LeftJoinStr:
-			outScope.node = plan.NewUsingJoin(leftScope.node, rightScope.node, plan.JoinTypeLeftOuter, conds)
-		case ast.RightJoinStr:
-			outScope.node = plan.NewUsingJoin(leftScope.node, rightScope.node, plan.JoinTypeRightOuter, conds)
-		default:
-			b.handleErr(fmt.Errorf("unknown using join type: %s", te.Join))
-		}
-		return outScope
 	}
 
 	var op plan.JoinType
@@ -205,6 +185,67 @@ func (b *Builder) buildNaturalJoin(inScope, leftScope, rightScope *scope) (outSc
 	jn := plan.NewJoin(leftScope.node, rightScope.node, plan.JoinTypeInner, filter)
 	outScope.node = jn
 	return
+}
+
+func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.JoinTableExpr, cols []string) (outScope *scope) {
+	outScope = inScope.push()
+
+	// Right joins swap left and right scopes.
+	// TODO: not sure this matters at this stage
+	var left, right *scope
+	if te.Join == ast.RightJoinStr || te.Join == ast.NaturalRightJoinStr {
+		left, right = rightScope, leftScope
+	} else {
+		left, right = leftScope, rightScope
+	}
+
+	// Add columns in common
+	usingCols := map[string]struct{}{}
+	for _, col := range te.Condition.Using {
+		colName := col.String()
+		// Every column in the USING clause must be in both tables.
+		lCol, ok := left.resolveColumn("", colName, false)
+		if !ok {
+			b.handleErr(sql.ErrUnknownColumn.New(colName, "from clause"))
+		}
+		rCol, ok := right.resolveColumn("", colName, false)
+		if !ok {
+			b.handleErr(sql.ErrUnknownColumn.New(colName, "from clause"))
+		}
+		usingCols[colName] = struct{}{}
+		outScope.addColumn(lCol)
+		outScope.redirect(rCol, lCol)
+	}
+
+	// Add remaining columns from left table.
+	for _, lCol := range left.cols {
+		if _, ok := usingCols[lCol.col]; !ok {
+			outScope.addColumn(lCol)
+		}
+	}
+
+	// Add remaining columns from right table.
+	for _, rCol := range right.cols {
+		if _, ok := usingCols[rCol.col]; !ok {
+			outScope.addColumn(rCol)
+		}
+	}
+
+	conds := make([]string, len(te.Condition.Using))
+	for i, col := range te.Condition.Using {
+		conds[i] = col.String()
+	}
+	switch strings.ToLower(te.Join) {
+	case ast.JoinStr:
+		outScope.node = plan.NewUsingJoin(left.node, right.node, plan.JoinTypeInner, conds)
+	case ast.LeftJoinStr:
+		outScope.node = plan.NewUsingJoin(left.node, right.node, plan.JoinTypeLeftOuter, conds)
+	case ast.RightJoinStr:
+		outScope.node = plan.NewUsingJoin(left.node, right.node, plan.JoinTypeRightOuter, conds)
+	default:
+		b.handleErr(fmt.Errorf("unknown using join type: %s", te.Join))
+	}
+	return outScope
 }
 
 func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *scope) {

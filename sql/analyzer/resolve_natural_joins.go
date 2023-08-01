@@ -37,38 +37,45 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, node sql.Node, scope *pl
 	span, ctx := ctx.Span("resolve_natural_joins")
 	defer span.End()
 
+	// TODO: this is confusing because it is doing two things at once
 	var replacements = make(map[tableCol]tableCol)
-	return transform.NodeWithCtx(node, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		shouldReplace := true
-		if proj, isProj := c.Parent.(*plan.Project); isProj {
-			for _, expr := range proj.Projections {
-				if isQualifiedExpr(expr) {
-					shouldReplace = false
-					break
-				}
-			}
-		}
-
+	newNode, same, err := transform.NodeWithCtx(node, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		if jn, ok := c.Node.(*plan.JoinNode); ok && (jn.Op.IsNatural() || len(jn.UsingCols) != 0) {
-			newN, err := resolveNaturalJoin(jn, replacements, shouldReplace)
+			newN, err := resolveNaturalJoin(jn, replacements)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			return newN, transform.NewTree, nil
-		}
-		if en, ok := c.Node.(sql.Expressioner); ok && shouldReplace {
-			return replaceExpressionsForNaturalJoin(en.(sql.Node), replacements)
+			if jn.Op.IsNatural() {
+				return newN, transform.NewTree, nil
+			}
+
+			shouldReplace := true
+			if proj, isProj := c.Parent.(*plan.Project); isProj {
+				for _, expr := range proj.Projections {
+					if isQualifiedExpr(expr) {
+						shouldReplace = false
+						break
+					}
+				}
+			}
+
+			proj, isProj := newN.(*plan.Project)
+			if isProj && shouldReplace {
+				return replaceExpressionsForNaturalJoin(proj, replacements)
+			}
+
+			return proj.Child, transform.NewTree, nil
 		}
 		return c.Node, transform.SameTree, nil
 	})
+	return newNode, same, err
 }
 
-func resolveNaturalJoin(n *plan.JoinNode, replacements map[tableCol]tableCol, shouldReplace bool) (sql.Node, error) {
+func resolveNaturalJoin(n *plan.JoinNode, replacements map[tableCol]tableCol) (sql.Node, error) {
 	if !n.Left().Resolved() || !n.Right().Resolved() {
 		return n, nil
 	}
 
-	// TODO: right joins actually swap left and right
 	var conds, common, left, right []sql.Expression
 	lSch, rSch := n.Left().Schema(), n.Right().Schema()
 	if n.Op == plan.JoinTypeUsingRight || n.Op == plan.JoinTypeRightOuter {
@@ -95,10 +102,8 @@ func resolveNaturalJoin(n *plan.JoinNode, replacements map[tableCol]tableCol, sh
 				continue
 			}
 			rSrc, rName := strings.ToLower(rCol.Source), strings.ToLower(rCol.Name)
-			if shouldReplace {
-				replacements[tableCol{rSrc, rName}] = tableCol{lSrc, lName}
-				replacements[tableCol{"", rName}] = tableCol{lSrc, lName}
-			}
+			replacements[tableCol{rSrc, rName}] = tableCol{lSrc, lName}
+			replacements[tableCol{"", rName}] = tableCol{lSrc, lName}
 			rgf := expression.NewGetFieldWithTable(
 				lSchLen+rIdx,
 				rCol.Type,
@@ -117,13 +122,11 @@ func resolveNaturalJoin(n *plan.JoinNode, replacements map[tableCol]tableCol, sh
 			lIdx, lCol := findCol(lSch, colName)
 			rIdx, rCol := findCol(rSch, colName)
 			if lIdx == -1 || rIdx == -1 {
-				return nil, sql.ErrColumnNotFound.New(colName)
+				return nil, sql.ErrUnknownColumn.New(colName, "from clause")
 			}
 			lSrc, rSrc := strings.ToLower(lCol.Source), strings.ToLower(rCol.Source)
-			if shouldReplace {
-				replacements[tableCol{rSrc, colName}] = tableCol{lSrc, colName}
-				replacements[tableCol{"", colName}] = tableCol{lSrc, colName}
-			}
+			replacements[tableCol{rSrc, colName}] = tableCol{lSrc, colName}
+			replacements[tableCol{"", colName}] = tableCol{lSrc, colName}
 			lgf := expression.NewGetFieldWithTable(
 				lIdx,
 				lCol.Type,
@@ -191,9 +194,9 @@ func resolveNaturalJoin(n *plan.JoinNode, replacements map[tableCol]tableCol, sh
 		newJoin = plan.NewInnerJoin(n.Left(), n.Right(), expression.JoinAnd(conds...))
 	}
 
-	if !shouldReplace {
-		return newJoin, nil
-	}
+	//if !shouldReplace {
+	//	return newJoin, nil
+	//}
 
 	return plan.NewProject(append(append(common, left...), right...), newJoin), nil
 }
