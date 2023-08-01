@@ -164,29 +164,20 @@ func TestResolveNaturalJoinsTableAlias(t *testing.T) {
 
 	expected := plan.NewProject(
 		[]sql.Expression{
-			expression.NewUnresolvedQualifiedColumn("t1", "b"),
-			expression.NewUnresolvedQualifiedColumn("t1", "c"),
+			expression.NewUnresolvedQualifiedColumn("t2-alias", "b"),
+			expression.NewUnresolvedQualifiedColumn("t2-alias", "c"),
 		},
-		plan.NewProject(
-			[]sql.Expression{
-				expression.NewGetFieldWithTable(1, types.Int64, "t1", "b", false),
-				expression.NewGetFieldWithTable(2, types.Int64, "t1", "c", false),
-				expression.NewGetFieldWithTable(0, types.Int64, "t1", "a", false),
-				expression.NewGetFieldWithTable(3, types.Int64, "t2-alias", "d", false),
-				expression.NewGetFieldWithTable(6, types.Int64, "t2-alias", "e", false),
-			},
-			plan.NewInnerJoin(
-				plan.NewResolvedTable(left, nil, nil),
-				plan.NewTableAlias("t2-alias", plan.NewResolvedTable(right, nil, nil)),
-				expression.JoinAnd(
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(1, types.Int64, "t1", "b", false),
-						expression.NewGetFieldWithTable(5, types.Int64, "t2-alias", "b", false),
-					),
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(2, types.Int64, "t1", "c", false),
-						expression.NewGetFieldWithTable(4, types.Int64, "t2-alias", "c", false),
-					),
+		plan.NewInnerJoin(
+			plan.NewResolvedTable(left, nil, nil),
+			plan.NewTableAlias("t2-alias", plan.NewResolvedTable(right, nil, nil)),
+			expression.JoinAnd(
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(1, types.Int64, "t1", "b", false),
+					expression.NewGetFieldWithTable(5, types.Int64, "t2-alias", "b", false),
+				),
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(2, types.Int64, "t1", "c", false),
+					expression.NewGetFieldWithTable(4, types.Int64, "t2-alias", "c", false),
 				),
 			),
 		),
@@ -242,57 +233,46 @@ func TestResolveNaturalJoinsChained(t *testing.T) {
 		[]sql.Expression{
 			expression.NewUnresolvedQualifiedColumn("t1", "b"),
 			expression.NewUnresolvedQualifiedColumn("t1", "c"),
-			expression.NewUnresolvedQualifiedColumn("t1", "f"),
+			expression.NewUnresolvedQualifiedColumn("t3-alias", "f"),
 		},
-		plan.NewProject(
-			[]sql.Expression{
-				expression.NewGetFieldWithTable(0, types.Int64, "t1", "b", false),
-				expression.NewGetFieldWithTable(2, types.Int64, "t1", "a", false),
-				expression.NewGetFieldWithTable(3, types.Int64, "t1", "f", false),
-				expression.NewGetFieldWithTable(1, types.Int64, "t1", "c", false),
-				expression.NewGetFieldWithTable(4, types.Int64, "t2-alias", "d", false),
-				expression.NewGetFieldWithTable(5, types.Int64, "t2-alias", "e", false),
-				expression.NewGetFieldWithTable(9, types.Int64, "t3-alias", "g", false),
-			},
-			plan.NewInnerJoin(
-				plan.NewProject(
-					[]sql.Expression{
-						expression.NewGetFieldWithTable(1, types.Int64, "t1", "b", false),
-						expression.NewGetFieldWithTable(2, types.Int64, "t1", "c", false),
-						expression.NewGetFieldWithTable(0, types.Int64, "t1", "a", false),
-						expression.NewGetFieldWithTable(3, types.Int64, "t1", "f", false),
-						expression.NewGetFieldWithTable(4, types.Int64, "t2-alias", "d", false),
-						expression.NewGetFieldWithTable(7, types.Int64, "t2-alias", "e", false),
-					},
-					plan.NewInnerJoin(
-						plan.NewResolvedTable(left, nil, nil),
-						plan.NewTableAlias("t2-alias", plan.NewResolvedTable(right, nil, nil)),
-						expression.JoinAnd(
-							expression.NewEquals(
-								expression.NewGetFieldWithTable(1, types.Int64, "t1", "b", false),
-								expression.NewGetFieldWithTable(6, types.Int64, "t2-alias", "b", false),
-							),
-							expression.NewEquals(
-								expression.NewGetFieldWithTable(2, types.Int64, "t1", "c", false),
-								expression.NewGetFieldWithTable(5, types.Int64, "t2-alias", "c", false),
-							),
+		plan.NewInnerJoin(
+			plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(1, types.Int64, "t1", "b", false),
+					expression.NewGetFieldWithTable(2, types.Int64, "t1", "c", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "t1", "a", false),
+					expression.NewGetFieldWithTable(3, types.Int64, "t1", "f", false),
+					expression.NewGetFieldWithTable(4, types.Int64, "t2-alias", "d", false),
+					expression.NewGetFieldWithTable(7, types.Int64, "t2-alias", "e", false),
+				},
+				plan.NewInnerJoin(
+					plan.NewResolvedTable(left, nil, nil),
+					plan.NewTableAlias("t2-alias", plan.NewResolvedTable(right, nil, nil)),
+					expression.JoinAnd(
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(1, types.Int64, "t1", "b", false),
+							expression.NewGetFieldWithTable(6, types.Int64, "t2-alias", "b", false),
+						),
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(2, types.Int64, "t1", "c", false),
+							expression.NewGetFieldWithTable(5, types.Int64, "t2-alias", "c", false),
 						),
 					),
 				),
-				plan.NewTableAlias("t3-alias", plan.NewResolvedTable(upperRight, nil, nil)),
-				expression.JoinAnd(
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(0, types.Int64, "t1", "b", false),
-						expression.NewGetFieldWithTable(7, types.Int64, "t3-alias", "b", false),
-					),
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(2, types.Int64, "t1", "a", false),
-						expression.NewGetFieldWithTable(6, types.Int64, "t3-alias", "a", false),
-					),
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(3, types.Int64, "t1", "f", false),
-						expression.NewGetFieldWithTable(8, types.Int64, "t3-alias", "f", false),
-					),
+			),
+			plan.NewTableAlias("t3-alias", plan.NewResolvedTable(upperRight, nil, nil)),
+			expression.JoinAnd(
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, types.Int64, "t1", "b", false),
+					expression.NewGetFieldWithTable(7, types.Int64, "t3-alias", "b", false),
+				),
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(2, types.Int64, "t1", "a", false),
+					expression.NewGetFieldWithTable(6, types.Int64, "t3-alias", "a", false),
+				),
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(3, types.Int64, "t1", "f", false),
+					expression.NewGetFieldWithTable(8, types.Int64, "t3-alias", "f", false),
 				),
 			),
 		),
