@@ -43,7 +43,7 @@ func (b *Builder) buildAlterTable(inScope *scope, query string, c *ast.AlterTabl
 	for i := 0; i < len(c.Statements); i++ {
 		scopes := b.buildAlterTableClause(inScope, c.Statements[i])
 		for _, scope := range scopes {
-			statements = append(statements, scope.node)	
+			statements = append(statements, scope.node)
 		}
 	}
 
@@ -52,7 +52,7 @@ func (b *Builder) buildAlterTable(inScope *scope, query string, c *ast.AlterTabl
 		outScope.node = statements[0]
 		return outScope
 	}
-	
+
 	// certain alter statements need to happen before others
 	sort.Slice(statements, func(i, j int) bool {
 		switch statements[i].(type) {
@@ -392,7 +392,7 @@ func (b *Builder) isUniqueColumn(tableSpec *ast.TableSpec, columnName string) bo
 
 func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 	outScopes := make([]*scope, 0, 1)
-	
+
 	if ddl.ColumnAction != "" {
 		columnActionOutscope := b.buildAlterTableColumnAction(inScope, ddl)
 		outScopes = append(outScopes, columnActionOutscope)
@@ -413,7 +413,7 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 				if !ok {
 					b.handleErr(sql.ErrTableNotFound.New(tableName))
 				}
-				
+
 				table, ok := columnActionOutscope.node.(*plan.ResolvedTable)
 				if !ok {
 					err := fmt.Errorf("expected resolved table: %s", tableName)
@@ -444,19 +444,19 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 
 		outScopes = append(outScopes, b.buildAlterConstraint(inScope, ddl))
 	}
-	
+
 	if ddl.IndexSpec != nil {
 		outScopes = append(outScopes, b.buildAlterIndex(inScope, ddl))
 	}
-	
+
 	if ddl.AutoIncSpec != nil {
 		outScopes = append(outScopes, b.buildAlterAutoIncrement(inScope, ddl))
-	} 
-	
+	}
+
 	if ddl.DefaultSpec != nil {
 		outScopes = append(outScopes, b.buildAlterDefault(inScope, ddl))
 	}
-	
+
 	if ddl.AlterCollationSpec != nil {
 		outScopes = append(outScopes, b.buildAlterCollationSpec(inScope, ddl))
 	}
@@ -465,7 +465,7 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 	if ddl.Action == ast.RenameStr {
 		outScopes = append(outScopes, b.buildRenameTable(inScope, ddl))
 	}
-	
+
 	return outScopes
 }
 
