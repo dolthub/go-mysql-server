@@ -758,7 +758,7 @@ var JoinScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			// Basic tests
 			{
-				Query: "select * from t1 join t2 using (badcol);",
+				Query:       "select * from t1 join t2 using (badcol);",
 				ExpectedErr: sql.ErrUnknownColumn,
 			},
 			{
@@ -814,7 +814,7 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip: true,
+				Skip:  true,
 				Query: "select * from t1 join t2 using (j, i);",
 				Expected: []sql.Row{
 					{2, 20},
@@ -839,8 +839,8 @@ var JoinScriptTests = []ScriptTest{
 			{
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 left join t2 using (i);",
 				Expected: []sql.Row{
-					{1, 10, 1,   30},
-					{2, 20, 2,   20},
+					{1, 10, 1, 30},
+					{2, 20, 2, 20},
 					{3, 30, nil, nil},
 				},
 			},
@@ -856,7 +856,7 @@ var JoinScriptTests = []ScriptTest{
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 left join t2 using (i, j);",
 				Expected: []sql.Row{
 					{1, 10, nil, nil},
-					{2, 20, 2,   20},
+					{2, 20, 2, 20},
 					{3, 30, nil, nil},
 				},
 			},
@@ -873,8 +873,8 @@ var JoinScriptTests = []ScriptTest{
 			{
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 right join t2 using (i);",
 				Expected: []sql.Row{
-					{1,   10,  1, 30},
-					{2,   20,  2, 20},
+					{1, 10, 1, 30},
+					{2, 20, 2, 20},
 					{nil, nil, 5, 50},
 				},
 			},
@@ -889,8 +889,8 @@ var JoinScriptTests = []ScriptTest{
 			{
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 right join t2 using (j);",
 				Expected: []sql.Row{
-					{3,   30,  1, 30},
-					{2,   20,  2, 20},
+					{3, 30, 1, 30},
+					{2, 20, 2, 20},
 					{nil, nil, 5, 50},
 				},
 			},
@@ -906,11 +906,10 @@ var JoinScriptTests = []ScriptTest{
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 right join t2 using (i, j);",
 				Expected: []sql.Row{
 					{nil, nil, 1, 30},
-					{2,   20,  2, 20},
+					{2, 20, 2, 20},
 					{nil, nil, 5, 50},
 				},
 			},
-
 
 			// Nested Join
 			{
