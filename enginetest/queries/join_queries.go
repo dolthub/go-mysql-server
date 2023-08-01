@@ -863,7 +863,6 @@ var JoinScriptTests = []ScriptTest{
 
 			// Right Join
 			{
-				Skip: true,
 				Query: "select * from t1 right join t2 using (i);",
 				Expected: []sql.Row{
 					{1, 30, 10},
@@ -880,11 +879,10 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip: true,
 				Query: "select * from t1 right join t2 using (j);",
 				Expected: []sql.Row{
-					{30, 1, 10},
-					{20, 2, 20},
+					{30, 1, 3},
+					{20, 2, 2},
 					{50, 5, nil},
 				},
 			},
@@ -897,7 +895,6 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip: true,
 				Query: "select * from t1 right join t2 using (i, j);",
 				Expected: []sql.Row{
 					{1, 30},

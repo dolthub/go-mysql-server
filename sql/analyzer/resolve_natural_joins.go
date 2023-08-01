@@ -71,6 +71,10 @@ func resolveNaturalJoin(n *plan.JoinNode, replacements map[tableCol]tableCol, sh
 	// TODO: right joins actually swap left and right
 	var conds, common, left, right []sql.Expression
 	lSch, rSch := n.Left().Schema(), n.Right().Schema()
+	if n.Op == plan.JoinTypeUsingRight || n.Op == plan.JoinTypeRightOuter {
+		lSch, rSch = rSch, lSch
+	}
+
 	lSchLen := len(lSch)
 	usedCols := map[string]struct{}{}
 
