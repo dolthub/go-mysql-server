@@ -295,6 +295,9 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 	}
 	indexes := ia.IndexesByTable(ctx, ctx.GetCurrentDatabase(), getTableName(table))
 	for _, index := range indexes {
+		if index.IsFullText() {
+			continue
+		}
 		prefixLengths := index.PrefixLengths()
 		for i, expr := range index.Expressions() {
 			col := plan.GetColumnFromIndexExpr(expr, getTable(table))
