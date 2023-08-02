@@ -214,7 +214,7 @@ func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.
 		}
 		usingCols[colName] = struct{}{}
 		outScope.addColumn(lCol)
-		outScope.redirect(rCol, lCol)
+		outScope.redirect(rCol, lCol) // TODO: sometimes we don't want to redirect
 	}
 
 	// Add remaining columns from left table.

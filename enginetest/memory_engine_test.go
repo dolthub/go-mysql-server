@@ -349,7 +349,7 @@ func TestSingleScript_Experimental(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "select t1.i, t1.j, t2.i, t2.j from t1 left join t2 using (i);",
+					Query: "select i from t1 join t2 using (i);",
 					Expected: []sql.Row{
 						//{1, 10, 1, 30},
 						//{2, 20, 2, 20},

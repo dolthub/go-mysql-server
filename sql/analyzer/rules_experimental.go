@@ -50,7 +50,6 @@ var OnceBeforeDefault_Exp = []Rule{
 
 // DefaultRules_Exp to apply when analyzing nodes.
 var DefaultRules_Exp = []Rule{
-	{resolveNaturalJoinsId, resolveNaturalJoins},
 	{validateStarExpressionsId, validateStarExpressions}, //TODO
 	{flattenTableAliasesId, flattenTableAliases},         //TODO
 	{pushdownSubqueryAliasFiltersId, pushdownSubqueryAliasFilters},
