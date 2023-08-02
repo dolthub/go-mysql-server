@@ -30,12 +30,13 @@ import (
 // available, it fulfills the RowIter call by performing a hash lookup
 // on the projected results. If cached results are not available, it
 // simply delegates to the child.
-func NewHashLookup(n *CachedResults, rightEntryKey sql.Expression, leftProbeKey sql.Expression) *HashLookup {
+func NewHashLookup(n *CachedResults, rightEntryKey sql.Expression, leftProbeKey sql.Expression, joinType JoinType) *HashLookup {
 	return &HashLookup{
 		UnaryNode:     UnaryNode{n},
 		RightEntryKey: rightEntryKey,
 		LeftProbeKey:  leftProbeKey,
 		Mutex:         new(sync.Mutex),
+		JoinType:      joinType,
 	}
 }
 
@@ -45,6 +46,7 @@ type HashLookup struct {
 	LeftProbeKey  sql.Expression
 	Mutex         *sync.Mutex
 	Lookup        map[interface{}][]sql.Row
+	JoinType      JoinType
 }
 
 var _ sql.Node = (*HashLookup)(nil)
