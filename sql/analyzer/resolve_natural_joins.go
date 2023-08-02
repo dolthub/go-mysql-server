@@ -49,28 +49,40 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, node sql.Node, scope *pl
 				return newN, transform.NewTree, nil
 			}
 
-			shouldReplace := true
 			if proj, isProj := c.Parent.(*plan.Project); isProj {
 				for _, expr := range proj.Projections {
+					if _, ok := expr.(*expression.Star); ok {
+						return newN, transform.NewTree, nil
+					}
 					if isQualifiedExpr(expr) {
-						shouldReplace = false
-						break
+						return newN.Children()[0], transform.NewTree, nil
 					}
 				}
 			}
 
-			proj, isProj := newN.(*plan.Project)
-			if isProj && shouldReplace {
-				return replaceExpressionsForNaturalJoin(proj, replacements)
-			}
+			return newN.Children()[0], transform.NewTree, nil
+		}
 
-			return proj.Child, transform.NewTree, nil
+		if proj, isProj := c.Node.(*plan.Project); isProj {
+			for _, expr := range proj.Projections {
+				if isQualifiedExpr(expr) {
+					return c.Node, transform.SameTree, nil
+				}
+			}
+		}
+
+		if e, ok := c.Node.(sql.Expressioner); ok {
+			return replaceExpressionsForNaturalJoin(e.(sql.Node), replacements)
 		}
 		return c.Node, transform.SameTree, nil
 	})
+
+	// TODO: fix up projections
+	// TODO: might be bad to do it separately because the replacements scope is different
 	return newNode, same, err
 }
 
+// TODO: this should either always return a projection or always return a join node
 func resolveNaturalJoin(n *plan.JoinNode, replacements map[tableCol]tableCol) (sql.Node, error) {
 	if !n.Left().Resolved() || !n.Right().Resolved() {
 		return n, nil
@@ -177,8 +189,13 @@ func resolveNaturalJoin(n *plan.JoinNode, replacements map[tableCol]tableCol) (s
 		}
 	}
 
+	// Put the pieces together
+	projExprs := append(append(common, left...), right...)
+
 	if len(conds) == 0 {
-		return plan.NewCrossJoin(n.Left(), n.Right()), nil
+		// TODO: make projection here for consistency even though it is useless
+		newJoin := plan.NewCrossJoin(n.Left(), n.Right())
+		return plan.NewProject(projExprs, newJoin), nil
 	}
 
 	var newJoin sql.Node
@@ -193,12 +210,7 @@ func resolveNaturalJoin(n *plan.JoinNode, replacements map[tableCol]tableCol) (s
 		// TODO: panic/error?
 		newJoin = plan.NewInnerJoin(n.Left(), n.Right(), expression.JoinAnd(conds...))
 	}
-
-	//if !shouldReplace {
-	//	return newJoin, nil
-	//}
-
-	return plan.NewProject(append(append(common, left...), right...), newJoin), nil
+	return plan.NewProject(projExprs, newJoin), nil
 }
 
 func findCol(s sql.Schema, name string) (int, *sql.Column) {
