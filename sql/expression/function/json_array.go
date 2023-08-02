@@ -111,7 +111,10 @@ func (j *JSONArray) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
-		if json, ok := val.(types.JSONValue); ok {
+		if bytes, ok := val.([]byte); ok {
+			// Bind vars come in as []byte, so convert to strings
+			val = string(bytes)
+		} else if json, ok := val.(types.JSONValue); ok {
 			doc, err := json.(types.JSONValue).Unmarshall(ctx)
 			if err != nil {
 				return nil, err
