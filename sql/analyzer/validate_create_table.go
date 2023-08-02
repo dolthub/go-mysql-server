@@ -149,6 +149,10 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 			}
 			return n, transform.NewTree, nil
 		case *plan.AlterIndex:
+			n, err := nn.WithTargetSchema(sch.Copy())
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
 			indexes, err = validateAlterIndex(ctx, initialSch, sch, n.(*plan.AlterIndex), indexes)
 			if err != nil {
 				return nil, transform.SameTree, err
@@ -291,6 +295,9 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 	}
 	indexes := ia.IndexesByTable(ctx, ctx.GetCurrentDatabase(), getTableName(table))
 	for _, index := range indexes {
+		if index.IsFullText() {
+			continue
+		}
 		prefixLengths := index.PrefixLengths()
 		for i, expr := range index.Expressions() {
 			col := plan.GetColumnFromIndexExpr(expr, getTable(table))
@@ -632,9 +639,11 @@ func validateIndexes(ctx *sql.Context, tableSpec *plan.TableSpec) error {
 			if !ok {
 				return sql.ErrUnknownIndexColumn.New(idxCol.Name, idx.IndexName)
 			}
-			err := validatePrefixLength(ctx, schCol, idxCol)
-			if err != nil {
-				return err
+			if !idx.IsFullText() {
+				err := validatePrefixLength(ctx, schCol, idxCol)
+				if err != nil {
+					return err
+				}
 			}
 		}
 		if idx.Constraint == sql.IndexConstraint_Spatial {

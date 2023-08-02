@@ -25,6 +25,7 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // IndexTableNames holds all of the names for each pseudo-index table used by a Full-Text index.
@@ -158,19 +159,20 @@ func HashRow(row sql.Row) (string, error) {
 func GetKeyColumns(ctx *sql.Context, parent sql.Table) (KeyColumns, []*sql.Column, error) {
 	var columns []*sql.Column
 	var positions []int
-	{ // Check for a primary key
-		// We'll never use partial indexes here, so the order doesn't matter
-		nameIdx := 0
-		for i, col := range parent.Schema() {
-			if col.PrimaryKey {
-				newCol := col.Copy()
+	// Check for a primary key. We'll only check on tables that implement sql.PrimaryKeyTable as we need to replicate
+	// the declaration order, and there's no guarantee that the order is sequential with a standard sql.Schema.
+	if pkTable, ok := parent.(sql.PrimaryKeyTable); ok {
+		sch := pkTable.PrimaryKeySchema()
+		if len(sch.PkOrdinals) > 0 {
+			positions = make([]int, len(sch.PkOrdinals))
+			copy(positions, sch.PkOrdinals)
+			nameIdx := 0
+			for _, ordinal := range sch.PkOrdinals {
+				newCol := sch.Schema[ordinal].Copy()
 				newCol.Name = fmt.Sprintf("C%d", nameIdx)
 				columns = append(columns, newCol)
-				positions = append(positions, i)
 				nameIdx++
 			}
-		}
-		if len(columns) > 0 {
 			return KeyColumns{
 				Type:      KeyType_Primary,
 				Name:      "",
@@ -372,10 +374,6 @@ func RebuildTables(ctx *sql.Context, tbl sql.IndexAddressableTable, db Database)
 		if err != nil {
 			return err
 		}
-		// The blank string is meant for the config table, so we'll only write it once
-		if _, ok = predeterminedNames[""]; !ok {
-			predeterminedNames[""] = tableNames
-		}
 		predeterminedNames[ftIndex.ID()] = tableNames
 		// We delete all tables besides the config table
 		if err = dropper.DropTable(ctx, tableNames.Position); err != nil {
@@ -427,51 +425,22 @@ func CreateFulltextIndexes(ctx *sql.Context, database Database, parent sql.Table
 		return err
 	}
 
-	var tableNames IndexTableNames
-	if predeterminedName, ok := predeterminedNames[""]; ok {
-		tableNames = predeterminedName
-	} else {
-		tableNames, err = database.CreateFulltextTableNames(ctx, fulltextAlterable.Name(), "_")
-		if err != nil {
-			return err
-		}
-	}
-
-	// We'll only create the config table if it doesn't already exist, since it is shared between all indexes on the table
-	_, ok, err = database.GetTableInsensitive(ctx, tableNames.Config)
-	if err != nil {
-		return err
-	}
-	if !ok {
-		// We create the config table first since it will be shared between all Full-Text indexes for this table
-		configSch, err := NewSchema(SchemaConfig, nil, tableNames.Config, sql.Collation_Default)
-		if err != nil {
-			return err
-		}
-		err = database.CreateTable(ctx, tableNames.Config, sql.NewPrimaryKeySchema(configSch), sql.Collation_Default)
-		if err != nil {
-			return err
-		}
-	}
-
 	// Create unique tables for each index
 	for _, fulltextIndex := range fulltextIndexes {
-		// Grab the table names that we'll use
-		if predeterminedName, ok := predeterminedNames[fulltextIndex.Name]; ok {
-			tableNames = predeterminedName
-		} else {
-			tableNames, err = database.CreateFulltextTableNames(ctx, fulltextAlterable.Name(), fulltextIndex.Name)
-			if err != nil {
-				return err
-			}
-		}
-		// Get the collation that will be used
+		// Get the collation that will be used, while checking for duplicate columns and ensuring they have valid types
 		collation := sql.Collation_Unspecified
+		exists := make(map[string]struct{})
 		for _, indexCol := range fulltextIndex.Columns {
 			indexColNameLower := strings.ToLower(indexCol.Name)
+			if _, ok = exists[indexColNameLower]; ok {
+				return sql.ErrFullTextDuplicateColumn.New(fulltextIndex.Name)
+			}
 			found := false
 			for _, tblCol := range tblSch {
 				if indexColNameLower == strings.ToLower(tblCol.Name) {
+					if !types.IsTextOnly(tblCol.Type) {
+						return sql.ErrFullTextInvalidColumnType.New()
+					}
 					colCollation, _ := tblCol.Type.CollationCoercibility(ctx)
 					if collation == sql.Collation_Unspecified {
 						collation = colCollation
@@ -484,6 +453,35 @@ func CreateFulltextIndexes(ctx *sql.Context, database Database, parent sql.Table
 			}
 			if !found {
 				return sql.ErrFullTextMissingColumn.New(indexCol.Name)
+			}
+			exists[indexColNameLower] = struct{}{}
+		}
+
+		// Grab the table names that we'll use
+		var tableNames IndexTableNames
+		if predeterminedName, ok := predeterminedNames[fulltextIndex.Name]; ok {
+			tableNames = predeterminedName
+		} else {
+			tableNames, err = database.CreateFulltextTableNames(ctx, fulltextAlterable.Name(), fulltextIndex.Name)
+			if err != nil {
+				return err
+			}
+		}
+
+		// We'll only create the config table if it doesn't already exist, since it is shared between all indexes on the table
+		_, ok, err = database.GetTableInsensitive(ctx, tableNames.Config)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			// We create the config table first since it will be shared between all Full-Text indexes for this table
+			configSch, err := NewSchema(SchemaConfig, nil, tableNames.Config, sql.Collation_Default)
+			if err != nil {
+				return err
+			}
+			err = database.CreateTable(ctx, tableNames.Config, sql.NewPrimaryKeySchema(configSch), sql.Collation_Default)
+			if err != nil {
+				return err
 			}
 		}
 

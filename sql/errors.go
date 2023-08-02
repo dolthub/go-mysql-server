@@ -840,6 +840,12 @@ var (
 
 	// ErrFullTextMissingColumn is returned when a Full-Text column cannot be found.
 	ErrFullTextMissingColumn = errors.NewKind("Full-Text index could not find the column `%s`")
+
+	// ErrFullTextDuplicateColumn is returned when a Full-Text index declares the same column multiple times.
+	ErrFullTextDuplicateColumn = errors.NewKind("cannot have duplicate columns in a Full-Text index: `%s`")
+
+	// ErrFullTextInvalidColumnType is returned when a Full-Text index is declared on a non-text column.
+	ErrFullTextInvalidColumnType = errors.NewKind("all Full-Text columns must be declared on a non-binary text type")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the
