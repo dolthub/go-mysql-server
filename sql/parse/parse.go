@@ -1330,78 +1330,7 @@ func convertAlterTable(ctx *sql.Context, query string, c *sqlparser.AlterTable) 
 	if len(statements) == 1 {
 		return statements[0], nil
 	}
-
-	// // TODO: add correct precedence for ADD/DROP PRIMARY KEY and (maybe) FOREIGN KEY
-	// // certain alter statements need to happen before others
-	// sort.Slice(statements, func(i, j int) bool {
-	// 	switch ii := statements[i].(type) {
-	// 	case *plan.RenameColumn:
-	// 		switch statements[j].(type) {
-	// 		case *plan.DropColumn,
-	// 			*plan.ModifyColumn,
-	// 			*plan.AddColumn,
-	// 			*plan.DropConstraint,
-	// 			*plan.DropCheck,
-	// 			*plan.CreateCheck,
-	// 			*plan.AlterIndex:
-	// 			return true
-	// 		}
-	// 	case *plan.DropColumn:
-	// 		switch statements[j].(type) {
-	// 		case *plan.ModifyColumn,
-	// 			*plan.AddColumn,
-	// 			*plan.DropConstraint,
-	// 			*plan.DropCheck,
-	// 			*plan.CreateCheck,
-	// 			*plan.AlterIndex:
-	// 			return true
-	// 		}
-	// 	case *plan.ModifyColumn:
-	// 		switch statements[j].(type) {
-	// 		case *plan.AddColumn,
-	// 			*plan.DropConstraint,
-	// 			*plan.DropCheck,
-	// 			*plan.CreateCheck,
-	// 			*plan.AlterIndex:
-	// 			return true
-	// 		}
-	// 	case *plan.AddColumn:
-	// 		switch statements[j].(type) {
-	// 		case *plan.DropConstraint,
-	// 			*plan.DropCheck,
-	// 			*plan.CreateCheck,
-	// 			*plan.AlterIndex:
-	// 			return true
-	// 		}
-	// 	case *plan.DropConstraint:
-	// 		switch statements[j].(type) {
-	// 		case *plan.DropCheck,
-	// 			*plan.CreateCheck,
-	// 			*plan.AlterIndex:
-	// 			return true
-	// 		}
-	// 	case *plan.DropCheck:
-	// 		switch statements[j].(type) {
-	// 		case *plan.CreateCheck,
-	// 			*plan.AlterIndex:
-	// 			return true
-	// 		}
-	// 	case *plan.CreateCheck:
-	// 		switch statements[j].(type) {
-	// 		case *plan.AlterIndex:
-	// 			return true
-	// 		}
-	// 	// AlterIndex precedence is Rename, Drop, then Create
-	// 	// So statement[i] < statement[j] = statement[i].action > statement[j].action
-	// 	case *plan.AlterIndex:
-	// 		switch jj := statements[j].(type) {
-	// 		case *plan.AlterIndex:
-	// 			return ii.Action > jj.Action
-	// 		}
-	// 	}
-	// 	return false
-	// })
-
+	
 	return plan.NewBlock(statements), nil
 }
 
