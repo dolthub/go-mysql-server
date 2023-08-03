@@ -287,7 +287,7 @@ func (b *ExecBuilder) buildHashJoin(j *HashJoin, input sql.Schema, children ...s
 	}
 
 	cr := plan.NewCachedResults(children[1])
-	outer := plan.NewHashLookup(cr, rightEntryKey, leftProbeKey)
+	outer := plan.NewHashLookup(cr, rightEntryKey, leftProbeKey, j.Op)
 	inner := children[0]
 	return plan.NewJoin(inner, outer, j.Op, filters).WithScopeLen(j.g.m.scopeLen), nil
 }
