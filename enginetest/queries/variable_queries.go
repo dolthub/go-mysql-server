@@ -285,7 +285,7 @@ var VariableQueries = []ScriptTest{
 			{
 				Query: `SHOW VARIABLES LIKE '%sql_mode%'`,
 				Expected: []sql.Row{
-					{"sql_mode", `ONLY_FULL_GROUP_BY`},
+					{"sql_mode", "ONLY_FULL_GROUP_BY"},
 				},
 			},
 		},
