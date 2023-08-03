@@ -271,8 +271,7 @@ func TestSingleQueryPrepared(t *testing.T) {
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
 	t.Skip()
-	var scripts = []queries.ScriptTest{
-	}
+	var scripts = []queries.ScriptTest{}
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
@@ -1283,7 +1282,7 @@ func TestAddDropPks_Exp(t *testing.T) {
 func TestAddAutoIncrementColumn(t *testing.T) {
 	t.Skip("in memory tables don't implement sql.RewritableTable yet")
 	for _, script := range queries.AlterTableAddAutoIncrementScripts {
-		enginetest.TestScript(t, enginetest.NewDefaultMemoryHarness(), script)	
+		enginetest.TestScript(t, enginetest.NewDefaultMemoryHarness(), script)
 	}
 }
 

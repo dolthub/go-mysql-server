@@ -101,9 +101,9 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 
 	sch = sch.Copy() // Make a copy of the original schema to deal with any references to the original table.
 	initialSch := sch
-	
+
 	addedColumn := false
-	
+
 	// Need a TransformUp here because multiple of these statement types can be nested under a Block node.
 	// It doesn't look it, but this is actually an iterative loop over all the independent clauses in an ALTER statement
 	n, same, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
@@ -113,7 +113,7 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			
+
 			sch, err = validateModifyColumn(ctx, initialSch, sch, n.(*plan.ModifyColumn), keyedColumns)
 			if err != nil {
 				return nil, transform.SameTree, err
@@ -134,12 +134,12 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			
+
 			sch, err = validateAddColumn(initialSch, sch, n.(*plan.AddColumn))
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			
+
 			addedColumn = true
 			return n, transform.NewTree, nil
 		case *plan.DropColumn:
@@ -152,7 +152,7 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 				return nil, transform.SameTree, err
 			}
 			delete(keyedColumns, nn.Column)
-			
+
 			return n, transform.NewTree, nil
 		case *plan.AlterIndex:
 			n, err := nn.WithTargetSchema(sch.Copy())
@@ -163,7 +163,7 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			
+
 			keyedColumns = updateKeyedColumns(keyedColumns, nn)
 			return n, transform.NewTree, nil
 		case *plan.AlterPK:
@@ -203,7 +203,7 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
-	
+
 	// We can't evaluate auto-increment until the end of the analysis, since we break adding a new auto-increment unique
 	// column into two steps: first add the column, then create the index. If there was no index created, that's an error.
 	if addedColumn {
@@ -212,7 +212,7 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 			return nil, false, err
 		}
 	}
-	
+
 	return n, same, nil
 }
 
@@ -228,7 +228,7 @@ func updateKeyedColumns(keyedColumns map[string]bool, n *plan.AlterIndex) map[st
 			delete(keyedColumns, col.Name)
 		}
 	}
-	
+
 	return keyedColumns
 }
 
@@ -305,7 +305,7 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 		}
 	} else {
 		if !schema.Contains(mc.Column(), nameable.Name()) ||
-				!initialSch.Contains(mc.Column(), nameable.Name()) {
+			!initialSch.Contains(mc.Column(), nameable.Name()) {
 			return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), mc.Column())
 		}
 	}

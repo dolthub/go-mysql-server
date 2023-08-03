@@ -383,7 +383,7 @@ var AlterTableScripts = []ScriptTest{
 				ExpectedErr: sql.ErrTableColumnNotFound,
 			},
 			{
-				Query: "alter table tbl_i add index(j), add column j int;",
+				Query:       "alter table tbl_i add index(j), add column j int;",
 				ExpectedErr: sql.ErrKeyColumnDoesNotExist,
 			},
 		},
@@ -405,13 +405,13 @@ var AlterTableScripts = []ScriptTest{
 				Query: "show create table t",
 				Expected: []sql.Row{sql.Row{"t",
 					"CREATE TABLE `t` (\n" +
-					"  `c1` int NOT NULL,\n" +
-					"  `c2` int,\n" +
-					"  `c3` int,\n" +
-					"  `c4` int,\n" +
-					"  PRIMARY KEY (`c1`),\n" +
-					"  UNIQUE KEY `uniq` (`c4`)\n" +
-					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						"  `c1` int NOT NULL,\n" +
+						"  `c2` int,\n" +
+						"  `c3` int,\n" +
+						"  `c4` int,\n" +
+						"  PRIMARY KEY (`c1`),\n" +
+						"  UNIQUE KEY `uniq` (`c4`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "select * from t",
@@ -441,11 +441,11 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 				Query: "show create table t1",
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
-							"  `i` int,\n" +
-							"  `j` int,\n" +
-							"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
-							"  PRIMARY KEY (`pk`)\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						"  `i` int,\n" +
+						"  `j` int,\n" +
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "select pk from t1 order by pk",
@@ -463,7 +463,7 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "alter table t1 add column pk int primary key",
+				Query:       "alter table t1 add column pk int primary key",
 				ExpectedErr: sql.ErrPrimaryKeyViolation,
 			},
 			{
@@ -474,11 +474,11 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 				Query: "show create table t1",
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
-							"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
-							"  `i` int,\n" +
-							"  `j` int,\n" +
-							"  PRIMARY KEY (`pk`)\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  `i` int,\n" +
+						"  `j` int,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "select pk from t1 order by pk",
@@ -503,12 +503,12 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 				Query: "show create table t1",
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
-							"  `i` bigint NOT NULL,\n" +
-							"  `s` varchar(20),\n" +
-							"  `j` int AUTO_INCREMENT,\n" +
-							"  PRIMARY KEY (`i`),\n" +
-							"  UNIQUE KEY `j` (`j`)\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						"  `i` bigint NOT NULL,\n" +
+						"  `s` varchar(20),\n" +
+						"  `j` int AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`),\n" +
+						"  UNIQUE KEY `j` (`j`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "select * from t1 order by i",
@@ -528,7 +528,7 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "alter table t1 add column j int auto_increment",
+				Query:       "alter table t1 add column j int auto_increment",
 				ExpectedErr: sql.ErrInvalidAutoIncCols,
 			},
 		},

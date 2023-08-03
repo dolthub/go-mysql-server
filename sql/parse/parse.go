@@ -1305,12 +1305,12 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 	}
 }
 
-// convertAlterTable converts AlterTable AST nodes. If there is a single clause in the statement, it is returned as 
+// convertAlterTable converts AlterTable AST nodes. If there is a single clause in the statement, it is returned as
 // the appropriate node type. Otherwise, a plan.Block is returned with children representing all the various clauses.
 // Our validation rules for what counts as a legal set of alter clauses differs from mysql's here. MySQL seems to apply
 // some form of precedence rules to the clauses in an ALTER TABLE so that e.g. DROP COLUMN always happens before other
 // kinds of statements. So in MySQL, statements like `ALTER TABLE t ADD KEY (a), DROP COLUMN a` fails, whereas our
-// analyzer happily produces a plan that adds an index and then drops that column. We do this in part for simplicity, 
+// analyzer happily produces a plan that adds an index and then drops that column. We do this in part for simplicity,
 // and also because we construct more than one node per clause in some cases and really want them executed in a
 // particular order in that case.
 func convertAlterTable(ctx *sql.Context, query string, c *sqlparser.AlterTable) (sql.Node, error) {
@@ -1326,7 +1326,7 @@ func convertAlterTable(ctx *sql.Context, query string, c *sqlparser.AlterTable) 
 	if len(statements) == 1 {
 		return statements[0], nil
 	}
-	
+
 	return plan.NewBlock(statements), nil
 }
 
@@ -2018,8 +2018,8 @@ func convertRenameTable(ctx *sql.Context, ddl *sqlparser.DDL, alterTbl bool) (sq
 	return plan.NewRenameTable(sql.UnresolvedDatabase(""), fromTables, toTables, alterTbl), nil
 }
 func isUniqueColumn(column *sqlparser.ColumnDefinition) bool {
-			return column.Type.KeyOpt == colKeyUnique ||
-				column.Type.KeyOpt == colKeyUniqueKey
+	return column.Type.KeyOpt == colKeyUnique ||
+		column.Type.KeyOpt == colKeyUniqueKey
 }
 
 func newColumnAction(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
