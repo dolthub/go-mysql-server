@@ -313,6 +313,14 @@ func TestSingleScript(t *testing.T) {
 						"  UNIQUE KEY `j` (`j`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 				},
+				{
+					Query: "select * from t1 order by i",
+					Expected: []sql.Row{
+						{1, "a", 1},
+						{2, "b", 2},
+						{3, "c", 3},
+					},
+				},
 			},
 		},
 	}
@@ -1325,7 +1333,9 @@ func TestAddDropPks_Exp(t *testing.T) {
 
 func TestAddAutoIncrementColumn(t *testing.T) {
 	t.Skip("in memory tables don't implement sql.RewritableTable yet")
-	enginetest.TestAddAutoIncrementColumn(t, enginetest.NewDefaultMemoryHarness())
+	for _, script := range queries.AlterTableAddAutoIncrementScripts {
+		enginetest.TestScript(t, enginetest.NewDefaultMemoryHarness(), script)	
+	}
 }
 
 func TestNullRanges(t *testing.T) {

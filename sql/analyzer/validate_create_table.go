@@ -59,7 +59,7 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	var sch sql.Schema
 	var indexes []string
-	var keyedColumns map[string]bool
+	keyedColumns := make(map[string]bool)
 	var err error
 	transform.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {

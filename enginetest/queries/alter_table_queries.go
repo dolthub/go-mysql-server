@@ -379,3 +379,109 @@ var AlterTableScripts = []ScriptTest{
 		},
 	},
 }
+
+var AlterTableAddAutoIncrementScripts = []ScriptTest{
+	{
+		Name: "Add primary key column with auto increment",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (i int, j int);",
+			"insert into t1 values (1,1), (2,2), (3,3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t1 add column pk int primary key",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query:    "alter table t1 add column pk int primary key auto_increment;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from t1 order by pk",
+				Expected: []sql.Row{
+					{1, 1, 1},
+					{2, 2, 2},
+					{3, 3, 3},
+				},
+			},
+		},
+	},
+	{
+		Name: "Add primary key column with auto increment, first",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (i int, j int);",
+			"insert into t1 values (1,1), (2,2), (3,3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t1 add column pk int primary key",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query:    "alter table t1 add column pk int primary key auto_increment;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from t1 order by pk",
+				Expected: []sql.Row{
+					{1, 1, 1},
+					{2, 2, 2},
+					{3, 3, 3},
+				},
+			},
+		},
+	},
+	{
+		Name: "add column auto_increment, non primary key",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (i bigint primary key, s varchar(20))",
+			"INSERT INTO t1 VALUES (1, 'a'), (2, 'b'), (3, 'c')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t1 add column j int auto_increment unique",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+							"  `i` bigint NOT NULL,\n" +
+							"  `s` varchar(20),\n" +
+							"  `j` int AUTO_INCREMENT,\n" +
+							"  PRIMARY KEY (`i`),\n" +
+							"  UNIQUE KEY `j` (`j`)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "select * from t1 order by i",
+				Expected: []sql.Row{
+					{1, "a", 1},
+					{2, "b", 2},
+					{3, "c", 3},
+				},
+			},
+		},
+	},
+	{
+		Name: "add column auto_increment, non key",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (i bigint primary key, s varchar(20))",
+			"INSERT INTO t1 VALUES (1, 'a'), (2, 'b'), (3, 'c')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t1 add column j int auto_increment",
+				ExpectedErr: sql.ErrInvalidAutoIncCols,
+			},
+		},
+	},
+}
