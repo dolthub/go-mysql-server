@@ -673,14 +673,18 @@ func TestQueryErrors(t *testing.T, harness Harness) {
 
 func TestInsertInto(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.Mytable_del_idxData, setup.KeylessData, setup.Keyless_idxData, setup.NiltableData, setup.TypestableData, setup.EmptytableData, setup.AutoincrementData, setup.OthertableData, setup.Othertable_del_idxData)
-	for _, insertion := range queries.InsertQueries {
-		RunWriteQueryTest(t, harness, insertion)
-	}
+	t.Run("insert queries", func(t *testing.T) {
+		for _, insertion := range queries.InsertQueries {
+			RunWriteQueryTest(t, harness, insertion)
+		}
+	})
 
 	harness.Setup(setup.MydbData)
-	for _, script := range queries.InsertScripts {
-		TestScript(t, harness, script)
-	}
+	t.Run("insert scripts", func(t *testing.T) {
+		for _, script := range queries.InsertScripts {
+			TestScript(t, harness, script)
+		}
+	})
 }
 
 func TestInsertDuplicateKeyKeyless(t *testing.T, harness Harness) {

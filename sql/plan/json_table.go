@@ -17,6 +17,7 @@ package plan
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -130,6 +131,24 @@ func (t *JSONTable) Name() string {
 // String implements the sql.Table interface
 func (t *JSONTable) String() string {
 	return t.TableName
+}
+
+// DebugString implements the sql.Table interface
+func (t *JSONTable) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("json_table")
+	var cols []string
+	for _, col := range t.Cols {
+		cols = append(cols, col.Path)
+	}
+	children := []string{
+		fmt.Sprintf("name: %s", t.TableName),
+		fmt.Sprintf("root_path: %s", t.RootPath),
+		fmt.Sprintf("data_expr: %s", sql.DebugString(t.DataExpr)),
+		fmt.Sprintf("cols: %s", strings.Join(cols, ", ")),
+	}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
 }
 
 // FlattenSchema returns the flattened schema of a JSONTableCol

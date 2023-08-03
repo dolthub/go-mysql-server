@@ -52,30 +52,38 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 			}
 
 			for _, procedure := range procedures {
+				var procToRegister *plan.Procedure
 				var parsedProcedure sql.Node
 				if ctx.Version == sql.VersionExperimental {
 					b := planbuilder.New(ctx, a.Catalog)
-					b.ProcCtx().Active = true
 					parsedProcedure, _, _, err = b.Parse(procedure.CreateStatement, false)
-					b.ProcCtx().Active = false
+					if err != nil {
+						procToRegister = &plan.Procedure{
+							CreateProcedureString: procedure.CreateStatement,
+						}
+						procToRegister.ValidationError = err
+					} else if cp, ok := parsedProcedure.(*plan.CreateProcedure); !ok {
+						return nil, sql.ErrProcedureCreateStatementInvalid.New(procedure.CreateStatement)
+					} else {
+						procToRegister = cp.Procedure
+					}
 				} else {
 					parsedProcedure, err = parse.Parse(ctx, procedure.CreateStatement)
-				}
-				if err != nil {
-					return nil, err
-				}
-				cp, ok := parsedProcedure.(*plan.CreateProcedure)
-				if !ok {
-					return nil, sql.ErrProcedureCreateStatementInvalid.New(procedure.CreateStatement)
-				}
+					if err != nil {
+						return nil, err
+					}
+					cp, ok := parsedProcedure.(*plan.CreateProcedure)
+					if !ok {
+						return nil, sql.ErrProcedureCreateStatementInvalid.New(procedure.CreateStatement)
+					}
 
-				var procToRegister *plan.Procedure
-				analyzedProc, err := analyzeCreateProcedure(ctx, a, cp, scope, sel)
-				if err != nil {
-					procToRegister = cp.Procedure
-					procToRegister.ValidationError = err
-				} else {
-					procToRegister = analyzedProc
+					analyzedProc, err := analyzeCreateProcedure(ctx, a, cp, scope, sel)
+					if err != nil {
+						procToRegister = cp.Procedure
+						procToRegister.ValidationError = err
+					} else {
+						procToRegister = analyzedProc
+					}
 				}
 
 				procToRegister.CreatedAt = procedure.CreatedAt
@@ -331,9 +339,7 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 					}
 					b.ViewCtx().AsOf = asOf
 				}
-				b.ProcCtx().Active = true
 				parsedProcedure, _, _, err = b.Parse(procedure.CreateStatement, false)
-				b.ProcCtx().Active = false
 			} else {
 				parsedProcedure, err = parse.Parse(ctx, procedure.CreateStatement)
 			}

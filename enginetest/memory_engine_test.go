@@ -192,8 +192,13 @@ func TestJSONTableScripts(t *testing.T) {
 
 // TestJSONTableScripts_Experimental runs the canonical test queries against new name resolution engine
 func TestJSONTableScripts_Experimental(t *testing.T) {
-	t.Skip("getfield indexing is incorrect")
-	enginetest.TestJSONTableScripts(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental))
+	harness := enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental)
+	// these have different error message
+	harness.QueriesToSkip(
+		"select t.a from t, json_table(t.k, '$[*]' columns (a INT path '$.a')) AS j",
+		"select j.b from t, json_table(t.j, '$[*]' columns (a INT path '$.a')) AS j",
+	)
+	enginetest.TestJSONTableScripts(t, harness)
 }
 
 // TestJSONTableScriptsPrepared runs the canonical test queries against a single threaded index enabled harness.
@@ -235,7 +240,7 @@ where
 
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, false, nil).WithVersion(sql.VersionStable)
-	harness.Setup(setup.JoinsSetup...)
+	harness.Setup(setup.XySetup...)
 	engine, err := harness.NewEngine(t)
 	if err != nil {
 		panic(err)
@@ -300,7 +305,7 @@ func TestSingleScript(t *testing.T) {
 	}
 
 	for _, test := range scripts {
-		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental)
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
@@ -612,8 +617,13 @@ func TestAmbiguousColumnResolution_Experimental(t *testing.T) {
 }
 
 func TestInsertInto_Experimental(t *testing.T) {
-	t.Skip("todo rewrite onUplicateUpdate exprs")
-	enginetest.TestInsertInto(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+	harness := enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental)
+	harness.QueriesToSkip(
+		// should be colum not found error
+		"insert into a (select * from b) on duplicate key update b.i = a.i",
+		"insert into a (select * from b as t) on duplicate key update a.i = b.j + 100",
+	)
+	enginetest.TestInsertInto(t, harness)
 }
 
 func TestInsertInto(t *testing.T) {
@@ -939,7 +949,6 @@ func TestStoredProcedures(t *testing.T) {
 }
 
 func TestStoredProcedures_Exp(t *testing.T) {
-	t.Skip("need to rewrite resolve procs")
 	for i, test := range queries.ProcedureLogicTests {
 		//TODO: the RowIter returned from a SELECT should not take future changes into account
 		if test.Name == "FETCH captures state at OPEN" {
@@ -963,8 +972,15 @@ func TestTriggersErrors(t *testing.T) {
 }
 
 func TestTriggersErrors_Exp(t *testing.T) {
-	t.Skip("different errors, but flaky to changes for passing triggers")
-	enginetest.TestTriggerErrors(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+	harness := enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental)
+	harness.QueriesToSkip(
+		// todo update to "column not be found" error
+		"create trigger old_on_insert before insert on x for each row set new.c = old.a + 1",
+		"create trigger new_on_delete before delete on x for each row set new.c = old.a + 1",
+		"create trigger not_found before insert on x for each row set new.d = new.d + 1",
+		"create trigger not_found before insert on x for each row set new.d = new.a + 1",
+	)
+	enginetest.TestTriggerErrors(t, harness)
 }
 
 func TestCreateTable(t *testing.T) {

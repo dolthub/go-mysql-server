@@ -29,7 +29,7 @@ func (b *Builder) buildWhere(inScope *scope, where *ast.Where) {
 func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	switch v := e.(type) {
 	case *ast.Default:
-		return expression.NewDefaultColumn(v.ColName)
+		return expression.WrapExpression(expression.NewDefaultColumn(v.ColName))
 	case *ast.SubstrExpr:
 		var name sql.Expression
 		if v.Name != nil {
@@ -212,16 +212,28 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		}
 		return expression.NewCollatedExpression(innerExpr, collation)
 	case *ast.ValuesFuncExpr:
-		col := b.buildScalar(inScope, v.Name)
-		fn, err := b.cat.Function(b.ctx, "values")
-		if err != nil {
-			b.handleErr(err)
+		if b.insertActive {
+			v.Name.Qualifier.Name = ast.NewTableIdent(onDupValuesPrefix)
+			tableName := strings.ToLower(v.Name.Qualifier.Name.String())
+			colName := strings.ToLower(v.Name.Name.String())
+			col, ok := inScope.resolveColumn(tableName, colName, false)
+			if !ok {
+				err := fmt.Errorf("expected ON DUPLICATE KEY ... VALUES() to reference a column, found: %s", v.Name.String())
+				b.handleErr(err)
+			}
+			return col.scalarGf()
+		} else {
+			col := b.buildScalar(inScope, v.Name)
+			fn, err := b.cat.Function(b.ctx, "values")
+			if err != nil {
+				b.handleErr(err)
+			}
+			values, err := fn.NewInstance([]sql.Expression{col})
+			if err != nil {
+				b.handleErr(err)
+			}
+			return values
 		}
-		values, err := fn.NewInstance([]sql.Expression{col})
-		if err != nil {
-			b.handleErr(err)
-		}
-		return values
 	case *ast.ExistsExpr:
 		sqScope := inScope.push()
 		selScope := b.buildSelectStmt(sqScope, v.Subquery.Select)

@@ -43,30 +43,13 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	}
 	isReplace := i.Action == ast.ReplaceStr
 
-	srcScope := b.insertRowsToNode(inScope, i.Rows)
-
-	combinedScope := inScope.replace()
-	for _, c := range destScope.cols {
-		combinedScope.newColumn(c)
-	}
-	for _, c := range srcScope.cols {
-		combinedScope.newColumn(c)
-	}
-	onDupExprs := b.assignmentExprsToExpressions(combinedScope, ast.AssignmentExprs(i.OnDup))
-
-	ignore := false
-	// TODO: make this a bool in vitess
-	if strings.Contains(strings.ToLower(i.Ignore), "ignore") {
-		ignore = true
-	}
-
 	var columns []string
 	{
 		columns = columnsToStrings(i.Columns)
 		// If no column names were specified in the query, go ahead and fill
 		// them all in now that the destination is resolved.
 		// TODO: setting the plan field directly is not great
-		if len(columns) == 0 && len(srcScope.cols) > 0 && rt != nil {
+		if len(columns) == 0 && len(destScope.cols) > 0 && rt != nil {
 			schema := rt.Schema()
 			columns = make([]string, len(schema))
 			for i, col := range schema {
@@ -75,7 +58,30 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 		}
 	}
 
-	ins := plan.NewInsertInto(db, destScope.node, srcScope.node, isReplace, columns, onDupExprs, ignore)
+	srcScope := b.insertRowsToNode(inScope, i.Rows, columns, destScope.node.Schema())
+
+	combinedScope := inScope.replace()
+	for i, c := range destScope.cols {
+		combinedScope.newColumn(c)
+		if len(srcScope.cols) == len(destScope.cols) {
+			combinedScope.newColumn(srcScope.cols[i])
+		} else {
+			// check for VALUES refs
+			c.table = onDupValuesPrefix
+			combinedScope.newColumn(c)
+		}
+	}
+	onDupExprs := b.buildOnDupUpdateExprs(combinedScope, destScope, ast.AssignmentExprs(i.OnDup))
+
+	ignore := false
+	// TODO: make this a bool in vitess
+	if strings.Contains(strings.ToLower(i.Ignore), "ignore") {
+		ignore = true
+	}
+
+	dest := destScope.node
+
+	ins := plan.NewInsertInto(db, plan.NewInsertDestination(dest.Schema(), dest), srcScope.node, isReplace, columns, onDupExprs, ignore)
 
 	if rt != nil {
 		checks := b.loadChecksFromTable(destScope, rt.Table)
@@ -88,16 +94,56 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	return
 }
 
-func (b *Builder) insertRowsToNode(inScope *scope, ir ast.InsertRows) (outScope *scope) {
+func (b *Builder) insertRowsToNode(inScope *scope, ir ast.InsertRows, columnNames []string, destSchema sql.Schema) (outScope *scope) {
 	switch v := ir.(type) {
 	case ast.SelectStatement:
 		return b.buildSelectStmt(inScope, v)
 	case ast.Values:
-		return b.buildValues(inScope, v)
+		outScope = b.buildInsertValues(inScope, v, columnNames, destSchema)
+
 	default:
 		err := sql.ErrUnsupportedSyntax.New(ast.String(ir))
 		b.handleErr(err)
 	}
+	return
+}
+
+func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []string, destSchema sql.Schema) (outScope *scope) {
+	columnDefaultValues := make([]*sql.ColumnDefaultValue, len(columnNames))
+	for i, columnName := range columnNames {
+		index := destSchema.IndexOfColName(columnName)
+		if index == -1 {
+			if !b.TriggerCtx().Call && len(b.TriggerCtx().UnresolvedTables) > 0 {
+				continue
+			}
+			err := plan.ErrInsertIntoNonexistentColumn.New(columnName)
+			b.handleErr(err)
+		}
+		columnDefaultValues[i] = destSchema[index].Default
+	}
+
+	exprTuples := make([][]sql.Expression, len(v))
+	for i, vt := range v {
+		exprs := make([]sql.Expression, len(columnNames))
+		exprTuples[i] = exprs
+		noExprs := len(vt) == 0
+		for j := range columnNames {
+			if noExprs {
+				exprs[j] = expression.WrapExpression(columnDefaultValues[j])
+				continue
+			}
+			e := vt[j]
+			switch e := e.(type) {
+			case *ast.Default:
+				exprs[j] = expression.WrapExpression(columnDefaultValues[j])
+			default:
+				exprs[j] = b.buildScalar(inScope, e)
+			}
+		}
+	}
+
+	outScope = inScope.push()
+	outScope.node = plan.NewValues(exprTuples)
 	return
 }
 
@@ -145,6 +191,60 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 		}
 	}
 	return res
+}
+
+const onDupValuesPrefix = "__new_ins"
+
+func (b *Builder) buildOnDupUpdateExprs(combinedScope, destScope *scope, e ast.AssignmentExprs) []sql.Expression {
+	b.insertActive = true
+	defer func() {
+		b.insertActive = false
+	}()
+	res := make([]sql.Expression, len(e))
+	// todo(max): prevent aggregations in separate semantic walk step
+	var startAggCnt int
+	if combinedScope.groupBy != nil {
+		startAggCnt = len(combinedScope.groupBy.aggs)
+	}
+	var startWinCnt int
+	if combinedScope.windowFuncs != nil {
+		startWinCnt = len(combinedScope.windowFuncs)
+	}
+	for i, updateExpr := range e {
+		colName := b.buildOnDupLeft(destScope, updateExpr.Name)
+		innerExpr := b.buildScalar(combinedScope, updateExpr.Expr)
+
+		res[i] = expression.NewSetField(colName, innerExpr)
+		if combinedScope.groupBy != nil {
+			if len(combinedScope.groupBy.aggs) > startAggCnt {
+				err := sql.ErrAggregationUnsupported.New(res[i])
+				b.handleErr(err)
+			}
+		}
+		if combinedScope.windowFuncs != nil {
+			if len(combinedScope.windowFuncs) > startWinCnt {
+				err := sql.ErrWindowUnsupported.New(res[i])
+				b.handleErr(err)
+			}
+		}
+	}
+	return res
+}
+
+func (b *Builder) buildOnDupLeft(inScope *scope, e ast.Expr) sql.Expression {
+	// expect col reference only
+	switch e := e.(type) {
+	case *ast.ColName:
+		c, ok := inScope.resolveColumn(strings.ToLower(e.Qualifier.Name.String()), strings.ToLower(e.Name.String()), true)
+		if !ok {
+			b.handleErr(sql.ErrColumnNotFound.New(e))
+		}
+		return c.scalarGf()
+	default:
+		err := fmt.Errorf("invalid update target; expected column reference, found: %T", e)
+		b.handleErr(err)
+	}
+	return nil
 }
 
 func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {

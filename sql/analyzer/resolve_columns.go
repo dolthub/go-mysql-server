@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/internal/similartext"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -251,6 +252,20 @@ func findOnDupUpdateLeftExprs(onDupExprs []sql.Expression) map[*expression.Unres
 		}
 	}
 	return onDupUpdateLeftExprs
+}
+
+// findOnDupUpdateRightValueExprs gathers all the right expressions for statements in InsertInto.OnDupExprs
+// onDupExprs are always references to the new column
+func findOnDupUpdateRightValueExprs(onDupExprs []sql.Expression) map[*expression.UnresolvedColumn]bool {
+	onDupUpdateRightExprs := map[*expression.UnresolvedColumn]bool{}
+	for _, e := range onDupExprs {
+		if sf, ok := e.(*expression.SetField); ok {
+			if uc, ok := sf.Right.(*expression.UnresolvedColumn); ok {
+				onDupUpdateRightExprs[uc] = true
+			}
+		}
+	}
+	return onDupUpdateRightExprs
 }
 
 // qualifyColumns assigns a table to any column expressions that don't have one already
@@ -668,7 +683,7 @@ func resolveJSONTables(ctx *sql.Context, a *Analyzer, scope *plan.Scope, left sq
 		if !ok || e.Resolved() {
 			return e, transform.SameTree, nil
 		}
-		return resolveColumnExpression(a, n, uc, columns)
+		return resolveColumnExpression(a, n, uc, columns, 0)
 	})
 	if err != nil {
 		return nil, transform.SameTree, err
@@ -730,7 +745,7 @@ func resolveJSONTablesInJoin(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 				return e, transform.SameTree, nil
 			}
 
-			return resolveColumnExpression(a, newN, uc, columns)
+			return resolveColumnExpression(a, newN, uc, columns, 0)
 		})
 		if err != nil {
 			return nil, transform.SameTree, nil
@@ -745,8 +760,14 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope
 	span, ctx := ctx.Span("resolve_columns")
 	defer span.End()
 
+	prePrepared := !sel(TrackProcessId)
+	inOffset := 0
+
 	n, same1, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		if n.Resolved() {
+		if in, ok := n.(*plan.InsertInto); ok && len(in.OnDupExprs) > 0 {
+			inOffset = len(in.Destination.Schema())
+		}
+		if n.Resolved() && inOffset == 0 {
 			return n, transform.SameTree, nil
 		}
 
@@ -769,12 +790,19 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope
 		}
 
 		return transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-			uc, ok := e.(column)
-			if !ok || e.Resolved() {
-				return e, transform.SameTree, nil
+			switch e := e.(type) {
+			case column:
+				if e.Resolved() {
+					return e, transform.SameTree, nil
+				}
+				return resolveColumnExpression(a, n, e, columns, 0)
+			case *function.Values:
+				if gf, ok := e.Child.(*expression.GetField); ok && inOffset > 0 && !prePrepared {
+					return gf.WithIndex(gf.Index() + inOffset), transform.NewTree, nil
+				}
+			default:
 			}
-
-			return resolveColumnExpression(a, n, uc, columns)
+			return e, transform.SameTree, nil
 		})
 	})
 	if err != nil {
@@ -934,7 +962,7 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *plan.Scope) (m
 		})
 		transform.Inspect(node.Source, func(n sql.Node) bool {
 			if resTbl, ok := n.(*plan.ResolvedTable); ok && !aliasedTables[resTbl] {
-				idx = 0
+				//idx = 0
 				indexSchema(resTbl.Schema())
 			}
 			return true
@@ -951,7 +979,7 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *plan.Scope) (m
 	return columns, nil
 }
 
-func resolveColumnExpression(a *Analyzer, n sql.Node, e column, columns map[tableCol]indexedCol) (sql.Expression, transform.TreeIdentity, error) {
+func resolveColumnExpression(a *Analyzer, n sql.Node, e column, columns map[tableCol]indexedCol, offset int) (sql.Expression, transform.TreeIdentity, error) {
 	name := strings.ToLower(e.Name())
 	table := strings.ToLower(e.Table())
 	col, ok := columns[tableCol{table, name}]
@@ -988,7 +1016,7 @@ func resolveColumnExpression(a *Analyzer, n sql.Node, e column, columns map[tabl
 	a.Log("column %s resolved to GetFieldWithTable: idx %d, typ %s, table %s, name %s, nullable %t",
 		e, col.index, col.Type, col.Source, col.Name, col.Nullable)
 	return expression.NewGetFieldWithTable(
-		col.index,
+		col.index+offset,
 		col.Type,
 		col.Source,
 		col.Name,
