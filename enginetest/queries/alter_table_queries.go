@@ -388,6 +388,41 @@ var AlterTableScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Add column and make unique in separate clauses",
+		SetUpScript: []string{
+			"create table t (c1 int primary key, c2 int, c3 int)",
+			"insert into t values (1, 1, 1), (2, 2, 2), (3, 3, 3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "alter table t add column c4 int null, add unique index uniq(c4)",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{sql.Row{"t",
+					"CREATE TABLE `t` (\n" +
+					"  `c1` int NOT NULL,\n" +
+					"  `c2` int,\n" +
+					"  `c3` int,\n" +
+					"  `c4` int,\n" +
+					"  PRIMARY KEY (`c1`),\n" +
+					"  UNIQUE KEY `uniq` (`c4`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 1, 1, nil},
+					{2, 2, 2, nil},
+					{3, 3, 3, nil},
+				},
+			},
+		},
+	},
 }
 
 var AlterTableAddAutoIncrementScripts = []ScriptTest{
