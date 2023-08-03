@@ -399,23 +399,23 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "alter table t1 add column pk int primary key",
-				ExpectedErr: sql.ErrPrimaryKeyViolation,
-			},
-			{
 				Query:    "alter table t1 add column pk int primary key auto_increment;",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "show create table t1",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+							"  `i` int,\n" +
+							"  `j` int,\n" +
+							"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+							"  PRIMARY KEY (`pk`)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query: "select * from t1 order by pk",
+				Query: "select pk from t1 order by pk",
 				Expected: []sql.Row{
-					{1, 1, 1},
-					{2, 2, 2},
-					{3, 3, 3},
+					{1}, {2}, {3},
 				},
 			},
 		},
@@ -432,19 +432,23 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 				ExpectedErr: sql.ErrPrimaryKeyViolation,
 			},
 			{
-				Query:    "alter table t1 add column pk int primary key auto_increment;",
+				Query:    "alter table t1 add column pk int primary key auto_increment first",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "show create table t1",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+							"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+							"  `i` int,\n" +
+							"  `j` int,\n" +
+							"  PRIMARY KEY (`pk`)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query: "select * from t1 order by pk",
+				Query: "select pk from t1 order by pk",
 				Expected: []sql.Row{
-					{1, 1, 1},
-					{2, 2, 2},
-					{3, 3, 3},
+					{1}, {2}, {3},
 				},
 			},
 		},

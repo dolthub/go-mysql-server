@@ -2036,7 +2036,7 @@ func newColumnAction(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		
 		// auto_increment will be added in an additional pass, so scrub it for now
 		column := sch.Schema[0]
-		column.AutoIncrement = false
+		// column.AutoIncrement = false
 
 		return plan.NewAddColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), column, columnOrderToColumnOrder(ddl.ColumnOrder)), nil
 	case sqlparser.DropStr:
@@ -2087,23 +2087,23 @@ func convertAlterTableClause(ctx *sql.Context, query string, ddl *sqlparser.DDL)
 				ddlNodes = append(ddlNodes, createIndex)
 			}
 			
-			if column.Type.Autoincrement {
-				sch, _, err := TableSpecToSchema(ctx, ddl.TableSpec, true)
-				if err != nil {
-					return nil, err
-				}
-
-				modifyAction := plan.NewModifyColumn(
-					sql.UnresolvedDatabase(ddl.Table.Qualifier.String()),
-					tableNameToUnresolvedTable(ddl.Table),
-					column.Name.String(),
-					sch.Schema[0],
-					columnOrderToColumnOrder(ddl.ColumnOrder),
-				)
-				
-				modifyAction.MarkAddColumn()
-				ddlNodes = append(ddlNodes, modifyAction)
-			}
+			// if column.Type.Autoincrement {
+			// 	sch, _, err := TableSpecToSchema(ctx, ddl.TableSpec, true)
+			// 	if err != nil {
+			// 		return nil, err
+			// 	}
+			// 
+			// 	modifyAction := plan.NewModifyColumn(
+			// 		sql.UnresolvedDatabase(ddl.Table.Qualifier.String()),
+			// 		tableNameToUnresolvedTable(ddl.Table),
+			// 		column.Name.String(),
+			// 		sch.Schema[0],
+			// 		columnOrderToColumnOrder(ddl.ColumnOrder),
+			// 	)
+			// 	
+			// 	modifyAction.MarkAddColumn()
+			// 	ddlNodes = append(ddlNodes, modifyAction)
+			// }
 		}
 	}
 

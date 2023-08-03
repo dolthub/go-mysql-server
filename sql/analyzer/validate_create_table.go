@@ -197,12 +197,6 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	})
 }
 
-func addKeyColumns(cols map[string]bool, columns map[string]bool) {
-	for col := range columns {
-		cols[col] = true
-	}
-}
-
 // updateKeyedColumns updates the keyedColumns map based on the action of the AlterIndex node
 func updateKeyedColumns(keyedColumns map[string]bool, n *plan.AlterIndex) map[string]bool {
 	switch n.Action {
