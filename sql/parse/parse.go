@@ -1305,18 +1305,14 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 	}
 }
 
-// convertAlterTable converts AlterTable AST nodes
-// If there are multiple alter statements, they are sorted in order of their precedence and placed inside a plan.Block
-// Currently, the precedence of DDL statements is:
-// 1.  RENAME COLUMN
-// 2.  DROP COLUMN
-// 3.  MODIFY COLUMN
-// 4.  ADD COLUMN
-// 5.  DROP CHECK/CONSTRAINT
-// 7.  CREATE CHECK/CONSTRAINT
-// 8.  RENAME INDEX
-// 9.  DROP INDEX
-// 10. ADD INDEX
+// convertAlterTable converts AlterTable AST nodes. If there is a single clause in the statement, it is returned as 
+// the appropriate node type. Otherwise, a plan.Block is returned with children representing all the various clauses.
+// Our validation rules for what counts as a legal set of alter clauses differs from mysql's here. MySQL seems to apply
+// some form of precedence rules to the clauses in an ALTER TABLE so that e.g. DROP COLUMN always happens before other
+// kinds of statements. So in MySQL, statements like `ALTER TABLE t ADD KEY (a), DROP COLUMN a` fails, whereas our
+// analyzer happily produces a plan that adds an index and then drops that column. We do this in part for simplicity, 
+// and also because we construct more than one node per clause in some cases and really want them executed in a
+// particular order in that case.
 func convertAlterTable(ctx *sql.Context, query string, c *sqlparser.AlterTable) (sql.Node, error) {
 	statements := make([]sql.Node, 0, len(c.Statements))
 	for i := 0; i < len(c.Statements); i++ {
@@ -2033,12 +2029,8 @@ func newColumnAction(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		
-		// auto_increment will be added in an additional pass, so scrub it for now
-		column := sch.Schema[0]
-		// column.AutoIncrement = false
 
-		return plan.NewAddColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), column, columnOrderToColumnOrder(ddl.ColumnOrder)), nil
+		return plan.NewAddColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
 	case sqlparser.DropStr:
 		return plan.NewDropColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String()), nil
 	case sqlparser.RenameStr:
@@ -2086,24 +2078,6 @@ func convertAlterTableClause(ctx *sql.Context, query string, ddl *sqlparser.DDL)
 				)
 				ddlNodes = append(ddlNodes, createIndex)
 			}
-			
-			// if column.Type.Autoincrement {
-			// 	sch, _, err := TableSpecToSchema(ctx, ddl.TableSpec, true)
-			// 	if err != nil {
-			// 		return nil, err
-			// 	}
-			// 
-			// 	modifyAction := plan.NewModifyColumn(
-			// 		sql.UnresolvedDatabase(ddl.Table.Qualifier.String()),
-			// 		tableNameToUnresolvedTable(ddl.Table),
-			// 		column.Name.String(),
-			// 		sch.Schema[0],
-			// 		columnOrderToColumnOrder(ddl.ColumnOrder),
-			// 	)
-			// 	
-			// 	modifyAction.MarkAddColumn()
-			// 	ddlNodes = append(ddlNodes, modifyAction)
-			// }
 		}
 	}
 
