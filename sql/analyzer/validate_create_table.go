@@ -102,9 +102,11 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	sch = sch.Copy() // Make a copy of the original schema to deal with any references to the original table.
 	initialSch := sch
 	
+	addedColumn := false
+	
 	// Need a TransformUp here because multiple of these statement types can be nested under a Block node.
 	// It doesn't look it, but this is actually an iterative loop over all the independent clauses in an ALTER statement
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	n, same, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch nn := n.(type) {
 		case *plan.ModifyColumn:
 			n, err := nn.WithTargetSchema(sch.Copy())
@@ -133,10 +135,12 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 				return nil, transform.SameTree, err
 			}
 			
-			sch, err = validateAddColumn(initialSch, sch, n.(*plan.AddColumn), keyedColumns)
+			sch, err = validateAddColumn(initialSch, sch, n.(*plan.AddColumn))
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
+			
+			addedColumn = true
 			return n, transform.NewTree, nil
 		case *plan.DropColumn:
 			n, err := nn.WithTargetSchema(sch.Copy())
@@ -195,6 +199,21 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 		}
 		return n, transform.SameTree, nil
 	})
+
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+	
+	// We can't evaluate auto-increment until the end of the analysis, since we break adding a new auto-increment unique
+	// column into two steps: first add the column, then create the index. If there was no index created, that's an error.
+	if addedColumn {
+		err = validateAutoIncrementAdd(ctx, sch, keyedColumns)
+		if err != nil {
+			return nil, false, err
+		}
+	}
+	
+	return n, same, nil
 }
 
 // updateKeyedColumns updates the keyedColumns map based on the action of the AlterIndex node
@@ -242,7 +261,7 @@ func validateRenameColumn(initialSch, sch sql.Schema, rc *plan.RenameColumn) (sq
 	return renameInSchema(sch, rc.ColumnName, rc.NewColumnName, nameable.Name()), nil
 }
 
-func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddColumn, keyedColumns map[string]bool) (sql.Schema, error) {
+func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddColumn) (sql.Schema, error) {
 	table := ac.Table
 	nameable := table.(sql.Nameable)
 
@@ -269,11 +288,6 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 	} else { // new column at end
 		newSch = append(newSch, schema...)
 		newSch = append(newSch, ac.Column().Copy())
-	}
-
-	err := validateAutoIncrementAdd(newSch)
-	if err != nil {
-		return nil, err
 	}
 
 	return newSch, nil
@@ -646,19 +660,25 @@ func validateAutoIncrementModify(schema sql.Schema, keyedColumns map[string]bool
 	return nil
 }
 
-func validateAutoIncrementAdd(schema sql.Schema) error {
+func validateAutoIncrementAdd(ctx *sql.Context, schema sql.Schema, keyColumns map[string]bool) error {
 	seen := false
 	for _, col := range schema {
 		if col.AutoIncrement {
-			if col.Default != nil {
-				// AUTO_INCREMENT col cannot have default
-				return sql.ErrInvalidAutoIncCols.New()
+			{
+				if !col.PrimaryKey && !keyColumns[col.Name] {
+					// AUTO_INCREMENT col must be a key
+					return sql.ErrInvalidAutoIncCols.New()
+				}
+				if col.Default != nil {
+					// AUTO_INCREMENT col cannot have default
+					return sql.ErrInvalidAutoIncCols.New()
+				}
+				if seen {
+					// there can be at most one AUTO_INCREMENT col
+					return sql.ErrInvalidAutoIncCols.New()
+				}
+				seen = true
 			}
-			if seen {
-				// there can be at most one AUTO_INCREMENT col
-				return sql.ErrInvalidAutoIncCols.New()
-			}
-			seen = true
 		}
 	}
 	return nil
