@@ -693,8 +693,9 @@ func (*RenameColumn) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 type ModifyColumn struct {
 	ddlNode
 	Table        sql.Node
-	columnName   string
-	column       *sql.Column
+	columnName      string
+	partOfAddColumn bool
+	column          *sql.Column
 	order        *sql.ColumnOrder
 	targetSchema sql.Schema
 }
@@ -725,6 +726,15 @@ func NewModifyColumn(database sql.Database, table *UnresolvedTable, columnName s
 		column:     column,
 		order:      order,
 	}
+}
+
+func (m *ModifyColumn) MarkAddColumn() {
+	m.partOfAddColumn = true
+}
+
+// IsPartOfAddColumn returns if this node is part of an AddColumn operation, as oposed to a stand-alone modify operation.
+func (m *ModifyColumn) IsPartOfAddColumn() bool {
+	return m.partOfAddColumn
 }
 
 func (m *ModifyColumn) WithDatabase(db sql.Database) (sql.Node, error) {

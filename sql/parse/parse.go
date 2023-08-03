@@ -19,7 +19,6 @@ import (
 	goerrors "errors"
 	"fmt"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -1332,76 +1331,76 @@ func convertAlterTable(ctx *sql.Context, query string, c *sqlparser.AlterTable) 
 		return statements[0], nil
 	}
 
-	// TODO: add correct precedence for ADD/DROP PRIMARY KEY and (maybe) FOREIGN KEY
-	// certain alter statements need to happen before others
-	sort.Slice(statements, func(i, j int) bool {
-		switch ii := statements[i].(type) {
-		case *plan.RenameColumn:
-			switch statements[j].(type) {
-			case *plan.DropColumn,
-				*plan.ModifyColumn,
-				*plan.AddColumn,
-				*plan.DropConstraint,
-				*plan.DropCheck,
-				*plan.CreateCheck,
-				*plan.AlterIndex:
-				return true
-			}
-		case *plan.DropColumn:
-			switch statements[j].(type) {
-			case *plan.ModifyColumn,
-				*plan.AddColumn,
-				*plan.DropConstraint,
-				*plan.DropCheck,
-				*plan.CreateCheck,
-				*plan.AlterIndex:
-				return true
-			}
-		case *plan.ModifyColumn:
-			switch statements[j].(type) {
-			case *plan.AddColumn,
-				*plan.DropConstraint,
-				*plan.DropCheck,
-				*plan.CreateCheck,
-				*plan.AlterIndex:
-				return true
-			}
-		case *plan.AddColumn:
-			switch statements[j].(type) {
-			case *plan.DropConstraint,
-				*plan.DropCheck,
-				*plan.CreateCheck,
-				*plan.AlterIndex:
-				return true
-			}
-		case *plan.DropConstraint:
-			switch statements[j].(type) {
-			case *plan.DropCheck,
-				*plan.CreateCheck,
-				*plan.AlterIndex:
-				return true
-			}
-		case *plan.DropCheck:
-			switch statements[j].(type) {
-			case *plan.CreateCheck,
-				*plan.AlterIndex:
-				return true
-			}
-		case *plan.CreateCheck:
-			switch statements[j].(type) {
-			case *plan.AlterIndex:
-				return true
-			}
-		// AlterIndex precedence is Rename, Drop, then Create
-		// So statement[i] < statement[j] = statement[i].action > statement[j].action
-		case *plan.AlterIndex:
-			switch jj := statements[j].(type) {
-			case *plan.AlterIndex:
-				return ii.Action > jj.Action
-			}
-		}
-		return false
-	})
+	// // TODO: add correct precedence for ADD/DROP PRIMARY KEY and (maybe) FOREIGN KEY
+	// // certain alter statements need to happen before others
+	// sort.Slice(statements, func(i, j int) bool {
+	// 	switch ii := statements[i].(type) {
+	// 	case *plan.RenameColumn:
+	// 		switch statements[j].(type) {
+	// 		case *plan.DropColumn,
+	// 			*plan.ModifyColumn,
+	// 			*plan.AddColumn,
+	// 			*plan.DropConstraint,
+	// 			*plan.DropCheck,
+	// 			*plan.CreateCheck,
+	// 			*plan.AlterIndex:
+	// 			return true
+	// 		}
+	// 	case *plan.DropColumn:
+	// 		switch statements[j].(type) {
+	// 		case *plan.ModifyColumn,
+	// 			*plan.AddColumn,
+	// 			*plan.DropConstraint,
+	// 			*plan.DropCheck,
+	// 			*plan.CreateCheck,
+	// 			*plan.AlterIndex:
+	// 			return true
+	// 		}
+	// 	case *plan.ModifyColumn:
+	// 		switch statements[j].(type) {
+	// 		case *plan.AddColumn,
+	// 			*plan.DropConstraint,
+	// 			*plan.DropCheck,
+	// 			*plan.CreateCheck,
+	// 			*plan.AlterIndex:
+	// 			return true
+	// 		}
+	// 	case *plan.AddColumn:
+	// 		switch statements[j].(type) {
+	// 		case *plan.DropConstraint,
+	// 			*plan.DropCheck,
+	// 			*plan.CreateCheck,
+	// 			*plan.AlterIndex:
+	// 			return true
+	// 		}
+	// 	case *plan.DropConstraint:
+	// 		switch statements[j].(type) {
+	// 		case *plan.DropCheck,
+	// 			*plan.CreateCheck,
+	// 			*plan.AlterIndex:
+	// 			return true
+	// 		}
+	// 	case *plan.DropCheck:
+	// 		switch statements[j].(type) {
+	// 		case *plan.CreateCheck,
+	// 			*plan.AlterIndex:
+	// 			return true
+	// 		}
+	// 	case *plan.CreateCheck:
+	// 		switch statements[j].(type) {
+	// 		case *plan.AlterIndex:
+	// 			return true
+	// 		}
+	// 	// AlterIndex precedence is Rename, Drop, then Create
+	// 	// So statement[i] < statement[j] = statement[i].action > statement[j].action
+	// 	case *plan.AlterIndex:
+	// 		switch jj := statements[j].(type) {
+	// 		case *plan.AlterIndex:
+	// 			return ii.Action > jj.Action
+	// 		}
+	// 	}
+	// 	return false
+	// })
 
 	return plan.NewBlock(statements), nil
 }
@@ -2093,16 +2092,9 @@ func convertRenameTable(ctx *sql.Context, ddl *sqlparser.DDL, alterTbl bool) (sq
 
 	return plan.NewRenameTable(sql.UnresolvedDatabase(""), fromTables, toTables, alterTbl), nil
 }
-
-func isUniqueColumn(tableSpec *sqlparser.TableSpec, columnName string) (bool, error) {
-	for _, column := range tableSpec.Columns {
-		if column.Name.String() == columnName {
+func isUniqueColumn(column *sqlparser.ColumnDefinition) bool {
 			return column.Type.KeyOpt == colKeyUnique ||
-				column.Type.KeyOpt == colKeyUniqueKey, nil
-		}
-	}
-	return false, fmt.Errorf("unknown column name %s", columnName)
-
+				column.Type.KeyOpt == colKeyUniqueKey
 }
 
 func newColumnAction(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
@@ -2112,7 +2104,12 @@ func newColumnAction(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return plan.NewAddColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
+		
+		// auto_increment will be added in an additional pass, so scrub it for now
+		column := sch.Schema[0]
+		column.AutoIncrement = false
+
+		return plan.NewAddColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), column, columnOrderToColumnOrder(ddl.ColumnOrder)), nil
 	case sqlparser.DropStr:
 		return plan.NewDropColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String()), nil
 	case sqlparser.RenameStr:
@@ -2146,10 +2143,7 @@ func convertAlterTableClause(ctx *sql.Context, query string, ddl *sqlparser.DDL)
 			}
 
 			column := ddl.TableSpec.Columns[0]
-			isUnique, err := isUniqueColumn(ddl.TableSpec, column.Name.String())
-			if err != nil {
-				return nil, fmt.Errorf("on table %s, %w", ddl.Table.String(), err)
-			}
+			isUnique := isUniqueColumn(column)
 
 			if isUnique {
 				createIndex := plan.NewAlterCreateIndex(
@@ -2162,6 +2156,24 @@ func convertAlterTableClause(ctx *sql.Context, query string, ddl *sqlparser.DDL)
 					"",
 				)
 				ddlNodes = append(ddlNodes, createIndex)
+			}
+			
+			if column.Type.Autoincrement {
+				sch, _, err := TableSpecToSchema(ctx, ddl.TableSpec, true)
+				if err != nil {
+					return nil, err
+				}
+
+				modifyAction := plan.NewModifyColumn(
+					sql.UnresolvedDatabase(ddl.Table.Qualifier.String()),
+					tableNameToUnresolvedTable(ddl.Table),
+					column.Name.String(),
+					sch.Schema[0],
+					columnOrderToColumnOrder(ddl.ColumnOrder),
+				)
+				
+				modifyAction.MarkAddColumn()
+				ddlNodes = append(ddlNodes, modifyAction)
 			}
 		}
 	}

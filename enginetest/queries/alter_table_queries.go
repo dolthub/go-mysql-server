@@ -355,4 +355,27 @@ var AlterTableScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "add column auto_increment",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (i bigint primary key, s varchar(20))",
+			"INSERT INTO t1 VALUES (1, 'a'), (2, 'b'), (3, 'c')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t1 add column j int auto_increment",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1", "CREATE TABLE `t1` (\n" +
+						"  `i` bigint NOT NULL,\n" +
+						"  `s` varchar(20),\n" +
+						"  `j` int,\n" +
+						"  PRIMARY KEY (`i`),\n" +
+						"  UNIQUE KEY `j` (`j`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
 }

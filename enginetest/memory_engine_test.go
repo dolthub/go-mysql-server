@@ -270,30 +270,48 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	// t.Skip()
 	var scripts = []queries.ScriptTest{
+		// {
+		// 	Name: "ALTER TABLE MODIFY column with KEY",
+		// 	SetUpScript: []string{
+		// 		"CREATE table test (pk int primary key, mk int, index (mk))",
+		// 		"ALTER TABLE `test` MODIFY column mk int auto_increment",
+		// 	},
+		// 	Assertions: []queries.ScriptTestAssertion{
+		// 		{
+		// 			Query: "show create table test",
+		// 			Expected: []sql.Row{{"test", 
+		// 				"CREATE TABLE `test` (\n" +
+		// 				"  `pk` int NOT NULL,\n" +
+		// 				"  `mk` int AUTO_INCREMENT,\n" +
+		// 				"  PRIMARY KEY (`pk`),\n" +
+		// 				"  KEY `mk` (`mk`)\n" +
+		// 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+		// 		},
+		// 	},
+		// },
 		{
-			Name: "renaming views with RENAME TABLE ... TO .. statement",
+			Name: "add column auto_increment",
 			SetUpScript: []string{
-				"create table t1 (id int primary key, v1 int);",
-				"create view v1 as select * from t1;",
+				"CREATE TABLE t1 (i bigint primary key, s varchar(20))",
+				"INSERT INTO t1 VALUES (1, 'a'), (2, 'b'), (3, 'c')",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "rename table v1 to view1",
-					Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+					Query:    "alter table t1 add column j int auto_increment unique",
+					Expected: []sql.Row{{types.NewOkResult(0)}},
 				},
 				{
-					Query:    "show tables;",
-					Expected: []sql.Row{{"myview"}, {"t1"}, {"view1"}},
-				},
-				{
-					Query:    "rename table view1 to newViewName, t1 to newTableName",
-					Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
-				},
-				{
-					Query:    "show tables;",
-					Expected: []sql.Row{{"myview"}, {"newTableName"}, {"newViewName"}},
+					Query: "show create table t1",
+					Expected: []sql.Row{{"t1",
+						"CREATE TABLE `t1` (\n" +
+						"  `i` bigint NOT NULL,\n" +
+						"  `s` varchar(20),\n" +
+						"  `j` int AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`),\n" +
+						"  UNIQUE KEY `j` (`j`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 				},
 			},
 		},

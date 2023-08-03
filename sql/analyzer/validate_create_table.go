@@ -101,7 +101,7 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 
 	sch = sch.Copy() // Make a copy of the original schema to deal with any references to the original table.
 	initialSch := sch
-
+	
 	// Need a TransformUp here because multiple of these statement types can be nested under a Block node.
 	// It doesn't look it, but this is actually an iterative loop over all the independent clauses in an ALTER statement
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
@@ -111,6 +111,7 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
+			
 			sch, err = validateModifyColumn(ctx, initialSch, sch, n.(*plan.ModifyColumn), keyedColumns)
 			if err != nil {
 				return nil, transform.SameTree, err
@@ -127,12 +128,11 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 			}
 			return n, transform.NewTree, nil
 		case *plan.AddColumn:
-			// TODO: can't `alter table add column j int unique auto_increment` as it ignores unique
-			// TODO: when above works, need to make sure unique index exists first then do what we did for modify
 			n, err := nn.WithTargetSchema(sch.Copy())
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
+			
 			sch, err = validateAddColumn(initialSch, sch, n.(*plan.AddColumn), keyedColumns)
 			if err != nil {
 				return nil, transform.SameTree, err
@@ -147,6 +147,8 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
+			delete(keyedColumns, nn.Column)
+			
 			return n, transform.NewTree, nil
 		case *plan.AlterIndex:
 			n, err := nn.WithTargetSchema(sch.Copy())
@@ -157,6 +159,8 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
+			
+			keyedColumns = updateKeyedColumns(keyedColumns, nn)
 			return n, transform.NewTree, nil
 		case *plan.AlterPK:
 			n, err := nn.WithTargetSchema(sch.Copy())
@@ -191,6 +195,28 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 		}
 		return n, transform.SameTree, nil
 	})
+}
+
+func addKeyColumns(cols map[string]bool, columns map[string]bool) {
+	for col := range columns {
+		cols[col] = true
+	}
+}
+
+// updateKeyedColumns updates the keyedColumns map based on the action of the AlterIndex node
+func updateKeyedColumns(keyedColumns map[string]bool, n *plan.AlterIndex) map[string]bool {
+	switch n.Action {
+	case plan.IndexAction_Create:
+		for _, col := range n.Columns {
+			keyedColumns[col.Name] = true
+		}
+	case plan.IndexAction_Drop:
+		for _, col := range n.Columns {
+			delete(keyedColumns, col.Name)
+		}
+	}
+	
+	return keyedColumns
 }
 
 // validateRenameColumn checks that a DDL RenameColumn node can be safely executed (e.g. no collision with other
@@ -266,9 +292,15 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 
 	// Look for the old column and throw an error if it's not there. The column cannot have been renamed in the same
 	// statement. This matches the MySQL behavior.
-	if !schema.Contains(mc.Column(), nameable.Name()) ||
-		!initialSch.Contains(mc.Column(), nameable.Name()) {
-		return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), mc.Column())
+	if mc.IsPartOfAddColumn() {
+		if !schema.Contains(mc.Column(), nameable.Name()) {
+			return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), mc.Column())
+		}
+	} else {
+		if !schema.Contains(mc.Column(), nameable.Name()) ||
+				!initialSch.Contains(mc.Column(), nameable.Name()) {
+			return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), mc.Column())
+		}
 	}
 
 	newSch := replaceInSchema(schema, mc.NewColumn(), nameable.Name())
