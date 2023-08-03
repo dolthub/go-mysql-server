@@ -149,3 +149,7 @@ func (n *HashLookup) GetHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 	}
 	return key, nil
 }
+
+func (n *HashLookup) Dispose() {
+	n.Lookup = nil
+}
