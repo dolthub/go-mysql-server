@@ -122,6 +122,13 @@ func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 	defer s.mu.RUnlock()
 
 	for k, v := range s.systemVars {
+		if sysType, ok := v.Var.Type.(SetType); ok {
+			if sv, ok := v.Val.(uint64); ok {
+				x, _ := sysType.BitsToString(sv)
+				m[k] = x
+				continue
+			}
+		}
 		m[k] = v.Val
 	}
 	return m
@@ -164,7 +171,7 @@ func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value
 	if ok && val.Val != sysVar.Default {
 		return ErrSystemVariableReinitialized.New(sysVarName)
 	}
-
+	
 	return s.setSessVar(ctx, sysVar, value)
 }
 

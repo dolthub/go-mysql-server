@@ -276,6 +276,20 @@ var VariableQueries = []ScriptTest{
 			{"ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION,NO_ZERO_DATE,NO_ZERO_IN_DATE,STRICT_ALL_TABLES,STRICT_TRANS_TABLES,TRADITIONAL"},
 		},
 	},
+	{
+		Name: "show variables renders enums after set",
+		SetUpScript: []string{
+			`set @@sql_mode='ONLY_FULL_GROUP_BY';`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:		`SHOW VARIABLES LIKE '%sql_mode%'`,
+				Expected:   []sql.Row{
+					{"sql_mode", `ONLY_FULL_GROUP_BY`},
+				},
+			},
+		},
+	},
 	// User variables
 	{
 		Name: "set user var",
