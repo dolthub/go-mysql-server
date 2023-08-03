@@ -235,7 +235,12 @@ func (t SetType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Val
 	}
 	encodedBytes, ok := resultCharset.Encoder().Encode(encodings.StringToBytes(value))
 	if !ok {
-		return sqltypes.Value{}, sql.ErrCharSetFailedToEncode.New(t.collation.CharacterSet().Name())
+		snippet := value
+		if len(snippet) > 50 {
+			snippet = snippet[:50]
+		}
+		snippet = strings.ToValidUTF8(snippet, string(utf8.RuneError))
+		return sqltypes.Value{}, sql.ErrCharSetFailedToEncode.New(resultCharset.Name(), utf8.ValidString(value), snippet)
 	}
 	val := AppendAndSliceBytes(dest, encodedBytes)
 
