@@ -2938,6 +2938,8 @@ var XyData = []SetupScript{{
   (4,4),
   (5,4);`,
 	`update information_schema.statistics set cardinality = 1000 where table_name = 'ab';`,
+	`update information_schema.statistics set cardinality = 1000 where table_name = 'ab_hasnull';`,
 	`update information_schema.statistics set cardinality = 1000 where table_name = 'xy';`,
+	`update information_schema.statistics set cardinality = 1000 where table_name = 'xy_hasnull';`,
 	`update information_schema.statistics set cardinality = 1000 where table_name = 'rs'`,
 }}
