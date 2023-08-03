@@ -48,7 +48,7 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 		}
 	}
 
-	err = validateAutoIncrement(ct.CreateSchema.Schema, keyedColumns)
+	err = validateAutoIncrementModify(ct.CreateSchema.Schema, keyedColumns)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -271,8 +271,7 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 		newSch = append(newSch, ac.Column().Copy())
 	}
 
-	// TODO: more validation possible to do here
-	err := validateAutoIncrement(newSch, keyedColumns)
+	err := validateAutoIncrementAdd(newSch)
 	if err != nil {
 		return nil, err
 	}
@@ -299,7 +298,7 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 
 	newSch := replaceInSchema(schema, mc.NewColumn(), nameable.Name())
 
-	err := validateAutoIncrement(newSch, keyedColumns)
+	err := validateAutoIncrementModify(newSch, keyedColumns)
 	if err != nil {
 		return nil, err
 	}
@@ -623,7 +622,8 @@ func removeInSchema(sch sql.Schema, colName, tableName string) sql.Schema {
 	return schCopy
 }
 
-func validateAutoIncrement(schema sql.Schema, keyedColumns map[string]bool) error {
+// TODO: make this work for CREATE TABLE statements where there's a non-pk auto increment column
+func validateAutoIncrementModify(schema sql.Schema, keyedColumns map[string]bool) error {
 	seen := false
 	for _, col := range schema {
 		if col.AutoIncrement {
@@ -632,6 +632,24 @@ func validateAutoIncrement(schema sql.Schema, keyedColumns map[string]bool) erro
 				// AUTO_INCREMENT col must be a key
 				return sql.ErrInvalidAutoIncCols.New()
 			}
+			if col.Default != nil {
+				// AUTO_INCREMENT col cannot have default
+				return sql.ErrInvalidAutoIncCols.New()
+			}
+			if seen {
+				// there can be at most one AUTO_INCREMENT col
+				return sql.ErrInvalidAutoIncCols.New()
+			}
+			seen = true
+		}
+	}
+	return nil
+}
+
+func validateAutoIncrementAdd(schema sql.Schema) error {
+	seen := false
+	for _, col := range schema {
+		if col.AutoIncrement {
 			if col.Default != nil {
 				// AUTO_INCREMENT col cannot have default
 				return sql.ErrInvalidAutoIncCols.New()
