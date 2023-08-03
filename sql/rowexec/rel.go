@@ -227,6 +227,19 @@ func (b *BaseBuilder) buildHashLookup(ctx *sql.Context, n *plan.HashLookup, row 
 		if err != nil {
 			return nil, err
 		}
+		if n.JoinType.IsExcludeNulls() {
+			// Some joins care if any of their filter comparisons have a NULL result.
+			// For these joins, we need to distinguish between an empty and non-empty secondary table.
+			// Thus, if there are any rows in the lookup, we must return at least one.
+			if len(n.Lookup[key]) > 0 {
+				return sql.RowsToRowIter(n.Lookup[key]...), nil
+			}
+			for k := range n.Lookup {
+				if len(n.Lookup[k]) > 0 {
+					return sql.RowsToRowIter(n.Lookup[k]...), nil
+				}
+			}
+		}
 		return sql.RowsToRowIter(n.Lookup[key]...), nil
 	}
 	return b.buildNodeExec(ctx, n.Child, row)
