@@ -283,8 +283,8 @@ var VariableQueries = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:		`SHOW VARIABLES LIKE '%sql_mode%'`,
-				Expected:   []sql.Row{
+				Query: `SHOW VARIABLES LIKE '%sql_mode%'`,
+				Expected: []sql.Row{
 					{"sql_mode", `ONLY_FULL_GROUP_BY`},
 				},
 			},
