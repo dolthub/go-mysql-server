@@ -192,8 +192,13 @@ func TestJSONTableScripts(t *testing.T) {
 
 // TestJSONTableScripts_Experimental runs the canonical test queries against new name resolution engine
 func TestJSONTableScripts_Experimental(t *testing.T) {
-	t.Skip("getfield indexing is incorrect")
-	enginetest.TestJSONTableScripts(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental))
+	harness := enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental)
+	// these have different error message
+	harness.QueriesToSkip(
+		"select t.a from t, json_table(t.k, '$[*]' columns (a INT path '$.a')) AS j",
+		"select j.b from t, json_table(t.j, '$[*]' columns (a INT path '$.a')) AS j",
+	)
+	enginetest.TestJSONTableScripts(t, harness)
 }
 
 // TestJSONTableScriptsPrepared runs the canonical test queries against a single threaded index enabled harness.
@@ -235,7 +240,7 @@ where
 
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, false, nil).WithVersion(sql.VersionStable)
-	harness.Setup(setup.JoinsSetup...)
+	harness.Setup(setup.XySetup...)
 	engine, err := harness.NewEngine(t)
 	if err != nil {
 		panic(err)
@@ -270,32 +275,11 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	var scripts = []queries.ScriptTest{
-		{
-			Name: "DELETE ME",
-			SetUpScript: []string{
-				"create table t1 (i int primary key, j int);",
-				"create table t2 (i int primary key, j int);",
-				"create table t3 (i int primary key, j int);",
-				"insert into t1 values (1, 10), (2, 20), (3, 30);",
-				"insert into t2 values (1, 30), (2, 20), (5, 50);",
-				"insert into t3 values (1, 200), (2, 20), (6, 600);",
-			},
-			Assertions: []queries.ScriptTestAssertion{
-				{
-					Query:    "select * from t1 join t2 using (i);",
-					Expected: []sql.Row{
-						//{1, 10, 1, 30},
-						//{2, 20, 2, 20},
-						//{3, 30, nil, nil},
-					},
-				},
-			},
-		},
-	}
+	t.Skip()
+	var scripts = []queries.ScriptTest{}
 
 	for _, test := range scripts {
-		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental)
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
@@ -303,39 +287,11 @@ func TestSingleScript(t *testing.T) {
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
-	//t.Skip()
-	//var scripts = []queries.ScriptTest{
-	//	{
-	//		Name: "trigger with signal and user var",
-	//		SetUpScript: []string{
-	//			"CREATE TABLE sales (year_built int primary key, CONSTRAINT `valid_year_built` CHECK (year_built <= 2022));",
-	//			"INSERT INTO sales VALUES (1981);",
-	//		},
-	//		Assertions: []queries.ScriptTestAssertion{
-	//			{
-	//				Query: "UPDATE sales JOIN (SELECT year_built FROM sales) AS t ON sales.year_built = t.year_built SET sales.year_built = 1901;",
-	//
-	//				Expected: []sql.Row{},
-	//			},
-	//		},
-	//	},
-	//}
-	//
-	//for _, test := range scripts {
-	//	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	//	engine, err := harness.NewEngine(t)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	engine.Analyzer.Debug = true
-	//	engine.Analyzer.Verbose = true
-	//
-	//	enginetest.TestScriptWithEngine(t, engine, harness, test)
-	//}
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript_Experimental(t *testing.T) {
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
 			Name: "DELETE ME",
@@ -368,39 +324,6 @@ func TestSingleScript_Experimental(t *testing.T) {
 		}
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
-	//t.Skip()
-	//var scripts = []queries.ScriptTest{
-	//	{
-	//		Name: "lateral join basic",
-	//		SetUpScript: []string{
-	//			"create table t (i int primary key)",
-	//			"create table t1 (j int primary key)",
-	//			"insert into t values (1), (2), (3)",
-	//			"insert into t1 values (1), (4), (5)",
-	//		},
-	//		Assertions: []queries.ScriptTestAssertion{
-	//			{
-	//				Query: `WITH RECURSIVE cte(x) AS (SELECT 1 union all SELECT x + 1 from cte where x < 5) SELECT * FROM cte, lateral (select * from t where t.i = cte.x) tt;`,
-	//				Expected: []sql.Row{
-	//					{1, 1},
-	//					{2, 2},
-	//					{3, 3},
-	//				},
-	//			},
-	//		},
-	//	},
-	//}
-	//
-	//for _, test := range scripts {
-	//	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental)
-	//	engine, err := harness.NewEngine(t)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	engine.Analyzer.Debug = true
-	//	engine.Analyzer.Verbose = true
-	//	enginetest.TestScriptWithEngine(t, engine, harness, test)
-	//}
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
@@ -666,8 +589,13 @@ func TestAmbiguousColumnResolution_Experimental(t *testing.T) {
 }
 
 func TestInsertInto_Experimental(t *testing.T) {
-	t.Skip("todo rewrite onUplicateUpdate exprs")
-	enginetest.TestInsertInto(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+	harness := enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental)
+	harness.QueriesToSkip(
+		// should be colum not found error
+		"insert into a (select * from b) on duplicate key update b.i = a.i",
+		"insert into a (select * from b as t) on duplicate key update a.i = b.j + 100",
+	)
+	enginetest.TestInsertInto(t, harness)
 }
 
 func TestInsertInto(t *testing.T) {
@@ -993,7 +921,6 @@ func TestStoredProcedures(t *testing.T) {
 }
 
 func TestStoredProcedures_Exp(t *testing.T) {
-	t.Skip("need to rewrite resolve procs")
 	for i, test := range queries.ProcedureLogicTests {
 		//TODO: the RowIter returned from a SELECT should not take future changes into account
 		if test.Name == "FETCH captures state at OPEN" {
@@ -1017,8 +944,15 @@ func TestTriggersErrors(t *testing.T) {
 }
 
 func TestTriggersErrors_Exp(t *testing.T) {
-	t.Skip("different errors, but flaky to changes for passing triggers")
-	enginetest.TestTriggerErrors(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+	harness := enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental)
+	harness.QueriesToSkip(
+		// todo update to "column not be found" error
+		"create trigger old_on_insert before insert on x for each row set new.c = old.a + 1",
+		"create trigger new_on_delete before delete on x for each row set new.c = old.a + 1",
+		"create trigger not_found before insert on x for each row set new.d = new.d + 1",
+		"create trigger not_found before insert on x for each row set new.d = new.a + 1",
+	)
+	enginetest.TestTriggerErrors(t, harness)
 }
 
 func TestCreateTable(t *testing.T) {
@@ -1361,7 +1295,9 @@ func TestAddDropPks_Exp(t *testing.T) {
 
 func TestAddAutoIncrementColumn(t *testing.T) {
 	t.Skip("in memory tables don't implement sql.RewritableTable yet")
-	enginetest.TestAddAutoIncrementColumn(t, enginetest.NewDefaultMemoryHarness())
+	for _, script := range queries.AlterTableAddAutoIncrementScripts {
+		enginetest.TestScript(t, enginetest.NewDefaultMemoryHarness(), script)
+	}
 }
 
 func TestNullRanges(t *testing.T) {

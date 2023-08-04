@@ -16,7 +16,7 @@ type Builder struct {
 	multiDDL        bool
 	viewCtx         *ViewContext
 	triggerCtx      *TriggerContext
-	procCtx         *ProcContext
+	insertActive    bool
 	nesting         int
 }
 
@@ -52,13 +52,6 @@ func (b *Builder) TriggerCtx() *TriggerContext {
 		b.triggerCtx = &TriggerContext{}
 	}
 	return b.triggerCtx
-}
-
-func (b *Builder) ProcCtx() *ProcContext {
-	if b.procCtx == nil {
-		b.procCtx = &ProcContext{}
-	}
-	return b.procCtx
 }
 
 func (b *Builder) newScope() *scope {

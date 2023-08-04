@@ -1,13 +1,14 @@
 package analyzer
 
 import (
+	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/fixidx"
-
-	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -39,6 +40,18 @@ func fixupAuxiliaryExprs(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 				return n, transform.SameTree, nil
 			}
 			return ret, transform.NewTree, nil
+		case *plan.Fetch:
+			return n, transform.SameTree, nil
+		case *plan.JSONTable:
+			newExprs, same, err := fixidx.FixFieldIndexesOnExpressions(scope, a.LogFn(), nil, n.Expressions()...)
+			if err != nil {
+				return n, transform.SameTree, nil
+			}
+			if same {
+				return n, transform.SameTree, nil
+			}
+			newJt, err := n.WithExpressions(newExprs...)
+			return newJt, transform.NewTree, err
 		case *plan.ShowVariables:
 			if n.Filter != nil {
 				newF, same, err := fixidx.FixFieldIndexes(scope, a.LogFn(), n.Schema(), n.Filter)
@@ -86,6 +99,47 @@ func fixupAuxiliaryExprs(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 				return n, transform.SameTree, err
 			}
 			ins.Source = newSource
+
+			rightSchema := make(sql.Schema, len(n.Destination.Schema())*2)
+			// schema = [oldrow][newrow]
+			for i, c := range n.Destination.Schema() {
+				rightSchema[i] = c
+				if _, ok := n.Source.(*plan.Values); !ok && len(n.Destination.Schema()) == len(n.Source.Schema()) {
+					rightSchema[len(n.Destination.Schema())+i] = n.Source.Schema()[i]
+				} else {
+					newC := c.Copy()
+					newC.Source = planbuilder.OnDupValuesPrefix
+					rightSchema[len(n.Destination.Schema())+i] = newC
+				}
+			}
+
+			var newOnDups []sql.Expression
+			for i, e := range n.OnDupExprs {
+				set, ok := e.(*expression.SetField)
+				if !ok {
+					return n, transform.SameTree, fmt.Errorf("on duplicate update expressions should be *expression.SetField; found %T", e)
+				}
+				left, same1, err := fixidx.FixFieldIndexes(scope, a.LogFn(), n.Destination.Schema(), set.Left)
+				if err != nil {
+					return n, transform.SameTree, err
+				}
+
+				right, same2, err := fixidx.FixFieldIndexes(scope, a.LogFn(), rightSchema, set.Right)
+				if err != nil {
+					return n, transform.SameTree, err
+				}
+				if same1 && same2 {
+					continue
+				}
+				if newOnDups == nil {
+					newOnDups = make([]sql.Expression, len(n.OnDupExprs))
+					copy(newOnDups, n.OnDupExprs)
+				}
+				newOnDups[i] = expression.NewSetField(left, right)
+			}
+			if newOnDups != nil {
+				ins.OnDupExprs = newOnDups
+			}
 			return ins, transform.NewTree, nil
 		}
 	})

@@ -761,7 +761,7 @@ var (
 	ErrCharSetInvalidString = errors.NewKind("invalid string for character set `%s`: \"%s\"")
 
 	// ErrCharSetFailedToEncode is returned when a character set fails encoding
-	ErrCharSetFailedToEncode = errors.NewKind("failed to encode `%s`")
+	ErrCharSetFailedToEncode = errors.NewKind("failed to encode: `%s`, valid string: `%v`, snippet: `%s`")
 
 	// ErrCharSetUnknown is returned when the character set is not a recognized MySQL character set
 	ErrCharSetUnknown = errors.NewKind("Unknown character set: %v")

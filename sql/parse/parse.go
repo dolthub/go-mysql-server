@@ -19,7 +19,6 @@ import (
 	goerrors "errors"
 	"fmt"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -1306,18 +1305,14 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 	}
 }
 
-// convertAlterTable converts AlterTable AST nodes
-// If there are multiple alter statements, they are sorted in order of their precedence and placed inside a plan.Block
-// Currently, the precedence of DDL statements is:
-// 1.  RENAME COLUMN
-// 2.  DROP COLUMN
-// 3.  MODIFY COLUMN
-// 4.  ADD COLUMN
-// 5.  DROP CHECK/CONSTRAINT
-// 7.  CREATE CHECK/CONSTRAINT
-// 8.  RENAME INDEX
-// 9.  DROP INDEX
-// 10. ADD INDEX
+// convertAlterTable converts AlterTable AST nodes. If there is a single clause in the statement, it is returned as
+// the appropriate node type. Otherwise, a plan.Block is returned with children representing all the various clauses.
+// Our validation rules for what counts as a legal set of alter clauses differs from mysql's here. MySQL seems to apply
+// some form of precedence rules to the clauses in an ALTER TABLE so that e.g. DROP COLUMN always happens before other
+// kinds of statements. So in MySQL, statements like `ALTER TABLE t ADD KEY (a), DROP COLUMN a` fails, whereas our
+// analyzer happily produces a plan that adds an index and then drops that column. We do this in part for simplicity,
+// and also because we construct more than one node per clause in some cases and really want them executed in a
+// particular order in that case.
 func convertAlterTable(ctx *sql.Context, query string, c *sqlparser.AlterTable) (sql.Node, error) {
 	statements := make([]sql.Node, 0, len(c.Statements))
 	for i := 0; i < len(c.Statements); i++ {
@@ -1331,77 +1326,6 @@ func convertAlterTable(ctx *sql.Context, query string, c *sqlparser.AlterTable) 
 	if len(statements) == 1 {
 		return statements[0], nil
 	}
-
-	// TODO: add correct precedence for ADD/DROP PRIMARY KEY and (maybe) FOREIGN KEY
-	// certain alter statements need to happen before others
-	sort.Slice(statements, func(i, j int) bool {
-		switch ii := statements[i].(type) {
-		case *plan.RenameColumn:
-			switch statements[j].(type) {
-			case *plan.DropColumn,
-				*plan.ModifyColumn,
-				*plan.AddColumn,
-				*plan.DropConstraint,
-				*plan.DropCheck,
-				*plan.CreateCheck,
-				*plan.AlterIndex:
-				return true
-			}
-		case *plan.DropColumn:
-			switch statements[j].(type) {
-			case *plan.ModifyColumn,
-				*plan.AddColumn,
-				*plan.DropConstraint,
-				*plan.DropCheck,
-				*plan.CreateCheck,
-				*plan.AlterIndex:
-				return true
-			}
-		case *plan.ModifyColumn:
-			switch statements[j].(type) {
-			case *plan.AddColumn,
-				*plan.DropConstraint,
-				*plan.DropCheck,
-				*plan.CreateCheck,
-				*plan.AlterIndex:
-				return true
-			}
-		case *plan.AddColumn:
-			switch statements[j].(type) {
-			case *plan.DropConstraint,
-				*plan.DropCheck,
-				*plan.CreateCheck,
-				*plan.AlterIndex:
-				return true
-			}
-		case *plan.DropConstraint:
-			switch statements[j].(type) {
-			case *plan.DropCheck,
-				*plan.CreateCheck,
-				*plan.AlterIndex:
-				return true
-			}
-		case *plan.DropCheck:
-			switch statements[j].(type) {
-			case *plan.CreateCheck,
-				*plan.AlterIndex:
-				return true
-			}
-		case *plan.CreateCheck:
-			switch statements[j].(type) {
-			case *plan.AlterIndex:
-				return true
-			}
-		// AlterIndex precedence is Rename, Drop, then Create
-		// So statement[i] < statement[j] = statement[i].action > statement[j].action
-		case *plan.AlterIndex:
-			switch jj := statements[j].(type) {
-			case *plan.AlterIndex:
-				return ii.Action > jj.Action
-			}
-		}
-		return false
-	})
 
 	return plan.NewBlock(statements), nil
 }
@@ -1906,7 +1830,11 @@ func convertDeclareHandler(ctx *sql.Context, d *sqlparser.Declare, query string)
 }
 
 func convertFetch(ctx *sql.Context, fetchCursor *sqlparser.FetchCursor) (sql.Node, error) {
-	return plan.NewFetch(fetchCursor.Name, fetchCursor.Variables), nil
+	toSet := make([]sql.Expression, len(fetchCursor.Variables))
+	for i, v := range fetchCursor.Variables {
+		toSet[i] = expression.NewUnresolvedColumn(v)
+	}
+	return plan.NewFetch(fetchCursor.Name, toSet), nil
 }
 
 func convertOpen(ctx *sql.Context, openCursor *sqlparser.OpenCursor) (sql.Node, error) {
@@ -2093,16 +2021,9 @@ func convertRenameTable(ctx *sql.Context, ddl *sqlparser.DDL, alterTbl bool) (sq
 
 	return plan.NewRenameTable(sql.UnresolvedDatabase(""), fromTables, toTables, alterTbl), nil
 }
-
-func isUniqueColumn(tableSpec *sqlparser.TableSpec, columnName string) (bool, error) {
-	for _, column := range tableSpec.Columns {
-		if column.Name.String() == columnName {
-			return column.Type.KeyOpt == colKeyUnique ||
-				column.Type.KeyOpt == colKeyUniqueKey, nil
-		}
-	}
-	return false, fmt.Errorf("unknown column name %s", columnName)
-
+func isUniqueColumn(column *sqlparser.ColumnDefinition) bool {
+	return column.Type.KeyOpt == colKeyUnique ||
+		column.Type.KeyOpt == colKeyUniqueKey
 }
 
 func newColumnAction(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
@@ -2112,6 +2033,7 @@ func newColumnAction(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		return plan.NewAddColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
 	case sqlparser.DropStr:
 		return plan.NewDropColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String()), nil
@@ -2146,10 +2068,7 @@ func convertAlterTableClause(ctx *sql.Context, query string, ddl *sqlparser.DDL)
 			}
 
 			column := ddl.TableSpec.Columns[0]
-			isUnique, err := isUniqueColumn(ddl.TableSpec, column.Name.String())
-			if err != nil {
-				return nil, fmt.Errorf("on table %s, %w", ddl.Table.String(), err)
-			}
+			isUnique := isUniqueColumn(column)
 
 			if isUnique {
 				createIndex := plan.NewAlterCreateIndex(
