@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -108,7 +109,7 @@ func fixupAuxiliaryExprs(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 					rightSchema[len(n.Destination.Schema())+i] = n.Source.Schema()[i]
 				} else {
 					newC := c.Copy()
-					newC.Source = "__new_ins"
+					newC.Source = planbuilder.OnDupValuesPrefix
 					rightSchema[len(n.Destination.Schema())+i] = newC
 				}
 			}

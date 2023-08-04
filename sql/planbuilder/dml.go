@@ -12,6 +12,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
+const OnDupValuesPrefix = "__new_ins"
+
 func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	if i.With != nil {
 		inScope = b.buildWith(inScope, i.With)
@@ -67,7 +69,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 			combinedScope.newColumn(srcScope.cols[i])
 		} else {
 			// check for VALUES refs
-			c.table = onDupValuesPrefix
+			c.table = OnDupValuesPrefix
 			combinedScope.newColumn(c)
 		}
 	}
@@ -192,8 +194,6 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 	}
 	return res
 }
-
-const onDupValuesPrefix = "__new_ins"
 
 func (b *Builder) buildOnDupUpdateExprs(combinedScope, destScope *scope, e ast.AssignmentExprs) []sql.Expression {
 	b.insertActive = true
