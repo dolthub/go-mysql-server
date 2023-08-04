@@ -47,6 +47,10 @@ type Column struct {
 	Comment string
 	// Extra contains any additional information to put in the `extra` column under `information_schema.columns`.
 	Extra string
+	// Generated is non-nil if the column is defined with a generated value
+	Generated *ColumnDefaultValue
+	// Virtual is true if the column is defined as a virtual column. Generated must be non-nil in this case. 
+	Virtual bool
 }
 
 // Check ensures the value is correct for this column.

@@ -122,6 +122,53 @@ func TestParse(t *testing.T) {
 			),
 		},
 		{
+			input: `CREATE TABLE t1(
+    		a INTEGER NOT NULL PRIMARY KEY,
+    		b int generated always as (a + 1) virtual,
+    		c int as (a - 1) stored)`,
+			plan: plan.NewCreateTable(
+				sql.UnresolvedDatabase(""),
+				"t1",
+				plan.IfNotExistsAbsent,
+				plan.IsTempTableAbsent,
+				&plan.TableSpec{
+					Schema: sql.NewPrimaryKeySchema(sql.Schema{
+						{
+						Name:       "a",
+						Type:       types.Int32,
+						Nullable:   false,
+						PrimaryKey: true,
+					},
+					{
+						Name:       "b",
+						Type:       types.Int32,
+						Nullable:   true,
+						Generated:  &sql.ColumnDefaultValue{
+							Expression: expression.NewPlus(
+								expression.NewUnresolvedColumn("a"),
+								expression.NewLiteral(int8(1), types.Int8),
+							),
+							ReturnNil: true,
+						},
+						Virtual: true,
+					},
+					{
+						Name:       "c",
+						Type:       types.Int32,
+						Nullable:   true,
+						Generated:  &sql.ColumnDefaultValue{
+							Expression: expression.NewMinus(
+								expression.NewUnresolvedColumn("a"),
+								expression.NewLiteral(int8(1), types.Int8),
+							),
+							ReturnNil: true,
+						},
+					},
+					}),
+				},
+			),
+		},
+		{
 			input: `CREATE TABLE t1(a INTEGER NOT NULL PRIMARY KEY COMMENT "hello", b TEXT COMMENT "goodbye")`,
 			plan: plan.NewCreateTable(
 				sql.UnresolvedDatabase(""),
@@ -1238,6 +1285,25 @@ CREATE TABLE t2
 					Nullable: true,
 					Comment:  "otherdb",
 					Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), "1", nil, true),
+				}, nil,
+			),
+		},
+		{
+			input: `ALTER TABLE t1 ADD COLUMN b int generated always as (a + 1) virtual`,
+			plan: plan.NewAddColumn(
+				sql.UnresolvedDatabase(""),
+				plan.NewUnresolvedTable("t1", ""), &sql.Column{
+					Name:       "b",
+					Type:       types.Int32,
+					Nullable:   true,
+					Generated:  &sql.ColumnDefaultValue{
+						Expression: expression.NewPlus(
+							expression.NewUnresolvedColumn("a"),
+							expression.NewLiteral(int8(1), types.Int8),
+						),
+						ReturnNil: true,
+					},
+					Virtual: true,
 				}, nil,
 			),
 		},
