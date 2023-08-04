@@ -305,7 +305,7 @@ func TestSingleScript_Experimental(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "select * from t1 natural left join t2;",
+					Query:    "select * from t1 natural left join t2;",
 					Expected: []sql.Row{
 						//{1, 10},
 						//{2, 20},

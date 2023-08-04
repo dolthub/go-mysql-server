@@ -841,7 +841,7 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip: true, // broken in old, works in new
+				Skip:  true, // broken in old, works in new
 				Query: "select i, j, a.*, b.*, a.i, a.j, b.i, b.j from t1 a join t2 b using (i, j);",
 				Expected: []sql.Row{
 					{2, 20, 2, 20, 2, 20, 2, 20, 2, 20},
