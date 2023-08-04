@@ -1,10 +1,11 @@
 package planbuilder
 
 import (
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
-	"strings"
 )
 
 func buildProject(p *plan.Project) sql.Node {
