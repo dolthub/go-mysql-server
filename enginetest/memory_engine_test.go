@@ -275,8 +275,30 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
-	var scripts = []queries.ScriptTest{}
+	//t.Skip()
+	var scripts = []queries.ScriptTest{
+		{
+			Name: "DELETE ME",
+			SetUpScript: []string{
+				"create table t1 (i int primary key, j int);",
+				"create table t2 (i int primary key, j int);",
+				"create table t3 (i int primary key, j int);",
+				"insert into t1 values (1, 10), (2, 20), (3, 30);",
+				"insert into t2 values (1, 30), (2, 20), (5, 50);",
+				"insert into t3 values (1, 200), (2, 20), (6, 600);",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query:    "SELECT a.i, b.i, a.j, b.j FROM t1 AS a NATURAL JOIN t2 AS b",
+					Expected: []sql.Row{
+						//{1, 10},
+						//{2, 20},
+						//{3, 30},
+					},
+				},
+			},
+		},
+	}
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental)
@@ -284,7 +306,6 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
 }
