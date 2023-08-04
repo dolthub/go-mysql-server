@@ -848,7 +848,7 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip: true, // broken in old, works in new
+				Skip:  true, // broken in old, works in new
 				Query: "select i, j, a.*, b.*, a.i, a.j, b.i, b.j from t1 a natural join t2 b;",
 				Expected: []sql.Row{
 					{2, 20, 2, 20, 2, 20, 2, 20, 2, 20},
@@ -897,7 +897,7 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip: true, // broken in old, works in new
+				Skip:  true, // broken in old, works in new
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 natural left join t2;",
 				Expected: []sql.Row{
 					{1, 10, nil, nil},
@@ -964,7 +964,7 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip: true, // broken in old, works in new
+				Skip:  true, // broken in old, works in new
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 natural right join t2;",
 				Expected: []sql.Row{
 					{nil, nil, 1, 30},
