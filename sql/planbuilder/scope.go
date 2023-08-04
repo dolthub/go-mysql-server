@@ -47,6 +47,12 @@ func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn,
 	var found scopeColumn
 	var foundCand bool
 	for _, c := range s.cols {
+		if table == "" && s.redirectCol != nil {
+			if rCol, ok := s.redirectCol[col]; ok {
+				return rCol, true
+			}
+		}
+
 		if strings.EqualFold(c.col, col) && (c.table == table || table == "") {
 			if foundCand {
 				if !s.b.TriggerCtx().Call && len(s.b.TriggerCtx().UnresolvedTables) > 0 {
@@ -68,7 +74,13 @@ func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn,
 	if foundCand {
 		return found, true
 	}
-	if c, ok := s.redirectCol[fmt.Sprintf("%s.%s", table, col)]; ok {
+	var colName string
+	if table == "" {
+		colName = col
+	} else {
+		colName = fmt.Sprintf("%s.%s", table, col)
+	}
+	if c, ok := s.redirectCol[colName]; ok {
 		return c, true
 	}
 

@@ -191,7 +191,6 @@ func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.
 	outScope = inScope.push()
 
 	// Right joins swap left and right scopes.
-	// TODO: not sure this matters at this stage
 	var left, right *scope
 	if te.Join == ast.RightJoinStr || te.Join == ast.NaturalRightJoinStr {
 		left, right = rightScope, leftScope
@@ -200,6 +199,7 @@ func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.
 	}
 
 	// Add columns in common
+	var filter sql.Expression
 	usingCols := map[string]struct{}{}
 	for _, col := range te.Condition.Using {
 		colName := col.String()
@@ -212,19 +212,34 @@ func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.
 		if !ok {
 			b.handleErr(sql.ErrUnknownColumn.New(colName, "from clause"))
 		}
+		f := expression.NewEquals(lCol.scalarGf(), rCol.scalarGf())
+		if filter == nil {
+			filter = f
+		} else {
+			filter = expression.NewAnd(filter, f)
+		}
 		usingCols[colName] = struct{}{}
-		outScope.addColumn(lCol)
-		outScope.redirect(rCol, lCol) // TODO: sometimes we don't want to redirect
+		outScope.redirect(scopeColumn{col: rCol.col}, lCol)
 	}
 
-	// Add remaining columns from left table.
+	// Add common columns first, then left, then right.
+	// TODO: I have this here and not in the above loop because there can be multiple matches
+	// Additionally, the order of the columns is not in the order of using, but in the order of the left table
+	for _, lCol := range left.cols {
+		if _, ok := usingCols[lCol.col]; ok {
+			outScope.addColumn(lCol)
+		}
+	}
+	for _, rCol := range right.cols {
+		if _, ok := usingCols[rCol.col]; ok {
+			outScope.addColumn(rCol)
+		}
+	}
 	for _, lCol := range left.cols {
 		if _, ok := usingCols[lCol.col]; !ok {
 			outScope.addColumn(lCol)
 		}
 	}
-
-	// Add remaining columns from right table.
 	for _, rCol := range right.cols {
 		if _, ok := usingCols[rCol.col]; !ok {
 			outScope.addColumn(rCol)
@@ -237,11 +252,11 @@ func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.
 	}
 	switch strings.ToLower(te.Join) {
 	case ast.JoinStr:
-		outScope.node = plan.NewUsingJoin(left.node, right.node, plan.JoinTypeInner, conds)
+		outScope.node = plan.NewInnerJoin(leftScope.node, rightScope.node, filter)
 	case ast.LeftJoinStr:
-		outScope.node = plan.NewUsingJoin(left.node, right.node, plan.JoinTypeLeftOuter, conds)
+		outScope.node = plan.NewLeftOuterJoin(leftScope.node, rightScope.node, filter)
 	case ast.RightJoinStr:
-		outScope.node = plan.NewUsingJoin(left.node, right.node, plan.JoinTypeRightOuter, conds)
+		outScope.node = plan.NewRightOuterJoin(leftScope.node, rightScope.node, filter)
 	default:
 		b.handleErr(fmt.Errorf("unknown using join type: %s", te.Join))
 	}
