@@ -1906,7 +1906,11 @@ func convertDeclareHandler(ctx *sql.Context, d *sqlparser.Declare, query string)
 }
 
 func convertFetch(ctx *sql.Context, fetchCursor *sqlparser.FetchCursor) (sql.Node, error) {
-	return plan.NewFetch(fetchCursor.Name, fetchCursor.Variables), nil
+	toSet := make([]sql.Expression, len(fetchCursor.Variables))
+	for i, v := range fetchCursor.Variables {
+		toSet[i] = expression.NewUnresolvedColumn(v)
+	}
+	return plan.NewFetch(fetchCursor.Name, toSet), nil
 }
 
 func convertOpen(ctx *sql.Context, openCursor *sqlparser.OpenCursor) (sql.Node, error) {

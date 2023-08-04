@@ -162,22 +162,17 @@ func (b *Builder) buildCreateProcedure(inScope *scope, query string, c *ast.DDL)
 		}
 	}
 
+	inScope.initProc()
 	procName := strings.ToLower(c.ProcedureSpec.ProcName.Name.String())
 	for _, p := range params {
 		// populate inScope with the procedure parameters. this will be
 		// subject maybe a bug where an inner procedure has access to
 		// outer procedure parameters.
-		inScope.newColumn(scopeColumn{table: "", col: strings.ToLower(p.Name), typ: p.Type, scalar: expression.NewProcedureParam(strings.ToLower(p.Name))})
+		inScope.proc.AddVar(expression.NewProcedureParam(strings.ToLower(p.Name)))
 	}
 	bodyStr := strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
 
-	var bodyScope *scope
-	if b.ProcCtx().Active {
-		bodyScope = b.build(inScope, c.ProcedureSpec.Body, bodyStr)
-	} else {
-		bodyScope = inScope.push()
-		bodyScope.node = plan.NewValues(nil)
-	}
+	bodyScope := b.build(inScope, c.ProcedureSpec.Body, bodyStr)
 
 	var db sql.Database = nil
 	dbName := c.ProcedureSpec.ProcName.Qualifier.String()

@@ -8,6 +8,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -41,9 +42,17 @@ type scope struct {
 	windowDefs  map[string]*sql.WindowDefinition
 	// exprs collects unique expression ids for reference
 	exprs map[string]columnId
+	proc  *procCtx
 }
 
 func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn, bool) {
+	// procedure params take precedence
+	if table == "" && checkParent && s.procActive() {
+		col, ok := s.proc.GetVar(col)
+		if ok {
+			return col, true
+		}
+	}
 	var found scopeColumn
 	var foundCand bool
 	for _, c := range s.cols {
@@ -141,6 +150,20 @@ func (s *scope) getExpr(name string, checkCte bool) (columnId, bool) {
 	return id, ok
 }
 
+func (s *scope) procActive() bool {
+	return s.proc != nil
+}
+
+func (s *scope) initProc() {
+	s.proc = &procCtx{
+		s:          s,
+		conditions: make(map[string]*plan.DeclareCondition),
+		cursors:    make(map[string]struct{}),
+		vars:       make(map[string]scopeColumn),
+		labels:     make(map[string]bool),
+	}
+}
+
 // initGroupBy creates a container scope for aggregation
 // functions and function inputs.
 func (s *scope) initGroupBy() {
@@ -208,10 +231,14 @@ func (s *scope) setColAlias(cols []string) {
 // parent. Variables in the new scope will have name visibility
 // into this scope.
 func (s *scope) push() *scope {
-	return &scope{
+	new := &scope{
 		b:      s.b,
 		parent: s,
 	}
+	if s.procActive() {
+		new.initProc()
+	}
+	return new
 }
 
 // replace creates a new scope with the same parent definition

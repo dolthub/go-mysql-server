@@ -516,12 +516,21 @@ func (b *Builder) buildJSONTable(inScope *scope, t *ast.JSONTableExpr) (outScope
 
 	alias := t.Alias.String()
 	cols := b.buildJSONTableCols(inScope, t.Spec)
+	var recFlatten func(col plan.JSONTableCol)
+	recFlatten = func(col plan.JSONTableCol) {
+		for _, col := range col.NestedCols {
+			recFlatten(col)
+		}
+		if col.Opts != nil {
+			outScope.newColumn(scopeColumn{
+				table: strings.ToLower(alias),
+				col:   col.Opts.Name,
+				typ:   col.Opts.Type,
+			})
+		}
+	}
 	for _, col := range cols {
-		outScope.newColumn(scopeColumn{
-			table: strings.ToLower(alias),
-			col:   col.Opts.Name,
-			typ:   col.Opts.Type,
-		})
+		recFlatten(col)
 	}
 
 	var err error

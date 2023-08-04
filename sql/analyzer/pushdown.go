@@ -424,7 +424,7 @@ func convertIsNullForIndexes(ctx *sql.Context, e sql.Expression) sql.Expression 
 // is responsible for join filters and conditions.)
 func pushdownFixIndices(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope) (sql.Node, transform.TreeIdentity, error) {
 	switch n := n.(type) {
-	case *plan.JoinNode, *plan.HashLookup:
+	case *plan.JoinNode, *plan.HashLookup, *plan.InsertInto:
 		return n, transform.SameTree, nil
 	}
 	return fixidx.FixFieldIndexesForExpressions(ctx, a.LogFn(), n, scope)
