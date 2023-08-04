@@ -350,6 +350,9 @@ func (b *Builder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope) {
 		if scalar == nil {
 			scalar = c.scalarGf()
 		}
+		// Unions pass order bys to the top scope, where the original
+		// order by get field may not longer be accessible. Here it is
+		// safe to assume the alias has already been computed.
 		scalar, _, _ = transform.Expr(scalar, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			switch e := e.(type) {
 			case *expression.Alias:

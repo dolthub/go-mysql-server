@@ -216,6 +216,11 @@ func isAggregateFunc(name string) bool {
 // buildAggregateFunc tags aggregate functions in the correct scope
 // and makes the aggregate available for reference by other clauses.
 func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExpr) sql.Expression {
+	if len(inScope.windowFuncs) > 0 {
+		err := sql.ErrNonAggregatedColumnWithoutGroupBy.New()
+		b.handleErr(err)
+	}
+
 	if inScope.groupBy == nil {
 		inScope.initGroupBy()
 	}
@@ -396,10 +401,12 @@ func isWindowFunc(name string) bool {
 }
 
 func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, over *ast.WindowDef) sql.Expression {
-	// couple with other expressions or alone?
-	// can these be referenced? aliased?
-	// internal expressions can be complex, but window can't be more than alias
+	if inScope.groupBy != nil {
+		err := sql.ErrNonAggregatedColumnWithoutGroupBy.New()
+		b.handleErr(err)
+	}
 
+	// internal expressions can be complex, but window can't be more than alias
 	var args []sql.Expression
 	for _, arg := range e.Exprs {
 		e := b.selectExprToExpression(inScope, arg)

@@ -178,6 +178,7 @@ func (b *Builder) buildSysVar(colName *ast.ColName, scopeHint ast.SetScope) (sql
 			if db, err := b.cat.Database(b.ctx, b.ctx.GetCurrentDatabase()); err == nil {
 				sysVar.Collation = plan.GetDatabaseCollation(b.ctx, db)
 			}
+			return sysVar, scope, true
 		default:
 			_, err = b.ctx.GetSessionVariable(b.ctx, varName)
 			if err != nil {

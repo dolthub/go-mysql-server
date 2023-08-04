@@ -12,6 +12,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
+const OnDupValuesPrefix = "__new_ins"
+
 func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	if i.With != nil {
 		inScope = b.buildWith(inScope, i.With)
@@ -67,7 +69,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 			combinedScope.newColumn(srcScope.cols[i])
 		} else {
 			// check for VALUES refs
-			c.table = onDupValuesPrefix
+			c.table = OnDupValuesPrefix
 			combinedScope.newColumn(c)
 		}
 	}
@@ -124,15 +126,20 @@ func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []
 
 	exprTuples := make([][]sql.Expression, len(v))
 	for i, vt := range v {
+		// noExprs is an edge case where we fill VALUES with nil expressions
 		noExprs := len(vt) == 0
-		if len(vt) != len(columnNames) && !noExprs {
+		// triggerUnknownTable is an edge case where we ignored an unresolved
+		// table error and do not have a schema for resolving defaults
+		triggerUnknownTable := (len(columnNames) == 0 && len(vt) > 0) && (len(b.TriggerCtx().UnresolvedTables) > 0)
+
+		if len(vt) != len(columnNames) && !noExprs && !triggerUnknownTable {
 			err := fmt.Errorf("insert values don't match columns: %#v", vt)
 			b.handleErr(err)
 		}
 		exprs := make([]sql.Expression, len(columnNames))
 		exprTuples[i] = exprs
 		for j := range columnNames {
-			if noExprs {
+			if noExprs || triggerUnknownTable {
 				exprs[j] = expression.WrapExpression(columnDefaultValues[j])
 				continue
 			}
@@ -196,8 +203,6 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 	}
 	return res
 }
-
-const onDupValuesPrefix = "__new_ins"
 
 func (b *Builder) buildOnDupUpdateExprs(combinedScope, destScope *scope, e ast.AssignmentExprs) []sql.Expression {
 	b.insertActive = true

@@ -64,6 +64,11 @@ func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn,
 						return c, true
 					}
 				}
+				if c.table == OnDupValuesPrefix {
+					return found, true
+				} else if found.table == OnDupValuesPrefix {
+					return c, true
+				}
 				err := sql.ErrAmbiguousColumnName.New(col, []string{c.table, found.table})
 				if c.table == "" {
 					err = sql.ErrAmbiguousColumnOrAliasName.New(c.col)

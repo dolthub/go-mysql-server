@@ -57,6 +57,15 @@ func (f *Fetch) Resolved() bool {
 func (f *Fetch) String() string {
 	vars := make([]string, len(f.ToSet))
 	for i, e := range f.ToSet {
+		vars[i] = e.String()
+	}
+	return fmt.Sprintf("FETCH %s INTO %s", f.Name, strings.Join(vars, ", "))
+}
+
+// DebugString implements the interface sql.DebugStringer.
+func (f *Fetch) DebugString() string {
+	vars := make([]string, len(f.ToSet))
+	for i, e := range f.ToSet {
 		vars[i] = sql.DebugString(e)
 	}
 	return fmt.Sprintf("FETCH %s INTO %s", f.Name, strings.Join(vars, ", "))

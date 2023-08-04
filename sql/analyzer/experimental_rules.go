@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/fixidx"
-
-	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -111,7 +111,7 @@ func fixupAuxiliaryExprs(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 					rightSchema[len(n.Destination.Schema())+i] = n.Source.Schema()[i]
 				} else {
 					newC := c.Copy()
-					newC.Source = "__new_ins"
+					newC.Source = planbuilder.OnDupValuesPrefix
 					rightSchema[len(n.Destination.Schema())+i] = newC
 				}
 			}

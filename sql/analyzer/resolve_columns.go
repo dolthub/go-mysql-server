@@ -254,7 +254,6 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *plan.Scope) (m
 		})
 		transform.Inspect(node.Source, func(n sql.Node) bool {
 			if resTbl, ok := n.(*plan.ResolvedTable); ok && !aliasedTables[resTbl] {
-				//idx = 0
 				indexSchema(resTbl.Schema())
 			}
 			return true

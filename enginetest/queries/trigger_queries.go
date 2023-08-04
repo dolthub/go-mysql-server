@@ -3072,7 +3072,7 @@ var TriggerErrorTests = []ScriptTest{
 			"create table x (a int primary key, b int, c int)",
 		},
 		Query:       "create trigger old_on_insert before insert on x for each row set new.c = old.a + 1",
-		ExpectedErr: sql.ErrInvalidUseOfOldNew,
+		ExpectedErr: sql.ErrColumnNotFound,
 	},
 	{
 		Name: "reference to new on delete",
@@ -3080,7 +3080,7 @@ var TriggerErrorTests = []ScriptTest{
 			"create table x (a int primary key, b int, c int)",
 		},
 		Query:       "create trigger new_on_delete before delete on x for each row set new.c = old.a + 1",
-		ExpectedErr: sql.ErrInvalidUseOfOldNew,
+		ExpectedErr: sql.ErrColumnNotFound,
 	},
 	{
 		Name: "set old row on update",
@@ -3128,7 +3128,7 @@ var TriggerErrorTests = []ScriptTest{
 			"create table x (a int primary key, b int, c int)",
 		},
 		Query:       "create trigger not_found before insert on x for each row set new.d = new.d + 1",
-		ExpectedErr: sql.ErrUnknownColumn,
+		ExpectedErr: sql.ErrColumnNotFound,
 	},
 	{
 		Name: "target column doesn't exist",
@@ -3136,6 +3136,6 @@ var TriggerErrorTests = []ScriptTest{
 			"create table x (a int primary key, b int, c int)",
 		},
 		Query:       "create trigger not_found before insert on x for each row set new.d = new.a + 1",
-		ExpectedErr: sql.ErrUnknownColumn,
+		ExpectedErr: sql.ErrColumnNotFound,
 	},
 }

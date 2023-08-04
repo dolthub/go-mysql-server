@@ -528,11 +528,6 @@ func TestEvents(t *testing.T) {
 }
 
 func TestTriggersErrors(t *testing.T) {
-	// todo update to "column not be found" error
-	//"create trigger old_on_insert before insert on x for each row set new.c = old.a + 1",
-	//	"create trigger new_on_delete before delete on x for each row set new.c = old.a + 1",
-	//	"create trigger not_found before insert on x for each row set new.d = new.d + 1",
-	//	"create trigger not_found before insert on x for each row set new.d = new.a + 1",
 	enginetest.TestTriggerErrors(t, enginetest.NewDefaultMemoryHarness())
 }
 
