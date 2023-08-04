@@ -772,12 +772,6 @@ var JoinScriptTests = []ScriptTest{
 				Query:       "select j from t1 join t2 using (i);",
 				ExpectedErr: sql.ErrAmbiguousColumnName,
 			},
-			{
-				Query: "select i from t1 natural join t2;",
-				Expected: []sql.Row{
-					{2},
-				},
-			},
 
 			{
 				Query: "select * from t1 join t2 using (i);",
@@ -821,6 +815,12 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
+				Query: "select * from t1 natural join t2;",
+				Expected: []sql.Row{
+					{2, 20},
+				},
+			},
+			{
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 join t2 using (i, j);",
 				Expected: []sql.Row{
 					{2, 20, 2, 20},
@@ -834,8 +834,22 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				//Skip: true, // broken in old, works in new
+				//Skip:  true, // broken in old, works in new
+				Query: "select i, j, t1.*, t2.*, t1.i, t1.j, t2.i, t2.j from t1 natural join t2;",
+				Expected: []sql.Row{
+					{2, 20, 2, 20, 2, 20, 2, 20, 2, 20},
+				},
+			},
+			{
+				Skip: true, // broken in old, works in new
 				Query: "select i, j, a.*, b.*, a.i, a.j, b.i, b.j from t1 a join t2 b using (i, j);",
+				Expected: []sql.Row{
+					{2, 20, 2, 20, 2, 20, 2, 20, 2, 20},
+				},
+			},
+			{
+				//Skip: true, // broken in old, works in new
+				Query: "select i, j, a.*, b.*, a.i, a.j, b.i, b.j from t1 a natural join t2 b;",
 				Expected: []sql.Row{
 					{2, 20, 2, 20, 2, 20, 2, 20, 2, 20},
 				},
@@ -867,7 +881,23 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
+				Query: "select * from t1 natural left join t2;",
+				Expected: []sql.Row{
+					{1, 10},
+					{2, 20},
+					{3, 30},
+				},
+			},
+			{
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 left join t2 using (i, j);",
+				Expected: []sql.Row{
+					{1, 10, nil, nil},
+					{2, 20, 2, 20},
+					{3, 30, nil, nil},
+				},
+			},
+			{
+				Query: "select t1.i, t1.j, t2.i, t2.j from t1 natural left join t2;",
 				Expected: []sql.Row{
 					{1, 10, nil, nil},
 					{2, 20, 2, 20},
@@ -917,7 +947,23 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
+				Query: "select * from t1 natural right join t2;",
+				Expected: []sql.Row{
+					{1, 30},
+					{2, 20},
+					{5, 50},
+				},
+			},
+			{
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 right join t2 using (i, j);",
+				Expected: []sql.Row{
+					{nil, nil, 1, 30},
+					{2, 20, 2, 20},
+					{nil, nil, 5, 50},
+				},
+			},
+			{
+				Query: "select t1.i, t1.j, t2.i, t2.j from t1 natural right join t2;",
 				Expected: []sql.Row{
 					{nil, nil, 1, 30},
 					{2, 20, 2, 20},
