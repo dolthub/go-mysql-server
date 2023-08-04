@@ -153,6 +153,48 @@ func (i *cachedResultsIter) Close(ctx *sql.Context) error {
 	return i.iter.Close(ctx)
 }
 
+type hashLookupGeneratingIter struct {
+	n         *plan.HashLookup
+	childIter sql.RowIter
+	lookup    *map[interface{}][]sql.Row
+}
+
+func newHashLookupGeneratingIter(n *plan.HashLookup, chlidIter sql.RowIter) *hashLookupGeneratingIter {
+	h := &hashLookupGeneratingIter{
+		n:         n,
+		childIter: chlidIter,
+	}
+	lookup := make(map[interface{}][]sql.Row)
+	h.lookup = &lookup
+	return h
+}
+
+func (h *hashLookupGeneratingIter) Next(ctx *sql.Context) (sql.Row, error) {
+	childRow, err := h.childIter.Next(ctx)
+	if err == io.EOF {
+		// We wait until we finish the child iter before caching the Lookup map.
+		// This is because some plans may not fully exhaust the iterator.
+		h.n.Lookup = h.lookup
+		return nil, io.EOF
+	}
+	if err != nil {
+		return nil, err
+	}
+	// TODO: Maybe do not put nil stuff in here.
+	key, err := h.n.GetHashKey(ctx, h.n.RightEntryKey, childRow)
+	if err != nil {
+		return nil, err
+	}
+	(*(h.lookup))[key] = append((*(h.lookup))[key], childRow)
+	return childRow, nil
+}
+
+func (h *hashLookupGeneratingIter) Close(c *sql.Context) error {
+	return nil
+}
+
+var _ sql.RowIter = (*hashLookupGeneratingIter)(nil)
+
 // declareCursorIter is the sql.RowIter of *DeclareCursor.
 type declareCursorIter struct {
 	*plan.DeclareCursor
