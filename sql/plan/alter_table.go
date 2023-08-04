@@ -692,11 +692,11 @@ func (*RenameColumn) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 
 type ModifyColumn struct {
 	ddlNode
-	Table           sql.Node
-	columnName      string
-	column          *sql.Column
-	order           *sql.ColumnOrder
-	targetSchema    sql.Schema
+	Table        sql.Node
+	columnName   string
+	column       *sql.Column
+	order        *sql.ColumnOrder
+	targetSchema sql.Schema
 }
 
 var _ sql.Node = (*ModifyColumn)(nil)

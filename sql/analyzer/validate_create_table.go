@@ -300,7 +300,7 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 	// Look for the old column and throw an error if it's not there. The column cannot have been renamed in the same
 	// statement. This matches the MySQL behavior.
 	if !schema.Contains(mc.Column(), nameable.Name()) ||
-			!initialSch.Contains(mc.Column(), nameable.Name()) {
+		!initialSch.Contains(mc.Column(), nameable.Name()) {
 		return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), mc.Column())
 	}
 
