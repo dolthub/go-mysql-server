@@ -24,7 +24,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-// TODO: convert this to just resolveUsingJoins
 // resolveNaturalJoins simplifies a natural join into an inner join. The inner
 // join will include equality filters between all common schema attributes
 // of the same name between the two relations.
@@ -37,7 +36,6 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, node sql.Node, scope *pl
 	span, ctx := ctx.Span("resolve_natural_joins")
 	defer span.End()
 
-	// TODO: this is confusing because it is doing two things at once
 	var replacements = make(map[tableCol]tableCol)
 	newNode, same, err := transform.NodeWithCtx(node, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		if jn, ok := c.Node.(*plan.JoinNode); ok && (jn.Op.IsNatural() || len(jn.UsingCols) != 0) {
@@ -77,12 +75,9 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, node sql.Node, scope *pl
 		return c.Node, transform.SameTree, nil
 	})
 
-	// TODO: fix up projections
-	// TODO: might be bad to do it separately because the replacements scope is different
 	return newNode, same, err
 }
 
-// TODO: this should either always return a projection or always return a join node
 func resolveNaturalJoin(n *plan.JoinNode, replacements map[tableCol]tableCol) (sql.Node, error) {
 	if !n.Left().Resolved() || !n.Right().Resolved() {
 		return n, nil
@@ -193,7 +188,6 @@ func resolveNaturalJoin(n *plan.JoinNode, replacements map[tableCol]tableCol) (s
 	projExprs := append(append(common, left...), right...)
 
 	if len(conds) == 0 {
-		// TODO: make projection here for consistency even though it is useless
 		newJoin := plan.NewCrossJoin(n.Left(), n.Right())
 		return plan.NewProject(projExprs, newJoin), nil
 	}
@@ -207,7 +201,6 @@ func resolveNaturalJoin(n *plan.JoinNode, replacements map[tableCol]tableCol) (s
 	case plan.JoinTypeUsingRight, plan.JoinTypeRightOuter:
 		newJoin = plan.NewRightOuterJoin(n.Left(), n.Right(), expression.JoinAnd(conds...))
 	default:
-		// TODO: panic/error?
 		newJoin = plan.NewInnerJoin(n.Left(), n.Right(), expression.JoinAnd(conds...))
 	}
 	return plan.NewProject(projExprs, newJoin), nil
