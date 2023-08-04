@@ -320,8 +320,12 @@ var JsonScripts = []ScriptTest{
 				ExpectedErr: sql.ErrTableNotFound,
 			},
 			{
-				Query:       `SELECT JSON_OBJECTAGG(c0, val, badarg) from test`,
+				Query:       `SELECT JSON_OBJECTAGG(c0, val, 'badarg') from test`,
 				ExpectedErr: sql.ErrInvalidArgumentNumber,
+			},
+			{
+				Query:       `SELECT JSON_OBJECTAGG(c0, val, badarg) from test`,
+				ExpectedErr: sql.ErrColumnNotFound,
 			},
 			{
 				Query:       `SELECT JSON_OBJECTAGG(c0) from test`,

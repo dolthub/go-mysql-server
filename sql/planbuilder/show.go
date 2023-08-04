@@ -446,7 +446,7 @@ func (b *Builder) buildAsOfExpr(inScope *scope, time ast.Expr) sql.Expression {
 		}
 		return expression.NewLiteral(ret.(string), types.LongText)
 	case *ast.ColName:
-		sysVar, ok := b.buildSysVar(v, ast.SetScope_None)
+		sysVar, _, ok := b.buildSysVar(v, ast.SetScope_None)
 		if ok {
 			return sysVar
 		}

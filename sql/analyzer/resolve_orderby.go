@@ -27,6 +27,12 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+var (
+	// ErrOrderByColumnIndex is returned when in an order clause there is a
+	// column that is unknown.
+	ErrOrderByColumnIndex = errors.NewKind("unknown column %d in order by clause")
+)
+
 // pushdownSort pushes the Sort node underneath the Project or GroupBy node in the case that columns needed to
 // sort would be projected away before sorting. This can also alter the projection in some cases.
 func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {

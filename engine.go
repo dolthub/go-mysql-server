@@ -135,7 +135,6 @@ type Engine struct {
 	IsServerLocked    bool
 	PreparedDataCache *PreparedDataCache
 	mu                *sync.Mutex
-	Version           sql.AnalyzerVersion
 }
 
 type ColumnWithRawDefault struct {
@@ -164,10 +163,6 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	})
 	a.Catalog.RegisterFunction(emptyCtx, function.GetLockingFuncs(ls)...)
 
-	version := sql.VersionStable
-	if ExperimentalGMS {
-		version = sql.VersionExperimental
-	}
 	return &Engine{
 		Analyzer:          a,
 		MemoryManager:     sql.NewMemoryManager(sql.ProcessMemory),
@@ -178,17 +173,12 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		IsServerLocked:    cfg.IsServerLocked,
 		PreparedDataCache: NewPreparedDataCache(),
 		mu:                &sync.Mutex{},
-		Version:           version,
 	}
 }
 
 // NewDefault creates a new default Engine.
 func NewDefault(pro sql.DatabaseProvider) *Engine {
-	version := sql.VersionStable
-	if ExperimentalGMS {
-		version = sql.VersionExperimental
-	}
-	a := analyzer.NewDefaultWithVersion(pro, version)
+	a := analyzer.NewDefaultWithVersion(pro)
 	return New(a, nil)
 }
 
@@ -197,26 +187,10 @@ func (e *Engine) AnalyzeQuery(
 	ctx *sql.Context,
 	query string,
 ) (sql.Node, error) {
-	if ctx.Version == sql.VersionUnknown {
-		ctx.Version = e.Version
-	}
-
-	var parsed sql.Node
-	var err error
-	switch ctx.Version {
-	case sql.VersionExperimental:
-		parsed, err = planbuilder.Parse(ctx, e.Analyzer.Catalog, query)
-		if err != nil {
-			ctx.Version = sql.VersionStable
-			parsed, err = parse.Parse(ctx, query)
-		}
-	default:
-		parsed, err = parse.Parse(ctx, query)
-	}
+	parsed, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, query)
 	if err != nil {
 		return nil, err
 	}
-
 	return e.Analyzer.Analyze(ctx, parsed, nil)
 }
 
@@ -258,17 +232,8 @@ func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, parsed sq
 		err      error
 	)
 
-	if ctx.Version == sql.VersionUnknown {
-		ctx.Version = e.Version
-	}
-
 	if parsed == nil {
-		switch ctx.Version {
-		case sql.VersionExperimental:
-			parsed, err = planbuilder.Parse(ctx, e.Analyzer.Catalog, query)
-		default:
-			parsed, err = parse.Parse(ctx, query)
-		}
+		parsed, err = planbuilder.Parse(ctx, e.Analyzer.Catalog, query)
 		if err != nil {
 			return nil, nil, err
 		}

@@ -346,8 +346,20 @@ func (b *Builder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope) {
 		if c.descending {
 			so = sql.Descending
 		}
+		scalar := c.scalar
+		if scalar == nil {
+			scalar = c.scalarGf()
+		}
+		scalar, _, _ = transform.Expr(scalar, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			switch e := e.(type) {
+			case *expression.Alias:
+				return expression.NewGetField(int(c.id), e.Type(), e.Name(), e.IsNullable()), transform.NewTree, nil
+			default:
+				return e, transform.SameTree, nil
+			}
+		})
 		sf := sql.SortField{
-			Column: c.scalarGf(),
+			Column: scalar,
 			Order:  so,
 		}
 		sortFields = append(sortFields, sf)

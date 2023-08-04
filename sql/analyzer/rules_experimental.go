@@ -95,6 +95,20 @@ var OnceAfterDefault_Experimental = []Rule{
 	{applyFKsId, applyForeignKeys},
 }
 
+// DefaultValidationRules to apply while analyzing nodes.
+var DefaultValidationRules = []Rule{
+	{validateResolvedId, validateIsResolved},
+	{validateOrderById, validateOrderBy},
+	{validateGroupById, validateGroupBy},
+	{validateSchemaSourceId, validateSchemaSource},
+	{validateIndexCreationId, validateIndexCreation},
+	{validateOperandsId, validateOperands},
+	{validateIntervalUsageId, validateIntervalUsage},
+	{validateSubqueryColumnsId, validateSubqueryColumns},
+	{validateUnionSchemasMatchId, validateUnionSchemasMatch},
+	{validateAggregationsId, validateAggregations},
+}
+
 var OnceAfterAll_Experimental = []Rule{
 	{inlineSubqueryAliasRefsId, inlineSubqueryAliasRefs},
 	{cacheSubqueryResultsId, cacheSubqueryResults},

@@ -22,7 +22,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -54,36 +53,17 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 			for _, procedure := range procedures {
 				var procToRegister *plan.Procedure
 				var parsedProcedure sql.Node
-				if ctx.Version == sql.VersionExperimental {
-					b := planbuilder.New(ctx, a.Catalog)
-					parsedProcedure, _, _, err = b.Parse(procedure.CreateStatement, false)
-					if err != nil {
-						procToRegister = &plan.Procedure{
-							CreateProcedureString: procedure.CreateStatement,
-						}
-						procToRegister.ValidationError = err
-					} else if cp, ok := parsedProcedure.(*plan.CreateProcedure); !ok {
-						return nil, sql.ErrProcedureCreateStatementInvalid.New(procedure.CreateStatement)
-					} else {
-						procToRegister = cp.Procedure
+				b := planbuilder.New(ctx, a.Catalog)
+				parsedProcedure, _, _, err = b.Parse(procedure.CreateStatement, false)
+				if err != nil {
+					procToRegister = &plan.Procedure{
+						CreateProcedureString: procedure.CreateStatement,
 					}
+					procToRegister.ValidationError = err
+				} else if cp, ok := parsedProcedure.(*plan.CreateProcedure); !ok {
+					return nil, sql.ErrProcedureCreateStatementInvalid.New(procedure.CreateStatement)
 				} else {
-					parsedProcedure, err = parse.Parse(ctx, procedure.CreateStatement)
-					if err != nil {
-						return nil, err
-					}
-					cp, ok := parsedProcedure.(*plan.CreateProcedure)
-					if !ok {
-						return nil, sql.ErrProcedureCreateStatementInvalid.New(procedure.CreateStatement)
-					}
-
-					analyzedProc, err := analyzeCreateProcedure(ctx, a, cp, scope, sel)
-					if err != nil {
-						procToRegister = cp.Procedure
-						procToRegister.ValidationError = err
-					} else {
-						procToRegister = analyzedProc
-					}
+					procToRegister = cp.Procedure
 				}
 
 				procToRegister.CreatedAt = procedure.CreatedAt
@@ -330,23 +310,19 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				return nil, transform.SameTree, err
 			}
 			var parsedProcedure sql.Node
-			if ctx.Version == sql.VersionExperimental {
-				b := planbuilder.New(ctx, a.Catalog)
-				if call.AsOf() != nil {
-					asOf, err := call.AsOf().Eval(ctx, nil)
-					if err != nil {
-						return n, transform.SameTree, err
-					}
-					b.ViewCtx().AsOf = asOf
+			b := planbuilder.New(ctx, a.Catalog)
+			if call.AsOf() != nil {
+				asOf, err := call.AsOf().Eval(ctx, nil)
+				if err != nil {
+					return n, transform.SameTree, err
 				}
-				parsedProcedure, _, _, err = b.Parse(procedure.CreateStatement, false)
-			} else {
-				parsedProcedure, err = parse.Parse(ctx, procedure.CreateStatement)
+				b.ViewCtx().AsOf = asOf
 			}
-
+			parsedProcedure, _, _, err = b.Parse(procedure.CreateStatement, false)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
+
 			parsedProcedure, _, err = transform.Node(parsedProcedure, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 				versionable, ok := n.(plan.Versionable)
 				if !ok {

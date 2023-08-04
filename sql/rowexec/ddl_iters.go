@@ -196,20 +196,17 @@ func (l loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expressi
 					return nil, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
 				}
 				var def sql.Expression = f.Default
-				if ctx.Version == sql.VersionExperimental {
-					var err error
-					def, _, err = transform.Expr(f.Default, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-						switch e := e.(type) {
-						case *expression.GetField:
-							//return e.WithIndex(e.Index() - 1), transform.NewTree, nil
-							return fixidx.FixFieldIndexes(nil, log.Printf, l.destination.Schema(), e.WithTable(l.destination.Name()))
-						default:
-							return e, transform.SameTree, nil
-						}
-					})
-					if err != nil {
-						return nil, err
+				var err error
+				def, _, err = transform.Expr(f.Default, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+					switch e := e.(type) {
+					case *expression.GetField:
+						return fixidx.FixFieldIndexes(nil, log.Printf, l.destination.Schema(), e.WithTable(l.destination.Name()))
+					default:
+						return e, transform.SameTree, nil
 					}
+				})
+				if err != nil {
+					return nil, err
 				}
 				exprs[i] = def
 			}

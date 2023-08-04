@@ -171,7 +171,7 @@ func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 				b.ctx.Session.Warn(&sql.Warning{
 					Level:   "Note",
 					Code:    mysql.ERBadTable,
-					Message: fmt.Sprintf("Can't drop table %s; table doesn't exist ", tableName),
+					Message: fmt.Sprintf("Unknown table '%s'", tableName),
 				})
 				continue
 			} else if err != nil {
@@ -492,15 +492,6 @@ func (b *Builder) buildAlterTableColumnAction(inScope *scope, ddl *ast.DDL) (out
 		drop.Checks = b.loadChecksFromTable(outScope, table.Table)
 		outScope.node = drop
 	case ast.RenameStr:
-		for _, c := range table.Schema() {
-			outScope.newColumn(scopeColumn{
-				db:       strings.ToLower(table.Database.Name()),
-				table:    strings.ToLower(c.Source),
-				col:      strings.ToLower(c.Name),
-				typ:      c.Type,
-				nullable: c.Nullable,
-			})
-		}
 		rename := plan.NewRenameColumnResolved(table, ddl.Column.String(), ddl.ToColumn.String())
 		rename.Checks = b.loadChecksFromTable(outScope, table.Table)
 		outScope.node = rename

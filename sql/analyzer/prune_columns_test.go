@@ -27,7 +27,7 @@ import (
 )
 
 func TestPruneColumns(t *testing.T) {
-	rule := getRuleFrom(OnceAfterDefault, pruneColumnsId)
+	rule := getRuleFrom(OnceAfterDefault_Experimental, pruneColumnsId)
 
 	t1 := plan.NewResolvedTable(memory.NewTable("t1", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "foo", Type: types.Int64, Source: "t1"},

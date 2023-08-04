@@ -112,19 +112,28 @@ func (b *Builder) setExprsToExpressions(inScope *scope, e ast.SetVarExprs) []sql
 
 		// left => convert to user var or system var expression, validate system var
 		// right => getSetExpr, not adapted for defaults yet, special keywords need to be converted, variables replaced
+		var setScope ast.SetScope
+
 		c, ok := inScope.resolveColumn(strings.ToLower(setExpr.Name.Qualifier.String()), strings.ToLower(setExpr.Name.Name.String()), true)
 		var setVar sql.Expression
 		if ok {
 			setVar = c.scalarGf()
 		} else {
-			setVar, ok = b.buildSysVar(setExpr.Name, setExpr.Scope)
+			setVar, setScope, ok = b.buildSysVar(setExpr.Name, setExpr.Scope)
 			if !ok {
-				b.handleErr(sql.ErrColumnNotFound.New(setExpr.Name.String()))
+				switch setScope {
+				case ast.SetScope_None:
+					b.handleErr(sql.ErrColumnNotFound.New(setExpr.Name.String()))
+				case ast.SetScope_User:
+					b.handleErr(sql.ErrUnknownUserVariable.New(setExpr.Name.String()))
+				default:
+					b.handleErr(sql.ErrUnknownSystemVariable.New(setExpr.Name.String()))
+				}
 			}
 		}
 
 		sysVarType, _ := setVar.Type().(sql.SystemVariableType)
-		innerExpr, ok := b.simplifySetExpr(setExpr.Name, setExpr.Expr, sysVarType)
+		innerExpr, ok := b.simplifySetExpr(setExpr.Name, setScope, setExpr.Expr, sysVarType)
 		if !ok {
 			innerExpr = b.buildScalar(inScope, setExpr.Expr)
 		}
@@ -134,7 +143,7 @@ func (b *Builder) setExprsToExpressions(inScope *scope, e ast.SetVarExprs) []sql
 	return res
 }
 
-func (b *Builder) buildSysVar(colName *ast.ColName, scopeHint ast.SetScope) (sql.Expression, bool) {
+func (b *Builder) buildSysVar(colName *ast.ColName, scopeHint ast.SetScope) (sql.Expression, ast.SetScope, bool) {
 	// convert to system or user var, validate system var
 	table := colName.Qualifier.String()
 	col := colName.Name.String()
@@ -158,9 +167,9 @@ func (b *Builder) buildSysVar(colName *ast.ColName, scopeHint ast.SetScope) (sql
 	case ast.SetScope_Global:
 		_, _, ok := sql.SystemVariables.GetGlobal(varName)
 		if !ok {
-			return nil, false
+			return nil, scope, false
 		}
-		return expression.NewSystemVar(varName, sql.SystemVariableScope_Global), true
+		return expression.NewSystemVar(varName, sql.SystemVariableScope_Global), scope, true
 	case ast.SetScope_None, ast.SetScope_Session:
 		switch strings.ToLower(varName) {
 		case "character_set_database", "collation_database":
@@ -172,34 +181,34 @@ func (b *Builder) buildSysVar(colName *ast.ColName, scopeHint ast.SetScope) (sql
 		default:
 			_, err = b.ctx.GetSessionVariable(b.ctx, varName)
 			if err != nil {
-				return nil, false
+				return nil, scope, false
 			}
-			return expression.NewSystemVar(varName, sql.SystemVariableScope_Session), true
+			return expression.NewSystemVar(varName, sql.SystemVariableScope_Session), scope, true
 		}
 	case ast.SetScope_User:
 		t, _, err := b.ctx.GetUserVariable(b.ctx, varName)
 		if err != nil {
 			b.handleErr(err)
 		}
-		return expression.NewUserVarWithType(varName, t), true
+		return expression.NewUserVarWithType(varName, t), scope, true
 	case ast.SetScope_Persist:
-		return expression.NewSystemVar(varName, sql.SystemVariableScope_Persist), true
+		return expression.NewSystemVar(varName, sql.SystemVariableScope_Persist), scope, true
 	case ast.SetScope_PersistOnly:
-		return expression.NewSystemVar(varName, sql.SystemVariableScope_PersistOnly), true
+		return expression.NewSystemVar(varName, sql.SystemVariableScope_PersistOnly), scope, true
 	default: // shouldn't happen
 		err := fmt.Errorf("unknown set scope %v", scope)
 		b.handleErr(err)
 	}
-	return nil, false
+	return nil, scope, false
 }
 
-func (b *Builder) simplifySetExpr(name *ast.ColName, val ast.Expr, sysVarType sql.Type) (sql.Expression, bool) {
+func (b *Builder) simplifySetExpr(name *ast.ColName, varScope ast.SetScope, val ast.Expr, sysVarType sql.Type) (sql.Expression, bool) {
 	// can |val| be nested?
 	switch val := val.(type) {
 	case *ast.ColName:
 		// convert and eval
 		// todo check whether right side needs variable replacement
-		sysVar, ok := b.buildSysVar(val, ast.SetScope_None)
+		sysVar, _, ok := b.buildSysVar(val, ast.SetScope_None)
 		if ok {
 			return sysVar, true
 		}
@@ -254,21 +263,20 @@ func (b *Builder) simplifySetExpr(name *ast.ColName, val ast.Expr, sysVarType sq
 		}
 	case *ast.Default:
 		// set back to default value
-		var scope ast.SetScope
 		var err error
 		var varName string
 		table := name.Qualifier.String()
 		col := name.Name.Lowered()
 		if table != "" {
-			varName, scope, err = ast.VarScope(table, col)
+			varName, _, err = ast.VarScope(table, col)
 		} else {
-			varName, scope, err = ast.VarScope(col)
+			varName, _, err = ast.VarScope(col)
 		}
 		if err != nil {
 			b.handleErr(err)
 		}
 
-		switch scope {
+		switch varScope {
 		case ast.SetScope_None, ast.SetScope_Session, ast.SetScope_Global:
 			_, value, ok := sql.SystemVariables.GetGlobal(varName)
 			if ok {
@@ -276,11 +284,11 @@ func (b *Builder) simplifySetExpr(name *ast.ColName, val ast.Expr, sysVarType sq
 			}
 			err = sql.ErrUnknownSystemVariable.New(varName)
 		case ast.SetScope_Persist, ast.SetScope_PersistOnly:
-			err = fmt.Errorf("%wsetting default for '%s'", sql.ErrUnsupportedFeature.New(), scope)
+			err = fmt.Errorf("%wsetting default for '%s'", sql.ErrUnsupportedFeature.New(), varScope)
 		case ast.SetScope_User:
 			err = sql.ErrUserVariableNoDefault.New(varName)
 		default: // shouldn't happen
-			err = fmt.Errorf("unknown set scope %v", scope)
+			err = fmt.Errorf("unknown set scope %v", varScope)
 		}
 		b.handleErr(err)
 	}

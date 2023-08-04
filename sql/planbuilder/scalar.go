@@ -67,7 +67,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	case *ast.ColName:
 		c, ok := inScope.resolveColumn(strings.ToLower(v.Qualifier.Name.String()), strings.ToLower(v.Name.String()), true)
 		if !ok {
-			sysVar, ok := b.buildSysVar(v, ast.SetScope_None)
+			sysVar, _, ok := b.buildSysVar(v, ast.SetScope_None)
 			if ok {
 				return sysVar
 			}
@@ -114,7 +114,6 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	case *ast.GroupConcatExpr:
 		// TODO this is an aggregation
 		return b.buildGroupConcat(inScope, v)
-		//b.handleErr(fmt.Errorf("todo group concat"))
 	case *ast.ParenExpr:
 		return b.buildScalar(inScope, v.Expr)
 	case *ast.AndExpr:

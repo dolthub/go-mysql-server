@@ -466,7 +466,7 @@ func (b *Builder) buildSignal(inScope *scope, s *ast.Signal) (outScope *scope) {
 				if ok {
 					ref = c.scalarGf()
 				} else {
-					ref, ok = b.buildSysVar(&ast.ColName{Name: v.Name}, ast.SetScope_None)
+					ref, _, ok = b.buildSysVar(&ast.ColName{Name: v.Name}, ast.SetScope_None)
 					if !ok {
 						b.handleErr(fmt.Errorf("signal column not found: %s", v.Name.String()))
 					}

@@ -65,33 +65,6 @@ func TestJoinOps(t *testing.T, harness Harness) {
 	}
 }
 
-func TestJoinOpsPrepared(t *testing.T, harness Harness) {
-	for _, tt := range joinOpTests {
-		t.Run(tt.name, func(t *testing.T) {
-			e := mustNewEngine(t, harness)
-			defer e.Close()
-			for _, setup := range tt.setup {
-				for _, statement := range setup {
-					if sh, ok := harness.(SkippingHarness); ok {
-						if sh.SkipQueryTest(statement) {
-							t.Skip()
-						}
-					}
-					ctx := NewContext(harness)
-					RunQueryWithContext(t, e, harness, ctx, statement)
-				}
-			}
-
-			for k, c := range biasedCosters {
-				e.Analyzer.Coster = c
-				for _, tt := range tt.tests {
-					evalJoinCorrectnessPrepared(t, harness, e, fmt.Sprintf("%s join: %s", k, tt.Query), tt.Query, tt.Expected, tt.Skip)
-				}
-			}
-		})
-	}
-}
-
 var joinOpTests = []struct {
 	name  string
 	setup [][]string

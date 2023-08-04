@@ -242,6 +242,9 @@ var (
 	// ErrUnknownSystemVariable is returned when a query references a system variable that doesn't exist
 	ErrUnknownSystemVariable = errors.NewKind(`Unknown system variable '%s'`)
 
+	// ErrUnknownUserVariable is returned when a query references a user variable that doesn't exist
+	ErrUnknownUserVariable = errors.NewKind(`Unknown user variable '%s'`)
+
 	// ErrSystemVariableReadOnly is returned when attempting to set a value to a non-Dynamic system variable.
 	ErrSystemVariableReadOnly = errors.NewKind(`Variable '%s' is a read only variable`)
 

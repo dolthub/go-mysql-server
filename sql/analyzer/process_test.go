@@ -66,7 +66,7 @@ func TestPreparedStatementQueryTracking(t *testing.T) {
 
 func TestTrackProcessSubquery(t *testing.T) {
 	require := require.New(t)
-	rule := getRuleFrom(OnceAfterAll, TrackProcessId)
+	rule := getRuleFrom(OnceAfterAll_Experimental, TrackProcessId)
 	a := NewDefault(sql.NewDatabaseProvider())
 
 	node := plan.NewProject(

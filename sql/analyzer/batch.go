@@ -15,12 +15,10 @@
 package analyzer
 
 import (
-	"reflect"
-	"strconv"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"reflect"
 )
 
 // RuleFunc is the function to be applied in a rule.
@@ -60,44 +58,13 @@ func (b *Batch) EvalWithSelector(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 	if b.Iterations == 0 {
 		return n, transform.SameTree, nil
 	}
-	prev := n
 	a.PushDebugContext("0")
 	cur, _, err := b.evalOnce(ctx, a, n, scope, sel)
 	a.PopDebugContext()
 	if err != nil {
 		return cur, transform.SameTree, err
 	}
-
-	nodesEq := nodesEqual(prev, cur)
-	same := transform.TreeIdentity(nodesEq)
-	if b.Iterations == 1 || ctx.Version == sql.VersionExperimental {
-		return cur, transform.TreeIdentity(nodesEq), nil
-	}
-
-	for i := 1; !nodesEq; {
-		a.Log("Nodes not equal, re-running batch")
-		a.LogDiff(prev, cur)
-		if i >= b.Iterations {
-			return cur, transform.SameTree, ErrMaxAnalysisIters.New(b.Iterations)
-		}
-
-		prev = cur
-		a.PushDebugContext(strconv.Itoa(i))
-		cur, _, err = b.evalOnce(ctx, a, cur, scope, sel)
-		a.PopDebugContext()
-		if err != nil {
-			return cur, transform.SameTree, err
-		}
-
-		//todo(max): Use nodesEqual until all rules can reliably report
-		// modifications. False positives, where a rule incorrectly states
-		// report sql.NewTree, are the primary barrier.
-		nodesEq = nodesEqual(prev, cur)
-		same = same && transform.TreeIdentity(nodesEq)
-		i++
-	}
-
-	return cur, same, nil
+	return cur, transform.NewTree, nil
 }
 
 // evalOnce returns the result of evaluating a batch of rules on the node given. In the result of an error, the result

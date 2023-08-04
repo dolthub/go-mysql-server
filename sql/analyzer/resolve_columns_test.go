@@ -29,46 +29,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func TestQualifyColumnsProject(t *testing.T) {
-	require := require.New(t)
-
-	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: types.Text, Source: "foo"},
-		{Name: "b", Type: types.Text, Source: "foo"},
-	}), nil)
-
-	node := plan.NewProject(
-		[]sql.Expression{
-			uc("a"),
-			uc("b"),
-		},
-		plan.NewProject(
-			[]sql.Expression{
-				uqc("foo", "a"),
-			},
-			plan.NewResolvedTable(table, nil, nil),
-		),
-	)
-
-	result, _, err := qualifyColumns(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
-	require.NoError(err)
-
-	expected := plan.NewProject(
-		[]sql.Expression{
-			uqc("foo", "a"),
-			uqc("foo", "b"),
-		},
-		plan.NewProject(
-			[]sql.Expression{
-				uqc("foo", "a"),
-			},
-			plan.NewResolvedTable(table, nil, nil),
-		),
-	)
-
-	require.Equal(expected, result)
-}
-
 func TestMisusedAlias(t *testing.T) {
 	require := require.New(t)
 	f := getRule(resolveColumnsId)
@@ -616,56 +576,4 @@ func TestResolveColumns(t *testing.T) {
 	}
 
 	runTestCases(t, nil, testCases, nil, f)
-}
-
-func TestPushdownGroupByAliases(t *testing.T) {
-	require := require.New(t)
-
-	a := NewDefault(nil)
-	node := plan.NewGroupBy(
-		[]sql.Expression{
-			expression.NewAlias("c", expression.NewUnresolvedFunction("foo", false, nil,
-				uc("c"),
-			)),
-			expression.NewAlias("b", uc("d")),
-			expression.NewUnresolvedFunction("bar", true, nil,
-				uc("b"),
-			),
-		},
-		[]sql.Expression{
-			uc("a"),
-			uc("b"),
-		},
-		plan.NewResolvedTable(memory.NewTable("table", sql.PrimaryKeySchema{}, nil), nil, nil),
-	)
-
-	expected := plan.NewGroupBy(
-		[]sql.Expression{
-			expression.NewAlias("c", expression.NewUnresolvedFunction("foo", false, nil,
-				uc("c"),
-			)),
-			expression.NewAliasReference("b"),
-			expression.NewUnresolvedFunction("bar", true, nil,
-				uc("b_01"),
-			),
-		},
-		[]sql.Expression{
-			uc("a"),
-			expression.NewAliasReference("b"),
-		},
-		plan.NewProject(
-			[]sql.Expression{
-				expression.NewAlias("b", uc("d")),
-				uc("a"),
-				expression.NewAlias("b_01", uc("b")),
-				uc("c"),
-			},
-			plan.NewResolvedTable(memory.NewTable("table", sql.PrimaryKeySchema{}, nil), nil, nil),
-		),
-	)
-
-	result, _, err := pushdownGroupByAliases(sql.NewEmptyContext(), a, node, nil, DefaultRuleSelector)
-	require.NoError(err)
-
-	require.Equal(expected, result)
 }

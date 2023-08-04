@@ -166,6 +166,7 @@ func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 				}
 			}
 		}
+
 		return transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if count, ok := e.(*aggregation.Count); ok {
 				if _, ok := count.Child.(*expression.Star); ok {

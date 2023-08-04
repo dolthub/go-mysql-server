@@ -276,7 +276,7 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 			col := scopeColumn{table: e.Table(), col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable()}
 			gb.addInCol(col)
 		case *expression.Star:
-			err := fmt.Errorf("a '*' is in a context where it is not allowed")
+			err := sql.ErrStarUnsupported.New()
 			b.handleErr(err)
 		default:
 			args = append(args, e)
@@ -354,8 +354,12 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 		if c.descending {
 			so = sql.Descending
 		}
+		scalar := c.scalar
+		if scalar == nil {
+			scalar = c.scalarGf()
+		}
 		sf := sql.SortField{
-			Column: c.scalar,
+			Column: scalar,
 			Order:  so,
 		}
 		sortFields = append(sortFields, sf)
@@ -685,6 +689,7 @@ func (b *Builder) buildInnerProj(fromScope, projScope *scope) *scope {
 	for i, c := range fromScope.cols {
 		proj[i] = c.scalarGf()
 	}
+
 	// eval aliases in project scope
 	for _, e := range projScope.cols {
 		// selection aliases need to be projected

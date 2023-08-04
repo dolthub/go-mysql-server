@@ -30,7 +30,7 @@ import (
 )
 
 func TestResolveSetVariables(t *testing.T) {
-	rule := getRuleFrom(OnceBeforeDefault, resolveSetVariablesId)
+	rule := getRuleFrom(OnceBeforeDefault_Exp, resolveSetVariablesId)
 
 	var testCases = []analyzerFnTestCase{
 		{
@@ -123,7 +123,7 @@ func TestResolveSetVariables(t *testing.T) {
 }
 
 func TestResolveBarewordSetVariables(t *testing.T) {
-	rule := getRuleFrom(DefaultRules, resolveBarewordSetVariablesId)
+	rule := getRuleFrom(DefaultRules_Exp, resolveBarewordSetVariablesId)
 
 	var testCases = []analyzerFnTestCase{
 		{

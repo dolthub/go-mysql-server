@@ -124,9 +124,13 @@ func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []
 
 	exprTuples := make([][]sql.Expression, len(v))
 	for i, vt := range v {
+		noExprs := len(vt) == 0
+		if len(vt) != len(columnNames) && !noExprs {
+			err := fmt.Errorf("insert values don't match columns: %#v", vt)
+			b.handleErr(err)
+		}
 		exprs := make([]sql.Expression, len(columnNames))
 		exprTuples[i] = exprs
-		noExprs := len(vt) == 0
 		for j := range columnNames {
 			if noExprs {
 				exprs[j] = expression.WrapExpression(columnDefaultValues[j])

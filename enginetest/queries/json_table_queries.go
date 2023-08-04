@@ -459,7 +459,7 @@ var JSONTableScriptTests = []ScriptTest{
 			"create table t (i int, j json)",
 		},
 		Query:       "select t.a from t, json_table(t.k, '$[*]' columns (a INT path '$.a')) AS j",
-		ExpectedErr: sql.ErrTableColumnNotFound,
+		ExpectedErr: sql.ErrColumnNotFound,
 	},
 	{
 		Name: "select from non existent json table column",
@@ -467,7 +467,7 @@ var JSONTableScriptTests = []ScriptTest{
 			"create table t (i int, j json)",
 		},
 		Query:       "select j.b from t, json_table(t.j, '$[*]' columns (a INT path '$.a')) AS j",
-		ExpectedErr: sql.ErrTableColumnNotFound,
+		ExpectedErr: sql.ErrColumnNotFound,
 	},
 	{
 		Name: "subquery argument to json_table not allowed",

@@ -17,6 +17,9 @@ import (
 // indexes.
 func fixupAuxiliaryExprs(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.NodeWithOpaque(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		if _, ok := n.(*plan.Union); ok {
+			print("")
+		}
 		switch n := n.(type) {
 		default:
 			ret, same1, err := fixidx.FixFieldIndexesForExpressions(ctx, a.LogFn(), n, scope)
@@ -142,6 +145,17 @@ func fixupAuxiliaryExprs(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 			}
 			return ins, transform.NewTree, nil
 		}
+	})
+}
+
+func hoistSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		// match [node] -> Sort
+		// move sort above [node]
+		// exclusion conditions:
+		// - parent does not have input cols for sort
+		// -
+		return n, transform.SameTree, nil
 	})
 }
 

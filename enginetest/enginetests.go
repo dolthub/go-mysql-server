@@ -38,7 +38,6 @@ import (
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
@@ -238,18 +237,6 @@ func TestJoinQueriesPrepared(t *testing.T, harness Harness) {
 func TestBrokenQueries(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.Fk_tblData)
 	RunQueryTests(t, harness, queries.BrokenQueries)
-}
-
-func TestPreparedStaticIndexQuery(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData)
-	engine := mustNewEngine(t, harness)
-	defer engine.Close()
-	ctx := NewContext(harness)
-	RunQueryWithContext(t, engine, harness, ctx, "CREATE TABLE squares (i bigint primary key, square bigint);")
-	engine.PrepareQuery(ctx, "select * from squares where i = 1")
-	RunQueryWithContext(t, engine, harness, ctx, "INSERT INTO squares VALUES (0, 0), (1, 1), (2, 4), (3, 9);")
-	TestQueryWithContext(t, ctx, engine, harness, "select * from squares where i = 1",
-		[]sql.Row{{1, 1}}, sql.Schema{{Name: "i", Type: types.Int64}, {Name: "square", Type: types.Int64}}, nil)
 }
 
 // RunQueryTests runs the query tests given after setting up the engine. Useful for testing out a smaller subset of
@@ -481,13 +468,7 @@ func TestVersionedQueriesPrepared(t *testing.T, harness VersionedDBHarness) {
 func TestQueryPlan(t *testing.T, harness Harness, e *sqle.Engine, query, expectedPlan string, verbose bool) {
 	t.Run(query, func(t *testing.T) {
 		ctx := NewContext(harness)
-		var parsed sql.Node
-		var err error
-		if ctx.Version == sql.VersionExperimental {
-			parsed, err = planbuilder.Parse(ctx, e.Analyzer.Catalog, query)
-		} else {
-			parsed, err = parse.Parse(ctx, query)
-		}
+		parsed, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, query)
 		require.NoError(t, err)
 
 		node, err := e.Analyzer.Analyze(ctx, parsed, nil)
@@ -1970,13 +1951,10 @@ func TestRecursiveViewDefinition(t *testing.T, harness Harness) {
 	db, err := e.Analyzer.Catalog.Database(ctx, "mydb")
 	require.NoError(t, err)
 
-	vdb, ok := db.(sql.ViewDatabase)
+	_, ok := db.(sql.ViewDatabase)
 	require.True(t, ok, "expected sql.ViewDatabase")
 
-	err = vdb.CreateView(ctx, "recursiveView", "select * from recursiveView", "create view recursiveView AS select * from recursiveView")
-	require.NoError(t, err)
-
-	AssertErr(t, e, harness, "select * from recursiveView", analyzer.ErrMaxAnalysisIters)
+	AssertErr(t, e, harness, "create view recursiveView AS select * from recursiveView", sql.ErrTableNotFound)
 }
 
 func TestViewsPrepared(t *testing.T, harness Harness) {
@@ -2057,11 +2035,9 @@ func TestVersionedViewsPrepared(t *testing.T, harness VersionedDBHarness) {
 func TestCreateTable(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.FooData)
 	for _, tt := range queries.CreateTableQueries {
-		RunWriteQueryTest(t, harness, tt)
-	}
-
-	for _, script := range queries.CreateTableScriptTests {
-		TestScriptPrepared(t, harness, script)
+		t.Run(tt.WriteQuery, func(t *testing.T) {
+			RunWriteQueryTest(t, harness, tt)
+		})
 	}
 
 	harness.Setup(setup.MydbData, setup.MytableData)
@@ -3622,7 +3598,7 @@ CREATE TABLE t4
   c1 INT CHECK (c1 > 10),
   c2 INT CONSTRAINT c2_positive CHECK (c2 > 0),
   CHECK (c1 > c3)
-);`, sql.ErrTableColumnNotFound)
+);`, sql.ErrColumnNotFound)
 
 	// Test any scripts relevant to CheckConstraints. We do this separately from the rest of the scripts
 	// as certain integrators might not implement check constraints.
@@ -4771,7 +4747,9 @@ func TestVariableErrors(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, test := range queries.VariableErrorTests {
-		AssertErr(t, e, harness, test.Query, test.ExpectedErr)
+		t.Run(test.Query, func(t *testing.T) {
+			AssertErr(t, e, harness, test.Query, test.ExpectedErr)
+		})
 	}
 }
 
@@ -5125,7 +5103,7 @@ func TestTracing(t *testing.T, harness Harness) {
 
 	sql.WithTracer(tracer)(ctx)
 
-	sch, iter, err := e.Query(ctx, `SELECT DISTINCT i
+	sch, iter, err := e.Query(ctx, `explain SELECT DISTINCT i
 		FROM mytable
 		WHERE s = 'first row'
 		ORDER BY i DESC

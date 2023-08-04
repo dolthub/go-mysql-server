@@ -39,7 +39,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -301,19 +300,9 @@ func (h *Handler) doQuery(
 
 	var remainder string
 	var parsed sql.Node
-	ctx.Version = h.e.Version
+	var prequery string
 	if mode == MultiStmtModeOn {
-		var prequery string
-		switch ctx.Version {
-		case sql.VersionExperimental:
-			parsed, prequery, remainder, err = planbuilder.ParseOne(ctx, h.e.Analyzer.Catalog, query)
-			if err != nil {
-				parsed, prequery, remainder, _ = parse.ParseOne(ctx, query)
-				ctx.Version = sql.VersionStable
-			}
-		default:
-			parsed, prequery, remainder, _ = parse.ParseOne(ctx, query)
-		}
+		parsed, prequery, remainder, err = planbuilder.ParseOne(ctx, h.e.Analyzer.Catalog, query)
 		if prequery != "" {
 			query = prequery
 		}
@@ -343,20 +332,10 @@ func (h *Handler) doQuery(
 	start := time.Now()
 
 	if parsed == nil {
-		switch ctx.Version {
-		case sql.VersionExperimental:
-			parsed, err = planbuilder.Parse(ctx, h.e.Analyzer.Catalog, query)
-			if err != nil {
-				ctx.GetLogger().Tracef("experimental planbuilder failed: %s", err)
-				parsed, err = parse.Parse(ctx, query)
-				ctx.Version = sql.VersionStable
-			}
-		default:
-			parsed, err = parse.Parse(ctx, query)
+		parsed, err = planbuilder.Parse(ctx, h.e.Analyzer.Catalog, query)
+		if err != nil {
+			return "", err
 		}
-	}
-	if err != nil {
-		return "", err
 	}
 
 	ctx.GetLogger().Tracef("beginning execution")

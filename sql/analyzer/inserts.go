@@ -195,21 +195,17 @@ func wrapRowSource(ctx *sql.Context, scope *plan.Scope, logFn func(string, ...an
 			if !f.Nullable && f.Default == nil && !f.AutoIncrement {
 				return nil, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
 			}
-			var def sql.Expression = f.Default
-			if ctx.Version == sql.VersionExperimental {
-				var err error
-				def, _, err = transform.Expr(f.Default, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-					switch e := e.(type) {
-					case *expression.GetField:
-						//return e.WithIndex(e.Index() - 1), transform.NewTree, nil
-						return fixidx.FixFieldIndexes(scope, logFn, schema, e.WithTable(destTbl.Name()))
-					default:
-						return e, transform.SameTree, nil
-					}
-				})
-				if err != nil {
-					return nil, err
+			var err error
+			def, _, err := transform.Expr(f.Default, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				switch e := e.(type) {
+				case *expression.GetField:
+					return fixidx.FixFieldIndexes(scope, logFn, schema, e.WithTable(destTbl.Name()))
+				default:
+					return e, transform.SameTree, nil
 				}
+			})
+			if err != nil {
+				return nil, err
 			}
 			projExprs[i] = def
 		}
