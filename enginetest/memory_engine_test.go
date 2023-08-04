@@ -276,33 +276,7 @@ func TestSingleQueryPrepared(t *testing.T) {
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
 	t.Skip()
-	var scripts = []queries.ScriptTest{
-		{
-			Name: "renaming views with RENAME TABLE ... TO .. statement",
-			SetUpScript: []string{
-				"create table t1 (id int primary key, v1 int);",
-				"create view v1 as select * from t1;",
-			},
-			Assertions: []queries.ScriptTestAssertion{
-				{
-					Query:    "rename table v1 to view1",
-					Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
-				},
-				{
-					Query:    "show tables;",
-					Expected: []sql.Row{{"myview"}, {"t1"}, {"view1"}},
-				},
-				{
-					Query:    "rename table view1 to newViewName, t1 to newTableName",
-					Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
-				},
-				{
-					Query:    "show tables;",
-					Expected: []sql.Row{{"myview"}, {"newTableName"}, {"newViewName"}},
-				},
-			},
-		},
-	}
+	var scripts = []queries.ScriptTest{}
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental)
@@ -1323,7 +1297,9 @@ func TestAddDropPks_Exp(t *testing.T) {
 
 func TestAddAutoIncrementColumn(t *testing.T) {
 	t.Skip("in memory tables don't implement sql.RewritableTable yet")
-	enginetest.TestAddAutoIncrementColumn(t, enginetest.NewDefaultMemoryHarness())
+	for _, script := range queries.AlterTableAddAutoIncrementScripts {
+		enginetest.TestScript(t, enginetest.NewDefaultMemoryHarness(), script)
+	}
 }
 
 func TestNullRanges(t *testing.T) {
