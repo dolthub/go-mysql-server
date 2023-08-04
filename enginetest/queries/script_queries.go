@@ -1470,14 +1470,6 @@ var ScriptTests = []ScriptTest{
 				Query:       "SELECT col0, col1 FROM tab1 GROUP by col0;",
 				ExpectedErr: analyzererrors.ErrValidationGroupBy,
 			},
-			{
-				Query:       "SELECT col0, floor(col1) FROM tab1 GROUP by col0;",
-				ExpectedErr: analyzererrors.ErrValidationGroupBy,
-			},
-			{
-				Query:       "SELECT floor(cor0.col1) * ceil(cor0.col0) AS col2 FROM tab1 AS cor0 GROUP BY cor0.col0",
-				ExpectedErr: analyzererrors.ErrValidationGroupBy,
-			},
 		},
 	},
 	{

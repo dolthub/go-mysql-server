@@ -118,7 +118,6 @@ func TestJSONTableQueries(t *testing.T) {
 
 // TestJSONTableScripts runs the canonical test queries against a single threaded index enabled harness.
 func TestJSONTableScripts(t *testing.T) {
-	// TODO different error messages
 	enginetest.TestJSONTableScripts(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
@@ -324,7 +323,6 @@ func TestParallelismQueries(t *testing.T) {
 }
 
 func TestQueryErrors(t *testing.T) {
-	// TODO some of these still do not work
 	enginetest.TestQueryErrors(t, enginetest.NewDefaultMemoryHarness())
 }
 
@@ -463,8 +461,6 @@ func TestConvert(t *testing.T) {
 }
 
 func TestScripts(t *testing.T) {
-	// TODO different error messages
-	// different error messages; 2 aggregation validators failing (probably OK temporarily
 	enginetest.TestScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 

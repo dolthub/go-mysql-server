@@ -65,11 +65,18 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	case *ast.NullVal:
 		return expression.NewLiteral(nil, types.Null)
 	case *ast.ColName:
-		c, ok := inScope.resolveColumn(strings.ToLower(v.Qualifier.Name.String()), strings.ToLower(v.Name.String()), true)
+		tableName := strings.ToLower(v.Qualifier.Name.String())
+		colName := strings.ToLower(v.Name.String())
+		c, ok := inScope.resolveColumn(tableName, colName, true)
 		if !ok {
 			sysVar, _, ok := b.buildSysVar(v, ast.SetScope_None)
 			if ok {
 				return sysVar
+			}
+			if tableName != "" && !inScope.hasTable(tableName) {
+				b.handleErr(sql.ErrTableNotFound.New(tableName))
+			} else if tableName != "" {
+				b.handleErr(sql.ErrTableColumnNotFound.New(tableName, colName))
 			}
 			b.handleErr(sql.ErrColumnNotFound.New(v))
 		}

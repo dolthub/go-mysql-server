@@ -114,7 +114,8 @@ func (b *Builder) setExprsToExpressions(inScope *scope, e ast.SetVarExprs) []sql
 		// right => getSetExpr, not adapted for defaults yet, special keywords need to be converted, variables replaced
 		var setScope ast.SetScope
 
-		c, ok := inScope.resolveColumn(strings.ToLower(setExpr.Name.Qualifier.String()), strings.ToLower(setExpr.Name.Name.String()), true)
+		tableName := strings.ToLower(setExpr.Name.Qualifier.String())
+		c, ok := inScope.resolveColumn(tableName, strings.ToLower(setExpr.Name.Name.String()), true)
 		var setVar sql.Expression
 		if ok {
 			setVar = c.scalarGf()
@@ -123,6 +124,9 @@ func (b *Builder) setExprsToExpressions(inScope *scope, e ast.SetVarExprs) []sql
 			if !ok {
 				switch setScope {
 				case ast.SetScope_None:
+					if tableName != "" && !inScope.hasTable(tableName) {
+						b.handleErr(sql.ErrTableNotFound.New(tableName))
+					}
 					b.handleErr(sql.ErrColumnNotFound.New(setExpr.Name.String()))
 				case ast.SetScope_User:
 					b.handleErr(sql.ErrUnknownUserVariable.New(setExpr.Name.String()))

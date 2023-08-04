@@ -452,7 +452,12 @@ func (b *Builder) buildAsOfExpr(inScope *scope, time ast.Expr) sql.Expression {
 		}
 		return expression.NewLiteral(v.Name.String(), types.LongText)
 	case *ast.FuncExpr:
-		return b.buildScalar(inScope, v)
+		// todo(max): more specific validation for nested ASOF functions
+		if isWindowFunc(v.Name.Lowered()) || isAggregateFunc(v.Name.Lowered()) {
+			err := sql.ErrInvalidAsOfExpression.New(v)
+			b.handleErr(err)
+		}
+		return b.buildScalar(b.newScope(), v)
 	default:
 	}
 	err := sql.ErrInvalidAsOfExpression.New(time)

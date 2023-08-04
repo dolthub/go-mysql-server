@@ -111,6 +111,17 @@ func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn,
 	return c, true
 }
 
+func (s *scope) hasTable(table string) bool {
+	_, ok := s.tables[strings.ToLower(table)]
+	if ok {
+		return true
+	}
+	if s.parent != nil {
+		return s.parent.hasTable(table)
+	}
+	return false
+}
+
 // triggerCol is used to hallucinate a new column during trigger DDL
 // when we fail a resolveColumn.
 func (s *scope) triggerCol(table, col string) (scopeColumn, bool) {
@@ -188,8 +199,6 @@ func (s *scope) setTableAlias(t string) {
 		s.cols[i].table = t
 		id, ok := s.getExpr(beforeColStr, true)
 		if ok {
-			//err := sql.ErrColumnNotFound.New(beforeColStr)
-			//s.b.handleErr(err)
 			// todo better way to do projections
 			delete(s.exprs, beforeColStr)
 		}
@@ -210,15 +219,14 @@ func (s *scope) setTableAlias(t string) {
 // to the names in the input list.
 func (s *scope) setColAlias(cols []string) {
 	if len(cols) != len(s.cols) {
-		s.b.handleErr(fmt.Errorf("invalid column number for column alias"))
+		err := sql.ErrColumnCountMismatch.New()
+		s.b.handleErr(err)
 	}
 	ids := make([]columnId, len(cols))
 	for i := range s.cols {
 		beforeColStr := s.cols[i].String()
 		id, ok := s.getExpr(beforeColStr, true)
 		if ok {
-			//err := sql.ErrColumnNotFound.New(beforeColStr)
-			//s.b.handleErr(err)
 			// todo better way to do projections
 			delete(s.exprs, beforeColStr)
 		}

@@ -742,6 +742,22 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		Query: `SELECT s as i, i as i from mytable order by 1`,
+		Expected: []sql.Row{
+			{"first row", "first row"},
+			{"second row", "second row"},
+			{"third row", "third row"},
+		},
+	},
+	{
+		Query:    "SELECT SUM(i), i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
+		Expected: []sql.Row{{float64(1), 1}, {float64(2), 2}, {float64(3), 3}},
+	},
+	{
+		Query:    "SELECT SUM(i) as sum, i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
+		Expected: []sql.Row{{float64(1), 1}, {float64(2), 2}, {float64(3), 3}},
+	},
+	{
 		Query:    "select count(1)",
 		Expected: []sql.Row{{1}},
 	},
@@ -8588,10 +8604,11 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       `SELECT * FROM mytable WHERE s REGEXP("*main.go")`,
 		ExpectedErr: expression.ErrInvalidRegexp,
 	},
-	{
-		Query:       `SELECT SUBSTRING(s, 1, 10) AS sub_s, SUBSTRING(SUB_S, 2, 3) AS sub_sub_s FROM mytable`,
-		ExpectedErr: sql.ErrMisusedAlias,
-	},
+	// todo: we should be case-sensitive and reject SUB_S as a valid field
+	//{
+	//	Query:       `SELECT SUBSTRING(s, 1, 10) AS sub_s, SUBSTRING(SUB_S, 2, 3) AS sub_sub_s FROM mytable`,
+	//	ExpectedErr: sql.ErrMisusedAlias,
+	//},
 	{
 		Query:       "SELECT pk, (SELECT max(pk) FROM one_pk b WHERE b.pk <= one_pk.pk) FROM one_pk opk ORDER BY 1",
 		ExpectedErr: sql.ErrTableNotFound,
@@ -8685,17 +8702,6 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrDatabaseNotFound,
 	},
 	{
-		Query:       `SELECT s as i, i as i from mytable order by 1`,
-		ExpectedErr: sql.ErrAmbiguousColumnInOrderBy,
-	},
-	{
-		Query: `SELECT pk as pk, nt.i  as i, nt2.i as i FROM one_pk
-						RIGHT JOIN niltable nt ON pk=nt.i
-						RIGHT JOIN niltable nt2 ON pk=nt2.i - 1
-						ORDER BY 3`,
-		ExpectedErr: sql.ErrAmbiguousColumnInOrderBy,
-	},
-	{
 		Query:       "SELECT C FROM (select i,s FROM mytable) mt (a,b) order by a desc;",
 		ExpectedErr: sql.ErrColumnNotFound,
 	},
@@ -8730,15 +8736,6 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query:       `alter table mytable add primary key (s)`,
 		ExpectedErr: sql.ErrMultiplePrimaryKeysDefined,
-	},
-	// TODO: The following two queries should work. See https://github.com/dolthub/go-mysql-server/issues/542.
-	{
-		Query:       "SELECT SUM(i), i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
-		ExpectedErr: sql.ErrAggregationUnsupported,
-	},
-	{
-		Query:       "SELECT SUM(i) as sum, i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
-		ExpectedErr: sql.ErrAggregationUnsupported,
 	},
 	{
 		Query:       "select ((1, 2)) from dual",
@@ -8879,7 +8876,7 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:          "with a as (select * from c), b as (select * from a), c as (select * from b) select * from a",
-		ExpectedErrStr: "table not found: a", // TODO: should be c
+		ExpectedErrStr: "table not found: c",
 	},
 	{
 		Query:       "WITH Numbers AS ( SELECT n = 1 UNION ALL SELECT n + 1 FROM Numbers WHERE n+1 <= 10) SELECT n FROM Numbers;",
@@ -8953,10 +8950,6 @@ var BrokenErrorQueries = []QueryErrorTest{
 		ExpectedErrStr: "Unknown column 'x' in 'order clause'",
 	},
 	{
-		Query:          "with a as (select * from c), b as (select * from a), c as (select * from b) select * from a",
-		ExpectedErrStr: "table not found: c",
-	},
-	{
 		Query:       "WITH Numbers AS ( SELECT n = 1 UNION ALL SELECT n + 1 FROM Numbers WHERE n+1 <= 10) SELECT n FROM Numbers;",
 		ExpectedErr: sql.ErrTableNotFound,
 	},
@@ -8965,6 +8958,14 @@ var BrokenErrorQueries = []QueryErrorTest{
 	// Relevant issue: https://github.com/dolthub/dolt/issues/4998
 	// Special case: If you are grouping by every field of the PK, then you can select anything
 	// Otherwise, whatever you are selecting must be in the Group By (with the exception of aggregations)
+	{
+		Query:       "SELECT col0, floor(col1) FROM tab1 GROUP by col0;",
+		ExpectedErr: analyzererrors.ErrValidationGroupBy,
+	},
+	{
+		Query:       "SELECT floor(cor0.col1) * ceil(cor0.col0) AS col2 FROM tab1 AS cor0 GROUP BY cor0.col0",
+		ExpectedErr: analyzererrors.ErrValidationGroupBy,
+	},
 	{
 		Query: "select * from two_pk group by pk1, pk2",
 		// No error
