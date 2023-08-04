@@ -2063,7 +2063,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 	for _, script := range queries.CreateTableAutoIncrementTests {
 		TestScript(t, harness, script)
 	}
-	
+
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
