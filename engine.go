@@ -591,7 +591,7 @@ func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Sche
 // ColumnsFromCheckDefinition retrieves the Column Names referenced by a CheckDefinition
 func ColumnsFromCheckDefinition(ctx *sql.Context, def *sql.CheckDefinition) ([]string, error) {
 	// Evaluate the CheckDefinition to get evaluated Expression
-	c, err := analyzer.ConvertCheckDefToConstraint(ctx, def)
+	c, err := analyzer.ConvertCheckDefToConstraint(ctx, def, nil)
 	if err != nil {
 		return nil, err
 	}
