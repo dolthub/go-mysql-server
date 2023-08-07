@@ -23,7 +23,8 @@ import (
 
 // SqlMode encodes the SQL mode string and provides methods for querying the enabled modes.
 type SqlMode struct {
-	modes map[string]struct{}
+	modes      map[string]struct{}
+	modeString string
 }
 
 // LoadSqlMode loads the SQL mode using the session data contained in |ctx| and returns a SqlMode
@@ -52,7 +53,10 @@ func NewSqlModeFromString(sqlModeString string) *SqlMode {
 		modes[element] = struct{}{}
 	}
 
-	return &SqlMode{modes: modes}
+	return &SqlMode{
+		modes:      modes,
+		modeString: strings.ToUpper(sqlModeString),
+	}
 }
 
 // AnsiQuotes returns true if the ANSI_QUOTES SQL mode is enabled. Note that the ANSI mode is a compound mode that
@@ -76,4 +80,9 @@ func (s *SqlMode) ParserOptions() sqlparser.ParserOptions {
 	return sqlparser.ParserOptions{
 		AnsiQuotes: s.AnsiQuotes(),
 	}
+}
+
+// String returns the SQL_MODE string representing this SqlMode instance.
+func (s *SqlMode) String() string {
+	return s.modeString
 }

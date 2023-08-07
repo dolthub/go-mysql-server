@@ -930,7 +930,7 @@ func (b *BaseBuilder) buildCreateProcedure(ctx *sql.Context, n *plan.CreateProce
 			CreateStatement: n.CreateProcedureString,
 			CreatedAt:       n.CreatedAt,
 			ModifiedAt:      n.ModifiedAt,
-			AnsiQuotes:      sqlMode.AnsiQuotes(),
+			SqlMode:         sqlMode.String(),
 		},
 		db: n.Database(),
 	}, nil
@@ -946,7 +946,7 @@ func (b *BaseBuilder) buildCreateTrigger(ctx *sql.Context, n *plan.CreateTrigger
 			Name:            n.TriggerName,
 			CreateStatement: n.CreateTriggerString,
 			CreatedAt:       n.CreatedAt,
-			AnsiQuotes:      sqlMode.AnsiQuotes(),
+			SqlMode:         sqlMode.String(),
 		},
 		db: n.Database(),
 	}, nil

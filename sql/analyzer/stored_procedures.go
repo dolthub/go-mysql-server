@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -70,7 +69,7 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 					}
 				} else {
 					parsedProcedure, err = parse.ParseWithOptions(ctx, procedure.CreateStatement,
-						sqlparser.ParserOptions{AnsiQuotes: procedure.AnsiQuotes})
+						sql.NewSqlModeFromString(procedure.SqlMode).ParserOptions())
 					if err != nil {
 						return nil, err
 					}
@@ -344,7 +343,7 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				parsedProcedure, _, _, err = b.Parse(procedure.CreateStatement, false)
 			} else {
 				parsedProcedure, err = parse.ParseWithOptions(ctx, procedure.CreateStatement,
-					sqlparser.ParserOptions{AnsiQuotes: procedure.AnsiQuotes})
+					sql.NewSqlModeFromString(procedure.SqlMode).ParserOptions())
 			}
 			if err != nil {
 				return nil, transform.SameTree, err

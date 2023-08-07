@@ -331,7 +331,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		CreateStatement: c.eventDetails.CreateEventStatement(),
 		CreatedAt:       c.eventDetails.Created,
 		LastAltered:     c.eventDetails.LastAltered,
-		AnsiQuotes:      sqlMode.AnsiQuotes(),
+		SqlMode:         sqlMode.String(),
 	}
 
 	err = c.eventDb.SaveEvent(ctx, eventDefinition)

@@ -441,7 +441,7 @@ func (d *Database) CreateView(ctx *sql.Context, name string, selectStatement, cr
 		Name:                name,
 		TextDefinition:      selectStatement,
 		CreateViewStatement: createViewStmt,
-		AnsiQuotes:          sqlMode.AnsiQuotes(),
+		SqlMode:             sqlMode.String(),
 	}
 	return nil
 }

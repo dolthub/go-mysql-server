@@ -15,8 +15,6 @@
 package analyzer
 
 import (
-	"github.com/dolthub/vitess/go/vt/sqlparser"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -88,7 +86,7 @@ func loadEventFromDb(ctx *sql.Context, db sql.Database, name string) (sql.EventD
 
 func getEventDetailsFromEventDefinition(ctx *sql.Context, event sql.EventDefinition) (sql.EventDetails, error) {
 	parsedCreateEvent, err := parse.ParseWithOptions(ctx, event.CreateStatement,
-		sqlparser.ParserOptions{AnsiQuotes: event.AnsiQuotes})
+		sql.NewSqlModeFromString(event.SqlMode).ParserOptions())
 	if err != nil {
 		return sql.EventDetails{}, err
 	}

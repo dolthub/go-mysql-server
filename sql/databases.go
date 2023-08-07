@@ -189,9 +189,9 @@ type TriggerDefinition struct {
 	CreateStatement string
 	// The time that the trigger was created.
 	CreatedAt time.Time
-	// AnsiQuotes is true if this trigger definition was defined using the ANSI_QUOTES SQL mode, meaning that any
-	// double quotes should be treated as identifier quotes, instead of string literal quotes.
-	AnsiQuotes bool
+	// SqlMode holds the SQL_MODE that was in use when this trigger was originally defined. It contains information
+	// needed for how to parse the trigger's SQL, such as whether ANSI_QUOTES mode is enabled.
+	SqlMode string
 }
 
 // TemporaryTableDatabase is a database that can query the session (which manages the temporary table state) to
@@ -266,7 +266,7 @@ type ViewDefinition struct {
 	Name                string
 	TextDefinition      string
 	CreateViewStatement string
-	AnsiQuotes          bool
+	SqlMode             string
 }
 
 // GetTableInsensitive implements a case-insensitive map lookup for tables keyed off of the table name.

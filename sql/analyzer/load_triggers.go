@@ -17,8 +17,6 @@ package analyzer
 import (
 	"strings"
 
-	"github.com/dolthub/vitess/go/vt/sqlparser"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -107,10 +105,11 @@ func loadTriggersFromDb(ctx *sql.Context, a *Analyzer, db sql.Database) ([]*plan
 		}
 		for _, trigger := range triggers {
 			var parsedTrigger sql.Node
+			sqlMode := sql.NewSqlModeFromString(trigger.SqlMode)
 			if ctx.Version == sql.VersionExperimental {
-				parsedTrigger, err = planbuilder.ParseWithOptions(ctx, a.Catalog, trigger.CreateStatement, sqlparser.ParserOptions{AnsiQuotes: trigger.AnsiQuotes})
+				parsedTrigger, err = planbuilder.ParseWithOptions(ctx, a.Catalog, trigger.CreateStatement, sqlMode.ParserOptions())
 			} else {
-				parsedTrigger, err = parse.ParseWithOptions(ctx, trigger.CreateStatement, sqlparser.ParserOptions{AnsiQuotes: trigger.AnsiQuotes})
+				parsedTrigger, err = parse.ParseWithOptions(ctx, trigger.CreateStatement, sqlMode.ParserOptions())
 			}
 			if err != nil {
 				return nil, err

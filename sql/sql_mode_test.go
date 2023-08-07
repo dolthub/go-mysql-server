@@ -28,13 +28,16 @@ func TestSqlMode(t *testing.T) {
 	require.True(t, sqlMode.ModeEnabled("ONLY_FULL_GROUP_BY"))
 	require.False(t, sqlMode.ModeEnabled("fake_mode"))
 	require.True(t, sqlMode.ParserOptions().AnsiQuotes)
+	require.Equal(t, "ONLY_FULL_GROUP_BY,ANSI", sqlMode.String())
 
+	// Test a mixed case SQL_MODE string where only ANSI_QUOTES is enabled
 	sqlMode = NewSqlModeFromString("AnSi_quotEs")
 	require.True(t, sqlMode.AnsiQuotes())
 	require.True(t, sqlMode.ModeEnabled("ansi_quotes"))
 	require.True(t, sqlMode.ModeEnabled("ANSI_quoTes"))
 	require.False(t, sqlMode.ModeEnabled("fake_mode"))
 	require.True(t, sqlMode.ParserOptions().AnsiQuotes)
+	require.Equal(t, "ANSI_QUOTES", sqlMode.String())
 
 	// Test when SQL_MODE does not include ANSI_QUOTES
 	sqlMode = NewSqlModeFromString("ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES")
@@ -42,4 +45,5 @@ func TestSqlMode(t *testing.T) {
 	require.True(t, sqlMode.ModeEnabled("STRICT_TRANS_TABLES"))
 	require.False(t, sqlMode.ModeEnabled("ansi_quotes"))
 	require.False(t, sqlMode.ParserOptions().AnsiQuotes)
+	require.Equal(t, "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES", sqlMode.String())
 }
