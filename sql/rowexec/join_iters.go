@@ -830,7 +830,7 @@ func (i *lateralJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
 		if i.cond != nil {
 			if res, err := sql.EvaluateCondition(ctx, i.cond, row); err != nil {
 				return nil, err
-			} else if sql.IsFalse(res) {
+			} else if !sql.IsTrue(res) {
 				continue
 			}
 		}
