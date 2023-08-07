@@ -210,10 +210,17 @@ func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.
 		}
 	}
 
+	// joining two tables with no common columns is just cross join
+	if len(te.Condition.Using) == 0 {
+		outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
+		return outScope
+	}
+
 	conds := make([]string, len(te.Condition.Using))
 	for i, col := range te.Condition.Using {
 		conds[i] = col.String()
 	}
+
 	switch strings.ToLower(te.Join) {
 	case ast.JoinStr, ast.NaturalJoinStr:
 		outScope.node = plan.NewInnerJoin(leftScope.node, rightScope.node, filter)
