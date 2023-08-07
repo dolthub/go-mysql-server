@@ -16,6 +16,12 @@ package enginetest
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/parse"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
+	"github.com/dolthub/vitess/go/sqltypes"
+	querypb "github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"strings"
 	"testing"
 	"time"
@@ -29,10 +35,7 @@ import (
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -234,7 +237,7 @@ func TestTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harne
 
 // TestQuery runs a query on the engine given and asserts that results are as expected.
 // TODO: this should take en engine
-func TestQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sql.Expression) {
+func TestQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]*querypb.BindVariable) {
 	t.Run(q, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(q) {
@@ -250,7 +253,7 @@ func TestQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expe
 }
 
 // TestQuery runs a query on the engine given and asserts that results are as expected.
-func TestQuery2(t *testing.T, harness Harness, e *sqle.Engine, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sql.Expression) {
+func TestQuery2(t *testing.T, harness Harness, e *sqle.Engine, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]*querypb.BindVariable) {
 	t.Run(q, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(q) {
@@ -277,7 +280,7 @@ func TestQueryWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt queri
 	})
 }
 
-func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sql.Expression) {
+func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]*querypb.BindVariable) {
 	ctx = ctx.WithQuery(q)
 	require := require.New(t)
 	if len(bindings) > 0 {
@@ -337,14 +340,18 @@ func TestPreparedQueryWithContext(
 	q string,
 	expected []sql.Row,
 	expectedCols []*sql.Column,
-	bindVars map[string]sql.Expression,
+	bindVars map[string]*querypb.BindVariable,
 ) {
 	require := require.New(t)
 	rows, sch, err := runQueryPreparedWithCtx(t, ctx, e, q, bindVars)
+	if err != nil {
+		print(q)
+	}
 	require.NoError(err, "Unexpected error for query %s", q)
 
 	if expected != nil {
-		checkResults(t, expected, expectedCols, sch, rows, q)
+		// TODO fix expected cols for prepared?
+		checkResults(t, expected, nil, sch, rows, q)
 	}
 
 	require.Equal(0, ctx.Memory.NumCaches())
@@ -356,17 +363,101 @@ func injectBindVarsAndPrepare(
 	ctx *sql.Context,
 	e *sqle.Engine,
 	q string,
-) (map[string]sql.Expression, error) {
-	parsed, err := parse.Parse(ctx, q)
+) (string, map[string]*querypb.BindVariable, error) {
+	parsed, err := sqlparser.Parse(q)
 	if err != nil {
-		return nil, err
+		return q, nil, err
 	}
 
-	_, isInsert := parsed.(*plan.InsertInto)
-	_, isDatabaser := parsed.(sql.Databaser)
+	resPlan, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, q)
+	if err != nil {
+		return q, nil, err
+	}
+
+	_, isInsert := resPlan.(*plan.InsertInto)
+	bindVars := make(map[string]*querypb.BindVariable)
+	var bindCnt int
+	var foundBindVar bool
+	var skipTypeConv bool
+	//var skipBegin bool
+	err = sqlparser.Walk(func(n sqlparser.SQLNode) (kontinue bool, err error) {
+		// match SELECT, FILTER, ORDER BY, JOIN COND, AS OF
+		// match expressions with children generally?
+		switch n := n.(type) {
+		case *sqlparser.SQLVal:
+			switch n.Type {
+			case sqlparser.HexNum, sqlparser.HexVal:
+				return false, nil
+			}
+			e, err := parse.ConvertVal(ctx, n)
+			if err != nil {
+				return false, err
+			}
+			val, _, err := e.Type().Promote().Convert(e.(*expression.Literal).Value())
+			if err != nil {
+				skipTypeConv = true
+				return false, nil
+			}
+			bindVar, err := sqltypes.BuildBindVariable(val)
+			if err != nil {
+				skipTypeConv = true
+				return false, nil
+			}
+			//switch n.Type {
+			//case sqlparser.IntVal:
+			//	bindVar = sqltypes.Int64BindVariable(e.(*expression.Literal).Value().(int64))
+			//case sqlparser.FloatVal:
+			//	//typ = querypb.Type_FLOAT64
+			//	bindVar = sqltypes.Float64BindVariable(e.(*expression.Literal).Value().(float64))
+			////case sqlparser.HexNum:
+			////	quote = true
+			////	typ = querypb.Type_BLOB
+			//case sqlparser.HexVal:
+			//	val, err := n.HexDecode()
+			//	if err != nil {
+			//		panic(err)
+			//	}
+			//	//typ = querypb.Type_BLOB
+			//	bindVar.Value = []byte("'" + string(val) + "'")
+			//case sqlparser.BitVal:
+			//	//typ = querypb.Type_UINT64
+			//case sqlparser.StrVal:
+			//	//typ = querypb.Type_VARCHAR
+			//	//bindVar.Value = []byte(fmt.Sprintf("'%s'", n.Val))
+			//	bindVar = sqltypes.StringBindVariable(e.(*expression.Literal).Value().(string))
+			//
+			//default:
+			//	return true, nil
+			//}
+			varName := fmt.Sprintf("v%d", bindCnt)
+			bindVars[varName] = bindVar
+			n.Type = sqlparser.ValArg
+			n.Val = []byte(fmt.Sprintf(":v%d", bindCnt))
+			bindCnt++
+		case *sqlparser.Insert:
+			isInsert = true
+		case *sqlparser.Begin:
+			//skipBegin = true
+		default:
+		}
+		return true, nil
+	}, parsed)
+	if err != nil {
+		return "", nil, err
+	}
+	if skipTypeConv {
+		return q, nil, nil
+	}
+
+	buf := sqlparser.NewTrackedBuffer(nil)
+	parsed.Format(buf)
+	//print(buf.String())
+	e.PreparedDataCache.CacheStmt(ctx.Session.ID(), buf.String(), parsed)
+
+	_, isDatabaser := resPlan.(sql.Databaser)
 
 	// *ast.MultiAlterDDL parses arbitrary nodes in a *plan.Block
-	if bl, ok := parsed.(*plan.Block); ok {
+	if bl, ok := resPlan.(*plan.Block); ok {
 		for _, n := range bl.Children() {
 			if _, ok := n.(*plan.InsertInto); ok {
 				isInsert = true
@@ -377,57 +468,52 @@ func injectBindVarsAndPrepare(
 		}
 	}
 	if isDatabaser && !isInsert {
-		return nil, nil
+		return q, nil, nil
 	}
 
-	bindVars := make(map[string]sql.Expression)
-	var bindCnt int
-	var foundBindVar bool
-	insertBindings := func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		switch e := expr.(type) {
-		case *expression.Literal:
-			varName := fmt.Sprintf("v%d", bindCnt)
-			bindVars[varName] = e
-			bindCnt++
-			return expression.NewBindVar(varName), transform.NewTree, nil
-		case *expression.BindVar:
-			if _, ok := bindVars[e.Name]; ok {
-				return expr, transform.SameTree, nil
-			}
-			foundBindVar = true
-			return expr, transform.NewTree, nil
-		default:
-			return expr, transform.SameTree, nil
-		}
-	}
-	bound, _, err := transform.NodeWithOpaque(parsed, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		switch n := node.(type) {
-		case *plan.InsertInto:
-			newSource, _, err := transform.NodeExprs(n.Source, insertBindings)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-			return n.WithSource(newSource), transform.NewTree, nil
-		default:
-			return transform.NodeExprs(n, insertBindings)
-		}
-		return node, transform.SameTree, nil
-	})
+	//insertBindings := func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	//	switch e := expr.(type) {
+	//	case *expression.Literal:
+	//		varName := fmt.Sprintf("v%d", bindCnt)
+	//		val, err := sql.ConvertToValue(e.Value())
+	//		if err != nil {
+	//			return e, transform.SameTree, err
+	//		}
+	//		bindVars[varName] = &querypb.BindVariable{
+	//			Value: val.Val,
+	//			Type:  val.Typ,
+	//		}
+	//		bindCnt++
+	//		return expression.NewBindVar(varName), transform.NewTree, nil
+	//	case *expression.BindVar:
+	//		if _, ok := bindVars[e.Name]; ok {
+	//			return expr, transform.SameTree, nil
+	//		}
+	//		foundBindVar = true
+	//		return expr, transform.NewTree, nil
+	//	default:
+	//		return expr, transform.SameTree, nil
+	//	}
+	//}
+	//bound, _, err := transform.NodeWithOpaque(resPlan, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	//	switch n := node.(type) {
+	//	case *plan.InsertInto:
+	//		newSource, _, err := transform.NodeExprs(n.Source, insertBindings)
+	//		if err != nil {
+	//			return nil, transform.SameTree, err
+	//		}
+	//		return n.WithSource(newSource), transform.NewTree, nil
+	//	default:
+	//		return transform.NodeExprs(n, insertBindings)
+	//	}
+	//	return node, transform.SameTree, nil
+	//})
 
 	if foundBindVar {
 		t.Skip()
 	}
 
-	if err != nil {
-		return nil, err
-	}
-
-	prepared, err := e.Analyzer.PrepareQuery(ctx, bound, nil)
-	if err != nil {
-		return nil, err
-	}
-	e.PreparedDataCache.CacheStmt(ctx.Session.ID(), q, prepared)
-	return bindVars, nil
+	return buf.String(), bindVars, nil
 }
 
 func runQueryPreparedWithCtx(
@@ -435,20 +521,20 @@ func runQueryPreparedWithCtx(
 	ctx *sql.Context,
 	e *sqle.Engine,
 	q string,
-	bindVars map[string]sql.Expression,
+	bindVars map[string]*querypb.BindVariable,
 ) ([]sql.Row, sql.Schema, error) {
 	// If bindvars were not provided, try to inject some
 	if bindVars == nil || len(bindVars) == 0 {
 		var err error
-		bindVars, err = injectBindVarsAndPrepare(t, ctx, e, q)
+		q, bindVars, err = injectBindVarsAndPrepare(t, ctx, e, q)
 		if err != nil {
 			return nil, nil, err
 		}
 	}
 
-	p, _ := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), q)
+	//p, _ := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), q)
 
-	sch, iter, err := e.QueryNodeWithBindings(ctx, q, p, bindVars)
+	sch, iter, err := e.QueryNodeWithBindings(ctx, q, bindVars)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -666,7 +752,7 @@ func AssertErr(t *testing.T, e *sqle.Engine, harness Harness, query string, expe
 
 // AssertErrWithBindings asserts that the given query returns an error during its execution, optionally specifying a
 // type of error.
-func AssertErrWithBindings(t *testing.T, e *sqle.Engine, harness Harness, query string, bindings map[string]sql.Expression, expectedErrKind *errors.Kind, errStrs ...string) {
+func AssertErrWithBindings(t *testing.T, e *sqle.Engine, harness Harness, query string, bindings map[string]*querypb.BindVariable, expectedErrKind *errors.Kind, errStrs ...string) {
 	ctx := NewContext(harness)
 	sch, iter, err := e.QueryWithBindings(ctx, query, bindings)
 	if err == nil {

@@ -69,6 +69,7 @@ func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool) (sql.Nod
 			})
 			remainder = s[ri:]
 		}
+		return nil, parsed, remainder, err
 	}
 
 	if err != nil {

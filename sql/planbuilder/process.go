@@ -10,6 +10,7 @@ import (
 )
 
 func (b *Builder) buildKill(inScope *scope, kill *ast.Kill) (outScope *scope) {
+	outScope = inScope.push()
 	connID64 := b.getInt64Value(inScope, kill.ConnID, "Error parsing KILL, expected int literal")
 	connID32 := uint32(connID64)
 	if int64(connID32) != connID64 {

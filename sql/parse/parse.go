@@ -4069,7 +4069,7 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 
 		return expression.NewNot(c), nil
 	case *sqlparser.SQLVal:
-		return convertVal(ctx, v)
+		return ConvertVal(ctx, v)
 	case sqlparser.BoolVal:
 		return expression.NewLiteral(bool(v), types.Boolean), nil
 	case *sqlparser.NullVal:
@@ -4449,7 +4449,7 @@ func convertInt(value string, base int) (sql.Expression, error) {
 	return nil, fmt.Errorf("could not convert %s to any numerical type", value)
 }
 
-func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
+func ConvertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 	switch v.Type {
 	case sqlparser.StrVal:
 		return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation())), nil

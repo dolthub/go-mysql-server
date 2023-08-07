@@ -83,7 +83,6 @@ func TestQueries(t *testing.T) {
 
 // TestQueriesPreparedSimple runs the canonical test queries against a single threaded index enabled harness.
 func TestQueriesPreparedSimple(t *testing.T) {
-	t.Skip("todo refactored prepared")
 	enginetest.TestQueriesPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
@@ -133,22 +132,7 @@ func TestSingleQuery(t *testing.T) {
 	var test queries.QueryTest
 	test = queries.QueryTest{
 		Query: `
-select /*+ LOOKUP_JOIN(style, dimension) LOOKUP_JOIN(dimension, color) */ style.assetId
-from asset style
-join asset dimension
-  on style.assetId = dimension.assetId
-join asset color
-  on style.assetId = color.assetId
-where
-  dimension.val = 'wide' and
-  style.val = 'curve' and
-  color.val = 'blue' and
-  dimension.name = 'dimension' and
-  style.name = 'style' and
-  color.name = 'color' and
-  dimension.orgId = 'org1' and
-  style.orgId = 'org1' and
-  color.orgId = 'org1';
+		select /*+ JOIN_ORDER(scalarSubq0,xy) */ count(*) from xy where y in (select distinct v from uv);
 `,
 		Expected: []sql.Row{},
 	}
@@ -165,6 +149,38 @@ where
 	engine.Analyzer.Verbose = true
 
 	enginetest.TestQueryWithEngine(t, harness, engine, test)
+}
+
+// Convenience test for debugging a single query. Unskip and set to the desired query.
+func TestSingleQueryPrepared(t *testing.T) {
+	t.Skip()
+	var test = queries.ScriptTest{
+		Name:        "renaming views with RENAME TABLE ... TO .. statement",
+		SetUpScript: []string{},
+		Assertions: []queries.ScriptTestAssertion{
+			{
+				// Original Issue: https://github.com/dolthub/dolt/issues/5714
+				Query: `select 1.0/0.0 from dual`,
+
+				Expected: []sql.Row{
+					{4},
+				},
+			},
+		},
+	}
+
+	fmt.Sprintf("%v", test)
+	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, false, nil)
+	harness.Setup(setup.KeylessSetup...)
+	engine, err := harness.NewEngine(t)
+	if err != nil {
+		panic(err)
+	}
+
+	engine.Analyzer.Debug = true
+	engine.Analyzer.Verbose = true
+
+	enginetest.TestScriptWithEnginePrepared(t, engine, harness, test)
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
@@ -731,17 +747,14 @@ func TestValidateSession(t *testing.T) {
 }
 
 func TestPrepared(t *testing.T) {
-	t.Skip("todo prepared")
 	enginetest.TestPrepared(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestPreparedInsert(t *testing.T) {
-	t.Skip("todo prepared")
 	enginetest.TestPreparedInsert(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
 func TestPreparedStatements(t *testing.T) {
-	t.Skip("todo prepared")
 	enginetest.TestPreparedStatements(t, enginetest.NewDefaultMemoryHarness())
 }
 

@@ -24,6 +24,7 @@ func (b *Builder) buildPrepare(inScope *scope, n *ast.Prepare) (outScope *scope)
 	outScope = inScope.push()
 	expr := n.Expr
 	if strings.HasPrefix(n.Expr, "@") {
+		// TODO resolve user variable
 		varName := strings.ToLower(strings.Trim(n.Expr, "@"))
 		_, val, err := b.ctx.GetUserVariable(b.ctx, varName)
 		if err != nil {

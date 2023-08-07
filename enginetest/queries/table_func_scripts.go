@@ -30,27 +30,27 @@ var TableFunctionScriptTests = []ScriptTest{
 	{
 		Name:        "projection of non-existent qualified column from table function",
 		Query:       "SELECT simple_TABLE_function.none from simple_TABLE_function(123);",
-		ExpectedErr: sql.ErrColumnNotFound,
+		ExpectedErr: sql.ErrTableNotFound,
 	},
 	{
 		Name:        "projection of non-existent aliased qualified column from table function",
 		Query:       "SELECT stf.none from simple_TABLE_function(123) as stf;",
-		ExpectedErr: sql.ErrColumnNotFound,
+		ExpectedErr: sql.ErrTableColumnNotFound,
 	},
 	{
 		Name:        "projection of non-existent aliased qualified column from table function in join",
 		Query:       "SELECT stf1.none from simple_TABLE_function(123) as stf1 join simple_TABLE_function(123) stf2;",
-		ExpectedErr: sql.ErrColumnNotFound,
+		ExpectedErr: sql.ErrTableColumnNotFound,
 	},
 	{
 		Name:        "alias overwrites original name",
 		Query:       "SELECT simple_table_function.none from simple_TABLE_function(123) stf;",
-		ExpectedErr: sql.ErrColumnNotFound,
+		ExpectedErr: sql.ErrTableNotFound,
 	},
 	{
 		Name:        "projection of aliased non-existent qualified column from table function",
 		Query:       "SELECT stf.none as none from simple_TABLE_function(123) as stf;",
-		ExpectedErr: sql.ErrColumnNotFound,
+		ExpectedErr: sql.ErrTableColumnNotFound,
 	},
 	{
 		Name:     "basic table function",
@@ -131,7 +131,7 @@ var TableFunctionScriptTests = []ScriptTest{
 	},
 	{
 		Query:       "select not_seq.x from sequence_table('x', 5) as seq",
-		ExpectedErr: sql.ErrColumnNotFound,
+		ExpectedErr: sql.ErrTableNotFound,
 	},
 	{
 		Query:    "select seq1.x, seq2.y from sequence_table('x', 5) seq1 join sequence_table('y', 5) seq2 on seq1.x = seq2.y",
@@ -151,7 +151,7 @@ var TableFunctionScriptTests = []ScriptTest{
 	},
 	{
 		Query:       "select seq.x from (select seq.x from sequence_table('x', 5) seq) sq",
-		ExpectedErr: sql.ErrColumnNotFound,
+		ExpectedErr: sql.ErrTableNotFound,
 	},
 	{
 		Query:    "select sq.xx from (select seq.x as xx from sequence_table('x', 5) seq) sq",

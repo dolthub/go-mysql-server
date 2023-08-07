@@ -16,6 +16,7 @@ package server
 
 import (
 	"encoding/base64"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"io"
 	"net"
 	"regexp"
@@ -113,6 +114,10 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error
 	}
 
 	if types.IsOkResultSchema(analyzed.Schema()) {
+		return nil, nil
+	}
+	switch analyzed.(type) {
+	case *plan.InsertInto, *plan.Update, *plan.UpdateJoin, *plan.DeleteFrom:
 		return nil, nil
 	}
 	return schemaToFields(ctx, analyzed.Schema()), nil
@@ -299,10 +304,9 @@ func (h *Handler) doQuery(
 	}
 
 	var remainder string
-	var parsed sql.Node
 	var prequery string
 	if mode == MultiStmtModeOn {
-		parsed, prequery, remainder, err = planbuilder.ParseOne(ctx, h.e.Analyzer.Catalog, query)
+		_, prequery, remainder, err = planbuilder.ParseOne(ctx, h.e.Analyzer.Catalog, query)
 		if prequery != "" {
 			query = prequery
 		}
@@ -331,23 +335,7 @@ func (h *Handler) doQuery(
 
 	start := time.Now()
 
-	if parsed == nil {
-		parsed, err = planbuilder.Parse(ctx, h.e.Analyzer.Catalog, query)
-		if err != nil {
-			return "", err
-		}
-	}
-
 	ctx.GetLogger().Tracef("beginning execution")
-
-	var sqlBindings map[string]sql.Expression
-	if len(bindings) > 0 {
-		sqlBindings, err = bindingsToExprs(bindings)
-		if err != nil {
-			ctx.GetLogger().WithError(err).Errorf("Error processing bindings")
-			return remainder, err
-		}
-	}
 
 	oCtx := ctx
 	eg, ctx := ctx.NewErrgroup()
@@ -361,7 +349,7 @@ func (h *Handler) doQuery(
 		}
 	}()
 
-	schema, rowIter, err := h.e.QueryNodeWithBindings(ctx, query, parsed, sqlBindings)
+	schema, rowIter, err := h.e.QueryNodeWithBindings(ctx, query, bindings)
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
 		return remainder, err

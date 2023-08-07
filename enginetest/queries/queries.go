@@ -15,6 +15,7 @@
 package queries
 
 import (
+	"github.com/dolthub/vitess/go/vt/proto/query"
 	"math"
 	"time"
 
@@ -32,7 +33,7 @@ type QueryTest struct {
 	Query           string
 	Expected        []sql.Row
 	ExpectedColumns sql.Schema // only Name and Type matter here, because that's what we send on the wire
-	Bindings        map[string]sql.Expression
+	Bindings        map[string]*query.BindVariable
 	SkipPrepared    bool
 }
 
@@ -4859,8 +4860,9 @@ Select * from (
 		},
 	},
 	{
-		Query:    "",
-		Expected: []sql.Row{},
+		SkipPrepared: true,
+		Query:        "",
+		Expected:     []sql.Row{},
 	},
 	{
 		Query: "/*!40101 SET NAMES " +
@@ -7777,8 +7779,8 @@ SELECT * FROM my_cte;`,
 	
 	)
     ORDER BY c0;
-;`,
-
+`,
+		//SkipPrepared: true,
 		Expected: []sql.Row{
 			{4},
 		},
@@ -7810,8 +7812,7 @@ SELECT * FROM my_cte;`,
 		
 	)
     ORDER BY c0;
-;`,
-
+`,
 		Expected: []sql.Row{
 			{4},
 		},
@@ -8500,7 +8501,7 @@ var DateParseQueries = []QueryTest{
 
 type QueryErrorTest struct {
 	Query          string
-	Bindings       map[string]sql.Expression
+	Bindings       map[string]*query.BindVariable
 	ExpectedErr    *errors.Kind
 	ExpectedErrStr string
 }
@@ -9009,7 +9010,7 @@ type WriteQueryTest struct {
 	ExpectedWriteResult []sql.Row
 	SelectQuery         string
 	ExpectedSelect      []sql.Row
-	Bindings            map[string]sql.Expression
+	Bindings            map[string]*query.BindVariable
 }
 
 // GenericErrorQueryTest is a query test that is used to assert an error occurs for some query, without specifying what

@@ -15,6 +15,7 @@
 package queries
 
 import (
+	"github.com/dolthub/vitess/go/vt/proto/query"
 	"time"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -75,7 +76,7 @@ type ScriptTestAssertion struct {
 	Skip bool
 
 	// Bindings are variable mappings only used for prepared tests
-	Bindings map[string]sql.Expression
+	Bindings map[string]*query.BindVariable
 }
 
 // ScriptTests are a set of test scripts to run.
@@ -4232,8 +4233,8 @@ var PreparedScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:       "execute s",
-				ExpectedErr: sql.ErrInvalidArgument,
+				Query:          "execute s",
+				ExpectedErrStr: "missing bind var v1",
 			},
 			{
 				Query: "execute s using @abc",
@@ -4242,8 +4243,8 @@ var PreparedScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:       "execute s using @a, @b, @c, @abc",
-				ExpectedErr: sql.ErrInvalidArgument,
+				Query:          "execute s using @a, @b, @c, @abc",
+				ExpectedErrStr: "invalid arguments. expected: 1, found: 4",
 			},
 			{
 				Query: "execute s using @a",
@@ -4290,8 +4291,8 @@ var PreparedScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:       "execute s using @a",
-				ExpectedErr: sql.ErrInvalidArgument,
+				Query:          "execute s using @a",
+				ExpectedErrStr: "missing bind var v2",
 			},
 			{
 				Query: "execute s using @a, @b",

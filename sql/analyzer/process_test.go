@@ -33,14 +33,14 @@ import (
 func TestPreparedStatementQueryTracking(t *testing.T) {
 	ctx := sql.NewContext(context.Background())
 
-	node := plan.NewProject(
-		[]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("commits", ""))
-
 	commits := memory.NewTable("commits", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "repository_id", Source: "commits", Type: types.Text},
 		{Name: "commit_hash", Source: "commits", Type: types.Text},
 		{Name: "commit_author_when", Source: "commits", Type: types.Text},
 	}), nil)
+
+	node := plan.NewProject(
+		[]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("commits", ""))
 
 	db := memory.NewDatabase("mydb")
 	db.AddTable("commits", commits)

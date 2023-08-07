@@ -3,6 +3,7 @@ package enginetest
 import (
 	"bufio"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,7 +14,6 @@ import (
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 )
 
 // This test will write a new set of query plan expected results to a file that you can copy and paste over the existing
@@ -53,11 +53,11 @@ func writePlans(t *testing.T, s [][]setup.SetupScript, original []queries.QueryP
 	for _, tt := range original {
 		_, _ = w.WriteString("\t{\n")
 		ctx := NewContextWithEngine(harness, engine)
-		parsed, err := parse.Parse(ctx, tt.Query)
+		parsed, err := planbuilder.Parse(ctx, engine.Analyzer.Catalog, tt.Query)
 		require.NoError(t, err)
 
 		node, err := engine.Analyzer.Analyze(ctx, parsed, nil)
-		require.NoError(t, err)
+		require.NoError(t, err, tt.Query)
 
 		var planString string
 		if verbose {
