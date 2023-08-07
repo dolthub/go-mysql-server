@@ -118,21 +118,30 @@ func (ii *InsertInto) WithDatabase(database sql.Database) (sql.Node, error) {
 	return &nc, nil
 }
 
+func (ii InsertInto) WithColumnNames(cols []string) *InsertInto {
+	ii.ColumnNames = cols
+	return &ii
+}
+
 // InsertDestination is a wrapper for a table to be used with InsertInto.Destination that allows the schema to be
 // overridden. This is useful when the table in question has late-resolving column defaults.
 type InsertDestination struct {
 	UnaryNode
+	DestinationName string
 	Sch sql.Schema
 }
 
 var _ sql.Node = (*InsertDestination)(nil)
+var _ sql.Nameable = (*InsertDestination)(nil)
 var _ sql.Expressioner = (*InsertDestination)(nil)
 var _ sql.CollationCoercible = (*InsertDestination)(nil)
 
 func NewInsertDestination(schema sql.Schema, node sql.Node) *InsertDestination {
+	nameable := node.(sql.Nameable)
 	return &InsertDestination{
 		UnaryNode: UnaryNode{Child: node},
 		Sch:       schema,
+		DestinationName: nameable.Name(),
 	}
 }
 
@@ -147,6 +156,10 @@ func (id InsertDestination) WithExpressions(exprs ...sql.Expression) (sql.Node, 
 
 	id.Sch = transform.SchemaWithDefaults(id.Sch, exprs)
 	return &id, nil
+}
+
+func (id *InsertDestination) Name() string {
+	return id.DestinationName
 }
 
 func (id *InsertDestination) String() string {
