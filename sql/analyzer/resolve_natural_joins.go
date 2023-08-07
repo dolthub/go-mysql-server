@@ -43,6 +43,13 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, node sql.Node, scope *pl
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
+
+			if proj, isProj := newN.(*plan.Project); isProj {
+				if child, isJoin := proj.Child.(*plan.JoinNode); isJoin && child.Op.IsCross() {
+					return child, transform.NewTree, nil
+				}
+			}
+
 			if jn.Op.IsNatural() {
 				return newN, transform.NewTree, nil
 			}
