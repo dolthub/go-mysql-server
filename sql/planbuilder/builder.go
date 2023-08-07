@@ -16,7 +16,7 @@ type Builder struct {
 	multiDDL        bool
 	viewCtx         *ViewContext
 	triggerCtx      *TriggerContext
-	procCtx         *ProcContext
+	insertActive    bool
 	nesting         int
 }
 
@@ -52,13 +52,6 @@ func (b *Builder) TriggerCtx() *TriggerContext {
 		b.triggerCtx = &TriggerContext{}
 	}
 	return b.triggerCtx
-}
-
-func (b *Builder) ProcCtx() *ProcContext {
-	if b.procCtx == nil {
-		b.procCtx = &ProcContext{}
-	}
-	return b.procCtx
 }
 
 func (b *Builder) newScope() *scope {
@@ -104,8 +97,8 @@ func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outSc
 		return b.buildShow(inScope, n, query)
 	case *ast.DDL:
 		return b.buildDDL(inScope, query, n)
-	case *ast.MultiAlterDDL:
-		return b.buildMultiAlterDDL(inScope, query, n)
+	case *ast.AlterTable:
+		return b.buildAlterTable(inScope, query, n)
 	case *ast.DBDDL:
 		return b.buildDBDDL(inScope, n)
 	case *ast.Explain:

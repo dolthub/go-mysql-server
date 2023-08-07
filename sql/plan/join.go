@@ -74,7 +74,7 @@ func (i JoinType) IsLeftOuter() bool {
 // that row is excluded from the result table.
 func (i JoinType) IsExcludeNulls() bool {
 	switch i {
-	case JoinTypeAnti, JoinTypeLeftOuterExcludeNulls, JoinTypeLeftOuterHashExcludeNulls:
+	case JoinTypeAnti, JoinTypeAntiHash, JoinTypeAntiLookup, JoinTypeAntiMerge, JoinTypeLeftOuterExcludeNulls, JoinTypeLeftOuterHashExcludeNulls:
 		return true
 	default:
 		return false

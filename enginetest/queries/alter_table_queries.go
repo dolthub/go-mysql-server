@@ -332,4 +332,205 @@ var AlterTableScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "add column unique index",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (i bigint primary key, s varchar(20))",
+			"INSERT INTO t1 VALUES (1, 'a'), (2, 'b'), (3, 'c')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t1 add column j int unique",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1", "CREATE TABLE `t1` (\n" +
+					"  `i` bigint NOT NULL,\n" +
+					"  `s` varchar(20),\n" +
+					"  `j` int,\n" +
+					"  PRIMARY KEY (`i`),\n" +
+					"  UNIQUE KEY `j` (`j`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "multi-alter ddl column errors",
+		SetUpScript: []string{
+			"create table tbl_i (i int primary key)",
+			"create table tbl_ij (i int primary key, j int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table tbl_i add column j int, drop column j",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "alter table tbl_i add column j int, rename column j to k;",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "alter table tbl_i add column j int, modify column j varchar(10)",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "alter table tbl_ij drop column j, rename column j to k;",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "alter table tbl_ij drop column k, rename column j to k;",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "alter table tbl_i add index(j), add column j int;",
+				ExpectedErr: sql.ErrKeyColumnDoesNotExist,
+			},
+		},
+	},
+	{
+		Name: "Add column and make unique in separate clauses",
+		SetUpScript: []string{
+			"create table t (c1 int primary key, c2 int, c3 int)",
+			"insert into t values (1, 1, 1), (2, 2, 2), (3, 3, 3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "alter table t add column c4 int null, add unique index uniq(c4)",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{sql.Row{"t",
+					"CREATE TABLE `t` (\n" +
+						"  `c1` int NOT NULL,\n" +
+						"  `c2` int,\n" +
+						"  `c3` int,\n" +
+						"  `c4` int,\n" +
+						"  PRIMARY KEY (`c1`),\n" +
+						"  UNIQUE KEY `uniq` (`c4`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 1, 1, nil},
+					{2, 2, 2, nil},
+					{3, 3, 3, nil},
+				},
+			},
+		},
+	},
+}
+
+var AlterTableAddAutoIncrementScripts = []ScriptTest{
+	{
+		Name: "Add primary key column with auto increment",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (i int, j int);",
+			"insert into t1 values (1,1), (2,2), (3,3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t1 add column pk int primary key auto_increment;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+						"  `i` int,\n" +
+						"  `j` int,\n" +
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "select pk from t1 order by pk",
+				Expected: []sql.Row{
+					{1}, {2}, {3},
+				},
+			},
+		},
+	},
+	{
+		Name: "Add primary key column with auto increment, first",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (i int, j int);",
+			"insert into t1 values (1,1), (2,2), (3,3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table t1 add column pk int primary key",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query:    "alter table t1 add column pk int primary key auto_increment first",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  `i` int,\n" +
+						"  `j` int,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "select pk from t1 order by pk",
+				Expected: []sql.Row{
+					{1}, {2}, {3},
+				},
+			},
+		},
+	},
+	{
+		Name: "add column auto_increment, non primary key",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (i bigint primary key, s varchar(20))",
+			"INSERT INTO t1 VALUES (1, 'a'), (2, 'b'), (3, 'c')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t1 add column j int auto_increment unique",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+						"  `i` bigint NOT NULL,\n" +
+						"  `s` varchar(20),\n" +
+						"  `j` int AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`),\n" +
+						"  UNIQUE KEY `j` (`j`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "select * from t1 order by i",
+				Expected: []sql.Row{
+					{1, "a", 1},
+					{2, "b", 2},
+					{3, "c", 3},
+				},
+			},
+		},
+	},
+	{
+		Name: "add column auto_increment, non key",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (i bigint primary key, s varchar(20))",
+			"INSERT INTO t1 VALUES (1, 'a'), (2, 'b'), (3, 'c')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table t1 add column j int auto_increment",
+				ExpectedErr: sql.ErrInvalidAutoIncCols,
+			},
+		},
+	},
 }

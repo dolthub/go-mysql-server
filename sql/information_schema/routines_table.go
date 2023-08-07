@@ -162,6 +162,7 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 				continue
 			}
 
+			// todo shortcircuit routineDef->procedure.CreateProcedureString?
 			parsedProcedure, err := parse.Parse(ctx, procedure.CreateProcedureString)
 			if err != nil {
 				return nil, err

@@ -15,11 +15,31 @@
 package queries
 
 import (
+	"github.com/dolthub/vitess/go/vt/proto/query"
+
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var JsonScripts = []ScriptTest{
+	{
+		// https://github.com/dolthub/go-mysql-server/issues/1855",
+		Name: "JSON_ARRAY properly handles CHAR bind vars",
+		SetUpScript: []string{
+			"CREATE TABLE `users` (`id` bigint unsigned AUTO_INCREMENT,`name` longtext,`languages` JSON, PRIMARY KEY (`id`))",
+			`INSERT INTO users (name, languages) VALUES ('Tom', CAST('["ZH", "EN"]' AS JSON));`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT * FROM users WHERE JSON_CONTAINS (languages, JSON_ARRAY(?)) ORDER BY users.id LIMIT 1`,
+				Bindings: map[string]sql.Expression{
+					"v1": expression.NewLiteral("ZH", types.MustCreateString(query.Type_CHAR, 3, sql.Collation_binary)),
+				},
+				Expected: []sql.Row{{uint64(1), "Tom", types.JSONDocument{Val: []interface{}{"ZH", "EN"}}}},
+			},
+		},
+	},
 	{
 		Name: "JSON_ARRAYAGG on one column",
 		SetUpScript: []string{

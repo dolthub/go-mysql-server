@@ -18,19 +18,17 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/types"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // Fetch represents the FETCH statement, which handles value acquisition from cursors.
 type Fetch struct {
-	Name      string
-	Variables []string
-	InnerSet  *Set
-	Pref      *expression.ProcedureReference
-	Sch       sql.Schema
+	Name     string
+	InnerSet *Set
+	ToSet    []sql.Expression
+	Pref     *expression.ProcedureReference
+	Sch      sql.Schema
 }
 
 var _ sql.Node = (*Fetch)(nil)
@@ -38,29 +36,39 @@ var _ sql.CollationCoercible = (*Fetch)(nil)
 var _ expression.ProcedureReferencable = (*Fetch)(nil)
 
 // NewFetch returns a new *Fetch node.
-func NewFetch(name string, variables []string) *Fetch {
-	exprs := make([]sql.Expression, len(variables))
-	for i := range variables {
-		exprs[i] = expression.NewSetField(
-			expression.NewUnresolvedColumn(variables[i]),
-			expression.NewGetField(i, types.Null, "", true),
-		)
-	}
+func NewFetch(name string, toSet []sql.Expression) *Fetch {
 	return &Fetch{
-		Name:      name,
-		Variables: variables,
-		InnerSet:  NewSet(exprs),
+		Name:  name,
+		ToSet: toSet,
 	}
 }
 
 // Resolved implements the interface sql.Node.
 func (f *Fetch) Resolved() bool {
-	return f.InnerSet.Resolved()
+	for _, e := range f.ToSet {
+		if !e.Resolved() {
+			return false
+		}
+	}
+	return true
 }
 
 // String implements the interface sql.Node.
 func (f *Fetch) String() string {
-	return fmt.Sprintf("FETCH %s INTO %s", f.Name, strings.Join(f.Variables, ", "))
+	vars := make([]string, len(f.ToSet))
+	for i, e := range f.ToSet {
+		vars[i] = e.String()
+	}
+	return fmt.Sprintf("FETCH %s INTO %s", f.Name, strings.Join(vars, ", "))
+}
+
+// DebugString implements the interface sql.DebugStringer.
+func (f *Fetch) DebugString() string {
+	vars := make([]string, len(f.ToSet))
+	for i, e := range f.ToSet {
+		vars[i] = sql.DebugString(e)
+	}
+	return fmt.Sprintf("FETCH %s INTO %s", f.Name, strings.Join(vars, ", "))
 }
 
 // Schema implements the interface sql.Node.
@@ -68,24 +76,27 @@ func (f *Fetch) Schema() sql.Schema {
 	return nil
 }
 
+func (f *Fetch) Expressions() []sql.Expression {
+	return f.ToSet
+}
+
+func (f *Fetch) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != len(f.ToSet) {
+		return nil, sql.ErrInvalidExpressionNumber.New(len(exprs), len(f.ToSet))
+	}
+	ret := *f
+	ret.ToSet = exprs
+	return &ret, nil
+}
+
 // Children implements the interface sql.Node.
 func (f *Fetch) Children() []sql.Node {
-	return []sql.Node{f.InnerSet}
+	return nil
 }
 
 // WithChildren implements the interface sql.Node.
 func (f *Fetch) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
-	}
-
-	var ok bool
-	nf := *f
-	nf.InnerSet, ok = children[0].(*Set)
-	if !ok {
-		return nil, fmt.Errorf("FETCH expected SET child")
-	}
-	return &nf, nil
+	return f, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.

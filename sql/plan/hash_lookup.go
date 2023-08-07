@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -30,12 +32,13 @@ import (
 // available, it fulfills the RowIter call by performing a hash lookup
 // on the projected results. If cached results are not available, it
 // simply delegates to the child.
-func NewHashLookup(n *CachedResults, rightEntryKey sql.Expression, leftProbeKey sql.Expression) *HashLookup {
+func NewHashLookup(n sql.Node, rightEntryKey sql.Expression, leftProbeKey sql.Expression, joinType JoinType) *HashLookup {
 	return &HashLookup{
 		UnaryNode:     UnaryNode{n},
 		RightEntryKey: rightEntryKey,
 		LeftProbeKey:  leftProbeKey,
 		Mutex:         new(sync.Mutex),
+		JoinType:      joinType,
 	}
 }
 
@@ -44,7 +47,8 @@ type HashLookup struct {
 	RightEntryKey sql.Expression
 	LeftProbeKey  sql.Expression
 	Mutex         *sync.Mutex
-	Lookup        map[interface{}][]sql.Row
+	Lookup        *map[interface{}][]sql.Row
+	JoinType      JoinType
 }
 
 var _ sql.Node = (*HashLookup)(nil)
@@ -91,9 +95,6 @@ func (n *HashLookup) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 1)
 	}
-	if _, ok := children[0].(*CachedResults); !ok {
-		return nil, sql.ErrInvalidChildType.New(n, children[0], (*CachedResults)(nil))
-	}
 	nn := *n
 	nn.UnaryNode.Child = children[0]
 	return &nn, nil
@@ -119,6 +120,10 @@ func (n *HashLookup) GetHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 		return nil, err
 	}
 	key, _, err = n.LeftProbeKey.Type().Convert(key)
+	if types.ErrValueNotNil.Is(err) {
+		// The LHS expression was NullType. This is allowed.
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -148,6 +153,5 @@ func (n *HashLookup) GetHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 }
 
 func (n *HashLookup) Dispose() {
-	cr := n.Child.(*CachedResults)
-	cr.Dispose()
+	n.Lookup = nil
 }

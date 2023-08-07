@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -70,8 +71,10 @@ func validateCreateTableChecks(ctx *sql.Context, a *Analyzer, n *plan.CreateTabl
 			case column:
 				col := newTableCol(e.Table(), e.Name())
 				if _, ok := columns[col]; !ok {
-					err = sql.ErrTableColumnNotFound.New(e.Table(), e.Name())
-					return false
+					if _, ok := columns[newTableCol("", e.Name())]; !ok {
+						err = sql.ErrTableColumnNotFound.New(e.Table(), e.Name())
+						return false
+					}
 				}
 			}
 
@@ -197,6 +200,8 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, se
 				newExpr, same, err := transform.Expr(check.Expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 					if t, ok := e.(*expression.UnresolvedColumn); ok {
 						return expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", t.Name())), transform.NewTree, nil
+					} else if t, ok := e.(*expression.GetField); ok {
+						return expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", t.Name())), transform.NewTree, nil
 					}
 					return e, transform.SameTree, nil
 				})
@@ -286,7 +291,7 @@ func loadChecksFromTable(ctx *sql.Context, table sql.Table) ([]*sql.CheckConstra
 			return nil, err
 		}
 		for _, ch := range checks {
-			constraint, err := ConvertCheckDefToConstraint(ctx, &ch)
+			constraint, err := ConvertCheckDefToConstraint(ctx, &ch, checkTable)
 			if err != nil {
 				return nil, err
 			}
@@ -296,7 +301,7 @@ func loadChecksFromTable(ctx *sql.Context, table sql.Table) ([]*sql.CheckConstra
 	return loadedChecks, nil
 }
 
-func ConvertCheckDefToConstraint(ctx *sql.Context, check *sql.CheckDefinition) (*sql.CheckConstraint, error) {
+func ConvertCheckDefToConstraint(ctx *sql.Context, check *sql.CheckDefinition, t sql.Table) (*sql.CheckConstraint, error) {
 	parseStr := fmt.Sprintf("select %s", check.CheckExpression)
 	// TODO: Move to ParseWithOptions and test ANSI_QUOTES support with check constraints
 	parsed, err := sqlparser.Parse(parseStr)
@@ -318,6 +323,24 @@ func ConvertCheckDefToConstraint(ctx *sql.Context, check *sql.CheckDefinition) (
 	c, err := parse.ExprToExpression(ctx, ae.Expr)
 	if err != nil {
 		return nil, err
+	}
+
+	if t != nil {
+		c, _, err = transform.Expr(c, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			switch e := e.(type) {
+			case *expression.UnresolvedColumn:
+				for i, c := range t.Schema() {
+					if strings.EqualFold(c.Name, e.Name()) {
+						return expression.NewGetFieldWithTable(i, c.Type, c.Source, c.Name, c.Nullable), transform.NewTree, nil
+					}
+				}
+			default:
+			}
+			return e, transform.SameTree, nil
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &sql.CheckConstraint{

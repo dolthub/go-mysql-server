@@ -153,6 +153,40 @@ var FulltextTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "Basic matching 2 PKs Reversed",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk1 BIGINT UNSIGNED, pk2 BIGINT UNSIGNED, v1 VARCHAR(200), v2 VARCHAR(200), PRIMARY KEY (pk2, pk1), FULLTEXT idx (v1, v2));",
+			"INSERT INTO test VALUES (1, 1, 'abc', 'def pqr'), (2, 1, 'ghi', 'jkl'), (3, 1, 'mno', 'mno'), (4, 1, 'stu vwx', 'xyz zyx yzx'), (5, 1, 'ghs', 'mno shg');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
+				Expected: []sql.Row{{uint64(2), uint64(1), "ghi", "jkl"}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl mno');",
+				Expected: []sql.Row{{uint64(2), uint64(1), "ghi", "jkl"}, {uint64(3), uint64(1), "mno", "mno"}, {uint64(5), uint64(1), "ghs", "mno shg"}},
+			},
+		},
+	},
+	{
+		Name: "Basic matching 2 PKs Non-Sequential",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk1 BIGINT UNSIGNED, v1 VARCHAR(200), pk2 BIGINT UNSIGNED, v2 VARCHAR(200), PRIMARY KEY (pk2, pk1), FULLTEXT idx (v1, v2));",
+			"INSERT INTO test VALUES (1, 'abc', 1, 'def pqr'), (2, 'ghi', 1, 'jkl'), (3, 'mno', 1, 'mno'), (4, 'stu vwx', 1, 'xyz zyx yzx'), (5, 'ghs', 1, 'mno shg');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
+				Expected: []sql.Row{{uint64(2), "ghi", uint64(1), "jkl"}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl mno');",
+				Expected: []sql.Row{{uint64(2), "ghi", uint64(1), "jkl"}, {uint64(3), "mno", uint64(1), "mno"}, {uint64(5), "ghs", uint64(1), "mno shg"}},
+			},
+		},
+	},
+	{
 		Name: "Basic matching 2 UKs",
 		SetUpScript: []string{
 			"CREATE TABLE test (uk1 BIGINT UNSIGNED NOT NULL, uk2 BIGINT UNSIGNED NOT NULL, v1 VARCHAR(200), v2 VARCHAR(200), UNIQUE KEY (uk1, uk2), FULLTEXT idx (v1, v2));",
@@ -174,9 +208,9 @@ var FulltextTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Basic matching 2 UKs Non-Sequential",
+		Name: "Basic matching 2 UKs Reversed",
 		SetUpScript: []string{
-			"CREATE TABLE test (uk1 BIGINT UNSIGNED NOT NULL, uk2 BIGINT UNSIGNED NOT NULL, v1 VARCHAR(200), v2 VARCHAR(200), UNIQUE KEY (uk1, uk2), FULLTEXT idx (v1, v2));",
+			"CREATE TABLE test (uk1 BIGINT UNSIGNED NOT NULL, uk2 BIGINT UNSIGNED NOT NULL, v1 VARCHAR(200), v2 VARCHAR(200), UNIQUE KEY (uk2, uk1), FULLTEXT idx (v1, v2));",
 			"INSERT INTO test VALUES (1, 1, 'abc', 'def pqr'), (2, 1, 'ghi', 'jkl'), (3, 1, 'mno', 'mno'), (4, 1, 'stu vwx', 'xyz zyx yzx'), (5, 1, 'ghs', 'mno shg');",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -185,12 +219,29 @@ var FulltextTests = []ScriptTest{
 				Expected: []sql.Row{{uint64(2), uint64(1), "ghi", "jkl"}},
 			},
 			{
+				Query:    "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl mno');",
+				Expected: []sql.Row{{uint64(2), uint64(1), "ghi", "jkl"}, {uint64(3), uint64(1), "mno", "mno"}, {uint64(5), uint64(1), "ghs", "mno shg"}},
+			},
+		},
+	},
+	{
+		Name: "Basic matching 2 UKs Non-Sequential",
+		SetUpScript: []string{
+			"CREATE TABLE test (uk1 BIGINT UNSIGNED NOT NULL, v1 VARCHAR(200), uk2 BIGINT UNSIGNED NOT NULL, v2 VARCHAR(200), UNIQUE KEY (uk1, uk2), FULLTEXT idx (v1, v2));",
+			"INSERT INTO test VALUES (1, 'abc', 1, 'def pqr'), (2, 'ghi', 1, 'jkl'), (3, 'mno', 1, 'mno'), (4, 'stu vwx', 1, 'xyz zyx yzx'), (5, 'ghs', 1, 'mno shg');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
+				Expected: []sql.Row{{uint64(2), "ghi", uint64(1), "jkl"}},
+			},
+			{
 				Query:    "SELECT v2, uk2 FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				Expected: []sql.Row{{"jkl", uint64(1)}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl mno');",
-				Expected: []sql.Row{{uint64(2), uint64(1), "ghi", "jkl"}, {uint64(3), uint64(1), "mno", "mno"}, {uint64(5), uint64(1), "ghs", "mno shg"}},
+				Expected: []sql.Row{{uint64(2), "ghi", uint64(1), "jkl"}, {uint64(3), "mno", uint64(1), "mno"}, {uint64(5), "ghs", uint64(1), "mno shg"}},
 			},
 		},
 	},
@@ -327,7 +378,7 @@ var FulltextTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "ALTER TABLE MODIFY COLUMN",
+		Name: "ALTER TABLE MODIFY COLUMN not used by index",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT UNSIGNED PRIMARY KEY, v1 VARCHAR(200), v2 VARCHAR(200), v3 BIGINT UNSIGNED, FULLTEXT idx (v1, v2));",
 			"INSERT INTO test VALUES (1, 'abc', 'def pqr', 7), (2, 'ghi', 'jkl', 7), (3, 'mno', 'mno', 7), (4, 'stu vwx', 'xyz zyx yzx', 7), (5, 'ghs', 'mno shg', 7);",
@@ -344,7 +395,37 @@ var FulltextTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "ALTER TABLE DROP COLUMN",
+		Name: "ALTER TABLE MODIFY COLUMN used by index to valid type",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT UNSIGNED PRIMARY KEY, v1 VARCHAR(200), v2 VARCHAR(200), FULLTEXT idx (v1, v2));",
+			"INSERT INTO test VALUES (1, 'abc', 'def pqr'), (2, 'ghi', 'jkl'), (3, 'mno', 'mno'), (4, 'stu vwx', 'xyz zyx yzx'), (5, 'ghs', 'mno shg');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE test MODIFY COLUMN v2 TEXT;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
+				Expected: []sql.Row{{uint64(2), "ghi", "jkl"}},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE MODIFY COLUMN used by index to invalid type",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT UNSIGNED PRIMARY KEY, v1 VARCHAR(200), v2 VARCHAR(200), FULLTEXT idx (v1, v2));",
+			"INSERT INTO test VALUES (1, 'abc', 'def pqr'), (2, 'ghi', 'jkl'), (3, 'mno', 'mno'), (4, 'stu vwx', 'xyz zyx yzx'), (5, 'ghs', 'mno shg');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE test MODIFY COLUMN v2 VARBINARY(200);",
+				ExpectedErr: sql.ErrFullTextInvalidColumnType,
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE DROP COLUMN not used by index",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT UNSIGNED PRIMARY KEY, v1 VARCHAR(200), v2 VARCHAR(200), v3 BIGINT UNSIGNED, FULLTEXT idx (v1, v2));",
 			"INSERT INTO test VALUES (1, 'abc', 'def pqr', 7), (2, 'ghi', 'jkl', 7), (3, 'mno', 'mno', 7), (4, 'stu vwx', 'xyz zyx yzx', 7), (5, 'ghs', 'mno shg', 7);",
@@ -357,6 +438,19 @@ var FulltextTests = []ScriptTest{
 			{
 				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				Expected: []sql.Row{{uint64(2), "ghi", "jkl"}},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE DROP COLUMN used by index",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT UNSIGNED PRIMARY KEY, v1 VARCHAR(200), v2 VARCHAR(200), FULLTEXT idx (v1, v2));",
+			"INSERT INTO test VALUES (1, 'abc', 'def pqr'), (2, 'ghi', 'jkl'), (3, 'mno', 'mno'), (4, 'stu vwx', 'xyz zyx yzx'), (5, 'ghs', 'mno shg');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE test DROP COLUMN v2;",
+				ExpectedErr: sql.ErrFullTextMissingColumn,
 			},
 		},
 	},
@@ -542,6 +636,15 @@ var FulltextTests = []ScriptTest{
 			{
 				Query:       "CREATE TABLE test (v1 VARCHAR(200), v2 VARCHAR(200), FULLTEXT idx (v3));",
 				ExpectedErr: sql.ErrUnknownIndexColumn,
+			},
+		},
+	},
+	{
+		Name: "Creating an index on an invalid type",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "CREATE TABLE test (v1 VARCHAR(200), v2 BIGINT, FULLTEXT idx (v1, v2));",
+				ExpectedErr: sql.ErrFullTextInvalidColumnType,
 			},
 		},
 	},

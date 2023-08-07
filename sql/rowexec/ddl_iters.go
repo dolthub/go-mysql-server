@@ -1333,7 +1333,7 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), sql.SchemaToPrimaryKeySchema(rwt, newSch)
 
 	rewriteRequired := false
-	if i.a.Column().Default != nil || !i.a.Column().Nullable {
+	if i.a.Column().Default != nil || !i.a.Column().Nullable || i.a.Column().AutoIncrement {
 		rewriteRequired = true
 	}
 

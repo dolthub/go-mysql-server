@@ -758,7 +758,7 @@ var (
 	ErrCharSetInvalidString = errors.NewKind("invalid string for character set `%s`: \"%s\"")
 
 	// ErrCharSetFailedToEncode is returned when a character set fails encoding
-	ErrCharSetFailedToEncode = errors.NewKind("failed to encode `%s`")
+	ErrCharSetFailedToEncode = errors.NewKind("failed to encode: `%s`, valid string: `%v`, snippet: `%s`")
 
 	// ErrCharSetUnknown is returned when the character set is not a recognized MySQL character set
 	ErrCharSetUnknown = errors.NewKind("Unknown character set: %v")
@@ -840,6 +840,9 @@ var (
 
 	// ErrFullTextDuplicateColumn is returned when a Full-Text index declares the same column multiple times.
 	ErrFullTextDuplicateColumn = errors.NewKind("cannot have duplicate columns in a Full-Text index: `%s`")
+
+	// ErrFullTextInvalidColumnType is returned when a Full-Text index is declared on a non-text column.
+	ErrFullTextInvalidColumnType = errors.NewKind("all Full-Text columns must be declared on a non-binary text type")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the

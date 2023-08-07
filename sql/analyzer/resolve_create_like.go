@@ -95,7 +95,7 @@ func resolveCreateLike(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		}
 
 		for _, check := range checks {
-			checkConstraint, err := ConvertCheckDefToConstraint(ctx, &check)
+			checkConstraint, err := ConvertCheckDefToConstraint(ctx, &check, checksTable)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
