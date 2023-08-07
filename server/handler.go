@@ -69,7 +69,8 @@ const (
 func init() {
 	// Set the log.Error and log.Errorf functions in Vitess so that any errors
 	// logged by Vitess will appear in our logs. Without this, errors from Vitess
-	// can be silently swallowed, which makes debugging failures harder.
+	// can be swallowed (e.g. any parse error for a ComPrepare event is silently
+	// swallowed without this wired up), which makes debugging failures harder.
 	log.Error = logrus.StandardLogger().Error
 	log.Errorf = logrus.StandardLogger().Errorf
 }
