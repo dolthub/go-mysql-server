@@ -45,14 +45,6 @@ type scope struct {
 	proc  *procCtx
 }
 
-// columnNames formats a table name and column name into a common format.
-func (s *scope) columnName(table, col string) string {
-	if table == "" {
-		return strings.ToLower(col)
-	}
-	return fmt.Sprintf("%s.%s", strings.ToLower(table), strings.ToLower(col))
-}
-
 func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn, bool) {
 	// procedure params take precedence
 	if table == "" && checkParent && s.procActive() {

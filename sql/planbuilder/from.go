@@ -138,8 +138,14 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 	return outScope
 }
 
-// buildUsingJoin converts a JOIN with a USING clause or a NATURAL JOIN into an INNER JOIN, LEFT JOIN, or RIGHT JOIN.
-// An equality filter is created with columns in the USING list.
+// buildUsingJoin converts a JOIN with a USING clause into an INNER JOIN, LEFT JOIN, or RIGHT JOIN; NATURAL JOINs are a
+// subset of USING joins.
+// The scope of these join must contain all the qualified columns from both left and right tables. The columns listed
+// in the USING clause must be in both left and right tables, and will be redirected to
+// either the left or right table.
+// An equality filter is created with columns in the USING list. Columns in the USING
+// list are de-duplicated and listed first (in the order they appear in the left table), followed by the remaining
+// columns from the left table, followed by the remaining columns from the right table.
 func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.JoinTableExpr) (outScope *scope) {
 	outScope = inScope.push()
 
