@@ -31,6 +31,8 @@ type Column struct {
 	// Type is the data type of the column.
 	Type Type
 	// Default contains the default value of the column or nil if it was not explicitly defined. A nil instance is valid, thus calls do not error.
+	// TODO: figure out where table values are getting filled in
+	// TODO: can a column have both a default and generated value?
 	Default *ColumnDefaultValue
 	// AutoIncrement is true if the column auto-increments.
 	AutoIncrement bool
