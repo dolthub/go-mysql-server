@@ -94,11 +94,6 @@ func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn,
 		return found, true
 	}
 
-	// TODO: this probably doesn't happen anymore
-	if c, ok := s.redirectCol[s.columnName(table, col)]; ok {
-		return c, true
-	}
-
 	if s.groupBy != nil {
 		if c, ok := s.groupBy.outScope.resolveColumn(table, col, false); ok {
 			return c, true

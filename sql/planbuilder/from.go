@@ -147,7 +147,7 @@ func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.
 	if len(te.Condition.Using) == 0 {
 		for _, lCol := range leftScope.cols {
 			for _, rCol := range rightScope.cols {
-				if lCol.col == rCol.col {
+				if strings.EqualFold(lCol.col, rCol.col) {
 					te.Condition.Using = append(te.Condition.Using, ast.NewColIdent(lCol.col))
 					break
 				}
@@ -214,11 +214,6 @@ func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.
 	if len(te.Condition.Using) == 0 {
 		outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
 		return outScope
-	}
-
-	conds := make([]string, len(te.Condition.Using))
-	for i, col := range te.Condition.Using {
-		conds[i] = col.String()
 	}
 
 	switch strings.ToLower(te.Join) {
