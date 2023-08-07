@@ -843,7 +843,7 @@ var (
 
 	// ErrFullTextInvalidColumnType is returned when a Full-Text index is declared on a non-text column.
 	ErrFullTextInvalidColumnType = errors.NewKind("all Full-Text columns must be declared on a non-binary text type")
-	
+
 	// ErrGeneratedColumnValue is returned when a value is provided for a generated column
 	ErrGeneratedColumnValue = errors.NewKind("The value specified for generated column %q in table %q is not allowed.")
 )

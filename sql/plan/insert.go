@@ -128,7 +128,7 @@ func (ii InsertInto) WithColumnNames(cols []string) *InsertInto {
 type InsertDestination struct {
 	UnaryNode
 	DestinationName string
-	Sch sql.Schema
+	Sch             sql.Schema
 }
 
 var _ sql.Node = (*InsertDestination)(nil)
@@ -139,8 +139,8 @@ var _ sql.CollationCoercible = (*InsertDestination)(nil)
 func NewInsertDestination(schema sql.Schema, node sql.Node) *InsertDestination {
 	nameable := node.(sql.Nameable)
 	return &InsertDestination{
-		UnaryNode: UnaryNode{Child: node},
-		Sch:       schema,
+		UnaryNode:       UnaryNode{Child: node},
+		Sch:             schema,
 		DestinationName: nameable.Name(),
 	}
 }

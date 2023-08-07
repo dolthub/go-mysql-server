@@ -43,17 +43,17 @@ func GenerateCreateTableColumnDefinition(col *Column, colDefault string) string 
 	if !col.Nullable {
 		stmt = fmt.Sprintf("%s NOT NULL", stmt)
 	}
-	
+
 	if col.AutoIncrement {
 		stmt = fmt.Sprintf("%s AUTO_INCREMENT", stmt)
 	}
-	
+
 	if c, ok := col.Type.(SpatialColumnType); ok {
 		if s, d := c.GetSpatialTypeSRID(); d {
 			stmt = fmt.Sprintf("%s /*!80003 SRID %v */", stmt, s)
 		}
 	}
-	
+
 	if col.Generated != nil {
 		storedStr := ""
 		if !col.Virtual {
@@ -61,11 +61,11 @@ func GenerateCreateTableColumnDefinition(col *Column, colDefault string) string 
 		}
 		stmt = fmt.Sprintf("%s GENERATED ALWAYS AS %s%s", stmt, col.Generated.String(), storedStr)
 	}
-	
+
 	if col.Default != nil && col.Generated == nil {
 		stmt = fmt.Sprintf("%s DEFAULT %s", stmt, colDefault)
 	}
-	
+
 	if col.Comment != "" {
 		stmt = fmt.Sprintf("%s COMMENT '%s'", stmt, col.Comment)
 	}

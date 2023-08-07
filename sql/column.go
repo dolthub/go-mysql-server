@@ -51,7 +51,7 @@ type Column struct {
 	Extra string
 	// Generated is non-nil if the column is defined with a generated value
 	Generated *ColumnDefaultValue
-	// Virtual is true if the column is defined as a virtual column. Generated must be non-nil in this case. 
+	// Virtual is true if the column is defined as a virtual column. Generated must be non-nil in this case.
 	Virtual bool
 }
 

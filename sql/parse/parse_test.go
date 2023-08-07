@@ -134,36 +134,36 @@ func TestParse(t *testing.T) {
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{
 						{
-						Name:       "a",
-						Type:       types.Int32,
-						Nullable:   false,
-						PrimaryKey: true,
-					},
-					{
-						Name:       "b",
-						Type:       types.Int32,
-						Nullable:   true,
-						Generated:  &sql.ColumnDefaultValue{
-							Expression: expression.NewPlus(
-								expression.NewUnresolvedColumn("a"),
-								expression.NewLiteral(int8(1), types.Int8),
-							),
-							ReturnNil: true,
+							Name:       "a",
+							Type:       types.Int32,
+							Nullable:   false,
+							PrimaryKey: true,
 						},
-						Virtual: true,
-					},
-					{
-						Name:       "c",
-						Type:       types.Int32,
-						Nullable:   true,
-						Generated:  &sql.ColumnDefaultValue{
-							Expression: expression.NewMinus(
-								expression.NewUnresolvedColumn("a"),
-								expression.NewLiteral(int8(1), types.Int8),
-							),
-							ReturnNil: true,
+						{
+							Name:     "b",
+							Type:     types.Int32,
+							Nullable: true,
+							Generated: &sql.ColumnDefaultValue{
+								Expression: expression.NewPlus(
+									expression.NewUnresolvedColumn("a"),
+									expression.NewLiteral(int8(1), types.Int8),
+								),
+								ReturnNil: true,
+							},
+							Virtual: true,
 						},
-					},
+						{
+							Name:     "c",
+							Type:     types.Int32,
+							Nullable: true,
+							Generated: &sql.ColumnDefaultValue{
+								Expression: expression.NewMinus(
+									expression.NewUnresolvedColumn("a"),
+									expression.NewLiteral(int8(1), types.Int8),
+								),
+								ReturnNil: true,
+							},
+						},
 					}),
 				},
 			),
@@ -1293,10 +1293,10 @@ CREATE TABLE t2
 			plan: plan.NewAddColumn(
 				sql.UnresolvedDatabase(""),
 				plan.NewUnresolvedTable("t1", ""), &sql.Column{
-					Name:       "b",
-					Type:       types.Int32,
-					Nullable:   true,
-					Generated:  &sql.ColumnDefaultValue{
+					Name:     "b",
+					Type:     types.Int32,
+					Nullable: true,
+					Generated: &sql.ColumnDefaultValue{
 						Expression: expression.NewPlus(
 							expression.NewUnresolvedColumn("a"),
 							expression.NewLiteral(int8(1), types.Int8),

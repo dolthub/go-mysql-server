@@ -354,11 +354,11 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 				colDefaultStr = fmt.Sprintf("'%v'", v)
 			}
 		}
-		
+
 		if col.PrimaryKey && len(pkSchema.Schema) == 0 {
 			pkOrdinals = append(pkOrdinals, i)
 		}
-		
+
 		colStmts[i] = sql.GenerateCreateTableColumnDefinition(col, colDefaultStr)
 	}
 

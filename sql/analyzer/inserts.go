@@ -206,12 +206,12 @@ func wrapRowSource(ctx *sql.Context, scope *plan.Scope, logFn func(string, ...an
 			if !f.Nullable && f.Default == nil && f.Generated == nil && !f.AutoIncrement {
 				return nil, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
 			}
-			
+
 			var defaultExpr sql.Expression = f.Default
 			if defaultExpr == nil && f.Generated != nil {
 				defaultExpr = f.Generated
 			}
-			
+
 			if ctx.Version == sql.VersionExperimental {
 				var err error
 				defaultExpr, _, err = transform.Expr(defaultExpr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
@@ -258,7 +258,7 @@ func validateColumns(tableName string, columnNames []string, dstSchema sql.Schem
 			return plan.ErrInsertIntoNonexistentColumn.New(columnName)
 		}
 		if dstCol.Generated != nil {
-			return sql.ErrGeneratedColumnValue.New(dstCol.Name, tableName)	
+			return sql.ErrGeneratedColumnValue.New(dstCol.Name, tableName)
 		}
 		if _, exists := usedNames[columnName]; !exists {
 			usedNames[columnName] = struct{}{}
