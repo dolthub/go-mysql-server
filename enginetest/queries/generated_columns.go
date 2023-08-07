@@ -27,6 +27,16 @@ var GeneratedColumnTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				Query:    "show create table t1",
+				// TODO: double parens here is a bug
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+					"  `a` int NOT NULL,\n" +
+					"  `b` int GENERATED ALWAYS AS ((a + 1)) STORED,\n" +
+					"  PRIMARY KEY (`a`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
 				Query:    "insert into t1 values (1,2)",
 				ExpectedErr: sql.ErrGeneratedColumnValue,
 			},
