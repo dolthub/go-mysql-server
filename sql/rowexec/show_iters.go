@@ -343,7 +343,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 	for i, col := range schema {
 		var colDefaultStr string
 		// TODO: The columns that are rendered in defaults should be backticked
-		if col.Default != nil {
+		if col.Default != nil && col.Generated == nil {
 			// TODO : string literals should have character set introducer
 			colDefaultStr = col.Default.String()
 			if colDefaultStr != "NULL" && col.Default.IsLiteral() && !types.IsTime(col.Default.Type()) && !types.IsText(col.Default.Type()) {

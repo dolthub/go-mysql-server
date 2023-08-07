@@ -62,7 +62,7 @@ func GenerateCreateTableColumnDefinition(col *Column, colDefault string) string 
 		stmt = fmt.Sprintf("%s GENERATED ALWAYS AS %s%s", stmt, col.Generated.String(), storedStr)
 	}
 	
-	if col.Default != nil {
+	if col.Default != nil && col.Generated == nil {
 		stmt = fmt.Sprintf("%s DEFAULT %s", stmt, colDefault)
 	}
 	
