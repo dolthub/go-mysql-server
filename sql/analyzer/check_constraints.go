@@ -303,7 +303,6 @@ func loadChecksFromTable(ctx *sql.Context, table sql.Table) ([]*sql.CheckConstra
 
 func ConvertCheckDefToConstraint(ctx *sql.Context, check *sql.CheckDefinition, t sql.Table) (*sql.CheckConstraint, error) {
 	parseStr := fmt.Sprintf("select %s", check.CheckExpression)
-	// TODO: Move to ParseWithOptions and test ANSI_QUOTES support with check constraints
 	parsed, err := sqlparser.Parse(parseStr)
 	if err != nil {
 		return nil, err

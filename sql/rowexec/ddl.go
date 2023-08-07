@@ -941,7 +941,6 @@ func (b *BaseBuilder) buildCreateTrigger(ctx *sql.Context, n *plan.CreateTrigger
 	if err != nil {
 		return nil, err
 	}
-
 	return &createTriggerIter{
 		definition: sql.TriggerDefinition{
 			Name:            n.TriggerName,

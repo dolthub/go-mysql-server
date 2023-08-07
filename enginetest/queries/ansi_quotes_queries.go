@@ -20,7 +20,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// TODO: Audit all places that use the vitess and GMS parse functions
 var AnsiQuotesTests = []ScriptTest{
 	{
 		Name: "ANSI_QUOTES: basic cases",
@@ -232,8 +231,6 @@ var AnsiQuotesTests = []ScriptTest{
 		},
 	},
 	{
-		// TODO: How about when we merge? We apply check constraints and column default there, too
-		//       (and they both use the new planbuilder package)
 		Name: "ANSI_QUOTES: column defaults",
 		SetUpScript: []string{
 			`SET @@sql_mode='ANSI_QUOTES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
@@ -267,7 +264,7 @@ var AnsiQuotesTests = []ScriptTest{
 		Name: "ANSI_QUOTES: check constraints",
 		SetUpScript: []string{
 			`SET @@sql_mode='ANSI_QUOTES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
-			`create table t (pk int primary key, data varchar(100), CONSTRAINT ansi_check CHECK ("data" != 'forbidden'));`,
+			`create table t (pk int primary key, data varchar(100), CONSTRAINT "ansi_check" CHECK ("data" != 'forbidden'));`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -296,7 +293,6 @@ var AnsiQuotesTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				// Assert the check constraint runs correctly in ANSI_QUOTES mode
 				Query: `CREATE EVENT myevent 
 							ON SCHEDULE EVERY 1 SECOND STARTS '2037-10-16 23:59:00' DO
       						UPDATE "t" SET "count"="count"+1;`,

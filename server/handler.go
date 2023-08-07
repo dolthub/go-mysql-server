@@ -118,8 +118,7 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error
 		analyzed, err = h.e.PrepareQuery(ctx, query)
 	}
 	if err != nil {
-		// TODO: Look at error logging in other handler functions
-		logrus.StandardLogger().Errorf("ComPrepare ERROR: %s", err.Error())
+		logrus.WithField("query", query).Errorf("unable to prepare query: %s", err.Error())
 		err := sql.CastSQLError(err)
 		return nil, err
 	}

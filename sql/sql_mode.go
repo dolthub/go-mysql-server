@@ -39,6 +39,12 @@ func LoadSqlMode(ctx *Context) (*SqlMode, error) {
 		return nil, fmt.Errorf("unable to parse sql_mode: %v", sqlMode)
 	}
 
+	return NewSqlModeFromString(sqlModeString), nil
+}
+
+// NewSqlModeFromString returns a new SqlMode instance, constructed from the specified |sqlModeString| that
+// has a comma delimited list of SQL modes (e.g. "ONLY_FULLY_GROUP_BY,ANSI_QUOTES").
+func NewSqlModeFromString(sqlModeString string) *SqlMode {
 	sqlModeString = strings.ToLower(sqlModeString)
 	elements := strings.Split(sqlModeString, ",")
 	modes := map[string]struct{}{}
@@ -46,9 +52,7 @@ func LoadSqlMode(ctx *Context) (*SqlMode, error) {
 		modes[element] = struct{}{}
 	}
 
-	return &SqlMode{
-		modes: modes,
-	}, nil
+	return &SqlMode{modes: modes}
 }
 
 // AnsiQuotes returns true if the ANSI_QUOTES SQL mode is enabled. Note that the ANSI mode is a compound mode that
@@ -57,7 +61,11 @@ func (s *SqlMode) AnsiQuotes() bool {
 	return s.ModeEnabled("ansi_quotes") || s.ModeEnabled("ansi")
 }
 
-// ModeEnabled returns true if |mode| is enabled in the SQL mode string.
+// ModeEnabled returns true if |mode| was explicitly specified in the SQL_MODE string that was used to
+// create this SqlMode instance. Note this function does not support expanding compound modes into the
+// individual modes they contain (e.g. if "ANSI" is the SQL_MODE string, then this function will not
+// report that "ANSI_QUOTES" is enabled). To deal with compound modes, use the mode specific functions,
+// such as SqlMode::AnsiQuotes().
 func (s *SqlMode) ModeEnabled(mode string) bool {
 	_, ok := s.modes[strings.ToLower(mode)]
 	return ok
