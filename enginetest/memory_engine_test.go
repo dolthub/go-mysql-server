@@ -287,7 +287,7 @@ func TestSingleScript(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "select a.i as i, b.j as i from a join b on a.i = b.j - 3;",
+					Query:    "select a.i as i, b.j as i from a join b on a.i = b.j - 3;",
 					Expected: []sql.Row{
 						//{1, 4},
 						//{2, 5},
@@ -324,7 +324,7 @@ func TestSingleScript_Experimental(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "select a.i as i, b.j as i from a join b on a.i = b.j - 3;",
+					Query:    "select a.i as i, b.j as i from a join b on a.i = b.j - 3;",
 					Expected: []sql.Row{
 						//{1, 4},
 						//{2, 5},
@@ -333,7 +333,6 @@ func TestSingleScript_Experimental(t *testing.T) {
 			},
 		},
 	}
-
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental)
