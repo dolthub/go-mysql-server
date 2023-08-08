@@ -135,12 +135,7 @@ func (b *Builder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.
 func (b *Builder) buildProjection(inScope, outScope *scope) {
 	projections := make([]sql.Expression, len(outScope.cols))
 	for i, sc := range outScope.cols {
-		scalar := sc.scalar
-		if a, ok := sc.scalar.(*expression.Alias); ok && !a.Unreferencable() {
-			// replace alias with its reference
-			//scalar = sc.scalarGf()
-		}
-		projections[i] = scalar
+		projections[i] = sc.scalar
 	}
 	proj := plan.NewProject(projections, inScope.node)
 	if _, ok := inScope.node.(*plan.SubqueryAlias); ok && proj.Schema().Equals(proj.Child.Schema()) {
