@@ -566,6 +566,20 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 		},
 	},
 	{
+		Query: `SELECT pk as pk, nt.i  as i, nt2.i as i FROM one_pk
+						RIGHT JOIN niltable nt ON pk=nt.i
+						RIGHT JOIN niltable nt2 ON pk=nt2.i - 1
+						ORDER BY 3;`,
+		Expected: []sql.Row{
+			{nil, nil, 1},
+			{  1,   1, 2},
+			{  2,   2, 3},
+			{  3,   3, 4},
+			{nil, nil, 5},
+			{nil, nil, 6},
+		},
+	},
+	{
 		Query: "select * from ab full join pq on a = p order by 1,2,3,4;",
 		Expected: []sql.Row{
 			{0, 2, 0, 0},
