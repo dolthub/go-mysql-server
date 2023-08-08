@@ -84,7 +84,9 @@ var AnsiQuotesTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "ANSI_QUOTES: ANSI mode includes ANSI_QUOTES",
+		// ANSI mode is a special "combination" mode that includes ANSI_QUOTES and other modes
+		// https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sql-mode-combo
+		Name: "ANSI_QUOTES: ANSI combination mode",
 		SetUpScript: []string{
 			`SET @@sql_mode='ANSI';`,
 		},
@@ -116,6 +118,10 @@ var AnsiQuotesTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
+				Query:    `insert into public_keys("item", "type", "hash", "count", "public") values (42, 'type', 1010, 1, 'public');`,
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
 				Query:    `create view view1 as select public_keys."public", public_keys."count" from public_keys;`,
 				Expected: []sql.Row{},
 			},
@@ -126,6 +132,10 @@ var AnsiQuotesTests = []ScriptTest{
 			{
 				Query:    `show create table view1;`,
 				Expected: []sql.Row{{"view1", "CREATE VIEW `view1` AS select public_keys.\"public\", public_keys.\"count\" from public_keys", "utf8mb4", "utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    `select "public", "count" from view1;`,
+				Expected: []sql.Row{{"public", 1}},
 			},
 			{
 				// Assert that we can load and parse views for information_schema when ANSI_QUOTES mode is enabled
@@ -144,6 +154,10 @@ var AnsiQuotesTests = []ScriptTest{
 			{
 				Query:    `show create table public_keys;`,
 				Expected: []sql.Row{{"public_keys", "CREATE TABLE `public_keys` (\n  `item` int,\n  `type` char(4),\n  `hash` int,\n  `count` int,\n  `public` varchar(8000)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "select public, `count` from view1;",
+				Expected: []sql.Row{{"public", 1}},
 			},
 			{
 				// Assert that we can still load and parse views for information_schema when ANSI_QUOTES mode is disabled
