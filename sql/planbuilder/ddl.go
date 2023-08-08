@@ -2,7 +2,6 @@ package planbuilder
 
 import (
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -33,6 +32,14 @@ func (b *Builder) resolveDb(name string) sql.Database {
 	return database
 }
 
+// buildAlterTable converts AlterTable AST nodes. If there is a single clause in the statement, it is returned as
+// the appropriate node type. Otherwise, a plan.Block is returned with children representing all the various clauses.
+// Our validation rules for what counts as a legal set of alter clauses differs from mysql's here. MySQL seems to apply
+// some form of precedence rules to the clauses in an ALTER TABLE so that e.g. DROP COLUMN always happens before other
+// kinds of statements. So in MySQL, statements like `ALTER TABLE t ADD KEY (a), DROP COLUMN a` fails, whereas our
+// analyzer happily produces a plan that adds an index and then drops that column. We do this in part for simplicity,
+// and also because we construct more than one node per clause in some cases and really want them executed in a
+// particular order in that case.
 func (b *Builder) buildAlterTable(inScope *scope, query string, c *ast.AlterTable) (outScope *scope) {
 	b.multiDDL = true
 	defer func() {
@@ -53,30 +60,6 @@ func (b *Builder) buildAlterTable(inScope *scope, query string, c *ast.AlterTabl
 		return outScope
 	}
 
-	// certain alter statements need to happen before others
-	sort.Slice(statements, func(i, j int) bool {
-		switch statements[i].(type) {
-		case *plan.RenameColumn:
-			switch statements[j].(type) {
-			case *plan.DropColumn,
-				*plan.AddColumn,
-				*plan.AlterIndex:
-				return true
-			}
-		case *plan.DropColumn:
-			switch statements[j].(type) {
-			case *plan.AddColumn,
-				*plan.AlterIndex:
-				return true
-			}
-		case *plan.AddColumn:
-			switch statements[j].(type) {
-			case *plan.AlterIndex:
-				return true
-			}
-		}
-		return false
-	})
 	outScope = inScope.push()
 	outScope.node = plan.NewBlock(statements)
 	return
