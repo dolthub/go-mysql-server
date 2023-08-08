@@ -18,11 +18,11 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
-	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	"strconv"
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
+	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"

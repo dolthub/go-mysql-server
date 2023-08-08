@@ -16,13 +16,13 @@ package sqle
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/sqltypes"
-	querypb "github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"os"
 	"strings"
 	"sync"
 
+	"github.com/dolthub/vitess/go/sqltypes"
+	querypb "github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/pkg/errors"
 
 	"github.com/dolthub/go-mysql-server/memory"

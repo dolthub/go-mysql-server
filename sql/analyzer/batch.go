@@ -15,10 +15,11 @@
 package analyzer
 
 import (
+	"reflect"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
-	"reflect"
 )
 
 // RuleFunc is the function to be applied in a rule.

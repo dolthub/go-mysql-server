@@ -15,9 +15,9 @@
 package queries
 
 import (
-	"github.com/dolthub/vitess/go/vt/proto/query"
 	"time"
 
+	"github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
 
 	gmstime "github.com/dolthub/go-mysql-server/internal/time"

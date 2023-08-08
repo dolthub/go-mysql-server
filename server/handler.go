@@ -16,7 +16,6 @@ package server
 
 import (
 	"encoding/base64"
-	"github.com/dolthub/go-mysql-server/sql/plan"
 	"io"
 	"net"
 	"regexp"
@@ -40,6 +39,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )

@@ -17,6 +17,7 @@ package driver
 import (
 	"context"
 	"database/sql/driver"
+
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 )
 
