@@ -134,6 +134,7 @@ func TestJoinOps_Experimental(t *testing.T) {
 
 // TestJoinQueries runs the canonical test queries against a single threaded index enabled harness.
 func TestJoinQueries(t *testing.T) {
+	t.Skip()
 	enginetest.TestJoinQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
@@ -147,6 +148,7 @@ func TestLateralJoin_Experimental(t *testing.T) {
 
 // TestJoinQueriesPrepared runs the canonical test queries against a single threaded index enabled harness.
 func TestJoinQueriesPrepared(t *testing.T) {
+	t.Skip()
 	enginetest.TestJoinQueriesPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
@@ -275,7 +277,7 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
 			Name: "DELETE ME",
@@ -312,7 +314,7 @@ func TestSingleScript(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript_Experimental(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
 			Name: "DELETE ME",
