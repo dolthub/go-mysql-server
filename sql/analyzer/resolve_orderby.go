@@ -306,7 +306,7 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pl
 			return n, transform.SameTree, nil
 		}
 
-		fields, same, err := resolveSortFields(a, sort.SortFields, sort.Child.Schema())
+		fields, same, err := resolveSortFields(a, sort.SortFields, sort.Child)
 		if err != nil {
 			return n, transform.SameTree, err
 		}
@@ -317,13 +317,13 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pl
 	})
 }
 
-func resolveSortFields(a *Analyzer, sfs sql.SortFields, schema sql.Schema) (sql.SortFields, transform.TreeIdentity, error) {
+func resolveSortFields(a *Analyzer, sfs sql.SortFields, node sql.Node) (sql.SortFields, transform.TreeIdentity, error) {
 	ret := make([]sql.SortField, len(sfs))
 	same := transform.SameTree
 	var err error
 	sameF := transform.SameTree
 	for i, f := range sfs {
-		ret[i], sameF, err = resolveSortField(a, f, schema)
+		ret[i], sameF, err = resolveSortField(a, f, node)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -332,7 +332,8 @@ func resolveSortFields(a *Analyzer, sfs sql.SortFields, schema sql.Schema) (sql.
 	return ret, same, nil
 }
 
-func resolveSortField(a *Analyzer, f sql.SortField, schema sql.Schema) (sql.SortField, transform.TreeIdentity, error) {
+func resolveSortField(a *Analyzer, f sql.SortField, node sql.Node) (sql.SortField, transform.TreeIdentity, error) {
+	schema := node.Schema()
 	if lit, ok := f.Column.(*expression.Literal); ok && types.IsNumber(f.Column.Type()) {
 		v, err := lit.Eval(nil, nil)
 		if err != nil {
@@ -348,7 +349,6 @@ func resolveSortField(a *Analyzer, f sql.SortField, schema sql.Schema) (sql.Sort
 		idx := int(v.(int64)) - 1
 		if idx >= len(schema) || idx < 0 {
 			return sql.SortField{}, transform.SameTree, ErrOrderByColumnIndex.New(idx + 1)
-
 		}
 
 		// If there is more than one alias with this name, we can't handle it yet. This is because we rewrite
@@ -356,16 +356,24 @@ func resolveSortField(a *Analyzer, f sql.SortField, schema sql.Schema) (sql.Sort
 		// index at some later step based on name ambiguity.
 		// TODO: fix this by not rewriting field indexes based on names anymore
 		if columnAliasRepeated(schema, idx) {
+			if proj, isProj := node.(*plan.Project); isProj {
+				a.Log("replaced order by column %d with %v", idx+1, schema[idx])
+				return sql.SortField{
+					Column:       proj.Projections[idx],
+					Order:        f.Order,
+					NullOrdering: f.NullOrdering,
+				}, transform.NewTree, nil
+			}
 			return sql.SortField{}, transform.SameTree, sql.ErrAmbiguousColumnInOrderBy.New(schema[idx].Name)
 		}
 		uc := expression.NewUnresolvedQualifiedColumn(schema[idx].Source, schema[idx].Name)
+		a.Log("replaced order by column %d with %v", idx+1, schema[idx])
 		return sql.SortField{
 			Column:       uc,
 			Column2:      uc,
 			Order:        f.Order,
 			NullOrdering: f.NullOrdering,
 		}, transform.NewTree, nil
-		a.Log("replaced order by column %d with %v", idx+1, schema[idx])
 	} else if agg, ok := f.Column.(sql.Aggregation); ok {
 		name := agg.String()
 		if nameable, ok := f.Column.(sql.Nameable); ok {

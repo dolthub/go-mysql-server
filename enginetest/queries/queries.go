@@ -8685,17 +8685,6 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrDatabaseNotFound,
 	},
 	{
-		Query:       `SELECT s as i, i as i from mytable order by 1`,
-		ExpectedErr: sql.ErrAmbiguousColumnInOrderBy,
-	},
-	{
-		Query: `SELECT pk as pk, nt.i  as i, nt2.i as i FROM one_pk
-						RIGHT JOIN niltable nt ON pk=nt.i
-						RIGHT JOIN niltable nt2 ON pk=nt2.i - 1
-						ORDER BY 3`,
-		ExpectedErr: sql.ErrAmbiguousColumnInOrderBy,
-	},
-	{
 		Query:       "SELECT C FROM (select i,s FROM mytable) mt (a,b) order by a desc;",
 		ExpectedErr: sql.ErrColumnNotFound,
 	},

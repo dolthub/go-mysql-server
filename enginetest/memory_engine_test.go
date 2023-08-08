@@ -134,7 +134,6 @@ func TestJoinOps_Experimental(t *testing.T) {
 
 // TestJoinQueries runs the canonical test queries against a single threaded index enabled harness.
 func TestJoinQueries(t *testing.T) {
-	t.Skip()
 	enginetest.TestJoinQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
@@ -148,7 +147,6 @@ func TestLateralJoin_Experimental(t *testing.T) {
 
 // TestJoinQueriesPrepared runs the canonical test queries against a single threaded index enabled harness.
 func TestJoinQueriesPrepared(t *testing.T) {
-	t.Skip()
 	enginetest.TestJoinQueriesPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
@@ -289,7 +287,7 @@ func TestSingleScript(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "select a.i as i, b.j as i from a join b on a.i = b.j - 3;",
+					Query:    "select a.i as i, b.j as i from a join b on a.i = b.j - 3 order by 2;",
 					Expected: []sql.Row{
 						//{1, 4},
 						//{2, 5},
@@ -300,13 +298,13 @@ func TestSingleScript(t *testing.T) {
 	}
 
 	for _, test := range scripts {
-		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental)
+		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
 		}
-		//engine.Analyzer.Debug = true
-		//engine.Analyzer.Verbose = true
+		engine.Analyzer.Debug = true
+		engine.Analyzer.Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
@@ -326,7 +324,7 @@ func TestSingleScript_Experimental(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "select a.i as i, b.j as i from a join b on a.i = b.j - 3;",
+					Query:    "select a.i as i, b.j as i from a join b on a.i = b.j - 3 order by 1;",
 					Expected: []sql.Row{
 						//{1, 4},
 						//{2, 5},
