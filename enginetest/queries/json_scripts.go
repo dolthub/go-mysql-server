@@ -566,4 +566,58 @@ var JsonScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "json_contains_path returns true if the path exists",
+		SetUpScript: []string{
+			`create table t (pk int primary key, col1 json);`,
+			`insert into t values (1, '{"a": 1}');`,
+			`insert into t values (2, '{"a": 1, "b": 2, "c": {"d": 4}}');`,
+			`insert into t values (3, '{"w": 1, "x": 2, "c": {"d": 4}}');`,
+			`insert into t values (4, '{}');`,
+			`insert into t values (5, null);`,
+		},
+
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select pk, json_contains_path(col1, 'one', '$.a') from t order by pk;",
+				Expected: []sql.Row{
+					{1, true},
+					{2, true},
+					{3, false},
+					{4, false},
+					{5, nil},
+				},
+			},
+			{
+				Query: "select pk, json_contains_path(col1, 'one', '$.a', '$.x', '$.c.d') from t order by pk;",
+				Expected: []sql.Row{
+					{1, true},
+					{2, true},
+					{3, true},
+					{4, false},
+					{5, nil},
+				},
+			},
+			{
+				Query: "select pk, json_contains_path(col1, 'all', '$.a', '$.x') from t order by pk;",
+				Expected: []sql.Row{
+					{1, false},
+					{2, false},
+					{3, false},
+					{4, false},
+					{5, nil},
+				},
+			},
+			{
+				Query: "select pk, json_contains_path(col1, 'all', '$.c.d', '$.x') from t order by pk;",
+				Expected: []sql.Row{
+					{1, false},
+					{2, false},
+					{3, true},
+					{4, false},
+					{5, nil},
+				},
+			},
+		},
+	},
 }
