@@ -25,7 +25,7 @@ import (
 
 // ErrEventSchedulerDisabled is returned when user tries to set `event_scheduler_notifier` global system variable to ON or OFF
 // when the server started with either `--event-scheduler=DISABLED` or `--skip-grant-tables` configuration. Should have ERROR 1290 code.
-var ErrEventSchedulerDisabled = errors.New("The server is running with the --event-scheduler=DISABLED or --skip-grant-tables option so it cannot executeEvent this statement")
+var ErrEventSchedulerDisabled = errors.New("The server is running with the --event-scheduler=DISABLED or --skip-grant-tables option and the event scheduler cannot be enabled")
 
 // SchedulerStatus can be one of 'ON', 'OFF' or 'DISABLED'
 // If --event-scheduler configuration variable is set to 'DISABLED'
