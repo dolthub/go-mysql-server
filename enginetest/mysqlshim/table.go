@@ -16,11 +16,11 @@ package mysqlshim
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"math/rand"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -373,7 +373,8 @@ func (t Table) getCreateTable() (*plan.CreateTable, error) {
 	if len(rows) == 0 || len(rows[0]) == 0 {
 		return nil, sql.ErrTableNotFound.New(t.name)
 	}
-	createTableNode, err := parse.Parse(sql.NewEmptyContext(), rows[0][1].(string))
+	// TODO add catalog
+	createTableNode, err := planbuilder.Parse(sql.NewEmptyContext(), sql.MapCatalog{Tables: map[string]sql.Table{t.name: t}}, rows[0][1].(string))
 	if err != nil {
 		return nil, err
 	}

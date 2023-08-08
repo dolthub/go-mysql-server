@@ -25,12 +25,10 @@ import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/pkg/errors"
 
-	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
@@ -503,7 +501,7 @@ func (e *Engine) readOnlyCheck(node sql.Node) error {
 	}
 	switch node.(type) {
 	case
-		*plan.DeleteFrom, *plan.InsertInto, *plan.Update, *plan.LockTables, *plan.UnlockTables:
+			*plan.DeleteFrom, *plan.InsertInto, *plan.Update, *plan.LockTables, *plan.UnlockTables:
 		if e.IsReadOnly {
 			return sql.ErrReadOnly.New()
 		} else if e.IsServerLocked {
@@ -511,71 +509,4 @@ func (e *Engine) readOnlyCheck(node sql.Node) error {
 		}
 	}
 	return nil
-}
-
-// ResolveDefaults takes in a schema, along with each column's default value in a string form, and returns the schema
-// with the default values parsed and resolved.
-func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Schema, error) {
-	// todo: change this function or thread a context
-	ctx := sql.NewEmptyContext()
-	db := plan.NewDummyResolvedDB("temporary")
-	e := NewDefault(memory.NewDBProvider(db))
-	defer e.Close()
-
-	unresolvedSchema := make(sql.Schema, len(schema))
-	defaultCount := 0
-	for i, col := range schema {
-		unresolvedSchema[i] = col.SqlColumn
-		if col.Default != "" {
-			var err error
-			unresolvedSchema[i].Default, err = parse.StringToColumnDefaultValue(ctx, col.Default)
-			if err != nil {
-				return nil, err
-			}
-			defaultCount++
-		}
-	}
-	// if all defaults are nil, we can skip the rest of this
-	if defaultCount == 0 {
-		return unresolvedSchema, nil
-	}
-
-	// *plan.CreateTable properly handles resolving default values, so we hijack it
-	createTable := plan.NewCreateTable(db, tableName, false, false, &plan.TableSpec{Schema: sql.NewPrimaryKeySchema(unresolvedSchema)})
-
-	analyzed, err := e.Analyzer.Analyze(ctx, createTable, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	analyzedQueryProcess, ok := analyzed.(*plan.QueryProcess)
-	if !ok {
-		return nil, fmt.Errorf("internal error: unknown analyzed result type `%T`", analyzed)
-	}
-
-	analyzedCreateTable, ok := analyzedQueryProcess.Child().(*plan.CreateTable)
-	if !ok {
-		return nil, fmt.Errorf("internal error: unknown query process child type `%T`", analyzedQueryProcess)
-	}
-
-	return analyzedCreateTable.CreateSchema.Schema, nil
-}
-
-// ColumnsFromCheckDefinition retrieves the Column Names referenced by a CheckDefinition
-func ColumnsFromCheckDefinition(ctx *sql.Context, def *sql.CheckDefinition) ([]string, error) {
-	// Evaluate the CheckDefinition to get evaluated Expression
-	c, err := analyzer.ConvertCheckDefToConstraint(ctx, def, nil)
-	if err != nil {
-		return nil, err
-	}
-	// Look for any column references in the evaluated Expression
-	var cols []string
-	sql.Inspect(c.Expr, func(expr sql.Expression) bool {
-		if c, ok := expr.(*expression.UnresolvedColumn); ok {
-			cols = append(cols, c.Name())
-			return false
-		}
-		return true
-	})
-	return cols, nil
 }

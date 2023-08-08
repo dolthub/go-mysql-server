@@ -3,6 +3,7 @@ package planbuilder
 import (
 	"bufio"
 	"fmt"
+	"github.com/dolthub/vitess/go/sqltypes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -1719,134 +1720,217 @@ Project
 	}
 }
 
-func newTestCatalog() *testCatalog {
-	cat := &testCatalog{
-		databases: make(map[string]sql.Database),
-		tables:    make(map[string]sql.Table),
+func newTestCatalog() *sql.MapCatalog {
+	cat := &sql.MapCatalog{
+		Databases: make(map[string]sql.Database),
+		Tables:    make(map[string]sql.Table),
 	}
 
-	cat.tables["xy"] = memory.NewTable("xy", sql.NewPrimaryKeySchema(sql.Schema{
+	cat.Tables["xy"] = memory.NewTable("xy", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "x", Type: types.Int64},
 		{Name: "y", Type: types.Int64},
 		{Name: "z", Type: types.Int64},
 	}, 0), nil)
-	cat.tables["uv"] = memory.NewTable("uv", sql.NewPrimaryKeySchema(sql.Schema{
+	cat.Tables["uv"] = memory.NewTable("uv", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "u", Type: types.Int64},
 		{Name: "v", Type: types.Int64},
 		{Name: "w", Type: types.Int64},
 	}, 0), nil)
 
 	mydb := memory.NewDatabase("mydb")
-	mydb.AddTable("xy", cat.tables["xy"])
-	mydb.AddTable("uv", cat.tables["uv"])
-	cat.databases["mydb"] = mydb
-	cat.funcs = function.NewRegistry()
+	mydb.AddTable("xy", cat.Tables["xy"])
+	mydb.AddTable("uv", cat.Tables["uv"])
+	cat.Databases["mydb"] = mydb
+	cat.Funcs = function.NewRegistry()
 	return cat
 }
 
-type testCatalog struct {
-	tables    map[string]sql.Table
-	funcs     map[string]sql.Function
-	tabFuncs  map[string]sql.TableFunction
-	databases map[string]sql.Database
-}
-
-var _ sql.Catalog = (*testCatalog)(nil)
-
-func (t *testCatalog) Function(ctx *sql.Context, name string) (sql.Function, error) {
-	if f, ok := t.funcs[name]; ok {
-		return f, nil
+func TestParseColumnTypeString(t *testing.T) {
+	tests := []struct {
+		columnType      string
+		expectedSqlType sql.Type
+	}{
+		{
+			"tinyint",
+			types.Int8,
+		},
+		{
+			"SMALLINT",
+			types.Int16,
+		},
+		{
+			"MeDiUmInT",
+			types.Int24,
+		},
+		{
+			"INT",
+			types.Int32,
+		},
+		{
+			"BIGINT",
+			types.Int64,
+		},
+		{
+			"TINYINT UNSIGNED",
+			types.Uint8,
+		},
+		{
+			"SMALLINT UNSIGNED",
+			types.Uint16,
+		},
+		{
+			"MEDIUMINT UNSIGNED",
+			types.Uint24,
+		},
+		{
+			"INT UNSIGNED",
+			types.Uint32,
+		},
+		{
+			"BIGINT UNSIGNED",
+			types.Uint64,
+		},
+		{
+			"BOOLEAN",
+			types.Int8,
+		},
+		{
+			"FLOAT",
+			types.Float32,
+		},
+		{
+			"DOUBLE",
+			types.Float64,
+		},
+		{
+			"REAL",
+			types.Float64,
+		},
+		{
+			"DECIMAL",
+			types.MustCreateColumnDecimalType(10, 0),
+		},
+		{
+			"DECIMAL(22)",
+			types.MustCreateColumnDecimalType(22, 0),
+		},
+		{
+			"DECIMAL(55, 13)",
+			types.MustCreateColumnDecimalType(55, 13),
+		},
+		{
+			"DEC(34, 2)",
+			types.MustCreateColumnDecimalType(34, 2),
+		},
+		{
+			"FIXED(4, 4)",
+			types.MustCreateColumnDecimalType(4, 4),
+		},
+		{
+			"BIT(31)",
+			types.MustCreateBitType(31),
+		},
+		{
+			"TINYBLOB",
+			types.TinyBlob,
+		},
+		{
+			"BLOB",
+			types.Blob,
+		},
+		{
+			"MEDIUMBLOB",
+			types.MediumBlob,
+		},
+		{
+			"LONGBLOB",
+			types.LongBlob,
+		},
+		{
+			"TINYTEXT",
+			types.TinyText,
+		},
+		{
+			"TEXT",
+			types.Text,
+		},
+		{
+			"MEDIUMTEXT",
+			types.MediumText,
+		},
+		{
+			"LONGTEXT",
+			types.LongText,
+		},
+		{
+			"CHAR(5)",
+			types.MustCreateStringWithDefaults(sqltypes.Char, 5),
+		},
+		{
+			"VARCHAR(255)",
+			types.MustCreateStringWithDefaults(sqltypes.VarChar, 255),
+		},
+		{
+			"VARCHAR(300) COLLATE latin1_german2_ci",
+			types.MustCreateString(sqltypes.VarChar, 300, sql.Collation_latin1_german2_ci),
+		},
+		{
+			"BINARY(6)",
+			types.MustCreateBinary(sqltypes.Binary, 6),
+		},
+		{
+			"VARBINARY(256)",
+			types.MustCreateBinary(sqltypes.VarBinary, 256),
+		},
+		{
+			"YEAR",
+			types.Year,
+		},
+		{
+			"DATE",
+			types.Date,
+		},
+		{
+			"TIME",
+			types.Time,
+		},
+		{
+			"TIMESTAMP",
+			types.Timestamp,
+		},
+		{
+			"DATETIME",
+			types.Datetime,
+		},
 	}
-	return nil, fmt.Errorf("func not found")
-}
 
-func (t *testCatalog) TableFunction(ctx *sql.Context, name string) (sql.TableFunction, error) {
-	if f, ok := t.tabFuncs[name]; ok {
-		return f, nil
+	cat := newTestCatalog()
+	for _, test := range tests {
+		ctx := sql.NewEmptyContext()
+		ctx.SetCurrentDatabase("mydb")
+		t.Run("parse "+test.columnType, func(t *testing.T) {
+			res, err := ParseColumnTypeString(ctx, cat, test.columnType)
+			require.NoError(t, err)
+			if collatedType, ok := res.(sql.TypeWithCollation); ok {
+				if collatedType.Collation() == sql.Collation_Unspecified {
+					res, err = collatedType.WithNewCollation(sql.Collation_Default)
+					require.NoError(t, err)
+				}
+			}
+			require.Equal(t, test.expectedSqlType, res)
+		})
+		t.Run("round trip "+test.columnType, func(t *testing.T) {
+			str := test.expectedSqlType.String()
+			typ, err := ParseColumnTypeString(ctx, cat, str)
+			require.NoError(t, err)
+			if collatedType, ok := typ.(sql.TypeWithCollation); ok {
+				if collatedType.Collation() == sql.Collation_Unspecified {
+					typ, err = collatedType.WithNewCollation(sql.Collation_Default)
+					require.NoError(t, err)
+				}
+			}
+			require.Equal(t, test.expectedSqlType, typ)
+			require.Equal(t, typ.String(), str)
+		})
 	}
-	return nil, fmt.Errorf("table func not found")
-}
-
-func (t *testCatalog) ExternalStoredProcedure(ctx *sql.Context, name string, numOfParams int) (*sql.ExternalStoredProcedureDetails, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (t *testCatalog) ExternalStoredProcedures(ctx *sql.Context, name string) ([]sql.ExternalStoredProcedureDetails, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (t *testCatalog) AllDatabases(ctx *sql.Context) []sql.Database {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (t *testCatalog) HasDatabase(ctx *sql.Context, name string) bool {
-	_, ok := t.databases[name]
-	return ok
-}
-
-func (t *testCatalog) Database(ctx *sql.Context, name string) (sql.Database, error) {
-	if f, ok := t.databases[name]; ok {
-		return f, nil
-	}
-	return nil, fmt.Errorf("database not found")
-}
-
-func (t *testCatalog) CreateDatabase(ctx *sql.Context, dbName string, collation sql.CollationID) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (t *testCatalog) RemoveDatabase(ctx *sql.Context, dbName string) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (t *testCatalog) Table(ctx *sql.Context, dbName, tableName string) (sql.Table, sql.Database, error) {
-	if db, ok := t.databases[dbName]; ok {
-		if t, ok, err := db.GetTableInsensitive(ctx, tableName); ok {
-			return t, db, nil
-		} else {
-			return nil, nil, err
-		}
-	}
-	return nil, nil, fmt.Errorf("table not found")
-}
-
-func (t *testCatalog) TableAsOf(ctx *sql.Context, dbName, tableName string, asOf interface{}) (sql.Table, sql.Database, error) {
-	return t.Table(ctx, dbName, tableName)
-}
-
-func (t *testCatalog) DatabaseTable(ctx *sql.Context, db sql.Database, tableName string) (sql.Table, sql.Database, error) {
-	if t, ok, err := db.GetTableInsensitive(ctx, tableName); ok {
-		return t, db, nil
-	} else {
-		return nil, nil, err
-	}
-}
-
-func (t *testCatalog) DatabaseTableAsOf(ctx *sql.Context, db sql.Database, tableName string, asOf interface{}) (sql.Table, sql.Database, error) {
-	return t.DatabaseTable(ctx, db, tableName)
-}
-
-func (t *testCatalog) RegisterFunction(ctx *sql.Context, fns ...sql.Function) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (t *testCatalog) LockTable(ctx *sql.Context, table string) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (t *testCatalog) UnlockTables(ctx *sql.Context, id uint32) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (t *testCatalog) Statistics(ctx *sql.Context) (sql.StatsReadWriter, error) {
-	//TODO implement me
-	panic("implement me")
 }

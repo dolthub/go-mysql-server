@@ -43,7 +43,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db/serial"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -2481,7 +2480,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		assertSchemasEqualWithDefaults(t, sql.Schema{
 			{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
 			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
-			{Name: "i2", Type: types.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
+			{Name: "i2", Type: types.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
 		}, tbl.Schema())
 
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM mytable ORDER BY i", []sql.Row{
@@ -2501,7 +2500,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 			{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
 			{Name: "s2", Type: types.Text, Source: "mytable", Comment: "hello", Nullable: true},
 			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
-			{Name: "i2", Type: types.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
+			{Name: "i2", Type: types.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
 		}, tbl.Schema())
 
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM mytable ORDER BY i", []sql.Row{
@@ -2533,11 +2532,11 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		require.NoError(err)
 		require.True(ok)
 		assertSchemasEqualWithDefaults(t, sql.Schema{
-			{Name: "s3", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
+			{Name: "s3", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
 			{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
 			{Name: "s2", Type: types.Text, Source: "mytable", Comment: "hello", Nullable: true},
 			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
-			{Name: "i2", Type: types.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
+			{Name: "i2", Type: types.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
 		}, tbl.Schema())
 
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM mytable ORDER BY i", []sql.Row{
@@ -2555,12 +2554,12 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		require.NoError(err)
 		require.True(ok)
 		assertSchemasEqualWithDefaults(t, sql.Schema{
-			{Name: "s3", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
+			{Name: "s3", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
 			{Name: "s4", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 1), Source: "mytable"},
 			{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
 			{Name: "s2", Type: types.Text, Source: "mytable", Comment: "hello", Nullable: true},
 			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
-			{Name: "i2", Type: types.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
+			{Name: "i2", Type: types.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
 		}, tbl.Schema())
 
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM mytable ORDER BY i", []sql.Row{
@@ -2578,12 +2577,12 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		require.NoError(err)
 		require.True(ok)
 		assertSchemasEqualWithDefaults(t, sql.Schema{
-			{Name: "s3", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
+			{Name: "s3", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
 			{Name: "s4", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 1), Source: "mytable"},
 			{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
 			{Name: "s2", Type: types.Text, Source: "mytable", Comment: "hello", Nullable: true},
 			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
-			{Name: "i2", Type: types.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
+			{Name: "i2", Type: types.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
 			{Name: "s5", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 26), Source: "mytable", Nullable: true},
 			{Name: "s6", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 27), Source: "mytable", Nullable: true},
 		}, tbl.Schema())
@@ -2614,12 +2613,12 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		require.NoError(err)
 		require.True(ok)
 		assertSchemasEqualWithDefaults(t, sql.Schema{
-			{Name: "s3", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
+			{Name: "s3", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
 			{Name: "s4", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 1), Source: "mytable"},
 			{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
 			{Name: "s2", Type: types.Text, Source: "mytable", Comment: "hello", Nullable: true},
 			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
-			{Name: "i2", Type: types.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
+			{Name: "i2", Type: types.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
 			{Name: "s5", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 26), Source: "mytable", Nullable: true},
 			{Name: "s6", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 27), Source: "mytable", Nullable: true},
 			{Name: "s10", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 26), Source: "mytable", Nullable: true},

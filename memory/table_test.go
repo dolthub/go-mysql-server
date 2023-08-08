@@ -16,6 +16,7 @@ package memory_test
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"io"
 	"testing"
 
@@ -24,7 +25,6 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -129,9 +129,9 @@ var tests = []struct {
 	{
 		name: "test",
 		schema: sql.NewPrimaryKeySchema(sql.Schema{
-			&sql.Column{Name: "col1", Source: "test", Type: types.Text, Nullable: false, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, types.Text, false)},
-			&sql.Column{Name: "col2", Source: "test", Type: types.Int32, Nullable: false, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", types.Int32, false)},
-			&sql.Column{Name: "col3", Source: "test", Type: types.Int64, Nullable: false, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", types.Int64, false)},
+			&sql.Column{Name: "col1", Source: "test", Type: types.Text, Nullable: false, Default: planbuilder.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, types.Text, false)},
+			&sql.Column{Name: "col2", Source: "test", Type: types.Int32, Nullable: false, Default: planbuilder.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", types.Int32, false)},
+			&sql.Column{Name: "col3", Source: "test", Type: types.Int64, Nullable: false, Default: planbuilder.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", types.Int64, false)},
 		}),
 		numPartitions: 2,
 		rows: []sql.Row{

@@ -15,6 +15,7 @@
 package rowexec
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,7 +24,6 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	. "github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -44,28 +44,28 @@ func TestShowIndexes(t *testing.T) {
 		{
 			name: "test1",
 			table: memory.NewTable("test1", sql.NewPrimaryKeySchema(sql.Schema{
-				&sql.Column{Name: "foo", Type: types.Int32, Source: "test1", Default: parse.MustStringToColumnDefaultValue(ctx, "0", types.Int32, false), Nullable: false},
+				&sql.Column{Name: "foo", Type: types.Int32, Source: "test1", Default: planbuilder.MustStringToColumnDefaultValue(ctx, "0", types.Int32, false), Nullable: false},
 			}), db.GetForeignKeyCollection()),
 		},
 		{
 			name: "test2",
 			table: memory.NewTable("test2", sql.NewPrimaryKeySchema(sql.Schema{
-				&sql.Column{Name: "bar", Type: types.Int64, Source: "test2", Default: parse.MustStringToColumnDefaultValue(ctx, "0", types.Int64, true), Nullable: true},
-				&sql.Column{Name: "rab", Type: types.Int64, Source: "test2", Default: parse.MustStringToColumnDefaultValue(ctx, "0", types.Int64, false), Nullable: false},
+				&sql.Column{Name: "bar", Type: types.Int64, Source: "test2", Default: planbuilder.MustStringToColumnDefaultValue(ctx, "0", types.Int64, true), Nullable: true},
+				&sql.Column{Name: "rab", Type: types.Int64, Source: "test2", Default: planbuilder.MustStringToColumnDefaultValue(ctx, "0", types.Int64, false), Nullable: false},
 			}), db.GetForeignKeyCollection()),
 		},
 		{
 			name: "test3",
 			table: memory.NewTable("test3", sql.NewPrimaryKeySchema(sql.Schema{
-				&sql.Column{Name: "baz", Type: types.Text, Source: "test3", Default: parse.MustStringToColumnDefaultValue(ctx, `""`, types.Text, false), Nullable: false},
-				&sql.Column{Name: "zab", Type: types.Int32, Source: "test3", Default: parse.MustStringToColumnDefaultValue(ctx, "0", types.Int32, true), Nullable: true},
-				&sql.Column{Name: "bza", Type: types.Int64, Source: "test3", Default: parse.MustStringToColumnDefaultValue(ctx, "0", types.Int64, true), Nullable: true},
+				&sql.Column{Name: "baz", Type: types.Text, Source: "test3", Default: planbuilder.MustStringToColumnDefaultValue(ctx, `""`, types.Text, false), Nullable: false},
+				&sql.Column{Name: "zab", Type: types.Int32, Source: "test3", Default: planbuilder.MustStringToColumnDefaultValue(ctx, "0", types.Int32, true), Nullable: true},
+				&sql.Column{Name: "bza", Type: types.Int64, Source: "test3", Default: planbuilder.MustStringToColumnDefaultValue(ctx, "0", types.Int64, true), Nullable: true},
 			}), db.GetForeignKeyCollection()),
 		},
 		{
 			name: "test4",
 			table: memory.NewTable("test4", sql.NewPrimaryKeySchema(sql.Schema{
-				&sql.Column{Name: "oof", Type: types.Text, Source: "test4", Default: parse.MustStringToColumnDefaultValue(ctx, `""`, types.Text, false), Nullable: false},
+				&sql.Column{Name: "oof", Type: types.Text, Source: "test4", Default: planbuilder.MustStringToColumnDefaultValue(ctx, `""`, types.Text, false), Nullable: false},
 			}), db.GetForeignKeyCollection()),
 		},
 	}

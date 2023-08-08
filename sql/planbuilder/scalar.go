@@ -59,7 +59,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		c := b.buildScalar(inScope, v.Expr)
 		return expression.NewNot(c)
 	case *ast.SQLVal:
-		return b.convertVal(v)
+		return b.ConvertVal(v)
 	case ast.BoolVal:
 		return expression.NewLiteral(bool(v), types.Boolean)
 	case *ast.NullVal:
@@ -730,7 +730,7 @@ func (b *Builder) convertInt(value string, base int) *expression.Literal {
 	return nil
 }
 
-func (b *Builder) convertVal(v *ast.SQLVal) sql.Expression {
+func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 	switch v.Type {
 	case ast.StrVal:
 		return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))

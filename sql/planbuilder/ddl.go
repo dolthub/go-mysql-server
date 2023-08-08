@@ -1297,3 +1297,17 @@ func (b *Builder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
 	}
 	return outScope
 }
+
+func ParseColumnTypeString(ctx *sql.Context, cat sql.Catalog, columnType string) (sql.Type, error) {
+	createStmt := fmt.Sprintf("CREATE TABLE a(b %s)", columnType)
+	node, err := Parse(ctx, cat, createStmt)
+	if err != nil {
+		return nil, err
+	}
+	ddl, ok := node.(*plan.CreateTable)
+	if !ok {
+		return nil, fmt.Errorf("expected translation from type string to sql type has returned an unexpected result")
+	}
+	// If we successfully created a CreateTable plan with an empty schema then something has gone horribly wrong, so we'll panic
+	return ddl.CreateSchema.Schema[0].Type, nil
+}

@@ -33,7 +33,6 @@ import (
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -389,10 +388,8 @@ func injectBindVarsAndPrepare(
 			case sqlparser.HexNum, sqlparser.HexVal:
 				return false, nil
 			}
-			e, err := parse.ConvertVal(ctx, n)
-			if err != nil {
-				return false, err
-			}
+			b := planbuilder.New(ctx, sql.MapCatalog{})
+			e := b.ConvertVal(n)
 			val, _, err := e.Type().Promote().Convert(e.(*expression.Literal).Value())
 			if err != nil {
 				skipTypeConv = true

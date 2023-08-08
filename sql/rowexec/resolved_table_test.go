@@ -16,13 +16,13 @@ package rowexec
 
 import (
 	"context"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"io"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	. "github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -69,9 +69,9 @@ func TestResolvedTableCancelled(t *testing.T) {
 
 func newTableTest(source string) sql.Table {
 	schema := []*sql.Column{
-		{Name: "col1", Type: types.Int32, Source: source, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", types.Int32, false), Nullable: false},
-		{Name: "col2", Type: types.Int64, Source: source, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", types.Int64, false), Nullable: false},
-		{Name: "col3", Type: types.Text, Source: source, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, types.Text, false), Nullable: false},
+		{Name: "col1", Type: types.Int32, Source: source, Default: planbuilder.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", types.Int32, false), Nullable: false},
+		{Name: "col2", Type: types.Int64, Source: source, Default: planbuilder.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", types.Int64, false), Nullable: false},
+		{Name: "col3", Type: types.Text, Source: source, Default: planbuilder.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, types.Text, false), Nullable: false},
 	}
 
 	keys := [][]byte{

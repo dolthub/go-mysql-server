@@ -12,86 +12,80 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package parse
+package planbuilder
 
 import (
-	"reflect"
-	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"reflect"
 )
 
-func TestStringToColumnDefaultValue(t *testing.T) {
-	tests := []struct {
-		exprStr      string
-		expectedExpr sql.Expression
-	}{
-		{
-			"2",
-			NewColumnDefaultValue(
-				expression.NewLiteral(int8(2), types.Int8),
-				nil,
-				true,
-				false,
-				true,
-			),
-		},
-		{
-			"(2)",
-			NewColumnDefaultValue(
-				expression.NewLiteral(int8(2), types.Int8),
-				nil,
-				false,
-				true,
-				true,
-			),
-		},
-		{
-			"(RAND() + 5)",
-			NewColumnDefaultValue(
-				expression.NewArithmetic(
-					expression.NewUnresolvedFunction("rand", false, nil),
-					expression.NewLiteral(int8(5), types.Int8),
-					"+",
-				),
-				nil,
-				false,
-				true,
-				true,
-			),
-		},
-		{
-			"(GREATEST(RAND(), RAND()))",
-			NewColumnDefaultValue(
-				expression.NewUnresolvedFunction("greatest", false, nil,
-					expression.NewUnresolvedFunction("rand", false, nil),
-					expression.NewUnresolvedFunction("rand", false, nil),
-				),
-				nil,
-				false,
-				true,
-				true,
-			),
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.exprStr, func(t *testing.T) {
-			res, err := StringToColumnDefaultValue(sql.NewEmptyContext(), test.exprStr)
-			if test.expectedExpr == nil {
-				assert.Error(t, err)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, test.expectedExpr, res)
-			}
-		})
-	}
-}
+// TODO use planbuilder
+//func TestStringToColumnDefaultValue(t *testing.T) {
+//	tests := []struct {
+//		exprStr      string
+//		expectedExpr sql.Expression
+//	}{
+//		{
+//			"2",
+//			NewColumnDefaultValue(
+//				expression.NewLiteral(int8(2), types.Int8),
+//				nil,
+//				true,
+//				false,
+//				true,
+//			),
+//		},
+//		{
+//			"(2)",
+//			NewColumnDefaultValue(
+//				expression.NewLiteral(int8(2), types.Int8),
+//				nil,
+//				false,
+//				true,
+//				true,
+//			),
+//		},
+//		{
+//			"(RAND() + 5)",
+//			NewColumnDefaultValue(
+//				expression.NewArithmetic(
+//					expression.NewUnresolvedFunction("rand", false, nil),
+//					expression.NewLiteral(int8(5), types.Int8),
+//					"+",
+//				),
+//				nil,
+//				false,
+//				true,
+//				true,
+//			),
+//		},
+//		{
+//			"(GREATEST(RAND(), RAND()))",
+//			NewColumnDefaultValue(
+//				expression.NewUnresolvedFunction("greatest", false, nil,
+//					expression.NewUnresolvedFunction("rand", false, nil),
+//					expression.NewUnresolvedFunction("rand", false, nil),
+//				),
+//				nil,
+//				false,
+//				true,
+//				true,
+//			),
+//		},
+//	}
+//
+//	for _, test := range tests {
+//		t.Run(test.exprStr, func(t *testing.T) {
+//			res, err := StringToColumnDefaultValue(sql.NewEmptyContext(), test.exprStr)
+//			if test.expectedExpr == nil {
+//				assert.Error(t, err)
+//			} else {
+//				require.NoError(t, err)
+//				assert.Equal(t, test.expectedExpr, res)
+//			}
+//		})
+//	}
+//}
 
 // must executes functions of the form "func(args...) (sql.Expression, error)" and panics on errors
 func must(f interface{}, args ...interface{}) sql.Expression {

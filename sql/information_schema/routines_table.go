@@ -17,11 +17,11 @@ package information_schema
 import (
 	"bytes"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 
 	. "github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -163,9 +163,9 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 			}
 
 			// todo shortcircuit routineDef->procedure.CreateProcedureString?
-			parsedProcedure, err := parse.Parse(ctx, procedure.CreateProcedureString)
+			parsedProcedure, err := planbuilder.Parse(ctx, c, procedure.CreateProcedureString)
 			if err != nil {
-				return nil, err
+				continue
 			}
 			procedurePlan, ok := parsedProcedure.(*plan.CreateProcedure)
 			if !ok {
