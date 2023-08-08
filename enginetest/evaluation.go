@@ -287,9 +287,6 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, harnes
 		require.NoError(err)
 	}
 
-	//e.Analyzer.Verbose = true
-	//e.Analyzer.Debug = true
-
 	sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
 	require.NoError(err, "Unexpected error for query %s: %s", q, err)
 
@@ -378,10 +375,7 @@ func injectBindVarsAndPrepare(
 	var bindCnt int
 	var foundBindVar bool
 	var skipTypeConv bool
-	//var skipBegin bool
 	err = sqlparser.Walk(func(n sqlparser.SQLNode) (kontinue bool, err error) {
-		// match SELECT, FILTER, ORDER BY, JOIN COND, AS OF
-		// match expressions with children generally?
 		switch n := n.(type) {
 		case *sqlparser.SQLVal:
 			switch n.Type {
@@ -400,32 +394,6 @@ func injectBindVarsAndPrepare(
 				skipTypeConv = true
 				return false, nil
 			}
-			//switch n.Type {
-			//case sqlparser.IntVal:
-			//	bindVar = sqltypes.Int64BindVariable(e.(*expression.Literal).Value().(int64))
-			//case sqlparser.FloatVal:
-			//	//typ = querypb.Type_FLOAT64
-			//	bindVar = sqltypes.Float64BindVariable(e.(*expression.Literal).Value().(float64))
-			////case sqlparser.HexNum:
-			////	quote = true
-			////	typ = querypb.Type_BLOB
-			//case sqlparser.HexVal:
-			//	val, err := n.HexDecode()
-			//	if err != nil {
-			//		panic(err)
-			//	}
-			//	//typ = querypb.Type_BLOB
-			//	bindVar.Value = []byte("'" + string(val) + "'")
-			//case sqlparser.BitVal:
-			//	//typ = querypb.Type_UINT64
-			//case sqlparser.StrVal:
-			//	//typ = querypb.Type_VARCHAR
-			//	//bindVar.Value = []byte(fmt.Sprintf("'%s'", n.Val))
-			//	bindVar = sqltypes.StringBindVariable(e.(*expression.Literal).Value().(string))
-			//
-			//default:
-			//	return true, nil
-			//}
 			varName := fmt.Sprintf("v%d", bindCnt)
 			bindVars[varName] = bindVar
 			n.Type = sqlparser.ValArg
@@ -433,8 +401,6 @@ func injectBindVarsAndPrepare(
 			bindCnt++
 		case *sqlparser.Insert:
 			isInsert = true
-		case *sqlparser.Begin:
-			//skipBegin = true
 		default:
 		}
 		return true, nil
@@ -448,7 +414,6 @@ func injectBindVarsAndPrepare(
 
 	buf := sqlparser.NewTrackedBuffer(nil)
 	parsed.Format(buf)
-	//print(buf.String())
 	e.PreparedDataCache.CacheStmt(ctx.Session.ID(), buf.String(), parsed)
 
 	_, isDatabaser := resPlan.(sql.Databaser)
@@ -467,44 +432,6 @@ func injectBindVarsAndPrepare(
 	if isDatabaser && !isInsert {
 		return q, nil, nil
 	}
-
-	//insertBindings := func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-	//	switch e := expr.(type) {
-	//	case *expression.Literal:
-	//		varName := fmt.Sprintf("v%d", bindCnt)
-	//		val, err := sql.ConvertToValue(e.Value())
-	//		if err != nil {
-	//			return e, transform.SameTree, err
-	//		}
-	//		bindVars[varName] = &querypb.BindVariable{
-	//			Value: val.Val,
-	//			Type:  val.Typ,
-	//		}
-	//		bindCnt++
-	//		return expression.NewBindVar(varName), transform.NewTree, nil
-	//	case *expression.BindVar:
-	//		if _, ok := bindVars[e.Name]; ok {
-	//			return expr, transform.SameTree, nil
-	//		}
-	//		foundBindVar = true
-	//		return expr, transform.NewTree, nil
-	//	default:
-	//		return expr, transform.SameTree, nil
-	//	}
-	//}
-	//bound, _, err := transform.NodeWithOpaque(resPlan, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
-	//	switch n := node.(type) {
-	//	case *plan.InsertInto:
-	//		newSource, _, err := transform.NodeExprs(n.Source, insertBindings)
-	//		if err != nil {
-	//			return nil, transform.SameTree, err
-	//		}
-	//		return n.WithSource(newSource), transform.NewTree, nil
-	//	default:
-	//		return transform.NodeExprs(n, insertBindings)
-	//	}
-	//	return node, transform.SameTree, nil
-	//})
 
 	if foundBindVar {
 		t.Skip()
@@ -528,8 +455,6 @@ func runQueryPreparedWithCtx(
 			return nil, nil, err
 		}
 	}
-
-	//p, _ := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), q)
 
 	sch, iter, err := e.QueryNodeWithBindings(ctx, q, bindVars)
 	if err != nil {

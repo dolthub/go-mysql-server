@@ -875,7 +875,6 @@ func (t TestProvider) TableFunction(_ *sql.Context, name string) (sql.TableFunct
 }
 
 func TestTimestampBindingsCanBeConverted(t *testing.T) {
-	// TODO: prepareds required
 	db, close := newDatabase()
 	defer close()
 
@@ -889,7 +888,6 @@ func TestTimestampBindingsCanBeConverted(t *testing.T) {
 }
 
 func TestTimestampBindingsCanBeCompared(t *testing.T) {
-	// TODO: prepareds required
 	db, close := newDatabase()
 	defer close()
 

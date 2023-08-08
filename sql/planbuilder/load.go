@@ -15,7 +15,6 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
 	}
-	//table := b.resolveTable(d.Table.Name.String(), database.Name(), nil)
 
 	tableName := strings.ToLower(d.Table.Name.String())
 	destScope, ok := b.buildTablescan(inScope, dbName, tableName, nil)
