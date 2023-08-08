@@ -64,9 +64,15 @@ func FixFieldIndexes(scope *plan.Scope, logFn func(string, ...any), schema sql.S
 		switch e := e.(type) {
 		// For each GetField expression, re-index it with the appropriate index from the schema.
 		case *expression.GetField:
+			partial := -1
 			for i, col := range schema {
 				newIndex := scopeLen + i
 				if strings.EqualFold(e.Name(), col.Name) && strings.EqualFold(e.Table(), col.Source) {
+					if e.Table() == "" && e.Name() != col.Name {
+						// aliases with same lowered representation need to case-sensitive match
+						partial = newIndex
+						continue
+					}
 					if newIndex != e.Index() {
 						if logFn != nil {
 							logFn("Rewriting field %s.%s from index %d to %d", e.Table(), e.Name(), e.Index(), newIndex)
@@ -81,6 +87,21 @@ func FixFieldIndexes(scope *plan.Scope, logFn func(string, ...any), schema sql.S
 					}
 					return e, transform.SameTree, nil
 				}
+			}
+			if partial >= 0 {
+				if partial != e.Index() {
+					if logFn != nil {
+						logFn("Rewriting field %s.%s from index %d to %d", e.Table(), e.Name(), e.Index(), partial)
+					}
+					return expression.NewGetFieldWithTable(
+						partial,
+						e.Type(),
+						e.Table(),
+						e.Name(),
+						e.IsNullable(),
+					), transform.NewTree, nil
+				}
+				return e, transform.SameTree, nil
 			}
 
 			// If we didn't find the column in the schema of the node itself, look outward in surrounding scopes. Work
@@ -126,9 +147,33 @@ func Schemas(nodes []sql.Node) sql.Schema {
 }
 
 // FixFieldIndexesForExpressions transforms the expressions in the Node given, fixing the field indexes.
-func FixFieldIndexesForExpressions(logFn func(string, ...any), node sql.Node, scope *plan.Scope) (sql.Node, transform.TreeIdentity, error) {
-	if _, ok := node.(sql.Expressioner); !ok {
+func FixFieldIndexesForExpressions(ctx *sql.Context, logFn func(string, ...any), node sql.Node, scope *plan.Scope) (sql.Node, transform.TreeIdentity, error) {
+	ne, ok := node.(sql.Expressioner)
+	if !ok {
 		return node, transform.SameTree, nil
+	}
+
+	var sameF transform.TreeIdentity
+	if scope.InJoin() {
+		scopeSch := scope.Schema()
+		var newN sql.Node
+		var err error
+		newN, sameF, err = transform.OneNodeExprsWithNode(node, func(_ sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			fixed, same, err := FixFieldIndexes(nil, logFn, scopeSch, e)
+			if ErrFieldMissing.Is(err) {
+				return e, transform.SameTree, nil
+			}
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return fixed, same, nil
+		})
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		if !sameF {
+			node = newN
+		}
 	}
 
 	var schemas []sql.Schema
@@ -136,8 +181,17 @@ func FixFieldIndexesForExpressions(logFn func(string, ...any), node sql.Node, sc
 		schemas = append(schemas, child.Schema())
 	}
 
-	if len(schemas) < 1 {
-		return node, transform.SameTree, nil
+	if len(schemas) < 1 && ctx.Version == sql.VersionExperimental {
+		newExprs, same, err := FixFieldIndexesOnExpressions(scope, logFn, nil, ne.Expressions()...)
+		if same || err != nil {
+			return node, transform.SameTree, err
+		}
+		newNode, err := ne.WithExpressions(newExprs...)
+		if err != nil {
+			return node, transform.SameTree, nil
+		}
+		return newNode, transform.NewTree, err
+
 	}
 
 	n, sameC, err := transform.OneNodeExprsWithNode(node, func(_ sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
@@ -219,7 +273,7 @@ func FixFieldIndexesForTableNode(ctx *sql.Context, logFn func(string, ...any), n
 	})
 }
 
-func FixFieldIndexesForNode(logFn func(string, ...any), scope *plan.Scope, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+func FixFieldIndexesForNode(ctx *sql.Context, logFn func(string, ...any), scope *plan.Scope, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		ret := n
 		var err error
@@ -227,16 +281,25 @@ func FixFieldIndexesForNode(logFn func(string, ...any), scope *plan.Scope, n sql
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
 			scope := scope.NewScopeFromSubqueryAlias(n)
-			ret, sameN, err = FixFieldIndexesForExpressions(logFn, n, scope)
+			newQ, sameN, err := FixFieldIndexesForNode(ctx, logFn, scope, n.Child)
+			if err != nil || sameN {
+				return n, transform.SameTree, err
+			}
+			return n.WithChild(newQ), transform.NewTree, nil
+
 		default:
-			ret, sameN, err = FixFieldIndexesForExpressions(logFn, n, scope)
+			ret, sameN, err = FixFieldIndexesForExpressions(ctx, logFn, n, scope)
 		}
 		if err != nil {
 			return n, transform.SameTree, err
 		}
 		ret, sameE, err := transform.NodeExprs(ret, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if sq, ok := e.(*plan.Subquery); ok {
-				return FixFieldIndexes(scope, logFn, ret.Schema(), sq)
+				newQ, same, err := FixFieldIndexesForNode(ctx, logFn, scope.NewScopeFromSubqueryExpression(ret), sq.Query)
+				if err != nil || same {
+					return sq, transform.SameTree, err
+				}
+				return sq.WithQuery(newQ), transform.NewTree, nil
 			}
 			return e, transform.SameTree, nil
 		})

@@ -48,7 +48,7 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 		}
 	}
 
-	err = validateAutoIncrement(ct.CreateSchema.Schema, keyedColumns)
+	err = validateAutoIncrementModify(ct.CreateSchema.Schema, keyedColumns)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -59,7 +59,7 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	var sch sql.Schema
 	var indexes []string
-	var keyedColumns map[string]bool
+	keyedColumns := make(map[string]bool)
 	var err error
 	transform.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
@@ -102,15 +102,18 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	sch = sch.Copy() // Make a copy of the original schema to deal with any references to the original table.
 	initialSch := sch
 
+	addedColumn := false
+
 	// Need a TransformUp here because multiple of these statement types can be nested under a Block node.
 	// It doesn't look it, but this is actually an iterative loop over all the independent clauses in an ALTER statement
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	n, same, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch nn := n.(type) {
 		case *plan.ModifyColumn:
 			n, err := nn.WithTargetSchema(sch.Copy())
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
+
 			sch, err = validateModifyColumn(ctx, initialSch, sch, n.(*plan.ModifyColumn), keyedColumns)
 			if err != nil {
 				return nil, transform.SameTree, err
@@ -127,16 +130,17 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 			}
 			return n, transform.NewTree, nil
 		case *plan.AddColumn:
-			// TODO: can't `alter table add column j int unique auto_increment` as it ignores unique
-			// TODO: when above works, need to make sure unique index exists first then do what we did for modify
 			n, err := nn.WithTargetSchema(sch.Copy())
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			sch, err = validateAddColumn(initialSch, sch, n.(*plan.AddColumn), keyedColumns)
+
+			sch, err = validateAddColumn(initialSch, sch, n.(*plan.AddColumn))
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
+
+			addedColumn = true
 			return n, transform.NewTree, nil
 		case *plan.DropColumn:
 			n, err := nn.WithTargetSchema(sch.Copy())
@@ -147,12 +151,20 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
+			delete(keyedColumns, nn.Column)
+
 			return n, transform.NewTree, nil
 		case *plan.AlterIndex:
+			n, err := nn.WithTargetSchema(sch.Copy())
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
 			indexes, err = validateAlterIndex(ctx, initialSch, sch, n.(*plan.AlterIndex), indexes)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
+
+			keyedColumns = updateKeyedColumns(keyedColumns, nn)
 			return n, transform.NewTree, nil
 		case *plan.AlterPK:
 			n, err := nn.WithTargetSchema(sch.Copy())
@@ -187,6 +199,37 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 		}
 		return n, transform.SameTree, nil
 	})
+
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
+	// We can't evaluate auto-increment until the end of the analysis, since we break adding a new auto-increment unique
+	// column into two steps: first add the column, then create the index. If there was no index created, that's an error.
+	if addedColumn {
+		err = validateAutoIncrementAdd(ctx, sch, keyedColumns)
+		if err != nil {
+			return nil, false, err
+		}
+	}
+
+	return n, same, nil
+}
+
+// updateKeyedColumns updates the keyedColumns map based on the action of the AlterIndex node
+func updateKeyedColumns(keyedColumns map[string]bool, n *plan.AlterIndex) map[string]bool {
+	switch n.Action {
+	case plan.IndexAction_Create:
+		for _, col := range n.Columns {
+			keyedColumns[col.Name] = true
+		}
+	case plan.IndexAction_Drop:
+		for _, col := range n.Columns {
+			delete(keyedColumns, col.Name)
+		}
+	}
+
+	return keyedColumns
 }
 
 // validateRenameColumn checks that a DDL RenameColumn node can be safely executed (e.g. no collision with other
@@ -218,7 +261,7 @@ func validateRenameColumn(initialSch, sch sql.Schema, rc *plan.RenameColumn) (sq
 	return renameInSchema(sch, rc.ColumnName, rc.NewColumnName, nameable.Name()), nil
 }
 
-func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddColumn, keyedColumns map[string]bool) (sql.Schema, error) {
+func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddColumn) (sql.Schema, error) {
 	table := ac.Table
 	nameable := table.(sql.Nameable)
 
@@ -247,12 +290,6 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 		newSch = append(newSch, ac.Column().Copy())
 	}
 
-	// TODO: more validation possible to do here
-	err := validateAutoIncrement(newSch, keyedColumns)
-	if err != nil {
-		return nil, err
-	}
-
 	return newSch, nil
 }
 
@@ -269,7 +306,7 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 
 	newSch := replaceInSchema(schema, mc.NewColumn(), nameable.Name())
 
-	err := validateAutoIncrement(newSch, keyedColumns)
+	err := validateAutoIncrementModify(newSch, keyedColumns)
 	if err != nil {
 		return nil, err
 	}
@@ -291,6 +328,9 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 	}
 	indexes := ia.IndexesByTable(ctx, ctx.GetCurrentDatabase(), getTableName(table))
 	for _, index := range indexes {
+		if index.IsFullText() {
+			continue
+		}
 		prefixLengths := index.PrefixLengths()
 		for i, expr := range index.Expressions() {
 			col := plan.GetColumnFromIndexExpr(expr, getTable(table))
@@ -335,11 +375,18 @@ func validateColumnNotUsedInCheckConstraint(columnName string, checks sql.CheckC
 	var err error
 	for _, check := range checks {
 		_ = transform.InspectExpr(check.Expr, func(e sql.Expression) bool {
-			if unresolvedColumn, ok := e.(*expression.UnresolvedColumn); ok {
-				if columnName == unresolvedColumn.Name() {
-					err = sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)
-					return true
-				}
+			var name string
+			switch e := e.(type) {
+			case *expression.UnresolvedColumn:
+				name = e.Name()
+			case *expression.GetField:
+				name = e.Name()
+			default:
+				return false
+			}
+			if strings.EqualFold(name, columnName) {
+				err = sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)
+				return true
 			}
 			return false
 		})
@@ -360,17 +407,24 @@ func validateColumnSafeToDropWithCheckConstraint(columnName string, checks sql.C
 		hasOtherCol := false
 		hasMatchingCol := false
 		_ = transform.InspectExpr(check.Expr, func(e sql.Expression) bool {
-			if unresolvedColumn, ok := e.(*expression.UnresolvedColumn); ok {
-				if columnName == unresolvedColumn.Name() {
-					if hasOtherCol {
-						err = sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)
-						return true
-					} else {
-						hasMatchingCol = true
-					}
+			var colName string
+			switch e := e.(type) {
+			case *expression.UnresolvedColumn:
+				colName = e.Name()
+			case *expression.GetField:
+				colName = e.Name()
+			default:
+				return false
+			}
+			if strings.EqualFold(columnName, colName) {
+				if hasOtherCol {
+					err = sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)
+					return true
 				} else {
-					hasOtherCol = true
+					hasMatchingCol = true
 				}
+			} else {
+				hasOtherCol = true
 			}
 			return false
 		})
@@ -576,7 +630,8 @@ func removeInSchema(sch sql.Schema, colName, tableName string) sql.Schema {
 	return schCopy
 }
 
-func validateAutoIncrement(schema sql.Schema, keyedColumns map[string]bool) error {
+// TODO: make this work for CREATE TABLE statements where there's a non-pk auto increment column
+func validateAutoIncrementModify(schema sql.Schema, keyedColumns map[string]bool) error {
 	seen := false
 	for _, col := range schema {
 		if col.AutoIncrement {
@@ -594,6 +649,30 @@ func validateAutoIncrement(schema sql.Schema, keyedColumns map[string]bool) erro
 				return sql.ErrInvalidAutoIncCols.New()
 			}
 			seen = true
+		}
+	}
+	return nil
+}
+
+func validateAutoIncrementAdd(ctx *sql.Context, schema sql.Schema, keyColumns map[string]bool) error {
+	seen := false
+	for _, col := range schema {
+		if col.AutoIncrement {
+			{
+				if !col.PrimaryKey && !keyColumns[col.Name] {
+					// AUTO_INCREMENT col must be a key
+					return sql.ErrInvalidAutoIncCols.New()
+				}
+				if col.Default != nil {
+					// AUTO_INCREMENT col cannot have default
+					return sql.ErrInvalidAutoIncCols.New()
+				}
+				if seen {
+					// there can be at most one AUTO_INCREMENT col
+					return sql.ErrInvalidAutoIncCols.New()
+				}
+				seen = true
+			}
 		}
 	}
 	return nil
@@ -618,9 +697,11 @@ func validateIndexes(ctx *sql.Context, tableSpec *plan.TableSpec) error {
 			if !ok {
 				return sql.ErrUnknownIndexColumn.New(idxCol.Name, idx.IndexName)
 			}
-			err := validatePrefixLength(ctx, schCol, idxCol)
-			if err != nil {
-				return err
+			if !idx.IsFullText() {
+				err := validatePrefixLength(ctx, schCol, idxCol)
+				if err != nil {
+					return err
+				}
 			}
 		}
 		if idx.Constraint == sql.IndexConstraint_Spatial {

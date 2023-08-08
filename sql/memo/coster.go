@@ -32,6 +32,8 @@ const (
 	degeneratePenalty = 2.0
 	optimisticJoinSel = .10
 	biasFactor        = 1e5
+
+	perKeyCostReductionFactor = 0.5
 )
 
 func NewDefaultCoster() Coster {
@@ -71,6 +73,14 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 		return c.costMergeJoin(ctx, n, s)
 	case *LookupJoin:
 		return c.costLookupJoin(ctx, n, s)
+	case *RangeHeapJoin:
+		return c.costRangeHeapJoin(ctx, n, s)
+	case *LateralCrossJoin:
+		return c.costLateralCrossJoin(ctx, n, s)
+	case *LateralInnerJoin:
+		return c.costLateralInnerJoin(ctx, n, s)
+	case *LateralLeftJoin:
+		return c.costLateralLeftJoin(ctx, n, s)
 	case *SemiJoin:
 		return c.costSemiJoin(ctx, n, s)
 	case *AntiJoin:
@@ -183,6 +193,34 @@ func (c *coster) costLookupJoin(_ *sql.Context, n *LookupJoin, _ sql.StatsReader
 	return l*r*sel*(cpuCostFactor+randIOCostFactor) - r*seqIOCostFactor, nil
 }
 
+func (c *coster) costRangeHeapJoin(_ *sql.Context, n *RangeHeapJoin, _ sql.StatsReader) (float64, error) {
+	l := n.Left.RelProps.card
+	r := n.Right.RelProps.card
+
+	// TODO: We can probably get a better estimate somehow.
+	expectedNumberOfOverlappingJoins := r * perKeyCostReductionFactor
+
+	return l * expectedNumberOfOverlappingJoins * (seqIOCostFactor), nil
+}
+
+func (c *coster) costLateralCrossJoin(ctx *sql.Context, n *LateralCrossJoin, _ sql.StatsReader) (float64, error) {
+	l := n.Left.RelProps.card
+	r := n.Right.RelProps.card
+	return ((l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor) * degeneratePenalty, nil
+}
+
+func (c *coster) costLateralInnerJoin(ctx *sql.Context, n *LateralInnerJoin, _ sql.StatsReader) (float64, error) {
+	l := n.Left.RelProps.card
+	r := n.Right.RelProps.card
+	return (l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor, nil
+}
+
+func (c *coster) costLateralLeftJoin(ctx *sql.Context, n *LateralLeftJoin, _ sql.StatsReader) (float64, error) {
+	l := n.Left.RelProps.card
+	r := n.Right.RelProps.card
+	return (l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor, nil
+}
+
 func (c *coster) costConcatJoin(_ *sql.Context, n *ConcatJoin, _ sql.StatsReader) (float64, error) {
 	l := n.Left.RelProps.card
 	var sel float64
@@ -204,17 +242,12 @@ func (c *coster) costDistinct(_ *sql.Context, n *Distinct, _ sql.StatsReader) (f
 	return n.Child.Cost * (cpuCostFactor + .75*memCostFactor), nil
 }
 
-// lookupJoinSelectivity estimates the selectivity of a join condition.
-// A join with no selectivity will return n x m rows. A join with a selectivity
-// of 1 will return n rows. It is possible for join selectivity to be below 1
-// if source table filters limit the number of rows returned by the left table.
+// lookupJoinSelectivity estimates the selectivity of a join condition with n lhs rows and m rhs rows.
+// A join with a selectivity of k will return k*(n*m) rows.
+// Special case: A join with a selectivity of 0 will return n rows.
 func lookupJoinSelectivity(l *Lookup) float64 {
-	var sel float64 = 1
-	if len(l.Index.SqlIdx().Expressions()) == len(l.KeyExprs) {
-		sel = 0.1
-	} else {
-		sel = math.Pow(0.5, float64(len(l.KeyExprs)))
-	}
+	sel := math.Pow(perKeyCostReductionFactor, float64(len(l.KeyExprs)))
+
 	if !l.Index.SqlIdx().IsUnique() {
 		return sel
 	}
@@ -337,6 +370,12 @@ func (c *carder) cardRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 		}
 		if jp.Op.IsPartial() {
 			return optimisticJoinSel * jp.Left.RelProps.card, nil
+		}
+		if jp.Op.IsLeftOuter() {
+			return math.Max(jp.Left.RelProps.card, optimisticJoinSel*jp.Left.RelProps.card*jp.Right.RelProps.card), nil
+		}
+		if jp.Op.IsRightOuter() {
+			return math.Max(jp.Right.RelProps.card, optimisticJoinSel*jp.Left.RelProps.card*jp.Right.RelProps.card), nil
 		}
 		return optimisticJoinSel * jp.Left.RelProps.card * jp.Right.RelProps.card, nil
 	case *Project:
@@ -486,6 +525,23 @@ func NewPartialBiasedCoster() Coster {
 func (c *partialBiasedCoster) EstimateCost(ctx *sql.Context, r RelExpr, s sql.StatsReader) (float64, error) {
 	switch r.(type) {
 	case *AntiJoin, *SemiJoin:
+		return -biasFactor, nil
+	default:
+		return c.costRel(ctx, r, s)
+	}
+}
+
+type rangeHeapBiasedCoster struct {
+	*coster
+}
+
+func NewRangeHeapBiasedCoster() Coster {
+	return &rangeHeapBiasedCoster{coster: &coster{}}
+}
+
+func (c *rangeHeapBiasedCoster) EstimateCost(ctx *sql.Context, r RelExpr, s sql.StatsReader) (float64, error) {
+	switch r.(type) {
+	case *RangeHeapJoin:
 		return -biasFactor, nil
 	default:
 		return c.costRel(ctx, r, s)

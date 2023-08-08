@@ -28,15 +28,13 @@ import (
 )
 
 func TestWindowPlanToIter(t *testing.T) {
-	n1, err := window.NewRowNumber().(sql.WindowAggregation).WithWindow(
+	n1 := window.NewRowNumber().(sql.WindowAggregation).WithWindow(
 		&sql.WindowDefinition{
 			PartitionBy: []sql.Expression{
 				expression.NewGetField(2, types.Int64, "c", false)},
 			OrderBy: nil,
 		})
-	require.NoError(t, err)
-
-	n2, err := aggregation.NewMax(
+	n2 := aggregation.NewMax(
 		expression.NewGetField(0, types.Int64, "a", false),
 	).WithWindow(
 		&sql.WindowDefinition{
@@ -44,9 +42,8 @@ func TestWindowPlanToIter(t *testing.T) {
 				expression.NewGetField(1, types.Int64, "b", false)},
 			OrderBy: nil,
 		})
-	require.NoError(t, err)
 	n3 := expression.NewGetField(0, types.Int64, "a", false)
-	n4, err := aggregation.NewMin(
+	n4 := aggregation.NewMin(
 		expression.NewGetField(0, types.Int64, "a", false),
 	).WithWindow(
 		&sql.WindowDefinition{
@@ -54,7 +51,6 @@ func TestWindowPlanToIter(t *testing.T) {
 				expression.NewGetField(1, types.Int64, "b", false)},
 			OrderBy: nil,
 		})
-	require.NoError(t, err)
 
 	fn1, err := n1.NewWindowFunction()
 	require.NoError(t, err)
@@ -77,9 +73,7 @@ func TestWindowPlanToIter(t *testing.T) {
 	require.Equal(t, len(outputOrdinals), 3)
 	accOrdinals := make([]int, 0)
 	for _, p := range outputOrdinals {
-		for _, v := range p {
-			accOrdinals = append(accOrdinals, v)
-		}
+		accOrdinals = append(accOrdinals, p...)
 	}
 	require.ElementsMatch(t, accOrdinals, []int{0, 1, 2, 3})
 

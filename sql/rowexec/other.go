@@ -107,21 +107,23 @@ func (b *BaseBuilder) buildFetch(ctx *sql.Context, n *plan.Fetch, row sql.Row) (
 	} else if err != nil {
 		return nil, err
 	}
-	if len(row) != len(n.InnerSet.Exprs) {
+	if len(row) != len(n.ToSet) {
 		return nil, sql.ErrFetchIncorrectCount.New()
 	}
+	if len(n.ToSet) == 0 {
+		return sql.RowsToRowIter(), io.EOF
+	}
+
 	if n.Sch == nil {
 		n.Sch = sch
-		for i, expr := range n.InnerSet.Exprs {
-			setExpr, ok := expr.(*expression.SetField)
-			if !ok {
-				return nil, fmt.Errorf("expected SetField expression in FETCH")
-			}
-			col := sch[i]
-			setExpr.Right = expression.NewGetField(i, col.Type, col.Name, col.Nullable)
-		}
 	}
-	return b.buildSet(ctx, n.InnerSet, row)
+	setExprs := make([]sql.Expression, len(n.ToSet))
+	for i, expr := range n.ToSet {
+		col := sch[i]
+		setExprs[i] = expression.NewSetField(expr, expression.NewGetField(i, col.Type, col.Name, col.Nullable))
+	}
+	set := plan.NewSet(setExprs)
+	return b.buildSet(ctx, set, row)
 }
 
 func (b *BaseBuilder) buildSignalName(ctx *sql.Context, n *plan.SignalName, row sql.Row) (sql.RowIter, error) {
@@ -250,7 +252,13 @@ func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (
 
 	selectSeen := false
 	for _, s := range n.Children() {
-		err := func() error {
+		// TODO: this should happen at iteration time, but this call is where the actual iteration happens
+		err := startTransaction(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		err = func() error {
 			rowCache, disposeFunc := ctx.Memory.NewRowsCache()
 			defer disposeFunc()
 

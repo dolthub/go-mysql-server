@@ -758,7 +758,7 @@ var (
 	ErrCharSetInvalidString = errors.NewKind("invalid string for character set `%s`: \"%s\"")
 
 	// ErrCharSetFailedToEncode is returned when a character set fails encoding
-	ErrCharSetFailedToEncode = errors.NewKind("failed to encode `%s`")
+	ErrCharSetFailedToEncode = errors.NewKind("failed to encode: `%s`, valid string: `%v`, snippet: `%s`")
 
 	// ErrCharSetUnknown is returned when the character set is not a recognized MySQL character set
 	ErrCharSetUnknown = errors.NewKind("Unknown character set: %v")
@@ -795,6 +795,54 @@ var (
 
 	// ErrDroppedJoinFilters is returned when we removed filters from a join, but failed to re-insert them
 	ErrDroppedJoinFilters = errors.NewKind("dropped filters from join, but failed to re-insert them")
+
+	// ErrInvalidIndexName is called when we try to create an index with an unusable name.
+	ErrInvalidIndexName = errors.NewKind("invalid index name '%s'")
+
+	// ErrStarUnsupported is called for * expressions seen outside: raw projections, count(*), and arrayagg(*)
+	ErrStarUnsupported = errors.NewKind(
+		"a '*' is in a context where it is not allowed.",
+	)
+
+	// ErrAggregationUnsupported is returned when the analyzer has failed
+	// to push down an Aggregation in an expression to a GroupBy node.
+	ErrAggregationUnsupported = errors.NewKind(
+		"an aggregation remained in the expression '%s' after analysis, outside of a node capable of evaluating it; this query is currently unsupported.",
+	)
+
+	ErrWindowUnsupported = errors.NewKind(
+		"a window function '%s' is in a context where it cannot be evaluated.",
+	)
+
+	// ErrFullTextNotSupported is returned when a table does not support the creation of Full-Text indexes.
+	ErrFullTextNotSupported = errors.NewKind("table does not support FULLTEXT indexes")
+
+	// ErrFullTextDatabaseNotSupported is returned when a database does not support the creation of Full-Text indexes.
+	ErrFullTextDatabaseNotSupported = errors.NewKind("database does not support FULLTEXT indexes")
+
+	// ErrIncompleteFullTextIntegration is returned when some portions of Full-Text are implemented but not all of them
+	ErrIncompleteFullTextIntegration = errors.NewKind("proper Full-Text support requires all interfaces to be implemented")
+
+	// ErrNoFullTextIndexFound is returned when the relevant Full-Text index cannot be found.
+	ErrNoFullTextIndexFound = errors.NewKind("no matching Full-Text index found on table `%s`")
+
+	// ErrFullTextMatchAgainstNotColumns is returned when the provided MATCH(...) columns are not column names.
+	ErrFullTextMatchAgainstNotColumns = errors.NewKind("match columns must be column names")
+
+	// ErrFullTextMatchAgainstSameTable is returned when the provided MATCH(...) columns belong to different tables.
+	ErrFullTextMatchAgainstSameTable = errors.NewKind("match columns must refer to the same table")
+
+	// ErrFullTextDifferentCollations is returned when creating a Full-Text index on columns that have different collations.
+	ErrFullTextDifferentCollations = errors.NewKind("Full-Text index columns must have the same collation")
+
+	// ErrFullTextMissingColumn is returned when a Full-Text column cannot be found.
+	ErrFullTextMissingColumn = errors.NewKind("Full-Text index could not find the column `%s`")
+
+	// ErrFullTextDuplicateColumn is returned when a Full-Text index declares the same column multiple times.
+	ErrFullTextDuplicateColumn = errors.NewKind("cannot have duplicate columns in a Full-Text index: `%s`")
+
+	// ErrFullTextInvalidColumnType is returned when a Full-Text index is declared on a non-text column.
+	ErrFullTextInvalidColumnType = errors.NewKind("all Full-Text columns must be declared on a non-binary text type")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the

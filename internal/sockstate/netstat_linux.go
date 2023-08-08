@@ -25,7 +25,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -70,7 +69,7 @@ func getProcName(s []byte) string {
 func (p *procFd) iterFdDir() {
 	// link name is of the form socket:[5860846]
 	fddir := path.Join(p.base, "/fd")
-	fi, err := ioutil.ReadDir(fddir)
+	fi, err := os.ReadDir(fddir)
 	if err != nil {
 		return
 	}
@@ -110,7 +109,7 @@ func (p *procFd) iterFdDir() {
 
 func extractProcInfo(sktab []sockTabEntry) {
 	const basedir = "/proc"
-	fi, err := ioutil.ReadDir(basedir)
+	fi, err := os.ReadDir(basedir)
 	if err != nil {
 		return
 	}
@@ -233,7 +232,7 @@ var isWSL = false
 var isProcBlocked = false
 
 func init() {
-	osRelease, err := ioutil.ReadFile("/proc/sys/kernel/osrelease")
+	osRelease, err := os.ReadFile("/proc/sys/kernel/osrelease")
 	if err == nil {
 		osReleaseString := strings.ToLower(string(osRelease))
 		if strings.Contains(osReleaseString, "microsoft") {

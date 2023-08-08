@@ -82,10 +82,11 @@ var JoinQueryTests = []QueryTest{
 			{1, 1},
 		},
 	},
-	{
-		Query:    `with cte1 as (select u, v from cte2 join ab on cte2.u = b), cte2 as (select u,v from uv join ab on u = b where u in (2,3)) select * from xy where (x) not in (select u from cte1) order by 1`,
-		Expected: []sql.Row{{0, 2}, {1, 0}, {3, 3}},
-	},
+	//{
+	// TODO this is invalid, should error
+	//	Query:    `with cte1 as (select u, v from cte2 join ab on cte2.u = b), cte2 as (select u,v from uv join ab on u = b where u in (2,3)) select * from xy where (x) not in (select u from cte1) order by 1`,
+	//	Expected: []sql.Row{{0, 2}, {1, 0}, {3, 3}},
+	//},
 	{
 		Query:    `SELECT (SELECT 1 FROM (SELECT x FROM xy INNER JOIN uv ON (x = u OR y = v) LIMIT 1) r) AS s FROM xy`,
 		Expected: []sql.Row{{1}, {1}, {1}, {1}},
@@ -751,5 +752,122 @@ var SkippedJoinQueryTests = []QueryTest{
 		// resolve error: table "xy" does not have column "x"
 		Query:    "select x from xy, uv join ab on x = a and u = -1",
 		Expected: []sql.Row{{}},
+	},
+}
+
+var LateralJoinScriptTests = []ScriptTest{
+	{
+		Name: "basic lateral join test",
+		SetUpScript: []string{
+			"create table t (i int primary key)",
+			"create table t1 (j int primary key)",
+			"insert into t values (1), (2), (3)",
+			"insert into t1 values (1), (4), (5)",
+		},
+		Assertions: []ScriptTestAssertion{
+			// Lateral Cross Join
+			{
+				Query: "select * from t, lateral (select * from t1 where t.i = t1.j) as tt order by t.i, tt.j;",
+				Expected: []sql.Row{
+					{1, 1},
+				},
+			},
+			{
+				Query: "select * from t, lateral (select * from t1 where t.i != t1.j) as tt order by tt.j, t.i;",
+				Expected: []sql.Row{
+					{2, 1},
+					{3, 1},
+					{1, 4},
+					{2, 4},
+					{3, 4},
+					{1, 5},
+					{2, 5},
+					{3, 5},
+				},
+			},
+			{
+				Query: "select * from t, t1, lateral (select * from t1 where t.i != t1.j) as tt where t.i > t1.j and t1.j = tt.j order by t.i, t1.j, tt.j;",
+				Expected: []sql.Row{
+					{2, 1, 1},
+					{3, 1, 1},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "select * from t, lateral (select * from t1 where t.i = t1.j) tt, lateral (select * from t1 where t.i != t1.j) as ttt order by t.i, tt.j, ttt.j;",
+				Expected: []sql.Row{
+					{1, 1, 4},
+					{1, 1, 5},
+				},
+			},
+			{
+				Skip:  true,
+				Query: `WITH RECURSIVE cte(x) AS (SELECT 1 union all SELECT x + 1 from cte where x < 5) SELECT * FROM cte, lateral (select * from t where t.i = cte.x) tt;`,
+				Expected: []sql.Row{
+					{1, 1},
+					{2, 2},
+					{3, 3},
+				},
+			},
+			{
+				Query: "select * from (select * from t, lateral (select * from t1 where t.i = t1.j) as tt order by t.i, tt.j) ttt;",
+				Expected: []sql.Row{
+					{1, 1},
+				},
+			},
+
+			// Lateral Inner Join
+			{
+				Query: "select * from t inner join lateral (select * from t1 where t.i != t1.j) as tt on t.i > tt.j",
+				Expected: []sql.Row{
+					{2, 1},
+					{3, 1},
+				},
+			},
+			{
+				Query: "select * from t inner join lateral (select * from t1 where t.i = t1.j) as tt on t.i = tt.j",
+				Expected: []sql.Row{
+					{1, 1},
+				},
+			},
+			{
+				Query:    "select * from t inner join lateral (select * from t1 where t.i = t1.j) as tt on t.i != tt.j",
+				Expected: []sql.Row{},
+			},
+
+			// Lateral Left Join
+			{
+				Query: "select * from t left join lateral (select * from t1 where t.i = t1.j) as tt on t.i = tt.j order by t.i, tt.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{2, nil},
+					{3, nil},
+				},
+			},
+			{
+				Query: "select * from t left join lateral (select * from t1 where t.i != t1.j) as tt on t.i + 1 = tt.j or t.i + 2 = tt.j order by t.i, tt.j",
+				Expected: []sql.Row{
+					{1, nil},
+					{2, 4},
+					{3, 4},
+					{3, 5},
+				},
+			},
+
+			// Lateral Right Join
+			{
+				Query:       "select * from t right join lateral (select * from t1 where t.i != t1.j) as tt on t.i > tt.j",
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+			{
+				Query: "select * from t right join lateral (select * from t1) as tt on t.i > tt.j order by t.i, tt.j",
+				Expected: []sql.Row{
+					{nil, 4},
+					{nil, 5},
+					{2, 1},
+					{3, 1},
+				},
+			},
+		},
 	},
 }

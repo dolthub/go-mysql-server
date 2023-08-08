@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -98,7 +97,7 @@ func (f *LastValue) IsNullable() bool {
 
 // Eval implements sql.Expression
 func (f *LastValue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return nil, analyzererrors.ErrWindowUnsupported.New(f.FunctionName())
+	return nil, sql.ErrWindowUnsupported.New(f.FunctionName())
 }
 
 // Children implements sql.Expression
@@ -128,10 +127,10 @@ func (f *LastValue) WithChildren(children ...sql.Expression) (sql.Expression, er
 }
 
 // WithWindow implements sql.WindowAggregation
-func (f *LastValue) WithWindow(window *sql.WindowDefinition) (sql.WindowAggregation, error) {
+func (f *LastValue) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	nr := *f
 	nr.window = window
-	return &nr, nil
+	return &nr
 }
 
 func (f *LastValue) NewWindowFunction() (sql.WindowFunction, error) {

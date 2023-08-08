@@ -46,7 +46,7 @@ var (
 	// ErrLengthTooLarge is thrown when a string's length is too large given the other parameters.
 	ErrLengthTooLarge    = errors.NewKind("length is %v but max allowed is %v")
 	ErrLengthBeyondLimit = errors.NewKind("string '%v' is too large for column '%v'")
-	ErrBinaryCollation   = errors.NewKind("binary types must have the binary collation")
+	ErrBinaryCollation   = errors.NewKind("binary types must have the binary collation: %v")
 
 	TinyText   = MustCreateStringWithDefaults(sqltypes.Text, TinyTextBlobMax)
 	Text       = MustCreateStringWithDefaults(sqltypes.Text, TextBlobMax)
@@ -99,7 +99,7 @@ func CreateString(baseType query.Type, length int64, collation sql.CollationID) 
 	switch baseType {
 	case sqltypes.Binary, sqltypes.VarBinary, sqltypes.Blob:
 		if collation != sql.Collation_binary {
-			return nil, ErrBinaryCollation.New(collation.Name, sql.Collation_binary)
+			return nil, ErrBinaryCollation.New(collation.Name())
 		}
 	}
 
@@ -491,7 +491,12 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 		}
 		encodedBytes, ok := resultCharset.Encoder().Encode(encodings.StringToBytes(v))
 		if !ok {
-			return sqltypes.Value{}, sql.ErrCharSetFailedToEncode.New(t.collation.CharacterSet().Name())
+			snippet := v
+			if len(snippet) > 50 {
+				snippet = snippet[:50]
+			}
+			snippet = strings2.ToValidUTF8(snippet, string(utf8.RuneError))
+			return sqltypes.Value{}, sql.ErrCharSetFailedToEncode.New(resultCharset.Name(), utf8.ValidString(v), snippet)
 		}
 		val = AppendAndSliceBytes(dest, encodedBytes)
 	}

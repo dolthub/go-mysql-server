@@ -2391,6 +2391,17 @@ CREATE TABLE t2
 			),
 		},
 		{
+			input: `SELECT 0x12345`,
+			plan: plan.NewProject(
+				[]sql.Expression{
+					expression.NewAlias("0x12345",
+						expression.NewLiteral([]byte{1, 35, 69}, types.LongBlob),
+					),
+				},
+				plan.NewResolvedDualTable(),
+			),
+		},
+		{
 			input: `SELECT X'41'`,
 			plan: plan.NewProject(
 				[]sql.Expression{
@@ -2868,15 +2879,15 @@ CREATE TABLE t2
 		{
 			input: `alter table t add index (i), drop index i, add check (i = 0), drop check chk, drop constraint c, add column i int, modify column i text, drop column i, rename column i to j`,
 			plan: plan.NewBlock([]sql.Node{
-				plan.NewRenameColumn(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t", ""), "i", "j"),
-				plan.NewDropColumn(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t", ""), "i"),
-				plan.NewModifyColumn(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t", ""), "i", &sql.Column{Name: "i", Type: types.CreateText(sql.Collation_Unspecified), Nullable: true, Source: "t"}, nil),
-				plan.NewAddColumn(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t", ""), &sql.Column{Name: "i", Type: types.Int32, Nullable: true, Source: "t"}, nil),
-				plan.NewDropConstraint(plan.NewUnresolvedTable("t", ""), "c"),
-				plan.NewAlterDropCheck(plan.NewUnresolvedTable("t", ""), "chk"),
-				plan.NewAlterAddCheck(plan.NewUnresolvedTable("t", ""), &sql.CheckConstraint{Name: "", Expr: expression.NewEquals(expression.NewUnresolvedColumn("i"), expression.NewLiteral(int8(0), types.Int8)), Enforced: true}),
-				plan.NewAlterDropIndex(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t", ""), "i"),
 				plan.NewAlterCreateIndex(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t", ""), "", sql.IndexUsing_BTree, sql.IndexConstraint_None, []sql.IndexColumn{{Name: "i", Length: 0}}, ""),
+				plan.NewAlterDropIndex(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t", ""), "i"),
+				plan.NewAlterAddCheck(plan.NewUnresolvedTable("t", ""), &sql.CheckConstraint{Name: "", Expr: expression.NewEquals(expression.NewUnresolvedColumn("i"), expression.NewLiteral(int8(0), types.Int8)), Enforced: true}),
+				plan.NewAlterDropCheck(plan.NewUnresolvedTable("t", ""), "chk"),
+				plan.NewDropConstraint(plan.NewUnresolvedTable("t", ""), "c"),
+				plan.NewAddColumn(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t", ""), &sql.Column{Name: "i", Type: types.Int32, Nullable: true, Source: "t"}, nil),
+				plan.NewModifyColumn(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t", ""), "i", &sql.Column{Name: "i", Type: types.CreateText(sql.Collation_Unspecified), Nullable: true, Source: "t"}, nil),
+				plan.NewDropColumn(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t", ""), "i"),
+				plan.NewRenameColumn(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t", ""), "i", "j"),
 			}),
 		},
 		{
@@ -3196,15 +3207,15 @@ CREATE TABLE t2
 		},
 		{
 			input: `SHOW VARIABLES`,
-			plan:  plan.NewShowVariables(nil, false),
+			plan:  plan.NewShowVariables(expression.NewLiteral(true, types.Boolean), false),
 		},
 		{
 			input: `SHOW GLOBAL VARIABLES`,
-			plan:  plan.NewShowVariables(nil, true),
+			plan:  plan.NewShowVariables(expression.NewLiteral(true, types.Boolean), true),
 		},
 		{
 			input: `SHOW SESSION VARIABLES`,
-			plan:  plan.NewShowVariables(nil, false),
+			plan:  plan.NewShowVariables(expression.NewLiteral(true, types.Boolean), false),
 		},
 		{
 			input: `SHOW VARIABLES LIKE 'gtid_mode'`,
@@ -4900,7 +4911,7 @@ END;`,
 							plan.NewResolvedDualTable(),
 						)),
 						plan.NewOpen("cur1"),
-						plan.NewFetch("cur1", []string{"c"}),
+						plan.NewFetch("cur1", []sql.Expression{expression.NewUnresolvedColumn("c")}),
 						plan.NewClose("cur1"),
 					}),
 				),
@@ -5007,6 +5018,25 @@ END`,
 				"",
 				"SELECT 1",
 				plan.NewProject([]sql.Expression{expression.NewLiteral(int8(1), types.Int8)}, plan.NewResolvedDualTable()),
+				false,
+			),
+		},
+		{
+			input: "INSERT INTO instance(id, setup_complete)\n  VALUES (CONVERT(UUID() USING utf8mb4), FALSE)",
+			plan: plan.NewInsertInto(
+				sql.UnresolvedDatabase(""),
+				plan.NewUnresolvedTable("instance", ""),
+				plan.NewValues([][]sql.Expression{
+					{
+						expression.NewCollatedExpression(
+							expression.NewUnresolvedFunction("uuid", false, nil),
+							sql.CharacterSet_utf8mb4.DefaultCollation()),
+						expression.NewLiteral(false, types.Boolean),
+					},
+				}),
+				false,
+				[]string{"id", "setup_complete"},
+				[]sql.Expression{},
 				false,
 			),
 		},

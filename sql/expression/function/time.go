@@ -1458,7 +1458,7 @@ func NewCurrTimestamp(args ...sql.Expression) (sql.Expression, error) {
 
 func (c *CurrTimestamp) String() string {
 	if len(c.Args) == 0 {
-		return fmt.Sprintf("CURRENT_TIMESTAMP()")
+		return "CURRENT_TIMESTAMP()"
 	}
 	return fmt.Sprintf("CURRENT_TIMESTAMP(%s)", c.Args[0].String())
 }

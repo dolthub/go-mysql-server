@@ -85,6 +85,9 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 
 		for _, assertion := range assertions {
 			t.Run(assertion.Query, func(t *testing.T) {
+				if sh, ok := harness.(SkippingHarness); ok && sh.SkipQueryTest(assertion.Query) {
+					t.Skip()
+				}
 				if assertion.Skip {
 					t.Skip()
 				}
@@ -170,11 +173,11 @@ func TestScriptWithEnginePrepared(t *testing.T, e *sqle.Engine, harness Harness,
 						assertion.ExpectedWarningMessageSubstring, assertion.SkipResultsCheck)
 				} else if assertion.SkipResultsCheck {
 					ctx := NewContext(harness).WithQuery(assertion.Query)
-					_, _, err := runQueryPreparedWithCtx(t, ctx, e, assertion.Query)
+					_, _, err := runQueryPreparedWithCtx(t, ctx, e, assertion.Query, assertion.Bindings)
 					require.NoError(t, err)
 				} else {
 					ctx := NewContext(harness).WithQuery(assertion.Query)
-					TestPreparedQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, nil)
+					TestPreparedQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, nil, assertion.Bindings)
 				}
 			})
 		}
@@ -281,6 +284,7 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, harnes
 		_, err := e.PrepareQuery(ctx, q)
 		require.NoError(err)
 	}
+
 	sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
 	require.NoError(err, "Unexpected error for query %s: %s", q, err)
 
@@ -306,7 +310,7 @@ func TestPreparedQuery(t *testing.T, harness Harness, q string, expected []sql.R
 		e := mustNewEngine(t, harness)
 		defer e.Close()
 		ctx := NewContext(harness)
-		TestPreparedQueryWithContext(t, ctx, e, harness, q, expected, expectedCols)
+		TestPreparedQueryWithContext(t, ctx, e, harness, q, expected, expectedCols, nil)
 	})
 }
 
@@ -318,7 +322,7 @@ func TestPreparedQueryWithEngine(t *testing.T, harness Harness, e *sqle.Engine, 
 			}
 		}
 		ctx := NewContext(harness)
-		TestPreparedQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, tt.ExpectedColumns)
+		TestPreparedQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	})
 }
 
@@ -330,12 +334,15 @@ func TestPreparedQueryWithContext(
 	q string,
 	expected []sql.Row,
 	expectedCols []*sql.Column,
+	bindVars map[string]sql.Expression,
 ) {
 	require := require.New(t)
-	rows, sch, err := runQueryPreparedWithCtx(t, ctx, e, q)
+	rows, sch, err := runQueryPreparedWithCtx(t, ctx, e, q, bindVars)
 	require.NoError(err, "Unexpected error for query %s", q)
 
-	checkResults(t, expected, expectedCols, sch, rows, q)
+	if expected != nil {
+		checkResults(t, expected, expectedCols, sch, rows, q)
+	}
 
 	require.Equal(0, ctx.Memory.NumCaches())
 	validateEngine(t, ctx, h, e)
@@ -425,10 +432,15 @@ func runQueryPreparedWithCtx(
 	ctx *sql.Context,
 	e *sqle.Engine,
 	q string,
+	bindVars map[string]sql.Expression,
 ) ([]sql.Row, sql.Schema, error) {
-	bindVars, err := injectBindVarsAndPrepare(t, ctx, e, q)
-	if err != nil {
-		return nil, nil, err
+	// If bindvars were not provided, try to inject some
+	if bindVars == nil || len(bindVars) == 0 {
+		var err error
+		bindVars, err = injectBindVarsAndPrepare(t, ctx, e, q)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	p, _ := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), q)
@@ -440,6 +452,11 @@ func runQueryPreparedWithCtx(
 
 	rows, err := sql.RowIterToRows(ctx, sch, iter)
 	return rows, sch, err
+}
+
+// CustomValueValidator is an interface for custom validation of values in the result set
+type CustomValueValidator interface {
+	Validate(interface{}) (bool, error)
 }
 
 func checkResults(
@@ -476,6 +493,23 @@ func checkResults(
 				if d, ok := val.(decimal.Decimal); ok {
 					widenedRow[i] = d.StringFixed(d.Exponent() * -1)
 				}
+			}
+		}
+	}
+
+	// Special case for custom values
+	for i, row := range widenedExpected {
+		for j, field := range row {
+			if cvv, isCustom := field.(CustomValueValidator); isCustom {
+				actual := widenedRows[i][j] // shouldn't panic, but fine if it does
+				ok, err := cvv.Validate(actual)
+				if err != nil {
+					t.Error(err.Error())
+				}
+				if !ok {
+					t.Errorf("Custom value validation, got %v", actual)
+				}
+				widenedExpected[i][j] = actual // ensure it passes equality check later
 			}
 		}
 	}
@@ -671,7 +705,7 @@ func AssertErrPrepared(t *testing.T, e *sqle.Engine, harness Harness, query stri
 // AssertErrPreparedWithCtx is the same as AssertErr, but uses the context given instead of creating one from a harness
 func AssertErrPreparedWithCtx(t *testing.T, e *sqle.Engine, harness Harness, ctx *sql.Context, query string, expectedErrKind *errors.Kind, errStrs ...string) {
 	ctx = ctx.WithQuery(query)
-	_, _, err := runQueryPreparedWithCtx(t, ctx, e, query)
+	_, _, err := runQueryPreparedWithCtx(t, ctx, e, query, nil)
 	require.Error(t, err)
 	if expectedErrKind != nil {
 		err = sql.UnwrapError(err)
@@ -820,8 +854,8 @@ func runWriteQueryTestPrepared(t *testing.T, harness Harness, tt queries.WriteQu
 		e := mustNewEngine(t, harness)
 		ctx := NewContext(harness)
 		defer e.Close()
-		TestPreparedQueryWithContext(t, ctx, e, harness, tt.WriteQuery, tt.ExpectedWriteResult, nil)
-		TestPreparedQueryWithContext(t, ctx, e, harness, tt.SelectQuery, tt.ExpectedSelect, nil)
+		TestPreparedQueryWithContext(t, ctx, e, harness, tt.WriteQuery, tt.ExpectedWriteResult, nil, tt.Bindings)
+		TestPreparedQueryWithContext(t, ctx, e, harness, tt.SelectQuery, tt.ExpectedSelect, nil, tt.Bindings)
 	})
 }
 

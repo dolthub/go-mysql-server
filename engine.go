@@ -269,10 +269,6 @@ func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, parsed sq
 		switch ctx.Version {
 		case sql.VersionExperimental:
 			parsed, err = planbuilder.Parse(ctx, e.Analyzer.Catalog, query)
-			if err != nil {
-				ctx.Version = sql.VersionStable
-				parsed, err = parse.Parse(ctx, query)
-			}
 		default:
 			parsed, err = parse.Parse(ctx, query)
 		}
@@ -360,10 +356,13 @@ func (e *Engine) CloseSession(connID uint32) {
 
 // Count number of BindVars in given tree
 func countBindVars(node sql.Node) int {
-	bindCnt := 0
+	var bindVars map[string]bool
 	bindCntFunc := func(e sql.Expression) bool {
-		if _, ok := e.(*expression.BindVar); ok {
-			bindCnt++
+		if bv, ok := e.(*expression.BindVar); ok {
+			if bindVars == nil {
+				bindVars = make(map[string]bool)
+			}
+			bindVars[bv.Name] = true
 		}
 		return true
 	}
@@ -377,7 +376,7 @@ func countBindVars(node sql.Node) int {
 		}
 		return true
 	})
-	return bindCnt
+	return len(bindVars)
 }
 
 func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, bindings map[string]sql.Expression) (sql.Node, error) {
@@ -597,7 +596,7 @@ func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Sche
 // ColumnsFromCheckDefinition retrieves the Column Names referenced by a CheckDefinition
 func ColumnsFromCheckDefinition(ctx *sql.Context, def *sql.CheckDefinition) ([]string, error) {
 	// Evaluate the CheckDefinition to get evaluated Expression
-	c, err := analyzer.ConvertCheckDefToConstraint(ctx, def)
+	c, err := analyzer.ConvertCheckDefToConstraint(ctx, def, nil)
 	if err != nil {
 		return nil, err
 	}

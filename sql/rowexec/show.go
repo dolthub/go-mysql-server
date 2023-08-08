@@ -481,7 +481,7 @@ func (b *BaseBuilder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, ro
 		extra := col.Extra
 		// If extra is not defined, fill it here.
 		if extra == "" && !col.Default.IsLiteral() {
-			extra = fmt.Sprintf("DEFAULT_GENERATED")
+			extra = "DEFAULT_GENERATED"
 		}
 
 		if n.Full {
@@ -529,7 +529,12 @@ func (b *BaseBuilder) buildShowVariables(ctx *sql.Context, n *plan.ShowVariables
 			if err != nil {
 				return nil, err
 			}
-			if !res.(bool) {
+			res, _, err = types.Boolean.Convert(res)
+			if err != nil {
+				ctx.Warn(1292, err.Error())
+				continue
+			}
+			if res.(int8) == 0 {
 				continue
 			}
 		}
@@ -548,7 +553,7 @@ func (b *BaseBuilder) buildShowTriggers(ctx *sql.Context, n *plan.ShowTriggers, 
 	for _, trigger := range n.Triggers {
 		triggerEvent := strings.ToUpper(trigger.TriggerEvent)
 		triggerTime := strings.ToUpper(trigger.TriggerTime)
-		tableName := trigger.Table.(*plan.UnresolvedTable).Name()
+		tableName := trigger.Table.(sql.Nameable).Name()
 		characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
 		if err != nil {
 			return nil, err
@@ -611,7 +616,11 @@ func (b *BaseBuilder) buildShowGrants(ctx *sql.Context, n *plan.ShowGrants, row 
 			Host: client.Address,
 		}
 	}
-	user := mysqlDb.GetUser(n.For.Name, n.For.Host, false)
+
+	reader := mysqlDb.Reader()
+	defer reader.Close()
+
+	user := mysqlDb.GetUser(reader, n.For.Name, n.For.Host, false)
 	if user == nil {
 		return nil, sql.ErrShowGrantsUserDoesNotExist.New(n.For.Name, n.For.Host)
 	}
@@ -638,7 +647,8 @@ func (b *BaseBuilder) buildShowGrants(ctx *sql.Context, n *plan.ShowGrants, row 
 	// TODO: display column privileges
 
 	sb := strings.Builder{}
-	roleEdges := mysqlDb.RoleEdgesTable().Data().Get(mysql_db.RoleEdgesToKey{
+
+	roleEdges := reader.GetToUserRoleEdges(mysql_db.RoleEdgesToKey{
 		ToHost: user.Host,
 		ToUser: user.User,
 	})
@@ -646,7 +656,7 @@ func (b *BaseBuilder) buildShowGrants(ctx *sql.Context, n *plan.ShowGrants, row 
 		if i > 0 {
 			sb.WriteString(", ")
 		}
-		sb.WriteString(roleEdge.(*mysql_db.RoleEdge).FromString("`"))
+		sb.WriteString(roleEdge.FromString("`"))
 	}
 	if sb.Len() > 0 {
 		rows = append(rows, sql.Row{fmt.Sprintf("GRANT %s TO %s", sb.String(), user.UserHostToString("`"))})

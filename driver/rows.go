@@ -89,8 +89,10 @@ func (r *Rows) convert(col int, v driver.Value) interface{} {
 		query.Type_FLOAT32, query.Type_FLOAT64:
 		rv := reflect.ValueOf(v)
 		switch rv.Kind() {
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			return rv.Int()
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			return rv.Uint()
 		case reflect.Float32, reflect.Float64:
 			return rv.Float()
 		case reflect.String:

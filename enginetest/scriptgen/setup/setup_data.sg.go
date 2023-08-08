@@ -2555,7 +2555,12 @@ var JoinData = []SetupScript{{
     (3, 'org1', 'small', 'retries', 'curve'),
     (4, 'org1', 'medium', 'style', 'straight'),
     (5, 'org1', 'medium', 'color', 'green'),
-    (6, 'org1', 'medium', 'dimension', 'narrow');`,
+    (6, 'org1', 'medium', 'dimension', 'narrow'),
+    (7, 'org1', 'medium', 'retries', 'straight'),
+    (8, 'org1', 'large', 'style', 'bendy'),
+    (9, 'org1', 'large', 'color', 'red'),
+    (10, 'org1', 'large', 'dimension', 'round'),
+    (11, 'org1', 'large', 'retries', 'bendy');`,
 	"CREATE TABLE `warehouse1` (   `w_id` smallint NOT NULL,   `w_name` varchar(10),   `w_street_1` varchar(20),   `w_street_2` varchar(20),   `w_city` varchar(20),   `w_state` char(2),   `w_zip` char(9),   `w_tax` decimal(4,2),   `w_ytd` decimal(12,2),   PRIMARY KEY (`w_id`) ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;",
 	"CREATE TABLE `district1` (   `d_id` tinyint NOT NULL,   `d_w_id` smallint NOT NULL,   `d_name` varchar(10),   `d_street_1` varchar(20),   `d_street_2` varchar(20),   `d_city` varchar(20),   `d_state` char(2),   `d_zip` char(9),   `d_tax` decimal(4,2),   `d_ytd` decimal(12,2),   `d_next_o_id` int,   PRIMARY KEY (`d_w_id`,`d_id`),   CONSTRAINT `fkey_district_1_1` FOREIGN KEY (`d_w_id`) REFERENCES `warehouse1` (`w_id`) ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;",
 	"CREATE TABLE `item1` (   `i_id` int NOT NULL,   `i_im_id` int,   `i_name` varchar(24),   `i_price` decimal(5,2),   `i_data` varchar(50),   PRIMARY KEY (`i_id`) ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;",
@@ -2883,7 +2888,7 @@ var ViewsData = []SetupScript{{
 }}
 
 var XyData = []SetupScript{{
-	`CREATE table xy (x int primary key, y int, index y_idx(y));`,
+	`CREATE table xy (x int primary key, y int, unique index y_idx(y));`,
 	`CREATE table uv (u int primary key, v int);`,
 	`CREATE table ab (a int primary key, b int);`,
 	`CREATE table pq (p int primary key, q int);`,
@@ -2933,6 +2938,8 @@ var XyData = []SetupScript{{
   (4,4),
   (5,4);`,
 	`update information_schema.statistics set cardinality = 1000 where table_name = 'ab';`,
+	`update information_schema.statistics set cardinality = 1000 where table_name = 'ab_hasnull';`,
 	`update information_schema.statistics set cardinality = 1000 where table_name = 'xy';`,
+	`update information_schema.statistics set cardinality = 1000 where table_name = 'xy_hasnull';`,
 	`update information_schema.statistics set cardinality = 1000 where table_name = 'rs'`,
 }}

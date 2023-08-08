@@ -13,6 +13,10 @@ exprs:
   join: true
   attrs:
   - [lookup, "*Lookup"]
+- name: "RangeHeapJoin"
+  join: true
+  attrs:
+    - [rangeHeap, "*RangeHeap"]
 - name: "ConcatJoin"
   join: true
   attrs:
@@ -29,6 +33,12 @@ exprs:
   - [outerScan, "*IndexScan"]
   - [swapCmp, "bool"]
 - name: "FullOuterJoin"
+  join: true
+- name: "LateralCrossJoin"
+  join: true
+- name: "LateralInnerJoin"
+  join: true
+- name: "LateralLeftJoin"
   join: true
 - name: "TableScan"
   sourceType: "*plan.ResolvedTable"
@@ -122,6 +132,12 @@ exprs:
   scalar: true
   attrs:
   - [values, "[]*ExprGroup"]
+- name: "Between"
+  scalar: true
+  attrs:
+  - [Value, "*ExprGroup"]
+  - [Min, "*ExprGroup"]
+  - [Max, "*ExprGroup"]
 - name: "Hidden"
   scalar: true
   attrs:

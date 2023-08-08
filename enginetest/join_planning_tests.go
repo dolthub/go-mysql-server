@@ -31,6 +31,7 @@ import (
 type JoinPlanTest struct {
 	q       string
 	types   []plan.JoinType
+	indexes []string
 	exp     []sql.Row
 	order   []string
 	skipOld bool
@@ -261,7 +262,7 @@ var JoinPlanningTests = []struct {
 			{
 				// anti join will be cross-join-right, be passed non-nil parent row
 				q:     "select x,a from ab, (select * from xy where x != (select r from rs where r = 1) order by 1) sq where x = 2 and b = 2 order by 1,2;",
-				types: []plan.JoinType{plan.JoinTypeCross, plan.JoinTypeLeftOuterHashExcludeNulls},
+				types: []plan.JoinType{plan.JoinTypeCrossHash, plan.JoinTypeLeftOuterHashExcludeNulls},
 				exp:   []sql.Row{{2, 0}, {2, 1}, {2, 2}},
 			},
 			{
@@ -276,7 +277,7 @@ select * from uv where u > (
   order by 1 limit 1
 )
 order by 1;`,
-				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeCross, plan.JoinTypeLeftOuterHashExcludeNulls},
+				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeCrossHash, plan.JoinTypeLeftOuterHashExcludeNulls},
 				exp:   []sql.Row{{1, 1}, {2, 2}, {3, 2}},
 			},
 			{
@@ -305,7 +306,7 @@ order by 1;`,
 			{
 				// semi join will be right-side, be passed non-nil parent row
 				q:     "select x,a from ab, (select * from xy where x = (select r from rs where r = 1) order by 1) sq order by 1,2",
-				types: []plan.JoinType{plan.JoinTypeCross, plan.JoinTypeLookup},
+				types: []plan.JoinType{plan.JoinTypeCrossHash, plan.JoinTypeLookup},
 				exp:   []sql.Row{{1, 0}, {1, 1}, {1, 2}, {1, 3}},
 			},
 			//{
@@ -321,7 +322,7 @@ order by 1;`,
 			//  order by 1 limit 1
 			//)
 			//order by 1;`,
-			//types: []plan.JoinType{plan.JoinTypeCross, plan.JoinTypeLookup},
+			//types: []plan.JoinType{plan.JoinTypeCrossHash, plan.JoinTypeLookup},
 			//exp:   []sql.Row{{2, 2}, {3, 2}},
 			//},
 			{
@@ -398,6 +399,18 @@ order by 1;`,
 		},
 		tests: []JoinPlanTest{
 			{
+				q: `
+SELECT x
+FROM xy 
+WHERE EXISTS (SELECT count(v) AS count_1 
+FROM uv 
+WHERE y = v and v = 1 GROUP BY v
+HAVING count(v) >= 1)`,
+				types:   []plan.JoinType{},
+				exp:     []sql.Row{{2}},
+				skipOld: true,
+			},
+			{
 				q:     "select * from xy where y-1 = (select u from uv where v = 2 order by 1 limit 1);",
 				types: []plan.JoinType{plan.JoinTypeSemi},
 				exp:   []sql.Row{{3, 3}},
@@ -426,14 +439,16 @@ order by 1;`,
 				q: `SELECT * FROM xy WHERE (
       				EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
       				AND EXISTS (SELECT * FROM uv Alias2 WHERE Alias2.u = (xy.x + 2)));`,
-				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeSemiLookup},
+				// These should both be JoinTypeSemiLookup, but for https://github.com/dolthub/go-mysql-server/issues/1893
+				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 2}, {1, 0}},
 			},
 			{
 				q: `SELECT * FROM xy WHERE (
       				EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
       				AND EXISTS (SELECT * FROM uv Alias1 WHERE Alias1.u = (xy.x + 2)));`,
-				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeSemiLookup},
+				// These should both be JoinTypeSemiLookup, but for https://github.com/dolthub/go-mysql-server/issues/1893
+				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 2}, {1, 0}},
 			},
 			{
@@ -459,7 +474,7 @@ WHERE EXISTS (
 			},
 			{
 				q:     `select * from xy where exists (select * from uv) and x = 0`,
-				types: []plan.JoinType{plan.JoinTypeLookup},
+				types: []plan.JoinType{plan.JoinTypeCrossHash},
 				exp:   []sql.Row{{0, 2}},
 			},
 			{
@@ -480,6 +495,31 @@ select * from xy where x in (
 )`,
 				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeHash},
 				exp:   []sql.Row{{1, 0}},
+			},
+			{
+				q: `
+SELECT *
+FROM xy
+  WHERE
+    EXISTS (
+    SELECT 1
+    FROM ab
+    WHERE
+      xy.x = ab.a AND
+      EXISTS (
+        SELECT 1
+        FROM uv
+        WHERE
+          ab.a = uv.v
+    )
+  )`,
+				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeLookup},
+				exp:   []sql.Row{{1, 0}, {2, 1}},
+			},
+			{
+				q:     `select * from xy where exists (select * from uv join ab on u = a)`,
+				types: []plan.JoinType{plan.JoinTypeCrossHash, plan.JoinTypeMerge},
+				exp:   []sql.Row{{0, 2}, {1, 0}, {2, 1}, {3, 3}},
 			},
 		},
 	},
@@ -853,8 +893,9 @@ join uv d on d.u = c.x`,
 				order: []string{"a", "b", "c", "d"},
 			},
 			{
-				q:     "select /*+ LOOKUP_JOIN(xy,scalarSubq0) */ 1 from xy where x not in (select u from uv)",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterLookup},
+				q: "select /*+ LOOKUP_JOIN(xy,scalarSubq0) */ 1 from xy where x not in (select u from uv)",
+				// This should be JoinTypeSemiLookup, but for https://github.com/dolthub/go-mysql-server/issues/1894
+				types: []plan.JoinType{plan.JoinTypeAntiLookup},
 			},
 			{
 				q:     "select /*+ ANTI_JOIN(xy,scalarSubq0) */ 1 from xy where x not in (select u from uv)",
@@ -878,6 +919,483 @@ join uv d on d.u = c.x`,
 			},
 		},
 	},
+	{
+		// This is a regression test for https://github.com/dolthub/go-mysql-server/pull/1889.
+		// We should always prefer a more specific index over a less specific index for lookups.
+		name: "lookup join multiple indexes",
+		setup: []string{
+			"create table lhs (a int, b int, c int);",
+			"create table rhs (a int, b int, c int, d int, index a_idx(a), index abcd_idx(a,b,c,d));",
+			"insert into lhs values (0, 0, 0), (0, 0, 1), (0, 1, 1), (1, 1, 1);",
+			"insert into rhs values " +
+				"(0, 0, 0, 0)," +
+				"(0, 0, 0, 1)," +
+				"(0, 0, 1, 0)," +
+				"(0, 0, 1, 1)," +
+				"(0, 1, 0, 0)," +
+				"(0, 1, 0, 1)," +
+				"(0, 1, 1, 0)," +
+				"(0, 1, 1, 1)," +
+				"(1, 0, 0, 0)," +
+				"(1, 0, 0, 1)," +
+				"(1, 0, 1, 0)," +
+				"(1, 0, 1, 1)," +
+				"(1, 1, 0, 0)," +
+				"(1, 1, 0, 1)," +
+				"(1, 1, 1, 0)," +
+				"(1, 1, 1, 1);",
+		},
+		tests: []JoinPlanTest{
+			{
+				q:       "select rhs.* from lhs left join rhs on lhs.a = rhs.a and lhs.b = rhs.b and lhs.c = rhs.c",
+				types:   []plan.JoinType{plan.JoinTypeLeftOuterLookup},
+				indexes: []string{"abcd_idx"},
+				exp: []sql.Row{
+					{0, 0, 0, 0},
+					{0, 0, 0, 1},
+					{0, 0, 1, 0},
+					{0, 0, 1, 1},
+					{0, 1, 1, 0},
+					{0, 1, 1, 1},
+					{1, 1, 1, 0},
+					{1, 1, 1, 1},
+				},
+			},
+		},
+	},
+	{
+		name: "primary key range join",
+		setup: []string{
+			"create table vals (val int primary key)",
+			"create table ranges (min int primary key, max int, unique key(min,max))",
+			"insert into vals values (0), (1), (2), (3), (4), (5), (6)",
+			"insert into ranges values (0,2), (1,3), (2,4), (3,5), (4,6)",
+		},
+		tests: []JoinPlanTest{
+			{
+				q:     "select * from vals join ranges on val between min and max",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{0, 0, 2},
+					{1, 0, 2},
+					{1, 1, 3},
+					{2, 0, 2},
+					{2, 1, 3},
+					{2, 2, 4},
+					{3, 1, 3},
+					{3, 2, 4},
+					{3, 3, 5},
+					{4, 2, 4},
+					{4, 3, 5},
+					{4, 4, 6},
+					{5, 3, 5},
+					{5, 4, 6},
+					{6, 4, 6},
+				},
+			},
+			{
+				q:     "select * from vals join ranges on val > min and val < max",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{1, 0, 2},
+					{2, 1, 3},
+					{3, 2, 4},
+					{4, 3, 5},
+					{5, 4, 6},
+				},
+			},
+			{
+				q:     "select * from vals join ranges on val >= min and val < max",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{0, 0, 2},
+					{1, 0, 2},
+					{1, 1, 3},
+					{2, 1, 3},
+					{2, 2, 4},
+					{3, 2, 4},
+					{3, 3, 5},
+					{4, 3, 5},
+					{4, 4, 6},
+					{5, 4, 6},
+				},
+			},
+			{
+				q:     "select * from vals join ranges on val > min and val <= max",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{1, 0, 2},
+					{2, 0, 2},
+					{2, 1, 3},
+					{3, 1, 3},
+					{3, 2, 4},
+					{4, 2, 4},
+					{4, 3, 5},
+					{5, 3, 5},
+					{5, 4, 6},
+					{6, 4, 6},
+				},
+			},
+			{
+				q:     "select * from vals join ranges on val >= min and val <= max",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{0, 0, 2},
+					{1, 0, 2},
+					{1, 1, 3},
+					{2, 0, 2},
+					{2, 1, 3},
+					{2, 2, 4},
+					{3, 1, 3},
+					{3, 2, 4},
+					{3, 3, 5},
+					{4, 2, 4},
+					{4, 3, 5},
+					{4, 4, 6},
+					{5, 3, 5},
+					{5, 4, 6},
+					{6, 4, 6},
+				},
+			},
+		},
+	},
+	{
+		name: "keyless range join",
+		setup: []string{
+			"create table vals (val int)",
+			"create table ranges (min int, max int)",
+			"insert into vals values (0), (1), (2), (3), (4), (5), (6)",
+			"insert into ranges values (0,2), (1,3), (2,4), (3,5), (4,6)",
+		},
+		tests: []JoinPlanTest{
+			{
+				q:     "select * from vals join ranges on val between min and max",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{0, 0, 2},
+					{1, 0, 2},
+					{1, 1, 3},
+					{2, 0, 2},
+					{2, 1, 3},
+					{2, 2, 4},
+					{3, 1, 3},
+					{3, 2, 4},
+					{3, 3, 5},
+					{4, 2, 4},
+					{4, 3, 5},
+					{4, 4, 6},
+					{5, 3, 5},
+					{5, 4, 6},
+					{6, 4, 6},
+				},
+			},
+			{
+				q:     "select * from vals join ranges on val > min and val < max",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{1, 0, 2},
+					{2, 1, 3},
+					{3, 2, 4},
+					{4, 3, 5},
+					{5, 4, 6},
+				},
+			},
+			{
+				q:     "select * from vals join ranges on min < val and max > val",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{1, 0, 2},
+					{2, 1, 3},
+					{3, 2, 4},
+					{4, 3, 5},
+					{5, 4, 6},
+				},
+			},
+			{
+				q:     "select * from vals join ranges on val >= min and val < max",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{0, 0, 2},
+					{1, 0, 2},
+					{1, 1, 3},
+					{2, 1, 3},
+					{2, 2, 4},
+					{3, 2, 4},
+					{3, 3, 5},
+					{4, 3, 5},
+					{4, 4, 6},
+					{5, 4, 6},
+				},
+			},
+			{
+				q:     "select * from vals join ranges on val > min and val <= max",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{1, 0, 2},
+					{2, 0, 2},
+					{2, 1, 3},
+					{3, 1, 3},
+					{3, 2, 4},
+					{4, 2, 4},
+					{4, 3, 5},
+					{5, 3, 5},
+					{5, 4, 6},
+					{6, 4, 6},
+				},
+			},
+			{
+				q:     "select * from vals join ranges on val >= min and val <= max",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{0, 0, 2},
+					{1, 0, 2},
+					{1, 1, 3},
+					{2, 0, 2},
+					{2, 1, 3},
+					{2, 2, 4},
+					{3, 1, 3},
+					{3, 2, 4},
+					{3, 3, 5},
+					{4, 2, 4},
+					{4, 3, 5},
+					{4, 4, 6},
+					{5, 3, 5},
+					{5, 4, 6},
+					{6, 4, 6},
+				},
+			},
+			{
+				q:     "select * from vals left join ranges on val > min and val < max",
+				types: []plan.JoinType{plan.JoinTypeLeftOuterRangeHeap},
+				exp: []sql.Row{
+					{0, nil, nil},
+					{1, 0, 2},
+					{2, 1, 3},
+					{3, 2, 4},
+					{4, 3, 5},
+					{5, 4, 6},
+					{6, nil, nil},
+				},
+			},
+			{
+				q:     "select * from ranges l join ranges r on l.min > r.min and l.min < r.max",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{1, 3, 0, 2},
+					{2, 4, 1, 3},
+					{3, 5, 2, 4},
+					{4, 6, 3, 5},
+				},
+			},
+			{
+				q:     "select * from vals left join ranges r1 on val > r1.min and val < r1.max left join ranges r2 on r1.min > r2.min and r1.min < r2.max",
+				types: []plan.JoinType{plan.JoinTypeLeftOuterRangeHeap, plan.JoinTypeLeftOuterRangeHeap},
+				exp: []sql.Row{
+					{0, nil, nil, nil, nil},
+					{1, 0, 2, nil, nil},
+					{2, 1, 3, 0, 2},
+					{3, 2, 4, 1, 3},
+					{4, 3, 5, 2, 4},
+					{5, 4, 6, 3, 5},
+					{6, nil, nil, nil, nil},
+				},
+			},
+			{
+				q:     "select * from (select vals.val * 2 as val from vals) as newVals join (select ranges.min * 2 as min, ranges.max * 2 as max from ranges) as newRanges on val > min and val < max;",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{2, 0, 4},
+					{4, 2, 6},
+					{6, 4, 8},
+					{8, 6, 10},
+					{10, 8, 12},
+				},
+			},
+			{
+				// This tests that the RangeHeapJoin node functions correctly even if its rows are iterated over multiple times.
+				q:     "select * from (select 1 union select 2) as l left join (select * from vals join ranges on val > min and val < max) as r on max = max",
+				types: []plan.JoinType{plan.JoinTypeLeftOuter, plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{1, 1, 0, 2},
+					{1, 2, 1, 3},
+					{1, 3, 2, 4},
+					{1, 4, 3, 5},
+					{1, 5, 4, 6},
+					{2, 1, 0, 2},
+					{2, 2, 1, 3},
+					{2, 3, 2, 4},
+					{2, 4, 3, 5},
+					{2, 5, 4, 6},
+				},
+			},
+			{
+				q:     "select * from vals left join (select * from ranges where 0) as newRanges on val > min and val < max;",
+				types: []plan.JoinType{plan.JoinTypeLeftOuterRangeHeap},
+				exp: []sql.Row{
+					{0, nil, nil},
+					{1, nil, nil},
+					{2, nil, nil},
+					{3, nil, nil},
+					{4, nil, nil},
+					{5, nil, nil},
+					{6, nil, nil},
+				},
+			},
+		},
+	},
+	{
+		name: "range join vs good lookup join regression test",
+		setup: []string{
+			"create table vals (val int, filter1 int, filter2 int, filter3 int)",
+			"create table ranges (min int, max int, filter1 int, filter2 int, filter3 int, key filters (filter1, filter2, filter3))",
+			"insert into vals values (0, 0, 0, 0), " +
+				"(1, 0, 0, 0), " +
+				"(2, 0, 0, 0), " +
+				"(3, 0, 0, 0), " +
+				"(4, 0, 0, 0), " +
+				"(5, 0, 0, 0), " +
+				"(6, 0, 0, 0), " +
+				"(0, 0, 0, 1), " +
+				"(1, 0, 0, 1), " +
+				"(2, 0, 0, 1), " +
+				"(3, 0, 0, 1), " +
+				"(4, 0, 0, 1), " +
+				"(5, 0, 0, 1), " +
+				"(6, 0, 0, 1), " +
+				"(0, 0, 1, 0), " +
+				"(1, 0, 1, 0), " +
+				"(2, 0, 1, 0), " +
+				"(3, 0, 1, 0), " +
+				"(4, 0, 1, 0), " +
+				"(5, 0, 1, 0), " +
+				"(6, 0, 1, 0), " +
+				"(0, 0, 1, 1), " +
+				"(1, 0, 1, 1), " +
+				"(2, 0, 1, 1), " +
+				"(3, 0, 1, 1), " +
+				"(4, 0, 1, 1), " +
+				"(5, 0, 1, 1), " +
+				"(6, 0, 1, 1), " +
+				"(0, 1, 0, 0), " +
+				"(1, 1, 0, 0), " +
+				"(2, 1, 0, 0), " +
+				"(3, 1, 0, 0), " +
+				"(4, 1, 0, 0), " +
+				"(5, 1, 0, 0), " +
+				"(6, 1, 0, 0), " +
+				"(0, 1, 0, 1), " +
+				"(1, 1, 0, 1), " +
+				"(2, 1, 0, 1), " +
+				"(3, 1, 0, 1), " +
+				"(4, 1, 0, 1), " +
+				"(5, 1, 0, 1), " +
+				"(6, 1, 0, 1), " +
+				"(0, 1, 1, 0), " +
+				"(1, 1, 1, 0), " +
+				"(2, 1, 1, 0), " +
+				"(3, 1, 1, 0), " +
+				"(4, 1, 1, 0), " +
+				"(5, 1, 1, 0), " +
+				"(6, 1, 1, 0), " +
+				"(0, 1, 1, 1), " +
+				"(1, 1, 1, 1), " +
+				"(2, 1, 1, 1), " +
+				"(3, 1, 1, 1), " +
+				"(4, 1, 1, 1), " +
+				"(5, 1, 1, 1), " +
+				"(6, 1, 1, 1);",
+			"insert into ranges values " +
+				"(0, 2, 0, 0, 0), " +
+				"(1, 3, 0, 0, 0), " +
+				"(2, 4, 0, 0, 0), " +
+				"(3, 5, 0, 0, 0), " +
+				"(4, 6, 0, 0, 0), " +
+				"(0, 2, 0, 0, 1), " +
+				"(1, 3, 0, 0, 1), " +
+				"(2, 4, 0, 0, 1), " +
+				"(3, 5, 0, 0, 1), " +
+				"(4, 6, 0, 0, 1), " +
+				"(0, 2, 0, 1, 0), " +
+				"(1, 3, 0, 1, 0), " +
+				"(2, 4, 0, 1, 0), " +
+				"(3, 5, 0, 1, 0), " +
+				"(4, 6, 0, 1, 0), " +
+				"(0, 2, 0, 1, 1), " +
+				"(1, 3, 0, 1, 1), " +
+				"(2, 4, 0, 1, 1), " +
+				"(3, 5, 0, 1, 1), " +
+				"(4, 6, 0, 1, 1), " +
+				"(0, 2, 1, 0, 0), " +
+				"(1, 3, 1, 0, 0), " +
+				"(2, 4, 1, 0, 0), " +
+				"(3, 5, 1, 0, 0), " +
+				"(4, 6, 1, 0, 0), " +
+				"(0, 2, 1, 0, 1), " +
+				"(1, 3, 1, 0, 1), " +
+				"(2, 4, 1, 0, 1), " +
+				"(3, 5, 1, 0, 1), " +
+				"(4, 6, 1, 0, 1), " +
+				"(0, 2, 1, 1, 0), " +
+				"(1, 3, 1, 1, 0), " +
+				"(2, 4, 1, 1, 0), " +
+				"(3, 5, 1, 1, 0), " +
+				"(4, 6, 1, 1, 0), " +
+				"(0, 2, 1, 1, 1), " +
+				"(1, 3, 1, 1, 1), " +
+				"(2, 4, 1, 1, 1), " +
+				"(3, 5, 1, 1, 1), " +
+				"(4, 6, 1, 1, 1); ",
+		},
+		tests: []JoinPlanTest{
+			{
+				// Test that a RangeHeapJoin won't be chosen over a LookupJoin with a multiple-column index.
+				q:     "select val, min, max, vals.filter1, vals.filter2, vals.filter3 from vals join ranges on val > min and val < max and vals.filter1 = ranges.filter1 and vals.filter2 = ranges.filter2 and vals.filter3 = ranges.filter3",
+				types: []plan.JoinType{plan.JoinTypeLookup},
+				exp: []sql.Row{
+					{1, 0, 2, 0, 0, 0},
+					{2, 1, 3, 0, 0, 0},
+					{3, 2, 4, 0, 0, 0},
+					{4, 3, 5, 0, 0, 0},
+					{5, 4, 6, 0, 0, 0},
+					{1, 0, 2, 0, 0, 1},
+					{2, 1, 3, 0, 0, 1},
+					{3, 2, 4, 0, 0, 1},
+					{4, 3, 5, 0, 0, 1},
+					{5, 4, 6, 0, 0, 1},
+					{1, 0, 2, 0, 1, 0},
+					{2, 1, 3, 0, 1, 0},
+					{3, 2, 4, 0, 1, 0},
+					{4, 3, 5, 0, 1, 0},
+					{5, 4, 6, 0, 1, 0},
+					{1, 0, 2, 0, 1, 1},
+					{2, 1, 3, 0, 1, 1},
+					{3, 2, 4, 0, 1, 1},
+					{4, 3, 5, 0, 1, 1},
+					{5, 4, 6, 0, 1, 1},
+					{1, 0, 2, 1, 0, 0},
+					{2, 1, 3, 1, 0, 0},
+					{3, 2, 4, 1, 0, 0},
+					{4, 3, 5, 1, 0, 0},
+					{5, 4, 6, 1, 0, 0},
+					{1, 0, 2, 1, 0, 1},
+					{2, 1, 3, 1, 0, 1},
+					{3, 2, 4, 1, 0, 1},
+					{4, 3, 5, 1, 0, 1},
+					{5, 4, 6, 1, 0, 1},
+					{1, 0, 2, 1, 1, 0},
+					{2, 1, 3, 1, 1, 0},
+					{3, 2, 4, 1, 1, 0},
+					{4, 3, 5, 1, 1, 0},
+					{5, 4, 6, 1, 1, 0},
+					{1, 0, 2, 1, 1, 1},
+					{2, 1, 3, 1, 1, 1},
+					{3, 2, 4, 1, 1, 1},
+					{4, 3, 5, 1, 1, 1},
+					{5, 4, 6, 1, 1, 1},
+				},
+			},
+		},
+	},
 }
 
 func TestJoinPlanning(t *testing.T, harness Harness) {
@@ -889,6 +1407,9 @@ func TestJoinPlanning(t *testing.T, harness Harness) {
 			for _, tt := range tt.tests {
 				if tt.types != nil {
 					evalJoinTypeTest(t, harness, e, tt)
+				}
+				if tt.indexes != nil {
+					evalIndexTest(t, harness, e, tt)
 				}
 				if tt.exp != nil {
 					evalJoinCorrectness(t, harness, e, tt.q, tt.q, tt.exp, tt.skipOld)
@@ -921,6 +1442,31 @@ func evalJoinTypeTest(t *testing.T, harness Harness, e *sqle.Engine, tt JoinPlan
 		var cmp []string
 		for _, t := range jts {
 			cmp = append(cmp, t.String())
+		}
+		require.Equal(t, exp, cmp, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(a)))
+	})
+}
+
+func evalIndexTest(t *testing.T, harness Harness, e *sqle.Engine, tt JoinPlanTest) {
+	t.Run(tt.q+" join indexes", func(t *testing.T) {
+		if tt.skipOld {
+			t.Skip()
+		}
+
+		ctx := NewContext(harness)
+		ctx = ctx.WithQuery(tt.q)
+
+		a, err := e.AnalyzeQuery(ctx, tt.q)
+		require.NoError(t, err)
+
+		idxs := collectIndexes(a)
+		var exp []string
+		for _, i := range tt.indexes {
+			exp = append(exp, i)
+		}
+		var cmp []string
+		for _, i := range idxs {
+			cmp = append(cmp, i.ID())
 		}
 		require.Equal(t, exp, cmp, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(a)))
 	})
@@ -978,6 +1524,35 @@ func collectJoinTypes(n sql.Node) []plan.JoinType {
 	return types
 }
 
+func collectIndexes(n sql.Node) []sql.Index {
+	var indexes []sql.Index
+	transform.Inspect(n, func(n sql.Node) bool {
+		if n == nil {
+			return true
+		}
+		access, ok := n.(*plan.IndexedTableAccess)
+		if ok {
+			indexes = append(indexes, access.Index())
+			return true
+		}
+
+		if ex, ok := n.(sql.Expressioner); ok {
+			for _, e := range ex.Expressions() {
+				transform.InspectExpr(e, func(e sql.Expression) bool {
+					sq, ok := e.(*plan.Subquery)
+					if !ok {
+						return false
+					}
+					indexes = append(indexes, collectIndexes(sq.Query)...)
+					return false
+				})
+			}
+		}
+		return true
+	})
+	return indexes
+}
+
 func evalJoinOrder(t *testing.T, harness Harness, e *sqle.Engine, q string, exp []string, skipOld bool) {
 	t.Run(q+" join order", func(t *testing.T) {
 		if vh, ok := harness.(VersionedHarness); (ok && vh.Version() == sql.VersionStable && skipOld) || (!ok && skipOld) {
@@ -1023,6 +1598,9 @@ func TestJoinPlanningPrepared(t *testing.T, harness Harness) {
 			for _, tt := range tt.tests {
 				if tt.types != nil {
 					evalJoinTypeTestPrepared(t, harness, e, tt, tt.skipOld)
+				}
+				if tt.indexes != nil {
+					evalJoinIndexTestPrepared(t, harness, e, tt, tt.skipOld)
 				}
 				if tt.exp != nil {
 					evalJoinCorrectnessPrepared(t, harness, e, tt.q, tt.q, tt.exp, tt.skipOld)
@@ -1070,6 +1648,46 @@ func evalJoinTypeTestPrepared(t *testing.T, harness Harness, e *sqle.Engine, tt 
 		var cmp []string
 		for _, t := range jts {
 			cmp = append(cmp, t.String())
+		}
+		require.Equal(t, exp, cmp, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(a)))
+	})
+}
+
+func evalJoinIndexTestPrepared(t *testing.T, harness Harness, e *sqle.Engine, tt JoinPlanTest, skipOld bool) {
+	t.Run(tt.q+" join indexes", func(t *testing.T) {
+		if vh, ok := harness.(VersionedHarness); (ok && vh.Version() == sql.VersionStable && skipOld) || (!ok && skipOld) {
+			t.Skip()
+		}
+
+		ctx := NewContext(harness)
+		ctx = ctx.WithQuery(tt.q)
+
+		bindings, err := injectBindVarsAndPrepare(t, ctx, e, tt.q)
+		require.NoError(t, err)
+
+		p, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), tt.q)
+		require.True(t, ok, "prepared statement not found")
+
+		if len(bindings) > 0 {
+			var usedBindings map[string]bool
+			p, usedBindings, err = plan.ApplyBindings(p, bindings)
+			require.NoError(t, err)
+			for binding := range bindings {
+				require.True(t, usedBindings[binding], "unused binding %s", binding)
+			}
+		}
+
+		a, _, err := e.Analyzer.AnalyzePrepared(ctx, p, nil)
+		require.NoError(t, err)
+
+		idxs := collectIndexes(a)
+		var exp []string
+		for _, i := range tt.indexes {
+			exp = append(exp, i)
+		}
+		var cmp []string
+		for _, i := range idxs {
+			cmp = append(cmp, i.ID())
 		}
 		require.Equal(t, exp, cmp, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(a)))
 	})

@@ -252,8 +252,9 @@ func (j *joinOrderBuilder) makeTransitiveEdge(col1, col2 sql.ColumnId) {
 			break
 		}
 	}
-	if op == nil {
+	if op == nil || op.joinType.IsPartial() {
 		// columns are common to one table, not a join edge
+		// or, we are trying to semi join after columns have maybe been projected away
 		return
 	}
 
@@ -267,7 +268,7 @@ func (j *joinOrderBuilder) makeTransitiveEdge(col1, col2 sql.ColumnId) {
 	if eqGroup == nil {
 		eqGroup = j.m.NewExprGroup(eq)
 	}
-	hash := internExpr(eqGroup.Scalar)
+	hash := InternExpr(eqGroup.Scalar)
 	if hash != 0 {
 		j.m.exprs[hash] = eqGroup
 	}

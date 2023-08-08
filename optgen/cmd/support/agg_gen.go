@@ -142,9 +142,9 @@ func (g *AggGen) genAggWithChildren(define AggDef) {
 }
 
 func (g *AggGen) genAggWithWindow(define AggDef) {
-	fmt.Fprintf(g.w, "func (a *%s) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {\n", define.Name)
-	fmt.Fprintf(g.w, "    res, err := a.unaryAggBase.WithWindow(window)\n")
-	fmt.Fprintf(g.w, "    return &%s{unaryAggBase: *res.(*unaryAggBase)}, err\n", define.Name)
+	fmt.Fprintf(g.w, "func (a *%s) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {\n", define.Name)
+	fmt.Fprintf(g.w, "    res := a.unaryAggBase.WithWindow(window)\n")
+	fmt.Fprintf(g.w, "    return &%s{unaryAggBase: *res.(*unaryAggBase)}\n", define.Name)
 	fmt.Fprintf(g.w, "}\n\n")
 }
 

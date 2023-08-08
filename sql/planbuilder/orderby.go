@@ -7,11 +7,13 @@ import (
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy) (outScope *scope) {
+func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy) (outScope *scope) {
 	// Order by resolves to
 	// 1) alias in projScope
 	// 2) column name in fromScope
@@ -43,7 +45,7 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 			}
 
 			// fromScope col
-			c, ok = fromScope.resolveColumn(strings.ToLower(e.Qualifier.String()), strings.ToLower(e.Name.String()), false)
+			c, ok = fromScope.resolveColumn(strings.ToLower(e.Qualifier.String()), strings.ToLower(e.Name.String()), true)
 			if !ok {
 				err := sql.ErrColumnNotFound.New(e.Name)
 				b.handleErr(err)
@@ -77,6 +79,13 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 				if scalar == nil {
 					scalar = target.scalarGf()
 				}
+				if a, ok := target.scalar.(*expression.Alias); ok && a.Unreferencable() && fromScope.groupBy != nil {
+					for _, c := range fromScope.groupBy.outScope.cols {
+						if target.id == c.id {
+							target = c
+						}
+					}
+				}
 				outScope.addColumn(scopeColumn{
 					table:      target.table,
 					col:        target.col,
@@ -88,8 +97,38 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 				})
 			}
 		default:
-			// we could add to aggregates here, ref GF in aggOut
+			// track order by col
+			// replace aggregations with refs
+			// pick up auxiliary cols
 			expr := b.buildScalar(fromScope, e)
+			_, ok := outScope.getExpr(expr.String(), true)
+			if ok {
+				continue
+			}
+			// aggregate ref -> expr.String() in
+			// or compound expression
+			expr, _, _ = transform.Expr(expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				//  get fields outside of aggs need to be in extra cols
+				switch e := e.(type) {
+				case *expression.GetField:
+					c, ok := fromScope.resolveColumn(strings.ToLower(e.Table()), strings.ToLower(e.Name()), true)
+					if !ok {
+						err := sql.ErrColumnNotFound.New(e.Name)
+						b.handleErr(err)
+					}
+					fromScope.addExtraColumn(c)
+				case sql.WindowAdaptableExpression:
+					// has to have been ref'd already
+					id, ok := fromScope.getExpr(e.String(), true)
+					if !ok {
+						err := fmt.Errorf("faild to ref aggregate expression: %s", e.String())
+						b.handleErr(err)
+					}
+					return expression.NewGetField(int(id), e.Type(), e.String(), e.IsNullable()), transform.NewTree, nil
+				default:
+				}
+				return e, transform.SameTree, nil
+			})
 			col := scopeColumn{
 				table:      "",
 				col:        expr.String(),
@@ -98,17 +137,13 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 				nullable:   expr.IsNullable(),
 				descending: descending,
 			}
-			_, ok := outScope.getExpr(expr.String())
-			if !ok {
-				outScope.newColumn(col)
-			}
+			outScope.newColumn(col)
 		}
 	}
 	return
 }
 
-func (b *PlanBuilder) buildOrderBy(inScope, orderByScope *scope) {
-	// TODO build Sort node over input
+func (b *Builder) buildOrderBy(inScope, orderByScope *scope) {
 	if len(orderByScope.cols) == 0 {
 		return
 	}
@@ -118,8 +153,12 @@ func (b *PlanBuilder) buildOrderBy(inScope, orderByScope *scope) {
 		if c.descending {
 			so = sql.Descending
 		}
+		scalar := c.scalar
+		if scalar == nil {
+			scalar = c.scalarGf()
+		}
 		sf := sql.SortField{
-			Column: c.scalar,
+			Column: scalar,
 			Order:  so,
 		}
 		sortFields = append(sortFields, sf)

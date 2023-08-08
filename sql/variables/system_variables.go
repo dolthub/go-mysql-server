@@ -2107,7 +2107,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.Uint32,
-		Default:           0,
+		Default:           uint32(0),
 	},
 	"session_track_gtids": {
 		Name:              "session_track_gtids",

@@ -65,6 +65,12 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 				// is not ideal but not the end of the world.
 				reorder = false
 			}
+			if sqa, ok := n.Left().(*plan.SubqueryAlias); ok && sqa.IsLateral {
+				reorder = false
+			}
+			if sqa, ok := n.Right().(*plan.SubqueryAlias); ok && sqa.IsLateral {
+				reorder = false
+			}
 		default:
 		}
 		return n, transform.SameTree, nil
@@ -179,6 +185,10 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	if err != nil {
 		return nil, err
 	}
+	err = addCrossHashJoins(m)
+	if err != nil {
+		return nil, err
+	}
 	err = addLookupJoins(m)
 	if err != nil {
 		return nil, err
@@ -188,6 +198,10 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 		return nil, err
 	}
 	err = addMergeJoins(m)
+	if err != nil {
+		return nil, err
+	}
+	err = addRangeHeapJoin(m)
 	if err != nil {
 		return nil, err
 	}
@@ -574,6 +588,30 @@ func lookupCandidates(rel memo.RelExpr) (memo.GroupId, []*memo.Index, []memo.Sca
 
 }
 
+func addCrossHashJoins(m *memo.Memo) error {
+	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
+		switch e.(type) {
+		case *memo.CrossJoin:
+		default:
+			return nil
+		}
+
+		join := e.(memo.JoinRel).JoinPrivate()
+		if len(join.Filter) > 0 {
+			return nil
+		}
+
+		rel := &memo.HashJoin{
+			JoinBase:   join.Copy(),
+			LeftAttrs:  nil,
+			RightAttrs: nil,
+		}
+		rel.Op = rel.Op.AsHash()
+		e.Group().Prepend(rel)
+		return nil
+	})
+}
+
 func addHashJoins(m *memo.Memo) error {
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		switch e.(type) {
@@ -617,11 +655,178 @@ func addHashJoins(m *memo.Memo) error {
 	})
 }
 
+type rangeFilter struct {
+	value, min, max                        *memo.ExprGroup
+	closedOnLowerBound, closedOnUpperBound bool
+}
+
+// getRangeFilters takes the filter expressions on a join and identifies "ranges" where a given expression
+// is constrained between two other expressions. (For instance, detecting "x > 5" and "x <= 10" and creating a range
+// object representing "5 < x <= 10". See range_filter_test.go for examples.
+func getRangeFilters(filters []memo.ScalarExpr) (ranges []rangeFilter) {
+	type candidateMap struct {
+		group    *memo.ExprGroup
+		isClosed bool
+	}
+	lowerToUpper := make(map[uint64][]candidateMap)
+	upperToLower := make(map[uint64][]candidateMap)
+
+	findUpperBounds := func(value, min *memo.ExprGroup, closedOnLowerBound bool) {
+		for _, max := range lowerToUpper[memo.InternExpr(value.Scalar)] {
+			ranges = append(ranges, rangeFilter{
+				value:              value,
+				min:                min,
+				max:                max.group,
+				closedOnLowerBound: closedOnLowerBound,
+				closedOnUpperBound: max.isClosed})
+		}
+	}
+
+	findLowerBounds := func(value, max *memo.ExprGroup, closedOnUpperBound bool) {
+		for _, min := range upperToLower[memo.InternExpr(value.Scalar)] {
+			ranges = append(ranges, rangeFilter{
+				value:              value,
+				min:                min.group,
+				max:                max,
+				closedOnLowerBound: min.isClosed,
+				closedOnUpperBound: closedOnUpperBound})
+		}
+	}
+
+	addBounds := func(lower, upper *memo.ExprGroup, isClosed bool) {
+		lowerIntern := memo.InternExpr(lower.Scalar)
+		lowerToUpper[lowerIntern] = append(lowerToUpper[lowerIntern], candidateMap{
+			group:    upper,
+			isClosed: isClosed,
+		})
+		upperIntern := memo.InternExpr(upper.Scalar)
+		upperToLower[upperIntern] = append(upperToLower[upperIntern], candidateMap{
+			group:    lower,
+			isClosed: isClosed,
+		})
+	}
+
+	for _, filter := range filters {
+		switch f := filter.(type) {
+		case *memo.Between:
+			ranges = append(ranges, rangeFilter{f.Value, f.Min, f.Max, true, true})
+		case *memo.Gt:
+			findUpperBounds(f.Left, f.Right, false)
+			findLowerBounds(f.Right, f.Left, false)
+			addBounds(f.Right, f.Left, false)
+		case *memo.Geq:
+			findUpperBounds(f.Left, f.Right, true)
+			findLowerBounds(f.Right, f.Left, true)
+			addBounds(f.Right, f.Left, true)
+		case *memo.Lt:
+			findLowerBounds(f.Left, f.Right, false)
+			findUpperBounds(f.Right, f.Left, false)
+			addBounds(f.Left, f.Right, false)
+		case *memo.Leq:
+			findLowerBounds(f.Left, f.Right, true)
+			findUpperBounds(f.Right, f.Left, true)
+			addBounds(f.Left, f.Right, true)
+		}
+	}
+	return ranges
+}
+
+// addRangeHeapJoin checks whether the join can be implemented as a RangeHeap, and if so, prefixes a memo.RangeHeap plan
+// to the memo join group. We can apply a range heap join for any join plan where a filter (or pair of filters) restricts a column the left child
+// to be between two columns the right child.
+//
+// Some example joins that can be implemented as RangeHeap joins:
+// - SELECT * FROM a JOIN b on a.value BETWEEN b.min AND b.max
+// - SELECT * FROM a JOIN b on b.min <= a.value AND a.value < b.max
+func addRangeHeapJoin(m *memo.Memo) error {
+	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
+		switch e.(type) {
+		case *memo.InnerJoin, *memo.LeftJoin:
+		default:
+			return nil
+		}
+
+		join := e.(memo.JoinRel).JoinPrivate()
+
+		_, lIndexes, lFilters := lookupCandidates(join.Left.First)
+		_, rIndexes, rFilters := lookupCandidates(join.Right.First)
+
+		for _, filter := range getRangeFilters(join.Filter) {
+
+			if !(satisfiesScalarRefs(filter.value.Scalar, join.Left) &&
+				satisfiesScalarRefs(filter.min.Scalar, join.Right) &&
+				satisfiesScalarRefs(filter.max.Scalar, join.Right)) {
+				return nil
+			}
+			// For now, only match expressions that are exactly a column reference.
+			// TODO: We may be able to match more complicated expressions if they meet the necessary criteria, such as:
+			// - References exactly one column
+			// - Is monotonically increasing
+			valueColRef, ok := filter.value.Scalar.(*memo.ColRef)
+			if !ok {
+				return nil
+			}
+			minColRef, ok := filter.min.Scalar.(*memo.ColRef)
+			if !ok {
+				return nil
+			}
+			maxColRef, ok := filter.max.Scalar.(*memo.ColRef)
+			if !ok {
+				return nil
+			}
+
+			leftIndexScans := sortedIndexScansForTableCol(lIndexes, valueColRef, join.Left.RelProps.FuncDeps().Constants(), lFilters)
+			if leftIndexScans == nil {
+				leftIndexScans = []*memo.IndexScan{nil}
+			}
+			for _, lIdx := range leftIndexScans {
+				rightIndexScans := sortedIndexScansForTableCol(rIndexes, minColRef, join.Right.RelProps.FuncDeps().Constants(), rFilters)
+				if rightIndexScans == nil {
+					rightIndexScans = []*memo.IndexScan{nil}
+				}
+				for _, rIdx := range rightIndexScans {
+					rel := &memo.RangeHeapJoin{
+						JoinBase: join.Copy(),
+					}
+					rel.RangeHeap = &memo.RangeHeap{
+						ValueIndex:              lIdx,
+						MinIndex:                rIdx,
+						ValueExpr:               &filter.value.Scalar,
+						MinExpr:                 &filter.min.Scalar,
+						ValueCol:                valueColRef,
+						MinColRef:               minColRef,
+						MaxColRef:               maxColRef,
+						Parent:                  rel.JoinBase,
+						RangeClosedOnLowerBound: filter.closedOnLowerBound,
+						RangeClosedOnUpperBound: filter.closedOnUpperBound,
+					}
+					rel.Op = rel.Op.AsRangeHeap()
+					e.Group().Prepend(rel)
+				}
+			}
+		}
+		return nil
+	})
+}
+
 // satisfiesScalarRefs returns true if all GetFields in the expression
 // are columns provided by |grp|
 func satisfiesScalarRefs(e memo.ScalarExpr, grp *memo.ExprGroup) bool {
 	// |grp| provides all tables referenced in |e|
 	return e.Group().ScalarProps().Tables.Difference(grp.RelProps.OutputTables()).Len() == 0
+}
+
+// getColumnRefFromScalar returns the first column reference used in a scalar expression.
+func getColumnRefFromScalar(s memo.ScalarExpr) *memo.ColRef {
+	var result *memo.ColRef
+	memo.DfsScalar(s, func(e memo.ScalarExpr) (err error) {
+		if c, ok := e.(*memo.ColRef); ok {
+			result = c
+			return memo.HaltErr
+		}
+		return
+	})
+	return result
 }
 
 // addMergeJoins will add merge join operators to join relations
@@ -679,22 +884,8 @@ func addMergeJoins(m *memo.Memo) error {
 				continue
 			}
 
-			var lRef *memo.ColRef
-			memo.DfsScalar(l.Scalar, func(e memo.ScalarExpr) (err error) {
-				if c, ok := e.(*memo.ColRef); ok {
-					lRef = c
-					return memo.HaltErr
-				}
-				return
-			})
-			var rRef *memo.ColRef
-			memo.DfsScalar(r.Scalar, func(e memo.ScalarExpr) (err error) {
-				if c, ok := e.(*memo.ColRef); ok {
-					rRef = c
-					return memo.HaltErr
-				}
-				return
-			})
+			lRef := getColumnRefFromScalar(l.Scalar)
+			rRef := getColumnRefFromScalar(r.Scalar)
 
 			// check that comparer is not non-decreasing
 			if !isWeaklyMonotonic(l.Scalar) || !isWeaklyMonotonic(r.Scalar) {
@@ -762,7 +953,7 @@ func sortedIndexScansForTableCol(indexes []*memo.Index, targetCol *memo.ColRef, 
 					}
 				}
 			}
-			rang[j] = sql.ClosedRangeColumnExpr(lit.Val, lit.Val, lit.Typ)
+			rang[j] = sql.ClosedRangeColumnExpr(lit.Val, lit.Val, idx.SqlIdx().ColumnExpressionTypes()[j].Type)
 		}
 		for j := matchedIdx; j < len(idx.Cols()); j++ {
 			// all range bound Compare() is type insensitive
@@ -842,6 +1033,9 @@ func transposeRightJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 		case *plan.JoinNode:
 			if n.Op.IsRightOuter() {
 				return plan.NewLeftOuterJoin(n.Right(), n.Left(), n.Filter), transform.NewTree, nil
+			}
+			if n.Op == plan.JoinTypeLateralRight {
+				return plan.NewJoin(n.Right(), n.Left(), plan.JoinTypeLateralLeft, n.Filter), transform.NewTree, nil
 			}
 		default:
 		}

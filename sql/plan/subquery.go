@@ -428,10 +428,9 @@ func (s *Subquery) HasResultRow(ctx *sql.Context, row sql.Row) (bool, error) {
 	// Call the iterator once and see if it has a row. If io.EOF is received return false.
 	_, err = iter.Next(ctx)
 	if err == io.EOF {
-		return false, nil
-	}
-
-	if err != nil {
+		err = iter.Close(ctx)
+		return false, err
+	} else if err != nil {
 		return false, err
 	}
 

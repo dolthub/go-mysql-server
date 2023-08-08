@@ -221,6 +221,8 @@ func (g *MemoGen) genFormatters(defines []ExprDef) {
 				fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: '%%s.%%s'\", r.Gf.Table(), r.Gf.Name())\n", loweredName)
 			case "Bindvar":
 				fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: %%s\", r.Name)\n", loweredName)
+			case "Between":
+				fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: %%d, %%d, %%d\", r.Value.Id, r.Min.Id, r.Max.Id)\n", loweredName)
 			case "Hidden":
 				fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: %%s\", r.E)\n", loweredName)
 			case "Tuple":

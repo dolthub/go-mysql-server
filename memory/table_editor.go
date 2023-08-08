@@ -40,6 +40,7 @@ var _ sql.RowReplacer = (*tableEditor)(nil)
 var _ sql.RowUpdater = (*tableEditor)(nil)
 var _ sql.RowInserter = (*tableEditor)(nil)
 var _ sql.RowDeleter = (*tableEditor)(nil)
+var _ sql.AutoIncrementSetter = (*tableEditor)(nil)
 var _ sql.ForeignKeyEditor = (*tableEditor)(nil)
 
 func (t *tableEditor) Name() string {
@@ -288,12 +289,8 @@ func (t *tableEditor) IndexedAccess(i sql.IndexLookup) sql.IndexedTable {
 		}
 		adds := make([]sql.Row, len(nonPkTea.adds))
 		deletes := make([]sql.Row, len(nonPkTea.deletes))
-		for i, val := range nonPkTea.adds {
-			adds[i] = val
-		}
-		for i, val := range nonPkTea.deletes {
-			deletes[i] = val
-		}
+		copy(adds, nonPkTea.adds)
+		copy(deletes, nonPkTea.deletes)
 		err = (&keylessTableEditAccumulator{
 			table:   newTable,
 			adds:    adds,

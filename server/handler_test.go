@@ -17,7 +17,7 @@ package server
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"strconv"
 	"testing"
@@ -1182,7 +1182,7 @@ func testServer(t *testing.T, ready chan struct{}, port string, breakConn bool) 
 			_ = conn.Close()
 		}()
 
-		_, err = ioutil.ReadAll(conn)
+		_, err = io.ReadAll(conn)
 		if err != nil {
 			t.Fatal(err)
 		}

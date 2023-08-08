@@ -17,12 +17,12 @@ package analyzer
 import (
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/transform"
-	"github.com/dolthub/go-mysql-server/sql/types"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/fixidx"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func setInsertColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
@@ -129,7 +129,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		}
 
 		// The schema of the destination node and the underlying table differ subtly in terms of defaults
-		project, err := wrapRowSource(ctx, source, insertable, insert.Destination.Schema(), columnNames)
+		project, err := wrapRowSource(ctx, scope, a.LogFn(), source, insertable, insert.Destination.Schema(), columnNames)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -179,7 +179,7 @@ func existsNonZeroValueCount(values sql.Node) bool {
 
 // wrapRowSource wraps the original row source in a projection so that its schema matches the full schema of the
 // underlying table, in the same order.
-func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string) (sql.Node, error) {
+func wrapRowSource(ctx *sql.Context, scope *plan.Scope, logFn func(string, ...any), insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string) (sql.Node, error) {
 	projExprs := make([]sql.Expression, len(schema))
 	for i, f := range schema {
 		found := false
@@ -195,7 +195,23 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 			if !f.Nullable && f.Default == nil && !f.AutoIncrement {
 				return nil, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
 			}
-			projExprs[i] = f.Default
+			var def sql.Expression = f.Default
+			if ctx.Version == sql.VersionExperimental {
+				var err error
+				def, _, err = transform.Expr(f.Default, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+					switch e := e.(type) {
+					case *expression.GetField:
+						//return e.WithIndex(e.Index() - 1), transform.NewTree, nil
+						return fixidx.FixFieldIndexes(scope, logFn, schema, e.WithTable(destTbl.Name()))
+					default:
+						return e, transform.SameTree, nil
+					}
+				})
+				if err != nil {
+					return nil, err
+				}
+			}
+			projExprs[i] = def
 		}
 
 		if f.AutoIncrement {

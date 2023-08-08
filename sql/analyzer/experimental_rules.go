@@ -2,12 +2,13 @@ package analyzer
 
 import (
 	"fmt"
-
-	"github.com/dolthub/go-mysql-server/sql/fixidx"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/fixidx"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -15,164 +16,246 @@ import (
 // to compensate for the new name resolution expression overloading GetField
 // indexes.
 func fixupAuxiliaryExprs(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		switch n.(type) {
-		case *plan.Sort, *plan.Project:
-			return fixidx.FixFieldIndexesForExpressions(a.LogFn(), n, scope)
+	return transform.NodeWithOpaque(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		switch n := n.(type) {
 		default:
+			ret, same1, err := fixidx.FixFieldIndexesForExpressions(ctx, a.LogFn(), n, scope)
+			if err != nil {
+				return n, transform.SameTree, err
+			}
+			// walk subquery expressions
+			ret, same2, err := transform.OneNodeExpressions(ret, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				switch e := e.(type) {
+				case *plan.Subquery:
+					newQ, same, err := fixupAuxiliaryExprs(ctx, a, e.Query, scope.NewScopeFromSubqueryExpression(ret), sel)
+					if same || err != nil {
+						return e, transform.SameTree, err
+					}
+					return plan.NewSubquery(newQ, e.QueryString), transform.NewTree, nil
+				default:
+				}
+				return e, transform.SameTree, nil
+			})
+			if same1 && same2 || err != nil {
+				return n, transform.SameTree, nil
+			}
+			return ret, transform.NewTree, nil
+		case *plan.Fetch:
 			return n, transform.SameTree, nil
+		case *plan.JSONTable:
+			newExprs, same, err := fixidx.FixFieldIndexesOnExpressions(scope, a.LogFn(), nil, n.Expressions()...)
+			if err != nil {
+				return n, transform.SameTree, nil
+			}
+			if same {
+				return n, transform.SameTree, nil
+			}
+			newJt, err := n.WithExpressions(newExprs...)
+			return newJt, transform.NewTree, err
+		case *plan.ShowVariables:
+			if n.Filter != nil {
+				newF, same, err := fixidx.FixFieldIndexes(scope, a.LogFn(), n.Schema(), n.Filter)
+				if same || err != nil {
+					return n, transform.SameTree, err
+				}
+				n.Filter = newF
+				return n, transform.NewTree, nil
+			}
+			return n, transform.SameTree, nil
+		case *plan.CreateTable:
+			allSame := transform.SameTree
+			if len(n.ChDefs) > 0 {
+				for i, ch := range n.ChDefs {
+					newExpr, same, err := fixidx.FixFieldIndexes(scope, a.LogFn(), n.CreateSchema.Schema, ch.Expr)
+					if err != nil {
+						return n, transform.SameTree, err
+					}
+					allSame = allSame && same
+					n.ChDefs[i].Expr = newExpr
+				}
+			}
+			return n, allSame, nil
+		case *plan.Update:
+			allSame := transform.SameTree
+			if len(n.Checks) > 0 {
+				for i, ch := range n.Checks {
+					newExpr, same, err := fixidx.FixFieldIndexes(scope, a.LogFn(), n.Schema(), ch.Expr)
+					if err != nil {
+						return n, transform.SameTree, err
+					}
+					allSame = allSame && same
+					n.Checks[i].Expr = newExpr
+				}
+			}
+			return n, allSame, nil
+		case *plan.InsertInto:
+			newN, same1, err := fixidx.FixFieldIndexesForExpressions(ctx, a.LogFn(), n, scope)
+			if err != nil {
+				return n, transform.SameTree, err
+			}
+			ins := newN.(*plan.InsertInto)
+			newSource, same2, err := fixupAuxiliaryExprs(ctx, a, ins.Source, scope, sel)
+			if err != nil || (same1 && same2) {
+				return n, transform.SameTree, err
+			}
+			ins.Source = newSource
+
+			rightSchema := make(sql.Schema, len(n.Destination.Schema())*2)
+			// schema = [oldrow][newrow]
+			for i, c := range n.Destination.Schema() {
+				rightSchema[i] = c
+				if _, ok := n.Source.(*plan.Values); !ok && len(n.Destination.Schema()) == len(n.Source.Schema()) {
+					rightSchema[len(n.Destination.Schema())+i] = n.Source.Schema()[i]
+				} else {
+					newC := c.Copy()
+					newC.Source = planbuilder.OnDupValuesPrefix
+					rightSchema[len(n.Destination.Schema())+i] = newC
+				}
+			}
+
+			var newOnDups []sql.Expression
+			for i, e := range n.OnDupExprs {
+				set, ok := e.(*expression.SetField)
+				if !ok {
+					return n, transform.SameTree, fmt.Errorf("on duplicate update expressions should be *expression.SetField; found %T", e)
+				}
+				left, same1, err := fixidx.FixFieldIndexes(scope, a.LogFn(), n.Destination.Schema(), set.Left)
+				if err != nil {
+					return n, transform.SameTree, err
+				}
+
+				right, same2, err := fixidx.FixFieldIndexes(scope, a.LogFn(), rightSchema, set.Right)
+				if err != nil {
+					return n, transform.SameTree, err
+				}
+				if same1 && same2 {
+					continue
+				}
+				if newOnDups == nil {
+					newOnDups = make([]sql.Expression, len(n.OnDupExprs))
+					copy(newOnDups, n.OnDupExprs)
+				}
+				newOnDups[i] = expression.NewSetField(left, right)
+			}
+			if newOnDups != nil {
+				ins.OnDupExprs = newOnDups
+			}
+			return ins, transform.NewTree, nil
 		}
 	})
 }
 
-func transformJoinApply_experimental(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	switch n.(type) {
-	case *plan.DeleteFrom, *plan.InsertInto:
-		return n, transform.SameTree, nil
+type aliasScope struct {
+	aliases map[string]sql.Expression
+	parent  *aliasScope
+}
+
+func (a *aliasScope) push() *aliasScope {
+	return &aliasScope{
+		parent: a,
 	}
-	var applyId int
+}
 
-	ret := n
-	var err error
-	same := transform.TreeIdentity(false)
-	iters := 0
-	for !same {
-		if iters > 50 {
-			return n, transform.SameTree, fmt.Errorf("hit applyJoin stack limit")
+func (a *aliasScope) addRef(alias *expression.Alias) {
+	if a.aliases == nil {
+		a.aliases = make(map[string]sql.Expression)
+	}
+	a.aliases[alias.Name()] = alias.Child
+}
+
+func (a *aliasScope) isOuterRef(name string) (sql.Expression, bool) {
+	if a.aliases != nil {
+		if a, ok := a.aliases[name]; ok {
+			return a, false
 		}
-		// simplifySubqExpr can merge two scopes, requiring us to either
-		// recurse on the merged scope or perform a fixed-point iteration.
-		ret, same, err = transform.Node(ret, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-			var filters []sql.Expression
-			var child sql.Node
-			switch n := n.(type) {
-			case *plan.Filter:
-				child = n.Child
-				filters = expression.SplitConjunction(n.Expression)
-			default:
-			}
+	}
+	if a.parent == nil {
+		return nil, false
+	}
+	found, _ := a.parent.isOuterRef(name)
+	if found != nil {
+		return found, true
+	}
+	return nil, false
+}
 
-			if sel == nil {
-				return n, transform.SameTree, nil
-			}
+// inlineSubqueryAliasRefs matches the pattern:
+// SELECT expr as <alias>, (SELECT <alias> ...) ...
+// and performs a variable replacement:
+// SELECT expr as <alias>, (SELECT expr ...) ...
+// Outer alias references can occur anywhere in subquery expressions,
+// as written this is a fairly unflexible rule.
+// TODO: extend subquery search to WHERE filters and other scalar expressions
+// TODO: convert subquery expressions to lateral joins to avoid this hack
+func inlineSubqueryAliasRefs(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	ret, err := inlineSubqueryAliasRefsHelper(&aliasScope{}, n)
+	return ret, transform.NewTree, err
+}
 
-			subScope := scope.NewScopeFromSubqueryExpression(n)
-			var matches []applyJoin
-			var newFilters []sql.Expression
-
-			// separate decorrelation candidates
-			for _, e := range filters {
-				if !plan.IsNullRejecting(e) {
-					// TODO: rewrite dual table to permit in-scope joins,
-					// which aren't possible when values are projected
-					// above join filter
-					rt := getResolvedTable(n)
-					if rt == nil || plan.IsDualTable(rt.Table) {
-						newFilters = append(newFilters, e)
-						continue
+func inlineSubqueryAliasRefsHelper(scope *aliasScope, n sql.Node) (sql.Node, error) {
+	ret := n
+	switch n := n.(type) {
+	case *plan.Project:
+		var newProj []sql.Expression
+		for i, e := range n.Projections {
+			e, same, err := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				switch e := e.(type) {
+				case *expression.AliasReference:
+				case *expression.Alias:
+					// new def
+					if !e.Unreferencable() {
+						scope.addRef(e)
 					}
-				}
-
-				candE := e
-				op := plan.JoinTypeSemi
-				if n, ok := e.(*expression.Not); ok {
-					candE = n.Child
-					op = plan.JoinTypeAnti
-				}
-
-				var sq *plan.Subquery
-				var l sql.Expression
-				var joinF sql.Expression
-				var max1 bool
-				switch e := candE.(type) {
-				case *plan.InSubquery:
-					sq, _ = e.Right.(*plan.Subquery)
-					l = e.Left
-					joinF = expression.NewEquals(nil, nil)
-				case expression.Comparer:
-					sq, _ = e.Right().(*plan.Subquery)
-					l = e.Left()
-					joinF = e
-					max1 = true
+				case *expression.GetField:
+					// is an alias ref?
+					// check if in parent scope
+					if alias, inOuter := scope.isOuterRef(strings.ToLower(e.Name())); e.Table() == "" && alias != nil && inOuter {
+						return alias, transform.NewTree, nil
+					}
+				case *plan.Subquery:
+					subqScope := scope.push()
+					newQ, err := inlineSubqueryAliasRefsHelper(subqScope, e.Query)
+					if err != nil {
+						return e, transform.SameTree, err
+					}
+					ret := *e
+					ret.Query = newQ
+					return &ret, transform.NewTree, nil
 				default:
 				}
-				if sq != nil && (sq.CanCacheResults() || nodeIsCacheable(sq.Query, len(subScope.Schema())+1)) {
-					matches = append(matches, applyJoin{l: l, r: sq, op: op, filter: joinF, max1: max1})
-				} else {
-					newFilters = append(newFilters, e)
-				}
+				return e, transform.SameTree, nil
+			})
+			if err != nil {
+				return nil, err
 			}
-			if len(matches) == 0 {
-				return n, transform.SameTree, nil
+			if !same {
+				if newProj == nil {
+					newProj = make([]sql.Expression, len(n.Projections))
+					copy(newProj, n.Projections)
+				}
+				newProj[i] = e
 			}
-
-			ret := child
-			for _, m := range matches {
-				// A successful candidate is built with:
-				// (1) Semi or anti join between the outer scope and (2) conditioned on (3).
-				// (2) Simplified or unnested subquery (table alias).
-				// (3) Join condition synthesized from the original correlated expression
-				//     normalized to match changes to (2).
-				subq := m.r
-
-				name := fmt.Sprintf("scalarSubq%d", applyId)
-				applyId++
-
-				sch := subq.Query.Schema()
-				var rightF sql.Expression
-				var newCols []string
-				if len(sch) == 1 {
-					subqCol := subq.Query.Schema()[0]
-					rightF = expression.NewGetFieldWithTable(len(scope.Schema()), subqCol.Type, name, subqCol.Name, subqCol.Nullable)
-					newCols = append(newCols, subqCol.Name)
-				} else {
-					tup := make(expression.Tuple, len(sch))
-					for i, c := range sch {
-						tup[i] = expression.NewGetFieldWithTable(len(scope.Schema())+i, c.Type, name, c.Name, c.Nullable)
-						newCols = append(newCols, c.Name)
-					}
-					rightF = tup
-				}
-
-				q, _, err := fixidx.FixFieldIndexesForNode(a.LogFn(), scope, subq.Query)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-
-				var newSubq sql.Node = plan.NewSubqueryAlias(name, subq.QueryString, q).WithColumns(newCols)
-				newSubq, err = simplifySubqExpr(newSubq)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-				if m.max1 {
-					newSubq = plan.NewMax1Row(newSubq, name)
-				}
-
-				condSch := append(ret.Schema(), newSubq.Schema()...)
-				filter, err := m.filter.WithChildren(m.l, rightF)
-				if err != nil {
-					return n, transform.SameTree, err
-				}
-				filter, _, err = fixidx.FixFieldIndexes(scope, a.LogFn(), condSch, filter)
-				if err != nil {
-					return n, transform.SameTree, err
-				}
-				var comment string
-				if c, ok := ret.(sql.CommentedNode); ok {
-					comment = c.Comment()
-				}
-				ret = plan.NewJoin(ret, newSubq, m.op, filter).WithComment(comment)
-			}
-
-			if len(newFilters) == 0 {
-				return ret, transform.NewTree, nil
-			}
-			return plan.NewFilter(expression.JoinAnd(newFilters...), ret), transform.NewTree, nil
-		})
-		if err != nil {
-			return n, transform.SameTree, err
 		}
-		iters++
+		if newProj != nil {
+			ret = plan.NewProject(newProj, n.Child)
+		}
+	default:
 	}
-	return ret, transform.TreeIdentity(applyId == 0), nil
+
+	newChildren := make([]sql.Node, len(n.Children()))
+	var err error
+	for i, c := range ret.Children() {
+		newChildren[i], err = inlineSubqueryAliasRefsHelper(scope, c)
+		if err != nil {
+			return nil, err
+		}
+	}
+	ret, err = ret.WithChildren(newChildren...)
+	if err != nil {
+		return nil, err
+	}
+	if err != nil {
+		panic(err)
+	}
+	return ret, nil
 }

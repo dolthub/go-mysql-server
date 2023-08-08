@@ -112,7 +112,7 @@ func NewAlterEvent(
 
 // String implements the sql.Node interface.
 func (a *AlterEvent) String() string {
-	stmt := fmt.Sprintf("ALTER")
+	stmt := "ALTER"
 
 	if a.Definer != "" {
 		stmt = fmt.Sprintf("%s DEFINER = %s", stmt, a.Definer)
@@ -442,7 +442,7 @@ func (a *alterEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 				ctx.Session.Warn(&sql.Warning{
 					Level:   "Note",
 					Code:    1544,
-					Message: fmt.Sprintf("Event execution time is in the past. Event has been disabled"),
+					Message: "Event execution time is in the past. Event has been disabled",
 				})
 			} else {
 				return nil, fmt.Errorf("Event execution time is in the past and ON COMPLETION NOT PRESERVE is set. The event was not changed. Specify a time in the future.")

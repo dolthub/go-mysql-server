@@ -29,6 +29,7 @@ type JoinType uint16
 const (
 	JoinTypeUnknown                   JoinType = iota // UnknownJoin
 	JoinTypeCross                                     // CrossJoin
+	JoinTypeCrossHash                                 // CrossHashJoin
 	JoinTypeInner                                     // InnerJoin
 	JoinTypeSemi                                      // SemiJoin
 	JoinTypeAnti                                      // AntiJoin
@@ -44,6 +45,8 @@ const (
 	JoinTypeLeftOuterHashExcludeNulls                 // LeftOuterHashJoinExcludeNulls
 	JoinTypeMerge                                     // MergeJoin
 	JoinTypeLeftOuterMerge                            // LeftOuterMergeJoin
+	JoinTypeRangeHeap                                 // RangeHeapJoin
+	JoinTypeLeftOuterRangeHeap                        // LeftOuterRangeHeapJoin
 	JoinTypeSemiHash                                  // SemiHashJoin
 	JoinTypeAntiHash                                  // AntiHashJoin
 	JoinTypeSemiLookup                                // SemiLookupJoin
@@ -51,11 +54,16 @@ const (
 	JoinTypeSemiMerge                                 // SemiMergeJoin
 	JoinTypeAntiMerge                                 // AntiMergeJoin
 	JoinTypeNatural                                   // NaturalJoin
+	// TODO: might be able to merge these with their respective join types
+	JoinTypeLateralCross // LateralCrossJoin
+	JoinTypeLateralInner // LateralInnerJoin
+	JoinTypeLateralLeft  // LateralLeftJoin
+	JoinTypeLateralRight // LateralLeftJoin
 )
 
 func (i JoinType) IsLeftOuter() bool {
 	switch i {
-	case JoinTypeLeftOuter, JoinTypeLeftOuterExcludeNulls, JoinTypeLeftOuterLookup, JoinTypeLeftOuterHash, JoinTypeLeftOuterHashExcludeNulls, JoinTypeLeftOuterMerge:
+	case JoinTypeLeftOuter, JoinTypeLeftOuterExcludeNulls, JoinTypeLeftOuterLookup, JoinTypeLeftOuterHash, JoinTypeLeftOuterHashExcludeNulls, JoinTypeLeftOuterMerge, JoinTypeLeftOuterRangeHeap:
 		return true
 	default:
 		return false
@@ -66,7 +74,7 @@ func (i JoinType) IsLeftOuter() bool {
 // that row is excluded from the result table.
 func (i JoinType) IsExcludeNulls() bool {
 	switch i {
-	case JoinTypeAnti, JoinTypeLeftOuterExcludeNulls, JoinTypeLeftOuterHashExcludeNulls:
+	case JoinTypeAnti, JoinTypeAntiHash, JoinTypeAntiLookup, JoinTypeAntiMerge, JoinTypeLeftOuterExcludeNulls, JoinTypeLeftOuterHashExcludeNulls:
 		return true
 	default:
 		return false
@@ -87,7 +95,7 @@ func (i JoinType) IsPhysical() bool {
 		JoinTypeSemiLookup, JoinTypeSemiMerge, JoinTypeSemiHash,
 		JoinTypeHash, JoinTypeLeftOuterHash, JoinTypeLeftOuterHashExcludeNulls,
 		JoinTypeMerge, JoinTypeLeftOuterMerge,
-		JoinTypeAntiLookup, JoinTypeAntiMerge, JoinTypeAntiHash:
+		JoinTypeAntiLookup, JoinTypeAntiMerge, JoinTypeAntiHash, JoinTypeRangeHeap, JoinTypeLeftOuterRangeHeap:
 		return true
 	default:
 		return false
@@ -122,7 +130,7 @@ func (i JoinType) IsMerge() bool {
 
 func (i JoinType) IsHash() bool {
 	switch i {
-	case JoinTypeHash, JoinTypeSemiHash, JoinTypeAntiHash, JoinTypeLeftOuterHash, JoinTypeLeftOuterHashExcludeNulls:
+	case JoinTypeHash, JoinTypeSemiHash, JoinTypeAntiHash, JoinTypeLeftOuterHash, JoinTypeLeftOuterHashExcludeNulls, JoinTypeCrossHash:
 		return true
 	default:
 		return false
@@ -172,7 +180,25 @@ func (i JoinType) IsLookup() bool {
 }
 
 func (i JoinType) IsCross() bool {
-	return i == JoinTypeCross
+	return i == JoinTypeCross || i == JoinTypeCrossHash
+}
+
+func (i JoinType) IsLateral() bool {
+	switch i {
+	case JoinTypeLateralCross, JoinTypeLateralInner, JoinTypeLateralLeft:
+		return true
+	default:
+		return false
+	}
+}
+
+func (i JoinType) IsRange() bool {
+	switch i {
+	case JoinTypeRangeHeap, JoinTypeLeftOuterRangeHeap:
+		return true
+	default:
+		return false
+	}
 }
 
 func (i JoinType) AsHash() JoinType {
@@ -187,6 +213,19 @@ func (i JoinType) AsHash() JoinType {
 		return JoinTypeSemiHash
 	case JoinTypeAnti:
 		return JoinTypeAntiHash
+	case JoinTypeCross:
+		return JoinTypeCrossHash
+	default:
+		return i
+	}
+}
+
+func (i JoinType) AsRangeHeap() JoinType {
+	switch i {
+	case JoinTypeInner:
+		return JoinTypeRangeHeap
+	case JoinTypeLeftOuter:
+		return JoinTypeLeftOuterRangeHeap
 	default:
 		return i
 	}

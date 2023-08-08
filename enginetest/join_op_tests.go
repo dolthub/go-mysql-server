@@ -31,11 +31,12 @@ type JoinOpTests struct {
 }
 
 var biasedCosters = map[string]memo.Coster{
-	"inner":   memo.NewInnerBiasedCoster(),
-	"lookup":  memo.NewLookupBiasedCoster(),
-	"hash":    memo.NewHashBiasedCoster(),
-	"merge":   memo.NewMergeBiasedCoster(),
-	"partial": memo.NewPartialBiasedCoster(),
+	"inner":     memo.NewInnerBiasedCoster(),
+	"lookup":    memo.NewLookupBiasedCoster(),
+	"hash":      memo.NewHashBiasedCoster(),
+	"merge":     memo.NewMergeBiasedCoster(),
+	"partial":   memo.NewPartialBiasedCoster(),
+	"rangeHeap": memo.NewRangeHeapBiasedCoster(),
 }
 
 func TestJoinOps(t *testing.T, harness Harness) {
@@ -164,6 +165,28 @@ var joinOpTests = []struct {
 			{
 				Query:    "select * from xy where x not in (select v from uv)",
 				Expected: []sql.Row{{0, 0}},
+			},
+		},
+	},
+	{
+		name: "ordered distinct",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"create table uv (u int primary key, v int);",
+				"insert into uv values (1,1),(2,2),(3,1),(4,2);",
+				"create table xy (x int primary key, y int);",
+				"insert into xy values (1,1),(2,2);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    `select /*+ JOIN_ORDER(scalarSubq0,xy) */ count(*) from xy where y in (select distinct v from uv);`,
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    `SELECT /*+ JOIN_ORDER(scalarSubq0,xy) */ count(*) from xy where y in (select distinct u from uv);`,
+				Expected: []sql.Row{{2}},
 			},
 		},
 	},
@@ -1333,6 +1356,238 @@ SELECT SUM(x) FROM xy WHERE x IN (
       					AND EXISTS (SELECT * FROM othertable Alias1 join othertable Alias2 WHERE Alias1.i2 = (mytable.i + 2)))`,
 				Expected: []sql.Row{{1, "first row"}},
 			},
+		},
+	},
+	{
+		name: "primary key range join",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"create table vals (val int primary key)",
+				"create table ranges (min int primary key, max int, unique key(min,max))",
+				"insert into vals values (0), (1), (2), (3), (4), (5), (6)",
+				"insert into ranges values (0,2), (1,3), (2,4), (3,5), (4,6)",
+			},
+		},
+		tests: rangeJoinOpTests,
+	},
+	{
+		name: "keyless range join",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"create table vals (val int)",
+				"create table ranges (min int, max int)",
+				"insert into vals values (0), (1), (2), (3), (4), (5), (6)",
+				"insert into ranges values (0,2), (1,3), (2,4), (3,5), (4,6)",
+			},
+		},
+		tests: rangeJoinOpTests,
+	},
+	{
+		name: "recursive range join",
+		setup: [][]string{
+			setup.MydbData[0],
+		},
+		tests: []JoinOpTests{{
+			Query: "with recursive vals as (select 0 as val union all select val + 1 from vals where val < 6), " +
+				"ranges as (select 0 as min, 2 as max union all select min+1, max+1 from ranges where max < 6) " +
+				"select * from vals join ranges on val > min and val < max",
+			Expected: []sql.Row{
+				{1, 0, 2},
+				{2, 1, 3},
+				{3, 2, 4},
+				{4, 3, 5},
+				{5, 4, 6},
+			},
+		}},
+	},
+	{
+		name: "where x not in (...)",
+		setup: [][]string{
+			setup.XyData[0],
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    `SELECT * from xy_hasnull where y not in (SELECT b from ab_hasnull)`,
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    `SELECT * from xy_hasnull where y not in (SELECT b from ab)`,
+				Expected: []sql.Row{{1, 0}},
+			},
+			{
+				Query:    `SELECT * from xy where y not in (SELECT b from ab_hasnull)`,
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    `SELECT * from xy where null not in (SELECT b from ab)`,
+				Expected: []sql.Row{},
+			},
+		},
+	},
+}
+
+var rangeJoinOpTests = []JoinOpTests{
+	{
+		Query: "select * from vals join ranges on val between min and max",
+		Expected: []sql.Row{
+			{0, 0, 2},
+			{1, 0, 2},
+			{1, 1, 3},
+			{2, 0, 2},
+			{2, 1, 3},
+			{2, 2, 4},
+			{3, 1, 3},
+			{3, 2, 4},
+			{3, 3, 5},
+			{4, 2, 4},
+			{4, 3, 5},
+			{4, 4, 6},
+			{5, 3, 5},
+			{5, 4, 6},
+			{6, 4, 6},
+		},
+	},
+	{
+		Query: "select * from vals join ranges on val > min and val < max",
+		Expected: []sql.Row{
+			{1, 0, 2},
+			{2, 1, 3},
+			{3, 2, 4},
+			{4, 3, 5},
+			{5, 4, 6},
+		},
+	},
+	{
+		Query: "select * from vals join ranges on min < val and max > val",
+		Expected: []sql.Row{
+			{1, 0, 2},
+			{2, 1, 3},
+			{3, 2, 4},
+			{4, 3, 5},
+			{5, 4, 6},
+		},
+	},
+	{
+		Query: "select * from vals join ranges on val >= min and val < max",
+		Expected: []sql.Row{
+			{0, 0, 2},
+			{1, 0, 2},
+			{1, 1, 3},
+			{2, 1, 3},
+			{2, 2, 4},
+			{3, 2, 4},
+			{3, 3, 5},
+			{4, 3, 5},
+			{4, 4, 6},
+			{5, 4, 6},
+		},
+	},
+	{
+		Query: "select * from vals join ranges on val > min and val <= max",
+		Expected: []sql.Row{
+			{1, 0, 2},
+			{2, 0, 2},
+			{2, 1, 3},
+			{3, 1, 3},
+			{3, 2, 4},
+			{4, 2, 4},
+			{4, 3, 5},
+			{5, 3, 5},
+			{5, 4, 6},
+			{6, 4, 6},
+		},
+	},
+	{
+		Query: "select * from vals join ranges on val >= min and val <= max",
+		Expected: []sql.Row{
+			{0, 0, 2},
+			{1, 0, 2},
+			{1, 1, 3},
+			{2, 0, 2},
+			{2, 1, 3},
+			{2, 2, 4},
+			{3, 1, 3},
+			{3, 2, 4},
+			{3, 3, 5},
+			{4, 2, 4},
+			{4, 3, 5},
+			{4, 4, 6},
+			{5, 3, 5},
+			{5, 4, 6},
+			{6, 4, 6},
+		},
+	},
+	{
+		Query: "select * from vals left join ranges on val > min and val < max",
+		Expected: []sql.Row{
+			{0, nil, nil},
+			{1, 0, 2},
+			{2, 1, 3},
+			{3, 2, 4},
+			{4, 3, 5},
+			{5, 4, 6},
+			{6, nil, nil},
+		},
+	},
+	{
+		Query: "select * from ranges l join ranges r on l.min > r.min and l.min < r.max",
+		Expected: []sql.Row{
+			{1, 3, 0, 2},
+			{2, 4, 1, 3},
+			{3, 5, 2, 4},
+			{4, 6, 3, 5},
+		},
+	},
+	{
+		Query: "select * from vals left join ranges r1 on val > r1.min and val < r1.max left join ranges r2 on r1.min > r2.min and r1.min < r2.max",
+		Expected: []sql.Row{
+			{0, nil, nil, nil, nil},
+			{1, 0, 2, nil, nil},
+			{2, 1, 3, 0, 2},
+			{3, 2, 4, 1, 3},
+			{4, 3, 5, 2, 4},
+			{5, 4, 6, 3, 5},
+			{6, nil, nil, nil, nil},
+		},
+	},
+	{
+		Query: "select * from (select vals.val * 2 as val from vals) as newVals join (select ranges.min * 2 as min, ranges.max * 2 as max from ranges) as newRanges on val > min and val < max;",
+		Expected: []sql.Row{
+			{2, 0, 4},
+			{4, 2, 6},
+			{6, 4, 8},
+			{8, 6, 10},
+			{10, 8, 12},
+		},
+	},
+	{
+		// This tests that the RangeHeapJoin node functions correctly even if its rows are iterated over multiple times.
+		Query: "select * from (select 1 union select 2) as l left join (select * from vals join ranges on val > min and val < max) as r on max = max",
+		Expected: []sql.Row{
+			{1, 1, 0, 2},
+			{1, 2, 1, 3},
+			{1, 3, 2, 4},
+			{1, 4, 3, 5},
+			{1, 5, 4, 6},
+			{2, 1, 0, 2},
+			{2, 2, 1, 3},
+			{2, 3, 2, 4},
+			{2, 4, 3, 5},
+			{2, 5, 4, 6},
+		},
+	},
+	{
+		Query: "select * from vals left join (select * from ranges where 0) as newRanges on val > min and val < max;",
+		Expected: []sql.Row{
+			{0, nil, nil},
+			{1, nil, nil},
+			{2, nil, nil},
+			{3, nil, nil},
+			{4, nil, nil},
+			{5, nil, nil},
+			{6, nil, nil},
 		},
 	},
 }

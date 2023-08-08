@@ -248,6 +248,89 @@ var CreateTableScriptTests = []ScriptTest{
 	},
 }
 
+var CreateTableAutoIncrementTests = []ScriptTest{
+	{
+		Name:        "create table with non primary auto_increment column",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "create table t1 (a int auto_increment unique, b int, primary key(b))",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "insert into t1 (b) values (1), (2)",
+				Expected: []sql.Row{
+					{
+						types.OkResult{
+							RowsAffected: 2,
+							InsertID:     1,
+						},
+					},
+				},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+						"  `a` int AUTO_INCREMENT,\n" +
+						"  `b` int NOT NULL,\n" +
+						"  PRIMARY KEY (`b`),\n" +
+						"  UNIQUE KEY `a` (`a`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "select * from t1 order by b",
+				Expected: []sql.Row{{1, 1}, {2, 2}},
+			},
+		},
+	},
+	{
+		Name:        "create table with non primary auto_increment column, separate unique key",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "create table t1 (a int auto_increment, b int, primary key(b), unique key(a))",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "insert into t1 (b) values (1), (2)",
+				Expected: []sql.Row{
+					{
+						types.OkResult{
+							RowsAffected: 2,
+							InsertID:     1,
+						},
+					},
+				},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+						"  `a` int AUTO_INCREMENT,\n" +
+						"  `b` int NOT NULL,\n" +
+						"  PRIMARY KEY (`b`),\n" +
+						"  UNIQUE KEY `a` (`a`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "select * from t1 order by b",
+				Expected: []sql.Row{{1, 1}, {2, 2}},
+			},
+		},
+	},
+	{
+		Name:        "create table with non primary auto_increment column, missing unique key",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "create table t1 (a int auto_increment, b int, primary key(b))",
+				ExpectedErr: sql.ErrInvalidAutoIncCols,
+			},
+		},
+	},
+}
+
 var BrokenCreateTableQueries = []WriteQueryTest{
 	{
 		WriteQuery:          `create table t1 (b blob, primary key(b(1)))`,

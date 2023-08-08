@@ -32,10 +32,21 @@ type RoleEdge struct {
 	WithAdminOption bool
 }
 
-var _ in_mem_table.Entry = (*RoleEdge)(nil)
+func RoleEdgeToRow(ctx *sql.Context, r *RoleEdge) (sql.Row, error) {
+	row := make(sql.Row, len(roleEdgesTblSchema))
+	row[roleEdgesTblColIndex_FROM_HOST] = r.FromHost
+	row[roleEdgesTblColIndex_FROM_USER] = r.FromUser
+	row[roleEdgesTblColIndex_TO_HOST] = r.ToHost
+	row[roleEdgesTblColIndex_TO_USER] = r.ToUser
+	if r.WithAdminOption {
+		row[roleEdgesTblColIndex_WITH_ADMIN_OPTION] = uint16(2)
+	} else {
+		row[roleEdgesTblColIndex_WITH_ADMIN_OPTION] = uint16(1)
+	}
+	return row, nil
+}
 
-// NewFromRow implements the interface in_mem_table.Entry.
-func (r *RoleEdge) NewFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Entry, error) {
+func RoleEdgeFromRow(ctx *sql.Context, row sql.Row) (*RoleEdge, error) {
 	if err := roleEdgesTblSchema.CheckRow(row); err != nil {
 		return nil, err
 	}
@@ -48,43 +59,20 @@ func (r *RoleEdge) NewFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Entry
 	}, nil
 }
 
-// UpdateFromRow implements the interface in_mem_table.Entry.
-func (r *RoleEdge) UpdateFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Entry, error) {
-	return r.NewFromRow(ctx, row)
+func RoleEdgeEquals(left, right *RoleEdge) bool {
+	return *left == *right
 }
 
-// ToRow implements the interface in_mem_table.Entry.
-func (r *RoleEdge) ToRow(ctx *sql.Context) sql.Row {
-	row := make(sql.Row, len(roleEdgesTblSchema))
-	row[roleEdgesTblColIndex_FROM_HOST] = r.FromHost
-	row[roleEdgesTblColIndex_FROM_USER] = r.FromUser
-	row[roleEdgesTblColIndex_TO_HOST] = r.ToHost
-	row[roleEdgesTblColIndex_TO_USER] = r.ToUser
-	if r.WithAdminOption {
-		row[roleEdgesTblColIndex_WITH_ADMIN_OPTION] = uint16(2)
-	} else {
-		row[roleEdgesTblColIndex_WITH_ADMIN_OPTION] = uint16(1)
-	}
-	return row
-}
-
-// Equals implements the interface in_mem_table.Entry.
-func (r *RoleEdge) Equals(ctx *sql.Context, otherEntry in_mem_table.Entry) bool {
-	otherRoleEdge, ok := otherEntry.(*RoleEdge)
-	if !ok {
-		return false
-	}
-	return *r == *otherRoleEdge
-}
-
-// Copy implements the interface in_mem_table.Entry.
-func (r *RoleEdge) Copy(ctx *sql.Context) in_mem_table.Entry {
-	rr := *r
-	return &rr
+var RoleEdgeOps = in_mem_table.ValueOps[*RoleEdge]{
+	ToRow:   RoleEdgeToRow,
+	FromRow: RoleEdgeFromRow,
+	UpdateWithRow: func(ctx *sql.Context, row sql.Row, e *RoleEdge) (*RoleEdge, error) {
+		return RoleEdgeFromRow(ctx, row)
+	},
 }
 
 // FromJson implements the interface in_mem_table.Entry.
-func (r *RoleEdge) FromJson(ctx *sql.Context, jsonStr string) (in_mem_table.Entry, error) {
+func (r *RoleEdge) FromJson(ctx *sql.Context, jsonStr string) (*RoleEdge, error) {
 	newRoleEdge := &RoleEdge{}
 	if err := json.Unmarshal([]byte(jsonStr), newRoleEdge); err != nil {
 		return nil, err

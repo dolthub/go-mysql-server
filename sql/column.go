@@ -61,8 +61,15 @@ func (c *Column) Check(v interface{}) bool {
 
 // Equals checks whether two columns are equal.
 func (c *Column) Equals(c2 *Column) bool {
+	if c.Source != "" {
+		return strings.EqualFold(c.Name, c2.Name) &&
+			strings.EqualFold(c.Source, c2.Source) &&
+			c.Nullable == c2.Nullable &&
+			reflect.DeepEqual(c.Default, c2.Default) &&
+			reflect.DeepEqual(c.Type, c2.Type)
+	}
 	return c.Name == c2.Name &&
-		c.Source == c2.Source &&
+		strings.EqualFold(c.Source, c2.Source) &&
 		c.Nullable == c2.Nullable &&
 		reflect.DeepEqual(c.Default, c2.Default) &&
 		reflect.DeepEqual(c.Type, c2.Type)
@@ -101,10 +108,15 @@ func (c *Column) DebugString() string {
 }
 
 func (c *Column) Copy() *Column {
+	// This creates a copy of the default, rather than referencing the same pointer
+	def := c.Default
+	if def != nil {
+		def = &(*def)
+	}
 	return &Column{
 		Name:          c.Name,
 		Type:          c.Type,
-		Default:       c.Default,
+		Default:       def,
 		AutoIncrement: c.AutoIncrement,
 		Nullable:      c.Nullable,
 		Source:        c.Source,

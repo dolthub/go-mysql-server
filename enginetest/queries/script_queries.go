@@ -1696,6 +1696,14 @@ var ScriptTests = []ScriptTest{
 					{12, 3},
 				},
 			},
+			{
+				Query: `update test2 inner join (select * from test3 order by val) as t3 on false SET test2.val=t3.val`,
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{
+					Matched:  0,
+					Updated:  0,
+					Warnings: 0,
+				}}}},
+			},
 		},
 	},
 	{
@@ -1915,7 +1923,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:          "create index `primary` on t(i)",
-				ExpectedErrStr: "incorrect index name 'primary'",
+				ExpectedErrStr: "invalid index name 'primary'",
 			},
 		},
 	},
@@ -2805,6 +2813,18 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "scientific notation for floats",
+		SetUpScript: []string{
+			"create table t (b bigint unsigned);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into t values (5.2443381514267e+18);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+		},
+	},
+	{
 		Name: "INSERT IGNORE throws an error when json is badly formatted",
 		SetUpScript: []string{
 			"CREATE TABLE t (pk int primary key, col1 json);",
@@ -3081,63 +3101,6 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "multi-alter ddl column statements",
-		SetUpScript: []string{
-			"create table tbl_i (i int primary key)",
-			"create table tbl_ij (i int primary key, j int)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "alter table tbl_i add column j int, drop column j",
-				ExpectedErr: sql.ErrTableColumnNotFound,
-			},
-			{
-				Query:       "alter table tbl_i add column j int, rename column j to k;",
-				ExpectedErr: sql.ErrTableColumnNotFound,
-			},
-			{
-				Query:       "alter table tbl_i add column j int, modify column j varchar(10)",
-				ExpectedErr: sql.ErrTableColumnNotFound,
-			},
-			{
-				Query:       "alter table tbl_ij add index (j), drop column j;",
-				ExpectedErr: sql.ErrKeyColumnDoesNotExist,
-			},
-			{
-				Query:       "alter table tbl_ij drop column j, rename column j to k;",
-				ExpectedErr: sql.ErrTableColumnNotFound,
-			},
-			{
-				Query:       "alter table tbl_ij drop column k, rename column j to k;",
-				ExpectedErr: sql.ErrTableColumnNotFound,
-			},
-			{
-				Query: "alter table tbl_i add index(j), add column j int;",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query: "show create table tbl_i",
-				Expected: []sql.Row{
-					{"tbl_i", "CREATE TABLE `tbl_i` (\n  `i` int NOT NULL,\n  `j` int,\n  PRIMARY KEY (`i`),\n  KEY `j` (`j`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-			{
-				Query: "alter table tbl_ij add index (j), drop column j, add column j int;",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query: "show create table tbl_ij",
-				Expected: []sql.Row{
-					{"tbl_ij", "CREATE TABLE `tbl_ij` (\n  `i` int NOT NULL,\n  `j` int,\n  PRIMARY KEY (`i`),\n  KEY `j` (`j`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-		},
-	},
-	{
 		Name: "Keyless Table with Unique Index",
 		SetUpScript: []string{
 			"create table a (x int, val int unique)",
@@ -3329,6 +3292,45 @@ var ScriptTests = []ScriptTest{
 						time.Date(2020, time.February, 14, 12, 0, 0, 0, time.UTC)},
 					{3, time.Date(2020, time.February, 16, 9, 0, 0, 0, time.UTC),
 						time.Date(2020, time.February, 16, 4, 0, 0, 0, time.UTC)}},
+			},
+		},
+	},
+	{
+		Name: "test index scan over floats",
+		SetUpScript: []string{
+			"CREATE TABLE tab2(pk INTEGER PRIMARY KEY, col0 INTEGER, col1 FLOAT, col2 TEXT, col3 INTEGER, col4 FLOAT, col5 TEXT);",
+			"CREATE UNIQUE INDEX idx_tab2_0 ON tab2 (col1 DESC,col4 DESC);",
+			"CREATE INDEX idx_tab2_1 ON tab2 (col1,col0);",
+			"CREATE INDEX idx_tab2_2 ON tab2 (col4,col0);",
+			"CREATE INDEX idx_tab2_3 ON tab2 (col3 DESC);",
+			"INSERT INTO tab2 VALUES(0,344,171.98,'nwowg',833,149.54,'wjiif');",
+			"INSERT INTO tab2 VALUES(1,353,589.18,'femmh',44,621.85,'qedct');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT pk FROM tab2 WHERE ((((((col0 IN (SELECT col3 FROM tab2 WHERE ((col1 = 672.71)) AND col4 IN (SELECT col1 FROM tab2 WHERE ((col4 > 169.88 OR col0 > 939 AND ((col3 > 578))))) AND col0 >= 377) AND col4 >= 817.87 AND (col4 > 597.59)) OR col4 >= 434.59 AND ((col4 < 158.43)))))) AND col0 < 303) OR ((col0 > 549)) AND (col4 BETWEEN 816.92 AND 983.96) OR (col3 BETWEEN 421 AND 96);",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "empty table update",
+		SetUpScript: []string{
+			"create table t (i int primary key)",
+			"insert into t values (1), (2), (3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "update t set i = 0 where false",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: plan.UpdateInfo{Matched: 0}}}},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
 			},
 		},
 	},

@@ -20,6 +20,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -137,6 +138,12 @@ func TestJoinQueries(t *testing.T, harness Harness) {
 	t.Skip()
 	for _, tt := range queries.SkippedJoinQueryTests {
 		TestQuery2(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+	}
+}
+
+func TestLateralJoinQueries(t *testing.T, harness Harness) {
+	for _, ts := range queries.LateralJoinScriptTests {
+		TestScript(t, harness, ts)
 	}
 }
 
@@ -301,6 +308,20 @@ func TestInfoSchema(t *testing.T, h Harness) {
 			t.Skip()
 			TestScript(t, h, script)
 		})
+	}
+}
+
+func TestMySqlDb(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, tt := range queries.MySqlDbTests {
+		TestScript(t, harness, tt)
+	}
+}
+
+func TestMySqlDbPrepared(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, tt := range queries.MySqlDbTests {
+		TestScriptPrepared(t, harness, tt)
 	}
 }
 
@@ -492,7 +513,7 @@ func TestQueryPlan(t *testing.T, harness Harness, e *sqle.Engine, query, expecte
 func TestQueryPlanWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt queries.QueryPlanTest, verbose bool) {
 	t.Run(tt.Query, func(t *testing.T) {
 		ctx := NewContext(harness)
-		parsed, err := parse.Parse(ctx, tt.Query)
+		parsed, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, tt.Query)
 		require.NoError(t, err)
 
 		node, err := e.Analyzer.Analyze(ctx, parsed, nil)
@@ -519,69 +540,71 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 		TestScript(t, harness, tt)
 	}
 
-	e := mustNewEngine(t, harness)
-	defer e.Close()
-	ctx := NewContext(harness)
-	RunQueryWithContext(t, e, harness, ctx, "create table members (id int primary key, team text);")
-	RunQueryWithContext(t, e, harness, ctx, "insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');")
+	t.Run("non-deterministic group by", func(t *testing.T) {
+		e := mustNewEngine(t, harness)
+		defer e.Close()
+		ctx := NewContext(harness)
+		RunQueryWithContext(t, e, harness, ctx, "create table members (id int primary key, team text);")
+		RunQueryWithContext(t, e, harness, ctx, "insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');")
 
-	var rowIter sql.RowIter
-	var row sql.Row
-	var err error
-	var rowCount int
+		var rowIter sql.RowIter
+		var row sql.Row
+		var err error
+		var rowCount int
 
-	// group by with any_value or non-strict are non-deterministic (unless there's only one value), so we must accept multiple
-	// group by with any_value()
-	_, rowIter, err = e.Query(ctx, "select any_value(id), team from members group by team order by id")
-	require.NoError(t, err)
-	rowCount = 0
-	for {
-		row, err = rowIter.Next(ctx)
-		if err == io.EOF {
-			break
-		}
-		rowCount++
+		// group by with any_value or non-strict are non-deterministic (unless there's only one value), so we must accept multiple
+		// group by with any_value()
+		_, rowIter, err = e.Query(ctx, "select any_value(id), team from members group by team order by id")
 		require.NoError(t, err)
-		val := row[0].(int32)
-		team := row[1].(string)
-		switch team {
-		case "red":
-			require.True(t, val == 3 || val == 4)
-		case "orange":
-			require.True(t, val == 5 || val == 6 || val == 7)
-		case "purple":
-			require.True(t, val == 8)
-		default:
-			panic("received non-existent team")
+		rowCount = 0
+		for {
+			row, err = rowIter.Next(ctx)
+			if err == io.EOF {
+				break
+			}
+			rowCount++
+			require.NoError(t, err)
+			val := row[0].(int32)
+			team := row[1].(string)
+			switch team {
+			case "red":
+				require.True(t, val == 3 || val == 4)
+			case "orange":
+				require.True(t, val == 5 || val == 6 || val == 7)
+			case "purple":
+				require.True(t, val == 8)
+			default:
+				panic("received non-existent team")
+			}
 		}
-	}
-	require.Equal(t, rowCount, 3)
+		require.Equal(t, rowCount, 3)
 
-	// TODO: this should error; the order by doesn't count towards ONLY_FULL_GROUP_BY
-	_, rowIter, err = e.Query(ctx, "select id, team from members group by team order by id")
-	require.NoError(t, err)
-	rowCount = 0
-	for {
-		row, err = rowIter.Next(ctx)
-		if err == io.EOF {
-			break
-		}
-		rowCount++
+		// TODO: this should error; the order by doesn't count towards ONLY_FULL_GROUP_BY
+		_, rowIter, err = e.Query(ctx, "select id, team from members group by team order by id")
 		require.NoError(t, err)
-		val := row[0].(int32)
-		team := row[1].(string)
-		switch team {
-		case "red":
-			require.True(t, val == 3 || val == 4)
-		case "orange":
-			require.True(t, val == 5 || val == 6 || val == 7)
-		case "purple":
-			require.True(t, val == 8)
-		default:
-			panic("received non-existent team")
+		rowCount = 0
+		for {
+			row, err = rowIter.Next(ctx)
+			if err == io.EOF {
+				break
+			}
+			rowCount++
+			require.NoError(t, err)
+			val := row[0].(int32)
+			team := row[1].(string)
+			switch team {
+			case "red":
+				require.True(t, val == 3 || val == 4)
+			case "orange":
+				require.True(t, val == 5 || val == 6 || val == 7)
+			case "purple":
+				require.True(t, val == 8)
+			default:
+				panic("received non-existent team")
+			}
 		}
-	}
-	require.Equal(t, rowCount, 3)
+		require.Equal(t, rowCount, 3)
+	})
 }
 
 func TestReadOnly(t *testing.T, harness Harness) {
@@ -650,14 +673,18 @@ func TestQueryErrors(t *testing.T, harness Harness) {
 
 func TestInsertInto(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.Mytable_del_idxData, setup.KeylessData, setup.Keyless_idxData, setup.NiltableData, setup.TypestableData, setup.EmptytableData, setup.AutoincrementData, setup.OthertableData, setup.Othertable_del_idxData)
-	for _, insertion := range queries.InsertQueries {
-		RunWriteQueryTest(t, harness, insertion)
-	}
+	t.Run("insert queries", func(t *testing.T) {
+		for _, insertion := range queries.InsertQueries {
+			RunWriteQueryTest(t, harness, insertion)
+		}
+	})
 
 	harness.Setup(setup.MydbData)
-	for _, script := range queries.InsertScripts {
-		TestScript(t, harness, script)
-	}
+	t.Run("insert scripts", func(t *testing.T) {
+		for _, script := range queries.InsertScripts {
+			TestScript(t, harness, script)
+		}
+	})
 }
 
 func TestInsertDuplicateKeyKeyless(t *testing.T, harness Harness) {
@@ -921,7 +948,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t5 ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t5"
-		parsed, err := parse.Parse(ctx, deleteStr)
+		parsed, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, deleteStr)
 		require.NoError(t, err)
 		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
@@ -950,7 +977,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "INSERT INTO t6parent VALUES (1,1), (2,2)")
 		RunQuery(t, e, harness, "INSERT INTO t6child VALUES (1,1), (2,2)")
 
-		parsed, err := parse.Parse(ctx, "DELETE FROM t6parent")
+		parsed, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, "DELETE FROM t6parent")
 		require.NoError(t, err)
 		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
@@ -978,7 +1005,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t7i ORDER BY 1", []sql.Row{{int64(3), int64(3)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t7"
-		parsed, err := parse.Parse(ctx, deleteStr)
+		parsed, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, deleteStr)
 		require.NoError(t, err)
 		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
@@ -1006,7 +1033,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t8 ORDER BY 1", []sql.Row{{int64(1), int64(4)}, {int64(2), int64(5)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t8"
-		parsed, err := parse.Parse(ctx, deleteStr)
+		parsed, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, deleteStr)
 		require.NoError(t, err)
 		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
@@ -1035,7 +1062,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t9 ORDER BY 1", []sql.Row{{int64(7), int64(7)}, {int64(8), int64(8)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t9 WHERE pk > 0"
-		parsed, err := parse.Parse(ctx, deleteStr)
+		parsed, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, deleteStr)
 		require.NoError(t, err)
 		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
@@ -1062,7 +1089,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t10 ORDER BY 1", []sql.Row{{int64(8), int64(8)}, {int64(9), int64(9)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t10 LIMIT 1000"
-		parsed, err := parse.Parse(ctx, deleteStr)
+		parsed, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, deleteStr)
 		require.NoError(t, err)
 		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
@@ -1089,7 +1116,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t11 ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(9), int64(9)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t11 ORDER BY 1"
-		parsed, err := parse.Parse(ctx, deleteStr)
+		parsed, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, deleteStr)
 		require.NoError(t, err)
 		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
@@ -1120,7 +1147,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t12b ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}}, nil, nil)
 
 		deleteStr := "DELETE t12a, t12b FROM t12a INNER JOIN t12b WHERE t12a.pk=t12b.pk"
-		parsed, err := parse.Parse(ctx, deleteStr)
+		parsed, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, deleteStr)
 		require.NoError(t, err)
 		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
@@ -1796,22 +1823,31 @@ func TestShowTriggers(t *testing.T, harness Harness) {
 }
 
 func TestStoredProcedures(t *testing.T, harness Harness) {
-	for _, script := range queries.ProcedureLogicTests {
-		TestScript(t, harness, script)
-	}
-	for _, script := range queries.ProcedureCallTests {
-		TestScript(t, harness, script)
-	}
-	for _, script := range queries.ProcedureDropTests {
-		TestScript(t, harness, script)
-	}
-	for _, script := range queries.ProcedureShowStatus {
-		TestScript(t, harness, script)
-	}
-	for _, script := range queries.ProcedureShowCreate {
-		TestScript(t, harness, script)
-	}
-
+	t.Run("logic tests", func(t *testing.T) {
+		for _, script := range queries.ProcedureLogicTests {
+			TestScript(t, harness, script)
+		}
+	})
+	t.Run("call tests", func(t *testing.T) {
+		for _, script := range queries.ProcedureCallTests {
+			TestScript(t, harness, script)
+		}
+	})
+	t.Run("drop tests", func(t *testing.T) {
+		for _, script := range queries.ProcedureDropTests {
+			TestScript(t, harness, script)
+		}
+	})
+	t.Run("show status tests", func(t *testing.T) {
+		for _, script := range queries.ProcedureShowStatus {
+			TestScript(t, harness, script)
+		}
+	})
+	t.Run("show create tests", func(t *testing.T) {
+		for _, script := range queries.ProcedureShowCreate {
+			TestScript(t, harness, script)
+		}
+	})
 	harness.Setup(setup.MydbData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
@@ -1820,15 +1856,17 @@ func TestStoredProcedures(t *testing.T, harness Harness) {
 		ctx.SetCurrentDatabase("")
 
 		for _, script := range queries.NoDbProcedureTests {
-			if script.Expected != nil || script.SkipResultsCheck {
-				expectedResult := script.Expected
-				if script.SkipResultsCheck {
-					expectedResult = nil
+			t.Run(script.Query, func(t *testing.T) {
+				if script.Expected != nil || script.SkipResultsCheck {
+					expectedResult := script.Expected
+					if script.SkipResultsCheck {
+						expectedResult = nil
+					}
+					TestQueryWithContext(t, ctx, e, harness, script.Query, expectedResult, nil, nil)
+				} else if script.ExpectedErr != nil {
+					AssertErrWithCtx(t, e, harness, ctx, script.Query, script.ExpectedErr)
 				}
-				TestQueryWithContext(t, ctx, e, harness, script.Query, expectedResult, nil, nil)
-			} else if script.ExpectedErr != nil {
-				AssertErrWithCtx(t, e, harness, ctx, script.Query, script.ExpectedErr)
-			}
+			})
 		}
 
 		TestQueryWithContext(t, ctx, e, harness, "CREATE PROCEDURE mydb.p1() SELECT 5", []sql.Row{{types.OkResult{}}}, nil, nil)
@@ -2024,6 +2062,10 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 	for _, script := range queries.CreateTableScriptTests {
 		TestScriptPrepared(t, harness, script)
+	}
+
+	for _, script := range queries.CreateTableAutoIncrementTests {
+		TestScript(t, harness, script)
 	}
 
 	harness.Setup(setup.MydbData, setup.MytableData)
@@ -3458,6 +3500,13 @@ func TestForeignKeys(t *testing.T, harness Harness) {
 	}
 }
 
+func TestFulltextIndexes(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.FulltextTests {
+		TestScript(t, harness, script)
+	}
+}
+
 // todo(max): rewrite this using info schema and []QueryTest
 func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 	require := require.New(t)
@@ -4575,6 +4624,10 @@ func TestVariables(t *testing.T, harness Harness) {
 			Query:    "SELECT @@GLOBAL.select_into_buffer_size",
 			Expected: []sql.Row{{9002}},
 		},
+		{
+			Query:    "SET GLOBAL select_into_buffer_size = 131072",
+			Expected: []sql.Row{{}},
+		},
 	} {
 		t.Run(assertion.Query, func(t *testing.T) {
 			TestQueryWithContext(t, ctx2, engine, harness, assertion.Query, assertion.Expected, nil, nil)
@@ -4923,6 +4976,69 @@ func TestTransactionScripts(t *testing.T, harness Harness) {
 	for _, script := range queries.TransactionTests {
 		TestTransactionScript(t, harness, script)
 	}
+}
+
+func TestConcurrentProcessList(t *testing.T, harness Harness) {
+	require := require.New(t)
+	pl := sqle.NewProcessList()
+	numSessions := 2
+
+	for i := 0; i < numSessions; i++ {
+		pl.AddConnection(uint32(i), "foo")
+		sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: "", User: ""}, uint32(i))
+		pl.ConnectionReady(sess)
+
+		var err error
+		ctx := sql.NewContext(context.Background(), sql.WithPid(uint64(i)), sql.WithSession(sess), sql.WithProcessList(pl))
+		_, err = pl.BeginQuery(ctx, "foo")
+		require.NoError(err)
+	}
+
+	var wg sync.WaitGroup
+
+	// Read concurrently
+	for i := 0; i < numSessions; i++ {
+		wg.Add(1)
+		go func(x int) {
+			defer wg.Done()
+			procs := pl.Processes()
+			for _, proc := range procs {
+				for prog, part := range proc.Progress {
+					if prog == "" {
+					}
+					for p, pp := range part.PartitionsProgress {
+						if p == "" {
+						}
+						if pp.Name == "" {
+						}
+					}
+				}
+			}
+		}(i)
+	}
+
+	// Writes concurrently
+	for i := 0; i < numSessions; i++ {
+		wg.Add(4)
+		go func(x int) {
+			defer wg.Done()
+			pl.AddTableProgress(uint64(x), "foo", 100)
+		}(i)
+		go func(x int) {
+			defer wg.Done()
+			pl.AddPartitionProgress(uint64(x), "foo", "bar", 100)
+		}(i)
+		go func(x int) {
+			defer wg.Done()
+			pl.UpdateTableProgress(uint64(x), "foo", 100)
+		}(i)
+		go func(x int) {
+			defer wg.Done()
+			pl.UpdatePartitionProgress(uint64(x), "foo", "bar", 100)
+		}(i)
+	}
+
+	wg.Wait()
 }
 
 func TestNoDatabaseSelected(t *testing.T, harness Harness) {
@@ -5307,86 +5423,6 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 	})
 }
 
-func TestAddAutoIncrementColumn(t *testing.T, harness Harness) {
-	harness.Setup([]setup.SetupScript{{
-		"create database mydb",
-		"use mydb",
-	}})
-	e := mustNewEngine(t, harness)
-	defer e.Close()
-	ctx := NewContext(harness)
-
-	t.Run("Add primary key column with auto increment", func(t *testing.T) {
-		ctx.SetCurrentDatabase("mydb")
-		RunQuery(t, e, harness, "CREATE TABLE t1 (i int, j int);")
-		RunQuery(t, e, harness, "insert into t1 values (1,1), (2,2), (3,3)")
-		AssertErr(
-			t, e, harness,
-			"alter table t1 add column pk int primary key;",
-			sql.ErrPrimaryKeyViolation,
-		)
-
-		TestQueryWithContext(
-			t, ctx, e, harness,
-			"alter table t1 add column pk int primary key auto_increment;",
-			[]sql.Row{{types.NewOkResult(0)}},
-			nil, nil,
-		)
-
-		TestQueryWithContext(
-			t, ctx, e, harness,
-			"select pk from t1;",
-			[]sql.Row{
-				{1},
-				{2},
-				{3},
-			},
-			nil, nil,
-		)
-
-		TestQueryWithContext(
-			t, ctx, e, harness,
-			"show create table t1;",
-			[]sql.Row{
-				{"t1", "CREATE TABLE `t1` (\n  `i` int,\n  `j` int,\n  `pk` int NOT NULL AUTO_INCREMENT,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-			},
-			nil, nil,
-		)
-	})
-
-	t.Run("Add primary key column with auto increment first", func(t *testing.T) {
-		ctx.SetCurrentDatabase("mydb")
-		RunQuery(t, e, harness, "CREATE TABLE t2 (i int, j int);")
-		RunQuery(t, e, harness, "insert into t2 values (1,1), (2,2), (3,3)")
-		TestQueryWithContext(
-			t, ctx, e, harness,
-			"alter table t2 add column pk int primary key auto_increment first;",
-			[]sql.Row{{types.NewOkResult(0)}},
-			nil, nil,
-		)
-
-		TestQueryWithContext(
-			t, ctx, e, harness,
-			"select pk from t2;",
-			[]sql.Row{
-				{1},
-				{2},
-				{3},
-			},
-			nil, nil,
-		)
-
-		TestQueryWithContext(
-			t, ctx, e, harness,
-			"show create table t2;",
-			[]sql.Row{
-				{"t2", "CREATE TABLE `t2` (\n  `pk` int NOT NULL AUTO_INCREMENT,\n  `i` int,\n  `j` int,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-			},
-			nil, nil,
-		)
-	})
-}
-
 func TestNullRanges(t *testing.T, harness Harness) {
 	harness.Setup(setup.NullsSetup...)
 	for _, tt := range queries.NullRangeTests {
@@ -5401,31 +5437,9 @@ func TestJsonScripts(t *testing.T, harness Harness) {
 }
 
 func TestAlterTable(t *testing.T, harness Harness) {
-	errorTests := []queries.QueryErrorTest{
-		{
-			Query:       "ALTER TABLE one_pk_two_idx MODIFY COLUMN v1 BIGINT DEFAULT (pk) AFTER v3",
-			ExpectedErr: sql.ErrTableColumnNotFound,
-		},
-		{
-			Query:       "ALTER TABLE one_pk_two_idx ADD COLUMN v4 BIGINT DEFAULT (pk) AFTER v3",
-			ExpectedErr: sql.ErrTableColumnNotFound,
-		},
-		{
-			Query:       "ALTER TABLE one_pk_two_idx ADD COLUMN v3 BIGINT DEFAULT 5, RENAME COLUMN v3 to v4",
-			ExpectedErr: sql.ErrTableColumnNotFound,
-		},
-		{
-			Query:       "ALTER TABLE one_pk_two_idx ADD COLUMN v3 BIGINT DEFAULT 5, modify column v3 bigint default null",
-			ExpectedErr: sql.ErrTableColumnNotFound,
-		},
-	}
-
 	harness.Setup(setup.MydbData, setup.Pk_tablesData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	for _, tt := range errorTests {
-		runQueryErrorTest(t, harness, tt)
-	}
 
 	t.Run("variety of alter column statements in a single statement", func(t *testing.T) {
 		RunQuery(t, e, harness, "CREATE TABLE t32(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int default (v1), toRename int)")
@@ -5503,216 +5517,9 @@ func TestAlterTable(t *testing.T, harness Harness) {
 		}, checks)
 	})
 
-	t.Run("drop column drops check constraint", func(t *testing.T) {
-		RunQuery(t, e, harness, "create table t34 (i bigint primary key, s varchar(20))")
-		RunQuery(t, e, harness, "ALTER TABLE t34 ADD COLUMN j int")
-		RunQuery(t, e, harness, "ALTER TABLE t34 ADD CONSTRAINT test_check CHECK (j < 12345)")
-		RunQuery(t, e, harness, "ALTER TABLE t34 DROP COLUMN j")
-		tt := queries.QueryTest{
-			Query: "show create table t34",
-			Expected: []sql.Row{{"t34", "CREATE TABLE `t34` (\n" +
-				"  `i` bigint NOT NULL,\n" +
-				"  `s` varchar(20),\n" +
-				"  PRIMARY KEY (`i`)\n" +
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-		}
-		TestQueryWithEngine(t, harness, e, tt)
-	})
-
-	t.Run("drop column drops all relevant check constraints", func(t *testing.T) {
-		RunQuery(t, e, harness, "create table t42 (i bigint primary key, s varchar(20))")
-		RunQuery(t, e, harness, "ALTER TABLE t42 ADD COLUMN j int")
-		RunQuery(t, e, harness, "ALTER TABLE t42 ADD CONSTRAINT check1 CHECK (j < 12345)")
-		RunQuery(t, e, harness, "ALTER TABLE t42 ADD CONSTRAINT check2 CHECK (j > 0)")
-		RunQuery(t, e, harness, "ALTER TABLE t42 DROP COLUMN j")
-		tt := queries.QueryTest{
-			Query: "show create table t42",
-			Expected: []sql.Row{{"t42", "CREATE TABLE `t42` (\n" +
-				"  `i` bigint NOT NULL,\n" +
-				"  `s` varchar(20),\n" +
-				"  PRIMARY KEY (`i`)\n" +
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-		}
-		TestQueryWithEngine(t, harness, e, tt)
-	})
-
-	t.Run("drop column drops correct check constraint", func(t *testing.T) {
-		RunQuery(t, e, harness, "create table t41 (i bigint primary key, s varchar(20))")
-		RunQuery(t, e, harness, "ALTER TABLE t41 ADD COLUMN j int")
-		RunQuery(t, e, harness, "ALTER TABLE t41 ADD COLUMN k int")
-		RunQuery(t, e, harness, "ALTER TABLE t41 ADD CONSTRAINT j_check CHECK (j < 12345)")
-		RunQuery(t, e, harness, "ALTER TABLE t41 ADD CONSTRAINT k_check CHECK (k < 123)")
-		RunQuery(t, e, harness, "ALTER TABLE t41 DROP COLUMN j")
-		tt := queries.QueryTest{
-			Query: "show create table t41",
-			Expected: []sql.Row{{"t41", "CREATE TABLE `t41` (\n" +
-				"  `i` bigint NOT NULL,\n" +
-				"  `s` varchar(20),\n" +
-				"  `k` int,\n" +
-				"  PRIMARY KEY (`i`),\n" +
-				"  CONSTRAINT `k_check` CHECK ((`k` < 123))\n" +
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-		}
-		TestQueryWithEngine(t, harness, e, tt)
-	})
-
-	t.Run("drop column does not drop when referenced in constraint with other column", func(t *testing.T) {
-		RunQuery(t, e, harness, "create table t43 (i bigint primary key, s varchar(20))")
-		RunQuery(t, e, harness, "ALTER TABLE t43 ADD COLUMN j int")
-		RunQuery(t, e, harness, "ALTER TABLE t43 ADD COLUMN k int")
-		RunQuery(t, e, harness, "ALTER TABLE t43 ADD CONSTRAINT test_check CHECK (j < k)")
-		AssertErr(t, e, harness, "ALTER TABLE t43 DROP COLUMN j", sql.ErrCheckConstraintInvalidatedByColumnAlter)
-		tt := queries.QueryTest{
-			Query: "show create table t43",
-			Expected: []sql.Row{{"t43", "CREATE TABLE `t43` (\n" +
-				"  `i` bigint NOT NULL,\n" +
-				"  `s` varchar(20),\n" +
-				"  `j` int,\n" +
-				"  `k` int,\n" +
-				"  PRIMARY KEY (`i`),\n" +
-				"  CONSTRAINT `test_check` CHECK ((`j` < `k`))\n" +
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-		}
-		TestQueryWithEngine(t, harness, e, tt)
-	})
-
-	t.Run("drop column preserves indexes", func(t *testing.T) {
-		ctx := NewContext(harness)
-		RunQuery(t, e, harness, "create table t35 (i bigint primary key, s varchar(20), s2 varchar(20))")
-		RunQuery(t, e, harness, "ALTER TABLE t35 ADD unique key test_key (s)")
-
-		RunQuery(t, e, harness, "ALTER TABLE t35 DROP COLUMN s2")
-		TestQueryWithContext(t, ctx, e, harness, "show create table t35",
-			[]sql.Row{{"t35", "CREATE TABLE `t35` (\n" +
-				"  `i` bigint NOT NULL,\n" +
-				"  `s` varchar(20),\n" +
-				"  PRIMARY KEY (`i`),\n" +
-				"  UNIQUE KEY `test_key` (`s`)\n" +
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			nil, nil)
-	})
-
-	t.Run("drop column prevents foreign key violations", func(t *testing.T) {
-		RunQuery(t, e, harness, "create table t36 (i bigint primary key, j varchar(20))")
-		RunQuery(t, e, harness, "create table t37 (i bigint primary key, j varchar(20))")
-		RunQuery(t, e, harness, "ALTER TABLE t36 ADD key (j)")
-		RunQuery(t, e, harness, "ALTER TABLE t37 ADD constraint fk_36 foreign key (j) references t36(j)")
-
-		AssertErr(t, e, harness, "ALTER TABLE t37 DROP COLUMN j", sql.ErrForeignKeyDropColumn)
-	})
-
-	t.Run("disable keys / enable keys", func(t *testing.T) {
-		ctx := NewContext(harness)
-		AssertWarningAndTestQuery(t, e, ctx, harness, "ALTER TABLE t33 DISABLE KEYS",
-			[]sql.Row{{types.NewOkResult(0)}},
-			nil, mysql.ERNotSupportedYet, 1,
-			"", false)
-		AssertWarningAndTestQuery(t, e, ctx, harness, "ALTER TABLE t33 ENABLE KEYS",
-			[]sql.Row{{types.NewOkResult(0)}}, nil, mysql.ERNotSupportedYet, 1,
-			"", false)
-	})
-
-	t.Run("adding a unique constraint errors if violations exist", func(t *testing.T) {
-		// single column unique constraint (success)
-		RunQuery(t, e, harness, "CREATE TABLE t38 (pk int PRIMARY KEY, col1 int)")
-		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (1, 1)")
-		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (2, 2)")
-		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (3, NULL)")
-		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (4, NULL)")
-		RunQuery(t, e, harness, "ALTER TABLE t38 ADD UNIQUE u_col1 (col1)")
-
-		// multi column unique constraint (success)
-		RunQuery(t, e, harness, "CREATE TABLE t39 (pk int PRIMARY KEY, col1 int, col2 int)")
-		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (1, 1, 1)")
-		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (2, 1, 2)")
-		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (3, 2, 1)")
-		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (4, 1, NULL)")
-		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (5, 1, NULL)")
-		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (6, NULL, 1)")
-		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (7, NULL, 1)")
-		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (8, NULL, NULL)")
-		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (9, NULL, NULL)")
-		RunQuery(t, e, harness, "ALTER TABLE t39 ADD UNIQUE u_col1_col2 (col1, col2)")
-
-		// single column unique constraint (failure)
-		RunQuery(t, e, harness, "ALTER TABLE t38 DROP INDEX u_col1;")
-		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (5, 1);")
-		AssertErr(t, e, harness, "ALTER TABLE t38 ADD UNIQUE u_col1 (col1)", sql.ErrUniqueKeyViolation)
-		tt := queries.QueryTest{
-			Query: "show create table t38;",
-			Expected: []sql.Row{{"t38", "CREATE TABLE `t38` (\n" +
-				"  `pk` int NOT NULL,\n" +
-				"  `col1` int,\n" +
-				"  PRIMARY KEY (`pk`)\n" +
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-		}
-		TestQueryWithEngine(t, harness, e, tt)
-
-		// multi column unique constraint (failure)
-		RunQuery(t, e, harness, "ALTER TABLE t39 DROP INDEX u_col1_col2;")
-		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (10, 1, 1);")
-		AssertErr(t, e, harness, "ALTER TABLE t39 ADD UNIQUE u_col1_col2 (col1, col2)", sql.ErrUniqueKeyViolation)
-		tt = queries.QueryTest{
-			Query: "show create table t39;",
-			Expected: []sql.Row{{"t39", "CREATE TABLE `t39` (\n" +
-				"  `pk` int NOT NULL,\n" +
-				"  `col1` int,\n" +
-				"  `col2` int,\n" +
-				"  PRIMARY KEY (`pk`)\n" +
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-		}
-		TestQueryWithEngine(t, harness, e, tt)
-	})
-
-	t.Run("ALTER TABLE remove AUTO_INCREMENT", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t40 (pk int AUTO_INCREMENT PRIMARY KEY, val int)")
-		RunQuery(t, e, harness, "INSERT into t40 VALUES (1, 1), (NULL, 2), (NULL, 3)")
-
-		RunQuery(t, e, harness, "ALTER TABLE t40 MODIFY COLUMN pk int")
-		ctx := harness.NewContext()
-		TestQueryWithContext(t, ctx, e, harness, "DESCRIBE t40", []sql.Row{
-			{"pk", "int", "NO", "PRI", "NULL", ""},
-			{"val", "int", "YES", "", "NULL", ""}},
-			nil, nil)
-
-		AssertErr(t, e, harness, "INSERT INTO t40 VALUES (NULL, 4)", sql.ErrInsertIntoNonNullableProvidedNull)
-		RunQuery(t, e, harness, "DROP TABLE t40")
-
-		RunQuery(t, e, harness, "CREATE TABLE t40 (pk int AUTO_INCREMENT PRIMARY KEY, val int)")
-		RunQuery(t, e, harness, "INSERT into t40 VALUES (NULL, 1)")
-
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t40", []sql.Row{{1, 1}}, nil, nil)
-	})
-
-	TestScript(t, harness, queries.ScriptTest{
-		// https://github.com/dolthub/dolt/issues/6206
-		Name: "alter table containing column default value expressions",
-		SetUpScript: []string{
-			"create table t (pk int primary key, col1 timestamp default current_timestamp(), col2 varchar(1000), index idx1 (pk, col1));",
-		},
-		Assertions: []queries.ScriptTestAssertion{
-			{
-				Query:    "alter table t alter column col2 DROP DEFAULT;",
-				Expected: []sql.Row{},
-			},
-			{
-				Query:    "show create table t;",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `pk` int NOT NULL,\n  `col1` timestamp(6) DEFAULT (CURRENT_TIMESTAMP()),\n  `col2` varchar(1000),\n  PRIMARY KEY (`pk`),\n  KEY `idx1` (`pk`,`col1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query:    "alter table t alter column col2 SET DEFAULT 'FOO!';",
-				Expected: []sql.Row{},
-			},
-			{
-				Query:    "show create table t;",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `pk` int NOT NULL,\n  `col1` timestamp(6) DEFAULT (CURRENT_TIMESTAMP()),\n  `col2` varchar(1000) DEFAULT 'FOO!',\n  PRIMARY KEY (`pk`),\n  KEY `idx1` (`pk`,`col1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query:    "alter table t drop index idx1;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-		},
-	})
+	for _, script := range queries.AlterTableScripts {
+		TestScript(t, harness, script)
+	}
 }
 
 func NewColumnDefaultValue(expr sql.Expression, outType sql.Type, representsLiteral, isParenthesized, mayReturnNil bool) *sql.ColumnDefaultValue {
@@ -6172,7 +5979,7 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 				_, res, _ := sql.SystemVariables.GetGlobal("max_connections")
 				require.Equal(t, tt.ExpectedGlobal, res)
 
-				showGlobalVarsQuery := fmt.Sprintf("SHOW GLOBAL VARIABLES LIKE 'max_connections'")
+				showGlobalVarsQuery := "SHOW GLOBAL VARIABLES LIKE 'max_connections'"
 				TestQueryWithContext(t, ctx, e, harness, showGlobalVarsQuery, []sql.Row{{"max_connections", tt.ExpectedGlobal}}, nil, nil)
 			}
 

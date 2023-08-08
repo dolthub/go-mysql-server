@@ -67,6 +67,8 @@ type Index interface {
 	IsUnique() bool
 	// IsSpatial returns whether this index is a spatial index
 	IsSpatial() bool
+	// IsFullText returns whether this index is a Full-Text index
+	IsFullText() bool
 	// Comment returns the comment for this index
 	Comment() string
 	// IndexType returns the type of this index, e.g. BTREE

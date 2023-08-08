@@ -97,10 +97,12 @@ const (
 	foldEmptyJoinsId             // foldEmptyJoins
 	optimizeJoinsId              // optimizeJoins
 	generateIndexScansId         // generateIndexScans
+	matchAgainstId               // matchAgainst
 	pushFiltersId                // pushFilters
 	subqueryIndexesId            // subqueryIndexes
 	pruneTablesId                // pruneTables
 	fixupAuxiliaryExprsId        // fixupAuxiliaryExprs
+	inlineSubqueryAliasRefsId    // inlineSubqueryAliasRefs
 	setJoinScopeLenId            // setJoinScopeLen
 	eraseProjectionId            // eraseProjection
 	replaceSortPkId              // replaceSortPk

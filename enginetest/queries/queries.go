@@ -2150,12 +2150,6 @@ Select * from (
 		},
 	},
 	{
-		Query: "with recursive t (n) as (select sum('1') from dual union all select (2.00) from dual) select sum(n) from t;",
-		Expected: []sql.Row{
-			{float64(3)},
-		},
-	},
-	{
 		Query: "with recursive t (n) as (select sum(1) from dual union all select (2.00) from dual) select sum(n) from t;",
 		Expected: []sql.Row{
 			{"3.00"},
@@ -2171,12 +2165,6 @@ Select * from (
 		Query: "with recursive t (n) as (select sum(1) from dual union all select n+1 from t where n < 10) select sum(n) from t;",
 		Expected: []sql.Row{
 			{float64(55)},
-		},
-	},
-	{
-		Query: "with recursive t (n) as (select sum(1.0) from dual union all select n+1 from t where n < 10) select sum(n) from t;",
-		Expected: []sql.Row{
-			{"55.0"},
 		},
 	},
 	{
@@ -3970,6 +3958,10 @@ Select * from (
 		Expected: []sql.Row{{uint64(65), uint64(65)}},
 	},
 	{
+		Query:    "SELECT 0x12345;",
+		Expected: []sql.Row{{[]uint8{0x1, 0x23, 0x45}}},
+	},
+	{
 		Query:    "SELECT i FROM mytable WHERE i BETWEEN 1 AND 2",
 		Expected: []sql.Row{{int64(1)}, {int64(2)}},
 	},
@@ -4447,6 +4439,10 @@ Select * from (
 	{
 		Query:    `SELECT CONVERT(10.12345, DECIMAL(4,2))`,
 		Expected: []sql.Row{{"10.12"}},
+	},
+	{
+		Query:    `SELECT CONVERT(1234567893.1234567893, DECIMAL(20,10))`,
+		Expected: []sql.Row{{"1234567893.1234567893"}},
 	},
 	{
 		// In enginetests, the SQL wire conversion logic isn't used, which is what expands the DECIMAL(4,2) value
@@ -4976,6 +4972,9 @@ Select * from (
 		},
 	},
 	{
+		Query: `SHOW VARIABLES`,
+	},
+	{
 		Query: `SHOW VARIABLES LIKE 'gtid_mode'`,
 		Expected: []sql.Row{
 			{"gtid_mode", "OFF"},
@@ -5003,6 +5002,20 @@ Select * from (
 		Expected: []sql.Row{
 			{"version_comment", "Dolt"}, {"version_compile_machine", ""}, {"version_compile_os", ""}, {"version_compile_zlib", ""}, {"wait_timeout", 28800}, {"windowing_use_high_precision", 1},
 		},
+	},
+	{
+		Query: `SHOW VARIABLES WHERE "1" and variable_name = 'autocommit'`,
+		Expected: []sql.Row{
+			{"autocommit", 1},
+		},
+	},
+	{
+		Query:    `SHOW VARIABLES WHERE "0" and variable_name = 'autocommit'`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SHOW VARIABLES WHERE "abc" and variable_name = 'autocommit'`,
+		Expected: []sql.Row{},
 	},
 	{
 		Query: `SHOW GLOBAL VARIABLES LIKE '%mode'`,
@@ -7332,6 +7345,10 @@ Select * from (
 		},
 	},
 	{
+		Query:    `select instr(REPLACE(CONVERT(UUID() USING utf8mb4), '-', ''), '-')`,
+		Expected: []sql.Row{{0}},
+	},
+	{
 		Query:    `select * from mytable where 1 = 0 order by i asc`,
 		Expected: []sql.Row{},
 	},
@@ -7851,6 +7868,34 @@ var KeylessQueries = []QueryTest{
 
 // BrokenQueries are queries that are known to be broken in the engine.
 var BrokenQueries = []QueryTest{
+	{
+		Query: `WITH RECURSIVE
+rt (foo) AS (
+ SELECT 1 as foo
+ UNION ALL
+ SELECT foo + 1 as foo FROM rt WHERE foo < 5
+),
+ladder (depth, foo) AS (
+ SELECT 1 as depth, NULL as foo from rt
+ UNION ALL
+ SELECT ladder.depth + 1 as depth, rt.foo
+ FROM ladder JOIN rt WHERE ladder.foo = rt.foo
+)
+SELECT * FROM ladder;`,
+	},
+	// union and aggregation typing are tricky
+	{
+		Query: "with recursive t (n) as (select sum('1') from dual union all select (2.00) from dual) select sum(n) from t;",
+		Expected: []sql.Row{
+			{float64(3)},
+		},
+	},
+	{
+		Query: "with recursive t (n) as (select sum(1.0) from dual union all select n+1 from t where n < 10) select sum(n) from t;",
+		Expected: []sql.Row{
+			{"55.0"},
+		},
+	},
 	{
 		// natural join filter columns do not hide duplicated columns
 		Query: "select t2.* from mytable t1 natural join mytable t2 join othertable t3 on t2.i = t3.i2;",
@@ -8576,6 +8621,10 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrInvalidAsOfExpression,
 	},
 	{
+		Query:       "SELECT i FROM myhistorytable AS OF MAX(i)",
+		ExpectedErr: sql.ErrInvalidAsOfExpression,
+	},
+	{
 		Query:       "SELECT pk FROM one_pk WHERE pk > ?",
 		ExpectedErr: sql.ErrUnboundPreparedStatementVariable,
 	},
@@ -8685,11 +8734,11 @@ var ErrorQueries = []QueryErrorTest{
 	// TODO: The following two queries should work. See https://github.com/dolthub/go-mysql-server/issues/542.
 	{
 		Query:       "SELECT SUM(i), i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
-		ExpectedErr: analyzererrors.ErrAggregationUnsupported,
+		ExpectedErr: sql.ErrAggregationUnsupported,
 	},
 	{
 		Query:       "SELECT SUM(i) as sum, i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
-		ExpectedErr: analyzererrors.ErrAggregationUnsupported,
+		ExpectedErr: sql.ErrAggregationUnsupported,
 	},
 	{
 		Query:       "select ((1, 2)) from dual",
@@ -8770,14 +8819,6 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query:       "with recursive t (n) as (select (1) from dual union all select n + 1 from t where n < 1002) select sum(n) from t",
 		ExpectedErr: sql.ErrCteRecursionLimitExceeded,
-	},
-	{
-		Query:       `alter table a add fulltext index idx (id)`,
-		ExpectedErr: sql.ErrUnsupportedFeature,
-	},
-	{
-		Query:       `CREATE FULLTEXT INDEX idx ON opening_lines(opening_line)`,
-		ExpectedErr: sql.ErrUnsupportedFeature,
 	},
 	{
 		Query:       `SELECT * FROM datetime_table where date_col >= 'not a valid date'`,
@@ -8878,7 +8919,7 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:       "select SUM(*) from dual;",
-		ExpectedErr: analyzererrors.ErrStarUnsupported,
+		ExpectedErr: sql.ErrStarUnsupported,
 	},
 	{
 		Query:          "create table vb_tbl (vb varbinary(123456789));",

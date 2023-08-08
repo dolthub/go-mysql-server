@@ -18,7 +18,6 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -93,7 +92,7 @@ func (p *Rank) IsNullable() bool {
 
 // Eval implements sql.Expression
 func (p *Rank) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return nil, analyzererrors.ErrWindowUnsupported.New(p.FunctionName())
+	return nil, sql.ErrWindowUnsupported.New(p.FunctionName())
 }
 
 // Children implements sql.Expression
@@ -108,14 +107,14 @@ func (p *Rank) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 		return nil, err
 	}
 
-	return p.WithWindow(window)
+	return p.WithWindow(window), nil
 }
 
 // WithWindow implements sql.WindowAggregation
-func (p *Rank) WithWindow(window *sql.WindowDefinition) (sql.WindowAggregation, error) {
+func (p *Rank) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	nr := *p
 	nr.window = window
-	return &nr, nil
+	return &nr
 }
 
 func (p *Rank) NewWindowFunction() (sql.WindowFunction, error) {

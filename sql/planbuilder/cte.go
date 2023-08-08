@@ -10,7 +10,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func (b *PlanBuilder) buildWith(inScope *scope, with *ast.With) (outScope *scope) {
+func (b *Builder) buildWith(inScope *scope, with *ast.With) (outScope *scope) {
 	// resolveCommonTableExpressions operates on With nodes. It replaces any matching UnresolvedTable references in the
 	// tree with the subqueries defined in the CTEs.
 
@@ -56,7 +56,7 @@ func (b *PlanBuilder) buildWith(inScope *scope, with *ast.With) (outScope *scope
 	return
 }
 
-func (b *PlanBuilder) buildCte(inScope *scope, e ast.TableExpr, name string, columns []string) *scope {
+func (b *Builder) buildCte(inScope *scope, e ast.TableExpr, name string, columns []string) *scope {
 	cteScope := b.buildDataSource(inScope, e)
 	b.renameSource(cteScope, name, columns)
 	switch n := cteScope.node.(type) {
@@ -66,7 +66,7 @@ func (b *PlanBuilder) buildCte(inScope *scope, e ast.TableExpr, name string, col
 	return cteScope
 }
 
-func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name string, columns []string) *scope {
+func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name string, columns []string) *scope {
 	l, r := splitRecursiveCteUnion(name, union)
 	if r == nil {
 		// not recursive
@@ -110,6 +110,7 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 
 		for i, c := range leftScope.cols {
 			c.typ = recSch[i].Type
+			c.scalar = nil
 			cteScope.newColumn(c)
 		}
 		b.renameSource(cteScope, name, columns)
@@ -125,7 +126,7 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 	distinct := union.Type != ast.UnionAllStr
 	limit := b.buildLimit(inScope, union.Limit)
 
-	orderByScope := b.analyzeOrderBy(cteScope, inScope, union.OrderBy)
+	orderByScope := b.analyzeOrderBy(cteScope, leftScope, union.OrderBy)
 	var sortFields sql.SortFields
 	for _, c := range orderByScope.cols {
 		so := sql.Ascending

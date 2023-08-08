@@ -100,10 +100,10 @@ func (j *JSONObjectAgg) WithChildren(children ...sql.Expression) (sql.Expression
 }
 
 // WithWindow implements sql.Aggregation
-func (j *JSONObjectAgg) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
+func (j *JSONObjectAgg) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	nj := *j
 	nj.window = window
-	return &nj, nil
+	return &nj
 }
 
 // Window implements sql.Aggregation

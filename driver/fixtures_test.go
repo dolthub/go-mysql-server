@@ -47,16 +47,17 @@ func (f *memTable) Resolve(name string, _ *driver.Options) (string, sql.Database
 func personMemTable(database, table string) (*memTable, Records) {
 	type J = types.JSONDocument
 	records := Records{
-		[]any{"John Doe", "john@doe.com", J{Val: []any{"555-555-555"}}, time.Now()},
-		[]any{"John Doe", "johnalt@doe.com", J{Val: []any{}}, time.Now()},
-		[]any{"Jane Doe", "jane@doe.com", J{Val: []any{}}, time.Now()},
-		[]any{"Evil Bob", "evilbob@gmail.com", J{Val: []any{"555-666-555", "666-666-666"}}, time.Now()},
+		[]any{uint64(1), "John Doe", "john@doe.com", J{Val: []any{"555-555-555"}}, time.Now()},
+		[]any{uint64(2), "John Doe", "johnalt@doe.com", J{Val: []any{}}, time.Now()},
+		[]any{uint64(3), "Jane Doe", "jane@doe.com", J{Val: []any{}}, time.Now()},
+		[]any{uint64(4), "Evil Bob", "evilbob@gmail.com", J{Val: []any{"555-666-555", "666-666-666"}}, time.Now()},
 	}
 
 	mtb := &memTable{
 		DatabaseName: database,
 		TableName:    table,
 		Schema: sql.Schema{
+			{Name: "id", Type: types.Uint64, Nullable: false, Source: table, AutoIncrement: true},
 			{Name: "name", Type: types.Text, Nullable: false, Source: table},
 			{Name: "email", Type: types.Text, Nullable: false, Source: table},
 			{Name: "phone_numbers", Type: types.JSON, Nullable: false, Source: table},

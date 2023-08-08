@@ -152,9 +152,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 					return nil, sql.NewWrappedInsertError(row, err)
 				}
 				// the row had to be deleted, write the values into the toReturn row
-				for i := 0; i < len(ue.Existing); i++ {
-					toReturn[i] = ue.Existing[i]
-				}
+				copy(toReturn, ue.Existing)
 			} else {
 				break
 			}
@@ -167,7 +165,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 			}
 
 			ue := err.(*errors.Error).Cause().(sql.UniqueKeyError)
-			return i.handleOnDuplicateKeyUpdate(ctx, row, ue.Existing)
+			return i.handleOnDuplicateKeyUpdate(ctx, ue.Existing, row)
 		}
 	}
 
@@ -176,15 +174,14 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 	return row, nil
 }
 
-func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, row, rowToUpdate sql.Row) (returnRow sql.Row, returnErr error) {
-	err := i.resolveValues(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	newRow := rowToUpdate
+func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, oldRow, newRow sql.Row) (returnRow sql.Row, returnErr error) {
+	var err error
+	updateAcc := append(oldRow, newRow...)
+	var evalRow sql.Row
 	for _, updateExpr := range i.updateExprs {
-		val, err := updateExpr.Eval(i.ctx, newRow)
+		// this SET <val> indexes into LHS, but the <expr> can
+		// reference the new row on RHS
+		val, err := updateExpr.Eval(i.ctx, updateAcc)
 		if err != nil {
 			if i.ignore {
 				idx, ok := getFieldIndexFromUpdateExpr(updateExpr)
@@ -192,28 +189,30 @@ func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, row, rowToUpda
 					return nil, err
 				}
 
-				val = convertDataAndWarn(ctx, i.schema, row, idx, err)
+				val = convertDataAndWarn(ctx, i.schema, newRow, idx, err)
 			} else {
 				return nil, err
 			}
 		}
 
-		newRow = val.(sql.Row)
+		updateAcc = val.(sql.Row)
 	}
+	// project LHS only
+	evalRow = updateAcc[:len(oldRow)]
 
 	// Should revaluate the check conditions.
-	err = i.evaluateChecks(ctx, newRow)
+	err = i.evaluateChecks(ctx, evalRow)
 	if err != nil {
 		return nil, i.ignoreOrClose(ctx, newRow, err)
 	}
 
-	err = i.updater.Update(ctx, rowToUpdate, newRow)
+	err = i.updater.Update(ctx, oldRow, evalRow)
 	if err != nil {
 		return nil, i.ignoreOrClose(ctx, newRow, err)
 	}
 
 	// In the case that we attempted an update, return a concatenated [old,new] row just like update.
-	return rowToUpdate.Append(newRow), nil
+	return oldRow.Append(evalRow), nil
 }
 
 func getFieldIndexFromUpdateExpr(updateExpr sql.Expression) (int, bool) {

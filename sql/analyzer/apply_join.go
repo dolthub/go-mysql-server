@@ -106,6 +106,12 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 					max1 = true
 				default:
 				}
+				if sq != nil {
+					sq.Query, _, err = fixidx.FixFieldIndexesForNode(ctx, a.LogFn(), scope.NewScopeFromSubqueryExpression(n), sq.Query)
+					if err != nil {
+						return nil, transform.SameTree, err
+					}
+				}
 				if sq != nil && nodeIsCacheable(sq.Query, len(subScope.Schema())) {
 					matches = append(matches, applyJoin{l: l, r: sq, op: op, filter: joinF, max1: max1})
 				} else {
@@ -141,7 +147,7 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 					rightF = tup
 				}
 
-				q, _, err := fixidx.FixFieldIndexesForNode(a.LogFn(), scope, subq.Query)
+				q, _, err := fixidx.FixFieldIndexesForNode(ctx, a.LogFn(), scope, subq.Query)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}

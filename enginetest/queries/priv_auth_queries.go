@@ -596,6 +596,7 @@ var UserPrivTests = []UserPrivilegeTest{
 		SetUpScript: []string{
 			"CREATE USER testuser@localhost;",
 			"GRANT REPLICATION_SLAVE_ADMIN ON *.* TO testuser@localhost;",
+			"GRANT CLONE_ADMIN ON *.* TO testuser@localhost;",
 		},
 		Assertions: []UserPrivilegeTestAssertion{
 			{
@@ -611,7 +612,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				Query: "SHOW GRANTS FOR testuser@localhost;",
 				Expected: []sql.Row{
 					{"GRANT USAGE ON *.* TO `testuser`@`localhost`"},
-					{"GRANT REPLICATION_SLAVE_ADMIN ON *.* TO `testuser`@`localhost`"},
+					{"GRANT CLONE_ADMIN, REPLICATION_SLAVE_ADMIN ON *.* TO `testuser`@`localhost`"},
 				},
 			},
 			{
@@ -2141,7 +2142,9 @@ var ServerAuthTests = []ServerAuthenticationTest{
 	{
 		Name: "Adding a Super User directly",
 		SetUpFunc: func(ctx *sql.Context, t *testing.T, engine *sqle.Engine) {
-			engine.Analyzer.Catalog.MySQLDb.AddSuperUser("bestuser", "localhost", "the_pass")
+			ed := engine.Analyzer.Catalog.MySQLDb.Editor()
+			defer ed.Close()
+			engine.Analyzer.Catalog.MySQLDb.AddSuperUser(ed, "bestuser", "localhost", "the_pass")
 		},
 		Assertions: []ServerAuthenticationTestAssertion{
 			{

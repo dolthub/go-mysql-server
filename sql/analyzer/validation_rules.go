@@ -495,7 +495,7 @@ func validateStarExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *p
 					}
 					switch e.(type) {
 					case *expression.Star:
-						err = analyzererrors.ErrStarUnsupported.New()
+						err = sql.ErrStarUnsupported.New()
 						return false
 					case *aggregation.Count, *aggregation.CountDistinct, *aggregation.JsonArray:
 						if _, s := e.Children()[0].(*expression.Star); s {
@@ -850,7 +850,7 @@ func checkForAggregationFunctions(exprs []sql.Expression) error {
 	for _, e := range exprs {
 		sql.Inspect(e, func(ie sql.Expression) bool {
 			if _, ok := ie.(sql.Aggregation); ok {
-				validationErr = analyzererrors.ErrAggregationUnsupported.New(e.String())
+				validationErr = sql.ErrAggregationUnsupported.New(e.String())
 			}
 			return validationErr == nil
 		})
@@ -868,8 +868,8 @@ func checkForNonAggregatedColumnReferences(w *plan.Window) error {
 			if agg.Window() == nil {
 				index, gf := findFirstWindowAggregationColumnReference(w)
 
-				if index > 0 {
-					return sql.ErrNonAggregatedColumnWithoutGroupBy.New(index+1, gf.String())
+				if index >= 0 {
+					return sql.ErrNonAggregatedColumnWithoutGroupBy.New(index, gf.String())
 				} else {
 					// We should always have an index and GetField value to use, but just in case
 					// something changes that, return a similar error message without those details.
