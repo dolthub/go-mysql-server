@@ -15,8 +15,9 @@
 package planbuilder
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
 	"reflect"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // TODO use planbuilder

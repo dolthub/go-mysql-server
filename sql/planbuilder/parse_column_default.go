@@ -2,11 +2,13 @@ package planbuilder
 
 import (
 	"fmt"
+	"strings"
+
+	"github.com/dolthub/vitess/go/vt/sqlparser"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
-	"strings"
 )
 
 // StringToColumnDefaultValue takes in a string representing a default value and returns the equivalent Expression.

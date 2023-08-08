@@ -3,12 +3,12 @@ package planbuilder
 import (
 	"bufio"
 	"fmt"
-	"github.com/dolthub/vitess/go/sqltypes"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/stretchr/testify/require"
 

@@ -17,7 +17,6 @@ package golden
 import (
 	dsql "database/sql"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"math"
 	"reflect"
 	"strings"
@@ -33,6 +32,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 

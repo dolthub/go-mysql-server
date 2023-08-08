@@ -16,7 +16,6 @@ package memory_test
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"io"
 	"testing"
 
@@ -25,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
