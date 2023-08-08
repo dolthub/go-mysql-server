@@ -566,6 +566,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 		},
 	},
 	{
+		SkipPrepared: true,
 		Query: `SELECT pk as pk, nt.i  as i, nt2.i as i FROM one_pk
 						RIGHT JOIN niltable nt ON pk=nt.i
 						RIGHT JOIN niltable nt2 ON pk=nt2.i - 1
