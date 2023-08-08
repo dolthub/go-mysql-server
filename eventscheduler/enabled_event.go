@@ -276,7 +276,7 @@ func (r *runningEventsStatus) getStatus(key string) (bool, bool) {
 	return b, ok
 }
 
-// getAdd returns the whether to re-add the event at given key.
+// getReAdd returns whether to re-add the event at given key.
 func (r *runningEventsStatus) getReAdd(key string) (bool, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -284,8 +284,9 @@ func (r *runningEventsStatus) getReAdd(key string) (bool, bool) {
 	return b, ok
 }
 
-// removeSchemaEvents removes all events of given database name.
-func (r *runningEventsStatus) removeSchemaEvents(dbName string) {
+// cancelEventsForDatabase marks all running events for the specified database
+// so that they do not get rescheduled after they finish running.
+func (r *runningEventsStatus) cancelEventsForDatabase(dbName string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	// if there are any running events of given database, then set reAdd to false

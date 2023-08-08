@@ -287,13 +287,13 @@ func (ee *eventExecutor) removeEvent(eventIdName string) {
 	}
 }
 
-// removeSchemaEvents removes all events of given database if any exists
+// removeSchemaEvents removes all events from a given database if any exist
 // in the enabled events list. If any events of this database
-// is currently executing, it will not be in the list,
+// are currently executing, they will not be in the list,
 // so it updates the running events status to not re-add those
 // events after their execution.
 func (ee *eventExecutor) removeSchemaEvents(dbName string) {
 	ee.list.removeSchemaEvents(dbName)
 	// if not found, it might be currently executing
-	ee.runningEventsStatus.removeSchemaEvents(dbName)
+	ee.runningEventsStatus.cancelEventsForDatabase(dbName)
 }
