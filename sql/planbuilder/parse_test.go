@@ -27,7 +27,7 @@ type planTest struct {
 func TestPlanBuilder(t *testing.T) {
 	var verbose, rewrite bool
 	//verbose = true
-	//rewrite = true
+	rewrite = true
 
 	var tests = []planTest{
 		{
@@ -175,7 +175,7 @@ Project
 			Query: "select y as x from xy",
 			ExpectedPlan: `
 Project
- ├─ columns: [x:4!null]
+ ├─ columns: [xy.y:2!null as x]
  └─ Project
      ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, xy.y:2!null as x]
      └─ Table
@@ -377,7 +377,7 @@ Project
 			Query: "SELECT count(xy.x) AS count_1, xy.y + xy.z AS lx FROM xy GROUP BY xy.x + xy.z",
 			ExpectedPlan: `
 Project
- ├─ columns: [count_1:5!null, lx:6!null]
+ ├─ columns: [count(xy.x):4!null as count_1, (xy.y:2!null + xy.z:3!null) as lx]
  └─ Project
      ├─ columns: [count(xy.x):4!null, xy.y:2!null, xy.z:3!null, count(xy.x):4!null as count_1, (xy.y:2!null + xy.z:3!null) as lx]
      └─ GroupBy
@@ -392,7 +392,7 @@ Project
 			Query: "SELECT count(xy.x) AS count_1, xy.x + xy.z AS lx FROM xy GROUP BY xy.x + xy.z",
 			ExpectedPlan: `
 Project
- ├─ columns: [count_1:5!null, lx:6!null]
+ ├─ columns: [count(xy.x):4!null as count_1, (xy.x:1!null + xy.z:3!null) as lx]
  └─ Project
      ├─ columns: [count(xy.x):4!null, xy.x:1!null, xy.z:3!null, count(xy.x):4!null as count_1, (xy.x:1!null + xy.z:3!null) as lx]
      └─ GroupBy
@@ -483,7 +483,7 @@ Project
          ├─ outerVisibility: false
          ├─ cacheable: false
          └─ Project
-             ├─ columns: [s:5!null]
+             ├─ columns: [count(1):4!null as s]
              └─ Project
                  ├─ columns: [count(1):4!null, count(1):4!null as s]
                  └─ GroupBy
@@ -498,7 +498,7 @@ Project
 			Query: "SELECT count(*), x+y AS r FROM xy GROUP BY x, y",
 			ExpectedPlan: `
 Project
- ├─ columns: [count(1):4!null as count(*), r:5!null]
+ ├─ columns: [count(1):4!null as count(*), (xy.x:1!null + xy.y:2!null) as r]
  └─ Project
      ├─ columns: [count(1):4!null, xy.x:1!null, xy.y:2!null, (xy.x:1!null + xy.y:2!null) as r]
      └─ GroupBy
@@ -513,7 +513,7 @@ Project
 			Query: "SELECT count(*), x+y AS r FROM xy GROUP BY x+y",
 			ExpectedPlan: `
 Project
- ├─ columns: [count(1):4!null as count(*), r:5!null]
+ ├─ columns: [count(1):4!null as count(*), (xy.x:1!null + xy.y:2!null) as r]
  └─ Project
      ├─ columns: [count(1):4!null, xy.x:1!null, xy.y:2!null, (xy.x:1!null + xy.y:2!null) as r]
      └─ GroupBy
@@ -749,7 +749,7 @@ Project
          │                   ├─ outerVisibility: false
          │                   ├─ cacheable: false
          │                   └─ Project
-         │                       ├─ columns: [u:7!null]
+         │                       ├─ columns: [uv.u:4!null as u]
          │                       └─ Project
          │                           ├─ columns: [uv.u:4!null, uv.v:5!null, uv.w:6!null, uv.u:4!null as u]
          │                           └─ Filter
@@ -783,7 +783,7 @@ Project
      │                   ├─ outerVisibility: false
      │                   ├─ cacheable: false
      │                   └─ Project
-     │                       ├─ columns: [u:7!null]
+     │                       ├─ columns: [uv.u:4!null as u]
      │                       └─ Project
      │                           ├─ columns: [uv.u:4!null, uv.v:5!null, uv.w:6!null, uv.u:4!null as u]
      │                           └─ Filter
@@ -815,7 +815,7 @@ Project
  │               ├─ outerVisibility: false
  │               ├─ cacheable: false
  │               └─ Project
- │                   ├─ columns: [z:7!null]
+ │                   ├─ columns: [uv.u:4!null as z]
  │                   └─ Project
  │                       ├─ columns: [uv.u:4!null, uv.v:5!null, uv.w:6!null, uv.u:4!null as z]
  │                       └─ Filter
@@ -849,7 +849,7 @@ Project
  │               ├─ outerVisibility: false
  │               ├─ cacheable: false
  │               └─ Project
- │                   ├─ columns: [z:7!null]
+ │                   ├─ columns: [uv.u:4!null as z]
  │                   └─ Project
  │                       ├─ columns: [uv.u:4!null, uv.v:5!null, uv.w:6!null, uv.u:4!null as z]
  │                       └─ Filter
@@ -883,7 +883,7 @@ Project
  │               ├─ outerVisibility: false
  │               ├─ cacheable: false
  │               └─ Project
- │                   ├─ columns: [u:7!null]
+ │                   ├─ columns: [uv.u:4!null as u]
  │                   └─ Project
  │                       ├─ columns: [uv.u:4!null, uv.v:5!null, uv.w:6!null, uv.u:4!null as u]
  │                       └─ Filter
@@ -905,7 +905,7 @@ Project
 			Query: "select x, x as y from xy order by y",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, y:4!null]
+ ├─ columns: [xy.x:1!null, xy.x:1!null as y]
  └─ Sort(xy.x:1!null as y ASC nullsFirst)
      └─ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, xy.x:1!null as y]
@@ -918,7 +918,7 @@ Project
 			Query: "select x, y as x from xy order by y",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, x:4!null]
+ ├─ columns: [xy.x:1!null, xy.y:2!null as x]
  └─ Sort(xy.y:2!null ASC nullsFirst)
      └─ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, xy.y:2!null as x]
@@ -931,7 +931,7 @@ Project
 			Query: "select sum(x) as `count(x)` from xy order by `count(x)`;",
 			ExpectedPlan: `
 Project
- ├─ columns: [count(x):5!null]
+ ├─ columns: [sum(xy.x):4!null as count(x)]
  └─ Sort(sum(xy.x):4!null as count(x) ASC nullsFirst)
      └─ Project
          ├─ columns: [sum(xy.x):4!null, sum(xy.x):4!null as count(x)]
@@ -947,7 +947,7 @@ Project
 			Query: "select (1+x) s from xy group by 1 having s = 1",
 			ExpectedPlan: `
 Project
- ├─ columns: [s:4!null]
+ ├─ columns: [(1 (tinyint) + xy.x:1!null) as s]
  └─ Having
      ├─ Eq
      │   ├─ s:5!null
@@ -966,7 +966,7 @@ Project
 			Query: "select (1+x) s from xy join uv on (1+x) = (1+u) group by 1 having s = 1",
 			ExpectedPlan: `
 Project
- ├─ columns: [s:7!null]
+ ├─ columns: [(1 (tinyint) + xy.x:1!null) as s]
  └─ Having
      ├─ Eq
      │   ├─ s:8!null
@@ -992,6 +992,7 @@ Project
 			Query: `
 
 
+
 			select
 			x,
 			x*y,
@@ -1001,7 +1002,10 @@ Project
 			`,
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, (xy.x:1!null * xy.y:2!null) as x*y, row_num1:5!null, sum:7!null]
+ ├─ columns: [xy.x:1!null, (xy.x:1!null * xy.y:2!null) as x*y, row_number() over ( partition by xy.x rows between unbounded preceding and unbounded following):4!null as row_num1, sum
+ │   ├─ over ( partition by xy.y order by xy.x asc)
+ │   └─ xy.x
+ │  :6!null as sum]
  └─ Project
      ├─ columns: [row_number() over ( partition by xy.x rows between unbounded preceding and unbounded following):4!null, sum
      │   ├─ over ( partition by xy.y order by xy.x asc)
@@ -1026,6 +1030,7 @@ Project
 			Query: `
 
 
+
 			select
 			x+1 as x,
 			sum(x) OVER(PARTITION BY y ORDER BY x) AS sum
@@ -1034,7 +1039,10 @@ Project
 			`,
 			ExpectedPlan: `
 Project
- ├─ columns: [x:4!null, sum:6!null]
+ ├─ columns: [(xy.x:1!null + 1 (tinyint)) as x, sum
+ │   ├─ over ( partition by xy.y order by xy.x asc)
+ │   └─ xy.x
+ │  :5!null as sum]
  └─ Having
      ├─ GreaterThan
      │   ├─ x:7!null
@@ -1061,6 +1069,7 @@ Project
 			Query: `
 
 
+
 			SELECT
 			x,
 			ROW_NUMBER() OVER w AS 'row_number',
@@ -1070,7 +1079,7 @@ Project
 			WINDOW w AS (PARTITION BY y ORDER BY x);`,
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, row_number:5!null, rank:7!null, dense_rank:9!null]
+ ├─ columns: [xy.x:1!null, row_number() over ( partition by xy.y order by xy.x asc rows between unbounded preceding and unbounded following):4!null as row_number, rank() over ( partition by xy.y order by xy.x asc rows between unbounded preceding and unbounded following):6!null as rank, dense_rank() over ( partition by xy.y order by xy.x asc rows between unbounded preceding and unbounded following):8!null as dense_rank]
  └─ Project
      ├─ columns: [row_number() over ( partition by xy.y order by xy.x asc rows between unbounded preceding and unbounded following):4!null, rank() over ( partition by xy.y order by xy.x asc rows between unbounded preceding and unbounded following):6!null, dense_rank() over ( partition by xy.y order by xy.x asc rows between unbounded preceding and unbounded following):8!null, xy.x:1!null, row_number() over ( partition by xy.y order by xy.x asc rows between unbounded preceding and unbounded following):4!null as row_number, rank() over ( partition by xy.y order by xy.x asc rows between unbounded preceding and unbounded following):6!null as rank, dense_rank() over ( partition by xy.y order by xy.x asc rows between unbounded preceding and unbounded following):8!null as dense_rank]
      └─ Window
@@ -1199,7 +1208,7 @@ Project
 			Query: "select x+y as X from xy where x < 1 having x > 1",
 			ExpectedPlan: `
 Project
- ├─ columns: [X:4!null]
+ ├─ columns: [(xy.x:1!null + xy.y:2!null) as X]
  └─ Having
      ├─ GreaterThan
      │   ├─ X:5!null
@@ -1238,7 +1247,7 @@ Project
 			Query: "select x+y as s from xy having exists (select * from xy where y = s)",
 			ExpectedPlan: `
 Project
- ├─ columns: [s:4!null]
+ ├─ columns: [(xy.x:1!null + xy.y:2!null) as s]
  └─ Having
      ├─ EXISTS Subquery
      │   ├─ cacheable: false
@@ -1264,7 +1273,7 @@ Project
 			Query: "select x, count(x) as cnt from xy group by x having x > 1",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, cnt:5!null]
+ ├─ columns: [xy.x:1!null, count(xy.x):4!null as cnt]
  └─ Having
      ├─ GreaterThan
      │   ├─ xy.x:1!null
@@ -1283,6 +1292,7 @@ Project
 			Query: `
 
 
+
 			SELECT x
 			FROM xy
 			WHERE EXISTS (SELECT count(u) AS count_1
@@ -1298,7 +1308,7 @@ Project
          ├─ EXISTS Subquery
          │   ├─ cacheable: false
          │   └─ Project
-         │       ├─ columns: [count_1:8!null]
+         │       ├─ columns: [count(uv.u):7!null as count_1]
          │       └─ Having
          │           ├─ GreaterThan
          │           │   ├─ COUNT(uv.u):7!null
@@ -1322,6 +1332,7 @@ Project
 		},
 		{
 			Query: `
+
 
 
 			WITH RECURSIVE
@@ -1349,7 +1360,7 @@ Project
          └─ RecursiveCTE
              └─ Union all
                  ├─ Project
-                 │   ├─ columns: [depth:4!null, foo:5]
+                 │   ├─ columns: [1 (tinyint) as depth, NULL (null) as foo]
                  │   └─ Project
                  │       ├─ columns: [rt.foo:2!null, 1 (tinyint) as depth, NULL (null) as foo]
                  │       └─ SubqueryAlias
@@ -1359,14 +1370,14 @@ Project
                  │           └─ RecursiveCTE
                  │               └─ Union all
                  │                   ├─ Project
-                 │                   │   ├─ columns: [foo:1!null]
+                 │                   │   ├─ columns: [1 (tinyint) as foo]
                  │                   │   └─ Project
                  │                   │       ├─ columns: [1 (tinyint) as foo]
                  │                   │       └─ Table
                  │                   │           ├─ name: 
                  │                   │           └─ columns: []
                  │                   └─ Project
-                 │                       ├─ columns: [foo:3!null]
+                 │                       ├─ columns: [(rt.foo:2!null + 1 (tinyint)) as foo]
                  │                       └─ Project
                  │                           ├─ columns: [rt.foo:2!null, (rt.foo:2!null + 1 (tinyint)) as foo]
                  │                           └─ Filter
@@ -1375,7 +1386,7 @@ Project
                  │                               │   └─ 5 (tinyint)
                  │                               └─ RecursiveTable(rt)
                  └─ Project
-                     ├─ columns: [depth:8!null, rt.foo:2!null]
+                     ├─ columns: [(ladder.depth:6!null + 1 (tinyint)) as depth, rt.foo:2!null]
                      └─ Project
                          ├─ columns: [ladder.depth:6!null, ladder.foo:7, rt.foo:2!null, (ladder.depth:6!null + 1 (tinyint)) as depth]
                          └─ Filter
@@ -1391,14 +1402,14 @@ Project
                                      └─ RecursiveCTE
                                          └─ Union all
                                              ├─ Project
-                                             │   ├─ columns: [foo:1!null]
+                                             │   ├─ columns: [1 (tinyint) as foo]
                                              │   └─ Project
                                              │       ├─ columns: [1 (tinyint) as foo]
                                              │       └─ Table
                                              │           ├─ name: 
                                              │           └─ columns: []
                                              └─ Project
-                                                 ├─ columns: [foo:3!null]
+                                                 ├─ columns: [(rt.foo:2!null + 1 (tinyint)) as foo]
                                                  └─ Project
                                                      ├─ columns: [rt.foo:2!null, (rt.foo:2!null + 1 (tinyint)) as foo]
                                                      └─ Filter
@@ -1412,7 +1423,7 @@ Project
 			Query: "select x as cOl, y as COL FROM xy",
 			ExpectedPlan: `
 Project
- ├─ columns: [cOl:4!null, COL:5!null]
+ ├─ columns: [xy.x:1!null as cOl, xy.y:2!null as COL]
  └─ Project
      ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, xy.x:1!null as cOl, xy.y:2!null as COL]
      └─ Table
@@ -1424,7 +1435,7 @@ Project
 			Query: "SELECT x as alias1, (SELECT alias1+1 group by alias1 having alias1 > 0) FROM xy where x > 1;",
 			ExpectedPlan: `
 Project
- ├─ columns: [alias1:4!null, Subquery
+ ├─ columns: [xy.x:1!null as alias1, Subquery
  │   ├─ cacheable: false
  │   └─ Project
  │       ├─ columns: [(alias1:4!null + 1 (tinyint)) as alias1+1]
@@ -1471,7 +1482,7 @@ Project
 			Query: "select - SUM(DISTINCT - - 71) as col2 from xy cor0",
 			ExpectedPlan: `
 Project
- ├─ columns: [col2:5!null]
+ ├─ columns: [-sum(distinct 71) as col2]
  └─ Project
      ├─ columns: [sum(distinct 71):4!null, -sum(distinct 71) as col2]
      └─ GroupBy
@@ -1487,7 +1498,7 @@ Project
 			Query: "select x as y, y from xy s order by x desc",
 			ExpectedPlan: `
 Project
- ├─ columns: [y:4!null, s.y:2!null]
+ ├─ columns: [s.x:1!null as y, s.y:2!null]
  └─ Sort(s.x:1!null DESC nullsFirst)
      └─ Project
          ├─ columns: [s.x:1!null, s.y:2!null, s.z:3!null, s.x:1!null as y]
@@ -1501,7 +1512,7 @@ Project
 			Query: "select x+1 as x, (select x) from xy;",
 			ExpectedPlan: `
 Project
- ├─ columns: [x:4!null, Subquery
+ ├─ columns: [(xy.x:1!null + 1 (tinyint)) as x, Subquery
  │   ├─ cacheable: false
  │   └─ Project
  │       ├─ columns: [xy.x:1!null]
@@ -1518,6 +1529,7 @@ Project
 		},
 		{
 			Query: `
+
 
 SELECT fi, COUNT(*) FROM (
 			SELECT tbl.x AS fi
@@ -1537,7 +1549,7 @@ Project
              ├─ outerVisibility: false
              ├─ cacheable: false
              └─ Project
-                 ├─ columns: [fi:4!null]
+                 ├─ columns: [tbl.x:1!null as fi]
                  └─ Project
                      ├─ columns: [tbl.x:1!null, tbl.y:2!null, tbl.z:3!null, tbl.x:1!null as fi]
                      └─ TableAlias(tbl)
@@ -1552,7 +1564,7 @@ Project
 Union distinct
  ├─ sortFields: k:4!null
  ├─ Project
- │   ├─ columns: [k:4!null]
+ │   ├─ columns: [xy.y:2!null as k]
  │   └─ Project
  │       ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, xy.y:2!null as k]
  │       └─ Table
@@ -1590,7 +1602,14 @@ Project
 			Query: "select 1 as a, (select a) as a",
 			ExpectedPlan: `
 Project
- ├─ columns: [a:1!null, a:2]
+ ├─ columns: [1 (tinyint) as a, Subquery
+ │   ├─ cacheable: false
+ │   └─ Project
+ │       ├─ columns: [a:1!null]
+ │       └─ Table
+ │           ├─ name: 
+ │           └─ columns: []
+ │   as a]
  └─ Project
      ├─ columns: [1 (tinyint) as a, Subquery
      │   ├─ cacheable: false
@@ -1606,11 +1625,28 @@ Project
 `,
 		},
 		{
-			// TODO higher-level subquery should ref a1, not recompute
 			Query: "SELECT max(x), (select max(dt.a) from (SELECT x as a) as dt(a)) as a1 from xy group by a1;",
 			ExpectedPlan: `
 Project
- ├─ columns: [max(xy.x):4!null as max(x), a1:8]
+ ├─ columns: [max(xy.x):4!null as max(x), Subquery
+ │   ├─ cacheable: false
+ │   └─ Project
+ │       ├─ columns: [max(dt.a):7!null]
+ │       └─ GroupBy
+ │           ├─ select: MAX(dt.a:6!null)
+ │           ├─ group: 
+ │           └─ SubqueryAlias
+ │               ├─ name: dt
+ │               ├─ outerVisibility: false
+ │               ├─ cacheable: false
+ │               └─ Project
+ │                   ├─ columns: [xy.x:1!null as a]
+ │                   └─ Project
+ │                       ├─ columns: [xy.x:1!null as a]
+ │                       └─ Table
+ │                           ├─ name: 
+ │                           └─ columns: []
+ │   as a1]
  └─ Project
      ├─ columns: [max(xy.x):4!null, Subquery
      │   ├─ cacheable: false
@@ -1624,7 +1660,7 @@ Project
      │               ├─ outerVisibility: false
      │               ├─ cacheable: false
      │               └─ Project
-     │                   ├─ columns: [a:5!null]
+     │                   ├─ columns: [xy.x:1!null as a]
      │                   └─ Project
      │                       ├─ columns: [xy.x:1!null as a]
      │                       └─ Table
@@ -1645,7 +1681,7 @@ Project
          │               ├─ outerVisibility: false
          │               ├─ cacheable: false
          │               └─ Project
-         │                   ├─ columns: [a:5!null]
+         │                   ├─ columns: [xy.x:1!null as a]
          │                   └─ Project
          │                       ├─ columns: [xy.x:1!null as a]
          │                       └─ Table
