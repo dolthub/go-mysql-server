@@ -276,29 +276,10 @@ func TestSingleQueryPrepared(t *testing.T) {
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
 	t.Skip()
-	var scripts = []queries.ScriptTest{
-		{
-			Name: "DELETE ME",
-			SetUpScript: []string{
-				"create table a (i int primary key);",
-				"create table b (j int primary key);",
-				"insert into a values (1), (2), (3);",
-				"insert into b values (1), (4), (5);",
-			},
-			Assertions: []queries.ScriptTestAssertion{
-				{
-					Query:    "select a.i as i, b.j as i from a join b on a.i = b.j - 3 order by 2;",
-					Expected: []sql.Row{
-						//{1, 4},
-						//{2, 5},
-					},
-				},
-			},
-		},
-	}
+	var scripts = []queries.ScriptTest{}
 
 	for _, test := range scripts {
-		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental)
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
@@ -315,19 +296,20 @@ func TestSingleScript_Experimental(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "DELETE ME",
+			Name: "lateral join basic",
 			SetUpScript: []string{
-				"create table a (i int primary key);",
-				"create table b (j int primary key);",
-				"insert into a values (1), (2), (3);",
-				"insert into b values (1), (4), (5);",
+				"create table t (i int primary key)",
+				"create table t1 (j int primary key)",
+				"insert into t values (1), (2), (3)",
+				"insert into t1 values (1), (4), (5)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "select a.i as i, b.j as i from a join b on a.i = b.j - 3 order by 1;",
+					Query: `WITH RECURSIVE cte(x) AS (SELECT 1 union all SELECT x + 1 from cte where x < 5) SELECT * FROM cte, lateral (select * from t where t.i = cte.x) tt;`,
 					Expected: []sql.Row{
-						//{1, 4},
-						//{2, 5},
+						{1, 1},
+						{2, 2},
+						{3, 3},
 					},
 				},
 			},
@@ -336,13 +318,12 @@ func TestSingleScript_Experimental(t *testing.T) {
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental)
-		//harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.OthertableData, setup.NiltableData, setup.XyData)
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
 		}
-		//engine.Analyzer.Debug = true
-		//engine.Analyzer.Verbose = true
+		engine.Analyzer.Debug = true
+		engine.Analyzer.Verbose = true
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
 }
