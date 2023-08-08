@@ -138,7 +138,7 @@ func (b *Builder) buildProjection(inScope, outScope *scope) {
 		scalar := sc.scalar
 		if a, ok := sc.scalar.(*expression.Alias); ok && !a.Unreferencable() {
 			// replace alias with its reference
-			scalar = sc.scalarGf()
+			//scalar = sc.scalarGf()
 		}
 		projections[i] = scalar
 	}
