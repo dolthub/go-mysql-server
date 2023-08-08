@@ -60,7 +60,6 @@ var DefaultRules_Exp = []Rule{
 	{mergeUnionSchemasId, mergeUnionSchemas},     //TODO
 	{transformJoinApplyId, transformJoinApply},
 	{resolveSubqueriesId, resolveSubqueries},
-	{resolveBarewordSetVariablesId, resolveBarewordSetVariables}, //TODO
 	{replaceCrossJoinsId, replaceCrossJoins},
 	{moveJoinCondsToFilterId, moveJoinConditionsToFilter}, // depends on indexes being correct
 }

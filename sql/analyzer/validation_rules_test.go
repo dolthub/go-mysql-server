@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/variables"
 	"testing"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -59,6 +60,7 @@ func TestValidateOrderBy(t *testing.T) {
 }
 
 func TestValidateGroupBy(t *testing.T) {
+	variables.InitSystemVariables()
 	require := require.New(t)
 
 	vr := getValidationRule(validateGroupById)

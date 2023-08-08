@@ -39,10 +39,15 @@ func TestPreparedStatementQueryTracking(t *testing.T) {
 		{Name: "commit_author_when", Source: "commits", Type: types.Text},
 	}), nil)
 
-	node := plan.NewProject(
-		[]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("commits", ""))
-
 	db := memory.NewDatabase("mydb")
+
+	node := plan.NewProject(
+		[]sql.Expression{
+			expression.NewGetFieldWithTable(0, types.Text, "commits", "repository_id", true),
+			expression.NewGetFieldWithTable(1, types.Text, "commits", "commit_hash", true),
+			expression.NewGetFieldWithTable(2, types.Text, "commits", "commit_author_when", true),
+		}, plan.NewResolvedTable(commits, db, nil))
+
 	db.AddTable("commits", commits)
 	ctx.SetCurrentDatabase("mydb")
 
