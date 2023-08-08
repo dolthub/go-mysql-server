@@ -19,8 +19,9 @@ func (b *Builder) buildKill(inScope *scope, kill *ast.Kill) (outScope *scope) {
 	}
 	if kill.Connection {
 		outScope.node = plan.NewKill(plan.KillType_Connection, connID32)
+	} else {
+		outScope.node = plan.NewKill(plan.KillType_Query, connID32)
 	}
-	outScope.node = plan.NewKill(plan.KillType_Query, connID32)
 	return outScope
 }
 
