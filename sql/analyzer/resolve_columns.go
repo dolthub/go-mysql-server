@@ -706,7 +706,7 @@ func resolveJSONTablesInJoin(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 		switch j := n.(type) {
 		case *plan.JoinNode:
 			switch {
-			case j.Op.IsNatural() || j.Op.IsInner():
+			case j.Op.IsUsing() || j.Op.IsInner():
 				if jt, ok := j.Right().(*plan.JSONTable); ok {
 					jtNew, jtSame, jtErr = resolveJSONTables(ctx, a, scope, j.Left(), jt)
 				}

@@ -134,7 +134,6 @@ func TestJoinOps_Experimental(t *testing.T) {
 
 // TestJoinQueries runs the canonical test queries against a single threaded index enabled harness.
 func TestJoinQueries(t *testing.T) {
-	t.Skip("affected rules will be deleted in new name resolution")
 	enginetest.TestJoinQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
@@ -148,7 +147,6 @@ func TestLateralJoin_Experimental(t *testing.T) {
 
 // TestJoinQueriesPrepared runs the canonical test queries against a single threaded index enabled harness.
 func TestJoinQueriesPrepared(t *testing.T) {
-	t.Skip("affected rules will be deleted in new name resolution")
 	enginetest.TestJoinQueriesPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
@@ -164,13 +162,11 @@ func TestJoinPlanningPrepared(t *testing.T) {
 
 // TestJoinOps runs join-specific tests for merge
 func TestJoinOps(t *testing.T) {
-	t.Skip() // temporary skip
 	enginetest.TestJoinOps(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
 // TestJoinOpsPrepared runs prepared join-specific tests for merge
 func TestJoinOpsPrepared(t *testing.T) {
-	t.Skip() // temporary skip
 	enginetest.TestJoinOpsPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 

@@ -114,8 +114,7 @@ func (i JoinType) IsInner() bool {
 	}
 }
 
-// TODO: rename this to IsUsing
-func (i JoinType) IsNatural() bool {
+func (i JoinType) IsUsing() bool {
 	switch i {
 	case JoinTypeUsing, JoinTypeUsingLeft, JoinTypeUsingRight:
 		return true
@@ -321,7 +320,7 @@ func (j *JoinNode) Comment() string {
 // Resolved implements the Resolvable interface.
 func (j *JoinNode) Resolved() bool {
 	switch {
-	case j.Op.IsNatural():
+	case j.Op.IsUsing():
 		return false
 	case j.Op.IsDegenerate() || j.Filter == nil:
 		return j.left.Resolved() && j.right.Resolved()
@@ -371,7 +370,7 @@ func (j *JoinNode) Schema() sql.Schema {
 		return append(makeNullable(j.left.Schema()), makeNullable(j.right.Schema())...)
 	case j.Op.IsPartial():
 		return j.Left().Schema()
-	case j.Op.IsNatural():
+	case j.Op.IsUsing():
 		panic("NaturalJoin is a placeholder, Schema called")
 	default:
 		return append(j.left.Schema(), j.right.Schema()...)

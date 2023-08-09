@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -38,42 +39,12 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, node sql.Node, scope *pl
 
 	var replacements = make(map[tableCol]tableCol)
 	newNode, same, err := transform.NodeWithCtx(node, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		if jn, ok := c.Node.(*plan.JoinNode); ok && (jn.Op.IsNatural() || len(jn.UsingCols) != 0) {
+		if jn, ok := c.Node.(*plan.JoinNode); ok && (jn.Op.IsUsing() || len(jn.UsingCols) != 0) {
 			newN, err := resolveNaturalJoin(jn, replacements)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-
-			if proj, isProj := newN.(*plan.Project); isProj {
-				if child, isJoin := proj.Child.(*plan.JoinNode); isJoin && child.Op.IsCross() {
-					return child, transform.NewTree, nil
-				}
-			}
-
-			if jn.Op.IsNatural() {
-				return newN, transform.NewTree, nil
-			}
-
-			if proj, isProj := c.Parent.(*plan.Project); isProj {
-				for _, expr := range proj.Projections {
-					if _, ok := expr.(*expression.Star); ok {
-						return newN, transform.NewTree, nil
-					}
-					if isQualifiedExpr(expr) {
-						return newN.Children()[0], transform.NewTree, nil
-					}
-				}
-			}
-
-			return newN.Children()[0], transform.NewTree, nil
-		}
-
-		if proj, isProj := c.Node.(*plan.Project); isProj {
-			for _, expr := range proj.Projections {
-				if isQualifiedExpr(expr) {
-					return c.Node, transform.SameTree, nil
-				}
-			}
+			return newN, transform.NewTree, nil
 		}
 
 		if e, ok := c.Node.(sql.Expressioner); ok {
@@ -91,11 +62,12 @@ func resolveNaturalJoin(n *plan.JoinNode, replacements map[tableCol]tableCol) (s
 	}
 
 	var conds, common, left, right []sql.Expression
-	lSch, rSch := n.Left().Schema(), n.Right().Schema()
+	var lSch, rSch sql.Schema
 	if n.Op == plan.JoinTypeUsingRight || n.Op == plan.JoinTypeRightOuter {
-		lSch, rSch = rSch, lSch
+		lSch, rSch = n.Right().Schema(), n.Left().Schema()
+	} else {
+		lSch, rSch = n.Left().Schema(), n.Right().Schema()
 	}
-
 	lSchLen := len(lSch)
 	usedCols := map[string]struct{}{}
 
@@ -130,7 +102,7 @@ func resolveNaturalJoin(n *plan.JoinNode, replacements map[tableCol]tableCol) (s
 			usedCols[lName] = struct{}{}
 		}
 	} else {
-		// TODO: the order of common needs to match left
+		// ensure that all columns are in left and right schemas
 		for _, col := range n.UsingCols {
 			colName := strings.ToLower(col)
 			lIdx, lCol := findCol(lSch, colName)
@@ -160,6 +132,12 @@ func resolveNaturalJoin(n *plan.JoinNode, replacements map[tableCol]tableCol) (s
 			usedCols[colName] = struct{}{}
 		}
 
+		// common columns must be in the same order as in the left schema
+		sort.Slice(common, func(i, j int) bool {
+			gfi, gfj := common[i].(*expression.GetField), common[j].(*expression.GetField)
+			return gfi.Index() < gfj.Index()
+		})
+
 		// Add remaining left columns
 		for lIdx, lCol := range lSch {
 			lName := strings.ToLower(lCol.Name)
@@ -174,6 +152,11 @@ func resolveNaturalJoin(n *plan.JoinNode, replacements map[tableCol]tableCol) (s
 				left = append(left, lgf)
 			}
 		}
+	}
+
+	// no matching columns, so just do cross join
+	if len(conds) == 0 {
+		return plan.NewCrossJoin(n.Left(), n.Right()), nil
 	}
 
 	// Add remaining right columns
@@ -193,11 +176,6 @@ func resolveNaturalJoin(n *plan.JoinNode, replacements map[tableCol]tableCol) (s
 
 	// Put the pieces together
 	projExprs := append(append(common, left...), right...)
-
-	if len(conds) == 0 {
-		newJoin := plan.NewCrossJoin(n.Left(), n.Right())
-		return plan.NewProject(projExprs, newJoin), nil
-	}
 
 	var newJoin sql.Node
 	switch n.Op {

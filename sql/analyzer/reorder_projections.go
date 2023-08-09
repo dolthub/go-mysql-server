@@ -255,7 +255,7 @@ func hasNaturalJoin(node sql.Node) bool {
 	var found bool
 	transform.Inspect(node, func(node sql.Node) bool {
 		if j, ok := node.(*plan.JoinNode); ok {
-			found = j.Op.IsNatural()
+			found = j.Op.IsUsing()
 			return false
 		}
 		return true
