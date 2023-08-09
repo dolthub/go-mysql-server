@@ -3342,18 +3342,18 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: 			"create index idx_one on TABLE_ONE (vAL1);",
-				Expected: 		[]sql.Row{{types.NewOkResult(0)}},
+				Query:    "create index idx_one on TABLE_ONE (vAL1);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "show create table TABLE_one;",
+				Query: "show create table TABLE_one;",
 				Expected: []sql.Row{{"table_One",
 					"CREATE TABLE `table_One` (\n" +
-							"  `Id` int NOT NULL,\n" +
-							"  `Val1` int,\n" +
-							"  PRIMARY KEY (`Id`),\n" +
-							"  KEY `idx_one` (`Val1`)\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						"  `Id` int NOT NULL,\n" +
+						"  `Val1` int,\n" +
+						"  PRIMARY KEY (`Id`),\n" +
+						"  KEY `idx_one` (`Val1`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "show index from TABLE_one;",
@@ -3374,18 +3374,18 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query: 			"create index idx_one on TABLEtwo (VAL2, VAL3);",
-				Expected: 		[]sql.Row{{types.NewOkResult(0)}},
+				Query:    "create index idx_one on TABLEtwo (VAL2, VAL3);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "show create table TABLETWO;",
+				Query: "show create table TABLETWO;",
 				Expected: []sql.Row{{"TableTwo", "CREATE TABLE `TableTwo` (\n" +
-						"  `iD` int NOT NULL,\n" +
-						"  `VAL2` int,\n" +
-						"  `vAL3` int,\n" +
-						"  PRIMARY KEY (`iD`),\n" +
-						"  KEY `idx_one` (`VAL2`,`vAL3`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+					"  `iD` int NOT NULL,\n" +
+					"  `VAL2` int,\n" +
+					"  `vAL3` int,\n" +
+					"  PRIMARY KEY (`iD`),\n" +
+					"  KEY `idx_one` (`VAL2`,`vAL3`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "show index from tABLEtwo;",
@@ -3407,30 +3407,30 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "drop index IDX_ONE on TABLE_one;",
+				Query:    "drop index IDX_ONE on TABLE_one;",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: "drop index IDX_ONE on TABLEtwo;",
+				Query:    "drop index IDX_ONE on TABLEtwo;",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "show create table TABLE_one;",
+				Query: "show create table TABLE_one;",
 				Expected: []sql.Row{{"table_One",
 					"CREATE TABLE `table_One` (\n" +
-							"  `Id` int NOT NULL,\n" +
-							"  `Val1` int,\n" +
-							"  PRIMARY KEY (`Id`)\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						"  `Id` int NOT NULL,\n" +
+						"  `Val1` int,\n" +
+						"  PRIMARY KEY (`Id`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query:    "show create table TABLETWO;",
+				Query: "show create table TABLETWO;",
 				Expected: []sql.Row{{"TableTwo", "CREATE TABLE `TableTwo` (\n" +
-						"  `iD` int NOT NULL,\n" +
-						"  `VAL2` int,\n" +
-						"  `vAL3` int,\n" +
-						"  PRIMARY KEY (`iD`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+					"  `iD` int NOT NULL,\n" +
+					"  `VAL2` int,\n" +
+					"  `vAL3` int,\n" +
+					"  PRIMARY KEY (`iD`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},

@@ -1575,7 +1575,7 @@ func (t *Table) DropIndex(ctx *sql.Context, indexName string) error {
 			return nil
 		}
 	}
-	
+
 	return sql.ErrIndexNotFound.New(indexName)
 }
 
