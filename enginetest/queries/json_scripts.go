@@ -618,6 +618,10 @@ var JsonScripts = []ScriptTest{
 					{5, nil},
 				},
 			},
+			{
+				Query:          "select pk, json_contains_path(col1, 'other', '$.c.d', '$.x') from t order by pk;",
+				ExpectedErrStr: "The oneOrAll argument to json_contains_path may take these values: 'one' or 'all'",
+			},
 		},
 	},
 }
