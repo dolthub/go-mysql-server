@@ -937,12 +937,12 @@ func addMergeJoins(m *memo.Memo) error {
 						}
 
 						// To make the index scan, we need the first non-constant column in each index.
-						leftColIdx, ok := matchedEqFilters[0].filter.Left.Scalar.(*memo.ColRef)
-						if !ok {
+						leftColIdx := getColumnRefFromScalar(matchedEqFilters[0].filter.Left.Scalar)
+						if leftColIdx == nil {
 							continue
 						}
-						rightColIdx, ok := matchedEqFilters[0].filter.Right.Scalar.(*memo.ColRef)
-						if !ok {
+						rightColIdx := getColumnRefFromScalar(matchedEqFilters[0].filter.Right.Scalar)
+						if rightColIdx == nil {
 							continue
 						}
 						lIndexScan := makeIndexScan(lIndex, leftColIdx.Col, lFilters)
