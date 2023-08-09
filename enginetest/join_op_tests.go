@@ -1426,6 +1426,18 @@ SELECT SUM(x) FROM xy WHERE x IN (
 			},
 		},
 	},
+	{
+		name: "multi-column merge join",
+		setup: [][]string{
+			setup.Pk_tablesData[0],
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    `SELECT l.pk1, l.pk2, l.c1, r.pk1, r.pk2, r.c1 FROM two_pk l JOIN two_pk r ON l.pk1=r.pk1 AND l.pk2=r.pk2`,
+				Expected: []sql.Row{sql.Row{0, 0, 0, 0, 0, 0}, sql.Row{0, 1, 10, 0, 1, 10}, sql.Row{1, 0, 20, 1, 0, 20}, sql.Row{1, 1, 30, 1, 1, 30}},
+			},
+		},
+	},
 }
 
 var rangeJoinOpTests = []JoinOpTests{

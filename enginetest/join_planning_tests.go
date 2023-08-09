@@ -16,6 +16,7 @@ package enginetest
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"strings"
 	"testing"
 
@@ -29,12 +30,13 @@ import (
 )
 
 type JoinPlanTest struct {
-	q       string
-	types   []plan.JoinType
-	indexes []string
-	exp     []sql.Row
-	order   []string
-	skipOld bool
+	q             string
+	types         []plan.JoinType
+	indexes       []string
+	mergeCompares []string
+	exp           []sql.Row
+	order         []string
+	skipOld       bool
 }
 
 var JoinPlanningTests = []struct {
@@ -179,6 +181,19 @@ var JoinPlanningTests = []struct {
 				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = s order by 1,3",
 				types: []plan.JoinType{plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 0, 1, 0}, {0, 0, 4, 0}, {3, 0, 1, 0}, {3, 0, 4, 0}, {4, 8, 0, 8}, {5, 4, 5, 4}},
+			},
+		},
+	},
+	{
+		name:  "multi-column merge join",
+		setup: setup.Pk_tablesData[0],
+
+		tests: []JoinPlanTest{
+			{
+				q:             `SELECT /*+ MERGE_JOIN(l,r) */ l.pk1, l.pk2, l.c1, r.pk1, r.pk2, r.c1 FROM two_pk l JOIN two_pk r ON l.pk1=r.pk1 AND l.pk2=r.pk2`,
+				types:         []plan.JoinType{plan.JoinTypeMerge},
+				mergeCompares: []string{"((r.pk1, r.pk2) = (l.pk1, l.pk2))"},
+				exp:           []sql.Row{sql.Row{0, 0, 0, 0, 0, 0}, sql.Row{0, 1, 10, 0, 1, 10}, sql.Row{1, 0, 20, 1, 0, 20}, sql.Row{1, 1, 30, 1, 1, 30}},
 			},
 		},
 	},
@@ -1411,6 +1426,9 @@ func TestJoinPlanning(t *testing.T, harness Harness) {
 				if tt.indexes != nil {
 					evalIndexTest(t, harness, e, tt)
 				}
+				if tt.mergeCompares != nil {
+					evalMergeCmpTest(t, harness, e, tt)
+				}
 				if tt.exp != nil {
 					evalJoinCorrectness(t, harness, e, tt.q, tt.q, tt.exp, tt.skipOld)
 				}
@@ -1444,6 +1462,37 @@ func evalJoinTypeTest(t *testing.T, harness Harness, e *sqle.Engine, tt JoinPlan
 			cmp = append(cmp, t.String())
 		}
 		require.Equal(t, exp, cmp, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(a)))
+	})
+}
+
+func evalMergeCmpTest(t *testing.T, harness Harness, e *sqle.Engine, tt JoinPlanTest) {
+	hasMergeJoin := false
+	for _, joinType := range tt.types {
+		if joinType.IsMerge() {
+			hasMergeJoin = true
+		}
+	}
+	if !hasMergeJoin {
+		return
+	}
+	t.Run(tt.q+"merge join compare", func(t *testing.T) {
+		if tt.skipOld {
+			t.Skip()
+		}
+
+		ctx := NewContext(harness)
+		ctx = ctx.WithQuery(tt.q)
+
+		a, err := e.AnalyzeQuery(ctx, tt.q)
+		require.NoError(t, err)
+
+		// consider making this a string too
+		compares := collectMergeCompares(a)
+		var cmp []string
+		for _, i := range compares {
+			cmp = append(cmp, i.String())
+		}
+		require.Equal(t, tt.mergeCompares, cmp, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(a)))
 	})
 }
 
@@ -1522,6 +1571,40 @@ func collectJoinTypes(n sql.Node) []plan.JoinType {
 		return true
 	})
 	return types
+}
+
+func collectMergeCompares(n sql.Node) []sql.Expression {
+	var compares []sql.Expression
+	transform.Inspect(n, func(n sql.Node) bool {
+		if n == nil {
+			return true
+		}
+
+		if ex, ok := n.(sql.Expressioner); ok {
+			for _, e := range ex.Expressions() {
+				transform.InspectExpr(e, func(e sql.Expression) bool {
+					sq, ok := e.(*plan.Subquery)
+					if !ok {
+						return false
+					}
+					compares = append(compares, collectMergeCompares(sq.Query)...)
+					return false
+				})
+			}
+		}
+
+		join, ok := n.(*plan.JoinNode)
+		if !ok {
+			return true
+		}
+		if !join.Op.IsMerge() {
+			return true
+		}
+
+		compares = append(compares, expression.SplitConjunction(join.JoinCond())[0])
+		return true
+	})
+	return compares
 }
 
 func collectIndexes(n sql.Node) []sql.Index {
