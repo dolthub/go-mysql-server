@@ -24,7 +24,6 @@ var OnceBeforeDefault_Exp = []Rule{
 	{validateCreateTableId, validateCreateTable},
 	{validateExprSemId, validateExprSem},
 	{validateCreateProcedureId, validateCreateProcedure},
-	{setTargetSchemasId, setTargetSchemas}, //TODO
 	{resolveDropConstraintId, resolveDropConstraint},
 	{resolveAlterColumnId, resolveAlterColumn},
 	{validateDropTablesId, validateDropTables},
@@ -36,8 +35,7 @@ var OnceBeforeDefault_Exp = []Rule{
 	{checkUniqueTableNamesId, validateUniqueTableNames}, //TODO
 	{resolveDeclarationsId, resolveDeclarations},
 	{validateCreateTriggerId, validateCreateTrigger},
-	{loadInfoSchemaId, loadInfoSchema},               //TODO
-	{resolveColumnDefaultsId, resolveColumnDefaults}, //TODO
+	{loadInfoSchemaId, loadInfoSchema}, //TODO
 	{validateColumnDefaultsId, validateColumnDefaults},
 	{validateReadOnlyDatabaseId, validateReadOnlyDatabase},
 	{validateReadOnlyTransactionId, validateReadOnlyTransaction},

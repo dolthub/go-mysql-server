@@ -22,51 +22,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-// setTargetSchemas fills in the target schema for any nodes in the tree that operate on a table node but also want to
-// store supplementary schema information. This is useful for lazy resolution of column default values.
-func setTargetSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, ctx := ctx.Span("set_target_schema")
-	defer span.End()
-
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		t, ok := n.(sql.SchemaTarget)
-		if !ok {
-			return n, transform.SameTree, nil
-		}
-
-		// Skip filling in target schema info for CreateTable nodes, since the
-		// target schema must be provided by the user and we don't want to pick
-		//  up any resolved tables from a subquery node.
-		if _, ok := n.(*plan.CreateTable); ok {
-			return n, transform.SameTree, nil
-		}
-
-		table := getResolvedTable(n)
-		if table == nil {
-			return n, transform.SameTree, nil
-		}
-
-		var err error
-		n, err = t.WithTargetSchema(table.Schema())
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-
-		pkst, ok := n.(sql.PrimaryKeySchemaTarget)
-		if !ok {
-			return n, transform.NewTree, nil
-		}
-
-		pkt, ok := table.Table.(sql.PrimaryKeyTable)
-		if !ok {
-			return n, transform.NewTree, nil
-		}
-
-		n, err = pkst.WithPrimaryKeySchema(pkt.PrimaryKeySchema())
-		return n, transform.NewTree, err
-	})
-}
-
 // validateDropTables ensures that each ResolvedTable in DropTable is droppable, any UnresolvedTables are
 // skipped due to `IF EXISTS` clause, and there aren't any non-table nodes.
 func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {

@@ -630,6 +630,11 @@ func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf
 			nullable: c.Nullable,
 		})
 	}
+
+	if rt.Table.Name() == "columns" {
+		b.resolveSchemaDefaults(outScope, rt.Schema())
+	}
+
 	return outScope, true
 }
 

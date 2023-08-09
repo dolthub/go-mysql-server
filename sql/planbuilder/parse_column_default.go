@@ -34,13 +34,6 @@ func StringToColumnDefaultValue(ctx *sql.Context, exprStr string) (*sql.ColumnDe
 	if a, ok := parsedExpr.(*expression.Alias); ok {
 		parsedExpr = a.Child
 	}
-	//parsedExpr, err := ExprToExpression(ctx, aliasedExpr.Expr)
-	//if err != nil {
-	//	return nil, err
-	//}
-	// The literal and function expression distinction is based primarily on the presence of parentheses,
-	// with the exception that now/current_timestamp are not literal expressions but can be used without
-	// parens
 	_, isParenthesized := aliasedExpr.Expr.(*sqlparser.ParenExpr)
 
 	var isLiteral bool

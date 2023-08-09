@@ -59,8 +59,11 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 			}
 		}
 	}
-
-	srcScope := b.insertRowsToNode(inScope, i.Rows, columns, destScope.node.Schema())
+	sch := destScope.node.Schema()
+	if rt != nil {
+		sch = b.resolveSchemaDefaults(destScope, rt.Schema())
+	}
+	srcScope := b.insertRowsToNode(inScope, i.Rows, columns, sch)
 
 	combinedScope := inScope.replace()
 	for i, c := range destScope.cols {
@@ -102,7 +105,6 @@ func (b *Builder) insertRowsToNode(inScope *scope, ir ast.InsertRows, columnName
 		return b.buildSelectStmt(inScope, v)
 	case ast.Values:
 		outScope = b.buildInsertValues(inScope, v, columnNames, destSchema)
-
 	default:
 		err := sql.ErrUnsupportedSyntax.New(ast.String(ir))
 		b.handleErr(err)

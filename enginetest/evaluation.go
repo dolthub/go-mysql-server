@@ -512,6 +512,9 @@ func checkResults(
 	for i, row := range widenedExpected {
 		for j, field := range row {
 			if cvv, isCustom := field.(CustomValueValidator); isCustom {
+				if i >= len(widenedRows) {
+					continue
+				}
 				actual := widenedRows[i][j] // shouldn't panic, but fine if it does
 				ok, err := cvv.Validate(actual)
 				if err != nil {

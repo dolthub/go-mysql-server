@@ -104,7 +104,7 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 	}
 
 	showCreate := plan.NewShowCreateTableWithAsOf(tableScope.node, showType == "create view", asOfExpr)
-
+	outScope.node = showCreate
 	if rt != nil {
 		checks := b.loadChecksFromTable(outScope, rt.Table)
 		// To match MySQL output format, transform the column names and wrap with backticks
@@ -117,9 +117,14 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 			})
 		}
 		showCreate.Checks = checks
-	}
 
-	outScope.node = showCreate
+		pks, _ := rt.Table.(sql.PrimaryKeyTable)
+		if pks != nil {
+			showCreate.PrimaryKeySchema = pks.PrimaryKeySchema()
+		}
+		// todo load defaults
+		outScope.node = b.modifySchemaTarget(outScope, showCreate, rt)
+	}
 	return
 }
 
@@ -561,7 +566,22 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 		}
 		table = tableScope.node
 	}
-	var node sql.Node = plan.NewShowColumns(full, table)
+
+	show := plan.NewShowColumns(full, table)
+
+	for _, c := range show.Schema() {
+		outScope.newColumn(scopeColumn{
+			table:    strings.ToLower(c.Source),
+			col:      strings.ToLower(c.Name),
+			typ:      c.Type,
+			nullable: c.Nullable,
+		})
+	}
+
+	var node sql.Node = show
+	if rt, _ := table.(*plan.ResolvedTable); rt != nil {
+		node = b.modifySchemaTarget(outScope, show, rt)
+	}
 
 	if s.ShowTablesOpt != nil && s.ShowTablesOpt.Filter != nil {
 		if s.ShowTablesOpt.Filter.Like != "" {
@@ -575,15 +595,6 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 				),
 				node,
 			)
-		}
-
-		for _, c := range node.Schema() {
-			outScope.newColumn(scopeColumn{
-				table:    strings.ToLower(c.Source),
-				col:      strings.ToLower(c.Name),
-				typ:      c.Type,
-				nullable: c.Nullable,
-			})
 		}
 
 		if s.ShowTablesOpt.Filter.Filter != nil {
