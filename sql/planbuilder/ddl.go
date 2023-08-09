@@ -1160,8 +1160,11 @@ func (b *Builder) resolveSchemaDefaults(inScope *scope, schema sql.Schema) sql.S
 		if col.Default == nil || col.Default.Expression == nil {
 			continue
 		}
-		def, _ := col.Default.Expression.(sql.UnresolvedColumnDefault)
-		if def.String() == "" {
+		def, ok := col.Default.Expression.(sql.UnresolvedColumnDefault)
+		if ok && def.String() == "" {
+			schema[i].Default = b.convertDefaultExpression(inScope, &ast.SQLVal{Val: []byte{}, Type: ast.StrVal}, schema[i].Type, schema[i].Nullable)
+			continue
+		} else if !ok {
 			continue
 		}
 		parsed, err := ast.Parse(fmt.Sprintf("SELECT %s", def))

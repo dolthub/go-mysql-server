@@ -178,6 +178,11 @@ type PrimaryKeySchemaTarget interface {
 	WithPrimaryKeySchema(schema PrimaryKeySchema) (Node, error)
 }
 
+type DynamicColumnsTable interface {
+	AllColumns(*Context) (Schema, error)
+	WithDefaultsSchema(Schema) (Table, error)
+}
+
 // PartitionCounter can return the number of partitions.
 type PartitionCounter interface {
 	// PartitionCount returns the number of partitions.

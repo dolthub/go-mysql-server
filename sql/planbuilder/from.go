@@ -631,8 +631,41 @@ func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf
 		})
 	}
 
-	if rt.Table.Name() == "columns" {
-		b.resolveSchemaDefaults(outScope, rt.Schema())
+	if dt, _ := rt.Table.(sql.DynamicColumnsTable); dt != nil {
+		// the columns table schema is dynamic
+		sch, err := dt.AllColumns(b.ctx)
+		if err != nil {
+			b.handleErr(err)
+		}
+
+		var newSch sql.Schema
+		startSource := sch[0].Source
+		tmpScope := inScope.push()
+		for i, c := range sch {
+			// bucket schema fragments into colsets for resolving defaults
+			newCol := scopeColumn{
+				db:       strings.ToLower(db),
+				table:    strings.ToLower(c.Source),
+				col:      strings.ToLower(c.Name),
+				typ:      c.Type,
+				nullable: c.Nullable,
+			}
+			if !strings.EqualFold(c.Source, startSource) {
+				startSource = c.Source
+				tmpSch := b.resolveSchemaDefaults(tmpScope, sch[i-len(tmpScope.cols):i])
+				newSch = append(newSch, tmpSch...)
+				tmpScope = inScope.push()
+			}
+			tmpScope.newColumn(newCol)
+		}
+		if len(tmpScope.cols) > 0 {
+			tmpSch := b.resolveSchemaDefaults(tmpScope, sch[len(sch)-len(tmpScope.cols):len(sch)])
+			newSch = append(newSch, tmpSch...)
+		}
+		rt.Table, err = dt.WithDefaultsSchema(newSch)
+		if err != nil {
+			b.handleErr(err)
+		}
 	}
 
 	return outScope, true

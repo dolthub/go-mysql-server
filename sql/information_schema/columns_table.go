@@ -61,6 +61,7 @@ type ColumnsTable struct {
 }
 
 var _ sql.Table = (*ColumnsTable)(nil)
+var _ sql.DynamicColumnsTable = (*ColumnsTable)(nil)
 
 // String implements the sql.Table interface.
 func (c *ColumnsTable) String() string {
@@ -147,6 +148,21 @@ func (c ColumnsTable) WithColumnDefaults(columnDefaults []sql.Expression) (sql.T
 	}
 
 	c.allColsWithDefaultValue = transform.SchemaWithDefaults(c.allColsWithDefaultValue, columnDefaults)
+	return &c, nil
+}
+
+func (c ColumnsTable) WithDefaultsSchema(sch sql.Schema) (sql.Table, error) {
+	if c.allColsWithDefaultValue == nil {
+		return nil, fmt.Errorf("WithColumnDefaults called with nil columns for table %s", c.Name())
+	}
+
+	if len(sch) != len(c.allColsWithDefaultValue) {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(sch), len(c.allColsWithDefaultValue))
+	}
+
+	for i, col := range sch {
+		c.allColsWithDefaultValue[i].Default = col.Default
+	}
 	return &c, nil
 }
 
