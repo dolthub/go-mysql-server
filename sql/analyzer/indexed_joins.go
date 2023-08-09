@@ -905,10 +905,10 @@ func addMergeJoins(m *memo.Memo) error {
 
 		}
 		for _, lIndex := range lIndexes {
-			matchedEqFilters := matchedFiltersForIndex(lIndex, join.Left.RelProps.FuncDeps().Constants(), eqFilters)
+			matchedEqFilters := matchedFiltersForLeftIndex(lIndex, join.Left.RelProps.FuncDeps().Constants(), eqFilters)
 			for len(matchedEqFilters) > 0 {
 				for _, rIndex := range rIndexes {
-					if indexMatches(rIndex, join.Left.RelProps.FuncDeps().Constants(), matchedEqFilters) {
+					if rightIndexMatchesFilters(rIndex, join.Left.RelProps.FuncDeps().Constants(), matchedEqFilters) {
 						jb := join.Copy()
 						if d, ok := jb.Left.First.(*memo.Distinct); ok && lIndex.SqlIdx().IsUnique() {
 							jb.Left = d.Child
@@ -975,9 +975,9 @@ func combineIntoTuple(m *memo.Memo, filters []filterAndPosition) *memo.Equal {
 	}
 }
 
-// indexMatches checks whether the provided rIndex is a candidate for a merge join on the provided filters.
+// rightIndexMatchesFilters checks whether the provided rIndex is a candidate for a merge join on the provided filters.
 // The index must have a prefix consisting entirely of constants and the provided filters in order.
-func indexMatches(rIndex *memo.Index, constants sql.ColSet, filters []filterAndPosition) bool {
+func rightIndexMatchesFilters(rIndex *memo.Index, constants sql.ColSet, filters []filterAndPosition) bool {
 	columnIds := rIndex.Cols()
 	columnPos := 0
 	filterPos := 0
@@ -1004,14 +1004,15 @@ func indexMatches(rIndex *memo.Index, constants sql.ColSet, filters []filterAndP
 	}
 }
 
+// filterAndPosition stores a filter on a join, along with that filter's original index.
 type filterAndPosition struct {
 	filter *memo.Equal
 	pos    int
 }
 
-// matchedFiltersForIndex computes the maximum-length prefix for an index where every column is matched by the supplied
+// matchedFiltersForLeftIndex computes the maximum-length prefix for an index where every column is matched by the supplied
 // constants and scalar expressions.
-func matchedFiltersForIndex(lIndex *memo.Index, constants sql.ColSet, filters []filterAndPosition) (matchedFilters []filterAndPosition) {
+func matchedFiltersForLeftIndex(lIndex *memo.Index, constants sql.ColSet, filters []filterAndPosition) (matchedFilters []filterAndPosition) {
 	for _, idxCol := range lIndex.Cols() {
 		if constants.Contains(idxCol) {
 			// column is constant, it can be used in the prefix.
