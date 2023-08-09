@@ -276,29 +276,7 @@ func TestSingleQueryPrepared(t *testing.T) {
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
 	t.Skip()
-	var scripts = []queries.ScriptTest{
-		{
-			Name: "DELETE ME",
-			SetUpScript: []string{
-				"create table t1 (i int primary key, j int);",
-				"create table t2 (i int primary key, j int);",
-				"create table t3 (i int primary key, j int);",
-				"insert into t1 values (1, 10), (2, 20), (3, 30);",
-				"insert into t2 values (1, 30), (2, 20), (5, 50);",
-				"insert into t3 values (1, 200), (2, 20), (6, 600);",
-			},
-			Assertions: []queries.ScriptTestAssertion{
-				{
-					Query:    "SELECT a.i, b.i, a.j, b.j FROM t1 AS a NATURAL JOIN t2 AS b",
-					Expected: []sql.Row{
-						//{1, 10},
-						//{2, 20},
-						//{3, 30},
-					},
-				},
-			},
-		},
-	}
+	var scripts = []queries.ScriptTest{}
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental)
@@ -306,6 +284,9 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
+		engine.Analyzer.Debug = true
+		engine.Analyzer.Verbose = true
+
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
 }
@@ -315,21 +296,20 @@ func TestSingleScript_Experimental(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "DELETE ME",
+			Name: "lateral join basic",
 			SetUpScript: []string{
-				"create table organizations (organization varchar(10), members json)",
-				`insert into organizations values ("orgA", '["bob","john"]'), ("orgB", '["alice","mary"]')`,
-				`create table p (i int primary key)`,
-				`insert into p values (1),(2),(3)`,
+				"create table t (i int primary key)",
+				"create table t1 (j int primary key)",
+				"insert into t values (1), (2), (3)",
+				"insert into t1 values (1), (4), (5)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "select o.organization, jt.names from organizations o NATURAL JOIN JSON_TABLE(o.members, '$[*]' columns (names varchar(100) path '$')) as jt;",
+					Query: `WITH RECURSIVE cte(x) AS (SELECT 1 union all SELECT x + 1 from cte where x < 5) SELECT * FROM cte, lateral (select * from t where t.i = cte.x) tt;`,
 					Expected: []sql.Row{
-						{"orgA", "bob"},
-						{"orgA", "john"},
-						{"orgB", "alice"},
-						{"orgB", "mary"},
+						{1, 1},
+						{2, 2},
+						{3, 3},
 					},
 				},
 			},
@@ -342,6 +322,8 @@ func TestSingleScript_Experimental(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
+		engine.Analyzer.Debug = true
+		engine.Analyzer.Verbose = true
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
 }
