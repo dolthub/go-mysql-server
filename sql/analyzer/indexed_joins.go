@@ -958,25 +958,17 @@ func addMergeJoins(m *memo.Memo) error {
 }
 
 func combineIntoTuple(m *memo.Memo, filters []filterAndPosition) *memo.Equal {
-	l := memo.NewTuple()
-	r := memo.NewTuple()
+	var lFilters []*memo.ExprGroup
+	var rFilters []*memo.ExprGroup
+
 	for _, filter := range filters {
-		l.Values = append(l.Values, filter.filter.Left)
-		r.Values = append(r.Values, filter.filter.Right)
+		lFilters = append(lFilters, filter.filter.Left)
+		rFilters = append(rFilters, filter.filter.Right)
 	}
-	var lGroup, rGroup *memo.ExprGroup
-	{
-		lGroup = m.PreexistingScalar(&l)
-		if lGroup == nil {
-			lGroup = m.NewExprGroup(&l)
-		}
-	}
-	{
-		rGroup = m.PreexistingScalar(&r)
-		if rGroup == nil {
-			rGroup = m.NewExprGroup(&r)
-		}
-	}
+
+	lGroup := memo.NewTuple(m, lFilters)
+	rGroup := memo.NewTuple(m, rFilters)
+
 	return &memo.Equal{
 		Left:  lGroup,
 		Right: rGroup,
@@ -990,13 +982,13 @@ func indexMatches(rIndex *memo.Index, constants sql.ColSet, filters []filterAndP
 	columnPos := 0
 	filterPos := 0
 	for {
-		if columnPos >= len(columnIds) {
-			// There are still unmatched filters: this filter is not a prefix on the index
-			return false
-		}
 		if filterPos >= len(filters) {
 			// every filter matched: this filter is a prefix on the index
 			return true
+		}
+		if columnPos >= len(columnIds) {
+			// There are still unmatched filters: this filter is not a prefix on the index
+			return false
 		}
 		if constants.Contains(columnIds[columnPos]) {
 			// column is constant, it can be used in the prefix.
@@ -1007,6 +999,7 @@ func indexMatches(rIndex *memo.Index, constants sql.ColSet, filters []filterAndP
 			// filter does not match the index
 			return false
 		}
+		columnPos++
 		filterPos++
 	}
 }

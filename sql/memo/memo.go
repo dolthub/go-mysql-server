@@ -418,6 +418,20 @@ func (m *Memo) MemoizeRangeHeapJoin(grp, left, right *ExprGroup, op plan.JoinTyp
 	return grp
 }
 
+func NewTuple(m *Memo, filters []*ExprGroup) *ExprGroup {
+	t := Tuple{
+		scalarBase: &scalarBase{},
+		Values:     filters,
+	}
+
+	grp := m.PreexistingScalar(&t)
+	if grp == nil {
+		grp = m.NewExprGroup(&t)
+	}
+
+	return grp
+}
+
 func (m *Memo) MemoizeMergeJoin(grp, left, right *ExprGroup, lIdx, rIdx *IndexScan, op plan.JoinType, filter []ScalarExpr, swapCmp bool) *ExprGroup {
 	rel := &MergeJoin{
 		JoinBase: &JoinBase{
