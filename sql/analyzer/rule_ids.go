@@ -55,7 +55,7 @@ const (
 	applyBinlogReplicaControllerId               // applyBinlogReplicaController
 
 	// default
-	resolveNaturalJoinsId          // resolveNaturalJoins
+	resolveNaturalJoinsId          // resolveUsingJoins
 	resolveOrderbyLiteralsId       // resolveOrderbyLiterals
 	resolveFunctionsId             // resolveFunctions
 	flattenTableAliasesId          // flattenTableAliases

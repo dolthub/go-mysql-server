@@ -25,7 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-// resolveNaturalJoins simplifies a natural join into an inner join. The inner
+// resolveUsingJoins simplifies a natural join into an inner join. The inner
 // join will include equality filters between all common schema attributes
 // of the same name between the two relations.
 //
@@ -33,14 +33,14 @@ import (
 // NATURAL_JOIN(xyz,xyw)
 // =>
 // Project([a.x,a.y,a.z,b.w])-> InnerJoin(xyz->a, xyw->b, [a.x=b.x, a.y=b.y])
-func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveUsingJoins(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolve_natural_joins")
 	defer span.End()
 
 	var replacements = make(map[tableCol]tableCol)
 	newNode, same, err := transform.NodeWithCtx(node, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		if jn, ok := c.Node.(*plan.JoinNode); ok && (jn.Op.IsUsing() || len(jn.UsingCols) != 0) {
-			newN, err := resolveNaturalJoin(jn, replacements)
+			newN, err := resolveUsingJoin(jn, replacements)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -48,7 +48,7 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, node sql.Node, scope *pl
 		}
 
 		if e, ok := c.Node.(sql.Expressioner); ok {
-			return replaceExpressionsForNaturalJoin(e.(sql.Node), replacements)
+			return replaceExpressionsForUsingJoin(e.(sql.Node), replacements)
 		}
 		return c.Node, transform.SameTree, nil
 	})
@@ -56,7 +56,7 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, node sql.Node, scope *pl
 	return newNode, same, err
 }
 
-func resolveNaturalJoin(n *plan.JoinNode, replacements map[tableCol]tableCol) (sql.Node, error) {
+func resolveUsingJoin(n *plan.JoinNode, replacements map[tableCol]tableCol) (sql.Node, error) {
 	if !n.Left().Resolved() || !n.Right().Resolved() {
 		return n, nil
 	}
@@ -200,19 +200,8 @@ func findCol(s sql.Schema, name string) (int, *sql.Column) {
 	return -1, nil
 }
 
-func isQualifiedExpr(expr sql.Expression) bool {
-	switch e := expr.(type) {
-	case *expression.GetField:
-		return e.Table() != ""
-	case *expression.UnresolvedColumn:
-		return e.Table() != ""
-	default:
-		return false
-	}
-}
-
-// replaceExpressionsForNaturalJoin replaces all expressions that refer to columns that are being replaced by a natural join.
-func replaceExpressionsForNaturalJoin(n sql.Node, replacements map[tableCol]tableCol) (sql.Node, transform.TreeIdentity, error) {
+// replaceExpressionsForUsingJoin replaces all expressions that refer to columns that are being replaced by a natural join.
+func replaceExpressionsForUsingJoin(n sql.Node, replacements map[tableCol]tableCol) (sql.Node, transform.TreeIdentity, error) {
 	return transform.OneNodeExprsWithNode(n, func(_ sql.Node, expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := expr.(type) {
 		case *expression.GetField, *expression.UnresolvedColumn:
