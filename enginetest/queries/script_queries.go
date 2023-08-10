@@ -1519,7 +1519,7 @@ var ScriptTests = []ScriptTest{
                              dcim_rackgroup.level 
                            FROM dcim_rackgroup
 							order by 2 limit 1`,
-				Expected: []sql.Row{{1, "5c107f979f434bf7a7820622f18a5211", types.JSONDocument{Val: map[string]interface{}{}}, "Parent Rack Group 1", "parent-rack-group-1", "f0471f313b694d388c8ec39d9590e396", interface{}(nil), "", uint64(1), uint64(2), uint64(1), uint64(0)}},
+				Expected: []sql.Row{{1, "5c107f979f434bf7a7820622f18a5211", types.JSONDocument{Val: map[string]interface{}{}}, "Parent Rack Group 1", "parent-rack-group-1", "f0471f313b694d388c8ec39d9590e396", nil, "", uint64(1), uint64(2), uint64(1), uint64(0)}},
 			},
 		},
 	},
@@ -3322,6 +3322,106 @@ var ScriptTests = []ScriptTest{
 					{2},
 					{3},
 				},
+			},
+		},
+	},
+	{
+		Name: "case insensitive index handling",
+		SetUpScript: []string{
+			"create table table_One (Id int primary key, Val1 int);",
+			"create table TableTwo (iD int primary key, VAL2 int, vAL3 int);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "create index idx_one on TABLE_ONE (vAL1);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table TABLE_one;",
+				Expected: []sql.Row{{"table_One",
+					"CREATE TABLE `table_One` (\n" +
+						"  `Id` int NOT NULL,\n" +
+						"  `Val1` int,\n" +
+						"  PRIMARY KEY (`Id`),\n" +
+						"  KEY `idx_one` (`Val1`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "show index from TABLE_one;",
+				Expected: []sql.Row{
+					{"table_One", 0, "PRIMARY", 1, "Id", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+					{"table_One", 1, "idx_one", 1, "Val1", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
+				},
+			},
+			{
+				Query: "explain select * from TABLE_one where vAL1 = 1;",
+				Expected: []sql.Row{
+					{"Filter"},
+					{" ├─ (table_One.Val1 = 1)"},
+					{" └─ IndexedTableAccess(table_One)"},
+					{"     ├─ index: [table_One.Val1]"},
+					{"     ├─ filters: [{[1, 1]}]"},
+					{"     └─ columns: [id val1]"},
+				},
+			},
+			{
+				Query:    "create index idx_one on TABLEtwo (VAL2, VAL3);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table TABLETWO;",
+				Expected: []sql.Row{{"TableTwo", "CREATE TABLE `TableTwo` (\n" +
+					"  `iD` int NOT NULL,\n" +
+					"  `VAL2` int,\n" +
+					"  `vAL3` int,\n" +
+					"  PRIMARY KEY (`iD`),\n" +
+					"  KEY `idx_one` (`VAL2`,`vAL3`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "show index from tABLEtwo;",
+				Expected: []sql.Row{
+					{"TableTwo", 0, "PRIMARY", 1, "iD", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+					{"TableTwo", 1, "idx_one", 1, "VAL2", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
+					{"TableTwo", 1, "idx_one", 2, "vAL3", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
+				},
+			},
+			{
+				Query: "explain select * from TABLETWO where vAL2 = 1 and val3 = 2;",
+				Expected: []sql.Row{
+					{"Filter"},
+					{" ├─ ((TableTwo.VAL2 = 1) AND (TableTwo.vAL3 = 2))"},
+					{" └─ IndexedTableAccess(TableTwo)"},
+					{"     ├─ index: [TableTwo.VAL2,TableTwo.vAL3]"},
+					{"     ├─ filters: [{[1, 1], [2, 2]}]"},
+					{"     └─ columns: [id val2 val3]"},
+				},
+			},
+			{
+				Query:    "drop index IDX_ONE on TABLE_one;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "drop index IDX_ONE on TABLEtwo;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table TABLE_one;",
+				Expected: []sql.Row{{"table_One",
+					"CREATE TABLE `table_One` (\n" +
+						"  `Id` int NOT NULL,\n" +
+						"  `Val1` int,\n" +
+						"  PRIMARY KEY (`Id`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "show create table TABLETWO;",
+				Expected: []sql.Row{{"TableTwo", "CREATE TABLE `TableTwo` (\n" +
+					"  `iD` int NOT NULL,\n" +
+					"  `VAL2` int,\n" +
+					"  `vAL3` int,\n" +
+					"  PRIMARY KEY (`iD`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
