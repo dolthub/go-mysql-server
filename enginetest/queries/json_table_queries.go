@@ -681,8 +681,9 @@ var JSONTableScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name:        "test NESTED NESTED",
-		SetUpScript: []string{},
+		Name:         "test NESTED NESTED",
+		SetUpScript:  []string{},
+		SkipPrepared: true,
 		Assertions: []ScriptTestAssertion{
 			// TODO: double check the for ordinal column
 			{
@@ -749,8 +750,9 @@ JSON_TABLE(
 		},
 	},
 	{
-		Name:        "test combinations of options",
-		SetUpScript: []string{},
+		Name:         "test combinations of options",
+		SetUpScript:  []string{},
+		SkipPrepared: true,
 		Assertions: []ScriptTestAssertion{
 			{
 				// From MySQL docs

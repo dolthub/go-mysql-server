@@ -558,8 +558,6 @@ func (b *Builder) buildJSONTable(inScope *scope, t *ast.JSONTableExpr) (outScope
 func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf) (outScope *scope, ok bool) {
 	outScope = inScope.push()
 
-	// lookup table in catalog
-	// Special handling for asOf w/ prepared statement bindvar
 	if db == "" {
 		db = b.ctx.GetCurrentDatabase()
 	}

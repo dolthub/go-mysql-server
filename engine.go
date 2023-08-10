@@ -248,8 +248,24 @@ func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, bindings 
 		}
 	}
 
+	// Give the integrator a chance to reject the session before proceeding
+	err = ctx.Session.ValidateSession(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = e.beginTransaction(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	parsed, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, query)
 	if err != nil {
+		err2 := clearAutocommitTransaction(ctx)
+		if err2 != nil {
+			err = errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
+		}
+
 		return nil, nil, err
 	}
 
@@ -294,23 +310,17 @@ func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, bindings 
 		}
 		parsed, err = planbuilder.Parse(ctx, e.Analyzer.Catalog, query)
 		if err != nil {
+			err2 := clearAutocommitTransaction(ctx)
+			if err2 != nil {
+				err = errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
+			}
+
 			return nil, nil, err
 		}
 
 	}
 
-	// Give the integrator a chance to reject the session before proceeding
-	err = ctx.Session.ValidateSession(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	err = e.readOnlyCheck(parsed)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	err = e.beginTransaction(ctx)
 	if err != nil {
 		return nil, nil, err
 	}

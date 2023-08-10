@@ -71,6 +71,7 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 				}
 			}
 			ctx := NewContext(harness).WithQuery(statement)
+			//ctx = NewContext(harness).WithQuery(statement)
 			RunQueryWithContext(t, e, harness, ctx, statement)
 		}
 
@@ -362,7 +363,7 @@ func injectBindVarsAndPrepare(
 ) (string, map[string]*querypb.BindVariable, error) {
 	parsed, err := sqlparser.Parse(q)
 	if err != nil {
-		return q, nil, err
+		return q, nil, sql.ErrSyntaxError.New(err)
 	}
 
 	resPlan, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, q)
@@ -370,6 +371,7 @@ func injectBindVarsAndPrepare(
 		return q, nil, err
 	}
 
+	b := planbuilder.New(ctx, sql.MapCatalog{})
 	_, isInsert := resPlan.(*plan.InsertInto)
 	bindVars := make(map[string]*querypb.BindVariable)
 	var bindCnt int
@@ -382,7 +384,6 @@ func injectBindVarsAndPrepare(
 			case sqlparser.HexNum, sqlparser.HexVal:
 				return false, nil
 			}
-			b := planbuilder.New(ctx, sql.MapCatalog{})
 			e := b.ConvertVal(n)
 			val, _, err := e.Type().Promote().Convert(e.(*expression.Literal).Value())
 			if err != nil {
@@ -414,6 +415,8 @@ func injectBindVarsAndPrepare(
 
 	buf := sqlparser.NewTrackedBuffer(nil)
 	parsed.Format(buf)
+	println(q)
+	println(buf.String())
 	e.PreparedDataCache.CacheStmt(ctx.Session.ID(), buf.String(), parsed)
 
 	_, isDatabaser := resPlan.(sql.Databaser)

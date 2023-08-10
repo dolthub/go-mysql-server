@@ -21,7 +21,8 @@ type Builder struct {
 }
 
 type ViewContext struct {
-	AsOf interface{}
+	AsOf   interface{}
+	DbName string
 }
 
 type TriggerContext struct {

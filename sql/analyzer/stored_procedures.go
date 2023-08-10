@@ -294,37 +294,9 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				}
 				b.ViewCtx().AsOf = asOf
 			}
-			parsedProcedure, _, _, err = b.Parse(procedure.CreateStatement, false)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
+			b.ViewCtx().DbName = call.Database().Name()
 
-			parsedProcedure, _, err = transform.Node(parsedProcedure, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-				versionable, ok := n.(plan.Versionable)
-				if !ok {
-					return n, transform.SameTree, nil
-				}
-				tree := transform.SameTree
-				if newCall, ok := versionable.(*plan.Call); ok {
-					if newCall.Database() == nil || newCall.Database().Name() == "" {
-						newNode, err := newCall.WithDatabase(spdb)
-						if err != nil {
-							return nil, transform.SameTree, err
-						}
-						versionable = newNode.(plan.Versionable)
-						tree = transform.NewTree
-					}
-				}
-				if versionable.AsOf() == nil {
-					newNode, err := versionable.WithAsOf(call.AsOf())
-					if err != nil {
-						return nil, transform.SameTree, err
-					}
-					versionable = newNode.(plan.Versionable)
-					tree = transform.NewTree
-				}
-				return versionable, tree, nil
-			})
+			parsedProcedure, _, _, err = b.Parse(procedure.CreateStatement, false)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}

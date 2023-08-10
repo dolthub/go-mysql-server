@@ -74,7 +74,7 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 	var asOf *ast.AsOf
 	var asOfExpr sql.Expression
 	if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
-		asOfExpr = b.buildScalar(inScope, s.ShowTablesOpt.AsOf)
+		asOfExpr = b.buildAsOfExpr(inScope, s.ShowTablesOpt.AsOf)
 		asOf = &ast.AsOf{Time: s.ShowTablesOpt.AsOf}
 	}
 
@@ -455,7 +455,7 @@ func (b *Builder) buildAsOfExpr(inScope *scope, time ast.Expr) sql.Expression {
 		if ok {
 			return sysVar
 		}
-		return expression.NewLiteral(v.Name.String(), types.LongText)
+		return expression.NewLiteral(v.String(), types.LongText)
 	case *ast.FuncExpr:
 		// todo(max): more specific validation for nested ASOF functions
 		if isWindowFunc(v.Name.Lowered()) || isAggregateFunc(v.Name.Lowered()) {
@@ -544,28 +544,27 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 	outScope = inScope.push()
 	full := s.Full
 	var table sql.Node
-	{
-		var asOf *ast.AsOf
-		if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
-			asOf = &ast.AsOf{Time: s.ShowTablesOpt.AsOf}
-		}
 
-		db := s.Database
-		if db == "" {
-			db = s.Table.Qualifier.String()
-		}
-		if db == "" {
-			db = b.currentDb().Name()
-		}
-
-		tableName := strings.ToLower(s.Table.Name.String())
-		tableScope, ok := b.buildTablescan(inScope, db, tableName, asOf)
-		if !ok {
-			err := sql.ErrTableNotFound.New()
-			b.handleErr(err)
-		}
-		table = tableScope.node
+	var asOf *ast.AsOf
+	if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
+		asOf = &ast.AsOf{Time: s.ShowTablesOpt.AsOf}
 	}
+
+	db := s.Database
+	if db == "" {
+		db = s.Table.Qualifier.String()
+	}
+	if db == "" {
+		db = b.currentDb().Name()
+	}
+
+	tableName := strings.ToLower(s.Table.Name.String())
+	tableScope, ok := b.buildTablescan(inScope, db, tableName, asOf)
+	if !ok {
+		err := sql.ErrTableNotFound.New()
+		b.handleErr(err)
+	}
+	table = tableScope.node
 
 	show := plan.NewShowColumns(full, table)
 
@@ -580,7 +579,7 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 
 	var node sql.Node = show
 	if rt, _ := table.(*plan.ResolvedTable); rt != nil {
-		node = b.modifySchemaTarget(outScope, show, rt)
+		node = b.modifySchemaTarget(tableScope, show, rt)
 	}
 
 	if s.ShowTablesOpt != nil && s.ShowTablesOpt.Filter != nil {

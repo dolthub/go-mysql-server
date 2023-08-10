@@ -1200,7 +1200,7 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"fabric;color"}, {"shape;color"}},
 			},
 			{
-				Query:    "SELECT group_concat(o_id) FROM t WHERE `attribute`='color' order by o_id",
+				Query:    "SELECT group_concat(o_id order by o_id) FROM t WHERE `attribute`='color' order by o_id",
 				Expected: []sql.Row{{"2,3"}},
 			},
 			{
@@ -1833,12 +1833,6 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Issue #709",
-		SetUpScript: []string{
-			"create table a(id int primary key, v int , key (v));",
-		},
-	},
-	{
 		Name: "Show create table with various keys and constraints",
 		SetUpScript: []string{
 			"create table t1(a int primary key, b varchar(10) not null default 'abc')",
@@ -2390,7 +2384,7 @@ var ScriptTests = []ScriptTest{
 	{
 		Name: "sum() and avg() on non-DECIMAL type column returns the DOUBLE type result",
 		SetUpScript: []string{
-			"create table float_table (id int, val1 double, val2 float);",
+			"create table float_table (id int primary key, val1 double, val2 float);",
 			"insert into float_table values (1,-2.5633000000000384, 2.3);",
 			"insert into float_table values (2,2.5633000000000370, 2.4);",
 			"insert into float_table values (3,0.0000000000000004, 5.3);",
@@ -2401,7 +2395,11 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{float64(6), -9.322676295501879e-16, 10.000000238418579}},
 			},
 			{
-				Query:    "SELECT avg(id), avg(val1), avg(val2) FROM float_table ORDER BY id;;",
+				Query:    "SELECT sum(id), sum(val1), sum(val2) FROM float_table ORDER BY id;",
+				Expected: []sql.Row{{float64(6), -9.322676295501879e-16, 10.000000238418579}},
+			},
+			{
+				Query:    "SELECT avg(id), avg(val1), avg(val2) FROM float_table ORDER BY id;",
 				Expected: []sql.Row{{float64(2), -3.107558765167293e-16, 3.333333412806193}},
 			},
 		},
