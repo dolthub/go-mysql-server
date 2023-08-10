@@ -179,8 +179,96 @@ func (c *coster) costHashJoin(ctx *sql.Context, n *HashJoin, _ sql.StatsReader) 
 }
 
 func (c *coster) costMergeJoin(_ *sql.Context, n *MergeJoin, _ sql.StatsReader) (float64, error) {
+
 	l := n.Left.RelProps.card
-	return l * cpuCostFactor, nil
+	r := n.Right.RelProps.card
+
+	comparer, ok := n.Filter[0].(*Equal)
+	if !ok {
+		return 0, sql.ErrMergeJoinExpectsComparerFilters.New(n.Filter[0])
+	}
+
+	var leftCompareExprs []*ExprGroup
+	var rightCompareExprs []*ExprGroup
+
+	leftTuple, isTuple := comparer.Left.Scalar.(*Tuple)
+	if isTuple {
+		rightTuple, _ := comparer.Right.Scalar.(*Tuple)
+		leftCompareExprs = leftTuple.Values
+		rightCompareExprs = rightTuple.Values
+	} else {
+		leftCompareExprs = []*ExprGroup{comparer.Left}
+		rightCompareExprs = []*ExprGroup{comparer.Right}
+	}
+
+	if isLinearMerge(n, leftCompareExprs, rightCompareExprs) {
+		// We're guarenteed that the execution will never need to iterate over multiple rows in memory.
+		return (l + r) * cpuCostFactor, nil
+	}
+
+	// Each comparison either compares a row on one child table with a constant, which reduces the number of rows from
+	// that child, or compares a column on each table, which reduces the expected number of collisions on the comparator.
+	// In either case, we assume a similar improvement in the selectivity of the join.
+	selectivity := math.Pow(perKeyCostReductionFactor, float64(len(leftCompareExprs)))
+	return (l + r + l*r*selectivity) * cpuCostFactor, nil
+}
+
+// isLinearMerge determines whether either of a merge join's child indexes returns only unique values for the merge
+// comparator.
+func isLinearMerge(n *MergeJoin, leftCompareExprs, rightCompareExprs []*ExprGroup) bool {
+	{
+		keyExprs, nullmask := keyExprsForIndexFromTupleComparison(n.Left.Id, n.InnerScan.Idx.Cols(), leftCompareExprs, rightCompareExprs)
+		if isUniqueLookup(n.InnerScan.Idx, n.JoinBase, keyExprs, nullmask) {
+			return true
+		}
+	}
+	{
+		keyExprs, nullmask := keyExprsForIndexFromTupleComparison(n.Right.Id, n.OuterScan.Idx.Cols(), leftCompareExprs, rightCompareExprs)
+		if isUniqueLookup(n.OuterScan.Idx, n.JoinBase, keyExprs, nullmask) {
+			return true
+		}
+	}
+	return false
+}
+
+func keyExprsForIndexFromTupleComparison(tableGrp GroupId, idxExprs []sql.ColumnId, leftExprs []*ExprGroup, rightExprs []*ExprGroup) ([]ScalarExpr, []bool) {
+	var keyExprs []ScalarExpr
+	var nullmask []bool
+	for _, col := range idxExprs {
+		key, nullable := keyForExprFromTupleComparison(col, tableGrp, leftExprs, rightExprs)
+		if key == nil {
+			break
+		}
+		keyExprs = append(keyExprs, key)
+		nullmask = append(nullmask, nullable)
+	}
+	if len(keyExprs) == 0 {
+		return nil, nil
+	}
+	return keyExprs, nullmask
+}
+
+// keyForExpr returns an equivalence or constant value to satisfy the
+// lookup index expression.
+func keyForExprFromTupleComparison(targetCol sql.ColumnId, tableGrp GroupId, leftExprs []*ExprGroup, rightExprs []*ExprGroup) (ScalarExpr, bool) {
+	for i, leftExpr := range leftExprs {
+		rightExpr := rightExprs[i]
+
+		var key ScalarExpr
+		if ref, ok := leftExpr.Scalar.(*ColRef); ok && ref.Col == targetCol {
+			key = rightExpr.Scalar
+		} else if ref, ok := rightExpr.Scalar.(*ColRef); ok && ref.Col == targetCol {
+			key = leftExpr.Scalar
+		} else {
+			continue
+		}
+		// expression key can be arbitrarily complex (or simple), but cannot
+		// reference the lookup table
+		if !key.Group().ScalarProps().Tables.Contains(int(TableIdForSource(tableGrp))) {
+			return key, false
+		}
+	}
+	return nil, false
 }
 
 func (c *coster) costLookupJoin(_ *sql.Context, n *LookupJoin, _ sql.StatsReader) (float64, error) {
@@ -246,18 +334,23 @@ func (c *coster) costDistinct(_ *sql.Context, n *Distinct, _ sql.StatsReader) (f
 // A join with a selectivity of k will return k*(n*m) rows.
 // Special case: A join with a selectivity of 0 will return n rows.
 func lookupJoinSelectivity(l *Lookup) float64 {
-	sel := math.Pow(perKeyCostReductionFactor, float64(len(l.KeyExprs)))
+	if isUniqueLookup(l.Index, l.Parent, l.KeyExprs, l.Nullmask) {
+		return 0
+	}
+	return math.Pow(perKeyCostReductionFactor, float64(len(l.KeyExprs)))
+}
 
-	if !l.Index.SqlIdx().IsUnique() {
-		return sel
+func isUniqueLookup(idx *Index, joinBase *JoinBase, keyExprs []ScalarExpr, nullMask []bool) bool {
+	if !idx.SqlIdx().IsUnique() {
+		return false
 	}
 
-	joinFds := l.Parent.Group().RelProps.FuncDeps()
+	joinFds := joinBase.Group().RelProps.FuncDeps()
 
 	var notNull sql.ColSet
 	var constCols sql.ColSet
-	for i, nullable := range l.Nullmask {
-		props := l.KeyExprs[i].Group().ScalarProps()
+	for i, nullable := range nullMask {
+		props := keyExprs[i].Group().ScalarProps()
 		onCols := joinFds.EquivalenceClosure(props.Cols)
 		if !nullable {
 			if props.nullRejecting {
@@ -271,11 +364,8 @@ func lookupJoinSelectivity(l *Lookup) float64 {
 		constCols = constCols.Union(onCols)
 	}
 
-	fds := sql.NewLookupFDs(l.Parent.Right.RelProps.FuncDeps(), l.Index.ColSet(), notNull, constCols, joinFds.Equiv())
-	if fds.HasMax1Row() {
-		return 0
-	}
-	return sel
+	fds := sql.NewLookupFDs(joinBase.Right.RelProps.FuncDeps(), idx.ColSet(), notNull, constCols, joinFds.Equiv())
+	return fds.HasMax1Row()
 }
 
 func (c *coster) costAntiJoin(_ *sql.Context, n *AntiJoin, _ sql.StatsReader) (float64, error) {
