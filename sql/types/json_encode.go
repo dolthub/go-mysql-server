@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+	"time"
 )
 
 var isEscaped = [256]bool{}
@@ -304,6 +305,12 @@ func writeMarshalledValue(writer io.Writer, val interface{}) error {
 
 	case nil:
 		writer.Write([]byte("null"))
+		return nil
+
+	case time.Time:
+		writer.Write([]byte{'"'})
+		writer.Write([]byte(val.Format(time.RFC3339)))
+		writer.Write([]byte{'"'})
 		return nil
 
 	default:
