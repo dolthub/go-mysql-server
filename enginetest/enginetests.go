@@ -1263,6 +1263,13 @@ func TestInsertScriptsPrepared(t *testing.T, harness Harness) {
 	}
 }
 
+func TestGeneratedColumns(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.GeneratedColumnTests {
+		TestScriptPrepared(t, harness, script)
+	}
+}
+
 func TestComplexIndexQueriesPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.ComplexIndexSetup...)
 	e := mustNewEngine(t, harness)

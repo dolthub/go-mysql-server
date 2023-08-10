@@ -450,7 +450,11 @@ func fillInColumnDefaults(_ *sql.Context, insertInto *plan.InsertInto) error {
 		if index == -1 {
 			return plan.ErrInsertIntoNonexistentColumn.New(columnName)
 		}
-		columnDefaultValues[i] = schema[index].Default
+		defaultVal := schema[index].Default
+		if defaultVal == nil && schema[index].Generated != nil {
+			defaultVal = schema[index].Generated
+		}
+		columnDefaultValues[i] = defaultVal
 	}
 
 	// Walk through the expression tuples looking for any column defaults to fill in
