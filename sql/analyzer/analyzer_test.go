@@ -119,7 +119,7 @@ func TestRemoveOnceBeforeRule(t *testing.T) {
 func TestRemoveDefaultRule(t *testing.T) {
 	require := require.New(t)
 
-	a := NewBuilder(nil).RemoveDefaultRule(resolveNaturalJoinsId).Build()
+	a := NewBuilder(nil).RemoveDefaultRule(resolveUsingJoinsId).Build()
 
 	defRulesCount := countRules(NewDefault(nil).Batches)
 

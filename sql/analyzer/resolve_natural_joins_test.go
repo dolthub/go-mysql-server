@@ -46,7 +46,7 @@ func TestResolveNaturalJoins(t *testing.T) {
 		plan.NewResolvedTable(left, nil, nil),
 		plan.NewResolvedTable(right, nil, nil),
 	)
-	rule := getRule(resolveNaturalJoinsId)
+	rule := getRule(resolveUsingJoinsId)
 
 	result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 	require.NoError(err)
@@ -79,7 +79,7 @@ func TestResolveNaturalJoins(t *testing.T) {
 }
 
 func TestResolveNaturalJoinsColumns(t *testing.T) {
-	rule := getRule(resolveNaturalJoinsId)
+	rule := getRule(resolveUsingJoinsId)
 	require := require.New(t)
 
 	left := memory.NewTable("t1", sql.NewPrimaryKeySchema(sql.Schema{
@@ -141,7 +141,7 @@ func TestResolveNaturalJoinsColumns(t *testing.T) {
 }
 
 func TestResolveNaturalJoinsTableAlias(t *testing.T) {
-	rule := getRule(resolveNaturalJoinsId)
+	rule := getRule(resolveUsingJoinsId)
 	require := require.New(t)
 
 	left := memory.NewTable("t1", sql.NewPrimaryKeySchema(sql.Schema{
@@ -205,7 +205,7 @@ func TestResolveNaturalJoinsTableAlias(t *testing.T) {
 }
 
 func TestResolveNaturalJoinsChained(t *testing.T) {
-	rule := getRule(resolveNaturalJoinsId)
+	rule := getRule(resolveUsingJoinsId)
 	require := require.New(t)
 
 	left := memory.NewTable("t1", sql.NewPrimaryKeySchema(sql.Schema{
@@ -329,7 +329,7 @@ func TestResolveNaturalJoinsEqual(t *testing.T) {
 		plan.NewResolvedTable(left, nil, nil),
 		plan.NewResolvedTable(right, nil, nil),
 	)
-	rule := getRule(resolveNaturalJoinsId)
+	rule := getRule(resolveUsingJoinsId)
 
 	result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 	require.NoError(err)
@@ -381,7 +381,7 @@ func TestResolveNaturalJoinsDisjoint(t *testing.T) {
 		plan.NewResolvedTable(left, nil, nil),
 		plan.NewResolvedTable(right, nil, nil),
 	)
-	rule := getRule(resolveNaturalJoinsId)
+	rule := getRule(resolveUsingJoinsId)
 
 	result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 	require.NoError(err)
