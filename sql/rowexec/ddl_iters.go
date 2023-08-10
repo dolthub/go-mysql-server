@@ -1815,12 +1815,12 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 		// Make sure that all columns are valid, in the table, and there are no duplicates
 		seenCols := make(map[string]bool)
 		for _, col := range indexable.Schema() {
-			seenCols[col.Name] = false
+			seenCols[strings.ToLower(col.Name)] = false
 		}
 		for _, indexCol := range n.Columns {
-			if seen, ok := seenCols[indexCol.Name]; ok {
+			if seen, ok := seenCols[strings.ToLower(indexCol.Name)]; ok {
 				if !seen {
-					seenCols[indexCol.Name] = true
+					seenCols[strings.ToLower(indexCol.Name)] = true
 				} else {
 					return plan.ErrCreateIndexDuplicateColumn.New(indexCol.Name)
 				}
