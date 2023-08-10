@@ -3354,17 +3354,6 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "explain select * from TABLE_one where vAL1 = 1;",
-				Expected: []sql.Row{
-					{"Filter"},
-					{" ├─ (table_One.Val1 = 1)"},
-					{" └─ IndexedTableAccess(table_One)"},
-					{"     ├─ index: [table_One.Val1]"},
-					{"     ├─ filters: [{[1, 1]}]"},
-					{"     └─ columns: [id val1]"},
-				},
-			},
-			{
 				Query:    "create index idx_one on TABLEtwo (VAL2, VAL3);",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
@@ -3384,17 +3373,6 @@ var ScriptTests = []ScriptTest{
 					{"TableTwo", 0, "PRIMARY", 1, "iD", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 					{"TableTwo", 1, "idx_one", 1, "VAL2", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
 					{"TableTwo", 1, "idx_one", 2, "vAL3", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
-				},
-			},
-			{
-				Query: "explain select * from TABLETWO where vAL2 = 1 and val3 = 2;",
-				Expected: []sql.Row{
-					{"Filter"},
-					{" ├─ ((TableTwo.VAL2 = 1) AND (TableTwo.vAL3 = 2))"},
-					{" └─ IndexedTableAccess(TableTwo)"},
-					{"     ├─ index: [TableTwo.VAL2,TableTwo.vAL3]"},
-					{"     ├─ filters: [{[1, 1], [2, 2]}]"},
-					{"     └─ columns: [id val2 val3]"},
 				},
 			},
 			{

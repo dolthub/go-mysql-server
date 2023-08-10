@@ -25,6 +25,18 @@ type QueryPlanTest struct {
 // in testgen_test.go.
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `select * from MYTABLE where I = 2 and s = 'first row'`,
+		ExpectedPlan: "Filter\n" +
+			" ├─ Eq\n" +
+			" │   ├─ mytable.s:1!null\n" +
+			" │   └─ first row (longtext)\n" +
+			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.s,mytable.i]\n" +
+			"     ├─ static: [{[first row, first row], [2, 2]}]\n" +
+			"     └─ columns: [i s]\n" +
+			"",
+	},
+	{
 		Query: `select /*+ JOIN_ORDER(scalarSubq0,xy) */ count(*) from xy where y in (select distinct v from uv);`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [count(1):0!null as count(*)]\n" +
