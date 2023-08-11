@@ -1,6 +1,9 @@
 package types
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestMarshalToMySqlString(t *testing.T) {
 	tests := []struct {
@@ -63,6 +66,14 @@ func TestMarshalToMySqlString(t *testing.T) {
 				"baz": "qux",
 			},
 			expected: `{"baz": "qux", "foo": "bar"}`,
+		},
+		{
+			name: "map of timestamps",
+			val: map[string]interface{}{
+				"a": time.Date(2023, 1, 2, 3, 4, 5, 6, time.UTC),
+				"b": time.Date(2023, 6, 5, 4, 3, 2, 1, time.UTC),
+			},
+			expected: `{"a": "2023-01-02T03:04:05Z", "b": "2023-06-05T04:03:02Z"}`,
 		},
 		{
 			name: "string formatting",

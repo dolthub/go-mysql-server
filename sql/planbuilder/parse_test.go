@@ -924,6 +924,7 @@ Project
 
 
 
+
 			select
 			x,
 			x*y,
@@ -933,7 +934,10 @@ Project
 			`,
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, (xy.x:1!null * xy.y:2!null) as x*y, row_num1:5!null, sum:7!null]
+ ├─ columns: [xy.x:1!null, (xy.x:1!null * xy.y:2!null) as x*y, row_number() over ( partition by xy.x rows between unbounded preceding and unbounded following):4!null as row_num1, sum
+ │   ├─ over ( partition by xy.y order by xy.x asc)
+ │   └─ xy.x
+ │  :6!null as sum]
  └─ Window
      ├─ row_number() over ( partition by xy.x ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
      ├─ SUM
@@ -948,6 +952,7 @@ Project
 		},
 		{
 			Query: `
+
 
 
 
@@ -989,6 +994,7 @@ Project
 
 
 
+
 			SELECT
 			x,
 			ROW_NUMBER() OVER w AS 'row_number',
@@ -998,7 +1004,7 @@ Project
 			WINDOW w AS (PARTITION BY y ORDER BY x);`,
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, row_number:5!null, rank:7!null, dense_rank:9!null]
+ ├─ columns: [xy.x:1!null, row_number() over ( partition by xy.y order by xy.x asc rows between unbounded preceding and unbounded following):4!null as row_number, rank() over ( partition by xy.y order by xy.x asc rows between unbounded preceding and unbounded following):6!null as rank, dense_rank() over ( partition by xy.y order by xy.x asc rows between unbounded preceding and unbounded following):8!null as dense_rank]
  └─ Window
      ├─ row_number() over ( partition by xy.y order by xy.x ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
      ├─ rank() over ( partition by xy.y order by xy.x ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
@@ -1209,6 +1215,7 @@ Project
 
 
 
+
 			SELECT x
 			FROM xy
 			WHERE EXISTS (SELECT count(u) AS count_1
@@ -1246,6 +1253,7 @@ Project
 		},
 		{
 			Query: `
+
 
 
 
@@ -1426,6 +1434,7 @@ Project
 		},
 		{
 			Query: `
+
 
 
 
