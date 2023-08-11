@@ -7,13 +7,19 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
+// factory functions are supposed to apply all optimizations to an expression
+// that are always costing/simplification wins. Each function will be a series
+// of optimizations local to this specific node. Eventually there should be a
+// top level optimizer with a switch for every type.
+
 func buildProject(p *plan.Project) (sql.Node, error) {
 	{
-		// pruneColumns can get overly aggressive
+		// todo generalize this
 		if sqa, _ := p.Child.(*plan.SubqueryAlias); sqa != nil && p.Schema().Equals(sqa.Schema()) {
 			return sqa, nil
 		}
 	}
+
 	{
 		// project->project=>project
 		if p2, _ := p.Child.(*plan.Project); p2 != nil {

@@ -220,7 +220,7 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 	}
 	database := b.resolveDb(qualifier)
 	// todo resolve defaults in schema
-	schema, collation := b.tableSpecToSchema(inScope, outScope, database, strings.ToLower(c.Table.Name.String()), c.TableSpec, false, false)
+	schema, collation := b.tableSpecToSchema(inScope, outScope, database, strings.ToLower(c.Table.Name.String()), c.TableSpec, false)
 	fkDefs, chDefs := b.buildConstraintsDefs(outScope, c.Table, c.TableSpec)
 
 	schema.Schema = b.resolveSchemaDefaults(outScope, schema.Schema)
@@ -476,7 +476,7 @@ func (b *Builder) buildAlterTableColumnAction(inScope *scope, ddl *ast.DDL, tabl
 	outScope = inScope
 	switch strings.ToLower(ddl.ColumnAction) {
 	case ast.AddStr:
-		sch, _ := b.tableSpecToSchema(inScope, outScope, table.Database, ddl.Table.Name.String(), ddl.TableSpec, true, false)
+		sch, _ := b.tableSpecToSchema(inScope, outScope, table.Database, ddl.Table.Name.String(), ddl.TableSpec, true)
 		outScope.node = plan.NewAddColumnResolved(table, *sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder))
 	case ast.DropStr:
 		drop := plan.NewDropColumnResolved(table, ddl.Column.String())
@@ -490,7 +490,7 @@ func (b *Builder) buildAlterTableColumnAction(inScope *scope, ddl *ast.DDL, tabl
 		// modify adds a new column maybe with same name
 		// make new hierarchy so it resolves before old column
 		outScope = inScope.push()
-		sch, _ := b.tableSpecToSchema(inScope, outScope, table.Database, ddl.Table.Name.String(), ddl.TableSpec, true, true)
+		sch, _ := b.tableSpecToSchema(inScope, outScope, table.Database, ddl.Table.Name.String(), ddl.TableSpec, true)
 
 		outScope.node = plan.NewModifyColumnResolved(table, ddl.Column.String(), *sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder))
 	default:
@@ -955,7 +955,9 @@ func (b *Builder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (outSco
 }
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec
-func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, tableName string, tableSpec *ast.TableSpec, forceInvalidCollation, modify bool) (sql.PrimaryKeySchema, sql.CollationID) {
+func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, tableName string, tableSpec *ast.TableSpec, forceInvalidCollation bool) (sql.PrimaryKeySchema, sql.CollationID) {
+	// todo: somewhere downstream updates an ALTER MODIY column's type collation
+	// to match the underlying. That only happens if the type stays unspecified.
 	tableCollation := sql.Collation_Unspecified
 	if !forceInvalidCollation {
 		tableCollation = sql.Collation_Default
