@@ -17,9 +17,6 @@ import (
 // indexes.
 func fixupAuxiliaryExprs(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.NodeWithOpaque(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		if _, ok := n.(*plan.Union); ok {
-			print("")
-		}
 		switch n := n.(type) {
 		default:
 			ret, same1, err := fixidx.FixFieldIndexesForExpressions(ctx, a.LogFn(), n, scope)

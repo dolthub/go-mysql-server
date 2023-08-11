@@ -415,8 +415,6 @@ func injectBindVarsAndPrepare(
 
 	buf := sqlparser.NewTrackedBuffer(nil)
 	parsed.Format(buf)
-	println(q)
-	println(buf.String())
 	e.PreparedDataCache.CacheStmt(ctx.Session.ID(), buf.String(), parsed)
 
 	_, isDatabaser := resPlan.(sql.Databaser)

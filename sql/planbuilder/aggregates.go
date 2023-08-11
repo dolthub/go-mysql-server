@@ -163,9 +163,18 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 		}
 	}
 	var aliases []sql.Expression
-	for _, e := range projScope.cols {
+	for _, col := range projScope.cols {
+		// eval aliases in project scope
+		switch e := col.scalar.(type) {
+		case *expression.Alias:
+			if !e.Unreferencable() {
+				aliases = append(aliases, e.WithId(sql.ColumnId(col.id)))
+			}
+		default:
+		}
+
 		// projection dependencies -> table cols needed above
-		transform.InspectExpr(e.scalar, func(e sql.Expression) bool {
+		transform.InspectExpr(col.scalar, func(e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:
 				colName := strings.ToLower(e.Name())
@@ -174,10 +183,7 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 					selectGfs = append(selectGfs, e)
 					selectStr[colName] = true
 				}
-			case *expression.Alias:
-				if !e.Unreferencable() {
-					aliases = append(aliases, e)
-				}
+			default:
 			}
 			return false
 		})
@@ -467,9 +473,18 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 		}
 	}
 	var aliases []sql.Expression
-	for _, e := range projScope.cols {
+	for _, col := range projScope.cols {
+		// eval aliases in project scope
+		switch e := col.scalar.(type) {
+		case *expression.Alias:
+			if !e.Unreferencable() {
+				aliases = append(aliases, e.WithId(sql.ColumnId(col.id)))
+			}
+		default:
+		}
+
 		// projection dependencies -> table cols needed above
-		transform.InspectExpr(e.scalar, func(e sql.Expression) bool {
+		transform.InspectExpr(col.scalar, func(e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:
 				colName := strings.ToLower(e.Name())
@@ -478,11 +493,7 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 					selectStr[colName] = true
 					selectGfs = append(selectGfs, e)
 				}
-			case *expression.Alias:
-				// selection aliases need to be projected
-				if !e.Unreferencable() {
-					aliases = append(aliases, e)
-				}
+			default:
 			}
 			return false
 		})
@@ -698,17 +709,13 @@ func (b *Builder) buildInnerProj(fromScope, projScope *scope) *scope {
 	}
 
 	// eval aliases in project scope
-	for _, e := range projScope.cols {
-		// selection aliases need to be projected
-		transform.InspectExpr(e.scalar, func(e sql.Expression) bool {
-			switch e := e.(type) {
-			case *expression.Alias:
-				if !e.Unreferencable() {
-					proj = append(proj, e)
-				}
+	for _, col := range projScope.cols {
+		switch e := col.scalar.(type) {
+		case *expression.Alias:
+			if !e.Unreferencable() {
+				proj = append(proj, e.WithId(sql.ColumnId(col.id)))
 			}
-			return false
-		})
+		}
 	}
 
 	if len(proj) > 0 {

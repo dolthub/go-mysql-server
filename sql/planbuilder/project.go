@@ -66,7 +66,6 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 			if a, ok := e.Child.(*expression.Alias); ok {
 				if _, ok := tempScope.exprs[a.Name()]; ok {
 					// can't ref alias within the same scope
-					// TODO we use alias
 					err := sql.ErrMisusedAlias.New(e.Name())
 					b.handleErr(err)
 				}
@@ -142,13 +141,18 @@ func (b *Builder) buildProjection(inScope, outScope *scope) {
 		}
 		projections[i] = scalar
 	}
-	proj := plan.NewProject(projections, inScope.node)
-	if _, ok := inScope.node.(*plan.SubqueryAlias); ok && proj.Schema().Equals(proj.Child.Schema()) {
-		// pruneColumns can get overly aggressive
-		outScope.node = inScope.node
-	} else {
-		outScope.node = proj
+	proj, err := buildProject(plan.NewProject(projections, inScope.node))
+	if err != nil {
+		b.handleErr(err)
 	}
+	outScope.node = proj
+
+	//if _, ok := inScope.node.(*plan.SubqueryAlias); ok && proj.Schema().Equals(proj.Child.Schema()) {
+	//	// pruneColumns can get overly aggressive
+	//	outScope.node = inScope.node
+	//} else {
+	//	outScope.node = proj
+	//}
 }
 
 func selectExprNeedsAlias(e *ast.AliasedExpr, expr sql.Expression) bool {

@@ -203,7 +203,12 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 
 		selectScope := b.buildSelectStmt(inScope, c.OptSelect.Select)
 
-		outScope.node = plan.NewCreateTableSelect(b.currentDb(), c.Table.Name.String(), selectScope.node, tableSpec, plan.IfNotExistsOption(c.IfNotExists), plan.TempTableOption(c.Temporary))
+		dbName := strings.ToLower(c.Table.Qualifier.String())
+		if dbName == "" {
+			dbName = b.ctx.GetCurrentDatabase()
+		}
+		db := b.resolveDb(dbName)
+		outScope.node = plan.NewCreateTableSelect(db, c.Table.Name.String(), selectScope.node, tableSpec, plan.IfNotExistsOption(c.IfNotExists), plan.TempTableOption(c.Temporary))
 		return outScope
 	}
 
@@ -214,9 +219,8 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 		qualifier = b.ctx.GetCurrentDatabase()
 	}
 	database := b.resolveDb(qualifier)
-
 	// todo resolve defaults in schema
-	schema, collation := b.tableSpecToSchema(inScope, outScope, strings.ToLower(database.Name()), strings.ToLower(c.Table.Name.String()), c.TableSpec, false)
+	schema, collation := b.tableSpecToSchema(inScope, outScope, database, strings.ToLower(c.Table.Name.String()), c.TableSpec, false, false)
 	fkDefs, chDefs := b.buildConstraintsDefs(outScope, c.Table, c.TableSpec)
 
 	schema.Schema = b.resolveSchemaDefaults(outScope, schema.Schema)
@@ -472,7 +476,7 @@ func (b *Builder) buildAlterTableColumnAction(inScope *scope, ddl *ast.DDL, tabl
 	outScope = inScope
 	switch strings.ToLower(ddl.ColumnAction) {
 	case ast.AddStr:
-		sch, _ := b.tableSpecToSchema(inScope, outScope, table.Database.Name(), ddl.Table.Name.String(), ddl.TableSpec, true)
+		sch, _ := b.tableSpecToSchema(inScope, outScope, table.Database, ddl.Table.Name.String(), ddl.TableSpec, true, false)
 		outScope.node = plan.NewAddColumnResolved(table, *sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder))
 	case ast.DropStr:
 		drop := plan.NewDropColumnResolved(table, ddl.Column.String())
@@ -486,7 +490,8 @@ func (b *Builder) buildAlterTableColumnAction(inScope *scope, ddl *ast.DDL, tabl
 		// modify adds a new column maybe with same name
 		// make new hierarchy so it resolves before old column
 		outScope = inScope.push()
-		sch, _ := b.tableSpecToSchema(inScope, outScope, table.Database.Name(), ddl.Table.Name.String(), ddl.TableSpec, true)
+		sch, _ := b.tableSpecToSchema(inScope, outScope, table.Database, ddl.Table.Name.String(), ddl.TableSpec, true, true)
+
 		outScope.node = plan.NewModifyColumnResolved(table, ddl.Column.String(), *sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder))
 	default:
 		err := sql.ErrUnsupportedFeature.New(ast.String(ddl))
@@ -950,9 +955,13 @@ func (b *Builder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (outSco
 }
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec
-func (b *Builder) tableSpecToSchema(inScope, outScope *scope, dbName, tableName string, tableSpec *ast.TableSpec, forceInvalidCollation bool) (sql.PrimaryKeySchema, sql.CollationID) {
+func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, tableName string, tableSpec *ast.TableSpec, forceInvalidCollation, modify bool) (sql.PrimaryKeySchema, sql.CollationID) {
 	tableCollation := sql.Collation_Unspecified
 	if !forceInvalidCollation {
+		tableCollation = sql.Collation_Default
+		if cdb, _ := db.(sql.CollatedDatabase); cdb != nil {
+			tableCollation = cdb.GetCollation(b.ctx)
+		}
 		if len(tableSpec.Options) > 0 {
 			charsetSubmatches := tableCharsetOptionRegex.FindStringSubmatch(tableSpec.Options)
 			collationSubmatches := tableCollationOptionRegex.FindStringSubmatch(tableSpec.Options)
@@ -997,7 +1006,7 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, dbName, tableName 
 
 		schema = append(schema, column)
 		outScope.newColumn(scopeColumn{
-			db:       dbName,
+			db:       db.Name(),
 			table:    tableName,
 			col:      strings.ToLower(column.Name),
 			typ:      column.Type,

@@ -83,6 +83,7 @@ type Alias struct {
 	UnaryExpression
 	name           string
 	unreferencable bool
+	id             sql.ColumnId
 }
 
 var _ sql.Expression = (*Alias)(nil)
@@ -90,7 +91,7 @@ var _ sql.CollationCoercible = (*Alias)(nil)
 
 // NewAlias returns a new Alias node.
 func NewAlias(name string, expr sql.Expression) *Alias {
-	return &Alias{UnaryExpression{expr}, name, false}
+	return &Alias{UnaryExpression{expr}, name, false, 0}
 }
 
 // AsUnreferencable marks the alias outside of scope referencing
@@ -102,6 +103,16 @@ func (e *Alias) AsUnreferencable() *Alias {
 
 func (e *Alias) Unreferencable() bool {
 	return e.unreferencable
+}
+
+func (e *Alias) WithId(id sql.ColumnId) *Alias {
+	ret := *e
+	ret.id = id
+	return &ret
+}
+
+func (e *Alias) Id() sql.ColumnId {
+	return e.id
 }
 
 // Type returns the type of the expression.
