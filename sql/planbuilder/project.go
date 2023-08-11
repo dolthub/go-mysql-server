@@ -141,18 +141,11 @@ func (b *Builder) buildProjection(inScope, outScope *scope) {
 		}
 		projections[i] = scalar
 	}
-	proj, err := buildProject(plan.NewProject(projections, inScope.node))
+	proj, err := factoryBuildProject(plan.NewProject(projections, inScope.node))
 	if err != nil {
 		b.handleErr(err)
 	}
 	outScope.node = proj
-
-	//if _, ok := inScope.node.(*plan.SubqueryAlias); ok && proj.Schema().Equals(proj.Child.Schema()) {
-	//	// pruneColumns can get overly aggressive
-	//	outScope.node = inScope.node
-	//} else {
-	//	outScope.node = proj
-	//}
 }
 
 func selectExprNeedsAlias(e *ast.AliasedExpr, expr sql.Expression) bool {
