@@ -85,7 +85,7 @@ func newIndexAnalyzerForNode(ctx *sql.Context, n sql.Node) (*indexAnalyzer, erro
 					return false
 				}
 			case *plan.IndexedTableAccess:
-				err := indexesForTable(n.Name(), n.ResolvedTable.UnderlyingTable())
+				err := indexesForTable(n.Name(), n.TableNode.UnderlyingTable())
 				if err != nil {
 					analysisErr = err
 					return false

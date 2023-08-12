@@ -365,7 +365,7 @@ func resolveRecursiveCte(
 	}
 
 	// replace recursive table refs, cannot do this until we have schema
-	// TODO does ResolvedTable need a schema? should we replace in prior step?
+	// TODO does TableNode need a schema? should we replace in prior step?
 	rTable := plan.NewRecursiveTable(rCte.Name(), recSch)
 	newRec, _, err := transform.Node(rCte.Right(), func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {

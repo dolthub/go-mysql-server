@@ -101,7 +101,7 @@ func NodeRepresentsSelect(s sql.Node) bool {
 		return false
 	}
 	isSelect := false
-	// All SELECT statements, including those that do not specify a table (using "dual"), have a ResolvedTable.
+	// All SELECT statements, including those that do not specify a table (using "dual"), have a TableNode.
 	transform.Inspect(s, func(node sql.Node) bool {
 		switch node.(type) {
 		case *AlterAutoIncrement, *AlterIndex, *CreateForeignKey, *CreateIndex, *CreateTable, *CreateTrigger,

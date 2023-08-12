@@ -355,7 +355,7 @@ func (j *joinOrderBuilder) buildJoinLeaf(n sql.Nameable) *ExprGroup {
 	case *plan.RecursiveCte:
 		rel = &RecursiveCte{sourceBase: b, Table: n}
 	case *plan.IndexedTableAccess:
-		rel = &TableScan{sourceBase: b, Table: n.ResolvedTable}
+		rel = &TableScan{sourceBase: b, Table: n.TableNode}
 	case *plan.ValueDerivedTable:
 		rel = &Values{sourceBase: b, Table: n}
 	case sql.TableFunction:

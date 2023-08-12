@@ -113,7 +113,7 @@ func (p *ExchangePartition) CheckPrivileges(ctx *sql.Context, opChecker sql.Priv
 	if node, ok := p.Table.(sql.Node); ok {
 		return node.CheckPrivileges(ctx, opChecker)
 	}
-	// If the table is not a ResolvedTable or other such node, then I guess we'll return true as to not fail.
+	// If the table is not a TableNode or other such node, then I guess we'll return true as to not fail.
 	// This may not be the correct behavior though, as it's just a guess.
 	return true
 }

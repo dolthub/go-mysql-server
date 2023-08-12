@@ -719,7 +719,7 @@ func (b *BaseBuilder) buildPrepareQuery(ctx *sql.Context, n *plan.PrepareQuery, 
 }
 
 func (b *BaseBuilder) buildResolvedTable(ctx *sql.Context, n *plan.ResolvedTable, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.ResolvedTable")
+	span, ctx := ctx.Span("plan.TableNode")
 
 	partitions, err := n.Table.Partitions(ctx)
 	if err != nil {

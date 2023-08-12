@@ -163,7 +163,7 @@ func (t *ResolvedTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (t *ResolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	// It is assumed that if we've landed upon this node, then we're doing a SELECT operation. Most other nodes that
-	// may contain a ResolvedTable will have their own privilege checks, so we should only end up here if the parent
+	// may contain a TableNode will have their own privilege checks, so we should only end up here if the parent
 	// nodes are things such as indexed access, filters, limits, etc.
 	if IsDualTable(t) {
 		return true
@@ -184,7 +184,7 @@ func (*ResolvedTable) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 // WithTable returns this Node with the given table. The new table should have the same name as the previous table.
 func (t *ResolvedTable) WithTable(table sql.Table) (*ResolvedTable, error) {
 	if t.Name() != table.Name() {
-		return nil, fmt.Errorf("attempted to update ResolvedTable `%s` with table `%s`", t.Name(), table.Name())
+		return nil, fmt.Errorf("attempted to update TableNode `%s` with table `%s`", t.Name(), table.Name())
 	}
 	nt := *t
 	nt.Table = table

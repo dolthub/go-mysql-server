@@ -256,15 +256,15 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 			return new, transform.NewTree, nil
 		case *plan.IndexedTableAccess:
 			var ok bool
-			from, ok = n.ResolvedTable.(*plan.ResolvedTable)
+			from, ok = n.TableNode.(*plan.ResolvedTable)
 			if ok {
 				db = n.Database()
-				to, err = resolveTable(ctx, plan.NewUnresolvedTableWithDatabase(n.ResolvedTable.Name(), db), a)
+				to, err = resolveTable(ctx, plan.NewUnresolvedTableWithDatabase(n.TableNode.Name(), db), a)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
 				new := *n
-				new.ResolvedTable = transferProjections(ctx, from, to.(*plan.ResolvedTable))
+				new.TableNode = transferProjections(ctx, from, to.(*plan.ResolvedTable))
 				return &new, transform.NewTree, nil
 			}
 		case *plan.DeferredAsOfTable:
@@ -282,7 +282,7 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 			}
 			rt, ok := new.(*plan.ResolvedTable)
 			if !ok {
-				return n, transform.SameTree, fmt.Errorf("unable to re-resolve prepared *plan.TableCountLookup; expected *plan.ResolvedTable, found: %T", new)
+				return n, transform.SameTree, fmt.Errorf("unable to re-resolve prepared *plan.TableCountLookup; expected *plan.TableNode, found: %T", new)
 			}
 			statsTable, ok := rt.Table.(sql.StatisticsTable)
 			if !ok {
@@ -373,7 +373,7 @@ func pruneDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	return newN, transform.NewTree, nil
 }
 
-// validateDropTables ensures that each ResolvedTable in DropTable is droppable, any UnresolvedTables are
+// validateDropTables ensures that each TableNode in DropTable is droppable, any UnresolvedTables are
 // skipped due to `IF EXISTS` clause, and there aren't any non-table nodes.
 func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	dt, ok := n.(*plan.DropTable)

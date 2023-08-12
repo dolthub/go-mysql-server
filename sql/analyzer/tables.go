@@ -80,7 +80,7 @@ func getTable(node sql.Node) sql.Table {
 			// TODO unwinding a table wrapper here causes infinite analyzer recursion
 			return false
 		case *plan.IndexedTableAccess:
-			table = n.ResolvedTable.UnderlyingTable()
+			table = n.TableNode.UnderlyingTable()
 			return false
 		}
 		return true
@@ -116,7 +116,7 @@ func getResolvedTableAndAlias(node sql.Node) (*plan.ResolvedTable, string) {
 
 	transform.Inspect(node, func(node sql.Node) bool {
 		// plan.Inspect will get called on all children of a node even if one of the children's calls returns false. We
-		// only want the first ResolvedTable match.
+		// only want the first TableNode match.
 		if table != nil {
 			return false
 		}
@@ -130,7 +130,7 @@ func getResolvedTableAndAlias(node sql.Node) (*plan.ResolvedTable, string) {
 			table = n
 			return false
 		case *plan.IndexedTableAccess:
-			rt, ok := n.ResolvedTable.(*plan.ResolvedTable)
+			rt, ok := n.TableNode.(*plan.ResolvedTable)
 			if ok {
 				table = rt
 				return false
@@ -141,12 +141,12 @@ func getResolvedTableAndAlias(node sql.Node) (*plan.ResolvedTable, string) {
 	return table, alias
 }
 
-// Finds first ResolvedTable node that is a descendant of the node given
+// Finds first TableNode node that is a descendant of the node given
 func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 	var table *plan.ResolvedTable
 	transform.Inspect(node, func(node sql.Node) bool {
 		// plan.Inspect will get called on all children of a node even if one of the children's calls returns false. We
-		// only want the first ResolvedTable match.
+		// only want the first TableNode match.
 		if table != nil {
 			return false
 		}
@@ -158,7 +158,7 @@ func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 				return false
 			}
 		case *plan.IndexedTableAccess:
-			rt, ok := n.ResolvedTable.(*plan.ResolvedTable)
+			rt, ok := n.TableNode.(*plan.ResolvedTable)
 			if ok {
 				table = rt
 				return false
@@ -178,7 +178,7 @@ func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 		case *plan.ResolvedTable:
 			ret[n.Table.Name()] = n
 		case *plan.IndexedTableAccess:
-			rt, ok := n.ResolvedTable.(*plan.ResolvedTable)
+			rt, ok := n.TableNode.(*plan.ResolvedTable)
 			if ok {
 				ret[rt.Name()] = rt
 				return false

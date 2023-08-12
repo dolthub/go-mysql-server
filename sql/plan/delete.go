@@ -136,7 +136,7 @@ func GetDeletable(node sql.Node) (sql.DeletableTable, error) {
 	case sql.DeletableTable:
 		return node, nil
 	case *IndexedTableAccess:
-		return GetDeletable(node.ResolvedTable)
+		return GetDeletable(node.TableNode)
 	case *ResolvedTable:
 		return getDeletableTable(node.Table)
 	case *TableAlias:

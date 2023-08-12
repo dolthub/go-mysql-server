@@ -65,7 +65,7 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 				return node, transform.SameTree, nil
 			}
 
-			// the table has to be ResolvedTable as this rule is executed after resolve-table rule
+			// the table has to be TableNode as this rule is executed after resolve-table rule
 			var dropTableDb sql.Database
 			if t, ok := node.Tables[0].(*plan.ResolvedTable); ok {
 				dropTableDb = t.SqlDatabase

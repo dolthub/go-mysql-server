@@ -38,10 +38,10 @@ type TableNode interface {
 // IndexedTableAccess represents an indexed lookup of a particular ResolvedTable. The values for the key used to access
 // the indexed table is provided in RowIter(), or during static analysis.
 type IndexedTableAccess struct {
-	ResolvedTable TableNode
-	lb            *LookupBuilder
-	lookup        sql.IndexLookup
-	Table         sql.IndexedTable
+	TableNode TableNode
+	lb        *LookupBuilder
+	lookup    sql.IndexLookup
+	Table     sql.IndexedTable
 }
 
 var _ sql.Table = (*IndexedTableAccess)(nil)
@@ -55,9 +55,9 @@ var _ sql.CollationCoercible = (*IndexedTableAccess)(nil)
 // applied for the row given in RowIter().
 func NewIndexedTableAccess(rt *ResolvedTable, t sql.IndexedTable, lb *LookupBuilder) *IndexedTableAccess {
 	return &IndexedTableAccess{
-		ResolvedTable: rt,
-		lb:            lb,
-		Table:         t,
+		TableNode: rt,
+		lb:        lb,
+		Table:     t,
 	}
 }
 
@@ -82,9 +82,9 @@ func NewIndexedAccessForResolvedTable(rt *ResolvedTable, lb *LookupBuilder) (*In
 	}
 	ia := iaTable.IndexedAccess(lookup)
 	return &IndexedTableAccess{
-		ResolvedTable: rt,
-		lb:            lb,
-		Table:         ia,
+		TableNode: rt,
+		lb:        lb,
+		Table:     ia,
 	}, nil
 }
 
@@ -93,9 +93,9 @@ func NewIndexedAccessForResolvedTable(rt *ResolvedTable, lb *LookupBuilder) (*In
 // only for display purposes.
 func NewStaticIndexedTableAccess(rt *ResolvedTable, t sql.IndexedTable, lookup sql.IndexLookup) *IndexedTableAccess {
 	return &IndexedTableAccess{
-		ResolvedTable: rt,
-		lookup:        lookup,
-		Table:         t,
+		TableNode: rt,
+		lookup:    lookup,
+		Table:     t,
 	}
 }
 
@@ -117,9 +117,9 @@ func NewStaticIndexedAccessForResolvedTable(rt TableNode, lookup sql.IndexLookup
 	}
 	ia := iaTable.IndexedAccess(lookup)
 	return &IndexedTableAccess{
-		ResolvedTable: rt,
-		lookup:        lookup,
-		Table:         ia,
+		TableNode: rt,
+		lookup:    lookup,
+		Table:     ia,
 	}, nil
 }
 
@@ -127,9 +127,9 @@ func NewStaticIndexedAccessForResolvedTable(rt TableNode, lookup sql.IndexLookup
 // different behavior compared to other indexed tables.
 func NewStaticIndexedAccessForFullTextTable(rt *ResolvedTable, lookup sql.IndexLookup, ftTable sql.IndexedTable) *IndexedTableAccess {
 	return &IndexedTableAccess{
-		ResolvedTable: rt,
-		lookup:        lookup,
-		Table:         ftTable,
+		TableNode: rt,
+		lookup:    lookup,
+		Table:     ftTable,
 	}
 }
 
@@ -138,15 +138,15 @@ func (i *IndexedTableAccess) IsStatic() bool {
 }
 
 func (i *IndexedTableAccess) Resolved() bool {
-	return i.ResolvedTable.Resolved()
+	return i.TableNode.Resolved()
 }
 
 func (i *IndexedTableAccess) Schema() sql.Schema {
-	return i.ResolvedTable.Schema()
+	return i.TableNode.Schema()
 }
 
 func (i *IndexedTableAccess) Collation() sql.CollationID {
-	return i.ResolvedTable.Collation()
+	return i.TableNode.Collation()
 }
 
 func (i *IndexedTableAccess) Children() []sql.Node {
@@ -162,20 +162,20 @@ func (i *IndexedTableAccess) WithChildren(children ...sql.Node) (sql.Node, error
 }
 
 func (i *IndexedTableAccess) Name() string {
-	return i.ResolvedTable.Name()
+	return i.TableNode.Name()
 }
 
 func (i *IndexedTableAccess) Database() sql.Database {
-	return i.ResolvedTable.Database()
+	return i.TableNode.Database()
 }
 
 func (i *IndexedTableAccess) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return i.ResolvedTable.CheckPrivileges(ctx, opChecker)
+	return i.TableNode.CheckPrivileges(ctx, opChecker)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (i *IndexedTableAccess) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	return i.ResolvedTable.CollationCoercibility(ctx)
+	return i.TableNode.CollationCoercibility(ctx)
 }
 
 func (i *IndexedTableAccess) Index() sql.Index {
@@ -226,7 +226,7 @@ func (i *IndexedTableAccess) getLookup2(ctx *sql.Context, row sql.Row2) (sql.Ind
 
 func (i *IndexedTableAccess) String() string {
 	pr := sql.NewTreePrinter()
-	pr.WriteNode("IndexedTableAccess(%s)", i.ResolvedTable.Name())
+	pr.WriteNode("IndexedTableAccess(%s)", i.TableNode.Name())
 	var children []string
 	children = append(children, fmt.Sprintf("index: %s", formatIndexDecoratorString(i.Index())))
 	if !i.lookup.IsEmpty() {
@@ -270,7 +270,7 @@ func formatIndexDecoratorString(idx sql.Index) string {
 
 func (i *IndexedTableAccess) DebugString() string {
 	pr := sql.NewTreePrinter()
-	pr.WriteNode("IndexedTableAccess(%s)", i.ResolvedTable.Name())
+	pr.WriteNode("IndexedTableAccess(%s)", i.TableNode.Name())
 	var children []string
 	children = append(children, fmt.Sprintf("index: %s", formatIndexDecoratorString(i.Index())))
 	if !i.lookup.IsEmpty() {
@@ -332,9 +332,9 @@ func (i *IndexedTableAccess) WithExpressions(exprs ...sql.Expression) (sql.Node,
 		return nil, err
 	}
 	return &IndexedTableAccess{
-		ResolvedTable: i.ResolvedTable,
-		Table:         i.Table,
-		lb:            lb,
+		TableNode: i.TableNode,
+		Table:     i.Table,
+		lb:        lb,
 	}, nil
 }
 

@@ -38,7 +38,7 @@ func TestMemoGen(t *testing.T) {
 
         type TableScan struct {
           *sourceBase
-          Table *plan.ResolvedTable
+          Table *plan.TableNode
         }
 
         var _ RelExpr = (*tableScan)(nil)
@@ -146,7 +146,7 @@ func TestMemoGen(t *testing.T) {
 			},
 			{
 				Name:       "tableScan",
-				SourceType: "*plan.ResolvedTable",
+				SourceType: "*plan.TableNode",
 			},
 			{
 				Name: "equal",

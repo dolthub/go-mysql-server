@@ -47,7 +47,7 @@ func GetTruncatable(node sql.Node) (sql.TruncateableTable, error) {
 	case sql.TruncateableTable:
 		return node, nil
 	case *IndexedTableAccess:
-		return GetTruncatable(node.ResolvedTable)
+		return GetTruncatable(node.TableNode)
 	case *ResolvedTable:
 		return getTruncatableTable(node.Table)
 	case sql.TableWrapper:

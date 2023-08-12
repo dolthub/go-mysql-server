@@ -651,7 +651,7 @@ func (d *DropTable) WithTriggers(triggers []string) sql.Node {
 func (d *DropTable) TableNames() ([]string, error) {
 	tblNames := make([]string, len(d.Tables))
 	for i, t := range d.Tables {
-		// either *ResolvedTable OR *UnresolvedTable here
+		// either *TableNode OR *UnresolvedTable here
 		if uTable, ok := t.(*UnresolvedTable); ok {
 			tblNames[i] = uTable.Name()
 		} else if rTable, ok := t.(*ResolvedTable); ok {
