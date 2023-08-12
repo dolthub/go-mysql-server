@@ -27,6 +27,9 @@ var ErrNoIndexableTable = errors.NewKind("expected an IndexableTable, couldn't f
 var ErrNoIndexedTableAccess = errors.NewKind("expected an IndexedTableAccess, couldn't find one in %v")
 var ErrInvalidLookupForIndexedTable = errors.NewKind("indexable table does not support given lookup: %s")
 
+// TableNode is an interface for nodes that are also tables. A node that implements this interface exposes all the
+// information needed for filters on the table to be optimized into indexes. This is possible when the return value
+// of `UnderlyingTable` is a table that implements `sql.IndexAddressable`
 type TableNode interface {
 	sql.Table
 	sql.Node

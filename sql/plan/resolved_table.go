@@ -30,6 +30,7 @@ type ResolvedTable struct {
 	comment     string
 }
 
+// UnderlyingTable returns the table wrapped by the ResolvedTable.
 func (t *ResolvedTable) UnderlyingTable() sql.Table {
 	if w, ok := t.Table.(sql.TableWrapper); ok {
 		return w.Underlying()
