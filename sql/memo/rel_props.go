@@ -137,7 +137,7 @@ func (p *relProps) populateFds() {
 			}
 			indexes, _ = indexableTable.GetIndexes(rel.Group().m.Ctx)
 		case *TableScan:
-			table := n.Table.Table
+			table := n.Table.UnderlyingTable()
 			if w, ok := table.(sql.TableWrapper); ok {
 				table = w.Underlying()
 			}
@@ -245,7 +245,7 @@ func allTableCols(rel SourceRel) sql.Schema {
 		}
 		table = rt.Table
 	case *TableScan:
-		table = rel.Table.Table
+		table = rel.Table.UnderlyingTable()
 	default:
 		return rel.OutputCols()
 	}
@@ -436,7 +436,7 @@ func sortedInputs(rel RelExpr) bool {
 func sortedColsForRel(rel RelExpr) sql.Schema {
 	switch r := rel.(type) {
 	case *TableScan:
-		tab, ok := r.Table.Table.(sql.PrimaryKeyTable)
+		tab, ok := r.Table.UnderlyingTable().(sql.PrimaryKeyTable)
 		if ok {
 			ords := tab.PrimaryKeySchema().PkOrdinals
 			var pks sql.Schema

@@ -120,7 +120,7 @@ func (c *coster) costTableAlias(ctx *sql.Context, n *TableAlias, s sql.StatsRead
 }
 
 func (c *coster) costScan(ctx *sql.Context, t *TableScan, s sql.StatsReader) (float64, error) {
-	return c.costRead(ctx, t.Table.Table, s)
+	return c.costRead(ctx, t.Table.UnderlyingTable(), s)
 }
 
 func (c *coster) costRead(ctx *sql.Context, t sql.Table, s sql.StatsReader) (float64, error) {
@@ -399,7 +399,7 @@ func (c *carder) statsTableAlias(ctx *sql.Context, n *TableAlias, s sql.StatsRea
 }
 
 func (c *carder) statsScan(ctx *sql.Context, t *TableScan, s sql.StatsReader) (float64, error) {
-	return c.statsRead(ctx, t.Table.Table, t.Table.SqlDatabase.Name(), s)
+	return c.statsRead(ctx, t.Table.UnderlyingTable(), t.Table.Database().Name(), s)
 }
 
 func (c *carder) statsRead(ctx *sql.Context, t sql.Table, db string, s sql.StatsReader) (float64, error) {

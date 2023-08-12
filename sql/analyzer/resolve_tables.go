@@ -255,15 +255,18 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 			new := transferProjections(ctx, from, to.(*plan.ResolvedTable))
 			return new, transform.NewTree, nil
 		case *plan.IndexedTableAccess:
-			from = n.ResolvedTable
-			db = n.Database()
-			to, err = resolveTable(ctx, plan.NewUnresolvedTableWithDatabase(n.ResolvedTable.Name(), db), a)
-			if err != nil {
-				return nil, transform.SameTree, err
+			var ok bool
+			from, ok = n.ResolvedTable.(*plan.ResolvedTable)
+			if ok {
+				db = n.Database()
+				to, err = resolveTable(ctx, plan.NewUnresolvedTableWithDatabase(n.ResolvedTable.Name(), db), a)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				new := *n
+				new.ResolvedTable = transferProjections(ctx, from, to.(*plan.ResolvedTable))
+				return &new, transform.NewTree, nil
 			}
-			new := *n
-			new.ResolvedTable = transferProjections(ctx, from, to.(*plan.ResolvedTable))
-			return &new, transform.NewTree, nil
 		case *plan.DeferredAsOfTable:
 			from = n.ResolvedTable
 			to, err = resolveTable(ctx, plan.NewDeferredAsOfTable(n.ResolvedTable, n.AsOf()), a)

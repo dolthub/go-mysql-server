@@ -27,10 +27,18 @@ var ErrNoIndexableTable = errors.NewKind("expected an IndexableTable, couldn't f
 var ErrNoIndexedTableAccess = errors.NewKind("expected an IndexedTableAccess, couldn't find one in %v")
 var ErrInvalidLookupForIndexedTable = errors.NewKind("indexable table does not support given lookup: %s")
 
+type TableNode interface {
+	sql.Table
+	sql.Node
+	sql.CollationCoercible
+	sql.Databaser
+	UnderlyingTable() sql.Table
+}
+
 // IndexedTableAccess represents an indexed lookup of a particular ResolvedTable. The values for the key used to access
 // the indexed table is provided in RowIter(), or during static analysis.
 type IndexedTableAccess struct {
-	ResolvedTable *ResolvedTable
+	ResolvedTable TableNode
 	lb            *LookupBuilder
 	lookup        sql.IndexLookup
 	Table         sql.IndexedTable
@@ -93,8 +101,9 @@ func NewStaticIndexedTableAccess(rt *ResolvedTable, t sql.IndexedTable, lookup s
 
 // NewStaticIndexedAccessForResolvedTable creates an IndexedTableAccess node if the resolved table embeds
 // an IndexAddressableTable, otherwise returns an error.
-func NewStaticIndexedAccessForResolvedTable(rt *ResolvedTable, lookup sql.IndexLookup) (*IndexedTableAccess, error) {
-	var table = rt.Table
+func NewStaticIndexedAccessForResolvedTable(rt TableNode, lookup sql.IndexLookup) (*IndexedTableAccess, error) {
+	var table sql.Table
+	table = rt.UnderlyingTable()
 	if t, ok := table.(sql.TableWrapper); ok {
 		table = t.Underlying()
 	}
@@ -157,7 +166,7 @@ func (i *IndexedTableAccess) Name() string {
 }
 
 func (i *IndexedTableAccess) Database() sql.Database {
-	return i.ResolvedTable.SqlDatabase
+	return i.ResolvedTable.Database()
 }
 
 func (i *IndexedTableAccess) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {

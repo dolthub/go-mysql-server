@@ -30,6 +30,10 @@ type ResolvedTable struct {
 	comment     string
 }
 
+func (t *ResolvedTable) UnderlyingTable() sql.Table {
+	return t.Table
+}
+
 func (t *ResolvedTable) Database() sql.Database {
 	return t.SqlDatabase
 }

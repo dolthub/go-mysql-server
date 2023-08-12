@@ -41,9 +41,8 @@ func newIndexAnalyzerForNode(ctx *sql.Context, n sql.Node) (*indexAnalyzer, erro
 	var analysisErr error
 	indexes := make(map[string][]sql.Index)
 
-	var indexesForTable = func(name string, rt *plan.ResolvedTable) error {
+	var indexesForTable = func(name string, table sql.Table) error {
 		name = strings.ToLower(name)
-		table := rt.Table
 		if w, ok := table.(sql.TableWrapper); ok {
 			table = w.Underlying()
 		}
@@ -72,7 +71,7 @@ func newIndexAnalyzerForNode(ctx *sql.Context, n sql.Node) (*indexAnalyzer, erro
 					return false
 				}
 
-				err := indexesForTable(n.Name(), rt)
+				err := indexesForTable(n.Name(), rt.UnderlyingTable())
 				if err != nil {
 					analysisErr = err
 					return false
@@ -80,19 +79,18 @@ func newIndexAnalyzerForNode(ctx *sql.Context, n sql.Node) (*indexAnalyzer, erro
 
 				return false
 			case *plan.ResolvedTable:
-				err := indexesForTable(n.Name(), n)
+				err := indexesForTable(n.Name(), n.UnderlyingTable())
 				if err != nil {
 					analysisErr = err
 					return false
 				}
 			case *plan.IndexedTableAccess:
-				err := indexesForTable(n.Name(), n.ResolvedTable)
+				err := indexesForTable(n.Name(), n.ResolvedTable.UnderlyingTable())
 				if err != nil {
 					analysisErr = err
 					return false
 				}
 			}
-
 			return true
 		})
 	}

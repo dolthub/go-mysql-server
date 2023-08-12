@@ -231,7 +231,7 @@ func (r *LateralLeftJoin) JoinPrivate() *JoinBase {
 
 type TableScan struct {
 	*sourceBase
-	Table *plan.ResolvedTable
+	Table plan.TableNode
 }
 
 var _ RelExpr = (*TableScan)(nil)

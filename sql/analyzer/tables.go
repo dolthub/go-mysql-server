@@ -80,7 +80,7 @@ func getTable(node sql.Node) sql.Table {
 			// TODO unwinding a table wrapper here causes infinite analyzer recursion
 			return false
 		case *plan.IndexedTableAccess:
-			table = n.ResolvedTable.Table
+			table = n.ResolvedTable.UnderlyingTable()
 			return false
 		}
 		return true
@@ -130,8 +130,11 @@ func getResolvedTableAndAlias(node sql.Node) (*plan.ResolvedTable, string) {
 			table = n
 			return false
 		case *plan.IndexedTableAccess:
-			table = n.ResolvedTable
-			return false
+			rt, ok := n.ResolvedTable.(*plan.ResolvedTable)
+			if ok {
+				table = rt
+				return false
+			}
 		}
 		return true
 	})
@@ -155,8 +158,11 @@ func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 				return false
 			}
 		case *plan.IndexedTableAccess:
-			table = n.ResolvedTable
-			return false
+			rt, ok := n.ResolvedTable.(*plan.ResolvedTable)
+			if ok {
+				table = rt
+				return false
+			}
 		}
 		return true
 	})
@@ -172,7 +178,11 @@ func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 		case *plan.ResolvedTable:
 			ret[n.Table.Name()] = n
 		case *plan.IndexedTableAccess:
-			ret[n.ResolvedTable.Name()] = n.ResolvedTable
+			rt, ok := n.ResolvedTable.(*plan.ResolvedTable)
+			if ok {
+				ret[rt.Name()] = rt
+				return false
+			}
 		case *plan.TableAlias:
 			rt := getResolvedTable(n)
 			if rt != nil {
