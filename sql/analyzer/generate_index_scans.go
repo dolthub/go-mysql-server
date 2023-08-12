@@ -177,9 +177,6 @@ func pushdownIndexesToTable(ctx *sql.Context, scope *plan.Scope, a *Analyzer, ta
 			if table == nil {
 				return n, transform.SameTree, nil
 			}
-			if tw, ok := table.(sql.TableWrapper); ok {
-				table = tw.Underlying()
-			}
 			if _, ok := table.(sql.IndexAddressableTable); ok {
 				if indexLookup, ok := indexes[strings.ToLower(tableNode.Name())]; ok {
 					if indexLookup.lookup.Index.IsFullText() {

@@ -31,6 +31,9 @@ type ResolvedTable struct {
 }
 
 func (t *ResolvedTable) UnderlyingTable() sql.Table {
+	if w, ok := t.Table.(sql.TableWrapper); ok {
+		return w.Underlying()
+	}
 	return t.Table
 }
 
@@ -82,7 +85,7 @@ func (*ResolvedTable) Resolved() bool {
 func (t *ResolvedTable) String() string {
 	pr := sql.NewTreePrinter()
 	pr.WriteNode("Table")
-	table := seethroughTableWrapper(t)
+	table := t.UnderlyingTable()
 	children := []string{fmt.Sprintf("name: %s", t.Name())}
 
 	if pt, ok := table.(sql.ProjectedTable); ok {
@@ -113,7 +116,7 @@ func (t *ResolvedTable) String() string {
 func (t *ResolvedTable) DebugString() string {
 	pr := sql.NewTreePrinter()
 	pr.WriteNode("Table")
-	table := seethroughTableWrapper(t)
+	table := t.UnderlyingTable()
 	children := []string{fmt.Sprintf("name: %s", t.Name())}
 
 	var columns []string
@@ -189,12 +192,4 @@ func (t *ResolvedTable) WithTable(table sql.Table) (*ResolvedTable, error) {
 	nt := *t
 	nt.Table = table
 	return &nt, nil
-}
-
-func seethroughTableWrapper(n *ResolvedTable) sql.Table {
-	if tw, ok := n.Table.(sql.TableWrapper); ok {
-		return tw.Underlying()
-	} else {
-		return n.Table
-	}
 }

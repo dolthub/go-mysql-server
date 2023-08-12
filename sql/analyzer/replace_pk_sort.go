@@ -29,10 +29,7 @@ func replacePkSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sor
 		}
 		sfExprs := normalizeExpressions(tableAliases, sortNode.SortFields.ToExpressions()...)
 		sfAliases := aliasedExpressionsInNode(sortNode)
-		table := n.Table
-		if w, ok := table.(sql.TableWrapper); ok {
-			table = w.Underlying()
-		}
+		table := n.UnderlyingTable()
 		idxTbl, ok := table.(sql.IndexAddressableTable)
 		if !ok {
 			return n, transform.SameTree, nil

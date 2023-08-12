@@ -100,9 +100,6 @@ func pushdownIndexToTable(ctx *sql.Context, a *Analyzer, tableNode sql.NameableN
 			if table == nil {
 				return n, transform.SameTree, nil
 			}
-			if tw, ok := table.(sql.TableWrapper); ok {
-				table = tw.Underlying()
-			}
 			if iat, ok := table.(sql.IndexAddressableTable); ok {
 				a.Log("table %q transformed with pushdown of index", tableNode.Name())
 				lb := plan.NewLookupBuilder(index, keyExpr, nullmask)

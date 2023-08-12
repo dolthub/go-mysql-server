@@ -51,10 +51,7 @@ func processMatchAgainst(ctx *sql.Context, matchAgainstExpr *expression.MatchAga
 	if tbl == nil {
 		return nil, transform.NewTree, fmt.Errorf("cannot use MATCH ... AGAINST ... as no table was found")
 	}
-	innerTbl := tbl.Table
-	if t, ok := innerTbl.(sql.TableWrapper); ok {
-		innerTbl = t.Underlying()
-	}
+	innerTbl := tbl.UnderlyingTable()
 	indexedTbl, ok := innerTbl.(sql.IndexAddressableTable)
 	if !ok {
 		return nil, transform.NewTree, fmt.Errorf("cannot use MATCH ... AGAINST ... on a table that does not declare indexes")

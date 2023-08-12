@@ -76,7 +76,7 @@ func getTable(node sql.Node) sql.Table {
 
 		switch n := node.(type) {
 		case *plan.ResolvedTable:
-			table = n.Table
+			table = n.UnderlyingTable()
 			// TODO unwinding a table wrapper here causes infinite analyzer recursion
 			return false
 		case *plan.IndexedTableAccess:

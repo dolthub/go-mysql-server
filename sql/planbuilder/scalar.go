@@ -860,10 +860,7 @@ func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expressio
 		b.handleErr(err)
 	}
 
-	innerTbl := rt.Table
-	if t, ok := innerTbl.(sql.TableWrapper); ok {
-		innerTbl = t.Underlying()
-	}
+	innerTbl := rt.UnderlyingTable()
 	indexedTbl, ok := innerTbl.(sql.IndexAddressableTable)
 	if !ok {
 		err := fmt.Errorf("cannot use MATCH ... AGAINST ... on a table that does not declare indexes")

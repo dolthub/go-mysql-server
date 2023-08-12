@@ -43,9 +43,6 @@ func newIndexAnalyzerForNode(ctx *sql.Context, n sql.Node) (*indexAnalyzer, erro
 
 	var indexesForTable = func(name string, table sql.Table) error {
 		name = strings.ToLower(name)
-		if w, ok := table.(sql.TableWrapper); ok {
-			table = w.Underlying()
-		}
 		it, ok := table.(sql.IndexAddressableTable)
 
 		if !ok {

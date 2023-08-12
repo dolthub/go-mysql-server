@@ -127,10 +127,7 @@ func (p *relProps) populateFds() {
 			if !ok {
 				break
 			}
-			table := rt.Table
-			if w, ok := table.(sql.TableWrapper); ok {
-				table = w.Underlying()
-			}
+			table := rt.UnderlyingTable()
 			indexableTable, ok := table.(sql.IndexAddressableTable)
 			if !ok {
 				break
@@ -138,9 +135,6 @@ func (p *relProps) populateFds() {
 			indexes, _ = indexableTable.GetIndexes(rel.Group().m.Ctx)
 		case *TableScan:
 			table := n.Table.UnderlyingTable()
-			if w, ok := table.(sql.TableWrapper); ok {
-				table = w.Underlying()
-			}
 			indexableTable, ok := table.(sql.IndexAddressableTable)
 			if !ok {
 				break
@@ -243,14 +237,11 @@ func allTableCols(rel SourceRel) sql.Schema {
 		if !ok {
 			break
 		}
-		table = rt.Table
+		table = rt.UnderlyingTable()
 	case *TableScan:
 		table = rel.Table.UnderlyingTable()
 	default:
 		return rel.OutputCols()
-	}
-	if w, ok := table.(sql.TableWrapper); ok {
-		table = w.Underlying()
 	}
 	projTab, ok := table.(sql.PrimaryKeyTable)
 	if !ok {

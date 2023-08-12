@@ -64,10 +64,7 @@ func NewIndexedTableAccess(rt *ResolvedTable, t sql.IndexedTable, lb *LookupBuil
 // NewIndexedAccessForResolvedTable creates an IndexedTableAccess node if the resolved table embeds
 // an IndexAddressableTable, otherwise returns an error.
 func NewIndexedAccessForResolvedTable(rt *ResolvedTable, lb *LookupBuilder) (*IndexedTableAccess, error) {
-	var table = rt.Table
-	if t, ok := table.(sql.TableWrapper); ok {
-		table = t.Underlying()
-	}
+	var table = rt.UnderlyingTable()
 	iaTable, ok := table.(sql.IndexAddressableTable)
 	if !ok {
 		return nil, fmt.Errorf("table is not index addressable: %s", table.Name())
@@ -104,9 +101,6 @@ func NewStaticIndexedTableAccess(rt *ResolvedTable, t sql.IndexedTable, lookup s
 func NewStaticIndexedAccessForResolvedTable(rt TableNode, lookup sql.IndexLookup) (*IndexedTableAccess, error) {
 	var table sql.Table
 	table = rt.UnderlyingTable()
-	if t, ok := table.(sql.TableWrapper); ok {
-		table = t.Underlying()
-	}
 	iaTable, ok := table.(sql.IndexAddressableTable)
 	if !ok {
 		return nil, fmt.Errorf("table is not index addressable: %s", table.Name())
