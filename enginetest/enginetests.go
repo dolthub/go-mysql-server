@@ -623,7 +623,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 func TestReadOnly(t *testing.T, harness Harness) {
 	harness.Setup(setup.Mytable...)
 	e := mustNewEngine(t, harness)
-	e.IsReadOnly = true
+	e.ReadOnly.Store(true)
 	defer e.Close()
 
 	RunQuery(t, e, harness, `SELECT i FROM mytable`)
@@ -634,6 +634,11 @@ func TestReadOnly(t *testing.T, harness Harness) {
 		`INSERT INTO mytable (i, s) VALUES(42, 'yolo')`,
 		`CREATE VIEW myview3 AS SELECT i FROM mytable`,
 		`DROP VIEW myview`,
+		`DROP DATABASE mydb`,
+		`CREATE DATABASE newdb`,
+		`CREATE USER tester@localhost`,
+		`CREATE ROLE test_role`,
+		`GRANT SUPER ON * TO 'root'@'localhost'`,
 	}
 
 	for _, query := range writingQueries {
