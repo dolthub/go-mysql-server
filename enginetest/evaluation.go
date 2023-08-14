@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -104,7 +105,11 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 					RunQuery(t, e, harness, assertion.Query)
 				} else {
 					ctx := NewContext(harness)
-					TestQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, assertion.ExpectedColumns, assertion.Bindings)
+					if assertion.VitessBindings != nil {
+						TestQueryWithBindvars(t, ctx, e, harness, assertion.Query, assertion.Expected, assertion.ExpectedColumns, assertion.VitessBindings)						
+					} else {
+						TestQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, assertion.ExpectedColumns, assertion.Bindings)
+					}
 				}
 			})
 		}
@@ -286,6 +291,28 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, harnes
 	}
 
 	sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
+	require.NoError(err, "Unexpected error for query %s: %s", q, err)
+
+	rows, err := sql.RowIterToRows(ctx, sch, iter)
+	require.NoError(err, "Unexpected error for query %s: %s", q, err)
+
+	if expected != nil {
+		checkResults(t, expected, expectedCols, sch, rows, q)
+	}
+
+	require.Equal(0, ctx.Memory.NumCaches())
+	validateEngine(t, ctx, harness, e)
+}
+
+func TestQueryWithBindvars(t *testing.T, ctx *sql.Context, e *sqle.Engine, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]*query.BindVariable) {
+	ctx = ctx.WithQuery(q)
+	require := require.New(t)
+	if len(bindings) > 0 {
+		_, err := e.PrepareQuery(ctx, q)
+		require.NoError(err)
+	}
+
+	sch, iter, err := e.QueryNodeWithVitessBindings(ctx, q, nil, bindings)
 	require.NoError(err, "Unexpected error for query %s: %s", q, err)
 
 	rows, err := sql.RowIterToRows(ctx, sch, iter)
