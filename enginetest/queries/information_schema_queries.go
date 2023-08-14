@@ -16,10 +16,48 @@ package queries
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 var InfoSchemaQueries = []QueryTest{
+	{
+		Query: `select table_name from information_schema.tables limit 1;`,
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "TABLE_NAME",
+				Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default),
+			},
+		},
+	},
+	{
+		Query: `select * from information_schema.tables limit 1;`,
+		ExpectedColumns: sql.Schema{
+			{Name: "TABLE_CATALOG", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
+			{Name: "TABLE_SCHEMA", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
+			{Name: "TABLE_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
+			{Name: "COLUMN_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
+			{Name: "ORDINAL_POSITION", Type: types.Uint32},
+			{Name: "COLUMN_DEFAULT", Type: types.Text},
+			{Name: "IS_NULLABLE", Type: types.MustCreateString(sqltypes.VarChar, 3, sql.Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, types.MustCreateString(sqltypes.VarChar, 3, sql.Collation_Information_Schema_Default), false)},
+			{Name: "DATA_TYPE", Type: types.LongText},
+			{Name: "CHARACTER_MAXIMUM_LENGTH", Type: types.Int64},
+			{Name: "CHARACTER_OCTET_LENGTH", Type: types.Int64},
+			{Name: "NUMERIC_PRECISION", Type: types.Uint64},
+			{Name: "NUMERIC_SCALE", Type: types.Uint64},
+			{Name: "DATETIME_PRECISION", Type: types.Uint32},
+			{Name: "CHARACTER_SET_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
+			{Name: "COLLATION_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
+			{Name: "COLUMN_TYPE", Type: types.MediumText},
+			{Name: "COLUMN_KEY", Type: types.MustCreateEnumType([]string{"", "PRI", "UNI", "MUL"}, sql.Collation_Information_Schema_Default)},
+			{Name: "EXTRA", Type: types.MustCreateString(sqltypes.VarChar, 256, sql.Collation_Information_Schema_Default)},
+			{Name: "PRIVILEGES", Type: types.MustCreateString(sqltypes.VarChar, 154, sql.Collation_Information_Schema_Default)},
+			{Name: "COLUMN_COMMENT", Type: types.Text},
+			{Name: "GENERATION_EXPRESSION", Type: types.LongText},
+			{Name: "SRS_ID", Type: types.Uint32},
+		},
+	},
 	{
 		Query: `select table_name from information_schema.tables where table_schema = 'information_schema' order by table_name;`,
 		Expected: []sql.Row{
@@ -1295,10 +1333,10 @@ FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_ty
 FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC 
 WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK';`,
 				Expected: []sql.Row{
-					{"chk1", "(b > 0)", "YES"},
+					{"chk1", "(B > 0)", "YES"},
 					{"chk2", "(b > 0)", "NO"},
-					{"chk3", "(b > 1)", "YES"},
-					{"chk4", "(upper(c) = c)", "YES"},
+					{"chk3", "(B > 1)", "YES"},
+					{"chk4", "(upper(C) = c)", "YES"},
 				},
 			},
 			{
@@ -1314,10 +1352,10 @@ WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.C
 			{
 				Query: `select * from information_schema.check_constraints where constraint_schema = 'mydb';`,
 				Expected: []sql.Row{
-					{"def", "mydb", "chk1", "(b > 0)"},
+					{"def", "mydb", "chk1", "(B > 0)"},
 					{"def", "mydb", "chk2", "(b > 0)"},
-					{"def", "mydb", "chk3", "(b > 1)"},
-					{"def", "mydb", "chk4", "(upper(c) = c)"},
+					{"def", "mydb", "chk3", "(B > 1)"},
+					{"def", "mydb", "chk4", "(upper(C) = c)"},
 				},
 			},
 			{

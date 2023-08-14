@@ -3526,7 +3526,7 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 	expected := []sql.CheckDefinition{
 		{
 			Name:            "chk1",
-			CheckExpression: "(b > 0)",
+			CheckExpression: "(B > 0)",
 			Enforced:        true,
 		},
 		{
@@ -3536,12 +3536,12 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 		},
 		{
 			Name:            "chk3",
-			CheckExpression: "(b > 1)",
+			CheckExpression: "(B > 1)",
 			Enforced:        true,
 		},
 		{
 			Name:            "chk4",
-			CheckExpression: "(upper(c) = c)",
+			CheckExpression: "(upper(C) = c)",
 			Enforced:        true,
 		},
 	}
@@ -3599,7 +3599,7 @@ CREATE TABLE T2
 		"(c2 > 0)",
 		"(c3 < 100)",
 		"(c1 = 0)",
-		"(c1 > c3)",
+		"(C1 > C3)",
 	}
 
 	var checkConds []string

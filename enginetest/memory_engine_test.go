@@ -588,7 +588,6 @@ func TestFulltextIndexes(t *testing.T) {
 }
 
 func TestCreateCheckConstraints(t *testing.T) {
-	// TODO different error message
 	enginetest.TestCreateCheckConstraints(t, enginetest.NewDefaultMemoryHarness())
 }
 

@@ -80,6 +80,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 			}
 			b.handleErr(sql.ErrColumnNotFound.New(v))
 		}
+		c.originalCol = v.Name.String()
 		return c.scalarGf()
 	case *ast.FuncExpr:
 		name := v.Name.Lowered()

@@ -1134,7 +1134,7 @@ Project
  ├─ columns: [X:4!null]
  └─ Having
      ├─ GreaterThan
-     │   ├─ X:5!null
+     │   ├─ x:5!null
      │   └─ 1 (tinyint)
      └─ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, (xy.x:1!null + xy.y:2!null) as X]

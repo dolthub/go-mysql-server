@@ -743,6 +743,24 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		Query: `SELECT I,S from mytable order by 1`,
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "I",
+				Type: types.Int64,
+			},
+			{
+				Name: "S",
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+			},
+		},
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
 		Query: `SELECT s as i, i as i from mytable order by 1`,
 		Expected: []sql.Row{
 			{"first row", "first row"},

@@ -78,7 +78,10 @@ func aliasTrackAndReplace(adj map[sql.ColumnId]sql.Expression, e sql.Expression)
 		switch e := e.(type) {
 		case *expression.GetField:
 			if a, _ := adj[sql.ColumnId(e.Index())]; a != nil {
-				return a, transform.NewTree, nil
+				if _, ok := a.(*expression.Alias); ok {
+					// prefer outer-most field reference, is case-sensitive
+					return a, transform.NewTree, nil
+				}
 			}
 		default:
 		}

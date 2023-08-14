@@ -441,14 +441,15 @@ type tableId uint16
 type columnId uint16
 
 type scopeColumn struct {
-	db         string
-	table      string
-	col        string
-	id         columnId
-	typ        sql.Type
-	scalar     sql.Expression
-	nullable   bool
-	descending bool
+	db          string
+	table       string
+	col         string
+	originalCol string
+	id          columnId
+	typ         sql.Type
+	scalar      sql.Expression
+	nullable    bool
+	descending  bool
 }
 
 // empty returns true if a scopeColumn is the null value
@@ -462,6 +463,9 @@ func (c scopeColumn) scalarGf() sql.Expression {
 		if p, ok := c.scalar.(*expression.ProcedureParam); ok {
 			return p
 		}
+	}
+	if c.originalCol != "" {
+		return expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.originalCol, c.nullable)
 	}
 	return expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
 }
