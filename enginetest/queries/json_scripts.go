@@ -18,7 +18,6 @@ import (
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -33,8 +32,8 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `SELECT * FROM users WHERE JSON_CONTAINS (languages, JSON_ARRAY(?)) ORDER BY users.id LIMIT 1`,
-				Bindings: map[string]sql.Expression{
-					"v1": expression.NewLiteral("ZH", types.MustCreateString(query.Type_CHAR, 3, sql.Collation_binary)),
+				Bindings: map[string]*query.BindVariable{
+					"v1": {Value: sql.MustConvertToValue("ZH").Val, Type: sql.MustConvertToValue("ZH").Typ},
 				},
 				Expected: []sql.Row{{uint64(1), "Tom", types.JSONDocument{Val: []interface{}{"ZH", "EN"}}}},
 			},
@@ -340,8 +339,12 @@ var JsonScripts = []ScriptTest{
 				ExpectedErr: sql.ErrTableNotFound,
 			},
 			{
-				Query:       `SELECT JSON_OBJECTAGG(c0, val, badarg) from test`,
+				Query:       `SELECT JSON_OBJECTAGG(c0, val, 'badarg') from test`,
 				ExpectedErr: sql.ErrInvalidArgumentNumber,
+			},
+			{
+				Query:       `SELECT JSON_OBJECTAGG(c0, val, badarg) from test`,
+				ExpectedErr: sql.ErrColumnNotFound,
 			},
 			{
 				Query:       `SELECT JSON_OBJECTAGG(c0) from test`,
