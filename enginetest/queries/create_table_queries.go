@@ -246,6 +246,23 @@ var CreateTableScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Validate that CREATE LIKE preserves defaults",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (pk int primary key, c1 int default 5 comment 'hi')",
+			"CREATE TABLE t2 LIKE t1",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO t2 (pk) VALUES (1)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select * from t2",
+				Expected: []sql.Row{{1, 5}},
+			},
+		},
+	},
 }
 
 var CreateTableAutoIncrementTests = []ScriptTest{

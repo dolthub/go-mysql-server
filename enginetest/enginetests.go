@@ -2058,6 +2058,10 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		})
 	}
 
+	for _, script := range queries.CreateTableScriptTests {
+		TestScript(t, harness, script)
+	}
+
 	for _, script := range queries.CreateTableAutoIncrementTests {
 		TestScript(t, harness, script)
 	}

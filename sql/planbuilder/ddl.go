@@ -333,8 +333,11 @@ func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 		}
 	}
 
+	pkSchema := sql.NewPrimaryKeySchema(newSch, pkOrdinals...)
+	pkSchema.Schema = b.resolveSchemaDefaults(outScope, pkSchema.Schema)
+
 	tableSpec := &plan.TableSpec{
-		Schema:    sql.NewPrimaryKeySchema(newSch, pkOrdinals...),
+		Schema:    pkSchema,
 		IdxDefs:   idxDefs,
 		ChDefs:    checkDefs,
 		Collation: likeTable.Collation(),
