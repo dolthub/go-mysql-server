@@ -37,7 +37,7 @@ import (
 // zero due to rounding (as is the case with the MyISAM backend, which we currently do not support).
 type FulltextFilterTable struct {
 	MatchAgainst *expression.MatchAgainst
-	Table        *plan.ResolvedTable
+	Table        plan.TableNode
 }
 
 var _ sql.IndexedTable = (*FulltextFilterTable)(nil)

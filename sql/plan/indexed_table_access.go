@@ -88,22 +88,11 @@ func NewIndexedAccessForResolvedTable(rt *ResolvedTable, lb *LookupBuilder) (*In
 	}, nil
 }
 
-// NewStaticIndexedTableAccess returns a new IndexedTableAccess node with the indexlookup given. It will be applied in
-// RowIter() without consideration of the row given. The key expression should faithfully represent this lookup, but is
-// only for display purposes.
-func NewStaticIndexedTableAccess(rt *ResolvedTable, t sql.IndexedTable, lookup sql.IndexLookup) *IndexedTableAccess {
-	return &IndexedTableAccess{
-		TableNode: rt,
-		lookup:    lookup,
-		Table:     t,
-	}
-}
-
 // NewStaticIndexedAccessForResolvedTable creates an IndexedTableAccess node if the resolved table embeds
 // an IndexAddressableTable, otherwise returns an error.
-func NewStaticIndexedAccessForResolvedTable(rt TableNode, lookup sql.IndexLookup) (*IndexedTableAccess, error) {
+func NewStaticIndexedAccessForResolvedTable(node TableNode, lookup sql.IndexLookup) (*IndexedTableAccess, error) {
 	var table sql.Table
-	table = rt.UnderlyingTable()
+	table = node.UnderlyingTable()
 	iaTable, ok := table.(sql.IndexAddressableTable)
 	if !ok {
 		return nil, fmt.Errorf("table is not index addressable: %s", table.Name())
@@ -114,7 +103,7 @@ func NewStaticIndexedAccessForResolvedTable(rt TableNode, lookup sql.IndexLookup
 	}
 	ia := iaTable.IndexedAccess(lookup)
 	return &IndexedTableAccess{
-		TableNode: rt,
+		TableNode: node,
 		lookup:    lookup,
 		Table:     ia,
 	}, nil
@@ -122,9 +111,9 @@ func NewStaticIndexedAccessForResolvedTable(rt TableNode, lookup sql.IndexLookup
 
 // NewStaticIndexedAccessForFullTextTable creates an IndexedTableAccess node for Full-Text tables, which have a
 // different behavior compared to other indexed tables.
-func NewStaticIndexedAccessForFullTextTable(rt *ResolvedTable, lookup sql.IndexLookup, ftTable sql.IndexedTable) *IndexedTableAccess {
+func NewStaticIndexedAccessForFullTextTable(node TableNode, lookup sql.IndexLookup, ftTable sql.IndexedTable) *IndexedTableAccess {
 	return &IndexedTableAccess{
-		TableNode: rt,
+		TableNode: node,
 		lookup:    lookup,
 		Table:     ftTable,
 	}
