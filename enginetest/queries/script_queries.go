@@ -15,16 +15,17 @@
 package queries
 
 import (
-	"github.com/dolthub/vitess/go/sqltypes"
-	"gopkg.in/src-d/go-errors.v1"
 	"time"
+
+	"github.com/dolthub/vitess/go/sqltypes"
+	querypb "github.com/dolthub/vitess/go/vt/proto/query"
+	"gopkg.in/src-d/go-errors.v1"
 
 	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 )
 
 type ScriptTest struct {
