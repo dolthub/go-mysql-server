@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"log"
 	"testing"
+	"time"
 
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
@@ -278,14 +279,27 @@ func TestSingleScript(t *testing.T) {
 	// t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "datetime default precision",
+			Name: "datetime precision",
 			SetUpScript: []string{
 				"CREATE TABLE t1 (pk int primary key, d datetime)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query: "show create table t1",
-					Expected: []sql.Row{},
+					Expected: []sql.Row{{"t1", 
+						"CREATE TABLE `t1` (\n" +
+						"  `pk` int NOT NULL,\n" +
+						"  `d` datetime(0),\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				},
+				{
+					Query: "insert into t1 values (1, '2020-01-01 00:00:00.123456')",
+					Expected: []sql.Row{{types.NewOkResult(1)}},
+				},
+				{
+					Query: "select * from t1 order by pk",
+					Expected: []sql.Row{{1, enginetest.MustParseTime(time.DateTime, "2020-01-01 00:00:00")}},
 				},
 			},
 		},

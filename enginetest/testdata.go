@@ -228,6 +228,10 @@ func createNativeIndexes(t *testing.T, harness Harness, e *sqle.Engine) error {
 	return nil
 }
 
-func dob(year, month, day int) time.Time {
-	return time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
+func MustParseTime(layout, value string) time.Time {
+	parsed, err := time.Parse(layout, value)
+	if err != nil {
+		panic(err)
+	}
+	return parsed
 }
