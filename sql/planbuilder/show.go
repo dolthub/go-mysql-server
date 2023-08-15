@@ -89,7 +89,7 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 	tableName := strings.ToLower(s.Table.Name.String())
 	tableScope, ok := b.buildTablescan(inScope, db, tableName, asOf)
 	if !ok {
-		err := sql.ErrTableNotFound.New()
+		err := sql.ErrTableNotFound.New(tableName)
 		b.handleErr(err)
 	}
 	rt, _ := tableScope.node.(*plan.ResolvedTable)
@@ -561,7 +561,7 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 	tableName := strings.ToLower(s.Table.Name.String())
 	tableScope, ok := b.buildTablescan(inScope, db, tableName, asOf)
 	if !ok {
-		err := sql.ErrTableNotFound.New()
+		err := sql.ErrTableNotFound.New(tableName)
 		b.handleErr(err)
 	}
 	table = tableScope.node

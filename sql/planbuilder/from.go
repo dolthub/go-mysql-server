@@ -621,11 +621,12 @@ func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf
 
 	for _, c := range tab.Schema() {
 		outScope.newColumn(scopeColumn{
-			db:       strings.ToLower(db),
-			table:    strings.ToLower(tab.Name()),
-			col:      strings.ToLower(c.Name),
-			typ:      c.Type,
-			nullable: c.Nullable,
+			db:          strings.ToLower(db),
+			table:       strings.ToLower(tab.Name()),
+			col:         strings.ToLower(c.Name),
+			originalCol: c.Name,
+			typ:         c.Type,
+			nullable:    c.Nullable,
 		})
 	}
 
@@ -642,11 +643,12 @@ func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf
 		for i, c := range sch {
 			// bucket schema fragments into colsets for resolving defaults
 			newCol := scopeColumn{
-				db:       strings.ToLower(db),
-				table:    strings.ToLower(c.Source),
-				col:      strings.ToLower(c.Name),
-				typ:      c.Type,
-				nullable: c.Nullable,
+				db:          strings.ToLower(db),
+				table:       strings.ToLower(c.Source),
+				col:         strings.ToLower(c.Name),
+				originalCol: c.Name,
+				typ:         c.Type,
+				nullable:    c.Nullable,
 			}
 			if !strings.EqualFold(c.Source, startSource) {
 				startSource = c.Source

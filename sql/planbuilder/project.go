@@ -47,7 +47,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 			startLen := len(outScope.cols)
 			for _, c := range inScope.cols {
 				if c.table == tableName || tableName == "" {
-					gf := expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
+					gf := c.scalarGf()
 					exprs = append(exprs, gf)
 					id, ok := inScope.getExpr(gf.String(), true)
 					if !ok {

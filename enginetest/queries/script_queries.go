@@ -15,6 +15,7 @@
 package queries
 
 import (
+	"github.com/dolthub/vitess/go/sqltypes"
 	"time"
 
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -83,6 +84,41 @@ type ScriptTestAssertion struct {
 // Unlike other engine tests, ScriptTests must be self-contained. No other tables are created outside the definition of
 // the tests.
 var ScriptTests = []ScriptTest{
+	{
+		Name: "create table casing",
+		SetUpScript: []string{
+			"create table t (lower varchar(20) primary key, UPPER varchar(20), MiXeD varchar(20), un_der varchar(20), `da-sh` varchar(20));",
+			"insert into t values ('a','b','c','d','e')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select * from t`,
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "lower",
+						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+					},
+					{
+						Name: "UPPER",
+						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+					},
+					{
+						Name: "MiXeD",
+						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+					},
+					{
+						Name: "un_der",
+						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+					},
+					{
+						Name: "da-sh",
+						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+					},
+				},
+				Expected: []sql.Row{{"a", "b", "c", "d", "e"}},
+			},
+		},
+	},
 	{
 		Name: "trigger with signal and user var",
 		SetUpScript: []string{

@@ -69,16 +69,25 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		colName := strings.ToLower(v.Name.String())
 		c, ok := inScope.resolveColumn(tableName, colName, true)
 		if !ok {
-			sysVar, _, ok := b.buildSysVar(v, ast.SetScope_None)
+			sysVar, scope, ok := b.buildSysVar(v, ast.SetScope_None)
 			if ok {
 				return sysVar
 			}
-			if tableName != "" && !inScope.hasTable(tableName) {
-				b.handleErr(sql.ErrTableNotFound.New(tableName))
+			var err error
+			if scope == ast.SetScope_User {
+				err = sql.ErrUnknownUserVariable.New(colName)
+			} else if scope == ast.SetScope_Persist || scope == ast.SetScope_PersistOnly {
+				err = sql.ErrUnknownUserVariable.New(colName)
+			} else if scope == ast.SetScope_Global || scope == ast.SetScope_Session {
+				err = sql.ErrUnknownSystemVariable.New(colName)
+			} else if tableName != "" && !inScope.hasTable(tableName) {
+				err = sql.ErrTableNotFound.New(tableName)
 			} else if tableName != "" {
-				b.handleErr(sql.ErrTableColumnNotFound.New(tableName, colName))
+				err = sql.ErrTableColumnNotFound.New(tableName, colName)
+			} else {
+				err = sql.ErrColumnNotFound.New(v)
 			}
-			b.handleErr(sql.ErrColumnNotFound.New(v))
+			b.handleErr(err)
 		}
 		c.originalCol = v.Name.String()
 		return c.scalarGf()
