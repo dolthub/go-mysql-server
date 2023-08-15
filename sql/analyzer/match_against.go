@@ -59,6 +59,9 @@ func processMatchAgainst(ctx *sql.Context, matchAgainstExpr *expression.MatchAga
 	if !ok {
 		return nil, transform.NewTree, fmt.Errorf("cannot use MATCH ... AGAINST ... on a table that does not declare indexes")
 	}
+	if _, ok = indexedTbl.(sql.StatisticsTable); !ok {
+		return nil, transform.NewTree, fmt.Errorf("cannot use MATCH ... AGAINST ... on a table that does not implement sql.StatisticsTable")
+	}
 
 	// Verify the indexes that have been set
 	ftIndex := matchAgainstExpr.GetIndex()
