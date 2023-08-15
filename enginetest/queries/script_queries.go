@@ -17,6 +17,7 @@ package queries
 import (
 	"time"
 
+	"github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
 
 	gmstime "github.com/dolthub/go-mysql-server/internal/time"
@@ -76,6 +77,10 @@ type ScriptTestAssertion struct {
 
 	// Bindings are variable mappings only used for prepared tests
 	Bindings map[string]sql.Expression
+
+	// VitessBindings are variable mappings only used for prepared tests, allowing us to more closely simulate the
+	// server's wire path in engine tests
+	VitessBindings map[string]*query.BindVariable
 }
 
 // ScriptTests are a set of test scripts to run.
@@ -4527,6 +4532,41 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Query:       "ALTER TABLE mytable DROP COLUMN col2",
 				ExpectedErr: sql.ErrCheckConstraintInvalidatedByColumnAlter,
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolthub-issues/issues/489
+		Name: "Large character data",
+		SetUpScript: []string{
+			"CREATE TABLE `test` (`id` int NOT NULL AUTO_INCREMENT, `data` blob NOT NULL, PRIMARY KEY (`id`))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `INSERT INTO test (data) values (?)`,
+				VitessBindings: map[string]*query.BindVariable{
+					// Vitess chooses VARBINARY as the bindvar type if the client sends CHAR data
+					// If we change how Vitess interprets client bindvar types, we should update this test
+					// Or better yet: have a test harness that uses the server directly
+					"v1": {Type: query.Type_VARBINARY, Value: []byte(
+						"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"")},
+				},
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 1,
+					InsertID:     1,
+				}}},
 			},
 		},
 	},
