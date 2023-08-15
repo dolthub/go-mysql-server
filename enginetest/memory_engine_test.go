@@ -301,7 +301,7 @@ func TestSingleScript(t *testing.T) {
 				},
 				{
 					Query: "select * from t1 order by pk",
-					Expected: []sql.Row{{1, enginetest.MustParseTime(time.DateTime, "2020-01-01 00:00:00")}},
+					Expected: []sql.Row{{1, queries.MustParseTime(time.DateTime, "2020-01-01 00:00:00")}},
 				},
 				{
 					Query: "show create table t2",
@@ -318,7 +318,7 @@ func TestSingleScript(t *testing.T) {
 				},
 				{
 					Query: "select * from t2 order by pk",
-					Expected: []sql.Row{{1, enginetest.MustParseTime(time.RFC3339Nano, "2020-01-01T00:00:00.123000000Z")}},
+					Expected: []sql.Row{{1, queries.MustParseTime(time.RFC3339Nano, "2020-01-01T00:00:00.123000000Z")}},
 				},
 				{
 					Query: "show create table t3",
@@ -335,7 +335,15 @@ func TestSingleScript(t *testing.T) {
 				},
 				{
 					Query: "select * from t3 order by pk",
-					Expected: []sql.Row{{1, enginetest.MustParseTime(time.RFC3339Nano, "2020-01-01T00:00:00.123456000Z")}},
+					Expected: []sql.Row{{1, queries.MustParseTime(time.RFC3339Nano, "2020-01-01T00:00:00.123456000Z")}},
+				},
+				{
+					Query: "create table t4 (pk int primary key, d datetime(-1))",
+					ExpectedErr: sql.ErrSyntaxError,
+				},
+				{
+					Query: "create table t4 (pk int primary key, d datetime(7))",
+					ExpectedErrStr: "DATETIME supports precision from 0 to 6",
 				},
 			},
 		},
