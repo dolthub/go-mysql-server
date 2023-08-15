@@ -15,7 +15,7 @@
 package queries
 
 import (
-	"github.com/dolthub/vitess/go/vt/proto/query"
+	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -32,8 +32,9 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `SELECT * FROM users WHERE JSON_CONTAINS (languages, JSON_ARRAY(?)) ORDER BY users.id LIMIT 1`,
-				Bindings: map[string]*query.BindVariable{
-					"v1": {Value: sql.MustConvertToValue("ZH").Val, Type: sql.MustConvertToValue("ZH").Typ},
+				// CHAR bind vars are converted to VAR_BINARY on the wire path
+				Bindings: map[string]*querypb.BindVariable{
+					"v1": {Type: querypb.Type_VARBINARY, Value: []byte("ZH")},
 				},
 				Expected: []sql.Row{{uint64(1), "Tom", types.JSONDocument{Val: []interface{}{"ZH", "EN"}}}},
 			},

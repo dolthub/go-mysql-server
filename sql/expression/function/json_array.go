@@ -111,13 +111,17 @@ func (j *JSONArray) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
-		if json, ok := val.(types.JSONValue); ok {
-			doc, err := json.(types.JSONValue).Unmarshall(ctx)
+		switch v := val.(type) {
+		case types.JSONValue:
+			doc, err := v.Unmarshall(ctx)
 			if err != nil {
 				return nil, err
 			}
 			val = doc.Val
+		case []byte:
+			val = string(v)
 		}
+
 		resultArray[i] = val
 	}
 

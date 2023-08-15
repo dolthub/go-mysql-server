@@ -41,7 +41,7 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 	pushdownAboveTables := func(n sql.Node, filters *filterSet) (sql.Node, transform.TreeIdentity, error) {
 		return transform.NodeWithCtx(n, filterPushdownAboveTablesChildSelector, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 			switch node := c.Node.(type) {
-			case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
+			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable:
 				table, same, err := pushdownFiltersToAboveTable(ctx, a, node.(sql.NameableNode), scope, filters)
 				if err != nil {
 					return nil, transform.SameTree, err
@@ -260,19 +260,12 @@ func pushdownFiltersToAboveTable(
 	}
 
 	switch tableNode.(type) {
-	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
-		node, _, err := withTable(tableNode, table)
-		if plan.ErrInvalidLookupForIndexedTable.Is(err) {
-			node = tableNode
-		} else if err != nil {
-			return nil, transform.SameTree, err
-		}
-
+	case *plan.ResolvedTable, *plan.TableAlias, *plan.ValueDerivedTable:
 		if pushedDownFilterExpression != nil {
-			return plan.NewFilter(pushedDownFilterExpression, node), transform.NewTree, nil
+			return plan.NewFilter(pushedDownFilterExpression, tableNode), transform.NewTree, nil
 		}
 
-		return node, transform.NewTree, nil
+		return tableNode, transform.SameTree, nil
 	default:
 		return nil, transform.SameTree, ErrInvalidNodeType.New("pushdownFiltersToAboveTable", tableNode)
 	}
