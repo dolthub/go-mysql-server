@@ -848,6 +848,10 @@ func TestInsertScriptsPrepared(t *testing.T) {
 	enginetest.TestInsertScriptsPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
+func TestGeneratedColumns(t *testing.T) {
+	enginetest.TestGeneratedColumns(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
 func TestComplexIndexQueriesPrepared(t *testing.T) {
 	enginetest.TestComplexIndexQueriesPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }

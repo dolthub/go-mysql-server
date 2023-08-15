@@ -27,45 +27,6 @@ var ErrUnsupportedJSONFunction = errors.NewKind("unsupported JSON function: %s")
 // JSON search functions //
 ///////////////////////////
 
-// JSON_CONTAINS_PATH(json_doc, one_or_all, path[, path] ...)
-//
-// JSONContainsPath Returns 0 or 1 to indicate whether a JSON document contains data at a given path or paths. Returns
-// NULL if any argument is NULL. An error occurs if the json_doc argument is not a valid JSON document, any path
-// argument is not a valid path expression, or one_or_all is not 'one' or 'all'. To check for a specific value at a
-// path, use JSON_CONTAINS() instead.
-//
-// The return value is 0 if no specified path exists within the document. Otherwise, the return value depends on the
-// one_or_all argument:
-//   - 'one': 1 if at least one path exists within the document, 0 otherwise.
-//   - 'all': 1 if all paths exist within the document, 0 otherwise.
-//
-// https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html#function_json-contains-path
-type JSONContainsPath struct {
-	sql.Expression
-}
-
-var _ sql.FunctionExpression = JSONContainsPath{}
-
-// NewJSONContainsPath creates a new JSONContainsPath function.
-func NewJSONContainsPath(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONContainsPath{}.FunctionName())
-}
-
-// FunctionName implements sql.FunctionExpression
-func (j JSONContainsPath) FunctionName() string {
-	return "json_contains_path"
-}
-
-// Description implements sql.FunctionExpression
-func (j JSONContainsPath) Description() string {
-	return "returns whether JSON document contains any data at path."
-}
-
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONContainsPath) IsUnsupported() bool {
-	return true
-}
-
 // JSON_KEYS(json_doc[, path])
 //
 // JSONKeys Returns the keys from the top-level value of a JSON object as a JSON array, or, if a path argument is given,

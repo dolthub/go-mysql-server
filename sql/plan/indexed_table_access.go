@@ -329,39 +329,6 @@ func (i *IndexedTableAccess) WithExpressions(exprs ...sql.Expression) (sql.Node,
 	}, nil
 }
 
-// WithTable replaces the underlying ResolvedTable with the one given.
-func (i IndexedTableAccess) WithTable(table sql.Table) (*IndexedTableAccess, error) {
-	nrt, err := i.ResolvedTable.WithTable(table)
-	if err != nil {
-		return nil, err
-	}
-	i.ResolvedTable = nrt
-
-	if t, ok := table.(sql.TableWrapper); ok {
-		table = t.Underlying()
-	}
-
-	_, ok := table.(sql.IndexAddressableTable)
-	if !ok {
-		return nil, fmt.Errorf("table does not support indexed access")
-	}
-
-	var lookup sql.IndexLookup
-	if i.lookup.Index != nil {
-		lookup = i.lookup
-	} else if i.lb != nil {
-		lookup, err = i.lb.GetLookup(i.lb.GetZeroKey())
-		if err != nil {
-			return nil, err
-		}
-	}
-	if lookup.Index.CanSupport(lookup.Ranges...) {
-		return nil, ErrInvalidLookupForIndexedTable.New(sql.DebugString(i.lookup.Ranges))
-	}
-
-	return &i, nil
-}
-
 // Partitions implements sql.Table
 func (i *IndexedTableAccess) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 	return i.Table.LookupPartitions(ctx, i.lookup)

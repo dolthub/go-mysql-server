@@ -115,7 +115,7 @@ func newIndexAnalyzerForNode(ctx *sql.Context, n sql.Node) (*indexAnalyzer, erro
 // IndexesByTable returns all indexes on the table named. The table must be present in the node used to create the
 // analyzer.
 func (r *indexAnalyzer) IndexesByTable(ctx *sql.Context, db, table string) []sql.Index {
-	indexes := r.indexesByTable[table]
+	indexes := r.indexesByTable[strings.ToLower(table)]
 
 	if r.indexRegistry != nil {
 		idxes := r.indexRegistry.IndexesByTable(db, table)

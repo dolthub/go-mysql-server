@@ -17,8 +17,9 @@ package queries
 import (
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
-	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -35,6 +36,14 @@ var JsonScripts = []ScriptTest{
 				Query: `SELECT * FROM users WHERE JSON_CONTAINS (languages, JSON_ARRAY(?)) ORDER BY users.id LIMIT 1`,
 				Bindings: map[string]sql.Expression{
 					"v1": expression.NewLiteral("ZH", types.MustCreateString(query.Type_CHAR, 3, sql.Collation_binary)),
+				},
+				Expected: []sql.Row{{uint64(1), "Tom", types.JSONDocument{Val: []interface{}{"ZH", "EN"}}}},
+			},
+			{
+				Query: `SELECT * FROM users WHERE JSON_CONTAINS (languages, JSON_ARRAY(?)) ORDER BY users.id LIMIT 1`,
+				// CHAR bind vars are converted to VAR_BINARY on the wire path
+				VitessBindings: map[string]*query.BindVariable{
+					"v1": {Type: query.Type_VARBINARY, Value: []byte("ZH")},
 				},
 				Expected: []sql.Row{{uint64(1), "Tom", types.JSONDocument{Val: []interface{}{"ZH", "EN"}}}},
 			},
@@ -563,6 +572,64 @@ var JsonScripts = []ScriptTest{
 			{
 				Query:    "select pk from t where json_extract(col1, '$.items') <> null;",
 				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "json_contains_path returns true if the path exists",
+		SetUpScript: []string{
+			`create table t (pk int primary key, col1 json);`,
+			`insert into t values (1, '{"a": 1}');`,
+			`insert into t values (2, '{"a": 1, "b": 2, "c": {"d": 4}}');`,
+			`insert into t values (3, '{"w": 1, "x": 2, "c": {"d": 4}}');`,
+			`insert into t values (4, '{}');`,
+			`insert into t values (5, null);`,
+		},
+
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select pk, json_contains_path(col1, 'one', '$.a') from t order by pk;",
+				Expected: []sql.Row{
+					{1, true},
+					{2, true},
+					{3, false},
+					{4, false},
+					{5, nil},
+				},
+			},
+			{
+				Query: "select pk, json_contains_path(col1, 'one', '$.a', '$.x', '$.c.d') from t order by pk;",
+				Expected: []sql.Row{
+					{1, true},
+					{2, true},
+					{3, true},
+					{4, false},
+					{5, nil},
+				},
+			},
+			{
+				Query: "select pk, json_contains_path(col1, 'all', '$.a', '$.x') from t order by pk;",
+				Expected: []sql.Row{
+					{1, false},
+					{2, false},
+					{3, false},
+					{4, false},
+					{5, nil},
+				},
+			},
+			{
+				Query: "select pk, json_contains_path(col1, 'all', '$.c.d', '$.x') from t order by pk;",
+				Expected: []sql.Row{
+					{1, false},
+					{2, false},
+					{3, true},
+					{4, false},
+					{5, nil},
+				},
+			},
+			{
+				Query:          "select pk, json_contains_path(col1, 'other', '$.c.d', '$.x') from t order by pk;",
+				ExpectedErrStr: "The oneOrAll argument to json_contains_path may take these values: 'one' or 'all'",
 			},
 		},
 	},
