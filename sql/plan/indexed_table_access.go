@@ -56,9 +56,9 @@ var _ sql.CollationCoercible = (*IndexedTableAccess)(nil)
 // NewIndexedTableAccess returns a new IndexedTableAccess node that will use
 // the LookupBuilder to build lookups. An index lookup will be calculated and
 // applied for the row given in RowIter().
-func NewIndexedTableAccess(rt *ResolvedTable, t sql.IndexedTable, lb *LookupBuilder) *IndexedTableAccess {
+func NewIndexedTableAccess(node TableNode, t sql.IndexedTable, lb *LookupBuilder) *IndexedTableAccess {
 	return &IndexedTableAccess{
-		TableNode: rt,
+		TableNode: node,
 		lb:        lb,
 		Table:     t,
 	}
@@ -66,8 +66,8 @@ func NewIndexedTableAccess(rt *ResolvedTable, t sql.IndexedTable, lb *LookupBuil
 
 // NewIndexedAccessForResolvedTable creates an IndexedTableAccess node if the resolved table embeds
 // an IndexAddressableTable, otherwise returns an error.
-func NewIndexedAccessForResolvedTable(rt *ResolvedTable, lb *LookupBuilder) (*IndexedTableAccess, error) {
-	var table = rt.UnderlyingTable()
+func NewIndexedAccessForResolvedTable(node TableNode, lb *LookupBuilder) (*IndexedTableAccess, error) {
+	var table = node.UnderlyingTable()
 	iaTable, ok := table.(sql.IndexAddressableTable)
 	if !ok {
 		return nil, fmt.Errorf("table is not index addressable: %s", table.Name())
@@ -82,7 +82,7 @@ func NewIndexedAccessForResolvedTable(rt *ResolvedTable, lb *LookupBuilder) (*In
 	}
 	ia := iaTable.IndexedAccess(lookup)
 	return &IndexedTableAccess{
-		TableNode: rt,
+		TableNode: node,
 		lb:        lb,
 		Table:     ia,
 	}, nil

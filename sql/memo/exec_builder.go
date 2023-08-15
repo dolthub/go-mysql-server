@@ -94,7 +94,7 @@ func (b *ExecBuilder) buildLookup(l *Lookup, input sql.Schema, children ...sql.N
 		return nil, err
 	}
 	switch n := children[0].(type) {
-	case *plan.ResolvedTable:
+	case plan.TableNode:
 		ret, err = plan.NewIndexedAccessForResolvedTable(n, plan.NewLookupBuilder(l.Index.SqlIdx(), keyExprs, l.Nullmask))
 	case *plan.TableAlias:
 		ret, err = plan.NewIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), plan.NewLookupBuilder(l.Index.SqlIdx(), keyExprs, l.Nullmask))

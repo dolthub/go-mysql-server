@@ -95,7 +95,7 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 func pushdownIndexToTable(ctx *sql.Context, a *Analyzer, tableNode sql.NameableNode, index sql.Index, keyExpr []sql.Expression, nullmask []bool) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(tableNode, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
-		case *plan.ResolvedTable:
+		case plan.TableNode:
 			table := getTable(tableNode)
 			if table == nil {
 				return n, transform.SameTree, nil
