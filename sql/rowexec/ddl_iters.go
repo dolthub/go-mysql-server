@@ -1565,6 +1565,11 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	// Full-Text indexes will need to be rebuilt
 	hasFullText := hasFullText(ctx, i.alterable)
+	if hasFullText {
+		if err := fulltext.DropColumnFromTables(ctx, i.alterable.(sql.IndexAddressableTable), i.d.Db.(fulltext.Database), i.d.Column); err != nil {
+			return nil, err
+		}
+	}
 
 	// drop constraints that reference the dropped column
 	cat, ok := i.alterable.(sql.CheckAlterableTable)
@@ -1929,7 +1934,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 				return err
 			}
 			for _, fk := range fks {
-				_, ok, err := plan.FindIndexWithPrefix(ctx, fkTable, fk.Columns, false, n.IndexName)
+				_, ok, err := plan.FindFKIndexWithPrefix(ctx, fkTable, fk.Columns, false, n.IndexName)
 				if err != nil {
 					return err
 				}
@@ -1943,7 +1948,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 				return err
 			}
 			for _, parentFk := range parentFks {
-				_, ok, err := plan.FindIndexWithPrefix(ctx, fkTable, parentFk.ParentColumns, true, n.IndexName)
+				_, ok, err := plan.FindFKIndexWithPrefix(ctx, fkTable, parentFk.ParentColumns, true, n.IndexName)
 				if err != nil {
 					return err
 				}
