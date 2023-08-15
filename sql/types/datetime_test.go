@@ -324,7 +324,9 @@ func TestDatetimeString(t *testing.T) {
 		expectedStr string
 	}{
 		{MustCreateDatetimeType(sqltypes.Date), "date"},
-		{MustCreateDatetimeType(sqltypes.Datetime), "datetime(6)"},
+		{MustCreateDatetimeType(sqltypes.Datetime), "datetime(0)"},
+		{datetimeType{baseType: sqltypes.Datetime, precision: 3}, "datetime(3)"},
+		{datetimeType{baseType: sqltypes.Datetime, precision: 6}, "datetime(6)"},
 		{MustCreateDatetimeType(sqltypes.Timestamp), "timestamp(6)"},
 	}
 

@@ -316,15 +316,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 	case "year":
 		return Year, nil
 	case "date":
-		precision := int64(0)
-		if ct.Length != nil {
-			var err error
-			precision, err = strconv.ParseInt(string(ct.Length.Val), 10, 64)
-			if err != nil {
-				return nil, err
-			}
-		}
-		return CreateDatetimeType(sqltypes.Date, int(precision))
+		return CreateDatetimeType(sqltypes.Date, 0)
 	case "time":
 		if ct.Length != nil {
 			length, err := strconv.ParseInt(string(ct.Length.Val), 10, 64)
@@ -344,7 +336,16 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 	case "timestamp":
 		return Timestamp, nil
 	case "datetime":
-		return Datetime, nil
+		precision := int64(0)
+		if ct.Length != nil {
+			var err error
+			precision, err = strconv.ParseInt(string(ct.Length.Val), 10, 64)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		return CreateDatetimeType(sqltypes.Datetime, int(precision))
 	case "enum":
 		collation, err := sql.ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
 		if err != nil {
