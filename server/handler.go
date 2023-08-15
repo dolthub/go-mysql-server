@@ -262,7 +262,7 @@ func (h *Handler) doQuery(
 			ctx.ProcessList.EndQuery(ctx)
 		}
 	}()
-	
+
 	schema, rowIter, err := h.e.QueryNodeWithVitessBindings(ctx, query, parsed, bindings)
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")

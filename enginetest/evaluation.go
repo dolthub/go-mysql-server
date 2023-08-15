@@ -106,7 +106,7 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 				} else {
 					ctx := NewContext(harness)
 					if assertion.VitessBindings != nil {
-						TestQueryWithBindvars(t, ctx, e, harness, assertion.Query, assertion.Expected, assertion.ExpectedColumns, assertion.VitessBindings)						
+						TestQueryWithBindvars(t, ctx, e, harness, assertion.Query, assertion.Expected, assertion.ExpectedColumns, assertion.VitessBindings)
 					} else {
 						TestQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, assertion.ExpectedColumns, assertion.Bindings)
 					}

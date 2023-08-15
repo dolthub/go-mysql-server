@@ -20,7 +20,6 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/pkg/errors"
@@ -35,6 +34,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 	_ "github.com/dolthub/go-mysql-server/sql/variables"
 )
 
@@ -264,7 +264,7 @@ func (e *Engine) QueryNodeWithVitessBindings(ctx *sql.Context, query string, par
 			return nil, nil, err
 		}
 	}
-	
+
 	return e.QueryNodeWithBindings(ctx, query, parsed, sqlBindings)
 }
 
