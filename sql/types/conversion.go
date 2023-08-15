@@ -334,7 +334,20 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 		}
 		return Time, nil
 	case "timestamp":
-		return Timestamp, nil
+		precision := int64(0)
+		if ct.Length != nil {
+			var err error
+			precision, err = strconv.ParseInt(string(ct.Length.Val), 10, 64)
+			if err != nil {
+				return nil, err
+			}
+
+			if precision > 6 || precision < 0 {
+				return nil, fmt.Errorf("TIMESTAMP supports precision from 0 to 6")
+			}
+		}
+
+		return CreateDatetimeType(sqltypes.Timestamp, int(precision))
 	case "datetime":
 		precision := int64(0)
 		if ct.Length != nil {

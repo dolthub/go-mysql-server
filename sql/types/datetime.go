@@ -164,6 +164,8 @@ func (t datetimeType) Convert(v interface{}) (interface{}, sql.ConvertInRange, e
 	return res, sql.InRange, nil
 }
 
+// precisionConversion is a conversion ratio to divide time.Second by to truncate the appropriate amount for the
+// precision of a type with time info
 var precisionConversion = [7]int {
 	1, 10, 100, 1_000, 10_000, 100_000, 1_000_000,
 }
@@ -404,7 +406,7 @@ func (t datetimeType) String() string {
 	case sqltypes.Datetime:
 		return fmt.Sprintf("datetime(%d)", t.precision)
 	case sqltypes.Timestamp:
-		return "timestamp(6)"
+		return fmt.Sprintf("timestamp(%d)", t.precision)
 	default:
 		panic(sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime"))
 	}
