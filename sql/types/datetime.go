@@ -15,6 +15,7 @@
 package types
 
 import (
+	"fmt"
 	"math"
 	"reflect"
 	"time"
@@ -88,13 +89,14 @@ var (
 
 type datetimeType struct {
 	baseType query.Type
+	precision int
 }
 
 var _ sql.DatetimeType = datetimeType{}
 var _ sql.CollationCoercible = datetimeType{}
 
 // CreateDatetimeType creates a Type dealing with all temporal types that are not TIME nor YEAR.
-func CreateDatetimeType(baseType query.Type) (sql.DatetimeType, error) {
+func CreateDatetimeType(baseType query.Type, precision int) (sql.DatetimeType, error) {
 	switch baseType {
 	case sqltypes.Date, sqltypes.Datetime, sqltypes.Timestamp:
 		return datetimeType{
@@ -106,7 +108,7 @@ func CreateDatetimeType(baseType query.Type) (sql.DatetimeType, error) {
 
 // MustCreateDatetimeType is the same as CreateDatetimeType except it panics on errors.
 func MustCreateDatetimeType(baseType query.Type) sql.DatetimeType {
-	dt, err := CreateDatetimeType(baseType)
+	dt, err := CreateDatetimeType(baseType, 0)
 	if err != nil {
 		panic(err)
 	}
@@ -390,7 +392,7 @@ func (t datetimeType) String() string {
 	case sqltypes.Date:
 		return "date"
 	case sqltypes.Datetime:
-		return "datetime(6)"
+		return fmt.Sprintf("datetime(%d)", t.precision)
 	case sqltypes.Timestamp:
 		return "timestamp(6)"
 	default:

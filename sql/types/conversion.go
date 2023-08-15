@@ -316,7 +316,15 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 	case "year":
 		return Year, nil
 	case "date":
-		return Date, nil
+		precision := int64(0)
+		if ct.Length != nil {
+			var err error
+			precision, err = strconv.ParseInt(string(ct.Length.Val), 10, 64)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return CreateDatetimeType(sqltypes.Date, int(precision))
 	case "time":
 		if ct.Length != nil {
 			length, err := strconv.ParseInt(string(ct.Length.Val), 10, 64)

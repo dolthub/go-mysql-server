@@ -246,6 +246,18 @@ var CreateTableScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "datetime default precision",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (pk int primary key, d datetime)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{},
+			},
+		},
+	},
 }
 
 var CreateTableAutoIncrementTests = []ScriptTest{

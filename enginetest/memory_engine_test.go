@@ -275,11 +275,24 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
-	var scripts = []queries.ScriptTest{}
+	// t.Skip()
+	var scripts = []queries.ScriptTest{
+		{
+			Name: "datetime default precision",
+			SetUpScript: []string{
+				"CREATE TABLE t1 (pk int primary key, d datetime)",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query: "show create table t1",
+					Expected: []sql.Row{},
+				},
+			},
+		},
+	}
 
 	for _, test := range scripts {
-		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental)
+		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)

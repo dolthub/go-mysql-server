@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dolthub/vitess/go/sqltypes"
+	sqltypes "github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -74,14 +74,14 @@ func TestDatetimeCreate(t *testing.T) {
 		expectedType datetimeType
 		expectedErr  bool
 	}{
-		{sqltypes.Date, datetimeType{sqltypes.Date}, false},
-		{sqltypes.Datetime, datetimeType{sqltypes.Datetime}, false},
-		{sqltypes.Timestamp, datetimeType{sqltypes.Timestamp}, false},
+		{baseType: sqltypes.Date, expectedType: datetimeType{baseType: sqltypes.Date}},
+		{baseType: sqltypes.Datetime, expectedType: datetimeType{baseType: sqltypes.Datetime}},
+		{baseType: sqltypes.Timestamp, expectedType: datetimeType{baseType: sqltypes.Timestamp}},
 	}
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test.baseType), func(t *testing.T) {
-			typ, err := CreateDatetimeType(test.baseType)
+			typ, err := CreateDatetimeType(test.baseType, 0)
 			if test.expectedErr {
 				assert.Error(t, err)
 			} else {
@@ -130,7 +130,7 @@ func TestDatetimeCreateInvalidBaseTypes(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test.baseType), func(t *testing.T) {
-			typ, err := CreateDatetimeType(test.baseType)
+			typ, err := CreateDatetimeType(test.baseType, 0)
 			if test.expectedErr {
 				assert.Error(t, err)
 			} else {
