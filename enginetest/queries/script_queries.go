@@ -15,9 +15,9 @@
 package queries
 
 import (
-	"github.com/dolthub/vitess/go/sqltypes"
 	"time"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
 
