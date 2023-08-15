@@ -134,6 +134,15 @@ var AnsiQuotesTests = []ScriptTest{
 				Expected: []sql.Row{{"view1", "CREATE VIEW `view1` AS select public_keys.\"public\", public_keys.\"count\" from public_keys", "utf8mb4", "utf8mb4_0900_bin"}},
 			},
 			{
+				// TODO: MySQL returns view definitions according to the session's current
+				//       SQL_MODE settings, but we currently don't normalize the view
+				//       definition based on the current setting for ANSI_QUOTES. We should
+				//       fix that, remove the test above, and unskip this test.
+				Skip:     true,
+				Query:    `show create table view1;`,
+				Expected: []sql.Row{{"view1", "CREATE VIEW `view1` AS select public_keys.`public`, public_keys.`count` from public_keys", "utf8mb4", "utf8mb4_0900_bin"}},
+			},
+			{
 				Query:    `select "public", "count" from view1;`,
 				Expected: []sql.Row{{"public", 1}},
 			},
