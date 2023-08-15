@@ -210,6 +210,41 @@ func (b *Builder) buildSysVar(colName *ast.ColName, scopeHint ast.SetScope) (sql
 func (b *Builder) simplifySetExpr(name *ast.ColName, varScope ast.SetScope, val ast.Expr, sysVarType sql.Type) (sql.Expression, bool) {
 	// can |val| be nested?
 	switch val := val.(type) {
+	case *ast.SQLVal:
+		if val.Type != ast.StrVal {
+			return nil, false
+		}
+		e := expression.NewLiteral(string(val.Val), types.Text)
+		res, err := e.Eval(b.ctx, nil)
+		if err != nil {
+			b.handleErr(err)
+		}
+		setVal, ok := res.(string)
+		if !ok {
+			return nil, false
+		}
+
+		switch strings.ToLower(setVal) {
+		case ast.KeywordString(ast.ON):
+			return expression.NewLiteral(true, types.Boolean), true
+		case ast.KeywordString(ast.TRUE):
+			return expression.NewLiteral(true, types.Boolean), true
+		case ast.KeywordString(ast.OFF):
+			return expression.NewLiteral(false, types.Boolean), true
+		case ast.KeywordString(ast.FALSE):
+			return expression.NewLiteral(false, types.Boolean), true
+		default:
+		}
+
+		if sysVarType == nil {
+			return nil, false
+		}
+
+		enum, _, err := sysVarType.Convert(setVal)
+		if err != nil {
+			b.handleErr(err)
+		}
+		return expression.NewLiteral(enum, sysVarType), true
 	case *ast.ColName:
 		// convert and eval
 		// todo check whether right side needs variable replacement

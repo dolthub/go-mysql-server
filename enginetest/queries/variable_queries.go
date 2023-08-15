@@ -22,6 +22,12 @@ import (
 
 var VariableQueries = []ScriptTest{
 	{
+		Name:        "use string name for foreign_key checks",
+		SetUpScript: []string{},
+		Query:       "set @@foreign_key_checks = off;",
+		Expected:    []sql.Row{{}},
+	},
+	{
 		Name: "set system variables",
 		SetUpScript: []string{
 			"set @@auto_increment_increment = 100, sql_select_limit = 1",

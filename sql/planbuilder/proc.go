@@ -201,7 +201,7 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 		db = b.resolveDb(b.ViewCtx().DbName)
 	} else if dbName := c.ProcName.Qualifier.String(); dbName != "" {
 		db = b.resolveDb(dbName)
-	} else {
+	} else if b.ctx.GetCurrentDatabase() != "" {
 		db = b.currentDb()
 	}
 
