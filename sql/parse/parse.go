@@ -2925,8 +2925,18 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 		return nil, err
 	}
 
-	extra := ""
+	generatedVal, err := convertDefaultExpression(ctx, cd.Type.GeneratedExpr)
+	if err != nil {
+		return nil, err
+	}
+	if generatedVal != nil {
+		generatedVal.Literal = false
+		generatedVal.ReturnNil = true
+	}
 
+	stored := bool(cd.Type.Stored)
+
+	extra := ""
 	if cd.Type.Autoincrement {
 		extra = "auto_increment"
 	}
@@ -2955,6 +2965,8 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 		AutoIncrement: bool(cd.Type.Autoincrement),
 		Comment:       comment,
 		Extra:         extra,
+		Generated:     generatedVal,
+		Virtual:       generatedVal != nil && !stored,
 	}, nil
 }
 

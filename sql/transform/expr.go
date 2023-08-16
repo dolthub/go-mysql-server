@@ -228,7 +228,11 @@ func SchemaWithDefaults(schema sql.Schema, defaults []sql.Expression) sql.Schema
 func WrappedColumnDefaults(schema sql.Schema) []sql.Expression {
 	defs := make([]sql.Expression, len(schema))
 	for i, col := range schema {
-		defs[i] = expression.WrapExpression(col.Default)
+		defaultVal := col.Default
+		if defaultVal == nil && col.Generated != nil {
+			defaultVal = col.Generated
+		}
+		defs[i] = expression.WrapExpression(defaultVal)
 	}
 	return defs
 }

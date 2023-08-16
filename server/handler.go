@@ -19,7 +19,6 @@ import (
 	"io"
 	"net"
 	"regexp"
-	"strconv"
 	"sync"
 	"time"
 
@@ -38,7 +37,6 @@ import (
 	"github.com/dolthub/go-mysql-server/internal/sockstate"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -51,8 +49,6 @@ var ErrRowTimeout = errors.NewKind("row read wait bigger than connection timeout
 
 // ErrConnectionWasClosed will be returned if we try to use a previously closed connection
 var ErrConnectionWasClosed = errors.NewKind("connection was closed")
-
-var ErrUnsupportedOperation = errors.NewKind("unsupported operation")
 
 const rowsBatch = 128
 
@@ -179,112 +175,6 @@ func (h *Handler) ComQuery(
 	return err
 }
 
-func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Expression, error) {
-	res := make(map[string]sql.Expression, len(bindings))
-	for k, v := range bindings {
-		v, err := sqltypes.NewValue(v.Type, v.Value)
-		if err != nil {
-			return nil, err
-		}
-		switch {
-		case v.Type() == sqltypes.Year:
-			v, _, err := types.Year.Convert(string(v.ToBytes()))
-			if err != nil {
-				return nil, err
-			}
-			res[k] = expression.NewLiteral(v, types.Year)
-		case sqltypes.IsSigned(v.Type()):
-			v, err := strconv.ParseInt(string(v.ToBytes()), 0, 64)
-			if err != nil {
-				return nil, err
-			}
-			t := types.Int64
-			c, _, err := t.Convert(v)
-			if err != nil {
-				return nil, err
-			}
-			res[k] = expression.NewLiteral(c, t)
-		case sqltypes.IsUnsigned(v.Type()):
-			v, err := strconv.ParseUint(string(v.ToBytes()), 0, 64)
-			if err != nil {
-				return nil, err
-			}
-			t := types.Uint64
-			c, _, err := t.Convert(v)
-			if err != nil {
-				return nil, err
-			}
-			res[k] = expression.NewLiteral(c, t)
-		case sqltypes.IsFloat(v.Type()):
-			v, err := strconv.ParseFloat(string(v.ToBytes()), 64)
-			if err != nil {
-				return nil, err
-			}
-			t := types.Float64
-			c, _, err := t.Convert(v)
-			if err != nil {
-				return nil, err
-			}
-			res[k] = expression.NewLiteral(c, t)
-		case v.Type() == sqltypes.Decimal:
-			v, _, err := types.InternalDecimalType.Convert(string(v.ToBytes()))
-			if err != nil {
-				return nil, err
-			}
-			res[k] = expression.NewLiteral(v, types.InternalDecimalType)
-		case v.Type() == sqltypes.Bit:
-			t := types.MustCreateBitType(types.BitTypeMaxBits)
-			v, _, err := t.Convert(v.ToBytes())
-			if err != nil {
-				return nil, err
-			}
-			res[k] = expression.NewLiteral(v, t)
-		case v.Type() == sqltypes.Null:
-			res[k] = expression.NewLiteral(nil, types.Null)
-		case v.Type() == sqltypes.Blob || v.Type() == sqltypes.VarBinary || v.Type() == sqltypes.Binary:
-			t, err := types.CreateBinary(v.Type(), int64(len(v.ToBytes())))
-			if err != nil {
-				return nil, err
-			}
-			v, _, err := t.Convert(v.ToBytes())
-			if err != nil {
-				return nil, err
-			}
-			res[k] = expression.NewLiteral(v, t)
-		case v.Type() == sqltypes.Text || v.Type() == sqltypes.VarChar || v.Type() == sqltypes.Char:
-			t, err := types.CreateStringWithDefaults(v.Type(), int64(len(v.ToBytes())))
-			if err != nil {
-				return nil, err
-			}
-			v, _, err := t.Convert(v.ToBytes())
-			if err != nil {
-				return nil, err
-			}
-			res[k] = expression.NewLiteral(v, t)
-		case v.Type() == sqltypes.Date || v.Type() == sqltypes.Datetime || v.Type() == sqltypes.Timestamp:
-			t, err := types.CreateDatetimeType(v.Type())
-			if err != nil {
-				return nil, err
-			}
-			v, _, err := t.Convert(string(v.ToBytes()))
-			if err != nil {
-				return nil, err
-			}
-			res[k] = expression.NewLiteral(v, t)
-		case v.Type() == sqltypes.Time:
-			t := types.Time
-			v, _, err := t.Convert(string(v.ToBytes()))
-			if err != nil {
-				return nil, err
-			}
-			res[k] = expression.NewLiteral(v, t)
-		default:
-			return nil, ErrUnsupportedOperation.New()
-		}
-	}
-	return res, nil
-}
-
 var queryLoggingRegex = regexp.MustCompile(`[\r\n\t ]+`)
 
 func (h *Handler) doQuery(
@@ -361,15 +251,6 @@ func (h *Handler) doQuery(
 
 	ctx.GetLogger().Tracef("beginning execution")
 
-	var sqlBindings map[string]sql.Expression
-	if len(bindings) > 0 {
-		sqlBindings, err = bindingsToExprs(bindings)
-		if err != nil {
-			ctx.GetLogger().WithError(err).Errorf("Error processing bindings")
-			return remainder, err
-		}
-	}
-
 	oCtx := ctx
 	eg, ctx := ctx.NewErrgroup()
 
@@ -382,7 +263,7 @@ func (h *Handler) doQuery(
 		}
 	}()
 
-	schema, rowIter, err := h.e.QueryNodeWithBindings(ctx, query, parsed, sqlBindings)
+	schema, rowIter, err := h.e.QueryNodeWithVitessBindings(ctx, query, parsed, bindings)
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
 		return remainder, err
