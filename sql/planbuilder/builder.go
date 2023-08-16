@@ -15,11 +15,14 @@ type Builder struct {
 	tabId           tableId
 	multiDDL        bool
 	viewCtx         *ViewContext
+	procCtx         *ProcContext
 	triggerCtx      *TriggerContext
 	insertActive    bool
 	nesting         int
 }
 
+// ViewContext overwrites database root source of nested
+// calls.
 type ViewContext struct {
 	AsOf   interface{}
 	DbName string
@@ -32,9 +35,11 @@ type TriggerContext struct {
 	ResolveErr       error
 }
 
+// ProcContext allows nested CALLs to use the same database for resolving
+// procedure definitions without changing the underlying database roots.
 type ProcContext struct {
-	Active     bool
-	ResolveErr error
+	AsOf   interface{}
+	DbName string
 }
 
 func New(ctx *sql.Context, cat sql.Catalog) *Builder {
@@ -46,6 +51,13 @@ func (b *Builder) ViewCtx() *ViewContext {
 		b.viewCtx = &ViewContext{}
 	}
 	return b.viewCtx
+}
+
+func (b *Builder) ProcCtx() *ProcContext {
+	if b.procCtx == nil {
+		b.procCtx = &ProcContext{}
+	}
+	return b.procCtx
 }
 
 func (b *Builder) TriggerCtx() *TriggerContext {

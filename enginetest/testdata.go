@@ -85,27 +85,6 @@ func createVersionedTables(t *testing.T, harness Harness, myDb, foo sql.Database
 			require.NoError(t, versionedHarness.SnapshotTable(versionedDb, "myhistorytable", "2019-01-01"))
 		})
 
-		jan1 := time.Date(2019, time.January, 1, 0, 0, 0, 0, time.UTC)
-		wrapInTransaction(t, myDb, harness, func() {
-			table = versionedHarness.NewTableAsOf(versionedDb, "myhistorytable", sql.NewPrimaryKeySchema(sql.Schema{
-				{Name: "i", Type: types.Int64, Source: "myhistorytable", PrimaryKey: true},
-				{Name: "s", Type: types.Text, Source: "myhistorytable"},
-			}), jan1)
-
-			if err == nil {
-				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(int64(1), "first row, 1"),
-					sql.NewRow(int64(2), "second row, 1"),
-					sql.NewRow(int64(3), "third row, 1"))
-			} else {
-				t.Logf("Warning: could not create table %s: %s", "myhistorytable", err)
-			}
-		})
-
-		wrapInTransaction(t, myDb, harness, func() {
-			require.NoError(t, versionedHarness.SnapshotTable(versionedDb, "myhistorytable", jan1))
-		})
-
 		wrapInTransaction(t, myDb, harness, func() {
 			table = versionedHarness.NewTableAsOf(versionedDb, "myhistorytable", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "i", Type: types.Int64, Source: "myhistorytable", PrimaryKey: true},

@@ -569,6 +569,8 @@ func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf
 		asOfLit = b.buildAsOfLit(inScope, asof.Time)
 	} else if asof := b.ViewCtx().AsOf; asof != nil {
 		asOfLit = asof
+	} else if asof := b.ProcCtx().AsOf; asof != nil {
+		asOfLit = asof
 	}
 
 	var tab sql.Table

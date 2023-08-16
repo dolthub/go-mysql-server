@@ -192,12 +192,16 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 	var asOf sql.Expression = nil
 	if c.AsOf != nil {
 		asOf = b.buildAsOfExpr(inScope, c.AsOf)
+	} else if b.ProcCtx().AsOf != nil {
+		asOf = expression.NewLiteral(b.ProcCtx().AsOf, types.Text)
 	} else if b.ViewCtx().AsOf != nil {
 		asOf = expression.NewLiteral(b.ViewCtx().AsOf, types.Text)
 	}
 
 	var db sql.Database = nil
-	if b.ViewCtx().DbName != "" {
+	if b.ProcCtx().DbName != "" {
+		db = b.resolveDb(b.ProcCtx().DbName)
+	} else if b.ViewCtx().DbName != "" {
 		db = b.resolveDb(b.ViewCtx().DbName)
 	} else if dbName := c.ProcName.Qualifier.String(); dbName != "" {
 		db = b.resolveDb(dbName)

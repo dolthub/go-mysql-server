@@ -1575,6 +1575,20 @@ Project
      └─ columns: [x y z]
 `,
 		},
+		{
+			Query: "SELECT *  FROM xy AS OF convert('2018-01-01', DATETIME) AS s ORDER BY x",
+			ExpectedPlan: `
+Project
+ ├─ columns: [s.x:1!null, s.y:2!null, s.z:3!null]
+ └─ Sort(s.x:1!null ASC nullsFirst)
+     └─ Project
+         ├─ columns: [s.x:1!null, s.y:2!null, s.z:3!null]
+         └─ TableAlias(s)
+             └─ Table
+                 ├─ name: xy
+                 └─ columns: [x y z]
+`,
+		},
 	}
 
 	var w *bufio.Writer
