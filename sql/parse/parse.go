@@ -67,17 +67,39 @@ const (
 	colKeyFulltextKey
 )
 
-// Parse parses the given SQL sentence and returns the corresponding node.
+// Parse parses the given SQL |query| and returns the corresponding node. The
+// query will be parsed with the current session's SQL mode. Use the ParseWithOptions
+// function if you want to control what SQL mode is used for parsing the query.
 func Parse(ctx *sql.Context, query string) (sql.Node, error) {
-	n, _, _, err := parse(ctx, query, false)
+	sqlMode, err := sql.LoadSqlMode(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	n, _, _, err := parse(ctx, query, false, sqlMode.ParserOptions())
 	return n, err
 }
 
-func ParseOne(ctx *sql.Context, query string) (sql.Node, string, string, error) {
-	return parse(ctx, query, true)
+// ParseWithOptions parses the specified |query| using the specified |options| which
+// control parser behavior (e.g. ANSI_QUOTES mode).
+func ParseWithOptions(ctx *sql.Context, query string, options sqlparser.ParserOptions) (sql.Node, error) {
+	n, _, _, err := parse(ctx, query, false, options)
+	return n, err
 }
 
-func parse(ctx *sql.Context, query string, multi bool) (sql.Node, string, string, error) {
+// ParseOne parses the first SQL statement from |query| and returns the sql.Node, the
+// statement that was parsed, and the remainder of |query| that was not parsed. The
+// statement will be parsed with the current session's SQL mode.
+func ParseOne(ctx *sql.Context, query string) (sql.Node, string, string, error) {
+	sqlMode, err := sql.LoadSqlMode(ctx)
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	return parse(ctx, query, true, sqlMode.ParserOptions())
+}
+
+func parse(ctx *sql.Context, query string, multi bool, options sqlparser.ParserOptions) (sql.Node, string, string, error) {
 	span, ctx := ctx.Span("parse", trace.WithAttributes(attribute.String("query", query)))
 	defer span.End()
 
@@ -94,10 +116,10 @@ func parse(ctx *sql.Context, query string, multi bool) (sql.Node, string, string
 
 	parsed = s
 	if !multi {
-		stmt, err = sqlparser.Parse(s)
+		stmt, err = sqlparser.ParseWithOptions(s, options)
 	} else {
 		var ri int
-		stmt, ri, err = sqlparser.ParseOne(s)
+		stmt, ri, err = sqlparser.ParseOneWithOptions(s, options)
 		if ri != 0 && ri < len(s) {
 			parsed = s[:ri]
 			parsed = strings.TrimSpace(parsed)
@@ -462,7 +484,12 @@ func convertPrepare(ctx *sql.Context, n *sqlparser.Prepare) (sql.Node, error) {
 		}
 	}
 
-	childStmt, err := sqlparser.Parse(expr)
+	sqlMode, err := sql.LoadSqlMode(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	childStmt, err := sqlparser.ParseWithOptions(expr, sqlMode.ParserOptions())
 	if err != nil {
 		return nil, err
 	}

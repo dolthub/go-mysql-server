@@ -19,8 +19,16 @@ const maxAnalysisIterations = 8
 // ErrMaxAnalysisIters is thrown when the analysis iterations are exceeded
 var ErrMaxAnalysisIters = errors.NewKind("exceeded max analysis iterations (%d)")
 
-// Parse parses the given SQL sentence and returns the corresponding node.
+// Parse parses the given SQL |query| using the default parsing settings and returns the corresponding node.
 func Parse(ctx *sql.Context, cat sql.Catalog, query string) (ret sql.Node, err error) {
+	sqlMode, err := sql.LoadSqlMode(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWithOptions(ctx, cat, query, sqlMode.ParserOptions())
+}
+
+func ParseWithOptions(ctx *sql.Context, cat sql.Catalog, query string, options sqlparser.ParserOptions) (ret sql.Node, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			switch r := r.(type) {
@@ -31,15 +39,20 @@ func Parse(ctx *sql.Context, cat sql.Catalog, query string) (ret sql.Node, err e
 			}
 		}
 	}()
-	n, _, _, err := parse(ctx, cat, query, false)
+	n, _, _, err := parse(ctx, cat, query, false, options)
 	return n, err
 }
 
 func ParseOne(ctx *sql.Context, cat sql.Catalog, query string) (sql.Node, string, string, error) {
-	return parse(ctx, cat, query, true)
+	sqlMode, err := sql.LoadSqlMode(ctx)
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	return parse(ctx, cat, query, true, sqlMode.ParserOptions())
 }
 
-func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool) (sql.Node, string, string, error) {
+func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool, options sqlparser.ParserOptions) (sql.Node, string, string, error) {
 	span, ctx := ctx.Span("parse", trace.WithAttributes(attribute.String("query", query)))
 	defer span.End()
 
@@ -56,10 +69,10 @@ func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool) (sql.Nod
 
 	parsed = s
 	if !multi {
-		stmt, err = sqlparser.Parse(s)
+		stmt, err = sqlparser.ParseWithOptions(s, options)
 	} else {
 		var ri int
-		stmt, ri, err = sqlparser.ParseOne(s)
+		stmt, ri, err = sqlparser.ParseOneWithOptions(s, options)
 		if ri != 0 && ri < len(s) {
 			parsed = s[:ri]
 			parsed = strings.TrimSpace(parsed)

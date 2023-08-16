@@ -56,7 +56,8 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 					return nil, transform.SameTree, verr
 				}
 				if vdok {
-					query, qerr := parse.Parse(ctx, viewDef.TextDefinition)
+					query, qerr := parse.ParseWithOptions(ctx, viewDef.TextDefinition,
+						sql.NewSqlModeFromString(viewDef.SqlMode).ParserOptions())
 					if qerr != nil {
 						return nil, transform.SameTree, qerr
 					}

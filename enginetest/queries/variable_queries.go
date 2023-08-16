@@ -159,8 +159,8 @@ var VariableQueries = []ScriptTest{
 	{
 		Name: "set system variable with expressions",
 		SetUpScript: []string{
-			`set lc_messages = "123", @@auto_increment_increment = 1`,
-			`set lc_messages = concat(@@lc_messages, "456"), @@auto_increment_increment = @@auto_increment_increment + 3`,
+			`set lc_messages = '123', @@auto_increment_increment = 1`,
+			`set lc_messages = concat(@@lc_messages, '456'), @@auto_increment_increment = @@auto_increment_increment + 3`,
 		},
 		Query: "SELECT @@lc_messages, @@auto_increment_increment",
 		Expected: []sql.Row{

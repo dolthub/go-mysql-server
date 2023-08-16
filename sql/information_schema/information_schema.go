@@ -1876,6 +1876,10 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO: This should be the SQL_MODE at the time the trigger was created, not the current session's SQL_MODE.
+	//       We track that information now, but this code needs to be refactored a bit in order to display it, since
+	//       trigger definitions are converted to trigger plan nodes and then used for generating output.
 	sysVal, err := ctx.Session.GetSessionVariable(ctx, "sql_mode")
 	if err != nil {
 		return nil, err
@@ -1906,7 +1910,8 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 			var triggerPlans []*plan.CreateTrigger
 			for _, trigger := range triggers {
-				parsedTrigger, err := parse.Parse(ctx, trigger.CreateStatement)
+				parsedTrigger, err := parse.ParseWithOptions(ctx, trigger.CreateStatement,
+					NewSqlModeFromString(trigger.SqlMode).ParserOptions())
 				if err != nil {
 					return nil, err
 				}
@@ -2111,7 +2116,8 @@ func viewsRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 			if !hasGlobalShowViewPriv && !hasDbShowViewPriv && !privTblSet.Has(PrivilegeType_ShowView) {
 				continue
 			}
-			parsedView, err := parse.Parse(ctx, view.CreateViewStatement)
+			parsedView, err := parse.ParseWithOptions(ctx, view.CreateViewStatement,
+				NewSqlModeFromString(view.SqlMode).ParserOptions())
 			if err != nil {
 				return nil, err
 			}

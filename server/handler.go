@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/netutil"
 	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/log"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/go-kit/kit/metrics/discard"
@@ -60,6 +61,15 @@ const (
 	MultiStmtModeOff MultiStmtMode = 0
 	MultiStmtModeOn  MultiStmtMode = 1
 )
+
+func init() {
+	// Set the log.Error and log.Errorf functions in Vitess so that any errors
+	// logged by Vitess will appear in our logs. Without this, errors from Vitess
+	// can be swallowed (e.g. any parse error for a ComPrepare event is silently
+	// swallowed without this wired up), which makes debugging failures harder.
+	log.Error = logrus.StandardLogger().Error
+	log.Errorf = logrus.StandardLogger().Errorf
+}
 
 // Handler is a connection handler for a SQLe engine, implementing the Vitess mysql.Handler interface.
 type Handler struct {
@@ -105,6 +115,7 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error
 		analyzed, err = h.e.PrepareQuery(ctx, query)
 	}
 	if err != nil {
+		logrus.WithField("query", query).Errorf("unable to prepare query: %s", err.Error())
 		err := sql.CastSQLError(err)
 		return nil, err
 	}
@@ -127,7 +138,16 @@ func (h *Handler) ComResetConnection(c *mysql.Conn) {
 }
 
 func (h *Handler) ParserOptionsForConnection(c *mysql.Conn) (sqlparser.ParserOptions, error) {
-	return sqlparser.ParserOptions{}, nil
+	ctx, err := h.sm.NewContext(c)
+	if err != nil {
+		return sqlparser.ParserOptions{}, err
+	}
+
+	sqlMode, err := sql.LoadSqlMode(ctx)
+	if err != nil {
+		return sqlparser.ParserOptions{}, err
+	}
+	return sqlMode.ParserOptions(), nil
 }
 
 // ConnectionClosed reports that a connection has been closed.

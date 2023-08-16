@@ -68,7 +68,8 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 						procToRegister = cp.Procedure
 					}
 				} else {
-					parsedProcedure, err = parse.Parse(ctx, procedure.CreateStatement)
+					parsedProcedure, err = parse.ParseWithOptions(ctx, procedure.CreateStatement,
+						sql.NewSqlModeFromString(procedure.SqlMode).ParserOptions())
 					if err != nil {
 						return nil, err
 					}
@@ -341,9 +342,9 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				}
 				parsedProcedure, _, _, err = b.Parse(procedure.CreateStatement, false)
 			} else {
-				parsedProcedure, err = parse.Parse(ctx, procedure.CreateStatement)
+				parsedProcedure, err = parse.ParseWithOptions(ctx, procedure.CreateStatement,
+					sql.NewSqlModeFromString(procedure.SqlMode).ParserOptions())
 			}
-
 			if err != nil {
 				return nil, transform.SameTree, err
 			}

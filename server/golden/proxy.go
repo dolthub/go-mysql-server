@@ -42,6 +42,10 @@ type MySqlProxy struct {
 	conns   map[uint32]proxyConn
 }
 
+func (h MySqlProxy) ParserOptionsForConnection(_ *mysql.Conn) (sqlparser.ParserOptions, error) {
+	return sqlparser.ParserOptions{}, nil
+}
+
 type proxyConn struct {
 	*dbr.Connection
 	*logrus.Entry
@@ -199,10 +203,6 @@ func (h MySqlProxy) ComQuery(
 		conn.Errorf("Failed to process MySQL results: %s", err)
 	}
 	return err
-}
-
-func (h MySqlProxy) ParserOptionsForConnection(c *mysql.Conn) (sqlparser.ParserOptions, error) {
-	return sqlparser.ParserOptions{}, nil
 }
 
 func (h MySqlProxy) processQuery(

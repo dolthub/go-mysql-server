@@ -432,7 +432,17 @@ func (d *Database) CreateView(ctx *sql.Context, name string, selectStatement, cr
 		return sql.ErrExistingView.New(name)
 	}
 
-	d.views[name] = sql.ViewDefinition{Name: name, TextDefinition: selectStatement, CreateViewStatement: createViewStmt}
+	sqlMode, err := sql.LoadSqlMode(ctx)
+	if err != nil {
+		return err
+	}
+
+	d.views[name] = sql.ViewDefinition{
+		Name:                name,
+		TextDefinition:      selectStatement,
+		CreateViewStatement: createViewStmt,
+		SqlMode:             sqlMode.String(),
+	}
 	return nil
 }
 
@@ -440,7 +450,7 @@ func (d *Database) CreateView(ctx *sql.Context, name string, selectStatement, cr
 func (d *Database) DropView(ctx *sql.Context, name string) error {
 	_, ok := d.views[name]
 	if !ok {
-		return sql.ErrViewDoesNotExist.New(name)
+		return sql.ErrViewDoesNotExist.New(d.name, name)
 	}
 
 	delete(d.views, name)
