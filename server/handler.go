@@ -720,16 +720,30 @@ func row2ToSQL(s sql.Schema, row sql.Row2) ([]sqltypes.Value, error) {
 func schemaToFields(ctx *sql.Context, s sql.Schema) []*query.Field {
 	fields := make([]*query.Field, len(s))
 	for i, c := range s {
+		var flags query.MySqlFlag
 		var charset uint32 = mysql.CharacterSetUtf8
 		if types.IsBinaryType(c.Type) {
 			charset = mysql.CharacterSetBinary
 		}
+		if !c.Nullable {
+			flags = flags | query.MySqlFlag_NOT_NULL_FLAG
+		}
+		if c.AutoIncrement {
+			flags = flags | query.MySqlFlag_AUTO_INCREMENT_FLAG
+		}
+		if c.PrimaryKey {
+			flags = flags | query.MySqlFlag_PRI_KEY_FLAG
+		}
 
 		fields[i] = &query.Field{
+			Database:     c.DatabaseSource,
+			OrgTable:     c.Source,
+			Table:        c.Source,
 			Name:         c.Name,
 			Type:         c.Type.Type(),
 			Charset:      charset,
 			ColumnLength: c.Type.MaxTextResponseByteLength(ctx),
+			Flags:        uint32(flags),
 		}
 
 		if types.IsDecimal(c.Type) {
