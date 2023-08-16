@@ -108,7 +108,7 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	date, _, err := types.Datetime.Convert(val)
+	date, _, err := types.DatetimeMaxPrecision.Convert(val)
 	if err != nil {
 		ctx.Warn(1292, err.Error())
 		return nil, nil
@@ -203,7 +203,7 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	date, _, err = types.Datetime.Convert(date)
+	date, _, err = types.DatetimeMaxPrecision.Convert(date)
 	if err != nil {
 		ctx.Warn(1292, err.Error())
 		return nil, nil
@@ -325,7 +325,7 @@ func (t *DatetimeConversion) String() string {
 }
 
 func (t *DatetimeConversion) Type() sql.Type {
-	return types.Datetime
+	return types.DatetimeMaxPrecision
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -342,7 +342,7 @@ func (t *DatetimeConversion) Eval(ctx *sql.Context, r sql.Row) (interface{}, err
 	if err != nil {
 		return nil, err
 	}
-	ret, _, err := types.Datetime.Convert(e)
+	ret, _, err := types.DatetimeMaxPrecision.Convert(e)
 	return ret, err
 }
 
@@ -440,7 +440,7 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		return nil, nil
 	}
 
-	date, _, err = types.Datetime.Convert(date)
+	date, _, err = types.DatetimeMaxPrecision.Convert(date)
 	if err != nil {
 		// If we aren't able to convert the value to a date, return 0 and set
 		// a warning to match MySQL's behavior
@@ -473,7 +473,7 @@ var _ sql.FunctionExpression = (*FromUnixtime)(nil)
 var _ sql.CollationCoercible = (*FromUnixtime)(nil)
 
 func NewFromUnixtime(arg sql.Expression) sql.Expression {
-	return &FromUnixtime{NewUnaryFunc(arg, "FROM_UNIXTIME", types.Datetime)}
+	return &FromUnixtime{NewUnaryFunc(arg, "FROM_UNIXTIME", types.DatetimeMaxPrecision)}
 }
 
 // Description implements sql.FunctionExpression
@@ -575,11 +575,11 @@ func dateOffsetType(input sql.Expression, interval *expression.Interval) sql.Typ
 	// set type flags
 	isInputDate := inputType == types.Date
 	isInputTime := inputType == types.Time
-	isInputDatetime := inputType == types.Datetime || inputType == types.Timestamp
+	isInputDatetime := types.IsDatetimeType(inputType) || types.IsTimestampType(inputType)
 
 	// result is Datetime if expression is Datetime or Timestamp
 	if isInputDatetime {
-		return types.Datetime
+		return types.DatetimeMaxPrecision
 	}
 
 	// determine what kind of interval we're dealing with
@@ -598,7 +598,7 @@ func dateOffsetType(input sql.Expression, interval *expression.Interval) sql.Typ
 	if isInputDate {
 		if isHmsInterval || isMixedInterval {
 			// if interval contains time components, result is Datetime
-			return types.Datetime
+			return types.DatetimeMaxPrecision
 		} else {
 			// otherwise result is Date
 			return types.Date
@@ -609,7 +609,7 @@ func dateOffsetType(input sql.Expression, interval *expression.Interval) sql.Typ
 	if isInputTime {
 		if isYmdInterval || isMixedInterval {
 			// if interval contains date components, result is Datetime
-			return types.Datetime
+			return types.DatetimeMaxPrecision
 		} else {
 			// otherwise result is Time
 			return types.Time
@@ -623,7 +623,7 @@ func dateOffsetType(input sql.Expression, interval *expression.Interval) sql.Typ
 			return types.Date
 		} else {
 			// otherwise result is Datetime
-			return types.Datetime
+			return types.DatetimeMaxPrecision
 		}
 	}
 

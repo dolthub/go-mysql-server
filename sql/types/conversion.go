@@ -61,7 +61,7 @@ func ApproximateTypeFromValue(val interface{}) sql.Type {
 	case Timespan, time.Duration:
 		return Time
 	case time.Time:
-		return Datetime
+		return DatetimeMaxPrecision
 	case float32:
 		return Float32
 	case float64:
