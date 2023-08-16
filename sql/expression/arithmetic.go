@@ -119,7 +119,7 @@ func (a *Arithmetic) DebugString() string {
 
 // IsNullable implements the sql.Expression interface.
 func (a *Arithmetic) IsNullable() bool {
-	if a.Type() == types.Timestamp || a.Type() == types.Datetime {
+	if types.IsDatetimeType(a.Type()) || types.IsTimestampType(a.Type()) {
 		return true
 	}
 
@@ -140,7 +140,8 @@ func (a *Arithmetic) Type() sql.Type {
 
 	// applies for + and - ops
 	if isInterval(a.Left) || isInterval(a.Right) {
-		return types.Datetime
+		// TODO: we might need to truncate precision here
+		return types.DatetimeMaxPrecision
 	}
 
 	if types.IsTime(lTyp) && types.IsTime(rTyp) {

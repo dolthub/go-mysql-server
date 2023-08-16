@@ -671,9 +671,9 @@ func TestSchemaToFields(t *testing.T) {
 		{Name: "bit12", Type: types.MustCreateBitType(12)},
 
 		// Dates
-		{Name: "datetime", Type: types.MustCreateDatetimeType(sqltypes.Datetime)},
-		{Name: "timestamp", Type: types.MustCreateDatetimeType(sqltypes.Timestamp)},
-		{Name: "date", Type: types.MustCreateDatetimeType(sqltypes.Date)},
+		{Name: "datetime", Type: types.MustCreateDatetimeType(sqltypes.Datetime, 0)},
+		{Name: "timestamp", Type: types.MustCreateDatetimeType(sqltypes.Timestamp, 0)},
+		{Name: "date", Type: types.MustCreateDatetimeType(sqltypes.Date, 0)},
 		{Name: "time", Type: types.Time},
 		{Name: "year", Type: types.Year},
 
