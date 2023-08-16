@@ -79,8 +79,10 @@ var (
 
 	// Date is a date with day, month and year.
 	Date = MustCreateDatetimeType(sqltypes.Date, 0)
-	// Datetime is a date and a time
+	// Datetime is a date and a time with default precision (no fractional seconds).
 	Datetime = MustCreateDatetimeType(sqltypes.Datetime, 0)
+	// DatetimeMaxPrecision is a date and a time with maximum precision
+	DatetimeMaxPrecision = MustCreateDatetimeType(sqltypes.Datetime, 6)
 	// Timestamp is an UNIX timestamp.
 	Timestamp = MustCreateDatetimeType(sqltypes.Timestamp, 0)
 
@@ -99,6 +101,9 @@ var _ sql.CollationCoercible = datetimeType{}
 func CreateDatetimeType(baseType query.Type, precision int) (sql.DatetimeType, error) {
 	switch baseType {
 	case sqltypes.Date, sqltypes.Datetime, sqltypes.Timestamp:
+		if precision < 0 || precision > 6 {
+			return nil, fmt.Errorf("precision must be between 0 and 6, got %d", precision)
+		}
 		return datetimeType{
 			baseType: baseType,
 			precision: precision,
