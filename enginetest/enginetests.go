@@ -2164,8 +2164,8 @@ func TestCreateTable(t *testing.T, harness Harness) {
 			{"val", "int", "YES", "", "NULL", ""}}, nil, nil)
 	})
 
-	t.Skip("primary key lengths are not stored properly")
 	for _, tt := range queries.BrokenCreateTableQueries {
+		t.Skip("primary key lengths are not stored properly")
 		RunWriteQueryTest(t, harness, tt)
 	}
 }
