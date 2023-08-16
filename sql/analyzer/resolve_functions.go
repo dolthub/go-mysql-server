@@ -68,6 +68,13 @@ func resolveTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *plan.Sc
 			return nil, transform.SameTree, err
 		}
 
+		if ctf, isCTF := newInstance.(sql.CatalogTableFunction); isCTF {
+			newInstance, err = ctf.WithCatalog(a.Catalog)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+		}
+
 		return newInstance, transform.NewTree, nil
 	})
 }
