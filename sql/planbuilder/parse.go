@@ -92,6 +92,7 @@ func (b *Builder) Parse(query string, multi bool) (ret sql.Node, parsed, remaind
 		return nil, "", "", ErrMaxAnalysisIters.New(maxAnalysisIterations)
 	}
 	defer func() {
+		b.nesting--
 		if r := recover(); r != nil {
 			switch r := r.(type) {
 			case parseErr:
