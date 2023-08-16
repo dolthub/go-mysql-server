@@ -74,7 +74,7 @@ func TestTimeDiff(t *testing.T) {
 		{
 			"valid mismatch",
 			expression.NewLiteral(time.Date(2008, time.December, 29, 1, 1, 1, 2, time.Local), types.Timestamp),
-			expression.NewLiteral(time.Date(2008, time.December, 30, 1, 1, 1, 2, time.Local), types.Datetime),
+			expression.NewLiteral(time.Date(2008, time.December, 30, 1, 1, 1, 2, time.Local), types.DatetimeMaxPrecision),
 			toTimespan("-24:00:00"),
 			false,
 		},
@@ -108,8 +108,8 @@ func TestTimeDiff(t *testing.T) {
 		},
 		{
 			"datetime types",
-			expression.NewLiteral(time.Date(2008, time.December, 29, 0, 0, 0, 0, time.Local), types.Datetime),
-			expression.NewLiteral(time.Date(2008, time.December, 30, 0, 0, 0, 0, time.Local), types.Datetime),
+			expression.NewLiteral(time.Date(2008, time.December, 29, 0, 0, 0, 0, time.Local), types.DatetimeMaxPrecision),
+			expression.NewLiteral(time.Date(2008, time.December, 30, 0, 0, 0, 0, time.Local), types.DatetimeMaxPrecision),
 			toTimespan("-24:00:00"),
 			false,
 		},
@@ -122,7 +122,7 @@ func TestTimeDiff(t *testing.T) {
 		},
 		{
 			"datetime string mix types",
-			expression.NewLiteral(time.Date(2008, time.December, 29, 0, 0, 0, 0, time.UTC), types.Datetime),
+			expression.NewLiteral(time.Date(2008, time.December, 29, 0, 0, 0, 0, time.UTC), types.DatetimeMaxPrecision),
 			expression.NewLiteral("2008-12-30 00:00:00", types.Text),
 			toTimespan("-24:00:00"),
 			false,
@@ -175,7 +175,7 @@ func TestDateDiff(t *testing.T) {
 		expected interface{}
 		err      *errors.Kind
 	}{
-		{"time and text types, ", types.Datetime, types.Text, sql.NewRow(dt, "2019-12-28"), int64(3), nil},
+		{"time and text types, ", types.DatetimeMaxPrecision, types.Text, sql.NewRow(dt, "2019-12-28"), int64(3), nil},
 		{"text types, diff day, less than 24 hours time diff", types.Text, types.Text, sql.NewRow("2007-12-31 23:58:59", "2007-12-30 23:59:59"), int64(1), nil},
 		{"text types, same day, 23:59:59 time diff", types.Text, types.Text, sql.NewRow("2007-12-30 23:59:59", "2007-12-30 00:00:00"), int64(0), nil},
 		{"text types, diff day, 1 min time diff", types.Text, types.Text, sql.NewRow("2007-12-31 00:00:59", "2007-12-30 23:59:59"), int64(1), nil},
@@ -224,7 +224,7 @@ func TestTimestampDiff(t *testing.T) {
 	}{
 		{"invalid unit", types.Text, types.Text, types.Text, sql.NewRow("MILLISECOND", "2007-12-30 23:59:59", "2007-12-31 00:00:00"), nil, true},
 		{"microsecond", types.Text, types.Text, types.Text, sql.NewRow("MICROSECOND", "2007-12-30 23:59:59", "2007-12-31 00:00:00"), int64(1000000), false},
-		{"microsecond - small number", types.Text, types.Datetime, types.Datetime, sql.NewRow("MICROSECOND",
+		{"microsecond - small number", types.Text, types.DatetimeMaxPrecision, types.DatetimeMaxPrecision, sql.NewRow("MICROSECOND",
 			time.Date(2017, 11, 12, 16, 16, 25, 2*int(time.Microsecond), time.Local),
 			time.Date(2017, 11, 12, 16, 16, 25, 333*int(time.Microsecond), time.Local)), int64(331), false},
 		{"microsecond - negative", types.Text, types.Text, types.Text, sql.NewRow("SQL_TSI_MICROSECOND", "2017-11-12 16:16:25.000022 +0000 UTC", "2017-11-12 16:16:25.000000 +0000 UTC"), int64(-22), false},

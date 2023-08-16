@@ -123,7 +123,6 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 		if pks != nil {
 			showCreate.PrimaryKeySchema = pks.PrimaryKeySchema()
 		}
-		// todo load defaults
 		outScope.node = b.modifySchemaTarget(outScope, showCreate, rt)
 	}
 	return

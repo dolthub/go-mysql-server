@@ -1831,8 +1831,16 @@ func TestParseColumnTypeString(t *testing.T) {
 			types.Timestamp,
 		},
 		{
+			"TIMESTAMP(6)",
+			types.TimestampMaxPrecision,
+		},
+		{
 			"DATETIME",
 			types.Datetime,
+		},
+		{
+			"DATETIME(6)",
+			types.DatetimeMaxPrecision,
 		},
 	}
 
