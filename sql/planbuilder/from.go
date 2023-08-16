@@ -635,7 +635,7 @@ func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf
 	}
 
 	if dt, _ := rt.Table.(sql.DynamicColumnsTable); dt != nil {
-		// the columns table schema is dynamic
+		// the columns table has to resolve all columns in every table
 		sch, err := dt.AllColumns(b.ctx)
 		if err != nil {
 			b.handleErr(err)

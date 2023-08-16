@@ -105,6 +105,9 @@ func (c *ColumnsTable) PartitionRows(context *sql.Context, partition sql.Partiti
 
 	return columnsRowIter(context, c.catalog, c.allColsWithDefaultValue)
 }
+func (c *ColumnsTable) HasDynamicColumns() bool {
+	return true
+}
 
 // AllColumns returns all columns in the catalog, renamed to reflect their database and table names
 func (c *ColumnsTable) AllColumns(ctx *sql.Context) (sql.Schema, error) {

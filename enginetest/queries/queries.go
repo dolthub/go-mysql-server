@@ -7798,7 +7798,6 @@ SELECT * FROM my_cte;`,
 	)
     ORDER BY c0;
 `,
-		//SkipPrepared: true,
 		Expected: []sql.Row{
 			{4},
 		},
@@ -8623,11 +8622,10 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       `SELECT * FROM mytable WHERE s REGEXP("*main.go")`,
 		ExpectedErr: expression.ErrInvalidRegexp,
 	},
-	// todo: we should be case-sensitive and reject SUB_S as a valid field
-	//{
-	//	Query:       `SELECT SUBSTRING(s, 1, 10) AS sub_s, SUBSTRING(SUB_S, 2, 3) AS sub_sub_s FROM mytable`,
-	//	ExpectedErr: sql.ErrMisusedAlias,
-	//},
+	{
+		Query:       `SELECT SUBSTRING(s, 1, 10) AS sub_s, SUBSTRING(SUB_S, 2, 3) AS sub_sub_s FROM mytable`,
+		ExpectedErr: sql.ErrMisusedAlias,
+	},
 	{
 		Query:       "SELECT pk, (SELECT max(pk) FROM one_pk b WHERE b.pk <= one_pk.pk) FROM one_pk opk ORDER BY 1",
 		ExpectedErr: sql.ErrTableNotFound,

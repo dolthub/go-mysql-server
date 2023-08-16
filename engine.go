@@ -371,9 +371,8 @@ func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, bindings 
 	if err != nil {
 		err2 := clearAutocommitTransaction(ctx)
 		if err2 != nil {
-			err = errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
+			return nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
 		}
-
 		return nil, nil, err
 	}
 
@@ -420,7 +419,7 @@ func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, bindings 
 		if err != nil {
 			err2 := clearAutocommitTransaction(ctx)
 			if err2 != nil {
-				err = errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
+				return nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
 			}
 
 			return nil, nil, err
@@ -486,7 +485,7 @@ func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, bindings 
 	if err != nil {
 		err2 := clearAutocommitTransaction(ctx)
 		if err2 != nil {
-			err = errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
+			return nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
 		}
 
 		return nil, nil, err
@@ -496,7 +495,7 @@ func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, bindings 
 	if err != nil {
 		err2 := clearAutocommitTransaction(ctx)
 		if err2 != nil {
-			err = errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
+			return nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
 		}
 
 		return nil, nil, err

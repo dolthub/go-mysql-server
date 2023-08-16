@@ -1,6 +1,7 @@
 package planbuilder
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
@@ -28,6 +29,32 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 	var exprs []sql.Expression
 	for _, se := range selectExprs {
 		pe := b.selectExprToExpression(inScope, se)
+
+		// TODO two passes for symbol res and semantic validation
+		var aRef string
+		inScopeAliasRef := transform.InspectExpr(pe, func(e sql.Expression) bool {
+			var id columnId
+			switch e := e.(type) {
+			case *expression.GetField:
+				if e.Table() == "" {
+					id = columnId(e.Index())
+					aRef = e.Name()
+				}
+			case *expression.Alias:
+				id = columnId(e.Id())
+				aRef = e.Name()
+			}
+			if aRef != "" {
+				collisionId, ok := tempScope.exprs[strings.ToLower(aRef)]
+				return ok && id == collisionId
+			}
+			return false
+		})
+		if inScopeAliasRef {
+			err := sql.ErrMisusedAlias.New(aRef)
+			b.handleErr(err)
+		}
+
 		switch e := pe.(type) {
 		case *expression.GetField:
 			exprs = append(exprs, e)
