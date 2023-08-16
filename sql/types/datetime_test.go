@@ -323,11 +323,11 @@ func TestDatetimeString(t *testing.T) {
 		typ         sql.Type
 		expectedStr string
 	}{
-		{MustCreateDatetimeType(sqltypes.Date), "date"},
-		{MustCreateDatetimeType(sqltypes.Datetime), "datetime(0)"},
+		{MustCreateDatetimeType(sqltypes.Date, 0), "date"},
+		{MustCreateDatetimeType(sqltypes.Datetime, 0), "datetime(0)"},
 		{datetimeType{baseType: sqltypes.Datetime, precision: 3}, "datetime(3)"},
 		{datetimeType{baseType: sqltypes.Datetime, precision: 6}, "datetime(6)"},
-		{MustCreateDatetimeType(sqltypes.Timestamp), "timestamp(6)"},
+		{MustCreateDatetimeType(sqltypes.Timestamp, 0), "timestamp(6)"},
 	}
 
 	for _, test := range tests {
@@ -339,10 +339,10 @@ func TestDatetimeString(t *testing.T) {
 }
 
 func TestDatetimeZero(t *testing.T) {
-	_, ok := MustCreateDatetimeType(sqltypes.Date).Zero().(time.Time)
+	_, ok := MustCreateDatetimeType(sqltypes.Date, 0).Zero().(time.Time)
 	require.True(t, ok)
-	_, ok = MustCreateDatetimeType(sqltypes.Datetime).Zero().(time.Time)
+	_, ok = MustCreateDatetimeType(sqltypes.Datetime, 0).Zero().(time.Time)
 	require.True(t, ok)
-	_, ok = MustCreateDatetimeType(sqltypes.Timestamp).Zero().(time.Time)
+	_, ok = MustCreateDatetimeType(sqltypes.Timestamp, 0).Zero().(time.Time)
 	require.True(t, ok)
 }

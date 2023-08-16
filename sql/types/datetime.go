@@ -78,11 +78,11 @@ var (
 	zeroTime = time.Unix(-62167219200, 0).UTC()
 
 	// Date is a date with day, month and year.
-	Date = MustCreateDatetimeType(sqltypes.Date)
+	Date = MustCreateDatetimeType(sqltypes.Date, 0)
 	// Datetime is a date and a time
-	Datetime = MustCreateDatetimeType(sqltypes.Datetime)
+	Datetime = MustCreateDatetimeType(sqltypes.Datetime, 0)
 	// Timestamp is an UNIX timestamp.
-	Timestamp = MustCreateDatetimeType(sqltypes.Timestamp)
+	Timestamp = MustCreateDatetimeType(sqltypes.Timestamp, 0)
 
 	datetimeValueType = reflect.TypeOf(time.Time{})
 )
@@ -108,8 +108,8 @@ func CreateDatetimeType(baseType query.Type, precision int) (sql.DatetimeType, e
 }
 
 // MustCreateDatetimeType is the same as CreateDatetimeType except it panics on errors.
-func MustCreateDatetimeType(baseType query.Type) sql.DatetimeType {
-	dt, err := CreateDatetimeType(baseType, 0)
+func MustCreateDatetimeType(baseType query.Type, precision int) sql.DatetimeType {
+	dt, err := CreateDatetimeType(baseType, precision)
 	if err != nil {
 		panic(err)
 	}
@@ -404,9 +404,15 @@ func (t datetimeType) String() string {
 	case sqltypes.Date:
 		return "date"
 	case sqltypes.Datetime:
-		return fmt.Sprintf("datetime(%d)", t.precision)
+		if t.precision > 0 {
+			return fmt.Sprintf("datetime(%d)", t.precision)
+		}
+		return "datetime"
 	case sqltypes.Timestamp:
-		return fmt.Sprintf("timestamp(%d)", t.precision)
+		if t.precision > 0 {
+			return fmt.Sprintf("timestamp(%d)", t.precision)
+		}
+		return "timestamp"
 	default:
 		panic(sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime"))
 	}
