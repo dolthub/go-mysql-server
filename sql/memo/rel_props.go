@@ -123,7 +123,7 @@ func (p *relProps) populateFds() {
 		var indexes []sql.Index
 		switch n := rel.(type) {
 		case *TableAlias:
-			rt, ok := n.Table.Child.(*plan.ResolvedTable)
+			rt, ok := n.Table.Child.(plan.TableNode)
 			if !ok {
 				break
 			}
