@@ -259,7 +259,7 @@ func (t *TimestampConversion) String() string {
 }
 
 func (t *TimestampConversion) Type() sql.Type {
-	return types.Timestamp
+	return types.TimestampMaxPrecision
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -276,7 +276,7 @@ func (t *TimestampConversion) Eval(ctx *sql.Context, r sql.Row) (interface{}, er
 	if err != nil {
 		return nil, err
 	}
-	ret, _, err := types.Timestamp.Convert(e)
+	ret, _, err := types.TimestampMaxPrecision.Convert(e)
 	return ret, err
 }
 

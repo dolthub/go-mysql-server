@@ -83,9 +83,9 @@ var (
 	Datetime = MustCreateDatetimeType(sqltypes.Datetime, 0)
 	// DatetimeMaxPrecision is a date and a time with maximum precision
 	DatetimeMaxPrecision = MustCreateDatetimeType(sqltypes.Datetime, 6)
-	// Timestamp is an UNIX timestamp with default precision (no fractional seconds).
+	// Timestamp is a UNIX timestamp with default precision (no fractional seconds).
 	Timestamp = MustCreateDatetimeType(sqltypes.Timestamp, 0)
-	// TimestampMaxPrecision is an UNIX timestamp with maximum precision
+	// TimestampMaxPrecision is a UNIX timestamp with maximum precision
 	TimestampMaxPrecision = MustCreateDatetimeType(sqltypes.Timestamp, 6)
 	
 	datetimeValueType = reflect.TypeOf(time.Time{})
