@@ -270,7 +270,7 @@ func validateValueCount(columnNames []string, values sql.Node) error {
 	case *plan.Values:
 		for _, exprTuple := range node.ExpressionTuples {
 			if len(exprTuple) != len(columnNames) {
-				return plan.ErrInsertIntoMismatchValueCount.New()
+				return sql.ErrInsertIntoMismatchValueCount.New()
 			}
 		}
 	case *plan.LoadData:
@@ -279,12 +279,12 @@ func validateValueCount(columnNames []string, values sql.Node) error {
 			dataColLen = len(node.Schema())
 		}
 		if len(columnNames) != dataColLen {
-			return plan.ErrInsertIntoMismatchValueCount.New()
+			return sql.ErrInsertIntoMismatchValueCount.New()
 		}
 	default:
 		// Parser assures us that this will be some form of SelectStatement, so no need to type check it
 		if len(columnNames) != len(values.Schema()) {
-			return plan.ErrInsertIntoMismatchValueCount.New()
+			return sql.ErrInsertIntoMismatchValueCount.New()
 		}
 	}
 	return nil

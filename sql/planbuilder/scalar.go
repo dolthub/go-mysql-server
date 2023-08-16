@@ -89,7 +89,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 			}
 			b.handleErr(err)
 		}
-		c.originalCol = v.Name.String()
+		c = c.withOriginal(v.Name.String())
 		return c.scalarGf()
 	case *ast.FuncExpr:
 		name := v.Name.Lowered()

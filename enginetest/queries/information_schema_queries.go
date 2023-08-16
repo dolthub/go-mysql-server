@@ -15,49 +15,64 @@
 package queries
 
 import (
-	"github.com/dolthub/vitess/go/sqltypes"
-
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 var InfoSchemaQueries = []QueryTest{
 	{
-		Query: `select table_name from information_schema.tables limit 1;`,
+		Query: `SELECT 
+     table_name, index_name, comment, non_unique, GROUP_CONCAT(column_name ORDER BY seq_in_index) AS COLUMNS 
+   FROM information_schema.statistics 
+   WHERE table_schema='mydb' AND table_name='mytable' AND index_name!="PRIMARY" 
+   GROUP BY index_name;`,
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "TABLE_NAME",
+				Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "INDEX_NAME",
+				Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "COMMENT",
+				Type: types.MustCreateString(sqltypes.VarChar, 8, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "NON_UNIQUE",
+				Type: types.Int32,
+			},
+			{
+				Name: "COLUMNS",
+				Type: types.Text,
+			},
+		},
+		Expected: []sql.Row{
+			{"mytable", "idx_si", "", 1, "s,i"},
+			{"mytable", "mytable_i_s", "", 1, "i,s"},
+			{"mytable", "mytable_s", "", 0, "s"},
+		},
+	},
+	{
+		Query: `select table_name from information_schema.tables where table_name = 'mytable' limit 1;`,
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "TABLE_NAME",
 				Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default),
 			},
 		},
+		Expected: []sql.Row{{"mytable"}},
 	},
 	{
-		Query: `select * from information_schema.tables limit 1;`,
+		Query: `select table_catalog, table_schema, table_name from information_schema.tables where table_name = 'mytable' limit 1;`,
 		ExpectedColumns: sql.Schema{
 			{Name: "TABLE_CATALOG", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
 			{Name: "TABLE_SCHEMA", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
 			{Name: "TABLE_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
-			{Name: "COLUMN_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
-			{Name: "ORDINAL_POSITION", Type: types.Uint32},
-			{Name: "COLUMN_DEFAULT", Type: types.Text},
-			{Name: "IS_NULLABLE", Type: types.MustCreateString(sqltypes.VarChar, 3, sql.Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, types.MustCreateString(sqltypes.VarChar, 3, sql.Collation_Information_Schema_Default), false)},
-			{Name: "DATA_TYPE", Type: types.LongText},
-			{Name: "CHARACTER_MAXIMUM_LENGTH", Type: types.Int64},
-			{Name: "CHARACTER_OCTET_LENGTH", Type: types.Int64},
-			{Name: "NUMERIC_PRECISION", Type: types.Uint64},
-			{Name: "NUMERIC_SCALE", Type: types.Uint64},
-			{Name: "DATETIME_PRECISION", Type: types.Uint32},
-			{Name: "CHARACTER_SET_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
-			{Name: "COLLATION_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
-			{Name: "COLUMN_TYPE", Type: types.MediumText},
-			{Name: "COLUMN_KEY", Type: types.MustCreateEnumType([]string{"", "PRI", "UNI", "MUL"}, sql.Collation_Information_Schema_Default)},
-			{Name: "EXTRA", Type: types.MustCreateString(sqltypes.VarChar, 256, sql.Collation_Information_Schema_Default)},
-			{Name: "PRIVILEGES", Type: types.MustCreateString(sqltypes.VarChar, 154, sql.Collation_Information_Schema_Default)},
-			{Name: "COLUMN_COMMENT", Type: types.Text},
-			{Name: "GENERATION_EXPRESSION", Type: types.LongText},
-			{Name: "SRS_ID", Type: types.Uint32},
 		},
+		Expected: []sql.Row{{"def", "mydb", "mytable"}},
 	},
 	{
 		Query: `select table_name from information_schema.tables where table_schema = 'information_schema' order by table_name;`,

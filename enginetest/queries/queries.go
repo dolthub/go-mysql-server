@@ -8339,6 +8339,14 @@ var VersionedQueries = []QueryTest{
 		},
 	},
 	{
+		Query: "SELECT *  FROM myhistorytable AS OF convert('2019-01-01', DATETIME) AS foo ORDER BY i",
+		Expected: []sql.Row{
+			{int64(1), "first row, 1"},
+			{int64(2), "second row, 1"},
+			{int64(3), "third row, 1"},
+		},
+	},
+	{
 		Query: "SELECT *  FROM myhistorytable AS OF '2019-01-02' foo ORDER BY i",
 		Expected: []sql.Row{
 			{int64(1), "first row, 2"},

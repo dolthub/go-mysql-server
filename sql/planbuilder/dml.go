@@ -135,7 +135,7 @@ func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []
 		triggerUnknownTable := (len(columnNames) == 0 && len(vt) > 0) && (len(b.TriggerCtx().UnresolvedTables) > 0)
 
 		if len(vt) != len(columnNames) && !noExprs && !triggerUnknownTable {
-			err := fmt.Errorf("insert values don't match columns: %#v", vt)
+			err := sql.ErrInsertIntoMismatchValueCount.New()
 			b.handleErr(err)
 		}
 		exprs := make([]sql.Expression, len(columnNames))

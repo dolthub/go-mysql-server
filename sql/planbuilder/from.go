@@ -558,7 +558,9 @@ func (b *Builder) buildJSONTable(inScope *scope, t *ast.JSONTableExpr) (outScope
 func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf) (outScope *scope, ok bool) {
 	outScope = inScope.push()
 
-	if db == "" {
+	if b.ViewCtx().DbName != "" {
+		db = b.ViewCtx().DbName
+	} else if db == "" {
 		db = b.ctx.GetCurrentDatabase()
 	}
 
@@ -681,12 +683,12 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 		}
 		if vdok {
 			outerAsOf := b.ViewCtx().AsOf
-			outerDb := b.currentDatabase
+			outerDb := b.ViewCtx().DbName
 			b.ViewCtx().AsOf = asOf
-			b.currentDatabase = database
+			b.ViewCtx().DbName = database.Name()
 			defer func() {
 				b.ViewCtx().AsOf = outerAsOf
-				b.currentDatabase = outerDb
+				b.ViewCtx().DbName = outerDb
 			}()
 			node, _, _, err := b.Parse(viewDef.TextDefinition, false)
 			if err != nil {

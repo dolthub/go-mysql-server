@@ -849,6 +849,8 @@ var (
 
 	// ErrGeneratedColumnValue is returned when a value is provided for a generated column
 	ErrGeneratedColumnValue = errors.NewKind("The value specified for generated column %q in table %q is not allowed.")
+
+	ErrInsertIntoMismatchValueCount = errors.NewKind("number of values does not match number of columns provided")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the

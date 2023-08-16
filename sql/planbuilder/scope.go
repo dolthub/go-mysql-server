@@ -457,6 +457,14 @@ func (c scopeColumn) empty() bool {
 	return c.id == 0
 }
 
+func (c scopeColumn) withOriginal(col string) scopeColumn {
+	if c.db != sql.InformationSchemaDatabaseName {
+		// info schema columns always presented as uppercase
+		c.originalCol = col
+	}
+	return c
+}
+
 // scalarGf returns a getField reference to this column's expression.
 func (c scopeColumn) scalarGf() sql.Expression {
 	if c.scalar != nil {

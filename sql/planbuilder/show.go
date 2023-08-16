@@ -2,16 +2,15 @@ package planbuilder
 
 import (
 	"fmt"
-	"strings"
-
-	"github.com/dolthub/vitess/go/sqltypes"
-	ast "github.com/dolthub/vitess/go/vt/sqlparser"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/sqltypes"
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
+	"strings"
+	"time"
 )
 
 func (b *Builder) buildShow(inScope *scope, s *ast.Show, query string) (outScope *scope) {
@@ -426,20 +425,24 @@ func (b *Builder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *sco
 	return
 }
 
-func (b *Builder) buildAsOfLit(inScope *scope, time ast.Expr) string {
-	expr := b.buildAsOfExpr(inScope, time)
+func (b *Builder) buildAsOfLit(inScope *scope, t ast.Expr) interface{} {
+	expr := b.buildAsOfExpr(inScope, t)
 	res, err := expr.Eval(b.ctx, nil)
 	if err != nil {
 		b.handleErr(err)
 	}
-	asOfVal, ok := res.(string)
-	if ok {
-		return asOfVal
+	switch res.(type) {
+	case string, time.Time:
+		return res
 	}
 
-	err = sql.ErrInvalidAsOfExpression.New(time)
+	if res != nil {
+		err = sql.ErrInvalidAsOfExpression.New(res)
+	} else {
+		err = sql.ErrInvalidAsOfExpression.New(t)
+	}
 	b.handleErr(err)
-	return ""
+	return nil
 }
 
 func (b *Builder) buildAsOfExpr(inScope *scope, time ast.Expr) sql.Expression {
@@ -462,12 +465,9 @@ func (b *Builder) buildAsOfExpr(inScope *scope, time ast.Expr) sql.Expression {
 			err := sql.ErrInvalidAsOfExpression.New(v)
 			b.handleErr(err)
 		}
-		return b.buildScalar(b.newScope(), v)
 	default:
 	}
-	err := sql.ErrInvalidAsOfExpression.New(time)
-	b.handleErr(err)
-	return nil
+	return b.buildScalar(b.newScope(), time)
 }
 
 func (b *Builder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *scope) {
