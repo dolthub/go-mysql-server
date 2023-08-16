@@ -123,6 +123,10 @@ func MustCreateDatetimeType(baseType query.Type, precision int) sql.DatetimeType
 	return dt
 }
 
+func (t datetimeType) Precision() int {
+	return t.precision
+}
+
 // Compare implements Type interface.
 func (t datetimeType) Compare(a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
