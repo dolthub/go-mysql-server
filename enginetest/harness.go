@@ -47,11 +47,6 @@ type Harness interface {
 	NewEngine(*testing.T) (*sqle.Engine, error)
 }
 
-type VersionedHarness interface {
-	Harness
-	Version() sql.AnalyzerVersion
-}
-
 // ClientHarness allows for integrators to test user privileges, as mock clients are used to test functionality.
 type ClientHarness interface {
 	Harness

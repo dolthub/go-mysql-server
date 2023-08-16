@@ -181,7 +181,7 @@ func FixFieldIndexesForExpressions(ctx *sql.Context, logFn func(string, ...any),
 		schemas = append(schemas, child.Schema())
 	}
 
-	if len(schemas) < 1 && ctx.Version == sql.VersionExperimental {
+	if len(schemas) < 1 {
 		newExprs, same, err := FixFieldIndexesOnExpressions(scope, logFn, nil, ne.Expressions()...)
 		if same || err != nil {
 			return node, transform.SameTree, err
@@ -191,7 +191,6 @@ func FixFieldIndexesForExpressions(ctx *sql.Context, logFn func(string, ...any),
 			return node, transform.SameTree, nil
 		}
 		return newNode, transform.NewTree, err
-
 	}
 
 	n, sameC, err := transform.OneNodeExprsWithNode(node, func(_ sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {

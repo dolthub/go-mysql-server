@@ -43,7 +43,6 @@ type MemoryHarness struct {
 	session                   sql.Session
 	setupData                 []setup.SetupScript
 	externalProcedureRegistry sql.ExternalStoredProcedureRegistry
-	version                   sql.AnalyzerVersion
 }
 
 var _ Harness = (*MemoryHarness)(nil)
@@ -54,7 +53,6 @@ var _ ReadOnlyDatabaseHarness = (*MemoryHarness)(nil)
 var _ ForeignKeyHarness = (*MemoryHarness)(nil)
 var _ KeylessTableHarness = (*MemoryHarness)(nil)
 var _ ClientHarness = (*MemoryHarness)(nil)
-var _ VersionedHarness = (*MemoryHarness)(nil)
 var _ sql.ExternalStoredProcedureProvider = (*MemoryHarness)(nil)
 
 func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useNativeIndexes bool, driverInitalizer IndexDriverInitializer) *MemoryHarness {
@@ -71,7 +69,6 @@ func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useN
 		nativeIndexSupport:        useNativeIndexes,
 		skippedQueries:            make(map[string]struct{}),
 		externalProcedureRegistry: externalProcedureRegistry,
-		version:                   sql.VersionStable,
 	}
 }
 
@@ -83,16 +80,6 @@ func NewReadOnlyMemoryHarness() *MemoryHarness {
 	h := NewMemoryHarness("default", 1, testNumPartitions, true, nil)
 	h.readonly = true
 	return h
-}
-
-func (m *MemoryHarness) Version() sql.AnalyzerVersion {
-	return m.version
-}
-
-func (m *MemoryHarness) WithVersion(version sql.AnalyzerVersion) *MemoryHarness {
-	ret := *m
-	ret.version = version
-	return &ret
 }
 
 // ExternalStoredProcedure implements the sql.ExternalStoredProcedureProvider interface
@@ -202,12 +189,10 @@ func (m *MemoryHarness) NewContext() *sql.Context {
 		}
 	}
 
-	ctx := sql.NewContext(
+	return sql.NewContext(
 		context.Background(),
 		sql.WithSession(m.session),
 	)
-	ctx.Version = m.Version()
-	return ctx
 }
 
 func (m *MemoryHarness) NewContextWithClient(client sql.Client) *sql.Context {

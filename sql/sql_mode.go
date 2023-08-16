@@ -21,6 +21,8 @@ import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
+const SqlModeSessionVar = "SQL_MODE"
+
 // SqlMode encodes the SQL mode string and provides methods for querying the enabled modes.
 type SqlMode struct {
 	modes      map[string]struct{}
@@ -30,7 +32,7 @@ type SqlMode struct {
 // LoadSqlMode loads the SQL mode using the session data contained in |ctx| and returns a SqlMode
 // instance that can be used to query which modes are enabled.
 func LoadSqlMode(ctx *Context) (*SqlMode, error) {
-	sqlMode, err := ctx.Session.GetSessionVariable(ctx, "SQL_MODE")
+	sqlMode, err := ctx.Session.GetSessionVariable(ctx, SqlModeSessionVar)
 	if err != nil {
 		return nil, err
 	}

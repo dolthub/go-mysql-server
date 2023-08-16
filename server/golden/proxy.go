@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -31,7 +32,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/parse"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -215,7 +216,19 @@ func (h MySqlProxy) processQuery(
 	ctx := sql.NewContext(h.ctx)
 	var remainder string
 	if isMultiStatement {
-		_, query, remainder, _ = parse.ParseOne(ctx, query)
+		_, ri, err := sqlparser.ParseOne(query)
+		if err != nil {
+			return "", err
+		}
+		if ri != 0 && ri < len(query) {
+			remainder = query[ri:]
+			query = query[:ri]
+			query = strings.TrimSpace(query)
+			// trim spaces and empty statements
+			query = strings.TrimRightFunc(query, func(r rune) bool {
+				return r == ';' || unicode.IsSpace(r)
+			})
+		}
 	}
 
 	ctx = ctx.WithQuery(query)
@@ -372,7 +385,7 @@ func schemaToFields(ctx *sql.Context, cols []*dsql.ColumnType) ([]sql.Type, []*q
 			// default to the maximum width
 			typeStr = ts
 		}
-		types[i], err = parse.ParseColumnTypeString(ctx, typeStr)
+		types[i], err = planbuilder.ParseColumnTypeString(typeStr)
 		if err != nil {
 			return nil, nil, err
 		}
