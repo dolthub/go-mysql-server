@@ -48,7 +48,7 @@ var AlterTableScripts = []ScriptTest{
 		// https://github.com/dolthub/dolt/issues/6206
 		Name: "alter table containing column default value expressions",
 		SetUpScript: []string{
-			"create table t (pk int primary key, col1 timestamp default current_timestamp(), col2 varchar(1000), index idx1 (pk, col1));",
+			"create table t (pk int primary key, col1 timestamp(6) default current_timestamp(), col2 varchar(1000), index idx1 (pk, col1));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
