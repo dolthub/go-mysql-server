@@ -351,7 +351,7 @@ func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Ex
 			}
 			res[k] = expression.NewLiteral(v, t)
 		case v.Type() == sqltypes.Date || v.Type() == sqltypes.Datetime || v.Type() == sqltypes.Timestamp:
-			precision := 6 
+			precision := 6
 			if v.Type() == sqltypes.Date {
 				precision = 0
 			}

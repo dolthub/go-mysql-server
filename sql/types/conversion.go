@@ -356,7 +356,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 			if err != nil {
 				return nil, err
 			}
-			
+
 			if precision > 6 || precision < 0 {
 				return nil, fmt.Errorf("DATETIME supports precision from 0 to 6")
 			}

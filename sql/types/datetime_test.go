@@ -155,7 +155,7 @@ func TestDatetimeConvert(t *testing.T) {
 		expectedVal interface{}
 		expectedErr bool
 	}
-	tests := []testcase {
+	tests := []testcase{
 		{Date, nil, nil, false},
 		{Date, time.Date(2012, 12, 12, 12, 12, 12, 12, time.UTC),
 			time.Date(2012, 12, 12, 0, 0, 0, 0, time.UTC), false},
@@ -261,7 +261,7 @@ func TestDatetimeConvert(t *testing.T) {
 		{Timestamp, "2010-06-03 12:34:56.7", time.Date(2010, 6, 3, 12, 34, 56, 0, time.UTC), false},
 		{Timestamp, "2010-06-03 12:34:56.78", time.Date(2010, 6, 3, 12, 34, 56, 0, time.UTC), false},
 		{Timestamp, "2010-06-03 12:34:56.789", time.Date(2010, 6, 3, 12, 34, 56, 0, time.UTC), false},
-		
+
 		{Date, "0000-01-01 00:00:00", time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
 		{Date, "0500-01-01 00:00:00", time.Date(500, 1, 1, 0, 0, 0, 0, time.UTC), false},
 		{Date, time.Date(10000, 1, 1, 1, 1, 1, 1, time.UTC), nil, true},
