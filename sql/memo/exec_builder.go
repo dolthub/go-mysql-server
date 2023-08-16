@@ -97,7 +97,7 @@ func (b *ExecBuilder) buildLookup(l *Lookup, input sql.Schema, children ...sql.N
 	case plan.TableNode:
 		ret, err = plan.NewIndexedAccessForResolvedTable(n, plan.NewLookupBuilder(l.Index.SqlIdx(), keyExprs, l.Nullmask))
 	case *plan.TableAlias:
-		ret, err = plan.NewIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), plan.NewLookupBuilder(l.Index.SqlIdx(), keyExprs, l.Nullmask))
+		ret, err = plan.NewIndexedAccessForResolvedTable(n.Child.(plan.TableNode), plan.NewLookupBuilder(l.Index.SqlIdx(), keyExprs, l.Nullmask))
 		ret = plan.NewTableAlias(n.Name(), ret)
 	case *plan.Distinct:
 		ret, err = b.buildLookup(l, input, n.Child)

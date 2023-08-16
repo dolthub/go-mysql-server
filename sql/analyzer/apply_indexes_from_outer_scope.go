@@ -72,7 +72,7 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 					return pushdownIndexToTable(ctx, a, n, idxLookup.index, idxLookup.keyExpr, idxLookup.nullmask)
 				}
 				return n, transform.SameTree, nil
-			case *plan.ResolvedTable:
+			case plan.TableNode:
 				if strings.ToLower(n.Name()) == idxLookup.table {
 					return pushdownIndexToTable(ctx, a, n, idxLookup.index, idxLookup.keyExpr, idxLookup.nullmask)
 				}
