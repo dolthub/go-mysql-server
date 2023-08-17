@@ -71,7 +71,6 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 				}
 			}
 			ctx := NewContext(harness).WithQuery(statement)
-			//ctx = NewContext(harness).WithQuery(statement)
 			RunQueryWithContext(t, e, harness, ctx, statement)
 		}
 

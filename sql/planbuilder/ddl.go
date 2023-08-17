@@ -494,8 +494,8 @@ func (b *Builder) buildAlterTableColumnAction(inScope *scope, ddl *ast.DDL, tabl
 		// make new hierarchy so it resolves before old column
 		outScope = inScope.push()
 		sch, _ := b.tableSpecToSchema(inScope, outScope, table.Database, ddl.Table.Name.String(), ddl.TableSpec, true)
-
-		outScope.node = plan.NewModifyColumnResolved(table, ddl.Column.String(), *sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder))
+		modifyCol := plan.NewModifyColumnResolved(table, ddl.Column.String(), *sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder))
+		outScope.node = modifyCol
 	default:
 		err := sql.ErrUnsupportedFeature.New(ast.String(ddl))
 		b.handleErr(err)
@@ -748,7 +748,9 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 			b.handleErr(err)
 		}
 
-		outScope.node = plan.NewAlterCreateIndex(table.Database, table, ddl.IndexSpec.ToName.String(), using, constraint, columns, comment)
+		createIndex := plan.NewAlterCreateIndex(table.Database, table, ddl.IndexSpec.ToName.String(), using, constraint, columns, comment)
+		outScope.node = b.modifySchemaTarget(inScope, createIndex, table)
+
 		return
 	case ast.DropStr:
 		if ddl.IndexSpec.Type == ast.PrimaryStr {
@@ -906,7 +908,7 @@ func (b *Builder) buildDefaultExpression(inScope *scope, defaultExpr ast.Expr) *
 // rather than "(5)"), then the parameter "isLiteral" should be true.
 func ExpressionToColumnDefaultValue(inputExpr sql.Expression, isLiteral, isParenthesized bool) *sql.ColumnDefaultValue {
 	return &sql.ColumnDefaultValue{
-		Expression:    inputExpr,
+		Expr:          inputExpr,
 		OutType:       nil,
 		Literal:       isLiteral,
 		ReturnNil:     true,
@@ -1170,11 +1172,14 @@ func (b *Builder) modifySchemaTarget(inScope *scope, n sql.SchemaTarget, rt *pla
 }
 
 func (b *Builder) resolveSchemaDefaults(inScope *scope, schema sql.Schema) sql.Schema {
-	for i, col := range schema {
-		if col.Default == nil || col.Default.Expression == nil {
+	newSch := make(sql.Schema, len(schema))
+	for i, c := range schema {
+		col := c.Copy()
+		newSch[i] = col
+		if col.Default == nil || col.Default.Expr == nil {
 			continue
 		}
-		def, ok := col.Default.Expression.(sql.UnresolvedColumnDefault)
+		def, ok := col.Default.Expr.(*sql.UnresolvedColumnDefault)
 		if ok && def.String() == "" {
 			schema[i].Default = b.convertDefaultExpression(inScope, &ast.SQLVal{Val: []byte{}, Type: ast.StrVal}, schema[i].Type, schema[i].Nullable)
 			continue
@@ -1197,9 +1202,9 @@ func (b *Builder) resolveSchemaDefaults(inScope *scope, schema sql.Schema) sql.S
 			err := sql.ErrInvalidColumnDefaultValue.New(def)
 			b.handleErr(err)
 		}
-		schema[i].Default = b.convertDefaultExpression(inScope, ae.Expr, schema[i].Type, schema[i].Nullable)
+		col.Default = b.convertDefaultExpression(inScope, ae.Expr, schema[i].Type, schema[i].Nullable)
 	}
-	return schema
+	return newSch
 }
 
 func (b *Builder) convertDefaultExpression(inScope *scope, defaultExpr ast.Expr, typ sql.Type, nullable bool) *sql.ColumnDefaultValue {
@@ -1247,7 +1252,7 @@ func (b *Builder) convertDefaultExpression(inScope *scope, defaultExpr ast.Expr,
 	}
 
 	return &sql.ColumnDefaultValue{
-		Expression:    resExpr,
+		Expr:          resExpr,
 		OutType:       typ,
 		Literal:       isLiteral,
 		ReturnNil:     nullable,
