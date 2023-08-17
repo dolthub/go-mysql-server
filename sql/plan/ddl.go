@@ -703,7 +703,7 @@ func (d *DropTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (d *DropTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	for _, tbl := range d.Tables {
-		db := getDatabase(tbl)
+		db := GetDatabase(tbl)
 		if !opChecker.UserHasPrivileges(ctx,
 			sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(db), getTableName(tbl), "", sql.PrivilegeType_Drop)) {
 			return false

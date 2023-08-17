@@ -30,7 +30,7 @@ var TableFunctionScriptTests = []ScriptTest{
 	{
 		Name:        "projection of non-existent qualified column from table function",
 		Query:       "SELECT simple_TABLE_function.none from simple_TABLE_function(123);",
-		ExpectedErr: sql.ErrTableColumnNotFound,
+		ExpectedErr: sql.ErrTableNotFound,
 	},
 	{
 		Name:        "projection of non-existent aliased qualified column from table function",

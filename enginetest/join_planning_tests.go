@@ -1474,10 +1474,6 @@ func evalIndexTest(t *testing.T, harness Harness, e *sqle.Engine, tt JoinPlanTes
 
 func evalJoinCorrectness(t *testing.T, harness Harness, e *sqle.Engine, name, q string, exp []sql.Row, skipOld bool) {
 	t.Run(name, func(t *testing.T) {
-		if vh, ok := harness.(VersionedHarness); (ok && vh.Version() == sql.VersionStable && skipOld) || (!ok && skipOld) {
-			t.Skip()
-		}
-
 		ctx := NewContext(harness)
 		ctx = ctx.WithQuery(q)
 
@@ -1555,10 +1551,6 @@ func collectIndexes(n sql.Node) []sql.Index {
 
 func evalJoinOrder(t *testing.T, harness Harness, e *sqle.Engine, q string, exp []string, skipOld bool) {
 	t.Run(q+" join order", func(t *testing.T) {
-		if vh, ok := harness.(VersionedHarness); (ok && vh.Version() == sql.VersionStable && skipOld) || (!ok && skipOld) {
-			t.Skip()
-		}
-
 		ctx := NewContext(harness)
 		ctx = ctx.WithQuery(q)
 
@@ -1587,167 +1579,4 @@ func collectJoinOrder(n sql.Node) []string {
 	}
 
 	return order
-}
-
-func TestJoinPlanningPrepared(t *testing.T, harness Harness) {
-	for _, tt := range JoinPlanningTests {
-		t.Run(tt.name, func(t *testing.T) {
-			harness.Setup([]setup.SetupScript{setup.MydbData[0], tt.setup})
-			e := mustNewEngine(t, harness)
-			defer e.Close()
-			for _, tt := range tt.tests {
-				if tt.types != nil {
-					evalJoinTypeTestPrepared(t, harness, e, tt, tt.skipOld)
-				}
-				if tt.indexes != nil {
-					evalJoinIndexTestPrepared(t, harness, e, tt, tt.skipOld)
-				}
-				if tt.exp != nil {
-					evalJoinCorrectnessPrepared(t, harness, e, tt.q, tt.q, tt.exp, tt.skipOld)
-				}
-				if tt.order != nil {
-					evalJoinOrderPrepared(t, harness, e, tt.q, tt.order, tt.skipOld)
-				}
-			}
-		})
-	}
-}
-
-func evalJoinTypeTestPrepared(t *testing.T, harness Harness, e *sqle.Engine, tt JoinPlanTest, skipOld bool) {
-	t.Run(tt.q+" join types", func(t *testing.T) {
-		if vh, ok := harness.(VersionedHarness); (ok && vh.Version() == sql.VersionStable && skipOld) || (!ok && skipOld) {
-			t.Skip()
-		}
-
-		ctx := NewContext(harness)
-		ctx = ctx.WithQuery(tt.q)
-
-		bindings, err := injectBindVarsAndPrepare(t, ctx, e, tt.q)
-		require.NoError(t, err)
-
-		p, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), tt.q)
-		require.True(t, ok, "prepared statement not found")
-
-		if len(bindings) > 0 {
-			var usedBindings map[string]bool
-			p, usedBindings, err = plan.ApplyBindings(p, bindings)
-			require.NoError(t, err)
-			for binding := range bindings {
-				require.True(t, usedBindings[binding], "unused binding %s", binding)
-			}
-		}
-
-		a, _, err := e.Analyzer.AnalyzePrepared(ctx, p, nil)
-		require.NoError(t, err)
-
-		jts := collectJoinTypes(a)
-		var exp []string
-		for _, t := range tt.types {
-			exp = append(exp, t.String())
-		}
-		var cmp []string
-		for _, t := range jts {
-			cmp = append(cmp, t.String())
-		}
-		require.Equal(t, exp, cmp, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(a)))
-	})
-}
-
-func evalJoinIndexTestPrepared(t *testing.T, harness Harness, e *sqle.Engine, tt JoinPlanTest, skipOld bool) {
-	t.Run(tt.q+" join indexes", func(t *testing.T) {
-		if vh, ok := harness.(VersionedHarness); (ok && vh.Version() == sql.VersionStable && skipOld) || (!ok && skipOld) {
-			t.Skip()
-		}
-
-		ctx := NewContext(harness)
-		ctx = ctx.WithQuery(tt.q)
-
-		bindings, err := injectBindVarsAndPrepare(t, ctx, e, tt.q)
-		require.NoError(t, err)
-
-		p, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), tt.q)
-		require.True(t, ok, "prepared statement not found")
-
-		if len(bindings) > 0 {
-			var usedBindings map[string]bool
-			p, usedBindings, err = plan.ApplyBindings(p, bindings)
-			require.NoError(t, err)
-			for binding := range bindings {
-				require.True(t, usedBindings[binding], "unused binding %s", binding)
-			}
-		}
-
-		a, _, err := e.Analyzer.AnalyzePrepared(ctx, p, nil)
-		require.NoError(t, err)
-
-		idxs := collectIndexes(a)
-		var exp []string
-		for _, i := range tt.indexes {
-			exp = append(exp, i)
-		}
-		var cmp []string
-		for _, i := range idxs {
-			cmp = append(cmp, i.ID())
-		}
-		require.Equal(t, exp, cmp, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(a)))
-	})
-}
-
-func evalJoinCorrectnessPrepared(t *testing.T, harness Harness, e *sqle.Engine, name, q string, exp []sql.Row, skipOld bool) {
-	t.Run(q, func(t *testing.T) {
-		if vh, ok := harness.(VersionedHarness); (ok && vh.Version() == sql.VersionStable && skipOld) || (!ok && skipOld) {
-			t.Skip()
-		}
-
-		ctx := NewContext(harness)
-		ctx = ctx.WithQuery(q)
-
-		bindings, err := injectBindVarsAndPrepare(t, ctx, e, q)
-		require.NoError(t, err)
-
-		sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
-		require.NoError(t, err, "Unexpected error for query %s: %s", q, err)
-
-		rows, err := sql.RowIterToRows(ctx, sch, iter)
-		require.NoError(t, err, "Unexpected error for query %s: %s", q, err)
-
-		if exp != nil {
-			checkResults(t, exp, nil, sch, rows, q)
-		}
-
-		require.Equal(t, 0, ctx.Memory.NumCaches())
-		validateEngine(t, ctx, harness, e)
-	})
-}
-
-func evalJoinOrderPrepared(t *testing.T, harness Harness, e *sqle.Engine, q string, exp []string, skipOld bool) {
-	t.Run(q+" join order", func(t *testing.T) {
-		if vh, ok := harness.(VersionedHarness); (ok && vh.Version() == sql.VersionStable && skipOld) || (!ok && skipOld) {
-			t.Skip()
-		}
-
-		ctx := NewContext(harness)
-		ctx = ctx.WithQuery(q)
-
-		bindings, err := injectBindVarsAndPrepare(t, ctx, e, q)
-		require.NoError(t, err)
-
-		p, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), q)
-		require.True(t, ok, "prepared statement not found")
-
-		if len(bindings) > 0 {
-			var usedBindings map[string]bool
-			p, usedBindings, err = plan.ApplyBindings(p, bindings)
-			require.NoError(t, err)
-			for binding := range bindings {
-				require.True(t, usedBindings[binding], "unused binding %s", binding)
-			}
-		}
-
-		a, _, err := e.Analyzer.AnalyzePrepared(ctx, p, nil)
-		require.NoError(t, err)
-
-		cmp := collectJoinOrder(a)
-		require.Equal(t, exp, cmp, fmt.Sprintf("expected order '%s' found '%s'\ndetail:\n%s", strings.Join(exp, ","), strings.Join(cmp, ","), sql.DebugString(a)))
-	})
 }

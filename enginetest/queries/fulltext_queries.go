@@ -16,6 +16,7 @@ package queries
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -246,6 +247,106 @@ var FulltextTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "Basic UPDATE and DELETE checks",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT UNSIGNED PRIMARY KEY, v1 VARCHAR(200), v2 VARCHAR(200), FULLTEXT idx (v1, v2));",
+			"INSERT INTO test VALUES (1, 'abc', 'def pqr'), (2, 'ghi', 'jkl'), (3, 'mno', 'mno'), (4, 'stu vwx', 'xyz zyx yzx'), (5, 'ghs', 'mno shg');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
+				Expected: []sql.Row{{uint64(2), "ghi", "jkl"}},
+			},
+			{
+				Query:    "UPDATE test SET v1 = 'rgb' WHERE pk = 2;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('rgb');",
+				Expected: []sql.Row{{uint64(2), "rgb", "jkl"}},
+			},
+			{
+				Query:    "UPDATE test SET v2 = 'mno' WHERE pk = 2;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('mno');",
+				Expected: []sql.Row{{uint64(2), "rgb", "mno"}, {uint64(3), "mno", "mno"}, {uint64(5), "ghs", "mno shg"}},
+			},
+			{
+				Query:    "DELETE FROM test WHERE pk = 3;",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('mno');",
+				Expected: []sql.Row{{uint64(2), "rgb", "mno"}, {uint64(5), "ghs", "mno shg"}},
+			},
+		},
+	},
+	{
+		Name: "Collation handling",
+		SetUpScript: []string{
+			"CREATE TABLE test1 (pk BIGINT UNSIGNED PRIMARY KEY, v1 VARCHAR(200) COLLATE utf8mb4_0900_bin, v2 VARCHAR(200) COLLATE utf8mb4_0900_bin, FULLTEXT idx (v1, v2));",
+			"CREATE TABLE test2 (pk BIGINT UNSIGNED PRIMARY KEY, v1 VARCHAR(200) COLLATE utf8mb4_0900_ai_ci, v2 VARCHAR(200) COLLATE utf8mb4_0900_ai_ci, FULLTEXT idx (v1, v2));",
+			"INSERT INTO test1 VALUES (1, 'abc', 'def pqr'), (2, 'ghi', 'jkl'), (3, 'mno', 'mno'), (4, 'stu vwx', 'xyz zyx yzx'), (5, 'ghs', 'mno shg');",
+			"INSERT INTO test2 VALUES (1, 'abc', 'def pqr'), (2, 'ghi', 'jkl'), (3, 'mno', 'mno'), (4, 'stu vwx', 'xyz zyx yzx'), (5, 'ghs', 'mno shg');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM test1 WHERE MATCH(v1, v2) AGAINST ('ghi');",
+				Expected: []sql.Row{{uint64(2), "ghi", "jkl"}},
+			},
+			{
+				Query:    "SELECT * FROM test1 WHERE MATCH(v2, v1) AGAINST ('jkl') = 0;",
+				Expected: []sql.Row{{uint64(1), "abc", "def pqr"}, {uint64(3), "mno", "mno"}, {uint64(4), "stu vwx", "xyz zyx yzx"}, {uint64(5), "ghs", "mno shg"}},
+			},
+			{
+				Query:    "SELECT * FROM test1 WHERE MATCH(v2, v1) AGAINST ('jkl mno') AND pk = 3;",
+				Expected: []sql.Row{{uint64(3), "mno", "mno"}},
+			},
+			{
+				Query:    "SELECT * FROM test1 WHERE MATCH(v1, v2) AGAINST ('GHI');",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * FROM test1 WHERE MATCH(v2, v1) AGAINST ('JKL') = 0;",
+				Expected: []sql.Row{{uint64(1), "abc", "def pqr"}, {uint64(2), "ghi", "jkl"}, {uint64(3), "mno", "mno"}, {uint64(4), "stu vwx", "xyz zyx yzx"}, {uint64(5), "ghs", "mno shg"}},
+			},
+			{
+				Query:    "SELECT * FROM test1 WHERE MATCH(v2, v1) AGAINST ('JKL MNO') AND pk = 3;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * FROM test2 WHERE MATCH(v1, v2) AGAINST ('ghi');",
+				Expected: []sql.Row{{uint64(2), "ghi", "jkl"}},
+			},
+			{
+				Query:    "SELECT * FROM test2 WHERE MATCH(v2, v1) AGAINST ('jkl') = 0;",
+				Expected: []sql.Row{{uint64(1), "abc", "def pqr"}, {uint64(3), "mno", "mno"}, {uint64(4), "stu vwx", "xyz zyx yzx"}, {uint64(5), "ghs", "mno shg"}},
+			},
+			{
+				Query:    "SELECT * FROM test2 WHERE MATCH(v2, v1) AGAINST ('jkl mno') AND pk = 3;",
+				Expected: []sql.Row{{uint64(3), "mno", "mno"}},
+			},
+			{
+				Query:    "SELECT * FROM test2 WHERE MATCH(v1, v2) AGAINST ('GHI');",
+				Expected: []sql.Row{{uint64(2), "ghi", "jkl"}},
+			},
+			{
+				Query:    "SELECT * FROM test2 WHERE MATCH(v2, v1) AGAINST ('JKL') = 0;",
+				Expected: []sql.Row{{uint64(1), "abc", "def pqr"}, {uint64(3), "mno", "mno"}, {uint64(4), "stu vwx", "xyz zyx yzx"}, {uint64(5), "ghs", "mno shg"}},
+			},
+			{
+				Query:    "SELECT * FROM test2 WHERE MATCH(v2, v1) AGAINST ('JKL MNO') AND pk = 3;",
+				Expected: []sql.Row{{uint64(3), "mno", "mno"}},
+			},
+		},
+	},
+	{
 		Name: "CREATE INDEX before insertions",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT UNSIGNED PRIMARY KEY, v1 VARCHAR(200), v2 VARCHAR(200));",
@@ -444,13 +545,69 @@ var FulltextTests = []ScriptTest{
 	{
 		Name: "ALTER TABLE DROP COLUMN used by index",
 		SetUpScript: []string{
-			"CREATE TABLE test (pk BIGINT UNSIGNED PRIMARY KEY, v1 VARCHAR(200), v2 VARCHAR(200), FULLTEXT idx (v1, v2));",
-			"INSERT INTO test VALUES (1, 'abc', 'def pqr'), (2, 'ghi', 'jkl'), (3, 'mno', 'mno'), (4, 'stu vwx', 'xyz zyx yzx'), (5, 'ghs', 'mno shg');",
+			"CREATE TABLE test (pk BIGINT UNSIGNED PRIMARY KEY, v1 VARCHAR(200), v2 VARCHAR(200), v3 VARCHAR(200), FULLTEXT idx1 (v1, v2), FULLTEXT idx2 (v2), FULLTEXT idx3 (v2, v3));",
+			"INSERT INTO test VALUES (1, 'abc', 'def', 'ghi');",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:       "ALTER TABLE test DROP COLUMN v2;",
-				ExpectedErr: sql.ErrFullTextMissingColumn,
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('abc');",
+				Expected: []sql.Row{{uint64(1), "abc", "def", "ghi"}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v2) AGAINST ('def');",
+				Expected: []sql.Row{{uint64(1), "abc", "def", "ghi"}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v2, v3) AGAINST ('ghi');",
+				Expected: []sql.Row{{uint64(1), "abc", "def", "ghi"}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE test;",
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `pk` bigint unsigned NOT NULL,\n  `v1` varchar(200),\n  `v2` varchar(200),\n  `v3` varchar(200),\n  PRIMARY KEY (`pk`),\n  FULLTEXT KEY `idx1` (`v1`,`v2`),\n  FULLTEXT KEY `idx2` (`v2`),\n  FULLTEXT KEY `idx3` (`v2`,`v3`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "ALTER TABLE test DROP COLUMN v2;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:       "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('abc');",
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+			{
+				Query:       "SELECT * FROM test WHERE MATCH(v2) AGAINST ('def');",
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+			{
+				Query:       "SELECT * FROM test WHERE MATCH(v2, v3) AGAINST ('ghi');",
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1) AGAINST ('abc');",
+				Expected: []sql.Row{{uint64(1), "abc", "ghi"}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v3) AGAINST ('ghi');",
+				Expected: []sql.Row{{uint64(1), "abc", "ghi"}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE test;",
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `pk` bigint unsigned NOT NULL,\n  `v1` varchar(200),\n  `v3` varchar(200),\n  PRIMARY KEY (`pk`),\n  FULLTEXT KEY `idx1` (`v1`),\n  FULLTEXT KEY `idx3` (`v3`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "ALTER TABLE test DROP COLUMN v3;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1) AGAINST ('abc');",
+				Expected: []sql.Row{{uint64(1), "abc"}},
+			},
+			{
+				Query:       "SELECT * FROM test WHERE MATCH(v3) AGAINST ('ghi');",
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+			{
+				Query:    "SHOW CREATE TABLE test;",
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `pk` bigint unsigned NOT NULL,\n  `v1` varchar(200),\n  PRIMARY KEY (`pk`),\n  FULLTEXT KEY `idx1` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -489,7 +646,7 @@ var FulltextTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "ALTER TABLE DROP PRIMARY KEY",
+		Name: "ALTER TABLE DROP TABLE",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT UNSIGNED PRIMARY KEY, v1 VARCHAR(200), v2 VARCHAR(200), FULLTEXT idx (v1, v2));",
 			"INSERT INTO test VALUES (1, 'abc', 'def pqr'), (2, 'ghi', 'jkl'), (3, 'mno', 'mno'), (4, 'stu vwx', 'xyz zyx yzx'), (5, 'ghs', 'mno shg');",
@@ -498,6 +655,27 @@ var FulltextTests = []ScriptTest{
 			{ // This is mainly to check for a panic
 				Query:    "DROP TABLE test;",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
+	{
+		Name: "TRUNCATE TABLE",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT UNSIGNED PRIMARY KEY, v1 VARCHAR(200), v2 VARCHAR(200), FULLTEXT idx (v1, v2));",
+			"INSERT INTO test VALUES (1, 'abc', 'def pqr'), (2, 'ghi', 'jkl'), (3, 'mno', 'mno'), (4, 'stu vwx', 'xyz zyx yzx'), (5, 'ghs', 'mno shg');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
+				Expected: []sql.Row{{uint64(2), "ghi", "jkl"}},
+			},
+			{
+				Query:    "TRUNCATE TABLE test;",
+				Expected: []sql.Row{{types.NewOkResult(5)}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
+				Expected: []sql.Row{},
 			},
 		},
 	},
@@ -645,6 +823,22 @@ var FulltextTests = []ScriptTest{
 			{
 				Query:       "CREATE TABLE test (v1 VARCHAR(200), v2 BIGINT, FULLTEXT idx (v1, v2));",
 				ExpectedErr: sql.ErrFullTextInvalidColumnType,
+			},
+		},
+	},
+	{
+		Name: "Foreign keys ignore Full-Text indexes",
+		SetUpScript: []string{
+			"CREATE TABLE parent (pk BIGINT, v1 VARCHAR(200), FULLTEXT idx (v1));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "CREATE TABLE child1 (pk BIGINT, v1 VARCHAR(200), FULLTEXT idx (v1), CONSTRAINT fk FOREIGN KEY (v1) REFERENCES parent(v1));",
+				ExpectedErr: sql.ErrForeignKeyMissingReferenceIndex,
+			},
+			{
+				Query:       "CREATE TABLE child2 (pk BIGINT, v1 VARCHAR(200), INDEX idx (v1), CONSTRAINT fk FOREIGN KEY (v1) REFERENCES parent(v1));",
+				ExpectedErr: sql.ErrForeignKeyMissingReferenceIndex,
 			},
 		},
 	},

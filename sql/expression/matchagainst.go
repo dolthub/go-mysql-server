@@ -16,6 +16,7 @@ package expression
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 
@@ -49,6 +50,7 @@ type MatchAgainst struct {
 	docCountIndex    sql.Index
 	globalCountIndex sql.Index
 	rowCountIndex    sql.Index
+	parentRowCount   uint64
 }
 
 var _ sql.Expression = (*MatchAgainst)(nil)
@@ -267,6 +269,12 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 			err = nErr
 			return
 		}
+		// Load the number of rows from the parent table, since it's used in the relevancy calculation
+		expr.parentRowCount, nErr = expr.ParentTable.(sql.StatisticsTable).RowCount(ctx)
+		if nErr != nil {
+			err = nErr
+			return
+		}
 	})
 	if err != nil {
 		return 0, err
@@ -310,13 +318,18 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 		if err != nil {
 			return 0, err
 		}
-		// This did not match, so we continue
 		if len(docCountRows) == 0 {
+			// This did not match, so we continue
 			continue
 		} else if len(docCountRows) > 1 {
 			return 0, fmt.Errorf("somehow there are duplicate entries within the Full-Text doc count table")
 		}
 		docCountRow := docCountRows[0]
+		docCount := float64(docCountRow[len(docCountRow)-1].(uint64))
+		if docCount == 0 {
+			// We've got an empty document count, so the word does not match (so it should have been deleted)
+			continue
+		}
 
 		// Otherwise, we've found a match, so we'll grab the global count as well
 		lookup = sql.IndexLookup{Ranges: []sql.Range{
@@ -363,16 +376,20 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 		rowCountRow := rowCountRows[0]
 
 		// Calculate the relevancy (partially based on an old MySQL implementation)
-		//TODO: use an actual algorithm with a good distribution, however we're focusing on correctly returned results for now
-		docCount := float32(docCountRow[len(docCountRow)-1].(uint64))
-		globalCount := float32(globalCountRow[len(globalCountRow)-1].(uint64))
-		uniqueWords := float32(rowCountRow[2].(uint64))
-		fp := docCount / globalCount
-		sp := 1 + 1/(1+0.115*uniqueWords)
-		accumulatedRelevancy += fp * sp
+		// https://web.archive.org/web/20220122170304/http://dev.mysql.com/doc/internals/en/full-text-search.html
+		globalCount := float64(globalCountRow[len(globalCountRow)-1].(uint64))
+		uniqueWords := float64(rowCountRow[2].(uint64))
+		base := math.Log(docCount) + 1
+		normFactor := uniqueWords / (1 + 0.115*uniqueWords)
+		globalMult := math.Log(float64(expr.parentRowCount)/globalCount) + 1
+		accumulatedRelevancy += float32(base * normFactor * globalMult)
 	}
 	if err != nil {
 		return 0, err
+	}
+	// Due to how we handle floating to bool conversion, we need to add 0.5 if the result is positive
+	if accumulatedRelevancy > 0 {
+		accumulatedRelevancy += 0.5
 	}
 	// Return the accumulated relevancy from all of the parsed words
 	return accumulatedRelevancy, nil

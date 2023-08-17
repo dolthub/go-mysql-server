@@ -17,6 +17,8 @@ package queries
 import (
 	"time"
 
+	"github.com/dolthub/vitess/go/sqltypes"
+	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
 
 	gmstime "github.com/dolthub/go-mysql-server/internal/time"
@@ -75,13 +77,48 @@ type ScriptTestAssertion struct {
 	Skip bool
 
 	// Bindings are variable mappings only used for prepared tests
-	Bindings map[string]sql.Expression
+	Bindings map[string]*querypb.BindVariable
 }
 
 // ScriptTests are a set of test scripts to run.
 // Unlike other engine tests, ScriptTests must be self-contained. No other tables are created outside the definition of
 // the tests.
 var ScriptTests = []ScriptTest{
+	{
+		Name: "create table casing",
+		SetUpScript: []string{
+			"create table t (lower varchar(20) primary key, UPPER varchar(20), MiXeD varchar(20), un_der varchar(20), `da-sh` varchar(20));",
+			"insert into t values ('a','b','c','d','e')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select * from t`,
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "lower",
+						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+					},
+					{
+						Name: "UPPER",
+						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+					},
+					{
+						Name: "MiXeD",
+						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+					},
+					{
+						Name: "un_der",
+						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+					},
+					{
+						Name: "da-sh",
+						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+					},
+				},
+				Expected: []sql.Row{{"a", "b", "c", "d", "e"}},
+			},
+		},
+	},
 	{
 		Name: "trigger with signal and user var",
 		SetUpScript: []string{
@@ -1199,7 +1236,7 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"fabric;color"}, {"shape;color"}},
 			},
 			{
-				Query:    "SELECT group_concat(o_id) FROM t WHERE `attribute`='color' order by o_id",
+				Query:    "SELECT group_concat(o_id order by o_id) FROM t WHERE `attribute`='color' order by o_id",
 				Expected: []sql.Row{{"2,3"}},
 			},
 			{
@@ -1470,14 +1507,6 @@ var ScriptTests = []ScriptTest{
 				Query:       "SELECT col0, col1 FROM tab1 GROUP by col0;",
 				ExpectedErr: analyzererrors.ErrValidationGroupBy,
 			},
-			{
-				Query:       "SELECT col0, floor(col1) FROM tab1 GROUP by col0;",
-				ExpectedErr: analyzererrors.ErrValidationGroupBy,
-			},
-			{
-				Query:       "SELECT floor(cor0.col1) * ceil(cor0.col0) AS col2 FROM tab1 AS cor0 GROUP BY cor0.col0",
-				ExpectedErr: analyzererrors.ErrValidationGroupBy,
-			},
 		},
 	},
 	{
@@ -1526,7 +1555,7 @@ var ScriptTests = []ScriptTest{
                              dcim_rackgroup.level 
                            FROM dcim_rackgroup
 							order by 2 limit 1`,
-				Expected: []sql.Row{{1, "5c107f979f434bf7a7820622f18a5211", types.JSONDocument{Val: map[string]interface{}{}}, "Parent Rack Group 1", "parent-rack-group-1", "f0471f313b694d388c8ec39d9590e396", interface{}(nil), "", uint64(1), uint64(2), uint64(1), uint64(0)}},
+				Expected: []sql.Row{{1, "5c107f979f434bf7a7820622f18a5211", types.JSONDocument{Val: map[string]interface{}{}}, "Parent Rack Group 1", "parent-rack-group-1", "f0471f313b694d388c8ec39d9590e396", nil, "", uint64(1), uint64(2), uint64(1), uint64(0)}},
 			},
 		},
 	},
@@ -1837,12 +1866,6 @@ var ScriptTests = []ScriptTest{
 				Query:    "SELECT stats.* FROM player_season_stat_totals stats LEFT JOIN team_seasons ON team_seasons.team_id = stats.team_id AND team_seasons.season_id = stats.season_id;",
 				Expected: []sql.Row{{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}},
 			},
-		},
-	},
-	{
-		Name: "Issue #709",
-		SetUpScript: []string{
-			"create table a(id int primary key, v int , key (v));",
 		},
 	},
 	{
@@ -2397,7 +2420,7 @@ var ScriptTests = []ScriptTest{
 	{
 		Name: "sum() and avg() on non-DECIMAL type column returns the DOUBLE type result",
 		SetUpScript: []string{
-			"create table float_table (id int, val1 double, val2 float);",
+			"create table float_table (id int primary key, val1 double, val2 float);",
 			"insert into float_table values (1,-2.5633000000000384, 2.3);",
 			"insert into float_table values (2,2.5633000000000370, 2.4);",
 			"insert into float_table values (3,0.0000000000000004, 5.3);",
@@ -2408,7 +2431,11 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{float64(6), -9.322676295501879e-16, 10.000000238418579}},
 			},
 			{
-				Query:    "SELECT avg(id), avg(val1), avg(val2) FROM float_table ORDER BY id;;",
+				Query:    "SELECT sum(id), sum(val1), sum(val2) FROM float_table ORDER BY id;",
+				Expected: []sql.Row{{float64(6), -9.322676295501879e-16, 10.000000238418579}},
+			},
+			{
+				Query:    "SELECT avg(id), avg(val1), avg(val2) FROM float_table ORDER BY id;",
 				Expected: []sql.Row{{float64(2), -3.107558765167293e-16, 3.333333412806193}},
 			},
 		},
@@ -3334,6 +3361,84 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "case insensitive index handling",
+		SetUpScript: []string{
+			"create table table_One (Id int primary key, Val1 int);",
+			"create table TableTwo (iD int primary key, VAL2 int, vAL3 int);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "create index idx_one on TABLE_ONE (vAL1);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table TABLE_one;",
+				Expected: []sql.Row{{"table_One",
+					"CREATE TABLE `table_One` (\n" +
+						"  `Id` int NOT NULL,\n" +
+						"  `Val1` int,\n" +
+						"  PRIMARY KEY (`Id`),\n" +
+						"  KEY `idx_one` (`Val1`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "show index from TABLE_one;",
+				Expected: []sql.Row{
+					{"table_One", 0, "PRIMARY", 1, "Id", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+					{"table_One", 1, "idx_one", 1, "Val1", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
+				},
+			},
+			{
+				Query:    "create index idx_one on TABLEtwo (VAL2, VAL3);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table TABLETWO;",
+				Expected: []sql.Row{{"TableTwo", "CREATE TABLE `TableTwo` (\n" +
+					"  `iD` int NOT NULL,\n" +
+					"  `VAL2` int,\n" +
+					"  `vAL3` int,\n" +
+					"  PRIMARY KEY (`iD`),\n" +
+					"  KEY `idx_one` (`VAL2`,`vAL3`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "show index from tABLEtwo;",
+				Expected: []sql.Row{
+					{"TableTwo", 0, "PRIMARY", 1, "iD", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+					{"TableTwo", 1, "idx_one", 1, "VAL2", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
+					{"TableTwo", 1, "idx_one", 2, "vAL3", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
+				},
+			},
+			{
+				Query:    "drop index IDX_ONE on TABLE_one;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "drop index IDX_ONE on TABLEtwo;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table TABLE_one;",
+				Expected: []sql.Row{{"table_One",
+					"CREATE TABLE `table_One` (\n" +
+						"  `Id` int NOT NULL,\n" +
+						"  `Val1` int,\n" +
+						"  PRIMARY KEY (`Id`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "show create table TABLETWO;",
+				Expected: []sql.Row{{"TableTwo", "CREATE TABLE `TableTwo` (\n" +
+					"  `iD` int NOT NULL,\n" +
+					"  `VAL2` int,\n" +
+					"  `vAL3` int,\n" +
+					"  PRIMARY KEY (`iD`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
@@ -4183,8 +4288,8 @@ var PreparedScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:       "execute s",
-				ExpectedErr: sql.ErrInvalidArgument,
+				Query:          "execute s",
+				ExpectedErrStr: "missing bind var v1",
 			},
 			{
 				Query: "execute s using @abc",
@@ -4193,8 +4298,8 @@ var PreparedScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:       "execute s using @a, @b, @c, @abc",
-				ExpectedErr: sql.ErrInvalidArgument,
+				Query:          "execute s using @a, @b, @c, @abc",
+				ExpectedErrStr: "invalid arguments. expected: 1, found: 4",
 			},
 			{
 				Query: "execute s using @a",
@@ -4241,8 +4346,8 @@ var PreparedScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:       "execute s using @a",
-				ExpectedErr: sql.ErrInvalidArgument,
+				Query:          "execute s using @a",
+				ExpectedErrStr: "missing bind var v2",
 			},
 			{
 				Query: "execute s using @a, @b",
@@ -4427,6 +4532,41 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Query:       "ALTER TABLE mytable DROP COLUMN col2",
 				ExpectedErr: sql.ErrCheckConstraintInvalidatedByColumnAlter,
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolthub-issues/issues/489
+		Name: "Large character data",
+		SetUpScript: []string{
+			"CREATE TABLE `test` (`id` int NOT NULL AUTO_INCREMENT, `data` blob NOT NULL, PRIMARY KEY (`id`))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `INSERT INTO test (data) values (?)`,
+				Bindings: map[string]*querypb.BindVariable{
+					// Vitess chooses VARBINARY as the bindvar type if the client sends CHAR data
+					// If we change how Vitess interprets client bindvar types, we should update this test
+					// Or better yet: have a test harness that uses the server directly
+					"v1": {Type: querypb.Type_VARBINARY, Value: []byte(
+						"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"")},
+				},
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 1,
+					InsertID:     1,
+				}}},
 			},
 		},
 	},

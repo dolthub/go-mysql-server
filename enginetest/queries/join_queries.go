@@ -760,6 +760,36 @@ var JoinScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Join with truthy condition",
+		SetUpScript: []string{
+			"CREATE TABLE `a` (aa int);",
+			"INSERT INTO `a` VALUES (1), (2);",
+
+			"CREATE TABLE `b` (bb int);",
+			"INSERT INTO `b` VALUES (1), (2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM a LEFT JOIN b ON 1;",
+				Expected: []sql.Row{
+					{1, 2},
+					{1, 1},
+					{2, 2},
+					{2, 1},
+				},
+			},
+			{
+				Query: "SELECT * FROM a RIGHT JOIN b ON 8+9;",
+				Expected: []sql.Row{
+					{1, 2},
+					{1, 1},
+					{2, 2},
+					{2, 1},
+				},
+			},
+		},
+	},
 }
 
 var SkippedJoinQueryTests = []QueryTest{
@@ -872,7 +902,7 @@ var LateralJoinScriptTests = []ScriptTest{
 			// Lateral Right Join
 			{
 				Query:       "select * from t right join lateral (select * from t1 where t.i != t1.j) as tt on t.i > tt.j",
-				ExpectedErr: sql.ErrColumnNotFound,
+				ExpectedErr: sql.ErrTableNotFound,
 			},
 			{
 				Query: "select * from t right join lateral (select * from t1) as tt on t.i > tt.j order by t.i, tt.j",
