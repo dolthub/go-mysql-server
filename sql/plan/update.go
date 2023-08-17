@@ -96,7 +96,7 @@ func getDatabase(node sql.Node) sql.Database {
 	case *IndexedTableAccess:
 		return getDatabase(node.ResolvedTable)
 	case *ResolvedTable:
-		return node.Database
+		return node.SqlDatabase
 	case *UnresolvedTable:
 		return node.Database()
 	}

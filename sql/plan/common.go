@@ -159,7 +159,7 @@ func GetDatabaseName(nodeToSearch sql.Node) string {
 		case sql.Databaser:
 			return n.Database().Name()
 		case *ResolvedTable:
-			return n.Database.Name()
+			return n.SqlDatabase.Name()
 		case *UnresolvedTable:
 			return n.Database().Name()
 		case *IndexedTableAccess:

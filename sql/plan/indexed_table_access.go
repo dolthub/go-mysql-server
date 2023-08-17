@@ -157,7 +157,7 @@ func (i *IndexedTableAccess) Name() string {
 }
 
 func (i *IndexedTableAccess) Database() sql.Database {
-	return i.ResolvedTable.Database
+	return i.ResolvedTable.SqlDatabase
 }
 
 func (i *IndexedTableAccess) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {

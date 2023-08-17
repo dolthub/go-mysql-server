@@ -686,7 +686,7 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 	// if a ReadOnlyDatabase is found, invalidate the query
 	readOnlyDBSearch := func(node sql.Node) bool {
 		if rt, ok := node.(*plan.ResolvedTable); ok {
-			if ro, ok := rt.Database.(sql.ReadOnlyDatabase); ok {
+			if ro, ok := rt.SqlDatabase.(sql.ReadOnlyDatabase); ok {
 				if ro.IsReadOnly() {
 					readOnlyDB = ro
 					valid = false

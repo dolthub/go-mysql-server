@@ -209,7 +209,7 @@ func (t *DeferredAsOfTable) Name() string {
 
 // Database implements sql.UnresolvedTable
 func (t *DeferredAsOfTable) Database() sql.Database {
-	return t.ResolvedTable.Database
+	return t.ResolvedTable.SqlDatabase
 }
 
 // WithAsOf implements sql.UnresolvedTable

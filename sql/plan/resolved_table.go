@@ -25,24 +25,35 @@ import (
 // ResolvedTable represents a resolved SQL Table.
 type ResolvedTable struct {
 	sql.Table
-	Database sql.Database
-	AsOf     interface{}
-	comment  string
+	SqlDatabase sql.Database
+	AsOf        interface{}
+	comment     string
+}
+
+func (t *ResolvedTable) Database() sql.Database {
+	return t.SqlDatabase
+}
+
+func (t *ResolvedTable) WithDatabase(database sql.Database) (sql.Node, error) {
+	newNode := *t
+	t.SqlDatabase = database
+	return &newNode, nil
 }
 
 var _ sql.Node = (*ResolvedTable)(nil)
+var _ sql.Databaser = (*ResolvedTable)(nil)
 var _ sql.CommentedNode = (*ResolvedTable)(nil)
 var _ sql.RenameableNode = (*ResolvedTable)(nil)
 var _ sql.CollationCoercible = (*ResolvedTable)(nil)
 
 // NewResolvedTable creates a new instance of ResolvedTable.
 func NewResolvedTable(table sql.Table, db sql.Database, asOf interface{}) *ResolvedTable {
-	return &ResolvedTable{Table: table, Database: db, AsOf: asOf}
+	return &ResolvedTable{Table: table, SqlDatabase: db, AsOf: asOf}
 }
 
 // NewResolvedDualTable creates a new instance of ResolvedTable.
 func NewResolvedDualTable() *ResolvedTable {
-	return &ResolvedTable{Table: NewDualSqlTable(), Database: memory.NewDatabase(""), AsOf: nil}
+	return &ResolvedTable{Table: NewDualSqlTable(), SqlDatabase: memory.NewDatabase(""), AsOf: nil}
 }
 
 func (t *ResolvedTable) WithComment(s string) sql.Node {
@@ -154,7 +165,7 @@ func (t *ResolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileg
 		return true
 	}
 
-	db := t.Database
+	db := t.SqlDatabase
 	checkDbName := CheckPrivilegeNameForDatabase(db)
 
 	return opChecker.UserHasPrivileges(ctx,

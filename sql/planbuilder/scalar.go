@@ -900,7 +900,7 @@ func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expressio
 	fullindexTableNames := [5]string{tableNames.Config, tableNames.Position, tableNames.DocCount, tableNames.GlobalCount, tableNames.RowCount}
 	idxTables := make([]sql.IndexAddressableTable, 5)
 	for i, name := range fullindexTableNames {
-		configTbl, ok, err := rt.Database.GetTableInsensitive(b.ctx, name)
+		configTbl, ok, err := rt.SqlDatabase.GetTableInsensitive(b.ctx, name)
 		if err != nil {
 			b.handleErr(err)
 		}

@@ -68,7 +68,7 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 			// the table has to be ResolvedTable as this rule is executed after resolve-table rule
 			var dropTableDb sql.Database
 			if t, ok := node.Tables[0].(*plan.ResolvedTable); ok {
-				dropTableDb = t.Database
+				dropTableDb = t.SqlDatabase
 			}
 
 			loadedTriggers, err := loadTriggersFromDb(ctx, a, dropTableDb)

@@ -29,7 +29,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	switch n := destScope.node.(type) {
 	case *plan.ResolvedTable:
 		rt = n
-		db = rt.Database
+		db = rt.SqlDatabase
 	case *plan.UnresolvedTable:
 		db = n.Database()
 	default:
@@ -350,7 +350,7 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 					tableScope := inScope.push()
 					for _, c := range rt.Schema() {
 						tableScope.addColumn(scopeColumn{
-							db:       rt.Database.Name(),
+							db:       rt.SqlDatabase.Name(),
 							table:    strings.ToLower(n.Name()),
 							col:      strings.ToLower(c.Name),
 							typ:      c.Type,

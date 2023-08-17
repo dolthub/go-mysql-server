@@ -239,7 +239,7 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			from = n
-			db = n.Database
+			db = n.SqlDatabase
 			var asof sql.Expression
 			if n.AsOf != nil {
 				asof = expression.NewLiteral(n.AsOf, nil)
@@ -349,7 +349,7 @@ func transferProjections(ctx *sql.Context, from, to *plan.ResolvedTable) *plan.R
 		return to
 	}
 
-	return plan.NewResolvedTable(toTable, to.Database, to.AsOf).WithComment(from.Comment()).(*plan.ResolvedTable)
+	return plan.NewResolvedTable(toTable, to.SqlDatabase, to.AsOf).WithComment(from.Comment()).(*plan.ResolvedTable)
 }
 
 // pruneDropTables removes all nodes that are not `*plan.ResolvedTable` from `plan.DropTable.Tables`
@@ -381,8 +381,8 @@ func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	for _, table := range dt.Tables {
 		switch t := table.(type) {
 		case *plan.ResolvedTable:
-			if _, ok := t.Database.(sql.TableDropper); !ok {
-				return nil, transform.SameTree, sql.ErrDropTableNotSupported.New(t.Database.Name())
+			if _, ok := t.SqlDatabase.(sql.TableDropper); !ok {
+				return nil, transform.SameTree, sql.ErrDropTableNotSupported.New(t.SqlDatabase.Name())
 			}
 		case *plan.UnresolvedTable:
 			if dt.IfExists() {

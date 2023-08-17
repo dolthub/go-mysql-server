@@ -404,7 +404,7 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 				}
 
 				createIndex := plan.NewAlterCreateIndex(
-					table.Database,
+					table.SqlDatabase,
 					table,
 					column.Name.String(),
 					sql.IndexUsing_BTree,
@@ -477,7 +477,7 @@ func (b *Builder) buildAlterTableColumnAction(inScope *scope, ddl *ast.DDL) (out
 	case ast.RenameStr:
 		for _, c := range table.Schema() {
 			outScope.newColumn(scopeColumn{
-				db:       strings.ToLower(table.Database.Name()),
+				db:       strings.ToLower(table.SqlDatabase.Name()),
 				table:    strings.ToLower(c.Source),
 				col:      strings.ToLower(c.Name),
 				typ:      c.Type,
@@ -516,7 +516,7 @@ func (b *Builder) buildAlterConstraint(inScope *scope, ddl *ast.DDL) (outScope *
 	case ast.AddStr:
 		switch c := parsedConstraint.(type) {
 		case *sql.ForeignKeyConstraint:
-			c.Database = table.Database.Name()
+			c.Database = table.SqlDatabase.Name()
 			c.Table = table.Name()
 			alterFk := plan.NewAlterAddForeignKey(c)
 			alterFk.DbProvider = b.cat
@@ -530,7 +530,7 @@ func (b *Builder) buildAlterConstraint(inScope *scope, ddl *ast.DDL) (outScope *
 	case ast.DropStr:
 		switch c := parsedConstraint.(type) {
 		case *sql.ForeignKeyConstraint:
-			database := table.Database.Name()
+			database := table.SqlDatabase.Name()
 			dropFk := plan.NewAlterDropForeignKey(database, table.Name(), c.Name)
 			dropFk.DbProvider = b.cat
 			outScope.node = dropFk
@@ -754,7 +754,7 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL) (outScope *scope
 		}
 
 		if constraint == sql.IndexConstraint_Primary {
-			outScope.node = plan.NewAlterCreatePk(table.Database, table, columns)
+			outScope.node = plan.NewAlterCreatePk(table.SqlDatabase, table, columns)
 			return
 		}
 
@@ -764,27 +764,27 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL) (outScope *scope
 			b.handleErr(err)
 		}
 
-		outScope.node = plan.NewAlterCreateIndex(table.Database, table, ddl.IndexSpec.ToName.String(), using, constraint, columns, comment)
+		outScope.node = plan.NewAlterCreateIndex(table.SqlDatabase, table, ddl.IndexSpec.ToName.String(), using, constraint, columns, comment)
 		return
 	case ast.DropStr:
 		if ddl.IndexSpec.Type == ast.PrimaryStr {
-			outScope.node = plan.NewAlterDropPk(table.Database, table)
+			outScope.node = plan.NewAlterDropPk(table.SqlDatabase, table)
 			return
 		}
-		outScope.node = plan.NewAlterDropIndex(table.Database, table, ddl.IndexSpec.ToName.String())
+		outScope.node = plan.NewAlterDropIndex(table.SqlDatabase, table, ddl.IndexSpec.ToName.String())
 
 		//todo checks
 
 		return
 	case ast.RenameStr:
-		outScope.node = plan.NewAlterRenameIndex(table.Database, table, ddl.IndexSpec.FromName.String(), ddl.IndexSpec.ToName.String())
+		outScope.node = plan.NewAlterRenameIndex(table.SqlDatabase, table, ddl.IndexSpec.FromName.String(), ddl.IndexSpec.ToName.String())
 		//todo checks
 		return
 	case "disable":
-		outScope.node = plan.NewAlterDisableEnableKeys(table.Database, table, true)
+		outScope.node = plan.NewAlterDisableEnableKeys(table.SqlDatabase, table, true)
 		return
 	case "enable":
-		outScope.node = plan.NewAlterDisableEnableKeys(table.Database, table, false)
+		outScope.node = plan.NewAlterDisableEnableKeys(table.SqlDatabase, table, false)
 		return
 	default:
 		err := sql.ErrUnsupportedFeature.New(ast.String(ddl))
@@ -852,7 +852,7 @@ func (b *Builder) buildAlterAutoIncrement(inScope *scope, ddl *ast.DDL) (outScop
 		err := fmt.Errorf("expected resolved table: %s", tableName)
 		b.handleErr(err)
 	}
-	outScope.node = plan.NewAlterAutoIncrement(table.Database, table, autoVal)
+	outScope.node = plan.NewAlterAutoIncrement(table.SqlDatabase, table, autoVal)
 	return
 }
 
@@ -872,10 +872,10 @@ func (b *Builder) buildAlterDefault(inScope *scope, ddl *ast.DDL) (outScope *sco
 	switch strings.ToLower(ddl.DefaultSpec.Action) {
 	case ast.SetStr:
 		defaultVal := b.buildDefaultExpression(inScope, ddl.DefaultSpec.Value)
-		outScope.node = plan.NewAlterDefaultSet(table.Database, table, ddl.DefaultSpec.Column.String(), defaultVal)
+		outScope.node = plan.NewAlterDefaultSet(table.SqlDatabase, table, ddl.DefaultSpec.Column.String(), defaultVal)
 		return
 	case ast.DropStr:
-		outScope.node = plan.NewAlterDefaultDrop(table.Database, table, ddl.DefaultSpec.Column.String())
+		outScope.node = plan.NewAlterDefaultDrop(table.SqlDatabase, table, ddl.DefaultSpec.Column.String())
 
 		return
 	default:

@@ -392,14 +392,14 @@ func (c *carder) cardRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 func (c *carder) statsTableAlias(ctx *sql.Context, n *TableAlias, s sql.StatsReader) (float64, error) {
 	switch n := n.Table.Child.(type) {
 	case *plan.ResolvedTable:
-		return c.statsRead(ctx, n.Table, n.Database.Name(), s)
+		return c.statsRead(ctx, n.Table, n.SqlDatabase.Name(), s)
 	default:
 		return 1000, nil
 	}
 }
 
 func (c *carder) statsScan(ctx *sql.Context, t *TableScan, s sql.StatsReader) (float64, error) {
-	return c.statsRead(ctx, t.Table.Table, t.Table.Database.Name(), s)
+	return c.statsRead(ctx, t.Table.Table, t.Table.SqlDatabase.Name(), s)
 }
 
 func (c *carder) statsRead(ctx *sql.Context, t sql.Table, db string, s sql.StatsReader) (float64, error) {
