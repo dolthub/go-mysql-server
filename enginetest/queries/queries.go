@@ -10394,3 +10394,11 @@ var IndexPrefixQueries = []ScriptTest{
 		},
 	},
 }
+
+func MustParseTime(layout, value string) time.Time {
+	parsed, err := time.Parse(layout, value)
+	if err != nil {
+		panic(err)
+	}
+	return parsed
+}

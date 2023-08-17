@@ -62,7 +62,7 @@ func combinedCaseBranchType(left, right sql.Type) sql.Type {
 		if left == right {
 			return left
 		}
-		return types.Datetime
+		return types.DatetimeMaxPrecision
 	}
 	if types.IsNumber(left) && types.IsNumber(right) {
 		if left == types.Float64 || right == types.Float64 {

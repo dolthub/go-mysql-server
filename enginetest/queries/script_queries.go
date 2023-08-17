@@ -1877,7 +1877,7 @@ var ScriptTests = []ScriptTest{
 			"create table t2(c int primary key, d varchar(10))",
 			"alter table t2 add constraint t2du unique (d)",
 			"alter table t2 add constraint fk1 foreign key (d) references t1 (b)",
-			"create table t3 (a int, b varchar(100), c datetime, primary key (b,a))",
+			"create table t3 (a int, b varchar(100), c datetime(6), primary key (b,a))",
 			"create table t4 (a int default (floor(1)), b int default (coalesce(a, 10)))",
 		},
 		Assertions: []ScriptTestAssertion{
