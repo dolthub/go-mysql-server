@@ -22,10 +22,13 @@ var ErrMaxAnalysisIters = errors.NewKind("exceeded max analysis iterations (%d)"
 // Parse parses the given SQL |query| using the default parsing settings and returns the corresponding node.
 func Parse(ctx *sql.Context, cat sql.Catalog, query string) (ret sql.Node, err error) {
 	sqlMode, err := sql.LoadSqlMode(ctx)
+	var parserOpts sqlparser.ParserOptions
 	if err != nil {
-		return nil, err
+		parserOpts = sqlparser.ParserOptions{}
+	} else {
+		parserOpts = sqlMode.ParserOptions()
 	}
-	return ParseWithOptions(ctx, cat, query, sqlMode.ParserOptions())
+	return ParseWithOptions(ctx, cat, query, parserOpts)
 }
 
 func ParseWithOptions(ctx *sql.Context, cat sql.Catalog, query string, options sqlparser.ParserOptions) (ret sql.Node, err error) {
@@ -82,6 +85,7 @@ func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool, options 
 			})
 			remainder = s[ri:]
 		}
+		return nil, parsed, remainder, err
 	}
 
 	if err != nil {
@@ -104,6 +108,7 @@ func (b *Builder) Parse(query string, multi bool) (ret sql.Node, parsed, remaind
 		return nil, "", "", ErrMaxAnalysisIters.New(maxAnalysisIterations)
 	}
 	defer func() {
+		b.nesting--
 		if r := recover(); r != nil {
 			switch r := r.(type) {
 			case parseErr:
@@ -126,10 +131,10 @@ func (b *Builder) Parse(query string, multi bool) (ret sql.Node, parsed, remaind
 
 	parsed = s
 	if !multi {
-		stmt, err = sqlparser.Parse(s)
+		stmt, err = sqlparser.ParseWithOptions(s, b.parserOpts)
 	} else {
 		var ri int
-		stmt, ri, err = sqlparser.ParseOne(s)
+		stmt, ri, err = sqlparser.ParseOneWithOptions(s, b.parserOpts)
 		if ri != 0 && ri < len(s) {
 			parsed = s[:ri]
 			parsed = strings.TrimSpace(parsed)

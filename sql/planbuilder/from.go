@@ -346,8 +346,23 @@ func (b *Builder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope) {
 		if c.descending {
 			so = sql.Descending
 		}
+		scalar := c.scalar
+		if scalar == nil {
+			scalar = c.scalarGf()
+		}
+		// Unions pass order bys to the top scope, where the original
+		// order by get field may not longer be accessible. Here it is
+		// safe to assume the alias has already been computed.
+		scalar, _, _ = transform.Expr(scalar, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			switch e := e.(type) {
+			case *expression.Alias:
+				return expression.NewGetField(int(c.id), e.Type(), e.Name(), e.IsNullable()), transform.NewTree, nil
+			default:
+				return e, transform.SameTree, nil
+			}
+		})
 		sf := sql.SortField{
-			Column: c.scalarGf(),
+			Column: scalar,
 			Order:  so,
 		}
 		sortFields = append(sortFields, sf)
@@ -543,9 +558,9 @@ func (b *Builder) buildJSONTable(inScope *scope, t *ast.JSONTableExpr) (outScope
 func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf) (outScope *scope, ok bool) {
 	outScope = inScope.push()
 
-	// lookup table in catalog
-	// Special handling for asOf w/ prepared statement bindvar
-	if db == "" {
+	if b.ViewCtx().DbName != "" {
+		db = b.ViewCtx().DbName
+	} else if db == "" {
 		db = b.ctx.GetCurrentDatabase()
 	}
 
@@ -553,6 +568,8 @@ func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf
 	if asof != nil {
 		asOfLit = b.buildAsOfLit(inScope, asof.Time)
 	} else if asof := b.ViewCtx().AsOf; asof != nil {
+		asOfLit = asof
+	} else if asof := b.ProcCtx().AsOf; asof != nil {
 		asOfLit = asof
 	}
 
@@ -608,13 +625,53 @@ func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf
 
 	for _, c := range tab.Schema() {
 		outScope.newColumn(scopeColumn{
-			db:       strings.ToLower(db),
-			table:    strings.ToLower(tab.Name()),
-			col:      strings.ToLower(c.Name),
-			typ:      c.Type,
-			nullable: c.Nullable,
+			db:          strings.ToLower(db),
+			table:       strings.ToLower(tab.Name()),
+			col:         strings.ToLower(c.Name),
+			originalCol: c.Name,
+			typ:         c.Type,
+			nullable:    c.Nullable,
 		})
 	}
+
+	if dt, _ := rt.Table.(sql.DynamicColumnsTable); dt != nil {
+		// the columns table has to resolve all columns in every table
+		sch, err := dt.AllColumns(b.ctx)
+		if err != nil {
+			b.handleErr(err)
+		}
+
+		var newSch sql.Schema
+		startSource := sch[0].Source
+		tmpScope := inScope.push()
+		for i, c := range sch {
+			// bucket schema fragments into colsets for resolving defaults
+			newCol := scopeColumn{
+				db:          strings.ToLower(db),
+				table:       strings.ToLower(c.Source),
+				col:         strings.ToLower(c.Name),
+				originalCol: c.Name,
+				typ:         c.Type,
+				nullable:    c.Nullable,
+			}
+			if !strings.EqualFold(c.Source, startSource) {
+				startSource = c.Source
+				tmpSch := b.resolveSchemaDefaults(tmpScope, sch[i-len(tmpScope.cols):i])
+				newSch = append(newSch, tmpSch...)
+				tmpScope = inScope.push()
+			}
+			tmpScope.newColumn(newCol)
+		}
+		if len(tmpScope.cols) > 0 {
+			tmpSch := b.resolveSchemaDefaults(tmpScope, sch[len(sch)-len(tmpScope.cols):len(sch)])
+			newSch = append(newSch, tmpSch...)
+		}
+		rt.Table, err = dt.WithDefaultsSchema(newSch)
+		if err != nil {
+			b.handleErr(err)
+		}
+	}
+
 	return outScope, true
 }
 
@@ -626,15 +683,20 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 		if err != nil {
 			b.handleErr(err)
 		}
+		oldOpts := b.parserOpts
+		defer func() {
+			b.parserOpts = oldOpts
+		}()
 		if vdok {
 			outerAsOf := b.ViewCtx().AsOf
-			outerDb := b.currentDatabase
+			outerDb := b.ViewCtx().DbName
 			b.ViewCtx().AsOf = asOf
-			b.currentDatabase = database
+			b.ViewCtx().DbName = database.Name()
 			defer func() {
 				b.ViewCtx().AsOf = outerAsOf
-				b.currentDatabase = outerDb
+				b.ViewCtx().DbName = outerDb
 			}()
+			b.parserOpts = sql.NewSqlModeFromString(viewDef.SqlMode).ParserOptions()
 			node, _, _, err := b.Parse(viewDef.TextDefinition, false)
 			if err != nil {
 				b.handleErr(err)

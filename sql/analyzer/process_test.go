@@ -33,9 +33,6 @@ import (
 func TestPreparedStatementQueryTracking(t *testing.T) {
 	ctx := sql.NewContext(context.Background())
 
-	node := plan.NewProject(
-		[]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("commits", ""))
-
 	commits := memory.NewTable("commits", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "repository_id", Source: "commits", Type: types.Text},
 		{Name: "commit_hash", Source: "commits", Type: types.Text},
@@ -43,6 +40,14 @@ func TestPreparedStatementQueryTracking(t *testing.T) {
 	}), nil)
 
 	db := memory.NewDatabase("mydb")
+
+	node := plan.NewProject(
+		[]sql.Expression{
+			expression.NewGetFieldWithTable(0, types.Text, "commits", "repository_id", true),
+			expression.NewGetFieldWithTable(1, types.Text, "commits", "commit_hash", true),
+			expression.NewGetFieldWithTable(2, types.Text, "commits", "commit_author_when", true),
+		}, plan.NewResolvedTable(commits, db, nil))
+
 	db.AddTable("commits", commits)
 	ctx.SetCurrentDatabase("mydb")
 
@@ -66,7 +71,7 @@ func TestPreparedStatementQueryTracking(t *testing.T) {
 
 func TestTrackProcessSubquery(t *testing.T) {
 	require := require.New(t)
-	rule := getRuleFrom(OnceAfterAll, TrackProcessId)
+	rule := getRuleFrom(OnceAfterAll_Experimental, TrackProcessId)
 	a := NewDefault(sql.NewDatabaseProvider())
 
 	node := plan.NewProject(

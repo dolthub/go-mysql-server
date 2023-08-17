@@ -203,30 +203,22 @@ func wrapRowSource(ctx *sql.Context, scope *plan.Scope, logFn func(string, ...an
 		}
 
 		if !found {
-			if !f.Nullable && f.Default == nil && f.Generated == nil && !f.AutoIncrement {
+			if !f.Nullable && f.Default == nil && !f.AutoIncrement {
 				return nil, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
 			}
-
-			var defaultExpr sql.Expression = f.Default
-			if defaultExpr == nil && f.Generated != nil {
-				defaultExpr = f.Generated
-			}
-
-			if ctx.Version == sql.VersionExperimental {
-				var err error
-				defaultExpr, _, err = transform.Expr(defaultExpr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-					switch e := e.(type) {
-					case *expression.GetField:
-						return fixidx.FixFieldIndexes(scope, logFn, schema, e.WithTable(destTbl.Name()))
-					default:
-						return e, transform.SameTree, nil
-					}
-				})
-				if err != nil {
-					return nil, err
+			var err error
+			def, _, err := transform.Expr(f.Default, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				switch e := e.(type) {
+				case *expression.GetField:
+					return fixidx.FixFieldIndexes(scope, logFn, schema, e.WithTable(destTbl.Name()))
+				default:
+					return e, transform.SameTree, nil
 				}
+			})
+			if err != nil {
+				return nil, err
 			}
-			projExprs[i] = defaultExpr
+			projExprs[i] = def
 		}
 
 		if f.AutoIncrement {
@@ -278,7 +270,7 @@ func validateValueCount(columnNames []string, values sql.Node) error {
 	case *plan.Values:
 		for _, exprTuple := range node.ExpressionTuples {
 			if len(exprTuple) != len(columnNames) {
-				return plan.ErrInsertIntoMismatchValueCount.New()
+				return sql.ErrInsertIntoMismatchValueCount.New()
 			}
 		}
 	case *plan.LoadData:
@@ -287,12 +279,12 @@ func validateValueCount(columnNames []string, values sql.Node) error {
 			dataColLen = len(node.Schema())
 		}
 		if len(columnNames) != dataColLen {
-			return plan.ErrInsertIntoMismatchValueCount.New()
+			return sql.ErrInsertIntoMismatchValueCount.New()
 		}
 	default:
 		// Parser assures us that this will be some form of SelectStatement, so no need to type check it
 		if len(columnNames) != len(values.Schema()) {
-			return plan.ErrInsertIntoMismatchValueCount.New()
+			return sql.ErrInsertIntoMismatchValueCount.New()
 		}
 	}
 	return nil
