@@ -241,7 +241,7 @@ func TestCaseType(t *testing.T) {
 		{
 			"date and timestamp becomes datetime",
 			caseExpr(NewLiteral("2020-04-07", types.Date), NewLiteral("2020-04-07T00:00:00Z", types.Timestamp)),
-			types.DatetimeMaxPrecision,
+			types.Datetime,
 		},
 	}
 

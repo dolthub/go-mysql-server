@@ -173,7 +173,7 @@ func TestInTuple(t *testing.T) {
 		},
 		{
 			name: "date on right side; non-dates on left",
-			left: expression.NewLiteral(time.Now(), types.DatetimeMaxPrecision),
+			left: expression.NewLiteral(time.Now(), types.Datetime),
 			right: expression.NewTuple(
 				expression.NewLiteral("hi", types.TinyText),
 				expression.NewLiteral("bye", types.TinyText),
@@ -539,7 +539,7 @@ func TestHashInTuple(t *testing.T) {
 		},
 		{
 			name: "date on right side; non-dates on left",
-			left: expression.NewLiteral(time.Now(), types.DatetimeMaxPrecision),
+			left: expression.NewLiteral(time.Now(), types.Datetime),
 			right: expression.NewTuple(
 				expression.NewLiteral("hi", types.TinyText),
 				expression.NewLiteral("bye", types.TinyText),
