@@ -262,10 +262,10 @@ var CreateTableScriptTests = []ScriptTest{
 			{
 				Query:    "select * from t2",
 				Expected: []sql.Row{{1, 5}},
-            },
-        },
-    },
-    {
+			},
+		},
+	},
+	{
 		Name: "datetime precision",
 		SetUpScript: []string{
 			"CREATE TABLE t1 (pk int primary key, d datetime)",
