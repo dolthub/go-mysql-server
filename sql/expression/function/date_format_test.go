@@ -160,7 +160,7 @@ func TestWeekYearFormatting(t *testing.T) {
 
 func TestDateFormatEval(t *testing.T) {
 	dt := time.Date(2020, 2, 3, 4, 5, 6, 7000, time.UTC)
-	dateLit := expression.NewLiteral(dt, types.DatetimeMaxPrecision)
+	dateLit := expression.NewLiteral(dt, types.Datetime)
 	format := expression.NewLiteral("%Y-%m-%d %H:%i:%s.%f", types.Text)
 	nullLiteral := expression.NewLiteral(nil, types.Null)
 

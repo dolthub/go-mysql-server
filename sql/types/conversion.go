@@ -61,7 +61,7 @@ func ApproximateTypeFromValue(val interface{}) sql.Type {
 	case Timespan, time.Duration:
 		return Time
 	case time.Time:
-		return DatetimeMaxPrecision
+		return Datetime
 	case float32:
 		return Float32
 	case float64:
@@ -316,7 +316,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 	case "year":
 		return Year, nil
 	case "date":
-		return CreateDatetimeType(sqltypes.Date, 0)
+		return Date, nil
 	case "time":
 		if ct.Length != nil {
 			length, err := strconv.ParseInt(string(ct.Length.Val), 10, 64)
@@ -334,35 +334,9 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 		}
 		return Time, nil
 	case "timestamp":
-		precision := int64(0)
-		if ct.Length != nil {
-			var err error
-			precision, err = strconv.ParseInt(string(ct.Length.Val), 10, 64)
-			if err != nil {
-				return nil, err
-			}
-
-			if precision > 6 || precision < 0 {
-				return nil, fmt.Errorf("TIMESTAMP supports precision from 0 to 6")
-			}
-		}
-
-		return CreateDatetimeType(sqltypes.Timestamp, int(precision))
+		return Timestamp, nil
 	case "datetime":
-		precision := int64(0)
-		if ct.Length != nil {
-			var err error
-			precision, err = strconv.ParseInt(string(ct.Length.Val), 10, 64)
-			if err != nil {
-				return nil, err
-			}
-
-			if precision > 6 || precision < 0 {
-				return nil, fmt.Errorf("DATETIME supports precision from 0 to 6")
-			}
-		}
-
-		return CreateDatetimeType(sqltypes.Datetime, int(precision))
+		return Datetime, nil
 	case "enum":
 		collation, err := sql.ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
 		if err != nil {

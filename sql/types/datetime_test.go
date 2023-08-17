@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	sqltypes "github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -51,13 +51,6 @@ func TestDatetimeCompare(t *testing.T) {
 			"2010-06-03", 1},
 		{Datetime, "2010-06-03 06:03:11",
 			time.Date(2010, 6, 3, 6, 3, 11, 0, time.UTC), 0},
-		{Datetime, "2010-06-03 06:03:11", "2010-06-03 06:03:11", 0},
-		{DatetimeMaxPrecision, "2010-06-03 06:03:11.123456", "2010-06-03 06:03:11", 1},
-		{DatetimeMaxPrecision, "2010-06-03 06:03:11", "2010-06-03 06:03:11.123456", -1},
-		{DatetimeMaxPrecision, "2010-06-03 06:03:11.123456111", "2010-06-03 06:03:11.123456333", 0},
-		{MustCreateDatetimeType(sqltypes.Datetime, 3), "2010-06-03 06:03:11.123", "2010-06-03 06:03:11", 1},
-		{MustCreateDatetimeType(sqltypes.Datetime, 3), "2010-06-03 06:03:11", "2010-06-03 06:03:11.123", -1},
-		{MustCreateDatetimeType(sqltypes.Datetime, 3), "2010-06-03 06:03:11.123456", "2010-06-03 06:03:11.123789", 0},
 		{Timestamp, time.Date(2012, 12, 12, 12, 12, 12, 12, time.UTC),
 			time.Date(2012, 12, 12, 12, 24, 24, 24, time.UTC), -1},
 		{Timestamp, time.Date(2012, 12, 12, 12, 12, 12, 12, time.UTC),
@@ -81,14 +74,14 @@ func TestDatetimeCreate(t *testing.T) {
 		expectedType datetimeType
 		expectedErr  bool
 	}{
-		{baseType: sqltypes.Date, expectedType: datetimeType{baseType: sqltypes.Date}},
-		{baseType: sqltypes.Datetime, expectedType: datetimeType{baseType: sqltypes.Datetime}},
-		{baseType: sqltypes.Timestamp, expectedType: datetimeType{baseType: sqltypes.Timestamp}},
+		{sqltypes.Date, datetimeType{sqltypes.Date}, false},
+		{sqltypes.Datetime, datetimeType{sqltypes.Datetime}, false},
+		{sqltypes.Timestamp, datetimeType{sqltypes.Timestamp}, false},
 	}
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test.baseType), func(t *testing.T) {
-			typ, err := CreateDatetimeType(test.baseType, 0)
+			typ, err := CreateDatetimeType(test.baseType)
 			if test.expectedErr {
 				assert.Error(t, err)
 			} else {
@@ -137,7 +130,7 @@ func TestDatetimeCreateInvalidBaseTypes(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test.baseType), func(t *testing.T) {
-			typ, err := CreateDatetimeType(test.baseType, 0)
+			typ, err := CreateDatetimeType(test.baseType)
 			if test.expectedErr {
 				assert.Error(t, err)
 			} else {
@@ -149,13 +142,12 @@ func TestDatetimeCreateInvalidBaseTypes(t *testing.T) {
 }
 
 func TestDatetimeConvert(t *testing.T) {
-	type testcase struct {
+	tests := []struct {
 		typ         sql.Type
 		val         interface{}
 		expectedVal interface{}
 		expectedErr bool
-	}
-	tests := []testcase{
+	}{
 		{Date, nil, nil, false},
 		{Date, time.Date(2012, 12, 12, 12, 12, 12, 12, time.UTC),
 			time.Date(2012, 12, 12, 0, 0, 0, 0, time.UTC), false},
@@ -170,97 +162,50 @@ func TestDatetimeConvert(t *testing.T) {
 		{Date, "20100603", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
 		{Date, "20100603121212", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
 
-		{DatetimeMaxPrecision, nil, nil, false},
-		{DatetimeMaxPrecision, time.Date(2012, 12, 12, 12, 12, 12, 12, time.UTC),
-			time.Date(2012, 12, 12, 12, 12, 12, 0, time.UTC), false},
-		{DatetimeMaxPrecision, time.Date(2012, 12, 12, 12, 12, 12, 12345, time.UTC),
-			time.Date(2012, 12, 12, 12, 12, 12, 12000, time.UTC), false},
-		{DatetimeMaxPrecision, "2010-06-03", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
-		{DatetimeMaxPrecision, "2010-6-3", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
-		{DatetimeMaxPrecision, "2010-06-3", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
-		{DatetimeMaxPrecision, "2010-6-03", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
-		{DatetimeMaxPrecision, "2010-06-03 12:12:12", time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC), false},
-		{DatetimeMaxPrecision, "2010-06-03 12:12:12.000012", time.Date(2010, 6, 3, 12, 12, 12, 12000, time.UTC), false},
-		{DatetimeMaxPrecision, "2010-06-03T12:12:12Z", time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC), false},
-		{DatetimeMaxPrecision, "2010-06-03T12:12:12.000012Z", time.Date(2010, 6, 3, 12, 12, 12, 12000, time.UTC), false},
-		{DatetimeMaxPrecision, "20100603", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
-		{DatetimeMaxPrecision, "20100603121212", time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC), false},
-		{DatetimeMaxPrecision, "2010-6-3 12:12:12", time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC), false},
-		{DatetimeMaxPrecision, "2010-6-13 12:12:12", time.Date(2010, 6, 13, 12, 12, 12, 0, time.UTC), false},
-		{DatetimeMaxPrecision, "2010-10-3 12:12:12", time.Date(2010, 10, 3, 12, 12, 12, 0, time.UTC), false},
-		{DatetimeMaxPrecision, "2010-10-3 12:12:2", time.Date(2010, 10, 3, 12, 12, 2, 0, time.UTC), false},
-		{DatetimeMaxPrecision, "2010-10-3 12:2:2", time.Date(2010, 10, 3, 12, 2, 2, 0, time.UTC), false},
-		{DatetimeMaxPrecision, "2010-06-03 12:3", time.Date(2010, 6, 3, 12, 3, 0, 0, time.UTC), false},
-		{DatetimeMaxPrecision, "2010-06-03 12:34", time.Date(2010, 6, 3, 12, 34, 0, 0, time.UTC), false},
-		{DatetimeMaxPrecision, "2010-06-03 12:34:", time.Date(2010, 6, 3, 12, 34, 0, 0, time.UTC), false},
-		{DatetimeMaxPrecision, "2010-06-03 12:34:.", time.Date(2010, 6, 3, 12, 34, 0, 0, time.UTC), false},
-		{DatetimeMaxPrecision, "2010-06-03 12:34:5", time.Date(2010, 6, 3, 12, 34, 5, 0, time.UTC), false},
-		{DatetimeMaxPrecision, "2010-06-03 12:34:56", time.Date(2010, 6, 3, 12, 34, 56, 0, time.UTC), false},
-		{DatetimeMaxPrecision, "2010-06-03 12:34:56.", time.Date(2010, 6, 3, 12, 34, 56, 0, time.UTC), false},
-		{DatetimeMaxPrecision, "2010-06-03 12:34:56.7", time.Date(2010, 6, 3, 12, 34, 56, 700000000, time.UTC), false},
-		{DatetimeMaxPrecision, "2010-06-03 12:34:56.78", time.Date(2010, 6, 3, 12, 34, 56, 780000000, time.UTC), false},
-		{DatetimeMaxPrecision, "2010-06-03 12:34:56.789", time.Date(2010, 6, 3, 12, 34, 56, 789000000, time.UTC), false},
-
-		{MustCreateDatetimeType(sqltypes.Datetime, 3), nil, nil, false},
-		{MustCreateDatetimeType(sqltypes.Datetime, 3), time.Date(2012, 12, 12, 12, 12, 12, 12345678, time.UTC),
-			time.Date(2012, 12, 12, 12, 12, 12, 12000000, time.UTC), false},
-		{MustCreateDatetimeType(sqltypes.Datetime, 3), time.Date(2012, 12, 12, 12, 12, 12, 12345678, time.UTC),
-			time.Date(2012, 12, 12, 12, 12, 12, 12000000, time.UTC), false},
-		{MustCreateDatetimeType(sqltypes.Datetime, 3), "2010-06-03 12:12:12.123456", time.Date(2010, 6, 3, 12, 12, 12, 123000000, time.UTC), false},
-		{MustCreateDatetimeType(sqltypes.Datetime, 3), "2010-06-03T12:12:12.123456Z", time.Date(2010, 6, 3, 12, 12, 12, 123000000, time.UTC), false},
-		{MustCreateDatetimeType(sqltypes.Datetime, 3), "2010-06-03 12:34:56.7", time.Date(2010, 6, 3, 12, 34, 56, 700000000, time.UTC), false},
-		{MustCreateDatetimeType(sqltypes.Datetime, 3), "2010-06-03 12:34:56.78", time.Date(2010, 6, 3, 12, 34, 56, 780000000, time.UTC), false},
-		{MustCreateDatetimeType(sqltypes.Datetime, 3), "2010-06-03 12:34:56.789", time.Date(2010, 6, 3, 12, 34, 56, 789000000, time.UTC), false},
-
 		{Datetime, nil, nil, false},
-		{Datetime, time.Date(2012, 12, 12, 12, 12, 12, 12345678, time.UTC),
-			time.Date(2012, 12, 12, 12, 12, 12, 0, time.UTC), false},
-		{Datetime, time.Date(2012, 12, 12, 12, 12, 12, 12345678, time.UTC),
-			time.Date(2012, 12, 12, 12, 12, 12, 0, time.UTC), false},
-		{Datetime, "2010-06-03 12:12:12.123456", time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC), false},
-		{Datetime, "2010-06-03T12:12:12.123456Z", time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC), false},
-		{Datetime, "2010-06-03 12:34:56.7", time.Date(2010, 6, 3, 12, 34, 56, 0, time.UTC), false},
-		{Datetime, "2010-06-03 12:34:56.78", time.Date(2010, 6, 3, 12, 34, 56, 0, time.UTC), false},
-		{Datetime, "2010-06-03 12:34:56.789", time.Date(2010, 6, 3, 12, 34, 56, 0, time.UTC), false},
+		{Datetime, time.Date(2012, 12, 12, 12, 12, 12, 12, time.UTC),
+			time.Date(2012, 12, 12, 12, 12, 12, 12, time.UTC), false},
+		{Datetime, "2010-06-03", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
+		{Datetime, "2010-6-3", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
+		{Datetime, "2010-06-3", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
+		{Datetime, "2010-6-03", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
+		{Datetime, "2010-06-03 12:12:12", time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC), false},
+		{Datetime, "2010-06-03 12:12:12.000012", time.Date(2010, 6, 3, 12, 12, 12, 12000, time.UTC), false},
+		{Datetime, "2010-06-03T12:12:12Z", time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC), false},
+		{Datetime, "2010-06-03T12:12:12.000012Z", time.Date(2010, 6, 3, 12, 12, 12, 12000, time.UTC), false},
+		{Datetime, "20100603", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
+		{Datetime, "20100603121212", time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC), false},
+		{Datetime, "2010-6-3 12:12:12", time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC), false},
+		{Datetime, "2010-6-13 12:12:12", time.Date(2010, 6, 13, 12, 12, 12, 0, time.UTC), false},
+		{Datetime, "2010-10-3 12:12:12", time.Date(2010, 10, 3, 12, 12, 12, 0, time.UTC), false},
+		{Datetime, "2010-10-3 12:12:2", time.Date(2010, 10, 3, 12, 12, 2, 0, time.UTC), false},
+		{Datetime, "2010-10-3 12:2:2", time.Date(2010, 10, 3, 12, 2, 2, 0, time.UTC), false},
 
-		{TimestampMaxPrecision, nil, nil, false},
-		{TimestampMaxPrecision, time.Date(2012, 12, 12, 12, 12, 12, 12, time.UTC),
-			time.Date(2012, 12, 12, 12, 12, 12, 0, time.UTC), false},
-		{TimestampMaxPrecision, time.Date(2012, 12, 12, 12, 12, 12, 12345, time.UTC),
-			time.Date(2012, 12, 12, 12, 12, 12, 12000, time.UTC), false},
-		{TimestampMaxPrecision, "2010-06-03", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
-		{TimestampMaxPrecision, "2010-6-3", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
-		{TimestampMaxPrecision, "2010-6-03", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
-		{TimestampMaxPrecision, "2010-06-3", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
-		{TimestampMaxPrecision, "2010-06-03 12:12:12", time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC), false},
-		{TimestampMaxPrecision, "2010-06-03 12:12:12.000012", time.Date(2010, 6, 3, 12, 12, 12, 12000, time.UTC), false},
-		{TimestampMaxPrecision, "2010-06-03T12:12:12Z", time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC), false},
-		{TimestampMaxPrecision, "2010-06-03T12:12:12.000012Z", time.Date(2010, 6, 3, 12, 12, 12, 12000, time.UTC), false},
-		{TimestampMaxPrecision, "20100603", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
-		{TimestampMaxPrecision, "20100603121212", time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC), false},
-		{TimestampMaxPrecision, time.Date(2012, 12, 12, 12, 12, 12, 12345, time.UTC).UTC().String(), time.Date(2012, 12, 12, 12, 12, 12, 12000, time.UTC), false},
-
-		{MustCreateDatetimeType(sqltypes.Timestamp, 3), nil, nil, false},
-		{MustCreateDatetimeType(sqltypes.Timestamp, 3), time.Date(2012, 12, 12, 12, 12, 12, 12345678, time.UTC),
-			time.Date(2012, 12, 12, 12, 12, 12, 12000000, time.UTC), false},
-		{MustCreateDatetimeType(sqltypes.Timestamp, 3), time.Date(2012, 12, 12, 12, 12, 12, 12345678, time.UTC),
-			time.Date(2012, 12, 12, 12, 12, 12, 12000000, time.UTC), false},
-		{MustCreateDatetimeType(sqltypes.Timestamp, 3), "2010-06-03 12:12:12.123456", time.Date(2010, 6, 3, 12, 12, 12, 123000000, time.UTC), false},
-		{MustCreateDatetimeType(sqltypes.Timestamp, 3), "2010-06-03T12:12:12.123456Z", time.Date(2010, 6, 3, 12, 12, 12, 123000000, time.UTC), false},
-		{MustCreateDatetimeType(sqltypes.Timestamp, 3), "2010-06-03 12:34:56.7", time.Date(2010, 6, 3, 12, 34, 56, 700000000, time.UTC), false},
-		{MustCreateDatetimeType(sqltypes.Timestamp, 3), "2010-06-03 12:34:56.78", time.Date(2010, 6, 3, 12, 34, 56, 780000000, time.UTC), false},
-		{MustCreateDatetimeType(sqltypes.Timestamp, 3), "2010-06-03 12:34:56.789", time.Date(2010, 6, 3, 12, 34, 56, 789000000, time.UTC), false},
+		{Datetime, "2010-06-03 12:3", time.Date(2010, 6, 3, 12, 3, 0, 0, time.UTC), false},
+		{Datetime, "2010-06-03 12:34", time.Date(2010, 6, 3, 12, 34, 0, 0, time.UTC), false},
+		{Datetime, "2010-06-03 12:34:", time.Date(2010, 6, 3, 12, 34, 0, 0, time.UTC), false},
+		{Datetime, "2010-06-03 12:34:.", time.Date(2010, 6, 3, 12, 34, 0, 0, time.UTC), false},
+		{Datetime, "2010-06-03 12:34:5", time.Date(2010, 6, 3, 12, 34, 5, 0, time.UTC), false},
+		{Datetime, "2010-06-03 12:34:56", time.Date(2010, 6, 3, 12, 34, 56, 0, time.UTC), false},
+		{Datetime, "2010-06-03 12:34:56.", time.Date(2010, 6, 3, 12, 34, 56, 0, time.UTC), false},
+		{Datetime, "2010-06-03 12:34:56.7", time.Date(2010, 6, 3, 12, 34, 56, 700000000, time.UTC), false},
+		{Datetime, "2010-06-03 12:34:56.78", time.Date(2010, 6, 3, 12, 34, 56, 780000000, time.UTC), false},
+		{Datetime, "2010-06-03 12:34:56.789", time.Date(2010, 6, 3, 12, 34, 56, 789000000, time.UTC), false},
 
 		{Timestamp, nil, nil, false},
-		{Timestamp, time.Date(2012, 12, 12, 12, 12, 12, 12345678, time.UTC),
-			time.Date(2012, 12, 12, 12, 12, 12, 0, time.UTC), false},
-		{Timestamp, time.Date(2012, 12, 12, 12, 12, 12, 12345678, time.UTC),
-			time.Date(2012, 12, 12, 12, 12, 12, 0, time.UTC), false},
-		{Timestamp, "2010-06-03 12:12:12.123456", time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC), false},
-		{Timestamp, "2010-06-03T12:12:12.123456Z", time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC), false},
-		{Timestamp, "2010-06-03 12:34:56.7", time.Date(2010, 6, 3, 12, 34, 56, 0, time.UTC), false},
-		{Timestamp, "2010-06-03 12:34:56.78", time.Date(2010, 6, 3, 12, 34, 56, 0, time.UTC), false},
-		{Timestamp, "2010-06-03 12:34:56.789", time.Date(2010, 6, 3, 12, 34, 56, 0, time.UTC), false},
+		{Timestamp, time.Date(2012, 12, 12, 12, 12, 12, 12, time.UTC),
+			time.Date(2012, 12, 12, 12, 12, 12, 12, time.UTC), false},
+		{Timestamp, "2010-06-03", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
+		{Timestamp, "2010-6-3", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
+		{Timestamp, "2010-6-03", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
+		{Timestamp, "2010-06-3", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
+		{Timestamp, "2010-06-03 12:12:12", time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC), false},
+		{Timestamp, "2010-06-03 12:12:12.000012", time.Date(2010, 6, 3, 12, 12, 12, 12000, time.UTC), false},
+		{Timestamp, "2010-06-03T12:12:12Z", time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC), false},
+		{Timestamp, "2010-06-03T12:12:12.000012Z", time.Date(2010, 6, 3, 12, 12, 12, 12000, time.UTC), false},
+		{Timestamp, "20100603", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
+		{Timestamp, "20100603121212", time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC), false},
+		{Timestamp, time.Date(2012, 12, 12, 12, 12, 12, 12, time.UTC).UTC().String(), time.Date(2012, 12, 12, 12, 12, 12, 12, time.UTC), false},
 
 		{Date, "0000-01-01 00:00:00", time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
 		{Date, "0500-01-01 00:00:00", time.Date(500, 1, 1, 0, 0, 0, 0, time.UTC), false},
@@ -282,40 +227,40 @@ func TestDatetimeConvert(t *testing.T) {
 		{Date, float64(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
 		{Date, []byte{0}, nil, true},
 
-		{DatetimeMaxPrecision, "0500-01-01 01:01:01", time.Date(500, 1, 1, 1, 1, 1, 0, time.UTC), false},
-		{DatetimeMaxPrecision, "0000-01-01 00:00:00", time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
-		{DatetimeMaxPrecision, time.Date(10000, 1, 1, 1, 1, 1, 1, time.UTC), nil, true},
-		{DatetimeMaxPrecision, int(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
-		{DatetimeMaxPrecision, int8(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
-		{DatetimeMaxPrecision, int16(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
-		{DatetimeMaxPrecision, int32(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
-		{DatetimeMaxPrecision, int64(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
-		{DatetimeMaxPrecision, uint(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
-		{DatetimeMaxPrecision, uint8(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
-		{DatetimeMaxPrecision, uint16(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
-		{DatetimeMaxPrecision, uint32(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
-		{DatetimeMaxPrecision, uint64(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
-		{DatetimeMaxPrecision, float32(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
-		{DatetimeMaxPrecision, float64(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
-		{DatetimeMaxPrecision, []byte{0}, nil, true},
+		{Datetime, "0500-01-01 01:01:01", time.Date(500, 1, 1, 1, 1, 1, 0, time.UTC), false},
+		{Datetime, "0000-01-01 00:00:00", time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Datetime, time.Date(10000, 1, 1, 1, 1, 1, 1, time.UTC), nil, true},
+		{Datetime, int(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Datetime, int8(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Datetime, int16(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Datetime, int32(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Datetime, int64(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Datetime, uint(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Datetime, uint8(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Datetime, uint16(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Datetime, uint32(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Datetime, uint64(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Datetime, float32(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Datetime, float64(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Datetime, []byte{0}, nil, true},
 
-		{TimestampMaxPrecision, time.Date(1960, 1, 1, 1, 1, 1, 1, time.UTC), nil, true},
-		{TimestampMaxPrecision, "1970-01-01 00:00:00", nil, true},
-		{TimestampMaxPrecision, "1970-01-01 00:00:01", time.Date(1970, 1, 1, 0, 0, 1, 0, time.UTC), false},
-		{TimestampMaxPrecision, time.Date(2040, 1, 1, 1, 1, 1, 1, time.UTC), nil, true},
-		{TimestampMaxPrecision, int(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
-		{TimestampMaxPrecision, int8(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
-		{TimestampMaxPrecision, int16(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
-		{TimestampMaxPrecision, int32(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
-		{TimestampMaxPrecision, int64(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
-		{TimestampMaxPrecision, uint(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
-		{TimestampMaxPrecision, uint8(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
-		{TimestampMaxPrecision, uint16(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
-		{TimestampMaxPrecision, uint32(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
-		{TimestampMaxPrecision, uint64(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
-		{TimestampMaxPrecision, float32(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
-		{TimestampMaxPrecision, float64(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
-		{TimestampMaxPrecision, []byte{0}, nil, true},
+		{Timestamp, time.Date(1960, 1, 1, 1, 1, 1, 1, time.UTC), nil, true},
+		{Timestamp, "1970-01-01 00:00:00", nil, true},
+		{Timestamp, "1970-01-01 00:00:01", time.Date(1970, 1, 1, 0, 0, 1, 0, time.UTC), false},
+		{Timestamp, time.Date(2040, 1, 1, 1, 1, 1, 1, time.UTC), nil, true},
+		{Timestamp, int(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Timestamp, int8(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Timestamp, int16(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Timestamp, int32(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Timestamp, int64(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Timestamp, uint(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Timestamp, uint8(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Timestamp, uint16(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Timestamp, uint32(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Timestamp, uint64(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Timestamp, float32(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Timestamp, float64(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Timestamp, []byte{0}, nil, true},
 
 		{Date, int(1), nil, true},
 		{Date, int8(1), nil, true},
@@ -330,31 +275,31 @@ func TestDatetimeConvert(t *testing.T) {
 		{Date, float32(1), nil, true},
 		{Date, float64(1), nil, true},
 
-		{DatetimeMaxPrecision, int(1), nil, true},
-		{DatetimeMaxPrecision, int8(1), nil, true},
-		{DatetimeMaxPrecision, int16(1), nil, true},
-		{DatetimeMaxPrecision, int32(1), nil, true},
-		{DatetimeMaxPrecision, int64(1), nil, true},
-		{DatetimeMaxPrecision, uint(1), nil, true},
-		{DatetimeMaxPrecision, uint8(1), nil, true},
-		{DatetimeMaxPrecision, uint16(1), nil, true},
-		{DatetimeMaxPrecision, uint32(1), nil, true},
-		{DatetimeMaxPrecision, uint64(1), nil, true},
-		{DatetimeMaxPrecision, float32(1), nil, true},
-		{DatetimeMaxPrecision, float64(1), nil, true},
+		{Datetime, int(1), nil, true},
+		{Datetime, int8(1), nil, true},
+		{Datetime, int16(1), nil, true},
+		{Datetime, int32(1), nil, true},
+		{Datetime, int64(1), nil, true},
+		{Datetime, uint(1), nil, true},
+		{Datetime, uint8(1), nil, true},
+		{Datetime, uint16(1), nil, true},
+		{Datetime, uint32(1), nil, true},
+		{Datetime, uint64(1), nil, true},
+		{Datetime, float32(1), nil, true},
+		{Datetime, float64(1), nil, true},
 
-		{TimestampMaxPrecision, int(1), nil, true},
-		{TimestampMaxPrecision, int8(1), nil, true},
-		{TimestampMaxPrecision, int16(1), nil, true},
-		{TimestampMaxPrecision, int32(1), nil, true},
-		{TimestampMaxPrecision, int64(1), nil, true},
-		{TimestampMaxPrecision, uint(1), nil, true},
-		{TimestampMaxPrecision, uint8(1), nil, true},
-		{TimestampMaxPrecision, uint16(1), nil, true},
-		{TimestampMaxPrecision, uint32(1), nil, true},
-		{TimestampMaxPrecision, uint64(1), nil, true},
-		{TimestampMaxPrecision, float32(1), nil, true},
-		{TimestampMaxPrecision, float64(1), nil, true},
+		{Timestamp, int(1), nil, true},
+		{Timestamp, int8(1), nil, true},
+		{Timestamp, int16(1), nil, true},
+		{Timestamp, int32(1), nil, true},
+		{Timestamp, int64(1), nil, true},
+		{Timestamp, uint(1), nil, true},
+		{Timestamp, uint8(1), nil, true},
+		{Timestamp, uint16(1), nil, true},
+		{Timestamp, uint32(1), nil, true},
+		{Timestamp, uint64(1), nil, true},
+		{Timestamp, float32(1), nil, true},
+		{Timestamp, float64(1), nil, true},
 	}
 
 	for _, test := range tests {
@@ -378,13 +323,9 @@ func TestDatetimeString(t *testing.T) {
 		typ         sql.Type
 		expectedStr string
 	}{
-		{MustCreateDatetimeType(sqltypes.Date, 0), "date"},
-		{MustCreateDatetimeType(sqltypes.Datetime, 0), "datetime"},
-		{datetimeType{baseType: sqltypes.Datetime, precision: 3}, "datetime(3)"},
-		{datetimeType{baseType: sqltypes.Datetime, precision: 6}, "datetime(6)"},
-		{MustCreateDatetimeType(sqltypes.Timestamp, 0), "timestamp"},
-		{MustCreateDatetimeType(sqltypes.Timestamp, 3), "timestamp(3)"},
-		{MustCreateDatetimeType(sqltypes.Timestamp, 6), "timestamp(6)"},
+		{MustCreateDatetimeType(sqltypes.Date), "date"},
+		{MustCreateDatetimeType(sqltypes.Datetime), "datetime(6)"},
+		{MustCreateDatetimeType(sqltypes.Timestamp), "timestamp(6)"},
 	}
 
 	for _, test := range tests {
@@ -396,10 +337,10 @@ func TestDatetimeString(t *testing.T) {
 }
 
 func TestDatetimeZero(t *testing.T) {
-	_, ok := MustCreateDatetimeType(sqltypes.Date, 0).Zero().(time.Time)
+	_, ok := MustCreateDatetimeType(sqltypes.Date).Zero().(time.Time)
 	require.True(t, ok)
-	_, ok = MustCreateDatetimeType(sqltypes.Datetime, 0).Zero().(time.Time)
+	_, ok = MustCreateDatetimeType(sqltypes.Datetime).Zero().(time.Time)
 	require.True(t, ok)
-	_, ok = MustCreateDatetimeType(sqltypes.Timestamp, 0).Zero().(time.Time)
+	_, ok = MustCreateDatetimeType(sqltypes.Timestamp).Zero().(time.Time)
 	require.True(t, ok)
 }

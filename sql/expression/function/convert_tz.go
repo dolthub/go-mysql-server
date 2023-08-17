@@ -62,7 +62,7 @@ func (c *ConvertTz) String() string {
 
 // Type implements the sql.Expression interface.
 func (c *ConvertTz) Type() sql.Type {
-	return types.DatetimeMaxPrecision
+	return types.Datetime
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -93,7 +93,7 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// If either the date, or the timezones/offsets are not correct types we return NULL.
-	datetime, err := types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(dt)
+	datetime, err := types.Datetime.ConvertWithoutRangeCheck(dt)
 	if err != nil {
 		return nil, nil
 	}
@@ -121,7 +121,7 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	return types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(converted)
+	return types.Datetime.ConvertWithoutRangeCheck(converted)
 }
 
 // Children implements the sql.Expression interface.
