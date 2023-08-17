@@ -314,11 +314,7 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 			}
 			res[k] = expression.NewLiteral(v, t)
 		case v.Type() == sqltypes.Date || v.Type() == sqltypes.Datetime || v.Type() == sqltypes.Timestamp:
-			precision := 6
-			if v.Type() == sqltypes.Date {
-				precision = 0
-			}
-			t, err := types.CreateDatetimeType(v.Type(), precision)
+			t, err := types.CreateDatetimeType(v.Type())
 			if err != nil {
 				return nil, err
 			}

@@ -171,7 +171,7 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 			return nil, nil, nil, err
 		}
 
-		return l, r, types.DatetimeMaxPrecision, nil
+		return l, r, types.Datetime, nil
 	}
 
 	if types.IsBinaryType(leftType) || types.IsBinaryType(rightType) {

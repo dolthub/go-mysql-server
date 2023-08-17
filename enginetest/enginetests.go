@@ -2167,8 +2167,8 @@ func TestCreateTable(t *testing.T, harness Harness) {
 			{"val", "int", "YES", "", "NULL", ""}}, nil, nil)
 	})
 
+	t.Skip("primary key lengths are not stored properly")
 	for _, tt := range queries.BrokenCreateTableQueries {
-		t.Skip("primary key lengths are not stored properly")
 		RunWriteQueryTest(t, harness, tt)
 	}
 }
@@ -5613,8 +5613,8 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		e.Query(ctx, "set @@session.time_zone='SYSTEM';")
 		// TODO: NOW() and CURRENT_TIMESTAMP() are supposed to be the same function in MySQL, but we have two different
 		//       implementations with slightly different behavior.
-		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t10(pk BIGINT PRIMARY KEY, v1 DATETIME(6) DEFAULT NOW(), v2 DATETIME(6) DEFAULT CURRENT_TIMESTAMP(),"+
-			"v3 TIMESTAMP(6) DEFAULT NOW(), v4 TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP())", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t10(pk BIGINT PRIMARY KEY, v1 DATETIME DEFAULT NOW(), v2 DATETIME DEFAULT CURRENT_TIMESTAMP(),"+
+			"v3 TIMESTAMP DEFAULT NOW(), v4 TIMESTAMP DEFAULT CURRENT_TIMESTAMP())", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
 
 		// truncating time to microseconds for compatibility with integrators who may store more precision (go gives nanos)
 		now := time.Now().Truncate(time.Microsecond).UTC()
@@ -5836,14 +5836,14 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	})
 
 	t.Run("Column defaults with functions", func(t *testing.T) {
-		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t33(pk varchar(100) DEFAULT (replace(UUID(), '-', '')), v1 timestamp(6) DEFAULT now(), v2 varchar(100), primary key (pk))", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t33(pk varchar(100) DEFAULT (replace(UUID(), '-', '')), v1 timestamp DEFAULT now(), v2 varchar(100), primary key (pk))", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "insert into t33 (v2) values ('abc')", []sql.Row{{types.NewOkResult(1)}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "select count(*) from t33", []sql.Row{{1}}, nil, nil)
 		RunQuery(t, e, harness, "alter table t33 add column name varchar(100)")
 		RunQuery(t, e, harness, "alter table t33 rename column v1 to v1_new")
 		RunQuery(t, e, harness, "alter table t33 rename column name to name2")
 		RunQuery(t, e, harness, "alter table t33 drop column name2")
-		RunQuery(t, e, harness, "alter table t33 add column v3 datetime(6) default CURRENT_TIMESTAMP()")
+		RunQuery(t, e, harness, "alter table t33 add column v3 datetime default CURRENT_TIMESTAMP()")
 
 		TestQueryWithContext(t, ctx, e, harness, "desc t33", []sql.Row{
 			{"pk", "varchar(100)", "NO", "PRI", "(replace(uuid(), '-', ''))", "DEFAULT_GENERATED"},

@@ -1132,6 +1132,22 @@ func (b *Builder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinit
 		extra = "auto_increment"
 	}
 
+	if cd.Type.SRID != nil {
+		sridVal, err := strconv.ParseInt(string(cd.Type.SRID.Val), 10, 32)
+		if err != nil {
+			b.handleErr(err)
+		}
+
+		if err = types.ValidateSRID(int(sridVal), ""); err != nil {
+			b.handleErr(err)
+		}
+		if s, ok := internalTyp.(sql.SpatialColumnType); ok {
+			internalTyp = s.SetSRID(uint32(sridVal))
+		} else {
+			b.handleErr(sql.ErrInvalidType.New(fmt.Sprintf("cannot define SRID for %s", internalTyp)))
+		}
+	}
+
 	return &sql.Column{
 		Nullable:      nullable,
 		Type:          internalTyp,

@@ -120,7 +120,7 @@ func (c *Convert) Type() sql.Type {
 	case ConvertToDate:
 		return types.Date
 	case ConvertToDatetime:
-		return types.DatetimeMaxPrecision
+		return types.Datetime
 	case ConvertToDecimal:
 		if c.cachedDecimalType == nil {
 			c.cachedDecimalType = createConvertedDecimalType(c.typeLength, c.typeScale, true)
@@ -285,7 +285,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type, typeLengt
 		if !(isTime || isString || isBinary) {
 			return nil, nil
 		}
-		d, _, err := types.DatetimeMaxPrecision.Convert(val)
+		d, _, err := types.Datetime.Convert(val)
 		if err != nil {
 			return nil, err
 		}

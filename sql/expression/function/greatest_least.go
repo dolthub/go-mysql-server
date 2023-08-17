@@ -125,15 +125,13 @@ func compEval(
 
 	}
 
-	if types.IsDatetimeType(returnType) {
-		return selectedTime, nil
-	}
-
 	switch returnType {
 	case types.Int64:
 		return int64(selectedNum), nil
 	case types.LongText:
 		return selectedString, nil
+	case types.Datetime:
+		return selectedTime, nil
 	}
 
 	// sql.Float64
@@ -191,7 +189,7 @@ func compRetType(args ...sql.Expression) (sql.Type, error) {
 	} else if allInt {
 		return types.Int64, nil
 	} else if allDatetime {
-		return types.DatetimeMaxPrecision, nil
+		return types.Datetime, nil
 	} else {
 		return types.Float64, nil
 	}
