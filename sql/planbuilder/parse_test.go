@@ -1842,6 +1842,10 @@ func TestParseColumnTypeString(t *testing.T) {
 			"DATETIME(6)",
 			types.DatetimeMaxPrecision,
 		},
+		{
+			"geometry SRID 4326",
+			types.GeometryType{SRID: 4326, DefinedSRID: true},
+		},
 	}
 
 	for _, test := range tests {
