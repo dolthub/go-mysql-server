@@ -1830,18 +1830,26 @@ func TestParseColumnTypeString(t *testing.T) {
 			"TIMESTAMP",
 			types.Timestamp,
 		},
-		//{
-		//	"TIMESTAMP(6)",
-		//	types.TimestampMaxPrecision,
-		//},
+		{
+			"TIMESTAMP(3)",
+			types.MustCreateDatetimeType(sqltypes.Timestamp, 3),
+		},
+		{
+			"TIMESTAMP(6)",
+			types.TimestampMaxPrecision,
+		},
+		{
+			"DATETIME(3)",
+			types.MustCreateDatetimeType(sqltypes.Datetime, 3),
+		},
 		{
 			"DATETIME",
 			types.Datetime,
 		},
-		//{
-		//	"DATETIME(6)",
-		//	types.DatetimeMaxPrecision,
-		//},
+		{
+			"DATETIME(6)",
+			types.DatetimeMaxPrecision,
+		},
 	}
 
 	for _, test := range tests {
