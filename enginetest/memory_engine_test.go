@@ -189,7 +189,7 @@ func TestSingleScript(t *testing.T) {
 	var scripts = []queries.ScriptTest{}
 
 	for _, test := range scripts {
-		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental)
+		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
