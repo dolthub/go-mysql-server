@@ -481,6 +481,7 @@ func (b *BaseBuilder) populateMax1Results(ctx *sql.Context, n *plan.Max1Row, row
 	if err != nil {
 		return err
 	}
+	defer i.Close(ctx)
 	r1, err := i.Next(ctx)
 	if errors.Is(err, io.EOF) {
 		n.EmptyResult = true

@@ -396,6 +396,101 @@ func RebuildTables(ctx *sql.Context, tbl sql.IndexAddressableTable, db Database)
 	return CreateFulltextIndexes(ctx, db, tbl, predeterminedNames, indexDefs...)
 }
 
+// DropColumnFromTables removes the given column from all of the Full-Text indexes, which will trigger a rebuild if the
+// index spans multiple columns, but will trigger a deletion if the index spans that single column. The column name is
+// case-insensitive.
+func DropColumnFromTables(ctx *sql.Context, tbl sql.IndexAddressableTable, db Database, colName string) error {
+	// Check the interfaces on the parameters
+	dropper, ok := db.(sql.TableDropper)
+	if !ok {
+		return sql.ErrIncompleteFullTextIntegration.New()
+	}
+	idxAlterable, ok := tbl.(sql.IndexAlterableTable)
+	if !ok {
+		return sql.ErrIncompleteFullTextIntegration.New()
+	}
+
+	lowercaseColName := strings.ToLower(colName)
+	configTableReuse := make(map[string]bool)
+	predeterminedNames := make(map[string]IndexTableNames)
+	var indexDefs []sql.IndexDef
+
+	// Load the indexes to search for Full-Text indexes
+	indexes, err := tbl.GetIndexes(ctx)
+	if err != nil {
+		return err
+	}
+	for _, index := range indexes {
+		// Skip all non-Full-Text indexes
+		if !index.IsFullText() {
+			continue
+		}
+		// Store the index definition so that we may recreate it below
+		ftIndex := index.(Index)
+		tableNames, err := ftIndex.FullTextTableNames(ctx)
+		if err != nil {
+			return err
+		}
+		predeterminedNames[ftIndex.ID()] = tableNames
+		// Iterate over the columns to search for the given column
+		exprs := ftIndex.Expressions()
+		var indexCols []sql.IndexColumn
+		for _, expr := range exprs {
+			exprColName := strings.TrimPrefix(expr, ftIndex.Table()+".")
+			// Skip this column if it matches our given column
+			if strings.ToLower(exprColName) == lowercaseColName {
+				continue
+			}
+			indexCols = append(indexCols, sql.IndexColumn{
+				Name:   exprColName,
+				Length: 0,
+			})
+		}
+		if len(indexCols) > 0 {
+			// This index will continue to exist, so we want to preserve the config table
+			indexDefs = append(indexDefs, sql.IndexDef{
+				Name:       ftIndex.ID(),
+				Columns:    indexCols,
+				Constraint: sql.IndexConstraint_Fulltext,
+				Storage:    sql.IndexUsing_Default,
+				Comment:    ftIndex.Comment(),
+			})
+			configTableReuse[tableNames.Config] = true
+		} else {
+			// This index will be deleted, so we should delete the config table if no other indexes will reuse the table
+			if _, ok := configTableReuse[tableNames.Config]; !ok {
+				configTableReuse[tableNames.Config] = false
+			}
+		}
+		// We delete all tables besides the config table
+		if err = dropper.DropTable(ctx, tableNames.Position); err != nil {
+			return err
+		}
+		if err = dropper.DropTable(ctx, tableNames.DocCount); err != nil {
+			return err
+		}
+		if err = dropper.DropTable(ctx, tableNames.GlobalCount); err != nil {
+			return err
+		}
+		if err = dropper.DropTable(ctx, tableNames.RowCount); err != nil {
+			return err
+		}
+		// Finally we'll drop the index
+		if err = idxAlterable.DropIndex(ctx, ftIndex.ID()); err != nil {
+			return err
+		}
+	}
+	// Delete all orphaned config tables
+	for configTableName, reused := range configTableReuse {
+		if !reused {
+			if err = dropper.DropTable(ctx, configTableName); err != nil {
+				return err
+			}
+		}
+	}
+	return CreateFulltextIndexes(ctx, db, tbl, predeterminedNames, indexDefs...)
+}
+
 // CreateFulltextIndexes creates and populates Full-Text indexes on the target table.
 func CreateFulltextIndexes(ctx *sql.Context, database Database, parent sql.Table,
 	predeterminedNames map[string]IndexTableNames, indexes ...sql.IndexDef) error {
@@ -415,6 +510,9 @@ func CreateFulltextIndexes(ctx *sql.Context, database Database, parent sql.Table
 		return sql.ErrFullTextNotSupported.New()
 	}
 	if _, ok = fulltextAlterable.(sql.IndexAddressableTable); !ok {
+		return sql.ErrFullTextNotSupported.New()
+	}
+	if _, ok = fulltextAlterable.(sql.StatisticsTable); !ok {
 		return sql.ErrFullTextNotSupported.New()
 	}
 	tblSch := parent.Schema()

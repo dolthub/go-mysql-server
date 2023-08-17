@@ -133,8 +133,12 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name strin
 		if c.descending {
 			so = sql.Descending
 		}
+		scalar := c.scalar
+		if scalar == nil {
+			scalar = c.scalarGf()
+		}
 		sf := sql.SortField{
-			Column: c.scalar,
+			Column: scalar,
 			Order:  so,
 		}
 		sortFields = append(sortFields, sf)

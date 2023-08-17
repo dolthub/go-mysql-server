@@ -145,6 +145,17 @@ func fixupAuxiliaryExprs(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 	})
 }
 
+func hoistSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		// match [node] -> Sort
+		// move sort above [node]
+		// exclusion conditions:
+		// - parent does not have input cols for sort
+		// -
+		return n, transform.SameTree, nil
+	})
+}
+
 type aliasScope struct {
 	aliases map[string]sql.Expression
 	parent  *aliasScope

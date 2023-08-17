@@ -59,8 +59,11 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 			}
 		}
 	}
-
-	srcScope := b.insertRowsToNode(inScope, i.Rows, columns, destScope.node.Schema())
+	sch := destScope.node.Schema()
+	if rt != nil {
+		sch = b.resolveSchemaDefaults(destScope, rt.Schema())
+	}
+	srcScope := b.insertRowsToNode(inScope, i.Rows, columns, sch)
 
 	combinedScope := inScope.replace()
 	for i, c := range destScope.cols {
@@ -102,7 +105,6 @@ func (b *Builder) insertRowsToNode(inScope *scope, ir ast.InsertRows, columnName
 		return b.buildSelectStmt(inScope, v)
 	case ast.Values:
 		outScope = b.buildInsertValues(inScope, v, columnNames, destSchema)
-
 	default:
 		err := sql.ErrUnsupportedSyntax.New(ast.String(ir))
 		b.handleErr(err)
@@ -126,11 +128,20 @@ func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []
 
 	exprTuples := make([][]sql.Expression, len(v))
 	for i, vt := range v {
+		// noExprs is an edge case where we fill VALUES with nil expressions
+		noExprs := len(vt) == 0
+		// triggerUnknownTable is an edge case where we ignored an unresolved
+		// table error and do not have a schema for resolving defaults
+		triggerUnknownTable := (len(columnNames) == 0 && len(vt) > 0) && (len(b.TriggerCtx().UnresolvedTables) > 0)
+
+		if len(vt) != len(columnNames) && !noExprs && !triggerUnknownTable {
+			err := sql.ErrInsertIntoMismatchValueCount.New()
+			b.handleErr(err)
+		}
 		exprs := make([]sql.Expression, len(columnNames))
 		exprTuples[i] = exprs
-		noExprs := len(vt) == 0
 		for j := range columnNames {
-			if noExprs {
+			if noExprs || triggerUnknownTable {
 				exprs[j] = expression.WrapExpression(columnDefaultValues[j])
 				continue
 			}
@@ -235,8 +246,15 @@ func (b *Builder) buildOnDupLeft(inScope *scope, e ast.Expr) sql.Expression {
 	// expect col reference only
 	switch e := e.(type) {
 	case *ast.ColName:
-		c, ok := inScope.resolveColumn(strings.ToLower(e.Qualifier.Name.String()), strings.ToLower(e.Name.String()), true)
+		tableName := strings.ToLower(e.Qualifier.Name.String())
+		colName := strings.ToLower(e.Name.String())
+		c, ok := inScope.resolveColumn(tableName, colName, true)
 		if !ok {
+			if tableName != "" && !inScope.hasTable(tableName) {
+				b.handleErr(sql.ErrTableNotFound.New(tableName))
+			} else if tableName != "" {
+				b.handleErr(sql.ErrTableColumnNotFound.New(tableName, colName))
+			}
 			b.handleErr(sql.ErrColumnNotFound.New(e))
 		}
 		return c.scalarGf()

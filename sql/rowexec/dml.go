@@ -368,6 +368,12 @@ func (b *BaseBuilder) buildTruncate(ctx *sql.Context, n *plan.Truncate, row sql.
 			break
 		}
 	}
+	// If we've got Full-Text indexes, then we also need to clear those tables
+	if hasFullText(ctx, truncatable) {
+		if err = rebuildFullText(ctx, truncatable.Name(), plan.GetDatabase(n.Child)); err != nil {
+			return nil, err
+		}
+	}
 	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(removed))), nil
 }
 

@@ -920,23 +920,33 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 }
 
 func (b *BaseBuilder) buildCreateProcedure(ctx *sql.Context, n *plan.CreateProcedure, row sql.Row) (sql.RowIter, error) {
+	sqlMode, err := sql.LoadSqlMode(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return &createProcedureIter{
 		spd: sql.StoredProcedureDetails{
 			Name:            n.Name,
 			CreateStatement: n.CreateProcedureString,
 			CreatedAt:       n.CreatedAt,
 			ModifiedAt:      n.ModifiedAt,
+			SqlMode:         sqlMode.String(),
 		},
 		db: n.Database(),
 	}, nil
 }
 
 func (b *BaseBuilder) buildCreateTrigger(ctx *sql.Context, n *plan.CreateTrigger, row sql.Row) (sql.RowIter, error) {
+	sqlMode, err := sql.LoadSqlMode(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return &createTriggerIter{
 		definition: sql.TriggerDefinition{
 			Name:            n.TriggerName,
 			CreateStatement: n.CreateTriggerString,
 			CreatedAt:       n.CreatedAt,
+			SqlMode:         sqlMode.String(),
 		},
 		db: n.Database(),
 	}, nil

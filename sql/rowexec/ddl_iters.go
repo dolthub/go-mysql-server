@@ -196,20 +196,17 @@ func (l loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expressi
 					return nil, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
 				}
 				var def sql.Expression = f.Default
-				if ctx.Version == sql.VersionExperimental {
-					var err error
-					def, _, err = transform.Expr(f.Default, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-						switch e := e.(type) {
-						case *expression.GetField:
-							//return e.WithIndex(e.Index() - 1), transform.NewTree, nil
-							return fixidx.FixFieldIndexes(nil, log.Printf, l.destination.Schema(), e.WithTable(l.destination.Name()))
-						default:
-							return e, transform.SameTree, nil
-						}
-					})
-					if err != nil {
-						return nil, err
+				var err error
+				def, _, err = transform.Expr(f.Default, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+					switch e := e.(type) {
+					case *expression.GetField:
+						return fixidx.FixFieldIndexes(nil, log.Printf, l.destination.Schema(), e.WithTable(l.destination.Name()))
+					default:
+						return e, transform.SameTree, nil
 					}
+				})
+				if err != nil {
+					return nil, err
 				}
 				exprs[i] = def
 			}
@@ -1565,6 +1562,11 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	// Full-Text indexes will need to be rebuilt
 	hasFullText := hasFullText(ctx, i.alterable)
+	if hasFullText {
+		if err := fulltext.DropColumnFromTables(ctx, i.alterable.(sql.IndexAddressableTable), i.d.Db.(fulltext.Database), i.d.Column); err != nil {
+			return nil, err
+		}
+	}
 
 	// drop constraints that reference the dropped column
 	cat, ok := i.alterable.(sql.CheckAlterableTable)
@@ -1929,7 +1931,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 				return err
 			}
 			for _, fk := range fks {
-				_, ok, err := plan.FindIndexWithPrefix(ctx, fkTable, fk.Columns, false, n.IndexName)
+				_, ok, err := plan.FindFKIndexWithPrefix(ctx, fkTable, fk.Columns, false, n.IndexName)
 				if err != nil {
 					return err
 				}
@@ -1943,7 +1945,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 				return err
 			}
 			for _, parentFk := range parentFks {
-				_, ok, err := plan.FindIndexWithPrefix(ctx, fkTable, parentFk.ParentColumns, true, n.IndexName)
+				_, ok, err := plan.FindFKIndexWithPrefix(ctx, fkTable, parentFk.ParentColumns, true, n.IndexName)
 				if err != nil {
 					return err
 				}

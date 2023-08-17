@@ -59,20 +59,37 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		c := b.buildScalar(inScope, v.Expr)
 		return expression.NewNot(c)
 	case *ast.SQLVal:
-		return b.convertVal(v)
+		return b.ConvertVal(v)
 	case ast.BoolVal:
 		return expression.NewLiteral(bool(v), types.Boolean)
 	case *ast.NullVal:
 		return expression.NewLiteral(nil, types.Null)
 	case *ast.ColName:
-		c, ok := inScope.resolveColumn(strings.ToLower(v.Qualifier.Name.String()), strings.ToLower(v.Name.String()), true)
+		tableName := strings.ToLower(v.Qualifier.Name.String())
+		colName := strings.ToLower(v.Name.String())
+		c, ok := inScope.resolveColumn(tableName, colName, true)
 		if !ok {
-			sysVar, ok := b.buildSysVar(v, ast.SetScope_None)
+			sysVar, scope, ok := b.buildSysVar(v, ast.SetScope_None)
 			if ok {
 				return sysVar
 			}
-			b.handleErr(sql.ErrColumnNotFound.New(v))
+			var err error
+			if scope == ast.SetScope_User {
+				err = sql.ErrUnknownUserVariable.New(colName)
+			} else if scope == ast.SetScope_Persist || scope == ast.SetScope_PersistOnly {
+				err = sql.ErrUnknownUserVariable.New(colName)
+			} else if scope == ast.SetScope_Global || scope == ast.SetScope_Session {
+				err = sql.ErrUnknownSystemVariable.New(colName)
+			} else if tableName != "" && !inScope.hasTable(tableName) {
+				err = sql.ErrTableNotFound.New(tableName)
+			} else if tableName != "" {
+				err = sql.ErrTableColumnNotFound.New(tableName, colName)
+			} else {
+				err = sql.ErrColumnNotFound.New(v)
+			}
+			b.handleErr(err)
 		}
+		c = c.withOriginal(v.Name.String())
 		return c.scalarGf()
 	case *ast.FuncExpr:
 		name := v.Name.Lowered()
@@ -114,7 +131,6 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	case *ast.GroupConcatExpr:
 		// TODO this is an aggregation
 		return b.buildGroupConcat(inScope, v)
-		//b.handleErr(fmt.Errorf("todo group concat"))
 	case *ast.ParenExpr:
 		return b.buildScalar(inScope, v.Expr)
 	case *ast.AndExpr:
@@ -724,7 +740,7 @@ func (b *Builder) convertInt(value string, base int) *expression.Literal {
 	return nil
 }
 
-func (b *Builder) convertVal(v *ast.SQLVal) sql.Expression {
+func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 	switch v.Type {
 	case ast.StrVal:
 		return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))

@@ -24,7 +24,6 @@ var OnceBeforeDefault_Exp = []Rule{
 	{validateCreateTableId, validateCreateTable},
 	{validateExprSemId, validateExprSem},
 	{validateCreateProcedureId, validateCreateProcedure},
-	{setTargetSchemasId, setTargetSchemas}, //TODO
 	{resolveDropConstraintId, resolveDropConstraint},
 	{resolveAlterColumnId, resolveAlterColumn},
 	{validateDropTablesId, validateDropTables},
@@ -36,8 +35,7 @@ var OnceBeforeDefault_Exp = []Rule{
 	{checkUniqueTableNamesId, validateUniqueTableNames}, //TODO
 	{resolveDeclarationsId, resolveDeclarations},
 	{validateCreateTriggerId, validateCreateTrigger},
-	{loadInfoSchemaId, loadInfoSchema},               //TODO
-	{resolveColumnDefaultsId, resolveColumnDefaults}, //TODO
+	{loadInfoSchemaId, loadInfoSchema}, //TODO
 	{validateColumnDefaultsId, validateColumnDefaults},
 	{validateReadOnlyDatabaseId, validateReadOnlyDatabase},
 	{validateReadOnlyTransactionId, validateReadOnlyTransaction},
@@ -60,7 +58,6 @@ var DefaultRules_Exp = []Rule{
 	{mergeUnionSchemasId, mergeUnionSchemas},     //TODO
 	{transformJoinApplyId, transformJoinApply},
 	{resolveSubqueriesId, resolveSubqueries},
-	{resolveBarewordSetVariablesId, resolveBarewordSetVariables}, //TODO
 	{replaceCrossJoinsId, replaceCrossJoins},
 	{moveJoinCondsToFilterId, moveJoinConditionsToFilter}, // depends on indexes being correct
 }
@@ -93,6 +90,20 @@ var OnceAfterDefault_Experimental = []Rule{
 	{applyRowUpdateAccumulatorsId, applyUpdateAccumulators},
 	{wrapWithRollbackId, wrapWritesWithRollback},
 	{applyFKsId, applyForeignKeys},
+}
+
+// DefaultValidationRules to apply while analyzing nodes.
+var DefaultValidationRules = []Rule{
+	{validateResolvedId, validateIsResolved},
+	{validateOrderById, validateOrderBy},
+	{validateGroupById, validateGroupBy},
+	{validateSchemaSourceId, validateSchemaSource},
+	{validateIndexCreationId, validateIndexCreation},
+	{validateOperandsId, validateOperands},
+	{validateIntervalUsageId, validateIntervalUsage},
+	{validateSubqueryColumnsId, validateSubqueryColumns},
+	{validateUnionSchemasMatchId, validateUnionSchemasMatch},
+	{validateAggregationsId, validateAggregations},
 }
 
 var OnceAfterAll_Experimental = []Rule{

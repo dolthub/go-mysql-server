@@ -52,6 +52,9 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	b.buildNamedWindows(fromScope, s.Window)
 
 	b.buildWhere(fromScope, s.Where)
+	// select *, (SELECT t2.i) from t1 left join using t2 on i;
+	// select t1.*, t2.*, t2.* from ...
+	//
 	projScope := fromScope.push()
 
 	// Aggregates in select list added to fromScope.groupBy.outCols.
@@ -81,8 +84,17 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	// references.
 
 	b.buildHaving(fromScope, projScope, outScope, s.Having)
+
 	b.buildOrderBy(outScope, orderByScope)
 
+	// Last level projection restricts outputs to target projections.
+	b.buildProjection(outScope, projScope)
+	outScope = projScope
+
+	// DISTINCT when
+	b.buildDistinct(outScope, s.Distinct)
+
+	// OFFSET and LIMIT are last
 	offset := b.buildOffset(outScope, s.Limit)
 	if offset != nil {
 		outScope.node = plan.NewOffset(offset, outScope.node)
@@ -94,10 +106,6 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 		outScope.node = l
 	}
 
-	// Last level projection restricts outputs to target projections.
-	b.buildProjection(outScope, projScope)
-	outScope = projScope
-	b.buildDistinct(outScope, s.Distinct)
 	return
 }
 
