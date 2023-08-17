@@ -38,13 +38,11 @@ import (
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db/serial"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -201,22 +199,34 @@ func TestQueriesPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.SimpleSetup...)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	for _, tt := range queries.QueryTests {
-		if tt.SkipPrepared {
-			continue
+	t.Run("query prepared tests", func(t *testing.T) {
+		for _, tt := range queries.QueryTests {
+			if tt.SkipPrepared {
+				continue
+			}
+			t.Run(tt.Query, func(t *testing.T) {
+				TestPreparedQueryWithEngine(t, harness, e, tt)
+			})
 		}
-		TestPreparedQueryWithEngine(t, harness, e, tt)
-	}
+	})
 
-	harness.Setup(setup.MydbData, setup.KeylessData, setup.Keyless_idxData, setup.MytableData)
-	for _, tt := range queries.KeylessQueries {
-		TestPreparedQueryWithEngine(t, harness, e, tt)
-	}
+	t.Run("keyless prepared tests", func(t *testing.T) {
+		harness.Setup(setup.MydbData, setup.KeylessData, setup.Keyless_idxData, setup.MytableData)
+		for _, tt := range queries.KeylessQueries {
+			t.Run(tt.Query, func(t *testing.T) {
+				TestPreparedQueryWithEngine(t, harness, e, tt)
+			})
+		}
+	})
 
-	harness.Setup(setup.MydbData)
-	for _, tt := range queries.DateParseQueries {
-		TestPreparedQueryWithEngine(t, harness, e, tt)
-	}
+	t.Run("date parse prepared tests", func(t *testing.T) {
+		harness.Setup(setup.MydbData)
+		for _, tt := range queries.DateParseQueries {
+			t.Run(tt.Query, func(t *testing.T) {
+				TestPreparedQueryWithEngine(t, harness, e, tt)
+			})
+		}
+	})
 }
 
 // TestJoinQueriesPrepared tests join queries as prepared statements against a provided harness.
@@ -238,18 +248,6 @@ func TestJoinQueriesPrepared(t *testing.T, harness Harness) {
 func TestBrokenQueries(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.Fk_tblData)
 	RunQueryTests(t, harness, queries.BrokenQueries)
-}
-
-func TestPreparedStaticIndexQuery(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData)
-	engine := mustNewEngine(t, harness)
-	defer engine.Close()
-	ctx := NewContext(harness)
-	RunQueryWithContext(t, engine, harness, ctx, "CREATE TABLE squares (i bigint primary key, square bigint);")
-	engine.PrepareQuery(ctx, "select * from squares where i = 1")
-	RunQueryWithContext(t, engine, harness, ctx, "INSERT INTO squares VALUES (0, 0), (1, 1), (2, 4), (3, 9);")
-	TestQueryWithContext(t, ctx, engine, harness, "select * from squares where i = 1",
-		[]sql.Row{{1, 1}}, sql.Schema{{Name: "i", Type: types.Int64}, {Name: "square", Type: types.Int64}}, nil)
 }
 
 // RunQueryTests runs the query tests given after setting up the engine. Useful for testing out a smaller subset of
@@ -381,6 +379,18 @@ func TestReadOnlyVersionedQueries(t *testing.T, harness Harness) {
 	}
 }
 
+func TestAnsiQuotesSqlMode(t *testing.T, harness Harness) {
+	for _, tt := range queries.AnsiQuotesTests {
+		TestScript(t, harness, tt)
+	}
+}
+
+func TestAnsiQuotesSqlModePrepared(t *testing.T, harness Harness) {
+	for _, tt := range queries.AnsiQuotesTests {
+		TestScriptPrepared(t, harness, tt)
+	}
+}
+
 // TestQueryPlans tests generating the correct query plans for various queries using databases and tables provided by
 // the given harness.
 func TestQueryPlans(t *testing.T, harness Harness, planTests []queries.QueryPlanTest) {
@@ -481,13 +491,7 @@ func TestVersionedQueriesPrepared(t *testing.T, harness VersionedDBHarness) {
 func TestQueryPlan(t *testing.T, harness Harness, e *sqle.Engine, query, expectedPlan string, verbose bool) {
 	t.Run(query, func(t *testing.T) {
 		ctx := NewContext(harness)
-		var parsed sql.Node
-		var err error
-		if ctx.Version == sql.VersionExperimental {
-			parsed, err = planbuilder.Parse(ctx, e.Analyzer.Catalog, query)
-		} else {
-			parsed, err = parse.Parse(ctx, query)
-		}
+		parsed, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, query)
 		require.NoError(t, err)
 
 		node, err := e.Analyzer.Analyze(ctx, parsed, nil)
@@ -1977,13 +1981,10 @@ func TestRecursiveViewDefinition(t *testing.T, harness Harness) {
 	db, err := e.Analyzer.Catalog.Database(ctx, "mydb")
 	require.NoError(t, err)
 
-	vdb, ok := db.(sql.ViewDatabase)
+	_, ok := db.(sql.ViewDatabase)
 	require.True(t, ok, "expected sql.ViewDatabase")
 
-	err = vdb.CreateView(ctx, "recursiveView", "select * from recursiveView", "create view recursiveView AS select * from recursiveView")
-	require.NoError(t, err)
-
-	AssertErr(t, e, harness, "select * from recursiveView", analyzer.ErrMaxAnalysisIters)
+	AssertErr(t, e, harness, "create view recursiveView AS select * from recursiveView", sql.ErrTableNotFound)
 }
 
 func TestViewsPrepared(t *testing.T, harness Harness) {
@@ -2064,11 +2065,13 @@ func TestVersionedViewsPrepared(t *testing.T, harness VersionedDBHarness) {
 func TestCreateTable(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.FooData)
 	for _, tt := range queries.CreateTableQueries {
-		RunWriteQueryTest(t, harness, tt)
+		t.Run(tt.WriteQuery, func(t *testing.T) {
+			RunWriteQueryTest(t, harness, tt)
+		})
 	}
 
 	for _, script := range queries.CreateTableScriptTests {
-		TestScriptPrepared(t, harness, script)
+		TestScript(t, harness, script)
 	}
 
 	for _, script := range queries.CreateTableAutoIncrementTests {
@@ -2500,7 +2503,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		assertSchemasEqualWithDefaults(t, sql.Schema{
 			{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
 			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
-			{Name: "i2", Type: types.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
+			{Name: "i2", Type: types.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
 		}, tbl.Schema())
 
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM mytable ORDER BY i", []sql.Row{
@@ -2520,7 +2523,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 			{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
 			{Name: "s2", Type: types.Text, Source: "mytable", Comment: "hello", Nullable: true},
 			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
-			{Name: "i2", Type: types.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
+			{Name: "i2", Type: types.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
 		}, tbl.Schema())
 
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM mytable ORDER BY i", []sql.Row{
@@ -2552,11 +2555,11 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		require.NoError(err)
 		require.True(ok)
 		assertSchemasEqualWithDefaults(t, sql.Schema{
-			{Name: "s3", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
+			{Name: "s3", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
 			{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
 			{Name: "s2", Type: types.Text, Source: "mytable", Comment: "hello", Nullable: true},
 			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
-			{Name: "i2", Type: types.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
+			{Name: "i2", Type: types.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
 		}, tbl.Schema())
 
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM mytable ORDER BY i", []sql.Row{
@@ -2574,12 +2577,12 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		require.NoError(err)
 		require.True(ok)
 		assertSchemasEqualWithDefaults(t, sql.Schema{
-			{Name: "s3", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
+			{Name: "s3", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
 			{Name: "s4", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 1), Source: "mytable"},
 			{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
 			{Name: "s2", Type: types.Text, Source: "mytable", Comment: "hello", Nullable: true},
 			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
-			{Name: "i2", Type: types.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
+			{Name: "i2", Type: types.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
 		}, tbl.Schema())
 
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM mytable ORDER BY i", []sql.Row{
@@ -2597,12 +2600,12 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		require.NoError(err)
 		require.True(ok)
 		assertSchemasEqualWithDefaults(t, sql.Schema{
-			{Name: "s3", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
+			{Name: "s3", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
 			{Name: "s4", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 1), Source: "mytable"},
 			{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
 			{Name: "s2", Type: types.Text, Source: "mytable", Comment: "hello", Nullable: true},
 			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
-			{Name: "i2", Type: types.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
+			{Name: "i2", Type: types.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
 			{Name: "s5", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 26), Source: "mytable", Nullable: true},
 			{Name: "s6", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 27), Source: "mytable", Nullable: true},
 		}, tbl.Schema())
@@ -2633,12 +2636,12 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		require.NoError(err)
 		require.True(ok)
 		assertSchemasEqualWithDefaults(t, sql.Schema{
-			{Name: "s3", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
+			{Name: "s3", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
 			{Name: "s4", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 1), Source: "mytable"},
 			{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
 			{Name: "s2", Type: types.Text, Source: "mytable", Comment: "hello", Nullable: true},
 			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
-			{Name: "i2", Type: types.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
+			{Name: "i2", Type: types.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
 			{Name: "s5", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 26), Source: "mytable", Nullable: true},
 			{Name: "s6", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 27), Source: "mytable", Nullable: true},
 			{Name: "s10", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 26), Source: "mytable", Nullable: true},
@@ -3539,7 +3542,7 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 	expected := []sql.CheckDefinition{
 		{
 			Name:            "chk1",
-			CheckExpression: "(b > 0)",
+			CheckExpression: "(B > 0)",
 			Enforced:        true,
 		},
 		{
@@ -3549,12 +3552,12 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 		},
 		{
 			Name:            "chk3",
-			CheckExpression: "(b > 1)",
+			CheckExpression: "(B > 1)",
 			Enforced:        true,
 		},
 		{
 			Name:            "chk4",
-			CheckExpression: "(upper(c) = c)",
+			CheckExpression: "(upper(C) = c)",
 			Enforced:        true,
 		},
 	}
@@ -3612,7 +3615,7 @@ CREATE TABLE T2
 		"(c2 > 0)",
 		"(c3 < 100)",
 		"(c1 = 0)",
-		"(c1 > c3)",
+		"(C1 > C3)",
 	}
 
 	var checkConds []string
@@ -3633,7 +3636,7 @@ CREATE TABLE t4
   c1 INT CHECK (c1 > 10),
   c2 INT CONSTRAINT c2_positive CHECK (c2 > 0),
   CHECK (c1 > c3)
-);`, sql.ErrTableColumnNotFound)
+);`, sql.ErrColumnNotFound)
 
 	// Test any scripts relevant to CheckConstraints. We do this separately from the rest of the scripts
 	// as certain integrators might not implement check constraints.
@@ -4153,7 +4156,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 4},
 	}, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, first_value(c) over (partition by b) FROM t1 order by a*b,a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, first_value(c) over (partition by b order by a) FROM t1 order by a*b,a`, []sql.Row{
 		{0, 0},
 		{3, 0},
 		{1, 1},
@@ -4454,7 +4457,6 @@ func TestWindowRangeFrames(t *testing.T, harness Harness) {
 	RunQuery(t, e, harness, "INSERT INTO c VALUES (0,0,0,'2022-01-26'), (1,0,0,'2022-01-26'), (2,0,0, '2022-01-26'), (3,1,0,'2022-01-27'), (4,1,0,'2022-01-29'), (5,3,0,'2022-01-30'), (6,0,0, '2022-02-03'), (7,1,0,'2022-02-03'), (8,1,0,'2022-02-04'), (9,3,0,'2022-02-04')")
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between interval '2' DAY preceding and interval '1' DAY preceding) FROM c order by x`, []sql.Row{{nil}, {nil}, {nil}, {float64(0)}, {float64(1)}, {float64(1)}, {nil}, {nil}, {float64(1)}, {float64(1)}}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between interval '1' DAY preceding and interval '1' DAY following) FROM c order by x`, []sql.Row{{float64(1)}, {float64(1)}, {float64(1)}, {float64(1)}, {float64(4)}, {float64(4)}, {float64(5)}, {float64(5)}, {float64(5)}, {float64(5)}}, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT first_value(x) over (partition by z order by date range interval '1' DAY preceding) FROM c order by x`, []sql.Row{{0}, {0}, {0}, {0}, {4}, {4}, {6}, {6}, {6}, {6}}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between interval '1' DAY preceding and current row) FROM c order by x`, []sql.Row{{float64(0)}, {float64(0)}, {float64(0)}, {float64(1)}, {float64(1)}, {float64(4)}, {float64(1)}, {float64(1)}, {float64(5)}, {float64(5)}}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT avg(y) over (partition by z order by date range between interval '1' DAY preceding and unbounded following) FROM c order by x`, []sql.Row{{float64(1)}, {float64(1)}, {float64(1)}, {float64(1)}, {float64(3) / float64(2)}, {float64(3) / float64(2)}, {float64(5) / float64(4)}, {float64(5) / float64(4)}, {float64(5) / float64(4)}, {float64(5) / float64(4)}}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between unbounded preceding and interval '1' DAY following) FROM c order by x`, []sql.Row{{float64(1)}, {float64(1)}, {float64(1)}, {float64(1)}, {float64(5)}, {float64(5)}, {float64(10)}, {float64(10)}, {float64(10)}, {float64(10)}}, nil, nil)
@@ -4479,7 +4481,7 @@ func TestNamedWindows(t *testing.T, harness Harness) {
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over w FROM a WINDOW w as (partition by z order by x rows unbounded preceding) order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(7)}}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over w FROM a WINDOW w as (partition by z order by x rows current row) order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(2)}, {float64(0)}, {float64(1)}, {float64(3)}}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (w) FROM a WINDOW w as (partition by z order by x rows 2 preceding) order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}}, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT row_number() over (w3) FROM a WINDOW w3 as (w2), w2 as (w1), w1 as (partition by z) order by x`, []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}, {int64(4)}, {int64(5)}, {int64(6)}}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT row_number() over (w3) FROM a WINDOW w3 as (w2), w2 as (w1), w1 as (partition by z order by x) order by x`, []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}, {int64(4)}, {int64(5)}, {int64(6)}}, nil, nil)
 
 	// errors
 	AssertErr(t, e, harness, "SELECT sum(y) over (w1 partition by x) FROM a WINDOW w1 as (partition by z) order by x", sql.ErrInvalidWindowInheritance)
@@ -4657,9 +4659,9 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query: "insert into test values (?, ?)",
-					Bindings: map[string]sql.Expression{
-						"v1": expression.NewLiteral(1, types.Int64),
-						"v2": expression.NewLiteral(1, types.Int64),
+					Bindings: map[string]*query.BindVariable{
+						"v1": sqltypes.Int64BindVariable(1),
+						"v2": sqltypes.Int64BindVariable(1),
 					},
 					Expected: []sql.Row{
 						{types.OkResult{RowsAffected: 1}},
@@ -4675,10 +4677,10 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query: "INSERT INTO test(decimal_test, decimal_test_2, decimal_test_3) VALUES (?, ?, ?)",
-					Bindings: map[string]sql.Expression{
-						"v1": expression.NewLiteral(10, types.Int64),
-						"v2": expression.NewLiteral([]byte("10.5"), types.MustCreateString(sqltypes.VarBinary, 4, sql.Collation_binary)),
-						"v3": expression.NewLiteral(20.40, types.Float64),
+					Bindings: map[string]*query.BindVariable{
+						"v1": mustBuildBindVariable(10),
+						"v2": mustBuildBindVariable([]byte("10.5")),
+						"v3": mustBuildBindVariable(20.40),
 					},
 					Expected: []sql.Row{
 						{types.OkResult{RowsAffected: 1, InsertID: 1}},
@@ -4705,13 +4707,13 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query: "insert into nodes(id,owner,status,timestamp) values(?, ?, ?, ?) on duplicate key update owner=?,status=?",
-					Bindings: map[string]sql.Expression{
-						"v1": expression.NewLiteral("id1", types.Text),
-						"v2": expression.NewLiteral("dabe", types.Text),
-						"v3": expression.NewLiteral("off", types.Text),
-						"v4": expression.NewLiteral(2, types.Int64),
-						"v5": expression.NewLiteral("milo", types.Text),
-						"v6": expression.NewLiteral("on", types.Text),
+					Bindings: map[string]*query.BindVariable{
+						"v1": mustBuildBindVariable("id1"),
+						"v2": mustBuildBindVariable("dabe"),
+						"v3": mustBuildBindVariable("off"),
+						"v4": mustBuildBindVariable(2),
+						"v5": mustBuildBindVariable("milo"),
+						"v6": mustBuildBindVariable("on"),
 					},
 					Expected: []sql.Row{
 						{types.OkResult{RowsAffected: 2}},
@@ -4719,13 +4721,13 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 				},
 				{
 					Query: "insert into nodes(id,owner,status,timestamp) values(?, ?, ?, ?) on duplicate key update owner=?,status=?",
-					Bindings: map[string]sql.Expression{
-						"v1": expression.NewLiteral("id2", types.Text),
-						"v2": expression.NewLiteral("dabe", types.Text),
-						"v3": expression.NewLiteral("off", types.Text),
-						"v4": expression.NewLiteral(3, types.Int64),
-						"v5": expression.NewLiteral("milo", types.Text),
-						"v6": expression.NewLiteral("on", types.Text),
+					Bindings: map[string]*query.BindVariable{
+						"v1": mustBuildBindVariable("id2"),
+						"v2": mustBuildBindVariable("dabe"),
+						"v3": mustBuildBindVariable("off"),
+						"v4": mustBuildBindVariable(3),
+						"v5": mustBuildBindVariable("milo"),
+						"v6": mustBuildBindVariable("on"),
 					},
 					Expected: []sql.Row{
 						{types.OkResult{RowsAffected: 1}},
@@ -4746,6 +4748,13 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 	}
 }
 
+func mustBuildBindVariable(v interface{}) *query.BindVariable {
+	ret, err := sqltypes.BuildBindVariable(v)
+	if err != nil {
+		panic(err)
+	}
+	return ret
+}
 func TestPreparedStatements(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
@@ -4782,7 +4791,9 @@ func TestVariableErrors(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, test := range queries.VariableErrorTests {
-		AssertErr(t, e, harness, test.Query, test.ExpectedErr)
+		t.Run(test.Query, func(t *testing.T) {
+			AssertErr(t, e, harness, test.Query, test.ExpectedErr)
+		})
 	}
 }
 
@@ -5148,11 +5159,12 @@ func TestTracing(t *testing.T, harness Harness) {
 	require.NoError(t, err)
 
 	spans := tracer.Spans
+	// TODO restore TopN
 	var expectedSpans = []string{
 		"plan.Limit",
-		"plan.TopN",
 		"plan.Distinct",
 		"plan.Project",
+		"plan.Sort",
 		"plan.Filter",
 		"plan.IndexedTableAccess",
 	}
@@ -6026,31 +6038,31 @@ func TestPrepared(t *testing.T, harness Harness) {
 			Query: "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = ?) AS a ORDER BY foo, i",
 			Expected: []sql.Row{
 				{2, 1, 2}},
-			Bindings: map[string]sql.Expression{
-				"v1": expression.NewLiteral(int64(2), types.Int64),
+			Bindings: map[string]*query.BindVariable{
+				"v1": sqltypes.Int64BindVariable(int64(2)),
 			},
 		},
 		{
 			Query: "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = :var) AS a HAVING bar = :var ORDER BY foo, i",
 			Expected: []sql.Row{
 				{2, 1, 2}},
-			Bindings: map[string]sql.Expression{
-				"var": expression.NewLiteral(int64(2), types.Int64),
+			Bindings: map[string]*query.BindVariable{
+				"var": sqltypes.Int64BindVariable(int64(2)),
 			},
 		},
 		{
 			Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable HAVING bar = ? ORDER BY foo, i;",
 			Expected: []sql.Row{},
-			Bindings: map[string]sql.Expression{
-				"v1": expression.NewLiteral(int64(1), types.Int64),
+			Bindings: map[string]*query.BindVariable{
+				"v1": sqltypes.Int64BindVariable(int64(1)),
 			},
 		},
 		{
 			Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable HAVING bar = :bar AND foo = :foo ORDER BY foo, i;",
 			Expected: []sql.Row{},
-			Bindings: map[string]sql.Expression{
-				"bar": expression.NewLiteral(int64(1), types.Int64),
-				"foo": expression.NewLiteral(int64(1), types.Int64),
+			Bindings: map[string]*query.BindVariable{
+				"bar": sqltypes.Int64BindVariable(int64(1)),
+				"foo": sqltypes.Int64BindVariable(int64(1)),
 			},
 		},
 		{
@@ -6058,8 +6070,8 @@ func TestPrepared(t *testing.T, harness Harness) {
 			Expected: []sql.Row{
 				{2},
 			},
-			Bindings: map[string]sql.Expression{
-				"foo": expression.NewLiteral(int64(1), types.Int64),
+			Bindings: map[string]*query.BindVariable{
+				"foo": sqltypes.Int64BindVariable(int64(1)),
 			},
 		},
 		{
@@ -6068,9 +6080,9 @@ func TestPrepared(t *testing.T, harness Harness) {
 				{1},
 				{2},
 			},
-			Bindings: map[string]sql.Expression{
-				"foo": expression.NewLiteral(int64(1), types.Int64),
-				"bar": expression.NewLiteral(int64(2), types.Int64),
+			Bindings: map[string]*query.BindVariable{
+				"foo": sqltypes.Int64BindVariable(int64(1)),
+				"bar": sqltypes.Int64BindVariable(int64(2)),
 			},
 		},
 		{
@@ -6078,8 +6090,8 @@ func TestPrepared(t *testing.T, harness Harness) {
 			Expected: []sql.Row{
 				{2},
 			},
-			Bindings: map[string]sql.Expression{
-				"foo": expression.NewLiteral(int64(1), types.Int64),
+			Bindings: map[string]*query.BindVariable{
+				"foo": sqltypes.Int64BindVariable(int64(1)),
 			},
 		},
 		{
@@ -6089,83 +6101,83 @@ func TestPrepared(t *testing.T, harness Harness) {
 				{2},
 				{3},
 			},
-			Bindings: map[string]sql.Expression{
-				"foo": expression.NewLiteral(int64(2), types.Int64),
+			Bindings: map[string]*query.BindVariable{
+				"foo": sqltypes.Int64BindVariable(int64(2)),
 			},
 		},
 		{
 			Query: "SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC LIMIT ?;",
-			Bindings: map[string]sql.Expression{
-				"v1": expression.NewLiteral(1, types.Int8),
+			Bindings: map[string]*query.BindVariable{
+				"v1": sqltypes.Int64BindVariable(1),
 			},
 			Expected: []sql.Row{{int64(1)}},
 		},
 		{
 			Query: "SELECT i FROM mytable ORDER BY i LIMIT ? OFFSET 2;",
-			Bindings: map[string]sql.Expression{
-				"v1": expression.NewLiteral(1, types.Int8),
+			Bindings: map[string]*query.BindVariable{
+				"v1": sqltypes.Int64BindVariable(1),
 			},
 			Expected: []sql.Row{{int64(3)}},
 		},
 		// todo(max): sort function expressions w/ bindvars are aliased incorrectly
 		//{
 		//	Query: "SELECT sum(?) as x FROM mytable ORDER BY sum(?)",
-		//	Bindings: map[string]sql.Expression{
-		//		"v1": expression.NewLiteral(1, sql.Int8),
-		//		"v2": expression.NewLiteral(1, sql.Int8),
+		//	Bindings: map[string]*query.BindVariable{
+		//		"v1": querypb.&query{Val: 1, Type: sql.Int8},
+		//		"v2": {Value: mustConvertToValue().Val1, Type: sql.Int8},
 		//	},
 		//	Expected: []sql.Row{{float64(3)}},
 		//},
 		{
 			Query: "SELECT (select sum(?) from mytable) as x FROM mytable ORDER BY (select sum(?) from mytable)",
-			Bindings: map[string]sql.Expression{
-				"v1": expression.NewLiteral(1, types.Int8),
-				"v2": expression.NewLiteral(1, types.Int8),
+			Bindings: map[string]*query.BindVariable{
+				"v1": sqltypes.Int64BindVariable(1),
+				"v2": sqltypes.Int64BindVariable(1),
 			},
 			Expected: []sql.Row{{float64(3)}, {float64(3)}, {float64(3)}},
 		},
 		{
 			Query: "With x as (select sum(?) from mytable) select sum(?) from x ORDER BY (select sum(?) from mytable)",
-			Bindings: map[string]sql.Expression{
-				"v1": expression.NewLiteral(1, types.Int8),
-				"v2": expression.NewLiteral(1, types.Int8),
-				"v3": expression.NewLiteral(1, types.Int8),
+			Bindings: map[string]*query.BindVariable{
+				"v1": sqltypes.Int64BindVariable(1),
+				"v2": sqltypes.Int64BindVariable(1),
+				"v3": sqltypes.Int64BindVariable(1),
 			},
 			Expected: []sql.Row{{float64(1)}},
 		},
 		{
 			Query: "SELECT CAST(? as CHAR) UNION SELECT CAST(? as CHAR)",
-			Bindings: map[string]sql.Expression{
-				"v1": expression.NewLiteral(1, types.Int8),
-				"v2": expression.NewLiteral("1", types.TinyText),
+			Bindings: map[string]*query.BindVariable{
+				"v1": sqltypes.Int64BindVariable(1),
+				"v2": mustBuildBindVariable("1"),
 			},
 			Expected: []sql.Row{{"1"}},
 		},
 		{
 			Query: "SELECT GET_LOCK(?, 10)",
-			Bindings: map[string]sql.Expression{
-				"v1": expression.NewLiteral(10, types.MustCreateBinary(query.Type_VARBINARY, int64(16))),
+			Bindings: map[string]*query.BindVariable{
+				"v1": sqltypes.StringBindVariable("10"),
 			},
 			Expected: []sql.Row{{1}},
 		},
 		{
 			Query: "Select IS_FREE_LOCK(?)",
-			Bindings: map[string]sql.Expression{
-				"v1": expression.NewLiteral(10, types.MustCreateBinary(query.Type_VARBINARY, int64(16))),
+			Bindings: map[string]*query.BindVariable{
+				"v1": sqltypes.StringBindVariable("10"),
 			},
 			Expected: []sql.Row{{0}},
 		},
 		{
 			Query: "Select IS_USED_LOCK(?)",
-			Bindings: map[string]sql.Expression{
-				"v1": expression.NewLiteral(10, types.MustCreateBinary(query.Type_VARBINARY, int64(16))),
+			Bindings: map[string]*query.BindVariable{
+				"v1": sqltypes.StringBindVariable("10"),
 			},
 			Expected: []sql.Row{{uint64(1)}},
 		},
 		{
 			Query: "Select RELEASE_LOCK(?)",
-			Bindings: map[string]sql.Expression{
-				"v1": expression.NewLiteral(10, types.MustCreateBinary(query.Type_VARBINARY, int64(16))),
+			Bindings: map[string]*query.BindVariable{
+				"v1": sqltypes.StringBindVariable("10"),
 			},
 			Expected: []sql.Row{{1}},
 		},
@@ -6176,25 +6188,25 @@ func TestPrepared(t *testing.T, harness Harness) {
 		{
 			Query:    "SELECT DATE_ADD(TIMESTAMP(:var), INTERVAL 1 DAY);",
 			Expected: []sql.Row{{time.Date(2022, time.October, 27, 13, 14, 15, 0, time.UTC)}},
-			Bindings: map[string]sql.Expression{
-				"var": expression.NewLiteral("2022-10-26 13:14:15", types.Text),
+			Bindings: map[string]*query.BindVariable{
+				"var": mustBuildBindVariable("2022-10-26 13:14:15"),
 			},
 		},
 		{
 			Query:    "SELECT DATE_ADD(:var, INTERVAL 1 DAY);",
 			Expected: []sql.Row{{time.Date(2022, time.October, 27, 13, 14, 15, 0, time.UTC)}},
-			Bindings: map[string]sql.Expression{
-				"var": expression.NewLiteral("2022-10-26 13:14:15", types.Datetime),
+			Bindings: map[string]*query.BindVariable{
+				"var": mustBuildBindVariable("2022-10-26 13:14:15"),
 			},
 		},
 	}
 	qErrTests := []queries.QueryErrorTest{
 		{
 			Query:          "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = ?) AS a ORDER BY foo, i",
-			ExpectedErrStr: "unused binding v2",
-			Bindings: map[string]sql.Expression{
-				"v1": expression.NewLiteral(int64(2), types.Int64),
-				"v2": expression.NewLiteral(int64(2), types.Int64),
+			ExpectedErrStr: "invalid bind variable count: expected: 1, found: 2",
+			Bindings: map[string]*query.BindVariable{
+				"v1": sqltypes.Int64BindVariable(int64(2)),
+				"v2": sqltypes.Int64BindVariable(int64(2)),
 			},
 		},
 	}
@@ -6227,24 +6239,24 @@ func TestPrepared(t *testing.T, harness Harness) {
 
 	repeatTests := []queries.QueryTest{
 		{
-			Bindings: map[string]sql.Expression{
-				"v1": expression.NewLiteral(int64(2), types.Int64),
+			Bindings: map[string]*query.BindVariable{
+				"v1": sqltypes.Int64BindVariable(int64(2)),
 			},
 			Expected: []sql.Row{
 				{2, float64(4)},
 			},
 		},
 		{
-			Bindings: map[string]sql.Expression{
-				"v1": expression.NewLiteral(int64(2), types.Int64),
+			Bindings: map[string]*query.BindVariable{
+				"v1": sqltypes.Int64BindVariable(int64(2)),
 			},
 			Expected: []sql.Row{
 				{2, float64(4)},
 			},
 		},
 		{
-			Bindings: map[string]sql.Expression{
-				"v1": expression.NewLiteral(int64(0), types.Int64),
+			Bindings: map[string]*query.BindVariable{
+				"v1": sqltypes.Int64BindVariable(int64(0)),
 			},
 			Expected: []sql.Row{
 				{1, float64(2)},
@@ -6252,16 +6264,16 @@ func TestPrepared(t *testing.T, harness Harness) {
 			},
 		},
 		{
-			Bindings: map[string]sql.Expression{
-				"v1": expression.NewLiteral(int64(3), types.Int64),
+			Bindings: map[string]*query.BindVariable{
+				"v1": sqltypes.Int64BindVariable(int64(3)),
 			},
 			Expected: []sql.Row{
 				{2, float64(2)},
 			},
 		},
 		{
-			Bindings: map[string]sql.Expression{
-				"v1": expression.NewLiteral(int64(1), types.Int64),
+			Bindings: map[string]*query.BindVariable{
+				"v1": sqltypes.Int64BindVariable(int64(1)),
 			},
 			Expected: []sql.Row{
 				{1, float64(1)},

@@ -10,6 +10,7 @@ import (
 )
 
 func (b *Builder) buildKill(inScope *scope, kill *ast.Kill) (outScope *scope) {
+	outScope = inScope.push()
 	connID64 := b.getInt64Value(inScope, kill.ConnID, "Error parsing KILL, expected int literal")
 	connID32 := uint32(connID64)
 	if int64(connID32) != connID64 {
@@ -18,8 +19,9 @@ func (b *Builder) buildKill(inScope *scope, kill *ast.Kill) (outScope *scope) {
 	}
 	if kill.Connection {
 		outScope.node = plan.NewKill(plan.KillType_Connection, connID32)
+	} else {
+		outScope.node = plan.NewKill(plan.KillType_Query, connID32)
 	}
-	outScope.node = plan.NewKill(plan.KillType_Query, connID32)
 	return outScope
 }
 

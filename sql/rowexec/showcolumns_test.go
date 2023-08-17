@@ -22,8 +22,8 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	. "github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -34,7 +34,7 @@ func TestShowColumns(t *testing.T) {
 	schema := sql.Schema{
 		{Name: "a", Source: "foo", Type: types.Text, PrimaryKey: true},
 		{Name: "b", Source: "foo", Type: types.Int64, Nullable: true},
-		{Name: "c", Source: "foo", Type: types.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", types.Int64, false)},
+		{Name: "c", Source: "foo", Type: types.Int64, Default: planbuilder.MustStringToColumnDefaultValue(ctx, "1", types.Int64, false)},
 	}
 	table := NewResolvedTable(memory.NewTable("foo", sql.NewPrimaryKeySchema(schema), nil), nil, nil)
 
@@ -63,9 +63,9 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 	schema := sql.Schema{
 		{Name: "a", Source: "foo", Type: types.Text, PrimaryKey: true},
 		{Name: "b", Source: "foo", Type: types.Int64, Nullable: true},
-		{Name: "c", Source: "foo", Type: types.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", types.Int64, false)},
+		{Name: "c", Source: "foo", Type: types.Int64, Default: planbuilder.MustStringToColumnDefaultValue(ctx, "1", types.Int64, false)},
 		{Name: "d", Source: "foo", Type: types.Int64, Nullable: true},
-		{Name: "e", Source: "foo", Type: types.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", types.Int64, false)},
+		{Name: "e", Source: "foo", Type: types.Int64, Default: planbuilder.MustStringToColumnDefaultValue(ctx, "1", types.Int64, false)},
 	}
 	table := NewResolvedTable(memory.NewTable("foo", sql.NewPrimaryKeySchema(schema), nil), nil, nil)
 
@@ -152,7 +152,7 @@ func TestShowColumnsFull(t *testing.T) {
 	schema := sql.Schema{
 		{Name: "a", Type: types.Text, PrimaryKey: true},
 		{Name: "b", Type: types.Int64, Nullable: true},
-		{Name: "c", Type: types.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", types.Int64, false), Comment: "a comment"},
+		{Name: "c", Type: types.Int64, Default: planbuilder.MustStringToColumnDefaultValue(ctx, "1", types.Int64, false), Comment: "a comment"},
 	}
 	table := NewResolvedTable(memory.NewTable("foo", sql.NewPrimaryKeySchema(schema), nil), nil, nil)
 

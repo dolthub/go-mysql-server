@@ -17,6 +17,8 @@ package analyzer
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
@@ -25,8 +27,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
-
-	"github.com/stretchr/testify/require"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestValidateResolved(t *testing.T) {
@@ -59,6 +60,7 @@ func TestValidateOrderBy(t *testing.T) {
 }
 
 func TestValidateGroupBy(t *testing.T) {
+	variables.InitSystemVariables()
 	require := require.New(t)
 
 	vr := getValidationRule(validateGroupById)
