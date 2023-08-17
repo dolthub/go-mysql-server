@@ -26,7 +26,7 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 	switch n := destScope.node.(type) {
 	case *plan.ResolvedTable:
 		rt = n
-		db = rt.Database
+		db = rt.Database()
 	case *plan.UnresolvedTable:
 		db = n.Database()
 	default:
