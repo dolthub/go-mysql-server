@@ -141,7 +141,7 @@ func getResolvedTableAndAlias(node sql.Node) (*plan.ResolvedTable, string) {
 	return table, alias
 }
 
-// Finds first TableNode node that is a descendant of the node given
+// Finds first ResolvedTable node that is a descendant of the node given
 func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 	var table *plan.ResolvedTable
 	transform.Inspect(node, func(node sql.Node) bool {
