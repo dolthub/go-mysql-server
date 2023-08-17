@@ -826,28 +826,24 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "select i, j, t1.*, t2.*, t1.i, t1.j, t2.i, t2.j from t1 join t2 using (i, j);",
 				Expected: []sql.Row{
 					{2, 20, 2, 20, 2, 20, 2, 20, 2, 20},
 				},
 			},
 			{
-				Skip:  true,
 				Query: "select i, j, t1.*, t2.*, t1.i, t1.j, t2.i, t2.j from t1 natural join t2;",
 				Expected: []sql.Row{
 					{2, 20, 2, 20, 2, 20, 2, 20, 2, 20},
 				},
 			},
 			{
-				Skip:  true,
 				Query: "select i, j, a.*, b.*, a.i, a.j, b.i, b.j from t1 a join t2 b using (i, j);",
 				Expected: []sql.Row{
 					{2, 20, 2, 20, 2, 20, 2, 20, 2, 20},
 				},
 			},
 			{
-				Skip:  true,
 				Query: "select i, j, a.*, b.*, a.i, a.j, b.i, b.j from t1 a natural join t2 b;",
 				Expected: []sql.Row{
 					{2, 20, 2, 20, 2, 20, 2, 20, 2, 20},
@@ -864,7 +860,6 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 left join t2 using (i);",
 				Expected: []sql.Row{
 					{1, 10, 1, 30},
@@ -889,7 +884,6 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 left join t2 using (i, j);",
 				Expected: []sql.Row{
 					{1, 10, nil, nil},
@@ -898,7 +892,6 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 natural left join t2;",
 				Expected: []sql.Row{
 					{1, 10, nil, nil},
@@ -917,7 +910,6 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 right join t2 using (i);",
 				Expected: []sql.Row{
 					{1, 10, 1, 30},
@@ -934,7 +926,6 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 right join t2 using (j);",
 				Expected: []sql.Row{
 					{3, 30, 1, 30},
@@ -959,7 +950,6 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 right join t2 using (i, j);",
 				Expected: []sql.Row{
 					{nil, nil, 1, 30},
@@ -968,7 +958,6 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 natural right join t2;",
 				Expected: []sql.Row{
 					{nil, nil, 1, 30},
@@ -986,12 +975,10 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "select t1.i, t1.j, t2.i, t2.j, t3.i, t3.j from t1 join t2 on t1.i = t2.i join t3 using (i);",
 				ExpectedErr: sql.ErrAmbiguousColumnName,
 			},
 			{
-				Skip:  true,
 				Query: "select t1.i, t1.j, t2.i, t2.j, t3.i, t3.j from t1 join t2 using (i) join t3 using (i);",
 				Expected: []sql.Row{
 					{1, 10, 1, 30, 1, 200},
@@ -1098,129 +1085,6 @@ var JoinScriptTests = []ScriptTest{
 					{1, 1},
 					{2, 2},
 					{2, 1},
-				},
-			},
-		},
-	},
-}
-
-// UsingJoinScriptTests contains the skipped tests for USING joins
-// TODO: delete this and unskip when new name resolution is merged
-var UsingJoinScriptTests = []ScriptTest{
-	{
-		Name: "USING join tests",
-		SetUpScript: []string{
-			"create table t1 (i int primary key, j int);",
-			"create table t2 (i int primary key, j int);",
-			"create table t3 (i int primary key, j int);",
-			"insert into t1 values (1, 10), (2, 20), (3, 30);",
-			"insert into t2 values (1, 30), (2, 20), (5, 50);",
-			"insert into t3 values (1, 200), (2, 20), (6, 600);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select i, j, t1.*, t2.*, t1.i, t1.j, t2.i, t2.j from t1 join t2 using (i, j);",
-				Expected: []sql.Row{
-					{2, 20, 2, 20, 2, 20, 2, 20, 2, 20},
-				},
-			},
-			{
-				Query: "select i, j, t1.*, t2.*, t1.i, t1.j, t2.i, t2.j from t1 natural join t2;",
-				Expected: []sql.Row{
-					{2, 20, 2, 20, 2, 20, 2, 20, 2, 20},
-				},
-			},
-			{
-				Query: "select i, j, a.*, b.*, a.i, a.j, b.i, b.j from t1 a join t2 b using (i, j);",
-				Expected: []sql.Row{
-					{2, 20, 2, 20, 2, 20, 2, 20, 2, 20},
-				},
-			},
-			{
-				Query: "select i, j, a.*, b.*, a.i, a.j, b.i, b.j from t1 a natural join t2 b;",
-				Expected: []sql.Row{
-					{2, 20, 2, 20, 2, 20, 2, 20, 2, 20},
-				},
-			},
-
-			// Left Join
-			{
-				Query: "select t1.i, t1.j, t2.i, t2.j from t1 left join t2 using (i);",
-				Expected: []sql.Row{
-					{1, 10, 1, 30},
-					{2, 20, 2, 20},
-					{3, 30, nil, nil},
-				},
-			},
-			{
-				Query: "select t1.i, t1.j, t2.i, t2.j from t1 left join t2 using (i, j);",
-				Expected: []sql.Row{
-					{1, 10, nil, nil},
-					{2, 20, 2, 20},
-					{3, 30, nil, nil},
-				},
-			},
-			{
-				Query: "select t1.i, t1.j, t2.i, t2.j from t1 natural left join t2;",
-				Expected: []sql.Row{
-					{1, 10, nil, nil},
-					{2, 20, 2, 20},
-					{3, 30, nil, nil},
-				},
-			},
-
-			// Right Join
-			{
-				Query: "select t1.i, t1.j, t2.i, t2.j from t1 right join t2 using (i);",
-				Expected: []sql.Row{
-					{1, 10, 1, 30},
-					{2, 20, 2, 20},
-					{nil, nil, 5, 50},
-				},
-			},
-			{
-				Query: "select * from t1 right join t2 using (j);",
-				Expected: []sql.Row{
-					{30, 1, 3},
-					{20, 2, 2},
-					{50, 5, nil},
-				},
-			},
-			{
-				Query: "select t1.i, t1.j, t2.i, t2.j from t1 right join t2 using (j);",
-				Expected: []sql.Row{
-					{3, 30, 1, 30},
-					{2, 20, 2, 20},
-					{nil, nil, 5, 50},
-				},
-			},
-			{
-				Query: "select t1.i, t1.j, t2.i, t2.j from t1 right join t2 using (i, j);",
-				Expected: []sql.Row{
-					{nil, nil, 1, 30},
-					{2, 20, 2, 20},
-					{nil, nil, 5, 50},
-				},
-			},
-			{
-				Query: "select t1.i, t1.j, t2.i, t2.j from t1 natural right join t2;",
-				Expected: []sql.Row{
-					{nil, nil, 1, 30},
-					{2, 20, 2, 20},
-					{nil, nil, 5, 50},
-				},
-			},
-
-			// Nested Join
-			{
-				Query:       "select t1.i, t1.j, t2.i, t2.j, t3.i, t3.j from t1 join t2 on t1.i = t2.i join t3 using (i);",
-				ExpectedErr: sql.ErrAmbiguousColumnName,
-			},
-			{
-				Query: "select t1.i, t1.j, t2.i, t2.j, t3.i, t3.j from t1 join t2 using (i) join t3 using (i);",
-				Expected: []sql.Row{
-					{1, 10, 1, 30, 1, 200},
-					{2, 20, 2, 20, 2, 20},
 				},
 			},
 		},

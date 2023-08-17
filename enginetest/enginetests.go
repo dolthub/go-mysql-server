@@ -132,11 +132,6 @@ func TestJoinQueries(t *testing.T, harness Harness) {
 	for _, ts := range queries.JoinScriptTests {
 		TestScript(t, harness, ts)
 	}
-	if e.Version == sql.VersionExperimental {
-		for _, ts := range queries.UsingJoinScriptTests {
-			TestScript(t, harness, ts)
-		}
-	}
 
 	t.Skip()
 	for _, tt := range queries.SkippedJoinQueryTests {
