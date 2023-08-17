@@ -72,6 +72,11 @@ func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn,
 						return c, true
 					}
 				}
+				if c.table == OnDupValuesPrefix {
+					return found, true
+				} else if found.table == OnDupValuesPrefix {
+					return c, true
+				}
 				err := sql.ErrAmbiguousColumnName.New(col, []string{c.table, found.table})
 				if c.table == "" {
 					err = sql.ErrAmbiguousColumnOrAliasName.New(c.col)
@@ -109,6 +114,17 @@ func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn,
 	}
 
 	return c, true
+}
+
+func (s *scope) hasTable(table string) bool {
+	_, ok := s.tables[strings.ToLower(table)]
+	if ok {
+		return true
+	}
+	if s.parent != nil {
+		return s.parent.hasTable(table)
+	}
+	return false
 }
 
 // triggerCol is used to hallucinate a new column during trigger DDL
@@ -188,8 +204,6 @@ func (s *scope) setTableAlias(t string) {
 		s.cols[i].table = t
 		id, ok := s.getExpr(beforeColStr, true)
 		if ok {
-			//err := sql.ErrColumnNotFound.New(beforeColStr)
-			//s.b.handleErr(err)
 			// todo better way to do projections
 			delete(s.exprs, beforeColStr)
 		}
@@ -210,15 +224,14 @@ func (s *scope) setTableAlias(t string) {
 // to the names in the input list.
 func (s *scope) setColAlias(cols []string) {
 	if len(cols) != len(s.cols) {
-		s.b.handleErr(fmt.Errorf("invalid column number for column alias"))
+		err := sql.ErrColumnCountMismatch.New()
+		s.b.handleErr(err)
 	}
 	ids := make([]columnId, len(cols))
 	for i := range s.cols {
 		beforeColStr := s.cols[i].String()
 		id, ok := s.getExpr(beforeColStr, true)
 		if ok {
-			//err := sql.ErrColumnNotFound.New(beforeColStr)
-			//s.b.handleErr(err)
 			// todo better way to do projections
 			delete(s.exprs, beforeColStr)
 		}
@@ -429,19 +442,28 @@ type tableId uint16
 type columnId uint16
 
 type scopeColumn struct {
-	db         string
-	table      string
-	col        string
-	id         columnId
-	typ        sql.Type
-	scalar     sql.Expression
-	nullable   bool
-	descending bool
+	db          string
+	table       string
+	col         string
+	originalCol string
+	id          columnId
+	typ         sql.Type
+	scalar      sql.Expression
+	nullable    bool
+	descending  bool
 }
 
 // empty returns true if a scopeColumn is the null value
 func (c scopeColumn) empty() bool {
 	return c.id == 0
+}
+
+func (c scopeColumn) withOriginal(col string) scopeColumn {
+	if c.db != sql.InformationSchemaDatabaseName {
+		// info schema columns always presented as uppercase
+		c.originalCol = col
+	}
+	return c
 }
 
 // scalarGf returns a getField reference to this column's expression.
@@ -450,6 +472,9 @@ func (c scopeColumn) scalarGf() sql.Expression {
 		if p, ok := c.scalar.(*expression.ProcedureParam); ok {
 			return p
 		}
+	}
+	if c.originalCol != "" {
+		return expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.originalCol, c.nullable)
 	}
 	return expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
 }

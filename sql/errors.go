@@ -242,6 +242,9 @@ var (
 	// ErrUnknownSystemVariable is returned when a query references a system variable that doesn't exist
 	ErrUnknownSystemVariable = errors.NewKind(`Unknown system variable '%s'`)
 
+	// ErrUnknownUserVariable is returned when a query references a user variable that doesn't exist
+	ErrUnknownUserVariable = errors.NewKind(`Unknown user variable '%s'`)
+
 	// ErrSystemVariableReadOnly is returned when attempting to set a value to a non-Dynamic system variable.
 	ErrSystemVariableReadOnly = errors.NewKind(`Variable '%s' is a read only variable`)
 
@@ -846,6 +849,11 @@ var (
 
 	// ErrFullTextInvalidColumnType is returned when a Full-Text index is declared on a non-text column.
 	ErrFullTextInvalidColumnType = errors.NewKind("all Full-Text columns must be declared on a non-binary text type")
+
+	// ErrGeneratedColumnValue is returned when a value is provided for a generated column
+	ErrGeneratedColumnValue = errors.NewKind("The value specified for generated column %q in table %q is not allowed.")
+
+	ErrInsertIntoMismatchValueCount = errors.NewKind("number of values does not match number of columns provided")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the

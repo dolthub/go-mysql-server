@@ -8,6 +8,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 func (b *Builder) analyzeProjectionList(inScope, outScope *scope, selectExprs ast.SelectExprs) {
@@ -28,6 +29,32 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 	var exprs []sql.Expression
 	for _, se := range selectExprs {
 		pe := b.selectExprToExpression(inScope, se)
+
+		// TODO two passes for symbol res and semantic validation
+		var aRef string
+		inScopeAliasRef := transform.InspectExpr(pe, func(e sql.Expression) bool {
+			var id columnId
+			switch e := e.(type) {
+			case *expression.GetField:
+				if e.Table() == "" {
+					id = columnId(e.Index())
+					aRef = e.Name()
+				}
+			case *expression.Alias:
+				id = columnId(e.Id())
+				aRef = e.Name()
+			}
+			if aRef != "" {
+				collisionId, ok := tempScope.exprs[strings.ToLower(aRef)]
+				return ok && id == collisionId
+			}
+			return false
+		})
+		if inScopeAliasRef {
+			err := sql.ErrMisusedAlias.New(aRef)
+			b.handleErr(err)
+		}
+
 		switch e := pe.(type) {
 		case *expression.GetField:
 			exprs = append(exprs, e)
@@ -51,7 +78,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 					continue
 				}
 				if c.table == tableName || tableName == "" {
-					gf := expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
+					gf := c.scalarGf()
 					exprs = append(exprs, gf)
 					id, ok := inScope.getExpr(gf.String(), true)
 					if !ok {
@@ -70,7 +97,6 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 			if a, ok := e.Child.(*expression.Alias); ok {
 				if _, ok := tempScope.exprs[a.Name()]; ok {
 					// can't ref alias within the same scope
-					// TODO we use alias
 					err := sql.ErrMisusedAlias.New(e.Name())
 					b.handleErr(err)
 				}
@@ -146,13 +172,11 @@ func (b *Builder) buildProjection(inScope, outScope *scope) {
 		}
 		projections[i] = scalar
 	}
-	proj := plan.NewProject(projections, inScope.node)
-	if _, ok := inScope.node.(*plan.SubqueryAlias); ok && proj.Schema().Equals(proj.Child.Schema()) {
-		// pruneColumns can get overly aggressive
-		outScope.node = inScope.node
-	} else {
-		outScope.node = proj
+	proj, err := factoryBuildProject(plan.NewProject(projections, inScope.node))
+	if err != nil {
+		b.handleErr(err)
 	}
+	outScope.node = proj
 }
 
 func selectExprNeedsAlias(e *ast.AliasedExpr, expr sql.Expression) bool {

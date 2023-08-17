@@ -28,7 +28,6 @@ var ErrInsertIntoNotSupported = errors.NewKind("table doesn't support INSERT INT
 var ErrReplaceIntoNotSupported = errors.NewKind("table doesn't support REPLACE INTO")
 var ErrOnDuplicateKeyUpdateNotSupported = errors.NewKind("table doesn't support ON DUPLICATE KEY UPDATE")
 var ErrAutoIncrementNotSupported = errors.NewKind("table doesn't support AUTO_INCREMENT")
-var ErrInsertIntoMismatchValueCount = errors.NewKind("number of values does not match number of columns provided")
 var ErrInsertIntoUnsupportedValues = errors.NewKind("%T is unsupported for inserts")
 var ErrInsertIntoDuplicateColumn = errors.NewKind("duplicate column name %v")
 var ErrInsertIntoNonexistentColumn = errors.NewKind("invalid column name %v")
@@ -118,21 +117,30 @@ func (ii *InsertInto) WithDatabase(database sql.Database) (sql.Node, error) {
 	return &nc, nil
 }
 
+func (ii InsertInto) WithColumnNames(cols []string) *InsertInto {
+	ii.ColumnNames = cols
+	return &ii
+}
+
 // InsertDestination is a wrapper for a table to be used with InsertInto.Destination that allows the schema to be
 // overridden. This is useful when the table in question has late-resolving column defaults.
 type InsertDestination struct {
 	UnaryNode
-	Sch sql.Schema
+	DestinationName string
+	Sch             sql.Schema
 }
 
 var _ sql.Node = (*InsertDestination)(nil)
+var _ sql.Nameable = (*InsertDestination)(nil)
 var _ sql.Expressioner = (*InsertDestination)(nil)
 var _ sql.CollationCoercible = (*InsertDestination)(nil)
 
 func NewInsertDestination(schema sql.Schema, node sql.Node) *InsertDestination {
+	nameable := node.(sql.Nameable)
 	return &InsertDestination{
-		UnaryNode: UnaryNode{Child: node},
-		Sch:       schema,
+		UnaryNode:       UnaryNode{Child: node},
+		Sch:             schema,
+		DestinationName: nameable.Name(),
 	}
 }
 
@@ -147,6 +155,10 @@ func (id InsertDestination) WithExpressions(exprs ...sql.Expression) (sql.Node, 
 
 	id.Sch = transform.SchemaWithDefaults(id.Sch, exprs)
 	return &id, nil
+}
+
+func (id *InsertDestination) Name() string {
+	return id.DestinationName
 }
 
 func (id *InsertDestination) String() string {

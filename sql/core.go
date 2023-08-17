@@ -178,6 +178,20 @@ type PrimaryKeySchemaTarget interface {
 	WithPrimaryKeySchema(schema PrimaryKeySchema) (Node, error)
 }
 
+// DynamicColumnsTable is a table with a schema that is variable depending
+// on the tables in the database (information_schema.columns).
+type DynamicColumnsTable interface {
+	// AllColumns returns all columns that need to be resolved
+	// for this particular table.
+	AllColumns(*Context) (Schema, error)
+	// WithDefaultsSchema returns a table with a fully resolved
+	// schema for every column in AllColumns.
+	WithDefaultsSchema(Schema) (Table, error)
+	// HasDynamicColumns indicates that a type implements the
+	// DynamicColumnsTable interface.
+	HasDynamicColumns() bool
+}
+
 // PartitionCounter can return the number of partitions.
 type PartitionCounter interface {
 	// PartitionCount returns the number of partitions.

@@ -15,11 +15,66 @@
 package queries
 
 import (
+	"github.com/dolthub/vitess/go/sqltypes"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var InfoSchemaQueries = []QueryTest{
+	{
+		Query: `SELECT 
+     table_name, index_name, comment, non_unique, GROUP_CONCAT(column_name ORDER BY seq_in_index) AS COLUMNS 
+   FROM information_schema.statistics 
+   WHERE table_schema='mydb' AND table_name='mytable' AND index_name!="PRIMARY" 
+   GROUP BY index_name;`,
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "TABLE_NAME",
+				Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "INDEX_NAME",
+				Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "COMMENT",
+				Type: types.MustCreateString(sqltypes.VarChar, 8, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "NON_UNIQUE",
+				Type: types.Int32,
+			},
+			{
+				Name: "COLUMNS",
+				Type: types.Text,
+			},
+		},
+		Expected: []sql.Row{
+			{"mytable", "idx_si", "", 1, "s,i"},
+			{"mytable", "mytable_i_s", "", 1, "i,s"},
+			{"mytable", "mytable_s", "", 0, "s"},
+		},
+	},
+	{
+		Query: `select table_name from information_schema.tables where table_name = 'mytable' limit 1;`,
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "TABLE_NAME",
+				Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default),
+			},
+		},
+		Expected: []sql.Row{{"mytable"}},
+	},
+	{
+		Query: `select table_catalog, table_schema, table_name from information_schema.tables where table_name = 'mytable' limit 1;`,
+		ExpectedColumns: sql.Schema{
+			{Name: "TABLE_CATALOG", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
+			{Name: "TABLE_SCHEMA", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
+			{Name: "TABLE_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
+		},
+		Expected: []sql.Row{{"def", "mydb", "mytable"}},
+	},
 	{
 		Query: `select table_name from information_schema.tables where table_schema = 'information_schema' order by table_name;`,
 		Expected: []sql.Row{
@@ -1295,10 +1350,10 @@ FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_ty
 FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC 
 WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK';`,
 				Expected: []sql.Row{
-					{"chk1", "(b > 0)", "YES"},
+					{"chk1", "(B > 0)", "YES"},
 					{"chk2", "(b > 0)", "NO"},
-					{"chk3", "(b > 1)", "YES"},
-					{"chk4", "(upper(c) = c)", "YES"},
+					{"chk3", "(B > 1)", "YES"},
+					{"chk4", "(upper(C) = c)", "YES"},
 				},
 			},
 			{
@@ -1314,10 +1369,10 @@ WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.C
 			{
 				Query: `select * from information_schema.check_constraints where constraint_schema = 'mydb';`,
 				Expected: []sql.Row{
-					{"def", "mydb", "chk1", "(b > 0)"},
+					{"def", "mydb", "chk1", "(B > 0)"},
 					{"def", "mydb", "chk2", "(b > 0)"},
-					{"def", "mydb", "chk3", "(b > 1)"},
-					{"def", "mydb", "chk4", "(upper(c) = c)"},
+					{"def", "mydb", "chk3", "(B > 1)"},
+					{"def", "mydb", "chk4", "(upper(C) = c)"},
 				},
 			},
 			{

@@ -22,6 +22,18 @@ import (
 
 var VariableQueries = []ScriptTest{
 	{
+		Name:        "use string name for foreign_key checks",
+		SetUpScript: []string{},
+		Query:       "select @@GLOBAL.unknown",
+		ExpectedErr: sql.ErrUnknownSystemVariable,
+	},
+	{
+		Name:        "use string name for foreign_key checks",
+		SetUpScript: []string{},
+		Query:       "set @@foreign_key_checks = off;",
+		Expected:    []sql.Row{{}},
+	},
+	{
 		Name: "set system variables",
 		SetUpScript: []string{
 			"set @@auto_increment_increment = 100, sql_select_limit = 1",
@@ -159,8 +171,8 @@ var VariableQueries = []ScriptTest{
 	{
 		Name: "set system variable with expressions",
 		SetUpScript: []string{
-			`set lc_messages = "123", @@auto_increment_increment = 1`,
-			`set lc_messages = concat(@@lc_messages, "456"), @@auto_increment_increment = @@auto_increment_increment + 3`,
+			`set lc_messages = '123', @@auto_increment_increment = 1`,
+			`set lc_messages = concat(@@lc_messages, '456'), @@auto_increment_increment = @@auto_increment_increment + 3`,
 		},
 		Query: "SELECT @@lc_messages, @@auto_increment_increment",
 		Expected: []sql.Row{

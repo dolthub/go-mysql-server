@@ -19,8 +19,19 @@ const maxAnalysisIterations = 8
 // ErrMaxAnalysisIters is thrown when the analysis iterations are exceeded
 var ErrMaxAnalysisIters = errors.NewKind("exceeded max analysis iterations (%d)")
 
-// Parse parses the given SQL sentence and returns the corresponding node.
+// Parse parses the given SQL |query| using the default parsing settings and returns the corresponding node.
 func Parse(ctx *sql.Context, cat sql.Catalog, query string) (ret sql.Node, err error) {
+	sqlMode, err := sql.LoadSqlMode(ctx)
+	var parserOpts sqlparser.ParserOptions
+	if err != nil {
+		parserOpts = sqlparser.ParserOptions{}
+	} else {
+		parserOpts = sqlMode.ParserOptions()
+	}
+	return ParseWithOptions(ctx, cat, query, parserOpts)
+}
+
+func ParseWithOptions(ctx *sql.Context, cat sql.Catalog, query string, options sqlparser.ParserOptions) (ret sql.Node, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			switch r := r.(type) {
@@ -31,15 +42,20 @@ func Parse(ctx *sql.Context, cat sql.Catalog, query string) (ret sql.Node, err e
 			}
 		}
 	}()
-	n, _, _, err := parse(ctx, cat, query, false)
+	n, _, _, err := parse(ctx, cat, query, false, options)
 	return n, err
 }
 
 func ParseOne(ctx *sql.Context, cat sql.Catalog, query string) (sql.Node, string, string, error) {
-	return parse(ctx, cat, query, true)
+	sqlMode, err := sql.LoadSqlMode(ctx)
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	return parse(ctx, cat, query, true, sqlMode.ParserOptions())
 }
 
-func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool) (sql.Node, string, string, error) {
+func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool, options sqlparser.ParserOptions) (sql.Node, string, string, error) {
 	span, ctx := ctx.Span("parse", trace.WithAttributes(attribute.String("query", query)))
 	defer span.End()
 
@@ -56,10 +72,10 @@ func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool) (sql.Nod
 
 	parsed = s
 	if !multi {
-		stmt, err = sqlparser.Parse(s)
+		stmt, err = sqlparser.ParseWithOptions(s, options)
 	} else {
 		var ri int
-		stmt, ri, err = sqlparser.ParseOne(s)
+		stmt, ri, err = sqlparser.ParseOneWithOptions(s, options)
 		if ri != 0 && ri < len(s) {
 			parsed = s[:ri]
 			parsed = strings.TrimSpace(parsed)
@@ -69,6 +85,7 @@ func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool) (sql.Nod
 			})
 			remainder = s[ri:]
 		}
+		return nil, parsed, remainder, err
 	}
 
 	if err != nil {
@@ -91,6 +108,7 @@ func (b *Builder) Parse(query string, multi bool) (ret sql.Node, parsed, remaind
 		return nil, "", "", ErrMaxAnalysisIters.New(maxAnalysisIterations)
 	}
 	defer func() {
+		b.nesting--
 		if r := recover(); r != nil {
 			switch r := r.(type) {
 			case parseErr:
@@ -113,10 +131,10 @@ func (b *Builder) Parse(query string, multi bool) (ret sql.Node, parsed, remaind
 
 	parsed = s
 	if !multi {
-		stmt, err = sqlparser.Parse(s)
+		stmt, err = sqlparser.ParseWithOptions(s, b.parserOpts)
 	} else {
 		var ri int
-		stmt, ri, err = sqlparser.ParseOne(s)
+		stmt, ri, err = sqlparser.ParseOneWithOptions(s, b.parserOpts)
 		if ri != 0 && ri < len(s) {
 			parsed = s[:ri]
 			parsed = strings.TrimSpace(parsed)
