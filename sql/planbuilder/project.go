@@ -73,6 +73,10 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 			}
 			startLen := len(outScope.cols)
 			for _, c := range inScope.cols {
+				// unqualified columns that are redirected should not be replaced
+				if col, ok := inScope.redirectCol[c.col]; tableName == "" && ok && col != c {
+					continue
+				}
 				if c.table == tableName || tableName == "" {
 					gf := c.scalarGf()
 					exprs = append(exprs, gf)

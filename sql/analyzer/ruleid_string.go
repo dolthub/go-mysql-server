@@ -55,7 +55,7 @@ func _() {
 	_ = x[setInsertColumnsId-44]
 	_ = x[validateJoinComplexityId-45]
 	_ = x[applyBinlogReplicaControllerId-46]
-	_ = x[resolveNaturalJoinsId-47]
+	_ = x[resolveUsingJoinsId-47]
 	_ = x[resolveOrderbyLiteralsId-48]
 	_ = x[resolveFunctionsId-49]
 	_ = x[flattenTableAliasesId-50]
