@@ -15,6 +15,7 @@
 package types
 
 import (
+	"fmt"
 	"math"
 	"reflect"
 	"time"
@@ -77,40 +78,53 @@ var (
 	zeroTime = time.Unix(-62167219200, 0).UTC()
 
 	// Date is a date with day, month and year.
-	Date = MustCreateDatetimeType(sqltypes.Date)
-	// Datetime is a date and a time
-	Datetime = MustCreateDatetimeType(sqltypes.Datetime)
-	// Timestamp is an UNIX timestamp.
-	Timestamp = MustCreateDatetimeType(sqltypes.Timestamp)
+	Date = MustCreateDatetimeType(sqltypes.Date, 0)
+	// Datetime is a date and a time with default precision (no fractional seconds).
+	Datetime = MustCreateDatetimeType(sqltypes.Datetime, 0)
+	// DatetimeMaxPrecision is a date and a time with maximum precision
+	DatetimeMaxPrecision = MustCreateDatetimeType(sqltypes.Datetime, 6)
+	// Timestamp is a UNIX timestamp with default precision (no fractional seconds).
+	Timestamp = MustCreateDatetimeType(sqltypes.Timestamp, 0)
+	// TimestampMaxPrecision is a UNIX timestamp with maximum precision
+	TimestampMaxPrecision = MustCreateDatetimeType(sqltypes.Timestamp, 6)
 
 	datetimeValueType = reflect.TypeOf(time.Time{})
 )
 
 type datetimeType struct {
-	baseType query.Type
+	baseType  query.Type
+	precision int
 }
 
 var _ sql.DatetimeType = datetimeType{}
 var _ sql.CollationCoercible = datetimeType{}
 
 // CreateDatetimeType creates a Type dealing with all temporal types that are not TIME nor YEAR.
-func CreateDatetimeType(baseType query.Type) (sql.DatetimeType, error) {
+func CreateDatetimeType(baseType query.Type, precision int) (sql.DatetimeType, error) {
 	switch baseType {
 	case sqltypes.Date, sqltypes.Datetime, sqltypes.Timestamp:
+		if precision < 0 || precision > 6 {
+			return nil, fmt.Errorf("precision must be between 0 and 6, got %d", precision)
+		}
 		return datetimeType{
-			baseType: baseType,
+			baseType:  baseType,
+			precision: precision,
 		}, nil
 	}
 	return nil, sql.ErrInvalidBaseType.New(baseType.String(), "datetime")
 }
 
 // MustCreateDatetimeType is the same as CreateDatetimeType except it panics on errors.
-func MustCreateDatetimeType(baseType query.Type) sql.DatetimeType {
-	dt, err := CreateDatetimeType(baseType)
+func MustCreateDatetimeType(baseType query.Type, precision int) sql.DatetimeType {
+	dt, err := CreateDatetimeType(baseType, precision)
 	if err != nil {
 		panic(err)
 	}
 	return dt
+}
+
+func (t datetimeType) Precision() int {
+	return t.precision
 }
 
 // Compare implements Type interface.
@@ -161,6 +175,12 @@ func (t datetimeType) Convert(v interface{}) (interface{}, sql.ConvertInRange, e
 	return res, sql.InRange, nil
 }
 
+// precisionConversion is a conversion ratio to divide time.Second by to truncate the appropriate amount for the
+// precision of a type with time info
+var precisionConversion = [7]int{
+	1, 10, 100, 1_000, 10_000, 100_000, 1_000_000,
+}
+
 func ConvertToTime(v interface{}, t datetimeType) (time.Time, error) {
 	if v == nil {
 		return time.Time{}, nil
@@ -174,6 +194,11 @@ func ConvertToTime(v interface{}, t datetimeType) (time.Time, error) {
 	if res.Equal(zeroTime) {
 		return zeroTime, nil
 	}
+
+	// Truncate the date to the precision of this type
+	truncationDuration := time.Second
+	truncationDuration /= time.Duration(precisionConversion[t.precision])
+	res = res.Truncate(truncationDuration)
 
 	switch t.baseType {
 	case sqltypes.Date:
@@ -336,7 +361,7 @@ func (t datetimeType) MaxTextResponseByteLength(_ *sql.Context) uint32 {
 
 // Promote implements the Type interface.
 func (t datetimeType) Promote() sql.Type {
-	return Datetime
+	return DatetimeMaxPrecision
 }
 
 // SQL implements Type interface.
@@ -390,9 +415,15 @@ func (t datetimeType) String() string {
 	case sqltypes.Date:
 		return "date"
 	case sqltypes.Datetime:
-		return "datetime(6)"
+		if t.precision > 0 {
+			return fmt.Sprintf("datetime(%d)", t.precision)
+		}
+		return "datetime"
 	case sqltypes.Timestamp:
-		return "timestamp(6)"
+		if t.precision > 0 {
+			return fmt.Sprintf("timestamp(%d)", t.precision)
+		}
+		return "timestamp"
 	default:
 		panic(sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime"))
 	}

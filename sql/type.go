@@ -145,6 +145,7 @@ type DatetimeType interface {
 	ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
 	MaximumTime() time.Time
 	MinimumTime() time.Time
+	Precision() int
 }
 
 // YearType represents the YEAR type.

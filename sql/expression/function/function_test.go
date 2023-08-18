@@ -82,7 +82,7 @@ func assertResultType(t *testing.T, expectedType sql.Type, result interface{}) {
 	case string:
 		assert.True(t, types.IsText(expectedType))
 	case time.Time:
-		assert.Equal(t, expectedType, types.Datetime)
+		assert.Equal(t, expectedType, types.DatetimeMaxPrecision)
 	case bool:
 		assert.Equal(t, expectedType, types.Boolean)
 	case []byte:
@@ -317,7 +317,7 @@ func toLiteralExpression(input interface{}) *expression.Literal {
 	case string:
 		return expression.NewLiteral(val, types.Text)
 	case time.Time:
-		return expression.NewLiteral(val, types.Datetime)
+		return expression.NewLiteral(val, types.DatetimeMaxPrecision)
 	case []byte:
 		return expression.NewLiteral(string(val), types.Blob)
 	default:

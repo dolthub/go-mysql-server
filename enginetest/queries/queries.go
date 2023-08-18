@@ -763,9 +763,9 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT s as i, i as i from mytable order by 1`,
 		Expected: []sql.Row{
-			{"first row", "first row"},
-			{"second row", "second row"},
-			{"third row", "third row"},
+			{"first row", 1},
+			{"second row", 2},
+			{"third row", 3},
 		},
 	},
 	{
@@ -10393,4 +10393,12 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 		},
 	},
+}
+
+func MustParseTime(layout, value string) time.Time {
+	parsed, err := time.Parse(layout, value)
+	if err != nil {
+		panic(err)
+	}
+	return parsed
 }
