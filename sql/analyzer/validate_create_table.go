@@ -62,30 +62,23 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	keyedColumns := make(map[string]bool)
 	var err error
 	transform.Inspect(n, func(n sql.Node) bool {
+		if st, ok := n.(sql.SchemaTarget); ok {
+			sch = st.TargetSchema()
+		}
 		switch n := n.(type) {
 		case *plan.ModifyColumn:
-			sch = n.TargetSchema()
 			keyedColumns, err = getTableIndexColumns(ctx, n.Table)
 			return false
 		case *plan.RenameColumn:
-			sch = n.TargetSchema()
 			return false
 		case *plan.AddColumn:
-			sch = n.TargetSchema()
 			keyedColumns, err = getTableIndexColumns(ctx, n.Table)
 			return false
 		case *plan.DropColumn:
-			sch = n.TargetSchema()
 			return false
 		case *plan.AlterIndex:
-			sch = n.TargetSchema()
 			indexes, err = getTableIndexNames(ctx, a, n.Table)
-		case *plan.AlterPK:
-			sch = n.TargetSchema()
-		case *plan.AlterDefaultSet:
-			sch = n.TargetSchema()
-		case *plan.AlterDefaultDrop:
-			sch = n.TargetSchema()
+		default:
 		}
 		return true
 	})
@@ -109,12 +102,21 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	n, same, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch nn := n.(type) {
 		case *plan.ModifyColumn:
+			n, err := nn.WithTargetSchema(sch.Copy())
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
 			sch, err = validateModifyColumn(ctx, initialSch, sch, n.(*plan.ModifyColumn), keyedColumns)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
 			return n, transform.NewTree, nil
 		case *plan.RenameColumn:
+			n, err := nn.WithTargetSchema(sch.Copy())
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
 			sch, err = validateRenameColumn(initialSch, sch, n.(*plan.RenameColumn))
 			if err != nil {
 				return nil, transform.SameTree, err
@@ -134,13 +136,22 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 			addedColumn = true
 			return n, transform.NewTree, nil
 		case *plan.DropColumn:
+			n, err := nn.WithTargetSchema(sch.Copy())
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
 			sch, err = validateDropColumn(initialSch, sch, n.(*plan.DropColumn))
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
 			delete(keyedColumns, nn.Column)
+
 			return n, transform.NewTree, nil
 		case *plan.AlterIndex:
+			n, err := nn.WithTargetSchema(sch.Copy())
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
 			indexes, err = validateAlterIndex(ctx, initialSch, sch, n.(*plan.AlterIndex), indexes)
 			if err != nil {
 				return nil, transform.SameTree, err
@@ -149,18 +160,30 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 			keyedColumns = updateKeyedColumns(keyedColumns, nn)
 			return n, transform.NewTree, nil
 		case *plan.AlterPK:
+			n, err := nn.WithTargetSchema(sch.Copy())
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
 			sch, err = validatePrimaryKey(ctx, initialSch, sch, n.(*plan.AlterPK))
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
 			return n, transform.NewTree, nil
 		case *plan.AlterDefaultSet:
+			n, err := nn.WithTargetSchema(sch.Copy())
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
 			sch, err = validateAlterDefault(initialSch, sch, n.(*plan.AlterDefaultSet))
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
 			return n, transform.NewTree, nil
 		case *plan.AlterDefaultDrop:
+			n, err := nn.WithTargetSchema(sch.Copy())
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
 			sch, err = validateDropDefault(initialSch, sch, n.(*plan.AlterDefaultDrop))
 			if err != nil {
 				return nil, transform.SameTree, err
