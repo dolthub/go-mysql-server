@@ -80,7 +80,6 @@ var OnceAfterDefault_Experimental = []Rule{
 	{insertTopNId, insertTopNNodes},
 	{applyHashInId, applyHashIn},
 	{resolveInsertRowsId, resolveInsertRows},
-	{resolvePreparedInsertId, resolvePreparedInsert},
 	{applyTriggersId, applyTriggers},
 	{applyProceduresId, applyProcedures},
 	{assignRoutinesId, assignRoutines},
