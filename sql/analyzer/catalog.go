@@ -244,7 +244,7 @@ func (c *Catalog) DatabaseTableAsOf(ctx *sql.Context, db sql.Database, tableName
 
 	versionedDb, ok := db.(sql.VersionedDatabase)
 	if !ok {
-		return nil, nil, sql.ErrAsOfNotSupported.New(tableName)
+		return nil, nil, sql.ErrAsOfNotSupported.New(db.Name())
 	}
 
 	tbl, ok, err := versionedDb.GetTableInsensitiveAsOf(ctx, tableName, asOf)
