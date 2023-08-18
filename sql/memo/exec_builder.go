@@ -298,10 +298,10 @@ func (b *ExecBuilder) buildIndexScan(i *IndexScan, input sql.Schema, children ..
 	var ret sql.Node
 	var err error
 	switch n := children[0].(type) {
-	case *plan.ResolvedTable:
+	case plan.TableNode:
 		ret, err = plan.NewStaticIndexedAccessForResolvedTable(n, l)
 	case *plan.TableAlias:
-		ret, err = plan.NewStaticIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), l)
+		ret, err = plan.NewStaticIndexedAccessForResolvedTable(n.Child.(plan.TableNode), l)
 		ret = plan.NewTableAlias(n.Name(), ret)
 	case *plan.Distinct:
 		ret, err = b.buildIndexScan(i, input, n.Child)
