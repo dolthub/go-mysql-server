@@ -233,14 +233,23 @@ func TestQueriesPrepared(t *testing.T, harness Harness) {
 func TestJoinQueriesPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.OthertableData, setup.NiltableData, setup.XyData)
 	for _, tt := range queries.JoinQueryTests {
+		if tt.SkipPrepared {
+			continue
+		}
 		TestPreparedQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns)
 	}
 	for _, ts := range queries.JoinScriptTests {
+		if ts.SkipPrepared {
+			continue
+		}
 		TestScriptPrepared(t, harness, ts)
 	}
 
 	t.Skip()
 	for _, tt := range queries.SkippedJoinQueryTests {
+		if tt.SkipPrepared {
+			continue
+		}
 		TestPreparedQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns)
 	}
 }
