@@ -15,6 +15,8 @@
 package queries
 
 import (
+	"time"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -30,7 +32,7 @@ var CreateTableQueries = []WriteQueryTest{
 		WriteQuery:          `CREATE TABLE t1 (a INTEGER, b TEXT, c DATE, d TIMESTAMP, e VARCHAR(20), f BLOB NOT NULL, b1 BOOL, b2 BOOLEAN NOT NULL, g DATETIME, h CHAR(40))`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
 		SelectQuery:         "SHOW CREATE TABLE t1",
-		ExpectedSelect:      []sql.Row{sql.Row{"t1", "CREATE TABLE `t1` (\n  `a` int,\n  `b` text,\n  `c` date,\n  `d` timestamp(6),\n  `e` varchar(20),\n  `f` blob NOT NULL,\n  `b1` tinyint,\n  `b2` tinyint NOT NULL,\n  `g` datetime(6),\n  `h` char(40)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+		ExpectedSelect:      []sql.Row{sql.Row{"t1", "CREATE TABLE `t1` (\n  `a` int,\n  `b` text,\n  `c` date,\n  `d` timestamp,\n  `e` varchar(20),\n  `f` blob NOT NULL,\n  `b1` tinyint,\n  `b2` tinyint NOT NULL,\n  `g` datetime,\n  `h` char(40)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 	},
 	{
 		WriteQuery:          `CREATE TABLE t1 (a INTEGER NOT NULL PRIMARY KEY, b VARCHAR(10) NOT NULL)`,
@@ -145,7 +147,7 @@ var CreateTableQueries = []WriteQueryTest{
 		)`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
 		SelectQuery:         "SHOW CREATE TABLE td",
-		ExpectedSelect:      []sql.Row{sql.Row{"td", "CREATE TABLE `td` (\n  `pk` int NOT NULL,\n  `col2` int NOT NULL DEFAULT '2',\n  `col3` double NOT NULL DEFAULT (round(-1.58,0)),\n  `col4` varchar(10) DEFAULT 'new row',\n  `col5` float DEFAULT '33.33',\n  `col6` int DEFAULT NULL,\n  `col7` timestamp(6) DEFAULT (NOW()),\n  `col8` bigint DEFAULT (NOW()),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+		ExpectedSelect:      []sql.Row{sql.Row{"td", "CREATE TABLE `td` (\n  `pk` int NOT NULL,\n  `col2` int NOT NULL DEFAULT '2',\n  `col3` double NOT NULL DEFAULT (round(-1.58,0)),\n  `col4` varchar(10) DEFAULT 'new row',\n  `col5` float DEFAULT '33.33',\n  `col6` int DEFAULT NULL,\n  `col7` timestamp DEFAULT (NOW()),\n  `col8` bigint DEFAULT (NOW()),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 	},
 	{
 		WriteQuery:          `CREATE TABLE t1 (i int PRIMARY KEY, j varchar(MAX))`,
@@ -243,6 +245,144 @@ var CreateTableScriptTests = []ScriptTest{
 			{
 				Query:       "INSERT INTO t2 VALUE (1, 60, 15)",
 				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+		},
+	},
+	{
+		Name: "datetime precision",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (pk int primary key, d datetime)",
+			"CREATE TABLE t2 (pk int primary key, d datetime(3))",
+			"CREATE TABLE t3 (pk int primary key, d datetime(6))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+						"  `pk` int NOT NULL,\n" +
+						"  `d` datetime,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "insert into t1 values (1, '2020-01-01 00:00:00.123456')",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select * from t1 order by pk",
+				Expected: []sql.Row{{1, MustParseTime(time.DateTime, "2020-01-01 00:00:00")}},
+			},
+			{
+				Query: "show create table t2",
+				Expected: []sql.Row{{"t2",
+					"CREATE TABLE `t2` (\n" +
+						"  `pk` int NOT NULL,\n" +
+						"  `d` datetime(3),\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "insert into t2 values (1, '2020-01-01 00:00:00.123456')",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select * from t2 order by pk",
+				Expected: []sql.Row{{1, MustParseTime(time.RFC3339Nano, "2020-01-01T00:00:00.123000000Z")}},
+			},
+			{
+				Query: "show create table t3",
+				Expected: []sql.Row{{"t3",
+					"CREATE TABLE `t3` (\n" +
+						"  `pk` int NOT NULL,\n" +
+						"  `d` datetime(6),\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "insert into t3 values (1, '2020-01-01 00:00:00.123456')",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select * from t3 order by pk",
+				Expected: []sql.Row{{1, MustParseTime(time.RFC3339Nano, "2020-01-01T00:00:00.123456000Z")}},
+			},
+			{
+				Query:       "create table t4 (pk int primary key, d datetime(-1))",
+				ExpectedErr: sql.ErrSyntaxError,
+			},
+			{
+				Query:          "create table t4 (pk int primary key, d datetime(7))",
+				ExpectedErrStr: "DATETIME supports precision from 0 to 6",
+			},
+		},
+	},
+	{
+		Name: "timestamp precision",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (pk int primary key, d timestamp)",
+			"CREATE TABLE t2 (pk int primary key, d timestamp(3))",
+			"CREATE TABLE t3 (pk int primary key, d timestamp(6))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+						"  `pk` int NOT NULL,\n" +
+						"  `d` timestamp,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "insert into t1 values (1, '2020-01-01 00:00:00.123456')",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select * from t1 order by pk",
+				Expected: []sql.Row{{1, MustParseTime(time.DateTime, "2020-01-01 00:00:00")}},
+			},
+			{
+				Query: "show create table t2",
+				Expected: []sql.Row{{"t2",
+					"CREATE TABLE `t2` (\n" +
+						"  `pk` int NOT NULL,\n" +
+						"  `d` timestamp(3),\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "insert into t2 values (1, '2020-01-01 00:00:00.123456')",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select * from t2 order by pk",
+				Expected: []sql.Row{{1, MustParseTime(time.RFC3339Nano, "2020-01-01T00:00:00.123000000Z")}},
+			},
+			{
+				Query: "show create table t3",
+				Expected: []sql.Row{{"t3",
+					"CREATE TABLE `t3` (\n" +
+						"  `pk` int NOT NULL,\n" +
+						"  `d` timestamp(6),\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "insert into t3 values (1, '2020-01-01 00:00:00.123456')",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select * from t3 order by pk",
+				Expected: []sql.Row{{1, MustParseTime(time.RFC3339Nano, "2020-01-01T00:00:00.123456000Z")}},
+			},
+			{
+				Query:       "create table t4 (pk int primary key, d TIMESTAMP(-1))",
+				ExpectedErr: sql.ErrSyntaxError,
+			},
+			{
+				Query:          "create table t4 (pk int primary key, d TIMESTAMP(7))",
+				ExpectedErrStr: "TIMESTAMP supports precision from 0 to 6",
 			},
 		},
 	},
