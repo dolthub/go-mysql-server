@@ -38,7 +38,7 @@ type TableNode interface {
 	UnderlyingTable() sql.Table
 }
 
-// IndexedTableAccess represents an indexed lookup of a particular ResolvedTable. The values for the key used to access
+// IndexedTableAccess represents an indexed lookup of a particular plan.TableNode. The values for the key used to access
 // the indexed table is provided in RowIter(), or during static analysis.
 type IndexedTableAccess struct {
 	TableNode TableNode
@@ -64,9 +64,9 @@ func NewIndexedTableAccess(node TableNode, t sql.IndexedTable, lb *LookupBuilder
 	}
 }
 
-// NewIndexedAccessForResolvedTable creates an IndexedTableAccess node if the resolved table embeds
+// NewIndexedAccessForTableNode creates an IndexedTableAccess node if the resolved table embeds
 // an IndexAddressableTable, otherwise returns an error.
-func NewIndexedAccessForResolvedTable(node TableNode, lb *LookupBuilder) (*IndexedTableAccess, error) {
+func NewIndexedAccessForTableNode(node TableNode, lb *LookupBuilder) (*IndexedTableAccess, error) {
 	var table = node.UnderlyingTable()
 	iaTable, ok := table.(sql.IndexAddressableTable)
 	if !ok {
@@ -88,9 +88,9 @@ func NewIndexedAccessForResolvedTable(node TableNode, lb *LookupBuilder) (*Index
 	}, nil
 }
 
-// NewStaticIndexedAccessForResolvedTable creates an IndexedTableAccess node if the resolved table embeds
+// NewStaticIndexedAccessForTableNode creates an IndexedTableAccess node if the resolved table embeds
 // an IndexAddressableTable, otherwise returns an error.
-func NewStaticIndexedAccessForResolvedTable(node TableNode, lookup sql.IndexLookup) (*IndexedTableAccess, error) {
+func NewStaticIndexedAccessForTableNode(node TableNode, lookup sql.IndexLookup) (*IndexedTableAccess, error) {
 	var table sql.Table
 	table = node.UnderlyingTable()
 	iaTable, ok := table.(sql.IndexAddressableTable)

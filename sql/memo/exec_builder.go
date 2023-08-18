@@ -95,9 +95,9 @@ func (b *ExecBuilder) buildLookup(l *Lookup, input sql.Schema, children ...sql.N
 	}
 	switch n := children[0].(type) {
 	case plan.TableNode:
-		ret, err = plan.NewIndexedAccessForResolvedTable(n, plan.NewLookupBuilder(l.Index.SqlIdx(), keyExprs, l.Nullmask))
+		ret, err = plan.NewIndexedAccessForTableNode(n, plan.NewLookupBuilder(l.Index.SqlIdx(), keyExprs, l.Nullmask))
 	case *plan.TableAlias:
-		ret, err = plan.NewIndexedAccessForResolvedTable(n.Child.(plan.TableNode), plan.NewLookupBuilder(l.Index.SqlIdx(), keyExprs, l.Nullmask))
+		ret, err = plan.NewIndexedAccessForTableNode(n.Child.(plan.TableNode), plan.NewLookupBuilder(l.Index.SqlIdx(), keyExprs, l.Nullmask))
 		ret = plan.NewTableAlias(n.Name(), ret)
 	case *plan.Distinct:
 		ret, err = b.buildLookup(l, input, n.Child)
@@ -299,9 +299,9 @@ func (b *ExecBuilder) buildIndexScan(i *IndexScan, input sql.Schema, children ..
 	var err error
 	switch n := children[0].(type) {
 	case plan.TableNode:
-		ret, err = plan.NewStaticIndexedAccessForResolvedTable(n, l)
+		ret, err = plan.NewStaticIndexedAccessForTableNode(n, l)
 	case *plan.TableAlias:
-		ret, err = plan.NewStaticIndexedAccessForResolvedTable(n.Child.(plan.TableNode), l)
+		ret, err = plan.NewStaticIndexedAccessForTableNode(n.Child.(plan.TableNode), l)
 		ret = plan.NewTableAlias(n.Name(), ret)
 	case *plan.Distinct:
 		ret, err = b.buildIndexScan(i, input, n.Child)
