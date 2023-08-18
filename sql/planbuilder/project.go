@@ -66,7 +66,6 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 			e = e.WithIndex(int(id)).(*expression.GetField)
 			outScope.addColumn(scopeColumn{table: e.Table(), col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable(), id: id})
 		case *expression.Star:
-			// TODO: if there is an unqualified star and from scope is using, we need to dedup columns
 			tableName := strings.ToLower(e.Table)
 			if tableName == "" && len(inScope.cols) == 0 {
 				err := sql.ErrNoTablesUsed.New()
@@ -74,6 +73,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 			}
 			startLen := len(outScope.cols)
 			for _, c := range inScope.cols {
+				// unqualified columns that are redirected should not be replaced
 				if col, ok := inScope.redirectCol[c.col]; tableName == "" && ok && col != c {
 					continue
 				}

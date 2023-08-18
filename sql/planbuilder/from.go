@@ -146,6 +146,12 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 // An equality filter is created with columns in the USING list. Columns in the USING
 // list are de-duplicated and listed first (in the order they appear in the left table), followed by the remaining
 // columns from the left table, followed by the remaining columns from the right table.
+// NATURAL_JOIN(t1, t2)       => PROJ(t1.a1, ...,t1.aN) -> INNER_JOIN(t1, t2, [t1.a1=t2.a1,..., t1.aN=t2.aN])
+// NATURAL_LEFT_JOIN(t1, t2)  => PROJ(t1.a1, ...,t1.aN) -> LEFT_JOIN (t1, t2, [t1.a1=t2.a1,..., t1.aN=t2.aN])
+// NATURAL_RIGHT_JOIN(t1, t2) => PROJ(t1.a1, ...,t1.aN) -> RIGHT_JOIN(t1, t2, [t1.a1=t2.a1,..., t1.aN=t2.aN])
+// USING_JOIN(t1, t2)         => PROJ(t1.a1, ...,t1.aN) -> INNER_JOIN(t1, t2, [t1.a1=t2.a1,..., t1.aN=t2.aN])
+// USING_LEFT_JOIN(t1, t2)    => PROJ(t1.a1, ...,t1.aN) -> LEFT_JOIN (t1, t2, [t1.a1=t2.a1,..., t1.aN=t2.aN])
+// USING_RIGHT_JOIN(t1, t2)   => PROJ(t1.a1, ...,t1.aN) -> RIGHT_JOIN(t1, t2, [t1.a1=t2.a1,..., t1.aN=t2.aN])
 func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.JoinTableExpr) (outScope *scope) {
 	outScope = inScope.push()
 
