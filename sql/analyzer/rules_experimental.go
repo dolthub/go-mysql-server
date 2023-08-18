@@ -33,7 +33,6 @@ var OnceBeforeDefault_Exp = []Rule{
 	{resolveUnionsId, resolveUnions},
 	{resolveDescribeQueryId, resolveDescribeQuery},      //TODO
 	{checkUniqueTableNamesId, validateUniqueTableNames}, //TODO
-	{resolveDeclarationsId, resolveDeclarations},
 	{validateCreateTriggerId, validateCreateTrigger},
 	{validateColumnDefaultsId, validateColumnDefaults},
 	{validateReadOnlyDatabaseId, validateReadOnlyDatabase},

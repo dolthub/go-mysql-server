@@ -177,6 +177,7 @@ func (s *scope) initProc() {
 		cursors:    make(map[string]struct{}),
 		vars:       make(map[string]scopeColumn),
 		labels:     make(map[string]bool),
+		lastState:  dsVariable,
 	}
 }
 
