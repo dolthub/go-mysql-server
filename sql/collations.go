@@ -955,6 +955,11 @@ func (ci *CollationsIterator) Next() (Collation, bool) {
 
 // TypeWithCollation is implemented on all types that may return a collation.
 type TypeWithCollation interface {
+	// Collation returns the collation belonging to this type.
 	Collation() CollationID
+	// WithNewCollation returns a replica of this type, except with the given collation replacing the existing collation.
 	WithNewCollation(collation CollationID) (Type, error)
+	// StringWithTableCollation converts this type to a string, however it uses the given table collation to determine
+	// whether to include the character set and/or collation information.
+	StringWithTableCollation(tableCollation CollationID) string
 }

@@ -1271,19 +1271,19 @@ var DatabaseCollationWireTests = []CharsetCollationWireTest{
 			{
 				Query: "SHOW CREATE TABLE test_a;",
 				Expected: []sql.Row{
-					{"test_a", "CREATE TABLE `test_a` (\n  `pk` varchar(20) CHARACTER SET utf8mb3 COLLATE utf8mb3_bin NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin"},
+					{"test_a", "CREATE TABLE `test_a` (\n  `pk` varchar(20) NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin"},
 				},
 			},
 			{
 				Query: "SHOW CREATE TABLE test_b;",
 				Expected: []sql.Row{
-					{"test_b", "CREATE TABLE `test_b` (\n  `pk` varchar(20) CHARACTER SET utf8mb3 COLLATE utf8mb3_unicode_ci NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_unicode_ci"},
+					{"test_b", "CREATE TABLE `test_b` (\n  `pk` varchar(20) NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_unicode_ci"},
 				},
 			},
 			{
 				Query: "SHOW CREATE TABLE test_c;",
 				Expected: []sql.Row{
-					{"test_c", "CREATE TABLE `test_c` (\n  `pk` varchar(20) CHARACTER SET utf8mb3 COLLATE utf8mb3_unicode_ci NOT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin"},
+					{"test_c", "CREATE TABLE `test_c` (\n  `pk` varchar(20) COLLATE utf8mb3_unicode_ci NOT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin"},
 				},
 			},
 			{
@@ -1299,7 +1299,7 @@ var DatabaseCollationWireTests = []CharsetCollationWireTest{
 			{
 				Query: "SHOW CREATE TABLE test_d;",
 				Expected: []sql.Row{
-					{"test_d", "CREATE TABLE `test_d` (\n  `pk` varchar(20) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci"},
+					{"test_d", "CREATE TABLE `test_d` (\n  `pk` varchar(20) NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci"},
 				},
 			},
 			{
