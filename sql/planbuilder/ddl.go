@@ -699,7 +699,6 @@ func (b *Builder) buildReferentialAction(action ast.ReferenceAction) sql.Foreign
 	}
 }
 
-// todo drop column, rename column
 func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
 	outScope = inScope
 	switch strings.ToLower(ddl.IndexSpec.Action) {
