@@ -3,10 +3,11 @@ package memory
 import (
 	"encoding/binary"
 	"fmt"
+	"io"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"io"
 )
 
 var _ sql.TableFunction = IntSequenceTable{}
