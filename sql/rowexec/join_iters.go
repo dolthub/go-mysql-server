@@ -17,7 +17,6 @@ package rowexec
 import (
 	"errors"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/transform"
 	"io"
 	"reflect"
 
@@ -26,6 +25,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 func newJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
