@@ -1409,7 +1409,7 @@ func TestJoinPlanning(t *testing.T, harness Harness) {
 					evalJoinTypeTest(t, harness, e, tt)
 				}
 				if tt.indexes != nil {
-					evalIndexTest(t, harness, e, tt)
+					evalIndexTest(t, harness, e, tt.q, tt.indexes, tt.skipOld)
 				}
 				if tt.exp != nil {
 					evalJoinCorrectness(t, harness, e, tt.q, tt.q, tt.exp, tt.skipOld)
@@ -1447,21 +1447,21 @@ func evalJoinTypeTest(t *testing.T, harness Harness, e *sqle.Engine, tt JoinPlan
 	})
 }
 
-func evalIndexTest(t *testing.T, harness Harness, e *sqle.Engine, tt JoinPlanTest) {
-	t.Run(tt.q+" join indexes", func(t *testing.T) {
-		if tt.skipOld {
+func evalIndexTest(t *testing.T, harness Harness, e *sqle.Engine, q string, indexes []string, skip bool) {
+	t.Run(q+" join indexes", func(t *testing.T) {
+		if skip {
 			t.Skip()
 		}
 
 		ctx := NewContext(harness)
-		ctx = ctx.WithQuery(tt.q)
+		ctx = ctx.WithQuery(q)
 
-		a, err := e.AnalyzeQuery(ctx, tt.q)
+		a, err := e.AnalyzeQuery(ctx, q)
 		require.NoError(t, err)
 
 		idxs := collectIndexes(a)
 		var exp []string
-		for _, i := range tt.indexes {
+		for _, i := range indexes {
 			exp = append(exp, i)
 		}
 		var cmp []string

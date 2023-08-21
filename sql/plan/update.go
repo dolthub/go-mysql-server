@@ -55,7 +55,7 @@ func GetUpdatable(node sql.Node) (sql.UpdatableTable, error) {
 	case sql.UpdatableTable:
 		return node, nil
 	case *IndexedTableAccess:
-		return GetUpdatable(node.ResolvedTable)
+		return GetUpdatable(node.TableNode)
 	case *ResolvedTable:
 		return getUpdatableTable(node.Table)
 	case *SubqueryAlias:
@@ -94,9 +94,9 @@ func getUpdatableTable(t sql.Table) (sql.UpdatableTable, error) {
 func GetDatabase(node sql.Node) sql.Database {
 	switch node := node.(type) {
 	case *IndexedTableAccess:
-		return GetDatabase(node.ResolvedTable)
+		return GetDatabase(node.TableNode)
 	case *ResolvedTable:
-		return node.Database
+		return node.Database()
 	case *UnresolvedTable:
 		return node.Database()
 	}
