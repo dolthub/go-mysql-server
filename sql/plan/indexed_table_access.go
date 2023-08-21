@@ -30,6 +30,7 @@ var ErrInvalidLookupForIndexedTable = errors.NewKind("indexable table does not s
 // TableNode is an interface for nodes that are also tables. A node that implements this interface exposes all the
 // information needed for filters on the table to be optimized into indexes. This is possible when the return value
 // of `UnderlyingTable` is a table that implements `sql.IndexAddressable`
+// For an example of how to use this interface to optimize a system table or table function, see memory.IntSequenceTable
 type TableNode interface {
 	sql.Table
 	sql.Node
