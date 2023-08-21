@@ -131,7 +131,7 @@ func getTableName(nodeToSearch sql.Node) string {
 				nodeStack = append(nodeStack, n.UnaryNode.Child)
 				continue
 			}
-		case TableNode:
+		case sql.TableNode:
 			return n.UnderlyingTable().Name()
 		case *UnresolvedTable:
 			return n.name

@@ -27,22 +27,10 @@ var ErrNoIndexableTable = errors.NewKind("expected an IndexableTable, couldn't f
 var ErrNoIndexedTableAccess = errors.NewKind("expected an IndexedTableAccess, couldn't find one in %v")
 var ErrInvalidLookupForIndexedTable = errors.NewKind("indexable table does not support given lookup: %s")
 
-// TableNode is an interface for nodes that are also tables. A node that implements this interface exposes all the
-// information needed for filters on the table to be optimized into indexes. This is possible when the return value
-// of `UnderlyingTable` is a table that implements `sql.IndexAddressable`
-// For an example of how to use this interface to optimize a system table or table function, see memory.IntSequenceTable
-type TableNode interface {
-	sql.Table
-	sql.Node
-	sql.CollationCoercible
-	sql.Databaser
-	UnderlyingTable() sql.Table
-}
-
 // IndexedTableAccess represents an indexed lookup of a particular plan.TableNode. The values for the key used to access
 // the indexed table is provided in RowIter(), or during static analysis.
 type IndexedTableAccess struct {
-	TableNode TableNode
+	TableNode sql.TableNode
 	lb        *LookupBuilder
 	lookup    sql.IndexLookup
 	Table     sql.IndexedTable
@@ -57,7 +45,7 @@ var _ sql.CollationCoercible = (*IndexedTableAccess)(nil)
 // NewIndexedTableAccess returns a new IndexedTableAccess node that will use
 // the LookupBuilder to build lookups. An index lookup will be calculated and
 // applied for the row given in RowIter().
-func NewIndexedTableAccess(node TableNode, t sql.IndexedTable, lb *LookupBuilder) *IndexedTableAccess {
+func NewIndexedTableAccess(node sql.TableNode, t sql.IndexedTable, lb *LookupBuilder) *IndexedTableAccess {
 	return &IndexedTableAccess{
 		TableNode: node,
 		lb:        lb,
@@ -67,7 +55,7 @@ func NewIndexedTableAccess(node TableNode, t sql.IndexedTable, lb *LookupBuilder
 
 // NewIndexedAccessForTableNode creates an IndexedTableAccess node if the resolved table embeds
 // an IndexAddressableTable, otherwise returns an error.
-func NewIndexedAccessForTableNode(node TableNode, lb *LookupBuilder) (*IndexedTableAccess, error) {
+func NewIndexedAccessForTableNode(node sql.TableNode, lb *LookupBuilder) (*IndexedTableAccess, error) {
 	var table = node.UnderlyingTable()
 	iaTable, ok := table.(sql.IndexAddressableTable)
 	if !ok {
@@ -91,7 +79,7 @@ func NewIndexedAccessForTableNode(node TableNode, lb *LookupBuilder) (*IndexedTa
 
 // NewStaticIndexedAccessForTableNode creates an IndexedTableAccess node if the resolved table embeds
 // an IndexAddressableTable, otherwise returns an error.
-func NewStaticIndexedAccessForTableNode(node TableNode, lookup sql.IndexLookup) (*IndexedTableAccess, error) {
+func NewStaticIndexedAccessForTableNode(node sql.TableNode, lookup sql.IndexLookup) (*IndexedTableAccess, error) {
 	var table sql.Table
 	table = node.UnderlyingTable()
 	iaTable, ok := table.(sql.IndexAddressableTable)
@@ -112,7 +100,7 @@ func NewStaticIndexedAccessForTableNode(node TableNode, lookup sql.IndexLookup) 
 
 // NewStaticIndexedAccessForFullTextTable creates an IndexedTableAccess node for Full-Text tables, which have a
 // different behavior compared to other indexed tables.
-func NewStaticIndexedAccessForFullTextTable(node TableNode, lookup sql.IndexLookup, ftTable sql.IndexedTable) *IndexedTableAccess {
+func NewStaticIndexedAccessForFullTextTable(node sql.TableNode, lookup sql.IndexLookup, ftTable sql.IndexedTable) *IndexedTableAccess {
 	return &IndexedTableAccess{
 		TableNode: node,
 		lookup:    lookup,

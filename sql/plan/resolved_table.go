@@ -49,6 +49,7 @@ func (t *ResolvedTable) WithDatabase(database sql.Database) (sql.Node, error) {
 }
 
 var _ sql.Node = (*ResolvedTable)(nil)
+var _ sql.TableNode = (*ResolvedTable)(nil)
 var _ sql.Databaser = (*ResolvedTable)(nil)
 var _ sql.CommentedNode = (*ResolvedTable)(nil)
 var _ sql.RenameableNode = (*ResolvedTable)(nil)

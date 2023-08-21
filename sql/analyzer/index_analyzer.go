@@ -63,7 +63,7 @@ func newIndexAnalyzerForNode(ctx *sql.Context, n sql.Node) (*indexAnalyzer, erro
 		transform.Inspect(n, func(n sql.Node) bool {
 			switch n := n.(type) {
 			case *plan.TableAlias:
-				rt, ok := n.Child.(plan.TableNode)
+				rt, ok := n.Child.(sql.TableNode)
 				if !ok {
 					return false
 				}

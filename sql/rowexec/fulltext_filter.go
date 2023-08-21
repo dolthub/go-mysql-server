@@ -21,7 +21,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
-	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 // FulltextFilterTable handles row iteration for filters involving Full-Text indexes, as they behave differently than
@@ -37,7 +36,7 @@ import (
 // zero due to rounding (as is the case with the MyISAM backend, which we currently do not support).
 type FulltextFilterTable struct {
 	MatchAgainst *expression.MatchAgainst
-	Table        plan.TableNode
+	Table        sql.TableNode
 }
 
 var _ sql.IndexedTable = (*FulltextFilterTable)(nil)

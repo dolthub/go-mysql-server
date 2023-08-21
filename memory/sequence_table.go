@@ -15,9 +15,7 @@ var _ sql.CollationCoercible = IntSequenceTable{}
 var _ sql.ExecSourceRel = IntSequenceTable{}
 var _ sql.IndexAddressable = IntSequenceTable{}
 var _ sql.IndexedTable = IntSequenceTable{}
-
-// IntSequenceTable implements plan.TableNode, but importing the interface would create a dependency cycle.
-// var _ plan.TableNode = IntSequenceTable{}
+var _ sql.TableNode = IntSequenceTable{}
 
 // IntSequenceTable a simple table function that returns a sequence
 // of integers.
