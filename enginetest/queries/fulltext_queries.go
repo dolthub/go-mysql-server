@@ -346,6 +346,129 @@ var FulltextTests = []ScriptTest{
 			},
 		},
 	},
+	{ // We should not have many relevancy tests since the values are subject to change if/when the algorithm gets updated
+		Name: "Relevancy Ordering",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk INT PRIMARY KEY, doc TEXT, FULLTEXT idx (doc)) COLLATE=utf8mb4_general_ci;",
+			"INSERT INTO test VALUES (2, 'g hhhh aaaab ooooo aaaa'), (1, 'bbbb ff cccc ddd eee'), (4, 'AAAA aaaa aaaac aaaa Aaaa aaaa'), (3, 'aaaA ff j kkkk llllllll');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance DESC;",
+				Expected: []sql.Row{
+					{float32(5.9636202)},
+					{float32(4.0278959)},
+					{float32(3.3721533)},
+					{float32(0)},
+				},
+			},
+			{
+				Query: "SELECT MATCH(doc) AGAINST('aaaa') AS relevance, pk FROM test ORDER BY relevance DESC;",
+				Expected: []sql.Row{
+					{float32(5.9636202), int32(4)},
+					{float32(4.0278959), int32(2)},
+					{float32(3.3721533), int32(3)},
+					{float32(0), int32(1)},
+				},
+			},
+			{
+				Query: "SELECT pk, MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance ASC;",
+				Expected: []sql.Row{
+					{int32(1), float32(0)},
+					{int32(3), float32(3.3721533)},
+					{int32(2), float32(4.0278959)},
+					{int32(4), float32(5.9636202)},
+				},
+			},
+			{
+				Query: "SELECT pk, doc, MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance DESC;",
+				Expected: []sql.Row{
+					{int32(4), "AAAA aaaa aaaac aaaa Aaaa aaaa", float32(5.9636202)},
+					{int32(2), "g hhhh aaaab ooooo aaaa", float32(4.0278959)},
+					{int32(3), "aaaA ff j kkkk llllllll", float32(3.3721533)},
+					{int32(1), "bbbb ff cccc ddd eee", float32(0)},
+				},
+			},
+			{
+				Query: "SELECT pk, doc, MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance ASC;",
+				Expected: []sql.Row{
+					{int32(1), "bbbb ff cccc ddd eee", float32(0)},
+					{int32(3), "aaaA ff j kkkk llllllll", float32(3.3721533)},
+					{int32(2), "g hhhh aaaab ooooo aaaa", float32(4.0278959)},
+					{int32(4), "AAAA aaaa aaaac aaaa Aaaa aaaa", float32(5.9636202)},
+				},
+			},
+			{
+				Query: "SELECT pk FROM test ORDER BY MATCH(doc) AGAINST('aaaa') DESC;",
+				Expected: []sql.Row{
+					{int32(4)},
+					{int32(2)},
+					{int32(3)},
+					{int32(1)},
+				},
+			},
+			{
+				Query: "SELECT pk, doc FROM test ORDER BY MATCH(doc) AGAINST('aaaa') ASC;",
+				Expected: []sql.Row{
+					{int32(1), "bbbb ff cccc ddd eee"},
+					{int32(3), "aaaA ff j kkkk llllllll"},
+					{int32(2), "g hhhh aaaab ooooo aaaa"},
+					{int32(4), "AAAA aaaa aaaac aaaa Aaaa aaaa"},
+				},
+			},
+			{
+				Query: "SELECT 1 FROM test ORDER BY MATCH(doc) AGAINST('aaaa') DESC;",
+				Expected: []sql.Row{
+					{int32(1)},
+					{int32(1)},
+					{int32(1)},
+					{int32(1)},
+				},
+			},
+			{
+				Query: "SELECT pk, MATCH(doc) AGAINST('aaaa') AS relevance FROM test HAVING relevance > 4 ORDER BY relevance DESC;",
+				Expected: []sql.Row{
+					{int32(4), float32(5.9636202)},
+					{int32(2), float32(4.0278959)},
+				},
+			},
+			{ // Test with an added column to ensure that unnecessary columns do not affect the results
+				Query:    "ALTER TABLE test ADD COLUMN extracol INT DEFAULT 7;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "SELECT pk FROM test ORDER BY MATCH(doc) AGAINST('aaaa') DESC;",
+				Expected: []sql.Row{
+					{int32(4)},
+					{int32(2)},
+					{int32(3)},
+					{int32(1)},
+				},
+			},
+			{ // Drop the primary key to ensure that results are still consistent without a primary key
+				Query:    "ALTER TABLE test DROP PRIMARY KEY;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "SELECT pk FROM test ORDER BY MATCH(doc) AGAINST('aaaa') ASC;",
+				Expected: []sql.Row{
+					{int32(1)},
+					{int32(3)},
+					{int32(2)},
+					{int32(4)},
+				},
+			},
+			{
+				Query: "SELECT pk, MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance DESC;",
+				Expected: []sql.Row{
+					{int32(4), float32(5.9636202)},
+					{int32(2), float32(4.0278959)},
+					{int32(3), float32(3.3721533)},
+					{int32(1), float32(0)},
+				},
+			},
+		},
+	},
 	{
 		Name: "CREATE INDEX before insertions",
 		SetUpScript: []string{
