@@ -220,7 +220,7 @@ func (s IntSequenceTable) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 				expression.NewGetFieldWithTable(0, types.Int64, s.Name(), s.name, false),
 			},
 			Name:         s.name,
-			Unique:       false,
+			Unique:       true,
 			Spatial:      false,
 			Fulltext:     false,
 			CommentStr:   "",
