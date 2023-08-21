@@ -38,8 +38,14 @@ func GenerateCreateTableStatement(tblName string, colStmts []string, tblCharsetN
 
 // GenerateCreateTableColumnDefinition returns column definition string for 'CREATE TABLE' statement for given column.
 // This part comes first in the 'CREATE TABLE' statement.
-func GenerateCreateTableColumnDefinition(col *Column, colDefault string) string {
-	stmt := fmt.Sprintf("  %s %s", QuoteIdentifier(col.Name), col.Type.String())
+func GenerateCreateTableColumnDefinition(col *Column, colDefault string, tableCollation CollationID) string {
+	var colTypeString string
+	if collationType, ok := col.Type.(TypeWithCollation); ok {
+		colTypeString = collationType.StringWithTableCollation(tableCollation)
+	} else {
+		colTypeString = col.Type.String()
+	}
+	stmt := fmt.Sprintf("  %s %s", QuoteIdentifier(col.Name), colTypeString)
 	if !col.Nullable {
 		stmt = fmt.Sprintf("%s NOT NULL", stmt)
 	}
