@@ -278,18 +278,6 @@ type AutoIncrementSetter interface {
 	Closer
 }
 
-// AutoIncrementGetter is implemented by tables that support AUTO_INCREMENT to return the next value that will be
-// inserted, given a particular insert value provided by the client.
-type AutoIncrementGetter interface {
-	GetNextAutoIncrementValue(ctx *Context, insertVal interface{}) (uint64, error)
-}
-
-// AutoIncrementEditor is an interface for tables that support changing the value of auto increment columns.
-type AutoIncrementEditor interface {
-	AutoIncrementSetter
-	AutoIncrementGetter
-}
-
 // ReplaceableTable allows rows to be replaced through a Delete (if applicable) then Insert.
 type ReplaceableTable interface {
 	Table
