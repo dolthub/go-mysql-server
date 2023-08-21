@@ -5493,11 +5493,8 @@ inner join pq on true
 			"     ├─ columns: [a.pk1:2!null, a.pk2:3!null, b.pk1:0!null, b.pk2:1!null]\n" +
 			"     └─ MergeJoin\n" +
 			"         ├─ cmp: Eq\n" +
-			"         │   ├─ b.pk1:0!null\n" +
-			"         │   └─ a.pk1:2!null\n" +
-			"         ├─ sel: Eq\n" +
-			"         │   ├─ a.pk2:3!null\n" +
-			"         │   └─ b.pk2:1!null\n" +
+			"         │   ├─ TUPLE(b.pk1:0!null, b.pk2:1!null)\n" +
+			"         │   └─ TUPLE(a.pk1:2!null, a.pk2:3!null)\n" +
 			"         ├─ TableAlias(b)\n" +
 			"         │   └─ IndexedTableAccess(two_pk)\n" +
 			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
@@ -5540,11 +5537,8 @@ inner join pq on true
 			"     ├─ columns: [a.pk1:2!null, a.pk2:3!null, b.pk1:0!null, b.pk2:1!null]\n" +
 			"     └─ MergeJoin\n" +
 			"         ├─ cmp: Eq\n" +
-			"         │   ├─ b.pk1:0!null\n" +
-			"         │   └─ a.pk1:2!null\n" +
-			"         ├─ sel: Eq\n" +
-			"         │   ├─ a.pk2:3!null\n" +
-			"         │   └─ b.pk2:1!null\n" +
+			"         │   ├─ TUPLE(b.pk1:0!null, b.pk2:1!null)\n" +
+			"         │   └─ TUPLE(a.pk1:2!null, a.pk2:3!null)\n" +
 			"         ├─ TableAlias(b)\n" +
 			"         │   └─ IndexedTableAccess(two_pk)\n" +
 			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
@@ -5564,11 +5558,8 @@ inner join pq on true
 			"     ├─ columns: [a.pk1:2!null, a.pk2:3!null, b.pk1:0!null, b.pk2:1!null]\n" +
 			"     └─ MergeJoin\n" +
 			"         ├─ cmp: Eq\n" +
-			"         │   ├─ b.pk1:0!null\n" +
-			"         │   └─ (a.pk1:2!null + 1 (tinyint))\n" +
-			"         ├─ sel: Eq\n" +
-			"         │   ├─ (a.pk2:3!null + 1 (tinyint))\n" +
-			"         │   └─ b.pk2:1!null\n" +
+			"         │   ├─ TUPLE(b.pk1:0!null, b.pk2:1!null)\n" +
+			"         │   └─ TUPLE((a.pk1:2!null + 1 (tinyint)), (a.pk2:3!null + 1 (tinyint)))\n" +
 			"         ├─ TableAlias(b)\n" +
 			"         │   └─ IndexedTableAccess(two_pk)\n" +
 			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
@@ -5588,11 +5579,8 @@ inner join pq on true
 			"     ├─ columns: [a.pk1:2!null, a.pk2:3!null, b.pk1:0!null, b.pk2:1!null]\n" +
 			"     └─ MergeJoin\n" +
 			"         ├─ cmp: Eq\n" +
-			"         │   ├─ b.pk1:0!null\n" +
-			"         │   └─ a.pk1:2!null\n" +
-			"         ├─ sel: Eq\n" +
-			"         │   ├─ a.pk2:3!null\n" +
-			"         │   └─ b.pk2:1!null\n" +
+			"         │   ├─ TUPLE(b.pk1:0!null, b.pk2:1!null)\n" +
+			"         │   └─ TUPLE(a.pk1:2!null, a.pk2:3!null)\n" +
 			"         ├─ TableAlias(b)\n" +
 			"         │   └─ IndexedTableAccess(two_pk)\n" +
 			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
@@ -5927,11 +5915,8 @@ inner join pq on true
 			"     ├─ columns: [one_pk.pk:2!null, two_pk.pk1:0!null, two_pk.pk2:1!null]\n" +
 			"     └─ MergeJoin\n" +
 			"         ├─ cmp: Eq\n" +
-			"         │   ├─ two_pk.pk1:0!null\n" +
-			"         │   └─ one_pk.pk:2!null\n" +
-			"         ├─ sel: Eq\n" +
-			"         │   ├─ one_pk.pk:2!null\n" +
-			"         │   └─ two_pk.pk2:1!null\n" +
+			"         │   ├─ TUPLE(two_pk.pk1:0!null, two_pk.pk2:1!null)\n" +
+			"         │   └─ TUPLE(one_pk.pk:2!null, one_pk.pk:2!null)\n" +
 			"         ├─ IndexedTableAccess(two_pk)\n" +
 			"         │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
@@ -6026,11 +6011,8 @@ inner join pq on true
 			"     ├─ columns: [one_pk.pk:2, two_pk.pk1:0!null, two_pk.pk2:1!null]\n" +
 			"     └─ LeftOuterMergeJoin\n" +
 			"         ├─ cmp: Eq\n" +
-			"         │   ├─ two_pk.pk1:0!null\n" +
-			"         │   └─ one_pk.pk:2!null\n" +
-			"         ├─ sel: Eq\n" +
-			"         │   ├─ one_pk.pk:2!null\n" +
-			"         │   └─ two_pk.pk2:1!null\n" +
+			"         │   ├─ TUPLE(two_pk.pk1:0!null, two_pk.pk2:1!null)\n" +
+			"         │   └─ TUPLE(one_pk.pk:2!null, one_pk.pk:2!null)\n" +
 			"         ├─ IndexedTableAccess(two_pk)\n" +
 			"         │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
@@ -6048,11 +6030,8 @@ inner join pq on true
 			"     ├─ columns: [opk.pk:2!null, tpk.pk1:0!null, tpk.pk2:1!null]\n" +
 			"     └─ MergeJoin\n" +
 			"         ├─ cmp: Eq\n" +
-			"         │   ├─ tpk.pk1:0!null\n" +
-			"         │   └─ opk.pk:2!null\n" +
-			"         ├─ sel: Eq\n" +
-			"         │   ├─ opk.pk:2!null\n" +
-			"         │   └─ tpk.pk2:1!null\n" +
+			"         │   ├─ TUPLE(tpk.pk1:0!null, tpk.pk2:1!null)\n" +
+			"         │   └─ TUPLE(opk.pk:2!null, opk.pk:2!null)\n" +
 			"         ├─ TableAlias(tpk)\n" +
 			"         │   └─ IndexedTableAccess(two_pk)\n" +
 			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
@@ -6072,11 +6051,8 @@ inner join pq on true
 			"     ├─ columns: [opk.pk:2!null, tpk.pk1:0!null, tpk.pk2:1!null]\n" +
 			"     └─ MergeJoin\n" +
 			"         ├─ cmp: Eq\n" +
-			"         │   ├─ tpk.pk1:0!null\n" +
-			"         │   └─ opk.pk:2!null\n" +
-			"         ├─ sel: Eq\n" +
-			"         │   ├─ opk.pk:2!null\n" +
-			"         │   └─ tpk.pk2:1!null\n" +
+			"         │   ├─ TUPLE(tpk.pk1:0!null, tpk.pk2:1!null)\n" +
+			"         │   └─ TUPLE(opk.pk:2!null, opk.pk:2!null)\n" +
 			"         ├─ TableAlias(tpk)\n" +
 			"         │   └─ IndexedTableAccess(two_pk)\n" +
 			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +

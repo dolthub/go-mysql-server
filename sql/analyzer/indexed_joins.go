@@ -978,14 +978,13 @@ func combineIntoTuple(m *memo.Memo, filters []filterAndPosition) *memo.Equal {
 // rightIndexMatchesFilters checks whether the provided rIndex is a candidate for a merge join on the provided filters.
 // The index must have a prefix consisting entirely of constants and the provided filters in order.
 func rightIndexMatchesFilters(rIndex *memo.Index, constants sql.ColSet, filters []filterAndPosition) bool {
+	if filters == nil {
+		return true
+	}
 	columnIds := rIndex.Cols()
 	columnPos := 0
 	filterPos := 0
 	for {
-		if filterPos >= len(filters) {
-			// every filter matched: this filter is a prefix on the index
-			return true
-		}
 		if columnPos >= len(columnIds) {
 			// There are still unmatched filters: this filter is not a prefix on the index
 			return false
@@ -995,12 +994,20 @@ func rightIndexMatchesFilters(rIndex *memo.Index, constants sql.ColSet, filters 
 			columnPos++
 			continue
 		}
-		if getColumnRefFromScalar(filters[filterPos].filter.Right.Scalar).Col != columnIds[columnPos] {
-			// filter does not match the index
+		matched := false
+		// A column
+		for getColumnRefFromScalar(filters[filterPos].filter.Right.Scalar).Col == columnIds[columnPos] {
+			matched = true
+			filterPos++
+			if filterPos >= len(filters) {
+				// every filter matched: this filter is a prefix on the index
+				return true
+			}
+		}
+		if !matched {
 			return false
 		}
 		columnPos++
-		filterPos++
 	}
 }
 
