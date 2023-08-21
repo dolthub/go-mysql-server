@@ -401,6 +401,9 @@ func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, parsed sq
 			return nil, nil, err
 		}
 		bound, err = b.BindOnly(parsed, query)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	switch n := bound.(type) {
