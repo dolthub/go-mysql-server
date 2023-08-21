@@ -461,7 +461,7 @@ func runQueryPreparedWithCtx(
 		}
 	}
 
-	sch, iter, err := e.QueryNodeWithBindings(ctx, q, bindVars)
+	sch, iter, err := e.QueryNodeWithBindings(ctx, q, nil, bindVars)
 	if err != nil {
 		return nil, nil, err
 	}

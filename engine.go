@@ -228,7 +228,7 @@ func (e *Engine) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter,
 
 // QueryWithBindings executes the query given with the bindings provided
 func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
-	return e.QueryNodeWithBindings(ctx, query, bindings)
+	return e.QueryNodeWithBindings(ctx, query, nil, bindings)
 }
 
 func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.Expression, error) {
@@ -343,14 +343,16 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 
 // QueryNodeWithBindings executes the query given with the bindings provided. If parsed is non-nil, it will be used
 // instead of parsing the query from text.
-func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
+func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
 	var err error
 	if prep, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query); ok {
+		parsed = nil
 		query, err = prep.GenerateQuery(bindings, nil)
 		if err != nil {
 			return nil, nil, err
 		}
 	} else if len(bindings) > 0 {
+		parsed = nil
 		_, err := e.PrepareQuery(ctx, query)
 		if err != nil {
 			return nil, nil, err
@@ -383,16 +385,25 @@ func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, bindings 
 		}
 		return nil, nil, err
 	}
-	parsed, err := planbuilder.ParseWithOptions(ctx, e.Analyzer.Catalog, query, sqlMode.ParserOptions())
-	if err != nil {
-		err2 := clearAutocommitTransaction(ctx)
-		if err2 != nil {
-			return nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
+	var bound sql.Node
+	if parsed == nil {
+		bound, err = planbuilder.ParseWithOptions(ctx, e.Analyzer.Catalog, query, sqlMode.ParserOptions())
+		if err != nil {
+			err2 := clearAutocommitTransaction(ctx)
+			if err2 != nil {
+				return nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
+			}
+			return nil, nil, err
 		}
-		return nil, nil, err
+	} else {
+		b, err := planbuilder.New(ctx, e.Analyzer.Catalog)
+		if err != nil {
+			return nil, nil, err
+		}
+		bound, err = b.BindOnly(parsed, query)
 	}
 
-	switch n := parsed.(type) {
+	switch n := bound.(type) {
 	case *plan.ExecuteQuery:
 		prep, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), n.Name)
 		if !ok {
@@ -424,14 +435,13 @@ func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, bindings 
 				}
 			} else {
 				bindings[fmt.Sprintf("v%d", i)] = sqltypes.StringBindVariable(name.String())
-
 			}
 		}
 		query, err = prep.GenerateQuery(bindings, nil)
 		if err != nil {
 			return nil, nil, err
 		}
-		parsed, err = planbuilder.ParseWithOptions(ctx, e.Analyzer.Catalog, query, sqlMode.ParserOptions())
+		bound, err = planbuilder.ParseWithOptions(ctx, e.Analyzer.Catalog, query, sqlMode.ParserOptions())
 		if err != nil {
 			err2 := clearAutocommitTransaction(ctx)
 			if err2 != nil {
@@ -440,10 +450,9 @@ func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, bindings 
 
 			return nil, nil, err
 		}
-
 	}
 
-	err = e.readOnlyCheck(parsed)
+	err = e.readOnlyCheck(bound)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -451,7 +460,7 @@ func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, bindings 
 	// TODO: eventually, we should have this logic be in the RowIter() of the respective plans
 	// along with a new rule that handles analysis
 	var analyzed sql.Node
-	switch n := parsed.(type) {
+	switch n := bound.(type) {
 	case *plan.PrepareQuery:
 		// we have to name-resolve to check for structural errors, but we do
 		// not to cache the name-bound query yet.
@@ -484,15 +493,15 @@ func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, bindings 
 			return nil, nil, err
 		}
 		e.PreparedDataCache.CacheStmt(ctx.Session.ID(), n.Name, cacheStmt)
-		analyzed = parsed
+		analyzed = bound
 	case *plan.DeallocateQuery:
 		if _, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), n.Name); !ok {
 			return nil, nil, sql.ErrUnknownPreparedStatement.New(n.Name)
 		}
 		e.PreparedDataCache.UncacheStmt(ctx.Session.ID(), n.Name)
-		analyzed = parsed
+		analyzed = bound
 	default:
-		analyzed, err = e.analyzeQuery(ctx, query, parsed)
+		analyzed, err = e.analyzeQuery(ctx, query, bound)
 		if err != nil {
 			return nil, nil, err
 		}
