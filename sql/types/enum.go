@@ -258,14 +258,7 @@ func (t EnumType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 
 // String implements Type interface.
 func (t EnumType) String() string {
-	s := fmt.Sprintf("enum('%v')", strings.Join(t.indexToVal, `','`))
-	if t.CharacterSet() != sql.Collation_Default.CharacterSet() {
-		s += " CHARACTER SET " + t.CharacterSet().String()
-	}
-	if !t.collation.Equals(sql.Collation_Default) {
-		s += " COLLATE " + t.collation.String()
-	}
-	return s
+	return t.StringWithTableCollation(sql.Collation_Default)
 }
 
 // Type implements Type interface.
@@ -339,7 +332,19 @@ func (t EnumType) Values() []string {
 	return vals
 }
 
-// WithNewCollation implements TypeWithCollation interface.
+// WithNewCollation implements sql.TypeWithCollation interface.
 func (t EnumType) WithNewCollation(collation sql.CollationID) (sql.Type, error) {
 	return CreateEnumType(t.indexToVal, collation)
+}
+
+// StringWithTableCollation implements sql.TypeWithCollation interface.
+func (t EnumType) StringWithTableCollation(tableCollation sql.CollationID) string {
+	s := fmt.Sprintf("enum('%v')", strings.Join(t.indexToVal, `','`))
+	if t.CharacterSet() != tableCollation.CharacterSet() {
+		s += " CHARACTER SET " + t.CharacterSet().String()
+	}
+	if t.collation != tableCollation {
+		s += " COLLATE " + t.collation.String()
+	}
+	return s
 }

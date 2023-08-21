@@ -215,8 +215,9 @@ func (h *Handler) doQuery(
 
 	var remainder string
 	var prequery string
+	var parsed sqlparser.Statement
 	if mode == MultiStmtModeOn {
-		_, prequery, remainder, err = planbuilder.ParseOne(ctx, h.e.Analyzer.Catalog, query)
+		parsed, prequery, remainder, err = planbuilder.ParseOnly(ctx, query, true)
 		if prequery != "" {
 			query = prequery
 		}
@@ -259,7 +260,7 @@ func (h *Handler) doQuery(
 		}
 	}()
 
-	schema, rowIter, err := h.e.QueryNodeWithBindings(ctx, query, bindings)
+	schema, rowIter, err := h.e.QueryNodeWithBindings(ctx, query, parsed, bindings)
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
 		return remainder, err

@@ -842,4 +842,20 @@ var FulltextTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Full-Text with autoincrement",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, v1 VARCHAR(200), PRIMARY KEY(pk), FULLTEXT idx (v1));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO test (v1) VALUES ('abc'), ('def');",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 1}}},
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{uint64(1), "abc"}, {uint64(2), "def"}},
+			},
+		},
+	},
 }

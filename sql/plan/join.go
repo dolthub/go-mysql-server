@@ -269,6 +269,19 @@ func (i JoinType) AsLookup() JoinType {
 	}
 }
 
+func (i JoinType) AsLateral() JoinType {
+	switch i {
+	case JoinTypeInner:
+		return JoinTypeLateralInner
+	case JoinTypeLeftOuter, JoinTypeLeftOuterExcludeNulls:
+		return JoinTypeLateralLeft
+	case JoinTypeCross:
+		return JoinTypeLateralCross
+	default:
+		return i
+	}
+}
+
 // JoinNode contains all the common data fields and implements the common sql.Node getters for all join types.
 type JoinNode struct {
 	BinaryNode
