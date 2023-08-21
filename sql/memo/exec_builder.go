@@ -368,6 +368,17 @@ func (b *ExecBuilder) buildMergeJoin(j *MergeJoin, input sql.Schema, children ..
 	return plan.NewJoin(inner, outer, j.Op, filters).WithScopeLen(j.g.m.scopeLen), nil
 }
 
+func (b *ExecBuilder) buildLateralJoin(j *LateralJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+	if len(j.Filter) == 0 {
+		return plan.NewCrossJoin(children[0], children[1]), nil
+	}
+	filters, err := b.buildFilterConjunction(j.g.m.scope, input, j.Filter...)
+	if err != nil {
+		return nil, err
+	}
+	return plan.NewJoin(children[0], children[1], j.Op.AsLateral(), filters), nil
+}
+
 func (b *ExecBuilder) buildSubqueryAlias(r *SubqueryAlias, input sql.Schema, children ...sql.Node) (sql.Node, error) {
 	return r.Table, nil
 }

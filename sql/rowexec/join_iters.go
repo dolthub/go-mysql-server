@@ -25,6 +25,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 func newJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
@@ -752,14 +753,13 @@ func (i *lateralJoinIterator) loadLeft(ctx *sql.Context) error {
 
 func (i *lateralJoinIterator) buildRight(ctx *sql.Context) error {
 	if i.rIter == nil {
-		iter, err := i.b.Build(ctx, i.rNode, i.lRow)
+		prepended, _, err := transform.Node(i.rNode, plan.PrependRowInPlan(i.lRow, true))
 		if err != nil {
 			return err
 		}
-
-		// Prepend node doesn't work over filter, because it calls filter.Next(), then prepends the row
-		if _, ok := iter.(*plan.FilterIter); ok {
-			iter.(*plan.FilterIter).ParentRow = i.lRow
+		iter, err := i.b.Build(ctx, prepended, i.lRow)
+		if err != nil {
+			return err
 		}
 		i.rIter = iter
 	}
@@ -772,7 +772,7 @@ func (i *lateralJoinIterator) loadRight(ctx *sql.Context) error {
 		if err != nil {
 			return err
 		}
-		i.rRow = rRow
+		i.rRow = rRow[len(i.lRow):]
 	}
 	return nil
 }
