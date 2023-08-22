@@ -83,7 +83,9 @@ func (f *FulltextFilterTable) PartitionRows(ctx *sql.Context, partition sql.Part
 	}
 	wordsStr, ok := words.(string)
 	if !ok {
-		return nil, fmt.Errorf("expected WORD to be a string, but had type `%T`", words)
+		if words != nil {
+			return nil, fmt.Errorf("expected WORD to be a string, but had type `%T`", words)
+		}
 	}
 	collation := fulltext.GetCollationFromSchema(ctx, f.MatchAgainst.DocCountTable.Schema())
 	parser, err := fulltext.NewDefaultParser(ctx, collation, wordsStr)

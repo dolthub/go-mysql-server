@@ -444,7 +444,7 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 		if !ok {
 			return nil, sql.ErrKeyColumnDoesNotExist.New(badColName)
 		}
-		err := validateIndexType(ctx, ai.Columns, sch)
+		err := validateIndexType(ctx, ai.Columns, sch, ai.Constraint == sql.IndexConstraint_Fulltext)
 		if err != nil {
 			return nil, err
 		}
@@ -538,16 +538,18 @@ func validatePrefixLength(ctx *sql.Context, schCol *sql.Column, idxCol sql.Index
 }
 
 // validateIndexType prevents creating invalid indexes
-func validateIndexType(ctx *sql.Context, cols []sql.IndexColumn, sch sql.Schema) error {
+func validateIndexType(ctx *sql.Context, cols []sql.IndexColumn, sch sql.Schema, isFullText bool) error {
 	for _, idxCol := range cols {
 		idx := sch.IndexOfColName(idxCol.Name)
 		if idx == -1 {
 			return sql.ErrColumnNotFound.New(idxCol.Name)
 		}
 		schCol := sch[idx]
-		err := validatePrefixLength(ctx, schCol, idxCol)
-		if err != nil {
-			return err
+		if !isFullText {
+			err := validatePrefixLength(ctx, schCol, idxCol)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
