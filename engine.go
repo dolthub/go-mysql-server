@@ -643,13 +643,13 @@ func (e *Engine) IsReadOnly() bool {
 
 // readOnlyCheck checks to see if the query is valid with the modification setting of the engine.
 func (e *Engine) readOnlyCheck(node sql.Node) error {
-	nodeIsReadOnly := plan.IsReadOnly(node)
-	if !nodeIsReadOnly {
-		if e.IsReadOnly() {
-			return sql.ErrReadOnly.New()
-		} else if e.IsServerLocked {
-			return sql.ErrDatabaseWriteLocked.New()
-		}
+	// Note: We only compute plan.IsReadOnly if the server is in one of
+	// these two modes, since otherwise it is simply wasted work.
+	if e.IsReadOnly() && !plan.IsReadOnly(node) {
+		return sql.ErrReadOnly.New()
+	}
+	if e.IsServerLocked && !plan.IsReadOnly(node) {
+		return sql.ErrDatabaseWriteLocked.New()
 	}
 	return nil
 }
