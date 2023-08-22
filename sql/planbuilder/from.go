@@ -44,7 +44,6 @@ func (b *Builder) buildFrom(inScope *scope, te ast.TableExprs) (outScope *scope)
 }
 
 func (b *Builder) validateJoinTableNames(leftScope, rightScope *scope) {
-	// TODO validateUniqueTableNames is redundant
 	for t, _ := range leftScope.tables {
 		if _, ok := rightScope.tables[t]; ok {
 			err := sql.ErrDuplicateAliasOrTable.New(t)
