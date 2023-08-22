@@ -288,6 +288,57 @@ var FulltextTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "NULL handling",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT UNSIGNED PRIMARY KEY, v1 VARCHAR(200), v2 VARCHAR(200), FULLTEXT idx (v1, v2));",
+			"INSERT INTO test VALUES (1, 'abc', NULL), (2, 'ghi', 'jkl'), (3, 'mno', 'mno'), (4, NULL, NULL), (5, 'ghs', 'mno shg');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{ // Full-Text handles NULL values by ignoring them, meaning non-null values are still added to the document
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('abc');",
+				Expected: []sql.Row{{uint64(1), "abc", nil}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
+				Expected: []sql.Row{{uint64(2), "ghi", "jkl"}},
+			},
+			{
+				Query:    "UPDATE test SET v1 = NULL WHERE pk = 2;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('jkl');",
+				Expected: []sql.Row{{uint64(2), nil, "jkl"}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST (NULL);",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "SELECT pk, v1, v2, MATCH(v1, v2) AGAINST (NULL) FROM test;",
+				Expected: []sql.Row{
+					{uint64(1), "abc", nil, float32(0)},
+					{uint64(2), nil, "jkl", float32(0)},
+					{uint64(3), "mno", "mno", float32(0)},
+					{uint64(4), nil, nil, float32(0)},
+					{uint64(5), "ghs", "mno shg", float32(0)},
+				},
+			},
+			{
+				Query:    "DROP INDEX idx ON test;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE test ADD FULLTEXT INDEX idx (v1, v2);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
+	{
 		Name: "Collation handling",
 		SetUpScript: []string{
 			"CREATE TABLE test1 (pk BIGINT UNSIGNED PRIMARY KEY, v1 VARCHAR(200) COLLATE utf8mb4_0900_bin, v2 VARCHAR(200) COLLATE utf8mb4_0900_bin, FULLTEXT idx (v1, v2));",
@@ -684,6 +735,14 @@ var FulltextTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CREATE TABLE `film_text` (`film_id` SMALLINT NOT NULL, `title` VARCHAR(255) NOT NULL, `description` TEXT, PRIMARY KEY (`film_id`), FULLTEXT KEY `idx_title_description` (`title`,`description`));",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "CREATE TABLE other_table (pk BIGINT PRIMARY KEY, v1 TEXT);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE other_table ADD FULLTEXT INDEX idx (v1);",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 		},
