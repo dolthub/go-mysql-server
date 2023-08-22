@@ -71,7 +71,6 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 				}
 			}
 			ctx := NewContext(harness).WithQuery(statement)
-			//ctx = NewContext(harness).WithQuery(statement)
 			RunQueryWithContext(t, e, harness, ctx, statement)
 		}
 
@@ -79,9 +78,10 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 		if len(assertions) == 0 {
 			assertions = []queries.ScriptTestAssertion{
 				{
-					Query:       script.Query,
-					Expected:    script.Expected,
-					ExpectedErr: script.ExpectedErr,
+					Query:           script.Query,
+					Expected:        script.Expected,
+					ExpectedErr:     script.ExpectedErr,
+					ExpectedIndexes: script.ExpectedIndexes,
 				},
 			}
 		}
@@ -108,6 +108,9 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 				} else {
 					ctx := NewContext(harness)
 					TestQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, assertion.ExpectedColumns, assertion.Bindings)
+				}
+				if assertion.ExpectedIndexes != nil {
+					evalIndexTest(t, harness, e, assertion.Query, assertion.ExpectedIndexes, assertion.Skip)
 				}
 			})
 		}
@@ -147,9 +150,10 @@ func TestScriptWithEnginePrepared(t *testing.T, e *sqle.Engine, harness Harness,
 		if len(assertions) == 0 {
 			assertions = []queries.ScriptTestAssertion{
 				{
-					Query:       script.Query,
-					Expected:    script.Expected,
-					ExpectedErr: script.ExpectedErr,
+					Query:           script.Query,
+					Expected:        script.Expected,
+					ExpectedErr:     script.ExpectedErr,
+					ExpectedIndexes: script.ExpectedIndexes,
 				},
 			}
 		}
@@ -181,6 +185,9 @@ func TestScriptWithEnginePrepared(t *testing.T, e *sqle.Engine, harness Harness,
 				} else {
 					ctx := NewContext(harness).WithQuery(assertion.Query)
 					TestPreparedQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, nil, assertion.Bindings)
+				}
+				if assertion.ExpectedIndexes != nil {
+					evalIndexTest(t, harness, e, assertion.Query, assertion.ExpectedIndexes, assertion.Skip)
 				}
 			})
 		}

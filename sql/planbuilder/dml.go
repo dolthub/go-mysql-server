@@ -29,7 +29,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	switch n := destScope.node.(type) {
 	case *plan.ResolvedTable:
 		rt = n
-		db = rt.Database
+		db = rt.SqlDatabase
 	case *plan.UnresolvedTable:
 		db = n.Database()
 	default:
@@ -86,7 +86,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 
 	dest := destScope.node
 
-	ins := plan.NewInsertInto(db, plan.NewInsertDestination(dest.Schema(), dest), srcScope.node, isReplace, columns, onDupExprs, ignore)
+	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), srcScope.node, isReplace, columns, onDupExprs, ignore)
 
 	if rt != nil {
 		checks := b.loadChecksFromTable(destScope, rt.Table)
@@ -368,7 +368,7 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 					tableScope := inScope.push()
 					for _, c := range rt.Schema() {
 						tableScope.addColumn(scopeColumn{
-							db:       rt.Database.Name(),
+							db:       rt.SqlDatabase.Name(),
 							table:    strings.ToLower(n.Name()),
 							col:      strings.ToLower(c.Name),
 							typ:      c.Type,
@@ -407,10 +407,7 @@ func rowUpdatersByTable(ctx *sql.Context, node sql.Node, ij sql.Node) (map[strin
 			return nil, plan.ErrUpdateForTableNotSupported.New(tableToBeUpdated)
 		}
 
-		var table = resolvedTable.Table
-		if t, ok := table.(sql.TableWrapper); ok {
-			table = t.Underlying()
-		}
+		var table = resolvedTable.UnderlyingTable()
 
 		// If there is no UpdatableTable for a table being updated, error out
 		updatable, ok := table.(sql.UpdatableTable)
@@ -438,7 +435,10 @@ func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 		case *plan.ResolvedTable:
 			ret[n.Table.Name()] = n
 		case *plan.IndexedTableAccess:
-			ret[n.ResolvedTable.Name()] = n.ResolvedTable
+			rt, ok := n.TableNode.(*plan.ResolvedTable)
+			if ok {
+				ret[rt.Name()] = rt
+			}
 		case *plan.TableAlias:
 			rt := getResolvedTable(n)
 			if rt != nil {
@@ -452,12 +452,12 @@ func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 	return ret
 }
 
-// Finds first ResolvedTable node that is a descendant of the node given
+// Finds first TableNode node that is a descendant of the node given
 func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 	var table *plan.ResolvedTable
 	transform.Inspect(node, func(node sql.Node) bool {
 		// plan.Inspect will get called on all children of a node even if one of the children's calls returns false. We
-		// only want the first ResolvedTable match.
+		// only want the first TableNode match.
 		if table != nil {
 			return false
 		}
@@ -469,8 +469,11 @@ func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 				return false
 			}
 		case *plan.IndexedTableAccess:
-			table = n.ResolvedTable
-			return false
+			rt, ok := n.TableNode.(*plan.ResolvedTable)
+			if ok {
+				table = rt
+				return false
+			}
 		}
 		return true
 	})
@@ -506,7 +509,12 @@ func (b *Builder) buildInto(inScope *scope, into *ast.Into) {
 		if strings.HasPrefix(val.String(), "@") {
 			vars[i] = expression.NewUserVar(strings.TrimPrefix(val.String(), "@"))
 		} else {
-			vars[i] = expression.NewUnresolvedProcedureParam(val.String())
+			col, ok := inScope.proc.GetVar(val.String())
+			if !ok {
+				err := sql.ErrExternalProcedureMissingContextParam.New(val.String())
+				b.handleErr(err)
+			}
+			vars[i] = col.scalarGf()
 		}
 	}
 	inScope.node = plan.NewInto(inScope.node, vars)

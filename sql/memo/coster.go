@@ -116,14 +116,10 @@ func (c *coster) costTableAlias(ctx *sql.Context, n *TableAlias, s sql.StatsRead
 }
 
 func (c *coster) costScan(ctx *sql.Context, t *TableScan, s sql.StatsReader) (float64, error) {
-	return c.costRead(ctx, t.Table.Table, s)
+	return c.costRead(ctx, t.Table.UnderlyingTable(), s)
 }
 
 func (c *coster) costRead(ctx *sql.Context, t sql.Table, s sql.StatsReader) (float64, error) {
-	if w, ok := t.(sql.TableWrapper); ok {
-		t = w.Underlying()
-	}
-
 	db := ctx.GetCurrentDatabase()
 	card, ok, err := s.RowCount(ctx, db, t.Name())
 	if err != nil || !ok {
@@ -378,21 +374,17 @@ func (c *carder) cardRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 func (c *carder) statsTableAlias(ctx *sql.Context, n *TableAlias, s sql.StatsReader) (float64, error) {
 	switch n := n.Table.Child.(type) {
 	case *plan.ResolvedTable:
-		return c.statsRead(ctx, n.Table, n.Database.Name(), s)
+		return c.statsRead(ctx, n.UnderlyingTable(), n.SqlDatabase.Name(), s)
 	default:
 		return 1000, nil
 	}
 }
 
 func (c *carder) statsScan(ctx *sql.Context, t *TableScan, s sql.StatsReader) (float64, error) {
-	return c.statsRead(ctx, t.Table.Table, t.Table.Database.Name(), s)
+	return c.statsRead(ctx, t.Table.UnderlyingTable(), t.Table.Database().Name(), s)
 }
 
 func (c *carder) statsRead(ctx *sql.Context, t sql.Table, db string, s sql.StatsReader) (float64, error) {
-	if w, ok := t.(sql.TableWrapper); ok {
-		t = w.Underlying()
-	}
-
 	card, ok, err := s.RowCount(ctx, db, t.Name())
 	if err != nil || !ok {
 		// TODO: better estimates for derived tables

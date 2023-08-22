@@ -830,6 +830,10 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 // filter, since we only need to load the tables once. All steps after this
 // one can assume that the expression has been fully resolved and is valid.
 func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expression.MatchAgainst {
+	//TODO: implement proper scope support and remove this check
+	if (inScope.groupBy != nil && inScope.groupBy.hasAggs()) || inScope.windowFuncs != nil {
+		b.handleErr(fmt.Errorf("aggregate and window functions are not yet supported alongside MATCH expressions"))
+	}
 	rts := getTablesByName(inScope.node)
 	var rt *plan.ResolvedTable
 	var matchTable string
@@ -876,10 +880,7 @@ func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expressio
 		b.handleErr(err)
 	}
 
-	innerTbl := rt.Table
-	if t, ok := innerTbl.(sql.TableWrapper); ok {
-		innerTbl = t.Underlying()
-	}
+	innerTbl := rt.UnderlyingTable()
 	indexedTbl, ok := innerTbl.(sql.IndexAddressableTable)
 	if !ok {
 		err := fmt.Errorf("cannot use MATCH ... AGAINST ... on a table that does not declare indexes")
@@ -916,7 +917,7 @@ func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expressio
 	fullindexTableNames := [5]string{tableNames.Config, tableNames.Position, tableNames.DocCount, tableNames.GlobalCount, tableNames.RowCount}
 	idxTables := make([]sql.IndexAddressableTable, 5)
 	for i, name := range fullindexTableNames {
-		configTbl, ok, err := rt.Database.GetTableInsensitive(b.ctx, name)
+		configTbl, ok, err := rt.SqlDatabase.GetTableInsensitive(b.ctx, name)
 		if err != nil {
 			b.handleErr(err)
 		}

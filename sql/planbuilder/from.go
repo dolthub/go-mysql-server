@@ -376,11 +376,13 @@ func columnsToStrings(cols ast.Columns) []string {
 }
 
 func (b *Builder) resolveTable(tab, db string, asOf interface{}) *plan.ResolvedTable {
-	table, _, err := b.cat.TableAsOf(b.ctx, db, tab, asOf)
-	if err != nil {
-		b.handleErr(err)
+	table, database, err := b.cat.TableAsOf(b.ctx, db, tab, asOf)
+	if sql.ErrAsOfNotSupported.Is(err) {
+		if asOf != nil {
+			b.handleErr(err)
+		}
+		table, database, err = b.cat.Table(b.ctx, db, tab)
 	}
-	database, err := b.cat.Database(b.ctx, b.ctx.GetCurrentDatabase())
 	if err != nil {
 		b.handleErr(err)
 	}

@@ -58,7 +58,7 @@ func MustStringToColumnDefaultValue(ctx *sql.Context, exprStr string, outType sq
 	if err != nil {
 		panic(err)
 	}
-	expr, err = sql.NewColumnDefaultValue(expr.Expression, outType, expr.IsLiteral(), !expr.IsLiteral(), nullable)
+	expr, err = sql.NewColumnDefaultValue(expr.Expr, outType, expr.IsLiteral(), !expr.IsLiteral(), nullable)
 	if err != nil {
 		panic(err)
 	}

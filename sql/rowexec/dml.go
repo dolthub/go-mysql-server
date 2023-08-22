@@ -167,9 +167,9 @@ func (b *BaseBuilder) buildDropTable(ctx *sql.Context, n *plan.DropTable, row sq
 
 	for _, table := range n.Tables {
 		tbl := table.(*plan.ResolvedTable)
-		curdb = tbl.Database
+		curdb = tbl.SqlDatabase
 
-		droppable := tbl.Database.(sql.TableDropper)
+		droppable := tbl.SqlDatabase.(sql.TableDropper)
 
 		if fkTable, err := getForeignKeyTable(tbl); err == nil {
 			fkChecks, err := ctx.GetSessionVariable(ctx, "foreign_key_checks")

@@ -106,6 +106,7 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 
 	showCreate := plan.NewShowCreateTableWithAsOf(tableScope.node, showType == "create view", asOfExpr)
 	outScope.node = showCreate
+
 	if rt != nil {
 		checks := b.loadChecksFromTable(outScope, rt.Table)
 		// To match MySQL output format, transform the column names and wrap with backticks
@@ -119,11 +120,14 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 		}
 		showCreate.Checks = checks
 
+		showCreate.Indexes = b.getInfoSchemaIndexes(rt)
+
 		pks, _ := rt.Table.(sql.PrimaryKeyTable)
 		if pks != nil {
 			showCreate.PrimaryKeySchema = pks.PrimaryKeySchema()
 		}
 		outScope.node = b.modifySchemaTarget(outScope, showCreate, rt)
+
 	}
 	return
 }
@@ -383,8 +387,43 @@ func (b *Builder) buildShowIndex(inScope *scope, s *ast.Show) (outScope *scope) 
 	}
 	tableName := strings.ToLower(s.Table.Name.String())
 	table := b.resolveTable(tableName, strings.ToLower(dbName), nil)
-	outScope.node = plan.NewShowIndexes(table)
+	showIdx := plan.NewShowIndexes(table)
+	showIdx.IndexesToShow = b.getInfoSchemaIndexes(table)
+	outScope.node = showIdx
 	return
+}
+
+func (b *Builder) getInfoSchemaIndexes(rt *plan.ResolvedTable) []sql.Index {
+	it, ok := rt.Table.(sql.IndexAddressableTable)
+	if !ok {
+		return nil
+	}
+
+	indexes, err := it.GetIndexes(b.ctx)
+	if err != nil {
+		b.handleErr(err)
+	}
+
+	for i := 0; i < len(indexes); i++ {
+		// remove generated indexes
+		idx := indexes[i]
+		if idx.IsGenerated() {
+			indexes[i], indexes[len(indexes)-1] = indexes[len(indexes)-1], indexes[i]
+			indexes = indexes[:len(indexes)-1]
+			i--
+		}
+	}
+
+	if b.ctx.GetIndexRegistry().HasIndexes() {
+		idxRegistry := b.ctx.GetIndexRegistry()
+		for _, idx := range idxRegistry.IndexesByTable(rt.Database().Name(), rt.Table.Name()) {
+			if !idx.IsGenerated() {
+				indexes = append(indexes, idx)
+			}
+		}
+	}
+
+	return indexes
 }
 
 func (b *Builder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *scope) {
@@ -580,6 +619,7 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 
 	var node sql.Node = show
 	if rt, _ := table.(*plan.ResolvedTable); rt != nil {
+		show.Indexes = b.getInfoSchemaIndexes(rt)
 		node = b.modifySchemaTarget(tableScope, show, rt)
 	}
 
@@ -721,7 +761,10 @@ func (b *Builder) buildShowStatus(inScope *scope, s *ast.Show) (outScope *scope)
 func (b *Builder) buildShowCharset(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 
-	var node sql.Node = plan.NewShowCharset()
+	showCharset := plan.NewShowCharset()
+	showCharset.CharacterSetTable = b.resolveTable("character_sets", "information_schema", nil)
+
+	var node sql.Node = showCharset
 	for _, c := range node.Schema() {
 		outScope.newColumn(scopeColumn{table: c.Source, col: c.Name, typ: c.Type, nullable: c.Nullable})
 	}

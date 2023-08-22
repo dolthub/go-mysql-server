@@ -62,30 +62,23 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	keyedColumns := make(map[string]bool)
 	var err error
 	transform.Inspect(n, func(n sql.Node) bool {
+		if st, ok := n.(sql.SchemaTarget); ok {
+			sch = st.TargetSchema()
+		}
 		switch n := n.(type) {
 		case *plan.ModifyColumn:
-			sch = n.Table.Schema()
 			keyedColumns, err = getTableIndexColumns(ctx, n.Table)
 			return false
 		case *plan.RenameColumn:
-			sch = n.Table.Schema()
 			return false
 		case *plan.AddColumn:
-			sch = n.Table.Schema()
 			keyedColumns, err = getTableIndexColumns(ctx, n.Table)
 			return false
 		case *plan.DropColumn:
-			sch = n.Table.Schema()
 			return false
 		case *plan.AlterIndex:
-			sch = n.Table.Schema()
 			indexes, err = getTableIndexNames(ctx, a, n.Table)
-		case *plan.AlterPK:
-			sch = n.Table.Schema()
-		case *plan.AlterDefaultSet:
-			sch = n.Table.Schema()
-		case *plan.AlterDefaultDrop:
-			sch = n.Table.Schema()
+		default:
 		}
 		return true
 	})

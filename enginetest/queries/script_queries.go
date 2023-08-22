@@ -41,6 +41,8 @@ type ScriptTest struct {
 	Expected []sql.Row
 	// For tests that make a single assertion, ExpectedErr can be set for the expected error
 	ExpectedErr *errors.Kind
+	// For tests that make a single assertion, ExpectedIndexes can be set for the string representation of indexes that we expect to appear in the query plan
+	ExpectedIndexes []string
 	// SkipPrepared is true when we skip a test for prepared statements only
 	SkipPrepared bool
 }
@@ -67,6 +69,9 @@ type ScriptTestAssertion struct {
 
 	// ExpectedColumns indicates the Name and Type of the columns expected; no other schema fields are tested.
 	ExpectedColumns sql.Schema
+
+	// The string representation of indexes that we expect to appear in the query plan
+	ExpectedIndexes []string
 
 	// SkipResultsCheck is used to skip assertions on expected Rows returned from a query. This should be used
 	// sparingly, such as in cases where you only want to test warning messages.

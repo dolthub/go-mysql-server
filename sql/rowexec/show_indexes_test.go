@@ -96,7 +96,7 @@ func TestShowIndexes(t *testing.T) {
 
 			// Assigning tables and indexes manually. This mimics what happens during analysis
 			showIdxs := NewShowIndexes(NewResolvedTable(test.table, nil, nil))
-			showIdxs.(*ShowIndexes).IndexesToShow = []sql.Index{idx}
+			showIdxs.IndexesToShow = []sql.Index{idx}
 
 			rowIter, err := DefaultBuilder.Build(ctx, showIdxs, nil)
 			assert.NoError(t, err)
