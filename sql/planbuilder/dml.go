@@ -509,7 +509,12 @@ func (b *Builder) buildInto(inScope *scope, into *ast.Into) {
 		if strings.HasPrefix(val.String(), "@") {
 			vars[i] = expression.NewUserVar(strings.TrimPrefix(val.String(), "@"))
 		} else {
-			vars[i] = expression.NewUnresolvedProcedureParam(val.String())
+			col, ok := inScope.proc.GetVar(val.String())
+			if !ok {
+				err := sql.ErrExternalProcedureMissingContextParam.New(val.String())
+				b.handleErr(err)
+			}
+			vars[i] = col.scalarGf()
 		}
 	}
 	inScope.node = plan.NewInto(inScope.node, vars)

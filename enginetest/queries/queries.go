@@ -8525,6 +8525,10 @@ type QueryErrorTest struct {
 
 var ErrorQueries = []QueryErrorTest{
 	{
+		Query:       "select table_name from information_schema.statistics AS OF '2023-08-31' WHERE table_schema='mydb'",
+		ExpectedErr: sql.ErrAsOfNotSupported,
+	},
+	{
 		Query:       "with a(j) as (select 1), b(i) as (select 2) (select j from a union select i from b order by 1 desc) union select j from a order by 1 asc;",
 		ExpectedErr: sql.ErrConflictingExternalQuery,
 	},

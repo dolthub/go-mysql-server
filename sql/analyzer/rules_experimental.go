@@ -33,9 +33,7 @@ var OnceBeforeDefault_Exp = []Rule{
 	{resolveUnionsId, resolveUnions},
 	{resolveDescribeQueryId, resolveDescribeQuery},      //TODO
 	{checkUniqueTableNamesId, validateUniqueTableNames}, //TODO
-	{resolveDeclarationsId, resolveDeclarations},
 	{validateCreateTriggerId, validateCreateTrigger},
-	{loadInfoSchemaId, loadInfoSchema}, //TODO
 	{validateColumnDefaultsId, validateColumnDefaults},
 	{validateReadOnlyDatabaseId, validateReadOnlyDatabase},
 	{validateReadOnlyTransactionId, validateReadOnlyTransaction},
@@ -82,7 +80,6 @@ var OnceAfterDefault_Experimental = []Rule{
 	{insertTopNId, insertTopNNodes},
 	{applyHashInId, applyHashIn},
 	{resolveInsertRowsId, resolveInsertRows},
-	{resolvePreparedInsertId, resolvePreparedInsert},
 	{applyTriggersId, applyTriggers},
 	{applyProceduresId, applyProcedures},
 	{assignRoutinesId, assignRoutines},

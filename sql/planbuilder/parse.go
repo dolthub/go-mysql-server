@@ -42,8 +42,8 @@ func ParseWithOptions(ctx *sql.Context, cat sql.Catalog, query string, options a
 			}
 		}
 	}()
-	n, _, _, err := parse(ctx, cat, query, false, options)
-	return n, err
+	ret, _, _, err = parse(ctx, cat, query, false, options)
+	return
 }
 
 func ParseOne(ctx *sql.Context, cat sql.Catalog, query string) (sql.Node, string, string, error) {
