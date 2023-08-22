@@ -52,7 +52,6 @@ var DefaultRules_Exp = []Rule{
 	{fixupAuxiliaryExprsId, fixupAuxiliaryExprs},
 	{validateCheckConstraintId, validateCheckConstraints},
 	{transposeRightJoinsId, transposeRightJoins}, //TODO
-	{mergeUnionSchemasId, mergeUnionSchemas},     //TODO
 	{transformJoinApplyId, transformJoinApply},
 	{resolveSubqueriesId, resolveSubqueries},
 	{replaceCrossJoinsId, replaceCrossJoins},
@@ -65,7 +64,6 @@ var OnceAfterDefault_Experimental = []Rule{
 	{loadTriggersId, loadTriggers},
 	{loadEventsId, loadEvents},
 	{processTruncateId, processTruncate},
-	{removeUnnecessaryConvertsId, removeUnnecessaryConverts},
 	{stripTableNameInDefaultsId, stripTableNamesFromColumnDefaults},
 	{foldEmptyJoinsId, foldEmptyJoins},
 	{pushFiltersId, pushFilters},

@@ -1,3 +1,17 @@
+// Copyright 2023 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package planbuilder
 
 import (
@@ -9,8 +23,11 @@ import (
 
 // factory functions should apply all optimizations to an expression
 // that are always costing/simplification wins. Each function will be a series
-// of optimizations local to this specific node. Eventually there should be a
-// top level optimizer with a switch for every type.
+// of optimizations local to this specific node.
+//
+// TODO: split this into a factory object/package when we start memoizing the plan
+// TODO: switch statement for each type
+// TODO: logging when optimizations triggered
 
 func factoryBuildProject(p *plan.Project) (sql.Node, error) {
 	{
@@ -94,4 +111,15 @@ func aliasTrackAndReplace(adj map[sql.ColumnId]sql.Expression, e sql.Expression)
 		adj[id] = newE
 	}
 	return newE, nil
+}
+
+func factoryBuildConvert(expr sql.Expression, castToType string, typeLength, typeScale int) (sql.Expression, error) {
+	n := expression.NewConvertWithLengthAndScale(expr, castToType, typeLength, typeScale)
+	{
+		// deduplicate redundant convert
+		if expr.Type().Equals(n.Type()) {
+			return expr, nil
+		}
+	}
+	return n, nil
 }
