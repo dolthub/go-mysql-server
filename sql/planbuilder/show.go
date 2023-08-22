@@ -416,7 +416,7 @@ func (b *Builder) getInfoSchemaIndexes(rt *plan.ResolvedTable) []sql.Index {
 
 	if b.ctx.GetIndexRegistry().HasIndexes() {
 		idxRegistry := b.ctx.GetIndexRegistry()
-		for _, idx := range idxRegistry.IndexesByTable(rt.Database.Name(), rt.Table.Name()) {
+		for _, idx := range idxRegistry.IndexesByTable(rt.Database().Name(), rt.Table.Name()) {
 			if !idx.IsGenerated() {
 				indexes = append(indexes, idx)
 			}
