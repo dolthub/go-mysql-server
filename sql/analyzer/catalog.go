@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 	"strings"
 	"sync"
 
@@ -32,14 +33,20 @@ type Catalog struct {
 
 	Provider         sql.DatabaseProvider
 	builtInFunctions function.Registry
-	mu               sync.RWMutex
-	locks            sessionLocks
+
+	// BinlogReplicaController holds an optional controller that receives forwarded binlog
+	// replication messages (e.g. "start replica").
+	BinlogReplicaController binlogreplication.BinlogReplicaController
+
+	mu    sync.RWMutex
+	locks sessionLocks
 }
 
 var _ sql.Catalog = (*Catalog)(nil)
 var _ sql.FunctionProvider = (*Catalog)(nil)
 var _ sql.TableFunctionProvider = (*Catalog)(nil)
 var _ sql.ExternalStoredProcedureProvider = (*Catalog)(nil)
+var _ binlogreplication.BinlogReplicaCatalog = (*Catalog)(nil)
 
 type tableLocks map[string]struct{}
 
@@ -61,6 +68,14 @@ func NewCatalog(provider sql.DatabaseProvider) *Catalog {
 // TODO: kill this
 func NewDatabaseProvider(dbs ...sql.Database) sql.DatabaseProvider {
 	return sql.NewDatabaseProvider(dbs...)
+}
+
+func (c *Catalog) IsBinlogReplicaCatalog() bool {
+	return c.BinlogReplicaController != nil
+}
+
+func (c *Catalog) GetBinlogReplicaController() binlogreplication.BinlogReplicaController {
+	return c.BinlogReplicaController
 }
 
 func (c *Catalog) AllDatabases(ctx *sql.Context) []sql.Database {

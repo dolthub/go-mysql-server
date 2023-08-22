@@ -120,8 +120,8 @@ func (b *Builder) mergeUnionSchemas(u *plan.Union) sql.Node {
 		convertTo := expression.GetConvertToType(ls[i].Type, rs[i].Type)
 
 		// TODO: Principled type coercion...
-		les[i], err = factoryBuildConvert(les[i], convertTo, 0, 0)
-		res[i], err = factoryBuildConvert(res[i], convertTo, 0, 0)
+		les[i], err = b.f.buildConvert(les[i], convertTo, 0, 0)
+		res[i], err = b.f.buildConvert(res[i], convertTo, 0, 0)
 
 		// Preserve schema names across the conversion.
 		les[i] = expression.NewAlias(ls[i].Name, les[i])

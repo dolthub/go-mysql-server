@@ -181,7 +181,7 @@ func (b *Builder) buildProjection(inScope, outScope *scope) {
 	for i, sc := range outScope.cols {
 		projections[i] = sc.scalar
 	}
-	proj, err := factoryBuildProject(plan.NewProject(projections, inScope.node))
+	proj, err := b.f.buildProject(plan.NewProject(projections, inScope.node))
 	if err != nil {
 		b.handleErr(err)
 	}

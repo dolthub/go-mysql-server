@@ -26,7 +26,6 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 	"github.com/dolthub/go-mysql-server/sql/memo"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
@@ -81,11 +80,11 @@ type Builder struct {
 func NewBuilder(pro sql.DatabaseProvider) *Builder {
 	return &Builder{
 		provider:        pro,
-		onceBeforeRules: OnceBeforeDefault_Exp,
-		defaultRules:    DefaultRules_Exp,
-		onceAfterRules:  OnceAfterDefault_Experimental,
+		onceBeforeRules: OnceBeforeDefault,
+		defaultRules:    DefaultRules,
+		onceAfterRules:  OnceAfterDefault,
 		validationRules: DefaultValidationRules,
-		afterAllRules:   OnceAfterAll_Experimental,
+		afterAllRules:   OnceAfterAll,
 	}
 }
 
@@ -286,9 +285,6 @@ type Analyzer struct {
 	Batches []*Batch
 	// Catalog of databases and registered functions.
 	Catalog *Catalog
-	// BinlogReplicaController holds an optional controller that receives forwarded binlog
-	// replication messages (e.g. "start replica").
-	BinlogReplicaController binlogreplication.BinlogReplicaController
 	// Carder estimates the number of rows returned by a relational expression.
 	Carder memo.Carder
 	// Coster estimates the incremental CPU+memory cost for execution operators.

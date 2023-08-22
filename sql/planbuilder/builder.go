@@ -25,6 +25,7 @@ type Builder struct {
 	ctx             *sql.Context
 	cat             sql.Catalog
 	parserOpts      ast.ParserOptions
+	f               *factory
 	currentDatabase sql.Database
 	colId           columnId
 	tabId           tableId
@@ -58,11 +59,16 @@ type ProcContext struct {
 }
 
 func New(ctx *sql.Context, cat sql.Catalog) (*Builder, error) {
+	opts := ast.ParserOptions{AnsiQuotes: false}
 	sqlMode, err := sql.LoadSqlMode(ctx)
-	if err != nil {
-		return nil, err
+	if err == nil {
+		opts.AnsiQuotes = sqlMode.AnsiQuotes()
 	}
-	return &Builder{ctx: ctx, cat: cat, parserOpts: sqlMode.ParserOptions()}, nil
+	return &Builder{ctx: ctx, cat: cat, parserOpts: opts, f: &factory{}}, nil
+}
+
+func (b *Builder) SetDebug(val bool) {
+	b.f.debug = val
 }
 
 func (b *Builder) SetParserOptions(opts ast.ParserOptions) {

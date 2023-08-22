@@ -87,6 +87,11 @@ type ReplicaStatus struct {
 	ReplicateIgnoreTables []string
 }
 
+type BinlogReplicaCatalog interface {
+	IsBinlogReplicaCatalog() bool
+	GetBinlogReplicaController() BinlogReplicaController
+}
+
 const (
 	ReplicaIoNotRunning  = "No"
 	ReplicaIoConnecting  = "Connecting"

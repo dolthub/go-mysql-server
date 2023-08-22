@@ -1656,10 +1656,7 @@ Project
 	ctx := sql.NewEmptyContext()
 	ctx.SetCurrentDatabase("mydb")
 	cat := newTestCatalog()
-	b := &Builder{
-		ctx: ctx,
-		cat: cat,
-	}
+	b, _ := New(ctx, cat)
 
 	for _, tt := range tests {
 		t.Run(tt.Query, func(t *testing.T) {

@@ -14,11 +14,10 @@
 
 package analyzer
 
-// OnceBeforeDefault_Exp contains the rules to be applied just once before the
+// OnceBeforeDefault contains the rules to be applied just once before the
 // DefaultRules.
-var OnceBeforeDefault_Exp = []Rule{
+var OnceBeforeDefault = []Rule{
 	{applyDefaultSelectLimitId, applyDefaultSelectLimit},
-	{applyBinlogReplicaControllerId, applyBinlogReplicaController},
 	{replaceCountStarId, replaceCountStar},
 	{validateOffsetAndLimitId, validateLimitAndOffset},
 	{validateCreateTableId, validateCreateTable},
@@ -42,8 +41,8 @@ var OnceBeforeDefault_Exp = []Rule{
 	{hoistOutOfScopeFiltersId, hoistOutOfScopeFilters},
 }
 
-// DefaultRules_Exp to apply when analyzing nodes.
-var DefaultRules_Exp = []Rule{
+// DefaultRules to apply when analyzing nodes.
+var DefaultRules = []Rule{
 	{validateStarExpressionsId, validateStarExpressions}, //TODO
 	{flattenTableAliasesId, flattenTableAliases},         //TODO
 	{pushdownSubqueryAliasFiltersId, pushdownSubqueryAliasFilters},
@@ -57,7 +56,7 @@ var DefaultRules_Exp = []Rule{
 	{moveJoinCondsToFilterId, moveJoinConditionsToFilter}, // depends on indexes being correct
 }
 
-var OnceAfterDefault_Experimental = []Rule{
+var OnceAfterDefault = []Rule{
 	{hoistSelectExistsId, hoistSelectExists},
 	{finalizeUnionsId, finalizeUnions},
 	{loadTriggersId, loadTriggers},
@@ -99,7 +98,7 @@ var DefaultValidationRules = []Rule{
 	{validateAggregationsId, validateAggregations},
 }
 
-var OnceAfterAll_Experimental = []Rule{
+var OnceAfterAll = []Rule{
 	{inlineSubqueryAliasRefsId, inlineSubqueryAliasRefs},
 	{cacheSubqueryResultsId, cacheSubqueryResults},
 	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},

@@ -29,11 +29,23 @@ import (
 // TODO: switch statement for each type
 // TODO: logging when optimizations triggered
 
-func factoryBuildProject(p *plan.Project) (sql.Node, error) {
+type factory struct {
+	ctx   *sql.Context
+	debug bool
+}
+
+func (f *factory) log(s string) {
+	if f.debug {
+		f.ctx.GetLogger().Info(s)
+	}
+}
+
+func (f *factory) buildProject(p *plan.Project) (sql.Node, error) {
 	{
 		// todo generalize this. proj->proj with subquery expression alias
 		// references are one problem.
 		if sqa, _ := p.Child.(*plan.SubqueryAlias); sqa != nil && p.Schema().Equals(sqa.Schema()) {
+			f.log("eliminated projection")
 			return sqa, nil
 		}
 	}
@@ -113,11 +125,12 @@ func aliasTrackAndReplace(adj map[sql.ColumnId]sql.Expression, e sql.Expression)
 	return newE, nil
 }
 
-func factoryBuildConvert(expr sql.Expression, castToType string, typeLength, typeScale int) (sql.Expression, error) {
+func (f *factory) buildConvert(expr sql.Expression, castToType string, typeLength, typeScale int) (sql.Expression, error) {
 	n := expression.NewConvertWithLengthAndScale(expr, castToType, typeLength, typeScale)
 	{
 		// deduplicate redundant convert
 		if expr.Type().Equals(n.Type()) {
+			f.log("eliminated convert")
 			return expr, nil
 		}
 	}

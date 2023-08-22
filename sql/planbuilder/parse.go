@@ -110,7 +110,10 @@ func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool, options 
 		return nil, parsed, remainder, sql.ErrSyntaxError.New(err.Error())
 	}
 
-	b := &Builder{ctx: ctx, cat: cat}
+	b, err := New(ctx, cat)
+	if err != nil {
+		return nil, "", "", err
+	}
 	outScope := b.build(nil, stmt, s)
 
 	return outScope.node, parsed, remainder, err
