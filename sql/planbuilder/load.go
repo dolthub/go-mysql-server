@@ -46,14 +46,20 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 		ignoreNumVal = b.getInt64Value(inScope, d.IgnoreNum, "Cannot parse ignore Value")
 	}
 
-	ld := plan.NewLoadData(bool(d.Local), d.Infile, destScope.node, columnsToStrings(d.Columns), d.Fields, d.Lines, ignoreNumVal, d.IgnoreOrReplace)
+	dest := destScope.node
+	sch := dest.Schema()
+	if rt != nil {
+		sch = b.resolveSchemaDefaults(destScope, rt.Schema())
+	}
 
+	ld := plan.NewLoadData(bool(d.Local), d.Infile, sch, columnsToStrings(d.Columns), d.Fields, d.Lines, ignoreNumVal, d.IgnoreOrReplace)
 	outScope = inScope.push()
-	ins := plan.NewInsertInto(db, destScope.node, ld, ld.IsReplace, ld.ColumnNames, nil, ld.IsIgnore)
+	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), ld, ld.IsReplace, ld.ColumnNames, nil, ld.IsIgnore)
 
 	if rt != nil {
 		checks := b.loadChecksFromTable(destScope, rt.Table)
 		ins.Checks = checks
+
 	}
 
 	outScope.node = ins

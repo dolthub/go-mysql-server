@@ -86,7 +86,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 
 	dest := destScope.node
 
-	ins := plan.NewInsertInto(db, plan.NewInsertDestination(dest.Schema(), dest), srcScope.node, isReplace, columns, onDupExprs, ignore)
+	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), srcScope.node, isReplace, columns, onDupExprs, ignore)
 
 	if rt != nil {
 		checks := b.loadChecksFromTable(destScope, rt.Table)

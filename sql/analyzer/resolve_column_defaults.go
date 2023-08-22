@@ -228,7 +228,7 @@ func validateColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrap
 	// Some column types can only have a NULL for a literal default, must be an expression otherwise
 	isLiteralRestrictedType := types.IsTextBlob(col.Type) || types.IsJSON(col.Type) || types.IsGeometry(col.Type)
 	if isLiteralRestrictedType && newDefault.IsLiteral() {
-		lit, err := newDefault.Expression.Eval(ctx, nil)
+		lit, err := newDefault.Expr.Eval(ctx, nil)
 		if err != nil {
 			return err
 		}
@@ -238,7 +238,7 @@ func validateColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrap
 	}
 
 	var err error
-	sql.Inspect(newDefault.Expression, func(e sql.Expression) bool {
+	sql.Inspect(newDefault.Expr, func(e sql.Expression) bool {
 		switch e.(type) {
 		case sql.FunctionExpression, *expression.UnresolvedFunction:
 			var funcName string
@@ -305,7 +305,7 @@ func stripTableNamesFromDefault(e *expression.Wrapper) (sql.Expression, transfor
 		return e, transform.SameTree, nil
 	}
 
-	newExpr, same, err := transform.Expr(newDefault.Expression, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	newExpr, same, err := transform.Expr(newDefault.Expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		if expr, ok := e.(*expression.GetField); ok {
 			return expr.WithTable(""), transform.NewTree, nil
 		}
@@ -320,6 +320,6 @@ func stripTableNamesFromDefault(e *expression.Wrapper) (sql.Expression, transfor
 	}
 
 	nd := *newDefault
-	nd.Expression = newExpr
+	nd.Expr = newExpr
 	return expression.WrapExpression(&nd), transform.NewTree, nil
 }
