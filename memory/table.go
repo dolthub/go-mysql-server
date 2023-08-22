@@ -143,6 +143,7 @@ func NewPartitionedTableWithCollation(name string, schema sql.PrimaryKeySchema, 
 			newDef, _, _ := transform.Expr(cCopy.Default, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				switch e := e.(type) {
 				case *expression.GetField:
+					// strip table names
 					return expression.NewGetField(e.Index(), e.Type(), e.Name(), e.IsNullable()), transform.NewTree, nil
 				default:
 				}
