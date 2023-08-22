@@ -632,9 +632,20 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 	}
 
 	var node sql.Node = show
+	switch t := table.(type) {
+	case *plan.ResolvedTable:
+		show.Indexes = b.getInfoSchemaIndexes(t)
+		node = b.modifySchemaTarget(tableScope, show, t)
+	case *plan.SubqueryAlias:
+		var err error
+		node, err = show.WithTargetSchema(t.Schema())
+		if err != nil {
+			b.handleErr(err)
+		}
+	default:
+	}
 	if rt, _ := table.(*plan.ResolvedTable); rt != nil {
-		show.Indexes = b.getInfoSchemaIndexes(rt)
-		node = b.modifySchemaTarget(tableScope, show, rt)
+
 	}
 
 	if s.ShowTablesOpt != nil && s.ShowTablesOpt.Filter != nil {
