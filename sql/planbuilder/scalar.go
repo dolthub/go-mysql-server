@@ -830,6 +830,10 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 // filter, since we only need to load the tables once. All steps after this
 // one can assume that the expression has been fully resolved and is valid.
 func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expression.MatchAgainst {
+	//TODO: implement proper scope support and remove this check
+	if (inScope.groupBy != nil && inScope.groupBy.hasAggs()) || inScope.windowFuncs != nil {
+		b.handleErr(fmt.Errorf("aggregate and window functions are not yet supported alongside MATCH expressions"))
+	}
 	rts := getTablesByName(inScope.node)
 	var rt *plan.ResolvedTable
 	var matchTable string
