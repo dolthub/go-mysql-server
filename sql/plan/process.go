@@ -478,3 +478,49 @@ func IsShowNode(node sql.Node) bool {
 func IsNoRowNode(node sql.Node) bool {
 	return IsDDLNode(node) || IsShowNode(node)
 }
+
+func IsReadOnly(node sql.Node) bool {
+	isExplain := false
+	transform.Inspect(node, func(n sql.Node) bool {
+		switch n.(type) {
+		case *DescribeQuery:
+			isExplain = true
+			return false
+		}
+		return true
+	})
+	if isExplain {
+		return true
+	}
+
+	if IsDDLNode(node) {
+		return false
+	}
+
+	switch node.(type) {
+	case *DeleteFrom, *InsertInto, *Update, *LockTables, *UnlockTables:
+		return false
+	}
+
+	isPrivNodeP := func(n sql.Node) bool {
+		switch node.(type) {
+		case *CreateUser, *DropUser, *RenameUser, *CreateRole, *DropRole, *Grant, *GrantRole, *GrantProxy, *Revoke, *RevokeRole, *RevokeAll, *RevokeProxy:
+			return true
+		}
+		return false
+	}
+	isPrivNode := false
+	transform.Inspect(node, func(n sql.Node) bool {
+		if isPrivNodeP(n) {
+			isPrivNode = true
+			return false
+		}
+		return true
+	})
+
+	if isPrivNode {
+		return false
+	}
+
+	return true
+}
