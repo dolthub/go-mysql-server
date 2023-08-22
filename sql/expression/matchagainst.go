@@ -235,7 +235,9 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 		}
 		wordsStr, ok := words.(string)
 		if !ok {
-			err = fmt.Errorf("expected WORD to be a string, but had type `%T`", words)
+			if words != nil {
+				err = fmt.Errorf("expected WORD to be a string, but had type `%T`", words)
+			}
 		}
 		expr.evaluatedString = wordsStr
 		// Grab the index for the doc count table
