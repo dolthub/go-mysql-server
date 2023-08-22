@@ -109,7 +109,11 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 	// cross join
 	if (te.Condition.On == nil || te.Condition.On == ast.BoolVal(true)) && te.Condition.Using == nil {
 		if rast, ok := te.RightExpr.(*ast.AliasedTableExpr); ok && rast.Lateral {
-			outScope.node = plan.NewJoin(leftScope.node, rightScope.node, plan.JoinTypeLateralCross, expression.NewLiteral(true, types.Boolean))
+			var err error
+			outScope.node, err = b.f.buildJoin(leftScope.node, rightScope.node, plan.JoinTypeLateralCross, expression.NewLiteral(true, types.Boolean))
+			if err != nil {
+				b.handleErr(err)
+			}
 		} else {
 			outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
 		}
@@ -251,7 +255,7 @@ func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.
 	case ast.LeftJoinStr, ast.NaturalLeftJoinStr:
 		outScope.node = plan.NewLeftOuterJoin(leftScope.node, rightScope.node, filter)
 	case ast.RightJoinStr, ast.NaturalRightJoinStr:
-		outScope.node = plan.NewRightOuterJoin(leftScope.node, rightScope.node, filter)
+		outScope.node = plan.NewLeftOuterJoin(rightScope.node, leftScope.node, filter)
 	default:
 		b.handleErr(fmt.Errorf("unknown using join type: %s", te.Join))
 	}

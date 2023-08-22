@@ -49,7 +49,6 @@ var DefaultRules = []Rule{
 	{pruneTablesId, pruneTables},
 	{fixupAuxiliaryExprsId, fixupAuxiliaryExprs},
 	{validateCheckConstraintId, validateCheckConstraints},
-	{transposeRightJoinsId, transposeRightJoins}, //TODO
 	{transformJoinApplyId, transformJoinApply},
 	{resolveSubqueriesId, resolveSubqueries},
 	{replaceCrossJoinsId, replaceCrossJoins},

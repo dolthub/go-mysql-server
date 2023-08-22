@@ -1026,19 +1026,3 @@ func attrsRefSingleTableCol(e sql.Expression) (tableCol, bool) {
 	})
 	return tc, !invalid && tc.table != ""
 }
-
-func transposeRightJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		switch n := n.(type) {
-		case *plan.JoinNode:
-			if n.Op.IsRightOuter() {
-				return plan.NewLeftOuterJoin(n.Right(), n.Left(), n.Filter), transform.NewTree, nil
-			}
-			if n.Op == plan.JoinTypeLateralRight {
-				return plan.NewJoin(n.Right(), n.Left(), plan.JoinTypeLateralLeft, n.Filter), transform.NewTree, nil
-			}
-		default:
-		}
-		return n, transform.SameTree, nil
-	})
-}
