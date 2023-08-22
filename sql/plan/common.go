@@ -101,7 +101,7 @@ func NodeRepresentsSelect(s sql.Node) bool {
 		return false
 	}
 	isSelect := false
-	// All SELECT statements, including those that do not specify a table (using "dual"), have a ResolvedTable.
+	// All SELECT statements, including those that do not specify a table (using "dual"), have a TableNode.
 	transform.Inspect(s, func(node sql.Node) bool {
 		switch node.(type) {
 		case *AlterAutoIncrement, *AlterIndex, *CreateForeignKey, *CreateIndex, *CreateTable, *CreateTrigger,
@@ -131,8 +131,8 @@ func getTableName(nodeToSearch sql.Node) string {
 				nodeStack = append(nodeStack, n.UnaryNode.Child)
 				continue
 			}
-		case *ResolvedTable:
-			return n.Table.Name()
+		case sql.TableNode:
+			return n.UnderlyingTable().Name()
 		case *UnresolvedTable:
 			return n.name
 		case *IndexedTableAccess:
@@ -159,7 +159,7 @@ func GetDatabaseName(nodeToSearch sql.Node) string {
 		case sql.Databaser:
 			return n.Database().Name()
 		case *ResolvedTable:
-			return n.Database.Name()
+			return n.SqlDatabase.Name()
 		case *UnresolvedTable:
 			return n.Database().Name()
 		case *IndexedTableAccess:

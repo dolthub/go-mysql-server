@@ -332,7 +332,7 @@ func (b *BaseBuilder) buildTableCopier(ctx *sql.Context, n *plan.TableCopier, ro
 
 	drt, ok := n.Destination.(*plan.ResolvedTable)
 	if !ok {
-		return nil, fmt.Errorf("TableCopier only accepts CreateTable or ResolvedTable as the destination")
+		return nil, fmt.Errorf("TableCopier only accepts CreateTable or TableNode as the destination")
 	}
 
 	return n.CopyTableOver(ctx, n.Source.Schema()[0].Source, drt.Name())

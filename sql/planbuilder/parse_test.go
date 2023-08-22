@@ -835,7 +835,7 @@ Project
 			Query: "select x, x as y from xy order by y",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, y:4!null]
+ ├─ columns: [xy.x:1!null, xy.x:1!null as y]
  └─ Sort(xy.x:1!null as y ASC nullsFirst)
      └─ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, xy.x:1!null as y]
@@ -848,7 +848,7 @@ Project
 			Query: "select x, y as x from xy order by y",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, x:4!null]
+ ├─ columns: [xy.x:1!null, xy.y:2!null as x]
  └─ Sort(xy.y:2!null ASC nullsFirst)
      └─ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, xy.y:2!null as x]
@@ -861,7 +861,7 @@ Project
 			Query: "select sum(x) as `count(x)` from xy order by `count(x)`;",
 			ExpectedPlan: `
 Project
- ├─ columns: [count(x):5!null]
+ ├─ columns: [sum(xy.x):4!null as count(x)]
  └─ Sort(sum(xy.x):4!null as count(x) ASC nullsFirst)
      └─ Project
          ├─ columns: [sum(xy.x):4!null, sum(xy.x):4!null as count(x)]
@@ -877,7 +877,7 @@ Project
 			Query: "select (1+x) s from xy group by 1 having s = 1",
 			ExpectedPlan: `
 Project
- ├─ columns: [s:4!null]
+ ├─ columns: [(1 (tinyint) + xy.x:1!null) as s]
  └─ Having
      ├─ Eq
      │   ├─ s:5!null
@@ -896,7 +896,7 @@ Project
 			Query: "select (1+x) s from xy join uv on (1+x) = (1+u) group by 1 having s = 1",
 			ExpectedPlan: `
 Project
- ├─ columns: [s:7!null]
+ ├─ columns: [(1 (tinyint) + xy.x:1!null) as s]
  └─ Having
      ├─ Eq
      │   ├─ s:8!null
@@ -965,7 +965,10 @@ Project
 			`,
 			ExpectedPlan: `
 Project
- ├─ columns: [x:4!null, sum:6!null]
+ ├─ columns: [(xy.x:1!null + 1 (tinyint)) as x, sum
+ │   ├─ over ( partition by xy.y order by xy.x asc)
+ │   └─ xy.x
+ │  :5!null as sum]
  └─ Having
      ├─ GreaterThan
      │   ├─ x:7!null
@@ -1131,7 +1134,7 @@ Project
 			Query: "select x+y as X from xy where x < 1 having x > 1",
 			ExpectedPlan: `
 Project
- ├─ columns: [X:4!null]
+ ├─ columns: [(xy.x:1!null + xy.y:2!null) as X]
  └─ Having
      ├─ GreaterThan
      │   ├─ x:5!null
@@ -1170,7 +1173,7 @@ Project
 			Query: "select x+y as s from xy having exists (select * from xy where y = s)",
 			ExpectedPlan: `
 Project
- ├─ columns: [s:4!null]
+ ├─ columns: [(xy.x:1!null + xy.y:2!null) as s]
  └─ Having
      ├─ EXISTS Subquery
      │   ├─ cacheable: false
@@ -1194,7 +1197,7 @@ Project
 			Query: "select x, count(x) as cnt from xy group by x having x > 1",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, cnt:5!null]
+ ├─ columns: [xy.x:1!null, count(xy.x):4!null as cnt]
  └─ Having
      ├─ GreaterThan
      │   ├─ xy.x:1!null
@@ -1229,7 +1232,7 @@ Project
      ├─ EXISTS Subquery
      │   ├─ cacheable: false
      │   └─ Project
-     │       ├─ columns: [count_1:8!null]
+     │       ├─ columns: [count(uv.u):7!null as count_1]
      │       └─ Having
      │           ├─ GreaterThan
      │           │   ├─ COUNT(uv.u):7!null
@@ -1342,7 +1345,7 @@ Project
 			Query: "SELECT x as alias1, (SELECT alias1+1 group by alias1 having alias1 > 0) FROM xy where x > 1;",
 			ExpectedPlan: `
 Project
- ├─ columns: [alias1:4!null, Subquery
+ ├─ columns: [xy.x:1!null as alias1, Subquery
  │   ├─ cacheable: false
  │   └─ Project
  │       ├─ columns: [(alias1:4!null + 1 (tinyint)) as alias1+1]
@@ -1403,7 +1406,7 @@ Project
 			Query: "select x as y, y from xy s order by x desc",
 			ExpectedPlan: `
 Project
- ├─ columns: [y:4!null, s.y:2!null]
+ ├─ columns: [s.x:1!null as y, s.y:2!null]
  └─ Sort(s.x:1!null DESC nullsFirst)
      └─ Project
          ├─ columns: [s.x:1!null, s.y:2!null, s.z:3!null, s.x:1!null as y]
@@ -1417,7 +1420,7 @@ Project
 			Query: "select x+1 as x, (select x) from xy;",
 			ExpectedPlan: `
 Project
- ├─ columns: [x:4!null, Subquery
+ ├─ columns: [(xy.x:1!null + 1 (tinyint)) as x, Subquery
  │   ├─ cacheable: false
  │   └─ Project
  │       ├─ columns: [xy.x:1!null]
@@ -1503,7 +1506,14 @@ Project
 			Query: "select 1 as a, (select a) as a",
 			ExpectedPlan: `
 Project
- ├─ columns: [a:1!null, a:2]
+ ├─ columns: [1 (tinyint) as a, Subquery
+ │   ├─ cacheable: false
+ │   └─ Project
+ │       ├─ columns: [a:1!null]
+ │       └─ Table
+ │           ├─ name: 
+ │           └─ columns: []
+ │   as a]
  └─ Project
      ├─ columns: [1 (tinyint) as a, Subquery
      │   ├─ cacheable: false
@@ -1522,7 +1532,23 @@ Project
 			Query: "SELECT max(x), (select max(dt.a) from (SELECT x as a) as dt(a)) as a1 from xy group by a1;",
 			ExpectedPlan: `
 Project
- ├─ columns: [max(xy.x):4!null as max(x), a1:8]
+ ├─ columns: [max(xy.x):4!null as max(x), Subquery
+ │   ├─ cacheable: false
+ │   └─ Project
+ │       ├─ columns: [max(dt.a):7!null]
+ │       └─ GroupBy
+ │           ├─ select: MAX(dt.a:6!null)
+ │           ├─ group: 
+ │           └─ SubqueryAlias
+ │               ├─ name: dt
+ │               ├─ outerVisibility: false
+ │               ├─ cacheable: false
+ │               └─ Project
+ │                   ├─ columns: [xy.x:1!null as a]
+ │                   └─ Table
+ │                       ├─ name: 
+ │                       └─ columns: []
+ │   as a1]
  └─ Project
      ├─ columns: [max(xy.x):4!null, Subquery
      │   ├─ cacheable: false
@@ -1830,18 +1856,26 @@ func TestParseColumnTypeString(t *testing.T) {
 			"TIMESTAMP",
 			types.Timestamp,
 		},
-		//{
-		//	"TIMESTAMP(6)",
-		//	types.TimestampMaxPrecision,
-		//},
+		{
+			"TIMESTAMP(3)",
+			types.MustCreateDatetimeType(sqltypes.Timestamp, 3),
+		},
+		{
+			"TIMESTAMP(6)",
+			types.TimestampMaxPrecision,
+		},
+		{
+			"DATETIME(3)",
+			types.MustCreateDatetimeType(sqltypes.Datetime, 3),
+		},
 		{
 			"DATETIME",
 			types.Datetime,
 		},
-		//{
-		//	"DATETIME(6)",
-		//	types.DatetimeMaxPrecision,
-		//},
+		{
+			"DATETIME(6)",
+			types.DatetimeMaxPrecision,
+		},
 	}
 
 	for _, test := range tests {

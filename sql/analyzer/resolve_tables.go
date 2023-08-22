@@ -22,7 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-// validateDropTables ensures that each ResolvedTable in DropTable is droppable, any UnresolvedTables are
+// validateDropTables ensures that each TableNode in DropTable is droppable, any UnresolvedTables are
 // skipped due to `IF EXISTS` clause, and there aren't any non-table nodes.
 func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	dt, ok := n.(*plan.DropTable)
@@ -33,8 +33,8 @@ func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	for _, table := range dt.Tables {
 		switch t := table.(type) {
 		case *plan.ResolvedTable:
-			if _, ok := t.Database.(sql.TableDropper); !ok {
-				return nil, transform.SameTree, sql.ErrDropTableNotSupported.New(t.Database.Name())
+			if _, ok := t.SqlDatabase.(sql.TableDropper); !ok {
+				return nil, transform.SameTree, sql.ErrDropTableNotSupported.New(t.Database().Name())
 			}
 		case *plan.UnresolvedTable:
 			if dt.IfExists() {

@@ -763,9 +763,9 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT s as i, i as i from mytable order by 1`,
 		Expected: []sql.Row{
-			{"first row", "first row"},
-			{"second row", "second row"},
-			{"third row", "third row"},
+			{"first row", 1},
+			{"second row", 2},
+			{"third row", 3},
 		},
 	},
 	{
@@ -10197,7 +10197,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "show create table t",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `v1` varchar(10) COLLATE utf8mb4_0900_ai_ci,\n  `v2` varchar(10) COLLATE utf8mb4_0900_ai_ci,\n  PRIMARY KEY (`i`),\n  UNIQUE KEY `v1v2` (`v1`(3),`v2`(5))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"}},
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `v1` varchar(10),\n  `v2` varchar(10),\n  PRIMARY KEY (`i`),\n  UNIQUE KEY `v1v2` (`v1`(3),`v2`(5))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"}},
 			},
 			{
 				Query:    "insert into t values (0, 'a', 'a'), (1, 'ab','ab'), (2, 'abc', 'abc'), (3, 'abcde', 'abcde')",
@@ -10393,4 +10393,12 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 		},
 	},
+}
+
+func MustParseTime(layout, value string) time.Time {
+	parsed, err := time.Parse(layout, value)
+	if err != nil {
+		panic(err)
+	}
+	return parsed
 }

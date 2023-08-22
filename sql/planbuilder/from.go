@@ -64,6 +64,13 @@ func (b *Builder) isLateral(te ast.TableExpr) bool {
 	}
 }
 
+func (b *Builder) isUsingJoin(te *ast.JoinTableExpr) bool {
+	return te.Condition.Using != nil ||
+		strings.EqualFold(te.Join, ast.NaturalJoinStr) ||
+		strings.EqualFold(te.Join, ast.NaturalLeftJoinStr) ||
+		strings.EqualFold(te.Join, ast.NaturalRightJoinStr)
+}
+
 func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *scope) {
 	//TODO build individual table expressions
 	// collect column  definitions
@@ -78,9 +85,8 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 
 	b.validateJoinTableNames(leftScope, rightScope)
 
-	if strings.EqualFold(te.Join, ast.NaturalJoinStr) {
-		// TODO inline resolve natural join
-		return b.buildNaturalJoin(inScope, leftScope, rightScope)
+	if b.isUsingJoin(te) {
+		return b.buildUsingJoin(inScope, leftScope, rightScope, te)
 	}
 
 	outScope = inScope.push()
@@ -88,7 +94,7 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 	outScope.appendColumnsFromScope(rightScope)
 
 	// cross join
-	if te.Condition.On == nil || te.Condition.On == ast.BoolVal(true) {
+	if (te.Condition.On == nil || te.Condition.On == ast.BoolVal(true)) && te.Condition.Using == nil {
 		if rast, ok := te.RightExpr.(*ast.AliasedTableExpr); ok && rast.Lateral {
 			outScope.node = plan.NewJoin(leftScope.node, rightScope.node, plan.JoinTypeLateralCross, expression.NewLiteral(true, types.Boolean))
 		} else {
@@ -97,7 +103,10 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 		return
 	}
 
-	filter := b.buildScalar(outScope, te.Condition.On)
+	var filter sql.Expression
+	if te.Condition.On != nil {
+		filter = b.buildScalar(outScope, te.Condition.On)
+	}
 
 	var op plan.JoinType
 	switch strings.ToLower(te.Join) {
@@ -129,54 +138,107 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 	return outScope
 }
 
-// buildNaturalJoin logically converts a NATURAL_JOIN to an INNER_JOIN.
-// All column names shared by the two tables are used as equality filters
-// in the join. The intersection of all unique columns is projected.
-// Common table attributes are rewritten to reference the left definitions
-// //.
-// NATURAL_JOIN(t1, t2)
-// =>
-// PROJ(t1.a1, ...,t1.aN) -> INNER_JOIN(t1, t2, [t1.a1=t2.a1,..., t1.aN=t2.aN])
-func (b *Builder) buildNaturalJoin(inScope, leftScope, rightScope *scope) (outScope *scope) {
+// buildUsingJoin converts a JOIN with a USING clause into an INNER JOIN, LEFT JOIN, or RIGHT JOIN; NATURAL JOINs are a
+// subset of USING joins.
+// The scope of these join must contain all the qualified columns from both left and right tables. The columns listed
+// in the USING clause must be in both left and right tables, and will be redirected to
+// either the left or right table.
+// An equality filter is created with columns in the USING list. Columns in the USING
+// list are de-duplicated and listed first (in the order they appear in the left table), followed by the remaining
+// columns from the left table, followed by the remaining columns from the right table.
+// NATURAL_JOIN(t1, t2)       => PROJ(t1.a1, ...,t1.aN) -> INNER_JOIN(t1, t2, [t1.a1=t2.a1,..., t1.aN=t2.aN])
+// NATURAL_LEFT_JOIN(t1, t2)  => PROJ(t1.a1, ...,t1.aN) -> LEFT_JOIN (t1, t2, [t1.a1=t2.a1,..., t1.aN=t2.aN])
+// NATURAL_RIGHT_JOIN(t1, t2) => PROJ(t1.a1, ...,t1.aN) -> RIGHT_JOIN(t1, t2, [t1.a1=t2.a1,..., t1.aN=t2.aN])
+// USING_JOIN(t1, t2)         => PROJ(t1.a1, ...,t1.aN) -> INNER_JOIN(t1, t2, [t1.a1=t2.a1,..., t1.aN=t2.aN])
+// USING_LEFT_JOIN(t1, t2)    => PROJ(t1.a1, ...,t1.aN) -> LEFT_JOIN (t1, t2, [t1.a1=t2.a1,..., t1.aN=t2.aN])
+// USING_RIGHT_JOIN(t1, t2)   => PROJ(t1.a1, ...,t1.aN) -> RIGHT_JOIN(t1, t2, [t1.a1=t2.a1,..., t1.aN=t2.aN])
+func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.JoinTableExpr) (outScope *scope) {
 	outScope = inScope.push()
-	var proj []sql.Expression
-	for _, lCol := range leftScope.cols {
-		outScope.addColumn(lCol)
-		proj = append(proj, lCol.scalarGf())
-	}
 
-	var filter sql.Expression
-	for _, rCol := range rightScope.cols {
-		var matched scopeColumn
+	// Fill in USING columns for NATURAL JOINs
+	if len(te.Condition.Using) == 0 {
 		for _, lCol := range leftScope.cols {
-			if lCol.col == rCol.col {
-				matched = lCol
-				break
+			for _, rCol := range rightScope.cols {
+				if strings.EqualFold(lCol.col, rCol.col) {
+					te.Condition.Using = append(te.Condition.Using, ast.NewColIdent(lCol.col))
+					break
+				}
 			}
 		}
-		if !matched.empty() {
-			outScope.redirect(rCol, matched)
-		} else {
-			proj = append(proj, rCol.scalarGf())
-			outScope.addColumn(rCol)
-			continue
-		}
+	}
 
-		f := expression.NewEquals(matched.scalarGf(), rCol.scalarGf())
+	// Right joins swap left and right scopes.
+	var left, right *scope
+	if te.Join == ast.RightJoinStr || te.Join == ast.NaturalRightJoinStr {
+		left, right = rightScope, leftScope
+	} else {
+		left, right = leftScope, rightScope
+	}
+
+	// Add columns in common
+	var filter sql.Expression
+	usingCols := map[string]struct{}{}
+	for _, col := range te.Condition.Using {
+		colName := col.String()
+		// Every column in the USING clause must be in both tables.
+		lCol, ok := left.resolveColumn("", colName, false)
+		if !ok {
+			b.handleErr(sql.ErrUnknownColumn.New(colName, "from clause"))
+		}
+		rCol, ok := right.resolveColumn("", colName, false)
+		if !ok {
+			b.handleErr(sql.ErrUnknownColumn.New(colName, "from clause"))
+		}
+		f := expression.NewEquals(lCol.scalarGf(), rCol.scalarGf())
 		if filter == nil {
 			filter = f
 		} else {
 			filter = expression.NewAnd(filter, f)
 		}
-	}
-	if filter == nil {
-		outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
-		return
+		usingCols[colName] = struct{}{}
+		outScope.redirect(scopeColumn{col: rCol.col}, lCol)
 	}
 
-	jn := plan.NewJoin(leftScope.node, rightScope.node, plan.JoinTypeInner, filter)
-	outScope.node = jn
-	return
+	// Add common columns first, then left, then right.
+	// The order of columns for the common section must match left table
+	for _, lCol := range left.cols {
+		if _, ok := usingCols[lCol.col]; ok {
+			outScope.addColumn(lCol)
+		}
+	}
+	for _, rCol := range right.cols {
+		if _, ok := usingCols[rCol.col]; ok {
+			outScope.addColumn(rCol)
+		}
+	}
+	for _, lCol := range left.cols {
+		if _, ok := usingCols[lCol.col]; !ok {
+			outScope.addColumn(lCol)
+		}
+	}
+	for _, rCol := range right.cols {
+		if _, ok := usingCols[rCol.col]; !ok {
+			outScope.addColumn(rCol)
+		}
+	}
+
+	// joining two tables with no common columns is just cross join
+	if len(te.Condition.Using) == 0 {
+		outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
+		return outScope
+	}
+
+	switch strings.ToLower(te.Join) {
+	case ast.JoinStr, ast.NaturalJoinStr:
+		outScope.node = plan.NewInnerJoin(leftScope.node, rightScope.node, filter)
+	case ast.LeftJoinStr, ast.NaturalLeftJoinStr:
+		outScope.node = plan.NewLeftOuterJoin(leftScope.node, rightScope.node, filter)
+	case ast.RightJoinStr, ast.NaturalRightJoinStr:
+		outScope.node = plan.NewRightOuterJoin(leftScope.node, rightScope.node, filter)
+	default:
+		b.handleErr(fmt.Errorf("unknown using join type: %s", te.Join))
+	}
+	return outScope
 }
 
 func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *scope) {

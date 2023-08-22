@@ -27,7 +27,7 @@ type scope struct {
 	// extraCols are auxillary output columns required
 	// for sorting or grouping
 	extraCols []scopeColumn
-	// redirectCol is used for natural join right-table
+	// redirectCol is used for using and natural joins right-table
 	// attributes that redirect to the left table intersection
 	redirectCol map[string]scopeColumn
 	// tables are the list of table definitions in this scope
@@ -53,6 +53,14 @@ func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn,
 			return col, true
 		}
 	}
+
+	// Unqualified columns that have been redirected should return early to avoid ambiguous column errors.
+	if table == "" && s.redirectCol != nil {
+		if rCol, ok := s.redirectCol[col]; ok {
+			return rCol, true
+		}
+	}
+
 	var found scopeColumn
 	var foundCand bool
 	for _, c := range s.cols {
@@ -81,9 +89,6 @@ func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn,
 	}
 	if foundCand {
 		return found, true
-	}
-	if c, ok := s.redirectCol[fmt.Sprintf("%s.%s", table, col)]; ok {
-		return c, true
 	}
 
 	if s.groupBy != nil {
@@ -359,11 +364,7 @@ func (s *scope) addColumn(col scopeColumn) {
 	if s.exprs == nil {
 		s.exprs = make(map[string]columnId)
 	}
-	if col.table != "" {
-		s.exprs[fmt.Sprintf("%s.%s", strings.ToLower(col.table), strings.ToLower(col.col))] = col.id
-	} else {
-		s.exprs[strings.ToLower(col.col)] = col.id
-	}
+	s.exprs[strings.ToLower(col.String())] = col.id
 	return
 }
 

@@ -48,7 +48,7 @@ var AlterTableScripts = []ScriptTest{
 		// https://github.com/dolthub/dolt/issues/6206
 		Name: "alter table containing column default value expressions",
 		SetUpScript: []string{
-			"create table t (pk int primary key, col1 timestamp default current_timestamp(), col2 varchar(1000), index idx1 (pk, col1));",
+			"create table t (pk int primary key, col1 timestamp(6) default current_timestamp(), col2 varchar(1000), index idx1 (pk, col1));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -420,6 +420,105 @@ var AlterTableScripts = []ScriptTest{
 					{2, 2, 2, nil},
 					{3, 3, 3, nil},
 				},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE does not change column collations",
+		SetUpScript: []string{
+			"CREATE TABLE test1 (v1 VARCHAR(200), v2 ENUM('a'), v3 SET('a'));",
+			"CREATE TABLE test2 (v1 VARCHAR(200), v2 ENUM('a'), v3 SET('a')) COLLATE=utf8mb4_general_ci;",
+			"CREATE TABLE test3 (v1 VARCHAR(200) COLLATE utf8mb4_general_ci, v2 ENUM('a'), v3 SET('a') CHARACTER SET utf8mb3) COLLATE=utf8mb4_general_ci",
+			"CREATE TABLE test4 (v1 VARCHAR(200) COLLATE utf8mb4_0900_ai_ci, v2 ENUM('a') COLLATE utf8mb4_general_ci, v3 SET('a') COLLATE utf8mb4_unicode_ci) COLLATE=utf8mb4_bin;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SHOW CREATE TABLE test1",
+				Expected: []sql.Row{{"test1",
+					"CREATE TABLE `test1` (\n" +
+						"  `v1` varchar(200),\n" +
+						"  `v2` enum('a'),\n" +
+						"  `v3` set('a')\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "SHOW CREATE TABLE test2",
+				Expected: []sql.Row{{"test2",
+					"CREATE TABLE `test2` (\n" +
+						"  `v1` varchar(200),\n" +
+						"  `v2` enum('a'),\n" +
+						"  `v3` set('a')\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"}},
+			},
+			{
+				Query: "SHOW CREATE TABLE test3",
+				Expected: []sql.Row{{"test3",
+					"CREATE TABLE `test3` (\n" +
+						"  `v1` varchar(200),\n" +
+						"  `v2` enum('a'),\n" +
+						"  `v3` set('a') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"}},
+			},
+			{
+				Query: "SHOW CREATE TABLE test4",
+				Expected: []sql.Row{{"test4",
+					"CREATE TABLE `test4` (\n" +
+						"  `v1` varchar(200) COLLATE utf8mb4_0900_ai_ci,\n" +
+						"  `v2` enum('a') COLLATE utf8mb4_general_ci,\n" +
+						"  `v3` set('a') COLLATE utf8mb4_unicode_ci\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"}},
+			},
+			{
+				Query:    "ALTER TABLE test1 COLLATE utf8mb4_general_ci;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE test2 COLLATE utf8mb4_0900_bin;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE test3 COLLATE utf8mb4_0900_bin;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE test4 COLLATE utf8mb4_unicode_ci;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "SHOW CREATE TABLE test1",
+				Expected: []sql.Row{{"test1",
+					"CREATE TABLE `test1` (\n" +
+						"  `v1` varchar(200) COLLATE utf8mb4_0900_bin,\n" +
+						"  `v2` enum('a') COLLATE utf8mb4_0900_bin,\n" +
+						"  `v3` set('a') COLLATE utf8mb4_0900_bin\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"}},
+			},
+			{
+				Query: "SHOW CREATE TABLE test2",
+				Expected: []sql.Row{{"test2",
+					"CREATE TABLE `test2` (\n" +
+						"  `v1` varchar(200) COLLATE utf8mb4_general_ci,\n" +
+						"  `v2` enum('a') COLLATE utf8mb4_general_ci,\n" +
+						"  `v3` set('a') COLLATE utf8mb4_general_ci\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "SHOW CREATE TABLE test3",
+				Expected: []sql.Row{{"test3",
+					"CREATE TABLE `test3` (\n" +
+						"  `v1` varchar(200) COLLATE utf8mb4_general_ci,\n" +
+						"  `v2` enum('a') COLLATE utf8mb4_general_ci,\n" +
+						"  `v3` set('a') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "SHOW CREATE TABLE test4",
+				Expected: []sql.Row{{"test4",
+					"CREATE TABLE `test4` (\n" +
+						"  `v1` varchar(200) COLLATE utf8mb4_0900_ai_ci,\n" +
+						"  `v2` enum('a') COLLATE utf8mb4_general_ci,\n" +
+						"  `v3` set('a')\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"}},
 			},
 		},
 	},

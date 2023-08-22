@@ -876,10 +876,7 @@ func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expressio
 		b.handleErr(err)
 	}
 
-	innerTbl := rt.Table
-	if t, ok := innerTbl.(sql.TableWrapper); ok {
-		innerTbl = t.Underlying()
-	}
+	innerTbl := rt.UnderlyingTable()
 	indexedTbl, ok := innerTbl.(sql.IndexAddressableTable)
 	if !ok {
 		err := fmt.Errorf("cannot use MATCH ... AGAINST ... on a table that does not declare indexes")
@@ -916,7 +913,7 @@ func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expressio
 	fullindexTableNames := [5]string{tableNames.Config, tableNames.Position, tableNames.DocCount, tableNames.GlobalCount, tableNames.RowCount}
 	idxTables := make([]sql.IndexAddressableTable, 5)
 	for i, name := range fullindexTableNames {
-		configTbl, ok, err := rt.Database.GetTableInsensitive(b.ctx, name)
+		configTbl, ok, err := rt.SqlDatabase.GetTableInsensitive(b.ctx, name)
 		if err != nil {
 			b.handleErr(err)
 		}

@@ -34,14 +34,10 @@ exprs:
   - [swapCmp, "bool"]
 - name: "FullOuterJoin"
   join: true
-- name: "LateralCrossJoin"
-  join: true
-- name: "LateralInnerJoin"
-  join: true
-- name: "LateralLeftJoin"
+- name: "LateralJoin"
   join: true
 - name: "TableScan"
-  sourceType: "*plan.ResolvedTable"
+  sourceType: "plan.TableNode"
 - name: "Values"
   sourceType: "*plan.ValueDerivedTable"
 - name: "TableAlias"

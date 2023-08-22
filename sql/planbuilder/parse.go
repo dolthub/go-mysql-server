@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/dolthub/vitess/go/vt/sqlparser"
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"gopkg.in/src-d/go-errors.v1"
@@ -22,16 +22,16 @@ var ErrMaxAnalysisIters = errors.NewKind("exceeded max analysis iterations (%d)"
 // Parse parses the given SQL |query| using the default parsing settings and returns the corresponding node.
 func Parse(ctx *sql.Context, cat sql.Catalog, query string) (ret sql.Node, err error) {
 	sqlMode, err := sql.LoadSqlMode(ctx)
-	var parserOpts sqlparser.ParserOptions
+	var parserOpts ast.ParserOptions
 	if err != nil {
-		parserOpts = sqlparser.ParserOptions{}
+		parserOpts = ast.ParserOptions{}
 	} else {
 		parserOpts = sqlMode.ParserOptions()
 	}
 	return ParseWithOptions(ctx, cat, query, parserOpts)
 }
 
-func ParseWithOptions(ctx *sql.Context, cat sql.Catalog, query string, options sqlparser.ParserOptions) (ret sql.Node, err error) {
+func ParseWithOptions(ctx *sql.Context, cat sql.Catalog, query string, options ast.ParserOptions) (ret sql.Node, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			switch r := r.(type) {
@@ -55,7 +55,7 @@ func ParseOne(ctx *sql.Context, cat sql.Catalog, query string) (sql.Node, string
 	return parse(ctx, cat, query, true, sqlMode.ParserOptions())
 }
 
-func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool, options sqlparser.ParserOptions) (sql.Node, string, string, error) {
+func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool, options ast.ParserOptions) (sql.Node, string, string, error) {
 	span, ctx := ctx.Span("parse", trace.WithAttributes(attribute.String("query", query)))
 	defer span.End()
 
@@ -65,17 +65,17 @@ func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool, options 
 		return r == ';' || unicode.IsSpace(r)
 	})
 
-	var stmt sqlparser.Statement
+	var stmt ast.Statement
 	var err error
 	var parsed string
 	var remainder string
 
 	parsed = s
 	if !multi {
-		stmt, err = sqlparser.ParseWithOptions(s, options)
+		stmt, err = ast.ParseWithOptions(s, options)
 	} else {
 		var ri int
-		stmt, ri, err = sqlparser.ParseOneWithOptions(s, options)
+		stmt, ri, err = ast.ParseOneWithOptions(s, options)
 		if ri != 0 && ri < len(s) {
 			parsed = s[:ri]
 			parsed = strings.TrimSpace(parsed)
@@ -89,7 +89,7 @@ func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool, options 
 	}
 
 	if err != nil {
-		if goerrors.Is(err, sqlparser.ErrEmpty) {
+		if goerrors.Is(err, ast.ErrEmpty) {
 			ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")
 			return plan.NothingImpl, parsed, remainder, nil
 		}
@@ -127,14 +127,14 @@ func (b *Builder) Parse(query string, multi bool) (ret sql.Node, parsed, remaind
 		return r == ';' || unicode.IsSpace(r)
 	})
 
-	var stmt sqlparser.Statement
+	var stmt ast.Statement
 
 	parsed = s
 	if !multi {
-		stmt, err = sqlparser.ParseWithOptions(s, b.parserOpts)
+		stmt, err = ast.ParseWithOptions(s, b.parserOpts)
 	} else {
 		var ri int
-		stmt, ri, err = sqlparser.ParseOneWithOptions(s, b.parserOpts)
+		stmt, ri, err = ast.ParseOneWithOptions(s, b.parserOpts)
 		if ri != 0 && ri < len(s) {
 			parsed = s[:ri]
 			parsed = strings.TrimSpace(parsed)
@@ -147,7 +147,7 @@ func (b *Builder) Parse(query string, multi bool) (ret sql.Node, parsed, remaind
 	}
 
 	if err != nil {
-		if goerrors.Is(err, sqlparser.ErrEmpty) {
+		if goerrors.Is(err, ast.ErrEmpty) {
 			ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")
 			return plan.NothingImpl, parsed, remainder, nil
 		}
@@ -157,4 +157,55 @@ func (b *Builder) Parse(query string, multi bool) (ret sql.Node, parsed, remaind
 	outScope := b.build(nil, stmt, s)
 
 	return outScope.node, parsed, remainder, err
+}
+
+func (b *Builder) BindOnly(stmt ast.Statement, s string) (ret sql.Node, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			switch r := r.(type) {
+			case parseErr:
+				err = r.err
+			default:
+				panic(r)
+			}
+		}
+	}()
+	outScope := b.build(nil, stmt, s)
+	return outScope.node, err
+}
+
+func ParseOnly(ctx *sql.Context, query string, multi bool) (ast.Statement, string, string, error) {
+	sqlMode, err := sql.LoadSqlMode(ctx)
+	if err != nil {
+		return nil, "", "", err
+	}
+	options := sqlMode.ParserOptions()
+
+	s := strings.TrimSpace(query)
+	// trim spaces and empty statements
+	s = strings.TrimRightFunc(s, func(r rune) bool {
+		return r == ';' || unicode.IsSpace(r)
+	})
+
+	var stmt ast.Statement
+	var parsed string
+	var remainder string
+
+	parsed = s
+	if !multi {
+		stmt, err = ast.ParseWithOptions(s, options)
+	} else {
+		var ri int
+		stmt, ri, err = ast.ParseOneWithOptions(s, options)
+		if ri != 0 && ri < len(s) {
+			parsed = s[:ri]
+			parsed = strings.TrimSpace(parsed)
+			// trim spaces and empty statements
+			parsed = strings.TrimRightFunc(parsed, func(r rune) bool {
+				return r == ';' || unicode.IsSpace(r)
+			})
+			remainder = s[ri:]
+		}
+	}
+	return stmt, query, remainder, err
 }
