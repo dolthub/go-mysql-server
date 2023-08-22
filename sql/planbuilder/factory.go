@@ -136,3 +136,17 @@ func (f *factory) buildConvert(expr sql.Expression, castToType string, typeLengt
 	}
 	return n, nil
 }
+
+func (f *factory) buildJoin(l, r sql.Node, op plan.JoinType, cond sql.Expression) (sql.Node, error) {
+	{
+		if _, empty := l.(*plan.EmptyTable); empty {
+			f.log("folded empty table join")
+			return plan.NewEmptyTableWithSchema(append(l.Schema(), r.Schema()...)), nil
+		}
+		if _, empty := r.(*plan.EmptyTable); empty && !op.IsLeftOuter() {
+			f.log("folded empty table join")
+			return plan.NewEmptyTableWithSchema(append(l.Schema(), r.Schema()...)), nil
+		}
+	}
+	return plan.NewJoin(l, r, op, cond), nil
+}

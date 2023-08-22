@@ -63,7 +63,6 @@ var OnceAfterDefault = []Rule{
 	{loadEventsId, loadEvents},
 	{processTruncateId, processTruncate},
 	{stripTableNameInDefaultsId, stripTableNamesFromColumnDefaults},
-	{foldEmptyJoinsId, foldEmptyJoins},
 	{pushFiltersId, pushFilters},
 	{optimizeJoinsId, optimizeJoins},
 	{generateIndexScansId, generateIndexScans},

@@ -146,7 +146,11 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 	default:
 		b.handleErr(fmt.Errorf("unknown join type: %s", te.Join))
 	}
-	outScope.node = plan.NewJoin(leftScope.node, rightScope.node, op, filter)
+	var err error
+	outScope.node, err = b.f.buildJoin(leftScope.node, rightScope.node, op, filter)
+	if err != nil {
+		b.handleErr(err)
+	}
 
 	return outScope
 }

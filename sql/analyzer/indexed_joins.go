@@ -1042,28 +1042,3 @@ func transposeRightJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 		return n, transform.SameTree, nil
 	})
 }
-
-// foldEmptyJoins pulls EmptyJoins up the operator tree where valid.
-// LEFT_JOIN and ANTI_JOIN are two cases where an empty right-hand
-// relation must be preserved.
-func foldEmptyJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		switch n := n.(type) {
-		case *plan.JoinNode:
-			_, leftEmpty := n.Left().(*plan.EmptyTable)
-			_, rightEmpty := n.Left().(*plan.EmptyTable)
-			switch {
-			case n.Op.IsAnti(), n.Op.IsLeftOuter():
-				if leftEmpty {
-					return plan.NewEmptyTableWithSchema(n.Schema()), transform.NewTree, nil
-				}
-			default:
-				if leftEmpty || rightEmpty {
-					return plan.NewEmptyTableWithSchema(n.Schema()), transform.NewTree, nil
-				}
-			}
-		default:
-		}
-		return n, transform.SameTree, nil
-	})
-}
