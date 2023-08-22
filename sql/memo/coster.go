@@ -75,12 +75,8 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 		return c.costLookupJoin(ctx, n, s)
 	case *RangeHeapJoin:
 		return c.costRangeHeapJoin(ctx, n, s)
-	case *LateralCrossJoin:
-		return c.costLateralCrossJoin(ctx, n, s)
-	case *LateralInnerJoin:
-		return c.costLateralInnerJoin(ctx, n, s)
-	case *LateralLeftJoin:
-		return c.costLateralLeftJoin(ctx, n, s)
+	case *LateralJoin:
+		return c.costLateralJoin(ctx, n, s)
 	case *SemiJoin:
 		return c.costSemiJoin(ctx, n, s)
 	case *AntiJoin:
@@ -120,14 +116,10 @@ func (c *coster) costTableAlias(ctx *sql.Context, n *TableAlias, s sql.StatsRead
 }
 
 func (c *coster) costScan(ctx *sql.Context, t *TableScan, s sql.StatsReader) (float64, error) {
-	return c.costRead(ctx, t.Table.Table, s)
+	return c.costRead(ctx, t.Table.UnderlyingTable(), s)
 }
 
 func (c *coster) costRead(ctx *sql.Context, t sql.Table, s sql.StatsReader) (float64, error) {
-	if w, ok := t.(sql.TableWrapper); ok {
-		t = w.Underlying()
-	}
-
 	db := ctx.GetCurrentDatabase()
 	card, ok, err := s.RowCount(ctx, db, t.Name())
 	if err != nil || !ok {
@@ -203,19 +195,7 @@ func (c *coster) costRangeHeapJoin(_ *sql.Context, n *RangeHeapJoin, _ sql.Stats
 	return l * expectedNumberOfOverlappingJoins * (seqIOCostFactor), nil
 }
 
-func (c *coster) costLateralCrossJoin(ctx *sql.Context, n *LateralCrossJoin, _ sql.StatsReader) (float64, error) {
-	l := n.Left.RelProps.card
-	r := n.Right.RelProps.card
-	return ((l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor) * degeneratePenalty, nil
-}
-
-func (c *coster) costLateralInnerJoin(ctx *sql.Context, n *LateralInnerJoin, _ sql.StatsReader) (float64, error) {
-	l := n.Left.RelProps.card
-	r := n.Right.RelProps.card
-	return (l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor, nil
-}
-
-func (c *coster) costLateralLeftJoin(ctx *sql.Context, n *LateralLeftJoin, _ sql.StatsReader) (float64, error) {
+func (c *coster) costLateralJoin(ctx *sql.Context, n *LateralJoin, _ sql.StatsReader) (float64, error) {
 	l := n.Left.RelProps.card
 	r := n.Right.RelProps.card
 	return (l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor, nil
@@ -366,6 +346,8 @@ func (c *carder) cardRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 				sel += lookupJoinSelectivity(l)
 			}
 			return n.Left.RelProps.card * optimisticJoinSel * sel, nil
+		case *LateralJoin:
+			return n.Left.RelProps.card * n.Right.RelProps.card, nil
 		default:
 		}
 		if jp.Op.IsPartial() {
@@ -392,21 +374,17 @@ func (c *carder) cardRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 func (c *carder) statsTableAlias(ctx *sql.Context, n *TableAlias, s sql.StatsReader) (float64, error) {
 	switch n := n.Table.Child.(type) {
 	case *plan.ResolvedTable:
-		return c.statsRead(ctx, n.Table, n.Database.Name(), s)
+		return c.statsRead(ctx, n.UnderlyingTable(), n.SqlDatabase.Name(), s)
 	default:
 		return 1000, nil
 	}
 }
 
 func (c *carder) statsScan(ctx *sql.Context, t *TableScan, s sql.StatsReader) (float64, error) {
-	return c.statsRead(ctx, t.Table.Table, t.Table.Database.Name(), s)
+	return c.statsRead(ctx, t.Table.UnderlyingTable(), t.Table.Database().Name(), s)
 }
 
 func (c *carder) statsRead(ctx *sql.Context, t sql.Table, db string, s sql.StatsReader) (float64, error) {
-	if w, ok := t.(sql.TableWrapper); ok {
-		t = w.Underlying()
-	}
-
 	card, ok, err := s.RowCount(ctx, db, t.Name())
 	if err != nil || !ok {
 		// TODO: better estimates for derived tables

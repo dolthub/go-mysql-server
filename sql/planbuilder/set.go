@@ -195,7 +195,10 @@ func (b *Builder) buildSysVar(colName *ast.ColName, scopeHint ast.SetScope) (sql
 		if err != nil {
 			b.handleErr(err)
 		}
-		return expression.NewUserVarWithType(varName, t), scope, true
+		if t != nil {
+			return expression.NewUserVarWithType(varName, t), scope, true
+		}
+		return expression.NewUserVar(varName), scope, true
 	case ast.SetScope_Persist:
 		return expression.NewSystemVar(varName, sql.SystemVariableScope_Persist), scope, true
 	case ast.SetScope_PersistOnly:

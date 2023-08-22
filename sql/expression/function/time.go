@@ -48,9 +48,9 @@ func getDate(ctx *sql.Context,
 		return nil, nil
 	}
 
-	date, err := types.Datetime.ConvertWithoutRangeCheck(val)
+	date, err := types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(val)
 	if err != nil {
-		date = types.Datetime.Zero().(time.Time)
+		date = types.DatetimeMaxPrecision.Zero().(time.Time)
 	}
 
 	return date, nil
@@ -902,7 +902,7 @@ func (n *Now) Description() string {
 
 // Type implements the sql.Expression interface.
 func (n *Now) Type() sql.Type {
-	return types.Datetime
+	return types.DatetimeMaxPrecision
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -1031,7 +1031,7 @@ func (ut *UTCTimestamp) Description() string {
 
 // Type implements the sql.Expression interface.
 func (ut *UTCTimestamp) Type() sql.Type {
-	return types.Datetime
+	return types.DatetimeMaxPrecision
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -1149,7 +1149,7 @@ func (dtf *UnaryDatetimeFunc) EvalChild(ctx *sql.Context, row sql.Row) (interfac
 		return nil, nil
 	}
 
-	ret, _, err := types.Datetime.Convert(val)
+	ret, _, err := types.DatetimeMaxPrecision.Convert(val)
 	return ret, err
 }
 
@@ -1463,7 +1463,7 @@ func (c *CurrTimestamp) String() string {
 	return fmt.Sprintf("CURRENT_TIMESTAMP(%s)", c.Args[0].String())
 }
 
-func (c *CurrTimestamp) Type() sql.Type { return types.Datetime }
+func (c *CurrTimestamp) Type() sql.Type { return types.DatetimeMaxPrecision }
 
 func (c *CurrTimestamp) IsNullable() bool {
 	for _, arg := range c.Args {
@@ -1598,7 +1598,7 @@ func (t *Time) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// convert to date
-	date, err := types.Datetime.ConvertWithoutRangeCheck(v)
+	date, err := types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(v)
 	if err == nil {
 		h, m, s := date.Clock()
 		us := date.Nanosecond() / 1000

@@ -278,18 +278,6 @@ type AutoIncrementSetter interface {
 	Closer
 }
 
-// AutoIncrementGetter is implemented by tables that support AUTO_INCREMENT to return the next value that will be
-// inserted, given a particular insert value provided by the client.
-type AutoIncrementGetter interface {
-	GetNextAutoIncrementValue(ctx *Context, insertVal interface{}) (uint64, error)
-}
-
-// AutoIncrementEditor is an interface for tables that support changing the value of auto increment columns.
-type AutoIncrementEditor interface {
-	AutoIncrementSetter
-	AutoIncrementGetter
-}
-
 // ReplaceableTable allows rows to be replaced through a Delete (if applicable) then Insert.
 type ReplaceableTable interface {
 	Table
@@ -374,4 +362,16 @@ type UnresolvedTable interface {
 	WithAsOf(asOf Expression) (Node, error)
 	// AsOf returns this table's asof expression.
 	AsOf() Expression
+}
+
+// TableNode is an interface for nodes that are also tables. A node that implements this interface exposes all the
+// information needed for filters on the table to be optimized into indexes. This is possible when the return value
+// of `UnderlyingTable` is a table that implements `sql.IndexAddressable`
+// For an example of how to use this interface to optimize a system table or table function, see memory.IntSequenceTable
+type TableNode interface {
+	Table
+	Node
+	CollationCoercible
+	Databaser
+	UnderlyingTable() Table
 }

@@ -506,6 +506,42 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 
 // String implements Type interface.
 func (t StringType) String() string {
+	return t.StringWithTableCollation(sql.Collation_Default)
+}
+
+// Type implements Type interface.
+func (t StringType) Type() query.Type {
+	return t.baseType
+}
+
+// ValueType implements Type interface.
+func (t StringType) ValueType() reflect.Type {
+	if IsBinaryType(t) {
+		return byteValueType
+	}
+	return stringValueType
+}
+
+// Zero implements Type interface.
+func (t StringType) Zero() interface{} {
+	return ""
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (t StringType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return t.collation, 4
+}
+
+func (t StringType) CharacterSet() sql.CharacterSetID {
+	return t.collation.CharacterSet()
+}
+
+func (t StringType) Collation() sql.CollationID {
+	return t.collation
+}
+
+// StringWithTableCollation implements sql.TypeWithCollation interface.
+func (t StringType) StringWithTableCollation(tableCollation sql.CollationID) string {
 	var s string
 
 	switch t.baseType {
@@ -540,46 +576,15 @@ func (t StringType) String() string {
 	}
 
 	if t.CharacterSet() != sql.CharacterSet_binary {
-		if t.CharacterSet() != sql.Collation_Default.CharacterSet() {
+		if t.CharacterSet() != tableCollation.CharacterSet() {
 			s += " CHARACTER SET " + t.CharacterSet().String()
 		}
-		if t.collation != sql.Collation_Default {
+		if t.collation != tableCollation {
 			s += " COLLATE " + t.collation.Name()
 		}
 	}
 
 	return s
-}
-
-// Type implements Type interface.
-func (t StringType) Type() query.Type {
-	return t.baseType
-}
-
-// ValueType implements Type interface.
-func (t StringType) ValueType() reflect.Type {
-	if IsBinaryType(t) {
-		return byteValueType
-	}
-	return stringValueType
-}
-
-// Zero implements Type interface.
-func (t StringType) Zero() interface{} {
-	return ""
-}
-
-// CollationCoercibility implements sql.CollationCoercible interface.
-func (t StringType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	return t.collation, 4
-}
-
-func (t StringType) CharacterSet() sql.CharacterSetID {
-	return t.collation.CharacterSet()
-}
-
-func (t StringType) Collation() sql.CollationID {
-	return t.collation
 }
 
 // WithNewCollation implements TypeWithCollation interface.

@@ -134,12 +134,14 @@ var TableFunctionScriptTests = []ScriptTest{
 		ExpectedErr: sql.ErrTableNotFound,
 	},
 	{
-		Query:    "select seq1.x, seq2.y from sequence_table('x', 5) seq1 join sequence_table('y', 5) seq2 on seq1.x = seq2.y",
-		Expected: []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}},
+		Query:           "select seq1.x, seq2.y from sequence_table('x', 5) seq1 join sequence_table('y', 5) seq2 on seq1.x = seq2.y",
+		Expected:        []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}},
+		ExpectedIndexes: []string{"y", "x"},
 	},
 	{
-		Query:    "select * from sequence_table('x', 5) seq1 join sequence_table('y', 5) seq2 on x = 0",
-		Expected: []sql.Row{{0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 4}},
+		Query:           "select * from sequence_table('x', 5) seq1 join sequence_table('y', 5) seq2 on x = 0",
+		Expected:        []sql.Row{{0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 4}},
+		ExpectedIndexes: []string{"x"},
 	},
 	{
 		Query:    "with cte as (select seq.x from sequence_table('x', 5) seq) select cte.x from cte",
@@ -156,5 +158,10 @@ var TableFunctionScriptTests = []ScriptTest{
 	{
 		Query:    "select sq.xx from (select seq.x as xx from sequence_table('x', 5) seq) sq",
 		Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
+	},
+	{
+		Query:           "select * from sequence_table('x', 5) where x = 2",
+		Expected:        []sql.Row{{2}},
+		ExpectedIndexes: []string{"x"},
 	},
 }

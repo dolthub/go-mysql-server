@@ -94,7 +94,6 @@ func (f *Filter) Expressions() []sql.Expression {
 type FilterIter struct {
 	cond      sql.Expression
 	childIter sql.RowIter
-	ParentRow sql.Row
 }
 
 // NewFilterIter creates a new FilterIter.
@@ -113,7 +112,7 @@ func (i *FilterIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 
-		res, err := sql.EvaluateCondition(ctx, i.cond, append(i.ParentRow, row...))
+		res, err := sql.EvaluateCondition(ctx, i.cond, row)
 		if err != nil {
 			return nil, err
 		}

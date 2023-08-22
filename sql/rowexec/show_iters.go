@@ -340,6 +340,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 	}
 
 	// Statement creation parts for each column
+	tableCollation := table.Collation()
 	for i, col := range schema {
 		var colDefaultStr string
 		// TODO: The columns that are rendered in defaults should be backticked
@@ -359,7 +360,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			pkOrdinals = append(pkOrdinals, i)
 		}
 
-		colStmts[i] = sql.GenerateCreateTableColumnDefinition(col, colDefaultStr)
+		colStmts[i] = sql.GenerateCreateTableColumnDefinition(col, colDefaultStr, tableCollation)
 	}
 
 	for _, i := range pkOrdinals {
