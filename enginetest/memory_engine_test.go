@@ -145,9 +145,9 @@ func TestSingleQuery(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-
-	engine.Analyzer.Debug = true
-	engine.Analyzer.Verbose = true
+	
+	engine.EngineAnalyzer().Debug = true
+	engine.EngineAnalyzer().Verbose = true
 
 	enginetest.TestQueryWithEngine(t, harness, engine, test)
 }
@@ -178,8 +178,8 @@ func TestSingleQueryPrepared(t *testing.T) {
 		panic(err)
 	}
 
-	engine.Analyzer.Debug = true
-	engine.Analyzer.Verbose = true
+	engine.EngineAnalyzer().Debug = true
+	engine.EngineAnalyzer().Verbose = true
 
 	enginetest.TestScriptWithEnginePrepared(t, engine, harness, test)
 }
@@ -265,8 +265,8 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		engine.Analyzer.Debug = true
-		engine.Analyzer.Verbose = true
+		engine.EngineAnalyzer().Debug = true
+		engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}

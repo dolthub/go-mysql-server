@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dolthub/go-mysql-server/enginetest"
+	sqle "github.com/dolthub/go-mysql-server"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -87,7 +87,7 @@ type QuickPrivilegeTest struct {
 // the SetUpScript.
 type ServerAuthenticationTest struct {
 	Name        string
-	SetUpFunc   func(ctx *sql.Context, t *testing.T, engine enginetest.QueryEngine)
+	SetUpFunc   func(ctx *sql.Context, t *testing.T, engine *sqle.Engine)
 	SetUpScript []string
 	Assertions  []ServerAuthenticationTestAssertion
 }
@@ -2114,7 +2114,7 @@ var ServerAuthTests = []ServerAuthenticationTest{
 			"CREATE USER `test-user`@localhost IDENTIFIED WITH authentication_dolt_jwt AS 'jwks=testing,sub=test-user,iss=dolthub.com,aud=some_id';",
 			"GRANT ALL ON *.* TO `test-user`@localhost WITH GRANT OPTION;",
 		},
-		SetUpFunc: func(ctx *sql.Context, t *testing.T, engine enginetest.QueryEngine) {
+		SetUpFunc: func(ctx *sql.Context, t *testing.T, engine *sqle.Engine) {
 			plugins := map[string]mysql_db.PlaintextAuthPlugin{"authentication_dolt_jwt": &NoopPlaintextPlugin{}}
 			engine.EngineAnalyzer().Catalog.MySQLDb.SetPlugins(plugins)
 		},
@@ -2141,7 +2141,7 @@ var ServerAuthTests = []ServerAuthenticationTest{
 	},
 	{
 		Name: "Adding a Super User directly",
-		SetUpFunc: func(ctx *sql.Context, t *testing.T, engine enginetest.QueryEngine) {
+		SetUpFunc: func(ctx *sql.Context, t *testing.T, engine *sqle.Engine) {
 			ed := engine.EngineAnalyzer().Catalog.MySQLDb.Editor()
 			defer ed.Close()
 			engine.EngineAnalyzer().Catalog.MySQLDb.AddSuperUser(ed, "bestuser", "localhost", "the_pass")
