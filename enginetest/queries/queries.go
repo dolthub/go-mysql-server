@@ -8525,6 +8525,10 @@ type QueryErrorTest struct {
 
 var ErrorQueries = []QueryErrorTest{
 	{
+		Query:       "select i from (select * from mytable a join mytable b on a.i = b.i) dt",
+		ExpectedErr: sql.ErrAmbiguousColumnName,
+	},
+	{
 		Query:       "select table_name from information_schema.statistics AS OF '2023-08-31' WHERE table_schema='mydb'",
 		ExpectedErr: sql.ErrAsOfNotSupported,
 	},
