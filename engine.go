@@ -226,11 +226,6 @@ func (e *Engine) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter,
 	return e.QueryWithBindings(ctx, query, nil)
 }
 
-// QueryWithBindings executes the query given with the bindings provided
-func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
-	return e.QueryNodeWithBindings(ctx, query, bindings)
-}
-
 func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.Expression, error) {
 	res := make(map[string]sql.Expression, len(bindings))
 	for k, v := range bindings {
@@ -341,9 +336,9 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 	return res, nil
 }
 
-// QueryNodeWithBindings executes the query given with the bindings provided. If parsed is non-nil, it will be used
+// QueryWithBindings executes the query given with the bindings provided. If parsed is non-nil, it will be used
 // instead of parsing the query from text.
-func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
+func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
 	var err error
 	if prep, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query); ok {
 		query, err = prep.GenerateQuery(bindings, nil)

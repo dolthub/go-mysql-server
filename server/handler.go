@@ -259,7 +259,7 @@ func (h *Handler) doQuery(
 		}
 	}()
 
-	schema, rowIter, err := h.e.QueryNodeWithBindings(ctx, query, bindings)
+	schema, rowIter, err := h.e.QueryWithBindings(ctx, query, bindings)
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
 		return remainder, err
