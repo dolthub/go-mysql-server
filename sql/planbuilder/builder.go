@@ -59,10 +59,7 @@ type ProcContext struct {
 }
 
 func New(ctx *sql.Context, cat sql.Catalog) (*Builder, error) {
-	sqlMode, err := sql.LoadSqlMode(ctx)
-	if err != nil {
-		return nil, err
-	}
+	sqlMode := sql.LoadSqlMode(ctx)
 	return &Builder{ctx: ctx, cat: cat, parserOpts: sqlMode.ParserOptions(), f: &factory{}}, nil
 }
 

@@ -321,10 +321,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
-	sqlMode, err := sql.LoadSqlMode(ctx)
-	if err != nil {
-		return nil, err
-	}
+	sqlMode := sql.LoadSqlMode(ctx)
 
 	var eventDefinition = sql.EventDefinition{
 		Name:            c.eventDetails.Name,
@@ -334,7 +331,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		SqlMode:         sqlMode.String(),
 	}
 
-	err = c.eventDb.SaveEvent(ctx, eventDefinition)
+	err := c.eventDb.SaveEvent(ctx, eventDefinition)
 	if err != nil {
 		if sql.ErrEventAlreadyExists.Is(err) && c.ifNotExists {
 			ctx.Session.Warn(&sql.Warning{

@@ -368,10 +368,7 @@ func injectBindVarsAndPrepare(
 	e *sqle.Engine,
 	q string,
 ) (string, map[string]*querypb.BindVariable, error) {
-	sqlMode, err := sql.LoadSqlMode(ctx)
-	if err != nil {
-		return "", nil, err
-	}
+	sqlMode := sql.LoadSqlMode(ctx)
 	parsed, err := sqlparser.ParseWithOptions(q, sqlMode.ParserOptions())
 	if err != nil {
 		return q, nil, sql.ErrSyntaxError.New(err)
