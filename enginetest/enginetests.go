@@ -3529,6 +3529,28 @@ func TestFulltextIndexes(t *testing.T, harness Harness) {
 	for _, script := range queries.FulltextTests {
 		TestScript(t, harness, script)
 	}
+	t.Run("Type Hashing", func(t *testing.T) {
+		for _, script := range queries.TypeWireTests {
+			t.Run(script.Name, func(t *testing.T) {
+				e := mustNewEngine(t, harness)
+				defer e.Close()
+
+				for _, statement := range script.SetUpScript {
+					if sh, ok := harness.(SkippingHarness); ok {
+						if sh.SkipQueryTest(statement) {
+							t.Skip()
+						}
+					}
+					ctx := NewContext(harness).WithQuery(statement)
+					RunQueryWithContext(t, e, harness, ctx, statement)
+				}
+
+				ctx := NewContext(harness)
+				RunQueryWithContext(t, e, harness, ctx, "ALTER TABLE test ADD COLUMN extracol VARCHAR(200) DEFAULT '';")
+				RunQueryWithContext(t, e, harness, ctx, "CREATE FULLTEXT INDEX idx ON test (extracol);")
+			})
+		}
+	})
 }
 
 // todo(max): rewrite this using info schema and []QueryTest
