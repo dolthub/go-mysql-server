@@ -623,7 +623,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 func TestReadOnly(t *testing.T, harness Harness) {
 	harness.Setup(setup.Mytable...)
 	e := mustNewEngine(t, harness)
-	e.IsReadOnly = true
+	e.ReadOnly.Store(true)
 	defer e.Close()
 
 	RunQuery(t, e, harness, `SELECT i FROM mytable`)
@@ -634,6 +634,11 @@ func TestReadOnly(t *testing.T, harness Harness) {
 		`INSERT INTO mytable (i, s) VALUES(42, 'yolo')`,
 		`CREATE VIEW myview3 AS SELECT i FROM mytable`,
 		`DROP VIEW myview`,
+		`DROP DATABASE mydb`,
+		`CREATE DATABASE newdb`,
+		`CREATE USER tester@localhost`,
+		`CREATE ROLE test_role`,
+		`GRANT SUPER ON * TO 'root'@'localhost'`,
 	}
 
 	for _, query := range writingQueries {
@@ -3524,6 +3529,28 @@ func TestFulltextIndexes(t *testing.T, harness Harness) {
 	for _, script := range queries.FulltextTests {
 		TestScript(t, harness, script)
 	}
+	t.Run("Type Hashing", func(t *testing.T) {
+		for _, script := range queries.TypeWireTests {
+			t.Run(script.Name, func(t *testing.T) {
+				e := mustNewEngine(t, harness)
+				defer e.Close()
+
+				for _, statement := range script.SetUpScript {
+					if sh, ok := harness.(SkippingHarness); ok {
+						if sh.SkipQueryTest(statement) {
+							t.Skip()
+						}
+					}
+					ctx := NewContext(harness).WithQuery(statement)
+					RunQueryWithContext(t, e, harness, ctx, statement)
+				}
+
+				ctx := NewContext(harness)
+				RunQueryWithContext(t, e, harness, ctx, "ALTER TABLE test ADD COLUMN extracol VARCHAR(200) DEFAULT '';")
+				RunQueryWithContext(t, e, harness, ctx, "CREATE FULLTEXT INDEX idx ON test (extracol);")
+			})
+		}
+	})
 }
 
 // todo(max): rewrite this using info schema and []QueryTest

@@ -14,7 +14,9 @@
 
 package sql
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // Table is a SQL table.
 type Table interface {
@@ -39,6 +41,14 @@ type TableFunction interface {
 
 	// NewInstance calls the table function with the arguments provided, producing a Node
 	NewInstance(ctx *Context, db Database, args []Expression) (Node, error)
+}
+
+// CatalogTableFunction is a table function that can be used as a table factor in many SQL queries.
+type CatalogTableFunction interface {
+	TableFunction
+
+	// WithCatalog returns a new instance of the table function with the given catalog
+	WithCatalog(c Catalog) (TableFunction, error)
 }
 
 // TemporaryTable allows tables to declare that they are temporary (created by CREATE TEMPORARY TABLE).

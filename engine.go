@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
@@ -136,7 +137,7 @@ type Engine struct {
 	ProcessList       sql.ProcessList
 	MemoryManager     *sql.MemoryManager
 	BackgroundThreads *sql.BackgroundThreads
-	IsReadOnly        bool
+	ReadOnly          atomic.Bool
 	IsServerLocked    bool
 	PreparedDataCache *PreparedDataCache
 	mu                *sync.Mutex
@@ -168,17 +169,18 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	})
 	a.Catalog.RegisterFunction(emptyCtx, function.GetLockingFuncs(ls)...)
 
-	return &Engine{
+	ret := &Engine{
 		Analyzer:          a,
 		MemoryManager:     sql.NewMemoryManager(sql.ProcessMemory),
 		ProcessList:       NewProcessList(),
 		LS:                ls,
 		BackgroundThreads: sql.NewBackgroundThreads(),
-		IsReadOnly:        cfg.IsReadOnly,
 		IsServerLocked:    cfg.IsServerLocked,
 		PreparedDataCache: NewPreparedDataCache(),
 		mu:                &sync.Mutex{},
 	}
+	ret.ReadOnly.Store(cfg.IsReadOnly)
+	return ret
 }
 
 // NewDefault creates a new default Engine.
@@ -635,23 +637,19 @@ func (e *Engine) WithBackgroundThreads(b *sql.BackgroundThreads) *Engine {
 	return e
 }
 
+func (e *Engine) IsReadOnly() bool {
+	return e.ReadOnly.Load()
+}
+
 // readOnlyCheck checks to see if the query is valid with the modification setting of the engine.
 func (e *Engine) readOnlyCheck(node sql.Node) error {
-	if plan.IsDDLNode(node) {
-		if e.IsReadOnly {
-			return sql.ErrReadOnly.New()
-		} else if e.IsServerLocked {
-			return sql.ErrDatabaseWriteLocked.New()
-		}
+	// Note: We only compute plan.IsReadOnly if the server is in one of
+	// these two modes, since otherwise it is simply wasted work.
+	if e.IsReadOnly() && !plan.IsReadOnly(node) {
+		return sql.ErrReadOnly.New()
 	}
-	switch node.(type) {
-	case
-		*plan.DeleteFrom, *plan.InsertInto, *plan.Update, *plan.LockTables, *plan.UnlockTables:
-		if e.IsReadOnly {
-			return sql.ErrReadOnly.New()
-		} else if e.IsServerLocked {
-			return sql.ErrDatabaseWriteLocked.New()
-		}
+	if e.IsServerLocked && !plan.IsReadOnly(node) {
+		return sql.ErrDatabaseWriteLocked.New()
 	}
 	return nil
 }
