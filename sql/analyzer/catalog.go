@@ -16,9 +16,10 @@ package analyzer
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 	"strings"
 	"sync"
+
+	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 
 	"github.com/dolthub/go-mysql-server/internal/similartext"
 	"github.com/dolthub/go-mysql-server/sql"
