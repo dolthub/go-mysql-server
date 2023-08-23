@@ -514,6 +514,13 @@ func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope
 		b.handleErr(err)
 	}
 
+	if ctf, isCTF := newInstance.(sql.CatalogTableFunction); isCTF {
+		newInstance, err = ctf.WithCatalog(b.cat)
+		if err != nil {
+			b.handleErr(err)
+		}
+	}
+
 	// Table Function must always have an alias, pick function name as alias if none is provided
 	var newAlias *plan.TableAlias
 	if t.Alias.IsEmpty() {
