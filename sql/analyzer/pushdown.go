@@ -121,8 +121,8 @@ func pushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 
 func hasSubqueryAlias(n sql.Node) bool {
 	return transform.InspectUp(n, func(n sql.Node) bool {
-		subq, _ := n.(*plan.SubqueryAlias)
-		return subq != nil
+		_, isSubq := n.(*plan.SubqueryAlias)
+		return isSubq
 	})
 }
 
