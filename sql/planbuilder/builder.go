@@ -59,12 +59,11 @@ type ProcContext struct {
 }
 
 func New(ctx *sql.Context, cat sql.Catalog) (*Builder, error) {
-	opts := ast.ParserOptions{AnsiQuotes: false}
 	sqlMode, err := sql.LoadSqlMode(ctx)
-	if err == nil {
-		opts.AnsiQuotes = sqlMode.AnsiQuotes()
+	if err != nil {
+		return nil, err
 	}
-	return &Builder{ctx: ctx, cat: cat, parserOpts: opts, f: &factory{}}, nil
+	return &Builder{ctx: ctx, cat: cat, parserOpts: sqlMode.ParserOptions(), f: &factory{}}, nil
 }
 
 func (b *Builder) SetDebug(val bool) {

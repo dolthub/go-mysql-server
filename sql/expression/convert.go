@@ -100,7 +100,7 @@ func NewConvertWithLengthAndScale(expr sql.Expression, castToType string, typeLe
 	}
 }
 
-// getConvertToType returns which type the both left and right values should be converted to.
+// GetConvertToType returns which type the both left and right values should be converted to.
 // If neither sql.Type represent number, then converted to string. Otherwise, we try to get
 // the appropriate type to avoid any precision loss.
 func GetConvertToType(l, r sql.Type) string {

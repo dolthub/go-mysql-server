@@ -34,7 +34,8 @@ type SqlMode struct {
 func LoadSqlMode(ctx *Context) (*SqlMode, error) {
 	sqlMode, err := ctx.Session.GetSessionVariable(ctx, SqlModeSessionVar)
 	if err != nil {
-		return nil, err
+		// if system variables are not initialized, assume default sqlMode
+		return &SqlMode{modes: nil, modeString: ""}, nil
 	}
 
 	sqlModeString, ok := sqlMode.(string)

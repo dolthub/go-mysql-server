@@ -644,9 +644,6 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 		}
 	default:
 	}
-	if rt, _ := table.(*plan.ResolvedTable); rt != nil {
-
-	}
 
 	if s.ShowTablesOpt != nil && s.ShowTablesOpt.Filter != nil {
 		if s.ShowTablesOpt.Filter.Like != "" {
