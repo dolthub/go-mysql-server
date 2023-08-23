@@ -643,3 +643,11 @@ func (e *Engine) readOnlyCheck(node sql.Node) error {
 	}
 	return nil
 }
+
+func (e *Engine) EnginePreparedDataCache() *PreparedDataCache {
+	return e.PreparedDataCache
+}
+
+func (e *Engine) EngineAnalyzer() *analyzer.Analyzer {
+	return e.Analyzer
+}
