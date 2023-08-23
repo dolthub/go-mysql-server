@@ -457,11 +457,6 @@ func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, parsed sq
 		}
 	}
 
-	err = e.readOnlyCheck(bound)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	// TODO: eventually, we should have this logic be in the RowIter() of the respective plans
 	// along with a new rule that handles analysis
 	var analyzed sql.Node
@@ -510,6 +505,11 @@ func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, parsed sq
 		if err != nil {
 			return nil, nil, err
 		}
+	}
+
+	err = e.readOnlyCheck(analyzed)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	if err != nil {
@@ -651,5 +651,6 @@ func (e *Engine) readOnlyCheck(node sql.Node) error {
 	if e.IsServerLocked && !plan.IsReadOnly(node) {
 		return sql.ErrDatabaseWriteLocked.New()
 	}
+
 	return nil
 }

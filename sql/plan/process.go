@@ -480,6 +480,13 @@ func IsNoRowNode(node sql.Node) bool {
 }
 
 func IsReadOnly(node sql.Node) bool {
+	if qp, ok := node.(*QueryProcess); ok {
+		node = qp.UnaryNode.Child
+	}
+	if tcn, ok := node.(*TransactionCommittingNode); ok {
+		node = tcn.UnaryNode.Child
+	}
+
 	isExplain := false
 	transform.Inspect(node, func(n sql.Node) bool {
 		switch n.(type) {
@@ -498,8 +505,18 @@ func IsReadOnly(node sql.Node) bool {
 	}
 
 	switch node.(type) {
-	case *DeleteFrom, *InsertInto, *Update, *LockTables, *UnlockTables:
+	case *RowUpdateAccumulator, *DeleteFrom, *InsertInto, *Update, *LockTables, *UnlockTables:
 		return false
+	}
+
+	if call, ok := node.(*Call); ok {
+		if p := call.Procedure; p != nil {
+			if b := p.Body; b != nil {
+				if ep, ok := b.(*ExternalProcedure); ok {
+					return ep.ExternalStoredProcedureDetails.ReadOnly
+				}
+			}
+		}
 	}
 
 	isPrivNodeP := func(n sql.Node) bool {
