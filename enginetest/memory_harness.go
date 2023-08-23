@@ -137,7 +137,7 @@ func (m *MemoryHarness) Setup(setupData ...[]setup.SetupScript) {
 	return
 }
 
-func (m *MemoryHarness) NewEngine(t *testing.T) (*sqle.Engine, error) {
+func (m *MemoryHarness) NewEngine(t *testing.T) (QueryEngine, error) {
 	return NewEngine(t, m, m.getProvider(), m.setupData)
 }
 
@@ -257,30 +257,6 @@ func (m *MemoryHarness) NewReadOnlyEngine(provider sql.DatabaseProvider) (*sqle.
 	m.provider = readOnlyProvider
 
 	return NewEngineWithProvider(nil, m, readOnlyProvider), nil
-}
-
-func (m *MemoryHarness) NewTable(db sql.Database, name string, schema sql.PrimaryKeySchema) (sql.Table, error) {
-	var fkColl *memory.ForeignKeyCollection
-	if memDb, ok := db.(*memory.BaseDatabase); ok {
-		fkColl = memDb.GetForeignKeyCollection()
-	} else if memDb, ok := db.(*memory.Database); ok {
-		fkColl = memDb.GetForeignKeyCollection()
-	} else if memDb, ok := db.(*memory.HistoryDatabase); ok {
-		fkColl = memDb.GetForeignKeyCollection()
-	} else if memDb, ok := db.(*memory.ReadOnlyDatabase); ok {
-		fkColl = memDb.GetForeignKeyCollection()
-	}
-	table := memory.NewPartitionedTable(name, schema, fkColl, m.numTablePartitions)
-	if m.nativeIndexSupport {
-		table.EnablePrimaryKeyIndexes()
-	}
-
-	if ro, ok := db.(memory.ReadOnlyDatabase); ok {
-		ro.HistoryDatabase.AddTable(name, table)
-	} else {
-		db.(*memory.HistoryDatabase).AddTable(name, table)
-	}
-	return table, nil
 }
 
 func (m *MemoryHarness) ValidateEngine(ctx *sql.Context, e *sqle.Engine) error {

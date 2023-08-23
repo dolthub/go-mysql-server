@@ -44,7 +44,7 @@ type Harness interface {
 	Setup(...[]setup.SetupScript)
 	// NewEngine creates a new sqle.Engine. The state of the engine returned must match what was previous specified
 	// by Setup, with no other data. See enginetest.NewEngine for help creating an engine suitable in tests.
-	NewEngine(*testing.T) (*sqle.Engine, error)
+	NewEngine(*testing.T) (QueryEngine, error)
 }
 
 // ClientHarness allows for integrators to test user privileges, as mock clients are used to test functionality.

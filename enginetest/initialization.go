@@ -42,7 +42,7 @@ func NewContextWithClient(harness ClientHarness, client sql.Client) *sql.Context
 }
 
 // TODO: remove
-func NewContextWithEngine(harness Harness, engine *sqle.Engine) *sql.Context {
+func NewContextWithEngine(harness Harness, engine QueryEngine) *sql.Context {
 	return NewContext(harness)
 }
 
@@ -104,7 +104,7 @@ func NewBaseSession() *sql.BaseSession {
 }
 
 // NewEngineWithProvider returns a new engine with the specified provider
-func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseProvider) *sqle.Engine {
+func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseProvider) QueryEngine {
 	var a *analyzer.Analyzer
 
 	if harness.Parallelism() > 1 {
@@ -129,7 +129,7 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseP
 }
 
 // NewEngine creates an engine and sets it up for testing using harness, provider, and setup data given.
-func NewEngine(t *testing.T, harness Harness, provider sql.DatabaseProvider, setupData []setup.SetupScript) (*sqle.Engine, error) {
+func NewEngine(t *testing.T, harness Harness, provider sql.DatabaseProvider, setupData []setup.SetupScript) (QueryEngine, error) {
 	e := NewEngineWithProvider(t, harness, provider)
 	ctx := NewContext(harness)
 
@@ -146,7 +146,7 @@ func NewEngine(t *testing.T, harness Harness, provider sql.DatabaseProvider, set
 }
 
 // RunSetupScripts runs the given setup scripts on the given engine, returning any error
-func RunSetupScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScript, createIndexes bool) (*sqle.Engine, error) {
+func RunSetupScripts(ctx *sql.Context, e QueryEngine, scripts []setup.SetupScript, createIndexes bool) (QueryEngine, error) {
 	for i := range scripts {
 		for _, s := range scripts[i] {
 			if !createIndexes {
@@ -169,7 +169,7 @@ func RunSetupScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScri
 	return e, nil
 }
 
-func MustQuery(ctx *sql.Context, e *sqle.Engine, q string) (sql.Schema, []sql.Row) {
+func MustQuery(ctx *sql.Context, e QueryEngine, q string) (sql.Schema, []sql.Row) {
 	sch, iter, err := e.Query(ctx, q)
 	if err != nil {
 		panic(fmt.Sprintf("err running query %s: %s", q, err))
@@ -181,7 +181,7 @@ func MustQuery(ctx *sql.Context, e *sqle.Engine, q string) (sql.Schema, []sql.Ro
 	return sch, rows
 }
 
-func mustNewEngine(t *testing.T, h Harness) *sqle.Engine {
+func mustNewEngine(t *testing.T, h Harness) QueryEngine {
 	e, err := h.NewEngine(t)
 	if err != nil {
 		require.NoError(t, err)
