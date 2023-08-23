@@ -1496,7 +1496,10 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 				AllowClearTextWithoutTLS: true,
 			}
 
-			engine := mustNewEngine(t, harness)
+			e := mustNewEngine(t, harness)
+			engine, ok := e.(*sqle.Engine)
+			require.True(t, ok, "Need a *sqle.Engine for TestUserAuthentication")
+			
 			defer engine.Close()
 			engine.EngineAnalyzer().Catalog.MySQLDb.AddRootAccount()
 			engine.EngineAnalyzer().Catalog.MySQLDb.SetPersister(&mysql_db.NoopPersister{})
@@ -1512,11 +1515,8 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 				}
 				RunQueryWithContext(t, engine, harness, ctx, statement)
 			}
-
-			e, ok := engine.(*sqle.Engine)
-			require.True(t, ok, "Need a *sqle.Engine for TestUserAuthentication")
 			
-			s, err := server.NewDefaultServer(serverConfig, e)
+			s, err := server.NewDefaultServer(serverConfig, engine)
 			require.NoError(t, err)
 			go func() {
 				err := s.Start()

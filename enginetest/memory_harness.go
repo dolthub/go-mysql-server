@@ -247,7 +247,7 @@ func (m *MemoryHarness) NewDatabases(names ...string) []sql.Database {
 	return dbs
 }
 
-func (m *MemoryHarness) NewReadOnlyEngine(provider sql.DatabaseProvider) (*sqle.Engine, error) {
+func (m *MemoryHarness) NewReadOnlyEngine(provider sql.DatabaseProvider) (QueryEngine, error) {
 	dbs := make([]sql.Database, 0)
 	for _, db := range provider.AllDatabases(m.NewContext()) {
 		dbs = append(dbs, memory.ReadOnlyDatabase{db.(*memory.HistoryDatabase)})
