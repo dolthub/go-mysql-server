@@ -1,3 +1,17 @@
+// Copyright 2023 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package planbuilder
 
 import (
@@ -21,7 +35,7 @@ var ErrMaxAnalysisIters = errors.NewKind("exceeded max analysis iterations (%d)"
 
 // Parse parses the given SQL |query| using the default parsing settings and returns the corresponding node.
 func Parse(ctx *sql.Context, cat sql.Catalog, query string) (ret sql.Node, err error) {
-	sqlMode, err := sql.LoadSqlMode(ctx)
+	sqlMode := sql.LoadSqlMode(ctx)
 	var parserOpts ast.ParserOptions
 	if err != nil {
 		parserOpts = ast.ParserOptions{}
@@ -47,11 +61,7 @@ func ParseWithOptions(ctx *sql.Context, cat sql.Catalog, query string, options a
 }
 
 func ParseOne(ctx *sql.Context, cat sql.Catalog, query string) (sql.Node, string, string, error) {
-	sqlMode, err := sql.LoadSqlMode(ctx)
-	if err != nil {
-		return nil, "", "", err
-	}
-
+	sqlMode := sql.LoadSqlMode(ctx)
 	return parse(ctx, cat, query, true, sqlMode.ParserOptions())
 }
 
@@ -96,7 +106,10 @@ func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool, options 
 		return nil, parsed, remainder, sql.ErrSyntaxError.New(err.Error())
 	}
 
-	b := &Builder{ctx: ctx, cat: cat}
+	b, err := New(ctx, cat)
+	if err != nil {
+		return nil, "", "", err
+	}
 	outScope := b.build(nil, stmt, s)
 
 	return outScope.node, parsed, remainder, err
@@ -175,10 +188,7 @@ func (b *Builder) BindOnly(stmt ast.Statement, s string) (ret sql.Node, err erro
 }
 
 func ParseOnly(ctx *sql.Context, query string, multi bool) (ast.Statement, string, string, error) {
-	sqlMode, err := sql.LoadSqlMode(ctx)
-	if err != nil {
-		return nil, "", "", err
-	}
+	sqlMode := sql.LoadSqlMode(ctx)
 	options := sqlMode.ParserOptions()
 
 	s := strings.TrimSpace(query)
@@ -190,6 +200,7 @@ func ParseOnly(ctx *sql.Context, query string, multi bool) (ast.Statement, strin
 	var stmt ast.Statement
 	var parsed string
 	var remainder string
+	var err error
 
 	parsed = s
 	if !multi {

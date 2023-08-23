@@ -14431,7 +14431,7 @@ WHERE
 			"         │   │       │   ├─ columns: [jchir.FJDP5:0!null, jchir.BJUF2:1!null, jchir.PSMU6:2!null, jchir.M22QN:3!null, jchir.GE5EL:4, jchir.F7A4Q:5, jchir.ESFVY:6!null, jchir.CC4AX:7, jchir.SL76B:8!null, convert\n" +
 			"         │   │       │   │   ├─ type: char\n" +
 			"         │   │       │   │   └─ jchir.QNI57:9!null\n" +
-			"         │   │       │   │   as QNI57, jchir.TDEIU:10]\n" +
+			"         │   │       │   │   as QNI57, TDEIU:10 as TDEIU]\n" +
 			"         │   │       │   └─ Union distinct\n" +
 			"         │   │       │       ├─ Project\n" +
 			"         │   │       │       │   ├─ columns: [jchir.FJDP5:0!null, jchir.BJUF2:1!null, jchir.PSMU6:2!null, jchir.M22QN:3!null, jchir.GE5EL:4, jchir.F7A4Q:5, jchir.ESFVY:6!null, jchir.CC4AX:7, jchir.SL76B:8!null, jchir.QNI57:9!null, convert\n" +
@@ -14649,7 +14649,10 @@ WHERE
 			"         │   │           ├─ columns: [jchir.FJDP5:0!null, jchir.BJUF2:1!null, jchir.PSMU6:2!null, jchir.M22QN:3!null, jchir.GE5EL:4, jchir.F7A4Q:5, jchir.ESFVY:6!null, jchir.CC4AX:7, jchir.SL76B:8!null, convert\n" +
 			"         │   │           │   ├─ type: char\n" +
 			"         │   │           │   └─ QNI57:9\n" +
-			"         │   │           │   as QNI57, jchir.TDEIU:10!null]\n" +
+			"         │   │           │   as QNI57, convert\n" +
+			"         │   │           │   ├─ type: char\n" +
+			"         │   │           │   └─ jchir.TDEIU:10!null\n" +
+			"         │   │           │   as TDEIU]\n" +
 			"         │   │           └─ Project\n" +
 			"         │   │               ├─ columns: [jchir.FJDP5:0!null, jchir.BJUF2:1!null, jchir.PSMU6:2!null, jchir.M22QN:3!null, jchir.GE5EL:4, jchir.F7A4Q:5, jchir.ESFVY:6!null, jchir.CC4AX:7, jchir.SL76B:8!null, NULL (null) as QNI57, jchir.TDEIU:10!null]\n" +
 			"         │   │               └─ SubqueryAlias\n" +

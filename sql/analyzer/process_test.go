@@ -26,7 +26,7 @@ import (
 
 func TestTrackProcessSubquery(t *testing.T) {
 	require := require.New(t)
-	rule := getRuleFrom(OnceAfterAll_Experimental, TrackProcessId)
+	rule := getRuleFrom(OnceAfterAll, TrackProcessId)
 	a := NewDefault(sql.NewDatabaseProvider())
 
 	node := plan.NewProject(
