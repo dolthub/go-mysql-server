@@ -17,7 +17,9 @@ package enginetest
 import (
 	gosql "database/sql"
 	"fmt"
+	"strings"
 	"testing"
+	"time"
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/memory"
@@ -25,6 +27,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -137,11 +140,134 @@ func (s ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, bin
 }
 
 func convertExecResult(exec gosql.Result) (sql.Schema, sql.RowIter, error) {
-	
+	// TODO
+	return nil, nil, nil
 }
 
 func convertRowsResult(rows *gosql.Rows) (sql.Schema, sql.RowIter, error) {
+	sch, err := schemaForRows(rows)
+	if err != nil {
+		return nil, nil, err
+	}
 	
+	rowIter, err := rowIterForGoSqlRows(sch, rows)
+	if err != nil {
+		return nil, nil, err
+	}
+	
+	return sch, rowIter, nil
+}
+
+func rowIterForGoSqlRows(sch sql.Schema, rows *gosql.Rows) (sql.RowIter, error) {
+	result := make([]sql.Row, 0)
+	
+	for rows.Next() {
+		r, err := emptyRowForSchema(sch)
+		if err != nil {
+			return nil, err
+		}
+
+		err = rows.Scan(r...)
+		if err != nil {
+			return nil, err
+		}
+	}
+	
+	return sql.RowsToRowIter(result...), nil
+}
+
+func emptyRowForSchema(sch sql.Schema) ([]any, error) {
+	result := make([]any, len(sch))
+	for i, col := range sch {
+		var err error
+		result[i], err = emptyValuePointerForType(col.Type)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+func emptyValuePointerForType(t sql.Type) (any, error) {
+	switch t.Type() {
+		case query.Type_INT8, query.Type_INT16, query.Type_INT24, query.Type_INT32, query.Type_INT64,
+			query.Type_UINT8, query.Type_UINT16, query.Type_UINT24, query.Type_UINT32, query.Type_UINT64,
+			query.Type_BIT:
+			var i int64
+			return &i, nil
+		case query.Type_DATE, query.Type_DATETIME, query.Type_TIMESTAMP:
+			var t time.Time
+			return &t, nil
+		case query.Type_TEXT, query.Type_VARCHAR, query.Type_CHAR:
+			var s string
+			return &s, nil
+		case query.Type_FLOAT32, query.Type_FLOAT64, query.Type_DECIMAL:
+			var f float64
+			return &f, nil
+	default:
+		return nil, fmt.Errorf("unsupported type %T", t)
+	}
+}
+
+func schemaForRows(rows *gosql.Rows) (sql.Schema, error) {
+	types, err := rows.ColumnTypes()
+	if err != nil {
+		return nil, err
+	}
+	
+	names, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+
+	schema := make(sql.Schema, len(types))
+	for i, columnType := range types {
+		typ, err := convertGoSqlType(columnType)
+		if err != nil {
+			return nil, err
+		}
+		schema[i] = &sql.Column{
+			Name: names[i],
+			Type: typ,
+		}
+	}
+	
+	return schema, nil
+}
+
+func convertGoSqlType(columnType *gosql.ColumnType) (sql.Type, error) {
+	switch strings.ToLower(columnType.DatabaseTypeName()) {
+	case "int", "integer", "tinyint", "smallint", "mediumint", "bigint":
+		return types.Int64, nil
+	case "float", "double":
+		return types.Float64, nil
+	case "decimal":
+		precision, scale, ok := columnType.DecimalSize()
+		if !ok {
+			return nil, fmt.Errorf("could not get decimal size for column %s", columnType.Name())
+		}
+		decimalType, err := types.CreateDecimalType(uint8(precision), uint8(scale))
+		if err != nil {
+			return nil, err
+		}
+		return decimalType, nil
+	case "date":
+		return types.Date, nil
+	case "datetime":
+		return types.Datetime, nil
+	case "timestamp":
+		return types.Timestamp, nil
+	case "time":
+		return types.Time, nil
+	case "year":
+		return types.Year, nil
+	case "char", "varchar", "tinytext", "text", "mediumtext", "longtext":
+		return types.Text, nil
+	case "binary", "varbinary", "tinyblob", "blob", "mediumblob", "longblob":
+		return types.Blob, nil
+	default:
+		return nil, fmt.Errorf("unhandled type %s", columnType.DatabaseTypeName())
+	}
 }
 
 func bindingArgs(bindings map[string]*query.BindVariable) []any {
