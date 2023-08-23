@@ -18,9 +18,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/enginetest"
 	"gopkg.in/src-d/go-errors.v1"
 
-	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -87,7 +87,7 @@ type QuickPrivilegeTest struct {
 // the SetUpScript.
 type ServerAuthenticationTest struct {
 	Name        string
-	SetUpFunc   func(ctx *sql.Context, t *testing.T, engine *sqle.Engine)
+	SetUpFunc   func(ctx *sql.Context, t *testing.T, engine enginetest.QueryEngine)
 	SetUpScript []string
 	Assertions  []ServerAuthenticationTestAssertion
 }
@@ -2114,9 +2114,9 @@ var ServerAuthTests = []ServerAuthenticationTest{
 			"CREATE USER `test-user`@localhost IDENTIFIED WITH authentication_dolt_jwt AS 'jwks=testing,sub=test-user,iss=dolthub.com,aud=some_id';",
 			"GRANT ALL ON *.* TO `test-user`@localhost WITH GRANT OPTION;",
 		},
-		SetUpFunc: func(ctx *sql.Context, t *testing.T, engine *sqle.Engine) {
+		SetUpFunc: func(ctx *sql.Context, t *testing.T, engine enginetest.QueryEngine) {
 			plugins := map[string]mysql_db.PlaintextAuthPlugin{"authentication_dolt_jwt": &NoopPlaintextPlugin{}}
-			engine.Analyzer.Catalog.MySQLDb.SetPlugins(plugins)
+			engine.EngineAnalyzer().Catalog.MySQLDb.SetPlugins(plugins)
 		},
 		Assertions: []ServerAuthenticationTestAssertion{
 			{
@@ -2141,10 +2141,10 @@ var ServerAuthTests = []ServerAuthenticationTest{
 	},
 	{
 		Name: "Adding a Super User directly",
-		SetUpFunc: func(ctx *sql.Context, t *testing.T, engine *sqle.Engine) {
-			ed := engine.Analyzer.Catalog.MySQLDb.Editor()
+		SetUpFunc: func(ctx *sql.Context, t *testing.T, engine enginetest.QueryEngine) {
+			ed := engine.EngineAnalyzer().Catalog.MySQLDb.Editor()
 			defer ed.Close()
-			engine.Analyzer.Catalog.MySQLDb.AddSuperUser(ed, "bestuser", "localhost", "the_pass")
+			engine.EngineAnalyzer().Catalog.MySQLDb.AddSuperUser(ed, "bestuser", "localhost", "the_pass")
 		},
 		Assertions: []ServerAuthenticationTestAssertion{
 			{
