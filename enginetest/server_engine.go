@@ -17,6 +17,7 @@ package enginetest
 import (
 	gosql "database/sql"
 	"fmt"
+	"testing"
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/memory"
@@ -25,12 +26,15 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
 type ServerQueryEngine struct {
+	engine 	*sqle.Engine
 	server *server.Server
+	t 		*testing.T
 }
 
 var _ QueryEngine = (*ServerQueryEngine)(nil)
@@ -39,7 +43,7 @@ var address   = "localhost"
 // TODO: get random port
 var port      = 3306
 
-func NewServerQueryEngine() (*ServerQueryEngine, error) {
+func NewServerQueryEngine(t *testing.T) (*ServerQueryEngine, error) {
 	ctx := sql.NewEmptyContext()
 	engine := sqle.NewDefault(memory.NewDBProvider())
 
@@ -65,6 +69,8 @@ func NewServerQueryEngine() (*ServerQueryEngine, error) {
 	}
 	
 	return &ServerQueryEngine{
+		t: t,
+		engine: engine,
 		server: s,
 	}, nil
 }
@@ -74,28 +80,84 @@ func newConnection() (*gosql.DB, error) {
 }
 
 func (s ServerQueryEngine) PrepareQuery(ctx *sql.Context, query string) (sql.Node, error) {
-	// TODO implement me
-	panic("implement me")
+	// TODO
+	// q, bindVars, err := injectBindVarsAndPrepare(s.t, ctx, s.engine, query)
+	return nil, nil
 }
 
 func (s ServerQueryEngine) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter, error) {
-	// TODO implement me
-	panic("implement me")
+	q, bindVars, err := injectBindVarsAndPrepare(s.t, ctx, s.engine, query)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return s.QueryWithBindings(ctx, q, bindVars)
 }
 
 func (s ServerQueryEngine) EngineAnalyzer() *analyzer.Analyzer {
-	// TODO implement me
-	panic("implement me")
+	return s.engine.Analyzer
 }
 
 func (s ServerQueryEngine) EnginePreparedDataCache() *sqle.PreparedDataCache {
-	// TODO implement me
-	panic("implement me")
+	return s.engine.PreparedDataCache
 }
 
 func (s ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, bindings map[string]*query.BindVariable) (sql.Schema, sql.RowIter, error) {
-	// TODO implement me
-	panic("implement me")
+	conn, err := newConnection()
+	if err != nil {
+		return nil, nil, err
+	}
+	
+	stmt, err := conn.Prepare(query)
+	if err != nil {
+		return nil, nil, err
+	}
+	
+	bindingArgs := bindingArgs(bindings)
+
+	parsed, err := sqlparser.Parse(query)
+	if err != nil {
+		return nil, nil, err
+	}
+	
+	switch parsed.(type) {
+	case *sqlparser.Select, *sqlparser.Union:
+		rows, err := stmt.Query(bindingArgs)
+		if err != nil {
+			return nil, nil, err
+		}
+		return convertRowsResult(rows)
+	default:
+		exec, err := stmt.Exec(bindingArgs)
+		if err != nil {
+			return nil, nil, err
+		}
+		return convertExecResult(exec)
+	}
+}
+
+func convertExecResult(exec gosql.Result) (sql.Schema, sql.RowIter, error) {
+	
+}
+
+func convertRowsResult(rows *gosql.Rows) (sql.Schema, sql.RowIter, error) {
+	
+}
+
+func bindingArgs(bindings map[string]*query.BindVariable) []any {
+	names := make([]string, len(bindings))
+	var i int
+	for name := range bindings {
+		names[i] = name
+		i++
+	}
+
+	args := make([]any, len(bindings))
+	for i, name := range names {
+		args[i] = bindings[name].Value
+	}
+	
+	return args
 }
 
 func (s ServerQueryEngine) CloseSession(connID uint32) {
