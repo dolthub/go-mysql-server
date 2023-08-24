@@ -22,7 +22,6 @@ import (
 	"time"
 
 	sqle "github.com/dolthub/go-mysql-server"
-	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
@@ -46,9 +45,8 @@ var address   = "localhost"
 // TODO: get random port
 var port      = 3306
 
-func NewServerQueryEngine(t *testing.T) (*ServerQueryEngine, error) {
+func NewServerQueryEngine(t *testing.T, engine *sqle.Engine) (*ServerQueryEngine, error) {
 	ctx := sql.NewEmptyContext()
-	engine := sqle.NewDefault(memory.NewDBProvider())
 
 	// This variable may be found in the "users_example.go" file. Please refer to that file for a walkthrough on how to
 	// set up the "mysql" database to allow user creation and user checking when establishing connections. This is set
@@ -66,11 +64,10 @@ func NewServerQueryEngine(t *testing.T) (*ServerQueryEngine, error) {
 		return nil, err
 	}
 
-	err = s.Start()
-	if err != nil {
-		return nil, err
-	}
-	
+	go func() {
+		_ = s.Start()
+	}()
+
 	return &ServerQueryEngine{
 		t: t,
 		engine: engine,
@@ -78,8 +75,9 @@ func NewServerQueryEngine(t *testing.T) (*ServerQueryEngine, error) {
 	}, nil
 }
 
-func newConnection() (*gosql.DB, error) {
-	return gosql.Open("mysql", "root:@tcp(127.0.0.1)")
+func newConnection(ctx *sql.Context) (*gosql.DB, error) {
+	db := ctx.GetCurrentDatabase()
+	return gosql.Open("mysql", fmt.Sprintf("root:@tcp(127.0.0.1)/%s", db))
 }
 
 func (s ServerQueryEngine) PrepareQuery(ctx *sql.Context, query string) (sql.Node, error) {
@@ -106,7 +104,7 @@ func (s ServerQueryEngine) EnginePreparedDataCache() *sqle.PreparedDataCache {
 }
 
 func (s ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, bindings map[string]*query.BindVariable) (sql.Schema, sql.RowIter, error) {
-	conn, err := newConnection()
+	conn, err := newConnection(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -125,13 +123,13 @@ func (s ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, bin
 	
 	switch parsed.(type) {
 	case *sqlparser.Select, *sqlparser.Union:
-		rows, err := stmt.Query(bindingArgs)
+		rows, err := stmt.Query(bindingArgs...)
 		if err != nil {
 			return nil, nil, err
 		}
 		return convertRowsResult(rows)
 	default:
-		exec, err := stmt.Exec(bindingArgs)
+		exec, err := stmt.Exec(bindingArgs...)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -171,6 +169,8 @@ func rowIterForGoSqlRows(sch sql.Schema, rows *gosql.Rows) (sql.RowIter, error) 
 		if err != nil {
 			return nil, err
 		}
+		
+		result = append(result, r)
 	}
 	
 	return sql.RowsToRowIter(result...), nil

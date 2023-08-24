@@ -43,6 +43,7 @@ type MemoryHarness struct {
 	session                   sql.Session
 	setupData                 []setup.SetupScript
 	externalProcedureRegistry sql.ExternalStoredProcedureRegistry
+	server                    bool
 }
 
 var _ Harness = (*MemoryHarness)(nil)
@@ -113,6 +114,10 @@ func (m *MemoryHarness) QueriesToSkip(queries ...string) {
 	}
 }
 
+func (m *MemoryHarness) UseServer() {
+	m.server = true
+}
+
 type SkippingMemoryHarness struct {
 	MemoryHarness
 }
@@ -138,7 +143,16 @@ func (m *MemoryHarness) Setup(setupData ...[]setup.SetupScript) {
 }
 
 func (m *MemoryHarness) NewEngine(t *testing.T) (QueryEngine, error) {
-	return NewEngine(t, m, m.getProvider(), m.setupData)
+	engine, err := NewEngine(t, m, m.getProvider(), m.setupData)
+	if err != nil {
+		return nil, err
+	}
+	
+	if m.server {
+		return NewServerQueryEngine(t, engine)
+	}
+	
+	return engine, nil
 }
 
 func (m *MemoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.PrimaryKeySchema, asOf interface{}) sql.Table {

@@ -104,7 +104,7 @@ func NewBaseSession() *sql.BaseSession {
 }
 
 // NewEngineWithProvider returns a new engine with the specified provider
-func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseProvider) QueryEngine {
+func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseProvider) *sqle.Engine {
 	var a *analyzer.Analyzer
 
 	if harness.Parallelism() > 1 {
@@ -129,7 +129,7 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseP
 }
 
 // NewEngine creates an engine and sets it up for testing using harness, provider, and setup data given.
-func NewEngine(t *testing.T, harness Harness, provider sql.DatabaseProvider, setupData []setup.SetupScript) (QueryEngine, error) {
+func NewEngine(t *testing.T, harness Harness, provider sql.DatabaseProvider, setupData []setup.SetupScript) (*sqle.Engine, error) {
 	e := NewEngineWithProvider(t, harness, provider)
 	ctx := NewContext(harness)
 
@@ -146,7 +146,7 @@ func NewEngine(t *testing.T, harness Harness, provider sql.DatabaseProvider, set
 }
 
 // RunSetupScripts runs the given setup scripts on the given engine, returning any error
-func RunSetupScripts(ctx *sql.Context, e QueryEngine, scripts []setup.SetupScript, createIndexes bool) (QueryEngine, error) {
+func RunSetupScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScript, createIndexes bool) (*sqle.Engine, error) {
 	for i := range scripts {
 		for _, s := range scripts[i] {
 			if !createIndexes {
