@@ -44,6 +44,10 @@ func (n *ExternalProcedure) Resolved() bool {
 	return true
 }
 
+func (n *ExternalProcedure) IsReadOnly() bool {
+	return n.ExternalStoredProcedureDetails.ReadOnly
+}
+
 // String implements the interface sql.Node.
 func (n *ExternalProcedure) String() string {
 	return n.ExternalStoredProcedureDetails.Name

@@ -77,6 +77,8 @@ type Node interface {
 	// whether a user (contained in the context, along with their active roles) has the necessary privileges to execute
 	// this node (and its children).
 	CheckPrivileges(ctx *Context, opChecker PrivilegedOperationChecker) bool
+
+	IsReadOnly() bool
 }
 
 // NodeExecBuilder converts a sql.Node tree into a RowIter.

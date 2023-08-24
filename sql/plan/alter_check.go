@@ -72,6 +72,10 @@ func (c *CreateCheck) Resolved() bool {
 	return c.Child.Resolved() && c.Check.Expr.Resolved()
 }
 
+func (c *CreateCheck) IsReadOnly() bool {
+	return false
+}
+
 // WithExpressions implements the sql.Expressioner interface.
 func (c *CreateCheck) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 1 {
@@ -136,6 +140,8 @@ func (p *DropCheck) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 }
 
 func (p *DropCheck) Schema() sql.Schema { return nil }
+
+func (p *DropCheck) IsReadOnly() bool { return false }
 
 func (p DropCheck) String() string {
 	pr := sql.NewTreePrinter()
@@ -203,6 +209,8 @@ func (d *DropConstraint) CheckPrivileges(ctx *sql.Context, opChecker sql.Privile
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(db), getTableName(d.Child), "", sql.PrivilegeType_Alter))
 }
+
+func (d *DropConstraint) IsReadOnly() bool { return false }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (d *DropConstraint) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {

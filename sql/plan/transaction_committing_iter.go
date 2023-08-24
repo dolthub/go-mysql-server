@@ -59,6 +59,10 @@ func (t *TransactionCommittingNode) DebugString() string {
 	return sql.DebugString(t.Child())
 }
 
+func (t *TransactionCommittingNode) IsReadOnly() bool {
+	return t.Child().IsReadOnly()
+}
+
 // WithChildren implements the sql.Node interface.
 func (t *TransactionCommittingNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {

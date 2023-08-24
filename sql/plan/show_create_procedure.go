@@ -60,6 +60,10 @@ func (s *ShowCreateProcedure) Resolved() bool {
 	return !ok
 }
 
+func (s *ShowCreateProcedure) IsReadOnly() bool {
+	return true
+}
+
 // Children implements the sql.Node interface.
 func (s *ShowCreateProcedure) Children() []sql.Node {
 	return nil

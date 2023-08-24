@@ -104,6 +104,10 @@ func (*Truncate) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 	return sql.Collation_binary, 7
 }
 
+func (*Truncate) IsReadOnly() bool {
+	return false
+}
+
 // String implements the Node interface.
 func (p Truncate) String() string {
 	pr := sql.NewTreePrinter()

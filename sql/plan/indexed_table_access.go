@@ -116,6 +116,10 @@ func (i *IndexedTableAccess) Resolved() bool {
 	return i.TableNode.Resolved()
 }
 
+func (i *IndexedTableAccess) IsReadOnly() bool {
+	return true
+}
+
 func (i *IndexedTableAccess) Schema() sql.Schema {
 	return i.TableNode.Schema()
 }

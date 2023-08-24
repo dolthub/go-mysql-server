@@ -41,6 +41,10 @@ func NewWith(child sql.Node, ctes []*CommonTableExpression, recursive bool) *Wit
 	}
 }
 
+func (w *With) IsReadOnly() bool {
+	return w.Child.IsReadOnly()
+}
+
 func (w *With) String() string {
 	cteStrings := make([]string, len(w.CTEs))
 	for i, e := range w.CTEs {

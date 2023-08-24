@@ -164,6 +164,10 @@ func (utf *UnresolvedTableFunction) Expressions() []sql.Expression {
 	return utf.Arguments
 }
 
+func (utf *UnresolvedTableFunction) IsReadOnly() bool {
+	return true
+}
+
 // WithExpressions implements the Expressioner interface
 func (utf *UnresolvedTableFunction) WithExpressions(expression ...sql.Expression) (sql.Node, error) {
 	if len(expression) != len(utf.Expressions()) {

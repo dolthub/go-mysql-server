@@ -55,6 +55,10 @@ func (p *AlterAutoIncrement) Resolved() bool {
 	return p.ddlNode.Resolved() && p.Table.Resolved()
 }
 
+func (p *AlterAutoIncrement) IsReadOnly() bool {
+	return false
+}
+
 // CheckPrivileges implements the interface sql.Node.
 func (p *AlterAutoIncrement) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,

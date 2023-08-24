@@ -52,6 +52,10 @@ func (dv *SingleDropView) Resolved() bool {
 	return !ok
 }
 
+func (dv *SingleDropView) IsReadOnly() bool {
+	return false
+}
+
 // RowIter implements the Node interface. It always returns an empty iterator.
 func (dv *SingleDropView) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return sql.RowsToRowIter(), nil
@@ -174,6 +178,10 @@ func (dvs *DropView) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 		}
 	}
 	return true
+}
+
+func (dvs *DropView) IsReadOnly() bool {
+	return false
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

@@ -47,6 +47,10 @@ func (p *QueryProcess) Child() sql.Node {
 	return p.UnaryNode.Child
 }
 
+func (p *QueryProcess) IsReadOnly() bool {
+	return p.Child().IsReadOnly()
+}
+
 // WithChildren implements the Node interface.
 func (p *QueryProcess) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
@@ -480,64 +484,5 @@ func IsNoRowNode(node sql.Node) bool {
 }
 
 func IsReadOnly(node sql.Node) bool {
-	if qp, ok := node.(*QueryProcess); ok {
-		node = qp.UnaryNode.Child
-	}
-	if tcn, ok := node.(*TransactionCommittingNode); ok {
-		node = tcn.UnaryNode.Child
-	}
-
-	isExplain := false
-	transform.Inspect(node, func(n sql.Node) bool {
-		switch n.(type) {
-		case *DescribeQuery:
-			isExplain = true
-			return false
-		}
-		return true
-	})
-	if isExplain {
-		return true
-	}
-
-	if IsDDLNode(node) {
-		return false
-	}
-
-	switch node.(type) {
-	case *RowUpdateAccumulator, *DeleteFrom, *InsertInto, *Update, *LockTables, *UnlockTables:
-		return false
-	}
-
-	if call, ok := node.(*Call); ok {
-		if p := call.Procedure; p != nil {
-			if b := p.Body; b != nil {
-				if ep, ok := b.(*ExternalProcedure); ok {
-					return ep.ExternalStoredProcedureDetails.ReadOnly
-				}
-			}
-		}
-	}
-
-	isPrivNodeP := func(n sql.Node) bool {
-		switch node.(type) {
-		case *CreateUser, *DropUser, *RenameUser, *CreateRole, *DropRole, *Grant, *GrantRole, *GrantProxy, *Revoke, *RevokeRole, *RevokeAll, *RevokeProxy:
-			return true
-		}
-		return false
-	}
-	isPrivNode := false
-	transform.Inspect(node, func(n sql.Node) bool {
-		if isPrivNodeP(n) {
-			isPrivNode = true
-			return false
-		}
-		return true
-	})
-
-	if isPrivNode {
-		return false
-	}
-
-	return true
+	return node.IsReadOnly()
 }

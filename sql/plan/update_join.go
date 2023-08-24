@@ -67,6 +67,10 @@ func (u *UpdateJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewUpdateJoin(u.Updaters, children[0]), nil
 }
 
+func (u *UpdateJoin) IsReadOnly() bool {
+	return false
+}
+
 // CheckPrivileges implements the interface sql.Node.
 func (u *UpdateJoin) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return u.Child.CheckPrivileges(ctx, opChecker)

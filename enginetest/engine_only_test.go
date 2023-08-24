@@ -761,6 +761,10 @@ func (s SimpleTableFunction) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter, 
 	return &SimpleTableFunctionRowIter{}, nil
 }
 
+func (s SimpleTableFunction) IsReadOnly() bool {
+	return true
+}
+
 func (s SimpleTableFunction) Resolved() bool {
 	return true
 }

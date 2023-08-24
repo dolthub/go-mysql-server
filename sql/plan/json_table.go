@@ -128,6 +128,10 @@ func (t *JSONTable) Name() string {
 	return t.TableName
 }
 
+func (t *JSONTable) IsReadOnly() bool {
+	return true
+}
+
 // String implements the sql.Table interface
 func (t *JSONTable) String() string {
 	return t.TableName

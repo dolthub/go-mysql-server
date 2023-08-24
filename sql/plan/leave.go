@@ -50,6 +50,10 @@ func (l *Leave) Schema() sql.Schema {
 	return nil
 }
 
+func (l *Leave) IsReadOnly() bool {
+	return true
+}
+
 // Children implements the interface sql.Node.
 func (l *Leave) Children() []sql.Node {
 	return nil

@@ -43,6 +43,10 @@ func (t *ProcedureResolvedTable) Resolved() bool {
 	return t.ResolvedTable.Resolved()
 }
 
+func (t *ProcedureResolvedTable) IsReadOnly() bool {
+	return true
+}
+
 // String implements the sql.Node interface.
 func (t *ProcedureResolvedTable) String() string {
 	return t.ResolvedTable.String()

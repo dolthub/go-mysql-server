@@ -39,6 +39,10 @@ func NewNamedWindows(windowDefs map[string]*sql.WindowDefinition, child sql.Node
 	}
 }
 
+func (n *NamedWindows) IsReadOnly() bool {
+	return n.Child.IsReadOnly()
+}
+
 // String implements sql.Node
 func (n *NamedWindows) String() string {
 	var sb strings.Builder

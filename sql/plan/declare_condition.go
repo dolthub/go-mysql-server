@@ -44,6 +44,10 @@ func (d *DeclareCondition) Resolved() bool {
 	return true
 }
 
+func (d *DeclareCondition) IsReadOnly() bool {
+	return true
+}
+
 // String implements the sql.Node interface.
 func (d *DeclareCondition) String() string {
 	val := ""

@@ -70,6 +70,10 @@ func (*Concat) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 	return sql.Collation_binary, 7
 }
 
+func (c *Concat) IsReadOnly() bool {
+	return c.left.IsReadOnly() && c.right.IsReadOnly()
+}
+
 func (c Concat) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Concat")

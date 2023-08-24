@@ -53,6 +53,10 @@ func (s *RangeHeap) String() string {
 	return s.Child.String()
 }
 
+func (s *RangeHeap) IsReadOnly() bool {
+	return s.Child.IsReadOnly()
+}
+
 func (s *RangeHeap) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, fmt.Errorf("ds")

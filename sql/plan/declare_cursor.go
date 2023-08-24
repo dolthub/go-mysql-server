@@ -47,6 +47,10 @@ func (d *DeclareCursor) Resolved() bool {
 	return d.Select.Resolved()
 }
 
+func (d *DeclareCursor) IsReadOnly() bool {
+	return d.Select.IsReadOnly()
+}
+
 // String implements the interface sql.Node.
 func (d *DeclareCursor) String() string {
 	return fmt.Sprintf("DECLARE %s CURSOR FOR %s", d.Name, d.Select.String())

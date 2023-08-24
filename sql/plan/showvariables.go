@@ -91,6 +91,10 @@ func (sv *ShowVariables) Expressions() []sql.Expression {
 	return []sql.Expression{sv.Filter}
 }
 
+func (sv *ShowVariables) IsReadOnly() bool {
+	return true
+}
+
 func (sv *ShowVariables) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(sv, len(exprs), 1)

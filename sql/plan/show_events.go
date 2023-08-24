@@ -58,6 +58,10 @@ func (s *ShowEvents) String() string {
 	return "SHOW EVENTS"
 }
 
+func (s *ShowEvents) IsReadOnly() bool {
+	return true
+}
+
 // Resolved implements the sql.Node interface.
 func (s *ShowEvents) Resolved() bool {
 	_, ok := s.db.(sql.UnresolvedDatabase)

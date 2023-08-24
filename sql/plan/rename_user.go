@@ -44,6 +44,10 @@ func (n *RenameUser) Schema() sql.Schema {
 	return types.OkResultSchema
 }
 
+func (n *RenameUser) IsReadOnly() bool {
+	return false
+}
+
 // String implements the interface sql.Node.
 func (n *RenameUser) String() string {
 	strs := make([]string, len(n.OldName))

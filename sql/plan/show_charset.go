@@ -54,6 +54,10 @@ func (sc *ShowCharset) CheckPrivileges(ctx *sql.Context, opChecker sql.Privilege
 	return true
 }
 
+func (sc *ShowCharset) IsReadOnly() bool {
+	return true
+}
+
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*ShowCharset) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

@@ -70,6 +70,10 @@ func (a *AlterPK) Resolved() bool {
 	return a.Table.Resolved() && a.ddlNode.Resolved() && a.targetSchema.Resolved()
 }
 
+func (a *AlterPK) IsReadOnly() bool {
+	return false
+}
+
 func (a *AlterPK) String() string {
 	action := "add"
 	if a.Action == PrimaryKeyAction_Drop {
