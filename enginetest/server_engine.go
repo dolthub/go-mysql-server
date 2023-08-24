@@ -49,9 +49,6 @@ var port = 3306
 func NewServerQueryEngine(t *testing.T, engine *sqle.Engine) (*ServerQueryEngine, error) {
 	ctx := sql.NewEmptyContext()
 
-	// This variable may be found in the "users_example.go" file. Please refer to that file for a walkthrough on how to
-	// set up the "mysql" database to allow user creation and user checking when establishing connections. This is set
-	// to false for this example, but feel free to play around with it and see how it works.
 	if err := enableUserAccounts(ctx, engine); err != nil {
 		panic(err)
 	}
