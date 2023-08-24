@@ -40,10 +40,32 @@ type planTest struct {
 
 func TestPlanBuilder(t *testing.T) {
 	var verbose, rewrite bool
-	//verbose = true
+	verbose = true
 	//rewrite = true
 
 	var tests = []planTest{
+		{
+			Query: "select a.x, b.y as s1, a.y as s2 from xy a join xy b on a.y = b.y group by b.y",
+			ExpectedPlan: `
+Project
+ ├─ columns: [a.x:1!null, b.y:5!null as s1, a.y:2!null as s2]
+ └─ GroupBy
+     ├─ select: a.x:1!null, b.y:5!null, a.y:2!null
+     ├─ group: b.y:5!null
+     └─ InnerJoin
+         ├─ Eq
+         │   ├─ a.y:2!null
+         │   └─ b.y:5!null
+         ├─ TableAlias(a)
+         │   └─ Table
+         │       ├─ name: xy
+         │       └─ columns: [x y z]
+         └─ TableAlias(b)
+             └─ Table
+                 ├─ name: xy
+                 └─ columns: [x y z]
+`,
+		},
 		{
 			Query: "with cte(y,x) as (select x,y from xy) select * from cte",
 			ExpectedPlan: `
