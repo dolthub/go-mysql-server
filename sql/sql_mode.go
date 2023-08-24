@@ -34,7 +34,6 @@ func LoadSqlMode(ctx *Context) *SqlMode {
 	sqlMode, err := ctx.Session.GetSessionVariable(ctx, SqlModeSessionVar)
 	if err != nil {
 		// if system variables are not initialized, assume default sqlMode
-		ctx.GetLogger().Warn("sqlMode system variable has not been initialized")
 		return &SqlMode{modes: nil, modeString: ""}
 	}
 
