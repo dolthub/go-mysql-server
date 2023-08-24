@@ -208,7 +208,7 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 			selectExprs = append(selectExprs, e.scalarGf())
 			selectGfs = append(selectGfs, e.scalarGf())
 
-			selectStr[e.col] = true
+			selectStr[e.String()] = true
 		}
 	}
 	gb := plan.NewGroupBy(selectExprs, groupingCols, fromScope.node)
@@ -501,11 +501,11 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 		transform.InspectExpr(col.scalar, func(e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:
-				colName := strings.ToLower(e.Name())
+				colName := strings.ToLower(e.String())
 				if !selectStr[colName] {
 					selectExprs = append(selectExprs, e)
-					selectStr[colName] = true
 					selectGfs = append(selectGfs, e)
+					selectStr[colName] = true
 				}
 			default:
 			}
@@ -514,10 +514,10 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 	}
 	for _, e := range fromScope.extraCols {
 		// accessory cols used by ORDER_BY, HAVING
-		if !selectStr[e.col] {
+		if !selectStr[e.String()] {
 			selectExprs = append(selectExprs, e.scalarGf())
 			selectGfs = append(selectGfs, e.scalarGf())
-			selectStr[e.col] = true
+			selectStr[e.String()] = true
 		}
 	}
 
