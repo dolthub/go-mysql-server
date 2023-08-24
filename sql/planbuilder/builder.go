@@ -15,6 +15,7 @@
 package planbuilder
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -194,13 +195,25 @@ func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outSc
 		return b.buildChangeReplicationFilter(inScope, n)
 	case *ast.StartReplica:
 		outScope = inScope.push()
-		outScope.node = plan.NewStartReplica()
+		startRep := plan.NewStartReplica()
+		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.IsBinlogReplicaCatalog() {
+			startRep.ReplicaController = binCat.GetBinlogReplicaController()
+		}
+		outScope.node = startRep
 	case *ast.StopReplica:
 		outScope = inScope.push()
-		outScope.node = plan.NewStopReplica()
+		stopRep := plan.NewStopReplica()
+		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.IsBinlogReplicaCatalog() {
+			stopRep.ReplicaController = binCat.GetBinlogReplicaController()
+		}
+		outScope.node = stopRep
 	case *ast.ResetReplica:
 		outScope = inScope.push()
-		outScope.node = plan.NewResetReplica(n.All)
+		resetRep := plan.NewResetReplica(n.All)
+		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.IsBinlogReplicaCatalog() {
+			resetRep.ReplicaController = binCat.GetBinlogReplicaController()
+		}
+		outScope.node = resetRep
 	case *ast.BeginEndBlock:
 		return b.buildBeginEndBlock(inScope, n)
 	case *ast.IfStatement:

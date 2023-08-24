@@ -16,6 +16,7 @@ package planbuilder
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 	"strings"
 	"time"
 
@@ -76,7 +77,11 @@ func (b *Builder) buildShow(inScope *scope, s *ast.Show, query string) (outScope
 		return b.buildShowStatus(inScope, s)
 	case "replica status":
 		outScope = inScope.push()
-		outScope.node = plan.NewShowReplicaStatus()
+		showRep := plan.NewShowReplicaStatus()
+		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.IsBinlogReplicaCatalog() {
+			showRep.ReplicaController = binCat.GetBinlogReplicaController()
+		}
+		outScope.node = showRep
 	default:
 		unsupportedShow := fmt.Sprintf("SHOW %s", s.Type)
 		b.handleErr(sql.ErrUnsupportedFeature.New(unsupportedShow))

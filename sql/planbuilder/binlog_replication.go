@@ -31,7 +31,10 @@ func (b *Builder) buildChangeReplicationSource(inScope *scope, n *ast.ChangeRepl
 		convertedOption := b.buildReplicationOption(inScope, option)
 		convertedOptions = append(convertedOptions, *convertedOption)
 	}
-	outScope.node = plan.NewChangeReplicationSource(convertedOptions)
+	repSrc := plan.NewChangeReplicationSource(convertedOptions)
+	if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.IsBinlogReplicaCatalog() {
+		repSrc.ReplicaController = binCat.GetBinlogReplicaController()
+	}
 	return outScope
 }
 
