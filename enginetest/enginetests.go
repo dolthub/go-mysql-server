@@ -6279,7 +6279,7 @@ func TestPrepared(t *testing.T, harness Harness) {
 			_, err := e.PrepareQuery(ctx, tt.Query)
 			require.NoError(t, err)
 			ctx = ctx.WithQuery(tt.Query)
-			_, _, err = e.QueryWithBindings(ctx, tt.Query, tt.Bindings)
+			_, _, err = e.QueryWithBindings(ctx, tt.Query, nil, tt.Bindings)
 			require.Error(t, err)
 		})
 	}

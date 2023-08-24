@@ -295,7 +295,7 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e QueryEngine, harness
 		require.NoError(err)
 	}
 
-	sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
+	sch, iter, err := e.QueryWithBindings(ctx, q, nil, bindings)
 	require.NoError(err, "Unexpected error for query %s: %s", q, err)
 
 	rows, err := sql.RowIterToRows(ctx, sch, iter)
@@ -694,7 +694,7 @@ func AssertErr(t *testing.T, e QueryEngine, harness Harness, query string, expec
 // type of error.
 func AssertErrWithBindings(t *testing.T, e QueryEngine, harness Harness, query string, bindings map[string]*querypb.BindVariable, expectedErrKind *errors.Kind, errStrs ...string) {
 	ctx := NewContext(harness)
-	sch, iter, err := e.QueryWithBindings(ctx, query, bindings)
+	sch, iter, err := e.QueryWithBindings(ctx, query, nil, bindings)
 	if err == nil {
 		_, err = sql.RowIterToRows(ctx, sch, iter)
 	}

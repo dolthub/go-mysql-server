@@ -92,7 +92,7 @@ func (s ServerQueryEngine) Query(ctx *sql.Context, query string) (sql.Schema, sq
 		return nil, nil, err
 	}
 
-	return s.QueryWithBindings(ctx, q, bindVars)
+	return s.QueryWithBindings(ctx, q, nil, bindVars)
 }
 
 func (s ServerQueryEngine) EngineAnalyzer() *analyzer.Analyzer {
@@ -103,7 +103,7 @@ func (s ServerQueryEngine) EnginePreparedDataCache() *sqle.PreparedDataCache {
 	return s.engine.PreparedDataCache
 }
 
-func (s ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, bindings map[string]*query.BindVariable) (sql.Schema, sql.RowIter, error) {
+func (s ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*query.BindVariable) (sql.Schema, sql.RowIter, error) {
 	conn, err := newConnection(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -116,9 +116,11 @@ func (s ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, bin
 	
 	bindingArgs := bindingArgs(bindings)
 
-	parsed, err := sqlparser.Parse(query)
-	if err != nil {
-		return nil, nil, err
+	if parsed == nil {
+		parsed, err = sqlparser.Parse(query)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 	
 	switch parsed.(type) {

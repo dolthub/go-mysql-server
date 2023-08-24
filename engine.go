@@ -222,7 +222,7 @@ func (e *Engine) PrepareQuery(
 
 // Query executes a query.
 func (e *Engine) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter, error) {
-	return e.QueryWithBindings(ctx, query, nil)
+	return e.QueryWithBindings(ctx, query, nil, nil)
 }
 
 func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.Expression, error) {
