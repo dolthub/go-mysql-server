@@ -91,10 +91,10 @@ func newTestScope(n sql.Node) *plan.Scope {
 }
 
 var analyzeRules = [][]Rule{
-	OnceBeforeDefault_Exp,
-	DefaultRules_Exp,
-	OnceAfterDefault_Experimental,
-	OnceAfterAll_Experimental,
+	OnceBeforeDefault,
+	DefaultRules,
+	OnceAfterDefault,
+	OnceAfterAll,
 }
 
 func getRule(id RuleId) Rule {

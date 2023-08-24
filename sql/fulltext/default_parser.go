@@ -56,14 +56,19 @@ func NewDefaultParser(ctx *sql.Context, collation sql.CollationID, colVals ...in
 	//TODO: implement exact matching using double quotes
 	sb := strings.Builder{}
 	for i, colVal := range colVals {
-		if i > 0 {
-			sb.WriteString(" ")
-		}
 		switch v := colVal.(type) {
 		case string:
+			if i > 0 {
+				sb.WriteString(" ")
+			}
 			sb.WriteString(v)
 		case []byte:
+			if i > 0 {
+				sb.WriteString(" ")
+			}
 			sb.Write(v)
+		case nil:
+			continue
 		default:
 			panic(fmt.Errorf("Full-Text parser has encountered an unexpected type: %T", colVal))
 		}

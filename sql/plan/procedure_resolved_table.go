@@ -127,14 +127,14 @@ func (t *ProcedureResolvedTable) PartitionRows(ctx *sql.Context, partition sql.P
 // NewestTable fetches the newest copy of the contained table from the database.
 func (t *ProcedureResolvedTable) NewestTable(ctx *sql.Context) (*ResolvedTable, error) {
 	// If no database was given, such as with the "dual" table, then we return the given table as-is.
-	if t.ResolvedTable.Database == nil {
+	if t.ResolvedTable.SqlDatabase == nil {
 		return t.ResolvedTable, nil
 	}
 
 	if IsDualTable(t.ResolvedTable) {
 		return t.ResolvedTable, nil
 	} else if t.ResolvedTable.AsOf == nil {
-		tbl, ok, err := t.ResolvedTable.Database.GetTableInsensitive(ctx, t.ResolvedTable.Table.Name())
+		tbl, ok, err := t.ResolvedTable.SqlDatabase.GetTableInsensitive(ctx, t.ResolvedTable.Table.Name())
 		if err != nil {
 			return nil, err
 		} else if !ok {
@@ -142,9 +142,9 @@ func (t *ProcedureResolvedTable) NewestTable(ctx *sql.Context) (*ResolvedTable, 
 		}
 		return t.ResolvedTable.WithTable(tbl)
 	} else {
-		versionedDb, ok := t.ResolvedTable.Database.(sql.VersionedDatabase)
+		versionedDb, ok := t.ResolvedTable.SqlDatabase.(sql.VersionedDatabase)
 		if !ok {
-			return nil, sql.ErrAsOfNotSupported.New(t.ResolvedTable.Database.Name())
+			return nil, sql.ErrAsOfNotSupported.New(t.ResolvedTable.SqlDatabase.Name())
 		}
 
 		tbl, ok, err := versionedDb.GetTableInsensitiveAsOf(ctx, t.ResolvedTable.Table.Name(), t.ResolvedTable.AsOf)

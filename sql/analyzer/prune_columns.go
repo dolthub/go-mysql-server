@@ -54,7 +54,7 @@ func pruneColumns(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scop
 
 	// Skip pruning columns for insert statements. For inserts involving a select (INSERT INTO table1 SELECT a,b FROM
 	// table2), all columns from the select are used for the insert, and error checking for schema compatibility
-	// happens at execution time. Otherwise the logic below will convert a Project to a ResolvedTable for the selected
+	// happens at execution time. Otherwise the logic below will convert a Project to a TableNode for the selected
 	// table, which can alter the column order of the select.
 	switch n := node.(type) {
 	case *plan.InsertInto, *plan.CreateTrigger:

@@ -202,24 +202,6 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	return resultNode, resultIdentity, nil
 }
 
-// removeUnnecessaryConverts removes any Convert expressions that don't alter the type of the expression.
-func removeUnnecessaryConverts(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, ctx := ctx.Span("remove_unnecessary_converts")
-	defer span.End()
-
-	if !n.Resolved() {
-		return n, transform.SameTree, nil
-	}
-
-	return transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		if c, ok := e.(*expression.Convert); ok && c.Child.Type() == c.Type() {
-			return c.Child, transform.NewTree, nil
-		}
-
-		return e, transform.SameTree, nil
-	})
-}
-
 // containsSources checks that all `needle` sources are contained inside `haystack`.
 func containsSources(haystack, needle []string) bool {
 	for _, s := range needle {

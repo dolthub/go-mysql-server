@@ -1,3 +1,17 @@
+// Copyright 2023 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package planbuilder
 
 import (
@@ -16,11 +30,12 @@ import (
 type declareState uint8
 
 const (
-	dsUnknowndeclareState = iota
-	dsVariablesConditions // Variable or Condition
-	dsCursors             // Cursor
-	dsHandlers            // Handler
-	dsBody                // No more declarations should be seen
+	dsUnknownDeclareState = iota
+	dsVariable
+	dsCondition
+	dsCursor
+	dsHandler
+	dsBody // No more declarations should be seen
 )
 
 type procCtx struct {
@@ -33,7 +48,34 @@ type procCtx struct {
 	lastState  declareState
 }
 
+func (p *procCtx) NewState(state declareState) {
+	switch state {
+	case dsCondition:
+		if p.lastState > state {
+			err := sql.ErrDeclareConditionOrderInvalid.New()
+			p.s.b.handleErr(err)
+		}
+	case dsVariable:
+		if p.lastState > state && p.lastState != dsCondition {
+			err := sql.ErrDeclareVariableOrderInvalid.New()
+			p.s.b.handleErr(err)
+		}
+	case dsHandler:
+		if p.lastState > state {
+			err := sql.ErrDeclareHandlerOrderInvalid.New()
+			p.s.b.handleErr(err)
+		}
+	case dsCursor:
+		if p.lastState > state {
+			err := sql.ErrDeclareCursorOrderInvalid.New()
+			p.s.b.handleErr(err)
+		}
+	}
+	p.lastState = state
+}
+
 func (p *procCtx) AddVar(param *expression.ProcedureParam) {
+	p.NewState(dsVariable)
 	lowerName := strings.ToLower(param.Name())
 	if _, ok := p.vars[lowerName]; ok {
 		err := sql.ErrDeclareVariableDuplicate.New(lowerName)
@@ -56,6 +98,7 @@ func (p *procCtx) GetVar(name string) (scopeColumn, bool) {
 }
 
 func (p *procCtx) AddCursor(name string) {
+	p.NewState(dsCursor)
 	lowerName := strings.ToLower(name)
 	if _, ok := p.cursors[lowerName]; ok {
 		err := sql.ErrDeclareCursorDuplicate.New(name)
@@ -75,6 +118,7 @@ func (p *procCtx) HasCursor(name string) bool {
 }
 
 func (p *procCtx) AddHandler(h *plan.DeclareHandler) {
+	p.NewState(dsHandler)
 	if p.handler != nil {
 		err := sql.ErrDeclareHandlerDuplicate.New()
 		p.s.b.handleErr(err)
@@ -87,6 +131,8 @@ func (p *procCtx) HasHandler(name string) bool {
 }
 
 func (p *procCtx) AddLabel(label string, isLoop bool) {
+	p.NewState(dsVariable)
+
 	// Empty labels are not added since they cannot be referenced
 	if label == "" {
 		return
@@ -110,6 +156,7 @@ func (p *procCtx) HasLabel(name string) (bool, bool) {
 }
 
 func (p *procCtx) AddCondition(cond *plan.DeclareCondition) {
+	p.NewState(dsCondition)
 	name := strings.ToLower(cond.Name)
 	if _, ok := p.conditions[name]; ok {
 		err := sql.ErrDeclareConditionDuplicate.New(name)
@@ -257,6 +304,7 @@ func (b *Builder) buildDeclareCondition(inScope *scope, d *ast.Declare) (outScop
 		err = sql.ErrUnsupportedSyntax.New(ast.String(d))
 		b.handleErr(err)
 	}
+
 	cond := plan.NewDeclareCondition(strings.ToLower(dc.Name), 0, dc.SqlStateValue)
 	inScope.proc.AddCondition(cond)
 	outScope.node = cond
@@ -275,7 +323,9 @@ func (b *Builder) buildDeclareVariables(inScope *scope, d *ast.Declare) (outScop
 	for i, variable := range dVars.Names {
 		varName := strings.ToLower(variable.String())
 		names[i] = varName
-		inScope.newColumn(scopeColumn{table: "", col: varName, typ: typ, scalar: expression.NewProcedureParam(varName)})
+		param := expression.NewProcedureParam(varName)
+		inScope.proc.AddVar(param)
+		inScope.newColumn(scopeColumn{table: "", col: varName, typ: typ, scalar: param})
 	}
 	defaultVal := b.buildDefaultExpression(inScope, dVars.VarType.Default)
 
@@ -333,6 +383,13 @@ func (b *Builder) buildDeclareHandler(inScope *scope, d *ast.Declare, query stri
 func (b *Builder) buildBlock(inScope *scope, parserStatements ast.Statements) *plan.Block {
 	var statements []sql.Node
 	for _, s := range parserStatements {
+		switch s.(type) {
+		case *ast.Declare:
+		default:
+			if inScope.procActive() {
+				inScope.proc.NewState(dsBody)
+			}
+		}
 		stmtScope := b.build(inScope, s, ast.String(s))
 		statements = append(statements, stmtScope.node)
 	}

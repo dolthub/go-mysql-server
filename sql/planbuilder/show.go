@@ -1,3 +1,17 @@
+// Copyright 2023 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package planbuilder
 
 import (
@@ -106,6 +120,7 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 
 	showCreate := plan.NewShowCreateTableWithAsOf(tableScope.node, showType == "create view", asOfExpr)
 	outScope.node = showCreate
+
 	if rt != nil {
 		checks := b.loadChecksFromTable(outScope, rt.Table)
 		// To match MySQL output format, transform the column names and wrap with backticks
@@ -119,11 +134,14 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 		}
 		showCreate.Checks = checks
 
+		showCreate.Indexes = b.getInfoSchemaIndexes(rt)
+
 		pks, _ := rt.Table.(sql.PrimaryKeyTable)
 		if pks != nil {
 			showCreate.PrimaryKeySchema = pks.PrimaryKeySchema()
 		}
 		outScope.node = b.modifySchemaTarget(outScope, showCreate, rt)
+
 	}
 	return
 }
@@ -383,8 +401,43 @@ func (b *Builder) buildShowIndex(inScope *scope, s *ast.Show) (outScope *scope) 
 	}
 	tableName := strings.ToLower(s.Table.Name.String())
 	table := b.resolveTable(tableName, strings.ToLower(dbName), nil)
-	outScope.node = plan.NewShowIndexes(table)
+	showIdx := plan.NewShowIndexes(table)
+	showIdx.IndexesToShow = b.getInfoSchemaIndexes(table)
+	outScope.node = showIdx
 	return
+}
+
+func (b *Builder) getInfoSchemaIndexes(rt *plan.ResolvedTable) []sql.Index {
+	it, ok := rt.Table.(sql.IndexAddressableTable)
+	if !ok {
+		return nil
+	}
+
+	indexes, err := it.GetIndexes(b.ctx)
+	if err != nil {
+		b.handleErr(err)
+	}
+
+	for i := 0; i < len(indexes); i++ {
+		// remove generated indexes
+		idx := indexes[i]
+		if idx.IsGenerated() {
+			indexes[i], indexes[len(indexes)-1] = indexes[len(indexes)-1], indexes[i]
+			indexes = indexes[:len(indexes)-1]
+			i--
+		}
+	}
+
+	if b.ctx.GetIndexRegistry().HasIndexes() {
+		idxRegistry := b.ctx.GetIndexRegistry()
+		for _, idx := range idxRegistry.IndexesByTable(rt.Database().Name(), rt.Table.Name()) {
+			if !idx.IsGenerated() {
+				indexes = append(indexes, idx)
+			}
+		}
+	}
+
+	return indexes
 }
 
 func (b *Builder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *scope) {
@@ -579,8 +632,17 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 	}
 
 	var node sql.Node = show
-	if rt, _ := table.(*plan.ResolvedTable); rt != nil {
-		node = b.modifySchemaTarget(tableScope, show, rt)
+	switch t := table.(type) {
+	case *plan.ResolvedTable:
+		show.Indexes = b.getInfoSchemaIndexes(t)
+		node = b.modifySchemaTarget(tableScope, show, t)
+	case *plan.SubqueryAlias:
+		var err error
+		node, err = show.WithTargetSchema(t.Schema())
+		if err != nil {
+			b.handleErr(err)
+		}
+	default:
 	}
 
 	if s.ShowTablesOpt != nil && s.ShowTablesOpt.Filter != nil {
@@ -721,7 +783,10 @@ func (b *Builder) buildShowStatus(inScope *scope, s *ast.Show) (outScope *scope)
 func (b *Builder) buildShowCharset(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 
-	var node sql.Node = plan.NewShowCharset()
+	showCharset := plan.NewShowCharset()
+	showCharset.CharacterSetTable = b.resolveTable("character_sets", "information_schema", nil)
+
+	var node sql.Node = showCharset
 	for _, c := range node.Schema() {
 		outScope.newColumn(scopeColumn{table: c.Source, col: c.Name, typ: c.Type, nullable: c.Nullable})
 	}

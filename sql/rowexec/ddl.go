@@ -130,12 +130,8 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 		fieldToColumnMap[fieldIndex] = sch.IndexOf(columnName, source)
 	}
 
-	dest, ok := n.Destination.(*plan.ResolvedTable)
-	if !ok {
-		return nil, fmt.Errorf("expected destination to be a table, found %T", n.Destination)
-	}
 	return &loadDataIter{
-		destination:             dest,
+		destSch:                 n.DestSch,
 		reader:                  reader,
 		scanner:                 scanner,
 		columnCount:             len(n.ColumnNames), // Needs to be the original column count
@@ -920,10 +916,7 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 }
 
 func (b *BaseBuilder) buildCreateProcedure(ctx *sql.Context, n *plan.CreateProcedure, row sql.Row) (sql.RowIter, error) {
-	sqlMode, err := sql.LoadSqlMode(ctx)
-	if err != nil {
-		return nil, err
-	}
+	sqlMode := sql.LoadSqlMode(ctx)
 	return &createProcedureIter{
 		spd: sql.StoredProcedureDetails{
 			Name:            n.Name,
@@ -937,10 +930,7 @@ func (b *BaseBuilder) buildCreateProcedure(ctx *sql.Context, n *plan.CreateProce
 }
 
 func (b *BaseBuilder) buildCreateTrigger(ctx *sql.Context, n *plan.CreateTrigger, row sql.Row) (sql.RowIter, error) {
-	sqlMode, err := sql.LoadSqlMode(ctx)
-	if err != nil {
-		return nil, err
-	}
+	sqlMode := sql.LoadSqlMode(ctx)
 	return &createTriggerIter{
 		definition: sql.TriggerDefinition{
 			Name:            n.TriggerName,

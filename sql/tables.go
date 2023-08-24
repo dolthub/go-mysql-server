@@ -14,7 +14,9 @@
 
 package sql
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // Table is a SQL table.
 type Table interface {
@@ -39,6 +41,14 @@ type TableFunction interface {
 
 	// NewInstance calls the table function with the arguments provided, producing a Node
 	NewInstance(ctx *Context, db Database, args []Expression) (Node, error)
+}
+
+// CatalogTableFunction is a table function that can be used as a table factor in many SQL queries.
+type CatalogTableFunction interface {
+	TableFunction
+
+	// WithCatalog returns a new instance of the table function with the given catalog
+	WithCatalog(c Catalog) (TableFunction, error)
 }
 
 // TemporaryTable allows tables to declare that they are temporary (created by CREATE TEMPORARY TABLE).
@@ -278,18 +288,6 @@ type AutoIncrementSetter interface {
 	Closer
 }
 
-// AutoIncrementGetter is implemented by tables that support AUTO_INCREMENT to return the next value that will be
-// inserted, given a particular insert value provided by the client.
-type AutoIncrementGetter interface {
-	GetNextAutoIncrementValue(ctx *Context, insertVal interface{}) (uint64, error)
-}
-
-// AutoIncrementEditor is an interface for tables that support changing the value of auto increment columns.
-type AutoIncrementEditor interface {
-	AutoIncrementSetter
-	AutoIncrementGetter
-}
-
 // ReplaceableTable allows rows to be replaced through a Delete (if applicable) then Insert.
 type ReplaceableTable interface {
 	Table
@@ -374,4 +372,16 @@ type UnresolvedTable interface {
 	WithAsOf(asOf Expression) (Node, error)
 	// AsOf returns this table's asof expression.
 	AsOf() Expression
+}
+
+// TableNode is an interface for nodes that are also tables. A node that implements this interface exposes all the
+// information needed for filters on the table to be optimized into indexes. This is possible when the return value
+// of `UnderlyingTable` is a table that implements `sql.IndexAddressable`
+// For an example of how to use this interface to optimize a system table or table function, see memory.IntSequenceTable
+type TableNode interface {
+	Table
+	Node
+	CollationCoercible
+	Databaser
+	UnderlyingTable() Table
 }

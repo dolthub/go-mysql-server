@@ -45,6 +45,7 @@ type MatchAgainst struct {
 	RowCountTable    sql.IndexAddressableTable
 
 	once             sync.Once
+	expectedRowLen   int
 	evaluatedString  string
 	parser           fulltext.DefaultParser
 	docCountIndex    sql.Index
@@ -69,6 +70,7 @@ func NewMatchAgainst(columns []sql.Expression, expr sql.Expression, searchModifi
 		DocCountTable:    nil,
 		GlobalCountTable: nil,
 		RowCountTable:    nil,
+		expectedRowLen:   0,
 	}
 }
 
@@ -82,6 +84,7 @@ func (expr *MatchAgainst) Children() []sql.Expression {
 
 // Eval implements sql.Expression
 func (expr *MatchAgainst) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	row = row[:expr.expectedRowLen]
 	switch expr.SearchModifier {
 	case fulltext.SearchModifier_NaturalLanguage:
 		return expr.inNaturalLanguageMode(ctx, row)
@@ -157,6 +160,7 @@ func (expr *MatchAgainst) WithChildren(children ...sql.Expression) (sql.Expressi
 		DocCountTable:    expr.DocCountTable,
 		GlobalCountTable: expr.GlobalCountTable,
 		RowCountTable:    expr.RowCountTable,
+		expectedRowLen:   expr.expectedRowLen,
 	}, nil
 }
 
@@ -174,6 +178,7 @@ func (expr *MatchAgainst) WithInfo(parent, config, position, docCount, globalCou
 		DocCountTable:    docCount,
 		GlobalCountTable: globalCount,
 		RowCountTable:    rowCount,
+		expectedRowLen:   len(parent.Schema()),
 	}
 }
 
@@ -230,7 +235,9 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 		}
 		wordsStr, ok := words.(string)
 		if !ok {
-			err = fmt.Errorf("expected WORD to be a string, but had type `%T`", words)
+			if words != nil {
+				err = fmt.Errorf("expected WORD to be a string, but had type `%T`", words)
+			}
 		}
 		expr.evaluatedString = wordsStr
 		// Grab the index for the doc count table

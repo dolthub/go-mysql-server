@@ -149,30 +149,6 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 	})
 }
 
-// resolvePreparedInsert applies post-optimization
-// rules to Insert.Source for prepared statements.
-func resolvePreparedInsert(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		ins, ok := n.(*plan.InsertInto)
-		if !ok {
-			return n, transform.SameTree, nil
-		}
-
-		// TriggerExecutor has already been analyzed
-		if _, ok := ins.Source.(*plan.TriggerExecutor); ok {
-			return n, transform.SameTree, nil
-		}
-
-		source, _, err := a.analyzeWithSelector(ctx, ins.Source, scope, SelectAllBatches, postPrepareInsertSourceRuleSelector)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-
-		source = StripPassthroughNodes(source)
-		return ins.WithSource(source), transform.NewTree, nil
-	})
-}
-
 // Ensures that the number of elements in each Value tuple is empty
 func existsNonZeroValueCount(values sql.Node) bool {
 	switch node := values.(type) {

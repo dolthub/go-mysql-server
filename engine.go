@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
@@ -136,7 +137,7 @@ type Engine struct {
 	ProcessList       sql.ProcessList
 	MemoryManager     *sql.MemoryManager
 	BackgroundThreads *sql.BackgroundThreads
-	IsReadOnly        bool
+	ReadOnly          atomic.Bool
 	IsServerLocked    bool
 	PreparedDataCache *PreparedDataCache
 	mu                *sync.Mutex
@@ -168,17 +169,18 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	})
 	a.Catalog.RegisterFunction(emptyCtx, function.GetLockingFuncs(ls)...)
 
-	return &Engine{
+	ret := &Engine{
 		Analyzer:          a,
 		MemoryManager:     sql.NewMemoryManager(sql.ProcessMemory),
 		ProcessList:       NewProcessList(),
 		LS:                ls,
 		BackgroundThreads: sql.NewBackgroundThreads(),
-		IsReadOnly:        cfg.IsReadOnly,
 		IsServerLocked:    cfg.IsServerLocked,
 		PreparedDataCache: NewPreparedDataCache(),
 		mu:                &sync.Mutex{},
 	}
+	ret.ReadOnly.Store(cfg.IsReadOnly)
+	return ret
 }
 
 // NewDefault creates a new default Engine.
@@ -204,10 +206,7 @@ func (e *Engine) PrepareQuery(
 	ctx *sql.Context,
 	query string,
 ) (sql.Node, error) {
-	sqlMode, err := sql.LoadSqlMode(ctx)
-	if err != nil {
-		return nil, err
-	}
+	sqlMode := sql.LoadSqlMode(ctx)
 	node, err := planbuilder.ParseWithOptions(ctx, e.Analyzer.Catalog, query, sqlMode.ParserOptions())
 	if err != nil {
 		return nil, err
@@ -338,14 +337,16 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 
 // QueryWithBindings executes the query given with the bindings provided. If parsed is non-nil, it will be used
 // instead of parsing the query from text.
-func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
+func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
 	var err error
 	if prep, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query); ok {
+		parsed = nil
 		query, err = prep.GenerateQuery(bindings, nil)
 		if err != nil {
 			return nil, nil, err
 		}
 	} else if len(bindings) > 0 {
+		parsed = nil
 		_, err := e.PrepareQuery(ctx, query)
 		if err != nil {
 			return nil, nil, err
@@ -370,7 +371,7 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, bindings map[
 		return nil, nil, err
 	}
 
-	sqlMode, err := sql.LoadSqlMode(ctx)
+	sqlMode := sql.LoadSqlMode(ctx)
 	if err != nil {
 		err2 := clearAutocommitTransaction(ctx)
 		if err2 != nil {
@@ -378,16 +379,28 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, bindings map[
 		}
 		return nil, nil, err
 	}
-	parsed, err := planbuilder.ParseWithOptions(ctx, e.Analyzer.Catalog, query, sqlMode.ParserOptions())
-	if err != nil {
-		err2 := clearAutocommitTransaction(ctx)
-		if err2 != nil {
-			return nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
+	var bound sql.Node
+	if parsed == nil {
+		bound, err = planbuilder.ParseWithOptions(ctx, e.Analyzer.Catalog, query, sqlMode.ParserOptions())
+		if err != nil {
+			err2 := clearAutocommitTransaction(ctx)
+			if err2 != nil {
+				return nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
+			}
+			return nil, nil, err
 		}
-		return nil, nil, err
+	} else {
+		b, err := planbuilder.New(ctx, e.Analyzer.Catalog)
+		if err != nil {
+			return nil, nil, err
+		}
+		bound, err = b.BindOnly(parsed, query)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
-	switch n := parsed.(type) {
+	switch n := bound.(type) {
 	case *plan.ExecuteQuery:
 		prep, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), n.Name)
 		if !ok {
@@ -419,14 +432,13 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, bindings map[
 				}
 			} else {
 				bindings[fmt.Sprintf("v%d", i)] = sqltypes.StringBindVariable(name.String())
-
 			}
 		}
 		query, err = prep.GenerateQuery(bindings, nil)
 		if err != nil {
 			return nil, nil, err
 		}
-		parsed, err = planbuilder.ParseWithOptions(ctx, e.Analyzer.Catalog, query, sqlMode.ParserOptions())
+		bound, err = planbuilder.ParseWithOptions(ctx, e.Analyzer.Catalog, query, sqlMode.ParserOptions())
 		if err != nil {
 			err2 := clearAutocommitTransaction(ctx)
 			if err2 != nil {
@@ -435,10 +447,9 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, bindings map[
 
 			return nil, nil, err
 		}
-
 	}
 
-	err = e.readOnlyCheck(parsed)
+	err = e.readOnlyCheck(bound)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -446,7 +457,7 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, bindings map[
 	// TODO: eventually, we should have this logic be in the RowIter() of the respective plans
 	// along with a new rule that handles analysis
 	var analyzed sql.Node
-	switch n := parsed.(type) {
+	switch n := bound.(type) {
 	case *plan.PrepareQuery:
 		// we have to name-resolve to check for structural errors, but we do
 		// not to cache the name-bound query yet.
@@ -479,15 +490,15 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, bindings map[
 			return nil, nil, err
 		}
 		e.PreparedDataCache.CacheStmt(ctx.Session.ID(), n.Name, cacheStmt)
-		analyzed = parsed
+		analyzed = bound
 	case *plan.DeallocateQuery:
 		if _, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), n.Name); !ok {
 			return nil, nil, sql.ErrUnknownPreparedStatement.New(n.Name)
 		}
 		e.PreparedDataCache.UncacheStmt(ctx.Session.ID(), n.Name)
-		analyzed = parsed
+		analyzed = bound
 	default:
-		analyzed, err = e.analyzeQuery(ctx, query, parsed)
+		analyzed, err = e.analyzeQuery(ctx, query, bound)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -618,23 +629,19 @@ func (e *Engine) WithBackgroundThreads(b *sql.BackgroundThreads) *Engine {
 	return e
 }
 
+func (e *Engine) IsReadOnly() bool {
+	return e.ReadOnly.Load()
+}
+
 // readOnlyCheck checks to see if the query is valid with the modification setting of the engine.
 func (e *Engine) readOnlyCheck(node sql.Node) error {
-	if plan.IsDDLNode(node) {
-		if e.IsReadOnly {
-			return sql.ErrReadOnly.New()
-		} else if e.IsServerLocked {
-			return sql.ErrDatabaseWriteLocked.New()
-		}
+	// Note: We only compute plan.IsReadOnly if the server is in one of
+	// these two modes, since otherwise it is simply wasted work.
+	if e.IsReadOnly() && !plan.IsReadOnly(node) {
+		return sql.ErrReadOnly.New()
 	}
-	switch node.(type) {
-	case
-		*plan.DeleteFrom, *plan.InsertInto, *plan.Update, *plan.LockTables, *plan.UnlockTables:
-		if e.IsReadOnly {
-			return sql.ErrReadOnly.New()
-		} else if e.IsServerLocked {
-			return sql.ErrDatabaseWriteLocked.New()
-		}
+	if e.IsServerLocked && !plan.IsReadOnly(node) {
+		return sql.ErrDatabaseWriteLocked.New()
 	}
 	return nil
 }

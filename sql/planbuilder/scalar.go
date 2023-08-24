@@ -1,3 +1,17 @@
+// Copyright 2023 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package planbuilder
 
 import (
@@ -173,7 +187,12 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 			}
 		}
 		expr := b.buildScalar(inScope, v.Expr)
-		return expression.NewConvertWithLengthAndScale(expr, v.Type.Type, typeLength, typeScale)
+		ret, err := b.f.buildConvert(expr, v.Type.Type, typeLength, typeScale)
+		if err != nil {
+			b.handleErr(err)
+		}
+		return ret
+
 	case *ast.RangeCond:
 		val := b.buildScalar(inScope, v.Left)
 		lower := b.buildScalar(inScope, v.From)
@@ -830,6 +849,10 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 // filter, since we only need to load the tables once. All steps after this
 // one can assume that the expression has been fully resolved and is valid.
 func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expression.MatchAgainst {
+	//TODO: implement proper scope support and remove this check
+	if (inScope.groupBy != nil && inScope.groupBy.hasAggs()) || inScope.windowFuncs != nil {
+		b.handleErr(fmt.Errorf("aggregate and window functions are not yet supported alongside MATCH expressions"))
+	}
 	rts := getTablesByName(inScope.node)
 	var rt *plan.ResolvedTable
 	var matchTable string
@@ -876,10 +899,7 @@ func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expressio
 		b.handleErr(err)
 	}
 
-	innerTbl := rt.Table
-	if t, ok := innerTbl.(sql.TableWrapper); ok {
-		innerTbl = t.Underlying()
-	}
+	innerTbl := rt.UnderlyingTable()
 	indexedTbl, ok := innerTbl.(sql.IndexAddressableTable)
 	if !ok {
 		err := fmt.Errorf("cannot use MATCH ... AGAINST ... on a table that does not declare indexes")
@@ -916,7 +936,7 @@ func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expressio
 	fullindexTableNames := [5]string{tableNames.Config, tableNames.Position, tableNames.DocCount, tableNames.GlobalCount, tableNames.RowCount}
 	idxTables := make([]sql.IndexAddressableTable, 5)
 	for i, name := range fullindexTableNames {
-		configTbl, ok, err := rt.Database.GetTableInsensitive(b.ctx, name)
+		configTbl, ok, err := rt.SqlDatabase.GetTableInsensitive(b.ctx, name)
 		if err != nil {
 			b.handleErr(err)
 		}

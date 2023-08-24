@@ -28,7 +28,7 @@ type ShowIndexes struct {
 }
 
 // NewShowIndexes creates a new ShowIndexes node. The node must represent a table.
-func NewShowIndexes(table sql.Node) sql.Node {
+func NewShowIndexes(table sql.Node) *ShowIndexes {
 	return &ShowIndexes{
 		UnaryNode: UnaryNode{table},
 	}

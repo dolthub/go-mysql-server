@@ -1,3 +1,17 @@
+// Copyright 2023 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package planbuilder
 
 import (
@@ -418,7 +432,7 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 				isUnique := b.isUniqueColumn(ddl.TableSpec, column.Name.String())
 				if isUnique {
 					createIndex := plan.NewAlterCreateIndex(
-						rt.Database,
+						rt.Database(),
 						rt,
 						column.Name.String(),
 						sql.IndexUsing_BTree,
@@ -479,7 +493,7 @@ func (b *Builder) buildAlterTableColumnAction(inScope *scope, ddl *ast.DDL, tabl
 	outScope = inScope
 	switch strings.ToLower(ddl.ColumnAction) {
 	case ast.AddStr:
-		sch, _ := b.tableSpecToSchema(inScope, outScope, table.Database, ddl.Table.Name.String(), ddl.TableSpec, true)
+		sch, _ := b.tableSpecToSchema(inScope, outScope, table.Database(), ddl.Table.Name.String(), ddl.TableSpec, true)
 		outScope.node = plan.NewAddColumnResolved(table, *sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder))
 	case ast.DropStr:
 		drop := plan.NewDropColumnResolved(table, ddl.Column.String())
@@ -493,9 +507,9 @@ func (b *Builder) buildAlterTableColumnAction(inScope *scope, ddl *ast.DDL, tabl
 		// modify adds a new column maybe with same name
 		// make new hierarchy so it resolves before old column
 		outScope = inScope.push()
-		sch, _ := b.tableSpecToSchema(inScope, outScope, table.Database, ddl.Table.Name.String(), ddl.TableSpec, true)
-
-		outScope.node = plan.NewModifyColumnResolved(table, ddl.Column.String(), *sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder))
+		sch, _ := b.tableSpecToSchema(inScope, outScope, table.Database(), ddl.Table.Name.String(), ddl.TableSpec, true)
+		modifyCol := plan.NewModifyColumnResolved(table, ddl.Column.String(), *sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder))
+		outScope.node = modifyCol
 	default:
 		err := sql.ErrUnsupportedFeature.New(ast.String(ddl))
 		b.handleErr(err)
@@ -511,7 +525,7 @@ func (b *Builder) buildAlterConstraint(inScope *scope, ddl *ast.DDL, table *plan
 	case ast.AddStr:
 		switch c := parsedConstraint.(type) {
 		case *sql.ForeignKeyConstraint:
-			c.Database = table.Database.Name()
+			c.Database = table.SqlDatabase.Name()
 			c.Table = table.Name()
 			alterFk := plan.NewAlterAddForeignKey(c)
 			alterFk.DbProvider = b.cat
@@ -525,7 +539,7 @@ func (b *Builder) buildAlterConstraint(inScope *scope, ddl *ast.DDL, table *plan
 	case ast.DropStr:
 		switch c := parsedConstraint.(type) {
 		case *sql.ForeignKeyConstraint:
-			database := table.Database.Name()
+			database := table.SqlDatabase.Name()
 			dropFk := plan.NewAlterDropForeignKey(database, table.Name(), c.Name)
 			dropFk.DbProvider = b.cat
 			outScope.node = dropFk
@@ -699,7 +713,6 @@ func (b *Builder) buildReferentialAction(action ast.ReferenceAction) sql.Foreign
 	}
 }
 
-// todo drop column, rename column
 func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
 	outScope = inScope
 	switch strings.ToLower(ddl.IndexSpec.Action) {
@@ -738,7 +751,7 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 		}
 
 		if constraint == sql.IndexConstraint_Primary {
-			outScope.node = plan.NewAlterCreatePk(table.Database, table, columns)
+			outScope.node = plan.NewAlterCreatePk(table.SqlDatabase, table, columns)
 			return
 		}
 
@@ -748,23 +761,24 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 			b.handleErr(err)
 		}
 
-		outScope.node = plan.NewAlterCreateIndex(table.Database, table, ddl.IndexSpec.ToName.String(), using, constraint, columns, comment)
+		createIndex := plan.NewAlterCreateIndex(table.SqlDatabase, table, ddl.IndexSpec.ToName.String(), using, constraint, columns, comment)
+		outScope.node = b.modifySchemaTarget(inScope, createIndex, table)
 		return
 	case ast.DropStr:
 		if ddl.IndexSpec.Type == ast.PrimaryStr {
-			outScope.node = plan.NewAlterDropPk(table.Database, table)
+			outScope.node = plan.NewAlterDropPk(table.SqlDatabase, table)
 			return
 		}
-		outScope.node = plan.NewAlterDropIndex(table.Database, table, ddl.IndexSpec.ToName.String())
+		outScope.node = plan.NewAlterDropIndex(table.Database(), table, ddl.IndexSpec.ToName.String())
 		return
 	case ast.RenameStr:
-		outScope.node = plan.NewAlterRenameIndex(table.Database, table, ddl.IndexSpec.FromName.String(), ddl.IndexSpec.ToName.String())
+		outScope.node = plan.NewAlterRenameIndex(table.Database(), table, ddl.IndexSpec.FromName.String(), ddl.IndexSpec.ToName.String())
 		return
 	case "disable":
-		outScope.node = plan.NewAlterDisableEnableKeys(table.Database, table, true)
+		outScope.node = plan.NewAlterDisableEnableKeys(table.SqlDatabase, table, true)
 		return
 	case "enable":
-		outScope.node = plan.NewAlterDisableEnableKeys(table.Database, table, false)
+		outScope.node = plan.NewAlterDisableEnableKeys(table.SqlDatabase, table, false)
 		return
 	default:
 		err := sql.ErrUnsupportedFeature.New(ast.String(ddl))
@@ -822,7 +836,7 @@ func (b *Builder) buildAlterAutoIncrement(inScope *scope, ddl *ast.DDL, table *p
 		b.handleErr(err)
 	}
 
-	outScope.node = plan.NewAlterAutoIncrement(table.Database, table, autoVal)
+	outScope.node = plan.NewAlterAutoIncrement(table.Database(), table, autoVal)
 	return
 }
 
@@ -833,7 +847,7 @@ func (b *Builder) buildAlterDefault(inScope *scope, ddl *ast.DDL, table *plan.Re
 		for _, c := range table.Schema() {
 			if strings.EqualFold(c.Name, ddl.DefaultSpec.Column.String()) {
 				defaultExpr := b.convertDefaultExpression(inScope, ddl.DefaultSpec.Value, c.Type, c.Nullable)
-				defSet := plan.NewAlterDefaultSet(table.Database, table, ddl.DefaultSpec.Column.String(), defaultExpr)
+				defSet := plan.NewAlterDefaultSet(table.Database(), table, ddl.DefaultSpec.Column.String(), defaultExpr)
 				outScope.node = b.modifySchemaTarget(inScope, defSet, table)
 				return
 			}
@@ -842,7 +856,7 @@ func (b *Builder) buildAlterDefault(inScope *scope, ddl *ast.DDL, table *plan.Re
 		b.handleErr(err)
 		return
 	case ast.DropStr:
-		outScope.node = plan.NewAlterDefaultDrop(table.Database, table, ddl.DefaultSpec.Column.String())
+		outScope.node = plan.NewAlterDefaultDrop(table.Database(), table, ddl.DefaultSpec.Column.String())
 		return
 	default:
 		err := sql.ErrUnsupportedFeature.New(ast.String(ddl))
@@ -906,7 +920,7 @@ func (b *Builder) buildDefaultExpression(inScope *scope, defaultExpr ast.Expr) *
 // rather than "(5)"), then the parameter "isLiteral" should be true.
 func ExpressionToColumnDefaultValue(inputExpr sql.Expression, isLiteral, isParenthesized bool) *sql.ColumnDefaultValue {
 	return &sql.ColumnDefaultValue{
-		Expression:    inputExpr,
+		Expr:          inputExpr,
 		OutType:       nil,
 		Literal:       isLiteral,
 		ReturnNil:     true,
@@ -1170,11 +1184,14 @@ func (b *Builder) modifySchemaTarget(inScope *scope, n sql.SchemaTarget, rt *pla
 }
 
 func (b *Builder) resolveSchemaDefaults(inScope *scope, schema sql.Schema) sql.Schema {
-	for i, col := range schema {
-		if col.Default == nil || col.Default.Expression == nil {
+	newSch := make(sql.Schema, len(schema))
+	for i, c := range schema {
+		col := c.Copy()
+		newSch[i] = col
+		if col.Default == nil || col.Default.Expr == nil {
 			continue
 		}
-		def, ok := col.Default.Expression.(sql.UnresolvedColumnDefault)
+		def, ok := col.Default.Expr.(*sql.UnresolvedColumnDefault)
 		if ok && def.String() == "" {
 			schema[i].Default = b.convertDefaultExpression(inScope, &ast.SQLVal{Val: []byte{}, Type: ast.StrVal}, schema[i].Type, schema[i].Nullable)
 			continue
@@ -1197,9 +1214,9 @@ func (b *Builder) resolveSchemaDefaults(inScope *scope, schema sql.Schema) sql.S
 			err := sql.ErrInvalidColumnDefaultValue.New(def)
 			b.handleErr(err)
 		}
-		schema[i].Default = b.convertDefaultExpression(inScope, ae.Expr, schema[i].Type, schema[i].Nullable)
+		col.Default = b.convertDefaultExpression(inScope, ae.Expr, schema[i].Type, schema[i].Nullable)
 	}
-	return schema
+	return newSch
 }
 
 func (b *Builder) convertDefaultExpression(inScope *scope, defaultExpr ast.Expr, typ sql.Type, nullable bool) *sql.ColumnDefaultValue {
@@ -1247,7 +1264,7 @@ func (b *Builder) convertDefaultExpression(inScope *scope, defaultExpr ast.Expr,
 	}
 
 	return &sql.ColumnDefaultValue{
-		Expression:    resExpr,
+		Expr:          resExpr,
 		OutType:       typ,
 		Literal:       isLiteral,
 		ReturnNil:     nullable,

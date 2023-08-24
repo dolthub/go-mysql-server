@@ -31,7 +31,7 @@ import (
 func TestParallelize(t *testing.T) {
 	require := require.New(t)
 	table := memory.NewTable("t", sql.PrimaryKeySchema{}, nil)
-	rule := getRuleFrom(OnceAfterAll_Experimental, parallelizeId)
+	rule := getRuleFrom(OnceAfterAll, parallelizeId)
 	node := plan.NewProject(
 		nil,
 		plan.NewInnerJoin(
@@ -76,7 +76,7 @@ func TestParallelize(t *testing.T) {
 func TestParallelizeCreateIndex(t *testing.T) {
 	require := require.New(t)
 	table := memory.NewTable("t", sql.PrimaryKeySchema{}, nil)
-	rule := getRuleFrom(OnceAfterAll_Experimental, parallelizeId)
+	rule := getRuleFrom(OnceAfterAll, parallelizeId)
 	node := plan.NewCreateIndex(
 		"",
 		plan.NewResolvedTable(table, nil, nil),

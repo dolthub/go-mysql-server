@@ -287,7 +287,7 @@ func TestTrackProcess(t *testing.T) {
 	ctx, err := ctx.ProcessList.BeginQuery(ctx, "SELECT foo")
 	require.NoError(err)
 
-	rule := getRuleFrom(analyzer.OnceAfterAll_Experimental, analyzer.TrackProcessId)
+	rule := getRuleFrom(analyzer.OnceAfterAll, analyzer.TrackProcessId)
 	result, _, err := rule.Apply(ctx, a, node, nil, analyzer.DefaultRuleSelector)
 	require.NoError(err)
 
