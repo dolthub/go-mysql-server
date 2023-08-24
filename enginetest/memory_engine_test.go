@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"log"
 	"testing"
-	"time"
 
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
@@ -91,7 +90,6 @@ func TestQueriesPreparedSimple(t *testing.T) {
 // TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
 func TestQueriesSimple(t *testing.T) {
 	harness := enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil)
-	harness.UseServer()
 	enginetest.TestQueries(t, harness)
 }
 
@@ -132,7 +130,7 @@ func TestBrokenJSONTableScripts(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	// t.Skip()
+	t.Skip()
 	var test queries.QueryTest
 	test = queries.QueryTest{
 		Query:    `SELECT DISTINCT val FROM (values row(1), row(1.00), row(2), row(2)) a (val);`,
@@ -189,71 +187,21 @@ func TestSingleScript(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "datetime precision",
+			// https://github.com/dolthub/dolt/issues/4857
+			Name: "issue 4857: insert cte column alias with table alias qualify panic",
 			SetUpScript: []string{
-				"CREATE TABLE t1 (pk int primary key, d datetime)",
-				"CREATE TABLE t2 (pk int primary key, d datetime(3))",
-				"CREATE TABLE t3 (pk int primary key, d datetime(6))",
+				"create table xy (x int primary key, y int)",
+				"insert into xy values (0,0), (1,1), (2,2)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "show create table t1",
-					Expected: []sql.Row{{"t1",
-						"CREATE TABLE `t1` (\n" +
-							"  `pk` int NOT NULL,\n" +
-							"  `d` datetime(0),\n" +
-							"  PRIMARY KEY (`pk`)\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-				},
-				{
-					Query:    "insert into t1 values (1, '2020-01-01 00:00:00.123456')",
-					Expected: []sql.Row{{types.NewOkResult(1)}},
-				},
-				{
-					Query:    "select * from t1 order by pk",
-					Expected: []sql.Row{{1, queries.MustParseTime(time.DateTime, "2020-01-01 00:00:00")}},
-				},
-				{
-					Query: "show create table t2",
-					Expected: []sql.Row{{"t2",
-						"CREATE TABLE `t2` (\n" +
-							"  `pk` int NOT NULL,\n" +
-							"  `d` datetime(3),\n" +
-							"  PRIMARY KEY (`pk`)\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-				},
-				{
-					Query:    "insert into t2 values (1, '2020-01-01 00:00:00.123456')",
-					Expected: []sql.Row{{types.NewOkResult(1)}},
-				},
-				{
-					Query:    "select * from t2 order by pk",
-					Expected: []sql.Row{{1, queries.MustParseTime(time.RFC3339Nano, "2020-01-01T00:00:00.123000000Z")}},
-				},
-				{
-					Query: "show create table t3",
-					Expected: []sql.Row{{"t3",
-						"CREATE TABLE `t3` (\n" +
-							"  `pk` int NOT NULL,\n" +
-							"  `d` datetime(6),\n" +
-							"  PRIMARY KEY (`pk`)\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-				},
-				{
-					Query:    "insert into t3 values (1, '2020-01-01 00:00:00.123456')",
-					Expected: []sql.Row{{types.NewOkResult(1)}},
-				},
-				{
-					Query:    "select * from t3 order by pk",
-					Expected: []sql.Row{{1, queries.MustParseTime(time.RFC3339Nano, "2020-01-01T00:00:00.123456000Z")}},
-				},
-				{
-					Query:       "create table t4 (pk int primary key, d datetime(-1))",
-					ExpectedErr: sql.ErrSyntaxError,
-				},
-				{
-					Query:          "create table t4 (pk int primary key, d datetime(7))",
-					ExpectedErrStr: "DATETIME supports precision from 0 to 6",
+					Query: `With a as (
+  With b as (
+    Select sum(x) as x, y from xy where x < 2 group by y
+  )
+  Select * from b d
+) insert into xy (x,y) select x+9,y+9 from a;`,
+					Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 0}}},
 				},
 			},
 		},

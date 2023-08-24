@@ -138,8 +138,22 @@ func (s ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, bin
 }
 
 func convertExecResult(exec gosql.Result) (sql.Schema, sql.RowIter, error) {
-	// TODO
-	return nil, nil, nil
+	affected, err := exec.RowsAffected()
+	if err != nil {
+		return nil, nil, err
+	}
+	lastInsertId, err := exec.LastInsertId()
+	if err != nil {
+		return nil, nil, err
+	}
+	
+	okResult := types.OkResult{
+		RowsAffected: uint64(affected),
+		InsertID: uint64(lastInsertId),
+		Info:         nil,
+	}
+	
+	return types.OkResultSchema, sql.RowsToRowIter(sql.NewRow(okResult)), nil
 }
 
 func convertRowsResult(rows *gosql.Rows) (sql.Schema, sql.RowIter, error) {
@@ -169,73 +183,87 @@ func rowIterForGoSqlRows(sch sql.Schema, rows *gosql.Rows) (sql.RowIter, error) 
 		if err != nil {
 			return nil, err
 		}
+
+		row, err := derefRow(r)
+		if err != nil {
+			return nil, err
+		}
 		
-		result = append(result, derefRow(r))
+		result = append(result, row)
 	}
 	
 	return sql.RowsToRowIter(result...), nil
 }
 
-func derefRow(r []any) sql.Row {
+func derefRow(r []any) (sql.Row, error) {
 	row := make(sql.Row, len(r))
 	for i, v := range r {
-		row[i] = deref(v)
+		var err error
+		row[i], err = deref(v)
+		if err != nil {
+			return nil, err
+		}
 	}
-	return row
+	return row, nil
 }
 
-func deref(v any) any {
+func deref(v any) (any, error) {
 	switch v := v.(type) {
 	case *int8:
-		return *v
+		return *v, nil
 	case *int16:
-		return *v
+		return *v, nil
 	case *int32:
-		return *v
+		return *v, nil
 	case *int64:
-		return *v
+		return *v, nil
 	case *uint8:
-		return *v
+		return *v, nil
 	case *uint16:
-		return *v
+		return *v, nil
 	case *uint32:
-		return *v
+		return *v, nil
 	case *uint64:
-		return *v
+		return *v, nil
 	case *gosql.NullInt64:
 		if v.Valid {
-			return v.Int64
+			return v.Int64, nil
 		}
-		return nil
+		return nil, nil
 	case *float32:
-		return *v
+		return *v, nil
 	case *float64:
-		return *v
+		return *v, nil
 	case *gosql.NullFloat64:
 		if v.Valid {
-			return v.Float64
+			return v.Float64, nil
 		}
-		return nil
+		return nil, nil
 	case *string:
-		return *v
+		return *v, nil
 	case *gosql.NullString:
 		if v.Valid {
-			return v.String
+			return v.String, nil
 		}
-		return nil
+		return nil, nil
 	case *[]byte:
-		return *v
+		return *v, nil
 	case *bool:
-		return *v
+		return *v, nil
 	case *time.Time:
-		return *v
+		return *v, nil
 	case *gosql.NullTime:
 		if v.Valid {
-			return v.Time
+			return v.Time, nil
 		}
-		return nil
+		return nil, nil
+	case *gosql.NullByte:
+		if v.Valid {
+			return v.Byte, nil
+		}
+		return nil, nil
 	default:
-		panic(fmt.Sprintf("unhandled type %T", v))
+		return nil, fmt.Errorf("unhandled type %T", v)
 	}	
 }
 
@@ -253,22 +281,25 @@ func emptyRowForSchema(sch sql.Schema) ([]any, error) {
 
 func emptyValuePointerForType(t sql.Type) (any, error) {
 	switch t.Type() {
-		case query.Type_INT8, query.Type_INT16, query.Type_INT24, query.Type_INT32, query.Type_INT64,
-			query.Type_UINT8, query.Type_UINT16, query.Type_UINT24, query.Type_UINT32, query.Type_UINT64,
-			query.Type_BIT:
-			var i gosql.NullInt64
-			return &i, nil
-		case query.Type_DATE, query.Type_DATETIME, query.Type_TIMESTAMP:
-			var t gosql.NullTime
-			return &t, nil
-		case query.Type_TEXT, query.Type_VARCHAR, query.Type_CHAR:
-			var s gosql.NullString
-			return &s, nil
-		case query.Type_FLOAT32, query.Type_FLOAT64, query.Type_DECIMAL:
-			var f gosql.NullFloat64
-			return &f, nil
+	case query.Type_INT8, query.Type_INT16, query.Type_INT24, query.Type_INT32, query.Type_INT64,
+		query.Type_UINT8, query.Type_UINT16, query.Type_UINT24, query.Type_UINT32, query.Type_UINT64,
+		query.Type_BIT, query.Type_YEAR:
+		var i gosql.NullInt64
+		return &i, nil
+	case query.Type_DATE, query.Type_DATETIME, query.Type_TIMESTAMP, query.Type_TIME:
+		var t gosql.NullTime
+		return &t, nil
+	case query.Type_TEXT, query.Type_VARCHAR, query.Type_CHAR, query.Type_BINARY, query.Type_VARBINARY, query.Type_ENUM, query.Type_SET:
+		var s gosql.NullString
+		return &s, nil
+	case query.Type_FLOAT32, query.Type_FLOAT64, query.Type_DECIMAL:
+		var f gosql.NullFloat64
+		return &f, nil
+	case query.Type_JSON, query.Type_BLOB:
+		var f gosql.NullByte
+		return &f, nil
 	default:
-		return nil, fmt.Errorf("unsupported type %T", t)
+		return nil, fmt.Errorf("unsupported type %v", t.Type())
 	}
 }
 
@@ -334,6 +365,12 @@ func convertGoSqlType(columnType *gosql.ColumnType) (sql.Type, error) {
 		return types.Text, nil
 	case "binary", "varbinary", "tinyblob", "blob", "mediumblob", "longblob":
 		return types.Blob, nil
+	case "json":
+		return types.JSON, nil
+	case "enum":
+		return types.EnumType{}, nil
+	case "set":
+		return types.SetType{}, nil
 	default:
 		return nil, fmt.Errorf("unhandled type %s", columnType.DatabaseTypeName())
 	}
@@ -360,7 +397,7 @@ func (s ServerQueryEngine) CloseSession(connID uint32) {
 }
 
 func (s ServerQueryEngine) Close() error {
-	return s.Close()
+	return s.server.Close()
 }
 
 // MySQLPersister is an example struct which handles the persistence of the data in the "mysql" database.

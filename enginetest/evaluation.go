@@ -399,10 +399,10 @@ func injectBindVarsAndPrepare(
 				skipTypeConv = true
 				return false, nil
 			}
-			varName := fmt.Sprintf("v%d", bindCnt)
+			varName := fmt.Sprintf("v%d", bindCnt+1)
 			bindVars[varName] = bindVar
 			n.Type = sqlparser.ValArg
-			n.Val = []byte(fmt.Sprintf(":v%d", bindCnt))
+			n.Val = []byte(fmt.Sprintf(":v%d", bindCnt+1))
 			bindCnt++
 		case *sqlparser.Insert:
 			isInsert = true
