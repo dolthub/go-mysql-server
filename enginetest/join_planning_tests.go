@@ -21,10 +21,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -1422,7 +1422,7 @@ func TestJoinPlanning(t *testing.T, harness Harness) {
 	}
 }
 
-func evalJoinTypeTest(t *testing.T, harness Harness, e *sqle.Engine, tt JoinPlanTest) {
+func evalJoinTypeTest(t *testing.T, harness Harness, e QueryEngine, tt JoinPlanTest) {
 	t.Run(tt.q+" join types", func(t *testing.T) {
 		if tt.skipOld {
 			t.Skip()
@@ -1431,7 +1431,7 @@ func evalJoinTypeTest(t *testing.T, harness Harness, e *sqle.Engine, tt JoinPlan
 		ctx := NewContext(harness)
 		ctx = ctx.WithQuery(tt.q)
 
-		a, err := e.AnalyzeQuery(ctx, tt.q)
+		a, err := analyzeQuery(ctx, e, tt.q)
 		require.NoError(t, err)
 
 		jts := collectJoinTypes(a)
@@ -1447,7 +1447,16 @@ func evalJoinTypeTest(t *testing.T, harness Harness, e *sqle.Engine, tt JoinPlan
 	})
 }
 
-func evalIndexTest(t *testing.T, harness Harness, e *sqle.Engine, q string, indexes []string, skip bool) {
+func analyzeQuery(ctx *sql.Context, e QueryEngine, query string) (sql.Node, error) {
+	parsed, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, query)
+	if err != nil {
+		return nil, err
+	}
+
+	return e.EngineAnalyzer().Analyze(ctx, parsed, nil)
+}
+
+func evalIndexTest(t *testing.T, harness Harness, e QueryEngine, q string, indexes []string, skip bool) {
 	t.Run(q+" join indexes", func(t *testing.T) {
 		if skip {
 			t.Skip()
@@ -1456,7 +1465,7 @@ func evalIndexTest(t *testing.T, harness Harness, e *sqle.Engine, q string, inde
 		ctx := NewContext(harness)
 		ctx = ctx.WithQuery(q)
 
-		a, err := e.AnalyzeQuery(ctx, q)
+		a, err := analyzeQuery(ctx, e, q)
 		require.NoError(t, err)
 
 		idxs := collectIndexes(a)
@@ -1472,12 +1481,12 @@ func evalIndexTest(t *testing.T, harness Harness, e *sqle.Engine, q string, inde
 	})
 }
 
-func evalJoinCorrectness(t *testing.T, harness Harness, e *sqle.Engine, name, q string, exp []sql.Row, skipOld bool) {
+func evalJoinCorrectness(t *testing.T, harness Harness, e QueryEngine, name, q string, exp []sql.Row, skipOld bool) {
 	t.Run(name, func(t *testing.T) {
 		ctx := NewContext(harness)
 		ctx = ctx.WithQuery(q)
 
-		sch, iter, err := e.QueryWithBindings(ctx, q, nil)
+		sch, iter, err := e.QueryWithBindings(ctx, q, nil, nil)
 		require.NoError(t, err, "Unexpected error for query %s: %s", q, err)
 
 		rows, err := sql.RowIterToRows(ctx, sch, iter)
@@ -1549,12 +1558,12 @@ func collectIndexes(n sql.Node) []sql.Index {
 	return indexes
 }
 
-func evalJoinOrder(t *testing.T, harness Harness, e *sqle.Engine, q string, exp []string, skipOld bool) {
+func evalJoinOrder(t *testing.T, harness Harness, e QueryEngine, q string, exp []string, skipOld bool) {
 	t.Run(q+" join order", func(t *testing.T) {
 		ctx := NewContext(harness)
 		ctx = ctx.WithQuery(q)
 
-		a, err := e.AnalyzeQuery(ctx, q)
+		a, err := analyzeQuery(ctx, e, q)
 		require.NoError(t, err)
 
 		cmp := collectJoinOrder(a)

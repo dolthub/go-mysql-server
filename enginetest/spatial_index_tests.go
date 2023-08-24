@@ -19,7 +19,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -372,7 +371,7 @@ func TestSpatialIndexPlans(t *testing.T, harness Harness) {
 	}
 }
 
-func evalSpatialIndexPlanTest(t *testing.T, harness Harness, e *sqle.Engine, query string, skip, noIdx bool) {
+func evalSpatialIndexPlanTest(t *testing.T, harness Harness, e QueryEngine, query string, skip, noIdx bool) {
 	t.Run(query+" index plan", func(t *testing.T) {
 		if skip {
 			t.Skip()
@@ -380,7 +379,7 @@ func evalSpatialIndexPlanTest(t *testing.T, harness Harness, e *sqle.Engine, que
 		ctx := NewContext(harness)
 		ctx = ctx.WithQuery(query)
 
-		a, err := e.AnalyzeQuery(ctx, query)
+		a, err := analyzeQuery(ctx, e, query)
 		require.NoError(t, err)
 
 		hasFilter, hasIndex, hasRightOrder := false, false, false
@@ -408,7 +407,7 @@ func evalSpatialIndexPlanTest(t *testing.T, harness Harness, e *sqle.Engine, que
 	})
 }
 
-func evalSpatialIndexPlanCorrectness(t *testing.T, harness Harness, e *sqle.Engine, name, q string, exp []sql.Row, skip bool) {
+func evalSpatialIndexPlanCorrectness(t *testing.T, harness Harness, e QueryEngine, name, q string, exp []sql.Row, skip bool) {
 	t.Run(name, func(t *testing.T) {
 		if skip {
 			t.Skip()
@@ -417,7 +416,7 @@ func evalSpatialIndexPlanCorrectness(t *testing.T, harness Harness, e *sqle.Engi
 		ctx := NewContext(harness)
 		ctx = ctx.WithQuery(q)
 
-		sch, iter, err := e.QueryWithBindings(ctx, q, nil)
+		sch, iter, err := e.QueryWithBindings(ctx, q, nil, nil)
 		require.NoError(t, err, "Unexpected error for q %s: %s", q, err)
 
 		rows, err := sql.RowIterToRows(ctx, sch, iter)

@@ -53,10 +53,10 @@ func writePlans(t *testing.T, s [][]setup.SetupScript, original []queries.QueryP
 	for _, tt := range original {
 		_, _ = w.WriteString("\t{\n")
 		ctx := NewContextWithEngine(harness, engine)
-		parsed, err := planbuilder.Parse(ctx, engine.Analyzer.Catalog, tt.Query)
+		parsed, err := planbuilder.Parse(ctx, engine.EngineAnalyzer().Catalog, tt.Query)
 		require.NoError(t, err)
 
-		node, err := engine.Analyzer.Analyze(ctx, parsed, nil)
+		node, err := engine.EngineAnalyzer().Analyze(ctx, parsed, nil)
 		require.NoError(t, err, tt.Query)
 
 		var planString string

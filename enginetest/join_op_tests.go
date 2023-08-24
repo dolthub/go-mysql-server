@@ -56,7 +56,7 @@ func TestJoinOps(t *testing.T, harness Harness) {
 				}
 			}
 			for k, c := range biasedCosters {
-				e.Analyzer.Coster = c
+				e.EngineAnalyzer().Coster = c
 				for _, tt := range tt.tests {
 					evalJoinCorrectness(t, harness, e, fmt.Sprintf("%s join: %s", k, tt.Query), tt.Query, tt.Expected, tt.Skip)
 				}
