@@ -170,10 +170,53 @@ func rowIterForGoSqlRows(sch sql.Schema, rows *gosql.Rows) (sql.RowIter, error) 
 			return nil, err
 		}
 		
-		result = append(result, r)
+		result = append(result, derefRow(r))
 	}
 	
 	return sql.RowsToRowIter(result...), nil
+}
+
+func derefRow(r []any) sql.Row {
+	row := make(sql.Row, len(r))
+	for i, v := range r {
+		row[i] = deref(v)
+	}
+	return row
+}
+
+func deref(v any) any {
+	switch v := v.(type) {
+	case *int8:
+		return *v
+	case *int16:
+		return *v
+	case *int32:
+		return *v
+	case *int64:
+		return *v
+	case *uint8:
+		return *v
+	case *uint16:
+		return *v
+	case *uint32:
+		return *v
+	case *uint64:
+		return *v
+	case *float32:
+		return *v
+	case *float64:
+		return *v
+	case *string:
+		return *v
+	case *[]byte:
+		return *v
+	case *bool:
+		return *v
+	case *time.Time:
+		return *v
+	default:
+		panic(fmt.Sprintf("unhandled type %T", v))
+	}	
 }
 
 func emptyRowForSchema(sch sql.Schema) ([]any, error) {
