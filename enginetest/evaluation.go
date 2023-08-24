@@ -542,21 +542,27 @@ func checkResults(
 
 	// If the expected schema was given, test it as well
 	if expectedCols != nil {
-		assert.Equal(t, expectedCols, stripSchema(sch))
+		assert.Equal(t, simplifyResultSchema(expectedCols), simplifyResultSchema(sch))
 	}
 }
 
-func stripSchema(s sql.Schema) []*sql.Column {
-	fields := make([]*sql.Column, len(s))
+type resultSchemaCol struct {
+	Name string
+	Type querypb.Type
+}
+
+func simplifyResultSchema(s sql.Schema) []resultSchemaCol {
+	fields := make([]resultSchemaCol, len(s))
 	for i, c := range s {
-		fields[i] = &sql.Column{
+		fields[i] = resultSchemaCol{
 			Name: c.Name,
-			Type: c.Type,
+			Type: c.Type.Type(),
 		}
 	}
 	return fields
 }
 
+// WidenRows returns a slice of rows with all values widened to their widest type.
 // For a variety of reasons, the widths of various primitive types can vary when passed through different SQL queries
 // (and different database implementations). We may eventually decide that this undefined behavior is a problem, but
 // for now it's mostly just an issue when comparing results in tests. To get around this, we widen every type to its
@@ -569,7 +575,7 @@ func WidenRows(sch sql.Schema, rows []sql.Row) []sql.Row {
 	return widened
 }
 
-// See WidenRows
+// WidenRow returns a row with all values widened to their widest type
 func WidenRow(sch sql.Schema, row sql.Row) sql.Row {
 	widened := make(sql.Row, len(row))
 	for i, v := range row {

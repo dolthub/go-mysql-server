@@ -29,6 +29,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	_ "github.com/dolthub/go-mysql-server/sql/variables"
+	"github.com/stretchr/testify/require"
 )
 
 // This file is for validating both the engine itself and the in-memory database implementation in the memory package.
@@ -134,19 +135,16 @@ func TestSingleQuery(t *testing.T) {
 	t.Skip()
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query: `
-		select /*+ JOIN_ORDER(scalarSubq0,xy) */ count(*) from xy where y in (select distinct v from uv);
-`,
-		Expected: []sql.Row{},
+		Query:    "select sum(1) from emptytable",
+		Expected: []sql.Row{{nil}},
 	}
 
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, false, nil)
-	harness.Setup(setup.XySetup...)
+	harness.UseServer()
+	harness.Setup(setup.SimpleSetup...)
 	engine, err := harness.NewEngine(t)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 	
 	engine.EngineAnalyzer().Debug = true
 	engine.EngineAnalyzer().Verbose = true

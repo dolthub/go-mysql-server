@@ -202,18 +202,38 @@ func deref(v any) any {
 		return *v
 	case *uint64:
 		return *v
+	case *gosql.NullInt64:
+		if v.Valid {
+			return v.Int64
+		}
+		return nil
 	case *float32:
 		return *v
 	case *float64:
 		return *v
+	case *gosql.NullFloat64:
+		if v.Valid {
+			return v.Float64
+		}
+		return nil
 	case *string:
 		return *v
+	case *gosql.NullString:
+		if v.Valid {
+			return v.String
+		}
+		return nil
 	case *[]byte:
 		return *v
 	case *bool:
 		return *v
 	case *time.Time:
 		return *v
+	case *gosql.NullTime:
+		if v.Valid {
+			return v.Time
+		}
+		return nil
 	default:
 		panic(fmt.Sprintf("unhandled type %T", v))
 	}	
@@ -236,16 +256,16 @@ func emptyValuePointerForType(t sql.Type) (any, error) {
 		case query.Type_INT8, query.Type_INT16, query.Type_INT24, query.Type_INT32, query.Type_INT64,
 			query.Type_UINT8, query.Type_UINT16, query.Type_UINT24, query.Type_UINT32, query.Type_UINT64,
 			query.Type_BIT:
-			var i int64
+			var i gosql.NullInt64
 			return &i, nil
 		case query.Type_DATE, query.Type_DATETIME, query.Type_TIMESTAMP:
-			var t time.Time
+			var t gosql.NullTime
 			return &t, nil
 		case query.Type_TEXT, query.Type_VARCHAR, query.Type_CHAR:
-			var s string
+			var s gosql.NullString
 			return &s, nil
 		case query.Type_FLOAT32, query.Type_FLOAT64, query.Type_DECIMAL:
-			var f float64
+			var f gosql.NullFloat64
 			return &f, nil
 	default:
 		return nil, fmt.Errorf("unsupported type %T", t)
@@ -304,7 +324,13 @@ func convertGoSqlType(columnType *gosql.ColumnType) (sql.Type, error) {
 		return types.Time, nil
 	case "year":
 		return types.Year, nil
-	case "char", "varchar", "tinytext", "text", "mediumtext", "longtext":
+	case "char", "varchar":
+		length, _ := columnType.Length()
+		if length == 0 {
+			length = 255
+		}
+		return types.CreateString(query.Type_VARCHAR, length, sql.Collation_Default)
+	case "tinytext", "text", "mediumtext", "longtext":
 		return types.Text, nil
 	case "binary", "varbinary", "tinyblob", "blob", "mediumblob", "longblob":
 		return types.Blob, nil
