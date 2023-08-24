@@ -1376,11 +1376,11 @@ Select * from (
 	},
 	{
 		Query:    `SELECT DISTINCT val FROM (values row(1), row(1.00), row(2), row(2)) a (val);`,
-		Expected: []sql.Row{{"1.00"}, {"2.00"}},
+		Expected: []sql.Row{{1.0}, {2.0}},
 	},
 	{
 		Query:    `SELECT DISTINCT val FROM (values row(1.00), row(1.000), row(2), row(2)) a (val);`,
-		Expected: []sql.Row{{"1.000"}, {"2.000"}},
+		Expected: []sql.Row{{1.0}, {2.0}},
 	},
 	{
 		Query:    `SELECT DISTINCT val FROM (values row(1.000), row(21.00), row(2), row(2)) a (val);`,

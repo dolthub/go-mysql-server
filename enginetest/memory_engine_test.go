@@ -132,16 +132,16 @@ func TestBrokenJSONTableScripts(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
+	// t.Skip()
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query:    "select sum(1) from emptytable",
-		Expected: []sql.Row{{nil}},
+		Query:    `SELECT DISTINCT val FROM (values row(1), row(1.00), row(2), row(2)) a (val);`,
+		Expected: []sql.Row{{1.0}, {2.0}},
 	}
 
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, false, nil)
-	harness.UseServer()
+	// harness.UseServer()
 	harness.Setup(setup.SimpleSetup...)
 	engine, err := harness.NewEngine(t)
 	require.NoError(t, err)
