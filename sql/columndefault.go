@@ -220,10 +220,6 @@ func (e *ColumnDefaultValue) CheckType(ctx *Context) error {
 	return nil
 }
 
-func NewUnresolvedColumnDefault(s string) *UnresolvedColumnDefault {
-	return nil
-}
-
 type UnresolvedColumnDefault struct {
 	ExprString string
 }

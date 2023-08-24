@@ -58,4 +58,38 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "index on stored generated column",
+		SetUpScript: []string{
+			"create table t1 (a int primary key, b int as (a + 1) stored)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "create index i1 on t1(b)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				// TODO: double parens here is a bug
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+							"  `a` int NOT NULL,\n" +
+							"  `b` int GENERATED ALWAYS AS ((a + 1)) STORED,\n" +
+							"  PRIMARY KEY (`a`)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:       "insert into t1(a) values (1)",
+				ExpectedErr: sql.ErrGeneratedColumnValue,
+			},
+			{
+				Query:    "select * from t1 where b = 2 order by a",
+				Expected: []sql.Row{{1, 2}},
+			},
+			{
+				Query:    "explain select * from t1 where b = 2 order by a",
+				Expected: []sql.Row{{types.NewOkResult(3)}},
+			},
+		},
+	},
 }

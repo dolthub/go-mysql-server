@@ -69,6 +69,10 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 			schema := rt.Schema()
 			columns = make([]string, len(schema))
 			for i, col := range schema {
+				// Tables with any generated column must always supply a column list, so this is always an error 
+				if col.Generated != nil {
+					b.handleErr(sql.ErrGeneratedColumnValue.New(col.Name, rt.Name()))
+				}
 				columns[i] = col.Name
 			}
 		}
@@ -138,6 +142,9 @@ func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []
 			b.handleErr(err)
 		}
 		columnDefaultValues[i] = destSchema[index].Default
+		if columnDefaultValues[i] == nil && destSchema[index].Generated != nil {
+			columnDefaultValues[i] = destSchema[index].Generated
+		}
 	}
 
 	exprTuples := make([][]sql.Expression, len(v))

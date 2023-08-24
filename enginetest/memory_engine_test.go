@@ -413,6 +413,10 @@ func TestBrokenInsertScripts(t *testing.T) {
 	enginetest.TestBrokenInsertScripts(t, enginetest.NewSkippingMemoryHarness())
 }
 
+func TestGeneratedColumns(t *testing.T) {
+	enginetest.TestGeneratedColumns(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestStatistics(t *testing.T) {
 	enginetest.TestStatistics(t, enginetest.NewDefaultMemoryHarness())
 }
