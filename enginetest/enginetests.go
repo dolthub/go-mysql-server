@@ -623,10 +623,10 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 func TestReadOnly(t *testing.T, harness Harness) {
 	harness.Setup(setup.Mytable...)
 	engine := mustNewEngine(t, harness)
-	
+
 	e, ok := engine.(*sqle.Engine)
 	require.True(t, ok, "Need a *sqle.Engine for TestReadOnly")
-	
+
 	e.ReadOnly.Store(true)
 	defer e.Close()
 
@@ -1504,7 +1504,7 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 			e := mustNewEngine(t, harness)
 			engine, ok := e.(*sqle.Engine)
 			require.True(t, ok, "Need a *sqle.Engine for TestUserAuthentication")
-			
+
 			defer engine.Close()
 			engine.EngineAnalyzer().Catalog.MySQLDb.AddRootAccount()
 			engine.EngineAnalyzer().Catalog.MySQLDb.SetPersister(&mysql_db.NoopPersister{})
@@ -1520,7 +1520,7 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 				}
 				RunQueryWithContext(t, engine, harness, ctx, statement)
 			}
-			
+
 			s, err := server.NewDefaultServer(serverConfig, engine)
 			require.NoError(t, err)
 			go func() {
@@ -4997,11 +4997,11 @@ func TestConcurrentTransactions(t *testing.T, harness Harness) {
 	require := require.New(t)
 	harness.Setup(setup.MydbData)
 	engine := mustNewEngine(t, harness)
-	
+
 	e, ok := engine.(*sqle.Engine)
 	require.True(ok, "Need a *sqle.Engine for TestConcurrentTransactions")
 	defer e.Close()
-	
+
 	pl := e.ProcessList
 
 	RunQuery(t, e, harness, `CREATE TABLE a (x int primary key, y int)`)
@@ -6412,11 +6412,11 @@ func testCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 			}
 
 			e := mustNewEngine(t, harness)
-			
+
 			engine, ok := e.(*sqle.Engine)
 			// TODO: do we?
 			require.True(t, ok, "Need a *sqle.Engine for testCharsetCollationWire")
-			
+
 			defer engine.Close()
 			engine.EngineAnalyzer().Catalog.MySQLDb.AddRootAccount()
 
@@ -6488,7 +6488,7 @@ func TestTypesOverWire(t *testing.T, harness ClientHarness, sessionBuilder serve
 	for _, script := range queries.TypeWireTests {
 		t.Run(script.Name, func(t *testing.T) {
 			e := mustNewEngine(t, harness)
-			
+
 			engine, ok := e.(*sqle.Engine)
 			// TODO: do we?
 			require.True(t, ok, "Need a *sqle.Engine for TestTypesOverWire")

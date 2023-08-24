@@ -18,9 +18,9 @@ import (
 	"testing"
 	"time"
 
-	sqle "github.com/dolthub/go-mysql-server"
 	"gopkg.in/src-d/go-errors.v1"
 
+	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"

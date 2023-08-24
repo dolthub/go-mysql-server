@@ -19,6 +19,8 @@ import (
 	"log"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
@@ -28,7 +30,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	_ "github.com/dolthub/go-mysql-server/sql/variables"
-	"github.com/stretchr/testify/require"
 )
 
 // This file is for validating both the engine itself and the in-memory database implementation in the memory package.
@@ -143,7 +144,7 @@ func TestSingleQuery(t *testing.T) {
 	harness.Setup(setup.SimpleSetup...)
 	engine, err := harness.NewEngine(t)
 	require.NoError(t, err)
-	
+
 	engine.EngineAnalyzer().Debug = true
 	engine.EngineAnalyzer().Verbose = true
 

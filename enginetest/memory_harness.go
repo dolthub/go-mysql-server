@@ -147,11 +147,11 @@ func (m *MemoryHarness) NewEngine(t *testing.T) (QueryEngine, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if m.server {
 		return NewServerQueryEngine(t, engine)
 	}
-	
+
 	return engine, nil
 }
 

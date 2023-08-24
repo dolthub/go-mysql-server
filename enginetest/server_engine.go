@@ -21,29 +21,30 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
+	_ "github.com/go-sql-driver/mysql"
+
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
-
-	_ "github.com/go-sql-driver/mysql"
 )
 
 type ServerQueryEngine struct {
-	engine 	*sqle.Engine
+	engine *sqle.Engine
 	server *server.Server
-	t 		*testing.T
+	t      *testing.T
 }
 
 var _ QueryEngine = (*ServerQueryEngine)(nil)
 
-var address   = "localhost"
+var address = "localhost"
+
 // TODO: get random port
-var port      = 3306
+var port = 3306
 
 func NewServerQueryEngine(t *testing.T, engine *sqle.Engine) (*ServerQueryEngine, error) {
 	ctx := sql.NewEmptyContext()
@@ -69,7 +70,7 @@ func NewServerQueryEngine(t *testing.T, engine *sqle.Engine) (*ServerQueryEngine
 	}()
 
 	return &ServerQueryEngine{
-		t: t,
+		t:      t,
 		engine: engine,
 		server: s,
 	}, nil
@@ -108,12 +109,12 @@ func (s ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, par
 	if err != nil {
 		return nil, nil, err
 	}
-	
+
 	stmt, err := conn.Prepare(query)
 	if err != nil {
 		return nil, nil, err
 	}
-	
+
 	bindingArgs := bindingArgs(bindings)
 
 	if parsed == nil {
@@ -122,7 +123,7 @@ func (s ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, par
 			return nil, nil, err
 		}
 	}
-	
+
 	switch parsed.(type) {
 	case *sqlparser.Select, *sqlparser.Union:
 		rows, err := stmt.Query(bindingArgs...)
@@ -148,13 +149,13 @@ func convertExecResult(exec gosql.Result) (sql.Schema, sql.RowIter, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	
+
 	okResult := types.OkResult{
 		RowsAffected: uint64(affected),
-		InsertID: uint64(lastInsertId),
+		InsertID:     uint64(lastInsertId),
 		Info:         nil,
 	}
-	
+
 	return types.OkResultSchema, sql.RowsToRowIter(sql.NewRow(okResult)), nil
 }
 
@@ -163,18 +164,18 @@ func convertRowsResult(rows *gosql.Rows) (sql.Schema, sql.RowIter, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	
+
 	rowIter, err := rowIterForGoSqlRows(sch, rows)
 	if err != nil {
 		return nil, nil, err
 	}
-	
+
 	return sch, rowIter, nil
 }
 
 func rowIterForGoSqlRows(sch sql.Schema, rows *gosql.Rows) (sql.RowIter, error) {
 	result := make([]sql.Row, 0)
-	
+
 	for rows.Next() {
 		r, err := emptyRowForSchema(sch)
 		if err != nil {
@@ -190,10 +191,10 @@ func rowIterForGoSqlRows(sch sql.Schema, rows *gosql.Rows) (sql.RowIter, error) 
 		if err != nil {
 			return nil, err
 		}
-		
+
 		result = append(result, row)
 	}
-	
+
 	return sql.RowsToRowIter(result...), nil
 }
 
@@ -266,7 +267,7 @@ func deref(v any) (any, error) {
 		return nil, nil
 	default:
 		return nil, fmt.Errorf("unhandled type %T", v)
-	}	
+	}
 }
 
 func emptyRowForSchema(sch sql.Schema) ([]any, error) {
@@ -310,7 +311,7 @@ func schemaForRows(rows *gosql.Rows) (sql.Schema, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	names, err := rows.Columns()
 	if err != nil {
 		return nil, err
@@ -327,7 +328,7 @@ func schemaForRows(rows *gosql.Rows) (sql.Schema, error) {
 			Type: typ,
 		}
 	}
-	
+
 	return schema, nil
 }
 
@@ -390,7 +391,7 @@ func bindingArgs(bindings map[string]*query.BindVariable) []any {
 	for i, name := range names {
 		args[i] = bindings[name].Value
 	}
-	
+
 	return args
 }
 
