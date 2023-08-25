@@ -80,18 +80,20 @@ func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.S
 
 			// There may be multiple DDL nodes in the plan (ALTER TABLE statements can have many clauses), and for each of them
 			// we need to count the column indexes in the very hacky way outlined above.
-			colIndex := 0
+			i := 0
 			return transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
 				if !ok {
 					return e, transform.SameTree, nil
 				}
 
-				col, err := lookupColumnForTargetSchema(ctx, node, colIndex)
+				// Every schema has two wrapped expressions: a default and a generated column expression
+				colIdx := i / 2
+				col, err := lookupColumnForTargetSchema(ctx, node, colIdx)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
-				colIndex++
+				i++
 
 				err = validateColumnDefault(ctx, col, eWrapper)
 				if err != nil {
@@ -208,7 +210,7 @@ func lookupColumnForTargetSchema(_ *sql.Context, node sql.SchemaTarget, colIndex
 		if colIndex < len(schema) {
 			return schema[colIndex], nil
 		} else {
-			return nil, sql.ErrColumnNotFound.New(colIndex)
+			return nil, expression.ErrIndexOutOfBounds.New(colIndex, len(schema))
 		}
 	}
 }

@@ -534,10 +534,12 @@ func (c *CreateTable) schemaDebugString() string {
 }
 
 func (c *CreateTable) Expressions() []sql.Expression {
-	exprs := make([]sql.Expression, len(c.CreateSchema.Schema)+len(c.ChDefs))
+	exprs := make([]sql.Expression, len(c.CreateSchema.Schema)*2+len(c.ChDefs))
 	i := 0
 	for _, col := range c.CreateSchema.Schema {
 		exprs[i] = expression.WrapExpression(col.Default)
+		i++
+		exprs[i] = expression.WrapExpression(col.Generated)
 		i++
 	}
 	for _, ch := range c.ChDefs {

@@ -163,6 +163,7 @@ func (c ColumnsTable) WithDefaultsSchema(sch sql.Schema) (sql.Table, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(sch), len(c.allColsWithDefaultValue))
 	}
 
+	// TODO: generated values
 	for i, col := range sch {
 		c.allColsWithDefaultValue[i].Default = col.Default
 	}

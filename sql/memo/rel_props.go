@@ -251,6 +251,7 @@ func allTableCols(rel SourceRel) sql.Schema {
 	sch := projTab.PrimaryKeySchema().Schema
 	ret := make(sql.Schema, len(sch))
 	for i, c := range sch {
+		// TODO: generation_expression
 		ret[i] = &sql.Column{
 			Name:           c.Name,
 			Type:           c.Type,
