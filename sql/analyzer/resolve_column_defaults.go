@@ -94,15 +94,8 @@ func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.S
 				if eWrapper.Unwrap() == nil {
 					return e, transform.SameTree, nil
 				}
-
-				// Every schema has two wrapped expressions: a default and a generated column expression
-				// Default for every column comes first, then the generated column expressions
-				colIdx := i
-				if colIdx >= len(node.TargetSchema()) {
-					colIdx -= len(node.TargetSchema())
-				}
 				
-				col, err := lookupColumnForTargetSchema(ctx, node, colIdx)
+				col, err := lookupColumnForTargetSchema(ctx, node, i)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}

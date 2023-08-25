@@ -116,7 +116,12 @@ func (sc ShowCreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, er
 		return nil, sql.ErrInvalidChildrenNumber.New(sc, len(exprs), len(sc.targetSchema))
 	}
 
-	sc.targetSchema = transform.SchemaWithDefaults(sc.targetSchema, exprs)
+	sch, err := transform.SchemaWithDefaults(sc.targetSchema, exprs)
+	if err != nil {
+		return nil, err
+	}
+	
+	sc.targetSchema = sch
 	return &sc, nil
 }
 

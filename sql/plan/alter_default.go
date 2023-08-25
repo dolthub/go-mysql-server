@@ -115,7 +115,11 @@ func (d AlterDefaultSet) WithExpressions(exprs ...sql.Expression) (sql.Node, err
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(exprs), 1+len(d.targetSchema))
 	}
 
-	d.targetSchema = transform.SchemaWithDefaults(d.targetSchema, exprs[:len(d.targetSchema)])
+	sch, err := transform.SchemaWithDefaults(d.targetSchema, exprs[:len(d.targetSchema)])
+	if err != nil {
+		return nil, err
+	}
+	d.targetSchema = sch
 
 	unwrappedColDefVal, ok := exprs[len(exprs)-1].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
 	if ok {
@@ -192,7 +196,12 @@ func (d AlterDefaultDrop) WithExpressions(exprs ...sql.Expression) (sql.Node, er
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(exprs), len(d.targetSchema))
 	}
 
-	d.targetSchema = transform.SchemaWithDefaults(d.targetSchema, exprs[:len(d.targetSchema)])
+	sch, err := transform.SchemaWithDefaults(d.targetSchema, exprs[:len(d.targetSchema)])
+	if err != nil {
+		return nil, err
+	}
+	d.targetSchema = sch
+	
 	return &d, nil
 }
 
