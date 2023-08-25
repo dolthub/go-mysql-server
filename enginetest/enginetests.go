@@ -5602,6 +5602,10 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	defer e.Close()
 	ctx := NewContext(harness)
 
+	// for _, tt := range queries.ColumnDefaultTests {
+	// 	TestScript(t, harness, tt)
+	// }
+
 	t.Run("Standard default literal", func(t *testing.T) {
 		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t1(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT 2)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t1 (pk) VALUES (1), (2)")
