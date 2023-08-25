@@ -24,6 +24,7 @@ type Catalog interface {
 	FunctionProvider
 	TableFunctionProvider
 	ExternalStoredProcedureProvider
+	UserProcedureProvider
 
 	// CreateDatabase creates a new database, or returns an error if the operation isn't supported or fails.
 	CreateDatabase(ctx *Context, dbName string, collation CollationID) error

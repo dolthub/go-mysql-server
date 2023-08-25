@@ -449,7 +449,7 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 		}
 	}
 
-	err = e.readOnlyCheck(bound)
+	err = e.readOnlyCheck(parsed)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -634,13 +634,13 @@ func (e *Engine) IsReadOnly() bool {
 }
 
 // readOnlyCheck checks to see if the query is valid with the modification setting of the engine.
-func (e *Engine) readOnlyCheck(node sql.Node) error {
+func (e *Engine) readOnlyCheck(stmt sqlparser.Statement) error {
 	// Note: We only compute plan.IsReadOnly if the server is in one of
 	// these two modes, since otherwise it is simply wasted work.
-	if e.IsReadOnly() && !plan.IsReadOnly(node) {
+	if e.IsReadOnly() && !plan.IsReadOnly(e.Analyzer.Catalog, stmt) {
 		return sql.ErrReadOnly.New()
 	}
-	if e.IsServerLocked && !plan.IsReadOnly(node) {
+	if e.IsServerLocked && !plan.IsReadOnly(e.Analyzer.Catalog, stmt) {
 		return sql.ErrDatabaseWriteLocked.New()
 	}
 	return nil

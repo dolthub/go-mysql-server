@@ -16,10 +16,26 @@ package test
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 type Catalog struct {
 	provider sql.DatabaseProvider
+}
+
+func (c *Catalog) CreateUserProcedure(s string, a ast.Statement) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Catalog) GetUserProcedure(s string) (ast.Statement, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Catalog) DeleteUserProcedure(s string) error {
+	//TODO implement me
+	panic("implement me")
 }
 
 // NewCatalog returns a new empty Catalog with the given provider

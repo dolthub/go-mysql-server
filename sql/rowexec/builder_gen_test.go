@@ -65,7 +65,7 @@ func TestGenBuilder(t *testing.T) {
 		"AlterDB":                   "*plan.AlterDB",
 		"CreateTable":               "*plan.CreateTable",
 		"DropTable":                 "*plan.DropTable",
-		"CreateProcedure":           "*plan.CreateProcedure",
+		"CreateUserProcedure":       "*plan.CreateUserProcedure",
 		"CreateTrigger":             "*plan.CreateTrigger",
 		"DeclareCondition":          "*plan.DeclareCondition",
 		"DeclareCursor":             "*plan.DeclareCursor",

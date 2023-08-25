@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -25,6 +26,8 @@ type CreateProcedure struct {
 	*Procedure
 	ddlNode
 	BodyString string
+	Ast        ast.Statement
+	Catalog    sql.Catalog
 }
 
 var _ sql.Node = (*CreateProcedure)(nil)
@@ -35,6 +38,8 @@ var _ sql.CollationCoercible = (*CreateProcedure)(nil)
 // NewCreateProcedure returns a *CreateProcedure node.
 func NewCreateProcedure(
 	db sql.Database,
+	cat sql.Catalog,
+	ast ast.Statement,
 	name,
 	definer string,
 	params []ProcedureParam,
@@ -59,6 +64,8 @@ func NewCreateProcedure(
 		Procedure:  procedure,
 		BodyString: bodyString,
 		ddlNode:    ddlNode{db},
+		Catalog:    cat,
+		Ast:        ast,
 	}
 }
 

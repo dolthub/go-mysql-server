@@ -17,6 +17,7 @@ package rowexec
 import (
 	"bufio"
 	"fmt"
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	"io"
 	"log"
 	"strings"
@@ -1479,11 +1480,13 @@ func addColumnToSchema(schema sql.Schema, column *sql.Column, order *sql.ColumnO
 	return newSch, projections, nil
 }
 
-// createProcedureIter is the row iterator for *CreateProcedure.
+// createProcedureIter is the row iterator for *CreateUserProcedure.
 type createProcedureIter struct {
 	once sync.Once
 	spd  sql.StoredProcedureDetails
 	db   sql.Database
+	cat  sql.Catalog
+	ast  ast.Statement
 }
 
 // Next implements the sql.RowIter interface.
@@ -1502,6 +1505,11 @@ func (c *createProcedureIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	err := pdb.SaveStoredProcedure(ctx, c.spd)
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.cat.CreateUserProcedure(c.spd.Name, c.ast)
 	if err != nil {
 		return nil, err
 	}

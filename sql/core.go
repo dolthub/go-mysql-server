@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	"math"
 	"strconv"
 	"time"
@@ -216,6 +217,12 @@ type ExternalStoredProcedureProvider interface {
 	// empty slice is returned, with a nil error. If an unexpected error is encountered, it is returned as the
 	// error parameter.
 	ExternalStoredProcedures(ctx *Context, name string) ([]ExternalStoredProcedureDetails, error)
+}
+
+type UserProcedureProvider interface {
+	CreateUserProcedure(string, ast.Statement) error
+	GetUserProcedure(string) (ast.Statement, error)
+	DeleteUserProcedure(string) error
 }
 
 type TransactionCharacteristic int

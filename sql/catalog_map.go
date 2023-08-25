@@ -1,6 +1,10 @@
 package sql
 
-import "fmt"
+import (
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
+
+	"fmt"
+)
 
 type MapCatalog struct {
 	Tables    map[string]Table
@@ -10,6 +14,21 @@ type MapCatalog struct {
 }
 
 var _ Catalog = MapCatalog{}
+
+func (t MapCatalog) CreateUserProcedure(s string, a ast.Statement) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t MapCatalog) GetUserProcedure(s string) (ast.Statement, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t MapCatalog) DeleteUserProcedure(s string) error {
+	//TODO implement me
+	panic("implement me")
+}
 
 func (t MapCatalog) Function(ctx *Context, name string) (Function, error) {
 	if f, ok := t.Funcs[name]; ok {

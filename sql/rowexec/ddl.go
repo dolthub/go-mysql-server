@@ -925,7 +925,9 @@ func (b *BaseBuilder) buildCreateProcedure(ctx *sql.Context, n *plan.CreateProce
 			ModifiedAt:      n.ModifiedAt,
 			SqlMode:         sqlMode.String(),
 		},
-		db: n.Database(),
+		db:  n.Database(),
+		cat: n.Catalog,
+		ast: n.Ast,
 	}, nil
 }
 

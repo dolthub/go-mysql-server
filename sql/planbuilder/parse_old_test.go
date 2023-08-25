@@ -5049,9 +5049,9 @@ func TestParse(t *testing.T) {
 	//					require.NoError(err)
 	//				}
 	//			}
-	//		} else if createProcedure, ok := p.(*plan.CreateProcedure); ok {
-	//			createProcedure.CreatedAt = tt.plan.(*plan.CreateProcedure).CreatedAt
-	//			createProcedure.ModifiedAt = tt.plan.(*plan.CreateProcedure).ModifiedAt
+	//		} else if createProcedure, ok := p.(*plan.CreateUserProcedure); ok {
+	//			createProcedure.CreatedAt = tt.plan.(*plan.CreateUserProcedure).CreatedAt
+	//			createProcedure.ModifiedAt = tt.plan.(*plan.CreateUserProcedure).ModifiedAt
 	//		}
 	//		if !assertNodesEqualWithDiff(t, tt.plan, p) {
 	//			t.Logf("Unexpected result for query %s", tt.input)

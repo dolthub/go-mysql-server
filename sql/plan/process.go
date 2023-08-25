@@ -17,9 +17,9 @@ package plan
 import (
 	"fmt"
 
-	"github.com/dolthub/go-mysql-server/sql/transform"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/transform"
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 // QueryProcess represents a running query process node. It will use a callback
@@ -479,48 +479,68 @@ func IsNoRowNode(node sql.Node) bool {
 	return IsDDLNode(node) || IsShowNode(node)
 }
 
-func IsReadOnly(node sql.Node) bool {
-	isExplain := false
-	transform.Inspect(node, func(n sql.Node) bool {
-		switch n.(type) {
-		case *DescribeQuery:
-			isExplain = true
-			return false
+func IsReadOnly(cat sql.Catalog, stmt ast.Statement) bool {
+	var readOnly bool
+	ast.Walk(func(n ast.SQLNode) (bool, error) {
+		switch n := n.(type) {
+		case *ast.DDL:
+			readOnly = false
+		case *ast.AlterTable:
+			readOnly = false
+		case *ast.DBDDL:
+			readOnly = false
+		case *ast.Insert:
+			readOnly = false
+		case *ast.Delete:
+			readOnly = false
+		case *ast.Update:
+			readOnly = false
+		case *ast.LockTables:
+			readOnly = false
+		case *ast.UnlockTables:
+			readOnly = false
+		case *ast.Into:
+			readOnly = false
+		case *ast.Load:
+			readOnly = false
+		case *ast.CreateUser:
+			readOnly = false
+		case *ast.RenameUser:
+			readOnly = false
+		case *ast.DropUser:
+			readOnly = false
+		case *ast.CreateRole:
+			readOnly = false
+		case *ast.DropRole:
+			readOnly = false
+		case *ast.GrantPrivilege:
+			readOnly = false
+		case *ast.GrantRole:
+			readOnly = false
+		case *ast.GrantProxy:
+			readOnly = false
+		case *ast.RevokePrivilege:
+			readOnly = false
+		case *ast.RevokeAllPrivileges:
+			readOnly = false
+		case *ast.RevokeRole:
+			readOnly = false
+		case *ast.RevokeProxy:
+			readOnly = false
+		case *ast.Explain:
+			// explain is OK
+			return false, nil
+		case *ast.Call:
+			procAst, err := cat.GetUserProcedure(n.ProcName.Name.Lowered())
+			if err != nil {
+				return false, err
+			}
+			readOnly = IsReadOnly(cat, procAst)
 		}
-		return true
-	})
-	if isExplain {
-		return true
-	}
-
-	if IsDDLNode(node) {
-		return false
-	}
-
-	switch node.(type) {
-	case *DeleteFrom, *InsertInto, *Update, *LockTables, *UnlockTables:
-		return false
-	}
-
-	isPrivNodeP := func(n sql.Node) bool {
-		switch node.(type) {
-		case *CreateUser, *DropUser, *RenameUser, *CreateRole, *DropRole, *Grant, *GrantRole, *GrantProxy, *Revoke, *RevokeRole, *RevokeAll, *RevokeProxy:
-			return true
+		if !readOnly {
+			return false, nil
 		}
-		return false
-	}
-	isPrivNode := false
-	transform.Inspect(node, func(n sql.Node) bool {
-		if isPrivNodeP(n) {
-			isPrivNode = true
-			return false
-		}
-		return true
-	})
-
-	if isPrivNode {
-		return false
-	}
-
-	return true
+		return true, nil
+	}, stmt)
+	return readOnly
 }

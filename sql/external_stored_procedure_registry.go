@@ -15,9 +15,11 @@
 package sql
 
 import (
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	"math"
 	"reflect"
 	"strings"
+	"sync"
 )
 
 // ExternalStoredProcedureRegistry manages a collection of ExternalStoredProcedures and encapsulates
@@ -102,4 +104,49 @@ func (epd *ExternalStoredProcedureRegistry) countNumberOfParams(externalProcedur
 	// We subtract one because ctx is required to always be the first parameter to a function, but
 	// customers won't actually pass that in to the stored procedure.
 	return funcType.NumIn() - 1
+}
+
+func NewUserProcRegistry() *UserProcRegistry {
+	return &UserProcRegistry{procs: make(map[string]ast.Statement)}
+}
+
+// TODO incomplete implementation
+// - load procs on startup, from db provider
+// - delete procs propagates to this map
+// - replace runtime call resolution, use this instead of re-parsing
+type UserProcRegistry struct {
+	procs map[string]ast.Statement
+	mu    *sync.RWMutex
+}
+
+var _ UserProcedureProvider = (*UserProcRegistry)(nil)
+
+func (u *UserProcRegistry) CreateUserProcedure(name string, stmt ast.Statement) error {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if _, ok := u.procs[name]; !ok {
+		return ErrUserProcAlreadyExists.New(name)
+	}
+	u.procs[name] = stmt
+	return nil
+}
+
+func (u UserProcRegistry) GetUserProcedure(name string) (ast.Statement, error) {
+	u.mu.RLock()
+	defer u.mu.RUnlock()
+	proc, ok := u.procs[name]
+	if !ok {
+		return nil, ErrUserProcNotFound.New(name)
+	}
+	return proc, nil
+}
+
+func (u UserProcRegistry) DeleteUserProcedure(name string) error {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if _, ok := u.procs[name]; !ok {
+		return ErrUserProcNotFound.New(name)
+	}
+	delete(u.procs, name)
+	return nil
 }

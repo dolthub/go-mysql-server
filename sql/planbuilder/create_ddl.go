@@ -199,6 +199,8 @@ func (b *Builder) buildCreateProcedure(inScope *scope, query string, c *ast.DDL)
 	outScope = inScope.push()
 	outScope.node = plan.NewCreateProcedure(
 		db,
+		b.cat,
+		c.ProcedureSpec.Body,
 		procName,
 		c.ProcedureSpec.Definer,
 		params,

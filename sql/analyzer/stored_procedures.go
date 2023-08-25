@@ -157,7 +157,7 @@ func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCa
 	return node, transform.NewTree, nil
 }
 
-// validateCreateProcedure handles CreateProcedure nodes, ensuring that all nodes in Procedure are supported.
+// validateCreateProcedure handles CreateUserProcedure nodes, ensuring that all nodes in Procedure are supported.
 func validateCreateProcedure(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	cp, ok := node.(*plan.CreateProcedure)
 	if !ok {

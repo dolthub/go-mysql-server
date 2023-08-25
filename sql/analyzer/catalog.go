@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	"strings"
 	"sync"
 
@@ -33,6 +34,7 @@ type Catalog struct {
 	InfoSchema sql.Database
 
 	Provider         sql.DatabaseProvider
+	UserProcProvider sql.UserProcedureProvider
 	builtInFunctions function.Registry
 
 	// BinlogReplicaController holds an optional controller that receives forwarded binlog
@@ -43,11 +45,24 @@ type Catalog struct {
 	locks sessionLocks
 }
 
+func (c *Catalog) CreateUserProcedure(s string, statement ast.Statement) error {
+	return c.UserProcProvider.CreateUserProcedure("", statement)
+}
+
+func (c *Catalog) GetUserProcedure(name string) (ast.Statement, error) {
+	return c.UserProcProvider.GetUserProcedure(name)
+}
+
+func (c *Catalog) DeleteUserProcedure(name string) error {
+	return c.UserProcProvider.DeleteUserProcedure(name)
+}
+
 var _ sql.Catalog = (*Catalog)(nil)
 var _ sql.FunctionProvider = (*Catalog)(nil)
 var _ sql.TableFunctionProvider = (*Catalog)(nil)
 var _ sql.ExternalStoredProcedureProvider = (*Catalog)(nil)
 var _ binlogreplication.BinlogReplicaCatalog = (*Catalog)(nil)
+var _ sql.UserProcedureProvider = (*Catalog)(nil)
 
 type tableLocks map[string]struct{}
 
@@ -62,6 +77,8 @@ func NewCatalog(provider sql.DatabaseProvider) *Catalog {
 		InfoSchema:       information_schema.NewInformationSchemaDatabase(),
 		Provider:         provider,
 		builtInFunctions: function.NewRegistry(),
+		// TODO initialize existing user procs from database provider
+		UserProcProvider: sql.NewUserProcRegistry(),
 		locks:            make(sessionLocks),
 	}
 }
