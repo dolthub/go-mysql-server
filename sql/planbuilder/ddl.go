@@ -1050,6 +1050,9 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 		if gen != nil {
 			virtual := !bool(tableSpec.Columns[i].Type.Stored)
 			schema[i].Generated = b.convertDefaultExpression(outScope, gen, schema[i].Type, schema[i].Nullable)
+			// generated expressions are always parenthesized, but we don't record this in the parser
+			schema[i].Generated.Parenthesized = true
+			schema[i].Generated.Literal = false
 			schema[i].Virtual = virtual
 		}
 	}

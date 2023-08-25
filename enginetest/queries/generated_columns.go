@@ -32,7 +32,7 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
-						"  `b` int GENERATED ALWAYS AS (a + 1) STORED,\n" +
+						"  `b` int GENERATED ALWAYS AS ((a + 1)) STORED,\n" +
 						"  PRIMARY KEY (`a`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
@@ -73,7 +73,7 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
 					"  `a` int NOT NULL,\n" +
-					"  `b` int GENERATED ALWAYS AS (a + 1) STORED,\n" +
+					"  `b` int GENERATED ALWAYS AS ((a + 1)) STORED,\n" +
 					"  PRIMARY KEY (`a`),\n" +
 					"  KEY `i1` (`b`)\n" +
 					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
@@ -113,7 +113,7 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
 							"  `a` int NOT NULL,\n" +
-							"  `b` int GENERATED ALWAYS AS (a + 1) STORED,\n" +
+							"  `b` int GENERATED ALWAYS AS ((a + 1)) STORED,\n" +
 					    "  `c` int,\n" +
 							"  PRIMARY KEY (`a`),\n" +
 							"  KEY `i1` (`b`,`c`)\n" +
