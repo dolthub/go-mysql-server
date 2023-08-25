@@ -16,10 +16,11 @@ package sql
 
 import (
 	"fmt"
-	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	"math"
 	"strconv"
 	"time"
+
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 // Expression is a combination of one or more SQL expressions.

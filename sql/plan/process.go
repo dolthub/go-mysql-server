@@ -17,9 +17,10 @@ package plan
 import (
 	"fmt"
 
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/transform"
-	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 // QueryProcess represents a running query process node. It will use a callback

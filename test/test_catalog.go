@@ -15,8 +15,9 @@
 package test
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type Catalog struct {

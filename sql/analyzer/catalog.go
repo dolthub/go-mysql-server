@@ -16,14 +16,14 @@ package analyzer
 
 import (
 	"fmt"
-	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	"strings"
 	"sync"
 
-	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/internal/similartext"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"

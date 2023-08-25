@@ -15,11 +15,12 @@
 package sql
 
 import (
-	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	"math"
 	"reflect"
 	"strings"
 	"sync"
+
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 // ExternalStoredProcedureRegistry manages a collection of ExternalStoredProcedures and encapsulates

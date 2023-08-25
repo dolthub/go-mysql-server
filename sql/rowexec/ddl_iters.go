@@ -17,7 +17,6 @@ package rowexec
 import (
 	"bufio"
 	"fmt"
-	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	"io"
 	"log"
 	"strings"
@@ -26,6 +25,7 @@ import (
 
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
