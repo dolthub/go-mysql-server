@@ -56,7 +56,7 @@ const (
 	applyEventSchedulerId                        // applyEventScheduler
 
 	// default
-	resolveNaturalJoinsId          // resolveNaturalJoins
+	resolveUsingJoinsId            // resolveUsingJoins
 	resolveOrderbyLiteralsId       // resolveOrderbyLiterals
 	resolveFunctionsId             // resolveFunctions
 	flattenTableAliasesId          // flattenTableAliases

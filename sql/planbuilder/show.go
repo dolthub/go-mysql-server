@@ -1,13 +1,29 @@
+// Copyright 2023 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package planbuilder
 
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -61,7 +77,11 @@ func (b *Builder) buildShow(inScope *scope, s *ast.Show, query string) (outScope
 		return b.buildShowStatus(inScope, s)
 	case "replica status":
 		outScope = inScope.push()
-		outScope.node = plan.NewShowReplicaStatus()
+		showRep := plan.NewShowReplicaStatus()
+		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.IsBinlogReplicaCatalog() {
+			showRep.ReplicaController = binCat.GetBinlogReplicaController()
+		}
+		outScope.node = showRep
 	default:
 		unsupportedShow := fmt.Sprintf("SHOW %s", s.Type)
 		b.handleErr(sql.ErrUnsupportedFeature.New(unsupportedShow))
@@ -74,7 +94,7 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 	var asOf *ast.AsOf
 	var asOfExpr sql.Expression
 	if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
-		asOfExpr = b.buildScalar(inScope, s.ShowTablesOpt.AsOf)
+		asOfExpr = b.buildAsOfExpr(inScope, s.ShowTablesOpt.AsOf)
 		asOf = &ast.AsOf{Time: s.ShowTablesOpt.AsOf}
 	}
 
@@ -89,7 +109,7 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 	tableName := strings.ToLower(s.Table.Name.String())
 	tableScope, ok := b.buildTablescan(inScope, db, tableName, asOf)
 	if !ok {
-		err := sql.ErrTableNotFound.New()
+		err := sql.ErrTableNotFound.New(tableName)
 		b.handleErr(err)
 	}
 	rt, _ := tableScope.node.(*plan.ResolvedTable)
@@ -104,6 +124,7 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 	}
 
 	showCreate := plan.NewShowCreateTableWithAsOf(tableScope.node, showType == "create view", asOfExpr)
+	outScope.node = showCreate
 
 	if rt != nil {
 		checks := b.loadChecksFromTable(outScope, rt.Table)
@@ -117,9 +138,16 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 			})
 		}
 		showCreate.Checks = checks
-	}
 
-	outScope.node = showCreate
+		showCreate.Indexes = b.getInfoSchemaIndexes(rt)
+
+		pks, _ := rt.Table.(sql.PrimaryKeyTable)
+		if pks != nil {
+			showCreate.PrimaryKeySchema = pks.PrimaryKeySchema()
+		}
+		outScope.node = b.modifySchemaTarget(outScope, showCreate, rt)
+
+	}
 	return
 }
 
@@ -258,10 +286,10 @@ func (b *Builder) buildShowProcedure(inScope *scope, s *ast.Show) (outScope *sco
 func (b *Builder) buildShowProcedureStatus(inScope *scope, s *ast.Show) (outScope *scope) {
 	var filter sql.Expression
 
-	node, err := Parse(b.ctx, b.cat, "select routine_schema as `Db`, routine_name as `Name`, routine_type as `Type`,"+
+	node, _, _, err := b.Parse("select routine_schema as `Db`, routine_name as `Name`, routine_type as `Type`,"+
 		"definer as `Definer`, last_altered as `Modified`, created as `Created`, security_type as `Security_type`,"+
 		"routine_comment as `Comment`, CHARACTER_SET_CLIENT as `character_set_client`, COLLATION_CONNECTION as `collation_connection`,"+
-		"database_collation as `Database Collation` from information_schema.routines where routine_type = 'PROCEDURE'")
+		"database_collation as `Database Collation` from information_schema.routines where routine_type = 'PROCEDURE'", false)
 	if err != nil {
 		b.handleErr(err)
 	}
@@ -291,10 +319,10 @@ func (b *Builder) buildShowProcedureStatus(inScope *scope, s *ast.Show) (outScop
 
 func (b *Builder) buildShowFunctionStatus(inScope *scope, s *ast.Show) (outScope *scope) {
 	var filter sql.Expression
-	node, err := Parse(b.ctx, b.cat, "select routine_schema as `Db`, routine_name as `Name`, routine_type as `Type`,"+
+	node, _, _, err := b.Parse("select routine_schema as `Db`, routine_name as `Name`, routine_type as `Type`,"+
 		"definer as `Definer`, last_altered as `Modified`, created as `Created`, security_type as `Security_type`,"+
 		"routine_comment as `Comment`, character_set_client, collation_connection,"+
-		"database_collation as `Database Collation` from information_schema.routines where routine_type = 'FUNCTION'")
+		"database_collation as `Database Collation` from information_schema.routines where routine_type = 'FUNCTION'", false)
 	if err != nil {
 		b.handleErr(err)
 	}
@@ -378,8 +406,43 @@ func (b *Builder) buildShowIndex(inScope *scope, s *ast.Show) (outScope *scope) 
 	}
 	tableName := strings.ToLower(s.Table.Name.String())
 	table := b.resolveTable(tableName, strings.ToLower(dbName), nil)
-	outScope.node = plan.NewShowIndexes(table)
+	showIdx := plan.NewShowIndexes(table)
+	showIdx.IndexesToShow = b.getInfoSchemaIndexes(table)
+	outScope.node = showIdx
 	return
+}
+
+func (b *Builder) getInfoSchemaIndexes(rt *plan.ResolvedTable) []sql.Index {
+	it, ok := rt.Table.(sql.IndexAddressableTable)
+	if !ok {
+		return nil
+	}
+
+	indexes, err := it.GetIndexes(b.ctx)
+	if err != nil {
+		b.handleErr(err)
+	}
+
+	for i := 0; i < len(indexes); i++ {
+		// remove generated indexes
+		idx := indexes[i]
+		if idx.IsGenerated() {
+			indexes[i], indexes[len(indexes)-1] = indexes[len(indexes)-1], indexes[i]
+			indexes = indexes[:len(indexes)-1]
+			i--
+		}
+	}
+
+	if b.ctx.GetIndexRegistry().HasIndexes() {
+		idxRegistry := b.ctx.GetIndexRegistry()
+		for _, idx := range idxRegistry.IndexesByTable(rt.Database().Name(), rt.Table.Name()) {
+			if !idx.IsGenerated() {
+				indexes = append(indexes, idx)
+			}
+		}
+	}
+
+	return indexes
 }
 
 func (b *Builder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *scope) {
@@ -421,20 +484,24 @@ func (b *Builder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *sco
 	return
 }
 
-func (b *Builder) buildAsOfLit(inScope *scope, time ast.Expr) string {
-	expr := b.buildAsOfExpr(inScope, time)
+func (b *Builder) buildAsOfLit(inScope *scope, t ast.Expr) interface{} {
+	expr := b.buildAsOfExpr(inScope, t)
 	res, err := expr.Eval(b.ctx, nil)
 	if err != nil {
 		b.handleErr(err)
 	}
-	asOfVal, ok := res.(string)
-	if ok {
-		return asOfVal
+	switch res.(type) {
+	case string, time.Time:
+		return res
 	}
 
-	err = sql.ErrInvalidAsOfExpression.New(time)
+	if res != nil {
+		err = sql.ErrInvalidAsOfExpression.New(res)
+	} else {
+		err = sql.ErrInvalidAsOfExpression.New(t)
+	}
 	b.handleErr(err)
-	return ""
+	return nil
 }
 
 func (b *Builder) buildAsOfExpr(inScope *scope, time ast.Expr) sql.Expression {
@@ -446,18 +513,20 @@ func (b *Builder) buildAsOfExpr(inScope *scope, time ast.Expr) sql.Expression {
 		}
 		return expression.NewLiteral(ret.(string), types.LongText)
 	case *ast.ColName:
-		sysVar, ok := b.buildSysVar(v, ast.SetScope_None)
+		sysVar, _, ok := b.buildSysVar(v, ast.SetScope_None)
 		if ok {
 			return sysVar
 		}
-		return expression.NewLiteral(v.Name.String(), types.LongText)
+		return expression.NewLiteral(v.String(), types.LongText)
 	case *ast.FuncExpr:
-		return b.buildScalar(inScope, v)
+		// todo(max): more specific validation for nested ASOF functions
+		if isWindowFunc(v.Name.Lowered()) || isAggregateFunc(v.Name.Lowered()) {
+			err := sql.ErrInvalidAsOfExpression.New(v)
+			b.handleErr(err)
+		}
 	default:
 	}
-	err := sql.ErrInvalidAsOfExpression.New(time)
-	b.handleErr(err)
-	return nil
+	return b.buildScalar(b.newScope(), time)
 }
 
 func (b *Builder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *scope) {
@@ -534,29 +603,52 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 	outScope = inScope.push()
 	full := s.Full
 	var table sql.Node
-	{
-		var asOf *ast.AsOf
-		if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
-			asOf = &ast.AsOf{Time: s.ShowTablesOpt.AsOf}
-		}
 
-		db := s.Database
-		if db == "" {
-			db = s.Table.Qualifier.String()
-		}
-		if db == "" {
-			db = b.currentDb().Name()
-		}
+	var asOf *ast.AsOf
+	if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
+		asOf = &ast.AsOf{Time: s.ShowTablesOpt.AsOf}
+	}
 
-		tableName := strings.ToLower(s.Table.Name.String())
-		tableScope, ok := b.buildTablescan(inScope, db, tableName, asOf)
-		if !ok {
-			err := sql.ErrTableNotFound.New()
+	db := s.Database
+	if db == "" {
+		db = s.Table.Qualifier.String()
+	}
+	if db == "" {
+		db = b.currentDb().Name()
+	}
+
+	tableName := strings.ToLower(s.Table.Name.String())
+	tableScope, ok := b.buildTablescan(inScope, db, tableName, asOf)
+	if !ok {
+		err := sql.ErrTableNotFound.New(tableName)
+		b.handleErr(err)
+	}
+	table = tableScope.node
+
+	show := plan.NewShowColumns(full, table)
+
+	for _, c := range show.Schema() {
+		outScope.newColumn(scopeColumn{
+			table:    strings.ToLower(c.Source),
+			col:      strings.ToLower(c.Name),
+			typ:      c.Type,
+			nullable: c.Nullable,
+		})
+	}
+
+	var node sql.Node = show
+	switch t := table.(type) {
+	case *plan.ResolvedTable:
+		show.Indexes = b.getInfoSchemaIndexes(t)
+		node = b.modifySchemaTarget(tableScope, show, t)
+	case *plan.SubqueryAlias:
+		var err error
+		node, err = show.WithTargetSchema(t.Schema())
+		if err != nil {
 			b.handleErr(err)
 		}
-		table = tableScope.node
+	default:
 	}
-	var node sql.Node = plan.NewShowColumns(full, table)
 
 	if s.ShowTablesOpt != nil && s.ShowTablesOpt.Filter != nil {
 		if s.ShowTablesOpt.Filter.Like != "" {
@@ -570,15 +662,6 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 				),
 				node,
 			)
-		}
-
-		for _, c := range node.Schema() {
-			outScope.newColumn(scopeColumn{
-				table:    strings.ToLower(c.Source),
-				col:      strings.ToLower(c.Name),
-				typ:      c.Type,
-				nullable: c.Nullable,
-			})
 		}
 
 		if s.ShowTablesOpt.Filter.Filter != nil {
@@ -617,8 +700,8 @@ func (b *Builder) buildShowCollation(inScope *scope, s *ast.Show) (outScope *sco
 	// show collation statements are functionally identical to selecting from the collations table in
 	// information_schema, with slightly different syntax and with some columns aliased.
 	// TODO: install information_schema automatically for all catalogs
-	node, err := Parse(b.ctx, b.cat, "select collation_name as `collation`, character_set_name as charset, id,"+
-		"is_default as `default`, is_compiled as compiled, sortlen, pad_attribute from information_schema.collations")
+	node, _, _, err := b.Parse("select collation_name as `collation`, character_set_name as charset, id,"+
+		"is_default as `default`, is_compiled as compiled, sortlen, pad_attribute from information_schema.collations", false)
 	if err != nil {
 		b.handleErr(err)
 	}
@@ -653,7 +736,7 @@ func (b *Builder) buildShowCollation(inScope *scope, s *ast.Show) (outScope *sco
 
 func (b *Builder) buildShowEngines(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
-	infoSchemaSelect, err := Parse(b.ctx, b.cat, "select * from information_schema.engines")
+	infoSchemaSelect, _, _, err := b.Parse("select * from information_schema.engines", false)
 	if err != nil {
 		b.handleErr(err)
 	}
@@ -705,7 +788,10 @@ func (b *Builder) buildShowStatus(inScope *scope, s *ast.Show) (outScope *scope)
 func (b *Builder) buildShowCharset(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 
-	var node sql.Node = plan.NewShowCharset()
+	showCharset := plan.NewShowCharset()
+	showCharset.CharacterSetTable = b.resolveTable("character_sets", "information_schema", nil)
+
+	var node sql.Node = showCharset
 	for _, c := range node.Schema() {
 		outScope.newColumn(scopeColumn{table: c.Source, col: c.Name, typ: c.Type, nullable: c.Nullable})
 	}

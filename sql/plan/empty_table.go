@@ -46,6 +46,7 @@ func (e *EmptyTable) Name() string {
 func (e *EmptyTable) Schema() sql.Schema { return e.schema }
 func (*EmptyTable) Children() []sql.Node { return nil }
 func (*EmptyTable) Resolved() bool       { return true }
+func (*EmptyTable) IsReadOnly() bool     { return true }
 func (e *EmptyTable) String() string     { return "EmptyTable" }
 
 // RowIter implements the sql.Node interface.

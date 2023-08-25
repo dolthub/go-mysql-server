@@ -64,9 +64,17 @@ func (d *AlterDefaultSet) String() string {
 	return fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET DEFAULT %s", d.Table.String(), d.ColumnName, d.Default.String())
 }
 
+func (d *AlterDefaultSet) IsReadOnly() bool {
+	return false
+}
+
 // Resolved implements the sql.Node interface.
 func (d *AlterDefaultDrop) Resolved() bool {
 	return d.ddlNode.Resolved() && d.Table.Resolved() && d.targetSchema.Resolved()
+}
+
+func (d *AlterDefaultDrop) IsReadOnly() bool {
+	return false
 }
 
 // RowIter implements the sql.Node interface.

@@ -86,13 +86,17 @@ func (p *DeleteFrom) Resolved() bool {
 	return true
 }
 
+func (p *DeleteFrom) IsReadOnly() bool {
+	return false
+}
+
 // DB returns the database being deleted from. |Database| is used by another interface we implement.
 func (p *DeleteFrom) DB() sql.Database {
-	return getDatabase(p.Child)
+	return GetDatabase(p.Child)
 }
 
 func (p *DeleteFrom) Database() string {
-	database := getDatabase(p.Child)
+	database := GetDatabase(p.Child)
 	if database == nil {
 		return ""
 	}
@@ -120,7 +124,7 @@ func (p *DeleteFrom) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 			return false
 		}
 
-		db := getDatabase(target)
+		db := GetDatabase(target)
 		checkName := CheckPrivilegeNameForDatabase(db)
 		op := sql.NewPrivilegedOperation(checkName, deletable.Name(), "", sql.PrivilegeType_Delete)
 		if opChecker.UserHasPrivileges(ctx, op) == false {
@@ -136,7 +140,7 @@ func GetDeletable(node sql.Node) (sql.DeletableTable, error) {
 	case sql.DeletableTable:
 		return node, nil
 	case *IndexedTableAccess:
-		return GetDeletable(node.ResolvedTable)
+		return GetDeletable(node.TableNode)
 	case *ResolvedTable:
 		return getDeletableTable(node.Table)
 	case *TableAlias:

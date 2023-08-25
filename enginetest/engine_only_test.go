@@ -41,7 +41,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
@@ -65,17 +64,8 @@ func TestVariables(t *testing.T) {
 	enginetest.TestVariables(t, enginetest.NewDefaultMemoryHarness())
 }
 
-func TestVariables_Exp(t *testing.T) {
-	enginetest.TestVariables(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
-}
-
 func TestVariableErrors(t *testing.T) {
 	enginetest.TestVariableErrors(t, enginetest.NewDefaultMemoryHarness())
-}
-
-func TestVariableErrors_Exp(t *testing.T) {
-	t.Skip("different error messages")
-	enginetest.TestVariableErrors(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
 func TestWarnings(t *testing.T) {
@@ -96,33 +86,16 @@ func TestUse(t *testing.T) {
 	enginetest.TestUse(t, enginetest.NewDefaultMemoryHarness())
 }
 
-func TestUse_Exp(t *testing.T) {
-	enginetest.TestUse(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
-}
-
 func TestNoDatabaseSelected(t *testing.T) {
 	enginetest.TestNoDatabaseSelected(t, enginetest.NewDefaultMemoryHarness())
-}
-
-func TestNoDatabaseSelected_Exp(t *testing.T) {
-	enginetest.TestNoDatabaseSelected(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
 func TestTracing(t *testing.T) {
 	enginetest.TestTracing(t, enginetest.NewDefaultMemoryHarness())
 }
 
-func TestTracing_Exp(t *testing.T) {
-	t.Skip("different plan order")
-	enginetest.TestTracing(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
-}
-
 func TestCurrentTimestamp(t *testing.T) {
 	enginetest.TestCurrentTimestamp(t, enginetest.NewDefaultMemoryHarness())
-}
-
-func TestCurrentTimestamp_Exp(t *testing.T) {
-	enginetest.TestCurrentTimestamp(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
 // TODO: it's not currently possible to test this via harness, because the underlying table implementations are added to
@@ -233,7 +206,7 @@ func (l *lockableTable) Unlock(ctx *sql.Context, id uint32) error {
 type analyzerTestCase struct {
 	name          string
 	query         string
-	planGenerator func(*testing.T, *sql.Context, *sqle.Engine) sql.Node
+	planGenerator func(*testing.T, *sql.Context, enginetest.QueryEngine) sql.Node
 	err           *errors.Kind
 }
 
@@ -439,8 +412,8 @@ var analyzerTestCases = []analyzerTestCase{
 	{
 		name:  "show tables as of",
 		query: "SHOW TABLES AS OF 'abc123'",
-		planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
-			db, err := engine.Analyzer.Catalog.Database(ctx, "mydb")
+		planGenerator: func(t *testing.T, ctx *sql.Context, engine enginetest.QueryEngine) sql.Node {
+			db, err := engine.EngineAnalyzer().Catalog.Database(ctx, "mydb")
 			require.NoError(t, err)
 			return plan.NewShowTables(db, false, expression.NewLiteral("abc123", types.LongText))
 		},
@@ -448,8 +421,8 @@ var analyzerTestCases = []analyzerTestCase{
 	{
 		name:  "show tables as of, from",
 		query: "SHOW TABLES FROM foo AS OF 'abc123'",
-		planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
-			db, err := engine.Analyzer.Catalog.Database(ctx, "foo")
+		planGenerator: func(t *testing.T, ctx *sql.Context, engine enginetest.QueryEngine) sql.Node {
+			db, err := engine.EngineAnalyzer().Catalog.Database(ctx, "foo")
 			require.NoError(t, err)
 			return plan.NewShowTables(db, false, expression.NewLiteral("abc123", types.LongText))
 		},
@@ -457,8 +430,8 @@ var analyzerTestCases = []analyzerTestCase{
 	{
 		name:  "show tables as of, function call",
 		query: "SHOW TABLES FROM foo AS OF GREATEST('abc123', 'cde456')",
-		planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
-			db, err := engine.Analyzer.Catalog.Database(ctx, "foo")
+		planGenerator: func(t *testing.T, ctx *sql.Context, engine enginetest.QueryEngine) sql.Node {
+			db, err := engine.EngineAnalyzer().Catalog.Database(ctx, "foo")
 			require.NoError(t, err)
 			greatest, err := function.NewGreatest(
 				expression.NewLiteral("abc123", types.LongText),
@@ -471,8 +444,8 @@ var analyzerTestCases = []analyzerTestCase{
 	{
 		name:  "show tables as of, timestamp",
 		query: "SHOW TABLES FROM foo AS OF TIMESTAMP('20200101:120000Z')",
-		planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
-			db, err := engine.Analyzer.Catalog.Database(ctx, "foo")
+		planGenerator: func(t *testing.T, ctx *sql.Context, engine enginetest.QueryEngine) sql.Node {
+			db, err := engine.EngineAnalyzer().Catalog.Database(ctx, "foo")
 			require.NoError(t, err)
 			timestamp, err := function.NewTimestamp(
 				expression.NewLiteral("20200101:120000Z", types.LongText),
@@ -484,8 +457,8 @@ var analyzerTestCases = []analyzerTestCase{
 	{
 		name:  "show tables as of, naked literal",
 		query: "SHOW TABLES AS OF abc123",
-		planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
-			db, err := engine.Analyzer.Catalog.Database(ctx, "mydb")
+		planGenerator: func(t *testing.T, ctx *sql.Context, engine enginetest.QueryEngine) sql.Node {
+			db, err := engine.EngineAnalyzer().Catalog.Database(ctx, "mydb")
 			require.NoError(t, err)
 			return plan.NewShowTables(db, false, expression.NewLiteral("abc123", types.LongText))
 		},
@@ -493,7 +466,7 @@ var analyzerTestCases = []analyzerTestCase{
 }
 
 // Grab bag tests for testing analysis of various nodes that are difficult to verify through other means
-func TestAnalyzer(t *testing.T) {
+func TestAnalyzer_Exp(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
 	harness.Setup(setup.MydbData, setup.FooData)
 	for _, tt := range analyzerTestCases {
@@ -502,35 +475,11 @@ func TestAnalyzer(t *testing.T) {
 			require.NoError(t, err)
 
 			ctx := enginetest.NewContext(harness)
-			parsed, err := parse.Parse(ctx, tt.query)
-			require.NoError(t, err)
-
-			analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
-			analyzed = analyzer.StripPassthroughNodes(analyzed)
-			if tt.err != nil {
-				require.Error(t, err)
-				assert.True(t, tt.err.Is(err))
-			} else {
-				assertNodesEqualWithDiff(t, tt.planGenerator(t, ctx, e), analyzed)
-			}
-		})
-	}
-}
-
-func TestAnalyzer_Exp(t *testing.T) {
-	harness := enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental)
-	harness.Setup(setup.MydbData, setup.FooData)
-	for _, tt := range analyzerTestCases {
-		t.Run(tt.name, func(t *testing.T) {
-			e, err := harness.NewEngine(t)
-			require.NoError(t, err)
-
-			ctx := enginetest.NewContext(harness)
-			b := planbuilder.New(ctx, e.Analyzer.Catalog)
+			b, _ := planbuilder.New(ctx, e.EngineAnalyzer().Catalog)
 			parsed, _, _, err := b.Parse(tt.query, false)
 			require.NoError(t, err)
 
-			analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
+			analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil)
 			analyzed = analyzer.StripPassthroughNodes(analyzed)
 			if tt.err != nil {
 				require.Error(t, err)
@@ -571,12 +520,7 @@ func TestRecursiveViewDefinition(t *testing.T) {
 	enginetest.TestRecursiveViewDefinition(t, enginetest.NewDefaultMemoryHarness())
 }
 
-func TestRecursiveViewDefinition_Exp(t *testing.T) {
-	t.Skip("different error message (OK)")
-	enginetest.TestRecursiveViewDefinition(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
-}
-
-func TestShowCharset_Exp(t *testing.T) {
+func TestShowCharset(t *testing.T) {
 	iterForAllImplemented := func(t *testing.T) []sql.Row {
 		var rows []sql.Row
 		iter := sql.NewCharacterSetsIterator()
@@ -661,13 +605,14 @@ func TestShowCharset_Exp(t *testing.T) {
 		},
 	}
 
-	harness := enginetest.NewMemoryHarness("", 1, 1, false, nil).WithVersion(sql.VersionExperimental)
+	harness := enginetest.NewMemoryHarness("", 1, 1, false, nil)
 	for _, test := range tests {
 		enginetest.TestQuery(t, harness, test.Query, test.RowGen(t), nil, nil)
 	}
 }
 
 func TestTableFunctions(t *testing.T) {
+	// TODO different error messages
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
 	harness.Setup(setup.MydbData)
 
@@ -675,26 +620,7 @@ func TestTableFunctions(t *testing.T) {
 	testDatabaseProvider := NewTestProvider(&databaseProvider, SimpleTableFunction{}, memory.IntSequenceTable{})
 
 	engine := enginetest.NewEngineWithProvider(t, harness, testDatabaseProvider)
-	engine.Analyzer.ExecBuilder = rowexec.DefaultBuilder
-
-	engine, err := enginetest.RunSetupScripts(harness.NewContext(), engine, setup.MydbData, true)
-	require.NoError(t, err)
-
-	for _, test := range queries.TableFunctionScriptTests {
-		enginetest.TestScriptWithEngine(t, engine, harness, test)
-	}
-}
-
-func TestTableFunctions_Exp(t *testing.T) {
-	t.Skip("different error message (OK)")
-	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental)
-	harness.Setup(setup.MydbData)
-
-	databaseProvider := harness.NewDatabaseProvider()
-	testDatabaseProvider := NewTestProvider(&databaseProvider, SimpleTableFunction{}, memory.IntSequenceTable{})
-
-	engine := enginetest.NewEngineWithProvider(t, harness, testDatabaseProvider)
-	engine.Analyzer.ExecBuilder = rowexec.DefaultBuilder
+	engine.EngineAnalyzer().ExecBuilder = rowexec.DefaultBuilder
 
 	engine, err := enginetest.RunSetupScripts(harness.NewContext(), engine, setup.MydbData, true)
 	require.NoError(t, err)
@@ -706,21 +632,6 @@ func TestTableFunctions_Exp(t *testing.T) {
 
 func TestExternalProcedures(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
-	harness.Setup(setup.MydbData)
-	for _, script := range queries.ExternalProcedureTests {
-		func() {
-			e, err := harness.NewEngine(t)
-			require.NoError(t, err)
-			defer func() {
-				_ = e.Close()
-			}()
-			enginetest.TestScriptWithEngine(t, e, harness, script)
-		}()
-	}
-}
-
-func TestExternalProcedures_Exp(t *testing.T) {
-	harness := enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental)
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.ExternalProcedureTests {
 		func() {
@@ -749,71 +660,8 @@ func TestCallAsOf(t *testing.T) {
 	}
 }
 
-func TestCallAsOf_Exp(t *testing.T) {
-	harness := enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental)
-	enginetest.CreateVersionedTestData(t, harness)
-	for _, script := range queries.CallAsofScripts {
-		func() {
-			e, err := harness.NewEngine(t)
-			require.NoError(t, err)
-			defer func() {
-				_ = e.Close()
-			}()
-			enginetest.TestScriptWithEngine(t, e, harness, script)
-		}()
-	}
-}
-
 func TestCollationCoercion(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
-	harness.Setup(setup.MydbData)
-	engine, err := harness.NewEngine(t)
-	require.NoError(t, err)
-	defer engine.Close()
-
-	ctx := harness.NewContext()
-	ctx.SetCurrentDatabase("mydb")
-
-	for _, statement := range queries.CollationCoercionSetup {
-		enginetest.RunQueryWithContext(t, engine, harness, ctx, statement)
-	}
-
-	for _, test := range queries.CollationCoercionTests {
-		coercibilityQuery := fmt.Sprintf(`SELECT COERCIBILITY(%s) FROM temp_tbl LIMIT 1;`, test.Parameters)
-		collationQuery := fmt.Sprintf(`SELECT COLLATION(%s) FROM temp_tbl LIMIT 1;`, test.Parameters)
-		for i, query := range []string{coercibilityQuery, collationQuery} {
-			t.Run(query, func(t *testing.T) {
-				sch, iter, err := engine.Query(ctx, query)
-				if test.Error {
-					if err == nil {
-						_, err := sql.RowIterToRows(ctx, sch, iter)
-						require.Error(t, err)
-					} else {
-						require.Error(t, err)
-					}
-				} else {
-					require.NoError(t, err)
-					rows, err := sql.RowIterToRows(ctx, sch, iter)
-					require.NoError(t, err)
-					require.Equal(t, 1, len(rows))
-					require.Equal(t, 1, len(rows[0]))
-					if i == 0 {
-						num, _, err := types.Int64.Convert(rows[0][0])
-						require.NoError(t, err)
-						require.Equal(t, test.Coercibility, num.(int64))
-					} else {
-						str, _, err := types.LongText.Convert(rows[0][0])
-						require.NoError(t, err)
-						require.Equal(t, test.Collation.Name(), str.(string))
-					}
-				}
-			})
-		}
-	}
-}
-
-func TestCollationCoercion_Exp(t *testing.T) {
-	harness := enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental)
 	harness.Setup(setup.MydbData)
 	engine, err := harness.NewEngine(t)
 	require.NoError(t, err)
@@ -891,37 +739,6 @@ func TestRegex(t *testing.T) {
 	runtime.GC()
 }
 
-func TestRegex_Exp(t *testing.T) {
-	harness := enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental)
-	harness.Setup(setup.SimpleSetup...)
-	engine, err := harness.NewEngine(t)
-	require.NoError(t, err)
-	defer engine.Close()
-
-	ctx := enginetest.NewContext(harness)
-	for _, tt := range queries.RegexTests {
-		t.Run(tt.Query, func(t *testing.T) {
-			if harness.SkipQueryTest(tt.Query) {
-				t.Skipf("Skipping query plan for %s", tt.Query)
-			}
-			if tt.ExpectedErr == nil {
-				enginetest.TestQueryWithContext(t, ctx, engine, harness, tt.Query, tt.Expected, nil, nil)
-			} else {
-				newCtx := ctx.WithQuery(tt.Query)
-				sch, iter, err := engine.Query(newCtx, tt.Query)
-				if err == nil {
-					_, err = sql.RowIterToRows(newCtx, sch, iter)
-					require.Error(t, err)
-				}
-			}
-		})
-	}
-	// We force garbage collection twice as we have two levels of finalizers on our regex objects, and we want to make
-	// sure that neither of them panic.
-	runtime.GC()
-	runtime.GC()
-}
-
 var _ sql.TableFunction = (*SimpleTableFunction)(nil)
 var _ sql.CollationCoercible = (*SimpleTableFunction)(nil)
 var _ sql.ExecSourceRel = (*SimpleTableFunction)(nil)
@@ -942,6 +759,10 @@ func (s SimpleTableFunction) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter, 
 	}
 	s.returnedResults = true
 	return &SimpleTableFunctionRowIter{}, nil
+}
+
+func (s SimpleTableFunction) IsReadOnly() bool {
+	return true
 }
 
 func (s SimpleTableFunction) Resolved() bool {

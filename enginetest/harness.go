@@ -44,12 +44,7 @@ type Harness interface {
 	Setup(...[]setup.SetupScript)
 	// NewEngine creates a new sqle.Engine. The state of the engine returned must match what was previous specified
 	// by Setup, with no other data. See enginetest.NewEngine for help creating an engine suitable in tests.
-	NewEngine(*testing.T) (*sqle.Engine, error)
-}
-
-type VersionedHarness interface {
-	Harness
-	Version() sql.AnalyzerVersion
+	NewEngine(*testing.T) (QueryEngine, error)
 }
 
 // ClientHarness allows for integrators to test user privileges, as mock clients are used to test functionality.
@@ -136,7 +131,7 @@ type ReadOnlyDatabaseHarness interface {
 
 	// NewReadOnlyEngine returns a new engine with read-only versions of the databases supplied by the provider.
 	// TODO: should this and NewEngine actually just be NewProvider?
-	NewReadOnlyEngine(provider sql.DatabaseProvider) (*sqle.Engine, error)
+	NewReadOnlyEngine(provider sql.DatabaseProvider) (QueryEngine, error)
 }
 
 type ValidatingHarness interface {

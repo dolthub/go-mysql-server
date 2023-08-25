@@ -39,6 +39,10 @@ func (t *TableAlias) Name() string {
 	return t.name
 }
 
+func (t *TableAlias) IsReadOnly() bool {
+	return t.Child.IsReadOnly()
+}
+
 func (t *TableAlias) WithComment(s string) sql.Node {
 	ret := *t
 	ret.comment = s

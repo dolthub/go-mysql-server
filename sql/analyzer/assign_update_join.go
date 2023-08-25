@@ -61,10 +61,7 @@ func rowUpdatersByTable(ctx *sql.Context, node sql.Node, ij sql.Node) (map[strin
 			return nil, plan.ErrUpdateForTableNotSupported.New(tableToBeUpdated)
 		}
 
-		var table = resolvedTable.Table
-		if t, ok := table.(sql.TableWrapper); ok {
-			table = t.Underlying()
-		}
+		var table = resolvedTable.UnderlyingTable()
 
 		// If there is no UpdatableTable for a table being updated, error out
 		updatable, ok := table.(sql.UpdatableTable)

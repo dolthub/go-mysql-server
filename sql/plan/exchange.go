@@ -61,6 +61,10 @@ func (e *Exchange) DebugString() string {
 	return p.String()
 }
 
+func (e *Exchange) IsReadOnly() bool {
+	return e.Child.IsReadOnly()
+}
+
 // WithChildren implements the Node interface.
 func (e *Exchange) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
@@ -93,7 +97,8 @@ func (p *ExchangePartition) String() string {
 
 func (ExchangePartition) Children() []sql.Node { return nil }
 
-func (ExchangePartition) Resolved() bool { return true }
+func (ExchangePartition) Resolved() bool   { return true }
+func (ExchangePartition) IsReadOnly() bool { return true }
 
 func (p *ExchangePartition) Schema() sql.Schema {
 	return p.Table.Schema()
@@ -113,7 +118,7 @@ func (p *ExchangePartition) CheckPrivileges(ctx *sql.Context, opChecker sql.Priv
 	if node, ok := p.Table.(sql.Node); ok {
 		return node.CheckPrivileges(ctx, opChecker)
 	}
-	// If the table is not a ResolvedTable or other such node, then I guess we'll return true as to not fail.
+	// If the table is not a TableNode or other such node, then I guess we'll return true as to not fail.
 	// This may not be the correct behavior though, as it's just a guess.
 	return true
 }

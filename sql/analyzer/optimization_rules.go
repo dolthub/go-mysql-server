@@ -36,7 +36,7 @@ func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 
 	return transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		project, ok := node.(*plan.Project)
-		if ok && project.Schema().Equals(project.Child.Schema()) {
+		if ok && project.Schema().CaseSensitiveEquals(project.Child.Schema()) {
 			a.Log("project erased")
 			return project.Child, transform.NewTree, nil
 		}
@@ -200,24 +200,6 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	}
 
 	return resultNode, resultIdentity, nil
-}
-
-// removeUnnecessaryConverts removes any Convert expressions that don't alter the type of the expression.
-func removeUnnecessaryConverts(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, ctx := ctx.Span("remove_unnecessary_converts")
-	defer span.End()
-
-	if !n.Resolved() {
-		return n, transform.SameTree, nil
-	}
-
-	return transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		if c, ok := e.(*expression.Convert); ok && c.Child.Type() == c.Type() {
-			return c.Child, transform.NewTree, nil
-		}
-
-		return e, transform.SameTree, nil
-	})
 }
 
 // containsSources checks that all `needle` sources are contained inside `haystack`.

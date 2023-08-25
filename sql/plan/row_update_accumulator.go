@@ -58,6 +58,10 @@ func (r RowUpdateAccumulator) Schema() sql.Schema {
 	return types.OkResultSchema
 }
 
+func (r RowUpdateAccumulator) IsReadOnly() bool {
+	return r.Child().IsReadOnly()
+}
+
 func (r RowUpdateAccumulator) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(r, 1, len(children))

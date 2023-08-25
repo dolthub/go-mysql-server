@@ -123,24 +123,18 @@ func (p *relProps) populateFds() {
 		var indexes []sql.Index
 		switch n := rel.(type) {
 		case *TableAlias:
-			rt, ok := n.Table.Child.(*plan.ResolvedTable)
+			rt, ok := n.Table.Child.(sql.TableNode)
 			if !ok {
 				break
 			}
-			table := rt.Table
-			if w, ok := table.(sql.TableWrapper); ok {
-				table = w.Underlying()
-			}
+			table := rt.UnderlyingTable()
 			indexableTable, ok := table.(sql.IndexAddressableTable)
 			if !ok {
 				break
 			}
 			indexes, _ = indexableTable.GetIndexes(rel.Group().m.Ctx)
 		case *TableScan:
-			table := n.Table.Table
-			if w, ok := table.(sql.TableWrapper); ok {
-				table = w.Underlying()
-			}
+			table := n.Table.UnderlyingTable()
 			indexableTable, ok := table.(sql.IndexAddressableTable)
 			if !ok {
 				break
@@ -243,14 +237,11 @@ func allTableCols(rel SourceRel) sql.Schema {
 		if !ok {
 			break
 		}
-		table = rt.Table
+		table = rt.UnderlyingTable()
 	case *TableScan:
-		table = rel.Table.Table
+		table = rel.Table.UnderlyingTable()
 	default:
 		return rel.OutputCols()
-	}
-	if w, ok := table.(sql.TableWrapper); ok {
-		table = w.Underlying()
 	}
 	projTab, ok := table.(sql.PrimaryKeyTable)
 	if !ok {
@@ -436,7 +427,7 @@ func sortedInputs(rel RelExpr) bool {
 func sortedColsForRel(rel RelExpr) sql.Schema {
 	switch r := rel.(type) {
 	case *TableScan:
-		tab, ok := r.Table.Table.(sql.PrimaryKeyTable)
+		tab, ok := r.Table.UnderlyingTable().(sql.PrimaryKeyTable)
 		if ok {
 			ords := tab.PrimaryKeySchema().PkOrdinals
 			var pks sql.Schema

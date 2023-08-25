@@ -75,6 +75,10 @@ func (n *CreateSpatialRefSys) Schema() sql.Schema {
 	return types.OkResultSchema
 }
 
+func (n *CreateSpatialRefSys) IsReadOnly() bool {
+	return false
+}
+
 // Children implements the interface sql.Node
 func (n *CreateSpatialRefSys) Children() []sql.Node {
 	return nil

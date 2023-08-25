@@ -18,7 +18,6 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -65,10 +64,10 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 				return node, transform.SameTree, nil
 			}
 
-			// the table has to be ResolvedTable as this rule is executed after resolve-table rule
+			// the table has to be TableNode as this rule is executed after resolve-table rule
 			var dropTableDb sql.Database
 			if t, ok := node.Tables[0].(*plan.ResolvedTable); ok {
-				dropTableDb = t.Database
+				dropTableDb = t.SqlDatabase
 			}
 
 			loadedTriggers, err := loadTriggersFromDb(ctx, a, dropTableDb)
@@ -105,11 +104,8 @@ func loadTriggersFromDb(ctx *sql.Context, a *Analyzer, db sql.Database) ([]*plan
 		}
 		for _, trigger := range triggers {
 			var parsedTrigger sql.Node
-			if ctx.Version == sql.VersionExperimental {
-				parsedTrigger, err = planbuilder.Parse(ctx, a.Catalog, trigger.CreateStatement)
-			} else {
-				parsedTrigger, err = parse.Parse(ctx, trigger.CreateStatement)
-			}
+			sqlMode := sql.NewSqlModeFromString(trigger.SqlMode)
+			parsedTrigger, err = planbuilder.ParseWithOptions(ctx, a.Catalog, trigger.CreateStatement, sqlMode.ParserOptions())
 			if err != nil {
 				return nil, err
 			}

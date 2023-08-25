@@ -566,6 +566,21 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 		},
 	},
 	{
+		//SkipPrepared: true,
+		Query: `SELECT pk as pk, nt.i  as i, nt2.i as i FROM one_pk
+						RIGHT JOIN niltable nt ON pk=nt.i
+						RIGHT JOIN niltable nt2 ON pk=nt2.i - 1
+						ORDER BY 3;`,
+		Expected: []sql.Row{
+			{nil, nil, 1},
+			{1, 1, 2},
+			{2, 2, 3},
+			{3, 3, 4},
+			{nil, nil, 5},
+			{nil, nil, 6},
+		},
+	},
+	{
 		Query: "select * from ab full join pq on a = p order by 1,2,3,4;",
 		Expected: []sql.Row{
 			{0, 2, 0, 0},
@@ -745,6 +760,350 @@ var JoinScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "USING join tests",
+		SetUpScript: []string{
+			"create table t1 (i int primary key, j int);",
+			"create table t2 (i int primary key, j int);",
+			"create table t3 (i int primary key, j int);",
+			"insert into t1 values (1, 10), (2, 20), (3, 30);",
+			"insert into t2 values (1, 30), (2, 20), (5, 50);",
+			"insert into t3 values (1, 200), (2, 20), (6, 600);",
+		},
+		Assertions: []ScriptTestAssertion{
+			// Basic tests
+			{
+				Query:       "select * from t1 join t2 using (badcol);",
+				ExpectedErr: sql.ErrUnknownColumn,
+			},
+			{
+				Query: "select i from t1 join t2 using (i);",
+				Expected: []sql.Row{
+					{1},
+					{2},
+				},
+			},
+			{
+				Query:       "select j from t1 join t2 using (i);",
+				ExpectedErr: sql.ErrAmbiguousColumnName,
+			},
+
+			{
+				Query: "select * from t1 join t2 using (i);",
+				Expected: []sql.Row{
+					{1, 10, 30},
+					{2, 20, 20},
+				},
+			},
+			{
+				Query: "select t1.i, t1.j, t2.i, t2.j from t1 join t2 using (i);",
+				Expected: []sql.Row{
+					{1, 10, 1, 30},
+					{2, 20, 2, 20},
+				},
+			},
+			{
+				Query: "select * from t1 join t2 using (j);",
+				Expected: []sql.Row{
+					{30, 3, 1},
+					{20, 2, 2},
+				},
+			},
+			{
+				Query: "select t1.i, t1.j, t2.i, t2.j from t1 join t2 using (j);",
+				Expected: []sql.Row{
+					{3, 30, 1, 30},
+					{2, 20, 2, 20},
+				},
+			},
+			{
+				Query: "select * from t1 join t2 using (i, j);",
+				Expected: []sql.Row{
+					{2, 20},
+				},
+			},
+			{
+				Query: "select * from t1 join t2 using (j, i);",
+				Expected: []sql.Row{
+					{2, 20},
+				},
+			},
+			{
+				Query: "select * from t1 natural join t2;",
+				Expected: []sql.Row{
+					{2, 20},
+				},
+			},
+			{
+				Query: "select t1.i, t1.j, t2.i, t2.j from t1 join t2 using (i, j);",
+				Expected: []sql.Row{
+					{2, 20, 2, 20},
+				},
+			},
+			{
+				Query: "select i, j, t1.*, t2.*, t1.i, t1.j, t2.i, t2.j from t1 join t2 using (i, j);",
+				Expected: []sql.Row{
+					{2, 20, 2, 20, 2, 20, 2, 20, 2, 20},
+				},
+			},
+			{
+				Query: "select i, j, t1.*, t2.*, t1.i, t1.j, t2.i, t2.j from t1 natural join t2;",
+				Expected: []sql.Row{
+					{2, 20, 2, 20, 2, 20, 2, 20, 2, 20},
+				},
+			},
+			{
+				Query: "select i, j, a.*, b.*, a.i, a.j, b.i, b.j from t1 a join t2 b using (i, j);",
+				Expected: []sql.Row{
+					{2, 20, 2, 20, 2, 20, 2, 20, 2, 20},
+				},
+			},
+			{
+				Query: "select i, j, a.*, b.*, a.i, a.j, b.i, b.j from t1 a natural join t2 b;",
+				Expected: []sql.Row{
+					{2, 20, 2, 20, 2, 20, 2, 20, 2, 20},
+				},
+			},
+
+			// Left Join
+			{
+				Query: "select * from t1 left join t2 using (i);",
+				Expected: []sql.Row{
+					{1, 10, 30},
+					{2, 20, 20},
+					{3, 30, nil},
+				},
+			},
+			{
+				Query: "select t1.i, t1.j, t2.i, t2.j from t1 left join t2 using (i);",
+				Expected: []sql.Row{
+					{1, 10, 1, 30},
+					{2, 20, 2, 20},
+					{3, 30, nil, nil},
+				},
+			},
+			{
+				Query: "select * from t1 left join t2 using (i, j);",
+				Expected: []sql.Row{
+					{1, 10},
+					{2, 20},
+					{3, 30},
+				},
+			},
+			{
+				Query: "select * from t1 natural left join t2;",
+				Expected: []sql.Row{
+					{1, 10},
+					{2, 20},
+					{3, 30},
+				},
+			},
+			{
+				Query: "select t1.i, t1.j, t2.i, t2.j from t1 left join t2 using (i, j);",
+				Expected: []sql.Row{
+					{1, 10, nil, nil},
+					{2, 20, 2, 20},
+					{3, 30, nil, nil},
+				},
+			},
+			{
+				Query: "select t1.i, t1.j, t2.i, t2.j from t1 natural left join t2;",
+				Expected: []sql.Row{
+					{1, 10, nil, nil},
+					{2, 20, 2, 20},
+					{3, 30, nil, nil},
+				},
+			},
+
+			// Right Join
+			{
+				Query: "select * from t1 right join t2 using (i);",
+				Expected: []sql.Row{
+					{1, 30, 10},
+					{2, 20, 20},
+					{5, 50, nil},
+				},
+			},
+			{
+				Query: "select t1.i, t1.j, t2.i, t2.j from t1 right join t2 using (i);",
+				Expected: []sql.Row{
+					{1, 10, 1, 30},
+					{2, 20, 2, 20},
+					{nil, nil, 5, 50},
+				},
+			},
+			{
+				Query: "select * from t1 right join t2 using (j);",
+				Expected: []sql.Row{
+					{30, 1, 3},
+					{20, 2, 2},
+					{50, 5, nil},
+				},
+			},
+			{
+				Query: "select t1.i, t1.j, t2.i, t2.j from t1 right join t2 using (j);",
+				Expected: []sql.Row{
+					{3, 30, 1, 30},
+					{2, 20, 2, 20},
+					{nil, nil, 5, 50},
+				},
+			},
+			{
+				Query: "select * from t1 right join t2 using (i, j);",
+				Expected: []sql.Row{
+					{1, 30},
+					{2, 20},
+					{5, 50},
+				},
+			},
+			{
+				Query: "select * from t1 natural right join t2;",
+				Expected: []sql.Row{
+					{1, 30},
+					{2, 20},
+					{5, 50},
+				},
+			},
+			{
+				Query: "select t1.i, t1.j, t2.i, t2.j from t1 right join t2 using (i, j);",
+				Expected: []sql.Row{
+					{nil, nil, 1, 30},
+					{2, 20, 2, 20},
+					{nil, nil, 5, 50},
+				},
+			},
+			{
+				Query: "select t1.i, t1.j, t2.i, t2.j from t1 natural right join t2;",
+				Expected: []sql.Row{
+					{nil, nil, 1, 30},
+					{2, 20, 2, 20},
+					{nil, nil, 5, 50},
+				},
+			},
+
+			// Nested Join
+			{
+				Query: "select t1.i, t1.j, t2.i, t2.j, t3.i, t3.j from t1 join t2 using (i) join t3 on t1.i = t3.i;",
+				Expected: []sql.Row{
+					{1, 10, 1, 30, 1, 200},
+					{2, 20, 2, 20, 2, 20},
+				},
+			},
+			{
+				Query:       "select t1.i, t1.j, t2.i, t2.j, t3.i, t3.j from t1 join t2 on t1.i = t2.i join t3 using (i);",
+				ExpectedErr: sql.ErrAmbiguousColumnName,
+			},
+			{
+				Query: "select t1.i, t1.j, t2.i, t2.j, t3.i, t3.j from t1 join t2 using (i) join t3 using (i);",
+				Expected: []sql.Row{
+					{1, 10, 1, 30, 1, 200},
+					{2, 20, 2, 20, 2, 20},
+				},
+			},
+			{
+				Query: "select * from t1 join t2 using (i) join t3 using (i);",
+				Expected: []sql.Row{
+					{1, 10, 30, 200},
+					{2, 20, 20, 20},
+				},
+			},
+
+			// Subquery Tests
+			{
+				Query: "select t1.i, t1.j, tt.i from t1 join (select 1 as i) tt using (i);",
+				Expected: []sql.Row{
+					{1, 10, 1},
+				},
+			},
+			{
+				Query: "select t1.i, t1.j, tt.i, tt.j from t1 join (select * from t2) tt using (i);",
+				Expected: []sql.Row{
+					{1, 10, 1, 30},
+					{2, 20, 2, 20},
+				},
+			},
+			{
+				Query: "select tt1.i, tt1.j, tt2.i, tt2.j from (select * from t1) tt1 join (select * from t2) tt2 using (i);",
+				Expected: []sql.Row{
+					{1, 10, 1, 30},
+					{2, 20, 2, 20},
+				},
+			},
+
+			// CTE Tests
+			{
+				Query: "with cte as (select * from t1) select cte.i, cte.j, t2.i, t2.j from cte join t2 using (i);",
+				Expected: []sql.Row{
+					{1, 10, 1, 30},
+					{2, 20, 2, 20},
+				},
+			},
+			{
+				Query: "with cte1 as (select * from t1), cte2 as (select * from t2) select cte1.i, cte1.j, cte2.i, cte2.j from cte1 join cte2 using (i);",
+				Expected: []sql.Row{
+					{1, 10, 1, 30},
+					{2, 20, 2, 20},
+				},
+			},
+			{
+				Query: "WITH cte(i, j) AS (SELECT 1, 1 UNION ALL SELECT i, j from t1) SELECT cte.i, cte.j, t2.i, t2.j from cte join t2 using (i);",
+				Expected: []sql.Row{
+					{1, 1, 1, 30},
+					{1, 10, 1, 30},
+					{2, 20, 2, 20},
+				},
+			},
+			{
+				Query: "with recursive cte(i, j) AS (select 1, 1 union all select i + 1, j * 10 from cte where i < 3) select cte.i, cte.j, t2.i, t2.j from cte join t2 using (i);",
+				Expected: []sql.Row{
+					{1, 1, 1, 30},
+					{2, 10, 2, 20},
+				},
+			},
+
+			// Broken CTE tests
+			{
+				Skip:        true,
+				Query:       "with cte as (select * from t1 join t2 using (i)) select * from cte;",
+				ExpectedErr: sql.ErrDuplicateColumn,
+			},
+			{
+				Skip:        true,
+				Query:       "select * from (select t1.i, t1.j, t2.i, t2.j from t1 join t2 using (i)) tt;",
+				ExpectedErr: sql.ErrDuplicateColumn,
+			},
+		},
+	},
+	{
+		Name: "Join with truthy condition",
+		SetUpScript: []string{
+			"CREATE TABLE `a` (aa int);",
+			"INSERT INTO `a` VALUES (1), (2);",
+
+			"CREATE TABLE `b` (bb int);",
+			"INSERT INTO `b` VALUES (1), (2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM a LEFT JOIN b ON 1;",
+				Expected: []sql.Row{
+					{1, 2},
+					{1, 1},
+					{2, 2},
+					{2, 1},
+				},
+			},
+			{
+				Query: "SELECT * FROM a RIGHT JOIN b ON 8+9;",
+				Expected: []sql.Row{
+					{1, 2},
+					{1, 1},
+					{2, 2},
+					{2, 1},
+				},
+			},
+		},
+	},
 }
 
 var SkippedJoinQueryTests = []QueryTest{
@@ -857,7 +1216,7 @@ var LateralJoinScriptTests = []ScriptTest{
 			// Lateral Right Join
 			{
 				Query:       "select * from t right join lateral (select * from t1 where t.i != t1.j) as tt on t.i > tt.j",
-				ExpectedErr: sql.ErrColumnNotFound,
+				ExpectedErr: sql.ErrTableNotFound,
 			},
 			{
 				Query: "select * from t right join lateral (select * from t1) as tt on t.i > tt.j order by t.i, tt.j",

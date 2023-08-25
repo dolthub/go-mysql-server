@@ -94,6 +94,10 @@ func (f *Fetch) Children() []sql.Node {
 	return nil
 }
 
+func (f *Fetch) IsReadOnly() bool {
+	return true
+}
+
 // WithChildren implements the interface sql.Node.
 func (f *Fetch) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return f, nil

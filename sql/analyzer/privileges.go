@@ -53,7 +53,7 @@ func validatePrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	if plan.IsDualTable(getTable(n)) {
 		return n, transform.SameTree, nil
 	}
-	if rt := getResolvedTable(n); rt != nil && rt.Database.Name() == sql.InformationSchemaDatabaseName {
+	if rt := getResolvedTable(n); rt != nil && rt.SqlDatabase.Name() == sql.InformationSchemaDatabaseName {
 		return n, transform.SameTree, nil
 	}
 

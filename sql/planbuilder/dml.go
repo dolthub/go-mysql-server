@@ -1,3 +1,17 @@
+// Copyright 2023 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package planbuilder
 
 import (
@@ -29,7 +43,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	switch n := destScope.node.(type) {
 	case *plan.ResolvedTable:
 		rt = n
-		db = rt.Database
+		db = rt.SqlDatabase
 	case *plan.UnresolvedTable:
 		db = n.Database()
 	default:
@@ -59,8 +73,11 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 			}
 		}
 	}
-
-	srcScope := b.insertRowsToNode(inScope, i.Rows, columns, destScope.node.Schema())
+	sch := destScope.node.Schema()
+	if rt != nil {
+		sch = b.resolveSchemaDefaults(destScope, rt.Schema())
+	}
+	srcScope := b.insertRowsToNode(inScope, i.Rows, columns, sch)
 
 	combinedScope := inScope.replace()
 	for i, c := range destScope.cols {
@@ -83,7 +100,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 
 	dest := destScope.node
 
-	ins := plan.NewInsertInto(db, plan.NewInsertDestination(dest.Schema(), dest), srcScope.node, isReplace, columns, onDupExprs, ignore)
+	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), srcScope.node, isReplace, columns, onDupExprs, ignore)
 
 	if rt != nil {
 		checks := b.loadChecksFromTable(destScope, rt.Table)
@@ -102,7 +119,6 @@ func (b *Builder) insertRowsToNode(inScope *scope, ir ast.InsertRows, columnName
 		return b.buildSelectStmt(inScope, v)
 	case ast.Values:
 		outScope = b.buildInsertValues(inScope, v, columnNames, destSchema)
-
 	default:
 		err := sql.ErrUnsupportedSyntax.New(ast.String(ir))
 		b.handleErr(err)
@@ -126,11 +142,20 @@ func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []
 
 	exprTuples := make([][]sql.Expression, len(v))
 	for i, vt := range v {
+		// noExprs is an edge case where we fill VALUES with nil expressions
+		noExprs := len(vt) == 0
+		// triggerUnknownTable is an edge case where we ignored an unresolved
+		// table error and do not have a schema for resolving defaults
+		triggerUnknownTable := (len(columnNames) == 0 && len(vt) > 0) && (len(b.TriggerCtx().UnresolvedTables) > 0)
+
+		if len(vt) != len(columnNames) && !noExprs && !triggerUnknownTable {
+			err := sql.ErrInsertIntoMismatchValueCount.New()
+			b.handleErr(err)
+		}
 		exprs := make([]sql.Expression, len(columnNames))
 		exprTuples[i] = exprs
-		noExprs := len(vt) == 0
 		for j := range columnNames {
-			if noExprs {
+			if noExprs || triggerUnknownTable {
 				exprs[j] = expression.WrapExpression(columnDefaultValues[j])
 				continue
 			}
@@ -235,8 +260,15 @@ func (b *Builder) buildOnDupLeft(inScope *scope, e ast.Expr) sql.Expression {
 	// expect col reference only
 	switch e := e.(type) {
 	case *ast.ColName:
-		c, ok := inScope.resolveColumn(strings.ToLower(e.Qualifier.Name.String()), strings.ToLower(e.Name.String()), true)
+		tableName := strings.ToLower(e.Qualifier.Name.String())
+		colName := strings.ToLower(e.Name.String())
+		c, ok := inScope.resolveColumn(tableName, colName, true)
 		if !ok {
+			if tableName != "" && !inScope.hasTable(tableName) {
+				b.handleErr(sql.ErrTableNotFound.New(tableName))
+			} else if tableName != "" {
+				b.handleErr(sql.ErrTableColumnNotFound.New(tableName, colName))
+			}
 			b.handleErr(sql.ErrColumnNotFound.New(e))
 		}
 		return c.scalarGf()
@@ -350,7 +382,7 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 					tableScope := inScope.push()
 					for _, c := range rt.Schema() {
 						tableScope.addColumn(scopeColumn{
-							db:       rt.Database.Name(),
+							db:       rt.SqlDatabase.Name(),
 							table:    strings.ToLower(n.Name()),
 							col:      strings.ToLower(c.Name),
 							typ:      c.Type,
@@ -389,10 +421,7 @@ func rowUpdatersByTable(ctx *sql.Context, node sql.Node, ij sql.Node) (map[strin
 			return nil, plan.ErrUpdateForTableNotSupported.New(tableToBeUpdated)
 		}
 
-		var table = resolvedTable.Table
-		if t, ok := table.(sql.TableWrapper); ok {
-			table = t.Underlying()
-		}
+		var table = resolvedTable.UnderlyingTable()
 
 		// If there is no UpdatableTable for a table being updated, error out
 		updatable, ok := table.(sql.UpdatableTable)
@@ -420,7 +449,10 @@ func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 		case *plan.ResolvedTable:
 			ret[n.Table.Name()] = n
 		case *plan.IndexedTableAccess:
-			ret[n.ResolvedTable.Name()] = n.ResolvedTable
+			rt, ok := n.TableNode.(*plan.ResolvedTable)
+			if ok {
+				ret[rt.Name()] = rt
+			}
 		case *plan.TableAlias:
 			rt := getResolvedTable(n)
 			if rt != nil {
@@ -434,12 +466,12 @@ func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 	return ret
 }
 
-// Finds first ResolvedTable node that is a descendant of the node given
+// Finds first TableNode node that is a descendant of the node given
 func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 	var table *plan.ResolvedTable
 	transform.Inspect(node, func(node sql.Node) bool {
 		// plan.Inspect will get called on all children of a node even if one of the children's calls returns false. We
-		// only want the first ResolvedTable match.
+		// only want the first TableNode match.
 		if table != nil {
 			return false
 		}
@@ -451,8 +483,11 @@ func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 				return false
 			}
 		case *plan.IndexedTableAccess:
-			table = n.ResolvedTable
-			return false
+			rt, ok := n.TableNode.(*plan.ResolvedTable)
+			if ok {
+				table = rt
+				return false
+			}
 		}
 		return true
 	})
@@ -488,7 +523,12 @@ func (b *Builder) buildInto(inScope *scope, into *ast.Into) {
 		if strings.HasPrefix(val.String(), "@") {
 			vars[i] = expression.NewUserVar(strings.TrimPrefix(val.String(), "@"))
 		} else {
-			vars[i] = expression.NewUnresolvedProcedureParam(val.String())
+			col, ok := inScope.proc.GetVar(val.String())
+			if !ok {
+				err := sql.ErrExternalProcedureMissingContextParam.New(val.String())
+				b.handleErr(err)
+			}
+			vars[i] = col.scalarGf()
 		}
 	}
 	inScope.node = plan.NewInto(inScope.node, vars)

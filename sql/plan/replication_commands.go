@@ -70,6 +70,10 @@ func (c *ChangeReplicationSource) Resolved() bool {
 	return true
 }
 
+func (c *ChangeReplicationSource) IsReadOnly() bool {
+	return false
+}
+
 func (c *ChangeReplicationSource) String() string {
 	sb := strings.Builder{}
 	sb.WriteString("CHANGE REPLICATION SOURCE TO ")
@@ -135,6 +139,10 @@ func (c *ChangeReplicationFilter) WithBinlogReplicaController(controller binlogr
 
 func (c *ChangeReplicationFilter) Resolved() bool {
 	return true
+}
+
+func (c *ChangeReplicationFilter) IsReadOnly() bool {
+	return false
 }
 
 func (c *ChangeReplicationFilter) String() string {
@@ -204,6 +212,10 @@ func (s *StartReplica) Resolved() bool {
 	return true
 }
 
+func (s *StartReplica) IsReadOnly() bool {
+	return false
+}
+
 func (s *StartReplica) String() string {
 	return "START REPLICA"
 }
@@ -258,6 +270,10 @@ func (s *StopReplica) WithBinlogReplicaController(controller binlogreplication.B
 
 func (s *StopReplica) Resolved() bool {
 	return true
+}
+
+func (s *StopReplica) IsReadOnly() bool {
+	return false
 }
 
 func (s *StopReplica) String() string {
@@ -317,6 +333,10 @@ func (r *ResetReplica) WithBinlogReplicaController(controller binlogreplication.
 
 func (r *ResetReplica) Resolved() bool {
 	return true
+}
+
+func (r *ResetReplica) IsReadOnly() bool {
+	return false
 }
 
 func (r *ResetReplica) String() string {

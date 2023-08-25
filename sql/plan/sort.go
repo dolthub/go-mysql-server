@@ -49,6 +49,10 @@ func (s *Sort) Resolved() bool {
 	return s.Child.Resolved()
 }
 
+func (s *Sort) IsReadOnly() bool {
+	return s.Child.IsReadOnly()
+}
+
 func (s *Sort) String() string {
 	pr := sql.NewTreePrinter()
 	var fields = make([]string, len(s.SortFields))
@@ -145,6 +149,10 @@ func (n *TopN) Resolved() bool {
 func (n TopN) WithCalcFoundRows(v bool) *TopN {
 	n.CalcFoundRows = v
 	return &n
+}
+
+func (n *TopN) IsReadOnly() bool {
+	return n.Child.IsReadOnly()
 }
 
 func (n *TopN) String() string {

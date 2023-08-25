@@ -51,13 +51,13 @@ func processMatchAgainst(ctx *sql.Context, matchAgainstExpr *expression.MatchAga
 	if tbl == nil {
 		return nil, transform.NewTree, fmt.Errorf("cannot use MATCH ... AGAINST ... as no table was found")
 	}
-	innerTbl := tbl.Table
-	if t, ok := innerTbl.(sql.TableWrapper); ok {
-		innerTbl = t.Underlying()
-	}
+	innerTbl := tbl.UnderlyingTable()
 	indexedTbl, ok := innerTbl.(sql.IndexAddressableTable)
 	if !ok {
 		return nil, transform.NewTree, fmt.Errorf("cannot use MATCH ... AGAINST ... on a table that does not declare indexes")
+	}
+	if _, ok = indexedTbl.(sql.StatisticsTable); !ok {
+		return nil, transform.NewTree, fmt.Errorf("cannot use MATCH ... AGAINST ... on a table that does not implement sql.StatisticsTable")
 	}
 
 	// Verify the indexes that have been set
@@ -81,7 +81,7 @@ func processMatchAgainst(ctx *sql.Context, matchAgainstExpr *expression.MatchAga
 		return nil, transform.NewTree, err
 	}
 	// Get the config table
-	configTbl, ok, err := tbl.Database.GetTableInsensitive(ctx, tableNames.Config)
+	configTbl, ok, err := tbl.SqlDatabase.GetTableInsensitive(ctx, tableNames.Config)
 	if err != nil {
 		return nil, transform.NewTree, err
 	}
@@ -95,7 +95,7 @@ func processMatchAgainst(ctx *sql.Context, matchAgainstExpr *expression.MatchAga
 			ftIndex.ID(), indexedTbl.Name(), tableNames.Config)
 	}
 	// Get the position table
-	positionTbl, ok, err := tbl.Database.GetTableInsensitive(ctx, tableNames.Position)
+	positionTbl, ok, err := tbl.SqlDatabase.GetTableInsensitive(ctx, tableNames.Position)
 	if err != nil {
 		return nil, transform.NewTree, err
 	}
@@ -109,7 +109,7 @@ func processMatchAgainst(ctx *sql.Context, matchAgainstExpr *expression.MatchAga
 			ftIndex.ID(), indexedTbl.Name(), tableNames.Position)
 	}
 	// Get the document count table
-	docCountTbl, ok, err := tbl.Database.GetTableInsensitive(ctx, tableNames.DocCount)
+	docCountTbl, ok, err := tbl.SqlDatabase.GetTableInsensitive(ctx, tableNames.DocCount)
 	if err != nil {
 		return nil, transform.NewTree, err
 	}
@@ -123,7 +123,7 @@ func processMatchAgainst(ctx *sql.Context, matchAgainstExpr *expression.MatchAga
 			ftIndex.ID(), indexedTbl.Name(), tableNames.DocCount)
 	}
 	// Get the document count table
-	globalCountTbl, ok, err := tbl.Database.GetTableInsensitive(ctx, tableNames.GlobalCount)
+	globalCountTbl, ok, err := tbl.SqlDatabase.GetTableInsensitive(ctx, tableNames.GlobalCount)
 	if err != nil {
 		return nil, transform.NewTree, err
 	}
@@ -137,7 +137,7 @@ func processMatchAgainst(ctx *sql.Context, matchAgainstExpr *expression.MatchAga
 			ftIndex.ID(), indexedTbl.Name(), tableNames.GlobalCount)
 	}
 	// Get the row count table
-	rowCountTbl, ok, err := tbl.Database.GetTableInsensitive(ctx, tableNames.RowCount)
+	rowCountTbl, ok, err := tbl.SqlDatabase.GetTableInsensitive(ctx, tableNames.RowCount)
 	if err != nil {
 		return nil, transform.NewTree, err
 	}

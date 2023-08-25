@@ -186,6 +186,10 @@ func (a *AlterEvent) Schema() sql.Schema {
 	return nil
 }
 
+func (a *AlterEvent) IsReadOnly() bool {
+	return false
+}
+
 // Children implements the sql.Node interface.
 func (a *AlterEvent) Children() []sql.Node {
 	if a.AlterDefinition {

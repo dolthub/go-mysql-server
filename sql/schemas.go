@@ -107,6 +107,25 @@ func (s Schema) Equals(s2 Schema) bool {
 	return true
 }
 
+// CaseSensitiveEquals checks whether the given schema is equal to this one,
+// failing for column names with different casing
+func (s Schema) CaseSensitiveEquals(s2 Schema) bool {
+	if len(s) != len(s2) {
+		return false
+	}
+
+	for i := range s {
+		if s[i].Name != s2[i].Name {
+			return false
+		}
+		if !s[i].Equals(s2[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
 // HasAutoIncrement returns true if the schema has an auto increment column.
 func (s Schema) HasAutoIncrement() bool {
 	for _, c := range s {

@@ -189,6 +189,9 @@ type TriggerDefinition struct {
 	CreateStatement string
 	// The time that the trigger was created.
 	CreatedAt time.Time
+	// SqlMode holds the SQL_MODE that was in use when this trigger was originally defined. It contains information
+	// needed for how to parse the trigger's SQL, such as whether ANSI_QUOTES mode is enabled.
+	SqlMode string
 }
 
 // TemporaryTableDatabase is a database that can query the session (which manages the temporary table state) to
@@ -269,6 +272,7 @@ type ViewDefinition struct {
 	Name                string
 	TextDefinition      string
 	CreateViewStatement string
+	SqlMode             string
 }
 
 // GetTableInsensitive implements a case-insensitive map lookup for tables keyed off of the table name.

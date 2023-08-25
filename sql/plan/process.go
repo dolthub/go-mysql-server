@@ -47,6 +47,10 @@ func (p *QueryProcess) Child() sql.Node {
 	return p.UnaryNode.Child
 }
 
+func (p *QueryProcess) IsReadOnly() bool {
+	return p.Child().IsReadOnly()
+}
+
 // WithChildren implements the Node interface.
 func (p *QueryProcess) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
@@ -477,4 +481,8 @@ func IsShowNode(node sql.Node) bool {
 // rows.
 func IsNoRowNode(node sql.Node) bool {
 	return IsDDLNode(node) || IsShowNode(node)
+}
+
+func IsReadOnly(node sql.Node) bool {
+	return node.IsReadOnly()
 }

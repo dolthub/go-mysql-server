@@ -87,6 +87,10 @@ func (c *CreateIndex) Resolved() bool {
 	return true
 }
 
+func (c *CreateIndex) IsReadOnly() bool {
+	return false
+}
+
 // Schema implements the Node interface.
 func (c *CreateIndex) Schema() sql.Schema { return nil }
 
@@ -135,7 +139,7 @@ func (c *CreateIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (c *CreateIndex) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	db := getDatabase(c.Table)
+	db := GetDatabase(c.Table)
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(db), getTableName(c.Table), "", sql.PrivilegeType_Index))
 }

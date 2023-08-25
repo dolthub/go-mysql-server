@@ -61,6 +61,13 @@ func (c *Call) Resolved() bool {
 	return true
 }
 
+func (c *Call) IsReadOnly() bool {
+	if c.Procedure == nil {
+		return true
+	}
+	return c.Procedure.IsReadOnly()
+}
+
 // Schema implements the sql.Node interface.
 func (c *Call) Schema() sql.Schema {
 	if c.Procedure != nil {

@@ -55,6 +55,10 @@ func (sq *SubqueryAlias) AsView(createViewStmt string) *sql.View {
 // Name implements the Table interface.
 func (sq *SubqueryAlias) Name() string { return sq.name }
 
+func (sq *SubqueryAlias) IsReadOnly() bool {
+	return sq.Child.IsReadOnly()
+}
+
 // Schema implements the Node interface.
 func (sq *SubqueryAlias) Schema() sql.Schema {
 	childSchema := sq.Child.Schema()

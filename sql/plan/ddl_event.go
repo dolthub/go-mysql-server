@@ -98,6 +98,10 @@ func (c *CreateEvent) Resolved() bool {
 	return r
 }
 
+func (c *CreateEvent) IsReadOnly() bool {
+	return false
+}
+
 // Schema implements the sql.Node interface.
 func (c *CreateEvent) Schema() sql.Schema {
 	return nil
@@ -347,7 +351,17 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
-	enabled, err := c.eventDb.SaveEvent(ctx, c.eventDetails)
+	sqlMode := sql.LoadSqlMode(ctx)
+
+	var eventDefinition = sql.EventDefinition{
+		Name:            c.eventDetails.Name,
+		CreateStatement: c.eventDetails.CreateEventStatement(),
+		CreatedAt:       c.eventDetails.Created,
+		LastAltered:     c.eventDetails.LastAltered,
+		SqlMode:         sqlMode.String(),
+	}
+
+	err := c.eventDb.SaveEvent(ctx, eventDefinition)
 	if err != nil {
 		if sql.ErrEventAlreadyExists.Is(err) && c.ifNotExists {
 			ctx.Session.Warn(&sql.Warning{
@@ -435,6 +449,10 @@ func NewOnScheduleTimestamp(f string, ts sql.Expression, i []sql.Expression) *On
 		timestamp: ts,
 		intervals: i,
 	}
+}
+
+func (ost *OnScheduleTimestamp) IsReadOnly() bool {
+	return true
 }
 
 func (ost *OnScheduleTimestamp) Type() sql.Type {
@@ -576,6 +594,10 @@ func (d *DropEvent) String() string {
 // Schema implements the sql.Node interface.
 func (d *DropEvent) Schema() sql.Schema {
 	return nil
+}
+
+func (d *DropEvent) IsReadOnly() bool {
+	return false
 }
 
 // RowIter implements the sql.Node interface.

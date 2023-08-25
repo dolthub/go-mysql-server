@@ -58,6 +58,10 @@ func (p *Project) Resolved() bool {
 		expression.ExpressionsResolved(p.Projections...)
 }
 
+func (p *Project) IsReadOnly() bool {
+	return p.Child.IsReadOnly()
+}
+
 func (p *Project) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Project")

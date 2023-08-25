@@ -94,10 +94,10 @@ func (b *ExecBuilder) buildLookup(l *Lookup, input sql.Schema, children ...sql.N
 		return nil, err
 	}
 	switch n := children[0].(type) {
-	case *plan.ResolvedTable:
-		ret, err = plan.NewIndexedAccessForResolvedTable(n, plan.NewLookupBuilder(l.Index.SqlIdx(), keyExprs, l.Nullmask))
+	case sql.TableNode:
+		ret, err = plan.NewIndexedAccessForTableNode(n, plan.NewLookupBuilder(l.Index.SqlIdx(), keyExprs, l.Nullmask))
 	case *plan.TableAlias:
-		ret, err = plan.NewIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), plan.NewLookupBuilder(l.Index.SqlIdx(), keyExprs, l.Nullmask))
+		ret, err = plan.NewIndexedAccessForTableNode(n.Child.(sql.TableNode), plan.NewLookupBuilder(l.Index.SqlIdx(), keyExprs, l.Nullmask))
 		ret = plan.NewTableAlias(n.Name(), ret)
 	case *plan.Distinct:
 		ret, err = b.buildLookup(l, input, n.Child)
@@ -298,10 +298,10 @@ func (b *ExecBuilder) buildIndexScan(i *IndexScan, input sql.Schema, children ..
 	var ret sql.Node
 	var err error
 	switch n := children[0].(type) {
-	case *plan.ResolvedTable:
-		ret, err = plan.NewStaticIndexedAccessForResolvedTable(n, l)
+	case sql.TableNode:
+		ret, err = plan.NewStaticIndexedAccessForTableNode(n, l)
 	case *plan.TableAlias:
-		ret, err = plan.NewStaticIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), l)
+		ret, err = plan.NewStaticIndexedAccessForTableNode(n.Child.(sql.TableNode), l)
 		ret = plan.NewTableAlias(n.Name(), ret)
 	case *plan.Distinct:
 		ret, err = b.buildIndexScan(i, input, n.Child)
@@ -366,6 +366,17 @@ func (b *ExecBuilder) buildMergeJoin(j *MergeJoin, input sql.Schema, children ..
 		return nil, err
 	}
 	return plan.NewJoin(inner, outer, j.Op, filters).WithScopeLen(j.g.m.scopeLen), nil
+}
+
+func (b *ExecBuilder) buildLateralJoin(j *LateralJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+	if len(j.Filter) == 0 {
+		return plan.NewCrossJoin(children[0], children[1]), nil
+	}
+	filters, err := b.buildFilterConjunction(j.g.m.scope, input, j.Filter...)
+	if err != nil {
+		return nil, err
+	}
+	return plan.NewJoin(children[0], children[1], j.Op.AsLateral(), filters), nil
 }
 
 func (b *ExecBuilder) buildSubqueryAlias(r *SubqueryAlias, input sql.Schema, children ...sql.Node) (sql.Node, error) {

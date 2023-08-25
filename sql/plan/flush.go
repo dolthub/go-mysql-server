@@ -79,6 +79,11 @@ func (*FlushPrivileges) CollationCoercibility(ctx *sql.Context) (collation sql.C
 	return sql.Collation_binary, 7
 }
 
+// Semantically there is no reason to run this in a read-only context, so we say it is not read only.
+func (*FlushPrivileges) IsReadOnly() bool {
+	return false
+}
+
 // Resolved implements the interface sql.Node.
 func (f *FlushPrivileges) Resolved() bool {
 	_, ok := f.MysqlDb.(sql.UnresolvedDatabase)

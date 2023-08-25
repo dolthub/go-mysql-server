@@ -59,6 +59,10 @@ func (c *Close) Children() []sql.Node {
 	return nil
 }
 
+func (c *Close) IsReadOnly() bool {
+	return true
+}
+
 // WithChildren implements the interface sql.Node.
 func (c *Close) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(c, children...)

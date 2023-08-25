@@ -19,8 +19,10 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"hash"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/shopspring/decimal"
 
@@ -99,49 +101,10 @@ func HashRow(row sql.Row) (string, error) {
 	// give us a unique representation for representing NULL values.
 	valIsNull := make([]bool, len(row))
 	for i, val := range row {
-		switch val := val.(type) {
-		case int:
-			if err := binary.Write(h, binary.LittleEndian, int64(val)); err != nil {
-				return "", err
-			}
-		case uint:
-			if err := binary.Write(h, binary.LittleEndian, uint64(val)); err != nil {
-				return "", err
-			}
-		case string:
-			if _, err := h.Write([]byte(val)); err != nil {
-				return "", err
-			}
-		case []byte:
-			if _, err := h.Write(val); err != nil {
-				return "", err
-			}
-		case decimal.Decimal:
-			bytes, err := val.GobEncode()
-			if err != nil {
-				return "", err
-			}
-			if _, err := h.Write(bytes); err != nil {
-				return "", err
-			}
-		case decimal.NullDecimal:
-			if !val.Valid {
-				valIsNull[i] = true
-			} else {
-				bytes, err := val.Decimal.GobEncode()
-				if err != nil {
-					return "", err
-				}
-				if _, err := h.Write(bytes); err != nil {
-					return "", err
-				}
-			}
-		case nil:
-			valIsNull[i] = true
-		default:
-			if err := binary.Write(h, binary.LittleEndian, val); err != nil {
-				return "", err
-			}
+		var err error
+		valIsNull[i], err = writeHashedValue(h, val)
+		if err != nil {
+			return "", err
 		}
 	}
 
@@ -151,6 +114,75 @@ func HashRow(row sql.Row) (string, error) {
 	// Go's current implementation will always return lowercase hashes, but we'll convert for safety since it's not
 	// explicitly stated in the API that it's a lowercase string, therefore it might change in the future (even if highly unlikely).
 	return strings.ToLower(hex.EncodeToString(h.Sum(nil))), nil
+}
+
+// writeHashedValue writes the given value into the hash.
+func writeHashedValue(h hash.Hash, val interface{}) (valIsNull bool, err error) {
+	switch val := val.(type) {
+	case int:
+		if err := binary.Write(h, binary.LittleEndian, int64(val)); err != nil {
+			return false, err
+		}
+	case uint:
+		if err := binary.Write(h, binary.LittleEndian, uint64(val)); err != nil {
+			return false, err
+		}
+	case string:
+		if _, err := h.Write([]byte(val)); err != nil {
+			return false, err
+		}
+	case []byte:
+		if _, err := h.Write(val); err != nil {
+			return false, err
+		}
+	case decimal.Decimal:
+		bytes, err := val.GobEncode()
+		if err != nil {
+			return false, err
+		}
+		if _, err := h.Write(bytes); err != nil {
+			return false, err
+		}
+	case decimal.NullDecimal:
+		if !val.Valid {
+			return true, nil
+		} else {
+			bytes, err := val.Decimal.GobEncode()
+			if err != nil {
+				return false, err
+			}
+			if _, err := h.Write(bytes); err != nil {
+				return false, err
+			}
+		}
+	case time.Time:
+		bytes, err := val.MarshalBinary()
+		if err != nil {
+			return false, err
+		}
+		if _, err := h.Write(bytes); err != nil {
+			return false, err
+		}
+	case types.GeometryValue:
+		if _, err := h.Write(val.Serialize()); err != nil {
+			return false, err
+		}
+	case types.JSONDocument:
+		str, err := val.ToString(sql.NewEmptyContext())
+		if err != nil {
+			return false, err
+		}
+		if _, err := h.Write([]byte(str)); err != nil {
+			return false, err
+		}
+	case nil:
+		return true, nil
+	default:
+		if err := binary.Write(h, binary.LittleEndian, val); err != nil {
+			return false, err
+		}
+	}
+	return false, nil
 }
 
 // GetKeyColumns returns the key columns from the parent table that will be used to uniquely reference any given row on
@@ -396,6 +428,101 @@ func RebuildTables(ctx *sql.Context, tbl sql.IndexAddressableTable, db Database)
 	return CreateFulltextIndexes(ctx, db, tbl, predeterminedNames, indexDefs...)
 }
 
+// DropColumnFromTables removes the given column from all of the Full-Text indexes, which will trigger a rebuild if the
+// index spans multiple columns, but will trigger a deletion if the index spans that single column. The column name is
+// case-insensitive.
+func DropColumnFromTables(ctx *sql.Context, tbl sql.IndexAddressableTable, db Database, colName string) error {
+	// Check the interfaces on the parameters
+	dropper, ok := db.(sql.TableDropper)
+	if !ok {
+		return sql.ErrIncompleteFullTextIntegration.New()
+	}
+	idxAlterable, ok := tbl.(sql.IndexAlterableTable)
+	if !ok {
+		return sql.ErrIncompleteFullTextIntegration.New()
+	}
+
+	lowercaseColName := strings.ToLower(colName)
+	configTableReuse := make(map[string]bool)
+	predeterminedNames := make(map[string]IndexTableNames)
+	var indexDefs []sql.IndexDef
+
+	// Load the indexes to search for Full-Text indexes
+	indexes, err := tbl.GetIndexes(ctx)
+	if err != nil {
+		return err
+	}
+	for _, index := range indexes {
+		// Skip all non-Full-Text indexes
+		if !index.IsFullText() {
+			continue
+		}
+		// Store the index definition so that we may recreate it below
+		ftIndex := index.(Index)
+		tableNames, err := ftIndex.FullTextTableNames(ctx)
+		if err != nil {
+			return err
+		}
+		predeterminedNames[ftIndex.ID()] = tableNames
+		// Iterate over the columns to search for the given column
+		exprs := ftIndex.Expressions()
+		var indexCols []sql.IndexColumn
+		for _, expr := range exprs {
+			exprColName := strings.TrimPrefix(expr, ftIndex.Table()+".")
+			// Skip this column if it matches our given column
+			if strings.ToLower(exprColName) == lowercaseColName {
+				continue
+			}
+			indexCols = append(indexCols, sql.IndexColumn{
+				Name:   exprColName,
+				Length: 0,
+			})
+		}
+		if len(indexCols) > 0 {
+			// This index will continue to exist, so we want to preserve the config table
+			indexDefs = append(indexDefs, sql.IndexDef{
+				Name:       ftIndex.ID(),
+				Columns:    indexCols,
+				Constraint: sql.IndexConstraint_Fulltext,
+				Storage:    sql.IndexUsing_Default,
+				Comment:    ftIndex.Comment(),
+			})
+			configTableReuse[tableNames.Config] = true
+		} else {
+			// This index will be deleted, so we should delete the config table if no other indexes will reuse the table
+			if _, ok := configTableReuse[tableNames.Config]; !ok {
+				configTableReuse[tableNames.Config] = false
+			}
+		}
+		// We delete all tables besides the config table
+		if err = dropper.DropTable(ctx, tableNames.Position); err != nil {
+			return err
+		}
+		if err = dropper.DropTable(ctx, tableNames.DocCount); err != nil {
+			return err
+		}
+		if err = dropper.DropTable(ctx, tableNames.GlobalCount); err != nil {
+			return err
+		}
+		if err = dropper.DropTable(ctx, tableNames.RowCount); err != nil {
+			return err
+		}
+		// Finally we'll drop the index
+		if err = idxAlterable.DropIndex(ctx, ftIndex.ID()); err != nil {
+			return err
+		}
+	}
+	// Delete all orphaned config tables
+	for configTableName, reused := range configTableReuse {
+		if !reused {
+			if err = dropper.DropTable(ctx, configTableName); err != nil {
+				return err
+			}
+		}
+	}
+	return CreateFulltextIndexes(ctx, db, tbl, predeterminedNames, indexDefs...)
+}
+
 // CreateFulltextIndexes creates and populates Full-Text indexes on the target table.
 func CreateFulltextIndexes(ctx *sql.Context, database Database, parent sql.Table,
 	predeterminedNames map[string]IndexTableNames, indexes ...sql.IndexDef) error {
@@ -415,6 +542,9 @@ func CreateFulltextIndexes(ctx *sql.Context, database Database, parent sql.Table
 		return sql.ErrFullTextNotSupported.New()
 	}
 	if _, ok = fulltextAlterable.(sql.IndexAddressableTable); !ok {
+		return sql.ErrFullTextNotSupported.New()
+	}
+	if _, ok = fulltextAlterable.(sql.StatisticsTable); !ok {
 		return sql.ErrFullTextNotSupported.New()
 	}
 	tblSch := parent.Schema()

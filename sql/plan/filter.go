@@ -40,6 +40,10 @@ func (f *Filter) Resolved() bool {
 	return f.UnaryNode.Child.Resolved() && f.Expression.Resolved()
 }
 
+func (f *Filter) IsReadOnly() bool {
+	return f.Child.IsReadOnly()
+}
+
 // WithChildren implements the Node interface.
 func (f *Filter) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
@@ -94,7 +98,6 @@ func (f *Filter) Expressions() []sql.Expression {
 type FilterIter struct {
 	cond      sql.Expression
 	childIter sql.RowIter
-	ParentRow sql.Row
 }
 
 // NewFilterIter creates a new FilterIter.
@@ -113,7 +116,7 @@ func (i *FilterIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 
-		res, err := sql.EvaluateCondition(ctx, i.cond, append(i.ParentRow, row...))
+		res, err := sql.EvaluateCondition(ctx, i.cond, row)
 		if err != nil {
 			return nil, err
 		}

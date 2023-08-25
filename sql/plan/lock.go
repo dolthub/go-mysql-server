@@ -50,6 +50,11 @@ func (t *LockTables) Children() []sql.Node {
 	return children
 }
 
+// MySQL allows these against read-only servers.
+func (t *LockTables) IsReadOnly() bool {
+	return true
+}
+
 // Resolved implements the sql.Node interface.
 func (t *LockTables) Resolved() bool {
 	for _, l := range t.Locks {
@@ -129,6 +134,9 @@ func (t *UnlockTables) Children() []sql.Node { return nil }
 
 // Resolved implements the sql.Node interface.
 func (t *UnlockTables) Resolved() bool { return true }
+
+// MySQL allows these against read-only servers.
+func (t *UnlockTables) IsReadOnly() bool { return true }
 
 // Schema implements the sql.Node interface.
 func (t *UnlockTables) Schema() sql.Schema { return nil }

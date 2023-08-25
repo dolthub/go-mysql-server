@@ -62,6 +62,10 @@ func (s *ShowCreateEvent) Resolved() bool {
 	return !ok
 }
 
+func (s *ShowCreateEvent) IsReadOnly() bool {
+	return true
+}
+
 // Children implements the sql.Node interface.
 func (s *ShowCreateEvent) Children() []sql.Node {
 	return nil

@@ -1,3 +1,17 @@
+// Copyright 2023 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package planbuilder
 
 import (
@@ -163,32 +177,38 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 		}
 	}
 	var aliases []sql.Expression
-	for _, e := range projScope.cols {
+	for _, col := range projScope.cols {
+		// eval aliases in project scope
+		switch e := col.scalar.(type) {
+		case *expression.Alias:
+			if !e.Unreferencable() {
+				aliases = append(aliases, e.WithId(sql.ColumnId(col.id)))
+			}
+		default:
+		}
+
 		// projection dependencies -> table cols needed above
-		transform.InspectExpr(e.scalar, func(e sql.Expression) bool {
+		transform.InspectExpr(col.scalar, func(e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:
-				colName := strings.ToLower(e.Name())
+				colName := strings.ToLower(e.String())
 				if !selectStr[colName] {
 					selectExprs = append(selectExprs, e)
 					selectGfs = append(selectGfs, e)
 					selectStr[colName] = true
 				}
-			case *expression.Alias:
-				if !e.Unreferencable() {
-					aliases = append(aliases, e)
-				}
+			default:
 			}
 			return false
 		})
 	}
 	for _, e := range fromScope.extraCols {
 		// accessory cols used by ORDER_BY, HAVING
-		if !selectStr[e.col] {
+		if !selectStr[e.String()] {
 			selectExprs = append(selectExprs, e.scalarGf())
 			selectGfs = append(selectGfs, e.scalarGf())
 
-			selectStr[e.col] = true
+			selectStr[e.String()] = true
 		}
 	}
 	gb := plan.NewGroupBy(selectExprs, groupingCols, fromScope.node)
@@ -216,6 +236,11 @@ func isAggregateFunc(name string) bool {
 // buildAggregateFunc tags aggregate functions in the correct scope
 // and makes the aggregate available for reference by other clauses.
 func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExpr) sql.Expression {
+	if len(inScope.windowFuncs) > 0 {
+		err := sql.ErrNonAggregatedColumnWithoutGroupBy.New()
+		b.handleErr(err)
+	}
+
 	if inScope.groupBy == nil {
 		inScope.initGroupBy()
 	}
@@ -276,7 +301,7 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 			col := scopeColumn{table: e.Table(), col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable()}
 			gb.addInCol(col)
 		case *expression.Star:
-			err := fmt.Errorf("a '*' is in a context where it is not allowed")
+			err := sql.ErrStarUnsupported.New()
 			b.handleErr(err)
 		default:
 			args = append(args, e)
@@ -354,8 +379,12 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 		if c.descending {
 			so = sql.Descending
 		}
+		scalar := c.scalar
+		if scalar == nil {
+			scalar = c.scalarGf()
+		}
 		sf := sql.SortField{
-			Column: c.scalar,
+			Column: scalar,
 			Order:  so,
 		}
 		sortFields = append(sortFields, sf)
@@ -392,10 +421,12 @@ func isWindowFunc(name string) bool {
 }
 
 func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, over *ast.WindowDef) sql.Expression {
-	// couple with other expressions or alone?
-	// can these be referenced? aliased?
-	// internal expressions can be complex, but window can't be more than alias
+	if inScope.groupBy != nil {
+		err := sql.ErrNonAggregatedColumnWithoutGroupBy.New()
+		b.handleErr(err)
+	}
 
+	// internal expressions can be complex, but window can't be more than alias
 	var args []sql.Expression
 	for _, arg := range e.Exprs {
 		e := b.selectExprToExpression(inScope, arg)
@@ -456,32 +487,37 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 		}
 	}
 	var aliases []sql.Expression
-	for _, e := range projScope.cols {
+	for _, col := range projScope.cols {
+		// eval aliases in project scope
+		switch e := col.scalar.(type) {
+		case *expression.Alias:
+			if !e.Unreferencable() {
+				aliases = append(aliases, e.WithId(sql.ColumnId(col.id)))
+			}
+		default:
+		}
+
 		// projection dependencies -> table cols needed above
-		transform.InspectExpr(e.scalar, func(e sql.Expression) bool {
+		transform.InspectExpr(col.scalar, func(e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:
-				colName := strings.ToLower(e.Name())
+				colName := strings.ToLower(e.String())
 				if !selectStr[colName] {
 					selectExprs = append(selectExprs, e)
-					selectStr[colName] = true
 					selectGfs = append(selectGfs, e)
+					selectStr[colName] = true
 				}
-			case *expression.Alias:
-				// selection aliases need to be projected
-				if !e.Unreferencable() {
-					aliases = append(aliases, e)
-				}
+			default:
 			}
 			return false
 		})
 	}
 	for _, e := range fromScope.extraCols {
 		// accessory cols used by ORDER_BY, HAVING
-		if !selectStr[e.col] {
+		if !selectStr[e.String()] {
 			selectExprs = append(selectExprs, e.scalarGf())
 			selectGfs = append(selectGfs, e.scalarGf())
-			selectStr[e.col] = true
+			selectStr[e.String()] = true
 		}
 	}
 
@@ -685,18 +721,15 @@ func (b *Builder) buildInnerProj(fromScope, projScope *scope) *scope {
 	for i, c := range fromScope.cols {
 		proj[i] = c.scalarGf()
 	}
+
 	// eval aliases in project scope
-	for _, e := range projScope.cols {
-		// selection aliases need to be projected
-		transform.InspectExpr(e.scalar, func(e sql.Expression) bool {
-			switch e := e.(type) {
-			case *expression.Alias:
-				if !e.Unreferencable() {
-					proj = append(proj, e)
-				}
+	for _, col := range projScope.cols {
+		switch e := col.scalar.(type) {
+		case *expression.Alias:
+			if !e.Unreferencable() {
+				proj = append(proj, e.WithId(sql.ColumnId(col.id)))
 			}
-			return false
-		})
+		}
 	}
 
 	if len(proj) > 0 {

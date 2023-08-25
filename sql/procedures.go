@@ -26,6 +26,7 @@ type StoredProcedureDetails struct {
 	CreateStatement string    // The CREATE statement for this stored procedure.
 	CreatedAt       time.Time // The time that the stored procedure was created.
 	ModifiedAt      time.Time // The time of the last modification to the stored procedure.
+	SqlMode         string    // The SQL_MODE when this procedure was defined.
 }
 
 // ExternalStoredProcedureDetails are the details of an external stored procedure. Compared to standard stored
@@ -62,6 +63,8 @@ type ExternalStoredProcedureDetails struct {
 	// to the usage of the integer-max for the parameter count, only one variadic function is allowed per function name.
 	// The type of the variadic parameter may not have a pointer type.
 	Function interface{}
+	// If true, the procedure is ReadOnly and can be run against a locked or read-only server.
+	ReadOnly bool
 }
 
 // FakeCreateProcedureStmt returns a parseable CREATE PROCEDURE statement for this external stored procedure, as some

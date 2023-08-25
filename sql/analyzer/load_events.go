@@ -15,8 +15,10 @@
 package analyzer
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
+	"github.com/dolthub/go-mysql-server/sql/transform"
+
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -31,7 +33,7 @@ func loadEvents(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, se
 		switch node := n.(type) {
 		case *plan.ShowEvents:
 			newShowEvents := *node
-			loadedEvents, err := loadEventsFromDb(ctx, newShowEvents.Database())
+			loadedEvents, err := loadEventsFromDb(ctx, a.Catalog, newShowEvents.Database())
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -47,7 +49,7 @@ func loadEvents(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, se
 			return &newShowCreateEvent, transform.NewTree, nil
 		case *plan.AlterEvent:
 			newAlterEvent := *node
-			loadedEvent, err := loadEventFromDb(ctx, newAlterEvent.Database(), newAlterEvent.EventName)
+			loadedEvent, err := loadEventFromDb(ctx, a.Catalog, newAlterEvent.Database(), newAlterEvent.EventName)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -59,7 +61,7 @@ func loadEvents(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, se
 	})
 }
 
-func loadEventsFromDb(ctx *sql.Context, db sql.Database) ([]sql.EventDetails, error) {
+func loadEventsFromDb(ctx *sql.Context, cat sql.Catalog, db sql.Database) ([]sql.EventDetails, error) {
 	var loadedEvents []sql.EventDetails
 	if eventDb, ok := db.(sql.EventDatabase); ok {
 		events, err := eventDb.GetEvents(ctx)
@@ -67,7 +69,7 @@ func loadEventsFromDb(ctx *sql.Context, db sql.Database) ([]sql.EventDetails, er
 			return nil, err
 		}
 		for _, event := range events {
-			ed, err := GetEventDetailsFromEventDefinition(ctx, event)
+			ed, err := GetEventDetailsFromEventDefinition(ctx, cat, event)
 			if err != nil {
 				return nil, err
 			}
@@ -77,7 +79,7 @@ func loadEventsFromDb(ctx *sql.Context, db sql.Database) ([]sql.EventDetails, er
 	return loadedEvents, nil
 }
 
-func loadEventFromDb(ctx *sql.Context, db sql.Database, name string) (sql.EventDetails, error) {
+func loadEventFromDb(ctx *sql.Context, cat sql.Catalog, db sql.Database, name string) (sql.EventDetails, error) {
 	eventDb, ok := db.(sql.EventDatabase)
 	if !ok {
 		return sql.EventDetails{}, sql.ErrEventsNotSupported.New(db.Name())
@@ -89,13 +91,18 @@ func loadEventFromDb(ctx *sql.Context, db sql.Database, name string) (sql.EventD
 	} else if !exists {
 		return sql.EventDetails{}, sql.ErrUnknownEvent.New(name)
 	}
-	return GetEventDetailsFromEventDefinition(ctx, event)
+	return GetEventDetailsFromEventDefinition(ctx, cat, event)
 }
 
 // GetEventDetailsFromEventDefinition returns sql.EventDetails by parsing its CREATE statement.
 // All time values of events will be evaluated in UTC TZ as they are stored UTC TZ.
-func GetEventDetailsFromEventDefinition(ctx *sql.Context, event sql.EventDefinition) (sql.EventDetails, error) {
-	parsedCreateEvent, err := parse.Parse(ctx, event.CreateStatement)
+func GetEventDetailsFromEventDefinition(ctx *sql.Context, cat sql.Catalog, event sql.EventDefinition) (sql.EventDetails, error) {
+	b, err := planbuilder.New(ctx, cat)
+	if err != nil {
+		return sql.EventDetails{}, err
+	}
+	b.SetParserOptions(sql.NewSqlModeFromString(event.SqlMode).ParserOptions())
+	parsedCreateEvent, _, _, err := b.Parse(event.CreateStatement, false)
 	if err != nil {
 		return sql.EventDetails{}, err
 	}

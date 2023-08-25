@@ -77,6 +77,10 @@ func (srn *StripRowNode) String() string {
 	return srn.Child.String()
 }
 
+func (srn *StripRowNode) IsReadOnly() bool {
+	return srn.Child.IsReadOnly()
+}
+
 func (srn *StripRowNode) DebugString() string {
 	return sql.DebugString(srn.Child)
 }
@@ -112,6 +116,10 @@ var _ sql.CollationCoercible = (*PrependNode)(nil)
 
 func (p *PrependNode) String() string {
 	return p.Child.String()
+}
+
+func (p *PrependNode) IsReadOnly() bool {
+	return p.Child.IsReadOnly()
 }
 
 func (p *PrependNode) DebugString() string {
@@ -177,10 +185,10 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return rows[0], nil
 }
 
-// prependRowInPlan returns a transformation function that prepends the row given to any row source in a query
+// PrependRowInPlan returns a transformation function that prepends the row given to any row source in a query
 // plan. Any source of rows, as well as any node that alters the schema of its children, will be wrapped so that its
 // result rows are prepended with the row given.
-func prependRowInPlan(row sql.Row) func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+func PrependRowInPlan(row sql.Row, lateral bool) func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 	return func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case sql.Table, sql.Projector, *ValueDerivedTable, *TableCountLookup:
@@ -190,11 +198,11 @@ func prependRowInPlan(row sql.Row) func(n sql.Node) (sql.Node, transform.TreeIde
 			}, transform.NewTree, nil
 		case *Union:
 			newUnion := *n
-			newRight, _, err := transform.Node(n.Right(), prependRowInPlan(row))
+			newRight, _, err := transform.Node(n.Right(), PrependRowInPlan(row, lateral))
 			if err != nil {
 				return n, transform.SameTree, err
 			}
-			newLeft, _, err := transform.Node(n.Left(), prependRowInPlan(row))
+			newLeft, _, err := transform.Node(n.Left(), PrependRowInPlan(row, lateral))
 			if err != nil {
 				return n, transform.SameTree, err
 			}
@@ -203,7 +211,7 @@ func prependRowInPlan(row sql.Row) func(n sql.Node) (sql.Node, transform.TreeIde
 			return &newUnion, transform.NewTree, nil
 		case *RecursiveCte:
 			newRecursiveCte := *n
-			newUnion, _, err := transform.Node(n.union, prependRowInPlan(row))
+			newUnion, _, err := transform.Node(n.union, PrependRowInPlan(row, lateral))
 			newRecursiveCte.union = newUnion.(*Union)
 			return &newRecursiveCte, transform.NewTree, err
 		case *SubqueryAlias:
@@ -211,9 +219,9 @@ func prependRowInPlan(row sql.Row) func(n sql.Node) (sql.Node, transform.TreeIde
 			// transform their inner nodes to prepend the outer scope row data. Ideally, we would only do this when
 			// the subquery alias references those outer fields. That will also require updating subquery expression
 			// scope handling to also make the same optimization.
-			if n.OuterScopeVisibility {
+			if n.OuterScopeVisibility || lateral {
 				newSubqueryAlias := *n
-				newChildNode, _, err := transform.Node(n.Child, prependRowInPlan(row))
+				newChildNode, _, err := transform.Node(n.Child, PrependRowInPlan(row, lateral))
 				newSubqueryAlias.Child = newChildNode
 				return &newSubqueryAlias, transform.NewTree, err
 			} else {
@@ -247,6 +255,10 @@ var _ sql.CollationCoercible = (*Max1Row)(nil)
 
 func (m *Max1Row) Name() string {
 	return m.name
+}
+
+func (m *Max1Row) IsReadOnly() bool {
+	return m.Child.IsReadOnly()
 }
 
 func (m *Max1Row) Resolved() bool {
@@ -330,7 +342,7 @@ func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, error) {
 	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
 	// result rows are prepended with the scope row.
-	q, _, err := transform.Node(s.Query, prependRowInPlan(row))
+	q, _, err := transform.Node(s.Query, PrependRowInPlan(row, false))
 	if err != nil {
 		return nil, err
 	}
@@ -415,7 +427,7 @@ func (s *Subquery) HasResultRow(ctx *sql.Context, row sql.Row) (bool, error) {
 
 	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
 	// result rows are prepended with the scope row.
-	q, _, err := transform.Node(s.Query, prependRowInPlan(row))
+	q, _, err := transform.Node(s.Query, PrependRowInPlan(row, false))
 	if err != nil {
 		return false, err
 	}

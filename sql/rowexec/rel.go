@@ -481,6 +481,7 @@ func (b *BaseBuilder) populateMax1Results(ctx *sql.Context, n *plan.Max1Row, row
 	if err != nil {
 		return err
 	}
+	defer i.Close(ctx)
 	r1, err := i.Next(ctx)
 	if errors.Is(err, io.EOF) {
 		n.EmptyResult = true
@@ -719,7 +720,7 @@ func (b *BaseBuilder) buildPrepareQuery(ctx *sql.Context, n *plan.PrepareQuery, 
 }
 
 func (b *BaseBuilder) buildResolvedTable(ctx *sql.Context, n *plan.ResolvedTable, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.ResolvedTable")
+	span, ctx := ctx.Span("plan.TableNode")
 
 	partitions, err := n.Table.Partitions(ctx)
 	if err != nil {

@@ -54,6 +54,10 @@ func (p *CreateForeignKey) Resolved() bool {
 	return p.DbProvider != nil
 }
 
+func (p *CreateForeignKey) IsReadOnly() bool {
+	return false
+}
+
 // Children implements the interface sql.Node.
 func (p *CreateForeignKey) Children() []sql.Node {
 	return nil
@@ -183,7 +187,7 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		}
 
 		// Ensure that a suitable index exists on the referenced table, and check the declaring table for a suitable index.
-		refTblIndex, ok, err := FindIndexWithPrefix(ctx, refTbl, fkDef.ParentColumns, true)
+		refTblIndex, ok, err := FindFKIndexWithPrefix(ctx, refTbl, fkDef.ParentColumns, true)
 		if err != nil {
 			return err
 		}
@@ -235,7 +239,7 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		}
 	}
 
-	_, ok, err := FindIndexWithPrefix(ctx, tbl, fkDef.Columns, false)
+	_, ok, err := FindFKIndexWithPrefix(ctx, tbl, fkDef.Columns, false)
 	if err != nil {
 		return err
 	}
@@ -351,6 +355,10 @@ func (p *DropForeignKey) Resolved() bool {
 	return p.DbProvider != nil
 }
 
+func (p *DropForeignKey) IsReadOnly() bool {
+	return false
+}
+
 // Children implements the interface sql.Node.
 func (p *DropForeignKey) Children() []sql.Node {
 	return nil
@@ -430,8 +438,8 @@ func FindForeignKeyColMapping(
 	return indexPositions, appendTypes, nil
 }
 
-// FindIndexWithPrefix returns an index that has the given columns as a prefix. The returned index is deterministic and
-// follows the given rules, from the highest priority in descending order:
+// FindFKIndexWithPrefix returns an index that has the given columns as a prefix, with the index intended for use with
+// foreign keys. The returned index is deterministic and follows the given rules, from the highest priority in descending order:
 //
 // 1. Columns exactly match the index
 // 2. Columns match as much of the index prefix as possible
@@ -447,7 +455,7 @@ func FindForeignKeyColMapping(
 // If `useExtendedIndexes` is true, then this will include any implicit primary keys that were not explicitly defined on
 // the index. Some operations only consider explicitly indexed columns, while others also consider any implicit primary
 // keys as well, therefore this is a boolean to control the desired behavior.
-func FindIndexWithPrefix(ctx *sql.Context, tbl sql.IndexAddressableTable, prefixCols []string, useExtendedIndexes bool, ignoredIndexes ...string) (sql.Index, bool, error) {
+func FindFKIndexWithPrefix(ctx *sql.Context, tbl sql.IndexAddressableTable, prefixCols []string, useExtendedIndexes bool, ignoredIndexes ...string) (sql.Index, bool, error) {
 	type idxWithLen struct {
 		sql.Index
 		colLen int
@@ -466,7 +474,7 @@ func FindIndexWithPrefix(ctx *sql.Context, tbl sql.IndexAddressableTable, prefix
 	// https://dev.mysql.com/doc/refman/8.0/en/create-table-foreign-keys.html#:~:text=Index%20prefixes%20on%20foreign%20key%20columns%20are%20not%20supported.
 	// Ignore spatial indexes; MySQL will not pick them as the underlying secondary index for foreign keys
 	for _, idx := range indexes {
-		if len(idx.PrefixLengths()) > 0 || idx.IsSpatial() {
+		if len(idx.PrefixLengths()) > 0 || idx.IsSpatial() || idx.IsFullText() {
 			ignoredIndexesMap[strings.ToLower(idx.ID())] = struct{}{}
 		}
 	}

@@ -67,6 +67,8 @@ type EventDefinition struct {
 	CreatedAt time.Time
 	// The time that the event was last altered at.
 	LastAltered time.Time
+	// The SQL_MODE string in use when this event was defined.
+	SqlMode string
 	// The time that the event was last executed at.
 	LastExecuted time.Time
 }

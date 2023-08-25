@@ -78,6 +78,10 @@ func (n *CreateRole) Resolved() bool {
 	return !ok
 }
 
+func (n *CreateRole) IsReadOnly() bool {
+	return false
+}
+
 // Children implements the interface sql.Node.
 func (n *CreateRole) Children() []sql.Node {
 	return nil
