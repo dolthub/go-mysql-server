@@ -644,7 +644,7 @@ func TestDropConstraints(t *testing.T) {
 }
 
 func TestReadOnly(t *testing.T) {
-	enginetest.TestReadOnly(t, enginetest.NewDefaultMemoryHarness())
+	enginetest.TestReadOnly(t, enginetest.NewDefaultMemoryHarness(), true /* testStoredProcedures */)
 }
 
 func TestViews(t *testing.T) {

@@ -61,6 +61,10 @@ func (e *Exchange) DebugString() string {
 	return p.String()
 }
 
+func (e *Exchange) IsReadOnly() bool {
+	return e.Child.IsReadOnly()
+}
+
 // WithChildren implements the Node interface.
 func (e *Exchange) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
@@ -93,7 +97,8 @@ func (p *ExchangePartition) String() string {
 
 func (ExchangePartition) Children() []sql.Node { return nil }
 
-func (ExchangePartition) Resolved() bool { return true }
+func (ExchangePartition) Resolved() bool   { return true }
+func (ExchangePartition) IsReadOnly() bool { return true }
 
 func (p *ExchangePartition) Schema() sql.Schema {
 	return p.Table.Schema()

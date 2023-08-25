@@ -47,6 +47,10 @@ func (u *UpdateSource) Expressions() []sql.Expression {
 	return u.UpdateExprs
 }
 
+func (u *UpdateSource) IsReadOnly() bool {
+	return true
+}
+
 // WithExpressions implements the sql.Expressioner interface.
 func (u *UpdateSource) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
 	if len(newExprs) != len(u.UpdateExprs) {

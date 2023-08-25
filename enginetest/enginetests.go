@@ -620,7 +620,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 	})
 }
 
-func TestReadOnly(t *testing.T, harness Harness) {
+func TestReadOnly(t *testing.T, harness Harness, testStoredProcedures bool) {
 	harness.Setup(setup.Mytable...)
 	engine := mustNewEngine(t, harness)
 
@@ -630,11 +630,24 @@ func TestReadOnly(t *testing.T, harness Harness) {
 	e.ReadOnly.Store(true)
 	defer e.Close()
 
-	RunQuery(t, e, harness, `SELECT i FROM mytable`)
+	var workingQueries = []string{
+		`SELECT i FROM mytable`,
+		`EXPLAIN INSERT INTO mytable (i, s) VALUES (42, 'yolo')`,
+	}
+
+	if testStoredProcedures {
+		workingQueries = append(workingQueries, `CALL memory_inout_add_readonly(1, 1)`)
+	}
+
+	for _, q := range workingQueries {
+		t.Run(q, func(t *testing.T) {
+			RunQuery(t, e, harness, q)
+		})
+	}
 
 	writingQueries := []string{
 		`CREATE INDEX foo USING BTREE ON mytable (i, s)`,
-		`DROP INDEX foo ON mytable`,
+		`DROP INDEX idx_si ON mytable`,
 		`INSERT INTO mytable (i, s) VALUES(42, 'yolo')`,
 		`CREATE VIEW myview3 AS SELECT i FROM mytable`,
 		`DROP VIEW myview`,
@@ -645,8 +658,14 @@ func TestReadOnly(t *testing.T, harness Harness) {
 		`GRANT SUPER ON * TO 'root'@'localhost'`,
 	}
 
+	if testStoredProcedures {
+		writingQueries = append(writingQueries, `CALL memory_inout_add_readwrite(1, 1)`)
+	}
+
 	for _, query := range writingQueries {
-		AssertErr(t, e, harness, query, sql.ErrReadOnly)
+		t.Run(query, func(t *testing.T) {
+			AssertErr(t, e, harness, query, sql.ErrReadOnly)
+		})
 	}
 }
 

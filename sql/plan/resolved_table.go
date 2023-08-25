@@ -84,6 +84,10 @@ func (*ResolvedTable) Resolved() bool {
 	return true
 }
 
+func (*ResolvedTable) IsReadOnly() bool {
+	return true
+}
+
 func (t *ResolvedTable) String() string {
 	pr := sql.NewTreePrinter()
 	pr.WriteNode("Table")

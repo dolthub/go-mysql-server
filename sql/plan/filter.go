@@ -40,6 +40,10 @@ func (f *Filter) Resolved() bool {
 	return f.UnaryNode.Child.Resolved() && f.Expression.Resolved()
 }
 
+func (f *Filter) IsReadOnly() bool {
+	return f.Child.IsReadOnly()
+}
+
 // WithChildren implements the Node interface.
 func (f *Filter) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {

@@ -77,6 +77,10 @@ func (s *ShowColumns) Resolved() bool {
 	return s.Child.Resolved() && s.targetSchema.Resolved()
 }
 
+func (s *ShowColumns) IsReadOnly() bool {
+	return true
+}
+
 func (s *ShowColumns) Expressions() []sql.Expression {
 	if len(s.targetSchema) == 0 {
 		return nil

@@ -32,6 +32,10 @@ func (r *Releaser) Resolved() bool {
 	return r.Child.Resolved()
 }
 
+func (r *Releaser) IsReadOnly() bool {
+	return r.Child.IsReadOnly()
+}
+
 func (r *Releaser) Children() []sql.Node {
 	return []sql.Node{r.Child}
 }

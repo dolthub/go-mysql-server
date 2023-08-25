@@ -35,6 +35,10 @@ func NewOffset(n sql.Expression, child sql.Node) *Offset {
 	}
 }
 
+func (o *Offset) IsReadOnly() bool {
+	return o.Child.IsReadOnly()
+}
+
 // Expressions implements sql.Expressioner
 func (o *Offset) Expressions() []sql.Expression {
 	return []sql.Expression{o.Offset}

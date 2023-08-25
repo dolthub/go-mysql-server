@@ -76,6 +76,10 @@ func (r *RecursiveCte) Name() string {
 	return r.name
 }
 
+func (r *RecursiveCte) IsReadOnly() bool {
+	return r.union.BinaryNode.left.IsReadOnly() && r.union.BinaryNode.right.IsReadOnly()
+}
+
 // Left implements sql.BinaryNode
 func (r *RecursiveCte) Left() sql.Node {
 	return r.union.left
@@ -213,6 +217,10 @@ func (r *RecursiveTable) Resolved() bool {
 
 func (r *RecursiveTable) Name() string {
 	return r.name
+}
+
+func (r *RecursiveTable) IsReadOnly() bool {
+	return true
 }
 
 func (r *RecursiveTable) String() string {

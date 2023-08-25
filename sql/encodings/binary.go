@@ -32,6 +32,11 @@ func (binaryEncoder) Encode(str []byte) ([]byte, bool) {
 	return str, true
 }
 
+// EncodeReplaceUnknown implements the Encoder interface.
+func (binaryEncoder) EncodeReplaceUnknown(str []byte) []byte {
+	return str
+}
+
 // DecodeRune implements the Encoder interface.
 func (binaryEncoder) DecodeRune(r []byte) ([]byte, bool) {
 	return r, true

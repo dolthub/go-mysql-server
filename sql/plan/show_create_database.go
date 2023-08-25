@@ -46,6 +46,10 @@ func (s *ShowCreateDatabase) Database() sql.Database {
 	return s.db
 }
 
+func (s *ShowCreateDatabase) IsReadOnly() bool {
+	return true
+}
+
 // WithDatabase implements the sql.Databaser interface.
 func (s *ShowCreateDatabase) WithDatabase(db sql.Database) (sql.Node, error) {
 	nc := *s

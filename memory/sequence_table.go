@@ -55,6 +55,10 @@ func (s IntSequenceTable) Resolved() bool {
 	return true
 }
 
+func (s IntSequenceTable) IsReadOnly() bool {
+	return true
+}
+
 func (s IntSequenceTable) String() string {
 	return fmt.Sprintf("sequence(%s, %d)", s.name, s.Len)
 }

@@ -86,6 +86,10 @@ func (p *DeleteFrom) Resolved() bool {
 	return true
 }
 
+func (p *DeleteFrom) IsReadOnly() bool {
+	return false
+}
+
 // DB returns the database being deleted from. |Database| is used by another interface we implement.
 func (p *DeleteFrom) DB() sql.Database {
 	return GetDatabase(p.Child)

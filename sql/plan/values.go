@@ -75,6 +75,10 @@ func (p *Values) Resolved() bool {
 	return true
 }
 
+func (p *Values) IsReadOnly() bool {
+	return true
+}
+
 // RowIter implements the Node interface.
 func (p *Values) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	rows := make([]sql.Row, len(p.ExpressionTuples))

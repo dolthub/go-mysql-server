@@ -111,6 +111,10 @@ func (ii *InsertInto) Database() sql.Database {
 	return ii.db
 }
 
+func (ii *InsertInto) IsReadOnly() bool {
+	return false
+}
+
 func (ii *InsertInto) WithDatabase(database sql.Database) (sql.Node, error) {
 	nc := *ii
 	nc.db = database
@@ -159,6 +163,10 @@ func (id InsertDestination) WithExpressions(exprs ...sql.Expression) (sql.Node, 
 
 func (id *InsertDestination) Name() string {
 	return id.DestinationName
+}
+
+func (id *InsertDestination) IsReadOnly() bool {
+	return true
 }
 
 func (id *InsertDestination) String() string {

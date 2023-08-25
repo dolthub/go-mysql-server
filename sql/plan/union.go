@@ -183,6 +183,10 @@ func (u Union) String() string {
 	return pr.String()
 }
 
+func (u Union) IsReadOnly() bool {
+	return u.left.IsReadOnly() && u.right.IsReadOnly()
+}
+
 func (u Union) DebugString() string {
 	pr := sql.NewTreePrinter()
 	var distinct string

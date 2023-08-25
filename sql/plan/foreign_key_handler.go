@@ -61,6 +61,11 @@ func (n *ForeignKeyHandler) Schema() sql.Schema {
 	return n.OriginalNode.Schema()
 }
 
+func (n *ForeignKeyHandler) IsReadOnly() bool {
+	// false?
+	return n.OriginalNode.IsReadOnly()
+}
+
 // Collation implements the interface sql.Node.
 func (n *ForeignKeyHandler) Collation() sql.CollationID {
 	originalTable, ok := n.OriginalNode.(sql.Table)

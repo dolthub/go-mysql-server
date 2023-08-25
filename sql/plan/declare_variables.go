@@ -48,6 +48,10 @@ func (d *DeclareVariables) Resolved() bool {
 	return true
 }
 
+func (d *DeclareVariables) IsReadOnly() bool {
+	return true
+}
+
 // String implements the interface sql.Node.
 func (d *DeclareVariables) String() string {
 	return fmt.Sprintf("DECLARE %s %s", strings.Join(d.Names, ", "), d.Type.String())

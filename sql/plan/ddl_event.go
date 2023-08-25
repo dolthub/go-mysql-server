@@ -92,6 +92,10 @@ func (c *CreateEvent) Resolved() bool {
 	return r
 }
 
+func (c *CreateEvent) IsReadOnly() bool {
+	return false
+}
+
 // Schema implements the sql.Node interface.
 func (c *CreateEvent) Schema() sql.Schema {
 	return nil
@@ -420,6 +424,10 @@ func NewOnScheduleTimestamp(ts sql.Expression, i []sql.Expression) *OnScheduleTi
 	}
 }
 
+func (ost *OnScheduleTimestamp) IsReadOnly() bool {
+	return true
+}
+
 func (ost *OnScheduleTimestamp) Type() sql.Type {
 	return ost.timestamp.Type()
 }
@@ -550,6 +558,10 @@ func (d *DropEvent) String() string {
 // Schema implements the sql.Node interface.
 func (d *DropEvent) Schema() sql.Schema {
 	return nil
+}
+
+func (d *DropEvent) IsReadOnly() bool {
+	return false
 }
 
 // RowIter implements the sql.Node interface.

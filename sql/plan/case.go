@@ -57,6 +57,10 @@ func (c *CaseStatement) Resolved() bool {
 	return c.Expr.Resolved() && c.IfElse.Resolved()
 }
 
+func (c *CaseStatement) IsReadOnly() bool {
+	return c.IfElse.IsReadOnly()
+}
+
 // String implements the interface sql.Node.
 func (c *CaseStatement) String() string {
 	p := sql.NewTreePrinter()
@@ -133,6 +137,10 @@ var _ sql.Node = ElseCaseError{}
 
 // Resolved implements the interface sql.Node.
 func (e ElseCaseError) Resolved() bool {
+	return true
+}
+
+func (e ElseCaseError) IsReadOnly() bool {
 	return true
 }
 

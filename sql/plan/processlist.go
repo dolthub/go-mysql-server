@@ -47,6 +47,8 @@ func (p *ShowProcessList) Children() []sql.Node { return nil }
 // Resolved implements the Node interface.
 func (p *ShowProcessList) Resolved() bool { return true }
 
+func (p *ShowProcessList) IsReadOnly() bool { return true }
+
 // WithChildren implements the Node interface.
 func (p *ShowProcessList) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {

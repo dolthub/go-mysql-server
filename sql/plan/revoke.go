@@ -56,6 +56,10 @@ func (n *Revoke) Schema() sql.Schema {
 	return types.OkResultSchema
 }
 
+func (n *Revoke) IsReadOnly() bool {
+	return false
+}
+
 // String implements the interface sql.Node.
 func (n *Revoke) String() string {
 	users := make([]string, len(n.Users))
@@ -499,6 +503,10 @@ func (n *RevokeAll) Schema() sql.Schema {
 	return types.OkResultSchema
 }
 
+func (n *RevokeAll) IsReadOnly() bool {
+	return false
+}
+
 // String implements the interface sql.Node.
 func (n *RevokeAll) String() string {
 	users := make([]string, len(n.Users))
@@ -600,6 +608,10 @@ func (n *RevokeRole) WithDatabase(db sql.Database) (sql.Node, error) {
 func (n *RevokeRole) Resolved() bool {
 	_, ok := n.MySQLDb.(sql.UnresolvedDatabase)
 	return !ok
+}
+
+func (n *RevokeRole) IsReadOnly() bool {
+	return false
 }
 
 // Children implements the interface sql.Node.
@@ -726,6 +738,10 @@ func (n *RevokeProxy) String() string {
 // Resolved implements the interface sql.Node.
 func (n *RevokeProxy) Resolved() bool {
 	return true
+}
+
+func (n *RevokeProxy) IsReadOnly() bool {
+	return false
 }
 
 // Children implements the interface sql.Node.

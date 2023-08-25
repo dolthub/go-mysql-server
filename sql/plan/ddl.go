@@ -262,6 +262,10 @@ func (c *CreateTable) Resolved() bool {
 	return true
 }
 
+func (c *CreateTable) IsReadOnly() bool {
+	return false
+}
+
 // ForeignKeys returns any foreign keys that will be declared on this table.
 func (c *CreateTable) ForeignKeys() []*sql.ForeignKeyConstraint {
 	return c.FkDefs
@@ -684,6 +688,10 @@ func (d *DropTable) Resolved() bool {
 	}
 
 	return true
+}
+
+func (d *DropTable) IsReadOnly() bool {
+	return false
 }
 
 // Schema implements the sql.Expression interface.

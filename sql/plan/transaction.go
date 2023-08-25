@@ -42,6 +42,10 @@ func (transactionNode) Resolved() bool {
 	return true
 }
 
+func (transactionNode) IsReadOnly() bool {
+	return true
+}
+
 // Schema implements the sql.Node interface.
 func (transactionNode) Schema() sql.Schema {
 	return nil

@@ -65,6 +65,10 @@ func (t *TriggerExecutor) String() string {
 	return pr.String()
 }
 
+func (t *TriggerExecutor) IsReadOnly() bool {
+	return t.left.IsReadOnly() && t.right.IsReadOnly()
+}
+
 func (t *TriggerExecutor) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Trigger(%s)", t.TriggerDefinition.CreateStatement)
@@ -129,6 +133,10 @@ func (t *TriggerRollback) CollationCoercibility(ctx *sql.Context) (collation sql
 	return sql.GetCoercibility(ctx, t.Child)
 }
 
+func (t *TriggerRollback) IsReadOnly() bool {
+	return t.Child.IsReadOnly()
+}
+
 func (t *TriggerRollback) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("TriggerRollback()")
@@ -172,6 +180,10 @@ func (t *NoopTriggerRollback) CheckPrivileges(ctx *sql.Context, opChecker sql.Pr
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (t *NoopTriggerRollback) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.GetCoercibility(ctx, t.Child)
+}
+
+func (t *NoopTriggerRollback) IsReadOnly() bool {
+	return true
 }
 
 func (t *NoopTriggerRollback) String() string {

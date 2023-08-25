@@ -57,6 +57,10 @@ func (u *Use) Resolved() bool {
 	return !ok
 }
 
+func (u *Use) IsReadOnly() bool {
+	return true
+}
+
 // Schema implements the sql.Node interface.
 func (Use) Schema() sql.Schema { return nil }
 

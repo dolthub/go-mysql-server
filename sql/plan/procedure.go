@@ -132,6 +132,10 @@ func (p *Procedure) Resolved() bool {
 	return p.Body.Resolved()
 }
 
+func (p *Procedure) IsReadOnly() bool {
+	return p.Body.IsReadOnly()
+}
+
 // String implements the sql.Node interface.
 func (p *Procedure) String() string {
 	return p.Body.String()

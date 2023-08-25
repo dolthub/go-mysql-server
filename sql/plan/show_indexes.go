@@ -65,6 +65,10 @@ func (n *ShowIndexes) String() string {
 	return fmt.Sprintf("ShowIndexes(%s)", n.Child)
 }
 
+func (n *ShowIndexes) IsReadOnly() bool {
+	return true
+}
+
 // Schema implements the Node interface.
 func (n *ShowIndexes) Schema() sql.Schema {
 	return sql.Schema{

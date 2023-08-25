@@ -74,6 +74,10 @@ func (l *LoadData) Children() []sql.Node {
 	return nil
 }
 
+func (l *LoadData) IsReadOnly() bool {
+	return false
+}
+
 func (l *LoadData) SplitLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	// Return Nothing if at end of file and no data passed.
 	if atEOF && len(data) == 0 {
