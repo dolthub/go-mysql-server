@@ -1047,7 +1047,11 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 	}
 	
 	for i, gen := range generated {
-		schema[i].Generated = b.convertDefaultExpression(outScope, gen, schema[i].Type, schema[i].Nullable)
+		if gen != nil {
+			virtual := !bool(tableSpec.Columns[i].Type.Stored)
+			schema[i].Generated = b.convertDefaultExpression(outScope, gen, schema[i].Type, schema[i].Nullable)
+			schema[i].Virtual = virtual
+		}
 	}
 
 	return sql.NewPrimaryKeySchema(schema, getPkOrdinals(tableSpec)...), tableCollation
@@ -1120,7 +1124,8 @@ func getPkOrdinals(ts *ast.TableSpec) []int {
 	return []int{}
 }
 
-// columnDefinitionToColumn returns the sql.Column for the column definition given, as part of a create table statement.
+// columnDefinitionToColumn returns the sql.Column for the column definition given, as part of a create table
+// statement. Defaults and generated expressions must be handled separately.
 func (b *Builder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinition, indexes []*ast.IndexDefinition) *sql.Column {
 	internalTyp, err := types.ColumnTypeToType(&cd.Type)
 	if err != nil {
@@ -1151,8 +1156,6 @@ func (b *Builder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinit
 	}
 
 	nullable := !isPkey && !bool(cd.Type.NotNull)
-	defaultVal := b.convertDefaultExpression(inScope, cd.Type.Default, internalTyp, nullable)
-
 	extra := ""
 
 	if cd.Type.Autoincrement {
@@ -1174,16 +1177,15 @@ func (b *Builder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinit
 			b.handleErr(sql.ErrInvalidType.New(fmt.Sprintf("cannot define SRID for %s", internalTyp)))
 		}
 	}
-
+	
 	return &sql.Column{
-		Nullable:      nullable,
-		Type:          internalTyp,
-		Name:          cd.Name.String(),
-		PrimaryKey:    isPkey,
-		Default:       defaultVal,
-		AutoIncrement: bool(cd.Type.Autoincrement),
-		Comment:       comment,
-		Extra:         extra,
+		Name:           cd.Name.String(),
+		Type:           internalTyp,
+		AutoIncrement:  bool(cd.Type.Autoincrement),
+		Nullable:       nullable,
+		PrimaryKey:     isPkey,
+		Comment:        comment,
+		Extra:          extra,
 	}
 }
 

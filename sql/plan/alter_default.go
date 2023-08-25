@@ -21,6 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // AlterDefaultSet represents the ALTER COLUMN SET DEFAULT statement.
@@ -106,7 +107,7 @@ func (d *AlterDefaultSet) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 	}
 	newCol := &(*col)
 	newCol.Default = d.Default
-	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, d.ColumnName, newCol, nil)
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), alterable.ModifyColumn(ctx, d.ColumnName, newCol, nil)
 }
 
 // WithChildren implements the sql.Node interface.

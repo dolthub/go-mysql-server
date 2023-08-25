@@ -543,6 +543,8 @@ func (c *CreateTable) Expressions() []sql.Expression {
 	for _, col := range c.CreateSchema.Schema {
 		exprs[i] = expression.WrapExpression(col.Default)
 		i++
+	}
+	for _, col := range c.CreateSchema.Schema {
 		exprs[i] = expression.WrapExpression(col.Generated)
 		i++
 	}
@@ -586,7 +588,8 @@ func (c *CreateTable) Temporary() TempTableOption {
 }
 
 func (c CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	length := len(c.CreateSchema.Schema) + len(c.ChDefs)
+	schemaLen := len(c.CreateSchema.Schema)
+	length := schemaLen*2 + len(c.ChDefs)
 	if len(exprs) != length {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(exprs), length)
 	}
@@ -596,7 +599,7 @@ func (c CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) 
 	// Make sure to make a deep copy of any slices here so we aren't modifying the original pointer
 	ns := c.CreateSchema.Schema.Copy()
 	i := 0
-	for ; i < len(c.CreateSchema.Schema); i++ {
+	for ; i < schemaLen; i++ {
 		unwrappedColDefVal, ok := exprs[i].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
 		if ok {
 			ns[i].Default = unwrappedColDefVal
@@ -604,6 +607,16 @@ func (c CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) 
 			ns[i].Default = nil
 		}
 	}
+
+	for ; i < schemaLen*2; i++ {
+		unwrappedGeneratedExpr, ok := exprs[i].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
+		if ok {
+			ns[i-schemaLen].Generated = unwrappedGeneratedExpr
+		} else { // nil fails type check
+			ns[i-schemaLen].Default = nil
+		}
+	}
+
 	nc.CreateSchema = sql.NewPrimaryKeySchema(ns, c.CreateSchema.PkOrdinals...)
 
 	ncd, err := c.ChDefs.FromExpressions(exprs[i:])
