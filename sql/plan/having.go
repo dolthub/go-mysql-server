@@ -37,6 +37,10 @@ func NewHaving(cond sql.Expression, child sql.Node) *Having {
 // Resolved implements the sql.Node interface.
 func (h *Having) Resolved() bool { return h.Cond.Resolved() && h.Child.Resolved() }
 
+func (h *Having) IsReadOnly() bool {
+	return h.Child.IsReadOnly()
+}
+
 // Expressions implements the sql.Expressioner interface.
 func (h *Having) Expressions() []sql.Expression { return []sql.Expression{h.Cond} }
 

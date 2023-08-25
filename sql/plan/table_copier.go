@@ -42,6 +42,10 @@ func (tc *TableCopier) WithDatabase(db sql.Database) (sql.Node, error) {
 	return &ntc, nil
 }
 
+func (tc *TableCopier) IsReadOnly() bool {
+	return false
+}
+
 func (tc *TableCopier) Database() sql.Database {
 	return tc.db
 }

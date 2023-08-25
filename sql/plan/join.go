@@ -325,6 +325,10 @@ func (j *JoinNode) JoinCond() sql.Expression {
 	return j.Filter
 }
 
+func (j *JoinNode) IsReadOnly() bool {
+	return j.BinaryNode.left.IsReadOnly() && j.BinaryNode.right.IsReadOnly()
+}
+
 // Comment implements sql.CommentedNode
 func (j *JoinNode) Comment() string {
 	return j.CommentStr

@@ -54,6 +54,10 @@ func (p *CreateForeignKey) Resolved() bool {
 	return p.DbProvider != nil
 }
 
+func (p *CreateForeignKey) IsReadOnly() bool {
+	return false
+}
+
 // Children implements the interface sql.Node.
 func (p *CreateForeignKey) Children() []sql.Node {
 	return nil
@@ -349,6 +353,10 @@ func (p *DropForeignKey) WithDatabaseProvider(provider sql.DatabaseProvider) (sq
 // Resolved implements the interface sql.Node.
 func (p *DropForeignKey) Resolved() bool {
 	return p.DbProvider != nil
+}
+
+func (p *DropForeignKey) IsReadOnly() bool {
+	return false
 }
 
 // Children implements the interface sql.Node.

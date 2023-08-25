@@ -113,6 +113,10 @@ func (u *Update) DB() sql.Database {
 	return GetDatabase(u.Child)
 }
 
+func (u *Update) IsReadOnly() bool {
+	return false
+}
+
 func (u *Update) Database() string {
 	db := GetDatabase(u.Child)
 	if db == nil {

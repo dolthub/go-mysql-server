@@ -77,6 +77,10 @@ func (srn *StripRowNode) String() string {
 	return srn.Child.String()
 }
 
+func (srn *StripRowNode) IsReadOnly() bool {
+	return srn.Child.IsReadOnly()
+}
+
 func (srn *StripRowNode) DebugString() string {
 	return sql.DebugString(srn.Child)
 }
@@ -112,6 +116,10 @@ var _ sql.CollationCoercible = (*PrependNode)(nil)
 
 func (p *PrependNode) String() string {
 	return p.Child.String()
+}
+
+func (p *PrependNode) IsReadOnly() bool {
+	return p.Child.IsReadOnly()
 }
 
 func (p *PrependNode) DebugString() string {
@@ -247,6 +255,10 @@ var _ sql.CollationCoercible = (*Max1Row)(nil)
 
 func (m *Max1Row) Name() string {
 	return m.name
+}
+
+func (m *Max1Row) IsReadOnly() bool {
+	return m.Child.IsReadOnly()
 }
 
 func (m *Max1Row) Resolved() bool {

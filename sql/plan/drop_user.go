@@ -80,6 +80,10 @@ func (n *DropUser) Resolved() bool {
 	return !ok
 }
 
+func (n *DropUser) IsReadOnly() bool {
+	return false
+}
+
 // Children implements the interface sql.Node.
 func (n *DropUser) Children() []sql.Node {
 	return nil

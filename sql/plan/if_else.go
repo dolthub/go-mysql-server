@@ -40,6 +40,10 @@ func NewIfConditional(condition sql.Expression, body sql.Node) *IfConditional {
 	}
 }
 
+func (ic *IfConditional) IsReadOnly() bool {
+	return ic.Body.IsReadOnly()
+}
+
 // Resolved implements the sql.Node interface.
 func (ic *IfConditional) Resolved() bool {
 	return ic.Condition.Resolved() && ic.Body.Resolved()
@@ -137,6 +141,15 @@ func (ieb *IfElseBlock) Resolved() bool {
 		}
 	}
 	return ieb.Else.Resolved()
+}
+
+func (ieb *IfElseBlock) IsReadOnly() bool {
+	for _, s := range ieb.IfConditionals {
+		if !s.IsReadOnly() {
+			return false
+		}
+	}
+	return ieb.Else.IsReadOnly()
 }
 
 // String implements the sql.Node interface.

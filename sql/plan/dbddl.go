@@ -38,6 +38,10 @@ func (c *CreateDB) Resolved() bool {
 	return true
 }
 
+func (c *CreateDB) IsReadOnly() bool {
+	return false
+}
+
 func (c *CreateDB) String() string {
 	ifNotExists := ""
 	if c.IfNotExists {
@@ -96,6 +100,10 @@ func (d *DropDB) Resolved() bool {
 	return true
 }
 
+func (d *DropDB) IsReadOnly() bool {
+	return false
+}
+
 func (d *DropDB) String() string {
 	ifExists := ""
 	if d.IfExists {
@@ -147,6 +155,10 @@ var _ sql.CollationCoercible = (*AlterDB)(nil)
 // Resolved implements the interface sql.Node.
 func (c *AlterDB) Resolved() bool {
 	return true
+}
+
+func (c *AlterDB) IsReadOnly() bool {
+	return false
 }
 
 // String implements the interface sql.Node.

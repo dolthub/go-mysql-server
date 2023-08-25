@@ -109,6 +109,18 @@ var (
 			Schema:   externalSPSchemaText,
 			Function: variadic_overload2,
 		},
+		{
+			Name:     "memory_inout_add_readonly",
+			Schema:   externalSPSchemaInt,
+			Function: variadic_add,
+			ReadOnly: true,
+		},
+		{
+			Name:     "memory_inout_add_readwrite",
+			Schema:   externalSPSchemaInt,
+			Function: variadic_add,
+			ReadOnly: false,
+		},
 	}
 )
 

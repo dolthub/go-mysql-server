@@ -87,6 +87,10 @@ func (cv *CreateView) Resolved() bool {
 	return !ok && cv.Child.Resolved()
 }
 
+func (cv *CreateView) IsReadOnly() bool {
+	return false
+}
+
 // Schema implements the Node interface. It always returns nil.
 func (cv *CreateView) Schema() sql.Schema { return nil }
 

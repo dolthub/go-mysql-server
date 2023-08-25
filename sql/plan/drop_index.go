@@ -54,6 +54,8 @@ func (d *DropIndex) Database() string { return d.CurrentDatabase }
 // Resolved implements the Node interface.
 func (d *DropIndex) Resolved() bool { return d.Table.Resolved() }
 
+func (d *DropIndex) IsReadOnly() bool { return false }
+
 // Schema implements the Node interface.
 func (d *DropIndex) Schema() sql.Schema { return nil }
 

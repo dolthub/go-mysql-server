@@ -87,6 +87,10 @@ func (c *CreateIndex) Resolved() bool {
 	return true
 }
 
+func (c *CreateIndex) IsReadOnly() bool {
+	return false
+}
+
 // Schema implements the Node interface.
 func (c *CreateIndex) Schema() sql.Schema { return nil }
 

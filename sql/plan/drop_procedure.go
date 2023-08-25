@@ -46,6 +46,10 @@ func (d *DropProcedure) Resolved() bool {
 	return !ok
 }
 
+func (d *DropProcedure) IsReadOnly() bool {
+	return false
+}
+
 // String implements the sql.Node interface.
 func (d *DropProcedure) String() string {
 	ifExists := ""

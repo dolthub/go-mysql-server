@@ -49,6 +49,10 @@ func (p *ShowTables) Database() sql.Database {
 	return p.db
 }
 
+func (p *ShowTables) IsReadOnly() bool {
+	return true
+}
+
 // WithDatabase implements the sql.Databaser interface.
 func (p *ShowTables) WithDatabase(db sql.Database) (sql.Node, error) {
 	nc := *p

@@ -45,6 +45,10 @@ func (i *Into) Schema() sql.Schema {
 	return nil
 }
 
+func (i *Into) IsReadOnly() bool {
+	return i.Child.IsReadOnly()
+}
+
 func (i *Into) String() string {
 	p := sql.NewTreePrinter()
 	var vars = make([]string, len(i.IntoVars))

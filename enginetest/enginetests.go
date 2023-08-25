@@ -630,11 +630,19 @@ func TestReadOnly(t *testing.T, harness Harness) {
 	e.ReadOnly.Store(true)
 	defer e.Close()
 
-	RunQuery(t, e, harness, `SELECT i FROM mytable`)
+	for _, q := range []string{
+		`SELECT i FROM mytable`,
+		`CALL memory_inout_add_readonly(1, 1)`,
+		`EXPLAIN INSERT INTO mytable (i, s) VALUES (42, 'yolo')`,
+	} {
+		t.Run(q, func(t *testing.T) {
+			RunQuery(t, e, harness, q)
+		})
+	}
 
 	writingQueries := []string{
 		`CREATE INDEX foo USING BTREE ON mytable (i, s)`,
-		`DROP INDEX foo ON mytable`,
+		`DROP INDEX idx_si ON mytable`,
 		`INSERT INTO mytable (i, s) VALUES(42, 'yolo')`,
 		`CREATE VIEW myview3 AS SELECT i FROM mytable`,
 		`DROP VIEW myview`,
@@ -643,10 +651,13 @@ func TestReadOnly(t *testing.T, harness Harness) {
 		`CREATE USER tester@localhost`,
 		`CREATE ROLE test_role`,
 		`GRANT SUPER ON * TO 'root'@'localhost'`,
+		`CALL memory_inout_add_readwrite(1, 1)`,
 	}
 
 	for _, query := range writingQueries {
-		AssertErr(t, e, harness, query, sql.ErrReadOnly)
+		t.Run(query, func(t *testing.T) {
+			AssertErr(t, e, harness, query, sql.ErrReadOnly)
+		})
 	}
 }
 
