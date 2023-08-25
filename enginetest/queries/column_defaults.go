@@ -599,7 +599,7 @@ var ColumnDefaultTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "INSERT INTO t1000 (pk) VALUES (1)",
-				ExpectedErr: nil,
+				ExpectedErrStr: "4294967295 out of range for int unsigned",
 			},
 		},
 	},

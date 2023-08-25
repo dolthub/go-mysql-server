@@ -1198,7 +1198,7 @@ func (b *Builder) modifySchemaTarget(inScope *scope, n sql.SchemaTarget, rt *pla
 
 func (b *Builder) resolveSchemaDefaults(inScope *scope, schema sql.Schema) sql.Schema {
 	newSch := schema.Copy()
-	for _, col := range schema {
+	for _, col := range newSch {
 		col.Default = b.resolveColumnDefaultExpression(inScope, col, col.Default)
 		col.Generated = b.resolveColumnDefaultExpression(inScope, col, col.Generated)
 	}
