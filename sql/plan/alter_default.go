@@ -16,12 +16,10 @@ package plan
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // AlterDefaultSet represents the ALTER COLUMN SET DEFAULT statement.
@@ -76,38 +74,6 @@ func (d *AlterDefaultDrop) Resolved() bool {
 
 func (d *AlterDefaultDrop) IsReadOnly() bool {
 	return false
-}
-
-// RowIter implements the sql.Node interface.
-func (d *AlterDefaultSet) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	// Grab the table fresh from the database.
-	table, err := getTableFromDatabase(ctx, d.Database(), d.Table)
-	if err != nil {
-		return nil, err
-	}
-
-	alterable, ok := table.(sql.AlterableTable)
-	if !ok {
-		return nil, sql.ErrAlterTableNotSupported.New(d.Table)
-	}
-
-	if err != nil {
-		return nil, err
-	}
-	loweredColName := strings.ToLower(d.ColumnName)
-	var col *sql.Column
-	for _, schCol := range alterable.Schema() {
-		if strings.ToLower(schCol.Name) == loweredColName {
-			col = schCol
-			break
-		}
-	}
-	if col == nil {
-		return nil, sql.ErrTableColumnNotFound.New(d.Table, d.ColumnName)
-	}
-	newCol := &(*col)
-	newCol.Default = d.Default
-	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), alterable.ModifyColumn(ctx, d.ColumnName, newCol, nil)
 }
 
 // WithChildren implements the sql.Node interface.
@@ -193,34 +159,6 @@ func NewAlterDefaultDrop(database sql.Database, table sql.Node, columnName strin
 // String implements the sql.Node interface.
 func (d *AlterDefaultDrop) String() string {
 	return fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT", getTableName(d.Table), d.ColumnName)
-}
-
-// RowIter implements the sql.Node interface.
-func (d *AlterDefaultDrop) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	table, ok, err := d.ddlNode.Database().GetTableInsensitive(ctx, getTableName(d.Table))
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, sql.ErrTableNotFound.New(d.Table)
-	}
-
-	alterable, ok := table.(sql.AlterableTable)
-	loweredColName := strings.ToLower(d.ColumnName)
-	var col *sql.Column
-	for _, schCol := range alterable.Schema() {
-		if strings.ToLower(schCol.Name) == loweredColName {
-			col = schCol
-			break
-		}
-	}
-
-	if col == nil {
-		return nil, sql.ErrTableColumnNotFound.New(getTableName(d.Table), d.ColumnName)
-	}
-	newCol := &(*col)
-	newCol.Default = nil
-	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, d.ColumnName, newCol, nil)
 }
 
 // WithChildren implements the sql.Node interface.

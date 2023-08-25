@@ -53,7 +53,7 @@ var AlterTableScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t alter column col2 DROP DEFAULT;",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t;",
@@ -61,7 +61,7 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query:    "alter table t alter column col2 SET DEFAULT 'FOO!';",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t;",
