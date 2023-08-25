@@ -41,7 +41,7 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 	pushdownAboveTables := func(n sql.Node, filters *filterSet) (sql.Node, transform.TreeIdentity, error) {
 		return transform.NodeWithCtx(n, filterPushdownAboveTablesChildSelector, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 			switch node := c.Node.(type) {
-			case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
+			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable:
 				table, same, err := pushdownFiltersToAboveTable(ctx, a, node.(sql.NameableNode), scope, filters)
 				if err != nil {
 					return nil, transform.SameTree, err
@@ -107,12 +107,23 @@ func pushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 		return n, transform.SameTree, nil
 	}
 
+	if !hasSubqueryAlias(n) {
+		return n, transform.SameTree, nil
+	}
+
 	tableAliases, err := getTableAliases(n, scope)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
 
 	return transformPushdownSubqueryAliasFilters(ctx, a, n, scope, tableAliases)
+}
+
+func hasSubqueryAlias(n sql.Node) bool {
+	return transform.InspectUp(n, func(n sql.Node) bool {
+		_, isSubq := n.(*plan.SubqueryAlias)
+		return isSubq
+	})
 }
 
 // canDoPushdown returns whether the node given can safely be analyzed for pushdown
@@ -260,19 +271,12 @@ func pushdownFiltersToAboveTable(
 	}
 
 	switch tableNode.(type) {
-	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
-		node, _, err := withTable(tableNode, table)
-		if plan.ErrInvalidLookupForIndexedTable.Is(err) {
-			node = tableNode
-		} else if err != nil {
-			return nil, transform.SameTree, err
-		}
-
+	case *plan.ResolvedTable, *plan.TableAlias, *plan.ValueDerivedTable:
 		if pushedDownFilterExpression != nil {
-			return plan.NewFilter(pushedDownFilterExpression, node), transform.NewTree, nil
+			return plan.NewFilter(pushedDownFilterExpression, tableNode), transform.NewTree, nil
 		}
 
-		return node, transform.NewTree, nil
+		return tableNode, transform.SameTree, nil
 	default:
 		return nil, transform.SameTree, ErrInvalidNodeType.New("pushdownFiltersToAboveTable", tableNode)
 	}
@@ -424,7 +428,7 @@ func convertIsNullForIndexes(ctx *sql.Context, e sql.Expression) sql.Expression 
 // is responsible for join filters and conditions.)
 func pushdownFixIndices(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope) (sql.Node, transform.TreeIdentity, error) {
 	switch n := n.(type) {
-	case *plan.JoinNode, *plan.HashLookup:
+	case *plan.JoinNode, *plan.HashLookup, *plan.InsertInto:
 		return n, transform.SameTree, nil
 	}
 	return fixidx.FixFieldIndexesForExpressions(ctx, a.LogFn(), n, scope)

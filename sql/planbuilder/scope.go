@@ -1,3 +1,17 @@
+// Copyright 2023 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package planbuilder
 
 import (
@@ -8,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -26,7 +41,7 @@ type scope struct {
 	// extraCols are auxillary output columns required
 	// for sorting or grouping
 	extraCols []scopeColumn
-	// redirectCol is used for natural join right-table
+	// redirectCol is used for using and natural joins right-table
 	// attributes that redirect to the left table intersection
 	redirectCol map[string]scopeColumn
 	// tables are the list of table definitions in this scope
@@ -41,9 +56,25 @@ type scope struct {
 	windowDefs  map[string]*sql.WindowDefinition
 	// exprs collects unique expression ids for reference
 	exprs map[string]columnId
+	proc  *procCtx
 }
 
 func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn, bool) {
+	// procedure params take precedence
+	if table == "" && checkParent && s.procActive() {
+		col, ok := s.proc.GetVar(col)
+		if ok {
+			return col, true
+		}
+	}
+
+	// Unqualified columns that have been redirected should return early to avoid ambiguous column errors.
+	if table == "" && s.redirectCol != nil {
+		if rCol, ok := s.redirectCol[col]; ok {
+			return rCol, true
+		}
+	}
+
 	var found scopeColumn
 	var foundCand bool
 	for _, c := range s.cols {
@@ -54,6 +85,11 @@ func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn,
 					if ok {
 						return c, true
 					}
+				}
+				if c.table == OnDupValuesPrefix {
+					return found, true
+				} else if found.table == OnDupValuesPrefix {
+					return c, true
 				}
 				err := sql.ErrAmbiguousColumnName.New(col, []string{c.table, found.table})
 				if c.table == "" {
@@ -67,9 +103,6 @@ func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn,
 	}
 	if foundCand {
 		return found, true
-	}
-	if c, ok := s.redirectCol[fmt.Sprintf("%s.%s", table, col)]; ok {
-		return c, true
 	}
 
 	if s.groupBy != nil {
@@ -95,6 +128,17 @@ func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn,
 	}
 
 	return c, true
+}
+
+func (s *scope) hasTable(table string) bool {
+	_, ok := s.tables[strings.ToLower(table)]
+	if ok {
+		return true
+	}
+	if s.parent != nil {
+		return s.parent.hasTable(table)
+	}
+	return false
 }
 
 // triggerCol is used to hallucinate a new column during trigger DDL
@@ -141,6 +185,21 @@ func (s *scope) getExpr(name string, checkCte bool) (columnId, bool) {
 	return id, ok
 }
 
+func (s *scope) procActive() bool {
+	return s.proc != nil
+}
+
+func (s *scope) initProc() {
+	s.proc = &procCtx{
+		s:          s,
+		conditions: make(map[string]*plan.DeclareCondition),
+		cursors:    make(map[string]struct{}),
+		vars:       make(map[string]scopeColumn),
+		labels:     make(map[string]bool),
+		lastState:  dsVariable,
+	}
+}
+
 // initGroupBy creates a container scope for aggregation
 // functions and function inputs.
 func (s *scope) initGroupBy() {
@@ -160,8 +219,6 @@ func (s *scope) setTableAlias(t string) {
 		s.cols[i].table = t
 		id, ok := s.getExpr(beforeColStr, true)
 		if ok {
-			//err := sql.ErrColumnNotFound.New(beforeColStr)
-			//s.b.handleErr(err)
 			// todo better way to do projections
 			delete(s.exprs, beforeColStr)
 		}
@@ -182,15 +239,14 @@ func (s *scope) setTableAlias(t string) {
 // to the names in the input list.
 func (s *scope) setColAlias(cols []string) {
 	if len(cols) != len(s.cols) {
-		s.b.handleErr(fmt.Errorf("invalid column number for column alias"))
+		err := sql.ErrColumnCountMismatch.New()
+		s.b.handleErr(err)
 	}
 	ids := make([]columnId, len(cols))
 	for i := range s.cols {
 		beforeColStr := s.cols[i].String()
 		id, ok := s.getExpr(beforeColStr, true)
 		if ok {
-			//err := sql.ErrColumnNotFound.New(beforeColStr)
-			//s.b.handleErr(err)
 			// todo better way to do projections
 			delete(s.exprs, beforeColStr)
 		}
@@ -208,10 +264,14 @@ func (s *scope) setColAlias(cols []string) {
 // parent. Variables in the new scope will have name visibility
 // into this scope.
 func (s *scope) push() *scope {
-	return &scope{
+	new := &scope{
 		b:      s.b,
 		parent: s,
 	}
+	if s.procActive() {
+		new.initProc()
+	}
+	return new
 }
 
 // replace creates a new scope with the same parent definition
@@ -318,11 +378,7 @@ func (s *scope) addColumn(col scopeColumn) {
 	if s.exprs == nil {
 		s.exprs = make(map[string]columnId)
 	}
-	if col.table != "" {
-		s.exprs[fmt.Sprintf("%s.%s", strings.ToLower(col.table), strings.ToLower(col.col))] = col.id
-	} else {
-		s.exprs[strings.ToLower(col.col)] = col.id
-	}
+	s.exprs[strings.ToLower(col.String())] = col.id
 	return
 }
 
@@ -401,19 +457,28 @@ type tableId uint16
 type columnId uint16
 
 type scopeColumn struct {
-	db         string
-	table      string
-	col        string
-	id         columnId
-	typ        sql.Type
-	scalar     sql.Expression
-	nullable   bool
-	descending bool
+	db          string
+	table       string
+	col         string
+	originalCol string
+	id          columnId
+	typ         sql.Type
+	scalar      sql.Expression
+	nullable    bool
+	descending  bool
 }
 
 // empty returns true if a scopeColumn is the null value
 func (c scopeColumn) empty() bool {
 	return c.id == 0
+}
+
+func (c scopeColumn) withOriginal(col string) scopeColumn {
+	if c.db != sql.InformationSchemaDatabaseName {
+		// info schema columns always presented as uppercase
+		c.originalCol = col
+	}
+	return c
 }
 
 // scalarGf returns a getField reference to this column's expression.
@@ -422,6 +487,9 @@ func (c scopeColumn) scalarGf() sql.Expression {
 		if p, ok := c.scalar.(*expression.ProcedureParam); ok {
 			return p
 		}
+	}
+	if c.originalCol != "" {
+		return expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.originalCol, c.nullable)
 	}
 	return expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
 }

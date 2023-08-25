@@ -1,3 +1,17 @@
+// Copyright 2023 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package planbuilder
 
 import (
@@ -8,6 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 func (b *Builder) analyzeProjectionList(inScope, outScope *scope, selectExprs ast.SelectExprs) {
@@ -28,6 +43,32 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 	var exprs []sql.Expression
 	for _, se := range selectExprs {
 		pe := b.selectExprToExpression(inScope, se)
+
+		// TODO two passes for symbol res and semantic validation
+		var aRef string
+		inScopeAliasRef := transform.InspectExpr(pe, func(e sql.Expression) bool {
+			var id columnId
+			switch e := e.(type) {
+			case *expression.GetField:
+				if e.Table() == "" {
+					id = columnId(e.Index())
+					aRef = e.Name()
+				}
+			case *expression.Alias:
+				id = columnId(e.Id())
+				aRef = e.Name()
+			}
+			if aRef != "" {
+				collisionId, ok := tempScope.exprs[strings.ToLower(aRef)]
+				return ok && id == collisionId
+			}
+			return false
+		})
+		if inScopeAliasRef {
+			err := sql.ErrMisusedAlias.New(aRef)
+			b.handleErr(err)
+		}
+
 		switch e := pe.(type) {
 		case *expression.GetField:
 			exprs = append(exprs, e)
@@ -46,8 +87,12 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 			}
 			startLen := len(outScope.cols)
 			for _, c := range inScope.cols {
+				// unqualified columns that are redirected should not be replaced
+				if col, ok := inScope.redirectCol[c.col]; tableName == "" && ok && col != c {
+					continue
+				}
 				if c.table == tableName || tableName == "" {
-					gf := expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
+					gf := c.scalarGf()
 					exprs = append(exprs, gf)
 					id, ok := inScope.getExpr(gf.String(), true)
 					if !ok {
@@ -66,7 +111,6 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 			if a, ok := e.Child.(*expression.Alias); ok {
 				if _, ok := tempScope.exprs[a.Name()]; ok {
 					// can't ref alias within the same scope
-					// TODO we use alias
 					err := sql.ErrMisusedAlias.New(e.Name())
 					b.handleErr(err)
 				}
@@ -135,20 +179,13 @@ func (b *Builder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.
 func (b *Builder) buildProjection(inScope, outScope *scope) {
 	projections := make([]sql.Expression, len(outScope.cols))
 	for i, sc := range outScope.cols {
-		scalar := sc.scalar
-		if a, ok := sc.scalar.(*expression.Alias); ok && !a.Unreferencable() {
-			// replace alias with its reference
-			scalar = sc.scalarGf()
-		}
-		projections[i] = scalar
+		projections[i] = sc.scalar
 	}
-	proj := plan.NewProject(projections, inScope.node)
-	if _, ok := inScope.node.(*plan.SubqueryAlias); ok && proj.Schema().Equals(proj.Child.Schema()) {
-		// pruneColumns can get overly aggressive
-		outScope.node = inScope.node
-	} else {
-		outScope.node = proj
+	proj, err := b.f.buildProject(plan.NewProject(projections, inScope.node))
+	if err != nil {
+		b.handleErr(err)
 	}
+	outScope.node = proj
 }
 
 func selectExprNeedsAlias(e *ast.AliasedExpr, expr sql.Expression) bool {

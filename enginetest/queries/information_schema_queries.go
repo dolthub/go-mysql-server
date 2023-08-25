@@ -15,11 +15,66 @@
 package queries
 
 import (
+	"github.com/dolthub/vitess/go/sqltypes"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var InfoSchemaQueries = []QueryTest{
+	{
+		Query: `SELECT 
+     table_name, index_name, comment, non_unique, GROUP_CONCAT(column_name ORDER BY seq_in_index) AS COLUMNS 
+   FROM information_schema.statistics 
+   WHERE table_schema='mydb' AND table_name='mytable' AND index_name!="PRIMARY" 
+   GROUP BY index_name;`,
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "TABLE_NAME",
+				Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "INDEX_NAME",
+				Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "COMMENT",
+				Type: types.MustCreateString(sqltypes.VarChar, 8, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "NON_UNIQUE",
+				Type: types.Int32,
+			},
+			{
+				Name: "COLUMNS",
+				Type: types.Text,
+			},
+		},
+		Expected: []sql.Row{
+			{"mytable", "idx_si", "", 1, "s,i"},
+			{"mytable", "mytable_i_s", "", 1, "i,s"},
+			{"mytable", "mytable_s", "", 0, "s"},
+		},
+	},
+	{
+		Query: `select table_name from information_schema.tables where table_name = 'mytable' limit 1;`,
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "TABLE_NAME",
+				Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default),
+			},
+		},
+		Expected: []sql.Row{{"mytable"}},
+	},
+	{
+		Query: `select table_catalog, table_schema, table_name from information_schema.tables where table_name = 'mytable' limit 1;`,
+		ExpectedColumns: sql.Schema{
+			{Name: "TABLE_CATALOG", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
+			{Name: "TABLE_SCHEMA", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
+			{Name: "TABLE_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
+		},
+		Expected: []sql.Row{{"def", "mydb", "mytable"}},
+	},
 	{
 		Query: `select table_name from information_schema.tables where table_schema = 'information_schema' order by table_name;`,
 		Expected: []sql.Row{
@@ -972,8 +1027,8 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 					{"about", "id", nil, "NO", "int unsigned", "UNI", nil, "auto_increment"},
 					{"about", "uuid", nil, "NO", "char(36)", "PRI", 36, ""},
 					{"about", "status", "draft", "NO", "varchar(255)", "", 255, ""},
-					{"about", "date_created", nil, "YES", "timestamp(6)", "", nil, ""},
-					{"about", "date_updated", nil, "YES", "timestamp(6)", "", nil, ""},
+					{"about", "date_created", nil, "YES", "timestamp", "", nil, ""},
+					{"about", "date_updated", nil, "YES", "timestamp", "", nil, ""},
 					{"about", "url_key", nil, "NO", "varchar(255)", "UNI", 255, ""},
 				},
 			},
@@ -1095,7 +1150,7 @@ bit_2 bit(2) DEFAULT 2,
 some_blob blob DEFAULT ("abc"),
 char_1 char(1) DEFAULT "A",
 some_date date DEFAULT "2022-02-22",
-date_time datetime DEFAULT "2022-02-22 22:22:21",
+date_time datetime(6) DEFAULT "2022-02-22 22:22:21",
 decimal_52 decimal(5,2) DEFAULT "994.45",
 some_double double DEFAULT "1.1",
 some_enum enum('s','m','l') DEFAULT "s",
@@ -1115,7 +1170,7 @@ some_set set('one','two') DEFAULT "one,two",
 small_int smallint DEFAULT "5",
 some_text text DEFAULT ("abc"),
 time_6 time(6) DEFAULT "11:59:59.000010",
-time_stamp timestamp DEFAULT (CURRENT_TIMESTAMP()),
+time_stamp timestamp(6) DEFAULT (CURRENT_TIMESTAMP()),
 tiny_blob tinyblob DEFAULT ("abc"),
 tiny_int tinyint DEFAULT "4",
 tiny_text tinytext DEFAULT ("abc"),
@@ -1295,10 +1350,10 @@ FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_ty
 FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC 
 WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK';`,
 				Expected: []sql.Row{
-					{"chk1", "(b > 0)", "YES"},
+					{"chk1", "(B > 0)", "YES"},
 					{"chk2", "(b > 0)", "NO"},
-					{"chk3", "(b > 1)", "YES"},
-					{"chk4", "(upper(c) = c)", "YES"},
+					{"chk3", "(B > 1)", "YES"},
+					{"chk4", "(upper(C) = c)", "YES"},
 				},
 			},
 			{
@@ -1314,10 +1369,10 @@ WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.C
 			{
 				Query: `select * from information_schema.check_constraints where constraint_schema = 'mydb';`,
 				Expected: []sql.Row{
-					{"def", "mydb", "chk1", "(b > 0)"},
+					{"def", "mydb", "chk1", "(B > 0)"},
 					{"def", "mydb", "chk2", "(b > 0)"},
-					{"def", "mydb", "chk3", "(b > 1)"},
-					{"def", "mydb", "chk4", "(upper(c) = c)"},
+					{"def", "mydb", "chk3", "(B > 1)"},
+					{"def", "mydb", "chk4", "(upper(C) = c)"},
 				},
 			},
 			{

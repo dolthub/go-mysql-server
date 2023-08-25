@@ -21,7 +21,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
-	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 // FulltextFilterTable handles row iteration for filters involving Full-Text indexes, as they behave differently than
@@ -37,7 +36,7 @@ import (
 // zero due to rounding (as is the case with the MyISAM backend, which we currently do not support).
 type FulltextFilterTable struct {
 	MatchAgainst *expression.MatchAgainst
-	Table        *plan.ResolvedTable
+	Table        sql.TableNode
 }
 
 var _ sql.IndexedTable = (*FulltextFilterTable)(nil)
@@ -84,7 +83,9 @@ func (f *FulltextFilterTable) PartitionRows(ctx *sql.Context, partition sql.Part
 	}
 	wordsStr, ok := words.(string)
 	if !ok {
-		return nil, fmt.Errorf("expected WORD to be a string, but had type `%T`", words)
+		if words != nil {
+			return nil, fmt.Errorf("expected WORD to be a string, but had type `%T`", words)
+		}
 	}
 	collation := fulltext.GetCollationFromSchema(ctx, f.MatchAgainst.DocCountTable.Schema())
 	parser, err := fulltext.NewDefaultParser(ctx, collation, wordsStr)

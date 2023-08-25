@@ -152,7 +152,7 @@ func (v Validator) WarningCount(c *mysql.Conn) uint16 {
 	return 0
 }
 
-func (v Validator) ParserOptionsForConnection(c *mysql.Conn) (sqlparser.ParserOptions, error) {
+func (v Validator) ParserOptionsForConnection(_ *mysql.Conn) (sqlparser.ParserOptions, error) {
 	return sqlparser.ParserOptions{}, nil
 }
 

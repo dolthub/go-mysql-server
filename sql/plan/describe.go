@@ -42,6 +42,10 @@ func (d *Describe) Schema() sql.Schema {
 	}}
 }
 
+func (d *Describe) IsReadOnly() bool {
+	return true
+}
+
 // WithChildren implements the Node interface.
 func (d *Describe) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
@@ -79,6 +83,10 @@ var _ sql.CollationCoercible = (*DescribeQuery)(nil)
 
 func (d *DescribeQuery) Resolved() bool {
 	return d.Child.Resolved()
+}
+
+func (d *DescribeQuery) IsReadOnly() bool {
+	return true
 }
 
 func (d *DescribeQuery) Children() []sql.Node {

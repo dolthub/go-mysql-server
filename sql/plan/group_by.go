@@ -58,6 +58,10 @@ func (g *GroupBy) Resolved() bool {
 		expression.ExpressionsResolved(g.GroupByExprs...)
 }
 
+func (g *GroupBy) IsReadOnly() bool {
+	return g.Child.IsReadOnly()
+}
+
 // Schema implements the Node interface.
 func (g *GroupBy) Schema() sql.Schema {
 	var s = make(sql.Schema, len(g.SelectedExprs))

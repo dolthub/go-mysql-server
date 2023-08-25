@@ -90,3 +90,11 @@ func ConvertToValue(v interface{}) (Value, error) {
 		return Value{}, fmt.Errorf("type %T not implemented", v)
 	}
 }
+
+func MustConvertToValue(v interface{}) Value {
+	ret, err := ConvertToValue(v)
+	if err != nil {
+		panic(err)
+	}
+	return ret
+}

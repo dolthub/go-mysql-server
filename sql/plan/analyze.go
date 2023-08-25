@@ -57,6 +57,10 @@ func (n *AnalyzeTable) WithStats(stats sql.StatsReadWriter) *AnalyzeTable {
 	return n
 }
 
+func (n *AnalyzeTable) IsReadOnly() bool {
+	return true
+}
+
 // String implements the interface sql.Node.
 func (n *AnalyzeTable) String() string {
 	tblNames := make([]string, len(n.Tables))

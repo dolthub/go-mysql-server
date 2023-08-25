@@ -167,9 +167,9 @@ func (b *BaseBuilder) buildDropTable(ctx *sql.Context, n *plan.DropTable, row sq
 
 	for _, table := range n.Tables {
 		tbl := table.(*plan.ResolvedTable)
-		curdb = tbl.Database
+		curdb = tbl.SqlDatabase
 
-		droppable := tbl.Database.(sql.TableDropper)
+		droppable := tbl.SqlDatabase.(sql.TableDropper)
 
 		if fkTable, err := getForeignKeyTable(tbl); err == nil {
 			fkChecks, err := ctx.GetSessionVariable(ctx, "foreign_key_checks")
@@ -366,6 +366,12 @@ func (b *BaseBuilder) buildTruncate(ctx *sql.Context, n *plan.Truncate, row sql.
 				}
 			}
 			break
+		}
+	}
+	// If we've got Full-Text indexes, then we also need to clear those tables
+	if hasFullText(ctx, truncatable) {
+		if err = rebuildFullText(ctx, truncatable.Name(), plan.GetDatabase(n.Child)); err != nil {
+			return nil, err
 		}
 	}
 	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(removed))), nil

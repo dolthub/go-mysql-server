@@ -42,6 +42,10 @@ func (*ShowDatabases) Children() []sql.Node {
 	return nil
 }
 
+func (*ShowDatabases) IsReadOnly() bool {
+	return true
+}
+
 // Schema implements the Node interface.
 func (*ShowDatabases) Schema() sql.Schema {
 	return sql.Schema{{

@@ -122,6 +122,14 @@ func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 	defer s.mu.RUnlock()
 
 	for k, v := range s.systemVars {
+		if sysType, ok := v.Var.Type.(SetType); ok {
+			if sv, ok := v.Val.(uint64); ok {
+				if svStr, err := sysType.BitsToString(sv); err == nil {
+					m[k] = svStr
+				}
+				continue
+			}
+		}
 		m[k] = v.Val
 	}
 	return m

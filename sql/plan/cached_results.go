@@ -116,6 +116,10 @@ func (n *CachedResults) GetCachedResults() []sql.Row {
 	return CachedResultsGlobalCache.getCachedResultsById(n.Id)
 }
 
+func (n *CachedResults) IsReadOnly() bool {
+	return n.Child.IsReadOnly()
+}
+
 var EmptyIter = &emptyCacheIter{}
 
 func IsEmptyIter(i sql.RowIter) bool {

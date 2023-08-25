@@ -54,6 +54,10 @@ func (s *ShowTriggers) String() string {
 	return "SHOW TRIGGERS"
 }
 
+func (s *ShowTriggers) IsReadOnly() bool {
+	return true
+}
+
 // Resolved implements the sql.Node interface.
 func (s *ShowTriggers) Resolved() bool {
 	_, ok := s.db.(sql.UnresolvedDatabase)

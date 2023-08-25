@@ -584,12 +584,26 @@ func buildBestJoinPlan(b *ExecBuilder, grp *ExprGroup, input sql.Schema) (sql.No
 	n := grp.Best
 	var err error
 	children := make([]sql.Node, len(n.Children()))
-	for i, g := range n.Children() {
-		children[i], err = buildBestJoinPlan(b, g, input)
+	switch n := n.(type) {
+	case *LateralJoin:
+		left, err := buildBestJoinPlan(b, n.Left, input)
 		if err != nil {
 			return nil, err
 		}
-		input = append(input, g.RelProps.OutputCols()...)
+		right, err := buildBestJoinPlan(b, n.Right, append(input, left.Schema()...))
+		if err != nil {
+			return nil, err
+		}
+		children[0] = left
+		children[1] = right
+	default:
+		for i, g := range n.Children() {
+			children[i], err = buildBestJoinPlan(b, g, input)
+			if err != nil {
+				return nil, err
+			}
+			input = append(input, g.RelProps.OutputCols()...)
+		}
 	}
 	return b.buildRel(n, input, children...)
 }

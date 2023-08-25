@@ -40,6 +40,10 @@ func (p *PrepareQuery) Schema() sql.Schema {
 	return types.OkResultSchema
 }
 
+func (p *PrepareQuery) IsReadOnly() bool {
+	return true
+}
+
 // PrepareInfo is the Info for OKResults returned by Update nodes.
 type PrepareInfo struct {
 }
@@ -113,6 +117,10 @@ func (p *ExecuteQuery) Resolved() bool {
 	panic("ExecuteQuery methods shouldn't be used")
 }
 
+func (p *ExecuteQuery) IsReadOnly() bool {
+	panic("ExecuteQuery methods shouldn't be used")
+}
+
 // Children implements the Node interface.
 func (p *ExecuteQuery) Children() []sql.Node {
 	panic("ExecuteQuery methods shouldn't be used")
@@ -161,6 +169,10 @@ func (p *DeallocateQuery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 }
 
 func (p *DeallocateQuery) Resolved() bool {
+	return true
+}
+
+func (p *DeallocateQuery) IsReadOnly() bool {
 	return true
 }
 

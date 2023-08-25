@@ -1,3 +1,17 @@
+// Copyright 2023 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package planbuilder
 
 import (
@@ -162,22 +176,17 @@ func (b *Builder) buildCreateProcedure(inScope *scope, query string, c *ast.DDL)
 		}
 	}
 
+	inScope.initProc()
 	procName := strings.ToLower(c.ProcedureSpec.ProcName.Name.String())
 	for _, p := range params {
 		// populate inScope with the procedure parameters. this will be
 		// subject maybe a bug where an inner procedure has access to
 		// outer procedure parameters.
-		inScope.newColumn(scopeColumn{table: "", col: strings.ToLower(p.Name), typ: p.Type, scalar: expression.NewProcedureParam(strings.ToLower(p.Name))})
+		inScope.proc.AddVar(expression.NewProcedureParam(strings.ToLower(p.Name)))
 	}
 	bodyStr := strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
 
-	var bodyScope *scope
-	if b.ProcCtx().Active {
-		bodyScope = b.build(inScope, c.ProcedureSpec.Body, bodyStr)
-	} else {
-		bodyScope = inScope.push()
-		bodyScope.node = plan.NewValues(nil)
-	}
+	bodyScope := b.build(inScope, c.ProcedureSpec.Body, bodyStr)
 
 	var db sql.Database = nil
 	dbName := c.ProcedureSpec.ProcName.Qualifier.String()

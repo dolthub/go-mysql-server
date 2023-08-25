@@ -18,7 +18,7 @@ import (
 	"context"
 	"database/sql/driver"
 
-	"github.com/dolthub/go-mysql-server/sql"
+	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 )
 
 // Stmt is a prepared statement.
@@ -85,13 +85,13 @@ func (s *Stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driv
 	return s.query(ctx, bindings)
 }
 
-func (s *Stmt) exec(ctx context.Context, bindings map[string]sql.Expression) (driver.Result, error) {
+func (s *Stmt) exec(ctx context.Context, bindings map[string]*querypb.BindVariable) (driver.Result, error) {
 	qctx, err := s.conn.newContextWithQuery(ctx, s.queryStr)
 	if err != nil {
 		return nil, err
 	}
 
-	_, rows, err := s.conn.dbConn.engine.QueryWithBindings(qctx, s.queryStr, bindings)
+	_, rows, err := s.conn.dbConn.engine.QueryWithBindings(qctx, s.queryStr, nil, bindings)
 	if err != nil {
 		return nil, err
 	}
@@ -106,13 +106,13 @@ func (s *Stmt) exec(ctx context.Context, bindings map[string]sql.Expression) (dr
 	return &Result{okr}, nil
 }
 
-func (s *Stmt) query(ctx context.Context, bindings map[string]sql.Expression) (driver.Rows, error) {
+func (s *Stmt) query(ctx context.Context, bindings map[string]*querypb.BindVariable) (driver.Rows, error) {
 	qctx, err := s.conn.newContextWithQuery(ctx, s.queryStr)
 	if err != nil {
 		return nil, err
 	}
 
-	cols, rows, err := s.conn.dbConn.engine.QueryWithBindings(qctx, s.queryStr, bindings)
+	cols, rows, err := s.conn.dbConn.engine.QueryWithBindings(qctx, s.queryStr, nil, bindings)
 	if err != nil {
 		return nil, err
 	}

@@ -53,7 +53,7 @@ func main() {
 	case "frameFactory":
 	case "framer":
 	case "memo":
-		absPath, _ := filepath.Abs(path.Join("..", "go-mysql-server/optgen/cmd/source", "memo.yaml"))
+		absPath, _ := filepath.Abs(path.Join("../../../..", "go-mysql-server/optgen/cmd/source", "memo.yaml"))
 		defs, err = support.DecodeMemoExprs(absPath)
 		if err != nil {
 			exit(err)

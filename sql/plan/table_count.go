@@ -38,6 +38,10 @@ func (t *TableCountLookup) Table() sql.Table {
 	return t.table
 }
 
+func (t *TableCountLookup) IsReadOnly() bool {
+	return true
+}
+
 func (t *TableCountLookup) Db() sql.Database {
 	return t.db
 }

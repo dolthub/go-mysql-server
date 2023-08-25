@@ -1,3 +1,17 @@
+// Copyright 2023 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package planbuilder
 
 import (
@@ -11,6 +25,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
+
+const OnDupValuesPrefix = "__new_ins"
 
 func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	if i.With != nil {
@@ -27,7 +43,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	switch n := destScope.node.(type) {
 	case *plan.ResolvedTable:
 		rt = n
-		db = rt.Database
+		db = rt.SqlDatabase
 	case *plan.UnresolvedTable:
 		db = n.Database()
 	default:
@@ -43,30 +59,13 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	}
 	isReplace := i.Action == ast.ReplaceStr
 
-	srcScope := b.insertRowsToNode(inScope, i.Rows)
-
-	combinedScope := inScope.replace()
-	for _, c := range destScope.cols {
-		combinedScope.newColumn(c)
-	}
-	for _, c := range srcScope.cols {
-		combinedScope.newColumn(c)
-	}
-	onDupExprs := b.assignmentExprsToExpressions(combinedScope, ast.AssignmentExprs(i.OnDup))
-
-	ignore := false
-	// TODO: make this a bool in vitess
-	if strings.Contains(strings.ToLower(i.Ignore), "ignore") {
-		ignore = true
-	}
-
 	var columns []string
 	{
 		columns = columnsToStrings(i.Columns)
 		// If no column names were specified in the query, go ahead and fill
 		// them all in now that the destination is resolved.
 		// TODO: setting the plan field directly is not great
-		if len(columns) == 0 && len(srcScope.cols) > 0 && rt != nil {
+		if len(columns) == 0 && len(destScope.cols) > 0 && rt != nil {
 			schema := rt.Schema()
 			columns = make([]string, len(schema))
 			for i, col := range schema {
@@ -74,8 +73,34 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 			}
 		}
 	}
+	sch := destScope.node.Schema()
+	if rt != nil {
+		sch = b.resolveSchemaDefaults(destScope, rt.Schema())
+	}
+	srcScope := b.insertRowsToNode(inScope, i.Rows, columns, sch)
 
-	ins := plan.NewInsertInto(db, destScope.node, srcScope.node, isReplace, columns, onDupExprs, ignore)
+	combinedScope := inScope.replace()
+	for i, c := range destScope.cols {
+		combinedScope.newColumn(c)
+		if len(srcScope.cols) == len(destScope.cols) {
+			combinedScope.newColumn(srcScope.cols[i])
+		} else {
+			// check for VALUES refs
+			c.table = OnDupValuesPrefix
+			combinedScope.newColumn(c)
+		}
+	}
+	onDupExprs := b.buildOnDupUpdateExprs(combinedScope, destScope, ast.AssignmentExprs(i.OnDup))
+
+	ignore := false
+	// TODO: make this a bool in vitess
+	if strings.Contains(strings.ToLower(i.Ignore), "ignore") {
+		ignore = true
+	}
+
+	dest := destScope.node
+
+	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), srcScope.node, isReplace, columns, onDupExprs, ignore)
 
 	if rt != nil {
 		checks := b.loadChecksFromTable(destScope, rt.Table)
@@ -88,16 +113,64 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	return
 }
 
-func (b *Builder) insertRowsToNode(inScope *scope, ir ast.InsertRows) (outScope *scope) {
+func (b *Builder) insertRowsToNode(inScope *scope, ir ast.InsertRows, columnNames []string, destSchema sql.Schema) (outScope *scope) {
 	switch v := ir.(type) {
 	case ast.SelectStatement:
 		return b.buildSelectStmt(inScope, v)
 	case ast.Values:
-		return b.buildValues(inScope, v)
+		outScope = b.buildInsertValues(inScope, v, columnNames, destSchema)
 	default:
 		err := sql.ErrUnsupportedSyntax.New(ast.String(ir))
 		b.handleErr(err)
 	}
+	return
+}
+
+func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []string, destSchema sql.Schema) (outScope *scope) {
+	columnDefaultValues := make([]*sql.ColumnDefaultValue, len(columnNames))
+	for i, columnName := range columnNames {
+		index := destSchema.IndexOfColName(columnName)
+		if index == -1 {
+			if !b.TriggerCtx().Call && len(b.TriggerCtx().UnresolvedTables) > 0 {
+				continue
+			}
+			err := plan.ErrInsertIntoNonexistentColumn.New(columnName)
+			b.handleErr(err)
+		}
+		columnDefaultValues[i] = destSchema[index].Default
+	}
+
+	exprTuples := make([][]sql.Expression, len(v))
+	for i, vt := range v {
+		// noExprs is an edge case where we fill VALUES with nil expressions
+		noExprs := len(vt) == 0
+		// triggerUnknownTable is an edge case where we ignored an unresolved
+		// table error and do not have a schema for resolving defaults
+		triggerUnknownTable := (len(columnNames) == 0 && len(vt) > 0) && (len(b.TriggerCtx().UnresolvedTables) > 0)
+
+		if len(vt) != len(columnNames) && !noExprs && !triggerUnknownTable {
+			err := sql.ErrInsertIntoMismatchValueCount.New()
+			b.handleErr(err)
+		}
+		exprs := make([]sql.Expression, len(columnNames))
+		exprTuples[i] = exprs
+		for j := range columnNames {
+			if noExprs || triggerUnknownTable {
+				exprs[j] = expression.WrapExpression(columnDefaultValues[j])
+				continue
+			}
+			e := vt[j]
+			switch e := e.(type) {
+			case *ast.Default:
+				exprs[j] = expression.WrapExpression(columnDefaultValues[j])
+			default:
+				exprs[j] = b.buildScalar(inScope, e)
+			}
+		}
+	}
+
+	outScope = inScope.push()
+	outScope.node = plan.NewValues(exprTuples)
 	return
 }
 
@@ -145,6 +218,65 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 		}
 	}
 	return res
+}
+
+func (b *Builder) buildOnDupUpdateExprs(combinedScope, destScope *scope, e ast.AssignmentExprs) []sql.Expression {
+	b.insertActive = true
+	defer func() {
+		b.insertActive = false
+	}()
+	res := make([]sql.Expression, len(e))
+	// todo(max): prevent aggregations in separate semantic walk step
+	var startAggCnt int
+	if combinedScope.groupBy != nil {
+		startAggCnt = len(combinedScope.groupBy.aggs)
+	}
+	var startWinCnt int
+	if combinedScope.windowFuncs != nil {
+		startWinCnt = len(combinedScope.windowFuncs)
+	}
+	for i, updateExpr := range e {
+		colName := b.buildOnDupLeft(destScope, updateExpr.Name)
+		innerExpr := b.buildScalar(combinedScope, updateExpr.Expr)
+
+		res[i] = expression.NewSetField(colName, innerExpr)
+		if combinedScope.groupBy != nil {
+			if len(combinedScope.groupBy.aggs) > startAggCnt {
+				err := sql.ErrAggregationUnsupported.New(res[i])
+				b.handleErr(err)
+			}
+		}
+		if combinedScope.windowFuncs != nil {
+			if len(combinedScope.windowFuncs) > startWinCnt {
+				err := sql.ErrWindowUnsupported.New(res[i])
+				b.handleErr(err)
+			}
+		}
+	}
+	return res
+}
+
+func (b *Builder) buildOnDupLeft(inScope *scope, e ast.Expr) sql.Expression {
+	// expect col reference only
+	switch e := e.(type) {
+	case *ast.ColName:
+		tableName := strings.ToLower(e.Qualifier.Name.String())
+		colName := strings.ToLower(e.Name.String())
+		c, ok := inScope.resolveColumn(tableName, colName, true)
+		if !ok {
+			if tableName != "" && !inScope.hasTable(tableName) {
+				b.handleErr(sql.ErrTableNotFound.New(tableName))
+			} else if tableName != "" {
+				b.handleErr(sql.ErrTableColumnNotFound.New(tableName, colName))
+			}
+			b.handleErr(sql.ErrColumnNotFound.New(e))
+		}
+		return c.scalarGf()
+	default:
+		err := fmt.Errorf("invalid update target; expected column reference, found: %T", e)
+		b.handleErr(err)
+	}
+	return nil
 }
 
 func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
@@ -250,7 +382,7 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 					tableScope := inScope.push()
 					for _, c := range rt.Schema() {
 						tableScope.addColumn(scopeColumn{
-							db:       rt.Database.Name(),
+							db:       rt.SqlDatabase.Name(),
 							table:    strings.ToLower(n.Name()),
 							col:      strings.ToLower(c.Name),
 							typ:      c.Type,
@@ -289,10 +421,7 @@ func rowUpdatersByTable(ctx *sql.Context, node sql.Node, ij sql.Node) (map[strin
 			return nil, plan.ErrUpdateForTableNotSupported.New(tableToBeUpdated)
 		}
 
-		var table = resolvedTable.Table
-		if t, ok := table.(sql.TableWrapper); ok {
-			table = t.Underlying()
-		}
+		var table = resolvedTable.UnderlyingTable()
 
 		// If there is no UpdatableTable for a table being updated, error out
 		updatable, ok := table.(sql.UpdatableTable)
@@ -320,7 +449,10 @@ func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 		case *plan.ResolvedTable:
 			ret[n.Table.Name()] = n
 		case *plan.IndexedTableAccess:
-			ret[n.ResolvedTable.Name()] = n.ResolvedTable
+			rt, ok := n.TableNode.(*plan.ResolvedTable)
+			if ok {
+				ret[rt.Name()] = rt
+			}
 		case *plan.TableAlias:
 			rt := getResolvedTable(n)
 			if rt != nil {
@@ -334,12 +466,12 @@ func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 	return ret
 }
 
-// Finds first ResolvedTable node that is a descendant of the node given
+// Finds first TableNode node that is a descendant of the node given
 func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 	var table *plan.ResolvedTable
 	transform.Inspect(node, func(node sql.Node) bool {
 		// plan.Inspect will get called on all children of a node even if one of the children's calls returns false. We
-		// only want the first ResolvedTable match.
+		// only want the first TableNode match.
 		if table != nil {
 			return false
 		}
@@ -351,8 +483,11 @@ func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 				return false
 			}
 		case *plan.IndexedTableAccess:
-			table = n.ResolvedTable
-			return false
+			rt, ok := n.TableNode.(*plan.ResolvedTable)
+			if ok {
+				table = rt
+				return false
+			}
 		}
 		return true
 	})
@@ -388,7 +523,12 @@ func (b *Builder) buildInto(inScope *scope, into *ast.Into) {
 		if strings.HasPrefix(val.String(), "@") {
 			vars[i] = expression.NewUserVar(strings.TrimPrefix(val.String(), "@"))
 		} else {
-			vars[i] = expression.NewUnresolvedProcedureParam(val.String())
+			col, ok := inScope.proc.GetVar(val.String())
+			if !ok {
+				err := sql.ErrExternalProcedureMissingContextParam.New(val.String())
+				b.handleErr(err)
+			}
+			vars[i] = col.scalarGf()
 		}
 	}
 	inScope.node = plan.NewInto(inScope.node, vars)

@@ -41,12 +41,8 @@ func newIndexAnalyzerForNode(ctx *sql.Context, n sql.Node) (*indexAnalyzer, erro
 	var analysisErr error
 	indexes := make(map[string][]sql.Index)
 
-	var indexesForTable = func(name string, rt *plan.ResolvedTable) error {
+	var indexesForTable = func(name string, table sql.Table) error {
 		name = strings.ToLower(name)
-		table := rt.Table
-		if w, ok := table.(sql.TableWrapper); ok {
-			table = w.Underlying()
-		}
 		it, ok := table.(sql.IndexAddressableTable)
 
 		if !ok {
@@ -67,12 +63,12 @@ func newIndexAnalyzerForNode(ctx *sql.Context, n sql.Node) (*indexAnalyzer, erro
 		transform.Inspect(n, func(n sql.Node) bool {
 			switch n := n.(type) {
 			case *plan.TableAlias:
-				rt, ok := n.Child.(*plan.ResolvedTable)
+				rt, ok := n.Child.(sql.TableNode)
 				if !ok {
 					return false
 				}
 
-				err := indexesForTable(n.Name(), rt)
+				err := indexesForTable(n.Name(), rt.UnderlyingTable())
 				if err != nil {
 					analysisErr = err
 					return false
@@ -80,19 +76,18 @@ func newIndexAnalyzerForNode(ctx *sql.Context, n sql.Node) (*indexAnalyzer, erro
 
 				return false
 			case *plan.ResolvedTable:
-				err := indexesForTable(n.Name(), n)
+				err := indexesForTable(n.Name(), n.UnderlyingTable())
 				if err != nil {
 					analysisErr = err
 					return false
 				}
 			case *plan.IndexedTableAccess:
-				err := indexesForTable(n.Name(), n.ResolvedTable)
+				err := indexesForTable(n.Name(), n.TableNode.UnderlyingTable())
 				if err != nil {
 					analysisErr = err
 					return false
 				}
 			}
-
 			return true
 		})
 	}
@@ -115,7 +110,7 @@ func newIndexAnalyzerForNode(ctx *sql.Context, n sql.Node) (*indexAnalyzer, erro
 // IndexesByTable returns all indexes on the table named. The table must be present in the node used to create the
 // analyzer.
 func (r *indexAnalyzer) IndexesByTable(ctx *sql.Context, db, table string) []sql.Index {
-	indexes := r.indexesByTable[table]
+	indexes := r.indexesByTable[strings.ToLower(table)]
 
 	if r.indexRegistry != nil {
 		idxes := r.indexRegistry.IndexesByTable(db, table)

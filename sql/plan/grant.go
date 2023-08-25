@@ -60,6 +60,10 @@ func (n *Grant) Schema() sql.Schema {
 	return types.OkResultSchema
 }
 
+func (n *Grant) IsReadOnly() bool {
+	return false
+}
+
 // String implements the interface sql.Node.
 func (n *Grant) String() string {
 	users := make([]string, len(n.Users))
@@ -649,6 +653,10 @@ func (n *GrantRole) Children() []sql.Node {
 	return nil
 }
 
+func (n *GrantRole) IsReadOnly() bool {
+	return false
+}
+
 // WithChildren implements the interface sql.Node.
 func (n *GrantRole) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
@@ -769,6 +777,10 @@ func (n *GrantProxy) String() string {
 // Resolved implements the interface sql.Node.
 func (n *GrantProxy) Resolved() bool {
 	return true
+}
+
+func (n *GrantProxy) IsReadOnly() bool {
+	return false
 }
 
 // Children implements the interface sql.Node.

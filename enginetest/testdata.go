@@ -16,11 +16,9 @@ package enginetest
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
-	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -130,6 +128,20 @@ func createVersionedTables(t *testing.T, harness Harness, myDb, foo sql.Database
 		})
 
 		wrapInTransaction(t, myDb, harness, func() {
+			table = versionedHarness.NewTableAsOf(versionedDb, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
+				{Name: "s", Type: types.Text, Source: "mytable"},
+			}), nil)
+
+			if err == nil {
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					sql.NewRow(int64(1), "first row, 1"),
+					sql.NewRow(int64(2), "second row, 2"),
+					sql.NewRow(int64(3), "third row, 3"))
+			}
+		})
+
+		wrapInTransaction(t, myDb, harness, func() {
 			require.NoError(t, versionedHarness.SnapshotTable(versionedDb, "myhistorytable", "2019-01-03"))
 		})
 	}
@@ -191,43 +203,4 @@ func DeleteRows(t *testing.T, ctx *sql.Context, table sql.DeletableTable, rows .
 		}
 	}
 	require.NoError(t, deleter.Close(ctx))
-}
-
-func setAutoIncrementValue(t *testing.T, ctx *sql.Context, table sql.AutoIncrementTable, val uint64) {
-	setter := table.AutoIncrementSetter(ctx)
-	require.NoError(t, setter.SetAutoIncrementValue(ctx, val))
-	require.NoError(t, setter.Close(ctx))
-}
-
-func createNativeIndexes(t *testing.T, harness Harness, e *sqle.Engine) error {
-	createIndexes := []string{
-		"create unique index mytable_s on mytable (s)",
-		"create index mytable_i_s on mytable (i,s)",
-		"create index othertable_s2 on othertable (s2)",
-		"create index othertable_s2_i2 on othertable (s2,i2)",
-		"create index floattable_f on floattable (f64)",
-		"create index niltable_i2 on niltable (i2)",
-		"create index people_l_f on people (last_name,first_name)",
-		"create index datetime_table_d on datetime_table (date_col)",
-		"create index datetime_table_dt on datetime_table (datetime_col)",
-		"create index datetime_table_ts on datetime_table (timestamp_col)",
-		"create index one_pk_two_idx_1 on one_pk_two_idx (v1)",
-		"create index one_pk_two_idx_2 on one_pk_two_idx (v1, v2)",
-		"create index one_pk_three_idx_idx on one_pk_three_idx (v1, v2, v3)",
-	}
-
-	for _, q := range createIndexes {
-		ctx := NewContext(harness)
-		sch, iter, err := e.Query(ctx, q)
-		require.NoError(t, err)
-
-		_, err = sql.RowIterToRows(ctx, sch, iter)
-		require.NoError(t, err)
-	}
-
-	return nil
-}
-
-func dob(year, month, day int) time.Time {
-	return time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
 }

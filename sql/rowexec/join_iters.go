@@ -25,6 +25,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 func newJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
@@ -153,8 +154,7 @@ func (i *joinIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 
 		row := i.buildRow(primary, secondary)
-		res, err := i.cond.Eval(ctx, row)
-		matches := res == true
+		res, err := sql.EvaluateCondition(ctx, i.cond, row)
 		if err != nil {
 			return nil, err
 		}
@@ -169,7 +169,7 @@ func (i *joinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			continue
 		}
 
-		if !matches {
+		if !sql.IsTrue(res) {
 			continue
 		}
 
@@ -182,16 +182,6 @@ func (i *joinIter) removeParentRow(r sql.Row) sql.Row {
 	copy(r[i.scopeLen:], r[len(i.parentRow):])
 	r = r[:len(r)-len(i.parentRow)+i.scopeLen]
 	return r
-}
-
-func conditionIsTrue(ctx *sql.Context, row sql.Row, cond sql.Expression) (bool, error) {
-	v, err := cond.Eval(ctx, row)
-	if err != nil {
-		return false, err
-	}
-
-	// Expressions containing nil evaluate to nil, not false
-	return v == true, nil
 }
 
 // buildRow builds the result set row using the rows from the primary and secondary tables
@@ -269,7 +259,6 @@ const (
 
 func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 	var row sql.Row
-	var matches bool
 	var right sql.Row
 	var left sql.Row
 	var rIter sql.RowIter
@@ -328,8 +317,7 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 		case esCompare:
 			row = i.buildRow(left, right)
-			res, err := i.cond.Eval(ctx, row)
-			matches = res == true
+			res, err := sql.EvaluateCondition(ctx, i.cond, row)
 			if err != nil {
 				return nil, err
 			}
@@ -339,7 +327,7 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 				continue
 			}
 
-			if !matches {
+			if !sql.IsTrue(res) {
 				nextState = esIncRight
 			} else {
 				err = rIter.Close(ctx)
@@ -476,11 +464,11 @@ func (i *fullJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 
 		row := i.buildRow(i.leftRow, rightRow)
-		matches, err := conditionIsTrue(ctx, row, i.cond)
+		matches, err := sql.EvaluateCondition(ctx, i.cond, row)
 		if err != nil {
 			return nil, err
 		}
-		if !matches {
+		if !sql.IsTrue(matches) {
 			continue
 		}
 		rkey, err := sql.HashOf(rightRow)
@@ -765,14 +753,13 @@ func (i *lateralJoinIterator) loadLeft(ctx *sql.Context) error {
 
 func (i *lateralJoinIterator) buildRight(ctx *sql.Context) error {
 	if i.rIter == nil {
-		iter, err := i.b.Build(ctx, i.rNode, i.lRow)
+		prepended, _, err := transform.Node(i.rNode, plan.PrependRowInPlan(i.lRow, true))
 		if err != nil {
 			return err
 		}
-
-		// Prepend node doesn't work over filter, because it calls filter.Next(), then prepends the row
-		if _, ok := iter.(*plan.FilterIter); ok {
-			iter.(*plan.FilterIter).ParentRow = i.lRow
+		iter, err := i.b.Build(ctx, prepended, i.lRow)
+		if err != nil {
+			return err
 		}
 		i.rIter = iter
 	}
@@ -785,7 +772,7 @@ func (i *lateralJoinIterator) loadRight(ctx *sql.Context) error {
 		if err != nil {
 			return err
 		}
-		i.rRow = rRow
+		i.rRow = rRow[len(i.lRow):]
 	}
 	return nil
 }
@@ -841,9 +828,9 @@ func (i *lateralJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
 		row := i.buildRow(i.lRow, i.rRow)
 		i.rRow = nil
 		if i.cond != nil {
-			if res, err := i.cond.Eval(ctx, row); err != nil {
+			if res, err := sql.EvaluateCondition(ctx, i.cond, row); err != nil {
 				return nil, err
-			} else if res == false {
+			} else if !sql.IsTrue(res) {
 				continue
 			}
 		}

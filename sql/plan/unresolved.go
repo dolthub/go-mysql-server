@@ -121,6 +121,10 @@ func (*UnresolvedTable) CollationCoercibility(ctx *sql.Context) (collation sql.C
 	return sql.Collation_binary, 7
 }
 
+func (t *UnresolvedTable) IsReadOnly() bool {
+	return true
+}
+
 // WithAsOf implements sql.UnresolvedTable
 func (t *UnresolvedTable) WithAsOf(asOf sql.Expression) (sql.Node, error) {
 	t2 := *t
@@ -209,7 +213,7 @@ func (t *DeferredAsOfTable) Name() string {
 
 // Database implements sql.UnresolvedTable
 func (t *DeferredAsOfTable) Database() sql.Database {
-	return t.ResolvedTable.Database
+	return t.ResolvedTable.SqlDatabase
 }
 
 // WithAsOf implements sql.UnresolvedTable
@@ -222,6 +226,10 @@ func (t *DeferredAsOfTable) WithAsOf(asOf sql.Expression) (sql.Node, error) {
 // AsOf implements sql.UnresolvedTable
 func (t *DeferredAsOfTable) AsOf() sql.Expression {
 	return t.asOf
+}
+
+func (t *DeferredAsOfTable) IsReadOnly() bool {
+	return true
 }
 
 type DeferredFilteredTable struct {

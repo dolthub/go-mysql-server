@@ -47,6 +47,8 @@ func (s *Set) Resolved() bool {
 // Children implements the sql.Node interface.
 func (s *Set) Children() []sql.Node { return nil }
 
+func (s *Set) IsReadOnly() bool { return true }
+
 // WithChildren implements the sql.Node interface.
 func (s *Set) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {

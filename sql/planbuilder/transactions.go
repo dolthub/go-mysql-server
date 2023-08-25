@@ -1,3 +1,17 @@
+// Copyright 2023 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package planbuilder
 
 import (
@@ -24,6 +38,7 @@ func (b *Builder) buildPrepare(inScope *scope, n *ast.Prepare) (outScope *scope)
 	outScope = inScope.push()
 	expr := n.Expr
 	if strings.HasPrefix(n.Expr, "@") {
+		// TODO resolve user variable
 		varName := strings.ToLower(strings.Trim(n.Expr, "@"))
 		_, val, err := b.ctx.GetUserVariable(b.ctx, varName)
 		if err != nil {
@@ -40,7 +55,9 @@ func (b *Builder) buildPrepare(inScope *scope, n *ast.Prepare) (outScope *scope)
 		}
 	}
 
-	childStmt, err := ast.Parse(expr)
+	sqlMode := sql.LoadSqlMode(b.ctx)
+
+	childStmt, err := ast.ParseWithOptions(expr, sqlMode.ParserOptions())
 	if err != nil {
 		b.handleErr(err)
 	}

@@ -2116,7 +2116,7 @@ var ServerAuthTests = []ServerAuthenticationTest{
 		},
 		SetUpFunc: func(ctx *sql.Context, t *testing.T, engine *sqle.Engine) {
 			plugins := map[string]mysql_db.PlaintextAuthPlugin{"authentication_dolt_jwt": &NoopPlaintextPlugin{}}
-			engine.Analyzer.Catalog.MySQLDb.SetPlugins(plugins)
+			engine.EngineAnalyzer().Catalog.MySQLDb.SetPlugins(plugins)
 		},
 		Assertions: []ServerAuthenticationTestAssertion{
 			{
@@ -2142,9 +2142,9 @@ var ServerAuthTests = []ServerAuthenticationTest{
 	{
 		Name: "Adding a Super User directly",
 		SetUpFunc: func(ctx *sql.Context, t *testing.T, engine *sqle.Engine) {
-			ed := engine.Analyzer.Catalog.MySQLDb.Editor()
+			ed := engine.EngineAnalyzer().Catalog.MySQLDb.Editor()
 			defer ed.Close()
-			engine.Analyzer.Catalog.MySQLDb.AddSuperUser(ed, "bestuser", "localhost", "the_pass")
+			engine.EngineAnalyzer().Catalog.MySQLDb.AddSuperUser(ed, "bestuser", "localhost", "the_pass")
 		},
 		Assertions: []ServerAuthenticationTestAssertion{
 			{

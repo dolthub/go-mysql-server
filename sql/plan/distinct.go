@@ -52,6 +52,10 @@ func (d *Distinct) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpe
 	return d.Child.CheckPrivileges(ctx, opChecker)
 }
 
+func (d *Distinct) IsReadOnly() bool {
+	return d.Child.IsReadOnly()
+}
+
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (d *Distinct) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.GetCoercibility(ctx, d.Child)
@@ -104,6 +108,10 @@ func (d *OrderedDistinct) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (d *OrderedDistinct) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return d.Child.CheckPrivileges(ctx, opChecker)
+}
+
+func (d *OrderedDistinct) IsReadOnly() bool {
+	return d.Child.IsReadOnly()
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

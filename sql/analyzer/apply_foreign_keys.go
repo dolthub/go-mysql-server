@@ -263,7 +263,7 @@ func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 			}
 		}
 
-		parentIndex, ok, err := plan.FindIndexWithPrefix(ctx, parentTbl, fk.ParentColumns, true)
+		parentIndex, ok, err := plan.FindFKIndexWithPrefix(ctx, parentTbl, fk.ParentColumns, true)
 		if err != nil {
 			return nil, err
 		}
@@ -363,7 +363,7 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 			}
 		}
 
-		childIndex, ok, err := plan.FindIndexWithPrefix(ctx, childTbl, fk.Columns, false)
+		childIndex, ok, err := plan.FindFKIndexWithPrefix(ctx, childTbl, fk.Columns, false)
 		if err != nil {
 			return nil, err
 		}

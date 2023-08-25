@@ -146,6 +146,20 @@ func convertFiltersToIndexedAccess(
 			}
 			handled = append(handled, handledF...)
 			return ret, transform.NewTree, nil
+		case *plan.JSONTable:
+			switch j := c.Parent.(type) {
+			case *plan.JoinNode:
+				newExprs, same, err := fixidx.FixFieldIndexesOnExpressions(scope, a.LogFn(), j.Left().Schema(), n.Expressions()...)
+				if same || err != nil {
+					return n, transform.SameTree, err
+				}
+				newJt, err := n.WithExpressions(newExprs...)
+				if err != nil {
+					return n, transform.SameTree, err
+				}
+				return newJt, transform.NewTree, nil
+			}
+			return n, transform.SameTree, nil
 		default:
 			return pushdownFixIndices(ctx, a, n, scope)
 		}
@@ -158,13 +172,10 @@ func pushdownIndexesToTable(ctx *sql.Context, scope *plan.Scope, a *Analyzer, ta
 	var lookup *indexLookup
 	ret, same, err := transform.Node(tableNode, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
-		case *plan.ResolvedTable:
+		case sql.TableNode:
 			table := getTable(tableNode)
 			if table == nil {
 				return n, transform.SameTree, nil
-			}
-			if tw, ok := table.(sql.TableWrapper); ok {
-				table = tw.Underlying()
 			}
 			if _, ok := table.(sql.IndexAddressableTable); ok {
 				if indexLookup, ok := indexes[strings.ToLower(tableNode.Name())]; ok {
@@ -186,7 +197,7 @@ func pushdownIndexesToTable(ctx *sql.Context, scope *plan.Scope, a *Analyzer, ta
 						return ret, transform.NewTree, nil
 					} else if indexLookup.lookup.Index.CanSupport(indexLookup.lookup.Ranges...) {
 						a.Log("table %q transformed with pushdown of index", tableNode.Name())
-						ita, err := plan.NewStaticIndexedAccessForResolvedTable(n, indexLookup.lookup)
+						ita, err := plan.NewStaticIndexedAccessForTableNode(n, indexLookup.lookup)
 						if plan.ErrInvalidLookupForIndexedTable.Is(err) {
 							return n, transform.SameTree, nil
 						}

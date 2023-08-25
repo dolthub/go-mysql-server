@@ -136,6 +136,28 @@ func NewPartitionedTableWithCollation(name string, schema sql.PrimaryKeySchema, 
 		}
 	}
 
+	newSchema := make(sql.Schema, len(schema.Schema))
+	for i, c := range schema.Schema {
+		cCopy := c.Copy()
+		if cCopy.Default != nil {
+			newDef, _, _ := transform.Expr(cCopy.Default, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				switch e := e.(type) {
+				case *expression.GetField:
+					// strip table names
+					return expression.NewGetField(e.Index(), e.Type(), e.Name(), e.IsNullable()), transform.NewTree, nil
+				default:
+				}
+				return e, transform.SameTree, nil
+			})
+			defStr := newDef.String()
+			unrDef := sql.NewUnresolvedColumnDefaultValue(defStr)
+			cCopy.Default = unrDef
+		}
+		newSchema[i] = cCopy
+	}
+
+	schema.Schema = newSchema
+
 	return &Table{
 		name:          name,
 		schema:        schema,
@@ -1570,11 +1592,13 @@ func (t *Table) CreateIndex(ctx *sql.Context, idx sql.IndexDef) error {
 // DropIndex implements sql.IndexAlterableTable
 func (t *Table) DropIndex(ctx *sql.Context, indexName string) error {
 	for name := range t.indexes {
-		if name == indexName {
+		if strings.ToLower(name) == strings.ToLower(indexName) {
 			delete(t.indexes, name)
+			return nil
 		}
 	}
-	return nil
+
+	return sql.ErrIndexNotFound.New(indexName)
 }
 
 // RenameIndex implements sql.IndexAlterableTable

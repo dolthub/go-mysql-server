@@ -62,6 +62,10 @@ func (sc *ShowCreateTable) Resolved() bool {
 	return sc.Child.Resolved() && sc.targetSchema.Resolved()
 }
 
+func (sc *ShowCreateTable) IsReadOnly() bool {
+	return true
+}
+
 func (sc ShowCreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(1, len(children))

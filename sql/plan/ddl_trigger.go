@@ -86,6 +86,10 @@ func (c *CreateTrigger) Resolved() bool {
 	return c.ddlNode.Resolved() && c.Table.Resolved()
 }
 
+func (c *CreateTrigger) IsReadOnly() bool {
+	return false
+}
+
 func (c *CreateTrigger) Schema() sql.Schema {
 	return nil
 }

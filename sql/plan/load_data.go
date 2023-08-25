@@ -26,7 +26,7 @@ import (
 type LoadData struct {
 	Local                   bool
 	File                    string
-	Destination             sql.Node
+	DestSch                 sql.Schema
 	ColumnNames             []string
 	ResponsePacketSent      bool
 	Fields                  *sqlparser.Fields
@@ -56,7 +56,7 @@ const (
 )
 
 func (l *LoadData) Resolved() bool {
-	return l.Destination.Resolved()
+	return l.DestSch.Resolved()
 }
 
 func (l *LoadData) String() string {
@@ -67,11 +67,15 @@ func (l *LoadData) String() string {
 }
 
 func (l *LoadData) Schema() sql.Schema {
-	return l.Destination.Schema()
+	return l.DestSch
 }
 
 func (l *LoadData) Children() []sql.Node {
-	return []sql.Node{l.Destination}
+	return nil
+}
+
+func (l *LoadData) IsReadOnly() bool {
+	return false
 }
 
 func (l *LoadData) SplitLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
@@ -141,12 +145,10 @@ func (l *LoadData) SetParsingValues() error {
 }
 
 func (l *LoadData) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 1)
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 0)
 	}
-	ret := *l
-	ret.Destination = children[0]
-	return &ret, nil
+	return l, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
@@ -160,13 +162,13 @@ func (*LoadData) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 	return sql.Collation_binary, 7
 }
 
-func NewLoadData(local bool, file string, destination sql.Node, cols []string, fields *sqlparser.Fields, lines *sqlparser.Lines, ignoreNum int64, ignoreOrReplace string) *LoadData {
+func NewLoadData(local bool, file string, destSch sql.Schema, cols []string, fields *sqlparser.Fields, lines *sqlparser.Lines, ignoreNum int64, ignoreOrReplace string) *LoadData {
 	isReplace := ignoreOrReplace == sqlparser.ReplaceStr
 	isIgnore := ignoreOrReplace == sqlparser.IgnoreStr || (local && !isReplace)
 	return &LoadData{
 		Local:                   local,
 		File:                    file,
-		Destination:             destination,
+		DestSch:                 destSch,
 		ColumnNames:             cols,
 		Fields:                  fields,
 		Lines:                   lines,

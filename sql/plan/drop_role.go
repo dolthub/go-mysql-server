@@ -79,6 +79,10 @@ func (n *DropRole) Resolved() bool {
 	return !ok
 }
 
+func (n *DropRole) IsReadOnly() bool {
+	return false
+}
+
 // Children implements the interface sql.Node.
 func (n *DropRole) Children() []sql.Node {
 	return nil
