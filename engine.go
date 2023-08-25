@@ -28,7 +28,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/dolthub/go-mysql-server/eventscheduler"
-	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -182,7 +181,6 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		IsServerLocked:    cfg.IsServerLocked,
 		PreparedDataCache: NewPreparedDataCache(),
 		mu:                &sync.Mutex{},
-		Version:           version,
 		EventScheduler:    nil,
 	}
 	ret.ReadOnly.Store(cfg.IsReadOnly)

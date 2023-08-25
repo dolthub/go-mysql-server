@@ -980,7 +980,7 @@ func enginesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 }
 
 // eventsRowIter implements the sql.RowIter for the information_schema.EVENTS table.
-func eventsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
+func eventsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 
 	characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
@@ -1000,7 +1000,7 @@ func eventsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 		return nil, ErrSystemVariableCodeFail.New("sql_mode", sysVal)
 	}
 
-	for _, db := range cat.AllDatabases(ctx) {
+	for _, db := range c.AllDatabases(ctx) {
 		dbCollation := plan.GetDatabaseCollation(ctx, db)
 		dbName := db.Name()
 		eventDb, ok := db.(EventDatabase)
@@ -1015,7 +1015,7 @@ func eventsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 
 			var events []EventDetails
 			for _, event := range eventDefs {
-				parsedEvent, err := parse.Parse(ctx, event.CreateStatement)
+				parsedEvent, err := planbuilder.ParseWithOptions(ctx, c, event.CreateStatement, NewSqlModeFromString(event.SqlMode).ParserOptions())
 				if err != nil {
 					return nil, err
 				}

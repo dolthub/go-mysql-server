@@ -159,7 +159,7 @@ func (es *EventScheduler) evaluateAllEventsAndLoadEnabledEvents(ctx *sql.Context
 			// need to set the current database to get parsed plan
 			ctx.SetCurrentDatabase(edb.Name())
 			for _, eDef := range eDefs {
-				ed, err := analyzer.GetEventDetailsFromEventDefinition(ctx, eDef)
+				ed, err := analyzer.GetEventDetailsFromEventDefinition(ctx, a.Catalog, eDef)
 				if err != nil {
 					return nil, err
 				}

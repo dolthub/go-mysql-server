@@ -15,11 +15,9 @@
 package analyzer
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/planbuilder"
-	"github.com/dolthub/go-mysql-server/sql/transform"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -41,7 +39,7 @@ func loadEvents(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, se
 			return &newShowEvents, transform.NewTree, nil
 		case *plan.ShowCreateEvent:
 			newShowCreateEvent := *node
-			loadedEvent, err := loadEventFromDb(ctx, newShowCreateEvent.Database(), newShowCreateEvent.EventName)
+			loadedEvent, err := loadEventFromDb(ctx, a.Catalog, newShowCreateEvent.Database(), newShowCreateEvent.EventName)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
