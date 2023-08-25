@@ -14,11 +14,10 @@
 
 package analyzer
 
-// OnceBeforeDefault_Exp contains the rules to be applied just once before the
+// OnceBeforeDefault contains the rules to be applied just once before the
 // DefaultRules.
-var OnceBeforeDefault_Exp = []Rule{
+var OnceBeforeDefault = []Rule{
 	{applyDefaultSelectLimitId, applyDefaultSelectLimit},
-	{applyBinlogReplicaControllerId, applyBinlogReplicaController},
 	{replaceCountStarId, replaceCountStar},
 	{validateOffsetAndLimitId, validateLimitAndOffset},
 	{validateCreateTableId, validateCreateTable},
@@ -29,10 +28,8 @@ var OnceBeforeDefault_Exp = []Rule{
 	{validateDropTablesId, validateDropTables},
 	{resolveCreateSelectId, resolveCreateSelect},
 	{validateDropConstraintId, validateDropConstraint},
-	{setViewTargetSchemaId, setViewTargetSchema},
 	{resolveUnionsId, resolveUnions},
-	{resolveDescribeQueryId, resolveDescribeQuery},      //TODO
-	{checkUniqueTableNamesId, validateUniqueTableNames}, //TODO
+	{resolveDescribeQueryId, resolveDescribeQuery}, //TODO
 	{validateCreateTriggerId, validateCreateTrigger},
 	{validateColumnDefaultsId, validateColumnDefaults},
 	{validateReadOnlyDatabaseId, validateReadOnlyDatabase},
@@ -44,31 +41,27 @@ var OnceBeforeDefault_Exp = []Rule{
 	{hoistOutOfScopeFiltersId, hoistOutOfScopeFilters},
 }
 
-// DefaultRules_Exp to apply when analyzing nodes.
-var DefaultRules_Exp = []Rule{
+// DefaultRules to apply when analyzing nodes.
+var DefaultRules = []Rule{
 	{validateStarExpressionsId, validateStarExpressions}, //TODO
 	{flattenTableAliasesId, flattenTableAliases},         //TODO
 	{pushdownSubqueryAliasFiltersId, pushdownSubqueryAliasFilters},
 	{pruneTablesId, pruneTables},
 	{fixupAuxiliaryExprsId, fixupAuxiliaryExprs},
 	{validateCheckConstraintId, validateCheckConstraints},
-	{transposeRightJoinsId, transposeRightJoins}, //TODO
-	{mergeUnionSchemasId, mergeUnionSchemas},     //TODO
 	{transformJoinApplyId, transformJoinApply},
 	{resolveSubqueriesId, resolveSubqueries},
 	{replaceCrossJoinsId, replaceCrossJoins},
 	{moveJoinCondsToFilterId, moveJoinConditionsToFilter}, // depends on indexes being correct
 }
 
-var OnceAfterDefault_Experimental = []Rule{
+var OnceAfterDefault = []Rule{
 	{hoistSelectExistsId, hoistSelectExists},
 	{finalizeUnionsId, finalizeUnions},
 	{loadTriggersId, loadTriggers},
 	{loadEventsId, loadEvents},
 	{processTruncateId, processTruncate},
-	{removeUnnecessaryConvertsId, removeUnnecessaryConverts},
 	{stripTableNameInDefaultsId, stripTableNamesFromColumnDefaults},
-	{foldEmptyJoinsId, foldEmptyJoins},
 	{pushFiltersId, pushFilters},
 	{optimizeJoinsId, optimizeJoins},
 	{generateIndexScansId, generateIndexScans},
@@ -103,7 +96,7 @@ var DefaultValidationRules = []Rule{
 	{validateAggregationsId, validateAggregations},
 }
 
-var OnceAfterAll_Experimental = []Rule{
+var OnceAfterAll = []Rule{
 	{inlineSubqueryAliasRefsId, inlineSubqueryAliasRefs},
 	{cacheSubqueryResultsId, cacheSubqueryResults},
 	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},

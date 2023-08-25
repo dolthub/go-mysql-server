@@ -54,7 +54,7 @@ func enableUserAccounts(ctx *sql.Context, engine *sqle.Engine) error {
 
 	// The functions "AddRootAccount" and "LoadData" both automatically enable the "mysql" database, but this is just
 	// to explicitly show how one can manually enable (or disable) the database.
-	mysqlDb.Enabled = true
+	mysqlDb.SetEnabled(true)
 	// The persister here simply stands-in for your provided persistence function. The database calls this whenever it
 	// needs to save any changes to any of the "mysql" database's tables.
 	persister := &MySQLPersister{}

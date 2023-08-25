@@ -100,6 +100,30 @@ func NewConvertWithLengthAndScale(expr sql.Expression, castToType string, typeLe
 	}
 }
 
+// GetConvertToType returns which type the both left and right values should be converted to.
+// If neither sql.Type represent number, then converted to string. Otherwise, we try to get
+// the appropriate type to avoid any precision loss.
+func GetConvertToType(l, r sql.Type) string {
+	if !types.IsNumber(l) || !types.IsNumber(r) {
+		return ConvertToChar
+	}
+
+	if types.IsDecimal(l) || types.IsDecimal(r) {
+		return ConvertToDecimal
+	}
+	if types.IsUnsigned(l) && types.IsUnsigned(r) {
+		return ConvertToUnsigned
+	}
+	if types.IsSigned(l) && types.IsSigned(r) {
+		return ConvertToSigned
+	}
+	if types.IsInteger(l) && types.IsInteger(r) {
+		return ConvertToSigned
+	}
+
+	return ConvertToChar
+}
+
 // IsNullable implements the Expression interface.
 func (c *Convert) IsNullable() bool {
 	switch c.castToType {

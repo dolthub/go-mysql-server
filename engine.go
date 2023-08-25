@@ -206,10 +206,7 @@ func (e *Engine) PrepareQuery(
 	ctx *sql.Context,
 	query string,
 ) (sql.Node, error) {
-	sqlMode, err := sql.LoadSqlMode(ctx)
-	if err != nil {
-		return nil, err
-	}
+	sqlMode := sql.LoadSqlMode(ctx)
 	node, err := planbuilder.ParseWithOptions(ctx, e.Analyzer.Catalog, query, sqlMode.ParserOptions())
 	if err != nil {
 		return nil, err
@@ -225,12 +222,7 @@ func (e *Engine) PrepareQuery(
 
 // Query executes a query.
 func (e *Engine) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter, error) {
-	return e.QueryWithBindings(ctx, query, nil)
-}
-
-// QueryWithBindings executes the query given with the bindings provided
-func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
-	return e.QueryNodeWithBindings(ctx, query, nil, bindings)
+	return e.QueryWithBindings(ctx, query, nil, nil)
 }
 
 func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.Expression, error) {
@@ -343,9 +335,9 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 	return res, nil
 }
 
-// QueryNodeWithBindings executes the query given with the bindings provided. If parsed is non-nil, it will be used
+// QueryWithBindings executes the query given with the bindings provided. If parsed is non-nil, it will be used
 // instead of parsing the query from text.
-func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
+func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
 	var err error
 	if prep, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query); ok {
 		parsed = nil
@@ -379,7 +371,7 @@ func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, parsed sq
 		return nil, nil, err
 	}
 
-	sqlMode, err := sql.LoadSqlMode(ctx)
+	sqlMode := sql.LoadSqlMode(ctx)
 	if err != nil {
 		err2 := clearAutocommitTransaction(ctx)
 		if err2 != nil {
@@ -652,4 +644,12 @@ func (e *Engine) readOnlyCheck(node sql.Node) error {
 		return sql.ErrDatabaseWriteLocked.New()
 	}
 	return nil
+}
+
+func (e *Engine) EnginePreparedDataCache() *PreparedDataCache {
+	return e.PreparedDataCache
+}
+
+func (e *Engine) EngineAnalyzer() *analyzer.Analyzer {
+	return e.Analyzer
 }

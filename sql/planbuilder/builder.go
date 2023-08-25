@@ -1,7 +1,23 @@
+// Copyright 2023 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package planbuilder
 
 import (
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
+
+	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -11,6 +27,7 @@ type Builder struct {
 	ctx             *sql.Context
 	cat             sql.Catalog
 	parserOpts      ast.ParserOptions
+	f               *factory
 	currentDatabase sql.Database
 	colId           columnId
 	tabId           tableId
@@ -44,11 +61,12 @@ type ProcContext struct {
 }
 
 func New(ctx *sql.Context, cat sql.Catalog) (*Builder, error) {
-	sqlMode, err := sql.LoadSqlMode(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return &Builder{ctx: ctx, cat: cat, parserOpts: sqlMode.ParserOptions()}, nil
+	sqlMode := sql.LoadSqlMode(ctx)
+	return &Builder{ctx: ctx, cat: cat, parserOpts: sqlMode.ParserOptions(), f: &factory{}}, nil
+}
+
+func (b *Builder) SetDebug(val bool) {
+	b.f.debug = val
 }
 
 func (b *Builder) SetParserOptions(opts ast.ParserOptions) {
@@ -178,13 +196,25 @@ func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outSc
 		return b.buildChangeReplicationFilter(inScope, n)
 	case *ast.StartReplica:
 		outScope = inScope.push()
-		outScope.node = plan.NewStartReplica()
+		startRep := plan.NewStartReplica()
+		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.IsBinlogReplicaCatalog() {
+			startRep.ReplicaController = binCat.GetBinlogReplicaController()
+		}
+		outScope.node = startRep
 	case *ast.StopReplica:
 		outScope = inScope.push()
-		outScope.node = plan.NewStopReplica()
+		stopRep := plan.NewStopReplica()
+		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.IsBinlogReplicaCatalog() {
+			stopRep.ReplicaController = binCat.GetBinlogReplicaController()
+		}
+		outScope.node = stopRep
 	case *ast.ResetReplica:
 		outScope = inScope.push()
-		outScope.node = plan.NewResetReplica(n.All)
+		resetRep := plan.NewResetReplica(n.All)
+		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.IsBinlogReplicaCatalog() {
+			resetRep.ReplicaController = binCat.GetBinlogReplicaController()
+		}
+		outScope.node = resetRep
 	case *ast.BeginEndBlock:
 		return b.buildBeginEndBlock(inScope, n)
 	case *ast.IfStatement:

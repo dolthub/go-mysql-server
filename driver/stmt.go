@@ -91,7 +91,7 @@ func (s *Stmt) exec(ctx context.Context, bindings map[string]*querypb.BindVariab
 		return nil, err
 	}
 
-	_, rows, err := s.conn.dbConn.engine.QueryWithBindings(qctx, s.queryStr, bindings)
+	_, rows, err := s.conn.dbConn.engine.QueryWithBindings(qctx, s.queryStr, nil, bindings)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func (s *Stmt) query(ctx context.Context, bindings map[string]*querypb.BindVaria
 		return nil, err
 	}
 
-	cols, rows, err := s.conn.dbConn.engine.QueryWithBindings(qctx, s.queryStr, bindings)
+	cols, rows, err := s.conn.dbConn.engine.QueryWithBindings(qctx, s.queryStr, nil, bindings)
 	if err != nil {
 		return nil, err
 	}

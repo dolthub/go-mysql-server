@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -89,6 +90,49 @@ type ScriptTestAssertion struct {
 // Unlike other engine tests, ScriptTests must be self-contained. No other tables are created outside the definition of
 // the tests.
 var ScriptTests = []ScriptTest{
+	{
+		Name: "union schema merge",
+		SetUpScript: []string{
+			"create table `left` (i int primary key, j mediumint, k varchar(20));",
+			"create table `right` (i int primary key, j bigint, k text);",
+			"insert into `left` values (1,2, 'a')",
+			"insert into `right` values (3,4, 'b')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i, j from `left` union select i, j from `right`",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "i",
+						Type: types.Int32,
+					},
+					{
+						Name: "j",
+						Type: types.Int64,
+					},
+				},
+				Expected: []sql.Row{{1, 2}, {3, 4}},
+			},
+			{
+				Query: "select i, k from `left` union select i, k from `right`",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "i",
+						Type: types.Int32,
+					},
+					{
+						Name: "k",
+						Type: types.LongText,
+					},
+				},
+				Expected: []sql.Row{{1, "a"}, {3, "b"}},
+			},
+			{
+				Query:       "select i, k from `left` union select i, j, k from `right`",
+				ExpectedErr: planbuilder.ErrUnionSchemasDifferentLength,
+			},
+		},
+	},
 	{
 		Name: "create table casing",
 		SetUpScript: []string{

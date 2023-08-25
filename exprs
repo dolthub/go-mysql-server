@@ -1,9 +1,0 @@
-5524 9200 9228 0002
-2/26
-547
-
-with recursive cte(u) as (select 1 union select /*+ HASH_JOIN(uv,ab) */ u from uv join ab on a = u) select x, (select /*+ JOIN_ORDER(xy, cte) */ count(u) from xy, cte) from xy;
-
-with recursive cte(u) as (select 1 union select /*+ HASH_JOIN(uv,ab) */ u from uv join ab on a = u) select x from xy where x in (select /*+ JOIN_ORDER(xy, cte) */ count(u) from xy, cte)
- 
-with recursive cte(u) as (select 1 union select /*+ HASH_JOIN(uv,ab) */ u from uv join ab on a = u) select x from xy where x in (select /*+ JOIN_ORDER(xy, cte) */ count(x) from xy, cte)

@@ -15,7 +15,6 @@
 package sql
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -31,18 +30,20 @@ type SqlMode struct {
 
 // LoadSqlMode loads the SQL mode using the session data contained in |ctx| and returns a SqlMode
 // instance that can be used to query which modes are enabled.
-func LoadSqlMode(ctx *Context) (*SqlMode, error) {
+func LoadSqlMode(ctx *Context) *SqlMode {
 	sqlMode, err := ctx.Session.GetSessionVariable(ctx, SqlModeSessionVar)
 	if err != nil {
-		return nil, err
+		// if system variables are not initialized, assume default sqlMode
+		return &SqlMode{modes: nil, modeString: ""}
 	}
 
 	sqlModeString, ok := sqlMode.(string)
 	if !ok {
-		return nil, fmt.Errorf("unable to parse sql_mode: %v", sqlMode)
+		ctx.GetLogger().Warnf("sqlMode system variable value is invalid: '%v'", sqlMode)
+		return &SqlMode{modes: nil, modeString: ""}
 	}
 
-	return NewSqlModeFromString(sqlModeString), nil
+	return NewSqlModeFromString(sqlModeString)
 }
 
 // NewSqlModeFromString returns a new SqlMode instance, constructed from the specified |sqlModeString| that

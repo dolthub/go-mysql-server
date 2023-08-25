@@ -1,3 +1,17 @@
+// Copyright 2023 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package planbuilder
 
 import (
@@ -177,7 +191,7 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 		transform.InspectExpr(col.scalar, func(e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:
-				colName := strings.ToLower(e.Name())
+				colName := strings.ToLower(e.String())
 				if !selectStr[colName] {
 					selectExprs = append(selectExprs, e)
 					selectGfs = append(selectGfs, e)
@@ -190,11 +204,11 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 	}
 	for _, e := range fromScope.extraCols {
 		// accessory cols used by ORDER_BY, HAVING
-		if !selectStr[e.col] {
+		if !selectStr[e.String()] {
 			selectExprs = append(selectExprs, e.scalarGf())
 			selectGfs = append(selectGfs, e.scalarGf())
 
-			selectStr[e.col] = true
+			selectStr[e.String()] = true
 		}
 	}
 	gb := plan.NewGroupBy(selectExprs, groupingCols, fromScope.node)
@@ -487,11 +501,11 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 		transform.InspectExpr(col.scalar, func(e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:
-				colName := strings.ToLower(e.Name())
+				colName := strings.ToLower(e.String())
 				if !selectStr[colName] {
 					selectExprs = append(selectExprs, e)
-					selectStr[colName] = true
 					selectGfs = append(selectGfs, e)
+					selectStr[colName] = true
 				}
 			default:
 			}
@@ -500,10 +514,10 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 	}
 	for _, e := range fromScope.extraCols {
 		// accessory cols used by ORDER_BY, HAVING
-		if !selectStr[e.col] {
+		if !selectStr[e.String()] {
 			selectExprs = append(selectExprs, e.scalarGf())
 			selectGfs = append(selectGfs, e.scalarGf())
-			selectStr[e.col] = true
+			selectStr[e.String()] = true
 		}
 	}
 

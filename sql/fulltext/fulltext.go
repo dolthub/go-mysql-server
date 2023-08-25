@@ -19,8 +19,10 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"hash"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/shopspring/decimal"
 
@@ -99,49 +101,10 @@ func HashRow(row sql.Row) (string, error) {
 	// give us a unique representation for representing NULL values.
 	valIsNull := make([]bool, len(row))
 	for i, val := range row {
-		switch val := val.(type) {
-		case int:
-			if err := binary.Write(h, binary.LittleEndian, int64(val)); err != nil {
-				return "", err
-			}
-		case uint:
-			if err := binary.Write(h, binary.LittleEndian, uint64(val)); err != nil {
-				return "", err
-			}
-		case string:
-			if _, err := h.Write([]byte(val)); err != nil {
-				return "", err
-			}
-		case []byte:
-			if _, err := h.Write(val); err != nil {
-				return "", err
-			}
-		case decimal.Decimal:
-			bytes, err := val.GobEncode()
-			if err != nil {
-				return "", err
-			}
-			if _, err := h.Write(bytes); err != nil {
-				return "", err
-			}
-		case decimal.NullDecimal:
-			if !val.Valid {
-				valIsNull[i] = true
-			} else {
-				bytes, err := val.Decimal.GobEncode()
-				if err != nil {
-					return "", err
-				}
-				if _, err := h.Write(bytes); err != nil {
-					return "", err
-				}
-			}
-		case nil:
-			valIsNull[i] = true
-		default:
-			if err := binary.Write(h, binary.LittleEndian, val); err != nil {
-				return "", err
-			}
+		var err error
+		valIsNull[i], err = writeHashedValue(h, val)
+		if err != nil {
+			return "", err
 		}
 	}
 
@@ -151,6 +114,75 @@ func HashRow(row sql.Row) (string, error) {
 	// Go's current implementation will always return lowercase hashes, but we'll convert for safety since it's not
 	// explicitly stated in the API that it's a lowercase string, therefore it might change in the future (even if highly unlikely).
 	return strings.ToLower(hex.EncodeToString(h.Sum(nil))), nil
+}
+
+// writeHashedValue writes the given value into the hash.
+func writeHashedValue(h hash.Hash, val interface{}) (valIsNull bool, err error) {
+	switch val := val.(type) {
+	case int:
+		if err := binary.Write(h, binary.LittleEndian, int64(val)); err != nil {
+			return false, err
+		}
+	case uint:
+		if err := binary.Write(h, binary.LittleEndian, uint64(val)); err != nil {
+			return false, err
+		}
+	case string:
+		if _, err := h.Write([]byte(val)); err != nil {
+			return false, err
+		}
+	case []byte:
+		if _, err := h.Write(val); err != nil {
+			return false, err
+		}
+	case decimal.Decimal:
+		bytes, err := val.GobEncode()
+		if err != nil {
+			return false, err
+		}
+		if _, err := h.Write(bytes); err != nil {
+			return false, err
+		}
+	case decimal.NullDecimal:
+		if !val.Valid {
+			return true, nil
+		} else {
+			bytes, err := val.Decimal.GobEncode()
+			if err != nil {
+				return false, err
+			}
+			if _, err := h.Write(bytes); err != nil {
+				return false, err
+			}
+		}
+	case time.Time:
+		bytes, err := val.MarshalBinary()
+		if err != nil {
+			return false, err
+		}
+		if _, err := h.Write(bytes); err != nil {
+			return false, err
+		}
+	case types.GeometryValue:
+		if _, err := h.Write(val.Serialize()); err != nil {
+			return false, err
+		}
+	case types.JSONDocument:
+		str, err := val.ToString(sql.NewEmptyContext())
+		if err != nil {
+			return false, err
+		}
+		if _, err := h.Write([]byte(str)); err != nil {
+			return false, err
+		}
+	case nil:
+		return true, nil
+	default:
+		if err := binary.Write(h, binary.LittleEndian, val); err != nil {
+			return false, err
+		}
+	}
+	return false, nil
 }
 
 // GetKeyColumns returns the key columns from the parent table that will be used to uniquely reference any given row on

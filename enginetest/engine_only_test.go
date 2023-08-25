@@ -206,7 +206,7 @@ func (l *lockableTable) Unlock(ctx *sql.Context, id uint32) error {
 type analyzerTestCase struct {
 	name          string
 	query         string
-	planGenerator func(*testing.T, *sql.Context, *sqle.Engine) sql.Node
+	planGenerator func(*testing.T, *sql.Context, enginetest.QueryEngine) sql.Node
 	err           *errors.Kind
 }
 
@@ -287,7 +287,7 @@ func TestTrackProcess(t *testing.T) {
 	ctx, err := ctx.ProcessList.BeginQuery(ctx, "SELECT foo")
 	require.NoError(err)
 
-	rule := getRuleFrom(analyzer.OnceAfterAll_Experimental, analyzer.TrackProcessId)
+	rule := getRuleFrom(analyzer.OnceAfterAll, analyzer.TrackProcessId)
 	result, _, err := rule.Apply(ctx, a, node, nil, analyzer.DefaultRuleSelector)
 	require.NoError(err)
 
@@ -412,8 +412,8 @@ var analyzerTestCases = []analyzerTestCase{
 	{
 		name:  "show tables as of",
 		query: "SHOW TABLES AS OF 'abc123'",
-		planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
-			db, err := engine.Analyzer.Catalog.Database(ctx, "mydb")
+		planGenerator: func(t *testing.T, ctx *sql.Context, engine enginetest.QueryEngine) sql.Node {
+			db, err := engine.EngineAnalyzer().Catalog.Database(ctx, "mydb")
 			require.NoError(t, err)
 			return plan.NewShowTables(db, false, expression.NewLiteral("abc123", types.LongText))
 		},
@@ -421,8 +421,8 @@ var analyzerTestCases = []analyzerTestCase{
 	{
 		name:  "show tables as of, from",
 		query: "SHOW TABLES FROM foo AS OF 'abc123'",
-		planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
-			db, err := engine.Analyzer.Catalog.Database(ctx, "foo")
+		planGenerator: func(t *testing.T, ctx *sql.Context, engine enginetest.QueryEngine) sql.Node {
+			db, err := engine.EngineAnalyzer().Catalog.Database(ctx, "foo")
 			require.NoError(t, err)
 			return plan.NewShowTables(db, false, expression.NewLiteral("abc123", types.LongText))
 		},
@@ -430,8 +430,8 @@ var analyzerTestCases = []analyzerTestCase{
 	{
 		name:  "show tables as of, function call",
 		query: "SHOW TABLES FROM foo AS OF GREATEST('abc123', 'cde456')",
-		planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
-			db, err := engine.Analyzer.Catalog.Database(ctx, "foo")
+		planGenerator: func(t *testing.T, ctx *sql.Context, engine enginetest.QueryEngine) sql.Node {
+			db, err := engine.EngineAnalyzer().Catalog.Database(ctx, "foo")
 			require.NoError(t, err)
 			greatest, err := function.NewGreatest(
 				expression.NewLiteral("abc123", types.LongText),
@@ -444,8 +444,8 @@ var analyzerTestCases = []analyzerTestCase{
 	{
 		name:  "show tables as of, timestamp",
 		query: "SHOW TABLES FROM foo AS OF TIMESTAMP('20200101:120000Z')",
-		planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
-			db, err := engine.Analyzer.Catalog.Database(ctx, "foo")
+		planGenerator: func(t *testing.T, ctx *sql.Context, engine enginetest.QueryEngine) sql.Node {
+			db, err := engine.EngineAnalyzer().Catalog.Database(ctx, "foo")
 			require.NoError(t, err)
 			timestamp, err := function.NewTimestamp(
 				expression.NewLiteral("20200101:120000Z", types.LongText),
@@ -457,8 +457,8 @@ var analyzerTestCases = []analyzerTestCase{
 	{
 		name:  "show tables as of, naked literal",
 		query: "SHOW TABLES AS OF abc123",
-		planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
-			db, err := engine.Analyzer.Catalog.Database(ctx, "mydb")
+		planGenerator: func(t *testing.T, ctx *sql.Context, engine enginetest.QueryEngine) sql.Node {
+			db, err := engine.EngineAnalyzer().Catalog.Database(ctx, "mydb")
 			require.NoError(t, err)
 			return plan.NewShowTables(db, false, expression.NewLiteral("abc123", types.LongText))
 		},
@@ -475,11 +475,11 @@ func TestAnalyzer_Exp(t *testing.T) {
 			require.NoError(t, err)
 
 			ctx := enginetest.NewContext(harness)
-			b, _ := planbuilder.New(ctx, e.Analyzer.Catalog)
+			b, _ := planbuilder.New(ctx, e.EngineAnalyzer().Catalog)
 			parsed, _, _, err := b.Parse(tt.query, false)
 			require.NoError(t, err)
 
-			analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
+			analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil)
 			analyzed = analyzer.StripPassthroughNodes(analyzed)
 			if tt.err != nil {
 				require.Error(t, err)
@@ -620,7 +620,7 @@ func TestTableFunctions(t *testing.T) {
 	testDatabaseProvider := NewTestProvider(&databaseProvider, SimpleTableFunction{}, memory.IntSequenceTable{})
 
 	engine := enginetest.NewEngineWithProvider(t, harness, testDatabaseProvider)
-	engine.Analyzer.ExecBuilder = rowexec.DefaultBuilder
+	engine.EngineAnalyzer().ExecBuilder = rowexec.DefaultBuilder
 
 	engine, err := enginetest.RunSetupScripts(harness.NewContext(), engine, setup.MydbData, true)
 	require.NoError(t, err)

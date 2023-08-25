@@ -2,19 +2,13 @@ package planbuilder
 
 // The planbuilder package is responsible for:
 // - converting an ast.SQLNode tree into a sql.Node tree
-// - resolving column and table uses.
+// - resolving column and table uses
 //
 // In the future this package will absorb type checking and coercion
 //
 // This package currently does minor expression uniqueness tracking, which
 // should be absorbed by the plan IR.
 //
-// The intermediate phase involves several complications. The first is that
-// there are too many node types for a one-PR pass. Edge cases will fallback to
-// standard name resolving:
-// - TRIGGERS
-// - STORED PROCEDURES
-// - PREPARED STATEMENTS
 //
 // Name resolution works similarly to an attribute grammar. A simple attribute
 // grammar walks an AST and populates a node's attributes either by inspecting
@@ -34,6 +28,7 @@ package planbuilder
 // initializes the optimizer IR by adding expression groups to the query memo.
 // In our case we create the sql.Node tree.
 //
+// The order that we walk nodes in an AST depends on the particular query.
 // In the simplest case, a SELECT expression resolves column references using
 // FROM scope definitions. The source columns below are x:1, y:2, z:3:
 //
@@ -51,19 +46,26 @@ package planbuilder
 // It is useful to assign unique ids to referencable expressions. It is more
 // difficult to track symbols after substituting execution time indexes.
 //
-// There are two main complexities. The first is that aggregations
-// are subject to a dizzying set of resolution rules. Resolving valid
-// aggregation variable references is difficult, and tagging invalid
-// aggregations is also difficult.
+// There are two main complexities: 1) many clauses have required input
+// dependencies that are not naturally represented in the AST representation,
+// and instead have to be tracked and added with intermediate projections.
+// 2) Tracking dependencies using only string matching is fraught. We need
+// a way to reliably detect that two expressions are identical, refer to it with
+// references, and when adding expressions to the plan identify when the same
+// expression has already been evaluated and projected lower in the tree.
+// We currently only have partial solutions for these two problems.
 //
-// On the happy path, accessory columns used by ORDER BY, HAVING and DISTINCT
-// clauses can inject extra aggregations or passthrough columns in addition to
-// those in the GROUP BY and SELECT target lists.
+// The first difficulty, tracking input dependencies, is solved by separating
+// resolving into two phases. The first phase walks the tree to identify special
+// functions and expressions with unique input dependencies. For example,
+// aggregation and window functions (/ arguments) are a special case that require
+// unique rules when building, and are tracked separately. Accessory columns used
+// by ORDER BY, HAVING, and DISTINCT require projection inputs that are not
+// returned as output target projections.
 //
 // In the example below, we identify and tag two aggregations that are assigned
 // expression ids after x,y, and z: SUM(y):4, COUNT(y):5. The sort node and
-// target list projections that use those aggregations resolve dependencies by
-// id reference:
+// target list projections that use those aggregations resolve their id references:
 //
 // select x, sum(y) from xy group by x order by x - count(y)
 // =>
@@ -77,11 +79,11 @@ package planbuilder
 //             ├─ name: xy
 //             └─ columns: [x y z]
 //
-// Passthrough columns not included in the SELECT target list are included in the
-// aggregation outputs:
+// Passthrough columns not included in the SELECT target list need to be added
+// to the intermediate aggregation projection:
 //
 // select x from xy having z > 0
-//
+// =>
 // Project
 // ├─ columns: [xy.x:1!null]
 // └─ Having
@@ -99,7 +101,7 @@ package planbuilder
 // particularly when aggregate functions are initialized outside of their
 // execution scope (select (select u from uv where max(x) > u limit 1) from xy).
 //
-// The second difficulty is how to represent expressions and references while
+// The second difficulty is how to represent complex expressions and references while
 // building the plan, and how low in the tree to execute expression logic. This
 // is a secondary concern compared to generating unique ids for aggregation
 // functions and source columns.
@@ -127,19 +129,11 @@ package planbuilder
 // tree built a subtree of an expression currently being built, it can input
 // the reference rather than computing the subtree.
 //
-// Questions:
-// - can all node types be resolved with this setup? do we run into problems
-//   w/ subqueries?
-// - should we intern expression strings soon or put off?
-// - can type checking fit in this setup?
-//
 // TODO:
-// - A lot of validation logic is missing. Ambiguous table names, column names.
-//   Validating strict grouping columns.
-// - CTEs and recursive CTEs a bit broken.
-// - Windows (skip on first pass?)
-// - Need to see whether indexing pass is necessary before launching plans into
-//   regular analyzer.
-// - Parser branching logic for falling back to current parser converter.
-// - Analyzer branching logic for removing resolve rules for new path.
+// - The analyze phase should include type checking and coercion.
+// - The analyze phase is missing other validation logic.Ambiguous table
+//   names, column names. Validate strict grouping columns.
+// - Use memo to intern built expressions, avoid re-evaluating complex expressions
+//   when references exist.
+// - Much more aggregation testing needed.
 //

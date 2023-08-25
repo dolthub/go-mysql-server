@@ -42,7 +42,7 @@ func NewContextWithClient(harness ClientHarness, client sql.Client) *sql.Context
 }
 
 // TODO: remove
-func NewContextWithEngine(harness Harness, engine *sqle.Engine) *sql.Context {
+func NewContextWithEngine(harness Harness, engine QueryEngine) *sql.Context {
 	return NewContext(harness)
 }
 
@@ -169,7 +169,7 @@ func RunSetupScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScri
 	return e, nil
 }
 
-func MustQuery(ctx *sql.Context, e *sqle.Engine, q string) (sql.Schema, []sql.Row) {
+func MustQuery(ctx *sql.Context, e QueryEngine, q string) (sql.Schema, []sql.Row) {
 	sch, iter, err := e.Query(ctx, q)
 	if err != nil {
 		panic(fmt.Sprintf("err running query %s: %s", q, err))
@@ -181,7 +181,7 @@ func MustQuery(ctx *sql.Context, e *sqle.Engine, q string) (sql.Schema, []sql.Ro
 	return sch, rows
 }
 
-func mustNewEngine(t *testing.T, h Harness) *sqle.Engine {
+func mustNewEngine(t *testing.T, h Harness) QueryEngine {
 	e, err := h.NewEngine(t)
 	if err != nil {
 		require.NoError(t, err)
