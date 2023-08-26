@@ -179,11 +179,17 @@ func wrapRowSource(ctx *sql.Context, scope *plan.Scope, logFn func(string, ...an
 		}
 
 		if !found {
-			if !f.Nullable && f.Default == nil && !f.AutoIncrement {
+			defaultExpr := f.Default
+			if defaultExpr == nil {
+				defaultExpr = f.Generated
+			}
+			
+			if !f.Nullable && defaultExpr == nil && !f.AutoIncrement {
 				return nil, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
 			}
 			var err error
-			def, _, err := transform.Expr(f.Default, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			
+			def, _, err := transform.Expr(defaultExpr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				switch e := e.(type) {
 				case *expression.GetField:
 					return fixidx.FixFieldIndexes(scope, logFn, schema, e.WithTable(destTbl.Name()))
