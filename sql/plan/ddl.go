@@ -543,7 +543,7 @@ func (c *CreateTable) Expressions() []sql.Expression {
 	for _, ch := range c.ChDefs {
 		exprs = append(exprs, ch.Expr)
 	}
-	
+
 	return exprs
 }
 
@@ -593,7 +593,7 @@ func (c CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) 
 	if err != nil {
 		return nil, err
 	}
-	
+
 	nc.CreateSchema = sql.NewPrimaryKeySchema(ns, c.CreateSchema.PkOrdinals...)
 
 	ncd, err := c.ChDefs.FromExpressions(exprs[schemaLen:])

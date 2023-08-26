@@ -216,7 +216,7 @@ func SchemaWithDefaults(schema sql.Schema, defaultExprs []sql.Expression) (sql.S
 	if len(schema) != len(defaultExprs) {
 		return nil, fmt.Errorf("expected %d default expressions, got %d", len(schema), len(defaultExprs))
 	}
-	
+
 	sch := schema.Copy()
 	for i, col := range sch {
 		wrapper, ok := defaultExprs[i].(*expression.Wrapper)
@@ -242,7 +242,7 @@ func SchemaWithDefaults(schema sql.Schema, defaultExprs []sql.Expression) (sql.S
 	return sch, nil
 }
 
-// WrappedColumnDefaults returns the column defaults / generated expressions for the schema given, 
+// WrappedColumnDefaults returns the column defaults / generated expressions for the schema given,
 // wrapped with expression.Wrapper
 func WrappedColumnDefaults(schema sql.Schema) []sql.Expression {
 	defs := make([]sql.Expression, len(schema))

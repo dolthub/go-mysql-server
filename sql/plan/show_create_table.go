@@ -120,7 +120,7 @@ func (sc ShowCreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, er
 	if err != nil {
 		return nil, err
 	}
-	
+
 	sc.targetSchema = sch
 	return &sc, nil
 }

@@ -194,7 +194,7 @@ func TestSingleScript(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "insert into xy (x,y) values (1, DEFAULT)",
+					Query:    "insert into xy (x,y) values (1, DEFAULT)",
 					Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 0}}},
 				},
 			},

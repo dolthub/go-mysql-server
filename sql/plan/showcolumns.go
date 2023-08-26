@@ -98,7 +98,7 @@ func (s ShowColumns) WithExpressions(exprs ...sql.Expression) (sql.Node, error) 
 	if err != nil {
 		return nil, err
 	}
-	
+
 	s.targetSchema = sch
 	return &s, nil
 }

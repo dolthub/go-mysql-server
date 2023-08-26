@@ -74,29 +74,29 @@ var GeneratedColumnTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "create index i1 on t1(b)",
+				Query:    "create index i1 on t1(b)",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "show create table t1",
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
-					"  `a` int NOT NULL,\n" +
-					"  `b` int GENERATED ALWAYS AS ((a + 1)) STORED,\n" +
-					"  PRIMARY KEY (`a`),\n" +
-					"  KEY `i1` (`b`)\n" +
-					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						"  `a` int NOT NULL,\n" +
+						"  `b` int GENERATED ALWAYS AS ((a + 1)) STORED,\n" +
+						"  PRIMARY KEY (`a`),\n" +
+						"  KEY `i1` (`b`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query:       "insert into t1(a) values (1)",
-				Expected: 	[]sql.Row{{types.NewOkResult(1)}},
+				Query:    "insert into t1(a) values (1)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select * from t1 where b = 2 order by a",
 				Expected: []sql.Row{{1, 2}},
 			},
 			{
-				Query:    "explain select * from t1 where b = 2 order by a",
+				Query: "explain select * from t1 where b = 2 order by a",
 				Expected: []sql.Row{
 					{"Sort(t1.a ASC)"},
 					{" └─ IndexedTableAccess(t1)"},
@@ -114,30 +114,30 @@ var GeneratedColumnTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "create index i1 on t1(b,c)",
+				Query:    "create index i1 on t1(b,c)",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "show create table t1",
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
-							"  `a` int NOT NULL,\n" +
-							"  `b` int GENERATED ALWAYS AS ((a + 1)) STORED,\n" +
-					    "  `c` int,\n" +
-							"  PRIMARY KEY (`a`),\n" +
-							"  KEY `i1` (`b`,`c`)\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						"  `a` int NOT NULL,\n" +
+						"  `b` int GENERATED ALWAYS AS ((a + 1)) STORED,\n" +
+						"  `c` int,\n" +
+						"  PRIMARY KEY (`a`),\n" +
+						"  KEY `i1` (`b`,`c`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query:       "insert into t1(a,c) values (1,3)",
-				Expected: 	[]sql.Row{{types.NewOkResult(1)}},
+				Query:    "insert into t1(a,c) values (1,3)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select * from t1 where b = 2 and c = 3 order by a",
 				Expected: []sql.Row{{1, 2, 3}},
 			},
 			{
-				Query:    "explain select * from t1 where b = 2 and c = 3 order by a",
+				Query: "explain select * from t1 where b = 2 and c = 3 order by a",
 				Expected: []sql.Row{
 					{"Sort(t1.a ASC)"},
 					{" └─ IndexedTableAccess(t1)"},

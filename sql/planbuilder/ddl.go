@@ -1018,10 +1018,10 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 		}
 		defaults[i] = cd.Type.Default
 		generated[i] = cd.Type.GeneratedExpr
-		
+
 		cd.Type.Default = nil
 		cd.Type.GeneratedExpr = nil
-		
+
 		column := b.columnDefinitionToColumn(inScope, cd, tableSpec.Indexes)
 
 		if column.PrimaryKey && bool(cd.Type.Null) {
@@ -1045,7 +1045,7 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 			return sql.PrimaryKeySchema{}, sql.Collation_Unspecified
 		}
 	}
-	
+
 	for i, gen := range generated {
 		if gen != nil {
 			virtual := !bool(tableSpec.Columns[i].Type.Stored)
@@ -1180,15 +1180,15 @@ func (b *Builder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinit
 			b.handleErr(sql.ErrInvalidType.New(fmt.Sprintf("cannot define SRID for %s", internalTyp)))
 		}
 	}
-	
+
 	return &sql.Column{
-		Name:           cd.Name.String(),
-		Type:           internalTyp,
-		AutoIncrement:  bool(cd.Type.Autoincrement),
-		Nullable:       nullable,
-		PrimaryKey:     isPkey,
-		Comment:        comment,
-		Extra:          extra,
+		Name:          cd.Name.String(),
+		Type:          internalTyp,
+		AutoIncrement: bool(cd.Type.Autoincrement),
+		Nullable:      nullable,
+		PrimaryKey:    isPkey,
+		Comment:       comment,
+		Extra:         extra,
 	}
 }
 
@@ -1210,7 +1210,7 @@ func (b *Builder) resolveSchemaDefaults(inScope *scope, schema sql.Schema) sql.S
 	return newSch
 }
 
-func (b *Builder) resolveColumnDefaultExpression(inScope *scope, columnDef *sql.Column, colDefault *sql.ColumnDefaultValue) *sql.ColumnDefaultValue{
+func (b *Builder) resolveColumnDefaultExpression(inScope *scope, columnDef *sql.Column, colDefault *sql.ColumnDefaultValue) *sql.ColumnDefaultValue {
 	if colDefault == nil || colDefault.Expr == nil {
 		return colDefault
 	}
@@ -1220,7 +1220,7 @@ func (b *Builder) resolveColumnDefaultExpression(inScope *scope, columnDef *sql.
 		// no resolution work to be done, return the original value
 		return colDefault
 	}
-	
+
 	// Empty string is a special case, it means the default value is the empty string
 	// TODO: why isn't this serialized as ''
 	if def.String() == "" {

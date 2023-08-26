@@ -5624,7 +5624,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	for _, tt := range queries.ColumnDefaultTests {
 		TestScript(t, harness, tt)
 	}
-	
+
 	// Some tests can't currently be run with as a script because they do additional checks
 	t.Run("DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP current_timestamp", func(t *testing.T) {
 		e.Query(ctx, "set @@session.time_zone='SYSTEM';")
@@ -5676,7 +5676,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "select * from t11 order by 1",
 			[]sql.Row{{1, expectedDate, expectedDatetimeString}}, nil, nil)
 	})
-	
+
 	t.Run("Table referenced with column", func(t *testing.T) {
 		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t28(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (t28.pk))", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
 

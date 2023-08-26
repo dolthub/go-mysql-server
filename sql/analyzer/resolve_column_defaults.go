@@ -86,15 +86,15 @@ func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.S
 				if !ok {
 					return e, transform.SameTree, nil
 				}
-				
+
 				defer func() {
 					i++
 				}()
-				
+
 				if eWrapper.Unwrap() == nil {
 					return e, transform.SameTree, nil
 				}
-				
+
 				col, err := lookupColumnForTargetSchema(ctx, node, i)
 				if err != nil {
 					return nil, transform.SameTree, err

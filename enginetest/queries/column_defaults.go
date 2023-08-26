@@ -35,10 +35,10 @@ var ColumnDefaultTests = []ScriptTest{
 				Query: "show create table t1",
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
-					"  `pk` bigint NOT NULL,\n" +
-					"  `v1` bigint DEFAULT '2',\n" +
-					"  PRIMARY KEY (`pk`)\n" +
-					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						"  `pk` bigint NOT NULL,\n" +
+						"  `v1` bigint DEFAULT '2',\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -50,17 +50,17 @@ var ColumnDefaultTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-			Query:    "SELECT * FROM t2",
-			Expected: []sql.Row{{1, 2}, {2, 2}, {3, 3}},
+				Query:    "SELECT * FROM t2",
+				Expected: []sql.Row{{1, 2}, {2, 2}, {3, 3}},
 			},
 			{
 				Query: "show create table t2",
 				Expected: []sql.Row{{"t2",
 					"CREATE TABLE `t2` (\n" +
-					"  `pk` bigint NOT NULL,\n" +
-					"  `v1` smallint DEFAULT (greatest(pk,2)),\n" +
-					"  PRIMARY KEY (`pk`)\n" +
-					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						"  `pk` bigint NOT NULL,\n" +
+						"  `v1` smallint DEFAULT (greatest(pk,2)),\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -620,7 +620,7 @@ var ColumnDefaultTests = []ScriptTest{
 		SetUpScript: []string{"CREATE TABLE t1000(pk BIGINT PRIMARY KEY, v1 INT UNSIGNED DEFAULT (-1))"},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:       "INSERT INTO t1000 (pk) VALUES (1)",
+				Query:          "INSERT INTO t1000 (pk) VALUES (1)",
 				ExpectedErrStr: "4294967295 out of range for int unsigned",
 			},
 		},

@@ -110,7 +110,7 @@ func (a AlterPK) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		return nil, err
 	}
 	a.targetSchema = sch
-	
+
 	return &a, nil
 }
 

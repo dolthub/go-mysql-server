@@ -201,7 +201,7 @@ func (d AlterDefaultDrop) WithExpressions(exprs ...sql.Expression) (sql.Node, er
 		return nil, err
 	}
 	d.targetSchema = sch
-	
+
 	return &d, nil
 }
 

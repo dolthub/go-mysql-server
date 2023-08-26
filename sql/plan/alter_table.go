@@ -299,7 +299,7 @@ func (a AddColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	a.targetSch = sch
 
 	unwrappedColDefVal, ok := exprs[len(exprs)-1].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
@@ -600,7 +600,7 @@ func (d DropColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		return nil, err
 	}
 	d.targetSchema = sch
-	
+
 	return &d, nil
 }
 
@@ -693,7 +693,7 @@ func (r RenameColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	r.targetSchema = sch
 	return &r, nil
 }

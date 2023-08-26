@@ -161,7 +161,7 @@ func (id InsertDestination) WithExpressions(exprs ...sql.Expression) (sql.Node, 
 	if err != nil {
 		return nil, err
 	}
-	
+
 	id.Sch = sch
 	return &id, nil
 }
