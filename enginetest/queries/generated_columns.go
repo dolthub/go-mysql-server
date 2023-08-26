@@ -56,6 +56,14 @@ var GeneratedColumnTests = []ScriptTest{
 				Query:    "select * from t1 order by a",
 				Expected: []sql.Row{{1, 2}, {2, 3}, {3, 4}},
 			},
+			{
+				Query:    "insert into t1(a,b) values (4, DEFAULT)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select * from t1 where b = 5 order by a",
+				Expected: []sql.Row{{4, 5}},
+			},
 		},
 	},
 	{
