@@ -1893,6 +1893,23 @@ var InsertScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "INSERT IGNORE works with FK Violations",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (id INT PRIMARY KEY, v int);",
+			"CREATE TABLE t2 (id INT PRIMARY KEY, v2 int, CONSTRAINT mfk FOREIGN KEY (v2) REFERENCES t1(id));",
+			"INSERT INTO t1 values (1,1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "INSERT IGNORE INTO t2 VALUES (1,2);",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 0}},
+				},
+				ExpectedWarning: mysql.ErNoReferencedRow2,
+			},
+		},
+	},
 }
 
 var InsertDuplicateKeyKeyless = []ScriptTest{
@@ -2524,24 +2541,6 @@ var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 }
 
 var InsertBrokenScripts = []ScriptTest{
-	// TODO: Support unique keys and FK violations in memory implementation
-	{
-		Name: "Test that INSERT IGNORE works with FK Violations",
-		SetUpScript: []string{
-			"CREATE TABLE t1 (id INT PRIMARY KEY, v int);",
-			"CREATE TABLE t2 (id INT PRIMARY KEY, v2 int, CONSTRAINT mfk FOREIGN KEY (v2) REFERENCES t1(id));",
-			"INSERT INTO t1 values (1,1)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "INSERT IGNORE INTO t2 VALUES (1,2);",
-				Expected: []sql.Row{
-					{types.OkResult{RowsAffected: 0}},
-				},
-				ExpectedWarning: mysql.ErNoReferencedRow2,
-			},
-		},
-	},
 	// TODO: Condense all of our casting logic into a single error.
 	{
 		Name: "Test that INSERT IGNORE assigns the closest dataype correctly",
@@ -2570,6 +2569,18 @@ var InsertBrokenScripts = []ScriptTest{
 					{types.OkResult{RowsAffected: 1}},
 				},
 				ExpectedWarning: mysql.ERTruncatedWrongValueForField,
+			},
+		},
+	},
+	{
+		Name: "Test explicit default with column reference",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (a int default 1, b int default (a+1));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO t1 (a,b) values (1, DEFAULT)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
 		},
 	},

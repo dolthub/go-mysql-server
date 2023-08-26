@@ -188,20 +188,13 @@ func TestSingleScript(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			// https://github.com/dolthub/dolt/issues/4857
-			Name: "issue 4857: insert cte column alias with table alias qualify panic",
+			Name: "insert default value",
 			SetUpScript: []string{
-				"create table xy (x int primary key, y int)",
-				"insert into xy values (0,0), (1,1), (2,2)",
+				"create table xy (x int primary key, y int default (x+1))",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: `With a as (
-  With b as (
-    Select sum(x) as x, y from xy where x < 2 group by y
-  )
-  Select * from b d
-) insert into xy (x,y) select x+9,y+9 from a;`,
+					Query: "insert into xy (x,y) values (1, DEFAULT)",
 					Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 0}}},
 				},
 			},
@@ -410,7 +403,7 @@ func TestInsertIntoErrors(t *testing.T) {
 }
 
 func TestBrokenInsertScripts(t *testing.T) {
-	enginetest.TestBrokenInsertScripts(t, enginetest.NewSkippingMemoryHarness())
+	enginetest.TestBrokenInsertScripts(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestGeneratedColumns(t *testing.T) {
