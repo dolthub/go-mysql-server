@@ -1727,7 +1727,7 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) er
 		}
 	}
 
-	potentialSchema := copyschema(t.schema.Schema)
+	potentialSchema := t.schema.Schema.Copy()
 
 	pkOrdinals := make([]int, len(columns))
 	for i, newCol := range columns {
@@ -1830,38 +1830,38 @@ func (ps partitionssort) Swap(i, j int) {
 	ps.ps[lidx.key][lidx.i], ps.ps[ridx.key][ridx.i] = ps.ps[ridx.key][ridx.i], ps.ps[lidx.key][lidx.i]
 }
 
-func copyschema(sch sql.Schema) sql.Schema {
-	potentialSchema := make(sql.Schema, len(sch))
-
-	for i, c := range sch {
-		potentialSchema[i] = &sql.Column{
-			Name:          c.Name,
-			Type:          c.Type,
-			Default:       c.Default,
-			AutoIncrement: c.AutoIncrement,
-			Nullable:      c.Nullable,
-			Source:        c.Source,
-			PrimaryKey:    c.PrimaryKey,
-			Comment:       c.Comment,
-			Extra:         c.Extra,
-		}
+func (t Table) copy() *Table {
+	parts := make(map[string][]sql.Row, len(t.partitions))
+	for k, v := range t.partitions {
+		data := make([]sql.Row, len(v))
+		copy(data, v)
+		parts[k] = v
 	}
-
-	return potentialSchema
+	
+	keys := make([][]byte, len(t.partitionKeys))
+	copy(keys, t.partitionKeys)
+	
+	t.partitionKeys, t.partitions = keys, parts
+	
+	sch := t.schema.Schema.Copy()
+	pkSch := sql.NewPrimaryKeySchema(sch, t.schema.PkOrdinals...)
+	t.schema = pkSch
+	
+	projection := make([]string, len(t.projection))
+	copy(projection, t.projection)
+	t.projection = projection
+	
+	columns := make([]int, len(t.columns))
+	copy(columns, t.columns)
+	t.columns = columns
+	
+	return &t
 }
 
 func newTable(t *Table, newSch sql.PrimaryKeySchema) (*Table, error) {
-	newTable := NewPartitionedTableWithCollation(t.name, newSch, t.fkColl, len(t.partitions), t.collation)
-	for _, partition := range t.partitions {
-		for _, partitionRow := range partition {
-			err := newTable.Insert(sql.NewEmptyContext(), partitionRow)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	return newTable, nil
+	table := t.copy()
+	table.schema = newSch
+	return table, nil
 }
 
 // DropPrimaryKey implements the PrimaryKeyAlterableTable
