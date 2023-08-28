@@ -211,11 +211,11 @@ func (m *MemoryHarness) NewContext() *sql.Context {
 }
 
 func (m *MemoryHarness) NewContextWithClient(client sql.Client) *sql.Context {
-	session := sql.NewBaseSessionWithClientServer("address", client, 1)
+	baseSession := sql.NewBaseSessionWithClientServer("address", client, 1)
 
 	return sql.NewContext(
 		context.Background(),
-		sql.WithSession(session),
+		sql.WithSession(memory.NewSession(baseSession)),
 	)
 }
 
