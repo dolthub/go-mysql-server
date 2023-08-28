@@ -83,7 +83,7 @@ func (t *tableEditor) Close(ctx *sql.Context) error {
 	if err != nil {
 		return err
 	}
-	
+
 	sess := SessionFromContext(ctx)
 	sess.clearEditAccumulator(t.table)
 	return nil

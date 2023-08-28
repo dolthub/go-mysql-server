@@ -22,7 +22,7 @@ import (
 
 type Session struct {
 	*sql.BaseSession
-	editAccumulators map[string]tableEditAccumulator	
+	editAccumulators map[string]tableEditAccumulator
 }
 
 var _ sql.Session = (*Session)(nil)
@@ -30,7 +30,7 @@ var _ sql.Session = (*Session)(nil)
 // NewSession returns the new session for this object
 func NewSession(baseSession *sql.BaseSession) *Session {
 	return &Session{
-		BaseSession: baseSession,
+		BaseSession:      baseSession,
 		editAccumulators: make(map[string]tableEditAccumulator),
 	}
 }
@@ -47,7 +47,7 @@ func (s *Session) editAccumulator(t *Table) tableEditAccumulator {
 		ea = NewTableEditAccumulator(t)
 		s.editAccumulators[strings.ToLower(t.name)] = ea
 	}
-	
+
 	return ea
 }
 

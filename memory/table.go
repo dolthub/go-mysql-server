@@ -86,6 +86,7 @@ var _ fulltext.IndexAlterableTable = (*Table)(nil)
 
 var _ sql.ForeignKeyTable = (*Table)(nil)
 var _ sql.CheckAlterableTable = (*Table)(nil)
+
 // var _ sql.RewritableTable = (*Table)(nil)
 var _ sql.CheckTable = (*Table)(nil)
 var _ sql.AutoIncrementTable = (*Table)(nil)
@@ -1837,28 +1838,28 @@ func (t Table) copy() *Table {
 		copy(data, v)
 		parts[k] = v
 	}
-	
+
 	keys := make([][]byte, len(t.partitionKeys))
 	copy(keys, t.partitionKeys)
-	
+
 	t.partitionKeys, t.partitions = keys, parts
-	
+
 	sch := t.schema.Schema.Copy()
 	pkSch := sql.NewPrimaryKeySchema(sch, t.schema.PkOrdinals...)
 	t.schema = pkSch
-	
+
 	if t.projection != nil {
 		projection := make([]string, len(t.projection))
 		copy(projection, t.projection)
 		t.projection = projection
 	}
-	
+
 	if t.columns != nil {
 		columns := make([]int, len(t.columns))
 		copy(columns, t.columns)
 		t.columns = columns
 	}
-	
+
 	return &t
 }
 
@@ -2102,8 +2103,8 @@ func NewHistogramMapFromTable(ctx *sql.Context, t sql.Table) (sql.HistogramMap, 
 
 func (t Table) ShouldRewriteTable(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column) bool {
 	return orderChanged(oldSchema, newSchema, oldColumn, newColumn) ||
-			isColumnDrop(oldSchema, newSchema) ||
-			isPrimaryKeyChange(oldSchema, newSchema)
+		isColumnDrop(oldSchema, newSchema) ||
+		isPrimaryKeyChange(oldSchema, newSchema)
 }
 
 func orderChanged(oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column) bool {
@@ -2115,7 +2116,7 @@ func orderChanged(oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColum
 }
 
 func isPrimaryKeyChange(oldSchema sql.PrimaryKeySchema,
-		newSchema sql.PrimaryKeySchema) bool {
+	newSchema sql.PrimaryKeySchema) bool {
 	return len(newSchema.PkOrdinals) != len(oldSchema.PkOrdinals)
 }
 
@@ -2125,11 +2126,11 @@ func isColumnDrop(oldSchema sql.PrimaryKeySchema, newSchema sql.PrimaryKeySchema
 
 // func (t Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column, idxCols []sql.IndexColumn) (sql.RowInserter, error) {
 // 	editor := t.getTableEditor(ctx).(*tableEditor)
-// 	
-// 	editorCopy :=	*editor 
-// 	
+//
+// 	editorCopy :=	*editor
+//
 // 	// we want an editor that will truncate the table shortly just before applying all of its edits
 // 	editor.isRewrite = true
-// 	
+//
 // 	return editor, nil
 // }

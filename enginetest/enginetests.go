@@ -271,7 +271,7 @@ func RunQueryTests(t *testing.T, harness Harness, queries []queries.QueryTest) {
 func TestInfoSchema(t *testing.T, h Harness) {
 	h.Setup(setup.MydbData, setup.MytableData, setup.Fk_tblData, setup.FooData)
 	for _, tt := range queries.InfoSchemaQueries {
-		TestQuery(t, h, tt.Query, tt.Expected, tt.ExpectedColumns, nil)			
+		TestQuery(t, h, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}
 
 	for _, script := range queries.InfoSchemaScripts {
