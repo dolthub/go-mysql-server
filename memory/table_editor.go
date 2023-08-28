@@ -28,6 +28,8 @@ type tableEditor struct {
 	initialAutoIncVal uint64
 	initialPartitions map[string][]sql.Row
 	ea                tableEditAccumulator
+	isRewrite         bool
+	schema            sql.Schema
 	initialInsert     int
 	// array of key ordinals for each unique index defined on the table
 	uniqueIdxCols [][]int

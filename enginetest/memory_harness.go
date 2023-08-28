@@ -197,7 +197,8 @@ func (m *MemoryHarness) Parallelism() int {
 
 func (m *MemoryHarness) NewContext() *sql.Context {
 	if m.session == nil {
-		m.session = NewBaseSession()
+		baseSession := NewBaseSession()
+		m.session = memory.NewSession(baseSession)
 		if m.driver != nil {
 			m.session.GetIndexRegistry().RegisterIndexDriver(m.driver)
 		}

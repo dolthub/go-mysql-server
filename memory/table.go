@@ -46,7 +46,6 @@ type Table struct {
 	checks           []sql.CheckDefinition
 	collation        sql.CollationID
 	pkIndexesEnabled bool
-	ed               tableEditAccumulator
 
 	// pushdown info
 	filters         []sql.Expression // currently unused, filter pushdown is significantly broken right now
@@ -87,7 +86,7 @@ var _ fulltext.IndexAlterableTable = (*Table)(nil)
 
 var _ sql.ForeignKeyTable = (*Table)(nil)
 var _ sql.CheckAlterableTable = (*Table)(nil)
-var _ sql.RewritableTable = (*Table)(nil)
+// var _ sql.RewritableTable = (*Table)(nil)
 var _ sql.CheckTable = (*Table)(nil)
 var _ sql.AutoIncrementTable = (*Table)(nil)
 var _ sql.StatisticsTable = (*Table)(nil)
@@ -615,28 +614,10 @@ func (t *Table) AutoIncrementSetter(ctx *sql.Context) sql.AutoIncrementSetter {
 }
 
 func (t *Table) getTableEditor(ctx *sql.Context) sql.TableEditor {
-	var uniqIdxCols [][]int
-	var prefixLengths [][]uint16
-	for _, idx := range t.indexes {
-		if !idx.IsUnique() {
-			continue
-		}
-		var colNames []string
-		expressions := idx.(*Index).Exprs
-		for _, exp := range expressions {
-			colNames = append(colNames, exp.(*expression.GetField).Name())
-		}
-		colIdxs, err := t.columnIndexes(colNames)
-		if err != nil {
-			panic("failed to get column indexes")
-		}
-		uniqIdxCols = append(uniqIdxCols, colIdxs)
-		prefixLengths = append(prefixLengths, idx.PrefixLengths())
-	}
+	uniqIdxCols, prefixLengths := t.indexColsForTableEditor()
 
-	if t.ed == nil {
-		t.ed = NewTableEditAccumulator(t)
-	}
+	sess := SessionFromContext(ctx)
+	ed := sess.editAccumulator(t)
 
 	tableSets := t.getFulltextTableSets(ctx)
 
@@ -644,7 +625,7 @@ func (t *Table) getTableEditor(ctx *sql.Context) sql.TableEditor {
 		table:             t,
 		initialAutoIncVal: 1,
 		initialPartitions: nil,
-		ea:                t.ed,
+		ea:                ed,
 		initialInsert:     0,
 		uniqueIdxCols:     uniqIdxCols,
 		prefixLengths:     prefixLengths,
@@ -669,6 +650,28 @@ func (t *Table) getTableEditor(ctx *sql.Context) sql.TableEditor {
 	}
 
 	return editor
+}
+
+func (t *Table) indexColsForTableEditor() ([][]int, [][]uint16) {
+	var uniqIdxCols [][]int
+	var prefixLengths [][]uint16
+	for _, idx := range t.indexes {
+		if !idx.IsUnique() {
+			continue
+		}
+		var colNames []string
+		expressions := idx.(*Index).Exprs
+		for _, exp := range expressions {
+			colNames = append(colNames, exp.(*expression.GetField).Name())
+		}
+		colIdxs, err := t.columnIndexes(colNames)
+		if err != nil {
+			panic("failed to get column indexes")
+		}
+		uniqIdxCols = append(uniqIdxCols, colIdxs)
+		prefixLengths = append(prefixLengths, idx.PrefixLengths())
+	}
+	return uniqIdxCols, prefixLengths
 }
 
 func (t *Table) getFulltextTableSets(ctx *sql.Context) []fulltext.TableSet {
@@ -1891,7 +1894,6 @@ func (t *Table) DropPrimaryKey(ctx *sql.Context) error {
 	}
 
 	delete(t.indexes, "PRIMARY")
-	t.ed = nil
 
 	t.schema.PkOrdinals = []int{}
 
@@ -2117,6 +2119,13 @@ func isColumnDrop(oldSchema sql.PrimaryKeySchema, newSchema sql.PrimaryKeySchema
 	return len(oldSchema.Schema) > len(newSchema.Schema)
 }
 
-func (t Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column, idxCols []sql.IndexColumn) (sql.RowInserter, error) {
-	
-}
+// func (t Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column, idxCols []sql.IndexColumn) (sql.RowInserter, error) {
+// 	editor := t.getTableEditor(ctx).(*tableEditor)
+// 	
+// 	editorCopy :=	*editor 
+// 	
+// 	// we want an editor that will truncate the table shortly just before applying all of its edits
+// 	editor.isRewrite = true
+// 	
+// 	return editor, nil
+// }
