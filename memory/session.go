@@ -50,3 +50,7 @@ func (s *Session) editAccumulator(t *Table) tableEditAccumulator {
 	
 	return ea
 }
+
+func (s *Session) clearEditAccumulator(t *Table) {
+	delete(s.editAccumulators, strings.ToLower(t.name))
+}

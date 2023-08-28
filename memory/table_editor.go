@@ -78,7 +78,14 @@ func (t *tableEditor) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 
 func (t *tableEditor) Close(ctx *sql.Context) error {
 	// Checkpointing is equivalent to flushing for tableEditor
-	return t.StatementComplete(ctx)
+	err := t.StatementComplete(ctx)
+	if err != nil {
+		return err
+	}
+	
+	sess := SessionFromContext(ctx)
+	sess.clearEditAccumulator(t.table)
+	return nil
 }
 
 func (t *tableEditor) StatementBegin(ctx *sql.Context) {
