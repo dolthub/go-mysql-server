@@ -192,29 +192,31 @@ func stripTableNamesFromColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node
 func lookupColumnForTargetSchema(_ *sql.Context, node sql.SchemaTarget, colIndex int) (*sql.Column, error) {
 	schema := node.TargetSchema()
 
-	switch n2 := node.(type) {
+	switch n := node.(type) {
 	case *plan.ModifyColumn:
 		if colIndex < len(schema) {
 			return schema[colIndex], nil
 		} else {
-			return n2.NewColumn(), nil
+			return n.NewColumn(), nil
 		}
 	case *plan.AddColumn:
 		if colIndex < len(schema) {
 			return schema[colIndex], nil
 		} else {
-			return n2.Column(), nil
+			return n.Column(), nil
 		}
 	case *plan.AlterDefaultSet:
-		index := schema.IndexOfColName(n2.ColumnName)
+		index := schema.IndexOfColName(n.ColumnName)
 		if index == -1 {
-			return nil, sql.ErrTableColumnNotFound.New(n2.Table, n2.ColumnName)
+			return nil, sql.ErrTableColumnNotFound.New(n.Table, n.ColumnName)
 		}
 		return schema[index], nil
 	default:
 		if colIndex < len(schema) {
 			return schema[colIndex], nil
 		} else {
+			// TODO: sql.ErrColumnNotFound would be a better error here, but we need to add all the different node types to
+			//  the switch to get it
 			return nil, expression.ErrIndexOutOfBounds.New(colIndex, len(schema))
 		}
 	}
