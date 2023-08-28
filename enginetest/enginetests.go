@@ -270,7 +270,9 @@ func RunQueryTests(t *testing.T, harness Harness, queries []queries.QueryTest) {
 // TestInfoSchema runs tests of the information_schema database
 func TestInfoSchema(t *testing.T, h Harness) {
 	h.Setup(setup.MydbData, setup.MytableData, setup.Fk_tblData, setup.FooData)
-	RunQueryTests(t, h, queries.InfoSchemaQueries)
+	for _, tt := range queries.InfoSchemaQueries {
+		TestQuery(t, h, tt.Query, tt.Expected, tt.ExpectedColumns, nil)			
+	}
 
 	for _, script := range queries.InfoSchemaScripts {
 		TestScript(t, h, script)

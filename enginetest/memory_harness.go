@@ -100,6 +100,7 @@ func (m *MemoryHarness) InitializeIndexDriver(dbs []sql.Database) {
 }
 
 func (m *MemoryHarness) NewSession() *sql.Context {
+	m.session = m.newSession()
 	return m.NewContext()
 }
 
@@ -143,6 +144,7 @@ func (m *MemoryHarness) Setup(setupData ...[]setup.SetupScript) {
 }
 
 func (m *MemoryHarness) NewEngine(t *testing.T) (QueryEngine, error) {
+	m.session = nil
 	engine, err := NewEngine(t, m, m.getProvider(), m.setupData)
 	if err != nil {
 		return nil, err
@@ -197,17 +199,22 @@ func (m *MemoryHarness) Parallelism() int {
 
 func (m *MemoryHarness) NewContext() *sql.Context {
 	if m.session == nil {
-		baseSession := NewBaseSession()
-		m.session = memory.NewSession(baseSession)
-		if m.driver != nil {
-			m.session.GetIndexRegistry().RegisterIndexDriver(m.driver)
-		}
+		m.session = m.newSession()
 	}
 
 	return sql.NewContext(
 		context.Background(),
 		sql.WithSession(m.session),
 	)
+}
+
+func (m *MemoryHarness) newSession() *memory.Session {
+	baseSession := NewBaseSession()
+	session := memory.NewSession(baseSession)
+	if m.driver != nil {
+		session.GetIndexRegistry().RegisterIndexDriver(m.driver)
+	}
+	return session
 }
 
 func (m *MemoryHarness) NewContextWithClient(client sql.Client) *sql.Context {
@@ -265,7 +272,7 @@ func (m *MemoryHarness) NewDatabases(names ...string) []sql.Database {
 func (m *MemoryHarness) NewReadOnlyEngine(provider sql.DatabaseProvider) (QueryEngine, error) {
 	dbs := make([]sql.Database, 0)
 	for _, db := range provider.AllDatabases(m.NewContext()) {
-		dbs = append(dbs, memory.ReadOnlyDatabase{db.(*memory.HistoryDatabase)})
+		dbs = append(dbs, memory.ReadOnlyDatabase{HistoryDatabase: db.(*memory.HistoryDatabase)})
 	}
 
 	readOnlyProvider := memory.NewDBProviderWithOpts(memory.WithDbsOption(dbs))
