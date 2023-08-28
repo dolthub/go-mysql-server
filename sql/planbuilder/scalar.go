@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -428,13 +429,13 @@ func (b *Builder) buildBinaryScalar(inScope *scope, be *ast.BinaryExpr) sql.Expr
 		}
 
 	case ast.JSONExtractOp, ast.JSONUnquoteExtractOp:
-		jsonExtract, err := function.NewJSONExtract(l, r)
+		jsonExtract, err := json.NewJSONExtract(l, r)
 		if err != nil {
 			b.handleErr(err)
 		}
 
 		if operator == ast.JSONUnquoteExtractOp {
-			return function.NewJSONUnquote(jsonExtract)
+			return json.NewJSONUnquote(jsonExtract)
 		}
 		return jsonExtract
 
@@ -600,13 +601,13 @@ func (b *Builder) binaryExprToExpression(inScope *scope, be *ast.BinaryExpr) (sq
 		}
 
 	case ast.JSONExtractOp, ast.JSONUnquoteExtractOp:
-		jsonExtract, err := function.NewJSONExtract(l, r)
+		jsonExtract, err := json.NewJSONExtract(l, r)
 		if err != nil {
 			return nil, err
 		}
 
 		if operator == ast.JSONUnquoteExtractOp {
-			return function.NewJSONUnquote(jsonExtract), nil
+			return json.NewJSONUnquote(jsonExtract), nil
 		}
 		return jsonExtract, nil
 
