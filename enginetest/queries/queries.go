@@ -743,6 +743,23 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		Query: "select * from (select 1, 1) a(x,y) union select * from (select 1, NULL) b(x,y) union select * from (select 1,1) c(x,y);",
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "x",
+				Type: types.Int8,
+			},
+			{
+				Name: "y",
+				Type: types.Int64,
+			},
+		},
+		Expected: []sql.Row{
+			{1, 1},
+			{1, nil},
+		},
+	},
+	{
 		Query: `SELECT I,S from mytable order by 1`,
 		ExpectedColumns: sql.Schema{
 			{
