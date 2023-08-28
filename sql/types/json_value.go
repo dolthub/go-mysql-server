@@ -54,6 +54,20 @@ type SearchableJSONValue interface {
 	Search(ctx *sql.Context) (path string, err error)
 }
 
+type MutableJSONValue interface {
+	// Insert Adds the value at the give path, if it is not present. Updated value returned, and bool indicating if
+	// a change was made.
+	Insert(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
+	// Remove the value at the given path. Updated value returned, and bool indicating if a change was made.
+	Remove(ctx *sql.Context, path string) (MutableJSONValue, bool, error)
+	// Set the value at the given path. Updated value returned, and bool indicating if a change was made.
+	Set(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
+	// Replace the value
+	Replace(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
+
+	// NM4 build and convert functions required.
+}
+
 type JSONDocument struct {
 	Val interface{}
 }
@@ -77,6 +91,7 @@ func (doc JSONDocument) ToString(_ *sql.Context) (string, error) {
 }
 
 var _ SearchableJSONValue = JSONDocument{}
+var _ MutableJSONValue = JSONDocument{}
 
 // Contains returns nil in case of a nil value for either the doc.Val or candidate. Otherwise
 // it returns a bool
@@ -547,4 +562,24 @@ func jsonObjectDeterministicOrder(a, b map[string]interface{}, inter []string) (
 	}
 
 	return strings.Compare(aa, bb), nil
+}
+
+func (doc JSONDocument) Insert(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (doc JSONDocument) Remove(ctx *sql.Context, path string) (MutableJSONValue, bool, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (doc JSONDocument) Set(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (doc JSONDocument) Replace(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
+	//TODO implement me
+	panic("implement me")
 }
