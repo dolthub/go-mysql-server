@@ -87,6 +87,7 @@ var _ fulltext.IndexAlterableTable = (*Table)(nil)
 
 var _ sql.ForeignKeyTable = (*Table)(nil)
 var _ sql.CheckAlterableTable = (*Table)(nil)
+var _ sql.RewritableTable = (*Table)(nil)
 var _ sql.CheckTable = (*Table)(nil)
 var _ sql.AutoIncrementTable = (*Table)(nil)
 var _ sql.StatisticsTable = (*Table)(nil)
@@ -637,6 +638,40 @@ func (t *Table) getTableEditor(ctx *sql.Context) sql.TableEditor {
 		t.ed = NewTableEditAccumulator(t)
 	}
 
+	tableSets := t.getFulltextTableSets(ctx)
+
+	var editor sql.TableEditor = &tableEditor{
+		table:             t,
+		initialAutoIncVal: 1,
+		initialPartitions: nil,
+		ea:                t.ed,
+		initialInsert:     0,
+		uniqueIdxCols:     uniqIdxCols,
+		prefixLengths:     prefixLengths,
+	}
+
+	if len(tableSets) > 0 {
+		configTbl, ok, err := t.db.GetTableInsensitive(ctx, t.fullTextConfigTableName)
+		if err != nil {
+			panic(err)
+		}
+		if !ok { // This should never happen
+			panic(fmt.Sprintf("table `%s` declares the table `%s` as a FULLTEXT config table, but it could not be found", t.name, configTbl))
+		}
+		ftEditor, err := fulltext.CreateEditor(ctx, t, configTbl.(fulltext.EditableTable), tableSets...)
+		if err != nil {
+			panic(err)
+		}
+		editor, err = fulltext.CreateMultiTableEditor(ctx, editor, ftEditor)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	return editor
+}
+
+func (t *Table) getFulltextTableSets(ctx *sql.Context) []fulltext.TableSet {
 	var tableSets []fulltext.TableSet
 	for _, idx := range t.indexes {
 		if !idx.IsFullText() {
@@ -691,36 +726,7 @@ func (t *Table) getTableEditor(ctx *sql.Context) sql.TableEditor {
 			RowCount:    rowCountTbl.(fulltext.EditableTable),
 		})
 	}
-
-	var editor sql.TableEditor = &tableEditor{
-		table:             t,
-		initialAutoIncVal: 1,
-		initialPartitions: nil,
-		ea:                t.ed,
-		initialInsert:     0,
-		uniqueIdxCols:     uniqIdxCols,
-		prefixLengths:     prefixLengths,
-	}
-
-	if len(tableSets) > 0 {
-		configTbl, ok, err := t.db.GetTableInsensitive(ctx, t.fullTextConfigTableName)
-		if err != nil {
-			panic(err)
-		}
-		if !ok { // This should never happen
-			panic(fmt.Sprintf("table `%s` declares the table `%s` as a FULLTEXT config table, but it could not be found", t.name, configTbl))
-		}
-		ftEditor, err := fulltext.CreateEditor(ctx, t, configTbl.(fulltext.EditableTable), tableSets...)
-		if err != nil {
-			panic(err)
-		}
-		editor, err = fulltext.CreateMultiTableEditor(ctx, editor, ftEditor)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	return editor
+	return tableSets
 }
 
 func (t *Table) Truncate(ctx *sql.Context) (int, error) {
@@ -2086,4 +2092,31 @@ func NewHistogramMapFromTable(ctx *sql.Context, t sql.Table) (sql.HistogramMap, 
 	}
 
 	return histMap, nil
+}
+
+func (t Table) ShouldRewriteTable(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column) bool {
+	return orderChanged(oldSchema, newSchema, oldColumn, newColumn) ||
+			isColumnDrop(oldSchema, newSchema) ||
+			isPrimaryKeyChange(oldSchema, newSchema)
+}
+
+func orderChanged(oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column) bool {
+	if oldColumn == nil || newColumn == nil {
+		return false
+	}
+
+	return oldSchema.Schema.IndexOfColName(oldColumn.Name) != newSchema.Schema.IndexOfColName(newColumn.Name)
+}
+
+func isPrimaryKeyChange(oldSchema sql.PrimaryKeySchema,
+		newSchema sql.PrimaryKeySchema) bool {
+	return len(newSchema.PkOrdinals) != len(oldSchema.PkOrdinals)
+}
+
+func isColumnDrop(oldSchema sql.PrimaryKeySchema, newSchema sql.PrimaryKeySchema) bool {
+	return len(oldSchema.Schema) > len(newSchema.Schema)
+}
+
+func (t Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column, idxCols []sql.IndexColumn) (sql.RowInserter, error) {
+	
 }
