@@ -853,6 +853,9 @@ var (
 	// ErrGeneratedColumnValue is returned when a value is provided for a generated column
 	ErrGeneratedColumnValue = errors.NewKind("The value specified for generated column %q in table %q is not allowed.")
 
+	// ErrGeneratedColumnWithDefault is returned when a column specifies both a default and a generated value
+	ErrGeneratedColumnWithDefault = errors.NewKind("Incorrect usage of DEFAULT and generated column")
+
 	ErrInsertIntoMismatchValueCount = errors.NewKind("number of values does not match number of columns provided")
 )
 

@@ -105,7 +105,12 @@ func (a AlterPK) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(exprs), len(a.targetSchema))
 	}
 
-	a.targetSchema = transform.SchemaWithDefaults(a.targetSchema, exprs[:len(a.targetSchema)])
+	sch, err := transform.SchemaWithDefaults(a.targetSchema, exprs[:len(a.targetSchema)])
+	if err != nil {
+		return nil, err
+	}
+	a.targetSchema = sch
+
 	return &a, nil
 }
 

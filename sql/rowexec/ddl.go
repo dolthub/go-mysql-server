@@ -221,7 +221,7 @@ func (b *BaseBuilder) buildAlterDefaultSet(ctx *sql.Context, n *plan.AlterDefaul
 	}
 	newCol := &(*col)
 	newCol.Default = n.Default
-	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, n.ColumnName, newCol, nil)
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), alterable.ModifyColumn(ctx, n.ColumnName, newCol, nil)
 }
 
 func (b *BaseBuilder) buildDropCheck(ctx *sql.Context, n *plan.DropCheck, row sql.Row) (sql.RowIter, error) {
@@ -420,7 +420,7 @@ func (b *BaseBuilder) buildAlterDefaultDrop(ctx *sql.Context, n *plan.AlterDefau
 	}
 	newCol := &(*col)
 	newCol.Default = nil
-	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, n.ColumnName, newCol, nil)
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), alterable.ModifyColumn(ctx, n.ColumnName, newCol, nil)
 }
 
 func (b *BaseBuilder) buildDropView(ctx *sql.Context, n *plan.DropView, row sql.Row) (sql.RowIter, error) {

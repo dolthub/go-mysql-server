@@ -295,7 +295,12 @@ func (a AddColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(exprs), 1+len(a.targetSch))
 	}
 
-	a.targetSch = transform.SchemaWithDefaults(a.targetSch, exprs[:len(a.targetSch)])
+	sch, err := transform.SchemaWithDefaults(a.targetSch, exprs[:len(a.targetSch)])
+	if err != nil {
+		return nil, err
+	}
+
+	a.targetSch = sch
 
 	unwrappedColDefVal, ok := exprs[len(exprs)-1].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
 
@@ -590,7 +595,12 @@ func (d DropColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(exprs), len(d.targetSchema))
 	}
 
-	d.targetSchema = transform.SchemaWithDefaults(d.targetSchema, exprs)
+	sch, err := transform.SchemaWithDefaults(d.targetSchema, exprs)
+	if err != nil {
+		return nil, err
+	}
+	d.targetSchema = sch
+
 	return &d, nil
 }
 
@@ -679,7 +689,12 @@ func (r RenameColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error)
 		return nil, sql.ErrInvalidChildrenNumber.New(r, len(exprs), len(r.targetSchema))
 	}
 
-	r.targetSchema = transform.SchemaWithDefaults(r.targetSchema, exprs)
+	sch, err := transform.SchemaWithDefaults(r.targetSchema, exprs)
+	if err != nil {
+		return nil, err
+	}
+
+	r.targetSchema = sch
 	return &r, nil
 }
 
@@ -815,7 +830,11 @@ func (m ModifyColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error)
 		return nil, sql.ErrInvalidChildrenNumber.New(m, len(exprs), 1+len(m.targetSchema))
 	}
 
-	m.targetSchema = transform.SchemaWithDefaults(m.targetSchema, exprs[:len(m.targetSchema)])
+	sch, err := transform.SchemaWithDefaults(m.targetSchema, exprs[:len(m.targetSchema)])
+	if err != nil {
+		return nil, err
+	}
+	m.targetSchema = sch
 
 	unwrappedColDefVal, ok := exprs[len(exprs)-1].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
 	if ok {

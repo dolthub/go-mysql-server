@@ -54,11 +54,7 @@ func (s Schema) CheckRow(row Row) error {
 func (s Schema) Copy() Schema {
 	ns := make(Schema, len(s))
 	for i, col := range s {
-		nc := *col
-		if nc.Default != nil {
-			nc.Default = &(*nc.Default)
-		}
-		ns[i] = &nc
+		ns[i] = col.Copy()
 	}
 	return ns
 }

@@ -80,18 +80,25 @@ func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.S
 
 			// There may be multiple DDL nodes in the plan (ALTER TABLE statements can have many clauses), and for each of them
 			// we need to count the column indexes in the very hacky way outlined above.
-			colIndex := 0
+			i := 0
 			return transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
 				if !ok {
 					return e, transform.SameTree, nil
 				}
 
-				col, err := lookupColumnForTargetSchema(ctx, node, colIndex)
+				defer func() {
+					i++
+				}()
+
+				if eWrapper.Unwrap() == nil {
+					return e, transform.SameTree, nil
+				}
+
+				col, err := lookupColumnForTargetSchema(ctx, node, i)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
-				colIndex++
 
 				err = validateColumnDefault(ctx, col, eWrapper)
 				if err != nil {
@@ -185,30 +192,32 @@ func stripTableNamesFromColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node
 func lookupColumnForTargetSchema(_ *sql.Context, node sql.SchemaTarget, colIndex int) (*sql.Column, error) {
 	schema := node.TargetSchema()
 
-	switch n2 := node.(type) {
+	switch n := node.(type) {
 	case *plan.ModifyColumn:
 		if colIndex < len(schema) {
 			return schema[colIndex], nil
 		} else {
-			return n2.NewColumn(), nil
+			return n.NewColumn(), nil
 		}
 	case *plan.AddColumn:
 		if colIndex < len(schema) {
 			return schema[colIndex], nil
 		} else {
-			return n2.Column(), nil
+			return n.Column(), nil
 		}
 	case *plan.AlterDefaultSet:
-		index := schema.IndexOfColName(n2.ColumnName)
+		index := schema.IndexOfColName(n.ColumnName)
 		if index == -1 {
-			return nil, sql.ErrTableColumnNotFound.New(n2.Table, n2.ColumnName)
+			return nil, sql.ErrTableColumnNotFound.New(n.Table, n.ColumnName)
 		}
 		return schema[index], nil
 	default:
 		if colIndex < len(schema) {
 			return schema[colIndex], nil
 		} else {
-			return nil, sql.ErrColumnNotFound.New(colIndex)
+			// TODO: sql.ErrColumnNotFound would be a better error here, but we need to add all the different node types to
+			//  the switch to get it
+			return nil, expression.ErrIndexOutOfBounds.New(colIndex, len(schema))
 		}
 	}
 }

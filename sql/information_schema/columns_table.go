@@ -150,7 +150,12 @@ func (c ColumnsTable) WithColumnDefaults(columnDefaults []sql.Expression) (sql.T
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(columnDefaults), len(c.allColsWithDefaultValue))
 	}
 
-	c.allColsWithDefaultValue = transform.SchemaWithDefaults(c.allColsWithDefaultValue, columnDefaults)
+	sch, err := transform.SchemaWithDefaults(c.allColsWithDefaultValue, columnDefaults)
+	if err != nil {
+		return nil, err
+	}
+
+	c.allColsWithDefaultValue = sch
 	return &c, nil
 }
 
@@ -163,6 +168,7 @@ func (c ColumnsTable) WithDefaultsSchema(sch sql.Schema) (sql.Table, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(sch), len(c.allColsWithDefaultValue))
 	}
 
+	// TODO: generated values
 	for i, col := range sch {
 		c.allColsWithDefaultValue[i].Default = col.Default
 	}

@@ -33,6 +33,7 @@ type ColumnDefaultValue struct {
 	// Parenthesized indicates whether the value was specified in parens or not; this is typically the opposite of the Literal field,
 	// but they can both be false in the case of now/current_timestamp for datetimes and timestamps.
 	Parenthesized bool
+	// TODO: we need a generated marker here so we can tell them apart during analysis, maybe?
 }
 
 var _ Expression = (*ColumnDefaultValue)(nil)
@@ -217,10 +218,6 @@ func (e *ColumnDefaultValue) CheckType(ctx *Context) error {
 		}
 
 	}
-	return nil
-}
-
-func NewUnresolvedColumnDefault(s string) *UnresolvedColumnDefault {
 	return nil
 }
 
