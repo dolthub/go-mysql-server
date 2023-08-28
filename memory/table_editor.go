@@ -27,6 +27,7 @@ type tableEditor struct {
 	table             *Table
 	initialAutoIncVal uint64
 	initialPartitions map[string][]sql.Row
+	initialPartIdx    int
 	ea                tableEditAccumulator
 	isRewrite         bool
 	schema            sql.Schema
@@ -267,7 +268,7 @@ func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val uint64) error 
 }
 
 func (t *tableEditor) IndexedAccess(i sql.IndexLookup) sql.IndexedTable {
-	// TODO: optimize this, should create some a struct that encloses the tableEditor and filters based on the lookup
+	// TODO: optimize this, should create some struct that encloses the tableEditor and filters based on the lookup
 	if pkTea, ok := t.ea.(*pkTableEditAccumulator); ok {
 		newTable, err := newTable(pkTea.table, pkTea.table.schema)
 		if err != nil {

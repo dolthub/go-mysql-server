@@ -47,8 +47,7 @@ type Table struct {
 	collation        sql.CollationID
 	pkIndexesEnabled bool
 
-	// pushdown info
-	filters         []sql.Expression // currently unused, filter pushdown is significantly broken right now
+	// Projection info
 	projection      []string
 	projectedSchema sql.Schema
 	columns         []int
@@ -57,11 +56,12 @@ type Table struct {
 	partitions    map[string][]sql.Row
 	partitionKeys [][]byte
 
-	// Insert bookkeeping
+	// Insert bookkeeping (spread inserts across partitions)
 	insertPartIdx int
 
 	// Indexed lookups
-	lookup sql.DriverIndexLookup
+	lookup  sql.DriverIndexLookup
+	filters []sql.Expression
 
 	// AUTO_INCREMENT bookkeeping
 	autoIncVal uint64
@@ -1847,13 +1847,17 @@ func (t Table) copy() *Table {
 	pkSch := sql.NewPrimaryKeySchema(sch, t.schema.PkOrdinals...)
 	t.schema = pkSch
 	
-	projection := make([]string, len(t.projection))
-	copy(projection, t.projection)
-	t.projection = projection
+	if t.projection != nil {
+		projection := make([]string, len(t.projection))
+		copy(projection, t.projection)
+		t.projection = projection
+	}
 	
-	columns := make([]int, len(t.columns))
-	copy(columns, t.columns)
-	t.columns = columns
+	if t.columns != nil {
+		columns := make([]int, len(t.columns))
+		copy(columns, t.columns)
+		t.columns = columns
+	}
 	
 	return &t
 }

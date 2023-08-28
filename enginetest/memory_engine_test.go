@@ -185,17 +185,24 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	// t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "insert default value",
+			Name: "Cascaded DELETE becomes cascading UPDATE after first child, using ON DELETE for second child",
 			SetUpScript: []string{
-				"create table xy (x int primary key, y int default (x+1))",
+				"DROP TABLE child;",
+				"DROP TABLE parent;",
+				"CREATE TABLE parent (pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT, INDEX (v1), INDEX (v2), INDEX (v1, v2));",
+				"CREATE TABLE child (pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT, CONSTRAINT fk_child FOREIGN KEY (v1, v2) REFERENCES parent (v1, v2) ON DELETE SET NULL);",
+				"CREATE TABLE child2 (pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT, CONSTRAINT fk_child2 FOREIGN KEY (v1, v2) REFERENCES child (v1, v2) ON DELETE SET NULL);",
+				"INSERT INTO parent VALUES (1,1,1), (2,2,2), (3,3,3);",
+				"INSERT INTO child VALUES (1,1,1), (2,2,2), (3,3,3);",
+				"INSERT INTO child2 VALUES (1,1,1), (2,2,2), (3,3,3);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "insert into xy (x,y) values (1, DEFAULT)",
-					Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 0}}},
+					Query:       "DELETE FROM parent WHERE pk = 1;",
+					ExpectedErr: sql.ErrForeignKeyParentViolation,
 				},
 			},
 		},
@@ -203,6 +210,7 @@ func TestSingleScript(t *testing.T) {
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+		harness.Setup(setup.MydbData, setup.Parent_childData)
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
