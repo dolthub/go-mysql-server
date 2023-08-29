@@ -44,21 +44,9 @@ func TestJSONSet(t *testing.T) {
 	)
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
-	f1, err := NewJSONSet(
-		expression.NewGetField(0, types.LongText, "arg1", false),
-		expression.NewGetField(1, types.LongText, "arg2", false),
-		expression.NewGetField(2, types.LongText, "arg3", false),
-	)
-	require.NoError(t, err)
+	f1 := buildGetFieldExpressions(t, 3)
 
-	f2, err := NewJSONSet(
-		expression.NewGetField(0, types.LongText, "arg1", false),
-		expression.NewGetField(1, types.LongText, "arg2", false),
-		expression.NewGetField(2, types.LongText, "arg3", false),
-		expression.NewGetField(3, types.LongText, "arg4", false),
-		expression.NewGetField(4, types.LongText, "arg5", false),
-	)
-	require.NoError(t, err)
+	f2 := buildGetFieldExpressions(t, 5)
 
 	json := `{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`
 
@@ -68,28 +56,40 @@ func TestJSONSet(t *testing.T) {
 		expected interface{}
 		err      error
 	}{
-		{f1, sql.Row{json, "$.a", 10}, `{"a": 10, "b": [2, 3], "c": {"d": "foo"}}`, nil},                                                         // update existing
-		{f1, sql.Row{json, "$.e", "new"}, `{"a": 1, "b": [2, 3], "c": {"d": "foo"},"e":"new"}`, nil},                                             // set new
-		{f1, sql.Row{json, "$.c.d", "test"}, `{"a": 1, "b": [2, 3], "c": {"d": "test"}}`, nil},                                                   // update existing nested
-		{f2, sql.Row{json, "$.a", 10, "$.e", "new"}, `{"a": 10, "b": [2, 3], "c": {"d": "foo"},"e":"new"}`, nil},                                 // update existing and set new
-		{f1, sql.Row{json, "$.a.e", "test"}, `{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, nil},                                                    // set new nested does nothing
-		{f1, sql.Row{json, "$.c.e", "test"}, `{"a": 1, "b": [2, 3], "c": {"d": "foo","e":"test"}}`, nil},                                         // set new nested in existing struct
-		{f1, sql.Row{json, "$.c[5]", 4}, nil, fmt.Errorf("index out of range for maps currently unsupported")},                                   // update struct with indexing out of range (currently unsupported)
-		{f1, sql.Row{json, "$.b[0]", 4}, `{"a": 1, "b": [4, 3], "c": {"d": "foo"}}`, nil},                                                        // update element in array
-		{f1, sql.Row{json, "$.b[5]", 4}, `{"a": 1, "b": [2, 3,4], "c": {"d": "foo"}}`, nil},                                                      // update element in array out of range
-		{f1, sql.Row{json, "$.b.c", 4}, `{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, nil},                                                         // set nested in array does nothing
-		{f1, sql.Row{json, "$.a[0]", 4}, `{"a": 4, "b": [2, 3], "c": {"d": "foo"}}`, nil},                                                        // update single element with indexing
-		{f1, sql.Row{json, "$.a[5]", 4}, nil, fmt.Errorf("index out of range for single values currently unsupported")},                          // update single element with indexing out of range (currently unsupported)
-		{f1, sql.Row{json, "$[0]", 4}, `4`, nil},                                                                                                 // struct indexing
-		{f1, sql.Row{json, "$[0][1]", 4}, nil, fmt.Errorf("ordinal indexing currently unsupported")},                                             // nested struct indexing (currently unsupported)
-		{f1, sql.Row{json, "$.[0]", 4}, nil, fmt.Errorf("Invalid JSON path expression")},                                                         // improper struct indexing
-		{f1, sql.Row{json, "foo", "test"}, nil, fmt.Errorf("Invalid JSON path expression")},                                                      // invalid path
-		{f1, sql.Row{json, "$.c.*", "test"}, nil, fmt.Errorf("Path expressions may not contain the * and ** tokens")},                            // path contains * wildcard
-		{f1, sql.Row{json, "$.c.**", "test"}, nil, fmt.Errorf("Path expressions may not contain the * and ** tokens")},                           // path contains ** wildcard
-		{f1, sql.Row{json, "$", 10}, `10`, nil},                                                                                                  // whole document
-		{f1, sql.Row{nil, "$.a", 10}, nil, nil},                                                                                                  // null document
-		{f1, sql.Row{json, nil, 10}, nil, nil},                                                                                                   // if any path is null, return null
-		{f2, sql.Row{json, "$.z", map[string]interface{}{"zz": 1}, "$.z.zz", 42}, `{"a": 1, "b": [2, 3], "c": {"d": "foo"},"z":{"zz":42}}`, nil}, // accumulates L->R
+		{f1, sql.Row{json, "$.a", 10.1}, `{"a": 10.1, "b": [2, 3], "c": {"d": "foo"}}`, nil},                                                           // update existing
+		{f1, sql.Row{json, "$.e", "new"}, `{"a": 1, "b": [2, 3], "c": {"d": "foo"},"e":"new"}`, nil},                                                   // set new
+		{f1, sql.Row{json, "$.c.d", "test"}, `{"a": 1, "b": [2, 3], "c": {"d": "test"}}`, nil},                                                         // update existing nested
+		{f2, sql.Row{json, "$.a", 10.1, "$.e", "new"}, `{"a": 10.1, "b": [2, 3], "c": {"d": "foo"},"e":"new"}`, nil},                                   // update existing and set new
+		{f1, sql.Row{json, "$.a.e", "test"}, `{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, nil},                                                          // set new nested does nothing
+		{f1, sql.Row{json, "$.c.e", "test"}, `{"a": 1, "b": [2, 3], "c": {"d": "foo","e":"test"}}`, nil},                                               // set new nested in existing struct
+		{f1, sql.Row{json, "$.c[5]", 4.1}, `{"a": 1, "b": [2, 3], "c": [{"d": "foo"}, 4.1]}`, nil},                                                     // update struct with indexing out of range
+		{f1, sql.Row{json, "$.b[0]", 4.1}, `{"a": 1, "b": [4.1, 3], "c": {"d": "foo"}}`, nil},                                                          // update element in array
+		{f1, sql.Row{json, "$.b[5]", 4.1}, `{"a": 1, "b": [2, 3, 4.1], "c": {"d": "foo"}}`, nil},                                                       // update element in array out of range
+		{f1, sql.Row{json, "$.b.c", 4}, `{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, nil},                                                               // set nested in array does nothing
+		{f1, sql.Row{json, "$.a[0]", 4.1}, `{"a": 4.1, "b": [2, 3], "c": {"d": "foo"}}`, nil},                                                          // update single element with indexing
+		{f1, sql.Row{json, "$[0]", 4.1}, `4.1`, nil},                                                                                                   // struct indexing
+		{f1, sql.Row{json, "$.[0]", 4.1}, nil, fmt.Errorf("Invalid JSON path expression")},                                                             // improper struct indexing
+		{f1, sql.Row{json, "foo", "test"}, nil, fmt.Errorf("Invalid JSON path expression")},                                                            // invalid path
+		{f1, sql.Row{json, "$.c.*", "test"}, nil, fmt.Errorf("Path expressions may not contain the * and ** tokens")},                                  // path contains * wildcard
+		{f1, sql.Row{json, "$.c.**", "test"}, nil, fmt.Errorf("Path expressions may not contain the * and ** tokens")},                                 // path contains ** wildcard
+		{f1, sql.Row{json, "$", 10.1}, `10.1`, nil},                                                                                                    // whole document
+		{f1, sql.Row{nil, "$", 42.7}, nil, nil},                                                                                                        // null document
+		{f1, sql.Row{json, nil, 10}, nil, nil},                                                                                                         // if any path is null, return null
+		{f2, sql.Row{json, "$.z", map[string]interface{}{"zz": 1.1}, "$.z.zz", 42.1}, `{"a": 1, "b": [2, 3], "c": {"d": "foo"},"z":{"zz":42.1}}`, nil}, // accumulates L->R
+
+		// mysql> select JSON_SET(JSON_ARRAY(), "$[2]", 1 , "$[2]", 2 ,"$[2]", 3 ,"$[2]", 4);
+		// +---------------------------------------------------------------------+
+		// | JSON_SET(JSON_ARRAY(), "$[2]", 1 , "$[2]", 2 ,"$[2]", 3 ,"$[2]", 4) |
+		// +---------------------------------------------------------------------+
+		// | [1, 2, 4]                                                           |
+		// +---------------------------------------------------------------------+
+		{buildGetFieldExpressions(t, 9),
+			sql.Row{`[]`,
+				"$[2]", 1.1, // [] -> [1.1]
+				"$[2]", 2.2, // [1.1] -> [1.1,2.2]
+				"$[2]", 3.3, // [1.1, 2.2] -> [1.1, 2.2, 3.3]
+				"$[2]", 4.4}, // [1.1, 2.2, 3.3] -> [1.1, 2.2, 4.4]
+			`[1.1, 2.2, 4.4]`, nil},
 	}
 
 	for _, tt := range testCases {
@@ -114,11 +114,31 @@ func TestJSONSet(t *testing.T) {
 			result, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
 			if tt.err == nil {
 				require.NoError(err)
+
+				var expect interface{}
+				if tt.expected != nil {
+					expect, _, err = types.JSON.Convert(tt.expected)
+					if err != nil {
+						panic("Bad test string. Can't convert string to JSONDocument: " + tt.expected.(string))
+					}
+				}
+
+				require.Equal(expect, result)
 			} else {
 				require.Error(tt.err, err)
 			}
-
-			require.Equal(tt.expected, result)
 		})
 	}
+}
+
+func buildGetFieldExpressions(t *testing.T, argCount int) sql.Expression {
+	expressions := make([]sql.Expression, 0, argCount)
+	for i := 0; i < argCount; i++ {
+		expressions = append(expressions, expression.NewGetField(i, types.LongText, "arg"+strconv.Itoa(i), false))
+	}
+
+	result, err := NewJSONSet(expressions...)
+	require.NoError(t, err)
+
+	return result
 }

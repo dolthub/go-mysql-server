@@ -552,6 +552,32 @@ var JsonSetTests = []JsonMutationTest{
 		value:     `null`,
 		resultVal: `null`,
 	},
+
+	/* Known ways we don't behave like MySQL. Frankly if anyone is depending on these behaviors they are doing it wrong.
+		   mysql> select JSON_SET('{"a": 1}', "$[0][0]", 42);
+		+-------------------------------------+
+		| JSON_SET('{"a": 1}', "$[0][0]", 42) |
+		+-------------------------------------+
+		| 42                                  |
+		+-------------------------------------+
+
+		mysql> select JSON_SET('{"a": 1}', "$[0][1]", 42);
+		+-------------------------------------+
+		| JSON_SET('{"a": 1}', "$[0][1]", 42) |
+		+-------------------------------------+
+		| [{"a": 1}, 42]                      |
+		+-------------------------------------+
+
+		mysql> select JSON_SET('{"a": 1}', "$[0][last-3]", 42);
+		+------------------------------------------+
+		| JSON_SET('{"a": 1}', "$[0][last-3]", 42) |
+		+------------------------------------------+
+		| [42, {"a": 1}]                           |
+		+------------------------------------------+
+	    The three examples above seems to indicate that MySQL coerces objects to arrays earlier in the search process than we do.
+		Reason for thinking this is that  JSON_SET('{"a": 1}', "$[0][0][ANYTHING]", 42); is a no op.
+	*/
+
 }
 
 func TestJsonSet(t *testing.T) {
