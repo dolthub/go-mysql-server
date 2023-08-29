@@ -8525,6 +8525,10 @@ type QueryErrorTest struct {
 
 var ErrorQueries = []QueryErrorTest{
 	{
+		Query:       "SHOW KEYS FROM `columns` FROM `information_schema`;",
+		ExpectedErr: sql.ErrTableNotFound,
+	},
+	{
 		Query:       "select i from (select * from mytable a join mytable b on a.i = b.i) dt",
 		ExpectedErr: sql.ErrAmbiguousColumnName,
 	},
