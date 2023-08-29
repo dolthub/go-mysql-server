@@ -187,21 +187,19 @@ func TestSingleScript(t *testing.T) {
 	// t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "simple insert",
+			Name: "drop column drops check constraint",
 			SetUpScript: []string{
-				"create table t1 (a bigint primary key auto_increment, b int);",
+				"create table t34 (i bigint primary key, s varchar(20), j int, constraint test_check check (j < 12345))",
+				"ALTER TABLE t34 DROP COLUMN j",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:       "insert into t1(b) values (1), (2)",
-					Expected: 	[]sql.Row{{types.OkResult{
-						RowsAffected: 2,
-						InsertID:     1,
-					}}},
-				},
-				{
-					Query:       "select * from t1 order by a",
-					Expected: 	[]sql.Row{{1, 1}, {2,2}},
+					Query: "show create table t34",
+					Expected: []sql.Row{{"t34", "CREATE TABLE `t34` (\n" +
+							"  `i` bigint NOT NULL,\n" +
+							"  `s` varchar(20),\n" +
+							"  PRIMARY KEY (`i`)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 				},
 			},
 		},

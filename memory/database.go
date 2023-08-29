@@ -99,6 +99,10 @@ func (d *BaseDatabase) GetTableInsensitive(ctx *sql.Context, tblName string) (sq
 	return tbl, ok, nil
 }
 
+func (d *BaseDatabase) putTable(t *Table) {
+	d.tables[t.Name()] = t
+}
+
 func (d *BaseDatabase) GetTableNames(ctx *sql.Context) ([]string, error) {
 	tblNames := make([]string, 0, len(d.tables))
 	for k := range d.tables {

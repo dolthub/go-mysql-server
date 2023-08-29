@@ -108,12 +108,11 @@ func (t *tableEditor) DiscardChanges(ctx *sql.Context, errorEncountered error) e
 }
 
 func (t *tableEditor) StatementComplete(ctx *sql.Context) error {
-	// TODO: we're probably going to need to not apply edits after every statement
-	//  or: we can make a copy of the table when we begin editing, then only update the real table on Close
 	err := t.ea.ApplyEdits(ctx)
 	if err != nil {
 		return nil
 	}
+	
 	t.ea.Clear()
 	t.initialInsert = t.editedTable.insertPartIdx
 	t.initialAutoIncVal = t.editedTable.autoIncVal
@@ -128,7 +127,7 @@ func (t *tableEditor) StatementComplete(ctx *sql.Context) error {
 	return nil
 }
 
-// Insert a new row into the table.
+// Insert inserts a new row into the table.
 func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 	if err := checkRow(t.editedTable.schema.Schema, row); err != nil {
 		return err

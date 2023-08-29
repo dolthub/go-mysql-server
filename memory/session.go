@@ -68,6 +68,12 @@ func (s *Session) editAccumulator(t *Table) tableEditAccumulator {
 	return ea
 }
 
+// activeEditAccumulator returns the edit accumulator for the table provided for this session and whether it exists
+func (s *Session) activeEditAccumulator(t *Table) (tableEditAccumulator, bool) {
+	ea, ok := s.editAccumulators[strings.ToLower(t.name)]
+	return ea, ok
+}
+
 func (s *Session) clearEditAccumulator(t *Table) {
 	delete(s.editAccumulators, strings.ToLower(t.name))
 }

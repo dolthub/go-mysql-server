@@ -86,7 +86,7 @@ var _ fulltext.IndexAlterableTable = (*Table)(nil)
 
 var _ sql.ForeignKeyTable = (*Table)(nil)
 var _ sql.CheckAlterableTable = (*Table)(nil)
-// var _ sql.RewritableTable = (*Table)(nil)
+var _ sql.RewritableTable = (*Table)(nil)
 var _ sql.CheckTable = (*Table)(nil)
 var _ sql.AutoIncrementTable = (*Table)(nil)
 var _ sql.StatisticsTable = (*Table)(nil)
@@ -379,7 +379,7 @@ func (t *Table) AnalyzeTable(ctx *sql.Context) error {
 }
 
 func (t *Table) RowCount(ctx *sql.Context) (uint64, error) {
-	return t.numRows(ctx)
+	return t.tableUnderEdit(ctx).numRows(ctx)
 }
 
 func NewPartition(key []byte) *Partition {
@@ -835,8 +835,10 @@ func (t *Table) GetNextAutoIncrementValue(ctx *sql.Context, insertVal interface{
 }
 
 func (t *Table) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.ColumnOrder) error {
-	newColIdx := t.addColumnToSchema(ctx, column, order)
-	return t.insertValueInRows(ctx, newColIdx, column.Default)
+	table := t.tableUnderEdit(ctx)
+	
+	newColIdx := table.addColumnToSchema(ctx, column, order)
+	return table.insertValueInRows(ctx, newColIdx, column.Default)
 }
 
 // addColumnToSchema adds the given column to the schema and returns the new index
@@ -948,8 +950,10 @@ func (t *Table) insertValueInRows(ctx *sql.Context, idx int, colDefault *sql.Col
 }
 
 func (t *Table) DropColumn(ctx *sql.Context, columnName string) error {
-	droppedCol := t.dropColumnFromSchema(ctx, columnName)
-	for k, p := range t.partitions {
+	table := t.tableUnderEdit(ctx)
+
+	droppedCol := table.dropColumnFromSchema(ctx, columnName)
+	for k, p := range table.partitions {
 		newP := make([]sql.Row, len(p))
 		for i, row := range p {
 			var newRow sql.Row
@@ -957,9 +961,20 @@ func (t *Table) DropColumn(ctx *sql.Context, columnName string) error {
 			newRow = append(newRow, row[droppedCol+1:]...)
 			newP[i] = newRow
 		}
-		t.partitions[k] = newP
+		table.partitions[k] = newP
 	}
 	return nil
+}
+
+func (t *Table) tableUnderEdit(ctx *sql.Context) *Table {
+	table := t
+
+	sess := SessionFromContext(ctx)
+	ea, ok := sess.activeEditAccumulator(table)
+	if ok {
+		table = ea.Table()
+	}
+	return table
 }
 
 // dropColumnFromSchema drops the given column name from the schema and returns its old index.
@@ -990,16 +1005,18 @@ func (t *Table) dropColumnFromSchema(ctx *sql.Context, columnName string) int {
 }
 
 func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Column, order *sql.ColumnOrder) error {
+	table := t.tableUnderEdit(ctx)
+	
 	oldIdx := -1
 	newIdx := 0
-	for i, col := range t.schema.Schema {
+	for i, col := range table.schema.Schema {
 		if col.Name == columnName {
 			oldIdx = i
 			column.PrimaryKey = col.PrimaryKey
 			// We've removed auto increment through this modification so we need to do some bookkeeping
 			if col.AutoIncrement && !column.AutoIncrement {
-				t.autoColIdx = -1
-				t.autoIncVal = 0
+				table.autoColIdx = -1
+				table.autoIncVal = 0
 			}
 			break
 		}
@@ -1009,12 +1026,12 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 		if newIdx == 0 {
 			order = &sql.ColumnOrder{First: true}
 		} else {
-			order = &sql.ColumnOrder{AfterColumn: t.schema.Schema[newIdx-1].Name}
+			order = &sql.ColumnOrder{AfterColumn: table.schema.Schema[newIdx-1].Name}
 		}
 	} else if !order.First {
 		var oldSchemaWithoutCol sql.Schema
-		oldSchemaWithoutCol = append(oldSchemaWithoutCol, t.schema.Schema[:oldIdx]...)
-		oldSchemaWithoutCol = append(oldSchemaWithoutCol, t.schema.Schema[oldIdx+1:]...)
+		oldSchemaWithoutCol = append(oldSchemaWithoutCol, table.schema.Schema[:oldIdx]...)
+		oldSchemaWithoutCol = append(oldSchemaWithoutCol, table.schema.Schema[oldIdx+1:]...)
 		for i, col := range oldSchemaWithoutCol {
 			if col.Name == order.AfterColumn {
 				newIdx = i + 1
@@ -1023,7 +1040,7 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 		}
 	}
 
-	for k, p := range t.partitions {
+	for k, p := range table.partitions {
 		newP := make([]sql.Row, len(p))
 		for i, row := range p {
 			var oldRowWithoutVal sql.Row
@@ -1045,28 +1062,28 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 			newRow = append(newRow, oldRowWithoutVal[newIdx:]...)
 			newP[i] = newRow
 		}
-		t.partitions[k] = newP
+		table.partitions[k] = newP
 	}
 
 	pkNameToOrdIdx := make(map[string]int)
-	for i, ord := range t.schema.PkOrdinals {
-		pkNameToOrdIdx[t.schema.Schema[ord].Name] = i
+	for i, ord := range table.schema.PkOrdinals {
+		pkNameToOrdIdx[table.schema.Schema[ord].Name] = i
 	}
 
-	_ = t.dropColumnFromSchema(ctx, columnName)
-	t.addColumnToSchema(ctx, column, order)
+	_ = table.dropColumnFromSchema(ctx, columnName)
+	table.addColumnToSchema(ctx, column, order)
 
-	newPkOrds := make([]int, len(t.schema.PkOrdinals))
-	for ord, col := range t.schema.Schema {
+	newPkOrds := make([]int, len(table.schema.PkOrdinals))
+	for ord, col := range table.schema.Schema {
 		if col.PrimaryKey {
 			i := pkNameToOrdIdx[col.Name]
 			newPkOrds[i] = ord
 		}
 	}
 
-	t.schema.PkOrdinals = newPkOrds
+	table.schema.PkOrdinals = newPkOrds
 
-	for _, index := range t.indexes {
+	for _, index := range table.indexes {
 		memIndex := index.(*Index)
 		nameLowercase := strings.ToLower(columnName)
 		for i, expr := range memIndex.Exprs {
@@ -1871,12 +1888,16 @@ func (t Table) copy() *Table {
 func (t *Table) replaceData(src *Table) {
 	t.schema = src.schema
 	t.columns = src.columns
+	t.indexes = src.indexes
 	t.projection = src.projection
 	t.partitionKeys = src.partitionKeys
 	t.partitions = src.partitions
 	t.fkColl = src.fkColl
 	t.collation = src.collation
 	t.autoIncVal = src.autoIncVal
+	t.insertPartIdx = src.insertPartIdx
+	// for various reasons, the pointer we're editing may not be the one recorded in the database map, so update it
+	t.db.putTable(t)
 }
 
 func newTable(ctx *sql.Context, t *Table, newSch sql.PrimaryKeySchema) (*Table, error) {
@@ -2151,12 +2172,18 @@ func isColumnDrop(oldSchema sql.PrimaryKeySchema, newSchema sql.PrimaryKeySchema
 	return len(oldSchema.Schema) > len(newSchema.Schema)
 }
 
-// func (t Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column, idxCols []sql.IndexColumn) (sql.RowInserter, error) {
-// 	editor := t.getTableEditor(ctx).(*tableEditor)
-// 	
-// 	editorCopy :=	*editor 
-// 	
-// 	// we want an editor that will truncate the table shortly just before applying all of its edits
-// 	editorCopy.isRewrite = true
-// 	return &editorCopy, nil
-// }
+func (t Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column, idxCols []sql.IndexColumn) (sql.RowInserter, error) {
+	editor := t.getTableEditor(ctx).(*tableEditor)
+	editorCopy :=	*editor 
+	
+	// we want an editor that will truncate the table just before applying all of its edits
+	editorCopy.isRewrite = true
+	tableUnderEdit := editorCopy.editedTable
+	for k := range tableUnderEdit.partitions {
+		delete(tableUnderEdit.partitions, k)
+	}
+	tableUnderEdit.partitionKeys = make([][]byte, 0)
+	tableUnderEdit.schema = newSchema
+	
+	return &editorCopy, nil
+}
