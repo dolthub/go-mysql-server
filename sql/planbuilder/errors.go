@@ -36,4 +36,6 @@ var (
 	ErrUnionSchemasDifferentLength = errors.NewKind(
 		"cannot union two queries whose schemas are different lengths; left has %d column(s) right has %d column(s).",
 	)
+
+	ErrOrderByBinding = errors.NewKind("bindings in sort clauses not supported yet")
 )

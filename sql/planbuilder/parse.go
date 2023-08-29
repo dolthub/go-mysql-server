@@ -106,10 +106,7 @@ func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool, options 
 		return nil, parsed, remainder, sql.ErrSyntaxError.New(err.Error())
 	}
 
-	b, err := New(ctx, cat)
-	if err != nil {
-		return nil, "", "", err
-	}
+	b := New(ctx, cat)
 	outScope := b.build(nil, stmt, s)
 
 	return outScope.node, parsed, remainder, err
@@ -170,6 +167,11 @@ func (b *Builder) Parse(query string, multi bool) (ret sql.Node, parsed, remaind
 	outScope := b.build(nil, stmt, s)
 
 	return outScope.node, parsed, remainder, err
+}
+
+func (b *Builder) ParseOne(query string) (ret sql.Node, err error) {
+	ret, _, _, err = b.Parse(query, false)
+	return ret, err
 }
 
 func (b *Builder) BindOnly(stmt ast.Statement, s string) (ret sql.Node, err error) {

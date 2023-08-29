@@ -379,7 +379,7 @@ func injectBindVarsAndPrepare(
 		return q, nil, err
 	}
 
-	b, _ := planbuilder.New(ctx, sql.MapCatalog{})
+	b := planbuilder.New(ctx, sql.MapCatalog{})
 	_, isInsert := resPlan.(*plan.InsertInto)
 	bindVars := make(map[string]*querypb.BindVariable)
 	var bindCnt int

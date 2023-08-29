@@ -445,79 +445,6 @@ func (b *Builder) buildBinaryScalar(inScope *scope, be *ast.BinaryExpr) sql.Expr
 	return nil
 }
 
-func (b *Builder) buildLiteral(inScope *scope, v *ast.SQLVal) sql.Expression {
-	switch v.Type {
-	case ast.StrVal:
-		return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))
-	case ast.IntVal:
-		return b.convertInt(string(v.Val), 10)
-	case ast.FloatVal:
-		val, err := strconv.ParseFloat(string(v.Val), 64)
-		if err != nil {
-			b.handleErr(err)
-		}
-
-		// use the value as string format to keep precision and scale as defined for DECIMAL data type to avoid rounded up float64 value
-		if ps := strings.Split(string(v.Val), "."); len(ps) == 2 {
-			ogVal := string(v.Val)
-			floatVal := fmt.Sprintf("%v", val)
-			if len(ogVal) >= len(floatVal) && ogVal != floatVal {
-				p, s := expression.GetDecimalPrecisionAndScale(ogVal)
-				dt, err := types.CreateDecimalType(p, s)
-				if err != nil {
-					return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))
-				}
-				dVal, _, err := dt.Convert(ogVal)
-				if err != nil {
-					return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))
-				}
-				return expression.NewLiteral(dVal, dt)
-			}
-		}
-
-		return expression.NewLiteral(val, types.Float64)
-	case ast.HexNum:
-		//TODO: binary collation?
-		v := strings.ToLower(string(v.Val))
-		if strings.HasPrefix(v, "0x") {
-			v = v[2:]
-		} else if strings.HasPrefix(v, "x") {
-			v = strings.Trim(v[1:], "'")
-		}
-
-		valBytes := []byte(v)
-		dst := make([]byte, hex.DecodedLen(len(valBytes)))
-		_, err := hex.Decode(dst, valBytes)
-		if err != nil {
-			b.handleErr(err)
-		}
-		return expression.NewLiteral(dst, types.LongBlob)
-	case ast.HexVal:
-		//TODO: binary collation?
-		val, err := v.HexDecode()
-		if err != nil {
-			b.handleErr(err)
-		}
-		return expression.NewLiteral(val, types.LongBlob)
-	case ast.ValArg:
-		return expression.NewBindVar(strings.TrimPrefix(string(v.Val), ":"))
-	case ast.BitVal:
-		if len(v.Val) == 0 {
-			return expression.NewLiteral(0, types.Uint64)
-		}
-
-		res, err := strconv.ParseUint(string(v.Val), 2, 64)
-		if err != nil {
-			b.handleErr(err)
-		}
-
-		return expression.NewLiteral(res, types.Uint64)
-	}
-
-	b.handleErr(sql.ErrInvalidSQLValType.New(v.Type))
-	return nil
-}
-
 func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Expression {
 	left := b.buildScalar(inScope, c.Left)
 	right := b.buildScalar(inScope, c.Right)
@@ -820,7 +747,15 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 		}
 		return expression.NewLiteral(val, types.LongBlob)
 	case ast.ValArg:
-		return expression.NewBindVar(strings.TrimPrefix(string(v.Val), ":"))
+		name := strings.TrimPrefix(string(v.Val), ":")
+		if b.bindCtx != nil {
+			if b.bindCtx.resolveOnly {
+				return expression.NewBindVar(name)
+			}
+			replacement := b.normalizeValArg(v)
+			return b.buildScalar(&scope{}, replacement)
+		}
+		return expression.NewBindVar(name)
 	case ast.BitVal:
 		if len(v.Val) == 0 {
 			return expression.NewLiteral(0, types.Uint64)
