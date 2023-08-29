@@ -46,14 +46,13 @@ type Builder struct {
 	nesting         int
 }
 
-// ViewContext overwrites database root source of nested
-// calls.
+// BindvarContext holds bind variable replacement literals.
 type BindvarContext struct {
 	Bindings map[string]*querypb.BindVariable
 	used     map[string]struct{}
-	// skip indicates that we are resolving plan names,
-	// but will not error for missing bindvar replacement
-	skip bool
+	// resolveOnly indicates that we are resolving plan names,
+	// but will not error for missing bindvar replacements.
+	resolveOnly bool
 }
 
 func (bv *BindvarContext) GetSubstitute(s string) (*querypb.BindVariable, bool) {

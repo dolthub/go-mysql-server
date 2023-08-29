@@ -749,7 +749,7 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 	case ast.ValArg:
 		name := strings.TrimPrefix(string(v.Val), ":")
 		if b.bindCtx != nil {
-			if b.bindCtx.skip {
+			if b.bindCtx.resolveOnly {
 				return expression.NewBindVar(name)
 			}
 			replacement := b.normalizeValArg(v)

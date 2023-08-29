@@ -507,7 +507,7 @@ func (b *Builder) buildAsOfLit(inScope *scope, t ast.Expr) interface{} {
 func (b *Builder) buildAsOfExpr(inScope *scope, time ast.Expr) sql.Expression {
 	switch v := time.(type) {
 	case *ast.SQLVal:
-		if v.Type == ast.ValArg && (b.bindCtx == nil || b.bindCtx.skip) {
+		if v.Type == ast.ValArg && (b.bindCtx == nil || b.bindCtx.resolveOnly) {
 			return nil
 		}
 		repl := b.normalizeValArg(v)
