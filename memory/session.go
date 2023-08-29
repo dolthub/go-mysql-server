@@ -61,7 +61,7 @@ func SessionBuilder(ctx context.Context, c *mysql.Conn, addr string) (sql.Sessio
 func (s *Session) editAccumulator(t *Table) tableEditAccumulator {
 	ea, ok := s.editAccumulators[strings.ToLower(t.name)]
 	if !ok {
-		ea = NewTableEditAccumulator(t)
+		ea = NewTableEditAccumulator(t.copy())
 		s.editAccumulators[strings.ToLower(t.name)] = ea
 	}
 	

@@ -86,7 +86,7 @@ var _ fulltext.IndexAlterableTable = (*Table)(nil)
 
 var _ sql.ForeignKeyTable = (*Table)(nil)
 var _ sql.CheckAlterableTable = (*Table)(nil)
-// var _ sql.RewritableTable = (*Table)(nil)
+var _ sql.RewritableTable = (*Table)(nil)
 var _ sql.CheckTable = (*Table)(nil)
 var _ sql.AutoIncrementTable = (*Table)(nil)
 var _ sql.StatisticsTable = (*Table)(nil)
@@ -615,14 +615,15 @@ func (t *Table) AutoIncrementSetter(ctx *sql.Context) sql.AutoIncrementSetter {
 
 func (t *Table) getTableEditor(ctx *sql.Context) sql.TableEditor {
 	uniqIdxCols, prefixLengths := t.indexColsForTableEditor()
+	
+	tableSets := t.getFulltextTableSets(ctx)
 
 	sess := SessionFromContext(ctx)
 	ed := sess.editAccumulator(t)
 
-	tableSets := t.getFulltextTableSets(ctx)
-
 	var editor sql.TableEditor = &tableEditor{
-		table:             t,
+		editedTable:       ed.Table(),
+		targetTable:       t,
 		initialAutoIncVal: 1,
 		initialPartitions: nil,
 		ea:                ed,
@@ -1862,11 +1863,16 @@ func (t Table) copy() *Table {
 	return &t
 }
 
-// func newTable(t *Table, newSch sql.PrimaryKeySchema) (*Table, error) {
-// 	table := t.copy()
-// 	table.schema = newSch
-// 	return table, nil
-// }
+// replaceData replaces the data in this table with the one in the source
+func (t *Table) replaceData(src *Table) {
+	t.schema = src.schema
+	t.columns = src.columns
+	t.projection = src.projection
+	t.partitionKeys = src.partitionKeys
+	t.partitions = src.partitions
+	t.fkColl = src.fkColl
+	t.collation = src.collation
+}
 
 func newTable(ctx *sql.Context, t *Table, newSch sql.PrimaryKeySchema) (*Table, error) {
 	sess := SessionFromContext(ctx)
@@ -2140,13 +2146,12 @@ func isColumnDrop(oldSchema sql.PrimaryKeySchema, newSchema sql.PrimaryKeySchema
 	return len(oldSchema.Schema) > len(newSchema.Schema)
 }
 
-// func (t Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column, idxCols []sql.IndexColumn) (sql.RowInserter, error) {
-// 	editor := t.getTableEditor(ctx).(*tableEditor)
-// 	
-// 	editorCopy :=	*editor 
-// 	
-// 	// we want an editor that will truncate the table shortly just before applying all of its edits
-// 	editor.isRewrite = true
-// 	
-// 	return editor, nil
-// }
+func (t Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column, idxCols []sql.IndexColumn) (sql.RowInserter, error) {
+	editor := t.getTableEditor(ctx).(*tableEditor)
+	
+	editorCopy :=	*editor 
+	
+	// we want an editor that will truncate the table shortly just before applying all of its edits
+	editorCopy.isRewrite = true
+	return &editorCopy, nil
+}
