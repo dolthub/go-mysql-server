@@ -290,3 +290,300 @@ func TestJsonRoundTripping(t *testing.T) {
 		})
 	}
 }
+
+type JsonMutationTest struct {
+	desc         string
+	doc          string
+	path         string
+	value        string
+	resultVal    string
+	changed      bool
+	expectErrStr string
+}
+
+var JsonSetTests = []JsonMutationTest{
+	{
+		desc:      "set root",
+		doc:       `{"a": 1, "b": 2}`,
+		path:      "$",
+		value:     `{"c": 3}`,
+		resultVal: `{"c": 3}`,
+		changed:   true,
+	},
+	{
+		desc:      "set root ignore white space",
+		doc:       `{"a": 1, "b": 2}`,
+		path:      "   $   ",
+		value:     `{"c": 3}`,
+		resultVal: `{"c": 3}`,
+		changed:   true,
+	},
+	{
+		desc:      "set middle of an array",
+		doc:       `[1, 2, 3]`,
+		path:      "$[1]",
+		value:     `42`,
+		resultVal: `[1, 42, 3]`,
+		changed:   true,
+	},
+	{
+		desc:      "set last item of an array",
+		doc:       `[1, 2, 3]`,
+		path:      "$[2]",
+		value:     `42`,
+		resultVal: `[1, 2, 42]`,
+		changed:   true,
+	},
+	{
+		desc:      "append to an array when overflown",
+		doc:       `[1, 2, 3]`,
+		path:      "$[23]",
+		value:     `42`,
+		resultVal: `[1, 2, 3, 42]`,
+		changed:   true,
+	},
+	{
+		desc:      "set 'last' element of an array",
+		doc:       `[1, 2, 3]`,
+		path:      "$[last]",
+		value:     `42`,
+		resultVal: `[1, 2, 42]`,
+		changed:   true,
+	},
+	{
+		desc:      "set 'last-0' element of an array",
+		doc:       `[1, 2, 3]`,
+		path:      "$[last-0]",
+		value:     `42`,
+		resultVal: `[1, 2, 42]`,
+		changed:   true,
+	},
+	{
+		desc:      "set 'last-23' element of an array",
+		doc:       `[1, 2, 3]`,
+		path:      "$[last-23]",
+		value:     `42`,
+		resultVal: `[42, 2, 3]`,
+		changed:   true,
+	},
+	{
+		desc:      "array index ignores white space",
+		doc:       `[1, 2, 3]`,
+		path:      "$[   last -    1]",
+		value:     `42`,
+		resultVal: `[1, 42, 3]`,
+		changed:   true,
+	},
+	{
+		desc:      "empty array last index is 0",
+		doc:       `[]`,
+		path:      "$[last]",
+		value:     `42`,
+		resultVal: `[42]`,
+		changed:   true,
+	},
+
+	{
+		desc:      "treating object as an array replaces for index 0",
+		doc:       `{"a":1}`,
+		path:      "$[0]",
+		value:     `42`,
+		resultVal: `42`,
+		changed:   true,
+	},
+
+	{
+		desc:      "treating object as an array replaces for index last",
+		doc:       `{"a":1}`,
+		path:      "$[last]",
+		value:     `42`,
+		resultVal: `42`,
+		changed:   true,
+	},
+	{
+		desc:      "treating object will prefix as an array",
+		doc:       `{"a":1}`,
+		path:      "$[last-23]",
+		value:     `42`,
+		resultVal: `[42, {"a": 1}]`,
+		changed:   true,
+	},
+	{
+		desc:      "treating object will append as an array for out of bounds",
+		doc:       `{"a":1}`,
+		path:      "$[51]",
+		value:     `42`,
+		resultVal: `[{"a": 1}, 42]`,
+		changed:   true,
+	},
+	{
+		desc:      "scalar will append as an array for out of bounds",
+		doc:       `17`,
+		path:      "$[51]",
+		value:     `42`,
+		resultVal: `[17, 42]`,
+		changed:   true,
+	},
+	{
+		desc:      "scalar will be overwritten for index 0",
+		doc:       `17`,
+		path:      "$[0]",
+		value:     `42`,
+		resultVal: `42`,
+		changed:   true,
+	},
+	{
+		desc:      "scalar will be prefixed when underflow happens",
+		doc:       `17`,
+		path:      "$[last-23]",
+		value:     `42`,
+		resultVal: `[42, 17]`,
+		changed:   true,
+	},
+	{
+		desc:      "Object field updated",
+		doc:       `{"a": 1}`,
+		path:      "$.a",
+		value:     `42`,
+		resultVal: `{"a": 42}`,
+		changed:   true,
+	},
+	{
+		desc:      "Object field set",
+		doc:       `{"a": 1}`,
+		path:      "$.b",
+		value:     `42`,
+		resultVal: `{"a": 1, "b": 42}`,
+		changed:   true,
+	},
+
+	{
+		desc:      "Object field set Unicode",
+		doc:       `{"❤️🧡💛💚💙💜": {}}`,
+		path:      `$."❤️🧡💛💚💙💜"`,
+		value:     `42`,
+		resultVal: `{"❤️🧡💛💚💙💜": 42 }`,
+		changed:   true,
+	},
+	{
+		desc:      "Object field name can optionally have quotes",
+		doc:       `{"a": {}}`,
+		path:      `$."a"`,
+		value:     `42`,
+		resultVal: `{"a": 42 }`,
+		changed:   true,
+	},
+
+	/*
+		{
+			desc:         "Invalid last usage",
+			doc:          `[1, 2, 3]`,
+			path:         "$[last+1]",
+			value:        `42`,
+			changed:      false,
+			expectErrStr: `Invalid JSON path expression. The error is around character position 7"`,
+		},
+		{
+			desc:         "set rejects negative index",
+			doc:          `[1, 2, 3]`,
+			path:         "$[-32]",
+			value:        `42`,
+			changed:      false,
+			expectErrStr: `Invalid JSON path expression. The error is around character position 2`,
+		},
+
+	*/
+}
+
+func TestJsonSet(t *testing.T) {
+	for _, test := range JsonSetTests {
+		t.Run("JSON set: "+test.desc, func(t *testing.T) {
+			doc := MustJSON(test.doc)
+			val := MustJSON(test.value)
+			res, changed, err := doc.Set(sql.NewEmptyContext(), test.path, val)
+			if test.expectErrStr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), test.expectErrStr)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, MustJSON(test.resultVal), res)
+			}
+			assert.Equal(t, test.changed, changed)
+		})
+	}
+}
+
+var JsonInsertTests = []JsonMutationTest{
+	{
+		desc:      "set root",
+		doc:       `{"a": 1, "b": 2}`,
+		path:      "$",
+		value:     `{"c": 3}`,
+		resultVal: `{"a": 1, "b": 2}`,
+		changed:   false,
+	},
+}
+
+func TestJsonInsert(t *testing.T) {
+	for _, test := range JsonInsertTests {
+		t.Run("JSON insert: "+test.desc, func(t *testing.T) {
+			doc := MustJSON(test.doc)
+			val := MustJSON(test.value)
+			res, changed, err := doc.Insert(sql.NewEmptyContext(), test.path, val)
+			require.NoError(t, err)
+			assert.Equal(t, MustJSON(test.resultVal), res)
+			assert.Equal(t, test.changed, changed)
+		})
+	}
+}
+
+var JsonRemoveTests = []JsonMutationTest{
+	{
+		desc:         "replace root",
+		doc:          `{"a": 1, "b": 2}`,
+		path:         "$",
+		changed:      false,
+		expectErrStr: "The path expression '$' is not allowed in this context",
+	},
+}
+
+func TestJsonRemove(t *testing.T) {
+	for _, test := range JsonRemoveTests {
+		t.Run("JSON remove: "+test.desc, func(t *testing.T) {
+			doc := MustJSON(test.doc)
+			res, changed, err := doc.Remove(sql.NewEmptyContext(), test.path)
+			if test.expectErrStr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), test.expectErrStr)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, MustJSON(test.resultVal), res)
+			}
+			assert.Equal(t, test.changed, changed)
+		})
+	}
+}
+
+var JsonReplaceTests = []JsonMutationTest{
+	{
+		desc:      "set root",
+		doc:       `{"a": 1, "b": 2}`,
+		path:      "$",
+		value:     `{"c": 3}`,
+		resultVal: `{"c": 3}`,
+		changed:   true,
+	},
+}
+
+func TestReplaceSet(t *testing.T) {
+	for _, test := range JsonReplaceTests {
+		t.Run("JSON replace: "+test.desc, func(t *testing.T) {
+			doc := MustJSON(test.doc)
+			val := MustJSON(test.value)
+			res, changed, err := doc.Replace(sql.NewEmptyContext(), test.path, val)
+			require.NoError(t, err)
+			assert.Equal(t, MustJSON(test.resultVal), res)
+			assert.Equal(t, test.changed, changed)
+		})
+	}
+}

@@ -18,6 +18,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/dolthub/jsonpath"
@@ -565,21 +566,166 @@ func jsonObjectDeterministicOrder(a, b map[string]interface{}, inter []string) (
 }
 
 func (doc JSONDocument) Insert(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
-	//TODO implement me
+	if path == "$" {
+		// Do nothing. Can't replace the root object
+		return doc, false, nil
+	}
+
 	panic("implement me")
+
 }
 
 func (doc JSONDocument) Remove(ctx *sql.Context, path string) (MutableJSONValue, bool, error) {
-	//TODO implement me
+	if path == "$" {
+		return nil, false, fmt.Errorf("The path expression '$' is not allowed in this context.")
+	}
+
 	panic("implement me")
 }
 
 func (doc JSONDocument) Set(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
-	//TODO implement me
-	panic("implement me")
+	path = strings.TrimSpace(path)
+
+	if path == "$" {
+		res, err := val.Unmarshall(ctx)
+		if err != nil {
+			return nil, false, err
+		}
+		return res, true, nil
+	}
+
+	path = path[1:]
+
+	unmarshalled, err := val.Unmarshall(ctx)
+	if err != nil {
+		panic("whay??? NM4")
+	}
+
+	if path[0] == '.' {
+		strMap, ok := doc.Val.(map[string]interface{})
+		if !ok {
+			panic("wasn't a map? NM4")
+		}
+
+		name := path[1:]
+		if name == "" {
+			panic("invalid path")
+		} else if name[0] == '"' {
+			// find the next quote
+			right := strings.Index(name[1:], "\"")
+			if right == -1 {
+				panic("invalid path")
+			}
+			name = name[1 : right+1]
+		}
+
+		//get the name from strMap
+		strMap[name] = unmarshalled.Val
+		return doc, true, nil
+	} else if path[0] == '[' {
+		right := strings.Index(path, "]")
+		if right == -1 {
+			panic("invalid path")
+		}
+
+		if arr, ok := doc.Val.([]interface{}); ok {
+			index, err := parseIndex(path[1:right], len(arr)-1)
+			if err != nil {
+				panic("invalid path - index is not a number")
+			}
+
+			if len(arr) > index.index {
+				arr[index.index] = unmarshalled.Val
+				return doc, true, nil
+			} else {
+				newArr := append(arr, unmarshalled.Val)
+				return JSONDocument{Val: newArr}, true, nil
+			}
+		} else {
+			// We don't have an array, so must be a scalar or an object that the user is treating as an array. Thankfully
+			// MySQL treats both the same way, but it's a little nutty nonetheless.
+			index, err := parseIndex(path[1:right], 0)
+			if err != nil {
+				panic("invalid path - index is not a number")
+			}
+
+			if !index.underflow {
+				if index.index == 0 {
+					return JSONDocument{Val: unmarshalled.Val}, true, nil
+				} else {
+					var newArr = make([]interface{}, 0, 2)
+					newArr = append(newArr, doc.Val)
+					newArr = append(newArr, unmarshalled.Val)
+					return JSONDocument{Val: newArr}, true, nil
+				}
+			} else {
+				// convert to an array, [val, object]
+				var newArr = make([]interface{}, 0, 2)
+				newArr = append(newArr, unmarshalled.Val)
+				newArr = append(newArr, doc.Val)
+				return JSONDocument{Val: newArr}, true, nil
+			}
+		}
+
+	} else {
+		panic("invalid path")
+	}
+}
+
+type parseIndexResult struct {
+	underflow bool
+	overflow  bool
+	index     int
+}
+
+func parseIndex(index string, lastIndex int) (parseIndexResult, error) {
+	// trim whitespace off the ends
+	index = strings.TrimSpace(index)
+
+	if index == "last" {
+		if lastIndex < 0 {
+			lastIndex = 0 // This happens for an empty array
+		}
+		return parseIndexResult{index: lastIndex}, nil
+	} else {
+		// split the string on "-"
+		parts := strings.Split(index, "-")
+		if len(parts) == 2 {
+			part1, part2 := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+			if part1 == "last" {
+				lastMinus, err := strconv.Atoi(part2)
+				if err != nil || lastMinus < 0 {
+					panic("pan't parse index")
+				}
+
+				underFlow := false
+				reducedIdx := lastIndex - lastMinus
+				if reducedIdx < 0 {
+					reducedIdx = 0
+					underFlow = true
+				}
+				return parseIndexResult{index: reducedIdx, underflow: underFlow}, nil
+			} else {
+				panic("pan't parse index")
+			}
+		}
+	}
+
+	val, err := strconv.Atoi(index)
+	if err != nil {
+		panic("pan't parse index")
+	}
+	return parseIndexResult{index: val}, nil
 }
 
 func (doc JSONDocument) Replace(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
-	//TODO implement me
+	if path == "$" {
+		res, err := val.Unmarshall(ctx)
+		if err != nil {
+			return nil, false, err
+		}
+		return res, true, nil
+	}
+
 	panic("implement me")
 }
