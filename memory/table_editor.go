@@ -78,10 +78,22 @@ func (t *tableEditor) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 }
 
 func (t *tableEditor) Close(ctx *sql.Context) error {
+	// On the normal INSERT / UPDATE / DELETE path this happens at StatementComplete time, but for table rewrites it 
+	// only happens at Close
+	err := t.ea.ApplyEdits(ctx)
+	if err != nil {
+		return err
+	}
+	t.ea.Clear()
+	
 	t.targetTable.replaceData(t.editedTable)
 	
 	sess := SessionFromContext(ctx)
 	sess.clearEditAccumulator(t.targetTable)
+
+	// for various reasons, the pointer we're editing may not be the one recorded in the database map, so update it
+	t.targetTable.db.putTable(t.targetTable)
+
 	return nil
 }
 

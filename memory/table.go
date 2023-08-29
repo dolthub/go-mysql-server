@@ -1896,8 +1896,6 @@ func (t *Table) replaceData(src *Table) {
 	t.collation = src.collation
 	t.autoIncVal = src.autoIncVal
 	t.insertPartIdx = src.insertPartIdx
-	// for various reasons, the pointer we're editing may not be the one recorded in the database map, so update it
-	t.db.putTable(t)
 }
 
 func newTable(ctx *sql.Context, t *Table, newSch sql.PrimaryKeySchema) (*Table, error) {
@@ -2173,9 +2171,6 @@ func isColumnDrop(oldSchema sql.PrimaryKeySchema, newSchema sql.PrimaryKeySchema
 }
 
 func (t Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column, idxCols []sql.IndexColumn) (sql.RowInserter, error) {
-	editor := t.getTableEditor(ctx).(*tableEditor)
-	editorCopy :=	*editor 
-	
 	// Make a copy of the table under edit with the new schema and no data
 	var keys [][]byte
 	var partitions = map[string][]sql.Row{}
@@ -2187,11 +2182,13 @@ func (t Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.Primar
 		partitions[key] = []sql.Row{}
 	}
 	
-	tableUnderEdit := editorCopy.editedTable.copy()
+	tableUnderEdit := t.copy()
 	tableUnderEdit.partitionKeys = keys
 	tableUnderEdit.partitions = partitions
 	tableUnderEdit.schema = newSchema
-	editorCopy.editedTable = tableUnderEdit
+
+	editor := tableUnderEdit.getTableEditor(ctx).(*tableEditor)
+	editorCopy :=	*editor
 	
 	return &editorCopy, nil
 }
