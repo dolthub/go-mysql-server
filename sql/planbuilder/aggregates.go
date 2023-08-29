@@ -110,8 +110,14 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 			}
 		case *ast.SQLVal:
 			// literal -> index into targets
-			if e.Type == ast.IntVal {
-				lit := b.convertInt(string(e.Val), 10)
+			replace := b.normalizeValArg(e)
+			val, ok := replace.(*ast.SQLVal)
+			if !ok {
+				// ast.NullVal
+				continue
+			}
+			if val.Type == ast.IntVal {
+				lit := b.convertInt(string(val.Val), 10)
 				idx, _, err := types.Int64.Convert(lit.Value())
 				if err != nil {
 					b.handleErr(err)

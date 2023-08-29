@@ -507,7 +507,16 @@ func (b *Builder) buildAsOfLit(inScope *scope, t ast.Expr) interface{} {
 func (b *Builder) buildAsOfExpr(inScope *scope, time ast.Expr) sql.Expression {
 	switch v := time.(type) {
 	case *ast.SQLVal:
-		ret, _, err := types.Text.Convert(v.Val)
+		if v.Type == ast.ValArg && (b.bindCtx == nil || b.bindCtx.skip) {
+			return nil
+		}
+		repl := b.normalizeValArg(v)
+		val, ok := repl.(*ast.SQLVal)
+		if !ok {
+			// *ast.NullVal
+			return nil
+		}
+		ret, _, err := types.Text.Convert(val.Val)
 		if err != nil {
 			b.handleErr(err)
 		}

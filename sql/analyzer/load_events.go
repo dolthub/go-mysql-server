@@ -86,10 +86,7 @@ func loadEventFromDb(ctx *sql.Context, cat sql.Catalog, db sql.Database, name st
 }
 
 func getEventDetailsFromEventDefinition(ctx *sql.Context, cat sql.Catalog, event sql.EventDefinition) (sql.EventDetails, error) {
-	b, err := planbuilder.New(ctx, cat)
-	if err != nil {
-		return sql.EventDetails{}, err
-	}
+	b := planbuilder.New(ctx, cat)
 	b.SetParserOptions(sql.NewSqlModeFromString(event.SqlMode).ParserOptions())
 	parsedCreateEvent, _, _, err := b.Parse(event.CreateStatement, false)
 	if err != nil {

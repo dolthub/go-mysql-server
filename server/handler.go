@@ -107,7 +107,6 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error
 	if err != nil {
 		return nil, err
 	}
-
 	var analyzed sql.Node
 	if analyzer.PreparedStmtDisabled {
 		analyzed, err = h.e.AnalyzeQuery(ctx, query)
@@ -211,7 +210,7 @@ func (h *Handler) doQuery(
 	var remainder string
 	var prequery string
 	var parsed sqlparser.Statement
-	if mode == MultiStmtModeOn {
+	if _, ok := h.e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query); mode == MultiStmtModeOn && !ok {
 		parsed, prequery, remainder, err = planbuilder.ParseOnly(ctx, query, true)
 		if prequery != "" {
 			query = prequery
@@ -224,14 +223,15 @@ func (h *Handler) doQuery(
 	var queryStr string
 	if h.encodeLoggedQuery {
 		queryStr = base64.StdEncoding.EncodeToString([]byte(query))
-	} else {
+	} else if h.maxLoggedQueryLen > 0 {
+		// this is expensive, off by default
 		queryStr = string(queryLoggingRegex.ReplaceAll([]byte(query), []byte(" ")))
 		if h.maxLoggedQueryLen > 0 && len(queryStr) > h.maxLoggedQueryLen {
 			queryStr = queryStr[:h.maxLoggedQueryLen] + "..."
 		}
 	}
 
-	if h.encodeLoggedQuery || h.maxLoggedQueryLen >= 0 {
+	if h.encodeLoggedQuery || h.maxLoggedQueryLen > 0 {
 		ctx.SetLogger(ctx.GetLogger().WithField("query", queryStr))
 	}
 	ctx.GetLogger().Debugf("Starting query")

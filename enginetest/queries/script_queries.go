@@ -4351,7 +4351,7 @@ var PreparedScriptTests = []ScriptTest{
 			},
 			{
 				Query:          "execute s",
-				ExpectedErrStr: "missing bind var v1",
+				ExpectedErrStr: "bind variable not provided: 'v1'",
 			},
 			{
 				Query: "execute s using @abc",
@@ -4409,7 +4409,7 @@ var PreparedScriptTests = []ScriptTest{
 			},
 			{
 				Query:          "execute s using @a",
-				ExpectedErrStr: "missing bind var v2",
+				ExpectedErrStr: "bind variable not provided: 'v2'",
 			},
 			{
 				Query: "execute s using @a, @b",
