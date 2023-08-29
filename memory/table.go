@@ -86,7 +86,7 @@ var _ fulltext.IndexAlterableTable = (*Table)(nil)
 
 var _ sql.ForeignKeyTable = (*Table)(nil)
 var _ sql.CheckAlterableTable = (*Table)(nil)
-var _ sql.RewritableTable = (*Table)(nil)
+// var _ sql.RewritableTable = (*Table)(nil)
 var _ sql.CheckTable = (*Table)(nil)
 var _ sql.AutoIncrementTable = (*Table)(nil)
 var _ sql.StatisticsTable = (*Table)(nil)
@@ -814,7 +814,11 @@ func (t *Table) PeekNextAutoIncrementValue(*sql.Context) (uint64, error) {
 
 // GetNextAutoIncrementValue gets the next auto increment value for the memory table the increment.
 func (t *Table) GetNextAutoIncrementValue(ctx *sql.Context, insertVal interface{}) (uint64, error) {
-	cmp, err := types.Uint64.Compare(insertVal, t.autoIncVal)
+	sess := SessionFromContext(ctx)
+	ea := sess.editAccumulator(t)
+	tableUnderEdit := ea.Table()
+	
+	cmp, err := types.Uint64.Compare(insertVal, tableUnderEdit.autoIncVal)
 	if err != nil {
 		return 0, err
 	}
@@ -824,10 +828,10 @@ func (t *Table) GetNextAutoIncrementValue(ctx *sql.Context, insertVal interface{
 		if err != nil {
 			return 0, err
 		}
-		t.autoIncVal = v.(uint64)
+		tableUnderEdit.autoIncVal = v.(uint64)
 	}
 
-	return t.autoIncVal, nil
+	return tableUnderEdit.autoIncVal, nil
 }
 
 func (t *Table) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.ColumnOrder) error {
@@ -1872,6 +1876,7 @@ func (t *Table) replaceData(src *Table) {
 	t.partitions = src.partitions
 	t.fkColl = src.fkColl
 	t.collation = src.collation
+	t.autoIncVal = src.autoIncVal
 }
 
 func newTable(ctx *sql.Context, t *Table, newSch sql.PrimaryKeySchema) (*Table, error) {
@@ -2146,12 +2151,12 @@ func isColumnDrop(oldSchema sql.PrimaryKeySchema, newSchema sql.PrimaryKeySchema
 	return len(oldSchema.Schema) > len(newSchema.Schema)
 }
 
-func (t Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column, idxCols []sql.IndexColumn) (sql.RowInserter, error) {
-	editor := t.getTableEditor(ctx).(*tableEditor)
-	
-	editorCopy :=	*editor 
-	
-	// we want an editor that will truncate the table shortly just before applying all of its edits
-	editorCopy.isRewrite = true
-	return &editorCopy, nil
-}
+// func (t Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column, idxCols []sql.IndexColumn) (sql.RowInserter, error) {
+// 	editor := t.getTableEditor(ctx).(*tableEditor)
+// 	
+// 	editorCopy :=	*editor 
+// 	
+// 	// we want an editor that will truncate the table shortly just before applying all of its edits
+// 	editorCopy.isRewrite = true
+// 	return &editorCopy, nil
+// }

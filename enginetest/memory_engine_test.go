@@ -187,15 +187,21 @@ func TestSingleScript(t *testing.T) {
 	// t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "ADD FOREIGN KEY fails on existing table when data would cause violation",
+			Name: "simple insert",
 			SetUpScript: []string{
-				"INSERT INTO parent VALUES (1, 1, 1), (2, 2, 2);",
-				"INSERT INTO child VALUES (1, 1, 1), (2, 3, 2);",
+				"create table t1 (a bigint primary key auto_increment, b int);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:       "ALTER TABLE child ADD CONSTRAINT fk_name FOREIGN KEY (v1) REFERENCES parent(v1)",
-					ExpectedErr: sql.ErrForeignKeyChildViolation,
+					Query:       "insert into t1(b) values (1), (2)",
+					Expected: 	[]sql.Row{{types.OkResult{
+						RowsAffected: 2,
+						InsertID:     1,
+					}}},
+				},
+				{
+					Query:       "select * from t1 order by a",
+					Expected: 	[]sql.Row{{1, 1}, {2,2}},
 				},
 			},
 		},
@@ -203,7 +209,7 @@ func TestSingleScript(t *testing.T) {
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-		harness.Setup(setup.MydbData, setup.Parent_childData)
+		harness.Setup(setup.MydbData)
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
