@@ -743,6 +743,27 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		Query: "select * from (select i, i2 from niltable) a(x,y) union select * from (select 1, NULL) b(x,y) union select * from (select i, i2 from niltable) c(x,y)",
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "x",
+				Type: types.Int64,
+			},
+			{
+				Name: "y",
+				Type: types.Int64,
+			},
+		},
+		Expected: []sql.Row{
+			{1, nil},
+			{2, 2},
+			{3, nil},
+			{4, 4},
+			{5, nil},
+			{6, 6},
+		},
+	},
+	{
 		Query: "select * from (select 1, 1) a(x,y) union select * from (select 1, NULL) b(x,y) union select * from (select 1,1) c(x,y);",
 		ExpectedColumns: sql.Schema{
 			{
