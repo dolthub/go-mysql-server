@@ -456,7 +456,6 @@ var JsonSetTests = []JsonMutationTest{
 		resultVal: `{"a": 1, "b": 42}`,
 		changed:   true,
 	},
-
 	{
 		desc:      "Object field set Unicode",
 		doc:       `{"❤️🧡💛💚💙💜": {}}`,
@@ -492,6 +491,14 @@ var JsonSetTests = []JsonMutationTest{
 			expectErrStr: `Invalid JSON path expression. The error is around character position 2`,
 		},
 
+		{
+			desc:         "set does nothing for multi level updates",
+			doc:          `[1, 2, 3]`,
+			path:         "$.a.b.c",
+			value:        `42`,
+			resultVal: `[1, 2, 3]`,
+			changed:      false,
+		},
 	*/
 }
 
@@ -515,11 +522,145 @@ func TestJsonSet(t *testing.T) {
 
 var JsonInsertTests = []JsonMutationTest{
 	{
-		desc:      "set root",
+		desc:      "insert root",
 		doc:       `{"a": 1, "b": 2}`,
 		path:      "$",
 		value:     `{"c": 3}`,
 		resultVal: `{"a": 1, "b": 2}`,
+		changed:   false,
+	},
+
+	{
+		desc:      "insert root ignore white space",
+		doc:       `{"a": 1, "b": 2}`,
+		path:      "   $   ",
+		value:     `{"c": 3}`,
+		resultVal: `{"a": 1, "b": 2}`,
+		changed:   false,
+	},
+	{
+		desc:      "insert middle of an array",
+		doc:       `[1, 2, 3]`,
+		path:      "$[1]",
+		value:     `42`,
+		resultVal: `[1, 2, 3]`,
+		changed:   false,
+	},
+	{
+		desc:      "insert last item of an array does nothing",
+		doc:       `[1, 2, 3]`,
+		path:      "$[2]",
+		value:     `42`,
+		resultVal: `[1, 2, 3]`,
+		changed:   false,
+	},
+	{
+		desc:      "append to an array when overflown",
+		doc:       `[1, 2, 3]`,
+		path:      "$[23]",
+		value:     `42`,
+		resultVal: `[1, 2, 3, 42]`,
+		changed:   true,
+	},
+	{
+		desc:      "insert 'last' element of an array does nothing",
+		doc:       `[1, 2, 3]`,
+		path:      "$[last]",
+		value:     `42`,
+		resultVal: `[1, 2, 3]`,
+		changed:   false,
+	},
+	{
+		desc:      "insert into empty array mutates",
+		doc:       `[]`,
+		path:      "$[last]",
+		value:     `42`,
+		resultVal: `[42]`,
+		changed:   true,
+	},
+	{
+		desc:      "treating object as an array replaces for index 0",
+		doc:       `{"a":1}`,
+		path:      "$[0]",
+		value:     `42`,
+		resultVal: `{"a":1}`,
+		changed:   false,
+	},
+	{
+		// Can't make this stuff up.
+		//	mysql> select JSON_INSERT(JSON_OBJECT("a",1),'$[last-21]', 42);
+		// +--------------------------------------------------+
+		// | JSON_INSERT(JSON_OBJECT("a",1),'$[last-21]', 42) |
+		// +--------------------------------------------------+
+		// | [42, {"a": 1}]                                   |
+		// +--------------------------------------------------+
+		desc:      "treating object will prefix as an array",
+		doc:       `{"a":1}`,
+		path:      "$[last-23]",
+		value:     `42`,
+		resultVal: `[42, {"a": 1}]`,
+		changed:   true,
+	},
+	{
+		// mysql> select JSON_INSERT(JSON_OBJECT("a",1),'$[51]', 42);
+		// +---------------------------------------------+
+		// | JSON_INSERT(JSON_OBJECT("a",1),'$[51]', 42) |
+		// +---------------------------------------------+
+		// | [{"a": 1}, 42]                              |
+		// +---------------------------------------------+
+		desc:      "treating object will append as an array for out of bounds",
+		doc:       `{"a":1}`,
+		path:      "$[51]",
+		value:     `42`,
+		resultVal: `[{"a": 1}, 42]`,
+		changed:   true,
+	},
+	{
+		desc:      "scalar will append as an array for out of bounds",
+		doc:       `17`,
+		path:      "$[51]",
+		value:     `42`,
+		resultVal: `[17, 42]`,
+		changed:   true,
+	},
+	{
+		desc:      "scalar will be overwritten for index 0",
+		doc:       `17`,
+		path:      "$[0]",
+		value:     `42`,
+		resultVal: `17`,
+		changed:   false,
+	},
+	{
+		desc:      "scalar will be prefixed when underflow happens",
+		doc:       `17`,
+		path:      "$[last-23]",
+		value:     `42`,
+		resultVal: `[42, 17]`,
+		changed:   true,
+	},
+	{
+		desc:      "Object field updated",
+		doc:       `{"a": 1}`,
+		path:      "$.a",
+		value:     `42`,
+		resultVal: `{"a": 1}`,
+		changed:   false,
+	},
+	{
+		desc:      "Object field set",
+		doc:       `{"a": 1}`,
+		path:      "$.b",
+		value:     `42`,
+		resultVal: `{"a": 1, "b": 42}`,
+		changed:   true,
+	},
+	{
+		desc:      "Object field name can optionally have quotes",
+		doc:       `{"a": {}}`,
+		path:      `$."a"`,
+		value:     `42`,
+		resultVal: `{"a": {} }`,
 		changed:   false,
 	},
 }

@@ -21,9 +21,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dolthub/jsonpath"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/jsonpath"
 )
 
 // JSONValue is an integrator specific implementation of a JSON field value.
@@ -566,13 +565,12 @@ func jsonObjectDeterministicOrder(a, b map[string]interface{}, inter []string) (
 }
 
 func (doc JSONDocument) Insert(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
+	path = strings.TrimSpace(path)
 	if path == "$" {
 		// Do nothing. Can't replace the root object
 		return doc, false, nil
 	}
-
-	panic("implement me")
-
+	return doc.needANameForThis(ctx, path, val, false)
 }
 
 func (doc JSONDocument) Remove(ctx *sql.Context, path string) (MutableJSONValue, bool, error) {
@@ -593,6 +591,11 @@ func (doc JSONDocument) Set(ctx *sql.Context, path string, val JSONValue) (Mutab
 		}
 		return res, true, nil
 	}
+
+	return doc.needANameForThis(ctx, path, val, true)
+}
+
+func (doc JSONDocument) needANameForThis(ctx *sql.Context, path string, val JSONValue, overwrite bool) (MutableJSONValue, bool, error) {
 
 	path = path[1:]
 
@@ -619,9 +622,15 @@ func (doc JSONDocument) Set(ctx *sql.Context, path string, val JSONValue) (Mutab
 			name = name[1 : right+1]
 		}
 
-		//get the name from strMap
-		strMap[name] = unmarshalled.Val
-		return doc, true, nil
+		// does the name exist in the map?
+		updated := false
+		_, destrutive := strMap[name]
+		if !destrutive || overwrite {
+			strMap[name] = unmarshalled.Val
+			updated = true
+		}
+
+		return doc, updated, nil
 	} else if path[0] == '[' {
 		right := strings.Index(path, "]")
 		if right == -1 {
@@ -635,8 +644,12 @@ func (doc JSONDocument) Set(ctx *sql.Context, path string, val JSONValue) (Mutab
 			}
 
 			if len(arr) > index.index {
-				arr[index.index] = unmarshalled.Val
-				return doc, true, nil
+				updated := false
+				if overwrite {
+					arr[index.index] = unmarshalled.Val
+					updated = true
+				}
+				return doc, updated, nil
 			} else {
 				newArr := append(arr, unmarshalled.Val)
 				return JSONDocument{Val: newArr}, true, nil
@@ -651,7 +664,10 @@ func (doc JSONDocument) Set(ctx *sql.Context, path string, val JSONValue) (Mutab
 
 			if !index.underflow {
 				if index.index == 0 {
-					return JSONDocument{Val: unmarshalled.Val}, true, nil
+					if overwrite {
+						return JSONDocument{Val: unmarshalled.Val}, true, nil
+					}
+					return doc, false, nil
 				} else {
 					var newArr = make([]interface{}, 0, 2)
 					newArr = append(newArr, doc.Val)
