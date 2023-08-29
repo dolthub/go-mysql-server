@@ -400,14 +400,26 @@ func (b *Builder) buildShowTableStatus(inScope *scope, s *ast.Show) (outScope *s
 
 func (b *Builder) buildShowIndex(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
-	dbName := s.Table.Qualifier.String()
+	dbName := strings.ToLower(s.Database)
+	if dbName == "" {
+		dbName = s.Table.Qualifier.String()
+	}
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
 	}
 	tableName := strings.ToLower(s.Table.Name.String())
-	table := b.resolveTable(tableName, strings.ToLower(dbName), nil)
-	showIdx := plan.NewShowIndexes(table)
-	showIdx.IndexesToShow = b.getInfoSchemaIndexes(table)
+	tableScope, ok := b.buildTablescan(inScope, strings.ToLower(dbName), tableName, nil)
+	if !ok {
+		err := sql.ErrTableNotFound.New(tableName)
+		b.handleErr(err)
+	}
+	rt, ok := tableScope.node.(*plan.ResolvedTable)
+	if !ok {
+		err := sql.ErrTableNotFound.New(tableName)
+		b.handleErr(err)
+	}
+	showIdx := plan.NewShowIndexes(rt)
+	showIdx.IndexesToShow = b.getInfoSchemaIndexes(rt)
 	outScope.node = showIdx
 	return
 }
