@@ -83,7 +83,7 @@ func replacePkSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sor
 		if !pkIndex.CanSupport(lookup.Ranges...) {
 			return n, transform.SameTree, nil
 		}
-		nn, err := plan.NewStaticIndexedAccessForTableNode(n, lookup)
+		nn, err := plan.NewStaticIndexedAccessForTableNode(ctx, n, lookup)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}

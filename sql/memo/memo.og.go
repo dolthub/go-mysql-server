@@ -1000,7 +1000,7 @@ func FormatExpr(r exprType) string {
 	}
 }
 
-func buildRelExpr(b *ExecBuilder, r RelExpr, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+func buildRelExpr(ctx *sql.Context, b *ExecBuilder, r RelExpr, input sql.Schema, children ...sql.Node) (sql.Node, error) {
 	var result sql.Node
 	var err error
 
@@ -1016,15 +1016,15 @@ func buildRelExpr(b *ExecBuilder, r RelExpr, input sql.Schema, children ...sql.N
 	case *AntiJoin:
 		result, err = b.buildAntiJoin(r, input, children...)
 	case *LookupJoin:
-		result, err = b.buildLookupJoin(r, input, children...)
+		result, err = b.buildLookupJoin(ctx, r, input, children...)
 	case *RangeHeapJoin:
-		result, err = b.buildRangeHeapJoin(r, input, children...)
+		result, err = b.buildRangeHeapJoin(ctx, r, input, children...)
 	case *ConcatJoin:
-		result, err = b.buildConcatJoin(r, input, children...)
+		result, err = b.buildConcatJoin(ctx, r, input, children...)
 	case *HashJoin:
 		result, err = b.buildHashJoin(r, input, children...)
 	case *MergeJoin:
-		result, err = b.buildMergeJoin(r, input, children...)
+		result, err = b.buildMergeJoin(ctx, r, input, children...)
 	case *FullOuterJoin:
 		result, err = b.buildFullOuterJoin(r, input, children...)
 	case *LateralJoin:

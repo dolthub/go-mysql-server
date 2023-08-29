@@ -16,8 +16,8 @@ func NewExecBuilder() *ExecBuilder {
 	return &ExecBuilder{}
 }
 
-func (b *ExecBuilder) buildRel(r RelExpr, input sql.Schema, children ...sql.Node) (sql.Node, error) {
-	n, err := buildRelExpr(b, r, input, children...)
+func (b *ExecBuilder) buildRel(ctx *sql.Context, r RelExpr, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+	n, err := buildRelExpr(ctx, b, r, input, children...)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func (b *ExecBuilder) buildAntiJoin(j *AntiJoin, input sql.Schema, children ...s
 	return plan.NewJoin(children[0], children[1], j.Op, filters), nil
 }
 
-func (b *ExecBuilder) buildLookup(l *Lookup, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+func (b *ExecBuilder) buildLookup(ctx *sql.Context, l *Lookup, input sql.Schema, children ...sql.Node) (sql.Node, error) {
 	var ret sql.Node
 	var err error
 
@@ -95,21 +95,21 @@ func (b *ExecBuilder) buildLookup(l *Lookup, input sql.Schema, children ...sql.N
 	}
 	switch n := children[0].(type) {
 	case sql.TableNode:
-		ret, err = plan.NewIndexedAccessForTableNode(n, plan.NewLookupBuilder(l.Index.SqlIdx(), keyExprs, l.Nullmask))
+		ret, err = plan.NewIndexedAccessForTableNode(ctx, n, plan.NewLookupBuilder(l.Index.SqlIdx(), keyExprs, l.Nullmask))
 	case *plan.TableAlias:
-		ret, err = plan.NewIndexedAccessForTableNode(n.Child.(sql.TableNode), plan.NewLookupBuilder(l.Index.SqlIdx(), keyExprs, l.Nullmask))
+		ret, err = plan.NewIndexedAccessForTableNode(ctx, n.Child.(sql.TableNode), plan.NewLookupBuilder(l.Index.SqlIdx(), keyExprs, l.Nullmask))
 		ret = plan.NewTableAlias(n.Name(), ret)
 	case *plan.Distinct:
-		ret, err = b.buildLookup(l, input, n.Child)
+		ret, err = b.buildLookup(ctx, l, input, n.Child)
 		ret = plan.NewDistinct(ret)
 	case *plan.Filter:
-		ret, err = b.buildLookup(l, input, n.Child)
+		ret, err = b.buildLookup(ctx, l, input, n.Child)
 		ret = plan.NewFilter(n.Expression, ret)
 	case *plan.Project:
-		ret, err = b.buildLookup(l, input, n.Child)
+		ret, err = b.buildLookup(ctx, l, input, n.Child)
 		ret = plan.NewProject(n.Projections, ret)
 	case *plan.Limit:
-		ret, err = b.buildLookup(l, input, n.Child)
+		ret, err = b.buildLookup(ctx, l, input, n.Child)
 		ret = plan.NewLimit(n.Limit, ret)
 	default:
 		panic(fmt.Sprintf("unexpected lookup child %T", n))
@@ -120,9 +120,9 @@ func (b *ExecBuilder) buildLookup(l *Lookup, input sql.Schema, children ...sql.N
 	return ret, nil
 }
 
-func (b *ExecBuilder) buildLookupJoin(j *LookupJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+func (b *ExecBuilder) buildLookupJoin(ctx *sql.Context, j *LookupJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
 	left := children[0]
-	right, err := b.buildLookup(j.Lookup, input, children[1])
+	right, err := b.buildLookup(ctx, j.Lookup, input, children[1])
 	if err != nil {
 		return nil, err
 	}
@@ -133,24 +133,24 @@ func (b *ExecBuilder) buildLookupJoin(j *LookupJoin, input sql.Schema, children 
 	return plan.NewJoin(left, right, j.Op, filters).WithScopeLen(j.g.m.scopeLen), nil
 }
 
-func (b *ExecBuilder) buildRangeHeap(sr *RangeHeap, leftSch, rightSch sql.Schema, children ...sql.Node) (ret sql.Node, err error) {
+func (b *ExecBuilder) buildRangeHeap(ctx *sql.Context, sr *RangeHeap, leftSch, rightSch sql.Schema, children ...sql.Node) (ret sql.Node, err error) {
 	switch n := children[0].(type) {
 	case *plan.Distinct:
-		ret, err = b.buildRangeHeap(sr, leftSch, rightSch, n.Child)
+		ret, err = b.buildRangeHeap(ctx, sr, leftSch, rightSch, n.Child)
 		ret = plan.NewDistinct(ret)
 	case *plan.Filter:
-		ret, err = b.buildRangeHeap(sr, leftSch, rightSch, n.Child)
+		ret, err = b.buildRangeHeap(ctx, sr, leftSch, rightSch, n.Child)
 		ret = plan.NewFilter(n.Expression, ret)
 	case *plan.Project:
-		ret, err = b.buildRangeHeap(sr, leftSch, rightSch, n.Child)
+		ret, err = b.buildRangeHeap(ctx, sr, leftSch, rightSch, n.Child)
 		ret = plan.NewProject(n.Projections, ret)
 	case *plan.Limit:
-		ret, err = b.buildRangeHeap(sr, leftSch, rightSch, n.Child)
+		ret, err = b.buildRangeHeap(ctx, sr, leftSch, rightSch, n.Child)
 		ret = plan.NewLimit(n.Limit, ret)
 	default:
 		var childNode sql.Node
 		if sr.MinIndex != nil {
-			childNode, err = b.buildIndexScan(sr.MinIndex, rightSch, n)
+			childNode, err = b.buildIndexScan(ctx, sr.MinIndex, rightSch, n)
 		} else {
 			sortExpr, err := b.buildScalar(*sr.MinExpr, rightSch)
 			if err != nil {
@@ -183,14 +183,14 @@ func (b *ExecBuilder) buildRangeHeap(sr *RangeHeap, leftSch, rightSch sql.Schema
 	return ret, nil
 }
 
-func (b *ExecBuilder) buildRangeHeapJoin(j *RangeHeapJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+func (b *ExecBuilder) buildRangeHeapJoin(ctx *sql.Context, j *RangeHeapJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
 	leftSch := input[:len(input)-len(j.Right.RelProps.OutputCols())]
 	rightSch := input[len(j.Left.RelProps.OutputCols()):]
 
 	var left sql.Node
 	var err error
 	if j.RangeHeap.ValueIndex != nil {
-		left, err = b.buildIndexScan(j.RangeHeap.ValueIndex, input, children[0])
+		left, err = b.buildIndexScan(ctx, j.RangeHeap.ValueIndex, input, children[0])
 		if err != nil {
 			return nil, err
 		}
@@ -207,7 +207,7 @@ func (b *ExecBuilder) buildRangeHeapJoin(j *RangeHeapJoin, input sql.Schema, chi
 		left = plan.NewSort(sf, children[0])
 	}
 
-	right, err := b.buildRangeHeap(j.RangeHeap, leftSch, rightSch, children[1])
+	right, err := b.buildRangeHeap(ctx, j.RangeHeap, leftSch, rightSch, children[1])
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +218,7 @@ func (b *ExecBuilder) buildRangeHeapJoin(j *RangeHeapJoin, input sql.Schema, chi
 	return plan.NewJoin(left, right, j.Op, filters).WithScopeLen(j.g.m.scopeLen), nil
 }
 
-func (b *ExecBuilder) buildConcatJoin(j *ConcatJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+func (b *ExecBuilder) buildConcatJoin(ctx *sql.Context, j *ConcatJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
 	var alias string
 	var name string
 	rightC := children[1]
@@ -231,12 +231,12 @@ func (b *ExecBuilder) buildConcatJoin(j *ConcatJoin, input sql.Schema, children 
 		name = n.Name()
 	}
 
-	right, err := b.buildLookup(j.Concat[0], input, rightC)
+	right, err := b.buildLookup(ctx, j.Concat[0], input, rightC)
 	if err != nil {
 		return nil, err
 	}
 	for _, look := range j.Concat[1:] {
-		l, err := b.buildLookup(look, input, rightC)
+		l, err := b.buildLookup(ctx, look, input, rightC)
 		if err != nil {
 			return nil, err
 		}
@@ -291,7 +291,7 @@ func (b *ExecBuilder) buildHashJoin(j *HashJoin, input sql.Schema, children ...s
 	return plan.NewJoin(inner, outer, j.Op, filters).WithScopeLen(j.g.m.scopeLen), nil
 }
 
-func (b *ExecBuilder) buildIndexScan(i *IndexScan, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+func (b *ExecBuilder) buildIndexScan(ctx *sql.Context, i *IndexScan, input sql.Schema, children ...sql.Node) (sql.Node, error) {
 	// need keyExprs for whole range for every dimension
 	l := sql.IndexLookup{Index: i.Idx.SqlIdx(), Ranges: sql.RangeCollection{i.Range}}
 
@@ -299,21 +299,21 @@ func (b *ExecBuilder) buildIndexScan(i *IndexScan, input sql.Schema, children ..
 	var err error
 	switch n := children[0].(type) {
 	case sql.TableNode:
-		ret, err = plan.NewStaticIndexedAccessForTableNode(n, l)
+		ret, err = plan.NewStaticIndexedAccessForTableNode(ctx, n, l)
 	case *plan.TableAlias:
-		ret, err = plan.NewStaticIndexedAccessForTableNode(n.Child.(sql.TableNode), l)
+		ret, err = plan.NewStaticIndexedAccessForTableNode(ctx, n.Child.(sql.TableNode), l)
 		ret = plan.NewTableAlias(n.Name(), ret)
 	case *plan.Distinct:
-		ret, err = b.buildIndexScan(i, input, n.Child)
+		ret, err = b.buildIndexScan(ctx, i, input, n.Child)
 		ret = plan.NewDistinct(ret)
 	case *plan.OrderedDistinct:
-		ret, err = b.buildIndexScan(i, input, n.Child)
+		ret, err = b.buildIndexScan(ctx, i, input, n.Child)
 		ret = plan.NewOrderedDistinct(ret)
 	case *plan.Project:
-		ret, err = b.buildIndexScan(i, input, n.Child)
+		ret, err = b.buildIndexScan(ctx, i, input, n.Child)
 		ret = plan.NewProject(n.Projections, ret)
 	case *plan.Filter:
-		ret, err = b.buildIndexScan(i, input, n.Child)
+		ret, err = b.buildIndexScan(ctx, i, input, n.Child)
 		ret = plan.NewFilter(n.Expression, ret)
 	default:
 		return nil, fmt.Errorf("unexpected *indexScan child: %T", n)
@@ -333,8 +333,8 @@ func checkIndexTypeMismatch(idx sql.Index, rang sql.Range) bool {
 	return false
 }
 
-func (b *ExecBuilder) buildMergeJoin(j *MergeJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
-	inner, err := b.buildIndexScan(j.InnerScan, input, children[0])
+func (b *ExecBuilder) buildMergeJoin(ctx *sql.Context, j *MergeJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+	inner, err := b.buildIndexScan(ctx, j.InnerScan, input, children[0])
 	if err != nil {
 		return nil, err
 	}
@@ -342,7 +342,7 @@ func (b *ExecBuilder) buildMergeJoin(j *MergeJoin, input sql.Schema, children ..
 		return nil, fmt.Errorf("index scan type mismatch")
 	}
 
-	outer, err := b.buildIndexScan(j.OuterScan, input, children[1])
+	outer, err := b.buildIndexScan(ctx, j.OuterScan, input, children[1])
 	if err != nil {
 		return nil, err
 	}

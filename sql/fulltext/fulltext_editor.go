@@ -507,7 +507,11 @@ func (TableEditor) getRowCount(ctx *sql.Context, ie IndexEditors, hash string) (
 		},
 	}, Index: ie.RowCount.Index}
 
-	editorData := ie.RowCount.Editor.(sql.ForeignKeyEditor).IndexedAccess(lookup)
+	editorData, err := ie.RowCount.Editor.(sql.ForeignKeyEditor).IndexedAccess(ctx, lookup)
+	if err != nil {
+		return 0, 0, err
+	}
+	
 	partIter, err := editorData.LookupPartitions(ctx, lookup)
 	if err != nil {
 		return 0, 0, err
@@ -528,7 +532,11 @@ func (TableEditor) getRowCount(ctx *sql.Context, ie IndexEditors, hash string) (
 func (TableEditor) updateGlobalCount(ctx *sql.Context, ie IndexEditors, word string, increment bool) error {
 	lookup := sql.IndexLookup{Ranges: []sql.Range{{sql.ClosedRangeColumnExpr(word, word, ie.GlobalCount.Schema[0].Type)}},
 		Index: ie.GlobalCount.Index}
-	editorData := ie.GlobalCount.Editor.(sql.ForeignKeyEditor).IndexedAccess(lookup)
+	editorData, err := ie.GlobalCount.Editor.(sql.ForeignKeyEditor).IndexedAccess(ctx, lookup)
+	if err != nil {
+		return err
+	}
+	
 	partIter, err := editorData.LookupPartitions(ctx, lookup)
 	if err != nil {
 		return err

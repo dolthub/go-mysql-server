@@ -209,8 +209,8 @@ func (s IntSequenceTable) LookupPartitions(context *sql.Context, lookup sql.Inde
 	return sql.PartitionsToPartitionIter(&sequencePartition{min: int(min), max: int(max)}), nil
 }
 
-func (s IntSequenceTable) IndexedAccess(lookup sql.IndexLookup) sql.IndexedTable {
-	return s
+func (s IntSequenceTable) IndexedAccess(ctx *sql.Context, lookup sql.IndexLookup) (sql.IndexedTable, error) {
+	return s, nil
 }
 
 func (s IntSequenceTable) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {

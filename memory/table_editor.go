@@ -83,7 +83,7 @@ func (t *tableEditor) Close(ctx *sql.Context) error {
 	if err != nil {
 		return err
 	}
-	
+
 	sess := SessionFromContext(ctx)
 	sess.clearEditAccumulator(t.table)
 	return nil
@@ -267,21 +267,49 @@ func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val uint64) error 
 	return nil
 }
 
-func (t *tableEditor) IndexedAccess(i sql.IndexLookup) sql.IndexedTable {
+func (t *tableEditor) IndexedAccess(ctx *sql.Context, i sql.IndexLookup) (sql.IndexedTable, error) {
 	// TODO: optimize this, should create some struct that encloses the tableEditor and filters based on the lookup
 	if pkTea, ok := t.ea.(*pkTableEditAccumulator); ok {
 		newTable, err := newTable(pkTea.table, pkTea.table.schema)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
-		return &IndexedTable{Table: newTable, Lookup: i}
+		adds := make(map[string]sql.Row)
+		deletes := make(map[string]sql.Row)
+		for key, val := range pkTea.adds {
+			adds[key] = val
+		}
+		for key, val := range pkTea.deletes {
+			deletes[key] = val
+		}
+		err = (&pkTableEditAccumulator{
+			table:   newTable,
+			adds:    adds,
+			deletes: deletes,
+		}).ApplyEdits(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return &IndexedTable{Table: newTable, Lookup: i}, nil
 	} else {
 		nonPkTea := t.ea.(*keylessTableEditAccumulator)
 		newTable, err := newTable(nonPkTea.table, nonPkTea.table.schema)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
-		return &IndexedTable{Table: newTable, Lookup: i}
+		adds := make([]sql.Row, len(nonPkTea.adds))
+		deletes := make([]sql.Row, len(nonPkTea.deletes))
+		copy(adds, nonPkTea.adds)
+		copy(deletes, nonPkTea.deletes)
+		err = (&keylessTableEditAccumulator{
+			table:   newTable,
+			adds:    adds,
+			deletes: deletes,
+		}).ApplyEdits(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return &IndexedTable{Table: newTable, Lookup: i}, nil
 	}
 }
 
