@@ -1869,9 +1869,12 @@ func (t Table) copy() *Table {
 // }
 
 func newTable(ctx *sql.Context, t *Table, newSch sql.PrimaryKeySchema) (*Table, error) {
+	sess := SessionFromContext(ctx)
+	sess.clearEditAccumulator(t)
 	newTable := NewPartitionedTableWithCollation(t.name, newSch, t.fkColl, len(t.partitions), t.collation)
 	for _, partition := range t.partitions {
 		for _, partitionRow := range partition {
+			// TODO: we need a different edit accumulator here, it's reusing the session one
 			err := newTable.Insert(ctx, partitionRow)
 			if err != nil {
 				return nil, err
