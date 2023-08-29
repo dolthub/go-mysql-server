@@ -397,7 +397,14 @@ func columnsToStrings(cols ast.Columns) []string {
 }
 
 func (b *Builder) resolveTable(tab, db string, asOf interface{}) *plan.ResolvedTable {
-	table, database, err := b.cat.TableAsOf(b.ctx, db, tab, asOf)
+	var table sql.Table
+	var database sql.Database
+	var err error
+	if asOf != nil {
+		table, database, err = b.cat.TableAsOf(b.ctx, db, tab, asOf)
+	} else {
+		table, database, err = b.cat.Table(b.ctx, db, tab)
+	}
 	if sql.ErrAsOfNotSupported.Is(err) {
 		if asOf != nil {
 			b.handleErr(err)
