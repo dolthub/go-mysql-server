@@ -30,7 +30,6 @@ type tableEditor struct {
 	initialPartitions map[string][]sql.Row
 	initialPartIdx    int
 	ea                tableEditAccumulator
-	isRewrite         bool
 	schema            sql.Schema
 	initialInsert     int
 	// array of key ordinals for each unique index defined on the targetTable

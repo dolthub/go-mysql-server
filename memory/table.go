@@ -2176,14 +2176,22 @@ func (t Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.Primar
 	editor := t.getTableEditor(ctx).(*tableEditor)
 	editorCopy :=	*editor 
 	
-	// we want an editor that will truncate the table just before applying all of its edits
-	editorCopy.isRewrite = true
-	tableUnderEdit := editorCopy.editedTable
-	for k := range tableUnderEdit.partitions {
-		delete(tableUnderEdit.partitions, k)
+	// Make a copy of the table under edit with the new schema and no data
+	var keys [][]byte
+	var partitions = map[string][]sql.Row{}
+	numParts := len(t.partitionKeys)
+	
+	for i := 0; i < numParts; i++ {
+		key := strconv.Itoa(i)
+		keys = append(keys, []byte(key))
+		partitions[key] = []sql.Row{}
 	}
-	tableUnderEdit.partitionKeys = make([][]byte, 0)
+	
+	tableUnderEdit := editorCopy.editedTable.copy()
+	tableUnderEdit.partitionKeys = keys
+	tableUnderEdit.partitions = partitions
 	tableUnderEdit.schema = newSchema
+	editorCopy.editedTable = tableUnderEdit
 	
 	return &editorCopy, nil
 }
