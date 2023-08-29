@@ -188,60 +188,15 @@ func TestSingleScript(t *testing.T) {
 	// t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "Basic matching 1 PK",
+			Name: "ADD FOREIGN KEY fails on existing table when data would cause violation",
 			SetUpScript: []string{
-				"CREATE TABLE test (pk BIGINT UNSIGNED PRIMARY KEY, v1 VARCHAR(200), v2 VARCHAR(200), FULLTEXT idx (v1, v2));",
-				"INSERT INTO test VALUES (3, 'mno', 'mno');",
-				"insert into test values (5, 'ghs', 'mno shg');",
+				"INSERT INTO parent VALUES (1, 1, 1), (2, 2, 2);",
+				"INSERT INTO child VALUES (1, 1, 1), (2, 3, 2);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
-					Expected: []sql.Row{{uint64(2), "ghi", "jkl"}},
-				},
-				{
-					Query:    "SELECT pk, v1 FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
-					Expected: []sql.Row{{uint64(2), "ghi"}},
-				},
-				{
-					Query:    "SELECT v1, v2 FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
-					Expected: []sql.Row{{"ghi", "jkl"}},
-				},
-				{
-					Query:    "SELECT pk, v1, v2 FROM test WHERE MATCH(v2, v1) AGAINST ('jkl');",
-					Expected: []sql.Row{{uint64(2), "ghi", "jkl"}},
-				},
-				{
-					Query:    "SELECT pk, v2 FROM test WHERE MATCH(v2, v1) AGAINST ('jkl');",
-					Expected: []sql.Row{{uint64(2), "jkl"}},
-				},
-				{
-					Query:    "SELECT v1 FROM test WHERE MATCH(v2, v1) AGAINST ('jkl');",
-					Expected: []sql.Row{{"ghi"}},
-				},
-				{
-					Query:    "SELECT v2 FROM test WHERE MATCH(v2, v1) AGAINST ('jkl');",
-					Expected: []sql.Row{{"jkl"}},
-				},
-				{
-					Query:    "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl') = 0;",
-					Expected: []sql.Row{{uint64(1), "abc", "def pqr"}, {uint64(3), "mno", "mno"}, {uint64(4), "stu vwx", "xyz zyx yzx"}, {uint64(5), "ghs", "mno shg"}},
-				},
-				{
-					Query:    "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl') > 0;",
-					Expected: []sql.Row{{uint64(2), "ghi", "jkl"}},
-				},
-				{
-					Query:    "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl mno');",
-					Expected: []sql.Row{{uint64(2), "ghi", "jkl"}, {uint64(3), "mno", "mno"}, {uint64(5), "ghs", "mno shg"}},
-				},
-				{
-					Query:    "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl mno') AND pk = 3;",
-					Expected: []sql.Row{{uint64(3), "mno", "mno"}},
-				},
-				{
-					Query:    "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl mno') OR pk = 1;",
-					Expected: []sql.Row{{uint64(1), "abc", "def pqr"}, {uint64(2), "ghi", "jkl"}, {uint64(3), "mno", "mno"}, {uint64(5), "ghs", "mno shg"}},
+					Query:       "ALTER TABLE child ADD CONSTRAINT fk_name FOREIGN KEY (v1) REFERENCES parent(v1)",
+					ExpectedErr: sql.ErrForeignKeyChildViolation,
 				},
 			},
 		},

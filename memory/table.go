@@ -1751,7 +1751,7 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) er
 	}
 
 	pkSchema := sql.NewPrimaryKeySchema(potentialSchema, pkOrdinals...)
-	newTable, err := newTable(t, pkSchema)
+	newTable, err := newTable(ctx, t, pkSchema)
 	if err != nil {
 		return err
 	}
@@ -1862,10 +1862,24 @@ func (t Table) copy() *Table {
 	return &t
 }
 
-func newTable(t *Table, newSch sql.PrimaryKeySchema) (*Table, error) {
-	table := t.copy()
-	table.schema = newSch
-	return table, nil
+// func newTable(t *Table, newSch sql.PrimaryKeySchema) (*Table, error) {
+// 	table := t.copy()
+// 	table.schema = newSch
+// 	return table, nil
+// }
+
+func newTable(ctx *sql.Context, t *Table, newSch sql.PrimaryKeySchema) (*Table, error) {
+	newTable := NewPartitionedTableWithCollation(t.name, newSch, t.fkColl, len(t.partitions), t.collation)
+	for _, partition := range t.partitions {
+		for _, partitionRow := range partition {
+			err := newTable.Insert(ctx, partitionRow)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return newTable, nil
 }
 
 // DropPrimaryKey implements the PrimaryKeyAlterableTable
