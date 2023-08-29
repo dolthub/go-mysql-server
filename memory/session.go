@@ -15,9 +15,13 @@
 package memory
 
 import (
+	"context"
 	"strings"
+	
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/vitess/go/mysql"
 )
 
 type Session struct {
@@ -37,6 +41,19 @@ func NewSession(baseSession *sql.BaseSession) *Session {
 
 func SessionFromContext(ctx *sql.Context) *Session {
 	return ctx.Session.(*Session)
+}
+
+func SessionBuilder(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, error) {
+	host := ""
+	user := ""
+	mysqlConnectionUser, ok := c.UserData.(mysql_db.MysqlConnectionUser)
+	if ok {
+		host = mysqlConnectionUser.Host
+		user = mysqlConnectionUser.User
+	}
+	client := sql.Client{Address: host, User: user, Capabilities: c.Capabilities}
+	baseSession := sql.NewBaseSessionWithClientServer(addr, client, c.ConnectionID)
+	return NewSession(baseSession), nil
 }
 
 // editAccumulator returns the edit accumulator for the table provided for this session, creating one if it

@@ -25,7 +25,6 @@ import (
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/memory"
-	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -765,15 +764,15 @@ func TestCharsetCollationEngine(t *testing.T) {
 }
 
 func TestCharsetCollationWire(t *testing.T) {
-	enginetest.TestCharsetCollationWire(t, enginetest.NewDefaultMemoryHarness(), server.DefaultSessionBuilder)
+	enginetest.TestCharsetCollationWire(t, enginetest.NewDefaultMemoryHarness(), memory.SessionBuilder)
 }
 
 func TestDatabaseCollationWire(t *testing.T) {
-	enginetest.TestDatabaseCollationWire(t, enginetest.NewDefaultMemoryHarness(), server.DefaultSessionBuilder)
+	enginetest.TestDatabaseCollationWire(t, enginetest.NewDefaultMemoryHarness(), memory.SessionBuilder)
 }
 
 func TestTypesOverWire(t *testing.T) {
-	enginetest.TestTypesOverWire(t, enginetest.NewDefaultMemoryHarness(), server.DefaultSessionBuilder)
+	enginetest.TestTypesOverWire(t, enginetest.NewDefaultMemoryHarness(), memory.SessionBuilder)
 }
 
 func mergableIndexDriver(dbs []sql.Database) sql.IndexDriver {
