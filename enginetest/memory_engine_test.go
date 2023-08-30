@@ -187,73 +187,21 @@ func TestSingleScript(t *testing.T) {
 	// t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "adding a unique constraint errors if violations exist",
+			Name: "drop column drops all relevant check constraints",
 			SetUpScript: []string{
-				"CREATE TABLE t38 (pk int PRIMARY KEY, col1 int)",
-				"INSERT INTO t38 VALUES (1, 1)",
-				"INSERT INTO t38 VALUES (2, 2)",
-				"INSERT INTO t38 VALUES (3, NULL)",
-				"INSERT INTO t38 VALUES (4, NULL)",
-
-				// "CREATE TABLE t39 (pk int PRIMARY KEY, col1 int, col2 int)",
-				// "INSERT INTO t39 VALUES (1, 1, 1)",
-				// "INSERT INTO t39 VALUES (2, 1, 2)",
-				// "INSERT INTO t39 VALUES (3, 2, 1)",
-				// "INSERT INTO t39 VALUES (4, 1, NULL)",
-				// "INSERT INTO t39 VALUES (5, 1, NULL)",
-				// "INSERT INTO t39 VALUES (6, NULL, 1)",
-				// "INSERT INTO t39 VALUES (7, NULL, 1)",
-				// "INSERT INTO t39 VALUES (8, NULL, NULL)",
-				// "INSERT INTO t39 VALUES (9, NULL, NULL)",
+				"create table t42 (i bigint primary key, s varchar(20))",
+				"ALTER TABLE t42 ADD COLUMN j int",
+				"ALTER TABLE t42 ADD CONSTRAINT check1 CHECK (j < 12345)",
+				"ALTER TABLE t42 ADD CONSTRAINT check2 CHECK (j > 0)",
+				"ALTER TABLE t42 DROP COLUMN j",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "ALTER TABLE t38 ADD UNIQUE u_col1 (col1)",
-					Expected: []sql.Row{{types.NewOkResult(0)}},
-				},
-				// {
-				// 	Query:    "ALTER TABLE t39 ADD UNIQUE u_col1_col2 (col1, col2)",
-				// 	Expected: []sql.Row{{types.NewOkResult(0)}},
-				// },
-				{
-					Query:    "ALTER TABLE t38 DROP INDEX u_col1;",
-					Expected: []sql.Row{{types.NewOkResult(0)}},
-				},
-				{
-					Query:    "INSERT INTO t38 VALUES (5, 1);",
-					Expected: []sql.Row{{types.NewOkResult(1)}},
-				},
-				{
-					Query:       "ALTER TABLE t38 ADD UNIQUE u_col1 (col1)",
-					ExpectedErr: sql.ErrUniqueKeyViolation,
-				},
-				{
-					Query: "show create table t38;",
-					Expected: []sql.Row{{"t38", "CREATE TABLE `t38` (\n" +
-							"  `pk` int NOT NULL,\n" +
-							"  `col1` int,\n" +
-							"  PRIMARY KEY (`pk`)\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-				},
-				{
-					Query:    "ALTER TABLE t39 DROP INDEX u_col1_col2;",
-					Expected: []sql.Row{{types.NewOkResult(0)}},
-				},
-				{
-					Query:    "INSERT INTO t39 VALUES (10, 1, 1);",
-					Expected: []sql.Row{{types.NewOkResult(1)}},
-				},
-				{
-					Query:       "ALTER TABLE t39 ADD UNIQUE u_col1_col2 (col1, col2)",
-					ExpectedErr: sql.ErrUniqueKeyViolation,
-				},
-				{
-					Query: "show create table t39;",
-					Expected: []sql.Row{{"t39", "CREATE TABLE `t39` (\n" +
-							"  `pk` int NOT NULL,\n" +
-							"  `col1` int,\n" +
-							"  `col2` int,\n" +
-							"  PRIMARY KEY (`pk`)\n" +
+					Query: "show create table t42",
+					Expected: []sql.Row{{"t42", "CREATE TABLE `t42` (\n" +
+							"  `i` bigint NOT NULL,\n" +
+							"  `s` varchar(20),\n" +
+							"  PRIMARY KEY (`i`)\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 				},
 			},

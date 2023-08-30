@@ -99,6 +99,10 @@ func (c *CreateCheck) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewAlterAddCheck(children[0].(*ResolvedTable), c.Check), nil
 }
 
+func (c *CreateCheck) Children() []sql.Node {
+	return []sql.Node{c.Table}
+}
+
 // CheckPrivileges implements the interface sql.Node.
 func (c *CreateCheck) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	db := c.Table.Database()
@@ -123,34 +127,38 @@ func (c CreateCheck) String() string {
 	return pr.String()
 }
 
+func (d *DropCheck) Children() []sql.Node {
+	return []sql.Node{d.Table}
+}
+
 // WithChildren implements the Node interface.
-func (p *DropCheck) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (d *DropCheck) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
+		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
-	return NewAlterDropCheck(children[0].(*ResolvedTable), p.Name), nil
+	return NewAlterDropCheck(children[0].(*ResolvedTable), d.Name), nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
-func (p *DropCheck) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	db := p.Table.Database()
+func (d *DropCheck) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	db := d.Table.Database()
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(db), getTableName(p.Table), "", sql.PrivilegeType_Alter))
+		sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(db), getTableName(d.Table), "", sql.PrivilegeType_Alter))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
-func (p *DropCheck) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+func (d *DropCheck) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
 }
 
-func (p *DropCheck) Schema() sql.Schema { return nil }
+func (d *DropCheck) Schema() sql.Schema { return nil }
 
-func (p *DropCheck) IsReadOnly() bool { return false }
+func (d *DropCheck) IsReadOnly() bool { return false }
 
-func (p DropCheck) String() string {
+func (d DropCheck) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("DropCheck(%s)", p.Name)
-	_ = pr.WriteChildren(fmt.Sprintf("Table(%s)", p.Table.Name()))
+	_ = pr.WriteNode("DropCheck(%s)", d.Name)
+	_ = pr.WriteChildren(fmt.Sprintf("Table(%s)", d.Table.Name()))
 	return pr.String()
 }
 
