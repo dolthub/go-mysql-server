@@ -44,7 +44,7 @@ var OnceBeforeDefault = []Rule{
 // DefaultRules to apply when analyzing nodes.
 var DefaultRules = []Rule{
 	{validateStarExpressionsId, validateStarExpressions}, //TODO
-	//{flattenTableAliasesId, flattenTableAliases},         //TODO
+	{flattenTableAliasesId, flattenTableAliases},         //TODO
 	{pushdownSubqueryAliasFiltersId, pushdownSubqueryAliasFilters},
 	{pruneTablesId, pruneTables},
 	{fixupAuxiliaryExprsId, fixupAuxiliaryExprs},
