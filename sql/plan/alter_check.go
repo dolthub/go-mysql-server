@@ -33,7 +33,9 @@ var (
 )
 
 type CreateCheck struct {
-	UnaryNode
+	ddlNode
+	Table        *ResolvedTable
+	targetSchema sql.Schema
 	Check *sql.CheckConstraint
 }
 
@@ -48,9 +50,10 @@ type DropCheck struct {
 var _ sql.Node = (*DropCheck)(nil)
 var _ sql.CollationCoercible = (*DropCheck)(nil)
 
-func NewAlterAddCheck(table sql.Node, check *sql.CheckConstraint) *CreateCheck {
+func NewAlterAddCheck(table *ResolvedTable, check *sql.CheckConstraint) *CreateCheck {
 	return &CreateCheck{
-		UnaryNode: UnaryNode{table},
+		ddlNode: ddlNode{table.SqlDatabase},
+		Table:   table,
 		Check:     check,
 	}
 }
@@ -69,7 +72,7 @@ func (c *CreateCheck) Expressions() []sql.Expression {
 
 // Resolved implements the Resolvable interface.
 func (c *CreateCheck) Resolved() bool {
-	return c.Child.Resolved() && c.Check.Expr.Resolved()
+	return c.Check.Expr.Resolved()
 }
 
 func (c *CreateCheck) IsReadOnly() bool {
@@ -92,14 +95,14 @@ func (c *CreateCheck) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
-	return NewAlterAddCheck(children[0], c.Check), nil
+	return NewAlterAddCheck(children[0].(*ResolvedTable), c.Check), nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
 func (c *CreateCheck) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	db := GetDatabase(c.Child)
+	db := c.Table.Database()
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(db), getTableName(c.Child), "", sql.PrivilegeType_Alter))
+		sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(db), getTableName(c.Table), "", sql.PrivilegeType_Alter))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -113,7 +116,7 @@ func (c CreateCheck) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("AddCheck(%s)", c.Check.Name)
 	_ = pr.WriteChildren(
-		fmt.Sprintf("Table(%s)", c.UnaryNode.Child.String()),
+		fmt.Sprintf("Table(%s)", c.Table.Name()),
 		fmt.Sprintf("Expr(%s)", c.Check.Expr.String()),
 	)
 	return pr.String()

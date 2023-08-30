@@ -868,7 +868,7 @@ func projectRowWithTypes(ctx *sql.Context, sch sql.Schema, projections []sql.Exp
 	return newRow, nil
 }
 
-// getTableFromDatabase returns the related sql.Table from a database in the case of a sql.Databasw
+// getTableFromDatabase returns table named from the database provided 
 func getTableFromDatabase(ctx *sql.Context, db sql.Database, tableNode sql.Node) (sql.Table, error) {
 	// Grab the table fresh from the database.
 	tableName := getTableName(tableNode)
@@ -1718,14 +1718,19 @@ func (i *dropColumnIter) Close(context *sql.Context) error {
 
 // Execute inserts the rows in the database.
 func (b *BaseBuilder) executeCreateCheck(ctx *sql.Context, c *plan.CreateCheck) error {
-	chAlterable, err := getCheckAlterable(c.UnaryNode.Child)
+	table, err := getTableFromDatabase(ctx, c.Database(), c.Table)
+	if err != nil {
+		return err
+	}
+	
+	chAlterable, err := getCheckAlterableTable(table)
 	if err != nil {
 		return err
 	}
 
 	// check existing rows in table
 	var res interface{}
-	rowIter, err := b.buildNodeExec(ctx, c.Child, nil)
+	rowIter, err := b.buildNodeExec(ctx, c.Table, nil)
 	if err != nil {
 		return err
 	}

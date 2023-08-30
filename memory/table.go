@@ -1881,6 +1881,12 @@ func (t Table) copy() *Table {
 		t.columns = columns
 	}
 	
+	if t.checks != nil {
+		checks := make([]sql.CheckDefinition, len(t.checks))
+		copy(checks, t.checks)
+		t.checks = checks
+	}
+	
 	return &t
 }
 
@@ -1889,6 +1895,7 @@ func (t *Table) replaceData(src *Table) {
 	t.schema = src.schema
 	t.columns = src.columns
 	t.indexes = src.indexes
+	t.checks = src.checks
 	t.projection = src.projection
 	t.partitionKeys = src.partitionKeys
 	t.partitions = src.partitions
