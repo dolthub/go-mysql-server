@@ -2056,7 +2056,13 @@ func (b *BaseBuilder) executeAlterAutoInc(ctx *sql.Context, n *plan.AlterAutoInc
 		return nil
 	}
 
-	return autoTbl.AutoIncrementSetter(ctx).SetAutoIncrementValue(ctx, n.AutoVal)
+	setter := autoTbl.AutoIncrementSetter(ctx)
+	err = setter.SetAutoIncrementValue(ctx, n.AutoVal)
+	if err != nil {
+		return err
+	}
+
+	return setter.Close(ctx)
 }
 
 // hasFullText returns whether the given table has any Full-Text indexes.
