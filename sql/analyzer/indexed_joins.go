@@ -1071,7 +1071,8 @@ func sortedIndexScansForTableCol(indexes []*memo.Index, targetCol *memo.ColRef, 
 func makeIndexScan(idx *memo.Index, matchedIdx sql.ColumnId, filters []memo.ScalarExpr) *memo.IndexScan {
 	rang := make(sql.Range, len(idx.Cols()))
 	var j int
-	for idx.Cols()[j] != matchedIdx {
+	for {
+		found := idx.Cols()[j] == matchedIdx
 		var lit *memo.Literal
 		for _, f := range filters {
 			if eq, ok := f.(*memo.Equal); ok {
@@ -1086,8 +1087,14 @@ func makeIndexScan(idx *memo.Index, matchedIdx sql.ColumnId, filters []memo.Scal
 				}
 			}
 		}
+		if found && lit == nil {
+			break
+		}
 		rang[j] = sql.ClosedRangeColumnExpr(lit.Val, lit.Val, idx.SqlIdx().ColumnExpressionTypes()[j].Type)
 		j++
+		if found {
+			break
+		}
 	}
 	for j < len(idx.Cols()) {
 		// all range bound Compare() is type insensitive
