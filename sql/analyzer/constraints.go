@@ -78,10 +78,7 @@ func resolveDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pla
 func validateDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	switch n := n.(type) {
 	case *plan.DropCheck:
-		rt, ok := n.Child.(*plan.ResolvedTable)
-		if !ok {
-			return nil, transform.SameTree, ErrInAnalysis.New("Expected a TableNode for ALTER TABLE DROP CONSTRAINT statement")
-		}
+		rt := n.Table
 
 		ct, ok := rt.Table.(sql.CheckTable)
 		if ok {
