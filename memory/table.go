@@ -2182,26 +2182,29 @@ func isColumnDrop(oldSchema sql.PrimaryKeySchema, newSchema sql.PrimaryKeySchema
 
 func (t Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column, idxCols []sql.IndexColumn) (sql.RowInserter, error) {
 	// Make a copy of the table under edit with the new schema and no data
+	tableUnderEdit := t.copy().truncate(newSchema)
+
+	return tableUnderEdit.getTableEditor(ctx), nil
+}
+
+func (t *Table) truncate(schema sql.PrimaryKeySchema) *Table {
 	var keys [][]byte
 	var partitions = map[string][]sql.Row{}
 	numParts := len(t.partitionKeys)
-	
+
 	for i := 0; i < numParts; i++ {
 		key := strconv.Itoa(i)
 		keys = append(keys, []byte(key))
 		partitions[key] = []sql.Row{}
 	}
-	
-	tableUnderEdit := t.copy()
-	tableUnderEdit.partitionKeys = keys
-	tableUnderEdit.partitions = partitions
-	tableUnderEdit.schema = newSchema
-	tableUnderEdit.columns = allColumns(newSchema)
 
-	editor := tableUnderEdit.getTableEditor(ctx).(*tableEditor)
-	editorCopy :=	*editor
+	t.partitionKeys = keys
+	t.partitions = partitions
+	t.columns = allColumns(schema)
+	t.schema = schema
+	t.autoIncVal = 0
 	
-	return &editorCopy, nil
+	return t
 }
 
 func allColumns(schema sql.PrimaryKeySchema) []int {
