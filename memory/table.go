@@ -841,7 +841,16 @@ func (t *Table) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.Colum
 	table := t.tableUnderEdit(ctx)
 	
 	newColIdx := table.addColumnToSchema(ctx, column, order)
-	return table.insertValueInRows(ctx, newColIdx, column.Default)
+	err := table.insertValueInRows(ctx, newColIdx, column.Default)
+	if err != nil {
+		return err
+	}
+	
+	table.db.putTable(table)
+	sess := SessionFromContext(ctx)
+	sess.clearEditAccumulator(table)
+	
+	return nil
 }
 
 // addColumnToSchema adds the given column to the schema and returns the new index
@@ -924,8 +933,18 @@ func (t *Table) addColumnToSchema(ctx *sql.Context, newCol *sql.Column, order *s
 	}
 
 	t.schema = sql.NewPrimaryKeySchema(newSch, newPkOrds...)
+	
+	// Get rid of projection info, since these tables live in memory for a long time and keeping this info around after
+	// a schema change can mess up further statements. They'll be re-calculated as needed.
+	t.clearProjectionInfo()
 
 	return newColIdx
+}
+
+func (t *Table) clearProjectionInfo() {
+	t.columns = nil
+	t.projection = nil
+	t.filters = nil
 }
 
 func (t *Table) insertValueInRows(ctx *sql.Context, idx int, colDefault *sql.ColumnDefaultValue) error {
@@ -1004,6 +1023,7 @@ func (t *Table) dropColumnFromSchema(ctx *sql.Context, columnName string) int {
 	}
 
 	t.schema = sql.NewPrimaryKeySchema(newSch, newPkOrds...)
+	t.clearProjectionInfo()
 	return droppedCol
 }
 

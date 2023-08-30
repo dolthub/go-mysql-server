@@ -2553,7 +2553,6 @@ func TestAddColumn(t *testing.T, harness Harness) {
 			sql.NewRow(int64(2), "second row", int32(42)),
 			sql.NewRow(int64(3), "third row", int32(42)),
 		}, nil, nil)
-
 	})
 
 	t.Run("in middle, no default", func(t *testing.T) {
