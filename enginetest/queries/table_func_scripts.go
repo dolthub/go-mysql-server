@@ -134,12 +134,22 @@ var TableFunctionScriptTests = []ScriptTest{
 		ExpectedErr: sql.ErrTableNotFound,
 	},
 	{
-		Query:           "select seq1.x, seq2.y from sequence_table('x', 5) seq1 join sequence_table('y', 5) seq2 on seq1.x = seq2.y",
+		Query:           "select /*+ MERGE_JOIN(seq1,seq2) */ seq1.x, seq2.y from sequence_table('x', 5) seq1 join sequence_table('y', 5) seq2 on seq1.x = seq2.y",
 		Expected:        []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}},
 		ExpectedIndexes: []string{"y", "x"},
 	},
 	{
-		Query:           "select * from sequence_table('x', 5) seq1 join sequence_table('y', 5) seq2 on x = 0",
+		Query:           "select /*+ LOOKUP_JOIN(seq1,seq2) */ seq1.x, seq2.y from sequence_table('x', 5) seq1 join sequence_table('y', 5) seq2 on seq1.x = seq2.y",
+		Expected:        []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}},
+		ExpectedIndexes: []string{"x"},
+	},
+	{
+		Query:           "select /*+ MERGE_JOIN(seq1,seq2) */ * from sequence_table('x', 5) seq1 join sequence_table('y', 5) seq2 on x = 0",
+		Expected:        []sql.Row{{0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 4}},
+		ExpectedIndexes: []string{"x"},
+	},
+	{
+		Query:           "select /*+ LOOKUP_JOIN(seq1,seq2) */ * from sequence_table('x', 5) seq1 join sequence_table('y', 5) seq2 on x = 0",
 		Expected:        []sql.Row{{0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 4}},
 		ExpectedIndexes: []string{"x"},
 	},
