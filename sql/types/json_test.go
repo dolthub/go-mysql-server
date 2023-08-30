@@ -686,6 +686,92 @@ var JsonRemoveTests = []JsonMutationTest{
 		changed:      false,
 		expectErrStr: "The path expression '$' is not allowed in this context",
 	},
+	{
+		desc:         "set root ignore white space",
+		doc:          `{"a": 1, "b": 2}`,
+		path:         "   $   ",
+		changed:      false,
+		expectErrStr: "The path expression '$' is not allowed in this context",
+	},
+	{
+		desc:      "remove middle of an array",
+		doc:       `[1, 2, 3]`,
+		path:      "$[1]",
+		resultVal: `[1, 3]`,
+		changed:   true,
+	},
+	{
+		desc:      "remove last item of an array",
+		doc:       `[1, 2, 3]`,
+		path:      "$[2]",
+		resultVal: `[1, 2]`,
+		changed:   true,
+	},
+	{
+		desc:      "no op remove on array when overflown",
+		doc:       `[1, 2, 3]`,
+		path:      "$[23]",
+		resultVal: `[1, 2, 3]`,
+		changed:   false,
+	},
+	{
+		desc:      "remove 'last' element of an array",
+		doc:       `[1, 2, 3]`,
+		path:      "$[last]",
+		resultVal: `[1, 2]`,
+		changed:   true,
+	},
+	{
+		desc:      "remove 'last-0' element of an array",
+		doc:       `[1, 2, 3]`,
+		path:      "$[last-0]",
+		resultVal: `[1, 2]`,
+		changed:   true,
+	},
+	{
+		desc:      "no op remove on underflow 'last-23' element of an array",
+		doc:       `[1, 2, 3]`,
+		path:      "$[last-23]",
+		resultVal: `[1, 2, 3]`,
+		changed:   false,
+	},
+	{
+		desc:      "no op remove with empty array",
+		doc:       `[]`,
+		path:      "$[last]",
+		resultVal: `[]`,
+		changed:   false,
+	},
+	{ // Remove behaves much more reasonably than other operations when the path is invalid. When you treat an
+		// object or scalar as an array, it is a no-op. For this reason, there are far fewer remove tests than there
+		// are for insert/set/replace.
+		desc:      "treating object as an array is no op",
+		doc:       `{"a":1}`,
+		path:      "$[0]",
+		resultVal: `{"a" : 1}`,
+		changed:   false,
+	},
+	{
+		desc:      "scalar will append as an array for out of bounds",
+		doc:       `17`,
+		path:      "$[0]",
+		resultVal: `17`,
+		changed:   false,
+	},
+	{
+		desc:      "Object field updated",
+		doc:       `{"a": 1, "b": 2}`,
+		path:      "$.a",
+		resultVal: `{"b": 2}`,
+		changed:   true,
+	},
+	{
+		desc:      "No op object change when field not found",
+		doc:       `{"a": 1}`,
+		path:      "$.b",
+		resultVal: `{"a": 1}`,
+		changed:   false,
+	},
 }
 
 func TestJsonRemove(t *testing.T) {

@@ -570,15 +570,16 @@ func (doc JSONDocument) Insert(ctx *sql.Context, path string, val JSONValue) (Mu
 		// Do nothing. Can't replace the root object
 		return doc, false, nil
 	}
-	return doc.needANameForThis(ctx, path, val, INSERT)
+	return doc.leafNodeUpdate(ctx, path, val, INSERT)
 }
 
 func (doc JSONDocument) Remove(ctx *sql.Context, path string) (MutableJSONValue, bool, error) {
+	path = strings.TrimSpace(path)
 	if path == "$" {
 		return nil, false, fmt.Errorf("The path expression '$' is not allowed in this context.")
 	}
 
-	panic("implement me")
+	return doc.leafNodeUpdate(ctx, path, nil, REMOVE)
 }
 
 func (doc JSONDocument) Set(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
@@ -592,7 +593,7 @@ func (doc JSONDocument) Set(ctx *sql.Context, path string, val JSONValue) (Mutab
 		return res, true, nil
 	}
 
-	return doc.needANameForThis(ctx, path, val, SET)
+	return doc.leafNodeUpdate(ctx, path, val, SET)
 }
 
 func (doc JSONDocument) Replace(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
@@ -606,7 +607,7 @@ func (doc JSONDocument) Replace(ctx *sql.Context, path string, val JSONValue) (M
 		return res, true, nil
 	}
 
-	return doc.needANameForThis(ctx, path, val, REPLACE)
+	return doc.leafNodeUpdate(ctx, path, val, REPLACE)
 }
 
 const (
@@ -616,13 +617,17 @@ const (
 	REMOVE
 )
 
-func (doc JSONDocument) needANameForThis(ctx *sql.Context, path string, val JSONValue, mode int) (MutableJSONValue, bool, error) {
+func (doc JSONDocument) leafNodeUpdate(ctx *sql.Context, path string, val JSONValue, mode int) (MutableJSONValue, bool, error) {
 
 	path = path[1:]
 
-	unmarshalled, err := val.Unmarshall(ctx)
-	if err != nil {
-		panic("whay??? NM4")
+	var err error
+	var unmarshalled JSONDocument
+	if val != nil {
+		unmarshalled, err = val.Unmarshall(ctx)
+		if err != nil {
+			panic("whay??? NM4")
+		}
 	}
 
 	if path[0] == '.' {
@@ -651,6 +656,9 @@ func (doc JSONDocument) needANameForThis(ctx *sql.Context, path string, val JSON
 			(destrutive && mode == REPLACE) {
 			strMap[name] = unmarshalled.Val
 			updated = true
+		} else if destrutive && mode == REMOVE {
+			delete(strMap, name)
+			updated = true
 		}
 		return doc, updated, nil
 	} else if path[0] == '[' {
@@ -665,7 +673,7 @@ func (doc JSONDocument) needANameForThis(ctx *sql.Context, path string, val JSON
 				panic("invalid path - index is not a number")
 			}
 
-			if index.underflow && (mode == INSERT || mode == REPLACE) {
+			if index.underflow && (mode == INSERT || mode == REPLACE || mode == REMOVE) {
 				return doc, false, nil
 			}
 
@@ -673,6 +681,9 @@ func (doc JSONDocument) needANameForThis(ctx *sql.Context, path string, val JSON
 				updated := false
 				if mode == SET || mode == REPLACE {
 					arr[index.index] = unmarshalled.Val
+					updated = true
+				} else if mode == REMOVE {
+					doc.Val = append(arr[:index.index], arr[index.index+1:]...)
 					updated = true
 				}
 				return doc, updated, nil
