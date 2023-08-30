@@ -159,12 +159,17 @@ func (m *MemoryHarness) NewEngine(t *testing.T) (QueryEngine, error) {
 
 func (m *MemoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.PrimaryKeySchema, asOf interface{}) sql.Table {
 	var fkColl *memory.ForeignKeyCollection
+	var baseDb *memory.BaseDatabase
 	if memDb, ok := db.(*memory.HistoryDatabase); ok {
 		fkColl = memDb.GetForeignKeyCollection()
+		baseDb = memDb.BaseDatabase
 	} else if memDb, ok := db.(*memory.ReadOnlyDatabase); ok {
 		fkColl = memDb.GetForeignKeyCollection()
+		baseDb = memDb.BaseDatabase
+	} else {
+		panic(fmt.Sprintf("unexpected database type %T", db))
 	}
-	table := memory.NewPartitionedTable(name, schema, fkColl, m.numTablePartitions)
+	table := memory.NewPartitionedTable(baseDb, name, schema, fkColl, m.numTablePartitions)
 	if m.nativeIndexSupport {
 		table.EnablePrimaryKeyIndexes()
 	}

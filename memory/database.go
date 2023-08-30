@@ -200,7 +200,7 @@ func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.Pri
 		return sql.ErrTableAlreadyExists.New(name)
 	}
 
-	table := NewTableWithCollation(name, schema, d.fkColl, collation)
+	table := NewTableWithCollation(d, name, schema, d.fkColl, collation)
 	table.db = d
 	if d.primaryKeyIndexes {
 		table.EnablePrimaryKeyIndexes()
@@ -216,7 +216,7 @@ func (d *BaseDatabase) CreateIndexedTable(ctx *sql.Context, name string, sch sql
 		return sql.ErrTableAlreadyExists.New(name)
 	}
 
-	table := NewTableWithCollation(name, sch, d.fkColl, collation)
+	table := NewTableWithCollation(d, name, sch, d.fkColl, collation)
 	table.db = d
 	if d.primaryKeyIndexes {
 		table.EnablePrimaryKeyIndexes()

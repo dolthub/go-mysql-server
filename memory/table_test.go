@@ -30,7 +30,9 @@ import (
 
 func TestTablePartitionsCount(t *testing.T) {
 	require := require.New(t)
-	table := memory.NewPartitionedTable("foo", sql.PrimaryKeySchema{}, nil, 5)
+	db := memory.NewDatabase("db")
+	
+	table := memory.NewPartitionedTable(db.BaseDatabase, "foo", sql.PrimaryKeySchema{}, nil, 5)
 	count, err := table.PartitionCount(sql.NewEmptyContext())
 	require.NoError(err)
 	require.Equal(int64(5), count)
@@ -42,13 +44,16 @@ func TestTableName(t *testing.T) {
 		{Name: "col1", Type: types.Text, Nullable: true},
 	})
 
-	table := memory.NewTable("test", s, nil)
+	db := memory.NewDatabase("db")
+	table := memory.NewTable(db.BaseDatabase, "test", s, nil)
 	require.Equal("test", table.Name())
 }
 
 func TestTableString(t *testing.T) {
 	require := require.New(t)
-	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("db")
+
+	table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col1", Type: types.Text, Nullable: true},
 		{Name: "col2", Type: types.Int64, Nullable: false},
 	}), nil)
@@ -203,8 +208,9 @@ func TestTable(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
-
-			table := memory.NewPartitionedTable(test.name, test.schema, nil, test.numPartitions)
+			db := memory.NewDatabase("db")
+			
+			table := memory.NewPartitionedTable(db.BaseDatabase, test.name, test.schema, nil, test.numPartitions)
 			for _, row := range test.rows {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
@@ -246,8 +252,9 @@ func TestFiltered(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
+			db := memory.NewDatabase("db")
 
-			table := memory.NewFilteredTable(test.name, test.schema, nil)
+			table := memory.NewFilteredTable(db.BaseDatabase, test.name, test.schema, nil)
 			for _, row := range test.rows {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
@@ -268,8 +275,9 @@ func TestProjected(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
+			db := memory.NewDatabase("db")
 
-			table := memory.NewPartitionedTable(test.name, test.schema, nil, test.numPartitions)
+			table := memory.NewPartitionedTable(db.BaseDatabase, test.name, test.schema, nil, test.numPartitions)
 			for _, row := range test.rows {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
@@ -289,8 +297,9 @@ func TestFilterAndProject(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
+			db := memory.NewDatabase("db")
 
-			table := memory.NewFilteredTable(test.name, test.schema, nil)
+			table := memory.NewFilteredTable(db.BaseDatabase, test.name, test.schema, nil)
 			for _, row := range test.rows {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
@@ -311,8 +320,9 @@ func TestIndexed(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
+			db := memory.NewDatabase("db")
 
-			table := memory.NewPartitionedTable(test.name, test.schema, nil, test.numPartitions)
+			table := memory.NewPartitionedTable(db.BaseDatabase, test.name, test.schema, nil, test.numPartitions)
 			for _, row := range test.rows {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
@@ -365,8 +375,9 @@ func TestTableIndexKeyValueIter(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
+			db := memory.NewDatabase("db")
 
-			table := memory.NewPartitionedTable(test.name, test.schema, nil, test.numPartitions)
+			table := memory.NewPartitionedTable(db.BaseDatabase, test.name, test.schema, nil, test.numPartitions)
 			for _, row := range test.rows {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}

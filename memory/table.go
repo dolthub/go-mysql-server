@@ -96,23 +96,23 @@ var _ sql.PrimaryKeyTable = (*Table)(nil)
 
 // NewTable creates a new Table with the given name and schema. Assigns the default collation, therefore if a different
 // collation is desired, please use NewTableWithCollation.
-func NewTable(name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection) *Table {
-	return NewPartitionedTableWithCollation(name, schema, fkColl, 0, sql.Collation_Default)
+func NewTable(db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection) *Table {
+	return NewPartitionedTableWithCollation(db, name, schema, fkColl, 0, sql.Collation_Default)
 }
 
 // NewTableWithCollation creates a new Table with the given name, schema, and collation.
-func NewTableWithCollation(name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, collation sql.CollationID) *Table {
-	return NewPartitionedTableWithCollation(name, schema, fkColl, 0, collation)
+func NewTableWithCollation(db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, collation sql.CollationID) *Table {
+	return NewPartitionedTableWithCollation(db, name, schema, fkColl, 0, collation)
 }
 
 // NewPartitionedTable creates a new Table with the given name, schema and number of partitions. Assigns the default
 // collation, therefore if a different collation is desired, please use NewPartitionedTableWithCollation.
-func NewPartitionedTable(name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, numPartitions int) *Table {
-	return NewPartitionedTableWithCollation(name, schema, fkColl, numPartitions, sql.Collation_Default)
+func NewPartitionedTable(db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, numPartitions int) *Table {
+	return NewPartitionedTableWithCollation(db, name, schema, fkColl, numPartitions, sql.Collation_Default)
 }
 
 // NewPartitionedTableWithCollation creates a new Table with the given name, schema, number of partitions, and collation.
-func NewPartitionedTableWithCollation(name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, numPartitions int, collation sql.CollationID) *Table {
+func NewPartitionedTableWithCollation(db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, numPartitions int, collation sql.CollationID) *Table {
 	var keys [][]byte
 	var partitions = map[string][]sql.Row{}
 
@@ -167,6 +167,7 @@ func NewPartitionedTableWithCollation(name string, schema sql.PrimaryKeySchema, 
 		partitionKeys: keys,
 		autoIncVal:    autoIncVal,
 		autoColIdx:    autoIncIdx,
+		db: db,
 	}
 }
 
@@ -1183,9 +1184,9 @@ type FilteredTable struct {
 
 var _ sql.FilteredTable = (*FilteredTable)(nil)
 
-func NewFilteredTable(name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection) *FilteredTable {
+func NewFilteredTable(db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection) *FilteredTable {
 	return &FilteredTable{
-		Table: NewTable(name, schema, fkColl),
+		Table: NewTable(db, name, schema, fkColl),
 	}
 }
 
@@ -1908,7 +1909,7 @@ func (t *Table) replaceData(src *Table) {
 func newTable(ctx *sql.Context, t *Table, newSch sql.PrimaryKeySchema) (*Table, error) {
 	sess := SessionFromContext(ctx)
 	sess.clearEditAccumulator(t)
-	newTable := NewPartitionedTableWithCollation(t.name, newSch, t.fkColl, len(t.partitions), t.collation)
+	newTable := NewPartitionedTableWithCollation(t.db, t.name, newSch, t.fkColl, len(t.partitions), t.collation)
 	for _, partition := range t.partitions {
 		for _, partitionRow := range partition {
 			// TODO: we need a different edit accumulator here, it's reusing the session one

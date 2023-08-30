@@ -187,22 +187,17 @@ func TestSingleScript(t *testing.T) {
 	// t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "drop column drops all relevant check constraints",
+			Name: "Complex join query with foreign key constraints",
 			SetUpScript: []string{
-				"create table t42 (i bigint primary key, s varchar(20))",
-				"ALTER TABLE t42 ADD COLUMN j int",
-				"ALTER TABLE t42 ADD CONSTRAINT check1 CHECK (j < 12345)",
-				"ALTER TABLE t42 ADD CONSTRAINT check2 CHECK (j > 0)",
-				"ALTER TABLE t42 DROP COLUMN j",
+				"CREATE TABLE `users` (`id` int NOT NULL AUTO_INCREMENT, `username` varchar(255) NOT NULL, PRIMARY KEY (`id`));",
+				"CREATE TABLE `tweet` ( `id` int NOT NULL AUTO_INCREMENT, `user_id` int NOT NULL, `content` text NOT NULL, `timestamp` bigint NOT NULL, PRIMARY KEY (`id`), KEY `tweet_user_id` (`user_id`), CONSTRAINT `0qpfesgd` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`));",
+				"INSERT INTO `users` (`id`,`username`) VALUES (1,'huey'), (2,'zaizee'), (3,'mickey')",
+				"INSERT INTO `tweet` (`id`,`user_id`,`content`,`timestamp`) VALUES (1,1,'meow',1647463727), (2,1,'purr',1647463727), (3,2,'hiss',1647463727), (4,3,'woof',1647463727)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "show create table t42",
-					Expected: []sql.Row{{"t42", "CREATE TABLE `t42` (\n" +
-							"  `i` bigint NOT NULL,\n" +
-							"  `s` varchar(20),\n" +
-							"  PRIMARY KEY (`i`)\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+					Query:    " SELECT `t1`.`username`, COUNT(`t1`.`id`) AS `ct` FROM ((SELECT `t2`.`id`, `t2`.`content`, `t3`.`username` FROM `tweet` AS `t2` INNER JOIN `users` AS `t3` ON (`t2`.`user_id` = `t3`.`id`) WHERE (`t3`.`username` = 'u3')) UNION (SELECT `t4`.`id`, `t4`.`content`, `t5`.`username` FROM `tweet` AS `t4` INNER JOIN `users` AS `t5` ON (`t4`.`user_id` = `t5`.`id`) WHERE (`t5`.`username` IN ('u2', 'u4')))) AS `t1` GROUP BY `t1`.`username` ORDER BY COUNT(`t1`.`id`) DESC;",
+					Expected: []sql.Row{},
 				},
 			},
 		},

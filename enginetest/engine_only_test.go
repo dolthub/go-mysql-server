@@ -106,9 +106,9 @@ func TestLocks(t *testing.T) {
 	require := require.New(t)
 
 	db := memory.NewDatabase("db")
-	t1 := newLockableTable(memory.NewTable("t1", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
-	t2 := newLockableTable(memory.NewTable("t2", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
-	t3 := memory.NewTable("t3", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection())
+	t1 := newLockableTable(memory.NewTable(db.BaseDatabase, "t1", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+	t2 := newLockableTable(memory.NewTable(db.BaseDatabase, "t2", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+	t3 := memory.NewTable(db.BaseDatabase, "t3", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection())
 	db.AddTable("t1", t1)
 	db.AddTable("t2", t2)
 	db.AddTable("t3", t3)
@@ -270,12 +270,13 @@ b (2/6 partitions)
 // TODO: this was an analyzer test, but we don't have a mock process list for it to use, so it has to be here
 func TestTrackProcess(t *testing.T) {
 	require := require.New(t)
-	provider := sql.NewDatabaseProvider()
+	db := memory.NewDatabase("db")
+	provider := sql.NewDatabaseProvider(db)
 	a := analyzer.NewDefault(provider)
-
+	
 	node := plan.NewInnerJoin(
-		plan.NewResolvedTable(&nonIndexableTable{memory.NewPartitionedTable("foo", sql.PrimaryKeySchema{}, nil, 2)}, nil, nil),
-		plan.NewResolvedTable(memory.NewPartitionedTable("bar", sql.PrimaryKeySchema{}, nil, 4), nil, nil),
+		plan.NewResolvedTable(&nonIndexableTable{memory.NewPartitionedTable(db.BaseDatabase,"foo", sql.PrimaryKeySchema{}, nil, 2)}, nil, nil),
+		plan.NewResolvedTable(memory.NewPartitionedTable(db.BaseDatabase, "bar", sql.PrimaryKeySchema{}, nil, 4), nil, nil),
 		expression.NewLiteral(int64(1), types.Int64),
 	)
 
@@ -354,9 +355,10 @@ type nonIndexableTable struct {
 
 func TestLockTables(t *testing.T) {
 	require := require.New(t)
+	db := memory.NewDatabase("db")
 
-	t1 := newLockableTable(memory.NewTable("foo", sql.PrimaryKeySchema{}, nil))
-	t2 := newLockableTable(memory.NewTable("bar", sql.PrimaryKeySchema{}, nil))
+	t1 := newLockableTable(memory.NewTable(db.BaseDatabase, "foo", sql.PrimaryKeySchema{}, nil))
+	t2 := newLockableTable(memory.NewTable(db.BaseDatabase, "bar", sql.PrimaryKeySchema{}, nil))
 	node := plan.NewLockTables([]*plan.TableLock{
 		{plan.NewResolvedTable(t1, nil, nil), true},
 		{plan.NewResolvedTable(t2, nil, nil), false},
@@ -375,11 +377,11 @@ func TestLockTables(t *testing.T) {
 
 func TestUnlockTables(t *testing.T) {
 	require := require.New(t)
-
 	db := memory.NewDatabase("db")
-	t1 := newLockableTable(memory.NewTable("foo", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
-	t2 := newLockableTable(memory.NewTable("bar", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
-	t3 := newLockableTable(memory.NewTable("baz", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+
+	t1 := newLockableTable(memory.NewTable(db.BaseDatabase, "foo", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+	t2 := newLockableTable(memory.NewTable(db.BaseDatabase, "bar", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+	t3 := newLockableTable(memory.NewTable(db.BaseDatabase, "baz", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
 	db.AddTable("foo", t1)
 	db.AddTable("bar", t2)
 	db.AddTable("baz", t3)

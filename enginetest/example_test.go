@@ -63,7 +63,7 @@ func checkIfError(err error) {
 
 func createTestDatabase() sql.Database {
 	db := memory.NewDatabase("test")
-	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
+	table := memory.NewTable(db.BaseDatabase, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: types.Text, Source: "mytable"},
 		{Name: "email", Type: types.Text, Source: "mytable"},
 	}), db.GetForeignKeyCollection())
