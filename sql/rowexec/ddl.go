@@ -146,7 +146,9 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 }
 
 func (b *BaseBuilder) buildDropConstraint(ctx *sql.Context, n *plan.DropConstraint, row sql.Row) (sql.RowIter, error) {
-	return nil, fmt.Errorf("%T does not have an execution iterator", n)
+	// DropConstraint should be replaced by another node type (DropForeignKey, DropCheck, etc.) during analysis, 
+	// so this is an error
+	return nil, fmt.Errorf("%T does not have an execution iterator, this is a bug", n)
 }
 
 func (b *BaseBuilder) buildCreateView(ctx *sql.Context, n *plan.CreateView, row sql.Row) (sql.RowIter, error) {

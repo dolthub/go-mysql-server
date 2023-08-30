@@ -201,10 +201,6 @@ func (d *DropConstraint) String() string {
 	return tp.String()
 }
 
-func (d *DropConstraint) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	panic("DropConstraint is a placeholder node, but RowIter was called")
-}
-
 func (d DropConstraint) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
