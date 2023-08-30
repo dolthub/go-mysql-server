@@ -570,7 +570,7 @@ func (doc JSONDocument) Insert(ctx *sql.Context, path string, val JSONValue) (Mu
 		// Do nothing. Can't replace the root object
 		return doc, false, nil
 	}
-	return doc.needANameForThis(ctx, path, val, false)
+	return doc.needANameForThis(ctx, path, val, INSERT)
 }
 
 func (doc JSONDocument) Remove(ctx *sql.Context, path string) (MutableJSONValue, bool, error) {
@@ -592,10 +592,31 @@ func (doc JSONDocument) Set(ctx *sql.Context, path string, val JSONValue) (Mutab
 		return res, true, nil
 	}
 
-	return doc.needANameForThis(ctx, path, val, true)
+	return doc.needANameForThis(ctx, path, val, SET)
 }
 
-func (doc JSONDocument) needANameForThis(ctx *sql.Context, path string, val JSONValue, overwrite bool) (MutableJSONValue, bool, error) {
+func (doc JSONDocument) Replace(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
+	path = strings.TrimSpace(path)
+
+	if path == "$" {
+		res, err := val.Unmarshall(ctx)
+		if err != nil {
+			return nil, false, err
+		}
+		return res, true, nil
+	}
+
+	return doc.needANameForThis(ctx, path, val, REPLACE)
+}
+
+const (
+	SET = iota
+	INSERT
+	REPLACE
+	REMOVE
+)
+
+func (doc JSONDocument) needANameForThis(ctx *sql.Context, path string, val JSONValue, mode int) (MutableJSONValue, bool, error) {
 
 	path = path[1:]
 
@@ -625,11 +646,12 @@ func (doc JSONDocument) needANameForThis(ctx *sql.Context, path string, val JSON
 		// does the name exist in the map?
 		updated := false
 		_, destrutive := strMap[name]
-		if !destrutive || overwrite {
+		if mode == SET ||
+			(!destrutive && mode == INSERT) ||
+			(destrutive && mode == REPLACE) {
 			strMap[name] = unmarshalled.Val
 			updated = true
 		}
-
 		return doc, updated, nil
 	} else if path[0] == '[' {
 		right := strings.Index(path, "]")
@@ -643,16 +665,23 @@ func (doc JSONDocument) needANameForThis(ctx *sql.Context, path string, val JSON
 				panic("invalid path - index is not a number")
 			}
 
-			if len(arr) > index.index {
+			if index.underflow && (mode == INSERT || mode == REPLACE) {
+				return doc, false, nil
+			}
+
+			if len(arr) > index.index && !index.overflow {
 				updated := false
-				if overwrite {
+				if mode == SET || mode == REPLACE {
 					arr[index.index] = unmarshalled.Val
 					updated = true
 				}
 				return doc, updated, nil
 			} else {
-				newArr := append(arr, unmarshalled.Val)
-				return JSONDocument{Val: newArr}, true, nil
+				if mode == SET || mode == INSERT {
+					newArr := append(arr, unmarshalled.Val)
+					return JSONDocument{Val: newArr}, true, nil
+				}
+				return doc, false, nil
 			}
 		} else {
 			// We don't have an array, so must be a scalar or an object that the user is treating as an array. Thankfully
@@ -663,23 +692,29 @@ func (doc JSONDocument) needANameForThis(ctx *sql.Context, path string, val JSON
 			}
 
 			if !index.underflow {
-				if index.index == 0 {
-					if overwrite {
+				if index.index == 0 && !index.overflow {
+					if mode == SET || mode == REPLACE {
 						return JSONDocument{Val: unmarshalled.Val}, true, nil
 					}
 					return doc, false, nil
 				} else {
-					var newArr = make([]interface{}, 0, 2)
-					newArr = append(newArr, doc.Val)
-					newArr = append(newArr, unmarshalled.Val)
-					return JSONDocument{Val: newArr}, true, nil
+					if index.overflow && (mode == SET || mode == INSERT) {
+						var newArr = make([]interface{}, 0, 2)
+						newArr = append(newArr, doc.Val)
+						newArr = append(newArr, unmarshalled.Val)
+						return JSONDocument{Val: newArr}, true, nil
+					}
+					return doc, false, nil
 				}
 			} else {
-				// convert to an array, [val, object]
-				var newArr = make([]interface{}, 0, 2)
-				newArr = append(newArr, unmarshalled.Val)
-				newArr = append(newArr, doc.Val)
-				return JSONDocument{Val: newArr}, true, nil
+				if mode == SET || mode == INSERT {
+					// convert to an array, [val, object]
+					var newArr = make([]interface{}, 0, 2)
+					newArr = append(newArr, unmarshalled.Val)
+					newArr = append(newArr, doc.Val)
+					return JSONDocument{Val: newArr}, true, nil
+				}
+				return doc, false, nil
 			}
 		}
 
@@ -731,17 +766,12 @@ func parseIndex(index string, lastIndex int) (parseIndexResult, error) {
 	if err != nil {
 		panic("pan't parse index")
 	}
-	return parseIndexResult{index: val}, nil
-}
 
-func (doc JSONDocument) Replace(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
-	if path == "$" {
-		res, err := val.Unmarshall(ctx)
-		if err != nil {
-			return nil, false, err
-		}
-		return res, true, nil
+	overflow := false
+	if val > lastIndex {
+		val = lastIndex
+		overflow = true
 	}
 
-	panic("implement me")
+	return parseIndexResult{index: val, overflow: overflow}, nil
 }

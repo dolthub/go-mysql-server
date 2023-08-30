@@ -707,12 +707,154 @@ func TestJsonRemove(t *testing.T) {
 
 var JsonReplaceTests = []JsonMutationTest{
 	{
-		desc:      "set root",
+		desc:      "replace root",
 		doc:       `{"a": 1, "b": 2}`,
 		path:      "$",
 		value:     `{"c": 3}`,
 		resultVal: `{"c": 3}`,
 		changed:   true,
+	},
+
+	{
+		desc:      "replace root ignore white space",
+		doc:       `{"a": 1, "b": 2}`,
+		path:      "   $   ",
+		value:     `{"c": 3}`,
+		resultVal: `{"c": 3}`,
+		changed:   true,
+	},
+	{
+		desc:      "replace middle of an array",
+		doc:       `[1, 2, 3]`,
+		path:      "$[1]",
+		value:     `42`,
+		resultVal: `[1, 42, 3]`,
+		changed:   true,
+	},
+	{
+		desc:      "set last item of an array",
+		doc:       `[1, 2, 3]`,
+		path:      "$[2]",
+		value:     `42`,
+		resultVal: `[1, 2, 42]`,
+		changed:   true,
+	},
+	{
+		desc:      "noupdate to an array when overflown",
+		doc:       `[1, 2, 3]`,
+		path:      "$[23]",
+		value:     `42`,
+		resultVal: `[1, 2, 3]`,
+		changed:   false,
+	},
+	{
+		desc:      "replace 'last' element of an array",
+		doc:       `[1, 2, 3]`,
+		path:      "$[last]",
+		value:     `42`,
+		resultVal: `[1, 2, 42]`,
+		changed:   true,
+	},
+	{
+		// mysql> select JSON_REPLACE(JSON_ARRAY(1,2,3),'$[last-23]', 42);
+		// +--------------------------------------------------+
+		// | JSON_REPLACE(JSON_ARRAY(1,2,3),'$[last-23]', 42) |
+		// +--------------------------------------------------+
+		// | [1, 2, 3]                                        |
+		// +--------------------------------------------------+
+		// 1 row in set (0.00 sec)
+		desc:      "no update for element underflow",
+		doc:       `[1, 2, 3]`,
+		path:      "$[last-23]",
+		value:     `42`,
+		resultVal: `[1, 2, 3]`,
+		changed:   false,
+	},
+	{
+		desc:      "no update for empty array",
+		doc:       `[]`,
+		path:      "$[0]",
+		value:     `42`,
+		resultVal: `[]`,
+		changed:   false,
+	},
+	{
+		desc:      "treating object as an array replaces for index 0",
+		doc:       `{"a":1}`,
+		path:      "$[0]",
+		value:     `42`,
+		resultVal: `42`,
+		changed:   true,
+	},
+	{
+		// mysql> select JSON_REPLACE(JSON_OBJECT("a",1),'$[last]', 42);
+		// +------------------------------------------------+
+		// | JSON_REPLACE(JSON_OBJECT("a",1),'$[last]', 42) |
+		// +------------------------------------------------+
+		// | 42                                             |
+		// +------------------------------------------------+
+		desc:      "treating object as an array replaces for index last",
+		doc:       `{"a":1}`,
+		path:      "$[last]",
+		value:     `42`,
+		resultVal: `42`,
+		changed:   true,
+	},
+	{
+		desc:      "no op when treating object as an array with underflow",
+		doc:       `{"a":1}`,
+		path:      "$[last-23]",
+		value:     `42`,
+		resultVal: `{"a": 1}`,
+		changed:   false,
+	},
+	{
+		desc:      "no op when treating object as an array with overflow",
+		doc:       `{"a":1}`,
+		path:      "$[51]",
+		value:     `42`,
+		resultVal: `{"a": 1}`,
+		changed:   false,
+	},
+	{
+		desc:      "no update for scalar will treated as an array for out of bounds",
+		doc:       `17`,
+		path:      "$[51]",
+		value:     `42`,
+		resultVal: `17`,
+		changed:   false,
+	},
+	{
+		desc:      "scalar will be overwritten for index 0",
+		doc:       `17`,
+		path:      "$[0]",
+		value:     `42`,
+		resultVal: `42`,
+		changed:   true,
+	},
+	{
+		desc:      "no update for scalar when used as an array with underflow",
+		doc:       `17`,
+		path:      "$[last-23]",
+		value:     `42`,
+		resultVal: `17`,
+		changed:   false,
+	},
+	{
+		desc:      "Object field updated",
+		doc:       `{"a": 1}`,
+		path:      "$.a",
+		value:     `42`,
+		resultVal: `{"a": 42}`,
+		changed:   true,
+	},
+	{
+		desc:      "Object field not inserted",
+		doc:       `{"a": 1}`,
+		path:      "$.b",
+		value:     `42`,
+		resultVal: `{"a": 1}`,
+		changed:   false,
 	},
 }
 
