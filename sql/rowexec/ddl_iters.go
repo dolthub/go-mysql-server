@@ -1764,10 +1764,16 @@ func (b *BaseBuilder) executeCreateCheck(ctx *sql.Context, c *plan.CreateCheck) 
 }
 
 func (b *BaseBuilder) executeDropCheck(ctx *sql.Context, n *plan.DropCheck) error {
-	chAlterable, err := getCheckAlterable(n.Child)
+	table, err := getTableFromDatabase(ctx, n.Database(), n.Table)
 	if err != nil {
 		return err
 	}
+
+	chAlterable, err := getCheckAlterableTable(table)
+	if err != nil {
+		return err
+	}
+
 	return chAlterable.DropCheck(ctx, n.Name)
 }
 

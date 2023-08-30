@@ -35,7 +35,6 @@ var (
 type CreateCheck struct {
 	ddlNode
 	Table        *ResolvedTable
-	targetSchema sql.Schema
 	Check *sql.CheckConstraint
 }
 
@@ -43,7 +42,8 @@ var _ sql.Node = (*CreateCheck)(nil)
 var _ sql.CollationCoercible = (*CreateCheck)(nil)
 
 type DropCheck struct {
-	UnaryNode
+	ddlNode
+	Table        *ResolvedTable
 	Name string
 }
 
@@ -58,9 +58,10 @@ func NewAlterAddCheck(table *ResolvedTable, check *sql.CheckConstraint) *CreateC
 	}
 }
 
-func NewAlterDropCheck(table sql.Node, name string) *DropCheck {
+func NewAlterDropCheck(table *ResolvedTable, name string) *DropCheck {
 	return &DropCheck{
-		UnaryNode: UnaryNode{Child: table},
+		ddlNode: ddlNode{table.SqlDatabase},
+		Table:   table,
 		Name:      name,
 	}
 }
@@ -127,14 +128,14 @@ func (p *DropCheck) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
-	return NewAlterDropCheck(children[0], p.Name), nil
+	return NewAlterDropCheck(children[0].(*ResolvedTable), p.Name), nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
 func (p *DropCheck) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	db := GetDatabase(p.Child)
+	db := p.Table.Database()
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(db), getTableName(p.Child), "", sql.PrivilegeType_Alter))
+		sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(db), getTableName(p.Table), "", sql.PrivilegeType_Alter))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -149,7 +150,7 @@ func (p *DropCheck) IsReadOnly() bool { return false }
 func (p DropCheck) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("DropCheck(%s)", p.Name)
-	_ = pr.WriteChildren(fmt.Sprintf("Table(%s)", p.UnaryNode.Child.String()))
+	_ = pr.WriteChildren(fmt.Sprintf("Table(%s)", p.Table.Name()))
 	return pr.String()
 }
 
