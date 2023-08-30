@@ -1080,6 +1080,7 @@ func addKeyToSchema(tableName string, schema sql.Schema, columns []sql.IndexColu
 		idx := schema.IndexOf(columns[i].Name, tableName)
 		ordinals[i] = idx
 		newSch[idx].PrimaryKey = true
+		newSch[idx].Nullable = false
 	}
 	return sql.NewPrimaryKeySchema(newSch, ordinals...)
 }

@@ -187,32 +187,34 @@ func TestSingleScript(t *testing.T) {
 	// t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "alter auto_increment value",
+			Name: "Multialter DDL with ADD/DROP Primary Key",
 			SetUpScript: []string{
-				`create table auto (
-				pk int auto_increment,
-				c0 int,
-				primary key(pk)
-			);`,
-				"insert into auto values (NULL,10), (NULL,20), (NULL,30)",
-				"alter table auto auto_increment 9;",
+				"CREATE TABLE t(pk int primary key, v1 int)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: 			"SELECT AUTO_INCREMENT FROM information_schema.tables WHERE table_name = 'auto' AND table_schema = DATABASE()",
-					Expected: 		[]sql.Row{{uint64(9)}},
+					Query:    "ALTER TABLE t ADD COLUMN (v2 int), drop primary key, add primary key (v2)",
+					Expected: []sql.Row{{types.NewOkResult(0)}},
 				},
 				{
-					Query: 			"insert into auto values (NULL,90)",
-					Expected: 		[]sql.Row{{types.OkResult{
-						RowsAffected: 1,
-						InsertID:     9,
-					}}},
+					Query: "show create table t",
+					Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
+						"  `pk` int NOT NULL,\n" +
+						"  `v1` int,\n" +
+						"  `v2` int NOT NULL,\n" +
+						"  PRIMARY KEY (`v2`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 				},
 				{
-					Query: "select * from auto order by 1",
+					Query:       "ALTER TABLE t ADD COLUMN (v3 int), drop primary key, add primary key (notacolumn)",
+					ExpectedErr: sql.ErrKeyColumnDoesNotExist,
+				},
+				{
+					Query: "DESCRIBE t",
 					Expected: []sql.Row{
-						{1, 10}, {2, 20}, {3, 30}, {9, 90},
+						{"pk", "int", "NO", "", "NULL", ""},
+						{"v1", "int", "YES", "", "NULL", ""},
+						{"v2", "int", "NO", "PRI", "NULL", ""},
 					},
 				},
 			},
