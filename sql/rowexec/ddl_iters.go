@@ -1777,17 +1777,6 @@ func (b *BaseBuilder) executeDropCheck(ctx *sql.Context, n *plan.DropCheck) erro
 	return chAlterable.DropCheck(ctx, n.Name)
 }
 
-func getCheckAlterable(node sql.Node) (sql.CheckAlterableTable, error) {
-	switch node := node.(type) {
-	case sql.CheckAlterableTable:
-		return node, nil
-	case *plan.ResolvedTable:
-		return getCheckAlterableTable(node.Table)
-	default:
-		return nil, plan.ErrNoCheckConstraintSupport.New(node.String())
-	}
-}
-
 func getCheckAlterableTable(t sql.Table) (sql.CheckAlterableTable, error) {
 	switch t := t.(type) {
 	case sql.CheckAlterableTable:
