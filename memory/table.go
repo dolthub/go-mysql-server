@@ -668,7 +668,9 @@ func (t *Table) indexColsForTableEditor() ([][]int, [][]uint16) {
 		}
 		colIdxs, err := t.columnIndexes(colNames)
 		if err != nil {
-			panic("failed to get column indexes")
+			// this means that the column names in this index aren't in the schema, which can happen in the case of a
+			// table rewrite
+			continue
 		}
 		uniqIdxCols = append(uniqIdxCols, colIdxs)
 		prefixLengths = append(prefixLengths, idx.PrefixLengths())
@@ -2194,9 +2196,18 @@ func (t Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.Primar
 	tableUnderEdit.partitionKeys = keys
 	tableUnderEdit.partitions = partitions
 	tableUnderEdit.schema = newSchema
+	tableUnderEdit.columns = allColumns(newSchema)
 
 	editor := tableUnderEdit.getTableEditor(ctx).(*tableEditor)
 	editorCopy :=	*editor
 	
 	return &editorCopy, nil
+}
+
+func allColumns(schema sql.PrimaryKeySchema) []int {
+	columns := make([]int, len(schema.Schema))
+	for i := range schema.Schema {
+		columns[i] = i
+	}
+	return columns
 }
