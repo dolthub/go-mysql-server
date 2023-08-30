@@ -231,7 +231,26 @@ func (b *Builder) buildShowEvent(inScope *scope, s *ast.Show) (outScope *scope) 
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
 	}
-	outScope.node = plan.NewShowCreateEvent(b.resolveDb(dbName), s.Table.Name.String())
+
+	db := b.resolveDb(dbName)
+
+	eventName := strings.ToLower(s.Table.Name.String())
+	eventDb, ok := db.(sql.EventDatabase)
+	if !ok {
+		err := sql.ErrEventsNotSupported.New(db.Name())
+		b.handleErr(err)
+	}
+
+	event, exists, err := eventDb.GetEvent(b.ctx, eventName)
+	if err != nil {
+		b.handleErr(err)
+	}
+	if !exists {
+		err := sql.ErrUnknownEvent.New(eventName)
+		b.handleErr(err)
+	}
+
+	outScope.node = plan.NewShowCreateEvent(db, event)
 	return
 }
 
@@ -243,7 +262,10 @@ func (b *Builder) buildShowAllEvents(inScope *scope, s *ast.Show) (outScope *sco
 		dbName = b.ctx.GetCurrentDatabase()
 	}
 	db := b.resolveDb(dbName)
-	var node sql.Node = plan.NewShowEvents(db)
+	showEvents := plan.NewShowEvents(db)
+	showEvents.Events = b.loadAllEventDetails(db)
+
+	var node sql.Node = showEvents
 	for _, c := range node.Schema() {
 		outScope.newColumn(scopeColumn{table: c.Source, col: c.Name, typ: c.Type, nullable: c.Nullable})
 	}
@@ -268,6 +290,39 @@ func (b *Builder) buildShowAllEvents(inScope *scope, s *ast.Show) (outScope *sco
 
 	outScope.node = node
 	return
+}
+
+func (b *Builder) loadAllEventDetails(db sql.Database) []sql.EventDetails {
+	if eventDb, ok := db.(sql.EventDatabase); ok {
+		events, err := eventDb.GetEvents(b.ctx)
+		if err != nil {
+			b.handleErr(err)
+		}
+		loadedEvents := make([]sql.EventDetails, len(events))
+		for i, event := range events {
+			loadedEvents[i] = b.loadEventDetails(event)
+		}
+		return loadedEvents
+	}
+	return nil
+}
+
+func (b *Builder) loadEventDetails(event sql.EventDefinition) sql.EventDetails {
+	parsed, _, err := ast.ParseOneWithOptions(event.CreateStatement, sql.NewSqlModeFromString(event.SqlMode).ParserOptions())
+	if err != nil {
+		b.handleErr(fmt.Errorf("failed to parse create event '%s': %w", event.Name, err))
+	}
+	eventScope := b.build(b.newScope(), parsed, event.CreateStatement)
+	eventPlan, ok := eventScope.node.(*plan.CreateEvent)
+	if !ok {
+		err := sql.ErrEventCreateStatementInvalid.New(event.CreateStatement)
+		b.handleErr(err)
+	}
+	ed, err := eventPlan.GetEventDetails(b.ctx, event.CreatedAt)
+	if err != nil {
+		b.handleErr(err)
+	}
+	return ed
 }
 
 func (b *Builder) buildShowProcedure(inScope *scope, s *ast.Show) (outScope *scope) {
