@@ -47,7 +47,7 @@ var JoinPlanningTests = []struct {
 	{
 		name: "merge join unary index",
 		setup: []string{
-			"CREATE table xy (x int primary key, y int, index y_idx(y));",
+			"CREATE table xy (x int primary key, y int, unique index y_idx(y));",
 			"create table rs (r int primary key, s int, index s_idx(s));",
 			"CREATE table uv (u int primary key, v int);",
 			"CREATE table ab (a int primary key, b int);",
@@ -59,54 +59,54 @@ var JoinPlanningTests = []struct {
 		},
 		tests: []JoinPlanTest{
 			{
-				q:     "select u,a,y from uv join (select /*+ JOIN_ORDER(ab, xy) */ * from ab join xy on y = a) r on u = r.a order by 1",
+				q:     "select u,a,y from uv join (select /*+ JOIN_ORDER(ab, xy) MERGE_JOIN(ab, xy) */ * from ab join xy on y = a) r on u = r.a order by 1",
 				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 0, 0}, {1, 1, 1}, {2, 2, 2}, {3, 3, 3}},
 			},
 			{
-				q:     "select /*+ JOIN_ORDER(ab, xy) */ * from ab join xy on y = a order by 1, 3",
+				q:     "select /*+ JOIN_ORDER(ab, xy) MERGE_JOIN(ab, xy)*/ * from ab join xy on y = a order by 1, 3",
 				types: []plan.JoinType{plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 2, 1, 0}, {1, 2, 2, 1}, {2, 2, 0, 2}, {3, 1, 3, 3}},
 			},
 			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs left join xy on y = s order by 1, 3",
+				q:     "select /*+ JOIN_ORDER(rs, xy) MERGE_JOIN(rs, xy) */ * from rs left join xy on y = s order by 1, 3",
 				types: []plan.JoinType{plan.JoinTypeLeftOuterMerge},
 				exp:   []sql.Row{{0, 0, 1, 0}, {1, 0, 1, 0}, {2, 0, 1, 0}, {4, 4, nil, nil}, {5, 4, nil, nil}},
 			},
 			{
 				// extra join condition does not filter left-only rows
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs left join xy on y = s and y+s = 0 order by 1, 3",
+				q:     "select /*+ JOIN_ORDER(rs, xy) MERGE_JOIN(rs, xy) */ * from rs left join xy on y = s and y+s = 0 order by 1, 3",
 				types: []plan.JoinType{plan.JoinTypeLeftOuterMerge},
 				exp:   []sql.Row{{0, 0, 1, 0}, {1, 0, 1, 0}, {2, 0, 1, 0}, {4, 4, nil, nil}, {5, 4, nil, nil}},
 			},
 			{
 				// extra join condition does not filter left-only rows
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs left join xy on y+2 = s and s-y = 2 order by 1, 3",
+				q:     "select /*+ JOIN_ORDER(rs, xy) MERGE_JOIN(rs, xy) */ * from rs left join xy on y+2 = s and s-y = 2 order by 1, 3",
 				types: []plan.JoinType{plan.JoinTypeLeftOuterMerge},
 				exp:   []sql.Row{{0, 0, nil, nil}, {1, 0, nil, nil}, {2, 0, nil, nil}, {4, 4, 0, 2}, {5, 4, 0, 2}},
 			},
 			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = r order by 1, 3",
+				q:     "select /*+ JOIN_ORDER(rs, xy) MERGE_JOIN(rs, xy) */ * from rs join xy on y = r order by 1, 3",
 				types: []plan.JoinType{plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 0, 1, 0}, {1, 0, 2, 1}, {2, 0, 0, 2}},
 			},
 			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on r = y order by 1, 3",
+				q:     "select /*+ JOIN_ORDER(rs, xy) MERGE_JOIN(rs, xy) */ * from rs join xy on r = y order by 1, 3",
 				types: []plan.JoinType{plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 0, 1, 0}, {1, 0, 2, 1}, {2, 0, 0, 2}},
 			},
 			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = s order by 1, 3",
+				q:     "select /*+ JOIN_ORDER(rs, xy) MERGE_JOIN(rs, xy) */ * from rs join xy on y = s order by 1, 3",
 				types: []plan.JoinType{plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 0, 1, 0}, {1, 0, 1, 0}, {2, 0, 1, 0}},
 			},
 			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = s and y = r order by 1, 3",
+				q:     "select /*+ JOIN_ORDER(rs, xy) MERGE_JOIN(rs, xy) */ * from rs join xy on y = s and y = r order by 1, 3",
 				types: []plan.JoinType{plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 0, 1, 0}},
 			},
 			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y+2 = s order by 1, 3",
+				q:     "select /*+ JOIN_ORDER(rs, xy) MERGE_JOIN(rs, xy) */ * from rs join xy on y+2 = s order by 1, 3",
 				types: []plan.JoinType{plan.JoinTypeMerge},
 				exp:   []sql.Row{{4, 4, 0, 2}, {5, 4, 0, 2}},
 			},
@@ -122,12 +122,12 @@ var JoinPlanningTests = []struct {
 			//	exp:   []sql.Row{{0,0,1,0},{0, 0, 1, 0},{2,0,1,0},{4,4,1,0}},
 			//},
 			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on 2 = s+y order by 1, 3",
+				q:     "select /*+ JOIN_ORDER(rs, xy) MERGE_JOIN(rs, xy) */ * from rs join xy on 2 = s+y order by 1, 3",
 				types: []plan.JoinType{plan.JoinTypeInner},
 				exp:   []sql.Row{{0, 0, 0, 2}, {1, 0, 0, 2}, {2, 0, 0, 2}},
 			},
 			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y > s+2 order by 1, 3",
+				q:     "select /*+ JOIN_ORDER(rs, xy) MERGE_JOIN(rs, xy) */ * from rs join xy on y > s+2 order by 1, 3",
 				types: []plan.JoinType{plan.JoinTypeInner},
 				exp:   []sql.Row{{0, 0, 3, 3}, {1, 0, 3, 3}, {2, 0, 3, 3}},
 			},
@@ -144,7 +144,7 @@ var JoinPlanningTests = []struct {
 		},
 		tests: []JoinPlanTest{
 			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = s order by 1,3",
+				q:     "select /*+ JOIN_ORDER(rs, xy) MERGE_JOIN(rs, xy) */ * from rs join xy on y = s order by 1,3",
 				types: []plan.JoinType{plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 0, 1, 0}, {0, 0, 4, 0}, {3, 0, 1, 0}, {3, 0, 4, 0}, {4, 8, 0, 8}, {5, 4, 5, 4}},
 			},
@@ -161,9 +161,34 @@ var JoinPlanningTests = []struct {
 		},
 		tests: []JoinPlanTest{
 			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = s order by 1,3",
+				q:     "select /*+ JOIN_ORDER(rs, xy) MERGE_JOIN(rs, xy) */ * from rs join xy on y = s order by 1,3",
 				types: []plan.JoinType{plan.JoinTypeMerge},
 				exp:   []sql.Row{},
+			},
+		},
+	},
+	{
+		name: "merge join large and small table",
+		setup: []string{
+			"CREATE table xy (x int primary key, y int, index y_idx(y));",
+			"create table rs (r int primary key, s int, index s_idx(s));",
+			"insert into xy values (1,0), (2,1), (0,8), (3,7), (5,4), (4,0);",
+			"insert into rs values (0,0),(2,3),(3,0), (4,8), (5,4);",
+			"update information_schema.statistics set cardinality = 10 where table_name = 'xy';",
+			"update information_schema.statistics set cardinality = 1000000000 where table_name = 'rs';",
+		},
+		tests: []JoinPlanTest{
+			{
+				// When primary table is much larger, doing many lookups is expensive: prefer merge
+				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on x = r order by 1,3",
+				types: []plan.JoinType{plan.JoinTypeMerge},
+				exp:   []sql.Row{{0, 0, 0, 8}, {2, 3, 2, 1}, {3, 0, 3, 7}, {4, 8, 4, 0}, {5, 4, 5, 4}},
+			},
+			{
+				// When secondary table is much larger, avoid reading the entire table: prefer lookup
+				q:     "select /*+ JOIN_ORDER(xy, rs) */ * from xy join rs on x = r order by 1,3",
+				types: []plan.JoinType{plan.JoinTypeLookup},
+				exp:   []sql.Row{{0, 8, 0, 0}, {2, 1, 2, 3}, {3, 7, 3, 0}, {4, 0, 4, 8}, {5, 4, 5, 4}},
 			},
 		},
 	},
@@ -178,7 +203,7 @@ var JoinPlanningTests = []struct {
 		},
 		tests: []JoinPlanTest{
 			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = s order by 1,3",
+				q:     "select /*+ JOIN_ORDER(rs, xy) MERGE_JOIN(rs, xy) */ * from rs join xy on y = s order by 1,3",
 				types: []plan.JoinType{plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 0, 1, 0}, {0, 0, 4, 0}, {3, 0, 1, 0}, {3, 0, 4, 0}, {4, 8, 0, 8}, {5, 4, 5, 4}},
 			},
@@ -193,7 +218,7 @@ var JoinPlanningTests = []struct {
 				q:             `SELECT /*+ MERGE_JOIN(l,r) */ l.pk1, l.pk2, l.c1, r.pk1, r.pk2, r.c1 FROM two_pk l JOIN two_pk r ON l.pk1=r.pk1 AND l.pk2=r.pk2`,
 				types:         []plan.JoinType{plan.JoinTypeMerge},
 				mergeCompares: []string{"((r.pk1, r.pk2) = (l.pk1, l.pk2))"},
-				exp:           []sql.Row{sql.Row{0, 0, 0, 0, 0, 0}, sql.Row{0, 1, 10, 0, 1, 10}, sql.Row{1, 0, 20, 1, 0, 20}, sql.Row{1, 1, 30, 1, 1, 30}},
+				exp:           []sql.Row{{0, 0, 0, 0, 0, 0}, {0, 1, 10, 0, 1, 10}, {1, 0, 20, 1, 0, 20}, {1, 1, 30, 1, 1, 30}},
 			},
 		},
 	},
@@ -208,7 +233,7 @@ var JoinPlanningTests = []struct {
 		},
 		tests: []JoinPlanTest{
 			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = s order by 1,3",
+				q:     "select /*+ JOIN_ORDER(rs, xy) MERGE_JOIN(rs, xy) */ * from rs join xy on y = s order by 1,3",
 				types: []plan.JoinType{plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 0, 1, 0}, {0, 0, 4, 0}, {3, 0, 1, 0}, {3, 0, 4, 0}, {4, 8, 0, 8}, {5, 4, 5, 4}},
 			},
@@ -266,7 +291,7 @@ var JoinPlanningTests = []struct {
 			},
 			{
 				q:     "select * from xy where x not in (select u from uv where u not in (select a from ab where a not in (select r from rs where r = 1))) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls, plan.JoinTypeLeftOuterHashExcludeNulls, plan.JoinTypeAntiLookup},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls, plan.JoinTypeLeftOuterHashExcludeNulls, plan.JoinTypeLeftOuterMerge},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
@@ -357,12 +382,12 @@ order by 1;`,
 			},
 			{
 				q:     "select * from xy where x in (select u from uv join ab on u = a and a = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeLookup},
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeMerge},
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
 				q:     "select * from xy where x = (select u from uv join ab on u = a and a = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeLookup},
+				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeMerge},
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
@@ -497,7 +522,7 @@ WHERE EXISTS (
 select x from xy where
   not exists (select a from ab where a = x and a = 1) and
   not exists (select a from ab where a = x and a = 2)`,
-				types: []plan.JoinType{plan.JoinTypeAntiLookup, plan.JoinTypeAntiLookup},
+				types: []plan.JoinType{plan.JoinTypeAntiLookup, plan.JoinTypeLeftOuterMerge},
 				exp:   []sql.Row{{0}, {3}},
 			},
 			{
@@ -671,7 +696,7 @@ where u in (select * from rec);`,
 		tests: []JoinPlanTest{
 			{
 				q:     "select * from xy where x in (select u from uv join ab on u = a and a = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeLookup},
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeMerge},
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
@@ -767,7 +792,7 @@ where u in (select * from rec);`,
 			},
 			{
 				q:     "select /*+ MERGE_JOIN(xy,scalarSubq0) */ * from xy where x not in (select u from uv WHERE u = 2) order by x",
-				types: []plan.JoinType{plan.JoinTypeAntiLookup},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterMerge},
 				exp: []sql.Row{
 					{0, 2},
 					{1, 0},
