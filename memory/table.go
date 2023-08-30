@@ -1036,6 +1036,9 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 		if col.Name == columnName {
 			oldIdx = i
 			column.PrimaryKey = col.PrimaryKey
+			if column.PrimaryKey {
+				column.Nullable = false
+			}
 			// We've removed auto increment through this modification so we need to do some bookkeeping
 			if col.AutoIncrement && !column.AutoIncrement {
 				table.autoColIdx = -1
@@ -1044,6 +1047,7 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 			break
 		}
 	}
+	
 	if order == nil {
 		newIdx = oldIdx
 		if newIdx == 0 {
@@ -1945,6 +1949,20 @@ func newTable(ctx *sql.Context, t *Table, newSch sql.PrimaryKeySchema) (*Table, 
 	return newTable, nil
 }
 
+// normalizeSchemaForRewrite returns a copy of the schema provided suitable for rewriting. This is necessary because 
+// the engine doesn't currently enforce that primary key columns are not nullable, rather taking the definition 
+// directly from the user. 
+func normalizeSchemaForRewrite(newSch sql.PrimaryKeySchema) sql.PrimaryKeySchema {
+	schema := newSch.Schema.Copy()
+	for _, col := range schema {
+		if col.PrimaryKey {
+			col.Nullable = false
+		}
+	}
+	
+	return sql.NewPrimaryKeySchema(schema, newSch.PkOrdinals...)
+}
+
 // DropPrimaryKey implements the PrimaryKeyAlterableTable
 func (t *Table) DropPrimaryKey(ctx *sql.Context) error {
 	// Must drop auto increment property before dropping primary key
@@ -2202,7 +2220,7 @@ func isColumnDrop(oldSchema sql.PrimaryKeySchema, newSchema sql.PrimaryKeySchema
 
 func (t Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column, idxCols []sql.IndexColumn) (sql.RowInserter, error) {
 	// Make a copy of the table under edit with the new schema and no data
-	tableUnderEdit := t.copy().truncate(newSchema)
+	tableUnderEdit := t.copy().truncate(normalizeSchemaForRewrite(newSchema))
 
 	return tableUnderEdit.getTableEditor(ctx), nil
 }

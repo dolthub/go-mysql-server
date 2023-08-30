@@ -187,35 +187,23 @@ func TestSingleScript(t *testing.T) {
 	// t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "Multialter DDL with ADD/DROP Primary Key",
+			Name: "primary key order change",
 			SetUpScript: []string{
-				"CREATE TABLE t(pk int primary key, v1 int)",
+				"CREATE TABLE t(u int, v int, primary key (u, v))",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "ALTER TABLE t ADD COLUMN (v2 int), drop primary key, add primary key (v2)",
+					Query:    "alter table t modify column u int after v",
 					Expected: []sql.Row{{types.NewOkResult(0)}},
 				},
 				{
 					Query: "show create table t",
-					Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
-						"  `pk` int NOT NULL,\n" +
-						"  `v1` int,\n" +
-						"  `v2` int NOT NULL,\n" +
-						"  PRIMARY KEY (`v2`)\n" +
+					Expected: []sql.Row{{"t",
+						"CREATE TABLE `t` (\n" +
+						"  `v` int NOT NULL,\n" +
+						"  `u` int NOT NULL,\n" +
+						"  PRIMARY KEY (`u`,`v`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-				},
-				{
-					Query:       "ALTER TABLE t ADD COLUMN (v3 int), drop primary key, add primary key (notacolumn)",
-					ExpectedErr: sql.ErrKeyColumnDoesNotExist,
-				},
-				{
-					Query: "DESCRIBE t",
-					Expected: []sql.Row{
-						{"pk", "int", "NO", "", "NULL", ""},
-						{"v1", "int", "YES", "", "NULL", ""},
-						{"v2", "int", "NO", "PRI", "NULL", ""},
-					},
 				},
 			},
 		},
