@@ -1911,7 +1911,7 @@ func (t *Table) replaceData(src *Table) {
 func newTable(ctx *sql.Context, t *Table, newSch sql.PrimaryKeySchema) (*Table, error) {
 	sess := SessionFromContext(ctx)
 	sess.clearEditAccumulator(t)
-	newTable := NewPartitionedTableWithCollation(t.db, t.name, newSch, t.fkColl, len(t.partitions), t.collation)
+	newTable := t.copy().truncate(newSch)
 	for _, partition := range t.partitions {
 		for _, partitionRow := range partition {
 			// TODO: we need a different edit accumulator here, it's reusing the session one
@@ -2202,6 +2202,7 @@ func (t *Table) truncate(schema sql.PrimaryKeySchema) *Table {
 	t.partitions = partitions
 	t.columns = allColumns(schema)
 	t.schema = schema
+	t.insertPartIdx = 0
 	t.autoIncVal = 0
 	
 	return t
