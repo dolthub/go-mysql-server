@@ -608,12 +608,6 @@ func TestDropForeignKeys(t *testing.T) {
 }
 
 func TestForeignKeys(t *testing.T) {
-	for i := len(queries.ForeignKeyTests) - 1; i >= 0; i-- {
-		//TODO: memory tables don't quite handle keyless foreign keys properly
-		if queries.ForeignKeyTests[i].Name == "Keyless CASCADE over three tables" {
-			queries.ForeignKeyTests = append(queries.ForeignKeyTests[:i], queries.ForeignKeyTests[i+1:]...)
-		}
-	}
 	enginetest.TestForeignKeys(t, enginetest.NewDefaultMemoryHarness())
 }
 
