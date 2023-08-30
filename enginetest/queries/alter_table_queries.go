@@ -93,6 +93,46 @@ var AlterTableScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "drop check as part of alter block",
+		SetUpScript: []string{
+			"create table t42 (i bigint primary key, j int, CONSTRAINT check1 CHECK (j < 12345), CONSTRAINT check2 CHECK (j > 0))",
+			"ALTER TABLE t42 ADD COLUMN s varchar(20), drop check check1",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t42",
+				Expected: []sql.Row{{"t42",
+					"CREATE TABLE `t42` (\n" +
+					"  `i` bigint NOT NULL,\n" +
+					"  `j` int,\n" +
+					"  `s` varchar(20),\n" +
+					"  PRIMARY KEY (`i`),\n" +
+					"  CONSTRAINT `check2` CHECK ((`j` > 0))\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "drop constraint as part of alter block",
+		SetUpScript: []string{
+			"create table t42 (i bigint primary key, j int, CONSTRAINT check1 CHECK (j < 12345), CONSTRAINT check2 CHECK (j > 0))",
+			"ALTER TABLE t42 ADD COLUMN s varchar(20), drop constraint check1",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t42",
+				Expected: []sql.Row{{"t42",
+					"CREATE TABLE `t42` (\n" +
+							"  `i` bigint NOT NULL,\n" +
+							"  `j` int,\n" +
+							"  `s` varchar(20),\n" +
+							"  PRIMARY KEY (`i`),\n" +
+							"  CONSTRAINT `check2` CHECK ((`j` > 0))\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
 		Name: "drop column drops all relevant check constraints",
 		SetUpScript: []string{
 			"create table t42 (i bigint primary key, s varchar(20))",
