@@ -231,7 +231,26 @@ func (b *Builder) buildShowEvent(inScope *scope, s *ast.Show) (outScope *scope) 
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
 	}
-	outScope.node = plan.NewShowCreateEvent(b.resolveDb(dbName), s.Table.Name.String())
+
+	db := b.resolveDb(dbName)
+
+	eventName := strings.ToLower(s.Table.Name.String())
+	eventDb, ok := db.(sql.EventDatabase)
+	if !ok {
+		err := sql.ErrEventsNotSupported.New(db.Name())
+		b.handleErr(err)
+	}
+
+	event, exists, err := eventDb.GetEvent(b.ctx, eventName)
+	if err != nil {
+		b.handleErr(err)
+	}
+	if !exists {
+		err := sql.ErrUnknownEvent.New(eventName)
+		b.handleErr(err)
+	}
+
+	outScope.node = plan.NewShowCreateEvent(db, event)
 	return
 }
 
@@ -243,7 +262,10 @@ func (b *Builder) buildShowAllEvents(inScope *scope, s *ast.Show) (outScope *sco
 		dbName = b.ctx.GetCurrentDatabase()
 	}
 	db := b.resolveDb(dbName)
-	var node sql.Node = plan.NewShowEvents(db)
+	showEvents := plan.NewShowEvents(db)
+	showEvents.Events = b.loadAllEventDetails(db)
+
+	var node sql.Node = showEvents
 	for _, c := range node.Schema() {
 		outScope.newColumn(scopeColumn{table: c.Source, col: c.Name, typ: c.Type, nullable: c.Nullable})
 	}
@@ -268,6 +290,39 @@ func (b *Builder) buildShowAllEvents(inScope *scope, s *ast.Show) (outScope *sco
 
 	outScope.node = node
 	return
+}
+
+func (b *Builder) loadAllEventDetails(db sql.Database) []sql.EventDetails {
+	if eventDb, ok := db.(sql.EventDatabase); ok {
+		events, err := eventDb.GetEvents(b.ctx)
+		if err != nil {
+			b.handleErr(err)
+		}
+		loadedEvents := make([]sql.EventDetails, len(events))
+		for i, event := range events {
+			loadedEvents[i] = b.loadEventDetails(event)
+		}
+		return loadedEvents
+	}
+	return nil
+}
+
+func (b *Builder) loadEventDetails(event sql.EventDefinition) sql.EventDetails {
+	parsed, _, err := ast.ParseOneWithOptions(event.CreateStatement, sql.NewSqlModeFromString(event.SqlMode).ParserOptions())
+	if err != nil {
+		b.handleErr(fmt.Errorf("failed to parse create event '%s': %w", event.Name, err))
+	}
+	eventScope := b.build(b.newScope(), parsed, event.CreateStatement)
+	eventPlan, ok := eventScope.node.(*plan.CreateEvent)
+	if !ok {
+		err := sql.ErrEventCreateStatementInvalid.New(event.CreateStatement)
+		b.handleErr(err)
+	}
+	ed, err := eventPlan.GetEventDetails(b.ctx, event.CreatedAt)
+	if err != nil {
+		b.handleErr(err)
+	}
+	return ed
 }
 
 func (b *Builder) buildShowProcedure(inScope *scope, s *ast.Show) (outScope *scope) {
@@ -400,14 +455,26 @@ func (b *Builder) buildShowTableStatus(inScope *scope, s *ast.Show) (outScope *s
 
 func (b *Builder) buildShowIndex(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
-	dbName := s.Table.Qualifier.String()
+	dbName := strings.ToLower(s.Database)
+	if dbName == "" {
+		dbName = s.Table.Qualifier.String()
+	}
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
 	}
 	tableName := strings.ToLower(s.Table.Name.String())
-	table := b.resolveTable(tableName, strings.ToLower(dbName), nil)
-	showIdx := plan.NewShowIndexes(table)
-	showIdx.IndexesToShow = b.getInfoSchemaIndexes(table)
+	tableScope, ok := b.buildTablescan(inScope, strings.ToLower(dbName), tableName, nil)
+	if !ok {
+		err := sql.ErrTableNotFound.New(tableName)
+		b.handleErr(err)
+	}
+	rt, ok := tableScope.node.(*plan.ResolvedTable)
+	if !ok {
+		err := sql.ErrTableNotFound.New(tableName)
+		b.handleErr(err)
+	}
+	showIdx := plan.NewShowIndexes(rt)
+	showIdx.IndexesToShow = b.getInfoSchemaIndexes(rt)
 	outScope.node = showIdx
 	return
 }
@@ -507,7 +574,16 @@ func (b *Builder) buildAsOfLit(inScope *scope, t ast.Expr) interface{} {
 func (b *Builder) buildAsOfExpr(inScope *scope, time ast.Expr) sql.Expression {
 	switch v := time.(type) {
 	case *ast.SQLVal:
-		ret, _, err := types.Text.Convert(v.Val)
+		if v.Type == ast.ValArg && (b.bindCtx == nil || b.bindCtx.resolveOnly) {
+			return nil
+		}
+		repl := b.normalizeValArg(v)
+		val, ok := repl.(*ast.SQLVal)
+		if !ok {
+			// *ast.NullVal
+			return nil
+		}
+		ret, _, err := types.Text.Convert(val.Val)
 		if err != nil {
 			b.handleErr(err)
 		}

@@ -255,6 +255,8 @@ func (b *BaseBuilder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (
 		return b.buildShowStatus(ctx, n, row)
 	case *plan.ShowTableStatus:
 		return b.buildShowTableStatus(ctx, n, row)
+	case *plan.ShowCreateEvent:
+		return b.buildShowCreateEvent(ctx, n, row)
 	case *plan.SignalName:
 		return b.buildSignalName(ctx, n, row)
 	case *plan.StartTransaction:

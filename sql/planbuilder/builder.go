@@ -15,13 +15,19 @@
 package planbuilder
 
 import (
+	"sync"
+
+	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
-	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
+
+var BinderFactory = &sync.Pool{New: func() interface{} {
+	return &Builder{f: &factory{}}
+}}
 
 type Builder struct {
 	ctx             *sql.Context
@@ -35,8 +41,40 @@ type Builder struct {
 	viewCtx         *ViewContext
 	procCtx         *ProcContext
 	triggerCtx      *TriggerContext
+	bindCtx         *BindvarContext
 	insertActive    bool
 	nesting         int
+}
+
+// BindvarContext holds bind variable replacement literals.
+type BindvarContext struct {
+	Bindings map[string]*querypb.BindVariable
+	used     map[string]struct{}
+	// resolveOnly indicates that we are resolving plan names,
+	// but will not error for missing bindvar replacements.
+	resolveOnly bool
+}
+
+func (bv *BindvarContext) GetSubstitute(s string) (*querypb.BindVariable, bool) {
+	if bv.Bindings != nil {
+		ret, ok := bv.Bindings[s]
+		bv.used[s] = struct{}{}
+		return ret, ok
+	}
+	return nil, false
+}
+
+func (bv *BindvarContext) UnusedBindings() []string {
+	if len(bv.used) == len(bv.Bindings) {
+		return nil
+	}
+	var unused []string
+	for k, _ := range bv.Bindings {
+		if _, ok := bv.used[k]; !ok {
+			unused = append(unused, k)
+		}
+	}
+	return unused
 }
 
 // ViewContext overwrites database root source of nested
@@ -60,17 +98,35 @@ type ProcContext struct {
 	DbName string
 }
 
-func New(ctx *sql.Context, cat sql.Catalog) (*Builder, error) {
+func New(ctx *sql.Context, cat sql.Catalog) *Builder {
 	sqlMode := sql.LoadSqlMode(ctx)
-	return &Builder{ctx: ctx, cat: cat, parserOpts: sqlMode.ParserOptions(), f: &factory{}}, nil
+	return &Builder{ctx: ctx, cat: cat, parserOpts: sqlMode.ParserOptions(), f: &factory{}}
+}
+
+func (b *Builder) Initialize(ctx *sql.Context, cat sql.Catalog, opts ast.ParserOptions) {
+	b.ctx = ctx
+	b.cat = cat
+	b.f.ctx = ctx
+	b.parserOpts = opts
 }
 
 func (b *Builder) SetDebug(val bool) {
 	b.f.debug = val
 }
 
+func (b *Builder) SetBindings(bindings map[string]*querypb.BindVariable) {
+	b.bindCtx = &BindvarContext{
+		Bindings: bindings,
+		used:     make(map[string]struct{}),
+	}
+}
+
 func (b *Builder) SetParserOptions(opts ast.ParserOptions) {
 	b.parserOpts = opts
+}
+
+func (b *Builder) BindCtx() *BindvarContext {
+	return b.bindCtx
 }
 
 func (b *Builder) ViewCtx() *ViewContext {
@@ -98,8 +154,17 @@ func (b *Builder) newScope() *scope {
 	return &scope{b: b}
 }
 
-func (b *Builder) reset() {
+func (b *Builder) Reset() {
 	b.colId = 0
+	b.bindCtx = nil
+	b.currentDatabase = nil
+	b.procCtx = nil
+	b.multiDDL = false
+	b.insertActive = false
+	b.tabId = 0
+	b.triggerCtx = nil
+	b.viewCtx = nil
+	b.nesting = 0
 }
 
 type parseErr struct {

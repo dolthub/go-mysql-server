@@ -743,6 +743,44 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		Query: "select * from (select i, i2 from niltable) a(x,y) union select * from (select 1, NULL) b(x,y) union select * from (select i, i2 from niltable) c(x,y)",
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "x",
+				Type: types.Int64,
+			},
+			{
+				Name: "y",
+				Type: types.Int64,
+			},
+		},
+		Expected: []sql.Row{
+			{1, nil},
+			{2, 2},
+			{3, nil},
+			{4, 4},
+			{5, nil},
+			{6, 6},
+		},
+	},
+	{
+		Query: "select * from (select 1, 1) a(x,y) union select * from (select 1, NULL) b(x,y) union select * from (select 1,1) c(x,y);",
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "x",
+				Type: types.Int8,
+			},
+			{
+				Name: "y",
+				Type: types.Int64,
+			},
+		},
+		Expected: []sql.Row{
+			{1, 1},
+			{1, nil},
+		},
+	},
+	{
 		Query: `SELECT I,S from mytable order by 1`,
 		ExpectedColumns: sql.Schema{
 			{
@@ -9612,6 +9650,9 @@ var IndexPrefixQueries = []ScriptTest{
 		Name: "varchar keyed secondary index prefix",
 		SetUpScript: []string{
 			"create table t (i int primary key, v varchar(10))",
+			// Insert a value before we create the index, so that it
+			// has to process existing data when building the index
+			"insert into t values (-1, 'zzz');",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -9913,9 +9954,32 @@ var IndexPrefixQueries = []ScriptTest{
 	{
 		Name: "blob keyed secondary index prefix",
 		SetUpScript: []string{
-			"create table t (i int primary key, b blob)",
+			"create table t (i int primary key, b blob);",
+			// Insert a BLOB value before we create the index, so that it
+			// has to process existing data when building the index
+			"insert into t values (999, 'abcdefg');",
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select i from t where b like 'abcd%';",
+				Expected: []sql.Row{{999}},
+			},
+			{
+				Query:    "alter table t add index (b(1))",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table t",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `b` blob,\n  PRIMARY KEY (`i`),\n  KEY `b` (`b`(1))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "insert into t values (998, X'4242');;",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "alter table t drop index `b`;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
 			{
 				Query:    "alter table t add unique index (b(1))",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
@@ -9985,11 +10049,38 @@ var IndexPrefixQueries = []ScriptTest{
 	{
 		Name: "text keyed secondary index prefix",
 		SetUpScript: []string{
-			"create table t (i int primary key, t text)",
+			"create table t (i int primary key, t text);",
+			// Insert a TEXT value before we create the index, so that it
+			// has to process existing data when building the index
+			"insert into t values (999, 'xxx');",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "alter table t add unique index (t(1))",
+				Query:    "select i from t where t like 'x%';",
+				Expected: []sql.Row{{999}},
+			},
+			{
+				Query:    "alter table t add index (t(1));",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table t",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `t` text,\n  PRIMARY KEY (`i`),\n  KEY `t` (`t`(1))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "select i from t where t like 'x%';",
+				Expected: []sql.Row{{999}},
+			},
+			{
+				Query:    "insert into t values (998, 'yy');",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "alter table t drop index `t`;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "alter table t add unique index (t(1));",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{

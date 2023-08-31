@@ -55,10 +55,10 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 
 // stripSchema removes all non-type information from a schema, such as the key info, default value, etc.
 func stripSchema(schema sql.Schema) sql.Schema {
-	sch := make(sql.Schema, len(schema))
+	sch := schema.Copy()
 	for i := range schema {
-		sch[i] = schema[i].Copy()
 		sch[i].Default = nil
+		sch[i].Generated = nil
 		sch[i].AutoIncrement = false
 		sch[i].PrimaryKey = false
 		sch[i].Source = ""

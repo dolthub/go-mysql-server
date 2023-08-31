@@ -24,7 +24,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func (b *Builder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope) {
@@ -111,9 +110,6 @@ func (b *Builder) mergeUnionSchemas(u *plan.Union) sql.Node {
 		les[i] = expression.NewGetFieldWithTable(i, ls[i].Type, ls[i].Source, ls[i].Name, ls[i].Nullable)
 		res[i] = expression.NewGetFieldWithTable(i, rs[i].Type, rs[i].Source, rs[i].Name, rs[i].Nullable)
 		if reflect.DeepEqual(ls[i].Type, rs[i].Type) {
-			continue
-		}
-		if types.IsDeferredType(ls[i].Type) || types.IsDeferredType(rs[i].Type) {
 			continue
 		}
 		hasdiff = true

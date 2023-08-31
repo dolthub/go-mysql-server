@@ -12,29 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build linux || darwin || freebsd
-// +build linux darwin freebsd
+//go:build freebsd
+// +build freebsd
 
 package sockstate
 
 import (
 	"net"
-	"syscall"
+
+	"github.com/sirupsen/logrus"
 )
 
-func getConnFd(c *net.TCPConn) (fd uintptr, err error) {
-	f, err := c.File()
+// tcpSocks returns a slice of active TCP sockets containing only those
+// elements that satisfy the accept function
+func tcpSocks(accept AcceptFn) ([]sockTabEntry, error) {
+	// (juanjux) TODO: not implemented
+	logrus.Warn("Connection checking not implemented for FreeBSD")
+	return nil, ErrSocketCheckNotImplemented.New()
+}
+
+func GetConnInode(c *net.TCPConn) (uint64, error) {
+	_, err := getConnFd(c)
 	if err != nil {
 		return 0, err
 	}
-
-	fd = f.Fd()
-
-	// We have to set this file back to non-blocking or we get things like
-	// blocking Close() in some cases.
-	syscall.SetNonblock(int(fd), true)
-
-	f.Close()
-
-	return fd, nil
+	return 0, ErrSocketCheckNotImplemented.New()
 }

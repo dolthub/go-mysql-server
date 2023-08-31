@@ -372,9 +372,25 @@ func (b *Builder) buildAlterEvent(inScope *scope, query string, c *ast.DDL) (out
 		newDefinition = defScope.node
 	}
 
+	eventName := strings.ToLower(eventSpec.EventName.Name.String())
+	eventDb, ok := database.(sql.EventDatabase)
+	if !ok {
+		err := sql.ErrEventsNotSupported.New(database.Name())
+		b.handleErr(err)
+	}
+
+	eventDef, exists, err := eventDb.GetEvent(b.ctx, eventName)
+	if err != nil {
+		b.handleErr(err)
+	}
+	if !exists {
+		err := sql.ErrEventDoesNotExist.New(eventName)
+		b.handleErr(err)
+	}
+
 	outScope = inScope.push()
-	outScope.node = plan.NewAlterEvent(
-		database, eventSpec.EventName.Name.String(), definer,
+	alterEvent := plan.NewAlterEvent(
+		database, eventName, definer,
 		alterSchedule, at, starts, ends, everyInterval,
 		alterOnComp, newOnCompPreserve,
 		alterEventName, newName,
@@ -382,6 +398,8 @@ func (b *Builder) buildAlterEvent(inScope *scope, query string, c *ast.DDL) (out
 		alterComment, newComment,
 		alterDefinition, newDefinitionStr, newDefinition,
 	)
+	alterEvent.Event = b.loadEventDetails(eventDef)
+	outScope.node = alterEvent
 	return
 }
 

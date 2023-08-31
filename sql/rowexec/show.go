@@ -787,3 +787,29 @@ func (b *BaseBuilder) buildShowReplicaStatus(ctx *sql.Context, n *plan.ShowRepli
 
 	return sql.RowsToRowIter(row), nil
 }
+
+func (b *BaseBuilder) buildShowCreateEvent(ctx *sql.Context, n *plan.ShowCreateEvent, row sql.Row) (sql.RowIter, error) {
+	characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
+	if err != nil {
+		return nil, err
+	}
+	collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
+	if err != nil {
+		return nil, err
+	}
+	collationServer, err := ctx.GetSessionVariable(ctx, "collation_server")
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: fill sql_mode and time_zone with appropriate values
+	return sql.RowsToRowIter(sql.Row{
+		n.Event.Name,            // Event
+		"",                      // sql_mode
+		"SYSTEM",                // time_zone
+		n.Event.CreateStatement, // Create Event
+		characterSetClient,      // character_set_client
+		collationConnection,     // collation_connection
+		collationServer,         // Database Collation
+	}), nil
+}

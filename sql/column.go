@@ -31,8 +31,6 @@ type Column struct {
 	// Type is the data type of the column.
 	Type Type
 	// Default contains the default value of the column or nil if it was not explicitly defined. A nil instance is valid, thus calls do not error.
-	// TODO: figure out where table values are getting filled in
-	// TODO: can a column have both a default and generated value?
 	Default *ColumnDefaultValue
 	// AutoIncrement is true if the column auto-increments.
 	AutoIncrement bool
@@ -49,7 +47,7 @@ type Column struct {
 	Comment string
 	// Extra contains any additional information to put in the `extra` column under `information_schema.columns`.
 	Extra string
-	// Generated is non-nil if the column is defined with a generated value
+	// Generated is non-nil if the column is defined with a generated value. Mutually exclusive with Default
 	Generated *ColumnDefaultValue
 	// Virtual is true if the column is defined as a virtual column. Generated must be non-nil in this case.
 	Virtual bool
@@ -113,21 +111,13 @@ func (c *Column) DebugString() string {
 	return sb.String()
 }
 
-func (c *Column) Copy() *Column {
-	// This creates a copy of the default, rather than referencing the same pointer
-	def := c.Default
-	if def != nil {
-		def = &(*def)
+func (c Column) Copy() *Column {
+	// Create a copy of the default and generated column, rather than referencing the same pointer
+	if c.Default != nil {
+		c.Default = &(*c.Default)
 	}
-	return &Column{
-		Name:          c.Name,
-		Type:          c.Type,
-		Default:       def,
-		AutoIncrement: c.AutoIncrement,
-		Nullable:      c.Nullable,
-		Source:        c.Source,
-		PrimaryKey:    c.PrimaryKey,
-		Comment:       c.Comment,
-		Extra:         c.Extra,
+	if c.Generated != nil {
+		c.Generated = &(*c.Generated)
 	}
+	return &c
 }

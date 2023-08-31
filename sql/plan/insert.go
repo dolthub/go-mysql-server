@@ -157,7 +157,12 @@ func (id InsertDestination) WithExpressions(exprs ...sql.Expression) (sql.Node, 
 		return nil, sql.ErrInvalidChildrenNumber.New(id, len(exprs), len(id.Sch))
 	}
 
-	id.Sch = transform.SchemaWithDefaults(id.Sch, exprs)
+	sch, err := transform.SchemaWithDefaults(id.Sch, exprs)
+	if err != nil {
+		return nil, err
+	}
+
+	id.Sch = sch
 	return &id, nil
 }
 

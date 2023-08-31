@@ -15,7 +15,6 @@
 package analyzer
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -25,45 +24,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
-
-func setInsertColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	// We capture all INSERTs along the tree, such as those inside of block statements.
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		// TODO: put load data here too?
-		ii, ok := n.(*plan.InsertInto)
-		if !ok {
-			return n, transform.SameTree, nil
-		}
-
-		destination := ii.Destination
-		if !destination.Resolved() {
-			return n, transform.SameTree, nil
-		}
-
-		nameable, ok := destination.(sql.Nameable)
-		if !ok {
-			return n, transform.SameTree, fmt.Errorf("expected a sql.Nameable, got %T", destination)
-		}
-
-		schema := destination.Schema()
-
-		// If no column names were specified in the query, go ahead and fill
-		// them all in now that the destination is resolved.
-		if len(ii.ColumnNames) == 0 {
-			colNames := make([]string, len(schema))
-			for i, col := range schema {
-				// Tables with any generated columns must specify a column list, so this is always an error
-				if col.Generated != nil {
-					return nil, transform.SameTree, sql.ErrGeneratedColumnValue.New(col.Name, nameable.Name())
-				}
-				colNames[i] = col.Name
-			}
-			ii.ColumnNames = colNames
-		}
-
-		return ii, transform.NewTree, nil
-	})
-}
 
 func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if _, ok := n.(*plan.TriggerExecutor); ok {
@@ -179,11 +139,17 @@ func wrapRowSource(ctx *sql.Context, scope *plan.Scope, logFn func(string, ...an
 		}
 
 		if !found {
-			if !f.Nullable && f.Default == nil && !f.AutoIncrement {
+			defaultExpr := f.Default
+			if defaultExpr == nil {
+				defaultExpr = f.Generated
+			}
+
+			if !f.Nullable && defaultExpr == nil && !f.AutoIncrement {
 				return nil, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
 			}
 			var err error
-			def, _, err := transform.Expr(f.Default, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+
+			def, _, err := transform.Expr(defaultExpr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				switch e := e.(type) {
 				case *expression.GetField:
 					return fixidx.FixFieldIndexes(scope, logFn, schema, e.WithTable(destTbl.Name()))

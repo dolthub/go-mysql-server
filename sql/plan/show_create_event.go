@@ -16,7 +16,6 @@ package plan
 
 import (
 	"fmt"
-	"strings"
 
 	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -24,9 +23,8 @@ import (
 )
 
 type ShowCreateEvent struct {
-	db        sql.Database
-	EventName string
-	Event     sql.EventDefinition
+	db    sql.Database
+	Event sql.EventDefinition
 }
 
 var _ sql.Databaser = (*ShowCreateEvent)(nil)
@@ -44,16 +42,16 @@ var showCreateEventSchema = sql.Schema{
 }
 
 // NewShowCreateEvent creates a new ShowCreateEvent node for SHOW CREATE EVENT statements.
-func NewShowCreateEvent(db sql.Database, event string) *ShowCreateEvent {
+func NewShowCreateEvent(db sql.Database, event sql.EventDefinition) *ShowCreateEvent {
 	return &ShowCreateEvent{
-		db:        db,
-		EventName: strings.ToLower(event),
+		db:    db,
+		Event: event,
 	}
 }
 
 // String implements the sql.Node interface.
 func (s *ShowCreateEvent) String() string {
-	return fmt.Sprintf("SHOW CREATE EVENT %s", s.EventName)
+	return fmt.Sprintf("SHOW CREATE EVENT %s", s.Event.Name)
 }
 
 // Resolved implements the sql.Node interface.
@@ -74,42 +72,6 @@ func (s *ShowCreateEvent) Children() []sql.Node {
 // Schema implements the sql.Node interface.
 func (s *ShowCreateEvent) Schema() sql.Schema {
 	return showCreateEventSchema
-}
-
-// RowIter implements the sql.Node interface.
-func (s *ShowCreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
-	if err != nil {
-		return nil, err
-	}
-	collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
-	if err != nil {
-		return nil, err
-	}
-	collationServer, err := ctx.GetSessionVariable(ctx, "collation_server")
-	if err != nil {
-		return nil, err
-	}
-
-	e := s.Event.ConvertTimesFromUTCToTz(gmstime.SystemTimezoneOffset())
-	sysVal, err := ctx.Session.GetSessionVariable(ctx, "sql_mode")
-	if err != nil {
-		return nil, err
-	}
-	sqlMode, sok := sysVal.(string)
-	if !sok {
-		return nil, sql.ErrSystemVariableCodeFail.New("sql_mode", sysVal)
-	}
-	// TODO: fill time_zone with appropriate value, for now it's default to SYSTEM
-	return sql.RowsToRowIter(sql.Row{
-		e.Name,                   // Event
-		sqlMode,                  // sql_mode
-		"SYSTEM",                 // time_zone
-		e.CreateEventStatement(), // Create Event
-		characterSetClient,       // character_set_client
-		collationConnection,      // collation_connection
-		collationServer,          // Database Collation
-	}), nil
 }
 
 // WithChildren implements the sql.Node interface.

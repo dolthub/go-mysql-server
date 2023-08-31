@@ -1323,7 +1323,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE test ALTER v1 SET DEFAULT (CONVERT('42', SIGNED));",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "INSERT INTO test (pk) VALUES (2);",
@@ -1339,7 +1339,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE test ALTER v1 DROP DEFAULT;",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:       "INSERT INTO test (pk) VALUES (3);",
@@ -1355,7 +1355,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE test ALTER v1 SET DEFAULT 100, alter v1 DROP DEFAULT",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:       "INSERT INTO test (pk) VALUES (2);",
@@ -1363,7 +1363,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE test ALTER v1 SET DEFAULT 100, alter v1 SET DEFAULT 200",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:       "ALTER TABLE test DROP COLUMN v1, alter v1 SET DEFAULT 5000",
@@ -2248,7 +2248,7 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table test alter column j set default ('[]');",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "show create table test",
@@ -4351,7 +4351,7 @@ var PreparedScriptTests = []ScriptTest{
 			},
 			{
 				Query:          "execute s",
-				ExpectedErrStr: "missing bind var v1",
+				ExpectedErrStr: "bind variable not provided: 'v1'",
 			},
 			{
 				Query: "execute s using @abc",
@@ -4409,7 +4409,7 @@ var PreparedScriptTests = []ScriptTest{
 			},
 			{
 				Query:          "execute s using @a",
-				ExpectedErrStr: "missing bind var v2",
+				ExpectedErrStr: "bind variable not provided: 'v2'",
 			},
 			{
 				Query: "execute s using @a, @b",
