@@ -1013,24 +1013,7 @@ func eventsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				continue
 			}
 
-			var events []EventDetails
-			for _, event := range eventDefs {
-				parsedEvent, err := planbuilder.ParseWithOptions(ctx, c, event.CreateStatement, NewSqlModeFromString(event.SqlMode).ParserOptions())
-				if err != nil {
-					return nil, err
-				}
-				eventPlan, ok := parsedEvent.(*plan.CreateEvent)
-				if !ok {
-					return nil, ErrEventCreateStatementInvalid.New(event.CreateStatement)
-				}
-				ed, err := eventPlan.GetEventDetails(ctx, event.CreatedAt, event.LastAltered, event.LastExecuted, event.TimezoneOffset)
-				if err != nil {
-					return nil, err
-				}
-				events = append(events, ed)
-			}
-
-			for _, e := range events {
+			for _, e := range eventDefs {
 				ed := e.ConvertTimesFromUTCToTz(gmstime.SystemTimezoneOffset())
 				var at, intervalVal, intervalField, starts, ends interface{}
 				var eventType, status string
@@ -1068,7 +1051,7 @@ func eventsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					onCompPerserve = "PRESERVE"
 				}
 
-				created := ed.Created.Format(EventDateSpaceTimeFormat)
+				created := ed.CreatedAt.Format(EventDateSpaceTimeFormat)
 				lastAltered := ed.LastAltered.Format(EventDateSpaceTimeFormat)
 				lastExecuted := ed.LastExecuted.Format(EventDateSpaceTimeFormat)
 				// TODO: timezone should use e.TimezoneOffest, but is always 'SYSTEM' for now.
@@ -1080,7 +1063,7 @@ func eventsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					ed.Definer,           // definer
 					"SYSTEM",             // time_zone
 					"SQL",                // event_body
-					ed.Definition,        // event_definition
+					ed.EventBody,         // event_definition
 					eventType,            // event_type
 					at,                   // execute_at
 					intervalVal,          // interval_value

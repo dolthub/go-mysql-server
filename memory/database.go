@@ -367,15 +367,15 @@ func (d *BaseDatabase) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, error
 }
 
 // SaveEvent implements sql.EventDatabase
-func (d *BaseDatabase) SaveEvent(ctx *sql.Context, ed sql.EventDetails) (bool, error) {
-	loweredName := strings.ToLower(ed.Name)
-	for _, existingEd := range d.events {
-		if strings.ToLower(existingEd.Name) == loweredName {
-			return false, sql.ErrEventAlreadyExists.New(ed.Name)
+func (d *BaseDatabase) SaveEvent(_ *sql.Context, event sql.EventDefinition) (bool, error) {
+	loweredName := strings.ToLower(event.Name)
+	for _, existingEvent := range d.events {
+		if strings.ToLower(existingEvent.Name) == loweredName {
+			return false, sql.ErrEventAlreadyExists.New(event.Name)
 		}
 	}
-	d.events = append(d.events, ed.GetEventStorageDefinition())
-	return ed.Status == sql.EventStatus_Enable.String(), nil
+	d.events = append(d.events, event)
+	return event.Status == sql.EventStatus_Enable.String(), nil
 }
 
 // DropEvent implements sql.EventDatabase
@@ -396,23 +396,23 @@ func (d *BaseDatabase) DropEvent(ctx *sql.Context, name string) error {
 }
 
 // UpdateEvent implements sql.EventDatabase
-func (d *BaseDatabase) UpdateEvent(ctx *sql.Context, originalName string, ed sql.EventDetails) (bool, error) {
+func (d *BaseDatabase) UpdateEvent(_ *sql.Context, originalName string, event sql.EventDefinition) (bool, error) {
 	loweredOriginalName := strings.ToLower(originalName)
-	loweredNewName := strings.ToLower(ed.Name)
+	loweredNewName := strings.ToLower(event.Name)
 	found := false
 	for i, existingEd := range d.events {
 		if loweredOriginalName != loweredNewName && strings.ToLower(existingEd.Name) == loweredNewName {
 			// renaming event to existing name
 			return false, sql.ErrEventAlreadyExists.New(loweredNewName)
 		} else if strings.ToLower(existingEd.Name) == loweredOriginalName {
-			d.events[i] = ed.GetEventStorageDefinition()
+			d.events[i] = event
 			found = true
 		}
 	}
 	if !found {
-		return false, sql.ErrEventDoesNotExist.New(ed.Name)
+		return false, sql.ErrEventDoesNotExist.New(event.Name)
 	}
-	return ed.Status == sql.EventStatus_Enable.String(), nil
+	return event.Status == sql.EventStatus_Enable.String(), nil
 }
 
 func (d *BaseDatabase) UpdateLastExecuted(ctx *sql.Context, eventName string, lastExecuted time.Time) error {

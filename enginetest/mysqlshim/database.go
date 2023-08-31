@@ -230,8 +230,7 @@ func (d Database) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, error) {
 		}
 		// Event, sql_mode, time_zone, Create Event, ...
 		eventDefinition[i] = sql.EventDefinition{
-			Name:            eventStmt[0][0].(string),
-			CreateStatement: eventStmt[0][3].(string),
+			Name: eventStmt[0][0].(string),
 			// TODO: other fields should be added such as Created, LastAltered
 		}
 	}
@@ -239,8 +238,8 @@ func (d Database) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, error) {
 }
 
 // SaveEvent implements sql.EventDatabase
-func (d Database) SaveEvent(ctx *sql.Context, ed sql.EventDetails) (bool, error) {
-	return ed.Status == sql.EventStatus_Enable.String(), d.shim.Exec(d.name, ed.CreateEventStatement())
+func (d Database) SaveEvent(ctx *sql.Context, event sql.EventDefinition) (bool, error) {
+	return event.Status == sql.EventStatus_Enable.String(), d.shim.Exec(d.name, event.CreateEventStatement())
 }
 
 // DropEvent implements sql.EventDatabase
@@ -249,12 +248,12 @@ func (d Database) DropEvent(ctx *sql.Context, name string) error {
 }
 
 // UpdateEvent implements sql.EventDatabase
-func (d Database) UpdateEvent(ctx *sql.Context, originalName string, ed sql.EventDetails) (bool, error) {
+func (d Database) UpdateEvent(_ *sql.Context, originalName string, event sql.EventDefinition) (bool, error) {
 	err := d.shim.Exec(d.name, fmt.Sprintf("DROP EVENT `%s`;", originalName))
 	if err != nil {
 		return false, err
 	}
-	return ed.Status == sql.EventStatus_Enable.String(), d.shim.Exec(d.name, ed.CreateEventStatement())
+	return event.Status == sql.EventStatus_Enable.String(), d.shim.Exec(d.name, event.CreateEventStatement())
 }
 
 // UpdateLastExecuted implements sql.EventDatabase

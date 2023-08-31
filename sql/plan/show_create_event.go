@@ -26,7 +26,7 @@ import (
 type ShowCreateEvent struct {
 	db        sql.Database
 	EventName string
-	Event     sql.EventDetails
+	Event     sql.EventDefinition
 }
 
 var _ sql.Databaser = (*ShowCreateEvent)(nil)

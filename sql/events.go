@@ -42,9 +42,9 @@ type EventSchedulerStatement interface {
 // to the EventSchedulerStatus.
 type EventScheduler interface {
 	// AddEvent is called when there is an event created at runtime.
-	AddEvent(ctx *Context, edb EventDatabase, details EventDetails)
+	AddEvent(ctx *Context, edb EventDatabase, event EventDefinition)
 	// UpdateEvent is called when there is an event altered at runtime.
-	UpdateEvent(ctx *Context, edb EventDatabase, orgEventName string, details EventDetails)
+	UpdateEvent(ctx *Context, edb EventDatabase, orgEventName string, event EventDefinition)
 	// RemoveEvent is called when there is an event dropped at runtime. This function
 	// removes the given event if it exists in the enabled events list of the EventSchedulerStatus.
 	RemoveEvent(dbName, eventName string)
@@ -53,113 +53,41 @@ type EventScheduler interface {
 	RemoveSchemaEvents(dbName string)
 }
 
-// EventDefinition defines an event. Integrators are not expected to parse or
-// understand the event definitions, but must store and return them when asked.
-// All time values will be stored in UTC TZ.
+// EventDefinition describes a scheduled event.
 type EventDefinition struct {
 	// The name of this event. Event names in a database are unique.
 	Name string
-	// The text definition of the statement to create this event.
-	CreateStatement string
+	// The SQL statements to be executed when this event is executed.
+	EventBody string
 	// The timezone offset the event was created or last altered at.
 	TimezoneOffset string
+	// The enabled or disabled status of this event.
+	Status string
+	// The user or account who created this scheduled event.
+	Definer string
 	// The time that the event was created at.
 	CreatedAt time.Time
 	// The time that the event was last altered at.
 	LastAltered time.Time
-	// The SQL_MODE string in use when this event was defined.
-	SqlMode string
 	// The time that the event was last executed at.
 	LastExecuted time.Time
-}
 
-// EventDetails are the details of the event.
-type EventDetails struct {
-	Name                 string
-	Definer              string
-	OnCompletionPreserve bool
-	Status               string
+	/* Fields parsed from the CREATE EVENT statement */
 	Comment              string
-	Definition           string
-
-	// events' ON SCHEDULE clause fields
-	ExecuteAt    time.Time
-	HasExecuteAt bool
-	ExecuteEvery string
-	Starts       time.Time // STARTS is always defined when EVERY is defined.
-	Ends         time.Time
-	HasEnds      bool
-
-	// TimezoneOffset is session timezone offset that event was created or altered
-	// All time values in EventDetails should be in this timezone offset when storing.
-	TimezoneOffset string
-
-	// time values of event create/alter/execute metadata
-	Created        time.Time
-	LastAltered    time.Time
-	LastExecuted   time.Time
-	ExecutionCount uint64
-}
-
-// GetEventStorageDefinition returns event's EventDefinition that will be stored in the database.
-// All time values are converted into and stored in UTC TZ.
-func (e *EventDetails) GetEventStorageDefinition() EventDefinition {
-	e.ExecuteAt = e.ExecuteAt.UTC()
-	e.Starts = e.Starts.UTC()
-	e.Ends = e.Ends.UTC()
-	e.Created = e.Created.UTC()
-	e.LastAltered = e.LastAltered.UTC()
-	e.LastExecuted = e.LastExecuted.UTC()
-
-	return EventDefinition{
-		Name:            e.Name,
-		CreateStatement: e.CreateEventStatement(),
-		TimezoneOffset:  e.TimezoneOffset,
-		CreatedAt:       e.Created,
-		LastAltered:     e.LastAltered,
-		LastExecuted:    e.LastExecuted,
-	}
-}
-
-// CreateEventStatement returns a CREATE EVENT statement for this event.
-func (e *EventDetails) CreateEventStatement() string {
-	stmt := "CREATE"
-	if e.Definer != "" {
-		stmt = fmt.Sprintf("%s DEFINER = %s", stmt, e.Definer)
-	}
-	stmt = fmt.Sprintf("%s EVENT `%s`", stmt, e.Name)
-
-	if e.HasExecuteAt {
-		stmt = fmt.Sprintf("%s ON SCHEDULE AT '%s'", stmt, e.ExecuteAt.Format(EventDateSpaceTimeFormat))
-	} else {
-		// STARTS should be NOT null regardless of user definition
-		stmt = fmt.Sprintf("%s ON SCHEDULE EVERY %s STARTS '%s'", stmt, e.ExecuteEvery, e.Starts.Format(EventDateSpaceTimeFormat))
-		if e.HasEnds {
-			stmt = fmt.Sprintf("%s ENDS '%s'", stmt, e.Ends.Format(EventDateSpaceTimeFormat))
-		}
-	}
-
-	if e.OnCompletionPreserve {
-		stmt = fmt.Sprintf("%s ON COMPLETION PRESERVE", stmt)
-	} else {
-		stmt = fmt.Sprintf("%s ON COMPLETION NOT PRESERVE", stmt)
-	}
-
-	stmt = fmt.Sprintf("%s %s", stmt, e.Status)
-
-	if e.Comment != "" {
-		stmt = fmt.Sprintf("%s COMMENT '%s'", stmt, e.Comment)
-	}
-
-	stmt = fmt.Sprintf("%s DO %s", stmt, e.Definition)
-	return stmt
+	OnCompletionPreserve bool
+	HasExecuteAt         bool
+	ExecuteAt            time.Time
+	ExecuteEvery         string
+	Starts               time.Time // STARTS is always defined when EVERY is defined.
+	HasEnds              bool
+	Ends                 time.Time
 }
 
 // ConvertTimesFromUTCToTz returns new EventDetails with all its time values converted
 // from UTC TZ to the given TZ. This function should only be used when needing to display
 // data that includes the time values in string format for such as SHOW EVENTS or
 // SHOW CREATE EVENT statements.
-func (e *EventDetails) ConvertTimesFromUTCToTz(tz string) *EventDetails {
+func (e *EventDefinition) ConvertTimesFromUTCToTz(tz string) *EventDefinition {
 	ne := *e
 	if ne.HasExecuteAt {
 		t, ok := gmstime.ConvertTimeZone(e.ExecuteAt, "+00:00", tz)
@@ -179,9 +107,9 @@ func (e *EventDetails) ConvertTimesFromUTCToTz(tz string) *EventDetails {
 		}
 	}
 
-	t, ok := gmstime.ConvertTimeZone(e.Created, "+00:00", tz)
+	t, ok := gmstime.ConvertTimeZone(e.CreatedAt, "+00:00", tz)
 	if ok {
-		ne.Created = t
+		ne.CreatedAt = t
 	}
 	t, ok = gmstime.ConvertTimeZone(e.LastAltered, "+00:00", tz)
 	if ok {
@@ -196,7 +124,7 @@ func (e *EventDetails) ConvertTimesFromUTCToTz(tz string) *EventDetails {
 
 // GetNextExecutionTime returns the next execution time for the event, which depends on AT
 // or EVERY field of EventDetails. It also returns whether the event is expired.
-func (e *EventDetails) GetNextExecutionTime(curTime time.Time) (time.Time, bool, error) {
+func (e *EventDefinition) GetNextExecutionTime(curTime time.Time) (time.Time, bool, error) {
 	if e.HasExecuteAt {
 		return e.ExecuteAt, e.ExecuteAt.Sub(curTime).Seconds() <= -1, nil
 	} else {
@@ -232,6 +160,39 @@ func (e *EventDetails) GetNextExecutionTime(curTime time.Time) (time.Time, bool,
 		}
 		return nextTime, false, nil
 	}
+}
+
+// CreateEventStatement returns a CREATE EVENT statement for this event.
+func (e *EventDefinition) CreateEventStatement() string {
+	stmt := "CREATE"
+	if e.Definer != "" {
+		stmt = fmt.Sprintf("%s DEFINER = %s", stmt, e.Definer)
+	}
+	stmt = fmt.Sprintf("%s EVENT `%s`", stmt, e.Name)
+
+	if e.HasExecuteAt {
+		stmt = fmt.Sprintf("%s ON SCHEDULE AT '%s'", stmt, e.ExecuteAt.Format(EventDateSpaceTimeFormat))
+	} else {
+		// STARTS should be NOT null regardless of user definition
+		stmt = fmt.Sprintf("%s ON SCHEDULE EVERY %s STARTS '%s'", stmt, e.ExecuteEvery, e.Starts.Format(EventDateSpaceTimeFormat))
+		if e.HasEnds {
+			stmt = fmt.Sprintf("%s ENDS '%s'", stmt, e.Ends.Format(EventDateSpaceTimeFormat))
+		}
+	}
+
+	if e.OnCompletionPreserve {
+		stmt = fmt.Sprintf("%s ON COMPLETION PRESERVE", stmt)
+	} else {
+		stmt = fmt.Sprintf("%s ON COMPLETION NOT PRESERVE", stmt)
+	}
+
+	stmt = fmt.Sprintf("%s %s", stmt, e.Status)
+
+	if e.Comment != "" {
+		stmt = fmt.Sprintf("%s COMMENT '%s'", stmt, e.Comment)
+	}
+
+	return fmt.Sprintf("%s DO %s", stmt, e.EventBody)
 }
 
 // getTimeDurationFromEveryInterval returns time.Duration converting the given EVERY interval.

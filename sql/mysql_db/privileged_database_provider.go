@@ -391,7 +391,7 @@ func (pdb PrivilegedDatabase) GetEvents(ctx *sql.Context) ([]sql.EventDefinition
 }
 
 // SaveEvent implements sql.EventDatabase
-func (pdb PrivilegedDatabase) SaveEvent(ctx *sql.Context, ed sql.EventDetails) (bool, error) {
+func (pdb PrivilegedDatabase) SaveEvent(ctx *sql.Context, ed sql.EventDefinition) (bool, error) {
 	if db, ok := pdb.db.(sql.EventDatabase); ok {
 		return db.SaveEvent(ctx, ed)
 	}
@@ -407,7 +407,7 @@ func (pdb PrivilegedDatabase) DropEvent(ctx *sql.Context, name string) error {
 }
 
 // UpdateEvent implements sql.EventDatabase
-func (pdb PrivilegedDatabase) UpdateEvent(ctx *sql.Context, originalName string, ed sql.EventDetails) (bool, error) {
+func (pdb PrivilegedDatabase) UpdateEvent(ctx *sql.Context, originalName string, ed sql.EventDefinition) (bool, error) {
 	if db, ok := pdb.db.(sql.EventDatabase); ok {
 		return db.UpdateEvent(ctx, originalName, ed)
 	}

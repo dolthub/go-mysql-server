@@ -159,11 +159,7 @@ func (es *EventScheduler) evaluateAllEventsAndLoadEnabledEvents(ctx *sql.Context
 			// need to set the current database to get parsed plan
 			ctx.SetCurrentDatabase(edb.Name())
 			for _, eDef := range eDefs {
-				ed, err := analyzer.GetEventDetailsFromEventDefinition(ctx, a.Catalog, eDef)
-				if err != nil {
-					return nil, err
-				}
-				newEnabledEvent, created, err := newEnabledEventFromEventDetails(ctx, edb, ed, time.Now())
+				newEnabledEvent, created, err := newEnabledEventFromEventDetails(ctx, edb, eDef, time.Now())
 				if err != nil {
 					return nil, err
 				} else if created {
@@ -177,7 +173,7 @@ func (es *EventScheduler) evaluateAllEventsAndLoadEnabledEvents(ctx *sql.Context
 
 // AddEvent implements sql.EventScheduler interface.
 // This function is called when there is an event created at runtime.
-func (es *EventScheduler) AddEvent(ctx *sql.Context, edb sql.EventDatabase, details sql.EventDetails) {
+func (es *EventScheduler) AddEvent(ctx *sql.Context, edb sql.EventDatabase, details sql.EventDefinition) {
 	if es.status == SchedulerDisabled || es.status == SchedulerOff {
 		return
 	}
@@ -186,7 +182,7 @@ func (es *EventScheduler) AddEvent(ctx *sql.Context, edb sql.EventDatabase, deta
 
 // UpdateEvent implements sql.EventScheduler interface.
 // This function is called when there is an event altered at runtime.
-func (es *EventScheduler) UpdateEvent(ctx *sql.Context, edb sql.EventDatabase, orgEventName string, details sql.EventDetails) {
+func (es *EventScheduler) UpdateEvent(ctx *sql.Context, edb sql.EventDatabase, orgEventName string, details sql.EventDefinition) {
 	if es.status == SchedulerDisabled || es.status == SchedulerOff {
 		return
 	}

@@ -22,7 +22,7 @@ import (
 
 type ShowEvents struct {
 	db     sql.Database
-	Events []sql.EventDetails
+	Events []sql.EventDefinition
 }
 
 var _ sql.Databaser = (*ShowEvents)(nil)

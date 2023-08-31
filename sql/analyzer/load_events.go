@@ -17,7 +17,6 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -59,54 +58,30 @@ func loadEvents(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, se
 	})
 }
 
-func loadEventsFromDb(ctx *sql.Context, cat sql.Catalog, db sql.Database) ([]sql.EventDetails, error) {
-	var loadedEvents []sql.EventDetails
+func loadEventsFromDb(ctx *sql.Context, cat sql.Catalog, db sql.Database) ([]sql.EventDefinition, error) {
+	var loadedEvents []sql.EventDefinition
 	if eventDb, ok := db.(sql.EventDatabase); ok {
 		events, err := eventDb.GetEvents(ctx)
 		if err != nil {
 			return nil, err
 		}
-		for _, event := range events {
-			ed, err := GetEventDetailsFromEventDefinition(ctx, cat, event)
-			if err != nil {
-				return nil, err
-			}
-			loadedEvents = append(loadedEvents, ed)
-		}
+		loadedEvents = append(loadedEvents, events...)
 	}
 	return loadedEvents, nil
 }
 
-func loadEventFromDb(ctx *sql.Context, cat sql.Catalog, db sql.Database, name string) (sql.EventDetails, error) {
+func loadEventFromDb(ctx *sql.Context, cat sql.Catalog, db sql.Database, name string) (sql.EventDefinition, error) {
 	eventDb, ok := db.(sql.EventDatabase)
 	if !ok {
-		return sql.EventDetails{}, sql.ErrEventsNotSupported.New(db.Name())
+		return sql.EventDefinition{}, sql.ErrEventsNotSupported.New(db.Name())
 	}
 
 	event, exists, err := eventDb.GetEvent(ctx, name)
 	if err != nil {
-		return sql.EventDetails{}, err
+		return sql.EventDefinition{}, err
 	} else if !exists {
-		return sql.EventDetails{}, sql.ErrUnknownEvent.New(name)
+		return sql.EventDefinition{}, sql.ErrUnknownEvent.New(name)
 	}
-	return GetEventDetailsFromEventDefinition(ctx, cat, event)
-}
 
-// GetEventDetailsFromEventDefinition returns sql.EventDetails by parsing its CREATE statement.
-// All time values of events will be evaluated in UTC TZ as they are stored UTC TZ.
-func GetEventDetailsFromEventDefinition(ctx *sql.Context, cat sql.Catalog, event sql.EventDefinition) (sql.EventDetails, error) {
-	b, err := planbuilder.New(ctx, cat)
-	if err != nil {
-		return sql.EventDetails{}, err
-	}
-	b.SetParserOptions(sql.NewSqlModeFromString(event.SqlMode).ParserOptions())
-	parsedCreateEvent, _, _, err := b.Parse(event.CreateStatement, false)
-	if err != nil {
-		return sql.EventDetails{}, err
-	}
-	eventPlan, ok := parsedCreateEvent.(*plan.CreateEvent)
-	if !ok {
-		return sql.EventDetails{}, sql.ErrEventCreateStatementInvalid.New(event.CreateStatement)
-	}
-	return eventPlan.GetEventDetails(ctx, event.CreatedAt, event.LastAltered, event.LastExecuted, "+00:00")
+	return event, nil
 }

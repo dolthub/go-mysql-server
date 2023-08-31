@@ -27,7 +27,7 @@ import (
 // enabledEvent is used for storing a list of events that are enabled in EventScheduler.
 type enabledEvent struct {
 	edb             sql.EventDatabase
-	eventDetails    sql.EventDetails
+	event           sql.EventDefinition
 	nextExecutionAt time.Time
 	username        string
 	address         string
@@ -36,7 +36,7 @@ type enabledEvent struct {
 // newEnabledEventFromEventDetails returns new enabledEvent object and whether it is created successfully. An event
 // with ENABLE status might NOT be created if the event SCHEDULE is ended/expired. If the event is expired,
 // then this function either updates its status in the database or drops it from the database.
-func newEnabledEventFromEventDetails(ctx *sql.Context, edb sql.EventDatabase, ed sql.EventDetails, curTime time.Time) (*enabledEvent, bool, error) {
+func newEnabledEventFromEventDetails(ctx *sql.Context, edb sql.EventDatabase, ed sql.EventDefinition, curTime time.Time) (*enabledEvent, bool, error) {
 	if ed.Status == sql.EventStatus_Enable.String() {
 		nextExecution, eventEnded, err := ed.GetNextExecutionTime(curTime)
 		if err != nil {
@@ -48,7 +48,7 @@ func newEnabledEventFromEventDetails(ctx *sql.Context, edb sql.EventDatabase, ed
 			}
 			return &enabledEvent{
 				edb:             edb,
-				eventDetails:    ed,
+				event:           ed,
 				nextExecutionAt: nextExecution,
 				username:        username,
 				address:         address,
@@ -90,7 +90,7 @@ func getUsernameAndAddressFromDefiner(definer string) (string, string, error) {
 
 // name returns 'database_name.event_name' used as a key for mapping unique events.
 func (e *enabledEvent) name() string {
-	return fmt.Sprintf("%s.%s", e.edb.Name(), e.eventDetails.Name)
+	return fmt.Sprintf("%s.%s", e.edb.Name(), e.event.Name)
 }
 
 // updateEventAfterExecution updates the event's LastExecuted metadata with given execution time and returns whether
@@ -100,21 +100,21 @@ func (e *enabledEvent) updateEventAfterExecution(ctx *sql.Context, edb sql.Event
 	var nextExecutionAt time.Time
 	var ended bool
 	var err error
-	if e.eventDetails.HasExecuteAt {
+	if e.event.HasExecuteAt {
 		// one-time event is ended after one execution
 		ended = true
 	} else {
-		nextExecutionAt, ended, err = e.eventDetails.GetNextExecutionTime(time.Now())
+		nextExecutionAt, ended, err = e.event.GetNextExecutionTime(time.Now())
 		if err != nil {
 			return ended, err
 		}
 	}
 
 	if ended {
-		if e.eventDetails.OnCompletionPreserve {
-			e.eventDetails.Status = sql.EventStatus_Disable.String()
+		if e.event.OnCompletionPreserve {
+			e.event.Status = sql.EventStatus_Disable.String()
 		} else {
-			err = edb.DropEvent(ctx, e.eventDetails.Name)
+			err = edb.DropEvent(ctx, e.event.Name)
 			if err != nil {
 				return ended, err
 			}
@@ -124,9 +124,9 @@ func (e *enabledEvent) updateEventAfterExecution(ctx *sql.Context, edb sql.Event
 		e.nextExecutionAt = nextExecutionAt
 	}
 
-	e.eventDetails.LastExecuted = executionTime
+	e.event.LastExecuted = executionTime
 	// update the database stored event with LastExecuted and Status metadata update if applicable.
-	_, err = edb.UpdateEvent(ctx, e.eventDetails.Name, e.eventDetails)
+	_, err = edb.UpdateEvent(ctx, e.event.Name, e.event)
 	if err != nil {
 		return ended, err
 	}

@@ -61,8 +61,9 @@ type AlterEvent struct {
 	DefinitionString string
 	DefinitionNode   sql.Node
 
-	// Event will be defined during analyzing
-	Event sql.EventDetails
+	// Event will be set during analysis
+	Event sql.EventDefinition
+
 	// scheduler is used to notify EventSchedulerStatus of the event update
 	scheduler sql.EventScheduler
 }
@@ -320,14 +321,14 @@ func (a *AlterEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		ed.Comment = a.Comment
 	}
 	if a.AlterDefinition {
-		ed.Definition = a.DefinitionString
+		ed.EventBody = a.DefinitionString
 	}
 
 	return &alterEventIter{
 		originalName:  a.EventName,
 		alterSchedule: a.AlterOnSchedule,
 		alterStatus:   a.AlterStatus,
-		eventDetails:  ed,
+		event:         ed,
 		eventDb:       eventDb,
 		scheduler:     a.scheduler,
 	}, nil
@@ -415,7 +416,7 @@ type alterEventIter struct {
 	originalName  string
 	alterSchedule bool
 	alterStatus   bool
-	eventDetails  sql.EventDetails
+	event         sql.EventDefinition
 	eventDb       sql.EventDatabase
 	scheduler     sql.EventScheduler
 }
@@ -431,18 +432,18 @@ func (a *alterEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	var eventEndingTime time.Time
-	if a.eventDetails.HasExecuteAt {
-		eventEndingTime = a.eventDetails.ExecuteAt
-	} else if a.eventDetails.HasEnds {
-		eventEndingTime = a.eventDetails.Ends
+	if a.event.HasExecuteAt {
+		eventEndingTime = a.event.ExecuteAt
+	} else if a.event.HasEnds {
+		eventEndingTime = a.event.Ends
 	}
 
-	if (a.eventDetails.HasExecuteAt || a.eventDetails.HasEnds) && eventEndingTime.Sub(a.eventDetails.LastAltered).Seconds() < 0 {
+	if (a.event.HasExecuteAt || a.event.HasEnds) && eventEndingTime.Sub(a.event.LastAltered).Seconds() < 0 {
 		// If the event execution/end time is altered and in the past.
 		if a.alterSchedule {
-			if a.eventDetails.OnCompletionPreserve {
+			if a.event.OnCompletionPreserve {
 				// If ON COMPLETION PRESERVE is defined, the event is disabled.
-				a.eventDetails.Status = sql.EventStatus_Disable.String()
+				a.event.Status = sql.EventStatus_Disable.String()
 				ctx.Session.Warn(&sql.Warning{
 					Level:   "Note",
 					Code:    1544,
@@ -454,9 +455,9 @@ func (a *alterEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 
 		if a.alterStatus {
-			if a.eventDetails.OnCompletionPreserve {
+			if a.event.OnCompletionPreserve {
 				// If the event execution/end time is in the past and is ON COMPLETION PRESERVE, status must stay as DISABLE.
-				a.eventDetails.Status = sql.EventStatus_Disable.String()
+				a.event.Status = sql.EventStatus_Disable.String()
 			} else {
 				// If event status was set to ENABLE and ON COMPLETION NOT PRESERVE, it gets dropped.
 				// make sure to notify the EventSchedulerStatus before dropping the event in the database
@@ -472,20 +473,20 @@ func (a *alterEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
-	enabled, err := a.eventDb.UpdateEvent(ctx, a.originalName, a.eventDetails)
+	enabled, err := a.eventDb.UpdateEvent(ctx, a.originalName, a.event)
 	if err != nil {
 		return nil, err
 	}
 
 	// make sure to notify the EventSchedulerStatus after updating the event in the database
 	if a.scheduler != nil && enabled {
-		a.scheduler.UpdateEvent(ctx, a.eventDb, a.originalName, a.eventDetails)
+		a.scheduler.UpdateEvent(ctx, a.eventDb, a.originalName, a.event)
 	}
 
 	return sql.Row{types.NewOkResult(0)}, nil
 }
 
 // Close implements the sql.RowIter interface.
-func (a *alterEventIter) Close(ctx *sql.Context) error {
+func (a *alterEventIter) Close(_ *sql.Context) error {
 	return nil
 }
