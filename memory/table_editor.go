@@ -122,7 +122,9 @@ func (t *tableEditor) DiscardChanges(ctx *sql.Context, errorEncountered error) e
 	t.editedTable.autoIncVal = t.initialAutoIncVal
 	t.editedTable.partitions = t.initialPartitions
 	t.ea.Clear()
-	t.discardChanges = true
+	if _, ignore := errorEncountered.(sql.IgnorableError); !ignore {
+		t.discardChanges = true	
+	}
 	return nil
 }
 
@@ -400,8 +402,7 @@ type tableEditAccumulator interface {
 	Insert(value sql.Row) error
 	// Delete adds a row to the accumulator to be deleted in the future. Updates are modeled as a Delete then an insertPartIdx.
 	Delete(value sql.Row) error
-	// Get returns a row if found along with two booleans added and deleted. Added is true if a row was inserted. Deleted
-	// is true if a row was deleted.
+	// Get returns a row if found along with a boolean added. Added is true if a row was inserted.
 	Get(value sql.Row) (sql.Row, bool, error)
 	// ApplyEdits takes a initialTable and runs through a sequence of inserts and deletes that have been stored in the
 	// accumulator.
