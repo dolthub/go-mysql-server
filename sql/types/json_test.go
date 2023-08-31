@@ -472,33 +472,107 @@ var JsonSetTests = []JsonMutationTest{
 		resultVal: `{"a": 42 }`,
 		changed:   true,
 	},
+	{
+		desc:      "Object field can be set to null",
+		doc:       `{"a": {}}`,
+		path:      `$."a"`,
+		value:     `null`,
+		resultVal: `{"a": null }`,
+		changed:   true,
+	},
+	{
+		desc:      "Array treated as an object is a no op",
+		doc:       `[1, 2, 3]`,
+		path:      `$.a`,
+		value:     `42`,
+		resultVal: `[1, 2, 3]`,
+		changed:   false,
+	},
+	{
+		desc:         "Invalid path ends in dot",
+		doc:          `{}`,
+		path:         "$.",
+		changed:      false,
+		value:        `{}`,
+		expectErrStr: `Invalid JSON path expression.`,
+	},
+	{
+		desc:         "Invalid path doesn't have a closing bracket",
+		doc:          `{}`,
+		path:         "$[23",
+		changed:      false,
+		value:        `{}`,
+		expectErrStr: `Invalid JSON path expression.`,
+	},
+	{
+		desc:      "Setting in a nested array works",
+		doc:       `[1, [2]]`,
+		path:      "$[1][0]",
+		changed:   true,
+		value:     `42`,
+		resultVal: `[1, [42]]`,
+	},
+	{
+		desc:      "Setting in a nested objects works",
+		doc:       `{"a": {"b": 1}}`,
+		path:      "$.a.b",
+		changed:   true,
+		value:     `42`,
+		resultVal: `{"a": {"b": 42}}`,
+	},
+	{
+		desc:      "Setting in a nested several levels deep works",
+		doc:       `{"a": {"b": [1,2,3,4,[5,6,7]]}}`,
+		path:      "$.a.b[4][1]",
+		changed:   true,
+		value:     `96`,
+		resultVal: `{"a": {"b": [1,2,3,4,[5,96,7]]}}`,
+	},
+	{
+		desc:      "Setting in a nested several levels deep works",
+		doc:       `[9,8, {"a": [3,4,5] } ]`,
+		path:      "$[2].a[0]",
+		changed:   true,
+		value:     `96`,
+		resultVal: `[9,8, {"a": [96,4,5]}]`,
+	},
 
 	/*
-		{
-			desc:         "Invalid last usage",
-			doc:          `[1, 2, 3]`,
-			path:         "$[last+1]",
-			value:        `42`,
-			changed:      false,
-			expectErrStr: `Invalid JSON path expression. The error is around character position 7"`,
-		},
-		{
-			desc:         "set rejects negative index",
-			doc:          `[1, 2, 3]`,
-			path:         "$[-32]",
-			value:        `42`,
-			changed:      false,
-			expectErrStr: `Invalid JSON path expression. The error is around character position 2`,
-		},
+			{
+				desc:         "Invalid last usage",
+				doc:          `[1, 2, 3]`,
+				path:         "$[last+1]",
+				value:        `42`,
+				changed:      false,
+				expectErrStr: `Invalid JSON path expression. The error is around character position 7"`,
+			},
+			{
+				desc:         "set rejects negative index",
+				doc:          `[1, 2, 3]`,
+				path:         "$[-32]",
+				value:        `42`,
+				changed:      false,
+				expectErrStr: `Invalid JSON path expression. The error is around character position 2`,
+			},
 
-		{
-			desc:         "set does nothing for multi level updates",
-			doc:          `[1, 2, 3]`,
-			path:         "$.a.b.c",
-			value:        `42`,
-			resultVal: `[1, 2, 3]`,
-			changed:      false,
-		},
+			{
+				desc:         "set does nothing for multi level updates",
+				doc:          `[1, 2, 3]`,
+				path:         "$.a.b.c",
+				value:        `42`,
+				resultVal: `[1, 2, 3]`,
+				changed:      false,
+			},
+
+		mysql> select JSON_REPLACE(JSON_OBJECT("a", 1), "$", NULL);
+		+----------------------------------------------+
+		| JSON_REPLACE(JSON_OBJECT("a", 1), "$", NULL) |
+		+----------------------------------------------+
+		| null                                         |
+		+----------------------------------------------+
+		1 row in set (0.00 sec)
+
+
 	*/
 }
 
@@ -661,6 +735,14 @@ var JsonInsertTests = []JsonMutationTest{
 		path:      `$."a"`,
 		value:     `42`,
 		resultVal: `{"a": {} }`,
+		changed:   false,
+	},
+	{
+		desc:      "Array treated as an object is a no op",
+		doc:       `[1, 2, 3]`,
+		path:      `$.a`,
+		value:     `42`,
+		resultVal: `[1, 2, 3]`,
 		changed:   false,
 	},
 }

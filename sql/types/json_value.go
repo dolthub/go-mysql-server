@@ -17,6 +17,7 @@ package types
 import (
 	"database/sql/driver"
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -567,10 +568,9 @@ func jsonObjectDeterministicOrder(a, b map[string]interface{}, inter []string) (
 func (doc JSONDocument) Insert(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
 	path = strings.TrimSpace(path)
 	if path == "$" {
-		// Do nothing. Can't replace the root object
 		return doc, false, nil
 	}
-	return doc.leafNodeUpdate(ctx, path, val, INSERT)
+	return doc.unwrapAndExecute(ctx, path, val, INSERT)
 }
 
 func (doc JSONDocument) Remove(ctx *sql.Context, path string) (MutableJSONValue, bool, error) {
@@ -579,7 +579,7 @@ func (doc JSONDocument) Remove(ctx *sql.Context, path string) (MutableJSONValue,
 		return nil, false, fmt.Errorf("The path expression '$' is not allowed in this context.")
 	}
 
-	return doc.leafNodeUpdate(ctx, path, nil, REMOVE)
+	return doc.unwrapAndExecute(ctx, path, nil, REMOVE)
 }
 
 func (doc JSONDocument) Set(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
@@ -593,7 +593,7 @@ func (doc JSONDocument) Set(ctx *sql.Context, path string, val JSONValue) (Mutab
 		return res, true, nil
 	}
 
-	return doc.leafNodeUpdate(ctx, path, val, SET)
+	return doc.unwrapAndExecute(ctx, path, val, SET)
 }
 
 func (doc JSONDocument) Replace(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
@@ -607,7 +607,7 @@ func (doc JSONDocument) Replace(ctx *sql.Context, path string, val JSONValue) (M
 		return res, true, nil
 	}
 
-	return doc.leafNodeUpdate(ctx, path, val, REPLACE)
+	return doc.unwrapAndExecute(ctx, path, val, REPLACE)
 }
 
 const (
@@ -617,10 +617,7 @@ const (
 	REMOVE
 )
 
-func (doc JSONDocument) leafNodeUpdate(ctx *sql.Context, path string, val JSONValue, mode int) (MutableJSONValue, bool, error) {
-
-	path = path[1:]
-
+func (doc JSONDocument) unwrapAndExecute(ctx *sql.Context, path string, val JSONValue, mode int) (MutableJSONValue, bool, error) {
 	var err error
 	var unmarshalled JSONDocument
 	if val != nil {
@@ -628,110 +625,184 @@ func (doc JSONDocument) leafNodeUpdate(ctx *sql.Context, path string, val JSONVa
 		if err != nil {
 			panic("whay??? NM4")
 		}
+	} else if mode != REMOVE {
+		panic("Non nil arg required")
 	}
 
+	// FUll path - should have a "$" at the beginning. NM4 - pull out before?
+	path = path[1:]
+
+	resultRaw, changed, err := leafNodeUpdate(path, doc.Val, unmarshalled.Val, mode)
+	if err != nil {
+		return nil, false, err
+	}
+	return JSONDocument{Val: resultRaw}, changed, nil
+}
+
+const pattern = `^([a-zA-Z0-9]+)(.*)$`
+
+func parseAfterDot(path string) (name string, remainingPath string, err error) {
+	if path[0] != '.' {
+		return "", "", fmt.Errorf("Invalid JSON path expression. Expected '.' at beginning of path")
+	}
+
+	path = path[1:]
+	if path == "" {
+		return "", "", fmt.Errorf("Invalid JSON path expression. Empty string after '.'")
+	}
+
+	if path[0] == '"' {
+		// find the next quote
+		right := strings.Index(path[1:], "\"")
+		if right == -1 {
+			return "", "", fmt.Errorf("Invalid JSON path expression. Unterminated string: %s", path)
+		}
+		name = path[1 : right+1]
+		remainingPath = path[right+2:]
+	} else {
+		regex := regexp.MustCompile(pattern)
+		matches := regex.FindStringSubmatch(path)
+		if len(matches) != 3 {
+			panic("NM4")
+		}
+		name = matches[1]
+		remainingPath = matches[2]
+	}
+
+	return
+}
+
+func leafNodeUpdate(path string, doc interface{}, val interface{}, mode int) (interface{}, bool, error) {
 	if path[0] == '.' {
-		strMap, ok := doc.Val.(map[string]interface{})
+		strMap, ok := doc.(map[string]interface{})
 		if !ok {
-			panic("wasn't a map? NM4")
+			// not a map, can't do anything. NoOp
+			return doc, false, nil
 		}
 
-		name := path[1:]
-		if name == "" {
-			panic("invalid path")
-		} else if name[0] == '"' {
-			// find the next quote
-			right := strings.Index(name[1:], "\"")
-			if right == -1 {
-				panic("invalid path")
+		name, remainingPath, err := parseAfterDot(path)
+		if err != nil {
+			return nil, false, err
+		}
+
+		if remainingPath == "" {
+			// does the name exist in the map?
+			updated := false
+			_, destrutive := strMap[name]
+			if mode == SET ||
+				(!destrutive && mode == INSERT) ||
+				(destrutive && mode == REPLACE) {
+				strMap[name] = val
+				updated = true
+			} else if destrutive && mode == REMOVE {
+				delete(strMap, name)
+				updated = true
 			}
-			name = name[1 : right+1]
+			return doc, updated, nil
+		} else {
+			// go deeper.
+			newObj, changed, err := leafNodeUpdate(remainingPath, strMap[name], val, mode)
+			if err != nil {
+				return nil, false, err
+			}
+			if changed {
+				strMap[name] = newObj
+				return doc, true, nil
+			}
+			return doc, false, nil
 		}
 
-		// does the name exist in the map?
-		updated := false
-		_, destrutive := strMap[name]
-		if mode == SET ||
-			(!destrutive && mode == INSERT) ||
-			(destrutive && mode == REPLACE) {
-			strMap[name] = unmarshalled.Val
-			updated = true
-		} else if destrutive && mode == REMOVE {
-			delete(strMap, name)
-			updated = true
-		}
-		return doc, updated, nil
 	} else if path[0] == '[' {
 		right := strings.Index(path, "]")
 		if right == -1 {
-			panic("invalid path")
+			return nil, false, fmt.Errorf("Invalid JSON path expression. Missing ']'.")
 		}
 
-		if arr, ok := doc.Val.([]interface{}); ok {
-			index, err := parseIndex(path[1:right], len(arr)-1)
+		remaining := path[right+1:]
+
+		indexString := path[1:right]
+
+		if arr, ok := doc.([]interface{}); ok {
+			index, err := parseIndex(indexString, len(arr)-1)
 			if err != nil {
-				panic("invalid path - index is not a number")
+				return nil, false, err
 			}
 
-			if index.underflow && (mode == INSERT || mode == REPLACE || mode == REMOVE) {
+			// All operations, except for SET, ignore the underflow case.
+			if index.underflow && (mode != SET) {
 				return doc, false, nil
 			}
 
 			if len(arr) > index.index && !index.overflow {
-				updated := false
-				if mode == SET || mode == REPLACE {
-					arr[index.index] = unmarshalled.Val
-					updated = true
-				} else if mode == REMOVE {
-					doc.Val = append(arr[:index.index], arr[index.index+1:]...)
-					updated = true
+				// index exists in the array.
+				if remaining == "" {
+					updated := false
+					if mode == SET || mode == REPLACE {
+						arr[index.index] = val
+						updated = true
+					} else if mode == REMOVE {
+						doc = append(arr[:index.index], arr[index.index+1:]...)
+						updated = true
+					}
+					return doc, updated, nil
+				} else {
+					newVal, changed, err := leafNodeUpdate(remaining, arr[index.index], val, mode)
+					if err != nil {
+						return nil, false, err
+					}
+					if changed {
+						arr[index.index] = newVal
+						return doc, true, nil
+					} else {
+						return doc, false, nil
+					}
 				}
-				return doc, updated, nil
 			} else {
 				if mode == SET || mode == INSERT {
-					newArr := append(arr, unmarshalled.Val)
-					return JSONDocument{Val: newArr}, true, nil
+					newArr := append(arr, val)
+					return newArr, true, nil
 				}
 				return doc, false, nil
 			}
 		} else {
-			// We don't have an array, so must be a scalar or an object that the user is treating as an array. Thankfully
-			// MySQL treats both the same way, but it's a little nutty nonetheless.
-			index, err := parseIndex(path[1:right], 0)
-			if err != nil {
-				panic("invalid path - index is not a number")
-			}
-
-			if !index.underflow {
-				if index.index == 0 && !index.overflow {
-					if mode == SET || mode == REPLACE {
-						return JSONDocument{Val: unmarshalled.Val}, true, nil
-					}
-					return doc, false, nil
-				} else {
-					if index.overflow && (mode == SET || mode == INSERT) {
-						var newArr = make([]interface{}, 0, 2)
-						newArr = append(newArr, doc.Val)
-						newArr = append(newArr, unmarshalled.Val)
-						return JSONDocument{Val: newArr}, true, nil
-					}
-					return doc, false, nil
-				}
-			} else {
-				if mode == SET || mode == INSERT {
-					// convert to an array, [val, object]
-					var newArr = make([]interface{}, 0, 2)
-					newArr = append(newArr, unmarshalled.Val)
-					newArr = append(newArr, doc.Val)
-					return JSONDocument{Val: newArr}, true, nil
-				}
-				return doc, false, nil
-			}
+			return updateObjectTreatAsArray(indexString, doc, val, mode)
 		}
 
 	} else {
 		panic("invalid path")
 	}
+}
+
+// updateObjectTreatAsArray handles the case where the user is treating an object as an array. The behavior in MySQL here
+// is a little nutty, but we try to match it as closely as possible. In particular, each mode has a different behavior,
+// and the behavior defies logic. This is basically mimicing MySQL because it's not dangerous, and there may be some crazy
+// use case which expects this behavior.
+func updateObjectTreatAsArray(indexString string, doc interface{}, val interface{}, mode int) (interface{}, bool, error) {
+	parsedIndex, err := parseIndex(indexString, 0)
+	if err != nil {
+		panic("invalid path - parsedIndex is not a number")
+	}
+
+	if parsedIndex.underflow {
+		if mode == SET || mode == INSERT {
+			// SET and INSERT convert {}, to [val, {}]
+			var newArr = make([]interface{}, 0, 2)
+			newArr = append(newArr, val)
+			newArr = append(newArr, doc)
+			return newArr, true, nil
+		}
+	} else if parsedIndex.overflow {
+		if parsedIndex.overflow && (mode == SET || mode == INSERT) {
+			// SET and INSERT convert {}, to [{}, val]
+			var newArr = make([]interface{}, 0, 2)
+			newArr = append(newArr, doc)
+			newArr = append(newArr, val)
+			return newArr, true, nil
+		}
+	} else if mode == SET || mode == REPLACE {
+		return val, true, nil
+	}
+	return doc, false, nil
 }
 
 type parseIndexResult struct {
