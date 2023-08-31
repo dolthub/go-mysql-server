@@ -529,6 +529,8 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 
 		err = inserter.Insert(ctx, newRow)
 		if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return false, err
 		}
 	}
@@ -1160,6 +1162,8 @@ func (d *dropPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) err
 
 		err = inserter.Insert(ctx, r)
 		if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return err
 		}
 	}
@@ -1651,6 +1655,8 @@ func (i *dropColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable)
 
 		err = inserter.Insert(ctx, newRow)
 		if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return false, err
 		}
 	}
@@ -1916,6 +1922,8 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 
 			err = inserter.Insert(ctx, r)
 			if err != nil {
+				_ = inserter.DiscardChanges(ctx, err)
+				_ = inserter.Close(ctx)
 				return err
 			}
 		}
