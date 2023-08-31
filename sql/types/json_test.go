@@ -292,13 +292,13 @@ func TestJsonRoundTripping(t *testing.T) {
 }
 
 type JsonMutationTest struct {
-	desc         string
-	doc          string
-	path         string
-	value        string
-	resultVal    string
-	changed      bool
-	expectErrStr string
+	desc      string
+	doc       string
+	path      string
+	value     string
+	resultVal string
+	changed   bool
+	//	expectErrStr string
 }
 
 var JsonSetTests = []JsonMutationTest{
@@ -489,22 +489,6 @@ var JsonSetTests = []JsonMutationTest{
 		changed:   false,
 	},
 	{
-		desc:         "Invalid path ends in dot",
-		doc:          `{}`,
-		path:         "$.",
-		changed:      false,
-		value:        `{}`,
-		expectErrStr: `Invalid JSON path expression.`,
-	},
-	{
-		desc:         "Invalid path doesn't have a closing bracket",
-		doc:          `{}`,
-		path:         "$[23",
-		changed:      false,
-		value:        `{}`,
-		expectErrStr: `Invalid JSON path expression.`,
-	},
-	{
 		desc:      "Setting in a nested array works",
 		doc:       `[1, [2]]`,
 		path:      "$[1][0]",
@@ -570,44 +554,6 @@ var JsonSetTests = []JsonMutationTest{
 		value:     `null`,
 		resultVal: `null`,
 	},
-
-	/*
-			{
-				desc:         "Invalid last usage",
-				doc:          `[1, 2, 3]`,
-				path:         "$[last+1]",
-				value:        `42`,
-				changed:      false,
-				expectErrStr: `Invalid JSON path expression. The error is around character position 7"`,
-			},
-			{
-				desc:         "set rejects negative index",
-				doc:          `[1, 2, 3]`,
-				path:         "$[-32]",
-				value:        `42`,
-				changed:      false,
-				expectErrStr: `Invalid JSON path expression. The error is around character position 2`,
-			},
-
-			{
-				desc:         "set does nothing for multi level updates",
-				doc:          `[1, 2, 3]`,
-				path:         "$.a.b.c",
-				value:        `42`,
-				resultVal: `[1, 2, 3]`,
-				changed:      false,
-			},
-
-		mysql> select JSON_REPLACE(JSON_OBJECT("a", 1), "$", NULL);
-		+----------------------------------------------+
-		| JSON_REPLACE(JSON_OBJECT("a", 1), "$", NULL) |
-		+----------------------------------------------+
-		| null                                         |
-		+----------------------------------------------+
-		1 row in set (0.00 sec)
-
-
-	*/
 }
 
 func TestJsonSet(t *testing.T) {
@@ -616,13 +562,8 @@ func TestJsonSet(t *testing.T) {
 			doc := MustJSON(test.doc)
 			val := MustJSON(test.value)
 			res, changed, err := doc.Set(sql.NewEmptyContext(), test.path, val)
-			if test.expectErrStr != "" {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), test.expectErrStr)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, MustJSON(test.resultVal), res)
-			}
+			require.NoError(t, err)
+			assert.Equal(t, MustJSON(test.resultVal), res)
 			assert.Equal(t, test.changed, changed)
 		})
 	}
@@ -813,20 +754,6 @@ func TestJsonInsert(t *testing.T) {
 
 var JsonRemoveTests = []JsonMutationTest{
 	{
-		desc:         "replace root",
-		doc:          `{"a": 1, "b": 2}`,
-		path:         "$",
-		changed:      false,
-		expectErrStr: "The path expression '$' is not allowed in this context",
-	},
-	{
-		desc:         "set root ignore white space",
-		doc:          `{"a": 1, "b": 2}`,
-		path:         "   $   ",
-		changed:      false,
-		expectErrStr: "The path expression '$' is not allowed in this context",
-	},
-	{
 		desc:      "remove middle of an array",
 		doc:       `[1, 2, 3]`,
 		path:      "$[1]",
@@ -913,13 +840,8 @@ func TestJsonRemove(t *testing.T) {
 		t.Run("JSON remove: "+test.desc, func(t *testing.T) {
 			doc := MustJSON(test.doc)
 			res, changed, err := doc.Remove(sql.NewEmptyContext(), test.path)
-			if test.expectErrStr != "" {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), test.expectErrStr)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, MustJSON(test.resultVal), res)
-			}
+			require.NoError(t, err)
+			assert.Equal(t, MustJSON(test.resultVal), res)
 			assert.Equal(t, test.changed, changed)
 		})
 	}
@@ -1089,4 +1011,82 @@ func TestReplaceSet(t *testing.T) {
 			assert.Equal(t, test.changed, changed)
 		})
 	}
+}
+
+type parseErrTest struct {
+	desc         string
+	path         string
+	expectErrStr string
+}
+
+var JsonPathParseErrTests = []parseErrTest{
+	{
+		desc:         "empty path",
+		path:         "",
+		expectErrStr: "Invalid JSON path expression. Empty path",
+	},
+	{
+		desc:         "non $ prefix",
+		path:         "bogus",
+		expectErrStr: "Invalid JSON path expression. Path must start with '$'",
+	},
+	{
+		desc:         "dot to nowhere",
+		path:         "$.",
+		expectErrStr: "Invalid JSON path expression. Expected field name after '.' at character 2 of $.",
+	},
+	{
+		desc:         "no . or [",
+		path:         "$fu.bar",
+		expectErrStr: "Invalid JSON path expression. Expected '.' or '[' at character 1 of $fu.bar",
+	},
+	{
+		desc:         "incomplete quoted field",
+		path:         `$."a"."b`,
+		expectErrStr: `Invalid JSON path expression. '"' expected at character 6 of $."a"."b`,
+	},
+	{
+		desc:         "invalid bare string",
+		path:         "$.a@<>bc",
+		expectErrStr: `Invalid JSON path expression. Expected '.' or '[' at character 3 of $.a@<>bc`,
+	},
+	{
+		desc:         "non-integer array index",
+		path:         "$[abcd]",
+		expectErrStr: `Invalid JSON path expression. Unable to convert abcd to an int at character 2 of $[abcd]`,
+	},
+	{
+		desc:         "non-integer array index",
+		path:         "$[last-abcd]",
+		expectErrStr: `Invalid JSON path expression. Expected a positive integer after 'last-' at character 6 of $[last-abcd]`,
+	},
+	{
+		desc:         "too many dashes in last-",
+		path:         "$[last-abcd-xyz]",
+		expectErrStr: `Invalid JSON path expression. Unable to convert last-abcd-xyz to an int at character 2 of $[last-abcd-xyz]`,
+	},
+}
+
+func TestJsonPathErrors(t *testing.T) {
+	doc := MustJSON(`{"a": {"b": 2} , "c": [1, 2, 3]}`)
+
+	for _, test := range JsonPathParseErrTests {
+		t.Run("JSON Path: "+test.desc, func(t *testing.T) {
+			_, changed, err := doc.Set(sql.NewEmptyContext(), test.path, MustJSON(`{"a": 42}`))
+			assert.Equal(t, false, changed)
+			require.Error(t, err)
+			assert.Equal(t, test.expectErrStr, err.Error())
+		})
+	}
+}
+
+func TestRemoveRoot(t *testing.T) {
+	// Fairly special case situation which doesn't mesh with our other tests. MySQL returns a specfic message when you
+	// attempt to remove the root document.
+	doc := MustJSON(`{"a": 1, "b": 2}`)
+	_, changed, err := doc.Remove(sql.NewEmptyContext(), "$")
+
+	require.Error(t, err)
+	assert.Equal(t, "The path expression '$' is not allowed in this context.", err.Error())
+	assert.Equal(t, false, changed)
 }

@@ -65,8 +65,6 @@ type MutableJSONValue interface {
 	Set(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
 	// Replace the value
 	Replace(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
-
-	// NM4 build and convert functions required.
 }
 
 type JSONDocument struct {
@@ -617,70 +615,90 @@ const (
 	REMOVE
 )
 
+// unwrapAndExecute unwraps the JSONDocument and executes the given path on the unwrapped value. The path string passed
+// in at this point should be unmodified.
 func (doc JSONDocument) unwrapAndExecute(ctx *sql.Context, path string, val JSONValue, mode int) (MutableJSONValue, bool, error) {
+	if path == "" {
+		return nil, false, fmt.Errorf("Invalid JSON path expression. Empty path")
+	}
+
 	var err error
 	var unmarshalled JSONDocument
 	if val != nil {
 		unmarshalled, err = val.Unmarshall(ctx)
 		if err != nil {
-			panic("whay??? NM4")
+			return nil, false, err
 		}
 	} else if mode != REMOVE {
-		panic("Non nil arg required")
+		return nil, false, fmt.Errorf("Invariant violation. value may not be nil")
 	}
 
-	// FUll path - should have a "$" at the beginning. NM4 - pull out before?
-	path = path[1:]
+	if path[0] != '$' {
+		return nil, false, fmt.Errorf("Invalid JSON path expression. Path must start with '$'")
+	}
 
-	resultRaw, changed, err := leafNodeUpdate(path, doc.Val, unmarshalled.Val, mode)
-	if err != nil {
+	path = path[1:]
+	// Cursor is used to track how many characters have been parsed in the path. It is used to enable better error messages,
+	// and is passed as a pointer because some function parse a variable number of characters.
+	cursor := 1
+
+	resultRaw, changed, parseErr := leafNodeUpdate(path, doc.Val, unmarshalled.Val, mode, &cursor)
+	if parseErr != nil {
+		err = fmt.Errorf("%s at character %d of $%s", parseErr.msg, parseErr.character, path)
 		return nil, false, err
 	}
 	return JSONDocument{Val: resultRaw}, changed, nil
 }
 
+// compile this. NM4
 const pattern = `^([a-zA-Z0-9]+)(.*)$`
 
-func parseAfterDot(path string) (name string, remainingPath string, err error) {
-	if path[0] != '.' {
-		return "", "", fmt.Errorf("Invalid JSON path expression. Expected '.' at beginning of path")
-	}
+type parseErr struct {
+	msg       string
+	character int
+}
 
-	path = path[1:]
+// parseAfterDot parses the json path immediately after a '.'. It returns the name of the field and the remaining path,
+// and modifies the cursor to point to the end of the parsed path.
+func parseAfterDot(path string, cursor *int) (name string, remainingPath string, err *parseErr) {
 	if path == "" {
-		return "", "", fmt.Errorf("Invalid JSON path expression. Empty string after '.'")
+		return "", "", &parseErr{msg: "Invalid JSON path expression. Expected field name after '.'", character: *cursor}
 	}
 
 	if path[0] == '"' {
 		// find the next quote
 		right := strings.Index(path[1:], "\"")
 		if right == -1 {
-			return "", "", fmt.Errorf("Invalid JSON path expression. Unterminated string: %s", path)
+			return "", "", &parseErr{msg: "Invalid JSON path expression. '\"' expected", character: *cursor}
 		}
 		name = path[1 : right+1]
 		remainingPath = path[right+2:]
+		*cursor = *cursor + right + 2
 	} else {
 		regex := regexp.MustCompile(pattern)
 		matches := regex.FindStringSubmatch(path)
 		if len(matches) != 3 {
-			panic("NM4")
+			return "", "", &parseErr{msg: "Invalid JSON path expression. Expected field name after '.'", character: *cursor}
 		}
 		name = matches[1]
 		remainingPath = matches[2]
+		*cursor = *cursor + len(name)
 	}
 
 	return
 }
 
-func leafNodeUpdate(path string, doc interface{}, val interface{}, mode int) (interface{}, bool, error) {
+func leafNodeUpdate(path string, doc interface{}, val interface{}, mode int, cursor *int) (interface{}, bool, *parseErr) {
 	if path[0] == '.' {
+		path = path[1:]
+		*cursor = *cursor + 1
 		strMap, ok := doc.(map[string]interface{})
 		if !ok {
 			// not a map, can't do anything. NoOp
 			return doc, false, nil
 		}
 
-		name, remainingPath, err := parseAfterDot(path)
+		name, remainingPath, err := parseAfterDot(path, cursor)
 		if err != nil {
 			return nil, false, err
 		}
@@ -701,7 +719,7 @@ func leafNodeUpdate(path string, doc interface{}, val interface{}, mode int) (in
 			return doc, updated, nil
 		} else {
 			// go deeper.
-			newObj, changed, err := leafNodeUpdate(remainingPath, strMap[name], val, mode)
+			newObj, changed, err := leafNodeUpdate(remainingPath, strMap[name], val, mode, cursor)
 			if err != nil {
 				return nil, false, err
 			}
@@ -713,9 +731,10 @@ func leafNodeUpdate(path string, doc interface{}, val interface{}, mode int) (in
 		}
 
 	} else if path[0] == '[' {
+		*cursor = *cursor + 1
 		right := strings.Index(path, "]")
 		if right == -1 {
-			return nil, false, fmt.Errorf("Invalid JSON path expression. Missing ']'.")
+			return nil, false, &parseErr{msg: "Invalid JSON path expression. Missing ']'", character: *cursor}
 		}
 
 		remaining := path[right+1:]
@@ -723,7 +742,7 @@ func leafNodeUpdate(path string, doc interface{}, val interface{}, mode int) (in
 		indexString := path[1:right]
 
 		if arr, ok := doc.([]interface{}); ok {
-			index, err := parseIndex(indexString, len(arr)-1)
+			index, err := parseIndex(indexString, len(arr)-1, cursor)
 			if err != nil {
 				return nil, false, err
 			}
@@ -746,7 +765,7 @@ func leafNodeUpdate(path string, doc interface{}, val interface{}, mode int) (in
 					}
 					return doc, updated, nil
 				} else {
-					newVal, changed, err := leafNodeUpdate(remaining, arr[index.index], val, mode)
+					newVal, changed, err := leafNodeUpdate(remaining, arr[index.index], val, mode, cursor)
 					if err != nil {
 						return nil, false, err
 					}
@@ -765,11 +784,11 @@ func leafNodeUpdate(path string, doc interface{}, val interface{}, mode int) (in
 				return doc, false, nil
 			}
 		} else {
-			return updateObjectTreatAsArray(indexString, doc, val, mode)
+			return updateObjectTreatAsArray(indexString, doc, val, mode, cursor)
 		}
-
 	} else {
-		panic("invalid path")
+		return nil, false, &parseErr{msg: "Invalid JSON path expression. Expected '.' or '['", character: *cursor}
+
 	}
 }
 
@@ -777,10 +796,10 @@ func leafNodeUpdate(path string, doc interface{}, val interface{}, mode int) (in
 // is a little nutty, but we try to match it as closely as possible. In particular, each mode has a different behavior,
 // and the behavior defies logic. This is basically mimicing MySQL because it's not dangerous, and there may be some crazy
 // use case which expects this behavior.
-func updateObjectTreatAsArray(indexString string, doc interface{}, val interface{}, mode int) (interface{}, bool, error) {
-	parsedIndex, err := parseIndex(indexString, 0)
+func updateObjectTreatAsArray(indexString string, doc interface{}, val interface{}, mode int, cursor *int) (interface{}, bool, *parseErr) {
+	parsedIndex, err := parseIndex(indexString, 0, cursor)
 	if err != nil {
-		panic("invalid path - parsedIndex is not a number")
+		return nil, false, err
 	}
 
 	if parsedIndex.underflow {
@@ -811,7 +830,7 @@ type parseIndexResult struct {
 	index     int
 }
 
-func parseIndex(index string, lastIndex int) (parseIndexResult, error) {
+func parseIndex(index string, lastIndex int, cursor *int) (*parseIndexResult, *parseErr) {
 	// trim whitespace off the ends
 	index = strings.TrimSpace(index)
 
@@ -819,16 +838,17 @@ func parseIndex(index string, lastIndex int) (parseIndexResult, error) {
 		if lastIndex < 0 {
 			lastIndex = 0 // This happens for an empty array
 		}
-		return parseIndexResult{index: lastIndex}, nil
+		return &parseIndexResult{index: lastIndex}, nil
 	} else {
-		// split the string on "-"
+		// Attempt to split the string on "-". "last-2" gets the second to last element in an array.
 		parts := strings.Split(index, "-")
 		if len(parts) == 2 {
 			part1, part2 := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
 			if part1 == "last" {
 				lastMinus, err := strconv.Atoi(part2)
 				if err != nil || lastMinus < 0 {
-					panic("pan't parse index")
+					*cursor = *cursor + 4 // len("last")
+					return nil, &parseErr{msg: "Invalid JSON path expression. Expected a positive integer after 'last-'", character: *cursor}
 				}
 
 				underFlow := false
@@ -837,16 +857,17 @@ func parseIndex(index string, lastIndex int) (parseIndexResult, error) {
 					reducedIdx = 0
 					underFlow = true
 				}
-				return parseIndexResult{index: reducedIdx, underflow: underFlow}, nil
+				return &parseIndexResult{index: reducedIdx, underflow: underFlow}, nil
 			} else {
-				panic("pan't parse index")
+				return nil, &parseErr{msg: "Invalid JSON path expression. Expected 'last-N'", character: *cursor}
 			}
 		}
 	}
 
 	val, err := strconv.Atoi(index)
 	if err != nil {
-		panic("pan't parse index")
+		msg := fmt.Sprintf("Invalid JSON path expression. Unable to convert %s to an int", index)
+		return nil, &parseErr{msg: msg, character: *cursor}
 	}
 
 	overflow := false
@@ -855,5 +876,5 @@ func parseIndex(index string, lastIndex int) (parseIndexResult, error) {
 		overflow = true
 	}
 
-	return parseIndexResult{index: val, overflow: overflow}, nil
+	return &parseIndexResult{index: val, overflow: overflow}, nil
 }
