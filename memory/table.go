@@ -2221,8 +2221,54 @@ func isColumnDrop(oldSchema sql.PrimaryKeySchema, newSchema sql.PrimaryKeySchema
 func (t Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column, idxCols []sql.IndexColumn) (sql.RowInserter, error) {
 	// Make a copy of the table under edit with the new schema and no data
 	tableUnderEdit := t.copy().truncate(normalizeSchemaForRewrite(newSchema))
-
+	err := tableUnderEdit.modifyFulltextIndexesForRewrite(ctx, oldSchema)
+	if err != nil {
+		return nil, err
+	}
+	
 	return tableUnderEdit.getTableEditor(ctx), nil
+}
+
+// modifyFulltextIndexesForRewrite will modify the fulltext indexes of a table to correspond to a new schema before a rewrite.
+func (t *Table) modifyFulltextIndexesForRewrite(ctx *sql.Context, oldSchema sql.PrimaryKeySchema) error {
+	for i, idx := range t.indexes {
+		if !idx.IsFullText() {
+			continue
+		}
+		if t.db == nil { // Rewrite your test if you run into this
+			return fmt.Errorf("database is nil, which can only happen when adding a table outside of the SQL path, such as during harness creation")
+		}
+		
+		memIdx, ok := idx.(*Index)
+		if !ok { // This should never happen
+			return fmt.Errorf("index returns true for FULLTEXT, but does not implement interface")
+		}
+		
+		ftInfo := memIdx.fulltextInfo
+		newPoses := remapColumnOrds(oldSchema, t.schema, ftInfo.KeyColumns)
+		if newPoses == nil {
+			// TODO: omit, probably
+			return fmt.Errorf("could not find column in new schema")
+		}
+
+		newIdx := memIdx.copy()
+		newIdx.fulltextInfo.KeyColumns.Positions = newPoses
+		t.indexes[i] = newIdx
+	}
+	
+	return nil
+}
+
+func remapColumnOrds(oldSch sql.PrimaryKeySchema, newSch sql.PrimaryKeySchema, cols fulltext.KeyColumns) []int {
+	newPoses := make([]int, len(cols.Positions))
+	for i, col := range cols.Positions {
+		idx := newSch.Schema.IndexOfColName(oldSch.Schema[col].Name)
+		if idx < 0 {
+			return nil
+		}
+		newPoses[i] = idx
+	}
+	return newPoses
 }
 
 func (t *Table) truncate(schema sql.PrimaryKeySchema) *Table {

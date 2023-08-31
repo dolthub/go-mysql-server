@@ -187,23 +187,19 @@ func TestSingleScript(t *testing.T) {
 	// t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "primary key order change",
+			Name: "ALTER TABLE ADD COLUMN",
 			SetUpScript: []string{
-				"CREATE TABLE t(u int, v int, primary key (u, v))",
+				"CREATE TABLE test (pk BIGINT UNSIGNED PRIMARY KEY, v1 VARCHAR(200), v2 VARCHAR(200), FULLTEXT idx (v1, v2));",
+				"INSERT INTO test VALUES (1, 'abc', 'def pqr'), (2, 'ghi', 'jkl'), (3, 'mno', 'mno'), (4, 'stu vwx', 'xyz zyx yzx'), (5, 'ghs', 'mno shg');",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "alter table t modify column u int after v",
+					Query:    "ALTER TABLE test ADD COLUMN v3 FLOAT DEFAULT 7 FIRST;",
 					Expected: []sql.Row{{types.NewOkResult(0)}},
 				},
 				{
-					Query: "show create table t",
-					Expected: []sql.Row{{"t",
-						"CREATE TABLE `t` (\n" +
-						"  `v` int NOT NULL,\n" +
-						"  `u` int NOT NULL,\n" +
-						"  PRIMARY KEY (`u`,`v`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+					Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
+					Expected: []sql.Row{{float32(7), uint64(2), "ghi", "jkl"}},
 				},
 			},
 		},

@@ -263,3 +263,7 @@ func (idx *Index) Order() sql.IndexOrder {
 func (idx *Index) Reversible() bool {
 	return true
 }
+
+func (idx Index) copy() *Index {
+	return &idx
+}
