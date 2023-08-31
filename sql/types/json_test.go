@@ -529,12 +529,46 @@ var JsonSetTests = []JsonMutationTest{
 		resultVal: `{"a": {"b": [1,2,3,4,[5,96,7]]}}`,
 	},
 	{
-		desc:      "Setting in a nested several levels deep works",
+		desc:      "setting in a nested several levels deep works",
 		doc:       `[9,8, {"a": [3,4,5] } ]`,
 		path:      "$[2].a[0]",
 		changed:   true,
 		value:     `96`,
 		resultVal: `[9,8, {"a": [96,4,5]}]`,
+	},
+	{
+		desc:      "setting a deep path has no effect",
+		doc:       `{}`,
+		path:      "$.a.b.c",
+		changed:   false,
+		value:     `42`,
+		resultVal: `{}`,
+	},
+	{
+		desc:      "setting a deep path has no effect",
+		doc:       `{}`,
+		path:      "$.a.b[last]",
+		changed:   false,
+		value:     `42`,
+		resultVal: `{}`,
+	},
+	{
+		// I've verified that null in MySQL is treated as a scalar in all ways that I can tell, which makes sense.
+		// Therefore, testing beyond these two tests doesn't necessary.
+		desc:      "setting a null doc with a value results in the value",
+		doc:       `null`,
+		path:      "$",
+		changed:   true,
+		value:     `{"a": 42}`,
+		resultVal: `{"a": 42}`,
+	},
+	{
+		desc:      "setting a null doc with a value results in the value",
+		doc:       `{"a" : 1}`,
+		path:      "$",
+		changed:   true,
+		value:     `null`,
+		resultVal: `null`,
 	},
 
 	/*
@@ -714,7 +748,7 @@ var JsonInsertTests = []JsonMutationTest{
 		changed:   true,
 	},
 	{
-		desc:      "Object field updated",
+		desc:      "object field updated",
 		doc:       `{"a": 1}`,
 		path:      "$.a",
 		value:     `42`,
@@ -722,7 +756,7 @@ var JsonInsertTests = []JsonMutationTest{
 		changed:   false,
 	},
 	{
-		desc:      "Object field set",
+		desc:      "object field set",
 		doc:       `{"a": 1}`,
 		path:      "$.b",
 		value:     `42`,
@@ -730,7 +764,7 @@ var JsonInsertTests = []JsonMutationTest{
 		changed:   true,
 	},
 	{
-		desc:      "Object field name can optionally have quotes",
+		desc:      "object field name can optionally have quotes",
 		doc:       `{"a": {}}`,
 		path:      `$."a"`,
 		value:     `42`,
@@ -738,12 +772,29 @@ var JsonInsertTests = []JsonMutationTest{
 		changed:   false,
 	},
 	{
-		desc:      "Array treated as an object is a no op",
+		desc:      "array treated as an object is a no op",
 		doc:       `[1, 2, 3]`,
 		path:      `$.a`,
 		value:     `42`,
 		resultVal: `[1, 2, 3]`,
 		changed:   false,
+	},
+
+	{
+		desc:      "inserting a deep path has no effect",
+		doc:       `{}`,
+		path:      "$.a.b.c",
+		changed:   false,
+		value:     `42`,
+		resultVal: `{}`,
+	},
+	{
+		desc:      "inserting a deep path has no effect",
+		doc:       `{}`,
+		path:      "$.a.b[last]",
+		changed:   false,
+		value:     `42`,
+		resultVal: `{}`,
 	},
 }
 
@@ -824,9 +875,10 @@ var JsonRemoveTests = []JsonMutationTest{
 		resultVal: `[]`,
 		changed:   false,
 	},
-	{ // Remove behaves much more reasonably than other operations when the path is invalid. When you treat an
-		// object or scalar as an array, it is a no-op. For this reason, there are far fewer remove tests than there
-		// are for insert/set/replace.
+	{
+		// Remove behaves much more reasonably than other operations when the path is invalid. When you treat an
+		// object or scalar as an array, it is a no-op. period. For this reason, there are far fewer remove tests than
+		// there are for insert/set/replace.
 		desc:      "treating object as an array is no op",
 		doc:       `{"a":1}`,
 		path:      "$[0]",
