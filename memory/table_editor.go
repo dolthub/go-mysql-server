@@ -26,6 +26,7 @@ import (
 type tableEditor struct {
 	editedTable       *Table
 	targetTable       *Table
+	discardChanges    bool
 	initialAutoIncVal uint64
 	initialPartitions map[string][]sql.Row
 	initialPartIdx    int
@@ -78,6 +79,15 @@ func (t *tableEditor) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 }
 
 func (t *tableEditor) Close(ctx *sql.Context) error {
+	defer func() {
+		sess := SessionFromContext(ctx)
+		sess.clearEditAccumulator(t.targetTable)
+	}()
+	
+	if t.discardChanges {
+		return nil
+	}
+	
 	// On the normal INSERT / UPDATE / DELETE path this happens at StatementComplete time, but for table rewrites it 
 	// only happens at Close
 	err := t.ea.ApplyEdits(ctx)
@@ -88,9 +98,6 @@ func (t *tableEditor) Close(ctx *sql.Context) error {
 	
 	t.targetTable.replaceData(t.editedTable)
 	
-	sess := SessionFromContext(ctx)
-	sess.clearEditAccumulator(t.targetTable)
-
 	// for various reasons, the pointer we're editing may not be the one recorded in the database map, so update it
 	t.targetTable.db.putTable(t.targetTable)
 
@@ -115,6 +122,7 @@ func (t *tableEditor) DiscardChanges(ctx *sql.Context, errorEncountered error) e
 	t.editedTable.autoIncVal = t.initialAutoIncVal
 	t.editedTable.partitions = t.initialPartitions
 	t.ea.Clear()
+	t.discardChanges = true
 	return nil
 }
 

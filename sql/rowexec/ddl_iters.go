@@ -1060,6 +1060,8 @@ func (c *createPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) e
 
 		err = inserter.Insert(ctx, r)
 		if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return err
 		}
 	}

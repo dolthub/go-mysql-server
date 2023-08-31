@@ -187,19 +187,36 @@ func TestSingleScript(t *testing.T) {
 	// t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "ALTER TABLE ADD COLUMN",
+			Name: "Add primary key",
 			SetUpScript: []string{
-				"CREATE TABLE test (pk BIGINT UNSIGNED PRIMARY KEY, v1 VARCHAR(200), v2 VARCHAR(200), FULLTEXT idx (v1, v2));",
-				"INSERT INTO test VALUES (1, 'abc', 'def pqr'), (2, 'ghi', 'jkl'), (3, 'mno', 'mno'), (4, 'stu vwx', 'xyz zyx yzx'), (5, 'ghs', 'mno shg');",
+				"create table t1 (i int, j int)",
+				"insert into t1 values (1,1), (1,2), (1,3)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "ALTER TABLE test ADD COLUMN v3 FLOAT DEFAULT 7 FIRST;",
+					Query:       "alter table t1 add primary key (i)",
+					ExpectedErr: sql.ErrPrimaryKeyViolation,
+				},
+				{
+					Query: "show create table t1",
+					Expected: []sql.Row{{"t1",
+						"CREATE TABLE `t1` (\n" +
+								"  `i` int,\n" +
+								"  `j` int\n" +
+								") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				},
+				{
+					Query:    "alter table t1 add primary key (i, j)",
 					Expected: []sql.Row{{types.NewOkResult(0)}},
 				},
 				{
-					Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
-					Expected: []sql.Row{{float32(7), uint64(2), "ghi", "jkl"}},
+					Query: "show create table t1",
+					Expected: []sql.Row{{"t1",
+						"CREATE TABLE `t1` (\n" +
+								"  `i` int,\n" +
+								"  `j` int,\n" +
+								"  PRIMARY KEY (`i`,`j`)\n" +
+								") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 				},
 			},
 		},
