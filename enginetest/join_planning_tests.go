@@ -215,10 +215,25 @@ var JoinPlanningTests = []struct {
 
 		tests: []JoinPlanTest{
 			{
+				// Find a unique index, even if it has multiple columns
 				q:             `SELECT /*+ MERGE_JOIN(l,r) */ l.pk1, l.pk2, l.c1, r.pk1, r.pk2, r.c1 FROM two_pk l JOIN two_pk r ON l.pk1=r.pk1 AND l.pk2=r.pk2`,
 				types:         []plan.JoinType{plan.JoinTypeMerge},
 				mergeCompares: []string{"((r.pk1, r.pk2) = (l.pk1, l.pk2))"},
 				exp:           []sql.Row{{0, 0, 0, 0, 0, 0}, {0, 1, 10, 0, 1, 10}, {1, 0, 20, 1, 0, 20}, {1, 1, 30, 1, 1, 30}},
+			},
+			{
+				// Prefer a two-column non-unique index over a one-column non-unique index
+				q:             `SELECT /*+ MERGE_JOIN(l,r) */ l.pk, r.pk FROM one_pk_two_idx l JOIN one_pk_two_idx r ON l.v1=r.v1 AND l.v2=r.v2`,
+				types:         []plan.JoinType{plan.JoinTypeMerge},
+				mergeCompares: []string{"((r.v1, r.v2) = (l.v1, l.v2))"},
+				exp:           []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}, {7, 7}},
+			},
+			{
+				// Prefer a one-column unique index over a two-column non-unique index
+				q:             `SELECT /*+ MERGE_JOIN(l,r) */ l.pk, r.pk FROM one_pk_three_idx l JOIN one_pk_three_idx r ON l.v1=r.v1 AND l.v2=r.v2 AND l.pk=r.v1`,
+				types:         []plan.JoinType{plan.JoinTypeMerge},
+				mergeCompares: []string{"(l.pk = r.v1)"},
+				exp:           []sql.Row{{0, 0}, {0, 1}},
 			},
 		},
 	},
