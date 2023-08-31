@@ -673,3 +673,177 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 		},
 	},
 }
+
+var AddDropPrimaryKeyScripts = []ScriptTest{
+	{
+		Name:"Drop primary key for table with multiple primary key columns",
+		SetUpScript: []string{
+			"create table t1 (pk varchar(20), v varchar(20) default (concat(pk, '-foo')), primary key (pk, v))",
+			"insert into t1 values ('a1', 'a2'), ('a2', 'a3'), ('a3', 'a4')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t1 order by pk",
+				Expected: []sql.Row{
+					{"a1", "a2"},
+					{"a2", "a3"},
+					{"a3", "a4"},
+				},
+			},
+			{
+				Query:    "alter table t1 drop primary key",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "select * from t1 order by pk",
+				Expected: []sql.Row{
+					{"a1", "a2"},
+					{"a2", "a3"},
+					{"a3", "a4"},
+				},
+			},
+			{
+				Query: "insert into t1 values ('a1', 'a2')",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query: "select * from t1 order by pk",
+				Expected: []sql.Row{
+					{"a1", "a2"},
+					{"a1", "a2"},
+					{"a2", "a3"},
+					{"a3", "a4"},
+				},
+			},
+			{
+				Query: "alter table t1 add primary key (pk, v)",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query:    "delete from t1 where pk = 'a1' limit 1",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query: "alter table t1 add primary key (pk, v)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "alter table t1 drop primary key",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "alter table add index myidx (v)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "alter table t1 add primary key (pk)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "insert into t1 values ('a4', 'a3')",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query: "select * from t1 where v = 'a3' order by pk",
+				Expected: []sql.Row{
+					{"a2", "a3"},
+					{"a4", "a3"},
+				},
+			},
+			{
+				Query: "alter table t1 drop primary key",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "truncate t1",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "alter table t1 drop index myidx",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "alter table t1 add primary key (pk, v)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "insert into t1 values ('a1', 'a2'), ('a2', 'a3'), ('a3', 'a4')",
+				Expected: []sql.Row{{types.NewOkResult(3)}},
+			},
+			{
+				Query: "ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY (v)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "INSERT INTO t1 (pk, v) values ('a100', 'a3')",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query: "ALTER TABLE t1 ADD PRIMARY KEY (pk, v), DROP PRIMARY KEY",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
+	{
+		Name: "No database selected",
+		SetUpScript: []string{
+			"create database newdb",
+			"create table newdb.tab1 (pk int, c1 int)",
+			"ALTER TABLE newdb.tab1 ADD PRIMARY KEY (pk)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SHOW CREATE TABLE newdb.tab1",
+				Expected: []sql.Row{{"tab1",
+					"CREATE TABLE `tab1` (\n" +
+					"  `pk` int NOT NULL,\n" +
+					"  `c1` int,\n" +
+					"  PRIMARY KEY (`pk`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "alter table newdb.tab1 drop primary key",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "SHOW CREATE TABLE newdb.tab1",
+				Expected: []sql.Row{{"tab1",
+					"CREATE TABLE `tab1` (\n" +
+					"  `pk` int NOT NULL,\n" +
+					"  `c1` int\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "Drop primary key auto increment",
+		SetUpScript: []string{
+			"CREATE TABLE test(pk int AUTO_INCREMENT PRIMARY KEY, val int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "ALTER TABLE test DROP PRIMARY KEY",
+				ExpectedErr: sql.ErrWrongAutoKey,
+			},
+			{
+				Query: 				"ALTER TABLE test modify pk int, drop primary key",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "SHOW CREATE TABLE test",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query: "INSERT INTO test VALUES (1, 1), (NULL, 1)",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query: "SELECT * FROM test ORDER BY pk",
+				Expected:  []sql.Row{
+					{nil, 1},
+					{1, 1},
+				},
+			},
+		},
+	},
+}
