@@ -891,22 +891,43 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 				ExpectedErr: sql.ErrWrongAutoKey,
 			},
 			{
-				Query: 				"ALTER TABLE test modify pk int, drop primary key",
+				Query: 				"ALTER TABLE test modify pk int",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW CREATE TABLE test",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{"test",
+					"CREATE TABLE `test` (\n" +
+							"  `pk` int NOT NULL,\n" +
+							"  `val` int,\n" +
+							"  PRIMARY KEY (`pk`)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "ALTER TABLE test drop primary key",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "SHOW CREATE TABLE test",
+				Expected: []sql.Row{{"test",
+					"CREATE TABLE `test` (\n" +
+							"  `pk` int NOT NULL,\n" +
+							"  `val` int\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "INSERT INTO test VALUES (1, 1), (NULL, 1)",
+				ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
+			},
+			{
+				Query: "INSERT INTO test VALUES (2, 2), (3, 3)",
 				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
 				Query: "SELECT * FROM test ORDER BY pk",
 				Expected:  []sql.Row{
-					{nil, 1},
-					{1, 1},
+					{2, 2},
+					{3, 3},
 				},
 			},
 		},

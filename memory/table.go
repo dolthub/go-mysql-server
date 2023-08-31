@@ -2249,6 +2249,11 @@ func isColumnDrop(oldSchema sql.PrimaryKeySchema, newSchema sql.PrimaryKeySchema
 }
 
 func (t Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column, idxCols []sql.IndexColumn) (sql.RowInserter, error) {
+	// TODO: this is insufficient: we need prevent dropping any index that is used by a primary key (or the engine does)
+	if isPrimaryKeyDrop(oldSchema, newSchema) && primaryKeyIsAutoincrement(oldSchema) {
+		return nil, sql.ErrWrongAutoKey.New()
+	}
+	
 	// Make a copy of the table under edit with the new schema and no data
 	tableUnderEdit := t.copy().truncate(normalizeSchemaForRewrite(newSchema))
 	err := tableUnderEdit.modifyFulltextIndexesForRewrite(ctx, oldSchema)
@@ -2257,6 +2262,19 @@ func (t Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.Primar
 	}
 	
 	return tableUnderEdit.getRewriteTableEditor(ctx), nil
+}
+
+func primaryKeyIsAutoincrement(schema sql.PrimaryKeySchema) bool {
+	for _, ordinal := range schema.PkOrdinals {
+		if schema.Schema[ordinal].AutoIncrement {
+			return true
+		}
+	}
+	return false
+}
+
+func isPrimaryKeyDrop(oldSchema sql.PrimaryKeySchema, newSchema sql.PrimaryKeySchema) bool {
+	return len(oldSchema.PkOrdinals) > 0 && len(newSchema.PkOrdinals) == 0
 }
 
 // modifyFulltextIndexesForRewrite will modify the fulltext indexes of a table to correspond to a new schema before a rewrite.

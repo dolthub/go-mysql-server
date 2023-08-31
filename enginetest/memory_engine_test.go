@@ -187,36 +187,54 @@ func TestSingleScript(t *testing.T) {
 	// t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "Add primary key",
+			Name: "Drop primary key auto increment",
 			SetUpScript: []string{
-				"create table t1 (i int, j int)",
-				"insert into t1 values (1,1), (1,2), (1,3)",
+				"CREATE TABLE test(pk int AUTO_INCREMENT PRIMARY KEY, val int)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:       "alter table t1 add primary key (i)",
-					ExpectedErr: sql.ErrPrimaryKeyViolation,
+					Query: "ALTER TABLE test DROP PRIMARY KEY",
+					ExpectedErr: sql.ErrWrongAutoKey,
 				},
 				{
-					Query: "show create table t1",
-					Expected: []sql.Row{{"t1",
-						"CREATE TABLE `t1` (\n" +
-								"  `i` int,\n" +
-								"  `j` int\n" +
-								") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-				},
-				{
-					Query:    "alter table t1 add primary key (i, j)",
+					Query: 				"ALTER TABLE test modify pk int",
 					Expected: []sql.Row{{types.NewOkResult(0)}},
 				},
 				{
-					Query: "show create table t1",
-					Expected: []sql.Row{{"t1",
-						"CREATE TABLE `t1` (\n" +
-								"  `i` int,\n" +
-								"  `j` int,\n" +
-								"  PRIMARY KEY (`i`,`j`)\n" +
+					Query: "SHOW CREATE TABLE test",
+					Expected: []sql.Row{{"test",
+						"CREATE TABLE `test` (\n" +
+						"  `pk` int NOT NULL,\n" +
+						"  `val` int,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				},
+				{
+					Query: "ALTER TABLE test drop primary key",
+					Expected: []sql.Row{{types.NewOkResult(0)}},
+				},
+				{
+					Query: "SHOW CREATE TABLE test",
+					Expected: []sql.Row{{"test",
+						"CREATE TABLE `test` (\n" +
+								"  `pk` int NOT NULL,\n" +
+								"  `val` int\n" +
 								") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				},
+				{
+					Query: "INSERT INTO test VALUES (1, 1), (NULL, 1)",
+					ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
+				},
+				{
+					Query: "INSERT INTO test VALUES (2, 2), (3, 3)",
+					Expected: []sql.Row{{types.NewOkResult(2)}},
+				},
+				{
+					Query: "SELECT * FROM test ORDER BY pk",
+					Expected:  []sql.Row{
+						{2, 2},
+						{3, 3},
+					},
 				},
 			},
 		},
@@ -718,7 +736,6 @@ func TestAddDropPks(t *testing.T) {
 }
 
 func TestAddAutoIncrementColumn(t *testing.T) {
-	t.Skip("in memory tables don't implement sql.RewritableTable yet")
 	for _, script := range queries.AlterTableAddAutoIncrementScripts {
 		enginetest.TestScript(t, enginetest.NewDefaultMemoryHarness(), script)
 	}
