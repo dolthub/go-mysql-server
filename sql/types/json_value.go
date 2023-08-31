@@ -57,14 +57,14 @@ type SearchableJSONValue interface {
 }
 
 type MutableJSONValue interface {
-	// Insert Adds the value at the give path, if it is not present. Updated value returned, and bool indicating if
+	// Insert Adds the value at the give path, only if it is not present. Updated value returned, and bool indicating if
 	// a change was made.
 	Insert(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
 	// Remove the value at the given path. Updated value returned, and bool indicating if a change was made.
 	Remove(ctx *sql.Context, path string) (MutableJSONValue, bool, error)
 	// Set the value at the given path. Updated value returned, and bool indicating if a change was made.
 	Set(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
-	// Replace the value
+	// Replace the value at the given path with the new value. If the path does not exist, no modification is made.
 	Replace(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
 }
 
@@ -643,7 +643,7 @@ func (doc JSONDocument) unwrapAndExecute(ctx *sql.Context, path string, val JSON
 	// and is passed as a pointer because some function parse a variable number of characters.
 	cursor := 1
 
-	resultRaw, changed, parseErr := leafNodeUpdate(path, doc.Val, unmarshalled.Val, mode, &cursor)
+	resultRaw, changed, parseErr := walkPathAndUpdate(path, doc.Val, unmarshalled.Val, mode, &cursor)
 	if parseErr != nil {
 		err = fmt.Errorf("%s at character %d of $%s", parseErr.msg, parseErr.character, path)
 		return nil, false, err
@@ -651,32 +651,103 @@ func (doc JSONDocument) unwrapAndExecute(ctx *sql.Context, path string, val JSON
 	return JSONDocument{Val: resultRaw}, changed, nil
 }
 
-// compile this. NM4
-const pattern = `^([a-zA-Z0-9]+)(.*)$`
-
+// parseErr is used to track errors that occur during parsing of the path, specifically to track the index of the character
+// where we believe there is a problem.
 type parseErr struct {
 	msg       string
 	character int
 }
 
-// parseAfterDot parses the json path immediately after a '.'. It returns the name of the field and the remaining path,
+// walkPathAndUpdate walks the path and updates the document.
+// JSONPath Spec (as documented) https://dev.mysql.com/doc/refman/8.0/en/json.html#json-path-syntax
+//
+// This function recursively consumes the path until it reaches the end, at which point it applies the mutation operation.
+//
+// Currently, our implementation focuses specifically on the mutation operations, so '*','**', and range index paths are
+// not supported.
+func walkPathAndUpdate(path string, doc interface{}, val interface{}, mode int, cursor *int) (interface{}, bool, *parseErr) {
+	if path[0] == '.' {
+		path = path[1:]
+		*cursor = *cursor + 1
+		strMap, ok := doc.(map[string]interface{})
+		if !ok {
+			// not a map, can't do anything. NoOp
+			return doc, false, nil
+		}
+		return updateObject(path, doc, strMap, val, mode, cursor)
+	} else if path[0] == '[' {
+		*cursor = *cursor + 1
+		right := strings.Index(path, "]")
+		if right == -1 {
+			return nil, false, &parseErr{msg: "Invalid JSON path expression. Missing ']'", character: *cursor}
+		}
+
+		remaining := path[right+1:]
+		indexString := path[1:right]
+
+		if arr, ok := doc.([]interface{}); ok {
+			return updateArray(indexString, remaining, doc, arr, val, mode, cursor)
+		} else {
+			return updateObjectTreatAsArray(indexString, doc, val, mode, cursor)
+		}
+	} else {
+		return nil, false, &parseErr{msg: "Invalid JSON path expression. Expected '.' or '['", character: *cursor}
+	}
+}
+
+// updateObject Take a map[string]interface{} and update the value at the given path. If we are not at the end of the path,
+// the object is looked up and the walkPathAndUpdate function is called recursively.
+func updateObject(path string, doc interface{}, strMap map[string]interface{}, val interface{}, mode int, cursor *int) (interface{}, bool, *parseErr) {
+	name, remainingPath, err := parseNameAfterDot(path, cursor)
+	if err != nil {
+		return nil, false, err
+	}
+
+	if remainingPath == "" {
+		// does the name exist in the map?
+		updated := false
+		_, destructive := strMap[name]
+		if mode == SET ||
+			(!destructive && mode == INSERT) ||
+			(destructive && mode == REPLACE) {
+			strMap[name] = val
+			updated = true
+		} else if destructive && mode == REMOVE {
+			delete(strMap, name)
+			updated = true
+		}
+		return doc, updated, nil
+	} else {
+		// go deeper.
+		newObj, changed, err := walkPathAndUpdate(remainingPath, strMap[name], val, mode, cursor)
+		if err != nil {
+			return nil, false, err
+		}
+		if changed {
+			strMap[name] = newObj
+			return doc, true, nil
+		}
+		return doc, false, nil
+	}
+}
+
+// parseNameAfterDot parses the json path immediately after a '.'. It returns the name of the field and the remaining path,
 // and modifies the cursor to point to the end of the parsed path.
-func parseAfterDot(path string, cursor *int) (name string, remainingPath string, err *parseErr) {
+func parseNameAfterDot(path string, cursor *int) (name string, remainingPath string, err *parseErr) {
 	if path == "" {
 		return "", "", &parseErr{msg: "Invalid JSON path expression. Expected field name after '.'", character: *cursor}
 	}
 
 	if path[0] == '"' {
-		// find the next quote
 		right := strings.Index(path[1:], "\"")
-		if right == -1 {
+		if right < 0 {
 			return "", "", &parseErr{msg: "Invalid JSON path expression. '\"' expected", character: *cursor}
 		}
 		name = path[1 : right+1]
 		remainingPath = path[right+2:]
 		*cursor = *cursor + right + 2
 	} else {
-		regex := regexp.MustCompile(pattern)
+		regex := regexp.MustCompile(`^([a-zA-Z0-9_]+)(.*)$`)
 		matches := regex.FindStringSubmatch(path)
 		if len(matches) != 3 {
 			return "", "", &parseErr{msg: "Invalid JSON path expression. Expected field name after '.'", character: *cursor}
@@ -689,113 +760,56 @@ func parseAfterDot(path string, cursor *int) (name string, remainingPath string,
 	return
 }
 
-func leafNodeUpdate(path string, doc interface{}, val interface{}, mode int, cursor *int) (interface{}, bool, *parseErr) {
-	if path[0] == '.' {
-		path = path[1:]
-		*cursor = *cursor + 1
-		strMap, ok := doc.(map[string]interface{})
-		if !ok {
-			// not a map, can't do anything. NoOp
-			return doc, false, nil
-		}
+// updateArray will update an array element appropriately when the path element is an array. This includes parsing
+// the special indexes. If there are more elements in the path after this element look up, the update will be performed
+// by the walkPathAndUpdate function.
+func updateArray(indexString string, remaining string, doc interface{}, arr []interface{}, val interface{}, mode int, cursor *int) (interface{}, bool, *parseErr) {
+	index, err := parseIndex(indexString, len(arr)-1, cursor)
+	if err != nil {
+		return nil, false, err
+	}
 
-		name, remainingPath, err := parseAfterDot(path, cursor)
-		if err != nil {
-			return nil, false, err
-		}
+	// All operations, except for SET, ignore the underflow case.
+	if index.underflow && (mode != SET) {
+		return doc, false, nil
+	}
 
-		if remainingPath == "" {
-			// does the name exist in the map?
+	if len(arr) > index.index && !index.overflow {
+		// index exists in the array.
+		if remaining == "" {
 			updated := false
-			_, destrutive := strMap[name]
-			if mode == SET ||
-				(!destrutive && mode == INSERT) ||
-				(destrutive && mode == REPLACE) {
-				strMap[name] = val
+			if mode == SET || mode == REPLACE {
+				arr[index.index] = val
 				updated = true
-			} else if destrutive && mode == REMOVE {
-				delete(strMap, name)
+			} else if mode == REMOVE {
+				doc = append(arr[:index.index], arr[index.index+1:]...)
 				updated = true
 			}
 			return doc, updated, nil
 		} else {
-			// go deeper.
-			newObj, changed, err := leafNodeUpdate(remainingPath, strMap[name], val, mode, cursor)
+			newVal, changed, err := walkPathAndUpdate(remaining, arr[index.index], val, mode, cursor)
 			if err != nil {
 				return nil, false, err
 			}
 			if changed {
-				strMap[name] = newObj
+				arr[index.index] = newVal
 				return doc, true, nil
-			}
-			return doc, false, nil
-		}
-
-	} else if path[0] == '[' {
-		*cursor = *cursor + 1
-		right := strings.Index(path, "]")
-		if right == -1 {
-			return nil, false, &parseErr{msg: "Invalid JSON path expression. Missing ']'", character: *cursor}
-		}
-
-		remaining := path[right+1:]
-
-		indexString := path[1:right]
-
-		if arr, ok := doc.([]interface{}); ok {
-			index, err := parseIndex(indexString, len(arr)-1, cursor)
-			if err != nil {
-				return nil, false, err
-			}
-
-			// All operations, except for SET, ignore the underflow case.
-			if index.underflow && (mode != SET) {
-				return doc, false, nil
-			}
-
-			if len(arr) > index.index && !index.overflow {
-				// index exists in the array.
-				if remaining == "" {
-					updated := false
-					if mode == SET || mode == REPLACE {
-						arr[index.index] = val
-						updated = true
-					} else if mode == REMOVE {
-						doc = append(arr[:index.index], arr[index.index+1:]...)
-						updated = true
-					}
-					return doc, updated, nil
-				} else {
-					newVal, changed, err := leafNodeUpdate(remaining, arr[index.index], val, mode, cursor)
-					if err != nil {
-						return nil, false, err
-					}
-					if changed {
-						arr[index.index] = newVal
-						return doc, true, nil
-					} else {
-						return doc, false, nil
-					}
-				}
 			} else {
-				if mode == SET || mode == INSERT {
-					newArr := append(arr, val)
-					return newArr, true, nil
-				}
 				return doc, false, nil
 			}
-		} else {
-			return updateObjectTreatAsArray(indexString, doc, val, mode, cursor)
 		}
 	} else {
-		return nil, false, &parseErr{msg: "Invalid JSON path expression. Expected '.' or '['", character: *cursor}
-
+		if mode == SET || mode == INSERT {
+			newArr := append(arr, val)
+			return newArr, true, nil
+		}
+		return doc, false, nil
 	}
 }
 
-// updateObjectTreatAsArray handles the case where the user is treating an object as an array. The behavior in MySQL here
+// updateObjectTreatAsArray handles the case where the user is treating an object or scalar as an array. The behavior in MySQL here
 // is a little nutty, but we try to match it as closely as possible. In particular, each mode has a different behavior,
-// and the behavior defies logic. This is basically mimicing MySQL because it's not dangerous, and there may be some crazy
+// and the behavior defies logic. This is  mimicking MySQL because it's not dangerous, and there may be some crazy
 // use case which expects this behavior.
 func updateObjectTreatAsArray(indexString string, doc interface{}, val interface{}, mode int, cursor *int) (interface{}, bool, *parseErr) {
 	parsedIndex, err := parseIndex(indexString, 0, cursor)
@@ -825,24 +839,34 @@ func updateObjectTreatAsArray(indexString string, doc interface{}, val interface
 	return doc, false, nil
 }
 
+// parseIndexResult is the result of parsing an index by the parseIndex function.
 type parseIndexResult struct {
-	underflow bool
-	overflow  bool
-	index     int
+	underflow bool // true if the index was under 0 - will only happen with last-1000, for example.
+	overflow  bool // true if the index was greater than the length of the array.
+	index     int  // the index to use. Will be 0 if underflow is true, or the length of the array if overflow is true.
 }
 
-func parseIndex(index string, lastIndex int, cursor *int) (*parseIndexResult, *parseErr) {
+// parseIndex parses an array index string. These are of the form:
+// 1. stantard integer
+// 2. "last"
+// 3. "last-NUMBER" - to get the second to last element in an array.
+// 4. "M to N", "last-4 to N", "M to last-4", "last-4 to last-2" (Currently we don't support this)
+//
+// White space is ignored completely.
+//
+// The lastIndex sets index of the last element. -1 for an empty array.
+func parseIndex(indexStr string, lastIndex int, cursor *int) (*parseIndexResult, *parseErr) {
 	// trim whitespace off the ends
-	index = strings.TrimSpace(index)
+	indexStr = strings.TrimSpace(indexStr)
 
-	if index == "last" {
+	if indexStr == "last" {
 		if lastIndex < 0 {
 			lastIndex = 0 // This happens for an empty array
 		}
 		return &parseIndexResult{index: lastIndex}, nil
 	} else {
 		// Attempt to split the string on "-". "last-2" gets the second to last element in an array.
-		parts := strings.Split(index, "-")
+		parts := strings.Split(indexStr, "-")
 		if len(parts) == 2 {
 			part1, part2 := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
 			if part1 == "last" {
@@ -865,9 +889,9 @@ func parseIndex(index string, lastIndex int, cursor *int) (*parseIndexResult, *p
 		}
 	}
 
-	val, err := strconv.Atoi(index)
+	val, err := strconv.Atoi(indexStr)
 	if err != nil {
-		msg := fmt.Sprintf("Invalid JSON path expression. Unable to convert %s to an int", index)
+		msg := fmt.Sprintf("Invalid JSON path expression. Unable to convert %s to an int", indexStr)
 		return nil, &parseErr{msg: msg, character: *cursor}
 	}
 

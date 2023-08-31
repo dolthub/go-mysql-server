@@ -1000,7 +1000,7 @@ var JsonReplaceTests = []JsonMutationTest{
 	},
 }
 
-func TestReplaceSet(t *testing.T) {
+func TestJsonReplace(t *testing.T) {
 	for _, test := range JsonReplaceTests {
 		t.Run("JSON replace: "+test.desc, func(t *testing.T) {
 			doc := MustJSON(test.doc)
