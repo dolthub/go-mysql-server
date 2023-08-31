@@ -198,9 +198,7 @@ func (c *coster) costMergeJoin(_ *sql.Context, n *MergeJoin, _ sql.StatsReader) 
 		return (l + r) * cpuCostFactor, nil
 	}
 
-	// Each comparison either compares a row on one child table with a constant, which reduces the number of rows from
-	// that child, or compares a column on each table, which reduces the expected number of collisions on the comparator.
-	// In either case, we assume a similar improvement in the selectivity of the join.
+	// Each comparison reduces the expected number of collisions on the comparator.
 	selectivity := math.Pow(perKeyCostReductionFactor, float64(len(leftCompareExprs)))
 	return (l + r + l*r*selectivity) * cpuCostFactor, nil
 }
