@@ -187,53 +187,34 @@ func TestSingleScript(t *testing.T) {
 	// t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "Drop primary key auto increment",
+			Name: "Add primary key column with auto increment, first",
 			SetUpScript: []string{
-				"CREATE TABLE test(pk int AUTO_INCREMENT PRIMARY KEY, val int)",
+				"CREATE TABLE t1 (i int, j int);",
+				"insert into t1 values (1,1), (2,2), (3,3)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "ALTER TABLE test DROP PRIMARY KEY",
-					ExpectedErr: sql.ErrWrongAutoKey,
+					Query:       "alter table t1 add column pk int primary key",
+					ExpectedErr: sql.ErrPrimaryKeyViolation,
 				},
 				{
-					Query: 				"ALTER TABLE test modify pk int",
+					Query:    "alter table t1 add column pk int primary key auto_increment first",
 					Expected: []sql.Row{{types.NewOkResult(0)}},
 				},
 				{
-					Query: "SHOW CREATE TABLE test",
-					Expected: []sql.Row{{"test",
-						"CREATE TABLE `test` (\n" +
-						"  `pk` int NOT NULL,\n" +
-						"  `val` int,\n" +
-						"  PRIMARY KEY (`pk`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-				},
-				{
-					Query: "ALTER TABLE test drop primary key",
-					Expected: []sql.Row{{types.NewOkResult(0)}},
-				},
-				{
-					Query: "SHOW CREATE TABLE test",
-					Expected: []sql.Row{{"test",
-						"CREATE TABLE `test` (\n" +
-								"  `pk` int NOT NULL,\n" +
-								"  `val` int\n" +
+					Query: "show create table t1",
+					Expected: []sql.Row{{"t1",
+						"CREATE TABLE `t1` (\n" +
+								"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+								"  `i` int,\n" +
+								"  `j` int,\n" +
+								"  PRIMARY KEY (`pk`)\n" +
 								") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 				},
 				{
-					Query: "INSERT INTO test VALUES (1, 1), (NULL, 1)",
-					ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
-				},
-				{
-					Query: "INSERT INTO test VALUES (2, 2), (3, 3)",
-					Expected: []sql.Row{{types.NewOkResult(2)}},
-				},
-				{
-					Query: "SELECT * FROM test ORDER BY pk",
-					Expected:  []sql.Row{
-						{2, 2},
-						{3, 3},
+					Query: "select pk from t1 order by pk",
+					Expected: []sql.Row{
+						{1}, {2}, {3},
 					},
 				},
 			},

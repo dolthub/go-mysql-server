@@ -2335,7 +2335,11 @@ func (t *Table) truncate(schema sql.PrimaryKeySchema) *Table {
 	t.columns = allColumns(schema)
 	t.schema = schema
 	t.insertPartIdx = 0
+	
 	t.autoIncVal = 0
+	if schema.HasAutoIncrement() {
+		t.autoIncVal = 1	
+	}
 	
 	return t
 }

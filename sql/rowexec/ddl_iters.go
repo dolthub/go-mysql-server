@@ -514,16 +514,22 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		if err == io.EOF {
 			break
 		} else if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return false, err
 		}
 
 		newRow, err := projectRowWithTypes(ctx, newSch, projections, r)
 		if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return false, err
 		}
 
 		err = i.validateNullability(ctx, newSch, newRow)
 		if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return false, err
 		}
 
@@ -1050,6 +1056,8 @@ func (c *createPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) e
 		if err == io.EOF {
 			break
 		} else if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return err
 		}
 
@@ -1157,6 +1165,8 @@ func (d *dropPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) err
 		if err == io.EOF {
 			break
 		} else if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return err
 		}
 
@@ -1377,11 +1387,15 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 		if err == io.EOF {
 			break
 		} else if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return false, err
 		}
 
 		newRow, err := ProjectRow(ctx, projections, r)
 		if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return false, err
 		}
 
@@ -1396,6 +1410,8 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 
 		err = inserter.Insert(ctx, newRow)
 		if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return false, err
 		}
 	}
@@ -1645,11 +1661,15 @@ func (i *dropColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable)
 		if err == io.EOF {
 			break
 		} else if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return false, err
 		}
 
 		newRow, err := ProjectRow(ctx, projections, r)
 		if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return false, err
 		}
 
@@ -1917,6 +1937,8 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 			if err == io.EOF {
 				break
 			} else if err != nil {
+				_ = inserter.DiscardChanges(ctx, err)
+				_ = inserter.Close(ctx)
 				return err
 			}
 
