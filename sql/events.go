@@ -65,11 +65,13 @@ type EventDefinition struct {
 	Status string
 	// The user or account who created this scheduled event.
 	Definer string
-	// The time that the event was created at.
+	// The SQL_MODE in effect when this event was created.
+	SqlMode string
+	// The time at which the event was created.
 	CreatedAt time.Time
-	// The time that the event was last altered at.
+	// The time at which the event was last altered.
 	LastAltered time.Time
-	// The time that the event was last executed at.
+	// The time at which the event was last executed.
 	LastExecuted time.Time
 
 	/* Fields parsed from the CREATE EVENT statement */

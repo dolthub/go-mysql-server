@@ -804,12 +804,12 @@ func (b *BaseBuilder) buildShowCreateEvent(ctx *sql.Context, n *plan.ShowCreateE
 
 	// TODO: fill sql_mode and time_zone with appropriate values
 	return sql.RowsToRowIter(sql.Row{
-		n.Event.Name,            // Event
-		"",                      // sql_mode
-		"SYSTEM",                // time_zone
-		n.Event.CreateStatement, // Create Event
-		characterSetClient,      // character_set_client
-		collationConnection,     // collation_connection
-		collationServer,         // Database Collation
+		n.Event.Name,                   // Event
+		n.Event.SqlMode,                // sql_mode
+		"SYSTEM",                       // time_zone
+		n.Event.CreateEventStatement(), // Create Event
+		characterSetClient,             // character_set_client
+		collationConnection,            // collation_connection
+		collationServer,                // Database Collation
 	}), nil
 }
