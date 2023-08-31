@@ -301,6 +301,26 @@ WHERE
 			"",
 	},
 	{
+		Query: "select * from asset am join asset am2 on (am.orgId = am2.orgId and am.name = am2.name and am.val = am2.val);",
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [am.id:5!null, am.orgId:6, am.assetId:7, am.name:8, am.val:9, am2.id:0!null, am2.orgId:1, am2.assetId:2, am2.name:3, am2.val:4]\n" +
+			" └─ MergeJoin\n" +
+			"     ├─ cmp: Eq\n" +
+			"     │   ├─ TUPLE(am2.orgId:1, am2.name:3, am2.val:4)\n" +
+			"     │   └─ TUPLE(am.orgId:6, am.name:8, am.val:9)\n" +
+			"     ├─ TableAlias(am2)\n" +
+			"     │   └─ IndexedTableAccess(asset)\n" +
+			"     │       ├─ index: [asset.orgId,asset.name,asset.val]\n" +
+			"     │       ├─ static: [{[NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			"     │       └─ columns: [id orgid assetid name val]\n" +
+			"     └─ TableAlias(am)\n" +
+			"         └─ IndexedTableAccess(asset)\n" +
+			"             ├─ index: [asset.orgId,asset.name,asset.val]\n" +
+			"             ├─ static: [{[NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			"             └─ columns: [id orgid assetid name val]\n" +
+			"",
+	},
+	{
 		Query: `
 select /*+ LOOKUP_JOIN(style, dimension) LOOKUP_JOIN(dimension, color) */ style.assetId
 from asset style
@@ -4160,7 +4180,7 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b CROSS JOIN mytable c CROSS JOIN mytable d where a.i = b.i AND b.s = c.s`,
-		ExpectedPlan: "Project\n" +
+		ExpectedPlan: "Projct\n" +
 			" ├─ columns: [a.i:3!null, a.s:4!null]\n" +
 			" └─ CrossHashJoin\n" +
 			"     ├─ TableAlias(d)\n" +
