@@ -615,13 +615,43 @@ func (t *Table) AutoIncrementSetter(ctx *sql.Context) sql.AutoIncrementSetter {
 }
 
 func (t *Table) getTableEditor(ctx *sql.Context) sql.TableEditor {
-	uniqIdxCols, prefixLengths := t.indexColsForTableEditor()
-	
-	tableSets := t.getFulltextTableSets(ctx)
+	editor := t.newTableEditor(ctx)
 
+	tableSets := t.getFulltextTableSets(ctx)
+	if len(tableSets) > 0 {
+		editor = t.newFulltextTableEditor(ctx, editor, tableSets)
+	}
+
+	return editor
+}
+
+func (t *Table) getRewriteTableEditor(ctx *sql.Context) sql.TableEditor {
+	editor := t.newTableEditor(ctx)
+
+	tableSets := t.getFulltextTableSets(ctx)
+	if len(tableSets) > 0 {
+		// table editors used for rewrite need to truncate the fulltext tables as well as the primary table (which happens 
+		// in the RewriteInserter method for all tables)
+		newTableSets := make([]fulltext.TableSet, len(tableSets))
+		for i := range tableSets {
+			ts := *(&tableSets[i])
+			ts.RowCount = ts.RowCount.(*Table).copy().truncate(ts.RowCount.(*Table).schema)
+			ts.DocCount = ts.DocCount.(*Table).copy().truncate(ts.DocCount.(*Table).schema)
+			ts.GlobalCount = ts.GlobalCount.(*Table).copy().truncate(ts.GlobalCount.(*Table).schema)
+			ts.Position = ts.Position.(*Table).copy().truncate(ts.Position.(*Table).schema)
+			newTableSets[i] = ts
+		}
+		editor = t.newFulltextTableEditor(ctx, editor, newTableSets)
+	}
+
+	return editor
+}
+
+func (t *Table) newTableEditor(ctx *sql.Context) sql.TableEditor {
 	sess := SessionFromContext(ctx)
 	ed := sess.editAccumulator(t)
 
+	uniqIdxCols, prefixLengths := t.indexColsForTableEditor()
 	var editor sql.TableEditor = &tableEditor{
 		editedTable:       ed.Table(),
 		targetTable:       t,
@@ -632,26 +662,26 @@ func (t *Table) getTableEditor(ctx *sql.Context) sql.TableEditor {
 		uniqueIdxCols:     uniqIdxCols,
 		prefixLengths:     prefixLengths,
 	}
-
-	if len(tableSets) > 0 {
-		configTbl, ok, err := t.db.GetTableInsensitive(ctx, t.fullTextConfigTableName)
-		if err != nil {
-			panic(err)
-		}
-		if !ok { // This should never happen
-			panic(fmt.Sprintf("table `%s` declares the table `%s` as a FULLTEXT config table, but it could not be found", t.name, configTbl))
-		}
-		ftEditor, err := fulltext.CreateEditor(ctx, t, configTbl.(fulltext.EditableTable), tableSets...)
-		if err != nil {
-			panic(err)
-		}
-		editor, err = fulltext.CreateMultiTableEditor(ctx, editor, ftEditor)
-		if err != nil {
-			panic(err)
-		}
-	}
-
 	return editor
+}
+
+func (t *Table) newFulltextTableEditor(ctx *sql.Context, parentEditor sql.TableEditor, tableSets []fulltext.TableSet) sql.TableEditor {
+	configTbl, ok, err := t.db.GetTableInsensitive(ctx, t.fullTextConfigTableName)
+	if err != nil {
+		panic(err)
+	}
+	if !ok { // This should never happen
+		panic(fmt.Sprintf("table `%s` declares the table `%s` as a FULLTEXT config table, but it could not be found", t.name, configTbl))
+	}
+	ftEditor, err := fulltext.CreateEditor(ctx, t, configTbl.(fulltext.EditableTable), tableSets...)
+	if err != nil {
+		panic(err)
+	}
+	parentEditor, err = fulltext.CreateMultiTableEditor(ctx, parentEditor, ftEditor)
+	if err != nil {
+		panic(err)
+	}
+	return parentEditor
 }
 
 func (t *Table) indexColsForTableEditor() ([][]int, [][]uint16) {
@@ -2226,7 +2256,7 @@ func (t Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.Primar
 		return nil, err
 	}
 	
-	return tableUnderEdit.getTableEditor(ctx), nil
+	return tableUnderEdit.getRewriteTableEditor(ctx), nil
 }
 
 // modifyFulltextIndexesForRewrite will modify the fulltext indexes of a table to correspond to a new schema before a rewrite.
