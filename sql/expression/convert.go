@@ -104,6 +104,13 @@ func NewConvertWithLengthAndScale(expr sql.Expression, castToType string, typeLe
 // If neither sql.Type represent number, then converted to string. Otherwise, we try to get
 // the appropriate type to avoid any precision loss.
 func GetConvertToType(l, r sql.Type) string {
+	if types.Null == l {
+		return GetConvertToType(r, r)
+	}
+	if types.Null == r {
+		return GetConvertToType(l, l)
+	}
+
 	if !types.IsNumber(l) || !types.IsNumber(r) {
 		return ConvertToChar
 	}

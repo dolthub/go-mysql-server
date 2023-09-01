@@ -477,7 +477,7 @@ func TestAnalyzer_Exp(t *testing.T) {
 			require.NoError(t, err)
 
 			ctx := enginetest.NewContext(harness)
-			b, _ := planbuilder.New(ctx, e.EngineAnalyzer().Catalog)
+			b := planbuilder.New(ctx, e.EngineAnalyzer().Catalog)
 			parsed, _, _, err := b.Parse(tt.query, false)
 			require.NoError(t, err)
 

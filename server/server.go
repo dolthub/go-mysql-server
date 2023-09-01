@@ -167,8 +167,20 @@ func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handle
 // Start starts accepting connections on the server.
 func (s *Server) Start() error {
 	logrus.Infof("Server ready. Accepting connections.")
+	s.WarnIfLoadFileInsecure()
 	s.Listener.Accept()
 	return nil
+}
+
+func (s *Server) WarnIfLoadFileInsecure() {
+	_, v, ok := sql.SystemVariables.GetGlobal("secure_file_priv")
+	if ok {
+		if v == "" {
+			logrus.Warn("secure_file_priv is set to \"\", which is insecure.")
+			logrus.Warn("Any user with GRANT FILE privileges will be able to read any file which the sql-server process can read.")
+			logrus.Warn("Please consider restarting the server with secure_file_priv set to a safe (or non-existant) directory.")
+		}
+	}
 }
 
 // Close closes the server connection.

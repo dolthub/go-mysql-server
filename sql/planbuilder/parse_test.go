@@ -1701,7 +1701,7 @@ Project
 	ctx := sql.NewEmptyContext()
 	ctx.SetCurrentDatabase("mydb")
 	cat := newTestCatalog()
-	b, _ := New(ctx, cat)
+	b := New(ctx, cat)
 
 	for _, tt := range tests {
 		t.Run(tt.Query, func(t *testing.T) {
@@ -1712,7 +1712,7 @@ Project
 			require.NoError(t, err)
 
 			outScope := b.build(nil, stmt, tt.Query)
-			defer b.reset()
+			defer b.Reset()
 			plan := sql.DebugString(outScope.node)
 
 			if rewrite {

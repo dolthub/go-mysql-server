@@ -72,20 +72,20 @@ type TemporaryUser struct {
 
 // PreparedDataCache manages all the prepared data for every session for every query for an engine
 type PreparedDataCache struct {
-	data map[uint32]map[string]*sqlparser.ParsedQuery
+	data map[uint32]map[string]sqlparser.Statement
 	mu   *sync.Mutex
 }
 
 func NewPreparedDataCache() *PreparedDataCache {
 	return &PreparedDataCache{
-		data: make(map[uint32]map[string]*sqlparser.ParsedQuery),
+		data: make(map[uint32]map[string]sqlparser.Statement),
 		mu:   &sync.Mutex{},
 	}
 }
 
 // GetCachedStmt will retrieve the prepared sql.Node associated with the ctx.SessionId and query if it exists
 // it will return nil, false if the query does not exist
-func (p *PreparedDataCache) GetCachedStmt(sessId uint32, query string) (*sqlparser.ParsedQuery, bool) {
+func (p *PreparedDataCache) GetCachedStmt(sessId uint32, query string) (sqlparser.Statement, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if sessData, ok := p.data[sessId]; ok {
@@ -96,7 +96,7 @@ func (p *PreparedDataCache) GetCachedStmt(sessId uint32, query string) (*sqlpars
 }
 
 // GetSessionData returns all the prepared queries for a particular session
-func (p *PreparedDataCache) GetSessionData(sessId uint32) map[string]*sqlparser.ParsedQuery {
+func (p *PreparedDataCache) GetSessionData(sessId uint32) map[string]sqlparser.Statement {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.data[sessId]
@@ -114,10 +114,9 @@ func (p *PreparedDataCache) CacheStmt(sessId uint32, query string, stmt sqlparse
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if _, ok := p.data[sessId]; !ok {
-		p.data[sessId] = make(map[string]*sqlparser.ParsedQuery)
+		p.data[sessId] = make(map[string]sqlparser.Statement)
 	}
-	prep := sqlparser.NewParsedQuery(stmt)
-	p.data[sessId][query] = prep
+	p.data[sessId][query] = stmt
 }
 
 // UncacheStmt removes the prepared node associated with a ctx.SessionId and query to it
@@ -207,11 +206,15 @@ func (e *Engine) PrepareQuery(
 	query string,
 ) (sql.Node, error) {
 	sqlMode := sql.LoadSqlMode(ctx)
-	node, err := planbuilder.ParseWithOptions(ctx, e.Analyzer.Catalog, query, sqlMode.ParserOptions())
+
+	stmt, _, err := sqlparser.ParseOneWithOptions(query, sqlMode.ParserOptions())
 	if err != nil {
 		return nil, err
 	}
-	stmt, _, err := sqlparser.ParseOneWithOptions(query, sqlMode.ParserOptions())
+
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog)
+	node, err := binder.BindOnly(stmt, query)
+
 	if err != nil {
 		return nil, err
 	}
@@ -339,12 +342,10 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 // instead of parsing the query from text.
 func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
 	var err error
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog)
 	if prep, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query); ok {
-		parsed = nil
-		query, err = prep.GenerateQuery(bindings, nil)
-		if err != nil {
-			return nil, nil, err
-		}
+		parsed = prep
+		binder.SetBindings(bindings)
 	} else if len(bindings) > 0 {
 		parsed = nil
 		_, err := e.PrepareQuery(ctx, query)
@@ -353,11 +354,12 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 		}
 		prep, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
 		if ok {
-			query, err = prep.GenerateQuery(bindings, nil)
-			if err != nil {
-				return nil, nil, err
-			}
+			parsed = prep
+			binder.SetBindings(bindings)
 		}
+	}
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// Give the integrator a chance to reject the session before proceeding
@@ -371,7 +373,6 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 		return nil, nil, err
 	}
 
-	sqlMode := sql.LoadSqlMode(ctx)
 	if err != nil {
 		err2 := clearAutocommitTransaction(ctx)
 		if err2 != nil {
@@ -381,7 +382,7 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 	}
 	var bound sql.Node
 	if parsed == nil {
-		bound, err = planbuilder.ParseWithOptions(ctx, e.Analyzer.Catalog, query, sqlMode.ParserOptions())
+		bound, err = binder.ParseOne(query)
 		if err != nil {
 			err2 := clearAutocommitTransaction(ctx)
 			if err2 != nil {
@@ -390,11 +391,7 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 			return nil, nil, err
 		}
 	} else {
-		b, err := planbuilder.New(ctx, e.Analyzer.Catalog)
-		if err != nil {
-			return nil, nil, err
-		}
-		bound, err = b.BindOnly(parsed, query)
+		bound, err = binder.BindOnly(parsed, query)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -434,11 +431,8 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 				bindings[fmt.Sprintf("v%d", i)] = sqltypes.StringBindVariable(name.String())
 			}
 		}
-		query, err = prep.GenerateQuery(bindings, nil)
-		if err != nil {
-			return nil, nil, err
-		}
-		bound, err = planbuilder.ParseWithOptions(ctx, e.Analyzer.Catalog, query, sqlMode.ParserOptions())
+		binder.SetBindings(bindings)
+		bound, err = binder.BindOnly(prep, query)
 		if err != nil {
 			err2 := clearAutocommitTransaction(ctx)
 			if err2 != nil {
@@ -454,6 +448,8 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 	var analyzed sql.Node
 	switch n := bound.(type) {
 	case *plan.PrepareQuery:
+		sqlMode := sql.LoadSqlMode(ctx)
+
 		// we have to name-resolve to check for structural errors, but we do
 		// not to cache the name-bound query yet.
 		//todo(max): improve name resolution so we can cache post name-binding.
@@ -496,6 +492,12 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 		analyzed, err = e.analyzeQuery(ctx, query, bound)
 		if err != nil {
 			return nil, nil, err
+		}
+	}
+
+	if bindCtx := binder.BindCtx(); bindCtx != nil {
+		if unused := bindCtx.UnusedBindings(); len(unused) > 0 {
+			return nil, nil, fmt.Errorf("invalid arguments. expected: %d, found: %d", len(bindCtx.Bindings)-len(unused), len(bindCtx.Bindings))
 		}
 	}
 

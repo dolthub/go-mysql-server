@@ -44,7 +44,6 @@ var OnceBeforeDefault = []Rule{
 // DefaultRules to apply when analyzing nodes.
 var DefaultRules = []Rule{
 	{validateStarExpressionsId, validateStarExpressions}, //TODO
-	{flattenTableAliasesId, flattenTableAliases},         //TODO
 	{pushdownSubqueryAliasFiltersId, pushdownSubqueryAliasFilters},
 	{pruneTablesId, pruneTables},
 	{fixupAuxiliaryExprsId, fixupAuxiliaryExprs},
@@ -59,7 +58,6 @@ var OnceAfterDefault = []Rule{
 	{hoistSelectExistsId, hoistSelectExists},
 	{finalizeUnionsId, finalizeUnions},
 	{loadTriggersId, loadTriggers},
-	{loadEventsId, loadEvents},
 	{processTruncateId, processTruncate},
 	{stripTableNameInDefaultsId, stripTableNamesFromColumnDefaults},
 	{pushFiltersId, pushFilters},

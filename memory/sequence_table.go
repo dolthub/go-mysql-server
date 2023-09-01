@@ -21,7 +21,7 @@ var _ sql.TableNode = IntSequenceTable{}
 // of integers.
 type IntSequenceTable struct {
 	name string
-	Len  int
+	Len  int64
 }
 
 func (s IntSequenceTable) UnderlyingTable() sql.Table {
@@ -48,7 +48,7 @@ func (s IntSequenceTable) NewInstance(_ *sql.Context, _ sql.Database, args []sql
 	if !ok {
 		return nil, fmt.Errorf("%w; sequence table expects 2nd argument to be a sequence length integer", err)
 	}
-	return IntSequenceTable{name: name, Len: int(length.(int64))}, nil
+	return IntSequenceTable{name: name, Len: length.(int64)}, nil
 }
 
 func (s IntSequenceTable) Resolved() bool {
@@ -139,8 +139,8 @@ func (s IntSequenceTable) Description() string {
 var _ sql.RowIter = (*SequenceTableFnRowIter)(nil)
 
 type SequenceTableFnRowIter struct {
-	n int
-	i int
+	n int64
+	i int64
 }
 
 func (i *SequenceTableFnRowIter) Next(_ *sql.Context) (sql.Row, error) {
@@ -159,18 +159,18 @@ func (i *SequenceTableFnRowIter) Close(_ *sql.Context) error {
 var _ sql.Partition = (*sequencePartition)(nil)
 
 type sequencePartition struct {
-	min, max int
+	min, max int64
 }
 
 func (s sequencePartition) Key() []byte {
 
-	return binary.LittleEndian.AppendUint32(binary.LittleEndian.AppendUint32(nil, uint32(s.min)), uint32(s.max))
+	return binary.LittleEndian.AppendUint64(binary.LittleEndian.AppendUint64(nil, uint64(s.min)), uint64(s.max))
 }
 
 // Partitions is a sql.Table interface function that returns a partition of the data. This data has a single partition.
 func (s IntSequenceTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 
-	return sql.PartitionsToPartitionIter(&sequencePartition{min: 0, max: s.Len - 1}), nil
+	return sql.PartitionsToPartitionIter(&sequencePartition{min: 0, max: int64(s.Len) - 1}), nil
 }
 
 // PartitionRows is a sql.Table interface function that takes a partition and returns all rows in that partition.
@@ -180,11 +180,11 @@ func (s IntSequenceTable) PartitionRows(ctx *sql.Context, partition sql.Partitio
 	if !ok {
 		return &SequenceTableFnRowIter{i: 0, n: s.Len}, nil
 	}
-	min := 0
+	min := int64(0)
 	if sp.min > min {
 		min = sp.min
 	}
-	max := s.Len - 1
+	max := int64(s.Len) - 1
 	if sp.max < max {
 		max = sp.max
 	}
@@ -204,9 +204,15 @@ func (s IntSequenceTable) LookupPartitions(context *sql.Context, lookup sql.Inde
 	if !ok {
 		return s.Partitions(context)
 	}
-	min := below.Key.(int8)
-	max := above.Key.(int8)
-	return sql.PartitionsToPartitionIter(&sequencePartition{min: int(min), max: int(max)}), nil
+	min, _, err := s.Schema()[0].Type.Convert(below.Key)
+	if err != nil {
+		return nil, err
+	}
+	max, _, err := s.Schema()[0].Type.Convert(above.Key)
+	if err != nil {
+		return nil, err
+	}
+	return sql.PartitionsToPartitionIter(&sequencePartition{min: min.(int64), max: max.(int64)}), nil
 }
 
 func (s IntSequenceTable) IndexedAccess(ctx *sql.Context, lookup sql.IndexLookup) (sql.IndexedTable, error) {
