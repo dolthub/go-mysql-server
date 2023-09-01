@@ -816,19 +816,6 @@ func satisfiesScalarRefs(e memo.ScalarExpr, grp *memo.ExprGroup) bool {
 	return e.Group().ScalarProps().Tables.Difference(grp.RelProps.OutputTables()).Len() == 0
 }
 
-// getColumnRefFromScalar returns the first column reference used in a scalar expression.
-func getColumnRefFromScalar(s memo.ScalarExpr) *memo.ColRef {
-	var result *memo.ColRef
-	memo.DfsScalar(s, func(e memo.ScalarExpr) (err error) {
-		if c, ok := e.(*memo.ColRef); ok {
-			result = c
-			return memo.HaltErr
-		}
-		return
-	})
-	return result
-}
-
 // addMergeJoins will add merge join operators to join relations
 // with native indexes providing sort enforcement on an equality
 // filter.
@@ -937,16 +924,10 @@ func addMergeJoins(m *memo.Memo) error {
 						}
 
 						// To make the index scan, we need the first non-constant column in each index.
-						leftColIdx := getColumnRefFromScalar(matchedEqFilters[0].filter.Left.Scalar)
-						if leftColIdx == nil {
-							continue
-						}
-						rightColIdx := getColumnRefFromScalar(matchedEqFilters[0].filter.Right.Scalar)
-						if rightColIdx == nil {
-							continue
-						}
-						lIndexScan := makeIndexScan(lIndex, leftColIdx.Col, lFilters)
-						rIndexScan := makeIndexScan(rIndex, rightColIdx.Col, rFilters)
+						leftColId := getOnlyColumnId(matchedEqFilters[0].filter.Left)
+						rightColId := getOnlyColumnId(matchedEqFilters[0].filter.Right)
+						lIndexScan := makeIndexScan(lIndex, leftColId, lFilters)
+						rIndexScan := makeIndexScan(rIndex, rightColId, rFilters)
 						m.MemoizeMergeJoin(e.Group(), join.Left, join.Right, lIndexScan, rIndexScan, jb.Op.AsMerge(), newFilters, false)
 					}
 				}
@@ -955,6 +936,13 @@ func addMergeJoins(m *memo.Memo) error {
 		}
 		return nil
 	})
+}
+
+// getOnlyColumnId returns the id of the only column referenced in an expression group. We only call this
+// on expressions that are already verified to have exactly one referenced column.
+func getOnlyColumnId(group *memo.ExprGroup) sql.ColumnId {
+	id, _ := group.ScalarProps().Cols.Next(1)
+	return id
 }
 
 func combineIntoTuple(m *memo.Memo, filters []filterAndPosition) *memo.Equal {
@@ -995,8 +983,7 @@ func rightIndexMatchesFilters(rIndex *memo.Index, constants sql.ColSet, filters 
 			continue
 		}
 		matched := false
-		// A column
-		for getColumnRefFromScalar(filters[filterPos].filter.Right.Scalar).Col == columnIds[columnPos] {
+		for getOnlyColumnId(filters[filterPos].filter.Right) == columnIds[columnPos] {
 			matched = true
 			filterPos++
 			if filterPos >= len(filters) {
@@ -1027,7 +1014,7 @@ func matchedFiltersForLeftIndex(lIndex *memo.Index, constants sql.ColSet, filter
 		}
 		found := false
 		for _, filter := range filters {
-			if getColumnRefFromScalar(filter.filter.Left.Scalar).Col == idxCol {
+			if getOnlyColumnId(filter.filter.Left) == idxCol {
 				matchedFilters = append(matchedFilters, filter)
 				found = true
 				break
