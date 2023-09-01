@@ -415,41 +415,6 @@ type JSONMerge struct {
 	sql.Expression
 }
 
-// JSON_REMOVE(json_doc, path[, path] ...)
-//
-// JSONRemove Removes data from a JSON document and returns the result. Returns NULL if any argument is NULL. An error
-// occurs if the json_doc argument is not a valid JSON document or any path argument is not a valid path expression or
-// is $ or contains a * or ** wildcard. The path arguments are evaluated left to right. The document produced by
-// evaluating one path becomes the new value against which the next path is evaluated. It is not an error if the element
-// to be removed does not exist in the document; in that case, the path does not affect the document.
-//
-// https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-remove
-type JSONRemove struct {
-	sql.Expression
-}
-
-var _ sql.FunctionExpression = JSONRemove{}
-
-// NewJSONRemove creates a new JSONRemove function.
-func NewJSONRemove(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONRemove{}.FunctionName())
-}
-
-// FunctionName implements sql.FunctionExpression
-func (j JSONRemove) FunctionName() string {
-	return "json_remove"
-}
-
-// Description implements sql.FunctionExpression
-func (j JSONRemove) Description() string {
-	return "removes data from JSON document."
-}
-
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONRemove) IsUnsupported() bool {
-	return true
-}
-
 // JSON_REPLACE(json_doc, path, val[, path, val] ...)
 //
 // JSONReplace Replaces existing values in a JSON document and returns the result. Returns NULL if any argument is NULL.
