@@ -298,36 +298,9 @@ func (b *Builder) loadAllEventDetails(db sql.Database) []sql.EventDefinition {
 		if err != nil {
 			b.handleErr(err)
 		}
-		loadedEvents := make([]sql.EventDefinition, len(events))
-		for i, event := range events {
-			loadedEvents[i] = b.loadEventDetails(event)
-		}
-		return loadedEvents
+		return events
 	}
 	return nil
-}
-
-func (b *Builder) loadEventDetails(event sql.EventDefinition) sql.EventDefinition {
-	createEventStatement := event.CreateEventStatement()
-	parsed, _, err := ast.ParseOneWithOptions(createEventStatement,
-		sql.NewSqlModeFromString(event.SqlMode).ParserOptions())
-	if err != nil {
-		b.handleErr(fmt.Errorf("failed to parse create event '%s': %w", event.Name, err))
-	}
-	eventScope := b.build(b.newScope(), parsed, createEventStatement)
-	eventPlan, ok := eventScope.node.(*plan.CreateEvent)
-	if !ok {
-		err := sql.ErrEventCreateStatementInvalid.New(createEventStatement)
-		b.handleErr(err)
-	}
-	ed, err := eventPlan.GetParsedEventDefinition(b.ctx, event.CreatedAt, event.LastAltered, event.LastExecuted, event.TimezoneOffset)
-	if err != nil {
-		b.handleErr(err)
-	}
-
-	ed.SqlMode = event.SqlMode
-
-	return ed
 }
 
 func (b *Builder) buildShowProcedure(inScope *scope, s *ast.Show) (outScope *scope) {

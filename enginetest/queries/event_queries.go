@@ -285,6 +285,10 @@ var EventTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				Query:    "SHOW CREATE EVENT my_event1;",
+				Expected: []sql.Row{{"my_event1", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", "SYSTEM", "CREATE DEFINER = `root`@`localhost` EVENT `my_event1` ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION PRESERVE DISABLE DO INSERT INTO totals VALUES (1)", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
+			},
+			{
 				Query:    "ALTER EVENT my_event1 RENAME TO newEventName;",
 				Expected: []sql.Row{{types.OkResult{}}},
 			},

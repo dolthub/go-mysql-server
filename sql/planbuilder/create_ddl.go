@@ -379,7 +379,7 @@ func (b *Builder) buildAlterEvent(inScope *scope, query string, c *ast.DDL) (out
 		b.handleErr(err)
 	}
 
-	eventDef, exists, err := eventDb.GetEvent(b.ctx, eventName)
+	event, exists, err := eventDb.GetEvent(b.ctx, eventName)
 	if err != nil {
 		b.handleErr(err)
 	}
@@ -398,7 +398,7 @@ func (b *Builder) buildAlterEvent(inScope *scope, query string, c *ast.DDL) (out
 		alterComment, newComment,
 		alterDefinition, newDefinitionStr, newDefinition,
 	)
-	alterEvent.Event = b.loadEventDetails(eventDef)
+	alterEvent.Event = event
 	outScope.node = alterEvent
 	return
 }
