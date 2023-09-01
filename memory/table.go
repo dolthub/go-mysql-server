@@ -1886,7 +1886,7 @@ func (t Table) copy() *Table {
 	for k, v := range t.partitions {
 		data := make([]sql.Row, len(v))
 		copy(data, v)
-		parts[k] = v
+		parts[k] = data
 	}
 	
 	keys := make([][]byte, len(t.partitionKeys))
