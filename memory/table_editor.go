@@ -284,8 +284,6 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val uint64) error {
 	t.editedTable.autoIncVal = val
 	return nil
-	// TODO: this seems like a bug, we should be closing this in the engine
-	// return t.Close(ctx)
 }
 
 func (t *tableEditor) IndexedAccess(ctx *sql.Context, i sql.IndexLookup) (sql.IndexedTable, error) {
