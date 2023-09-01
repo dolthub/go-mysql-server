@@ -193,7 +193,7 @@ func (c *coster) costMergeJoin(_ *sql.Context, n *MergeJoin, _ sql.StatsReader) 
 		rightCompareExprs = []*ExprGroup{comparer.Right}
 	}
 
-	if isLinearMerge(n, leftCompareExprs, rightCompareExprs) {
+	if isInjectiveMerge(n, leftCompareExprs, rightCompareExprs) {
 		// We're guarenteed that the execution will never need to iterate over multiple rows in memory.
 		return (l + r) * cpuCostFactor, nil
 	}
@@ -203,18 +203,18 @@ func (c *coster) costMergeJoin(_ *sql.Context, n *MergeJoin, _ sql.StatsReader) 
 	return (l + r + l*r*selectivity) * cpuCostFactor, nil
 }
 
-// isLinearMerge determines whether either of a merge join's child indexes returns only unique values for the merge
+// isInjectiveMerge determines whether either of a merge join's child indexes returns only unique values for the merge
 // comparator.
-func isLinearMerge(n *MergeJoin, leftCompareExprs, rightCompareExprs []*ExprGroup) bool {
+func isInjectiveMerge(n *MergeJoin, leftCompareExprs, rightCompareExprs []*ExprGroup) bool {
 	{
 		keyExprs, nullmask := keyExprsForIndexFromTupleComparison(n.Left.Id, n.InnerScan.Idx.Cols(), leftCompareExprs, rightCompareExprs)
-		if isUniqueLookup(n.InnerScan.Idx, n.JoinBase, keyExprs, nullmask) {
+		if isInjectiveLookup(n.InnerScan.Idx, n.JoinBase, keyExprs, nullmask) {
 			return true
 		}
 	}
 	{
 		keyExprs, nullmask := keyExprsForIndexFromTupleComparison(n.Right.Id, n.OuterScan.Idx.Cols(), leftCompareExprs, rightCompareExprs)
-		if isUniqueLookup(n.OuterScan.Idx, n.JoinBase, keyExprs, nullmask) {
+		if isInjectiveLookup(n.OuterScan.Idx, n.JoinBase, keyExprs, nullmask) {
 			return true
 		}
 	}
@@ -312,13 +312,15 @@ func (c *coster) costDistinct(_ *sql.Context, n *Distinct, _ sql.StatsReader) (f
 // A join with a selectivity of k will return k*(n*m) rows.
 // Special case: A join with a selectivity of 0 will return n rows.
 func lookupJoinSelectivity(l *Lookup) float64 {
-	if isUniqueLookup(l.Index, l.Parent, l.KeyExprs, l.Nullmask) {
+	if isInjectiveLookup(l.Index, l.Parent, l.KeyExprs, l.Nullmask) {
 		return 0
 	}
 	return math.Pow(perKeyCostReductionFactor, float64(len(l.KeyExprs)))
 }
 
-func isUniqueLookup(idx *Index, joinBase *JoinBase, keyExprs []ScalarExpr, nullMask []bool) bool {
+// isInjectiveLookup returns whether every lookup with the given key expressions is guarenteed to return
+// at most one row.
+func isInjectiveLookup(idx *Index, joinBase *JoinBase, keyExprs []ScalarExpr, nullMask []bool) bool {
 	if !idx.SqlIdx().IsUnique() {
 		return false
 	}
