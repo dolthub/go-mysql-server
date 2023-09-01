@@ -313,47 +313,6 @@ func (j JSONArrayInsert) IsUnsupported() bool {
 	return true
 }
 
-// JSON_INSERT(json_doc, path, val[, path, val] ...)
-//
-// JSONInsert Inserts data into a JSON document and returns the result. Returns NULL if any argument is NULL. An error
-// occurs if the json_doc argument is not a valid JSON document or any path argument is not a valid path expression or
-// contains a * or ** wildcard. The path-value pairs are evaluated left to right. The document produced by evaluating
-// one pair becomes the new value against which the next pair is evaluated. A path-value pair for an existing path in
-// the document is ignored and does not overwrite the existing document value. A path-value pair for a nonexisting path
-// in the document adds the value to the document if the path identifies one of these types of values:
-//   - A member not present in an existing object. The member is added to the object and associated with the new value.
-//   - A position past the end of an existing array. The array is extended with the new value. If the existing value is
-//     not an array, it is autowrapped as an array, then extended with the new value.
-//
-// Otherwise, a path-value pair for a nonexisting path in the document is ignored and has no effect.
-//
-// https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-insert
-type JSONInsert struct {
-	sql.Expression
-}
-
-var _ sql.FunctionExpression = JSONInsert{}
-
-// NewJSONInsert creates a new JSONInsert function.
-func NewJSONInsert(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONInsert{}.FunctionName())
-}
-
-// FunctionName implements sql.FunctionExpression
-func (j JSONInsert) FunctionName() string {
-	return "json_insert"
-}
-
-// Description implements sql.FunctionExpression
-func (j JSONInsert) Description() string {
-	return "inserts data into JSON document"
-}
-
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONInsert) IsUnsupported() bool {
-	return true
-}
-
 // JSON_MERGE_PATCH(json_doc, json_doc[, json_doc] ...)
 //
 // JSONMergePatch Performs an RFC 7396 compliant merge of two or more JSON documents and returns the merged result,
