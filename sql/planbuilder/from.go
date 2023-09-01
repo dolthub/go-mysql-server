@@ -285,7 +285,11 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 			if t.As.String() != "" {
 				tAlias := strings.ToLower(t.As.String())
 				outScope.setTableAlias(tAlias)
-				outScope.node = plan.NewTableAlias(tAlias, outScope.node)
+				var err error
+				outScope.node, err = b.f.buildTableAlias(tAlias, outScope.node)
+				if err != nil {
+					b.handleErr(err)
+				}
 			}
 		case *ast.Subquery:
 			if t.As.IsEmpty() {
@@ -479,18 +483,24 @@ func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope
 	}
 
 	// Table Function must always have an alias, pick function name as alias if none is provided
-	var newAlias *plan.TableAlias
+	var name string
+	var newAlias sql.Node
 	if t.Alias.IsEmpty() {
-		newAlias = plan.NewTableAlias(t.Name, newInstance)
+		name = t.Name
+		newAlias = plan.NewTableAlias(name, newInstance)
 	} else {
-		newAlias = plan.NewTableAlias(t.Alias.String(), newInstance)
+		name = t.Alias.String()
+		newAlias, err = b.f.buildTableAlias(name, newInstance)
+		if err != nil {
+			b.handleErr(err)
+		}
 	}
 
 	outScope.node = newAlias
 	for _, c := range newAlias.Schema() {
 		outScope.newColumn(scopeColumn{
 			db:    database.Name(),
-			table: newAlias.Name(),
+			table: name,
 			col:   c.Name,
 			typ:   c.Type,
 		})
