@@ -19,7 +19,6 @@ import (
 	"log"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/enginetest"
@@ -191,31 +190,36 @@ func TestSingleScript(t *testing.T) {
 			Name: "Self-referential child column follows parent CASCADE",
 			SetUpScript: []string{
 				"ALTER TABLE parent ADD CONSTRAINT fk_named FOREIGN KEY (v2) REFERENCES parent(v1) ON UPDATE CASCADE ON DELETE CASCADE;",
-				"INSERT INTO parent VALUES (1, 1, 1), (2, 2, 1), (3, 3, NULL);",
-				"UPDATE parent SET v1 = 1 WHERE id = 1;",
-				"UPDATE parent SET v1 = 4 WHERE id = 3;",
-				"DELETE FROM parent WHERE id = 3;",
+				// "INSERT INTO parent VALUES (1, 1, 1), (2, 2, 1), (3, 3, NULL);",
+				// "UPDATE parent SET v1 = 1 WHERE id = 1;",
+				// "UPDATE parent SET v1 = 4 WHERE id = 3;",
+				// "DELETE FROM parent WHERE id = 3;",
+				"INSERT INTO parent VALUES (1, 1, 1), (2, 2, 2);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
+				// {
+				// 	Query:       "UPDATE parent SET v1 = 2;",
+				// 	ExpectedErr: sql.ErrForeignKeyParentViolation,
+				// },
+				// {
+				// 	Query:    "REPLACE INTO parent VALUES (1, 1, 1), (2, 2, 2);",
+				// 	Expected: []sql.Row{{types.NewOkResult(3)}},
+				// },
+				// {
+				// 	Query:    "SELECT * FROM parent;",
+				// 	Expected: []sql.Row{{1, 1, 1}, {2, 2, 2}},
+				// },
+				// {
+				// 	Query:       "UPDATE parent SET v1 = 2;",
+				// 	ExpectedErr: sql.ErrForeignKeyParentViolation,
+				// },
+				// {
+				// 	Query:       "UPDATE parent SET v1 = 2 WHERE id = 1;",
+				// 	ExpectedErr: sql.ErrForeignKeyParentViolation,
+				// },
 				{
-					Query:       "UPDATE parent SET v1 = 2;",
-					ExpectedErr: sql.ErrForeignKeyParentViolation,
-				},
-				{
-					Query:    "REPLACE INTO parent VALUES (1, 1, 1), (2, 2, 2);",
-					Expected: []sql.Row{{types.NewOkResult(3)}},
-				},
-				{
-					Query:    "SELECT * FROM parent;",
+					Query:    "SELECT * FROM parent order by 1;",
 					Expected: []sql.Row{{1, 1, 1}, {2, 2, 2}},
-				},
-				{
-					Query:       "UPDATE parent SET v1 = 2;",
-					ExpectedErr: sql.ErrForeignKeyParentViolation,
-				},
-				{
-					Query:       "UPDATE parent SET v1 = 2 WHERE id = 1;",
-					ExpectedErr: sql.ErrForeignKeyParentViolation,
 				},
 				{
 					Query:       "REPLACE INTO parent VALUES (1, 1, 2), (2, 2, 1);",
@@ -225,34 +229,34 @@ func TestSingleScript(t *testing.T) {
 					Query:    "SELECT * FROM parent order by 1;",
 					Expected: []sql.Row{{1, 1, 1}, {2, 2, 2}},
 				},
-				{
-					Query:    "UPDATE parent SET v2 = 2 WHERE id = 1;",
-					Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
-				},
-				{
-					Query:    "UPDATE parent SET v2 = 1 WHERE id = 2;",
-					Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
-				},
-				{
-					Query:    "SELECT * FROM parent;",
-					Expected: []sql.Row{{1, 1, 2}, {2, 2, 1}},
-				},
-				{
-					Query:       "UPDATE parent SET v1 = 2;",
-					ExpectedErr: sql.ErrForeignKeyParentViolation,
-				},
-				{
-					Query:       "UPDATE parent SET v1 = 2 WHERE id = 1;",
-					ExpectedErr: sql.ErrForeignKeyParentViolation,
-				},
-				{
-					Query:    "DELETE FROM parent WHERE v1 = 1;",
-					Expected: []sql.Row{{types.NewOkResult(1)}},
-				},
-				{
-					Query:    "SELECT * FROM parent;",
-					Expected: []sql.Row{},
-				},
+				// {
+				// 	Query:    "UPDATE parent SET v2 = 2 WHERE id = 1;",
+				// 	Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+				// },
+				// {
+				// 	Query:    "UPDATE parent SET v2 = 1 WHERE id = 2;",
+				// 	Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+				// },
+				// {
+				// 	Query:    "SELECT * FROM parent;",
+				// 	Expected: []sql.Row{{1, 1, 2}, {2, 2, 1}},
+				// },
+				// {
+				// 	Query:       "UPDATE parent SET v1 = 2;",
+				// 	ExpectedErr: sql.ErrForeignKeyParentViolation,
+				// },
+				// {
+				// 	Query:       "UPDATE parent SET v1 = 2 WHERE id = 1;",
+				// 	ExpectedErr: sql.ErrForeignKeyParentViolation,
+				// },
+				// {
+				// 	Query:    "DELETE FROM parent WHERE v1 = 1;",
+				// 	Expected: []sql.Row{{types.NewOkResult(1)}},
+				// },
+				// {
+				// 	Query:    "SELECT * FROM parent;",
+				// 	Expected: []sql.Row{},
+				// },
 			},
 		},
 	}

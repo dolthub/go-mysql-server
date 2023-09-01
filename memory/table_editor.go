@@ -108,7 +108,7 @@ func (t *tableEditor) StatementBegin(ctx *sql.Context) {
 	t.initialInsert = t.editedTable.insertPartIdx
 	t.initialAutoIncVal = t.editedTable.autoIncVal
 	t.initialPartitions = make(map[string][]sql.Row)
-	for partStr, rowSlice := range t.editedTable.partitions {
+	for partStr, rowSlice := range t.editedTable.partitions { 
 		newRowSlice := make([]sql.Row, len(rowSlice))
 		for i, row := range rowSlice {
 			newRowSlice[i] = row.Copy()
