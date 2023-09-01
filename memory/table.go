@@ -784,36 +784,6 @@ func (t *Table) Insert(ctx *sql.Context, row sql.Row) error {
 	return inserter.Close(ctx)
 }
 
-func increment(v interface{}) interface{} {
-	switch val := v.(type) {
-	case int:
-		return val + 1
-	case uint:
-		return val + 1
-	case int8:
-		return val + 1
-	case int16:
-		return val + 1
-	case int32:
-		return val + 1
-	case int64:
-		return val + 1
-	case uint8:
-		return val + 1
-	case uint16:
-		return val + 1
-	case uint32:
-		return val + 1
-	case uint64:
-		return val + 1
-	case float32:
-		return val + 1
-	case float64:
-		return val + 1
-	}
-	return v
-}
-
 func rowsAreEqual(ctx *sql.Context, schema sql.Schema, left, right sql.Row) (bool, error) {
 	if len(left) != len(right) || len(left) != len(schema) {
 		return false, nil
@@ -1799,6 +1769,7 @@ Top:
 
 // CreatePrimaryKey implements the PrimaryKeyAlterableTable
 func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) error {
+	// TODO: create alternate table implementation that doesn't implement rewriter to test this
 	// First check that a primary key already exists
 	for _, col := range t.schema.Schema {
 		if col.PrimaryKey {

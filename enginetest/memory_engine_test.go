@@ -19,6 +19,7 @@ import (
 	"log"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/enginetest"
@@ -187,35 +188,70 @@ func TestSingleScript(t *testing.T) {
 	// t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "Add primary key column with auto increment, first",
+			Name: "Self-referential child column follows parent CASCADE",
 			SetUpScript: []string{
-				"CREATE TABLE t1 (i int, j int);",
-				"insert into t1 values (1,1), (2,2), (3,3)",
+				"ALTER TABLE parent ADD CONSTRAINT fk_named FOREIGN KEY (v2) REFERENCES parent(v1) ON UPDATE CASCADE ON DELETE CASCADE;",
+				"INSERT INTO parent VALUES (1, 1, 1), (2, 2, 1), (3, 3, NULL);",
+				"UPDATE parent SET v1 = 1 WHERE id = 1;",
+				"UPDATE parent SET v1 = 4 WHERE id = 3;",
+				"DELETE FROM parent WHERE id = 3;",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:       "alter table t1 add column pk int primary key",
-					ExpectedErr: sql.ErrPrimaryKeyViolation,
+					Query:       "UPDATE parent SET v1 = 2;",
+					ExpectedErr: sql.ErrForeignKeyParentViolation,
 				},
 				{
-					Query:    "alter table t1 add column pk int primary key auto_increment first",
-					Expected: []sql.Row{{types.NewOkResult(0)}},
+					Query:    "REPLACE INTO parent VALUES (1, 1, 1), (2, 2, 2);",
+					Expected: []sql.Row{{types.NewOkResult(3)}},
 				},
 				{
-					Query: "show create table t1",
-					Expected: []sql.Row{{"t1",
-						"CREATE TABLE `t1` (\n" +
-								"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
-								"  `i` int,\n" +
-								"  `j` int,\n" +
-								"  PRIMARY KEY (`pk`)\n" +
-								") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+					Query:    "SELECT * FROM parent;",
+					Expected: []sql.Row{{1, 1, 1}, {2, 2, 2}},
 				},
 				{
-					Query: "select pk from t1 order by pk",
-					Expected: []sql.Row{
-						{1}, {2}, {3},
-					},
+					Query:       "UPDATE parent SET v1 = 2;",
+					ExpectedErr: sql.ErrForeignKeyParentViolation,
+				},
+				{
+					Query:       "UPDATE parent SET v1 = 2 WHERE id = 1;",
+					ExpectedErr: sql.ErrForeignKeyParentViolation,
+				},
+				{
+					Query:       "REPLACE INTO parent VALUES (1, 1, 2), (2, 2, 1);",
+					ExpectedErr: sql.ErrForeignKeyChildViolation,
+				},
+				{
+					Query:    "SELECT * FROM parent order by 1;",
+					Expected: []sql.Row{{1, 1, 1}, {2, 2, 2}},
+				},
+				{
+					Query:    "UPDATE parent SET v2 = 2 WHERE id = 1;",
+					Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+				},
+				{
+					Query:    "UPDATE parent SET v2 = 1 WHERE id = 2;",
+					Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+				},
+				{
+					Query:    "SELECT * FROM parent;",
+					Expected: []sql.Row{{1, 1, 2}, {2, 2, 1}},
+				},
+				{
+					Query:       "UPDATE parent SET v1 = 2;",
+					ExpectedErr: sql.ErrForeignKeyParentViolation,
+				},
+				{
+					Query:       "UPDATE parent SET v1 = 2 WHERE id = 1;",
+					ExpectedErr: sql.ErrForeignKeyParentViolation,
+				},
+				{
+					Query:    "DELETE FROM parent WHERE v1 = 1;",
+					Expected: []sql.Row{{types.NewOkResult(1)}},
+				},
+				{
+					Query:    "SELECT * FROM parent;",
+					Expected: []sql.Row{},
 				},
 			},
 		},
@@ -223,7 +259,7 @@ func TestSingleScript(t *testing.T) {
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-		harness.Setup(setup.MydbData)
+		harness.Setup(setup.MydbData, setup.Parent_childData)
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
