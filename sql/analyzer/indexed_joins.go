@@ -858,12 +858,6 @@ func addMergeJoins(m *memo.Memo) error {
 			return nil
 		}
 
-		// For each lIndex:
-		// Compute the max set of filter expressions that match that index
-		// While matchedFilters is not empty:
-		//    Check to see if any rIndexes match that set of filters
-		//    Remove the last matched filter
-
 		eqFilters := make([]filterAndPosition, 0, len(join.Filter))
 		for filterPos, filter := range join.Filter {
 			switch eq := filter.(type) {
@@ -904,6 +898,12 @@ func addMergeJoins(m *memo.Memo) error {
 			}
 
 		}
+
+		// For each lIndex:
+		// Compute the max set of filter expressions that match that index
+		// While matchedFilters is not empty:
+		//    Check to see if any rIndexes match that set of filters
+		//    Remove the last matched filter
 		for _, lIndex := range lIndexes {
 			matchedEqFilters := matchedFiltersForLeftIndex(lIndex, join.Left.RelProps.FuncDeps().Constants(), eqFilters)
 			for len(matchedEqFilters) > 0 {
