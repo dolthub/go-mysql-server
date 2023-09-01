@@ -1800,15 +1800,16 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) er
 		}
 	}
 
-	pkSchema := sql.NewPrimaryKeySchema(potentialSchema, pkOrdinals...)
-	newTable, err := newTable(ctx, t, pkSchema)
-	if err != nil {
-		return err
-	}
-
-	t.schema = pkSchema
-	t.partitions = newTable.partitions
-	t.partitionKeys = newTable.partitionKeys
+	// TODO: fix
+	// pkSchema := sql.NewPrimaryKeySchema(potentialSchema, pkOrdinals...)
+	// newTable, err := newTable(ctx, t, pkSchema)
+	// if err != nil {
+	// 	return err
+	// }
+	// 
+	// t.schema = pkSchema
+	// t.partitions = newTable.partitions
+	// t.partitionKeys = newTable.partitionKeys
 
 	return nil
 }
@@ -1931,23 +1932,6 @@ func (t *Table) replaceData(src *Table) {
 	t.collation = src.collation
 	t.autoIncVal = src.autoIncVal
 	t.insertPartIdx = src.insertPartIdx
-}
-
-func newTable(ctx *sql.Context, t *Table, newSch sql.PrimaryKeySchema) (*Table, error) {
-	sess := SessionFromContext(ctx)
-	sess.clearEditAccumulator(t)
-	newTable := t.copy().truncate(newSch)
-	for _, partition := range t.partitions {
-		for _, partitionRow := range partition {
-			// TODO: we need a different edit accumulator here, it's reusing the session one
-			err := newTable.Insert(ctx, partitionRow)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	return newTable, nil
 }
 
 // normalizeSchemaForRewrite returns a copy of the schema provided suitable for rewriting. This is necessary because 
