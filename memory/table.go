@@ -1890,7 +1890,10 @@ func (t Table) copy() *Table {
 	}
 	
 	keys := make([][]byte, len(t.partitionKeys))
-	copy(keys, t.partitionKeys)
+	for i := range t.partitionKeys {
+		keys[i] = make([]byte, len(t.partitionKeys[i]))
+		copy(keys[i], t.partitionKeys[i])
+	}
 	
 	t.partitionKeys, t.partitions = keys, parts
 	
