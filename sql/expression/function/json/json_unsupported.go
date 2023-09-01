@@ -415,42 +415,6 @@ type JSONMerge struct {
 	sql.Expression
 }
 
-// JSON_REPLACE(json_doc, path, val[, path, val] ...)
-//
-// JSONReplace Replaces existing values in a JSON document and returns the result. Returns NULL if any argument is NULL.
-// An error occurs if the json_doc argument is not a valid JSON document or any path argument is not a valid path
-// expression or contains a * or ** wildcard. The path-value pairs are evaluated left to right. The document produced by
-// evaluating one pair becomes the new value against which the next pair is evaluated. A path-value pair for an existing
-// path in the document overwrites the existing document value with the new value. A path-value pair for a non-existing
-// path in the document is ignored and has no effect.
-//
-// https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-replace
-type JSONReplace struct {
-	sql.Expression
-}
-
-var _ sql.FunctionExpression = JSONReplace{}
-
-// NewJSONReplace creates a new JSONReplace function.
-func NewJSONReplace(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONReplace{}.FunctionName())
-}
-
-// FunctionName implements sql.FunctionExpression
-func (j JSONReplace) FunctionName() string {
-	return "json_replace"
-}
-
-// Description implements sql.FunctionExpression
-func (j JSONReplace) Description() string {
-	return "replaces values in JSON document."
-}
-
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONReplace) IsUnsupported() bool {
-	return true
-}
-
 //////////////////////////////
 // JSON attribute functions //
 //////////////////////////////
