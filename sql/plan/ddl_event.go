@@ -343,6 +343,9 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, io.EOF
 	}
 
+	mode := sql.LoadSqlMode(ctx)
+	c.event.SqlMode = mode.String()
+
 	// checks if the defined ENDS time is before STARTS time
 	if c.event.HasEnds {
 		if c.event.Ends.Sub(c.event.Starts).Seconds() < 0 {
