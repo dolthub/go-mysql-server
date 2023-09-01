@@ -77,6 +77,10 @@ func (n *CreateUser) Resolved() bool {
 	return !ok
 }
 
+func (n *CreateUser) IsReadOnly() bool {
+	return false
+}
+
 // Children implements the interface sql.Node.
 func (n *CreateUser) Children() []sql.Node {
 	return nil

@@ -184,54 +184,24 @@ func (r *FullOuterJoin) JoinPrivate() *JoinBase {
 	return r.JoinBase
 }
 
-type LateralCrossJoin struct {
+type LateralJoin struct {
 	*JoinBase
 }
 
-var _ RelExpr = (*LateralCrossJoin)(nil)
-var _ JoinRel = (*LateralCrossJoin)(nil)
+var _ RelExpr = (*LateralJoin)(nil)
+var _ JoinRel = (*LateralJoin)(nil)
 
-func (r *LateralCrossJoin) String() string {
+func (r *LateralJoin) String() string {
 	return FormatExpr(r)
 }
 
-func (r *LateralCrossJoin) JoinPrivate() *JoinBase {
-	return r.JoinBase
-}
-
-type LateralInnerJoin struct {
-	*JoinBase
-}
-
-var _ RelExpr = (*LateralInnerJoin)(nil)
-var _ JoinRel = (*LateralInnerJoin)(nil)
-
-func (r *LateralInnerJoin) String() string {
-	return FormatExpr(r)
-}
-
-func (r *LateralInnerJoin) JoinPrivate() *JoinBase {
-	return r.JoinBase
-}
-
-type LateralLeftJoin struct {
-	*JoinBase
-}
-
-var _ RelExpr = (*LateralLeftJoin)(nil)
-var _ JoinRel = (*LateralLeftJoin)(nil)
-
-func (r *LateralLeftJoin) String() string {
-	return FormatExpr(r)
-}
-
-func (r *LateralLeftJoin) JoinPrivate() *JoinBase {
+func (r *LateralJoin) JoinPrivate() *JoinBase {
 	return r.JoinBase
 }
 
 type TableScan struct {
 	*sourceBase
-	Table *plan.ResolvedTable
+	Table sql.TableNode
 }
 
 var _ RelExpr = (*TableScan)(nil)
@@ -948,7 +918,7 @@ func FormatExpr(r exprType) string {
 	case *LookupJoin:
 		return fmt.Sprintf("lookupjoin %d %d", r.Left.Id, r.Right.Id)
 	case *RangeHeapJoin:
-		return fmt.Sprintf("slidingrangejoin %d %d", r.Left.Id, r.Right.Id)
+		return fmt.Sprintf("rangeheapjoin %d %d", r.Left.Id, r.Right.Id)
 	case *ConcatJoin:
 		return fmt.Sprintf("concatjoin %d %d", r.Left.Id, r.Right.Id)
 	case *HashJoin:
@@ -957,12 +927,8 @@ func FormatExpr(r exprType) string {
 		return fmt.Sprintf("mergejoin %d %d", r.Left.Id, r.Right.Id)
 	case *FullOuterJoin:
 		return fmt.Sprintf("fullouterjoin %d %d", r.Left.Id, r.Right.Id)
-	case *LateralCrossJoin:
-		return fmt.Sprintf("lateralcrossjoin %d %d", r.Left.Id, r.Right.Id)
-	case *LateralInnerJoin:
-		return fmt.Sprintf("lateralinnerjoin %d %d", r.Left.Id, r.Right.Id)
-	case *LateralLeftJoin:
-		return fmt.Sprintf("lateralleftjoin %d %d", r.Left.Id, r.Right.Id)
+	case *LateralJoin:
+		return fmt.Sprintf("lateraljoin %d %d", r.Left.Id, r.Right.Id)
 	case *TableScan:
 		return fmt.Sprintf("tablescan: %s", r.Name())
 	case *Values:
@@ -1061,6 +1027,8 @@ func buildRelExpr(b *ExecBuilder, r RelExpr, input sql.Schema, children ...sql.N
 		result, err = b.buildMergeJoin(r, input, children...)
 	case *FullOuterJoin:
 		result, err = b.buildFullOuterJoin(r, input, children...)
+	case *LateralJoin:
+		result, err = b.buildLateralJoin(r, input, children...)
 	case *TableScan:
 		result, err = b.buildTableScan(r, input, children...)
 	case *Values:

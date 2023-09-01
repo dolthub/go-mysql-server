@@ -28,7 +28,6 @@ var ErrInsertIntoNotSupported = errors.NewKind("table doesn't support INSERT INT
 var ErrReplaceIntoNotSupported = errors.NewKind("table doesn't support REPLACE INTO")
 var ErrOnDuplicateKeyUpdateNotSupported = errors.NewKind("table doesn't support ON DUPLICATE KEY UPDATE")
 var ErrAutoIncrementNotSupported = errors.NewKind("table doesn't support AUTO_INCREMENT")
-var ErrInsertIntoMismatchValueCount = errors.NewKind("number of values does not match number of columns provided")
 var ErrInsertIntoUnsupportedValues = errors.NewKind("%T is unsupported for inserts")
 var ErrInsertIntoDuplicateColumn = errors.NewKind("duplicate column name %v")
 var ErrInsertIntoNonexistentColumn = errors.NewKind("invalid column name %v")
@@ -112,6 +111,10 @@ func (ii *InsertInto) Database() sql.Database {
 	return ii.db
 }
 
+func (ii *InsertInto) IsReadOnly() bool {
+	return false
+}
+
 func (ii *InsertInto) WithDatabase(database sql.Database) (sql.Node, error) {
 	nc := *ii
 	nc.db = database
@@ -154,12 +157,21 @@ func (id InsertDestination) WithExpressions(exprs ...sql.Expression) (sql.Node, 
 		return nil, sql.ErrInvalidChildrenNumber.New(id, len(exprs), len(id.Sch))
 	}
 
-	id.Sch = transform.SchemaWithDefaults(id.Sch, exprs)
+	sch, err := transform.SchemaWithDefaults(id.Sch, exprs)
+	if err != nil {
+		return nil, err
+	}
+
+	id.Sch = sch
 	return &id, nil
 }
 
 func (id *InsertDestination) Name() string {
 	return id.DestinationName
+}
+
+func (id *InsertDestination) IsReadOnly() bool {
+	return true
 }
 
 func (id *InsertDestination) String() string {

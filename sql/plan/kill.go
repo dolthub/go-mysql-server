@@ -57,6 +57,10 @@ func (k *Kill) Children() []sql.Node {
 	return nil
 }
 
+func (k *Kill) IsReadOnly() bool {
+	return true
+}
+
 func (k *Kill) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(k, len(children), 0)

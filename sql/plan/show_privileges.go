@@ -49,6 +49,10 @@ func (n *ShowPrivileges) Resolved() bool {
 	return true
 }
 
+func (n *ShowPrivileges) IsReadOnly() bool {
+	return true
+}
+
 // Children implements the interface sql.Node.
 func (n *ShowPrivileges) Children() []sql.Node {
 	return nil

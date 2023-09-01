@@ -3,8 +3,9 @@ package function
 import (
 	"fmt"
 
+	"github.com/dolthub/go-mysql-server/sql/planbuilder/dateparse"
+
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/parse/dateparse"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -46,7 +47,7 @@ func (s StrToDate) String() string {
 
 // Type returns the expression type.
 func (s StrToDate) Type() sql.Type {
-	return types.Datetime
+	return types.DatetimeMaxPrecision
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

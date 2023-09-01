@@ -26,6 +26,7 @@ var _ sql.CollationCoercible = Nothing{}
 
 func (Nothing) String() string       { return "NOTHING" }
 func (Nothing) Resolved() bool       { return true }
+func (Nothing) IsReadOnly() bool     { return true }
 func (Nothing) Schema() sql.Schema   { return nil }
 func (Nothing) Children() []sql.Node { return nil }
 func (Nothing) RowIter(*sql.Context, sql.Row) (sql.RowIter, error) {

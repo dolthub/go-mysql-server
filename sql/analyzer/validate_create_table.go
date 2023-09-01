@@ -62,30 +62,23 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	keyedColumns := make(map[string]bool)
 	var err error
 	transform.Inspect(n, func(n sql.Node) bool {
+		if st, ok := n.(sql.SchemaTarget); ok {
+			sch = st.TargetSchema()
+		}
 		switch n := n.(type) {
 		case *plan.ModifyColumn:
-			sch = n.Table.Schema()
 			keyedColumns, err = getTableIndexColumns(ctx, n.Table)
 			return false
 		case *plan.RenameColumn:
-			sch = n.Table.Schema()
 			return false
 		case *plan.AddColumn:
-			sch = n.Table.Schema()
 			keyedColumns, err = getTableIndexColumns(ctx, n.Table)
 			return false
 		case *plan.DropColumn:
-			sch = n.Table.Schema()
 			return false
 		case *plan.AlterIndex:
-			sch = n.Table.Schema()
 			indexes, err = getTableIndexNames(ctx, a, n.Table)
-		case *plan.AlterPK:
-			sch = n.Table.Schema()
-		case *plan.AlterDefaultSet:
-			sch = n.Table.Schema()
-		case *plan.AlterDefaultDrop:
-			sch = n.Table.Schema()
+		default:
 		}
 		return true
 	})
@@ -451,7 +444,7 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 		if !ok {
 			return nil, sql.ErrKeyColumnDoesNotExist.New(badColName)
 		}
-		err := validateIndexType(ctx, ai.Columns, sch)
+		err := validateIndexType(ctx, ai.Columns, sch, ai.Constraint == sql.IndexConstraint_Fulltext)
 		if err != nil {
 			return nil, err
 		}
@@ -545,16 +538,18 @@ func validatePrefixLength(ctx *sql.Context, schCol *sql.Column, idxCol sql.Index
 }
 
 // validateIndexType prevents creating invalid indexes
-func validateIndexType(ctx *sql.Context, cols []sql.IndexColumn, sch sql.Schema) error {
+func validateIndexType(ctx *sql.Context, cols []sql.IndexColumn, sch sql.Schema, isFullText bool) error {
 	for _, idxCol := range cols {
 		idx := sch.IndexOfColName(idxCol.Name)
 		if idx == -1 {
 			return sql.ErrColumnNotFound.New(idxCol.Name)
 		}
 		schCol := sch[idx]
-		err := validatePrefixLength(ctx, schCol, idxCol)
-		if err != nil {
-			return err
+		if !isFullText {
+			err := validatePrefixLength(ctx, schCol, idxCol)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil

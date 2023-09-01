@@ -84,7 +84,7 @@ func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *plan.Scope, sel R
 		case *plan.ResolvedTable:
 			return pruneTableCols(n, parentCols, parentStars, unqualifiedStar)
 		case *plan.JoinNode:
-			if n.JoinType().IsPhysical() || n.JoinType().IsNatural() {
+			if n.JoinType().IsPhysical() || n.JoinType().IsUsing() {
 				return n, transform.SameTree, nil
 			}
 			if _, ok := n.Right().(*plan.JSONTable); ok {

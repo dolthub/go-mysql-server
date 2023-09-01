@@ -1,9 +1,24 @@
+// Copyright 2023 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package planbuilder
 
 import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -57,8 +72,9 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 		case *ast.SQLVal:
 			// integer literal into projScope
 			// else throw away
-			if e.Type == ast.IntVal {
-				lit := b.convertInt(string(e.Val), 10)
+			expr := b.normalizeValArg(e)
+			if val, ok := expr.(*ast.SQLVal); ok && val.Type == ast.IntVal {
+				lit := b.convertInt(string(val.Val), 10)
 				idx, _, err := types.Int64.Convert(lit.Value())
 				if err != nil {
 					b.handleErr(err)
@@ -141,6 +157,38 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 		}
 	}
 	return
+}
+
+func (b *Builder) normalizeValArg(e *ast.SQLVal) ast.Expr {
+	if e.Type != ast.ValArg || b.bindCtx == nil {
+		return e
+	}
+	name := strings.TrimPrefix(string(e.Val), ":")
+	if b.bindCtx.Bindings == nil {
+		err := fmt.Errorf("bind variable not provided: '%s'", name)
+		b.handleErr(err)
+	}
+	bv, ok := b.bindCtx.GetSubstitute(name)
+	if !ok {
+		err := fmt.Errorf("bind variable not provided: '%s'", name)
+		b.handleErr(err)
+	}
+
+	val, err := sqltypes.BindVariableToValue(bv)
+	if err != nil {
+		b.handleErr(err)
+	}
+	expr, err := ast.ExprFromValue(val)
+	switch e := expr.(type) {
+	case *ast.SQLVal:
+		return e
+	case *ast.NullVal:
+		return e
+	default:
+		err := fmt.Errorf("unknown ast.Expr: %T", e)
+		b.handleErr(err)
+	}
+	return nil
 }
 
 func (b *Builder) buildOrderBy(inScope, orderByScope *scope) {

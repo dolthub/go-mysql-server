@@ -14,108 +14,55 @@
 
 package analyzer
 
-import (
-	errors "gopkg.in/src-d/go-errors.v1"
-)
-
 // OnceBeforeDefault contains the rules to be applied just once before the
 // DefaultRules.
 var OnceBeforeDefault = []Rule{
 	{applyDefaultSelectLimitId, applyDefaultSelectLimit},
-	{applyBinlogReplicaControllerId, applyBinlogReplicaController},
+	{replaceCountStarId, replaceCountStar},
 	{validateOffsetAndLimitId, validateLimitAndOffset},
 	{validateCreateTableId, validateCreateTable},
 	{validateExprSemId, validateExprSem},
-	{resolveVariablesId, resolveVariables},
-	{resolveNamedWindowsId, replaceNamedWindows},
-	{resolveSetVariablesId, resolveSetVariables},
-	{resolveViewsId, resolveViews},
-	{liftCtesId, hoistCommonTableExpressions},
-	{resolveCtesId, resolveCommonTableExpressions},
-	{liftRecursiveCtesId, hoistRecursiveCte},
 	{validateCreateProcedureId, validateCreateProcedure},
-	{resolveCreateProcedureId, resolveCreateProcedure},
-	{resolveDatabasesId, resolveDatabases},
-	{resolveTablesId, resolveTables},
-	{reresolveTablesId, reresolveTables},
-	{setInsertColumnsId, setInsertColumns},
-	{setTargetSchemasId, setTargetSchemas},
-	{loadCheckConstraintsId, loadChecks},
+	{resolveDropConstraintId, resolveDropConstraint},
 	{resolveAlterColumnId, resolveAlterColumn},
 	{validateDropTablesId, validateDropTables},
-	{pruneDropTablesId, pruneDropTables},
-	{resolveCreateLikeId, resolveCreateLike},
-	{resolveAnalyzeTablesId, resolveAnalyzeTables},
-	{assignCatalogId, assignCatalog},
-	{parseColumnDefaultsId, parseColumnDefaults},
-	{resolveDropConstraintId, resolveDropConstraint},
-	{validateDropConstraintId, validateDropConstraint},
 	{resolveCreateSelectId, resolveCreateSelect},
-	{resolveSubqueriesId, resolveSubqueries},
-	{setViewTargetSchemaId, setViewTargetSchema},
+	{validateDropConstraintId, validateDropConstraint},
 	{resolveUnionsId, resolveUnions},
-	{resolveDescribeQueryId, resolveDescribeQuery},
-	{checkUniqueTableNamesId, validateUniqueTableNames},
-	{resolveTableFunctionsId, resolveTableFunctions},
-	{resolveDeclarationsId, resolveDeclarations},
+	{resolveDescribeQueryId, resolveDescribeQuery}, //TODO
 	{validateCreateTriggerId, validateCreateTrigger},
-	{loadInfoSchemaId, loadInfoSchema},
-	{resolveColumnDefaultsId, resolveColumnDefaults},
 	{validateColumnDefaultsId, validateColumnDefaults},
 	{validateReadOnlyDatabaseId, validateReadOnlyDatabase},
 	{validateReadOnlyTransactionId, validateReadOnlyTransaction},
 	{validateDatabaseSetId, validateDatabaseSet},
 	{validateDeleteFromId, validateDeleteFrom},
 	{validatePrivilegesId, validatePrivileges}, // Ensure that checking privileges happens after db, table  & table function resolution
+	{evalFilterId, simplifyFilters},            //TODO inline?
+	{hoistOutOfScopeFiltersId, hoistOutOfScopeFilters},
 }
 
 // DefaultRules to apply when analyzing nodes.
 var DefaultRules = []Rule{
-	{resolveNaturalJoinsId, resolveNaturalJoins},
-	{qualifyColumnsId, qualifyColumns},
-	{resolveOrderbyLiteralsId, resolveOrderByLiterals},
-	{resolveFunctionsId, resolveFunctions},
-	{validateStarExpressionsId, validateStarExpressions},
-	{replaceCountStarId, replaceCountStar},
-	{flattenTableAliasesId, flattenTableAliases},
-	{pushdownSortId, pushdownSort},
-	{pushdownGroupbyAliasesId, pushdownGroupByAliases},
+	{validateStarExpressionsId, validateStarExpressions}, //TODO
 	{pushdownSubqueryAliasFiltersId, pushdownSubqueryAliasFilters},
 	{pruneTablesId, pruneTables},
-	{resolveColumnsId, resolveColumns},
+	{fixupAuxiliaryExprsId, fixupAuxiliaryExprs},
 	{validateCheckConstraintId, validateCheckConstraints},
-	{expandStarsId, expandStars},
-	{transposeRightJoinsId, transposeRightJoins},
-	{resolveHavingId, resolveHaving},
-	{mergeUnionSchemasId, mergeUnionSchemas},
-	{flattenAggregationExprsId, flattenAggregationExpressions},
-	{reorderProjectionId, reorderProjection},
+	{transformJoinApplyId, transformJoinApply},
 	{resolveSubqueriesId, resolveSubqueries},
-	{resolveBarewordSetVariablesId, resolveBarewordSetVariables},
 	{replaceCrossJoinsId, replaceCrossJoins},
-	{moveJoinCondsToFilterId, moveJoinConditionsToFilter},
-	{evalFilterId, simplifyFilters},
-	{optimizeDistinctId, optimizeDistinct},
+	{moveJoinCondsToFilterId, moveJoinConditionsToFilter}, // depends on indexes being correct
 }
 
-// OnceAfterDefault contains the rules to be applied just once after the
-// DefaultRules.
 var OnceAfterDefault = []Rule{
-	{hoistOutOfScopeFiltersId, hoistOutOfScopeFilters},
-	{transformJoinApplyId, transformJoinApply},
 	{hoistSelectExistsId, hoistSelectExists},
 	{finalizeUnionsId, finalizeUnions},
 	{loadTriggersId, loadTriggers},
-	{loadEventsId, loadEvents},
 	{processTruncateId, processTruncate},
-	{removeUnnecessaryConvertsId, removeUnnecessaryConverts},
 	{stripTableNameInDefaultsId, stripTableNamesFromColumnDefaults},
-	{foldEmptyJoinsId, foldEmptyJoins},
 	{pushFiltersId, pushFilters},
 	{optimizeJoinsId, optimizeJoins},
-	{matchAgainstId, matchAgainst},
 	{generateIndexScansId, generateIndexScans},
-	{pruneColumnsId, pruneColumns},
 	{finalizeSubqueriesId, finalizeSubqueries},
 	{subqueryIndexesId, applyIndexesFromOuterScope},
 	{replaceSortPkId, replacePkSort},
@@ -124,7 +71,6 @@ var OnceAfterDefault = []Rule{
 	{insertTopNId, insertTopNNodes},
 	{applyHashInId, applyHashIn},
 	{resolveInsertRowsId, resolveInsertRows},
-	{resolvePreparedInsertId, resolvePreparedInsert},
 	{applyTriggersId, applyTriggers},
 	{applyProceduresId, applyProcedures},
 	{assignRoutinesId, assignRoutines},
@@ -148,9 +94,8 @@ var DefaultValidationRules = []Rule{
 	{validateAggregationsId, validateAggregations},
 }
 
-// OnceAfterAll contains the rules to be applied just once after all other
-// rules have been applied.
 var OnceAfterAll = []Rule{
+	{inlineSubqueryAliasRefsId, inlineSubqueryAliasRefs},
 	{cacheSubqueryResultsId, cacheSubqueryResults},
 	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
 	{AutocommitId, addAutocommitNode},
@@ -158,9 +103,3 @@ var OnceAfterAll = []Rule{
 	{parallelizeId, parallelize},
 	{clearWarningsId, clearWarnings},
 }
-
-var (
-	// ErrOrderByColumnIndex is returned when in an order clause there is a
-	// column that is unknown.
-	ErrOrderByColumnIndex = errors.NewKind("unknown column %d in order by clause")
-)

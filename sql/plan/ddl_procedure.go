@@ -79,6 +79,10 @@ func (c *CreateProcedure) Resolved() bool {
 	return c.ddlNode.Resolved() && c.Procedure.Resolved()
 }
 
+func (c *CreateProcedure) IsReadOnly() bool {
+	return false
+}
+
 // Schema implements the sql.Node interface.
 func (c *CreateProcedure) Schema() sql.Schema {
 	return nil

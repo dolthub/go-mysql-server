@@ -1,3 +1,17 @@
+// Copyright 2023 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package planbuilder
 
 import (
@@ -358,9 +372,25 @@ func (b *Builder) buildAlterEvent(inScope *scope, query string, c *ast.DDL) (out
 		newDefinition = defScope.node
 	}
 
+	eventName := strings.ToLower(eventSpec.EventName.Name.String())
+	eventDb, ok := database.(sql.EventDatabase)
+	if !ok {
+		err := sql.ErrEventsNotSupported.New(database.Name())
+		b.handleErr(err)
+	}
+
+	eventDef, exists, err := eventDb.GetEvent(b.ctx, eventName)
+	if err != nil {
+		b.handleErr(err)
+	}
+	if !exists {
+		err := sql.ErrEventDoesNotExist.New(eventName)
+		b.handleErr(err)
+	}
+
 	outScope = inScope.push()
-	outScope.node = plan.NewAlterEvent(
-		database, eventSpec.EventName.Name.String(), definer,
+	alterEvent := plan.NewAlterEvent(
+		database, eventName, definer,
 		alterSchedule, at, starts, ends, everyInterval,
 		alterOnComp, newOnCompPreserve,
 		alterEventName, newName,
@@ -368,6 +398,8 @@ func (b *Builder) buildAlterEvent(inScope *scope, query string, c *ast.DDL) (out
 		alterComment, newComment,
 		alterDefinition, newDefinitionStr, newDefinition,
 	)
+	alterEvent.Event = b.loadEventDetails(eventDef)
+	outScope.node = alterEvent
 	return
 }
 

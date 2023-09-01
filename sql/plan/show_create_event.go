@@ -16,15 +16,14 @@ package plan
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type ShowCreateEvent struct {
-	db        sql.Database
-	EventName string
+	db    sql.Database
+	Event sql.EventDefinition
 }
 
 var _ sql.Databaser = (*ShowCreateEvent)(nil)
@@ -42,22 +41,26 @@ var showCreateEventSchema = sql.Schema{
 }
 
 // NewShowCreateEvent creates a new ShowCreateEvent node for SHOW CREATE EVENT statements.
-func NewShowCreateEvent(db sql.Database, event string) *ShowCreateEvent {
+func NewShowCreateEvent(db sql.Database, event sql.EventDefinition) *ShowCreateEvent {
 	return &ShowCreateEvent{
-		db:        db,
-		EventName: strings.ToLower(event),
+		db:    db,
+		Event: event,
 	}
 }
 
 // String implements the sql.Node interface.
 func (s *ShowCreateEvent) String() string {
-	return fmt.Sprintf("SHOW CREATE EVENT %s", s.EventName)
+	return fmt.Sprintf("SHOW CREATE EVENT %s", s.Event.Name)
 }
 
 // Resolved implements the sql.Node interface.
 func (s *ShowCreateEvent) Resolved() bool {
 	_, ok := s.db.(sql.UnresolvedDatabase)
 	return !ok
+}
+
+func (s *ShowCreateEvent) IsReadOnly() bool {
+	return true
 }
 
 // Children implements the sql.Node interface.
@@ -68,46 +71,6 @@ func (s *ShowCreateEvent) Children() []sql.Node {
 // Schema implements the sql.Node interface.
 func (s *ShowCreateEvent) Schema() sql.Schema {
 	return showCreateEventSchema
-}
-
-// RowIter implements the sql.Node interface.
-func (s *ShowCreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	eventDb, ok := s.db.(sql.EventDatabase)
-	if !ok {
-		return nil, sql.ErrEventsNotSupported.New(s.db.Name())
-	}
-	events, err := eventDb.GetEvents(ctx)
-	if err != nil {
-		return nil, err
-	}
-	for _, event := range events {
-		if strings.ToLower(event.Name) == s.EventName {
-			characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
-			if err != nil {
-				return nil, err
-			}
-			collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
-			if err != nil {
-				return nil, err
-			}
-			collationServer, err := ctx.GetSessionVariable(ctx, "collation_server")
-			if err != nil {
-				return nil, err
-			}
-
-			// TODO: fill sql_mode and time_zone with appropriate values
-			return sql.RowsToRowIter(sql.Row{
-				event.Name,            // Event
-				"",                    // sql_mode
-				"SYSTEM",              // time_zone
-				event.CreateStatement, // Create Event
-				characterSetClient,    // character_set_client
-				collationConnection,   // collation_connection
-				collationServer,       // Database Collation
-			}), nil
-		}
-	}
-	return nil, sql.ErrUnknownEvent.New(s.EventName)
 }
 
 // WithChildren implements the sql.Node interface.

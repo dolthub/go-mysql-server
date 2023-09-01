@@ -19,9 +19,9 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -260,6 +260,10 @@ func (c *CreateTable) Resolved() bool {
 	}
 
 	return true
+}
+
+func (c *CreateTable) IsReadOnly() bool {
+	return false
 }
 
 // ForeignKeys returns any foreign keys that will be declared on this table.
@@ -534,16 +538,12 @@ func (c *CreateTable) schemaDebugString() string {
 }
 
 func (c *CreateTable) Expressions() []sql.Expression {
-	exprs := make([]sql.Expression, len(c.CreateSchema.Schema)+len(c.ChDefs))
-	i := 0
-	for _, col := range c.CreateSchema.Schema {
-		exprs[i] = expression.WrapExpression(col.Default)
-		i++
-	}
+	exprs := transform.WrappedColumnDefaults(c.CreateSchema.Schema)
+
 	for _, ch := range c.ChDefs {
-		exprs[i] = ch.Expr
-		i++
+		exprs = append(exprs, ch.Expr)
 	}
+
 	return exprs
 }
 
@@ -580,7 +580,8 @@ func (c *CreateTable) Temporary() TempTableOption {
 }
 
 func (c CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	length := len(c.CreateSchema.Schema) + len(c.ChDefs)
+	schemaLen := len(c.CreateSchema.Schema)
+	length := schemaLen + len(c.ChDefs)
 	if len(exprs) != length {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(exprs), length)
 	}
@@ -588,19 +589,14 @@ func (c CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) 
 	nc := c
 
 	// Make sure to make a deep copy of any slices here so we aren't modifying the original pointer
-	ns := c.CreateSchema.Schema.Copy()
-	i := 0
-	for ; i < len(c.CreateSchema.Schema); i++ {
-		unwrappedColDefVal, ok := exprs[i].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
-		if ok {
-			ns[i].Default = unwrappedColDefVal
-		} else { // nil fails type check
-			ns[i].Default = nil
-		}
+	ns, err := transform.SchemaWithDefaults(c.CreateSchema.Schema, exprs[:schemaLen])
+	if err != nil {
+		return nil, err
 	}
+
 	nc.CreateSchema = sql.NewPrimaryKeySchema(ns, c.CreateSchema.PkOrdinals...)
 
-	ncd, err := c.ChDefs.FromExpressions(exprs[i:])
+	ncd, err := c.ChDefs.FromExpressions(exprs[schemaLen:])
 	if err != nil {
 		return nil, err
 	}
@@ -682,6 +678,10 @@ func (d *DropTable) Resolved() bool {
 	}
 
 	return true
+}
+
+func (d *DropTable) IsReadOnly() bool {
+	return false
 }
 
 // Schema implements the sql.Expression interface.

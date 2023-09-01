@@ -44,6 +44,10 @@ func (o *Open) Resolved() bool {
 	return true
 }
 
+func (o *Open) IsReadOnly() bool {
+	return true
+}
+
 // String implements the interface sql.Node.
 func (o *Open) String() string {
 	return fmt.Sprintf("OPEN %s", o.Name)

@@ -114,7 +114,7 @@ func getTableAliases(n sql.Node, scope *plan.Scope) (TableAliases, error) {
 			}
 			return false
 		case *plan.IndexedTableAccess:
-			rt := getResolvedTable(node.ResolvedTable)
+			rt := getResolvedTable(node.TableNode)
 			analysisErr = passAliases.add(rt, node)
 			return false
 		case sql.Nameable:

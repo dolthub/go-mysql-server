@@ -545,14 +545,13 @@ func (TableEditor) updateGlobalCount(ctx *sql.Context, ie IndexEditors, word str
 		}
 		// Our new count is 1, so we need to create a new entry
 		return ie.GlobalCount.Editor.Insert(ctx, sql.Row{word, uint64(1)})
-
 	} else if len(rows) != 1 {
 		return fmt.Errorf("somehow there are duplicate entries within the Full-Text global count table")
 	}
 	row := rows[0]
 	oldCount := row[len(row)-1].(uint64)
 	// First we'll delete the existing row
-	if err = ie.GlobalCount.Editor.Delete(ctx, sql.Row{word, oldCount}); err != nil {
+	if err = ie.GlobalCount.Editor.Delete(ctx, row); err != nil {
 		return err
 	}
 	// If we're incrementing, then we can add 1 to the old count

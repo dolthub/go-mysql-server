@@ -76,57 +76,6 @@ func TestEraseProjection(t *testing.T) {
 	require.Equal(expected, result)
 }
 
-func TestOptimizeDistinct(t *testing.T) {
-	t1 := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Source: "foo"},
-		{Name: "b", Source: "foo"},
-	}), nil)
-
-	testCases := []struct {
-		name      string
-		child     sql.Node
-		optimized bool
-	}{
-		{
-			"without sort",
-			plan.NewResolvedTable(t1, nil, nil),
-			false,
-		},
-		{
-			"sort but column not projected",
-			plan.NewSort(
-				[]sql.SortField{
-					{Column: gf(0, "foo", "c")},
-				},
-				plan.NewResolvedTable(t1, nil, nil),
-			),
-			false,
-		},
-		{
-			"sort and column projected",
-			plan.NewSort(
-				[]sql.SortField{
-					{Column: gf(0, "foo", "a")},
-				},
-				plan.NewResolvedTable(t1, nil, nil),
-			),
-			true,
-		},
-	}
-
-	rule := getRule(optimizeDistinctId)
-
-	for _, tt := range testCases {
-		t.Run(tt.name, func(t *testing.T) {
-			node, _, err := rule.Apply(sql.NewEmptyContext(), nil, plan.NewDistinct(tt.child), nil, DefaultRuleSelector)
-			require.NoError(t, err)
-
-			_, ok := node.(*plan.OrderedDistinct)
-			require.Equal(t, tt.optimized, ok)
-		})
-	}
-}
-
 func TestMoveJoinConditionsToFilter(t *testing.T) {
 	t1 := memory.NewTable("t1", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "t1", Type: types.Int64},
@@ -394,55 +343,6 @@ func TestEvalFilter(t *testing.T) {
 			result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 			require.NoError(err)
 			require.Equal(tt.expected, result)
-		})
-	}
-}
-
-func TestRemoveUnnecessaryConverts(t *testing.T) {
-	testCases := []struct {
-		name      string
-		childExpr sql.Expression
-		castType  string
-		expected  sql.Expression
-	}{
-		{
-			"unnecessary cast",
-			expression.NewLiteral([]byte{}, types.LongBlob),
-			"binary",
-			expression.NewLiteral([]byte{}, types.LongBlob),
-		},
-		{
-			"necessary cast",
-			expression.NewLiteral("foo", types.LongText),
-			"signed",
-			expression.NewConvert(
-				expression.NewLiteral("foo", types.LongText),
-				"signed",
-			),
-		},
-	}
-
-	for _, tt := range testCases {
-		t.Run(tt.name, func(t *testing.T) {
-			require := require.New(t)
-
-			node := plan.NewProject([]sql.Expression{
-				expression.NewConvert(tt.childExpr, tt.castType),
-			},
-				plan.NewResolvedTable(memory.NewTable("foo", sql.PrimaryKeySchema{}, nil), nil, nil),
-			)
-
-			result, _, err := removeUnnecessaryConverts(
-				sql.NewEmptyContext(),
-				NewDefault(nil),
-				node,
-				nil,
-				DefaultRuleSelector,
-			)
-			require.NoError(err)
-
-			resultExpr := result.(*plan.Project).Projections[0]
-			require.Equal(tt.expected, resultExpr)
 		})
 	}
 }

@@ -107,12 +107,23 @@ func pushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 		return n, transform.SameTree, nil
 	}
 
+	if !hasSubqueryAlias(n) {
+		return n, transform.SameTree, nil
+	}
+
 	tableAliases, err := getTableAliases(n, scope)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
 
 	return transformPushdownSubqueryAliasFilters(ctx, a, n, scope, tableAliases)
+}
+
+func hasSubqueryAlias(n sql.Node) bool {
+	return transform.InspectUp(n, func(n sql.Node) bool {
+		_, isSubq := n.(*plan.SubqueryAlias)
+		return isSubq
+	})
 }
 
 // canDoPushdown returns whether the node given can safely be analyzed for pushdown

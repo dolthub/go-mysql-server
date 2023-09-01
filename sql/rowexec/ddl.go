@@ -130,12 +130,8 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 		fieldToColumnMap[fieldIndex] = sch.IndexOf(columnName, source)
 	}
 
-	dest, ok := n.Destination.(*plan.ResolvedTable)
-	if !ok {
-		return nil, fmt.Errorf("expected destination to be a table, found %T", n.Destination)
-	}
 	return &loadDataIter{
-		destination:             dest,
+		destSch:                 n.DestSch,
 		reader:                  reader,
 		scanner:                 scanner,
 		columnCount:             len(n.ColumnNames), // Needs to be the original column count
@@ -225,7 +221,7 @@ func (b *BaseBuilder) buildAlterDefaultSet(ctx *sql.Context, n *plan.AlterDefaul
 	}
 	newCol := &(*col)
 	newCol.Default = n.Default
-	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, n.ColumnName, newCol, nil)
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), alterable.ModifyColumn(ctx, n.ColumnName, newCol, nil)
 }
 
 func (b *BaseBuilder) buildDropCheck(ctx *sql.Context, n *plan.DropCheck, row sql.Row) (sql.RowIter, error) {
@@ -424,7 +420,7 @@ func (b *BaseBuilder) buildAlterDefaultDrop(ctx *sql.Context, n *plan.AlterDefau
 	}
 	newCol := &(*col)
 	newCol.Default = nil
-	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, n.ColumnName, newCol, nil)
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), alterable.ModifyColumn(ctx, n.ColumnName, newCol, nil)
 }
 
 func (b *BaseBuilder) buildDropView(ctx *sql.Context, n *plan.DropView, row sql.Row) (sql.RowIter, error) {
@@ -920,23 +916,27 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 }
 
 func (b *BaseBuilder) buildCreateProcedure(ctx *sql.Context, n *plan.CreateProcedure, row sql.Row) (sql.RowIter, error) {
+	sqlMode := sql.LoadSqlMode(ctx)
 	return &createProcedureIter{
 		spd: sql.StoredProcedureDetails{
 			Name:            n.Name,
 			CreateStatement: n.CreateProcedureString,
 			CreatedAt:       n.CreatedAt,
 			ModifiedAt:      n.ModifiedAt,
+			SqlMode:         sqlMode.String(),
 		},
 		db: n.Database(),
 	}, nil
 }
 
 func (b *BaseBuilder) buildCreateTrigger(ctx *sql.Context, n *plan.CreateTrigger, row sql.Row) (sql.RowIter, error) {
+	sqlMode := sql.LoadSqlMode(ctx)
 	return &createTriggerIter{
 		definition: sql.TriggerDefinition{
 			Name:            n.TriggerName,
 			CreateStatement: n.CreateTriggerString,
 			CreatedAt:       n.CreatedAt,
+			SqlMode:         sqlMode.String(),
 		},
 		db: n.Database(),
 	}, nil

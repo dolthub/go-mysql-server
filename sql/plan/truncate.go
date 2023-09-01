@@ -47,7 +47,7 @@ func GetTruncatable(node sql.Node) (sql.TruncateableTable, error) {
 	case sql.TruncateableTable:
 		return node, nil
 	case *IndexedTableAccess:
-		return GetTruncatable(node.ResolvedTable)
+		return GetTruncatable(node.TableNode)
 	case *ResolvedTable:
 		return getTruncatableTable(node.Table)
 	case sql.TableWrapper:
@@ -102,6 +102,10 @@ func (p *Truncate) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpe
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Truncate) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
+}
+
+func (*Truncate) IsReadOnly() bool {
+	return false
 }
 
 // String implements the Node interface.

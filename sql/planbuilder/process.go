@@ -1,3 +1,17 @@
+// Copyright 2023 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package planbuilder
 
 import (
@@ -10,6 +24,7 @@ import (
 )
 
 func (b *Builder) buildKill(inScope *scope, kill *ast.Kill) (outScope *scope) {
+	outScope = inScope.push()
 	connID64 := b.getInt64Value(inScope, kill.ConnID, "Error parsing KILL, expected int literal")
 	connID32 := uint32(connID64)
 	if int64(connID32) != connID64 {
@@ -18,8 +33,9 @@ func (b *Builder) buildKill(inScope *scope, kill *ast.Kill) (outScope *scope) {
 	}
 	if kill.Connection {
 		outScope.node = plan.NewKill(plan.KillType_Connection, connID32)
+	} else {
+		outScope.node = plan.NewKill(plan.KillType_Query, connID32)
 	}
-	outScope.node = plan.NewKill(plan.KillType_Query, connID32)
 	return outScope
 }
 

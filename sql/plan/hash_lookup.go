@@ -59,6 +59,10 @@ func (n *HashLookup) Expressions() []sql.Expression {
 	return []sql.Expression{n.RightEntryKey, n.LeftProbeKey}
 }
 
+func (n *HashLookup) IsReadOnly() bool {
+	return n.Child.IsReadOnly()
+}
+
 func (n *HashLookup) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(exprs), 2)

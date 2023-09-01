@@ -23,7 +23,7 @@ import (
 // method calls will return without error.
 type ColumnDefaultValue struct {
 	// Expression is the expression representing this default value
-	Expression
+	Expr Expression
 	// OutType converts the output of the expression into this type, when not nil
 	OutType Type
 	// Literal indicates whether the default value is a Literal value or expression
@@ -33,6 +33,7 @@ type ColumnDefaultValue struct {
 	// Parenthesized indicates whether the value was specified in parens or not; this is typically the opposite of the Literal field,
 	// but they can both be false in the case of now/current_timestamp for datetimes and timestamps.
 	Parenthesized bool
+	// TODO: we need a generated marker here so we can tell them apart during analysis, maybe?
 }
 
 var _ Expression = (*ColumnDefaultValue)(nil)
@@ -41,7 +42,7 @@ var _ CollationCoercible = (*ColumnDefaultValue)(nil)
 // NewColumnDefaultValue returns a new ColumnDefaultValue expression.
 func NewColumnDefaultValue(expr Expression, outType Type, representsLiteral bool, parenthesized bool, mayReturnNil bool) (*ColumnDefaultValue, error) {
 	return &ColumnDefaultValue{
-		Expression:    expr,
+		Expr:          expr,
 		OutType:       outType,
 		Literal:       representsLiteral,
 		ReturnNil:     mayReturnNil,
@@ -52,7 +53,7 @@ func NewColumnDefaultValue(expr Expression, outType Type, representsLiteral bool
 // NewUnresolvedColumnDefaultValue returns a column default
 func NewUnresolvedColumnDefaultValue(expr string) *ColumnDefaultValue {
 	return &ColumnDefaultValue{
-		Expression: UnresolvedColumnDefault{exprString: expr},
+		Expr: &UnresolvedColumnDefault{ExprString: expr},
 	}
 }
 
@@ -61,7 +62,7 @@ func (e *ColumnDefaultValue) Children() []Expression {
 	if e == nil {
 		return nil
 	}
-	return []Expression{e.Expression}
+	return []Expression{e.Expr}
 }
 
 // Eval implements sql.Expression
@@ -70,7 +71,7 @@ func (e *ColumnDefaultValue) Eval(ctx *Context, r Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, err := e.Expression.Eval(ctx, r)
+	val, err := e.Expr.Eval(ctx, r)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +120,7 @@ func (e *ColumnDefaultValue) IsNullable() bool {
 	if !e.ReturnNil {
 		return false
 	}
-	return e.Expression.IsNullable()
+	return e.Expr.IsNullable()
 }
 
 // Resolved implements sql.Expression
@@ -130,7 +131,7 @@ func (e *ColumnDefaultValue) Resolved() bool {
 	if e.OutType == nil {
 		return false
 	}
-	return e.Expression.Resolved()
+	return e.Expr.Resolved()
 }
 
 // String implements sql.Expression
@@ -144,9 +145,9 @@ func (e *ColumnDefaultValue) String() string {
 	// The default value specified in a DEFAULT clause can be a literal constant or an expression. With one exception,
 	// enclose expression default values within parentheses to distinguish them from literal constant default values.
 	if e.Literal {
-		return e.Expression.String()
+		return e.Expr.String()
 	} else {
-		return fmt.Sprintf("(%s)", e.Expression.String())
+		return fmt.Sprintf("(%s)", e.Expr.String())
 	}
 }
 
@@ -156,11 +157,11 @@ func (e *ColumnDefaultValue) DebugString() string {
 	}
 
 	if e.Literal {
-		return DebugString(e.Expression)
+		return DebugString(e.Expr)
 	} else if e.Parenthesized {
-		return fmt.Sprintf("parenthesized(%s)", DebugString(e.Expression))
+		return fmt.Sprintf("parenthesized(%s)", DebugString(e.Expr))
 	} else {
-		return fmt.Sprintf("(%s)", DebugString(e.Expression))
+		return fmt.Sprintf("(%s)", DebugString(e.Expr))
 	}
 }
 
@@ -170,7 +171,7 @@ func (e *ColumnDefaultValue) Type() Type {
 		return nil
 	}
 	if e.OutType == nil {
-		return e.Expression.Type()
+		return e.Expr.Type()
 	}
 	return e.OutType
 }
@@ -180,7 +181,7 @@ func (e *ColumnDefaultValue) CollationCoercibility(ctx *Context) (collation Coll
 	if e == nil {
 		return Collation_binary, 6
 	}
-	return GetCoercibility(ctx, e.Expression)
+	return GetCoercibility(ctx, e.Expr)
 }
 
 // WithChildren implements sql.Expression
@@ -202,7 +203,7 @@ func (e *ColumnDefaultValue) WithChildren(children ...Expression) (Expression, e
 // CheckType validates that the ColumnDefaultValue has the correct type.
 func (e *ColumnDefaultValue) CheckType(ctx *Context) error {
 	if e.OutType != nil && e.Literal {
-		val, err := e.Expression.Eval(ctx, nil)
+		val, err := e.Expr.Eval(ctx, nil)
 		if err != nil {
 			return err
 		}
@@ -213,7 +214,7 @@ func (e *ColumnDefaultValue) CheckType(ctx *Context) error {
 		if err != nil {
 			return ErrIncompatibleDefaultType.Wrap(err)
 		} else if !inRange {
-			return ErrIncompatibleDefaultType.Wrap(ErrValueOutOfRange.New(val, e.Expression))
+			return ErrIncompatibleDefaultType.Wrap(ErrValueOutOfRange.New(val, e.Expr))
 		}
 
 	}
@@ -221,7 +222,7 @@ func (e *ColumnDefaultValue) CheckType(ctx *Context) error {
 }
 
 type UnresolvedColumnDefault struct {
-	exprString string
+	ExprString string
 }
 
 var _ Expression = UnresolvedColumnDefault{}
@@ -232,7 +233,7 @@ func (u UnresolvedColumnDefault) Resolved() bool {
 }
 
 func (u UnresolvedColumnDefault) String() string {
-	return u.exprString
+	return u.ExprString
 }
 
 func (u UnresolvedColumnDefault) Type() Type {

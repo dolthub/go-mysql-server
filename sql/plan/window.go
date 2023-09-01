@@ -48,6 +48,10 @@ func (w *Window) Resolved() bool {
 		expression.ExpressionsResolved(w.SelectExprs...)
 }
 
+func (w *Window) IsReadOnly() bool {
+	return w.Child.IsReadOnly()
+}
+
 func (w *Window) String() string {
 	pr := sql.NewTreePrinter()
 	var exprs = make([]string, len(w.SelectExprs))

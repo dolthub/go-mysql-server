@@ -288,6 +288,57 @@ var FulltextTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "NULL handling",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT UNSIGNED PRIMARY KEY, v1 VARCHAR(200), v2 VARCHAR(200), FULLTEXT idx (v1, v2));",
+			"INSERT INTO test VALUES (1, 'abc', NULL), (2, 'ghi', 'jkl'), (3, 'mno', 'mno'), (4, NULL, NULL), (5, 'ghs', 'mno shg');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{ // Full-Text handles NULL values by ignoring them, meaning non-null values are still added to the document
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('abc');",
+				Expected: []sql.Row{{uint64(1), "abc", nil}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
+				Expected: []sql.Row{{uint64(2), "ghi", "jkl"}},
+			},
+			{
+				Query:    "UPDATE test SET v1 = NULL WHERE pk = 2;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('jkl');",
+				Expected: []sql.Row{{uint64(2), nil, "jkl"}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST (NULL);",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "SELECT pk, v1, v2, MATCH(v1, v2) AGAINST (NULL) FROM test;",
+				Expected: []sql.Row{
+					{uint64(1), "abc", nil, float32(0)},
+					{uint64(2), nil, "jkl", float32(0)},
+					{uint64(3), "mno", "mno", float32(0)},
+					{uint64(4), nil, nil, float32(0)},
+					{uint64(5), "ghs", "mno shg", float32(0)},
+				},
+			},
+			{
+				Query:    "DROP INDEX idx ON test;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE test ADD FULLTEXT INDEX idx (v1, v2);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
+	{
 		Name: "Collation handling",
 		SetUpScript: []string{
 			"CREATE TABLE test1 (pk BIGINT UNSIGNED PRIMARY KEY, v1 VARCHAR(200) COLLATE utf8mb4_0900_bin, v2 VARCHAR(200) COLLATE utf8mb4_0900_bin, FULLTEXT idx (v1, v2));",
@@ -343,6 +394,129 @@ var FulltextTests = []ScriptTest{
 			{
 				Query:    "SELECT * FROM test2 WHERE MATCH(v2, v1) AGAINST ('JKL MNO') AND pk = 3;",
 				Expected: []sql.Row{{uint64(3), "mno", "mno"}},
+			},
+		},
+	},
+	{ // We should not have many relevancy tests since the values are subject to change if/when the algorithm gets updated
+		Name: "Relevancy Ordering",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk INT PRIMARY KEY, doc TEXT, FULLTEXT idx (doc)) COLLATE=utf8mb4_general_ci;",
+			"INSERT INTO test VALUES (2, 'g hhhh aaaab ooooo aaaa'), (1, 'bbbb ff cccc ddd eee'), (4, 'AAAA aaaa aaaac aaaa Aaaa aaaa'), (3, 'aaaA ff j kkkk llllllll');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance DESC;",
+				Expected: []sql.Row{
+					{float32(5.9636202)},
+					{float32(4.0278959)},
+					{float32(3.3721533)},
+					{float32(0)},
+				},
+			},
+			{
+				Query: "SELECT MATCH(doc) AGAINST('aaaa') AS relevance, pk FROM test ORDER BY relevance DESC;",
+				Expected: []sql.Row{
+					{float32(5.9636202), int32(4)},
+					{float32(4.0278959), int32(2)},
+					{float32(3.3721533), int32(3)},
+					{float32(0), int32(1)},
+				},
+			},
+			{
+				Query: "SELECT pk, MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance ASC;",
+				Expected: []sql.Row{
+					{int32(1), float32(0)},
+					{int32(3), float32(3.3721533)},
+					{int32(2), float32(4.0278959)},
+					{int32(4), float32(5.9636202)},
+				},
+			},
+			{
+				Query: "SELECT pk, doc, MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance DESC;",
+				Expected: []sql.Row{
+					{int32(4), "AAAA aaaa aaaac aaaa Aaaa aaaa", float32(5.9636202)},
+					{int32(2), "g hhhh aaaab ooooo aaaa", float32(4.0278959)},
+					{int32(3), "aaaA ff j kkkk llllllll", float32(3.3721533)},
+					{int32(1), "bbbb ff cccc ddd eee", float32(0)},
+				},
+			},
+			{
+				Query: "SELECT pk, doc, MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance ASC;",
+				Expected: []sql.Row{
+					{int32(1), "bbbb ff cccc ddd eee", float32(0)},
+					{int32(3), "aaaA ff j kkkk llllllll", float32(3.3721533)},
+					{int32(2), "g hhhh aaaab ooooo aaaa", float32(4.0278959)},
+					{int32(4), "AAAA aaaa aaaac aaaa Aaaa aaaa", float32(5.9636202)},
+				},
+			},
+			{
+				Query: "SELECT pk FROM test ORDER BY MATCH(doc) AGAINST('aaaa') DESC;",
+				Expected: []sql.Row{
+					{int32(4)},
+					{int32(2)},
+					{int32(3)},
+					{int32(1)},
+				},
+			},
+			{
+				Query: "SELECT pk, doc FROM test ORDER BY MATCH(doc) AGAINST('aaaa') ASC;",
+				Expected: []sql.Row{
+					{int32(1), "bbbb ff cccc ddd eee"},
+					{int32(3), "aaaA ff j kkkk llllllll"},
+					{int32(2), "g hhhh aaaab ooooo aaaa"},
+					{int32(4), "AAAA aaaa aaaac aaaa Aaaa aaaa"},
+				},
+			},
+			{
+				Query: "SELECT 1 FROM test ORDER BY MATCH(doc) AGAINST('aaaa') DESC;",
+				Expected: []sql.Row{
+					{int32(1)},
+					{int32(1)},
+					{int32(1)},
+					{int32(1)},
+				},
+			},
+			{
+				Query: "SELECT pk, MATCH(doc) AGAINST('aaaa') AS relevance FROM test HAVING relevance > 4 ORDER BY relevance DESC;",
+				Expected: []sql.Row{
+					{int32(4), float32(5.9636202)},
+					{int32(2), float32(4.0278959)},
+				},
+			},
+			{ // Test with an added column to ensure that unnecessary columns do not affect the results
+				Query:    "ALTER TABLE test ADD COLUMN extracol INT DEFAULT 7;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "SELECT pk FROM test ORDER BY MATCH(doc) AGAINST('aaaa') DESC;",
+				Expected: []sql.Row{
+					{int32(4)},
+					{int32(2)},
+					{int32(3)},
+					{int32(1)},
+				},
+			},
+			{ // Drop the primary key to ensure that results are still consistent without a primary key
+				Query:    "ALTER TABLE test DROP PRIMARY KEY;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "SELECT pk FROM test ORDER BY MATCH(doc) AGAINST('aaaa') ASC;",
+				Expected: []sql.Row{
+					{int32(1)},
+					{int32(3)},
+					{int32(2)},
+					{int32(4)},
+				},
+			},
+			{
+				Query: "SELECT pk, MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance DESC;",
+				Expected: []sql.Row{
+					{int32(4), float32(5.9636202)},
+					{int32(2), float32(4.0278959)},
+					{int32(3), float32(3.3721533)},
+					{int32(1), float32(0)},
+				},
 			},
 		},
 	},
@@ -686,6 +860,14 @@ var FulltextTests = []ScriptTest{
 				Query:    "CREATE TABLE `film_text` (`film_id` SMALLINT NOT NULL, `title` VARCHAR(255) NOT NULL, `description` TEXT, PRIMARY KEY (`film_id`), FULLTEXT KEY `idx_title_description` (`title`,`description`));",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
+			{
+				Query:    "CREATE TABLE other_table (pk BIGINT PRIMARY KEY, v1 TEXT);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE other_table ADD FULLTEXT INDEX idx (v1);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
 		},
 	},
 	{
@@ -839,6 +1021,22 @@ var FulltextTests = []ScriptTest{
 			{
 				Query:       "CREATE TABLE child2 (pk BIGINT, v1 VARCHAR(200), INDEX idx (v1), CONSTRAINT fk FOREIGN KEY (v1) REFERENCES parent(v1));",
 				ExpectedErr: sql.ErrForeignKeyMissingReferenceIndex,
+			},
+		},
+	},
+	{
+		Name: "Full-Text with autoincrement",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, v1 VARCHAR(200), PRIMARY KEY(pk), FULLTEXT idx (v1));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO test (v1) VALUES ('abc'), ('def');",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 1}}},
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{uint64(1), "abc"}, {uint64(2), "def"}},
 			},
 		},
 	},

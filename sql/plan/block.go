@@ -69,6 +69,15 @@ func (b *Block) Resolved() bool {
 	return true
 }
 
+func (b *Block) IsReadOnly() bool {
+	for _, n := range b.statements {
+		if !n.IsReadOnly() {
+			return false
+		}
+	}
+	return true
+}
+
 // String implements the sql.Node interface.
 func (b *Block) String() string {
 	p := sql.NewTreePrinter()

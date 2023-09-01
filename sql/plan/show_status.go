@@ -54,6 +54,10 @@ func (s *ShowStatus) Resolved() bool {
 	return true
 }
 
+func (s *ShowStatus) IsReadOnly() bool {
+	return true
+}
+
 // String implements sql.Node interface.
 func (s *ShowStatus) String() string {
 	return "SHOW STATUS"

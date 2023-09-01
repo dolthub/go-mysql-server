@@ -61,6 +61,7 @@ type ColumnsTable struct {
 }
 
 var _ sql.Table = (*ColumnsTable)(nil)
+var _ sql.DynamicColumnsTable = (*ColumnsTable)(nil)
 
 // String implements the sql.Table interface.
 func (c *ColumnsTable) String() string {
@@ -104,6 +105,9 @@ func (c *ColumnsTable) PartitionRows(context *sql.Context, partition sql.Partiti
 
 	return columnsRowIter(context, c.catalog, c.allColsWithDefaultValue)
 }
+func (c *ColumnsTable) HasDynamicColumns() bool {
+	return true
+}
 
 // AllColumns returns all columns in the catalog, renamed to reflect their database and table names
 func (c *ColumnsTable) AllColumns(ctx *sql.Context) (sql.Schema, error) {
@@ -146,7 +150,28 @@ func (c ColumnsTable) WithColumnDefaults(columnDefaults []sql.Expression) (sql.T
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(columnDefaults), len(c.allColsWithDefaultValue))
 	}
 
-	c.allColsWithDefaultValue = transform.SchemaWithDefaults(c.allColsWithDefaultValue, columnDefaults)
+	sch, err := transform.SchemaWithDefaults(c.allColsWithDefaultValue, columnDefaults)
+	if err != nil {
+		return nil, err
+	}
+
+	c.allColsWithDefaultValue = sch
+	return &c, nil
+}
+
+func (c ColumnsTable) WithDefaultsSchema(sch sql.Schema) (sql.Table, error) {
+	if c.allColsWithDefaultValue == nil {
+		return nil, fmt.Errorf("WithColumnDefaults called with nil columns for table %s", c.Name())
+	}
+
+	if len(sch) != len(c.allColsWithDefaultValue) {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(sch), len(c.allColsWithDefaultValue))
+	}
+
+	// TODO: generated values
+	for i, col := range sch {
+		c.allColsWithDefaultValue[i].Default = col.Default
+	}
 	return &c, nil
 }
 

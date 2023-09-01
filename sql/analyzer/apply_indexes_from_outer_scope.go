@@ -72,7 +72,7 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 					return pushdownIndexToTable(ctx, a, n, idxLookup.index, idxLookup.keyExpr, idxLookup.nullmask)
 				}
 				return n, transform.SameTree, nil
-			case *plan.ResolvedTable:
+			case sql.TableNode:
 				if strings.ToLower(n.Name()) == idxLookup.table {
 					return pushdownIndexToTable(ctx, a, n, idxLookup.index, idxLookup.keyExpr, idxLookup.nullmask)
 				}
@@ -95,13 +95,10 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 func pushdownIndexToTable(ctx *sql.Context, a *Analyzer, tableNode sql.NameableNode, index sql.Index, keyExpr []sql.Expression, nullmask []bool) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(tableNode, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
-		case *plan.ResolvedTable:
+		case sql.TableNode:
 			table := getTable(tableNode)
 			if table == nil {
 				return n, transform.SameTree, nil
-			}
-			if tw, ok := table.(sql.TableWrapper); ok {
-				table = tw.Underlying()
 			}
 			if iat, ok := table.(sql.IndexAddressableTable); ok {
 				a.Log("table %q transformed with pushdown of index", tableNode.Name())

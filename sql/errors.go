@@ -242,6 +242,9 @@ var (
 	// ErrUnknownSystemVariable is returned when a query references a system variable that doesn't exist
 	ErrUnknownSystemVariable = errors.NewKind(`Unknown system variable '%s'`)
 
+	// ErrUnknownUserVariable is returned when a query references a user variable that doesn't exist
+	ErrUnknownUserVariable = errors.NewKind(`Unknown user variable '%s'`)
+
 	// ErrSystemVariableReadOnly is returned when attempting to set a value to a non-Dynamic system variable.
 	ErrSystemVariableReadOnly = errors.NewKind(`Variable '%s' is a read only variable`)
 
@@ -452,6 +455,9 @@ var (
 
 	// ErrDuplicateEntry is returns when a duplicate entry is placed on an index such as a UNIQUE or a Primary Key.
 	ErrDuplicateEntry = errors.NewKind("Duplicate entry for key '%s'")
+
+	// ErrDuplicateColumn is returned when a table has two columns with the same name.
+	ErrDuplicateColumn = errors.NewKind("duplicate column name: `%s`")
 
 	// ErrInvalidArgument is returned when an argument to a function is invalid.
 	ErrInvalidArgument = errors.NewKind("Invalid argument to %s")
@@ -846,6 +852,11 @@ var (
 
 	// ErrGeneratedColumnValue is returned when a value is provided for a generated column
 	ErrGeneratedColumnValue = errors.NewKind("The value specified for generated column %q in table %q is not allowed.")
+
+	// ErrGeneratedColumnWithDefault is returned when a column specifies both a default and a generated value
+	ErrGeneratedColumnWithDefault = errors.NewKind("Incorrect usage of DEFAULT and generated column")
+
+	ErrInsertIntoMismatchValueCount = errors.NewKind("number of values does not match number of columns provided")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the

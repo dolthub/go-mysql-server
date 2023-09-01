@@ -28,7 +28,7 @@ type ShowIndexes struct {
 }
 
 // NewShowIndexes creates a new ShowIndexes node. The node must represent a table.
-func NewShowIndexes(table sql.Node) sql.Node {
+func NewShowIndexes(table sql.Node) *ShowIndexes {
 	return &ShowIndexes{
 		UnaryNode: UnaryNode{table},
 	}
@@ -63,6 +63,10 @@ func (*ShowIndexes) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 // String implements the fmt.Stringer interface.
 func (n *ShowIndexes) String() string {
 	return fmt.Sprintf("ShowIndexes(%s)", n.Child)
+}
+
+func (n *ShowIndexes) IsReadOnly() bool {
+	return true
 }
 
 // Schema implements the Node interface.

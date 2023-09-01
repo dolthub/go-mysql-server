@@ -41,7 +41,7 @@ import (
 
 type loadDataIter struct {
 	scanner                 *bufio.Scanner
-	destination             *plan.ResolvedTable
+	destSch                 sql.Schema
 	reader                  io.ReadCloser
 	columnCount             int
 	fieldToColumnMap        []int
@@ -156,14 +156,14 @@ func (l loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expressi
 		}
 	}
 
-	exprs := make([]sql.Expression, len(l.destination.Schema()))
+	exprs := make([]sql.Expression, len(l.destSch))
 
 	limit := len(exprs)
 	if len(fields) < limit {
 		limit = len(fields)
 	}
 
-	destSch := l.destination.Schema()
+	destSch := l.destSch
 	for i := 0; i < limit; i++ {
 		field := fields[i]
 		destCol := destSch[l.fieldToColumnMap[i]]
@@ -196,20 +196,17 @@ func (l loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expressi
 					return nil, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
 				}
 				var def sql.Expression = f.Default
-				if ctx.Version == sql.VersionExperimental {
-					var err error
-					def, _, err = transform.Expr(f.Default, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-						switch e := e.(type) {
-						case *expression.GetField:
-							//return e.WithIndex(e.Index() - 1), transform.NewTree, nil
-							return fixidx.FixFieldIndexes(nil, log.Printf, l.destination.Schema(), e.WithTable(l.destination.Name()))
-						default:
-							return e, transform.SameTree, nil
-						}
-					})
-					if err != nil {
-						return nil, err
+				var err error
+				def, _, err = transform.Expr(f.Default, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+					switch e := e.(type) {
+					case *expression.GetField:
+						return fixidx.FixFieldIndexes(nil, log.Printf, l.destSch, e.WithTable(l.destSch[0].Source))
+					default:
+						return e, transform.SameTree, nil
 					}
+				})
+				if err != nil {
+					return nil, err
 				}
 				exprs[i] = def
 			}
@@ -429,7 +426,7 @@ func updateDefaultsOnColumnRename(ctx *sql.Context, tbl sql.AlterableTable, sche
 			continue
 		}
 		newCol := *col
-		newCol.Default.Expression, _, err = transform.Expr(col.Default.Expression, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		newCol.Default.Expr, _, err = transform.Expr(col.Default.Expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if expr, ok := e.(*expression.GetField); ok {
 				if strings.ToLower(expr.Name()) == oldName {
 					colsToModify[&newCol] = struct{}{}
@@ -612,7 +609,7 @@ func modifyColumnInSchema(schema sql.Schema, name string, column *sql.Column, or
 		newCol := newSch[oldToNewIdxMapping[i]]
 
 		if newCol.Default != nil {
-			newDefault, _, err := transform.Expr(newCol.Default.Expression, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			newDefault, _, err := transform.Expr(newCol.Default.Expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				gf, ok := e.(*expression.GetField)
 				if !ok {
 					return e, transform.SameTree, nil
@@ -1456,7 +1453,7 @@ func addColumnToSchema(schema sql.Schema, column *sql.Column, order *sql.ColumnO
 		switch p := projections[i].(type) {
 		case plan.ColDefaultExpression:
 			if p.Column.Default != nil {
-				newExpr, _, err := transform.Expr(p.Column.Default.Expression, func(s sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				newExpr, _, err := transform.Expr(p.Column.Default.Expr, func(s sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 					switch s := s.(type) {
 					case *expression.GetField:
 						idx := schema.IndexOf(s.Name(), schema[0].Source)
@@ -1472,7 +1469,7 @@ func addColumnToSchema(schema sql.Schema, column *sql.Column, order *sql.ColumnO
 				if err != nil {
 					return nil, nil, err
 				}
-				p.Column.Default.Expression = newExpr
+				p.Column.Default.Expr = newExpr
 				projections[i] = p
 			}
 			break

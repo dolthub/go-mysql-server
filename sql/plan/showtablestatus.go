@@ -78,6 +78,10 @@ func (s *ShowTableStatus) String() string {
 	return "SHOW TABLE STATUS"
 }
 
+func (s *ShowTableStatus) IsReadOnly() bool {
+	return true
+}
+
 // WithChildren implements the Node interface.
 func (s *ShowTableStatus) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {

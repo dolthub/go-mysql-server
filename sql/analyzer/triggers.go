@@ -22,7 +22,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -184,16 +183,18 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 			return nil, transform.SameTree, err
 		}
 
+		b := planbuilder.New(ctx, a.Catalog)
+		prevActive := b.TriggerCtx().Active
+		b.TriggerCtx().Active = true
+		defer func() {
+			b.TriggerCtx().Active = prevActive
+		}()
+
 		for _, trigger := range triggers {
 			var parsedTrigger sql.Node
-			if ctx.Version == sql.VersionExperimental {
-				b := planbuilder.New(ctx, a.Catalog)
-				b.TriggerCtx().Call = true
-				parsedTrigger, _, _, err = b.Parse(trigger.CreateStatement, false)
-				b.TriggerCtx().Call = false
-			} else {
-				parsedTrigger, err = parse.Parse(ctx, trigger.CreateStatement)
-			}
+			sqlMode := sql.NewSqlModeFromString(trigger.SqlMode)
+			b.SetParserOptions(sqlMode.ParserOptions())
+			parsedTrigger, _, _, err = b.Parse(trigger.CreateStatement, false)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -205,6 +206,20 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 
 			triggerTable := getTableName(ct.Table)
 			if stringContains(affectedTables, triggerTable) && triggerEventsMatch(triggerEvent, ct.TriggerEvent) {
+				// first pass allows unresolved before we know whether trigger is relevant
+				// TODO store destination table name with trigger, so we don't have to do parse twice
+				b.TriggerCtx().Call = true
+				parsedTrigger, _, _, err = b.Parse(trigger.CreateStatement, false)
+				b.TriggerCtx().Call = false
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+
+				ct, ok := parsedTrigger.(*plan.CreateTrigger)
+				if !ok {
+					return nil, transform.SameTree, sql.ErrTriggerCreateStatementInvalid.New(trigger.CreateStatement)
+				}
+
 				if block, ok := ct.Body.(*plan.BeginEndBlock); ok {
 					ct.Body = plan.NewTriggerBeginEndBlock(block)
 				}

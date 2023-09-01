@@ -260,6 +260,10 @@ func (p *AlterIndex) Resolved() bool {
 	return p.Table.Resolved() && p.ddlNode.Resolved() && p.targetSchema.Resolved()
 }
 
+func (p *AlterIndex) IsReadOnly() bool {
+	return false
+}
+
 // Children implements the sql.Node interface.
 func (p *AlterIndex) Children() []sql.Node {
 	return []sql.Node{p.Table}

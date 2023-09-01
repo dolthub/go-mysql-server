@@ -1,27 +1,87 @@
+// Copyright 2023 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package planbuilder
 
 import (
+	"sync"
+
+	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
+
+var BinderFactory = &sync.Pool{New: func() interface{} {
+	return &Builder{f: &factory{}}
+}}
 
 type Builder struct {
 	ctx             *sql.Context
 	cat             sql.Catalog
+	parserOpts      ast.ParserOptions
+	f               *factory
 	currentDatabase sql.Database
 	colId           columnId
 	tabId           tableId
 	multiDDL        bool
 	viewCtx         *ViewContext
+	procCtx         *ProcContext
 	triggerCtx      *TriggerContext
+	bindCtx         *BindvarContext
 	insertActive    bool
 	nesting         int
 }
 
+// BindvarContext holds bind variable replacement literals.
+type BindvarContext struct {
+	Bindings map[string]*querypb.BindVariable
+	used     map[string]struct{}
+	// resolveOnly indicates that we are resolving plan names,
+	// but will not error for missing bindvar replacements.
+	resolveOnly bool
+}
+
+func (bv *BindvarContext) GetSubstitute(s string) (*querypb.BindVariable, bool) {
+	if bv.Bindings != nil {
+		ret, ok := bv.Bindings[s]
+		bv.used[s] = struct{}{}
+		return ret, ok
+	}
+	return nil, false
+}
+
+func (bv *BindvarContext) UnusedBindings() []string {
+	if len(bv.used) == len(bv.Bindings) {
+		return nil
+	}
+	var unused []string
+	for k, _ := range bv.Bindings {
+		if _, ok := bv.used[k]; !ok {
+			unused = append(unused, k)
+		}
+	}
+	return unused
+}
+
+// ViewContext overwrites database root source of nested
+// calls.
 type ViewContext struct {
-	AsOf interface{}
+	AsOf   interface{}
+	DbName string
 }
 
 type TriggerContext struct {
@@ -31,13 +91,42 @@ type TriggerContext struct {
 	ResolveErr       error
 }
 
+// ProcContext allows nested CALLs to use the same database for resolving
+// procedure definitions without changing the underlying database roots.
 type ProcContext struct {
-	Active     bool
-	ResolveErr error
+	AsOf   interface{}
+	DbName string
 }
 
 func New(ctx *sql.Context, cat sql.Catalog) *Builder {
-	return &Builder{ctx: ctx, cat: cat}
+	sqlMode := sql.LoadSqlMode(ctx)
+	return &Builder{ctx: ctx, cat: cat, parserOpts: sqlMode.ParserOptions(), f: &factory{}}
+}
+
+func (b *Builder) Initialize(ctx *sql.Context, cat sql.Catalog, opts ast.ParserOptions) {
+	b.ctx = ctx
+	b.cat = cat
+	b.f.ctx = ctx
+	b.parserOpts = opts
+}
+
+func (b *Builder) SetDebug(val bool) {
+	b.f.debug = val
+}
+
+func (b *Builder) SetBindings(bindings map[string]*querypb.BindVariable) {
+	b.bindCtx = &BindvarContext{
+		Bindings: bindings,
+		used:     make(map[string]struct{}),
+	}
+}
+
+func (b *Builder) SetParserOptions(opts ast.ParserOptions) {
+	b.parserOpts = opts
+}
+
+func (b *Builder) BindCtx() *BindvarContext {
+	return b.bindCtx
 }
 
 func (b *Builder) ViewCtx() *ViewContext {
@@ -45,6 +134,13 @@ func (b *Builder) ViewCtx() *ViewContext {
 		b.viewCtx = &ViewContext{}
 	}
 	return b.viewCtx
+}
+
+func (b *Builder) ProcCtx() *ProcContext {
+	if b.procCtx == nil {
+		b.procCtx = &ProcContext{}
+	}
+	return b.procCtx
 }
 
 func (b *Builder) TriggerCtx() *TriggerContext {
@@ -58,8 +154,17 @@ func (b *Builder) newScope() *scope {
 	return &scope{b: b}
 }
 
-func (b *Builder) reset() {
+func (b *Builder) Reset() {
 	b.colId = 0
+	b.bindCtx = nil
+	b.currentDatabase = nil
+	b.procCtx = nil
+	b.multiDDL = false
+	b.insertActive = false
+	b.tabId = 0
+	b.triggerCtx = nil
+	b.viewCtx = nil
+	b.nesting = 0
 }
 
 type parseErr struct {
@@ -156,13 +261,25 @@ func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outSc
 		return b.buildChangeReplicationFilter(inScope, n)
 	case *ast.StartReplica:
 		outScope = inScope.push()
-		outScope.node = plan.NewStartReplica()
+		startRep := plan.NewStartReplica()
+		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.IsBinlogReplicaCatalog() {
+			startRep.ReplicaController = binCat.GetBinlogReplicaController()
+		}
+		outScope.node = startRep
 	case *ast.StopReplica:
 		outScope = inScope.push()
-		outScope.node = plan.NewStopReplica()
+		stopRep := plan.NewStopReplica()
+		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.IsBinlogReplicaCatalog() {
+			stopRep.ReplicaController = binCat.GetBinlogReplicaController()
+		}
+		outScope.node = stopRep
 	case *ast.ResetReplica:
 		outScope = inScope.push()
-		outScope.node = plan.NewResetReplica(n.All)
+		resetRep := plan.NewResetReplica(n.All)
+		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.IsBinlogReplicaCatalog() {
+			resetRep.ReplicaController = binCat.GetBinlogReplicaController()
+		}
+		outScope.node = resetRep
 	case *ast.BeginEndBlock:
 		return b.buildBeginEndBlock(inScope, n)
 	case *ast.IfStatement:
