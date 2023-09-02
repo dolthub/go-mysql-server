@@ -14,7 +14,9 @@
 
 package json
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestReplace(t *testing.T) {
 

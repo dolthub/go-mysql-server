@@ -44,9 +44,9 @@ func TestJSONSet(t *testing.T) {
 	)
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
-	f1 := buildGetFieldExpressions(t, 3)
+	f1 := buildGetFieldExpressions(t, NewJSONSet, 3)
 
-	f2 := buildGetFieldExpressions(t, 5)
+	f2 := buildGetFieldExpressions(t, NewJSONSet, 5)
 
 	json := `{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`
 
@@ -83,7 +83,7 @@ func TestJSONSet(t *testing.T) {
 		// +---------------------------------------------------------------------+
 		// | [1, 2, 4]                                                           |
 		// +---------------------------------------------------------------------+
-		{buildGetFieldExpressions(t, 9),
+		{buildGetFieldExpressions(t, NewJSONSet, 9),
 			sql.Row{`[]`,
 				"$[2]", 1.1, // [] -> [1.1]
 				"$[2]", 2.2, // [1.1] -> [1.1,2.2]
@@ -131,13 +131,13 @@ func TestJSONSet(t *testing.T) {
 	}
 }
 
-func buildGetFieldExpressions(t *testing.T, argCount int) sql.Expression {
+func buildGetFieldExpressions(t *testing.T, construct func(...sql.Expression) (sql.Expression, error), argCount int) sql.Expression {
 	expressions := make([]sql.Expression, 0, argCount)
 	for i := 0; i < argCount; i++ {
 		expressions = append(expressions, expression.NewGetField(i, types.LongText, "arg"+strconv.Itoa(i), false))
 	}
 
-	result, err := NewJSONSet(expressions...)
+	result, err := construct(expressions...)
 	require.NoError(t, err)
 
 	return result

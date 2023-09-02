@@ -69,11 +69,6 @@ func (j JSONRemove) IsNullable() bool {
 	return j.doc.IsNullable()
 }
 
-func (j JSONRemove) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (j JSONRemove) Children() []sql.Expression {
 	return append([]sql.Expression{j.doc}, j.paths...)
 }
@@ -109,4 +104,36 @@ func (j JSONRemove) Description() string {
 // IsUnsupported implements sql.UnsupportedFunctionStub
 func (j JSONRemove) IsUnsupported() bool {
 	return false
+}
+
+func (j JSONRemove) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	doc, err := getMutableJSONVal(ctx, row, j.doc)
+	if err != nil {
+		return nil, err
+	}
+	if doc == nil {
+		return nil, nil
+	}
+
+	for _, path := range j.paths {
+		path, err := path.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+
+		if path == nil {
+			// MySQL documented behavior is to return null, not error, if path is null.
+			return nil, nil
+		}
+
+		// make sure path is string
+		if _, ok := path.(string); !ok {
+			return nil, fmt.Errorf("Invalid JSON path expression")
+		}
+		doc, _, err = doc.Remove(ctx, path.(string))
+		if err != nil {
+			return nil, err
+		}
+	}
+	return doc, nil
 }
