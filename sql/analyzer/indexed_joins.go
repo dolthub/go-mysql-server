@@ -816,19 +816,6 @@ func satisfiesScalarRefs(e memo.ScalarExpr, grp *memo.ExprGroup) bool {
 	return e.Group().ScalarProps().Tables.Difference(grp.RelProps.OutputTables()).Len() == 0
 }
 
-// getColumnRefFromScalar returns the first column reference used in a scalar expression.
-func getColumnRefFromScalar(s memo.ScalarExpr) *memo.ColRef {
-	var result *memo.ColRef
-	memo.DfsScalar(s, func(e memo.ScalarExpr) (err error) {
-		if c, ok := e.(*memo.ColRef); ok {
-			result = c
-			return memo.HaltErr
-		}
-		return
-	})
-	return result
-}
-
 // addMergeJoins will add merge join operators to join relations
 // with native indexes providing sort enforcement on an equality
 // filter.
@@ -858,60 +845,186 @@ func addMergeJoins(m *memo.Memo) error {
 			return nil
 		}
 
-		for i, f := range join.Filter {
-			var l, r *memo.ExprGroup
-			switch f := f.(type) {
+		eqFilters := make([]filterAndPosition, 0, len(join.Filter))
+		for filterPos, filter := range join.Filter {
+			switch eq := filter.(type) {
 			case *memo.Equal:
-				l = f.Left
-				r = f.Right
+				l := eq.Left
+				r := eq.Right
+
+				if l.ScalarProps().Cols.Len() != 1 ||
+					r.ScalarProps().Cols.Len() != 1 {
+					continue
+				}
+
+				// check that comparer is not non-decreasing
+				if !isWeaklyMonotonic(l.Scalar) || !isWeaklyMonotonic(r.Scalar) {
+					continue
+				}
+
+				var swap bool
+				if l.ScalarProps().Tables.Contains(int(memo.TableIdForSource(leftGrp))) &&
+					r.ScalarProps().Tables.Contains(int(memo.TableIdForSource(rightGrp))) {
+				} else if r.ScalarProps().Tables.Contains(int(memo.TableIdForSource(leftGrp))) &&
+					l.ScalarProps().Tables.Contains(int(memo.TableIdForSource(rightGrp))) {
+					swap = true
+					l, r = r, l
+				} else {
+					continue
+				}
+				if swap {
+					eqFilters = append(eqFilters, filterAndPosition{&memo.Equal{
+						Left:  eq.Right,
+						Right: eq.Left,
+					}, filterPos})
+				} else {
+					eqFilters = append(eqFilters, filterAndPosition{eq, filterPos})
+				}
 			default:
 				continue
 			}
 
-			if l.ScalarProps().Cols.Len() != 1 ||
-				r.ScalarProps().Cols.Len() != 1 {
-				continue
-			}
+		}
 
-			var swap bool
-			if l.ScalarProps().Tables.Contains(int(memo.TableIdForSource(leftGrp))) &&
-				r.ScalarProps().Tables.Contains(int(memo.TableIdForSource(rightGrp))) {
-			} else if r.ScalarProps().Tables.Contains(int(memo.TableIdForSource(leftGrp))) &&
-				l.ScalarProps().Tables.Contains(int(memo.TableIdForSource(rightGrp))) {
-				swap = true
-				l, r = r, l
-			} else {
-				continue
-			}
+		// For each lIndex:
+		// Compute the max set of filter expressions that match that index
+		// While matchedFilters is not empty:
+		//    Check to see if any rIndexes match that set of filters
+		//    Remove the last matched filter
+		for _, lIndex := range lIndexes {
+			matchedEqFilters := matchedFiltersForLeftIndex(lIndex, join.Left.RelProps.FuncDeps().Constants(), eqFilters)
+			for len(matchedEqFilters) > 0 {
+				for _, rIndex := range rIndexes {
+					if rightIndexMatchesFilters(rIndex, join.Left.RelProps.FuncDeps().Constants(), matchedEqFilters) {
+						jb := join.Copy()
+						if d, ok := jb.Left.First.(*memo.Distinct); ok && lIndex.SqlIdx().IsUnique() {
+							jb.Left = d.Child
+						}
+						if d, ok := jb.Right.First.(*memo.Distinct); ok && rIndex.SqlIdx().IsUnique() {
+							jb.Right = d.Child
+						}
+						var compare memo.ScalarExpr
+						if len(matchedEqFilters) > 1 {
+							compare = combineIntoTuple(m, matchedEqFilters)
+						} else {
+							compare = matchedEqFilters[0].filter
 
-			lRef := getColumnRefFromScalar(l.Scalar)
-			rRef := getColumnRefFromScalar(r.Scalar)
+						}
+						newFilters := []memo.ScalarExpr{compare}
+						for filterPos, filter := range join.Filter {
+							found := false
+							for _, filterAndPos := range matchedEqFilters {
+								if filterAndPos.pos == filterPos {
+									found = true
+								}
+							}
+							if !found {
+								newFilters = append(newFilters, filter)
+							}
+						}
 
-			// check that comparer is not non-decreasing
-			if !isWeaklyMonotonic(l.Scalar) || !isWeaklyMonotonic(r.Scalar) {
-				continue
-			}
-
-			newFilters := make([]memo.ScalarExpr, len(join.Filter))
-			copy(newFilters, join.Filter)
-			// merge cond first
-			newFilters[0], newFilters[i] = newFilters[i], newFilters[0]
-
-			for _, rIdx := range sortedIndexScansForTableCol(rIndexes, rRef, join.Right.RelProps.FuncDeps().Constants(), rFilters) {
-				for _, lIdx := range sortedIndexScansForTableCol(lIndexes, lRef, join.Left.RelProps.FuncDeps().Constants(), lFilters) {
-					jb := join.Copy()
-					if d, ok := jb.Left.First.(*memo.Distinct); ok && lIdx.Idx.SqlIdx().IsUnique() {
-						jb.Left = d.Child
+						// To make the index scan, we need the first non-constant column in each index.
+						leftColId := getOnlyColumnId(matchedEqFilters[0].filter.Left)
+						rightColId := getOnlyColumnId(matchedEqFilters[0].filter.Right)
+						lIndexScan := makeIndexScan(lIndex, leftColId, lFilters)
+						rIndexScan := makeIndexScan(rIndex, rightColId, rFilters)
+						m.MemoizeMergeJoin(e.Group(), join.Left, join.Right, lIndexScan, rIndexScan, jb.Op.AsMerge(), newFilters, false)
 					}
-					if d, ok := jb.Right.First.(*memo.Distinct); ok && rIdx.Idx.SqlIdx().IsUnique() {
-						jb.Right = d.Child
-					}
-					m.MemoizeMergeJoin(e.Group(), join.Left, join.Right, lIdx, rIdx, jb.Op.AsMerge(), newFilters, swap)
 				}
+				matchedEqFilters = matchedEqFilters[:len(matchedEqFilters)-1]
 			}
 		}
 		return nil
 	})
+}
+
+// getOnlyColumnId returns the id of the only column referenced in an expression group. We only call this
+// on expressions that are already verified to have exactly one referenced column.
+func getOnlyColumnId(group *memo.ExprGroup) sql.ColumnId {
+	id, _ := group.ScalarProps().Cols.Next(1)
+	return id
+}
+
+func combineIntoTuple(m *memo.Memo, filters []filterAndPosition) *memo.Equal {
+	var lFilters []*memo.ExprGroup
+	var rFilters []*memo.ExprGroup
+
+	for _, filter := range filters {
+		lFilters = append(lFilters, filter.filter.Left)
+		rFilters = append(rFilters, filter.filter.Right)
+	}
+
+	lGroup := memo.NewTuple(m, lFilters)
+	rGroup := memo.NewTuple(m, rFilters)
+
+	return &memo.Equal{
+		Left:  lGroup,
+		Right: rGroup,
+	}
+}
+
+// rightIndexMatchesFilters checks whether the provided rIndex is a candidate for a merge join on the provided filters.
+// The index must have a prefix consisting entirely of constants and the provided filters in order.
+func rightIndexMatchesFilters(rIndex *memo.Index, constants sql.ColSet, filters []filterAndPosition) bool {
+	if filters == nil {
+		return true
+	}
+	columnIds := rIndex.Cols()
+	columnPos := 0
+	filterPos := 0
+	for {
+		if columnPos >= len(columnIds) {
+			// There are still unmatched filters: this filter is not a prefix on the index
+			return false
+		}
+		matched := false
+		for getOnlyColumnId(filters[filterPos].filter.Right) == columnIds[columnPos] {
+			matched = true
+			filterPos++
+			if filterPos >= len(filters) {
+				// every filter matched: this filter is a prefix on the index
+				return true
+			}
+		}
+		if !matched {
+			if constants.Contains(columnIds[columnPos]) {
+				// column is constant, it can be used in the prefix.
+				columnPos++
+				continue
+			}
+			return false
+		}
+		columnPos++
+	}
+}
+
+// filterAndPosition stores a filter on a join, along with that filter's original index.
+type filterAndPosition struct {
+	filter *memo.Equal
+	pos    int
+}
+
+// matchedFiltersForLeftIndex computes the maximum-length prefix for an index where every column is matched by the supplied
+// constants and scalar expressions.
+func matchedFiltersForLeftIndex(lIndex *memo.Index, constants sql.ColSet, filters []filterAndPosition) (matchedFilters []filterAndPosition) {
+	for _, idxCol := range lIndex.Cols() {
+		if constants.Contains(idxCol) {
+			// column is constant, it can be used in the prefix.
+			continue
+		}
+		found := false
+		for _, filter := range filters {
+			if getOnlyColumnId(filter.filter.Left) == idxCol {
+				matchedFilters = append(matchedFilters, filter)
+				found = true
+				break
+			}
+		}
+		if !found {
+			return matchedFilters
+		}
+	}
+	return matchedFilters
 }
 
 // sortedIndexScanForTableCol returns the first indexScan found for a relation
@@ -921,15 +1034,15 @@ func sortedIndexScansForTableCol(indexes []*memo.Index, targetCol *memo.ColRef, 
 	// valid index prefix is (constants..., targetCol)
 	for _, idx := range indexes {
 		found := false
-		matchedIdx := 0
-		for i, idxCol := range idx.Cols() {
+		var matchedIdx sql.ColumnId
+		for _, idxCol := range idx.Cols() {
 			if constants.Contains(idxCol) {
 				// idxCol constant OK
 				continue
 			}
 			if idxCol == targetCol.Col {
 				found = true
-				matchedIdx = i
+				matchedIdx = idxCol
 			} else {
 				break
 			}
@@ -937,38 +1050,52 @@ func sortedIndexScansForTableCol(indexes []*memo.Index, targetCol *memo.ColRef, 
 		if !found {
 			continue
 		}
-		rang := make(sql.Range, len(idx.Cols()))
-		for j := 0; j < matchedIdx; j++ {
-			var lit *memo.Literal
-			for _, f := range filters {
-				if eq, ok := f.(*memo.Equal); ok {
-					if l, ok := eq.Left.Scalar.(*memo.ColRef); ok && l.Col == idx.Cols()[j] {
-						lit, _ = eq.Right.Scalar.(*memo.Literal)
-					}
-					if r, ok := eq.Right.Scalar.(*memo.ColRef); ok && r.Col == idx.Cols()[j] {
-						lit, _ = eq.Left.Scalar.(*memo.Literal)
-					}
-					if lit != nil {
-						break
-					}
-				}
-			}
-			rang[j] = sql.ClosedRangeColumnExpr(lit.Val, lit.Val, idx.SqlIdx().ColumnExpressionTypes()[j].Type)
-		}
-		for j := matchedIdx; j < len(idx.Cols()); j++ {
-			// all range bound Compare() is type insensitive
-			rang[j] = sql.AllRangeColumnExpr(types.Null)
-		}
-
-		if !idx.SqlIdx().CanSupport(rang) {
-			return nil
-		}
-		ret = append(ret, &memo.IndexScan{
-			Idx:   idx,
-			Range: rang,
-		})
+		ret = append(ret, makeIndexScan(idx, matchedIdx, filters))
 	}
 	return ret
+}
+
+func makeIndexScan(idx *memo.Index, matchedIdx sql.ColumnId, filters []memo.ScalarExpr) *memo.IndexScan {
+	rang := make(sql.Range, len(idx.Cols()))
+	var j int
+	for {
+		found := idx.Cols()[j] == matchedIdx
+		var lit *memo.Literal
+		for _, f := range filters {
+			if eq, ok := f.(*memo.Equal); ok {
+				if l, ok := eq.Left.Scalar.(*memo.ColRef); ok && l.Col == idx.Cols()[j] {
+					lit, _ = eq.Right.Scalar.(*memo.Literal)
+				}
+				if r, ok := eq.Right.Scalar.(*memo.ColRef); ok && r.Col == idx.Cols()[j] {
+					lit, _ = eq.Left.Scalar.(*memo.Literal)
+				}
+				if lit != nil {
+					break
+				}
+			}
+		}
+		if found && lit == nil {
+			break
+		}
+		rang[j] = sql.ClosedRangeColumnExpr(lit.Val, lit.Val, idx.SqlIdx().ColumnExpressionTypes()[j].Type)
+		j++
+		if found {
+			break
+		}
+	}
+	for j < len(idx.Cols()) {
+		// all range bound Compare() is type insensitive
+		rang[j] = sql.AllRangeColumnExpr(types.Null)
+		j++
+	}
+
+	if !idx.SqlIdx().CanSupport(rang) {
+		return nil
+	}
+	return &memo.IndexScan{
+		Idx:   idx,
+		Range: rang,
+	}
 }
 
 // isWeaklyMonotonic is a weak test of whether an expression
