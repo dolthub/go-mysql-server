@@ -654,11 +654,9 @@ func (t *Table) newTableEditor(ctx *sql.Context) sql.TableEditor {
 	uniqIdxCols, prefixLengths := t.indexColsForTableEditor()
 	var editor sql.TableEditor = &tableEditor{
 		editedTable:       ed.Table(),
+		initialTable:      t.copy(),
 		targetTable:       t,
-		initialAutoIncVal: 1,
-		initialPartitions: nil,
 		ea:                ed,
-		initialInsert:     0,
 		uniqueIdxCols:     uniqIdxCols,
 		prefixLengths:     prefixLengths,
 	}
@@ -1150,32 +1148,42 @@ func (t *Table) String() string {
 }
 
 func (t *Table) DebugString() string {
-	p := sql.NewTreePrinter()
-
-	children := []string{fmt.Sprintf("name: %s", t.name)}
-	if t.lookup != nil {
-		children = append(children, fmt.Sprintf("index: %s", t.lookup))
-	}
-
-	if len(t.columns) > 0 {
-		var projections []string
-		for _, column := range t.columns {
-			projections = append(projections, fmt.Sprintf("%d", column))
+	p := t.partitions["0"]
+	s := ""
+	for i, row := range p {
+		if i > 0 {
+			s += ", "
 		}
-		children = append(children, fmt.Sprintf("projections: %s", projections))
-
+		s += fmt.Sprintf("%v", row)
 	}
-
-	if len(t.filters) > 0 {
-		var filters []string
-		for _, filter := range t.filters {
-			filters = append(filters, fmt.Sprintf("%s", sql.DebugString(filter)))
-		}
-		children = append(children, fmt.Sprintf("filters: %s", filters))
-	}
-	_ = p.WriteNode("Table")
-	p.WriteChildren(children...)
-	return p.String()
+	return s
+	
+	// p := sql.NewTreePrinter()
+	// 
+	// children := []string{fmt.Sprintf("name: %s", t.name)}
+	// if t.lookup != nil {
+	// 	children = append(children, fmt.Sprintf("index: %s", t.lookup))
+	// }
+	// 
+	// if len(t.columns) > 0 {
+	// 	var projections []string
+	// 	for _, column := range t.columns {
+	// 		projections = append(projections, fmt.Sprintf("%d", column))
+	// 	}
+	// 	children = append(children, fmt.Sprintf("projections: %s", projections))
+	// 
+	// }
+	// 
+	// if len(t.filters) > 0 {
+	// 	var filters []string
+	// 	for _, filter := range t.filters {
+	// 		filters = append(filters, fmt.Sprintf("%s", sql.DebugString(filter)))
+	// 	}
+	// 	children = append(children, fmt.Sprintf("filters: %s", filters))
+	// }
+	// _ = p.WriteNode("Table")
+	// p.WriteChildren(children...)
+	// return p.String()
 }
 
 // HandledFilters implements the sql.FilteredTable interface.

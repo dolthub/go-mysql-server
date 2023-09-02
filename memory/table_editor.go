@@ -26,13 +26,12 @@ import (
 type tableEditor struct {
 	editedTable       *Table
 	targetTable       *Table
-	discardChanges    bool
-	initialAutoIncVal uint64
-	initialPartitions map[string][]sql.Row
-	initialPartIdx    int
-	ea                tableEditAccumulator
+	initialTable      *Table
 	schema            sql.Schema
-	initialInsert     int
+
+	discardChanges    bool
+	ea                tableEditAccumulator
+
 	// array of key ordinals for each unique index defined on the targetTable
 	uniqueIdxCols [][]int
 	prefixLengths [][]uint16
@@ -105,22 +104,11 @@ func (t *tableEditor) Close(ctx *sql.Context) error {
 }
 
 func (t *tableEditor) StatementBegin(ctx *sql.Context) {
-	t.initialInsert = t.editedTable.insertPartIdx
-	t.initialAutoIncVal = t.editedTable.autoIncVal
-	t.initialPartitions = make(map[string][]sql.Row)
-	for partStr, rowSlice := range t.editedTable.partitions { 
-		newRowSlice := make([]sql.Row, len(rowSlice))
-		for i, row := range rowSlice {
-			newRowSlice[i] = row.Copy()
-		}
-		t.initialPartitions[partStr] = newRowSlice
-	}
+	t.initialTable = t.editedTable.copy()
 }
 
 func (t *tableEditor) DiscardChanges(ctx *sql.Context, errorEncountered error) error {
-	t.editedTable.insertPartIdx = t.initialInsert
-	t.editedTable.autoIncVal = t.initialAutoIncVal
-	t.editedTable.partitions = t.initialPartitions
+	t.editedTable.replaceData(t.initialTable)
 	t.ea.Clear()
 	if _, ignore := errorEncountered.(sql.IgnorableError); !ignore {
 		t.discardChanges = true	
@@ -135,16 +123,7 @@ func (t *tableEditor) StatementComplete(ctx *sql.Context) error {
 	}
 	
 	t.ea.Clear()
-	t.initialInsert = t.editedTable.insertPartIdx
-	t.initialAutoIncVal = t.editedTable.autoIncVal
-	t.initialPartitions = make(map[string][]sql.Row)
-	for partStr, rowSlice := range t.editedTable.partitions {
-		newRowSlice := make([]sql.Row, len(rowSlice))
-		for i, row := range rowSlice {
-			newRowSlice[i] = row.Copy()
-		}
-		t.initialPartitions[partStr] = newRowSlice
-	}
+	t.editedTable.db.putTable(t.editedTable)
 	return nil
 }
 
