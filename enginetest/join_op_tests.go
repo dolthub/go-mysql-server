@@ -1417,6 +1417,18 @@ SELECT SUM(x) FROM xy WHERE x IN (
 				Query:    `SELECT l.pk, r.pk FROM one_pk_three_idx l JOIN one_pk_three_idx r ON l.v1=r.v1 AND l.v2=r.v2 AND l.pk=r.v1`,
 				Expected: []sql.Row{{0, 0}, {0, 1}},
 			},
+			{
+				Query:    `SELECT l.pk1, l.pk2, r.pk FROM two_pk l JOIN one_pk_three_idx r ON l.pk2=r.v1 WHERE l.pk1 = 1`,
+				Expected: []sql.Row{{1, 0, 0}, {1, 0, 1}, {1, 0, 2}, {1, 0, 3}, {1, 1, 4}},
+			},
+			{
+				Query:    `SELECT l.pk1, l.pk2, r.pk FROM two_pk l JOIN one_pk_three_idx r ON l.pk1=r.v1 WHERE l.pk2 = 1`,
+				Expected: []sql.Row{{0, 1, 0}, {0, 1, 1}, {0, 1, 2}, {0, 1, 3}, {1, 1, 4}},
+			},
+			{
+				Query:    `SELECT l.pk, r.pk FROM one_pk_three_idx l JOIN one_pk_three_idx r ON l.pk=r.v1 WHERE l.pk = 1`,
+				Expected: []sql.Row{{1, 4}},
+			},
 		},
 	},
 }

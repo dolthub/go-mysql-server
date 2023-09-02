@@ -235,6 +235,27 @@ var JoinPlanningTests = []struct {
 				mergeCompares: []string{"(l.pk = r.v1)"},
 				exp:           []sql.Row{{0, 0}, {0, 1}},
 			},
+			{
+				// Allow an index with a prefix that is determined to be constant.
+				q:             `SELECT /*+ MERGE_JOIN(l,r) */ l.pk1, l.pk2, r.pk FROM two_pk l JOIN one_pk_three_idx r ON l.pk2=r.v1 WHERE l.pk1 = 1`,
+				types:         []plan.JoinType{plan.JoinTypeMerge},
+				mergeCompares: []string{"(l.pk2 = r.v1)"},
+				exp:           []sql.Row{{1, 0, 0}, {1, 0, 1}, {1, 0, 2}, {1, 0, 3}, {1, 1, 4}},
+			},
+			{
+				// Allow an index where the final index column is determined to be constant.
+				q:             `SELECT /*+ MERGE_JOIN(l,r) */ l.pk1, l.pk2, r.pk FROM two_pk l JOIN one_pk_three_idx r ON l.pk1=r.v1 WHERE l.pk2 = 1`,
+				types:         []plan.JoinType{plan.JoinTypeMerge},
+				mergeCompares: []string{"(r.v1 = l.pk1)"},
+				exp:           []sql.Row{{0, 1, 0}, {0, 1, 1}, {0, 1, 2}, {0, 1, 3}, {1, 1, 4}},
+			},
+			{
+				// Allow an index where the key expression is determined to be constant.
+				q:             `SELECT /*+ MERGE_JOIN(l,r) */ l.pk, r.pk FROM one_pk_three_idx l JOIN one_pk_three_idx r ON l.pk=r.v1 WHERE l.pk = 1`,
+				types:         []plan.JoinType{plan.JoinTypeMerge},
+				mergeCompares: []string{"(r.v1 = l.pk)"},
+				exp:           []sql.Row{{1, 4}},
+			},
 		},
 	},
 	{
