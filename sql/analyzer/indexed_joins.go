@@ -977,11 +977,6 @@ func rightIndexMatchesFilters(rIndex *memo.Index, constants sql.ColSet, filters 
 			// There are still unmatched filters: this filter is not a prefix on the index
 			return false
 		}
-		if constants.Contains(columnIds[columnPos]) {
-			// column is constant, it can be used in the prefix.
-			columnPos++
-			continue
-		}
 		matched := false
 		for getOnlyColumnId(filters[filterPos].filter.Right) == columnIds[columnPos] {
 			matched = true
@@ -992,6 +987,11 @@ func rightIndexMatchesFilters(rIndex *memo.Index, constants sql.ColSet, filters 
 			}
 		}
 		if !matched {
+			if constants.Contains(columnIds[columnPos]) {
+				// column is constant, it can be used in the prefix.
+				columnPos++
+				continue
+			}
 			return false
 		}
 		columnPos++
