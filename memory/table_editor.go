@@ -292,6 +292,7 @@ func (t *tableEditor) IndexedAccess(ctx *sql.Context, i sql.IndexLookup) (sql.In
 	if err != nil {
 		return nil, err
 	}
+	t.ea.Clear()
 	return &IndexedTable{Table: t.ea.Table(), Lookup: i}, nil
 }
 
