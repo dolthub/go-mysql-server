@@ -382,7 +382,6 @@ var JsonSetTests = []JsonMutationTest{
 		resultVal: `[42]`,
 		changed:   true,
 	},
-
 	{
 		desc:      "treating object as an array replaces for index 0",
 		doc:       `{"a":1}`,
@@ -391,7 +390,6 @@ var JsonSetTests = []JsonMutationTest{
 		resultVal: `42`,
 		changed:   true,
 	},
-
 	{
 		desc:      "treating object as an array replaces for index last",
 		doc:       `{"a":1}`,
@@ -673,7 +671,7 @@ var JsonInsertTests = []JsonMutationTest{
 		changed:   true,
 	},
 	{
-		desc:      "scalar will be overwritten for index 0",
+		desc:      "scalar will not be overwritten for index 0",
 		doc:       `17`,
 		path:      "$[0]",
 		value:     `42`,
@@ -689,7 +687,7 @@ var JsonInsertTests = []JsonMutationTest{
 		changed:   true,
 	},
 	{
-		desc:      "object field updated",
+		desc:      "existing object field not updated",
 		doc:       `{"a": 1}`,
 		path:      "$.a",
 		value:     `42`,
@@ -697,7 +695,7 @@ var JsonInsertTests = []JsonMutationTest{
 		changed:   false,
 	},
 	{
-		desc:      "object field set",
+		desc:      "new object field inserted",
 		doc:       `{"a": 1}`,
 		path:      "$.b",
 		value:     `42`,

@@ -57,7 +57,7 @@ type SearchableJSONValue interface {
 }
 
 type MutableJSONValue interface {
-	// Insert Adds the value at the give path, only if it is not present. Updated value returned, and bool indicating if
+	// Insert Adds the value at the given path, only if it is not present. Updated value returned, and bool indicating if
 	// a change was made.
 	Insert(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
 	// Remove the value at the given path. Updated value returned, and bool indicating if a change was made.
