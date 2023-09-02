@@ -674,7 +674,7 @@ func walkPathAndUpdate(path string, doc interface{}, val interface{}, mode int, 
 			// not a map, can't do anything. NoOp
 			return doc, false, nil
 		}
-		return updateObject(path, doc, strMap, val, mode, cursor)
+		return updateObject(path, strMap, val, mode, cursor)
 	} else if path[0] == '[' {
 		*cursor = *cursor + 1
 		right := strings.Index(path, "]")
@@ -697,7 +697,7 @@ func walkPathAndUpdate(path string, doc interface{}, val interface{}, mode int, 
 
 // updateObject Take a map[string]interface{} and update the value at the given path. If we are not at the end of the path,
 // the object is looked up and the walkPathAndUpdate function is called recursively.
-func updateObject(path string, doc interface{}, strMap map[string]interface{}, val interface{}, mode int, cursor *int) (interface{}, bool, *parseErr) {
+func updateObject(path string, doc map[string]interface{}, val interface{}, mode int, cursor *int) (interface{}, bool, *parseErr) {
 	name, remainingPath, err := parseNameAfterDot(path, cursor)
 	if err != nil {
 		return nil, false, err
@@ -706,30 +706,33 @@ func updateObject(path string, doc interface{}, strMap map[string]interface{}, v
 	if remainingPath == "" {
 		// does the name exist in the map?
 		updated := false
-		_, destructive := strMap[name]
+		_, destructive := doc[name]
 		if mode == SET ||
 			(!destructive && mode == INSERT) ||
 			(destructive && mode == REPLACE) {
-			strMap[name] = val
+			doc[name] = val
 			updated = true
 		} else if destructive && mode == REMOVE {
-			delete(strMap, name)
+			delete(doc, name)
 			updated = true
 		}
 		return doc, updated, nil
 	} else {
 		// go deeper.
-		newObj, changed, err := walkPathAndUpdate(remainingPath, strMap[name], val, mode, cursor)
+		newObj, changed, err := walkPathAndUpdate(remainingPath, doc[name], val, mode, cursor)
 		if err != nil {
 			return nil, false, err
 		}
 		if changed {
-			strMap[name] = newObj
+			doc[name] = newObj
 			return doc, true, nil
 		}
 		return doc, false, nil
 	}
 }
+
+// compiled regex used to parse the name of a field after a '.' in a JSON path.
+var regex = regexp.MustCompile(`^(\w+)(.*)$`)
 
 // parseNameAfterDot parses the json path immediately after a '.'. It returns the name of the field and the remaining path,
 // and modifies the cursor to point to the end of the parsed path.
@@ -747,7 +750,6 @@ func parseNameAfterDot(path string, cursor *int) (name string, remainingPath str
 		remainingPath = path[right+2:]
 		*cursor = *cursor + right + 2
 	} else {
-		regex := regexp.MustCompile(`^([a-zA-Z0-9_]+)(.*)$`)
 		matches := regex.FindStringSubmatch(path)
 		if len(matches) != 3 {
 			return "", "", &parseErr{msg: "Invalid JSON path expression. Expected field name after '.'", character: *cursor}
