@@ -927,7 +927,13 @@ func addMergeJoins(m *memo.Memo) error {
 						leftColId := getOnlyColumnId(matchedEqFilters[0].filter.Left)
 						rightColId := getOnlyColumnId(matchedEqFilters[0].filter.Right)
 						lIndexScan := makeIndexScan(lIndex, leftColId, lFilters)
+						if lIndexScan == nil {
+							continue
+						}
 						rIndexScan := makeIndexScan(rIndex, rightColId, rFilters)
+						if rIndexScan == nil {
+							continue
+						}
 						m.MemoizeMergeJoin(e.Group(), join.Left, join.Right, lIndexScan, rIndexScan, jb.Op.AsMerge(), newFilters, false)
 					}
 				}
