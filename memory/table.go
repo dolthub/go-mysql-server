@@ -60,23 +60,37 @@ type Table struct {
 
 // TableData encapsulates all schema and data for a table's schema and rows. Other aspects of a table can change 
 // freely as needed for different views on a table (column projections, index lookups, filters, etc.) but the 
-// storage of underyling data lives here.
+// storage of underlying data lives here.
 type TableData struct {
+	dbName string
+	tableName string
+	
 	// Schema data
 	schema           sql.PrimaryKeySchema
 	indexes          map[string]sql.Index
 	fkColl           *ForeignKeyCollection
 	checks           []sql.CheckDefinition
 	collation        sql.CollationID
-	autoColIdx int
+	autoColIdx       int
+	primaryKeyIndexes bool
 
 	// Data storage
 	partitions    map[string][]sql.Row
 	partitionKeys [][]byte
-	autoIncVal uint64
+	autoIncVal    uint64
 
 	// Insert bookkeeping (spread inserts across partitions)
 	insertPartIdx int
+}
+
+// Table returns a table with this data
+func (d TableData) Table(database *BaseDatabase) *Table {
+	return &Table{
+		db:               database,
+		name:             d.tableName,
+		data:             &d,
+		pkIndexesEnabled: d.primaryKeyIndexes,
+	}
 }
 
 var _ sql.Table = (*Table)(nil)
@@ -168,6 +182,8 @@ func NewPartitionedTableWithCollation(db *BaseDatabase, name string, schema sql.
 	return &Table{
 		name:          name,
 		data: &TableData{
+			dbName:        db.Name(),
+			tableName:     name,
 			schema:        schema,
 			fkColl:        fkColl,
 			collation:     collation,

@@ -16,6 +16,7 @@ package memory
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	
 
@@ -26,17 +27,21 @@ import (
 
 type Session struct {
 	*sql.BaseSession
-	editAccumulators map[string]tableEditAccumulator	
+	dbProvider *DbProvider
+	editAccumulators map[tableKey]tableEditAccumulator
+	tableData 			map[tableKey]*TableData
 }
 
 var _ sql.Session = (*Session)(nil)
 var _ sql.TransactionSession = (*Session)(nil)
+var _ sql.Transaction = (*Transaction)(nil)
 
 // NewSession returns the new session for this object
 func NewSession(baseSession *sql.BaseSession) *Session {
 	return &Session{
 		BaseSession: baseSession,
-		editAccumulators: make(map[string]tableEditAccumulator),
+		editAccumulators: make(map[tableKey]tableEditAccumulator),
+		tableData: make(map[tableKey]*TableData),
 	}
 }
 
@@ -57,54 +62,98 @@ func SessionBuilder(ctx context.Context, c *mysql.Conn, addr string) (sql.Sessio
 	return NewSession(baseSession), nil
 }
 
+type Transaction struct {
+	readOnly bool
+}
+
+var _ sql.Transaction = (*Transaction)(nil)
+
+func (s *Transaction) String() string {
+	return "in-memory transaction"
+}
+
+func (s *Transaction) IsReadOnly() bool {
+	return s.readOnly
+}
+
+
 // editAccumulator returns the edit accumulator for the table provided for this session, creating one if it
 // doesn't exist
 func (s *Session) editAccumulator(t *Table) tableEditAccumulator {
-	ea, ok := s.editAccumulators[strings.ToLower(t.name)]
+	ea, ok := s.editAccumulators[key(t.data)]
 	if !ok {
 		ea = NewTableEditAccumulator(t.copy())
-		s.editAccumulators[strings.ToLower(t.name)] = ea
+		s.editAccumulators[key(t.data)] = ea
 	}
 	
 	return ea
 }
 
+type tableKey struct {
+	db string
+	table string
+}
+
+func key(t *TableData) tableKey {
+	return tableKey{strings.ToLower(t.dbName), strings.ToLower(t.tableName)}
+}
+
 // activeEditAccumulator returns the edit accumulator for the table provided for this session and whether it exists
 func (s *Session) activeEditAccumulator(t *Table) (tableEditAccumulator, bool) {
-	ea, ok := s.editAccumulators[strings.ToLower(t.name)]
+	ea, ok := s.editAccumulators[key(t.data)]
 	return ea, ok
 }
 
 func (s *Session) clearEditAccumulator(t *Table) {
-	delete(s.editAccumulators, strings.ToLower(t.name))
+	delete(s.editAccumulators, key(t.data))
 }
 
+// StartTransaction clears session state and returns a new transaction object.
+// Because we don't support concurrency, we store table data changes in the session, rather than the transaction itself.
 func (s *Session) StartTransaction(ctx *sql.Context, tCharacteristic sql.TransactionCharacteristic) (sql.Transaction, error) {
-	// TODO implement me
-	panic("implement me")
+	s.editAccumulators = make(map[tableKey]tableEditAccumulator)
+	s.tableData = make(map[tableKey]*TableData)
+	return &Transaction{tCharacteristic == sql.ReadOnly}, nil
 }
 
 func (s *Session) CommitTransaction(ctx *sql.Context, tx sql.Transaction) error {
-	// TODO implement me
-	panic("implement me")
+	for key := range s.tableData {
+		db, err := s.dbProvider.Database(ctx, key.db)
+		if err != nil {
+			return err
+		}
+		
+		var baseDb *BaseDatabase
+		switch db := db.(type) {
+		case *BaseDatabase:
+			baseDb = db
+		case *Database:
+			baseDb = db.BaseDatabase
+		case *HistoryDatabase:
+			baseDb = db.BaseDatabase
+		default:
+			return fmt.Errorf("unknown database type %T", db)
+		}
+		
+		baseDb.tables[strings.ToLower(key.table)] = s.tableData[key].Table(baseDb)
+	}
+	return nil
 }
 
 func (s *Session) Rollback(ctx *sql.Context, transaction sql.Transaction) error {
-	// TODO implement me
-	panic("implement me")
+	s.editAccumulators = make(map[tableKey]tableEditAccumulator)
+	s.tableData = make(map[tableKey]*TableData)
+	return nil
 }
 
 func (s *Session) CreateSavepoint(ctx *sql.Context, transaction sql.Transaction, name string) error {
-	// TODO implement me
-	panic("implement me")
+	return fmt.Errorf("savepoints are not supported in memory sessions")
 }
 
 func (s *Session) RollbackToSavepoint(ctx *sql.Context, transaction sql.Transaction, name string) error {
-	// TODO implement me
-	panic("implement me")
+	return fmt.Errorf("savepoints are not supported in memory sessions")
 }
 
 func (s *Session) ReleaseSavepoint(ctx *sql.Context, transaction sql.Transaction, name string) error {
-	// TODO implement me
-	panic("implement me")
+	return fmt.Errorf("savepoints are not supported in memory sessions")
 }
