@@ -399,8 +399,7 @@ func DefaultRuleSelector(id RuleId) bool {
 func NewProcRuleSelector(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		case optimizeJoinsId,
-			pruneTablesId,
+		case pruneTablesId,
 			transformJoinApplyId,
 
 			// once after default rules should only be run once

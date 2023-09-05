@@ -29,9 +29,11 @@ type SubqueryAlias struct {
 	// OuterScopeVisibility is true when a SubqueryAlias (i.e. derived table) is contained in a subquery
 	// expression and is eligible to have visibility to outer scopes of the query.
 	OuterScopeVisibility bool
-	CanCacheResults      bool
-	CacheableCTESource   bool
-	IsLateral            bool
+	//DoCacheResults       bool
+	Correlated         sql.ColSet
+	Volatile           bool
+	CacheableCTESource bool
+	IsLateral          bool
 }
 
 var _ sql.Node = (*SubqueryAlias)(nil)
@@ -54,6 +56,12 @@ func (sq *SubqueryAlias) AsView(createViewStmt string) *sql.View {
 
 // Name implements the Table interface.
 func (sq *SubqueryAlias) Name() string { return sq.name }
+
+func (sq *SubqueryAlias) WithName(n string) *SubqueryAlias {
+	ret := *sq
+	ret.name = n
+	return &ret
+}
 
 func (sq *SubqueryAlias) IsReadOnly() bool {
 	return sq.Child.IsReadOnly()
@@ -101,15 +109,19 @@ func (sq *SubqueryAlias) WithChild(n sql.Node) *SubqueryAlias {
 	return &ret
 }
 
-func (sq *SubqueryAlias) WithName(name string) *SubqueryAlias {
+func (sq *SubqueryAlias) CanCacheResults() bool {
+	return sq.Correlated.Empty() && !sq.Volatile
+}
+
+func (sq *SubqueryAlias) WithCorrelated(cols sql.ColSet) *SubqueryAlias {
 	ret := *sq
-	ret.name = name
+	ret.Correlated = cols
 	return &ret
 }
 
-func (sq *SubqueryAlias) WithCachedResults() *SubqueryAlias {
+func (sq *SubqueryAlias) WithVolatile(v bool) *SubqueryAlias {
 	ret := *sq
-	ret.CanCacheResults = true
+	ret.Volatile = v
 	return &ret
 }
 
@@ -124,7 +136,7 @@ func (sq *SubqueryAlias) String() string {
 	children := make([]string, 4)
 	children[0] = fmt.Sprintf("name: %s", sq.name)
 	children[1] = fmt.Sprintf("outerVisibility: %t", sq.OuterScopeVisibility)
-	children[2] = fmt.Sprintf("cacheable: %t", sq.CanCacheResults)
+	children[2] = fmt.Sprintf("cacheable: %t", sq.CanCacheResults())
 	children[3] = sq.Child.String()
 	_ = pr.WriteChildren(children...)
 	return pr.String()
@@ -136,7 +148,7 @@ func (sq *SubqueryAlias) DebugString() string {
 	children := make([]string, 4)
 	children[0] = fmt.Sprintf("name: %s", sq.name)
 	children[1] = fmt.Sprintf("outerVisibility: %t", sq.OuterScopeVisibility)
-	children[2] = fmt.Sprintf("cacheable: %t", sq.CanCacheResults)
+	children[2] = fmt.Sprintf("cacheable: %t", sq.CanCacheResults())
 	children[3] = sql.DebugString(sq.Child)
 	_ = pr.WriteChildren(children...)
 	return pr.String()

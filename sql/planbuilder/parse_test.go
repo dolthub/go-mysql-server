@@ -97,7 +97,7 @@ Project
  └─ SubqueryAlias
      ├─ name: cte
      ├─ outerVisibility: false
-     ├─ cacheable: false
+     ├─ cacheable: true
      └─ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null]
          └─ Table
@@ -237,7 +237,7 @@ Project
      └─ SubqueryAlias
          ├─ name: s
          ├─ outerVisibility: false
-         ├─ cacheable: false
+         ├─ cacheable: true
          └─ Project
              ├─ columns: [uv.u:4!null, uv.v:5!null, uv.w:6!null]
              └─ Table
@@ -277,7 +277,7 @@ Project
  └─ SubqueryAlias
      ├─ name: cte
      ├─ outerVisibility: false
-     ├─ cacheable: false
+     ├─ cacheable: true
      └─ Project
          ├─ columns: [1 (tinyint)]
          └─ Table
@@ -293,7 +293,7 @@ Project
  └─ SubqueryAlias
      ├─ name: cte
      ├─ outerVisibility: false
-     ├─ cacheable: false
+     ├─ cacheable: true
      └─ RecursiveCTE
          └─ Union distinct
              ├─ Project
@@ -346,7 +346,7 @@ Project
 			ExpectedPlan: `
 Project
  ├─ columns: [xy.y:2!null, count(xy.x):4!null as count(x)]
- └─ Sort(COUNT(xy.x):4!null DESC nullsFirst)
+ └─ Sort(count(xy.x):4!null DESC nullsFirst)
      └─ GroupBy
          ├─ select: COUNT(xy.x:1!null), xy.y:2!null
          ├─ group: xy.y:2!null
@@ -479,7 +479,7 @@ Project
      └─ SubqueryAlias
          ├─ name: dt
          ├─ outerVisibility: false
-         ├─ cacheable: false
+         ├─ cacheable: true
          └─ Project
              ├─ columns: [count(1):4!null as count(*)]
              └─ GroupBy
@@ -498,7 +498,7 @@ Project
  └─ SubqueryAlias
      ├─ name: dt
      ├─ outerVisibility: false
-     ├─ cacheable: false
+     ├─ cacheable: true
      └─ Project
          ├─ columns: [count(1):4!null as s]
          └─ GroupBy
@@ -582,7 +582,7 @@ Project
  └─ Sort(xy.x:1!null ASC nullsFirst)
      └─ Having
          ├─ GreaterThan
-         │   ├─ AVG(xy.x):5
+         │   ├─ avg(xy.x):5
          │   └─ 1 (tinyint)
          └─ GroupBy
              ├─ select: AVG(xy.x:1!null), SUM(xy.x:1!null), xy.x:1!null
@@ -597,7 +597,7 @@ Project
 			ExpectedPlan: `
 Project
  ├─ columns: [xy.y:2!null, sum(xy.x):4!null as SUM(x)]
- └─ Sort((SUM(xy.x):4!null + 1 (tinyint)) ASC nullsFirst)
+ └─ Sort((sum(xy.x):4!null + 1 (tinyint)) ASC nullsFirst)
      └─ GroupBy
          ├─ select: SUM(xy.x:1!null), xy.y:2!null
          ├─ group: xy.y:2!null
@@ -625,7 +625,7 @@ Project
 			ExpectedPlan: `
 Project
  ├─ columns: [xy.y:2!null, sum(xy.x):4!null as SUM(x)]
- └─ Sort((SUM(xy.x):4!null % 2 (tinyint)) ASC nullsFirst, SUM(xy.x):4!null ASC nullsFirst, avg(xy.x):7 ASC nullsFirst)
+ └─ Sort((sum(xy.x):4!null % 2 (tinyint)) ASC nullsFirst, sum(xy.x):4!null ASC nullsFirst, avg(xy.x):7 ASC nullsFirst)
      └─ GroupBy
          ├─ select: AVG(xy.x:1!null), SUM(xy.x:1!null), xy.y:2!null
          ├─ group: xy.y:2!null
@@ -656,7 +656,7 @@ Project
  └─ Sort(xy.x:1!null ASC nullsFirst)
      └─ Having
          ├─ GreaterThan
-         │   ├─ AVG(xy.y):5
+         │   ├─ avg(xy.y):5
          │   └─ 1 (tinyint)
          └─ GroupBy
              ├─ select: AVG(xy.y:2!null), SUM(xy.x:1!null), xy.x:1!null, xy.y:2!null
@@ -674,7 +674,7 @@ Project
  └─ Sort(sum(xy.x):4!null as sum(x) ASC nullsFirst)
      └─ Having
          ├─ GreaterThan
-         │   ├─ AVG(xy.x):5
+         │   ├─ avg(xy.x):5
          │   └─ 1 (tinyint)
          └─ GroupBy
              ├─ select: AVG(xy.x:1!null), SUM(xy.x:1!null), xy.x:1!null
@@ -984,6 +984,7 @@ Project
 
 
 
+
 			select
 			x,
 			x*y,
@@ -1011,6 +1012,7 @@ Project
 		},
 		{
 			Query: `
+
 
 
 
@@ -1052,6 +1054,7 @@ Project
 		},
 		{
 			Query: `
+
 
 
 
@@ -1124,7 +1127,7 @@ Project
 			ExpectedPlan: `
 Project
  ├─ columns: [xy.x:1!null, avg(xy.x):4 as avg(x)]
- └─ Sort(AVG(xy.x):4 ASC nullsFirst)
+ └─ Sort(avg(xy.x):4 ASC nullsFirst)
      └─ GroupBy
          ├─ select: AVG(xy.x:1!null), xy.x:1!null
          ├─ group: xy.x:1!null
@@ -1278,6 +1281,7 @@ Project
 
 
 
+
 			SELECT x
 			FROM xy
 			WHERE EXISTS (SELECT count(u) AS count_1
@@ -1294,7 +1298,7 @@ Project
      │       ├─ columns: [count(uv.u):7!null as count_1]
      │       └─ Having
      │           ├─ GreaterThan
-     │           │   ├─ COUNT(uv.u):7!null
+     │           │   ├─ count(uv.u):7!null
      │           │   └─ 1 (tinyint)
      │           └─ Project
      │               ├─ columns: [count(uv.u):7!null, uv.u:4!null, count(uv.u):7!null as count_1]
@@ -1320,6 +1324,7 @@ Project
 
 
 
+
 			WITH RECURSIVE
 			rt (foo) AS (
 			SELECT 1 as foo
@@ -1339,7 +1344,7 @@ Project
  └─ SubqueryAlias
      ├─ name: ladder
      ├─ outerVisibility: false
-     ├─ cacheable: false
+     ├─ cacheable: true
      └─ RecursiveCTE
          └─ Union all
              ├─ Project
@@ -1347,7 +1352,7 @@ Project
              │   └─ SubqueryAlias
              │       ├─ name: rt
              │       ├─ outerVisibility: false
-             │       ├─ cacheable: false
+             │       ├─ cacheable: true
              │       └─ RecursiveCTE
              │           └─ Union all
              │               ├─ Project
@@ -1373,7 +1378,7 @@ Project
                          └─ SubqueryAlias
                              ├─ name: rt
                              ├─ outerVisibility: false
-                             ├─ cacheable: false
+                             ├─ cacheable: true
                              └─ RecursiveCTE
                                  └─ Union all
                                      ├─ Project
@@ -1500,6 +1505,7 @@ Project
 
 
 
+
 SELECT fi, COUNT(*) FROM (
 			SELECT tbl.x AS fi
 			FROM xy tbl
@@ -1516,7 +1522,7 @@ Project
          └─ SubqueryAlias
              ├─ name: t
              ├─ outerVisibility: false
-             ├─ cacheable: false
+             ├─ cacheable: true
              └─ Project
                  ├─ columns: [tbl.x:1!null as fi]
                  └─ TableAlias(tbl)

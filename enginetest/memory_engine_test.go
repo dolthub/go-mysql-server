@@ -134,8 +134,8 @@ func TestSingleQuery(t *testing.T) {
 	t.Skip()
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query:    `SELECT DISTINCT val FROM (values row(1), row(1.00), row(2), row(2)) a (val);`,
-		Expected: []sql.Row{{1.0}, {2.0}},
+		Query:    `select count((select * from (select pk from one_pk limit 1) as sq)) from one_pk;`,
+		Expected: []sql.Row{{0}, {1}},
 	}
 
 	fmt.Sprintf("%v", test)

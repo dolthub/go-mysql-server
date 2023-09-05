@@ -423,6 +423,34 @@ func (r *TableFunc) Children() []*ExprGroup {
 	return nil
 }
 
+type JSONTable struct {
+	*sourceBase
+	Table *plan.JSONTable
+}
+
+var _ RelExpr = (*JSONTable)(nil)
+var _ SourceRel = (*JSONTable)(nil)
+
+func (r *JSONTable) String() string {
+	return FormatExpr(r)
+}
+
+func (r *JSONTable) Name() string {
+	return strings.ToLower(r.Table.Name())
+}
+
+func (r *JSONTable) TableId() TableId {
+	return TableIdForSource(r.g.Id)
+}
+
+func (r *JSONTable) OutputCols() sql.Schema {
+	return r.Table.Schema()
+}
+
+func (r *JSONTable) Children() []*ExprGroup {
+	return nil
+}
+
 type EmptyTable struct {
 	*sourceBase
 	Table *plan.EmptyTable
@@ -945,6 +973,8 @@ func FormatExpr(r exprType) string {
 		return fmt.Sprintf("max1row: %s", r.Name())
 	case *TableFunc:
 		return fmt.Sprintf("tablefunc: %s", r.Name())
+	case *JSONTable:
+		return fmt.Sprintf("jsontable: %s", r.Name())
 	case *EmptyTable:
 		return fmt.Sprintf("emptytable: %s", r.Name())
 	case *Project:
@@ -1045,6 +1075,8 @@ func buildRelExpr(b *ExecBuilder, r RelExpr, input sql.Schema, children ...sql.N
 		result, err = b.buildMax1Row(r, input, children...)
 	case *TableFunc:
 		result, err = b.buildTableFunc(r, input, children...)
+	case *JSONTable:
+		result, err = b.buildJSONTable(r, input, children...)
 	case *EmptyTable:
 		result, err = b.buildEmptyTable(r, input, children...)
 	case *Project:

@@ -33,8 +33,10 @@ type Subquery struct {
 	Query sql.Node
 	// The original verbatim select statement for this subquery
 	QueryString string
-	// Whether it's safe to cache result values for this subquery
-	canCacheResults bool
+	// correlated is a set of the field references in this subquery from out-of-scope
+	correlated sql.ColSet
+	// volatile indicates that the expression contains a non-deterministic function
+	volatile bool
 	// Whether results have been cached
 	resultsCached bool
 	// Cached results, if any
@@ -171,7 +173,7 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, sql.ErrExpectedSingleRow.New()
 	}
 
-	if s.canCacheResults {
+	if s.canCacheResults() {
 		s.cacheMu.Lock()
 		if !s.resultsCached {
 			s.cache, s.resultsCached = rows, true
@@ -328,7 +330,7 @@ func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 		return nil, err
 	}
 
-	if s.canCacheResults {
+	if s.canCacheResults() {
 		s.cacheMu.Lock()
 		if s.resultsCached == false {
 			s.cache, s.resultsCached = result, true
@@ -337,6 +339,10 @@ func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 	}
 
 	return result, nil
+}
+
+func (s *Subquery) canCacheResults() bool {
+	return s.correlated.Empty() && !s.volatile
 }
 
 func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, error) {
@@ -396,7 +402,7 @@ func (s *Subquery) HashMultiple(ctx *sql.Context, row sql.Row) (sql.KeyValueCach
 		return nil, err
 	}
 
-	if s.canCacheResults {
+	if s.canCacheResults() {
 		s.cacheMu.Lock()
 		defer s.cacheMu.Unlock()
 		if !s.resultsCached || s.hashCache == nil {
@@ -476,7 +482,7 @@ func (s *Subquery) IsNullable() bool {
 func (s *Subquery) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Subquery")
-	children := []string{fmt.Sprintf("cacheable: %t", s.canCacheResults), s.Query.String()}
+	children := []string{fmt.Sprintf("cacheable: %t", s.canCacheResults()), s.Query.String()}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
@@ -484,7 +490,7 @@ func (s *Subquery) String() string {
 func (s *Subquery) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Subquery")
-	children := []string{fmt.Sprintf("cacheable: %t", s.canCacheResults), sql.DebugString(s.Query)}
+	children := []string{fmt.Sprintf("cacheable: %t", s.canCacheResults()), sql.DebugString(s.Query)}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
@@ -548,18 +554,31 @@ func (s *Subquery) WithExecBuilder(b sql.NodeExecBuilder) *Subquery {
 }
 
 func (s *Subquery) IsNonDeterministic() bool {
-	return !s.canCacheResults
+	return !s.canCacheResults()
 }
 
-// WithCachedResults returns the subquery with CanCacheResults set to true.
-func (s *Subquery) WithCachedResults() *Subquery {
-	ns := *s
-	ns.canCacheResults = true
-	return &ns
+func (s *Subquery) Volatile() bool {
+	return s.volatile
+}
+
+func (s *Subquery) WithVolatile() *Subquery {
+	ret := *s
+	ret.volatile = true
+	return &ret
+}
+
+func (s *Subquery) WithCorrelated(cols sql.ColSet) *Subquery {
+	ret := *s
+	ret.correlated = cols
+	return &ret
+}
+
+func (s *Subquery) Correlated() sql.ColSet {
+	return s.correlated
 }
 
 func (s *Subquery) CanCacheResults() bool {
-	return s.canCacheResults
+	return s.canCacheResults()
 }
 
 // Dispose implements sql.Disposable

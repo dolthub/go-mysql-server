@@ -358,6 +358,8 @@ func (j *joinOrderBuilder) buildJoinLeaf(n sql.Nameable) *ExprGroup {
 		rel = &TableScan{sourceBase: b, Table: n.TableNode}
 	case *plan.ValueDerivedTable:
 		rel = &Values{sourceBase: b, Table: n}
+	case *plan.JSONTable:
+		rel = &JSONTable{sourceBase: b, Table: n}
 	case sql.TableFunction:
 		rel = &TableFunc{sourceBase: b, Table: n}
 	case *plan.EmptyTable:
@@ -589,6 +591,10 @@ func (j *joinOrderBuilder) constructJoin(
 		rel = &SemiJoin{b}
 	case plan.JoinTypeAnti:
 		rel = &AntiJoin{b}
+	case plan.JoinTypeLateralInner, plan.JoinTypeLateralCross,
+		plan.JoinTypeLateralRight, plan.JoinTypeLateralLeft:
+		rel = &LateralJoin{b}
+		b.Op = op
 	default:
 		panic(fmt.Sprintf("unexpected join type: %s", op))
 	}
@@ -1102,43 +1108,46 @@ const (
 // assocTable is a Lookup table indicating whether it is correct to apply the
 // associative transformation to pairs of join operators.
 // citations: [8] table 2
-var assocTable = [7][7]lookupTableEntry{
-	//             cross-B inner-B semi-B  anti-B  left-B  full-B group-B
-	/* cross-A */ {always, always, always, always, always, never, always},
-	/* inner-A */ {always, always, always, always, always, never, always},
-	/* semi-A  */ {never, never, never, never, never, never, never},
-	/* anti-A  */ {never, never, never, never, never, never, never},
-	/* left-A  */ {never, never, never, never, table2Note1, never, never},
-	/* full-A  */ {never, never, never, never, table2Note1, table2Note2, never},
-	/* group-A  */ {never, never, never, never, never, never, never},
+var assocTable = [8][8]lookupTableEntry{
+	//             cross-B inner-B semi-B  anti-B  left-B  full-B group-B lateral-B
+	/* cross-A   */ {always, always, always, always, always, never, always, never},
+	/* inner-A   */ {always, always, always, always, always, never, always, never},
+	/* semi-A    */ {never, never, never, never, never, never, never, never},
+	/* anti-A    */ {never, never, never, never, never, never, never, never},
+	/* left-A    */ {never, never, never, never, table2Note1, never, never, never},
+	/* full-A    */ {never, never, never, never, table2Note1, table2Note2, never},
+	/* group-A   */ {never, never, never, never, never, never, never, never},
+	/* lateral-A */ {never, never, never, never, never, never, never, never},
 }
 
 // leftAsscomTable is a Lookup table indicating whether it is correct to apply
 // the left-asscom transformation to pairs of join operators.
 // citations: [8] table 3
-var leftAsscomTable = [7][7]lookupTableEntry{
-	//             cross-A inner-B semi-B  anti-B  left-B  full-B
-	/* cross-A */ {always, always, always, always, always, never, always},
-	/* inner-A */ {always, always, always, always, always, never, always},
-	/* semi-A  */ {always, always, always, always, always, never, always},
-	/* anti-A  */ {always, always, always, always, always, never, always},
-	/* left-A  */ {always, always, always, always, always, table3Note1, always},
-	/* full-A  */ {never, never, never, never, table3Note2, table3Note3, never},
-	/* group-A */ {always, always, always, always, always, never, always},
+var leftAsscomTable = [8][8]lookupTableEntry{
+	//             cross-A inner-B semi-B  anti-B  left-B  full-B group-B lateral-B
+	/* cross-A   */ {always, always, always, always, always, never, always, never},
+	/* inner-A   */ {always, always, always, always, always, never, always, never},
+	/* semi-A    */ {always, always, always, always, always, never, always, never},
+	/* anti-A    */ {always, always, always, always, always, never, always, never},
+	/* left-A    */ {always, always, always, always, always, table3Note1, always, never},
+	/* full-A    */ {never, never, never, never, table3Note2, table3Note3, never, never},
+	/* group-A   */ {always, always, always, always, always, never, always, never},
+	/* lateral-A */ {never, never, never, never, never, never, never, never},
 }
 
 // rightAsscomTable is a Lookup table indicating whether it is correct to apply
 // the right-asscom transformation to pairs of join operators.
 // citations: [8] table 3
-var rightAsscomTable = [7][7]lookupTableEntry{
-	//             cross-B inner-B semi-B anti-B left-B full-B
-	/* cross-A */ {always, always, never, never, never, never},
-	/* inner-A */ {always, always, never, never, never, never},
-	/* semi-A  */ {never, never, never, never, never, never},
-	/* anti-A  */ {never, never, never, never, never, never},
-	/* left-A  */ {never, never, never, never, never, never},
-	/* full-A  */ {never, never, never, never, never, table3Note4},
-	/* group-A */ {never, never, never, never, never, never, never},
+var rightAsscomTable = [8][8]lookupTableEntry{
+	//             cross-B inner-B semi-B anti-B left-B full-B group-B lateral-B
+	/* cross-A */ {always, always, never, never, never, never, never, never},
+	/* inner-A */ {always, always, never, never, never, never, never, never},
+	/* semi-A  */ {never, never, never, never, never, never, never, never},
+	/* anti-A  */ {never, never, never, never, never, never, never, never},
+	/* left-A  */ {never, never, never, never, never, never, never},
+	/* full-A  */ {never, never, never, never, never, table3Note4, never, never},
+	/* group-A */ {never, never, never, never, never, never, never, never},
+	/* lateral-A */ {never, never, never, never, never, never, never, never},
 }
 
 // checkProperty returns true if the transformation represented by the given
@@ -1146,7 +1155,7 @@ var rightAsscomTable = [7][7]lookupTableEntry{
 // most table entries are either true or false, some are conditionally true,
 // depending on the null-rejecting properties of the edge filters (for example,
 // association for two full joins).
-func checkProperty(table [7][7]lookupTableEntry, edgeA, edgeB *edge) bool {
+func checkProperty(table [8][8]lookupTableEntry, edgeA, edgeB *edge) bool {
 	entry := table[getOpIdx(edgeA)][getOpIdx(edgeB)]
 
 	if entry == never {
@@ -1209,6 +1218,9 @@ func getOpIdx(e *edge) int {
 		return 5
 	case plan.JoinTypeGroupBy:
 		return 6
+	case plan.JoinTypeLateralInner, plan.JoinTypeLateralCross,
+		plan.JoinTypeLateralRight, plan.JoinTypeLateralLeft:
+		return 7
 	default:
 		panic(fmt.Sprintf("invalid operator: %v", e.op.joinType))
 	}
