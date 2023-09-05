@@ -30,6 +30,7 @@ type Session struct {
 }
 
 var _ sql.Session = (*Session)(nil)
+var _ sql.TransactionSession = (*Session)(nil)
 
 // NewSession returns the new session for this object
 func NewSession(baseSession *sql.BaseSession) *Session {
@@ -76,4 +77,34 @@ func (s *Session) activeEditAccumulator(t *Table) (tableEditAccumulator, bool) {
 
 func (s *Session) clearEditAccumulator(t *Table) {
 	delete(s.editAccumulators, strings.ToLower(t.name))
+}
+
+func (s *Session) StartTransaction(ctx *sql.Context, tCharacteristic sql.TransactionCharacteristic) (sql.Transaction, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (s *Session) CommitTransaction(ctx *sql.Context, tx sql.Transaction) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (s *Session) Rollback(ctx *sql.Context, transaction sql.Transaction) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (s *Session) CreateSavepoint(ctx *sql.Context, transaction sql.Transaction, name string) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (s *Session) RollbackToSavepoint(ctx *sql.Context, transaction sql.Transaction, name string) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (s *Session) ReleaseSavepoint(ctx *sql.Context, transaction sql.Transaction, name string) error {
+	// TODO implement me
+	panic("implement me")
 }
