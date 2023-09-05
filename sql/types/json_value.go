@@ -588,11 +588,34 @@ func (doc JSONDocument) Replace(ctx *sql.Context, path string, val JSONValue) (M
 	return doc.unwrapAndExecute(ctx, path, val, REPLACE)
 }
 
+func (doc JSONDocument) ArrayAppend(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
+	path = strings.TrimSpace(path)
+
+	if path == "$" {
+		return nil, false, fmt.Errorf("The path expression '$' is not allowed in this context.")
+	}
+
+	return doc.unwrapAndExecute(ctx, path, val, ARRAY_APPEND)
+}
+
+func (doc JSONDocument) ArrayInsert(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
+	path = strings.TrimSpace(path)
+
+	if path == "$" {
+		// Check if the root is an array, if not, return an error.
+		return nil, false, fmt.Errorf("Path expression is not a path to a cell in an array: $")
+	}
+
+	return doc.unwrapAndExecute(ctx, path, val, ARRAY_INSERT)
+}
+
 const (
 	SET = iota
 	INSERT
 	REPLACE
 	REMOVE
+	ARRAY_APPEND
+	ARRAY_INSERT
 )
 
 // unwrapAndExecute unwraps the JSONDocument and executes the given path on the unwrapped value. The path string passed
@@ -652,6 +675,21 @@ func walkPathAndUpdate(path string, doc interface{}, val interface{}, mode int, 
 			return val, true, nil
 		case INSERT:
 			return doc, false, nil
+		case ARRAY_APPEND:
+			if arr, ok := doc.([]interface{}); ok {
+				doc = append(arr, val)
+				return doc, true, nil
+			} else {
+				// Otherwise, turn it into an array and append to it, and append to it.
+				doc = []interface{}{doc, val}
+				return doc, true, nil
+			}
+		case ARRAY_INSERT:
+			if arr, ok := doc.([]interface{}); ok {
+				panic(arr)
+			} else {
+				panic("should never get here")
+			}
 		default:
 			return nil, false, &parseErr{msg: "Invalid JSON path expression. End of path reached", character: *cursor}
 		}
@@ -694,7 +732,12 @@ func updateObject(path string, doc map[string]interface{}, val interface{}, mode
 		return nil, false, err
 	}
 
-	if remainingPath == "" {
+	if remainingPath == "" && mode != ARRAY_APPEND {
+		// Found an item, and it must be an array in one case only.
+		if mode == ARRAY_INSERT {
+			return nil, false, &parseErr{msg: "A path expression is not a path to a cell in an array", character: *cursor}
+		}
+
 		// does the name exist in the map?
 		updated := false
 		_, destructive := doc[name]
@@ -769,13 +812,20 @@ func updateArray(indexString string, remaining string, arr []interface{}, val in
 
 	if len(arr) > index.index && !index.overflow {
 		// index exists in the array.
-		if remaining == "" {
+		if remaining == "" && mode != ARRAY_APPEND {
 			updated := false
 			if mode == SET || mode == REPLACE {
 				arr[index.index] = val
 				updated = true
 			} else if mode == REMOVE {
 				arr = append(arr[:index.index], arr[index.index+1:]...)
+				updated = true
+			} else if mode == ARRAY_INSERT {
+				newArr := make([]interface{}, len(arr)+1)
+				copy(newArr, arr[:index.index])
+				newArr[index.index] = val
+				copy(newArr[index.index+1:], arr[index.index:])
+				arr = newArr
 				updated = true
 			}
 			return arr, updated, nil
@@ -786,13 +836,11 @@ func updateArray(indexString string, remaining string, arr []interface{}, val in
 			}
 			if changed {
 				arr[index.index] = newVal
-				return arr, true, nil
-			} else {
-				return arr, false, nil
 			}
+			return arr, changed, nil
 		}
 	} else {
-		if mode == SET || mode == INSERT {
+		if mode == SET || mode == INSERT || mode == ARRAY_INSERT {
 			newArr := append(arr, val)
 			return newArr, true, nil
 		}
@@ -811,15 +859,15 @@ func updateObjectTreatAsArray(indexString string, doc interface{}, val interface
 	}
 
 	if parsedIndex.underflow {
-		if mode == SET || mode == INSERT {
+		if mode == SET || mode == INSERT || mode == ARRAY_APPEND {
 			// SET and INSERT convert {}, to [val, {}]
 			var newArr = make([]interface{}, 0, 2)
 			newArr = append(newArr, val)
 			newArr = append(newArr, doc)
 			return newArr, true, nil
 		}
-	} else if parsedIndex.overflow {
-		if parsedIndex.overflow && (mode == SET || mode == INSERT) {
+	} else if parsedIndex.overflow || mode == ARRAY_APPEND {
+		if mode == SET || mode == INSERT {
 			// SET and INSERT convert {}, to [{}, val]
 			var newArr = make([]interface{}, 0, 2)
 			newArr = append(newArr, doc)
@@ -840,7 +888,7 @@ type parseIndexResult struct {
 }
 
 // parseIndex parses an array index string. These are of the form:
-// 1. stantard integer
+// 1. standard integer
 // 2. "last"
 // 3. "last-NUMBER" - to get the second to last element in an array.
 // 4. "M to N", "last-4 to N", "M to last-4", "last-4 to last-2" (Currently we don't support this)

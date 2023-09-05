@@ -1037,8 +1037,175 @@ func TestJsonReplace(t *testing.T) {
 	}
 }
 
+var JsonArrayAppendTests = []JsonMutationTest{
+	{
+		desc:      "append to empty object",
+		doc:       `{}`,
+		path:      "$",
+		value:     `42`,
+		changed:   true,
+		resultVal: `[{}, 42]`,
+	},
+	{
+		desc:      "append to empty array",
+		doc:       `[]`,
+		path:      "$",
+		value:     `42`,
+		changed:   true,
+		resultVal: `[42]`,
+	},
+	{
+		desc:      "append to a nested array",
+		doc:       `[{"a": [1, 2, 3, 4]}]`,
+		path:      "$[0].a",
+		value:     `42`,
+		changed:   true,
+		resultVal: `[{"a": [1, 2, 3, 4, 42]}]`,
+	},
+	{
+		desc:      "append a scalar to a scalar leads to an array",
+		doc:       `{"a": "eh"}`,
+		path:      "$.a",
+		changed:   true,
+		value:     `42`,
+		resultVal: `{"a": ["eh", 42]}`,
+	},
+	{
+		desc:      "append to an array index",
+		doc:       `[[1, 2, 3], {"a": "eh"}]`,
+		path:      "$[0]",
+		changed:   true,
+		value:     `42`,
+		resultVal: `[[1, 2, 3, 42], {"a": "eh"}]`,
+	},
+	{
+		desc:      "append to an array index",
+		doc:       `[{"b" : "be"}, {"a": "eh"}]`,
+		path:      "$[0]",
+		changed:   true,
+		value:     `42`,
+		resultVal: `[[{"b" : "be"}, 42], {"a": "eh"}]`,
+	},
+	{
+		desc:      "no op when out of bounds",
+		doc:       `[1, 2, 3]`,
+		path:      "$[51]",
+		changed:   false,
+		value:     `42`,
+		resultVal: `[1, 2, 3]`,
+	},
+	{
+		desc:      "last index works for lookup",
+		doc:       `[1, 2, [3,4]]`,
+		path:      "$[last]",
+		changed:   true,
+		value:     `42`,
+		resultVal: `[1, 2, [3, 4, 42]]`,
+	},
+	{
+		desc:      "no op when there is an underflow",
+		doc:       `[1, 2, 3]`,
+		path:      "$[last-23]",
+		changed:   false,
+		value:     `42`,
+		resultVal: `[1, 2, 3]`,
+	},
+}
+
+func TestJsonArrayAppend(t *testing.T) {
+	for _, test := range JsonArrayAppendTests {
+		t.Run("JSON array append: "+test.desc, func(t *testing.T) {
+			doc := MustJSON(test.doc)
+			val := MustJSON(test.value)
+			res, changed, err := doc.ArrayAppend(sql.NewEmptyContext(), test.path, val)
+			require.NoError(t, err)
+			assert.Equal(t, MustJSON(test.resultVal), res)
+			assert.Equal(t, test.changed, changed)
+		})
+	}
+}
+
+var JsonArrayInsertTests = []JsonMutationTest{
+	{
+		desc:      "array insert overflow appends",
+		doc:       `[1,2,3]`,
+		path:      "$[51]",
+		value:     `42`,
+		resultVal: `[1,2,3,42]`,
+		changed:   true,
+	},
+	{
+		desc:      "array insert at first element",
+		doc:       `[1,2,3]`,
+		path:      "$[0]",
+		value:     `42`,
+		resultVal: `[42,1,2,3]`,
+		changed:   true,
+	},
+	{
+		desc:      "array insert at second element",
+		doc:       `[1,2,3]`,
+		path:      "$[1]",
+		value:     `42`,
+		resultVal: `[1,42,2,3]`,
+		changed:   true,
+	},
+	{
+		desc:      "insert to empty array",
+		doc:       `{"a" :[]}`,
+		path:      "$.a[0]",
+		value:     `42`,
+		resultVal: `{"a" : [42]}`,
+		changed:   true,
+	},
+	{
+		desc:      "insert to an object no op",
+		doc:       `{"a" :{}}`,
+		path:      "$.a[0]",
+		value:     `42`,
+		resultVal: `{"a" : {}}`,
+		changed:   false,
+	},
+	// mysql> select json_array_insert(json_array(1,2,3), "$[last]", 42);
+	// +-----------------------------------------------------+
+	// | json_array_insert(json_array(1,2,3), "$[last]", 42) |
+	// +-----------------------------------------------------+
+	// | [1, 2, 42, 3]                                       |
+	// +-----------------------------------------------------+
+	{
+		desc:      "insert to [last] does crazy things",
+		doc:       `[1,2,3]`,
+		path:      "$[last]",
+		value:     `42`,
+		resultVal: `[1,2,42,3]`, // It's true. Try it yourself.
+		changed:   true,
+	},
+	{
+		desc:      "insert into non-array results in noop",
+		doc:       `{}`,
+		path:      "$[0]",
+		value:     `42`,
+		changed:   false,
+		resultVal: `{}`,
+	},
+}
+
+func TestJsonArrayInsert(t *testing.T) {
+	for _, test := range JsonArrayInsertTests {
+		t.Run("JSON array insert: "+test.desc, func(t *testing.T) {
+			doc := MustJSON(test.doc)
+			val := MustJSON(test.value)
+			res, changed, err := doc.ArrayInsert(sql.NewEmptyContext(), test.path, val)
+			require.NoError(t, err)
+			assert.Equal(t, MustJSON(test.resultVal), res)
+			assert.Equal(t, test.changed, changed)
+		})
+	}
+}
+
 type parseErrTest struct {
 	desc         string
+	doc          string
 	path         string
 	expectErrStr string
 }
@@ -1097,6 +1264,39 @@ func TestJsonPathErrors(t *testing.T) {
 	for _, test := range JsonPathParseErrTests {
 		t.Run("JSON Path: "+test.desc, func(t *testing.T) {
 			_, changed, err := doc.Set(sql.NewEmptyContext(), test.path, MustJSON(`{"a": 42}`))
+			assert.Equal(t, false, changed)
+			require.Error(t, err)
+			assert.Equal(t, test.expectErrStr, err.Error())
+		})
+	}
+}
+
+var JsonArrayInsertErrors = []parseErrTest{
+	{
+		desc:         "empty path",
+		path:         "",
+		expectErrStr: "Invalid JSON path expression. Empty path",
+	},
+	{
+		desc:         "insert into root path results in an error",
+		doc:          `[]`,
+		path:         "$",
+		expectErrStr: "Path expression is not a path to a cell in an array: $",
+	},
+	{
+		desc:         "no op insert into non-array",
+		doc:          `{"a": "eh"}`,
+		path:         "$.a",
+		expectErrStr: "A path expression is not a path to a cell in an array at character 3 of $.a",
+	},
+}
+
+func TestJsonInsertErrors(t *testing.T) {
+	doc := MustJSON(`{"a": {"b": 2} , "c": [1, 2, 3]}`)
+
+	for _, test := range JsonArrayInsertErrors {
+		t.Run("JSON Path: "+test.desc, func(t *testing.T) {
+			_, changed, err := doc.ArrayInsert(sql.NewEmptyContext(), test.path, MustJSON(`{"a": 42}`))
 			assert.Equal(t, false, changed)
 			require.Error(t, err)
 			assert.Equal(t, test.expectErrStr, err.Error())
