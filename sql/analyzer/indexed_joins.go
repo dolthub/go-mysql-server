@@ -926,8 +926,14 @@ func addMergeJoins(m *memo.Memo) error {
 						// To make the index scan, we need the first non-constant column in each index.
 						leftColId := getOnlyColumnId(matchedEqFilters[0].filter.Left)
 						rightColId := getOnlyColumnId(matchedEqFilters[0].filter.Right)
-						lIndexScan := makeIndexScan(lIndex, leftColId, lFilters)
-						rIndexScan := makeIndexScan(rIndex, rightColId, rFilters)
+						lIndexScan, success := makeIndexScan(lIndex, leftColId, lFilters)
+						if !success {
+							continue
+						}
+						rIndexScan, success := makeIndexScan(rIndex, rightColId, rFilters)
+						if !success {
+							continue
+						}
 						m.MemoizeMergeJoin(e.Group(), join.Left, join.Right, lIndexScan, rIndexScan, jb.Op.AsMerge(), newFilters, false)
 					}
 				}
@@ -1050,12 +1056,15 @@ func sortedIndexScansForTableCol(indexes []*memo.Index, targetCol *memo.ColRef, 
 		if !found {
 			continue
 		}
-		ret = append(ret, makeIndexScan(idx, matchedIdx, filters))
+		indexScan, success := makeIndexScan(idx, matchedIdx, filters)
+		if success {
+			ret = append(ret, indexScan)
+		}
 	}
 	return ret
 }
 
-func makeIndexScan(idx *memo.Index, matchedIdx sql.ColumnId, filters []memo.ScalarExpr) *memo.IndexScan {
+func makeIndexScan(idx *memo.Index, matchedIdx sql.ColumnId, filters []memo.ScalarExpr) (*memo.IndexScan, bool) {
 	rang := make(sql.Range, len(idx.Cols()))
 	var j int
 	for {
@@ -1090,12 +1099,12 @@ func makeIndexScan(idx *memo.Index, matchedIdx sql.ColumnId, filters []memo.Scal
 	}
 
 	if !idx.SqlIdx().CanSupport(rang) {
-		return nil
+		return nil, false
 	}
 	return &memo.IndexScan{
 		Idx:   idx,
 		Range: rang,
-	}
+	}, true
 }
 
 // isWeaklyMonotonic is a weak test of whether an expression

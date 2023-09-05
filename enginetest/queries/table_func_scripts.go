@@ -14,7 +14,10 @@
 
 package queries
 
-import "github.com/dolthub/go-mysql-server/sql"
+import (
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
+)
 
 var TableFunctionScriptTests = []ScriptTest{
 	{
@@ -170,8 +173,39 @@ var TableFunctionScriptTests = []ScriptTest{
 		Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
 	},
 	{
+		Name:            "sequence_table allows point lookups",
 		Query:           "select * from sequence_table('x', 5) where x = 2",
 		Expected:        []sql.Row{{2}},
+		ExpectedIndexes: []string{"x"},
+	},
+	{
+		Name:            "sequence_table allows range lookups",
+		Query:           "select * from sequence_table('x', 5) where x >= 1 and x <= 3",
+		Expected:        []sql.Row{{1}, {2}, {3}},
+		ExpectedIndexes: []string{"x"},
+	},
+	{
+		Name:     "basic behavior of point_lookup_table",
+		Query:    "select seq.x from point_lookup_table('x', 5) seq",
+		Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
+	},
+	{
+		Name:            "point_lookup_table allows point lookups",
+		Query:           "select * from point_lookup_table('x', 5) where x = 2",
+		Expected:        []sql.Row{{2}},
+		ExpectedIndexes: []string{"x"},
+	},
+	{
+		Name:            "point_lookup_table disallows range lookups",
+		Query:           "select * from point_lookup_table('x', 5) where x >= 1 and x <= 3",
+		Expected:        []sql.Row{{1}, {2}, {3}},
+		ExpectedIndexes: []string{},
+	},
+	{
+		Name:            "point_lookup_table disallows merge join",
+		Query:           "select /*+ MERGE_JOIN(l,r) */ * from point_lookup_table('x', 5) l join point_lookup_table('y', 5) r where x = y",
+		Expected:        []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}},
+		JoinTypes:       []plan.JoinType{plan.JoinTypeLookup},
 		ExpectedIndexes: []string{"x"},
 	},
 }
