@@ -258,6 +258,8 @@ func pushdownFiltersToAboveTable(
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
+		// Mark the original expressions as handled (not the fixed expressions). This guarantees the original
+		// expressions get removed.
 		filters.markFiltersHandled(tableFilters...)
 		pushedDownFilterExpression = expression.JoinAnd(handled...)
 
