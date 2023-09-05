@@ -99,8 +99,17 @@ func (d *BaseDatabase) GetTableInsensitive(ctx *sql.Context, tblName string) (sq
 	return tbl, ok, nil
 }
 
+// putTable writes the table given into database storage. A table with this name must already be present.
 func (d *BaseDatabase) putTable(t *Table) {
-	d.tables[t.Name()] = t
+	lowerName := strings.ToLower(t.name)
+	for name, table := range d.tables {
+		if strings.ToLower(name) == lowerName {
+			t.name = table.Name()
+			d.tables[name] = t
+			break
+		}
+	}
+	panic(fmt.Sprintf("table %s not found", t.name))
 }
 
 func (d *BaseDatabase) GetTableNames(ctx *sql.Context) ([]string, error) {
@@ -264,10 +273,10 @@ func (d *BaseDatabase) RenameTable(ctx *sql.Context, oldName, newName string) er
 
 	memTbl := tbl.(*Table)
 	memTbl.name = newName
-	for _, col := range memTbl.schema.Schema {
+	for _, col := range memTbl.data.schema.Schema {
 		col.Source = newName
 	}
-	for _, index := range memTbl.indexes {
+	for _, index := range memTbl.data.indexes {
 		memIndex := index.(*Index)
 		for i, expr := range memIndex.Exprs {
 			getField := expr.(*expression.GetField)

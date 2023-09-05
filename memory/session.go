@@ -134,9 +134,9 @@ func (s *Session) CommitTransaction(ctx *sql.Context, tx sql.Transaction) error 
 		default:
 			return fmt.Errorf("unknown database type %T", db)
 		}
-		
-		baseDb.tables[strings.ToLower(key.table)] = s.tableData[key].Table(baseDb)
+		baseDb.putTable(s.tableData[key].Table(baseDb))
 	}
+	
 	return nil
 }
 
