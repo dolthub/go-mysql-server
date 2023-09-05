@@ -70,7 +70,7 @@ func (g *GroupBy) Schema() sql.Schema {
 		if n, ok := e.(sql.Nameable); ok {
 			name = n.Name()
 		} else {
-			name = GetFieldAggString(e)
+			name = AliasSubqueryString(e)
 		}
 
 		var table string

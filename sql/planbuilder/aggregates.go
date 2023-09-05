@@ -352,7 +352,7 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 		aggType = types.Float64
 	}
 
-	aggName := strings.ToLower(plan.GetFieldAggString(agg))
+	aggName := strings.ToLower(plan.AliasSubqueryString(agg))
 	if id, ok := gb.outScope.getExpr(aggName, true); ok {
 		// if we've already computed use reference here
 		gf := expression.NewGetFieldWithTable(int(id), aggType, "", aggName, agg.IsNullable())
@@ -409,7 +409,7 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 
 	// todo store ref to aggregate
 	agg := aggregation.NewGroupConcat(e.Distinct, sortFields, separatorS, args, int(groupConcatMaxLen))
-	aggName := strings.ToLower(plan.GetFieldAggString(agg))
+	aggName := strings.ToLower(plan.AliasSubqueryString(agg))
 	col := scopeColumn{col: aggName, scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
 
 	id := gb.outScope.newColumn(col)
