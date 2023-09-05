@@ -258,7 +258,7 @@ func pushdownFiltersToAboveTable(
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		filters.markFiltersHandled(handled...)
+		filters.markFiltersHandled(tableFilters...)
 		pushedDownFilterExpression = expression.JoinAnd(handled...)
 
 		a.Log(
