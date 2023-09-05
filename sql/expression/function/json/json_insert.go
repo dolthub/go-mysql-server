@@ -79,44 +79,17 @@ func (j JSONInsert) IsNullable() bool {
 
 func (j JSONInsert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	doc, err := getMutableJSONVal(ctx, row, j.doc)
-	if err != nil {
+	if err != nil || doc == nil {
 		return nil, err
 	}
-	if doc == nil {
-		return nil, nil
-	}
 
-	type pathValPair struct {
-		path string
-		val  types.JSONValue
-	}
 	pairs := make([]pathValPair, 0, len(j.pathVals)/2)
 	for i := 0; i < len(j.pathVals); i += 2 {
-		path, err := j.pathVals[i].Eval(ctx, row)
-		if err != nil {
+		argPair, err := buildPathValue(ctx, j.pathVals[i], j.pathVals[i+1], row)
+		if argPair == nil || err != nil {
 			return nil, err
 		}
-
-		if path == nil {
-			// MySQL documented behavior is to return null, not error, if path is null.
-			return nil, nil
-		}
-
-		// make sure path is string
-		if _, ok := path.(string); !ok {
-			return nil, fmt.Errorf("Invalid JSON path expression")
-		}
-
-		val, err := j.pathVals[i+1].Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-		jsonVal, ok := val.(types.JSONValue)
-		if !ok {
-			jsonVal = types.JSONDocument{val}
-		}
-
-		pairs = append(pairs, pathValPair{path.(string), jsonVal})
+		pairs = append(pairs, *argPair)
 	}
 
 	// Apply the path-value pairs to the document.

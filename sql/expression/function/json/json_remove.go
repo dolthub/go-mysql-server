@@ -108,11 +108,8 @@ func (j JSONRemove) IsUnsupported() bool {
 
 func (j JSONRemove) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	doc, err := getMutableJSONVal(ctx, row, j.doc)
-	if err != nil {
+	if err != nil || doc == nil {
 		return nil, err
-	}
-	if doc == nil {
-		return nil, nil
 	}
 
 	for _, path := range j.paths {
