@@ -58,41 +58,6 @@ type Table struct {
 	fullTextConfigTableName string
 }
 
-// TableData encapsulates all schema and data for a table's schema and rows. Other aspects of a table can change 
-// freely as needed for different views on a table (column projections, index lookups, filters, etc.) but the 
-// storage of underlying data lives here.
-type TableData struct {
-	dbName string
-	tableName string
-	
-	// Schema data
-	schema           sql.PrimaryKeySchema
-	indexes          map[string]sql.Index
-	fkColl           *ForeignKeyCollection
-	checks           []sql.CheckDefinition
-	collation        sql.CollationID
-	autoColIdx       int
-	primaryKeyIndexes bool
-
-	// Data storage
-	partitions    map[string][]sql.Row
-	partitionKeys [][]byte
-	autoIncVal    uint64
-
-	// Insert bookkeeping (spread inserts across partitions)
-	insertPartIdx int
-}
-
-// Table returns a table with this data
-func (d TableData) Table(database *BaseDatabase) *Table {
-	return &Table{
-		db:               database,
-		name:             d.tableName,
-		data:             &d,
-		pkIndexesEnabled: d.primaryKeyIndexes,
-	}
-}
-
 var _ sql.Table = (*Table)(nil)
 var _ sql.InsertableTable = (*Table)(nil)
 var _ sql.UpdatableTable = (*Table)(nil)
@@ -352,18 +317,8 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	}, nil
 }
 
-func (t *TableData) numRows(ctx *sql.Context) (uint64, error) {
-	var count uint64
-	for _, rows := range t.partitions {
-		count += uint64(len(rows))
-	}
-
-	return count, nil
-}
-
 func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
-	sess := SessionFromContext(ctx)
-	data, err := sess.tableData(ctx, t)
+	data, err := t.sessionTableData(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -748,30 +703,6 @@ func (t *Table) newFulltextTableEditor(ctx *sql.Context, parentEditor sql.TableE
 		panic(err)
 	}
 	return parentEditor
-}
-
-func (t *TableData) indexColsForTableEditor() ([][]int, [][]uint16) {
-	var uniqIdxCols [][]int
-	var prefixLengths [][]uint16
-	for _, idx := range t.indexes {
-		if !idx.IsUnique() {
-			continue
-		}
-		var colNames []string
-		expressions := idx.(*Index).Exprs
-		for _, exp := range expressions {
-			colNames = append(colNames, exp.(*expression.GetField).Name())
-		}
-		colIdxs, err := t.columnIndexes(colNames)
-		if err != nil {
-			// this means that the column names in this index aren't in the schema, which can happen in the case of a
-			// table rewrite
-			continue
-		}
-		uniqIdxCols = append(uniqIdxCols, colIdxs)
-		prefixLengths = append(prefixLengths, idx.PrefixLengths())
-	}
-	return uniqIdxCols, prefixLengths
 }
 
 func (t *Table) getFulltextTableSets(ctx *sql.Context) ([]fulltext.TableSet, error) {
@@ -1463,21 +1394,6 @@ func (t *Table) Projections() []string {
 	return t.projection
 }
 
-func (t *TableData) columnIndexes(colNames []string) ([]int, error) {
-	columns := make([]int, 0, len(colNames))
-
-	for _, name := range colNames {
-		i := t.schema.IndexOf(name, t.tableName)
-		if i == -1 {
-			return nil, errColumnNotFound.New(name)
-		}
-
-		columns = append(columns, i)
-	}
-
-	return columns, nil
-}
-
 // EnablePrimaryKeyIndexes enables the use of primary key indexes on this table.
 func (t *Table) EnablePrimaryKeyIndexes() {
 	t.pkIndexesEnabled = true
@@ -1750,60 +1666,6 @@ func (t *Table) createIndex(data *TableData, name string, columns []sql.IndexCol
 	}, nil
 }
 
-// throws an error if any two or more rows share the same |cols| values.
-func (t *TableData) errIfDuplicateEntryExist(cols []string, idxName string) error {
-	columnMapping, err := t.columnIndexes(cols)
-	if err != nil {
-		return err
-	}
-	unique := make(map[uint64]struct{})
-	for _, partition := range t.partitions {
-		for _, row := range partition {
-			idxPrefixKey := projectOnRow(columnMapping, row)
-			if hasNulls(idxPrefixKey) {
-				continue
-			}
-			h, err := sql.HashOf(idxPrefixKey)
-			if err != nil {
-				return err
-			}
-			if _, ok := unique[h]; ok {
-				return sql.NewUniqueKeyErr(formatRow(row, columnMapping), false, nil)
-			}
-			unique[h] = struct{}{}
-		}
-	}
-	return nil
-}
-
-func hasNulls(row sql.Row) bool {
-	for _, v := range row {
-		if v == nil {
-			return true
-		}
-	}
-	return false
-}
-
-func hasNullForAnyCols(row sql.Row, cols []int) bool {
-	for _, idx := range cols {
-		if row[idx] == nil {
-			return true
-		}
-	}
-	return false
-}
-
-// getField returns the index and column index with the name given, if it exists, or -1, nil otherwise.
-func (t *TableData) getField(col string) (int, *sql.Column) {
-	i := t.schema.IndexOf(col, t.tableName)
-	if i == -1 {
-		return -1, nil
-	}
-
-	return i, t.schema.Schema[i]
-}
-
 // CreateIndex implements sql.IndexAlterableTable
 func (t *Table) CreateIndex(ctx *sql.Context, idx sql.IndexDef) error {
 	sess := SessionFromContext(ctx)
@@ -1956,21 +1818,6 @@ func (t *Table) Filters() []sql.Expression {
 	return t.filters
 }
 
-func (t *TableData) generateCheckName() string {
-	i := 1
-Top:
-	for {
-		name := fmt.Sprintf("%s_chk_%d", t.tableName, i)
-		for _, check := range t.checks {
-			if check.Name == name {
-				i++
-				continue Top
-			}
-		}
-		return name
-	}
-}
-
 // CreatePrimaryKey implements the PrimaryKeyAlterableTable
 func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) error {
 	sess := SessionFromContext(ctx)
@@ -2024,44 +1871,6 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) er
 	return nil
 }
 
-// Sorts the rows in the partitions of the table to be in primary key order.
-func (t *TableData) sortRows() {
-	type pkfield struct {
-		i int
-		c *sql.Column
-	}
-	var pk []pkfield
-	for _, column := range t.schema.Schema {
-		if column.PrimaryKey {
-			idx, col := t.getField(column.Name)
-			pk = append(pk, pkfield{idx, col})
-		}
-	}
-
-	less := func(l, r sql.Row) bool {
-		for _, f := range pk {
-			r, err := f.c.Type.Compare(l[f.i], r[f.i])
-			if err != nil {
-				panic(err)
-			}
-			if r != 0 {
-				return r < 0
-			}
-		}
-		return false
-	}
-
-	var idx []partidx
-	for _, k := range t.partitionKeys {
-		p := t.partitions[string(k)]
-		for i := 0; i < len(p); i++ {
-			idx = append(idx, partidx{string(k), i})
-		}
-	}
-
-	sort.Sort(partitionssort{t.partitions, idx, less})
-}
-
 type partidx struct {
 	key string
 	i   int
@@ -2107,35 +1916,6 @@ func (t Table) copy() *Table {
 	}
 	
 	return &t
-}
-
-func (d TableData) copy() *TableData {
-	sch := d.schema.Schema.Copy()
-	pkSch := sql.NewPrimaryKeySchema(sch, d.schema.PkOrdinals...)
-	d.schema = pkSch
-
-	parts := make(map[string][]sql.Row, len(d.partitions))
-	for k, v := range d.partitions {
-		data := make([]sql.Row, len(v))
-		copy(data, v)
-		parts[k] = data
-	}
-
-	keys := make([][]byte, len(d.partitionKeys))
-	for i := range d.partitionKeys {
-		keys[i] = make([]byte, len(d.partitionKeys[i]))
-		copy(keys[i], d.partitionKeys[i])
-	}
-
-	d.partitionKeys, d.partitions = keys, parts
-
-	if d.checks != nil {
-		checks := make([]sql.CheckDefinition, len(d.checks))
-		copy(checks, d.checks)
-		d.checks = checks
-	}
-	
-	return &d
 }
 
 // replaceData replaces the data in this table with the one in the source
@@ -2489,34 +2269,11 @@ func remapColumnOrds(oldSch sql.PrimaryKeySchema, newSch sql.PrimaryKeySchema, c
 	return newPoses
 }
 
-func (t *TableData) truncate(schema sql.PrimaryKeySchema) *TableData {
-	var keys [][]byte
-	var partitions = map[string][]sql.Row{}
-	numParts := len(t.partitionKeys)
-
-	for i := 0; i < numParts; i++ {
-		key := strconv.Itoa(i)
-		keys = append(keys, []byte(key))
-		partitions[key] = []sql.Row{}
+func hasNullForAnyCols(row sql.Row, cols []int) bool {
+	for _, idx := range cols {
+		if row[idx] == nil {
+			return true
+		}
 	}
-
-	t.partitionKeys = keys
-	t.partitions = partitions
-	t.schema = schema
-	t.insertPartIdx = 0
-	
-	t.autoIncVal = 0
-	if schema.HasAutoIncrement() {
-		t.autoIncVal = 1	
-	}
-	
-	return t
-}
-
-func allColumns(schema sql.PrimaryKeySchema) []int {
-	columns := make([]int, len(schema.Schema))
-	for i := range schema.Schema {
-		columns[i] = i
-	}
-	return columns
+	return false
 }
