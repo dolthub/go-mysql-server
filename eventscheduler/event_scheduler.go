@@ -152,12 +152,13 @@ func (es *EventScheduler) evaluateAllEventsAndLoadEnabledEvents(ctx *sql.Context
 	events := make([]*enabledEvent, 0)
 	for _, db := range dbs {
 		if edb, ok := db.(sql.EventDatabase); ok {
+			// need to set the current database to get parsed plan
+			ctx.SetCurrentDatabase(edb.Name())
+
 			eDefs, err := edb.GetEvents(ctx)
 			if err != nil {
 				return nil, err
 			}
-			// need to set the current database to get parsed plan
-			ctx.SetCurrentDatabase(edb.Name())
 			for _, eDef := range eDefs {
 				newEnabledEvent, created, err := newEnabledEventFromEventDetails(ctx, edb, eDef, time.Now())
 				if err != nil {

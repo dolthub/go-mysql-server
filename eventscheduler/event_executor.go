@@ -156,7 +156,7 @@ func (ee *eventExecutor) executeEvent(event *enabledEvent) (bool, error, error) 
 				return
 			}
 
-			queryErr = ee.queryRunFunc(sqlCtx, event.edb.Name(), event.event.CreateEventStatement(), event.username, event.address)
+			queryErr = ee.queryRunFunc(sqlCtx, event.edb.Name(), event.event.EventBody, event.username, event.address)
 			if queryErr != nil {
 				queryErr = err
 				return
