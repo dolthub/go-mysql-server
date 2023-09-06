@@ -68,6 +68,10 @@ type MutableJSONValue interface {
 	Replace(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
 	// Insert into the array object referenced by the given path. If the path does not exist, no modification is made.
 	ArrayInsert(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
+	// Append to the array object referenced by the given path. If the path does not exist, no modification is made,
+	// or if the path exists and is not an array, the element will be converted into an array and the element will be
+	// appended to it.
+	ArrayAppend(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
 }
 
 type JSONDocument struct {
@@ -739,7 +743,23 @@ func updateObject(path string, doc map[string]interface{}, val interface{}, mode
 		return nil, false, err
 	}
 
-	if remainingPath == "" && mode != ARRAY_APPEND {
+	if remainingPath == "" {
+		if mode == ARRAY_APPEND {
+			newDoc, ok := doc[name]
+			if !ok {
+				// end of the path with a nil value - no-op
+				return doc, false, nil
+			}
+			newObj, changed, err := walkPathAndUpdate(remainingPath, newDoc, val, mode, cursor)
+			if err != nil {
+				return nil, false, err
+			}
+			if changed {
+				doc[name] = newObj
+			}
+			return doc, changed, nil
+		}
+
 		// Found an item, and it must be an array in one case only.
 		if mode == ARRAY_INSERT {
 			return nil, false, &parseErr{msg: "A path expression is not a path to a cell in an array", character: *cursor}
