@@ -271,7 +271,7 @@ func (d *BaseDatabase) RenameTable(ctx *sql.Context, oldName, newName string) er
 		return sql.ErrTableAlreadyExists.New(newName)
 	}
 
-	memTbl := tbl.(*Table)
+	memTbl := tbl.(*Table).copy()
 	memTbl.name = newName
 	for _, col := range memTbl.data.schema.Schema {
 		col.Source = newName

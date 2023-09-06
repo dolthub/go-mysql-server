@@ -861,25 +861,31 @@ func (t *Table) GetNextAutoIncrementValue(ctx *sql.Context, insertVal interface{
 }
 
 func (t *Table) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.ColumnOrder) error {
-	table := t.tableUnderEdit(ctx)
-	
-	newColIdx := table.addColumnToSchema(ctx, column, order)
-	err := table.insertValueInRows(ctx, newColIdx, column.Default)
+	sess := SessionFromContext(ctx)
+	data, err := sess.tableData(ctx, t)
 	if err != nil {
 		return err
 	}
 	
-	table.db.putTable(table)
-	sess := SessionFromContext(ctx)
-	sess.clearEditAccumulator(table)
+	newColIdx, data, err := addColumnToSchema(ctx, data, column, order)
+	if err != nil {
+		return err
+	}
 	
+	err = insertValueInRows(ctx, data, newColIdx, column.Default)
+	if err != nil {
+		return err
+	}
+	
+	sess.putTable(ctx, data)
 	return nil
 }
 
 // addColumnToSchema adds the given column to the schema and returns the new index
-func (t *Table) addColumnToSchema(ctx *sql.Context, newCol *sql.Column, order *sql.ColumnOrder) int {
-	newCol.Source = t.Name()
-	newSch := make(sql.Schema, len(t.data.schema.Schema)+1)
+func addColumnToSchema(ctx *sql.Context, data *TableData, newCol *sql.Column, order *sql.ColumnOrder) (int, *TableData, error) {
+	// TODO: might have wrong case
+	newCol.Source = data.tableName
+	newSch := make(sql.Schema, len(data.schema.Schema)+1)
 
 	// TODO: need to fix this in the engine itself
 	if newCol.PrimaryKey {
@@ -893,10 +899,10 @@ func (t *Table) addColumnToSchema(ctx *sql.Context, newCol *sql.Column, order *s
 		i++
 	}
 
-	for _, col := range t.data.schema.Schema {
+	for _, col := range data.schema.Schema {
 		newSch[i] = col
 		i++
-		if (order != nil && order.AfterColumn == col.Name) || (order == nil && i == len(t.data.schema.Schema)) {
+		if (order != nil && order.AfterColumn == col.Name) || (order == nil && i == len(data.schema.Schema)) {
 			newSch[i] = newCol
 			newColIdx = i
 			i++
@@ -906,7 +912,7 @@ func (t *Table) addColumnToSchema(ctx *sql.Context, newCol *sql.Column, order *s
 	for _, newSchCol := range newSch {
 		newDefault, _, _ := transform.Expr(newSchCol.Default, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if expr, ok := expr.(*expression.GetField); ok {
-				return expr.WithIndex(newSch.IndexOf(expr.Name(), t.name)), transform.NewTree, nil
+				return expr.WithIndex(newSch.IndexOf(expr.Name(), data.tableName)), transform.NewTree, nil
 			}
 			return expr, transform.SameTree, nil
 		})
@@ -914,17 +920,17 @@ func (t *Table) addColumnToSchema(ctx *sql.Context, newCol *sql.Column, order *s
 	}
 
 	if newCol.AutoIncrement {
-		t.data.autoColIdx = newColIdx
-		t.data.autoIncVal = 0
+		data.autoColIdx = newColIdx
+		data.autoIncVal = 0
 
-		if newColIdx < len(t.data.schema.Schema) {
-			for _, p := range t.data.partitions {
+		if newColIdx < len(data.schema.Schema) {
+			for _, p := range data.partitions {
 				for _, row := range p {
 					if row[newColIdx] == nil {
 						continue
 					}
 
-					cmp, err := newCol.Type.Compare(row[newColIdx], t.data.autoIncVal)
+					cmp, err := newCol.Type.Compare(row[newColIdx], data.autoIncVal)
 					if err != nil {
 						panic(err)
 					}
@@ -935,18 +941,18 @@ func (t *Table) addColumnToSchema(ctx *sql.Context, newCol *sql.Column, order *s
 						if err != nil {
 							panic(err)
 						}
-						t.data.autoIncVal = val.(uint64)
+						data.autoIncVal = val.(uint64)
 					}
 				}
 			}
 		} else {
-			t.data.autoIncVal = 0
+			data.autoIncVal = 0
 		}
 
-		t.data.autoIncVal++
+		data.autoIncVal++
 	}
 
-	newPkOrds := t.data.schema.PkOrdinals
+	newPkOrds := data.schema.PkOrdinals
 	for i := 0; i < len(newPkOrds); i++ {
 		// added column shifts the index of every column after
 		// all ordinals above addIdx will be bumped
@@ -955,50 +961,44 @@ func (t *Table) addColumnToSchema(ctx *sql.Context, newCol *sql.Column, order *s
 		}
 	}
 
-	t.data.schema = sql.NewPrimaryKeySchema(newSch, newPkOrds...)
+	data.schema = sql.NewPrimaryKeySchema(newSch, newPkOrds...)
 	
-	// Get rid of projection info, since these tables live in memory for a long time and keeping this info around after
-	// a schema change can mess up further statements. They'll be re-calculated as needed.
-	t.clearProjectionInfo()
-
-	return newColIdx
+	return newColIdx, data, nil
 }
 
-func (t *Table) clearProjectionInfo() {
-	t.columns = nil
-	t.projection = nil
-	t.filters = nil
-}
-
-func (t *Table) insertValueInRows(ctx *sql.Context, idx int, colDefault *sql.ColumnDefaultValue) error {
-	for k, p := range t.data.partitions {
+func insertValueInRows(ctx *sql.Context, data *TableData, colIdx int, colDefault *sql.ColumnDefaultValue) error {
+	for k, p := range data.partitions {
 		newP := make([]sql.Row, len(p))
 		for i, row := range p {
 			var newRow sql.Row
-			newRow = append(newRow, row[:idx]...)
+			newRow = append(newRow, row[:colIdx]...)
 			newRow = append(newRow, nil)
-			newRow = append(newRow, row[idx:]...)
+			newRow = append(newRow, row[colIdx:]...)
 			var err error
-			if !t.data.schema.Schema[idx].Nullable && colDefault == nil {
-				newRow[idx] = t.data.schema.Schema[idx].Type.Zero()
+			if !data.schema.Schema[colIdx].Nullable && colDefault == nil {
+				newRow[colIdx] = data.schema.Schema[colIdx].Type.Zero()
 			} else {
-				newRow[idx], err = colDefault.Eval(ctx, newRow)
+				newRow[colIdx], err = colDefault.Eval(ctx, newRow)
 				if err != nil {
 					return err
 				}
 			}
 			newP[i] = newRow
 		}
-		t.data.partitions[k] = newP
+		data.partitions[k] = newP
 	}
 	return nil
 }
 
 func (t *Table) DropColumn(ctx *sql.Context, columnName string) error {
-	table := t.tableUnderEdit(ctx)
+	sess := SessionFromContext(ctx)
+	data, err := sess.tableData(ctx, t)
+	if err != nil {
+		return err
+	}
 
-	droppedCol := table.dropColumnFromSchema(ctx, columnName)
-	for k, p := range table.data.partitions {
+	droppedCol, data := dropColumnFromSchema(ctx, data, columnName)
+	for k, p := range data.partitions {
 		newP := make([]sql.Row, len(p))
 		for i, row := range p {
 			var newRow sql.Row
@@ -1006,8 +1006,11 @@ func (t *Table) DropColumn(ctx *sql.Context, columnName string) error {
 			newRow = append(newRow, row[droppedCol+1:]...)
 			newP[i] = newRow
 		}
-		table.data.partitions[k] = newP
+		data.partitions[k] = newP
 	}
+	
+	sess.putTable(ctx, data)
+	
 	return nil
 }
 
@@ -1023,11 +1026,11 @@ func (t *Table) tableUnderEdit(ctx *sql.Context) *Table {
 }
 
 // dropColumnFromSchema drops the given column name from the schema and returns its old index.
-func (t *Table) dropColumnFromSchema(ctx *sql.Context, columnName string) int {
-	newSch := make(sql.Schema, len(t.data.schema.Schema)-1)
+func dropColumnFromSchema(ctx *sql.Context, data *TableData, columnName string) (int, *TableData) {
+	newSch := make(sql.Schema, len(data.schema.Schema)-1)
 	var i int
 	droppedCol := -1
-	for _, col := range t.data.schema.Schema {
+	for _, col := range data.schema.Schema {
 		if col.Name != columnName {
 			newSch[i] = col
 			i++
@@ -1036,7 +1039,7 @@ func (t *Table) dropColumnFromSchema(ctx *sql.Context, columnName string) int {
 		}
 	}
 
-	newPkOrds := t.data.schema.PkOrdinals
+	newPkOrds := data.schema.PkOrdinals
 	for i := 0; i < len(newPkOrds); i++ {
 		// deleting a column will shift subsequent column indices left
 		// PK ordinals after dropIdx bumped down
@@ -1045,17 +1048,20 @@ func (t *Table) dropColumnFromSchema(ctx *sql.Context, columnName string) int {
 		}
 	}
 
-	t.data.schema = sql.NewPrimaryKeySchema(newSch, newPkOrds...)
-	t.clearProjectionInfo()
-	return droppedCol
+	data.schema = sql.NewPrimaryKeySchema(newSch, newPkOrds...)
+	return droppedCol, data
 }
 
 func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Column, order *sql.ColumnOrder) error {
-	table := t.tableUnderEdit(ctx)
+	sess := SessionFromContext(ctx)
+	data, err := sess.tableData(ctx, t)
+	if err != nil {
+		return err
+	}
 	
 	oldIdx := -1
 	newIdx := 0
-	for i, col := range table.data.schema.Schema {
+	for i, col := range data.schema.Schema {
 		if col.Name == columnName {
 			oldIdx = i
 			column.PrimaryKey = col.PrimaryKey
@@ -1064,8 +1070,8 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 			}
 			// We've removed auto increment through this modification so we need to do some bookkeeping
 			if col.AutoIncrement && !column.AutoIncrement {
-				table.data.autoColIdx = -1
-				table.data.autoIncVal = 0
+				data.autoColIdx = -1
+				data.autoIncVal = 0
 			}
 			break
 		}
@@ -1076,12 +1082,12 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 		if newIdx == 0 {
 			order = &sql.ColumnOrder{First: true}
 		} else {
-			order = &sql.ColumnOrder{AfterColumn: table.data.schema.Schema[newIdx-1].Name}
+			order = &sql.ColumnOrder{AfterColumn: data.schema.Schema[newIdx-1].Name}
 		}
 	} else if !order.First {
 		var oldSchemaWithoutCol sql.Schema
-		oldSchemaWithoutCol = append(oldSchemaWithoutCol, table.data.schema.Schema[:oldIdx]...)
-		oldSchemaWithoutCol = append(oldSchemaWithoutCol, table.data.schema.Schema[oldIdx+1:]...)
+		oldSchemaWithoutCol = append(oldSchemaWithoutCol, data.schema.Schema[:oldIdx]...)
+		oldSchemaWithoutCol = append(oldSchemaWithoutCol, data.schema.Schema[oldIdx+1:]...)
 		for i, col := range oldSchemaWithoutCol {
 			if col.Name == order.AfterColumn {
 				newIdx = i + 1
@@ -1090,7 +1096,7 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 		}
 	}
 
-	for k, p := range table.data.partitions {
+	for k, p := range data.partitions {
 		newP := make([]sql.Row, len(p))
 		for i, row := range p {
 			var oldRowWithoutVal sql.Row
@@ -1112,28 +1118,31 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 			newRow = append(newRow, oldRowWithoutVal[newIdx:]...)
 			newP[i] = newRow
 		}
-		table.data.partitions[k] = newP
+		data.partitions[k] = newP
 	}
 
 	pkNameToOrdIdx := make(map[string]int)
-	for i, ord := range table.data.schema.PkOrdinals {
-		pkNameToOrdIdx[table.data.schema.Schema[ord].Name] = i
+	for i, ord := range data.schema.PkOrdinals {
+		pkNameToOrdIdx[data.schema.Schema[ord].Name] = i
 	}
 
-	_ = table.dropColumnFromSchema(ctx, columnName)
-	table.addColumnToSchema(ctx, column, order)
+	_, data = dropColumnFromSchema(ctx, data, columnName)
+	_, data, err = addColumnToSchema(ctx, data, column, order)
+	if err != nil {
+		return err
+	}
 
-	newPkOrds := make([]int, len(table.data.schema.PkOrdinals))
-	for ord, col := range table.data.schema.Schema {
+	newPkOrds := make([]int, len(data.schema.PkOrdinals))
+	for ord, col := range data.schema.Schema {
 		if col.PrimaryKey {
 			i := pkNameToOrdIdx[col.Name]
 			newPkOrds[i] = ord
 		}
 	}
 
-	table.data.schema.PkOrdinals = newPkOrds
+	data.schema.PkOrdinals = newPkOrds
 
-	for _, index := range table.data.indexes {
+	for _, index := range data.indexes {
 		memIndex := index.(*Index)
 		nameLowercase := strings.ToLower(columnName)
 		for i, expr := range memIndex.Exprs {
@@ -1143,6 +1152,8 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 			}
 		}
 	}
+	
+	sess.putTable(ctx, data)
 
 	return nil
 }
@@ -1476,13 +1487,21 @@ func (t *Table) GetReferencedForeignKeys(ctx *sql.Context) ([]sql.ForeignKeyCons
 
 // AddForeignKey implements sql.ForeignKeyTable. Foreign partitionKeys are not enforced on update / delete.
 func (t *Table) AddForeignKey(ctx *sql.Context, fk sql.ForeignKeyConstraint) error {
+	sess := SessionFromContext(ctx)
+	data, err := sess.tableData(ctx, t)
+	if err != nil {
+		return err
+	}
+	
 	lowerName := strings.ToLower(fk.Name)
-	for _, key := range t.data.fkColl.Keys() {
+	for _, key := range data.fkColl.Keys() {
 		if strings.ToLower(key.Name) == lowerName {
 			return fmt.Errorf("Constraint %s already exists", fk.Name)
 		}
 	}
-	t.data.fkColl.AddFK(fk)
+	data.fkColl.AddFK(fk)
+	
+	sess.putTable(ctx, data)
 	return nil
 }
 
@@ -1915,24 +1934,7 @@ func (ps partitionssort) Swap(i, j int) {
 }
 
 func (t Table) copy() *Table {
-	parts := make(map[string][]sql.Row, len(t.data.partitions))
-	for k, v := range t.data.partitions {
-		data := make([]sql.Row, len(v))
-		copy(data, v)
-		parts[k] = data
-	}
-	
-	keys := make([][]byte, len(t.data.partitionKeys))
-	for i := range t.data.partitionKeys {
-		keys[i] = make([]byte, len(t.data.partitionKeys[i]))
-		copy(keys[i], t.data.partitionKeys[i])
-	}
-	
-	t.data.partitionKeys, t.data.partitions = keys, parts
-	
-	sch := t.data.schema.Schema.Copy()
-	pkSch := sql.NewPrimaryKeySchema(sch, t.data.schema.PkOrdinals...)
-	t.data.schema = pkSch
+	t.data = t.data.copy()
 	
 	if t.projection != nil {
 		projection := make([]string, len(t.projection))
@@ -1946,18 +1948,41 @@ func (t Table) copy() *Table {
 		t.columns = columns
 	}
 	
-	if t.data.checks != nil {
-		checks := make([]sql.CheckDefinition, len(t.data.checks))
-		copy(checks, t.data.checks)
-		t.data.checks = checks
+	return &t
+}
+
+func (d TableData) copy() *TableData {
+	sch := d.schema.Schema.Copy()
+	pkSch := sql.NewPrimaryKeySchema(sch, d.schema.PkOrdinals...)
+	d.schema = pkSch
+
+	parts := make(map[string][]sql.Row, len(d.partitions))
+	for k, v := range d.partitions {
+		data := make([]sql.Row, len(v))
+		copy(data, v)
+		parts[k] = data
+	}
+
+	keys := make([][]byte, len(d.partitionKeys))
+	for i := range d.partitionKeys {
+		keys[i] = make([]byte, len(d.partitionKeys[i]))
+		copy(keys[i], d.partitionKeys[i])
+	}
+
+	d.partitionKeys, d.partitions = keys, parts
+
+	if d.checks != nil {
+		checks := make([]sql.CheckDefinition, len(d.checks))
+		copy(checks, d.checks)
+		d.checks = checks
 	}
 	
-	return &t
+	return &d
 }
 
 // replaceData replaces the data in this table with the one in the source
 func (t *Table) replaceData(src *Table) {
-	t.data = src.data
+	t.data = src.data.copy()
 }
 
 // normalizeSchemaForRewrite returns a copy of the schema provided suitable for rewriting. This is necessary because 

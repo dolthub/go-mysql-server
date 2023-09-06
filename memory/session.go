@@ -29,7 +29,7 @@ type Session struct {
 	*sql.BaseSession
 	dbProvider *DbProvider
 	editAccumulators map[tableKey]tableEditAccumulator
-	tableData 			map[tableKey]*TableData
+	tables           map[tableKey]*TableData
 }
 
 var _ sql.Session = (*Session)(nil)
@@ -39,9 +39,9 @@ var _ sql.Transaction = (*Transaction)(nil)
 // NewSession returns the new session for this object
 func NewSession(baseSession *sql.BaseSession) *Session {
 	return &Session{
-		BaseSession: baseSession,
+		BaseSession:      baseSession,
 		editAccumulators: make(map[tableKey]tableEditAccumulator),
-		tableData: make(map[tableKey]*TableData),
+		tables:           make(map[tableKey]*TableData),
 	}
 }
 
@@ -108,16 +108,32 @@ func (s *Session) clearEditAccumulator(t *Table) {
 	delete(s.editAccumulators, key(t.data))
 }
 
+// tableData returns the table data for this session for the table provided 
+func (s *Session) tableData(ctx *sql.Context, t *Table) (*TableData, error) {
+	td, ok := s.tables[key(t.data)]
+	if !ok {
+		s.tables[key(t.data)] = t.data
+	}
+	
+	return td, nil
+}
+
+// putTable stores the table data for this session for the table provided 
+func (s *Session) putTable(ctx *sql.Context, d *TableData) {
+	s.tables[key(d)] = d
+	delete(s.editAccumulators, key(d))
+}
+
 // StartTransaction clears session state and returns a new transaction object.
 // Because we don't support concurrency, we store table data changes in the session, rather than the transaction itself.
 func (s *Session) StartTransaction(ctx *sql.Context, tCharacteristic sql.TransactionCharacteristic) (sql.Transaction, error) {
 	s.editAccumulators = make(map[tableKey]tableEditAccumulator)
-	s.tableData = make(map[tableKey]*TableData)
+	s.tables = make(map[tableKey]*TableData)
 	return &Transaction{tCharacteristic == sql.ReadOnly}, nil
 }
 
 func (s *Session) CommitTransaction(ctx *sql.Context, tx sql.Transaction) error {
-	for key := range s.tableData {
+	for key := range s.tables {
 		db, err := s.dbProvider.Database(ctx, key.db)
 		if err != nil {
 			return err
@@ -134,7 +150,7 @@ func (s *Session) CommitTransaction(ctx *sql.Context, tx sql.Transaction) error 
 		default:
 			return fmt.Errorf("unknown database type %T", db)
 		}
-		baseDb.putTable(s.tableData[key].Table(baseDb))
+		baseDb.putTable(s.tables[key].Table(baseDb))
 	}
 	
 	return nil
@@ -142,7 +158,7 @@ func (s *Session) CommitTransaction(ctx *sql.Context, tx sql.Transaction) error 
 
 func (s *Session) Rollback(ctx *sql.Context, transaction sql.Transaction) error {
 	s.editAccumulators = make(map[tableKey]tableEditAccumulator)
-	s.tableData = make(map[tableKey]*TableData)
+	s.tables = make(map[tableKey]*TableData)
 	return nil
 }
 
