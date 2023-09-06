@@ -303,8 +303,7 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 				b.handleErr(sql.ErrUnsupportedFeature.New("subquery without alias"))
 			}
 
-			sqScope := inScope.push()
-			sqScope.initSubquery()
+			sqScope := inScope.pushSubquery()
 			fromScope := b.buildSelectStmt(sqScope, e.Select)
 			alias := strings.ToLower(t.As.String())
 			sq := plan.NewSubqueryAlias(alias, ast.String(e.Select), fromScope.node)

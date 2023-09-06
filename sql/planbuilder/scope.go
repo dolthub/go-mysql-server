@@ -217,6 +217,13 @@ func (s *scope) pushSubquery() *scope {
 	return newScope
 }
 
+// replaceSubquery creates a new scope with the subquery already initialized.
+func (s *scope) replaceSubquery() *scope {
+	newScope := s.replace()
+	newScope.activeSubquery = &subquery{}
+	return newScope
+}
+
 // initSubquery creates a container for tracking out of scope
 // column references and volatile functions.
 func (s *scope) initSubquery() {

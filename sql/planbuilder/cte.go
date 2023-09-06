@@ -135,9 +135,8 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name strin
 		cteScope.node = rTable
 	}
 
-	rightInScope := inScope.replace()
+	rightInScope := inScope.replaceSubquery()
 	rightInScope.addCte(name, cteScope)
-	rightInScope.activeSubquery = &subquery{}
 	rightScope := b.buildSelectStmt(rightInScope, r)
 
 	distinct := union.Type != ast.UnionAllStr
