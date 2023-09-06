@@ -255,6 +255,7 @@ Project
      │   ├─ left: xy.x:1!null
      │   └─ right: Subquery
      │       ├─ cacheable: false
+     │       ├─ alias-string: %!t(string=select u from uv where x = u)
      │       └─ Project
      │           ├─ columns: [uv.u:4!null]
      │           └─ Filter
@@ -690,6 +691,7 @@ Project
 Project
  ├─ columns: [Subquery
  │   ├─ cacheable: false
+ │   ├─ alias-string: %!t(string=select u from uv where x = u)
  │   └─ Project
  │       ├─ columns: [uv.u:4!null]
  │       └─ Filter
@@ -704,6 +706,7 @@ Project
      ├─ select: 
      ├─ group: Subquery
      │   ├─ cacheable: false
+     │   ├─ alias-string: %!t(string=select u from uv where x = u)
      │   └─ Project
      │       ├─ columns: [uv.u:7!null]
      │       └─ Filter
@@ -745,6 +748,7 @@ Project
      │   ├─ xy.y:2!null
      │   └─ Subquery
      │       ├─ cacheable: false
+     │       ├─ alias-string: %!t(string=select dt.u from (select uv.u as u from uv where uv.v = xy.x) as dt)
      │       └─ Project
      │           ├─ columns: [dt.u:8!null]
      │           └─ SubqueryAlias
@@ -775,6 +779,7 @@ Project
      │   ├─ xy.z:3!null
      │   └─ Subquery
      │       ├─ cacheable: false
+     │       ├─ alias-string: %!t(string=select dt.u from (select uv.u as u from uv where uv.v = xy.y) as dt)
      │       └─ Project
      │           ├─ columns: [dt.u:8!null]
      │           └─ SubqueryAlias
@@ -803,6 +808,7 @@ Project
 Project
  ├─ columns: [Subquery
  │   ├─ cacheable: false
+ │   ├─ alias-string: %!t(string=select dt.z from (select uv.u as z from uv where uv.v = xy.y) as dt)
  │   └─ Project
  │       ├─ columns: [dt.z:8!null]
  │       └─ SubqueryAlias
@@ -832,6 +838,7 @@ Project
 Project
  ├─ columns: [Subquery
  │   ├─ cacheable: false
+ │   ├─ alias-string: %!t(string=select max(dt.z) from (select uv.u as z from uv where uv.v = xy.y) as dt)
  │   └─ Project
  │       ├─ columns: [max(dt.z):9!null]
  │       └─ GroupBy
@@ -864,6 +871,7 @@ Project
 Project
  ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, Subquery
  │   ├─ cacheable: false
+ │   ├─ alias-string: %!t(string=select max(dt.u) from (select uv.u as u from uv where uv.v = xy.y) as dt)
  │   └─ Project
  │       ├─ columns: [max(dt.u):9!null]
  │       └─ GroupBy
@@ -985,6 +993,7 @@ Project
 
 
 
+
 			select
 			x,
 			x*y,
@@ -1012,6 +1021,7 @@ Project
 		},
 		{
 			Query: `
+
 
 
 
@@ -1054,6 +1064,7 @@ Project
 		},
 		{
 			Query: `
+
 
 
 
@@ -1239,6 +1250,7 @@ Project
  └─ Having
      ├─ EXISTS Subquery
      │   ├─ cacheable: false
+     │   ├─ alias-string: %!t(string=select * from xy where y = s)
      │   └─ Project
      │       ├─ columns: [xy.x:6!null, xy.y:7!null, xy.z:8!null]
      │       └─ Filter
@@ -1282,6 +1294,7 @@ Project
 
 
 
+
 			SELECT x
 			FROM xy
 			WHERE EXISTS (SELECT count(u) AS count_1
@@ -1294,6 +1307,7 @@ Project
  └─ Filter
      ├─ EXISTS Subquery
      │   ├─ cacheable: false
+     │   ├─ alias-string: %!t(string=select count(u) count_1 from uv where y = u group by u having count(u) > 1)
      │   └─ Project
      │       ├─ columns: [count(uv.u):7!null as count_1]
      │       └─ Having
@@ -1319,6 +1333,7 @@ Project
 		},
 		{
 			Query: `
+
 
 
 
@@ -1411,6 +1426,7 @@ Project
 Project
  ├─ columns: [xy.x:1!null as alias1, Subquery
  │   ├─ cacheable: false
+ │   ├─ alias-string: %!t(string=select alias1 + 1 group by alias1 having alias1 > 0)
  │   └─ Project
  │       ├─ columns: [(alias1:4!null + 1 (tinyint)) as alias1+1]
  │       └─ Having
@@ -1486,6 +1502,7 @@ Project
 Project
  ├─ columns: [(xy.x:1!null + 1 (tinyint)) as x, Subquery
  │   ├─ cacheable: false
+ │   ├─ alias-string: %!t(string=select x)
  │   └─ Project
  │       ├─ columns: [xy.x:1!null]
  │       └─ Table
@@ -1501,6 +1518,7 @@ Project
 		},
 		{
 			Query: `
+
 
 
 
@@ -1573,6 +1591,7 @@ Project
 Project
  ├─ columns: [1 (tinyint) as a, Subquery
  │   ├─ cacheable: false
+ │   ├─ alias-string: %!t(string=select a)
  │   └─ Project
  │       ├─ columns: [a:1!null]
  │       └─ Table
@@ -1582,6 +1601,7 @@ Project
  └─ Project
      ├─ columns: [1 (tinyint) as a, Subquery
      │   ├─ cacheable: false
+     │   ├─ alias-string: %!t(string=select a)
      │   └─ Project
      │       ├─ columns: [a:1!null]
      │       └─ Table
@@ -1599,6 +1619,7 @@ Project
 Project
  ├─ columns: [max(xy.x):4!null as max(x), Subquery
  │   ├─ cacheable: false
+ │   ├─ alias-string: %!t(string=select max(dt.a) from (select x as a) as dt (a))
  │   └─ Project
  │       ├─ columns: [max(dt.a):7!null]
  │       └─ GroupBy
@@ -1617,6 +1638,7 @@ Project
  └─ Project
      ├─ columns: [max(xy.x):4!null, Subquery
      │   ├─ cacheable: false
+     │   ├─ alias-string: %!t(string=select max(dt.a) from (select x as a) as dt (a))
      │   └─ Project
      │       ├─ columns: [max(dt.a):7!null]
      │       └─ GroupBy
@@ -1636,6 +1658,7 @@ Project
          ├─ select: MAX(xy.x:1!null)
          ├─ group: Subquery
          │   ├─ cacheable: false
+         │   ├─ alias-string: %!t(string=select max(dt.a) from (select x as a) as dt (a))
          │   └─ Project
          │       ├─ columns: [max(dt.a):7!null]
          │       └─ GroupBy

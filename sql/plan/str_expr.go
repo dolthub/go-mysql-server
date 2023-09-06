@@ -29,6 +29,8 @@ type StrExpr struct {
 	s string
 }
 
+var _ sql.Node = (*StrExpr)(nil)
+
 func (s *StrExpr) Schema() sql.Schema {
 	//TODO implement me
 	panic("implement me")
@@ -81,5 +83,3 @@ func (s *StrExpr) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	//TODO implement me
 	panic("implement me")
 }
-
-var _ sql.Node = (*StrExpr)(nil)

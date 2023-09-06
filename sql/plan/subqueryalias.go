@@ -29,11 +29,10 @@ type SubqueryAlias struct {
 	// OuterScopeVisibility is true when a SubqueryAlias (i.e. derived table) is contained in a subquery
 	// expression and is eligible to have visibility to outer scopes of the query.
 	OuterScopeVisibility bool
-	//DoCacheResults       bool
-	Correlated         sql.ColSet
-	Volatile           bool
-	CacheableCTESource bool
-	IsLateral          bool
+	Correlated           sql.ColSet
+	Volatile             bool
+	CacheableCTESource   bool
+	IsLateral            bool
 }
 
 var _ sql.Node = (*SubqueryAlias)(nil)

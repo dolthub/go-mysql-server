@@ -1482,7 +1482,7 @@ func TestJoinPlanning(t *testing.T, harness Harness) {
 			defer e.Close()
 			for _, tt := range tt.tests {
 				if tt.types != nil {
-					evalJoinTypeTest(t, harness, e, tt)
+					evalJoinTypeTest(t, harness, e, tt.q, tt.types, tt.skipOld)
 				}
 				if tt.indexes != nil {
 					evalIndexTest(t, harness, e, tt.q, tt.indexes, tt.skipOld)
@@ -1501,21 +1501,21 @@ func TestJoinPlanning(t *testing.T, harness Harness) {
 	}
 }
 
-func evalJoinTypeTest(t *testing.T, harness Harness, e QueryEngine, tt JoinPlanTest) {
-	t.Run(tt.q+" join types", func(t *testing.T) {
-		if tt.skipOld {
+func evalJoinTypeTest(t *testing.T, harness Harness, e QueryEngine, query string, types []plan.JoinType, skipOld bool) {
+	t.Run(query+" join types", func(t *testing.T) {
+		if skipOld {
 			t.Skip()
 		}
 
 		ctx := NewContext(harness)
-		ctx = ctx.WithQuery(tt.q)
+		ctx = ctx.WithQuery(query)
 
-		a, err := analyzeQuery(ctx, e, tt.q)
+		a, err := analyzeQuery(ctx, e, query)
 		require.NoError(t, err)
 
 		jts := collectJoinTypes(a)
 		var exp []string
-		for _, t := range tt.types {
+		for _, t := range types {
 			exp = append(exp, t.String())
 		}
 		var cmp []string

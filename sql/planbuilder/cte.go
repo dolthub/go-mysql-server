@@ -84,8 +84,7 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name strin
 	l, r := splitRecursiveCteUnion(name, union)
 	if r == nil {
 		// not recursive
-		sqScope := inScope.push()
-		sqScope.initSubquery()
+		sqScope := inScope.pushSubquery()
 
 		cteScope := b.buildSelectStmt(sqScope, union)
 		b.renameSource(cteScope, name, columns)
@@ -100,9 +99,8 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name strin
 		return cteScope
 	}
 
-	// resolve non-recusive portion
-	leftSqScope := inScope.push()
-	leftSqScope.initSubquery()
+	// resolve non-recursive portion
+	leftSqScope := inScope.pushSubquery()
 	leftScope := b.buildSelectStmt(leftSqScope, l)
 
 	// schema for non-recursive portion => recursive table
@@ -139,7 +137,7 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name strin
 
 	rightInScope := inScope.replace()
 	rightInScope.addCte(name, cteScope)
-	rightInScope.initSubquery()
+	rightInScope.activeSubquery = &subquery{}
 	rightScope := b.buildSelectStmt(rightInScope, r)
 
 	distinct := union.Type != ast.UnionAllStr

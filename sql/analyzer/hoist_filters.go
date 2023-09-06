@@ -23,18 +23,15 @@ func hoistOutOfScopeFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pl
 	default:
 	}
 	ret, same, filters, newCorr, err := recurseSubqueryForOuterFilters(n, a, sql.ColSet{})
-	//if !newCorr.Empty() {
-	//	return n, transform.SameTree, fmt.Errorf("tried to decorrelate expressions out of root scope")
-	//}
 	if len(filters) != 0 {
 		return n, transform.SameTree, fmt.Errorf("rule 'hoistOutOfScopeFilters' tried to hoist filters above root node")
 	}
 	switch n := ret.(type) {
 	case *plan.SubqueryAlias:
-		ret = n.WithCorrelated(newCorr)
+		return n.WithCorrelated(newCorr), same, err
 	default:
+		return ret, same, err
 	}
-	return ret, same, err
 }
 
 // recurseSubqueryForOuterFilters recursively hoists filters that belong
@@ -80,10 +77,6 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, corr sql.ColSet) (s
 				e = n.Child
 			}
 
-			// (1) normalize subquery expressions
-			// (1a) recurse downwards
-			// (1b) add hoisted to queue
-			// (1c) standardize subquery expression for hoisting
 			var sq *plan.Subquery
 			switch e := e.(type) {
 			case *plan.InSubquery:
@@ -92,6 +85,7 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, corr sql.ColSet) (s
 				sq = e.Query
 			default:
 			}
+
 			// only try to pull filters from correlated subqueries
 			if sq != nil && !sq.Correlated().Empty() {
 				children := e.Children()
@@ -122,14 +116,13 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, corr sql.ColSet) (s
 				e = expression.NewNot(e)
 			}
 
-			// (2) evaluate if expression hoistable
-			// (3) bucket filter into parent or current scope
 			inScope, outOfScope := partitionFilterByScope(e, corr)
 			if !inScope.Empty() {
 				// maintain reference to correlations that aren't hoisted
 				newCorr = newCorr.Union(outOfScope)
 				keepFilters = append(keepFilters, e)
 			} else {
+				// nothing tethers the subquery to this scope
 				hoistFilters = append(hoistFilters, e)
 			}
 		}
@@ -144,10 +137,8 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, corr sql.ColSet) (s
 		if corr.Empty() {
 			// rootscope or equivalent, there is no benefit from hoisting
 			// we should materialize filters
-			defer func() {
-				hoistFilters = hoistFilters[:0]
-			}()
 			newFilters := append(keepFilters, hoistFilters...)
+			hoistFilters = hoistFilters[:0]
 			return plan.NewFilter(expression.JoinAnd(newFilters...), f.Child), transform.NewTree, nil
 		}
 

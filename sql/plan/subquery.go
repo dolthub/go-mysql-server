@@ -490,7 +490,11 @@ func (s *Subquery) String() string {
 func (s *Subquery) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Subquery")
-	children := []string{fmt.Sprintf("cacheable: %t", s.canCacheResults()), sql.DebugString(s.Query)}
+	children := []string{
+		fmt.Sprintf("cacheable: %t", s.canCacheResults()),
+		fmt.Sprintf("alias-string: %t", s.QueryString),
+		sql.DebugString(s.Query),
+	}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }

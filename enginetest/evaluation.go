@@ -112,6 +112,9 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 				if assertion.ExpectedIndexes != nil {
 					evalIndexTest(t, harness, e, assertion.Query, assertion.ExpectedIndexes, assertion.Skip)
 				}
+				if assertion.JoinTypes != nil {
+					evalJoinTypeTest(t, harness, e, assertion.Query, assertion.JoinTypes, assertion.Skip)
+				}
 			})
 		}
 	})

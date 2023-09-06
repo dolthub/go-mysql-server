@@ -210,8 +210,15 @@ func (s *scope) initGroupBy() {
 	s.groupBy = &groupBy{outScope: s.replace()}
 }
 
+// pushSubquery creates a new scope with the subquery already initialized.
+func (s *scope) pushSubquery() *scope {
+	newScope := s.push()
+	newScope.activeSubquery = &subquery{}
+	return newScope
+}
+
 // initSubquery creates a container for tracking out of scope
-// column references and volatile functions
+// column references and volatile functions.
 func (s *scope) initSubquery() {
 	s.activeSubquery = &subquery{}
 }
