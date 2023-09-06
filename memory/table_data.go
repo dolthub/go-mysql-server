@@ -16,7 +16,6 @@ package memory
 
 import (
 	"fmt"
-	"reflect"
 	"sort"
 	"strconv"
 
@@ -315,21 +314,6 @@ func rowsAreEqual(ctx *sql.Context, schema sql.Schema, left, right sql.Row) (boo
 			return false, nil
 		}
 	}
+	
 	return true, nil
 }
-
-// TODO: consolidate into checkRow?
-func verifyRowTypes(row sql.Row, schema sql.Schema) {
-	if len(row) == len(schema) {
-		for i := range schema {
-			col := schema[i]
-			rowVal := row[i]
-			valType := reflect.TypeOf(rowVal)
-			expectedType := col.Type.ValueType()
-			if valType != expectedType && rowVal != nil && !valType.AssignableTo(expectedType) {
-				panic(fmt.Errorf("Actual Value Type: %s, Expected Value Type: %s", valType.String(), expectedType.String()))
-			}
-		}
-	}
-}
-

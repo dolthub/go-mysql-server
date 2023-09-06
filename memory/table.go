@@ -1066,21 +1066,6 @@ func (t *Table) PrimaryKeySchema() sql.PrimaryKeySchema {
 	return t.data.schema
 }
 
-func checkRow(schema sql.Schema, row sql.Row) error {
-	if len(row) != len(schema) {
-		return sql.ErrUnexpectedRowLength.New(len(schema), len(row))
-	}
-
-	for i, value := range row {
-		c := schema[i]
-		if !c.Check(value) {
-			return sql.ErrInvalidType.New(value)
-		}
-	}
-
-	return nil
-}
-
 // String implements the sql.Table interface.
 func (t *Table) String() string {
 	return t.name

@@ -16,6 +16,7 @@ package memory
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -131,7 +132,6 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 	if err := checkRow(t.editedTable.data.schema.Schema, row); err != nil {
 		return err
 	}
-	verifyRowTypes(row, t.editedTable.data.schema.Schema)
 
 	partitionRow, added, err := t.ea.Get(row)
 	if err != nil {
@@ -192,7 +192,6 @@ func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 	if err := checkRow(t.editedTable.Schema(), row); err != nil {
 		return err
 	}
-	verifyRowTypes(row, t.editedTable.data.schema.Schema)
 
 	err := t.ea.Delete(row)
 	if err != nil {
@@ -210,8 +209,6 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 	if err := checkRow(t.editedTable.Schema(), newRow); err != nil {
 		return err
 	}
-	verifyRowTypes(oldRow, t.editedTable.data.schema.Schema)
-	verifyRowTypes(newRow, t.editedTable.data.schema.Schema)
 
 	err := t.ea.Delete(oldRow)
 	if err != nil {
@@ -736,4 +733,34 @@ func formatRow(r sql.Row, idxs []int) string {
 	}
 	b.WriteString("]")
 	return b.String()
+}
+
+func checkRow(schema sql.Schema, row sql.Row) error {
+	if len(row) != len(schema) {
+		return sql.ErrUnexpectedRowLength.New(len(schema), len(row))
+	}
+
+	for i, value := range row {
+		c := schema[i]
+		if !c.Check(value) {
+			return sql.ErrInvalidType.New(value)
+		}
+	}
+
+	return verifyRowTypes(row, schema)
+}
+
+func verifyRowTypes(row sql.Row, schema sql.Schema) error {
+	if len(row) == len(schema) {
+		for i := range schema {
+			col := schema[i]
+			rowVal := row[i]
+			valType := reflect.TypeOf(rowVal)
+			expectedType := col.Type.ValueType()
+			if valType != expectedType && rowVal != nil && !valType.AssignableTo(expectedType) {
+				return fmt.Errorf("Actual Value Type: %s, Expected Value Type: %s", valType.String(), expectedType.String())
+			}
+		}
+	}
+	return nil
 }
