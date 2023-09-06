@@ -857,6 +857,8 @@ var (
 	ErrGeneratedColumnWithDefault = errors.NewKind("Incorrect usage of DEFAULT and generated column")
 
 	ErrInsertIntoMismatchValueCount = errors.NewKind("number of values does not match number of columns provided")
+
+	ErrInvalidTypeForLimit = errors.NewKind("invalid limit. expected %T, found %T")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the
