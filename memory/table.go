@@ -676,7 +676,7 @@ func (t *Table) newTableEditor(ctx *sql.Context) sql.TableEditor {
 	sess := SessionFromContext(ctx)
 	ed := sess.editAccumulator(t)
 
-	uniqIdxCols, prefixLengths := t.indexColsForTableEditor()
+	uniqIdxCols, prefixLengths := t.data.indexColsForTableEditor()
 	var editor sql.TableEditor = &tableEditor{
 		editedTable:       ed.Table(),
 		initialTable:      t.copy(),
@@ -707,10 +707,10 @@ func (t *Table) newFulltextTableEditor(ctx *sql.Context, parentEditor sql.TableE
 	return parentEditor
 }
 
-func (t *Table) indexColsForTableEditor() ([][]int, [][]uint16) {
+func (t *TableData) indexColsForTableEditor() ([][]int, [][]uint16) {
 	var uniqIdxCols [][]int
 	var prefixLengths [][]uint16
-	for _, idx := range t.data.indexes {
+	for _, idx := range t.indexes {
 		if !idx.IsUnique() {
 			continue
 		}
@@ -1380,7 +1380,7 @@ func (t *Table) WithProjections(cols []string) sql.Table {
 		nt.columns = nil
 		return &nt
 	}
-	columns, err := nt.columnIndexes(cols)
+	columns, err := nt.data.columnIndexes(cols)
 	if err != nil {
 		panic(err)
 	}
@@ -1403,11 +1403,11 @@ func (t *Table) Projections() []string {
 }
 
 // TODO: can we trust the table here, or do we need to get data from the session
-func (t *Table) columnIndexes(colNames []string) ([]int, error) {
+func (t *TableData) columnIndexes(colNames []string) ([]int, error) {
 	columns := make([]int, 0, len(colNames))
 
 	for _, name := range colNames {
-		i := t.data.schema.IndexOf(name, t.name)
+		i := t.schema.IndexOf(name, t.tableName)
 		if i == -1 {
 			return nil, errColumnNotFound.New(name)
 		}
@@ -1618,7 +1618,7 @@ func (t *Table) createIndex(data *TableData, name string, columns []sql.IndexCol
 	}
 
 	if constraint == sql.IndexConstraint_Unique {
-		err := t.errIfDuplicateEntryExist(colNames, name)
+		err := t.data.errIfDuplicateEntryExist(colNames, name)
 		if err != nil {
 			return nil, err
 		}
@@ -1640,13 +1640,13 @@ func (t *Table) createIndex(data *TableData, name string, columns []sql.IndexCol
 }
 
 // throws an error if any two or more rows share the same |cols| values.
-func (t *Table) errIfDuplicateEntryExist(cols []string, idxName string) error {
+func (t *TableData) errIfDuplicateEntryExist(cols []string, idxName string) error {
 	columnMapping, err := t.columnIndexes(cols)
 	if err != nil {
 		return err
 	}
 	unique := make(map[uint64]struct{})
-	for _, partition := range t.data.partitions {
+	for _, partition := range t.partitions {
 		for _, row := range partition {
 			idxPrefixKey := projectOnRow(columnMapping, row)
 			if hasNulls(idxPrefixKey) {
@@ -1813,7 +1813,7 @@ func (t *Table) IndexKeyValues(
 		return nil, err
 	}
 
-	columns, err := t.columnIndexes(colNames)
+	columns, err := t.data.columnIndexes(colNames)
 	if err != nil {
 		return nil, err
 	}

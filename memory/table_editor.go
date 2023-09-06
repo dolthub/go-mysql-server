@@ -279,7 +279,7 @@ func (t *tableEditor) pkColumnIndexes() []int {
 	var pkColIdxes []int
 	for _, column := range t.editedTable.data.schema.Schema {
 		if column.PrimaryKey {
-			idx, _ := t.editedTable.getField(column.Name)
+			idx, _ := t.editedTable.data.getField(column.Name)
 			pkColIdxes = append(pkColIdxes, idx)
 		}
 	}
