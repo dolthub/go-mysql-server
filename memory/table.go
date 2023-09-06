@@ -1432,7 +1432,7 @@ func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 			exprs := make([]sql.Expression, len(t.data.schema.PkOrdinals))
 			for i, ord := range t.data.schema.PkOrdinals {
 				column := t.data.schema.Schema[ord]
-				idx, field := t.getField(column.Name)
+				idx, field := t.data.getField(column.Name)
 				exprs[i] = expression.NewGetFieldWithTable(idx, field.Type, t.name, field.Name, field.Nullable)
 			}
 			indexes = append(indexes, &Index{
@@ -1589,7 +1589,7 @@ func (t *Table) createIndex(data *TableData, name string, columns []sql.IndexCol
 			name += column.Name + "_"
 		}
 	}
-	if t.data.indexes[name] != nil {
+	if data.indexes[name] != nil {
 		// TODO: extract a standard error type for this
 		return nil, fmt.Errorf("Error: index already exists")
 	}
@@ -1597,7 +1597,7 @@ func (t *Table) createIndex(data *TableData, name string, columns []sql.IndexCol
 	exprs := make([]sql.Expression, len(columns))
 	colNames := make([]string, len(columns))
 	for i, column := range columns {
-		idx, field := t.getField(column.Name)
+		idx, field := data.getField(column.Name)
 		exprs[i] = expression.NewGetFieldWithTable(idx, field.Type, t.name, field.Name, field.Nullable)
 		colNames[i] = column.Name
 	}
@@ -1684,13 +1684,13 @@ func hasNullForAnyCols(row sql.Row, cols []int) bool {
 }
 
 // getField returns the index and column index with the name given, if it exists, or -1, nil otherwise.
-func (t *Table) getField(col string) (int, *sql.Column) {
-	i := t.data.schema.IndexOf(col, t.name)
+func (t *TableData) getField(col string) (int, *sql.Column) {
+	i := t.schema.IndexOf(col, t.tableName)
 	if i == -1 {
 		return -1, nil
 	}
 
-	return i, t.data.schema.Schema[i]
+	return i, t.schema.Schema[i]
 }
 
 // CreateIndex implements sql.IndexAlterableTable
@@ -1705,7 +1705,7 @@ func (t *Table) CreateIndex(ctx *sql.Context, idx sql.IndexDef) error {
 		data.indexes = make(map[string]sql.Index)
 	}
 
-	index, err := t.createIndex(nil, idx.Name, idx.Columns, idx.Constraint, idx.Comment)
+	index, err := t.createIndex(data, idx.Name, idx.Columns, idx.Constraint, idx.Comment)
 	if err != nil {
 		return err
 	}
@@ -1893,13 +1893,13 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) er
 }
 
 // Sorts the rows in the partitions of the table to be in primary key order.
-func (t *Table) sortRows() {
+func (t *TableData) sortRows() {
 	type pkfield struct {
 		i int
 		c *sql.Column
 	}
 	var pk []pkfield
-	for _, column := range t.data.schema.Schema {
+	for _, column := range t.schema.Schema {
 		if column.PrimaryKey {
 			idx, col := t.getField(column.Name)
 			pk = append(pk, pkfield{idx, col})
@@ -1920,14 +1920,14 @@ func (t *Table) sortRows() {
 	}
 
 	var idx []partidx
-	for _, k := range t.data.partitionKeys {
-		p := t.data.partitions[string(k)]
+	for _, k := range t.partitionKeys {
+		p := t.partitions[string(k)]
 		for i := 0; i < len(p); i++ {
 			idx = append(idx, partidx{string(k), i})
 		}
 	}
 
-	sort.Sort(partitionssort{t.data.partitions, idx, less})
+	sort.Sort(partitionssort{t.partitions, idx, less})
 }
 
 type partidx struct {

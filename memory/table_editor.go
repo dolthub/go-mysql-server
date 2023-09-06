@@ -467,7 +467,7 @@ func (pke *pkTableEditAccumulator) ApplyEdits(ctx *sql.Context) error {
 		}
 	}
 
-	pke.table.sortRows()
+	pke.table.data.sortRows()
 
 	return nil
 }
