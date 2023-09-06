@@ -275,44 +275,6 @@ func (j JSONArrayAppend) IsUnsupported() bool {
 	return true
 }
 
-// JSON_ARRAY_INSERT(json_doc, path, val[, path, val] ...)
-//
-// JSONArrayInsert Updates a JSON document, inserting into an array within the document and returning the modified
-// document. Returns NULL if any argument is NULL. An error occurs if the json_doc argument is not a valid JSON document
-// or any path argument is not a valid path expression or contains a * or ** wildcard or does not end with an array
-// element identifier. The path-value pairs are evaluated left to right. The document produced by evaluating one pair
-// becomes the new value against which the next pair is evaluated. Pairs for which the path does not identify any array
-// in the JSON document are ignored. If a path identifies an array element, the corresponding value is inserted at that
-// element position, shifting any following values to the right. If a path identifies an array position past the end of
-// an array, the value is inserted at the end of the array.
-//
-// https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-array-insert
-type JSONArrayInsert struct {
-	sql.Expression
-}
-
-var _ sql.FunctionExpression = JSONArrayInsert{}
-
-// NewJSONArrayInsert creates a new JSONArrayInsert function.
-func NewJSONArrayInsert(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONArrayInsert{}.FunctionName())
-}
-
-// FunctionName implements sql.FunctionExpression
-func (j JSONArrayInsert) FunctionName() string {
-	return "json_array_insert"
-}
-
-// Description implements sql.FunctionExpression
-func (j JSONArrayInsert) Description() string {
-	return "inserts into JSON array."
-}
-
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONArrayInsert) IsUnsupported() bool {
-	return true
-}
-
 // JSON_MERGE_PATCH(json_doc, json_doc[, json_doc] ...)
 //
 // JSONMergePatch Performs an RFC 7396 compliant merge of two or more JSON documents and returns the merged result,

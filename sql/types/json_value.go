@@ -66,6 +66,8 @@ type MutableJSONValue interface {
 	Set(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
 	// Replace the value at the given path with the new value. If the path does not exist, no modification is made.
 	Replace(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
+	// Insert into the array object referenced by the given path. If the path does not exist, no modification is made.
+	ArrayInsert(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
 }
 
 type JSONDocument struct {
@@ -700,6 +702,11 @@ func walkPathAndUpdate(path string, doc interface{}, val interface{}, mode int, 
 		*cursor = *cursor + 1
 		strMap, ok := doc.(map[string]interface{})
 		if !ok {
+			// json_array_insert is the only function that produces an error when the path is to an object which
+			// lookup fails in this way. All other functions return the document unchanged. Go figure.
+			if mode == ARRAY_INSERT {
+				return nil, false, &parseErr{msg: "A path expression is not a path to a cell in an array", character: *cursor}
+			}
 			// not a map, can't do anything. NoOp
 			return doc, false, nil
 		}
