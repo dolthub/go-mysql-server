@@ -4849,22 +4849,23 @@ inner join pq on true
 			join datetime_table dt2 on dt1.date_col = date(date_sub(dt2.timestamp_col, interval 2 day))
 			order by 1 limit 3 offset 0`,
 		ExpectedPlan: "Limit(3)\n" +
-			" └─ Offset(0)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [dt1.i]\n" +
-			"         └─ Sort(dt1.i ASC)\n" +
-			"             └─ Project\n" +
-			"                 ├─ columns: [dt1.i, dt1.date_col, dt1.datetime_col, dt1.timestamp_col, dt1.time_col, dt2.i, dt2.date_col, dt2.datetime_col, dt2.timestamp_col, dt2.time_col]\n" +
-			"                 └─ LookupJoin\n" +
-			"                     ├─ (dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
-			"                     ├─ TableAlias(dt2)\n" +
-			"                     │   └─ Table\n" +
-			"                     │       ├─ name: datetime_table\n" +
-			"                     │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"                     └─ TableAlias(dt1)\n" +
-			"                         └─ IndexedTableAccess(datetime_table)\n" +
-			"                             ├─ index: [datetime_table.date_col]\n" +
-			"                             └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [dt1.i:0!null]\n" +
+			"     └─ Sort(dt1.i:0!null ASC nullsFirst)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [dt1.i:5!null, dt1.date_col:6, dt1.datetime_col:7, dt1.timestamp_col:8, dt1.time_col:9, dt2.i:0!null, dt2.date_col:1, dt2.datetime_col:2, dt2.timestamp_col:3, dt2.time_col:4]\n" +
+			"             └─ LookupJoin\n" +
+			"                 ├─ Eq\n" +
+			"                 │   ├─ dt1.date_col:6\n" +
+			"                 │   └─ DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY))\n" +
+			"                 ├─ TableAlias(dt2)\n" +
+			"                 │   └─ Table\n" +
+			"                 │       ├─ name: datetime_table\n" +
+			"                 │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"                 └─ TableAlias(dt1)\n" +
+			"                     └─ IndexedTableAccess(datetime_table)\n" +
+			"                         ├─ index: [datetime_table.date_col]\n" +
+			"                         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{
@@ -8937,11 +8938,10 @@ WHERE keyless.c0 IN (
 	{
 		Query: `SELECT * FROM one_pk ORDER BY pk LIMIT 0, 10;`,
 		ExpectedPlan: "Limit(10)\n" +
-			" └─ Offset(0)\n" +
-			"     └─ IndexedTableAccess(one_pk)\n" +
-			"         ├─ index: [one_pk.pk]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			" └─ IndexedTableAccess(one_pk)\n" +
+			"     ├─ index: [one_pk.pk]\n" +
+			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
