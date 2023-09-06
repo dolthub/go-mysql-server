@@ -101,11 +101,6 @@ func (j JSONRemove) Description() string {
 	return "removes data from JSON document."
 }
 
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONRemove) IsUnsupported() bool {
-	return false
-}
-
 func (j JSONRemove) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	doc, err := getMutableJSONVal(ctx, row, j.doc)
 	if err != nil || doc == nil {

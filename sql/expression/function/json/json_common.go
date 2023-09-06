@@ -21,7 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// getJSONVal returns a JSONValue from the given row and expression. The underling value is deeply copied so that
+// getMutableJSONVal returns a JSONValue from the given row and expression. The underling value is deeply copied so that
 // you are free to use the mutation functions on the returned value.
 // nil will be returned only if the inputs are nil. This will not return an error, so callers must check.
 func getMutableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (types.MutableJSONValue, error) {

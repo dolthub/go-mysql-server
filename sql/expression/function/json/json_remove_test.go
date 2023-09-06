@@ -42,17 +42,16 @@ func TestRemove(t *testing.T) {
 		expected interface{}
 		err      error
 	}{
-		{f1, sql.Row{json, "$.a"}, `{"b": [2, 3], "c": {"d": "foo"}}`, nil},                                            // update existing
-		{f1, sql.Row{json, "$.b[0]"}, `{"a": 1, "b": [3], "c": {"d": "foo"}}`, nil},                                    // set new
-		{f1, sql.Row{json, "$.c.d"}, `{"a": 1, "b": [2, 3], "c": {}}`, nil},                                            // update existing nested
-		{f1, sql.Row{json, "$.c"}, `{"a": 1, "b": [2, 3]}`, nil},                                                       // update existing and set new
-		{f1, sql.Row{json, "$.a.e"}, json, nil},                                                                        // set new nested does nothing
-		{f1, sql.Row{json, "$.c[5]"}, json, nil},                                                                       // update struct with indexing out of range
-		{f1, sql.Row{json, "$.b[last]"}, `{"a": 1, "b": [2], "c": {"d": "foo"}}`, nil},                                 // update element in array
-		{f1, sql.Row{json, "$.b[5]"}, json, nil},                                                                       // update element in array out of range
-		{f1, sql.Row{json, "$.b.c", 4}, json, nil},                                                                     // set nested in array does nothing
-		{f1, sql.Row{json, "$[0]", 4.1}, json, nil},                                                                    // struct indexing
-		{f1, sql.Row{json, "$.[0]", 4.1}, nil, fmt.Errorf("Invalid JSON path expression")},                             // improper struct indexing
+		{f1, sql.Row{json, "$.a"}, `{"b": [2, 3], "c": {"d": "foo"}}`, nil},                                            // remove existing
+		{f1, sql.Row{json, "$.b[0]"}, `{"a": 1, "b": [3], "c": {"d": "foo"}}`, nil},                                    // remove existing array element
+		{f1, sql.Row{json, "$.c.d"}, `{"a": 1, "b": [2, 3], "c": {}}`, nil},                                            // remove existing nested
+		{f1, sql.Row{json, "$.c"}, `{"a": 1, "b": [2, 3]}`, nil},                                                       // remove existing object
+		{f1, sql.Row{json, "$.a.e"}, json, nil},                                                                        // remove nothing when path not found
+		{f1, sql.Row{json, "$.c[5]"}, json, nil},                                                                       // remove nothing when path not found
+		{f1, sql.Row{json, "$.b[last]"}, `{"a": 1, "b": [2], "c": {"d": "foo"}}`, nil},                                 // remove last element in array
+		{f1, sql.Row{json, "$.b[5]"}, json, nil},                                                                       // remove nothing when array index out of bounds
+		{f1, sql.Row{json, "$[0]"}, json, nil},                                                                         // remove nothing when provided a bogus path.
+		{f1, sql.Row{json, "$.[0]"}, nil, fmt.Errorf("Invalid JSON path expression")},                                  // improper struct indexing
 		{f1, sql.Row{json, "foo", "test"}, nil, fmt.Errorf("Invalid JSON path expression")},                            // invalid path
 		{f1, sql.Row{json, "$.c.*", "test"}, nil, fmt.Errorf("Path expressions may not contain the * and ** tokens")},  // path contains * wildcard
 		{f1, sql.Row{json, "$.c.**", "test"}, nil, fmt.Errorf("Path expressions may not contain the * and ** tokens")}, // path contains ** wildcard

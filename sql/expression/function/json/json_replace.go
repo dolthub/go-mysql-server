@@ -122,11 +122,6 @@ func NewJSONReplace(args ...sql.Expression) (sql.Expression, error) {
 	return JSONReplace{args[0], args[1:]}, nil
 }
 
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONReplace) IsUnsupported() bool {
-	return false
-}
-
 // FunctionName implements sql.FunctionExpression
 func (j JSONReplace) FunctionName() string {
 	return "json_replace"

@@ -53,7 +53,7 @@ func TestReplace(t *testing.T) {
 		{f1, sql.Row{json, "$.b[5]", 4.1}, json, nil},                                                                  // replace element in array out of range does nothing
 		{f1, sql.Row{json, "$.b.c", 4}, json, nil},                                                                     // replace nested in array does nothing
 		{f1, sql.Row{json, "$.a[0]", 4.1}, `{"a": 4.1, "b": [2, 3], "c": {"d": "foo"}}`, nil},                          // replace scalar when treated as array
-		{f1, sql.Row{json, "$[0]", 4.1}, `4.1`, nil},                                                                   // Replace root element when treated as array
+		{f1, sql.Row{json, "$[0]", 4.1}, `4.1`, nil},                                                                   // replace root element when treated as array
 		{f1, sql.Row{json, "$.[0]", 4.1}, nil, fmt.Errorf("Invalid JSON path expression")},                             // improper struct indexing
 		{f1, sql.Row{json, "foo", "test"}, nil, fmt.Errorf("Invalid JSON path expression")},                            // invalid path
 		{f1, sql.Row{json, "$.c.*", "test"}, nil, fmt.Errorf("Path expressions may not contain the * and ** tokens")},  // path contains * wildcard
