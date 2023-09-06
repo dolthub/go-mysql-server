@@ -1402,6 +1402,7 @@ func (t *Table) Projections() []string {
 	return t.projection
 }
 
+// TODO: can we trust the table here, or do we need to get data from the session
 func (t *Table) columnIndexes(colNames []string) ([]int, error) {
 	columns := make([]int, 0, len(colNames))
 
@@ -1543,21 +1544,28 @@ func (t *Table) GetChecks(_ *sql.Context) ([]sql.CheckDefinition, error) {
 }
 
 // CreateCheck implements sql.CheckAlterableTable
-func (t *Table) CreateCheck(_ *sql.Context, check *sql.CheckDefinition) error {
+func (t *Table) CreateCheck(ctx *sql.Context, check *sql.CheckDefinition) error {
+	sess := SessionFromContext(ctx)
+	data, err := sess.tableData(ctx, t)
+	if err != nil {
+		return err
+	}
+
 	toInsert := *check
 
 	if toInsert.Name == "" {
 		toInsert.Name = t.generateCheckName()
 	}
 
-	for _, key := range t.data.checks {
+	for _, key := range data.checks {
 		if key.Name == toInsert.Name {
 			return fmt.Errorf("constraint %s already exists", toInsert.Name)
 		}
 	}
 
-	t.data.checks = append(t.data.checks, toInsert)
-
+	data.checks = append(t.data.checks, toInsert)
+	sess.putTable(ctx, data)
+	
 	return nil
 }
 
@@ -1574,7 +1582,8 @@ func (t *Table) DropCheck(ctx *sql.Context, chName string) error {
 	return fmt.Errorf("check '%s' was not found on the table", chName)
 }
 
-func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint sql.IndexConstraint, comment string) (sql.Index, error) {
+func (t *Table) createIndex(data *TableData, name string, columns []sql.IndexColumn, constraint sql.IndexConstraint, comment string) (sql.Index, error) {
+	
 	if name == "" {
 		for _, column := range columns {
 			name += column.Name + "_"
@@ -1686,16 +1695,25 @@ func (t *Table) getField(col string) (int, *sql.Column) {
 
 // CreateIndex implements sql.IndexAlterableTable
 func (t *Table) CreateIndex(ctx *sql.Context, idx sql.IndexDef) error {
-	if t.data.indexes == nil {
-		t.data.indexes = make(map[string]sql.Index)
-	}
-
-	index, err := t.createIndex(idx.Name, idx.Columns, idx.Constraint, idx.Comment)
+	sess := SessionFromContext(ctx)
+	data, err := sess.tableData(ctx, t)
 	if err != nil {
 		return err
 	}
 
-	t.data.indexes[index.ID()] = index // We should store the computed index name in the case of an empty index name being passed in
+	if data.indexes == nil {
+		data.indexes = make(map[string]sql.Index)
+	}
+
+	index, err := t.createIndex(nil, idx.Name, idx.Columns, idx.Constraint, idx.Comment)
+	if err != nil {
+		return err
+	}
+
+	// Store the computed index name in the case of an empty index name being passed in
+	data.indexes[index.ID()] = index 
+	sess.putTable(ctx, data)
+	
 	return nil
 }
 
@@ -1726,6 +1744,12 @@ func (t *Table) RenameIndex(ctx *sql.Context, fromIndexName string, toIndexName 
 
 // CreateFulltextIndex implements fulltext.IndexAlterableTable
 func (t *Table) CreateFulltextIndex(ctx *sql.Context, indexDef sql.IndexDef, keyCols fulltext.KeyColumns, tableNames fulltext.IndexTableNames) error {
+	sess := SessionFromContext(ctx)
+	data, err := sess.tableData(ctx, t)
+	if err != nil {
+		return err
+	}
+
 	if len(t.fullTextConfigTableName) > 0 {
 		if t.fullTextConfigTableName != tableNames.Config {
 			return fmt.Errorf("Full-Text config table name has been changed from `%s` to `%s`", t.fullTextConfigTableName, tableNames.Config)
@@ -1734,11 +1758,11 @@ func (t *Table) CreateFulltextIndex(ctx *sql.Context, indexDef sql.IndexDef, key
 		t.fullTextConfigTableName = tableNames.Config
 	}
 
-	if t.data.indexes == nil {
-		t.data.indexes = make(map[string]sql.Index)
+	if data.indexes == nil {
+		data.indexes = make(map[string]sql.Index)
 	}
 
-	index, err := t.createIndex(indexDef.Name, indexDef.Columns, indexDef.Constraint, indexDef.Comment)
+	index, err := t.createIndex(data, indexDef.Name, indexDef.Columns, indexDef.Constraint, indexDef.Comment)
 	if err != nil {
 		return err
 	}
@@ -1750,7 +1774,9 @@ func (t *Table) CreateFulltextIndex(ctx *sql.Context, indexDef sql.IndexDef, key
 		KeyColumns:           keyCols,
 	}
 
-	t.data.indexes[index.ID()] = index // We should store the computed index name in the case of an empty index name being passed in
+	data.indexes[index.ID()] = index // We should store the computed index name in the case of an empty index name being passed in
+	sess.putTable(ctx, data)
+	
 	return nil
 }
 
