@@ -233,7 +233,7 @@ func TestTable(t *testing.T) {
 				rows, err = sql.RowIterToRows(ctx, table.Schema(), iter)
 				require.NoError(err)
 
-				expected := table.GetPartition(string(p.Key()))
+				expected := table.getPartition(string(p.Key()))
 				require.Len(rows, len(expected))
 
 				for i, row := range rows {
