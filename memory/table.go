@@ -426,7 +426,11 @@ func (t *Table) AnalyzeTable(ctx *sql.Context) error {
 }
 
 func (t *Table) RowCount(ctx *sql.Context) (uint64, error) {
-	return t.tableUnderEdit(ctx).data.numRows(ctx)
+	data, err := t.sessionTableData(ctx)
+	if err != nil {
+		return 0, err
+	}
+	return data.numRows(ctx)
 }
 
 func NewPartition(key []byte) *Partition {
@@ -835,11 +839,17 @@ func (t *Table) getFulltextTableSets(ctx *sql.Context) ([]fulltext.TableSet, err
 }
 
 func (t *Table) Truncate(ctx *sql.Context) (int, error) {
-	count := 0
-	for key := range t.data.partitions {
-		count += len(t.data.partitions[key])
+	data, err := t.sessionTableData(ctx)
+	if err != nil {
+		return 0, err
 	}
-	t.data = t.data.truncate(t.data.schema)
+	
+	count := 0
+	for key := range data.partitions {
+		count += len(data.partitions[key])
+	}
+	
+	data.truncate(data.schema)
 	return count, nil
 }
 
@@ -1453,7 +1463,6 @@ func (t *Table) Projections() []string {
 	return t.projection
 }
 
-// TODO: can we trust the table here, or do we need to get data from the session
 func (t *TableData) columnIndexes(colNames []string) ([]int, error) {
 	columns := make([]int, 0, len(colNames))
 
@@ -1485,7 +1494,7 @@ func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 
 	if data.primaryKeyIndexes {
 		if len(data.schema.PkOrdinals) > 0 {
-			exprs := make([]sql.Expression, len(t.data.schema.PkOrdinals))
+			exprs := make([]sql.Expression, len(data.schema.PkOrdinals))
 			for i, ord := range data.schema.PkOrdinals {
 				column := data.schema.Schema[ord]
 				idx, field := data.getField(column.Name)
@@ -1646,8 +1655,7 @@ func (t *Table) sessionTableData(ctx *sql.Context) (*TableData, error) {
 
 // CreateCheck implements sql.CheckAlterableTable
 func (t *Table) CreateCheck(ctx *sql.Context, check *sql.CheckDefinition) error {
-	sess := SessionFromContext(ctx)
-	data, err := sess.tableData(ctx, t)
+	data, err := t.sessionTableData(ctx)
 	if err != nil {
 		return err
 	}
@@ -1664,16 +1672,13 @@ func (t *Table) CreateCheck(ctx *sql.Context, check *sql.CheckDefinition) error 
 		}
 	}
 
-	data.checks = append(t.data.checks, toInsert)
-	sess.putTable(ctx, data)
-	
+	data.checks = append(data.checks, toInsert)
 	return nil
 }
 
 // DropCheck implements sql.CheckAlterableTable.
 func (t *Table) DropCheck(ctx *sql.Context, chName string) error {
-	sess := SessionFromContext(ctx)
-	data, err := sess.tableData(ctx, t)
+	data, err := t.sessionTableData(ctx)
 	if err != nil {
 		return err
 	}
@@ -1681,7 +1686,7 @@ func (t *Table) DropCheck(ctx *sql.Context, chName string) error {
 	lowerName := strings.ToLower(chName)
 	for i, key := range data.checks {
 		if strings.ToLower(key.Name) == lowerName {
-			data.checks = append(t.data.checks[:i], t.data.checks[i+1:]...)
+			data.checks = append(data.checks[:i], data.checks[i+1:]...)
 			return nil
 		}
 	}
@@ -1825,15 +1830,14 @@ func (t *Table) CreateIndex(ctx *sql.Context, idx sql.IndexDef) error {
 
 // DropIndex implements sql.IndexAlterableTable
 func (t *Table) DropIndex(ctx *sql.Context, indexName string) error {
-	sess := SessionFromContext(ctx)
-	data, err := sess.tableData(ctx, t)
+	data, err := t.sessionTableData(ctx)
 	if err != nil {
 		return err
 	}
 	
 	for name := range data.indexes {
 		if strings.ToLower(name) == strings.ToLower(indexName) {
-			delete(t.data.indexes, name)
+			delete(data.indexes, name)
 			return nil
 		}
 	}
@@ -2156,8 +2160,7 @@ func normalizeSchemaForRewrite(newSch sql.PrimaryKeySchema) sql.PrimaryKeySchema
 // DropPrimaryKey implements the PrimaryKeyAlterableTable
 // TODO: get rid of this / make it error?
 func (t *Table) DropPrimaryKey(ctx *sql.Context) error {
-	sess := SessionFromContext(ctx)
-	data, err := sess.tableData(ctx, t)
+	data, err := t.sessionTableData(ctx)
 	if err != nil {
 		return err
 	}
@@ -2180,7 +2183,7 @@ func (t *Table) DropPrimaryKey(ctx *sql.Context) error {
 
 	// Check for foreign key relationships
 	for _, pk := range pks {
-		if fkName, ok := columnInFkRelationship(pk.Name, t.data.fkColl.Keys()); ok {
+		if fkName, ok := columnInFkRelationship(pk.Name, data.fkColl.Keys()); ok {
 			return sql.ErrCantDropIndex.New("PRIMARY", fkName)
 		}
 	}
@@ -2265,6 +2268,7 @@ func (i *indexKeyValueIter) Close(ctx *sql.Context) error {
 	return i.iter.Close(ctx)
 }
 
+// TODO: consolidate into checkRow?
 func verifyRowTypes(row sql.Row, schema sql.Schema) {
 	if len(row) == len(schema) {
 		for i := range schema {
@@ -2420,7 +2424,8 @@ func (t Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.Primar
 	}
 	
 	// Make a copy of the table under edit with the new schema and no data
-	tableUnderEdit := t.copy().truncate(normalizeSchemaForRewrite(newSchema))
+	tableUnderEdit := t.copy()
+	tableUnderEdit.data = tableUnderEdit.data.truncate(normalizeSchemaForRewrite(newSchema))
 	err := tableUnderEdit.modifyFulltextIndexesForRewrite(ctx, t.data, oldSchema)
 	if err != nil {
 		return nil, err
