@@ -24,6 +24,8 @@ import (
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/vitess/go/mysql"
 )
 
 const testNumPartitions = 5
@@ -35,7 +37,7 @@ type MemoryHarness struct {
 	parallelism               int
 	numTablePartitions        int
 	readonly                  bool
-	provider                  sql.MutableDatabaseProvider
+	provider                  *memory.DbProvider
 	indexDriverInitializer    IndexDriverInitializer
 	driver                    sql.IndexDriver
 	nativeIndexSupport        bool
@@ -82,6 +84,22 @@ func NewReadOnlyMemoryHarness() *MemoryHarness {
 	h.readonly = true
 	return h
 }
+
+func (m *MemoryHarness) SessionBuilder() func(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, error) {
+	return func(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, error) {
+		host := ""
+		user := ""
+		mysqlConnectionUser, ok := c.UserData.(mysql_db.MysqlConnectionUser)
+		if ok {
+			host = mysqlConnectionUser.Host
+			user = mysqlConnectionUser.User
+		}
+		client := sql.Client{Address: host, User: user, Capabilities: c.Capabilities}
+		baseSession := sql.NewBaseSessionWithClientServer(addr, client, c.ConnectionID)
+		return memory.NewSession(baseSession, m.getProvider()), nil
+	}
+}
+
 
 // ExternalStoredProcedure implements the sql.ExternalStoredProcedureProvider interface
 func (m *MemoryHarness) ExternalStoredProcedure(_ *sql.Context, name string, numOfParams int) (*sql.ExternalStoredProcedureDetails, error) {
@@ -215,7 +233,7 @@ func (m *MemoryHarness) NewContext() *sql.Context {
 
 func (m *MemoryHarness) newSession() *memory.Session {
 	baseSession := NewBaseSession()
-	session := memory.NewSession(baseSession)
+	session := memory.NewSession(baseSession, m.getProvider())
 	if m.driver != nil {
 		session.GetIndexRegistry().RegisterIndexDriver(m.driver)
 	}
@@ -227,7 +245,7 @@ func (m *MemoryHarness) NewContextWithClient(client sql.Client) *sql.Context {
 
 	return sql.NewContext(
 		context.Background(),
-		sql.WithSession(memory.NewSession(baseSession)),
+		sql.WithSession(memory.NewSession(baseSession, m.getProvider())),
 	)
 }
 
@@ -250,9 +268,9 @@ func (m *MemoryHarness) newDatabase(name string) sql.Database {
 	return db
 }
 
-func (m *MemoryHarness) getProvider() sql.MutableDatabaseProvider {
+func (m *MemoryHarness) getProvider() *memory.DbProvider {
 	if m.provider == nil {
-		return m.NewDatabaseProvider()
+		m.provider = m.NewDatabaseProvider().(*memory.DbProvider)
 	}
 
 	return m.provider
@@ -265,8 +283,6 @@ func (m *MemoryHarness) NewDatabaseProvider() sql.MutableDatabaseProvider {
 }
 
 func (m *MemoryHarness) NewDatabases(names ...string) []sql.Database {
-	m.provider = m.NewDatabaseProvider()
-
 	var dbs []sql.Database
 	for _, name := range names {
 		dbs = append(dbs, m.newDatabase(name))
@@ -281,7 +297,7 @@ func (m *MemoryHarness) NewReadOnlyEngine(provider sql.DatabaseProvider) (QueryE
 	}
 
 	readOnlyProvider := memory.NewDBProviderWithOpts(memory.WithDbsOption(dbs))
-	m.provider = readOnlyProvider
+	m.provider = readOnlyProvider.(*memory.DbProvider)
 
 	return NewEngineWithProvider(nil, m, readOnlyProvider), nil
 }

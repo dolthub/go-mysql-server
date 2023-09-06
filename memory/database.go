@@ -106,7 +106,7 @@ func (d *BaseDatabase) putTable(t *Table) {
 		if strings.ToLower(name) == lowerName {
 			t.name = table.Name()
 			d.tables[name] = t
-			break
+			return
 		}
 	}
 	panic(fmt.Sprintf("table %s not found", t.name))

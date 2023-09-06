@@ -15,14 +15,10 @@
 package memory
 
 import (
-	"context"
 	"fmt"
 	"strings"
-	
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
-	"github.com/dolthub/vitess/go/mysql"
 )
 
 type Session struct {
@@ -37,9 +33,10 @@ var _ sql.TransactionSession = (*Session)(nil)
 var _ sql.Transaction = (*Transaction)(nil)
 
 // NewSession returns the new session for this object
-func NewSession(baseSession *sql.BaseSession) *Session {
+func NewSession(baseSession *sql.BaseSession, provider *DbProvider) *Session {
 	return &Session{
 		BaseSession:      baseSession,
+		dbProvider: 			 provider,
 		editAccumulators: make(map[tableKey]tableEditAccumulator),
 		tables:           make(map[tableKey]*TableData),
 	}
@@ -47,19 +44,6 @@ func NewSession(baseSession *sql.BaseSession) *Session {
 
 func SessionFromContext(ctx *sql.Context) *Session {
 	return ctx.Session.(*Session)
-}
-
-func SessionBuilder(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, error) {
-	host := ""
-	user := ""
-	mysqlConnectionUser, ok := c.UserData.(mysql_db.MysqlConnectionUser)
-	if ok {
-		host = mysqlConnectionUser.Host
-		user = mysqlConnectionUser.User
-	}
-	client := sql.Client{Address: host, User: user, Capabilities: c.Capabilities}
-	baseSession := sql.NewBaseSessionWithClientServer(addr, client, c.ConnectionID)
-	return NewSession(baseSession), nil
 }
 
 type Transaction struct {
@@ -135,6 +119,10 @@ func (s *Session) StartTransaction(ctx *sql.Context, tCharacteristic sql.Transac
 
 func (s *Session) CommitTransaction(ctx *sql.Context, tx sql.Transaction) error {
 	for key := range s.tables {
+		if key.db == "" && key.table == "" {
+			// dual table
+			continue
+		}
 		db, err := s.dbProvider.Database(ctx, key.db)
 		if err != nil {
 			return err
