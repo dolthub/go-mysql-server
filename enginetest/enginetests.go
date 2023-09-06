@@ -503,9 +503,6 @@ func TestQueryPlan(t *testing.T, harness Harness, e QueryEngine, query, expected
 		parsed, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, query)
 		require.NoError(t, err)
 
-		//e.EngineAnalyzer().Debug = true
-		//e.EngineAnalyzer().Verbose = true
-
 		node, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
 
