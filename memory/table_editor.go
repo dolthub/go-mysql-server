@@ -78,8 +78,8 @@ func (t *tableEditor) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 }
 
 func (t *tableEditor) Close(ctx *sql.Context) error {
+	sess := SessionFromContext(ctx)
 	defer func() {
-		sess := SessionFromContext(ctx)
 		sess.clearEditAccumulator(t.targetTable)
 	}()
 	
@@ -95,11 +95,8 @@ func (t *tableEditor) Close(ctx *sql.Context) error {
 	}
 	t.ea.Clear()
 	
-	t.targetTable.replaceData(t.editedTable)
-	
-	// for various reasons, the pointer we're editing may not be the one recorded in the database map, so update it
-	t.targetTable.db.putTable(t.targetTable)
-
+	// TODO: copy of data?
+	sess.putTable(ctx, t.editedTable.data)
 	return nil
 }
 
