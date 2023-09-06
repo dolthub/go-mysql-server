@@ -492,7 +492,7 @@ func (s *Subquery) DebugString() string {
 	_ = pr.WriteNode("Subquery")
 	children := []string{
 		fmt.Sprintf("cacheable: %t", s.canCacheResults()),
-		fmt.Sprintf("alias-string: %t", s.QueryString),
+		fmt.Sprintf("alias-string: %s", s.QueryString),
 		sql.DebugString(s.Query),
 	}
 	_ = pr.WriteChildren(children...)
