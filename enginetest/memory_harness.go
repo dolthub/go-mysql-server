@@ -163,6 +163,7 @@ func (m *MemoryHarness) Setup(setupData ...[]setup.SetupScript) {
 
 func (m *MemoryHarness) NewEngine(t *testing.T) (QueryEngine, error) {
 	m.session = nil
+	m.provider = nil
 	engine, err := NewEngine(t, m, m.getProvider(), m.setupData)
 	if err != nil {
 		return nil, err

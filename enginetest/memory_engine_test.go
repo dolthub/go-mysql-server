@@ -421,7 +421,7 @@ func TestAmbiguousColumnResolution(t *testing.T) {
 func TestInsertInto(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
 	harness.QueriesToSkip(
-		// should be colum not found error
+		// should be column not found error
 		"insert into a (select * from b) on duplicate key update b.i = a.i",
 		"insert into a (select * from b as t) on duplicate key update a.i = b.j + 100",
 	)
