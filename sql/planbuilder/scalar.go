@@ -61,6 +61,11 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		return &function.Substring{Str: name, Start: start, Len: len}
 	case *ast.CurTimeFuncExpr:
 		fsp := b.buildScalar(inScope, v.Fsp)
+
+		if inScope.parent.activeSubquery != nil {
+			inScope.parent.activeSubquery.markVolatile()
+		}
+
 		return &function.CurrTimestamp{Args: []sql.Expression{fsp}}
 	case *ast.TrimExpr:
 		pat := b.buildScalar(inScope, v.Pattern)
@@ -108,6 +113,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		return c.scalarGf()
 	case *ast.FuncExpr:
 		name := v.Name.Lowered()
+
 		if isAggregateFunc(name) && v.Over == nil {
 			// TODO this assumes aggregate is in the same scope
 			// also need to avoid nested aggregates
@@ -139,6 +145,10 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 			}
 
 			args[0] = expression.NewDistinctExpression(args[0])
+		}
+
+		if _, ok := rf.(sql.NonDeterministicExpression); ok && inScope.nearestSubquery() != nil {
+			inScope.nearestSubquery().markVolatile()
 		}
 
 		return rf
@@ -221,10 +231,14 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	case *ast.Subquery:
 		sqScope := inScope.push()
 		selectString := ast.String(v.Select)
-		sqScope.subquery = true
+		sqScope.initSubquery()
 		selScope := b.buildSelectStmt(sqScope, v.Select)
 		// TODO: get the original select statement, not the reconstruction
 		sq := plan.NewSubquery(selScope.node, selectString)
+		sq = sq.WithCorrelated(sqScope.correlated())
+		if b.TriggerCtx().Active {
+			sq = sq.WithVolatile()
+		}
 		return sq
 	case *ast.CaseExpr:
 		return b.buildCaseExpr(inScope, v)
@@ -271,9 +285,11 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		}
 	case *ast.ExistsExpr:
 		sqScope := inScope.push()
+		sqScope.initSubquery()
 		selScope := b.buildSelectStmt(sqScope, v.Subquery.Select)
 		selectString := ast.String(v.Subquery.Select)
 		sq := plan.NewSubquery(selScope.node, selectString)
+		sq = sq.WithCorrelated(sqScope.correlated())
 		return plan.NewExistsSubquery(sq)
 	case *ast.TimestampFuncExpr:
 		var (

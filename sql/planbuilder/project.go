@@ -46,6 +46,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 
 		// TODO two passes for symbol res and semantic validation
 		var aRef string
+		var subqueryFound bool
 		inScopeAliasRef := transform.InspectExpr(pe, func(e sql.Expression) bool {
 			var id columnId
 			switch e := e.(type) {
@@ -57,6 +58,8 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 			case *expression.Alias:
 				id = columnId(e.Id())
 				aRef = e.Name()
+			case *plan.Subquery:
+				subqueryFound = true
 			}
 			if aRef != "" {
 				collisionId, ok := tempScope.exprs[strings.ToLower(aRef)]
@@ -67,6 +70,10 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 		if inScopeAliasRef {
 			err := sql.ErrMisusedAlias.New(aRef)
 			b.handleErr(err)
+		}
+		if subqueryFound {
+			outScope.refsSubquery = true
+
 		}
 
 		switch e := pe.(type) {
@@ -181,7 +188,7 @@ func (b *Builder) buildProjection(inScope, outScope *scope) {
 	for i, sc := range outScope.cols {
 		projections[i] = sc.scalar
 	}
-	proj, err := b.f.buildProject(plan.NewProject(projections, inScope.node))
+	proj, err := b.f.buildProject(plan.NewProject(projections, inScope.node), outScope.refsSubquery)
 	if err != nil {
 		b.handleErr(err)
 	}

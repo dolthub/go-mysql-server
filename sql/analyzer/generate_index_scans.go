@@ -147,18 +147,6 @@ func convertFiltersToIndexedAccess(
 			handled = append(handled, handledF...)
 			return ret, transform.NewTree, nil
 		case *plan.JSONTable:
-			switch j := c.Parent.(type) {
-			case *plan.JoinNode:
-				newExprs, same, err := fixidx.FixFieldIndexesOnExpressions(scope, a.LogFn(), j.Left().Schema(), n.Expressions()...)
-				if same || err != nil {
-					return n, transform.SameTree, err
-				}
-				newJt, err := n.WithExpressions(newExprs...)
-				if err != nil {
-					return n, transform.SameTree, err
-				}
-				return newJt, transform.NewTree, nil
-			}
 			return n, transform.SameTree, nil
 		default:
 			return pushdownFixIndices(ctx, a, n, scope)

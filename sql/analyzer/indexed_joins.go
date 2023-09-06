@@ -46,10 +46,6 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 	reorder := true
 	transform.NodeWithCtx(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		switch n := c.Node.(type) {
-		case *plan.JSONTable:
-			// TODO make a JoinTypeJSONTable[Cross], and use have its TES
-			// treated the same way as a left join for reordering.
-			reorder = false
 		case *plan.Project:
 			// TODO: fix natural joins, their project nodes should apply
 			// to the top-level scope not the middle of a join tree.
@@ -63,12 +59,6 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 			if n.JoinType().IsPhysical() {
 				// TODO: nested subqueries attempt to replan joins, which
 				// is not ideal but not the end of the world.
-				reorder = false
-			}
-			if sqa, ok := n.Left().(*plan.SubqueryAlias); ok && sqa.IsLateral {
-				reorder = false
-			}
-			if sqa, ok := n.Right().(*plan.SubqueryAlias); ok && sqa.IsLateral {
 				reorder = false
 			}
 		default:

@@ -114,6 +114,8 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 			if err != nil {
 				b.handleErr(err)
 			}
+		} else if b.isLateral(te.RightExpr) {
+			outScope.node = plan.NewJoin(leftScope.node, rightScope.node, plan.JoinTypeLateralCross, nil)
 		} else {
 			outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
 		}
@@ -245,7 +247,11 @@ func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.
 
 	// joining two tables with no common columns is just cross join
 	if len(te.Condition.Using) == 0 {
-		outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
+		if b.isLateral(te.RightExpr) {
+			outScope.node = plan.NewJoin(leftScope.node, rightScope.node, plan.JoinTypeLateralCross, nil)
+		} else {
+			outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
+		}
 		return outScope
 	}
 
@@ -297,10 +303,12 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 				b.handleErr(sql.ErrUnsupportedFeature.New("subquery without alias"))
 			}
 
-			sqScope := inScope.push()
+			sqScope := inScope.pushSubquery()
 			fromScope := b.buildSelectStmt(sqScope, e.Select)
 			alias := strings.ToLower(t.As.String())
 			sq := plan.NewSubqueryAlias(alias, ast.String(e.Select), fromScope.node)
+			sq = sq.WithCorrelated(sqScope.correlated())
+			sq = sq.WithVolatile(sqScope.volatile())
 			sq.IsLateral = t.Lateral
 
 			var renameCols []string

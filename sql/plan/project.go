@@ -47,7 +47,7 @@ func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 func (p *Project) Schema() sql.Schema {
 	var s = make(sql.Schema, len(p.Projections))
 	for i, e := range p.Projections {
-		s[i] = transform.ExpressionToColumn(e)
+		s[i] = transform.ExpressionToColumn(e, AliasSubqueryString(e))
 	}
 	return s
 }

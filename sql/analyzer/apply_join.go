@@ -17,8 +17,6 @@ package analyzer
 import (
 	"fmt"
 
-	"github.com/dolthub/go-mysql-server/sql/fixidx"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -65,7 +63,6 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 				return n, transform.SameTree, nil
 			}
 
-			subScope := scope.NewScopeFromSubqueryExpression(n)
 			var matches []applyJoin
 			var newFilters []sql.Expression
 
@@ -106,13 +103,7 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 					max1 = true
 				default:
 				}
-				if sq != nil {
-					sq.Query, _, err = fixidx.FixFieldIndexesForNode(ctx, a.LogFn(), scope.NewScopeFromSubqueryExpression(n), sq.Query)
-					if err != nil {
-						return nil, transform.SameTree, err
-					}
-				}
-				if sq != nil && nodeIsCacheable(sq.Query, len(subScope.Schema())) {
+				if sq != nil && sq.CanCacheResults() {
 					matches = append(matches, applyJoin{l: l, r: sq, op: op, filter: joinF, max1: max1})
 				} else {
 					newFilters = append(newFilters, e)
@@ -147,12 +138,8 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 					rightF = tup
 				}
 
-				q, _, err := fixidx.FixFieldIndexesForNode(ctx, a.LogFn(), scope, subq.Query)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
+				var newSubq sql.Node = plan.NewSubqueryAlias(name, subq.QueryString, subq.Query)
 
-				var newSubq sql.Node = plan.NewSubqueryAlias(name, subq.QueryString, q)
 				newSubq, err = simplifySubqExpr(newSubq)
 				if err != nil {
 					return nil, transform.SameTree, err
@@ -161,12 +148,7 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 					newSubq = plan.NewMax1Row(newSubq, name)
 				}
 
-				condSch := append(ret.Schema(), newSubq.Schema()...)
 				filter, err := m.filter.WithChildren(m.l, rightF)
-				if err != nil {
-					return n, transform.SameTree, err
-				}
-				filter, _, err = fixidx.FixFieldIndexes(scope, a.LogFn(), condSch, filter)
 				if err != nil {
 					return n, transform.SameTree, err
 				}

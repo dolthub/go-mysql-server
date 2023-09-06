@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2023 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package analyzer
+package planbuilder
 
-import (
-	"github.com/dolthub/go-mysql-server/sql"
-)
+import "github.com/dolthub/go-mysql-server/sql"
 
-func mustExpr(e sql.Expression, err error) sql.Expression {
-	if err != nil {
-		panic(err)
-	}
-	return e
+type subquery struct {
+	correlated sql.ColSet
+	volatile   bool
+}
+
+func (s *subquery) addOutOfScope(c columnId) {
+	s.correlated.Add(sql.ColumnId(c))
+}
+
+func (s *subquery) markVolatile() {
+	s.volatile = true
 }

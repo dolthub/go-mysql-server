@@ -84,22 +84,24 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name strin
 	l, r := splitRecursiveCteUnion(name, union)
 	if r == nil {
 		// not recursive
-		cteScope := b.buildSelectStmt(inScope, union)
+		sqScope := inScope.pushSubquery()
+
+		cteScope := b.buildSelectStmt(sqScope, union)
 		b.renameSource(cteScope, name, columns)
 		switch n := cteScope.node.(type) {
 		case *plan.Union:
 			sq := plan.NewSubqueryAlias(name, "", n)
 			sq = sq.WithColumns(columns)
-			if !inScope.subquery {
-				sq.CacheableCTESource = true
-			}
+			sq = sq.WithCorrelated(sqScope.correlated())
+			sq = sq.WithVolatile(sqScope.volatile())
 			cteScope.node = sq
 		}
 		return cteScope
 	}
 
-	// resolve non-recusive portion
-	leftScope := b.buildSelectStmt(inScope, l)
+	// resolve non-recursive portion
+	leftSqScope := inScope.pushSubquery()
+	leftScope := b.buildSelectStmt(leftSqScope, l)
 
 	// schema for non-recursive portion => recursive table
 	var rTable *plan.RecursiveTable
@@ -133,7 +135,7 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name strin
 		cteScope.node = rTable
 	}
 
-	rightInScope := inScope.replace()
+	rightInScope := inScope.replaceSubquery()
 	rightInScope.addCte(name, cteScope)
 	rightScope := b.buildSelectStmt(rightInScope, r)
 
@@ -160,10 +162,13 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name strin
 
 	rcte := plan.NewRecursiveCte(rInit, rightScope.node, name, columns, distinct, limit, sortFields)
 	rcte = rcte.WithSchema(recSch).WithWorking(rTable)
-	sq := plan.NewSubqueryAlias(name, "", rcte).WithColumns(columns)
-	if !inScope.subquery {
-		sq.CacheableCTESource = true
-	}
+	corr := leftSqScope.correlated().Union(rightInScope.correlated())
+	vol := leftSqScope.activeSubquery.volatile || rightInScope.activeSubquery.volatile
+
+	sq := plan.NewSubqueryAlias(name, "", rcte)
+	sq = sq.WithColumns(columns)
+	sq = sq.WithCorrelated(corr)
+	sq = sq.WithVolatile(vol)
 	cteScope.node = sq
 	b.renameSource(cteScope, name, columns)
 	return cteScope

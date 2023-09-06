@@ -308,7 +308,8 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e QueryEngine, harness
 		checkResults(t, expected, expectedCols, sch, rows, q)
 	}
 
-	require.Equal(0, ctx.Memory.NumCaches())
+	require.Equal(
+		0, ctx.Memory.NumCaches())
 	validateEngine(t, ctx, harness, e)
 }
 

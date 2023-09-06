@@ -93,6 +93,8 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 		return c.costConcatJoin(ctx, n, s)
 	case *RecursiveCte:
 		return c.costRecursiveCte(ctx, n, s)
+	case *JSONTable:
+		return c.costJSONTable(ctx, n, s)
 	case *Project:
 		return c.costProject(ctx, n, s)
 	case *Distinct:
@@ -300,6 +302,10 @@ func (c *coster) costRecursiveCte(_ *sql.Context, n *RecursiveCte, _ sql.StatsRe
 	return 1000 * seqIOCostFactor, nil
 }
 
+func (c *coster) costJSONTable(_ *sql.Context, n *JSONTable, _ sql.StatsReader) (float64, error) {
+	return 1000 * seqIOCostFactor, nil
+}
+
 func (c *coster) costProject(_ *sql.Context, n *Project, _ sql.StatsReader) (float64, error) {
 	return n.Child.RelProps.card * cpuCostFactor, nil
 }
@@ -411,6 +417,8 @@ func (c *carder) cardRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 		return c.statsValues(ctx, n, s)
 	case *RecursiveTable:
 		return c.statsRecursiveTable(ctx, n, s)
+	case *JSONTable:
+		return c.statsJSONTable(ctx, n, s)
 	case *SubqueryAlias:
 		return c.statsSubqueryAlias(ctx, n, s)
 	case *RecursiveCte:
@@ -485,6 +493,10 @@ func (c *carder) statsRead(ctx *sql.Context, t sql.Table, db string, s sql.Stats
 
 func (c *carder) statsValues(_ *sql.Context, v *Values, _ sql.StatsReader) (float64, error) {
 	return float64(len(v.Table.ExpressionTuples)) * cpuCostFactor, nil
+}
+
+func (c *carder) statsJSONTable(_ *sql.Context, v *JSONTable, _ sql.StatsReader) (float64, error) {
+	return float64(100) * seqIOCostFactor, nil
 }
 
 func (c *carder) statsRecursiveTable(_ *sql.Context, t *RecursiveTable, _ sql.StatsReader) (float64, error) {

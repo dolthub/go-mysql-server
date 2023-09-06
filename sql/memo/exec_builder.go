@@ -402,6 +402,19 @@ func (b *ExecBuilder) buildValues(r *Values, _ sql.Schema, _ ...sql.Node) (sql.N
 func (b *ExecBuilder) buildRecursiveTable(r *RecursiveTable, _ sql.Schema, _ ...sql.Node) (sql.Node, error) {
 	return r.Table, nil
 }
+
+func (b *ExecBuilder) buildJSONTable(n *JSONTable, input sql.Schema, _ ...sql.Node) (sql.Node, error) {
+	newExprs, same, err := fixidx.FixFieldIndexesOnExpressions(n.g.m.scope, nil, input, n.Table.Expressions()...)
+	if same || err != nil {
+		return n.Table, err
+	}
+	newJt, err := n.Table.WithExpressions(newExprs...)
+	if err != nil {
+		return nil, err
+	}
+	return newJt, nil
+}
+
 func (b *ExecBuilder) buildTableAlias(r *TableAlias, _ sql.Schema, _ ...sql.Node) (sql.Node, error) {
 	return r.Table, nil
 }

@@ -37,7 +37,7 @@ exprs:
 - name: "LateralJoin"
   join: true
 - name: "TableScan"
-  sourceType: "plan.TableNode"
+  sourceType: "sql.TableNode"
 - name: "Values"
   sourceType: "*plan.ValueDerivedTable"
 - name: "TableAlias"
@@ -52,6 +52,8 @@ exprs:
   sourceType: "sql.NameableNode"
 - name: "TableFunc"
   sourceType: "sql.TableFunction"
+- name: "JSONTable"
+  sourceType: "*plan.JSONTable"
 - name: "EmptyTable"
   sourceType: "*plan.EmptyTable"
 - name: "Project"
