@@ -20,13 +20,11 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/dolthub/vitess/go/sqltypes"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -195,10 +193,7 @@ func (t *Table) getPartition(key string) []sql.Row {
 
 // Partitions implements the sql.Table interface.
 func (t *Table) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
-	data, err := t.sessionTableData(ctx)
-	if err != nil {
-		return nil, err
-	}
+	data := t.sessionTableData(ctx)
 
 	var keys [][]byte
 	for _, k := range data.partitionKeys {
@@ -273,20 +268,14 @@ type spatialRangePartition struct {
 
 // PartitionCount implements the sql.PartitionCounter interface.
 func (t *Table) PartitionCount(ctx *sql.Context) (int64, error) {
-	data, err := t.sessionTableData(ctx)
-	if err != nil {
-		return 0, err
-	}
+	data := t.sessionTableData(ctx)
 
 	return int64(len(data.partitions)), nil
 }
 
 // PartitionRows implements the sql.PartitionRows interface.
 func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-	data, err := t.sessionTableData(ctx)
-	if err != nil {
-		return nil, err
-	}
+	data := t.sessionTableData(ctx)
 
 	filters := t.filters
 	if r, ok := partition.(*rangePartition); ok {
@@ -323,10 +312,7 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 }
 
 func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
-	data, err := t.sessionTableData(ctx)
-	if err != nil {
-		return 0, err
-	}
+	data := t.sessionTableData(ctx)
 	
 	var numBytesPerRow uint64
 	for _, col := range data.schema.Schema {
@@ -386,10 +372,7 @@ func (t *Table) AnalyzeTable(ctx *sql.Context) error {
 }
 
 func (t *Table) RowCount(ctx *sql.Context) (uint64, error) {
-	data, err := t.sessionTableData(ctx)
-	if err != nil {
-		return 0, err
-	}
+	data := t.sessionTableData(ctx)
 	return data.numRows(ctx)
 }
 
@@ -711,10 +694,7 @@ func (t *Table) newFulltextTableEditor(ctx *sql.Context, parentEditor sql.TableE
 }
 
 func (t *Table) getFulltextTableSets(ctx *sql.Context) ([]fulltext.TableSet, error) {
-	data, err := t.sessionTableData(ctx)
-	if err != nil {
-		return nil, err
-	}
+	data := t.sessionTableData(ctx)
 
 	var tableSets []fulltext.TableSet
 	for _, idx := range data.indexes {
@@ -775,11 +755,8 @@ func (t *Table) getFulltextTableSets(ctx *sql.Context) ([]fulltext.TableSet, err
 }
 
 func (t *Table) Truncate(ctx *sql.Context) (int, error) {
-	data, err := t.sessionTableData(ctx)
-	if err != nil {
-		return 0, err
-	}
-	
+	data := t.sessionTableData(ctx)
+
 	count := 0
 	for key := range data.partitions {
 		count += len(data.partitions[key])
@@ -798,48 +775,16 @@ func (t *Table) Insert(ctx *sql.Context, row sql.Row) error {
 	return inserter.Close(ctx)
 }
 
-func rowsAreEqual(ctx *sql.Context, schema sql.Schema, left, right sql.Row) (bool, error) {
-	if len(left) != len(right) || len(left) != len(schema) {
-		return false, nil
-	}
-
-	for index := range left {
-		typ := schema[index].Type
-		if typ.Type() != sqltypes.TypeJSON {
-			if left[index] != right[index] {
-				return false, nil
-			}
-			continue
-		}
-
-		// TODO should Type.Compare be used for all columns?
-		cmp, err := typ.Compare(left[index], right[index])
-		if err != nil {
-			return false, err
-		}
-		if cmp != 0 {
-			return false, nil
-		}
-	}
-	return true, nil
-}
-
 // PeekNextAutoIncrementValue peeks at the next AUTO_INCREMENT value
 func (t *Table) PeekNextAutoIncrementValue(ctx *sql.Context) (uint64, error) {
-	data, err := t.sessionTableData(ctx)
-	if err != nil {
-		return 0, err
-	}
+	data := t.sessionTableData(ctx)
 
 	return data.autoIncVal, nil
 }
 
 // GetNextAutoIncrementValue gets the next auto increment value for the memory table the increment.
 func (t *Table) GetNextAutoIncrementValue(ctx *sql.Context, insertVal interface{}) (uint64, error) {
-	data, err := t.sessionTableData(ctx)
-	if err != nil {
-		return 0, err
-	}
+	data := t.sessionTableData(ctx)
 	
 	cmp, err := types.Uint64.Compare(insertVal, data.autoIncVal)
 	if err != nil {
@@ -859,17 +804,11 @@ func (t *Table) GetNextAutoIncrementValue(ctx *sql.Context, insertVal interface{
 
 func (t *Table) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.ColumnOrder) error {
 	sess := SessionFromContext(ctx)
-	data, err := sess.tableData(t)
-	if err != nil {
-		return err
-	}
+	data := sess.tableData(t)
 	
-	newColIdx, data, err := addColumnToSchema(ctx, data, column, order)
-	if err != nil {
-		return err
-	}
+	newColIdx, data := addColumnToSchema(ctx, data, column, order)
 	
-	err = insertValueInRows(ctx, data, newColIdx, column.Default)
+	err := insertValueInRows(ctx, data, newColIdx, column.Default)
 	if err != nil {
 		return err
 	}
@@ -879,7 +818,7 @@ func (t *Table) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.Colum
 }
 
 // addColumnToSchema adds the given column to the schema and returns the new index
-func addColumnToSchema(ctx *sql.Context, data *TableData, newCol *sql.Column, order *sql.ColumnOrder) (int, *TableData, error) {
+func addColumnToSchema(ctx *sql.Context, data *TableData, newCol *sql.Column, order *sql.ColumnOrder) (int, *TableData) {
 	// TODO: might have wrong case
 	newCol.Source = data.tableName
 	newSch := make(sql.Schema, len(data.schema.Schema)+1)
@@ -959,40 +898,13 @@ func addColumnToSchema(ctx *sql.Context, data *TableData, newCol *sql.Column, or
 	}
 
 	data.schema = sql.NewPrimaryKeySchema(newSch, newPkOrds...)
-	
-	return newColIdx, data, nil
-}
 
-func insertValueInRows(ctx *sql.Context, data *TableData, colIdx int, colDefault *sql.ColumnDefaultValue) error {
-	for k, p := range data.partitions {
-		newP := make([]sql.Row, len(p))
-		for i, row := range p {
-			var newRow sql.Row
-			newRow = append(newRow, row[:colIdx]...)
-			newRow = append(newRow, nil)
-			newRow = append(newRow, row[colIdx:]...)
-			var err error
-			if !data.schema.Schema[colIdx].Nullable && colDefault == nil {
-				newRow[colIdx] = data.schema.Schema[colIdx].Type.Zero()
-			} else {
-				newRow[colIdx], err = colDefault.Eval(ctx, newRow)
-				if err != nil {
-					return err
-				}
-			}
-			newP[i] = newRow
-		}
-		data.partitions[k] = newP
-	}
-	return nil
+	return newColIdx, data
 }
 
 func (t *Table) DropColumn(ctx *sql.Context, columnName string) error {
 	sess := SessionFromContext(ctx)
-	data, err := sess.tableData(t)
-	if err != nil {
-		return err
-	}
+	data := sess.tableData(t)
 
 	droppedCol, data := dropColumnFromSchema(ctx, data, columnName)
 	for k, p := range data.partitions {
@@ -1051,10 +963,7 @@ func dropColumnFromSchema(ctx *sql.Context, data *TableData, columnName string) 
 
 func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Column, order *sql.ColumnOrder) error {
 	sess := SessionFromContext(ctx)
-	data, err := sess.tableData(t)
-	if err != nil {
-		return err
-	}
+	data := sess.tableData(t)
 	
 	oldIdx := -1
 	newIdx := 0
@@ -1124,10 +1033,7 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 	}
 
 	_, data = dropColumnFromSchema(ctx, data, columnName)
-	_, data, err = addColumnToSchema(ctx, data, column, order)
-	if err != nil {
-		return err
-	}
+	_, data = addColumnToSchema(ctx, data, column, order)
 
 	newPkOrds := make([]int, len(data.schema.PkOrdinals))
 	for ord, col := range data.schema.Schema {
@@ -1406,10 +1312,7 @@ func (t *Table) EnablePrimaryKeyIndexes() {
 
 // GetIndexes implements sql.IndexedTable
 func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
-	data, err := t.sessionTableData(ctx)
-	if err != nil {
-		return nil, err
-	}
+	data := t.sessionTableData(ctx)
 
 	indexes := make([]sql.Index, 0)
 
@@ -1448,10 +1351,7 @@ func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 
 // GetDeclaredForeignKeys implements the interface sql.ForeignKeyTable.
 func (t *Table) GetDeclaredForeignKeys(ctx *sql.Context) ([]sql.ForeignKeyConstraint, error) {
-	data, err := t.sessionTableData(ctx)
-	if err != nil {
-		return nil, err
-	}
+	data := t.sessionTableData(ctx)
 	
 	//TODO: may not be the best location, need to handle db as well
 	var fks []sql.ForeignKeyConstraint
@@ -1466,12 +1366,9 @@ func (t *Table) GetDeclaredForeignKeys(ctx *sql.Context) ([]sql.ForeignKeyConstr
 
 // GetReferencedForeignKeys implements the interface sql.ForeignKeyTable.
 func (t *Table) GetReferencedForeignKeys(ctx *sql.Context) ([]sql.ForeignKeyConstraint, error) {
-	data, err := t.sessionTableData(ctx)
-	if err != nil {
-		return nil, err
-	}
+	data := t.sessionTableData(ctx)
 
-	//TODO: may not be the best location, need to handle db as well
+	// TODO: may not be the best location, need to handle db as well
 	var fks []sql.ForeignKeyConstraint
 	lowerName := strings.ToLower(t.name)
 	for _, fk := range data.fkColl.Keys() {
@@ -1485,10 +1382,7 @@ func (t *Table) GetReferencedForeignKeys(ctx *sql.Context) ([]sql.ForeignKeyCons
 // AddForeignKey implements sql.ForeignKeyTable. Foreign partitionKeys are not enforced on update / delete.
 func (t *Table) AddForeignKey(ctx *sql.Context, fk sql.ForeignKeyConstraint) error {
 	sess := SessionFromContext(ctx)
-	data, err := sess.tableData(t)
-	if err != nil {
-		return err
-	}
+	data := sess.tableData(t)
 	
 	lowerName := strings.ToLower(fk.Name)
 	for _, key := range data.fkColl.Keys() {
@@ -1504,10 +1398,7 @@ func (t *Table) AddForeignKey(ctx *sql.Context, fk sql.ForeignKeyConstraint) err
 // DropForeignKey implements sql.ForeignKeyTable.
 func (t *Table) DropForeignKey(ctx *sql.Context, fkName string) error {
 	sess := SessionFromContext(ctx)
-	data, err := sess.tableData(t)
-	if err != nil {
-		return err
-	}
+	data := sess.tableData(t)
 	
 	if data.fkColl.DropFK(fkName) {
 		return nil
@@ -1519,10 +1410,7 @@ func (t *Table) DropForeignKey(ctx *sql.Context, fkName string) error {
 // UpdateForeignKey implements sql.ForeignKeyTable.
 func (t *Table) UpdateForeignKey(ctx *sql.Context, fkName string, fk sql.ForeignKeyConstraint) error {
 	sess := SessionFromContext(ctx)
-	data, err := sess.tableData(t)
-	if err != nil {
-		return err
-	}
+	data := sess.tableData(t)
 	
 	data.fkColl.DropFK(fkName)
 	lowerName := strings.ToLower(fk.Name)
@@ -1543,10 +1431,7 @@ func (t *Table) CreateIndexForForeignKey(ctx *sql.Context, idx sql.IndexDef) err
 
 // SetForeignKeyResolved implements sql.ForeignKeyTable.
 func (t *Table) SetForeignKeyResolved(ctx *sql.Context, fkName string) error {
-	data, err := t.sessionTableData(ctx)
-	if err != nil {
-		return err
-	}
+	data := t.sessionTableData(ctx)
 
 	if !data.fkColl.SetResolved(fkName) {
 		return sql.ErrForeignKeyNotFound.New(fkName, t.name)
@@ -1561,28 +1446,20 @@ func (t *Table) GetForeignKeyEditor(ctx *sql.Context) sql.ForeignKeyEditor {
 
 // GetChecks implements sql.CheckTable
 func (t *Table) GetChecks(ctx *sql.Context) ([]sql.CheckDefinition, error) {
-	data, err := t.sessionTableData(ctx)
-	if err != nil {
-		return nil, err
-	}
-	
+	data := t.sessionTableData(ctx)
 	return data.checks, nil
 }
 
-func (t *Table) sessionTableData(ctx *sql.Context) (*TableData, error) {
+func (t *Table) sessionTableData(ctx *sql.Context) *TableData {
 	sess := SessionFromContext(ctx)
 	return sess.tableData(t)
 }
 
 // CreateCheck implements sql.CheckAlterableTable
 func (t *Table) CreateCheck(ctx *sql.Context, check *sql.CheckDefinition) error {
-	data, err := t.sessionTableData(ctx)
-	if err != nil {
-		return err
-	}
-
+	data := t.sessionTableData(ctx)
+	
 	toInsert := *check
-
 	if toInsert.Name == "" {
 		toInsert.Name = data.generateCheckName()
 	}
@@ -1599,10 +1476,7 @@ func (t *Table) CreateCheck(ctx *sql.Context, check *sql.CheckDefinition) error 
 
 // DropCheck implements sql.CheckAlterableTable.
 func (t *Table) DropCheck(ctx *sql.Context, chName string) error {
-	data, err := t.sessionTableData(ctx)
-	if err != nil {
-		return err
-	}
+	data := t.sessionTableData(ctx)
 	
 	lowerName := strings.ToLower(chName)
 	for i, key := range data.checks {
@@ -1674,10 +1548,7 @@ func (t *Table) createIndex(data *TableData, name string, columns []sql.IndexCol
 // CreateIndex implements sql.IndexAlterableTable
 func (t *Table) CreateIndex(ctx *sql.Context, idx sql.IndexDef) error {
 	sess := SessionFromContext(ctx)
-	data, err := sess.tableData(t)
-	if err != nil {
-		return err
-	}
+	data := sess.tableData(t)
 
 	if data.indexes == nil {
 		data.indexes = make(map[string]sql.Index)
@@ -1697,10 +1568,7 @@ func (t *Table) CreateIndex(ctx *sql.Context, idx sql.IndexDef) error {
 
 // DropIndex implements sql.IndexAlterableTable
 func (t *Table) DropIndex(ctx *sql.Context, indexName string) error {
-	data, err := t.sessionTableData(ctx)
-	if err != nil {
-		return err
-	}
+	data := t.sessionTableData(ctx)
 	
 	for name := range data.indexes {
 		if strings.ToLower(name) == strings.ToLower(indexName) {
@@ -1714,10 +1582,7 @@ func (t *Table) DropIndex(ctx *sql.Context, indexName string) error {
 
 // RenameIndex implements sql.IndexAlterableTable
 func (t *Table) RenameIndex(ctx *sql.Context, fromIndexName string, toIndexName string) error {
-	data, err := t.sessionTableData(ctx)
-	if err != nil {
-		return err
-	}
+	data := t.sessionTableData(ctx)
 
 	if fromIndexName == toIndexName {
 		return nil
@@ -1733,10 +1598,7 @@ func (t *Table) RenameIndex(ctx *sql.Context, fromIndexName string, toIndexName 
 // CreateFulltextIndex implements fulltext.IndexAlterableTable
 func (t *Table) CreateFulltextIndex(ctx *sql.Context, indexDef sql.IndexDef, keyCols fulltext.KeyColumns, tableNames fulltext.IndexTableNames) error {
 	sess := SessionFromContext(ctx)
-	data, err := sess.tableData(t)
-	if err != nil {
-		return err
-	}
+	data := sess.tableData(t)
 
 	if len(t.fullTextConfigTableName) > 0 {
 		if t.fullTextConfigTableName != tableNames.Config {
@@ -1775,10 +1637,7 @@ func (t *Table) ModifyStoredCollation(ctx *sql.Context, collation sql.CollationI
 
 // ModifyDefaultCollation implements sql.CollationAlterableTable
 func (t *Table) ModifyDefaultCollation(ctx *sql.Context, collation sql.CollationID) error {
-	data, err := t.sessionTableData(ctx)
-	if err != nil {
-		return err
-	}
+	data := t.sessionTableData(ctx)
 
 	data.collation = collation
 	return nil
@@ -1825,10 +1684,7 @@ func (t *Table) Filters() []sql.Expression {
 
 // CreatePrimaryKey implements the PrimaryKeyAlterableTable
 func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) error {
-	data, err := t.sessionTableData(ctx)
-	if err != nil {
-		return err
-	}
+	data := t.sessionTableData(ctx)
 	
 	// TODO: create alternate table implementation that doesn't implement rewriter to test this
 	// First check that a primary key already exists
@@ -1944,10 +1800,7 @@ func normalizeSchemaForRewrite(newSch sql.PrimaryKeySchema) sql.PrimaryKeySchema
 // DropPrimaryKey implements the PrimaryKeyAlterableTable
 // TODO: get rid of this / make it error?
 func (t *Table) DropPrimaryKey(ctx *sql.Context) error {
-	data, err := t.sessionTableData(ctx)
-	if err != nil {
-		return err
-	}
+	data := t.sessionTableData(ctx)
 	
 	// Must drop auto increment property before dropping primary key
 	if data.schema.HasAutoIncrement() {
@@ -2050,21 +1903,6 @@ func (i *indexKeyValueIter) Next(ctx *sql.Context) ([]interface{}, []byte, error
 
 func (i *indexKeyValueIter) Close(ctx *sql.Context) error {
 	return i.iter.Close(ctx)
-}
-
-// TODO: consolidate into checkRow?
-func verifyRowTypes(row sql.Row, schema sql.Schema) {
-	if len(row) == len(schema) {
-		for i := range schema {
-			col := schema[i]
-			rowVal := row[i]
-			valType := reflect.TypeOf(rowVal)
-			expectedType := col.Type.ValueType()
-			if valType != expectedType && rowVal != nil && !valType.AssignableTo(expectedType) {
-				panic(fmt.Errorf("Actual Value Type: %s, Expected Value Type: %s", valType.String(), expectedType.String()))
-			}
-		}
-	}
 }
 
 // NewHistogramMapFromTable will construct a HistogramMap given a Table

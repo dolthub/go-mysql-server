@@ -16,11 +16,13 @@ package memory
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
 	"strconv"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 // TableData encapsulates all schema and data for a table's schema and rows. Other aspects of a table can change
@@ -265,3 +267,69 @@ func (td *TableData) sortRows() {
 
 	sort.Sort(partitionssort{td.partitions, idx, less})
 }
+
+func insertValueInRows(ctx *sql.Context, data *TableData, colIdx int, colDefault *sql.ColumnDefaultValue) error {
+	for k, p := range data.partitions {
+		newP := make([]sql.Row, len(p))
+		for i, row := range p {
+			var newRow sql.Row
+			newRow = append(newRow, row[:colIdx]...)
+			newRow = append(newRow, nil)
+			newRow = append(newRow, row[colIdx:]...)
+			var err error
+			if !data.schema.Schema[colIdx].Nullable && colDefault == nil {
+				newRow[colIdx] = data.schema.Schema[colIdx].Type.Zero()
+			} else {
+				newRow[colIdx], err = colDefault.Eval(ctx, newRow)
+				if err != nil {
+					return err
+				}
+			}
+			newP[i] = newRow
+		}
+		data.partitions[k] = newP
+	}
+	return nil
+}
+
+func rowsAreEqual(ctx *sql.Context, schema sql.Schema, left, right sql.Row) (bool, error) {
+	if len(left) != len(right) || len(left) != len(schema) {
+		return false, nil
+	}
+
+	for index := range left {
+		typ := schema[index].Type
+		if typ.Type() != sqltypes.TypeJSON {
+			if left[index] != right[index] {
+				return false, nil
+			}
+			continue
+		}
+
+		// TODO should Type.Compare be used for all columns?
+		cmp, err := typ.Compare(left[index], right[index])
+		if err != nil {
+			return false, err
+		}
+		if cmp != 0 {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+// TODO: consolidate into checkRow?
+func verifyRowTypes(row sql.Row, schema sql.Schema) {
+	if len(row) == len(schema) {
+		for i := range schema {
+			col := schema[i]
+			rowVal := row[i]
+			valType := reflect.TypeOf(rowVal)
+			expectedType := col.Type.ValueType()
+			if valType != expectedType && rowVal != nil && !valType.AssignableTo(expectedType) {
+				panic(fmt.Errorf("Actual Value Type: %s, Expected Value Type: %s", valType.String(), expectedType.String()))
+			}
+		}
+	}
+}
+

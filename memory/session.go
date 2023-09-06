@@ -93,14 +93,14 @@ func (s *Session) clearEditAccumulator(t *Table) {
 }
 
 // tableData returns the table data for this session for the table provided 
-func (s *Session) tableData(t *Table) (*TableData, error) {
+func (s *Session) tableData(t *Table) *TableData {
 	td, ok := s.tables[key(t.data)]
 	if !ok {
 		s.tables[key(t.data)] = t.data
-		return t.data, nil
+		return t.data
 	}
-	
-	return td, nil
+
+	return td
 }
 
 // putTable stores the table data for this session for the table provided 
