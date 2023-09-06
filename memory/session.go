@@ -64,10 +64,12 @@ func (s *Transaction) IsReadOnly() bool {
 // editAccumulator returns the edit accumulator for the table provided for this session, creating one if it
 // doesn't exist
 func (s *Session) editAccumulator(t *Table) tableEditAccumulator {
-	ea, ok := s.editAccumulators[key(t.data)]
+	tableKey := key(t.data)
+	ea, ok := s.editAccumulators[tableKey]
 	if !ok {
-		ea = NewTableEditAccumulator(t.copy())
-		s.editAccumulators[key(t.data)] = ea
+		data := t.copy()
+		ea = NewTableEditAccumulator(data)
+		s.editAccumulators[tableKey] = ea
 	}
 	
 	return ea

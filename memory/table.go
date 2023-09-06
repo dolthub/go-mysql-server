@@ -661,7 +661,6 @@ func (t *Table) newTableEditor(ctx *sql.Context) (sql.TableEditor, error) {
 	sess := SessionFromContext(ctx)
 	ed := sess.editAccumulator(t)
 	
-	
 	uniqIdxCols, prefixLengths := t.data.indexColsForTableEditor()
 	var editor sql.TableEditor = &tableEditor{
 		editedTable:       ed.Table(),

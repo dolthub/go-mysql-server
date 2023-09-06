@@ -514,7 +514,7 @@ func (pke *pkTableEditAccumulator) deleteHelper(ctx *sql.Context, table *Table, 
 			}
 
 			var err error
-			matches, err = rowsAreEqual(ctx, table.Schema(), row, partitionRow)
+			matches, err = rowsAreEqual(table.Schema(), row, partitionRow)
 			if err != nil {
 				return err
 			}
@@ -690,7 +690,7 @@ func (k *keylessTableEditAccumulator) deleteHelper(ctx *sql.Context, table *Tabl
 		for partitionRowIndex, partitionRow := range partition {
 			matches = true
 			var err error
-			matches, err = rowsAreEqual(ctx, table.data.schema.Schema, row, partitionRow)
+			matches, err = rowsAreEqual(table.data.schema.Schema, row, partitionRow)
 			if err != nil {
 				return err
 			}

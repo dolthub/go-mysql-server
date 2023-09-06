@@ -187,56 +187,17 @@ func TestSingleScript(t *testing.T) {
 	// t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "alter keyless table",
+			Name: "insert with auto increment",
 			SetUpScript: []string{
-				"create table t (c1 int, c2 varchar(200), c3 enum('one', 'two'));",
-				"insert into t values (1, 'one', NULL);",
+				"create table mytable (i int primary key auto_increment, s varchar(20))",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    `alter table t modify column c1 int unsigned`,
-					Expected: []sql.Row{{types.NewOkResult(0)}},
-				},
-				{
-					Query: "describe t;",
-					Expected: []sql.Row{
-						{"c1", "int unsigned", "YES", "", "NULL", ""},
-						{"c2", "varchar(200)", "YES", "", "NULL", ""},
-						{"c3", "enum('one','two')", "YES", "", "NULL", ""},
-					},
-				},
-				{
-					Query:    `alter table t drop column c1;`,
-					Expected: []sql.Row{{types.NewOkResult(0)}},
-				},
-				{
-					Query: "show create table t",
-					Expected: []sql.Row{sql.Row{"t",
-						"CREATE TABLE `t` (\n" +
-						"  `c1` int unsigned,\n" +
-						"  `c2` varchar(200),\n" +
-						"  `c3` enum('one','two')\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-				},
-				{
-					Query:    "alter table t add column new3 int;",
-					Expected: []sql.Row{{types.NewOkResult(0)}},
-				},
-				{
-					Query:    `insert into t values ('two', 'two', -2);`,
-					Expected: []sql.Row{{types.NewOkResult(1)}},
-				},
-				{
-					Query: "describe t;",
-					Expected: []sql.Row{
-						{"c2", "varchar(200)", "YES", "", "NULL", ""},
-						{"c3", "enum('one','two')", "YES", "", "NULL", ""},
-						{"new3", "int", "YES", "", "NULL", ""},
-					},
-				},
-				{
-					Query:    "select * from t;",
-					Expected: []sql.Row{{"one", nil, nil}, {"two", uint64(2), -2}},
+					Query: `insert into mytable (s) values ('a'), ('b'), ('c')`,
+					Expected: []sql.Row{{types.OkResult{
+						RowsAffected: 3,
+						InsertID:     3,
+					}}},
 				},
 			},
 		},

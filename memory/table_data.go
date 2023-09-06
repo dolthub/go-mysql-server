@@ -291,7 +291,7 @@ func insertValueInRows(ctx *sql.Context, data *TableData, colIdx int, colDefault
 	return nil
 }
 
-func rowsAreEqual(ctx *sql.Context, schema sql.Schema, left, right sql.Row) (bool, error) {
+func rowsAreEqual(schema sql.Schema, left, right sql.Row) (bool, error) {
 	if len(left) != len(right) || len(left) != len(schema) {
 		return false, nil
 	}
