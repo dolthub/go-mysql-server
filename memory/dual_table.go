@@ -30,10 +30,10 @@ var DualTableSchema = sql.NewPrimaryKeySchema(sql.Schema{
 func NewDualTable() *Table {
 	tbl := NewTable(nil, DualTableName, DualTableSchema, nil)
 	part := []byte { 0 }
-	tbl.partitions = map[string][]sql.Row {
+	tbl.data.partitions = map[string][]sql.Row {
 		string(part): { { "x" } },
 	}
-	tbl.partitionKeys = [][]byte { part }
+	tbl.data.partitionKeys = [][]byte { part }
 
 	return tbl
 }

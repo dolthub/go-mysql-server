@@ -113,6 +113,7 @@ func (s *Session) tableData(ctx *sql.Context, t *Table) (*TableData, error) {
 	td, ok := s.tables[key(t.data)]
 	if !ok {
 		s.tables[key(t.data)] = t.data
+		return t.data, nil
 	}
 	
 	return td, nil

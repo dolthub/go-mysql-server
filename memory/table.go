@@ -144,10 +144,15 @@ func NewPartitionedTableWithCollation(db *BaseDatabase, name string, schema sql.
 
 	schema.Schema = newSchema
 
+	// The dual table has a nil database
+	dbName := ""
+	if db != nil {
+		dbName = db.Name()
+	}
 	return &Table{
 		name:          name,
 		data: &TableData{
-			dbName:        db.Name(),
+			dbName:        dbName,
 			tableName:     name,
 			schema:        schema,
 			fkColl:        fkColl,
@@ -1820,8 +1825,7 @@ func (t *Table) Filters() []sql.Expression {
 
 // CreatePrimaryKey implements the PrimaryKeyAlterableTable
 func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) error {
-	sess := SessionFromContext(ctx)
-	data, err := sess.tableData(ctx, t)
+	data, err := t.sessionTableData(ctx)
 	if err != nil {
 		return err
 	}
