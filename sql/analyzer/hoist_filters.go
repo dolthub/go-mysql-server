@@ -22,16 +22,22 @@ func hoistOutOfScopeFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pl
 		return n, transform.SameTree, nil
 	default:
 	}
-	ret, same, filters, newCorr, err := recurseSubqueryForOuterFilters(n, a, sql.ColSet{})
+
+	inCorr := sql.ColSet{}
+	if sq, ok := n.(*plan.SubqueryAlias); ok {
+		inCorr = sq.Correlated
+	}
+
+	// todo: seems like inCorr/outCorr should match
+	ret, same, filters, outCorr, err := recurseSubqueryForOuterFilters(n, a, inCorr)
 	if len(filters) != 0 {
 		return n, transform.SameTree, fmt.Errorf("rule 'hoistOutOfScopeFilters' tried to hoist filters above root node")
 	}
-	switch n := ret.(type) {
-	case *plan.SubqueryAlias:
-		return n.WithCorrelated(newCorr), same, err
-	default:
-		return ret, same, err
+
+	if sq, ok := ret.(*plan.SubqueryAlias); ok {
+		ret = sq.WithCorrelated(outCorr)
 	}
+	return ret, same, err
 }
 
 // recurseSubqueryForOuterFilters recursively hoists filters that belong

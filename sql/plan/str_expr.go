@@ -12,7 +12,7 @@ func AliasSubqueryString(e sql.Expression) string {
 	e, _, err := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
 		case *Subquery:
-			return e.WithQuery(NewStrExpr(e.QueryString)), transform.NewTree, nil
+			return NewSubquery(NewStrExpr(e.QueryString), e.QueryString), transform.NewTree, nil
 		default:
 			return e, transform.SameTree, nil
 		}
