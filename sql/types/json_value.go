@@ -566,9 +566,6 @@ func jsonObjectDeterministicOrder(a, b map[string]interface{}, inter []string) (
 
 func (doc JSONDocument) Insert(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
 	path = strings.TrimSpace(path)
-	if path == "$" {
-		return doc, false, nil
-	}
 	return doc.unwrapAndExecute(ctx, path, val, INSERT)
 }
 
@@ -583,29 +580,11 @@ func (doc JSONDocument) Remove(ctx *sql.Context, path string) (MutableJSONValue,
 
 func (doc JSONDocument) Set(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
 	path = strings.TrimSpace(path)
-
-	if path == "$" {
-		res, err := val.Unmarshall(ctx)
-		if err != nil {
-			return nil, false, err
-		}
-		return res, true, nil
-	}
-
 	return doc.unwrapAndExecute(ctx, path, val, SET)
 }
 
 func (doc JSONDocument) Replace(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
 	path = strings.TrimSpace(path)
-
-	if path == "$" {
-		res, err := val.Unmarshall(ctx)
-		if err != nil {
-			return nil, false, err
-		}
-		return res, true, nil
-	}
-
 	return doc.unwrapAndExecute(ctx, path, val, REPLACE)
 }
 
@@ -666,6 +645,18 @@ type parseErr struct {
 // Currently, our implementation focuses specifically on the mutation operations, so '*','**', and range index paths are
 // not supported.
 func walkPathAndUpdate(path string, doc interface{}, val interface{}, mode int, cursor *int) (interface{}, bool, *parseErr) {
+	if path == "" {
+		// End of Path is kind of a special snowflake for each type and mode.
+		switch mode {
+		case SET, REPLACE:
+			return val, true, nil
+		case INSERT:
+			return doc, false, nil
+		default:
+			return nil, false, &parseErr{msg: "Invalid JSON path expression. End of path reached", character: *cursor}
+		}
+	}
+
 	if path[0] == '.' {
 		path = path[1:]
 		*cursor = *cursor + 1
@@ -686,7 +677,7 @@ func walkPathAndUpdate(path string, doc interface{}, val interface{}, mode int, 
 		indexString := path[1:right]
 
 		if arr, ok := doc.([]interface{}); ok {
-			return updateArray(indexString, remaining, doc, arr, val, mode, cursor)
+			return updateArray(indexString, remaining, arr, val, mode, cursor)
 		} else {
 			return updateObjectTreatAsArray(indexString, doc, val, mode, cursor)
 		}
@@ -765,7 +756,7 @@ func parseNameAfterDot(path string, cursor *int) (name string, remainingPath str
 // updateArray will update an array element appropriately when the path element is an array. This includes parsing
 // the special indexes. If there are more elements in the path after this element look up, the update will be performed
 // by the walkPathAndUpdate function.
-func updateArray(indexString string, remaining string, doc interface{}, arr []interface{}, val interface{}, mode int, cursor *int) (interface{}, bool, *parseErr) {
+func updateArray(indexString string, remaining string, arr []interface{}, val interface{}, mode int, cursor *int) (interface{}, bool, *parseErr) {
 	index, err := parseIndex(indexString, len(arr)-1, cursor)
 	if err != nil {
 		return nil, false, err
@@ -773,7 +764,7 @@ func updateArray(indexString string, remaining string, doc interface{}, arr []in
 
 	// All operations, except for SET, ignore the underflow case.
 	if index.underflow && (mode != SET) {
-		return doc, false, nil
+		return arr, false, nil
 	}
 
 	if len(arr) > index.index && !index.overflow {
@@ -784,10 +775,10 @@ func updateArray(indexString string, remaining string, doc interface{}, arr []in
 				arr[index.index] = val
 				updated = true
 			} else if mode == REMOVE {
-				doc = append(arr[:index.index], arr[index.index+1:]...)
+				arr = append(arr[:index.index], arr[index.index+1:]...)
 				updated = true
 			}
-			return doc, updated, nil
+			return arr, updated, nil
 		} else {
 			newVal, changed, err := walkPathAndUpdate(remaining, arr[index.index], val, mode, cursor)
 			if err != nil {
@@ -795,9 +786,9 @@ func updateArray(indexString string, remaining string, doc interface{}, arr []in
 			}
 			if changed {
 				arr[index.index] = newVal
-				return doc, true, nil
+				return arr, true, nil
 			} else {
-				return doc, false, nil
+				return arr, false, nil
 			}
 		}
 	} else {
@@ -805,7 +796,7 @@ func updateArray(indexString string, remaining string, doc interface{}, arr []in
 			newArr := append(arr, val)
 			return newArr, true, nil
 		}
-		return doc, false, nil
+		return arr, false, nil
 	}
 }
 
