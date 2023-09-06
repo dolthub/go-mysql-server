@@ -859,7 +859,7 @@ func (t *Table) GetNextAutoIncrementValue(ctx *sql.Context, insertVal interface{
 
 func (t *Table) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.ColumnOrder) error {
 	sess := SessionFromContext(ctx)
-	data, err := sess.tableData(ctx, t)
+	data, err := sess.tableData(t)
 	if err != nil {
 		return err
 	}
@@ -874,7 +874,7 @@ func (t *Table) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.Colum
 		return err
 	}
 	
-	sess.putTable(ctx, data)
+	sess.putTable(data)
 	return nil
 }
 
@@ -989,7 +989,7 @@ func insertValueInRows(ctx *sql.Context, data *TableData, colIdx int, colDefault
 
 func (t *Table) DropColumn(ctx *sql.Context, columnName string) error {
 	sess := SessionFromContext(ctx)
-	data, err := sess.tableData(ctx, t)
+	data, err := sess.tableData(t)
 	if err != nil {
 		return err
 	}
@@ -1006,7 +1006,7 @@ func (t *Table) DropColumn(ctx *sql.Context, columnName string) error {
 		data.partitions[k] = newP
 	}
 	
-	sess.putTable(ctx, data)
+	sess.putTable(data)
 	
 	return nil
 }
@@ -1051,7 +1051,7 @@ func dropColumnFromSchema(ctx *sql.Context, data *TableData, columnName string) 
 
 func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Column, order *sql.ColumnOrder) error {
 	sess := SessionFromContext(ctx)
-	data, err := sess.tableData(ctx, t)
+	data, err := sess.tableData(t)
 	if err != nil {
 		return err
 	}
@@ -1150,7 +1150,7 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 		}
 	}
 	
-	sess.putTable(ctx, data)
+	sess.putTable(data)
 
 	return nil
 }
@@ -1485,7 +1485,7 @@ func (t *Table) GetReferencedForeignKeys(ctx *sql.Context) ([]sql.ForeignKeyCons
 // AddForeignKey implements sql.ForeignKeyTable. Foreign partitionKeys are not enforced on update / delete.
 func (t *Table) AddForeignKey(ctx *sql.Context, fk sql.ForeignKeyConstraint) error {
 	sess := SessionFromContext(ctx)
-	data, err := sess.tableData(ctx, t)
+	data, err := sess.tableData(t)
 	if err != nil {
 		return err
 	}
@@ -1504,7 +1504,7 @@ func (t *Table) AddForeignKey(ctx *sql.Context, fk sql.ForeignKeyConstraint) err
 // DropForeignKey implements sql.ForeignKeyTable.
 func (t *Table) DropForeignKey(ctx *sql.Context, fkName string) error {
 	sess := SessionFromContext(ctx)
-	data, err := sess.tableData(ctx, t)
+	data, err := sess.tableData(t)
 	if err != nil {
 		return err
 	}
@@ -1519,7 +1519,7 @@ func (t *Table) DropForeignKey(ctx *sql.Context, fkName string) error {
 // UpdateForeignKey implements sql.ForeignKeyTable.
 func (t *Table) UpdateForeignKey(ctx *sql.Context, fkName string, fk sql.ForeignKeyConstraint) error {
 	sess := SessionFromContext(ctx)
-	data, err := sess.tableData(ctx, t)
+	data, err := sess.tableData(t)
 	if err != nil {
 		return err
 	}
@@ -1571,7 +1571,7 @@ func (t *Table) GetChecks(ctx *sql.Context) ([]sql.CheckDefinition, error) {
 
 func (t *Table) sessionTableData(ctx *sql.Context) (*TableData, error) {
 	sess := SessionFromContext(ctx)
-	return sess.tableData(ctx, t)
+	return sess.tableData(t)
 }
 
 // CreateCheck implements sql.CheckAlterableTable
@@ -1674,7 +1674,7 @@ func (t *Table) createIndex(data *TableData, name string, columns []sql.IndexCol
 // CreateIndex implements sql.IndexAlterableTable
 func (t *Table) CreateIndex(ctx *sql.Context, idx sql.IndexDef) error {
 	sess := SessionFromContext(ctx)
-	data, err := sess.tableData(ctx, t)
+	data, err := sess.tableData(t)
 	if err != nil {
 		return err
 	}
@@ -1690,7 +1690,7 @@ func (t *Table) CreateIndex(ctx *sql.Context, idx sql.IndexDef) error {
 
 	// Store the computed index name in the case of an empty index name being passed in
 	data.indexes[index.ID()] = index 
-	sess.putTable(ctx, data)
+	sess.putTable(data)
 	
 	return nil
 }
@@ -1733,7 +1733,7 @@ func (t *Table) RenameIndex(ctx *sql.Context, fromIndexName string, toIndexName 
 // CreateFulltextIndex implements fulltext.IndexAlterableTable
 func (t *Table) CreateFulltextIndex(ctx *sql.Context, indexDef sql.IndexDef, keyCols fulltext.KeyColumns, tableNames fulltext.IndexTableNames) error {
 	sess := SessionFromContext(ctx)
-	data, err := sess.tableData(ctx, t)
+	data, err := sess.tableData(t)
 	if err != nil {
 		return err
 	}
@@ -1763,7 +1763,7 @@ func (t *Table) CreateFulltextIndex(ctx *sql.Context, indexDef sql.IndexDef, key
 	}
 
 	data.indexes[index.ID()] = index // We should store the computed index name in the case of an empty index name being passed in
-	sess.putTable(ctx, data)
+	sess.putTable(data)
 	
 	return nil
 }

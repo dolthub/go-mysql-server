@@ -93,7 +93,7 @@ func (s *Session) clearEditAccumulator(t *Table) {
 }
 
 // tableData returns the table data for this session for the table provided 
-func (s *Session) tableData(ctx *sql.Context, t *Table) (*TableData, error) {
+func (s *Session) tableData(t *Table) (*TableData, error) {
 	td, ok := s.tables[key(t.data)]
 	if !ok {
 		s.tables[key(t.data)] = t.data
@@ -104,7 +104,7 @@ func (s *Session) tableData(ctx *sql.Context, t *Table) (*TableData, error) {
 }
 
 // putTable stores the table data for this session for the table provided 
-func (s *Session) putTable(ctx *sql.Context, d *TableData) {
+func (s *Session) putTable(d *TableData) {
 	s.tables[key(d)] = d
 	delete(s.editAccumulators, key(d))
 }

@@ -96,7 +96,7 @@ func (t *tableEditor) Close(ctx *sql.Context) error {
 	t.ea.Clear()
 	
 	// TODO: copy of data?
-	sess.putTable(ctx, t.editedTable.data)
+	sess.putTable(t.editedTable.data)
 	return nil
 }
 
@@ -120,7 +120,9 @@ func (t *tableEditor) StatementComplete(ctx *sql.Context) error {
 	}
 	
 	t.ea.Clear()
-	t.editedTable.db.putTable(t.editedTable)
+	sess := SessionFromContext(ctx)
+	sess.putTable(t.editedTable.data)
+
 	return nil
 }
 
