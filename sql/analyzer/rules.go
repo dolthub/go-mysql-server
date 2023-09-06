@@ -71,8 +71,6 @@ var OnceAfterDefault = []Rule{
 	{applyHashInId, applyHashIn},
 	{assignRoutinesId, assignRoutines},
 	{modifyUpdateExprsForJoinId, modifyUpdateExpressionsForJoin},
-	{applyRowUpdateAccumulatorsId, applyUpdateAccumulators},
-	{wrapWithRollbackId, wrapWritesWithRollback},
 	{applyFKsId, applyForeignKeys},
 }
 
@@ -96,6 +94,8 @@ var OnceAfterAll = []Rule{
 	{resolveInsertRowsId, resolveInsertRows},
 	{applyTriggersId, applyTriggers},
 	{applyProceduresId, applyProcedures},
+	{applyRowUpdateAccumulatorsId, applyUpdateAccumulators},
+	{wrapWithRollbackId, wrapWritesWithRollback},
 	{inlineSubqueryAliasRefsId, inlineSubqueryAliasRefs},
 	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
 	{AutocommitId, addAutocommitNode},
