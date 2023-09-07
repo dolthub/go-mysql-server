@@ -659,12 +659,6 @@ func (t *Table) getRewriteTableEditor(ctx *sql.Context, oldSchema, newSchema sql
 		editor = tableUnderEdit.newFulltextTableEditor(ctx, editor, newTableSets)
 	}
 
-	// After we have the new schema for the table, we need to set it in the session so that some statements (like full
-	// text rewrites, multi-statement alter tables, etc.) get the table with the new schema when they call 
-	// db.GetTableInsensitive(). This seems like a bug.
-	// sess := SessionFromContext(ctx)
-	// sess.putTable(tableUnderEdit.data)
-	
 	return editor
 }
 
