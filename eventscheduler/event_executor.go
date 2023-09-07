@@ -99,7 +99,7 @@ func (ee *eventExecutor) start() {
 						}
 					}
 				} else {
-					logrus.Tracef("Not executing event %s yet, seconds until execution: %f", ee.list.peek(), secondsUntilExecution)
+					logrus.Tracef("Not executing event %s yet, seconds until execution: %f", ee.list.peek().name(), secondsUntilExecution)
 				}
 			}
 		}
