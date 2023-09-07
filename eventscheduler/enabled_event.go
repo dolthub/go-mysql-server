@@ -178,6 +178,16 @@ func (l *enabledEventsList) getNextExecutionTime() (time.Time, bool) {
 	return l.eventsList[0].nextExecutionAt, true
 }
 
+// peek returns the first element from the list, without removing it from the list.
+func (l *enabledEventsList) peek() *enabledEvent {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if len(l.eventsList) == 0 {
+		return nil
+	}
+	return l.eventsList[0]
+}
+
 // pop returns the first element and removes it from the list.
 func (l *enabledEventsList) pop() *enabledEvent {
 	l.mu.Lock()

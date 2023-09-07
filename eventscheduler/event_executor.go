@@ -60,6 +60,7 @@ func (ee *eventExecutor) start() {
 	ee.stop.Store(false)
 
 	for {
+		time.Sleep(1 * time.Second)
 		timeNow := time.Now()
 		if ee.stop.Load() {
 			return
@@ -68,7 +69,7 @@ func (ee *eventExecutor) start() {
 			nextAt, ok := ee.list.getNextExecutionTime()
 			if ok {
 				diff := nextAt.Sub(timeNow).Seconds()
-				if diff <= -0.0000001 {
+				if diff <= -1.0000001 {
 					// in case the execution time is past, re-evaluate it ( TODO: should not happen )
 					curEvent := ee.list.pop()
 					if curEvent != nil {
