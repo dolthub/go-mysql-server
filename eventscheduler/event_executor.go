@@ -20,6 +20,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -58,26 +60,31 @@ func (ee *eventExecutor) loadEvents(l []*enabledEvent) {
 // enabled events and updates necessary events' metadata.
 func (ee *eventExecutor) start() {
 	ee.stop.Store(false)
+	logrus.Trace("Starting eventExecutor")
 
+	pollingDuration := 1 * time.Second
 	for {
-		time.Sleep(1 * time.Second)
+		time.Sleep(pollingDuration)
 		timeNow := time.Now()
 		if ee.stop.Load() {
+			logrus.Trace("Stopping eventExecutor")
 			return
 		} else if ee.list.len() > 0 {
 			// safeguard list entry getting removed while in check
 			nextAt, ok := ee.list.getNextExecutionTime()
 			if ok {
-				diff := nextAt.Sub(timeNow).Seconds()
-				if diff <= -1.0000001 {
+				secondsUntilExecution := nextAt.Sub(timeNow).Seconds()
+				if secondsUntilExecution <= -1*pollingDuration.Seconds() {
 					// in case the execution time is past, re-evaluate it ( TODO: should not happen )
 					curEvent := ee.list.pop()
 					if curEvent != nil {
+						logrus.Warnf("Reevaluating event %s, seconds until execution: %f", curEvent.name(), secondsUntilExecution)
 						ee.reevaluateEvent(curEvent.edb, curEvent.event)
 					}
-				} else if diff <= 0.0000001 {
+				} else if secondsUntilExecution <= 0.0000001 {
 					curEvent := ee.list.pop()
 					if curEvent != nil {
+						logrus.Tracef("Executing event %s, seconds until execution: %f", curEvent.name(), secondsUntilExecution)
 						ctx, commit, err := ee.ctxGetterFunc()
 						if err != nil {
 							ctx.GetLogger().Errorf("Received error '%s' getting ctx in event scheduler", err)
@@ -91,6 +98,8 @@ func (ee *eventExecutor) start() {
 							ctx.GetLogger().Errorf("Received error '%s' executing event: %s", err, curEvent.event.Name)
 						}
 					}
+				} else {
+					logrus.Tracef("Not executing event %s yet, seconds until execution: %f", ee.list.peek(), secondsUntilExecution)
 				}
 			}
 		}
