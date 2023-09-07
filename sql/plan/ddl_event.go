@@ -236,7 +236,7 @@ func (c *CreateEvent) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 func (c *CreateEvent) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
 	eventCreationTime := ctx.QueryTime()
 	// TODO: event time values are evaluated in 'SYSTEM' TZ for now (should be session TZ)
-	parsedEventDefinition, err := c.GetParsedEventDefinition(ctx, eventCreationTime, eventCreationTime, time.Time{}, gmstime.SystemTimezoneOffset())
+	eventDefinition, err := c.GetEventDefinition(ctx, eventCreationTime, eventCreationTime, time.Time{}, gmstime.SystemTimezoneOffset())
 	if err != nil {
 		return nil, err
 	}
@@ -247,7 +247,7 @@ func (c *CreateEvent) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) 
 	}
 
 	return &createEventIter{
-		event:          parsedEventDefinition,
+		event:          eventDefinition,
 		eventDb:        eventDb,
 		ifNotExists:    c.IfNotExists,
 		eventScheduler: c.eventScheduler,
@@ -261,9 +261,9 @@ func (c *CreateEvent) WithEventScheduler(scheduler sql.EventScheduler) sql.Node 
 	return &nc
 }
 
-// GetParsedEventDefinition returns an EventDefinition object with all of its fields populated from the details
+// GetEventDefinition returns an EventDefinition object with all of its fields populated from the details
 // of this CREATE EVENT statement.
-func (c *CreateEvent) GetParsedEventDefinition(ctx *sql.Context, eventCreationTime, lastAltered, lastExecuted time.Time, tz string) (sql.EventDefinition, error) {
+func (c *CreateEvent) GetEventDefinition(ctx *sql.Context, eventCreationTime, lastAltered, lastExecuted time.Time, tz string) (sql.EventDefinition, error) {
 	// TODO: support DISABLE ON SLAVE event status
 	if c.Status == sql.EventStatus_DisableOnSlave {
 		ctx.Session.Warn(&sql.Warning{
@@ -274,7 +274,7 @@ func (c *CreateEvent) GetParsedEventDefinition(ctx *sql.Context, eventCreationTi
 		c.Status = sql.EventStatus_Disable
 	}
 
-	parsedEventDefinition := sql.EventDefinition{
+	eventDefinition := sql.EventDefinition{
 		Name:                 c.EventName,
 		Definer:              c.Definer,
 		OnCompletionPreserve: c.OnCompPreserve,
@@ -286,8 +286,8 @@ func (c *CreateEvent) GetParsedEventDefinition(ctx *sql.Context, eventCreationTi
 
 	if c.At != nil {
 		var err error
-		parsedEventDefinition.HasExecuteAt = true
-		parsedEventDefinition.ExecuteAt, err = c.At.EvalTime(ctx, tz)
+		eventDefinition.HasExecuteAt = true
+		eventDefinition.ExecuteAt, err = c.At.EvalTime(ctx, tz)
 		if err != nil {
 			return sql.EventDefinition{}, err
 		}
@@ -298,30 +298,30 @@ func (c *CreateEvent) GetParsedEventDefinition(ctx *sql.Context, eventCreationTi
 		}
 		interval := sql.NewEveryInterval(delta.Years, delta.Months, delta.Days, delta.Hours, delta.Minutes, delta.Seconds)
 		iVal, iField := interval.GetIntervalValAndField()
-		parsedEventDefinition.ExecuteEvery = fmt.Sprintf("%s %s", iVal, iField)
+		eventDefinition.ExecuteEvery = fmt.Sprintf("%s %s", iVal, iField)
 
 		if c.Starts != nil {
-			parsedEventDefinition.Starts, err = c.Starts.EvalTime(ctx, tz)
+			eventDefinition.Starts, err = c.Starts.EvalTime(ctx, tz)
 			if err != nil {
 				return sql.EventDefinition{}, err
 			}
 		} else {
 			// If STARTS is not defined, it defaults to CURRENT_TIMESTAMP
-			parsedEventDefinition.Starts = eventCreationTime
+			eventDefinition.Starts = eventCreationTime
 		}
 		if c.Ends != nil {
-			parsedEventDefinition.HasEnds = true
-			parsedEventDefinition.Ends, err = c.Ends.EvalTime(ctx, tz)
+			eventDefinition.HasEnds = true
+			eventDefinition.Ends, err = c.Ends.EvalTime(ctx, tz)
 			if err != nil {
 				return sql.EventDefinition{}, err
 			}
 		}
 	}
 
-	parsedEventDefinition.CreatedAt = eventCreationTime
-	parsedEventDefinition.LastAltered = lastAltered
-	parsedEventDefinition.LastExecuted = lastExecuted
-	return parsedEventDefinition, nil
+	eventDefinition.CreatedAt = eventCreationTime
+	eventDefinition.LastAltered = lastAltered
+	eventDefinition.LastExecuted = lastExecuted
+	return eventDefinition, nil
 }
 
 // createEventIter is the row iterator for *CreateEvent.

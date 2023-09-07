@@ -85,7 +85,7 @@ type EventDefinition struct {
 	Ends                 time.Time
 }
 
-// ConvertTimesFromUTCToTz returns new EventDetails with all its time values converted
+// ConvertTimesFromUTCToTz returns a new EventDefinition with all its time values converted
 // from UTC TZ to the given TZ. This function should only be used when needing to display
 // data that includes the time values in string format for such as SHOW EVENTS or
 // SHOW CREATE EVENT statements.
@@ -125,7 +125,7 @@ func (e *EventDefinition) ConvertTimesFromUTCToTz(tz string) *EventDefinition {
 }
 
 // GetNextExecutionTime returns the next execution time for the event, which depends on AT
-// or EVERY field of EventDetails. It also returns whether the event is expired.
+// or EVERY field of EventDefinition. It also returns whether the event is expired.
 func (e *EventDefinition) GetNextExecutionTime(curTime time.Time) (time.Time, bool, error) {
 	if e.HasExecuteAt {
 		return e.ExecuteAt, e.ExecuteAt.Sub(curTime).Seconds() <= -1, nil
@@ -233,7 +233,7 @@ func (e EventStatus) String() string {
 }
 
 // EventStatusFromString returns EventStatus based on the given string value.
-// This function is used in Dolt to get EventStatus value for the EventDetails.
+// This function is used in Dolt to get EventStatus value for the EventDefinition.
 func EventStatusFromString(status string) (EventStatus, error) {
 	switch strings.ToLower(status) {
 	case "enable":
@@ -314,7 +314,7 @@ func (e *EventOnScheduleEveryInterval) GetIntervalValAndField() (string, string)
 
 // EventOnScheduleEveryIntervalFromString returns *EventOnScheduleEveryInterval parsing given interval string
 // such as `2 DAY` or `'1:2' MONTH_DAY`. This function is used in Dolt to construct EventOnScheduleEveryInterval value
-// for the EventDetails.
+// for the EventDefinition.
 func EventOnScheduleEveryIntervalFromString(every string) (*EventOnScheduleEveryInterval, error) {
 	errCannotParseEveryInterval := fmt.Errorf("cannot parse ON SCHEDULE EVERY interval: `%s`", every)
 	strs := strings.Split(every, " ")
@@ -377,6 +377,8 @@ func GetTimeValueFromStringInput(field, t string) (time.Time, error) {
 	// For MySQL datetime format, it accepts any valid date format
 	// and tries parsing time part first and timezone part if time part is valid.
 	// Otherwise, any invalid time or timezone part is truncated and gives warning.
+	// TODO: It seems like we should be able to reuse the timestamp parsing logic from Datetime.Convert.
+	//       Do we need to reimplement this here?
 	dt := strings.Split(t, "-")
 	if len(dt) > 1 {
 		var year, month, day, hour, minute, second int

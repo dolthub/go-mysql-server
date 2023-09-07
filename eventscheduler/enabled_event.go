@@ -33,35 +33,35 @@ type enabledEvent struct {
 	address         string
 }
 
-// newEnabledEventFromEventDetails returns new enabledEvent object and whether it is created successfully. An event
+// newEnabledEvent returns new enabledEvent object and whether it is created successfully. An event
 // with ENABLE status might NOT be created if the event SCHEDULE is ended/expired. If the event is expired,
 // then this function either updates its status in the database or drops it from the database.
-func newEnabledEventFromEventDetails(ctx *sql.Context, edb sql.EventDatabase, ed sql.EventDefinition, curTime time.Time) (*enabledEvent, bool, error) {
-	if ed.Status == sql.EventStatus_Enable.String() {
-		nextExecution, eventEnded, err := ed.GetNextExecutionTime(curTime)
+func newEnabledEvent(ctx *sql.Context, edb sql.EventDatabase, event sql.EventDefinition, curTime time.Time) (*enabledEvent, bool, error) {
+	if event.Status == sql.EventStatus_Enable.String() {
+		nextExecution, eventEnded, err := event.GetNextExecutionTime(curTime)
 		if err != nil {
 			return nil, false, err
 		} else if !eventEnded {
-			username, address, err := getUsernameAndAddressFromDefiner(ed.Definer)
+			username, address, err := getUsernameAndAddressFromDefiner(event.Definer)
 			if err != nil {
 				return nil, false, err
 			}
 			return &enabledEvent{
 				edb:             edb,
-				event:           ed,
+				event:           event,
 				nextExecutionAt: nextExecution,
 				username:        username,
 				address:         address,
 			}, true, nil
 		} else {
-			if ed.OnCompletionPreserve {
-				ed.Status = sql.EventStatus_Disable.String()
-				_, err = edb.UpdateEvent(ctx, ed.Name, ed)
+			if event.OnCompletionPreserve {
+				event.Status = sql.EventStatus_Disable.String()
+				_, err = edb.UpdateEvent(ctx, event.Name, event)
 				if err != nil {
 					return nil, false, err
 				}
 			} else {
-				err = edb.DropEvent(ctx, ed.Name)
+				err = edb.DropEvent(ctx, event.Name)
 				if err != nil {
 					return nil, false, err
 				}
@@ -71,7 +71,7 @@ func newEnabledEventFromEventDetails(ctx *sql.Context, edb sql.EventDatabase, ed
 	return nil, false, nil
 }
 
-// getUsernameAndAddressFromDefiner returns username and address parsed from given definer value of EventDetails.
+// getUsernameAndAddressFromDefiner returns username and address parsed from given definer value of an EventDefinition.
 func getUsernameAndAddressFromDefiner(definer string) (string, string, error) {
 	// make sure definer has username and address information here
 	ua := strings.Split(definer, "@")

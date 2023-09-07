@@ -160,7 +160,7 @@ func (es *EventScheduler) evaluateAllEventsAndLoadEnabledEvents(ctx *sql.Context
 				return nil, err
 			}
 			for _, eDef := range eDefs {
-				newEnabledEvent, created, err := newEnabledEventFromEventDetails(ctx, edb, eDef, time.Now())
+				newEnabledEvent, created, err := newEnabledEvent(ctx, edb, eDef, time.Now())
 				if err != nil {
 					return nil, err
 				} else if created {

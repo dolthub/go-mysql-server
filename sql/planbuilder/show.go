@@ -263,7 +263,7 @@ func (b *Builder) buildShowAllEvents(inScope *scope, s *ast.Show) (outScope *sco
 	}
 	db := b.resolveDb(dbName)
 	showEvents := plan.NewShowEvents(db)
-	showEvents.Events = b.loadAllEventDetails(db)
+	showEvents.Events = b.loadAllEventDefinitions(db)
 
 	var node sql.Node = showEvents
 	for _, c := range node.Schema() {
@@ -292,7 +292,7 @@ func (b *Builder) buildShowAllEvents(inScope *scope, s *ast.Show) (outScope *sco
 	return
 }
 
-func (b *Builder) loadAllEventDetails(db sql.Database) []sql.EventDefinition {
+func (b *Builder) loadAllEventDefinitions(db sql.Database) []sql.EventDefinition {
 	if eventDb, ok := db.(sql.EventDatabase); ok {
 		events, err := eventDb.GetEvents(b.ctx)
 		if err != nil {
