@@ -596,11 +596,6 @@ func (doc JSONDocument) Replace(ctx *sql.Context, path string, val JSONValue) (M
 
 func (doc JSONDocument) ArrayAppend(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
 	path = strings.TrimSpace(path)
-
-	if path == "$" {
-		return nil, false, fmt.Errorf("The path expression '$' is not allowed in this context.")
-	}
-
 	return doc.unwrapAndExecute(ctx, path, val, ARRAY_APPEND)
 }
 
@@ -690,12 +685,9 @@ func walkPathAndUpdate(path string, doc interface{}, val interface{}, mode int, 
 				doc = []interface{}{doc, val}
 				return doc, true, nil
 			}
-		case ARRAY_INSERT:
-			if arr, ok := doc.([]interface{}); ok {
-				panic(arr)
-			} else {
-				panic("should never get here")
-			}
+		case ARRAY_INSERT, REMOVE:
+			// Some mutations should never reach the end of the path.
+			return nil, false, &parseErr{msg: "Runtime error when processing json path", character: *cursor}
 		default:
 			return nil, false, &parseErr{msg: "Invalid JSON path expression. End of path reached", character: *cursor}
 		}
