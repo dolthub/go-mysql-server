@@ -1304,6 +1304,7 @@ func (t *Table) Projections() []string {
 // EnablePrimaryKeyIndexes enables the use of primary key indexes on this table.
 func (t *Table) EnablePrimaryKeyIndexes() {
 	t.pkIndexesEnabled = true
+	t.data.primaryKeyIndexes = true
 }
 
 // GetIndexes implements sql.IndexedTable
