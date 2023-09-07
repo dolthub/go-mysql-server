@@ -24,7 +24,6 @@ import (
 type Session struct {
 	*sql.BaseSession
 	dbProvider *DbProvider
-	editAccumulators map[tableKey]tableEditAccumulator
 	tables           map[tableKey]*TableData
 }
 
@@ -37,7 +36,6 @@ func NewSession(baseSession *sql.BaseSession, provider *DbProvider) *Session {
 	return &Session{
 		BaseSession:      baseSession,
 		dbProvider: 			 provider,
-		editAccumulators: make(map[tableKey]tableEditAccumulator),
 		tables:           make(map[tableKey]*TableData),
 	}
 }
@@ -60,21 +58,6 @@ func (s *Transaction) IsReadOnly() bool {
 	return s.readOnly
 }
 
-
-// editAccumulator returns the edit accumulator for the table provided for this session, creating one if it
-// doesn't exist
-func (s *Session) editAccumulator(t *Table) tableEditAccumulator {
-	tableKey := key(t.data)
-	ea, ok := s.editAccumulators[tableKey]
-	if !ok {
-		data := t.copy()
-		ea = NewTableEditAccumulator(data)
-		s.editAccumulators[tableKey] = ea
-	}
-	
-	return ea
-}
-
 type tableKey struct {
 	db string
 	table string
@@ -82,16 +65,6 @@ type tableKey struct {
 
 func key(t *TableData) tableKey {
 	return tableKey{strings.ToLower(t.dbName), strings.ToLower(t.tableName)}
-}
-
-// activeEditAccumulator returns the edit accumulator for the table provided for this session and whether it exists
-func (s *Session) activeEditAccumulator(t *Table) (tableEditAccumulator, bool) {
-	ea, ok := s.editAccumulators[key(t.data)]
-	return ea, ok
-}
-
-func (s *Session) clearEditAccumulator(t *Table) {
-	delete(s.editAccumulators, key(t.data))
 }
 
 // tableData returns the table data for this session for the table provided 
@@ -108,13 +81,11 @@ func (s *Session) tableData(t *Table) *TableData {
 // putTable stores the table data for this session for the table provided 
 func (s *Session) putTable(d *TableData) {
 	s.tables[key(d)] = d
-	delete(s.editAccumulators, key(d))
 }
 
 // StartTransaction clears session state and returns a new transaction object.
 // Because we don't support concurrency, we store table data changes in the session, rather than the transaction itself.
 func (s *Session) StartTransaction(ctx *sql.Context, tCharacteristic sql.TransactionCharacteristic) (sql.Transaction, error) {
-	s.editAccumulators = make(map[tableKey]tableEditAccumulator)
 	s.tables = make(map[tableKey]*TableData)
 	return &Transaction{tCharacteristic == sql.ReadOnly}, nil
 }
@@ -148,7 +119,6 @@ func (s *Session) CommitTransaction(ctx *sql.Context, tx sql.Transaction) error 
 }
 
 func (s *Session) Rollback(ctx *sql.Context, transaction sql.Transaction) error {
-	s.editAccumulators = make(map[tableKey]tableEditAccumulator)
 	s.tables = make(map[tableKey]*TableData)
 	return nil
 }

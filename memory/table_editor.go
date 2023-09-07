@@ -26,7 +26,6 @@ import (
 // tableEditor manages the edits that a targetTable receives.
 type tableEditor struct {
 	editedTable       *Table
-	targetTable       *Table
 	initialTable      *Table
 	schema            sql.Schema
 
@@ -48,7 +47,7 @@ var _ sql.AutoIncrementSetter = (*tableEditor)(nil)
 var _ sql.ForeignKeyEditor = (*tableEditor)(nil)
 
 func (t *tableEditor) Name() string {
-	return t.targetTable.name
+	return t.editedTable.name
 }
 
 func (t *tableEditor) String() string {
@@ -79,14 +78,11 @@ func (t *tableEditor) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 }
 
 func (t *tableEditor) Close(ctx *sql.Context) error {
-	sess := SessionFromContext(ctx)
-	defer func() {
-		sess.clearEditAccumulator(t.targetTable)
-	}()
-	
 	if t.discardChanges {
 		return nil
 	}
+
+	sess := SessionFromContext(ctx)
 	
 	// On the normal INSERT / UPDATE / DELETE path this happens at StatementComplete time, but for table rewrites it 
 	// only happens at Close
@@ -268,7 +264,7 @@ func (t *tableEditor) IndexedAccess(ctx *sql.Context, i sql.IndexLookup) (sql.In
 		return nil, err
 	}
 	t.ea.Clear()
-	return &IndexedTable{Table: t.ea.Table(), Lookup: i}, nil
+	return &IndexedTable{Table: t.editedTable, Lookup: i}, nil
 }
 
 func (t *tableEditor) pkColumnIndexes() []int {
@@ -347,31 +343,29 @@ type tableEditAccumulator interface {
 	GetByCols(value sql.Row, cols []int, prefixLengths []uint16) (sql.Row, bool, error)
 	// Clear wipes all of the stored inserts and deletes that may or may not have been applied.
 	Clear()
-	// Table returns the table being edited
-	Table() *Table
 }
 
 // NewTableEditAccumulator returns a tableEditAccumulator based on the schema.
-func NewTableEditAccumulator(t *Table) tableEditAccumulator {
-	if sql.IsKeyless(t.data.schema.Schema) {
+func NewTableEditAccumulator(t *TableData) tableEditAccumulator {
+	if sql.IsKeyless(t.schema.Schema) {
 		return &keylessTableEditAccumulator{
-			table:   t,
-			adds:    make([]sql.Row, 0),
-			deletes: make([]sql.Row, 0),
+			tableData: t,
+			adds:      make([]sql.Row, 0),
+			deletes:   make([]sql.Row, 0),
 		}
 	}
 
 	return &pkTableEditAccumulator{
-		table:   t,
-		adds:    make(map[string]sql.Row),
-		deletes: make(map[string]sql.Row),
+		tableData: t,
+		adds:      make(map[string]sql.Row),
+		deletes:   make(map[string]sql.Row),
 	}
 }
 
 // pkTableEditAccumulator manages the updates of keyed tables. It uses a map to efficiently toggle edits.
 type pkTableEditAccumulator struct {
-	table   *Table
-	adds    map[string]sql.Row
+	tableData *TableData
+	adds      map[string]sql.Row
 	deletes map[string]sql.Row
 }
 
@@ -410,7 +404,7 @@ func (pke *pkTableEditAccumulator) Get(value sql.Row) (sql.Row, bool, error) {
 	}
 
 	pkColIdxes := pke.pkColumnIndexes()
-	for _, partition := range pke.table.data.partitions {
+	for _, partition := range pke.tableData.partitions {
 		for _, partitionRow := range partition {
 			if columnsMatch(pkColIdxes, nil, partitionRow, value) {
 				return partitionRow, true, nil
@@ -436,7 +430,7 @@ func (pke *pkTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefixLe
 		}
 	}
 
-	for _, partition := range pke.table.data.partitions {
+	for _, partition := range pke.tableData.partitions {
 		for _, partitionRow := range partition {
 			if columnsMatch(cols, prefixLengths, partitionRow, value) {
 				return partitionRow, true, nil
@@ -450,20 +444,20 @@ func (pke *pkTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefixLe
 // ApplyEdits implements the tableEditAccumulator interface.
 func (pke *pkTableEditAccumulator) ApplyEdits(ctx *sql.Context) error {
 	for _, val := range pke.deletes {
-		err := pke.deleteHelper(ctx, pke.table, val)
+		err := pke.deleteHelper(ctx, pke.tableData, val)
 		if err != nil {
 			return err
 		}
 	}
 
 	for _, val := range pke.adds {
-		err := pke.insertHelper(ctx, pke.table, val)
+		err := pke.insertHelper(ctx, pke.tableData, val)
 		if err != nil {
 			return err
 		}
 	}
 
-	pke.table.data.sortRows()
+	pke.tableData.sortRows()
 
 	return nil
 }
@@ -474,32 +468,28 @@ func (pke *pkTableEditAccumulator) Clear() {
 	pke.deletes = make(map[string]sql.Row)
 }
 
-func (pke *pkTableEditAccumulator) Table() *Table {
-	return pke.table
-}
-
-// pkColumnIndexes returns the indexes of the primary partitionKeys in the initialized table.
+// pkColumnIndexes returns the indexes of the primary partitionKeys in the initialized tableData.
 func (pke *pkTableEditAccumulator) pkColumnIndexes() []int {
-	return pke.table.data.schema.PkOrdinals
+	return pke.tableData.schema.PkOrdinals
 }
 
-// getRowKey returns a sql.Row of the primary partitionKeys a row in relation with the initialized table.
+// getRowKey returns a sql.Row of the primary partitionKeys a row in relation with the initialized tableData.
 func (pke *pkTableEditAccumulator) getRowKey(r sql.Row) string {
 	var rowKey strings.Builder
-	for _, i := range pke.table.data.schema.PkOrdinals {
+	for _, i := range pke.tableData.schema.PkOrdinals {
 		rowKey.WriteString(fmt.Sprintf("%v", r[i]))
 	}
 	return rowKey.String()
 }
 
-// deleteHelper deletes the given row from the table.
-func (pke *pkTableEditAccumulator) deleteHelper(ctx *sql.Context, table *Table, row sql.Row) error {
-	if err := checkRow(table.Schema(), row); err != nil {
+// deleteHelper deletes the given row from the tableData.
+func (pke *pkTableEditAccumulator) deleteHelper(ctx *sql.Context, table *TableData, row sql.Row) error {
+	if err := checkRow(table.schema.Schema, row); err != nil {
 		return err
 	}
 
 	matches := false
-	for partitionIndex, partition := range table.data.partitions {
+	for partitionIndex, partition := range table.partitions {
 		for partitionRowIndex, partitionRow := range partition {
 			matches = true
 
@@ -508,19 +498,19 @@ func (pke *pkTableEditAccumulator) deleteHelper(ctx *sql.Context, table *Table, 
 			pkColIdxes := pke.pkColumnIndexes()
 			if len(pkColIdxes) > 0 {
 				if columnsMatch(pkColIdxes, nil, partitionRow, row) {
-					table.data.partitions[partitionIndex] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
+					table.partitions[partitionIndex] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
 					break
 				}
 			}
 
 			var err error
-			matches, err = rowsAreEqual(table.Schema(), row, partitionRow)
+			matches, err = rowsAreEqual(table.schema.Schema, row, partitionRow)
 			if err != nil {
 				return err
 			}
 
 			if matches {
-				table.data.partitions[partitionIndex] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
+				table.partitions[partitionIndex] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
 				break
 			}
 		}
@@ -532,19 +522,19 @@ func (pke *pkTableEditAccumulator) deleteHelper(ctx *sql.Context, table *Table, 
 	return nil
 }
 
-// insertHelper inserts the given row into the given table.
-func (pke *pkTableEditAccumulator) insertHelper(ctx *sql.Context, table *Table, row sql.Row) error {
-	key := string(table.data.partitionKeys[table.data.insertPartIdx])
-	table.data.insertPartIdx++
-	if table.data.insertPartIdx == len(table.data.partitionKeys) {
-		table.data.insertPartIdx = 0
+// insertHelper inserts the given row into the given tableData.
+func (pke *pkTableEditAccumulator) insertHelper(ctx *sql.Context, table *TableData, row sql.Row) error {
+	key := string(table.partitionKeys[table.insertPartIdx])
+	table.insertPartIdx++
+	if table.insertPartIdx == len(table.partitionKeys) {
+		table.insertPartIdx = 0
 	}
 
 	pkColIdxes := pke.pkColumnIndexes()
 	savedPartitionIndex := ""
 	savedPartitionRowIndex := -1
 	if len(pkColIdxes) > 0 {
-		for partitionIndex, partition := range table.data.partitions {
+		for partitionIndex, partition := range table.partitions {
 			for partitionRowIndex, partitionRow := range partition {
 				if columnsMatch(pkColIdxes, nil, partitionRow, row) {
 					// Instead of throwing a unique key error, we perform an update operation to essentially represent
@@ -558,23 +548,19 @@ func (pke *pkTableEditAccumulator) insertHelper(ctx *sql.Context, table *Table, 
 	}
 
 	if savedPartitionRowIndex > -1 {
-		table.data.partitions[savedPartitionIndex][savedPartitionRowIndex] = row
+		table.partitions[savedPartitionIndex][savedPartitionRowIndex] = row
 	} else {
-		table.data.partitions[key] = append(table.data.partitions[key], row)
+		table.partitions[key] = append(table.partitions[key], row)
 	}
 
 	return nil
 }
 
-// keylessTableEditAccumulator manages updates for a keyless table.
+// keylessTableEditAccumulator manages updates for a keyless tableData.
 type keylessTableEditAccumulator struct {
-	table   *Table
-	adds    []sql.Row
-	deletes []sql.Row
-}
-
-func (k *keylessTableEditAccumulator) Table() *Table {
-	return k.table
+	tableData *TableData
+	adds      []sql.Row
+	deletes   []sql.Row
 }
 
 var _ tableEditAccumulator = (*keylessTableEditAccumulator)(nil)
@@ -582,7 +568,7 @@ var _ tableEditAccumulator = (*keylessTableEditAccumulator)(nil)
 // Insert implements the tableEditAccumulator interface.
 func (k *keylessTableEditAccumulator) Insert(value sql.Row) error {
 	for i, row := range k.deletes {
-		eq, err := value.Equals(row, k.table.data.schema.Schema)
+		eq, err := value.Equals(row, k.tableData.schema.Schema)
 		if err != nil {
 			return err
 		}
@@ -600,7 +586,7 @@ func (k *keylessTableEditAccumulator) Insert(value sql.Row) error {
 // Delete implements the tableEditAccumulator interface.
 func (k *keylessTableEditAccumulator) Delete(value sql.Row) error {
 	for i, row := range k.adds {
-		eq, err := value.Equals(row, k.table.data.schema.Schema)
+		eq, err := value.Equals(row, k.tableData.schema.Schema)
 		if err != nil {
 			return err
 		}
@@ -631,7 +617,7 @@ func (k *keylessTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefi
 		}
 	}
 
-	for _, partition := range k.table.data.partitions {
+	for _, partition := range k.tableData.partitions {
 		for _, partitionRow := range partition {
 			if columnsMatch(cols, prefixLengths, partitionRow, value) {
 				if deleteCount == 0 {
@@ -657,14 +643,14 @@ func (k *keylessTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefi
 // ApplyEdits implements the tableEditAccumulator interface.
 func (k *keylessTableEditAccumulator) ApplyEdits(ctx *sql.Context) error {
 	for _, val := range k.deletes {
-		err := k.deleteHelper(ctx, k.table, val)
+		err := k.deleteHelper(ctx, k.tableData, val)
 		if err != nil {
 			return err
 		}
 	}
 
 	for _, val := range k.adds {
-		err := k.insertHelper(ctx, k.table, val)
+		err := k.insertHelper(ctx, k.tableData, val)
 		if err != nil {
 			return err
 		}
@@ -679,24 +665,24 @@ func (k *keylessTableEditAccumulator) Clear() {
 	k.deletes = make([]sql.Row, 0)
 }
 
-// deleteHelper deletes a row from a keyless table, if it exists.
-func (k *keylessTableEditAccumulator) deleteHelper(ctx *sql.Context, table *Table, row sql.Row) error {
-	if err := checkRow(table.data.schema.Schema, row); err != nil {
+// deleteHelper deletes a row from a keyless tableData, if it exists.
+func (k *keylessTableEditAccumulator) deleteHelper(ctx *sql.Context, table *TableData, row sql.Row) error {
+	if err := checkRow(table.schema.Schema, row); err != nil {
 		return err
 	}
 
 	matches := false
-	for partitionIndex, partition := range table.data.partitions {
+	for partitionIndex, partition := range table.partitions {
 		for partitionRowIndex, partitionRow := range partition {
 			matches = true
 			var err error
-			matches, err = rowsAreEqual(table.data.schema.Schema, row, partitionRow)
+			matches, err = rowsAreEqual(table.schema.Schema, row, partitionRow)
 			if err != nil {
 				return err
 			}
 
 			if matches {
-				table.data.partitions[partitionIndex] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
+				table.partitions[partitionIndex] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
 				break
 			}
 		}
@@ -708,15 +694,15 @@ func (k *keylessTableEditAccumulator) deleteHelper(ctx *sql.Context, table *Tabl
 	return nil
 }
 
-// insertHelper inserts into a keyless table.
-func (k *keylessTableEditAccumulator) insertHelper(ctx *sql.Context, table *Table, row sql.Row) error {
-	key := string(table.data.partitionKeys[table.data.insertPartIdx])
-	table.data.insertPartIdx++
-	if table.data.insertPartIdx == len(table.data.partitionKeys) {
-		table.data.insertPartIdx = 0
+// insertHelper inserts into a keyless tableData.
+func (k *keylessTableEditAccumulator) insertHelper(ctx *sql.Context, table *TableData, row sql.Row) error {
+	key := string(table.partitionKeys[table.insertPartIdx])
+	table.insertPartIdx++
+	if table.insertPartIdx == len(table.partitionKeys) {
+		table.insertPartIdx = 0
 	}
 
-	table.data.partitions[key] = append(table.data.partitions[key], row)
+	table.partitions[key] = append(table.partitions[key], row)
 
 	return nil
 }

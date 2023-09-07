@@ -626,8 +626,8 @@ func (t *Table) getTableEditor(ctx *sql.Context) sql.TableEditor {
 	return editor
 }
 
-func (t *Table) getRewriteTableEditor(ctx *sql.Context) sql.TableEditor {
-	editor, err := t.newTableEditor(ctx)
+func (t *Table) getRewriteTableEditor(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema) sql.TableEditor {
+	editor, err := t.tableEditorForRewrite(ctx, oldSchema, newSchema)
 	if err != nil {
 		// TODO
 		panic(err)
@@ -658,17 +658,39 @@ func (t *Table) getRewriteTableEditor(ctx *sql.Context) sql.TableEditor {
 }
 
 func (t *Table) newTableEditor(ctx *sql.Context) (sql.TableEditor, error) {
-	sess := SessionFromContext(ctx)
-	ed := sess.editAccumulator(t)
-	
+	data := t.sessionTableData(ctx)
+	ed := NewTableEditAccumulator(data)
+
+	tableUnderEdit := t.copy()
+	tableUnderEdit.data = data
+
 	uniqIdxCols, prefixLengths := t.data.indexColsForTableEditor()
 	var editor sql.TableEditor = &tableEditor{
-		editedTable:       ed.Table(),
+		editedTable:       tableUnderEdit,
 		initialTable:      t.copy(),
-		targetTable:       t,
 		ea:                ed,
 		uniqueIdxCols:     uniqIdxCols,
 		prefixLengths:     prefixLengths,
+	}
+	return editor, nil
+}
+
+func (t *Table) tableEditorForRewrite(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema) (sql.TableEditor, error) {
+	// Make a copy of the table under edit with the new schema and no data
+	tableUnderEdit := t.copy()
+	tableData := tableUnderEdit.data.truncate(normalizeSchemaForRewrite(newSchema))
+	err := tableUnderEdit.modifyFulltextIndexesForRewrite(ctx, tableData, oldSchema)
+	if err != nil {
+		return nil, err
+	}
+
+	uniqIdxCols, prefixLengths := tableData.indexColsForTableEditor()
+	var editor sql.TableEditor = &tableEditor{
+		editedTable:   tableUnderEdit,
+		initialTable:  t.copy(),
+		ea: NewTableEditAccumulator(tableData),
+		uniqueIdxCols: uniqIdxCols,
+		prefixLengths: prefixLengths,
 	}
 	return editor, nil
 }
@@ -920,17 +942,6 @@ func (t *Table) DropColumn(ctx *sql.Context, columnName string) error {
 	sess.putTable(data)
 	
 	return nil
-}
-
-func (t *Table) tableUnderEdit(ctx *sql.Context) *Table {
-	table := t
-
-	sess := SessionFromContext(ctx)
-	ea, ok := sess.activeEditAccumulator(table)
-	if ok {
-		table = ea.Table()
-	}
-	return table
 }
 
 // dropColumnFromSchema drops the given column name from the schema and returns its old index.
@@ -2029,15 +2040,7 @@ func (t Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.Primar
 		return nil, sql.ErrWrongAutoKey.New()
 	}
 	
-	// Make a copy of the table under edit with the new schema and no data
-	tableUnderEdit := t.copy()
-	tableUnderEdit.data = tableUnderEdit.data.truncate(normalizeSchemaForRewrite(newSchema))
-	err := tableUnderEdit.modifyFulltextIndexesForRewrite(ctx, t.data, oldSchema)
-	if err != nil {
-		return nil, err
-	}
-	
-	return tableUnderEdit.getRewriteTableEditor(ctx), nil
+	return t.getRewriteTableEditor(ctx, oldSchema, newSchema), nil
 }
 
 func primaryKeyIsAutoincrement(schema sql.PrimaryKeySchema) bool {
