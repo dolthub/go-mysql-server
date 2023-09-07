@@ -53,7 +53,6 @@ type Table struct {
 
 	db                      *BaseDatabase
 	tableStats              *sql.TableStatistics
-	fullTextConfigTableName string
 }
 
 var _ sql.Table = (*Table)(nil)
@@ -633,7 +632,13 @@ func (t *Table) getRewriteTableEditor(ctx *sql.Context, oldSchema, newSchema sql
 		panic(err)
 	}
 
-	tableSets, err := t.getFulltextTableSets(ctx)
+	tableUnderEdit := editor.(*tableEditor).editedTable
+	err = tableUnderEdit.modifyFulltextIndexesForRewrite(ctx, tableUnderEdit.data, oldSchema)
+	if err != nil {
+		panic(err)
+	}
+
+	tableSets, err := tableUnderEdit.getFulltextTableSets(ctx)
 	if err != nil {
 		// TODO
 		panic(err)
@@ -651,9 +656,15 @@ func (t *Table) getRewriteTableEditor(ctx *sql.Context, oldSchema, newSchema sql
 			ts.Position.(*Table).data = ts.Position.(*Table).data.copy().truncate(ts.Position.(*Table).data.schema)
 			newTableSets[i] = ts
 		}
-		editor = t.newFulltextTableEditor(ctx, editor, newTableSets)
+		editor = tableUnderEdit.newFulltextTableEditor(ctx, editor, newTableSets)
 	}
 
+	// After we have the new schema for the table, we need to set it in the session so that some statements (like full
+	// text rewrites, multi-statement alter tables, etc.) get the table with the new schema when they call 
+	// db.GetTableInsensitive(). This seems like a bug.
+	// sess := SessionFromContext(ctx)
+	// sess.putTable(tableUnderEdit.data)
+	
 	return editor
 }
 
@@ -680,10 +691,6 @@ func (t *Table) tableEditorForRewrite(ctx *sql.Context, oldSchema, newSchema sql
 	// Make a copy of the table under edit with the new schema and no data
 	tableUnderEdit := t.copy()
 	tableData := tableUnderEdit.data.truncate(normalizeSchemaForRewrite(newSchema))
-	err := tableUnderEdit.modifyFulltextIndexesForRewrite(ctx, tableData, oldSchema)
-	if err != nil {
-		return nil, err
-	}
 	tableUnderEdit.data = tableData
 
 	uniqIdxCols, prefixLengths := tableData.indexColsForTableEditor()
@@ -698,7 +705,7 @@ func (t *Table) tableEditorForRewrite(ctx *sql.Context, oldSchema, newSchema sql
 }
 
 func (t *Table) newFulltextTableEditor(ctx *sql.Context, parentEditor sql.TableEditor, tableSets []fulltext.TableSet) sql.TableEditor {
-	configTbl, ok, err := t.db.GetTableInsensitive(ctx, t.fullTextConfigTableName)
+	configTbl, ok, err := t.db.GetTableInsensitive(ctx, t.data.fullTextConfigTableName)
 	if err != nil {
 		panic(err)
 	}
@@ -1598,12 +1605,12 @@ func (t *Table) CreateFulltextIndex(ctx *sql.Context, indexDef sql.IndexDef, key
 	sess := SessionFromContext(ctx)
 	data := sess.tableData(t)
 
-	if len(t.fullTextConfigTableName) > 0 {
-		if t.fullTextConfigTableName != tableNames.Config {
-			return fmt.Errorf("Full-Text config table name has been changed from `%s` to `%s`", t.fullTextConfigTableName, tableNames.Config)
+	if len(data.fullTextConfigTableName) > 0 {
+		if data.fullTextConfigTableName != tableNames.Config {
+			return fmt.Errorf("Full-Text config table name has been changed from `%s` to `%s`", data.fullTextConfigTableName, tableNames.Config)
 		}
 	} else {
-		t.fullTextConfigTableName = tableNames.Config
+		data.fullTextConfigTableName = tableNames.Config
 	}
 
 	if data.indexes == nil {
@@ -2075,14 +2082,20 @@ func (t *Table) modifyFulltextIndexesForRewrite(ctx *sql.Context, data *TableDat
 		}
 		
 		ftInfo := memIdx.fulltextInfo
-		newPoses := remapColumnOrds(oldSchema, data.schema, ftInfo.KeyColumns)
-		if newPoses == nil {
+		newKeyColumns := remapColumnOrds(oldSchema, data.schema, ftInfo.KeyColumns)
+		if newKeyColumns == nil {
 			// TODO: omit, probably
 			return fmt.Errorf("could not find column in new schema")
 		}
 
+		// newSourceColumns := remapColumnOrds(oldSchema, data.schema, ftInfo.Positions)
+		// if newKeyColumns == nil {
+		// 	// TODO: omit, probably
+		// 	return fmt.Errorf("could not find column in new schema")
+		// }
+
 		newIdx := memIdx.copy()
-		newIdx.fulltextInfo.KeyColumns.Positions = newPoses
+		newIdx.fulltextInfo.KeyColumns.Positions = newKeyColumns
 		data.indexes[i] = newIdx
 	}
 	
@@ -2090,6 +2103,18 @@ func (t *Table) modifyFulltextIndexesForRewrite(ctx *sql.Context, data *TableDat
 }
 
 func remapColumnOrds(oldSch sql.PrimaryKeySchema, newSch sql.PrimaryKeySchema, cols fulltext.KeyColumns) []int {
+	newPoses := make([]int, len(cols.Positions))
+	for i, col := range cols.Positions {
+		idx := newSch.Schema.IndexOfColName(oldSch.Schema[col].Name)
+		if idx < 0 {
+			return nil
+		}
+		newPoses[i] = idx
+	}
+	return newPoses
+}
+
+func remapSourceCols(oldSch sql.PrimaryKeySchema, newSch sql.PrimaryKeySchema, cols fulltext.KeyColumns) []int {
 	newPoses := make([]int, len(cols.Positions))
 	for i, col := range cols.Positions {
 		idx := newSch.Schema.IndexOfColName(oldSch.Schema[col].Name)

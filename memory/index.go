@@ -196,7 +196,7 @@ func (idx *Index) ExtendedColumnExpressionTypes() []sql.ColumnExpressionType {
 
 func (idx *Index) FullTextTableNames(ctx *sql.Context) (fulltext.IndexTableNames, error) {
 	return fulltext.IndexTableNames{
-		Config:      idx.Tbl.fullTextConfigTableName,
+		Config:      idx.Tbl.data.fullTextConfigTableName,
 		Position:    idx.fulltextInfo.PositionTableName,
 		DocCount:    idx.fulltextInfo.DocCountTableName,
 		GlobalCount: idx.fulltextInfo.GlobalCountTableName,

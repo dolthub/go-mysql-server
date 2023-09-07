@@ -1219,11 +1219,6 @@ func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 		if rewritten {
-			if hasFullText {
-				if err = rebuildFullText(ctx, i.alterable.Name(), i.a.Db); err != nil {
-					return nil, err
-				}
-			}
 			return sql.NewRow(types.NewOkResult(0)), nil
 		}
 	}

@@ -195,49 +195,19 @@ func TestSingleScript(t *testing.T) {
 	// t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "insert on duplicate key for keyless table multiple unique columns batched",
+			Name: "ALTER TABLE ADD COLUMN",
 			SetUpScript: []string{
-				`create table t (c1 int, c2 int, c3 int, unique key(c1,c2))`,
+				"CREATE TABLE test (pk BIGINT UNSIGNED PRIMARY KEY, v1 VARCHAR(200), v2 VARCHAR(200), FULLTEXT idx (v1, v2));",
+				"INSERT INTO test VALUES (1, 'abc', 'def pqr'), (2, 'ghi', 'jkl'), (3, 'mno', 'mno'), (4, 'stu vwx', 'xyz zyx yzx'), (5, 'ghs', 'mno shg');",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: `insert into t(c1, c2, c3) values (0, 0, 0), (0, 0, 0), (0, 0, 1), (0, 0, 1) on duplicate key update c3 = 1`,
-					Expected: []sql.Row{
-						{types.NewOkResult(3)},
-					},
+					Query:    "ALTER TABLE test ADD COLUMN v3 FLOAT DEFAULT 7 FIRST;",
+					Expected: []sql.Row{{types.NewOkResult(0)}},
 				},
 				{
-					Query: `select c1, c2, c3 from t order by c1, c2, c3`,
-					Expected: []sql.Row{
-						{0, 0, 1},
-					},
-				},
-				{
-					Query: `insert into t(c1, c2, c3) values (0, 0, 1), (0, 0, 2), (0, 0, 3), (0, 0, 4) on duplicate key update c3 = 100`,
-					Expected: []sql.Row{
-						{types.NewOkResult(2)},
-					},
-				},
-				{
-					Query: `select c1, c2, c3 from t order by c1, c2, c3`,
-					Expected: []sql.Row{
-						{0, 0, 100},
-					},
-				},
-				{
-					Query: `insert into t(c1, c2, c3) values (0, 0, 1), (0, 1, 1), (0, 2, 2), (0, 3, 3) on duplicate key update c3 = 200`,
-					Expected: []sql.Row{
-						{types.NewOkResult(5)},
-					},
-				},
-				{
-					Query: `select c1, c2, c3 from t order by c1, c2, c3`,
-					Expected: []sql.Row{
-						{0, 0, 200},
-						{0, 1, 1},
-						{0, 2, 2},
-						{0, 3, 3},
-					},
+					Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
+					Expected: []sql.Row{{float32(7), uint64(2), "ghi", "jkl"}},
 				},
 			},
 		},

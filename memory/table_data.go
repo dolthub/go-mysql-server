@@ -31,7 +31,7 @@ type TableData struct {
 	dbName    string
 	tableName string
 
-	// Schema data
+	// Schema / config data
 	schema            sql.PrimaryKeySchema
 	indexes           map[string]sql.Index
 	fkColl            *ForeignKeyCollection
@@ -39,6 +39,7 @@ type TableData struct {
 	collation         sql.CollationID
 	autoColIdx        int
 	primaryKeyIndexes bool
+	fullTextConfigTableName string
 
 	// Data storage
 	partitions    map[string][]sql.Row
