@@ -658,8 +658,9 @@ func (t *Table) getRewriteTableEditor(ctx *sql.Context, oldSchema, newSchema sql
 }
 
 func (t *Table) newTableEditor(ctx *sql.Context) (sql.TableEditor, error) {
-	data := t.sessionTableData(ctx)
-	ed := NewTableEditAccumulator(data)
+	sess := SessionFromContext(ctx)
+	ea := sess.editAccumulator(t)
+	data := sess.tableData(t)
 
 	tableUnderEdit := t.copy()
 	tableUnderEdit.data = data
@@ -668,7 +669,7 @@ func (t *Table) newTableEditor(ctx *sql.Context) (sql.TableEditor, error) {
 	var editor sql.TableEditor = &tableEditor{
 		editedTable:       tableUnderEdit,
 		initialTable:      t.copy(),
-		ea:                ed,
+		ea:                ea,
 		uniqueIdxCols:     uniqIdxCols,
 		prefixLengths:     prefixLengths,
 	}

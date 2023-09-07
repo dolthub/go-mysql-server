@@ -92,7 +92,6 @@ func (t *tableEditor) Close(ctx *sql.Context) error {
 	}
 	t.ea.Clear()
 	
-	// TODO: copy of data?
 	sess.putTable(t.editedTable.data)
 	return nil
 }

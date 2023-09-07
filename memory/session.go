@@ -25,6 +25,7 @@ type Session struct {
 	*sql.BaseSession
 	dbProvider *DbProvider
 	tables           map[tableKey]*TableData
+	editAccumulators map[tableKey]tableEditAccumulator
 }
 
 var _ sql.Session = (*Session)(nil)
@@ -37,6 +38,7 @@ func NewSession(baseSession *sql.BaseSession, provider *DbProvider) *Session {
 		BaseSession:      baseSession,
 		dbProvider: 			 provider,
 		tables:           make(map[tableKey]*TableData),
+		editAccumulators: make(map[tableKey]tableEditAccumulator),
 	}
 }
 
@@ -67,6 +69,21 @@ func key(t *TableData) tableKey {
 	return tableKey{strings.ToLower(t.dbName), strings.ToLower(t.tableName)}
 }
 
+// editAccumulator returns the edit accumulator for this session for the table provided. Some statement types, like 
+// updates with an on duplicate key clause, require an accumulator to be shared among all table editors 
+func (s *Session) editAccumulator(t *Table) tableEditAccumulator {
+	ea, ok := s.editAccumulators[key(t.data)]
+	if !ok {
+		ea = NewTableEditAccumulator(t.data)
+		s.editAccumulators[key(t.data)] = ea
+	}
+	return ea
+}
+
+func (s *Session) clearEditAccumulator(t *Table) {
+	delete(s.editAccumulators, key(t.data))
+}
+
 func keyFromNames(dbName, tableName string) tableKey {
 	return tableKey{strings.ToLower(dbName), strings.ToLower(tableName)}
 }
@@ -85,6 +102,7 @@ func (s *Session) tableData(t *Table) *TableData {
 // putTable stores the table data for this session for the table provided 
 func (s *Session) putTable(d *TableData) {
 	s.tables[key(d)] = d
+	delete(s.editAccumulators, key(d))
 }
 
 // dropTable clears the table data for the session 
@@ -129,6 +147,7 @@ func (s *Session) CommitTransaction(ctx *sql.Context, tx sql.Transaction) error 
 
 func (s *Session) Rollback(ctx *sql.Context, transaction sql.Transaction) error {
 	s.tables = make(map[tableKey]*TableData)
+	s.editAccumulators = make(map[tableKey]tableEditAccumulator)
 	return nil
 }
 
