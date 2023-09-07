@@ -248,10 +248,12 @@ func (d *BaseDatabase) CreateIndexedTable(ctx *sql.Context, name string, sch sql
 
 // DropTable drops the table with the given name
 func (d *BaseDatabase) DropTable(ctx *sql.Context, name string) error {
-	_, ok := d.tables[name]
+	t, ok := d.tables[name]
 	if !ok {
 		return sql.ErrTableNotFound.New(name)
 	}
+	
+	SessionFromContext(ctx).dropTable(t.(*Table).data)
 
 	delete(d.tables, name)
 	return nil 

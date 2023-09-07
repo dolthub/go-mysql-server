@@ -83,6 +83,11 @@ func (s *Session) putTable(d *TableData) {
 	s.tables[key(d)] = d
 }
 
+// dropTable clears the table data for the session 
+func (s *Session) dropTable(d *TableData) {
+	delete(s.tables, key(d))
+}
+
 // StartTransaction clears session state and returns a new transaction object.
 // Because we don't support concurrency, we store table data changes in the session, rather than the transaction itself.
 func (s *Session) StartTransaction(ctx *sql.Context, tCharacteristic sql.TransactionCharacteristic) (sql.Transaction, error) {

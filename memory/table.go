@@ -278,7 +278,7 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	data := t.sessionTableData(ctx)
 
 	filters := t.filters
-	if r, ok := partition.(*rangePartition); ok {
+	if r, ok := partition.(*rangePartition); ok && r.rang != nil {
 		// index lookup is currently a single filter applied to a full table scan
 		filters = append(t.filters, r.rang)
 	}
@@ -683,6 +683,7 @@ func (t *Table) tableEditorForRewrite(ctx *sql.Context, oldSchema, newSchema sql
 	if err != nil {
 		return nil, err
 	}
+	tableUnderEdit.data = tableData
 
 	uniqIdxCols, prefixLengths := tableData.indexColsForTableEditor()
 	var editor sql.TableEditor = &tableEditor{
