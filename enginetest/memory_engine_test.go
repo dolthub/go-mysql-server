@@ -19,7 +19,7 @@ import (
 	"log"
 	"testing"
 
-	"github.com/dolthub/vitess/go/mysql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/enginetest"
@@ -183,43 +183,60 @@ func TestSingleQueryPrepared(t *testing.T) {
 	enginetest.TestScriptWithEnginePrepared(t, engine, harness, test)
 }
 
+func newUpdateResult(matched, updated int) types.OkResult {
+	return types.OkResult{
+		RowsAffected: uint64(updated),
+		Info:         plan.UpdateInfo{Matched: matched, Updated: updated},
+	}
+}
+
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
 	// t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "Test that INSERT IGNORE INTO works with unique keys",
+			Name: "insert on duplicate key for keyless table multiple unique columns batched",
 			SetUpScript: []string{
-				"CREATE TABLE one_uniq(pk int PRIMARY KEY, col1 int UNIQUE)",
-				"CREATE TABLE two_uniq(pk int PRIMARY KEY, col1 int, col2 int, UNIQUE KEY col1_col2_uniq (col1, col2))",
-				"INSERT INTO one_uniq values (1, 1)",
-				"INSERT INTO two_uniq values (1, 1, 1)",
+				`create table t (c1 int, c2 int, c3 int, unique key(c1,c2))`,
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "INSERT IGNORE INTO one_uniq VALUES (3, 2), (2, 1), (4, null), (5, null)",
+					Query: `insert into t(c1, c2, c3) values (0, 0, 0), (0, 0, 0), (0, 0, 1), (0, 0, 1) on duplicate key update c3 = 1`,
 					Expected: []sql.Row{
-						{types.OkResult{RowsAffected: 3}},
-					},
-					ExpectedWarning: mysql.ERDupEntry,
-				},
-				{
-					Query: "SELECT * from one_uniq order by pk;",
-					Expected: []sql.Row{
-						{1, 1}, {3, 2}, {4, nil}, {5, nil},
+						{types.NewOkResult(3)},
 					},
 				},
 				{
-					Query: "INSERT IGNORE INTO two_uniq VALUES (4, 1, 2), (5, 2, 1), (6, null, 1), (7, null, 1), (12, 1, 1), (8, 1, null), (9, 1, null), (10, null, null), (11, null, null)",
+					Query: `select c1, c2, c3 from t order by c1, c2, c3`,
 					Expected: []sql.Row{
-						{types.OkResult{RowsAffected: 8}},
+						{0, 0, 1},
 					},
-					ExpectedWarning: mysql.ERDupEntry,
 				},
 				{
-					Query: "SELECT * from two_uniq order by pk;",
+					Query: `insert into t(c1, c2, c3) values (0, 0, 1), (0, 0, 2), (0, 0, 3), (0, 0, 4) on duplicate key update c3 = 100`,
 					Expected: []sql.Row{
-						{1, 1, 1}, {4, 1, 2}, {5, 2, 1}, {6, nil, 1}, {7, nil, 1}, {8, 1, nil}, {9, 1, nil}, {10, nil, nil}, {11, nil, nil},
+						{types.NewOkResult(2)},
+					},
+				},
+				{
+					Query: `select c1, c2, c3 from t order by c1, c2, c3`,
+					Expected: []sql.Row{
+						{0, 0, 100},
+					},
+				},
+				{
+					Query: `insert into t(c1, c2, c3) values (0, 0, 1), (0, 1, 1), (0, 2, 2), (0, 3, 3) on duplicate key update c3 = 200`,
+					Expected: []sql.Row{
+						{types.NewOkResult(5)},
+					},
+				},
+				{
+					Query: `select c1, c2, c3 from t order by c1, c2, c3`,
+					Expected: []sql.Row{
+						{0, 0, 200},
+						{0, 1, 1},
+						{0, 2, 2},
+						{0, 3, 3},
 					},
 				},
 			},
