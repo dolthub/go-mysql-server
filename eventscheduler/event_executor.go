@@ -209,7 +209,6 @@ func (ee *eventExecutor) reevaluateEvent(edb sql.EventDatabase, event sql.EventD
 	if err != nil {
 		ctx.GetLogger().Errorf("Received error '%s' re-evaluating event to scheduler: %s", err, event.Name)
 	}
-	return
 }
 
 // addEvent creates new enabledEvent if the event being created is at ENABLE status with valid schedule.
