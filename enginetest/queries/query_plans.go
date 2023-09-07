@@ -1948,7 +1948,7 @@ Select * from (
 	{
 		Query: `select * from xy where exists (select * from ab where a = x order by a limit 2) order by x limit 5`,
 		ExpectedPlan: "Limit(5)\n" +
-			" └─ TopN(Limit: [5 (tinyint)]; xy.x:0!null ASC nullsFirst)\n" +
+			" └─ TopN(Limit: [5 (bigint)]; xy.x:0!null ASC nullsFirst)\n" +
 			"     └─ SemiLookupJoin\n" +
 			"         ├─ Eq\n" +
 			"         │   ├─ ab.a:2!null\n" +
@@ -4765,7 +4765,7 @@ inner join pq on true
 	{
 		Query: `SELECT * FROM datetime_table ORDER BY date_col ASC LIMIT 100`,
 		ExpectedPlan: "Limit(100)\n" +
-			" └─ TopN(Limit: [100 (tinyint)]; datetime_table.date_col:1 ASC nullsFirst)\n" +
+			" └─ TopN(Limit: [100 (bigint)]; datetime_table.date_col:1 ASC nullsFirst)\n" +
 			"     └─ Table\n" +
 			"         ├─ name: datetime_table\n" +
 			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
