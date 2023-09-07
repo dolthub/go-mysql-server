@@ -19,6 +19,7 @@ import (
 	"log"
 	"testing"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/enginetest"
@@ -187,17 +188,39 @@ func TestSingleScript(t *testing.T) {
 	// t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "insert with auto increment",
+			Name: "Test that INSERT IGNORE INTO works with unique keys",
 			SetUpScript: []string{
-				"create table mytable (i int primary key auto_increment, s varchar(20))",
+				"CREATE TABLE one_uniq(pk int PRIMARY KEY, col1 int UNIQUE)",
+				"CREATE TABLE two_uniq(pk int PRIMARY KEY, col1 int, col2 int, UNIQUE KEY col1_col2_uniq (col1, col2))",
+				"INSERT INTO one_uniq values (1, 1)",
+				"INSERT INTO two_uniq values (1, 1, 1)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: `insert into mytable (s) values ('a'), ('b'), ('c')`,
-					Expected: []sql.Row{{types.OkResult{
-						RowsAffected: 3,
-						InsertID:     3,
-					}}},
+					Query: "INSERT IGNORE INTO one_uniq VALUES (3, 2), (2, 1), (4, null), (5, null)",
+					Expected: []sql.Row{
+						{types.OkResult{RowsAffected: 3}},
+					},
+					ExpectedWarning: mysql.ERDupEntry,
+				},
+				{
+					Query: "SELECT * from one_uniq order by pk;",
+					Expected: []sql.Row{
+						{1, 1}, {3, 2}, {4, nil}, {5, nil},
+					},
+				},
+				{
+					Query: "INSERT IGNORE INTO two_uniq VALUES (4, 1, 2), (5, 2, 1), (6, null, 1), (7, null, 1), (12, 1, 1), (8, 1, null), (9, 1, null), (10, null, null), (11, null, null)",
+					Expected: []sql.Row{
+						{types.OkResult{RowsAffected: 8}},
+					},
+					ExpectedWarning: mysql.ERDupEntry,
+				},
+				{
+					Query: "SELECT * from two_uniq order by pk;",
+					Expected: []sql.Row{
+						{1, 1, 1}, {4, 1, 2}, {5, 2, 1}, {6, nil, 1}, {7, nil, 1}, {8, 1, nil}, {9, 1, nil}, {10, nil, nil}, {11, nil, nil},
+					},
 				},
 			},
 		},

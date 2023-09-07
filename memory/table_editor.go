@@ -102,9 +102,9 @@ func (t *tableEditor) StatementBegin(ctx *sql.Context) {
 }
 
 func (t *tableEditor) DiscardChanges(ctx *sql.Context, errorEncountered error) error {
-	t.editedTable.replaceData(t.initialTable)
-	t.ea.Clear()
 	if _, ignore := errorEncountered.(sql.IgnorableError); !ignore {
+		t.editedTable.replaceData(t.initialTable)
+		t.ea.Clear()
 		t.discardChanges = true	
 	}
 	return nil
