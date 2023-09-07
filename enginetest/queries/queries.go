@@ -743,6 +743,10 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		Query:    "show full processlist",
+		Expected: []sql.Row{},
+	},
+	{
 		Query: "select * from (select i, i2 from niltable) a(x,y) union select * from (select 1, NULL) b(x,y) union select * from (select i, i2 from niltable) c(x,y)",
 		ExpectedColumns: sql.Schema{
 			{

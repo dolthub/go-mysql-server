@@ -34,6 +34,7 @@ func (b *Builder) buildShow(inScope *scope, s *ast.Show, query string) (outScope
 	showType := strings.ToLower(s.Type)
 	switch showType {
 	case "processlist":
+		outScope = inScope.push()
 		outScope.node = plan.NewShowProcessList()
 	case ast.CreateTableStr, "create view":
 		return b.buildShowTable(inScope, s, showType)
