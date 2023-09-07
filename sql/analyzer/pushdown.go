@@ -19,7 +19,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/fixidx"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -49,13 +48,9 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 				if same {
 					return node, transform.SameTree, nil
 				}
-				node, _, err = pushdownFixIndices(ctx, a, table, scope)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-				return node, transform.NewTree, nil
+				return table, transform.NewTree, nil
 			default:
-				return pushdownFixIndices(ctx, a, node, scope)
+				return node, transform.SameTree, nil
 			}
 		})
 	}
@@ -254,18 +249,14 @@ func pushdownFiltersToAboveTable(
 	// Move any remaining filters for the table directly above the table itself
 	var pushedDownFilterExpression sql.Expression
 	if tableFilters := filters.availableFiltersForTable(ctx, tableNode.Name()); len(tableFilters) > 0 {
-		handled, _, err := fixidx.FixFieldIndexesOnExpressions(scope, a.LogFn(), tableNode.Schema(), tableFilters...)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-		filters.markFiltersHandled(handled...)
-		pushedDownFilterExpression = expression.JoinAnd(handled...)
+		filters.markFiltersHandled(tableFilters...)
+		pushedDownFilterExpression = expression.JoinAnd(tableFilters...)
 
 		a.Log(
 			"pushed down filters %s above table %q, %d filters handled of %d",
-			handled,
+			tableFilters,
 			tableNode.Name(),
-			len(handled),
+			len(tableFilters),
 			len(tableFilters),
 		)
 	}
@@ -288,30 +279,33 @@ func pushdownFiltersToAboveTable(
 // filters down below it can help find index usage opportunities later in the
 // analysis phase.
 func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.SubqueryAlias, filters *filterSet) (sql.Node, transform.TreeIdentity, error) {
+	if sa.ScopeMapping == nil {
+		return sa, transform.SameTree, nil
+	}
 	handled := filters.availableFiltersForTable(ctx, sa.Name())
 	if len(handled) == 0 {
 		return sa, transform.SameTree, nil
 	}
 	filters.markFiltersHandled(handled...)
-	schema := sa.Schema()
-	handled, _, err := fixidx.FixFieldIndexesOnExpressions(nil, a.LogFn(), schema, handled...)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
 	// |handled| is in terms of the parent schema, and in particular the
 	// |Source| is the alias name. Rewrite it to refer to the |sa.Child|
 	// schema instead.
-	childSchema := sa.Child.Schema()
 	expressionsForChild := make([]sql.Expression, len(handled))
+	var err error
 	for i, h := range handled {
 		expressionsForChild[i], _, err = transform.Expr(h, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if gt, ok := e.(*expression.GetField); ok {
-				col := childSchema[gt.Index()]
-				return gt.WithTable(col.Source).WithName(col.Name), transform.NewTree, nil
+				gf, ok := sa.ScopeMapping[sql.ColumnId(gt.Index())]
+				if !ok {
+					return e, transform.SameTree, fmt.Errorf("unable to find child with id: %d", gt.Index())
+				}
+				return gf, transform.NewTree, nil
 			}
 			return e, transform.SameTree, nil
 		})
+		if err != nil {
+			return sa, transform.SameTree, err
+		}
 	}
 
 	n, err := sa.WithChildren(plan.NewFilter(expression.JoinAnd(expressionsForChild...), sa.Child))
@@ -422,14 +416,4 @@ func convertIsNullForIndexes(ctx *sql.Context, e sql.Expression) sql.Expression 
 		return expression.NewNullSafeEquals(isNull.Child, expression.NewLiteral(nil, types.Null)), transform.NewTree, nil
 	})
 	return expr
-}
-
-// pushdownFixIndices fixes field indices for non-join expressions (replanJoin
-// is responsible for join filters and conditions.)
-func pushdownFixIndices(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope) (sql.Node, transform.TreeIdentity, error) {
-	switch n := n.(type) {
-	case *plan.JoinNode, *plan.HashLookup, *plan.InsertInto:
-		return n, transform.SameTree, nil
-	}
-	return fixidx.FixFieldIndexesForExpressions(ctx, a.LogFn(), n, scope)
 }

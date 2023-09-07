@@ -115,6 +115,7 @@ func inOrderReplanJoin(
 	// two different base cases, depending on whether we reorder or not
 	if reorder {
 		scope.SetJoin(true)
+		scope.SetLateralJoin(j.Op.IsLateral())
 		ret, err := replanJoin(ctx, j, a, scope)
 		if err != nil {
 			return nil, transform.SameTree, fmt.Errorf("failed to replan join: %w", err)

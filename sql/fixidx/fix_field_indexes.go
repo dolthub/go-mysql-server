@@ -155,7 +155,7 @@ func FixFieldIndexesForExpressions(ctx *sql.Context, logFn func(string, ...any),
 
 	var sameF transform.TreeIdentity
 	if scope.InJoin() {
-		scopeSch := scope.Schema()
+		scopeSch := append(scope.Schema(), node.Schema()...)
 		var newN sql.Node
 		var err error
 		newN, sameF, err = transform.OneNodeExprsWithNode(node, func(_ sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
@@ -216,7 +216,7 @@ func FixFieldIndexesForExpressions(ctx *sql.Context, logFn func(string, ...any),
 
 	j, ok := n.(*plan.JoinNode)
 	if !ok {
-		return n, sameC, nil
+		return n, sameC && sameF, nil
 	}
 	sameJ := transform.SameTree
 	var cond sql.Expression

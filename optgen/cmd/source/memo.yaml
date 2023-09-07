@@ -48,8 +48,6 @@ exprs:
   sourceType: "*plan.RecursiveCte"
 - name: "SubqueryAlias"
   sourceType: "*plan.SubqueryAlias"
-- name: "Max1Row"
-  sourceType: "sql.NameableNode"
 - name: "TableFunc"
   sourceType: "sql.TableFunction"
 - name: "JSONTable"
@@ -63,6 +61,8 @@ exprs:
 - name: "Distinct"
   unary:  true
   skipExec: true
+- name: "Max1Row"
+  unary:  true
 
 # scalar
 - name: "Filter"

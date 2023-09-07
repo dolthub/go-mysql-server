@@ -16,16 +16,16 @@ import (
 // to compensate for the new name resolution expression overloading GetField
 // indexes.
 func fixupAuxiliaryExprs(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	return fixupAuxiliaryExprsHelper(ctx, a, n, scope, false)
+	return fixupAuxiliaryExprsHelper(ctx, a, n, scope)
 }
 
-func fixupAuxiliaryExprsHelper(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, trigger bool) (sql.Node, transform.TreeIdentity, error) {
-	return transform.NodeWithOpaque(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+func fixupAuxiliaryExprsHelper(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope) (sql.Node, transform.TreeIdentity, error) {
+	if scope.InJoin() && scope.InLateralJoin() {
+		return n, transform.SameTree, nil
+	}
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		default:
-			if _, ok := n.(*plan.Set); ok && trigger {
-				return n, transform.SameTree, nil
-			}
 			ret, same1, err := fixidx.FixFieldIndexesForExpressions(ctx, a.LogFn(), n, scope)
 			if err != nil {
 				return n, transform.SameTree, err
@@ -34,7 +34,7 @@ func fixupAuxiliaryExprsHelper(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 			ret, same2, err := transform.OneNodeExpressions(ret, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				switch e := e.(type) {
 				case *plan.Subquery:
-					newQ, same, err := fixupAuxiliaryExprsHelper(ctx, a, e.Query, scope.NewScopeFromSubqueryExpression(ret), trigger)
+					newQ, same, err := fixupAuxiliaryExprsHelper(ctx, a, e.Query, scope.NewScopeFromSubqueryExpression(ret))
 					if same || err != nil {
 						return e, transform.SameTree, err
 					}
@@ -48,10 +48,38 @@ func fixupAuxiliaryExprsHelper(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 				return n, transform.SameTree, nil
 			}
 			return ret, transform.NewTree, nil
-		case *plan.JoinNode, *plan.Filter:
+		case *plan.RecursiveCte:
+			newL, same1, err := fixupAuxiliaryExprsHelper(ctx, a, n.Left(), scope)
+			if err != nil {
+				return n, transform.SameTree, err
+			}
+			newR, same2, err := fixupAuxiliaryExprsHelper(ctx, a, n.Right(), scope)
+			if err != nil {
+				return n, transform.SameTree, err
+			}
+			if same1 && same2 {
+				return n, transform.SameTree, nil
+			}
+			ret, err := n.WithChildren(newL, newR)
+			return ret, transform.NewTree, err
+		case *plan.SubqueryAlias:
+			newQ, same, err := fixupAuxiliaryExprsHelper(ctx, a, n.Child, scope.NewScopeFromSubqueryAlias(n))
+			if same || err != nil {
+				return n, transform.SameTree, err
+			}
+			return n.WithChild(newQ), transform.NewTree, nil
+		case *plan.JoinNode:
 			return n, transform.SameTree, nil
 		case *plan.IndexedTableAccess:
-			return n, transform.SameTree, nil
+			newExprs, _, err := fixidx.FixFieldIndexesOnExpressions(scope, a.LogFn(), nil, n.Expressions()...)
+			if err != nil {
+				return n, transform.SameTree, nil
+			}
+			ret, err := n.WithExpressions(newExprs...)
+			if err != nil {
+				return n, transform.SameTree, nil
+			}
+			return ret, transform.NewTree, nil
 		case *plan.Fetch:
 			return n, transform.SameTree, nil
 		case *plan.JSONTable:
@@ -106,7 +134,7 @@ func fixupAuxiliaryExprsHelper(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 				return n, transform.SameTree, err
 			}
 			ins := newN.(*plan.InsertInto)
-			newSource, same2, err := fixupAuxiliaryExprsHelper(ctx, a, ins.Source, scope, trigger)
+			newSource, same2, err := fixupAuxiliaryExprsHelper(ctx, a, ins.Source, scope)
 			if err != nil || (same1 && same2) {
 				return n, transform.SameTree, err
 			}

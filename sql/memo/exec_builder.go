@@ -384,7 +384,7 @@ func (b *ExecBuilder) buildSubqueryAlias(r *SubqueryAlias, input sql.Schema, chi
 }
 
 func (b *ExecBuilder) buildMax1Row(r *Max1Row, input sql.Schema, children ...sql.Node) (sql.Node, error) {
-	return r.Table, nil
+	return plan.NewMax1Row(children[0], ""), nil
 }
 
 func (b *ExecBuilder) buildTableFunc(r *TableFunc, input sql.Schema, children ...sql.Node) (sql.Node, error) {

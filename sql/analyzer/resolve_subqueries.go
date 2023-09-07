@@ -80,11 +80,13 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 			if sqa.OuterScopeVisibility && joinParent != nil {
 				if stripChild, ok := joinParent.Right().(*plan.StripRowNode); ok && stripChild.Child == sqa {
 					subScope := scope.NewScopeInJoin(joinParent.Children()[0])
+					subScope.SetLateralJoin(joinParent.Op.IsLateral())
 					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
 				} else {
 					// IsLateral means that the subquery should have visibility into the left scope.
 					if sqa.IsLateral {
 						subScope := addLeftTablesToScope(scope, joinParent.Left())
+						subScope.SetLateralJoin(true)
 						newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
 					} else {
 						newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
@@ -94,6 +96,7 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 				// IsLateral means that the subquery should have visibility into the left scope.
 				if joinParent != nil && sqa.IsLateral {
 					subScope := addLeftTablesToScope(scope, joinParent.Left())
+					subScope.SetLateralJoin(true)
 					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
 				} else {
 					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)

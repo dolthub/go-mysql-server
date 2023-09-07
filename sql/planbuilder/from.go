@@ -317,19 +317,19 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 				sq = sq.WithColumns(renameCols)
 			}
 
-			outScope = inScope.push()
-			outScope.node = sq
-
 			if len(renameCols) > 0 && len(fromScope.cols) != len(renameCols) {
 				err := sql.ErrColumnCountMismatch.New()
 				b.handleErr(err)
 			}
+
+			outScope = inScope.push()
+			scopeMapping := make(map[sql.ColumnId]sql.Expression)
 			for i, c := range fromScope.cols {
 				col := c.col
 				if len(renameCols) > 0 {
 					col = renameCols[i]
 				}
-				outScope.newColumn(scopeColumn{
+				toId := outScope.newColumn(scopeColumn{
 					db:       c.db,
 					table:    alias,
 					col:      col,
@@ -337,7 +337,9 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 					typ:      c.typ,
 					nullable: c.nullable,
 				})
+				scopeMapping[sql.ColumnId(toId)] = c.scalarGf()
 			}
+			outScope.node = sq.WithScopeMapping(scopeMapping)
 			return
 		case *ast.ValuesStatement:
 			if t.As.IsEmpty() {

@@ -56,6 +56,8 @@ func newRelProps(rel RelExpr) *relProps {
 		// need to assign column ids
 		// TODO name resolution should replace assignColumnIds, then Fds can stay lazy
 		p.populateFds()
+	} else if _, ok := rel.(*Max1Row); ok {
+		p.populateFds()
 	}
 	p.populateOutputTables()
 	p.populateInputTables()
@@ -89,20 +91,22 @@ func (p *relProps) populateFds() {
 			fds = sql.NewInnerJoinFDs(jp.Left.RelProps.FuncDeps(), jp.Right.RelProps.FuncDeps(), getEquivs(jp.Filter))
 		}
 	case *Max1Row:
-		start := len(rel.Group().m.Columns)
-		rel.Group().m.assignColumnIds(rel)
-		end := len(rel.Group().m.Columns)
-
-		sch := allTableCols(rel)
-
-		var all sql.ColSet
-		var notNull sql.ColSet
-		for i := start; i < end; i++ {
-			all.Add(sql.ColumnId(i + 1))
-			if !sch[i-start].Nullable {
-				notNull.Add(sql.ColumnId(i + 1))
-			}
-		}
+		//start := len(rel.Group().m.Columns)
+		//rel.Group().m.assignColumnIds(rel)
+		//end := len(rel.Group().m.Columns)
+		//
+		//sch := allTableCols(rel)
+		//
+		//var all sql.ColSet
+		//var notNull sql.ColSet
+		//for i := start; i < end; i++ {
+		//	all.Add(sql.ColumnId(i + 1))
+		//	if !sch[i-start].Nullable {
+		//		notNull.Add(sql.ColumnId(i + 1))
+		//	}
+		//}
+		all := rel.Child.RelProps.FuncDeps().All()
+		notNull := rel.Child.RelProps.FuncDeps().NotNull()
 		fds = sql.NewMax1RowFDs(all, notNull)
 	case SourceRel:
 		start := len(rel.Group().m.Columns)
@@ -312,6 +316,8 @@ func (p *relProps) populateOutputTables() {
 		p.outputTables = n.Child.RelProps.OutputTables()
 	case *Filter:
 		p.outputTables = n.Child.RelProps.OutputTables()
+	case *Max1Row:
+		p.outputTables = n.Child.RelProps.OutputTables()
 	case JoinRel:
 		p.outputTables = n.JoinPrivate().Left.RelProps.OutputTables().Union(n.JoinPrivate().Right.RelProps.OutputTables())
 	default:
@@ -331,6 +337,8 @@ func (p *relProps) populateInputTables() {
 	case *Project:
 		p.inputTables = n.Child.RelProps.InputTables()
 	case *Filter:
+		p.inputTables = n.Child.RelProps.InputTables()
+	case *Max1Row:
 		p.inputTables = n.Child.RelProps.InputTables()
 	case JoinRel:
 		p.inputTables = n.JoinPrivate().Left.RelProps.InputTables().Union(n.JoinPrivate().Right.RelProps.InputTables())
@@ -362,6 +370,8 @@ func (p *relProps) outputColsForRel(r RelExpr) sql.Schema {
 	case *Project:
 		return r.outputCols()
 	case *Filter:
+		return r.outputCols()
+	case *Max1Row:
 		return r.outputCols()
 	case SourceRel:
 		return r.OutputCols()

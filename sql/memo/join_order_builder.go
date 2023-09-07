@@ -166,6 +166,8 @@ func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet, *Ex
 	case *plan.Limit:
 		_, _, group = j.populateSubgraph(n.Child)
 		group.RelProps.limit = n.Limit
+	case *plan.Max1Row:
+		return j.buildMax1Row(n)
 	case *plan.JoinNode:
 		group = j.buildJoinOp(n)
 	case sql.Nameable:
@@ -328,8 +330,18 @@ func (j *joinOrderBuilder) buildFilter(n *plan.Filter) (vertexSet, edgeSet, *Exp
 		filterGroups = append(filterGroups, j.m.MemoizeScalar(f))
 	}
 
-	// TODO if child is a filter, combine filters
 	filterGrp := j.m.MemoizeFilter(nil, childGrp, filterGroups)
+
+	// filter will absorb child relation for join reordering
+	j.plans[childV] = filterGrp
+	return childV, childE, filterGrp
+}
+
+func (j *joinOrderBuilder) buildMax1Row(n *plan.Max1Row) (vertexSet, edgeSet, *ExprGroup) {
+	// memoize child
+	childV, childE, childGrp := j.populateSubgraph(n.Child)
+
+	filterGrp := j.m.MemoizeMax1Row(nil, childGrp)
 
 	// filter will absorb child relation for join reordering
 	j.plans[childV] = filterGrp
@@ -350,8 +362,6 @@ func (j *joinOrderBuilder) buildJoinLeaf(n sql.Nameable) *ExprGroup {
 		rel = &RecursiveTable{sourceBase: b, Table: n}
 	case *plan.SubqueryAlias:
 		rel = &SubqueryAlias{sourceBase: b, Table: n}
-	case *plan.Max1Row:
-		rel = &Max1Row{sourceBase: b, Table: n}
 	case *plan.RecursiveCte:
 		rel = &RecursiveCte{sourceBase: b, Table: n}
 	case *plan.IndexedTableAccess:

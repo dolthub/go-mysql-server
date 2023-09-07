@@ -16,7 +16,6 @@ package plan
 
 import (
 	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -33,6 +32,7 @@ type SubqueryAlias struct {
 	Volatile             bool
 	CacheableCTESource   bool
 	IsLateral            bool
+	ScopeMapping         map[sql.ColumnId]sql.Expression
 }
 
 var _ sql.Node = (*SubqueryAlias)(nil)
@@ -121,6 +121,12 @@ func (sq *SubqueryAlias) WithCorrelated(cols sql.ColSet) *SubqueryAlias {
 func (sq *SubqueryAlias) WithVolatile(v bool) *SubqueryAlias {
 	ret := *sq
 	ret.Volatile = v
+	return &ret
+}
+
+func (sq *SubqueryAlias) WithScopeMapping(cols map[sql.ColumnId]sql.Expression) *SubqueryAlias {
+	ret := *sq
+	ret.ScopeMapping = cols
 	return &ret
 }
 

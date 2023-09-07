@@ -37,8 +37,9 @@ type Scope struct {
 
 	Procedures *ProcedureCache
 
-	inJoin       bool
-	joinSiblings []sql.Node
+	inJoin        bool
+	inLateralJoin bool
+	joinSiblings  []sql.Node
 }
 
 func (s *Scope) SetJoin(b bool) {
@@ -46,6 +47,13 @@ func (s *Scope) SetJoin(b bool) {
 		return
 	}
 	s.inJoin = b
+}
+
+func (s *Scope) SetLateralJoin(b bool) {
+	if s == nil {
+		return
+	}
+	s.inLateralJoin = b
 }
 
 func (s *Scope) IsEmpty() bool {
@@ -154,6 +162,7 @@ func (s *Scope) NewScopeFromSubqueryAlias(sqa *SubqueryAlias) *Scope {
 			subScope.joinSiblings = append(subScope.joinSiblings, s.joinSiblings...)
 		}
 		subScope.inJoin = s.inJoin
+		subScope.inLateralJoin = s.inLateralJoin
 	}
 
 	return subScope
@@ -300,4 +309,15 @@ func (s *Scope) InJoin() bool {
 		return false
 	}
 	return s.inJoin
+}
+
+func (s *Scope) InLateralJoin() bool {
+	if s == nil {
+		return false
+	}
+	return s.inLateralJoin
+}
+
+func (s *Scope) JoinSiblings() []sql.Node {
+	return s.joinSiblings
 }

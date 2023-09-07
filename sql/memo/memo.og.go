@@ -367,34 +367,6 @@ func (r *SubqueryAlias) Children() []*ExprGroup {
 	return nil
 }
 
-type Max1Row struct {
-	*sourceBase
-	Table sql.NameableNode
-}
-
-var _ RelExpr = (*Max1Row)(nil)
-var _ SourceRel = (*Max1Row)(nil)
-
-func (r *Max1Row) String() string {
-	return FormatExpr(r)
-}
-
-func (r *Max1Row) Name() string {
-	return strings.ToLower(r.Table.Name())
-}
-
-func (r *Max1Row) TableId() TableId {
-	return TableIdForSource(r.g.Id)
-}
-
-func (r *Max1Row) OutputCols() sql.Schema {
-	return r.Table.Schema()
-}
-
-func (r *Max1Row) Children() []*ExprGroup {
-	return nil
-}
-
 type TableFunc struct {
 	*sourceBase
 	Table sql.TableFunction
@@ -519,6 +491,25 @@ func (r *Distinct) Children() []*ExprGroup {
 }
 
 func (r *Distinct) outputCols() sql.Schema {
+	return r.Child.RelProps.OutputCols()
+}
+
+type Max1Row struct {
+	*relBase
+	Child *ExprGroup
+}
+
+var _ RelExpr = (*Max1Row)(nil)
+
+func (r *Max1Row) String() string {
+	return FormatExpr(r)
+}
+
+func (r *Max1Row) Children() []*ExprGroup {
+	return []*ExprGroup{r.Child}
+}
+
+func (r *Max1Row) outputCols() sql.Schema {
 	return r.Child.RelProps.OutputCols()
 }
 
@@ -969,8 +960,6 @@ func FormatExpr(r exprType) string {
 		return fmt.Sprintf("recursivecte: %s", r.Name())
 	case *SubqueryAlias:
 		return fmt.Sprintf("subqueryalias: %s", r.Name())
-	case *Max1Row:
-		return fmt.Sprintf("max1row: %s", r.Name())
 	case *TableFunc:
 		return fmt.Sprintf("tablefunc: %s", r.Name())
 	case *JSONTable:
@@ -981,6 +970,8 @@ func FormatExpr(r exprType) string {
 		return fmt.Sprintf("project: %d", r.Child.Id)
 	case *Distinct:
 		return fmt.Sprintf("distinct: %d", r.Child.Id)
+	case *Max1Row:
+		return fmt.Sprintf("max1row: %d", r.Child.Id)
 	case *Filter:
 		return fmt.Sprintf("filter: %d", r.Child.Id)
 	case *Equal:
@@ -1071,8 +1062,6 @@ func buildRelExpr(b *ExecBuilder, r RelExpr, input sql.Schema, children ...sql.N
 		result, err = b.buildRecursiveCte(r, input, children...)
 	case *SubqueryAlias:
 		result, err = b.buildSubqueryAlias(r, input, children...)
-	case *Max1Row:
-		result, err = b.buildMax1Row(r, input, children...)
 	case *TableFunc:
 		result, err = b.buildTableFunc(r, input, children...)
 	case *JSONTable:
@@ -1081,6 +1070,8 @@ func buildRelExpr(b *ExecBuilder, r RelExpr, input sql.Schema, children ...sql.N
 		result, err = b.buildEmptyTable(r, input, children...)
 	case *Project:
 		result, err = b.buildProject(r, input, children...)
+	case *Max1Row:
+		result, err = b.buildMax1Row(r, input, children...)
 	case *Filter:
 		result, err = b.buildFilter(r, input, children...)
 	default:
