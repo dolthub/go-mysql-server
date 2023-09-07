@@ -67,6 +67,10 @@ func key(t *TableData) tableKey {
 	return tableKey{strings.ToLower(t.dbName), strings.ToLower(t.tableName)}
 }
 
+func keyFromNames(dbName, tableName string) tableKey {
+	return tableKey{strings.ToLower(dbName), strings.ToLower(tableName)}
+}
+
 // tableData returns the table data for this session for the table provided 
 func (s *Session) tableData(t *Table) *TableData {
 	td, ok := s.tables[key(t.data)]

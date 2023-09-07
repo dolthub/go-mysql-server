@@ -271,6 +271,9 @@ func (d *BaseDatabase) RenameTable(ctx *sql.Context, oldName, newName string) er
 		return sql.ErrTableAlreadyExists.New(newName)
 	}
 
+	sess := SessionFromContext(ctx)
+	sess.dropTable(tbl.(*Table).data)
+	
 	memTbl := tbl.(*Table).copy()
 	memTbl.name = newName
 	for _, col := range memTbl.data.schema.Schema {
@@ -283,8 +286,11 @@ func (d *BaseDatabase) RenameTable(ctx *sql.Context, oldName, newName string) er
 			memIndex.Exprs[i] = expression.NewGetFieldWithTable(i, getField.Type(), newName, getField.Name(), getField.IsNullable())
 		}
 	}
+	memTbl.data.tableName = newName
+	
 	d.tables[newName] = tbl
 	delete(d.tables, oldName)
+	sess.putTable(memTbl.data)
 
 	return nil
 }
