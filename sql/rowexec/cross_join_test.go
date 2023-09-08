@@ -42,7 +42,6 @@ var rSchema = sql.NewPrimaryKeySchema(sql.Schema{
 
 func TestCrossJoin(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewEmptyContext()
 
 	resultSchema := sql.Schema{
 		{Name: "lcol1", Type: types.Text},
@@ -56,10 +55,13 @@ func TestCrossJoin(t *testing.T) {
 	}
 
 	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
 	ltable := memory.NewTable(db.Database(), "left", lSchema, nil)
 	rtable := memory.NewTable(db.Database(), "right", rSchema, nil)
-	insertData(t, ltable)
-	insertData(t, rtable)
+	insertData(t, newContext(pro), ltable)
+	insertData(t, newContext(pro), rtable)
 
 	j := plan.NewCrossJoin(
 		plan.NewResolvedTable(ltable, nil, nil),
@@ -115,12 +117,14 @@ func TestCrossJoin(t *testing.T) {
 
 func TestCrossJoin_Empty(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewEmptyContext()
 
 	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+	
 	ltable := memory.NewTable(db.Database(), "left", lSchema, nil)
 	rtable := memory.NewTable(db.Database(), "right", rSchema, nil)
-	insertData(t, ltable)
+	insertData(t, newContext(pro), ltable)
 
 	j := plan.NewCrossJoin(
 		plan.NewResolvedTable(ltable, nil, nil),
@@ -137,7 +141,7 @@ func TestCrossJoin_Empty(t *testing.T) {
 
 	ltable = memory.NewTable(db.Database(), "left", lSchema, nil)
 	rtable = memory.NewTable(db.Database(), "right", rSchema, nil)
-	insertData(t, rtable)
+	insertData(t, newContext(pro), rtable)
 
 	j = plan.NewCrossJoin(
 		plan.NewResolvedTable(ltable, nil, nil),
@@ -153,7 +157,7 @@ func TestCrossJoin_Empty(t *testing.T) {
 	require.Nil(row)
 }
 
-func insertData(t *testing.T, table *memory.Table) {
+func insertData(t *testing.T, ctx *sql.Context, table *memory.Table) {
 	t.Helper()
 	require := require.New(t)
 
@@ -163,6 +167,6 @@ func insertData(t *testing.T, table *memory.Table) {
 	}
 
 	for _, r := range rows {
-		require.NoError(table.Insert(sql.NewEmptyContext(), r))
+		require.NoError(table.Insert(ctx, r))
 	}
 }

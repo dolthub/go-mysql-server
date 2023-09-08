@@ -85,10 +85,12 @@ func testInnerJoin(t *testing.T, ctx *sql.Context) {
 
 	require := require.New(t)
 	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	
 	ltable := memory.NewTable(db.BaseDatabase, "left", lSchema, nil)
 	rtable := memory.NewTable(db.BaseDatabase, "right", rSchema, nil)
-	insertData(t, ltable)
-	insertData(t, rtable)
+	insertData(t, newContext(pro), ltable)
+	insertData(t, newContext(pro),  rtable)
 
 	j := plan.NewInnerJoin(
 		plan.NewResolvedTable(ltable, nil, nil),
@@ -223,10 +225,13 @@ func TestLeftJoin(t *testing.T) {
 	require := require.New(t)
 
 	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	
 	ltable := memory.NewTable(db.BaseDatabase, "left", lSchema, nil)
 	rtable := memory.NewTable(db.BaseDatabase, "right", rSchema, nil)
-	insertData(t, ltable)
-	insertData(t, rtable)
+	
+	insertData(t, newContext(pro), ltable)
+	insertData(t, newContext(pro),  rtable)
 
 	j := plan.NewLeftOuterJoin(
 		plan.NewResolvedTable(ltable, nil, nil),
