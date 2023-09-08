@@ -126,9 +126,8 @@ func assertRows(t *testing.T, ctx *sql.Context, iter sql.RowIter, expected int64
 	require.Equal(expected, rows)
 }
 
-func collectRows(t *testing.T, node sql.Node) []sql.Row {
+func collectRows(t *testing.T, ctx *sql.Context, node sql.Node) []sql.Row {
 	t.Helper()
-	ctx := sql.NewEmptyContext()
 
 	iter, err := DefaultBuilder.Build(ctx, node, nil)
 	require.NoError(t, err)

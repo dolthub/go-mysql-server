@@ -70,27 +70,30 @@ func TestJoinSchema(t *testing.T) {
 }
 
 func TestInnerJoin(t *testing.T) {
-	testInnerJoin(t, sql.NewEmptyContext())
+	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+	testInnerJoin(t, db, ctx)
 }
 
 func TestMultiPassInnerJoin(t *testing.T) {
+	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
 	ctx := sql.NewContext(context.TODO(), sql.WithMemoryManager(
 		sql.NewMemoryManager(mockReporter{2, 1}),
-	))
-	testInnerJoin(t, ctx)
+	), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
+	testInnerJoin(t, db, ctx)
 }
 
-func testInnerJoin(t *testing.T, ctx *sql.Context) {
+func testInnerJoin(t *testing.T, db *memory.Database, ctx *sql.Context) {
 	t.Helper()
 
 	require := require.New(t)
-	db := memory.NewDatabase("test")
-	pro := memory.NewDBProvider(db)
 	
 	ltable := memory.NewTable(db.BaseDatabase, "left", lSchema, nil)
 	rtable := memory.NewTable(db.BaseDatabase, "right", rSchema, nil)
-	insertData(t, newContext(pro), ltable)
-	insertData(t, newContext(pro),  rtable)
+	insertData(t, ctx, ltable)
+	insertData(t, ctx,  rtable)
 
 	j := plan.NewInnerJoin(
 		plan.NewResolvedTable(ltable, nil, nil),
@@ -100,7 +103,7 @@ func testInnerJoin(t *testing.T, ctx *sql.Context) {
 			expression.NewGetField(4, types.Text, "rcol1", false),
 		))
 
-	rows := collectRows(t, j)
+	rows := collectRows(t, ctx, j)
 	require.Len(rows, 2)
 
 	require.Equal([]sql.Row{
@@ -108,11 +111,14 @@ func testInnerJoin(t *testing.T, ctx *sql.Context) {
 		{"col1_2", "col2_2", int32(3), int64(4), "col1_2", "col2_2", int32(3), int64(4)},
 	}, rows)
 }
+
 func TestInnerJoinEmpty(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewEmptyContext()
 
 	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+	
 	ltable := memory.NewTable(db.BaseDatabase, "left", lSchema, nil)
 	rtable := memory.NewTable(db.BaseDatabase, "right", rSchema, nil)
 
@@ -132,6 +138,8 @@ func TestInnerJoinEmpty(t *testing.T) {
 
 func BenchmarkInnerJoin(b *testing.B) {
 	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	
 	t1 := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo", Type: types.Int64},
 		{Name: "b", Source: "foo", Type: types.Text},
@@ -175,9 +183,10 @@ func BenchmarkInnerJoin(b *testing.B) {
 		{int64(4), "t1_4", int64(4), "t2_4"},
 	}
 
-	ctx := sql.NewContext(context.TODO(), sql.WithMemoryManager(
+	ctx := sql.NewContext(context.Background(), sql.WithMemoryManager(
 		sql.NewMemoryManager(mockReporter{1, 5}),
-	))
+	), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
+	
 	b.Run("inner join", func(b *testing.B) {
 		require := require.New(b)
 
@@ -226,6 +235,7 @@ func TestLeftJoin(t *testing.T) {
 
 	db := memory.NewDatabase("test")
 	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
 	
 	ltable := memory.NewTable(db.BaseDatabase, "left", lSchema, nil)
 	rtable := memory.NewTable(db.BaseDatabase, "right", rSchema, nil)
@@ -244,7 +254,6 @@ func TestLeftJoin(t *testing.T) {
 			expression.NewGetField(6, types.Text, "rcol3", false),
 		))
 
-	ctx := sql.NewEmptyContext()
 	iter, err := DefaultBuilder.Build(ctx, j, nil)
 	require.NoError(err)
 	rows, err := sql.RowIterToRows(ctx, nil, iter)
