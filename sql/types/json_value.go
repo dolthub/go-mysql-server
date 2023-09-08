@@ -885,7 +885,7 @@ func updateObjectTreatAsArray(indexString string, doc interface{}, val interface
 			newArr = append(newArr, doc)
 			return newArr, true, nil
 		}
-	} else if parsedIndex.overflow || mode == ARRAY_APPEND {
+	} else if parsedIndex.overflow {
 		if mode == SET || mode == INSERT {
 			// SET and INSERT convert {}, to [{}, val]
 			var newArr = make([]interface{}, 0, 2)
