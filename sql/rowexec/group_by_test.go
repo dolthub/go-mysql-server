@@ -64,9 +64,11 @@ func TestGroupByResolved(t *testing.T) {
 
 func TestGroupByRowIter(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewEmptyContext()
 
 	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+	
 	childSchema := sql.Schema{
 		{Name: "col1", Type: types.LongText},
 		{Name: "col2", Type: types.Int64},
@@ -82,7 +84,7 @@ func TestGroupByRowIter(t *testing.T) {
 	}
 
 	for _, r := range rows {
-		require.NoError(child.Insert(sql.NewEmptyContext(), r))
+		require.NoError(child.Insert(ctx, r))
 	}
 
 	p := plan.NewSort(
@@ -119,9 +121,11 @@ func TestGroupByRowIter(t *testing.T) {
 
 func TestGroupByAggregationGrouping(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewEmptyContext()
 
 	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+	
 	childSchema := sql.Schema{
 		{Name: "col1", Type: types.LongText},
 		{Name: "col2", Type: types.Int64},
@@ -138,7 +142,7 @@ func TestGroupByAggregationGrouping(t *testing.T) {
 	}
 
 	for _, r := range rows {
-		require.NoError(child.Insert(sql.NewEmptyContext(), r))
+		require.NoError(child.Insert(ctx, r))
 	}
 
 	p := plan.NewGroupBy(
@@ -198,7 +202,6 @@ func TestGroupByCollations(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.Type.String(), func(t *testing.T) {
 			require := require.New(t)
-			ctx := sql.NewEmptyContext()
 
 			childSchema := sql.Schema{
 				{Name: "col1", Type: tc.Type},
@@ -206,6 +209,9 @@ func TestGroupByCollations(t *testing.T) {
 			}
 
 			db := memory.NewDatabase("test")
+			pro := memory.NewDBProvider(db)
+			ctx := newContext(pro)
+			
 			child := memory.NewTable(db.BaseDatabase, "test", sql.NewPrimaryKeySchema(childSchema), nil)
 
 			rows := []sql.Row{
@@ -217,7 +223,7 @@ func TestGroupByCollations(t *testing.T) {
 			}
 
 			for _, r := range rows {
-				require.NoError(child.Insert(sql.NewEmptyContext(), r))
+				require.NoError(child.Insert(ctx, r))
 			}
 
 			p := plan.NewGroupBy(
