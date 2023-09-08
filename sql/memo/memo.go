@@ -484,6 +484,19 @@ func (m *Memo) MemoizeFilter(grp, child *ExprGroup, filters []*ExprGroup) *ExprG
 	return grp
 }
 
+func (m *Memo) MemoizeMax1Row(grp, child *ExprGroup) *ExprGroup {
+	rel := &Max1Row{
+		relBase: &relBase{},
+		Child:   child,
+	}
+	if grp == nil {
+		return m.NewExprGroup(rel)
+	}
+	rel.g = grp
+	grp.Prepend(rel)
+	return grp
+}
+
 // OptimizeRoot finds the implementation for the root expression
 // that has the lowest cost.
 func (m *Memo) OptimizeRoot() error {

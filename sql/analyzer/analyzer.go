@@ -468,7 +468,8 @@ func NewFinalizeUnionSel(sel RuleSelector) RuleSelector {
 func newInsertSourceSelector(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		case transformJoinApplyId:
+		case transformJoinApplyId,
+			pushdownSubqueryAliasFiltersId:
 			return false
 		}
 		return sel(id)

@@ -165,7 +165,7 @@ func partitionFilterByScope(e sql.Expression, corr sql.ColSet) (inScope, outOfSc
 		case *expression.GetField:
 			// we're searching for anything in-scope
 			// return true if not correlated from outerscope
-			id := sql.ColumnId(e.Index())
+			id := e.Id()
 			if corr.Contains(id) {
 				outOfScope.Add(id)
 			} else {
