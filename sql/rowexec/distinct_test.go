@@ -29,9 +29,11 @@ import (
 
 func TestDistinct(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewEmptyContext()
 
 	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+	
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: types.Text, Nullable: true},
 		{Name: "email", Type: types.Text, Nullable: true},
@@ -47,7 +49,7 @@ func TestDistinct(t *testing.T) {
 	}
 
 	for _, r := range rows {
-		require.NoError(child.Insert(sql.NewEmptyContext(), r))
+		require.NoError(child.Insert(ctx, r))
 	}
 
 	p := plan.NewProject([]sql.Expression{
@@ -77,9 +79,11 @@ func TestDistinct(t *testing.T) {
 
 func TestOrderedDistinct(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewEmptyContext()
 
 	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+	
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: types.Text, Nullable: true},
 		{Name: "email", Type: types.Text, Nullable: true},
@@ -95,7 +99,7 @@ func TestOrderedDistinct(t *testing.T) {
 	}
 
 	for _, r := range rows {
-		require.NoError(child.Insert(sql.NewEmptyContext(), r))
+		require.NoError(child.Insert(ctx, r))
 	}
 
 	p := plan.NewProject([]sql.Expression{
