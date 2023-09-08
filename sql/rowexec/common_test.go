@@ -28,8 +28,15 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+func newContext(provider *memory.DbProvider) *sql.Context {
+	ctx := sql.NewEmptyContext()
+	ctx.Session = memory.NewSession(sql.NewBaseSession(), provider)
+	return ctx
+}
+
 var benchtable = func() *memory.Table {
 	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
 	
 	schema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "strfield", Type: types.Text, Nullable: true},
@@ -48,7 +55,7 @@ var benchtable = func() *memory.Table {
 			boolVal = 1
 		}
 		err := t.Insert(
-			sql.NewEmptyContext(),
+			newContext(pro),
 			sql.NewRow(
 				repeatStr(n, i%10+1),
 				float64(i),
@@ -64,7 +71,7 @@ var benchtable = func() *memory.Table {
 
 		if i%2 == 0 {
 			err := t.Insert(
-				sql.NewEmptyContext(),
+				newContext(pro),
 				sql.NewRow(
 					repeatStr(n, i%10+1),
 					float64(i),
