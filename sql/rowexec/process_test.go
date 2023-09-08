@@ -31,12 +31,15 @@ func TestQueryProcess(t *testing.T) {
 	require := require.New(t)
 
 	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
 	table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: types.Int64},
 	}), nil)
 
-	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(1)))
-	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(2)))
+	table.Insert(ctx, sql.NewRow(int64(1)))
+	table.Insert(ctx, sql.NewRow(int64(2)))
 
 	var notifications int
 
@@ -52,7 +55,6 @@ func TestQueryProcess(t *testing.T) {
 		},
 	)
 
-	ctx := sql.NewEmptyContext()
 	iter, err := DefaultBuilder.Build(ctx, node, nil)
 	require.NoError(err)
 
@@ -72,14 +74,17 @@ func TestProcessTable(t *testing.T) {
 	require := require.New(t)
 
 	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
 	table := memory.NewPartitionedTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: types.Int64},
 	}), nil, 2)
 
-	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(1)))
-	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(2)))
-	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(3)))
-	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(4)))
+	table.Insert(ctx, sql.NewRow(int64(1)))
+	table.Insert(ctx, sql.NewRow(int64(2)))
+	table.Insert(ctx, sql.NewRow(int64(3)))
+	table.Insert(ctx, sql.NewRow(int64(4)))
 
 	var partitionDoneNotifications int
 	var partitionStartNotifications int
@@ -103,7 +108,6 @@ func TestProcessTable(t *testing.T) {
 		), nil, nil),
 	)
 
-	ctx := sql.NewEmptyContext()
 	iter, err := DefaultBuilder.Build(ctx, node, nil)
 	require.NoError(err)
 
@@ -127,14 +131,17 @@ func TestProcessIndexableTable(t *testing.T) {
 	require := require.New(t)
 
 	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
 	table := memory.NewPartitionedTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: types.Int64, Source: "foo"},
 	}), nil, 2)
 
-	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(1)))
-	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(2)))
-	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(3)))
-	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(4)))
+	table.Insert(ctx, sql.NewRow(int64(1)))
+	table.Insert(ctx, sql.NewRow(int64(2)))
+	table.Insert(ctx, sql.NewRow(int64(3)))
+	table.Insert(ctx, sql.NewRow(int64(4)))
 
 	var partitionDoneNotifications int
 	var partitionStartNotifications int
@@ -153,7 +160,6 @@ func TestProcessIndexableTable(t *testing.T) {
 		},
 	)
 
-	ctx := sql.NewEmptyContext()
 	iter, err := pt.IndexKeyValues(ctx, []string{"a"})
 	require.NoError(err)
 

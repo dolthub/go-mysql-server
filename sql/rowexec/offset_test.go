@@ -17,9 +17,9 @@ package rowexec
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/stretchr/testify/require"
 
-	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -27,9 +27,11 @@ import (
 
 func TestOffsetPlan(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewEmptyContext()
 
-	_, table, _ := getTestingTable(t)
+	db, table, _ := getTestingTable(t)
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
 	offset := plan.NewOffset(expression.NewLiteral(0, types.Int8), plan.NewResolvedTable(table, nil, nil))
 	require.Equal(1, len(offset.Children()))
 
@@ -40,9 +42,11 @@ func TestOffsetPlan(t *testing.T) {
 
 func TestOffset(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewEmptyContext()
 
-	_, table, n := getTestingTable(t)
+	db, table, n := getTestingTable(t)
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
 	offset := plan.NewOffset(expression.NewLiteral(1, types.Int8), plan.NewResolvedTable(table, nil, nil))
 
 	iter, err := DefaultBuilder.Build(ctx, offset, nil)
