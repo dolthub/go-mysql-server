@@ -37,6 +37,8 @@ type Scope struct {
 
 	Procedures *ProcedureCache
 
+	// corr is the aggregated set of correlated columns tracked by the subquery
+	// chain that produced this scope.
 	corr          sql.ColSet
 	inJoin        bool
 	inLateralJoin bool
@@ -91,8 +93,10 @@ func (s *Scope) NewScope(node sql.Node) *Scope {
 	}
 }
 
-// NewScopeFromSubqueryExpression returns a new subscope created from a subquery expression contained by the specified
-// node.
+// NewScopeFromSubqueryExpression returns a new subscope created from a
+// subquery expression contained by the specified node. |corr| is the
+// set of correlated columns referenced in this subquery, which is only
+// implicit here because the subquery is distanced from its parent |node|.
 func (s *Scope) NewScopeFromSubqueryExpression(node sql.Node, corr sql.ColSet) *Scope {
 	subScope := s.NewScope(node)
 	subScope.CurrentNodeIsFromSubqueryExpression = true
