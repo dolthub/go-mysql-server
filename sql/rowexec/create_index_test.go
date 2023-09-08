@@ -33,7 +33,7 @@ import (
 
 func TestCreateIndexAsync(t *testing.T) {
 	require := require.New(t)
-
+	
 	db := memory.NewDatabase("foo")
 	table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo"},
@@ -59,9 +59,10 @@ func TestCreateIndexAsync(t *testing.T) {
 	ci.CurrentDatabase = "foo"
 
 	tracer := new(test.MemTracer)
-	sess := sql.NewBaseSession()
-	sess.SetIndexRegistry(idxReg)
-	ctx := sql.NewContext(context.Background(), sql.WithTracer(tracer), sql.WithSession(sess))
+	pro := memory.NewDBProvider(db)
+	baseSession := sql.NewBaseSession()
+	baseSession.SetIndexRegistry(idxReg)
+	ctx := sql.NewContext(context.Background(), sql.WithTracer(tracer), sql.WithSession(memory.NewSession(baseSession, pro)))
 	_, err := DefaultBuilder.Build(ctx, ci, nil)
 
 	require.NoError(err)

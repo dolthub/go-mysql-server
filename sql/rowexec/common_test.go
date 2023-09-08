@@ -16,6 +16,7 @@ package rowexec
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"testing"
@@ -29,9 +30,7 @@ import (
 )
 
 func newContext(provider *memory.DbProvider) *sql.Context {
-	ctx := sql.NewEmptyContext()
-	ctx.Session = memory.NewSession(sql.NewBaseSession(), provider)
-	return ctx
+	return sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), provider)))
 }
 
 var benchtable = func() *memory.Table {
