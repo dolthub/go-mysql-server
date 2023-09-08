@@ -37,11 +37,12 @@ func TestShowTableStatus(t *testing.T) {
 	db2.AddTable("t4", memory.NewTable(db2,"t4", sql.PrimaryKeySchema{}, db2.GetForeignKeyCollection()))
 
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db1, db2))
-
+	pro := memory.NewDBProvider(db1, db2)
+	ctx := newContext(pro)
+	
 	node := plan.NewShowTableStatus(db1)
 	node.Catalog = catalog
 
-	ctx := sql.NewEmptyContext()
 	ctx.SetCurrentDatabase("a")
 	iter, err := DefaultBuilder.Build(ctx, node, nil)
 	require.NoError(err)

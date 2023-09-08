@@ -201,12 +201,14 @@ func TestSort(t *testing.T) {
 	for i, tt := range testCases {
 		t.Run(fmt.Sprintf("Sort test %d", i), func(t *testing.T) {
 			require := require.New(t)
-			ctx := sql.NewEmptyContext()
 
 			db := memory.NewDatabase("test")
 			tbl := memory.NewTable(db, "test", schema, nil)
+			pro := memory.NewDBProvider(db)
+			ctx := newContext(pro)
+
 			for _, row := range tt.rows {
-				require.NoError(tbl.Insert(sql.NewEmptyContext(), row))
+				require.NoError(tbl.Insert(ctx, row))
 			}
 
 			sort := plan.NewSort(tt.sortFields, plan.NewResolvedTable(tbl, nil, nil))
@@ -220,7 +222,6 @@ func TestSort(t *testing.T) {
 
 func TestSortAscending(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewEmptyContext()
 
 	data := []sql.Row{
 		sql.NewRow("c"),
@@ -235,9 +236,12 @@ func TestSortAscending(t *testing.T) {
 		{Name: "col1", Type: types.Text, Nullable: true},
 	})
 
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
 	child := memory.NewTable(db, "test", schema, nil)
 	for _, row := range data {
-		require.NoError(child.Insert(sql.NewEmptyContext(), row))
+		require.NoError(child.Insert(ctx, row))
 	}
 
 	sf := []sql.SortField{
@@ -253,7 +257,7 @@ func TestSortAscending(t *testing.T) {
 		sql.NewRow("c"),
 		sql.NewRow("d"),
 	}
-
+	
 	actual, err := NodeToRows(ctx, s)
 	require.NoError(err)
 	require.Equal(expected, actual)
@@ -261,7 +265,6 @@ func TestSortAscending(t *testing.T) {
 
 func TestSortDescending(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewEmptyContext()
 
 	data := []sql.Row{
 		sql.NewRow("c"),
@@ -276,9 +279,12 @@ func TestSortDescending(t *testing.T) {
 		{Name: "col1", Type: types.Text, Nullable: true},
 	})
 
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+	
 	child := memory.NewTable(db, "test", schema, nil)
 	for _, row := range data {
-		require.NoError(child.Insert(sql.NewEmptyContext(), row))
+		require.NoError(child.Insert(ctx, row))
 	}
 
 	sf := []sql.SortField{
@@ -294,7 +300,7 @@ func TestSortDescending(t *testing.T) {
 		sql.NewRow("a"),
 		sql.NewRow(nil),
 	}
-
+	
 	actual, err := NodeToRows(ctx, s)
 	require.NoError(err)
 	require.Equal(expected, actual)

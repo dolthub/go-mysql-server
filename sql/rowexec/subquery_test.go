@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package rowexec_test
+package rowexec
 
 import (
 	"testing"
@@ -23,24 +23,26 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestSubquery(t *testing.T) {
 	require := require.New(t)
 	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
 	table := memory.NewTable(db, "", sql.PrimaryKeySchema{}, nil)
-	require.NoError(table.Insert(sql.NewEmptyContext(), nil))
+	require.NoError(table.Insert(ctx, nil))
 
 	subquery := plan.NewSubquery(plan.NewProject(
 		[]sql.Expression{
 			expression.NewLiteral("one", types.LongText),
 		},
 		plan.NewResolvedTable(table, nil, nil),
-	), "select 'one'").WithExecBuilder(rowexec.DefaultBuilder)
+	), "select 'one'").WithExecBuilder(DefaultBuilder)
 
-	value, err := subquery.Eval(sql.NewEmptyContext(), nil)
+	value, err := subquery.Eval(ctx, nil)
 	require.NoError(err)
 	require.Equal(value, "one")
 }
@@ -48,26 +50,31 @@ func TestSubquery(t *testing.T) {
 func TestSubqueryTooManyRows(t *testing.T) {
 	require := require.New(t)
 	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
 	table := memory.NewTable(db, "", sql.PrimaryKeySchema{}, nil)
-	require.NoError(table.Insert(sql.NewEmptyContext(), nil))
-	require.NoError(table.Insert(sql.NewEmptyContext(), nil))
+	require.NoError(table.Insert(ctx, nil))
+	require.NoError(table.Insert(ctx, nil))
 
 	subquery := plan.NewSubquery(plan.NewProject(
 		[]sql.Expression{
 			expression.NewLiteral("one", types.LongText),
 		},
 		plan.NewResolvedTable(table, nil, nil),
-	), "select 'one'").WithExecBuilder(rowexec.DefaultBuilder)
+	), "select 'one'").WithExecBuilder(DefaultBuilder)
 
-	_, err := subquery.Eval(sql.NewEmptyContext(), nil)
+	_, err := subquery.Eval(ctx, nil)
 	require.Error(err)
 }
 
 func TestSubqueryMultipleRows(t *testing.T) {
 	require := require.New(t)
-
-	ctx := sql.NewEmptyContext()
+	
 	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
 	table := memory.NewTable(db, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "t", Source: "foo", Type: types.Text},
 	}), nil)
@@ -81,7 +88,7 @@ func TestSubqueryMultipleRows(t *testing.T) {
 			expression.NewGetField(0, types.Text, "t", false),
 		},
 		plan.NewResolvedTable(table, nil, nil),
-	), "select t from foo").WithExecBuilder(rowexec.DefaultBuilder)
+	), "select t from foo").WithExecBuilder(DefaultBuilder)
 
 	values, err := subquery.EvalMultiple(ctx, nil)
 	require.NoError(err)
