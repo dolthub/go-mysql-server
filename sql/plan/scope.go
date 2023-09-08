@@ -37,6 +37,7 @@ type Scope struct {
 
 	Procedures *ProcedureCache
 
+	corr          sql.ColSet
 	inJoin        bool
 	inLateralJoin bool
 	joinSiblings  []sql.Node
@@ -92,9 +93,13 @@ func (s *Scope) NewScope(node sql.Node) *Scope {
 
 // NewScopeFromSubqueryExpression returns a new subscope created from a subquery expression contained by the specified
 // node.
-func (s *Scope) NewScopeFromSubqueryExpression(node sql.Node) *Scope {
+func (s *Scope) NewScopeFromSubqueryExpression(node sql.Node, corr sql.ColSet) *Scope {
 	subScope := s.NewScope(node)
 	subScope.CurrentNodeIsFromSubqueryExpression = true
+	subScope.corr = corr
+	if s != nil {
+		subScope.corr = s.corr.Union(corr)
+	}
 	return subScope
 }
 
@@ -126,6 +131,7 @@ func (s *Scope) NewScopeInJoin(node sql.Node) *Scope {
 		recursionDepth: s.recursionDepth + 1,
 		Procedures:     s.Procedures,
 		joinSiblings:   newNodes,
+		corr:           s.corr,
 	}
 }
 
@@ -138,6 +144,7 @@ func (s *Scope) NewScopeNoJoin() *Scope {
 		recursionDepth:  s.recursionDepth + 1,
 		Procedures:      s.Procedures,
 		EnforceReadOnly: s.EnforceReadOnly,
+		corr:            s.corr,
 	}
 }
 
@@ -146,6 +153,7 @@ func (s *Scope) NewScopeNoJoin() *Scope {
 // expression, they may reference tables from the scopes outside the subquery expression's scope.
 func (s *Scope) NewScopeFromSubqueryAlias(sqa *SubqueryAlias) *Scope {
 	subScope := newScopeWithDepth(s.RecursionDepth() + 1)
+	subScope.corr = sqa.Correlated
 	if s != nil {
 		if len(s.nodes) > 0 {
 			// As of MySQL 8.0.14, MySQL provides OUTER scope visibility to derived tables. Unlike LATERAL scope visibility, which
@@ -163,6 +171,7 @@ func (s *Scope) NewScopeFromSubqueryAlias(sqa *SubqueryAlias) *Scope {
 		}
 		subScope.inJoin = s.inJoin
 		subScope.inLateralJoin = s.inLateralJoin
+		subScope.corr = s.corr.Union(sqa.Correlated)
 	}
 
 	return subScope
@@ -320,4 +329,8 @@ func (s *Scope) InLateralJoin() bool {
 
 func (s *Scope) JoinSiblings() []sql.Node {
 	return s.joinSiblings
+}
+
+func (s *Scope) Correlated() sql.ColSet {
+	return s.corr
 }

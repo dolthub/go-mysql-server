@@ -11229,8 +11229,8 @@ WHERE
 			" │       │           │   ├─ aac.id:74!null\n" +
 			" │       │           │   └─ sl3s5.M22QN:63!null\n" +
 			" │       │           └─ TableAlias(aac)\n" +
-			" │       │               └─ Table\n" +
-			" │       │                   ├─ name: TPXBU\n" +
+			" │       │               └─ IndexedTableAccess(TPXBU)\n" +
+			" │       │                   ├─ index: [TPXBU.id]\n" +
 			" │       │                   └─ columns: [id btxc5]\n" +
 			" │       │   as TPXBU, sl3s5.NO52D:65!null as NO52D, sl3s5.IDPK7:66!null as IDPK7]\n" +
 			" │       └─ Project\n" +
@@ -11244,8 +11244,8 @@ WHERE
 			" │           │           │   ├─ aac.id:67!null\n" +
 			" │           │           │   └─ sl3s5.M22QN:19!null\n" +
 			" │           │           └─ TableAlias(aac)\n" +
-			" │           │               └─ Table\n" +
-			" │           │                   ├─ name: TPXBU\n" +
+			" │           │               └─ IndexedTableAccess(TPXBU)\n" +
+			" │           │                   ├─ index: [TPXBU.id]\n" +
 			" │           │                   └─ columns: [id btxc5]\n" +
 			" │           │   as TPXBU, sl3s5.NO52D:21!null as NO52D, sl3s5.IDPK7:22!null as IDPK7]\n" +
 			" │           └─ HashJoin\n" +
@@ -11615,8 +11615,8 @@ WHERE
 			" │       │           │   ├─ aac.id:74!null\n" +
 			" │       │           │   └─ sl3s5.M22QN:63!null\n" +
 			" │       │           └─ TableAlias(aac)\n" +
-			" │       │               └─ Table\n" +
-			" │       │                   ├─ name: TPXBU\n" +
+			" │       │               └─ IndexedTableAccess(TPXBU)\n" +
+			" │       │                   ├─ index: [TPXBU.id]\n" +
 			" │       │                   └─ columns: [id btxc5]\n" +
 			" │       │   as TPXBU, sl3s5.NO52D:65!null as NO52D, sl3s5.IDPK7:66!null as IDPK7]\n" +
 			" │       └─ Project\n" +
@@ -11630,8 +11630,8 @@ WHERE
 			" │           │           │   ├─ aac.id:67!null\n" +
 			" │           │           │   └─ sl3s5.M22QN:19!null\n" +
 			" │           │           └─ TableAlias(aac)\n" +
-			" │           │               └─ Table\n" +
-			" │           │                   ├─ name: TPXBU\n" +
+			" │           │               └─ IndexedTableAccess(TPXBU)\n" +
+			" │           │                   ├─ index: [TPXBU.id]\n" +
 			" │           │                   └─ columns: [id btxc5]\n" +
 			" │           │   as TPXBU, sl3s5.NO52D:21!null as NO52D, sl3s5.IDPK7:22!null as IDPK7]\n" +
 			" │           └─ HashJoin\n" +
@@ -14217,8 +14217,8 @@ WHERE
 			"         │   │   │   │                       │   ├─ jtehg.BRQP2:22!null\n" +
 			"         │   │   │   │                       │   └─ mjr3d.BJUF2:1!null\n" +
 			"         │   │   │   │                       └─ TableAlias(jtehg)\n" +
-			"         │   │   │   │                           └─ Table\n" +
-			"         │   │   │   │                               ├─ name: NOXN3\n" +
+			"         │   │   │   │                           └─ IndexedTableAccess(NOXN3)\n" +
+			"         │   │   │   │                               ├─ index: [NOXN3.BRQP2]\n" +
 			"         │   │   │   │                               └─ columns: [id brqp2]\n" +
 			"         │   │   │   └─ AND\n" +
 			"         │   │   │       ├─ AND\n" +
@@ -14237,8 +14237,8 @@ WHERE
 			"         │   │   │                       │   ├─ xmafz.BRQP2:22!null\n" +
 			"         │   │   │                       │   └─ mjr3d.FJDP5:0!null\n" +
 			"         │   │   │                       └─ TableAlias(xmafz)\n" +
-			"         │   │   │                           └─ Table\n" +
-			"         │   │   │                               ├─ name: NOXN3\n" +
+			"         │   │   │                           └─ IndexedTableAccess(NOXN3)\n" +
+			"         │   │   │                               ├─ index: [NOXN3.BRQP2]\n" +
 			"         │   │   │                               └─ columns: [id brqp2]\n" +
 			"         │   │   └─ AND\n" +
 			"         │   │       ├─ AND\n" +
@@ -14258,8 +14258,8 @@ WHERE
 			"         │   │                       │   ├─ xmafz.BRQP2:22!null\n" +
 			"         │   │                       │   └─ mjr3d.BJUF2:1!null\n" +
 			"         │   │                       └─ TableAlias(xmafz)\n" +
-			"         │   │                           └─ Table\n" +
-			"         │   │                               ├─ name: NOXN3\n" +
+			"         │   │                           └─ IndexedTableAccess(NOXN3)\n" +
+			"         │   │                               ├─ index: [NOXN3.BRQP2]\n" +
 			"         │   │                               └─ columns: [id brqp2]\n" +
 			"         │   ├─ SubqueryAlias\n" +
 			"         │   │   ├─ name: mjr3d\n" +
@@ -15008,8 +15008,8 @@ WHERE
 			"     │                                           │   │   │       │                   │   ├─ jtehg.BRQP2:21!null\n" +
 			"     │                                           │   │   │       │                   │   └─ mjr3d.BJUF2:1!null\n" +
 			"     │                                           │   │   │       │                   └─ TableAlias(jtehg)\n" +
-			"     │                                           │   │   │       │                       └─ Table\n" +
-			"     │                                           │   │   │       │                           ├─ name: NOXN3\n" +
+			"     │                                           │   │   │       │                       └─ IndexedTableAccess(NOXN3)\n" +
+			"     │                                           │   │   │       │                           ├─ index: [NOXN3.BRQP2]\n" +
 			"     │                                           │   │   │       │                           └─ columns: [id brqp2]\n" +
 			"     │                                           │   │   │       └─ NOT\n" +
 			"     │                                           │   │   │           └─ mjr3d.BJUF2:1!null IS NULL\n" +
@@ -15029,8 +15029,8 @@ WHERE
 			"     │                                           │   │       │                   │   ├─ xmafz.BRQP2:21!null\n" +
 			"     │                                           │   │       │                   │   └─ mjr3d.FJDP5:0!null\n" +
 			"     │                                           │   │       │                   └─ TableAlias(xmafz)\n" +
-			"     │                                           │   │       │                       └─ Table\n" +
-			"     │                                           │   │       │                           ├─ name: NOXN3\n" +
+			"     │                                           │   │       │                       └─ IndexedTableAccess(NOXN3)\n" +
+			"     │                                           │   │       │                           ├─ index: [NOXN3.BRQP2]\n" +
 			"     │                                           │   │       │                           └─ columns: [id brqp2]\n" +
 			"     │                                           │   │       └─ mjr3d.BJUF2:1!null IS NULL\n" +
 			"     │                                           │   └─ AND\n" +
@@ -15049,8 +15049,8 @@ WHERE
 			"     │                                           │       │                   │   ├─ xmafz.BRQP2:21!null\n" +
 			"     │                                           │       │                   │   └─ mjr3d.BJUF2:1!null\n" +
 			"     │                                           │       │                   └─ TableAlias(xmafz)\n" +
-			"     │                                           │       │                       └─ Table\n" +
-			"     │                                           │       │                           ├─ name: NOXN3\n" +
+			"     │                                           │       │                       └─ IndexedTableAccess(NOXN3)\n" +
+			"     │                                           │       │                           ├─ index: [NOXN3.BRQP2]\n" +
 			"     │                                           │       │                           └─ columns: [id brqp2]\n" +
 			"     │                                           │       └─ NOT\n" +
 			"     │                                           │           └─ mjr3d.BJUF2:1!null IS NULL\n" +
@@ -15349,8 +15349,8 @@ WHERE
 			"                                                 │   │   │       │                   │   ├─ jtehg.BRQP2:21!null\n" +
 			"                                                 │   │   │       │                   │   └─ mjr3d.BJUF2:1!null\n" +
 			"                                                 │   │   │       │                   └─ TableAlias(jtehg)\n" +
-			"                                                 │   │   │       │                       └─ Table\n" +
-			"                                                 │   │   │       │                           ├─ name: NOXN3\n" +
+			"                                                 │   │   │       │                       └─ IndexedTableAccess(NOXN3)\n" +
+			"                                                 │   │   │       │                           ├─ index: [NOXN3.BRQP2]\n" +
 			"                                                 │   │   │       │                           └─ columns: [id brqp2]\n" +
 			"                                                 │   │   │       └─ NOT\n" +
 			"                                                 │   │   │           └─ mjr3d.BJUF2:1!null IS NULL\n" +
@@ -15370,8 +15370,8 @@ WHERE
 			"                                                 │   │       │                   │   ├─ xmafz.BRQP2:21!null\n" +
 			"                                                 │   │       │                   │   └─ mjr3d.FJDP5:0!null\n" +
 			"                                                 │   │       │                   └─ TableAlias(xmafz)\n" +
-			"                                                 │   │       │                       └─ Table\n" +
-			"                                                 │   │       │                           ├─ name: NOXN3\n" +
+			"                                                 │   │       │                       └─ IndexedTableAccess(NOXN3)\n" +
+			"                                                 │   │       │                           ├─ index: [NOXN3.BRQP2]\n" +
 			"                                                 │   │       │                           └─ columns: [id brqp2]\n" +
 			"                                                 │   │       └─ mjr3d.BJUF2:1!null IS NULL\n" +
 			"                                                 │   └─ AND\n" +
@@ -15390,8 +15390,8 @@ WHERE
 			"                                                 │       │                   │   ├─ xmafz.BRQP2:21!null\n" +
 			"                                                 │       │                   │   └─ mjr3d.BJUF2:1!null\n" +
 			"                                                 │       │                   └─ TableAlias(xmafz)\n" +
-			"                                                 │       │                       └─ Table\n" +
-			"                                                 │       │                           ├─ name: NOXN3\n" +
+			"                                                 │       │                       └─ IndexedTableAccess(NOXN3)\n" +
+			"                                                 │       │                           ├─ index: [NOXN3.BRQP2]\n" +
 			"                                                 │       │                           └─ columns: [id brqp2]\n" +
 			"                                                 │       └─ NOT\n" +
 			"                                                 │           └─ mjr3d.BJUF2:1!null IS NULL\n" +
@@ -15851,8 +15851,8 @@ WHERE
 			"     │                                           │   │   │       │                   │   ├─ jtehg.BRQP2:21!null\n" +
 			"     │                                           │   │   │       │                   │   └─ mjr3d.BJUF2:1!null\n" +
 			"     │                                           │   │   │       │                   └─ TableAlias(jtehg)\n" +
-			"     │                                           │   │   │       │                       └─ Table\n" +
-			"     │                                           │   │   │       │                           ├─ name: NOXN3\n" +
+			"     │                                           │   │   │       │                       └─ IndexedTableAccess(NOXN3)\n" +
+			"     │                                           │   │   │       │                           ├─ index: [NOXN3.BRQP2]\n" +
 			"     │                                           │   │   │       │                           └─ columns: [id brqp2]\n" +
 			"     │                                           │   │   │       └─ NOT\n" +
 			"     │                                           │   │   │           └─ mjr3d.BJUF2:1!null IS NULL\n" +
@@ -15872,8 +15872,8 @@ WHERE
 			"     │                                           │   │       │                   │   ├─ xmafz.BRQP2:21!null\n" +
 			"     │                                           │   │       │                   │   └─ mjr3d.FJDP5:0!null\n" +
 			"     │                                           │   │       │                   └─ TableAlias(xmafz)\n" +
-			"     │                                           │   │       │                       └─ Table\n" +
-			"     │                                           │   │       │                           ├─ name: NOXN3\n" +
+			"     │                                           │   │       │                       └─ IndexedTableAccess(NOXN3)\n" +
+			"     │                                           │   │       │                           ├─ index: [NOXN3.BRQP2]\n" +
 			"     │                                           │   │       │                           └─ columns: [id brqp2]\n" +
 			"     │                                           │   │       └─ mjr3d.BJUF2:1!null IS NULL\n" +
 			"     │                                           │   └─ AND\n" +
@@ -15892,8 +15892,8 @@ WHERE
 			"     │                                           │       │                   │   ├─ xmafz.BRQP2:21!null\n" +
 			"     │                                           │       │                   │   └─ mjr3d.BJUF2:1!null\n" +
 			"     │                                           │       │                   └─ TableAlias(xmafz)\n" +
-			"     │                                           │       │                       └─ Table\n" +
-			"     │                                           │       │                           ├─ name: NOXN3\n" +
+			"     │                                           │       │                       └─ IndexedTableAccess(NOXN3)\n" +
+			"     │                                           │       │                           ├─ index: [NOXN3.BRQP2]\n" +
 			"     │                                           │       │                           └─ columns: [id brqp2]\n" +
 			"     │                                           │       └─ NOT\n" +
 			"     │                                           │           └─ mjr3d.BJUF2:1!null IS NULL\n" +
@@ -16192,8 +16192,8 @@ WHERE
 			"                                                 │   │   │       │                   │   ├─ jtehg.BRQP2:21!null\n" +
 			"                                                 │   │   │       │                   │   └─ mjr3d.BJUF2:1!null\n" +
 			"                                                 │   │   │       │                   └─ TableAlias(jtehg)\n" +
-			"                                                 │   │   │       │                       └─ Table\n" +
-			"                                                 │   │   │       │                           ├─ name: NOXN3\n" +
+			"                                                 │   │   │       │                       └─ IndexedTableAccess(NOXN3)\n" +
+			"                                                 │   │   │       │                           ├─ index: [NOXN3.BRQP2]\n" +
 			"                                                 │   │   │       │                           └─ columns: [id brqp2]\n" +
 			"                                                 │   │   │       └─ NOT\n" +
 			"                                                 │   │   │           └─ mjr3d.BJUF2:1!null IS NULL\n" +
@@ -16213,8 +16213,8 @@ WHERE
 			"                                                 │   │       │                   │   ├─ xmafz.BRQP2:21!null\n" +
 			"                                                 │   │       │                   │   └─ mjr3d.FJDP5:0!null\n" +
 			"                                                 │   │       │                   └─ TableAlias(xmafz)\n" +
-			"                                                 │   │       │                       └─ Table\n" +
-			"                                                 │   │       │                           ├─ name: NOXN3\n" +
+			"                                                 │   │       │                       └─ IndexedTableAccess(NOXN3)\n" +
+			"                                                 │   │       │                           ├─ index: [NOXN3.BRQP2]\n" +
 			"                                                 │   │       │                           └─ columns: [id brqp2]\n" +
 			"                                                 │   │       └─ mjr3d.BJUF2:1!null IS NULL\n" +
 			"                                                 │   └─ AND\n" +
@@ -16233,8 +16233,8 @@ WHERE
 			"                                                 │       │                   │   ├─ xmafz.BRQP2:21!null\n" +
 			"                                                 │       │                   │   └─ mjr3d.BJUF2:1!null\n" +
 			"                                                 │       │                   └─ TableAlias(xmafz)\n" +
-			"                                                 │       │                       └─ Table\n" +
-			"                                                 │       │                           ├─ name: NOXN3\n" +
+			"                                                 │       │                       └─ IndexedTableAccess(NOXN3)\n" +
+			"                                                 │       │                           ├─ index: [NOXN3.BRQP2]\n" +
 			"                                                 │       │                           └─ columns: [id brqp2]\n" +
 			"                                                 │       └─ NOT\n" +
 			"                                                 │           └─ mjr3d.BJUF2:1!null IS NULL\n" +
@@ -17723,8 +17723,8 @@ FROM
 			"                             │           ├─ Eq\n" +
 			"                             │           │   ├─ noxn3.id:6!null\n" +
 			"                             │           │   └─ new.WNUNU:1!null\n" +
-			"                             │           └─ Table\n" +
-			"                             │               ├─ name: NOXN3\n" +
+			"                             │           └─ IndexedTableAccess(NOXN3)\n" +
+			"                             │               ├─ index: [NOXN3.id]\n" +
 			"                             │               └─ columns: [id fftbj]\n" +
 			"                             └─ Subquery\n" +
 			"                                 ├─ cacheable: false\n" +
@@ -17735,8 +17735,8 @@ FROM
 			"                                         ├─ Eq\n" +
 			"                                         │   ├─ noxn3.id:6!null\n" +
 			"                                         │   └─ new.HHVLX:2!null\n" +
-			"                                         └─ Table\n" +
-			"                                             ├─ name: NOXN3\n" +
+			"                                         └─ IndexedTableAccess(NOXN3)\n" +
+			"                                             ├─ index: [NOXN3.id]\n" +
 			"                                             └─ columns: [id brqp2]\n" +
 			"                        )\n" +
 			"                         └─ BLOCK\n" +
@@ -18002,8 +18002,8 @@ WHERE
 			"                 │               ├─ Eq\n" +
 			"                 │               │   ├─ e2i7u.id:8!null\n" +
 			"                 │               │   └─ new.LUEVY:2!null\n" +
-			"                 │               └─ Table\n" +
-			"                 │                   ├─ name: E2I7U\n" +
+			"                 │               └─ IndexedTableAccess(E2I7U)\n" +
+			"                 │                   ├─ index: [E2I7U.id]\n" +
 			"                 │                   └─ columns: [id fgg57]\n" +
 			"                 │       IS NULL)\n" +
 			"                 │       └─ BLOCK\n" +
@@ -18180,8 +18180,8 @@ WHERE
 			"                 │           │           ├─ Eq\n" +
 			"                 │           │           │   ├─ xoaop.id:5!null\n" +
 			"                 │           │           │   └─ new.CH3FR:2!null\n" +
-			"                 │           │           └─ Table\n" +
-			"                 │           │               ├─ name: XOAOP\n" +
+			"                 │           │           └─ IndexedTableAccess(XOAOP)\n" +
+			"                 │           │               ├─ index: [XOAOP.id]\n" +
 			"                 │           │               └─ columns: [id dzlim]\n" +
 			"                 │           └─ right: TUPLE(NER (longtext), BER (longtext), HR (longtext), MMR (longtext))\n" +
 			"                 │      )\n" +
@@ -18352,8 +18352,8 @@ WHERE
 			"                 │           │           ├─ Eq\n" +
 			"                 │           │           │   ├─ xoaop.id:5!null\n" +
 			"                 │           │           │   └─ new.CH3FR:2!null\n" +
-			"                 │           │           └─ Table\n" +
-			"                 │           │               ├─ name: XOAOP\n" +
+			"                 │           │           └─ IndexedTableAccess(XOAOP)\n" +
+			"                 │           │               ├─ index: [XOAOP.id]\n" +
 			"                 │           │               └─ columns: [id dzlim]\n" +
 			"                 │           └─ right: TUPLE(NER (longtext), BER (longtext), HR (longtext), MMR (longtext))\n" +
 			"                 │      )\n" +
@@ -18524,8 +18524,8 @@ WHERE
 			"                 │           │           ├─ Eq\n" +
 			"                 │           │           │   ├─ xoaop.id:5!null\n" +
 			"                 │           │           │   └─ new.CH3FR:2!null\n" +
-			"                 │           │           └─ Table\n" +
-			"                 │           │               ├─ name: XOAOP\n" +
+			"                 │           │           └─ IndexedTableAccess(XOAOP)\n" +
+			"                 │           │               ├─ index: [XOAOP.id]\n" +
 			"                 │           │               └─ columns: [id dzlim]\n" +
 			"                 │           └─ right: TUPLE(NER (longtext), BER (longtext), HR (longtext), MMR (longtext))\n" +
 			"                 │      )\n" +
@@ -18696,8 +18696,8 @@ WHERE
 			"                 │           │           ├─ Eq\n" +
 			"                 │           │           │   ├─ xoaop.id:5!null\n" +
 			"                 │           │           │   └─ new.CH3FR:2!null\n" +
-			"                 │           │           └─ Table\n" +
-			"                 │           │               ├─ name: XOAOP\n" +
+			"                 │           │           └─ IndexedTableAccess(XOAOP)\n" +
+			"                 │           │               ├─ index: [XOAOP.id]\n" +
 			"                 │           │               └─ columns: [id dzlim]\n" +
 			"                 │           └─ right: TUPLE(NER (longtext), BER (longtext), HR (longtext), MMR (longtext))\n" +
 			"                 │      )\n" +
@@ -19579,8 +19579,8 @@ FROM
 			"                     │           │   ├─ aac.BTXC5:18\n" +
 			"                     │           │   └─ bpnw2.SYPKF:3\n" +
 			"                     │           └─ TableAlias(aac)\n" +
-			"                     │               └─ Table\n" +
-			"                     │                   ├─ name: TPXBU\n" +
+			"                     │               └─ IndexedTableAccess(TPXBU)\n" +
+			"                     │                   ├─ index: [TPXBU.BTXC5]\n" +
 			"                     │                   └─ columns: [id btxc5]\n" +
 			"                     │   as M22QN, bpnw2.NZ4MQ:4 as NZ4MQ, bpnw2.MU3KG:0!null as ETPQV, bpnw2.I4NDZ:7!null as PRUV2, bpnw2.YKSSU:6 as YKSSU, bpnw2.FHCYT:5 as FHCYT]\n" +
 			"                     └─ Project\n" +
@@ -19594,8 +19594,8 @@ FROM
 			"                         │           │   ├─ aac.BTXC5:9\n" +
 			"                         │           │   └─ bpnw2.SYPKF:3\n" +
 			"                         │           └─ TableAlias(aac)\n" +
-			"                         │               └─ Table\n" +
-			"                         │                   ├─ name: TPXBU\n" +
+			"                         │               └─ IndexedTableAccess(TPXBU)\n" +
+			"                         │                   ├─ index: [TPXBU.BTXC5]\n" +
 			"                         │                   └─ columns: [id btxc5]\n" +
 			"                         │   as M22QN, bpnw2.NZ4MQ:4 as NZ4MQ, bpnw2.MU3KG:0!null as ETPQV, bpnw2.I4NDZ:7!null as PRUV2, bpnw2.YKSSU:6 as YKSSU, bpnw2.FHCYT:5 as FHCYT]\n" +
 			"                         └─ SubqueryAlias\n" +

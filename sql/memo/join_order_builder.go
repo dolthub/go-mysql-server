@@ -341,11 +341,10 @@ func (j *joinOrderBuilder) buildMax1Row(n *plan.Max1Row) (vertexSet, edgeSet, *E
 	// memoize child
 	childV, childE, childGrp := j.populateSubgraph(n.Child)
 
-	filterGrp := j.m.MemoizeMax1Row(nil, childGrp)
+	max1Grp := j.m.MemoizeMax1Row(nil, childGrp)
 
-	// filter will absorb child relation for join reordering
-	j.plans[childV] = filterGrp
-	return childV, childE, filterGrp
+	j.plans[childV] = max1Grp
+	return childV, childE, max1Grp
 }
 
 func (j *joinOrderBuilder) buildJoinLeaf(n sql.Nameable) *ExprGroup {

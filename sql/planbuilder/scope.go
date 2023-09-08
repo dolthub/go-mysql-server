@@ -38,7 +38,8 @@ type scope struct {
 	refsSubquery   bool
 
 	// cols are definitions provided by this scope
-	cols []scopeColumn
+	cols   []scopeColumn
+	colset sql.ColSet
 	// extraCols are auxillary output columns required
 	// for sorting or grouping
 	extraCols []scopeColumn
@@ -127,6 +128,7 @@ func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn,
 	if !foundCand {
 		return scopeColumn{}, false
 	}
+	//s.parent.nearestSubquery().addOutOfScope(c.id)
 
 	if s.parent.activeSubquery != nil {
 		s.parent.activeSubquery.addOutOfScope(c.id)
@@ -213,14 +215,14 @@ func (s *scope) initGroupBy() {
 // pushSubquery creates a new scope with the subquery already initialized.
 func (s *scope) pushSubquery() *scope {
 	newScope := s.push()
-	newScope.activeSubquery = &subquery{}
+	newScope.activeSubquery = &subquery{parent: s.nearestSubquery()}
 	return newScope
 }
 
 // replaceSubquery creates a new scope with the subquery already initialized.
 func (s *scope) replaceSubquery() *scope {
 	newScope := s.replace()
-	newScope.activeSubquery = &subquery{}
+	newScope.activeSubquery = &subquery{parent: s.nearestSubquery()}
 	return newScope
 }
 
@@ -372,6 +374,9 @@ func (s *scope) copy() *scope {
 		ret.cols = make([]scopeColumn, len(s.cols))
 		copy(ret.cols, s.cols)
 	}
+	if !s.colset.Empty() {
+		ret.colset = s.colset.Copy()
+	}
 
 	return &ret
 }
@@ -424,6 +429,7 @@ func (s *scope) redirect(from, to scopeColumn) {
 // column identity
 func (s *scope) addColumn(col scopeColumn) {
 	s.cols = append(s.cols, col)
+	s.colset.Add(sql.ColumnId(col.id))
 	if s.exprs == nil {
 		s.exprs = make(map[string]columnId)
 	}

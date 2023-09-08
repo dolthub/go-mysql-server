@@ -91,20 +91,6 @@ func (p *relProps) populateFds() {
 			fds = sql.NewInnerJoinFDs(jp.Left.RelProps.FuncDeps(), jp.Right.RelProps.FuncDeps(), getEquivs(jp.Filter))
 		}
 	case *Max1Row:
-		//start := len(rel.Group().m.Columns)
-		//rel.Group().m.assignColumnIds(rel)
-		//end := len(rel.Group().m.Columns)
-		//
-		//sch := allTableCols(rel)
-		//
-		//var all sql.ColSet
-		//var notNull sql.ColSet
-		//for i := start; i < end; i++ {
-		//	all.Add(sql.ColumnId(i + 1))
-		//	if !sch[i-start].Nullable {
-		//		notNull.Add(sql.ColumnId(i + 1))
-		//	}
-		//}
 		all := rel.Child.RelProps.FuncDeps().All()
 		notNull := rel.Child.RelProps.FuncDeps().NotNull()
 		fds = sql.NewMax1RowFDs(all, notNull)

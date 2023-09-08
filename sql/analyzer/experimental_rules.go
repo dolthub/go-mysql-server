@@ -34,7 +34,7 @@ func fixupAuxiliaryExprsHelper(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 			ret, same2, err := transform.OneNodeExpressions(ret, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				switch e := e.(type) {
 				case *plan.Subquery:
-					newQ, same, err := fixupAuxiliaryExprsHelper(ctx, a, e.Query, scope.NewScopeFromSubqueryExpression(ret))
+					newQ, same, err := fixupAuxiliaryExprsHelper(ctx, a, e.Query, scope.NewScopeFromSubqueryExpression(ret, e.Correlated()))
 					if same || err != nil {
 						return e, transform.SameTree, err
 					}
