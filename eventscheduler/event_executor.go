@@ -51,11 +51,6 @@ func newEventExecutor(bgt *sql.BackgroundThreads, ctxFunc func() (*sql.Context, 
 	}
 }
 
-// loadEvents loads the enabled events list to the eventExecutor.
-func (ee *eventExecutor) loadEvents(l []*enabledEvent) {
-	ee.list = newEnabledEventsList(l)
-}
-
 // start starts the eventExecutor. It checks and executes
 // enabled events and updates necessary events' metadata.
 func (ee *eventExecutor) start() {

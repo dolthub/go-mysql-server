@@ -138,7 +138,8 @@ func (es *EventScheduler) loadEventsAndStartEventExecutor(ctx *sql.Context, a *a
 	if err != nil {
 		return err
 	}
-	es.executor.loadEvents(enabledEvents)
+
+	es.executor.list = newEnabledEventsList(enabledEvents)
 	go es.executor.start()
 	return nil
 }
