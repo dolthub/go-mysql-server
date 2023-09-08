@@ -151,7 +151,7 @@ func hoistExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, filt
 
 		// recurse
 		if s.inner != nil {
-			s.inner, _, err = hoistSelectExistsHelper(ctx, scope.NewScopeFromSubqueryExpression(filter), a, s.inner, aliasDisambig)
+			s.inner, _, err = hoistSelectExistsHelper(ctx, scope.NewScopeFromSubqueryExpression(filter, sq.Correlated()), a, s.inner, aliasDisambig)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -248,7 +248,7 @@ func decorrelateOuterCols(sqChild sql.Node, aliasDisambig *aliasDisambiguator, c
 		filters := expression.SplitConjunction(f.Expression)
 		for _, f := range filters {
 			outerRef := transform.InspectExpr(f, func(e sql.Expression) bool {
-				if gf, ok := e.(*expression.GetField); ok && corr.Contains(sql.ColumnId(gf.Index())) {
+				if gf, ok := e.(*expression.GetField); ok && corr.Contains(gf.Id()) {
 					return true
 				}
 				return false

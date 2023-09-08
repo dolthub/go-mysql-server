@@ -295,7 +295,7 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 	for i, h := range handled {
 		expressionsForChild[i], _, err = transform.Expr(h, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if gt, ok := e.(*expression.GetField); ok {
-				gf, ok := sa.ScopeMapping[sql.ColumnId(gt.Index())]
+				gf, ok := sa.ScopeMapping[gt.Id()]
 				if !ok {
 					return e, transform.SameTree, fmt.Errorf("unable to find child with id: %d", gt.Index())
 				}

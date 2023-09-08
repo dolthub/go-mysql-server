@@ -77,13 +77,7 @@ func FixFieldIndexes(scope *plan.Scope, logFn func(string, ...any), schema sql.S
 						if logFn != nil {
 							logFn("Rewriting field %s.%s from index %d to %d", e.Table(), e.Name(), e.Index(), newIndex)
 						}
-						return expression.NewGetFieldWithTable(
-							newIndex,
-							e.Type(),
-							e.Table(),
-							e.Name(),
-							e.IsNullable(),
-						), transform.NewTree, nil
+						return e.WithIndex(newIndex), transform.NewTree, nil
 					}
 					return e, transform.SameTree, nil
 				}
@@ -93,13 +87,7 @@ func FixFieldIndexes(scope *plan.Scope, logFn func(string, ...any), schema sql.S
 					if logFn != nil {
 						logFn("Rewriting field %s.%s from index %d to %d", e.Table(), e.Name(), e.Index(), partial)
 					}
-					return expression.NewGetFieldWithTable(
-						partial,
-						e.Type(),
-						e.Table(),
-						e.Name(),
-						e.IsNullable(),
-					), transform.NewTree, nil
+					return e.WithIndex(partial), transform.NewTree, nil
 				}
 				return e, transform.SameTree, nil
 			}
@@ -117,13 +105,7 @@ func FixFieldIndexes(scope *plan.Scope, logFn func(string, ...any), schema sql.S
 							if logFn != nil {
 								logFn("Rewriting field %s.%s from index %d to %d", e.Table(), e.Name(), e.Index(), newIndex)
 							}
-							return expression.NewGetFieldWithTable(
-								newIndex,
-								e.Type(),
-								e.Table(),
-								e.Name(),
-								e.IsNullable(),
-							), transform.NewTree, nil
+							return e.WithIndex(newIndex), transform.NewTree, nil
 						}
 						return e, transform.SameTree, nil
 					}
@@ -294,7 +276,7 @@ func FixFieldIndexesForNode(ctx *sql.Context, logFn func(string, ...any), scope 
 		}
 		ret, sameE, err := transform.NodeExprs(ret, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if sq, ok := e.(*plan.Subquery); ok {
-				newQ, same, err := FixFieldIndexesForNode(ctx, logFn, scope.NewScopeFromSubqueryExpression(ret), sq.Query)
+				newQ, same, err := FixFieldIndexesForNode(ctx, logFn, scope.NewScopeFromSubqueryExpression(ret, sq.Correlated()), sq.Query)
 				if err != nil || same {
 					return sq, transform.SameTree, err
 				}

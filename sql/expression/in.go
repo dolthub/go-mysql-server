@@ -324,17 +324,14 @@ func (hit *HashInTuple) Resolved() bool {
 
 func (hit *HashInTuple) Type() sql.Type {
 	return hit.in.Type()
-
 }
 
 func (hit *HashInTuple) IsNullable() bool {
 	return hit.in.IsNullable()
-
 }
 
 func (hit *HashInTuple) Children() []sql.Expression {
 	return hit.in.Children()
-
 }
 
 func (hit *HashInTuple) WithChildren(children ...sql.Expression) (sql.Expression, error) {

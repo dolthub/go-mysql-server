@@ -52,7 +52,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 			switch e := e.(type) {
 			case *expression.GetField:
 				if e.Table() == "" {
-					id = columnId(e.Index())
+					id = columnId(e.Id())
 					aRef = e.Name()
 				}
 			case *expression.Alias:

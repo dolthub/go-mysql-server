@@ -27,6 +27,10 @@ import (
 type GetField struct {
 	table      string
 	fieldIndex int
+	// exprId lets the lifecycle of getFields be idempotent. We can re-index
+	// or re-apply scope/caching optimizations without worrying about losing
+	// the reference to the unique id.
+	exprId     sql.ColumnId
 	name       string
 	fieldType  sql.Type
 	fieldType2 sql.Type2
@@ -52,11 +56,14 @@ func NewGetFieldWithTable(index int, fieldType sql.Type, table, fieldName string
 		fieldType2: fieldType2,
 		name:       fieldName,
 		nullable:   nullable,
+		exprId:     sql.ColumnId(index),
 	}
 }
 
 // Index returns the index where the GetField will look for the value from a sql.Row.
 func (p *GetField) Index() int { return p.fieldIndex }
+
+func (p *GetField) Id() sql.ColumnId { return p.exprId }
 
 // Children implements the Expression interface.
 func (*GetField) Children() []sql.Expression {

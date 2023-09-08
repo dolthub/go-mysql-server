@@ -1460,7 +1460,7 @@ func addColumnToSchema(schema sql.Schema, column *sql.Column, order *sql.ColumnO
 						if idx < 0 {
 							return nil, transform.SameTree, sql.ErrTableColumnNotFound.New(schema[0].Source, s.Name())
 						}
-						return s.WithIndex(idx), transform.NewTree, nil
+						return expression.NewGetFieldWithTable(idx, s.Type(), s.Table(), s.Name(), s.IsNullable()), transform.NewTree, nil
 					default:
 						return s, transform.SameTree, nil
 					}

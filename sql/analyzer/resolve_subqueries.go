@@ -17,7 +17,6 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -126,14 +125,14 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 					if analyzererrors.ErrValidationResolved.Is(err) {
 						// if a parent is unresolved, we want to dig deeper to find the unresolved
 						// child dependency
-						_, _, err := finalizeSubqueriesHelper(ctx, a, sq.Query, scope.NewScopeFromSubqueryExpression(node), sel)
+						_, _, err := finalizeSubqueriesHelper(ctx, a, sq.Query, scope.NewScopeFromSubqueryExpression(node, sq.Correlated()), sel)
 						if err != nil {
 							return e, transform.SameTree, err
 						}
 					}
 					return e, transform.SameTree, err
 				}
-				newExpr, same1, err := finalizeSubqueriesHelper(ctx, a, newSq.(*plan.Subquery).Query, scope.NewScopeFromSubqueryExpression(node), sel)
+				newExpr, same1, err := finalizeSubqueriesHelper(ctx, a, newSq.(*plan.Subquery).Query, scope.NewScopeFromSubqueryExpression(node, newSq.(*plan.Subquery).Correlated()), sel)
 				if err != nil {
 					return e, transform.SameTree, err
 				}
@@ -212,10 +211,10 @@ func analyzeSubqueryExpression(ctx *sql.Context, a *Analyzer, n sql.Node, sq *pl
 	var err error
 	if finalize {
 		analyzed, _, err = a.analyzeStartingAtBatch(subqueryCtx, sq.Query,
-			scope.NewScopeFromSubqueryExpression(n), "default-rules", NewFinalizeSubquerySel(sel))
+			scope.NewScopeFromSubqueryExpression(n, sq.Correlated()), "default-rules", NewFinalizeSubquerySel(sel))
 	} else {
 		analyzed, _, err = a.analyzeThroughBatch(subqueryCtx, sq.Query,
-			scope.NewScopeFromSubqueryExpression(n), "default-rules", NewResolveSubqueryExprSelector(sel))
+			scope.NewScopeFromSubqueryExpression(n, sq.Correlated()), "default-rules", NewResolveSubqueryExprSelector(sel))
 	}
 	if err != nil {
 		// We ignore certain errors during non-final passes of the analyzer, deferring them to later analysis passes.
@@ -284,56 +283,6 @@ func StripPassthroughNodes(n sql.Node) sql.Node {
 	}
 
 	return n
-}
-
-func exprIsCacheable(expr sql.Expression, lowestAllowedIdx int) bool {
-	cacheable := true
-	sql.Inspect(expr, func(e sql.Expression) bool {
-		switch e := e.(type) {
-		case *expression.GetField:
-			if e.Index() >= lowestAllowedIdx {
-				return true
-			}
-		case *plan.Subquery:
-			if nodeIsCacheable(e.Query, lowestAllowedIdx) {
-				return true
-			}
-		case *deferredColumn:
-		case sql.NonDeterministicExpression:
-		default:
-			return true
-		}
-		cacheable = false
-		return false
-	})
-	return cacheable
-}
-
-func nodeIsCacheable(n sql.Node, lowestAllowedIdx int) bool {
-	cacheable := true
-	transform.Inspect(n, func(node sql.Node) bool {
-		if er, ok := node.(sql.Expressioner); ok {
-			for _, expr := range er.Expressions() {
-				if !exprIsCacheable(expr, lowestAllowedIdx) {
-					cacheable = false
-					return false
-				}
-			}
-		} else if sqa, ok := node.(*plan.SubqueryAlias); ok {
-			// TODO: Need more logic and testing with CTEs. For example, CTEs that are non-deterministic MUST be
-			//       cached and have their result sets reused, otherwise query result will be incorrect.
-			// If a subquery has visibility to outer scopes, then we need to check if it has
-			// references to that outer scope. If not, it can be always be cached.
-			if sqa.OuterScopeVisibility {
-				if !nodeIsCacheable(sqa.Child, lowestAllowedIdx) {
-					cacheable = false
-				}
-			}
-			return false
-		}
-		return true
-	})
-	return cacheable
 }
 
 // cacheSubqueryAlisesInJoins will look for joins against subquery aliases that
