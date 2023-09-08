@@ -144,7 +144,7 @@ var _ sql.Table = (*dummyTable)(nil)
 var _ sql.PrimaryKeyTable = (*dummyTable)(nil)
 var _ sql.IndexAddressable = (*dummyTable)(nil)
 
-func (t *dummyTable) IndexedAccess(sql.IndexLookup) sql.IndexedTable {
+func (t *dummyTable) IndexedAccess(*sql.Context, sql.IndexLookup) (sql.IndexedTable, error) {
 	panic("implement me")
 }
 

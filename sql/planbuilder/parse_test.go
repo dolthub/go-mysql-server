@@ -1740,21 +1740,21 @@ func newTestCatalog() *sql.MapCatalog {
 		Tables:    make(map[string]sql.Table),
 	}
 
-	cat.Tables["xy"] = memory.NewTable("xy", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("mydb")
+	cat.Tables["xy"] = memory.NewTable(db, "xy", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "x", Type: types.Int64},
 		{Name: "y", Type: types.Int64},
 		{Name: "z", Type: types.Int64},
 	}, 0), nil)
-	cat.Tables["uv"] = memory.NewTable("uv", sql.NewPrimaryKeySchema(sql.Schema{
+	cat.Tables["uv"] = memory.NewTable(db, "uv", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "u", Type: types.Int64},
 		{Name: "v", Type: types.Int64},
 		{Name: "w", Type: types.Int64},
 	}, 0), nil)
 
-	mydb := memory.NewDatabase("mydb")
-	mydb.AddTable("xy", cat.Tables["xy"])
-	mydb.AddTable("uv", cat.Tables["uv"])
-	cat.Databases["mydb"] = mydb
+	db.AddTable("xy", cat.Tables["xy"])
+	db.AddTable("uv", cat.Tables["uv"])
+	cat.Databases["mydb"] = db
 	cat.Funcs = function.NewRegistry()
 	return cat
 }
