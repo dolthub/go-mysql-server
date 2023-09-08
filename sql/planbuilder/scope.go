@@ -128,7 +128,6 @@ func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn,
 	if !foundCand {
 		return scopeColumn{}, false
 	}
-	//s.parent.nearestSubquery().addOutOfScope(c.id)
 
 	if s.parent.activeSubquery != nil {
 		s.parent.activeSubquery.addOutOfScope(c.id)
