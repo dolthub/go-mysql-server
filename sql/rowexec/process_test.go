@@ -30,7 +30,8 @@ import (
 func TestQueryProcess(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("test")
+	table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: types.Int64},
 	}), nil)
 
@@ -70,7 +71,8 @@ func TestQueryProcess(t *testing.T) {
 func TestProcessTable(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewPartitionedTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("test")
+	table := memory.NewPartitionedTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: types.Int64},
 	}), nil, 2)
 
@@ -124,7 +126,8 @@ func TestProcessTable(t *testing.T) {
 func TestProcessIndexableTable(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewPartitionedTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("test")
+	table := memory.NewPartitionedTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: types.Int64, Source: "foo"},
 	}), nil, 2)
 

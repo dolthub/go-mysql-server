@@ -55,8 +55,9 @@ func TestCrossJoin(t *testing.T) {
 		{Name: "rcol4", Type: types.Int64},
 	}
 
-	ltable := memory.NewTable("left", lSchema, nil)
-	rtable := memory.NewTable("right", rSchema, nil)
+	db := memory.NewDatabase("test")
+	ltable := memory.NewTable(db.Database(), "left", lSchema, nil)
+	rtable := memory.NewTable(db.Database(), "right", rSchema, nil)
 	insertData(t, ltable)
 	insertData(t, rtable)
 
@@ -116,8 +117,9 @@ func TestCrossJoin_Empty(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	ltable := memory.NewTable("left", lSchema, nil)
-	rtable := memory.NewTable("right", rSchema, nil)
+	db := memory.NewDatabase("test")
+	ltable := memory.NewTable(db.Database(), "left", lSchema, nil)
+	rtable := memory.NewTable(db.Database(), "right", rSchema, nil)
 	insertData(t, ltable)
 
 	j := plan.NewCrossJoin(
@@ -133,8 +135,8 @@ func TestCrossJoin_Empty(t *testing.T) {
 	require.Equal(io.EOF, err)
 	require.Nil(row)
 
-	ltable = memory.NewTable("left", lSchema, nil)
-	rtable = memory.NewTable("right", rSchema, nil)
+	ltable = memory.NewTable(db.Database(), "left", lSchema, nil)
+	rtable = memory.NewTable(db.Database(), "right", rSchema, nil)
 	insertData(t, rtable)
 
 	j = plan.NewCrossJoin(

@@ -33,6 +33,7 @@ type Database struct {
 type MemoryDatabase interface {
 	sql.Database
 	AddTable(name string, t sql.Table)
+	Database() *BaseDatabase
 }
 
 var _ sql.Database = (*Database)(nil)
@@ -82,6 +83,10 @@ func NewViewlessDatabase(name string) *BaseDatabase {
 // EnablePrimaryKeyIndexes causes every table created in this database to use an index on its primary partitionKeys
 func (d *BaseDatabase) EnablePrimaryKeyIndexes() {
 	d.primaryKeyIndexes = true
+}
+
+func (d *BaseDatabase) Database() *BaseDatabase {
+	return d
 }
 
 // Name returns the database name.
@@ -448,6 +453,10 @@ func (d *BaseDatabase) GetCollation(ctx *sql.Context) sql.CollationID {
 func (d *BaseDatabase) SetCollation(ctx *sql.Context, collation sql.CollationID) error {
 	d.collation = collation
 	return nil
+}
+
+func (d *Database) Database() *BaseDatabase {
+	return d.BaseDatabase
 }
 
 // CreateView implements the interface sql.ViewDatabase.

@@ -34,7 +34,8 @@ func TestInSubquery(t *testing.T) {
 	varChar3 := types.MustCreateString(sqltypes.VarChar, 3, sql.Collation_Default)
 	varChar6 := types.MustCreateString(sqltypes.VarChar, 6, sql.Collation_Default)
 
-	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("foo")
+	table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "t", Source: "foo", Type: varChar3},
 	}), nil)
 
@@ -141,7 +142,8 @@ func TestInSubquery(t *testing.T) {
 
 func TestNotInSubquery(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("foo")
+	table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "t", Source: "foo", Type: types.Text},
 	}), nil)
 

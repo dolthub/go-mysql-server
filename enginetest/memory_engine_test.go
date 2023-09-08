@@ -785,12 +785,14 @@ func TestIndexPrefix(t *testing.T) {
 }
 
 func TestPersist(t *testing.T) {
-	newSess := func(ctx *sql.Context) sql.PersistableSession {
+	harness := enginetest.NewDefaultMemoryHarness()
+	newSess := func(_ *sql.Context) sql.PersistableSession {
+		ctx := harness.NewSession()
 		persistedGlobals := memory.GlobalsMap{}
-		persistedSess := memory.NewInMemoryPersistedSession(ctx.Session, persistedGlobals)
-		return persistedSess
+		memSession := ctx.Session.(*memory.Session).SetGlobals(persistedGlobals)
+		return memSession
 	}
-	enginetest.TestPersist(t, enginetest.NewDefaultMemoryHarness(), newSess)
+	enginetest.TestPersist(t, harness, newSess)
 }
 
 func TestValidateSession(t *testing.T) {
@@ -799,11 +801,14 @@ func TestValidateSession(t *testing.T) {
 		count++
 	}
 
-	newSess := func(ctx *sql.Context) sql.PersistableSession {
-		sess := memory.NewInMemoryPersistedSessionWithValidationCallback(ctx.Session, incrementValidateCb)
-		return sess
+	harness := enginetest.NewDefaultMemoryHarness()
+	newSess := func(_ *sql.Context) sql.PersistableSession {
+		ctx := harness.NewSession()
+		memSession := ctx.Session.(*memory.Session)
+		memSession.SetValidationCallback(incrementValidateCb)
+		return memSession
 	}
-	enginetest.TestValidateSession(t, enginetest.NewDefaultMemoryHarness(), newSess, &count)
+	enginetest.TestValidateSession(t, harness, newSess, &count)
 }
 
 func TestPrepared(t *testing.T) {

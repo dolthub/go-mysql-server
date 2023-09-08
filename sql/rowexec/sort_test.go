@@ -203,7 +203,8 @@ func TestSort(t *testing.T) {
 			require := require.New(t)
 			ctx := sql.NewEmptyContext()
 
-			tbl := memory.NewTable("test", schema, nil)
+			db := memory.NewDatabase("test")
+			tbl := memory.NewTable(db, "test", schema, nil)
 			for _, row := range tt.rows {
 				require.NoError(tbl.Insert(sql.NewEmptyContext(), row))
 			}
@@ -229,11 +230,12 @@ func TestSortAscending(t *testing.T) {
 		sql.NewRow("b"),
 	}
 
+	db := memory.NewDatabase("test")
 	schema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col1", Type: types.Text, Nullable: true},
 	})
 
-	child := memory.NewTable("test", schema, nil)
+	child := memory.NewTable(db, "test", schema, nil)
 	for _, row := range data {
 		require.NoError(child.Insert(sql.NewEmptyContext(), row))
 	}
@@ -269,11 +271,12 @@ func TestSortDescending(t *testing.T) {
 		sql.NewRow("b"),
 	}
 
+	db := memory.NewDatabase("test")
 	schema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col1", Type: types.Text, Nullable: true},
 	})
 
-	child := memory.NewTable("test", schema, nil)
+	child := memory.NewTable(db, "test", schema, nil)
 	for _, row := range data {
 		require.NoError(child.Insert(sql.NewEmptyContext(), row))
 	}

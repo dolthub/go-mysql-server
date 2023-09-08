@@ -107,10 +107,11 @@ func getTestingTable(t *testing.T) (*memory.Table, int) {
 		return testingTable, testingTableSize
 	}
 
+	db := memory.NewDatabase("test")
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col1", Type: types.Text},
 	})
-	testingTable = memory.NewTable("test", childSchema, nil)
+	testingTable = memory.NewTable(db.BaseDatabase, "test", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow("11a"),

@@ -31,11 +31,12 @@ func TestDistinct(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
+	db := memory.NewDatabase("test")
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: types.Text, Nullable: true},
 		{Name: "email", Type: types.Text, Nullable: true},
 	})
-	child := memory.NewTable("test", childSchema, nil)
+	child := memory.NewTable(db.BaseDatabase, "test", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow("john", "john@doe.com"),
@@ -78,11 +79,12 @@ func TestOrderedDistinct(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
+	db := memory.NewDatabase("test")
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: types.Text, Nullable: true},
 		{Name: "email", Type: types.Text, Nullable: true},
 	})
-	child := memory.NewTable("test", childSchema, nil)
+	child := memory.NewTable(db.BaseDatabase,"test", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow("jane", "jane@doe.com"),

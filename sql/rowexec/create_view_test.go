@@ -28,7 +28,7 @@ import (
 )
 
 func newCreateView(db memory.MemoryDatabase, isReplace bool) *plan.CreateView {
-	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
+	table := memory.NewTable(db.Database(), "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Source: "mytable", Type: types.Int32},
 		{Name: "s", Source: "mytable", Type: types.Text},
 	}), nil)

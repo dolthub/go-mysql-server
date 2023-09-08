@@ -34,7 +34,8 @@ import (
 func TestCreateIndexAsync(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("foo")
+	table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
@@ -43,7 +44,6 @@ func TestCreateIndexAsync(t *testing.T) {
 	idxReg := sql.NewIndexRegistry()
 	driver := new(mockDriver)
 	idxReg.RegisterIndexDriver(driver)
-	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
@@ -91,7 +91,8 @@ func TestCreateIndexAsync(t *testing.T) {
 func TestCreateIndexNotIndexableExprs(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("foo")
+	table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo", Type: types.Blob},
 		{Name: "b", Source: "foo", Type: types.JSON},
 		{Name: "c", Source: "foo", Type: types.Text},
@@ -100,7 +101,6 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 	driver := new(mockDriver)
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
-	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
@@ -143,7 +143,8 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 func TestCreateIndexSync(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("foo")
+	table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
@@ -152,7 +153,6 @@ func TestCreateIndexSync(t *testing.T) {
 	driver := new(mockDriver)
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
-	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
@@ -199,8 +199,9 @@ func TestCreateIndexSync(t *testing.T) {
 func TestCreateIndexChecksum(t *testing.T) {
 	require := require.New(t)
 
+	db := memory.NewDatabase("foo")
 	table := &checksumTable{
-		memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+		memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "a", Source: "foo"},
 			{Name: "b", Source: "foo"},
 			{Name: "c", Source: "foo"},
@@ -211,7 +212,6 @@ func TestCreateIndexChecksum(t *testing.T) {
 	driver := new(mockDriver)
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
-	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
@@ -240,12 +240,13 @@ func TestCreateIndexChecksum(t *testing.T) {
 func TestCreateIndexChecksumWithUnderlying(t *testing.T) {
 	require := require.New(t)
 
+	db := memory.NewDatabase("test")
 	table :=
 		&underlyingTable{
 			&underlyingTable{
 				&underlyingTable{
 					&checksumTable{
-						memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+						memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 							{Name: "a", Source: "foo"},
 							{Name: "b", Source: "foo"},
 							{Name: "c", Source: "foo"},
@@ -285,7 +286,9 @@ func TestCreateIndexChecksumWithUnderlying(t *testing.T) {
 
 func TestCreateIndexWithIter(t *testing.T) {
 	require := require.New(t)
-	foo := memory.NewPartitionedTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("foo")
+
+	foo := memory.NewPartitionedTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "one", Source: "foo", Type: types.Int64},
 		{Name: "two", Source: "foo", Type: types.Int64},
 	}), nil, 2)
@@ -309,7 +312,6 @@ func TestCreateIndexWithIter(t *testing.T) {
 	driver := new(mockDriver)
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
-	db := memory.NewDatabase("foo")
 	db.AddTable("foo", foo)
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 

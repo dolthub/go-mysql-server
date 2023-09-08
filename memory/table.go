@@ -79,8 +79,13 @@ var _ sql.PrimaryKeyTable = (*Table)(nil)
 
 // NewTable creates a new Table with the given name and schema. Assigns the default collation, therefore if a different
 // collation is desired, please use NewTableWithCollation.
-func NewTable(db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection) *Table {
-	return NewPartitionedTableWithCollation(db, name, schema, fkColl, 0, sql.Collation_Default)
+func NewTable(db MemoryDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection) *Table {
+	var baseDatabase *BaseDatabase
+	// the dual table has no database
+	if db != nil {
+		baseDatabase = db.Database()
+	}
+	return NewPartitionedTableWithCollation(baseDatabase, name, schema, fkColl, 0, sql.Collation_Default)
 }
 
 // NewTableWithCollation creates a new Table with the given name, schema, and collation.

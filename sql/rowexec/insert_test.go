@@ -75,7 +75,8 @@ func TestInsertIgnoreConversions(t *testing.T) {
 	var warningCnt int
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+			db := memory.NewDatabase("foo")
+			table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "c1", Source: "foo", Type: tc.colType},
 			}), nil)
 

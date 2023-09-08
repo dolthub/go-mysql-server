@@ -34,7 +34,9 @@ func TestProject(t *testing.T) {
 		{Name: "col1", Type: types.Text, Nullable: true},
 		{Name: "col2", Type: types.Text, Nullable: true},
 	})
-	child := memory.NewTable("test", childSchema, nil)
+	
+	db := memory.NewDatabase("test")
+	child := memory.NewTable(db.BaseDatabase, "test", childSchema, nil)
 	child.Insert(sql.NewEmptyContext(), sql.NewRow("col1_1", "col2_1"))
 	child.Insert(sql.NewEmptyContext(), sql.NewRow("col1_2", "col2_2"))
 	p := plan.NewProject(

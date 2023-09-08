@@ -71,7 +71,10 @@ func TestDropTable(t *testing.T) {
 	require.NoError(createTable(t, db, "testTable2", s, plan.IfNotExistsAbsent, plan.IsTempTableAbsent))
 	require.NoError(createTable(t, db, "testTable3", s, plan.IfNotExistsAbsent, plan.IsTempTableAbsent))
 
-	d := plan.NewDropTable([]sql.Node{plan.NewResolvedTable(memory.NewTable("testTable1", s, db.GetForeignKeyCollection()), db, nil), plan.NewResolvedTable(memory.NewTable("testTable2", s, db.GetForeignKeyCollection()), db, nil)}, false)
+	d := plan.NewDropTable([]sql.Node{
+		plan.NewResolvedTable(memory.NewTable(db.BaseDatabase, "testTable1", s, db.GetForeignKeyCollection()), db, nil),
+		plan.NewResolvedTable(memory.NewTable(db.BaseDatabase, "testTable2", s, db.GetForeignKeyCollection()), db, nil),
+	}, false)
 	rows, err := DefaultBuilder.Build(sql.NewEmptyContext(), d, nil)
 	require.NoError(err)
 
@@ -89,11 +92,11 @@ func TestDropTable(t *testing.T) {
 	_, ok = db.Tables()["testTable3"]
 	require.True(ok)
 
-	d = plan.NewDropTable([]sql.Node{plan.NewResolvedTable(memory.NewTable("testTable1", s, db.GetForeignKeyCollection()), db, nil)}, false)
+	d = plan.NewDropTable([]sql.Node{plan.NewResolvedTable(memory.NewTable(db.Database(), "testTable1", s, db.GetForeignKeyCollection()), db, nil)}, false)
 	_, err = DefaultBuilder.Build(sql.NewEmptyContext(), d, nil)
 	require.Error(err)
 
-	d = plan.NewDropTable([]sql.Node{plan.NewResolvedTable(memory.NewTable("testTable3", s, db.GetForeignKeyCollection()), db, nil)}, false)
+	d = plan.NewDropTable([]sql.Node{plan.NewResolvedTable(memory.NewTable(db.Database(), "testTable3", s, db.GetForeignKeyCollection()), db, nil)}, false)
 	_, err = DefaultBuilder.Build(sql.NewEmptyContext(), d, nil)
 	require.NoError(err)
 

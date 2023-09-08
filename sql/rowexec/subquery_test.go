@@ -29,7 +29,8 @@ import (
 
 func TestSubquery(t *testing.T) {
 	require := require.New(t)
-	table := memory.NewTable("", sql.PrimaryKeySchema{}, nil)
+	db := memory.NewDatabase("test")
+	table := memory.NewTable(db, "", sql.PrimaryKeySchema{}, nil)
 	require.NoError(table.Insert(sql.NewEmptyContext(), nil))
 
 	subquery := plan.NewSubquery(plan.NewProject(
@@ -46,7 +47,8 @@ func TestSubquery(t *testing.T) {
 
 func TestSubqueryTooManyRows(t *testing.T) {
 	require := require.New(t)
-	table := memory.NewTable("", sql.PrimaryKeySchema{}, nil)
+	db := memory.NewDatabase("test")
+	table := memory.NewTable(db, "", sql.PrimaryKeySchema{}, nil)
 	require.NoError(table.Insert(sql.NewEmptyContext(), nil))
 	require.NoError(table.Insert(sql.NewEmptyContext(), nil))
 
@@ -65,7 +67,8 @@ func TestSubqueryMultipleRows(t *testing.T) {
 	require := require.New(t)
 
 	ctx := sql.NewEmptyContext()
-	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("test")
+	table := memory.NewTable(db, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "t", Source: "foo", Type: types.Text},
 	}), nil)
 

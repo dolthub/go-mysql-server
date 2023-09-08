@@ -69,10 +69,11 @@ func TestUpdateIgnoreConversions(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			db := memory.NewDatabase("foo")
 			sch := sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "c1", Source: "foo", Type: tc.colType, Nullable: true},
 			})
-			table := memory.NewTable("foo", sch, nil)
+			table := memory.NewTable(db, "foo", sch, nil)
 
 			err := table.Insert(ctx, sql.Row{nil})
 			require.NoError(t, err)

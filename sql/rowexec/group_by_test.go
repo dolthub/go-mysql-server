@@ -31,7 +31,8 @@ import (
 func TestGroupBySchema(t *testing.T) {
 	require := require.New(t)
 
-	child := memory.NewTable("test", sql.PrimaryKeySchema{}, nil)
+	db := memory.NewDatabase("test")
+	child := memory.NewTable(db.BaseDatabase, "test", sql.PrimaryKeySchema{}, nil)
 	agg := []sql.Expression{
 		expression.NewAlias("c1", expression.NewLiteral("s", types.LongText)),
 		expression.NewAlias("c2", aggregation.NewCount(expression.NewStar())),
@@ -46,7 +47,8 @@ func TestGroupBySchema(t *testing.T) {
 func TestGroupByResolved(t *testing.T) {
 	require := require.New(t)
 
-	child := memory.NewTable("test", sql.PrimaryKeySchema{}, nil)
+	db := memory.NewDatabase("test")
+	child := memory.NewTable(db.BaseDatabase, "test", sql.PrimaryKeySchema{}, nil)
 	agg := []sql.Expression{
 		expression.NewAlias("c2", aggregation.NewCount(expression.NewStar())),
 	}
@@ -64,11 +66,12 @@ func TestGroupByRowIter(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
+	db := memory.NewDatabase("test")
 	childSchema := sql.Schema{
 		{Name: "col1", Type: types.LongText},
 		{Name: "col2", Type: types.Int64},
 	}
-	child := memory.NewTable("test", sql.NewPrimaryKeySchema(childSchema), nil)
+	child := memory.NewTable(db.BaseDatabase, "test", sql.NewPrimaryKeySchema(childSchema), nil)
 
 	rows := []sql.Row{
 		sql.NewRow("col1_1", int64(1111)),
@@ -118,12 +121,13 @@ func TestGroupByAggregationGrouping(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
+	db := memory.NewDatabase("test")
 	childSchema := sql.Schema{
 		{Name: "col1", Type: types.LongText},
 		{Name: "col2", Type: types.Int64},
 	}
 
-	child := memory.NewTable("test", sql.NewPrimaryKeySchema(childSchema), nil)
+	child := memory.NewTable(db.BaseDatabase, "test", sql.NewPrimaryKeySchema(childSchema), nil)
 
 	rows := []sql.Row{
 		sql.NewRow("col1_1", int64(1111)),
@@ -201,7 +205,8 @@ func TestGroupByCollations(t *testing.T) {
 				{Name: "col2", Type: types.Int64},
 			}
 
-			child := memory.NewTable("test", sql.NewPrimaryKeySchema(childSchema), nil)
+			db := memory.NewDatabase("test")
+			child := memory.NewTable(db.BaseDatabase, "test", sql.NewPrimaryKeySchema(childSchema), nil)
 
 			rows := []sql.Row{
 				sql.NewRow(tc.Value(t, "col1_1"), int64(1111)),
@@ -298,7 +303,8 @@ func benchmarkTable(t testing.TB) sql.Table {
 	t.Helper()
 	require := require.New(t)
 
-	table := memory.NewTable("test", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("test")
+	table := memory.NewTable(db.BaseDatabase, "test", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: types.Int64},
 		{Name: "b", Type: types.Int64},
 	}), nil)

@@ -32,7 +32,8 @@ import (
 func TestDeleteIndex(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("foo")
+	table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
@@ -41,7 +42,6 @@ func TestDeleteIndex(t *testing.T) {
 	driver := new(mockDriver)
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
-	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
@@ -78,7 +78,8 @@ func TestDeleteIndex(t *testing.T) {
 func TestDeleteIndexNotReady(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("foo")
+	table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
@@ -87,7 +88,6 @@ func TestDeleteIndexNotReady(t *testing.T) {
 	driver := new(mockDriver)
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
-	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
@@ -126,7 +126,8 @@ func TestDeleteIndexNotReady(t *testing.T) {
 func TestDeleteIndexOutdated(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("foo")
+	table := memory.NewTable(db.BaseDatabase,"foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
@@ -135,7 +136,6 @@ func TestDeleteIndexOutdated(t *testing.T) {
 	driver := new(mockDriver)
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
-	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 

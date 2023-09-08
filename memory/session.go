@@ -21,16 +21,20 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+type GlobalsMap = map[string]interface{}
 type Session struct {
 	*sql.BaseSession
 	dbProvider *DbProvider
 	tables           map[tableKey]*TableData
 	editAccumulators map[tableKey]tableEditAccumulator
+	persistedGlobals GlobalsMap
+	validateCallback func()
 }
 
 var _ sql.Session = (*Session)(nil)
 var _ sql.TransactionSession = (*Session)(nil)
 var _ sql.Transaction = (*Transaction)(nil)
+var _ sql.PersistableSession = (*Session)(nil)
 
 // NewSession returns the new session for this object
 func NewSession(baseSession *sql.BaseSession, provider *DbProvider) *Session {
@@ -161,4 +165,56 @@ func (s *Session) RollbackToSavepoint(ctx *sql.Context, transaction sql.Transact
 
 func (s *Session) ReleaseSavepoint(ctx *sql.Context, transaction sql.Transaction, name string) error {
 	return fmt.Errorf("savepoints are not supported in memory sessions")
+}
+
+// PersistGlobal implements sql.PersistableSession
+func (s *Session) PersistGlobal(sysVarName string, value interface{}) error {
+	sysVar, _, ok := sql.SystemVariables.GetGlobal(sysVarName)
+	if !ok {
+		return sql.ErrUnknownSystemVariable.New(sysVarName)
+	}
+	val, _, err := sysVar.Type.Convert(value)
+	if err != nil {
+		return err
+	}
+	s.persistedGlobals[sysVarName] = val
+	return nil
+}
+
+func (s *Session) SetGlobals(globals map[string]interface{}) *Session {
+	s.persistedGlobals = globals
+	return s
+}
+
+func (s *Session) SetValidationCallback(validationCallback func()) *Session {
+	s.validateCallback = validationCallback
+	return s
+}
+
+// RemovePersistedGlobal implements sql.PersistableSession
+func (s *Session) RemovePersistedGlobal(sysVarName string) error {
+	if _, _, ok := sql.SystemVariables.GetGlobal(sysVarName); !ok {
+		return sql.ErrUnknownSystemVariable.New(sysVarName)
+	}
+	delete(s.persistedGlobals, sysVarName)
+	return nil
+}
+
+// RemoveAllPersistedGlobals implements sql.PersistableSession
+func (s *Session) RemoveAllPersistedGlobals() error {
+	s.persistedGlobals = GlobalsMap{}
+	return nil
+}
+
+// GetPersistedValue implements sql.PersistableSession
+func (s *Session) GetPersistedValue(k string) (interface{}, error) {
+	return s.persistedGlobals[k], nil
+}
+
+// ValidateSession counts the number of times this method is called.
+func (s *Session) ValidateSession(ctx *sql.Context) error {
+	if s.validateCallback != nil {
+		s.validateCallback()
+	}
+	return s.BaseSession.ValidateSession(ctx)
 }

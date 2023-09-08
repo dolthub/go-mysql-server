@@ -31,12 +31,13 @@ func TestShowColumns(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
+	db := memory.NewDatabase("mydb")
 	schema := sql.Schema{
 		{Name: "a", Source: "foo", Type: types.Text, PrimaryKey: true},
 		{Name: "b", Source: "foo", Type: types.Int64, Nullable: true},
 		{Name: "c", Source: "foo", Type: types.Int64, Default: planbuilder.MustStringToColumnDefaultValue(ctx, "1", types.Int64, false)},
 	}
-	table := NewResolvedTable(memory.NewTable("foo", sql.NewPrimaryKeySchema(schema), nil), nil, nil)
+	table := NewResolvedTable(memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(schema), nil), nil, nil)
 
 	showColumns, err := NewShowColumns(false, table).WithTargetSchema(schema)
 	require.NoError(err)
@@ -60,6 +61,7 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
+	db := memory.NewDatabase("mydb")
 	schema := sql.Schema{
 		{Name: "a", Source: "foo", Type: types.Text, PrimaryKey: true},
 		{Name: "b", Source: "foo", Type: types.Int64, Nullable: true},
@@ -67,7 +69,7 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 		{Name: "d", Source: "foo", Type: types.Int64, Nullable: true},
 		{Name: "e", Source: "foo", Type: types.Int64, Default: planbuilder.MustStringToColumnDefaultValue(ctx, "1", types.Int64, false)},
 	}
-	table := NewResolvedTable(memory.NewTable("foo", sql.NewPrimaryKeySchema(schema), nil), nil, nil)
+	table := NewResolvedTable(memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(schema), nil), nil, nil)
 
 	showColumns, err := NewShowColumns(false, table).WithTargetSchema(schema)
 	require.NoError(err)
@@ -149,12 +151,13 @@ func TestShowColumnsFull(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
+	db := memory.NewDatabase("mydb")
 	schema := sql.Schema{
 		{Name: "a", Type: types.Text, PrimaryKey: true},
 		{Name: "b", Type: types.Int64, Nullable: true},
 		{Name: "c", Type: types.Int64, Default: planbuilder.MustStringToColumnDefaultValue(ctx, "1", types.Int64, false), Comment: "a comment"},
 	}
-	table := NewResolvedTable(memory.NewTable("foo", sql.NewPrimaryKeySchema(schema), nil), nil, nil)
+	table := NewResolvedTable(memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(schema), nil), nil, nil)
 
 	showColumns, err := NewShowColumns(true, table).WithTargetSchema(schema)
 	require.NoError(err)

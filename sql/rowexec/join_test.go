@@ -29,11 +29,12 @@ import (
 )
 
 func TestJoinSchema(t *testing.T) {
-	t1 := plan.NewResolvedTable(memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("test")
+	t1 := plan.NewResolvedTable(memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo", Type: types.Int64},
 	}), nil), nil, nil)
 
-	t2 := plan.NewResolvedTable(memory.NewTable("bar", sql.NewPrimaryKeySchema(sql.Schema{
+	t2 := plan.NewResolvedTable(memory.NewTable(db.BaseDatabase, "bar", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "b", Source: "bar", Type: types.Int64},
 	}), nil), nil, nil)
 
@@ -83,8 +84,9 @@ func testInnerJoin(t *testing.T, ctx *sql.Context) {
 	t.Helper()
 
 	require := require.New(t)
-	ltable := memory.NewTable("left", lSchema, nil)
-	rtable := memory.NewTable("right", rSchema, nil)
+	db := memory.NewDatabase("test")
+	ltable := memory.NewTable(db.BaseDatabase, "left", lSchema, nil)
+	rtable := memory.NewTable(db.BaseDatabase, "right", rSchema, nil)
 	insertData(t, ltable)
 	insertData(t, rtable)
 
@@ -108,8 +110,9 @@ func TestInnerJoinEmpty(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	ltable := memory.NewTable("left", lSchema, nil)
-	rtable := memory.NewTable("right", rSchema, nil)
+	db := memory.NewDatabase("test")
+	ltable := memory.NewTable(db.BaseDatabase, "left", lSchema, nil)
+	rtable := memory.NewTable(db.BaseDatabase, "right", rSchema, nil)
 
 	j := plan.NewInnerJoin(
 		plan.NewResolvedTable(ltable, nil, nil),
@@ -126,12 +129,13 @@ func TestInnerJoinEmpty(t *testing.T) {
 }
 
 func BenchmarkInnerJoin(b *testing.B) {
-	t1 := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("test")
+	t1 := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo", Type: types.Int64},
 		{Name: "b", Source: "foo", Type: types.Text},
 	}), nil)
 
-	t2 := memory.NewTable("bar", sql.NewPrimaryKeySchema(sql.Schema{
+	t2 := memory.NewTable(db.BaseDatabase, "bar", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "bar", Type: types.Int64},
 		{Name: "b", Source: "bar", Type: types.Text},
 	}), nil)
@@ -218,8 +222,9 @@ func BenchmarkInnerJoin(b *testing.B) {
 func TestLeftJoin(t *testing.T) {
 	require := require.New(t)
 
-	ltable := memory.NewTable("left", lSchema, nil)
-	rtable := memory.NewTable("right", rSchema, nil)
+	db := memory.NewDatabase("test")
+	ltable := memory.NewTable(db.BaseDatabase, "left", lSchema, nil)
+	rtable := memory.NewTable(db.BaseDatabase, "right", rSchema, nil)
 	insertData(t, ltable)
 	insertData(t, rtable)
 

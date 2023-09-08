@@ -30,12 +30,13 @@ import (
 func TestUnion(t *testing.T) {
 	require := require.New(t)
 
+	db := memory.NewDatabase("test")
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: types.Text, Nullable: true},
 		{Name: "email", Type: types.Text, Nullable: true},
 	})
-	child := memory.NewTable("test", childSchema, nil)
-	empty := memory.NewTable("empty", childSchema, nil)
+	child := memory.NewTable(db, "test", childSchema, nil)
+	empty := memory.NewTable(db, "empty", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow("john", "john@doe.com"),
