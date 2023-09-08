@@ -171,9 +171,11 @@ func TestCreateIndexSync(t *testing.T) {
 
 	tracer := new(test.MemTracer)
 
-	sess := sql.NewBaseSession()
-	sess.SetIndexRegistry(idxReg)
-	ctx := sql.NewContext(context.Background(), sql.WithTracer(tracer), sql.WithSession(sess))
+	pro := memory.NewDBProvider(db)
+	baseSession := sql.NewBaseSession()
+	baseSession.SetIndexRegistry(idxReg)
+	ctx := sql.NewContext(context.Background(), sql.WithTracer(tracer), sql.WithSession(memory.NewSession(baseSession, pro)))
+
 	_, err := DefaultBuilder.Build(ctx, ci, nil)
 	require.NoError(err)
 
@@ -228,9 +230,11 @@ func TestCreateIndexChecksum(t *testing.T) {
 	ci.Catalog = catalog
 	ci.CurrentDatabase = "foo"
 
-	sess := sql.NewBaseSession()
-	sess.SetIndexRegistry(idxReg)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+	pro := memory.NewDBProvider(db)
+	baseSession := sql.NewBaseSession()
+	baseSession.SetIndexRegistry(idxReg)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(baseSession, pro)))
+
 	_, err := DefaultBuilder.Build(ctx, ci, nil)
 	require.NoError(err)
 
@@ -275,9 +279,11 @@ func TestCreateIndexChecksumWithUnderlying(t *testing.T) {
 	ci.Catalog = catalog
 	ci.CurrentDatabase = "foo"
 
-	sess := sql.NewBaseSession()
-	sess.SetIndexRegistry(idxReg)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+	pro := memory.NewDBProvider(db)
+	baseSession := sql.NewBaseSession()
+	baseSession.SetIndexRegistry(idxReg)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(baseSession, pro)))
+
 	_, err := DefaultBuilder.Build(ctx, ci, nil)
 	require.NoError(err)
 
@@ -288,7 +294,8 @@ func TestCreateIndexChecksumWithUnderlying(t *testing.T) {
 func TestCreateIndexWithIter(t *testing.T) {
 	require := require.New(t)
 	db := memory.NewDatabase("foo")
-
+	pro := memory.NewDBProvider(db)
+	
 	foo := memory.NewPartitionedTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "one", Source: "foo", Type: types.Int64},
 		{Name: "two", Source: "foo", Type: types.Int64},
@@ -300,8 +307,9 @@ func TestCreateIndexWithIter(t *testing.T) {
 		{0, 0},
 		{math.MaxInt64, math.MinInt64},
 	}
+	
 	for _, r := range rows {
-		err := foo.Insert(sql.NewEmptyContext(), sql.NewRow(r[0], r[1]))
+		err := foo.Insert(newContext(pro), sql.NewRow(r[0], r[1]))
 		require.NoError(err)
 	}
 
@@ -320,9 +328,10 @@ func TestCreateIndexWithIter(t *testing.T) {
 	ci.Catalog = catalog
 	ci.CurrentDatabase = "foo"
 
-	sess := sql.NewBaseSession()
-	sess.SetIndexRegistry(idxReg)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+	baseSession := sql.NewBaseSession()
+	baseSession.SetIndexRegistry(idxReg)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(baseSession, pro)))
+
 	columns, exprs, err := GetColumnsAndPrepareExpressions(ci.Exprs)
 	require.NoError(err)
 
