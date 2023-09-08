@@ -2081,13 +2081,7 @@ func (t *Table) modifyFulltextIndexesForRewrite(ctx *sql.Context, data *TableDat
 			// TODO: omit, probably
 			return fmt.Errorf("could not find column in new schema")
 		}
-
-		// newSourceColumns := remapColumnOrds(oldSchema, data.schema, ftInfo.Positions)
-		// if newKeyColumns == nil {
-		// 	// TODO: omit, probably
-		// 	return fmt.Errorf("could not find column in new schema")
-		// }
-
+		
 		newIdx := memIdx.copy()
 		newIdx.fulltextInfo.KeyColumns.Positions = newKeyColumns
 		data.indexes[i] = newIdx

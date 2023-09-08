@@ -324,11 +324,6 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 		if rewritten {
-			if hasFullText {
-				if err = rebuildFullText(ctx, i.alterable.Name(), i.m.Db); err != nil {
-					return nil, err
-				}
-			}
 			return sql.NewRow(types.NewOkResult(0)), nil
 		}
 	}
@@ -1009,11 +1004,6 @@ func (c *createPkIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if err != nil {
 			return nil, err
 		}
-		if hasFullText {
-			if err = rebuildFullText(ctx, c.pkAlterable.Name(), c.db); err != nil {
-				return nil, err
-			}
-		}
 		return sql.NewRow(types.NewOkResult(0)), nil
 	}
 
@@ -1117,11 +1107,6 @@ func (d *dropPkIter) Next(ctx *sql.Context) (sql.Row, error) {
 		err := d.rewriteTable(ctx, rwt)
 		if err != nil {
 			return nil, err
-		}
-		if hasFullText {
-			if err = rebuildFullText(ctx, d.pkAlterable.Name(), d.db); err != nil {
-				return nil, err
-			}
 		}
 		return sql.NewRow(types.NewOkResult(0)), nil
 	}
@@ -1576,15 +1561,7 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, io.EOF
 	}
 	i.runOnce = true
-
-	// Full-Text indexes will need to be rebuilt
-	hasFullText := hasFullText(ctx, i.alterable)
-	if hasFullText {
-		if err := fulltext.DropColumnFromTables(ctx, i.alterable.(sql.IndexAddressableTable), i.d.Db.(fulltext.Database), i.d.Column); err != nil {
-			return nil, err
-		}
-	}
-
+	
 	// drop constraints that reference the dropped column
 	cat, ok := i.alterable.(sql.CheckAlterableTable)
 	if ok {
@@ -1602,12 +1579,15 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 		if rewritten {
-			if hasFullText {
-				if err = rebuildFullText(ctx, i.alterable.Name(), i.d.Db); err != nil {
-					return nil, err
-				}
-			}
 			return sql.NewRow(types.NewOkResult(0)), nil
+		}
+	}
+
+	// Full-Text indexes will need to be rebuilt
+	hasFullText := hasFullText(ctx, i.alterable)
+	if hasFullText {
+		if err := fulltext.DropColumnFromTables(ctx, i.alterable.(sql.IndexAddressableTable), i.d.Db.(fulltext.Database), i.d.Column); err != nil {
+			return nil, err
 		}
 	}
 
@@ -1624,7 +1604,7 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return sql.NewRow(types.NewOkResult(0)), nil
 }
 
-// rewriteTable rewrites the table given if required or requested, and returns the whether it was rewritten
+// rewriteTable rewrites the table given if required or requested, and returns whether it was rewritten
 func (i *dropColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
 	newSch, projections, err := dropColumnFromSchema(i.d.TargetSchema(), i.d.Column, i.alterable.Name())
 	if err != nil {

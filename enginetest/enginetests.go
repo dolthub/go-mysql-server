@@ -5442,18 +5442,20 @@ func NewColumnDefaultValue(expr sql.Expression, outType sql.Type, representsLite
 }
 
 func TestColumnDefaults(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData, setup.MytableData)
-	e := mustNewEngine(t, harness)
-	defer e.Close()
-	ctx := NewContext(harness)
+	harness.Setup(setup.MydbData)
 
 	for _, tt := range queries.ColumnDefaultTests {
 		TestScript(t, harness, tt)
 	}
 
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	ctx := NewContext(harness)
+
 	// Some tests can't currently be run with as a script because they do additional checks
 	t.Run("DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP current_timestamp", func(t *testing.T) {
-		e.Query(ctx, "set @@session.time_zone='SYSTEM';")
+		// ctx = NewContext(harness)
+		// e.Query(ctx, "set @@session.time_zone='SYSTEM';")
 		// TODO: NOW() and CURRENT_TIMESTAMP() are supposed to be the same function in MySQL, but we have two different
 		//       implementations with slightly different behavior.
 		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t10(pk BIGINT PRIMARY KEY, v1 DATETIME(6) DEFAULT NOW(), v2 DATETIME(6) DEFAULT CURRENT_TIMESTAMP(),"+

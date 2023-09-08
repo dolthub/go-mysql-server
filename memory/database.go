@@ -214,7 +214,11 @@ func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.Pri
 	if d.primaryKeyIndexes {
 		table.EnablePrimaryKeyIndexes()
 	}
+	
 	d.tables[name] = table
+	sess := SessionFromContext(ctx)
+	sess.putTable(table.data)
+	
 	return nil
 }
 
