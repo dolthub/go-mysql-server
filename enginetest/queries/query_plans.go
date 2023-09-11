@@ -336,9 +336,6 @@ where
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [style.assetId:9]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ style.assetId:9\n" +
-			"     │   └─ color.assetId:1\n" +
 			"     ├─ LookupJoin\n" +
 			"     │   ├─ Filter\n" +
 			"     │   │   ├─ AND\n" +
@@ -1472,9 +1469,6 @@ Select * from (
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [t1.i:2!null, t1.s:3!null, t3.s2:0!null, t3.i2:1!null]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ t2.i:4!null\n" +
-			"     │   └─ t3.i2:1!null\n" +
 			"     ├─ MergeJoin\n" +
 			"     │   ├─ cmp: Eq\n" +
 			"     │   │   ├─ t3.i2:1!null\n" +
@@ -2449,9 +2443,6 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [t1.i:0!null]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ t1.i:0!null\n" +
-			"     │   └─ (t2.i:1!null + 1 (tinyint))\n" +
 			"     ├─ Filter\n" +
 			"     │   ├─ Eq\n" +
 			"     │   │   ├─ t1.i:0!null\n" +
@@ -3745,13 +3736,6 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.i:0!null, a.s:1!null]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ AND\n" +
-			"     │   ├─ Eq\n" +
-			"     │   │   ├─ b.i:4!null\n" +
-			"     │   │   └─ c.i:2!null\n" +
-			"     │   └─ Eq\n" +
-			"     │       ├─ b.i:4!null\n" +
-			"     │       └─ d.i:3!null\n" +
 			"     ├─ LookupJoin\n" +
 			"     │   ├─ MergeJoin\n" +
 			"     │   │   ├─ cmp: Eq\n" +
@@ -3788,9 +3772,6 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.i:2!null, a.s:3!null]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ b.i:4!null\n" +
-			"     │   └─ c.i:1!null\n" +
 			"     ├─ LookupJoin\n" +
 			"     │   ├─ LookupJoin\n" +
 			"     │   │   ├─ Or\n" +
@@ -3839,9 +3820,6 @@ inner join pq on true
 			"         ├─ left-key: TUPLE()\n" +
 			"         ├─ right-key: TUPLE()\n" +
 			"         └─ LookupJoin\n" +
-			"             ├─ Eq\n" +
-			"             │   ├─ b.i:3!null\n" +
-			"             │   └─ c.i:0!null\n" +
 			"             ├─ MergeJoin\n" +
 			"             │   ├─ cmp: Eq\n" +
 			"             │   │   ├─ c.i:0!null\n" +
@@ -3997,13 +3975,6 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.i:0!null, a.s:1!null]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ AND\n" +
-			"     │   ├─ Eq\n" +
-			"     │   │   ├─ b.i:4!null\n" +
-			"     │   │   └─ c.i:2!null\n" +
-			"     │   └─ Eq\n" +
-			"     │       ├─ b.i:4!null\n" +
-			"     │       └─ d.i:3!null\n" +
 			"     ├─ LookupJoin\n" +
 			"     │   ├─ MergeJoin\n" +
 			"     │   │   ├─ cmp: Eq\n" +
@@ -4040,9 +4011,6 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.i:2!null, a.s:3!null]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ b.i:4!null\n" +
-			"     │   └─ c.i:1!null\n" +
 			"     ├─ LookupJoin\n" +
 			"     │   ├─ LookupJoin\n" +
 			"     │   │   ├─ Or\n" +
@@ -4853,21 +4821,6 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [one_pk.pk:2!null]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ AND\n" +
-			"     │   ├─ AND\n" +
-			"     │   │   ├─ AND\n" +
-			"     │   │   │   ├─ Eq\n" +
-			"     │   │   │   │   ├─ tpk2.pk1:0!null\n" +
-			"     │   │   │   │   └─ tpk.pk2:4!null\n" +
-			"     │   │   │   └─ Eq\n" +
-			"     │   │   │       ├─ tpk2.pk2:1!null\n" +
-			"     │   │   │       └─ tpk.pk1:3!null\n" +
-			"     │   │   └─ Eq\n" +
-			"     │   │       ├─ tpk.pk1:3!null\n" +
-			"     │   │       └─ tpk2.pk1:0!null\n" +
-			"     │   └─ Eq\n" +
-			"     │       ├─ tpk.pk2:4!null\n" +
-			"     │       └─ tpk2.pk2:1!null\n" +
 			"     ├─ MergeJoin\n" +
 			"     │   ├─ cmp: Eq\n" +
 			"     │   │   ├─ TUPLE(tpk2.pk1:0!null, tpk2.pk2:1!null)\n" +
@@ -4896,21 +4849,6 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [one_pk.pk:2!null]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ AND\n" +
-			"     │   ├─ AND\n" +
-			"     │   │   ├─ AND\n" +
-			"     │   │   │   ├─ Eq\n" +
-			"     │   │   │   │   ├─ tpk2.pk1:0!null\n" +
-			"     │   │   │   │   └─ tpk.pk2:4!null\n" +
-			"     │   │   │   └─ Eq\n" +
-			"     │   │   │       ├─ tpk2.pk2:1!null\n" +
-			"     │   │   │       └─ tpk.pk1:3!null\n" +
-			"     │   │   └─ Eq\n" +
-			"     │   │       ├─ tpk.pk1:3!null\n" +
-			"     │   │       └─ tpk2.pk1:0!null\n" +
-			"     │   └─ Eq\n" +
-			"     │       ├─ tpk.pk2:4!null\n" +
-			"     │       └─ tpk2.pk2:1!null\n" +
 			"     ├─ MergeJoin\n" +
 			"     │   ├─ cmp: Eq\n" +
 			"     │   │   ├─ TUPLE(tpk2.pk1:0!null, tpk2.pk2:1!null)\n" +
@@ -6643,9 +6581,6 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.pk:1!null, a.c1:2, a.c2:3, a.c3:4, a.c4:5, a.c5:6]\n" +
 			" └─ LeftOuterLookupJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ b.pk:7!null\n" +
-			"     │   └─ a.pk:1!null\n" +
 			"     ├─ CrossHashJoin\n" +
 			"     │   ├─ TableAlias(c)\n" +
 			"     │   │   └─ Table\n" +
@@ -10767,13 +10702,6 @@ WHERE
 			"     │                   ├─ columns: [umf.id:79!null as ORB3K]\n" +
 			"     │                   └─ AntiLookupJoin\n" +
 			"     │                       ├─ LookupJoin\n" +
-			"     │                       │   ├─ AND\n" +
-			"     │                       │   │   ├─ Eq\n" +
-			"     │                       │   │   │   ├─ umf.T4IBQ:80\n" +
-			"     │                       │   │   │   └─ tj5d2.T4IBQ:72!null\n" +
-			"     │                       │   │   └─ Eq\n" +
-			"     │                       │   │       ├─ umf.SYPKF:87\n" +
-			"     │                       │   │       └─ tj5d2.SYPKF:74!null\n" +
 			"     │                       │   ├─ Filter\n" +
 			"     │                       │   │   ├─ Eq\n" +
 			"     │                       │   │   │   ├─ tj5d2.SWCQV:76!null\n" +
