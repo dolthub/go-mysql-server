@@ -66,6 +66,12 @@ type MutableJSONValue interface {
 	Set(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
 	// Replace the value at the given path with the new value. If the path does not exist, no modification is made.
 	Replace(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
+	// ArrayInsert inserts into the array object referenced by the given path. If the path does not exist, no modification is made.
+	ArrayInsert(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
+	// ArrayAppend appends to an  array object referenced by the given path. If the path does not exist, no modification is made,
+	// or if the path exists and is not an array, the element will be converted into an array and the element will be
+	// appended to it.
+	ArrayAppend(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
 }
 
 type JSONDocument struct {
@@ -566,9 +572,6 @@ func jsonObjectDeterministicOrder(a, b map[string]interface{}, inter []string) (
 
 func (doc JSONDocument) Insert(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
 	path = strings.TrimSpace(path)
-	if path == "$" {
-		return doc, false, nil
-	}
 	return doc.unwrapAndExecute(ctx, path, val, INSERT)
 }
 
@@ -583,30 +586,28 @@ func (doc JSONDocument) Remove(ctx *sql.Context, path string) (MutableJSONValue,
 
 func (doc JSONDocument) Set(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
 	path = strings.TrimSpace(path)
-
-	if path == "$" {
-		res, err := val.Unmarshall(ctx)
-		if err != nil {
-			return nil, false, err
-		}
-		return res, true, nil
-	}
-
 	return doc.unwrapAndExecute(ctx, path, val, SET)
 }
 
 func (doc JSONDocument) Replace(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
 	path = strings.TrimSpace(path)
+	return doc.unwrapAndExecute(ctx, path, val, REPLACE)
+}
+
+func (doc JSONDocument) ArrayAppend(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
+	path = strings.TrimSpace(path)
+	return doc.unwrapAndExecute(ctx, path, val, ARRAY_APPEND)
+}
+
+func (doc JSONDocument) ArrayInsert(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
+	path = strings.TrimSpace(path)
 
 	if path == "$" {
-		res, err := val.Unmarshall(ctx)
-		if err != nil {
-			return nil, false, err
-		}
-		return res, true, nil
+		// json_array_insert is the only function that produces an error for the '$' path no matter what the value is.
+		return nil, false, fmt.Errorf("Path expression is not a path to a cell in an array: $")
 	}
 
-	return doc.unwrapAndExecute(ctx, path, val, REPLACE)
+	return doc.unwrapAndExecute(ctx, path, val, ARRAY_INSERT)
 }
 
 const (
@@ -614,6 +615,8 @@ const (
 	INSERT
 	REPLACE
 	REMOVE
+	ARRAY_APPEND
+	ARRAY_INSERT
 )
 
 // unwrapAndExecute unwraps the JSONDocument and executes the given path on the unwrapped value. The path string passed
@@ -666,11 +669,40 @@ type parseErr struct {
 // Currently, our implementation focuses specifically on the mutation operations, so '*','**', and range index paths are
 // not supported.
 func walkPathAndUpdate(path string, doc interface{}, val interface{}, mode int, cursor *int) (interface{}, bool, *parseErr) {
+	if path == "" {
+		// End of Path is kind of a special snowflake for each type and mode.
+		switch mode {
+		case SET, REPLACE:
+			return val, true, nil
+		case INSERT:
+			return doc, false, nil
+		case ARRAY_APPEND:
+			if arr, ok := doc.([]interface{}); ok {
+				doc = append(arr, val)
+				return doc, true, nil
+			} else {
+				// Otherwise, turn it into an array and append to it, and append to it.
+				doc = []interface{}{doc, val}
+				return doc, true, nil
+			}
+		case ARRAY_INSERT, REMOVE:
+			// Some mutations should never reach the end of the path.
+			return nil, false, &parseErr{msg: "Runtime error when processing json path", character: *cursor}
+		default:
+			return nil, false, &parseErr{msg: "Invalid JSON path expression. End of path reached", character: *cursor}
+		}
+	}
+
 	if path[0] == '.' {
 		path = path[1:]
 		*cursor = *cursor + 1
 		strMap, ok := doc.(map[string]interface{})
 		if !ok {
+			// json_array_insert is the only function that produces an error when the path is to an object which
+			// lookup fails in this way. All other functions return the document unchanged. Go figure.
+			if mode == ARRAY_INSERT {
+				return nil, false, &parseErr{msg: "A path expression is not a path to a cell in an array", character: *cursor}
+			}
 			// not a map, can't do anything. NoOp
 			return doc, false, nil
 		}
@@ -686,7 +718,7 @@ func walkPathAndUpdate(path string, doc interface{}, val interface{}, mode int, 
 		indexString := path[1:right]
 
 		if arr, ok := doc.([]interface{}); ok {
-			return updateArray(indexString, remaining, doc, arr, val, mode, cursor)
+			return updateArray(indexString, remaining, arr, val, mode, cursor)
 		} else {
 			return updateObjectTreatAsArray(indexString, doc, val, mode, cursor)
 		}
@@ -704,6 +736,27 @@ func updateObject(path string, doc map[string]interface{}, val interface{}, mode
 	}
 
 	if remainingPath == "" {
+		if mode == ARRAY_APPEND {
+			newDoc, ok := doc[name]
+			if !ok {
+				// end of the path with a nil value - no-op
+				return doc, false, nil
+			}
+			newObj, changed, err := walkPathAndUpdate(remainingPath, newDoc, val, mode, cursor)
+			if err != nil {
+				return nil, false, err
+			}
+			if changed {
+				doc[name] = newObj
+			}
+			return doc, changed, nil
+		}
+
+		// Found an item, and it must be an array in one case only.
+		if mode == ARRAY_INSERT {
+			return nil, false, &parseErr{msg: "A path expression is not a path to a cell in an array", character: *cursor}
+		}
+
 		// does the name exist in the map?
 		updated := false
 		_, destructive := doc[name]
@@ -765,7 +818,7 @@ func parseNameAfterDot(path string, cursor *int) (name string, remainingPath str
 // updateArray will update an array element appropriately when the path element is an array. This includes parsing
 // the special indexes. If there are more elements in the path after this element look up, the update will be performed
 // by the walkPathAndUpdate function.
-func updateArray(indexString string, remaining string, doc interface{}, arr []interface{}, val interface{}, mode int, cursor *int) (interface{}, bool, *parseErr) {
+func updateArray(indexString string, remaining string, arr []interface{}, val interface{}, mode int, cursor *int) (interface{}, bool, *parseErr) {
 	index, err := parseIndex(indexString, len(arr)-1, cursor)
 	if err != nil {
 		return nil, false, err
@@ -773,21 +826,28 @@ func updateArray(indexString string, remaining string, doc interface{}, arr []in
 
 	// All operations, except for SET, ignore the underflow case.
 	if index.underflow && (mode != SET) {
-		return doc, false, nil
+		return arr, false, nil
 	}
 
 	if len(arr) > index.index && !index.overflow {
 		// index exists in the array.
-		if remaining == "" {
+		if remaining == "" && mode != ARRAY_APPEND {
 			updated := false
 			if mode == SET || mode == REPLACE {
 				arr[index.index] = val
 				updated = true
 			} else if mode == REMOVE {
-				doc = append(arr[:index.index], arr[index.index+1:]...)
+				arr = append(arr[:index.index], arr[index.index+1:]...)
+				updated = true
+			} else if mode == ARRAY_INSERT {
+				newArr := make([]interface{}, len(arr)+1)
+				copy(newArr, arr[:index.index])
+				newArr[index.index] = val
+				copy(newArr[index.index+1:], arr[index.index:])
+				arr = newArr
 				updated = true
 			}
-			return doc, updated, nil
+			return arr, updated, nil
 		} else {
 			newVal, changed, err := walkPathAndUpdate(remaining, arr[index.index], val, mode, cursor)
 			if err != nil {
@@ -795,17 +855,15 @@ func updateArray(indexString string, remaining string, doc interface{}, arr []in
 			}
 			if changed {
 				arr[index.index] = newVal
-				return doc, true, nil
-			} else {
-				return doc, false, nil
 			}
+			return arr, changed, nil
 		}
 	} else {
-		if mode == SET || mode == INSERT {
+		if mode == SET || mode == INSERT || mode == ARRAY_INSERT {
 			newArr := append(arr, val)
 			return newArr, true, nil
 		}
-		return doc, false, nil
+		return arr, false, nil
 	}
 }
 
@@ -828,7 +886,7 @@ func updateObjectTreatAsArray(indexString string, doc interface{}, val interface
 			return newArr, true, nil
 		}
 	} else if parsedIndex.overflow {
-		if parsedIndex.overflow && (mode == SET || mode == INSERT) {
+		if mode == SET || mode == INSERT {
 			// SET and INSERT convert {}, to [{}, val]
 			var newArr = make([]interface{}, 0, 2)
 			newArr = append(newArr, doc)
@@ -837,6 +895,12 @@ func updateObjectTreatAsArray(indexString string, doc interface{}, val interface
 		}
 	} else if mode == SET || mode == REPLACE {
 		return val, true, nil
+	} else if mode == ARRAY_APPEND {
+		// ARRAY APPEND converts {}, to [{}, val] - Does nothing in the over/underflow cases.
+		var newArr = make([]interface{}, 0, 2)
+		newArr = append(newArr, doc)
+		newArr = append(newArr, val)
+		return newArr, true, nil
 	}
 	return doc, false, nil
 }
@@ -849,7 +913,7 @@ type parseIndexResult struct {
 }
 
 // parseIndex parses an array index string. These are of the form:
-// 1. stantard integer
+// 1. standard integer
 // 2. "last"
 // 3. "last-NUMBER" - to get the second to last element in an array.
 // 4. "M to N", "last-4 to N", "M to last-4", "last-4 to last-2" (Currently we don't support this)

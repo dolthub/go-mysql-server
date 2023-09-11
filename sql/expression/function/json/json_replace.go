@@ -109,8 +109,6 @@ func (j JSONReplace) WithChildren(children ...sql.Expression) (sql.Expression, e
 	return NewJSONReplace(children...)
 }
 
-var _ sql.FunctionExpression = JSONReplace{}
-
 // NewJSONReplace creates a new JSONReplace function.
 func NewJSONReplace(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) <= 1 {
