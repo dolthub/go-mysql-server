@@ -254,6 +254,14 @@ func (i *IndexedTableAccess) DebugString() string {
 	children = append(children, fmt.Sprintf("index: %s", formatIndexDecoratorString(i.Index())))
 	if !i.lookup.IsEmpty() {
 		children = append(children, fmt.Sprintf("static: %s", i.lookup.Ranges.DebugString()))
+	} else {
+		var filters []string
+		for _, e := range i.lb.keyExprs {
+			filters = append(filters, e.String())
+		}
+		if len(filters) > 0 {
+			children = append(children, fmt.Sprintf(fmt.Sprintf("keys: %v", filters)))
+		}
 	}
 
 	var columns []string
