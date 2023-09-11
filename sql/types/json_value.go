@@ -66,9 +66,9 @@ type MutableJSONValue interface {
 	Set(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
 	// Replace the value at the given path with the new value. If the path does not exist, no modification is made.
 	Replace(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
-	// Insert into the array object referenced by the given path. If the path does not exist, no modification is made.
+	// ArrayInsert inserts into the array object referenced by the given path. If the path does not exist, no modification is made.
 	ArrayInsert(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
-	// Append to the array object referenced by the given path. If the path does not exist, no modification is made,
+	// ArrayAppend appends to an  array object referenced by the given path. If the path does not exist, no modification is made,
 	// or if the path exists and is not an array, the element will be converted into an array and the element will be
 	// appended to it.
 	ArrayAppend(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
@@ -603,7 +603,7 @@ func (doc JSONDocument) ArrayInsert(ctx *sql.Context, path string, val JSONValue
 	path = strings.TrimSpace(path)
 
 	if path == "$" {
-		// Check if the root is an array, if not, return an error.
+		// json_array_insert is the only function that produces an error for the '$' path no matter what the value is.
 		return nil, false, fmt.Errorf("Path expression is not a path to a cell in an array: $")
 	}
 
@@ -878,7 +878,7 @@ func updateObjectTreatAsArray(indexString string, doc interface{}, val interface
 	}
 
 	if parsedIndex.underflow {
-		if mode == SET || mode == INSERT || mode == ARRAY_APPEND {
+		if mode == SET || mode == INSERT {
 			// SET and INSERT convert {}, to [val, {}]
 			var newArr = make([]interface{}, 0, 2)
 			newArr = append(newArr, val)
@@ -895,6 +895,12 @@ func updateObjectTreatAsArray(indexString string, doc interface{}, val interface
 		}
 	} else if mode == SET || mode == REPLACE {
 		return val, true, nil
+	} else if mode == ARRAY_APPEND {
+		// ARRAY APPEND converts {}, to [{}, val] - Does nothing in the over/underflow cases.
+		var newArr = make([]interface{}, 0, 2)
+		newArr = append(newArr, doc)
+		newArr = append(newArr, val)
+		return newArr, true, nil
 	}
 	return doc, false, nil
 }

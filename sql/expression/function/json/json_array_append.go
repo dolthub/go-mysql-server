@@ -102,7 +102,7 @@ func (j JSONArrayAppend) Children() []sql.Expression {
 
 func (j JSONArrayAppend) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(j.Children()) != len(children) {
-		return nil, fmt.Errorf("json_array_insert did not receive the correct amount of args")
+		return nil, fmt.Errorf("json_array_append did not receive the correct number of args")
 	}
 	return NewJSONArrayAppend(children...)
 }
