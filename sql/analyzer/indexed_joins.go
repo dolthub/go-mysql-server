@@ -304,7 +304,7 @@ func addLookupJoins(m *memo.Memo) error {
 			for _, filter := range rel.Filter {
 				found := false
 				for _, matchedFilter := range matchedFilters {
-					if filter == matchedFilter {
+					if filter.ExprId() == matchedFilter.ExprId() {
 						found = true
 					}
 				}
