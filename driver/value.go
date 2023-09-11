@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
+	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -46,7 +47,7 @@ func valueToExpr(v driver.Value) (sql.Expression, error) {
 	case bool:
 		typ = types.Boolean
 	case []byte:
-		typ, err = types.CreateStringWithDefaults(sqltypes.Blob, int64(len(v)))
+		typ, err = types.CreateBinary(sqltypes.Blob, int64(len(v)))
 	case string:
 		typ, err = types.CreateStringWithDefaults(sqltypes.Text, int64(len(v)))
 	case time.Time:
@@ -65,16 +66,16 @@ func valueToExpr(v driver.Value) (sql.Expression, error) {
 	return expression.NewLiteral(c, typ), nil
 }
 
-func valuesToBindings(v []driver.Value) (map[string]sql.Expression, error) {
+func valuesToBindings(v []driver.Value) (map[string]*querypb.BindVariable, error) {
 	if len(v) == 0 {
 		return nil, nil
 	}
 
-	b := map[string]sql.Expression{}
+	b := map[string]*querypb.BindVariable{}
 
 	var err error
 	for i, v := range v {
-		b[strconv.FormatInt(int64(i), 10)], err = valueToExpr(v)
+		b[strconv.FormatInt(int64(i), 10)], err = sqltypes.BuildBindVariable(v)
 		if err != nil {
 			return nil, err
 		}
@@ -83,12 +84,12 @@ func valuesToBindings(v []driver.Value) (map[string]sql.Expression, error) {
 	return b, nil
 }
 
-func namedValuesToBindings(v []driver.NamedValue) (map[string]sql.Expression, error) {
+func namedValuesToBindings(v []driver.NamedValue) (map[string]*querypb.BindVariable, error) {
 	if len(v) == 0 {
 		return nil, nil
 	}
 
-	b := map[string]sql.Expression{}
+	b := map[string]*querypb.BindVariable{}
 
 	var err error
 	for _, v := range v {
@@ -97,7 +98,7 @@ func namedValuesToBindings(v []driver.NamedValue) (map[string]sql.Expression, er
 			name = "v" + strconv.FormatInt(int64(v.Ordinal), 10)
 		}
 
-		b[name], err = valueToExpr(v.Value)
+		b[name], err = sqltypes.BuildBindVariable(v.Value)
 		if err != nil {
 			return nil, err
 		}

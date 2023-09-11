@@ -55,6 +55,10 @@ func (r *RenameTable) String() string {
 	return fmt.Sprintf("Rename table %s to %s", r.OldNames, r.NewNames)
 }
 
+func (r *RenameTable) IsReadOnly() bool {
+	return false
+}
+
 func (r *RenameTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	renamer, _ := r.Db.(sql.TableRenamer)
 	viewDb, _ := r.Db.(sql.ViewDatabase)
@@ -238,7 +242,7 @@ func (a *AddColumn) DebugString() string {
 func NewAddColumnResolved(table *ResolvedTable, column sql.Column, order *sql.ColumnOrder) *AddColumn {
 	column.Source = table.Name()
 	return &AddColumn{
-		ddlNode: ddlNode{Db: table.Database},
+		ddlNode: ddlNode{Db: table.SqlDatabase},
 		Table:   table,
 		column:  &column,
 		order:   order,
@@ -261,6 +265,10 @@ func (a *AddColumn) Column() *sql.Column {
 
 func (a *AddColumn) Order() *sql.ColumnOrder {
 	return a.order
+}
+
+func (a *AddColumn) IsReadOnly() bool {
+	return false
 }
 
 func (a *AddColumn) WithDatabase(db sql.Database) (sql.Node, error) {
@@ -287,7 +295,12 @@ func (a AddColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(exprs), 1+len(a.targetSch))
 	}
 
-	a.targetSch = transform.SchemaWithDefaults(a.targetSch, exprs[:len(a.targetSch)])
+	sch, err := transform.SchemaWithDefaults(a.targetSch, exprs[:len(a.targetSch)])
+	if err != nil {
+		return nil, err
+	}
+
+	a.targetSch = sch
 
 	unwrappedColDefVal, ok := exprs[len(exprs)-1].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
 
@@ -447,7 +460,7 @@ var _ sql.CollationCoercible = (*DropColumn)(nil)
 
 func NewDropColumnResolved(table *ResolvedTable, column string) *DropColumn {
 	return &DropColumn{
-		ddlNode: ddlNode{Db: table.Database},
+		ddlNode: ddlNode{Db: table.SqlDatabase},
 		Table:   table,
 		Column:  column,
 	}
@@ -469,6 +482,10 @@ func (d *DropColumn) WithDatabase(db sql.Database) (sql.Node, error) {
 
 func (d *DropColumn) String() string {
 	return fmt.Sprintf("drop column %s", d.Column)
+}
+
+func (d *DropColumn) IsReadOnly() bool {
+	return false
 }
 
 // Validate returns an error if this drop column operation is invalid (because it would invalidate a column default
@@ -578,7 +595,12 @@ func (d DropColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(exprs), len(d.targetSchema))
 	}
 
-	d.targetSchema = transform.SchemaWithDefaults(d.targetSchema, exprs)
+	sch, err := transform.SchemaWithDefaults(d.targetSchema, exprs)
+	if err != nil {
+		return nil, err
+	}
+	d.targetSchema = sch
+
 	return &d, nil
 }
 
@@ -598,7 +620,7 @@ var _ sql.CollationCoercible = (*RenameColumn)(nil)
 
 func NewRenameColumnResolved(table *ResolvedTable, columnName string, newColumnName string) *RenameColumn {
 	return &RenameColumn{
-		ddlNode:       ddlNode{Db: table.Database},
+		ddlNode:       ddlNode{Db: table.SqlDatabase},
 		Table:         table,
 		ColumnName:    columnName,
 		NewColumnName: newColumnName,
@@ -633,6 +655,10 @@ func (r *RenameColumn) String() string {
 	return fmt.Sprintf("rename column %s to %s", r.ColumnName, r.NewColumnName)
 }
 
+func (r *RenameColumn) IsReadOnly() bool {
+	return false
+}
+
 func (r *RenameColumn) DebugString() string {
 	pr := sql.NewTreePrinter()
 	pr.WriteNode("rename column %s to %s", r.ColumnName, r.NewColumnName)
@@ -663,7 +689,12 @@ func (r RenameColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error)
 		return nil, sql.ErrInvalidChildrenNumber.New(r, len(exprs), len(r.targetSchema))
 	}
 
-	r.targetSchema = transform.SchemaWithDefaults(r.targetSchema, exprs)
+	sch, err := transform.SchemaWithDefaults(r.targetSchema, exprs)
+	if err != nil {
+		return nil, err
+	}
+
+	r.targetSchema = sch
 	return &r, nil
 }
 
@@ -708,7 +739,7 @@ var _ sql.CollationCoercible = (*ModifyColumn)(nil)
 func NewModifyColumnResolved(table *ResolvedTable, columnName string, column sql.Column, order *sql.ColumnOrder) *ModifyColumn {
 	column.Source = table.Name()
 	return &ModifyColumn{
-		ddlNode:    ddlNode{Db: table.Database},
+		ddlNode:    ddlNode{Db: table.SqlDatabase},
 		Table:      table,
 		columnName: columnName,
 		column:     &column,
@@ -754,6 +785,10 @@ func (m *ModifyColumn) String() string {
 	return fmt.Sprintf("modify column %s", m.column.Name)
 }
 
+func (m *ModifyColumn) IsReadOnly() bool {
+	return false
+}
+
 func (m ModifyColumn) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
 	m.targetSchema = schema
 	return &m, nil
@@ -795,7 +830,11 @@ func (m ModifyColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error)
 		return nil, sql.ErrInvalidChildrenNumber.New(m, len(exprs), 1+len(m.targetSchema))
 	}
 
-	m.targetSchema = transform.SchemaWithDefaults(m.targetSchema, exprs[:len(m.targetSchema)])
+	sch, err := transform.SchemaWithDefaults(m.targetSchema, exprs[:len(m.targetSchema)])
+	if err != nil {
+		return nil, err
+	}
+	m.targetSchema = sch
 
 	unwrappedColDefVal, ok := exprs[len(exprs)-1].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
 	if ok {
@@ -872,7 +911,7 @@ var _ sql.Databaser = (*AlterTableCollation)(nil)
 // NewAlterTableCollationResolved returns a new *AlterTableCollation
 func NewAlterTableCollationResolved(table *ResolvedTable, collation sql.CollationID) *AlterTableCollation {
 	return &AlterTableCollation{
-		ddlNode:   ddlNode{Db: table.Database},
+		ddlNode:   ddlNode{Db: table.SqlDatabase},
 		Table:     table,
 		Collation: collation,
 	}
@@ -892,6 +931,10 @@ func (atc *AlterTableCollation) WithDatabase(db sql.Database) (sql.Node, error) 
 	natc := *atc
 	natc.Db = db
 	return &natc, nil
+}
+
+func (atc *AlterTableCollation) IsReadOnly() bool {
+	return false
 }
 
 // String implements the interface sql.Node.

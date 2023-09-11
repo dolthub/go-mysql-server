@@ -1,3 +1,17 @@
+// Copyright 2023 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package planbuilder
 
 import (
@@ -6,11 +20,13 @@ import (
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *PlanBuilder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (outScope *scope) {
+func (b *Builder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (outScope *scope) {
 	switch s := s.(type) {
 	case *ast.Select:
 		if s.With != nil {
@@ -32,7 +48,7 @@ func (b *PlanBuilder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (ou
 	return
 }
 
-func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
+func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	// General order of binding:
 	// 1) Get definitions in FROM.
 	// 2) Build WHERE, which can only reference FROM columns.
@@ -52,7 +68,10 @@ func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scop
 	b.buildNamedWindows(fromScope, s.Window)
 
 	b.buildWhere(fromScope, s.Where)
-	projScope := fromScope.replace()
+	// select *, (SELECT t2.i) from t1 left join using t2 on i;
+	// select t1.*, t2.*, t2.* from ...
+	//
+	projScope := fromScope.push()
 
 	// Aggregates in select list added to fromScope.groupBy.outCols.
 	// Args to aggregates added to fromScope.groupBy.inCols.
@@ -81,46 +100,85 @@ func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scop
 	// references.
 
 	b.buildHaving(fromScope, projScope, outScope, s.Having)
+
 	b.buildOrderBy(outScope, orderByScope)
 
+	// Last level projection restricts outputs to target projections.
+	b.buildProjection(outScope, projScope)
+	outScope = projScope
+
+	// DISTINCT when
+	b.buildDistinct(outScope, s.Distinct)
+
+	// OFFSET and LIMIT are last
 	offset := b.buildOffset(outScope, s.Limit)
 	if offset != nil {
 		outScope.node = plan.NewOffset(offset, outScope.node)
 	}
 	limit := b.buildLimit(outScope, s.Limit)
 	if limit != nil {
-		outScope.node = plan.NewLimit(limit, outScope.node)
+		l := plan.NewLimit(limit, outScope.node)
+		l.CalcFoundRows = s.CalcFoundRows
+		outScope.node = l
 	}
 
-	// Last level projection restricts outputs to target projections.
-	b.buildProjection(outScope, projScope)
-	outScope = projScope
-	b.buildDistinct(outScope, s.Distinct)
 	return
 }
 
-func (b *PlanBuilder) buildLimit(inScope *scope, limit *ast.Limit) sql.Expression {
+func (b *Builder) buildLimit(inScope *scope, limit *ast.Limit) sql.Expression {
 	if limit != nil {
-		return b.buildScalar(inScope, limit.Rowcount)
+		l := b.buildScalar(inScope, limit.Rowcount)
+		return b.typeCoerceLiteral(l)
 	}
 	return nil
 }
 
-func (b *PlanBuilder) buildOffset(inScope *scope, limit *ast.Limit) sql.Expression {
+func (b *Builder) typeCoerceLiteral(e sql.Expression) sql.Expression {
+	// todo this should be in a module that can generically coerce to a type or type class
+	switch e := e.(type) {
+	case *expression.Literal:
+		val, _, err := types.Int64.Convert(e.Value())
+		if err != nil {
+			err = fmt.Errorf("%s: %w", err.Error(), sql.ErrInvalidTypeForLimit.New(types.Int64, e.Type()))
+		}
+		return expression.NewLiteral(val, types.Int64)
+	case *expression.BindVar:
+		return e
+	default:
+		err := sql.ErrInvalidTypeForLimit.New(expression.Literal{}, e)
+		b.handleErr(err)
+	}
+	return nil
+}
+
+func (b *Builder) buildOffset(inScope *scope, limit *ast.Limit) sql.Expression {
 	if limit != nil && limit.Offset != nil {
-		return b.buildScalar(inScope, limit.Offset)
+		rowCount := b.buildScalar(inScope, limit.Offset)
+		rowCount = b.typeCoerceLiteral(rowCount)
+		// Check if offset starts at 0, if so, we can just remove the offset node.
+		// Only cast to int8, as a larger int type just means a non-zero offset.
+		if val, err := rowCount.Eval(b.ctx, nil); err == nil {
+			if v, ok := val.(int64); ok && v == 0 {
+				return nil
+			}
+		}
+		return rowCount
 	}
 	return nil
 }
 
-func (b *PlanBuilder) buildDistinct(inScope *scope, distinct string) {
+func (b *Builder) buildDistinct(inScope *scope, distinct string) {
 	if distinct != "" {
 		inScope.node = plan.NewDistinct(inScope.node)
 	}
 }
 
-func (b *PlanBuilder) currentDb() sql.Database {
+func (b *Builder) currentDb() sql.Database {
 	if b.currentDatabase == nil {
+		if b.ctx.GetCurrentDatabase() == "" {
+			err := sql.ErrNoDatabaseSelected.New()
+			b.handleErr(err)
+		}
 		database, err := b.cat.Database(b.ctx, b.ctx.GetCurrentDatabase())
 		if err != nil {
 			b.handleErr(err)
@@ -134,7 +192,7 @@ func (b *PlanBuilder) currentDb() sql.Database {
 	return b.currentDatabase
 }
 
-func (b *PlanBuilder) renameSource(scope *scope, table string, cols []string) {
+func (b *Builder) renameSource(scope *scope, table string, cols []string) {
 	if table != "" {
 		scope.setTableAlias(table)
 	}

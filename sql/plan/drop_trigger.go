@@ -46,6 +46,10 @@ func (d *DropTrigger) Resolved() bool {
 	return !ok
 }
 
+func (d *DropTrigger) IsReadOnly() bool {
+	return false
+}
+
 // String implements the sql.Node interface.
 func (d *DropTrigger) String() string {
 	ifExists := ""

@@ -17,7 +17,6 @@ package queries
 import (
 	"github.com/dolthub/vitess/go/mysql"
 
-	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -269,8 +268,10 @@ var UpdateTests = []WriteQueryTest{
 		},
 	},
 	{
-		WriteQuery:          `update mytable h join mytable on h.i = mytable.i and h.s <> mytable.s set h.i = mytable.i;`,
+		WriteQuery:          `update mytable h join mytable on h.i = mytable.i and h.s <> mytable.s set h.i = mytable.i+1;`,
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(0, 0)}},
+		SelectQuery:         "select * from mytable",
+		ExpectedSelect:      []sql.Row{{1, "first row"}, {2, "second row"}, {3, "third row"}},
 	},
 	{
 		WriteQuery:          `UPDATE othertable CROSS JOIN tabletest set othertable.i2 = othertable.i2 * 10`, // cross join
@@ -733,15 +734,15 @@ var UpdateErrorTests = []QueryErrorTest{
 	},
 	{
 		Query:       `UPDATE people SET height_inches = IF(SUM(height_inches) % 2 = 0, 42, height_inches)`,
-		ExpectedErr: analyzererrors.ErrAggregationUnsupported,
+		ExpectedErr: sql.ErrAggregationUnsupported,
 	},
 	{
 		Query:       `UPDATE people SET height_inches = IF(SUM(*) % 2 = 0, 42, height_inches)`,
-		ExpectedErr: analyzererrors.ErrStarUnsupported,
+		ExpectedErr: sql.ErrStarUnsupported,
 	},
 	{
 		Query:       `UPDATE people SET height_inches = IF(ROW_NUMBER() OVER() % 2 = 0, 42, height_inches)`,
-		ExpectedErr: analyzererrors.ErrWindowUnsupported,
+		ExpectedErr: sql.ErrWindowUnsupported,
 	},
 }
 

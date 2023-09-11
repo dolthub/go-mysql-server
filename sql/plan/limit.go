@@ -61,6 +61,10 @@ func (l Limit) WithCalcFoundRows(v bool) *Limit {
 	return &l
 }
 
+func (l Limit) IsReadOnly() bool {
+	return l.Child.IsReadOnly()
+}
+
 // WithChildren implements the Node interface.
 func (l *Limit) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {

@@ -100,6 +100,37 @@ func NewConvertWithLengthAndScale(expr sql.Expression, castToType string, typeLe
 	}
 }
 
+// GetConvertToType returns which type the both left and right values should be converted to.
+// If neither sql.Type represent number, then converted to string. Otherwise, we try to get
+// the appropriate type to avoid any precision loss.
+func GetConvertToType(l, r sql.Type) string {
+	if types.Null == l {
+		return GetConvertToType(r, r)
+	}
+	if types.Null == r {
+		return GetConvertToType(l, l)
+	}
+
+	if !types.IsNumber(l) || !types.IsNumber(r) {
+		return ConvertToChar
+	}
+
+	if types.IsDecimal(l) || types.IsDecimal(r) {
+		return ConvertToDecimal
+	}
+	if types.IsUnsigned(l) && types.IsUnsigned(r) {
+		return ConvertToUnsigned
+	}
+	if types.IsSigned(l) && types.IsSigned(r) {
+		return ConvertToSigned
+	}
+	if types.IsInteger(l) && types.IsInteger(r) {
+		return ConvertToSigned
+	}
+
+	return ConvertToChar
+}
+
 // IsNullable implements the Expression interface.
 func (c *Convert) IsNullable() bool {
 	switch c.castToType {
@@ -120,7 +151,7 @@ func (c *Convert) Type() sql.Type {
 	case ConvertToDate:
 		return types.Date
 	case ConvertToDatetime:
-		return types.Datetime
+		return types.DatetimeMaxPrecision
 	case ConvertToDecimal:
 		if c.cachedDecimalType == nil {
 			c.cachedDecimalType = createConvertedDecimalType(c.typeLength, c.typeScale, true)
@@ -285,7 +316,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type, typeLengt
 		if !(isTime || isString || isBinary) {
 			return nil, nil
 		}
-		d, _, err := types.Datetime.Convert(val)
+		d, _, err := types.DatetimeMaxPrecision.Convert(val)
 		if err != nil {
 			return nil, err
 		}

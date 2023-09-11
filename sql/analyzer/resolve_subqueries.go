@@ -17,7 +17,6 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -80,11 +79,13 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 			if sqa.OuterScopeVisibility && joinParent != nil {
 				if stripChild, ok := joinParent.Right().(*plan.StripRowNode); ok && stripChild.Child == sqa {
 					subScope := scope.NewScopeInJoin(joinParent.Children()[0])
+					subScope.SetLateralJoin(joinParent.Op.IsLateral())
 					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
 				} else {
 					// IsLateral means that the subquery should have visibility into the left scope.
 					if sqa.IsLateral {
 						subScope := addLeftTablesToScope(scope, joinParent.Left())
+						subScope.SetLateralJoin(true)
 						newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
 					} else {
 						newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
@@ -94,6 +95,7 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 				// IsLateral means that the subquery should have visibility into the left scope.
 				if joinParent != nil && sqa.IsLateral {
 					subScope := addLeftTablesToScope(scope, joinParent.Left())
+					subScope.SetLateralJoin(true)
 					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
 				} else {
 					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
@@ -123,14 +125,14 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 					if analyzererrors.ErrValidationResolved.Is(err) {
 						// if a parent is unresolved, we want to dig deeper to find the unresolved
 						// child dependency
-						_, _, err := finalizeSubqueriesHelper(ctx, a, sq.Query, scope.NewScopeFromSubqueryExpression(node), sel)
+						_, _, err := finalizeSubqueriesHelper(ctx, a, sq.Query, scope.NewScopeFromSubqueryExpression(node, sq.Correlated()), sel)
 						if err != nil {
 							return e, transform.SameTree, err
 						}
 					}
 					return e, transform.SameTree, err
 				}
-				newExpr, same1, err := finalizeSubqueriesHelper(ctx, a, newSq.(*plan.Subquery).Query, scope.NewScopeFromSubqueryExpression(node), sel)
+				newExpr, same1, err := finalizeSubqueriesHelper(ctx, a, newSq.(*plan.Subquery).Query, scope.NewScopeFromSubqueryExpression(node, newSq.(*plan.Subquery).Correlated()), sel)
 				if err != nil {
 					return e, transform.SameTree, err
 				}
@@ -209,10 +211,10 @@ func analyzeSubqueryExpression(ctx *sql.Context, a *Analyzer, n sql.Node, sq *pl
 	var err error
 	if finalize {
 		analyzed, _, err = a.analyzeStartingAtBatch(subqueryCtx, sq.Query,
-			scope.NewScopeFromSubqueryExpression(n), "default-rules", NewFinalizeSubquerySel(sel))
+			scope.NewScopeFromSubqueryExpression(n, sq.Correlated()), "default-rules", NewFinalizeSubquerySel(sel))
 	} else {
 		analyzed, _, err = a.analyzeThroughBatch(subqueryCtx, sq.Query,
-			scope.NewScopeFromSubqueryExpression(n), "default-rules", NewResolveSubqueryExprSelector(sel))
+			scope.NewScopeFromSubqueryExpression(n, sq.Correlated()), "default-rules", NewResolveSubqueryExprSelector(sel))
 	}
 	if err != nil {
 		// We ignore certain errors during non-final passes of the analyzer, deferring them to later analysis passes.
@@ -283,125 +285,6 @@ func StripPassthroughNodes(n sql.Node) sql.Node {
 	return n
 }
 
-func exprIsCacheable(expr sql.Expression, lowestAllowedIdx int) bool {
-	cacheable := true
-	sql.Inspect(expr, func(e sql.Expression) bool {
-		switch e := e.(type) {
-		case *expression.GetField:
-			if e.Index() >= lowestAllowedIdx {
-				return true
-			}
-		case *plan.Subquery:
-			if nodeIsCacheable(e.Query, lowestAllowedIdx) {
-				return true
-			}
-		case *deferredColumn:
-		case sql.NonDeterministicExpression:
-		default:
-			return true
-		}
-		cacheable = false
-		return false
-	})
-	return cacheable
-}
-
-func nodeIsCacheable(n sql.Node, lowestAllowedIdx int) bool {
-	cacheable := true
-	transform.Inspect(n, func(node sql.Node) bool {
-		if er, ok := node.(sql.Expressioner); ok {
-			for _, expr := range er.Expressions() {
-				if !exprIsCacheable(expr, lowestAllowedIdx) {
-					cacheable = false
-					return false
-				}
-			}
-		} else if sqa, ok := node.(*plan.SubqueryAlias); ok {
-			if sqa.CacheableCTESource {
-				cacheable = true
-				return false
-			}
-			// TODO: Need more logic and testing with CTEs. For example, CTEs that are non-deterministic MUST be
-			//       cached and have their result sets reused, otherwise query result will be incorrect.
-			// If a subquery has visibility to outer scopes, then we need to check if it has
-			// references to that outer scope. If not, it can be always be cached.
-			if sqa.OuterScopeVisibility {
-				if !nodeIsCacheable(sqa.Child, lowestAllowedIdx) {
-					cacheable = false
-				}
-			}
-			return false
-		}
-		return true
-	})
-	return cacheable
-}
-
-// cacheSubqueryResults determines whether it's safe to cache the results for subqueries (expressions and aliases), and marks the
-// subquery as cacheable if so. Caching subquery results is safe in the case that no outer scope columns are referenced,
-// if all expressions in the subquery are deterministic, and if the subquery isn't inside a trigger block.
-func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	if !scope.IsEmpty() {
-		// triggers cannot be cached
-		return node, transform.SameTree, nil
-	}
-	return cacheSubqueryResultsHelper(ctx, a, node, scope, sel)
-}
-
-func cacheSubqueryResultsHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		ret := n
-		sameN := transform.SameTree
-		var err error
-		switch n := n.(type) {
-		case *plan.SubqueryAlias:
-			subScope := scope.NewScopeFromSubqueryAlias(n)
-			ret, sameN, err = transform.NodeChildren(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-				return cacheSubqueryResultsHelper(ctx, a, n, subScope, sel)
-			})
-			if err != nil {
-				return n, transform.SameTree, err
-			}
-			if nodeIsCacheable(ret.Children()[0], len(subScope.Schema())) {
-				sameN = transform.NewTree
-				ret = ret.(*plan.SubqueryAlias).WithCachedResults()
-			}
-		default:
-			if n, ok := n.(sql.OpaqueNode); ok {
-				ret, sameN, err = transform.NodeChildren(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-					return cacheSubqueryResultsHelper(ctx, a, n, scope, sel)
-				})
-				if err != nil {
-					return n, transform.SameTree, err
-				}
-			}
-		}
-
-		ret, sameE, err := transform.OneNodeExpressions(ret, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-			if sq, ok := e.(*plan.Subquery); ok {
-				subScope := scope.NewScopeFromSubqueryExpression(n)
-				newQ, same, err := cacheSubqueryResultsHelper(ctx, a, sq.Query, subScope, sel)
-				if err != nil {
-					return e, transform.SameTree, err
-				}
-				if !same {
-					sq = sq.WithQuery(newQ)
-				}
-				if nodeIsCacheable(sq.Query, len(subScope.Schema())) {
-					return sq.WithCachedResults(), transform.NewTree, nil
-				} else if !same {
-					return sq, transform.NewTree, nil
-				}
-			}
-			return e, transform.SameTree, nil
-		})
-		if err != nil {
-			return n, transform.SameTree, nil
-		}
-		return ret, sameN && sameE, err
-	})
-}
-
 // cacheSubqueryAlisesInJoins will look for joins against subquery aliases that
 // will repeatedly execute the subquery, and will insert a *plan.CachedResults
 // node on top of those nodes. The left-most child of a join root is an exception
@@ -420,14 +303,13 @@ func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 				foundFirstRel = false
 			}
 		case *plan.SubqueryAlias:
-			if n.CanCacheResults {
-				isCacheableSq = true
-			}
+			isCacheableSq = n.CanCacheResults()
 		case *plan.CachedResults:
 			isCachedRs = true
 		case *plan.Max1Row:
 			isMax1Row = true
 		default:
+
 		}
 
 		doCache := isCacheableSq && inJoin && !parentCached
@@ -510,50 +392,4 @@ func setJoinScopeLen(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 		}
 		return n, transform.SameTree, nil
 	})
-}
-
-// setViewTargetSchema is used to set the target schema for views. It is run after resolve_subqueries in order for
-// SubqueryAlias resolution to happen.
-func setViewTargetSchema(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, ctx := ctx.Span("set_view_target_schema")
-	defer span.End()
-
-	if _, ok := n.(*plan.ShowColumns); !ok {
-		return n, transform.SameTree, nil
-	}
-
-	t, ok := n.(sql.SchemaTarget)
-	if !ok {
-		return n, transform.SameTree, nil
-	}
-
-	sq := getSubqueryAlias(n)
-	if sq == nil {
-		return n, transform.SameTree, nil
-	}
-
-	n, err := t.WithTargetSchema(sq.Schema())
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	return n, transform.NewTree, nil
-}
-
-func getSubqueryAlias(node sql.Node) *plan.SubqueryAlias {
-	var sq *plan.SubqueryAlias
-	transform.Inspect(node, func(node sql.Node) bool {
-		// Only want to the first match
-		if sq != nil {
-			return false
-		}
-
-		switch n := node.(type) {
-		case *plan.SubqueryAlias:
-			sq = n
-			return false
-		}
-		return true
-	})
-	return sq
 }

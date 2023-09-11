@@ -17,42 +17,13 @@ package analyzer
 import (
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/transform"
-	"github.com/dolthub/go-mysql-server/sql/types"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/fixidx"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
-
-func setInsertColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	// We capture all INSERTs along the tree, such as those inside of block statements.
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		ii, ok := n.(*plan.InsertInto)
-		if !ok {
-			return n, transform.SameTree, nil
-		}
-
-		if !ii.Destination.Resolved() {
-			return n, transform.SameTree, nil
-		}
-
-		schema := ii.Destination.Schema()
-
-		// If no column names were specified in the query, go ahead and fill
-		// them all in now that the destination is resolved.
-		// TODO: setting the plan field directly is not great
-		if len(ii.ColumnNames) == 0 {
-			colNames := make([]string, len(schema))
-			for i, col := range schema {
-				colNames[i] = col.Name
-			}
-			ii.ColumnNames = colNames
-		}
-
-		return ii, transform.NewTree, nil
-	})
-}
 
 func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if _, ok := n.(*plan.TriggerExecutor); ok {
@@ -117,7 +88,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 				columnNames[i] = f.Name
 			}
 		} else {
-			err = validateColumns(columnNames, dstSchema)
+			err = validateColumns(table.Name(), columnNames, dstSchema)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -129,36 +100,12 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		}
 
 		// The schema of the destination node and the underlying table differ subtly in terms of defaults
-		project, err := wrapRowSource(ctx, source, insertable, insert.Destination.Schema(), columnNames)
+		project, err := wrapRowSource(ctx, scope, a.LogFn(), source, insertable, insert.Destination.Schema(), columnNames)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
 
 		return insert.WithSource(project), transform.NewTree, nil
-	})
-}
-
-// resolvePreparedInsert applies post-optimization
-// rules to Insert.Source for prepared statements.
-func resolvePreparedInsert(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		ins, ok := n.(*plan.InsertInto)
-		if !ok {
-			return n, transform.SameTree, nil
-		}
-
-		// TriggerExecutor has already been analyzed
-		if _, ok := ins.Source.(*plan.TriggerExecutor); ok {
-			return n, transform.SameTree, nil
-		}
-
-		source, _, err := a.analyzeWithSelector(ctx, ins.Source, scope, SelectAllBatches, postPrepareInsertSourceRuleSelector)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-
-		source = StripPassthroughNodes(source)
-		return ins.WithSource(source), transform.NewTree, nil
 	})
 }
 
@@ -179,7 +126,7 @@ func existsNonZeroValueCount(values sql.Node) bool {
 
 // wrapRowSource wraps the original row source in a projection so that its schema matches the full schema of the
 // underlying table, in the same order.
-func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string) (sql.Node, error) {
+func wrapRowSource(ctx *sql.Context, scope *plan.Scope, logFn func(string, ...any), insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string) (sql.Node, error) {
 	projExprs := make([]sql.Expression, len(schema))
 	for i, f := range schema {
 		found := false
@@ -192,10 +139,28 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 		}
 
 		if !found {
-			if !f.Nullable && f.Default == nil && !f.AutoIncrement {
+			defaultExpr := f.Default
+			if defaultExpr == nil {
+				defaultExpr = f.Generated
+			}
+
+			if !f.Nullable && defaultExpr == nil && !f.AutoIncrement {
 				return nil, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
 			}
-			projExprs[i] = f.Default
+			var err error
+
+			def, _, err := transform.Expr(defaultExpr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				switch e := e.(type) {
+				case *expression.GetField:
+					return fixidx.FixFieldIndexes(scope, logFn, schema, e.WithTable(destTbl.Name()))
+				default:
+					return e, transform.SameTree, nil
+				}
+			})
+			if err != nil {
+				return nil, err
+			}
+			projExprs[i] = def
 		}
 
 		if f.AutoIncrement {
@@ -215,15 +180,19 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 	return plan.NewProject(projExprs, insertSource), nil
 }
 
-func validateColumns(columnNames []string, dstSchema sql.Schema) error {
-	dstColNames := make(map[string]struct{})
+func validateColumns(tableName string, columnNames []string, dstSchema sql.Schema) error {
+	dstColNames := make(map[string]*sql.Column)
 	for _, dstCol := range dstSchema {
-		dstColNames[strings.ToLower(dstCol.Name)] = struct{}{}
+		dstColNames[strings.ToLower(dstCol.Name)] = dstCol
 	}
 	usedNames := make(map[string]struct{})
 	for _, columnName := range columnNames {
-		if _, exists := dstColNames[columnName]; !exists {
+		dstCol, exists := dstColNames[columnName]
+		if !exists {
 			return plan.ErrInsertIntoNonexistentColumn.New(columnName)
+		}
+		if dstCol.Generated != nil {
+			return sql.ErrGeneratedColumnValue.New(dstCol.Name, tableName)
 		}
 		if _, exists := usedNames[columnName]; !exists {
 			usedNames[columnName] = struct{}{}
@@ -243,7 +212,7 @@ func validateValueCount(columnNames []string, values sql.Node) error {
 	case *plan.Values:
 		for _, exprTuple := range node.ExpressionTuples {
 			if len(exprTuple) != len(columnNames) {
-				return plan.ErrInsertIntoMismatchValueCount.New()
+				return sql.ErrInsertIntoMismatchValueCount.New()
 			}
 		}
 	case *plan.LoadData:
@@ -252,12 +221,12 @@ func validateValueCount(columnNames []string, values sql.Node) error {
 			dataColLen = len(node.Schema())
 		}
 		if len(columnNames) != dataColLen {
-			return plan.ErrInsertIntoMismatchValueCount.New()
+			return sql.ErrInsertIntoMismatchValueCount.New()
 		}
 	default:
 		// Parser assures us that this will be some form of SelectStatement, so no need to type check it
 		if len(columnNames) != len(values.Schema()) {
-			return plan.ErrInsertIntoMismatchValueCount.New()
+			return sql.ErrInsertIntoMismatchValueCount.New()
 		}
 	}
 	return nil

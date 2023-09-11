@@ -38,24 +38,42 @@ func GenerateCreateTableStatement(tblName string, colStmts []string, tblCharsetN
 
 // GenerateCreateTableColumnDefinition returns column definition string for 'CREATE TABLE' statement for given column.
 // This part comes first in the 'CREATE TABLE' statement.
-func GenerateCreateTableColumnDefinition(colName string, colType Type, nullable bool, autoInc bool, hasDefault bool, colDefault string, comment string) string {
-	stmt := fmt.Sprintf("  %s %s", QuoteIdentifier(colName), colType.String())
-	if !nullable {
+func GenerateCreateTableColumnDefinition(col *Column, colDefault string, tableCollation CollationID) string {
+	var colTypeString string
+	if collationType, ok := col.Type.(TypeWithCollation); ok {
+		colTypeString = collationType.StringWithTableCollation(tableCollation)
+	} else {
+		colTypeString = col.Type.String()
+	}
+	stmt := fmt.Sprintf("  %s %s", QuoteIdentifier(col.Name), colTypeString)
+	if !col.Nullable {
 		stmt = fmt.Sprintf("%s NOT NULL", stmt)
 	}
-	if autoInc {
+
+	if col.AutoIncrement {
 		stmt = fmt.Sprintf("%s AUTO_INCREMENT", stmt)
 	}
-	if c, ok := colType.(SpatialColumnType); ok {
+
+	if c, ok := col.Type.(SpatialColumnType); ok {
 		if s, d := c.GetSpatialTypeSRID(); d {
 			stmt = fmt.Sprintf("%s /*!80003 SRID %v */", stmt, s)
 		}
 	}
-	if hasDefault {
+
+	if col.Generated != nil {
+		storedStr := ""
+		if !col.Virtual {
+			storedStr = " STORED"
+		}
+		stmt = fmt.Sprintf("%s GENERATED ALWAYS AS %s%s", stmt, col.Generated.String(), storedStr)
+	}
+
+	if col.Default != nil && col.Generated == nil {
 		stmt = fmt.Sprintf("%s DEFAULT %s", stmt, colDefault)
 	}
-	if comment != "" {
-		stmt = fmt.Sprintf("%s COMMENT '%s'", stmt, comment)
+
+	if col.Comment != "" {
+		stmt = fmt.Sprintf("%s COMMENT '%s'", stmt, col.Comment)
 	}
 	return stmt
 }
@@ -68,7 +86,7 @@ func GenerateCreateTablePrimaryKeyDefinition(pkCols []string) string {
 
 // GenerateCreateTableIndexDefinition returns index definition string for 'CREATE TABLE' statement
 // for given index. This part comes after primary key definition if there is any.
-func GenerateCreateTableIndexDefinition(isUnique, isSpatial bool, indexID string, indexCols []string, comment string) string {
+func GenerateCreateTableIndexDefinition(isUnique, isSpatial, isFullText bool, indexID string, indexCols []string, comment string) string {
 	unique := ""
 	if isUnique {
 		unique = "UNIQUE "
@@ -78,7 +96,12 @@ func GenerateCreateTableIndexDefinition(isUnique, isSpatial bool, indexID string
 	if isSpatial {
 		unique = "SPATIAL "
 	}
-	key := fmt.Sprintf("  %s%sKEY %s (%s)", unique, spatial, QuoteIdentifier(indexID), strings.Join(indexCols, ","))
+
+	fulltext := ""
+	if isFullText {
+		fulltext = "FULLTEXT "
+	}
+	key := fmt.Sprintf("  %s%s%sKEY %s (%s)", unique, spatial, fulltext, QuoteIdentifier(indexID), strings.Join(indexCols, ","))
 	if comment != "" {
 		key = fmt.Sprintf("%s COMMENT '%s'", key, comment)
 	}

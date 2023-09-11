@@ -20,6 +20,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -28,17 +29,22 @@ import (
 // TODO: add the remaining statements that interact with the grant tables
 func validatePrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	mysqlDb := a.Catalog.MySQLDb
+
 	switch n.(type) {
 	case *plan.CreateUser, *plan.DropUser, *plan.RenameUser, *plan.CreateRole, *plan.DropRole,
 		*plan.Grant, *plan.GrantRole, *plan.GrantProxy, *plan.Revoke, *plan.RevokeRole, *plan.RevokeAll, *plan.RevokeProxy:
-		mysqlDb.Enabled = true
+		mysqlDb.SetEnabled(true)
 	}
-	if !mysqlDb.Enabled {
+	if !mysqlDb.Enabled() {
 		return n, transform.SameTree, nil
 	}
 
 	client := ctx.Session.Client()
-	user := mysqlDb.GetUser(client.User, client.Address, false)
+	user := func() *mysql_db.User {
+		rd := mysqlDb.Reader()
+		defer rd.Close()
+		return mysqlDb.GetUser(rd, client.User, client.Address, false)
+	}()
 	if user == nil {
 		return nil, transform.SameTree, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", ctx.Session.Client().User)
 	}
@@ -47,10 +53,11 @@ func validatePrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	if plan.IsDualTable(getTable(n)) {
 		return n, transform.SameTree, nil
 	}
-	if rt := getResolvedTable(n); rt != nil && rt.Database.Name() == sql.InformationSchemaDatabaseName {
+	if rt := getResolvedTable(n); rt != nil && rt.SqlDatabase.Name() == sql.InformationSchemaDatabaseName {
 		return n, transform.SameTree, nil
 	}
-	if !n.CheckPrivileges(ctx, a.Catalog.MySQLDb) {
+
+	if !n.CheckPrivileges(ctx, mysqlDb) {
 		return nil, transform.SameTree, sql.ErrPrivilegeCheckFailed.New(user.UserHostToString("'"))
 	}
 	return n, transform.SameTree, nil

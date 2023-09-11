@@ -56,6 +56,10 @@ func (n *Revoke) Schema() sql.Schema {
 	return types.OkResultSchema
 }
 
+func (n *Revoke) IsReadOnly() bool {
+	return false
+}
+
 // String implements the interface sql.Node.
 func (n *Revoke) String() string {
 	users := make([]string, len(n.Users))
@@ -207,12 +211,14 @@ func (n *Revoke) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
+	editor := mysqlDb.Editor()
+	defer editor.Close()
 	if n.PrivilegeLevel.Database == "*" && n.PrivilegeLevel.TableRoutine == "*" {
 		if n.ObjectType != ObjectType_Any {
 			return nil, sql.ErrGrantRevokeIllegalPrivilege.New()
 		}
 		for _, revokeUser := range n.Users {
-			user := mysqlDb.GetUser(revokeUser.Name, revokeUser.Host, false)
+			user := mysqlDb.GetUser(editor, revokeUser.Name, revokeUser.Host, false)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -232,7 +238,7 @@ func (n *Revoke) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, sql.ErrGrantRevokeIllegalPrivilege.New()
 		}
 		for _, revokeUser := range n.Users {
-			user := mysqlDb.GetUser(revokeUser.Name, revokeUser.Host, false)
+			user := mysqlDb.GetUser(editor, revokeUser.Name, revokeUser.Host, false)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -253,7 +259,7 @@ func (n *Revoke) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, fmt.Errorf("GRANT has not yet implemented object types")
 		}
 		for _, grantUser := range n.Users {
-			user := mysqlDb.GetUser(grantUser.Name, grantUser.Host, false)
+			user := mysqlDb.GetUser(editor, grantUser.Name, grantUser.Host, false)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -262,7 +268,7 @@ func (n *Revoke) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			}
 		}
 	}
-	if err := mysqlDb.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx, editor); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
@@ -497,6 +503,10 @@ func (n *RevokeAll) Schema() sql.Schema {
 	return types.OkResultSchema
 }
 
+func (n *RevokeAll) IsReadOnly() bool {
+	return false
+}
+
 // String implements the interface sql.Node.
 func (n *RevokeAll) String() string {
 	users := make([]string, len(n.Users))
@@ -600,6 +610,10 @@ func (n *RevokeRole) Resolved() bool {
 	return !ok
 }
 
+func (n *RevokeRole) IsReadOnly() bool {
+	return false
+}
+
 // Children implements the interface sql.Node.
 func (n *RevokeRole) Children() []sql.Node {
 	return nil
@@ -622,33 +636,30 @@ func (n *RevokeRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 	//TODO: only active roles may be revoked if the SUPER privilege is not held
 	mysqlDb := n.MySQLDb.(*mysql_db.MySQLDb)
 	client := ctx.Session.Client()
-	user := mysqlDb.GetUser(client.User, client.Address, false)
+
+	reader := mysqlDb.Reader()
+	defer reader.Close()
+
+	user := mysqlDb.GetUser(reader, client.User, client.Address, false)
 	if user == nil {
 		return false
 	}
-	roleEntries := mysqlDb.RoleEdgesTable().Data().Get(mysql_db.RoleEdgesToKey{
+	roleEdges := reader.GetToUserRoleEdges(mysql_db.RoleEdgesToKey{
 		ToHost: user.Host,
 		ToUser: user.User,
 	})
+ROLES:
 	for _, roleName := range n.Roles {
-		role := mysqlDb.GetUser(roleName.Name, roleName.Host, true)
+		role := mysqlDb.GetUser(reader, roleName.Name, roleName.Host, true)
 		if role == nil {
 			return false
 		}
-		foundMatch := false
-		for _, roleEntry := range roleEntries {
-			roleEdge := roleEntry.(*mysql_db.RoleEdge)
-			if roleEdge.FromUser == role.User && roleEdge.FromHost == role.Host {
-				if roleEdge.WithAdminOption {
-					foundMatch = true
-				} else {
-					return false
-				}
+		for _, roleEdge := range roleEdges {
+			if roleEdge.FromUser == role.User && roleEdge.FromHost == role.Host && roleEdge.WithAdminOption {
+				continue ROLES
 			}
 		}
-		if !foundMatch {
-			return false
-		}
+		return false
 	}
 	return true
 }
@@ -664,30 +675,30 @@ func (n *RevokeRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	roleEdgesData := mysqlDb.RoleEdgesTable().Data()
+
+	editor := mysqlDb.Editor()
+	defer editor.Close()
+
 	for _, targetUser := range n.TargetUsers {
-		user := mysqlDb.GetUser(targetUser.Name, targetUser.Host, false)
+		user := mysqlDb.GetUser(editor, targetUser.Name, targetUser.Host, false)
 		if user == nil {
 			return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetUser.String("`"))
 		}
 		for _, targetRole := range n.Roles {
-			role := mysqlDb.GetUser(targetRole.Name, targetRole.Host, true)
+			role := mysqlDb.GetUser(editor, targetRole.Name, targetRole.Host, true)
 			if role == nil {
 				return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetRole.String("`"))
 			}
 			//TODO: if a role is mentioned in the "mandatory_roles" system variable then they cannot be revoked
-			err := roleEdgesData.Remove(ctx, mysql_db.RoleEdgesPrimaryKey{
+			editor.RemoveRoleEdge(mysql_db.RoleEdgesPrimaryKey{
 				FromHost: role.Host,
 				FromUser: role.User,
 				ToHost:   user.Host,
 				ToUser:   user.User,
-			}, nil)
-			if err != nil {
-				return nil, err
-			}
+			})
 		}
 	}
-	if err := mysqlDb.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx, editor); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
@@ -727,6 +738,10 @@ func (n *RevokeProxy) String() string {
 // Resolved implements the interface sql.Node.
 func (n *RevokeProxy) Resolved() bool {
 	return true
+}
+
+func (n *RevokeProxy) IsReadOnly() bool {
+	return false
 }
 
 // Children implements the interface sql.Node.

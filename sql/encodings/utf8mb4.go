@@ -37,6 +37,11 @@ func (utf8mb4Encoder) Encode(str []byte) ([]byte, bool) {
 	return str, true
 }
 
+// EncodeReplaceUnknown implements the Encoder interface.
+func (utf8mb4Encoder) EncodeReplaceUnknown(str []byte) []byte {
+	return str
+}
+
 // DecodeRune implements the Encoder interface.
 func (utf8mb4Encoder) DecodeRune(r []byte) ([]byte, bool) {
 	return r, true

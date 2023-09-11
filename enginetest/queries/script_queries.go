@@ -17,12 +17,15 @@ package queries
 import (
 	"time"
 
+	"github.com/dolthub/vitess/go/sqltypes"
+	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
 
 	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -39,6 +42,10 @@ type ScriptTest struct {
 	Expected []sql.Row
 	// For tests that make a single assertion, ExpectedErr can be set for the expected error
 	ExpectedErr *errors.Kind
+	// For tests that make a single assertion, ExpectedIndexes can be set for the string representation of indexes that we expect to appear in the query plan
+	ExpectedIndexes []string
+	// For tests that perform join operations, JoinTypes can be set for the type of merge we expect to perform.
+	JoinTypes []plan.JoinType
 	// SkipPrepared is true when we skip a test for prepared statements only
 	SkipPrepared bool
 }
@@ -66,6 +73,12 @@ type ScriptTestAssertion struct {
 	// ExpectedColumns indicates the Name and Type of the columns expected; no other schema fields are tested.
 	ExpectedColumns sql.Schema
 
+	// The string representation of indexes that we expect to appear in the query plan
+	ExpectedIndexes []string
+
+	// For tests that perform join operations, JoinTypes can be set for the type of merge we expect to perform.
+	JoinTypes []plan.JoinType
+
 	// SkipResultsCheck is used to skip assertions on expected Rows returned from a query. This should be used
 	// sparingly, such as in cases where you only want to test warning messages.
 	SkipResultsCheck bool
@@ -75,13 +88,91 @@ type ScriptTestAssertion struct {
 	Skip bool
 
 	// Bindings are variable mappings only used for prepared tests
-	Bindings map[string]sql.Expression
+	Bindings map[string]*querypb.BindVariable
 }
 
 // ScriptTests are a set of test scripts to run.
 // Unlike other engine tests, ScriptTests must be self-contained. No other tables are created outside the definition of
 // the tests.
 var ScriptTests = []ScriptTest{
+	{
+		Name: "union schema merge",
+		SetUpScript: []string{
+			"create table `left` (i int primary key, j mediumint, k varchar(20));",
+			"create table `right` (i int primary key, j bigint, k text);",
+			"insert into `left` values (1,2, 'a')",
+			"insert into `right` values (3,4, 'b')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i, j from `left` union select i, j from `right`",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "i",
+						Type: types.Int32,
+					},
+					{
+						Name: "j",
+						Type: types.Int64,
+					},
+				},
+				Expected: []sql.Row{{1, 2}, {3, 4}},
+			},
+			{
+				Query: "select i, k from `left` union select i, k from `right`",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "i",
+						Type: types.Int32,
+					},
+					{
+						Name: "k",
+						Type: types.LongText,
+					},
+				},
+				Expected: []sql.Row{{1, "a"}, {3, "b"}},
+			},
+			{
+				Query:       "select i, k from `left` union select i, j, k from `right`",
+				ExpectedErr: planbuilder.ErrUnionSchemasDifferentLength,
+			},
+		},
+	},
+	{
+		Name: "create table casing",
+		SetUpScript: []string{
+			"create table t (lower varchar(20) primary key, UPPER varchar(20), MiXeD varchar(20), un_der varchar(20), `da-sh` varchar(20));",
+			"insert into t values ('a','b','c','d','e')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select * from t`,
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "lower",
+						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+					},
+					{
+						Name: "UPPER",
+						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+					},
+					{
+						Name: "MiXeD",
+						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+					},
+					{
+						Name: "un_der",
+						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+					},
+					{
+						Name: "da-sh",
+						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+					},
+				},
+				Expected: []sql.Row{{"a", "b", "c", "d", "e"}},
+			},
+		},
+	},
 	{
 		Name: "trigger with signal and user var",
 		SetUpScript: []string{
@@ -1199,12 +1290,25 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"fabric;color"}, {"shape;color"}},
 			},
 			{
-				Query:    "SELECT group_concat(o_id) FROM t WHERE `attribute`='color' order by o_id",
+				Query:    "SELECT group_concat(o_id order by o_id) FROM t WHERE `attribute`='color' order by o_id",
 				Expected: []sql.Row{{"2,3"}},
 			},
 			{
 				Query:    "SELECT group_concat(attribute separator '') FROM t WHERE o_id=2 ORDER BY attribute",
 				Expected: []sql.Row{{"colorfabric"}},
+			},
+		},
+	},
+	{
+		Name: "CONVERT USING still converts between incompatible character sets",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 VARCHAR(200)) COLLATE=utf8mb4_0900_ai_ci;",
+			"INSERT INTO test VALUES (1, '63273াম'), (2, 'GHD30r'), (3, '8জ্রিয277'), (4, NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT pk, v1, CONVERT(CONVERT(v1 USING latin1) USING utf8mb4) AS round_trip FROM test WHERE v1 <> CONVERT(CONVERT(v1 USING latin1) USING utf8mb4);",
+				Expected: []sql.Row{{int64(1), "63273াম", "63273??"}, {int64(3), "8জ্রিয277", "8?????277"}},
 			},
 		},
 	},
@@ -1224,7 +1328,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE test ALTER v1 SET DEFAULT (CONVERT('42', SIGNED));",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "INSERT INTO test (pk) VALUES (2);",
@@ -1240,7 +1344,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE test ALTER v1 DROP DEFAULT;",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:       "INSERT INTO test (pk) VALUES (3);",
@@ -1256,7 +1360,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE test ALTER v1 SET DEFAULT 100, alter v1 DROP DEFAULT",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:       "INSERT INTO test (pk) VALUES (2);",
@@ -1264,7 +1368,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE test ALTER v1 SET DEFAULT 100, alter v1 SET DEFAULT 200",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:       "ALTER TABLE test DROP COLUMN v1, alter v1 SET DEFAULT 5000",
@@ -1470,14 +1574,6 @@ var ScriptTests = []ScriptTest{
 				Query:       "SELECT col0, col1 FROM tab1 GROUP by col0;",
 				ExpectedErr: analyzererrors.ErrValidationGroupBy,
 			},
-			{
-				Query:       "SELECT col0, floor(col1) FROM tab1 GROUP by col0;",
-				ExpectedErr: analyzererrors.ErrValidationGroupBy,
-			},
-			{
-				Query:       "SELECT floor(cor0.col1) * ceil(cor0.col0) AS col2 FROM tab1 AS cor0 GROUP BY cor0.col0",
-				ExpectedErr: analyzererrors.ErrValidationGroupBy,
-			},
 		},
 	},
 	{
@@ -1526,7 +1622,7 @@ var ScriptTests = []ScriptTest{
                              dcim_rackgroup.level 
                            FROM dcim_rackgroup
 							order by 2 limit 1`,
-				Expected: []sql.Row{{1, "5c107f979f434bf7a7820622f18a5211", types.JSONDocument{Val: map[string]interface{}{}}, "Parent Rack Group 1", "parent-rack-group-1", "f0471f313b694d388c8ec39d9590e396", interface{}(nil), "", uint64(1), uint64(2), uint64(1), uint64(0)}},
+				Expected: []sql.Row{{1, "5c107f979f434bf7a7820622f18a5211", types.JSONDocument{Val: map[string]interface{}{}}, "Parent Rack Group 1", "parent-rack-group-1", "f0471f313b694d388c8ec39d9590e396", nil, "", uint64(1), uint64(2), uint64(1), uint64(0)}},
 			},
 		},
 	},
@@ -1840,12 +1936,6 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Issue #709",
-		SetUpScript: []string{
-			"create table a(id int primary key, v int , key (v));",
-		},
-	},
-	{
 		Name: "Show create table with various keys and constraints",
 		SetUpScript: []string{
 			"create table t1(a int primary key, b varchar(10) not null default 'abc')",
@@ -1854,7 +1944,7 @@ var ScriptTests = []ScriptTest{
 			"create table t2(c int primary key, d varchar(10))",
 			"alter table t2 add constraint t2du unique (d)",
 			"alter table t2 add constraint fk1 foreign key (d) references t1 (b)",
-			"create table t3 (a int, b varchar(100), c datetime, primary key (b,a))",
+			"create table t3 (a int, b varchar(100), c datetime(6), primary key (b,a))",
 			"create table t4 (a int default (floor(1)), b int default (coalesce(a, 10)))",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -1923,7 +2013,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:          "create index `primary` on t(i)",
-				ExpectedErrStr: "incorrect index name 'primary'",
+				ExpectedErrStr: "invalid index name 'primary'",
 			},
 		},
 	},
@@ -2163,7 +2253,7 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table test alter column j set default ('[]');",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "show create table test",
@@ -2397,7 +2487,7 @@ var ScriptTests = []ScriptTest{
 	{
 		Name: "sum() and avg() on non-DECIMAL type column returns the DOUBLE type result",
 		SetUpScript: []string{
-			"create table float_table (id int, val1 double, val2 float);",
+			"create table float_table (id int primary key, val1 double, val2 float);",
 			"insert into float_table values (1,-2.5633000000000384, 2.3);",
 			"insert into float_table values (2,2.5633000000000370, 2.4);",
 			"insert into float_table values (3,0.0000000000000004, 5.3);",
@@ -2408,7 +2498,11 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{float64(6), -9.322676295501879e-16, 10.000000238418579}},
 			},
 			{
-				Query:    "SELECT avg(id), avg(val1), avg(val2) FROM float_table ORDER BY id;;",
+				Query:    "SELECT sum(id), sum(val1), sum(val2) FROM float_table ORDER BY id;",
+				Expected: []sql.Row{{float64(6), -9.322676295501879e-16, 10.000000238418579}},
+			},
+			{
+				Query:    "SELECT avg(id), avg(val1), avg(val2) FROM float_table ORDER BY id;",
 				Expected: []sql.Row{{float64(2), -3.107558765167293e-16, 3.333333412806193}},
 			},
 		},
@@ -3101,63 +3195,6 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "multi-alter ddl column statements",
-		SetUpScript: []string{
-			"create table tbl_i (i int primary key)",
-			"create table tbl_ij (i int primary key, j int)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "alter table tbl_i add column j int, drop column j",
-				ExpectedErr: sql.ErrTableColumnNotFound,
-			},
-			{
-				Query:       "alter table tbl_i add column j int, rename column j to k;",
-				ExpectedErr: sql.ErrTableColumnNotFound,
-			},
-			{
-				Query:       "alter table tbl_i add column j int, modify column j varchar(10)",
-				ExpectedErr: sql.ErrTableColumnNotFound,
-			},
-			{
-				Query:       "alter table tbl_ij add index (j), drop column j;",
-				ExpectedErr: sql.ErrKeyColumnDoesNotExist,
-			},
-			{
-				Query:       "alter table tbl_ij drop column j, rename column j to k;",
-				ExpectedErr: sql.ErrTableColumnNotFound,
-			},
-			{
-				Query:       "alter table tbl_ij drop column k, rename column j to k;",
-				ExpectedErr: sql.ErrTableColumnNotFound,
-			},
-			{
-				Query: "alter table tbl_i add index(j), add column j int;",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query: "show create table tbl_i",
-				Expected: []sql.Row{
-					{"tbl_i", "CREATE TABLE `tbl_i` (\n  `i` int NOT NULL,\n  `j` int,\n  PRIMARY KEY (`i`),\n  KEY `j` (`j`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-			{
-				Query: "alter table tbl_ij add index (j), drop column j, add column j int;",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query: "show create table tbl_ij",
-				Expected: []sql.Row{
-					{"tbl_ij", "CREATE TABLE `tbl_ij` (\n  `i` int NOT NULL,\n  `j` int,\n  PRIMARY KEY (`i`),\n  KEY `j` (`j`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-		},
-	},
-	{
 		Name: "Keyless Table with Unique Index",
 		SetUpScript: []string{
 			"create table a (x int, val int unique)",
@@ -3388,6 +3425,84 @@ var ScriptTests = []ScriptTest{
 					{2},
 					{3},
 				},
+			},
+		},
+	},
+	{
+		Name: "case insensitive index handling",
+		SetUpScript: []string{
+			"create table table_One (Id int primary key, Val1 int);",
+			"create table TableTwo (iD int primary key, VAL2 int, vAL3 int);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "create index idx_one on TABLE_ONE (vAL1);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table TABLE_one;",
+				Expected: []sql.Row{{"table_One",
+					"CREATE TABLE `table_One` (\n" +
+						"  `Id` int NOT NULL,\n" +
+						"  `Val1` int,\n" +
+						"  PRIMARY KEY (`Id`),\n" +
+						"  KEY `idx_one` (`Val1`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "show index from TABLE_one;",
+				Expected: []sql.Row{
+					{"table_One", 0, "PRIMARY", 1, "Id", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+					{"table_One", 1, "idx_one", 1, "Val1", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
+				},
+			},
+			{
+				Query:    "create index idx_one on TABLEtwo (VAL2, VAL3);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table TABLETWO;",
+				Expected: []sql.Row{{"TableTwo", "CREATE TABLE `TableTwo` (\n" +
+					"  `iD` int NOT NULL,\n" +
+					"  `VAL2` int,\n" +
+					"  `vAL3` int,\n" +
+					"  PRIMARY KEY (`iD`),\n" +
+					"  KEY `idx_one` (`VAL2`,`vAL3`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "show index from tABLEtwo;",
+				Expected: []sql.Row{
+					{"TableTwo", 0, "PRIMARY", 1, "iD", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+					{"TableTwo", 1, "idx_one", 1, "VAL2", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
+					{"TableTwo", 1, "idx_one", 2, "vAL3", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
+				},
+			},
+			{
+				Query:    "drop index IDX_ONE on TABLE_one;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "drop index IDX_ONE on TABLEtwo;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table TABLE_one;",
+				Expected: []sql.Row{{"table_One",
+					"CREATE TABLE `table_One` (\n" +
+						"  `Id` int NOT NULL,\n" +
+						"  `Val1` int,\n" +
+						"  PRIMARY KEY (`Id`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "show create table TABLETWO;",
+				Expected: []sql.Row{{"TableTwo", "CREATE TABLE `TableTwo` (\n" +
+					"  `iD` int NOT NULL,\n" +
+					"  `VAL2` int,\n" +
+					"  `vAL3` int,\n" +
+					"  PRIMARY KEY (`iD`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -4240,8 +4355,8 @@ var PreparedScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:       "execute s",
-				ExpectedErr: sql.ErrInvalidArgument,
+				Query:          "execute s",
+				ExpectedErrStr: "bind variable not provided: 'v1'",
 			},
 			{
 				Query: "execute s using @abc",
@@ -4250,8 +4365,8 @@ var PreparedScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:       "execute s using @a, @b, @c, @abc",
-				ExpectedErr: sql.ErrInvalidArgument,
+				Query:          "execute s using @a, @b, @c, @abc",
+				ExpectedErrStr: "invalid arguments. expected: 1, found: 4",
 			},
 			{
 				Query: "execute s using @a",
@@ -4298,8 +4413,8 @@ var PreparedScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:       "execute s using @a",
-				ExpectedErr: sql.ErrInvalidArgument,
+				Query:          "execute s using @a",
+				ExpectedErrStr: "bind variable not provided: 'v2'",
 			},
 			{
 				Query: "execute s using @a, @b",
@@ -4484,6 +4599,41 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Query:       "ALTER TABLE mytable DROP COLUMN col2",
 				ExpectedErr: sql.ErrCheckConstraintInvalidatedByColumnAlter,
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolthub-issues/issues/489
+		Name: "Large character data",
+		SetUpScript: []string{
+			"CREATE TABLE `test` (`id` int NOT NULL AUTO_INCREMENT, `data` blob NOT NULL, PRIMARY KEY (`id`))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `INSERT INTO test (data) values (?)`,
+				Bindings: map[string]*querypb.BindVariable{
+					// Vitess chooses VARBINARY as the bindvar type if the client sends CHAR data
+					// If we change how Vitess interprets client bindvar types, we should update this test
+					// Or better yet: have a test harness that uses the server directly
+					"v1": {Type: querypb.Type_VARBINARY, Value: []byte(
+						"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+							"")},
+				},
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 1,
+					InsertID:     1,
+				}}},
 			},
 		},
 	},

@@ -27,13 +27,13 @@ var ErrNoIndexableTable = errors.NewKind("expected an IndexableTable, couldn't f
 var ErrNoIndexedTableAccess = errors.NewKind("expected an IndexedTableAccess, couldn't find one in %v")
 var ErrInvalidLookupForIndexedTable = errors.NewKind("indexable table does not support given lookup: %s")
 
-// IndexedTableAccess represents an indexed lookup of a particular ResolvedTable. The values for the key used to access
+// IndexedTableAccess represents an indexed lookup of a particular plan.TableNode. The values for the key used to access
 // the indexed table is provided in RowIter(), or during static analysis.
 type IndexedTableAccess struct {
-	ResolvedTable *ResolvedTable
-	lb            *LookupBuilder
-	lookup        sql.IndexLookup
-	Table         sql.IndexedTable
+	TableNode sql.TableNode
+	lb        *LookupBuilder
+	lookup    sql.IndexLookup
+	Table     sql.IndexedTable
 }
 
 var _ sql.Table = (*IndexedTableAccess)(nil)
@@ -45,21 +45,18 @@ var _ sql.CollationCoercible = (*IndexedTableAccess)(nil)
 // NewIndexedTableAccess returns a new IndexedTableAccess node that will use
 // the LookupBuilder to build lookups. An index lookup will be calculated and
 // applied for the row given in RowIter().
-func NewIndexedTableAccess(rt *ResolvedTable, t sql.IndexedTable, lb *LookupBuilder) *IndexedTableAccess {
+func NewIndexedTableAccess(node sql.TableNode, t sql.IndexedTable, lb *LookupBuilder) *IndexedTableAccess {
 	return &IndexedTableAccess{
-		ResolvedTable: rt,
-		lb:            lb,
-		Table:         t,
+		TableNode: node,
+		lb:        lb,
+		Table:     t,
 	}
 }
 
-// NewIndexedAccessForResolvedTable creates an IndexedTableAccess node if the resolved table embeds
+// NewIndexedAccessForTableNode creates an IndexedTableAccess node if the resolved table embeds
 // an IndexAddressableTable, otherwise returns an error.
-func NewIndexedAccessForResolvedTable(rt *ResolvedTable, lb *LookupBuilder) (*IndexedTableAccess, error) {
-	var table = rt.Table
-	if t, ok := table.(sql.TableWrapper); ok {
-		table = t.Underlying()
-	}
+func NewIndexedAccessForTableNode(node sql.TableNode, lb *LookupBuilder) (*IndexedTableAccess, error) {
+	var table = node.UnderlyingTable()
 	iaTable, ok := table.(sql.IndexAddressableTable)
 	if !ok {
 		return nil, fmt.Errorf("table is not index addressable: %s", table.Name())
@@ -74,30 +71,17 @@ func NewIndexedAccessForResolvedTable(rt *ResolvedTable, lb *LookupBuilder) (*In
 	}
 	ia := iaTable.IndexedAccess(lookup)
 	return &IndexedTableAccess{
-		ResolvedTable: rt,
-		lb:            lb,
-		Table:         ia,
+		TableNode: node,
+		lb:        lb,
+		Table:     ia,
 	}, nil
 }
 
-// NewStaticIndexedTableAccess returns a new IndexedTableAccess node with the indexlookup given. It will be applied in
-// RowIter() without consideration of the row given. The key expression should faithfully represent this lookup, but is
-// only for display purposes.
-func NewStaticIndexedTableAccess(rt *ResolvedTable, t sql.IndexedTable, lookup sql.IndexLookup) *IndexedTableAccess {
-	return &IndexedTableAccess{
-		ResolvedTable: rt,
-		lookup:        lookup,
-		Table:         t,
-	}
-}
-
-// NewStaticIndexedAccessForResolvedTable creates an IndexedTableAccess node if the resolved table embeds
+// NewStaticIndexedAccessForTableNode creates an IndexedTableAccess node if the resolved table embeds
 // an IndexAddressableTable, otherwise returns an error.
-func NewStaticIndexedAccessForResolvedTable(rt *ResolvedTable, lookup sql.IndexLookup) (*IndexedTableAccess, error) {
-	var table = rt.Table
-	if t, ok := table.(sql.TableWrapper); ok {
-		table = t.Underlying()
-	}
+func NewStaticIndexedAccessForTableNode(node sql.TableNode, lookup sql.IndexLookup) (*IndexedTableAccess, error) {
+	var table sql.Table
+	table = node.UnderlyingTable()
 	iaTable, ok := table.(sql.IndexAddressableTable)
 	if !ok {
 		return nil, fmt.Errorf("table is not index addressable: %s", table.Name())
@@ -108,10 +92,20 @@ func NewStaticIndexedAccessForResolvedTable(rt *ResolvedTable, lookup sql.IndexL
 	}
 	ia := iaTable.IndexedAccess(lookup)
 	return &IndexedTableAccess{
-		ResolvedTable: rt,
-		lookup:        lookup,
-		Table:         ia,
+		TableNode: node,
+		lookup:    lookup,
+		Table:     ia,
 	}, nil
+}
+
+// NewStaticIndexedAccessForFullTextTable creates an IndexedTableAccess node for Full-Text tables, which have a
+// different behavior compared to other indexed tables.
+func NewStaticIndexedAccessForFullTextTable(node sql.TableNode, lookup sql.IndexLookup, ftTable sql.IndexedTable) *IndexedTableAccess {
+	return &IndexedTableAccess{
+		TableNode: node,
+		lookup:    lookup,
+		Table:     ftTable,
+	}
 }
 
 func (i *IndexedTableAccess) IsStatic() bool {
@@ -119,15 +113,19 @@ func (i *IndexedTableAccess) IsStatic() bool {
 }
 
 func (i *IndexedTableAccess) Resolved() bool {
-	return i.ResolvedTable.Resolved()
+	return i.TableNode.Resolved()
+}
+
+func (i *IndexedTableAccess) IsReadOnly() bool {
+	return true
 }
 
 func (i *IndexedTableAccess) Schema() sql.Schema {
-	return i.ResolvedTable.Schema()
+	return i.TableNode.Schema()
 }
 
 func (i *IndexedTableAccess) Collation() sql.CollationID {
-	return i.ResolvedTable.Collation()
+	return i.TableNode.Collation()
 }
 
 func (i *IndexedTableAccess) Children() []sql.Node {
@@ -143,20 +141,20 @@ func (i *IndexedTableAccess) WithChildren(children ...sql.Node) (sql.Node, error
 }
 
 func (i *IndexedTableAccess) Name() string {
-	return i.ResolvedTable.Name()
+	return i.TableNode.Name()
 }
 
 func (i *IndexedTableAccess) Database() sql.Database {
-	return i.ResolvedTable.Database
+	return i.TableNode.Database()
 }
 
 func (i *IndexedTableAccess) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return i.ResolvedTable.CheckPrivileges(ctx, opChecker)
+	return i.TableNode.CheckPrivileges(ctx, opChecker)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (i *IndexedTableAccess) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	return i.ResolvedTable.CollationCoercibility(ctx)
+	return i.TableNode.CollationCoercibility(ctx)
 }
 
 func (i *IndexedTableAccess) Index() sql.Index {
@@ -207,7 +205,7 @@ func (i *IndexedTableAccess) getLookup2(ctx *sql.Context, row sql.Row2) (sql.Ind
 
 func (i *IndexedTableAccess) String() string {
 	pr := sql.NewTreePrinter()
-	pr.WriteNode("IndexedTableAccess(%s)", i.ResolvedTable.Name())
+	pr.WriteNode("IndexedTableAccess(%s)", i.TableNode.Name())
 	var children []string
 	children = append(children, fmt.Sprintf("index: %s", formatIndexDecoratorString(i.Index())))
 	if !i.lookup.IsEmpty() {
@@ -251,7 +249,7 @@ func formatIndexDecoratorString(idx sql.Index) string {
 
 func (i *IndexedTableAccess) DebugString() string {
 	pr := sql.NewTreePrinter()
-	pr.WriteNode("IndexedTableAccess(%s)", i.ResolvedTable.Name())
+	pr.WriteNode("IndexedTableAccess(%s)", i.TableNode.Name())
 	var children []string
 	children = append(children, fmt.Sprintf("index: %s", formatIndexDecoratorString(i.Index())))
 	if !i.lookup.IsEmpty() {
@@ -313,43 +311,10 @@ func (i *IndexedTableAccess) WithExpressions(exprs ...sql.Expression) (sql.Node,
 		return nil, err
 	}
 	return &IndexedTableAccess{
-		ResolvedTable: i.ResolvedTable,
-		Table:         i.Table,
-		lb:            lb,
+		TableNode: i.TableNode,
+		Table:     i.Table,
+		lb:        lb,
 	}, nil
-}
-
-// WithTable replaces the underlying ResolvedTable with the one given.
-func (i IndexedTableAccess) WithTable(table sql.Table) (*IndexedTableAccess, error) {
-	nrt, err := i.ResolvedTable.WithTable(table)
-	if err != nil {
-		return nil, err
-	}
-	i.ResolvedTable = nrt
-
-	if t, ok := table.(sql.TableWrapper); ok {
-		table = t.Underlying()
-	}
-
-	_, ok := table.(sql.IndexAddressableTable)
-	if !ok {
-		return nil, fmt.Errorf("table does not support indexed access")
-	}
-
-	var lookup sql.IndexLookup
-	if i.lookup.Index != nil {
-		lookup = i.lookup
-	} else if i.lb != nil {
-		lookup, err = i.lb.GetLookup(i.lb.GetZeroKey())
-		if err != nil {
-			return nil, err
-		}
-	}
-	if lookup.Index.CanSupport(lookup.Ranges...) {
-		return nil, ErrInvalidLookupForIndexedTable.New(sql.DebugString(i.lookup.Ranges))
-	}
-
-	return &i, nil
 }
 
 // Partitions implements sql.Table

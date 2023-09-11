@@ -60,6 +60,10 @@ func (n *ShowGrants) Schema() sql.Schema {
 	}}
 }
 
+func (n *ShowGrants) IsReadOnly() bool {
+	return true
+}
+
 // String implements the interface sql.Node.
 func (n *ShowGrants) String() string {
 	user := n.For

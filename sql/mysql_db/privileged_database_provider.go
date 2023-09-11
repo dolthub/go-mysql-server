@@ -17,6 +17,8 @@ package mysql_db
 import (
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/fulltext"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -144,6 +146,7 @@ var _ sql.ReadOnlyDatabase = PrivilegedDatabase{}
 var _ sql.TemporaryTableDatabase = PrivilegedDatabase{}
 var _ sql.CollatedDatabase = PrivilegedDatabase{}
 var _ sql.ViewDatabase = PrivilegedDatabase{}
+var _ fulltext.Database = PrivilegedDatabase{}
 
 // NewPrivilegedDatabase returns a new PrivilegedDatabase.
 func NewPrivilegedDatabase(grantTables *MySQLDb, db sql.Database) sql.Database {
@@ -296,6 +299,14 @@ func (pdb PrivilegedDatabase) DropTable(ctx *sql.Context, name string) error {
 		return db.DropTable(ctx, name)
 	}
 	return sql.ErrDropTableNotSupported.New(pdb.db.Name())
+}
+
+// CreateFulltextTableNames implements the interface fulltext.Database.
+func (pdb PrivilegedDatabase) CreateFulltextTableNames(ctx *sql.Context, parentTable string, parentIndexName string) (fulltext.IndexTableNames, error) {
+	if db, ok := pdb.db.(fulltext.Database); ok {
+		return db.CreateFulltextTableNames(ctx, parentTable, parentIndexName)
+	}
+	return fulltext.IndexTableNames{}, sql.ErrFullTextDatabaseNotSupported.New()
 }
 
 // RenameTable implements the interface sql.TableRenamer.

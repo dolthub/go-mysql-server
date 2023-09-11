@@ -317,6 +317,10 @@ func (n *testNode) Schema() sql.Schema {
 	return nil
 }
 
+func (n *testNode) IsReadOnly() bool {
+	return true
+}
+
 func (n *testNode) Children() []sql.Node {
 	return n.children
 }

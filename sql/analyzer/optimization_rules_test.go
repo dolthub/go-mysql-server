@@ -76,57 +76,6 @@ func TestEraseProjection(t *testing.T) {
 	require.Equal(expected, result)
 }
 
-func TestOptimizeDistinct(t *testing.T) {
-	t1 := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Source: "foo"},
-		{Name: "b", Source: "foo"},
-	}), nil)
-
-	testCases := []struct {
-		name      string
-		child     sql.Node
-		optimized bool
-	}{
-		{
-			"without sort",
-			plan.NewResolvedTable(t1, nil, nil),
-			false,
-		},
-		{
-			"sort but column not projected",
-			plan.NewSort(
-				[]sql.SortField{
-					{Column: gf(0, "foo", "c")},
-				},
-				plan.NewResolvedTable(t1, nil, nil),
-			),
-			false,
-		},
-		{
-			"sort and column projected",
-			plan.NewSort(
-				[]sql.SortField{
-					{Column: gf(0, "foo", "a")},
-				},
-				plan.NewResolvedTable(t1, nil, nil),
-			),
-			true,
-		},
-	}
-
-	rule := getRule(optimizeDistinctId)
-
-	for _, tt := range testCases {
-		t.Run(tt.name, func(t *testing.T) {
-			node, _, err := rule.Apply(sql.NewEmptyContext(), nil, plan.NewDistinct(tt.child), nil, DefaultRuleSelector)
-			require.NoError(t, err)
-
-			_, ok := node.(*plan.OrderedDistinct)
-			require.Equal(t, tt.optimized, ok)
-		})
-	}
-}
-
 func TestMoveJoinConditionsToFilter(t *testing.T) {
 	t1 := memory.NewTable("t1", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "t1", Type: types.Int64},
@@ -163,21 +112,21 @@ func TestMoveJoinConditionsToFilter(t *testing.T) {
 	result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
-	var expected sql.Node = plan.NewFilter(
-		expression.JoinAnd(
+	var expected sql.Node = plan.NewInnerJoin(
+		plan.NewFilter(
+			eq(col(0, "t1", "a"), lit(5)),
+			plan.NewResolvedTable(t1, nil, nil),
+		),
+		plan.NewFilter(
 			eq(col(2, "t2", "c"), col(4, "t3", "e")),
-			eq(col(0, "t1", "a"), lit(5)),
-		),
-		plan.NewInnerJoin(
-			plan.NewResolvedTable(t1, nil, nil),
 			plan.NewCrossJoin(
 				plan.NewResolvedTable(t2, nil, nil),
 				plan.NewResolvedTable(t3, nil, nil),
 			),
-			and(
-				eq(col(0, "t1", "a"), col(2, "t2", "c")),
-				eq(col(0, "t1", "a"), col(4, "t3", "e")),
-			),
+		),
+		and(
+			eq(col(0, "t1", "a"), col(2, "t2", "c")),
+			eq(col(0, "t1", "a"), col(4, "t3", "e")),
 		),
 	)
 
@@ -198,18 +147,19 @@ func TestMoveJoinConditionsToFilter(t *testing.T) {
 	result, _, err = rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
-	expected = plan.NewFilter(
-		expression.JoinAnd(
-			eq(col(0, "t2", "c"), col(0, "t3", "e")),
+	expected = plan.NewInnerJoin(
+		plan.NewFilter(
 			eq(col(0, "t1", "a"), lit(5)),
-		),
-		plan.NewCrossJoin(
 			plan.NewResolvedTable(t1, nil, nil),
+		),
+		plan.NewFilter(
+			eq(col(0, "t2", "c"), col(0, "t3", "e")),
 			plan.NewCrossJoin(
 				plan.NewResolvedTable(t2, nil, nil),
 				plan.NewResolvedTable(t3, nil, nil),
 			),
 		),
+		expression.NewLiteral(true, types.Boolean),
 	)
 
 	assertNodesEqualWithDiff(t, expected, result)
@@ -233,24 +183,20 @@ func TestMoveJoinConditionsToFilter(t *testing.T) {
 	result, _, err = rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
-	expected = plan.NewFilter(
-		expression.JoinAnd(
-			eq(col(0, "t3", "a"), lit(5)),
+	expected = plan.NewInnerJoin(
+		plan.NewFilter(
 			eq(col(0, "t1", "a"), lit(10)),
+			plan.NewResolvedTable(t1, nil, nil),
 		),
 		plan.NewInnerJoin(
-			plan.NewResolvedTable(t1, nil, nil),
-			plan.NewInnerJoin(
-				plan.NewResolvedTable(t2, nil, nil),
+			plan.NewResolvedTable(t2, nil, nil),
+			plan.NewFilter(
+				eq(col(0, "t3", "a"), lit(5)),
 				plan.NewResolvedTable(t3, nil, nil),
-				expression.JoinAnd(
-					eq(col(0, "t2", "c"), col(0, "t3", "e")),
-				),
 			),
-			expression.JoinAnd(
-				eq(col(0, "t1", "c"), col(0, "t2", "e")),
-			),
+			eq(col(0, "t2", "c"), col(0, "t3", "e")),
 		),
+		eq(col(0, "t1", "c"), col(0, "t2", "e")),
 	)
 
 	assertNodesEqualWithDiff(t, expected, result)
@@ -273,22 +219,20 @@ func TestMoveJoinConditionsToFilter(t *testing.T) {
 	result, _, err = rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
-	expected = plan.NewFilter(
-		expression.JoinAnd(
-			eq(col(0, "t3", "a"), lit(5)),
-		),
+	expected = plan.NewInnerJoin(
+		plan.NewResolvedTable(t1, nil, nil),
 		plan.NewInnerJoin(
-			plan.NewResolvedTable(t1, nil, nil),
-			plan.NewInnerJoin(
-				plan.NewResolvedTable(t2, nil, nil),
+			plan.NewResolvedTable(t2, nil, nil),
+			plan.NewFilter(
+				eq(col(0, "t3", "a"), lit(5)),
 				plan.NewResolvedTable(t3, nil, nil),
-				expression.JoinAnd(
-					eq(col(0, "t2", "c"), col(0, "t3", "e")),
-				),
 			),
 			expression.JoinAnd(
-				eq(col(0, "t1", "c"), col(0, "t2", "e")),
+				eq(col(0, "t2", "c"), col(0, "t3", "e")),
 			),
+		),
+		expression.JoinAnd(
+			eq(col(0, "t1", "c"), col(0, "t2", "e")),
 		),
 	)
 
@@ -394,55 +338,6 @@ func TestEvalFilter(t *testing.T) {
 			result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 			require.NoError(err)
 			require.Equal(tt.expected, result)
-		})
-	}
-}
-
-func TestRemoveUnnecessaryConverts(t *testing.T) {
-	testCases := []struct {
-		name      string
-		childExpr sql.Expression
-		castType  string
-		expected  sql.Expression
-	}{
-		{
-			"unnecessary cast",
-			expression.NewLiteral([]byte{}, types.LongBlob),
-			"binary",
-			expression.NewLiteral([]byte{}, types.LongBlob),
-		},
-		{
-			"necessary cast",
-			expression.NewLiteral("foo", types.LongText),
-			"signed",
-			expression.NewConvert(
-				expression.NewLiteral("foo", types.LongText),
-				"signed",
-			),
-		},
-	}
-
-	for _, tt := range testCases {
-		t.Run(tt.name, func(t *testing.T) {
-			require := require.New(t)
-
-			node := plan.NewProject([]sql.Expression{
-				expression.NewConvert(tt.childExpr, tt.castType),
-			},
-				plan.NewResolvedTable(memory.NewTable("foo", sql.PrimaryKeySchema{}, nil), nil, nil),
-			)
-
-			result, _, err := removeUnnecessaryConverts(
-				sql.NewEmptyContext(),
-				NewDefault(nil),
-				node,
-				nil,
-				DefaultRuleSelector,
-			)
-			require.NoError(err)
-
-			resultExpr := result.(*plan.Project).Projections[0]
-			require.Equal(tt.expected, resultExpr)
 		})
 	}
 }

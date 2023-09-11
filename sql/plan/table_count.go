@@ -22,31 +22,35 @@ func NewTableCount(aliasName string, db sql.Database, table sql.StatisticsTable,
 
 var _ sql.Node = (*TableCountLookup)(nil)
 
-func (t TableCountLookup) Name() string {
+func (t *TableCountLookup) Name() string {
 	return t.aliasName
 }
 
-func (t TableCountLookup) Count() uint64 {
+func (t *TableCountLookup) Count() uint64 {
 	return t.cnt
 }
 
-func (t TableCountLookup) Resolved() bool {
+func (t *TableCountLookup) Resolved() bool {
 	return true
 }
 
-func (t TableCountLookup) Table() sql.Table {
+func (t *TableCountLookup) Table() sql.Table {
 	return t.table
 }
 
-func (t TableCountLookup) Db() sql.Database {
+func (t *TableCountLookup) IsReadOnly() bool {
+	return true
+}
+
+func (t *TableCountLookup) Db() sql.Database {
 	return t.db
 }
 
-func (t TableCountLookup) String() string {
+func (t *TableCountLookup) String() string {
 	return fmt.Sprintf("table_count(%s) as %s", t.table.Name(), t.aliasName)
 }
 
-func (t TableCountLookup) Schema() sql.Schema {
+func (t *TableCountLookup) Schema() sql.Schema {
 	return sql.Schema{{
 		Name:     t.aliasName,
 		Type:     types.Int64,
@@ -55,14 +59,14 @@ func (t TableCountLookup) Schema() sql.Schema {
 	}}
 }
 
-func (t TableCountLookup) Children() []sql.Node {
+func (t *TableCountLookup) Children() []sql.Node {
 	return nil
 }
 
-func (t TableCountLookup) WithChildren(_ ...sql.Node) (sql.Node, error) {
+func (t *TableCountLookup) WithChildren(_ ...sql.Node) (sql.Node, error) {
 	return t, nil
 }
 
-func (t TableCountLookup) CheckPrivileges(_ *sql.Context, _ sql.PrivilegedOperationChecker) bool {
+func (t *TableCountLookup) CheckPrivileges(_ *sql.Context, _ sql.PrivilegedOperationChecker) bool {
 	return true
 }

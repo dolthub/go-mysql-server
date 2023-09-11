@@ -191,6 +191,14 @@ implementing some interfaces. For detailed instructions, see the
 Are you building a database backend using **go-mysql-server**? We
 would like to hear from you and include you in this list.
 
+## Security Policy
+
+[go-mysql-server's security
+policy](https://github.com/dolthub/go-mysql-server/blob/main/SECURITY.md) is
+maintained in this repository. Please follow the disclosure instructions there.
+Please do not initially report security issues in this repository's public
+GitHub issues.
+
 ## Acknowledgements
 
 **go-mysql-server** was originally developed by the `{source-d}`

@@ -58,6 +58,10 @@ func (d *DeclareHandler) Resolved() bool {
 	return true
 }
 
+func (d *DeclareHandler) IsReadOnly() bool {
+	return true
+}
+
 // String implements the interface sql.Node.
 func (d *DeclareHandler) String() string {
 	var action string

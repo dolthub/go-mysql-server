@@ -65,6 +65,10 @@ func (i *Intersects) String() string {
 	return fmt.Sprintf("%s(%s,%s)", i.FunctionName(), i.Left, i.Right)
 }
 
+func (i *Intersects) DebugString() string {
+	return fmt.Sprintf("%s(%s,%s)", i.FunctionName(), sql.DebugString(i.Left), sql.DebugString(i.Right))
+}
+
 // WithChildren implements the Expression interface.
 func (i *Intersects) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {

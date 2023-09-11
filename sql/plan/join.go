@@ -45,13 +45,18 @@ const (
 	JoinTypeLeftOuterHashExcludeNulls                 // LeftOuterHashJoinExcludeNulls
 	JoinTypeMerge                                     // MergeJoin
 	JoinTypeLeftOuterMerge                            // LeftOuterMergeJoin
+	JoinTypeRangeHeap                                 // RangeHeapJoin
+	JoinTypeLeftOuterRangeHeap                        // LeftOuterRangeHeapJoin
 	JoinTypeSemiHash                                  // SemiHashJoin
 	JoinTypeAntiHash                                  // AntiHashJoin
 	JoinTypeSemiLookup                                // SemiLookupJoin
 	JoinTypeAntiLookup                                // AntiLookupJoin
 	JoinTypeSemiMerge                                 // SemiMergeJoin
 	JoinTypeAntiMerge                                 // AntiMergeJoin
-	JoinTypeNatural                                   // NaturalJoin
+	JoinTypeUsing                                     // NaturalJoin
+	JoinTypeUsingLeft                                 // NaturalLeftJoin
+	JoinTypeUsingRight                                // NaturalRightJoin
+
 	// TODO: might be able to merge these with their respective join types
 	JoinTypeLateralCross // LateralCrossJoin
 	JoinTypeLateralInner // LateralInnerJoin
@@ -61,7 +66,7 @@ const (
 
 func (i JoinType) IsLeftOuter() bool {
 	switch i {
-	case JoinTypeLeftOuter, JoinTypeLeftOuterExcludeNulls, JoinTypeLeftOuterLookup, JoinTypeLeftOuterHash, JoinTypeLeftOuterHashExcludeNulls, JoinTypeLeftOuterMerge:
+	case JoinTypeLeftOuter, JoinTypeLeftOuterExcludeNulls, JoinTypeLeftOuterLookup, JoinTypeLeftOuterHash, JoinTypeLeftOuterHashExcludeNulls, JoinTypeLeftOuterMerge, JoinTypeLeftOuterRangeHeap:
 		return true
 	default:
 		return false
@@ -72,7 +77,7 @@ func (i JoinType) IsLeftOuter() bool {
 // that row is excluded from the result table.
 func (i JoinType) IsExcludeNulls() bool {
 	switch i {
-	case JoinTypeAnti, JoinTypeLeftOuterExcludeNulls, JoinTypeLeftOuterHashExcludeNulls:
+	case JoinTypeAnti, JoinTypeAntiHash, JoinTypeAntiLookup, JoinTypeAntiMerge, JoinTypeLeftOuterExcludeNulls, JoinTypeLeftOuterHashExcludeNulls:
 		return true
 	default:
 		return false
@@ -93,7 +98,7 @@ func (i JoinType) IsPhysical() bool {
 		JoinTypeSemiLookup, JoinTypeSemiMerge, JoinTypeSemiHash,
 		JoinTypeHash, JoinTypeLeftOuterHash, JoinTypeLeftOuterHashExcludeNulls,
 		JoinTypeMerge, JoinTypeLeftOuterMerge,
-		JoinTypeAntiLookup, JoinTypeAntiMerge, JoinTypeAntiHash:
+		JoinTypeAntiLookup, JoinTypeAntiMerge, JoinTypeAntiHash, JoinTypeRangeHeap, JoinTypeLeftOuterRangeHeap:
 		return true
 	default:
 		return false
@@ -109,8 +114,13 @@ func (i JoinType) IsInner() bool {
 	}
 }
 
-func (i JoinType) IsNatural() bool {
-	return i == JoinTypeNatural
+func (i JoinType) IsUsing() bool {
+	switch i {
+	case JoinTypeUsing, JoinTypeUsingLeft, JoinTypeUsingRight:
+		return true
+	default:
+		return false
+	}
 }
 
 func (i JoinType) IsDegenerate() bool {
@@ -165,7 +175,7 @@ func (i JoinType) IsPartial() bool {
 
 func (i JoinType) IsPlaceholder() bool {
 	return i == JoinTypeRightOuter ||
-		i == JoinTypeNatural
+		i == JoinTypeUsing
 }
 
 func (i JoinType) IsLookup() bool {
@@ -190,6 +200,15 @@ func (i JoinType) IsLateral() bool {
 	}
 }
 
+func (i JoinType) IsRange() bool {
+	switch i {
+	case JoinTypeRangeHeap, JoinTypeLeftOuterRangeHeap:
+		return true
+	default:
+		return false
+	}
+}
+
 func (i JoinType) AsHash() JoinType {
 	switch i {
 	case JoinTypeInner:
@@ -204,6 +223,17 @@ func (i JoinType) AsHash() JoinType {
 		return JoinTypeAntiHash
 	case JoinTypeCross:
 		return JoinTypeCrossHash
+	default:
+		return i
+	}
+}
+
+func (i JoinType) AsRangeHeap() JoinType {
+	switch i {
+	case JoinTypeInner:
+		return JoinTypeRangeHeap
+	case JoinTypeLeftOuter:
+		return JoinTypeLeftOuterRangeHeap
 	default:
 		return i
 	}
@@ -239,6 +269,19 @@ func (i JoinType) AsLookup() JoinType {
 	}
 }
 
+func (i JoinType) AsLateral() JoinType {
+	switch i {
+	case JoinTypeInner:
+		return JoinTypeLateralInner
+	case JoinTypeLeftOuter, JoinTypeLeftOuterExcludeNulls:
+		return JoinTypeLateralLeft
+	case JoinTypeCross:
+		return JoinTypeLateralCross
+	default:
+		return i
+	}
+}
+
 // JoinNode contains all the common data fields and implements the common sql.Node getters for all join types.
 type JoinNode struct {
 	BinaryNode
@@ -246,6 +289,7 @@ type JoinNode struct {
 	Op         JoinType
 	CommentStr string
 	ScopeLen   int
+	UsingCols  []string
 }
 
 var _ sql.Node = (*JoinNode)(nil)
@@ -256,6 +300,16 @@ func NewJoin(left, right sql.Node, op JoinType, cond sql.Expression) *JoinNode {
 		Op:         op,
 		BinaryNode: BinaryNode{left: left, right: right},
 		Filter:     cond,
+	}
+}
+
+// NewUsingJoin creates a UsingJoin that joins on the specified columns with the same name.
+// This is a placeholder node, and should be transformed into the appropriate join during analysis.
+func NewUsingJoin(left, right sql.Node, op JoinType, cols []string) *JoinNode {
+	return &JoinNode{
+		Op:         op,
+		BinaryNode: BinaryNode{left: left, right: right},
+		UsingCols:  cols,
 	}
 }
 
@@ -271,6 +325,10 @@ func (j *JoinNode) JoinCond() sql.Expression {
 	return j.Filter
 }
 
+func (j *JoinNode) IsReadOnly() bool {
+	return j.BinaryNode.left.IsReadOnly() && j.BinaryNode.right.IsReadOnly()
+}
+
 // Comment implements sql.CommentedNode
 func (j *JoinNode) Comment() string {
 	return j.CommentStr
@@ -279,7 +337,7 @@ func (j *JoinNode) Comment() string {
 // Resolved implements the Resolvable interface.
 func (j *JoinNode) Resolved() bool {
 	switch {
-	case j.Op.IsNatural():
+	case j.Op.IsUsing():
 		return false
 	case j.Op.IsDegenerate() || j.Filter == nil:
 		return j.left.Resolved() && j.right.Resolved()
@@ -329,7 +387,7 @@ func (j *JoinNode) Schema() sql.Schema {
 		return append(makeNullable(j.left.Schema()), makeNullable(j.right.Schema())...)
 	case j.Op.IsPartial():
 		return j.Left().Schema()
-	case j.Op.IsNatural():
+	case j.Op.IsUsing():
 		panic("NaturalJoin is a placeholder, Schema called")
 	default:
 		return append(j.left.Schema(), j.right.Schema()...)
@@ -448,7 +506,7 @@ func NewCrossJoin(left, right sql.Node) *JoinNode {
 // NaturalJoin is a placeholder node, it should be transformed into an INNER
 // JOIN during analysis.
 func NewNaturalJoin(left, right sql.Node) *JoinNode {
-	return NewJoin(left, right, JoinTypeNatural, nil)
+	return NewJoin(left, right, JoinTypeUsing, nil)
 }
 
 // An LookupJoin is a join that uses index lookups for the secondary table.

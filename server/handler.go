@@ -19,14 +19,15 @@ import (
 	"io"
 	"net"
 	"regexp"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/netutil"
 	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/log"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/go-kit/kit/metrics/discard"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
@@ -37,8 +38,7 @@ import (
 	"github.com/dolthub/go-mysql-server/internal/sockstate"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/parse"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -51,8 +51,6 @@ var ErrRowTimeout = errors.NewKind("row read wait bigger than connection timeout
 // ErrConnectionWasClosed will be returned if we try to use a previously closed connection
 var ErrConnectionWasClosed = errors.NewKind("connection was closed")
 
-var ErrUnsupportedOperation = errors.NewKind("unsupported operation")
-
 const rowsBatch = 128
 
 var tcpCheckerSleepDuration time.Duration = 1 * time.Second
@@ -63,6 +61,15 @@ const (
 	MultiStmtModeOff MultiStmtMode = 0
 	MultiStmtModeOn  MultiStmtMode = 1
 )
+
+func init() {
+	// Set the log.Error and log.Errorf functions in Vitess so that any errors
+	// logged by Vitess will appear in our logs. Without this, errors from Vitess
+	// can be swallowed (e.g. any parse error for a ComPrepare event is silently
+	// swallowed without this wired up), which makes debugging failures harder.
+	log.Error = logrus.StandardLogger().Error
+	log.Errorf = logrus.StandardLogger().Errorf
+}
 
 // Handler is a connection handler for a SQLe engine, implementing the Vitess mysql.Handler interface.
 type Handler struct {
@@ -100,7 +107,6 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error
 	if err != nil {
 		return nil, err
 	}
-
 	var analyzed sql.Node
 	if analyzer.PreparedStmtDisabled {
 		analyzed, err = h.e.AnalyzeQuery(ctx, query)
@@ -108,11 +114,16 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error
 		analyzed, err = h.e.PrepareQuery(ctx, query)
 	}
 	if err != nil {
+		logrus.WithField("query", query).Errorf("unable to prepare query: %s", err.Error())
 		err := sql.CastSQLError(err)
 		return nil, err
 	}
 
 	if types.IsOkResultSchema(analyzed.Schema()) {
+		return nil, nil
+	}
+	switch analyzed.(type) {
+	case *plan.InsertInto, *plan.Update, *plan.UpdateJoin, *plan.DeleteFrom:
 		return nil, nil
 	}
 	return schemaToFields(ctx, analyzed.Schema()), nil
@@ -127,6 +138,14 @@ func (h *Handler) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, call
 
 func (h *Handler) ComResetConnection(c *mysql.Conn) {
 	// TODO: handle reset logic
+}
+
+func (h *Handler) ParserOptionsForConnection(c *mysql.Conn) (sqlparser.ParserOptions, error) {
+	ctx, err := h.sm.NewContext(c)
+	if err != nil {
+		return sqlparser.ParserOptions{}, err
+	}
+	return sql.LoadSqlMode(ctx).ParserOptions(), nil
 }
 
 // ConnectionClosed reports that a connection has been closed.
@@ -174,112 +193,6 @@ func (h *Handler) ComQuery(
 	return err
 }
 
-func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Expression, error) {
-	res := make(map[string]sql.Expression, len(bindings))
-	for k, v := range bindings {
-		v, err := sqltypes.NewValue(v.Type, v.Value)
-		if err != nil {
-			return nil, err
-		}
-		switch {
-		case v.Type() == sqltypes.Year:
-			v, _, err := types.Year.Convert(string(v.ToBytes()))
-			if err != nil {
-				return nil, err
-			}
-			res[k] = expression.NewLiteral(v, types.Year)
-		case sqltypes.IsSigned(v.Type()):
-			v, err := strconv.ParseInt(string(v.ToBytes()), 0, 64)
-			if err != nil {
-				return nil, err
-			}
-			t := types.Int64
-			c, _, err := t.Convert(v)
-			if err != nil {
-				return nil, err
-			}
-			res[k] = expression.NewLiteral(c, t)
-		case sqltypes.IsUnsigned(v.Type()):
-			v, err := strconv.ParseUint(string(v.ToBytes()), 0, 64)
-			if err != nil {
-				return nil, err
-			}
-			t := types.Uint64
-			c, _, err := t.Convert(v)
-			if err != nil {
-				return nil, err
-			}
-			res[k] = expression.NewLiteral(c, t)
-		case sqltypes.IsFloat(v.Type()):
-			v, err := strconv.ParseFloat(string(v.ToBytes()), 64)
-			if err != nil {
-				return nil, err
-			}
-			t := types.Float64
-			c, _, err := t.Convert(v)
-			if err != nil {
-				return nil, err
-			}
-			res[k] = expression.NewLiteral(c, t)
-		case v.Type() == sqltypes.Decimal:
-			v, _, err := types.InternalDecimalType.Convert(string(v.ToBytes()))
-			if err != nil {
-				return nil, err
-			}
-			res[k] = expression.NewLiteral(v, types.InternalDecimalType)
-		case v.Type() == sqltypes.Bit:
-			t := types.MustCreateBitType(types.BitTypeMaxBits)
-			v, _, err := t.Convert(v.ToBytes())
-			if err != nil {
-				return nil, err
-			}
-			res[k] = expression.NewLiteral(v, t)
-		case v.Type() == sqltypes.Null:
-			res[k] = expression.NewLiteral(nil, types.Null)
-		case v.Type() == sqltypes.Blob || v.Type() == sqltypes.VarBinary || v.Type() == sqltypes.Binary:
-			t, err := types.CreateBinary(v.Type(), int64(len(v.ToBytes())))
-			if err != nil {
-				return nil, err
-			}
-			v, _, err := t.Convert(v.ToBytes())
-			if err != nil {
-				return nil, err
-			}
-			res[k] = expression.NewLiteral(v, t)
-		case v.Type() == sqltypes.Text || v.Type() == sqltypes.VarChar || v.Type() == sqltypes.Char:
-			t, err := types.CreateStringWithDefaults(v.Type(), int64(len(v.ToBytes())))
-			if err != nil {
-				return nil, err
-			}
-			v, _, err := t.Convert(v.ToBytes())
-			if err != nil {
-				return nil, err
-			}
-			res[k] = expression.NewLiteral(v, t)
-		case v.Type() == sqltypes.Date || v.Type() == sqltypes.Datetime || v.Type() == sqltypes.Timestamp:
-			t, err := types.CreateDatetimeType(v.Type())
-			if err != nil {
-				return nil, err
-			}
-			v, _, err := t.Convert(string(v.ToBytes()))
-			if err != nil {
-				return nil, err
-			}
-			res[k] = expression.NewLiteral(v, t)
-		case v.Type() == sqltypes.Time:
-			t := types.Time
-			v, _, err := t.Convert(string(v.ToBytes()))
-			if err != nil {
-				return nil, err
-			}
-			res[k] = expression.NewLiteral(v, t)
-		default:
-			return nil, ErrUnsupportedOperation.New()
-		}
-	}
-	return res, nil
-}
-
 var queryLoggingRegex = regexp.MustCompile(`[\r\n\t ]+`)
 
 func (h *Handler) doQuery(
@@ -295,20 +208,10 @@ func (h *Handler) doQuery(
 	}
 
 	var remainder string
-	var parsed sql.Node
-	ctx.Version = h.e.Version
-	if mode == MultiStmtModeOn {
-		var prequery string
-		switch ctx.Version {
-		case sql.VersionExperimental:
-			parsed, prequery, remainder, err = planbuilder.ParseOne(ctx, h.e.Analyzer.Catalog, query)
-			if err != nil {
-				parsed, prequery, remainder, _ = parse.ParseOne(ctx, query)
-				ctx.Version = sql.VersionStable
-			}
-		default:
-			parsed, prequery, remainder, _ = parse.ParseOne(ctx, query)
-		}
+	var prequery string
+	var parsed sqlparser.Statement
+	if _, ok := h.e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query); mode == MultiStmtModeOn && !ok {
+		parsed, prequery, remainder, err = planbuilder.ParseOnly(ctx, query, true)
 		if prequery != "" {
 			query = prequery
 		}
@@ -320,14 +223,15 @@ func (h *Handler) doQuery(
 	var queryStr string
 	if h.encodeLoggedQuery {
 		queryStr = base64.StdEncoding.EncodeToString([]byte(query))
-	} else {
+	} else if h.maxLoggedQueryLen > 0 {
+		// this is expensive, off by default
 		queryStr = string(queryLoggingRegex.ReplaceAll([]byte(query), []byte(" ")))
 		if h.maxLoggedQueryLen > 0 && len(queryStr) > h.maxLoggedQueryLen {
 			queryStr = queryStr[:h.maxLoggedQueryLen] + "..."
 		}
 	}
 
-	if h.encodeLoggedQuery || h.maxLoggedQueryLen >= 0 {
+	if h.encodeLoggedQuery || h.maxLoggedQueryLen > 0 {
 		ctx.SetLogger(ctx.GetLogger().WithField("query", queryStr))
 	}
 	ctx.GetLogger().Debugf("Starting query")
@@ -337,33 +241,7 @@ func (h *Handler) doQuery(
 
 	start := time.Now()
 
-	if parsed == nil {
-		switch ctx.Version {
-		case sql.VersionExperimental:
-			parsed, err = planbuilder.Parse(ctx, h.e.Analyzer.Catalog, query)
-			if err != nil {
-				ctx.GetLogger().Tracef("experimental planbuilder failed: %s", err)
-				parsed, err = parse.Parse(ctx, query)
-				ctx.Version = sql.VersionStable
-			}
-		default:
-			parsed, err = parse.Parse(ctx, query)
-		}
-	}
-	if err != nil {
-		return "", err
-	}
-
 	ctx.GetLogger().Tracef("beginning execution")
-
-	var sqlBindings map[string]sql.Expression
-	if len(bindings) > 0 {
-		sqlBindings, err = bindingsToExprs(bindings)
-		if err != nil {
-			ctx.GetLogger().WithError(err).Errorf("Error processing bindings")
-			return remainder, err
-		}
-	}
 
 	oCtx := ctx
 	eg, ctx := ctx.NewErrgroup()
@@ -377,7 +255,7 @@ func (h *Handler) doQuery(
 		}
 	}()
 
-	schema, rowIter, err := h.e.QueryNodeWithBindings(ctx, query, parsed, sqlBindings)
+	schema, rowIter, err := h.e.QueryWithBindings(ctx, query, parsed, bindings)
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
 		return remainder, err

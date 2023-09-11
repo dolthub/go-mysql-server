@@ -109,11 +109,12 @@ func getTableAliases(n sql.Node, scope *plan.Scope) (TableAliases, error) {
 			}
 			return false
 		case *plan.InsertInto:
-			rt := getResolvedTable(node.Destination)
-			analysisErr = passAliases.add(rt, rt)
+			if rt := getResolvedTable(node.Destination); rt != nil {
+				analysisErr = passAliases.add(rt, rt)
+			}
 			return false
 		case *plan.IndexedTableAccess:
-			rt := getResolvedTable(node.ResolvedTable)
+			rt := getResolvedTable(node.TableNode)
 			analysisErr = passAliases.add(rt, node)
 			return false
 		case sql.Nameable:
@@ -217,7 +218,9 @@ func normalizeExpression(tableAliases TableAliases, e sql.Expression) sql.Expres
 		if field, ok := e.(*expression.GetField); ok {
 			table := strings.ToLower(field.Table())
 			if rt, ok := tableAliases[table]; ok {
-				return field.WithTable(rt.Name()), transform.NewTree, nil
+				return field.WithTable(strings.ToLower(rt.Name())).WithName(strings.ToLower(field.Name())), transform.NewTree, nil
+			} else {
+				return field.WithTable(strings.ToLower(field.Table())).WithName(strings.ToLower(field.Name())), transform.NewTree, nil
 			}
 		}
 

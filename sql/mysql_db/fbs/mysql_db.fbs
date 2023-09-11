@@ -74,6 +74,10 @@ table MySQLDb {
     user:[User];
     role_edges:[RoleEdge];
     replica_source_info:[ReplicaSourceInfo];
+
+    // Only used in replication, typically the server instance itself will
+    // manage creating bootstrap users.
+    super_user:[User];
 }
 
 root_type MySQLDb;

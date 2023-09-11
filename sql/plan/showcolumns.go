@@ -77,6 +77,10 @@ func (s *ShowColumns) Resolved() bool {
 	return s.Child.Resolved() && s.targetSchema.Resolved()
 }
 
+func (s *ShowColumns) IsReadOnly() bool {
+	return true
+}
+
 func (s *ShowColumns) Expressions() []sql.Expression {
 	if len(s.targetSchema) == 0 {
 		return nil
@@ -85,14 +89,18 @@ func (s *ShowColumns) Expressions() []sql.Expression {
 	return transform.WrappedColumnDefaults(s.targetSchema)
 }
 
-func (s *ShowColumns) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (s ShowColumns) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(s.targetSchema) {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), len(s.targetSchema))
 	}
 
-	ss := *s
-	ss.targetSchema = transform.SchemaWithDefaults(s.targetSchema, exprs)
-	return &ss, nil
+	sch, err := transform.SchemaWithDefaults(s.targetSchema, exprs)
+	if err != nil {
+		return nil, err
+	}
+
+	s.targetSchema = sch
+	return &s, nil
 }
 
 func (s *ShowColumns) WithTargetSchema(schema sql.Schema) (sql.Node, error) {

@@ -22,6 +22,18 @@ import (
 
 var VariableQueries = []ScriptTest{
 	{
+		Name:        "use string name for foreign_key checks",
+		SetUpScript: []string{},
+		Query:       "select @@GLOBAL.unknown",
+		ExpectedErr: sql.ErrUnknownSystemVariable,
+	},
+	{
+		Name:        "use string name for foreign_key checks",
+		SetUpScript: []string{},
+		Query:       "set @@foreign_key_checks = off;",
+		Expected:    []sql.Row{{}},
+	},
+	{
 		Name: "set system variables",
 		SetUpScript: []string{
 			"set @@auto_increment_increment = 100, sql_select_limit = 1",
@@ -53,7 +65,7 @@ var VariableQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select @@server_id;",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.Row{{uint32(0)}},
 			},
 			{
 				Query:    "set @@server_id=123;",
@@ -61,6 +73,10 @@ var VariableQueries = []ScriptTest{
 			},
 			{
 				Query:    "set @@GLOBAL.server_id=123;",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "set @@GLOBAL.server_id=0;",
 				Expected: []sql.Row{{}},
 			},
 		},
@@ -155,8 +171,8 @@ var VariableQueries = []ScriptTest{
 	{
 		Name: "set system variable with expressions",
 		SetUpScript: []string{
-			`set lc_messages = "123", @@auto_increment_increment = 1`,
-			`set lc_messages = concat(@@lc_messages, "456"), @@auto_increment_increment = @@auto_increment_increment + 3`,
+			`set lc_messages = '123', @@auto_increment_increment = 1`,
+			`set lc_messages = concat(@@lc_messages, '456'), @@auto_increment_increment = @@auto_increment_increment + 3`,
 		},
 		Query: "SELECT @@lc_messages, @@auto_increment_increment",
 		Expected: []sql.Row{
@@ -274,6 +290,20 @@ var VariableQueries = []ScriptTest{
 		Query: "SELECT @@sql_mode",
 		Expected: []sql.Row{
 			{"ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION,NO_ZERO_DATE,NO_ZERO_IN_DATE,STRICT_ALL_TABLES,STRICT_TRANS_TABLES,TRADITIONAL"},
+		},
+	},
+	{
+		Name: "show variables renders enums after set",
+		SetUpScript: []string{
+			`set @@sql_mode='ONLY_FULL_GROUP_BY';`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SHOW VARIABLES LIKE '%sql_mode%'`,
+				Expected: []sql.Row{
+					{"sql_mode", "ONLY_FULL_GROUP_BY"},
+				},
+			},
 		},
 	},
 	// User variables

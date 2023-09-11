@@ -37,6 +37,19 @@ var LoadDataScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "Basic load data check error",
+		SetUpScript: []string{
+			"create table loadtable(pk int primary key, check (pk > 1))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"'",
+
+				ExpectedErrStr: "Check constraint \"loadtable_chk_1\" violated",
+			},
+		},
+	},
+	{
 		Name: "Load data with csv",
 		SetUpScript: []string{
 			"create table loadtable(pk int primary key, c1 longtext)",

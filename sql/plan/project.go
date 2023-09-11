@@ -47,7 +47,7 @@ func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 func (p *Project) Schema() sql.Schema {
 	var s = make(sql.Schema, len(p.Projections))
 	for i, e := range p.Projections {
-		s[i] = transform.ExpressionToColumn(e)
+		s[i] = transform.ExpressionToColumn(e, AliasSubqueryString(e))
 	}
 	return s
 }
@@ -56,6 +56,10 @@ func (p *Project) Schema() sql.Schema {
 func (p *Project) Resolved() bool {
 	return p.UnaryNode.Child.Resolved() &&
 		expression.ExpressionsResolved(p.Projections...)
+}
+
+func (p *Project) IsReadOnly() bool {
+	return p.Child.IsReadOnly()
 }
 
 func (p *Project) String() string {

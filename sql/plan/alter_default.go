@@ -16,7 +16,6 @@ package plan
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -64,41 +63,17 @@ func (d *AlterDefaultSet) String() string {
 	return fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET DEFAULT %s", d.Table.String(), d.ColumnName, d.Default.String())
 }
 
+func (d *AlterDefaultSet) IsReadOnly() bool {
+	return false
+}
+
 // Resolved implements the sql.Node interface.
 func (d *AlterDefaultDrop) Resolved() bool {
 	return d.ddlNode.Resolved() && d.Table.Resolved() && d.targetSchema.Resolved()
 }
 
-// RowIter implements the sql.Node interface.
-func (d *AlterDefaultSet) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	// Grab the table fresh from the database.
-	table, err := getTableFromDatabase(ctx, d.Database(), d.Table)
-	if err != nil {
-		return nil, err
-	}
-
-	alterable, ok := table.(sql.AlterableTable)
-	if !ok {
-		return nil, sql.ErrAlterTableNotSupported.New(d.Table)
-	}
-
-	if err != nil {
-		return nil, err
-	}
-	loweredColName := strings.ToLower(d.ColumnName)
-	var col *sql.Column
-	for _, schCol := range alterable.Schema() {
-		if strings.ToLower(schCol.Name) == loweredColName {
-			col = schCol
-			break
-		}
-	}
-	if col == nil {
-		return nil, sql.ErrTableColumnNotFound.New(d.Table, d.ColumnName)
-	}
-	newCol := &(*col)
-	newCol.Default = d.Default
-	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, d.ColumnName, newCol, nil)
+func (d *AlterDefaultDrop) IsReadOnly() bool {
+	return false
 }
 
 // WithChildren implements the sql.Node interface.
@@ -140,7 +115,11 @@ func (d AlterDefaultSet) WithExpressions(exprs ...sql.Expression) (sql.Node, err
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(exprs), 1+len(d.targetSchema))
 	}
 
-	d.targetSchema = transform.SchemaWithDefaults(d.targetSchema, exprs[:len(d.targetSchema)])
+	sch, err := transform.SchemaWithDefaults(d.targetSchema, exprs[:len(d.targetSchema)])
+	if err != nil {
+		return nil, err
+	}
+	d.targetSchema = sch
 
 	unwrappedColDefVal, ok := exprs[len(exprs)-1].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
 	if ok {
@@ -186,34 +165,6 @@ func (d *AlterDefaultDrop) String() string {
 	return fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT", getTableName(d.Table), d.ColumnName)
 }
 
-// RowIter implements the sql.Node interface.
-func (d *AlterDefaultDrop) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	table, ok, err := d.ddlNode.Database().GetTableInsensitive(ctx, getTableName(d.Table))
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, sql.ErrTableNotFound.New(d.Table)
-	}
-
-	alterable, ok := table.(sql.AlterableTable)
-	loweredColName := strings.ToLower(d.ColumnName)
-	var col *sql.Column
-	for _, schCol := range alterable.Schema() {
-		if strings.ToLower(schCol.Name) == loweredColName {
-			col = schCol
-			break
-		}
-	}
-
-	if col == nil {
-		return nil, sql.ErrTableColumnNotFound.New(getTableName(d.Table), d.ColumnName)
-	}
-	newCol := &(*col)
-	newCol.Default = nil
-	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, d.ColumnName, newCol, nil)
-}
-
 // WithChildren implements the sql.Node interface.
 func (d *AlterDefaultDrop) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
@@ -245,7 +196,12 @@ func (d AlterDefaultDrop) WithExpressions(exprs ...sql.Expression) (sql.Node, er
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(exprs), len(d.targetSchema))
 	}
 
-	d.targetSchema = transform.SchemaWithDefaults(d.targetSchema, exprs[:len(d.targetSchema)])
+	sch, err := transform.SchemaWithDefaults(d.targetSchema, exprs[:len(d.targetSchema)])
+	if err != nil {
+		return nil, err
+	}
+	d.targetSchema = sch
+
 	return &d, nil
 }
 

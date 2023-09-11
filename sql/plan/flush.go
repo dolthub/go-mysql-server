@@ -44,11 +44,12 @@ func (f *FlushPrivileges) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, err
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	err := gts.Persist(ctx)
+	editor := gts.Editor()
+	defer editor.Close()
+	err := gts.Persist(ctx, editor)
 	if err != nil {
 		return nil, err
 	}
-
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
 
@@ -76,6 +77,11 @@ func (f *FlushPrivileges) CheckPrivileges(ctx *sql.Context, opChecker sql.Privil
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*FlushPrivileges) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
+}
+
+// Semantically there is no reason to run this in a read-only context, so we say it is not read only.
+func (*FlushPrivileges) IsReadOnly() bool {
+	return false
 }
 
 // Resolved implements the interface sql.Node.

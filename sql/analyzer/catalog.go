@@ -19,6 +19,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
+
 	"github.com/dolthub/go-mysql-server/internal/similartext"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
@@ -32,14 +34,20 @@ type Catalog struct {
 
 	Provider         sql.DatabaseProvider
 	builtInFunctions function.Registry
-	mu               sync.RWMutex
-	locks            sessionLocks
+
+	// BinlogReplicaController holds an optional controller that receives forwarded binlog
+	// replication messages (e.g. "start replica").
+	BinlogReplicaController binlogreplication.BinlogReplicaController
+
+	mu    sync.RWMutex
+	locks sessionLocks
 }
 
 var _ sql.Catalog = (*Catalog)(nil)
 var _ sql.FunctionProvider = (*Catalog)(nil)
 var _ sql.TableFunctionProvider = (*Catalog)(nil)
 var _ sql.ExternalStoredProcedureProvider = (*Catalog)(nil)
+var _ binlogreplication.BinlogReplicaCatalog = (*Catalog)(nil)
 
 type tableLocks map[string]struct{}
 
@@ -63,11 +71,19 @@ func NewDatabaseProvider(dbs ...sql.Database) sql.DatabaseProvider {
 	return sql.NewDatabaseProvider(dbs...)
 }
 
+func (c *Catalog) IsBinlogReplicaCatalog() bool {
+	return c.BinlogReplicaController != nil
+}
+
+func (c *Catalog) GetBinlogReplicaController() binlogreplication.BinlogReplicaController {
+	return c.BinlogReplicaController
+}
+
 func (c *Catalog) AllDatabases(ctx *sql.Context) []sql.Database {
 	var dbs []sql.Database
 	dbs = append(dbs, c.InfoSchema)
 
-	if c.MySQLDb.Enabled {
+	if c.MySQLDb.Enabled() {
 		dbs = append(dbs, mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.Provider).AllDatabases(ctx)...)
 	} else {
 		dbs = append(dbs, c.Provider.AllDatabases(ctx)...)
@@ -120,7 +136,7 @@ func (c *Catalog) HasDatabase(ctx *sql.Context, db string) bool {
 	db = strings.ToLower(db)
 	if db == "information_schema" {
 		return true
-	} else if c.MySQLDb.Enabled {
+	} else if c.MySQLDb.Enabled() {
 		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.Provider).HasDatabase(ctx, db)
 	} else {
 		return c.Provider.HasDatabase(ctx, db)
@@ -131,7 +147,7 @@ func (c *Catalog) HasDatabase(ctx *sql.Context, db string) bool {
 func (c *Catalog) Database(ctx *sql.Context, db string) (sql.Database, error) {
 	if strings.ToLower(db) == "information_schema" {
 		return c.InfoSchema, nil
-	} else if c.MySQLDb.Enabled {
+	} else if c.MySQLDb.Enabled() {
 		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.Provider).Database(ctx, db)
 	} else {
 		return c.Provider.Database(ctx, db)
@@ -244,7 +260,7 @@ func (c *Catalog) DatabaseTableAsOf(ctx *sql.Context, db sql.Database, tableName
 
 	versionedDb, ok := db.(sql.VersionedDatabase)
 	if !ok {
-		return nil, nil, sql.ErrAsOfNotSupported.New(tableName)
+		return nil, nil, sql.ErrAsOfNotSupported.New(db.Name())
 	}
 
 	tbl, ok, err := versionedDb.GetTableInsensitiveAsOf(ctx, tableName, asOf)

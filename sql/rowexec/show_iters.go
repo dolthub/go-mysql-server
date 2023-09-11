@@ -340,18 +340,19 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 	}
 
 	// Statement creation parts for each column
+	tableCollation := table.Collation()
 	for i, col := range schema {
-		var colDefault string
+		var colDefaultStr string
 		// TODO: The columns that are rendered in defaults should be backticked
-		if col.Default != nil {
+		if col.Default != nil && col.Generated == nil {
 			// TODO : string literals should have character set introducer
-			colDefault = col.Default.String()
-			if colDefault != "NULL" && col.Default.IsLiteral() && !types.IsTime(col.Default.Type()) && !types.IsText(col.Default.Type()) {
+			colDefaultStr = col.Default.String()
+			if colDefaultStr != "NULL" && col.Default.IsLiteral() && !types.IsTime(col.Default.Type()) && !types.IsText(col.Default.Type()) {
 				v, err := col.Default.Eval(ctx, nil)
 				if err != nil {
 					return "", err
 				}
-				colDefault = fmt.Sprintf("'%v'", v)
+				colDefaultStr = fmt.Sprintf("'%v'", v)
 			}
 		}
 
@@ -359,7 +360,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			pkOrdinals = append(pkOrdinals, i)
 		}
 
-		colStmts[i] = sql.GenerateCreateTableColumnDefinition(col.Name, col.Type, col.Nullable, col.AutoIncrement, col.Default != nil, colDefault, col.Comment)
+		colStmts[i] = sql.GenerateCreateTableColumnDefinition(col, colDefaultStr, tableCollation)
 	}
 
 	for _, i := range pkOrdinals {
@@ -389,7 +390,8 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			}
 		}
 
-		colStmts = append(colStmts, sql.GenerateCreateTableIndexDefinition(index.IsUnique(), index.IsSpatial(), index.ID(), indexCols, index.Comment()))
+		colStmts = append(colStmts, sql.GenerateCreateTableIndexDefinition(index.IsUnique(), index.IsSpatial(),
+			index.IsFullText(), index.ID(), indexCols, index.Comment()))
 	}
 
 	fkt, err := getForeignKeyTable(table)

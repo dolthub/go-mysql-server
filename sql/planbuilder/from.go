@@ -1,3 +1,17 @@
+// Copyright 2023 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package planbuilder
 
 import (
@@ -15,7 +29,7 @@ import (
 )
 
 // TODO outScope will be populated with a source node and column sets
-func (b *PlanBuilder) buildFrom(inScope *scope, te ast.TableExprs) (outScope *scope) {
+func (b *Builder) buildFrom(inScope *scope, te ast.TableExprs) (outScope *scope) {
 	if len(te) == 0 {
 		outScope = inScope.push()
 		outScope.ast = te
@@ -43,8 +57,7 @@ func (b *PlanBuilder) buildFrom(inScope *scope, te ast.TableExprs) (outScope *sc
 	return b.buildDataSource(inScope, te[0])
 }
 
-func (b *PlanBuilder) validateJoinTableNames(leftScope, rightScope *scope) {
-	// TODO validateUniqueTableNames is redundant
+func (b *Builder) validateJoinTableNames(leftScope, rightScope *scope) {
 	for t, _ := range leftScope.tables {
 		if _, ok := rightScope.tables[t]; ok {
 			err := sql.ErrDuplicateAliasOrTable.New(t)
@@ -53,7 +66,7 @@ func (b *PlanBuilder) validateJoinTableNames(leftScope, rightScope *scope) {
 	}
 }
 
-func (b *PlanBuilder) isLateral(te ast.TableExpr) bool {
+func (b *Builder) isLateral(te ast.TableExpr) bool {
 	switch t := te.(type) {
 	case *ast.JSONTableExpr:
 		return true
@@ -64,7 +77,14 @@ func (b *PlanBuilder) isLateral(te ast.TableExpr) bool {
 	}
 }
 
-func (b *PlanBuilder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *scope) {
+func (b *Builder) isUsingJoin(te *ast.JoinTableExpr) bool {
+	return te.Condition.Using != nil ||
+		strings.EqualFold(te.Join, ast.NaturalJoinStr) ||
+		strings.EqualFold(te.Join, ast.NaturalLeftJoinStr) ||
+		strings.EqualFold(te.Join, ast.NaturalRightJoinStr)
+}
+
+func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *scope) {
 	//TODO build individual table expressions
 	// collect column  definitions
 	leftScope := b.buildDataSource(inScope, te.LeftExpr)
@@ -78,9 +98,8 @@ func (b *PlanBuilder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope
 
 	b.validateJoinTableNames(leftScope, rightScope)
 
-	if strings.EqualFold(te.Join, ast.NaturalJoinStr) {
-		// TODO inline resolve natural join
-		return b.buildNaturalJoin(inScope, leftScope, rightScope)
+	if b.isUsingJoin(te) {
+		return b.buildUsingJoin(inScope, leftScope, rightScope, te)
 	}
 
 	outScope = inScope.push()
@@ -88,8 +107,14 @@ func (b *PlanBuilder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope
 	outScope.appendColumnsFromScope(rightScope)
 
 	// cross join
-	if te.Condition.On == nil || te.Condition.On == ast.BoolVal(true) {
+	if (te.Condition.On == nil || te.Condition.On == ast.BoolVal(true)) && te.Condition.Using == nil {
 		if rast, ok := te.RightExpr.(*ast.AliasedTableExpr); ok && rast.Lateral {
+			var err error
+			outScope.node, err = b.f.buildJoin(leftScope.node, rightScope.node, plan.JoinTypeLateralCross, expression.NewLiteral(true, types.Boolean))
+			if err != nil {
+				b.handleErr(err)
+			}
+		} else if b.isLateral(te.RightExpr) {
 			outScope.node = plan.NewJoin(leftScope.node, rightScope.node, plan.JoinTypeLateralCross, nil)
 		} else {
 			outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
@@ -97,7 +122,10 @@ func (b *PlanBuilder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope
 		return
 	}
 
-	filter := b.buildScalar(outScope, te.Condition.On)
+	var filter sql.Expression
+	if te.Condition.On != nil {
+		filter = b.buildScalar(outScope, te.Condition.On)
+	}
 
 	var op plan.JoinType
 	switch strings.ToLower(te.Join) {
@@ -124,61 +152,123 @@ func (b *PlanBuilder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope
 	default:
 		b.handleErr(fmt.Errorf("unknown join type: %s", te.Join))
 	}
-	outScope.node = plan.NewJoin(leftScope.node, rightScope.node, op, filter)
+	var err error
+	outScope.node, err = b.f.buildJoin(leftScope.node, rightScope.node, op, filter)
+	if err != nil {
+		b.handleErr(err)
+	}
 
 	return outScope
 }
 
-// buildNaturalJoin logically converts a NATURAL_JOIN to an INNER_JOIN.
-// All column names shared by the two tables are used as equality filters
-// in the join. The intersection of all unique columns is projected.
-// Common table attributes are rewritten to reference the left definitions
-// //.
-// NATURAL_JOIN(t1, t2)
-// =>
-// PROJ(t1.a1, ...,t1.aN) -> INNER_JOIN(t1, t2, [t1.a1=t2.a1,..., t1.aN=t2.aN])
-func (b *PlanBuilder) buildNaturalJoin(inScope, leftScope, rightScope *scope) (outScope *scope) {
+// buildUsingJoin converts a JOIN with a USING clause into an INNER JOIN, LEFT JOIN, or RIGHT JOIN; NATURAL JOINs are a
+// subset of USING joins.
+// The scope of these join must contain all the qualified columns from both left and right tables. The columns listed
+// in the USING clause must be in both left and right tables, and will be redirected to
+// either the left or right table.
+// An equality filter is created with columns in the USING list. Columns in the USING
+// list are de-duplicated and listed first (in the order they appear in the left table), followed by the remaining
+// columns from the left table, followed by the remaining columns from the right table.
+// NATURAL_JOIN(t1, t2)       => PROJ(t1.a1, ...,t1.aN) -> INNER_JOIN(t1, t2, [t1.a1=t2.a1,..., t1.aN=t2.aN])
+// NATURAL_LEFT_JOIN(t1, t2)  => PROJ(t1.a1, ...,t1.aN) -> LEFT_JOIN (t1, t2, [t1.a1=t2.a1,..., t1.aN=t2.aN])
+// NATURAL_RIGHT_JOIN(t1, t2) => PROJ(t1.a1, ...,t1.aN) -> RIGHT_JOIN(t1, t2, [t1.a1=t2.a1,..., t1.aN=t2.aN])
+// USING_JOIN(t1, t2)         => PROJ(t1.a1, ...,t1.aN) -> INNER_JOIN(t1, t2, [t1.a1=t2.a1,..., t1.aN=t2.aN])
+// USING_LEFT_JOIN(t1, t2)    => PROJ(t1.a1, ...,t1.aN) -> LEFT_JOIN (t1, t2, [t1.a1=t2.a1,..., t1.aN=t2.aN])
+// USING_RIGHT_JOIN(t1, t2)   => PROJ(t1.a1, ...,t1.aN) -> RIGHT_JOIN(t1, t2, [t1.a1=t2.a1,..., t1.aN=t2.aN])
+func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.JoinTableExpr) (outScope *scope) {
 	outScope = inScope.push()
-	var proj []sql.Expression
-	for _, lCol := range leftScope.cols {
-		outScope.addColumn(lCol)
-		proj = append(proj, lCol.scalarGf())
-	}
 
-	var filter sql.Expression
-	for _, rCol := range rightScope.cols {
-		var matched scopeColumn
+	// Fill in USING columns for NATURAL JOINs
+	if len(te.Condition.Using) == 0 {
 		for _, lCol := range leftScope.cols {
-			if lCol.col == rCol.col {
-				matched = lCol
-				break
+			for _, rCol := range rightScope.cols {
+				if strings.EqualFold(lCol.col, rCol.col) {
+					te.Condition.Using = append(te.Condition.Using, ast.NewColIdent(lCol.col))
+					break
+				}
 			}
 		}
-		if !matched.empty() {
-			outScope.redirect(rCol, matched)
-		} else {
-			proj = append(proj, rCol.scalarGf())
-			outScope.addColumn(rCol)
-		}
+	}
 
-		f := expression.NewEquals(matched.scalarGf(), rCol.scalarGf())
+	// Right joins swap left and right scopes.
+	var left, right *scope
+	if te.Join == ast.RightJoinStr || te.Join == ast.NaturalRightJoinStr {
+		left, right = rightScope, leftScope
+	} else {
+		left, right = leftScope, rightScope
+	}
+
+	// Add columns in common
+	var filter sql.Expression
+	usingCols := map[string]struct{}{}
+	for _, col := range te.Condition.Using {
+		colName := col.String()
+		// Every column in the USING clause must be in both tables.
+		lCol, ok := left.resolveColumn("", colName, false)
+		if !ok {
+			b.handleErr(sql.ErrUnknownColumn.New(colName, "from clause"))
+		}
+		rCol, ok := right.resolveColumn("", colName, false)
+		if !ok {
+			b.handleErr(sql.ErrUnknownColumn.New(colName, "from clause"))
+		}
+		f := expression.NewEquals(lCol.scalarGf(), rCol.scalarGf())
 		if filter == nil {
 			filter = f
 		} else {
 			filter = expression.NewAnd(filter, f)
 		}
-	}
-	if filter == nil {
-		outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
-		return
+		usingCols[colName] = struct{}{}
+		outScope.redirect(scopeColumn{col: rCol.col}, lCol)
 	}
 
-	jn := plan.NewJoin(leftScope.node, rightScope.node, plan.JoinTypeInner, filter)
-	outScope.node = jn
-	return
+	// Add common columns first, then left, then right.
+	// The order of columns for the common section must match left table
+	for _, lCol := range left.cols {
+		if _, ok := usingCols[lCol.col]; ok {
+			outScope.addColumn(lCol)
+		}
+	}
+	for _, rCol := range right.cols {
+		if _, ok := usingCols[rCol.col]; ok {
+			outScope.addColumn(rCol)
+		}
+	}
+	for _, lCol := range left.cols {
+		if _, ok := usingCols[lCol.col]; !ok {
+			outScope.addColumn(lCol)
+		}
+	}
+	for _, rCol := range right.cols {
+		if _, ok := usingCols[rCol.col]; !ok {
+			outScope.addColumn(rCol)
+		}
+	}
+
+	// joining two tables with no common columns is just cross join
+	if len(te.Condition.Using) == 0 {
+		if b.isLateral(te.RightExpr) {
+			outScope.node = plan.NewJoin(leftScope.node, rightScope.node, plan.JoinTypeLateralCross, nil)
+		} else {
+			outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
+		}
+		return outScope
+	}
+
+	switch strings.ToLower(te.Join) {
+	case ast.JoinStr, ast.NaturalJoinStr:
+		outScope.node = plan.NewInnerJoin(leftScope.node, rightScope.node, filter)
+	case ast.LeftJoinStr, ast.NaturalLeftJoinStr:
+		outScope.node = plan.NewLeftOuterJoin(leftScope.node, rightScope.node, filter)
+	case ast.RightJoinStr, ast.NaturalRightJoinStr:
+		outScope.node = plan.NewLeftOuterJoin(rightScope.node, leftScope.node, filter)
+	default:
+		b.handleErr(fmt.Errorf("unknown using join type: %s", te.Join))
+	}
+	return outScope
 }
 
-func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *scope) {
+func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *scope) {
 	outScope = inScope.push()
 	outScope.ast = te
 
@@ -187,16 +277,25 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 	case *ast.AliasedTableExpr:
 		switch e := t.Expr.(type) {
 		case ast.TableName:
-			if cteScope := inScope.getCte(e.Name.String()); cteScope != nil {
+			tableName := strings.ToLower(e.Name.String())
+			if cteScope := inScope.getCte(tableName); cteScope != nil {
 				outScope = cteScope.copy()
 				outScope.parent = inScope
 			} else {
-				outScope = b.buildTablescan(inScope, e.Qualifier.String(), e.Name.String(), t.AsOf)
+				var ok bool
+				outScope, ok = b.buildTablescan(inScope, e.Qualifier.String(), tableName, t.AsOf)
+				if !ok {
+					b.handleErr(sql.ErrTableNotFound.New(tableName))
+				}
 			}
 			if t.As.String() != "" {
 				tAlias := strings.ToLower(t.As.String())
 				outScope.setTableAlias(tAlias)
-				outScope.node = plan.NewTableAlias(tAlias, outScope.node)
+				var err error
+				outScope.node, err = b.f.buildTableAlias(tAlias, outScope.node)
+				if err != nil {
+					b.handleErr(err)
+				}
 			}
 		case *ast.Subquery:
 			if t.As.IsEmpty() {
@@ -204,9 +303,12 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 				b.handleErr(sql.ErrUnsupportedFeature.New("subquery without alias"))
 			}
 
-			sqScope := inScope.push()
-			outScope = b.buildSelectStmt(sqScope, e.Select)
-			sq := plan.NewSubqueryAlias(t.As.String(), ast.String(e.Select), outScope.node)
+			sqScope := inScope.pushSubquery()
+			fromScope := b.buildSelectStmt(sqScope, e.Select)
+			alias := strings.ToLower(t.As.String())
+			sq := plan.NewSubqueryAlias(alias, ast.String(e.Select), fromScope.node)
+			sq = sq.WithCorrelated(sqScope.correlated())
+			sq = sq.WithVolatile(sqScope.volatile())
 			sq.IsLateral = t.Lateral
 
 			var renameCols []string
@@ -214,8 +316,30 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 				renameCols = columnsToStrings(e.Columns)
 				sq = sq.WithColumns(renameCols)
 			}
-			b.renameSource(outScope, t.As.String(), renameCols)
-			outScope.node = sq
+
+			if len(renameCols) > 0 && len(fromScope.cols) != len(renameCols) {
+				err := sql.ErrColumnCountMismatch.New()
+				b.handleErr(err)
+			}
+
+			outScope = inScope.push()
+			scopeMapping := make(map[sql.ColumnId]sql.Expression)
+			for i, c := range fromScope.cols {
+				col := c.col
+				if len(renameCols) > 0 {
+					col = renameCols[i]
+				}
+				toId := outScope.newColumn(scopeColumn{
+					db:       c.db,
+					table:    alias,
+					col:      col,
+					id:       0,
+					typ:      c.typ,
+					nullable: c.nullable,
+				})
+				scopeMapping[sql.ColumnId(toId)] = c.scalarGf()
+			}
+			outScope.node = sq.WithScopeMapping(scopeMapping)
 			return
 		case *ast.ValuesStatement:
 			if t.As.IsEmpty() {
@@ -233,8 +357,10 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 
 			outScope = inScope.push()
 			vdt := plan.NewValueDerivedTable(plan.NewValues(exprTuples), t.As.String())
+			for _, c := range vdt.Schema() {
+				outScope.newColumn(scopeColumn{col: c.Name, table: c.Source, typ: c.Type, nullable: c.Nullable})
+			}
 			var renameCols []string
-
 			if len(e.Columns) > 0 {
 				renameCols = columnsToStrings(e.Columns)
 				vdt = vdt.WithColumns(renameCols)
@@ -284,22 +410,21 @@ func columnsToStrings(cols ast.Columns) []string {
 	return res
 }
 
-func (b *PlanBuilder) buildAsOf(inScope *scope, asOf ast.Expr) interface{} {
+func (b *Builder) resolveTable(tab, db string, asOf interface{}) *plan.ResolvedTable {
+	var table sql.Table
+	var database sql.Database
 	var err error
-	asOfExpr := b.buildScalar(inScope, asOf)
-	asOfLit, err := asOfExpr.Eval(b.ctx, nil)
-	if err != nil {
-		b.handleErr(err)
+	if asOf != nil {
+		table, database, err = b.cat.TableAsOf(b.ctx, db, tab, asOf)
+	} else {
+		table, database, err = b.cat.Table(b.ctx, db, tab)
 	}
-	return asOfLit
-}
-
-func (b *PlanBuilder) resolveTable(tab, db string, asOf interface{}) *plan.ResolvedTable {
-	table, _, err := b.cat.TableAsOf(b.ctx, db, tab, asOf)
-	if err != nil {
-		b.handleErr(err)
+	if sql.ErrAsOfNotSupported.Is(err) {
+		if asOf != nil {
+			b.handleErr(err)
+		}
+		table, database, err = b.cat.Table(b.ctx, db, tab)
 	}
-	database, err := b.cat.Database(b.ctx, b.ctx.GetCurrentDatabase())
 	if err != nil {
 		b.handleErr(err)
 	}
@@ -310,63 +435,7 @@ func (b *PlanBuilder) resolveTable(tab, db string, asOf interface{}) *plan.Resol
 	return plan.NewResolvedTable(table, database, asOf)
 }
 
-func (b *PlanBuilder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope) {
-	leftScope := b.buildSelectStmt(inScope, u.Left)
-	rightScope := b.buildSelectStmt(inScope, u.Right)
-
-	distinct := u.Type != ast.UnionAllStr
-	limit := b.buildLimit(inScope, u.Limit)
-	offset := b.buildOffset(inScope, u.Limit)
-
-	// mysql errors for order by right projection
-	orderByScope := b.analyzeOrderBy(leftScope, leftScope, u.OrderBy)
-
-	var sortFields sql.SortFields
-	for _, c := range orderByScope.cols {
-		so := sql.Ascending
-		if c.descending {
-			so = sql.Descending
-		}
-		sf := sql.SortField{
-			Column: c.scalar,
-			Order:  so,
-		}
-		sortFields = append(sortFields, sf)
-	}
-
-	n, ok := leftScope.node.(*plan.Union)
-	if ok {
-		if len(n.SortFields) > 0 {
-			if len(sortFields) > 0 {
-				err := sql.ErrConflictingExternalQuery.New()
-				b.handleErr(err)
-			}
-			sortFields = n.SortFields
-		}
-		if n.Limit != nil {
-			if limit != nil {
-				err := fmt.Errorf("conflicing external LIMIT")
-				b.handleErr(err)
-			}
-			limit = n.Limit
-		}
-		if n.Offset != nil {
-			if offset != nil {
-				err := fmt.Errorf("conflicing external OFFSET")
-				b.handleErr(err)
-			}
-			offset = n.Offset
-		}
-		leftScope.node = plan.NewUnion(n.Left(), n.Right(), n.Distinct, nil, nil, nil)
-	}
-
-	ret := plan.NewUnion(leftScope.node, rightScope.node, distinct, limit, offset, sortFields)
-	outScope = leftScope
-	outScope.node = ret
-	return
-}
-
-func (b *PlanBuilder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope *scope) {
+func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope *scope) {
 	//TODO what are valid mysql table arguments
 	args := make([]sql.Expression, 0, len(t.Exprs))
 	for _, e := range t.Exprs {
@@ -416,19 +485,32 @@ func (b *PlanBuilder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outS
 		b.handleErr(err)
 	}
 
+	if ctf, isCTF := newInstance.(sql.CatalogTableFunction); isCTF {
+		newInstance, err = ctf.WithCatalog(b.cat)
+		if err != nil {
+			b.handleErr(err)
+		}
+	}
+
 	// Table Function must always have an alias, pick function name as alias if none is provided
-	var newAlias *plan.TableAlias
+	var name string
+	var newAlias sql.Node
 	if t.Alias.IsEmpty() {
-		newAlias = plan.NewTableAlias(t.Name, newInstance)
+		name = t.Name
+		newAlias = plan.NewTableAlias(name, newInstance)
 	} else {
-		newAlias = plan.NewTableAlias(t.Alias.String(), newInstance)
+		name = t.Alias.String()
+		newAlias, err = b.f.buildTableAlias(name, newInstance)
+		if err != nil {
+			b.handleErr(err)
+		}
 	}
 
 	outScope.node = newAlias
 	for _, c := range newAlias.Schema() {
 		outScope.newColumn(scopeColumn{
 			db:    database.Name(),
-			table: "",
+			table: name,
 			col:   c.Name,
 			typ:   c.Type,
 		})
@@ -436,7 +518,7 @@ func (b *PlanBuilder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outS
 	return
 }
 
-func (b *PlanBuilder) buildJSONTableCols(inScope *scope, jtSpec *ast.JSONTableSpec) []plan.JSONTableCol {
+func (b *Builder) buildJSONTableCols(inScope *scope, jtSpec *ast.JSONTableSpec) []plan.JSONTableCol {
 	var cols []plan.JSONTableCol
 	for _, jtColDef := range jtSpec.Columns {
 		// nested col defs need to be flattened into multiple colOpts with all paths appended
@@ -486,7 +568,7 @@ func (b *PlanBuilder) buildJSONTableCols(inScope *scope, jtSpec *ast.JSONTableSp
 	return cols
 }
 
-func (b *PlanBuilder) buildJSONTable(inScope *scope, t *ast.JSONTableExpr) (outScope *scope) {
+func (b *Builder) buildJSONTable(inScope *scope, t *ast.JSONTableExpr) (outScope *scope) {
 	data := b.buildScalar(inScope, t.Data)
 	if _, ok := data.(*plan.Subquery); ok {
 		b.handleErr(sql.ErrInvalidArgument.New("JSON_TABLE"))
@@ -497,12 +579,21 @@ func (b *PlanBuilder) buildJSONTable(inScope *scope, t *ast.JSONTableExpr) (outS
 
 	alias := t.Alias.String()
 	cols := b.buildJSONTableCols(inScope, t.Spec)
+	var recFlatten func(col plan.JSONTableCol)
+	recFlatten = func(col plan.JSONTableCol) {
+		for _, col := range col.NestedCols {
+			recFlatten(col)
+		}
+		if col.Opts != nil {
+			outScope.newColumn(scopeColumn{
+				table: strings.ToLower(alias),
+				col:   col.Opts.Name,
+				typ:   col.Opts.Type,
+			})
+		}
+	}
 	for _, col := range cols {
-		outScope.newColumn(scopeColumn{
-			table: strings.ToLower(alias),
-			col:   col.Opts.Name,
-			typ:   col.Opts.Type,
-		})
+		recFlatten(col)
 	}
 
 	var err error
@@ -512,45 +603,50 @@ func (b *PlanBuilder) buildJSONTable(inScope *scope, t *ast.JSONTableExpr) (outS
 	return outScope
 }
 
-func (b *PlanBuilder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf) (outScope *scope) {
+func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf) (outScope *scope, ok bool) {
 	outScope = inScope.push()
 
-	// lookup table in catalog
-	// Special handling for asOf w/ prepared statement bindvar
-	if db == "" {
+	if b.ViewCtx().DbName != "" {
+		db = b.ViewCtx().DbName
+	} else if db == "" {
 		db = b.ctx.GetCurrentDatabase()
 	}
 
-	var asOfExpr sql.Expression
 	var asOfLit interface{}
-	var asofBindVar bool
 	if asof != nil {
-		asOfExpr = b.buildScalar(inScope, asof.Time)
-		asofBindVar = transform.InspectExpr(asOfExpr, func(expr sql.Expression) bool {
-			_, ok := expr.(*expression.BindVar)
-			return ok
-		})
-		if !asofBindVar {
-			//TODO what does this mean?
-			// special case for AsOf's that use naked identifiers; they are interpreted as UnresolvedColumns
-			if col, ok := asOfExpr.(*expression.UnresolvedColumn); ok {
-				asOfExpr = expression.NewLiteral(col.String(), types.LongText)
-			}
-
-			var err error
-			asOfLit, err = asOfExpr.Eval(b.ctx, nil)
-			if err != nil {
-				b.handleErr(err)
-			}
-		}
+		asOfLit = b.buildAsOfLit(inScope, asof.Time)
+	} else if asof := b.ViewCtx().AsOf; asof != nil {
+		asOfLit = asof
+	} else if asof := b.ProcCtx().AsOf; asof != nil {
+		asOfLit = asof
 	}
+
 	var tab sql.Table
 	var database sql.Database
 	var err error
-	if asOfExpr != nil {
+	database, err = b.cat.Database(b.ctx, db)
+	if err != nil {
+		b.handleErr(err)
+	}
+
+	if view := b.resolveView(name, database, asOfLit); view != nil {
+		outScope.node = view
+		for _, c := range view.Schema() {
+			outScope.newColumn(scopeColumn{
+				db:       strings.ToLower(db),
+				table:    strings.ToLower(name),
+				col:      strings.ToLower(c.Name),
+				typ:      c.Type,
+				nullable: c.Nullable,
+			})
+		}
+		return outScope, true
+	}
+
+	if asOfLit != nil {
 		tab, database, err = b.cat.TableAsOf(b.ctx, db, name, asOfLit)
 	} else {
-		tab, database, err = b.cat.Table(b.ctx, db, name)
+		tab, _, err = database.GetTableInsensitive(b.ctx, name)
 	}
 	if err != nil {
 		if sql.ErrDatabaseNotFound.Is(err) {
@@ -560,23 +656,126 @@ func (b *PlanBuilder) buildTablescan(inScope *scope, db, name string, asof *ast.
 		}
 		b.handleErr(err)
 	} else if tab == nil {
-		b.handleErr(sql.ErrTableNotFound.New(name))
+		if b.TriggerCtx().Active && !b.TriggerCtx().Call {
+			outScope.node = plan.NewUnresolvedTable(name, db)
+			b.TriggerCtx().UnresolvedTables = append(b.TriggerCtx().UnresolvedTables, name)
+			return outScope, true
+		}
+		return outScope, false
 	}
 
 	rt := plan.NewResolvedTable(tab, database, asOfLit)
-	outScope.node = rt
-	if asofBindVar {
-		outScope.node = plan.NewDeferredAsOfTable(rt, asOfExpr)
+	ct, ok := rt.Table.(sql.CatalogTable)
+	if ok {
+		rt.Table = ct.AssignCatalog(b.cat)
 	}
+	outScope.node = rt
 
 	for _, c := range tab.Schema() {
 		outScope.newColumn(scopeColumn{
-			db:       strings.ToLower(db),
-			table:    strings.ToLower(tab.Name()),
-			col:      strings.ToLower(c.Name),
-			typ:      c.Type,
-			nullable: c.Nullable,
+			db:          strings.ToLower(db),
+			table:       strings.ToLower(tab.Name()),
+			col:         strings.ToLower(c.Name),
+			originalCol: c.Name,
+			typ:         c.Type,
+			nullable:    c.Nullable,
 		})
 	}
-	return outScope
+
+	if dt, _ := rt.Table.(sql.DynamicColumnsTable); dt != nil {
+		// the columns table has to resolve all columns in every table
+		sch, err := dt.AllColumns(b.ctx)
+		if err != nil {
+			b.handleErr(err)
+		}
+
+		var newSch sql.Schema
+		startSource := sch[0].Source
+		tmpScope := inScope.push()
+		for i, c := range sch {
+			// bucket schema fragments into colsets for resolving defaults
+			newCol := scopeColumn{
+				db:          strings.ToLower(db),
+				table:       strings.ToLower(c.Source),
+				col:         strings.ToLower(c.Name),
+				originalCol: c.Name,
+				typ:         c.Type,
+				nullable:    c.Nullable,
+			}
+			if !strings.EqualFold(c.Source, startSource) {
+				startSource = c.Source
+				tmpSch := b.resolveSchemaDefaults(tmpScope, sch[i-len(tmpScope.cols):i])
+				newSch = append(newSch, tmpSch...)
+				tmpScope = inScope.push()
+			}
+			tmpScope.newColumn(newCol)
+		}
+		if len(tmpScope.cols) > 0 {
+			tmpSch := b.resolveSchemaDefaults(tmpScope, sch[len(sch)-len(tmpScope.cols):len(sch)])
+			newSch = append(newSch, tmpSch...)
+		}
+		rt.Table, err = dt.WithDefaultsSchema(newSch)
+		if err != nil {
+			b.handleErr(err)
+		}
+	}
+
+	return outScope, true
+}
+
+func (b *Builder) resolveView(name string, database sql.Database, asOf interface{}) sql.Node {
+	var view *sql.View
+
+	if vdb, vok := database.(sql.ViewDatabase); vok {
+		viewDef, vdok, err := vdb.GetViewDefinition(b.ctx, name)
+		if err != nil {
+			b.handleErr(err)
+		}
+		oldOpts := b.parserOpts
+		defer func() {
+			b.parserOpts = oldOpts
+		}()
+		if vdok {
+			outerAsOf := b.ViewCtx().AsOf
+			outerDb := b.ViewCtx().DbName
+			b.ViewCtx().AsOf = asOf
+			b.ViewCtx().DbName = database.Name()
+			defer func() {
+				b.ViewCtx().AsOf = outerAsOf
+				b.ViewCtx().DbName = outerDb
+			}()
+			b.parserOpts = sql.NewSqlModeFromString(viewDef.SqlMode).ParserOptions()
+			node, _, _, err := b.Parse(viewDef.TextDefinition, false)
+			if err != nil {
+				b.handleErr(err)
+			}
+			view = plan.NewSubqueryAlias(name, viewDef.TextDefinition, node).AsView(viewDef.CreateViewStatement)
+
+		}
+	}
+	// If we didn't find the view from the database directly, use the in-session registry
+	if view == nil {
+		view, _ = b.ctx.GetViewRegistry().View(database.Name(), name)
+		if view != nil {
+			def, _, _ := transform.NodeWithOpaque(view.Definition(), func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+				// TODO this is a hack because the test registry setup is busted, these should always be resolved
+				if urt, ok := n.(*plan.UnresolvedTable); ok {
+					return b.resolveTable(urt.Name(), urt.Database().Name(), urt.AsOf()), transform.NewTree, nil
+				}
+				return n, transform.SameTree, nil
+			})
+			view = view.WithDefinition(def)
+		}
+	}
+
+	if view == nil {
+		return nil
+	}
+
+	query := view.Definition().Children()[0]
+	n, err := view.Definition().WithChildren(query)
+	if err != nil {
+		b.handleErr(err)
+	}
+	return n
 }

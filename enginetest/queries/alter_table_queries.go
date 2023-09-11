@@ -48,12 +48,12 @@ var AlterTableScripts = []ScriptTest{
 		// https://github.com/dolthub/dolt/issues/6206
 		Name: "alter table containing column default value expressions",
 		SetUpScript: []string{
-			"create table t (pk int primary key, col1 timestamp default current_timestamp(), col2 varchar(1000), index idx1 (pk, col1));",
+			"create table t (pk int primary key, col1 timestamp(6) default current_timestamp(), col2 varchar(1000), index idx1 (pk, col1));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t alter column col2 DROP DEFAULT;",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t;",
@@ -61,7 +61,7 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query:    "alter table t alter column col2 SET DEFAULT 'FOO!';",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t;",
@@ -329,6 +329,306 @@ var AlterTableScripts = []ScriptTest{
 			{
 				Query:    "SELECT * FROM t40",
 				Expected: []sql.Row{{1, 1}},
+			},
+		},
+	},
+	{
+		Name: "add column unique index",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (i bigint primary key, s varchar(20))",
+			"INSERT INTO t1 VALUES (1, 'a'), (2, 'b'), (3, 'c')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t1 add column j int unique",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1", "CREATE TABLE `t1` (\n" +
+					"  `i` bigint NOT NULL,\n" +
+					"  `s` varchar(20),\n" +
+					"  `j` int,\n" +
+					"  PRIMARY KEY (`i`),\n" +
+					"  UNIQUE KEY `j` (`j`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "multi-alter ddl column errors",
+		SetUpScript: []string{
+			"create table tbl_i (i int primary key)",
+			"create table tbl_ij (i int primary key, j int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table tbl_i add column j int, drop column j",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "alter table tbl_i add column j int, rename column j to k;",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "alter table tbl_i add column j int, modify column j varchar(10)",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "alter table tbl_ij drop column j, rename column j to k;",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "alter table tbl_ij drop column k, rename column j to k;",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "alter table tbl_i add index(j), add column j int;",
+				ExpectedErr: sql.ErrKeyColumnDoesNotExist,
+			},
+		},
+	},
+	{
+		Name: "Add column and make unique in separate clauses",
+		SetUpScript: []string{
+			"create table t (c1 int primary key, c2 int, c3 int)",
+			"insert into t values (1, 1, 1), (2, 2, 2), (3, 3, 3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "alter table t add column c4 int null, add unique index uniq(c4)",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{sql.Row{"t",
+					"CREATE TABLE `t` (\n" +
+						"  `c1` int NOT NULL,\n" +
+						"  `c2` int,\n" +
+						"  `c3` int,\n" +
+						"  `c4` int,\n" +
+						"  PRIMARY KEY (`c1`),\n" +
+						"  UNIQUE KEY `uniq` (`c4`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 1, 1, nil},
+					{2, 2, 2, nil},
+					{3, 3, 3, nil},
+				},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE does not change column collations",
+		SetUpScript: []string{
+			"CREATE TABLE test1 (v1 VARCHAR(200), v2 ENUM('a'), v3 SET('a'));",
+			"CREATE TABLE test2 (v1 VARCHAR(200), v2 ENUM('a'), v3 SET('a')) COLLATE=utf8mb4_general_ci;",
+			"CREATE TABLE test3 (v1 VARCHAR(200) COLLATE utf8mb4_general_ci, v2 ENUM('a'), v3 SET('a') CHARACTER SET utf8mb3) COLLATE=utf8mb4_general_ci",
+			"CREATE TABLE test4 (v1 VARCHAR(200) COLLATE utf8mb4_0900_ai_ci, v2 ENUM('a') COLLATE utf8mb4_general_ci, v3 SET('a') COLLATE utf8mb4_unicode_ci) COLLATE=utf8mb4_bin;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SHOW CREATE TABLE test1",
+				Expected: []sql.Row{{"test1",
+					"CREATE TABLE `test1` (\n" +
+						"  `v1` varchar(200),\n" +
+						"  `v2` enum('a'),\n" +
+						"  `v3` set('a')\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "SHOW CREATE TABLE test2",
+				Expected: []sql.Row{{"test2",
+					"CREATE TABLE `test2` (\n" +
+						"  `v1` varchar(200),\n" +
+						"  `v2` enum('a'),\n" +
+						"  `v3` set('a')\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"}},
+			},
+			{
+				Query: "SHOW CREATE TABLE test3",
+				Expected: []sql.Row{{"test3",
+					"CREATE TABLE `test3` (\n" +
+						"  `v1` varchar(200),\n" +
+						"  `v2` enum('a'),\n" +
+						"  `v3` set('a') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"}},
+			},
+			{
+				Query: "SHOW CREATE TABLE test4",
+				Expected: []sql.Row{{"test4",
+					"CREATE TABLE `test4` (\n" +
+						"  `v1` varchar(200) COLLATE utf8mb4_0900_ai_ci,\n" +
+						"  `v2` enum('a') COLLATE utf8mb4_general_ci,\n" +
+						"  `v3` set('a') COLLATE utf8mb4_unicode_ci\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"}},
+			},
+			{
+				Query:    "ALTER TABLE test1 COLLATE utf8mb4_general_ci;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE test2 COLLATE utf8mb4_0900_bin;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE test3 COLLATE utf8mb4_0900_bin;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE test4 COLLATE utf8mb4_unicode_ci;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "SHOW CREATE TABLE test1",
+				Expected: []sql.Row{{"test1",
+					"CREATE TABLE `test1` (\n" +
+						"  `v1` varchar(200) COLLATE utf8mb4_0900_bin,\n" +
+						"  `v2` enum('a') COLLATE utf8mb4_0900_bin,\n" +
+						"  `v3` set('a') COLLATE utf8mb4_0900_bin\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"}},
+			},
+			{
+				Query: "SHOW CREATE TABLE test2",
+				Expected: []sql.Row{{"test2",
+					"CREATE TABLE `test2` (\n" +
+						"  `v1` varchar(200) COLLATE utf8mb4_general_ci,\n" +
+						"  `v2` enum('a') COLLATE utf8mb4_general_ci,\n" +
+						"  `v3` set('a') COLLATE utf8mb4_general_ci\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "SHOW CREATE TABLE test3",
+				Expected: []sql.Row{{"test3",
+					"CREATE TABLE `test3` (\n" +
+						"  `v1` varchar(200) COLLATE utf8mb4_general_ci,\n" +
+						"  `v2` enum('a') COLLATE utf8mb4_general_ci,\n" +
+						"  `v3` set('a') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "SHOW CREATE TABLE test4",
+				Expected: []sql.Row{{"test4",
+					"CREATE TABLE `test4` (\n" +
+						"  `v1` varchar(200) COLLATE utf8mb4_0900_ai_ci,\n" +
+						"  `v2` enum('a') COLLATE utf8mb4_general_ci,\n" +
+						"  `v3` set('a')\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"}},
+			},
+		},
+	},
+}
+
+var AlterTableAddAutoIncrementScripts = []ScriptTest{
+	{
+		Name: "Add primary key column with auto increment",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (i int, j int);",
+			"insert into t1 values (1,1), (2,2), (3,3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t1 add column pk int primary key auto_increment;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+						"  `i` int,\n" +
+						"  `j` int,\n" +
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "select pk from t1 order by pk",
+				Expected: []sql.Row{
+					{1}, {2}, {3},
+				},
+			},
+		},
+	},
+	{
+		Name: "Add primary key column with auto increment, first",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (i int, j int);",
+			"insert into t1 values (1,1), (2,2), (3,3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table t1 add column pk int primary key",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query:    "alter table t1 add column pk int primary key auto_increment first",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  `i` int,\n" +
+						"  `j` int,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "select pk from t1 order by pk",
+				Expected: []sql.Row{
+					{1}, {2}, {3},
+				},
+			},
+		},
+	},
+	{
+		Name: "add column auto_increment, non primary key",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (i bigint primary key, s varchar(20))",
+			"INSERT INTO t1 VALUES (1, 'a'), (2, 'b'), (3, 'c')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t1 add column j int auto_increment unique",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+						"  `i` bigint NOT NULL,\n" +
+						"  `s` varchar(20),\n" +
+						"  `j` int AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`),\n" +
+						"  UNIQUE KEY `j` (`j`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "select * from t1 order by i",
+				Expected: []sql.Row{
+					{1, "a", 1},
+					{2, "b", 2},
+					{3, "c", 3},
+				},
+			},
+		},
+	},
+	{
+		Name: "add column auto_increment, non key",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (i bigint primary key, s varchar(20))",
+			"INSERT INTO t1 VALUES (1, 'a'), (2, 'b'), (3, 'c')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table t1 add column j int auto_increment",
+				ExpectedErr: sql.ErrInvalidAutoIncCols,
 			},
 		},
 	},

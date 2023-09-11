@@ -20,6 +20,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
 
 	sqle "github.com/dolthub/go-mysql-server"
@@ -29,6 +30,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func NewContext(harness Harness) *sql.Context {
@@ -40,7 +42,7 @@ func NewContextWithClient(harness ClientHarness, client sql.Client) *sql.Context
 }
 
 // TODO: remove
-func NewContextWithEngine(harness Harness, engine *sqle.Engine) *sql.Context {
+func NewContextWithEngine(harness Harness, engine QueryEngine) *sql.Context {
 	return NewContext(harness)
 }
 
@@ -57,9 +59,11 @@ func newContextSetup(ctx *sql.Context) *sql.Context {
 		plan.NewSubqueryAlias(
 			"myview",
 			"SELECT * FROM mytable",
-			plan.NewProject([]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("mytable", "mydb")),
+			plan.NewProject([]sql.Expression{
+				expression.NewGetFieldWithTable(0, types.Int64, "mytable", "i", false),
+				expression.NewGetFieldWithTable(1, types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), "mytable", "s", false),
+			}, plan.NewUnresolvedTable("mytable", "mydb")),
 		).AsView("CREATE VIEW myview AS SELECT * FROM mytable"))
-
 	ctx.ApplyOpts(sql.WithPid(atomic.AddUint64(&pid, 1)))
 
 	// We don't want to show any external procedures in our engine tests, so we exclude them
@@ -105,8 +109,6 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseP
 
 	if harness.Parallelism() > 1 {
 		a = analyzer.NewBuilder(provider).WithParallelism(harness.Parallelism()).Build()
-	} else if h, ok := harness.(VersionedHarness); ok {
-		a = analyzer.NewDefaultWithVersion(provider, h.Version())
 	} else {
 		a = analyzer.NewDefault(provider)
 	}
@@ -167,7 +169,7 @@ func RunSetupScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScri
 	return e, nil
 }
 
-func MustQuery(ctx *sql.Context, e *sqle.Engine, q string) (sql.Schema, []sql.Row) {
+func MustQuery(ctx *sql.Context, e QueryEngine, q string) (sql.Schema, []sql.Row) {
 	sch, iter, err := e.Query(ctx, q)
 	if err != nil {
 		panic(fmt.Sprintf("err running query %s: %s", q, err))
@@ -179,42 +181,7 @@ func MustQuery(ctx *sql.Context, e *sqle.Engine, q string) (sql.Schema, []sql.Ro
 	return sch, rows
 }
 
-func MustQueryWithBindings(ctx *sql.Context, e *sqle.Engine, q string, bindings map[string]sql.Expression) (sql.Schema, []sql.Row) {
-	ctx = ctx.WithQuery(q)
-	sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
-	if err != nil {
-		panic(err)
-	}
-
-	rows, err := sql.RowIterToRows(ctx, sch, iter)
-	if err != nil {
-		panic(err)
-	}
-
-	return sch, rows
-}
-
-func MustQueryWithPreBindings(ctx *sql.Context, e *sqle.Engine, q string, bindings map[string]sql.Expression) (sql.Node, sql.Schema, []sql.Row) {
-	ctx = ctx.WithQuery(q)
-	pre, err := e.PrepareQuery(ctx, q)
-	if err != nil {
-		panic(err)
-	}
-
-	sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
-	if err != nil {
-		panic(err)
-	}
-
-	rows, err := sql.RowIterToRows(ctx, sch, iter)
-	if err != nil {
-		panic(err)
-	}
-
-	return pre, sch, rows
-}
-
-func mustNewEngine(t *testing.T, h Harness) *sqle.Engine {
+func mustNewEngine(t *testing.T, h Harness) QueryEngine {
 	e, err := h.NewEngine(t)
 	if err != nil {
 		require.NoError(t, err)

@@ -25,24 +25,44 @@ import (
 // ResolvedTable represents a resolved SQL Table.
 type ResolvedTable struct {
 	sql.Table
-	Database sql.Database
-	AsOf     interface{}
-	comment  string
+	SqlDatabase sql.Database
+	AsOf        interface{}
+	comment     string
+}
+
+// UnderlyingTable returns the table wrapped by the ResolvedTable.
+func (t *ResolvedTable) UnderlyingTable() sql.Table {
+	if w, ok := t.Table.(sql.TableWrapper); ok {
+		return w.Underlying()
+	}
+	return t.Table
+}
+
+func (t *ResolvedTable) Database() sql.Database {
+	return t.SqlDatabase
+}
+
+func (t *ResolvedTable) WithDatabase(database sql.Database) (sql.Node, error) {
+	newNode := *t
+	t.SqlDatabase = database
+	return &newNode, nil
 }
 
 var _ sql.Node = (*ResolvedTable)(nil)
+var _ sql.TableNode = (*ResolvedTable)(nil)
+var _ sql.Databaser = (*ResolvedTable)(nil)
 var _ sql.CommentedNode = (*ResolvedTable)(nil)
 var _ sql.RenameableNode = (*ResolvedTable)(nil)
 var _ sql.CollationCoercible = (*ResolvedTable)(nil)
 
 // NewResolvedTable creates a new instance of ResolvedTable.
 func NewResolvedTable(table sql.Table, db sql.Database, asOf interface{}) *ResolvedTable {
-	return &ResolvedTable{Table: table, Database: db, AsOf: asOf}
+	return &ResolvedTable{Table: table, SqlDatabase: db, AsOf: asOf}
 }
 
 // NewResolvedDualTable creates a new instance of ResolvedTable.
 func NewResolvedDualTable() *ResolvedTable {
-	return &ResolvedTable{Table: NewDualSqlTable(), Database: memory.NewDatabase(""), AsOf: nil}
+	return &ResolvedTable{Table: NewDualSqlTable(), SqlDatabase: memory.NewDatabase(""), AsOf: nil}
 }
 
 func (t *ResolvedTable) WithComment(s string) sql.Node {
@@ -64,10 +84,14 @@ func (*ResolvedTable) Resolved() bool {
 	return true
 }
 
+func (*ResolvedTable) IsReadOnly() bool {
+	return true
+}
+
 func (t *ResolvedTable) String() string {
 	pr := sql.NewTreePrinter()
 	pr.WriteNode("Table")
-	table := seethroughTableWrapper(t)
+	table := t.UnderlyingTable()
 	children := []string{fmt.Sprintf("name: %s", t.Name())}
 
 	if pt, ok := table.(sql.ProjectedTable); ok {
@@ -98,7 +122,7 @@ func (t *ResolvedTable) String() string {
 func (t *ResolvedTable) DebugString() string {
 	pr := sql.NewTreePrinter()
 	pr.WriteNode("Table")
-	table := seethroughTableWrapper(t)
+	table := t.UnderlyingTable()
 	children := []string{fmt.Sprintf("name: %s", t.Name())}
 
 	var columns []string
@@ -148,13 +172,13 @@ func (t *ResolvedTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (t *ResolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	// It is assumed that if we've landed upon this node, then we're doing a SELECT operation. Most other nodes that
-	// may contain a ResolvedTable will have their own privilege checks, so we should only end up here if the parent
+	// may contain a TableNode will have their own privilege checks, so we should only end up here if the parent
 	// nodes are things such as indexed access, filters, limits, etc.
 	if IsDualTable(t) {
 		return true
 	}
 
-	db := t.Database
+	db := t.SqlDatabase
 	checkDbName := CheckPrivilegeNameForDatabase(db)
 
 	return opChecker.UserHasPrivileges(ctx,
@@ -169,17 +193,9 @@ func (*ResolvedTable) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 // WithTable returns this Node with the given table. The new table should have the same name as the previous table.
 func (t *ResolvedTable) WithTable(table sql.Table) (*ResolvedTable, error) {
 	if t.Name() != table.Name() {
-		return nil, fmt.Errorf("attempted to update ResolvedTable `%s` with table `%s`", t.Name(), table.Name())
+		return nil, fmt.Errorf("attempted to update TableNode `%s` with table `%s`", t.Name(), table.Name())
 	}
 	nt := *t
 	nt.Table = table
 	return &nt, nil
-}
-
-func seethroughTableWrapper(n *ResolvedTable) sql.Table {
-	if tw, ok := n.Table.(sql.TableWrapper); ok {
-		return tw.Underlying()
-	} else {
-		return n.Table
-	}
 }

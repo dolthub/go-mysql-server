@@ -72,7 +72,7 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 					return pushdownIndexToTable(ctx, a, n, idxLookup.index, idxLookup.keyExpr, idxLookup.nullmask)
 				}
 				return n, transform.SameTree, nil
-			case *plan.ResolvedTable:
+			case sql.TableNode:
 				if strings.ToLower(n.Name()) == idxLookup.table {
 					return pushdownIndexToTable(ctx, a, n, idxLookup.index, idxLookup.keyExpr, idxLookup.nullmask)
 				}
@@ -95,13 +95,10 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 func pushdownIndexToTable(ctx *sql.Context, a *Analyzer, tableNode sql.NameableNode, index sql.Index, keyExpr []sql.Expression, nullmask []bool) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(tableNode, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
-		case *plan.ResolvedTable:
+		case sql.TableNode:
 			table := getTable(tableNode)
 			if table == nil {
 				return n, transform.SameTree, nil
-			}
-			if tw, ok := table.(sql.TableWrapper); ok {
-				table = tw.Underlying()
 			}
 			if iat, ok := table.(sql.IndexAddressableTable); ok {
 				a.Log("table %q transformed with pushdown of index", tableNode.Name())
@@ -214,7 +211,7 @@ func createIndexKeyExpr(ctx *sql.Context, idx sql.Index, joinExprs []*joinColExp
 IndexExpressions:
 	for i, idxExpr := range idxPrefixExpressions {
 		for j := range joinExprs {
-			if idxExpr == normalizedJoinExprStrs[j] {
+			if strings.EqualFold(idxExpr, normalizedJoinExprStrs[j]) {
 				keyExprs[i] = joinExprs[j].comparand
 				nullmask[i] = joinExprs[j].matchnull
 				continue IndexExpressions
@@ -236,9 +233,6 @@ func getSubqueryIndexes(
 	ia *indexAnalyzer,
 	tableAliases TableAliases,
 ) (map[string]sql.Index, joinExpressionsByTable, error) {
-
-	scopeLen := len(scope.Schema())
-
 	// build a list of candidate predicate expressions, those that might be used for an index lookup
 	var candidatePredicates []sql.Expression
 
@@ -248,7 +242,7 @@ func getSubqueryIndexes(
 		isScopeExpr := false
 		sql.Inspect(e, func(e sql.Expression) bool {
 			if gf, ok := e.(*expression.GetField); ok {
-				if gf.Index() < scopeLen {
+				if scope.Correlated().Contains(sql.ColumnId(gf.Id())) {
 					isScopeExpr = true
 					return false
 				}

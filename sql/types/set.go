@@ -235,7 +235,12 @@ func (t SetType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Val
 	}
 	encodedBytes, ok := resultCharset.Encoder().Encode(encodings.StringToBytes(value))
 	if !ok {
-		return sqltypes.Value{}, sql.ErrCharSetFailedToEncode.New(t.collation.CharacterSet().Name())
+		snippet := value
+		if len(snippet) > 50 {
+			snippet = snippet[:50]
+		}
+		snippet = strings.ToValidUTF8(snippet, string(utf8.RuneError))
+		return sqltypes.Value{}, sql.ErrCharSetFailedToEncode.New(resultCharset.Name(), utf8.ValidString(value), snippet)
 	}
 	val := AppendAndSliceBytes(dest, encodedBytes)
 
@@ -244,14 +249,7 @@ func (t SetType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Val
 
 // String implements Type interface.
 func (t SetType) String() string {
-	s := fmt.Sprintf("set('%v')", strings.Join(t.Values(), `','`))
-	if t.CharacterSet() != sql.Collation_Default.CharacterSet() {
-		s += " CHARACTER SET " + t.CharacterSet().String()
-	}
-	if !t.collation.Equals(sql.Collation_Default) {
-		s += " COLLATE " + t.collation.String()
-	}
-	return s
+	return t.StringWithTableCollation(sql.Collation_Default)
 }
 
 // Type implements Type interface.
@@ -305,9 +303,21 @@ func (t SetType) Values() []string {
 	return valArray
 }
 
-// WithNewCollation implements TypeWithCollation interface.
+// WithNewCollation implements sql.TypeWithCollation interface.
 func (t SetType) WithNewCollation(collation sql.CollationID) (sql.Type, error) {
 	return CreateSetType(t.Values(), collation)
+}
+
+// StringWithTableCollation implements sql.TypeWithCollation interface.
+func (t SetType) StringWithTableCollation(tableCollation sql.CollationID) string {
+	s := fmt.Sprintf("set('%v')", strings.Join(t.Values(), `','`))
+	if t.CharacterSet() != tableCollation.CharacterSet() {
+		s += " CHARACTER SET " + t.CharacterSet().String()
+	}
+	if t.collation != tableCollation {
+		s += " COLLATE " + t.collation.String()
+	}
+	return s
 }
 
 // allValuesBitField returns a bit field that references every value that the set contains.

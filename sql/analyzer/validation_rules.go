@@ -495,7 +495,7 @@ func validateStarExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *p
 					}
 					switch e.(type) {
 					case *expression.Star:
-						err = analyzererrors.ErrStarUnsupported.New()
+						err = sql.ErrStarUnsupported.New()
 						return false
 					case *aggregation.Count, *aggregation.CountDistinct, *aggregation.JsonArray:
 						if _, s := e.Children()[0].(*expression.Star); s {
@@ -686,7 +686,7 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 	// if a ReadOnlyDatabase is found, invalidate the query
 	readOnlyDBSearch := func(node sql.Node) bool {
 		if rt, ok := node.(*plan.ResolvedTable); ok {
-			if ro, ok := rt.Database.(sql.ReadOnlyDatabase); ok {
+			if ro, ok := rt.SqlDatabase.(sql.ReadOnlyDatabase); ok {
 				if ro.IsReadOnly() {
 					readOnlyDB = ro
 					valid = false
@@ -850,7 +850,7 @@ func checkForAggregationFunctions(exprs []sql.Expression) error {
 	for _, e := range exprs {
 		sql.Inspect(e, func(ie sql.Expression) bool {
 			if _, ok := ie.(sql.Aggregation); ok {
-				validationErr = analyzererrors.ErrAggregationUnsupported.New(e.String())
+				validationErr = sql.ErrAggregationUnsupported.New(e.String())
 			}
 			return validationErr == nil
 		})

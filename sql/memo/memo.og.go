@@ -102,6 +102,22 @@ func (r *LookupJoin) JoinPrivate() *JoinBase {
 	return r.JoinBase
 }
 
+type RangeHeapJoin struct {
+	*JoinBase
+	RangeHeap *RangeHeap
+}
+
+var _ RelExpr = (*RangeHeapJoin)(nil)
+var _ JoinRel = (*RangeHeapJoin)(nil)
+
+func (r *RangeHeapJoin) String() string {
+	return FormatExpr(r)
+}
+
+func (r *RangeHeapJoin) JoinPrivate() *JoinBase {
+	return r.JoinBase
+}
+
 type ConcatJoin struct {
 	*JoinBase
 	Concat []*Lookup
@@ -168,54 +184,24 @@ func (r *FullOuterJoin) JoinPrivate() *JoinBase {
 	return r.JoinBase
 }
 
-type LateralCrossJoin struct {
+type LateralJoin struct {
 	*JoinBase
 }
 
-var _ RelExpr = (*LateralCrossJoin)(nil)
-var _ JoinRel = (*LateralCrossJoin)(nil)
+var _ RelExpr = (*LateralJoin)(nil)
+var _ JoinRel = (*LateralJoin)(nil)
 
-func (r *LateralCrossJoin) String() string {
+func (r *LateralJoin) String() string {
 	return FormatExpr(r)
 }
 
-func (r *LateralCrossJoin) JoinPrivate() *JoinBase {
-	return r.JoinBase
-}
-
-type LateralInnerJoin struct {
-	*JoinBase
-}
-
-var _ RelExpr = (*LateralInnerJoin)(nil)
-var _ JoinRel = (*LateralInnerJoin)(nil)
-
-func (r *LateralInnerJoin) String() string {
-	return FormatExpr(r)
-}
-
-func (r *LateralInnerJoin) JoinPrivate() *JoinBase {
-	return r.JoinBase
-}
-
-type LateralLeftJoin struct {
-	*JoinBase
-}
-
-var _ RelExpr = (*LateralLeftJoin)(nil)
-var _ JoinRel = (*LateralLeftJoin)(nil)
-
-func (r *LateralLeftJoin) String() string {
-	return FormatExpr(r)
-}
-
-func (r *LateralLeftJoin) JoinPrivate() *JoinBase {
+func (r *LateralJoin) JoinPrivate() *JoinBase {
 	return r.JoinBase
 }
 
 type TableScan struct {
 	*sourceBase
-	Table *plan.ResolvedTable
+	Table sql.TableNode
 }
 
 var _ RelExpr = (*TableScan)(nil)
@@ -381,34 +367,6 @@ func (r *SubqueryAlias) Children() []*ExprGroup {
 	return nil
 }
 
-type Max1Row struct {
-	*sourceBase
-	Table sql.NameableNode
-}
-
-var _ RelExpr = (*Max1Row)(nil)
-var _ SourceRel = (*Max1Row)(nil)
-
-func (r *Max1Row) String() string {
-	return FormatExpr(r)
-}
-
-func (r *Max1Row) Name() string {
-	return strings.ToLower(r.Table.Name())
-}
-
-func (r *Max1Row) TableId() TableId {
-	return TableIdForSource(r.g.Id)
-}
-
-func (r *Max1Row) OutputCols() sql.Schema {
-	return r.Table.Schema()
-}
-
-func (r *Max1Row) Children() []*ExprGroup {
-	return nil
-}
-
 type TableFunc struct {
 	*sourceBase
 	Table sql.TableFunction
@@ -434,6 +392,34 @@ func (r *TableFunc) OutputCols() sql.Schema {
 }
 
 func (r *TableFunc) Children() []*ExprGroup {
+	return nil
+}
+
+type JSONTable struct {
+	*sourceBase
+	Table *plan.JSONTable
+}
+
+var _ RelExpr = (*JSONTable)(nil)
+var _ SourceRel = (*JSONTable)(nil)
+
+func (r *JSONTable) String() string {
+	return FormatExpr(r)
+}
+
+func (r *JSONTable) Name() string {
+	return strings.ToLower(r.Table.Name())
+}
+
+func (r *JSONTable) TableId() TableId {
+	return TableIdForSource(r.g.Id)
+}
+
+func (r *JSONTable) OutputCols() sql.Schema {
+	return r.Table.Schema()
+}
+
+func (r *JSONTable) Children() []*ExprGroup {
 	return nil
 }
 
@@ -505,6 +491,25 @@ func (r *Distinct) Children() []*ExprGroup {
 }
 
 func (r *Distinct) outputCols() sql.Schema {
+	return r.Child.RelProps.OutputCols()
+}
+
+type Max1Row struct {
+	*relBase
+	Child *ExprGroup
+}
+
+var _ RelExpr = (*Max1Row)(nil)
+
+func (r *Max1Row) String() string {
+	return FormatExpr(r)
+}
+
+func (r *Max1Row) Children() []*ExprGroup {
+	return []*ExprGroup{r.Child}
+}
+
+func (r *Max1Row) outputCols() sql.Schema {
 	return r.Child.RelProps.OutputCols()
 }
 
@@ -875,6 +880,27 @@ func (r *Tuple) Children() []*ExprGroup {
 	return nil
 }
 
+type Between struct {
+	*scalarBase
+	Value *ExprGroup
+	Min   *ExprGroup
+	Max   *ExprGroup
+}
+
+var _ ScalarExpr = (*Between)(nil)
+
+func (r *Between) ExprId() ScalarExprId {
+	return ScalarExprBetween
+}
+
+func (r *Between) String() string {
+	return FormatExpr(r)
+}
+
+func (r *Between) Children() []*ExprGroup {
+	return nil
+}
+
 type Hidden struct {
 	*scalarBase
 	E      sql.Expression
@@ -910,6 +936,8 @@ func FormatExpr(r exprType) string {
 		return fmt.Sprintf("antijoin %d %d", r.Left.Id, r.Right.Id)
 	case *LookupJoin:
 		return fmt.Sprintf("lookupjoin %d %d", r.Left.Id, r.Right.Id)
+	case *RangeHeapJoin:
+		return fmt.Sprintf("rangeheapjoin %d %d", r.Left.Id, r.Right.Id)
 	case *ConcatJoin:
 		return fmt.Sprintf("concatjoin %d %d", r.Left.Id, r.Right.Id)
 	case *HashJoin:
@@ -918,12 +946,8 @@ func FormatExpr(r exprType) string {
 		return fmt.Sprintf("mergejoin %d %d", r.Left.Id, r.Right.Id)
 	case *FullOuterJoin:
 		return fmt.Sprintf("fullouterjoin %d %d", r.Left.Id, r.Right.Id)
-	case *LateralCrossJoin:
-		return fmt.Sprintf("lateralcrossjoin %d %d", r.Left.Id, r.Right.Id)
-	case *LateralInnerJoin:
-		return fmt.Sprintf("lateralinnerjoin %d %d", r.Left.Id, r.Right.Id)
-	case *LateralLeftJoin:
-		return fmt.Sprintf("lateralleftjoin %d %d", r.Left.Id, r.Right.Id)
+	case *LateralJoin:
+		return fmt.Sprintf("lateraljoin %d %d", r.Left.Id, r.Right.Id)
 	case *TableScan:
 		return fmt.Sprintf("tablescan: %s", r.Name())
 	case *Values:
@@ -936,16 +960,18 @@ func FormatExpr(r exprType) string {
 		return fmt.Sprintf("recursivecte: %s", r.Name())
 	case *SubqueryAlias:
 		return fmt.Sprintf("subqueryalias: %s", r.Name())
-	case *Max1Row:
-		return fmt.Sprintf("max1row: %s", r.Name())
 	case *TableFunc:
 		return fmt.Sprintf("tablefunc: %s", r.Name())
+	case *JSONTable:
+		return fmt.Sprintf("jsontable: %s", r.Name())
 	case *EmptyTable:
 		return fmt.Sprintf("emptytable: %s", r.Name())
 	case *Project:
 		return fmt.Sprintf("project: %d", r.Child.Id)
 	case *Distinct:
 		return fmt.Sprintf("distinct: %d", r.Child.Id)
+	case *Max1Row:
+		return fmt.Sprintf("max1row: %d", r.Child.Id)
 	case *Filter:
 		return fmt.Sprintf("filter: %d", r.Child.Id)
 	case *Equal:
@@ -986,6 +1012,8 @@ func FormatExpr(r exprType) string {
 			vals[i] = fmt.Sprintf("%d", v.Id)
 		}
 		return fmt.Sprintf("tuple: %s", strings.Join(vals, " "))
+	case *Between:
+		return fmt.Sprintf("between: %d, %d, %d", r.Value.Id, r.Min.Id, r.Max.Id)
 	case *Hidden:
 		return fmt.Sprintf("hidden: %s", r.E)
 	default:
@@ -1010,6 +1038,8 @@ func buildRelExpr(b *ExecBuilder, r RelExpr, input sql.Schema, children ...sql.N
 		result, err = b.buildAntiJoin(r, input, children...)
 	case *LookupJoin:
 		result, err = b.buildLookupJoin(r, input, children...)
+	case *RangeHeapJoin:
+		result, err = b.buildRangeHeapJoin(r, input, children...)
 	case *ConcatJoin:
 		result, err = b.buildConcatJoin(r, input, children...)
 	case *HashJoin:
@@ -1018,6 +1048,8 @@ func buildRelExpr(b *ExecBuilder, r RelExpr, input sql.Schema, children ...sql.N
 		result, err = b.buildMergeJoin(r, input, children...)
 	case *FullOuterJoin:
 		result, err = b.buildFullOuterJoin(r, input, children...)
+	case *LateralJoin:
+		result, err = b.buildLateralJoin(r, input, children...)
 	case *TableScan:
 		result, err = b.buildTableScan(r, input, children...)
 	case *Values:
@@ -1030,14 +1062,16 @@ func buildRelExpr(b *ExecBuilder, r RelExpr, input sql.Schema, children ...sql.N
 		result, err = b.buildRecursiveCte(r, input, children...)
 	case *SubqueryAlias:
 		result, err = b.buildSubqueryAlias(r, input, children...)
-	case *Max1Row:
-		result, err = b.buildMax1Row(r, input, children...)
 	case *TableFunc:
 		result, err = b.buildTableFunc(r, input, children...)
+	case *JSONTable:
+		result, err = b.buildJSONTable(r, input, children...)
 	case *EmptyTable:
 		result, err = b.buildEmptyTable(r, input, children...)
 	case *Project:
 		result, err = b.buildProject(r, input, children...)
+	case *Max1Row:
+		result, err = b.buildMax1Row(r, input, children...)
 	case *Filter:
 		result, err = b.buildFilter(r, input, children...)
 	default:
@@ -1091,6 +1125,8 @@ func buildScalarExpr(b *ExecBuilder, r ScalarExpr, sch sql.Schema) (sql.Expressi
 		return b.buildIsNull(r, sch)
 	case *Tuple:
 		return b.buildTuple(r, sch)
+	case *Between:
+		return b.buildBetween(r, sch)
 	case *Hidden:
 		return b.buildHidden(r, sch)
 	default:

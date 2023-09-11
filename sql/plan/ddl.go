@@ -18,10 +18,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/fulltext"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type IfNotExistsOption bool
@@ -82,6 +84,10 @@ func (i *IndexDefinition) IsUnique() bool {
 	return i.Constraint == sql.IndexConstraint_Unique
 }
 
+func (i *IndexDefinition) IsFullText() bool {
+	return i.Constraint == sql.IndexConstraint_Fulltext
+}
+
 // ColumnNames returns each column's name without the length property.
 func (i *IndexDefinition) ColumnNames() []string {
 	colNames := make([]string, len(i.Columns))
@@ -89,6 +95,20 @@ func (i *IndexDefinition) ColumnNames() []string {
 		colNames[i] = col.Name
 	}
 	return colNames
+}
+
+// AsIndexDef returns the IndexDefinition as the other form.
+func (i *IndexDefinition) AsIndexDef() sql.IndexDef {
+	//TODO: We should get rid of this IndexDefinition and just use the SQL package one
+	cols := make([]sql.IndexColumn, len(i.Columns))
+	copy(cols, i.Columns)
+	return sql.IndexDef{
+		Name:       i.IndexName,
+		Columns:    cols,
+		Constraint: i.Constraint,
+		Storage:    i.Using,
+		Comment:    i.Comment,
+	}
 }
 
 // TableSpec is a node describing the schema of a table.
@@ -242,6 +262,10 @@ func (c *CreateTable) Resolved() bool {
 	return true
 }
 
+func (c *CreateTable) IsReadOnly() bool {
+	return false
+}
+
 // ForeignKeys returns any foreign keys that will be declared on this table.
 func (c *CreateTable) ForeignKeys() []*sql.ForeignKeyConstraint {
 	return c.FkDefs
@@ -259,13 +283,14 @@ func (c *CreateTable) WithParentForeignKeyTables(refTbls []sql.ForeignKeyTable) 
 	return &nc, nil
 }
 
-func (c *CreateTable) CreateIndexes(ctx *sql.Context, tableNode sql.Table, idxes []*IndexDefinition) error {
+func (c *CreateTable) CreateIndexes(ctx *sql.Context, tableNode sql.Table, idxes []*IndexDefinition) (err error) {
 	idxAlterable, ok := tableNode.(sql.IndexAlterableTable)
 	if !ok {
 		return ErrNotIndexable.New()
 	}
 
 	indexMap := make(map[string]struct{})
+	fulltextIndexes := make([]sql.IndexDef, 0, len(idxes))
 	for _, idxDef := range idxes {
 		indexName := idxDef.IndexName
 		// If the name is empty, we create a new name using the columns provided while appending an ascending integer
@@ -284,6 +309,13 @@ func (c *CreateTable) CreateIndexes(ctx *sql.Context, tableNode sql.Table, idxes
 		} else if _, ok = indexMap[strings.ToLower(idxDef.IndexName)]; ok {
 			return sql.ErrIndexIDAlreadyRegistered.New(idxDef.IndexName)
 		}
+		// We'll create the Full-Text indexes after all others
+		if idxDef.Constraint == sql.IndexConstraint_Fulltext {
+			otherDef := idxDef.AsIndexDef()
+			otherDef.Name = indexName
+			fulltextIndexes = append(fulltextIndexes, otherDef)
+			continue
+		}
 		err := idxAlterable.CreateIndex(ctx, sql.IndexDef{
 			Name:       indexName,
 			Columns:    idxDef.Columns,
@@ -295,6 +327,23 @@ func (c *CreateTable) CreateIndexes(ctx *sql.Context, tableNode sql.Table, idxes
 			return err
 		}
 		indexMap[strings.ToLower(indexName)] = struct{}{}
+	}
+
+	// Evaluate our Full-Text indexes now
+	if len(fulltextIndexes) > 0 {
+		database, ok := c.Db.(fulltext.Database)
+		if !ok {
+			if privDb, ok := c.Db.(mysql_db.PrivilegedDatabase); ok {
+				if database, ok = privDb.Unwrap().(fulltext.Database); !ok {
+					return sql.ErrCreateTableNotSupported.New(c.Db.Name())
+				}
+			} else {
+				return sql.ErrCreateTableNotSupported.New(c.Db.Name())
+			}
+		}
+		if err = fulltext.CreateFulltextIndexes(ctx, database, idxAlterable, nil, fulltextIndexes...); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -489,16 +538,12 @@ func (c *CreateTable) schemaDebugString() string {
 }
 
 func (c *CreateTable) Expressions() []sql.Expression {
-	exprs := make([]sql.Expression, len(c.CreateSchema.Schema)+len(c.ChDefs))
-	i := 0
-	for _, col := range c.CreateSchema.Schema {
-		exprs[i] = expression.WrapExpression(col.Default)
-		i++
-	}
+	exprs := transform.WrappedColumnDefaults(c.CreateSchema.Schema)
+
 	for _, ch := range c.ChDefs {
-		exprs[i] = ch.Expr
-		i++
+		exprs = append(exprs, ch.Expr)
 	}
+
 	return exprs
 }
 
@@ -535,7 +580,8 @@ func (c *CreateTable) Temporary() TempTableOption {
 }
 
 func (c CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	length := len(c.CreateSchema.Schema) + len(c.ChDefs)
+	schemaLen := len(c.CreateSchema.Schema)
+	length := schemaLen + len(c.ChDefs)
 	if len(exprs) != length {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(exprs), length)
 	}
@@ -543,19 +589,14 @@ func (c CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) 
 	nc := c
 
 	// Make sure to make a deep copy of any slices here so we aren't modifying the original pointer
-	ns := c.CreateSchema.Schema.Copy()
-	i := 0
-	for ; i < len(c.CreateSchema.Schema); i++ {
-		unwrappedColDefVal, ok := exprs[i].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
-		if ok {
-			ns[i].Default = unwrappedColDefVal
-		} else { // nil fails type check
-			ns[i].Default = nil
-		}
+	ns, err := transform.SchemaWithDefaults(c.CreateSchema.Schema, exprs[:schemaLen])
+	if err != nil {
+		return nil, err
 	}
+
 	nc.CreateSchema = sql.NewPrimaryKeySchema(ns, c.CreateSchema.PkOrdinals...)
 
-	ncd, err := c.ChDefs.FromExpressions(exprs[i:])
+	ncd, err := c.ChDefs.FromExpressions(exprs[schemaLen:])
 	if err != nil {
 		return nil, err
 	}
@@ -639,6 +680,10 @@ func (d *DropTable) Resolved() bool {
 	return true
 }
 
+func (d *DropTable) IsReadOnly() bool {
+	return false
+}
+
 // Schema implements the sql.Expression interface.
 func (d *DropTable) Schema() sql.Schema {
 	return types.OkResultSchema
@@ -658,7 +703,7 @@ func (d *DropTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (d *DropTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	for _, tbl := range d.Tables {
-		db := getDatabase(tbl)
+		db := GetDatabase(tbl)
 		if !opChecker.UserHasPrivileges(ctx,
 			sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(db), getTableName(tbl), "", sql.PrivilegeType_Drop)) {
 			return false

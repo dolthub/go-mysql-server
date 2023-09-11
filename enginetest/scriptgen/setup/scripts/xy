@@ -1,5 +1,5 @@
 exec
-CREATE table xy (x int primary key, y int, index y_idx(y));
+CREATE table xy (x int primary key, y int, unique index y_idx(y));
 ----
 
 exec
@@ -100,7 +100,15 @@ update information_schema.statistics set cardinality = 1000 where table_name = '
 ----
 
 exec
+update information_schema.statistics set cardinality = 1000 where table_name = 'ab_hasnull';
+----
+
+exec
 update information_schema.statistics set cardinality = 1000 where table_name = 'xy';
+----
+
+exec
+update information_schema.statistics set cardinality = 1000 where table_name = 'xy_hasnull';
 ----
 
 exec

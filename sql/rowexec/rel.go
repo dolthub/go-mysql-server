@@ -203,33 +203,30 @@ func (b *BaseBuilder) buildHashLookup(ctx *sql.Context, n *plan.HashLookup, row 
 	n.Mutex.Lock()
 	defer n.Mutex.Unlock()
 	if n.Lookup == nil {
-		// Instead of building the mapping inline here with a special
-		// RowIter, we currently make use of CachedResults and require
-		// *CachedResults to be our direct child.
-		cr := n.UnaryNode.Child.(*plan.CachedResults)
-		if res := cr.GetCachedResults(); res != nil {
-			n.Lookup = make(map[interface{}][]sql.Row)
-			for _, row := range res {
-				// TODO: Maybe do not put nil stuff in here.
-				key, err := n.GetHashKey(ctx, n.RightEntryKey, row)
-				if err != nil {
-					return nil, err
-				}
-				n.Lookup[key] = append(n.Lookup[key], row)
-			}
-			// CachedResult is safe to Dispose after contents are transferred
-			// to |n.lookup|
-			cr.Dispose()
-		}
-	}
-	if n.Lookup != nil {
-		key, err := n.GetHashKey(ctx, n.LeftProbeKey, row)
+		childIter, err := b.buildNodeExec(ctx, n.Child, row)
 		if err != nil {
 			return nil, err
 		}
-		return sql.RowsToRowIter(n.Lookup[key]...), nil
+		return newHashLookupGeneratingIter(n, childIter), nil
 	}
-	return b.buildNodeExec(ctx, n.Child, row)
+	key, err := n.GetHashKey(ctx, n.LeftProbeKey, row)
+	if err != nil {
+		return nil, err
+	}
+	if n.JoinType.IsExcludeNulls() {
+		// Some joins care if any of their filter comparisons have a NULL result.
+		// For these joins, we need to distinguish between an empty and non-empty secondary table.
+		// Thus, if there are any rows in the lookup, we must return at least one.
+		if len((*n.Lookup)[key]) > 0 {
+			return sql.RowsToRowIter((*n.Lookup)[key]...), nil
+		}
+		for k := range *n.Lookup {
+			if len((*n.Lookup)[k]) > 0 {
+				return sql.RowsToRowIter((*n.Lookup)[k]...), nil
+			}
+		}
+	}
+	return sql.RowsToRowIter((*n.Lookup)[key]...), nil
 }
 
 func (b *BaseBuilder) buildTableAlias(ctx *sql.Context, n *plan.TableAlias, row sql.Row) (sql.RowIter, error) {
@@ -265,6 +262,8 @@ func (b *BaseBuilder) buildJoinNode(ctx *sql.Context, n *plan.JoinNode, row sql.
 		return newMergeJoinIter(ctx, b, n, row)
 	case n.Op.IsLateral():
 		return newLateralJoinIter(ctx, b, n, row)
+	case n.Op.IsRange():
+		return newRangeHeapJoinIter(ctx, b, n, row)
 	default:
 		return newJoinIter(ctx, b, n, row)
 	}
@@ -482,6 +481,7 @@ func (b *BaseBuilder) populateMax1Results(ctx *sql.Context, n *plan.Max1Row, row
 	if err != nil {
 		return err
 	}
+	defer i.Close(ctx)
 	r1, err := i.Next(ctx)
 	if errors.Is(err, io.EOF) {
 		n.EmptyResult = true
@@ -720,7 +720,7 @@ func (b *BaseBuilder) buildPrepareQuery(ctx *sql.Context, n *plan.PrepareQuery, 
 }
 
 func (b *BaseBuilder) buildResolvedTable(ctx *sql.Context, n *plan.ResolvedTable, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.ResolvedTable")
+	span, ctx := ctx.Span("plan.TableNode")
 
 	partitions, err := n.Table.Partitions(ctx)
 	if err != nil {

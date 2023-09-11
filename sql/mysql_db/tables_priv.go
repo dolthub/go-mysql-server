@@ -17,6 +17,7 @@ package mysql_db
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -36,40 +37,10 @@ var (
 	tablesPrivTblSchema sql.Schema
 )
 
-// TablesPrivConverter handles the conversion between a stored *User entry and the faux "tables_priv" Grant Table.
-type TablesPrivConverter struct{}
-
-var _ in_mem_table.DataEditorConverter = TablesPrivConverter{}
-
-// RowToKey implements the interface in_mem_table.DataEditorConverter.
-func (conv TablesPrivConverter) RowToKey(ctx *sql.Context, row sql.Row) (in_mem_table.Key, error) {
+func UserAddTablesRow(ctx *sql.Context, row sql.Row, user *User) (*User, error) {
 	if len(row) != len(tablesPrivTblSchema) {
 		return nil, errTablesPrivRow
 	}
-	host, ok := row[tablesPrivTblColIndex_Host].(string)
-	if !ok {
-		return nil, errTablesPrivRow
-	}
-	user, ok := row[tablesPrivTblColIndex_User].(string)
-	if !ok {
-		return nil, errTablesPrivRow
-	}
-	return UserPrimaryKey{
-		Host: host,
-		User: user,
-	}, nil
-}
-
-// AddRowToEntry implements the interface in_mem_table.DataEditorConverter.
-func (conv TablesPrivConverter) AddRowToEntry(ctx *sql.Context, row sql.Row, entry in_mem_table.Entry) (in_mem_table.Entry, error) {
-	if len(row) != len(tablesPrivTblSchema) {
-		return nil, errTablesPrivRow
-	}
-	user, ok := entry.(*User)
-	if !ok {
-		return nil, errTablesPrivEntry
-	}
-	user = user.Copy(ctx).(*User)
 
 	dbName, ok := row[tablesPrivTblColIndex_Db].(string)
 	if !ok {
@@ -87,6 +58,9 @@ func (conv TablesPrivConverter) AddRowToEntry(ctx *sql.Context, row sql.Row, ent
 	if err != nil {
 		return nil, err
 	}
+
+	user = UserCopy(user)
+
 	var privs []sql.PrivilegeType
 	for _, val := range strings.Split(tablePrivStrs, ",") {
 		switch val {
@@ -125,16 +99,10 @@ func (conv TablesPrivConverter) AddRowToEntry(ctx *sql.Context, row sql.Row, ent
 	return user, nil
 }
 
-// RemoveRowFromEntry implements the interface in_mem_table.DataEditorConverter.
-func (conv TablesPrivConverter) RemoveRowFromEntry(ctx *sql.Context, row sql.Row, entry in_mem_table.Entry) (in_mem_table.Entry, error) {
+func UserRemoveTablesRow(ctx *sql.Context, row sql.Row, user *User) (*User, error) {
 	if len(row) != len(tablesPrivTblSchema) {
 		return nil, errTablesPrivRow
 	}
-	user, ok := entry.(*User)
-	if !ok {
-		return nil, errTablesPrivEntry
-	}
-	user = user.Copy(ctx).(*User)
 
 	db, ok := row[tablesPrivTblColIndex_Db].(string)
 	if !ok {
@@ -144,15 +112,41 @@ func (conv TablesPrivConverter) RemoveRowFromEntry(ctx *sql.Context, row sql.Row
 	if !ok {
 		return nil, errTablesPrivRow
 	}
+
+	user = UserCopy(user)
 	user.PrivilegeSet.ClearTable(db, tbl)
 	return user, nil
 }
 
-// EntryToRows implements the interface in_mem_table.DataEditorConverter.
-func (conv TablesPrivConverter) EntryToRows(ctx *sql.Context, entry in_mem_table.Entry) ([]sql.Row, error) {
-	user, ok := entry.(*User)
+func UserFromTablesRow(ctx *sql.Context, row sql.Row) (*User, error) {
+	if len(row) != len(tablesPrivTblSchema) {
+		return nil, errTablesPrivRow
+	}
+	host, ok := row[tablesPrivTblColIndex_Host].(string)
 	if !ok {
-		return nil, errTablesPrivEntry
+		return nil, errTablesPrivRow
+	}
+	user, ok := row[tablesPrivTblColIndex_User].(string)
+	if !ok {
+		return nil, errTablesPrivRow
+	}
+	return &User{
+		Host: host,
+		User: user,
+	}, nil
+}
+
+func UserToTablesRows(ctx *sql.Context, user *User) ([]sql.Row, error) {
+	newRow := func() (sql.Row, error) {
+		row := make(sql.Row, len(tablesPrivTblSchema))
+		var err error
+		for i, col := range tablesPrivTblSchema {
+			row[i], err = col.Default.Eval(ctx, nil)
+			if err != nil {
+				return nil, err // Should never happen, schema is static
+			}
+		}
+		return row, nil
 	}
 
 	var rows []sql.Row
@@ -161,14 +155,11 @@ func (conv TablesPrivConverter) EntryToRows(ctx *sql.Context, entry in_mem_table
 			if tblSet.Count() == 0 {
 				continue
 			}
-			row := make(sql.Row, len(tablesPrivTblSchema))
-			var err error
-			for i, col := range tablesPrivTblSchema {
-				row[i], err = col.Default.Eval(ctx, nil)
-				if err != nil {
-					return nil, err // Should never happen, schema is static
-				}
+			row, err := newRow()
+			if err != nil {
+				return nil, err
 			}
+
 			row[tablesPrivTblColIndex_User] = user.User
 			row[tablesPrivTblColIndex_Host] = user.Host
 			row[tablesPrivTblColIndex_Db] = dbSet.Name()
@@ -215,6 +206,24 @@ func (conv TablesPrivConverter) EntryToRows(ctx *sql.Context, entry in_mem_table
 	}
 
 	return rows, nil
+}
+
+func NewUserTablesIndexedSetTable(set in_mem_table.IndexedSet[*User], lock, rlock sync.Locker) *in_mem_table.MultiIndexedSetTable[*User] {
+	table := in_mem_table.NewMultiIndexedSetTable[*User](
+		tablesPrivTblName,
+		tablesPrivTblSchema,
+		sql.Collation_utf8mb3_bin,
+		set,
+		in_mem_table.MultiValueOps[*User]{
+			ToRows:    UserToTablesRows,
+			FromRow:   UserFromTablesRow,
+			AddRow:    UserAddTablesRow,
+			DeleteRow: UserRemoveTablesRow,
+		},
+		lock,
+		rlock,
+	)
+	return table
 }
 
 // init creates the schema for the "tables_priv" Grant Table.

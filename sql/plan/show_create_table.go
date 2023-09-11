@@ -62,6 +62,10 @@ func (sc *ShowCreateTable) Resolved() bool {
 	return sc.Child.Resolved() && sc.targetSchema.Resolved()
 }
 
+func (sc *ShowCreateTable) IsReadOnly() bool {
+	return true
+}
+
 func (sc ShowCreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(1, len(children))
@@ -112,7 +116,12 @@ func (sc ShowCreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, er
 		return nil, sql.ErrInvalidChildrenNumber.New(sc, len(exprs), len(sc.targetSchema))
 	}
 
-	sc.targetSchema = transform.SchemaWithDefaults(sc.targetSchema, exprs)
+	sch, err := transform.SchemaWithDefaults(sc.targetSchema, exprs)
+	if err != nil {
+		return nil, err
+	}
+
+	sc.targetSchema = sch
 	return &sc, nil
 }
 

@@ -41,6 +41,10 @@ func (i *Iterate) Resolved() bool {
 	return true
 }
 
+func (i *Iterate) IsReadOnly() bool {
+	return true
+}
+
 // String implements the interface sql.Node.
 func (i *Iterate) String() string {
 	return fmt.Sprintf("ITERATE %s", i.Label)

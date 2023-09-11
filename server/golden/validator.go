@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
@@ -149,6 +150,10 @@ func (v Validator) ComQuery(
 // or after the last ComQuery call completes.
 func (v Validator) WarningCount(c *mysql.Conn) uint16 {
 	return 0
+}
+
+func (v Validator) ParserOptionsForConnection(_ *mysql.Conn) (sqlparser.ParserOptions, error) {
+	return sqlparser.ParserOptions{}, nil
 }
 
 func (v Validator) getLogger(c *mysql.Conn) *logrus.Entry {

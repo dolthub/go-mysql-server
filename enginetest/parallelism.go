@@ -6,7 +6,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -25,10 +24,10 @@ func TestParallelismQueries(t *testing.T, harness Harness) {
 	}
 }
 
-func evalParallelismTest(t *testing.T, harness Harness, e *sqle.Engine, query string, parallel bool) {
+func evalParallelismTest(t *testing.T, harness Harness, e QueryEngine, query string, parallel bool) {
 	ctx := NewContext(harness)
 	ctx = ctx.WithQuery(query)
-	a, err := e.AnalyzeQuery(ctx, query)
+	a, err := analyzeQuery(ctx, e, query)
 	require.NoError(t, err)
 	require.Equal(t, parallel, findExchange(a), fmt.Sprintf("expected exchange: %t\nplan:\n%s", parallel, sql.DebugString(a)))
 }

@@ -46,7 +46,7 @@ var (
 	// ErrLengthTooLarge is thrown when a string's length is too large given the other parameters.
 	ErrLengthTooLarge    = errors.NewKind("length is %v but max allowed is %v")
 	ErrLengthBeyondLimit = errors.NewKind("string '%v' is too large for column '%v'")
-	ErrBinaryCollation   = errors.NewKind("binary types must have the binary collation")
+	ErrBinaryCollation   = errors.NewKind("binary types must have the binary collation: %v")
 
 	TinyText   = MustCreateStringWithDefaults(sqltypes.Text, TinyTextBlobMax)
 	Text       = MustCreateStringWithDefaults(sqltypes.Text, TextBlobMax)
@@ -99,7 +99,7 @@ func CreateString(baseType query.Type, length int64, collation sql.CollationID) 
 	switch baseType {
 	case sqltypes.Binary, sqltypes.VarBinary, sqltypes.Blob:
 		if collation != sql.Collation_binary {
-			return nil, ErrBinaryCollation.New(collation.Name, sql.Collation_binary)
+			return nil, ErrBinaryCollation.New(collation.Name())
 		}
 	}
 
@@ -491,7 +491,12 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 		}
 		encodedBytes, ok := resultCharset.Encoder().Encode(encodings.StringToBytes(v))
 		if !ok {
-			return sqltypes.Value{}, sql.ErrCharSetFailedToEncode.New(t.collation.CharacterSet().Name())
+			snippet := v
+			if len(snippet) > 50 {
+				snippet = snippet[:50]
+			}
+			snippet = strings2.ToValidUTF8(snippet, string(utf8.RuneError))
+			return sqltypes.Value{}, sql.ErrCharSetFailedToEncode.New(resultCharset.Name(), utf8.ValidString(v), snippet)
 		}
 		val = AppendAndSliceBytes(dest, encodedBytes)
 	}
@@ -501,6 +506,42 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 
 // String implements Type interface.
 func (t StringType) String() string {
+	return t.StringWithTableCollation(sql.Collation_Default)
+}
+
+// Type implements Type interface.
+func (t StringType) Type() query.Type {
+	return t.baseType
+}
+
+// ValueType implements Type interface.
+func (t StringType) ValueType() reflect.Type {
+	if IsBinaryType(t) {
+		return byteValueType
+	}
+	return stringValueType
+}
+
+// Zero implements Type interface.
+func (t StringType) Zero() interface{} {
+	return ""
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (t StringType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return t.collation, 4
+}
+
+func (t StringType) CharacterSet() sql.CharacterSetID {
+	return t.collation.CharacterSet()
+}
+
+func (t StringType) Collation() sql.CollationID {
+	return t.collation
+}
+
+// StringWithTableCollation implements sql.TypeWithCollation interface.
+func (t StringType) StringWithTableCollation(tableCollation sql.CollationID) string {
 	var s string
 
 	switch t.baseType {
@@ -535,46 +576,15 @@ func (t StringType) String() string {
 	}
 
 	if t.CharacterSet() != sql.CharacterSet_binary {
-		if t.CharacterSet() != sql.Collation_Default.CharacterSet() {
+		if t.CharacterSet() != tableCollation.CharacterSet() {
 			s += " CHARACTER SET " + t.CharacterSet().String()
 		}
-		if t.collation != sql.Collation_Default {
+		if t.collation != tableCollation {
 			s += " COLLATE " + t.collation.Name()
 		}
 	}
 
 	return s
-}
-
-// Type implements Type interface.
-func (t StringType) Type() query.Type {
-	return t.baseType
-}
-
-// ValueType implements Type interface.
-func (t StringType) ValueType() reflect.Type {
-	if IsBinaryType(t) {
-		return byteValueType
-	}
-	return stringValueType
-}
-
-// Zero implements Type interface.
-func (t StringType) Zero() interface{} {
-	return ""
-}
-
-// CollationCoercibility implements sql.CollationCoercible interface.
-func (t StringType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	return t.collation, 4
-}
-
-func (t StringType) CharacterSet() sql.CharacterSetID {
-	return t.collation.CharacterSet()
-}
-
-func (t StringType) Collation() sql.CollationID {
-	return t.collation
 }
 
 // WithNewCollation implements TypeWithCollation interface.

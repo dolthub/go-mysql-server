@@ -1155,7 +1155,42 @@ func (rcv *MySQLDb) ReplicaSourceInfoLength() int {
 	return 0
 }
 
-const MySQLDbNumFields = 3
+func (rcv *MySQLDb) SuperUser(obj *User, j int) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
+	if o != 0 {
+		x := rcv._tab.Vector(o)
+		x += flatbuffers.UOffsetT(j) * 4
+		x = rcv._tab.Indirect(x)
+		obj.Init(rcv._tab.Bytes, x)
+		return true
+	}
+	return false
+}
+
+func (rcv *MySQLDb) TrySuperUser(obj *User, j int) (bool, error) {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
+	if o != 0 {
+		x := rcv._tab.Vector(o)
+		x += flatbuffers.UOffsetT(j) * 4
+		x = rcv._tab.Indirect(x)
+		obj.Init(rcv._tab.Bytes, x)
+		if UserNumFields < obj.Table().NumFields() {
+			return false, flatbuffers.ErrTableHasUnknownFields
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
+func (rcv *MySQLDb) SuperUserLength() int {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
+	if o != 0 {
+		return rcv._tab.VectorLen(o)
+	}
+	return 0
+}
+
+const MySQLDbNumFields = 4
 
 func MySQLDbStart(builder *flatbuffers.Builder) {
 	builder.StartObject(MySQLDbNumFields)
@@ -1176,6 +1211,12 @@ func MySQLDbAddReplicaSourceInfo(builder *flatbuffers.Builder, replicaSourceInfo
 	builder.PrependUOffsetTSlot(2, flatbuffers.UOffsetT(replicaSourceInfo), 0)
 }
 func MySQLDbStartReplicaSourceInfoVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
+	return builder.StartVector(4, numElems, 4)
+}
+func MySQLDbAddSuperUser(builder *flatbuffers.Builder, superUser flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(3, flatbuffers.UOffsetT(superUser), 0)
+}
+func MySQLDbStartSuperUserVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
 	return builder.StartVector(4, numElems, 4)
 }
 func MySQLDbEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {

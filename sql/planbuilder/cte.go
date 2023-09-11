@@ -1,3 +1,17 @@
+// Copyright 2023 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package planbuilder
 
 import (
@@ -10,7 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func (b *PlanBuilder) buildWith(inScope *scope, with *ast.With) (outScope *scope) {
+func (b *Builder) buildWith(inScope *scope, with *ast.With) (outScope *scope) {
 	// resolveCommonTableExpressions operates on With nodes. It replaces any matching UnresolvedTable references in the
 	// tree with the subqueries defined in the CTEs.
 
@@ -56,7 +70,7 @@ func (b *PlanBuilder) buildWith(inScope *scope, with *ast.With) (outScope *scope
 	return
 }
 
-func (b *PlanBuilder) buildCte(inScope *scope, e ast.TableExpr, name string, columns []string) *scope {
+func (b *Builder) buildCte(inScope *scope, e ast.TableExpr, name string, columns []string) *scope {
 	cteScope := b.buildDataSource(inScope, e)
 	b.renameSource(cteScope, name, columns)
 	switch n := cteScope.node.(type) {
@@ -66,32 +80,34 @@ func (b *PlanBuilder) buildCte(inScope *scope, e ast.TableExpr, name string, col
 	return cteScope
 }
 
-func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name string, columns []string) *scope {
+func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name string, columns []string) *scope {
 	l, r := splitRecursiveCteUnion(name, union)
 	if r == nil {
 		// not recursive
-		cteScope := b.buildSelectStmt(inScope, union)
+		sqScope := inScope.pushSubquery()
+		cteScope := b.buildSelectStmt(sqScope, union)
 		b.renameSource(cteScope, name, columns)
 		switch n := cteScope.node.(type) {
 		case *plan.Union:
 			sq := plan.NewSubqueryAlias(name, "", n)
 			sq = sq.WithColumns(columns)
-			if !inScope.subquery {
-				sq.CacheableCTESource = true
-			}
+			sq = sq.WithCorrelated(sqScope.correlated())
+			sq = sq.WithVolatile(sqScope.volatile())
 			cteScope.node = sq
 		}
 		return cteScope
 	}
 
-	// resolve non-recusive portion
-	leftScope := b.buildSelectStmt(inScope, l)
+	// resolve non-recursive portion
+	leftSqScope := inScope.pushSubquery()
+	leftScope := b.buildSelectStmt(leftSqScope, l)
 
 	// schema for non-recursive portion => recursive table
 	var rTable *plan.RecursiveTable
 	var rInit sql.Node
 	var recSch sql.Schema
 	cteScope := leftScope.replace()
+	scopeMapping := make(map[sql.ColumnId]sql.Expression)
 	{
 		rInit = leftScope.node
 		recSch = make(sql.Schema, len(rInit.Schema()))
@@ -111,7 +127,8 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 		for i, c := range leftScope.cols {
 			c.typ = recSch[i].Type
 			c.scalar = nil
-			cteScope.newColumn(c)
+			toId := cteScope.newColumn(c)
+			scopeMapping[sql.ColumnId(toId)] = c.scalarGf()
 		}
 		b.renameSource(cteScope, name, columns)
 
@@ -119,22 +136,26 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 		cteScope.node = rTable
 	}
 
-	rightInScope := inScope.replace()
+	rightInScope := inScope.replaceSubquery()
 	rightInScope.addCte(name, cteScope)
 	rightScope := b.buildSelectStmt(rightInScope, r)
 
 	distinct := union.Type != ast.UnionAllStr
 	limit := b.buildLimit(inScope, union.Limit)
 
-	orderByScope := b.analyzeOrderBy(cteScope, inScope, union.OrderBy)
+	orderByScope := b.analyzeOrderBy(cteScope, leftScope, union.OrderBy)
 	var sortFields sql.SortFields
 	for _, c := range orderByScope.cols {
 		so := sql.Ascending
 		if c.descending {
 			so = sql.Descending
 		}
+		scalar := c.scalar
+		if scalar == nil {
+			scalar = c.scalarGf()
+		}
 		sf := sql.SortField{
-			Column: c.scalar,
+			Column: scalar,
 			Order:  so,
 		}
 		sortFields = append(sortFields, sf)
@@ -142,10 +163,14 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 
 	rcte := plan.NewRecursiveCte(rInit, rightScope.node, name, columns, distinct, limit, sortFields)
 	rcte = rcte.WithSchema(recSch).WithWorking(rTable)
-	sq := plan.NewSubqueryAlias(name, "", rcte).WithColumns(columns)
-	if !inScope.subquery {
-		sq.CacheableCTESource = true
-	}
+	corr := leftSqScope.correlated().Union(rightInScope.correlated())
+	vol := leftSqScope.activeSubquery.volatile || rightInScope.activeSubquery.volatile
+
+	sq := plan.NewSubqueryAlias(name, "", rcte)
+	sq = sq.WithColumns(columns)
+	sq = sq.WithCorrelated(corr)
+	sq = sq.WithVolatile(vol)
+	sq = sq.WithScopeMapping(scopeMapping)
 	cteScope.node = sq
 	b.renameSource(cteScope, name, columns)
 	return cteScope

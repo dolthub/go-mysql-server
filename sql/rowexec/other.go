@@ -107,21 +107,23 @@ func (b *BaseBuilder) buildFetch(ctx *sql.Context, n *plan.Fetch, row sql.Row) (
 	} else if err != nil {
 		return nil, err
 	}
-	if len(row) != len(n.InnerSet.Exprs) {
+	if len(row) != len(n.ToSet) {
 		return nil, sql.ErrFetchIncorrectCount.New()
 	}
+	if len(n.ToSet) == 0 {
+		return sql.RowsToRowIter(), io.EOF
+	}
+
 	if n.Sch == nil {
 		n.Sch = sch
-		for i, expr := range n.InnerSet.Exprs {
-			setExpr, ok := expr.(*expression.SetField)
-			if !ok {
-				return nil, fmt.Errorf("expected SetField expression in FETCH")
-			}
-			col := sch[i]
-			setExpr.Right = expression.NewGetField(i, col.Type, col.Name, col.Nullable)
-		}
 	}
-	return b.buildSet(ctx, n.InnerSet, row)
+	setExprs := make([]sql.Expression, len(n.ToSet))
+	for i, expr := range n.ToSet {
+		col := sch[i]
+		setExprs[i] = expression.NewSetField(expr, expression.NewGetField(i, col.Type, col.Name, col.Nullable))
+	}
+	set := plan.NewSet(setExprs)
+	return b.buildSet(ctx, set, row)
 }
 
 func (b *BaseBuilder) buildSignalName(ctx *sql.Context, n *plan.SignalName, row sql.Row) (sql.RowIter, error) {
@@ -330,7 +332,7 @@ func (b *BaseBuilder) buildTableCopier(ctx *sql.Context, n *plan.TableCopier, ro
 
 	drt, ok := n.Destination.(*plan.ResolvedTable)
 	if !ok {
-		return nil, fmt.Errorf("TableCopier only accepts CreateTable or ResolvedTable as the destination")
+		return nil, fmt.Errorf("TableCopier only accepts CreateTable or TableNode as the destination")
 	}
 
 	return n.CopyTableOver(ctx, n.Source.Schema()[0].Source, drt.Name())

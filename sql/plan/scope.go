@@ -37,8 +37,12 @@ type Scope struct {
 
 	Procedures *ProcedureCache
 
-	inJoin       bool
-	joinSiblings []sql.Node
+	// corr is the aggregated set of correlated columns tracked by the subquery
+	// chain that produced this scope.
+	corr          sql.ColSet
+	inJoin        bool
+	inLateralJoin bool
+	joinSiblings  []sql.Node
 }
 
 func (s *Scope) SetJoin(b bool) {
@@ -46,6 +50,13 @@ func (s *Scope) SetJoin(b bool) {
 		return
 	}
 	s.inJoin = b
+}
+
+func (s *Scope) SetLateralJoin(b bool) {
+	if s == nil {
+		return
+	}
+	s.inLateralJoin = b
 }
 
 func (s *Scope) IsEmpty() bool {
@@ -82,11 +93,17 @@ func (s *Scope) NewScope(node sql.Node) *Scope {
 	}
 }
 
-// NewScopeFromSubqueryExpression returns a new subscope created from a subquery expression contained by the specified
-// node.
-func (s *Scope) NewScopeFromSubqueryExpression(node sql.Node) *Scope {
+// NewScopeFromSubqueryExpression returns a new subscope created from a
+// subquery expression contained by the specified node. |corr| is the
+// set of correlated columns referenced in this subquery, which is only
+// implicit here because the subquery is distanced from its parent |node|.
+func (s *Scope) NewScopeFromSubqueryExpression(node sql.Node, corr sql.ColSet) *Scope {
 	subScope := s.NewScope(node)
 	subScope.CurrentNodeIsFromSubqueryExpression = true
+	subScope.corr = corr
+	if s != nil {
+		subScope.corr = s.corr.Union(corr)
+	}
 	return subScope
 }
 
@@ -118,6 +135,7 @@ func (s *Scope) NewScopeInJoin(node sql.Node) *Scope {
 		recursionDepth: s.recursionDepth + 1,
 		Procedures:     s.Procedures,
 		joinSiblings:   newNodes,
+		corr:           s.corr,
 	}
 }
 
@@ -130,6 +148,7 @@ func (s *Scope) NewScopeNoJoin() *Scope {
 		recursionDepth:  s.recursionDepth + 1,
 		Procedures:      s.Procedures,
 		EnforceReadOnly: s.EnforceReadOnly,
+		corr:            s.corr,
 	}
 }
 
@@ -138,6 +157,7 @@ func (s *Scope) NewScopeNoJoin() *Scope {
 // expression, they may reference tables from the scopes outside the subquery expression's scope.
 func (s *Scope) NewScopeFromSubqueryAlias(sqa *SubqueryAlias) *Scope {
 	subScope := newScopeWithDepth(s.RecursionDepth() + 1)
+	subScope.corr = sqa.Correlated
 	if s != nil {
 		if len(s.nodes) > 0 {
 			// As of MySQL 8.0.14, MySQL provides OUTER scope visibility to derived tables. Unlike LATERAL scope visibility, which
@@ -154,6 +174,8 @@ func (s *Scope) NewScopeFromSubqueryAlias(sqa *SubqueryAlias) *Scope {
 			subScope.joinSiblings = append(subScope.joinSiblings, s.joinSiblings...)
 		}
 		subScope.inJoin = s.inJoin
+		subScope.inLateralJoin = s.inLateralJoin
+		subScope.corr = s.corr.Union(sqa.Correlated)
 	}
 
 	return subScope
@@ -271,7 +293,7 @@ func (s *Scope) Schema() sql.Schema {
 				for _, expr := range n.Projections {
 					var col *sql.Column
 					if expr.Resolved() {
-						col = transform.ExpressionToColumn(expr)
+						col = transform.ExpressionToColumn(expr, AliasSubqueryString(expr))
 					} else {
 						// TODO: a new type here?
 						col = &sql.Column{
@@ -300,4 +322,19 @@ func (s *Scope) InJoin() bool {
 		return false
 	}
 	return s.inJoin
+}
+
+func (s *Scope) InLateralJoin() bool {
+	if s == nil {
+		return false
+	}
+	return s.inLateralJoin
+}
+
+func (s *Scope) JoinSiblings() []sql.Node {
+	return s.joinSiblings
+}
+
+func (s *Scope) Correlated() sql.ColSet {
+	return s.corr
 }

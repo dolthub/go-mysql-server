@@ -13,6 +13,10 @@ exprs:
   join: true
   attrs:
   - [lookup, "*Lookup"]
+- name: "RangeHeapJoin"
+  join: true
+  attrs:
+    - [rangeHeap, "*RangeHeap"]
 - name: "ConcatJoin"
   join: true
   attrs:
@@ -30,14 +34,10 @@ exprs:
   - [swapCmp, "bool"]
 - name: "FullOuterJoin"
   join: true
-- name: "LateralCrossJoin"
-  join: true
-- name: "LateralInnerJoin"
-  join: true
-- name: "LateralLeftJoin"
+- name: "LateralJoin"
   join: true
 - name: "TableScan"
-  sourceType: "*plan.ResolvedTable"
+  sourceType: "sql.TableNode"
 - name: "Values"
   sourceType: "*plan.ValueDerivedTable"
 - name: "TableAlias"
@@ -48,10 +48,10 @@ exprs:
   sourceType: "*plan.RecursiveCte"
 - name: "SubqueryAlias"
   sourceType: "*plan.SubqueryAlias"
-- name: "Max1Row"
-  sourceType: "sql.NameableNode"
 - name: "TableFunc"
   sourceType: "sql.TableFunction"
+- name: "JSONTable"
+  sourceType: "*plan.JSONTable"
 - name: "EmptyTable"
   sourceType: "*plan.EmptyTable"
 - name: "Project"
@@ -61,6 +61,8 @@ exprs:
 - name: "Distinct"
   unary:  true
   skipExec: true
+- name: "Max1Row"
+  unary:  true
 
 # scalar
 - name: "Filter"
@@ -128,6 +130,12 @@ exprs:
   scalar: true
   attrs:
   - [values, "[]*ExprGroup"]
+- name: "Between"
+  scalar: true
+  attrs:
+  - [Value, "*ExprGroup"]
+  - [Min, "*ExprGroup"]
+  - [Max, "*ExprGroup"]
 - name: "Hidden"
   scalar: true
   attrs:

@@ -115,6 +115,10 @@ func (s *ShowReplicaStatus) Children() []sql.Node {
 	return nil
 }
 
+func (s *ShowReplicaStatus) IsReadOnly() bool {
+	return true
+}
+
 func (s *ShowReplicaStatus) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 0)

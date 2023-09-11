@@ -292,7 +292,7 @@ var InsertQueries = []WriteQueryTest{
 		},
 	},
 	{
-		WriteQuery: `INSERT INTO emptytable (s,i) SELECT s,i from mytable where i = 1 
+		WriteQuery: `INSERT INTO emptytable (s,i) SELECT s,i from mytable where i = 1
 			union select s,i from mytable where i = 3`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM emptytable ORDER BY i,s",
@@ -302,8 +302,8 @@ var InsertQueries = []WriteQueryTest{
 		},
 	},
 	{
-		WriteQuery: `INSERT INTO emptytable (s,i) SELECT s,i from mytable where i = 1 
-			union select s,i from mytable where i = 3 
+		WriteQuery: `INSERT INTO emptytable (s,i) SELECT s,i from mytable where i = 1
+			union select s,i from mytable where i = 3
 			union select s,i from mytable where i > 2`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM emptytable ORDER BY i,s",
@@ -313,9 +313,9 @@ var InsertQueries = []WriteQueryTest{
 		},
 	},
 	{
-		WriteQuery: `INSERT INTO emptytable (s,i) 
-			SELECT s,i from mytable where i = 1 
-			union all select s,i+1 from mytable where i < 2 
+		WriteQuery: `INSERT INTO emptytable (s,i)
+			SELECT s,i from mytable where i = 1
+			union all select s,i+1 from mytable where i < 2
 			union all select s,i+2 from mytable where i in (1)`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
 		SelectQuery:         "SELECT * FROM emptytable ORDER BY i,s",
@@ -398,9 +398,9 @@ var InsertQueries = []WriteQueryTest{
 		},
 	},
 	{
-		WriteQuery: `INSERT INTO mytable (i,s) SELECT sub.i + 10, ot.s2 
-				FROM othertable ot INNER JOIN 
-					(SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub 
+		WriteQuery: `INSERT INTO mytable (i,s) SELECT sub.i + 10, ot.s2
+				FROM othertable ot INNER JOIN
+					(SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub
 				ON sub.i = ot.i2 order by 1`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
 		SelectQuery:         "SELECT * FROM mytable where i > 10 ORDER BY i, s",
@@ -411,7 +411,7 @@ var InsertQueries = []WriteQueryTest{
 		},
 	},
 	{
-		WriteQuery: `INSERT INTO mytable (i,s) SELECT sub.i + 10, ot.s2 
+		WriteQuery: `INSERT INTO mytable (i,s) SELECT sub.i + 10, ot.s2
 				FROM (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub
 				INNER JOIN othertable ot ON sub.i = ot.i2 order by 1`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
@@ -1557,6 +1557,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
+		// refer to https://github.com/dolthub/dolt/issues/6437
 		Name: "Insert on duplicate key references table in subquery with alias",
 		SetUpScript: []string{
 			`create table a (i int primary key)`,
@@ -1567,12 +1568,14 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `insert into a (select t.i from b as t, b where t.i = b.i) on duplicate key update i = b.i;`,
+				Skip:  true,
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 			{
 				Query: "select * from a",
+				Skip:  true,
 				Expected: []sql.Row{
 					{1},
 					{2},
@@ -1592,12 +1595,14 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `insert into a with cte as (select * from b) select * from cte on duplicate key update a.i = cte.j + 100`,
+				Skip:  true,
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 4}},
 				},
 			},
 			{
 				Query: "select * from a",
+				Skip:  true,
 				Expected: []sql.Row{
 					{101},
 					{2},
@@ -1885,6 +1890,23 @@ var InsertScripts = []ScriptTest{
 			{
 				Query:       "insert into alphabet values ('z') on duplicate key update letter = values(letter)",
 				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+		},
+	},
+	{
+		Name: "INSERT IGNORE works with FK Violations",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (id INT PRIMARY KEY, v int);",
+			"CREATE TABLE t2 (id INT PRIMARY KEY, v2 int, CONSTRAINT mfk FOREIGN KEY (v2) REFERENCES t1(id));",
+			"INSERT INTO t1 values (1,1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "INSERT IGNORE INTO t2 VALUES (1,2);",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 0}},
+				},
+				ExpectedWarning: mysql.ErNoReferencedRow2,
 			},
 		},
 	},
@@ -2519,24 +2541,6 @@ var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 }
 
 var InsertBrokenScripts = []ScriptTest{
-	// TODO: Support unique keys and FK violations in memory implementation
-	{
-		Name: "Test that INSERT IGNORE works with FK Violations",
-		SetUpScript: []string{
-			"CREATE TABLE t1 (id INT PRIMARY KEY, v int);",
-			"CREATE TABLE t2 (id INT PRIMARY KEY, v2 int, CONSTRAINT mfk FOREIGN KEY (v2) REFERENCES t1(id));",
-			"INSERT INTO t1 values (1,1)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "INSERT IGNORE INTO t2 VALUES (1,2);",
-				Expected: []sql.Row{
-					{types.OkResult{RowsAffected: 0}},
-				},
-				ExpectedWarning: mysql.ErNoReferencedRow2,
-			},
-		},
-	},
 	// TODO: Condense all of our casting logic into a single error.
 	{
 		Name: "Test that INSERT IGNORE assigns the closest dataype correctly",
@@ -2565,6 +2569,18 @@ var InsertBrokenScripts = []ScriptTest{
 					{types.OkResult{RowsAffected: 1}},
 				},
 				ExpectedWarning: mysql.ERTruncatedWrongValueForField,
+			},
+		},
+	},
+	{
+		Name: "Test explicit default with column reference",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (a int default 1, b int default (a+1));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO t1 (a,b) values (1, DEFAULT)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
 		},
 	},

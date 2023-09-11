@@ -32,6 +32,8 @@ const (
 	degeneratePenalty = 2.0
 	optimisticJoinSel = .10
 	biasFactor        = 1e5
+
+	perKeyCostReductionFactor = 0.5
 )
 
 func NewDefaultCoster() Coster {
@@ -71,12 +73,10 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 		return c.costMergeJoin(ctx, n, s)
 	case *LookupJoin:
 		return c.costLookupJoin(ctx, n, s)
-	case *LateralCrossJoin:
-		return c.costLateralCrossJoin(ctx, n, s)
-	case *LateralInnerJoin:
-		return c.costLateralInnerJoin(ctx, n, s)
-	case *LateralLeftJoin:
-		return c.costLateralLeftJoin(ctx, n, s)
+	case *RangeHeapJoin:
+		return c.costRangeHeapJoin(ctx, n, s)
+	case *LateralJoin:
+		return c.costLateralJoin(ctx, n, s)
 	case *SemiJoin:
 		return c.costSemiJoin(ctx, n, s)
 	case *AntiJoin:
@@ -93,6 +93,8 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 		return c.costConcatJoin(ctx, n, s)
 	case *RecursiveCte:
 		return c.costRecursiveCte(ctx, n, s)
+	case *JSONTable:
+		return c.costJSONTable(ctx, n, s)
 	case *Project:
 		return c.costProject(ctx, n, s)
 	case *Distinct:
@@ -116,14 +118,10 @@ func (c *coster) costTableAlias(ctx *sql.Context, n *TableAlias, s sql.StatsRead
 }
 
 func (c *coster) costScan(ctx *sql.Context, t *TableScan, s sql.StatsReader) (float64, error) {
-	return c.costRead(ctx, t.Table.Table, s)
+	return c.costRead(ctx, t.Table.UnderlyingTable(), s)
 }
 
 func (c *coster) costRead(ctx *sql.Context, t sql.Table, s sql.StatsReader) (float64, error) {
-	if w, ok := t.(sql.TableWrapper); ok {
-		t = w.Underlying()
-	}
-
 	db := ctx.GetCurrentDatabase()
 	card, ok, err := s.RowCount(ctx, db, t.Name())
 	if err != nil || !ok {
@@ -175,8 +173,94 @@ func (c *coster) costHashJoin(ctx *sql.Context, n *HashJoin, _ sql.StatsReader) 
 }
 
 func (c *coster) costMergeJoin(_ *sql.Context, n *MergeJoin, _ sql.StatsReader) (float64, error) {
+
 	l := n.Left.RelProps.card
-	return l * cpuCostFactor, nil
+	r := n.Right.RelProps.card
+
+	comparer, ok := n.Filter[0].(*Equal)
+	if !ok {
+		return 0, sql.ErrMergeJoinExpectsComparerFilters.New(n.Filter[0])
+	}
+
+	var leftCompareExprs []*ExprGroup
+	var rightCompareExprs []*ExprGroup
+
+	leftTuple, isTuple := comparer.Left.Scalar.(*Tuple)
+	if isTuple {
+		rightTuple, _ := comparer.Right.Scalar.(*Tuple)
+		leftCompareExprs = leftTuple.Values
+		rightCompareExprs = rightTuple.Values
+	} else {
+		leftCompareExprs = []*ExprGroup{comparer.Left}
+		rightCompareExprs = []*ExprGroup{comparer.Right}
+	}
+
+	if isInjectiveMerge(n, leftCompareExprs, rightCompareExprs) {
+		// We're guarenteed that the execution will never need to iterate over multiple rows in memory.
+		return (l + r) * cpuCostFactor, nil
+	}
+
+	// Each comparison reduces the expected number of collisions on the comparator.
+	selectivity := math.Pow(perKeyCostReductionFactor, float64(len(leftCompareExprs)))
+	return (l + r + l*r*selectivity) * cpuCostFactor, nil
+}
+
+// isInjectiveMerge determines whether either of a merge join's child indexes returns only unique values for the merge
+// comparator.
+func isInjectiveMerge(n *MergeJoin, leftCompareExprs, rightCompareExprs []*ExprGroup) bool {
+	{
+		keyExprs, nullmask := keyExprsForIndexFromTupleComparison(n.Left.Id, n.InnerScan.Idx.Cols(), leftCompareExprs, rightCompareExprs)
+		if isInjectiveLookup(n.InnerScan.Idx, n.JoinBase, keyExprs, nullmask) {
+			return true
+		}
+	}
+	{
+		keyExprs, nullmask := keyExprsForIndexFromTupleComparison(n.Right.Id, n.OuterScan.Idx.Cols(), leftCompareExprs, rightCompareExprs)
+		if isInjectiveLookup(n.OuterScan.Idx, n.JoinBase, keyExprs, nullmask) {
+			return true
+		}
+	}
+	return false
+}
+
+func keyExprsForIndexFromTupleComparison(tableGrp GroupId, idxExprs []sql.ColumnId, leftExprs []*ExprGroup, rightExprs []*ExprGroup) ([]ScalarExpr, []bool) {
+	var keyExprs []ScalarExpr
+	var nullmask []bool
+	for _, col := range idxExprs {
+		key, nullable := keyForExprFromTupleComparison(col, tableGrp, leftExprs, rightExprs)
+		if key == nil {
+			break
+		}
+		keyExprs = append(keyExprs, key)
+		nullmask = append(nullmask, nullable)
+	}
+	if len(keyExprs) == 0 {
+		return nil, nil
+	}
+	return keyExprs, nullmask
+}
+
+// keyForExpr returns an equivalence or constant value to satisfy the
+// lookup index expression.
+func keyForExprFromTupleComparison(targetCol sql.ColumnId, tableGrp GroupId, leftExprs []*ExprGroup, rightExprs []*ExprGroup) (ScalarExpr, bool) {
+	for i, leftExpr := range leftExprs {
+		rightExpr := rightExprs[i]
+
+		var key ScalarExpr
+		if ref, ok := leftExpr.Scalar.(*ColRef); ok && ref.Col == targetCol {
+			key = rightExpr.Scalar
+		} else if ref, ok := rightExpr.Scalar.(*ColRef); ok && ref.Col == targetCol {
+			key = leftExpr.Scalar
+		} else {
+			continue
+		}
+		// expression key can be arbitrarily complex (or simple), but cannot
+		// reference the lookup table
+		if !key.Group().ScalarProps().Tables.Contains(int(TableIdForSource(tableGrp))) {
+			return key, false
+		}
+	}
+	return nil, false
 }
 
 func (c *coster) costLookupJoin(_ *sql.Context, n *LookupJoin, _ sql.StatsReader) (float64, error) {
@@ -189,19 +273,17 @@ func (c *coster) costLookupJoin(_ *sql.Context, n *LookupJoin, _ sql.StatsReader
 	return l*r*sel*(cpuCostFactor+randIOCostFactor) - r*seqIOCostFactor, nil
 }
 
-func (c *coster) costLateralCrossJoin(ctx *sql.Context, n *LateralCrossJoin, _ sql.StatsReader) (float64, error) {
+func (c *coster) costRangeHeapJoin(_ *sql.Context, n *RangeHeapJoin, _ sql.StatsReader) (float64, error) {
 	l := n.Left.RelProps.card
 	r := n.Right.RelProps.card
-	return ((l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor) * degeneratePenalty, nil
+
+	// TODO: We can probably get a better estimate somehow.
+	expectedNumberOfOverlappingJoins := r * perKeyCostReductionFactor
+
+	return l * expectedNumberOfOverlappingJoins * (seqIOCostFactor), nil
 }
 
-func (c *coster) costLateralInnerJoin(ctx *sql.Context, n *LateralInnerJoin, _ sql.StatsReader) (float64, error) {
-	l := n.Left.RelProps.card
-	r := n.Right.RelProps.card
-	return (l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor, nil
-}
-
-func (c *coster) costLateralLeftJoin(ctx *sql.Context, n *LateralLeftJoin, _ sql.StatsReader) (float64, error) {
+func (c *coster) costLateralJoin(ctx *sql.Context, n *LateralJoin, _ sql.StatsReader) (float64, error) {
 	l := n.Left.RelProps.card
 	r := n.Right.RelProps.card
 	return (l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor, nil
@@ -220,6 +302,10 @@ func (c *coster) costRecursiveCte(_ *sql.Context, n *RecursiveCte, _ sql.StatsRe
 	return 1000 * seqIOCostFactor, nil
 }
 
+func (c *coster) costJSONTable(_ *sql.Context, n *JSONTable, _ sql.StatsReader) (float64, error) {
+	return 1000 * seqIOCostFactor, nil
+}
+
 func (c *coster) costProject(_ *sql.Context, n *Project, _ sql.StatsReader) (float64, error) {
 	return n.Child.RelProps.card * cpuCostFactor, nil
 }
@@ -228,23 +314,29 @@ func (c *coster) costDistinct(_ *sql.Context, n *Distinct, _ sql.StatsReader) (f
 	return n.Child.Cost * (cpuCostFactor + .75*memCostFactor), nil
 }
 
-// lookupJoinSelectivity estimates the selectivity of a join condition.
-// A join with no selectivity will return n x m rows. A join with a selectivity
-// of 1 will return n rows. It is possible for join selectivity to be below 1
-// if source table filters limit the number of rows returned by the left table.
+// lookupJoinSelectivity estimates the selectivity of a join condition with n lhs rows and m rhs rows.
+// A join with a selectivity of k will return k*(n*m) rows.
+// Special case: A join with a selectivity of 0 will return n rows.
 func lookupJoinSelectivity(l *Lookup) float64 {
-	sel := math.Pow(0.5, float64(len(l.KeyExprs)))
+	if isInjectiveLookup(l.Index, l.Parent, l.KeyExprs, l.Nullmask) {
+		return 0
+	}
+	return math.Pow(perKeyCostReductionFactor, float64(len(l.KeyExprs)))
+}
 
-	if !l.Index.SqlIdx().IsUnique() {
-		return sel
+// isInjectiveLookup returns whether every lookup with the given key expressions is guarenteed to return
+// at most one row.
+func isInjectiveLookup(idx *Index, joinBase *JoinBase, keyExprs []ScalarExpr, nullMask []bool) bool {
+	if !idx.SqlIdx().IsUnique() {
+		return false
 	}
 
-	joinFds := l.Parent.Group().RelProps.FuncDeps()
+	joinFds := joinBase.Group().RelProps.FuncDeps()
 
 	var notNull sql.ColSet
 	var constCols sql.ColSet
-	for i, nullable := range l.Nullmask {
-		props := l.KeyExprs[i].Group().ScalarProps()
+	for i, nullable := range nullMask {
+		props := keyExprs[i].Group().ScalarProps()
 		onCols := joinFds.EquivalenceClosure(props.Cols)
 		if !nullable {
 			if props.nullRejecting {
@@ -258,11 +350,8 @@ func lookupJoinSelectivity(l *Lookup) float64 {
 		constCols = constCols.Union(onCols)
 	}
 
-	fds := sql.NewLookupFDs(l.Parent.Right.RelProps.FuncDeps(), l.Index.ColSet(), notNull, constCols, joinFds.Equiv())
-	if fds.HasMax1Row() {
-		return 0
-	}
-	return sel
+	fds := sql.NewLookupFDs(joinBase.Right.RelProps.FuncDeps(), idx.ColSet(), notNull, constCols, joinFds.Equiv())
+	return fds.HasMax1Row()
 }
 
 func (c *coster) costAntiJoin(_ *sql.Context, n *AntiJoin, _ sql.StatsReader) (float64, error) {
@@ -328,6 +417,8 @@ func (c *carder) cardRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 		return c.statsValues(ctx, n, s)
 	case *RecursiveTable:
 		return c.statsRecursiveTable(ctx, n, s)
+	case *JSONTable:
+		return c.statsJSONTable(ctx, n, s)
 	case *SubqueryAlias:
 		return c.statsSubqueryAlias(ctx, n, s)
 	case *RecursiveCte:
@@ -353,10 +444,18 @@ func (c *carder) cardRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 				sel += lookupJoinSelectivity(l)
 			}
 			return n.Left.RelProps.card * optimisticJoinSel * sel, nil
+		case *LateralJoin:
+			return n.Left.RelProps.card * n.Right.RelProps.card, nil
 		default:
 		}
 		if jp.Op.IsPartial() {
 			return optimisticJoinSel * jp.Left.RelProps.card, nil
+		}
+		if jp.Op.IsLeftOuter() {
+			return math.Max(jp.Left.RelProps.card, optimisticJoinSel*jp.Left.RelProps.card*jp.Right.RelProps.card), nil
+		}
+		if jp.Op.IsRightOuter() {
+			return math.Max(jp.Right.RelProps.card, optimisticJoinSel*jp.Left.RelProps.card*jp.Right.RelProps.card), nil
 		}
 		return optimisticJoinSel * jp.Left.RelProps.card * jp.Right.RelProps.card, nil
 	case *Project:
@@ -373,21 +472,17 @@ func (c *carder) cardRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 func (c *carder) statsTableAlias(ctx *sql.Context, n *TableAlias, s sql.StatsReader) (float64, error) {
 	switch n := n.Table.Child.(type) {
 	case *plan.ResolvedTable:
-		return c.statsRead(ctx, n.Table, n.Database.Name(), s)
+		return c.statsRead(ctx, n.UnderlyingTable(), n.SqlDatabase.Name(), s)
 	default:
 		return 1000, nil
 	}
 }
 
 func (c *carder) statsScan(ctx *sql.Context, t *TableScan, s sql.StatsReader) (float64, error) {
-	return c.statsRead(ctx, t.Table.Table, t.Table.Database.Name(), s)
+	return c.statsRead(ctx, t.Table.UnderlyingTable(), t.Table.Database().Name(), s)
 }
 
 func (c *carder) statsRead(ctx *sql.Context, t sql.Table, db string, s sql.StatsReader) (float64, error) {
-	if w, ok := t.(sql.TableWrapper); ok {
-		t = w.Underlying()
-	}
-
 	card, ok, err := s.RowCount(ctx, db, t.Name())
 	if err != nil || !ok {
 		// TODO: better estimates for derived tables
@@ -398,6 +493,10 @@ func (c *carder) statsRead(ctx *sql.Context, t sql.Table, db string, s sql.Stats
 
 func (c *carder) statsValues(_ *sql.Context, v *Values, _ sql.StatsReader) (float64, error) {
 	return float64(len(v.Table.ExpressionTuples)) * cpuCostFactor, nil
+}
+
+func (c *carder) statsJSONTable(_ *sql.Context, v *JSONTable, _ sql.StatsReader) (float64, error) {
+	return float64(100) * seqIOCostFactor, nil
 }
 
 func (c *carder) statsRecursiveTable(_ *sql.Context, t *RecursiveTable, _ sql.StatsReader) (float64, error) {
@@ -506,6 +605,23 @@ func NewPartialBiasedCoster() Coster {
 func (c *partialBiasedCoster) EstimateCost(ctx *sql.Context, r RelExpr, s sql.StatsReader) (float64, error) {
 	switch r.(type) {
 	case *AntiJoin, *SemiJoin:
+		return -biasFactor, nil
+	default:
+		return c.costRel(ctx, r, s)
+	}
+}
+
+type rangeHeapBiasedCoster struct {
+	*coster
+}
+
+func NewRangeHeapBiasedCoster() Coster {
+	return &rangeHeapBiasedCoster{coster: &coster{}}
+}
+
+func (c *rangeHeapBiasedCoster) EstimateCost(ctx *sql.Context, r RelExpr, s sql.StatsReader) (float64, error) {
+	switch r.(type) {
+	case *RangeHeapJoin:
 		return -biasFactor, nil
 	default:
 		return c.costRel(ctx, r, s)

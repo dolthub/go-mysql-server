@@ -122,7 +122,7 @@ func (m *Memo) getColumnId(table, name string) (sql.ColumnId, bool) {
 }
 
 func (m *Memo) PreexistingScalar(e ScalarExpr) *ExprGroup {
-	hash := internExpr(e)
+	hash := InternExpr(e)
 	group, _ := m.exprs[hash]
 	return group
 }
@@ -146,10 +146,12 @@ func (m *Memo) MemoizeScalar(e sql.Expression) *ExprGroup {
 		scalar = m.memoizeOr(e)
 	case *expression.BindVar:
 		scalar = m.memoizeBindvar(e)
+	case *expression.Between:
+		scalar = m.memoizeBetween(e)
 	default:
 		scalar = m.memoizeHidden(e)
 	}
-	hash := internExpr(scalar.Scalar)
+	hash := InternExpr(scalar.Scalar)
 	if hash != 0 {
 		m.exprs[hash] = scalar
 	}
@@ -305,6 +307,20 @@ func (m *Memo) memoizeBindvar(e *expression.BindVar) *ExprGroup {
 	return grp
 }
 
+func (m *Memo) memoizeBetween(e *expression.Between) *ExprGroup {
+	valueGrp := m.MemoizeScalar(e.Val)
+	minGrp := m.MemoizeScalar(e.Lower)
+	maxGrp := m.MemoizeScalar(e.Upper)
+	scalar := &Between{scalarBase: &scalarBase{}, Value: valueGrp, Min: minGrp, Max: maxGrp}
+	grp := m.PreexistingScalar(scalar)
+	if grp != nil {
+		return grp
+	}
+	grp = m.NewExprGroup(scalar)
+	// TODO scalar props
+	return grp
+}
+
 func (m *Memo) memoizeHidden(e sql.Expression) *ExprGroup {
 	var cols sql.ColSet
 	var tables sql.FastIntSet
@@ -381,6 +397,41 @@ func (m *Memo) MemoizeLookupJoin(grp, left, right *ExprGroup, op plan.JoinType, 
 	return grp
 }
 
+func (m *Memo) MemoizeRangeHeapJoin(grp, left, right *ExprGroup, op plan.JoinType, filter []ScalarExpr, rangeHeap *RangeHeap) *ExprGroup {
+	newJoin := &RangeHeapJoin{
+		JoinBase: &JoinBase{
+			relBase: &relBase{},
+			Left:    left,
+			Right:   right,
+			Op:      op,
+			Filter:  filter,
+		},
+		RangeHeap: rangeHeap,
+	}
+	newJoin.RangeHeap.Parent = newJoin.JoinBase
+
+	if grp == nil {
+		return m.NewExprGroup(newJoin)
+	}
+	newJoin.g = grp
+	grp.Prepend(newJoin)
+	return grp
+}
+
+func NewTuple(m *Memo, filters []*ExprGroup) *ExprGroup {
+	t := Tuple{
+		scalarBase: &scalarBase{},
+		Values:     filters,
+	}
+
+	grp := m.PreexistingScalar(&t)
+	if grp == nil {
+		grp = m.NewExprGroup(&t)
+	}
+
+	return grp
+}
+
 func (m *Memo) MemoizeMergeJoin(grp, left, right *ExprGroup, lIdx, rIdx *IndexScan, op plan.JoinType, filter []ScalarExpr, swapCmp bool) *ExprGroup {
 	rel := &MergeJoin{
 		JoinBase: &JoinBase{
@@ -424,6 +475,19 @@ func (m *Memo) MemoizeFilter(grp, child *ExprGroup, filters []*ExprGroup) *ExprG
 		relBase: &relBase{},
 		Child:   child,
 		Filters: filters,
+	}
+	if grp == nil {
+		return m.NewExprGroup(rel)
+	}
+	rel.g = grp
+	grp.Prepend(rel)
+	return grp
+}
+
+func (m *Memo) MemoizeMax1Row(grp, child *ExprGroup) *ExprGroup {
+	rel := &Max1Row{
+		relBase: &relBase{},
+		Child:   child,
 	}
 	if grp == nil {
 		return m.NewExprGroup(rel)
@@ -911,6 +975,26 @@ type IndexScan struct {
 	Idx    *Index
 	Range  sql.Range
 	Parent *JoinBase
+}
+
+// RangeHeap contains all the information necessary to construct a RangeHeap join.
+// Because both sides of the join can be implemented either by an index or a sorted node,
+// we require that exactly one of ValueIndex and ValueExpr is non-nil, and exactly one
+// of MinIndex and MinExpr is non-nil. If the index is non-nil, we will use it to construct
+// a plan.IndexedTableAccess. Otherwise we use the expression to construct a plan.Sort.
+type RangeHeap struct {
+	ValueIndex *IndexScan
+	ValueExpr  *ScalarExpr
+
+	MinIndex *IndexScan
+	MinExpr  *ScalarExpr
+
+	ValueCol                *ColRef
+	MinColRef               *ColRef
+	MaxColRef               *ColRef
+	RangeClosedOnLowerBound bool
+	RangeClosedOnUpperBound bool
+	Parent                  *JoinBase
 }
 
 // splitConjunction_memo breaks AND expressions into their left and right parts, recursively

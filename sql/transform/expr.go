@@ -16,6 +16,7 @@ package transform
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -95,18 +96,19 @@ func Exprs(e []sql.Expression, f ExprFunc) ([]sql.Expression, TreeIdentity, erro
 	return newExprs, NewTree, nil
 }
 
+var stopInspect = errors.New("stop")
+
 // InspectExpr traverses the given expression tree from the bottom up, breaking if
 // stop = true. Returns a bool indicating whether traversal was interrupted.
 func InspectExpr(node sql.Expression, f func(sql.Expression) bool) bool {
-	stop := errors.New("stop")
 	_, _, err := Expr(node, func(e sql.Expression) (sql.Expression, TreeIdentity, error) {
 		ok := f(e)
 		if ok {
-			return nil, SameTree, stop
+			return nil, SameTree, stopInspect
 		}
 		return e, SameTree, nil
 	})
-	return errors.Is(err, stop)
+	return errors.Is(err, stopInspect)
 }
 
 // InspectUp traverses the given node tree from the bottom up, breaking if
@@ -180,12 +182,9 @@ func ExprWithNode(n sql.Node, e sql.Expression, f ExprWithNodeFunc) (sql.Express
 // ExpressionToColumn converts the expression to the form that should be used in a Schema. Expressions that have Name()
 // and Table() methods will use these; otherwise, String() and "" are used, respectively. The type and nullability are
 // taken from the expression directly.
-func ExpressionToColumn(e sql.Expression) *sql.Column {
-	var name string
+func ExpressionToColumn(e sql.Expression, name string) *sql.Column {
 	if n, ok := e.(sql.Nameable); ok {
 		name = n.Name()
-	} else {
-		name = e.String()
 	}
 
 	var table string
@@ -211,24 +210,46 @@ func ExpressionToColumn(e sql.Expression) *sql.Column {
 
 // SchemaWithDefaults returns a copy of the schema given with the defaults provided. Default expressions must be
 // wrapped with expression.Wrapper.
-func SchemaWithDefaults(schema sql.Schema, defaults []sql.Expression) sql.Schema {
-	sc := schema.Copy()
-	for i, d := range defaults {
-		unwrappedColDefVal, ok := d.(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
-		if ok {
-			sc[i].Default = unwrappedColDefVal
+func SchemaWithDefaults(schema sql.Schema, defaultExprs []sql.Expression) (sql.Schema, error) {
+	if len(schema) != len(defaultExprs) {
+		return nil, fmt.Errorf("expected %d default expressions, got %d", len(schema), len(defaultExprs))
+	}
+
+	sch := schema.Copy()
+	for i, col := range sch {
+		wrapper, ok := defaultExprs[i].(*expression.Wrapper)
+		if !ok {
+			return nil, fmt.Errorf("expected expression.Wrapper, got %T", defaultExprs[i])
+		}
+		wrappedExpr := wrapper.Unwrap()
+		if wrappedExpr == nil {
+			continue
+		}
+
+		defaultExpr, ok := wrappedExpr.(*sql.ColumnDefaultValue)
+		if !ok {
+			return nil, fmt.Errorf("expected *sql.ColumnDefaultValue, got %T", wrappedExpr)
+		}
+		if col.Default != nil {
+			col.Default = defaultExpr
 		} else {
-			sc[i].Default = nil
+			col.Generated = defaultExpr
 		}
 	}
-	return sc
+
+	return sch, nil
 }
 
-// WrappedColumnDefaults returns the column defaults for the schema given, wrapped with expression.Wrapper
+// WrappedColumnDefaults returns the column defaults / generated expressions for the schema given,
+// wrapped with expression.Wrapper
 func WrappedColumnDefaults(schema sql.Schema) []sql.Expression {
 	defs := make([]sql.Expression, len(schema))
 	for i, col := range schema {
-		defs[i] = expression.WrapExpression(col.Default)
+		defaultVal := col.Default
+		if defaultVal == nil && col.Generated != nil {
+			defaultVal = col.Generated
+		}
+		defs[i] = expression.WrapExpression(defaultVal)
 	}
 	return defs
 }

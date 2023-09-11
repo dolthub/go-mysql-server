@@ -1,41 +1,181 @@
+// Copyright 2023 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package planbuilder
 
 import (
-	"strings"
+	"sync"
 
+	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	oldparse "github.com/dolthub/go-mysql-server/sql/parse"
+	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-type PlanBuilder struct {
+var BinderFactory = &sync.Pool{New: func() interface{} {
+	return &Builder{f: &factory{}}
+}}
+
+type Builder struct {
 	ctx             *sql.Context
 	cat             sql.Catalog
+	parserOpts      ast.ParserOptions
+	f               *factory
 	currentDatabase sql.Database
 	colId           columnId
 	tabId           tableId
 	multiDDL        bool
+	viewCtx         *ViewContext
+	procCtx         *ProcContext
+	triggerCtx      *TriggerContext
+	bindCtx         *BindvarContext
+	insertActive    bool
+	nesting         int
 }
 
-func (b *PlanBuilder) newScope() *scope {
+// BindvarContext holds bind variable replacement literals.
+type BindvarContext struct {
+	Bindings map[string]*querypb.BindVariable
+	used     map[string]struct{}
+	// resolveOnly indicates that we are resolving plan names,
+	// but will not error for missing bindvar replacements.
+	resolveOnly bool
+}
+
+func (bv *BindvarContext) GetSubstitute(s string) (*querypb.BindVariable, bool) {
+	if bv.Bindings != nil {
+		ret, ok := bv.Bindings[s]
+		bv.used[s] = struct{}{}
+		return ret, ok
+	}
+	return nil, false
+}
+
+func (bv *BindvarContext) UnusedBindings() []string {
+	if len(bv.used) == len(bv.Bindings) {
+		return nil
+	}
+	var unused []string
+	for k, _ := range bv.Bindings {
+		if _, ok := bv.used[k]; !ok {
+			unused = append(unused, k)
+		}
+	}
+	return unused
+}
+
+// ViewContext overwrites database root source of nested
+// calls.
+type ViewContext struct {
+	AsOf   interface{}
+	DbName string
+}
+
+type TriggerContext struct {
+	Active           bool
+	Call             bool
+	UnresolvedTables []string
+	ResolveErr       error
+}
+
+// ProcContext allows nested CALLs to use the same database for resolving
+// procedure definitions without changing the underlying database roots.
+type ProcContext struct {
+	AsOf   interface{}
+	DbName string
+}
+
+func New(ctx *sql.Context, cat sql.Catalog) *Builder {
+	sqlMode := sql.LoadSqlMode(ctx)
+	return &Builder{ctx: ctx, cat: cat, parserOpts: sqlMode.ParserOptions(), f: &factory{}}
+}
+
+func (b *Builder) Initialize(ctx *sql.Context, cat sql.Catalog, opts ast.ParserOptions) {
+	b.ctx = ctx
+	b.cat = cat
+	b.f.ctx = ctx
+	b.parserOpts = opts
+}
+
+func (b *Builder) SetDebug(val bool) {
+	b.f.debug = val
+}
+
+func (b *Builder) SetBindings(bindings map[string]*querypb.BindVariable) {
+	b.bindCtx = &BindvarContext{
+		Bindings: bindings,
+		used:     make(map[string]struct{}),
+	}
+}
+
+func (b *Builder) SetParserOptions(opts ast.ParserOptions) {
+	b.parserOpts = opts
+}
+
+func (b *Builder) BindCtx() *BindvarContext {
+	return b.bindCtx
+}
+
+func (b *Builder) ViewCtx() *ViewContext {
+	if b.viewCtx == nil {
+		b.viewCtx = &ViewContext{}
+	}
+	return b.viewCtx
+}
+
+func (b *Builder) ProcCtx() *ProcContext {
+	if b.procCtx == nil {
+		b.procCtx = &ProcContext{}
+	}
+	return b.procCtx
+}
+
+func (b *Builder) TriggerCtx() *TriggerContext {
+	if b.triggerCtx == nil {
+		b.triggerCtx = &TriggerContext{}
+	}
+	return b.triggerCtx
+}
+
+func (b *Builder) newScope() *scope {
 	return &scope{b: b}
 }
 
-func (b *PlanBuilder) reset() {
+func (b *Builder) Reset() {
 	b.colId = 0
+	b.bindCtx = nil
+	b.currentDatabase = nil
+	b.procCtx = nil
+	b.multiDDL = false
+	b.insertActive = false
+	b.tabId = 0
+	b.triggerCtx = nil
+	b.viewCtx = nil
+	b.nesting = 0
 }
 
 type parseErr struct {
 	err error
 }
 
-func (b *PlanBuilder) handleErr(err error) {
+func (b *Builder) handleErr(err error) {
 	panic(parseErr{err})
 }
 
-func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (outScope *scope) {
+func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outScope *scope) {
 	if inScope == nil {
 		inScope = b.newScope()
 	}
@@ -43,13 +183,15 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 	default:
 		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(n)))
 	case ast.SelectStatement:
-		return b.buildSelectStmt(inScope, n)
-		// todo: SELECT INTO
-		//if into := n.GetInto(); into != nil {
-		outScope = inScope.push()
-
+		outScope = b.buildSelectStmt(inScope, n)
+		if into := n.GetInto(); into != nil {
+			b.buildInto(outScope, into)
+		}
+		return outScope
 	case *ast.Analyze:
 		return b.buildAnalyze(inScope, n, query)
+	case *ast.CreateSpatialRefSys:
+		return b.buildCreateSpatialRefSys(inScope, n)
 	case *ast.Show:
 		// When a query is empty it means it comes from a subquery, as we don't
 		// have the query itself in a subquery. Hence, a SHOW could not be
@@ -60,36 +202,32 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		return b.buildShow(inScope, n, query)
 	case *ast.DDL:
 		return b.buildDDL(inScope, query, n)
-	case *ast.MultiAlterDDL:
-		return b.buildMultiAlterDDL(inScope, query, n)
+	case *ast.AlterTable:
+		return b.buildAlterTable(inScope, query, n)
 	case *ast.DBDDL:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildDBDDL(inScope, n)
 	case *ast.Explain:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildExplain(inScope, n)
 	case *ast.Insert:
+		if n.With != nil {
+			cteScope := b.buildWith(inScope, n.With)
+			return b.buildInsert(cteScope, n)
+		}
 		return b.buildInsert(inScope, n)
 	case *ast.Delete:
+		if n.With != nil {
+			cteScope := b.buildWith(inScope, n.With)
+			return b.buildDelete(cteScope, n)
+		}
 		return b.buildDelete(inScope, n)
 	case *ast.Update:
-		return b.buildUpdate(inScope, n)
-
-	case *ast.Load:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
+		if n.With != nil {
+			cteScope := b.buildWith(inScope, n.With)
+			return b.buildUpdate(cteScope, n)
 		}
-		outScope.node = node
+		return b.buildUpdate(inScope, n)
+	case *ast.Load:
+		return b.buildLoad(inScope, n)
 	case *ast.Set:
 		return b.buildSet(inScope, n)
 	case *ast.Use:
@@ -118,246 +256,100 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		outScope = inScope.push()
 		outScope.node = plan.NewReleaseSavepoint(n.Identifier)
 	case *ast.ChangeReplicationSource:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildChangeReplicationSource(inScope, n)
 	case *ast.ChangeReplicationFilter:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildChangeReplicationFilter(inScope, n)
 	case *ast.StartReplica:
 		outScope = inScope.push()
-		outScope.node = plan.NewStartReplica()
-		outScope = inScope.push()
+		startRep := plan.NewStartReplica()
+		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.IsBinlogReplicaCatalog() {
+			startRep.ReplicaController = binCat.GetBinlogReplicaController()
+		}
+		outScope.node = startRep
 	case *ast.StopReplica:
 		outScope = inScope.push()
-		outScope.node = plan.NewStopReplica()
+		stopRep := plan.NewStopReplica()
+		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.IsBinlogReplicaCatalog() {
+			stopRep.ReplicaController = binCat.GetBinlogReplicaController()
+		}
+		outScope.node = stopRep
 	case *ast.ResetReplica:
 		outScope = inScope.push()
-		outScope.node = plan.NewResetReplica(n.All)
+		resetRep := plan.NewResetReplica(n.All)
+		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.IsBinlogReplicaCatalog() {
+			resetRep.ReplicaController = binCat.GetBinlogReplicaController()
+		}
+		outScope.node = resetRep
 	case *ast.BeginEndBlock:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildBeginEndBlock(inScope, n)
 	case *ast.IfStatement:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildIfBlock(inScope, n)
 	case *ast.CaseStatement:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildCaseStatement(inScope, n)
 	case *ast.Call:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildCall(inScope, n)
 	case *ast.Declare:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildDeclare(inScope, n, query)
 	case *ast.FetchCursor:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildFetchCursor(inScope, n)
 	case *ast.OpenCursor:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildOpenCursor(inScope, n)
 	case *ast.CloseCursor:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildCloseCursor(inScope, n)
 	case *ast.Loop:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildLoop(inScope, n)
 	case *ast.Repeat:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildRepeat(inScope, n)
 	case *ast.While:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildWhile(inScope, n)
 	case *ast.Leave:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildLeave(inScope, n)
 	case *ast.Iterate:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildIterate(inScope, n)
 	case *ast.Kill:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildKill(inScope, n)
 	case *ast.Signal:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildSignal(inScope, n)
 	case *ast.LockTables:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildLockTables(inScope, n)
 	case *ast.UnlockTables:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildUnlockTables(inScope, n)
 	case *ast.CreateUser:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildCreateUser(inScope, n)
 	case *ast.RenameUser:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildRenameUser(inScope, n)
 	case *ast.DropUser:
-		outScope.node = plan.NewDropUser(n.IfExists, convertAccountName(n.AccountNames...))
+		return b.buildDropUser(inScope, n)
 	case *ast.CreateRole:
-		outScope.node = plan.NewCreateRole(n.IfNotExists, convertAccountName(n.Roles...))
+		return b.buildCreateRole(inScope, n)
 	case *ast.DropRole:
-		outScope.node = plan.NewDropRole(n.IfExists, convertAccountName(n.Roles...))
+		return b.buildDropRole(inScope, n)
 	case *ast.GrantPrivilege:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildGrantPrivilege(inScope, n)
 	case *ast.GrantRole:
-		outScope.node = plan.NewGrantRole(
-			convertAccountName(n.Roles...),
-			convertAccountName(n.To...),
-			n.WithAdminOption,
-		)
+		return b.buildGrantRole(inScope, n)
 	case *ast.GrantProxy:
-		outScope.node = plan.NewGrantProxy(
-			convertAccountName(n.On)[0],
-			convertAccountName(n.To...),
-			n.WithGrantOption,
-		)
+		return b.buildGrantProxy(inScope, n)
 	case *ast.RevokePrivilege:
-		privs := convertPrivilege(n.Privileges...)
-		objType := convertObjectType(n.ObjectType)
-		level := convertPrivilegeLevel(n.PrivilegeLevel)
-		users := convertAccountName(n.From...)
-		revoker := b.ctx.Session.Client().User
-		if strings.ToLower(level.Database) == sql.InformationSchemaDatabaseName {
-			b.handleErr(sql.ErrDatabaseAccessDeniedForUser.New(revoker, level.Database))
-		}
-		outScope.node = &plan.Revoke{
-			Privileges:     privs,
-			ObjectType:     objType,
-			PrivilegeLevel: level,
-			Users:          users,
-			MySQLDb:        sql.UnresolvedDatabase("mysql"),
-		}
+		return b.buildRevokePrivilege(inScope, n)
 	case *ast.RevokeAllPrivileges:
-		outScope.node = plan.NewRevokeAll(convertAccountName(n.From...))
+		return b.buildRevokeAllPrivileges(inScope, n)
 	case *ast.RevokeRole:
-		outScope.node = plan.NewRevokeRole(convertAccountName(n.Roles...), convertAccountName(n.From...))
+		return b.buildRevokeRole(inScope, n)
 	case *ast.RevokeProxy:
-		outScope.node = plan.NewRevokeProxy(convertAccountName(n.On)[0], convertAccountName(n.From...))
+		return b.buildRevokeProxy(inScope, n)
 	case *ast.ShowGrants:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildShowGrants(inScope, n)
 	case *ast.ShowPrivileges:
-		outScope.node = plan.NewShowPrivileges()
+		return b.buildShowPrivileges(inScope, n)
 	case *ast.Flush:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildFlush(inScope, n)
 	case *ast.Prepare:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildPrepare(inScope, n)
 	case *ast.Execute:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildExecute(inScope, n)
 	case *ast.Deallocate:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildDeallocate(inScope, n)
 	}
 	return
 }

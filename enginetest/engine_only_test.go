@@ -41,8 +41,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -206,7 +206,7 @@ func (l *lockableTable) Unlock(ctx *sql.Context, id uint32) error {
 type analyzerTestCase struct {
 	name          string
 	query         string
-	planGenerator func(*testing.T, *sql.Context, *sqle.Engine) sql.Node
+	planGenerator func(*testing.T, *sql.Context, enginetest.QueryEngine) sql.Node
 	err           *errors.Kind
 }
 
@@ -408,77 +408,78 @@ func (t *nonIndexableTable) PartitionCount(ctx *sql.Context) (int64, error) {
 	return t.Table.(sql.PartitionCounter).PartitionCount(ctx)
 }
 
-// Grab bag tests for testing analysis of various nodes that are difficult to verify through other means
-func TestAnalyzer(t *testing.T) {
-	testCases := []analyzerTestCase{
-		{
-			name:  "show tables as of",
-			query: "SHOW TABLES AS OF 'abc123'",
-			planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
-				db, err := engine.Analyzer.Catalog.Database(ctx, "mydb")
-				require.NoError(t, err)
-				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", types.LongText))
-			},
+var analyzerTestCases = []analyzerTestCase{
+	{
+		name:  "show tables as of",
+		query: "SHOW TABLES AS OF 'abc123'",
+		planGenerator: func(t *testing.T, ctx *sql.Context, engine enginetest.QueryEngine) sql.Node {
+			db, err := engine.EngineAnalyzer().Catalog.Database(ctx, "mydb")
+			require.NoError(t, err)
+			return plan.NewShowTables(db, false, expression.NewLiteral("abc123", types.LongText))
 		},
-		{
-			name:  "show tables as of, from",
-			query: "SHOW TABLES FROM foo AS OF 'abc123'",
-			planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
-				db, err := engine.Analyzer.Catalog.Database(ctx, "foo")
-				require.NoError(t, err)
-				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", types.LongText))
-			},
+	},
+	{
+		name:  "show tables as of, from",
+		query: "SHOW TABLES FROM foo AS OF 'abc123'",
+		planGenerator: func(t *testing.T, ctx *sql.Context, engine enginetest.QueryEngine) sql.Node {
+			db, err := engine.EngineAnalyzer().Catalog.Database(ctx, "foo")
+			require.NoError(t, err)
+			return plan.NewShowTables(db, false, expression.NewLiteral("abc123", types.LongText))
 		},
-		{
-			name:  "show tables as of, function call",
-			query: "SHOW TABLES FROM foo AS OF GREATEST('abc123', 'cde456')",
-			planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
-				db, err := engine.Analyzer.Catalog.Database(ctx, "foo")
-				require.NoError(t, err)
-				greatest, err := function.NewGreatest(
-					expression.NewLiteral("abc123", types.LongText),
-					expression.NewLiteral("cde456", types.LongText),
-				)
-				require.NoError(t, err)
-				return plan.NewShowTables(db, false, greatest)
-			},
+	},
+	{
+		name:  "show tables as of, function call",
+		query: "SHOW TABLES FROM foo AS OF GREATEST('abc123', 'cde456')",
+		planGenerator: func(t *testing.T, ctx *sql.Context, engine enginetest.QueryEngine) sql.Node {
+			db, err := engine.EngineAnalyzer().Catalog.Database(ctx, "foo")
+			require.NoError(t, err)
+			greatest, err := function.NewGreatest(
+				expression.NewLiteral("abc123", types.LongText),
+				expression.NewLiteral("cde456", types.LongText),
+			)
+			require.NoError(t, err)
+			return plan.NewShowTables(db, false, greatest)
 		},
-		{
-			name:  "show tables as of, timestamp",
-			query: "SHOW TABLES FROM foo AS OF TIMESTAMP('20200101:120000Z')",
-			planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
-				db, err := engine.Analyzer.Catalog.Database(ctx, "foo")
-				require.NoError(t, err)
-				timestamp, err := function.NewTimestamp(
-					expression.NewLiteral("20200101:120000Z", types.LongText),
-				)
-				require.NoError(t, err)
-				return plan.NewShowTables(db, false, timestamp)
-			},
+	},
+	{
+		name:  "show tables as of, timestamp",
+		query: "SHOW TABLES FROM foo AS OF TIMESTAMP('20200101:120000Z')",
+		planGenerator: func(t *testing.T, ctx *sql.Context, engine enginetest.QueryEngine) sql.Node {
+			db, err := engine.EngineAnalyzer().Catalog.Database(ctx, "foo")
+			require.NoError(t, err)
+			timestamp, err := function.NewTimestamp(
+				expression.NewLiteral("20200101:120000Z", types.LongText),
+			)
+			require.NoError(t, err)
+			return plan.NewShowTables(db, false, timestamp)
 		},
-		{
-			name:  "show tables as of, naked literal",
-			query: "SHOW TABLES AS OF abc123",
-			planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
-				db, err := engine.Analyzer.Catalog.Database(ctx, "mydb")
-				require.NoError(t, err)
-				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", types.LongText))
-			},
+	},
+	{
+		name:  "show tables as of, naked literal",
+		query: "SHOW TABLES AS OF abc123",
+		planGenerator: func(t *testing.T, ctx *sql.Context, engine enginetest.QueryEngine) sql.Node {
+			db, err := engine.EngineAnalyzer().Catalog.Database(ctx, "mydb")
+			require.NoError(t, err)
+			return plan.NewShowTables(db, false, expression.NewLiteral("abc123", types.LongText))
 		},
-	}
+	},
+}
 
+// Grab bag tests for testing analysis of various nodes that are difficult to verify through other means
+func TestAnalyzer_Exp(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
 	harness.Setup(setup.MydbData, setup.FooData)
-	for _, tt := range testCases {
+	for _, tt := range analyzerTestCases {
 		t.Run(tt.name, func(t *testing.T) {
 			e, err := harness.NewEngine(t)
 			require.NoError(t, err)
 
 			ctx := enginetest.NewContext(harness)
-			parsed, err := parse.Parse(ctx, tt.query)
+			b := planbuilder.New(ctx, e.EngineAnalyzer().Catalog)
+			parsed, _, _, err := b.Parse(tt.query, false)
 			require.NoError(t, err)
 
-			analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
+			analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil)
 			analyzed = analyzer.StripPassthroughNodes(analyzed)
 			if tt.err != nil {
 				require.Error(t, err)
@@ -611,162 +612,20 @@ func TestShowCharset(t *testing.T) {
 }
 
 func TestTableFunctions(t *testing.T) {
-	var tableFunctionScriptTests = []queries.ScriptTest{
-		{
-			Name:        "undefined table function",
-			Query:       "SELECT * from does_not_exist('q', 123);",
-			ExpectedErr: sql.ErrTableFunctionNotFound,
-		},
-		{
-			Name:        "projection of non-existent column from table function",
-			Query:       "SELECT none from simple_TABLE_function(123);",
-			ExpectedErr: sql.ErrColumnNotFound,
-		},
-		{
-			Name:        "projection of non-existent qualified column from table function",
-			Query:       "SELECT simple_TABLE_function.none from simple_TABLE_function(123);",
-			ExpectedErr: sql.ErrTableColumnNotFound,
-		},
-		{
-			Name:        "projection of non-existent aliased qualified column from table function",
-			Query:       "SELECT stf.none from simple_TABLE_function(123) as stf;",
-			ExpectedErr: sql.ErrTableColumnNotFound,
-		},
-		{
-			Name:        "projection of non-existent aliased qualified column from table function in join",
-			Query:       "SELECT stf1.none from simple_TABLE_function(123) as stf1 join simple_TABLE_function(123) stf2;",
-			ExpectedErr: sql.ErrTableColumnNotFound,
-		},
-		{
-			Name:        "alias overwrites original name",
-			Query:       "SELECT simple_table_function.none from simple_TABLE_function(123) stf;",
-			ExpectedErr: sql.ErrTableNotFound,
-		},
-		{
-			Name:        "projection of aliased non-existent qualified column from table function",
-			Query:       "SELECT stf.none as none from simple_TABLE_function(123) as stf;",
-			ExpectedErr: sql.ErrTableColumnNotFound,
-		},
-		{
-			Name:     "basic table function",
-			Query:    "SELECT * from simple_table_function(123);",
-			Expected: []sql.Row{{"foo", 123}},
-		},
-		{
-			Name:     "basic table function",
-			Query:    "SELECT * from simple_TABLE_function(123);",
-			Expected: []sql.Row{{"foo", 123}},
-		},
-		{
-			Name:     "aggregate function applied to a table function",
-			Query:    "SELECT count(*) from simple_TABLE_function(123);",
-			Expected: []sql.Row{{1}},
-		},
-		{
-			Name:     "projection of table function",
-			Query:    "SELECT one from simple_TABLE_function(123);",
-			Expected: []sql.Row{{"foo"}},
-		},
-		{
-			Name:     "nested expressions in table function arguments",
-			Query:    "SELECT * from simple_TABLE_function(concat('f', 'o', 'o'));",
-			Expected: []sql.Row{{"foo", 123}},
-		},
-		{
-			Name:     "filtering table function results",
-			Query:    "SELECT * from simple_TABLE_function(123) where one='foo';",
-			Expected: []sql.Row{{"foo", 123}},
-		},
-		{
-			Name:     "filtering table function results to no results",
-			Query:    "SELECT * from simple_TABLE_function(123) where one='none';",
-			Expected: []sql.Row{},
-		},
-		{
-			Name:     "grouping table function results",
-			Query:    "SELECT count(one) from simple_TABLE_function(123) group by one;",
-			Expected: []sql.Row{{1}},
-		},
-		{
-			Name:     "table function as subquery",
-			Query:    "SELECT * from (select * from simple_TABLE_function(123)) as tf;",
-			Expected: []sql.Row{{"foo", 123}},
-		},
-		{
-			Query:    "select * from sequence_table('x', 5)",
-			Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
-		},
-		{
-			Query:    "select sequence_table.x from sequence_table('x', 5)",
-			Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
-		},
-		{
-			Query:    "select sequence_table.x from sequence_table('x', 5)",
-			Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
-		},
-		{
-			Query:       "select * from sequence_table('x', 5) join sequence_table('y', 5) on x = y",
-			ExpectedErr: sql.ErrDuplicateAliasOrTable,
-		},
-		{
-			Query:       "select * from sequence_table('x', 5) join sequence_table('y', 5) on x = 0",
-			ExpectedErr: sql.ErrDuplicateAliasOrTable,
-		},
-		{
-			Query:    "select * from sequence_table('x', 2) where x is not null",
-			Expected: []sql.Row{{0}, {1}},
-		},
-		{
-			Query:    "select seq.x from sequence_table('x', 5) as seq",
-			Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
-		},
-		{
-			Query:    "select seq.x from sequence_table('x', 5) seq",
-			Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
-		},
-		{
-			Query:       "select not_seq.x from sequence_table('x', 5) as seq",
-			ExpectedErr: sql.ErrTableNotFound,
-		},
-		{
-			Query:    "select seq1.x, seq2.y from sequence_table('x', 5) seq1 join sequence_table('y', 5) seq2 on seq1.x = seq2.y",
-			Expected: []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}},
-		},
-		{
-			Query:    "select * from sequence_table('x', 5) seq1 join sequence_table('y', 5) seq2 on x = 0",
-			Expected: []sql.Row{{0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 4}},
-		},
-		{
-			Query:    "with cte as (select seq.x from sequence_table('x', 5) seq) select cte.x from cte",
-			Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
-		},
-		{
-			Query:    "select sq.x from (select seq.x from sequence_table('x', 5) seq) sq",
-			Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
-		},
-		{
-			Query:       "select seq.x from (select seq.x from sequence_table('x', 5) seq) sq",
-			ExpectedErr: sql.ErrTableNotFound,
-		},
-		{
-			Query:    "select sq.xx from (select seq.x as xx from sequence_table('x', 5) seq) sq",
-			Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
-		},
-	}
-
+	// TODO different error messages
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
 	harness.Setup(setup.MydbData)
 
 	databaseProvider := harness.NewDatabaseProvider()
-	testDatabaseProvider := NewTestProvider(&databaseProvider, SimpleTableFunction{}, memory.IntSequenceTable{})
+	testDatabaseProvider := NewTestProvider(&databaseProvider, SimpleTableFunction{}, memory.IntSequenceTable{}, memory.PointLookupTable{})
 
 	engine := enginetest.NewEngineWithProvider(t, harness, testDatabaseProvider)
-	engine.Analyzer.ExecBuilder = rowexec.DefaultBuilder
+	engine.EngineAnalyzer().ExecBuilder = rowexec.DefaultBuilder
 
 	engine, err := enginetest.RunSetupScripts(harness.NewContext(), engine, setup.MydbData, true)
 	require.NoError(t, err)
 
-	for _, test := range tableFunctionScriptTests {
+	for _, test := range queries.TableFunctionScriptTests {
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
 }
@@ -789,102 +648,7 @@ func TestExternalProcedures(t *testing.T) {
 func TestCallAsOf(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
 	enginetest.CreateVersionedTestData(t, harness)
-	var scripts = []queries.ScriptTest{
-		{
-			Name: "AS OF propagates to nested CALLs",
-			SetUpScript: []string{
-				"CREATE PROCEDURE p1() BEGIN CALL p2(); END",
-				"CREATE PROCEDURE p1a() BEGIN CALL p2() AS OF '2019-01-01'; END",
-				"CREATE PROCEDURE p1b() BEGIN CALL p2a(); END",
-				"CREATE PROCEDURE p2() BEGIN SELECT * FROM myhistorytable; END",
-				"CREATE PROCEDURE p2a() BEGIN SELECT * FROM myhistorytable AS OF '2019-01-02'; END",
-			},
-			Assertions: []queries.ScriptTestAssertion{
-				{
-					Query: "CALL p1();",
-					Expected: []sql.Row{
-						{int64(1), "first row, 3", "1"},
-						{int64(2), "second row, 3", "2"},
-						{int64(3), "third row, 3", "3"},
-					},
-				},
-				{
-					Query: "CALL p1a();",
-					Expected: []sql.Row{
-						{int64(1), "first row, 1"},
-						{int64(2), "second row, 1"},
-						{int64(3), "third row, 1"},
-					},
-				},
-				{
-					Query: "CALL p1b();",
-					Expected: []sql.Row{
-						{int64(1), "first row, 2"},
-						{int64(2), "second row, 2"},
-						{int64(3), "third row, 2"},
-					},
-				},
-				{
-					Query: "CALL p2();",
-					Expected: []sql.Row{
-						{int64(1), "first row, 3", "1"},
-						{int64(2), "second row, 3", "2"},
-						{int64(3), "third row, 3", "3"},
-					},
-				},
-				{
-					Query: "CALL p2a();",
-					Expected: []sql.Row{
-						{int64(1), "first row, 2"},
-						{int64(2), "second row, 2"},
-						{int64(3), "third row, 2"},
-					},
-				},
-				{
-					Query: "CALL p1() AS OF '2019-01-01';",
-					Expected: []sql.Row{
-						{int64(1), "first row, 1"},
-						{int64(2), "second row, 1"},
-						{int64(3), "third row, 1"},
-					},
-				},
-				{
-					Query: "CALL p1a() AS OF '2019-01-03';",
-					Expected: []sql.Row{
-						{int64(1), "first row, 1"},
-						{int64(2), "second row, 1"},
-						{int64(3), "third row, 1"},
-					},
-				},
-				{
-					Query: "CALL p1b() AS OF '2019-01-03';",
-					Expected: []sql.Row{
-						{int64(1), "first row, 2"},
-						{int64(2), "second row, 2"},
-						{int64(3), "third row, 2"},
-					},
-				},
-				{
-					Query: "CALL p2() AS OF '2019-01-01';",
-					Expected: []sql.Row{
-						{int64(1), "first row, 1"},
-						{int64(2), "second row, 1"},
-						{int64(3), "third row, 1"},
-					},
-				},
-				{
-					Query: "CALL p2a() AS OF '2019-01-03';",
-					Expected: []sql.Row{
-						{int64(1), "first row, 2"},
-						{int64(2), "second row, 2"},
-						{int64(3), "third row, 2"},
-					},
-				},
-			},
-		},
-	}
-
-	for _, script := range scripts {
+	for _, script := range queries.CallAsofScripts {
 		func() {
 			e, err := harness.NewEngine(t)
 			require.NoError(t, err)
@@ -995,6 +759,10 @@ func (s SimpleTableFunction) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter, 
 	}
 	s.returnedResults = true
 	return &SimpleTableFunctionRowIter{}, nil
+}
+
+func (s SimpleTableFunction) IsReadOnly() bool {
+	return true
 }
 
 func (s SimpleTableFunction) Resolved() bool {

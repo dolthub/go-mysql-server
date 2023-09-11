@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -32,7 +33,7 @@ type QueryTest struct {
 	Query           string
 	Expected        []sql.Row
 	ExpectedColumns sql.Schema // only Name and Type matter here, because that's what we send on the wire
-	Bindings        map[string]sql.Expression
+	Bindings        map[string]*query.BindVariable
 	SkipPrepared    bool
 }
 
@@ -741,6 +742,82 @@ var SpatialQueryTests = []QueryTest{
 }
 
 var QueryTests = []QueryTest{
+	{
+		Query:    "show full processlist",
+		Expected: []sql.Row{},
+	},
+	{
+		Query: "select * from (select i, i2 from niltable) a(x,y) union select * from (select 1, NULL) b(x,y) union select * from (select i, i2 from niltable) c(x,y)",
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "x",
+				Type: types.Int64,
+			},
+			{
+				Name: "y",
+				Type: types.Int64,
+			},
+		},
+		Expected: []sql.Row{
+			{1, nil},
+			{2, 2},
+			{3, nil},
+			{4, 4},
+			{5, nil},
+			{6, 6},
+		},
+	},
+	{
+		Query: "select * from (select 1, 1) a(x,y) union select * from (select 1, NULL) b(x,y) union select * from (select 1,1) c(x,y);",
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "x",
+				Type: types.Int8,
+			},
+			{
+				Name: "y",
+				Type: types.Int64,
+			},
+		},
+		Expected: []sql.Row{
+			{1, 1},
+			{1, nil},
+		},
+	},
+	{
+		Query: `SELECT I,S from mytable order by 1`,
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "I",
+				Type: types.Int64,
+			},
+			{
+				Name: "S",
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+			},
+		},
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
+		Query: `SELECT s as i, i as i from mytable order by 1`,
+		Expected: []sql.Row{
+			{"first row", 1},
+			{"second row", 2},
+			{"third row", 3},
+		},
+	},
+	{
+		Query:    "SELECT SUM(i), i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
+		Expected: []sql.Row{{float64(1), 1}, {float64(2), 2}, {float64(3), 3}},
+	},
+	{
+		Query:    "SELECT SUM(i) as sum, i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
+		Expected: []sql.Row{{float64(1), 1}, {float64(2), 2}, {float64(3), 3}},
+	},
 	{
 		Query:    "select count(1)",
 		Expected: []sql.Row{{1}},
@@ -3958,6 +4035,10 @@ Select * from (
 		Expected: []sql.Row{{uint64(65), uint64(65)}},
 	},
 	{
+		Query:    "SELECT 0x12345;",
+		Expected: []sql.Row{{[]uint8{0x1, 0x23, 0x45}}},
+	},
+	{
 		Query:    "SELECT i FROM mytable WHERE i BETWEEN 1 AND 2",
 		Expected: []sql.Row{{int64(1)}, {int64(2)}},
 	},
@@ -4839,8 +4920,9 @@ Select * from (
 		},
 	},
 	{
-		Query:    "",
-		Expected: []sql.Row{},
+		SkipPrepared: true,
+		Query:        "",
+		Expected:     []sql.Row{},
 	},
 	{
 		Query: "/*!40101 SET NAMES " +
@@ -4968,6 +5050,9 @@ Select * from (
 		},
 	},
 	{
+		Query: `SHOW VARIABLES`,
+	},
+	{
 		Query: `SHOW VARIABLES LIKE 'gtid_mode'`,
 		Expected: []sql.Row{
 			{"gtid_mode", "OFF"},
@@ -4995,6 +5080,20 @@ Select * from (
 		Expected: []sql.Row{
 			{"version_comment", "Dolt"}, {"version_compile_machine", ""}, {"version_compile_os", ""}, {"version_compile_zlib", ""}, {"wait_timeout", 28800}, {"windowing_use_high_precision", 1},
 		},
+	},
+	{
+		Query: `SHOW VARIABLES WHERE "1" and variable_name = 'autocommit'`,
+		Expected: []sql.Row{
+			{"autocommit", 1},
+		},
+	},
+	{
+		Query:    `SHOW VARIABLES WHERE "0" and variable_name = 'autocommit'`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SHOW VARIABLES WHERE "abc" and variable_name = 'autocommit'`,
+		Expected: []sql.Row{},
 	},
 	{
 		Query: `SHOW GLOBAL VARIABLES LIKE '%mode'`,
@@ -7740,8 +7839,7 @@ SELECT * FROM my_cte;`,
 	
 	)
     ORDER BY c0;
-;`,
-
+`,
 		Expected: []sql.Row{
 			{4},
 		},
@@ -7773,8 +7871,7 @@ SELECT * FROM my_cte;`,
 		
 	)
     ORDER BY c0;
-;`,
-
+`,
 		Expected: []sql.Row{
 			{4},
 		},
@@ -8463,12 +8560,20 @@ var DateParseQueries = []QueryTest{
 
 type QueryErrorTest struct {
 	Query          string
-	Bindings       map[string]sql.Expression
+	Bindings       map[string]*query.BindVariable
 	ExpectedErr    *errors.Kind
 	ExpectedErrStr string
 }
 
 var ErrorQueries = []QueryErrorTest{
+	{
+		Query:       "select i from (select * from mytable a join mytable b on a.i = b.i) dt",
+		ExpectedErr: sql.ErrAmbiguousColumnName,
+	},
+	{
+		Query:       "select table_name from information_schema.statistics AS OF '2023-08-31' WHERE table_schema='mydb'",
+		ExpectedErr: sql.ErrAsOfNotSupported,
+	},
 	{
 		Query:       "with a(j) as (select 1), b(i) as (select 2) (select j from a union select i from b order by 1 desc) union select j from a order by 1 asc;",
 		ExpectedErr: sql.ErrConflictingExternalQuery,
@@ -8600,6 +8705,10 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrInvalidAsOfExpression,
 	},
 	{
+		Query:       "SELECT i FROM myhistorytable AS OF MAX(i)",
+		ExpectedErr: sql.ErrInvalidAsOfExpression,
+	},
+	{
 		Query:       "SELECT pk FROM one_pk WHERE pk > ?",
 		ExpectedErr: sql.ErrUnboundPreparedStatementVariable,
 	},
@@ -8660,17 +8769,6 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrDatabaseNotFound,
 	},
 	{
-		Query:       `SELECT s as i, i as i from mytable order by 1`,
-		ExpectedErr: sql.ErrAmbiguousColumnInOrderBy,
-	},
-	{
-		Query: `SELECT pk as pk, nt.i  as i, nt2.i as i FROM one_pk
-						RIGHT JOIN niltable nt ON pk=nt.i
-						RIGHT JOIN niltable nt2 ON pk=nt2.i - 1
-						ORDER BY 3`,
-		ExpectedErr: sql.ErrAmbiguousColumnInOrderBy,
-	},
-	{
 		Query:       "SELECT C FROM (select i,s FROM mytable) mt (a,b) order by a desc;",
 		ExpectedErr: sql.ErrColumnNotFound,
 	},
@@ -8705,15 +8803,6 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query:       `alter table mytable add primary key (s)`,
 		ExpectedErr: sql.ErrMultiplePrimaryKeysDefined,
-	},
-	// TODO: The following two queries should work. See https://github.com/dolthub/go-mysql-server/issues/542.
-	{
-		Query:       "SELECT SUM(i), i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
-		ExpectedErr: analyzererrors.ErrAggregationUnsupported,
-	},
-	{
-		Query:       "SELECT SUM(i) as sum, i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
-		ExpectedErr: analyzererrors.ErrAggregationUnsupported,
 	},
 	{
 		Query:       "select ((1, 2)) from dual",
@@ -8796,14 +8885,6 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrCteRecursionLimitExceeded,
 	},
 	{
-		Query:       `alter table a add fulltext index idx (id)`,
-		ExpectedErr: sql.ErrUnsupportedFeature,
-	},
-	{
-		Query:       `CREATE FULLTEXT INDEX idx ON opening_lines(opening_line)`,
-		ExpectedErr: sql.ErrUnsupportedFeature,
-	},
-	{
 		Query:       `SELECT * FROM datetime_table where date_col >= 'not a valid date'`,
 		ExpectedErr: types.ErrConvertingToTime,
 	},
@@ -8862,7 +8943,7 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:          "with a as (select * from c), b as (select * from a), c as (select * from b) select * from a",
-		ExpectedErrStr: "table not found: a", // TODO: should be c
+		ExpectedErrStr: "table not found: c",
 	},
 	{
 		Query:       "WITH Numbers AS ( SELECT n = 1 UNION ALL SELECT n + 1 FROM Numbers WHERE n+1 <= 10) SELECT n FROM Numbers;",
@@ -8902,7 +8983,7 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:       "select SUM(*) from dual;",
-		ExpectedErr: analyzererrors.ErrStarUnsupported,
+		ExpectedErr: sql.ErrStarUnsupported,
 	},
 	{
 		Query:          "create table vb_tbl (vb varbinary(123456789));",
@@ -8936,10 +9017,6 @@ var BrokenErrorQueries = []QueryErrorTest{
 		ExpectedErrStr: "Unknown column 'x' in 'order clause'",
 	},
 	{
-		Query:          "with a as (select * from c), b as (select * from a), c as (select * from b) select * from a",
-		ExpectedErrStr: "table not found: c",
-	},
-	{
 		Query:       "WITH Numbers AS ( SELECT n = 1 UNION ALL SELECT n + 1 FROM Numbers WHERE n+1 <= 10) SELECT n FROM Numbers;",
 		ExpectedErr: sql.ErrTableNotFound,
 	},
@@ -8948,6 +9025,14 @@ var BrokenErrorQueries = []QueryErrorTest{
 	// Relevant issue: https://github.com/dolthub/dolt/issues/4998
 	// Special case: If you are grouping by every field of the PK, then you can select anything
 	// Otherwise, whatever you are selecting must be in the Group By (with the exception of aggregations)
+	{
+		Query:       "SELECT col0, floor(col1) FROM tab1 GROUP by col0;",
+		ExpectedErr: analyzererrors.ErrValidationGroupBy,
+	},
+	{
+		Query:       "SELECT floor(cor0.col1) * ceil(cor0.col0) AS col2 FROM tab1 AS cor0 GROUP BY cor0.col0",
+		ExpectedErr: analyzererrors.ErrValidationGroupBy,
+	},
 	{
 		Query: "select * from two_pk group by pk1, pk2",
 		// No error
@@ -8991,7 +9076,7 @@ type WriteQueryTest struct {
 	ExpectedWriteResult []sql.Row
 	SelectQuery         string
 	ExpectedSelect      []sql.Row
-	Bindings            map[string]sql.Expression
+	Bindings            map[string]*query.BindVariable
 }
 
 // GenericErrorQueryTest is a query test that is used to assert an error occurs for some query, without specifying what
@@ -9569,6 +9654,9 @@ var IndexPrefixQueries = []ScriptTest{
 		Name: "varchar keyed secondary index prefix",
 		SetUpScript: []string{
 			"create table t (i int primary key, v varchar(10))",
+			// Insert a value before we create the index, so that it
+			// has to process existing data when building the index
+			"insert into t values (-1, 'zzz');",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -9870,9 +9958,32 @@ var IndexPrefixQueries = []ScriptTest{
 	{
 		Name: "blob keyed secondary index prefix",
 		SetUpScript: []string{
-			"create table t (i int primary key, b blob)",
+			"create table t (i int primary key, b blob);",
+			// Insert a BLOB value before we create the index, so that it
+			// has to process existing data when building the index
+			"insert into t values (999, 'abcdefg');",
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select i from t where b like 'abcd%';",
+				Expected: []sql.Row{{999}},
+			},
+			{
+				Query:    "alter table t add index (b(1))",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table t",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `b` blob,\n  PRIMARY KEY (`i`),\n  KEY `b` (`b`(1))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "insert into t values (998, X'4242');;",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "alter table t drop index `b`;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
 			{
 				Query:    "alter table t add unique index (b(1))",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
@@ -9942,11 +10053,38 @@ var IndexPrefixQueries = []ScriptTest{
 	{
 		Name: "text keyed secondary index prefix",
 		SetUpScript: []string{
-			"create table t (i int primary key, t text)",
+			"create table t (i int primary key, t text);",
+			// Insert a TEXT value before we create the index, so that it
+			// has to process existing data when building the index
+			"insert into t values (999, 'xxx');",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "alter table t add unique index (t(1))",
+				Query:    "select i from t where t like 'x%';",
+				Expected: []sql.Row{{999}},
+			},
+			{
+				Query:    "alter table t add index (t(1));",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table t",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `t` text,\n  PRIMARY KEY (`i`),\n  KEY `t` (`t`(1))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "select i from t where t like 'x%';",
+				Expected: []sql.Row{{999}},
+			},
+			{
+				Query:    "insert into t values (998, 'yy');",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "alter table t drop index `t`;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "alter table t add unique index (t(1));",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
@@ -10162,7 +10300,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "show create table t",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `v1` varchar(10) COLLATE utf8mb4_0900_ai_ci,\n  `v2` varchar(10) COLLATE utf8mb4_0900_ai_ci,\n  PRIMARY KEY (`i`),\n  UNIQUE KEY `v1v2` (`v1`(3),`v2`(5))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"}},
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `v1` varchar(10),\n  `v2` varchar(10),\n  PRIMARY KEY (`i`),\n  UNIQUE KEY `v1v2` (`v1`(3),`v2`(5))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"}},
 			},
 			{
 				Query:    "insert into t values (0, 'a', 'a'), (1, 'ab','ab'), (2, 'abc', 'abc'), (3, 'abcde', 'abcde')",
@@ -10358,4 +10496,12 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 		},
 	},
+}
+
+func MustParseTime(layout, value string) time.Time {
+	parsed, err := time.Parse(layout, value)
+	if err != nil {
+		panic(err)
+	}
+	return parsed
 }

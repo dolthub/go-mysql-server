@@ -54,6 +54,10 @@ func (ShowWarnings) String() string {
 	return "SHOW WARNINGS"
 }
 
+func (ShowWarnings) IsReadOnly() bool {
+	return true
+}
+
 // Schema returns a new Schema reference for "SHOW VARIABLES" query.
 func (ShowWarnings) Schema() sql.Schema {
 	return sql.Schema{

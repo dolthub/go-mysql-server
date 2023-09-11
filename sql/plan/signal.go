@@ -28,6 +28,7 @@ import (
 type SignalConditionItemName string
 
 const (
+	SignalConditionItemName_Unknown           SignalConditionItemName = ""
 	SignalConditionItemName_ClassOrigin       SignalConditionItemName = "class_origin"
 	SignalConditionItemName_SubclassOrigin    SignalConditionItemName = "subclass_origin"
 	SignalConditionItemName_MessageText       SignalConditionItemName = "message_text"
@@ -160,6 +161,10 @@ func (s *Signal) String() string {
 		}
 	}
 	return fmt.Sprintf("SIGNAL SQLSTATE '%s'%s", s.SqlStateValue, infoStr)
+}
+
+func (s *Signal) IsReadOnly() bool {
+	return true
 }
 
 // DebugString implements the sql.DebugStringer interface.
@@ -325,6 +330,10 @@ func (s *SignalName) Schema() sql.Schema {
 	return nil
 }
 
+func (s *SignalName) IsReadOnly() bool {
+	return true
+}
+
 // Children implements the sql.Node interface.
 func (s *SignalName) Children() []sql.Node {
 	return nil // SignalName is an alternate form of Signal rather than an encapsulating node, thus no children
@@ -348,6 +357,10 @@ func (*SignalName) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 // RowIter implements the sql.Node interface.
 func (s *SignalName) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return nil, fmt.Errorf("may not iterate over unresolved node *SignalName")
+}
+
+func (s SignalInfo) IsReadOnly() bool {
+	return true
 }
 
 func (s SignalInfo) String() string {

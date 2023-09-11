@@ -48,6 +48,10 @@ func (w *Window) Resolved() bool {
 		expression.ExpressionsResolved(w.SelectExprs...)
 }
 
+func (w *Window) IsReadOnly() bool {
+	return w.Child.IsReadOnly()
+}
+
 func (w *Window) String() string {
 	pr := sql.NewTreePrinter()
 	var exprs = make([]string, len(w.SelectExprs))
@@ -75,7 +79,7 @@ func (w *Window) DebugString() string {
 func (w *Window) Schema() sql.Schema {
 	var s = make(sql.Schema, len(w.SelectExprs))
 	for i, e := range w.SelectExprs {
-		s[i] = transform.ExpressionToColumn(e)
+		s[i] = transform.ExpressionToColumn(e, AliasSubqueryString(e))
 	}
 	return s
 }
