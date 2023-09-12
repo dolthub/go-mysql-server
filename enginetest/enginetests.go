@@ -5583,8 +5583,6 @@ func TestValidateSession(t *testing.T, harness Harness, newSessFunc func(ctx *sq
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 
-	// TODO: is this necessary?
-	// sql.InitSystemVariables()
 	ctx := NewContext(harness)
 	ctx.Session = newSessFunc(ctx)
 

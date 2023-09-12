@@ -802,8 +802,7 @@ func TestValidateSession(t *testing.T) {
 	}
 
 	harness := enginetest.NewDefaultMemoryHarness()
-	newSess := func(_ *sql.Context) sql.PersistableSession {
-		ctx := harness.NewSession()
+	newSess := func(ctx *sql.Context) sql.PersistableSession {
 		memSession := ctx.Session.(*memory.Session)
 		memSession.SetValidationCallback(incrementValidateCb)
 		return memSession
