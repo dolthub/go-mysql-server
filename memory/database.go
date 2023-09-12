@@ -297,7 +297,7 @@ func (d *BaseDatabase) RenameTable(ctx *sql.Context, oldName, newName string) er
 	}
 	memTbl.data.tableName = newName
 	
-	d.tables[newName] = tbl
+	d.tables[newName] = memTbl
 	delete(d.tables, oldName)
 	sess.putTable(memTbl.data)
 
