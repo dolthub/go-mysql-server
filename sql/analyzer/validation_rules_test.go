@@ -325,7 +325,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 						},
 						table,
 					),
-					false, nil, nil, nil
+					false, nil, nil, nil,
 				),
 			false,
 		},
