@@ -124,6 +124,26 @@ var joinOpTests = []struct {
 		},
 	},
 	{
+		name: "left join on array data",
+		setup: [][]string{
+			{
+				"create table xy (x binary(2) primary key, y binary(2))",
+				"create table uv (u binary(2) primary key, v binary(2))",
+				"insert into xy values (x'F0F0',x'1234'),(x'2345',x'3456');",
+				"insert into uv values (x'fedc',x'F0F0');",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query: "select HEX(x),HEX(u) from xy left join uv on x = v OR y = u",
+				Expected: []sql.Row{
+					{"2345", nil},
+					{"F0F0", "FEDC"},
+				},
+			},
+		},
+	},
+	{
 		name: "point lookups",
 		setup: [][]string{
 			setup.MydbData[0],
