@@ -283,10 +283,15 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		defer e.Close()
 		p := sqle.NewProcessList()
 		p.AddConnection(1, "localhost")
-		sess := sql.NewBaseSessionWithClientServer("localhost", sql.Client{Address: "localhost", User: "root"}, 1)
-		p.ConnectionReady(sess)
-		ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess), sql.WithProcessList(p))
-
+		
+		ctx := NewContext(h)
+		ctx.Session.SetClient(sql.Client{Address: "localhost", User: "root"})
+		ctx.Session.SetConnectionId(1)
+		ctx.ProcessList = p
+		ctx.SetCurrentDatabase("")
+		
+		p.ConnectionReady(ctx.Session)
+		
 		ctx, err := p.BeginQuery(ctx, "SELECT foo")
 		require.NoError(t, err)
 
