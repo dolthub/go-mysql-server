@@ -91,7 +91,6 @@ func (t *tableEditor) Close(ctx *sql.Context) error {
 	if err != nil {
 		return err
 	}
-	t.editedTable.replaceData(t.ea.TableData())
 	
 	sess.putTable(t.editedTable.data)
 	return nil

@@ -101,7 +101,18 @@ func (d *BaseDatabase) Tables() map[string]sql.Table {
 
 func (d *BaseDatabase) GetTableInsensitive(ctx *sql.Context, tblName string) (sql.Table, bool, error) {
 	tbl, ok := sql.GetTableInsensitive(tblName, d.tables)
-	return tbl, ok, nil
+	
+	if !ok {
+		return nil, false, nil
+	}
+
+	// look in the session for table data. If it's not there, then cache it in the session and return it
+	sess := SessionFromContext(ctx)
+	memTbl := tbl.(*Table)
+	memTbl = memTbl.copy()
+	memTbl.replaceData(sess.tableData(memTbl))
+	
+	return memTbl, ok, nil
 }
 
 // putTable writes the table given into database storage. A table with this name must already be present.

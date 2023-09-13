@@ -513,9 +513,8 @@ func (b *BaseBuilder) buildCreateUser(ctx *sql.Context, n *plan.CreateUser, row 
 }
 
 func (b *BaseBuilder) buildAlterPK(ctx *sql.Context, n *plan.AlterPK, row sql.Row) (sql.RowIter, error) {
-	// We grab the table from the database to ensure that state is properly refreshed, thereby preventing multiple keys
-	// being defined.
-	// Grab the table fresh from the database.
+	// We need to get the current table from the database because this statement could be one clause in an alter table
+	// statement and the table may have changed since the analysis phase
 	table, err := getTableFromDatabase(ctx, n.Database(), n.Table)
 	if err != nil {
 		return nil, err

@@ -823,6 +823,15 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 				Query: "insert into t1 values ('a1', 'a2'), ('a2', 'a3'), ('a3', 'a4')",
 				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
+		},
+	},
+	{
+		Name:"Drop primary key for table with multiple primary key columns, add smaller primary key in same statement",
+		SetUpScript: []string{
+			"create table t1 (pk varchar(20), v varchar(20) default (concat(pk, '-foo')), primary key (pk, v))",
+			"insert into t1 values ('a1', 'a2'), ('a2', 'a3'), ('a3', 'a4')",
+		},
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY (v)",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
@@ -843,9 +852,9 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 				Query: "show create table t1",
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
-					"  `pk` varchar(20) NOT NULL,\n" +
-					"  `v` varchar(20) NOT NULL DEFAULT (concat(pk,'-foo'))\n" +
-					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+							"  `pk` varchar(20) NOT NULL,\n" +
+							"  `v` varchar(20) NOT NULL DEFAULT (concat(pk,'-foo'))\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},

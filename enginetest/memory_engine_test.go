@@ -192,74 +192,153 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	// t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "ALTER TABLE DROP COLUMN used by index",
+			Name:"Drop primary key for table with multiple primary key columns",
 			SetUpScript: []string{
-				"CREATE TABLE test (pk BIGINT UNSIGNED PRIMARY KEY, v1 VARCHAR(200), v2 VARCHAR(200), v3 VARCHAR(200), FULLTEXT idx1 (v1, v2), FULLTEXT idx2 (v2), FULLTEXT idx3 (v2, v3));",
-				"INSERT INTO test VALUES (1, 'abc', 'def', 'ghi');",
+				"create table t1 (pk varchar(20), v varchar(20) default (concat(pk, '-foo')), primary key (pk, v))",
+				"insert into t1 values ('a1', 'a2'), ('a2', 'a3'), ('a3', 'a4')",
 			},
 			Assertions: []queries.ScriptTestAssertion{
+				// {
+				// 	Query: "select * from t1 order by pk",
+				// 	Expected: []sql.Row{
+				// 		{"a1", "a2"},
+				// 		{"a2", "a3"},
+				// 		{"a3", "a4"},
+				// 	},
+				// },
+				// {
+				// 	Query:    "alter table t1 drop primary key",
+				// 	Expected: []sql.Row{{types.NewOkResult(0)}},
+				// },
+				// {
+				// 	Query: "select * from t1 order by pk",
+				// 	Expected: []sql.Row{
+				// 		{"a1", "a2"},
+				// 		{"a2", "a3"},
+				// 		{"a3", "a4"},
+				// 	},
+				// },
+				// {
+				// 	Query: "insert into t1 values ('a1', 'a2')",
+				// 	Expected: []sql.Row{{types.NewOkResult(1)}},
+				// },
+				// {
+				// 	Query: "select * from t1 order by pk",
+				// 	Expected: []sql.Row{
+				// 		{"a1", "a2"},
+				// 		{"a1", "a2"},
+				// 		{"a2", "a3"},
+				// 		{"a3", "a4"},
+				// 	},
+				// },
+				// {
+				// 	Query: "alter table t1 add primary key (pk, v)",
+				// 	ExpectedErr: sql.ErrPrimaryKeyViolation,
+				// },
+				// {
+				// 	Query:    "delete from t1 where pk = 'a1' limit 1",
+				// 	Expected: []sql.Row{{types.NewOkResult(1)}},
+				// },
+				// {
+				// 	Query: "alter table t1 add primary key (pk, v)",
+				// 	Expected: []sql.Row{{types.NewOkResult(0)}},
+				// },
+				// {
+				// 	Query: "show create table t1",
+				// 	Expected: []sql.Row{{"t1",
+				// 		"CREATE TABLE `t1` (\n" +
+				// 				"  `pk` varchar(20) NOT NULL,\n" +
+				// 				"  `v` varchar(20) NOT NULL DEFAULT (concat(pk,'-foo')),\n" +
+				// 				"  PRIMARY KEY (`pk`,`v`)\n" +
+				// 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				// },
+				// {
+				// 	Query: "alter table t1 drop primary key",
+				// 	Expected: []sql.Row{{types.NewOkResult(0)}},
+				// },
+				// {
+				// 	Query: "alter table t1 add index myidx (v)",
+				// 	Expected: []sql.Row{{types.NewOkResult(0)}},
+				// },
+				// {
+				// 	Query: "alter table t1 add primary key (pk)",
+				// 	Expected: []sql.Row{{types.NewOkResult(0)}},
+				// },
+				// {
+				// 	Query: "insert into t1 values ('a4', 'a3')",
+				// 	Expected: []sql.Row{{types.NewOkResult(1)}},
+				// },
+				// {
+				// 	Query: "show create table t1",
+				// 	Expected: []sql.Row{{"t1",
+				// 		"CREATE TABLE `t1` (\n" +
+				// 				"  `pk` varchar(20) NOT NULL,\n" +
+				// 				"  `v` varchar(20) NOT NULL DEFAULT (concat(pk,'-foo')),\n" +
+				// 				"  PRIMARY KEY (`pk`),\n" +
+				// 				"  KEY `myidx` (`v`)\n" +
+				// 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				// },
+				// {
+				// 	Query: "select * from t1 where v = 'a3' order by pk",
+				// 	Expected: []sql.Row{
+				// 		{"a2", "a3"},
+				// 		{"a4", "a3"},
+				// 	},
+				// },
+				// {
+				// 	Query: "alter table t1 drop primary key",
+				// 	Expected: []sql.Row{{types.NewOkResult(0)}},
+				// },
+				// {
+				// 	Query: "truncate t1",
+				// 	Expected: []sql.Row{{types.NewOkResult(4)}},
+				// },
+				// {
+				// 	Query: "alter table t1 drop index myidx",
+				// 	Expected: []sql.Row{{types.NewOkResult(0)}},
+				// },
+				// {
+				// 	Query: "alter table t1 add primary key (pk, v)",
+				// 	Expected: []sql.Row{{types.NewOkResult(0)}},
+				// },
+				// {
+				// 	Query: "insert into t1 values ('a1', 'a2'), ('a2', 'a3'), ('a3', 'a4')",
+				// 	Expected: []sql.Row{{types.NewOkResult(3)}},
+				// },
+				// {
+				// 	Query: "select * from t1 order by pk",
+				// 	Expected: []sql.Row{{}},
+				// },
+				// {
+				// 	Query: "show create table t1",
+				// 	Expected: []sql.Row{{}},
+				// },
 				{
-					Query:    "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('abc');",
-					Expected: []sql.Row{{uint64(1), "abc", "def", "ghi"}},
-				},
-				{
-					Query:    "SELECT * FROM test WHERE MATCH(v2) AGAINST ('def');",
-					Expected: []sql.Row{{uint64(1), "abc", "def", "ghi"}},
-				},
-				{
-					Query:    "SELECT * FROM test WHERE MATCH(v2, v3) AGAINST ('ghi');",
-					Expected: []sql.Row{{uint64(1), "abc", "def", "ghi"}},
-				},
-				{
-					Query:    "SHOW CREATE TABLE test;",
-					Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `pk` bigint unsigned NOT NULL,\n  `v1` varchar(200),\n  `v2` varchar(200),\n  `v3` varchar(200),\n  PRIMARY KEY (`pk`),\n  FULLTEXT KEY `idx1` (`v1`,`v2`),\n  FULLTEXT KEY `idx2` (`v2`),\n  FULLTEXT KEY `idx3` (`v2`,`v3`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-				},
-				{
-					Query:    "ALTER TABLE test DROP COLUMN v2;",
+					Query: "ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY (v)",
 					Expected: []sql.Row{{types.NewOkResult(0)}},
 				},
 				{
-					Query:       "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('abc');",
-					ExpectedErr: sql.ErrColumnNotFound,
+					Query: "INSERT INTO t1 (pk, v) values ('a100', 'a3')",
+					ExpectedErr: sql.ErrPrimaryKeyViolation,
 				},
 				{
-					Query:       "SELECT * FROM test WHERE MATCH(v2) AGAINST ('def');",
-					ExpectedErr: sql.ErrColumnNotFound,
-				},
-				{
-					Query:       "SELECT * FROM test WHERE MATCH(v2, v3) AGAINST ('ghi');",
-					ExpectedErr: sql.ErrColumnNotFound,
-				},
-				{
-					Query:    "SELECT * FROM test WHERE MATCH(v1) AGAINST ('abc');",
-					Expected: []sql.Row{{uint64(1), "abc", "ghi"}},
-				},
-				{
-					Query:    "SELECT * FROM test WHERE MATCH(v3) AGAINST ('ghi');",
-					Expected: []sql.Row{{uint64(1), "abc", "ghi"}},
-				},
-				{
-					Query:    "SHOW CREATE TABLE test;",
-					Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `pk` bigint unsigned NOT NULL,\n  `v1` varchar(200),\n  `v3` varchar(200),\n  PRIMARY KEY (`pk`),\n  FULLTEXT KEY `idx1` (`v1`),\n  FULLTEXT KEY `idx3` (`v3`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-				},
-				{
-					Query:    "ALTER TABLE test DROP COLUMN v3;",
+					Query: "alter table t1 drop primary key",
 					Expected: []sql.Row{{types.NewOkResult(0)}},
 				},
 				{
-					Query:    "SELECT * FROM test WHERE MATCH(v1) AGAINST ('abc');",
-					Expected: []sql.Row{{uint64(1), "abc"}},
+					Query: "ALTER TABLE t1 ADD PRIMARY KEY (pk, v), DROP PRIMARY KEY",
+					Expected: []sql.Row{{types.NewOkResult(0)}},
 				},
 				{
-					Query:       "SELECT * FROM test WHERE MATCH(v3) AGAINST ('ghi');",
-					ExpectedErr: sql.ErrColumnNotFound,
-				},
-				{
-					Query:    "SHOW CREATE TABLE test;",
-					Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `pk` bigint unsigned NOT NULL,\n  `v1` varchar(200),\n  PRIMARY KEY (`pk`),\n  FULLTEXT KEY `idx1` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+					Query: "show create table t1",
+					Expected: []sql.Row{{"t1",
+						"CREATE TABLE `t1` (\n" +
+								"  `pk` varchar(20) NOT NULL,\n" +
+								"  `v` varchar(20) NOT NULL DEFAULT (concat(pk,'-foo'))\n" +
+								") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 				},
 			},
 		},
@@ -267,7 +346,7 @@ func TestSingleScript(t *testing.T) {
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-		harness.Setup(setup.MydbData, setup.Parent_childData)
+		harness.Setup(setup.MydbData)
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
@@ -669,7 +748,6 @@ func TestForeignKeys(t *testing.T) {
 }
 
 func TestFulltextIndexes(t *testing.T) {
-	t.Skip()
 	enginetest.TestFulltextIndexes(t, enginetest.NewDefaultMemoryHarness())
 }
 
