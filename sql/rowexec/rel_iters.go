@@ -1068,3 +1068,26 @@ func (ui *unionIter) Close(ctx *sql.Context) error {
 		return nil
 	}
 }
+
+type intersectIter struct {
+	lIter, rIter sql.RowIter
+}
+
+func (ii *intersectIter) Next(ctx *sql.Context) (sql.Row, error) {
+	return nil, nil
+}
+
+func (ii *intersectIter) Close(ctx *sql.Context) error {
+	if ii.lIter != nil {
+		if err := ii.lIter.Close(ctx); err != nil {
+			return err
+		}
+	}
+	if ii.rIter != nil {
+		if err := ii.rIter.Close(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+

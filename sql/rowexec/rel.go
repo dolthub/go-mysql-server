@@ -654,12 +654,30 @@ func (b *BaseBuilder) buildUnion(ctx *sql.Context, u *plan.Union, row sql.Row) (
 		span.End()
 		return nil, err
 	}
-	iter = &unionIter{
-		cur: iter,
-		nextIter: func(ctx *sql.Context) (sql.RowIter, error) {
-			return b.buildNodeExec(ctx, u.Right(), row)
-		},
+	switch u.Type {
+	case plan.UnionType:
+		iter = &unionIter{
+			cur: iter,
+			nextIter: func(ctx *sql.Context) (sql.RowIter, error) {
+				return b.buildNodeExec(ctx, u.Right(), row)
+			},
+		}
+	case plan.IntersectType:
+		iter = &unionIter{
+			cur: iter,
+			nextIter: func(ctx *sql.Context) (sql.RowIter, error) {
+				return b.buildNodeExec(ctx, u.Right(), row)
+			},
+		}
+	case plan.ExceptType:
+		iter = &unionIter{
+			cur: iter,
+			nextIter: func(ctx *sql.Context) (sql.RowIter, error) {
+				return b.buildNodeExec(ctx, u.Right(), row)
+			},
+		}
 	}
+
 	if u.Distinct {
 		iter = newDistinctIter(ctx, iter)
 	}
