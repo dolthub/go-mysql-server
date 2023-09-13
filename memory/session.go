@@ -78,7 +78,7 @@ func key(t *TableData) tableKey {
 func (s *Session) editAccumulator(t *Table) tableEditAccumulator {
 	ea, ok := s.editAccumulators[key(t.data)]
 	if !ok {
-		ea = NewTableEditAccumulator(t.data)
+		ea = newTableEditAccumulator(t.data)
 		s.editAccumulators[key(t.data)] = ea
 	}
 	return ea

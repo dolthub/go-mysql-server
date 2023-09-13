@@ -696,7 +696,7 @@ func (t *Table) tableEditorForRewrite(ctx *sql.Context, oldSchema, newSchema sql
 	var editor sql.TableEditor = &tableEditor{
 		editedTable:   tableUnderEdit,
 		initialTable:  t.copy(),
-		ea: NewTableEditAccumulator(tableData),
+		ea:            newTableEditAccumulator(tableData),
 		uniqueIdxCols: uniqIdxCols,
 		prefixLengths: prefixLengths,
 	}

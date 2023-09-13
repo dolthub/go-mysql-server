@@ -352,8 +352,8 @@ type tableEditAccumulator interface {
 	TableData() *TableData
 }
 
-// NewTableEditAccumulator returns a tableEditAccumulator based on the schema.
-func NewTableEditAccumulator(t *TableData) tableEditAccumulator {
+// newTableEditAccumulator returns a tableEditAccumulator based on the schema.
+func newTableEditAccumulator(t *TableData) tableEditAccumulator {
 	if sql.IsKeyless(t.schema.Schema) {
 		return &keylessTableEditAccumulator{
 			tableData: t,
