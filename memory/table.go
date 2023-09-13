@@ -1783,8 +1783,8 @@ func (t Table) copy() *Table {
 }
 
 // replaceData replaces the data in this table with the one in the source
-func (t *Table) replaceData(src *Table) {
-	t.data = src.data.copy()
+func (t *Table) replaceData(src *TableData) {
+	t.data = src.copy()
 }
 
 // normalizeSchemaForRewrite returns a copy of the schema provided suitable for rewriting. This is necessary because 

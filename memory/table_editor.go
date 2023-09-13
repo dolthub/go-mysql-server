@@ -78,11 +78,12 @@ func (t *tableEditor) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 }
 
 func (t *tableEditor) Close(ctx *sql.Context) error {
+	sess := SessionFromContext(ctx)
+
 	if t.discardChanges {
+		sess.putTable(t.initialTable.data)
 		return nil
 	}
-
-	sess := SessionFromContext(ctx)
 	
 	// On the normal INSERT / UPDATE / DELETE path this happens at StatementComplete time, but for table rewrites it 
 	// only happens at Close
@@ -90,6 +91,8 @@ func (t *tableEditor) Close(ctx *sql.Context) error {
 	if err != nil {
 		return err
 	}
+	t.editedTable.replaceData(t.ea.TableData())
+	
 	t.ea.Clear()
 	
 	sess.putTable(t.editedTable.data)
@@ -103,7 +106,9 @@ func (t *tableEditor) StatementBegin(ctx *sql.Context) {
 func (t *tableEditor) DiscardChanges(ctx *sql.Context, errorEncountered error) error {
 	t.ea.Clear()
 	if _, ignore := errorEncountered.(sql.IgnorableError); !ignore {
-		t.editedTable.replaceData(t.initialTable)
+		t.editedTable.replaceData(t.initialTable.data)
+		// sess := SessionFromContext(ctx)
+		// sess.putTable(t.editedTable.data)
 		t.discardChanges = true	
 	}
 	return nil
@@ -114,6 +119,7 @@ func (t *tableEditor) StatementComplete(ctx *sql.Context) error {
 	if err != nil {
 		return nil
 	}
+	t.editedTable.replaceData(t.ea.TableData())
 	
 	t.ea.Clear()
 	sess := SessionFromContext(ctx)
@@ -257,13 +263,21 @@ func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val uint64) error 
 }
 
 func (t *tableEditor) IndexedAccess(ctx *sql.Context, i sql.IndexLookup) (sql.IndexedTable, error) {
+	// Before we return an indexed access for this table, we need to apply all the edits to the table and update it in 
+	// the session, because the table we return will pull its data from that same session. 
 	// TODO: optimize this, should create some struct that encloses the tableEditor and filters based on the lookup
 	err := t.ea.ApplyEdits(ctx)
 	if err != nil {
 		return nil, err
 	}
 	t.ea.Clear()
-	return &IndexedTable{Table: t.editedTable, Lookup: i}, nil
+	
+	table := t.editedTable.copy()
+	table.replaceData(t.ea.TableData())
+	sess := SessionFromContext(ctx)
+	sess.putTable(table.data)
+	
+	return &IndexedTable{Table: table, Lookup: i}, nil
 }
 
 func (t *tableEditor) pkColumnIndexes() []int {
@@ -336,26 +350,31 @@ type tableEditAccumulator interface {
 	Delete(value sql.Row) error
 	// Get returns a row if found along with a boolean added. Added is true if a row was inserted.
 	Get(value sql.Row) (sql.Row, bool, error)
-	// ApplyEdits takes a initialTable and runs through a sequence of inserts and deletes that have been stored in the
-	// accumulator.
+	// ApplyEdits updates the initialTable with the inserts and deletes that have been added to the accumulator, then 
+	// clears it.
 	ApplyEdits(ctx *sql.Context) error
+	// GetByCols returns the row in the table, or the pending edits, matching the ones given
 	GetByCols(value sql.Row, cols []int, prefixLengths []uint16) (sql.Row, bool, error)
 	// Clear wipes all of the stored inserts and deletes that may or may not have been applied.
 	Clear()
+	// TableData returns the table data of this accumulator
+	TableData() *TableData
 }
 
 // NewTableEditAccumulator returns a tableEditAccumulator based on the schema.
 func NewTableEditAccumulator(t *TableData) tableEditAccumulator {
 	if sql.IsKeyless(t.schema.Schema) {
 		return &keylessTableEditAccumulator{
-			tableData: t,
+			// tableData: t,
+			tableData: t.copy(),
 			adds:      make([]sql.Row, 0),
 			deletes:   make([]sql.Row, 0),
 		}
 	}
 
 	return &pkTableEditAccumulator{
-		tableData: t,
+		tableData: t.copy(),
+		// tableData: t,
 		adds:      make(map[string]sql.Row),
 		deletes:   make(map[string]sql.Row),
 	}
@@ -366,6 +385,10 @@ type pkTableEditAccumulator struct {
 	tableData *TableData
 	adds      map[string]sql.Row
 	deletes map[string]sql.Row
+}
+
+func (pke *pkTableEditAccumulator) TableData() *TableData {
+	return pke.tableData
 }
 
 var _ tableEditAccumulator = (*pkTableEditAccumulator)(nil)
@@ -560,6 +583,10 @@ type keylessTableEditAccumulator struct {
 	tableData *TableData
 	adds      []sql.Row
 	deletes   []sql.Row
+}
+
+func (k *keylessTableEditAccumulator) TableData() *TableData {
+	return k.tableData
 }
 
 var _ tableEditAccumulator = (*keylessTableEditAccumulator)(nil)
