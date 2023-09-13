@@ -111,12 +111,9 @@ func (ee *eventExecutor) shutdown() {
 // executeEventAndUpdateList executes the given event and updates the event's last executed time in the database.
 // If the event is not ended, then it updates the enabled event and re-adds it back to the list.
 func (ee *eventExecutor) executeEventAndUpdateList(ctx *sql.Context, event *enabledEvent, executionTime time.Time) error {
-	reAdd, qErr, tErr := ee.executeEvent(event)
-	if tErr != nil {
-		return fmt.Errorf("error from background thread: %s", tErr)
-	}
-	if qErr != nil {
-		return fmt.Errorf("error from event definition query: %s", qErr)
+	reAdd, err := ee.executeEvent(event)
+	if err != nil {
+		return err
 	}
 
 	ended, err := event.updateEventAfterExecution(ctx, event.edb, executionTime)
@@ -131,9 +128,9 @@ func (ee *eventExecutor) executeEventAndUpdateList(ctx *sql.Context, event *enab
 }
 
 // executeEvent executes given event by adding a thread to background threads to run the given event's definition.
-// This function returns whether the event needs to be added back into the enabled events list, error returned from
-// executing the event definition and thread error.
-func (ee *eventExecutor) executeEvent(event *enabledEvent) (bool, error, error) {
+// This function returns whether the event needs to be added back into the enabled events list, as well as any
+// error if a background thread was not able to be started up to execute the event.
+func (ee *eventExecutor) executeEvent(event *enabledEvent) (bool, error) {
 	ee.runningEventsStatus.update(event.name(), true, true)
 	defer ee.runningEventsStatus.remove(event.name())
 
@@ -147,36 +144,38 @@ func (ee *eventExecutor) executeEvent(event *enabledEvent) (bool, error, error) 
 		reAdd = false
 	}
 
-	var queryErr error
-	threadErr := ee.bThreads.Add(fmt.Sprintf("executing %s", event.name()), func(ctx context.Context) {
+	taskName := fmt.Sprintf("executing %s", event.name())
+	addThreadErr := ee.bThreads.Add(taskName, func(ctx context.Context) {
+		logrus.Trace(taskName)
 		select {
 		case <-ctx.Done():
+			logrus.Tracef("stopping background thread (%s)", taskName)
 			ee.stop.Store(true)
 			return
 		default:
 			// get a new session sql.Context for each event definition execution
 			sqlCtx, commit, err := ee.ctxGetterFunc()
 			if err != nil {
-				queryErr = err
+				logrus.WithField("query", event.event.EventBody).Errorf("unable to get context for executed query: %v", err)
 				return
 			}
 
-			queryErr = ee.queryRunFunc(sqlCtx, event.edb.Name(), event.event.EventBody, event.username, event.address)
-			if queryErr != nil {
-				queryErr = err
+			err = ee.queryRunFunc(sqlCtx, event.edb.Name(), event.event.CreateEventStatement(), event.username, event.address)
+			if err != nil {
+				logrus.WithField("query", event.event.EventBody).Errorf("unable to execute query: %v", err)
 				return
 			}
 
 			// must commit after done using the sql.Context
 			err = commit()
 			if err != nil {
-				queryErr = err
+				logrus.WithField("query", event.event.EventBody).Errorf("unable to commit transaction: %v", err)
 				return
 			}
 		}
 	})
 
-	return reAdd, queryErr, threadErr
+	return reAdd, addThreadErr
 }
 
 // reevaluateEvent evaluates an event from enabled events list, but its execution time passed the current time.
