@@ -76,7 +76,7 @@ func NewCreateEvent(
 		Status:           status,
 		Comment:          comment,
 		DefinitionString: definitionString,
-		DefinitionNode:   definition,
+		DefinitionNode:   prepareCreateEventDefinitionNode(definition),
 		IfNotExists:      ifNotExists,
 	}
 }
@@ -119,7 +119,7 @@ func (c *CreateEvent) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	nc := *c
-	nc.DefinitionNode = children[0]
+	nc.DefinitionNode = prepareCreateEventDefinitionNode(children[0])
 
 	return &nc, nil
 }
@@ -322,6 +322,29 @@ func (c *CreateEvent) GetEventDefinition(ctx *sql.Context, eventCreationTime, la
 	eventDefinition.LastAltered = lastAltered
 	eventDefinition.LastExecuted = lastExecuted
 	return eventDefinition, nil
+}
+
+// prepareCreateEventDefinitionNode fills in any missing ProcedureReference structures for
+// BeginEndBlocks in the event's definition.
+func prepareCreateEventDefinitionNode(definition sql.Node) sql.Node {
+	beginEndBlock, ok := definition.(*BeginEndBlock)
+	if !ok {
+		return definition
+	}
+
+	// NOTE: To execute a multi-statement event body in a BeginEndBlock, a ProcedureReference
+	//       must be set in the BeginEndBlock, but this currently only gets initialized in the
+	//       analyzer for ProcedureCalls, so we initialize it here.
+	// TODO: How does this work for triggers, which would have the same issue; seems like there
+	//       should be a cleaner way to handle this
+	beginEndBlock.Pref = expression.NewProcedureReference()
+
+	newChildren := make([]sql.Node, len(beginEndBlock.Children()))
+	for i, child := range beginEndBlock.Children() {
+		newChildren[i] = prepareCreateEventDefinitionNode(child)
+	}
+	newNode, _ := beginEndBlock.WithChildren(newChildren...)
+	return newNode
 }
 
 // createEventIter is the row iterator for *CreateEvent.
