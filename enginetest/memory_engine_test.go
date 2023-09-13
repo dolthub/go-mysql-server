@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/enginetest"
@@ -134,14 +135,44 @@ func TestSingleQuery(t *testing.T) {
 	// t.Skip()
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query:    "select count(*) from mytable",
-		Expected: []sql.Row{{3}},
+		Query: `SELECT 
+     table_name, index_name, comment, non_unique, GROUP_CONCAT(column_name ORDER BY seq_in_index) AS COLUMNS 
+   FROM information_schema.statistics 
+   WHERE table_schema='mydb' AND table_name='mytable' AND index_name!="PRIMARY" 
+   GROUP BY index_name;`,
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "TABLE_NAME",
+				Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "INDEX_NAME",
+				Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "COMMENT",
+				Type: types.MustCreateString(sqltypes.VarChar, 8, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "NON_UNIQUE",
+				Type: types.Int32,
+			},
+			{
+				Name: "COLUMNS",
+				Type: types.Text,
+			},
+		},
+		Expected: []sql.Row{
+			{"mytable", "idx_si", "", 1, "s,i"},
+			{"mytable", "mytable_i_s", "", 1, "i,s"},
+			{"mytable", "mytable_s", "", 0, "s"},
+		},
 	}
 
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, false, nil)
 	// harness.UseServer()
-	harness.Setup(setup.SimpleSetup...)
+	harness.Setup(setup.MydbData, setup.MytableData)
 	engine, err := harness.NewEngine(t)
 	require.NoError(t, err)
 

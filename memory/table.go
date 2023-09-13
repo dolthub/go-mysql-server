@@ -688,7 +688,9 @@ func (t *Table) newTableEditor(ctx *sql.Context) (sql.TableEditor, error) {
 
 func (t *Table) tableEditorForRewrite(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema) (sql.TableEditor, error) {
 	// Make a copy of the table under edit with the new schema and no data
+	// sess := SessionFromContext(ctx)
 	tableUnderEdit := t.copy()
+	// tableUnderEdit.data = sess.tableData(t).copy()
 	tableData := tableUnderEdit.data.truncate(normalizeSchemaForRewrite(newSchema))
 	tableUnderEdit.data = tableData
 
