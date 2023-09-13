@@ -87,13 +87,11 @@ func (t *tableEditor) Close(ctx *sql.Context) error {
 	
 	// On the normal INSERT / UPDATE / DELETE path this happens at StatementComplete time, but for table rewrites it 
 	// only happens at Close
-	err := t.ea.ApplyEdits(ctx)
+	err := t.ea.ApplyEdits(ctx, t.editedTable)
 	if err != nil {
 		return err
 	}
 	t.editedTable.replaceData(t.ea.TableData())
-	
-	t.ea.Clear()
 	
 	sess.putTable(t.editedTable.data)
 	return nil
@@ -107,21 +105,17 @@ func (t *tableEditor) DiscardChanges(ctx *sql.Context, errorEncountered error) e
 	t.ea.Clear()
 	if _, ignore := errorEncountered.(sql.IgnorableError); !ignore {
 		t.editedTable.replaceData(t.initialTable.data)
-		// sess := SessionFromContext(ctx)
-		// sess.putTable(t.editedTable.data)
 		t.discardChanges = true	
 	}
 	return nil
 }
 
 func (t *tableEditor) StatementComplete(ctx *sql.Context) error {
-	err := t.ea.ApplyEdits(ctx)
+	err := t.ea.ApplyEdits(ctx, t.editedTable)
 	if err != nil {
 		return nil
 	}
-	t.editedTable.replaceData(t.ea.TableData())
 	
-	t.ea.Clear()
 	sess := SessionFromContext(ctx)
 	sess.putTable(t.editedTable.data)
 
@@ -266,18 +260,15 @@ func (t *tableEditor) IndexedAccess(ctx *sql.Context, i sql.IndexLookup) (sql.In
 	// Before we return an indexed access for this table, we need to apply all the edits to the table and update it in 
 	// the session, because the table we return will pull its data from that same session. 
 	// TODO: optimize this, should create some struct that encloses the tableEditor and filters based on the lookup
-	err := t.ea.ApplyEdits(ctx)
+	err := t.ea.ApplyEdits(ctx, t.editedTable)
 	if err != nil {
 		return nil, err
 	}
-	t.ea.Clear()
 	
-	table := t.editedTable.copy()
-	table.replaceData(t.ea.TableData())
 	sess := SessionFromContext(ctx)
-	sess.putTable(table.data)
+	sess.putTable(t.editedTable.data)
 	
-	return &IndexedTable{Table: table, Lookup: i}, nil
+	return &IndexedTable{Table: t.editedTable, Lookup: i}, nil
 }
 
 func (t *tableEditor) pkColumnIndexes() []int {
@@ -350,9 +341,9 @@ type tableEditAccumulator interface {
 	Delete(value sql.Row) error
 	// Get returns a row if found along with a boolean added. Added is true if a row was inserted.
 	Get(value sql.Row) (sql.Row, bool, error)
-	// ApplyEdits updates the initialTable with the inserts and deletes that have been added to the accumulator, then 
-	// clears it.
-	ApplyEdits(ctx *sql.Context) error
+	// ApplyEdits updates the table provided with the inserts and deletes that have been added to the accumulator, then 
+	// clears it the accumulator.
+	ApplyEdits(ctx *sql.Context, table *Table) error
 	// GetByCols returns the row in the table, or the pending edits, matching the ones given
 	GetByCols(value sql.Row, cols []int, prefixLengths []uint16) (sql.Row, bool, error)
 	// Clear wipes all of the stored inserts and deletes that may or may not have been applied.
@@ -464,7 +455,7 @@ func (pke *pkTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefixLe
 }
 
 // ApplyEdits implements the tableEditAccumulator interface.
-func (pke *pkTableEditAccumulator) ApplyEdits(ctx *sql.Context) error {
+func (pke *pkTableEditAccumulator) ApplyEdits(ctx *sql.Context, table *Table) error {
 	for _, val := range pke.deletes {
 		err := pke.deleteHelper(ctx, pke.tableData, val)
 		if err != nil {
@@ -480,6 +471,8 @@ func (pke *pkTableEditAccumulator) ApplyEdits(ctx *sql.Context) error {
 	}
 
 	pke.tableData.sortRows()
+	table.replaceData(pke.tableData)
+	pke.Clear()
 
 	return nil
 }
@@ -667,7 +660,7 @@ func (k *keylessTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefi
 }
 
 // ApplyEdits implements the tableEditAccumulator interface.
-func (k *keylessTableEditAccumulator) ApplyEdits(ctx *sql.Context) error {
+func (k *keylessTableEditAccumulator) ApplyEdits(ctx *sql.Context, table *Table) error {
 	for _, val := range k.deletes {
 		err := k.deleteHelper(ctx, k.tableData, val)
 		if err != nil {
@@ -681,7 +674,9 @@ func (k *keylessTableEditAccumulator) ApplyEdits(ctx *sql.Context) error {
 			return err
 		}
 	}
-
+	table.replaceData(k.tableData)
+	k.Clear()
+	
 	return nil
 }
 
