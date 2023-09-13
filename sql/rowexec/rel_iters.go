@@ -1071,10 +1071,55 @@ func (ui *unionIter) Close(ctx *sql.Context) error {
 
 type intersectIter struct {
 	lIter, rIter sql.RowIter
+	cached bool
+	cache  map[uint64]int
 }
 
 func (ii *intersectIter) Next(ctx *sql.Context) (sql.Row, error) {
-	return nil, nil
+	if !ii.cached {
+		ii.cache = make(map[uint64]int)
+		for {
+			res, err := ii.rIter.Next(ctx)
+			if err != nil && err != io.EOF {
+				return nil, err
+			}
+
+			hash, herr := sql.HashOf(res)
+			if herr != nil {
+				return nil, herr
+			}
+			if _, ok := ii.cache[hash]; !ok {
+				ii.cache[hash] = 0
+			}
+			ii.cache[hash]++
+
+			if err == io.EOF {
+				break
+			}
+		}
+		ii.cached = true
+	}
+
+	for {
+		res, err := ii.lIter.Next(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		hash, herr := sql.HashOf(res)
+		if herr != nil {
+			return nil, herr
+		}
+		if _, ok := ii.cache[hash]; !ok {
+			continue
+		}
+		if ii.cache[hash] <= 0 {
+			continue
+		}
+		ii.cache[hash]--
+
+		return res, nil
+	}
 }
 
 func (ii *intersectIter) Close(ctx *sql.Context) error {
