@@ -1071,8 +1071,8 @@ func (ui *unionIter) Close(ctx *sql.Context) error {
 
 type intersectIter struct {
 	lIter, rIter sql.RowIter
-	cached bool
-	cache  map[uint64]int
+	cached       bool
+	cache        map[uint64]int
 }
 
 func (ii *intersectIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -1135,4 +1135,3 @@ func (ii *intersectIter) Close(ctx *sql.Context) error {
 	}
 	return nil
 }
-
