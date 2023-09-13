@@ -101,7 +101,6 @@ func (d *BaseDatabase) Tables() map[string]sql.Table {
 
 func (d *BaseDatabase) GetTableInsensitive(ctx *sql.Context, tblName string) (sql.Table, bool, error) {
 	tbl, ok := sql.GetTableInsensitive(tblName, d.tables)
-	
 	if !ok {
 		return nil, false, nil
 	}
@@ -110,7 +109,7 @@ func (d *BaseDatabase) GetTableInsensitive(ctx *sql.Context, tblName string) (sq
 	sess := SessionFromContext(ctx)
 	memTbl := tbl.(*Table)
 	memTbl = memTbl.copy()
-	memTbl.replaceData(sess.tableData(memTbl))
+	memTbl.data = sess.tableData(memTbl)
 	
 	return memTbl, ok, nil
 }
