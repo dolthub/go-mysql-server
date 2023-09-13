@@ -16,9 +16,9 @@ package types
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/sqltypes"
 	"testing"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/stretchr/testify/assert"
 
@@ -149,7 +149,7 @@ func TestColumnCharTypes(t *testing.T) {
 	for _, test := range test {
 		t.Run(fmt.Sprintf("%v %v", test.typ, test.exp), func(t *testing.T) {
 			ct := &sqlparser.ColumnType{
-				Type: test.typ,
+				Type:   test.typ,
 				Length: &sqlparser.SQLVal{Type: sqlparser.IntVal, Val: []byte(fmt.Sprintf("%v", test.len))},
 			}
 			res, err := ColumnTypeToType(ct)
