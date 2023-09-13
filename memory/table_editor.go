@@ -356,16 +356,14 @@ type tableEditAccumulator interface {
 func NewTableEditAccumulator(t *TableData) tableEditAccumulator {
 	if sql.IsKeyless(t.schema.Schema) {
 		return &keylessTableEditAccumulator{
-			// tableData: t,
-			tableData: t.copy(),
+			tableData: t,
 			adds:      make([]sql.Row, 0),
 			deletes:   make([]sql.Row, 0),
 		}
 	}
 
 	return &pkTableEditAccumulator{
-		tableData: t.copy(),
-		// tableData: t,
+		tableData: t,
 		adds:      make(map[string]sql.Row),
 		deletes:   make(map[string]sql.Row),
 	}
