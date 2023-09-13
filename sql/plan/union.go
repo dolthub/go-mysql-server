@@ -21,6 +21,12 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+const (
+	UnionType = iota
+	IntersectType
+	ExceptType
+)
+
 // Union is a node that returns everything in Left and then everything in Right
 type Union struct {
 	BinaryNode
@@ -28,6 +34,7 @@ type Union struct {
 	Limit      sql.Expression
 	Offset     sql.Expression
 	SortFields sql.SortFields
+	Type       int
 }
 
 var _ sql.Node = (*Union)(nil)
@@ -35,13 +42,14 @@ var _ sql.Expressioner = (*Union)(nil)
 var _ sql.CollationCoercible = (*Union)(nil)
 
 // NewUnion creates a new Union node with the given children.
-func NewUnion(left, right sql.Node, distinct bool, limit, offset sql.Expression, sortFields sql.SortFields) *Union {
+func NewUnion(unionType int, left, right sql.Node, distinct bool, limit, offset sql.Expression, sortFields sql.SortFields) *Union {
 	return &Union{
 		BinaryNode: BinaryNode{left: left, right: right},
 		Distinct:   distinct,
 		Limit:      limit,
 		Offset:     offset,
 		SortFields: sortFields,
+		Type:       unionType,
 	}
 }
 
@@ -145,7 +153,7 @@ func (u *Union) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 2)
 	}
-	return NewUnion(children[0], children[1], u.Distinct, u.Limit, u.Offset, u.SortFields), nil
+	return NewUnion(u.Type, children[0], children[1], u.Distinct, u.Limit, u.Offset, u.SortFields), nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
@@ -159,7 +167,7 @@ func (*Union) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID
 	return sql.Collation_binary, 7
 }
 
-func (u Union) String() string {
+func (u *Union) String() string {
 	pr := sql.NewTreePrinter()
 	var distinct string
 	if u.Distinct {
@@ -183,11 +191,11 @@ func (u Union) String() string {
 	return pr.String()
 }
 
-func (u Union) IsReadOnly() bool {
+func (u *Union) IsReadOnly() bool {
 	return u.left.IsReadOnly() && u.right.IsReadOnly()
 }
 
-func (u Union) DebugString() string {
+func (u *Union) DebugString() string {
 	pr := sql.NewTreePrinter()
 	var distinct string
 	if u.Distinct {

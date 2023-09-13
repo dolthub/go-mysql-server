@@ -30,7 +30,25 @@ func (b *Builder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope) {
 	leftScope := b.buildSelectStmt(inScope, u.Left)
 	rightScope := b.buildSelectStmt(inScope, u.Right)
 
-	distinct := u.Type != ast.UnionAllStr
+	var unionType int
+	switch u.Type {
+	case ast.UnionStr, ast.UnionAllStr, ast.UnionDistinctStr:
+		unionType = plan.UnionType
+	case ast.IntersectStr, ast.IntersectAllStr, ast.IntersectDistinctStr:
+		unionType = plan.IntersectType
+	case ast.ExceptStr, ast.ExceptAllStr, ast.ExceptDistinctStr:
+		unionType = plan.ExceptType
+	default:
+		b.handleErr(fmt.Errorf("unknown union type %s", u.Type))
+	}
+
+	// all is not distinct
+	distinct := true
+	switch u.Type {
+	case ast.UnionAllStr, ast.IntersectAllStr, ast.ExceptAllStr:
+		distinct = false
+	}
+
 	limit := b.buildLimit(inScope, u.Limit)
 	offset := b.buildOffset(inScope, u.Limit)
 
@@ -88,10 +106,10 @@ func (b *Builder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope) {
 			}
 			offset = n.Offset
 		}
-		leftScope.node = plan.NewUnion(n.Left(), n.Right(), n.Distinct, nil, nil, nil)
+		leftScope.node = plan.NewUnion(unionType, n.Left(), n.Right(), n.Distinct, nil, nil, nil)
 	}
 
-	ret := plan.NewUnion(leftScope.node, rightScope.node, distinct, limit, offset, sortFields)
+	ret := plan.NewUnion(unionType, leftScope.node, rightScope.node, distinct, limit, offset, sortFields)
 	outScope = leftScope
 	outScope.node = b.mergeUnionSchemas(ret)
 	return
