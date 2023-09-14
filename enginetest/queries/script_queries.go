@@ -147,6 +147,10 @@ var ScriptTests = []ScriptTest{
 			"insert into b values (1,2), (1,3), (3,4);",
 			"create table c (m int, n int);",
 			"insert into c values (1,3), (1,3), (3,4);",
+			"create table t1 (i int);",
+			"insert into t1 values (1), (2), (3);",
+			"create table t2 (i float);",
+			"insert into t2 values (1.0), (1.99), (3);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -175,6 +179,13 @@ var ScriptTests = []ScriptTest{
 					{1, 3},
 					{1, 3},
 					{3, 4},
+				},
+			},
+			{
+				Query: "table t1 intersect table t2 order by i;",
+				Expected: []sql.Row {
+					{1},
+					{3},
 				},
 			},
 		},
