@@ -132,7 +132,7 @@ func TestBrokenJSONTableScripts(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	// t.Skip()
+	t.Skip()
 	var test queries.QueryTest
 	test = queries.QueryTest{
 		Query: `SELECT 
@@ -223,156 +223,8 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	// t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
-		{
-			Name:"Drop primary key for table with multiple primary key columns",
-			SetUpScript: []string{
-				"create table t1 (pk varchar(20), v varchar(20) default (concat(pk, '-foo')), primary key (pk, v))",
-				"insert into t1 values ('a1', 'a2'), ('a2', 'a3'), ('a3', 'a4')",
-			},
-			Assertions: []queries.ScriptTestAssertion{
-				// {
-				// 	Query: "select * from t1 order by pk",
-				// 	Expected: []sql.Row{
-				// 		{"a1", "a2"},
-				// 		{"a2", "a3"},
-				// 		{"a3", "a4"},
-				// 	},
-				// },
-				// {
-				// 	Query:    "alter table t1 drop primary key",
-				// 	Expected: []sql.Row{{types.NewOkResult(0)}},
-				// },
-				// {
-				// 	Query: "select * from t1 order by pk",
-				// 	Expected: []sql.Row{
-				// 		{"a1", "a2"},
-				// 		{"a2", "a3"},
-				// 		{"a3", "a4"},
-				// 	},
-				// },
-				// {
-				// 	Query: "insert into t1 values ('a1', 'a2')",
-				// 	Expected: []sql.Row{{types.NewOkResult(1)}},
-				// },
-				// {
-				// 	Query: "select * from t1 order by pk",
-				// 	Expected: []sql.Row{
-				// 		{"a1", "a2"},
-				// 		{"a1", "a2"},
-				// 		{"a2", "a3"},
-				// 		{"a3", "a4"},
-				// 	},
-				// },
-				// {
-				// 	Query: "alter table t1 add primary key (pk, v)",
-				// 	ExpectedErr: sql.ErrPrimaryKeyViolation,
-				// },
-				// {
-				// 	Query:    "delete from t1 where pk = 'a1' limit 1",
-				// 	Expected: []sql.Row{{types.NewOkResult(1)}},
-				// },
-				// {
-				// 	Query: "alter table t1 add primary key (pk, v)",
-				// 	Expected: []sql.Row{{types.NewOkResult(0)}},
-				// },
-				// {
-				// 	Query: "show create table t1",
-				// 	Expected: []sql.Row{{"t1",
-				// 		"CREATE TABLE `t1` (\n" +
-				// 				"  `pk` varchar(20) NOT NULL,\n" +
-				// 				"  `v` varchar(20) NOT NULL DEFAULT (concat(pk,'-foo')),\n" +
-				// 				"  PRIMARY KEY (`pk`,`v`)\n" +
-				// 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-				// },
-				// {
-				// 	Query: "alter table t1 drop primary key",
-				// 	Expected: []sql.Row{{types.NewOkResult(0)}},
-				// },
-				// {
-				// 	Query: "alter table t1 add index myidx (v)",
-				// 	Expected: []sql.Row{{types.NewOkResult(0)}},
-				// },
-				// {
-				// 	Query: "alter table t1 add primary key (pk)",
-				// 	Expected: []sql.Row{{types.NewOkResult(0)}},
-				// },
-				// {
-				// 	Query: "insert into t1 values ('a4', 'a3')",
-				// 	Expected: []sql.Row{{types.NewOkResult(1)}},
-				// },
-				// {
-				// 	Query: "show create table t1",
-				// 	Expected: []sql.Row{{"t1",
-				// 		"CREATE TABLE `t1` (\n" +
-				// 				"  `pk` varchar(20) NOT NULL,\n" +
-				// 				"  `v` varchar(20) NOT NULL DEFAULT (concat(pk,'-foo')),\n" +
-				// 				"  PRIMARY KEY (`pk`),\n" +
-				// 				"  KEY `myidx` (`v`)\n" +
-				// 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-				// },
-				// {
-				// 	Query: "select * from t1 where v = 'a3' order by pk",
-				// 	Expected: []sql.Row{
-				// 		{"a2", "a3"},
-				// 		{"a4", "a3"},
-				// 	},
-				// },
-				// {
-				// 	Query: "alter table t1 drop primary key",
-				// 	Expected: []sql.Row{{types.NewOkResult(0)}},
-				// },
-				// {
-				// 	Query: "truncate t1",
-				// 	Expected: []sql.Row{{types.NewOkResult(4)}},
-				// },
-				// {
-				// 	Query: "alter table t1 drop index myidx",
-				// 	Expected: []sql.Row{{types.NewOkResult(0)}},
-				// },
-				// {
-				// 	Query: "alter table t1 add primary key (pk, v)",
-				// 	Expected: []sql.Row{{types.NewOkResult(0)}},
-				// },
-				// {
-				// 	Query: "insert into t1 values ('a1', 'a2'), ('a2', 'a3'), ('a3', 'a4')",
-				// 	Expected: []sql.Row{{types.NewOkResult(3)}},
-				// },
-				// {
-				// 	Query: "select * from t1 order by pk",
-				// 	Expected: []sql.Row{{}},
-				// },
-				// {
-				// 	Query: "show create table t1",
-				// 	Expected: []sql.Row{{}},
-				// },
-				{
-					Query: "ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY (v)",
-					Expected: []sql.Row{{types.NewOkResult(0)}},
-				},
-				{
-					Query: "INSERT INTO t1 (pk, v) values ('a100', 'a3')",
-					ExpectedErr: sql.ErrPrimaryKeyViolation,
-				},
-				{
-					Query: "alter table t1 drop primary key",
-					Expected: []sql.Row{{types.NewOkResult(0)}},
-				},
-				{
-					Query: "ALTER TABLE t1 ADD PRIMARY KEY (pk, v), DROP PRIMARY KEY",
-					Expected: []sql.Row{{types.NewOkResult(0)}},
-				},
-				{
-					Query: "show create table t1",
-					Expected: []sql.Row{{"t1",
-						"CREATE TABLE `t1` (\n" +
-								"  `pk` varchar(20) NOT NULL,\n" +
-								"  `v` varchar(20) NOT NULL DEFAULT (concat(pk,'-foo'))\n" +
-								") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-				},
-			},
-		},
 	}
 
 	for _, test := range scripts {
@@ -671,7 +523,6 @@ func TestUserPrivileges(t *testing.T) {
 }
 
 func TestUserAuthentication(t *testing.T) {
-	t.Skip()
 	enginetest.TestUserAuthentication(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
@@ -936,19 +787,16 @@ func TestCharsetCollationEngine(t *testing.T) {
 }
 
 func TestCharsetCollationWire(t *testing.T) {
-	t.Skip()
 	harness := enginetest.NewDefaultMemoryHarness()
 	enginetest.TestCharsetCollationWire(t, harness, harness.SessionBuilder())
 }
 
 func TestDatabaseCollationWire(t *testing.T) {
-	t.Skip()
 	harness := enginetest.NewDefaultMemoryHarness()
 	enginetest.TestDatabaseCollationWire(t, harness, harness.SessionBuilder())
 }
 
 func TestTypesOverWire(t *testing.T) {
-	t.Skip()
 	harness := enginetest.NewDefaultMemoryHarness()
 	enginetest.TestTypesOverWire(t, harness, harness.SessionBuilder())
 }

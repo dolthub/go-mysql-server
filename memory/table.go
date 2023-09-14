@@ -40,6 +40,8 @@ type Table struct {
 	
 	// Schema and related info
 	data *TableData
+	// ignoreSessionData is used to ignore session data for versioned tables (smoke tests only), unused otherwise
+	ignoreSessionData bool
 
 	// Projection info and settings
 	pkIndexesEnabled bool
@@ -82,7 +84,28 @@ type TableRevision struct {
 }
 
 func (t *TableRevision) Inserter(ctx *sql.Context) sql.RowInserter {
-	return t.getTableEditor(ctx)
+	ea := newTableEditAccumulator(t.Table.data)
+
+	uniqIdxCols, prefixLengths := t.data.indexColsForTableEditor()
+	return &tableEditor{
+		editedTable:       t.Table,
+		initialTable:      t.copy(),
+		ea:                ea,
+		uniqueIdxCols:     uniqIdxCols,
+		prefixLengths:     prefixLengths,
+	}
+}
+
+func (t *TableRevision) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.ColumnOrder) error {
+	newColIdx, data := addColumnToSchema(ctx, t.data, column, order)
+
+	err := insertValueInRows(ctx, data, newColIdx, column.Default)
+	if err != nil {
+		return err
+	}
+	
+	t.data = data
+	return nil
 }
 
 // NewTable creates a new Table with the given name and schema. Assigns the default collation, therefore if a different
@@ -111,6 +134,7 @@ func NewPartitionedTable(db *BaseDatabase, name string, schema sql.PrimaryKeySch
 // collation, therefore if a different collation is desired, please use NewPartitionedTableWithCollation.
 func NewPartitionedTableRevision(db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, numPartitions int) *TableRevision {
 	tbl := NewPartitionedTableWithCollation(db, name, schema, fkColl, numPartitions, sql.Collation_Default)
+	tbl.ignoreSessionData = true
 	return &TableRevision{tbl}
 }
 
@@ -1143,43 +1167,47 @@ func (t *Table) String() string {
 	return t.name
 }
 
+var debugDataPrint = false
+
 func (t *Table) DebugString() string {
-	p := t.data.partitions["0"]
-	s := ""
-	for i, row := range p {
-		if i > 0 {
-			s += ", "
+	if debugDataPrint {
+		p := t.data.partitions["0"]
+		s := ""
+		for i, row := range p {
+			if i > 0 {
+				s += ", "
+			}
+			s += fmt.Sprintf("%v", row)
 		}
-		s += fmt.Sprintf("%v", row)
+		return s
 	}
-	return s
 	
-	// p := sql.NewTreePrinter()
-	// 
-	// children := []string{fmt.Sprintf("name: %s", t.name)}
-	// if t.lookup != nil {
-	// 	children = append(children, fmt.Sprintf("index: %s", t.lookup))
-	// }
-	// 
-	// if len(t.columns) > 0 {
-	// 	var projections []string
-	// 	for _, column := range t.columns {
-	// 		projections = append(projections, fmt.Sprintf("%d", column))
-	// 	}
-	// 	children = append(children, fmt.Sprintf("projections: %s", projections))
-	// 
-	// }
-	// 
-	// if len(t.filters) > 0 {
-	// 	var filters []string
-	// 	for _, filter := range t.filters {
-	// 		filters = append(filters, fmt.Sprintf("%s", sql.DebugString(filter)))
-	// 	}
-	// 	children = append(children, fmt.Sprintf("filters: %s", filters))
-	// }
-	// _ = p.WriteNode("Table")
-	// p.WriteChildren(children...)
-	// return p.String()
+	p := sql.NewTreePrinter()
+	
+	children := []string{fmt.Sprintf("name: %s", t.name)}
+	if t.lookup != nil {
+		children = append(children, fmt.Sprintf("index: %s", t.lookup))
+	}
+	
+	if len(t.columns) > 0 {
+		var projections []string
+		for _, column := range t.columns {
+			projections = append(projections, fmt.Sprintf("%d", column))
+		}
+		children = append(children, fmt.Sprintf("projections: %s", projections))
+	
+	}
+	
+	if len(t.filters) > 0 {
+		var filters []string
+		for _, filter := range t.filters {
+			filters = append(filters, fmt.Sprintf("%s", sql.DebugString(filter)))
+		}
+		children = append(children, fmt.Sprintf("filters: %s", filters))
+	}
+	_ = p.WriteNode("Table")
+	p.WriteChildren(children...)
+	return p.String()
 }
 
 // HandledFilters implements the sql.FilteredTable interface.
@@ -1509,6 +1537,9 @@ func (t *Table) GetChecks(ctx *sql.Context) ([]sql.CheckDefinition, error) {
 }
 
 func (t *Table) sessionTableData(ctx *sql.Context) *TableData {
+	if t.ignoreSessionData {
+		return t.data
+	}
 	sess := SessionFromContext(ctx)
 	return sess.tableData(t)
 }

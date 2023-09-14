@@ -1507,16 +1507,16 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 }
 
 func TestUserAuthentication(t *testing.T, h Harness) {
-	harness, ok := h.(ClientHarness)
+	clientHarness, ok := h.(ClientHarness)
 	if !ok {
 		t.Skip("Cannot run TestUserAuthentication as the harness must implement ClientHarness")
 	}
-	harness.Setup(setup.MydbData, setup.MytableData)
+	clientHarness.Setup(setup.MydbData, setup.MytableData)
 
 	port := getEmptyPort(t)
 	for _, script := range queries.ServerAuthTests {
 		t.Run(script.Name, func(t *testing.T) {
-			ctx := NewContextWithClient(harness, sql.Client{
+			ctx := NewContextWithClient(clientHarness, sql.Client{
 				User:    "root",
 				Address: "localhost",
 			})
@@ -1527,7 +1527,7 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 				AllowClearTextWithoutTLS: true,
 			}
 
-			e := mustNewEngine(t, harness)
+			e := mustNewEngine(t, clientHarness)
 			engine, ok := e.(*sqle.Engine)
 			require.True(t, ok, "Need a *sqle.Engine for TestUserAuthentication")
 
@@ -1539,15 +1539,20 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 				script.SetUpFunc(ctx, t, engine)
 			}
 			for _, statement := range script.SetUpScript {
-				if sh, ok := harness.(SkippingHarness); ok {
+				if sh, ok := clientHarness.(SkippingHarness); ok {
 					if sh.SkipQueryTest(statement) {
 						t.Skip()
 					}
 				}
-				RunQueryWithContext(t, engine, harness, ctx, statement)
+				RunQueryWithContext(t, engine, clientHarness, ctx, statement)
 			}
-
-			s, err := server.NewDefaultServer(serverConfig, engine)
+			
+			serverHarness, ok := h.(ServerHarness)
+			if !ok {
+				require.FailNow(t, "harness must implement ServerHarness")
+			}
+			
+			s, err := server.NewServer(serverConfig, engine, serverHarness.SessionBuilder(), nil)
 			require.NoError(t, err)
 			go func() {
 				err := s.Start()

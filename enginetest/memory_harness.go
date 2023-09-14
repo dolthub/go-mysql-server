@@ -23,6 +23,7 @@ import (
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/memory"
+	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/vitess/go/mysql"
@@ -43,6 +44,7 @@ type MemoryHarness struct {
 	nativeIndexSupport        bool
 	skippedQueries            map[string]struct{}
 	session                   sql.Session
+	retainSession             bool
 	setupData                 []setup.SetupScript
 	externalProcedureRegistry sql.ExternalStoredProcedureRegistry
 	server                    bool
@@ -56,6 +58,7 @@ var _ ReadOnlyDatabaseHarness = (*MemoryHarness)(nil)
 var _ ForeignKeyHarness = (*MemoryHarness)(nil)
 var _ KeylessTableHarness = (*MemoryHarness)(nil)
 var _ ClientHarness = (*MemoryHarness)(nil)
+var _ ServerHarness = (*MemoryHarness)(nil)
 var _ sql.ExternalStoredProcedureProvider = (*MemoryHarness)(nil)
 
 func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useNativeIndexes bool, driverInitalizer IndexDriverInitializer) *MemoryHarness {
@@ -85,7 +88,7 @@ func NewReadOnlyMemoryHarness() *MemoryHarness {
 	return h
 }
 
-func (m *MemoryHarness) SessionBuilder() func(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, error) {
+func (m *MemoryHarness) SessionBuilder() server.SessionBuilder {
 	return func(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, error) {
 		host := ""
 		user := ""
@@ -162,8 +165,10 @@ func (m *MemoryHarness) Setup(setupData ...[]setup.SetupScript) {
 }
 
 func (m *MemoryHarness) NewEngine(t *testing.T) (QueryEngine, error) {
-	m.session = nil
-	m.provider = nil
+	if !m.retainSession {
+		m.session = nil
+		m.provider = nil
+	}
 	engine, err := NewEngine(t, m, m.getProvider(), m.setupData)
 	if err != nil {
 		return nil, err
@@ -188,7 +193,7 @@ func (m *MemoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, sche
 	} else {
 		panic(fmt.Sprintf("unexpected database type %T", db))
 	}
-	table := memory.NewPartitionedTable(baseDb, name, schema, fkColl, m.numTablePartitions)
+	table := memory.NewPartitionedTableRevision(baseDb, name, schema, fkColl, m.numTablePartitions)
 	if m.nativeIndexSupport {
 		table.EnablePrimaryKeyIndexes()
 	}
@@ -197,6 +202,9 @@ func (m *MemoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, sche
 	} else {
 		db.(*memory.HistoryDatabase).AddTableAsOf(name, table, asOf)
 	}
+	
+	m.retainSession = true
+	
 	return table
 }
 
