@@ -1037,25 +1037,21 @@ func (di *distinctIter) Dispose() {
 }
 
 type unionIter struct {
-	cur      sql.RowIter
-	nextIter func(ctx *sql.Context) (sql.RowIter, error)
+	cur, next sql.RowIter
 }
 
 func (ui *unionIter) Next(ctx *sql.Context) (sql.Row, error) {
 	res, err := ui.cur.Next(ctx)
 	if err == io.EOF {
-		if ui.nextIter == nil {
+		if ui.next == nil {
 			return nil, io.EOF
 		}
 		err = ui.cur.Close(ctx)
 		if err != nil {
 			return nil, err
 		}
-		ui.cur, err = ui.nextIter(ctx)
-		ui.nextIter = nil
-		if err != nil {
-			return nil, err
-		}
+		ui.cur = ui.next
+		ui.next = nil
 		return ui.cur.Next(ctx)
 	}
 	return res, err

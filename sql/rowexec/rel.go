@@ -646,10 +646,14 @@ func (b *BaseBuilder) buildIndexedTableAccess(ctx *sql.Context, n *plan.IndexedT
 
 func (b *BaseBuilder) buildUnion(ctx *sql.Context, u *plan.Union, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Union")
-	var iter sql.RowIter
+	var iter, iter2 sql.RowIter
 	var err error
 	iter, err = b.buildNodeExec(ctx, u.Left(), row)
-
+	if err != nil {
+		span.End()
+		return nil, err
+	}
+	iter2, err = b.buildNodeExec(ctx, u.Right(), row)
 	if err != nil {
 		span.End()
 		return nil, err
@@ -658,29 +662,17 @@ func (b *BaseBuilder) buildUnion(ctx *sql.Context, u *plan.Union, row sql.Row) (
 	case plan.UnionType:
 		iter = &unionIter{
 			cur: iter,
-			nextIter: func(ctx *sql.Context) (sql.RowIter, error) {
-				return b.buildNodeExec(ctx, u.Right(), row)
-			},
+			next: iter2,
 		}
 	case plan.IntersectType:
-		riter, err := b.buildNodeExec(ctx, u.Right(), row)
-		if err != nil {
-			span.End()
-			return nil, err
-		}
 		iter = &intersectIter{
 			lIter: iter,
-			rIter: riter,
+			rIter: iter2,
 		}
 	case plan.ExceptType:
-		riter, err := b.buildNodeExec(ctx, u.Right(), row)
-		if err != nil {
-			span.End()
-			return nil, err
-		}
 		iter = &exceptIter{
 			lIter: iter,
-			rIter: riter,
+			rIter: iter2,
 		}
 	}
 
