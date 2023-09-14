@@ -79,35 +79,6 @@ var _ sql.ProjectedTable = (*Table)(nil)
 var _ sql.PrimaryKeyAlterableTable = (*Table)(nil)
 var _ sql.PrimaryKeyTable = (*Table)(nil)
 
-type TableRevision struct {
-	*Table
-}
-
-func (t *TableRevision) Inserter(ctx *sql.Context) sql.RowInserter {
-	ea := newTableEditAccumulator(t.Table.data)
-
-	uniqIdxCols, prefixLengths := t.data.indexColsForTableEditor()
-	return &tableEditor{
-		editedTable:       t.Table,
-		initialTable:      t.copy(),
-		ea:                ea,
-		uniqueIdxCols:     uniqIdxCols,
-		prefixLengths:     prefixLengths,
-	}
-}
-
-func (t *TableRevision) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.ColumnOrder) error {
-	newColIdx, data := addColumnToSchema(ctx, t.data, column, order)
-
-	err := insertValueInRows(ctx, data, newColIdx, column.Default)
-	if err != nil {
-		return err
-	}
-	
-	t.data = data
-	return nil
-}
-
 // NewTable creates a new Table with the given name and schema. Assigns the default collation, therefore if a different
 // collation is desired, please use NewTableWithCollation.
 func NewTable(db MemoryDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection) *Table {
@@ -2238,4 +2209,36 @@ func hasNullForAnyCols(row sql.Row, cols []int) bool {
 		}
 	}
 	return false
+}
+
+// TableRevision is a container for memory tables to run basic smoke tests for versioned queries. It overrides only
+// enough of the Table interface required to pass those tests. Memory tables have a flag to force them to ignore
+// session data and use embedded data, which is required for the versioned table tests to pass. 
+type TableRevision struct {
+	*Table
+}
+
+func (t *TableRevision) Inserter(ctx *sql.Context) sql.RowInserter {
+	ea := newTableEditAccumulator(t.Table.data)
+
+	uniqIdxCols, prefixLengths := t.data.indexColsForTableEditor()
+	return &tableEditor{
+		editedTable:       t.Table,
+		initialTable:      t.copy(),
+		ea:                ea,
+		uniqueIdxCols:     uniqIdxCols,
+		prefixLengths:     prefixLengths,
+	}
+}
+
+func (t *TableRevision) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.ColumnOrder) error {
+	newColIdx, data := addColumnToSchema(ctx, t.data, column, order)
+
+	err := insertValueInRows(ctx, data, newColIdx, column.Default)
+	if err != nil {
+		return err
+	}
+
+	t.data = data
+	return nil
 }
