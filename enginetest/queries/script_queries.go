@@ -139,6 +139,47 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "intersection tests",
+		SetUpScript: []string{
+			"create table a (m int, n int);",
+			"insert into a values (1,2), (2,3), (3,4);",
+			"create table b (m int, n int);",
+			"insert into b values (1,2), (1,3), (3,4);",
+			"create table c (m int, n int);",
+			"insert into c values (1,3), (1,3), (3,4);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "table a intersect table b order by m, n;",
+				Expected: []sql.Row{
+					{1, 2},
+					{3, 4},
+				},
+			},
+			{
+				Query: "table a intersect table c order by m, n;",
+				Expected: []sql.Row{
+					{3, 4},
+				},
+			},
+			{
+				Query: "table c intersect distinct table c order by m, n;",
+				Expected: []sql.Row{
+					{1, 3},
+					{3, 4},
+				},
+			},
+			{
+				Query: "table c intersect all table c order by m, n;",
+				Expected: []sql.Row{
+					{1, 3},
+					{1, 3},
+					{3, 4},
+				},
+			},
+		},
+	},
+	{
 		Name: "create table casing",
 		SetUpScript: []string{
 			"create table t (lower varchar(20) primary key, UPPER varchar(20), MiXeD varchar(20), un_der varchar(20), `da-sh` varchar(20));",
