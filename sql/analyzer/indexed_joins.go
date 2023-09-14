@@ -451,6 +451,28 @@ func addRightSemiJoins(m *memo.Memo) error {
 			return nil
 		}
 		tableGrp, indexes, filters := lookupCandidates(semi.Left.First)
+		rightOutTables := semi.Right.RelProps.OutputTables()
+
+		var projectExpressions []*memo.ExprGroup
+		onlyEquality := true
+		for _, f := range semi.Filter {
+			_ = memo.DfsScalar(f, func(e memo.ScalarExpr) error {
+				switch e := e.(type) {
+				case *memo.ColRef:
+					if rightOutTables.Contains(int(memo.TableIdForSource(e.Table))) {
+						projectExpressions = append(projectExpressions, e.Group())
+					}
+				case *memo.Literal, *memo.And, *memo.Or, *memo.Equal, *memo.Arithmetic, *memo.Bindvar:
+				default:
+					onlyEquality = false
+					return memo.HaltErr
+				}
+				return nil
+			})
+			if !onlyEquality {
+				return nil
+			}
+		}
 
 		for _, idx := range indexes {
 			if !semi.Group().RelProps.FuncDeps().ColsAreStrictKey(idx.ColSet()) {
@@ -460,16 +482,6 @@ func addRightSemiJoins(m *memo.Memo) error {
 			keyExprs, nullmask := keyExprsForIndex(tableGrp, idx.Cols(), append(semi.Filter, filters...))
 			if keyExprs == nil {
 				continue
-			}
-
-			var projectExpressions []*memo.ExprGroup
-			for _, e := range keyExprs {
-				memo.DfsScalar(e, func(e memo.ScalarExpr) error {
-					if c, ok := e.(*memo.ColRef); ok {
-						projectExpressions = append(projectExpressions, c.Group())
-					}
-					return nil
-				})
 			}
 
 			rGroup := m.MemoizeProject(nil, semi.Right, projectExpressions)
