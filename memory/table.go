@@ -24,7 +24,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	
+
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -2088,7 +2088,29 @@ func (t Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.Primar
 		return nil, sql.ErrWrongAutoKey.New()
 	}
 	
+	if isPrimaryKeyChange(oldSchema, newSchema) {
+		err := validatePrimaryKeyChange(ctx, oldSchema, newSchema, idxCols)
+		if err != nil {
+			return nil, err
+		}
+	}
+	
 	return t.getRewriteTableEditor(ctx, oldSchema, newSchema), nil
+}
+
+func validatePrimaryKeyChange(ctx *sql.Context, oldSchema sql.PrimaryKeySchema, newSchema sql.PrimaryKeySchema, idxCols []sql.IndexColumn) error {
+	for _, idxCol := range idxCols {
+		idx := newSchema.Schema.IndexOfColName(idxCol.Name)
+		if idx < 0 {
+			return sql.ErrColumnNotFound.New(idxCol.Name)
+		}
+		col := newSchema.Schema[idx]
+		if col.PrimaryKey && idxCol.Length > 0 && types.IsText(col.Type) {
+			return sql.ErrUnsupportedIndexPrefix.New(col.Name)
+		}
+	}
+	
+	return nil
 }
 
 func primaryKeyIsAutoincrement(schema sql.PrimaryKeySchema) bool {
