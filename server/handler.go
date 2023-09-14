@@ -593,9 +593,9 @@ func row2ToSQL(s sql.Schema, row sql.Row2) ([]sqltypes.Value, error) {
 func schemaToFields(ctx *sql.Context, s sql.Schema) []*query.Field {
 	fields := make([]*query.Field, len(s))
 	for i, c := range s {
-		var charset uint32 = mysql.CharacterSetUtf8
-		if types.IsBinaryType(c.Type) {
-			charset = mysql.CharacterSetBinary
+		charset := uint32(sql.Collation_Default.CharacterSet())
+		if collatedType, ok := c.Type.(sql.TypeWithCollation); ok {
+			charset = uint32(collatedType.Collation().CharacterSet())
 		}
 
 		fields[i] = &query.Field{
