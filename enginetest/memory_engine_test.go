@@ -185,17 +185,29 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "insert default value",
+			Name: "intersection and except tests",
 			SetUpScript: []string{
-				"create table xy (x int primary key, y int default (x+1))",
+				"create table a (m int, n int);",
+				"insert into a values (1,2), (2,3), (3,4);",
+				"create table b (m int, n int);",
+				"insert into b values (1,2), (1,3), (3,4);",
+				"create table c (m int, n int);",
+				"insert into c values (1,3), (1,3), (3,4);",
+				"create table t1 (i int);",
+				"insert into t1 values (1), (2), (3);",
+				"create table t2 (i float);",
+				"insert into t2 values (1.0), (1.99), (3.0);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "insert into xy (x,y) values (1, DEFAULT)",
-					Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 0}}},
+					Query: "table a except (table b intersect table c) order by m;",
+					Expected: []sql.Row{
+						{1, 2},
+						{2, 3},
+					},
 				},
 			},
 		},

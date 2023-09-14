@@ -139,7 +139,7 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "intersection tests",
+		Name: "intersection and except tests",
 		SetUpScript: []string{
 			"create table a (m int, n int);",
 			"insert into a values (1,2), (2,3), (3,4);",
@@ -153,6 +153,7 @@ var ScriptTests = []ScriptTest{
 			"insert into t2 values (1.0), (1.99), (3.0);",
 		},
 		Assertions: []ScriptTestAssertion{
+			// Intersect tests
 			{
 				Query: "table a intersect table b order by m, n;",
 				Expected: []sql.Row{
@@ -182,6 +183,18 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
+				Query: "table a intersect table b intersect table c;",
+				Expected: []sql.Row{
+					{3, 4},
+				},
+			},
+			{
+				Query: "(table b order by m limit 1 offset 1) intersect (table c order by m limit 1);",
+				Expected: []sql.Row{
+					{1, 3},
+				},
+			},
+			{
 				// Resulting type is string for some reason
 				Skip:  true,
 				Query: "table t1 intersect table t2;",
@@ -198,23 +211,8 @@ var ScriptTests = []ScriptTest{
 					{1.0},
 				},
 			},
-		},
-	},
-	{
-		Name: "except tests",
-		SetUpScript: []string{
-			"create table a (m int, n int);",
-			"insert into a values (1,2), (2,3), (3,4);",
-			"create table b (m int, n int);",
-			"insert into b values (1,2), (1,3), (3,4);",
-			"create table c (m int, n int);",
-			"insert into c values (1,3), (1,3), (3,4);",
-			"create table t1 (i int);",
-			"insert into t1 values (1), (2);",
-			"create table t2 (i float);",
-			"insert into t2 values (1.0), (1.99);",
-		},
-		Assertions: []ScriptTestAssertion{
+
+			// Except tests
 			{
 				Query: "table a except table b order by m, n;",
 				Expected: []sql.Row{
@@ -248,11 +246,40 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
+				Query: "(table a order by m limit 1 offset 1) except (table c order by m limit 1);",
+				Expected: []sql.Row{
+					{2, 3},
+				},
+			},
+			{
 				// Resulting type is string for some reason
 				Skip:  true,
 				Query: "table t1 except table t2 order by i;",
 				Expected: []sql.Row{
 					{2.0},
+				},
+			},
+
+			// Both tests
+			// TODO: Precendence is INTERSECT, UNION, EXCEPT
+			{
+				Query: "table a except (table b intersect table c) order by m;",
+				Expected: []sql.Row{
+					{1, 2},
+					{2, 3},
+				},
+			},
+			{
+				Query: "(table a intersect table b) except table c order by m;",
+				Expected: []sql.Row{
+					{1, 2},
+				},
+			},
+			{
+				Query: "table a union (table a intersect table b) except table c order by m;",
+				Expected: []sql.Row{
+					{1, 2},
+					{2, 3},
 				},
 			},
 		},

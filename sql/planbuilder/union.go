@@ -106,7 +106,7 @@ func (b *Builder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope) {
 			}
 			offset = n.Offset
 		}
-		leftScope.node = plan.NewUnion(unionType, n.Left(), n.Right(), n.Distinct, nil, nil, nil)
+		leftScope.node = plan.NewUnion(n.Type, n.Left(), n.Right(), n.Distinct, nil, nil, nil)
 	}
 
 	ret := plan.NewUnion(unionType, leftScope.node, rightScope.node, distinct, limit, offset, sortFields)
