@@ -184,7 +184,7 @@ var joinOpTests = []struct {
 		},
 	},
 	{
-		name: "union joins",
+		name: "union/intersect/except joins",
 		setup: [][]string{
 			setup.MydbData[0],
 			{
@@ -202,6 +202,39 @@ var joinOpTests = []struct {
 			{
 				Query:    "select * from xy where x = 1 and x in (select y from xy union select 1)",
 				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query: "select * from xy where x = 1 intersect select * from uv;",
+				Expected: []sql.Row{
+					{1, 1},
+				},
+			},
+			{
+				Query: "select * from uv where u < 4 except select * from xy;",
+				Expected: []sql.Row{
+					{3, 1},
+				},
+			},
+			{
+				Query: "select * from xy, uv where x = u intersect select * from xy, uv where x = u order by x, y, u, v;",
+				Expected: []sql.Row{
+					{1, 1, 1, 1},
+					{2, 2, 2, 2},
+				},
+			},
+			{
+				Query: "select * from xy, uv where x != u except select * from xy, uv where y != v order by x, y, u, v;",
+				Expected: []sql.Row{
+					{1, 1, 3, 1},
+					{2, 2, 4, 2},
+				},
+			},
+			{
+				Query: "select * from (select * from uv where u < 4 except select * from xy) a, (select * from xy intersect select * from uv) b order by u, v, x, y;",
+				Expected: []sql.Row{
+					{3, 1, 1, 1},
+					{3, 1, 2, 2},
+				},
 			},
 		},
 	},

@@ -252,6 +252,12 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
+				Query: "table a except table b except table c;",
+				Expected: []sql.Row{
+					{2, 3},
+				},
+			},
+			{
 				// Resulting type is string for some reason
 				Skip:  true,
 				Query: "table t1 except table t2 order by i;",
@@ -260,8 +266,8 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 
-			// Both tests
-			// TODO: Precendence is INTERSECT, UNION, EXCEPT
+			// Multiple set operation tests
+			// TODO: Precedence is INTERSECT, UNION, EXCEPT
 			{
 				Query: "table a except (table b intersect table c) order by m;",
 				Expected: []sql.Row{
