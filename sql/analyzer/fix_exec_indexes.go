@@ -16,12 +16,13 @@ package analyzer
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
-	"strings"
 )
 
 // assignExecIndexes walks a query plan in-order and rewrites GetFields to use
