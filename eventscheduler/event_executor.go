@@ -160,6 +160,10 @@ func (ee *eventExecutor) executeEvent(event *enabledEvent) (bool, error) {
 				return
 			}
 
+			// Note that we pass in the full CREATE EVENT statement so that the engine can parse it
+			// and pull out the plan nodes for the event body, since the event body doesn't always
+			// parse as a valid SQL statement on its own (e.g. when using a BEGIN/END block).
+			logrus.WithField("query", event.event.EventBody).Debugf("executing event %s", event.name())
 			err = ee.queryRunFunc(sqlCtx, event.edb.Name(), event.event.CreateEventStatement(), event.username, event.address)
 			if err != nil {
 				logrus.WithField("query", event.event.EventBody).Errorf("unable to execute query: %v", err)
