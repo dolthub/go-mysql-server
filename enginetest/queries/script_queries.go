@@ -1399,7 +1399,7 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "ALTER TABLE ... ALTER COLUMN SET / DROP DEFAULT",
+		Name: "ALTER TABLE, ALTER COLUMN SET , DROP DEFAULT",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",
 		},

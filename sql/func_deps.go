@@ -433,8 +433,16 @@ func NewInnerJoinFDs(left, right *FuncDepSet, filters [][2]ColumnId) *FuncDepSet
 	ret := &FuncDepSet{all: left.all.Union(right.all)}
 	ret.AddNotNullable(left.notNull)
 	ret.AddNotNullable(right.notNull)
-	ret.AddConstants(left.consts)
-	ret.AddConstants(right.consts)
+	if left.HasMax1Row() {
+		ret.AddConstants(left.all)
+	} else {
+		ret.AddConstants(left.consts)
+	}
+	if right.HasMax1Row() {
+		ret.AddConstants(right.all)
+	} else {
+		ret.AddConstants(right.consts)
+	}
 	for _, set := range left.Equiv().Sets() {
 		ret.AddEquivSet(set)
 	}

@@ -124,6 +124,26 @@ var joinOpTests = []struct {
 		},
 	},
 	{
+		name: "left join on array data",
+		setup: [][]string{
+			{
+				"create table xy (x binary(2) primary key, y binary(2))",
+				"create table uv (u binary(2) primary key, v binary(2))",
+				"insert into xy values (x'F0F0',x'1234'),(x'2345',x'3456');",
+				"insert into uv values (x'fedc',x'F0F0');",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query: "select HEX(x),HEX(u) from xy left join uv on x = v OR y = u",
+				Expected: []sql.Row{
+					{"2345", nil},
+					{"F0F0", "FEDC"},
+				},
+			},
+		},
+	},
+	{
 		name: "point lookups",
 		setup: [][]string{
 			setup.MydbData[0],
@@ -160,6 +180,28 @@ var joinOpTests = []struct {
 			{
 				Query:    `SELECT /*+ JOIN_ORDER(scalarSubq0,xy) */ count(*) from xy where y in (select distinct u from uv);`,
 				Expected: []sql.Row{{2}},
+			},
+		},
+	},
+	{
+		name: "union joins",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"create table uv (u int primary key, v int);",
+				"insert into uv values (1,1),(2,2),(3,1),(4,2);",
+				"create table xy (x int primary key, y int);",
+				"insert into xy values (1,1),(2,2);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select * from xy where x = 1 and exists (select 1 union select 1)",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:    "select * from xy where x = 1 and x in (select y from xy union select 1)",
+				Expected: []sql.Row{{1, 1}},
 			},
 		},
 	},

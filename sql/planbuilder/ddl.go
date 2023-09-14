@@ -497,12 +497,12 @@ func (b *Builder) buildAlterTableColumnAction(inScope *scope, ddl *ast.DDL, tabl
 		outScope.node = plan.NewAddColumnResolved(table, *sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder))
 	case ast.DropStr:
 		drop := plan.NewDropColumnResolved(table, ddl.Column.String())
-		drop.Checks = b.loadChecksFromTable(outScope, table.Table)
-		outScope.node = drop
+		checks := b.loadChecksFromTable(outScope, table.Table)
+		outScope.node = drop.WithChecks(checks)
 	case ast.RenameStr:
 		rename := plan.NewRenameColumnResolved(table, ddl.Column.String(), ddl.ToColumn.String())
-		rename.Checks = b.loadChecksFromTable(outScope, table.Table)
-		outScope.node = rename
+		checks := b.loadChecksFromTable(outScope, table.Table)
+		outScope.node = rename.WithChecks(checks)
 	case ast.ModifyStr, ast.ChangeStr:
 		// modify adds a new column maybe with same name
 		// make new hierarchy so it resolves before old column
