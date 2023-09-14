@@ -650,15 +650,41 @@ func (t *Table) getRewriteTableEditor(ctx *sql.Context, oldSchema, newSchema sql
 	}
 	
 	if len(tableSets) > 0 {
+		_, insertCols, err := fulltext.GetKeyColumns(ctx, tableUnderEdit)
+		if err != nil {
+			panic(err)
+		}
+
 		// table editors used for rewrite need to truncate the fulltext tables as well as the primary table (which happens 
 		// in the RewriteInserter method for all tables)
 		newTableSets := make([]fulltext.TableSet, len(tableSets))
 		for i := range tableSets {
 			ts := *(&tableSets[i])
-			ts.RowCount.(*Table).data = ts.RowCount.(*Table).data.copy().truncate(ts.RowCount.(*Table).data.schema)
-			ts.DocCount.(*Table).data = ts.DocCount.(*Table).data.copy().truncate(ts.DocCount.(*Table).data.schema)
-			ts.GlobalCount.(*Table).data = ts.GlobalCount.(*Table).data.copy().truncate(ts.GlobalCount.(*Table).data.schema)
-			ts.Position.(*Table).data = ts.Position.(*Table).data.copy().truncate(ts.Position.(*Table).data.schema)
+
+			positionSch, err := fulltext.NewSchema(fulltext.SchemaPosition, insertCols, ts.Position.Name(), ts.Position.Collation())
+			if err != nil {
+				panic(err)
+			}
+
+			docCountSch, err := fulltext.NewSchema(fulltext.SchemaDocCount, insertCols, ts.DocCount.Name(), ts.DocCount.Collation())
+			if err != nil {
+				panic(err)
+			}
+
+			globalCountSch, err := fulltext.NewSchema(fulltext.SchemaGlobalCount, nil, ts.GlobalCount.Name(), ts.GlobalCount.Collation())
+			if err != nil {
+				panic(err)
+			}
+
+			rowCountSch, err := fulltext.NewSchema(fulltext.SchemaRowCount, nil, ts.RowCount.Name(), ts.RowCount.Collation())
+			if err != nil {
+				panic(err)
+			}
+
+			ts.RowCount.(*Table).data = ts.RowCount.(*Table).data.copy().truncate(sql.NewPrimaryKeySchema(rowCountSch))
+			ts.DocCount.(*Table).data = ts.DocCount.(*Table).data.copy().truncate(sql.NewPrimaryKeySchema(docCountSch))
+			ts.GlobalCount.(*Table).data = ts.GlobalCount.(*Table).data.copy().truncate(sql.NewPrimaryKeySchema(globalCountSch))
+			ts.Position.(*Table).data = ts.Position.(*Table).data.copy().truncate(sql.NewPrimaryKeySchema(positionSch))
 			newTableSets[i] = ts
 		}
 		editor = tableUnderEdit.newFulltextTableEditor(ctx, editor, newTableSets)
@@ -2073,7 +2099,11 @@ func isPrimaryKeyDrop(oldSchema sql.PrimaryKeySchema, newSchema sql.PrimaryKeySc
 }
 
 // modifyFulltextIndexesForRewrite will modify the fulltext indexes of a table to correspond to a new schema before a rewrite.
-func (t *Table) modifyFulltextIndexesForRewrite(ctx *sql.Context, data *TableData, oldSchema sql.PrimaryKeySchema) error {
+func (t *Table) modifyFulltextIndexesForRewrite(
+		ctx *sql.Context,
+		data *TableData,
+		oldSchema sql.PrimaryKeySchema,
+) error {
 	newIndexes := make(map[string]sql.Index)
 	for name, idx := range data.indexes {
 		if !idx.IsFullText() {
@@ -2091,11 +2121,21 @@ func (t *Table) modifyFulltextIndexesForRewrite(ctx *sql.Context, data *TableDat
 		}
 		
 		ftInfo := memIdx.fulltextInfo
-		newKeyColumns := remapColumnOrds(oldSchema, data.schema, ftInfo.KeyColumns)
-		if len(newKeyColumns) == 0 {
-			// omit this index, no columns in it left in new schema
-			continue
-		}
+
+		// var newKeyColumns []int
+		// if isPrimaryKeyChange(oldSchema, data.schema) {
+		// 	newKeyColumns = data.schema.PkOrdinals
+		// } else if isPrimaryKeyDrop(oldSchema, data.schema) {
+		// 	if err != nil {
+		// 		return fulltext.KeyColumns{}, nil, err
+		// 	}
+		// } else {
+			newKeyColumns := remapColumnOrds(oldSchema, data.schema, ftInfo.KeyColumns)
+			// if len(newKeyColumns) == 0 {
+			// 	// omit this index, no columns in it left in new schema
+			// 	continue
+			// }
+		// }
 
 		newExprs := removeDroppedColumns(data.schema, memIdx)
 		if len(newExprs) == 0 {
