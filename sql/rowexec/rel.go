@@ -661,7 +661,7 @@ func (b *BaseBuilder) buildUnion(ctx *sql.Context, u *plan.Union, row sql.Row) (
 	switch u.Type {
 	case plan.UnionType:
 		iter = &unionIter{
-			cur: iter,
+			cur:  iter,
 			next: iter2,
 		}
 	case plan.IntersectType:

@@ -183,7 +183,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				// Resulting type is string for some reason
-				Skip: true,
+				Skip:  true,
 				Query: "table t1 intersect table t2;",
 				Expected: []sql.Row{
 					{1},
@@ -192,9 +192,9 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				// Field indexing error
-				Skip: true,
+				Skip:  true,
 				Query: "table t1 intersect table t2 order by i;",
-				Expected: []sql.Row {
+				Expected: []sql.Row{
 					{1.0},
 				},
 			},
@@ -249,7 +249,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				// Resulting type is string for some reason
-				Skip: true,
+				Skip:  true,
 				Query: "table t1 except table t2 order by i;",
 				Expected: []sql.Row{
 					{2.0},
