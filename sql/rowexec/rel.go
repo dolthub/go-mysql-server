@@ -673,11 +673,14 @@ func (b *BaseBuilder) buildUnion(ctx *sql.Context, u *plan.Union, row sql.Row) (
 			rIter: riter,
 		}
 	case plan.ExceptType:
-		iter = &unionIter{
-			cur: iter,
-			nextIter: func(ctx *sql.Context) (sql.RowIter, error) {
-				return b.buildNodeExec(ctx, u.Right(), row)
-			},
+		riter, err := b.buildNodeExec(ctx, u.Right(), row)
+		if err != nil {
+			span.End()
+			return nil, err
+		}
+		iter = &exceptIter{
+			lIter: iter,
+			rIter: riter,
 		}
 	}
 

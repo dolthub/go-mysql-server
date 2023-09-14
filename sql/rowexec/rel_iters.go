@@ -1135,3 +1135,68 @@ func (ii *intersectIter) Close(ctx *sql.Context) error {
 	}
 	return nil
 }
+
+type exceptIter struct {
+	lIter, rIter sql.RowIter
+	cached       bool
+	cache        map[uint64]int
+}
+
+func (ei *exceptIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if !ei.cached {
+		ei.cache = make(map[uint64]int)
+		for {
+			res, err := ei.rIter.Next(ctx)
+			if err != nil && err != io.EOF {
+				return nil, err
+			}
+
+			hash, herr := sql.HashOf(res)
+			if herr != nil {
+				return nil, herr
+			}
+			if _, ok := ei.cache[hash]; !ok {
+				ei.cache[hash] = 0
+			}
+			ei.cache[hash]++
+
+			if err == io.EOF {
+				break
+			}
+		}
+		ei.cached = true
+	}
+
+	for {
+		res, err := ei.lIter.Next(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		hash, herr := sql.HashOf(res)
+		if herr != nil {
+			return nil, herr
+		}
+		if _, ok := ei.cache[hash]; !ok {
+			return res, nil
+		}
+		if ei.cache[hash] <= 0 {
+			return res, nil
+		}
+		ei.cache[hash]--
+	}
+}
+
+func (ei *exceptIter) Close(ctx *sql.Context) error {
+	if ei.lIter != nil {
+		if err := ei.lIter.Close(ctx); err != nil {
+			return err
+		}
+	}
+	if ei.rIter != nil {
+		if err := ei.rIter.Close(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
