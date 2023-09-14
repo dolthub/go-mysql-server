@@ -686,7 +686,16 @@ func (t *Table) getRewriteTableEditor(ctx *sql.Context, oldSchema, newSchema sql
 			ts.GlobalCount.(*Table).data = ts.GlobalCount.(*Table).data.copy().truncate(sql.NewPrimaryKeySchema(globalCountSch))
 			ts.Position.(*Table).data = ts.Position.(*Table).data.copy().truncate(sql.NewPrimaryKeySchema(positionSch))
 			newTableSets[i] = ts
+			
+			// When we get a rowcount editor below, we are going to use the session data for each of these tables. Since we 
+			// are rewriting them anyway, update their session data with the new empty data and new schema
+			sess := SessionFromContext(ctx)
+			sess.putTable(ts.RowCount.(*Table).data)
+			sess.putTable(ts.DocCount.(*Table).data)
+			sess.putTable(ts.GlobalCount.(*Table).data)
+			sess.putTable(ts.Position.(*Table).data)
 		}
+		
 		editor = tableUnderEdit.newFulltextTableEditor(ctx, editor, newTableSets)
 	}
 
