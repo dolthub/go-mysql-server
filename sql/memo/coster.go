@@ -101,6 +101,8 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 		return c.costDistinct(ctx, n, s)
 	case *EmptyTable:
 		return c.costEmptyTable(ctx, n, s)
+	case *Union:
+		return c.costUnion(ctx, n, s)
 	case *Filter:
 		return c.costFilter(ctx, n, s)
 	default:
@@ -386,6 +388,10 @@ func (c *coster) costEmptyTable(_ *sql.Context, _ *EmptyTable, _ sql.StatsReader
 	return 0, nil
 }
 
+func (c *coster) costUnion(_ *sql.Context, _ *Union, _ sql.StatsReader) (float64, error) {
+	return 1000 * seqIOCostFactor, nil
+}
+
 func (c *coster) costFilter(_ *sql.Context, f *Filter, _ sql.StatsReader) (float64, error) {
 	// 1 unit of compute for each input row
 	return f.Child.RelProps.card * cpuCostFactor * float64(len(f.Filters)), nil
@@ -429,6 +435,8 @@ func (c *carder) cardRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 		return c.statsTableFunc(ctx, n, s)
 	case *EmptyTable:
 		return c.statsEmptyTable(ctx, n, s)
+	case *Union:
+		return c.statsUnion(ctx, n, s)
 	case JoinRel:
 		jp := n.JoinPrivate()
 		switch n := n.(type) {
@@ -524,6 +532,10 @@ func (c *carder) statsTableFunc(_ *sql.Context, _ *TableFunc, _ sql.StatsReader)
 
 func (c *carder) statsEmptyTable(_ *sql.Context, _ *EmptyTable, _ sql.StatsReader) (float64, error) {
 	return 0, nil
+}
+
+func (c *carder) statsUnion(_ *sql.Context, _ *Union, _ sql.StatsReader) (float64, error) {
+	return float64(100) * seqIOCostFactor, nil
 }
 
 func NewInnerBiasedCoster() Coster {

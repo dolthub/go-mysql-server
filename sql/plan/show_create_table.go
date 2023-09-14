@@ -31,7 +31,7 @@ type ShowCreateTable struct {
 	*UnaryNode
 	IsView           bool
 	Indexes          []sql.Index
-	Checks           sql.CheckConstraints
+	checks           sql.CheckConstraints
 	targetSchema     sql.Schema
 	PrimaryKeySchema sql.PrimaryKeySchema
 	asOf             sql.Expression
@@ -40,6 +40,7 @@ type ShowCreateTable struct {
 var _ sql.Node = (*ShowCreateTable)(nil)
 var _ sql.Expressioner = (*ShowCreateTable)(nil)
 var _ sql.SchemaTarget = (*ShowCreateTable)(nil)
+var _ sql.CheckConstraintNode = (*ShowCreateTable)(nil)
 var _ sql.CollationCoercible = (*ShowCreateTable)(nil)
 var _ Versionable = (*ShowCreateTable)(nil)
 
@@ -55,6 +56,16 @@ func NewShowCreateTableWithAsOf(table sql.Node, isView bool, asOf sql.Expression
 		IsView:    isView,
 		asOf:      asOf,
 	}
+}
+
+func (sc *ShowCreateTable) Checks() sql.CheckConstraints {
+	return sc.checks
+}
+
+func (sc *ShowCreateTable) WithChecks(checks sql.CheckConstraints) sql.Node {
+	ret := *sc
+	ret.checks = checks
+	return &ret
 }
 
 // Resolved implements the Resolvable interface.
