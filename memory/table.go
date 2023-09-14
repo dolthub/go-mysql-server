@@ -24,7 +24,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
+	
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -643,7 +643,7 @@ func (t *Table) getRewriteTableEditor(ctx *sql.Context, oldSchema, newSchema sql
 		panic(err)
 	}
 
-	tableSets, err := tableUnderEdit.getFulltextTableSets(ctx)
+	tableSets, err := fulltextTableSets(ctx, tableUnderEdit.data, tableUnderEdit.db)
 	if err != nil {
 		// TODO
 		panic(err)
@@ -726,13 +726,18 @@ func (t *Table) newFulltextTableEditor(ctx *sql.Context, parentEditor sql.TableE
 
 func (t *Table) getFulltextTableSets(ctx *sql.Context) ([]fulltext.TableSet, error) {
 	data := t.sessionTableData(ctx)
+	db := t.db
 
+	return fulltextTableSets(ctx, data, db)
+}
+
+func fulltextTableSets(ctx *sql.Context, data *TableData, db *BaseDatabase) ([]fulltext.TableSet, error) {
 	var tableSets []fulltext.TableSet
 	for _, idx := range data.indexes {
 		if !idx.IsFullText() {
 			continue
 		}
-		if t.db == nil { // Rewrite your test if you run into this
+		if db == nil { // Rewrite your test if you run into this
 			panic("database is nil, which can only happen when adding a table outside of the SQL path, such as during harness creation")
 		}
 		ftIdx, ok := idx.(fulltext.Index)
@@ -744,28 +749,28 @@ func (t *Table) getFulltextTableSets(ctx *sql.Context) ([]fulltext.TableSet, err
 			panic(err.Error())
 		}
 
-		positionTbl, ok, err := t.db.GetTableInsensitive(ctx, ftTableNames.Position)
+		positionTbl, ok, err := db.GetTableInsensitive(ctx, ftTableNames.Position)
 		if err != nil {
 			panic(err)
 		}
 		if !ok { // This should never happen
 			panic(fmt.Sprintf("index `%s` declares the table `%s` as a FULLTEXT position table, but it could not be found", idx.ID(), ftTableNames.Position))
 		}
-		docCountTbl, ok, err := t.db.GetTableInsensitive(ctx, ftTableNames.DocCount)
+		docCountTbl, ok, err := db.GetTableInsensitive(ctx, ftTableNames.DocCount)
 		if err != nil {
 			panic(err)
 		}
 		if !ok { // This should never happen
 			panic(fmt.Sprintf("index `%s` declares the table `%s` as a FULLTEXT doc count table, but it could not be found", idx.ID(), ftTableNames.DocCount))
 		}
-		globalCountTbl, ok, err := t.db.GetTableInsensitive(ctx, ftTableNames.GlobalCount)
+		globalCountTbl, ok, err := db.GetTableInsensitive(ctx, ftTableNames.GlobalCount)
 		if err != nil {
 			panic(err)
 		}
 		if !ok { // This should never happen
 			panic(fmt.Sprintf("index `%s` declares the table `%s` as a FULLTEXT global count table, but it could not be found", idx.ID(), ftTableNames.GlobalCount))
 		}
-		rowCountTbl, ok, err := t.db.GetTableInsensitive(ctx, ftTableNames.RowCount)
+		rowCountTbl, ok, err := db.GetTableInsensitive(ctx, ftTableNames.RowCount)
 		if err != nil {
 			panic(err)
 		}
@@ -781,7 +786,7 @@ func (t *Table) getFulltextTableSets(ctx *sql.Context) ([]fulltext.TableSet, err
 			RowCount:    rowCountTbl.(fulltext.EditableTable),
 		})
 	}
-	
+
 	return tableSets, nil
 }
 
@@ -2069,10 +2074,13 @@ func isPrimaryKeyDrop(oldSchema sql.PrimaryKeySchema, newSchema sql.PrimaryKeySc
 
 // modifyFulltextIndexesForRewrite will modify the fulltext indexes of a table to correspond to a new schema before a rewrite.
 func (t *Table) modifyFulltextIndexesForRewrite(ctx *sql.Context, data *TableData, oldSchema sql.PrimaryKeySchema) error {
-	for i, idx := range data.indexes {
+	newIndexes := make(map[string]sql.Index)
+	for name, idx := range data.indexes {
 		if !idx.IsFullText() {
+			newIndexes[name] = idx
 			continue
 		}
+		
 		if t.db == nil { // Rewrite your test if you run into this
 			return fmt.Errorf("database is nil, which can only happen when adding a table outside of the SQL path, such as during harness creation")
 		}
@@ -2084,27 +2092,51 @@ func (t *Table) modifyFulltextIndexesForRewrite(ctx *sql.Context, data *TableDat
 		
 		ftInfo := memIdx.fulltextInfo
 		newKeyColumns := remapColumnOrds(oldSchema, data.schema, ftInfo.KeyColumns)
-		if newKeyColumns == nil {
-			// TODO: omit, probably
-			return fmt.Errorf("could not find column in new schema")
+		if len(newKeyColumns) == 0 {
+			// omit this index, no columns in it left in new schema
+			continue
 		}
-		
+
+		newExprs := removeDroppedColumns(data.schema, memIdx)
+		if len(newExprs) == 0 {
+			// omit this index, no columns in it left in new schema
+			continue
+		}
+
 		newIdx := memIdx.copy()
 		newIdx.fulltextInfo.KeyColumns.Positions = newKeyColumns
-		data.indexes[i] = newIdx
+		newIdx.Exprs = newExprs
+		
+		newIndexes[name] = newIdx
 	}
+	
+	data.indexes = newIndexes
 	
 	return nil
 }
 
+func removeDroppedColumns(schema sql.PrimaryKeySchema, idx *Index) []sql.Expression {
+	var newExprs []sql.Expression
+	for _, expr := range idx.Exprs {
+		if gf, ok := expr.(*expression.GetField); ok {
+			idx := schema.Schema.IndexOfColName(gf.Name())
+			if idx < 0 {
+				continue		
+			}
+		}
+		newExprs = append(newExprs, expr)
+	}
+	return newExprs
+}
+
 func remapColumnOrds(oldSch sql.PrimaryKeySchema, newSch sql.PrimaryKeySchema, cols fulltext.KeyColumns) []int {
-	newPoses := make([]int, len(cols.Positions))
-	for i, col := range cols.Positions {
+	var newPoses []int
+	for _, col := range cols.Positions {
 		idx := newSch.Schema.IndexOfColName(oldSch.Schema[col].Name)
 		if idx < 0 {
-			return nil
+			continue
 		}
-		newPoses[i] = idx
+		newPoses = append(newPoses, idx)
 	}
 	return newPoses
 }
