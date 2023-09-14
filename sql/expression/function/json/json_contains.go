@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package function
+package json
 
 import (
 	"fmt"
@@ -163,37 +163,6 @@ func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 
 	// Now determine whether the candidate value exists in the target
 	return target.Contains(ctx, candidate)
-}
-
-func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (types.SearchableJSONValue, error) {
-	js, err := json.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-	if js == nil {
-		return nil, nil
-	}
-
-	var converted interface{}
-	switch js.(type) {
-	case string, []interface{}, map[string]interface{}, types.JSONValue:
-		converted, _, err = types.JSON.Convert(js)
-		if err != nil {
-			return nil, sql.ErrInvalidJSONText.New(js)
-		}
-	default:
-		return nil, sql.ErrInvalidArgument.New(fmt.Sprintf("%v", js))
-	}
-
-	searchable, ok := converted.(types.SearchableJSONValue)
-	if !ok {
-		searchable, err = js.(types.JSONValue).Unmarshall(ctx)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return searchable, nil
 }
 
 func (j *JSONContains) Children() []sql.Expression {

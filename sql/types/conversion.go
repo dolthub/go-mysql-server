@@ -261,7 +261,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 			}
 		}
 		return CreateString(sqltypes.Char, length, sql.Collation_utf8mb3_general_ci)
-	case "varchar", "character varying":
+	case "varchar", "char varying", "character varying":
 		collation, err := sql.ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
 		if err != nil {
 			return nil, err
@@ -281,7 +281,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 			}
 		}
 		return CreateString(sqltypes.VarChar, length, collation)
-	case "nvarchar", "national varchar", "national character varying":
+	case "nchar varchar", "nchar varying", "nvarchar", "national varchar", "national char varying", "national character varying":
 		if ct.Length == nil {
 			return nil, fmt.Errorf("VARCHAR requires a length")
 		}

@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/stretchr/testify/assert"
 
@@ -113,6 +114,47 @@ func TestColumnTypeToType_Time(t *testing.T) {
 			} else {
 				assert.Equal(t, test.expected, res)
 			}
+		})
+	}
+}
+
+func TestColumnCharTypes(t *testing.T) {
+	test := []struct {
+		typ string
+		len int64
+		exp sql.Type
+	}{
+		{
+			typ: "nchar varchar",
+			len: 10,
+			exp: StringType{baseType: sqltypes.VarChar, maxCharLength: 10, maxByteLength: 30, collation: 33},
+		},
+		{
+			typ: "char varying",
+			len: 10,
+			exp: StringType{baseType: sqltypes.VarChar, maxCharLength: 10, maxByteLength: 40},
+		},
+		{
+			typ: "nchar varying",
+			len: 10,
+			exp: StringType{baseType: sqltypes.VarChar, maxCharLength: 10, maxByteLength: 30, collation: 33},
+		},
+		{
+			typ: "national char varying",
+			len: 10,
+			exp: StringType{baseType: sqltypes.VarChar, maxCharLength: 10, maxByteLength: 30, collation: 33},
+		},
+	}
+
+	for _, test := range test {
+		t.Run(fmt.Sprintf("%v %v", test.typ, test.exp), func(t *testing.T) {
+			ct := &sqlparser.ColumnType{
+				Type:   test.typ,
+				Length: &sqlparser.SQLVal{Type: sqlparser.IntVal, Val: []byte(fmt.Sprintf("%v", test.len))},
+			}
+			res, err := ColumnTypeToType(ct)
+			assert.NoError(t, err)
+			assert.Equal(t, test.exp, res)
 		})
 	}
 }

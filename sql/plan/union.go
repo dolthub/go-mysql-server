@@ -28,6 +28,7 @@ type Union struct {
 	Limit      sql.Expression
 	Offset     sql.Expression
 	SortFields sql.SortFields
+	dispose    []sql.DisposeFunc
 }
 
 var _ sql.Node = (*Union)(nil)
@@ -43,6 +44,10 @@ func NewUnion(left, right sql.Node, distinct bool, limit, offset sql.Expression,
 		Offset:     offset,
 		SortFields: sortFields,
 	}
+}
+
+func (u *Union) AddDispose(f sql.DisposeFunc) {
+	u.dispose = append(u.dispose, f)
 }
 
 func (u *Union) Schema() sql.Schema {
@@ -157,6 +162,12 @@ func (u *Union) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperat
 func (*Union) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	// Unions are able to return differing values, therefore they cannot be used to determine coercibility
 	return sql.Collation_binary, 7
+}
+
+func (u Union) Dispose() {
+	for _, f := range u.dispose {
+		f()
+	}
 }
 
 func (u Union) String() string {

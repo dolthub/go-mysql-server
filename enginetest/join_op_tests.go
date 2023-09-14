@@ -124,6 +124,26 @@ var joinOpTests = []struct {
 		},
 	},
 	{
+		name: "left join on array data",
+		setup: [][]string{
+			{
+				"create table xy (x binary(2) primary key, y binary(2))",
+				"create table uv (u binary(2) primary key, v binary(2))",
+				"insert into xy values (x'F0F0',x'1234'),(x'2345',x'3456');",
+				"insert into uv values (x'fedc',x'F0F0');",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query: "select HEX(x),HEX(u) from xy left join uv on x = v OR y = u",
+				Expected: []sql.Row{
+					{"2345", nil},
+					{"F0F0", "FEDC"},
+				},
+			},
+		},
+	},
+	{
 		name: "point lookups",
 		setup: [][]string{
 			setup.MydbData[0],
@@ -160,6 +180,28 @@ var joinOpTests = []struct {
 			{
 				Query:    `SELECT /*+ JOIN_ORDER(scalarSubq0,xy) */ count(*) from xy where y in (select distinct u from uv);`,
 				Expected: []sql.Row{{2}},
+			},
+		},
+	},
+	{
+		name: "union joins",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"create table uv (u int primary key, v int);",
+				"insert into uv values (1,1),(2,2),(3,1),(4,2);",
+				"create table xy (x int primary key, y int);",
+				"insert into xy values (1,1),(2,2);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select * from xy where x = 1 and exists (select 1 union select 1)",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:    "select * from xy where x = 1 and x in (select y from xy union select 1)",
+				Expected: []sql.Row{{1, 1}},
 			},
 		},
 	},
@@ -1396,6 +1438,38 @@ SELECT SUM(x) FROM xy WHERE x IN (
 			{
 				Query:    `SELECT * from xy where null not in (SELECT b from ab)`,
 				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		name: "multi-column merge join",
+		setup: [][]string{
+			setup.Pk_tablesData[0],
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    `SELECT l.pk1, l.pk2, l.c1, r.pk1, r.pk2, r.c1 FROM two_pk l JOIN two_pk r ON l.pk1=r.pk1 AND l.pk2=r.pk2`,
+				Expected: []sql.Row{{0, 0, 0, 0, 0, 0}, {0, 1, 10, 0, 1, 10}, {1, 0, 20, 1, 0, 20}, {1, 1, 30, 1, 1, 30}},
+			},
+			{
+				Query:    `SELECT l.pk, r.pk FROM one_pk_two_idx l JOIN one_pk_two_idx r ON l.v1=r.v1 AND l.v2=r.v2`,
+				Expected: []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}, {7, 7}},
+			},
+			{
+				Query:    `SELECT l.pk, r.pk FROM one_pk_three_idx l JOIN one_pk_three_idx r ON l.v1=r.v1 AND l.v2=r.v2 AND l.pk=r.v1`,
+				Expected: []sql.Row{{0, 0}, {0, 1}},
+			},
+			{
+				Query:    `SELECT l.pk1, l.pk2, r.pk FROM two_pk l JOIN one_pk_three_idx r ON l.pk2=r.v1 WHERE l.pk1 = 1`,
+				Expected: []sql.Row{{1, 0, 0}, {1, 0, 1}, {1, 0, 2}, {1, 0, 3}, {1, 1, 4}},
+			},
+			{
+				Query:    `SELECT l.pk1, l.pk2, r.pk FROM two_pk l JOIN one_pk_three_idx r ON l.pk1=r.v1 WHERE l.pk2 = 1`,
+				Expected: []sql.Row{{0, 1, 0}, {0, 1, 1}, {0, 1, 2}, {0, 1, 3}, {1, 1, 4}},
+			},
+			{
+				Query:    `SELECT l.pk, r.pk FROM one_pk_three_idx l JOIN one_pk_three_idx r ON l.pk=r.v1 WHERE l.pk = 1`,
+				Expected: []sql.Row{{1, 4}},
 			},
 		},
 	},

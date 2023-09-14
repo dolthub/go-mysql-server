@@ -5608,6 +5608,14 @@ func TestValidateSession(t *testing.T, harness Harness, newSessFunc func(ctx *sq
 func TestPrepared(t *testing.T, harness Harness) {
 	qtests := []queries.QueryTest{
 		{
+			Query:    "select 1,2 limit ?,?",
+			Expected: []sql.Row{{1, 2}},
+			Bindings: map[string]*query.BindVariable{
+				"v1": sqltypes.Float64BindVariable(0.0),
+				"v2": sqltypes.Float64BindVariable(1.0),
+			},
+		},
+		{
 			Query: "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = ?) AS a ORDER BY foo, i",
 			Expected: []sql.Row{
 				{2, 1, 2}},

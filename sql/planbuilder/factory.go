@@ -40,7 +40,7 @@ func (f *factory) log(s string) {
 	}
 }
 
-func (f *factory) buildProject(p *plan.Project) (sql.Node, error) {
+func (f *factory) buildProject(p *plan.Project, subquery bool) (sql.Node, error) {
 	{
 		// todo generalize this. proj->proj with subquery expression alias
 		// references are one problem.
@@ -53,7 +53,7 @@ func (f *factory) buildProject(p *plan.Project) (sql.Node, error) {
 	{
 		// project->project=>project
 		if p2, _ := p.Child.(*plan.Project); p2 != nil {
-			if !containsSubqueryExpr(p.Projections) && !containsSubqueryExpr(p2.Projections) {
+			if !subquery {
 				// it is important to bisect subquery expression alias inputs
 				// into a separate projection with current exec impl
 				adjGraph := make(map[sql.ColumnId]sql.Expression, 0)

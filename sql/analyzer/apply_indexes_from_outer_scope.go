@@ -149,7 +149,7 @@ func getOuterScopeIndexes(
 		case *plan.Filter:
 
 			var indexAnalyzer *indexAnalyzer
-			indexAnalyzer, err = newIndexAnalyzerForNode(ctx, node)
+			indexAnalyzer, err = newIndexAnalyzerForNode(ctx, node.Child)
 			if err != nil {
 				return false
 			}
@@ -237,9 +237,6 @@ func getSubqueryIndexes(
 	ia *indexAnalyzer,
 	tableAliases TableAliases,
 ) (map[string]sql.Index, joinExpressionsByTable, error) {
-
-	scopeLen := len(scope.Schema())
-
 	// build a list of candidate predicate expressions, those that might be used for an index lookup
 	var candidatePredicates []sql.Expression
 
@@ -249,7 +246,7 @@ func getSubqueryIndexes(
 		isScopeExpr := false
 		sql.Inspect(e, func(e sql.Expression) bool {
 			if gf, ok := e.(*expression.GetField); ok {
-				if gf.Index() < scopeLen {
+				if scope.Correlated().Contains(sql.ColumnId(gf.Id())) {
 					isScopeExpr = true
 					return false
 				}

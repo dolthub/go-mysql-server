@@ -64,7 +64,7 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		rowSource:   rowIter,
 		updateExprs: ii.OnDupExprs,
 		insertExprs: insertExpressions,
-		checks:      ii.Checks,
+		checks:      ii.Checks(),
 		ctx:         ctx,
 		ignore:      ii.Ignore,
 	}
@@ -134,7 +134,7 @@ func (b *BaseBuilder) buildUpdate(ctx *sql.Context, n *plan.Update, row sql.Row)
 		return nil, err
 	}
 
-	return newUpdateIter(iter, updatable.Schema(), updater, n.Checks, n.Ignore), nil
+	return newUpdateIter(iter, updatable.Schema(), updater, n.Checks(), n.Ignore), nil
 }
 
 func (b *BaseBuilder) buildDropForeignKey(ctx *sql.Context, n *plan.DropForeignKey, row sql.Row) (sql.RowIter, error) {

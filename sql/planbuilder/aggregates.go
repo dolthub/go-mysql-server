@@ -309,6 +309,10 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 		case *expression.Star:
 			err := sql.ErrStarUnsupported.New()
 			b.handleErr(err)
+		case *plan.Subquery:
+			args = append(args, e)
+			col := scopeColumn{col: e.QueryString, scalar: e, typ: e.Type()}
+			gb.addInCol(col)
 		default:
 			args = append(args, e)
 			col := scopeColumn{col: e.String(), scalar: e, typ: e.Type()}
@@ -348,14 +352,14 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 		aggType = types.Float64
 	}
 
-	aggName := strings.ToLower(agg.String())
+	aggName := strings.ToLower(plan.AliasSubqueryString(agg))
 	if id, ok := gb.outScope.getExpr(aggName, true); ok {
 		// if we've already computed use reference here
-		gf := expression.NewGetFieldWithTable(int(id), aggType, "", agg.String(), agg.IsNullable())
+		gf := expression.NewGetFieldWithTable(int(id), aggType, "", aggName, agg.IsNullable())
 		return gf
 	}
 
-	col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: aggType, nullable: agg.IsNullable()}
+	col := scopeColumn{col: aggName, scalar: agg, typ: aggType, nullable: agg.IsNullable()}
 	id := gb.outScope.newColumn(col)
 	col.id = id
 	gb.addAggStr(col)
@@ -405,7 +409,8 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 
 	// todo store ref to aggregate
 	agg := aggregation.NewGroupConcat(e.Distinct, sortFields, separatorS, args, int(groupConcatMaxLen))
-	col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
+	aggName := strings.ToLower(plan.AliasSubqueryString(agg))
+	col := scopeColumn{col: aggName, scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
 
 	id := gb.outScope.newColumn(col)
 	gb.addAggStr(col)
@@ -709,10 +714,8 @@ func (b *Builder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) 
 			}
 			c, ok = fromScope.resolveColumn(strings.ToLower(n.Qualifier.String()), strings.ToLower(n.Name.String()), true)
 			if !ok {
-				if !ok {
-					err := sql.ErrColumnNotFound.New(n.Name)
-					b.handleErr(err)
-				}
+				err := sql.ErrColumnNotFound.New(n.Name)
+				b.handleErr(err)
 			}
 			c.scalar = expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
 			fromScope.addExtraColumn(c)

@@ -23,6 +23,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+type itaType uint8
+
+const (
+	ItaTypeStatic itaType = iota
+	ItaTypeLookup
+)
+
 var ErrNoIndexableTable = errors.NewKind("expected an IndexableTable, couldn't find one in %v")
 var ErrNoIndexedTableAccess = errors.NewKind("expected an IndexedTableAccess, couldn't find one in %v")
 var ErrInvalidLookupForIndexedTable = errors.NewKind("indexable table does not support given lookup: %s")
@@ -34,6 +41,7 @@ type IndexedTableAccess struct {
 	lb        *LookupBuilder
 	lookup    sql.IndexLookup
 	Table     sql.IndexedTable
+	Typ       itaType
 }
 
 var _ sql.Table = (*IndexedTableAccess)(nil)
@@ -50,6 +58,7 @@ func NewIndexedTableAccess(node sql.TableNode, t sql.IndexedTable, lb *LookupBui
 		TableNode: node,
 		lb:        lb,
 		Table:     t,
+		Typ:       ItaTypeStatic,
 	}
 }
 
@@ -78,6 +87,7 @@ func NewIndexedAccessForTableNode(ctx *sql.Context, node sql.TableNode, lb *Look
 		TableNode: node,
 		lb:        lb,
 		Table:     ia,
+		Typ:       ItaTypeLookup,
 	}, nil
 }
 
@@ -103,6 +113,7 @@ func NewStaticIndexedAccessForTableNode(ctx *sql.Context, node sql.TableNode, lo
 		TableNode: node,
 		lookup:    lookup,
 		Table:     ia,
+		Typ:       ItaTypeStatic,
 	}, nil
 }
 
@@ -113,6 +124,7 @@ func NewStaticIndexedAccessForFullTextTable(node sql.TableNode, lookup sql.Index
 		TableNode: node,
 		lookup:    lookup,
 		Table:     ftTable,
+		Typ:       ItaTypeStatic,
 	}
 }
 
@@ -318,11 +330,9 @@ func (i *IndexedTableAccess) WithExpressions(exprs ...sql.Expression) (sql.Node,
 	if err != nil {
 		return nil, err
 	}
-	return &IndexedTableAccess{
-		TableNode: i.TableNode,
-		Table:     i.Table,
-		lb:        lb,
-	}, nil
+	ret := *i
+	ret.lb = lb
+	return &ret, nil
 }
 
 // Partitions implements sql.Table
@@ -540,11 +550,7 @@ func (lb *LookupBuilder) WithExpressions(node sql.Node, exprs ...sql.Expression)
 	if len(exprs) != len(lb.keyExprs) {
 		return &LookupBuilder{}, sql.ErrInvalidChildrenNumber.New(node, len(exprs), len(lb.keyExprs))
 	}
-	return &LookupBuilder{
-		keyExprs:        exprs,
-		index:           lb.index,
-		matchesNullMask: lb.matchesNullMask,
-		rang:            lb.rang,
-		cets:            lb.cets,
-	}, nil
+	ret := *lb
+	ret.keyExprs = exprs
+	return &ret, nil
 }

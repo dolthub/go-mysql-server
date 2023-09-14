@@ -223,15 +223,15 @@ func (h *Handler) doQuery(
 	var queryStr string
 	if h.encodeLoggedQuery {
 		queryStr = base64.StdEncoding.EncodeToString([]byte(query))
-	} else if h.maxLoggedQueryLen > 0 {
-		// this is expensive, off by default
+	} else if logrus.IsLevelEnabled(logrus.DebugLevel) {
+		// this is expensive, so skip this unless we're logging at DEBUG level
 		queryStr = string(queryLoggingRegex.ReplaceAll([]byte(query), []byte(" ")))
 		if h.maxLoggedQueryLen > 0 && len(queryStr) > h.maxLoggedQueryLen {
 			queryStr = queryStr[:h.maxLoggedQueryLen] + "..."
 		}
 	}
 
-	if h.encodeLoggedQuery || h.maxLoggedQueryLen > 0 {
+	if queryStr != "" {
 		ctx.SetLogger(ctx.GetLogger().WithField("query", queryStr))
 	}
 	ctx.GetLogger().Debugf("Starting query")

@@ -399,8 +399,7 @@ func DefaultRuleSelector(id RuleId) bool {
 func NewProcRuleSelector(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		case optimizeJoinsId,
-			pruneTablesId,
+		case pruneTablesId,
 			transformJoinApplyId,
 
 			// once after default rules should only be run once
@@ -422,7 +421,8 @@ func NewResolveSubqueryExprSelector(sel RuleSelector) RuleSelector {
 			hoistOutOfScopeFiltersId,
 			hoistSelectExistsId,
 			transformJoinApplyId,
-			finalizeSubqueriesId:
+			finalizeSubqueriesId,
+			assignExecIndexesId:
 			return false
 		}
 		return sel(id)
@@ -441,7 +441,8 @@ func NewFinalizeSubquerySel(sel RuleSelector) RuleSelector {
 			finalizeSubqueriesId,
 			hoistOutOfScopeFiltersId,
 			cacheSubqueryResultsId,
-			TrackProcessId:
+			TrackProcessId,
+			assignExecIndexesId:
 			return false
 		}
 		return sel(id)
@@ -469,7 +470,8 @@ func NewFinalizeUnionSel(sel RuleSelector) RuleSelector {
 func newInsertSourceSelector(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		case transformJoinApplyId:
+		case transformJoinApplyId,
+			pushdownSubqueryAliasFiltersId:
 			return false
 		}
 		return sel(id)

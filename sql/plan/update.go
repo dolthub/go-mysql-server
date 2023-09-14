@@ -30,13 +30,14 @@ var ErrUpdateUnexpectedSetResult = errors.NewKind("attempted to set field but ex
 // Update is a node for updating rows on tables.
 type Update struct {
 	UnaryNode
-	Checks sql.CheckConstraints
+	checks sql.CheckConstraints
 	Ignore bool
 }
 
 var _ sql.Node = (*Update)(nil)
 var _ sql.Databaseable = (*Update)(nil)
 var _ sql.CollationCoercible = (*Update)(nil)
+var _ sql.CheckConstraintNode = (*Update)(nil)
 
 // NewUpdate creates an Update node.
 func NewUpdate(n sql.Node, ignore bool, updateExprs []sql.Expression) *Update {
@@ -108,6 +109,16 @@ func GetDatabase(node sql.Node) sql.Database {
 	return nil
 }
 
+func (u *Update) Checks() sql.CheckConstraints {
+	return u.checks
+}
+
+func (u *Update) WithChecks(checks sql.CheckConstraints) sql.Node {
+	ret := *u
+	ret.checks = checks
+	return &ret
+}
+
 // DB returns the database being updated. |Database| is already used by another interface we implement.
 func (u *Update) DB() sql.Database {
 	return GetDatabase(u.Child)
@@ -126,20 +137,20 @@ func (u *Update) Database() string {
 }
 
 func (u *Update) Expressions() []sql.Expression {
-	return u.Checks.ToExpressions()
+	return u.checks.ToExpressions()
 }
 
 func (u *Update) Resolved() bool {
-	return u.Child.Resolved() && expression.ExpressionsResolved(u.Checks.ToExpressions()...)
+	return u.Child.Resolved() && expression.ExpressionsResolved(u.checks.ToExpressions()...)
 }
 
 func (u Update) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
-	if len(newExprs) != len(u.Checks) {
-		return nil, sql.ErrInvalidChildrenNumber.New(u, len(newExprs), len(u.Checks))
+	if len(newExprs) != len(u.checks) {
+		return nil, sql.ErrInvalidChildrenNumber.New(u, len(newExprs), len(u.checks))
 	}
 
 	var err error
-	u.Checks, err = u.Checks.FromExpressions(newExprs)
+	u.checks, err = u.checks.FromExpressions(newExprs)
 	if err != nil {
 		return nil, err
 	}

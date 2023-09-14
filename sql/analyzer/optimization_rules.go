@@ -45,36 +45,6 @@ func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 	})
 }
 
-// optimizeDistinct substitutes a Distinct node for an OrderedDistinct node when the child of Distinct is already
-// ordered. The OrderedDistinct node is much faster and uses much less memory, since it only has to compare the
-// previous row to the current one to determine its distinct-ness.
-func optimizeDistinct(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, ctx := ctx.Span("optimize_distinct")
-	defer span.End()
-
-	if n, ok := node.(*plan.Distinct); ok {
-		var sortField *expression.GetField
-		transform.Inspect(n, func(node sql.Node) bool {
-			// TODO: this is a bug. Every column in the output must be sorted in order for OrderedDistinct to produce a
-			//  correct result. This only checks one sort field
-			if sort, ok := node.(*plan.Sort); ok && sortField == nil {
-				if col, ok := sort.SortFields[0].Column.(*expression.GetField); ok {
-					sortField = col
-				}
-				return false
-			}
-			return true
-		})
-
-		if sortField != nil && n.Schema().Contains(sortField.Name(), sortField.Table()) {
-			a.Log("distinct optimized for ordered output")
-			return plan.NewOrderedDistinct(n.Child), transform.NewTree, nil
-		}
-	}
-
-	return node, transform.SameTree, nil
-}
-
 // moveJoinConditionsToFilter looks for expressions in a join condition that reference only tables in the left or right
 // side of the join, and move those conditions to a new Filter node instead. If the join condition is empty after these
 // moves, the join is converted to a CrossJoin.
@@ -83,40 +53,39 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		return n, transform.SameTree, nil
 	}
 
-	var nonJoinFilters []sql.Expression
-	var topJoin sql.Node
-	node, same, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		var rightOnlyFilters []sql.Expression
+		var leftOnlyFilters []sql.Expression
+
 		join, ok := n.(*plan.JoinNode)
 		if !ok {
 			// no join
 			return n, transform.SameTree, nil
 		}
 
-		// update top join to be current join
-		topJoin = n
-
 		// no filter or left join: nothing to do to the tree
-		if join.JoinType().IsDegenerate() || !join.JoinType().IsInner() {
+		if join.JoinType().IsDegenerate() {
 			return n, transform.SameTree, nil
 		}
-
+		if !(join.JoinType().IsInner() || join.JoinType().IsSemi()) {
+			return n, transform.SameTree, nil
+		}
 		leftSources := nodeSources(join.Left())
 		rightSources := nodeSources(join.Right())
 		filtersMoved := 0
 		var condFilters []sql.Expression
 		for _, e := range expression.SplitConjunction(join.JoinCond()) {
-			sources := expressionSources(e)
-			if len(sources) == 1 {
-				nonJoinFilters = append(nonJoinFilters, e)
-				filtersMoved++
+			sources, nullRej := expressionSources(e)
+			if !nullRej {
+				condFilters = append(condFilters, e)
 				continue
 			}
 
-			belongsToLeftTable := containsSources(leftSources, sources)
-			belongsToRightTable := containsSources(rightSources, sources)
-
-			if belongsToLeftTable || belongsToRightTable {
-				nonJoinFilters = append(nonJoinFilters, e)
+			if leftOnly := containsSources(leftSources, sources); leftOnly {
+				leftOnlyFilters = append(leftOnlyFilters, e)
+				filtersMoved++
+			} else if rightOnly := containsSources(rightSources, sources); rightOnly {
+				rightOnlyFilters = append(rightOnlyFilters, e)
 				filtersMoved++
 			} else {
 				condFilters = append(condFilters, e)
@@ -124,82 +93,25 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		}
 
 		if filtersMoved == 0 {
-			return topJoin, transform.SameTree, nil
-		}
-
-		if len(condFilters) > 0 {
-			var err error
-			topJoin, err = join.WithExpressions(expression.JoinAnd(condFilters...))
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-			return topJoin, transform.NewTree, nil
-		}
-
-		// if there are no cond filters left we can just convert it to a cross join
-		topJoin = plan.NewCrossJoin(join.Left(), join.Right())
-		return topJoin, transform.NewTree, nil
-	})
-
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	if len(nonJoinFilters) == 0 || same {
-		return node, transform.SameTree, nil
-	}
-
-	if node == topJoin {
-		return plan.NewFilter(expression.JoinAnd(nonJoinFilters...), node), transform.NewTree, nil
-	}
-
-	resultNode, resultIdentity, err := transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		children := n.Children()
-		if len(children) == 0 {
 			return n, transform.SameTree, nil
 		}
 
-		indexOfTopJoin := -1
-		for idx, child := range children {
-			if child == topJoin {
-				indexOfTopJoin = idx
-				break
-			}
-		}
-		if indexOfTopJoin == -1 {
-			return n, transform.SameTree, nil
+		newLeft := join.Left()
+		if len(leftOnlyFilters) > 0 {
+			newLeft = plan.NewFilter(expression.JoinAnd(leftOnlyFilters...), newLeft)
 		}
 
-		switch n := n.(type) {
-		case *plan.Filter:
-			nonJoinFilters = append(nonJoinFilters, n.Expression)
-			newExpression := expression.JoinAnd(nonJoinFilters...)
-			newFilter := plan.NewFilter(newExpression, topJoin)
-			nonJoinFilters = nil // clear nonJoinFilters so we know they were used
-			return newFilter, transform.NewTree, nil
-		default:
-			newExpression := expression.JoinAnd(nonJoinFilters...)
-			newFilter := plan.NewFilter(newExpression, topJoin)
-			children[indexOfTopJoin] = newFilter
-			updatedNode, err := n.WithChildren(children...)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-			nonJoinFilters = nil // clear nonJoinFilters so we know they were used
-			return updatedNode, transform.NewTree, nil
+		newRight := join.Right()
+		if len(rightOnlyFilters) > 0 {
+			newRight = plan.NewFilter(expression.JoinAnd(rightOnlyFilters...), newRight)
 		}
+
+		if len(condFilters) == 0 {
+			condFilters = append(condFilters, expression.NewLiteral(true, types.Boolean))
+		}
+
+		return plan.NewJoin(newLeft, newRight, join.Op, expression.JoinAnd(condFilters...)).WithComment(join.CommentStr), transform.NewTree, nil
 	})
-
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	// if there are still nonJoinFilters left, it means we removed them but failed to re-insert them
-	if len(nonJoinFilters) > 0 {
-		return nil, transform.SameTree, sql.ErrDroppedJoinFilters.New()
-	}
-
-	return resultNode, resultIdentity, nil
 }
 
 // containsSources checks that all `needle` sources are contained inside `haystack`.
@@ -236,24 +148,37 @@ func nodeSources(node sql.Node) []string {
 	return result
 }
 
-// expressionSources returns the set of sources from any GetField expressions in the expression given.
-func expressionSources(expr sql.Expression) []string {
+// expressionSources returns the set of sources from any GetField expressions
+// in the expression given, and a boolean indicating whether the expression
+// is null rejecting from those sources.
+func expressionSources(expr sql.Expression) ([]string, bool) {
 	var sources = make(map[string]struct{})
 	var result []string
+	var nullRejecting bool = true
 
-	sql.Inspect(expr, func(expr sql.Expression) bool {
-		f, ok := expr.(*expression.GetField)
-		if ok {
-			if _, ok := sources[f.Table()]; !ok {
-				sources[f.Table()] = struct{}{}
-				result = append(result, f.Table())
+	sql.Inspect(expr, func(e sql.Expression) bool {
+		switch e := e.(type) {
+		case *expression.GetField:
+			if _, ok := sources[e.Table()]; !ok {
+				sources[e.Table()] = struct{}{}
+				result = append(result, e.Table())
+			}
+		case *expression.IsNull:
+			nullRejecting = false
+		case *expression.NullSafeEquals:
+			nullRejecting = false
+		case *expression.Equals:
+			if lit, ok := e.Left().(*expression.Literal); ok && lit.Value() == nil {
+				nullRejecting = false
+			}
+			if lit, ok := e.Right().(*expression.Literal); ok && lit.Value() == nil {
+				nullRejecting = false
 			}
 		}
-
 		return true
 	})
 
-	return result
+	return result, nullRejecting
 }
 
 // simplifyFilters simplifies the expressions in Filter nodes where possible. This involves removing redundant parts of AND

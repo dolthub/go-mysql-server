@@ -44,6 +44,8 @@ type ScriptTest struct {
 	ExpectedErr *errors.Kind
 	// For tests that make a single assertion, ExpectedIndexes can be set for the string representation of indexes that we expect to appear in the query plan
 	ExpectedIndexes []string
+	// For tests that perform join operations, JoinTypes can be set for the type of merge we expect to perform.
+	JoinTypes []plan.JoinType
 	// SkipPrepared is true when we skip a test for prepared statements only
 	SkipPrepared bool
 }
@@ -73,6 +75,9 @@ type ScriptTestAssertion struct {
 
 	// The string representation of indexes that we expect to appear in the query plan
 	ExpectedIndexes []string
+
+	// For tests that perform join operations, JoinTypes can be set for the type of merge we expect to perform.
+	JoinTypes []plan.JoinType
 
 	// SkipResultsCheck is used to skip assertions on expected Rows returned from a query. This should be used
 	// sparingly, such as in cases where you only want to test warning messages.
@@ -1308,7 +1313,7 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "ALTER TABLE ... ALTER COLUMN SET / DROP DEFAULT",
+		Name: "ALTER TABLE, ALTER COLUMN SET , DROP DEFAULT",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",
 		},

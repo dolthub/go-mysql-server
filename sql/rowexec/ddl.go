@@ -906,7 +906,7 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 		}
 	}
 
-	if len(n.ChDefs) > 0 {
+	if len(n.Checks()) > 0 {
 		err = n.CreateChecks(ctx, tableNode)
 		if err != nil {
 			return sql.RowsToRowIter(), err

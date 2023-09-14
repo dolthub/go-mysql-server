@@ -16,7 +16,7 @@ func TestPopulateFDs(t *testing.T) {
 	// source relations
 	tests := []struct {
 		name    string
-		in      SourceRel
+		in      RelExpr
 		all     sql.ColSet
 		notNull sql.ColSet
 		indexes []*Index
@@ -85,15 +85,19 @@ func TestPopulateFDs(t *testing.T) {
 		{
 			name: "max1Row",
 			in: &Max1Row{
-				sourceBase: &sourceBase{relBase: &relBase{}},
-				Table: plan.NewResolvedTable(
-					&dummyTable{
-						schema: sql.NewPrimaryKeySchema(sql.Schema{
-							{Name: "x", Source: "t", Type: types.Int64, Nullable: false},
-							{Name: "y", Source: "t", Type: types.Int64, Nullable: false},
-							{Name: "z", Source: "t", Type: types.Int64, Nullable: false},
-						}),
-					}, nil, nil),
+				relBase: &relBase{},
+				Child: newExprGroup(NewMemo(nil, nil, nil, 0, nil, nil), 0, &TableScan{
+					sourceBase: &sourceBase{relBase: &relBase{}},
+					Table: plan.NewResolvedTable(
+						&dummyTable{
+							schema: sql.NewPrimaryKeySchema(sql.Schema{
+								{Name: "x", Source: "t", Type: types.Int64, Nullable: false},
+								{Name: "y", Source: "t", Type: types.Int64, Nullable: false},
+								{Name: "z", Source: "t", Type: types.Int64, Nullable: false},
+							}),
+						}, nil, nil),
+				},
+				),
 			},
 			all:     sql.NewColSet(1, 2, 3),
 			notNull: sql.NewColSet(1, 2, 3),
@@ -125,12 +129,14 @@ func TestPopulateFDs(t *testing.T) {
 				require.True(t, props.fds.HasMax1Row())
 			}
 
-			cmpIdx := tt.in.Indexes()
-			require.Equal(t, len(tt.indexes), len(cmpIdx))
-			for i, ii := range tt.indexes {
-				cmp := cmpIdx[i]
-				require.Equal(t, ii.Cols(), cmp.Cols())
-				require.Equal(t, ii.ColSet(), cmp.ColSet())
+			if src, ok := tt.in.(SourceRel); ok {
+				cmpIdx := src.Indexes()
+				require.Equal(t, len(tt.indexes), len(cmpIdx))
+				for i, ii := range tt.indexes {
+					cmp := cmpIdx[i]
+					require.Equal(t, ii.Cols(), cmp.Cols())
+					require.Equal(t, ii.ColSet(), cmp.ColSet())
+				}
 			}
 		})
 	}

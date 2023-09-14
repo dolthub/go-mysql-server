@@ -1462,7 +1462,7 @@ func addColumnToSchema(schema sql.Schema, column *sql.Column, order *sql.ColumnO
 						if idx < 0 {
 							return nil, transform.SameTree, sql.ErrTableColumnNotFound.New(schema[0].Source, s.Name())
 						}
-						return s.WithIndex(idx), transform.NewTree, nil
+						return expression.NewGetFieldWithTable(idx, s.Type(), s.Table(), s.Name(), s.IsNullable()), transform.NewTree, nil
 					default:
 						return s, transform.SameTree, nil
 					}
@@ -1566,7 +1566,7 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 	cat, ok := i.alterable.(sql.CheckAlterableTable)
 	if ok {
 		// note: validations done earlier ensure safety of dropping any constraint referencing the column
-		err := dropConstraints(ctx, cat, i.d.Checks, i.d.Column)
+		err := dropConstraints(ctx, cat, i.d.Checks(), i.d.Column)
 		if err != nil {
 			return nil, err
 		}

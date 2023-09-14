@@ -90,6 +90,12 @@ type CheckConstraint struct {
 
 type CheckConstraints []*CheckConstraint
 
+type CheckConstraintNode interface {
+	Node
+	Checks() CheckConstraints
+	WithChecks(CheckConstraints) Node
+}
+
 // ToExpressions returns the check expressions in these constraints as a slice of sql.Expression
 func (checks CheckConstraints) ToExpressions() []Expression {
 	exprs := make([]Expression, len(checks))
