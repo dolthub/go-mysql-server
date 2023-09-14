@@ -2104,6 +2104,11 @@ func (t *Table) modifyFulltextIndexesForRewrite(
 		data *TableData,
 		oldSchema sql.PrimaryKeySchema,
 ) error {
+	keyCols, _, err := fulltext.GetKeyColumns(ctx, data.Table(nil))
+	if err != nil {
+		return err
+	}
+
 	newIndexes := make(map[string]sql.Index)
 	for name, idx := range data.indexes {
 		if !idx.IsFullText() {
@@ -2119,23 +2124,6 @@ func (t *Table) modifyFulltextIndexesForRewrite(
 		if !ok { // This should never happen
 			return fmt.Errorf("index returns true for FULLTEXT, but does not implement interface")
 		}
-		
-		ftInfo := memIdx.fulltextInfo
-
-		// var newKeyColumns []int
-		// if isPrimaryKeyChange(oldSchema, data.schema) {
-		// 	newKeyColumns = data.schema.PkOrdinals
-		// } else if isPrimaryKeyDrop(oldSchema, data.schema) {
-		// 	if err != nil {
-		// 		return fulltext.KeyColumns{}, nil, err
-		// 	}
-		// } else {
-			newKeyColumns := remapColumnOrds(oldSchema, data.schema, ftInfo.KeyColumns)
-			// if len(newKeyColumns) == 0 {
-			// 	// omit this index, no columns in it left in new schema
-			// 	continue
-			// }
-		// }
 
 		newExprs := removeDroppedColumns(data.schema, memIdx)
 		if len(newExprs) == 0 {
@@ -2144,7 +2132,7 @@ func (t *Table) modifyFulltextIndexesForRewrite(
 		}
 
 		newIdx := memIdx.copy()
-		newIdx.fulltextInfo.KeyColumns.Positions = newKeyColumns
+		newIdx.fulltextInfo.KeyColumns = keyCols
 		newIdx.Exprs = newExprs
 		
 		newIndexes[name] = newIdx
@@ -2167,30 +2155,6 @@ func removeDroppedColumns(schema sql.PrimaryKeySchema, idx *Index) []sql.Express
 		newExprs = append(newExprs, expr)
 	}
 	return newExprs
-}
-
-func remapColumnOrds(oldSch sql.PrimaryKeySchema, newSch sql.PrimaryKeySchema, cols fulltext.KeyColumns) []int {
-	var newPoses []int
-	for _, col := range cols.Positions {
-		idx := newSch.Schema.IndexOfColName(oldSch.Schema[col].Name)
-		if idx < 0 {
-			continue
-		}
-		newPoses = append(newPoses, idx)
-	}
-	return newPoses
-}
-
-func remapSourceCols(oldSch sql.PrimaryKeySchema, newSch sql.PrimaryKeySchema, cols fulltext.KeyColumns) []int {
-	newPoses := make([]int, len(cols.Positions))
-	for i, col := range cols.Positions {
-		idx := newSch.Schema.IndexOfColName(oldSch.Schema[col].Name)
-		if idx < 0 {
-			return nil
-		}
-		newPoses[i] = idx
-	}
-	return newPoses
 }
 
 func hasNullForAnyCols(row sql.Row, cols []int) bool {
