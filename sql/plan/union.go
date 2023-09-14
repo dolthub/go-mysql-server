@@ -16,9 +16,8 @@ package plan
 
 import (
 	"fmt"
-	"strings"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"strings"
 )
 
 const (
@@ -172,7 +171,7 @@ func (*Union) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID
 	return sql.Collation_binary, 7
 }
 
-func (u Union) Dispose() {
+func (u *Union) Dispose() {
 	for _, f := range u.dispose {
 		f()
 	}
@@ -186,7 +185,14 @@ func (u *Union) String() string {
 	} else {
 		distinct = "all"
 	}
-	_ = pr.WriteNode(fmt.Sprintf("Union %s", distinct))
+	switch u.Type {
+	case UnionType:
+		_ = pr.WriteNode(fmt.Sprintf("Union %s", distinct))
+	case IntersectType:
+		_ = pr.WriteNode(fmt.Sprintf("Intersect %s", distinct))
+	case ExceptType:
+		_ = pr.WriteNode(fmt.Sprintf("Except %s", distinct))
+	}
 	var children []string
 	if len(u.SortFields) > 0 {
 		children = append(children, fmt.Sprintf("sortFields: %s", u.SortFields.ToExpressions()))
@@ -214,7 +220,14 @@ func (u *Union) DebugString() string {
 	} else {
 		distinct = "all"
 	}
-	_ = pr.WriteNode(fmt.Sprintf("Union %s", distinct))
+	switch u.Type {
+	case UnionType:
+		_ = pr.WriteNode(fmt.Sprintf("Union %s", distinct))
+	case IntersectType:
+		_ = pr.WriteNode(fmt.Sprintf("Intersect %s", distinct))
+	case ExceptType:
+		_ = pr.WriteNode(fmt.Sprintf("Except %s", distinct))
+	}
 	var children []string
 	if len(u.SortFields) > 0 {
 		sFields := make([]string, len(u.SortFields))
