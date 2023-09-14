@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/enginetest"
@@ -195,6 +194,23 @@ func newUpdateResult(matched, updated int) types.OkResult {
 func TestSingleScript(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
+		{
+			Name: "add new generated column",
+			SetUpScript: []string{
+				"create table t1 (a int primary key, b int)",
+				"insert into t1 values (1,2), (2,3), (3,4)",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query:    "alter table t1 add column c int as (a + b) stored",
+					Expected: []sql.Row{{types.NewOkResult(0)}},
+				},
+				{
+					Query:    "select * from t1 order by a",
+					Expected: []sql.Row{{1, 2, 3}, {2, 3, 5}, {3, 4, 7}},
+				},
+			},
+		},
 	}
 
 	for _, test := range scripts {
@@ -204,8 +220,8 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		// engine.EngineAnalyzer().Debug = true
-		// engine.EngineAnalyzer().Verbose = true
+		engine.EngineAnalyzer().Debug = true
+		engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
