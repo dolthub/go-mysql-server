@@ -89,11 +89,11 @@ func testInnerJoin(t *testing.T, db *memory.Database, ctx *sql.Context) {
 	t.Helper()
 
 	require := require.New(t)
-	
+
 	ltable := memory.NewTable(db.BaseDatabase, "left", lSchema, nil)
 	rtable := memory.NewTable(db.BaseDatabase, "right", rSchema, nil)
 	insertData(t, ctx, ltable)
-	insertData(t, ctx,  rtable)
+	insertData(t, ctx, rtable)
 
 	j := plan.NewInnerJoin(
 		plan.NewResolvedTable(ltable, nil, nil),
@@ -118,7 +118,7 @@ func TestInnerJoinEmpty(t *testing.T) {
 	db := memory.NewDatabase("test")
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
-	
+
 	ltable := memory.NewTable(db.BaseDatabase, "left", lSchema, nil)
 	rtable := memory.NewTable(db.BaseDatabase, "right", rSchema, nil)
 
@@ -139,7 +139,7 @@ func TestInnerJoinEmpty(t *testing.T) {
 func BenchmarkInnerJoin(b *testing.B) {
 	db := memory.NewDatabase("test")
 	pro := memory.NewDBProvider(db)
-	
+
 	t1 := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo", Type: types.Int64},
 		{Name: "b", Source: "foo", Type: types.Text},
@@ -186,7 +186,7 @@ func BenchmarkInnerJoin(b *testing.B) {
 	ctx := sql.NewContext(context.Background(), sql.WithMemoryManager(
 		sql.NewMemoryManager(mockReporter{1, 5}),
 	), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
-	
+
 	b.Run("inner join", func(b *testing.B) {
 		require := require.New(b)
 
@@ -236,12 +236,12 @@ func TestLeftJoin(t *testing.T) {
 	db := memory.NewDatabase("test")
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
-	
+
 	ltable := memory.NewTable(db.BaseDatabase, "left", lSchema, nil)
 	rtable := memory.NewTable(db.BaseDatabase, "right", rSchema, nil)
-	
+
 	insertData(t, newContext(pro), ltable)
-	insertData(t, newContext(pro),  rtable)
+	insertData(t, newContext(pro), rtable)
 
 	j := plan.NewLeftOuterJoin(
 		plan.NewResolvedTable(ltable, nil, nil),

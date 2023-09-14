@@ -20,13 +20,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dolthub/vitess/go/mysql"
+
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
-	"github.com/dolthub/vitess/go/mysql"
 )
 
 const testNumPartitions = 5
@@ -102,7 +103,6 @@ func (m *MemoryHarness) SessionBuilder() server.SessionBuilder {
 		return memory.NewSession(baseSession, m.getProvider()), nil
 	}
 }
-
 
 // ExternalStoredProcedure implements the sql.ExternalStoredProcedureProvider interface
 func (m *MemoryHarness) ExternalStoredProcedure(_ *sql.Context, name string, numOfParams int) (*sql.ExternalStoredProcedureDetails, error) {
@@ -202,9 +202,9 @@ func (m *MemoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, sche
 	} else {
 		db.(*memory.HistoryDatabase).AddTableAsOf(name, table, asOf)
 	}
-	
+
 	m.retainSession = true
-	
+
 	return table
 }
 

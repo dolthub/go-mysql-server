@@ -110,7 +110,7 @@ func (d *BaseDatabase) GetTableInsensitive(ctx *sql.Context, tblName string) (sq
 	memTbl := tbl.(*Table)
 	memTbl = memTbl.copy()
 	memTbl.data = sess.tableData(memTbl)
-	
+
 	return memTbl, ok, nil
 }
 
@@ -229,11 +229,11 @@ func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.Pri
 	if d.primaryKeyIndexes {
 		table.EnablePrimaryKeyIndexes()
 	}
-	
+
 	d.tables[name] = table
 	sess := SessionFromContext(ctx)
 	sess.putTable(table.data)
-	
+
 	return nil
 }
 
@@ -271,11 +271,11 @@ func (d *BaseDatabase) DropTable(ctx *sql.Context, name string) error {
 	if !ok {
 		return sql.ErrTableNotFound.New(name)
 	}
-	
+
 	SessionFromContext(ctx).dropTable(t.(*Table).data)
 
 	delete(d.tables, name)
-	return nil 
+	return nil
 }
 
 func (d *BaseDatabase) RenameTable(ctx *sql.Context, oldName, newName string) error {
@@ -292,7 +292,7 @@ func (d *BaseDatabase) RenameTable(ctx *sql.Context, oldName, newName string) er
 
 	sess := SessionFromContext(ctx)
 	sess.dropTable(tbl.(*Table).data)
-	
+
 	memTbl := tbl.(*Table).copy()
 	memTbl.name = newName
 	for _, col := range memTbl.data.schema.Schema {
@@ -306,7 +306,7 @@ func (d *BaseDatabase) RenameTable(ctx *sql.Context, oldName, newName string) er
 		}
 	}
 	memTbl.data.tableName = newName
-	
+
 	d.tables[newName] = memTbl
 	delete(d.tables, oldName)
 	sess.putTable(memTbl.data)

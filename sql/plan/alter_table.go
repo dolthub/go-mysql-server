@@ -307,7 +307,7 @@ func (a AddColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// *sql.Column is a reference type, make a copy before we modify it so we don't affect the original node
 	a.column = colSchema[0]
 	return &a, nil

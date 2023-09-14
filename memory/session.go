@@ -24,7 +24,7 @@ import (
 type GlobalsMap = map[string]interface{}
 type Session struct {
 	*sql.BaseSession
-	dbProvider *DbProvider
+	dbProvider       *DbProvider
 	tables           map[tableKey]*TableData
 	editAccumulators map[tableKey]tableEditAccumulator
 	persistedGlobals GlobalsMap
@@ -40,7 +40,7 @@ var _ sql.PersistableSession = (*Session)(nil)
 func NewSession(baseSession *sql.BaseSession, provider *DbProvider) *Session {
 	return &Session{
 		BaseSession:      baseSession,
-		dbProvider: 			 provider,
+		dbProvider:       provider,
 		tables:           make(map[tableKey]*TableData),
 		editAccumulators: make(map[tableKey]tableEditAccumulator),
 	}
@@ -65,7 +65,7 @@ func (s *Transaction) IsReadOnly() bool {
 }
 
 type tableKey struct {
-	db string
+	db    string
 	table string
 }
 
@@ -73,8 +73,8 @@ func key(t *TableData) tableKey {
 	return tableKey{strings.ToLower(t.dbName), strings.ToLower(t.tableName)}
 }
 
-// editAccumulator returns the edit accumulator for this session for the table provided. Some statement types, like 
-// updates with an on duplicate key clause, require an accumulator to be shared among all table editors 
+// editAccumulator returns the edit accumulator for this session for the table provided. Some statement types, like
+// updates with an on duplicate key clause, require an accumulator to be shared among all table editors
 func (s *Session) editAccumulator(t *Table) tableEditAccumulator {
 	ea, ok := s.editAccumulators[key(t.data)]
 	if !ok {
@@ -92,7 +92,7 @@ func keyFromNames(dbName, tableName string) tableKey {
 	return tableKey{strings.ToLower(dbName), strings.ToLower(tableName)}
 }
 
-// tableData returns the table data for this session for the table provided 
+// tableData returns the table data for this session for the table provided
 func (s *Session) tableData(t *Table) *TableData {
 	td, ok := s.tables[key(t.data)]
 	if !ok {
@@ -103,13 +103,13 @@ func (s *Session) tableData(t *Table) *TableData {
 	return td
 }
 
-// putTable stores the table data for this session for the table provided 
+// putTable stores the table data for this session for the table provided
 func (s *Session) putTable(d *TableData) {
 	s.tables[key(d)] = d
 	delete(s.editAccumulators, key(d))
 }
 
-// dropTable clears the table data for the session 
+// dropTable clears the table data for the session
 func (s *Session) dropTable(d *TableData) {
 	delete(s.tables, key(d))
 }
@@ -131,7 +131,7 @@ func (s *Session) CommitTransaction(ctx *sql.Context, tx sql.Transaction) error 
 		if err != nil {
 			return err
 		}
-		
+
 		var baseDb *BaseDatabase
 		switch db := db.(type) {
 		case *BaseDatabase:
@@ -145,7 +145,7 @@ func (s *Session) CommitTransaction(ctx *sql.Context, tx sql.Transaction) error 
 		}
 		baseDb.putTable(s.tables[key].Table(baseDb))
 	}
-	
+
 	return nil
 }
 

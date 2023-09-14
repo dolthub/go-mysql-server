@@ -871,7 +871,7 @@ func projectRowWithTypes(ctx *sql.Context, sch sql.Schema, projections []sql.Exp
 	return newRow, nil
 }
 
-// getTableFromDatabase returns table named from the database provided 
+// getTableFromDatabase returns table named from the database provided
 func getTableFromDatabase(ctx *sql.Context, db sql.Database, tableNode sql.Node) (sql.Table, error) {
 	// Grab the table fresh from the database.
 	tableName := getTableName(tableNode)
@@ -1561,7 +1561,7 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, io.EOF
 	}
 	i.runOnce = true
-	
+
 	// drop constraints that reference the dropped column
 	cat, ok := i.alterable.(sql.CheckAlterableTable)
 	if ok {
@@ -1726,7 +1726,7 @@ func (b *BaseBuilder) executeCreateCheck(ctx *sql.Context, c *plan.CreateCheck) 
 	if err != nil {
 		return err
 	}
-	
+
 	chAlterable, err := getCheckAlterableTable(table)
 	if err != nil {
 		return err

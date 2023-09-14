@@ -1003,12 +1003,12 @@ var InsertScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: 			"SELECT AUTO_INCREMENT FROM information_schema.tables WHERE table_name = 'auto' AND table_schema = DATABASE()",
-				Expected: 		[]sql.Row{{uint64(9)}},
+				Query:    "SELECT AUTO_INCREMENT FROM information_schema.tables WHERE table_name = 'auto' AND table_schema = DATABASE()",
+				Expected: []sql.Row{{uint64(9)}},
 			},
 			{
-				Query: 			"insert into auto values (NULL,90)",
-				Expected: 		[]sql.Row{{types.OkResult{
+				Query: "insert into auto values (NULL,90)",
+				Expected: []sql.Row{{types.OkResult{
 					RowsAffected: 1,
 					InsertID:     9,
 				}}},

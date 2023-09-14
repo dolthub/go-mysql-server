@@ -19,9 +19,10 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/dolthub/vitess/go/sqltypes"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 // TableData encapsulates all schema and data for a table's schema and rows. Other aspects of a table can change
@@ -32,13 +33,13 @@ type TableData struct {
 	tableName string
 
 	// Schema / config data
-	schema            sql.PrimaryKeySchema
-	indexes           map[string]sql.Index
-	fkColl            *ForeignKeyCollection
-	checks            []sql.CheckDefinition
-	collation         sql.CollationID
-	autoColIdx        int
-	primaryKeyIndexes bool
+	schema                  sql.PrimaryKeySchema
+	indexes                 map[string]sql.Index
+	fkColl                  *ForeignKeyCollection
+	checks                  []sql.CheckDefinition
+	collation               sql.CollationID
+	autoColIdx              int
+	primaryKeyIndexes       bool
 	fullTextConfigTableName string
 
 	// Data storage
@@ -120,7 +121,6 @@ func allColumns(schema sql.PrimaryKeySchema) []int {
 	}
 	return columns
 }
-
 
 func (td *TableData) columnIndexes(colNames []string) ([]int, error) {
 	columns := make([]int, 0, len(colNames))
@@ -315,6 +315,6 @@ func rowsAreEqual(schema sql.Schema, left, right sql.Row) (bool, error) {
 			return false, nil
 		}
 	}
-	
+
 	return true, nil
 }

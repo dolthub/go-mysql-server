@@ -103,12 +103,12 @@ var AlterTableScripts = []ScriptTest{
 				Query: "show create table t42",
 				Expected: []sql.Row{{"t42",
 					"CREATE TABLE `t42` (\n" +
-					"  `i` bigint NOT NULL,\n" +
-					"  `j` int,\n" +
-					"  `s` varchar(20),\n" +
-					"  PRIMARY KEY (`i`),\n" +
-					"  CONSTRAINT `check2` CHECK ((`j` > 0))\n" +
-					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						"  `i` bigint NOT NULL,\n" +
+						"  `j` int,\n" +
+						"  `s` varchar(20),\n" +
+						"  PRIMARY KEY (`i`),\n" +
+						"  CONSTRAINT `check2` CHECK ((`j` > 0))\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -123,12 +123,12 @@ var AlterTableScripts = []ScriptTest{
 				Query: "show create table t42",
 				Expected: []sql.Row{{"t42",
 					"CREATE TABLE `t42` (\n" +
-							"  `i` bigint NOT NULL,\n" +
-							"  `j` int,\n" +
-							"  `s` varchar(20),\n" +
-							"  PRIMARY KEY (`i`),\n" +
-							"  CONSTRAINT `check2` CHECK ((`j` > 0))\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						"  `i` bigint NOT NULL,\n" +
+						"  `j` int,\n" +
+						"  `s` varchar(20),\n" +
+						"  PRIMARY KEY (`i`),\n" +
+						"  CONSTRAINT `check2` CHECK ((`j` > 0))\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -710,7 +710,7 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 		},
 	},
 	{
-		Name:"Drop primary key for table with multiple primary key columns",
+		Name: "Drop primary key for table with multiple primary key columns",
 		SetUpScript: []string{
 			"create table t1 (pk varchar(20), v varchar(20) default (concat(pk, '-foo')), primary key (pk, v))",
 			"insert into t1 values ('a1', 'a2'), ('a2', 'a3'), ('a3', 'a4')",
@@ -737,7 +737,7 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 				},
 			},
 			{
-				Query: "insert into t1 values ('a1', 'a2')",
+				Query:    "insert into t1 values ('a1', 'a2')",
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
@@ -750,7 +750,7 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 				},
 			},
 			{
-				Query: "alter table t1 add primary key (pk, v)",
+				Query:       "alter table t1 add primary key (pk, v)",
 				ExpectedErr: sql.ErrPrimaryKeyViolation,
 			},
 			{
@@ -758,7 +758,7 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				Query: "alter table t1 add primary key (pk, v)",
+				Query:    "alter table t1 add primary key (pk, v)",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
@@ -771,30 +771,30 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query: "alter table t1 drop primary key",
+				Query:    "alter table t1 drop primary key",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: "alter table t1 add index myidx (v)",
+				Query:    "alter table t1 add index myidx (v)",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: "alter table t1 add primary key (pk)",
+				Query:    "alter table t1 add primary key (pk)",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: "insert into t1 values ('a4', 'a3')",
+				Query:    "insert into t1 values ('a4', 'a3')",
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query: "show create table t1",
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
-					"  `pk` varchar(20) NOT NULL,\n" +
-					"  `v` varchar(20) NOT NULL DEFAULT (concat(pk,'-foo')),\n" +
-					"  PRIMARY KEY (`pk`),\n" +
-					"  KEY `myidx` (`v`)\n" +
-					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						"  `pk` varchar(20) NOT NULL,\n" +
+						"  `v` varchar(20) NOT NULL DEFAULT (concat(pk,'-foo')),\n" +
+						"  PRIMARY KEY (`pk`),\n" +
+						"  KEY `myidx` (`v`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "select * from t1 where v = 'a3' order by pk",
@@ -804,57 +804,57 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 				},
 			},
 			{
-				Query: "alter table t1 drop primary key",
+				Query:    "alter table t1 drop primary key",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: "truncate t1",
+				Query:    "truncate t1",
 				Expected: []sql.Row{{types.NewOkResult(4)}},
 			},
 			{
-				Query: "alter table t1 drop index myidx",
+				Query:    "alter table t1 drop index myidx",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: "alter table t1 add primary key (pk, v)",
+				Query:    "alter table t1 add primary key (pk, v)",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: "insert into t1 values ('a1', 'a2'), ('a2', 'a3'), ('a3', 'a4')",
+				Query:    "insert into t1 values ('a1', 'a2'), ('a2', 'a3'), ('a3', 'a4')",
 				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 		},
 	},
 	{
-		Name:"Drop primary key for table with multiple primary key columns, add smaller primary key in same statement",
+		Name: "Drop primary key for table with multiple primary key columns, add smaller primary key in same statement",
 		SetUpScript: []string{
 			"create table t1 (pk varchar(20), v varchar(20) default (concat(pk, '-foo')), primary key (pk, v))",
 			"insert into t1 values ('a1', 'a2'), ('a2', 'a3'), ('a3', 'a4')",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY (v)",
+				Query:    "ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY (v)",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: "INSERT INTO t1 (pk, v) values ('a100', 'a3')",
+				Query:       "INSERT INTO t1 (pk, v) values ('a100', 'a3')",
 				ExpectedErr: sql.ErrPrimaryKeyViolation,
 			},
 			{
-				Query: "alter table t1 drop primary key",
+				Query:    "alter table t1 drop primary key",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: "ALTER TABLE t1 ADD PRIMARY KEY (pk, v), DROP PRIMARY KEY",
+				Query:    "ALTER TABLE t1 ADD PRIMARY KEY (pk, v), DROP PRIMARY KEY",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "show create table t1",
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
-							"  `pk` varchar(20) NOT NULL,\n" +
-							"  `v` varchar(20) NOT NULL DEFAULT (concat(pk,'-foo'))\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						"  `pk` varchar(20) NOT NULL,\n" +
+						"  `v` varchar(20) NOT NULL DEFAULT (concat(pk,'-foo'))\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -870,22 +870,22 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 				Query: "SHOW CREATE TABLE newdb.tab1",
 				Expected: []sql.Row{{"tab1",
 					"CREATE TABLE `tab1` (\n" +
-					"  `pk` int NOT NULL,\n" +
-					"  `c1` int,\n" +
-					"  PRIMARY KEY (`pk`)\n" +
-					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						"  `pk` int NOT NULL,\n" +
+						"  `c1` int,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query: "alter table newdb.tab1 drop primary key",
+				Query:    "alter table newdb.tab1 drop primary key",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW CREATE TABLE newdb.tab1",
 				Expected: []sql.Row{{"tab1",
 					"CREATE TABLE `tab1` (\n" +
-					"  `pk` int NOT NULL,\n" +
-					"  `c1` int\n" +
-					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						"  `pk` int NOT NULL,\n" +
+						"  `c1` int\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -896,45 +896,45 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "ALTER TABLE test DROP PRIMARY KEY",
+				Query:       "ALTER TABLE test DROP PRIMARY KEY",
 				ExpectedErr: sql.ErrWrongAutoKey,
 			},
 			{
-				Query: 				"ALTER TABLE test modify pk int",
+				Query:    "ALTER TABLE test modify pk int",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW CREATE TABLE test",
 				Expected: []sql.Row{{"test",
 					"CREATE TABLE `test` (\n" +
-							"  `pk` int NOT NULL,\n" +
-							"  `val` int,\n" +
-							"  PRIMARY KEY (`pk`)\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						"  `pk` int NOT NULL,\n" +
+						"  `val` int,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query: "ALTER TABLE test drop primary key",
+				Query:    "ALTER TABLE test drop primary key",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW CREATE TABLE test",
 				Expected: []sql.Row{{"test",
 					"CREATE TABLE `test` (\n" +
-							"  `pk` int NOT NULL,\n" +
-							"  `val` int\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						"  `pk` int NOT NULL,\n" +
+						"  `val` int\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query: "INSERT INTO test VALUES (1, 1), (NULL, 1)",
+				Query:       "INSERT INTO test VALUES (1, 1), (NULL, 1)",
 				ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
 			},
 			{
-				Query: "INSERT INTO test VALUES (2, 2), (3, 3)",
+				Query:    "INSERT INTO test VALUES (2, 2), (3, 3)",
 				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
 				Query: "SELECT * FROM test ORDER BY pk",
-				Expected:  []sql.Row{
+				Expected: []sql.Row{
 					{2, 2},
 					{3, 3},
 				},

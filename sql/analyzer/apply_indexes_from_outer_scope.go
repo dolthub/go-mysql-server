@@ -114,7 +114,7 @@ func pushdownIndexToTable(ctx *sql.Context, a *Analyzer, tableNode sql.NameableN
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
-				
+
 				ret := plan.NewIndexedTableAccess(n, ia, lb)
 				return ret, transform.NewTree, nil
 			}

@@ -121,7 +121,7 @@ func TestCrossJoin_Empty(t *testing.T) {
 	db := memory.NewDatabase("test")
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
-	
+
 	ltable := memory.NewTable(db.Database(), "left", lSchema, nil)
 	rtable := memory.NewTable(db.Database(), "right", rSchema, nil)
 	insertData(t, newContext(pro), ltable)

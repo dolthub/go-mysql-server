@@ -73,7 +73,7 @@ func resolveDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pla
 				return plan.NewAlterDropCheck(rt, check.Name), transform.NewTree, nil
 			}
 		}
-		
+
 		return nil, transform.SameTree, sql.ErrUnknownConstraint.New(dropConstraint.Name)
 	})
 }

@@ -30,7 +30,7 @@ func TestSubqueryAliasSchema(t *testing.T) {
 	require := require.New(t)
 
 	db := memory.NewDatabase("test")
-	
+
 	tableSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "foo", Type: types.Text, Nullable: false, Source: "bar"},
 		{Name: "baz", Type: types.Text, Nullable: false, Source: "bar"},

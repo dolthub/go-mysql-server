@@ -30,7 +30,7 @@ func newPersistedSqlContext() *sql.Context {
 	ctx, _ := context.WithCancel(context.TODO())
 	pro := NewDBProvider().(*DbProvider)
 	sess := sql.NewBaseSession()
-	
+
 	persistedGlobals := GlobalsMap{"max_connections": 1000, "net_read_timeout": 1000, "auto_increment_increment": 123}
 	persistedSess := NewSession(sess, pro).SetGlobals(persistedGlobals)
 	sqlCtx := sql.NewContext(ctx)

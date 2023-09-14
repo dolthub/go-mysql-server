@@ -31,7 +31,7 @@ import (
 func TestTablePartitionsCount(t *testing.T) {
 	require := require.New(t)
 	db := memory.NewDatabase("db")
-	
+
 	table := memory.NewPartitionedTable(db.BaseDatabase, "foo", sql.PrimaryKeySchema{}, nil, 5)
 	count, err := table.PartitionCount(sql.NewEmptyContext())
 	require.NoError(err)
@@ -209,7 +209,7 @@ func TestTable(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
 			db := memory.NewDatabase("db")
-			
+
 			table := memory.NewPartitionedTable(db.BaseDatabase, test.name, test.schema, nil, test.numPartitions)
 			for _, row := range test.rows {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))

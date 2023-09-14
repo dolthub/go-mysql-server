@@ -25,12 +25,12 @@ import (
 
 // tableEditor manages the edits that a targetTable receives.
 type tableEditor struct {
-	editedTable       *Table
-	initialTable      *Table
-	schema            sql.Schema
+	editedTable  *Table
+	initialTable *Table
+	schema       sql.Schema
 
-	discardChanges    bool
-	ea                tableEditAccumulator
+	discardChanges bool
+	ea             tableEditAccumulator
 
 	// array of key ordinals for each unique index defined on the targetTable
 	uniqueIdxCols [][]int
@@ -84,14 +84,14 @@ func (t *tableEditor) Close(ctx *sql.Context) error {
 		sess.putTable(t.initialTable.data)
 		return nil
 	}
-	
-	// On the normal INSERT / UPDATE / DELETE path this happens at StatementComplete time, but for table rewrites it 
+
+	// On the normal INSERT / UPDATE / DELETE path this happens at StatementComplete time, but for table rewrites it
 	// only happens at Close
 	err := t.ea.ApplyEdits(ctx, t.editedTable)
 	if err != nil {
 		return err
 	}
-	
+
 	sess.putTable(t.editedTable.data)
 	return nil
 }
@@ -104,7 +104,7 @@ func (t *tableEditor) DiscardChanges(ctx *sql.Context, errorEncountered error) e
 	t.ea.Clear()
 	if _, ignore := errorEncountered.(sql.IgnorableError); !ignore {
 		t.editedTable.replaceData(t.initialTable.data)
-		t.discardChanges = true	
+		t.discardChanges = true
 	}
 	return nil
 }
@@ -114,7 +114,7 @@ func (t *tableEditor) StatementComplete(ctx *sql.Context) error {
 	if err != nil {
 		return nil
 	}
-	
+
 	sess := SessionFromContext(ctx)
 	sess.putTable(t.editedTable.data)
 
@@ -256,17 +256,17 @@ func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val uint64) error 
 }
 
 func (t *tableEditor) IndexedAccess(ctx *sql.Context, i sql.IndexLookup) (sql.IndexedTable, error) {
-	// Before we return an indexed access for this table, we need to apply all the edits to the table and update it in 
-	// the session, because the table we return will pull its data from that same session. 
+	// Before we return an indexed access for this table, we need to apply all the edits to the table and update it in
+	// the session, because the table we return will pull its data from that same session.
 	// TODO: optimize this, should create some struct that encloses the tableEditor and filters based on the lookup
 	err := t.ea.ApplyEdits(ctx, t.editedTable)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	sess := SessionFromContext(ctx)
 	sess.putTable(t.editedTable.data)
-	
+
 	return &IndexedTable{Table: t.editedTable, Lookup: i}, nil
 }
 
@@ -340,7 +340,7 @@ type tableEditAccumulator interface {
 	Delete(value sql.Row) error
 	// Get returns a row if found along with a boolean added. Added is true if a row was inserted.
 	Get(value sql.Row) (sql.Row, bool, error)
-	// ApplyEdits updates the table provided with the inserts and deletes that have been added to the accumulator, then 
+	// ApplyEdits updates the table provided with the inserts and deletes that have been added to the accumulator, then
 	// clears it the accumulator.
 	ApplyEdits(ctx *sql.Context, table *Table) error
 	// GetByCols returns the row in the table, or the pending edits, matching the ones given
@@ -372,7 +372,7 @@ func newTableEditAccumulator(t *TableData) tableEditAccumulator {
 type pkTableEditAccumulator struct {
 	tableData *TableData
 	adds      map[string]sql.Row
-	deletes map[string]sql.Row
+	deletes   map[string]sql.Row
 }
 
 func (pke *pkTableEditAccumulator) TableData() *TableData {
@@ -673,7 +673,7 @@ func (k *keylessTableEditAccumulator) ApplyEdits(ctx *sql.Context, table *Table)
 	}
 	table.replaceData(k.tableData)
 	k.Clear()
-	
+
 	return nil
 }
 

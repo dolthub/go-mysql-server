@@ -82,7 +82,7 @@ func NewIndexedAccessForTableNode(ctx *sql.Context, node sql.TableNode, lb *Look
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &IndexedTableAccess{
 		TableNode: node,
 		lb:        lb,
@@ -108,7 +108,7 @@ func NewStaticIndexedAccessForTableNode(ctx *sql.Context, node sql.TableNode, lo
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &IndexedTableAccess{
 		TableNode: node,
 		lookup:    lookup,

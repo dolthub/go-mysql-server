@@ -58,7 +58,7 @@ type ClientHarness interface {
 
 type ServerHarness interface {
 	Harness
-	
+
 	// SessinBuilder returns a function that creates a new session for connections to a server
 	SessionBuilder() server.SessionBuilder
 }
