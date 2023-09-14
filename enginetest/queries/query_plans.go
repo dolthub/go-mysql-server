@@ -25,6 +25,73 @@ type QueryPlanTest struct {
 // in testgen_test.go.
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `
+select
+  case when x is null then 0
+  when x in (select x from xy where not x in (select u from uv)) then 1
+  else 2
+  end as s
+From xy;`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [CASE  WHEN xy.x:0!null IS NULL THEN 0 (tinyint) WHEN InSubquery\n" +
+			" │   ├─ left: xy.x:0!null\n" +
+			" │   └─ right: Subquery\n" +
+			" │       ├─ cacheable: true\n" +
+			" │       ├─ alias-string: select x from xy where not x in (select u from uv)\n" +
+			" │       └─ Project\n" +
+			" │           ├─ columns: [xy.x:3!null]\n" +
+			" │           └─ Project\n" +
+			" │               ├─ columns: [xy.x:3!null, xy.y:4]\n" +
+			" │               └─ Filter\n" +
+			" │                   ├─ scalarSubq0.u:5!null IS NULL\n" +
+			" │                   └─ LeftOuterHashJoinExcludeNulls\n" +
+			" │                       ├─ Eq\n" +
+			" │                       │   ├─ xy.x:3!null\n" +
+			" │                       │   └─ scalarSubq0.u:5!null\n" +
+			" │                       ├─ Table\n" +
+			" │                       │   ├─ name: xy\n" +
+			" │                       │   └─ columns: [x y]\n" +
+			" │                       └─ HashLookup\n" +
+			" │                           ├─ left-key: TUPLE(xy.x:3!null)\n" +
+			" │                           ├─ right-key: TUPLE(scalarSubq0.u:3!null)\n" +
+			" │                           └─ TableAlias(scalarSubq0)\n" +
+			" │                               └─ Table\n" +
+			" │                                   ├─ name: uv\n" +
+			" │                                   └─ columns: [u]\n" +
+			" │   THEN 1 (tinyint) ELSE 2 (tinyint) END as s]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [xy.x:0!null, xy.y:1, CASE  WHEN xy.x:0!null IS NULL THEN 0 (tinyint) WHEN InSubquery\n" +
+			"     │   ├─ left: xy.x:0!null\n" +
+			"     │   └─ right: Subquery\n" +
+			"     │       ├─ cacheable: true\n" +
+			"     │       ├─ alias-string: select x from xy where not x in (select u from uv)\n" +
+			"     │       └─ Project\n" +
+			"     │           ├─ columns: [xy.x:2!null]\n" +
+			"     │           └─ Project\n" +
+			"     │               ├─ columns: [xy.x:2!null, xy.y:3]\n" +
+			"     │               └─ Filter\n" +
+			"     │                   ├─ scalarSubq0.u:4!null IS NULL\n" +
+			"     │                   └─ LeftOuterHashJoinExcludeNulls\n" +
+			"     │                       ├─ Eq\n" +
+			"     │                       │   ├─ xy.x:2!null\n" +
+			"     │                       │   └─ scalarSubq0.u:4!null\n" +
+			"     │                       ├─ Table\n" +
+			"     │                       │   ├─ name: xy\n" +
+			"     │                       │   └─ columns: [x y]\n" +
+			"     │                       └─ HashLookup\n" +
+			"     │                           ├─ left-key: TUPLE(xy.x:2!null)\n" +
+			"     │                           ├─ right-key: TUPLE(scalarSubq0.u:2!null)\n" +
+			"     │                           └─ TableAlias(scalarSubq0)\n" +
+			"     │                               └─ Table\n" +
+			"     │                                   ├─ name: uv\n" +
+			"     │                                   └─ columns: [u]\n" +
+			"     │   THEN 1 (tinyint) ELSE 2 (tinyint) END as s]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: xy\n" +
+			"         └─ columns: [x y]\n" +
+			"",
+	},
+	{
 		Query: `select * from MYTABLE where I = 2 and s = 'first row'`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ AND\n" +
@@ -13379,7 +13446,7 @@ WHERE
 			" │                       │   ├─ name: E2I7U\n" +
 			" │                       │   └─ columns: [id dkcaj kng7t tw55n qrqxw ecxaj fgg57 zh72s fsk67 xqdyt tce7a iwv2h hpcms n5cc2 fhcyt etaq7 a75x7]\n" +
 			" │                       └─ HashLookup\n" +
-			" │                           ├─ left-key: TUPLE(e2i7u.id:0!null)\n" +
+			" │                           ├─ left-key: TUPLE(e2i7u.id:18!null)\n" +
 			" │                           ├─ right-key: TUPLE(scalarSubq0.LUEVY:18!null)\n" +
 			" │                           └─ TableAlias(scalarSubq0)\n" +
 			" │                               └─ Table\n" +
@@ -13412,7 +13479,7 @@ WHERE
 			"     │                       │   ├─ name: E2I7U\n" +
 			"     │                       │   └─ columns: [id dkcaj kng7t tw55n qrqxw ecxaj fgg57 zh72s fsk67 xqdyt tce7a iwv2h hpcms n5cc2 fhcyt etaq7 a75x7]\n" +
 			"     │                       └─ HashLookup\n" +
-			"     │                           ├─ left-key: TUPLE(e2i7u.id:0!null)\n" +
+			"     │                           ├─ left-key: TUPLE(e2i7u.id:17!null)\n" +
 			"     │                           ├─ right-key: TUPLE(scalarSubq0.LUEVY:17!null)\n" +
 			"     │                           └─ TableAlias(scalarSubq0)\n" +
 			"     │                               └─ Table\n" +

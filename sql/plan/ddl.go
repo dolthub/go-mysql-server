@@ -152,7 +152,7 @@ type CreateTable struct {
 	ifNotExists  IfNotExistsOption
 	FkDefs       []*sql.ForeignKeyConstraint
 	fkParentTbls []sql.ForeignKeyTable
-	ChDefs       sql.CheckConstraints
+	checks       sql.CheckConstraints
 	IdxDefs      []*IndexDefinition
 	Collation    sql.CollationID
 	like         sql.Node
@@ -164,6 +164,7 @@ var _ sql.Databaser = (*CreateTable)(nil)
 var _ sql.Node = (*CreateTable)(nil)
 var _ sql.Expressioner = (*CreateTable)(nil)
 var _ sql.SchemaTarget = (*CreateTable)(nil)
+var _ sql.CheckConstraintNode = (*CreateTable)(nil)
 var _ sql.CollationCoercible = (*CreateTable)(nil)
 
 // NewCreateTable creates a new CreateTable node
@@ -177,7 +178,7 @@ func NewCreateTable(db sql.Database, name string, ifn IfNotExistsOption, temp Te
 		name:         name,
 		CreateSchema: tableSpec.Schema,
 		FkDefs:       tableSpec.FkDefs,
-		ChDefs:       tableSpec.ChDefs,
+		checks:       tableSpec.ChDefs,
 		IdxDefs:      tableSpec.IdxDefs,
 		Collation:    tableSpec.Collation,
 		ifNotExists:  ifn,
@@ -206,13 +207,23 @@ func NewCreateTableSelect(db sql.Database, name string, selectNode sql.Node, tab
 		ddlNode:      ddlNode{Db: db},
 		CreateSchema: tableSpec.Schema,
 		FkDefs:       tableSpec.FkDefs,
-		ChDefs:       tableSpec.ChDefs,
+		checks:       tableSpec.ChDefs,
 		IdxDefs:      tableSpec.IdxDefs,
 		name:         name,
 		selectNode:   selectNode,
 		ifNotExists:  ifn,
 		temporary:    temp,
 	}
+}
+
+func (c *CreateTable) Checks() sql.CheckConstraints {
+	return c.checks
+}
+
+func (c *CreateTable) WithChecks(checks sql.CheckConstraints) sql.Node {
+	ret := *c
+	ret.checks = checks
+	return &ret
 }
 
 // WithTargetSchema  implements the sql.TargetSchema interface.
@@ -247,7 +258,7 @@ func (c *CreateTable) Resolved() bool {
 		return false
 	}
 
-	for _, chDef := range c.ChDefs {
+	for _, chDef := range c.checks {
 		if !chDef.Expr.Resolved() {
 			return false
 		}
@@ -394,7 +405,7 @@ func (c *CreateTable) CreateChecks(ctx *sql.Context, tableNode sql.Table) error 
 		return ErrNoCheckConstraintSupport.New(c.name)
 	}
 
-	for _, ch := range c.ChDefs {
+	for _, ch := range c.checks {
 		check, err := NewCheckDefinition(ctx, ch)
 		if err != nil {
 			return err
@@ -485,7 +496,7 @@ func (c *CreateTable) DebugString() string {
 	if len(c.IdxDefs) > 0 {
 		children = append(children, c.indexesDebugString())
 	}
-	if len(c.ChDefs) > 0 {
+	if len(c.checks) > 0 {
 		children = append(children, c.checkConstraintsDebugString())
 	}
 
@@ -519,7 +530,7 @@ func (c *CreateTable) checkConstraintsDebugString() string {
 	p := sql.NewTreePrinter()
 	p.WriteNode("CheckConstraints")
 	var children []string
-	for _, def := range c.ChDefs {
+	for _, def := range c.checks {
 		children = append(children, sql.DebugString(def))
 	}
 	p.WriteChildren(children...)
@@ -540,7 +551,7 @@ func (c *CreateTable) schemaDebugString() string {
 func (c *CreateTable) Expressions() []sql.Expression {
 	exprs := transform.WrappedColumnDefaults(c.CreateSchema.Schema)
 
-	for _, ch := range c.ChDefs {
+	for _, ch := range c.checks {
 		exprs = append(exprs, ch.Expr)
 	}
 
@@ -561,7 +572,7 @@ func (c *CreateTable) TableSpec() *TableSpec {
 	ret := tableSpec.WithSchema(c.CreateSchema)
 	ret = ret.WithForeignKeys(c.FkDefs)
 	ret = ret.WithIndices(c.IdxDefs)
-	ret = ret.WithCheckConstraints(c.ChDefs)
+	ret = ret.WithCheckConstraints(c.checks)
 	ret.Collation = c.Collation
 
 	return ret
@@ -581,7 +592,7 @@ func (c *CreateTable) Temporary() TempTableOption {
 
 func (c CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	schemaLen := len(c.CreateSchema.Schema)
-	length := schemaLen + len(c.ChDefs)
+	length := schemaLen + len(c.checks)
 	if len(exprs) != length {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(exprs), length)
 	}
@@ -596,12 +607,12 @@ func (c CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) 
 
 	nc.CreateSchema = sql.NewPrimaryKeySchema(ns, c.CreateSchema.PkOrdinals...)
 
-	ncd, err := c.ChDefs.FromExpressions(exprs[schemaLen:])
+	ncd, err := c.checks.FromExpressions(exprs[schemaLen:])
 	if err != nil {
 		return nil, err
 	}
 
-	nc.ChDefs = ncd
+	nc.checks = ncd
 	return &nc, nil
 }
 

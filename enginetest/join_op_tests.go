@@ -184,6 +184,28 @@ var joinOpTests = []struct {
 		},
 	},
 	{
+		name: "union joins",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"create table uv (u int primary key, v int);",
+				"insert into uv values (1,1),(2,2),(3,1),(4,2);",
+				"create table xy (x int primary key, y int);",
+				"insert into xy values (1,1),(2,2);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select * from xy where x = 1 and exists (select 1 union select 1)",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:    "select * from xy where x = 1 and x in (select y from xy union select 1)",
+				Expected: []sql.Row{{1, 1}},
+			},
+		},
+	},
+	{
 		name: "4-way join tests",
 		setup: [][]string{
 			setup.MydbData[0],

@@ -89,7 +89,7 @@ var DefaultValidationRules = []Rule{
 }
 
 var OnceAfterAll = []Rule{
-	{fixupAuxiliaryExprsId, fixupAuxiliaryExprs},
+	{assignExecIndexesId, assignExecIndexes},
 	// resolveInsertRows inserts a projection wrapping values that cannot be seen by fixup
 	{resolveInsertRowsId, resolveInsertRows},
 	{applyTriggersId, applyTriggers},

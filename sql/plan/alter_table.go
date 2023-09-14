@@ -449,13 +449,14 @@ type DropColumn struct {
 	ddlNode
 	Table        sql.Node
 	Column       string
-	Checks       sql.CheckConstraints
+	checks       sql.CheckConstraints
 	targetSchema sql.Schema
 }
 
 var _ sql.Node = (*DropColumn)(nil)
 var _ sql.Databaser = (*DropColumn)(nil)
 var _ sql.SchemaTarget = (*DropColumn)(nil)
+var _ sql.CheckConstraintNode = (*DropColumn)(nil)
 var _ sql.CollationCoercible = (*DropColumn)(nil)
 
 func NewDropColumnResolved(table *ResolvedTable, column string) *DropColumn {
@@ -472,6 +473,16 @@ func NewDropColumn(database sql.Database, table *UnresolvedTable, column string)
 		Table:   table,
 		Column:  column,
 	}
+}
+
+func (d *DropColumn) Checks() sql.CheckConstraints {
+	return d.checks
+}
+
+func (d *DropColumn) WithChecks(checks sql.CheckConstraints) sql.Node {
+	ret := *d
+	ret.checks = checks
+	return &ret
 }
 
 func (d *DropColumn) WithDatabase(db sql.Database) (sql.Node, error) {
@@ -609,13 +620,14 @@ type RenameColumn struct {
 	Table         sql.Node
 	ColumnName    string
 	NewColumnName string
-	Checks        sql.CheckConstraints
+	checks        sql.CheckConstraints
 	targetSchema  sql.Schema
 }
 
 var _ sql.Node = (*RenameColumn)(nil)
 var _ sql.Databaser = (*RenameColumn)(nil)
 var _ sql.SchemaTarget = (*RenameColumn)(nil)
+var _ sql.CheckConstraintNode = (*RenameColumn)(nil)
 var _ sql.CollationCoercible = (*RenameColumn)(nil)
 
 func NewRenameColumnResolved(table *ResolvedTable, columnName string, newColumnName string) *RenameColumn {
@@ -634,6 +646,16 @@ func NewRenameColumn(database sql.Database, table *UnresolvedTable, columnName s
 		ColumnName:    columnName,
 		NewColumnName: newColumnName,
 	}
+}
+
+func (r *RenameColumn) Checks() sql.CheckConstraints {
+	return r.checks
+}
+
+func (r *RenameColumn) WithChecks(checks sql.CheckConstraints) sql.Node {
+	ret := *r
+	ret.checks = checks
+	return &ret
 }
 
 func (r *RenameColumn) WithDatabase(db sql.Database) (sql.Node, error) {

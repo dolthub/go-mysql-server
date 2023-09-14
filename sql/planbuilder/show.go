@@ -138,7 +138,7 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 				return e, transform.SameTree, nil
 			})
 		}
-		showCreate.Checks = checks
+		showCreate = showCreate.WithChecks(checks).(*plan.ShowCreateTable)
 
 		showCreate.Indexes = b.getInfoSchemaIndexes(rt)
 

@@ -1572,7 +1572,7 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 	cat, ok := i.alterable.(sql.CheckAlterableTable)
 	if ok {
 		// note: validations done earlier ensure safety of dropping any constraint referencing the column
-		err := dropConstraints(ctx, cat, i.d.Checks, i.d.Column)
+		err := dropConstraints(ctx, cat, i.d.Checks(), i.d.Column)
 		if err != nil {
 			return nil, err
 		}

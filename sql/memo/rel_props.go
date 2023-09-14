@@ -42,6 +42,20 @@ func newRelProps(rel RelExpr) *relProps {
 	p := &relProps{
 		grp: rel.Group(),
 	}
+	switch r := rel.(type) {
+	case *EmptyTable:
+		p.outputCols = []*sql.Column{
+			{
+				Name:   "1",
+				Source: "",
+			},
+		}
+	case *Max1Row:
+		p.populateFds()
+	case SourceRel:
+		p.outputCols = r.OutputCols()
+	default:
+	}
 	if r, ok := rel.(SourceRel); ok {
 		if r.Name() == "" {
 			p.outputCols = []*sql.Column{
