@@ -619,7 +619,6 @@ func (t *Table) getTableEditor(ctx *sql.Context) sql.TableEditor {
 
 	tableSets, err := t.getFulltextTableSets(ctx)
 	if err != nil {
-		// TODO
 		panic(err)
 	}
 	
@@ -633,7 +632,6 @@ func (t *Table) getTableEditor(ctx *sql.Context) sql.TableEditor {
 func (t *Table) getRewriteTableEditor(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema) sql.TableEditor {
 	editor, err := t.tableEditorForRewrite(ctx, oldSchema, newSchema)
 	if err != nil {
-		// TODO
 		panic(err)
 	}
 
@@ -645,7 +643,6 @@ func (t *Table) getRewriteTableEditor(ctx *sql.Context, oldSchema, newSchema sql
 
 	tableSets, err := fulltextTableSets(ctx, tableUnderEdit.data, tableUnderEdit.db)
 	if err != nil {
-		// TODO
 		panic(err)
 	}
 	

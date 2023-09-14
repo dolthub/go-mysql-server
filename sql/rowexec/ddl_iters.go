@@ -1356,7 +1356,7 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 		}
 
 		autoIncColIdx = newSch.IndexOf(i.a.Column().Name, i.a.Column().Source)
-		val, err = t.GetNextAutoIncrementValue(ctx, 0)
+		val, err = t.GetNextAutoIncrementValue(ctx, 1)
 		if err != nil {
 			return false, err
 		}
