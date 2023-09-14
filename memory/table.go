@@ -77,6 +77,14 @@ var _ sql.ProjectedTable = (*Table)(nil)
 var _ sql.PrimaryKeyAlterableTable = (*Table)(nil)
 var _ sql.PrimaryKeyTable = (*Table)(nil)
 
+type TableRevision struct {
+	*Table
+}
+
+func (t *TableRevision) Inserter(ctx *sql.Context) sql.RowInserter {
+	return t.getTableEditor(ctx)
+}
+
 // NewTable creates a new Table with the given name and schema. Assigns the default collation, therefore if a different
 // collation is desired, please use NewTableWithCollation.
 func NewTable(db MemoryDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection) *Table {
@@ -97,6 +105,13 @@ func NewTableWithCollation(db *BaseDatabase, name string, schema sql.PrimaryKeyS
 // collation, therefore if a different collation is desired, please use NewPartitionedTableWithCollation.
 func NewPartitionedTable(db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, numPartitions int) *Table {
 	return NewPartitionedTableWithCollation(db, name, schema, fkColl, numPartitions, sql.Collation_Default)
+}
+
+// NewPartitionedTable creates a new Table with the given name, schema and number of partitions. Assigns the default
+// collation, therefore if a different collation is desired, please use NewPartitionedTableWithCollation.
+func NewPartitionedTableRevision(db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, numPartitions int) *TableRevision {
+	tbl := NewPartitionedTableWithCollation(db, name, schema, fkColl, numPartitions, sql.Collation_Default)
+	return &TableRevision{tbl}
 }
 
 // NewPartitionedTableWithCollation creates a new Table with the given name, schema, number of partitions, and collation.
@@ -658,22 +673,22 @@ func (t *Table) getRewriteTableEditor(ctx *sql.Context, oldSchema, newSchema sql
 		for i := range tableSets {
 			ts := *(&tableSets[i])
 
-			positionSch, err := fulltext.NewSchema(fulltext.SchemaPosition, insertCols, ts.Position.Name(), ts.Position.Collation())
+			positionSch, err := fulltext.NewSchema(fulltext.SchemaPosition, insertCols, ts.Position.Name(), tableUnderEdit.Collation())
 			if err != nil {
 				panic(err)
 			}
 
-			docCountSch, err := fulltext.NewSchema(fulltext.SchemaDocCount, insertCols, ts.DocCount.Name(), ts.DocCount.Collation())
+			docCountSch, err := fulltext.NewSchema(fulltext.SchemaDocCount, insertCols, ts.DocCount.Name(), tableUnderEdit.Collation())
 			if err != nil {
 				panic(err)
 			}
 
-			globalCountSch, err := fulltext.NewSchema(fulltext.SchemaGlobalCount, nil, ts.GlobalCount.Name(), ts.GlobalCount.Collation())
+			globalCountSch, err := fulltext.NewSchema(fulltext.SchemaGlobalCount, nil, ts.GlobalCount.Name(), tableUnderEdit.Collation())
 			if err != nil {
 				panic(err)
 			}
 
-			rowCountSch, err := fulltext.NewSchema(fulltext.SchemaRowCount, nil, ts.RowCount.Name(), ts.RowCount.Collation())
+			rowCountSch, err := fulltext.NewSchema(fulltext.SchemaRowCount, nil, ts.RowCount.Name(), tableUnderEdit.Collation())
 			if err != nil {
 				panic(err)
 			}
