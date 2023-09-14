@@ -183,7 +183,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query: "table t1 intersect table t2 order by i;",
-				Expected: []sql.Row {
+				Expected: []sql.Row{
 					{1},
 					{3},
 				},
@@ -239,7 +239,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query: "table t1 except table t2 order by i;",
-				Expected: []sql.Row {
+				Expected: []sql.Row{
 					{2},
 				},
 			},
