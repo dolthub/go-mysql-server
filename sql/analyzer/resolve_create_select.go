@@ -6,6 +6,10 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
+// todo this should be split into two rules. The first should be in
+// planbuilder and only bind the child select, strip/merge schemas.
+// a second rule should finalize analysis of the source/dest nodes
+// (skipping passthrough rule).
 func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	ct, ok := n.(*plan.CreateTable)
 	if !ok || ct.Select() == nil {
