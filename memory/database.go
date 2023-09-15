@@ -108,14 +108,13 @@ func (d *BaseDatabase) GetTableInsensitive(ctx *sql.Context, tblName string) (sq
 	if !ok {
 		return nil, false, nil
 	}
-	
- 	memTable := tbl.(MemTable)
+
+	memTable := tbl.(MemTable)
 	 if memTable.IgnoreSessionData() {
 		 return memTable, ok, nil
 	 }
 	 
 	underlying := memTable.UnderlyingTable()
-	
 	// look in the session for table data. If it's not there, then cache it in the session and return it
 	sess := SessionFromContext(ctx)
 	underlying = underlying.copy()
