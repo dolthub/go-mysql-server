@@ -31,9 +31,11 @@ import (
 func TestTablePartitionsCount(t *testing.T) {
 	require := require.New(t)
 	db := memory.NewDatabase("db")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
 
 	table := memory.NewPartitionedTable(db.BaseDatabase, "foo", sql.PrimaryKeySchema{}, nil, 5)
-	count, err := table.PartitionCount(sql.NewEmptyContext())
+	count, err := table.PartitionCount(ctx)
 	require.NoError(err)
 	require.Equal(int64(5), count)
 }
@@ -263,7 +265,7 @@ func TestFiltered(t *testing.T) {
 
 			filtered := table.WithFilters(ctx, test.filters)
 
-			filteredRows := getAllRows(t, nil, filtered)
+			filteredRows := getAllRows(t, ctx, filtered)
 			require.Len(filteredRows, len(test.expectedFiltered))
 			for _, row := range filteredRows {
 				require.Contains(test.expectedFiltered, row)
@@ -302,16 +304,18 @@ func TestFilterAndProject(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
 			db := memory.NewDatabase("db")
+			pro := memory.NewDBProvider(db)
+			ctx := newContext(pro)
 
 			table := memory.NewFilteredTable(db.BaseDatabase, test.name, test.schema, nil)
 			for _, row := range test.rows {
-				require.NoError(table.Insert(sql.NewEmptyContext(), row))
+				require.NoError(table.Insert(ctx, row))
 			}
 
-			filtered := table.WithFilters(sql.NewEmptyContext(), test.filters)
+			filtered := table.WithFilters(ctx, test.filters)
 			projected := filtered.(*memory.FilteredTable).WithProjections(test.columns)
 
-			rows := getAllRows(t, nil, projected)
+			rows := getAllRows(t, ctx, projected)
 			require.Len(rows, len(test.expectedFiltersAndProjections))
 			for _, row := range rows {
 				require.Contains(test.expectedFiltersAndProjections, row)
@@ -325,16 +329,17 @@ func TestIndexed(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
 			db := memory.NewDatabase("db")
+			pro := memory.NewDBProvider(db)
+			ctx := newContext(pro)
 
 			table := memory.NewPartitionedTable(db.BaseDatabase, test.name, test.schema, nil, test.numPartitions)
 			for _, row := range test.rows {
-				require.NoError(table.Insert(sql.NewEmptyContext(), row))
+				require.NoError(table.Insert(ctx, row))
 			}
 
 			projected := table.WithProjections(test.columns)
 			indexed := projected.(*memory.Table).WithDriverIndexLookup(test.lookup)
 
-			ctx := sql.NewEmptyContext()
 			iter, err := indexed.PartitionRows(ctx, test.partition)
 			require.NoError(err)
 
@@ -379,19 +384,19 @@ func TestTableIndexKeyValueIter(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
 			db := memory.NewDatabase("db")
+			pro := memory.NewDBProvider(db)
+			ctx := newContext(pro)
 
 			table := memory.NewPartitionedTable(db.BaseDatabase, test.name, test.schema, nil, test.numPartitions)
 			for _, row := range test.rows {
-				require.NoError(table.Insert(sql.NewEmptyContext(), row))
+				require.NoError(table.Insert(ctx, row))
 			}
 
 			pIter, err := table.IndexKeyValues(
-				sql.NewEmptyContext(),
+				ctx,
 				[]string{test.schema.Schema[0].Name, test.schema.Schema[2].Name},
 			)
 			require.NoError(err)
-
-			ctx := sql.NewEmptyContext()
 
 			var iter sql.IndexKeyValueIter
 			idxKVs := []*indexKeyValue{}
