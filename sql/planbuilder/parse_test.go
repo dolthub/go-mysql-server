@@ -16,6 +16,7 @@ package planbuilder
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -1733,9 +1734,13 @@ Project
 		}()
 	}
 
-	ctx := sql.NewEmptyContext()
+	db := memory.NewDatabase("mydb")
+	cat := newTestCatalog(db)
+	pro := memory.NewDBProvider(db)
+	sess := memory.NewSession(sql.NewBaseSession(), pro)
+
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 	ctx.SetCurrentDatabase("mydb")
-	cat := newTestCatalog()
 	b := New(ctx, cat)
 
 	for _, tt := range tests {
@@ -1769,13 +1774,12 @@ Project
 	}
 }
 
-func newTestCatalog() *sql.MapCatalog {
+func newTestCatalog(db *memory.Database) *sql.MapCatalog {
 	cat := &sql.MapCatalog{
 		Databases: make(map[string]sql.Database),
 		Tables:    make(map[string]sql.Table),
 	}
 
-	db := memory.NewDatabase("mydb")
 	cat.Tables["xy"] = memory.NewTable(db, "xy", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "x", Type: types.Int64},
 		{Name: "y", Type: types.Int64},
@@ -1787,8 +1791,8 @@ func newTestCatalog() *sql.MapCatalog {
 		{Name: "w", Type: types.Int64},
 	}, 0), nil)
 
-	db.AddTable("xy", cat.Tables["xy"])
-	db.AddTable("uv", cat.Tables["uv"])
+	db.AddTable("xy", cat.Tables["xy"].(memory.MemTable))
+	db.AddTable("uv", cat.Tables["uv"].(memory.MemTable))
 	cat.Databases["mydb"] = db
 	cat.Funcs = function.NewRegistry()
 	return cat
