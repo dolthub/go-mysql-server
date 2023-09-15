@@ -90,6 +90,18 @@ func NewTable(db MemoryDatabase, name string, schema sql.PrimaryKeySchema, fkCol
 	return NewPartitionedTableWithCollation(baseDatabase, name, schema, fkColl, 0, sql.Collation_Default)
 }
 
+// NewLocalTable returns a table suitable to use for transient non-memory applications 
+func NewLocalTable(db MemoryDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection) *Table {
+	var baseDatabase *BaseDatabase
+	// the dual table has no database
+	if db != nil {
+		baseDatabase = db.Database()
+	}
+	tbl := NewPartitionedTableWithCollation(baseDatabase, name, schema, fkColl, 0, sql.Collation_Default)
+	tbl.ignoreSessionData = true
+	return tbl
+}
+
 // NewTableWithCollation creates a new Table with the given name, schema, and collation.
 func NewTableWithCollation(db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, collation sql.CollationID) *Table {
 	return NewPartitionedTableWithCollation(db, name, schema, fkColl, 0, collation)

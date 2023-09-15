@@ -104,7 +104,18 @@ func (d *BaseDatabase) GetTableInsensitive(ctx *sql.Context, tblName string) (sq
 	if !ok {
 		return nil, false, nil
 	}
-
+	
+ 	switch tbl := tbl.(type) {
+	case *Table:
+		if tbl.ignoreSessionData {
+			return tbl, ok, nil
+		}
+	case *TableRevision:
+		return tbl, ok, nil
+	default:
+		panic(fmt.Sprintf("unknown table type %T", tbl))
+	}
+	
 	// look in the session for table data. If it's not there, then cache it in the session and return it
 	sess := SessionFromContext(ctx)
 	memTbl := tbl.(*Table)
