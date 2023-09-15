@@ -67,7 +67,7 @@ func TestCatalogTable(t *testing.T) {
 	require.EqualError(err, "table not found: bar")
 	require.Nil(table)
 
-	mytable := memory.NewTable(db, "bar", sql.PrimaryKeySchema{},  db.GetForeignKeyCollection())
+	mytable := memory.NewTable(db, "bar", sql.PrimaryKeySchema{PkOrdinals: []int{}},  db.GetForeignKeyCollection())
 	db.AddTable("bar", mytable)
 
 	table, _, err = c.Table(ctx, "foo", "baz")
@@ -108,6 +108,14 @@ func TestCatalogUnlockTables(t *testing.T) {
 type lockableTable struct {
 	sql.Table
 	unlocks int
+}
+
+func (l *lockableTable) IgnoreSessionData() bool {
+	return true
+}
+
+func (l *lockableTable) Underlying() *memory.Table {
+	return nil
 }
 
 func newLockableTable(t sql.Table) *lockableTable {
