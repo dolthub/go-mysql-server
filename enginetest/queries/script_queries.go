@@ -267,7 +267,7 @@ var ScriptTests = []ScriptTest{
 			},
 
 			// Multiple set operation tests
-			// TODO: Precedence is INTERSECT, UNION, EXCEPT
+			// TODO: Precedence is INTERSECT, UNION, EXCEPT; use parentheses for now
 			{
 				Query: "table a except (table b intersect table c) order by m;",
 				Expected: []sql.Row{

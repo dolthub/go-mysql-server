@@ -669,7 +669,7 @@ var (
 	// ErrRecursiveCTEMissingUnion is returned when a recursive CTE is not a UNION or UNION ALL node.
 	ErrRecursiveCTEMissingUnion = errors.NewKind("Recursive Common Table Expression '%s' should contain a UNION")
 
-	// ErrRecursiveCTEMissingUnion is returned when a recursive CTE is not a UNION or UNION ALL node.
+	// ErrRecursiveCTENotUnion is returned when an INTERSECT or EXCEPT includes a Recursive CTE.
 	ErrRecursiveCTENotUnion = errors.NewKind("Recursive table reference in EXCEPT or INTERSECT operand is not allowed")
 
 	// ErrCteRecursionLimitExceeded is returned when a recursive CTE's execution stack depth exceeds the static limit.

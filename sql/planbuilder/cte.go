@@ -56,8 +56,6 @@ func (b *Builder) buildWith(inScope *scope, with *ast.With) (outScope *scope) {
 		cteName := strings.ToLower(ate.As.String())
 		var cteScope *scope
 		if with.Recursive {
-			// TODO: need to determine if recursive cte is actually recursive
-			// TODO: if it's actually recursive, it must contain a UNION
 			switch n := sq.Select.(type) {
 			case *ast.Union:
 				switch n.Type {

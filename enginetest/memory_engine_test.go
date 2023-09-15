@@ -188,9 +188,16 @@ func TestSingleScript(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "DELETE ME",
-			SetUpScript: []string{},
-			Assertions:  []queries.ScriptTestAssertion{},
+			Name: "insert default value",
+			SetUpScript: []string{
+				"create table xy (x int primary key, y int default (x+1))",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query:    "insert into xy (x,y) values (1, DEFAULT)",
+					Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 0}}},
+				},
+			},
 		},
 	}
 
@@ -200,36 +207,11 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
+		engine.EngineAnalyzer().Debug = true
+		engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
-	//t.Skip()
-	//var scripts = []queries.ScriptTest{
-	//	{
-	//		Name: "insert default value",
-	//		SetUpScript: []string{
-	//			"create table xy (x int primary key, y int default (x+1))",
-	//		},
-	//		Assertions: []queries.ScriptTestAssertion{
-	//			{
-	//				Query:    "insert into xy (x,y) values (1, DEFAULT)",
-	//				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 0}}},
-	//			},
-	//		},
-	//	},
-	//}
-	//
-	//for _, test := range scripts {
-	//	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	//	engine, err := harness.NewEngine(t)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	engine.EngineAnalyzer().Debug = true
-	//	engine.EngineAnalyzer().Verbose = true
-	//
-	//	enginetest.TestScriptWithEngine(t, engine, harness, test)
-	//}
 }
 
 func TestUnbuildableIndex(t *testing.T) {
