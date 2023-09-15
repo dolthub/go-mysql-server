@@ -114,7 +114,7 @@ func (l *lockableTable) IgnoreSessionData() bool {
 	return true
 }
 
-func (l *lockableTable) Underlying() *memory.Table {
+func (l *lockableTable) UnderlyingTable() *memory.Table {
 	return nil
 }
 

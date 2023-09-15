@@ -37,7 +37,7 @@ import (
 type MemTable interface {
 	sql.Table
 	IgnoreSessionData() bool
-	Underlying() *Table
+	UnderlyingTable() *Table
 }
 
 // Table represents an in-memory database table.
@@ -218,7 +218,7 @@ func (t Table) IgnoreSessionData() bool {
 	return t.ignoreSessionData
 }
 
-func (t *Table) Underlying() *Table {
+func (t *Table) UnderlyingTable() *Table {
 	return t
 }
 

@@ -451,6 +451,14 @@ type checksumTable struct {
 	checksum string
 }
 
+func (t *checksumTable) IgnoreSessionData() bool {
+	return true
+}
+
+func (t *checksumTable) UnderlyingTable() *memory.Table {
+	return t.Table.(*memory.Table)
+}
+
 func (t *checksumTable) Checksum() (string, error) {
 	return t.checksum, nil
 }
