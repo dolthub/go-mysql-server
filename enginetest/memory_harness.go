@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -49,6 +50,7 @@ type MemoryHarness struct {
 	setupData                 []setup.SetupScript
 	externalProcedureRegistry sql.ExternalStoredProcedureRegistry
 	server                    bool
+	mu 											  *sync.Mutex
 }
 
 var _ Harness = (*MemoryHarness)(nil)
@@ -76,6 +78,7 @@ func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useN
 		nativeIndexSupport:        useNativeIndexes,
 		skippedQueries:            make(map[string]struct{}),
 		externalProcedureRegistry: externalProcedureRegistry,
+		mu: 											  &sync.Mutex{},
 	}
 }
 
@@ -278,6 +281,9 @@ func (m *MemoryHarness) newDatabase(name string) sql.Database {
 }
 
 func (m *MemoryHarness) getProvider() *memory.DbProvider {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if m.provider == nil {
 		m.provider = m.NewDatabaseProvider().(*memory.DbProvider)
 	}
