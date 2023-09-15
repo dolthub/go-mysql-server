@@ -30,7 +30,11 @@ import (
 
 func TestParallelize(t *testing.T) {
 	require := require.New(t)
-	table := memory.NewTable("t", sql.PrimaryKeySchema{}, nil)
+	db := memory.NewDatabase("db")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
+	table := memory.NewTable(db,"t", sql.PrimaryKeySchema{}, nil)
 	rule := getRuleFrom(OnceAfterAll, parallelizeId)
 	node := plan.NewProject(
 		nil,
@@ -68,14 +72,18 @@ func TestParallelize(t *testing.T) {
 		),
 	)
 
-	result, _, err := rule.Apply(sql.NewEmptyContext(), &Analyzer{Parallelism: 2}, node, nil, DefaultRuleSelector)
+	result, _, err := rule.Apply(ctx, &Analyzer{Parallelism: 2}, node, nil, DefaultRuleSelector)
 	require.NoError(err)
 	require.Equal(expected, result)
 }
 
 func TestParallelizeCreateIndex(t *testing.T) {
 	require := require.New(t)
-	table := memory.NewTable("t", sql.PrimaryKeySchema{}, nil)
+	db := memory.NewDatabase("db")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
+	table := memory.NewTable(db, "t", sql.PrimaryKeySchema{}, nil)
 	rule := getRuleFrom(OnceAfterAll, parallelizeId)
 	node := plan.NewCreateIndex(
 		"",
@@ -85,13 +93,14 @@ func TestParallelizeCreateIndex(t *testing.T) {
 		nil,
 	)
 
-	result, _, err := rule.Apply(sql.NewEmptyContext(), &Analyzer{Parallelism: 1}, node, nil, DefaultRuleSelector)
+	result, _, err := rule.Apply(ctx, &Analyzer{Parallelism: 1}, node, nil, DefaultRuleSelector)
 	require.NoError(err)
 	require.Equal(node, result)
 }
 
 func TestIsParallelizable(t *testing.T) {
-	table := memory.NewTable("t", sql.PrimaryKeySchema{}, nil)
+	db := memory.NewDatabase("db")
+	table := memory.NewTable(db, "t", sql.PrimaryKeySchema{}, nil)
 
 	testCases := []struct {
 		name           string
@@ -246,8 +255,9 @@ func TestIsParallelizable(t *testing.T) {
 
 func TestRemoveRedundantExchanges(t *testing.T) {
 	require := require.New(t)
+	db := memory.NewDatabase("db")
 
-	table := memory.NewTable("t", sql.PrimaryKeySchema{}, nil)
+	table := memory.NewTable(db,"t", sql.PrimaryKeySchema{}, nil)
 
 	node := plan.NewProject(
 		nil,

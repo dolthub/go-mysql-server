@@ -29,35 +29,33 @@ func TestTrackProcessSubquery(t *testing.T) {
 	rule := getRuleFrom(OnceAfterAll, TrackProcessId)
 	a := NewDefault(sql.NewDatabaseProvider())
 
+	db := memory.NewDatabase("db")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
 	node := plan.NewProject(
 		nil,
 		plan.NewSubqueryAlias("f", "",
 			plan.NewQueryProcess(
-				plan.NewResolvedTable(memory.NewTable("foo", sql.PrimaryKeySchema{}, nil), nil, nil),
+				plan.NewResolvedTable(memory.NewTable(db, "foo", sql.PrimaryKeySchema{}, nil), nil, nil),
 				nil,
 			),
 		),
 	)
 
-	result, _, err := rule.Apply(sql.NewEmptyContext(), a, node, nil, DefaultRuleSelector)
+	result, _, err := rule.Apply(ctx, a, node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	expectedChild := plan.NewProject(
 		nil,
 		plan.NewSubqueryAlias("f", "",
-			plan.NewResolvedTable(memory.NewTable("foo", sql.PrimaryKeySchema{}, nil), nil, nil),
+			plan.NewResolvedTable(memory.NewTable(db, "foo", sql.PrimaryKeySchema{}, nil), nil, nil),
 		),
 	)
 
 	proc, ok := result.(*plan.QueryProcess)
 	require.True(ok)
 	require.Equal(expectedChild, proc.Child())
-}
-
-func withoutProcessTracking(a *Analyzer) *Analyzer {
-	afterAll := a.Batches[len(a.Batches)-1]
-	afterAll.Rules = afterAll.Rules[2:]
-	return a
 }
 
 // wrapper around sql.Table to make it not indexable

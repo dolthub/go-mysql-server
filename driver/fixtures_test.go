@@ -23,7 +23,8 @@ type memTable struct {
 
 func (f *memTable) Resolve(name string, _ *driver.Options) (string, sql.DatabaseProvider, error) {
 	f.once.Do(func() {
-		table := memory.NewTable(f.TableName, sql.NewPrimaryKeySchema(f.Schema), nil)
+		db := memory.NewDatabase(f.DatabaseName)
+		table := memory.NewTable(db, f.TableName, sql.NewPrimaryKeySchema(f.Schema), nil)
 
 		if f.Records != nil {
 			ctx := sql.NewEmptyContext()

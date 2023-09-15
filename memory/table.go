@@ -1225,7 +1225,7 @@ type FilteredTable struct {
 
 var _ sql.FilteredTable = (*FilteredTable)(nil)
 
-func NewFilteredTable(db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection) *FilteredTable {
+func NewFilteredTable(db MemoryDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection) *FilteredTable {
 	return &FilteredTable{
 		Table: NewTable(db, name, schema, fkColl),
 	}

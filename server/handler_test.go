@@ -1013,7 +1013,7 @@ func setupMemDB(require *require.Assertions) (*sqle.Engine, sql.Database) {
 	pro := memory.NewDBProvider(db)
 	e := sqle.NewDefault(pro)
 
-	tableTest := memory.NewTable("test", sql.NewPrimaryKeySchema(sql.Schema{{Name: "c1", Type: types.Int32, Source: "test"}}), nil)
+	tableTest := memory.NewTable(db, "test", sql.NewPrimaryKeySchema(sql.Schema{{Name: "c1", Type: types.Int32, Source: "test"}}), nil)
 	tableTest.EnablePrimaryKeyIndexes()
 
 	for i := 0; i < 1010; i++ {
