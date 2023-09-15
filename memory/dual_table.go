@@ -29,6 +29,7 @@ var DualTableSchema = sql.NewPrimaryKeySchema(sql.Schema{
 // `dual` table specified. This table is never supplied by integrators, but always by this stand-in implementation.
 func NewDualTable() *Table {
 	tbl := NewTable(nil, DualTableName, DualTableSchema, nil)
+	tbl.ignoreSessionData = true
 	part := []byte { 0 }
 	tbl.data.partitions = map[string][]sql.Row {
 		string(part): { { "x" } },
