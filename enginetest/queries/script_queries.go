@@ -288,6 +288,15 @@ var ScriptTests = []ScriptTest{
 					{2, 3},
 				},
 			},
+
+			// CTE tests
+			{
+				Query: "with cte as (table a union (table a intersect table b) except table c order by m) select * from cte",
+				Expected: []sql.Row{
+					{1, 2},
+					{2, 3},
+				},
+			},
 		},
 	},
 	{
