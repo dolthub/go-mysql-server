@@ -18,8 +18,8 @@ func TestApplyHashIn(t *testing.T) {
 	ctx := &sql.Context{}
 	db := memory.NewDatabase("mydb")
 	pro := memory.NewDBProvider(db)
-	
-	table := memory.NewTable(db,"foo", sql.NewPrimaryKeySchema(sql.Schema{
+
+	table := memory.NewTable(db, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: types.Int64, Source: "foo"},
 		{Name: "b", Type: types.Int64, Source: "foo"},
 		{Name: "c", Type: types.Int64, Source: "foo"},
@@ -565,4 +565,3 @@ func mustNewHashInTuple(ctx *sql.Context, left, right sql.Expression) *expressio
 func newContext(provider *memory.DbProvider) *sql.Context {
 	return sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), provider)))
 }
-

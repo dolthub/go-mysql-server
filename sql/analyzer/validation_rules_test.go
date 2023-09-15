@@ -62,7 +62,7 @@ func TestValidateOrderBy(t *testing.T) {
 func TestValidateGroupBy(t *testing.T) {
 	variables.InitSystemVariables()
 	require := require.New(t)
-	
+
 	vr := getValidationRule(validateGroupById)
 
 	_, _, err := vr.Apply(sql.NewEmptyContext(), nil, dummyNode{true}, nil, DefaultRuleSelector)

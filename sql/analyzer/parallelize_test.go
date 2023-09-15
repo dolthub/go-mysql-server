@@ -34,7 +34,7 @@ func TestParallelize(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	table := memory.NewTable(db,"t", sql.PrimaryKeySchema{}, nil)
+	table := memory.NewTable(db, "t", sql.PrimaryKeySchema{}, nil)
 	rule := getRuleFrom(OnceAfterAll, parallelizeId)
 	node := plan.NewProject(
 		nil,
@@ -257,7 +257,7 @@ func TestRemoveRedundantExchanges(t *testing.T) {
 	require := require.New(t)
 	db := memory.NewDatabase("db")
 
-	table := memory.NewTable(db,"t", sql.PrimaryKeySchema{}, nil)
+	table := memory.NewTable(db, "t", sql.PrimaryKeySchema{}, nil)
 
 	node := plan.NewProject(
 		nil,
