@@ -204,6 +204,14 @@ var joinOpTests = []struct {
 				Expected: []sql.Row{{1, 1}},
 			},
 			{
+				Query:    "select * from xy where x = 1 and x in (select y from xy intersect select 1)",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:    "select * from xy where x = 1 and x in (select y from xy except select 2)",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
 				Query: "select * from xy where x = 1 intersect select * from uv;",
 				Expected: []sql.Row{
 					{1, 1},
