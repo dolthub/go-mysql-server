@@ -223,15 +223,15 @@ func (h *Handler) doQuery(
 	var queryStr string
 	if h.encodeLoggedQuery {
 		queryStr = base64.StdEncoding.EncodeToString([]byte(query))
-	} else if h.maxLoggedQueryLen > 0 {
-		// this is expensive, off by default
+	} else if logrus.IsLevelEnabled(logrus.DebugLevel) {
+		// this is expensive, so skip this unless we're logging at DEBUG level
 		queryStr = string(queryLoggingRegex.ReplaceAll([]byte(query), []byte(" ")))
 		if h.maxLoggedQueryLen > 0 && len(queryStr) > h.maxLoggedQueryLen {
 			queryStr = queryStr[:h.maxLoggedQueryLen] + "..."
 		}
 	}
 
-	if h.encodeLoggedQuery || h.maxLoggedQueryLen > 0 {
+	if queryStr != "" {
 		ctx.SetLogger(ctx.GetLogger().WithField("query", queryStr))
 	}
 	ctx.GetLogger().Debugf("Starting query")
@@ -593,9 +593,9 @@ func row2ToSQL(s sql.Schema, row sql.Row2) ([]sqltypes.Value, error) {
 func schemaToFields(ctx *sql.Context, s sql.Schema) []*query.Field {
 	fields := make([]*query.Field, len(s))
 	for i, c := range s {
-		var charset uint32 = mysql.CharacterSetUtf8
-		if types.IsBinaryType(c.Type) {
-			charset = mysql.CharacterSetBinary
+		charset := uint32(sql.Collation_Default.CharacterSet())
+		if collatedType, ok := c.Type.(sql.TypeWithCollation); ok {
+			charset = uint32(collatedType.Collation().CharacterSet())
 		}
 
 		fields[i] = &query.Field{
