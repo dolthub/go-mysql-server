@@ -1,6 +1,7 @@
 package driver_test
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -24,10 +25,12 @@ type memTable struct {
 func (f *memTable) Resolve(name string, _ *driver.Options) (string, sql.DatabaseProvider, error) {
 	f.once.Do(func() {
 		db := memory.NewDatabase(f.DatabaseName)
+		pro := memory.NewDBProvider(db)
+		ctx := newContext(pro)
+
 		table := memory.NewTable(db, f.TableName, sql.NewPrimaryKeySchema(f.Schema), nil)
 
 		if f.Records != nil {
-			ctx := sql.NewEmptyContext()
 			for _, row := range f.Records {
 				table.Insert(ctx, sql.NewRow(row...))
 			}
@@ -68,4 +71,8 @@ func personMemTable(database, table string) (*memTable, Records) {
 	}
 
 	return mtb, records
+}
+
+func newContext(provider *memory.DbProvider) *sql.Context {
+	return sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), provider)))
 }
