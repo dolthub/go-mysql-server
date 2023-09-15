@@ -26,6 +26,18 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
+func hasRecursiveCte(node sql.Node) bool {
+	hasRCTE := false
+	transform.Inspect(node, func(n sql.Node) bool {
+		if _, ok := n.(*plan.RecursiveTable); ok {
+			hasRCTE = true
+			return false
+		}
+		return true
+	})
+	return hasRCTE
+}
+
 func (b *Builder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope) {
 	leftScope := b.buildSelectStmt(inScope, u.Left)
 	rightScope := b.buildSelectStmt(inScope, u.Right)
@@ -40,6 +52,15 @@ func (b *Builder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope) {
 		unionType = plan.ExceptType
 	default:
 		b.handleErr(fmt.Errorf("unknown union type %s", u.Type))
+	}
+
+	if unionType != plan.UnionType {
+		if hasRecursiveCte(leftScope.node) {
+			b.handleErr(sql.ErrRecursiveCTENotUnion.New())
+		}
+		if hasRecursiveCte(rightScope.node) {
+			b.handleErr(sql.ErrRecursiveCTENotUnion.New())
+		}
 	}
 
 	// all is not distinct

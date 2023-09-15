@@ -297,6 +297,30 @@ var ScriptTests = []ScriptTest{
 					{2, 3},
 				},
 			},
+			{
+				Query:    "with recursive cte(x) as (select 1) select * from cte",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "with recursive cte (x,y) as ((select 1, 1 intersect select 1, 1) union select x + 1, y + 2 from cte where x < 5) select * from cte;",
+				Expected: []sql.Row{
+					{1, 1},
+					{2, 3},
+					{3, 5},
+					{4, 7},
+					{5, 9},
+				},
+			},
+			{
+				Query: "with recursive cte (x,y) as ((select 1, 1 intersect select 1, 1) intersect select x + 1, y + 2 from cte where x < 5) select * from cte;",
+				ExpectedErr: sql.ErrRecursiveCTEMissingUnion,
+			},
+			{
+				Query: "with recursive cte (x,y) as (select 1, 1 union (select 1, 1 intersect select x + 1, y + 2 from cte where x < 5)) select * from cte;",
+				ExpectedErr: sql.ErrRecursiveCTENotUnion,
+			},
 		},
 	},
 	{

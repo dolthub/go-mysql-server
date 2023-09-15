@@ -56,10 +56,20 @@ func (b *Builder) buildWith(inScope *scope, with *ast.With) (outScope *scope) {
 		cteName := strings.ToLower(ate.As.String())
 		var cteScope *scope
 		if with.Recursive {
+			// TODO: need to determine if recursive cte is actually recursive
+			// TODO: if it's actually recursive, it must contain a UNION
 			switch n := sq.Select.(type) {
 			case *ast.Union:
-				cteScope = b.buildRecursiveCte(outScope, n, cteName, columnsToStrings(cte.Columns))
+				switch n.Type {
+				case ast.UnionStr, ast.UnionAllStr, ast.UnionDistinctStr:
+					cteScope = b.buildRecursiveCte(outScope, n, cteName, columnsToStrings(cte.Columns))
+				default:
+					b.handleErr(sql.ErrRecursiveCTEMissingUnion.New(cteName))
+				}
 			default:
+				if hasRecursiveTable(cteName, n) {
+					b.handleErr(sql.ErrRecursiveCTEMissingUnion.New(cteName))
+				}
 				cteScope = b.buildCte(outScope, ate, cteName, columnsToStrings(cte.Columns))
 			}
 		} else {
@@ -98,6 +108,12 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name strin
 		return cteScope
 	}
 
+	switch union.Type {
+	case ast.UnionStr, ast.UnionAllStr, ast.UnionDistinctStr:
+	default:
+		b.handleErr(sql.ErrRecursiveCTENotUnion.New(union.Type))
+	}
+
 	// resolve non-recursive portion
 	leftSqScope := inScope.pushSubquery()
 	leftScope := b.buildSelectStmt(leftSqScope, l)
@@ -121,7 +137,6 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name strin
 			// we need to promote the type of the left part, so the final schema is the widest possible type
 			newC.Type = newC.Type.Promote()
 			recSch[i] = newC
-
 		}
 
 		for i, c := range leftScope.cols {
@@ -140,7 +155,12 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name strin
 	rightInScope.addCte(name, cteScope)
 	rightScope := b.buildSelectStmt(rightInScope, r)
 
-	distinct := union.Type != ast.UnionAllStr
+	// all is not distinct
+	distinct := true
+	switch union.Type {
+	case ast.UnionAllStr, ast.IntersectAllStr, ast.ExceptAllStr:
+		distinct = false
+	}
 	limit := b.buildLimit(inScope, union.Limit)
 
 	orderByScope := b.analyzeOrderBy(cteScope, leftScope, union.OrderBy)
