@@ -28,7 +28,7 @@ import (
 
 func newPersistedSqlContext() *sql.Context {
 	ctx, _ := context.WithCancel(context.TODO())
-	pro := NewDBProvider().(*DbProvider)
+	pro := NewDBProvider()
 	sess := sql.NewBaseSession()
 
 	persistedGlobals := GlobalsMap{"max_connections": 1000, "net_read_timeout": 1000, "auto_increment_increment": 123}

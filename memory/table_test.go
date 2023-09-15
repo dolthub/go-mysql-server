@@ -209,13 +209,14 @@ func TestTable(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
 			db := memory.NewDatabase("db")
+			pro := memory.NewDBProvider(db)
+			ctx := newContext(pro)
 
 			table := memory.NewPartitionedTable(db.BaseDatabase, test.name, test.schema, nil, test.numPartitions)
 			for _, row := range test.rows {
-				require.NoError(table.Insert(sql.NewEmptyContext(), row))
+				require.NoError(table.Insert(ctx, row))
 			}
 
-			ctx := sql.NewEmptyContext()
 			pIter, err := table.Partitions(ctx)
 			require.NoError(err)
 
@@ -225,7 +226,6 @@ func TestTable(t *testing.T) {
 				require.NoError(err)
 
 				var iter sql.RowIter
-				ctx := sql.NewEmptyContext()
 				iter, err = table.PartitionRows(ctx, p)
 				require.NoError(err)
 
@@ -233,7 +233,7 @@ func TestTable(t *testing.T) {
 				rows, err = sql.RowIterToRows(ctx, table.Schema(), iter)
 				require.NoError(err)
 
-				expected := table.getPartition(string(p.Key()))
+				expected := table.GetPartition(string(p.Key()))
 				require.Len(rows, len(expected))
 
 				for i, row := range rows {
@@ -253,15 +253,17 @@ func TestFiltered(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
 			db := memory.NewDatabase("db")
-
+			pro := memory.NewDBProvider(db)
+			ctx := newContext(pro)
+			
 			table := memory.NewFilteredTable(db.BaseDatabase, test.name, test.schema, nil)
 			for _, row := range test.rows {
-				require.NoError(table.Insert(sql.NewEmptyContext(), row))
+				require.NoError(table.Insert(ctx, row))
 			}
 
-			filtered := table.WithFilters(sql.NewEmptyContext(), test.filters)
+			filtered := table.WithFilters(ctx, test.filters)
 
-			filteredRows := getAllRows(t, filtered)
+			filteredRows := getAllRows(t, nil, filtered)
 			require.Len(filteredRows, len(test.expectedFiltered))
 			for _, row := range filteredRows {
 				require.Contains(test.expectedFiltered, row)
@@ -276,15 +278,17 @@ func TestProjected(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
 			db := memory.NewDatabase("db")
+			pro := memory.NewDBProvider(db)
+			ctx := newContext(pro)
 
 			table := memory.NewPartitionedTable(db.BaseDatabase, test.name, test.schema, nil, test.numPartitions)
 			for _, row := range test.rows {
-				require.NoError(table.Insert(sql.NewEmptyContext(), row))
+				require.NoError(table.Insert(ctx, row))
 			}
 
 			projected := table.WithProjections(test.columns)
 
-			projectedRows := getAllRows(t, projected)
+			projectedRows := getAllRows(t, ctx, projected)
 			require.Len(projectedRows, len(test.expectedProjected))
 			for _, row := range projectedRows {
 				require.Contains(test.expectedProjected, row)
@@ -307,7 +311,7 @@ func TestFilterAndProject(t *testing.T) {
 			filtered := table.WithFilters(sql.NewEmptyContext(), test.filters)
 			projected := filtered.(*memory.FilteredTable).WithProjections(test.columns)
 
-			rows := getAllRows(t, projected)
+			rows := getAllRows(t, nil, projected)
 			require.Len(rows, len(test.expectedFiltersAndProjections))
 			for _, row := range rows {
 				require.Contains(test.expectedFiltersAndProjections, row)
@@ -342,10 +346,9 @@ func TestIndexed(t *testing.T) {
 	}
 }
 
-func getAllRows(t *testing.T, table sql.Table) []sql.Row {
+func getAllRows(t *testing.T, ctx *sql.Context, table sql.Table) []sql.Row {
 	var require = require.New(t)
 
-	ctx := sql.NewEmptyContext()
 	pIter, err := table.Partitions(ctx)
 	require.NoError(err)
 	allRows := []sql.Row{}

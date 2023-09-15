@@ -208,7 +208,7 @@ func (t *Table) Collation() sql.CollationID {
 	return t.data.collation
 }
 
-func (t *Table) getPartition(key string) []sql.Row {
+func (t *Table) GetPartition(key string) []sql.Row {
 	rows, ok := t.data.partitions[key]
 	if ok {
 		return rows
