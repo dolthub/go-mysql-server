@@ -2,49 +2,42 @@ package driver_test
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/dolthub/go-mysql-server/driver"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type memTable struct {
-	DatabaseName string
-	TableName    string
-	Schema       sql.Schema
-	Records      Records
+	catalog *memory.DbProvider
+}
 
-	once    sync.Once
-	catalog sql.DatabaseProvider
+func (f *memTable) NewSession(ctx context.Context, id uint32, conn *driver.Connector) (sql.Session, error) {
+	return memory.NewSession(sql.NewBaseSession(), f.catalog), nil
+}
+
+var _ driver.Provider = (*memTable)(nil)
+var _ driver.ProviderWithSessionBuilder = (*memTable)(nil)
+
+func newMemTable(dbName string, tableName string, schema sql.Schema, records Records) *memTable {
+	db := memory.NewDatabase(dbName)
+	pro := memory.NewDBProvider(db)
+	table := memory.NewTable(db, tableName, sql.NewPrimaryKeySchema(schema), nil)
+	db.AddTable(tableName, table)
+
+	ctx := newContext(pro)
+	for _, row := range records {
+		_ = table.Insert(ctx, sql.NewRow(row...))
+	}
+
+	return &memTable{
+		catalog: pro, 
+	}
 }
 
 func (f *memTable) Resolve(name string, _ *driver.Options) (string, sql.DatabaseProvider, error) {
-	f.once.Do(func() {
-		db := memory.NewDatabase(f.DatabaseName)
-		pro := memory.NewDBProvider(db)
-		ctx := newContext(pro)
-
-		table := memory.NewTable(db, f.TableName, sql.NewPrimaryKeySchema(f.Schema), nil)
-
-		if f.Records != nil {
-			for _, row := range f.Records {
-				table.Insert(ctx, sql.NewRow(row...))
-			}
-		}
-
-		database := memory.NewDatabase(f.DatabaseName)
-		database.AddTable(f.TableName, table)
-
-		f.catalog = memory.NewDBProvider(
-			information_schema.NewInformationSchemaDatabase(),
-			database,
-		)
-	})
-
 	return name, f.catalog, nil
 }
 
@@ -57,18 +50,15 @@ func personMemTable(database, table string) (*memTable, Records) {
 		[]any{uint64(4), "Evil Bob", "evilbob@gmail.com", J{Val: []any{"555-666-555", "666-666-666"}}, time.Now()},
 	}
 
-	mtb := &memTable{
-		DatabaseName: database,
-		TableName:    table,
-		Schema: sql.Schema{
+	mtb := newMemTable(database, table, sql.Schema{
 			{Name: "id", Type: types.Uint64, Nullable: false, Source: table, AutoIncrement: true},
 			{Name: "name", Type: types.Text, Nullable: false, Source: table},
 			{Name: "email", Type: types.Text, Nullable: false, Source: table},
 			{Name: "phone_numbers", Type: types.JSON, Nullable: false, Source: table},
 			{Name: "created_at", Type: types.Timestamp, Nullable: false, Source: table},
 		},
-		Records: records,
-	}
+		records,
+	)
 
 	return mtb, records
 }
