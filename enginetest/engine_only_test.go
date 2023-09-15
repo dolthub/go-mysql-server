@@ -944,7 +944,7 @@ func newDatabase() (*sql2.DB, func()) {
 	harness := enginetest.NewDefaultMemoryHarness()
 	pro := harness.Provider()
 	harness.NewDatabases("mydb")
-	
+
 	engine := sqle.New(analyzer.NewDefault(pro), &sqle.Config{
 		IncludeRootAccount: true,
 	})

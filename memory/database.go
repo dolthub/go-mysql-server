@@ -110,10 +110,10 @@ func (d *BaseDatabase) GetTableInsensitive(ctx *sql.Context, tblName string) (sq
 	}
 
 	memTable := tbl.(MemTable)
-	 if memTable.IgnoreSessionData() {
-		 return memTable, ok, nil
-	 }
-	 
+	if memTable.IgnoreSessionData() {
+		return memTable, ok, nil
+	}
+
 	underlying := memTable.UnderlyingTable()
 	// look in the session for table data. If it's not there, then cache it in the session and return it
 	sess := SessionFromContext(ctx)

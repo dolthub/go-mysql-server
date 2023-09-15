@@ -19,14 +19,15 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dolthub/vitess/go/mysql"
+	"github.com/dolthub/vitess/go/vt/proto/query"
+
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/vitess/go/mysql"
-	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
 // This is an example of how to implement a MySQL server.
@@ -102,11 +103,11 @@ func sessionBuilder(pro *memory.DbProvider) server.SessionBuilder {
 func createTestDatabase() *memory.DbProvider {
 	db := memory.NewDatabase("mydb")
 	db.BaseDatabase.EnablePrimaryKeyIndexes()
-	
+
 	pro := memory.NewDBProvider(db)
 	session := memory.NewSession(sql.NewBaseSession(), pro)
 	ctx := sql.NewContext(context.Background(), sql.WithSession(session))
-	
+
 	table := memory.NewTable(db, tableName, sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: types.Text, Nullable: false, Source: tableName, PrimaryKey: true},
 		{Name: "email", Type: types.Text, Nullable: false, Source: tableName, PrimaryKey: true},

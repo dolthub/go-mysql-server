@@ -13,7 +13,7 @@ type SessionBuilder interface {
 }
 
 // DefaultSessionBuilder creates basic SQL sessions.
-type DefaultSessionBuilder struct{
+type DefaultSessionBuilder struct {
 	provider *memory.DbProvider
 }
 
@@ -27,4 +27,3 @@ func NewDefaultSessionBuilder() *DefaultSessionBuilder {
 func (d DefaultSessionBuilder) NewSession(ctx context.Context, id uint32, conn *Connector) (sql.Session, error) {
 	return memory.NewSession(sql.NewBaseSession(), d.provider), nil
 }
-

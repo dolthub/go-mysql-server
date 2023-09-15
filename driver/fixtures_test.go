@@ -33,7 +33,7 @@ func newMemTable(dbName string, tableName string, schema sql.Schema, records Rec
 	}
 
 	return &memTable{
-		catalog: pro, 
+		catalog: pro,
 	}
 }
 
@@ -51,12 +51,12 @@ func personMemTable(database, table string) (*memTable, Records) {
 	}
 
 	mtb := newMemTable(database, table, sql.Schema{
-			{Name: "id", Type: types.Uint64, Nullable: false, Source: table, AutoIncrement: true},
-			{Name: "name", Type: types.Text, Nullable: false, Source: table},
-			{Name: "email", Type: types.Text, Nullable: false, Source: table},
-			{Name: "phone_numbers", Type: types.JSON, Nullable: false, Source: table},
-			{Name: "created_at", Type: types.Timestamp, Nullable: false, Source: table},
-		},
+		{Name: "id", Type: types.Uint64, Nullable: false, Source: table, AutoIncrement: true},
+		{Name: "name", Type: types.Text, Nullable: false, Source: table},
+		{Name: "email", Type: types.Text, Nullable: false, Source: table},
+		{Name: "phone_numbers", Type: types.JSON, Nullable: false, Source: table},
+		{Name: "created_at", Type: types.Timestamp, Nullable: false, Source: table},
+	},
 		records,
 	)
 

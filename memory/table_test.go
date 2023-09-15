@@ -257,7 +257,7 @@ func TestFiltered(t *testing.T) {
 			db := memory.NewDatabase("db")
 			pro := memory.NewDBProvider(db)
 			ctx := newContext(pro)
-			
+
 			table := memory.NewFilteredTable(db.BaseDatabase, test.name, test.schema, nil)
 			for _, row := range test.rows {
 				require.NoError(table.Insert(ctx, row))

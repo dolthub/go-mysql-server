@@ -62,10 +62,10 @@ func TestHashJoins(t *testing.T) {
 `,
 		},
 	}
-	
+
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := memo.NewMemo(ctx, nil, nil, 0, memo.NewDefaultCoster(), memo.NewDefaultCarder())

@@ -40,7 +40,7 @@ import (
 func TestHandlerOutput(t *testing.T) {
 	e, pro := setupMemDB(require.New(t))
 	dbFunc := pro.Database
-	
+
 	dummyConn := newConn(1)
 	handler := &Handler{
 		e: e,

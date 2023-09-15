@@ -57,7 +57,7 @@ func enableUserAccounts(ctx *sql.Context, engine *sqle.Engine) error {
 	mysqlDb.SetEnabled(true)
 
 	// The persister here simply stands-in for your provided persistence function. The database calls this whenever it
-	// needs to save any changes to any of the "mysql" database's tables. The memory session persists in memory, 
+	// needs to save any changes to any of the "mysql" database's tables. The memory session persists in memory,
 	// but can be swapped out with the lines below
 	// persister := &MySQLPersister{}
 	// mysqlDb.SetPersister(persister)

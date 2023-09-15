@@ -27,8 +27,8 @@ func TestIssue361(t *testing.T) {
 	name := t.Name()
 	db := memory.NewDatabase("db")
 	pro := memory.NewDBProvider(db)
-	ctx := newContext(pro) 
-	
+	ctx := newContext(pro)
+
 	t.Run("Update", func(*testing.T) {
 		table := memory.NewTable(db, name, sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "json", Type: types.JSON, Nullable: false, Source: name},
