@@ -16,12 +16,12 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -280,7 +280,21 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 		for i, c := range n.Destination.Schema() {
 			rightSchema[i] = c
 			if _, ok := n.Source.(*plan.Values); !ok && len(n.Destination.Schema()) == len(n.Source.Schema()) {
-				rightSchema[len(n.Destination.Schema())+i] = n.Source.Schema()[i]
+				// find source index that aligns with dest column
+				var matched bool
+				for j, c3 := range n.ColumnNames {
+					if strings.EqualFold(c.Name, c3) {
+						rightSchema[len(n.Destination.Schema())+i] = n.Source.Schema()[j]
+						matched = true
+						break
+					}
+				}
+				if !matched {
+					// todo: this is only used for load data. load data errors
+					//  without a fallback, and fails to resolve defaults if I
+					//  define the columns upfront.
+					rightSchema[len(n.Destination.Schema())+i] = n.Source.Schema()[i]
+				}
 			} else {
 				newC := c.Copy()
 				newC.Source = planbuilder.OnDupValuesPrefix
