@@ -210,7 +210,7 @@ func (f *fulltextFilterTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 				if err != nil {
 					return nil, err
 				}
-				
+
 				partIter, err := docCountData.LookupPartitions(ctx, lookup)
 				if err != nil {
 					return nil, err
@@ -243,7 +243,7 @@ func (f *fulltextFilterTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 			if err != nil {
 				return nil, err
 			}
-			
+
 			partIter, err := parentData.LookupPartitions(ctx, lookup)
 			if err != nil {
 				return nil, err

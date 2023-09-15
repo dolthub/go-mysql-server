@@ -271,7 +271,7 @@ func RunQueryTests(t *testing.T, harness Harness, queries []queries.QueryTest) {
 func TestInfoSchema(t *testing.T, h Harness) {
 	h.Setup(setup.MydbData, setup.MytableData, setup.Fk_tblData, setup.FooData)
 	for _, tt := range queries.InfoSchemaQueries {
-		TestQuery(t, h, tt.Query, tt.Expected, tt.ExpectedColumns, nil)			
+		TestQuery(t, h, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}
 
 	for _, script := range queries.InfoSchemaScripts {
@@ -283,15 +283,15 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		defer e.Close()
 		p := sqle.NewProcessList()
 		p.AddConnection(1, "localhost")
-		
+
 		ctx := NewContext(h)
 		ctx.Session.SetClient(sql.Client{Address: "localhost", User: "root"})
 		ctx.Session.SetConnectionId(1)
 		ctx.ProcessList = p
 		ctx.SetCurrentDatabase("")
-		
+
 		p.ConnectionReady(ctx.Session)
-		
+
 		ctx, err := p.BeginQuery(ctx, "SELECT foo")
 		require.NoError(t, err)
 
@@ -1546,12 +1546,12 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 				}
 				RunQueryWithContext(t, engine, clientHarness, ctx, statement)
 			}
-			
+
 			serverHarness, ok := h.(ServerHarness)
 			if !ok {
 				require.FailNow(t, "harness must implement ServerHarness")
 			}
-			
+
 			s, err := server.NewServer(serverConfig, engine, serverHarness.SessionBuilder(), nil)
 			require.NoError(t, err)
 			go func() {
@@ -5367,7 +5367,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, `alter table t32 add column v4 int after pk,
 			drop column v2, modify v1 varchar(100) not null,
 			alter column v3 set default 100, rename column toRename to newName`)
-	
+
 		ctx := NewContext(harness)
 		t32, _, err := e.EngineAnalyzer().Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t32")
 		require.NoError(t, err)
@@ -5378,10 +5378,10 @@ func TestAlterTable(t *testing.T, harness Harness) {
 			{Name: "v3", Type: types.Int32, Nullable: true, Source: "t32", Default: NewColumnDefaultValue(expression.NewLiteral(int8(100), types.Int8), types.Int32, true, false, true)},
 			{Name: "newName", Type: types.Int32, Nullable: true, Source: "t32"},
 		}, t32.Schema())
-	
+
 		RunQuery(t, e, harness, "CREATE TABLE t32_2(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int)")
 		RunQuery(t, e, harness, `alter table t32_2 drop v1, add v1 int`)
-	
+
 		t32, _, err = e.EngineAnalyzer().Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t32_2")
 		require.NoError(t, err)
 		assertSchemasEqualWithDefaults(t, sql.Schema{
@@ -5390,10 +5390,10 @@ func TestAlterTable(t *testing.T, harness Harness) {
 			{Name: "v3", Type: types.Int32, Nullable: true, Source: "t32_2"},
 			{Name: "v1", Type: types.Int32, Nullable: true, Source: "t32_2"},
 		}, t32.Schema())
-	
+
 		RunQuery(t, e, harness, "CREATE TABLE t32_3(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int)")
 		RunQuery(t, e, harness, `alter table t32_3 rename column v1 to v5, add v1 int`)
-	
+
 		t32, _, err = e.EngineAnalyzer().Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t32_3")
 		require.NoError(t, err)
 		assertSchemasEqualWithDefaults(t, sql.Schema{
@@ -5403,7 +5403,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 			{Name: "v3", Type: types.Int32, Nullable: true, Source: "t32_3"},
 			{Name: "v1", Type: types.Int32, Nullable: true, Source: "t32_3"},
 		}, t32.Schema())
-	
+
 		// Error cases: dropping a column added in the same statement, dropping a column not present in the original schema,
 		// dropping a column renamed away
 		AssertErr(t, e, harness, "alter table t32 add column vnew int, drop column vnew", sql.ErrTableColumnNotFound)

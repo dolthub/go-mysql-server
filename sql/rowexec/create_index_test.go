@@ -33,7 +33,7 @@ import (
 
 func TestCreateIndexAsync(t *testing.T) {
 	require := require.New(t)
-	
+
 	db := memory.NewDatabase("foo")
 	table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo"},
@@ -295,7 +295,7 @@ func TestCreateIndexWithIter(t *testing.T) {
 	require := require.New(t)
 	db := memory.NewDatabase("foo")
 	pro := memory.NewDBProvider(db)
-	
+
 	foo := memory.NewPartitionedTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "one", Source: "foo", Type: types.Int64},
 		{Name: "two", Source: "foo", Type: types.Int64},
@@ -307,7 +307,7 @@ func TestCreateIndexWithIter(t *testing.T) {
 		{0, 0},
 		{math.MaxInt64, math.MinInt64},
 	}
-	
+
 	for _, r := range rows {
 		err := foo.Insert(newContext(pro), sql.NewRow(r[0], r[1]))
 		require.NoError(err)

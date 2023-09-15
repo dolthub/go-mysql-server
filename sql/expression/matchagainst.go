@@ -320,7 +320,7 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 		if err != nil {
 			return 0, err
 		}
-		
+
 		partIter, err := editorData.LookupPartitions(ctx, lookup)
 		if err != nil {
 			return 0, err
@@ -352,7 +352,7 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 		if err != nil {
 			return 0, err
 		}
-		
+
 		partIter, err = editorData.LookupPartitions(ctx, lookup)
 		if err != nil {
 			return 0, err
@@ -378,7 +378,7 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 		if err != nil {
 			return 0, err
 		}
-		
+
 		partIter, err = editorData.LookupPartitions(ctx, lookup)
 		if err != nil {
 			return 0, err

@@ -131,7 +131,7 @@ func getTestingTable(t *testing.T) (*memory.Database, *memory.Table, int) {
 
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
-	
+
 	for _, r := range rows {
 		require.NoError(t, testingTable.Insert(ctx, r))
 	}
@@ -145,7 +145,7 @@ func getLimitedIterator(t *testing.T, limitSize int64) (sql.RowIter, error) {
 	db, table, _ := getTestingTable(t)
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
-	
+
 	limitPlan := plan.NewLimit(expression.NewLiteral(limitSize, types.Int64), plan.NewResolvedTable(table, nil, nil))
 	return DefaultBuilder.Build(ctx, limitPlan, nil)
 }

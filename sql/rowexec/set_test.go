@@ -61,10 +61,10 @@ func newPersistedSqlContext() (*sql.Context, memory.GlobalsMap) {
 	ctx, _ := context.WithCancel(context.TODO())
 	pro := memory.NewDBProvider()
 	sess := memory.NewSession(sql.NewBaseSession(), pro)
-	
+
 	persistedGlobals := map[string]interface{}{"max_connections": 1000}
 	sess.SetGlobals(persistedGlobals)
-	
+
 	sqlCtx := sql.NewContext(ctx)
 	sqlCtx.Session = sess
 	return sqlCtx, persistedGlobals

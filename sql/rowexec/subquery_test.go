@@ -70,7 +70,7 @@ func TestSubqueryTooManyRows(t *testing.T) {
 
 func TestSubqueryMultipleRows(t *testing.T) {
 	require := require.New(t)
-	
+
 	db := memory.NewDatabase("test")
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)

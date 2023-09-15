@@ -273,9 +273,9 @@ func TestTrackProcess(t *testing.T) {
 	db := memory.NewDatabase("db")
 	provider := sql.NewDatabaseProvider(db)
 	a := analyzer.NewDefault(provider)
-	
+
 	node := plan.NewInnerJoin(
-		plan.NewResolvedTable(&nonIndexableTable{memory.NewPartitionedTable(db.BaseDatabase,"foo", sql.PrimaryKeySchema{}, nil, 2)}, nil, nil),
+		plan.NewResolvedTable(&nonIndexableTable{memory.NewPartitionedTable(db.BaseDatabase, "foo", sql.PrimaryKeySchema{}, nil, 2)}, nil, nil),
 		plan.NewResolvedTable(memory.NewPartitionedTable(db.BaseDatabase, "bar", sql.PrimaryKeySchema{}, nil, 4), nil, nil),
 		expression.NewLiteral(int64(1), types.Int64),
 	)

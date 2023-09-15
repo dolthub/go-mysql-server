@@ -68,7 +68,7 @@ func TestGroupByRowIter(t *testing.T) {
 	db := memory.NewDatabase("test")
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
-	
+
 	childSchema := sql.Schema{
 		{Name: "col1", Type: types.LongText},
 		{Name: "col2", Type: types.Int64},
@@ -125,7 +125,7 @@ func TestGroupByAggregationGrouping(t *testing.T) {
 	db := memory.NewDatabase("test")
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
-	
+
 	childSchema := sql.Schema{
 		{Name: "col1", Type: types.LongText},
 		{Name: "col2", Type: types.Int64},
@@ -211,7 +211,7 @@ func TestGroupByCollations(t *testing.T) {
 			db := memory.NewDatabase("test")
 			pro := memory.NewDBProvider(db)
 			ctx := newContext(pro)
-			
+
 			child := memory.NewTable(db.BaseDatabase, "test", sql.NewPrimaryKeySchema(childSchema), nil)
 
 			rows := []sql.Row{

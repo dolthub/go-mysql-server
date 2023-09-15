@@ -31,7 +31,7 @@ func TestCreateTable(t *testing.T) {
 
 	db := memory.NewDatabase("test")
 	pro := memory.NewDBProvider(db)
-	
+
 	tables := db.Tables()
 	_, ok := tables["testTable"]
 	require.False(ok)

@@ -34,7 +34,7 @@ var (
 
 type CreateCheck struct {
 	ddlNode
-	Table        *ResolvedTable
+	Table *ResolvedTable
 	Check *sql.CheckConstraint
 }
 
@@ -43,8 +43,8 @@ var _ sql.CollationCoercible = (*CreateCheck)(nil)
 
 type DropCheck struct {
 	ddlNode
-	Table        *ResolvedTable
-	Name string
+	Table *ResolvedTable
+	Name  string
 }
 
 var _ sql.Node = (*DropCheck)(nil)
@@ -54,7 +54,7 @@ func NewAlterAddCheck(table *ResolvedTable, check *sql.CheckConstraint) *CreateC
 	return &CreateCheck{
 		ddlNode: ddlNode{table.SqlDatabase},
 		Table:   table,
-		Check:     check,
+		Check:   check,
 	}
 }
 
@@ -62,7 +62,7 @@ func NewAlterDropCheck(table *ResolvedTable, name string) *DropCheck {
 	return &DropCheck{
 		ddlNode: ddlNode{table.SqlDatabase},
 		Table:   table,
-		Name:      name,
+		Name:    name,
 	}
 }
 

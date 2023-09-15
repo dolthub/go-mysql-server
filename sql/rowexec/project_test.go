@@ -29,12 +29,12 @@ import (
 
 func TestProject(t *testing.T) {
 	require := require.New(t)
-	
+
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col1", Type: types.Text, Nullable: true},
 		{Name: "col2", Type: types.Text, Nullable: true},
 	})
-	
+
 	db := memory.NewDatabase("test")
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)

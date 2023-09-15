@@ -278,7 +278,7 @@ func TestShowCreateView(t *testing.T) {
 	db := memory.NewDatabase("testdb")
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
-	
+
 	table := memory.NewTable(db.BaseDatabase, "test-table", sql.NewPrimaryKeySchema(sql.Schema{
 		&sql.Column{Name: "baz", Type: types.Text, Default: nil, Nullable: false, PrimaryKey: true},
 		&sql.Column{Name: "zab", Type: types.Int32, Default: planbuilder.MustStringToColumnDefaultValue(ctx, "0", types.Int32, true), Nullable: true, PrimaryKey: true},

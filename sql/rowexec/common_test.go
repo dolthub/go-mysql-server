@@ -36,7 +36,7 @@ func newContext(provider *memory.DbProvider) *sql.Context {
 var benchtable = func() *memory.Table {
 	db := memory.NewDatabase("test")
 	pro := memory.NewDBProvider(db)
-	
+
 	schema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "strfield", Type: types.Text, Nullable: true},
 		{Name: "floatfield", Type: types.Float64, Nullable: true},

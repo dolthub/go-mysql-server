@@ -257,7 +257,7 @@ func TestSortAscending(t *testing.T) {
 		sql.NewRow("c"),
 		sql.NewRow("d"),
 	}
-	
+
 	actual, err := NodeToRows(ctx, s)
 	require.NoError(err)
 	require.Equal(expected, actual)
@@ -281,7 +281,7 @@ func TestSortDescending(t *testing.T) {
 
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
-	
+
 	child := memory.NewTable(db, "test", schema, nil)
 	for _, row := range data {
 		require.NoError(child.Insert(ctx, row))
@@ -300,7 +300,7 @@ func TestSortDescending(t *testing.T) {
 		sql.NewRow("a"),
 		sql.NewRow(nil),
 	}
-	
+
 	actual, err := NodeToRows(ctx, s)
 	require.NoError(err)
 	require.Equal(expected, actual)
