@@ -27,10 +27,11 @@ import (
 
 func Example() {
 	// Create a test memory database and register it to the default engine.
-	db := createTestDatabase()
-	e := sqle.NewDefault(sql.NewDatabaseProvider(db))
+	pro := createTestDatabase()
+	e := sqle.NewDefault(pro)
 
-	ctx := sql.NewContext(context.Background())
+	session := memory.NewSession(sql.NewBaseSession(), pro)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(session))
 	ctx.SetCurrentDatabase("test")
 
 	_, r, err := e.Query(ctx, `SELECT name, count(*) FROM mytable
@@ -61,14 +62,17 @@ func checkIfError(err error) {
 	}
 }
 
-func createTestDatabase() sql.Database {
+func createTestDatabase() *memory.DbProvider {
 	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	session := memory.NewSession(sql.NewBaseSession(), pro)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(session))
+
 	table := memory.NewTable(db.BaseDatabase, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: types.Text, Source: "mytable"},
 		{Name: "email", Type: types.Text, Source: "mytable"},
 	}), db.GetForeignKeyCollection())
 	db.AddTable("mytable", table)
-	ctx := sql.NewEmptyContext()
 
 	rows := []sql.Row{
 		sql.NewRow("John Doe", "john@doe.com"),
@@ -81,5 +85,5 @@ func createTestDatabase() sql.Database {
 		table.Insert(ctx, row)
 	}
 
-	return db
+	return pro
 }
