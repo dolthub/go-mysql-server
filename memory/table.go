@@ -34,6 +34,12 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+type MemTable interface {
+	sql.Table
+	IgnoreSessionData() bool
+	Underlying() *Table
+}
+
 // Table represents an in-memory database table.
 type Table struct {
 	name string
@@ -58,6 +64,7 @@ type Table struct {
 }
 
 var _ sql.Table = (*Table)(nil)
+var _ MemTable = (*Table)(nil)
 var _ sql.InsertableTable = (*Table)(nil)
 var _ sql.UpdatableTable = (*Table)(nil)
 var _ sql.DeletableTable = (*Table)(nil)
@@ -67,8 +74,6 @@ var _ sql.DriverIndexableTable = (*Table)(nil)
 var _ sql.AlterableTable = (*Table)(nil)
 var _ sql.IndexAlterableTable = (*Table)(nil)
 var _ sql.CollationAlterableTable = (*Table)(nil)
-var _ fulltext.IndexAlterableTable = (*Table)(nil)
-
 var _ sql.ForeignKeyTable = (*Table)(nil)
 var _ sql.CheckAlterableTable = (*Table)(nil)
 var _ sql.RewritableTable = (*Table)(nil)
@@ -78,6 +83,7 @@ var _ sql.StatisticsTable = (*Table)(nil)
 var _ sql.ProjectedTable = (*Table)(nil)
 var _ sql.PrimaryKeyAlterableTable = (*Table)(nil)
 var _ sql.PrimaryKeyTable = (*Table)(nil)
+var _ fulltext.IndexAlterableTable = (*Table)(nil)
 
 // NewTable creates a new Table with the given name and schema. Assigns the default collation, therefore if a different
 // collation is desired, please use NewTableWithCollation.
@@ -206,6 +212,14 @@ func (t *Table) Schema() sql.Schema {
 // Collation implements the sql.Table interface.
 func (t *Table) Collation() sql.CollationID {
 	return t.data.collation
+}
+
+func (t Table) IgnoreSessionData() bool {
+	return t.ignoreSessionData
+}
+
+func (t *Table) Underlying() *Table {
+	return t
 }
 
 func (t *Table) GetPartition(key string) []sql.Row {
@@ -2230,6 +2244,8 @@ type TableRevision struct {
 	*Table
 }
 
+var _ MemTable = (*TableRevision)(nil)
+
 func (t *TableRevision) Inserter(ctx *sql.Context) sql.RowInserter {
 	ea := newTableEditAccumulator(t.Table.data)
 
@@ -2253,4 +2269,8 @@ func (t *TableRevision) AddColumn(ctx *sql.Context, column *sql.Column, order *s
 
 	t.data = data
 	return nil
+}
+
+func (t *TableRevision) IgnoreSessionData() bool {
+	return true
 }

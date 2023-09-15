@@ -32,7 +32,7 @@ type Database struct {
 
 type MemoryDatabase interface {
 	sql.Database
-	AddTable(name string, t sql.Table)
+	AddTable(name string, t MemTable)
 	Database() *BaseDatabase
 }
 
@@ -51,7 +51,7 @@ var _ fulltext.Database = (*Database)(nil)
 // BaseDatabase is an in-memory database that can't store views, only for testing the engine
 type BaseDatabase struct {
 	name              string
-	tables            map[string]sql.Table
+	tables            map[string]MemTable
 	fkColl            *ForeignKeyCollection
 	triggers          []sql.TriggerDefinition
 	storedProcedures  []sql.StoredProcedureDetails
@@ -75,7 +75,7 @@ func NewDatabase(name string) *Database {
 func NewViewlessDatabase(name string) *BaseDatabase {
 	return &BaseDatabase{
 		name:   name,
-		tables: map[string]sql.Table{},
+		tables: map[string]MemTable{},
 		fkColl: newForeignKeyCollection(),
 	}
 }
@@ -96,36 +96,32 @@ func (d *BaseDatabase) Name() string {
 
 // Tables returns all tables in the database.
 func (d *BaseDatabase) Tables() map[string]sql.Table {
-	return d.tables
+	tables := make(map[string]sql.Table, len(d.tables))
+	for name, table := range d.tables {
+		tables[name] = table
+	}
+	return tables
 }
 
 func (d *BaseDatabase) GetTableInsensitive(ctx *sql.Context, tblName string) (sql.Table, bool, error) {
-	tbl, ok := sql.GetTableInsensitive(tblName, d.tables)
+	tbl, ok := sql.GetTableInsensitive(tblName, d.Tables())
 	if !ok {
 		return nil, false, nil
 	}
 	
- 	switch memTable := tbl.(type) {
-	case *Table:
-		if memTable.ignoreSessionData {
-			return memTable, ok, nil
-		}
-	case *TableRevision:
-		return memTable, ok, nil
-	case *FilteredTable:
-		tbl = memTable.Table
-		// continue to logic below
-	default:
-		panic(fmt.Sprintf("unknown table type %T", memTable))
-	}
+ 	memTable := tbl.(MemTable)
+	 if memTable.IgnoreSessionData() {
+		 return memTable, ok, nil
+	 }
+	 
+	underlying := memTable.Underlying()
 	
 	// look in the session for table data. If it's not there, then cache it in the session and return it
 	sess := SessionFromContext(ctx)
-	memTbl := tbl.(*Table)
-	memTbl = memTbl.copy()
-	memTbl.data = sess.tableData(memTbl)
+	underlying = underlying.copy()
+	underlying.data = sess.tableData(underlying)
 
-	return memTbl, ok, nil
+	return underlying, ok, nil
 }
 
 // putTable writes the table given into database storage. A table with this name must already be present.
@@ -223,11 +219,11 @@ func (db *HistoryDatabase) AddTableAsOf(name string, t sql.Table, asOf interface
 	}
 
 	db.Revisions[strings.ToLower(name)][asOf] = t
-	db.tables[name] = t
+	db.tables[name] = t.(MemTable)
 }
 
 // AddTable adds a new table to the database.
-func (d *BaseDatabase) AddTable(name string, t sql.Table) {
+func (d *BaseDatabase) AddTable(name string, t MemTable) {
 	d.tables[name] = t
 }
 

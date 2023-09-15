@@ -291,6 +291,10 @@ func (m *MemoryHarness) NewDatabaseProvider() sql.MutableDatabaseProvider {
 		memory.HistoryProvider(true))
 }
 
+func (m *MemoryHarness) Provider() *memory.DbProvider {
+	return m.getProvider()
+}
+
 func (m *MemoryHarness) NewDatabases(names ...string) []sql.Database {
 	var dbs []sql.Database
 	for _, name := range names {
