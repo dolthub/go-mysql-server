@@ -98,6 +98,7 @@ func TestExampleLoadedUser(t *testing.T) {
 
 func TestIssue1621(t *testing.T) {
 	// This is an issue that is specific to using the example server, as this is not a logic issue but a setup issue
+	enableUsers = true
 	useUnusedPort(t)
 	go func() {
 		main()

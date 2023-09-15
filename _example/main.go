@@ -101,6 +101,8 @@ func sessionBuilder(pro *memory.DbProvider) server.SessionBuilder {
 
 func createTestDatabase() *memory.DbProvider {
 	db := memory.NewDatabase("mydb")
+	db.BaseDatabase.EnablePrimaryKeyIndexes()
+	
 	pro := memory.NewDBProvider(db)
 	session := memory.NewSession(sql.NewBaseSession(), pro)
 	ctx := sql.NewContext(context.Background(), sql.WithSession(session))
