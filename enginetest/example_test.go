@@ -32,7 +32,7 @@ func Example() {
 
 	session := memory.NewSession(sql.NewBaseSession(), pro)
 	ctx := sql.NewContext(context.Background(), sql.WithSession(session))
-	ctx.SetCurrentDatabase("test")
+	ctx.SetCurrentDatabase("mydb")
 
 	_, r, err := e.Query(ctx, `SELECT name, count(*) FROM mytable
 	WHERE name = 'John Doe'
@@ -63,7 +63,7 @@ func checkIfError(err error) {
 }
 
 func createTestDatabase() *memory.DbProvider {
-	db := memory.NewDatabase("test")
+	db := memory.NewDatabase("mydb")
 	pro := memory.NewDBProvider(db)
 	session := memory.NewSession(sql.NewBaseSession(), pro)
 	ctx := sql.NewContext(context.Background(), sql.WithSession(session))
