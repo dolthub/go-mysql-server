@@ -64,7 +64,7 @@ func NewIndexedTableAccess(node sql.TableNode, t sql.IndexedTable, lb *LookupBui
 
 // NewIndexedAccessForTableNode creates an IndexedTableAccess node if the resolved table embeds
 // an IndexAddressableTable, otherwise returns an error.
-func NewIndexedAccessForTableNode(ctx *sql.Context, node sql.TableNode, lb *LookupBuilder) (*IndexedTableAccess, error) {
+func NewIndexedAccessForTableNode(node sql.TableNode, lb *LookupBuilder) (*IndexedTableAccess, error) {
 	var table = node.UnderlyingTable()
 	iaTable, ok := table.(sql.IndexAddressableTable)
 	if !ok {
@@ -93,7 +93,7 @@ func NewIndexedAccessForTableNode(ctx *sql.Context, node sql.TableNode, lb *Look
 
 // NewStaticIndexedAccessForTableNode creates an IndexedTableAccess node if the resolved table embeds
 // an IndexAddressableTable, otherwise returns an error.
-func NewStaticIndexedAccessForTableNode(ctx *sql.Context, node sql.TableNode, lookup sql.IndexLookup) (*IndexedTableAccess, error) {
+func NewStaticIndexedAccessForTableNode(node sql.TableNode, lookup sql.IndexLookup) (*IndexedTableAccess, error) {
 	var table sql.Table
 	table = node.UnderlyingTable()
 	iaTable, ok := table.(sql.IndexAddressableTable)

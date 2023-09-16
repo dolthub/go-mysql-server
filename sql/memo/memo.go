@@ -585,12 +585,12 @@ func (m *Memo) updateBest(grp *ExprGroup, n RelExpr, cost float64) {
 
 func (m *Memo) BestRootPlan(ctx *sql.Context) (sql.Node, error) {
 	b := NewExecBuilder()
-	return buildBestJoinPlan(ctx, b, m.root, nil)
+	return buildBestJoinPlan(b, m.root, nil)
 }
 
 // buildBestJoinPlan converts group's lowest cost implementation into a
 // tree node with a recursive DFS.
-func buildBestJoinPlan(ctx *sql.Context, b *ExecBuilder, grp *ExprGroup, input sql.Schema) (sql.Node, error) {
+func buildBestJoinPlan(b *ExecBuilder, grp *ExprGroup, input sql.Schema) (sql.Node, error) {
 	if !grp.Done {
 		panic("expected expression group plans to be fixed")
 	}
@@ -598,13 +598,13 @@ func buildBestJoinPlan(ctx *sql.Context, b *ExecBuilder, grp *ExprGroup, input s
 	var err error
 	children := make([]sql.Node, len(n.Children()))
 	for i, g := range n.Children() {
-		children[i], err = buildBestJoinPlan(ctx, b, g, input)
+		children[i], err = buildBestJoinPlan(b, g, input)
 		if err != nil {
 			return nil, err
 		}
 		input = append(input, g.RelProps.OutputCols()...)
 	}
-	return b.buildRel(ctx, n, input, children...)
+	return b.buildRel(n, input, children...)
 }
 
 func (m *Memo) ApplyHint(hint Hint) {
