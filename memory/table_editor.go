@@ -260,13 +260,14 @@ func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val uint64) error 
 func (t *tableEditor) IndexedAccess(lookup sql.IndexLookup) sql.IndexedTable {
 	// Before we return an indexed access for this table, we need to apply all the edits to the table
 	// TODO: optimize this, should create some struct that encloses the tableEditor and filters based on the lookup
-	indexedTable := t.editedTable.copy()
-	err := t.ea.ApplyEdits(indexedTable)
+	err := t.ea.ApplyEdits(t.editedTable)
 	if err != nil {
 		return nil
 	}
+	t.ea.Clear()
 
 	// We mark this table as ignoring session data because the session won't have up to date data for it now
+	indexedTable := t.editedTable.copy()
 	indexedTable.ignoreSessionData = true
 	return &IndexedTable{Table: indexedTable, Lookup: lookup}
 }
