@@ -50,7 +50,7 @@ type MemoryHarness struct {
 	setupData                 []setup.SetupScript
 	externalProcedureRegistry sql.ExternalStoredProcedureRegistry
 	server                    bool
-	mu 											  *sync.Mutex
+	mu                        *sync.Mutex
 }
 
 var _ Harness = (*MemoryHarness)(nil)
@@ -78,7 +78,7 @@ func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useN
 		nativeIndexSupport:        useNativeIndexes,
 		skippedQueries:            make(map[string]struct{}),
 		externalProcedureRegistry: externalProcedureRegistry,
-		mu: 											  &sync.Mutex{},
+		mu:                        &sync.Mutex{},
 	}
 }
 
