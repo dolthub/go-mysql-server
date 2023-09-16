@@ -527,7 +527,6 @@ func ProjectRow(
 	projections []sql.Expression,
 	row sql.Row,
 ) (sql.Row, error) {
-	var err error
 	var secondPass []int
 	var fields sql.Row
 	for i, expr := range projections {
@@ -544,15 +543,31 @@ func ProjectRow(
 		if fErr != nil {
 			return nil, fErr
 		}
+		f = normalizeNegativeZeros(f)
 		fields = append(fields, f)
 	}
 	for _, index := range secondPass {
-		fields[index], err = projections[index].Eval(ctx, fields)
+		field, err := projections[index].Eval(ctx, fields)
 		if err != nil {
 			return nil, err
 		}
+		field = normalizeNegativeZeros(field)
+		fields[index] = field
 	}
 	return sql.NewRow(fields...), nil
+}
+
+// normalizeNegativeZeros converts negative zero into positive zero.
+// We do this so that floats and decimals have the same representation when displayed to the user.
+func normalizeNegativeZeros(val interface{}) interface{} {
+	// Golang doesn't have a negative zero literal, but negative zero compares equal to zero.
+	if val == float32(0) {
+		return float32(0)
+	}
+	if val == float64(0) {
+		return float64(0)
+	}
+	return val
 }
 
 // TODO a queue is probably more optimal
