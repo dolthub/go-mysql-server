@@ -87,7 +87,7 @@ func (t *tableEditor) Close(ctx *sql.Context) error {
 
 	// On the normal INSERT / UPDATE / DELETE path this happens at StatementComplete time, but for table rewrites it
 	// only happens at Close
-	err := t.ea.ApplyEdits(ctx, t.editedTable)
+	err := t.ea.ApplyEdits(t.editedTable)
 	if err != nil {
 		return err
 	}
@@ -111,7 +111,7 @@ func (t *tableEditor) DiscardChanges(ctx *sql.Context, errorEncountered error) e
 }
 
 func (t *tableEditor) StatementComplete(ctx *sql.Context) error {
-	err := t.ea.ApplyEdits(ctx, t.editedTable)
+	err := t.ea.ApplyEdits(t.editedTable)
 	if err != nil {
 		return nil
 	}
@@ -261,7 +261,7 @@ func (t *tableEditor) IndexedAccess(ctx *sql.Context, i sql.IndexLookup) (sql.In
 	// Before we return an indexed access for this table, we need to apply all the edits to the table
 	// TODO: optimize this, should create some struct that encloses the tableEditor and filters based on the lookup
 	indexedTable := t.editedTable.copy()
-	err := t.ea.ApplyEdits(sql.NewEmptyContext(), indexedTable)
+	err := t.ea.ApplyEdits(indexedTable)
 	if err != nil {
 		return nil, err
 	}
@@ -343,7 +343,7 @@ type tableEditAccumulator interface {
 	Get(value sql.Row) (sql.Row, bool, error)
 	// ApplyEdits updates the table provided with the inserts and deletes that have been added to the accumulator.
 	// Does not clear the accumulator.
-	ApplyEdits(ctx *sql.Context, table *Table) error
+	ApplyEdits(table *Table) error
 	// GetByCols returns the row in the table, or the pending edits, matching the ones given
 	GetByCols(value sql.Row, cols []int, prefixLengths []uint16) (sql.Row, bool, error)
 	// Clear wipes all of the stored inserts and deletes that may or may not have been applied.
@@ -447,7 +447,7 @@ func (pke *pkTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefixLe
 }
 
 // ApplyEdits implements the tableEditAccumulator interface.
-func (pke *pkTableEditAccumulator) ApplyEdits(ctx *sql.Context, table *Table) error {
+func (pke *pkTableEditAccumulator) ApplyEdits(table *Table) error {
 	for _, val := range pke.deletes {
 		err := pke.deleteHelper(ctx, pke.tableData, val)
 		if err != nil {
@@ -647,7 +647,7 @@ func (k *keylessTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefi
 }
 
 // ApplyEdits implements the tableEditAccumulator interface.
-func (k *keylessTableEditAccumulator) ApplyEdits(ctx *sql.Context, table *Table) error {
+func (k *keylessTableEditAccumulator) ApplyEdits(table *Table) error {
 	for _, val := range k.deletes {
 		err := k.deleteHelper(ctx, k.tableData, val)
 		if err != nil {
