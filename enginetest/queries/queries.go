@@ -7876,6 +7876,10 @@ SELECT * FROM my_cte;`,
 			{4},
 		},
 	},
+	{
+		Query:    `SELECT SUM(0) * -1`,
+		Expected: []sql.Row{{0.0}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
