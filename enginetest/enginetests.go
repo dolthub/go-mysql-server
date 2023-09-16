@@ -5357,7 +5357,6 @@ func TestJsonScripts(t *testing.T, harness Harness) {
 }
 
 func TestAlterTable(t *testing.T, harness Harness) {
-	// TODO: add schema target logic to check nodes
 	harness.Setup(setup.MydbData, setup.Pk_tablesData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()

@@ -1404,7 +1404,7 @@ func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 			exprs := make([]sql.Expression, len(data.schema.PkOrdinals))
 			for i, ord := range data.schema.PkOrdinals {
 				column := data.schema.Schema[ord]
-				idx, field := data.getField(column.Name)
+				idx, field := data.getColumnOrdinal(column.Name)
 				exprs[i] = expression.NewGetFieldWithTable(idx, field.Type, t.name, field.Name, field.Nullable)
 			}
 			indexes = append(indexes, &Index{
@@ -1589,7 +1589,7 @@ func (t *Table) createIndex(data *TableData, name string, columns []sql.IndexCol
 	exprs := make([]sql.Expression, len(columns))
 	colNames := make([]string, len(columns))
 	for i, column := range columns {
-		idx, field := data.getField(column.Name)
+		idx, field := data.getColumnOrdinal(column.Name)
 		exprs[i] = expression.NewGetFieldWithTable(idx, field.Type, t.name, field.Name, field.Nullable)
 		colNames[i] = column.Name
 	}

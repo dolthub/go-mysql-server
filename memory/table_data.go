@@ -181,8 +181,8 @@ func hasNulls(row sql.Row) bool {
 	return false
 }
 
-// getField returns the index and column index with the name given, if it exists, or -1, nil otherwise.
-func (td *TableData) getField(col string) (int, *sql.Column) {
+// getColumnOrdinal returns the index in the schema and column with the name given, if it exists, or -1, nil otherwise.
+func (td *TableData) getColumnOrdinal(col string) (int, *sql.Column) {
 	i := td.schema.IndexOf(col, td.tableName)
 	if i == -1 {
 		return -1, nil
@@ -239,7 +239,7 @@ func (td *TableData) sortRows() {
 	var pk []pkfield
 	for _, column := range td.schema.Schema {
 		if column.PrimaryKey {
-			idx, col := td.getField(column.Name)
+			idx, col := td.getColumnOrdinal(column.Name)
 			pk = append(pk, pkfield{idx, col})
 		}
 	}
