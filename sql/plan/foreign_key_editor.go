@@ -478,10 +478,7 @@ func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row) (sql.R
 	//TODO: profile this, may need to redesign this or add a fast path
 	lookup := sql.IndexLookup{Ranges: []sql.Range{rang}, Index: mapper.Index}
 
-	editorData, err := mapper.Updater.IndexedAccess(ctx, lookup)
-	if err != nil {
-		return nil, err
-	}
+	editorData := mapper.Updater.IndexedAccess(lookup)
 
 	partIter, err := editorData.LookupPartitions(ctx, lookup)
 	if err != nil {

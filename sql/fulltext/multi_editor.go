@@ -122,8 +122,8 @@ func (editor MultiTableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 }
 
 // IndexedAccess implements the interface ForeignKeyEditor.
-func (editor MultiTableEditor) IndexedAccess(ctx *sql.Context, lookup sql.IndexLookup) (sql.IndexedTable, error) {
-	return editor.primary.(sql.ForeignKeyEditor).IndexedAccess(ctx, lookup)
+func (editor MultiTableEditor) IndexedAccess(lookup sql.IndexLookup) sql.IndexedTable {
+	return editor.primary.(sql.ForeignKeyEditor).IndexedAccess(lookup)
 }
 
 // GetIndexes implements the interface ForeignKeyEditor.

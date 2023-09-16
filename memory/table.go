@@ -1352,8 +1352,8 @@ func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) 
 	return iter, nil
 }
 
-func (t *Table) IndexedAccess(ctx *sql.Context, i sql.IndexLookup) (sql.IndexedTable, error) {
-	return &IndexedTable{Table: t, Lookup: i}, nil
+func (t *Table) IndexedAccess(lookup sql.IndexLookup) sql.IndexedTable {
+	return &IndexedTable{Table: t, Lookup: lookup}
 }
 
 // WithProjections implements sql.ProjectedTable

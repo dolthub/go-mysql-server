@@ -257,18 +257,18 @@ func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val uint64) error 
 	return nil
 }
 
-func (t *tableEditor) IndexedAccess(ctx *sql.Context, i sql.IndexLookup) (sql.IndexedTable, error) {
+func (t *tableEditor) IndexedAccess(lookup sql.IndexLookup) sql.IndexedTable {
 	// Before we return an indexed access for this table, we need to apply all the edits to the table
 	// TODO: optimize this, should create some struct that encloses the tableEditor and filters based on the lookup
 	indexedTable := t.editedTable.copy()
 	err := t.ea.ApplyEdits(indexedTable)
 	if err != nil {
-		return nil, err
+		return nil
 	}
 
 	// We mark this table as ignoring session data because the session won't have up to date data for it now
 	indexedTable.ignoreSessionData = true
-	return &IndexedTable{Table: indexedTable, Lookup: i}, nil
+	return &IndexedTable{Table: indexedTable, Lookup: lookup}
 }
 
 func (t *tableEditor) pkColumnIndexes() []int {
@@ -449,14 +449,14 @@ func (pke *pkTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefixLe
 // ApplyEdits implements the tableEditAccumulator interface.
 func (pke *pkTableEditAccumulator) ApplyEdits(table *Table) error {
 	for _, val := range pke.deletes {
-		err := pke.deleteHelper(ctx, pke.tableData, val)
+		err := pke.deleteHelper(pke.tableData, val)
 		if err != nil {
 			return err
 		}
 	}
 
 	for _, val := range pke.adds {
-		err := pke.insertHelper(ctx, pke.tableData, val)
+		err := pke.insertHelper(pke.tableData, val)
 		if err != nil {
 			return err
 		}
@@ -489,7 +489,7 @@ func (pke *pkTableEditAccumulator) getRowKey(r sql.Row) string {
 }
 
 // deleteHelper deletes the given row from the tableData.
-func (pke *pkTableEditAccumulator) deleteHelper(ctx *sql.Context, table *TableData, row sql.Row) error {
+func (pke *pkTableEditAccumulator) deleteHelper(table *TableData, row sql.Row) error {
 	if err := checkRow(table.schema.Schema, row); err != nil {
 		return err
 	}
@@ -529,7 +529,7 @@ func (pke *pkTableEditAccumulator) deleteHelper(ctx *sql.Context, table *TableDa
 }
 
 // insertHelper inserts the given row into the given tableData.
-func (pke *pkTableEditAccumulator) insertHelper(ctx *sql.Context, table *TableData, row sql.Row) error {
+func (pke *pkTableEditAccumulator) insertHelper(table *TableData, row sql.Row) error {
 	key := string(table.partitionKeys[table.insertPartIdx])
 	table.insertPartIdx++
 	if table.insertPartIdx == len(table.partitionKeys) {
@@ -649,14 +649,14 @@ func (k *keylessTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefi
 // ApplyEdits implements the tableEditAccumulator interface.
 func (k *keylessTableEditAccumulator) ApplyEdits(table *Table) error {
 	for _, val := range k.deletes {
-		err := k.deleteHelper(ctx, k.tableData, val)
+		err := k.deleteHelper(k.tableData, val)
 		if err != nil {
 			return err
 		}
 	}
 
 	for _, val := range k.adds {
-		err := k.insertHelper(ctx, k.tableData, val)
+		err := k.insertHelper(k.tableData, val)
 		if err != nil {
 			return err
 		}
@@ -673,7 +673,7 @@ func (k *keylessTableEditAccumulator) Clear() {
 }
 
 // deleteHelper deletes a row from a keyless tableData, if it exists.
-func (k *keylessTableEditAccumulator) deleteHelper(ctx *sql.Context, table *TableData, row sql.Row) error {
+func (k *keylessTableEditAccumulator) deleteHelper(table *TableData, row sql.Row) error {
 	if err := checkRow(table.schema.Schema, row); err != nil {
 		return err
 	}
@@ -702,7 +702,7 @@ func (k *keylessTableEditAccumulator) deleteHelper(ctx *sql.Context, table *Tabl
 }
 
 // insertHelper inserts into a keyless tableData.
-func (k *keylessTableEditAccumulator) insertHelper(ctx *sql.Context, table *TableData, row sql.Row) error {
+func (k *keylessTableEditAccumulator) insertHelper(table *TableData, row sql.Row) error {
 	key := string(table.partitionKeys[table.insertPartIdx])
 	table.insertPartIdx++
 	if table.insertPartIdx == len(table.partitionKeys) {

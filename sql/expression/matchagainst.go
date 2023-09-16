@@ -316,7 +316,7 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 			}, Index: expr.docCountIndex}
 		}
 
-		editorData, err := expr.DocCountTable.IndexedAccess(ctx, lookup)
+		editorData := expr.DocCountTable.IndexedAccess(lookup)
 		if err != nil {
 			return 0, err
 		}
@@ -348,7 +348,7 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 				sql.ClosedRangeColumnExpr(wordStr, wordStr, expr.GlobalCountTable.Schema()[0].Type),
 			},
 		}, Index: expr.globalCountIndex}
-		editorData, err = expr.GlobalCountTable.IndexedAccess(ctx, lookup)
+		editorData = expr.GlobalCountTable.IndexedAccess(lookup)
 		if err != nil {
 			return 0, err
 		}
@@ -374,7 +374,7 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 				sql.ClosedRangeColumnExpr(hash, hash, expr.RowCountTable.Schema()[0].Type),
 			},
 		}, Index: expr.rowCountIndex}
-		editorData, err = expr.RowCountTable.IndexedAccess(ctx, lookup)
+		editorData = expr.RowCountTable.IndexedAccess(lookup)
 		if err != nil {
 			return 0, err
 		}

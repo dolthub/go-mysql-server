@@ -29,7 +29,7 @@ type tableEditor struct {
 	sch   sql.Schema
 }
 
-func (t *tableEditor) IndexedAccess(ctx *sql.Context, index sql.IndexLookup) (sql.IndexedTable, error) {
+func (t *tableEditor) IndexedAccess(lookup sql.IndexLookup) sql.IndexedTable {
 	//TODO implement me
 	panic("implement me")
 }

@@ -110,7 +110,7 @@ func pushdownIndexToTable(ctx *sql.Context, a *Analyzer, tableNode sql.NameableN
 				if !index.CanSupport(lookup.Ranges...) {
 					return n, transform.SameTree, nil
 				}
-				ia, err := iat.IndexedAccess(ctx, lookup)
+				ia := iat.IndexedAccess(lookup)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}

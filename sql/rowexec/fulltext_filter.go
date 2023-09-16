@@ -206,7 +206,7 @@ func (f *fulltextFilterTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 					sql.ClosedRangeColumnExpr(word, word, f.matchAgainst.DocCountTable.Schema()[0].Type),
 				}}, Index: f.docCountIndex}
 
-				docCountData, err := f.matchAgainst.DocCountTable.IndexedAccess(ctx, lookup)
+				docCountData := f.matchAgainst.DocCountTable.IndexedAccess(lookup)
 				if err != nil {
 					return nil, err
 				}
@@ -239,7 +239,7 @@ func (f *fulltextFilterTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 			lookup := sql.IndexLookup{Ranges: []sql.Range{ranges}, Index: f.parentIndex}
 
-			parentData, err := f.matchAgainst.ParentTable.IndexedAccess(ctx, lookup)
+			parentData := f.matchAgainst.ParentTable.IndexedAccess(lookup)
 			if err != nil {
 				return nil, err
 			}
