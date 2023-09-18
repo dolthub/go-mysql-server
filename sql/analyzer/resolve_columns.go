@@ -171,7 +171,7 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *plan.Scope) (m
 	switch n.(type) {
 	case *plan.AddColumn, *plan.ModifyColumn:
 		shouldIndexChildNode = false
-	case *plan.RecursiveCte, *plan.Union:
+	case *plan.RecursiveCte, *plan.SetOp:
 		shouldIndexChildNode = false
 	}
 
@@ -236,7 +236,7 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *plan.Scope) (m
 	case *plan.ModifyColumn:
 		tbl := node.Table
 		indexSchemaForDefaults(node.NewColumn(), node.Order(), tbl.Schema())
-	case *plan.RecursiveCte, *plan.Union:
+	case *plan.RecursiveCte, *plan.SetOp:
 		// opaque nodes have derived schemas
 		// TODO also subquery aliases?
 		indexChildNode(node.(sql.BinaryNode).Left())

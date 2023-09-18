@@ -52,7 +52,7 @@ func applyLimit(n sql.Node, limit sql.Expression) (sql.Node, transform.TreeIdent
 	switch n := n.(type) {
 	case *plan.Limit:
 		return n, transform.SameTree
-	case *plan.Union:
+	case *plan.SetOp:
 		if n.Limit != nil {
 			return n, transform.SameTree
 		}

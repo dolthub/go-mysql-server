@@ -57,9 +57,17 @@ func (b *Builder) buildWith(inScope *scope, with *ast.With) (outScope *scope) {
 		var cteScope *scope
 		if with.Recursive {
 			switch n := sq.Select.(type) {
-			case *ast.Union:
-				cteScope = b.buildRecursiveCte(outScope, n, cteName, columnsToStrings(cte.Columns))
+			case *ast.SetOp:
+				switch n.Type {
+				case ast.UnionStr, ast.UnionAllStr, ast.UnionDistinctStr:
+					cteScope = b.buildRecursiveCte(outScope, n, cteName, columnsToStrings(cte.Columns))
+				default:
+					b.handleErr(sql.ErrRecursiveCTEMissingUnion.New(cteName))
+				}
 			default:
+				if hasRecursiveTable(cteName, n) {
+					b.handleErr(sql.ErrRecursiveCTEMissingUnion.New(cteName))
+				}
 				cteScope = b.buildCte(outScope, ate, cteName, columnsToStrings(cte.Columns))
 			}
 		} else {
@@ -80,7 +88,7 @@ func (b *Builder) buildCte(inScope *scope, e ast.TableExpr, name string, columns
 	return cteScope
 }
 
-func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name string, columns []string) *scope {
+func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name string, columns []string) *scope {
 	l, r := splitRecursiveCteUnion(name, union)
 	if r == nil {
 		// not recursive
@@ -88,7 +96,7 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name strin
 		cteScope := b.buildSelectStmt(sqScope, union)
 		b.renameSource(cteScope, name, columns)
 		switch n := cteScope.node.(type) {
-		case *plan.Union:
+		case *plan.SetOp:
 			sq := plan.NewSubqueryAlias(name, "", n)
 			sq = sq.WithColumns(columns)
 			sq = sq.WithCorrelated(sqScope.correlated())
@@ -96,6 +104,12 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name strin
 			cteScope.node = sq
 		}
 		return cteScope
+	}
+
+	switch union.Type {
+	case ast.UnionStr, ast.UnionAllStr, ast.UnionDistinctStr:
+	default:
+		b.handleErr(sql.ErrRecursiveCTENotUnion.New(union.Type))
 	}
 
 	// resolve non-recursive portion
@@ -121,7 +135,6 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name strin
 			// we need to promote the type of the left part, so the final schema is the widest possible type
 			newC.Type = newC.Type.Promote()
 			recSch[i] = newC
-
 		}
 
 		for i, c := range leftScope.cols {
@@ -140,7 +153,12 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name strin
 	rightInScope.addCte(name, cteScope)
 	rightScope := b.buildSelectStmt(rightInScope, r)
 
-	distinct := union.Type != ast.UnionAllStr
+	// all is not distinct
+	distinct := true
+	switch union.Type {
+	case ast.UnionAllStr, ast.IntersectAllStr, ast.ExceptAllStr:
+		distinct = false
+	}
 	limit := b.buildLimit(inScope, union.Limit)
 
 	orderByScope := b.analyzeOrderBy(cteScope, leftScope, union.OrderBy)
@@ -188,28 +206,28 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name strin
 // "should have one or more non-recursive query blocks followed by one or more recursive ones"
 // "the recursive table must be referenced only once, and not in any subquery"
 func splitRecursiveCteUnion(name string, n ast.SelectStatement) (ast.SelectStatement, ast.SelectStatement) {
-	union, ok := n.(*ast.Union)
+	setOp, ok := n.(*ast.SetOp)
 	if !ok {
 		return n, nil
 	}
 
-	if !hasRecursiveTable(name, union.Right) {
+	if !hasRecursiveTable(name, setOp.Right) {
 		return n, nil
 	}
 
-	l, r := splitRecursiveCteUnion(name, union.Left)
+	l, r := splitRecursiveCteUnion(name, setOp.Left)
 	if r == nil {
-		return union.Left, union.Right
+		return setOp.Left, setOp.Right
 	}
 
-	return l, &ast.Union{
-		Type:    union.Type,
+	return l, &ast.SetOp{
+		Type:    setOp.Type,
 		Left:    r,
-		Right:   union.Right,
-		OrderBy: union.OrderBy,
-		With:    union.With,
-		Limit:   union.Limit,
-		Lock:    union.Lock,
+		Right:   setOp.Right,
+		OrderBy: setOp.OrderBy,
+		With:    setOp.With,
+		Limit:   setOp.Limit,
+		Lock:    setOp.Lock,
 	}
 }
 

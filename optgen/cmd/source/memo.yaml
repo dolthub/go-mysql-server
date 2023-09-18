@@ -54,8 +54,8 @@ exprs:
   sourceType: "*plan.JSONTable"
 - name: "EmptyTable"
   sourceType: "*plan.EmptyTable"
-- name: "Union"
-  sourceType: "*plan.Union"
+- name: "SetOp"
+  sourceType: "*plan.SetOp"
   skipName: true
 - name: "Project"
   unary: true

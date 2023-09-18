@@ -20,7 +20,7 @@ import (
 
 // Concat is a node that returns everything in Left and then everything in
 // Right, but it excludes any results in Right that already appeared in Left.
-// Similar to Distinct(Union(...)) but allows Left to return the same row
+// Similar to Distinct(SetOp(...)) but allows Left to return the same row
 // more than once.
 type Concat struct {
 	BinaryNode
