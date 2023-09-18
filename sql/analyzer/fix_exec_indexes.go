@@ -277,14 +277,15 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 	case *plan.InsertInto:
 		rightSchema := make(sql.Schema, len(n.Destination.Schema())*2)
 		// schema = [oldrow][newrow]
-		for i, c := range n.Destination.Schema() {
-			rightSchema[i] = c
+		for oldRowIdx, c := range n.Destination.Schema() {
+			rightSchema[oldRowIdx] = c
+			newRowIdx := len(n.Destination.Schema()) + oldRowIdx
 			if _, ok := n.Source.(*plan.Values); !ok && len(n.Destination.Schema()) == len(n.Source.Schema()) {
 				// find source index that aligns with dest column
 				var matched bool
-				for j, c3 := range n.ColumnNames {
-					if strings.EqualFold(c.Name, c3) {
-						rightSchema[len(n.Destination.Schema())+i] = n.Source.Schema()[j]
+				for j, sourceCol := range n.ColumnNames {
+					if strings.EqualFold(c.Name, sourceCol) {
+						rightSchema[newRowIdx] = n.Source.Schema()[j]
 						matched = true
 						break
 					}
@@ -293,12 +294,12 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 					// todo: this is only used for load data. load data errors
 					//  without a fallback, and fails to resolve defaults if I
 					//  define the columns upfront.
-					rightSchema[len(n.Destination.Schema())+i] = n.Source.Schema()[i]
+					rightSchema[newRowIdx] = n.Source.Schema()[oldRowIdx]
 				}
 			} else {
 				newC := c.Copy()
 				newC.Source = planbuilder.OnDupValuesPrefix
-				rightSchema[len(n.Destination.Schema())+i] = newC
+				rightSchema[newRowIdx] = newC
 			}
 		}
 		rightScope := &idxScope{}

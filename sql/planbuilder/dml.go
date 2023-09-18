@@ -83,6 +83,8 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	}
 	srcScope := b.insertRowsToNode(inScope, i.Rows, columns, sch)
 
+	// TODO: on duplicate expressions need to reference both VALUES and
+	//  derived columns equally in ON DUPLICATE UPDATE expressions.
 	combinedScope := inScope.replace()
 	for i, c := range destScope.cols {
 		combinedScope.newColumn(c)
