@@ -37,9 +37,9 @@ func (b *Builder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (outSco
 	case *ast.Union:
 		if s.With != nil {
 			cteScope := b.buildWith(inScope, s.With)
-			return b.buildUnion(cteScope, s)
+			return b.buildSetOp(cteScope, s)
 		}
-		return b.buildUnion(inScope, s)
+		return b.buildSetOp(inScope, s)
 	case *ast.ParenSelect:
 		return b.buildSelectStmt(inScope, s.Select)
 	default:
