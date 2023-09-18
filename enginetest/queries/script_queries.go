@@ -267,22 +267,21 @@ var ScriptTests = []ScriptTest{
 			},
 
 			// Multiple set operation tests
-			// TODO: Precedence is INTERSECT, UNION, EXCEPT; use parentheses for now
 			{
-				Query: "table a except (table b intersect table c) order by m;",
+				Query: "table a except table b intersect table c order by m;",
 				Expected: []sql.Row{
 					{1, 2},
 					{2, 3},
 				},
 			},
 			{
-				Query: "(table a intersect table b) except table c order by m;",
+				Query: "table a intersect table b except table c order by m;",
 				Expected: []sql.Row{
 					{1, 2},
 				},
 			},
 			{
-				Query: "table a union (table a intersect table b) except table c order by m;",
+				Query: "table a union table a intersect table b except table c order by m;",
 				Expected: []sql.Row{
 					{1, 2},
 					{2, 3},
@@ -291,7 +290,7 @@ var ScriptTests = []ScriptTest{
 
 			// CTE tests
 			{
-				Query: "with cte as (table a union (table a intersect table b) except table c order by m) select * from cte",
+				Query: "with cte as (table a union table a intersect table b except table c order by m) select * from cte",
 				Expected: []sql.Row{
 					{1, 2},
 					{2, 3},
@@ -304,7 +303,7 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "with recursive cte (x,y) as ((select 1, 1 intersect select 1, 1) union select x + 1, y + 2 from cte where x < 5) select * from cte;",
+				Query: "with recursive cte (x,y) as (select 1, 1 intersect select 1, 1 union select x + 1, y + 2 from cte where x < 5) select * from cte;",
 				Expected: []sql.Row{
 					{1, 1},
 					{2, 3},
@@ -314,11 +313,11 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:       "with recursive cte (x,y) as ((select 1, 1 intersect select 1, 1) intersect select x + 1, y + 2 from cte where x < 5) select * from cte;",
+				Query:       "with recursive cte (x,y) as (select 1, 1 intersect select 1, 1 intersect select x + 1, y + 2 from cte where x < 5) select * from cte;",
 				ExpectedErr: sql.ErrRecursiveCTEMissingUnion,
 			},
 			{
-				Query:       "with recursive cte (x,y) as (select 1, 1 union (select 1, 1 intersect select x + 1, y + 2 from cte where x < 5)) select * from cte;",
+				Query:       "with recursive cte (x,y) as (select 1, 1 union select 1, 1 intersect select x + 1, y + 2 from cte where x < 5) select * from cte;",
 				ExpectedErr: sql.ErrRecursiveCTENotUnion,
 			},
 		},
