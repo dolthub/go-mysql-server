@@ -42,19 +42,19 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.Union) (outScope *scope) {
 	leftScope := b.buildSelectStmt(inScope, u.Left)
 	rightScope := b.buildSelectStmt(inScope, u.Right)
 
-	var unionType int
+	var setOpType int
 	switch u.Type {
 	case ast.UnionStr, ast.UnionAllStr, ast.UnionDistinctStr:
-		unionType = plan.UnionType
+		setOpType = plan.UnionType
 	case ast.IntersectStr, ast.IntersectAllStr, ast.IntersectDistinctStr:
-		unionType = plan.IntersectType
+		setOpType = plan.IntersectType
 	case ast.ExceptStr, ast.ExceptAllStr, ast.ExceptDistinctStr:
-		unionType = plan.ExceptType
+		setOpType = plan.ExceptType
 	default:
 		b.handleErr(fmt.Errorf("unknown union type %s", u.Type))
 	}
 
-	if unionType != plan.UnionType {
+	if setOpType != plan.UnionType {
 		if hasRecursiveCte(leftScope.node) {
 			b.handleErr(sql.ErrRecursiveCTENotUnion.New())
 		}
@@ -130,7 +130,7 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.Union) (outScope *scope) {
 		leftScope.node = plan.NewSetOp(n.SetOpType, n.Left(), n.Right(), n.Distinct, nil, nil, nil)
 	}
 
-	ret := plan.NewSetOp(unionType, leftScope.node, rightScope.node, distinct, limit, offset, sortFields)
+	ret := plan.NewSetOp(setOpType, leftScope.node, rightScope.node, distinct, limit, offset, sortFields)
 	outScope = leftScope
 	outScope.node = b.mergeSetOpSchemas(ret)
 	return
