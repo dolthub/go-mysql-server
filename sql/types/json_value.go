@@ -117,6 +117,10 @@ func (doc JSONDocument) Extract(ctx *sql.Context, path string) (JSONValue, error
 
 	c, err := jsonpath.Compile(path)
 	if err != nil {
+		// Until we throw out jsonpath, let's at least make this error better.
+		if err.Error() == "should start with '$'" {
+			err = fmt.Errorf("Invalid JSON path expression. Path must start with '$', but received: '%s'", path)
+		}
 		return nil, err
 	}
 
