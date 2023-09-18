@@ -38,7 +38,7 @@ func hasRecursiveCte(node sql.Node) bool {
 	return hasRCTE
 }
 
-func (b *Builder) buildSetOp(inScope *scope, u *ast.Union) (outScope *scope) {
+func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 	leftScope := b.buildSelectStmt(inScope, u.Left)
 	rightScope := b.buildSelectStmt(inScope, u.Right)
 

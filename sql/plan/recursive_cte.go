@@ -22,7 +22,7 @@ import (
 )
 
 // RecursiveCte is defined by two subqueries
-// connected with a setOp:
+// connected with a union:
 //
 //	ex => WITH RECURSIVE [name]([Columns]) as ([Init] UNION [Rec]) ...
 //
@@ -43,7 +43,7 @@ import (
 // projection count and types. [Init] will be resolved before
 // [Rec] or [RecursiveCte] to share schema types.
 type RecursiveCte struct {
-	setOp *SetOp
+	union *SetOp
 	// Columns used to name lazily-loaded schema fields
 	Columns []string
 	// schema will match the types of [Init.Schema()], names of [Columns]
@@ -61,7 +61,8 @@ var _ sql.CollationCoercible = (*RecursiveCte)(nil)
 func NewRecursiveCte(initial, recursive sql.Node, name string, outputCols []string, deduplicate bool, l sql.Expression, sf sql.SortFields) *RecursiveCte {
 	return &RecursiveCte{
 		Columns: outputCols,
-		setOp: &SetOp{
+		union: &SetOp{
+			SetOpType:  UnionType,
 			BinaryNode: BinaryNode{left: initial, right: recursive},
 			Distinct:   deduplicate,
 			Limit:      l,
@@ -77,21 +78,21 @@ func (r *RecursiveCte) Name() string {
 }
 
 func (r *RecursiveCte) IsReadOnly() bool {
-	return r.setOp.BinaryNode.left.IsReadOnly() && r.setOp.BinaryNode.right.IsReadOnly()
+	return r.union.BinaryNode.left.IsReadOnly() && r.union.BinaryNode.right.IsReadOnly()
 }
 
 // Left implements sql.BinaryNode
 func (r *RecursiveCte) Left() sql.Node {
-	return r.setOp.left
+	return r.union.left
 }
 
 // Right implements sql.BinaryNode
 func (r *RecursiveCte) Right() sql.Node {
-	return r.setOp.right
+	return r.union.right
 }
 
 func (r *RecursiveCte) SetOp() *SetOp {
-	return r.setOp
+	return r.union
 }
 
 // WithSchema inherits [Init]'s schema at resolve time
@@ -116,11 +117,11 @@ func (r *RecursiveCte) Schema() sql.Schema {
 // WithChildren implements sql.Node
 func (r *RecursiveCte) WithChildren(children ...sql.Node) (sql.Node, error) {
 	ret := *r
-	s, err := r.setOp.WithChildren(children...)
+	s, err := r.union.WithChildren(children...)
 	if err != nil {
 		return nil, err
 	}
-	ret.setOp = s.(*SetOp)
+	ret.union = s.(*SetOp)
 	return &ret, nil
 }
 
@@ -129,15 +130,15 @@ func (r *RecursiveCte) Opaque() bool {
 }
 
 func (r *RecursiveCte) Resolved() bool {
-	return r.setOp.Resolved()
+	return r.union.Resolved()
 }
 
 func (r *RecursiveCte) Children() []sql.Node {
-	return r.setOp.Children()
+	return r.union.Children()
 }
 
 func (r *RecursiveCte) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return r.setOp.CheckPrivileges(ctx, opChecker)
+	return r.union.CheckPrivileges(ctx, opChecker)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -146,16 +147,16 @@ func (*RecursiveCte) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 }
 
 func (r *RecursiveCte) Expressions() []sql.Expression {
-	return r.setOp.Expressions()
+	return r.union.Expressions()
 }
 
 func (r *RecursiveCte) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	ret := *r
-	s, err := r.setOp.WithExpressions(exprs...)
+	s, err := r.union.WithExpressions(exprs...)
 	if err != nil {
 		return nil, err
 	}
-	ret.setOp = s.(*SetOp)
+	ret.union = s.(*SetOp)
 	return &ret, nil
 }
 
@@ -163,7 +164,7 @@ func (r *RecursiveCte) WithExpressions(exprs ...sql.Expression) (sql.Node, error
 func (r *RecursiveCte) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("RecursiveCTE")
-	pr.WriteChildren(r.setOp.String())
+	pr.WriteChildren(r.union.String())
 	return pr.String()
 }
 
@@ -171,7 +172,7 @@ func (r *RecursiveCte) String() string {
 func (r *RecursiveCte) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("RecursiveCTE")
-	pr.WriteChildren(sql.DebugString(r.setOp))
+	pr.WriteChildren(sql.DebugString(r.union))
 	return pr.String()
 }
 

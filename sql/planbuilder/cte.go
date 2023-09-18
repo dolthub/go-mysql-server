@@ -57,7 +57,7 @@ func (b *Builder) buildWith(inScope *scope, with *ast.With) (outScope *scope) {
 		var cteScope *scope
 		if with.Recursive {
 			switch n := sq.Select.(type) {
-			case *ast.Union:
+			case *ast.SetOp:
 				switch n.Type {
 				case ast.UnionStr, ast.UnionAllStr, ast.UnionDistinctStr:
 					cteScope = b.buildRecursiveCte(outScope, n, cteName, columnsToStrings(cte.Columns))
@@ -206,28 +206,28 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name strin
 // "should have one or more non-recursive query blocks followed by one or more recursive ones"
 // "the recursive table must be referenced only once, and not in any subquery"
 func splitRecursiveCteUnion(name string, n ast.SelectStatement) (ast.SelectStatement, ast.SelectStatement) {
-	union, ok := n.(*ast.Union)
+	setOp, ok := n.(*ast.SetOp)
 	if !ok {
 		return n, nil
 	}
 
-	if !hasRecursiveTable(name, union.Right) {
+	if !hasRecursiveTable(name, setOp.Right) {
 		return n, nil
 	}
 
-	l, r := splitRecursiveCteUnion(name, union.Left)
+	l, r := splitRecursiveCteUnion(name, setOp.Left)
 	if r == nil {
-		return union.Left, union.Right
+		return setOp.Left, setOp.Right
 	}
 
-	return l, &ast.Union{
-		Type:    union.Type,
+	return l, &ast.SetOp{
+		Type:    setOp.Type,
 		Left:    r,
-		Right:   union.Right,
-		OrderBy: union.OrderBy,
-		With:    union.With,
-		Limit:   union.Limit,
-		Lock:    union.Lock,
+		Right:   setOp.Right,
+		OrderBy: setOp.OrderBy,
+		With:    setOp.With,
+		Limit:   setOp.Limit,
+		Lock:    setOp.Lock,
 	}
 }
 

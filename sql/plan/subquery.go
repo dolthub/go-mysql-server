@@ -213,8 +213,8 @@ func PrependRowInPlan(row sql.Row, lateral bool) func(n sql.Node) (sql.Node, tra
 			return &newSetOp, transform.NewTree, nil
 		case *RecursiveCte:
 			newRecursiveCte := *n
-			newUnion, _, err := transform.Node(n.setOp, PrependRowInPlan(row, lateral))
-			newRecursiveCte.setOp = newUnion.(*SetOp)
+			newUnion, _, err := transform.Node(n.union, PrependRowInPlan(row, lateral))
+			newRecursiveCte.union = newUnion.(*SetOp)
 			return &newRecursiveCte, transform.NewTree, err
 		case *SubqueryAlias:
 			// For SubqueryAliases (i.e. DerivedTables), since they may have visibility to outer scopes, we need to
