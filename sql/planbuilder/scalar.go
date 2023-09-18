@@ -261,7 +261,9 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		return expression.NewCollatedExpression(innerExpr, collation)
 	case *ast.ValuesFuncExpr:
 		if b.insertActive {
-			v.Name.Qualifier.Name = ast.NewTableIdent(OnDupValuesPrefix)
+			if v.Name.Qualifier.Name.String() == "" {
+				v.Name.Qualifier.Name = ast.NewTableIdent(OnDupValuesPrefix)
+			}
 			tableName := strings.ToLower(v.Name.Qualifier.Name.String())
 			colName := strings.ToLower(v.Name.Name.String())
 			col, ok := inScope.resolveColumn(tableName, colName, false)
