@@ -34,7 +34,7 @@ func (b *Builder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (outSco
 			return b.buildSelect(cteScope, s)
 		}
 		return b.buildSelect(inScope, s)
-	case *ast.Union:
+	case *ast.SetOp:
 		if s.With != nil {
 			cteScope := b.buildWith(inScope, s.With)
 			return b.buildSetOp(cteScope, s)

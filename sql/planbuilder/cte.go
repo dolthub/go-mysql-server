@@ -88,7 +88,7 @@ func (b *Builder) buildCte(inScope *scope, e ast.TableExpr, name string, columns
 	return cteScope
 }
 
-func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name string, columns []string) *scope {
+func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name string, columns []string) *scope {
 	l, r := splitRecursiveCteUnion(name, union)
 	if r == nil {
 		// not recursive
