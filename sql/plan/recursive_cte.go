@@ -91,7 +91,7 @@ func (r *RecursiveCte) Right() sql.Node {
 	return r.union.right
 }
 
-func (r *RecursiveCte) SetOp() *SetOp {
+func (r *RecursiveCte) Union() *SetOp {
 	return r.union
 }
 

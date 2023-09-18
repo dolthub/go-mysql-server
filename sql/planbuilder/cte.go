@@ -206,28 +206,28 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name strin
 // "should have one or more non-recursive query blocks followed by one or more recursive ones"
 // "the recursive table must be referenced only once, and not in any subquery"
 func splitRecursiveCteUnion(name string, n ast.SelectStatement) (ast.SelectStatement, ast.SelectStatement) {
-	setOp, ok := n.(*ast.SetOp)
+	union, ok := n.(*ast.SetOp)
 	if !ok {
 		return n, nil
 	}
 
-	if !hasRecursiveTable(name, setOp.Right) {
+	if !hasRecursiveTable(name, union.Right) {
 		return n, nil
 	}
 
-	l, r := splitRecursiveCteUnion(name, setOp.Left)
+	l, r := splitRecursiveCteUnion(name, union.Left)
 	if r == nil {
-		return setOp.Left, setOp.Right
+		return union.Left, union.Right
 	}
 
 	return l, &ast.SetOp{
-		Type:    setOp.Type,
+		Type:    union.Type,
 		Left:    r,
-		Right:   setOp.Right,
-		OrderBy: setOp.OrderBy,
-		With:    setOp.With,
-		Limit:   setOp.Limit,
-		Lock:    setOp.Lock,
+		Right:   union.Right,
+		OrderBy: union.OrderBy,
+		With:    union.With,
+		Limit:   union.Limit,
+		Lock:    union.Lock,
 	}
 }
 

@@ -410,23 +410,23 @@ func (b *BaseBuilder) buildRecursiveCte(ctx *sql.Context, n *plan.RecursiveCte, 
 		row:         row,
 		working:     n.Working,
 		temp:        make([]sql.Row, 0),
-		deduplicate: n.SetOp().Distinct,
+		deduplicate: n.Union().Distinct,
 		b:           b,
 	}
-	if n.SetOp().Limit != nil && len(n.SetOp().SortFields) > 0 {
-		limit, err := getInt64Value(ctx, n.SetOp().Limit)
+	if n.Union().Limit != nil && len(n.Union().SortFields) > 0 {
+		limit, err := getInt64Value(ctx, n.Union().Limit)
 		if err != nil {
 			return nil, err
 		}
-		iter = newTopRowsIter(n.SetOp().SortFields, limit, false, iter, len(n.SetOp().Schema()))
-	} else if n.SetOp().Limit != nil {
-		limit, err := getInt64Value(ctx, n.SetOp().Limit)
+		iter = newTopRowsIter(n.Union().SortFields, limit, false, iter, len(n.Union().Schema()))
+	} else if n.Union().Limit != nil {
+		limit, err := getInt64Value(ctx, n.Union().Limit)
 		if err != nil {
 			return nil, err
 		}
 		iter = &limitIter{limit: limit, childIter: iter}
-	} else if len(n.SetOp().SortFields) > 0 {
-		iter = newSortIter(n.SetOp().SortFields, iter)
+	} else if len(n.Union().SortFields) > 0 {
+		iter = newSortIter(n.Union().SortFields, iter)
 	}
 	return iter, nil
 }
@@ -644,16 +644,11 @@ func (b *BaseBuilder) buildIndexedTableAccess(ctx *sql.Context, n *plan.IndexedT
 	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, n.Table, partIter)), nil
 }
 
-func (b *BaseBuilder) buildUnion(ctx *sql.Context, s *plan.SetOp, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildSetOp(ctx *sql.Context, s *plan.SetOp, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.SetOp")
-	var iter, iter2 sql.RowIter
+	var iter sql.RowIter
 	var err error
 	iter, err = b.buildNodeExec(ctx, s.Left(), row)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-	iter2, err = b.buildNodeExec(ctx, s.Right(), row)
 	if err != nil {
 		span.End()
 		return nil, err
@@ -661,15 +656,29 @@ func (b *BaseBuilder) buildUnion(ctx *sql.Context, s *plan.SetOp, row sql.Row) (
 	switch s.SetOpType {
 	case plan.UnionType:
 		iter = &unionIter{
-			cur:  iter,
-			next: iter2,
+			cur: iter,
+			nextIter: func(ctx *sql.Context) (sql.RowIter, error) {
+				return b.buildNodeExec(ctx, s.Right(), row)
+			},
 		}
 	case plan.IntersectType:
+		var iter2 sql.RowIter
+		iter2, err = b.buildNodeExec(ctx, s.Right(), row)
+		if err != nil {
+			span.End()
+			return nil, err
+		}
 		iter = &intersectIter{
 			lIter: iter,
 			rIter: iter2,
 		}
 	case plan.ExceptType:
+		var iter2 sql.RowIter
+		iter2, err = b.buildNodeExec(ctx, s.Right(), row)
+		if err != nil {
+			span.End()
+			return nil, err
+		}
 		iter = &exceptIter{
 			lIter: iter,
 			rIter: iter2,
