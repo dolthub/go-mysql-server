@@ -296,7 +296,7 @@ Project
      ├─ outerVisibility: false
      ├─ cacheable: true
      └─ RecursiveCTE
-         └─ SetOp distinct
+         └─ Union distinct
              ├─ Project
              │   ├─ columns: [xy.x:1!null]
              │   └─ Table
@@ -1366,7 +1366,7 @@ Project
      ├─ outerVisibility: false
      ├─ cacheable: true
      └─ RecursiveCTE
-         └─ SetOp all
+         └─ Union all
              ├─ Project
              │   ├─ columns: [1 (tinyint) as depth, NULL (null) as foo]
              │   └─ SubqueryAlias
@@ -1374,7 +1374,7 @@ Project
              │       ├─ outerVisibility: false
              │       ├─ cacheable: true
              │       └─ RecursiveCTE
-             │           └─ SetOp all
+             │           └─ Union all
              │               ├─ Project
              │               │   ├─ columns: [1 (tinyint) as foo]
              │               │   └─ Table
@@ -1400,7 +1400,7 @@ Project
                              ├─ outerVisibility: false
                              ├─ cacheable: true
                              └─ RecursiveCTE
-                                 └─ SetOp all
+                                 └─ Union all
                                      ├─ Project
                                      │   ├─ columns: [1 (tinyint) as foo]
                                      │   └─ Table
@@ -1558,7 +1558,7 @@ Project
 		{
 			Query: "select y as k from xy union select x from xy order by k",
 			ExpectedPlan: `
-SetOp distinct
+Union distinct
  ├─ sortFields: k:4!null
  ├─ Project
  │   ├─ columns: [xy.y:2!null as k]
