@@ -5,9 +5,10 @@ package planbuilder
 import (
 	"fmt"
 
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 func (b *Builder) NewFrame(inScope *scope, f *ast.Frame) sql.WindowFrame {
