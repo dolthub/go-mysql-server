@@ -4483,7 +4483,7 @@ func TestParse(t *testing.T) {
 	//				[]*plan.CommonTableExpression{
 	//					plan.NewCommonTableExpression(
 	//						plan.NewSubqueryAlias("cte1", "select 1 union select n + 1 from cte1 where n < 10",
-	//							plan.NewSetOp(plan.NewProject(
+	//							plan.NewUnion(plan.NewProject(
 	//								[]sql.Expression{
 	//									expression.NewLiteral(int8(1), types.Int8),
 	//								},
@@ -4708,7 +4708,7 @@ func TestParse(t *testing.T) {
 	//		},
 	//		{
 	//			input: `SELECT 2 UNION SELECT 3`,
-	//			plan: plan.NewSetOp(plan.NewProject(
+	//			plan: plan.NewUnion(plan.NewProject(
 	//				[]sql.Expression{expression.NewLiteral(int8(2), types.Int8)},
 	//				plan.NewResolvedDualTable(),
 	//			), plan.NewProject(
@@ -4718,7 +4718,7 @@ func TestParse(t *testing.T) {
 	//		},
 	//		{
 	//			input: `(SELECT 2) UNION (SELECT 3)`,
-	//			plan: plan.NewSetOp(plan.NewProject(
+	//			plan: plan.NewUnion(plan.NewProject(
 	//				[]sql.Expression{expression.NewLiteral(int8(2), types.Int8)},
 	//				plan.NewResolvedDualTable(),
 	//			), plan.NewProject(
@@ -4728,7 +4728,7 @@ func TestParse(t *testing.T) {
 	//		},
 	//		{
 	//			input: `SELECT 2 UNION ALL SELECT 3 UNION DISTINCT SELECT 4`,
-	//			plan: plan.NewSetOp(plan.NewSetOp(plan.NewProject(
+	//			plan: plan.NewUnion(plan.NewUnion(plan.NewProject(
 	//				[]sql.Expression{expression.NewLiteral(int8(2), types.Int8)},
 	//				plan.NewResolvedDualTable(),
 	//			), plan.NewProject(
@@ -4742,8 +4742,8 @@ func TestParse(t *testing.T) {
 	//		},
 	//		{
 	//			input: `SELECT 2 UNION SELECT 3 UNION ALL SELECT 4`,
-	//			plan: plan.NewSetOp(
-	//				plan.NewSetOp(plan.NewProject(
+	//			plan: plan.NewUnion(
+	//				plan.NewUnion(plan.NewProject(
 	//					[]sql.Expression{expression.NewLiteral(int8(2), types.Int8)},
 	//					plan.NewResolvedDualTable(),
 	//				), plan.NewProject(
@@ -4757,8 +4757,8 @@ func TestParse(t *testing.T) {
 	//		},
 	//		{
 	//			input: `SELECT 2 UNION SELECT 3 UNION SELECT 4`,
-	//			plan: plan.NewSetOp(
-	//				plan.NewSetOp(plan.NewProject(
+	//			plan: plan.NewUnion(
+	//				plan.NewUnion(plan.NewProject(
 	//					[]sql.Expression{expression.NewLiteral(int8(2), types.Int8)},
 	//					plan.NewResolvedDualTable(),
 	//				), plan.NewProject(
@@ -4772,12 +4772,12 @@ func TestParse(t *testing.T) {
 	//		},
 	//		{
 	//			input: `SELECT 2 UNION (SELECT 3 UNION SELECT 4)`,
-	//			plan: plan.NewSetOp(
+	//			plan: plan.NewUnion(
 	//				plan.NewProject(
 	//					[]sql.Expression{expression.NewLiteral(int8(2), types.Int8)},
 	//					plan.NewResolvedDualTable(),
 	//				),
-	//				plan.NewSetOp(plan.NewProject(
+	//				plan.NewUnion(plan.NewProject(
 	//					[]sql.Expression{expression.NewLiteral(int8(3), types.Int8)},
 	//					plan.NewResolvedDualTable(),
 	//				), plan.NewProject(
@@ -4789,7 +4789,7 @@ func TestParse(t *testing.T) {
 	//		},
 	//		{
 	//			input: `SELECT 2 UNION ALL SELECT 3`,
-	//			plan: plan.NewSetOp(plan.NewProject(
+	//			plan: plan.NewUnion(plan.NewProject(
 	//				[]sql.Expression{expression.NewLiteral(int8(2), types.Int8)},
 	//				plan.NewResolvedDualTable(),
 	//			), plan.NewProject(
@@ -4799,7 +4799,7 @@ func TestParse(t *testing.T) {
 	//		},
 	//		{
 	//			input: `SELECT 2 UNION DISTINCT SELECT 3`,
-	//			plan: plan.NewSetOp(plan.NewProject(
+	//			plan: plan.NewUnion(plan.NewProject(
 	//				[]sql.Expression{expression.NewLiteral(int8(2), types.Int8)},
 	//				plan.NewResolvedDualTable(),
 	//			), plan.NewProject(
@@ -4809,8 +4809,8 @@ func TestParse(t *testing.T) {
 	//		},
 	//		{
 	//			input: `SELECT 2 UNION SELECT 3 UNION SELECT 4 LIMIT 10`,
-	//			plan: plan.NewSetOp(
-	//				plan.NewSetOp(plan.NewProject(
+	//			plan: plan.NewUnion(
+	//				plan.NewUnion(plan.NewProject(
 	//					[]sql.Expression{expression.NewLiteral(int8(2), types.Int8)},
 	//					plan.NewResolvedDualTable(),
 	//				), plan.NewProject(
@@ -4824,8 +4824,8 @@ func TestParse(t *testing.T) {
 	//		},
 	//		{
 	//			input: `SELECT 2 UNION SELECT 3 UNION SELECT 4 ORDER BY 2`,
-	//			plan: plan.NewSetOp(
-	//				plan.NewSetOp(plan.NewProject(
+	//			plan: plan.NewUnion(
+	//				plan.NewUnion(plan.NewProject(
 	//					[]sql.Expression{expression.NewLiteral(int8(2), types.Int8)},
 	//					plan.NewResolvedDualTable(),
 	//				), plan.NewProject(
