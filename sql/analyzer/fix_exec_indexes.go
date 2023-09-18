@@ -176,7 +176,7 @@ func (s *idxScope) visitChildren(n sql.Node) error {
 		}
 		s.childScopes = append(s.childScopes, cScope)
 		s.children = append(s.children, newC)
-	case *plan.Union:
+	case *plan.SetOp:
 		var keepScope *idxScope
 		for i, c := range n.Children() {
 			newC, cScope, err := assignIndexesHelper(c, s)

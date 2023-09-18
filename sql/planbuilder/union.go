@@ -104,7 +104,7 @@ func (b *Builder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope) {
 		sortFields = append(sortFields, sf)
 	}
 
-	n, ok := leftScope.node.(*plan.Union)
+	n, ok := leftScope.node.(*plan.SetOp)
 	if ok {
 		if len(n.SortFields) > 0 {
 			if len(sortFields) > 0 {
@@ -127,16 +127,16 @@ func (b *Builder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope) {
 			}
 			offset = n.Offset
 		}
-		leftScope.node = plan.NewUnion(n.Type, n.Left(), n.Right(), n.Distinct, nil, nil, nil)
+		leftScope.node = plan.NewSetOp(n.SetOpType, n.Left(), n.Right(), n.Distinct, nil, nil, nil)
 	}
 
-	ret := plan.NewUnion(unionType, leftScope.node, rightScope.node, distinct, limit, offset, sortFields)
+	ret := plan.NewSetOp(unionType, leftScope.node, rightScope.node, distinct, limit, offset, sortFields)
 	outScope = leftScope
-	outScope.node = b.mergeUnionSchemas(ret)
+	outScope.node = b.mergeSetOpSchemas(ret)
 	return
 }
 
-func (b *Builder) mergeUnionSchemas(u *plan.Union) sql.Node {
+func (b *Builder) mergeSetOpSchemas(u *plan.SetOp) sql.Node {
 	ls, rs := u.Left().Schema(), u.Right().Schema()
 	if len(ls) != len(rs) {
 		err := ErrUnionSchemasDifferentLength.New(len(ls), len(rs))

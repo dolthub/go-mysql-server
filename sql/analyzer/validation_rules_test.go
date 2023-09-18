@@ -241,7 +241,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 		},
 		{
 			"top-level union with matching schemas",
-			plan.NewUnion(
+			plan.NewSetOp(
 				plan.UnionType,
 				plan.NewProject(
 					[]sql.Expression{
@@ -263,7 +263,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 		},
 		{
 			"top-level union with longer left schema",
-			plan.NewUnion(
+			plan.NewSetOp(
 				plan.UnionType,
 				plan.NewProject(
 					[]sql.Expression{
@@ -286,7 +286,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 		},
 		{
 			"top-level union with longer right schema",
-			plan.NewUnion(
+			plan.NewSetOp(
 				plan.UnionType,
 				plan.NewProject(
 					[]sql.Expression{
@@ -309,7 +309,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 		},
 		{
 			"top-level union with mismatched type in schema",
-			plan.NewUnion(
+			plan.NewSetOp(
 				plan.UnionType,
 				plan.NewProject(
 					[]sql.Expression{
@@ -333,7 +333,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 			"subquery union",
 			plan.NewSubqueryAlias(
 				"aliased", "select bar, baz from mytable union select rab, zab from mytable",
-				plan.NewUnion(
+				plan.NewSetOp(
 					plan.UnionType,
 					plan.NewProject(
 						[]sql.Expression{

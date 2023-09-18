@@ -150,7 +150,7 @@ func TestDeepCopyNode(t *testing.T) {
 				[]sql.Expression{
 					expression.NewLiteral(1, types.Int64),
 				},
-				plan.NewUnion(
+				plan.NewSetOp(
 					plan.UnionType,
 					plan.NewProject(
 						[]sql.Expression{

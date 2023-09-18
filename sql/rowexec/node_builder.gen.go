@@ -107,7 +107,7 @@ func (b *BaseBuilder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (
 		return b.buildSort(ctx, n, row)
 	case *plan.SubqueryAlias:
 		return b.buildSubqueryAlias(ctx, n, row)
-	case *plan.Union:
+	case *plan.SetOp:
 		return b.buildUnion(ctx, n, row)
 	case *plan.IndexedTableAccess:
 		return b.buildIndexedTableAccess(ctx, n, row)

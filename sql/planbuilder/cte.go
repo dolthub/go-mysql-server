@@ -96,7 +96,7 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name strin
 		cteScope := b.buildSelectStmt(sqScope, union)
 		b.renameSource(cteScope, name, columns)
 		switch n := cteScope.node.(type) {
-		case *plan.Union:
+		case *plan.SetOp:
 			sq := plan.NewSubqueryAlias(name, "", n)
 			sq = sq.WithColumns(columns)
 			sq = sq.WithCorrelated(sqScope.correlated())
