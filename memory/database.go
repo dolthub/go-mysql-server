@@ -415,6 +415,7 @@ func (d *BaseDatabase) UpdateEvent(_ *sql.Context, originalName string, event sq
 	return event.Status == sql.EventStatus_Enable.String(), nil
 }
 
+// UpdateLastExecuted implements sql.EventDatabase
 func (d *BaseDatabase) UpdateLastExecuted(ctx *sql.Context, eventName string, lastExecuted time.Time) error {
 	loweredName := strings.ToLower(eventName)
 	found := false
@@ -429,6 +430,18 @@ func (d *BaseDatabase) UpdateLastExecuted(ctx *sql.Context, eventName string, la
 		return sql.ErrEventDoesNotExist.New(eventName)
 	}
 	return nil
+}
+
+// NeedsToReloadEvents implements sql.EventDatabase
+func (d *Database) NeedsToReloadEvents(_ *sql.Context) (bool, error) {
+	// Event reloading not supported for in-memory database
+	return false, nil
+}
+
+// ReloadEvents implements sql.EventDatabase
+func (d *Database) ReloadEvents(ctx *sql.Context) ([]sql.EventDefinition, error) {
+	// Event reloading not supported for in-memory database
+	return d.GetEvents(ctx)
 }
 
 // GetCollation implements sql.CollatedDatabase.

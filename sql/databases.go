@@ -248,6 +248,17 @@ type EventDatabase interface {
 	// UpdateLastExecuted updated the lastExecuted metadata for the given event.
 	// The lastExecuted time is converted into UTC TZ for storage.
 	UpdateLastExecuted(ctx *Context, eventName string, lastExecuted time.Time) error
+	// NeedsToReloadEvents allows integrators to signal that out-of-band changes have modified an event (i.e. an
+	// event was modified without going through the SaveEvent or UpdateEvent methods in this interface), and that
+	// event definitions need to be reloaded. The event executor will periodically check to see if it needs to reload
+	// the events from a database by calling this method and if this method returns true, then the event executor will
+	// call the ReloadEvents method next to load in the new event definitions. If integrators to do not support events
+	// changing out-of-band, then they can simply return false from this method.
+	NeedsToReloadEvents(ctx *Context) (bool, error)
+	// ReloadEvents is called by the event executor initially to load events and after calling the NeedsToReloadEvents
+	// method to reload the latest event definitions. If integrators to do not support events changing out-of-band,
+	// then they can simply return GetEvents(ctx) from this method.
+	ReloadEvents(ctx *Context) ([]EventDefinition, error)
 }
 
 // ViewDatabase is implemented by databases that persist view definitions

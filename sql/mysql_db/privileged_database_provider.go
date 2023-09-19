@@ -414,6 +414,22 @@ func (pdb PrivilegedDatabase) UpdateEvent(ctx *sql.Context, originalName string,
 	return false, sql.ErrEventsNotSupported.New(pdb.db.Name())
 }
 
+// NeedsToReloadEvents implements sql.EventDatabase
+func (pdb PrivilegedDatabase) NeedsToReloadEvents(ctx *sql.Context) (bool, error) {
+	if db, ok := pdb.db.(sql.EventDatabase); ok {
+		return db.NeedsToReloadEvents(ctx)
+	}
+	return false, sql.ErrEventsNotSupported.New(pdb.db.Name())
+}
+
+// ReloadEvents implements sql.EventDatabase
+func (pdb PrivilegedDatabase) ReloadEvents(ctx *sql.Context) ([]sql.EventDefinition, error) {
+	if db, ok := pdb.db.(sql.EventDatabase); ok {
+		return db.ReloadEvents(ctx)
+	}
+	return nil, sql.ErrEventsNotSupported.New(pdb.db.Name())
+}
+
 func (pdb PrivilegedDatabase) UpdateLastExecuted(ctx *sql.Context, eventName string, lastExecuted time.Time) error {
 	if db, ok := pdb.db.(sql.EventDatabase); ok {
 		return db.UpdateLastExecuted(ctx, eventName, lastExecuted)

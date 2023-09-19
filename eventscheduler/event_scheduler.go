@@ -139,6 +139,7 @@ func (es *EventScheduler) loadEventsAndStartEventExecutor(ctx *sql.Context, a *a
 		return err
 	}
 
+	es.executor.catalog = a.Catalog
 	es.executor.list = newEnabledEventsList(enabledEvents)
 	go es.executor.start()
 	return nil
@@ -152,21 +153,27 @@ func (es *EventScheduler) evaluateAllEventsAndLoadEnabledEvents(ctx *sql.Context
 	dbs := a.Catalog.AllDatabases(ctx)
 	events := make([]*enabledEvent, 0)
 	for _, db := range dbs {
-		if edb, ok := db.(sql.EventDatabase); ok {
-			// need to set the current database to get parsed plan
-			ctx.SetCurrentDatabase(edb.Name())
+		edb, ok := db.(sql.EventDatabase)
+		if !ok {
+			// Skip any non-EventDatabases
+			continue
+		}
 
-			eDefs, err := edb.GetEvents(ctx)
+		// need to set the current database to get parsed plan
+		ctx.SetCurrentDatabase(edb.Name())
+
+		// Use ReloadEvents instead of GetEvents, so that integrators can capture any tracking metadata
+		// to support detecting out-of-band changes.
+		eDefs, err := edb.ReloadEvents(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, eDef := range eDefs {
+			newEnabledEvent, created, err := newEnabledEvent(ctx, edb, eDef, time.Now())
 			if err != nil {
 				return nil, err
-			}
-			for _, eDef := range eDefs {
-				newEnabledEvent, created, err := newEnabledEvent(ctx, edb, eDef, time.Now())
-				if err != nil {
-					return nil, err
-				} else if created {
-					events = append(events, newEnabledEvent)
-				}
+			} else if created {
+				events = append(events, newEnabledEvent)
 			}
 		}
 	}

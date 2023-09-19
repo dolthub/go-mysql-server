@@ -36,6 +36,7 @@ type eventExecutor struct {
 	ctxGetterFunc       func() (*sql.Context, func() error, error)
 	queryRunFunc        func(ctx *sql.Context, dbName, query, username, address string) error
 	stop                atomic.Bool
+	catalog             sql.Catalog
 }
 
 // newEventExecutor returns eventExecutor object with empty enabled events list.
@@ -60,45 +61,126 @@ func (ee *eventExecutor) start() {
 	pollingDuration := 1 * time.Second
 	for {
 		time.Sleep(pollingDuration)
+
+		ctx, _, err := ee.ctxGetterFunc()
+		if err != nil {
+			logrus.Errorf("unable to create context for event executor: %w", err)
+			continue
+		}
+
+		needsToReloadEvents, err := ee.needsToReloadEvents(ctx)
+		if err != nil {
+			ctx.GetLogger().Errorf("unable to determine if events need to be reloaded: %w", err)
+		}
+		if needsToReloadEvents {
+			err := ee.reloadEvents(ctx)
+			if err != nil {
+				ctx.GetLogger().Errorf("unable to reload events: %w", err)
+			}
+		}
+
 		timeNow := time.Now()
 		if ee.stop.Load() {
 			logrus.Trace("Stopping eventExecutor")
 			return
-		} else if ee.list.len() > 0 {
-			// safeguard list entry getting removed while in check
-			nextAt, ok := ee.list.getNextExecutionTime()
-			if ok {
-				secondsUntilExecution := nextAt.Sub(timeNow).Seconds()
-				if secondsUntilExecution <= -1*pollingDuration.Seconds() {
-					// in case the execution time is past, re-evaluate it ( TODO: should not happen )
-					curEvent := ee.list.pop()
-					if curEvent != nil {
-						logrus.Warnf("Reevaluating event %s, seconds until execution: %f", curEvent.name(), secondsUntilExecution)
-						ee.reevaluateEvent(curEvent.edb, curEvent.event)
-					}
-				} else if secondsUntilExecution <= 0.0000001 {
-					curEvent := ee.list.pop()
-					if curEvent != nil {
-						logrus.Tracef("Executing event %s, seconds until execution: %f", curEvent.name(), secondsUntilExecution)
-						ctx, commit, err := ee.ctxGetterFunc()
-						if err != nil {
-							ctx.GetLogger().Errorf("Received error '%s' getting ctx in event scheduler", err)
-						}
-						err = ee.executeEventAndUpdateList(ctx, curEvent, timeNow)
-						if err != nil {
-							ctx.GetLogger().Errorf("Received error '%s' executing event: %s", err, curEvent.event.Name)
-						}
-						err = commit()
-						if err != nil {
-							ctx.GetLogger().Errorf("Received error '%s' executing event: %s", err, curEvent.event.Name)
-						}
-					}
-				} else {
-					logrus.Tracef("Not executing event %s yet, seconds until execution: %f", ee.list.peek().name(), secondsUntilExecution)
+		} else if ee.list.len() == 0 {
+			continue
+		}
+
+		// safeguard list entry getting removed while in check
+		nextAt, ok := ee.list.getNextExecutionTime()
+		if !ok {
+			continue
+		}
+
+		secondsUntilExecution := nextAt.Sub(timeNow).Seconds()
+		if secondsUntilExecution <= -1*pollingDuration.Seconds() {
+			// in case the execution time is past, re-evaluate it ( TODO: should not happen )
+			curEvent := ee.list.pop()
+			if curEvent != nil {
+				logrus.Warnf("Reevaluating event %s, seconds until execution: %f", curEvent.name(), secondsUntilExecution)
+				ee.reevaluateEvent(curEvent.edb, curEvent.event)
+			}
+		} else if secondsUntilExecution <= 0.0000001 {
+			curEvent := ee.list.pop()
+			if curEvent != nil {
+				ctx.GetLogger().Debugf("Executing event %s, seconds until execution: %f", curEvent.name(), secondsUntilExecution)
+				ctx, commit, err := ee.ctxGetterFunc()
+				if err != nil {
+					ctx.GetLogger().Errorf("Received error '%s' getting ctx in event scheduler", err)
 				}
+				err = ee.executeEventAndUpdateList(ctx, curEvent, timeNow)
+				if err != nil {
+					ctx.GetLogger().Errorf("Received error '%s' executing event: %s", err, curEvent.event.Name)
+				}
+				err = commit()
+				if err != nil {
+					ctx.GetLogger().Errorf("Received error '%s' executing event: %s", err, curEvent.event.Name)
+				}
+			}
+		} else {
+			ctx.GetLogger().Tracef("Not executing event %s yet, seconds until execution: %f", ee.list.peek().name(), secondsUntilExecution)
+		}
+	}
+}
+
+// needsToReloadEvents returns true if any of the EventDatabases known to this event executor
+func (ee *eventExecutor) needsToReloadEvents(ctx *sql.Context) (bool, error) {
+	// TODO: We currently reload all events across all databases if any of the EventDatabases indicate they
+	//       need to be reloaded. In the future, we could optimize this more by ony reloading events from the
+	//       EventDatabases that indicated they need to be reloaded. This just requires more detailed handling
+	//       of the enabledEvent list to merge together existing events and reloaded events.
+	for _, database := range ee.catalog.AllDatabases(ctx) {
+		edb, ok := database.(sql.EventDatabase)
+		if !ok {
+			// Skip any non-EventDatabases
+			continue
+		}
+
+		needsToReload, err := edb.NeedsToReloadEvents(ctx)
+		if err != nil {
+			return false, err
+		}
+		if needsToReload {
+			ctx.GetLogger().Debugf("Event reload needed for database %s", edb.Name())
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// reloadEvents reloads all events from all known EventDatabases. This is necessary when out-of-band
+// changes have modified event definitions without going through the CREATE EVENT, ALTER EVENT code paths.
+func (ee *eventExecutor) reloadEvents(ctx *sql.Context) error {
+	ctx.GetLogger().Debug("Reloading events")
+
+	enabledEvents := make([]*enabledEvent, 0)
+	allDatabases := ee.catalog.AllDatabases(ctx)
+	for _, database := range allDatabases {
+		edb, ok := database.(sql.EventDatabase)
+		if !ok {
+			// Skip any non-EventDatabases
+			continue
+		}
+
+		ctx.SetCurrentDatabase(edb.Name())
+		events, err := edb.ReloadEvents(ctx)
+		if err != nil {
+			return err
+		}
+
+		for _, eDef := range events {
+			newEnabledEvent, created, err := newEnabledEvent(ctx, edb, eDef, time.Now())
+			if err != nil {
+				ctx.GetLogger().Errorf("unable to reload event: %w", err)
+			} else if created {
+				enabledEvents = append(enabledEvents, newEnabledEvent)
 			}
 		}
 	}
+
+	ee.list = newEnabledEventsList(enabledEvents)
+	return nil
 }
 
 // shutdown stops the eventExecutor.
