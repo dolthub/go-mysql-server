@@ -635,7 +635,7 @@ func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf
 			outScope.newColumn(scopeColumn{
 				db:       strings.ToLower(db),
 				table:    strings.ToLower(name),
-				col:      strings.ToLower(c.Name),
+				col:      c.Name,
 				typ:      c.Type,
 				nullable: c.Nullable,
 			})
