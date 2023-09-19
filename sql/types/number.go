@@ -86,20 +86,29 @@ var (
 )
 
 type NumberTypeImpl_ struct {
-	baseType query.Type
+	baseType     query.Type
+	displayWidth int
 }
 
 var _ sql.Type = NumberTypeImpl_{}
 var _ sql.Type2 = NumberTypeImpl_{}
 var _ sql.CollationCoercible = NumberTypeImpl_{}
+var _ sql.NumberType = NumberTypeImpl_{}
 
 // CreateNumberType creates a NumberType.
 func CreateNumberType(baseType query.Type) (sql.NumberType, error) {
+	return CreateNumberTypeWithDisplayWidth(baseType, 0)
+}
+
+// CreateNumberTypeWithDisplayWidth creates a NumberType that includes optional |displayWidth| metadata. Note that
+// while this function allows
+func CreateNumberTypeWithDisplayWidth(baseType query.Type, displayWidth int) (sql.NumberType, error) {
 	switch baseType {
 	case sqltypes.Int8, sqltypes.Uint8, sqltypes.Int16, sqltypes.Uint16, sqltypes.Int24, sqltypes.Uint24,
 		sqltypes.Int32, sqltypes.Uint32, sqltypes.Int64, sqltypes.Uint64, sqltypes.Float32, sqltypes.Float64:
 		return NumberTypeImpl_{
-			baseType: baseType,
+			baseType:     baseType,
+			displayWidth: displayWidth,
 		}, nil
 	}
 	return nil, fmt.Errorf("%v is not a valid number base type", baseType.String())
@@ -108,6 +117,15 @@ func CreateNumberType(baseType query.Type) (sql.NumberType, error) {
 // MustCreateNumberType is the same as CreateNumberType except it panics on errors.
 func MustCreateNumberType(baseType query.Type) sql.NumberType {
 	nt, err := CreateNumberType(baseType)
+	if err != nil {
+		panic(err)
+	}
+	return nt
+}
+
+// MustCreateNumberTypeWithDisplayWidth is the same as CreateNumberTypeWithDisplayWidth except it panics on errors.
+func MustCreateNumberTypeWithDisplayWidth(baseType query.Type, displayWidth int) sql.NumberType {
+	nt, err := CreateNumberTypeWithDisplayWidth(baseType, displayWidth)
 	if err != nil {
 		panic(err)
 	}
@@ -604,6 +622,10 @@ func (t NumberTypeImpl_) SQL2(v sql.Value) (sqltypes.Value, error) {
 func (t NumberTypeImpl_) String() string {
 	switch t.baseType {
 	case sqltypes.Int8:
+		// MySQL 8.1.0 only honors display width for signed TINYINT fields
+		if t.displayWidth != 0 {
+			return fmt.Sprintf("tinyint(%d)", t.displayWidth)
+		}
 		return "tinyint"
 	case sqltypes.Uint8:
 		return "tinyint unsigned"
@@ -722,6 +744,11 @@ func (t NumberTypeImpl_) IsSigned() bool {
 		return true
 	}
 	return false
+}
+
+// DisplayWidth() implements NumberType inteface.
+func (t NumberTypeImpl_) DisplayWidth() int {
+	return t.displayWidth
 }
 
 func convertToInt64(t NumberTypeImpl_, v interface{}) (int64, sql.ConvertInRange, error) {

@@ -272,6 +272,36 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/6682
+		Name: "display width for numeric types",
+		SetUpScript: []string{
+			"CREATE TABLE numericDisplayWidthTest (pk int primary key, b boolean, ti tinyint, ti1 tinyint(1), ti2 tinyint(2), i int, i1 int(1));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SHOW CREATE TABLE numericDisplayWidthTest;",
+				Expected: []sql.Row{{"numericDisplayWidthTest",
+					"CREATE TABLE `numericDisplayWidthTest` (\n  `pk` int NOT NULL,\n  `b` tinyint(1),\n  `ti` tinyint,\n  `ti1` tinyint(1),\n  `ti2` tinyint,\n  `i` int,\n  `i1` int,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "SHOW FULL FIELDS FROM numericDisplayWidthTest;",
+				Expected: []sql.Row{
+					{"pk", "int", interface{}(nil), "NO", "PRI", "NULL", "", "", ""},
+					{"b", "tinyint(1)", interface{}(nil), "YES", "", "NULL", "", "", ""},
+					{"ti", "tinyint", interface{}(nil), "YES", "", "NULL", "", "", ""},
+					{"ti1", "tinyint(1)", interface{}(nil), "YES", "", "NULL", "", "", ""},
+					{"ti2", "tinyint", interface{}(nil), "YES", "", "NULL", "", "", ""},
+					{"i", "int", interface{}(nil), "YES", "", "NULL", "", "", ""},
+					{"i1", "int", interface{}(nil), "YES", "", "NULL", "", "", ""},
+				},
+			},
+			{
+				Query:          "CREATE TABLE errorTest(pk int primary key, ti tinyint(-1));",
+				ExpectedErrStr: "syntax error at position 56 near 'tinyint'",
+			},
+		},
+	},
+	{
 		Name: "enums with default, case-sensitive collation (utf8mb4_0900_bin)",
 		SetUpScript: []string{
 			"CREATE TABLE enumtest1 (pk int primary key, e enum('abc', 'XYZ'));",

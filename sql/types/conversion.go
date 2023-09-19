@@ -120,8 +120,23 @@ func ApproximateTypeFromValue(val interface{}) sql.Type {
 func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 	switch strings.ToLower(ct.Type) {
 	case "boolean", "bool":
-		return Int8, nil
+		return CreateNumberTypeWithDisplayWidth(sqltypes.Int8, 1)
 	case "tinyint":
+		if ct.Length != nil {
+			displayWidth, err := strconv.Atoi(string(ct.Length.Val))
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse display width value: %w", err)
+			}
+
+			// As of MySQL 8.1.0, TINYINT is the only integer type for which MySQL will retain a display width,
+			// and ONLY if it's 1. All other types and display width values are dropped. TINYINT(1) seems to be
+			// left for backwards compatibility with ORM tools like ActiveRecord that rely on it for mapping to
+			// a boolean type.
+			if !ct.Unsigned && displayWidth == 1 {
+				return CreateNumberTypeWithDisplayWidth(sqltypes.Int8, displayWidth)
+			}
+		}
+
 		if ct.Unsigned {
 			return Uint8, nil
 		}
