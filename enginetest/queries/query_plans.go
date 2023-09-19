@@ -9160,7 +9160,7 @@ WHERE
 			"     │                   ├─ columns: [count(ccefl.zh72s):0!null, min(ccefl.wgbrl):1!null, sum(ccefl.wgbrl):2!null, ccefl.ZH72S:3, ccefl.ZH72S:3 as ZH72S, count(ccefl.zh72s):0!null as JTOA7, min(ccefl.wgbrl):1!null as TTDPM, sum(ccefl.wgbrl):2!null as FBSRS]\n" +
 			"     │                   └─ GroupBy\n" +
 			"     │                       ├─ select: COUNT(ccefl.ZH72S:1), MIN(ccefl.WGBRL:2), SUM(ccefl.WGBRL:2), ccefl.ZH72S:1\n" +
-			"     │                       ├─ group: ccefl.ZH72S:1 as ZH72S\n" +
+			"     │                       ├─ group: ccefl.ZH72S:1\n" +
 			"     │                       └─ SubqueryAlias\n" +
 			"     │                           ├─ name: ccefl\n" +
 			"     │                           ├─ outerVisibility: false\n" +
@@ -9722,7 +9722,7 @@ WHERE
 			"     │                   ├─ columns: [count(wooj5.zh72s):0!null, min(wooj5.lea4j):1!null, sum(wooj5.lea4j):2!null, wooj5.ZH72S:3, wooj5.ZH72S:3 as ZH72S, count(wooj5.zh72s):0!null as JTOA7, min(wooj5.lea4j):1!null as BADTB, sum(wooj5.lea4j):2!null as FLHXH]\n" +
 			"     │                   └─ GroupBy\n" +
 			"     │                       ├─ select: COUNT(wooj5.ZH72S:1), MIN(wooj5.LEA4J:2), SUM(wooj5.LEA4J:2), wooj5.ZH72S:1\n" +
-			"     │                       ├─ group: wooj5.ZH72S:1 as ZH72S\n" +
+			"     │                       ├─ group: wooj5.ZH72S:1\n" +
 			"     │                       └─ SubqueryAlias\n" +
 			"     │                           ├─ name: wooj5\n" +
 			"     │                           ├─ outerVisibility: false\n" +
@@ -10639,7 +10639,7 @@ WHERE
 			"     │                   ├─ columns: [count(tq57w.zh72s):0!null, min(tq57w.tj66d):1!null, sum(tq57w.tj66d):2!null, tq57w.ZH72S:3, tq57w.ZH72S:3 as ZH72S, count(tq57w.zh72s):0!null as JTOA7, min(tq57w.tj66d):1!null as B4OVH, sum(tq57w.tj66d):2!null as R5CKX]\n" +
 			"     │                   └─ GroupBy\n" +
 			"     │                       ├─ select: COUNT(tq57w.ZH72S:1), MIN(tq57w.TJ66D:2), SUM(tq57w.TJ66D:2), tq57w.ZH72S:1\n" +
-			"     │                       ├─ group: tq57w.ZH72S:1 as ZH72S\n" +
+			"     │                       ├─ group: tq57w.ZH72S:1\n" +
 			"     │                       └─ SubqueryAlias\n" +
 			"     │                           ├─ name: tq57w\n" +
 			"     │                           ├─ outerVisibility: false\n" +
@@ -12497,7 +12497,7 @@ WHERE
 			" ├─ columns: [xprw6.T4IBQ:2!null as T4IBQ, xprw6.ECUWU:3!null as ECUWU, sum(xprw6.b5ouf):0!null as B5OUF, sum(xprw6.sp4si):1!null as SP4SI]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: SUM(xprw6.B5OUF:3), SUM(xprw6.SP4SI:4!null), xprw6.T4IBQ:0!null, xprw6.ECUWU:1!null\n" +
-			"     ├─ group: xprw6.T4IBQ:0!null as T4IBQ, xprw6.ECUWU:1!null as ECUWU\n" +
+			"     ├─ group: xprw6.T4IBQ:0!null, xprw6.ECUWU:1!null\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: xprw6\n" +
 			"         ├─ outerVisibility: false\n" +
@@ -12513,7 +12513,7 @@ WHERE
 			"                 │       ├─ nrfj3.YHYLK:6\n" +
 			"                 │       └─ 0 (tinyint)\n" +
 			"                 │   THEN 1 (tinyint) ELSE 0 (tinyint) END), nrfj3.T4IBQ:0!null, nrfj3.ECUWU:1!null, nrfj3.GSTQA:2!null, nrfj3.B5OUF:3\n" +
-			"                 ├─ group: nrfj3.T4IBQ:0!null as T4IBQ, nrfj3.ECUWU:1!null as ECUWU, nrfj3.GSTQA:2!null as GSTQA\n" +
+			"                 ├─ group: nrfj3.T4IBQ:0!null, nrfj3.ECUWU:1!null, nrfj3.GSTQA:2!null\n" +
 			"                 └─ SubqueryAlias\n" +
 			"                     ├─ name: nrfj3\n" +
 			"                     ├─ outerVisibility: false\n" +
@@ -12941,7 +12941,7 @@ WHERE
 			" ├─ columns: [xprw6.T4IBQ:2!null as T4IBQ, xprw6.ECUWU:3!null as ECUWU, sum(xprw6.b5ouf):0!null as B5OUF, sum(xprw6.sp4si):1!null as SP4SI]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: SUM(xprw6.B5OUF:3), SUM(xprw6.SP4SI:4!null), xprw6.T4IBQ:0!null, xprw6.ECUWU:1!null\n" +
-			"     ├─ group: xprw6.T4IBQ:0!null as T4IBQ, xprw6.ECUWU:1!null as ECUWU\n" +
+			"     ├─ group: xprw6.T4IBQ:0!null, xprw6.ECUWU:1!null\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: xprw6\n" +
 			"         ├─ outerVisibility: false\n" +
@@ -12957,7 +12957,7 @@ WHERE
 			"                 │       ├─ nrfj3.YHYLK:6\n" +
 			"                 │       └─ 0 (tinyint)\n" +
 			"                 │   THEN 1 (tinyint) ELSE 0 (tinyint) END), nrfj3.T4IBQ:0!null, nrfj3.ECUWU:1!null, nrfj3.GSTQA:2!null, nrfj3.B5OUF:3\n" +
-			"                 ├─ group: nrfj3.T4IBQ:0!null as T4IBQ, nrfj3.ECUWU:1!null as ECUWU, nrfj3.GSTQA:2!null as GSTQA\n" +
+			"                 ├─ group: nrfj3.T4IBQ:0!null, nrfj3.ECUWU:1!null, nrfj3.GSTQA:2!null\n" +
 			"                 └─ SubqueryAlias\n" +
 			"                     ├─ name: nrfj3\n" +
 			"                     ├─ outerVisibility: false\n" +
