@@ -143,7 +143,7 @@ func TestNullSafeEquals(t *testing.T) {
 		require.NotNil(get1)
 		seq := expression.NewNullSafeEquals(get0, get1)
 		require.NotNil(seq)
-		require.Equal(types.Int8, seq.Type())
+		require.Equal(types.Boolean, seq.Type())
 		for cmpResult, cases := range cmpCase {
 			for _, pair := range cases {
 				row := sql.NewRow(pair[0], pair[1])
