@@ -102,7 +102,7 @@ func IsSigned(t sql.Type) bool {
 	if _, ok := t.(SystemBoolType); ok {
 		return true
 	}
-	return t == Int8 || t == Int16 || t == Int24 || t == Int32 || t == Int64
+	return t == Int8 || t == Int16 || t == Int24 || t == Int32 || t == Int64 || t == Boolean
 }
 
 // IsText checks if t is a CHAR, VARCHAR, TEXT, BINARY, VARBINARY, or BLOB (including TEXT and BLOB variants).

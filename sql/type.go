@@ -117,6 +117,7 @@ type NumberType interface {
 	Type
 	IsSigned() bool
 	IsFloat() bool
+	DisplayWidth() int
 }
 
 // StringType represents all string types, including VARCHAR and BLOB.

@@ -1804,7 +1804,24 @@ func TestParseColumnTypeString(t *testing.T) {
 			types.Int8,
 		},
 		{
+			"tinyint(0)",
+			types.Int8,
+		},
+		{
+			// MySQL 8.1.0 only honors display width for TINYINT and only when the display width is 1
+			"tinyint(1)",
+			types.MustCreateNumberTypeWithDisplayWidth(sqltypes.Int8, 1),
+		},
+		{
+			"tinyint(2)",
+			types.Int8,
+		},
+		{
 			"SMALLINT",
+			types.Int16,
+		},
+		{
+			"SMALLINT(1)",
 			types.Int16,
 		},
 		{
@@ -1812,7 +1829,15 @@ func TestParseColumnTypeString(t *testing.T) {
 			types.Int24,
 		},
 		{
+			"MEDIUMINT(1)",
+			types.Int24,
+		},
+		{
 			"INT",
+			types.Int32,
+		},
+		{
+			"INT(0)",
 			types.Int32,
 		},
 		{
@@ -1820,7 +1845,15 @@ func TestParseColumnTypeString(t *testing.T) {
 			types.Int64,
 		},
 		{
+			"BIGINT(1)",
+			types.Int64,
+		},
+		{
 			"TINYINT UNSIGNED",
+			types.Uint8,
+		},
+		{
+			"TINYINT(1) UNSIGNED",
 			types.Uint8,
 		},
 		{
@@ -1828,7 +1861,15 @@ func TestParseColumnTypeString(t *testing.T) {
 			types.Uint16,
 		},
 		{
+			"SMALLINT(1) UNSIGNED",
+			types.Uint16,
+		},
+		{
 			"MEDIUMINT UNSIGNED",
+			types.Uint24,
+		},
+		{
+			"MEDIUMINT(1) UNSIGNED",
 			types.Uint24,
 		},
 		{
@@ -1836,12 +1877,21 @@ func TestParseColumnTypeString(t *testing.T) {
 			types.Uint32,
 		},
 		{
+			"INT(1) UNSIGNED",
+			types.Uint32,
+		},
+		{
 			"BIGINT UNSIGNED",
 			types.Uint64,
 		},
 		{
+			"BIGINT(1) UNSIGNED",
+			types.Uint64,
+		},
+		{
+			// Boolean is a synonym for TINYINT(1)
 			"BOOLEAN",
-			types.Int8,
+			types.MustCreateNumberTypeWithDisplayWidth(sqltypes.Int8, 1),
 		},
 		{
 			"FLOAT",
