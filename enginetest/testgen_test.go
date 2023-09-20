@@ -30,12 +30,12 @@ func TestWriteImdbQueryPlans(t *testing.T) {
 }
 
 func TestWriteTpchQueryPlans(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	writePlans(t, setup.TpchPlanSetup, queries.TpchPlanTests, "TpchPlanTests", 1, true)
 }
 
 func TestWriteTpcdsQueryPlans(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	writePlans(t, setup.TpcdsPlanSetup, queries.TpcdsPlanTests, "TpcdsPlanTests", 1, true)
 }
 

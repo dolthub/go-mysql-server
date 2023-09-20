@@ -149,7 +149,17 @@ func generatePlansForSuite(spec PlanSpec, w *bytes.Buffer) error {
 		_, _ = w.WriteString("\t{\n")
 
 		if strings.Contains(tt.Query, "`") {
-			_, _ = w.WriteString(fmt.Sprintf(`Query: "%s",`, tt.Query))
+			_, _ = w.WriteString("Query: ")
+			for i, line := range strings.Split(strings.TrimSpace(tt.Query), "\n") {
+				if i > 0 {
+					_, _ = w.WriteString(" + \n")
+				}
+				if len(line) > 0 {
+					_, _ = w.WriteString(fmt.Sprintf(`"%s\n"`, strings.ReplaceAll(line, `"`, `\"`)))
+				}
+			}
+			// final line with comma
+			_, _ = w.WriteString(" + \n\"\",\n")
 		} else {
 			_, _ = w.WriteString(fmt.Sprintf("Query: `%s`,", tt.Query))
 		}
@@ -216,7 +226,7 @@ func specQueries(name string) []queries.QueryPlanTest {
 		return queries.PlanTests
 	case "IndexPlanTests":
 		return queries.IndexPlanTests
-	case "ImdbQueryPlans":
+	case "ImdbPlanTests":
 		return queries.ImdbPlanTests
 	case "TpchPlanTests":
 		return queries.TpchPlanTests
