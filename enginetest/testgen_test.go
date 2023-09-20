@@ -24,6 +24,21 @@ func TestWriteQueryPlans(t *testing.T) {
 	writePlans(t, setup.PlanSetup, queries.PlanTests, "PlanTests", 1, true)
 }
 
+func TestWriteImdbQueryPlans(t *testing.T) {
+	t.Skip()
+	writePlans(t, setup.ImdbPlanSetup, queries.ImdbPlanTests, "ImdbPlanTests", 1, true)
+}
+
+func TestWriteTpchQueryPlans(t *testing.T) {
+	//t.Skip()
+	writePlans(t, setup.TpchPlanSetup, queries.TpchPlanTests, "TpchPlanTests", 1, true)
+}
+
+func TestWriteTpcdsQueryPlans(t *testing.T) {
+	//t.Skip()
+	writePlans(t, setup.TpcdsPlanSetup, queries.TpcdsPlanTests, "TpcdsPlanTests", 1, true)
+}
+
 func TestWriteIndexQueryPlans(t *testing.T) {
 	t.Skip()
 	writePlans(t, setup.ComplexIndexSetup, queries.IndexPlanTests, "IndexPlanTests", 1, true)
@@ -54,7 +69,7 @@ func writePlans(t *testing.T, s [][]setup.SetupScript, original []queries.QueryP
 		_, _ = w.WriteString("\t{\n")
 		ctx := NewContextWithEngine(harness, engine)
 		parsed, err := planbuilder.Parse(ctx, engine.EngineAnalyzer().Catalog, tt.Query)
-		require.NoError(t, err)
+		require.NoError(t, err, "%s", tt.Query)
 
 		node, err := engine.EngineAnalyzer().Analyze(ctx, parsed, nil)
 		require.NoError(t, err, tt.Query)

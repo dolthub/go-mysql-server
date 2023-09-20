@@ -15,24 +15,28 @@
 package setup
 
 var (
-	Mytable           [][]SetupScript
-	KeylessSetup      [][]SetupScript
-	VersionedSetup    [][]SetupScript
-	SpecialSetup      [][]SetupScript
-	SimpleSetup       [][]SetupScript
-	PlanSetup         [][]SetupScript
-	OrdinalSetup      [][]SetupScript
-	SpatialSetup      [][]SetupScript
-	JsonSetup         [][]SetupScript
-	FooSetup          [][]SetupScript
-	GraphSetup        [][]SetupScript
-	ReservedSetup     [][]SetupScript
-	ChecksSetup       [][]SetupScript
-	NullsSetup        [][]SetupScript
-	ComplexIndexSetup [][]SetupScript
-	LoadDataSetup     [][]SetupScript
-	XySetup           [][]SetupScript
-	JoinsSetup        [][]SetupScript
+	Mytable              [][]SetupScript
+	KeylessSetup         [][]SetupScript
+	VersionedSetup       [][]SetupScript
+	SpecialSetup         [][]SetupScript
+	SimpleSetup          [][]SetupScript
+	PlanSetup            [][]SetupScript
+	OrdinalSetup         [][]SetupScript
+	SpatialSetup         [][]SetupScript
+	JsonSetup            [][]SetupScript
+	FooSetup             [][]SetupScript
+	GraphSetup           [][]SetupScript
+	ReservedSetup        [][]SetupScript
+	ChecksSetup          [][]SetupScript
+	NullsSetup           [][]SetupScript
+	IntegrationPlanSetup [][]SetupScript
+	ComplexIndexSetup    [][]SetupScript
+	TpchPlanSetup        [][]SetupScript
+	TpcdsPlanSetup       [][]SetupScript
+	ImdbPlanSetup        [][]SetupScript
+	LoadDataSetup        [][]SetupScript
+	XySetup              [][]SetupScript
+	JoinsSetup           [][]SetupScript
 )
 
 func init() {
@@ -67,9 +71,13 @@ func init() {
 	ChecksSetup = [][]SetupScript{MydbData, Check_constraintData}
 	NullsSetup = [][]SetupScript{MydbData, Null_rangesData}
 	ComplexIndexSetup = [][]SetupScript{MydbData, Comp_index_tablesData}
+	ImdbPlanSetup = [][]SetupScript{MydbData, ImdbData}
+	TpchPlanSetup = [][]SetupScript{MydbData, TpchData}
+	TpcdsPlanSetup = [][]SetupScript{MydbData, TpcdsData}
 	LoadDataSetup = [][]SetupScript{MydbData, LoadtableData}
 	XySetup = [][]SetupScript{MydbData, XyData}
 	JoinsSetup = [][]SetupScript{MydbData, JoinData}
+	IntegrationPlanSetup = [][]SetupScript{MydbData, Integration_testData}
 	SimpleSetup = concatenateSetupSources(
 		Mytable,
 		SpecialSetup,
