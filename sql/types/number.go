@@ -32,8 +32,8 @@ import (
 )
 
 var (
-	// Boolean is a synonym for TINYINT
-	Boolean = Int8
+	// Boolean is a synonym for TINYINT(1)
+	Boolean = MustCreateNumberTypeWithDisplayWidth(sqltypes.Int8, 1)
 	// Int8 is an integer of 8 bits
 	Int8 = MustCreateNumberType(sqltypes.Int8)
 	// Uint8 is an unsigned integer of 8 bits
