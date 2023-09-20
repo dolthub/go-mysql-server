@@ -258,7 +258,7 @@ func TestNumberString(t *testing.T) {
 		typ         sql.Type
 		expectedStr string
 	}{
-		{Boolean, "tinyint"},
+		{Boolean, "tinyint(1)"},
 		{Int8, "tinyint"},
 		{Int16, "smallint"},
 		{Int24, "mediumint"},
