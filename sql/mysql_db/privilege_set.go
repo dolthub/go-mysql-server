@@ -142,6 +142,10 @@ func (ps PrivilegeSet) RemoveDatabase(dbName string, privileges ...sql.Privilege
 			delete(dbSet.privs, priv)
 		}
 	}
+
+	if len(dbSet.privs) == 0 {
+		delete(ps.databases, strings.ToLower(dbName))
+	}
 }
 
 // RemoveTable removes the given table privilege(s).
