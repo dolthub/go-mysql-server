@@ -280,8 +280,12 @@ func (ps *PrivilegeSet) ClearGlobal() {
 
 // ClearDatabase removes all privileges for the given database.
 func (ps PrivilegeSet) ClearDatabase(dbName string) {
-	ps.getUseableDb(dbName).clear()
-	delete(ps.databases, strings.ToLower(dbName))
+	lowerDbName := strings.ToLower(dbName)
+	dbSet, ok := ps.databases[lowerDbName]
+	if ok {
+		dbSet.clear()
+		delete(ps.databases, lowerDbName)
+	}
 }
 
 // ClearTable removes all privileges for the given table.
