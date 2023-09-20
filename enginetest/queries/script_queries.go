@@ -151,6 +151,10 @@ var ScriptTests = []ScriptTest{
 			"insert into t1 values (1), (2), (3);",
 			"create table t2 (i float);",
 			"insert into t2 values (1.0), (1.99), (3.0);",
+			"create table l (i int);",
+			"insert into l values (1), (1), (1);",
+			"create table r (i int);",
+			"insert into r values (1);",
 		},
 		Assertions: []ScriptTestAssertion{
 			// Intersect tests
@@ -263,6 +267,21 @@ var ScriptTests = []ScriptTest{
 				Query: "table t1 except table t2 order by i;",
 				Expected: []sql.Row{
 					{2.0},
+				},
+			},
+			{
+				Query: "table l except table r;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "table l except distinct table r;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "table l except all table r;",
+				Expected: []sql.Row{
+					{1},
+					{1},
 				},
 			},
 

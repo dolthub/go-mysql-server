@@ -190,18 +190,12 @@ func TestSingleScript(t *testing.T) {
 		{
 			Name: "insert default value",
 			SetUpScript: []string{
-				"create table t1 (i int);",
-				"insert into t1 values (1), (2), (3);",
-				"create table t2 (i float);",
-				"insert into t2 values (1.0), (1.99), (3.0);",
+				"create table xy (x int primary key, y int default (x+1))",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					// Field indexing error
-					Query: "table t1 intersect table t2 order by i;",
-					Expected: []sql.Row{
-						{1.0},
-					},
+					Query:    "insert into xy (x,y) values (1, DEFAULT)",
+					Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 0}}},
 				},
 			},
 		},

@@ -679,13 +679,22 @@ func (b *BaseBuilder) buildSetOp(ctx *sql.Context, s *plan.SetOp, row sql.Row) (
 			span.End()
 			return nil, err
 		}
+		if s.Distinct {
+			dIter := newDistinctIter(ctx, iter)
+			s.AddDispose(dIter.dispose)
+			iter = dIter
+
+			dIter2 := newDistinctIter(ctx, iter2)
+			s.AddDispose(dIter2.dispose)
+			iter2 = dIter2
+		}
 		iter = &exceptIter{
 			lIter: iter,
 			rIter: iter2,
 		}
 	}
 
-	if s.Distinct {
+	if s.Distinct && s.SetOpType != plan.ExceptType {
 		dIter := newDistinctIter(ctx, iter)
 		s.AddDispose(dIter.dispose)
 		iter = dIter
