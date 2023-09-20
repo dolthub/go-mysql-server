@@ -165,7 +165,7 @@ func GetIsUpdatableFromCreateView(cv *CreateView) bool {
 		}
 
 		switch nn := n.(type) {
-		case *Distinct, *GroupBy, *Having, *Union:
+		case *Distinct, *GroupBy, *Having, *SetOp:
 			isUpdatable = false
 			return false
 		case *Project:

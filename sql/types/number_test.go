@@ -97,18 +97,18 @@ func TestNumberCreate(t *testing.T) {
 		expectedType NumberTypeImpl_
 		expectedErr  bool
 	}{
-		{sqltypes.Int8, NumberTypeImpl_{sqltypes.Int8}, false},
-		{sqltypes.Int16, NumberTypeImpl_{sqltypes.Int16}, false},
-		{sqltypes.Int24, NumberTypeImpl_{sqltypes.Int24}, false},
-		{sqltypes.Int32, NumberTypeImpl_{sqltypes.Int32}, false},
-		{sqltypes.Int64, NumberTypeImpl_{sqltypes.Int64}, false},
-		{sqltypes.Uint8, NumberTypeImpl_{sqltypes.Uint8}, false},
-		{sqltypes.Uint16, NumberTypeImpl_{sqltypes.Uint16}, false},
-		{sqltypes.Uint24, NumberTypeImpl_{sqltypes.Uint24}, false},
-		{sqltypes.Uint32, NumberTypeImpl_{sqltypes.Uint32}, false},
-		{sqltypes.Uint64, NumberTypeImpl_{sqltypes.Uint64}, false},
-		{sqltypes.Float32, NumberTypeImpl_{sqltypes.Float32}, false},
-		{sqltypes.Float64, NumberTypeImpl_{sqltypes.Float64}, false},
+		{sqltypes.Int8, NumberTypeImpl_{sqltypes.Int8, 0}, false},
+		{sqltypes.Int16, NumberTypeImpl_{sqltypes.Int16, 0}, false},
+		{sqltypes.Int24, NumberTypeImpl_{sqltypes.Int24, 0}, false},
+		{sqltypes.Int32, NumberTypeImpl_{sqltypes.Int32, 0}, false},
+		{sqltypes.Int64, NumberTypeImpl_{sqltypes.Int64, 0}, false},
+		{sqltypes.Uint8, NumberTypeImpl_{sqltypes.Uint8, 0}, false},
+		{sqltypes.Uint16, NumberTypeImpl_{sqltypes.Uint16, 0}, false},
+		{sqltypes.Uint24, NumberTypeImpl_{sqltypes.Uint24, 0}, false},
+		{sqltypes.Uint32, NumberTypeImpl_{sqltypes.Uint32, 0}, false},
+		{sqltypes.Uint64, NumberTypeImpl_{sqltypes.Uint64, 0}, false},
+		{sqltypes.Float32, NumberTypeImpl_{sqltypes.Float32, 0}, false},
+		{sqltypes.Float64, NumberTypeImpl_{sqltypes.Float64, 0}, false},
 	}
 
 	for _, test := range tests {
@@ -258,7 +258,7 @@ func TestNumberString(t *testing.T) {
 		typ         sql.Type
 		expectedStr string
 	}{
-		{Boolean, "tinyint"},
+		{Boolean, "tinyint(1)"},
 		{Int8, "tinyint"},
 		{Int16, "smallint"},
 		{Int24, "mediumint"},
