@@ -284,6 +284,8 @@ var ScriptTests = []ScriptTest{
 					"CREATE TABLE `numericDisplayWidthTest` (\n  `pk` int NOT NULL,\n  `b` tinyint(1),\n  `ti` tinyint,\n  `ti1` tinyint(1),\n  `ti2` tinyint,\n  `i` int,\n  `i1` int,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
+				// MySQL only honors display width when it is set to 1 and used with the TINYINT type;
+				// all other uses parse correctly, but are dropped.
 				Query: "SHOW FULL FIELDS FROM numericDisplayWidthTest;",
 				Expected: []sql.Row{
 					{"pk", "int", interface{}(nil), "NO", "PRI", "NULL", "", "", ""},
