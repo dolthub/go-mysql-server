@@ -16,6 +16,7 @@ package queries
 
 import (
 	"math"
+	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
 
@@ -827,6 +828,24 @@ var SpatialInsertQueries = []WriteQueryTest{
 }
 
 var InsertScripts = []ScriptTest{
+	{
+		// https://github.com/dolthub/dolt/issues/6675
+		Name: "issue 6675: on duplicate rearranged getfield indexes from select source",
+		SetUpScript: []string{
+			"create table xy (x int primary key, y datetime)",
+			"insert into xy values (0,'2023-09-16')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO xy (y,x) select * from (select cast('2019-12-31T12:00:00Z' as date), 0) dt(a,b) ON DUPLICATE KEY UPDATE x=dt.b+1, y=dt.a",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select * from xy",
+				Expected: []sql.Row{{1, time.Date(2019, time.December, 31, 0, 0, 0, 0, time.UTC)}},
+			},
+		},
+	},
 	{
 		// https://github.com/dolthub/dolt/issues/4857
 		Name: "issue 4857: insert cte column alias with table alias qualify panic",

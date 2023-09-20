@@ -95,7 +95,7 @@ func TestJSONContainsPath(t *testing.T) {
 		// Error cases
 		{onePath, sql.Row{`{"a": 1}`, `None`, `$.a`}, nil, errors.New("The oneOrAll argument to json_contains_path may take these values: 'one' or 'all'")},
 		{onePath, sql.Row{`{"a": 1`, `One`, `$.a`}, nil, errors.New(`Invalid JSON text: {"a": 1`)},
-		{threePath, sql.Row{`{"a": 1, "b": 2, "c": {"d": {"e" : 42}}}`, `one`, 42, `$.c.d.e`, `$.x`}, nil, errors.New(`should start with '$'`)},
+		{threePath, sql.Row{`{"a": 1, "b": 2, "c": {"d": {"e" : 42}}}`, `one`, 42, `$.c.d.e`, `$.x`}, nil, errors.New(`Invalid JSON path expression. Path must start with '$', but received: '42'`)},
 	}
 
 	for _, testcase := range testCases {

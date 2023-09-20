@@ -633,11 +633,12 @@ func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf
 		outScope.node = view
 		for _, c := range view.Schema() {
 			outScope.newColumn(scopeColumn{
-				db:       strings.ToLower(db),
-				table:    strings.ToLower(name),
-				col:      strings.ToLower(c.Name),
-				typ:      c.Type,
-				nullable: c.Nullable,
+				db:          strings.ToLower(db),
+				table:       strings.ToLower(name),
+				col:         strings.ToLower(c.Name),
+				originalCol: c.Name,
+				typ:         c.Type,
+				nullable:    c.Nullable,
 			})
 		}
 		return outScope, true

@@ -62,20 +62,20 @@ func TestUnion(t *testing.T) {
 		expected []string
 	}{
 		{
-			plan.NewUnion(plan.NewProject(name, plan.NewResolvedTable(child, nil, nil)), plan.NewProject(name, plan.NewResolvedTable(child, nil, nil)), false, nil, nil, nil),
+			plan.NewSetOp(plan.UnionType, plan.NewProject(name, plan.NewResolvedTable(child, nil, nil)), plan.NewProject(name, plan.NewResolvedTable(child, nil, nil)), false, nil, nil, nil),
 			[]string{
 				"john", "jane", "john", "martha", "martha",
 				"john", "jane", "john", "martha", "martha",
 			},
 		},
 		{
-			plan.NewUnion(plan.NewProject(name, plan.NewResolvedTable(empty, nil, nil)), plan.NewProject(name, plan.NewResolvedTable(child, nil, nil)), false, nil, nil, nil),
+			plan.NewSetOp(plan.UnionType, plan.NewProject(name, plan.NewResolvedTable(empty, nil, nil)), plan.NewProject(name, plan.NewResolvedTable(child, nil, nil)), false, nil, nil, nil),
 			[]string{
 				"john", "jane", "john", "martha", "martha",
 			},
 		},
 		{
-			plan.NewUnion(plan.NewProject(name, plan.NewResolvedTable(child, nil, nil)), plan.NewProject(name, plan.NewResolvedTable(empty, nil, nil)), false, nil, nil, nil),
+			plan.NewSetOp(plan.UnionType, plan.NewProject(name, plan.NewResolvedTable(child, nil, nil)), plan.NewProject(name, plan.NewResolvedTable(empty, nil, nil)), false, nil, nil, nil),
 			[]string{
 				"john", "jane", "john", "martha", "martha",
 			},

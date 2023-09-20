@@ -257,91 +257,115 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 		},
 		{
 			"top-level union with matching schemas",
-			plan.NewUnion(plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetField(0, types.Text, "bar", false),
-					expression.NewGetField(1, types.Int64, "baz", false),
-				},
-				table,
-			), plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetField(2, types.Text, "rab", false),
-					expression.NewGetField(3, types.Int64, "zab", false),
-				},
-				table,
-			), false, nil, nil, nil),
+			plan.NewSetOp(
+				plan.UnionType,
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(0, types.Text, "bar", false),
+						expression.NewGetField(1, types.Int64, "baz", false),
+					},
+					table,
+				),
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(2, types.Text, "rab", false),
+						expression.NewGetField(3, types.Int64, "zab", false),
+					},
+					table,
+				),
+				false, nil, nil, nil,
+			),
 			true,
 		},
 		{
 			"top-level union with longer left schema",
-			plan.NewUnion(plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetField(0, types.Text, "bar", false),
-					expression.NewGetField(1, types.Int64, "baz", false),
-					expression.NewGetField(4, types.Boolean, "quuz", false),
-				},
-				table,
-			), plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetField(2, types.Text, "rab", false),
-					expression.NewGetField(3, types.Int64, "zab", false),
-				},
-				table,
-			), false, nil, nil, nil),
+			plan.NewSetOp(
+				plan.UnionType,
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(0, types.Text, "bar", false),
+						expression.NewGetField(1, types.Int64, "baz", false),
+						expression.NewGetField(4, types.Boolean, "quuz", false),
+					},
+					table,
+				),
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(2, types.Text, "rab", false),
+						expression.NewGetField(3, types.Int64, "zab", false),
+					},
+					table,
+				),
+				false, nil, nil, nil,
+			),
 			false,
 		},
 		{
 			"top-level union with longer right schema",
-			plan.NewUnion(plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetField(0, types.Text, "bar", false),
-					expression.NewGetField(1, types.Int64, "baz", false),
-				},
-				table,
-			), plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetField(2, types.Text, "rab", false),
-					expression.NewGetField(3, types.Int64, "zab", false),
-					expression.NewGetField(4, types.Boolean, "quuz", false),
-				},
-				table,
-			), false, nil, nil, nil),
+			plan.NewSetOp(
+				plan.UnionType,
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(0, types.Text, "bar", false),
+						expression.NewGetField(1, types.Int64, "baz", false),
+					},
+					table,
+				),
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(2, types.Text, "rab", false),
+						expression.NewGetField(3, types.Int64, "zab", false),
+						expression.NewGetField(4, types.Boolean, "quuz", false),
+					},
+					table,
+				),
+				false, nil, nil, nil,
+			),
 			false,
 		},
 		{
 			"top-level union with mismatched type in schema",
-			plan.NewUnion(plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetField(0, types.Text, "bar", false),
-					expression.NewGetField(1, types.Int64, "baz", false),
-				},
-				table,
-			), plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetField(2, types.Text, "rab", false),
-					expression.NewGetField(3, types.Boolean, "zab", false),
-				},
-				table,
-			), false, nil, nil, nil),
+			plan.NewSetOp(
+				plan.UnionType,
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(0, types.Text, "bar", false),
+						expression.NewGetField(1, types.Int64, "baz", false),
+					},
+					table,
+				),
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(2, types.Text, "rab", false),
+						expression.NewGetField(3, types.Boolean, "zab", false),
+					},
+					table,
+				),
+				false, nil, nil, nil,
+			),
 			false,
 		},
 		{
 			"subquery union",
 			plan.NewSubqueryAlias(
 				"aliased", "select bar, baz from mytable union select rab, zab from mytable",
-				plan.NewUnion(plan.NewProject(
-					[]sql.Expression{
-						expression.NewGetField(0, types.Text, "bar", false),
-						expression.NewGetField(1, types.Int64, "baz", false),
-					},
-					table,
-				), plan.NewProject(
-					[]sql.Expression{
-						expression.NewGetField(2, types.Text, "rab", false),
-						expression.NewGetField(3, types.Boolean, "zab", false),
-					},
-					table,
-				), false, nil, nil, nil),
+				plan.NewSetOp(
+					plan.UnionType,
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewGetField(0, types.Text, "bar", false),
+							expression.NewGetField(1, types.Int64, "baz", false),
+						},
+						table,
+					),
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewGetField(2, types.Text, "rab", false),
+							expression.NewGetField(3, types.Boolean, "zab", false),
+						},
+						table,
+					),
+					false, nil, nil, nil),
 			),
 			false,
 		},

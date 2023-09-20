@@ -18,10 +18,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -176,7 +177,7 @@ func (s *idxScope) visitChildren(n sql.Node) error {
 		}
 		s.childScopes = append(s.childScopes, cScope)
 		s.children = append(s.children, newC)
-	case *plan.Union:
+	case *plan.SetOp:
 		var keepScope *idxScope
 		for i, c := range n.Children() {
 			newC, cScope, err := assignIndexesHelper(c, s)
@@ -277,14 +278,29 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 	case *plan.InsertInto:
 		rightSchema := make(sql.Schema, len(n.Destination.Schema())*2)
 		// schema = [oldrow][newrow]
-		for i, c := range n.Destination.Schema() {
-			rightSchema[i] = c
+		for oldRowIdx, c := range n.Destination.Schema() {
+			rightSchema[oldRowIdx] = c
+			newRowIdx := len(n.Destination.Schema()) + oldRowIdx
 			if _, ok := n.Source.(*plan.Values); !ok && len(n.Destination.Schema()) == len(n.Source.Schema()) {
-				rightSchema[len(n.Destination.Schema())+i] = n.Source.Schema()[i]
+				// find source index that aligns with dest column
+				var matched bool
+				for j, sourceCol := range n.ColumnNames {
+					if strings.EqualFold(c.Name, sourceCol) {
+						rightSchema[newRowIdx] = n.Source.Schema()[j]
+						matched = true
+						break
+					}
+				}
+				if !matched {
+					// todo: this is only used for load data. load data errors
+					//  without a fallback, and fails to resolve defaults if I
+					//  define the columns upfront.
+					rightSchema[newRowIdx] = n.Source.Schema()[oldRowIdx]
+				}
 			} else {
 				newC := c.Copy()
 				newC.Source = planbuilder.OnDupValuesPrefix
-				rightSchema[len(n.Destination.Schema())+i] = newC
+				rightSchema[newRowIdx] = newC
 			}
 		}
 		rightScope := &idxScope{}
