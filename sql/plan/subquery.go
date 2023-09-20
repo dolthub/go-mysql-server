@@ -198,8 +198,8 @@ func PrependRowInPlan(row sql.Row, lateral bool) func(n sql.Node) (sql.Node, tra
 				UnaryNode: UnaryNode{Child: n},
 				Row:       row,
 			}, transform.NewTree, nil
-		case *Union:
-			newUnion := *n
+		case *SetOp:
+			newSetOp := *n
 			newRight, _, err := transform.Node(n.Right(), PrependRowInPlan(row, lateral))
 			if err != nil {
 				return n, transform.SameTree, err
@@ -208,13 +208,13 @@ func PrependRowInPlan(row sql.Row, lateral bool) func(n sql.Node) (sql.Node, tra
 			if err != nil {
 				return n, transform.SameTree, err
 			}
-			newUnion.left = newLeft
-			newUnion.right = newRight
-			return &newUnion, transform.NewTree, nil
+			newSetOp.left = newLeft
+			newSetOp.right = newRight
+			return &newSetOp, transform.NewTree, nil
 		case *RecursiveCte:
 			newRecursiveCte := *n
 			newUnion, _, err := transform.Node(n.union, PrependRowInPlan(row, lateral))
-			newRecursiveCte.union = newUnion.(*Union)
+			newRecursiveCte.union = newUnion.(*SetOp)
 			return &newRecursiveCte, transform.NewTree, err
 		case *SubqueryAlias:
 			// For SubqueryAliases (i.e. DerivedTables), since they may have visibility to outer scopes, we need to

@@ -26,11 +26,50 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func (b *Builder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope) {
+func hasRecursiveCte(node sql.Node) bool {
+	hasRCTE := false
+	transform.Inspect(node, func(n sql.Node) bool {
+		if _, ok := n.(*plan.RecursiveTable); ok {
+			hasRCTE = true
+			return false
+		}
+		return true
+	})
+	return hasRCTE
+}
+
+func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 	leftScope := b.buildSelectStmt(inScope, u.Left)
 	rightScope := b.buildSelectStmt(inScope, u.Right)
 
-	distinct := u.Type != ast.UnionAllStr
+	var setOpType int
+	switch u.Type {
+	case ast.UnionStr, ast.UnionAllStr, ast.UnionDistinctStr:
+		setOpType = plan.UnionType
+	case ast.IntersectStr, ast.IntersectAllStr, ast.IntersectDistinctStr:
+		setOpType = plan.IntersectType
+	case ast.ExceptStr, ast.ExceptAllStr, ast.ExceptDistinctStr:
+		setOpType = plan.ExceptType
+	default:
+		b.handleErr(fmt.Errorf("unknown union type %s", u.Type))
+	}
+
+	if setOpType != plan.UnionType {
+		if hasRecursiveCte(leftScope.node) {
+			b.handleErr(sql.ErrRecursiveCTENotUnion.New())
+		}
+		if hasRecursiveCte(rightScope.node) {
+			b.handleErr(sql.ErrRecursiveCTENotUnion.New())
+		}
+	}
+
+	// all is not distinct
+	distinct := true
+	switch u.Type {
+	case ast.UnionAllStr, ast.IntersectAllStr, ast.ExceptAllStr:
+		distinct = false
+	}
+
 	limit := b.buildLimit(inScope, u.Limit)
 	offset := b.buildOffset(inScope, u.Limit)
 
@@ -65,7 +104,7 @@ func (b *Builder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope) {
 		sortFields = append(sortFields, sf)
 	}
 
-	n, ok := leftScope.node.(*plan.Union)
+	n, ok := leftScope.node.(*plan.SetOp)
 	if ok {
 		if len(n.SortFields) > 0 {
 			if len(sortFields) > 0 {
@@ -88,16 +127,16 @@ func (b *Builder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope) {
 			}
 			offset = n.Offset
 		}
-		leftScope.node = plan.NewUnion(n.Left(), n.Right(), n.Distinct, nil, nil, nil)
+		leftScope.node = plan.NewSetOp(n.SetOpType, n.Left(), n.Right(), n.Distinct, nil, nil, nil)
 	}
 
-	ret := plan.NewUnion(leftScope.node, rightScope.node, distinct, limit, offset, sortFields)
+	ret := plan.NewSetOp(setOpType, leftScope.node, rightScope.node, distinct, limit, offset, sortFields)
 	outScope = leftScope
-	outScope.node = b.mergeUnionSchemas(ret)
+	outScope.node = b.mergeSetOpSchemas(ret)
 	return
 }
 
-func (b *Builder) mergeUnionSchemas(u *plan.Union) sql.Node {
+func (b *Builder) mergeSetOpSchemas(u *plan.SetOp) sql.Node {
 	ls, rs := u.Left().Schema(), u.Right().Schema()
 	if len(ls) != len(rs) {
 		err := ErrUnionSchemasDifferentLength.New(len(ls), len(rs))

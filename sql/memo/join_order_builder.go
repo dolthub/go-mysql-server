@@ -170,7 +170,7 @@ func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet, *Ex
 		return j.buildMax1Row(n)
 	case *plan.JoinNode:
 		group = j.buildJoinOp(n)
-	case *plan.Union:
+	case *plan.SetOp:
 		group = j.buildJoinLeaf(n)
 	case sql.NameableNode:
 		group = j.buildJoinLeaf(n)
@@ -375,8 +375,8 @@ func (j *joinOrderBuilder) buildJoinLeaf(n sql.Node) *ExprGroup {
 		rel = &TableFunc{sourceBase: b, Table: n}
 	case *plan.EmptyTable:
 		rel = &EmptyTable{sourceBase: b, Table: n}
-	case *plan.Union:
-		rel = &Union{sourceBase: b, Table: n}
+	case *plan.SetOp:
+		rel = &SetOp{sourceBase: b, Table: n}
 	default:
 		panic(fmt.Sprintf("unrecognized join leaf: %T", n))
 	}

@@ -405,7 +405,7 @@ func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 
 	var firstmismatch []string
 	transform.Inspect(n, func(n sql.Node) bool {
-		if u, ok := n.(*plan.Union); ok {
+		if u, ok := n.(*plan.SetOp); ok {
 			ls := u.Left().Schema()
 			rs := u.Right().Schema()
 			if len(ls) != len(rs) {

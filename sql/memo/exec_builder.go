@@ -418,7 +418,7 @@ func (b *ExecBuilder) buildEmptyTable(r *EmptyTable, _ sql.Schema, _ ...sql.Node
 	return r.Table, nil
 }
 
-func (b *ExecBuilder) buildUnion(r *Union, _ sql.Schema, _ ...sql.Node) (sql.Node, error) {
+func (b *ExecBuilder) buildSetOp(r *SetOp, _ sql.Schema, _ ...sql.Node) (sql.Node, error) {
 	return r.Table, nil
 }
 

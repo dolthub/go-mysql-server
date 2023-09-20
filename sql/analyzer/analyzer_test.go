@@ -150,18 +150,22 @@ func TestDeepCopyNode(t *testing.T) {
 				[]sql.Expression{
 					expression.NewLiteral(1, types.Int64),
 				},
-				plan.NewUnion(plan.NewProject(
-					[]sql.Expression{
-						expression.NewLiteral(1, types.Int64),
-					},
-					plan.NewUnresolvedTable("mytable", ""),
-				), plan.NewProject(
-					[]sql.Expression{
-						expression.NewBindVar("v1"),
-						expression.NewBindVar("v2"),
-					},
-					plan.NewUnresolvedTable("mytable", ""),
-				), false, nil, nil, nil),
+				plan.NewSetOp(
+					plan.UnionType,
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewLiteral(1, types.Int64),
+						},
+						plan.NewUnresolvedTable("mytable", ""),
+					),
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewBindVar("v1"),
+							expression.NewBindVar("v2"),
+						},
+						plan.NewUnresolvedTable("mytable", ""),
+					),
+					false, nil, nil, nil),
 			),
 		},
 		{
