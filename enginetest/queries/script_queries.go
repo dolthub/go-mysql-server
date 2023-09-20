@@ -270,11 +270,11 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "table l except table r;",
+				Query:    "table l except table r;",
 				Expected: []sql.Row{},
 			},
 			{
-				Query: "table l except distinct table r;",
+				Query:    "table l except distinct table r;",
 				Expected: []sql.Row{},
 			},
 			{
