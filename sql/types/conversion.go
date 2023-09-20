@@ -120,7 +120,7 @@ func ApproximateTypeFromValue(val interface{}) sql.Type {
 func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 	switch strings.ToLower(ct.Type) {
 	case "boolean", "bool":
-		return CreateNumberTypeWithDisplayWidth(sqltypes.Int8, 1)
+		return Boolean, nil
 	case "tinyint":
 		if ct.Length != nil {
 			displayWidth, err := strconv.Atoi(string(ct.Length.Val))
@@ -133,7 +133,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 			// left for backwards compatibility with ORM tools like ActiveRecord that rely on it for mapping to
 			// a boolean type.
 			if !ct.Unsigned && displayWidth == 1 {
-				return CreateNumberTypeWithDisplayWidth(sqltypes.Int8, displayWidth)
+				return Boolean, nil
 			}
 		}
 

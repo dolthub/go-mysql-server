@@ -101,15 +101,21 @@ func CreateNumberType(baseType query.Type) (sql.NumberType, error) {
 }
 
 // CreateNumberTypeWithDisplayWidth creates a NumberType that includes optional |displayWidth| metadata. Note that
-// while this function allows
+// MySQL only allows a |displayWidth| of 1 for Int8 (i.e. TINYINT(1)); any other combination of |displayWidth| and
+// |baseType| is not supported and will cause this function to return an error.
 func CreateNumberTypeWithDisplayWidth(baseType query.Type, displayWidth int) (sql.NumberType, error) {
 	switch baseType {
 	case sqltypes.Int8, sqltypes.Uint8, sqltypes.Int16, sqltypes.Uint16, sqltypes.Int24, sqltypes.Uint24,
 		sqltypes.Int32, sqltypes.Uint32, sqltypes.Int64, sqltypes.Uint64, sqltypes.Float32, sqltypes.Float64:
-		return NumberTypeImpl_{
-			baseType:     baseType,
-			displayWidth: displayWidth,
-		}, nil
+
+		// displayWidth of 0 is valid for all types, displayWidth of 1 is only valid for Int8
+		if displayWidth == 0 || (displayWidth == 1 && baseType == sqltypes.Int8) {
+			return NumberTypeImpl_{
+				baseType:     baseType,
+				displayWidth: displayWidth,
+			}, nil
+		}
+		return nil, fmt.Errorf("display width of %d is not valid for type %s", displayWidth, baseType.String())
 	}
 	return nil, fmt.Errorf("%v is not a valid number base type", baseType.String())
 }
