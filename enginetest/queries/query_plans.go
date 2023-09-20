@@ -3608,7 +3608,7 @@ inner join pq on true
 			" ├─ HashIn\n" +
 			" │   ├─ Eq\n" +
 			" │   │   ├─ mytable.i:0!null\n" +
-			" │   │   └─ 1 (double)\n" +
+			" │   │   └─ 1 (bigint)\n" +
 			" │   └─ TUPLE(true (tinyint(1)))\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
@@ -3621,7 +3621,7 @@ inner join pq on true
 			" ├─ HashIn\n" +
 			" │   ├─ Eq\n" +
 			" │   │   ├─ mytable.i:0!null\n" +
-			" │   │   └─ 0 (double)\n" +
+			" │   │   └─ 0 (bigint)\n" +
 			" │   └─ TUPLE(true (tinyint(1)))\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
