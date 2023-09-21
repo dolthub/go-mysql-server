@@ -62,6 +62,10 @@ func newIndexAnalyzerForNode(ctx *sql.Context, n sql.Node) (*indexAnalyzer, erro
 	if n != nil {
 		transform.Inspect(n, func(n sql.Node) bool {
 			switch n := n.(type) {
+			// Because we previously pushed filters as close to their relevant tables as possible, we know that there
+			// cannot be another Filter between our node and any tables with relevant indexes.
+			case *plan.Filter:
+				return false
 			case *plan.TableAlias:
 				rt, ok := n.Child.(sql.TableNode)
 				if !ok {

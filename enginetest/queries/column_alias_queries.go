@@ -28,8 +28,10 @@ var ColumnAliasQueries = []ScriptTest{
 		SetUpScript: []string{
 			"create table xy (x int primary key, y int);",
 			"create table uv (u int primary key, v int);",
+			"create table wz (w int, z int);",
 			"insert into xy values (0,0),(1,1),(2,2),(3,3);",
 			"insert into uv values (0,3),(3,0),(2,1),(1,2);",
+			"insert into wz values (0, 0), (1, 0), (1, 2)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -88,6 +90,17 @@ var ColumnAliasQueries = []ScriptTest{
 				// If there is ambiguity between multiple aliases in an order by clause, it is an error
 				Query:       "select u as u, v as u from uv order by u;",
 				ExpectedErr: sql.ErrAmbiguousColumnOrAliasName,
+			},
+			{
+				// If there is ambiguity between one selected table column and one alias, the table column gets
+				// precedence in the group by clause.
+				Query:    "select w, min(z) as w, max(z) as w from wz group by w;",
+				Expected: []sql.Row{{0, 0, 0}, {1, 0, 2}},
+			},
+			{
+				// GroupBy may use a column that is selected multiple times.
+				Query:    "select w, w from wz group by w;",
+				Expected: []sql.Row{{0, 0}, {1, 1}},
 			},
 			{
 				// GroupBy may use expression aliases in grouping expressions

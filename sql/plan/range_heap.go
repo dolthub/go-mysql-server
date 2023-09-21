@@ -29,6 +29,9 @@ type RangeHeap struct {
 	ValueColumnIndex   int
 	MinColumnIndex     int
 	MaxColumnIndex     int
+	ValueColumnGf      sql.Expression
+	MinColumnGf        sql.Expression
+	MaxColumnGf        sql.Expression
 	ComparisonType     sql.Type
 	RangeIsClosedBelow bool
 	RangeIsClosedAbove bool
@@ -44,6 +47,9 @@ func NewRangeHeap(child sql.Node, lhsSchema sql.Schema, rhsSchema sql.Schema, va
 		MaxColumnIndex:     maxColumnIndex,
 		RangeIsClosedBelow: rangeIsClosedBelow,
 		RangeIsClosedAbove: rangeIsClosedAbove,
+		ValueColumnGf:      value,
+		MinColumnGf:        min,
+		MaxColumnGf:        max,
 	}
 	newSr.Child = child
 	return newSr, nil

@@ -527,7 +527,6 @@ func ProjectRow(
 	projections []sql.Expression,
 	row sql.Row,
 ) (sql.Row, error) {
-	var err error
 	var secondPass []int
 	var fields sql.Row
 	for i, expr := range projections {
@@ -544,15 +543,31 @@ func ProjectRow(
 		if fErr != nil {
 			return nil, fErr
 		}
+		f = normalizeNegativeZeros(f)
 		fields = append(fields, f)
 	}
 	for _, index := range secondPass {
-		fields[index], err = projections[index].Eval(ctx, fields)
+		field, err := projections[index].Eval(ctx, fields)
 		if err != nil {
 			return nil, err
 		}
+		field = normalizeNegativeZeros(field)
+		fields[index] = field
 	}
 	return sql.NewRow(fields...), nil
+}
+
+// normalizeNegativeZeros converts negative zero into positive zero.
+// We do this so that floats and decimals have the same representation when displayed to the user.
+func normalizeNegativeZeros(val interface{}) interface{} {
+	// Golang doesn't have a negative zero literal, but negative zero compares equal to zero.
+	if val == float32(0) {
+		return float32(0)
+	}
+	if val == float64(0) {
+		return float64(0)
+	}
+	return val
 }
 
 // TODO a queue is probably more optimal
@@ -1067,4 +1082,136 @@ func (ui *unionIter) Close(ctx *sql.Context) error {
 	} else {
 		return nil
 	}
+}
+
+type intersectIter struct {
+	lIter, rIter sql.RowIter
+	cached       bool
+	cache        map[uint64]int
+}
+
+func (ii *intersectIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if !ii.cached {
+		ii.cache = make(map[uint64]int)
+		for {
+			res, err := ii.rIter.Next(ctx)
+			if err != nil && err != io.EOF {
+				return nil, err
+			}
+
+			hash, herr := sql.HashOf(res)
+			if herr != nil {
+				return nil, herr
+			}
+			if _, ok := ii.cache[hash]; !ok {
+				ii.cache[hash] = 0
+			}
+			ii.cache[hash]++
+
+			if err == io.EOF {
+				break
+			}
+		}
+		ii.cached = true
+	}
+
+	for {
+		res, err := ii.lIter.Next(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		hash, herr := sql.HashOf(res)
+		if herr != nil {
+			return nil, herr
+		}
+		if _, ok := ii.cache[hash]; !ok {
+			continue
+		}
+		if ii.cache[hash] <= 0 {
+			continue
+		}
+		ii.cache[hash]--
+
+		return res, nil
+	}
+}
+
+func (ii *intersectIter) Close(ctx *sql.Context) error {
+	if ii.lIter != nil {
+		if err := ii.lIter.Close(ctx); err != nil {
+			return err
+		}
+	}
+	if ii.rIter != nil {
+		if err := ii.rIter.Close(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type exceptIter struct {
+	lIter, rIter sql.RowIter
+	cached       bool
+	cache        map[uint64]int
+}
+
+func (ei *exceptIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if !ei.cached {
+		ei.cache = make(map[uint64]int)
+		for {
+			res, err := ei.rIter.Next(ctx)
+			if err != nil && err != io.EOF {
+				return nil, err
+			}
+
+			hash, herr := sql.HashOf(res)
+			if herr != nil {
+				return nil, herr
+			}
+			if _, ok := ei.cache[hash]; !ok {
+				ei.cache[hash] = 0
+			}
+			ei.cache[hash]++
+
+			if err == io.EOF {
+				break
+			}
+		}
+		ei.cached = true
+	}
+
+	for {
+		res, err := ei.lIter.Next(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		hash, herr := sql.HashOf(res)
+		if herr != nil {
+			return nil, herr
+		}
+		if _, ok := ei.cache[hash]; !ok {
+			return res, nil
+		}
+		if ei.cache[hash] <= 0 {
+			return res, nil
+		}
+		ei.cache[hash]--
+	}
+}
+
+func (ei *exceptIter) Close(ctx *sql.Context) error {
+	if ei.lIter != nil {
+		if err := ei.lIter.Close(ctx); err != nil {
+			return err
+		}
+	}
+	if ei.rIter != nil {
+		if err := ei.rIter.Close(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
 }

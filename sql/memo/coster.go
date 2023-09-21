@@ -93,12 +93,16 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 		return c.costConcatJoin(ctx, n, s)
 	case *RecursiveCte:
 		return c.costRecursiveCte(ctx, n, s)
+	case *JSONTable:
+		return c.costJSONTable(ctx, n, s)
 	case *Project:
 		return c.costProject(ctx, n, s)
 	case *Distinct:
 		return c.costDistinct(ctx, n, s)
 	case *EmptyTable:
 		return c.costEmptyTable(ctx, n, s)
+	case *SetOp:
+		return c.costSetOp(ctx, n, s)
 	case *Filter:
 		return c.costFilter(ctx, n, s)
 	default:
@@ -171,8 +175,94 @@ func (c *coster) costHashJoin(ctx *sql.Context, n *HashJoin, _ sql.StatsReader) 
 }
 
 func (c *coster) costMergeJoin(_ *sql.Context, n *MergeJoin, _ sql.StatsReader) (float64, error) {
+
 	l := n.Left.RelProps.card
-	return l * cpuCostFactor, nil
+	r := n.Right.RelProps.card
+
+	comparer, ok := n.Filter[0].(*Equal)
+	if !ok {
+		return 0, sql.ErrMergeJoinExpectsComparerFilters.New(n.Filter[0])
+	}
+
+	var leftCompareExprs []*ExprGroup
+	var rightCompareExprs []*ExprGroup
+
+	leftTuple, isTuple := comparer.Left.Scalar.(*Tuple)
+	if isTuple {
+		rightTuple, _ := comparer.Right.Scalar.(*Tuple)
+		leftCompareExprs = leftTuple.Values
+		rightCompareExprs = rightTuple.Values
+	} else {
+		leftCompareExprs = []*ExprGroup{comparer.Left}
+		rightCompareExprs = []*ExprGroup{comparer.Right}
+	}
+
+	if isInjectiveMerge(n, leftCompareExprs, rightCompareExprs) {
+		// We're guarenteed that the execution will never need to iterate over multiple rows in memory.
+		return (l + r) * cpuCostFactor, nil
+	}
+
+	// Each comparison reduces the expected number of collisions on the comparator.
+	selectivity := math.Pow(perKeyCostReductionFactor, float64(len(leftCompareExprs)))
+	return (l + r + l*r*selectivity) * cpuCostFactor, nil
+}
+
+// isInjectiveMerge determines whether either of a merge join's child indexes returns only unique values for the merge
+// comparator.
+func isInjectiveMerge(n *MergeJoin, leftCompareExprs, rightCompareExprs []*ExprGroup) bool {
+	{
+		keyExprs, nullmask := keyExprsForIndexFromTupleComparison(n.Left.Id, n.InnerScan.Idx.Cols(), leftCompareExprs, rightCompareExprs)
+		if isInjectiveLookup(n.InnerScan.Idx, n.JoinBase, keyExprs, nullmask) {
+			return true
+		}
+	}
+	{
+		keyExprs, nullmask := keyExprsForIndexFromTupleComparison(n.Right.Id, n.OuterScan.Idx.Cols(), leftCompareExprs, rightCompareExprs)
+		if isInjectiveLookup(n.OuterScan.Idx, n.JoinBase, keyExprs, nullmask) {
+			return true
+		}
+	}
+	return false
+}
+
+func keyExprsForIndexFromTupleComparison(tableGrp GroupId, idxExprs []sql.ColumnId, leftExprs []*ExprGroup, rightExprs []*ExprGroup) ([]ScalarExpr, []bool) {
+	var keyExprs []ScalarExpr
+	var nullmask []bool
+	for _, col := range idxExprs {
+		key, nullable := keyForExprFromTupleComparison(col, tableGrp, leftExprs, rightExprs)
+		if key == nil {
+			break
+		}
+		keyExprs = append(keyExprs, key)
+		nullmask = append(nullmask, nullable)
+	}
+	if len(keyExprs) == 0 {
+		return nil, nil
+	}
+	return keyExprs, nullmask
+}
+
+// keyForExpr returns an equivalence or constant value to satisfy the
+// lookup index expression.
+func keyForExprFromTupleComparison(targetCol sql.ColumnId, tableGrp GroupId, leftExprs []*ExprGroup, rightExprs []*ExprGroup) (ScalarExpr, bool) {
+	for i, leftExpr := range leftExprs {
+		rightExpr := rightExprs[i]
+
+		var key ScalarExpr
+		if ref, ok := leftExpr.Scalar.(*ColRef); ok && ref.Col == targetCol {
+			key = rightExpr.Scalar
+		} else if ref, ok := rightExpr.Scalar.(*ColRef); ok && ref.Col == targetCol {
+			key = leftExpr.Scalar
+		} else {
+			continue
+		}
+		// expression key can be arbitrarily complex (or simple), but cannot
+		// reference the lookup table
+		if !key.Group().ScalarProps().Tables.Contains(int(TableIdForSource(tableGrp))) {
+			return key, false
+		}
+	}
+	return nil, false
 }
 
 func (c *coster) costLookupJoin(_ *sql.Context, n *LookupJoin, _ sql.StatsReader) (float64, error) {
@@ -214,6 +304,10 @@ func (c *coster) costRecursiveCte(_ *sql.Context, n *RecursiveCte, _ sql.StatsRe
 	return 1000 * seqIOCostFactor, nil
 }
 
+func (c *coster) costJSONTable(_ *sql.Context, n *JSONTable, _ sql.StatsReader) (float64, error) {
+	return 1000 * seqIOCostFactor, nil
+}
+
 func (c *coster) costProject(_ *sql.Context, n *Project, _ sql.StatsReader) (float64, error) {
 	return n.Child.RelProps.card * cpuCostFactor, nil
 }
@@ -226,18 +320,25 @@ func (c *coster) costDistinct(_ *sql.Context, n *Distinct, _ sql.StatsReader) (f
 // A join with a selectivity of k will return k*(n*m) rows.
 // Special case: A join with a selectivity of 0 will return n rows.
 func lookupJoinSelectivity(l *Lookup) float64 {
-	sel := math.Pow(perKeyCostReductionFactor, float64(len(l.KeyExprs)))
+	if isInjectiveLookup(l.Index, l.Parent, l.KeyExprs, l.Nullmask) {
+		return 0
+	}
+	return math.Pow(perKeyCostReductionFactor, float64(len(l.KeyExprs)))
+}
 
-	if !l.Index.SqlIdx().IsUnique() {
-		return sel
+// isInjectiveLookup returns whether every lookup with the given key expressions is guarenteed to return
+// at most one row.
+func isInjectiveLookup(idx *Index, joinBase *JoinBase, keyExprs []ScalarExpr, nullMask []bool) bool {
+	if !idx.SqlIdx().IsUnique() {
+		return false
 	}
 
-	joinFds := l.Parent.Group().RelProps.FuncDeps()
+	joinFds := joinBase.Group().RelProps.FuncDeps()
 
 	var notNull sql.ColSet
 	var constCols sql.ColSet
-	for i, nullable := range l.Nullmask {
-		props := l.KeyExprs[i].Group().ScalarProps()
+	for i, nullable := range nullMask {
+		props := keyExprs[i].Group().ScalarProps()
 		onCols := joinFds.EquivalenceClosure(props.Cols)
 		if !nullable {
 			if props.nullRejecting {
@@ -251,11 +352,8 @@ func lookupJoinSelectivity(l *Lookup) float64 {
 		constCols = constCols.Union(onCols)
 	}
 
-	fds := sql.NewLookupFDs(l.Parent.Right.RelProps.FuncDeps(), l.Index.ColSet(), notNull, constCols, joinFds.Equiv())
-	if fds.HasMax1Row() {
-		return 0
-	}
-	return sel
+	fds := sql.NewLookupFDs(joinBase.Right.RelProps.FuncDeps(), idx.ColSet(), notNull, constCols, joinFds.Equiv())
+	return fds.HasMax1Row()
 }
 
 func (c *coster) costAntiJoin(_ *sql.Context, n *AntiJoin, _ sql.StatsReader) (float64, error) {
@@ -290,6 +388,10 @@ func (c *coster) costEmptyTable(_ *sql.Context, _ *EmptyTable, _ sql.StatsReader
 	return 0, nil
 }
 
+func (c *coster) costSetOp(_ *sql.Context, _ *SetOp, _ sql.StatsReader) (float64, error) {
+	return 1000 * seqIOCostFactor, nil
+}
+
 func (c *coster) costFilter(_ *sql.Context, f *Filter, _ sql.StatsReader) (float64, error) {
 	// 1 unit of compute for each input row
 	return f.Child.RelProps.card * cpuCostFactor * float64(len(f.Filters)), nil
@@ -321,6 +423,8 @@ func (c *carder) cardRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 		return c.statsValues(ctx, n, s)
 	case *RecursiveTable:
 		return c.statsRecursiveTable(ctx, n, s)
+	case *JSONTable:
+		return c.statsJSONTable(ctx, n, s)
 	case *SubqueryAlias:
 		return c.statsSubqueryAlias(ctx, n, s)
 	case *RecursiveCte:
@@ -331,6 +435,8 @@ func (c *carder) cardRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 		return c.statsTableFunc(ctx, n, s)
 	case *EmptyTable:
 		return c.statsEmptyTable(ctx, n, s)
+	case *SetOp:
+		return c.statsSetOp(ctx, n, s)
 	case JoinRel:
 		jp := n.JoinPrivate()
 		switch n := n.(type) {
@@ -397,6 +503,10 @@ func (c *carder) statsValues(_ *sql.Context, v *Values, _ sql.StatsReader) (floa
 	return float64(len(v.Table.ExpressionTuples)) * cpuCostFactor, nil
 }
 
+func (c *carder) statsJSONTable(_ *sql.Context, v *JSONTable, _ sql.StatsReader) (float64, error) {
+	return float64(100) * seqIOCostFactor, nil
+}
+
 func (c *carder) statsRecursiveTable(_ *sql.Context, t *RecursiveTable, _ sql.StatsReader) (float64, error) {
 	return float64(100) * seqIOCostFactor, nil
 }
@@ -422,6 +532,10 @@ func (c *carder) statsTableFunc(_ *sql.Context, _ *TableFunc, _ sql.StatsReader)
 
 func (c *carder) statsEmptyTable(_ *sql.Context, _ *EmptyTable, _ sql.StatsReader) (float64, error) {
 	return 0, nil
+}
+
+func (c *carder) statsSetOp(_ *sql.Context, _ *SetOp, _ sql.StatsReader) (float64, error) {
+	return float64(100) * seqIOCostFactor, nil
 }
 
 func NewInnerBiasedCoster() Coster {

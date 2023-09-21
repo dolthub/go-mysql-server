@@ -96,18 +96,19 @@ func Exprs(e []sql.Expression, f ExprFunc) ([]sql.Expression, TreeIdentity, erro
 	return newExprs, NewTree, nil
 }
 
+var stopInspect = errors.New("stop")
+
 // InspectExpr traverses the given expression tree from the bottom up, breaking if
 // stop = true. Returns a bool indicating whether traversal was interrupted.
 func InspectExpr(node sql.Expression, f func(sql.Expression) bool) bool {
-	stop := errors.New("stop")
 	_, _, err := Expr(node, func(e sql.Expression) (sql.Expression, TreeIdentity, error) {
 		ok := f(e)
 		if ok {
-			return nil, SameTree, stop
+			return nil, SameTree, stopInspect
 		}
 		return e, SameTree, nil
 	})
-	return errors.Is(err, stop)
+	return errors.Is(err, stopInspect)
 }
 
 // InspectUp traverses the given node tree from the bottom up, breaking if
@@ -181,12 +182,9 @@ func ExprWithNode(n sql.Node, e sql.Expression, f ExprWithNodeFunc) (sql.Express
 // ExpressionToColumn converts the expression to the form that should be used in a Schema. Expressions that have Name()
 // and Table() methods will use these; otherwise, String() and "" are used, respectively. The type and nullability are
 // taken from the expression directly.
-func ExpressionToColumn(e sql.Expression) *sql.Column {
-	var name string
+func ExpressionToColumn(e sql.Expression, name string) *sql.Column {
 	if n, ok := e.(sql.Nameable); ok {
 		name = n.Name()
-	} else {
-		name = e.String()
 	}
 
 	var table string

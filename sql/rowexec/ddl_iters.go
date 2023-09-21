@@ -18,7 +18,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log"
 	"strings"
 	"sync"
 	"time"
@@ -31,7 +30,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/fixidx"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -197,10 +195,18 @@ func (l loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expressi
 				}
 				var def sql.Expression = f.Default
 				var err error
+				colIdx := make(map[string]int)
+				for i, c := range l.destSch {
+					colIdx[fmt.Sprintf("%s.%s", strings.ToLower(c.Source), strings.ToLower(c.Name))] = i
+				}
 				def, _, err = transform.Expr(f.Default, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 					switch e := e.(type) {
 					case *expression.GetField:
-						return fixidx.FixFieldIndexes(nil, log.Printf, l.destSch, e.WithTable(l.destSch[0].Source))
+						idx, ok := colIdx[strings.ToLower(e.String())]
+						if !ok {
+							return nil, transform.SameTree, fmt.Errorf("field not found: %s", e.String())
+						}
+						return e.WithIndex(idx), transform.NewTree, nil
 					default:
 						return e, transform.SameTree, nil
 					}
@@ -1460,7 +1466,7 @@ func addColumnToSchema(schema sql.Schema, column *sql.Column, order *sql.ColumnO
 						if idx < 0 {
 							return nil, transform.SameTree, sql.ErrTableColumnNotFound.New(schema[0].Source, s.Name())
 						}
-						return s.WithIndex(idx), transform.NewTree, nil
+						return expression.NewGetFieldWithTable(idx, s.Type(), s.Table(), s.Name(), s.IsNullable()), transform.NewTree, nil
 					default:
 						return s, transform.SameTree, nil
 					}
@@ -1572,7 +1578,7 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 	cat, ok := i.alterable.(sql.CheckAlterableTable)
 	if ok {
 		// note: validations done earlier ensure safety of dropping any constraint referencing the column
-		err := dropConstraints(ctx, cat, i.d.Checks, i.d.Column)
+		err := dropConstraints(ctx, cat, i.d.Checks(), i.d.Column)
 		if err != nil {
 			return nil, err
 		}

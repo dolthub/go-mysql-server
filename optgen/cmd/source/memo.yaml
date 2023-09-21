@@ -37,7 +37,7 @@ exprs:
 - name: "LateralJoin"
   join: true
 - name: "TableScan"
-  sourceType: "plan.TableNode"
+  sourceType: "sql.TableNode"
 - name: "Values"
   sourceType: "*plan.ValueDerivedTable"
 - name: "TableAlias"
@@ -48,12 +48,15 @@ exprs:
   sourceType: "*plan.RecursiveCte"
 - name: "SubqueryAlias"
   sourceType: "*plan.SubqueryAlias"
-- name: "Max1Row"
-  sourceType: "sql.NameableNode"
 - name: "TableFunc"
   sourceType: "sql.TableFunction"
+- name: "JSONTable"
+  sourceType: "*plan.JSONTable"
 - name: "EmptyTable"
   sourceType: "*plan.EmptyTable"
+- name: "SetOp"
+  sourceType: "*plan.SetOp"
+  skipName: true
 - name: "Project"
   unary: true
   attrs:
@@ -61,6 +64,8 @@ exprs:
 - name: "Distinct"
   unary:  true
   skipExec: true
+- name: "Max1Row"
+  unary:  true
 
 # scalar
 - name: "Filter"

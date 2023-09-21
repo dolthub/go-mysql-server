@@ -160,7 +160,20 @@ func TestFuncDeps_InnerJoin(t *testing.T) {
 		mnpq.AddStrictKey(cols(6, 7))
 
 		join := NewInnerJoinFDs(mnpq, abcde, [][2]ColumnId{{1, 6}, {1, 2}})
-		assert.Equal(t, "key(); constant(1-3,6,7); equiv(1-3,6)", join.String())
+		assert.Equal(t, "key(); constant(1-9); equiv(1-3,6)", join.String())
+	})
+	t.Run("infer constants from max1Row", func(t *testing.T) {
+		abcde := &FuncDepSet{all: cols(1, 2, 3, 4, 5)}
+		abcde.AddNotNullable(cols(1, 2, 3))
+		abcde.AddConstants(cols(1))
+		abcde.AddStrictKey(cols(1))
+
+		mnpq := &FuncDepSet{all: cols(6, 7, 8, 9)}
+		mnpq.AddNotNullable(cols(6))
+		mnpq.AddStrictKey(cols(6))
+
+		join := NewInnerJoinFDs(mnpq, abcde, [][2]ColumnId{{1, 7}})
+		assert.Equal(t, "key(6); constant(1-5,7); equiv(1,7)", join.String())
 	})
 }
 

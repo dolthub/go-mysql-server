@@ -57,9 +57,17 @@ func (b *Builder) buildWith(inScope *scope, with *ast.With) (outScope *scope) {
 		var cteScope *scope
 		if with.Recursive {
 			switch n := sq.Select.(type) {
-			case *ast.Union:
-				cteScope = b.buildRecursiveCte(outScope, n, cteName, columnsToStrings(cte.Columns))
+			case *ast.SetOp:
+				switch n.Type {
+				case ast.UnionStr, ast.UnionAllStr, ast.UnionDistinctStr:
+					cteScope = b.buildRecursiveCte(outScope, n, cteName, columnsToStrings(cte.Columns))
+				default:
+					b.handleErr(sql.ErrRecursiveCTEMissingUnion.New(cteName))
+				}
 			default:
+				if hasRecursiveTable(cteName, n) {
+					b.handleErr(sql.ErrRecursiveCTEMissingUnion.New(cteName))
+				}
 				cteScope = b.buildCte(outScope, ate, cteName, columnsToStrings(cte.Columns))
 			}
 		} else {
@@ -80,32 +88,40 @@ func (b *Builder) buildCte(inScope *scope, e ast.TableExpr, name string, columns
 	return cteScope
 }
 
-func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name string, columns []string) *scope {
+func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name string, columns []string) *scope {
 	l, r := splitRecursiveCteUnion(name, union)
 	if r == nil {
 		// not recursive
-		cteScope := b.buildSelectStmt(inScope, union)
+		sqScope := inScope.pushSubquery()
+		cteScope := b.buildSelectStmt(sqScope, union)
 		b.renameSource(cteScope, name, columns)
 		switch n := cteScope.node.(type) {
-		case *plan.Union:
+		case *plan.SetOp:
 			sq := plan.NewSubqueryAlias(name, "", n)
 			sq = sq.WithColumns(columns)
-			if !inScope.subquery {
-				sq.CacheableCTESource = true
-			}
+			sq = sq.WithCorrelated(sqScope.correlated())
+			sq = sq.WithVolatile(sqScope.volatile())
 			cteScope.node = sq
 		}
 		return cteScope
 	}
 
-	// resolve non-recusive portion
-	leftScope := b.buildSelectStmt(inScope, l)
+	switch union.Type {
+	case ast.UnionStr, ast.UnionAllStr, ast.UnionDistinctStr:
+	default:
+		b.handleErr(sql.ErrRecursiveCTENotUnion.New(union.Type))
+	}
+
+	// resolve non-recursive portion
+	leftSqScope := inScope.pushSubquery()
+	leftScope := b.buildSelectStmt(leftSqScope, l)
 
 	// schema for non-recursive portion => recursive table
 	var rTable *plan.RecursiveTable
 	var rInit sql.Node
 	var recSch sql.Schema
 	cteScope := leftScope.replace()
+	scopeMapping := make(map[sql.ColumnId]sql.Expression)
 	{
 		rInit = leftScope.node
 		recSch = make(sql.Schema, len(rInit.Schema()))
@@ -119,13 +135,13 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name strin
 			// we need to promote the type of the left part, so the final schema is the widest possible type
 			newC.Type = newC.Type.Promote()
 			recSch[i] = newC
-
 		}
 
 		for i, c := range leftScope.cols {
 			c.typ = recSch[i].Type
 			c.scalar = nil
-			cteScope.newColumn(c)
+			toId := cteScope.newColumn(c)
+			scopeMapping[sql.ColumnId(toId)] = c.scalarGf()
 		}
 		b.renameSource(cteScope, name, columns)
 
@@ -133,11 +149,16 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name strin
 		cteScope.node = rTable
 	}
 
-	rightInScope := inScope.replace()
+	rightInScope := inScope.replaceSubquery()
 	rightInScope.addCte(name, cteScope)
 	rightScope := b.buildSelectStmt(rightInScope, r)
 
-	distinct := union.Type != ast.UnionAllStr
+	// all is not distinct
+	distinct := true
+	switch union.Type {
+	case ast.UnionAllStr, ast.IntersectAllStr, ast.ExceptAllStr:
+		distinct = false
+	}
 	limit := b.buildLimit(inScope, union.Limit)
 
 	orderByScope := b.analyzeOrderBy(cteScope, leftScope, union.OrderBy)
@@ -160,10 +181,14 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name strin
 
 	rcte := plan.NewRecursiveCte(rInit, rightScope.node, name, columns, distinct, limit, sortFields)
 	rcte = rcte.WithSchema(recSch).WithWorking(rTable)
-	sq := plan.NewSubqueryAlias(name, "", rcte).WithColumns(columns)
-	if !inScope.subquery {
-		sq.CacheableCTESource = true
-	}
+	corr := leftSqScope.correlated().Union(rightInScope.correlated())
+	vol := leftSqScope.activeSubquery.volatile || rightInScope.activeSubquery.volatile
+
+	sq := plan.NewSubqueryAlias(name, "", rcte)
+	sq = sq.WithColumns(columns)
+	sq = sq.WithCorrelated(corr)
+	sq = sq.WithVolatile(vol)
+	sq = sq.WithScopeMapping(scopeMapping)
 	cteScope.node = sq
 	b.renameSource(cteScope, name, columns)
 	return cteScope
@@ -181,7 +206,7 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name strin
 // "should have one or more non-recursive query blocks followed by one or more recursive ones"
 // "the recursive table must be referenced only once, and not in any subquery"
 func splitRecursiveCteUnion(name string, n ast.SelectStatement) (ast.SelectStatement, ast.SelectStatement) {
-	union, ok := n.(*ast.Union)
+	union, ok := n.(*ast.SetOp)
 	if !ok {
 		return n, nil
 	}
@@ -195,7 +220,7 @@ func splitRecursiveCteUnion(name string, n ast.SelectStatement) (ast.SelectState
 		return union.Left, union.Right
 	}
 
-	return l, &ast.Union{
+	return l, &ast.SetOp{
 		Type:    union.Type,
 		Left:    r,
 		Right:   union.Right,

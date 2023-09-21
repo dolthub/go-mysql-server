@@ -47,16 +47,15 @@ var DefaultRules = []Rule{
 	{validateStarExpressionsId, validateStarExpressions}, //TODO
 	{pushdownSubqueryAliasFiltersId, pushdownSubqueryAliasFilters},
 	{pruneTablesId, pruneTables},
-	{fixupAuxiliaryExprsId, fixupAuxiliaryExprs},
 	{validateCheckConstraintId, validateCheckConstraints},
 	{transformJoinApplyId, transformJoinApply},
 	{resolveSubqueriesId, resolveSubqueries},
 	{replaceCrossJoinsId, replaceCrossJoins},
-	{moveJoinCondsToFilterId, moveJoinConditionsToFilter}, // depends on indexes being correct
 }
 
 var OnceAfterDefault = []Rule{
 	{hoistSelectExistsId, hoistSelectExists},
+	{moveJoinCondsToFilterId, moveJoinConditionsToFilter}, // depends on indexes being correct
 	{finalizeUnionsId, finalizeUnions},
 	{loadTriggersId, loadTriggers},
 	{processTruncateId, processTruncate},
@@ -71,13 +70,8 @@ var OnceAfterDefault = []Rule{
 	{eraseProjectionId, eraseProjection},
 	{insertTopNId, insertTopNNodes},
 	{applyHashInId, applyHashIn},
-	{resolveInsertRowsId, resolveInsertRows},
-	{applyTriggersId, applyTriggers},
-	{applyProceduresId, applyProcedures},
 	{assignRoutinesId, assignRoutines},
 	{modifyUpdateExprsForJoinId, modifyUpdateExpressionsForJoin},
-	{applyRowUpdateAccumulatorsId, applyUpdateAccumulators},
-	{wrapWithRollbackId, wrapWritesWithRollback},
 	{applyFKsId, applyForeignKeys},
 }
 
@@ -96,8 +90,14 @@ var DefaultValidationRules = []Rule{
 }
 
 var OnceAfterAll = []Rule{
+	{assignExecIndexesId, assignExecIndexes},
+	// resolveInsertRows inserts a projection wrapping values that cannot be seen by fixup
+	{resolveInsertRowsId, resolveInsertRows},
+	{applyTriggersId, applyTriggers},
+	{applyProceduresId, applyProcedures},
+	{applyRowUpdateAccumulatorsId, applyUpdateAccumulators},
+	{wrapWithRollbackId, wrapWritesWithRollback},
 	{inlineSubqueryAliasRefsId, inlineSubqueryAliasRefs},
-	{cacheSubqueryResultsId, cacheSubqueryResults},
 	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
 	{AutocommitId, addAutocommitNode},
 	{TrackProcessId, trackProcess},

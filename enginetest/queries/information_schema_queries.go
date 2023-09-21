@@ -1082,7 +1082,7 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 				Expected: []sql.Row{
 					{"ptable", "id", "NO", "int", "int", "PRI"},
 					{"ptable", "id2", "NO", "int", "int", "UNI"},
-					{"ptable", "col1", "YES", "tinyint", "tinyint", ""},
+					{"ptable", "col1", "YES", "tinyint", "tinyint(1)", ""},
 				},
 			},
 		},

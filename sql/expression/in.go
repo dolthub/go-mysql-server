@@ -159,13 +159,14 @@ func NewNotInTuple(left sql.Expression, right sql.Expression) sql.Expression {
 
 // HashInTuple is an expression that checks an expression is inside a list of expressions using a hashmap.
 type HashInTuple struct {
-	InTuple
+	in      *InTuple
 	cmp     map[uint64]sql.Expression
 	hasNull bool
 }
 
-var _ Comparer = (*InTuple)(nil)
-var _ sql.CollationCoercible = (*InTuple)(nil)
+var _ Comparer = (*HashInTuple)(nil)
+var _ sql.CollationCoercible = (*HashInTuple)(nil)
+var _ sql.Expression = (*HashInTuple)(nil)
 
 // NewHashInTuple creates an InTuple expression.
 func NewHashInTuple(ctx *sql.Context, left, right sql.Expression) (*HashInTuple, error) {
@@ -179,7 +180,7 @@ func NewHashInTuple(ctx *sql.Context, left, right sql.Expression) (*HashInTuple,
 		return nil, err
 	}
 
-	return &HashInTuple{InTuple: *NewInTuple(left, right), cmp: cmp, hasNull: hasNull}, nil
+	return &HashInTuple{in: NewInTuple(left, right), cmp: cmp, hasNull: hasNull}, nil
 }
 
 // newInMap hashes static expressions in the right child Tuple of a InTuple node
@@ -252,9 +253,9 @@ func (hit *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, nil
 	}
 
-	leftElems := types.NumColumns(hit.Left().Type().Promote())
+	leftElems := types.NumColumns(hit.in.Left().Type().Promote())
 
-	leftVal, err := hit.Left().Eval(ctx, row)
+	leftVal, err := hit.in.Left().Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -263,7 +264,7 @@ func (hit *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, nil
 	}
 
-	key, err := hashOfSimple(ctx, leftVal, hit.Left().Type())
+	key, err := hashOfSimple(ctx, leftVal, hit.in.Left().Type())
 	if err != nil {
 		return nil, err
 	}
@@ -313,14 +314,56 @@ func convertOrTruncate(ctx *sql.Context, i interface{}, t sql.Type) (interface{}
 	return t.Zero(), nil
 }
 
+func (hit *HashInTuple) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return hit.in.CollationCoercibility(ctx)
+}
+
+func (hit *HashInTuple) Resolved() bool {
+	return hit.in.Resolved()
+}
+
+func (hit *HashInTuple) Type() sql.Type {
+	return hit.in.Type()
+}
+
+func (hit *HashInTuple) IsNullable() bool {
+	return hit.in.IsNullable()
+}
+
+func (hit *HashInTuple) Children() []sql.Expression {
+	return hit.in.Children()
+}
+
+func (hit *HashInTuple) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(hit, len(children), 2)
+	}
+	ret := *hit
+	newIn, err := ret.in.WithChildren(children...)
+	ret.in = newIn.(*InTuple)
+	return &ret, err
+}
+
+func (hit *HashInTuple) Compare(ctx *sql.Context, row sql.Row) (int, error) {
+	return hit.in.Compare(ctx, row)
+}
+
+func (hit *HashInTuple) Left() sql.Expression {
+	return hit.in.Left()
+}
+
+func (hit *HashInTuple) Right() sql.Expression {
+	return hit.in.Right()
+}
+
 func (hit *HashInTuple) String() string {
-	return fmt.Sprintf("(%s HASH IN %s)", hit.Left(), hit.Right())
+	return fmt.Sprintf("(%s HASH IN %s)", hit.in.Left(), hit.in.Right())
 }
 
 func (hit *HashInTuple) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("HashIn")
-	children := []string{sql.DebugString(hit.Left()), sql.DebugString(hit.Right())}
+	children := []string{sql.DebugString(hit.in.Left()), sql.DebugString(hit.in.Right())}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }

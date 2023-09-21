@@ -122,7 +122,7 @@ func (s ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, par
 	}
 
 	switch parsed.(type) {
-	case *sqlparser.Select, *sqlparser.Union:
+	case *sqlparser.Select, *sqlparser.SetOp:
 		rows, err := stmt.Query(bindingArgs...)
 		if err != nil {
 			return nil, nil, err

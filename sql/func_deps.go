@@ -82,6 +82,9 @@ func (k *Key) implies(other Key) bool {
 //   - Do a set of grouping columns constitute a strict key
 //     (only_full_group_by)
 //
+// The docs here provide a summary of how functional dependencies work:
+// - https://github.com/cockroachdb/cockroach/blob/5a6aa768cd945118e795d1086ba6f6365f6d1284/pkg/sql/opt/props/func_dep.go#L420
+//
 // This object expects fields to be set in the following order:
 // - notNull: what columns are non-nullable?
 // - consts: what columns are constant?
@@ -433,8 +436,16 @@ func NewInnerJoinFDs(left, right *FuncDepSet, filters [][2]ColumnId) *FuncDepSet
 	ret := &FuncDepSet{all: left.all.Union(right.all)}
 	ret.AddNotNullable(left.notNull)
 	ret.AddNotNullable(right.notNull)
-	ret.AddConstants(left.consts)
-	ret.AddConstants(right.consts)
+	if left.HasMax1Row() {
+		ret.AddConstants(left.all)
+	} else {
+		ret.AddConstants(left.consts)
+	}
+	if right.HasMax1Row() {
+		ret.AddConstants(right.all)
+	} else {
+		ret.AddConstants(right.consts)
+	}
 	for _, set := range left.Equiv().Sets() {
 		ret.AddEquivSet(set)
 	}

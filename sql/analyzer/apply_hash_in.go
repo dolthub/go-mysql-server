@@ -46,8 +46,11 @@ func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 		if same {
 			return node, transform.SameTree, nil
 		}
-		node, err = filter.WithExpressions(e)
-		return node, transform.NewTree, err
+		ret, err := filter.WithExpressions(e)
+		if err != nil {
+			return node, transform.SameTree, nil
+		}
+		return ret, transform.NewTree, err
 	})
 }
 

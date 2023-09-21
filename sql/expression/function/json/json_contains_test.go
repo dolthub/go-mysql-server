@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package function
+package json
 
 import (
 	"testing"
@@ -93,7 +93,7 @@ func TestJSONContains(t *testing.T) {
 		{f2, sql.Row{"{\"a\": {\"foo\": [1, 2, 3]}}", "{\"foo\": [1]}"}, false, nil},
 
 		// Path Tests
-		{f, sql.Row{json, json, "FOO"}, nil, errors.New("should start with '$'")},
+		{f, sql.Row{json, json, "FOO"}, nil, errors.New("Invalid JSON path expression. Path must start with '$', but received: 'FOO'")},
 		{f, sql.Row{1, nil, "$.a"}, nil, errors.New("Invalid argument to 1")},
 		{f, sql.Row{json, 2, "$.e[0][*]"}, nil, errors.New("Invalid argument to 2")},
 		{f, sql.Row{nil, json, "$.b.c"}, nil, nil},

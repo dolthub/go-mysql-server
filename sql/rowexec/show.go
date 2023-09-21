@@ -703,7 +703,7 @@ func (b *BaseBuilder) buildShowCreateTable(ctx *sql.Context, n *plan.ShowCreateT
 		table:    n.Child,
 		isView:   n.IsView,
 		indexes:  n.Indexes,
-		checks:   n.Checks,
+		checks:   n.Checks(),
 		schema:   n.TargetSchema(),
 		pkSchema: n.PrimaryKeySchema,
 	}, nil

@@ -6,7 +6,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/fixidx"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
@@ -71,7 +70,7 @@ func convertFiltersToIndexedAccess(
 			return false
 		case *plan.RecursiveCte:
 			// TODO: fix memory IndexLookup bugs that are not reproduceable in Dolt
-			// this probably fails for *plan.Union also, we just don't have tests for it
+			// this probably fails for *plan.SetOp also, we just don't have tests for it
 			return false
 		case *plan.JoinNode:
 			// avoid changing anti and semi join condition indexes
@@ -123,13 +122,9 @@ func convertFiltersToIndexedAccess(
 			filters.markFiltersHandled(handled...)
 			newF := removePushedDownPredicates(ctx, a, n, filters)
 			if newF == nil {
-				return fixidx.FixFieldIndexesForExpressions(ctx, a.LogFn(), n, scope)
+				return n, transform.SameTree, nil
 			}
-			ret, _, err := fixidx.FixFieldIndexesForExpressions(ctx, a.LogFn(), newF, scope)
-			if err != nil {
-				return n, transform.SameTree, err
-			}
-			return ret, transform.NewTree, nil
+			return newF, transform.NewTree, nil
 		case *plan.TableAlias, *plan.ResolvedTable:
 			nameable := n.(sql.NameableNode)
 			ret, same, err, lookup := pushdownIndexesToTable(ctx, scope, a, nameable, indexes)
@@ -146,22 +141,8 @@ func convertFiltersToIndexedAccess(
 			}
 			handled = append(handled, handledF...)
 			return ret, transform.NewTree, nil
-		case *plan.JSONTable:
-			switch j := c.Parent.(type) {
-			case *plan.JoinNode:
-				newExprs, same, err := fixidx.FixFieldIndexesOnExpressions(scope, a.LogFn(), j.Left().Schema(), n.Expressions()...)
-				if same || err != nil {
-					return n, transform.SameTree, err
-				}
-				newJt, err := n.WithExpressions(newExprs...)
-				if err != nil {
-					return n, transform.SameTree, err
-				}
-				return newJt, transform.NewTree, nil
-			}
-			return n, transform.SameTree, nil
 		default:
-			return pushdownFixIndices(ctx, a, n, scope)
+			return n, transform.SameTree, nil
 		}
 	})
 }
@@ -207,17 +188,7 @@ func pushdownIndexesToTable(ctx *sql.Context, scope *plan.Scope, a *Analyzer, ta
 
 						// save reference
 						lookup = indexLookup
-
-						newExprs, _, err := fixidx.FixFieldIndexesOnExpressions(scope, a.LogFn(), table.Schema(), ita.Expressions()...)
-						if err != nil {
-							return nil, transform.SameTree, err
-						}
-						ret, err := ita.WithExpressions(newExprs...)
-						if err != nil {
-							return nil, transform.SameTree, err
-						}
-
-						return ret, transform.NewTree, nil
+						return ita, transform.NewTree, nil
 					}
 				}
 			}

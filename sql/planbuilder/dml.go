@@ -83,6 +83,8 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	}
 	srcScope := b.insertRowsToNode(inScope, i.Rows, columns, sch)
 
+	// TODO: on duplicate expressions need to reference both VALUES and
+	//  derived columns equally in ON DUPLICATE UPDATE expressions.
 	combinedScope := inScope.replace()
 	for i, c := range destScope.cols {
 		combinedScope.newColumn(c)
@@ -105,14 +107,12 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	dest := destScope.node
 
 	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), srcScope.node, isReplace, columns, onDupExprs, ignore)
-
-	if rt != nil {
-		checks := b.loadChecksFromTable(destScope, rt.Table)
-		ins.Checks = checks
-	}
-
 	outScope = destScope
 	outScope.node = ins
+	if rt != nil {
+		checks := b.loadChecksFromTable(destScope, rt.Table)
+		outScope.node = ins.WithChecks(checks)
+	}
 
 	return
 }
@@ -411,8 +411,7 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 			return true
 		})
 	}
-	update.Checks = checks
-	outScope.node = update
+	outScope.node = update.WithChecks(checks)
 	return
 }
 

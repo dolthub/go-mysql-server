@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package function
+package json
 
 import (
 	"gopkg.in/src-d/go-errors.v1"
@@ -239,121 +239,6 @@ func (j JSONQuote) IsUnsupported() bool {
 // JSON modification functions //
 /////////////////////////////////
 
-// JSON_ARRAY_APPEND(json_doc, path, val[, path, val] ...)
-//
-// JSONArrayAppend Appends values to the end of the indicated arrays within a JSON document and returns the result.
-// Returns NULL if any argument is NULL. An error occurs if the json_doc argument is not a valid JSON document or any
-// path argument is not a valid path expression or contains a * or ** wildcard. The path-value pairs are evaluated left
-// to right. The document produced by evaluating one pair becomes the new value against which the next pair is
-// evaluated. If a path selects a scalar or object value, that value is autowrapped within an array and the new value is
-// added to that array. Pairs for which the path does not identify any value in the JSON document are ignored.
-//
-// https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-array-append
-type JSONArrayAppend struct {
-	sql.Expression
-}
-
-var _ sql.FunctionExpression = JSONArrayAppend{}
-
-// NewJSONArrayAppend creates a new JSONArrayAppend function.
-func NewJSONArrayAppend(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONArrayAppend{}.FunctionName())
-}
-
-// FunctionName implements sql.FunctionExpression
-func (j JSONArrayAppend) FunctionName() string {
-	return "json_array_append"
-}
-
-// Description implements sql.FunctionExpression
-func (j JSONArrayAppend) Description() string {
-	return "appends data to JSON document."
-}
-
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONArrayAppend) IsUnsupported() bool {
-	return true
-}
-
-// JSON_ARRAY_INSERT(json_doc, path, val[, path, val] ...)
-//
-// JSONArrayInsert Updates a JSON document, inserting into an array within the document and returning the modified
-// document. Returns NULL if any argument is NULL. An error occurs if the json_doc argument is not a valid JSON document
-// or any path argument is not a valid path expression or contains a * or ** wildcard or does not end with an array
-// element identifier. The path-value pairs are evaluated left to right. The document produced by evaluating one pair
-// becomes the new value against which the next pair is evaluated. Pairs for which the path does not identify any array
-// in the JSON document are ignored. If a path identifies an array element, the corresponding value is inserted at that
-// element position, shifting any following values to the right. If a path identifies an array position past the end of
-// an array, the value is inserted at the end of the array.
-//
-// https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-array-insert
-type JSONArrayInsert struct {
-	sql.Expression
-}
-
-var _ sql.FunctionExpression = JSONArrayInsert{}
-
-// NewJSONArrayInsert creates a new JSONArrayInsert function.
-func NewJSONArrayInsert(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONArrayInsert{}.FunctionName())
-}
-
-// FunctionName implements sql.FunctionExpression
-func (j JSONArrayInsert) FunctionName() string {
-	return "json_array_insert"
-}
-
-// Description implements sql.FunctionExpression
-func (j JSONArrayInsert) Description() string {
-	return "inserts into JSON array."
-}
-
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONArrayInsert) IsUnsupported() bool {
-	return true
-}
-
-// JSON_INSERT(json_doc, path, val[, path, val] ...)
-//
-// JSONInsert Inserts data into a JSON document and returns the result. Returns NULL if any argument is NULL. An error
-// occurs if the json_doc argument is not a valid JSON document or any path argument is not a valid path expression or
-// contains a * or ** wildcard. The path-value pairs are evaluated left to right. The document produced by evaluating
-// one pair becomes the new value against which the next pair is evaluated. A path-value pair for an existing path in
-// the document is ignored and does not overwrite the existing document value. A path-value pair for a nonexisting path
-// in the document adds the value to the document if the path identifies one of these types of values:
-//   - A member not present in an existing object. The member is added to the object and associated with the new value.
-//   - A position past the end of an existing array. The array is extended with the new value. If the existing value is
-//     not an array, it is autowrapped as an array, then extended with the new value.
-//
-// Otherwise, a path-value pair for a nonexisting path in the document is ignored and has no effect.
-//
-// https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-insert
-type JSONInsert struct {
-	sql.Expression
-}
-
-var _ sql.FunctionExpression = JSONInsert{}
-
-// NewJSONInsert creates a new JSONInsert function.
-func NewJSONInsert(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONInsert{}.FunctionName())
-}
-
-// FunctionName implements sql.FunctionExpression
-func (j JSONInsert) FunctionName() string {
-	return "json_insert"
-}
-
-// Description implements sql.FunctionExpression
-func (j JSONInsert) Description() string {
-	return "inserts data into JSON document"
-}
-
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONInsert) IsUnsupported() bool {
-	return true
-}
-
 // JSON_MERGE_PATCH(json_doc, json_doc[, json_doc] ...)
 //
 // JSONMergePatch Performs an RFC 7396 compliant merge of two or more JSON documents and returns the merged result,
@@ -413,77 +298,6 @@ func (j JSONMergePatch) IsUnsupported() bool {
 // https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-merge
 type JSONMerge struct {
 	sql.Expression
-}
-
-// JSON_REMOVE(json_doc, path[, path] ...)
-//
-// JSONRemove Removes data from a JSON document and returns the result. Returns NULL if any argument is NULL. An error
-// occurs if the json_doc argument is not a valid JSON document or any path argument is not a valid path expression or
-// is $ or contains a * or ** wildcard. The path arguments are evaluated left to right. The document produced by
-// evaluating one path becomes the new value against which the next path is evaluated. It is not an error if the element
-// to be removed does not exist in the document; in that case, the path does not affect the document.
-//
-// https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-remove
-type JSONRemove struct {
-	sql.Expression
-}
-
-var _ sql.FunctionExpression = JSONRemove{}
-
-// NewJSONRemove creates a new JSONRemove function.
-func NewJSONRemove(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONRemove{}.FunctionName())
-}
-
-// FunctionName implements sql.FunctionExpression
-func (j JSONRemove) FunctionName() string {
-	return "json_remove"
-}
-
-// Description implements sql.FunctionExpression
-func (j JSONRemove) Description() string {
-	return "removes data from JSON document."
-}
-
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONRemove) IsUnsupported() bool {
-	return true
-}
-
-// JSON_REPLACE(json_doc, path, val[, path, val] ...)
-//
-// JSONReplace Replaces existing values in a JSON document and returns the result. Returns NULL if any argument is NULL.
-// An error occurs if the json_doc argument is not a valid JSON document or any path argument is not a valid path
-// expression or contains a * or ** wildcard. The path-value pairs are evaluated left to right. The document produced by
-// evaluating one pair becomes the new value against which the next pair is evaluated. A path-value pair for an existing
-// path in the document overwrites the existing document value with the new value. A path-value pair for a non-existing
-// path in the document is ignored and has no effect.
-//
-// https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-replace
-type JSONReplace struct {
-	sql.Expression
-}
-
-var _ sql.FunctionExpression = JSONReplace{}
-
-// NewJSONReplace creates a new JSONReplace function.
-func NewJSONReplace(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONReplace{}.FunctionName())
-}
-
-// FunctionName implements sql.FunctionExpression
-func (j JSONReplace) FunctionName() string {
-	return "json_replace"
-}
-
-// Description implements sql.FunctionExpression
-func (j JSONReplace) Description() string {
-	return "replaces values in JSON document."
-}
-
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONReplace) IsUnsupported() bool {
-	return true
 }
 
 //////////////////////////////

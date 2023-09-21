@@ -5,7 +5,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/fixidx"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -384,7 +383,7 @@ func (b *ExecBuilder) buildSubqueryAlias(r *SubqueryAlias, input sql.Schema, chi
 }
 
 func (b *ExecBuilder) buildMax1Row(r *Max1Row, input sql.Schema, children ...sql.Node) (sql.Node, error) {
-	return r.Table, nil
+	return plan.NewMax1Row(children[0], ""), nil
 }
 
 func (b *ExecBuilder) buildTableFunc(r *TableFunc, input sql.Schema, children ...sql.Node) (sql.Node, error) {
@@ -402,6 +401,11 @@ func (b *ExecBuilder) buildValues(r *Values, _ sql.Schema, _ ...sql.Node) (sql.N
 func (b *ExecBuilder) buildRecursiveTable(r *RecursiveTable, _ sql.Schema, _ ...sql.Node) (sql.Node, error) {
 	return r.Table, nil
 }
+
+func (b *ExecBuilder) buildJSONTable(n *JSONTable, input sql.Schema, _ ...sql.Node) (sql.Node, error) {
+	return n.Table, nil
+}
+
 func (b *ExecBuilder) buildTableAlias(r *TableAlias, _ sql.Schema, _ ...sql.Node) (sql.Node, error) {
 	return r.Table, nil
 }
@@ -411,6 +415,10 @@ func (b *ExecBuilder) buildTableScan(r *TableScan, _ sql.Schema, _ ...sql.Node) 
 }
 
 func (b *ExecBuilder) buildEmptyTable(r *EmptyTable, _ sql.Schema, _ ...sql.Node) (sql.Node, error) {
+	return r.Table, nil
+}
+
+func (b *ExecBuilder) buildSetOp(r *SetOp, _ sql.Schema, _ ...sql.Node) (sql.Node, error) {
 	return r.Table, nil
 }
 
@@ -493,8 +501,7 @@ func (b *ExecBuilder) buildLiteral(e *Literal, sch sql.Schema) (sql.Expression, 
 }
 
 func (b *ExecBuilder) buildColRef(e *ColRef, sch sql.Schema) (sql.Expression, error) {
-	gf, _, err := fixidx.FixFieldIndexes(e.Group().m.scope, nil, sch, e.Gf)
-	return gf, err
+	return e.Gf, nil
 }
 
 func (b *ExecBuilder) buildOr(e *Or, sch sql.Schema) (sql.Expression, error) {
@@ -666,6 +673,5 @@ func (b *ExecBuilder) buildBetween(e *Between, sch sql.Schema) (sql.Expression, 
 }
 
 func (b *ExecBuilder) buildHidden(e *Hidden, sch sql.Schema) (sql.Expression, error) {
-	ret, _, err := fixidx.FixFieldIndexes(e.g.m.scope, nil, sch, e.E)
-	return ret, err
+	return e.E, nil
 }

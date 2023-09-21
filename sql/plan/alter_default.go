@@ -81,8 +81,9 @@ func (d *AlterDefaultSet) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
-
-	return NewAlterDefaultSet(d.Db, children[0], d.ColumnName, d.Default), nil
+	ret := *d
+	ret.Table = children[0]
+	return &ret, nil
 }
 
 // Children implements the sql.Node interface.
@@ -170,7 +171,9 @@ func (d *AlterDefaultDrop) WithChildren(children ...sql.Node) (sql.Node, error) 
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
-	return NewAlterDefaultDrop(d.Database(), children[0], d.ColumnName), nil
+	ret := *d
+	ret.Table = children[0]
+	return &ret, nil
 }
 
 // Children implements the sql.Node interface.

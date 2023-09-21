@@ -180,7 +180,7 @@ func TestGenBuilder(t *testing.T) {
 		"NoopTriggerRollback":       "*plan.NoopTriggerRollback",
 		"TriggerBeginEndBlock":      "*plan.TriggerBeginEndBlock",
 		"Truncate":                  "*plan.Truncate",
-		"Union":                     "*plan.Union",
+		"SetOp":                     "*plan.SetOp",
 		"UnresolvedTable":           "*plan.UnresolvedTable",
 		"DeferredAsOfTable":         "*plan.DeferredAsOfTable",
 		"DeferredFilteredTable":     "*plan.DeferredFilteredTable",

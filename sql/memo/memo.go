@@ -418,6 +418,20 @@ func (m *Memo) MemoizeRangeHeapJoin(grp, left, right *ExprGroup, op plan.JoinTyp
 	return grp
 }
 
+func NewTuple(m *Memo, filters []*ExprGroup) *ExprGroup {
+	t := Tuple{
+		scalarBase: &scalarBase{},
+		Values:     filters,
+	}
+
+	grp := m.PreexistingScalar(&t)
+	if grp == nil {
+		grp = m.NewExprGroup(&t)
+	}
+
+	return grp
+}
+
 func (m *Memo) MemoizeMergeJoin(grp, left, right *ExprGroup, lIdx, rIdx *IndexScan, op plan.JoinType, filter []ScalarExpr, swapCmp bool) *ExprGroup {
 	rel := &MergeJoin{
 		JoinBase: &JoinBase{
@@ -461,6 +475,19 @@ func (m *Memo) MemoizeFilter(grp, child *ExprGroup, filters []*ExprGroup) *ExprG
 		relBase: &relBase{},
 		Child:   child,
 		Filters: filters,
+	}
+	if grp == nil {
+		return m.NewExprGroup(rel)
+	}
+	rel.g = grp
+	grp.Prepend(rel)
+	return grp
+}
+
+func (m *Memo) MemoizeMax1Row(grp, child *ExprGroup) *ExprGroup {
+	rel := &Max1Row{
+		relBase: &relBase{},
+		Child:   child,
 	}
 	if grp == nil {
 		return m.NewExprGroup(rel)
@@ -570,26 +597,12 @@ func buildBestJoinPlan(b *ExecBuilder, grp *ExprGroup, input sql.Schema) (sql.No
 	n := grp.Best
 	var err error
 	children := make([]sql.Node, len(n.Children()))
-	switch n := n.(type) {
-	case *LateralJoin:
-		left, err := buildBestJoinPlan(b, n.Left, input)
+	for i, g := range n.Children() {
+		children[i], err = buildBestJoinPlan(b, g, input)
 		if err != nil {
 			return nil, err
 		}
-		right, err := buildBestJoinPlan(b, n.Right, append(input, left.Schema()...))
-		if err != nil {
-			return nil, err
-		}
-		children[0] = left
-		children[1] = right
-	default:
-		for i, g := range n.Children() {
-			children[i], err = buildBestJoinPlan(b, g, input)
-			if err != nil {
-				return nil, err
-			}
-			input = append(input, g.RelProps.OutputCols()...)
-		}
+		input = append(input, g.RelProps.OutputCols()...)
 	}
 	return b.buildRel(n, input, children...)
 }

@@ -31,9 +31,9 @@ func resolveUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 	}
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		var u *plan.Union
+		var u *plan.SetOp
 		switch n := n.(type) {
-		case *plan.Union:
+		case *plan.SetOp:
 			u = n
 		default:
 			return n, transform.SameTree, nil
@@ -66,9 +66,9 @@ func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope
 	}
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		var u *plan.Union
+		var u *plan.SetOp
 		switch n := n.(type) {
-		case *plan.Union:
+		case *plan.SetOp:
 			u = n
 		case *plan.RecursiveCte:
 			// rCTEs behave like unions after default rules

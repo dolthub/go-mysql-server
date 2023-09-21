@@ -27,7 +27,7 @@ import (
 
 // Server is a MySQL server for SQLe engines.
 type Server struct {
-	Listener   *mysql.Listener
+	Listener   ProtocolListener
 	handler    mysql.Handler
 	sessionMgr *SessionManager
 	Engine     *gms.Engine
