@@ -19,8 +19,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/fixidx"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -619,7 +617,7 @@ func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *p
 			return true
 		}
 
-		outerScopeRowLen := len(scope.Schema()) + len(fixidx.Schemas(n.Children()))
+		outerScopeRowLen := len(scope.Schema()) + len(Schemas(n.Children()))
 		transform.Inspect(s.Query, func(n sql.Node) bool {
 			if n == nil {
 				return true
@@ -634,7 +632,7 @@ func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *p
 			default:
 			}
 			if es, ok := n.(sql.Expressioner); ok {
-				childSchemaLen := len(fixidx.Schemas(n.Children()))
+				childSchemaLen := len(Schemas(n.Children()))
 				for _, e := range es.Expressions() {
 					sql.Inspect(e, func(e sql.Expression) bool {
 						if gf, ok := e.(*expression.GetField); ok {

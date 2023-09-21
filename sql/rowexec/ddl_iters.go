@@ -18,7 +18,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log"
 	"strings"
 	"sync"
 	"time"
@@ -31,7 +30,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/fixidx"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -197,10 +195,18 @@ func (l loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expressi
 				}
 				var def sql.Expression = f.Default
 				var err error
+				colIdx := make(map[string]int)
+				for i, c := range l.destSch {
+					colIdx[fmt.Sprintf("%s.%s", strings.ToLower(c.Source), strings.ToLower(c.Name))] = i
+				}
 				def, _, err = transform.Expr(f.Default, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 					switch e := e.(type) {
 					case *expression.GetField:
-						return fixidx.FixFieldIndexes(nil, log.Printf, l.destSch, e.WithTable(l.destSch[0].Source))
+						idx, ok := colIdx[strings.ToLower(e.String())]
+						if !ok {
+							return nil, transform.SameTree, fmt.Errorf("field not found: %s", e.String())
+						}
+						return e.WithIndex(idx), transform.NewTree, nil
 					default:
 						return e, transform.SameTree, nil
 					}

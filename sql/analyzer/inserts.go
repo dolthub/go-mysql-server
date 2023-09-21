@@ -15,11 +15,11 @@
 package analyzer
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/fixidx"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -149,10 +149,18 @@ func wrapRowSource(ctx *sql.Context, scope *plan.Scope, logFn func(string, ...an
 			}
 			var err error
 
+			colIdx := make(map[string]int)
+			for i, c := range schema {
+				colIdx[fmt.Sprintf("%s.%s", strings.ToLower(c.Source), strings.ToLower(c.Name))] = i
+			}
 			def, _, err := transform.Expr(defaultExpr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				switch e := e.(type) {
 				case *expression.GetField:
-					return fixidx.FixFieldIndexes(scope, logFn, schema, e.WithTable(destTbl.Name()))
+					idx, ok := colIdx[strings.ToLower(e.WithTable(destTbl.Name()).String())]
+					if !ok {
+						return nil, transform.SameTree, fmt.Errorf("field not found: %s", e.String())
+					}
+					return e.WithIndex(idx), transform.NewTree, nil
 				default:
 					return e, transform.SameTree, nil
 				}
