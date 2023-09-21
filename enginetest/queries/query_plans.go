@@ -3574,7 +3574,7 @@ inner join pq on true
 			" │   ├─ GreaterThan\n" +
 			" │   │   ├─ mytable.i:0!null\n" +
 			" │   │   └─ 2 (tinyint)\n" +
-			" │   └─ TUPLE(true (tinyint))\n" +
+			" │   └─ TUPLE(true (tinyint(1)))\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
@@ -3609,7 +3609,7 @@ inner join pq on true
 			" │   ├─ Eq\n" +
 			" │   │   ├─ mytable.i:0!null\n" +
 			" │   │   └─ 1 (bigint)\n" +
-			" │   └─ TUPLE(true (tinyint))\n" +
+			" │   └─ TUPLE(true (tinyint(1)))\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
@@ -3622,7 +3622,7 @@ inner join pq on true
 			" │   ├─ Eq\n" +
 			" │   │   ├─ mytable.i:0!null\n" +
 			" │   │   └─ 0 (bigint)\n" +
-			" │   └─ TUPLE(true (tinyint))\n" +
+			" │   └─ TUPLE(true (tinyint(1)))\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
@@ -3689,7 +3689,7 @@ inner join pq on true
 		Query: `SELECT * from mytable where true IN (i > 3)`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ IN\n" +
-			" │   ├─ left: true (tinyint)\n" +
+			" │   ├─ left: true (tinyint(1))\n" +
 			" │   └─ right: TUPLE(GreaterThan\n" +
 			" │       ├─ mytable.i:0!null\n" +
 			" │       └─ 3 (tinyint)\n" +
@@ -7665,7 +7665,7 @@ inner join pq on true
 			" └─ Project\n" +
 			"     ├─ columns: [1 (tinyint)]\n" +
 			"     └─ SemiJoin\n" +
-			"         ├─ true (tinyint)\n" +
+			"         ├─ true (tinyint(1))\n" +
 			"         ├─ Table\n" +
 			"         │   ├─ name: \n" +
 			"         │   └─ columns: []\n" +
@@ -8020,7 +8020,7 @@ inner join pq on true
 			" └─ Project\n" +
 			"     ├─ columns: [1 (tinyint)]\n" +
 			"     └─ SemiJoin\n" +
-			"         ├─ true (tinyint)\n" +
+			"         ├─ true (tinyint(1))\n" +
 			"         ├─ Table\n" +
 			"         │   ├─ name: \n" +
 			"         │   └─ columns: []\n" +
@@ -12530,7 +12530,7 @@ WHERE
 			"                                     └─ Filter\n" +
 			"                                         ├─ Eq\n" +
 			"                                         │   ├─ ms.D237E:11!null\n" +
-			"                                         │   └─ true (tinyint)\n" +
+			"                                         │   └─ true (tinyint(1))\n" +
 			"                                         └─ LeftOuterHashJoin\n" +
 			"                                             ├─ Eq\n" +
 			"                                             │   ├─ nd.HPCMS:4!null\n" +
@@ -12974,7 +12974,7 @@ WHERE
 			"                                     └─ Filter\n" +
 			"                                         ├─ Eq\n" +
 			"                                         │   ├─ ms.D237E:11!null\n" +
-			"                                         │   └─ true (tinyint)\n" +
+			"                                         │   └─ true (tinyint(1))\n" +
 			"                                         └─ LeftOuterHashJoin\n" +
 			"                                             ├─ Eq\n" +
 			"                                             │   ├─ nd.HPCMS:4!null\n" +
