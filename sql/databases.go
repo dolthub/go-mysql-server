@@ -232,9 +232,12 @@ type EventDatabase interface {
 	// GetEvent returns the desired EventDefinition and if it exists in the database.
 	// All time values of EventDefinition needs to be converted into appropriate TZ.
 	GetEvent(ctx *Context, name string) (EventDefinition, bool, error)
-	// GetEvents returns all EventDefinition for the database.
-	// All time values of EventDefinition needs to be converted into appropriate TZ.
-	GetEvents(ctx *Context) ([]EventDefinition, error)
+	// GetEvents returns all EventDefinition for the database, as well as an opaque token that is used to
+	// track if events need to be reloaded. This token is specific to an EventDatabase and is passed to
+	// NeedsToReloadEvents so that integrators can examine it and signal if events need to be reloaded. If
+	// integrators do not need to implement out-of-band event reloading, then they can simply return nil for
+	// the token. All time values of EventDefinition needs to be converted into appropriate TZ.
+	GetEvents(ctx *Context) (events []EventDefinition, token interface{}, err error)
 	// SaveEvent stores the given EventDefinition to the database. The integrator should verify that
 	// the name of the new event is unique amongst existing events. The time values are converted
 	// into UTC TZ for storage. It returns whether the event status is enabled.
@@ -252,13 +255,11 @@ type EventDatabase interface {
 	// event was modified without going through the SaveEvent or UpdateEvent methods in this interface), and that
 	// event definitions need to be reloaded. The event executor will periodically check to see if it needs to reload
 	// the events from a database by calling this method and if this method returns true, then the event executor will
-	// call the ReloadEvents method next to load in the new event definitions. If integrators to do not support events
+	// call the ReloadEvents method next to load in the new event definitions. The opaque token is the same token
+	// returned from the last call to GetEvents and integrators are free to use whatever underlying data they
+	// need to track whether an out-of-band event change has occurred. If integrators to do not support events
 	// changing out-of-band, then they can simply return false from this method.
-	NeedsToReloadEvents(ctx *Context) (bool, error)
-	// ReloadEvents is called by the event executor initially to load events and after calling the NeedsToReloadEvents
-	// method to reload the latest event definitions. If integrators to do not support events changing out-of-band,
-	// then they can simply return GetEvents(ctx) from this method.
-	ReloadEvents(ctx *Context) ([]EventDefinition, error)
+	NeedsToReloadEvents(ctx *Context, token interface{}) (bool, error)
 }
 
 // ViewDatabase is implemented by databases that persist view definitions

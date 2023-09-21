@@ -17,7 +17,6 @@ package eventscheduler
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
@@ -134,50 +133,10 @@ func (es *EventScheduler) TurnOffEventScheduler() error {
 // loadEventsAndStartEventExecutor evaluates all events in all databases and evaluates the enabled events
 // with valid schedule to load into the eventExecutor. Then, it starts the eventExecutor.
 func (es *EventScheduler) loadEventsAndStartEventExecutor(ctx *sql.Context, a *analyzer.Analyzer) error {
-	enabledEvents, err := es.evaluateAllEventsAndLoadEnabledEvents(ctx, a)
-	if err != nil {
-		return err
-	}
-
 	es.executor.catalog = a.Catalog
-	es.executor.list = newEnabledEventsList(enabledEvents)
+	es.executor.loadAllEvents(ctx)
 	go es.executor.start()
 	return nil
-}
-
-// evaluateAllEventsAndLoadEnabledEvents is called only when sql server starts with --event-scheduler configuration
-// variable set to 'ON' or undefined, or it is set to 'ON' at runtime. This function evaluates all events in all
-// databases dropping events that are expired or updating the events metadata if applicable. This function returns
-// a list of events that are enabled and have valid schedule that are not expired.
-func (es *EventScheduler) evaluateAllEventsAndLoadEnabledEvents(ctx *sql.Context, a *analyzer.Analyzer) ([]*enabledEvent, error) {
-	dbs := a.Catalog.AllDatabases(ctx)
-	events := make([]*enabledEvent, 0)
-	for _, db := range dbs {
-		edb, ok := db.(sql.EventDatabase)
-		if !ok {
-			// Skip any non-EventDatabases
-			continue
-		}
-
-		// need to set the current database to get parsed plan
-		ctx.SetCurrentDatabase(edb.Name())
-
-		// Use ReloadEvents instead of GetEvents, so that integrators can capture any tracking metadata
-		// to support detecting out-of-band changes.
-		eDefs, err := edb.ReloadEvents(ctx)
-		if err != nil {
-			return nil, err
-		}
-		for _, eDef := range eDefs {
-			newEnabledEvent, created, err := newEnabledEvent(ctx, edb, eDef, time.Now())
-			if err != nil {
-				return nil, err
-			} else if created {
-				events = append(events, newEnabledEvent)
-			}
-		}
-	}
-	return events, nil
 }
 
 // AddEvent implements sql.EventScheduler interface.

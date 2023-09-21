@@ -383,11 +383,11 @@ func (pdb PrivilegedDatabase) GetEvent(ctx *sql.Context, name string) (sql.Event
 }
 
 // GetEvents implements sql.EventDatabase
-func (pdb PrivilegedDatabase) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, error) {
+func (pdb PrivilegedDatabase) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, interface{}, error) {
 	if db, ok := pdb.db.(sql.EventDatabase); ok {
 		return db.GetEvents(ctx)
 	}
-	return nil, sql.ErrEventsNotSupported.New(pdb.db.Name())
+	return nil, nil, sql.ErrEventsNotSupported.New(pdb.db.Name())
 }
 
 // SaveEvent implements sql.EventDatabase
@@ -415,19 +415,11 @@ func (pdb PrivilegedDatabase) UpdateEvent(ctx *sql.Context, originalName string,
 }
 
 // NeedsToReloadEvents implements sql.EventDatabase
-func (pdb PrivilegedDatabase) NeedsToReloadEvents(ctx *sql.Context) (bool, error) {
+func (pdb PrivilegedDatabase) NeedsToReloadEvents(ctx *sql.Context, token interface{}) (bool, error) {
 	if db, ok := pdb.db.(sql.EventDatabase); ok {
-		return db.NeedsToReloadEvents(ctx)
+		return db.NeedsToReloadEvents(ctx, token)
 	}
 	return false, sql.ErrEventsNotSupported.New(pdb.db.Name())
-}
-
-// ReloadEvents implements sql.EventDatabase
-func (pdb PrivilegedDatabase) ReloadEvents(ctx *sql.Context) ([]sql.EventDefinition, error) {
-	if db, ok := pdb.db.(sql.EventDatabase); ok {
-		return db.ReloadEvents(ctx)
-	}
-	return nil, sql.ErrEventsNotSupported.New(pdb.db.Name())
 }
 
 func (pdb PrivilegedDatabase) UpdateLastExecuted(ctx *sql.Context, eventName string, lastExecuted time.Time) error {

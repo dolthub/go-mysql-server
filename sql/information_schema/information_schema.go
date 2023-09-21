@@ -1005,7 +1005,7 @@ func eventsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		dbName := db.Name()
 		eventDb, ok := db.(EventDatabase)
 		if ok {
-			eventDefs, err := eventDb.GetEvents(ctx)
+			eventDefs, _, err := eventDb.GetEvents(ctx)
 			if err != nil {
 				return nil, err
 			}

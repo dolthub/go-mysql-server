@@ -294,7 +294,7 @@ func (b *Builder) buildShowAllEvents(inScope *scope, s *ast.Show) (outScope *sco
 
 func (b *Builder) loadAllEventDefinitions(db sql.Database) []sql.EventDefinition {
 	if eventDb, ok := db.(sql.EventDatabase); ok {
-		events, err := eventDb.GetEvents(b.ctx)
+		events, _, err := eventDb.GetEvents(b.ctx)
 		if err != nil {
 			b.handleErr(err)
 		}

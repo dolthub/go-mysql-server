@@ -203,7 +203,7 @@ func (d Database) DropStoredProcedure(ctx *sql.Context, name string) error {
 // GetEvent implements sql.EventDatabase
 func (d Database) GetEvent(ctx *sql.Context, name string) (sql.EventDefinition, bool, error) {
 	name = strings.ToLower(name)
-	events, err := d.GetEvents(ctx)
+	events, _, err := d.GetEvents(ctx)
 	if err != nil {
 		return sql.EventDefinition{}, false, err
 	}
@@ -216,17 +216,17 @@ func (d Database) GetEvent(ctx *sql.Context, name string) (sql.EventDefinition, 
 }
 
 // GetEvents implements sql.EventDatabase
-func (d Database) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, error) {
+func (d Database) GetEvents(_ *sql.Context) ([]sql.EventDefinition, interface{}, error) {
 	events, err := d.shim.QueryRows("", fmt.Sprintf("SHOW EVENTS WHERE Db = '%s';", d.name))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	eventDefinition := make([]sql.EventDefinition, len(events))
 	for i, event := range events {
 		// Db, Name, Definer, Time Zone, Type, ...
 		eventStmt, err := d.shim.QueryRows("", fmt.Sprintf("SHOW CREATE EVENT `%s`.`%s`;", d.name, event[1]))
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		// Event, sql_mode, time_zone, Create Event, ...
 		eventDefinition[i] = sql.EventDefinition{
@@ -234,7 +234,8 @@ func (d Database) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, error) {
 			// TODO: other fields should be added such as Created, LastAltered
 		}
 	}
-	return eventDefinition, nil
+	// MySQL shim doesn't support event reloading, so token is always nil
+	return eventDefinition, nil, nil
 }
 
 // SaveEvent implements sql.EventDatabase
@@ -254,6 +255,12 @@ func (d Database) UpdateEvent(_ *sql.Context, originalName string, event sql.Eve
 		return false, err
 	}
 	return event.Status == sql.EventStatus_Enable.String(), d.shim.Exec(d.name, event.CreateEventStatement())
+}
+
+// NeedsToReloadEvents implements sql.EventDatabase
+func (d Database) NeedsToReloadEvents(_ *sql.Context, _ interface{}) (bool, error) {
+	// mysqlshim does not support event reloading
+	return false, nil
 }
 
 // UpdateLastExecuted implements sql.EventDatabase

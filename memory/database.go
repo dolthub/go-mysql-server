@@ -360,10 +360,11 @@ func (d *BaseDatabase) GetEvent(ctx *sql.Context, name string) (sql.EventDefinit
 }
 
 // GetEvents implements sql.EventDatabase
-func (d *BaseDatabase) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, error) {
+func (d *BaseDatabase) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, interface{}, error) {
 	var eds []sql.EventDefinition
 	eds = append(eds, d.events...)
-	return eds, nil
+	// memory DB doesn't support event reloading, so token is always nil
+	return eds, nil, nil
 }
 
 // SaveEvent implements sql.EventDatabase
@@ -433,15 +434,9 @@ func (d *BaseDatabase) UpdateLastExecuted(ctx *sql.Context, eventName string, la
 }
 
 // NeedsToReloadEvents implements sql.EventDatabase
-func (d *Database) NeedsToReloadEvents(_ *sql.Context) (bool, error) {
+func (d *Database) NeedsToReloadEvents(_ *sql.Context, token interface{}) (bool, error) {
 	// Event reloading not supported for in-memory database
 	return false, nil
-}
-
-// ReloadEvents implements sql.EventDatabase
-func (d *Database) ReloadEvents(ctx *sql.Context) ([]sql.EventDefinition, error) {
-	// Event reloading not supported for in-memory database
-	return d.GetEvents(ctx)
 }
 
 // GetCollation implements sql.CollatedDatabase.

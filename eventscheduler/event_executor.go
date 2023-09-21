@@ -37,6 +37,7 @@ type eventExecutor struct {
 	queryRunFunc        func(ctx *sql.Context, dbName, query, username, address string) error
 	stop                atomic.Bool
 	catalog             sql.Catalog
+	tokenTracker        *tokenTracker
 }
 
 // newEventExecutor returns eventExecutor object with empty enabled events list.
@@ -49,6 +50,7 @@ func newEventExecutor(bgt *sql.BackgroundThreads, ctxFunc func() (*sql.Context, 
 		ctxGetterFunc:       ctxFunc,
 		queryRunFunc:        runQueryFunc,
 		stop:                atomic.Bool{},
+		tokenTracker:        newTokenTracker(),
 	}
 }
 
@@ -73,7 +75,7 @@ func (ee *eventExecutor) start() {
 			ctx.GetLogger().Errorf("unable to determine if events need to be reloaded: %w", err)
 		}
 		if needsToReloadEvents {
-			err := ee.reloadEvents(ctx)
+			err := ee.loadAllEvents(ctx)
 			if err != nil {
 				ctx.GetLogger().Errorf("unable to reload events: %w", err)
 			}
@@ -137,7 +139,8 @@ func (ee *eventExecutor) needsToReloadEvents(ctx *sql.Context) (bool, error) {
 			continue
 		}
 
-		needsToReload, err := edb.NeedsToReloadEvents(ctx)
+		token := ee.tokenTracker.GetTrackedToken(edb.Name())
+		needsToReload, err := edb.NeedsToReloadEvents(ctx, token)
 		if err != nil {
 			return false, err
 		}
@@ -149,10 +152,10 @@ func (ee *eventExecutor) needsToReloadEvents(ctx *sql.Context) (bool, error) {
 	return false, nil
 }
 
-// reloadEvents reloads all events from all known EventDatabases. This is necessary when out-of-band
+// loadAllEvents reloads all events from all known EventDatabases. This is necessary when out-of-band
 // changes have modified event definitions without going through the CREATE EVENT, ALTER EVENT code paths.
-func (ee *eventExecutor) reloadEvents(ctx *sql.Context) error {
-	ctx.GetLogger().Debug("Reloading events")
+func (ee *eventExecutor) loadAllEvents(ctx *sql.Context) error {
+	ctx.GetLogger().Debug("Loading events")
 
 	enabledEvents := make([]*enabledEvent, 0)
 	allDatabases := ee.catalog.AllDatabases(ctx)
@@ -163,12 +166,15 @@ func (ee *eventExecutor) reloadEvents(ctx *sql.Context) error {
 			continue
 		}
 
+		// TODO: We currently need to set the current database to get the parsed plan,
+		//       but this feels like it shouldn't be necessary; would be good to clean up
 		ctx.SetCurrentDatabase(edb.Name())
-		events, err := edb.ReloadEvents(ctx)
+		events, token, err := edb.GetEvents(ctx)
 		if err != nil {
 			return err
 		}
 
+		ee.tokenTracker.UpdateTrackedToken(edb.Name(), token)
 		for _, eDef := range events {
 			newEnabledEvent, created, err := newEnabledEvent(ctx, edb, eDef, time.Now())
 			if err != nil {
@@ -385,4 +391,36 @@ func (ee *eventExecutor) removeSchemaEvents(dbName string) {
 	ee.list.removeSchemaEvents(dbName)
 	// if not found, it might be currently executing
 	ee.runningEventsStatus.cancelEventsForDatabase(dbName)
+}
+
+// tokenTracker tracks the opaque tokens returned by EventDatabase.GetEvents, which are later used with
+// EventDatabase.NeedsToReloadEvents so that integrators can signal if out-of-band event changes have
+// occurred, in which case GMS will call EventDatabase.GetEvents to get the updated event definitions.
+type tokenTracker struct {
+	// trackedTokenMap is a map of event database name to the last opaque reload token returned by GetEvents.
+	trackedTokenMap map[string]interface{}
+}
+
+// newTokenTracker creates a new, empty tokenTracker.
+func newTokenTracker() *tokenTracker {
+	return &tokenTracker{
+		trackedTokenMap: make(map[string]interface{}),
+	}
+}
+
+// Equal returns true if the last tracked token for the EventDatabase named |databaseName| is equal
+// to the |other| opaque token. Equality is tested by an "==" check.
+func (ht *tokenTracker) Equal(databaseName string, other interface{}) bool {
+	return ht.trackedTokenMap[databaseName] == other
+}
+
+// UpdateTrackedToken updates the tracked token for the EventDatabase named |databaseName| to
+// the value in |token|.
+func (ht *tokenTracker) UpdateTrackedToken(databaseName string, token interface{}) {
+	ht.trackedTokenMap[databaseName] = token
+}
+
+// GetTrackedToken returns the tracked token for the EventDatabase named |databaseName|.
+func (ht *tokenTracker) GetTrackedToken(databaseName string) interface{} {
+	return ht.trackedTokenMap[databaseName]
 }
