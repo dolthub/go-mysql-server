@@ -205,11 +205,11 @@ func TestSingleScript(t *testing.T) {
 				//	Query: `SELECT (
 				//				SELECT
 				//				max(i2)
-			 	//				FROM (
-			 	//					SELECT *
+				//				FROM (
+				//					SELECT *
 				//					FROM mytable
 				//				) mytable
-			 	//				RIGHT JOIN
+				//				RIGHT JOIN
 				//				(
 				//					(
 				//						SELECT i2, s2
@@ -247,9 +247,8 @@ func TestSingleScript(t *testing.T) {
 				//	},
 				//},
 				{
-					Query: "select * from xy where x != (select u from uv limit 1 offset 5)",
-					Expected: []sql.Row {
-					},
+					Query:    "select * from xy where x != (select u from uv limit 1 offset 5)",
+					Expected: []sql.Row{},
 				},
 			},
 		},
