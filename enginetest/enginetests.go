@@ -420,6 +420,33 @@ func TestIntegrationPlans(t *testing.T, harness Harness) {
 	}
 }
 
+func TestImdbPlans(t *testing.T, harness Harness) {
+	harness.Setup(setup.ImdbPlanSetup...)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	for _, tt := range queries.ImdbPlanTests {
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
+	}
+}
+
+func TestTpchPlans(t *testing.T, harness Harness) {
+	harness.Setup(setup.TpchPlanSetup...)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	for _, tt := range queries.TpchPlanTests {
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
+	}
+}
+
+func TestTpcdsPlans(t *testing.T, harness Harness) {
+	harness.Setup(setup.TpcdsPlanSetup...)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	for _, tt := range queries.TpcdsPlanTests {
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
+	}
+}
+
 func TestIndexQueryPlans(t *testing.T, harness Harness) {
 	harness.Setup(setup.ComplexIndexSetup...)
 	e := mustNewEngine(t, harness)
