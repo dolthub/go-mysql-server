@@ -66,18 +66,18 @@ func (ee *eventExecutor) start() {
 
 		ctx, _, err := ee.ctxGetterFunc()
 		if err != nil {
-			logrus.Errorf("unable to create context for event executor: %w", err)
+			logrus.Errorf("unable to create context for event executor: %s", err)
 			continue
 		}
 
 		needsToReloadEvents, err := ee.needsToReloadEvents(ctx)
 		if err != nil {
-			ctx.GetLogger().Errorf("unable to determine if events need to be reloaded: %w", err)
+			ctx.GetLogger().Errorf("unable to determine if events need to be reloaded: %s", err)
 		}
 		if needsToReloadEvents {
 			err := ee.loadAllEvents(ctx)
 			if err != nil {
-				ctx.GetLogger().Errorf("unable to reload events: %w", err)
+				ctx.GetLogger().Errorf("unable to reload events: %s", err)
 			}
 		}
 
@@ -178,7 +178,7 @@ func (ee *eventExecutor) loadAllEvents(ctx *sql.Context) error {
 		for _, eDef := range events {
 			newEnabledEvent, created, err := newEnabledEvent(ctx, edb, eDef, time.Now())
 			if err != nil {
-				ctx.GetLogger().Errorf("unable to reload event: %w", err)
+				ctx.GetLogger().Errorf("unable to reload event: %s", err)
 			} else if created {
 				enabledEvents = append(enabledEvents, newEnabledEvent)
 			}
