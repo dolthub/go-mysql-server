@@ -19,17 +19,19 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"go/format"
+	"io"
+	"os"
+	"path"
+	"strings"
+
+	"gopkg.in/yaml.v3"
+
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
-	"go/format"
-	"gopkg.in/yaml.v3"
-	"io"
-	"os"
-	"path"
-	"strings"
 )
 
 //go:generate go run ./main.go -srcRoot=../../../../ plan ../../testdata/spec.yaml
