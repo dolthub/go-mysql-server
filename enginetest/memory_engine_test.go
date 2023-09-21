@@ -185,17 +185,71 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "insert default value",
+			Name: "DELETE ME",
 			SetUpScript: []string{
-				"create table xy (x int primary key, y int default (x+1))",
+				//"create table mytable (i int primary key, s varchar(20))",
+				//"insert into mytable values (1, 'first row'), (2, 'second row'), (3, 'third row')",
+				//"create table othertable (i2 int primary key, s2 varchar(20))",
+				//"insert into othertable values (1, 'first row'), (2, 'second row'), (3, 'third row')",
+				//"create table keyless (c0 bigint, c1 bigint);",
+				//"insert into keyless values (0, 0), (1, 1), (2, 2), (3, 3);",
+				"create table xy (x int primary key, y int);",
+				"insert into xy values (1, 1), (2, 2), (3, 3);",
+				"create table uv (u int primary key, y int);",
+				"insert into uv values (1, 1), (2, 2), (3, 3);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
+				//{
+				//	Query: `SELECT (
+				//				SELECT
+				//				max(i2)
+			 	//				FROM (
+			 	//					SELECT *
+				//					FROM mytable
+				//				) mytable
+			 	//				RIGHT JOIN
+				//				(
+				//					(
+				//						SELECT i2, s2
+				//						FROM othertable
+				//						ORDER BY i2 ASC
+				//					)
+				//					UNION ALL
+				// 					SELECT
+				//						CAST(4 AS SIGNED) AS i2,
+				// 				    	"not found" AS s2
+				// 					FROM DUAL
+				//				) othertable
+				//				ON i2 = i
+				//			) AS rj
+				//			FROM DUAL`,
+				//	Expected: []sql.Row{
+				//		{4},
+				//	},
+				//},
+				//{
+				//	Query: `SELECT (
+				//				SELECT i2
+				//				FROM mytable
+				//				RIGHT JOIN
+				//				(
+				//					TABLE othertable
+				//					UNION ALL
+				//					SELECT 4, "not found"
+				//				) sqa
+				//				ON i2 = i
+				//				LIMIT 1
+				//			) AS rj`,
+				//	Expected: []sql.Row{
+				//		{1},
+				//	},
+				//},
 				{
-					Query:    "insert into xy (x,y) values (1, DEFAULT)",
-					Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 0}}},
+					Query: "select * from xy where x != (select u from uv limit 1 offset 5)",
+					Expected: []sql.Row {
+					},
 				},
 			},
 		},
@@ -207,11 +261,35 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		engine.EngineAnalyzer().Debug = true
-		engine.EngineAnalyzer().Verbose = true
-
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
+	//t.Skip()
+	//var scripts = []queries.ScriptTest{
+	//	{
+	//		Name: "insert default value",
+	//		SetUpScript: []string{
+	//			"create table xy (x int primary key, y int default (x+1))",
+	//		},
+	//		Assertions: []queries.ScriptTestAssertion{
+	//			{
+	//				Query:    "insert into xy (x,y) values (1, DEFAULT)",
+	//				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 0}}},
+	//			},
+	//		},
+	//	},
+	//}
+	//
+	//for _, test := range scripts {
+	//	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+	//	engine, err := harness.NewEngine(t)
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//	engine.EngineAnalyzer().Debug = true
+	//	engine.EngineAnalyzer().Verbose = true
+	//
+	//	enginetest.TestScriptWithEngine(t, engine, harness, test)
+	//}
 }
 
 func TestUnbuildableIndex(t *testing.T) {

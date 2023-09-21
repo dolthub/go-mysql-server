@@ -356,6 +356,7 @@ func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 // TODO(max): join iterators should inline remove parentRow + scope,
 // deprecate this rule.
 func setJoinScopeLen(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return n, transform.SameTree, nil
 	scopeLen := len(scope.Schema())
 	if scopeLen == 0 {
 		return n, transform.SameTree, nil

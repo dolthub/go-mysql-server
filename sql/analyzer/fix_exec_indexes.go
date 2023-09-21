@@ -29,6 +29,7 @@ import (
 // assignExecIndexes walks a query plan in-order and rewrites GetFields to use
 // execution appropriate indexing.
 func assignExecIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	// TODO: this should assign scope lengths
 	s := &idxScope{}
 	if !scope.IsEmpty() {
 		// triggers
@@ -362,6 +363,7 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 	// assumes children scopes have been set
 	switch n := n.(type) {
+	//case *plan.JoinNode:
 	case *plan.InsertInto:
 		s.addSchema(n.Destination.Schema())
 		n.Source = s.children[0]
@@ -387,6 +389,35 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 		}
 		if nc, ok := ret.(sql.CheckConstraintNode); ok && s.checks != nil {
 			ret = nc.WithChecks(s.checks)
+		}
+		if _, ok := ret.(*plan.JoinNode); ok {
+			print()
+		}
+		if jn, ok := ret.(*plan.JoinNode); ok {
+			if len(s.parentScopes) == 0 {
+				return ret, nil
+			}
+			scopeLen := len(s.parentScopes[0].columns)
+			if scopeLen == 0 {
+				return ret, nil
+			}
+			ret = jn.WithScopeLen(scopeLen)
+			//if _, ok := jn.Left().(*plan.StripRowNode); ok {
+			//	return ret, nil
+			//}
+			//if _, ok := jn.Right().(*plan.RangeHeap); ok {
+			//	return ret, nil
+			//}
+			//if _, ok := jn.Right().(*plan.HashLookup); ok {
+			//	return ret, nil
+			//}
+			ret, err = ret.WithChildren(
+				plan.NewStripRowNode(jn.Left(), scopeLen),
+				plan.NewStripRowNode(jn.Right(), scopeLen),
+			)
+			if err != nil {
+				return nil, err
+			}
 		}
 		return ret, nil
 	}
