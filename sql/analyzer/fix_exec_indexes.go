@@ -388,6 +388,35 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 		if nc, ok := ret.(sql.CheckConstraintNode); ok && s.checks != nil {
 			ret = nc.WithChecks(s.checks)
 		}
+		if _, ok := ret.(*plan.JoinNode); ok {
+			print()
+		}
+		if jn, ok := ret.(*plan.JoinNode); ok {
+			if len(s.parentScopes) == 0 {
+				return ret, nil
+			}
+			scopeLen := len(s.parentScopes[0].columns)
+			if scopeLen == 0 {
+				return ret, nil
+			}
+			ret = jn.WithScopeLen(scopeLen)
+			//if _, ok := jn.Left().(*plan.StripRowNode); ok {
+			//	return ret, nil
+			//}
+			//if _, ok := jn.Right().(*plan.RangeHeap); ok {
+			//	return ret, nil
+			//}
+			//if _, ok := jn.Right().(*plan.HashLookup); ok {
+			//	return ret, nil
+			//}
+			ret, err = ret.WithChildren(
+				plan.NewStripRowNode(jn.Left(), scopeLen),
+				plan.NewStripRowNode(jn.Right(), scopeLen),
+			)
+			if err != nil {
+				return nil, err
+			}
+		}
 		return ret, nil
 	}
 }
