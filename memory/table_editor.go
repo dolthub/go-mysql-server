@@ -78,11 +78,19 @@ func (t *tableEditor) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 }
 
 func (t *tableEditor) Close(ctx *sql.Context) error {
-	sess := SessionFromContext(ctx)
+	var sess *Session
+	if !t.editedTable.IgnoreSessionData() {
+		sess = SessionFromContext(ctx)
 
-	if t.discardChanges {
-		sess.putTable(t.initialTable.data)
-		return nil
+		if t.discardChanges {
+			sess.putTable(t.initialTable.data)
+			return nil
+		}
+	} else {
+		if t.discardChanges {
+			t.editedTable.replaceData(t.initialTable.data)
+			return nil
+		}
 	}
 
 	// On the normal INSERT / UPDATE / DELETE path this happens at StatementComplete time, but for table rewrites it
@@ -93,7 +101,10 @@ func (t *tableEditor) Close(ctx *sql.Context) error {
 	}
 	t.ea.Clear()
 
-	sess.putTable(t.editedTable.data)
+	if !t.editedTable.IgnoreSessionData() {
+		sess.putTable(t.editedTable.data)
+	}
+	
 	return nil
 }
 
@@ -117,8 +128,10 @@ func (t *tableEditor) StatementComplete(ctx *sql.Context) error {
 	}
 	t.ea.Clear()
 
-	sess := SessionFromContext(ctx)
-	sess.putTable(t.editedTable.data)
+	if !t.editedTable.IgnoreSessionData() {
+		sess := SessionFromContext(ctx)
+		sess.putTable(t.editedTable.data)
+	}
 
 	return nil
 }

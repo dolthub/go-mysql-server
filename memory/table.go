@@ -736,9 +736,16 @@ func (t *Table) getRewriteTableEditor(ctx *sql.Context, oldSchema, newSchema sql
 }
 
 func (t *Table) newTableEditor(ctx *sql.Context) (sql.TableEditor, error) {
-	sess := SessionFromContext(ctx)
-	ea := sess.editAccumulator(t)
-	data := sess.tableData(t)
+	var ea tableEditAccumulator
+	var data *TableData
+	if t.ignoreSessionData {
+		ea = newTableEditAccumulator(t.data)
+		data = t.data
+	} else {
+		sess := SessionFromContext(ctx)
+		ea = sess.editAccumulator(t)
+		data = sess.tableData(t)
+	}
 
 	tableUnderEdit := t.copy()
 	tableUnderEdit.data = data
