@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -138,17 +139,20 @@ func TestHintParsing(t *testing.T) {
 }
 
 func TestOrderHintBuilding(t *testing.T) {
+	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+
 	p := plan.NewInnerJoin(
 		plan.NewInnerJoin(
 			plan.NewInnerJoin(
-				tableNode("ab"),
-				tableNode("xy"),
+				tableNode(db, "ab"),
+				tableNode(db, "xy"),
 				newEq("ab.x=xy.x"),
 			),
-			tableNode("pq"),
+			tableNode(db, "pq"),
 			newEq("xy.x=pq.x"),
 		),
-		tableNode("uv"),
+		tableNode(db, "uv"),
 		newEq("pq.x=uv.x"),
 	)
 
@@ -232,7 +236,7 @@ func TestOrderHintBuilding(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			j := NewJoinOrderBuilder(NewMemo(nil, nil, nil, 0, NewDefaultCoster(), NewDefaultCarder()))
+			j := NewJoinOrderBuilder(NewMemo(newContext(pro), nil, nil, 0, NewDefaultCoster(), NewDefaultCarder()))
 			j.ReorderJoin(tt.plan)
 			j.m.WithJoinOrder(tt.hint)
 			if tt.invalid {

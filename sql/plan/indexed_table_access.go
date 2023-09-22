@@ -79,6 +79,10 @@ func NewIndexedAccessForTableNode(node sql.TableNode, lb *LookupBuilder) (*Index
 		return nil, ErrInvalidLookupForIndexedTable.New(lookup.Ranges.DebugString())
 	}
 	ia := iaTable.IndexedAccess(lookup)
+	if err != nil {
+		return nil, err
+	}
+
 	return &IndexedTableAccess{
 		TableNode: node,
 		lb:        lb,
@@ -101,6 +105,7 @@ func NewStaticIndexedAccessForTableNode(node sql.TableNode, lookup sql.IndexLook
 		return nil, ErrInvalidLookupForIndexedTable.New(lookup.Ranges.DebugString())
 	}
 	ia := iaTable.IndexedAccess(lookup)
+
 	return &IndexedTableAccess{
 		TableNode: node,
 		lookup:    lookup,

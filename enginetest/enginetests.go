@@ -270,7 +270,9 @@ func RunQueryTests(t *testing.T, harness Harness, queries []queries.QueryTest) {
 // TestInfoSchema runs tests of the information_schema database
 func TestInfoSchema(t *testing.T, h Harness) {
 	h.Setup(setup.MydbData, setup.MytableData, setup.Fk_tblData, setup.FooData)
-	RunQueryTests(t, h, queries.InfoSchemaQueries)
+	for _, tt := range queries.InfoSchemaQueries {
+		TestQuery(t, h, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+	}
 
 	for _, script := range queries.InfoSchemaScripts {
 		TestScript(t, h, script)
@@ -281,9 +283,14 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		defer e.Close()
 		p := sqle.NewProcessList()
 		p.AddConnection(1, "localhost")
-		sess := sql.NewBaseSessionWithClientServer("localhost", sql.Client{Address: "localhost", User: "root"}, 1)
-		p.ConnectionReady(sess)
-		ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess), sql.WithProcessList(p))
+
+		ctx := NewContext(h)
+		ctx.Session.SetClient(sql.Client{Address: "localhost", User: "root"})
+		ctx.Session.SetConnectionId(1)
+		ctx.ProcessList = p
+		ctx.SetCurrentDatabase("")
+
+		p.ConnectionReady(ctx.Session)
 
 		ctx, err := p.BeginQuery(ctx, "SELECT foo")
 		require.NoError(t, err)
@@ -1500,16 +1507,16 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 }
 
 func TestUserAuthentication(t *testing.T, h Harness) {
-	harness, ok := h.(ClientHarness)
+	clientHarness, ok := h.(ClientHarness)
 	if !ok {
 		t.Skip("Cannot run TestUserAuthentication as the harness must implement ClientHarness")
 	}
-	harness.Setup(setup.MydbData, setup.MytableData)
+	clientHarness.Setup(setup.MydbData, setup.MytableData)
 
 	port := getEmptyPort(t)
 	for _, script := range queries.ServerAuthTests {
 		t.Run(script.Name, func(t *testing.T) {
-			ctx := NewContextWithClient(harness, sql.Client{
+			ctx := NewContextWithClient(clientHarness, sql.Client{
 				User:    "root",
 				Address: "localhost",
 			})
@@ -1520,7 +1527,7 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 				AllowClearTextWithoutTLS: true,
 			}
 
-			e := mustNewEngine(t, harness)
+			e := mustNewEngine(t, clientHarness)
 			engine, ok := e.(*sqle.Engine)
 			require.True(t, ok, "Need a *sqle.Engine for TestUserAuthentication")
 
@@ -1532,15 +1539,20 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 				script.SetUpFunc(ctx, t, engine)
 			}
 			for _, statement := range script.SetUpScript {
-				if sh, ok := harness.(SkippingHarness); ok {
+				if sh, ok := clientHarness.(SkippingHarness); ok {
 					if sh.SkipQueryTest(statement) {
 						t.Skip()
 					}
 				}
-				RunQueryWithContext(t, engine, harness, ctx, statement)
+				RunQueryWithContext(t, engine, clientHarness, ctx, statement)
 			}
 
-			s, err := server.NewDefaultServer(serverConfig, engine)
+			serverHarness, ok := h.(ServerHarness)
+			if !ok {
+				require.FailNow(t, "harness must implement ServerHarness")
+			}
+
+			s, err := server.NewServer(serverConfig, engine, serverHarness.SessionBuilder(), nil)
 			require.NoError(t, err)
 			go func() {
 				err := s.Start()
@@ -2551,7 +2563,6 @@ func TestAddColumn(t *testing.T, harness Harness) {
 			sql.NewRow(int64(2), "second row", int32(42)),
 			sql.NewRow(int64(3), "third row", int32(42)),
 		}, nil, nil)
-
 	})
 
 	t.Run("in middle, no default", func(t *testing.T) {
@@ -5327,185 +5338,9 @@ func TestCurrentTimestamp(t *testing.T, harness Harness) {
 }
 
 func TestAddDropPks(t *testing.T, harness Harness) {
-	harness.Setup([]setup.SetupScript{{
-		"create database mydb",
-		"use mydb",
-		"create table t1 (pk varchar(20), v varchar(20) default (concat(pk, '-foo')), primary key (pk, v))",
-		"insert into t1 values ('a1', 'a2'), ('a2', 'a3'), ('a3', 'a4')",
-	}})
-	e := mustNewEngine(t, harness)
-	defer e.Close()
-	ctx := NewContext(harness)
-
-	t.Run("Drop Primary key for table with multiple primary keys", func(t *testing.T) {
-		TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1`, []sql.Row{
-			{"a1", "a2"},
-			{"a2", "a3"},
-			{"a3", "a4"},
-		}, nil, nil)
-
-		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY`)
-
-		// Assert the table is still queryable
-		TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1`, []sql.Row{
-			{"a1", "a2"},
-			{"a2", "a3"},
-			{"a3", "a4"},
-		}, nil, nil)
-
-		// Assert that the table is insertable
-		TestQueryWithContext(t, ctx, e, harness, `INSERT INTO t1 VALUES ("a1", "a2")`, []sql.Row{
-			sql.Row{types.OkResult{RowsAffected: 1}},
-		}, nil, nil)
-
-		TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
-			{"a1", "a2"},
-			{"a1", "a2"},
-			{"a2", "a3"},
-			{"a3", "a4"},
-		}, nil, nil)
-
-		TestQueryWithContext(t, ctx, e, harness, `DELETE FROM t1 WHERE pk = "a1" LIMIT 1`, []sql.Row{
-			sql.Row{types.OkResult{RowsAffected: 1}},
-		}, nil, nil)
-
-		TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
-			{"a1", "a2"},
-			{"a2", "a3"},
-			{"a3", "a4"},
-		}, nil, nil)
-
-		// Add back a new primary key and assert the table is queryable
-		RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v)`)
-		TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1`, []sql.Row{
-			{"a1", "a2"},
-			{"a2", "a3"},
-			{"a3", "a4"},
-		}, nil, nil)
-
-		// Drop the original Pk, create an index, create a new primary key
-		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY`)
-		RunQuery(t, e, harness, `ALTER TABLE t1 ADD INDEX myidx (v)`)
-		RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk)`)
-
-		// Assert the table is insertable
-		TestQueryWithContext(t, ctx, e, harness, `INSERT INTO t1 VALUES ("a4", "a3")`, []sql.Row{
-			sql.Row{types.OkResult{RowsAffected: 1}},
-		}, nil, nil)
-
-		// Assert that an indexed based query still functions appropriately
-		TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1 WHERE v='a3'`, []sql.Row{
-			{"a2", "a3"},
-			{"a4", "a3"},
-		}, nil, nil)
-
-		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY`)
-
-		// Assert that the table is insertable
-		TestQueryWithContext(t, ctx, e, harness, `INSERT INTO t1 VALUES ("a1", "a2")`, []sql.Row{
-			sql.Row{types.OkResult{RowsAffected: 1}},
-		}, nil, nil)
-
-		TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
-			{"a1", "a2"},
-			{"a1", "a2"},
-			{"a2", "a3"},
-			{"a3", "a4"},
-			{"a4", "a3"},
-		}, nil, nil)
-
-		// Assert that a duplicate row causes an alter table error
-		AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v)`, sql.ErrPrimaryKeyViolation)
-
-		// Assert that the schema of t1 is unchanged
-		TestQueryWithContext(t, ctx, e, harness, `DESCRIBE t1`, []sql.Row{
-			{"pk", "varchar(20)", "NO", "", "NULL", ""},
-			{"v", "varchar(20)", "NO", "MUL", "(concat(pk,'-foo'))", "DEFAULT_GENERATED"},
-		}, nil, nil)
-		// Assert that adding a primary key with an unknown column causes an error
-		AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (v2)`, sql.ErrKeyColumnDoesNotExist)
-
-		// Truncate the table and re-add rows
-		RunQuery(t, e, harness, "TRUNCATE t1")
-		RunQuery(t, e, harness, "ALTER TABLE t1 DROP INDEX myidx")
-		RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v)`)
-		RunQuery(t, e, harness, `INSERT INTO t1 values ("a1","a2"),("a2","a3"),("a3","a4")`)
-
-		// Execute a MultiDDL Alter Statement
-		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY (v)`)
-		TestQueryWithContext(t, ctx, e, harness, `DESCRIBE t1`, []sql.Row{
-			{"pk", "varchar(20)", "NO", "", "NULL", ""},
-			{"v", "varchar(20)", "NO", "PRI", "(concat(pk,'-foo'))", "DEFAULT_GENERATED"},
-		}, nil, nil)
-		AssertErr(t, e, harness, `INSERT INTO t1 (pk, v) values ("a100", "a3")`, sql.ErrPrimaryKeyViolation)
-
-		TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
-			{"a1", "a2"},
-			{"a2", "a3"},
-			{"a3", "a4"},
-		}, nil, nil)
-		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY`)
-
-		// Technically the query beneath errors in MySQL but I'm pretty sure it's a bug cc:
-		// https://stackoverflow.com/questions/8301744/mysql-reports-a-primary-key-but-can-not-drop-it-from-the-table
-		RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v), DROP PRIMARY KEY`)
-		TestQueryWithContext(t, ctx, e, harness, `DESCRIBE t1`, []sql.Row{
-			{"pk", "varchar(20)", "NO", "", "NULL", ""},
-			{"v", "varchar(20)", "NO", "", "(concat(pk,'-foo'))", "DEFAULT_GENERATED"},
-		}, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
-			{"a1", "a2"},
-			{"a2", "a3"},
-			{"a3", "a4"},
-		}, nil, nil)
-	})
-
-	t.Run("No database selected", func(t *testing.T) {
-		// Create new database and table and alter the table in other database
-		RunQuery(t, e, harness, `CREATE DATABASE newdb`)
-		RunQuery(t, e, harness, `CREATE TABLE newdb.tab1 (pk int, c1 int)`)
-		RunQuery(t, e, harness, `ALTER TABLE newdb.tab1 ADD PRIMARY KEY (pk)`)
-
-		// Assert that the pk is not primary key
-		TestQueryWithContext(t, ctx, e, harness, `SHOW CREATE TABLE newdb.tab1`, []sql.Row{
-			{"tab1", "CREATE TABLE `tab1` (\n  `pk` int NOT NULL,\n  `c1` int,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-		}, nil, nil)
-
-		// Drop all primary key from other database table
-		RunQuery(t, e, harness, `ALTER TABLE newdb.tab1 DROP PRIMARY KEY`)
-
-		// Assert that NOT NULL constraint is kept
-		TestQueryWithContext(t, ctx, e, harness, `SHOW CREATE TABLE newdb.tab1`, []sql.Row{
-			{"tab1", "CREATE TABLE `tab1` (\n  `pk` int NOT NULL,\n  `c1` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-		}, nil, nil)
-	})
-
-	t.Run("Drop primary key with auto increment", func(t *testing.T) {
-		ctx.SetCurrentDatabase("mydb")
-		RunQuery(t, e, harness, "CREATE TABLE test(pk int AUTO_INCREMENT PRIMARY KEY, val int)")
-
-		AssertErr(t, e, harness, "ALTER TABLE test DROP PRIMARY KEY", sql.ErrWrongAutoKey)
-
-		RunQuery(t, e, harness, "ALTER TABLE test modify pk int, drop primary key")
-		TestQueryWithContext(t, ctx, e, harness, "DESCRIBE test", []sql.Row{{"pk", "int", "NO", "", "NULL", ""},
-			{"val", "int", "YES", "", "NULL", ""}}, nil, nil)
-
-		// Get rid of not null constraint
-		// TODO: Support ALTER TABLE test drop primary key modify pk int
-		RunQuery(t, e, harness, "ALTER TABLE test modify pk int")
-		TestQueryWithContext(t, ctx, e, harness, "DESCRIBE test", []sql.Row{{"pk", "int", "YES", "", "NULL", ""},
-			{"val", "int", "YES", "", "NULL", ""}}, nil, nil)
-
-		// Ensure that the autoincrement functionality is all gone and that null does not get misinterpreted
-		TestQueryWithContext(t, ctx, e, harness, `INSERT INTO test VALUES (1, 1), (NULL, 1)`, []sql.Row{
-			sql.Row{types.OkResult{RowsAffected: 2}},
-		}, nil, nil)
-
-		TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM test ORDER BY pk`, []sql.Row{
-			{nil, 1},
-			{1, 1},
-		}, nil, nil)
-	})
+	for _, tt := range queries.AddDropPrimaryKeyScripts {
+		TestScript(t, harness, tt)
+	}
 }
 
 func TestNullRanges(t *testing.T, harness Harness) {
@@ -5616,18 +5451,20 @@ func NewColumnDefaultValue(expr sql.Expression, outType sql.Type, representsLite
 }
 
 func TestColumnDefaults(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData, setup.MytableData)
-	e := mustNewEngine(t, harness)
-	defer e.Close()
-	ctx := NewContext(harness)
+	harness.Setup(setup.MydbData)
 
 	for _, tt := range queries.ColumnDefaultTests {
 		TestScript(t, harness, tt)
 	}
 
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	ctx := NewContext(harness)
+
 	// Some tests can't currently be run with as a script because they do additional checks
 	t.Run("DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP current_timestamp", func(t *testing.T) {
-		e.Query(ctx, "set @@session.time_zone='SYSTEM';")
+		// ctx = NewContext(harness)
+		// e.Query(ctx, "set @@session.time_zone='SYSTEM';")
 		// TODO: NOW() and CURRENT_TIMESTAMP() are supposed to be the same function in MySQL, but we have two different
 		//       implementations with slightly different behavior.
 		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t10(pk BIGINT PRIMARY KEY, v1 DATETIME(6) DEFAULT NOW(), v2 DATETIME(6) DEFAULT CURRENT_TIMESTAMP(),"+
@@ -5755,8 +5592,6 @@ func TestValidateSession(t *testing.T, harness Harness, newSessFunc func(ctx *sq
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 
-	// TODO: is this necessary?
-	// sql.InitSystemVariables()
 	ctx := NewContext(harness)
 	ctx.Session = newSessFunc(ctx)
 

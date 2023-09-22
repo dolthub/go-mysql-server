@@ -15,7 +15,6 @@
 package analyzer
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -60,14 +59,15 @@ func TestCatalogTable(t *testing.T) {
 	require := require.New(t)
 
 	db := memory.NewDatabase("foo")
-	c := NewCatalog(sql.NewDatabaseProvider(db))
-	ctx := sql.NewEmptyContext()
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+	c := NewCatalog(pro)
 
 	table, _, err := c.Table(ctx, "foo", "bar")
 	require.EqualError(err, "table not found: bar")
 	require.Nil(table)
 
-	mytable := memory.NewTable("bar", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection())
+	mytable := memory.NewTable(db, "bar", sql.PrimaryKeySchema{PkOrdinals: []int{}}, db.GetForeignKeyCollection())
 	db.AddTable("bar", mytable)
 
 	table, _, err = c.Table(ctx, "foo", "baz")
@@ -85,16 +85,16 @@ func TestCatalogTable(t *testing.T) {
 
 func TestCatalogUnlockTables(t *testing.T) {
 	require := require.New(t)
-
 	db := memory.NewDatabase("db")
-	t1 := newLockableTable(memory.NewTable("t1", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
-	t2 := newLockableTable(memory.NewTable("t2", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+	pro := memory.NewDBProvider(db)
+	c := NewCatalog(pro)
+	ctx := newContext(pro)
+
+	t1 := newLockableTable(memory.NewTable(db, "t1", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+	t2 := newLockableTable(memory.NewTable(db, "t2", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
 	db.AddTable("t1", t1)
 	db.AddTable("t2", t2)
 
-	c := NewCatalog(sql.NewDatabaseProvider(db))
-
-	ctx := sql.NewContext(context.Background())
 	ctx.SetCurrentDatabase(db.Name())
 	c.LockTable(ctx, "t1")
 	c.LockTable(ctx, "t2")
@@ -108,6 +108,14 @@ func TestCatalogUnlockTables(t *testing.T) {
 type lockableTable struct {
 	sql.Table
 	unlocks int
+}
+
+func (l *lockableTable) IgnoreSessionData() bool {
+	return true
+}
+
+func (l *lockableTable) UnderlyingTable() *memory.Table {
+	return nil
 }
 
 func newLockableTable(t sql.Table) *lockableTable {

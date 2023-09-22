@@ -27,7 +27,7 @@ import (
 )
 
 var expectedResults = [][]string{
-	{"Jane Deo", "janedeo@gmail.com", `["556-565-566","777-777-777"]`, "2022-11-01 12:00:00.000001"},
+	{"Jane Deo", "janedeo@gmail.com", `["556-565-566", "777-777-777"]`, "2022-11-01 12:00:00.000001"},
 	{"Jane Doe", "jane@doe.com", `[]`, "2022-11-01 12:00:00.000001"},
 	{"John Doe", "john@doe.com", `["555-555-555"]`, "2022-11-01 12:00:00.000001"},
 	{"John Doe", "johnalt@doe.com", `[]`, "2022-11-01 12:00:00.000001"},
@@ -98,6 +98,7 @@ func TestExampleLoadedUser(t *testing.T) {
 
 func TestIssue1621(t *testing.T) {
 	// This is an issue that is specific to using the example server, as this is not a logic issue but a setup issue
+	enableUsers = true
 	useUnusedPort(t)
 	go func() {
 		main()

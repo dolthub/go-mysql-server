@@ -29,14 +29,19 @@ import (
 
 func TestProject(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewEmptyContext()
+
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col1", Type: types.Text, Nullable: true},
 		{Name: "col2", Type: types.Text, Nullable: true},
 	})
-	child := memory.NewTable("test", childSchema, nil)
-	child.Insert(sql.NewEmptyContext(), sql.NewRow("col1_1", "col2_1"))
-	child.Insert(sql.NewEmptyContext(), sql.NewRow("col1_2", "col2_2"))
+
+	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
+	child := memory.NewTable(db.BaseDatabase, "test", childSchema, nil)
+	child.Insert(ctx, sql.NewRow("col1_1", "col2_1"))
+	child.Insert(ctx, sql.NewRow("col1_2", "col2_2"))
 	p := plan.NewProject(
 		[]sql.Expression{expression.NewGetField(1, types.Text, "col2", true)},
 		plan.NewResolvedTable(child, nil, nil),

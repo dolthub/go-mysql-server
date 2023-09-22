@@ -35,9 +35,9 @@ func TestShowTables(t *testing.T) {
 	require.Nil(unresolvedShowTables.Children())
 
 	db := memory.NewDatabase("test")
-	db.AddTable("test1", memory.NewTable("test1", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
-	db.AddTable("test2", memory.NewTable("test2", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
-	db.AddTable("test3", memory.NewTable("test3", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+	db.AddTable("test1", memory.NewTable(db, "test1", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+	db.AddTable("test2", memory.NewTable(db, "test2", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+	db.AddTable("test3", memory.NewTable(db, "test3", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
 
 	resolvedShowTables := plan.NewShowTables(db, false, nil)
 	require.True(resolvedShowTables.Resolved())

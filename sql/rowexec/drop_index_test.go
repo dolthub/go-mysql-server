@@ -32,7 +32,10 @@ import (
 func TestDeleteIndex(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("foo")
+	pro := memory.NewDBProvider(db)
+
+	table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
@@ -41,7 +44,6 @@ func TestDeleteIndex(t *testing.T) {
 	driver := new(mockDriver)
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
-	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
@@ -63,9 +65,10 @@ func TestDeleteIndex(t *testing.T) {
 	di.Catalog = catalog
 	di.CurrentDatabase = "foo"
 
-	sess := sql.NewBaseSession()
-	sess.SetIndexRegistry(idxReg)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+	baseSession := sql.NewBaseSession()
+	baseSession.SetIndexRegistry(idxReg)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(baseSession, pro)))
+
 	_, err = DefaultBuilder.Build(ctx, di, nil)
 	require.NoError(err)
 
@@ -78,7 +81,10 @@ func TestDeleteIndex(t *testing.T) {
 func TestDeleteIndexNotReady(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("foo")
+	pro := memory.NewDBProvider(db)
+
+	table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
@@ -87,7 +93,6 @@ func TestDeleteIndexNotReady(t *testing.T) {
 	driver := new(mockDriver)
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
-	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
@@ -96,9 +101,10 @@ func TestDeleteIndexNotReady(t *testing.T) {
 		expression.NewGetFieldWithTable(1, types.Int64, "foo", "a", true),
 	}
 
-	sess := sql.NewBaseSession()
-	sess.SetIndexRegistry(idxReg)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+	baseSess := sql.NewBaseSession()
+	baseSess.SetIndexRegistry(idxReg)
+
+	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(baseSess, pro)))
 	done, ready, err := idxReg.AddIndex(&mockIndex{id: "idx", db: "foo", table: "foo", exprs: expressions})
 	require.NoError(err)
 
@@ -126,7 +132,10 @@ func TestDeleteIndexNotReady(t *testing.T) {
 func TestDeleteIndexOutdated(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("foo")
+	pro := memory.NewDBProvider(db)
+
+	table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
@@ -135,7 +144,6 @@ func TestDeleteIndexOutdated(t *testing.T) {
 	driver := new(mockDriver)
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
-	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
@@ -144,9 +152,9 @@ func TestDeleteIndexOutdated(t *testing.T) {
 		expression.NewGetFieldWithTable(1, types.Int64, "foo", "a", true),
 	}
 
-	sess := sql.NewBaseSession()
-	sess.SetIndexRegistry(idxReg)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+	baseSess := sql.NewBaseSession()
+	baseSess.SetIndexRegistry(idxReg)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(baseSess, pro)))
 	done, ready, err := idxReg.AddIndex(&mockIndex{id: "idx", db: "foo", table: "foo", exprs: expressions})
 	require.NoError(err)
 	close(done)

@@ -59,11 +59,14 @@ func TestSet(t *testing.T) {
 
 func newPersistedSqlContext() (*sql.Context, memory.GlobalsMap) {
 	ctx, _ := context.WithCancel(context.TODO())
-	sess := sql.NewBaseSession()
+	pro := memory.NewDBProvider()
+	sess := memory.NewSession(sql.NewBaseSession(), pro)
+
 	persistedGlobals := map[string]interface{}{"max_connections": 1000}
-	persistedSess := memory.NewInMemoryPersistedSession(sess, persistedGlobals)
+	sess.SetGlobals(persistedGlobals)
+
 	sqlCtx := sql.NewContext(ctx)
-	sqlCtx.Session = persistedSess
+	sqlCtx.Session = sess
 	return sqlCtx, persistedGlobals
 }
 

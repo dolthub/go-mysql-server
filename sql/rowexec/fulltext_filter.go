@@ -207,6 +207,10 @@ func (f *fulltextFilterTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 				}}, Index: f.docCountIndex}
 
 				docCountData := f.matchAgainst.DocCountTable.IndexedAccess(lookup)
+				if err != nil {
+					return nil, err
+				}
+
 				partIter, err := docCountData.LookupPartitions(ctx, lookup)
 				if err != nil {
 					return nil, err
@@ -236,6 +240,10 @@ func (f *fulltextFilterTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 			lookup := sql.IndexLookup{Ranges: []sql.Range{ranges}, Index: f.parentIndex}
 
 			parentData := f.matchAgainst.ParentTable.IndexedAccess(lookup)
+			if err != nil {
+				return nil, err
+			}
+
 			partIter, err := parentData.LookupPartitions(ctx, lookup)
 			if err != nil {
 				return nil, err

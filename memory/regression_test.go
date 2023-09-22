@@ -15,6 +15,7 @@
 package memory_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -24,16 +25,18 @@ import (
 
 func TestIssue361(t *testing.T) {
 	name := t.Name()
+	db := memory.NewDatabase("db")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
 
 	t.Run("Update", func(*testing.T) {
-		table := memory.NewTable(name, sql.NewPrimaryKeySchema(sql.Schema{
+		table := memory.NewTable(db, name, sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "json", Type: types.JSON, Nullable: false, Source: name},
 		}), nil)
 
 		old := sql.NewRow(types.JSONDocument{Val: []string{"foo", "bar"}})
 		new := sql.NewRow(types.JSONDocument{Val: []string{"foo"}})
 
-		ctx := sql.NewEmptyContext()
 		table.Insert(ctx, old)
 
 		up := table.Updater(ctx)
@@ -41,16 +44,19 @@ func TestIssue361(t *testing.T) {
 	})
 
 	t.Run("Delete", func(*testing.T) {
-		table := memory.NewTable(name, sql.NewPrimaryKeySchema(sql.Schema{
+		table := memory.NewTable(db, name, sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "json", Type: types.JSON, Nullable: false, Source: name},
 		}), nil)
 
 		row := sql.NewRow(types.JSONDocument{Val: []string{"foo", "bar"}})
 
-		ctx := sql.NewEmptyContext()
 		table.Insert(ctx, row)
 
 		up := table.Deleter(ctx)
 		up.Delete(ctx, row) // does not panic
 	})
+}
+
+func newContext(provider *memory.DbProvider) *sql.Context {
+	return sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), provider)))
 }

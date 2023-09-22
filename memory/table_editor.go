@@ -16,20 +16,23 @@ package memory
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// tableEditor manages the edits that a table receives.
+// tableEditor manages the edits that a targetTable receives.
 type tableEditor struct {
-	table             *Table
-	initialAutoIncVal uint64
-	initialPartitions map[string][]sql.Row
-	ea                tableEditAccumulator
-	initialInsert     int
-	// array of key ordinals for each unique index defined on the table
+	editedTable  *Table
+	initialTable *Table
+	schema       sql.Schema
+
+	discardChanges bool
+	ea             tableEditAccumulator
+
+	// array of key ordinals for each unique index defined on the targetTable
 	uniqueIdxCols [][]int
 	prefixLengths [][]uint16
 	fkTable       *Table
@@ -44,87 +47,100 @@ var _ sql.AutoIncrementSetter = (*tableEditor)(nil)
 var _ sql.ForeignKeyEditor = (*tableEditor)(nil)
 
 func (t *tableEditor) Name() string {
-	return t.table.name
+	return t.editedTable.name
 }
 
 func (t *tableEditor) String() string {
-	return t.table.String()
+	return t.editedTable.String()
 }
 
 func (t *tableEditor) Schema() sql.Schema {
-	return t.table.Schema()
+	return t.editedTable.Schema()
 }
 
 func (t *tableEditor) Collation() sql.CollationID {
-	return t.table.Collation()
+	return t.editedTable.Collation()
 }
 
 func (t *tableEditor) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
-	return t.table.Partitions(ctx)
+	return t.editedTable.Partitions(ctx)
 }
 
 func (t *tableEditor) PartitionRows(ctx *sql.Context, part sql.Partition) (sql.RowIter, error) {
 	if t.fkTable != nil {
 		return t.fkTable.PartitionRows(ctx, part)
 	}
-	return t.table.PartitionRows(ctx, part)
+	return t.editedTable.PartitionRows(ctx, part)
 }
 
 func (t *tableEditor) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
-	return t.table.GetIndexes(ctx)
+	return t.editedTable.GetIndexes(ctx)
 }
 
 func (t *tableEditor) Close(ctx *sql.Context) error {
-	// Checkpointing is equivalent to flushing for tableEditor
-	return t.StatementComplete(ctx)
+	var sess *Session
+	if !t.editedTable.IgnoreSessionData() {
+		sess = SessionFromContext(ctx)
+
+		if t.discardChanges {
+			sess.putTable(t.initialTable.data)
+			return nil
+		}
+	} else {
+		if t.discardChanges {
+			t.editedTable.replaceData(t.initialTable.data)
+			return nil
+		}
+	}
+
+	// On the normal INSERT / UPDATE / DELETE path this happens at StatementComplete time, but for table rewrites it
+	// only happens at Close
+	err := t.ea.ApplyEdits(t.editedTable)
+	if err != nil {
+		return err
+	}
+	t.ea.Clear()
+
+	if !t.editedTable.IgnoreSessionData() {
+		sess.putTable(t.editedTable.data)
+	}
+
+	return nil
 }
 
 func (t *tableEditor) StatementBegin(ctx *sql.Context) {
-	t.initialInsert = t.table.insertPartIdx
-	t.initialAutoIncVal = t.table.autoIncVal
-	t.initialPartitions = make(map[string][]sql.Row)
-	for partStr, rowSlice := range t.table.partitions {
-		newRowSlice := make([]sql.Row, len(rowSlice))
-		for i, row := range rowSlice {
-			newRowSlice[i] = row.Copy()
-		}
-		t.initialPartitions[partStr] = newRowSlice
-	}
+	t.initialTable = t.editedTable.copy()
 }
 
 func (t *tableEditor) DiscardChanges(ctx *sql.Context, errorEncountered error) error {
-	t.table.insertPartIdx = t.initialInsert
-	t.table.autoIncVal = t.initialAutoIncVal
-	t.table.partitions = t.initialPartitions
 	t.ea.Clear()
+	if _, ignore := errorEncountered.(sql.IgnorableError); !ignore {
+		t.editedTable.replaceData(t.initialTable.data)
+		t.discardChanges = true
+	}
 	return nil
 }
 
 func (t *tableEditor) StatementComplete(ctx *sql.Context) error {
-	err := t.ea.ApplyEdits(ctx)
+	err := t.ea.ApplyEdits(t.editedTable)
 	if err != nil {
 		return nil
 	}
 	t.ea.Clear()
-	t.initialInsert = t.table.insertPartIdx
-	t.initialAutoIncVal = t.table.autoIncVal
-	t.initialPartitions = make(map[string][]sql.Row)
-	for partStr, rowSlice := range t.table.partitions {
-		newRowSlice := make([]sql.Row, len(rowSlice))
-		for i, row := range rowSlice {
-			newRowSlice[i] = row.Copy()
-		}
-		t.initialPartitions[partStr] = newRowSlice
+
+	if !t.editedTable.IgnoreSessionData() {
+		sess := SessionFromContext(ctx)
+		sess.putTable(t.editedTable.data)
 	}
+
 	return nil
 }
 
-// Insert a new row into the table.
+// Insert inserts a new row into the table.
 func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
-	if err := checkRow(t.table.schema.Schema, row); err != nil {
+	if err := checkRow(t.editedTable.data.schema.Schema, row); err != nil {
 		return err
 	}
-	t.table.verifyRowTypes(row)
 
 	partitionRow, added, err := t.ea.Get(row)
 	if err != nil {
@@ -156,10 +172,10 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 		return err
 	}
 
-	idx := t.table.autoColIdx
+	idx := t.editedTable.data.autoColIdx
 	if idx >= 0 {
-		autoCol := t.table.schema.Schema[idx]
-		cmp, err := autoCol.Type.Compare(row[idx], t.table.autoIncVal)
+		autoCol := t.editedTable.data.schema.Schema[idx]
+		cmp, err := autoCol.Type.Compare(row[idx], t.editedTable.data.autoIncVal)
 		if err != nil {
 			return err
 		}
@@ -169,11 +185,11 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 			if err != nil {
 				return err
 			}
-			t.table.autoIncVal = v.(uint64)
-			t.table.autoIncVal++ // Move onto next autoIncVal
+			t.editedTable.data.autoIncVal = v.(uint64)
+			t.editedTable.data.autoIncVal++ // Move onto next autoIncVal
 		} else if cmp == 0 {
 			// Provided value equal to autoIncVal
-			t.table.autoIncVal++ // Move onto next autoIncVal
+			t.editedTable.data.autoIncVal++ // Move onto next autoIncVal
 		}
 	}
 
@@ -182,10 +198,9 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 
 // Delete the given row from the table.
 func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
-	if err := checkRow(t.table.Schema(), row); err != nil {
+	if err := checkRow(t.editedTable.Schema(), row); err != nil {
 		return err
 	}
-	t.table.verifyRowTypes(row)
 
 	err := t.ea.Delete(row)
 	if err != nil {
@@ -197,14 +212,12 @@ func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 
 // Update the given row from the table.
 func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) error {
-	if err := checkRow(t.table.Schema(), oldRow); err != nil {
+	if err := checkRow(t.editedTable.Schema(), oldRow); err != nil {
 		return err
 	}
-	if err := checkRow(t.table.Schema(), newRow); err != nil {
+	if err := checkRow(t.editedTable.Schema(), newRow); err != nil {
 		return err
 	}
-	t.table.verifyRowTypes(oldRow)
-	t.table.verifyRowTypes(newRow)
 
 	err := t.ea.Delete(oldRow)
 	if err != nil {
@@ -253,61 +266,30 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 
 // SetAutoIncrementValue sets a new AUTO_INCREMENT value
 func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val uint64) error {
-	t.table.autoIncVal = val
+	t.editedTable.data.autoIncVal = val
 	return nil
 }
 
-func (t *tableEditor) IndexedAccess(i sql.IndexLookup) sql.IndexedTable {
-	//TODO: optimize this, should create some a struct that encloses the tableEditor and filters based on the lookup
-	if pkTea, ok := t.ea.(*pkTableEditAccumulator); ok {
-		newTable, err := newTable(pkTea.table, pkTea.table.schema)
-		if err != nil {
-			panic(err)
-		}
-		adds := make(map[string]sql.Row)
-		deletes := make(map[string]sql.Row)
-		for key, val := range pkTea.adds {
-			adds[key] = val
-		}
-		for key, val := range pkTea.deletes {
-			deletes[key] = val
-		}
-		err = (&pkTableEditAccumulator{
-			table:   newTable,
-			adds:    adds,
-			deletes: deletes,
-		}).ApplyEdits(sql.NewEmptyContext())
-		if err != nil {
-			panic(err)
-		}
-		return &IndexedTable{Table: newTable, Lookup: i}
-	} else {
-		nonPkTea := t.ea.(*keylessTableEditAccumulator)
-		newTable, err := newTable(nonPkTea.table, nonPkTea.table.schema)
-		if err != nil {
-			panic(err)
-		}
-		adds := make([]sql.Row, len(nonPkTea.adds))
-		deletes := make([]sql.Row, len(nonPkTea.deletes))
-		copy(adds, nonPkTea.adds)
-		copy(deletes, nonPkTea.deletes)
-		err = (&keylessTableEditAccumulator{
-			table:   newTable,
-			adds:    adds,
-			deletes: deletes,
-		}).ApplyEdits(sql.NewEmptyContext())
-		if err != nil {
-			panic(err)
-		}
-		return &IndexedTable{Table: newTable, Lookup: i}
+func (t *tableEditor) IndexedAccess(lookup sql.IndexLookup) sql.IndexedTable {
+	// Before we return an indexed access for this table, we need to apply all the edits to the table
+	// TODO: optimize this, should create some struct that encloses the tableEditor and filters based on the lookup
+	err := t.ea.ApplyEdits(t.editedTable)
+	if err != nil {
+		return nil
 	}
+	t.ea.Clear()
+
+	// We mark this table as ignoring session data because the session won't have up to date data for it now
+	indexedTable := t.editedTable.copy()
+	indexedTable.ignoreSessionData = true
+	return &IndexedTable{Table: indexedTable, Lookup: lookup}
 }
 
 func (t *tableEditor) pkColumnIndexes() []int {
 	var pkColIdxes []int
-	for _, column := range t.table.schema.Schema {
+	for _, column := range t.editedTable.data.schema.Schema {
 		if column.PrimaryKey {
-			idx, _ := t.table.getField(column.Name)
+			idx, _ := t.editedTable.data.getColumnOrdinal(column.Name)
 			pkColIdxes = append(pkColIdxes, idx)
 		}
 	}
@@ -371,39 +353,39 @@ type tableEditAccumulator interface {
 	Insert(value sql.Row) error
 	// Delete adds a row to the accumulator to be deleted in the future. Updates are modeled as a Delete then an insertPartIdx.
 	Delete(value sql.Row) error
-	// Get returns a row if found along with two booleans added and deleted. Added is true if a row was inserted. Deleted
-	// is true if a row was deleted.
+	// Get returns a row if found along with a boolean added. Added is true if a row was inserted.
 	Get(value sql.Row) (sql.Row, bool, error)
-	// ApplyEdits takes a initialTable and runs through a sequence of inserts and deletes that have been stored in the
-	// accumulator.
-	ApplyEdits(ctx *sql.Context) error
+	// ApplyEdits updates the table provided with the inserts and deletes that have been added to the accumulator.
+	// Does not clear the accumulator.
+	ApplyEdits(table *Table) error
+	// GetByCols returns the row in the table, or the pending edits, matching the ones given
 	GetByCols(value sql.Row, cols []int, prefixLengths []uint16) (sql.Row, bool, error)
 	// Clear wipes all of the stored inserts and deletes that may or may not have been applied.
 	Clear()
 }
 
-// NewTableEditAccumulator returns a tableEditAccumulator based on the schema.
-func NewTableEditAccumulator(t *Table) tableEditAccumulator {
+// newTableEditAccumulator returns a tableEditAccumulator based on the schema.
+func newTableEditAccumulator(t *TableData) tableEditAccumulator {
 	if sql.IsKeyless(t.schema.Schema) {
 		return &keylessTableEditAccumulator{
-			table:   t,
-			adds:    make([]sql.Row, 0),
-			deletes: make([]sql.Row, 0),
+			tableData: t,
+			adds:      make([]sql.Row, 0),
+			deletes:   make([]sql.Row, 0),
 		}
 	}
 
 	return &pkTableEditAccumulator{
-		table:   t,
-		adds:    make(map[string]sql.Row),
-		deletes: make(map[string]sql.Row),
+		tableData: t,
+		adds:      make(map[string]sql.Row),
+		deletes:   make(map[string]sql.Row),
 	}
 }
 
 // pkTableEditAccumulator manages the updates of keyed tables. It uses a map to efficiently toggle edits.
 type pkTableEditAccumulator struct {
-	table   *Table
-	adds    map[string]sql.Row
-	deletes map[string]sql.Row
+	tableData *TableData
+	adds      map[string]sql.Row
+	deletes   map[string]sql.Row
 }
 
 var _ tableEditAccumulator = (*pkTableEditAccumulator)(nil)
@@ -441,7 +423,7 @@ func (pke *pkTableEditAccumulator) Get(value sql.Row) (sql.Row, bool, error) {
 	}
 
 	pkColIdxes := pke.pkColumnIndexes()
-	for _, partition := range pke.table.partitions {
+	for _, partition := range pke.tableData.partitions {
 		for _, partitionRow := range partition {
 			if columnsMatch(pkColIdxes, nil, partitionRow, value) {
 				return partitionRow, true, nil
@@ -467,7 +449,7 @@ func (pke *pkTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefixLe
 		}
 	}
 
-	for _, partition := range pke.table.partitions {
+	for _, partition := range pke.tableData.partitions {
 		for _, partitionRow := range partition {
 			if columnsMatch(cols, prefixLengths, partitionRow, value) {
 				return partitionRow, true, nil
@@ -479,22 +461,23 @@ func (pke *pkTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefixLe
 }
 
 // ApplyEdits implements the tableEditAccumulator interface.
-func (pke *pkTableEditAccumulator) ApplyEdits(ctx *sql.Context) error {
+func (pke *pkTableEditAccumulator) ApplyEdits(table *Table) error {
 	for _, val := range pke.deletes {
-		err := pke.deleteHelper(ctx, pke.table, val)
+		err := pke.deleteHelper(pke.tableData, val)
 		if err != nil {
 			return err
 		}
 	}
 
 	for _, val := range pke.adds {
-		err := pke.insertHelper(ctx, pke.table, val)
+		err := pke.insertHelper(pke.tableData, val)
 		if err != nil {
 			return err
 		}
 	}
 
-	pke.table.sortRows()
+	pke.tableData.sortRows()
+	table.replaceData(pke.tableData)
 
 	return nil
 }
@@ -505,23 +488,23 @@ func (pke *pkTableEditAccumulator) Clear() {
 	pke.deletes = make(map[string]sql.Row)
 }
 
-// pkColumnIndexes returns the indexes of the primary partitionKeys in the initialized table.
+// pkColumnIndexes returns the indexes of the primary partitionKeys in the initialized tableData.
 func (pke *pkTableEditAccumulator) pkColumnIndexes() []int {
-	return pke.table.schema.PkOrdinals
+	return pke.tableData.schema.PkOrdinals
 }
 
-// getRowKey returns a sql.Row of the primary partitionKeys a row in relation with the initialized table.
+// getRowKey returns a sql.Row of the primary partitionKeys a row in relation with the initialized tableData.
 func (pke *pkTableEditAccumulator) getRowKey(r sql.Row) string {
 	var rowKey strings.Builder
-	for _, i := range pke.table.schema.PkOrdinals {
+	for _, i := range pke.tableData.schema.PkOrdinals {
 		rowKey.WriteString(fmt.Sprintf("%v", r[i]))
 	}
 	return rowKey.String()
 }
 
-// deleteHelper deletes the given row from the table.
-func (pke *pkTableEditAccumulator) deleteHelper(ctx *sql.Context, table *Table, row sql.Row) error {
-	if err := checkRow(table.Schema(), row); err != nil {
+// deleteHelper deletes the given row from the tableData.
+func (pke *pkTableEditAccumulator) deleteHelper(table *TableData, row sql.Row) error {
+	if err := checkRow(table.schema.Schema, row); err != nil {
 		return err
 	}
 
@@ -541,7 +524,7 @@ func (pke *pkTableEditAccumulator) deleteHelper(ctx *sql.Context, table *Table, 
 			}
 
 			var err error
-			matches, err = rowsAreEqual(ctx, table.Schema(), row, partitionRow)
+			matches, err = rowsAreEqual(table.schema.Schema, row, partitionRow)
 			if err != nil {
 				return err
 			}
@@ -559,8 +542,8 @@ func (pke *pkTableEditAccumulator) deleteHelper(ctx *sql.Context, table *Table, 
 	return nil
 }
 
-// insertHelper inserts the given row into the given table.
-func (pke *pkTableEditAccumulator) insertHelper(ctx *sql.Context, table *Table, row sql.Row) error {
+// insertHelper inserts the given row into the given tableData.
+func (pke *pkTableEditAccumulator) insertHelper(table *TableData, row sql.Row) error {
 	key := string(table.partitionKeys[table.insertPartIdx])
 	table.insertPartIdx++
 	if table.insertPartIdx == len(table.partitionKeys) {
@@ -593,11 +576,11 @@ func (pke *pkTableEditAccumulator) insertHelper(ctx *sql.Context, table *Table, 
 	return nil
 }
 
-// keylessTableEditAccumulator manages updates for a keyless table.
+// keylessTableEditAccumulator manages updates for a keyless tableData.
 type keylessTableEditAccumulator struct {
-	table   *Table
-	adds    []sql.Row
-	deletes []sql.Row
+	tableData *TableData
+	adds      []sql.Row
+	deletes   []sql.Row
 }
 
 var _ tableEditAccumulator = (*keylessTableEditAccumulator)(nil)
@@ -605,7 +588,7 @@ var _ tableEditAccumulator = (*keylessTableEditAccumulator)(nil)
 // Insert implements the tableEditAccumulator interface.
 func (k *keylessTableEditAccumulator) Insert(value sql.Row) error {
 	for i, row := range k.deletes {
-		eq, err := value.Equals(row, k.table.schema.Schema)
+		eq, err := value.Equals(row, k.tableData.schema.Schema)
 		if err != nil {
 			return err
 		}
@@ -623,7 +606,7 @@ func (k *keylessTableEditAccumulator) Insert(value sql.Row) error {
 // Delete implements the tableEditAccumulator interface.
 func (k *keylessTableEditAccumulator) Delete(value sql.Row) error {
 	for i, row := range k.adds {
-		eq, err := value.Equals(row, k.table.schema.Schema)
+		eq, err := value.Equals(row, k.tableData.schema.Schema)
 		if err != nil {
 			return err
 		}
@@ -654,7 +637,7 @@ func (k *keylessTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefi
 		}
 	}
 
-	for _, partition := range k.table.partitions {
+	for _, partition := range k.tableData.partitions {
 		for _, partitionRow := range partition {
 			if columnsMatch(cols, prefixLengths, partitionRow, value) {
 				if deleteCount == 0 {
@@ -678,20 +661,21 @@ func (k *keylessTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefi
 }
 
 // ApplyEdits implements the tableEditAccumulator interface.
-func (k *keylessTableEditAccumulator) ApplyEdits(ctx *sql.Context) error {
+func (k *keylessTableEditAccumulator) ApplyEdits(table *Table) error {
 	for _, val := range k.deletes {
-		err := k.deleteHelper(ctx, k.table, val)
+		err := k.deleteHelper(k.tableData, val)
 		if err != nil {
 			return err
 		}
 	}
 
 	for _, val := range k.adds {
-		err := k.insertHelper(ctx, k.table, val)
+		err := k.insertHelper(k.tableData, val)
 		if err != nil {
 			return err
 		}
 	}
+	table.replaceData(k.tableData)
 
 	return nil
 }
@@ -702,8 +686,8 @@ func (k *keylessTableEditAccumulator) Clear() {
 	k.deletes = make([]sql.Row, 0)
 }
 
-// deleteHelper deletes a row from a keyless table, if it exists.
-func (k *keylessTableEditAccumulator) deleteHelper(ctx *sql.Context, table *Table, row sql.Row) error {
+// deleteHelper deletes a row from a keyless tableData, if it exists.
+func (k *keylessTableEditAccumulator) deleteHelper(table *TableData, row sql.Row) error {
 	if err := checkRow(table.schema.Schema, row); err != nil {
 		return err
 	}
@@ -713,7 +697,7 @@ func (k *keylessTableEditAccumulator) deleteHelper(ctx *sql.Context, table *Tabl
 		for partitionRowIndex, partitionRow := range partition {
 			matches = true
 			var err error
-			matches, err = rowsAreEqual(ctx, table.schema.Schema, row, partitionRow)
+			matches, err = rowsAreEqual(table.schema.Schema, row, partitionRow)
 			if err != nil {
 				return err
 			}
@@ -731,8 +715,8 @@ func (k *keylessTableEditAccumulator) deleteHelper(ctx *sql.Context, table *Tabl
 	return nil
 }
 
-// insertHelper inserts into a keyless table.
-func (k *keylessTableEditAccumulator) insertHelper(ctx *sql.Context, table *Table, row sql.Row) error {
+// insertHelper inserts into a keyless tableData.
+func (k *keylessTableEditAccumulator) insertHelper(table *TableData, row sql.Row) error {
 	key := string(table.partitionKeys[table.insertPartIdx])
 	table.insertPartIdx++
 	if table.insertPartIdx == len(table.partitionKeys) {
@@ -756,4 +740,34 @@ func formatRow(r sql.Row, idxs []int) string {
 	}
 	b.WriteString("]")
 	return b.String()
+}
+
+func checkRow(schema sql.Schema, row sql.Row) error {
+	if len(row) != len(schema) {
+		return sql.ErrUnexpectedRowLength.New(len(schema), len(row))
+	}
+
+	for i, value := range row {
+		c := schema[i]
+		if !c.Check(value) {
+			return sql.ErrInvalidType.New(value)
+		}
+	}
+
+	return verifyRowTypes(row, schema)
+}
+
+func verifyRowTypes(row sql.Row, schema sql.Schema) error {
+	if len(row) == len(schema) {
+		for i := range schema {
+			col := schema[i]
+			rowVal := row[i]
+			valType := reflect.TypeOf(rowVal)
+			expectedType := col.Type.ValueType()
+			if valType != expectedType && rowVal != nil && !valType.AssignableTo(expectedType) {
+				return fmt.Errorf("Actual Value Type: %s, Expected Value Type: %s", valType.String(), expectedType.String())
+			}
+		}
+	}
+	return nil
 }

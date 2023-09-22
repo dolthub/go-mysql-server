@@ -287,7 +287,7 @@ func (a *AddColumn) String() string {
 }
 
 func (a *AddColumn) Expressions() []sql.Expression {
-	return append(transform.WrappedColumnDefaults(a.targetSch), expression.WrapExpressions(a.column.Default)...)
+	return append(transform.WrappedColumnDefaults(a.targetSch), transform.WrappedColumnDefaults(sql.Schema{a.column})...)
 }
 
 func (a AddColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
@@ -302,15 +302,14 @@ func (a AddColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 
 	a.targetSch = sch
 
-	unwrappedColDefVal, ok := exprs[len(exprs)-1].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
+	colSchema := sql.Schema{a.column}
+	colSchema, err = transform.SchemaWithDefaults(colSchema, exprs[len(exprs)-1:])
+	if err != nil {
+		return nil, err
+	}
 
 	// *sql.Column is a reference type, make a copy before we modify it so we don't affect the original node
-	a.column = a.column.Copy()
-	if ok {
-		a.column.Default = unwrappedColDefVal
-	} else { // nil fails type check
-		a.column.Default = nil
-	}
+	a.column = colSchema[0]
 	return &a, nil
 }
 
@@ -428,6 +427,9 @@ func (c ColDefaultExpression) WithChildren(children ...sql.Expression) (sql.Expr
 
 func (c ColDefaultExpression) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	columnDefaultExpr := c.Column.Default
+	if columnDefaultExpr == nil {
+		columnDefaultExpr = c.Column.Generated
+	}
 
 	if columnDefaultExpr == nil && !c.Column.Nullable {
 		val := c.Column.Type.Zero()
