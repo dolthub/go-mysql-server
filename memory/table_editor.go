@@ -104,7 +104,7 @@ func (t *tableEditor) Close(ctx *sql.Context) error {
 	if !t.editedTable.IgnoreSessionData() {
 		sess.putTable(t.editedTable.data)
 	}
-	
+
 	return nil
 }
 
