@@ -71,6 +71,32 @@ var joinOpTests = []struct {
 	tests []JoinOpTests
 }{
 	{
+		name: "bug where transitive join edge drops filters",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table xy (x int primary key, y int, unique index y_idx(y));",
+				"CREATE table uv (u int primary key, v int);",
+				"CREATE table ab (a int primary key, b int);",
+				"insert into xy values (1,0), (2,1), (0,2), (3,3);",
+				"insert into uv values (0,1), (1,1), (2,2), (3,2);",
+				"insert into ab values (0,2), (1,2), (2,2), (3,1);",
+				"update information_schema.statistics set cardinality = 1000 where table_name in ('ab', 'rs', 'xy', 'uv');",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				// This query is a small repro of a larger query caused by the intersection of several
+				// bugs. The query below should 1) move the filters out of the join condition, and then
+				// 2) push those hoisted filters on top of |uv|, where they are safe for join planning.
+				// At the time of this addition, filters in the middle of join trees are unsafe and
+				// at risk of being lost.
+				Query:    "select /*+ JOIN_ORDER(ab,xy,uv) */ * from xy join uv on (x = u and u in (0,2)) join ab on (x = a and v < 2)",
+				Expected: []sql.Row{{0, 2, 0, 1, 0, 2}},
+			},
+		},
+	},
+	{
 		name: "issue 5633, nil comparison in merge join",
 		setup: [][]string{
 			setup.MydbData[0],
