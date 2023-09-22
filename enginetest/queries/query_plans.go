@@ -25,6 +25,23 @@ type QueryPlanTest struct {
 // in testgen_test.go.
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `select * from xy join uv on (x = u and u  > 0) where u < 2`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [xy.x:2!null, xy.y:3, uv.u:0!null, uv.v:1]\n" +
+			" └─ LookupJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ xy.x:2!null\n" +
+			"     │   └─ uv.u:0!null\n" +
+			"     ├─ IndexedTableAccess(uv)\n" +
+			"     │   ├─ index: [uv.u]\n" +
+			"     │   ├─ static: [{(0, 2)}]\n" +
+			"     │   └─ columns: [u v]\n" +
+			"     └─ IndexedTableAccess(xy)\n" +
+			"         ├─ index: [xy.x]\n" +
+			"         └─ columns: [x y]\n" +
+			"",
+	},
+	{
 		Query: `
 select
   case when x is null then 0

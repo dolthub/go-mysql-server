@@ -41,8 +41,10 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 		return transform.NodeWithCtx(n, filterPushdownChildSelector, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 			switch node := c.Node.(type) {
 			case *plan.Filter:
+				// Notably, filters are allowed to be pushed through other filters.
+				// This prevents filters hoisted from join conditions from being
+				// orphaned in the middle of join trees.
 				if f, ok := node.Child.(*plan.Filter); ok {
-					//collapse
 					if node.Expression == f.Expression {
 						return f, transform.NewTree, nil
 					}
@@ -156,9 +158,11 @@ func canDoPushdown(n sql.Node) bool {
 	return true
 }
 
-// Pushing down a filter is incompatible with the secondary table in a Left or Right join. If we push a predicate on
-// the secondary table below the join, we end up not evaluating it in all cases (since the secondary table result is
-// sometimes null in these types of joins). It must be evaluated only after the join result is computed.
+// Pushing down a filter is incompatible with the secondary table in a Left
+// or Right join. If we push a predicate on the secondary table below the
+// join, we end up not evaluating it in all cases (since the secondary table
+// result is sometimes null in these types of joins). It must be evaluated
+// only after the join result is computed.
 func filterPushdownChildSelector(c transform.Context) bool {
 	switch c.Node.(type) {
 	case *plan.Limit:

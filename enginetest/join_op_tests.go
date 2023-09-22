@@ -86,7 +86,12 @@ var joinOpTests = []struct {
 		},
 		tests: []JoinOpTests{
 			{
-				Query:    "select /*+ JOIN_ORDER(pq,xy,uv) */ * from xy join uv on (x = u and u in (0,2)) join ab on (x = a and v < 2)",
+				// This query is a small repro of a larger query caused by the intersection of several
+				// bugs. The query below should 1) move the filters out of the join condition, and then
+				// 2) push those hoisted filters on top of |uv|, where they are safe for join planning.
+				// At the time of this addition, filters in the middle of join trees are unsafe and
+				// at risk of being lost.
+				Query:    "select /*+ JOIN_ORDER(ab,xy,uv) */ * from xy join uv on (x = u and u in (0,2)) join ab on (x = a and v < 2)",
 				Expected: []sql.Row{{0, 2, 0, 1, 0, 2}},
 			},
 		},
