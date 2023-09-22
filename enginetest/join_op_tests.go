@@ -76,11 +76,9 @@ var joinOpTests = []struct {
 			setup.MydbData[0],
 			{
 				"CREATE table xy (x int primary key, y int, unique index y_idx(y));",
-				"create table rs (r int primary key, s int, index s_idx(s));",
 				"CREATE table uv (u int primary key, v int);",
 				"CREATE table ab (a int primary key, b int);",
 				"insert into xy values (1,0), (2,1), (0,2), (3,3);",
-				"insert into rs values (0,0), (1,0), (2,0), (4,4), (5,4);",
 				"insert into uv values (0,1), (1,1), (2,2), (3,2);",
 				"insert into ab values (0,2), (1,2), (2,2), (3,1);",
 				"update information_schema.statistics set cardinality = 1000 where table_name in ('ab', 'rs', 'xy', 'uv');",
