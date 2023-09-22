@@ -43,12 +43,13 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 			case *plan.Filter:
 				if f, ok := node.Child.(*plan.Filter); ok {
 					//collapse
+					if node.Expression == f.Expression {
+						return f, transform.NewTree, nil
+					}
 					return plan.NewFilter(expression.JoinAnd(node.Expression, f.Expression), f.Child), transform.NewTree, nil
 				}
 				return node, transform.SameTree, nil
 			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable:
-				// only push filters not immediately above
-
 				table, same, err := pushdownFiltersToAboveTable(ctx, a, node.(sql.NameableNode), scope, filters)
 				if err != nil {
 					return nil, transform.SameTree, err
@@ -74,7 +75,7 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 		case *plan.Filter:
 			switch n.Child.(type) {
 			case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
-				// can'tt push any lower
+				// can't push any lower
 				return n, transform.SameTree, nil
 			default:
 			}
