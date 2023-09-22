@@ -438,6 +438,15 @@ func TestTpchPlans(t *testing.T, harness Harness) {
 	}
 }
 
+func TestTpccPlans(t *testing.T, harness Harness) {
+	harness.Setup(setup.TpccPlanSetup...)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	for _, tt := range queries.TpccPlanTests {
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
+	}
+}
+
 func TestTpcdsPlans(t *testing.T, harness Harness) {
 	harness.Setup(setup.TpcdsPlanSetup...)
 	e := mustNewEngine(t, harness)
