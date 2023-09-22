@@ -9409,8 +9409,11 @@ WHERE
 			" │                                       │           ├─ static: [{[NULL, ∞)}]\n" +
 			" │                                       │           └─ columns: [id nohhr avpyf sypkf idut2 fzxv5 dqygv swcqv ykssu fhcyt]\n" +
 			" │                                       └─ Filter\n" +
-			" │                                           ├─ NOT\n" +
-			" │                                           │   └─ scalarSubq0.PRUV2:9 IS NULL\n" +
+			" │                                           ├─ AND\n" +
+			" │                                           │   ├─ NOT\n" +
+			" │                                           │   │   └─ scalarSubq0.PRUV2:9 IS NULL\n" +
+			" │                                           │   └─ NOT\n" +
+			" │                                           │       └─ scalarSubq0.PRUV2:9 IS NULL\n" +
 			" │                                           └─ TableAlias(scalarSubq0)\n" +
 			" │                                               └─ IndexedTableAccess(HDDVB)\n" +
 			" │                                                   ├─ index: [HDDVB.PRUV2]\n" +
@@ -9928,8 +9931,11 @@ WHERE
 			"     │                       │           │           ├─ static: [{[NULL, ∞)}]\n" +
 			"     │                       │           │           └─ columns: [id tofpn sjyn2 btxc5 fvucx swcqv ykssu fhcyt]\n" +
 			"     │                       │           └─ Filter\n" +
-			"     │                       │               ├─ NOT\n" +
-			"     │                       │               │   └─ scalarSubq0.OCA7E:37 IS NULL\n" +
+			"     │                       │               ├─ AND\n" +
+			"     │                       │               │   ├─ NOT\n" +
+			"     │                       │               │   │   └─ scalarSubq0.OCA7E:37 IS NULL\n" +
+			"     │                       │               │   └─ NOT\n" +
+			"     │                       │               │       └─ scalarSubq0.OCA7E:37 IS NULL\n" +
 			"     │                       │               └─ TableAlias(scalarSubq0)\n" +
 			"     │                       │                   └─ IndexedTableAccess(FLQLP)\n" +
 			"     │                       │                       ├─ index: [FLQLP.OCA7E]\n" +
@@ -10060,8 +10066,11 @@ WHERE
 			"     │               │   │               └─ Project\n" +
 			"     │               │   │                   ├─ columns: [scalarSubq0.NRURT:5]\n" +
 			"     │               │   │                   └─ Filter\n" +
-			"     │               │   │                       ├─ NOT\n" +
-			"     │               │   │                       │   └─ scalarSubq0.NRURT:5 IS NULL\n" +
+			"     │               │   │                       ├─ AND\n" +
+			"     │               │   │                       │   ├─ NOT\n" +
+			"     │               │   │                       │   │   └─ scalarSubq0.NRURT:5 IS NULL\n" +
+			"     │               │   │                       │   └─ NOT\n" +
+			"     │               │   │                       │       └─ scalarSubq0.NRURT:5 IS NULL\n" +
 			"     │               │   │                       └─ TableAlias(scalarSubq0)\n" +
 			"     │               │   │                           └─ Table\n" +
 			"     │               │   │                               ├─ name: FLQLP\n" +
@@ -10207,8 +10216,11 @@ WHERE
 			"             └─ Project\n" +
 			"                 ├─ columns: [scalarSubq0.XMM6Q:7]\n" +
 			"                 └─ Filter\n" +
-			"                     ├─ NOT\n" +
-			"                     │   └─ scalarSubq0.XMM6Q:7 IS NULL\n" +
+			"                     ├─ AND\n" +
+			"                     │   ├─ NOT\n" +
+			"                     │   │   └─ scalarSubq0.XMM6Q:7 IS NULL\n" +
+			"                     │   └─ NOT\n" +
+			"                     │       └─ scalarSubq0.XMM6Q:7 IS NULL\n" +
 			"                     └─ TableAlias(scalarSubq0)\n" +
 			"                         └─ IndexedTableAccess(FLQLP)\n" +
 			"                             ├─ index: [FLQLP.XMM6Q]\n" +
@@ -11005,22 +11017,22 @@ WHERE
 			"     │               ├─ alias-string: select umf.id as ORB3K from SZW6V as TJ5D2 join NZKPM as umf on umf.T4IBQ = TJ5D2.T4IBQ and umf.FGG57 = TJ5D2.V7UFH and umf.SYPKF = TJ5D2.SYPKF where TJ5D2.SWCQV = 0 and TJ5D2.id not in (select QQV4M from HGMQ6 where QQV4M is not null)\n" +
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [umf.id:79!null as ORB3K]\n" +
-			"     │                   └─ AntiLookupJoin\n" +
-			"     │                       ├─ Eq\n" +
-			"     │                       │   ├─ tj5d2.id:71!null\n" +
-			"     │                       │   └─ scalarSubq0.QQV4M:104\n" +
-			"     │                       ├─ LookupJoin\n" +
+			"     │                   └─ LookupJoin\n" +
+			"     │                       ├─ AND\n" +
 			"     │                       │   ├─ AND\n" +
-			"     │                       │   │   ├─ AND\n" +
-			"     │                       │   │   │   ├─ Eq\n" +
-			"     │                       │   │   │   │   ├─ umf.T4IBQ:80\n" +
-			"     │                       │   │   │   │   └─ tj5d2.T4IBQ:72!null\n" +
-			"     │                       │   │   │   └─ Eq\n" +
-			"     │                       │   │   │       ├─ umf.FGG57:81\n" +
-			"     │                       │   │   │       └─ tj5d2.V7UFH:73!null\n" +
+			"     │                       │   │   ├─ Eq\n" +
+			"     │                       │   │   │   ├─ umf.T4IBQ:80\n" +
+			"     │                       │   │   │   └─ tj5d2.T4IBQ:72!null\n" +
 			"     │                       │   │   └─ Eq\n" +
-			"     │                       │   │       ├─ umf.SYPKF:87\n" +
-			"     │                       │   │       └─ tj5d2.SYPKF:74!null\n" +
+			"     │                       │   │       ├─ umf.FGG57:81\n" +
+			"     │                       │   │       └─ tj5d2.V7UFH:73!null\n" +
+			"     │                       │   └─ Eq\n" +
+			"     │                       │       ├─ umf.SYPKF:87\n" +
+			"     │                       │       └─ tj5d2.SYPKF:74!null\n" +
+			"     │                       ├─ AntiLookupJoin\n" +
+			"     │                       │   ├─ Eq\n" +
+			"     │                       │   │   ├─ tj5d2.id:71!null\n" +
+			"     │                       │   │   └─ scalarSubq0.QQV4M:79\n" +
 			"     │                       │   ├─ Filter\n" +
 			"     │                       │   │   ├─ Eq\n" +
 			"     │                       │   │   │   ├─ tj5d2.SWCQV:76!null\n" +
@@ -11029,17 +11041,20 @@ WHERE
 			"     │                       │   │       └─ Table\n" +
 			"     │                       │   │           ├─ name: SZW6V\n" +
 			"     │                       │   │           └─ columns: [id t4ibq v7ufh sypkf h4dmt swcqv ykssu fhcyt]\n" +
-			"     │                       │   └─ TableAlias(umf)\n" +
-			"     │                       │       └─ IndexedTableAccess(NZKPM)\n" +
-			"     │                       │           ├─ index: [NZKPM.FGG57]\n" +
-			"     │                       │           └─ columns: [id t4ibq fgg57 sshpj nla6o sfj6l tjpt7 arn5p sypkf ivfmk ide43 az6sp fsdy2 xosd4 hmw4h s76om vaf zroh6 qcgts lnfm6 tvawl hdlcl bhhw6 fhcyt qz6vt]\n" +
-			"     │                       └─ Filter\n" +
-			"     │                           ├─ NOT\n" +
-			"     │                           │   └─ scalarSubq0.QQV4M:71 IS NULL\n" +
-			"     │                           └─ TableAlias(scalarSubq0)\n" +
-			"     │                               └─ IndexedTableAccess(HGMQ6)\n" +
-			"     │                                   ├─ index: [HGMQ6.QQV4M]\n" +
-			"     │                                   └─ columns: [qqv4m]\n" +
+			"     │                       │   └─ Filter\n" +
+			"     │                       │       ├─ AND\n" +
+			"     │                       │       │   ├─ NOT\n" +
+			"     │                       │       │   │   └─ scalarSubq0.QQV4M:71 IS NULL\n" +
+			"     │                       │       │   └─ NOT\n" +
+			"     │                       │       │       └─ scalarSubq0.QQV4M:71 IS NULL\n" +
+			"     │                       │       └─ TableAlias(scalarSubq0)\n" +
+			"     │                       │           └─ IndexedTableAccess(HGMQ6)\n" +
+			"     │                       │               ├─ index: [HGMQ6.QQV4M]\n" +
+			"     │                       │               └─ columns: [qqv4m]\n" +
+			"     │                       └─ TableAlias(umf)\n" +
+			"     │                           └─ IndexedTableAccess(NZKPM)\n" +
+			"     │                               ├─ index: [NZKPM.FGG57]\n" +
+			"     │                               └─ columns: [id t4ibq fgg57 sshpj nla6o sfj6l tjpt7 arn5p sypkf ivfmk ide43 az6sp fsdy2 xosd4 hmw4h s76om vaf zroh6 qcgts lnfm6 tvawl hdlcl bhhw6 fhcyt qz6vt]\n" +
 			"     └─ HashJoin\n" +
 			"         ├─ Eq\n" +
 			"         │   ├─ bs.id:67!null\n" +
@@ -11370,9 +11385,13 @@ WHERE
 			" │               │           │           │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
 			" │               │           │           │   │   │           └─ columns: [id ftqlq]\n" +
 			" │               │           │           │   │   └─ Filter\n" +
-			" │               │           │           │   │       ├─ Eq\n" +
-			" │               │           │           │   │       │   ├─ ct.ZRV3B:5!null\n" +
-			" │               │           │           │   │       │   └─ = (longtext)\n" +
+			" │               │           │           │   │       ├─ AND\n" +
+			" │               │           │           │   │       │   ├─ Eq\n" +
+			" │               │           │           │   │       │   │   ├─ ct.ZRV3B:5!null\n" +
+			" │               │           │           │   │       │   │   └─ = (longtext)\n" +
+			" │               │           │           │   │       │   └─ Eq\n" +
+			" │               │           │           │   │       │       ├─ ct.ZRV3B:5!null\n" +
+			" │               │           │           │   │       │       └─ = (longtext)\n" +
 			" │               │           │           │   │       └─ TableAlias(ct)\n" +
 			" │               │           │           │   │           └─ IndexedTableAccess(FLQLP)\n" +
 			" │               │           │           │   │               ├─ index: [FLQLP.FZ2R5]\n" +
@@ -11524,22 +11543,30 @@ WHERE
 			"                             │           │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
 			"                             │           │   │   │           └─ columns: [id ftqlq]\n" +
 			"                             │           │   │   └─ Filter\n" +
-			"                             │           │   │       ├─ Eq\n" +
-			"                             │           │   │       │   ├─ ct.M22QN:3!null\n" +
-			"                             │           │   │       │   └─ Subquery\n" +
-			"                             │           │   │       │       ├─ cacheable: true\n" +
-			"                             │           │   │       │       ├─ alias-string: select aac.id from TPXBU as aac where BTXC5 = 'WT'\n" +
-			"                             │           │   │       │       └─ Project\n" +
-			"                             │           │   │       │           ├─ columns: [aac.id:12!null]\n" +
-			"                             │           │   │       │           └─ Filter\n" +
-			"                             │           │   │       │               ├─ Eq\n" +
-			"                             │           │   │       │               │   ├─ aac.BTXC5:13\n" +
-			"                             │           │   │       │               │   └─ WT (longtext)\n" +
-			"                             │           │   │       │               └─ TableAlias(aac)\n" +
-			"                             │           │   │       │                   └─ IndexedTableAccess(TPXBU)\n" +
-			"                             │           │   │       │                       ├─ index: [TPXBU.BTXC5]\n" +
-			"                             │           │   │       │                       ├─ static: [{[WT, WT]}]\n" +
-			"                             │           │   │       │                       └─ columns: [id btxc5]\n" +
+			"                             │           │   │       ├─ AND\n" +
+			"                             │           │   │       │   ├─ AND\n" +
+			"                             │           │   │       │   │   ├─ Eq\n" +
+			"                             │           │   │       │   │   │   ├─ ct.M22QN:3!null\n" +
+			"                             │           │   │       │   │   │   └─ Subquery\n" +
+			"                             │           │   │       │   │   │       ├─ cacheable: true\n" +
+			"                             │           │   │       │   │   │       ├─ alias-string: select aac.id from TPXBU as aac where BTXC5 = 'WT'\n" +
+			"                             │           │   │       │   │   │       └─ Project\n" +
+			"                             │           │   │       │   │   │           ├─ columns: [aac.id:12!null]\n" +
+			"                             │           │   │       │   │   │           └─ Filter\n" +
+			"                             │           │   │       │   │   │               ├─ Eq\n" +
+			"                             │           │   │       │   │   │               │   ├─ aac.BTXC5:13\n" +
+			"                             │           │   │       │   │   │               │   └─ WT (longtext)\n" +
+			"                             │           │   │       │   │   │               └─ TableAlias(aac)\n" +
+			"                             │           │   │       │   │   │                   └─ IndexedTableAccess(TPXBU)\n" +
+			"                             │           │   │       │   │   │                       ├─ index: [TPXBU.BTXC5]\n" +
+			"                             │           │   │       │   │   │                       ├─ static: [{[WT, WT]}]\n" +
+			"                             │           │   │       │   │   │                       └─ columns: [id btxc5]\n" +
+			"                             │           │   │       │   │   └─ Eq\n" +
+			"                             │           │   │       │   │       ├─ ct.ZRV3B:10!null\n" +
+			"                             │           │   │       │   │       └─ = (longtext)\n" +
+			"                             │           │   │       │   └─ Eq\n" +
+			"                             │           │   │       │       ├─ ct.ZRV3B:10!null\n" +
+			"                             │           │   │       │       └─ = (longtext)\n" +
 			"                             │           │   │       └─ TableAlias(ct)\n" +
 			"                             │           │   │           └─ IndexedTableAccess(FLQLP)\n" +
 			"                             │           │   │               ├─ index: [FLQLP.FZ2R5]\n" +
@@ -11756,9 +11783,13 @@ WHERE
 			" │               │           │           │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
 			" │               │           │           │   │   │           └─ columns: [id ftqlq]\n" +
 			" │               │           │           │   │   └─ Filter\n" +
-			" │               │           │           │   │       ├─ Eq\n" +
-			" │               │           │           │   │       │   ├─ ct.ZRV3B:5!null\n" +
-			" │               │           │           │   │       │   └─ = (longtext)\n" +
+			" │               │           │           │   │       ├─ AND\n" +
+			" │               │           │           │   │       │   ├─ Eq\n" +
+			" │               │           │           │   │       │   │   ├─ ct.ZRV3B:5!null\n" +
+			" │               │           │           │   │       │   │   └─ = (longtext)\n" +
+			" │               │           │           │   │       │   └─ Eq\n" +
+			" │               │           │           │   │       │       ├─ ct.ZRV3B:5!null\n" +
+			" │               │           │           │   │       │       └─ = (longtext)\n" +
 			" │               │           │           │   │       └─ TableAlias(ct)\n" +
 			" │               │           │           │   │           └─ IndexedTableAccess(FLQLP)\n" +
 			" │               │           │           │   │               ├─ index: [FLQLP.FZ2R5]\n" +
@@ -11910,22 +11941,30 @@ WHERE
 			"                             │           │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
 			"                             │           │   │   │           └─ columns: [id ftqlq]\n" +
 			"                             │           │   │   └─ Filter\n" +
-			"                             │           │   │       ├─ Eq\n" +
-			"                             │           │   │       │   ├─ ct.M22QN:3!null\n" +
-			"                             │           │   │       │   └─ Subquery\n" +
-			"                             │           │   │       │       ├─ cacheable: true\n" +
-			"                             │           │   │       │       ├─ alias-string: select aac.id from TPXBU as aac where BTXC5 = 'WT'\n" +
-			"                             │           │   │       │       └─ Project\n" +
-			"                             │           │   │       │           ├─ columns: [aac.id:12!null]\n" +
-			"                             │           │   │       │           └─ Filter\n" +
-			"                             │           │   │       │               ├─ Eq\n" +
-			"                             │           │   │       │               │   ├─ aac.BTXC5:13\n" +
-			"                             │           │   │       │               │   └─ WT (longtext)\n" +
-			"                             │           │   │       │               └─ TableAlias(aac)\n" +
-			"                             │           │   │       │                   └─ IndexedTableAccess(TPXBU)\n" +
-			"                             │           │   │       │                       ├─ index: [TPXBU.BTXC5]\n" +
-			"                             │           │   │       │                       ├─ static: [{[WT, WT]}]\n" +
-			"                             │           │   │       │                       └─ columns: [id btxc5]\n" +
+			"                             │           │   │       ├─ AND\n" +
+			"                             │           │   │       │   ├─ AND\n" +
+			"                             │           │   │       │   │   ├─ Eq\n" +
+			"                             │           │   │       │   │   │   ├─ ct.M22QN:3!null\n" +
+			"                             │           │   │       │   │   │   └─ Subquery\n" +
+			"                             │           │   │       │   │   │       ├─ cacheable: true\n" +
+			"                             │           │   │       │   │   │       ├─ alias-string: select aac.id from TPXBU as aac where BTXC5 = 'WT'\n" +
+			"                             │           │   │       │   │   │       └─ Project\n" +
+			"                             │           │   │       │   │   │           ├─ columns: [aac.id:12!null]\n" +
+			"                             │           │   │       │   │   │           └─ Filter\n" +
+			"                             │           │   │       │   │   │               ├─ Eq\n" +
+			"                             │           │   │       │   │   │               │   ├─ aac.BTXC5:13\n" +
+			"                             │           │   │       │   │   │               │   └─ WT (longtext)\n" +
+			"                             │           │   │       │   │   │               └─ TableAlias(aac)\n" +
+			"                             │           │   │       │   │   │                   └─ IndexedTableAccess(TPXBU)\n" +
+			"                             │           │   │       │   │   │                       ├─ index: [TPXBU.BTXC5]\n" +
+			"                             │           │   │       │   │   │                       ├─ static: [{[WT, WT]}]\n" +
+			"                             │           │   │       │   │   │                       └─ columns: [id btxc5]\n" +
+			"                             │           │   │       │   │   └─ Eq\n" +
+			"                             │           │   │       │   │       ├─ ct.ZRV3B:10!null\n" +
+			"                             │           │   │       │   │       └─ = (longtext)\n" +
+			"                             │           │   │       │   └─ Eq\n" +
+			"                             │           │   │       │       ├─ ct.ZRV3B:10!null\n" +
+			"                             │           │   │       │       └─ = (longtext)\n" +
 			"                             │           │   │       └─ TableAlias(ct)\n" +
 			"                             │           │   │           └─ IndexedTableAccess(FLQLP)\n" +
 			"                             │           │   │               ├─ index: [FLQLP.FZ2R5]\n" +

@@ -38,9 +38,17 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 	}
 
 	pushdownAboveTables := func(n sql.Node, filters *filterSet) (sql.Node, transform.TreeIdentity, error) {
-		return transform.NodeWithCtx(n, filterPushdownAboveTablesChildSelector, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		return transform.NodeWithCtx(n, filterPushdownChildSelector, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 			switch node := c.Node.(type) {
+			case *plan.Filter:
+				if f, ok := node.Child.(*plan.Filter); ok {
+					//collapse
+					return plan.NewFilter(expression.JoinAnd(node.Expression, f.Expression), f.Child), transform.NewTree, nil
+				}
+				return node, transform.SameTree, nil
 			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable:
+				// only push filters not immediately above
+
 				table, same, err := pushdownFiltersToAboveTable(ctx, a, node.(sql.NameableNode), scope, filters)
 				if err != nil {
 					return nil, transform.SameTree, err
@@ -64,6 +72,12 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 	return transform.Node(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := node.(type) {
 		case *plan.Filter:
+			switch n.Child.(type) {
+			case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
+				// can'tt push any lower
+				return n, transform.SameTree, nil
+			default:
+			}
 			// Find all col exprs and group them by the table they mention so that we can keep track of which ones
 			// have been pushed down and need to be removed from the parent filter
 			filtersByTable := getFiltersByTable(n)
@@ -173,29 +187,6 @@ func filterPushdownChildSelector(c transform.Context) bool {
 		}
 	default:
 	}
-	return true
-}
-
-// Like filterPushdownChildSelector, but for pushing filters down via the introduction of additional Filter nodes
-// (for tables that can't treat the filter as an index lookup or accept it directly). In this case, we want to avoid
-// introducing additional Filter nodes unnecessarily. This means only introducing new filter nodes when they are being
-// pushed below a join or other structure.
-func filterPushdownAboveTablesChildSelector(c transform.Context) bool {
-	// All the same restrictions that apply to pushing filters down in general apply here as well
-	if !filterPushdownChildSelector(c) {
-		return false
-	}
-	switch c.Parent.(type) {
-	case *plan.Filter:
-		switch c.Node.(type) {
-		// Don't bother pushing filters down above tables if the direct child node is a table. At best this
-		// just splits the predicates into multiple filter nodes, and at worst it breaks other parts of the
-		// analyzer that don't expect this structure in the tree.
-		case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
-			return false
-		}
-	}
-
 	return true
 }
 
