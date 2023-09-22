@@ -32,6 +32,7 @@ var (
 	IntegrationPlanSetup [][]SetupScript
 	ComplexIndexSetup    [][]SetupScript
 	TpchPlanSetup        [][]SetupScript
+	TpccPlanSetup        [][]SetupScript
 	TpcdsPlanSetup       [][]SetupScript
 	ImdbPlanSetup        [][]SetupScript
 	LoadDataSetup        [][]SetupScript
@@ -73,6 +74,7 @@ func init() {
 	ComplexIndexSetup = [][]SetupScript{MydbData, Comp_index_tablesData}
 	ImdbPlanSetup = [][]SetupScript{MydbData, ImdbData}
 	TpchPlanSetup = [][]SetupScript{MydbData, TpchData}
+	TpccPlanSetup = [][]SetupScript{MydbData, TpccData}
 	TpcdsPlanSetup = [][]SetupScript{MydbData, TpcdsData}
 	LoadDataSetup = [][]SetupScript{MydbData, LoadtableData}
 	XySetup = [][]SetupScript{MydbData, XyData}

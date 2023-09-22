@@ -208,7 +208,7 @@ func specSetup(name string) [][]setup.SetupScript {
 		return setup.PlanSetup
 	case "IndexPlanTests":
 		return setup.ComplexIndexSetup
-	case "ImdbQueryPlans":
+	case "ImdbPlanTests":
 		return setup.ImdbPlanSetup
 	case "TpchPlanTests":
 		return setup.TpchPlanSetup
@@ -216,6 +216,8 @@ func specSetup(name string) [][]setup.SetupScript {
 		return setup.TpcdsPlanSetup
 	case "IntegrationPlanTests":
 		return setup.IntegrationPlanSetup
+	case "TpccPlanTests":
+		return setup.TpccPlanSetup
 	default:
 		exit(fmt.Errorf("setup not found for plan suite: %s", name))
 		return nil
@@ -232,6 +234,8 @@ func specQueries(name string) []queries.QueryPlanTest {
 		return queries.ImdbPlanTests
 	case "TpchPlanTests":
 		return queries.TpchPlanTests
+	case "TpccPlanTests":
+		return queries.TpccPlanTests
 	case "TpcdsPlanTests":
 		return queries.TpcdsPlanTests
 	case "IntegrationPlanTests":

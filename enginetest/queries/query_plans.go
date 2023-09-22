@@ -7650,7 +7650,9 @@ inner join pq on true
 			"",
 	},
 	{
-		Query: "with recursive a as (select 1 union select 2) select * from (select 1 where 1 in (select * from a)) as `temp`",
+		Query: "with recursive a as (select 1 union select 2) select * from (select 1 where 1 in (select * from a)) as `temp`\n" +
+			"",
+
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: temp\n" +
 			" ├─ outerVisibility: false\n" +
@@ -8005,7 +8007,9 @@ inner join pq on true
 			"",
 	},
 	{
-		Query: "with recursive a as (select 1 union select 2) select * from (select 1 where 1 in (select * from a)) as `temp`",
+		Query: "with recursive a as (select 1 union select 2) select * from (select 1 where 1 in (select * from a)) as `temp`\n" +
+			"",
+
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: temp\n" +
 			" ├─ outerVisibility: false\n" +

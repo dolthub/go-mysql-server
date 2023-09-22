@@ -3488,7 +3488,7 @@ WHERE
 			"                                     └─ Filter\n" +
 			"                                         ├─ Eq\n" +
 			"                                         │   ├─ ms.D237E:11!null\n" +
-			"                                         │   └─ true (tinyint)\n" +
+			"                                         │   └─ true (tinyint(1))\n" +
 			"                                         └─ LeftOuterHashJoin\n" +
 			"                                             ├─ Eq\n" +
 			"                                             │   ├─ nd.HPCMS:4!null\n" +
@@ -3932,7 +3932,7 @@ WHERE
 			"                                     └─ Filter\n" +
 			"                                         ├─ Eq\n" +
 			"                                         │   ├─ ms.D237E:11!null\n" +
-			"                                         │   └─ true (tinyint)\n" +
+			"                                         │   └─ true (tinyint(1))\n" +
 			"                                         └─ LeftOuterHashJoin\n" +
 			"                                             ├─ Eq\n" +
 			"                                             │   ├─ nd.HPCMS:4!null\n" +
