@@ -29,7 +29,6 @@ import (
 )
 
 func TestInsertIgnoreConversions(t *testing.T) {
-	ctx := sql.NewEmptyContext()
 	testCases := []struct {
 		name      string
 		colType   sql.Type
@@ -72,10 +71,13 @@ func TestInsertIgnoreConversions(t *testing.T) {
 		},
 	}
 
-	var warningCnt int
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+			db := memory.NewDatabase("foo")
+			pro := memory.NewDBProvider(db)
+			ctx := newContext(pro)
+
+			table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "c1", Source: "foo", Type: tc.colType},
 			}), nil)
 
@@ -91,9 +93,9 @@ func TestInsertIgnoreConversions(t *testing.T) {
 
 			require.Equal(t, sql.Row{tc.expected}, row)
 
-			// Validate that the number of warnings are increasing by 1 each time
+			var warningCnt int
 			if tc.err {
-				warningCnt++
+				warningCnt = 1
 			}
 			require.Equal(t, ctx.WarningCount(), uint16(warningCnt))
 		})

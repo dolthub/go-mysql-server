@@ -68,9 +68,9 @@ func (s *tableEditorIter) Next(ctx *sql.Context) (sql.Row, error) {
 // Close implements the interface sql.RowIter.
 func (s *tableEditorIter) Close(ctx *sql.Context) error {
 	err := s.errorEncountered
-	_, ok := err.(sql.IgnorableError)
+	_, ignoreError := err.(sql.IgnorableError)
 
-	if err != nil && !ok {
+	if err != nil && !ignoreError {
 		for _, openerCloser := range s.openerClosers {
 			tempErr := openerCloser.DiscardChanges(ctx, s.errorEncountered)
 			if tempErr != nil {

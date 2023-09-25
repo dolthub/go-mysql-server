@@ -17,41 +17,23 @@ package plan
 import (
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/types"
-
 	"github.com/dolthub/go-mysql-server/memory"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // DualTableName is empty string because no table with empty name can be created
 const DualTableName = ""
-
-// DualTableSchema has a single column with empty name because no table can be created with empty string column name or
-// no alias name can be empty string. This avoids any alias name to be considered as GetField of dual table.
-var DualTableSchema = sql.NewPrimaryKeySchema(sql.Schema{
-	{Name: "", Source: DualTableName, Type: types.LongText, Nullable: false},
-})
 
 // IsDualTable returns whether the given table is the "dual" table.
 func IsDualTable(t sql.Table) bool {
 	if t == nil {
 		return false
 	}
-	return strings.ToLower(t.Name()) == DualTableName && t.Schema().Equals(DualTableSchema.Schema)
+	return strings.ToLower(t.Name()) == DualTableName && t.Schema().Equals(memory.DualTableSchema.Schema)
 }
 
 var dualTable = func() sql.Table {
-	t := memory.NewTable(DualTableName, DualTableSchema, nil)
-
-	ctx := sql.NewEmptyContext()
-
-	// Need to run through the proper inserting steps to add data to the dummy table.
-	inserter := t.Inserter(ctx)
-	inserter.StatementBegin(ctx)
-	_ = inserter.Insert(sql.NewEmptyContext(), sql.NewRow("x"))
-	_ = inserter.StatementComplete(ctx)
-	_ = inserter.Close(ctx)
-	return t
+	return memory.NewDualTable()
 }()
 
 // NewDualSqlTable creates a new Dual table.

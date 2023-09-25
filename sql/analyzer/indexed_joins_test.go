@@ -15,6 +15,8 @@ import (
 )
 
 func TestHashJoins(t *testing.T) {
+	db := memory.NewDatabase("db")
+
 	tests := []struct {
 		name string
 		plan sql.Node
@@ -25,14 +27,14 @@ func TestHashJoins(t *testing.T) {
 			plan: plan.NewInnerJoin(
 				plan.NewInnerJoin(
 					plan.NewInnerJoin(
-						ab(),
-						xy(),
+						ab(db),
+						xy(db),
 						newEq("ab.a=xy.x"),
 					),
-					pq(),
+					pq(db),
 					newEq("xy.x=pq.p"),
 				),
-				uv(),
+				uv(db),
 				newEq("pq.q=uv.u"),
 			),
 			memo: `memo:
@@ -61,9 +63,12 @@ func TestHashJoins(t *testing.T) {
 		},
 	}
 
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := memo.NewMemo(nil, nil, nil, 0, memo.NewDefaultCoster(), memo.NewDefaultCarder())
+			m := memo.NewMemo(ctx, nil, nil, 0, memo.NewDefaultCoster(), memo.NewDefaultCarder())
 			j := memo.NewJoinOrderBuilder(m)
 			j.ReorderJoin(tt.plan)
 			addHashJoins(m)
@@ -77,37 +82,32 @@ var childSchema = sql.NewPrimaryKeySchema(sql.Schema{
 	{Name: "s", Type: types.Text, Nullable: true},
 })
 
-func tableNode(name string) sql.Node {
-	t := memory.NewTable(name, childSchema, nil)
-	return plan.NewResolvedTable(t, nil, nil)
-}
-
-func uv() sql.Node {
-	t := memory.NewTable("uv", sql.NewPrimaryKeySchema(sql.Schema{
+func uv(db *memory.Database) sql.Node {
+	t := memory.NewTable(db, "uv", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "u", Type: types.Int64, Nullable: true},
 		{Name: "v", Type: types.Text, Nullable: true},
 	}, 0), nil)
 	return plan.NewResolvedTable(t, nil, nil)
 }
 
-func xy() sql.Node {
-	t := memory.NewTable("xy", sql.NewPrimaryKeySchema(sql.Schema{
+func xy(db *memory.Database) sql.Node {
+	t := memory.NewTable(db, "xy", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "x", Type: types.Int64, Nullable: true},
 		{Name: "y", Type: types.Text, Nullable: true},
 	}, 0), nil)
 	return plan.NewResolvedTable(t, nil, nil)
 }
 
-func ab() sql.Node {
-	t := memory.NewTable("ab", sql.NewPrimaryKeySchema(sql.Schema{
+func ab(db *memory.Database) sql.Node {
+	t := memory.NewTable(db, "ab", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: types.Int64, Nullable: true},
 		{Name: "b", Type: types.Text, Nullable: true},
 	}, 0), nil)
 	return plan.NewResolvedTable(t, nil, nil)
 }
 
-func pq() sql.Node {
-	t := memory.NewTable("pq", sql.NewPrimaryKeySchema(sql.Schema{
+func pq(db *memory.Database) sql.Node {
+	t := memory.NewTable(db, "pq", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "p", Type: types.Int64, Nullable: true},
 		{Name: "q", Type: types.Text, Nullable: true},
 	}, 0), nil)

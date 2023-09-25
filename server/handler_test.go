@@ -38,18 +38,14 @@ import (
 )
 
 func TestHandlerOutput(t *testing.T) {
-	e, db1 := setupMemDB(require.New(t))
-	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
-		if dbName == "test" {
-			return db1, nil
-		}
-		return nil, sql.ErrDatabaseNotFound.New(dbName)
-	}
+	e, pro := setupMemDB(require.New(t))
+	dbFunc := pro.Database
+
 	dummyConn := newConn(1)
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			testSessionBuilder,
+			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
@@ -212,19 +208,14 @@ func TestHandlerOutput(t *testing.T) {
 }
 
 func TestHandlerComPrepare(t *testing.T) {
-	e, db := setupMemDB(require.New(t))
+	e, pro := setupMemDB(require.New(t))
 	dummyConn := newConn(1)
-	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
-		if dbName == "test" {
-			return db, nil
-		}
-		return nil, sql.ErrDatabaseNotFound.New(dbName)
-	}
+	dbFunc := pro.Database
 
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			testSessionBuilder,
+			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
@@ -289,18 +280,14 @@ func TestHandlerComPrepare(t *testing.T) {
 }
 
 func TestHandlerComPrepareExecute(t *testing.T) {
-	e, db := setupMemDB(require.New(t))
+	e, pro := setupMemDB(require.New(t))
 	dummyConn := newConn(1)
-	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
-		if dbName == "test" {
-			return db, nil
-		}
-		return nil, sql.ErrDatabaseNotFound.New(dbName)
-	}
+	dbFunc := pro.Database
+
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			testSessionBuilder,
+			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
@@ -368,18 +355,14 @@ func TestHandlerComPrepareExecute(t *testing.T) {
 }
 
 func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
-	e, db := setupMemDB(require.New(t))
+	e, pro := setupMemDB(require.New(t))
 	dummyConn := newConn(1)
-	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
-		if dbName == "test" {
-			return db, nil
-		}
-		return nil, sql.ErrDatabaseNotFound.New(dbName)
-	}
+	dbFunc := pro.Database
+
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			testSessionBuilder,
+			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
@@ -479,13 +462,9 @@ func (tl *TestListener) QueryCompleted(success bool, duration time.Duration) {
 
 func TestServerEventListener(t *testing.T) {
 	require := require.New(t)
-	e, db := setupMemDB(require)
-	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
-		if dbName == "test" {
-			return db, nil
-		}
-		return nil, sql.ErrDatabaseNotFound.New(dbName)
-	}
+	e, pro := setupMemDB(require)
+	dbFunc := pro.Database
+
 	listener := &TestListener{}
 	handler := &Handler{
 		e: e,
@@ -565,13 +544,8 @@ func TestServerEventListener(t *testing.T) {
 
 func TestHandlerKill(t *testing.T) {
 	require := require.New(t)
-	e, db := setupMemDB(require)
-	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
-		if dbName == "test" {
-			return db, nil
-		}
-		return nil, sql.ErrDatabaseNotFound.New(dbName)
-	}
+	e, pro := setupMemDB(require)
+	dbFunc := pro.Database
 
 	handler := &Handler{
 		e: e,
@@ -739,18 +713,13 @@ func TestSchemaToFields(t *testing.T) {
 
 	require.Equal(len(schema), len(expected))
 
-	e, db := setupMemDB(require)
-	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
-		if dbName == "test" {
-			return db, nil
-		}
-		return nil, sql.ErrDatabaseNotFound.New(dbName)
-	}
+	e, pro := setupMemDB(require)
+	dbFunc := pro.Database
 
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			testSessionBuilder,
+			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
@@ -823,25 +792,15 @@ func TestHandlerMaxTextResponseBytes(t *testing.T) {
 func TestHandlerTimeout(t *testing.T) {
 	require := require.New(t)
 
-	e, db1 := setupMemDB(require)
-	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
-		if dbName == "test" {
-			return db1, nil
-		}
-		return nil, sql.ErrDatabaseNotFound.New(dbName)
-	}
+	e, pro := setupMemDB(require)
+	dbFunc := pro.Database
 
-	e2, db2 := setupMemDB(require)
-	dbFunc2 := func(ctx *sql.Context, dbName string) (sql.Database, error) {
-		if dbName == "test" {
-			return db2, nil
-		}
-		return nil, sql.ErrDatabaseNotFound.New(dbName)
-	}
+	e2, pro2 := setupMemDB(require)
+	dbFunc2 := pro2.Database
 
 	timeOutHandler := &Handler{
 		e: e,
-		sm: NewSessionManager(testSessionBuilder,
+		sm: NewSessionManager(testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
@@ -852,7 +811,7 @@ func TestHandlerTimeout(t *testing.T) {
 
 	noTimeOutHandler := &Handler{
 		e: e2,
-		sm: NewSessionManager(testSessionBuilder,
+		sm: NewSessionManager(testSessionBuilder(pro2),
 			sql.NoopTracer,
 			dbFunc2,
 			sql.NewMemoryManager(nil),
@@ -888,13 +847,9 @@ func TestHandlerTimeout(t *testing.T) {
 
 func TestOkClosedConnection(t *testing.T) {
 	require := require.New(t)
-	e, db := setupMemDB(require)
-	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
-		if dbName == "test" {
-			return db, nil
-		}
-		return nil, sql.ErrDatabaseNotFound.New(dbName)
-	}
+	e, pro := setupMemDB(require)
+	dbFunc := pro.Database
+
 	port, err := getFreePort()
 	require.NoError(err)
 
@@ -910,7 +865,7 @@ func TestOkClosedConnection(t *testing.T) {
 	h := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			testSessionBuilder,
+			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
@@ -931,13 +886,8 @@ func TestOkClosedConnection(t *testing.T) {
 
 // Tests the CLIENT_FOUND_ROWS capabilities flag
 func TestHandlerFoundRowsCapabilities(t *testing.T) {
-	e, db := setupMemDB(require.New(t))
-	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
-		if dbName == "test" {
-			return db, nil
-		}
-		return nil, sql.ErrDatabaseNotFound.New(dbName)
-	}
+	e, pro := setupMemDB(require.New(t))
+	dbFunc := pro.Database
 	dummyConn := newConn(1)
 
 	// Set the capabilities to include found rows
@@ -947,7 +897,7 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			testSessionBuilder,
+			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
@@ -1008,24 +958,25 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 	}
 }
 
-func setupMemDB(require *require.Assertions) (*sqle.Engine, sql.Database) {
+func setupMemDB(require *require.Assertions) (*sqle.Engine, *memory.DbProvider) {
 	db := memory.NewDatabase("test")
 	pro := memory.NewDBProvider(db)
 	e := sqle.NewDefault(pro)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
 
-	tableTest := memory.NewTable("test", sql.NewPrimaryKeySchema(sql.Schema{{Name: "c1", Type: types.Int32, Source: "test"}}), nil)
+	tableTest := memory.NewTable(db, "test", sql.NewPrimaryKeySchema(sql.Schema{{Name: "c1", Type: types.Int32, Source: "test"}}), nil)
 	tableTest.EnablePrimaryKeyIndexes()
 
 	for i := 0; i < 1010; i++ {
 		require.NoError(tableTest.Insert(
-			sql.NewEmptyContext(),
+			ctx,
 			sql.NewRow(int32(i)),
 		))
 	}
 
 	db.AddTable("test", tableTest)
 
-	return e, db
+	return e, pro
 }
 
 func getFreePort() (string, error) {
@@ -1076,8 +1027,11 @@ func brokenTestServer(t *testing.T, ready chan struct{}, port string) {
 
 // This session builder is used as dummy mysql Conn is not complete and
 // causes panic when accessing remote address.
-func testSessionBuilder(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, error) {
-	return sql.NewBaseSessionWithClientServer(addr, sql.Client{Address: "127.0.0.1:34567", User: c.User, Capabilities: c.Capabilities}, c.ConnectionID), nil
+func testSessionBuilder(pro *memory.DbProvider) func(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, error) {
+	return func(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, error) {
+		base := sql.NewBaseSessionWithClientServer(addr, sql.Client{Address: "127.0.0.1:34567", User: c.User, Capabilities: c.Capabilities}, c.ConnectionID)
+		return memory.NewSession(base, pro), nil
+	}
 }
 
 type mockConn struct {

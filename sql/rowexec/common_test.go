@@ -16,6 +16,7 @@ package rowexec
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"testing"
@@ -28,7 +29,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+func newContext(provider *memory.DbProvider) *sql.Context {
+	return sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), provider)))
+}
+
 var benchtable = func() *memory.Table {
+	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+
 	schema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "strfield", Type: types.Text, Nullable: true},
 		{Name: "floatfield", Type: types.Float64, Nullable: true},
@@ -37,7 +45,7 @@ var benchtable = func() *memory.Table {
 		{Name: "bigintfield", Type: types.Int64, Nullable: false},
 		{Name: "blobfield", Type: types.Blob, Nullable: false},
 	})
-	t := memory.NewTable("test", schema, nil)
+	t := memory.NewTable(db.BaseDatabase, "test", schema, nil)
 
 	for i := 0; i < 100; i++ {
 		n := fmt.Sprint(i)
@@ -46,7 +54,7 @@ var benchtable = func() *memory.Table {
 			boolVal = 1
 		}
 		err := t.Insert(
-			sql.NewEmptyContext(),
+			newContext(pro),
 			sql.NewRow(
 				repeatStr(n, i%10+1),
 				float64(i),
@@ -62,7 +70,7 @@ var benchtable = func() *memory.Table {
 
 		if i%2 == 0 {
 			err := t.Insert(
-				sql.NewEmptyContext(),
+				newContext(pro),
 				sql.NewRow(
 					repeatStr(n, i%10+1),
 					float64(i),
@@ -118,9 +126,8 @@ func assertRows(t *testing.T, ctx *sql.Context, iter sql.RowIter, expected int64
 	require.Equal(expected, rows)
 }
 
-func collectRows(t *testing.T, node sql.Node) []sql.Row {
+func collectRows(t *testing.T, ctx *sql.Context, node sql.Node) []sql.Row {
 	t.Helper()
-	ctx := sql.NewEmptyContext()
 
 	iter, err := DefaultBuilder.Build(ctx, node, nil)
 	require.NoError(t, err)
@@ -138,7 +145,8 @@ func collectRows(t *testing.T, node sql.Node) []sql.Row {
 
 func TestIsUnary(t *testing.T) {
 	require := require.New(t)
-	table := memory.NewTable("foo", sql.PrimaryKeySchema{}, nil)
+	db := memory.NewDatabase("test")
+	table := memory.NewTable(db.BaseDatabase, "foo", sql.PrimaryKeySchema{}, nil)
 
 	require.True(plan.IsUnary(plan.NewFilter(nil, plan.NewResolvedTable(table, nil, nil))))
 	require.False(plan.IsUnary(plan.NewCrossJoin(
@@ -149,7 +157,8 @@ func TestIsUnary(t *testing.T) {
 
 func TestIsBinary(t *testing.T) {
 	require := require.New(t)
-	table := memory.NewTable("foo", sql.PrimaryKeySchema{}, nil)
+	db := memory.NewDatabase("test")
+	table := memory.NewTable(db.BaseDatabase, "foo", sql.PrimaryKeySchema{}, nil)
 
 	require.False(plan.IsBinary(plan.NewFilter(nil, plan.NewResolvedTable(table, nil, nil))))
 	require.True(plan.IsBinary(plan.NewCrossJoin(

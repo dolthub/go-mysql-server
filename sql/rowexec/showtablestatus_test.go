@@ -29,19 +29,20 @@ func TestShowTableStatus(t *testing.T) {
 	require := require.New(t)
 
 	db1 := memory.NewDatabase("a")
-	db1.AddTable("t1", memory.NewTable("t1", sql.PrimaryKeySchema{}, db1.GetForeignKeyCollection()))
-	db1.AddTable("t2", memory.NewTable("t2", sql.PrimaryKeySchema{}, db1.GetForeignKeyCollection()))
+	db1.AddTable("t1", memory.NewTable(db1, "t1", sql.PrimaryKeySchema{}, db1.GetForeignKeyCollection()))
+	db1.AddTable("t2", memory.NewTable(db1, "t2", sql.PrimaryKeySchema{}, db1.GetForeignKeyCollection()))
 
 	db2 := memory.NewDatabase("b")
-	db2.AddTable("t3", memory.NewTable("t3", sql.PrimaryKeySchema{}, db2.GetForeignKeyCollection()))
-	db2.AddTable("t4", memory.NewTable("t4", sql.PrimaryKeySchema{}, db2.GetForeignKeyCollection()))
+	db2.AddTable("t3", memory.NewTable(db2, "t3", sql.PrimaryKeySchema{}, db2.GetForeignKeyCollection()))
+	db2.AddTable("t4", memory.NewTable(db2, "t4", sql.PrimaryKeySchema{}, db2.GetForeignKeyCollection()))
 
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db1, db2))
+	pro := memory.NewDBProvider(db1, db2)
+	ctx := newContext(pro)
 
 	node := plan.NewShowTableStatus(db1)
 	node.Catalog = catalog
 
-	ctx := sql.NewEmptyContext()
 	ctx.SetCurrentDatabase("a")
 	iter, err := DefaultBuilder.Build(ctx, node, nil)
 	require.NoError(err)

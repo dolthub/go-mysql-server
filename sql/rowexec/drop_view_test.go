@@ -31,7 +31,7 @@ import (
 // the view that is also returned. The context returned is the one used to
 // create the view.
 func setupView(t *testing.T, db memory.MemoryDatabase) (*sql.Context, *sql.View) {
-	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
+	table := memory.NewTable(db.Database(), "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Source: "mytable", Type: types.Int32},
 		{Name: "s", Source: "mytable", Type: types.Text},
 	}), nil)

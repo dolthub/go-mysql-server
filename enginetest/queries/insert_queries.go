@@ -1019,9 +1019,19 @@ var InsertScripts = []ScriptTest{
 			);`,
 			"insert into auto values (NULL,10), (NULL,20), (NULL,30)",
 			"alter table auto auto_increment 9;",
-			"insert into auto values (NULL,90)",
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT AUTO_INCREMENT FROM information_schema.tables WHERE table_name = 'auto' AND table_schema = DATABASE()",
+				Expected: []sql.Row{{uint64(9)}},
+			},
+			{
+				Query: "insert into auto values (NULL,90)",
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 1,
+					InsertID:     9,
+				}}},
+			},
 			{
 				Query: "select * from auto order by 1",
 				Expected: []sql.Row{

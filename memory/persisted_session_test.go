@@ -28,9 +28,11 @@ import (
 
 func newPersistedSqlContext() *sql.Context {
 	ctx, _ := context.WithCancel(context.TODO())
+	pro := NewDBProvider()
 	sess := sql.NewBaseSession()
+
 	persistedGlobals := GlobalsMap{"max_connections": 1000, "net_read_timeout": 1000, "auto_increment_increment": 123}
-	persistedSess := NewInMemoryPersistedSession(sess, persistedGlobals)
+	persistedSess := NewSession(sess, pro).SetGlobals(persistedGlobals)
 	sqlCtx := sql.NewContext(ctx)
 	sqlCtx.Session = persistedSess
 	return sqlCtx
@@ -38,7 +40,7 @@ func newPersistedSqlContext() *sql.Context {
 
 func TestInitPersistedSession(t *testing.T) {
 	sqlCtx := newPersistedSqlContext()
-	pg := sqlCtx.Session.(*InMemoryPersistedSession).persistedGlobals
+	pg := sqlCtx.Session.(*Session).persistedGlobals
 	res, ok := pg["max_connections"]
 	require.True(t, ok)
 	assert.Equal(t, 1000, res)
@@ -59,7 +61,7 @@ func TestPersistVariable(t *testing.T) {
 	for _, test := range persistTests {
 		t.Run(test.title, func(t *testing.T) {
 			sqlCtx := newPersistedSqlContext()
-			sess := sqlCtx.Session.(*InMemoryPersistedSession)
+			sess := sqlCtx.Session.(*Session)
 			err := sqlCtx.Session.(sql.PersistableSession).PersistGlobal(test.name, test.value)
 			if test.err != nil {
 				assert.True(t, test.err.Is(err))
@@ -74,7 +76,7 @@ func TestPersistVariable(t *testing.T) {
 
 func TestRemoveGlobal(t *testing.T) {
 	sqlCtx := newPersistedSqlContext()
-	sess := sqlCtx.Session.(*InMemoryPersistedSession)
+	sess := sqlCtx.Session.(*Session)
 
 	key := "auto_increment_increment"
 	err := sqlCtx.Session.(sql.PersistableSession).RemovePersistedGlobal(key)
@@ -87,7 +89,7 @@ func TestRemoveGlobal(t *testing.T) {
 
 func TestRemoveAllGlobals(t *testing.T) {
 	sqlCtx := newPersistedSqlContext()
-	sess := sqlCtx.Session.(*InMemoryPersistedSession)
+	sess := sqlCtx.Session.(*Session)
 	err := sqlCtx.Session.(sql.PersistableSession).RemoveAllPersistedGlobals()
 	require.NoError(t, err)
 	assert.Equal(t, 0, len(sess.persistedGlobals))

@@ -15,6 +15,7 @@
 package aggregation
 
 import (
+	"context"
 	"io"
 	"testing"
 
@@ -78,8 +79,11 @@ func TestWindowPartitionIter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
-			ctx := sql.NewEmptyContext()
-			tt.Iter.child = mustNewRowIter(t, ctx)
+			db := memory.NewDatabase("test")
+			pro := memory.NewDBProvider(db)
+			ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
+
+			tt.Iter.child = mustNewRowIter(t, db, ctx)
 			res, err := sql.RowIterToRows(ctx, nil, tt.Iter)
 			require.NoError(t, err)
 			require.Equal(t, tt.Expected, res)
@@ -87,14 +91,14 @@ func TestWindowPartitionIter(t *testing.T) {
 	}
 }
 
-func mustNewRowIter(t *testing.T, ctx *sql.Context) sql.RowIter {
+func mustNewRowIter(t *testing.T, db *memory.Database, ctx *sql.Context) sql.RowIter {
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "w", Type: types.Int64, Nullable: true},
 		{Name: "x", Type: types.Text, Nullable: true},
 		{Name: "y", Type: types.Text, Nullable: true},
 		{Name: "z", Type: types.Int32, Nullable: true},
 	})
-	table := memory.NewTable("test", childSchema, nil)
+	table := memory.NewTable(db, "test", childSchema, nil)
 
 	rows := []sql.Row{
 		{int64(1), "forest", "leaf", int32(4)},
@@ -109,7 +113,7 @@ func mustNewRowIter(t *testing.T, ctx *sql.Context) sql.RowIter {
 	}
 
 	for _, r := range rows {
-		require.NoError(t, table.Insert(sql.NewEmptyContext(), r))
+		require.NoError(t, table.Insert(ctx, r))
 	}
 
 	pIter, err := table.Partitions(ctx)
@@ -124,13 +128,16 @@ func mustNewRowIter(t *testing.T, ctx *sql.Context) sql.RowIter {
 }
 
 func TestWindowPartition_MaterializeInput(t *testing.T) {
-	ctx := sql.NewEmptyContext()
+	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
+
 	i := WindowPartitionIter{
 		w: &WindowPartition{
 			PartitionBy: partitionByX,
 			SortBy:      sortByW,
 		},
-		child: mustNewRowIter(t, ctx),
+		child: mustNewRowIter(t, db, ctx),
 	}
 
 	buf, ordering, err := i.materializeInput(ctx)

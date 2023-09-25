@@ -101,6 +101,8 @@ func (c *Column) DebugString() string {
 	sb.WriteString(", ")
 	sb.WriteString("Default: ")
 	sb.WriteString(DebugString(c.Default))
+	sb.WriteString("Generated: ")
+	sb.WriteString(DebugString(c.Generated))
 	sb.WriteString(", ")
 	sb.WriteString("AutoIncrement: ")
 	sb.WriteString(fmt.Sprintf("%v", c.AutoIncrement))

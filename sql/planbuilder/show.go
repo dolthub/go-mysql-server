@@ -447,13 +447,17 @@ func (b *Builder) buildShowIndex(inScope *scope, s *ast.Show) (outScope *scope) 
 		err := sql.ErrTableNotFound.New(tableName)
 		b.handleErr(err)
 	}
-	rt, ok := tableScope.node.(*plan.ResolvedTable)
-	if !ok {
+	showIdx := plan.NewShowIndexes(tableScope.node)
+	switch n := tableScope.node.(type) {
+	case *plan.ResolvedTable:
+		showIdx.IndexesToShow = b.getInfoSchemaIndexes(n)
+	case *plan.SubqueryAlias:
+		// views don't have keys
+		showIdx.Child = plan.NewResolvedDualTable()
+	default:
 		err := sql.ErrTableNotFound.New(tableName)
 		b.handleErr(err)
 	}
-	showIdx := plan.NewShowIndexes(rt)
-	showIdx.IndexesToShow = b.getInfoSchemaIndexes(rt)
 	outScope.node = showIdx
 	return
 }
