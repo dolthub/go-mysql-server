@@ -64,7 +64,7 @@ func assignIndexesHelper(n sql.Node, inScope *idxScope) (sql.Node, *idxScope, er
 // finalization into an after phase.
 type idxScope struct {
 	parentScopes  []*idxScope
-	lateralScopes []*idxScope // TODO: rename to sibling scope
+	lateralScopes []*idxScope
 	childScopes   []*idxScope
 	columns       []string
 	children      []sql.Node
@@ -391,7 +391,7 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 			if len(s.parentScopes) == 0 {
 				return ret, nil
 			}
-			// TODO: combine scopes???
+			// TODO: combine scopes?
 			scopeLen := len(s.parentScopes[0].columns)
 			if scopeLen == 0 {
 				return ret, nil
