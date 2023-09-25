@@ -324,7 +324,6 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 			newCheck.Expr = newE
 			s.checks = append(s.checks, &newCheck)
 		}
-
 	case *plan.Update:
 		newScope := s.copy()
 		srcScope := s.childScopes[0]
@@ -387,6 +386,24 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 		}
 		if nc, ok := ret.(sql.CheckConstraintNode); ok && s.checks != nil {
 			ret = nc.WithChecks(s.checks)
+		}
+		if jn, ok := ret.(*plan.JoinNode); ok {
+			if len(s.parentScopes) == 0 {
+				return ret, nil
+			}
+			// TODO: combine scopes?
+			scopeLen := len(s.parentScopes[0].columns)
+			if scopeLen == 0 {
+				return ret, nil
+			}
+			ret = jn.WithScopeLen(scopeLen)
+			ret, err = ret.WithChildren(
+				plan.NewStripRowNode(jn.Left(), scopeLen),
+				plan.NewStripRowNode(jn.Right(), scopeLen),
+			)
+			if err != nil {
+				return nil, err
+			}
 		}
 		return ret, nil
 	}
