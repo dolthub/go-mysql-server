@@ -8055,13 +8055,13 @@ SELECT * FROM ladder;`,
 		Expected: []sql.Row{{nil}}, // currently returns string "null"
 	},
 	{
-		Query:    "SELECT 1 FROM DUAL WHERE (1, null) != (0, null)",
+		Query: "SELECT 1 FROM DUAL WHERE (1, null) != (0, null)",
 		Expected: []sql.Row{
 			{1},
 		},
 	},
 	{
-		Query:    "SELECT 1 FROM DUAL WHERE ('0', 0) = (0, '0')",
+		Query: "SELECT 1 FROM DUAL WHERE ('0', 0) = (0, '0')",
 		Expected: []sql.Row{
 			{1},
 		},
@@ -8949,46 +8949,46 @@ var ErrorQueries = []QueryErrorTest{
 	},
 
 	{
-		Query: "SELECT json_array_append() FROM dual;",
+		Query:       "SELECT json_array_append() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
-		Query: "SELECT json_array_insert() FROM dual;",
+		Query:       "SELECT json_array_insert() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
-		Query: "SELECT json_contains() FROM dual;",
+		Query:       "SELECT json_contains() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
-		Query: "SELECT json_contains_path() FROM dual;",
+		Query:       "SELECT json_contains_path() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
-		Query: "SELECT json_insert() FROM dual;",
+		Query:       "SELECT json_insert() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
-		Query: "SELECT json_merge_preserve() FROM dual;",
+		Query:       "SELECT json_merge_preserve() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
-		Query: "SELECT json_remove() FROM dual;",
+		Query:       "SELECT json_remove() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
-		Query: "SELECT json_replace() FROM dual;",
+		Query:       "SELECT json_replace() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
-		Query: "SELECT json_set() FROM dual;",
+		Query:       "SELECT json_set() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 
 	// This gets an error "unable to cast "second row" of type string to int64"
 	// Should throw sql.ErrAmbiguousColumnInOrderBy
 	{
-		Query: `SELECT s as i, i as i from mytable order by i`,
+		Query:       `SELECT s as i, i as i from mytable order by i`,
 		ExpectedErr: sql.ErrAmbiguousColumnOrAliasName,
 	},
 }
@@ -9055,59 +9055,59 @@ var BrokenErrorQueries = []QueryErrorTest{
 	},
 	// Unimplemented JSON functions
 	{
-		Query: "SELECT json_depth() FROM dual;",
+		Query:       "SELECT json_depth() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
-		Query: "SELECT json_keys() FROM dual;",
+		Query:       "SELECT json_keys() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
-		Query: "SELECT json_length() FROM dual;",
+		Query:       "SELECT json_length() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
-		Query: "SELECT json_merge_patch() FROM dual;",
+		Query:       "SELECT json_merge_patch() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
-		Query: "SELECT json_overlaps() FROM dual;",
+		Query:       "SELECT json_overlaps() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
-		Query: "SELECT json_pretty() FROM dual;",
+		Query:       "SELECT json_pretty() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
-		Query: "SELECT json_quote() FROM dual;",
+		Query:       "SELECT json_quote() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
-		Query: "SELECT json_schema_valid() FROM dual;",
+		Query:       "SELECT json_schema_valid() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
-		Query: "SELECT json_schema_validation_report() FROM dual;",
+		Query:       "SELECT json_schema_validation_report() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
-		Query: "SELECT json_search() FROM dual;",
+		Query:       "SELECT json_search() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
-		Query: "SELECT json_storage_free() FROM dual;",
+		Query:       "SELECT json_storage_free() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
-		Query: "SELECT json_storage_size() FROM dual;",
+		Query:       "SELECT json_storage_size() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
-		Query: "SELECT json_type() FROM dual;",
+		Query:       "SELECT json_type() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
-		Query: "SELECT json_valid() FROM dual;",
+		Query:       "SELECT json_valid() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 }
