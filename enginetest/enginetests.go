@@ -255,7 +255,7 @@ func TestJoinQueriesPrepared(t *testing.T, harness Harness) {
 }
 
 func TestBrokenQueries(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.Fk_tblData)
+	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.Fk_tblData, setup.OthertableData)
 	RunQueryTests(t, harness, queries.BrokenQueries)
 }
 
