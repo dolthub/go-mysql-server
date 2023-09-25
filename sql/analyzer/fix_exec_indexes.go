@@ -64,7 +64,7 @@ func assignIndexesHelper(n sql.Node, inScope *idxScope) (sql.Node, *idxScope, er
 // finalization into an after phase.
 type idxScope struct {
 	parentScopes  []*idxScope
-	lateralScopes []*idxScope
+	lateralScopes []*idxScope // TODO: rename to sibling scope
 	childScopes   []*idxScope
 	columns       []string
 	children      []sql.Node
@@ -324,7 +324,6 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 			newCheck.Expr = newE
 			s.checks = append(s.checks, &newCheck)
 		}
-
 	case *plan.Update:
 		newScope := s.copy()
 		srcScope := s.childScopes[0]
@@ -388,27 +387,16 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 		if nc, ok := ret.(sql.CheckConstraintNode); ok && s.checks != nil {
 			ret = nc.WithChecks(s.checks)
 		}
-		if _, ok := ret.(*plan.JoinNode); ok {
-			print()
-		}
 		if jn, ok := ret.(*plan.JoinNode); ok {
 			if len(s.parentScopes) == 0 {
 				return ret, nil
 			}
+			// TODO: combine scopes???
 			scopeLen := len(s.parentScopes[0].columns)
 			if scopeLen == 0 {
 				return ret, nil
 			}
 			ret = jn.WithScopeLen(scopeLen)
-			//if _, ok := jn.Left().(*plan.StripRowNode); ok {
-			//	return ret, nil
-			//}
-			//if _, ok := jn.Right().(*plan.RangeHeap); ok {
-			//	return ret, nil
-			//}
-			//if _, ok := jn.Right().(*plan.HashLookup); ok {
-			//	return ret, nil
-			//}
 			ret, err = ret.WithChildren(
 				plan.NewStripRowNode(jn.Left(), scopeLen),
 				plan.NewStripRowNode(jn.Right(), scopeLen),
