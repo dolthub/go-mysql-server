@@ -1152,7 +1152,6 @@ var LateralJoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "select * from t, lateral (select * from t1 where t.i = t1.j) tt, lateral (select * from t1 where t.i != t1.j) as ttt order by t.i, tt.j, ttt.j;",
 				Expected: []sql.Row{
 					{1, 1, 4},
@@ -1160,7 +1159,6 @@ var LateralJoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: `WITH RECURSIVE cte(x) AS (SELECT 1 union all SELECT x + 1 from cte where x < 5) SELECT * FROM cte, lateral (select * from t where t.i = cte.x) tt;`,
 				Expected: []sql.Row{
 					{1, 1},
