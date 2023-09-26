@@ -5068,4 +5068,25 @@ var BrokenScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "TIMESTAMP type value should be converted from session TZ to UTC TZ to be stored",
+		SetUpScript: []string{
+			"CREATE TABLE timezone_test (ts TIMESTAMP, dt DATETIME)",
+			"INSERT INTO timezone_test VALUES ('2023-02-14 08:47', '2023-02-14 08:47');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SET SESSION time_zone = '-05:00';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "SELECT DATE_FORMAT(ts, '%H:%i:%s'), DATE_FORMAT(dt, '%H:%i:%s') from timezone_test;",
+				Expected: []sql.Row{{"11:47:00", "08:47:00"}},
+			},
+			{
+				Query:    "SELECT UNIX_TIMESTAMP(ts), UNIX_TIMESTAMP(dt) from timezone_test;",
+				Expected: []sql.Row{{float64(1676393220), float64(1676382420)}},
+			},
+		},
+	},
 }
