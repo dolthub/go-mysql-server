@@ -459,11 +459,13 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	// It will return the correct value of '2023-09-25 00:02:57 +00:00',
 	// which is equivalent of '2023-09-25 07:02:57 +07:00'.
 	stz, err := SessionTimeZone(ctx)
-	if err == nil {
-		tt, ok := gmstime.ConvertTimeZone(date.(time.Time), stz, "UTC")
-		if ok {
-			date = tt
-		}
+	if err != nil {
+		return nil, err
+	}
+
+	ctz, ok := gmstime.ConvertTimeZone(date.(time.Time), stz, "UTC")
+	if ok {
+		date = ctz
 	}
 
 	return toUnixTimestamp(date.(time.Time))
