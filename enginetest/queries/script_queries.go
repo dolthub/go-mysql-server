@@ -155,6 +155,10 @@ var ScriptTests = []ScriptTest{
 			"insert into l values (1), (1), (1);",
 			"create table r (i int);",
 			"insert into r values (1);",
+			"create table x (i int);",
+			"insert into x values (1), (2), (3);",
+			"create table y (i bigint);",
+			"insert into y values (1), (3);",
 		},
 		Assertions: []ScriptTestAssertion{
 			// Intersect tests
@@ -199,20 +203,26 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				// Resulting type is string for some reason
-				Skip:  true,
-				Query: "table t1 intersect table t2;",
+				Query: "table x intersect table y order by i;",
 				Expected: []sql.Row{
 					{1},
 					{3},
 				},
 			},
 			{
-				// Field indexing error
-				Skip:  true,
-				Query: "table t1 intersect table t2 order by i;",
+				Query: "table x intersect table y order by 1;",
 				Expected: []sql.Row{
-					{1.0},
+					{1},
+					{3},
+				},
+			},
+			{
+				// Resulting type is string for some reason
+				Skip:  true,
+				Query: "table t1 intersect table t2;",
+				Expected: []sql.Row{
+					{1},
+					{3},
 				},
 			},
 
@@ -262,11 +272,9 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				// Resulting type is string for some reason
-				Skip:  true,
-				Query: "table t1 except table t2 order by i;",
+				Query: "table x except table y order by i;",
 				Expected: []sql.Row{
-					{2.0},
+					{2},
 				},
 			},
 			{

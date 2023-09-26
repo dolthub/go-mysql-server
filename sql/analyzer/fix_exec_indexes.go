@@ -102,6 +102,7 @@ func (s *idxScope) getIdx(n string) (int, bool) {
 			return i, true
 		}
 	}
+	// TODO: perform unqualified search if no match found?
 	return -1, false
 }
 
@@ -417,7 +418,11 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 	ret, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
 		case *expression.GetField:
-			idx, _ := newScope.getIdx(e.String())
+			str := e.String()
+			idx, found := newScope.getIdx(str)
+			if !found && strings.Contains(str, ".") {
+				idx, found = newScope.getIdx(strings.Split(str, ".")[1])
+			}
 			return e.WithIndex(idx), transform.NewTree, nil
 		case *plan.Subquery:
 			// this |outScope| prepends the subquery scope
