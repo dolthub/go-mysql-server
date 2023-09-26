@@ -53,17 +53,19 @@ type EventScheduler struct {
 // InitEventScheduler is called at the start of the server. This function returns EventScheduler object
 // creating eventExecutor with empty events list. The enabled events will be loaded into the eventExecutor
 // if the EventScheduler status is 'ON'. The runQueryFunc is used to run an event definition during
-// event execution.
+// event execution. If the |period| parameter is 1 or greater, then that value will be used as the period
+// (in seconds) at which the event scheduler will wake up and see if events need to be executed.
 func InitEventScheduler(
 	a *analyzer.Analyzer,
 	bgt *sql.BackgroundThreads,
 	getSqlCtxFunc func() (*sql.Context, func() error, error),
 	status SchedulerStatus,
 	runQueryFunc func(ctx *sql.Context, dbName, query, username, address string) error,
+	period int,
 ) (*EventScheduler, error) {
 	var es = &EventScheduler{
 		status:        status,
-		executor:      newEventExecutor(bgt, getSqlCtxFunc, runQueryFunc),
+		executor:      newEventExecutor(bgt, getSqlCtxFunc, runQueryFunc, period),
 		ctxGetterFunc: getSqlCtxFunc,
 	}
 

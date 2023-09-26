@@ -38,11 +38,12 @@ type eventExecutor struct {
 	stop                atomic.Bool
 	catalog             sql.Catalog
 	tokenTracker        *tokenTracker
+	period              int
 }
 
-// newEventExecutor returns eventExecutor object with empty enabled events list.
+// newEventExecutor returns a new eventExecutor instance with an empty enabled events list.
 // The enabled events list is loaded only when the EventScheduler status is ENABLED.
-func newEventExecutor(bgt *sql.BackgroundThreads, ctxFunc func() (*sql.Context, func() error, error), runQueryFunc func(ctx *sql.Context, dbName, query, username, address string) error) *eventExecutor {
+func newEventExecutor(bgt *sql.BackgroundThreads, ctxFunc func() (*sql.Context, func() error, error), runQueryFunc func(ctx *sql.Context, dbName, query, username, address string) error, period int) *eventExecutor {
 	return &eventExecutor{
 		bThreads:            bgt,
 		list:                newEnabledEventsList([]*enabledEvent{}),
@@ -51,6 +52,7 @@ func newEventExecutor(bgt *sql.BackgroundThreads, ctxFunc func() (*sql.Context, 
 		queryRunFunc:        runQueryFunc,
 		stop:                atomic.Bool{},
 		tokenTracker:        newTokenTracker(),
+		period:              period,
 	}
 }
 
@@ -60,7 +62,16 @@ func (ee *eventExecutor) start() {
 	ee.stop.Store(false)
 	logrus.Trace("Starting eventExecutor")
 
-	pollingDuration := 1 * time.Second
+	// TODO: Currently, we execute events by sorting the enabled events by their execution time, then
+	//       waking up at a regular period and seeing if any events are ready to be executed. This
+	//       could be more efficient if we used time.Timer to schedule events to be run instead
+	//       of having our own loop here. It would also allow us to support any time granularity for
+	//       recurring events.
+	pollingDuration := 30 * time.Second
+	if ee.period > 0 {
+		pollingDuration = time.Duration(ee.period) * time.Second
+	}
+
 	for {
 		time.Sleep(pollingDuration)
 
