@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -446,6 +447,25 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		// a warning to match MySQL's behavior
 		ctx.Warn(1292, "Incorrect datetime value: %s", ut.Date.String())
 		return 0, nil
+	}
+
+	// The function above returns the time value in UTC time zone.
+	// Instead, it should use the current session time zone.
+
+	// For example, if the current session TZ is set to +07:00 and given value is '2023-09-25 07:02:57',
+	// then the correct time value is '2023-09-25 07:02:57 +07:00'.
+	// Currently, we get '2023-09-25 07:02:57 +00:00' from the above function.
+	// ConvertTimeZone function is used to get the value in +07:00 TZ
+	// It will return the correct value of '2023-09-25 00:02:57 +00:00',
+	// which is equivalent of '2023-09-25 07:02:57 +07:00'.
+	stz, err := SessionTimeZone(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ctz, ok := gmstime.ConvertTimeZone(date.(time.Time), stz, "UTC")
+	if ok {
+		date = ctz
 	}
 
 	return toUnixTimestamp(date.(time.Time))
