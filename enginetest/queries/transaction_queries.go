@@ -1011,4 +1011,57 @@ var TransactionTests = []TransactionTest{
 			},
 		},
 	},
+	{
+		Name: "Insert error with auto commit off",
+		SetUpScript: []string{
+			"create table t1 (pk int primary key, val int)",
+			"insert into t1 values (0,0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:            "/* client a */ set autocommit = off",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:            "/* client b */ set autocommit = off",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:    "/* client a */ insert into t1 values (1, 1)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:       "/* client a */ insert into t1 values (1, 2)",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query:    "/* client a */ insert into t1 values (2, 2)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client a */ select * from t1 order by pk",
+				Expected: []sql.Row{{0, 0}, {1, 1}, {2, 2}},
+			},
+			{
+				Query:    "/* client b */ select * from t1 order by pk",
+				Expected: []sql.Row{{0, 0}},
+			},
+			{
+				Query:            "/* client a */ commit",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:            "/* client b */ start transaction",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:    "/* client b */ select * from t1 order by pk",
+				Expected: []sql.Row{{0, 0}, {1, 1}, {2, 2}},
+			},
+			{
+				Query:    "/* client a */ select * from t1 order by pk",
+				Expected: []sql.Row{{0, 0}, {1, 1}, {2, 2}},
+			},
+		},
+	},
 }

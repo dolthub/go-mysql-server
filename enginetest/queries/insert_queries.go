@@ -1939,6 +1939,61 @@ var InsertScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "insert duplicate key doesn't prevent other updates",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (pk BIGINT PRIMARY KEY, v1 VARCHAR(3));",
+			"INSERT INTO t1 VALUES (1, 'abc');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t1 order by pk",
+				Expected: []sql.Row{{1, "abc"}},
+			},
+			{
+				Query:       "INSERT INTO t1 VALUES (1, 'abc');",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query:    "INSERT INTO t1 VALUES (2, 'def');",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select * from t1 order by pk",
+				Expected: []sql.Row{{1, "abc"}, {2, "def"}},
+			},
+		},
+	},
+	{
+		Name: "insert duplicate key doesn't prevent other updates, autocommit off",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (pk BIGINT PRIMARY KEY, v1 VARCHAR(3));",
+			"INSERT INTO t1 VALUES (1, 'abc');",
+			"SET autocommit = 0;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t1 order by pk",
+				Expected: []sql.Row{{1, "abc"}},
+			},
+			{
+				Query:       "INSERT INTO t1 VALUES (1, 'abc');",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query:    "INSERT INTO t1 VALUES (2, 'def');",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:            "commit",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:    "select * from t1 order by pk",
+				Expected: []sql.Row{{1, "abc"}, {2, "def"}},
+			},
+		},
+	},
 }
 
 var InsertDuplicateKeyKeyless = []ScriptTest{
