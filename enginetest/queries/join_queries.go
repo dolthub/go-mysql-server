@@ -746,6 +746,16 @@ on w = 0;`,
 
 var JoinScriptTests = []ScriptTest{
 	{
+		Name: "Simple join query",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x from xy, uv join ab on x = a and u = -1;",
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+		},
+	},
+	{
 		Name: "Complex join query with foreign key constraints",
 		SetUpScript: []string{
 			"CREATE TABLE `users` (`id` int NOT NULL AUTO_INCREMENT, `username` varchar(255) NOT NULL, PRIMARY KEY (`id`));",
@@ -1103,14 +1113,6 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 		},
-	},
-}
-
-var SkippedJoinQueryTests = []QueryTest{
-	{
-		// resolve error: table "xy" does not have column "x"
-		Query:    "select x from xy, uv join ab on x = a and u = -1",
-		Expected: []sql.Row{{}},
 	},
 }
 
