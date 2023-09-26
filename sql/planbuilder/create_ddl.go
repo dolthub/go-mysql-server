@@ -94,6 +94,10 @@ func (b *Builder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (
 	definer := getCurrentUserForDefiner(b.ctx, c.TriggerSpec.Definer)
 	db := b.resolveDb(dbName)
 
+	if _, ok := tableScope.node.(*plan.ResolvedTable); !ok {
+		b.handleErr(sql.ErrNotBaseTable.New(tableName))
+	}
+
 	outScope.node = plan.NewCreateTrigger(
 		db,
 		c.TriggerSpec.TrigName.Name.String(),

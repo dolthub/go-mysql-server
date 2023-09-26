@@ -3138,4 +3138,13 @@ var TriggerErrorTests = []ScriptTest{
 		Query:       "create trigger not_found before insert on x for each row set new.d = new.a + 1",
 		ExpectedErr: sql.ErrTableNotFound,
 	},
+	{
+		Name: "prevent creating trigger over views",
+		SetUpScript: []string{
+			"create table x (a int primary key, b int, c int)",
+			"create view v as select * from x",
+		},
+		Query:       "create trigger trig before insert on v for each row set b = 1",
+		ExpectedErr: sql.ErrNotBaseTable,
+	},
 }
