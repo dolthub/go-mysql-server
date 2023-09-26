@@ -1890,10 +1890,10 @@ var ScriptTests = []ScriptTest{
 				Query: `SELECT UNIX_TIMESTAMP(time) DIV 60 * 60 AS "time", avg(value) AS "value"
 				FROM test GROUP BY 1 ORDER BY UNIX_TIMESTAMP(test.time) DIV 60 * 60`,
 				Expected: []sql.Row{
-					{int64(1625158800), 4.0},
-					{int64(1625245200), 3.0},
-					{int64(1625331600), 2.0},
-					{int64(1625418000), 1.0},
+					{int64(1625133600), 4.0},
+					{int64(1625220000), 3.0},
+					{int64(1625306400), 2.0},
+					{int64(1625392800), 1.0},
 				},
 			},
 		},
