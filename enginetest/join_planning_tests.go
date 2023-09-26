@@ -489,7 +489,6 @@ WHERE y = v and v = 1 GROUP BY v
 HAVING count(v) >= 1)`,
 				types:   []plan.JoinType{},
 				exp:     []sql.Row{{2}},
-				skipOld: true,
 			},
 			{
 				q:     "select * from xy where y-1 = (select u from uv where v = 2 order by 1 limit 1);",
@@ -689,7 +688,6 @@ select * from uv
 where u in (select * from rec);`,
 				types:   []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeHash},
 				exp:     []sql.Row{{1, 1}},
-				skipOld: true,
 			},
 			{
 				q:     "select x+1 as newX, y from xy having y in (select x from xy where newX=1)",
