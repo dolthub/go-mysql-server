@@ -65,6 +65,14 @@ func SystemTimezoneOffset() string {
 	return SecondsToMySQLOffset(offset)
 }
 
+// SystemTimezoneName returns the current system timezone name.
+func SystemTimezoneName() string {
+	t := time.Now()
+	name, _ := t.Zone()
+
+	return name
+}
+
 // SecondsToMySQLOffset takes in a timezone offset in seconds (as returned by time.Time.Zone()) and returns it as a
 // MySQL timezone offset (e.g. "+01:00").
 func SecondsToMySQLOffset(offset int) string {
