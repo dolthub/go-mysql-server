@@ -1947,19 +1947,19 @@ var InsertScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:            "select * from t1 order by pk",
+				Query:    "select * from t1 order by pk",
 				Expected: []sql.Row{{1, "abc"}},
 			},
 			{
-				Query: "INSERT INTO t1 VALUES (1, 'abc');",
+				Query:       "INSERT INTO t1 VALUES (1, 'abc');",
 				ExpectedErr: sql.ErrPrimaryKeyViolation,
 			},
 			{
-				Query: "INSERT INTO t1 VALUES (2, 'def');",
+				Query:    "INSERT INTO t1 VALUES (2, 'def');",
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				Query:            "select * from t1 order by pk",
+				Query:    "select * from t1 order by pk",
 				Expected: []sql.Row{{1, "abc"}, {2, "def"}},
 			},
 		},
@@ -1973,15 +1973,15 @@ var InsertScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:            "select * from t1 order by pk",
+				Query:    "select * from t1 order by pk",
 				Expected: []sql.Row{{1, "abc"}},
 			},
 			{
-				Query: "INSERT INTO t1 VALUES (1, 'abc');",
+				Query:       "INSERT INTO t1 VALUES (1, 'abc');",
 				ExpectedErr: sql.ErrPrimaryKeyViolation,
 			},
 			{
-				Query: "INSERT INTO t1 VALUES (2, 'def');",
+				Query:    "INSERT INTO t1 VALUES (2, 'def');",
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
@@ -1989,7 +1989,7 @@ var InsertScripts = []ScriptTest{
 				SkipResultsCheck: true,
 			},
 			{
-				Query:            "select * from t1 order by pk",
+				Query:    "select * from t1 order by pk",
 				Expected: []sql.Row{{1, "abc"}, {2, "def"}},
 			},
 		},

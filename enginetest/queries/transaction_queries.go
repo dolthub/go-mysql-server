@@ -1019,11 +1019,11 @@ var TransactionTests = []TransactionTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "/* client a */ set autocommit = off",
+				Query:            "/* client a */ set autocommit = off",
 				SkipResultsCheck: true,
 			},
 			{
-				Query:    "/* client b */ set autocommit = off",
+				Query:            "/* client b */ set autocommit = off",
 				SkipResultsCheck: true,
 			},
 			{
@@ -1031,7 +1031,7 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				Query:    "/* client a */ insert into t1 values (1, 2)",
+				Query:       "/* client a */ insert into t1 values (1, 2)",
 				ExpectedErr: sql.ErrPrimaryKeyViolation,
 			},
 			{
@@ -1040,27 +1040,27 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client a */ select * from t1 order by pk",
-				Expected: []sql.Row{{0,0}, {1,1}, {2,2}},
+				Expected: []sql.Row{{0, 0}, {1, 1}, {2, 2}},
 			},
 			{
 				Query:    "/* client b */ select * from t1 order by pk",
-				Expected: []sql.Row{{0,0}},
+				Expected: []sql.Row{{0, 0}},
 			},
 			{
-				Query:    "/* client a */ commit",
+				Query:            "/* client a */ commit",
 				SkipResultsCheck: true,
 			},
 			{
-				Query:    "/* client b */ start transaction",
+				Query:            "/* client b */ start transaction",
 				SkipResultsCheck: true,
 			},
 			{
 				Query:    "/* client b */ select * from t1 order by pk",
-				Expected: []sql.Row{{0,0}, {1,1}, {2,2}},
+				Expected: []sql.Row{{0, 0}, {1, 1}, {2, 2}},
 			},
 			{
 				Query:    "/* client a */ select * from t1 order by pk",
-				Expected: []sql.Row{{0,0}, {1,1}, {2,2}},
+				Expected: []sql.Row{{0, 0}, {1, 1}, {2, 2}},
 			},
 		},
 	},
