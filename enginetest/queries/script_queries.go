@@ -1890,10 +1890,10 @@ var ScriptTests = []ScriptTest{
 				Query: `SELECT UNIX_TIMESTAMP(time) DIV 60 * 60 AS "time", avg(value) AS "value"
 				FROM test GROUP BY 1 ORDER BY UNIX_TIMESTAMP(test.time) DIV 60 * 60`,
 				Expected: []sql.Row{
-					{int64(1625133600), 4.0},
-					{int64(1625220000), 3.0},
-					{int64(1625306400), 2.0},
-					{int64(1625392800), 1.0},
+					{int64(1625158800), 4.0},
+					{int64(1625245200), 3.0},
+					{int64(1625331600), 2.0},
+					{int64(1625418000), 1.0},
 				},
 			},
 		},
@@ -3706,6 +3706,39 @@ var ScriptTests = []ScriptTest{
 					"  `vAL3` int,\n" +
 					"  PRIMARY KEY (`iD`)\n" +
 					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "UNIX_TIMESTAMP function usage with session different time zones",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SET time_zone = '+07:00';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "SELECT UNIX_TIMESTAMP('2023-09-25 07:02:57');",
+				Expected: []sql.Row{{float64(1695600177)}},
+			},
+			{
+				Query:    "SELECT UNIX_TIMESTAMP(CONVERT_TZ('2023-09-25 07:02:57', '+00:00', @@session.time_zone));",
+				Expected: []sql.Row{{float64(1695625377)}},
+			},
+			{
+				Query:    "SET time_zone = '+00:00';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "SELECT UNIX_TIMESTAMP('2023-09-25 07:02:57');",
+				Expected: []sql.Row{{float64(1695625377)}},
+			},
+			{
+				Query:    "SET time_zone = '-06:00';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "SELECT UNIX_TIMESTAMP('2023-09-25 07:02:57');",
+				Expected: []sql.Row{{float64(1695646977)}},
 			},
 		},
 	},

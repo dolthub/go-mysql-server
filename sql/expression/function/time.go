@@ -940,7 +940,7 @@ func (n *Now) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 		s += subSecondPrecision(t, *n.precision)
 	}*/
 
-	sessionTimeZone, err := sessionTimeZone(ctx)
+	sessionTimeZone, err := SessionTimeZone(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -961,9 +961,9 @@ func (n *Now) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewNow(children...)
 }
 
-// sessionTimeZone returns a MySQL timezone offset string for the value of @@session_time_zone. If the session
+// SessionTimeZone returns a MySQL timezone offset string for the value of @@session_time_zone. If the session
 // timezone is set to SYSTEM, then the system timezone offset is calculated and returned.
-func sessionTimeZone(ctx *sql.Context) (string, error) {
+func SessionTimeZone(ctx *sql.Context) (string, error) {
 	sessionTimeZoneVar, err := ctx.GetSessionVariable(ctx, "time_zone")
 	if err != nil {
 		return "", err
