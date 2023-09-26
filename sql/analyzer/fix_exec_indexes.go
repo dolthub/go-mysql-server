@@ -94,6 +94,14 @@ func (s *idxScope) addParent(other *idxScope) {
 	s.parentScopes = append(s.parentScopes, other)
 }
 
+// unqualify is a helper function to remove the table prefix from a column, if it's present.
+func unqualify(s string) string {
+	if strings.Contains(s, ".") {
+		return strings.Split(s, ".")[1]
+	}
+	return s
+}
+
 func (s *idxScope) getIdx(n string) (int, bool) {
 	// We match the column closet to our current scope. We have already
 	// resolved columns, so there will be no in-scope collisions.
@@ -102,7 +110,12 @@ func (s *idxScope) getIdx(n string) (int, bool) {
 			return i, true
 		}
 	}
-	// TODO: perform unqualified search if no match found?
+	n = unqualify(n)
+	for i := len(s.columns) - 1; i >= 0; i-- {
+		if strings.EqualFold(n, unqualify(s.columns[i])) {
+			return i, true
+		}
+	}
 	return -1, false
 }
 
@@ -418,11 +431,7 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 	ret, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
 		case *expression.GetField:
-			str := e.String()
-			idx, found := newScope.getIdx(str)
-			if !found && strings.Contains(str, ".") {
-				idx, found = newScope.getIdx(strings.Split(str, ".")[1])
-			}
+			idx, _ := newScope.getIdx( e.String())
 			return e.WithIndex(idx), transform.NewTree, nil
 		case *plan.Subquery:
 			// this |outScope| prepends the subquery scope
