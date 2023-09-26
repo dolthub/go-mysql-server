@@ -746,11 +746,11 @@ on w = 0;`,
 
 var JoinScriptTests = []ScriptTest{
 	{
-		Name: "Simple join query",
+		Name:        "Simple join query",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select x from xy, uv join ab on x = a and u = -1;",
+				Query:       "select x from xy, uv join ab on x = a and u = -1;",
 				ExpectedErr: sql.ErrColumnNotFound,
 			},
 		},
