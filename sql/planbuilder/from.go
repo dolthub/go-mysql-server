@@ -751,12 +751,8 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 				// TODO: Need to account for non-existing functions or
 				//  users without appropriate privilege to the referenced table/column/function.
 				if sql.ErrTableNotFound.Is(err) || sql.ErrColumnNotFound.Is(err) {
-					vd, exists, _ := vdb.GetViewDefinition(b.ctx, name)
-					// whether the view exists will eliminate CREATE VIEW stmts
-					// whether the view TextDefinition matches will eliminate ALTER VIEW stmts
-					if exists && vd.TextDefinition == viewDef.TextDefinition {
-						err = sql.ErrInvalidRefInView.New(database.Name(), name)
-					}
+					// TODO: ALTER VIEW should not return this error
+					err = sql.ErrInvalidRefInView.New(database.Name(), name)
 				}
 				b.handleErr(err)
 			}
