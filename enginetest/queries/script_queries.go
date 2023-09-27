@@ -162,7 +162,7 @@ var ScriptTests = []ScriptTest{
 				ExpectedErr: planbuilder.ErrUnionSchemasDifferentLength,
 			},
 			{
-				Query:    "table t1 union table t2 order by i;",
+				Query: "table t1 union table t2 order by i;",
 				ExpectedColumns: sql.Schema{
 					{
 						Name: "i",
@@ -176,7 +176,7 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:    "table t1 union table t2 order by i;",
+				Query: "table t1 union table t2 order by i;",
 				ExpectedColumns: sql.Schema{
 					{
 						Name: "i",
@@ -190,7 +190,7 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:    "table t3 union table t1 order by j;",
+				Query: "table t3 union table t1 order by j;",
 				ExpectedColumns: sql.Schema{
 					{
 						Name: "j",
@@ -204,7 +204,7 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:    "select j as i from t3 union table t1 order by i;",
+				Query: "select j as i from t3 union table t1 order by i;",
 				ExpectedColumns: sql.Schema{
 					{
 						Name: "i",
@@ -218,7 +218,7 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:    "table t1 union table t2 order by 1;",
+				Query: "table t1 union table t2 order by 1;",
 				ExpectedColumns: sql.Schema{
 					{
 						Name: "i",
@@ -232,7 +232,7 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:    "table t1 union table t3 order by 1;",
+				Query: "table t1 union table t3 order by 1;",
 				ExpectedColumns: sql.Schema{
 					{
 						Name: "i",
@@ -247,7 +247,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				// This looks wrong, but it actually matches MySQL
-				Query:    "table t1 union select i as j from t2 order by i;",
+				Query: "table t1 union select i as j from t2 order by i;",
 				ExpectedColumns: sql.Schema{
 					{
 						Name: "i",
@@ -261,30 +261,29 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:    "table t1 union table t3 order by j;",
+				Query:       "table t1 union table t3 order by j;",
 				ExpectedErr: sql.ErrColumnNotFound,
 			},
 			{
-				Query:    "table t1 union table t2 order by t1.i;",
+				Query:       "table t1 union table t2 order by t1.i;",
 				ExpectedErr: planbuilder.ErrQualifiedOrderBy,
 			},
 			{
-				Query:    "table t1 union table t2 order by t2.i;",
+				Query:       "table t1 union table t2 order by t2.i;",
 				ExpectedErr: planbuilder.ErrQualifiedOrderBy,
 			},
 			{
-				Query:    "table t1 union table t3 order by t3.i;",
+				Query:       "table t1 union table t3 order by t3.i;",
 				ExpectedErr: planbuilder.ErrQualifiedOrderBy,
 			},
 			{
-				Query:    "table t1 union table t3 order by t3.j;",
+				Query:       "table t1 union table t3 order by t3.j;",
 				ExpectedErr: planbuilder.ErrQualifiedOrderBy,
 			},
 			{
-				Query:    "table t1 union table t3 order by t1.j;",
+				Query:       "table t1 union table t3 order by t1.j;",
 				ExpectedErr: planbuilder.ErrQualifiedOrderBy,
 			},
-
 		},
 	},
 	{
