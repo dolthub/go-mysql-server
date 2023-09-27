@@ -76,8 +76,8 @@ func (idx *Index) ExtendedExpressions() []string {
 		foundCols[strings.ToLower(e.(*expression.GetField).Name())] = struct{}{}
 		exprs = append(exprs, e.String())
 	}
-	for _, ord := range idx.Tbl.schema.PkOrdinals {
-		col := idx.Tbl.schema.Schema[ord]
+	for _, ord := range idx.Tbl.data.schema.PkOrdinals {
+		col := idx.Tbl.data.schema.Schema[ord]
 		if _, ok := foundCols[strings.ToLower(col.Name)]; !ok {
 			exprs = append(exprs, fmt.Sprintf("%s.%s", idx.Tbl.name, col.Name))
 		}
@@ -173,7 +173,7 @@ func (idx *Index) ColumnExpressionTypes() []sql.ColumnExpressionType {
 }
 
 func (idx *Index) ExtendedColumnExpressionTypes() []sql.ColumnExpressionType {
-	cets := make([]sql.ColumnExpressionType, 0, len(idx.Tbl.schema.Schema))
+	cets := make([]sql.ColumnExpressionType, 0, len(idx.Tbl.data.schema.Schema))
 	cetsInExprs := make(map[string]struct{})
 	for _, expr := range idx.Exprs {
 		cetsInExprs[strings.ToLower(expr.(*expression.GetField).Name())] = struct{}{}
@@ -182,8 +182,8 @@ func (idx *Index) ExtendedColumnExpressionTypes() []sql.ColumnExpressionType {
 			Type:       expr.Type(),
 		})
 	}
-	for _, ord := range idx.Tbl.schema.PkOrdinals {
-		col := idx.Tbl.schema.Schema[ord]
+	for _, ord := range idx.Tbl.data.schema.PkOrdinals {
+		col := idx.Tbl.data.schema.Schema[ord]
 		if _, ok := cetsInExprs[strings.ToLower(col.Name)]; !ok {
 			cets = append(cets, sql.ColumnExpressionType{
 				Expression: fmt.Sprintf("%s.%s", idx.Tbl.name, col.Name),
@@ -196,7 +196,7 @@ func (idx *Index) ExtendedColumnExpressionTypes() []sql.ColumnExpressionType {
 
 func (idx *Index) FullTextTableNames(ctx *sql.Context) (fulltext.IndexTableNames, error) {
 	return fulltext.IndexTableNames{
-		Config:      idx.Tbl.fullTextConfigTableName,
+		Config:      idx.Tbl.data.fullTextConfigTableName,
 		Position:    idx.fulltextInfo.PositionTableName,
 		DocCount:    idx.fulltextInfo.DocCountTableName,
 		GlobalCount: idx.fulltextInfo.GlobalCountTableName,
@@ -262,4 +262,8 @@ func (idx *Index) Order() sql.IndexOrder {
 
 func (idx *Index) Reversible() bool {
 	return true
+}
+
+func (idx Index) copy() *Index {
+	return &idx
 }

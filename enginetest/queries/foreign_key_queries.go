@@ -839,12 +839,24 @@ var ForeignKeyTests = []ScriptTest{
 				ExpectedErr: sql.ErrForeignKeyParentViolation,
 			},
 			{
+				Query:    "SELECT * FROM parent order by v1;",
+				Expected: []sql.Row{{1, 1, 1}, {2, 2, 2}},
+			},
+			{
 				Query:       "UPDATE parent SET v1 = 2 WHERE id = 1;",
 				ExpectedErr: sql.ErrForeignKeyParentViolation,
 			},
 			{
+				Query:    "SELECT * FROM parent order by v1;",
+				Expected: []sql.Row{{1, 1, 1}, {2, 2, 2}},
+			},
+			{
 				Query:       "REPLACE INTO parent VALUES (1, 1, 2), (2, 2, 1);",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query:    "SELECT * FROM parent order by v1;",
+				Expected: []sql.Row{{1, 1, 1}, {2, 2, 2}},
 			},
 			{
 				Query:    "UPDATE parent SET v2 = 2 WHERE id = 1;",
@@ -855,7 +867,7 @@ var ForeignKeyTests = []ScriptTest{
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
-				Query:    "SELECT * FROM parent;",
+				Query:    "SELECT * FROM parent order by v1;",
 				Expected: []sql.Row{{1, 1, 2}, {2, 2, 1}},
 			},
 			{

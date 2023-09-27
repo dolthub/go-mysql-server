@@ -71,4 +71,25 @@ var ViewScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "show view",
+		SetUpScript: []string{
+			"create table xy (x int primary key, y int)",
+			"create view v as select * from xy",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show keys from v",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "show index from v from mydb",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "show index from v where Column_name = 'x'",
+				Expected: []sql.Row{},
+			},
+		},
+	},
 }

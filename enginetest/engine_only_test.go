@@ -105,19 +105,19 @@ func TestCurrentTimestamp(t *testing.T) {
 func TestLocks(t *testing.T) {
 	require := require.New(t)
 
-	db := memory.NewDatabase("db")
-	t1 := newLockableTable(memory.NewTable("t1", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
-	t2 := newLockableTable(memory.NewTable("t2", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
-	t3 := memory.NewTable("t3", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection())
+	harness := enginetest.NewDefaultMemoryHarness()
+	db := harness.NewDatabases("db")[0].(*memory.HistoryDatabase)
+	t1 := newLockableTable(memory.NewTable(db.BaseDatabase, "t1", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+	t2 := newLockableTable(memory.NewTable(db.BaseDatabase, "t2", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+	t3 := memory.NewTable(db.BaseDatabase, "t3", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection())
 	db.AddTable("t1", t1)
 	db.AddTable("t2", t2)
 	db.AddTable("t3", t3)
-	pro := sql.NewDatabaseProvider(db)
 
-	analyzer := analyzer.NewDefault(pro)
+	analyzer := analyzer.NewDefault(harness.Provider())
 	engine := sqle.New(analyzer, new(sqle.Config))
 
-	ctx := enginetest.NewContext(enginetest.NewDefaultMemoryHarness())
+	ctx := enginetest.NewContext(harness)
 	ctx.SetCurrentDatabase("db")
 	sch, iter, err := engine.Query(ctx, "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
 	require.NoError(err)
@@ -125,7 +125,7 @@ func TestLocks(t *testing.T) {
 	_, err = sql.RowIterToRows(ctx, sch, iter)
 	require.NoError(err)
 
-	ctx = enginetest.NewContext(enginetest.NewDefaultMemoryHarness())
+	ctx = enginetest.NewContext(harness)
 	ctx.SetCurrentDatabase("db")
 	sch, iter, err = engine.Query(ctx, "UNLOCK TABLES")
 	require.NoError(err)
@@ -181,6 +181,14 @@ type lockableTable struct {
 	readLocks  int
 	writeLocks int
 	unlocks    int
+}
+
+func (l *lockableTable) IgnoreSessionData() bool {
+	return true
+}
+
+func (l *lockableTable) UnderlyingTable() *memory.Table {
+	return l.Table.(*memory.Table)
 }
 
 func newLockableTable(t sql.Table) *lockableTable {
@@ -270,18 +278,20 @@ b (2/6 partitions)
 // TODO: this was an analyzer test, but we don't have a mock process list for it to use, so it has to be here
 func TestTrackProcess(t *testing.T) {
 	require := require.New(t)
-	provider := sql.NewDatabaseProvider()
+	db := memory.NewDatabase("db")
+	provider := memory.NewDBProvider(db)
 	a := analyzer.NewDefault(provider)
+	sess := memory.NewSession(sql.NewBaseSession(), provider)
 
 	node := plan.NewInnerJoin(
-		plan.NewResolvedTable(&nonIndexableTable{memory.NewPartitionedTable("foo", sql.PrimaryKeySchema{}, nil, 2)}, nil, nil),
-		plan.NewResolvedTable(memory.NewPartitionedTable("bar", sql.PrimaryKeySchema{}, nil, 4), nil, nil),
+		plan.NewResolvedTable(&nonIndexableTable{memory.NewPartitionedTable(db.BaseDatabase, "foo", sql.PrimaryKeySchema{}, nil, 2)}, nil, nil),
+		plan.NewResolvedTable(memory.NewPartitionedTable(db.BaseDatabase, "bar", sql.PrimaryKeySchema{}, nil, 4), nil, nil),
 		expression.NewLiteral(int64(1), types.Int64),
 	)
 
 	pl := sqle.NewProcessList()
 
-	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithProcessList(pl))
+	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithProcessList(pl), sql.WithSession(sess))
 	pl.AddConnection(ctx.Session.ID(), "localhost")
 	pl.ConnectionReady(ctx.Session)
 	ctx, err := ctx.ProcessList.BeginQuery(ctx, "SELECT foo")
@@ -314,7 +324,7 @@ func TestTrackProcess(t *testing.T) {
 
 	lhs, ok := join.Left().(*plan.ResolvedTable)
 	require.True(ok)
-	_, ok = lhs.Table.(*plan.ProcessTable)
+	_, ok = lhs.Table.(*plan.ProcessIndexableTable)
 	require.True(ok)
 
 	rhs, ok := join.Right().(*plan.ResolvedTable)
@@ -349,14 +359,21 @@ func getRuleFrom(rules []analyzer.Rule, id analyzer.RuleId) *analyzer.Rule {
 
 // wrapper around sql.Table to make it not indexable
 type nonIndexableTable struct {
-	sql.Table
+	*memory.Table
+}
+
+var _ memory.MemTable = (*nonIndexableTable)(nil)
+
+func (t *nonIndexableTable) IgnoreSessionData() bool {
+	return true
 }
 
 func TestLockTables(t *testing.T) {
 	require := require.New(t)
+	db := memory.NewDatabase("db")
 
-	t1 := newLockableTable(memory.NewTable("foo", sql.PrimaryKeySchema{}, nil))
-	t2 := newLockableTable(memory.NewTable("bar", sql.PrimaryKeySchema{}, nil))
+	t1 := newLockableTable(memory.NewTable(db.BaseDatabase, "foo", sql.PrimaryKeySchema{}, nil))
+	t2 := newLockableTable(memory.NewTable(db.BaseDatabase, "bar", sql.PrimaryKeySchema{}, nil))
 	node := plan.NewLockTables([]*plan.TableLock{
 		{plan.NewResolvedTable(t1, nil, nil), true},
 		{plan.NewResolvedTable(t2, nil, nil), false},
@@ -375,11 +392,11 @@ func TestLockTables(t *testing.T) {
 
 func TestUnlockTables(t *testing.T) {
 	require := require.New(t)
-
 	db := memory.NewDatabase("db")
-	t1 := newLockableTable(memory.NewTable("foo", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
-	t2 := newLockableTable(memory.NewTable("bar", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
-	t3 := newLockableTable(memory.NewTable("baz", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+
+	t1 := newLockableTable(memory.NewTable(db.BaseDatabase, "foo", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+	t2 := newLockableTable(memory.NewTable(db.BaseDatabase, "bar", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+	t3 := newLockableTable(memory.NewTable(db.BaseDatabase, "baz", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
 	db.AddTable("foo", t1)
 	db.AddTable("bar", t2)
 	db.AddTable("baz", t3)
@@ -405,7 +422,7 @@ func TestUnlockTables(t *testing.T) {
 var _ sql.PartitionCounter = (*nonIndexableTable)(nil)
 
 func (t *nonIndexableTable) PartitionCount(ctx *sql.Context) (int64, error) {
-	return t.Table.(sql.PartitionCounter).PartitionCount(ctx)
+	return t.Table.PartitionCount(ctx)
 }
 
 var analyzerTestCases = []analyzerTestCase{
@@ -924,17 +941,18 @@ func newDatabase() (*sql2.DB, func()) {
 		panic(err)
 	}
 
-	provider := sql.NewDatabaseProvider(
-		memory.NewDatabase("mydb"),
-	)
-	engine := sqle.New(analyzer.NewDefault(provider), &sqle.Config{
+	harness := enginetest.NewDefaultMemoryHarness()
+	pro := harness.Provider()
+	harness.NewDatabases("mydb")
+
+	engine := sqle.New(analyzer.NewDefault(pro), &sqle.Config{
 		IncludeRootAccount: true,
 	})
 	cfg := server.Config{
 		Protocol: "tcp",
 		Address:  fmt.Sprintf("localhost:%d", port),
 	}
-	srv, err := server.NewDefaultServer(cfg, engine)
+	srv, err := server.NewServer(cfg, engine, harness.SessionBuilder(), nil)
 	if err != nil {
 		panic(err)
 	}

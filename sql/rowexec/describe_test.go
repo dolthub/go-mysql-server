@@ -31,7 +31,8 @@ func TestDescribe(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	table := memory.NewTable("test", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("test")
+	table := memory.NewTable(db.Database(), "test", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "c1", Type: types.Text},
 		{Name: "c2", Type: types.Int32},
 	}), nil)
@@ -72,7 +73,8 @@ func TestDescribe_Empty(t *testing.T) {
 func TestDescribeQuery(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("foo")
+	table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Source: "foo", Name: "a", Type: types.Text},
 		{Source: "foo", Name: "b", Type: types.Text},
 	}), nil)

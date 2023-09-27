@@ -317,6 +317,10 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 		}
 
 		editorData := expr.DocCountTable.IndexedAccess(lookup)
+		if err != nil {
+			return 0, err
+		}
+
 		partIter, err := editorData.LookupPartitions(ctx, lookup)
 		if err != nil {
 			return 0, err
@@ -345,6 +349,10 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 			},
 		}, Index: expr.globalCountIndex}
 		editorData = expr.GlobalCountTable.IndexedAccess(lookup)
+		if err != nil {
+			return 0, err
+		}
+
 		partIter, err = editorData.LookupPartitions(ctx, lookup)
 		if err != nil {
 			return 0, err
@@ -367,6 +375,10 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 			},
 		}, Index: expr.rowCountIndex}
 		editorData = expr.RowCountTable.IndexedAccess(lookup)
+		if err != nil {
+			return 0, err
+		}
+
 		partIter, err = editorData.LookupPartitions(ctx, lookup)
 		if err != nil {
 			return 0, err

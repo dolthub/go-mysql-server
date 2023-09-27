@@ -26,12 +26,16 @@ import (
 )
 
 func TestConvertCrossJoin(t *testing.T) {
-	tableA := memory.NewTable("a", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("db")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
+	tableA := memory.NewTable(db, "a", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "x", Type: types.Int64, Source: "a"},
 		{Name: "y", Type: types.Int64, Source: "a"},
 		{Name: "z", Type: types.Int64, Source: "a"},
 	}), nil)
-	tableB := memory.NewTable("b", sql.NewPrimaryKeySchema(sql.Schema{
+	tableB := memory.NewTable(db, "b", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "x", Type: types.Int64, Source: "b"},
 		{Name: "y", Type: types.Int64, Source: "b"},
 		{Name: "z", Type: types.Int64, Source: "b"},
@@ -265,5 +269,5 @@ func TestConvertCrossJoin(t *testing.T) {
 	}
 	tests = append(tests, nested...)
 
-	runTestCases(t, sql.NewEmptyContext(), tests, NewDefault(sql.NewDatabaseProvider()), getRule(replaceCrossJoinsId))
+	runTestCases(t, ctx, tests, NewDefault(sql.NewDatabaseProvider()), getRule(replaceCrossJoinsId))
 }

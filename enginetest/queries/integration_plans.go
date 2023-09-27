@@ -2482,22 +2482,30 @@ WHERE
 			"                             │           │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
 			"                             │           │   │   │           └─ columns: [id ftqlq]\n" +
 			"                             │           │   │   └─ Filter\n" +
-			"                             │           │   │       ├─ Eq\n" +
-			"                             │           │   │       │   ├─ ct.M22QN:3!null\n" +
-			"                             │           │   │       │   └─ Subquery\n" +
-			"                             │           │   │       │       ├─ cacheable: true\n" +
-			"                             │           │   │       │       ├─ alias-string: select aac.id from TPXBU as aac where BTXC5 = 'WT'\n" +
-			"                             │           │   │       │       └─ Project\n" +
-			"                             │           │   │       │           ├─ columns: [aac.id:12!null]\n" +
-			"                             │           │   │       │           └─ Filter\n" +
-			"                             │           │   │       │               ├─ Eq\n" +
-			"                             │           │   │       │               │   ├─ aac.BTXC5:13\n" +
-			"                             │           │   │       │               │   └─ WT (longtext)\n" +
-			"                             │           │   │       │               └─ TableAlias(aac)\n" +
-			"                             │           │   │       │                   └─ IndexedTableAccess(TPXBU)\n" +
-			"                             │           │   │       │                       ├─ index: [TPXBU.BTXC5]\n" +
-			"                             │           │   │       │                       ├─ static: [{[WT, WT]}]\n" +
-			"                             │           │   │       │                       └─ columns: [id btxc5]\n" +
+			"                             │           │   │       ├─ AND\n" +
+			"                             │           │   │       │   ├─ AND\n" +
+			"                             │           │   │       │   │   ├─ Eq\n" +
+			"                             │           │   │       │   │   │   ├─ ct.M22QN:3!null\n" +
+			"                             │           │   │       │   │   │   └─ Subquery\n" +
+			"                             │           │   │       │   │   │       ├─ cacheable: true\n" +
+			"                             │           │   │       │   │   │       ├─ alias-string: select aac.id from TPXBU as aac where BTXC5 = 'WT'\n" +
+			"                             │           │   │       │   │   │       └─ Project\n" +
+			"                             │           │   │       │   │   │           ├─ columns: [aac.id:12!null]\n" +
+			"                             │           │   │       │   │   │           └─ Filter\n" +
+			"                             │           │   │       │   │   │               ├─ Eq\n" +
+			"                             │           │   │       │   │   │               │   ├─ aac.BTXC5:13\n" +
+			"                             │           │   │       │   │   │               │   └─ WT (longtext)\n" +
+			"                             │           │   │       │   │   │               └─ TableAlias(aac)\n" +
+			"                             │           │   │       │   │   │                   └─ IndexedTableAccess(TPXBU)\n" +
+			"                             │           │   │       │   │   │                       ├─ index: [TPXBU.BTXC5]\n" +
+			"                             │           │   │       │   │   │                       ├─ static: [{[WT, WT]}]\n" +
+			"                             │           │   │       │   │   │                       └─ columns: [id btxc5]\n" +
+			"                             │           │   │       │   │   └─ Eq\n" +
+			"                             │           │   │       │   │       ├─ ct.ZRV3B:10!null\n" +
+			"                             │           │   │       │   │       └─ = (longtext)\n" +
+			"                             │           │   │       │   └─ Eq\n" +
+			"                             │           │   │       │       ├─ ct.ZRV3B:10!null\n" +
+			"                             │           │   │       │       └─ = (longtext)\n" +
 			"                             │           │   │       └─ TableAlias(ct)\n" +
 			"                             │           │   │           └─ IndexedTableAccess(FLQLP)\n" +
 			"                             │           │   │               ├─ index: [FLQLP.FZ2R5]\n" +
@@ -2868,22 +2876,30 @@ WHERE
 			"                             │           │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
 			"                             │           │   │   │           └─ columns: [id ftqlq]\n" +
 			"                             │           │   │   └─ Filter\n" +
-			"                             │           │   │       ├─ Eq\n" +
-			"                             │           │   │       │   ├─ ct.M22QN:3!null\n" +
-			"                             │           │   │       │   └─ Subquery\n" +
-			"                             │           │   │       │       ├─ cacheable: true\n" +
-			"                             │           │   │       │       ├─ alias-string: select aac.id from TPXBU as aac where BTXC5 = 'WT'\n" +
-			"                             │           │   │       │       └─ Project\n" +
-			"                             │           │   │       │           ├─ columns: [aac.id:12!null]\n" +
-			"                             │           │   │       │           └─ Filter\n" +
-			"                             │           │   │       │               ├─ Eq\n" +
-			"                             │           │   │       │               │   ├─ aac.BTXC5:13\n" +
-			"                             │           │   │       │               │   └─ WT (longtext)\n" +
-			"                             │           │   │       │               └─ TableAlias(aac)\n" +
-			"                             │           │   │       │                   └─ IndexedTableAccess(TPXBU)\n" +
-			"                             │           │   │       │                       ├─ index: [TPXBU.BTXC5]\n" +
-			"                             │           │   │       │                       ├─ static: [{[WT, WT]}]\n" +
-			"                             │           │   │       │                       └─ columns: [id btxc5]\n" +
+			"                             │           │   │       ├─ AND\n" +
+			"                             │           │   │       │   ├─ AND\n" +
+			"                             │           │   │       │   │   ├─ Eq\n" +
+			"                             │           │   │       │   │   │   ├─ ct.M22QN:3!null\n" +
+			"                             │           │   │       │   │   │   └─ Subquery\n" +
+			"                             │           │   │       │   │   │       ├─ cacheable: true\n" +
+			"                             │           │   │       │   │   │       ├─ alias-string: select aac.id from TPXBU as aac where BTXC5 = 'WT'\n" +
+			"                             │           │   │       │   │   │       └─ Project\n" +
+			"                             │           │   │       │   │   │           ├─ columns: [aac.id:12!null]\n" +
+			"                             │           │   │       │   │   │           └─ Filter\n" +
+			"                             │           │   │       │   │   │               ├─ Eq\n" +
+			"                             │           │   │       │   │   │               │   ├─ aac.BTXC5:13\n" +
+			"                             │           │   │       │   │   │               │   └─ WT (longtext)\n" +
+			"                             │           │   │       │   │   │               └─ TableAlias(aac)\n" +
+			"                             │           │   │       │   │   │                   └─ IndexedTableAccess(TPXBU)\n" +
+			"                             │           │   │       │   │   │                       ├─ index: [TPXBU.BTXC5]\n" +
+			"                             │           │   │       │   │   │                       ├─ static: [{[WT, WT]}]\n" +
+			"                             │           │   │       │   │   │                       └─ columns: [id btxc5]\n" +
+			"                             │           │   │       │   │   └─ Eq\n" +
+			"                             │           │   │       │   │       ├─ ct.ZRV3B:10!null\n" +
+			"                             │           │   │       │   │       └─ = (longtext)\n" +
+			"                             │           │   │       │   └─ Eq\n" +
+			"                             │           │   │       │       ├─ ct.ZRV3B:10!null\n" +
+			"                             │           │   │       │       └─ = (longtext)\n" +
 			"                             │           │   │       └─ TableAlias(ct)\n" +
 			"                             │           │   │           └─ IndexedTableAccess(FLQLP)\n" +
 			"                             │           │   │               ├─ index: [FLQLP.FZ2R5]\n" +

@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"time"
 
 	"github.com/dolthub/go-mysql-server/driver"
@@ -41,7 +42,10 @@ func createTestDatabase() *memory.Database {
 	)
 
 	db := memory.NewDatabase(dbName)
-	table := memory.NewTable(tableName, sql.NewPrimaryKeySchema(sql.Schema{
+	pro := memory.NewDBProvider(db)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
+
+	table := memory.NewTable(db, tableName, sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: types.Text, Nullable: false, Source: tableName},
 		{Name: "email", Type: types.Text, Nullable: false, Source: tableName},
 		{Name: "phone_numbers", Type: types.JSON, Nullable: false, Source: tableName},
@@ -49,7 +53,7 @@ func createTestDatabase() *memory.Database {
 	}), nil)
 
 	db.AddTable(tableName, table)
-	ctx := sql.NewEmptyContext()
+
 	table.Insert(ctx, sql.NewRow("John Doe", "john@doe.com", types.JSONDocument{Val: []string{"555-555-555"}}, time.Now()))
 	table.Insert(ctx, sql.NewRow("John Doe", "johnalt@doe.com", types.JSONDocument{Val: []string{}}, time.Now()))
 	table.Insert(ctx, sql.NewRow("Jane Doe", "jane@doe.com", types.JSONDocument{Val: []string{}}, time.Now()))

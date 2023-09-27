@@ -30,6 +30,8 @@ func TestCreateTable(t *testing.T) {
 	require := require.New(t)
 
 	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+
 	tables := db.Tables()
 	_, ok := tables["testTable"]
 	require.False(ok)
@@ -39,7 +41,8 @@ func TestCreateTable(t *testing.T) {
 		{Name: "c2", Type: types.Int32},
 	})
 
-	require.NoError(createTable(t, db, "testTable", s, plan.IfNotExistsAbsent, plan.IsTempTableAbsent))
+	ctx := newContext(pro)
+	require.NoError(createTable(t, ctx, db, "testTable", s, plan.IfNotExistsAbsent, plan.IsTempTableAbsent))
 
 	tables = db.Tables()
 
@@ -52,27 +55,31 @@ func TestCreateTable(t *testing.T) {
 		require.Equal("testTable", s.Source)
 	}
 
-	require.Error(createTable(t, db, "testTable", s, plan.IfNotExistsAbsent, plan.IsTempTableAbsent))
-	require.NoError(createTable(t, db, "testTable", s, plan.IfNotExists, plan.IsTempTableAbsent))
+	require.Error(createTable(t, ctx, db, "testTable", s, plan.IfNotExistsAbsent, plan.IsTempTableAbsent))
+	require.NoError(createTable(t, ctx, db, "testTable", s, plan.IfNotExists, plan.IsTempTableAbsent))
 }
 
 func TestDropTable(t *testing.T) {
 	require := require.New(t)
 
 	db := memory.NewDatabase("test")
-	ctx := sql.NewEmptyContext()
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
 
 	s := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "c1", Type: types.Text},
 		{Name: "c2", Type: types.Int32},
 	})
 
-	require.NoError(createTable(t, db, "testTable1", s, plan.IfNotExistsAbsent, plan.IsTempTableAbsent))
-	require.NoError(createTable(t, db, "testTable2", s, plan.IfNotExistsAbsent, plan.IsTempTableAbsent))
-	require.NoError(createTable(t, db, "testTable3", s, plan.IfNotExistsAbsent, plan.IsTempTableAbsent))
+	require.NoError(createTable(t, ctx, db, "testTable1", s, plan.IfNotExistsAbsent, plan.IsTempTableAbsent))
+	require.NoError(createTable(t, ctx, db, "testTable2", s, plan.IfNotExistsAbsent, plan.IsTempTableAbsent))
+	require.NoError(createTable(t, ctx, db, "testTable3", s, plan.IfNotExistsAbsent, plan.IsTempTableAbsent))
 
-	d := plan.NewDropTable([]sql.Node{plan.NewResolvedTable(memory.NewTable("testTable1", s, db.GetForeignKeyCollection()), db, nil), plan.NewResolvedTable(memory.NewTable("testTable2", s, db.GetForeignKeyCollection()), db, nil)}, false)
-	rows, err := DefaultBuilder.Build(sql.NewEmptyContext(), d, nil)
+	d := plan.NewDropTable([]sql.Node{
+		plan.NewResolvedTable(memory.NewTable(db.BaseDatabase, "testTable1", s, db.GetForeignKeyCollection()), db, nil),
+		plan.NewResolvedTable(memory.NewTable(db.BaseDatabase, "testTable2", s, db.GetForeignKeyCollection()), db, nil),
+	}, false)
+	rows, err := DefaultBuilder.Build(ctx, d, nil)
 	require.NoError(err)
 
 	r, err := rows.Next(ctx)
@@ -89,27 +96,26 @@ func TestDropTable(t *testing.T) {
 	_, ok = db.Tables()["testTable3"]
 	require.True(ok)
 
-	d = plan.NewDropTable([]sql.Node{plan.NewResolvedTable(memory.NewTable("testTable1", s, db.GetForeignKeyCollection()), db, nil)}, false)
-	_, err = DefaultBuilder.Build(sql.NewEmptyContext(), d, nil)
+	d = plan.NewDropTable([]sql.Node{plan.NewResolvedTable(memory.NewTable(db.Database(), "testTable1", s, db.GetForeignKeyCollection()), db, nil)}, false)
+	_, err = DefaultBuilder.Build(ctx, d, nil)
 	require.Error(err)
 
-	d = plan.NewDropTable([]sql.Node{plan.NewResolvedTable(memory.NewTable("testTable3", s, db.GetForeignKeyCollection()), db, nil)}, false)
-	_, err = DefaultBuilder.Build(sql.NewEmptyContext(), d, nil)
+	d = plan.NewDropTable([]sql.Node{plan.NewResolvedTable(memory.NewTable(db.Database(), "testTable3", s, db.GetForeignKeyCollection()), db, nil)}, false)
+	_, err = DefaultBuilder.Build(ctx, d, nil)
 	require.NoError(err)
 
 	_, ok = db.Tables()["testTable3"]
 	require.False(ok)
 }
 
-func createTable(t *testing.T, db sql.Database, name string, schema sql.PrimaryKeySchema, ifNotExists plan.IfNotExistsOption, temporary plan.TempTableOption) error {
+func createTable(t *testing.T, ctx *sql.Context, db sql.Database, name string, schema sql.PrimaryKeySchema, ifNotExists plan.IfNotExistsOption, temporary plan.TempTableOption) error {
 	c := plan.NewCreateTable(db, name, ifNotExists, temporary, &plan.TableSpec{Schema: schema})
 
-	rows, err := DefaultBuilder.Build(sql.NewEmptyContext(), c, nil)
+	rows, err := DefaultBuilder.Build(ctx, c, nil)
 	if err != nil {
 		return err
 	}
 
-	ctx := sql.NewEmptyContext()
 	r, err := rows.Next(ctx)
 	require.Nil(t, err)
 	require.Equal(t, sql.NewRow(types.NewOkResult(0)), r)

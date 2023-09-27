@@ -34,7 +34,8 @@ import (
 func TestCreateIndexAsync(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("foo")
+	table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
@@ -43,7 +44,6 @@ func TestCreateIndexAsync(t *testing.T) {
 	idxReg := sql.NewIndexRegistry()
 	driver := new(mockDriver)
 	idxReg.RegisterIndexDriver(driver)
-	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
@@ -59,9 +59,10 @@ func TestCreateIndexAsync(t *testing.T) {
 	ci.CurrentDatabase = "foo"
 
 	tracer := new(test.MemTracer)
-	sess := sql.NewBaseSession()
-	sess.SetIndexRegistry(idxReg)
-	ctx := sql.NewContext(context.Background(), sql.WithTracer(tracer), sql.WithSession(sess))
+	pro := memory.NewDBProvider(db)
+	baseSession := sql.NewBaseSession()
+	baseSession.SetIndexRegistry(idxReg)
+	ctx := sql.NewContext(context.Background(), sql.WithTracer(tracer), sql.WithSession(memory.NewSession(baseSession, pro)))
 	_, err := DefaultBuilder.Build(ctx, ci, nil)
 
 	require.NoError(err)
@@ -91,7 +92,8 @@ func TestCreateIndexAsync(t *testing.T) {
 func TestCreateIndexNotIndexableExprs(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("foo")
+	table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo", Type: types.Blob},
 		{Name: "b", Source: "foo", Type: types.JSON},
 		{Name: "c", Source: "foo", Type: types.Text},
@@ -100,7 +102,6 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 	driver := new(mockDriver)
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
-	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
@@ -143,7 +144,8 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 func TestCreateIndexSync(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("foo")
+	table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
@@ -152,7 +154,6 @@ func TestCreateIndexSync(t *testing.T) {
 	driver := new(mockDriver)
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
-	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
@@ -170,9 +171,11 @@ func TestCreateIndexSync(t *testing.T) {
 
 	tracer := new(test.MemTracer)
 
-	sess := sql.NewBaseSession()
-	sess.SetIndexRegistry(idxReg)
-	ctx := sql.NewContext(context.Background(), sql.WithTracer(tracer), sql.WithSession(sess))
+	pro := memory.NewDBProvider(db)
+	baseSession := sql.NewBaseSession()
+	baseSession.SetIndexRegistry(idxReg)
+	ctx := sql.NewContext(context.Background(), sql.WithTracer(tracer), sql.WithSession(memory.NewSession(baseSession, pro)))
+
 	_, err := DefaultBuilder.Build(ctx, ci, nil)
 	require.NoError(err)
 
@@ -199,8 +202,9 @@ func TestCreateIndexSync(t *testing.T) {
 func TestCreateIndexChecksum(t *testing.T) {
 	require := require.New(t)
 
+	db := memory.NewDatabase("foo")
 	table := &checksumTable{
-		memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+		memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "a", Source: "foo"},
 			{Name: "b", Source: "foo"},
 			{Name: "c", Source: "foo"},
@@ -211,7 +215,6 @@ func TestCreateIndexChecksum(t *testing.T) {
 	driver := new(mockDriver)
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
-	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
@@ -227,9 +230,11 @@ func TestCreateIndexChecksum(t *testing.T) {
 	ci.Catalog = catalog
 	ci.CurrentDatabase = "foo"
 
-	sess := sql.NewBaseSession()
-	sess.SetIndexRegistry(idxReg)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+	pro := memory.NewDBProvider(db)
+	baseSession := sql.NewBaseSession()
+	baseSession.SetIndexRegistry(idxReg)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(baseSession, pro)))
+
 	_, err := DefaultBuilder.Build(ctx, ci, nil)
 	require.NoError(err)
 
@@ -240,12 +245,13 @@ func TestCreateIndexChecksum(t *testing.T) {
 func TestCreateIndexChecksumWithUnderlying(t *testing.T) {
 	require := require.New(t)
 
+	db := memory.NewDatabase("test")
 	table :=
 		&underlyingTable{
 			&underlyingTable{
 				&underlyingTable{
 					&checksumTable{
-						memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+						memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 							{Name: "a", Source: "foo"},
 							{Name: "b", Source: "foo"},
 							{Name: "c", Source: "foo"},
@@ -273,9 +279,11 @@ func TestCreateIndexChecksumWithUnderlying(t *testing.T) {
 	ci.Catalog = catalog
 	ci.CurrentDatabase = "foo"
 
-	sess := sql.NewBaseSession()
-	sess.SetIndexRegistry(idxReg)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+	pro := memory.NewDBProvider(db)
+	baseSession := sql.NewBaseSession()
+	baseSession.SetIndexRegistry(idxReg)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(baseSession, pro)))
+
 	_, err := DefaultBuilder.Build(ctx, ci, nil)
 	require.NoError(err)
 
@@ -285,7 +293,10 @@ func TestCreateIndexChecksumWithUnderlying(t *testing.T) {
 
 func TestCreateIndexWithIter(t *testing.T) {
 	require := require.New(t)
-	foo := memory.NewPartitionedTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("foo")
+	pro := memory.NewDBProvider(db)
+
+	foo := memory.NewPartitionedTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "one", Source: "foo", Type: types.Int64},
 		{Name: "two", Source: "foo", Type: types.Int64},
 	}), nil, 2)
@@ -296,8 +307,9 @@ func TestCreateIndexWithIter(t *testing.T) {
 		{0, 0},
 		{math.MaxInt64, math.MinInt64},
 	}
+
 	for _, r := range rows {
-		err := foo.Insert(sql.NewEmptyContext(), sql.NewRow(r[0], r[1]))
+		err := foo.Insert(newContext(pro), sql.NewRow(r[0], r[1]))
 		require.NoError(err)
 	}
 
@@ -309,7 +321,6 @@ func TestCreateIndexWithIter(t *testing.T) {
 	driver := new(mockDriver)
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
-	db := memory.NewDatabase("foo")
 	db.AddTable("foo", foo)
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
@@ -317,9 +328,10 @@ func TestCreateIndexWithIter(t *testing.T) {
 	ci.Catalog = catalog
 	ci.CurrentDatabase = "foo"
 
-	sess := sql.NewBaseSession()
-	sess.SetIndexRegistry(idxReg)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+	baseSession := sql.NewBaseSession()
+	baseSession.SetIndexRegistry(idxReg)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(baseSession, pro)))
+
 	columns, exprs, err := GetColumnsAndPrepareExpressions(ci.Exprs)
 	require.NoError(err)
 
@@ -437,6 +449,14 @@ func (d *mockDriver) Delete(index sql.DriverIndex, _ sql.PartitionIter) error {
 type checksumTable struct {
 	sql.Table
 	checksum string
+}
+
+func (t *checksumTable) IgnoreSessionData() bool {
+	return true
+}
+
+func (t *checksumTable) UnderlyingTable() *memory.Table {
+	return t.Table.(*memory.Table)
 }
 
 func (t *checksumTable) Checksum() (string, error) {

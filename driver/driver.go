@@ -96,7 +96,7 @@ func New(provider Provider, options *Options) *Driver {
 	if provWithSessionBuilder, ok := provider.(ProviderWithSessionBuilder); ok {
 		sessionBuilder = provWithSessionBuilder
 	} else {
-		sessionBuilder = DefaultSessionBuilder{}
+		sessionBuilder = NewDefaultSessionBuilder()
 	}
 
 	var contextBuilder ContextBuilder

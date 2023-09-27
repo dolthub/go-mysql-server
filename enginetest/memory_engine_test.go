@@ -25,9 +25,9 @@ import (
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/memory"
-	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	_ "github.com/dolthub/go-mysql-server/sql/variables"
 )
@@ -141,7 +141,7 @@ func TestSingleQuery(t *testing.T) {
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, false, nil)
 	// harness.UseServer()
-	harness.Setup(setup.SimpleSetup...)
+	harness.Setup(setup.MydbData, setup.MytableData)
 	engine, err := harness.NewEngine(t)
 	require.NoError(t, err)
 
@@ -183,19 +183,31 @@ func TestSingleQueryPrepared(t *testing.T) {
 	enginetest.TestScriptWithEnginePrepared(t, engine, harness, test)
 }
 
+func newUpdateResult(matched, updated int) types.OkResult {
+	return types.OkResult{
+		RowsAffected: uint64(updated),
+		Info:         plan.UpdateInfo{Matched: matched, Updated: updated},
+	}
+}
+
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "insert default value",
+			Name: "add new generated column",
 			SetUpScript: []string{
-				"create table xy (x int primary key, y int default (x+1))",
+				"create table t1 (a int primary key, b int)",
+				"insert into t1 values (1,2), (2,3), (3,4)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "insert into xy (x,y) values (1, DEFAULT)",
-					Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 0}}},
+					Query:    "alter table t1 add column c int as (a + b) stored",
+					Expected: []sql.Row{{types.NewOkResult(0)}},
+				},
+				{
+					Query:    "select * from t1 order by a",
+					Expected: []sql.Row{{1, 2, 3}, {2, 3, 5}, {3, 4, 7}},
 				},
 			},
 		},
@@ -203,6 +215,7 @@ func TestSingleScript(t *testing.T) {
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+		harness.Setup(setup.MydbData)
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
@@ -433,7 +446,7 @@ func TestAmbiguousColumnResolution(t *testing.T) {
 func TestInsertInto(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
 	harness.QueriesToSkip(
-		// should be colum not found error
+		// should be column not found error
 		"insert into a (select * from b) on duplicate key update b.i = a.i",
 		"insert into a (select * from b as t) on duplicate key update a.i = b.j + 100",
 	)
@@ -653,12 +666,6 @@ func TestDropForeignKeys(t *testing.T) {
 }
 
 func TestForeignKeys(t *testing.T) {
-	for i := len(queries.ForeignKeyTests) - 1; i >= 0; i-- {
-		//TODO: memory tables don't quite handle keyless foreign keys properly
-		if queries.ForeignKeyTests[i].Name == "Keyless CASCADE over three tables" {
-			queries.ForeignKeyTests = append(queries.ForeignKeyTests[:i], queries.ForeignKeyTests[i+1:]...)
-		}
-	}
 	enginetest.TestForeignKeys(t, enginetest.NewDefaultMemoryHarness())
 }
 
@@ -756,7 +763,6 @@ func TestAddDropPks(t *testing.T) {
 }
 
 func TestAddAutoIncrementColumn(t *testing.T) {
-	t.Skip("in memory tables don't implement sql.RewritableTable yet")
 	for _, script := range queries.AlterTableAddAutoIncrementScripts {
 		enginetest.TestScript(t, enginetest.NewDefaultMemoryHarness(), script)
 	}
@@ -779,12 +785,14 @@ func TestIndexPrefix(t *testing.T) {
 }
 
 func TestPersist(t *testing.T) {
-	newSess := func(ctx *sql.Context) sql.PersistableSession {
+	harness := enginetest.NewDefaultMemoryHarness()
+	newSess := func(_ *sql.Context) sql.PersistableSession {
+		ctx := harness.NewSession()
 		persistedGlobals := memory.GlobalsMap{}
-		persistedSess := memory.NewInMemoryPersistedSession(ctx.Session, persistedGlobals)
-		return persistedSess
+		memSession := ctx.Session.(*memory.Session).SetGlobals(persistedGlobals)
+		return memSession
 	}
-	enginetest.TestPersist(t, enginetest.NewDefaultMemoryHarness(), newSess)
+	enginetest.TestPersist(t, harness, newSess)
 }
 
 func TestValidateSession(t *testing.T) {
@@ -793,11 +801,13 @@ func TestValidateSession(t *testing.T) {
 		count++
 	}
 
+	harness := enginetest.NewDefaultMemoryHarness()
 	newSess := func(ctx *sql.Context) sql.PersistableSession {
-		sess := memory.NewInMemoryPersistedSessionWithValidationCallback(ctx.Session, incrementValidateCb)
-		return sess
+		memSession := ctx.Session.(*memory.Session)
+		memSession.SetValidationCallback(incrementValidateCb)
+		return memSession
 	}
-	enginetest.TestValidateSession(t, enginetest.NewDefaultMemoryHarness(), newSess, &count)
+	enginetest.TestValidateSession(t, harness, newSess, &count)
 }
 
 func TestPrepared(t *testing.T) {
@@ -817,15 +827,18 @@ func TestCharsetCollationEngine(t *testing.T) {
 }
 
 func TestCharsetCollationWire(t *testing.T) {
-	enginetest.TestCharsetCollationWire(t, enginetest.NewDefaultMemoryHarness(), server.DefaultSessionBuilder)
+	harness := enginetest.NewDefaultMemoryHarness()
+	enginetest.TestCharsetCollationWire(t, harness, harness.SessionBuilder())
 }
 
 func TestDatabaseCollationWire(t *testing.T) {
-	enginetest.TestDatabaseCollationWire(t, enginetest.NewDefaultMemoryHarness(), server.DefaultSessionBuilder)
+	harness := enginetest.NewDefaultMemoryHarness()
+	enginetest.TestDatabaseCollationWire(t, harness, harness.SessionBuilder())
 }
 
 func TestTypesOverWire(t *testing.T) {
-	enginetest.TestTypesOverWire(t, enginetest.NewDefaultMemoryHarness(), server.DefaultSessionBuilder)
+	harness := enginetest.NewDefaultMemoryHarness()
+	enginetest.TestTypesOverWire(t, harness, harness.SessionBuilder())
 }
 
 func mergableIndexDriver(dbs []sql.Database) sql.IndexDriver {

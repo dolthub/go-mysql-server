@@ -15,10 +15,12 @@
 package aggregation
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -87,8 +89,11 @@ func TestWindowIter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
-			ctx := sql.NewEmptyContext()
-			i := NewWindowIter(tt.PartitionIters, tt.OutputOrdinals, mustNewRowIter(t, ctx))
+			db := memory.NewDatabase("test")
+			pro := memory.NewDBProvider(db)
+			ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
+
+			i := NewWindowIter(tt.PartitionIters, tt.OutputOrdinals, mustNewRowIter(t, db, ctx))
 			res, err := sql.RowIterToRows(ctx, nil, i)
 			require.NoError(t, err)
 			require.Equal(t, tt.Expected, res)

@@ -1,6 +1,8 @@
 package sql
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type MapCatalog struct {
 	Tables    map[string]Table

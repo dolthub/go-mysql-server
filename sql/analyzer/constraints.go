@@ -26,39 +26,43 @@ import (
 // resolveDropConstraint replaces DropConstraint nodes with a concrete type of alter table node as appropriate, or
 // throws a constraint not found error if the named constraint isn't found on the table given.
 func resolveDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	dropConstraint, ok := n.(*plan.DropConstraint)
-	if !ok {
-		return n, transform.SameTree, nil
-	}
-
-	rt, ok := dropConstraint.Child.(*plan.ResolvedTable)
-	if !ok {
-		return nil, transform.SameTree, ErrInAnalysis.New("Expected a TableNode for ALTER TABLE DROP CONSTRAINT statement")
-	}
-
-	//TODO: handle if a foreign key and check constraint have the same name, it should error saying to use the specific drop
-	table := rt.Table
-	fkt, ok := table.(sql.ForeignKeyTable)
-	if ok {
-		decFks, err := fkt.GetDeclaredForeignKeys(ctx)
-		if err != nil {
-			return nil, transform.SameTree, err
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		dropConstraint, ok := n.(*plan.DropConstraint)
+		if !ok {
+			return n, transform.SameTree, nil
 		}
-		refFks, err := fkt.GetReferencedForeignKeys(ctx)
-		if err != nil {
-			return nil, transform.SameTree, err
+
+		rt, ok := dropConstraint.Child.(*plan.ResolvedTable)
+		if !ok {
+			return nil, transform.SameTree, ErrInAnalysis.New("Expected a TableNode for ALTER TABLE DROP CONSTRAINT statement")
 		}
-		for _, fk := range append(decFks, refFks...) {
-			if strings.ToLower(fk.Name) == strings.ToLower(dropConstraint.Name) {
-				n, err = plan.NewAlterDropForeignKey(rt.SqlDatabase.Name(), rt.Table.Name(), dropConstraint.Name).
-					WithDatabaseProvider(a.Catalog.Provider)
-				return n, transform.NewTree, err
+
+		//TODO: handle if a foreign key and check constraint have the same name, it should error saying to use the specific drop
+		table := rt.Table
+		fkt, ok := table.(sql.ForeignKeyTable)
+		if ok {
+			decFks, err := fkt.GetDeclaredForeignKeys(ctx)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			refFks, err := fkt.GetReferencedForeignKeys(ctx)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			for _, fk := range append(decFks, refFks...) {
+				if strings.ToLower(fk.Name) == strings.ToLower(dropConstraint.Name) {
+					n, err = plan.NewAlterDropForeignKey(rt.SqlDatabase.Name(), rt.Table.Name(), dropConstraint.Name).
+						WithDatabaseProvider(a.Catalog.Provider)
+					return n, transform.NewTree, err
+				}
 			}
 		}
-	}
 
-	ct, ok := table.(sql.CheckTable)
-	if ok {
+		ct, ok := table.(sql.CheckTable)
+		if !ok {
+			return nil, transform.SameTree, plan.ErrNoCheckConstraintSupport.New(table.Name())
+		}
+
 		checks, err := ct.GetChecks(ctx)
 		if err != nil {
 			return nil, transform.SameTree, err
@@ -69,19 +73,16 @@ func resolveDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pla
 				return plan.NewAlterDropCheck(rt, check.Name), transform.NewTree, nil
 			}
 		}
-	}
 
-	return nil, transform.SameTree, sql.ErrUnknownConstraint.New(dropConstraint.Name)
+		return nil, transform.SameTree, sql.ErrUnknownConstraint.New(dropConstraint.Name)
+	})
 }
 
 // validateDropConstraint returns an error if the constraint named to be dropped doesn't exist
 func validateDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	switch n := n.(type) {
 	case *plan.DropCheck:
-		rt, ok := n.Child.(*plan.ResolvedTable)
-		if !ok {
-			return nil, transform.SameTree, ErrInAnalysis.New("Expected a TableNode for ALTER TABLE DROP CONSTRAINT statement")
-		}
+		rt := n.Table
 
 		ct, ok := rt.Table.(sql.CheckTable)
 		if ok {

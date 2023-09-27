@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"context"
 	"testing"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -15,7 +16,10 @@ import (
 
 func TestApplyHashIn(t *testing.T) {
 	ctx := &sql.Context{}
-	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("mydb")
+	pro := memory.NewDBProvider(db)
+
+	table := memory.NewTable(db, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: types.Int64, Source: "foo"},
 		{Name: "b", Type: types.Int64, Source: "foo"},
 		{Name: "c", Type: types.Int64, Source: "foo"},
@@ -547,7 +551,7 @@ func TestApplyHashIn(t *testing.T) {
 		},
 	}
 
-	runTestCases(t, sql.NewEmptyContext(), tests, NewDefault(sql.NewDatabaseProvider()), getRule(applyHashInId))
+	runTestCases(t, newContext(pro), tests, NewDefault(sql.NewDatabaseProvider()), getRule(applyHashInId))
 }
 
 func mustNewHashInTuple(ctx *sql.Context, left, right sql.Expression) *expression.HashInTuple {
@@ -556,4 +560,8 @@ func mustNewHashInTuple(ctx *sql.Context, left, right sql.Expression) *expressio
 		panic(err)
 	}
 	return hin
+}
+
+func newContext(provider *memory.DbProvider) *sql.Context {
+	return sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), provider)))
 }

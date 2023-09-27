@@ -15,13 +15,18 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"time"
+
+	"github.com/dolthub/vitess/go/mysql"
+	"github.com/dolthub/vitess/go/vt/proto/query"
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -50,11 +55,12 @@ var (
 // For go-mysql-server developers: Remember to update the snippet in the README when this file changes.
 
 func main() {
-	ctx := sql.NewEmptyContext()
-	engine := sqle.NewDefault(
-		memory.NewDBProvider(
-			createTestDatabase(ctx),
-		))
+	pro := createTestDatabase()
+	engine := sqle.NewDefault(pro)
+
+	session := memory.NewSession(sql.NewBaseSession(), pro)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(session))
+	ctx.SetCurrentDatabase("test")
 
 	// This variable may be found in the "users_example.go" file. Please refer to that file for a walkthrough on how to
 	// set up the "mysql" database to allow user creation and user checking when establishing connections. This is set
@@ -69,7 +75,7 @@ func main() {
 		Protocol: "tcp",
 		Address:  fmt.Sprintf("%s:%d", address, port),
 	}
-	s, err := server.NewDefaultServer(config, engine)
+	s, err := server.NewServer(config, engine, sessionBuilder(pro), nil)
 	if err != nil {
 		panic(err)
 	}
@@ -78,14 +84,35 @@ func main() {
 	}
 }
 
-func createTestDatabase(ctx *sql.Context) *memory.Database {
-	db := memory.NewDatabase(dbName)
-	db.EnablePrimaryKeyIndexes()
-	table := memory.NewTable(tableName, sql.NewPrimaryKeySchema(sql.Schema{
+func sessionBuilder(pro *memory.DbProvider) server.SessionBuilder {
+	return func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
+		host := ""
+		user := ""
+		mysqlConnectionUser, ok := conn.UserData.(mysql_db.MysqlConnectionUser)
+		if ok {
+			host = mysqlConnectionUser.Host
+			user = mysqlConnectionUser.User
+		}
+
+		client := sql.Client{Address: host, User: user, Capabilities: conn.Capabilities}
+		baseSession := sql.NewBaseSessionWithClientServer(addr, client, conn.ConnectionID)
+		return memory.NewSession(baseSession, pro), nil
+	}
+}
+
+func createTestDatabase() *memory.DbProvider {
+	db := memory.NewDatabase("mydb")
+	db.BaseDatabase.EnablePrimaryKeyIndexes()
+
+	pro := memory.NewDBProvider(db)
+	session := memory.NewSession(sql.NewBaseSession(), pro)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(session))
+
+	table := memory.NewTable(db, tableName, sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: types.Text, Nullable: false, Source: tableName, PrimaryKey: true},
 		{Name: "email", Type: types.Text, Nullable: false, Source: tableName, PrimaryKey: true},
 		{Name: "phone_numbers", Type: types.JSON, Nullable: false, Source: tableName},
-		{Name: "created_at", Type: types.Datetime, Nullable: false, Source: tableName},
+		{Name: "created_at", Type: types.MustCreateDatetimeType(query.Type_DATETIME, 6), Nullable: false, Source: tableName},
 	}), db.GetForeignKeyCollection())
 	db.AddTable(tableName, table)
 
@@ -94,5 +121,6 @@ func createTestDatabase(ctx *sql.Context) *memory.Database {
 	_ = table.Insert(ctx, sql.NewRow("Jane Doe", "jane@doe.com", types.MustJSON(`[]`), creationTime))
 	_ = table.Insert(ctx, sql.NewRow("John Doe", "john@doe.com", types.MustJSON(`["555-555-555"]`), creationTime))
 	_ = table.Insert(ctx, sql.NewRow("John Doe", "johnalt@doe.com", types.MustJSON(`[]`), creationTime))
-	return db
+
+	return pro
 }
