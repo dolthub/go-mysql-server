@@ -3752,7 +3752,7 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "SELECT * FROM b;",
+				Query:       "SELECT * FROM b;",
 				ExpectedErr: sql.ErrInvalidRefInView,
 			},
 			{
@@ -3769,12 +3769,12 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				// TODO: View definition should have 'SELECT *' be unwrapped to each column of the referenced table
-				Skip: true,
-				Query:    "SELECT * FROM b;",
+				Skip:        true,
+				Query:       "SELECT * FROM b;",
 				ExpectedErr: sql.ErrInvalidRefInView,
 			},
 			{
-				Query:    "SELECT * FROM f;",
+				Query:       "SELECT * FROM f;",
 				ExpectedErr: sql.ErrInvalidRefInView,
 			},
 		},

@@ -751,7 +751,7 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 				// TODO: Need better way to determine the view usage here.
 				//  Creating new view or updating existing view to reference non-existent table/view do not apply here.
 				//  Need to account for non-existing functions or users without appropriate privilege to the referenced table/column/function.
-				if (sql.ErrTableNotFound.Is(err) || sql.ErrColumnNotFound.Is(err)) && strings.HasPrefix(strings.ToLower(b.ctx.Query()), "select"){
+				if (sql.ErrTableNotFound.Is(err) || sql.ErrColumnNotFound.Is(err)) && strings.HasPrefix(strings.ToLower(b.ctx.Query()), "select") {
 					err = sql.ErrInvalidRefInView.New(database.Name(), name)
 				}
 				b.handleErr(err)
