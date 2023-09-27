@@ -132,11 +132,6 @@ func TestJoinQueries(t *testing.T, harness Harness) {
 	for _, ts := range queries.JoinScriptTests {
 		TestScript(t, harness, ts)
 	}
-
-	t.Skip()
-	for _, tt := range queries.SkippedJoinQueryTests {
-		TestQuery2(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
-	}
 }
 
 func TestLateralJoinQueries(t *testing.T, harness Harness) {
@@ -244,18 +239,10 @@ func TestJoinQueriesPrepared(t *testing.T, harness Harness) {
 		}
 		TestScriptPrepared(t, harness, ts)
 	}
-
-	t.Skip()
-	for _, tt := range queries.SkippedJoinQueryTests {
-		if tt.SkipPrepared {
-			continue
-		}
-		TestPreparedQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns)
-	}
 }
 
 func TestBrokenQueries(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.Fk_tblData)
+	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.Fk_tblData, setup.OthertableData)
 	RunQueryTests(t, harness, queries.BrokenQueries)
 }
 

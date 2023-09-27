@@ -487,9 +487,8 @@ WHERE EXISTS (SELECT count(v) AS count_1
 FROM uv 
 WHERE y = v and v = 1 GROUP BY v
 HAVING count(v) >= 1)`,
-				types:   []plan.JoinType{},
-				exp:     []sql.Row{{2}},
-				skipOld: true,
+				types: []plan.JoinType{},
+				exp:   []sql.Row{{2}},
 			},
 			{
 				q:     "select * from xy where y-1 = (select u from uv where v = 2 order by 1 limit 1);",
@@ -687,9 +686,8 @@ with recursive rec(x) as (
 )
 select * from uv
 where u in (select * from rec);`,
-				types:   []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeHash},
-				exp:     []sql.Row{{1, 1}},
-				skipOld: true,
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeHash},
+				exp:   []sql.Row{{1, 1}},
 			},
 			{
 				q:     "select x+1 as newX, y from xy having y in (select x from xy where newX=1)",

@@ -746,6 +746,16 @@ on w = 0;`,
 
 var JoinScriptTests = []ScriptTest{
 	{
+		Name:        "Simple join query",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "select x from xy, uv join ab on x = a and u = -1;",
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+		},
+	},
+	{
 		Name: "Complex join query with foreign key constraints",
 		SetUpScript: []string{
 			"CREATE TABLE `users` (`id` int NOT NULL AUTO_INCREMENT, `username` varchar(255) NOT NULL, PRIMARY KEY (`id`));",
@@ -1106,14 +1116,6 @@ var JoinScriptTests = []ScriptTest{
 	},
 }
 
-var SkippedJoinQueryTests = []QueryTest{
-	{
-		// resolve error: table "xy" does not have column "x"
-		Query:    "select x from xy, uv join ab on x = a and u = -1",
-		Expected: []sql.Row{{}},
-	},
-}
-
 var LateralJoinScriptTests = []ScriptTest{
 	{
 		Name: "basic lateral join test",
@@ -1152,7 +1154,6 @@ var LateralJoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "select * from t, lateral (select * from t1 where t.i = t1.j) tt, lateral (select * from t1 where t.i != t1.j) as ttt order by t.i, tt.j, ttt.j;",
 				Expected: []sql.Row{
 					{1, 1, 4},
@@ -1160,7 +1161,6 @@ var LateralJoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: `WITH RECURSIVE cte(x) AS (SELECT 1 union all SELECT x + 1 from cte where x < 5) SELECT * FROM cte, lateral (select * from t where t.i = cte.x) tt;`,
 				Expected: []sql.Row{
 					{1, 1},
