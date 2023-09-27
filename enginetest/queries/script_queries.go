@@ -3752,6 +3752,16 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				Query:       "CREATE VIEW g AS SELECT * FROM nonexistenttable;",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				// TODO: ALTER VIEWs are not supported
+				Skip:        true,
+				Query:       "ALTER VIEW b AS SELECT * FROM nonexistenttable;",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
 				Query:       "SELECT * FROM b;",
 				ExpectedErr: sql.ErrInvalidRefInView,
 			},
@@ -3768,7 +3778,7 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				// TODO: View definition should have 'SELECT *' be unwrapped to each column of the referenced table
+				// TODO: View definition should have 'SELECT *' be expanded to each column of the referenced table
 				Skip:        true,
 				Query:       "SELECT * FROM b;",
 				ExpectedErr: sql.ErrInvalidRefInView,
