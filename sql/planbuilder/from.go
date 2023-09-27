@@ -748,6 +748,12 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 			b.parserOpts = sql.NewSqlModeFromString(viewDef.SqlMode).ParserOptions()
 			node, _, _, err := b.Parse(viewDef.TextDefinition, false)
 			if err != nil {
+				// TODO: Need to account for non-existing functions or
+				//  users without appropriate privilege to the referenced table/column/function.
+				if sql.ErrTableNotFound.Is(err) || sql.ErrColumnNotFound.Is(err) {
+					// TODO: ALTER VIEW should not return this error
+					err = sql.ErrInvalidRefInView.New(database.Name(), name)
+				}
 				b.handleErr(err)
 			}
 			view = plan.NewSubqueryAlias(name, viewDef.TextDefinition, node).AsView(viewDef.CreateViewStatement)

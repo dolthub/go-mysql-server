@@ -3898,6 +3898,53 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Querying existing view that references non-existing table",
+		SetUpScript: []string{
+			"CREATE TABLE a(id int primary key, col1 int);",
+			"CREATE VIEW b AS SELECT * FROM a;",
+			"CREATE VIEW f AS SELECT col1 AS npk FROM a;",
+			"RENAME TABLE a TO d;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "CREATE VIEW g AS SELECT * FROM nonexistenttable;",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				// TODO: ALTER VIEWs are not supported
+				Skip:        true,
+				Query:       "ALTER VIEW b AS SELECT * FROM nonexistenttable;",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:       "SELECT * FROM b;",
+				ExpectedErr: sql.ErrInvalidRefInView,
+			},
+			{
+				Query:    "RENAME TABLE d TO a;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT * FROM b;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "ALTER TABLE a RENAME COLUMN col1 TO newcol;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// TODO: View definition should have 'SELECT *' be expanded to each column of the referenced table
+				Skip:        true,
+				Query:       "SELECT * FROM b;",
+				ExpectedErr: sql.ErrInvalidRefInView,
+			},
+			{
+				Query:       "SELECT * FROM f;",
+				ExpectedErr: sql.ErrInvalidRefInView,
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
