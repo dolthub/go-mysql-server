@@ -3716,15 +3716,15 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select hex(*) from t;",
+				Query:       "select hex(*) from t;",
 				ExpectedErr: sql.ErrStarUnsupported,
 			},
 			{
-				Query:    "select HEX(*) from t;",
+				Query:       "select HEX(*) from t;",
 				ExpectedErr: sql.ErrStarUnsupported,
 			},
 			{
-				Query:    "select HeX(*) from t;",
+				Query:       "select HeX(*) from t;",
 				ExpectedErr: sql.ErrStarUnsupported,
 			},
 		},
