@@ -96,12 +96,19 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
-		Name: "union schema merge",
+		Name: "set op schema merge",
 		SetUpScript: []string{
 			"create table `left` (i int primary key, j mediumint, k varchar(20));",
 			"create table `right` (i int primary key, j bigint, k text);",
 			"insert into `left` values (1,2, 'a')",
 			"insert into `right` values (3,4, 'b')",
+
+			"create table t1 (i int);",
+			"insert into t1 values (1), (2), (3);",
+			"create table t2 (i int);",
+			"insert into t2 values (1), (3);",
+			"create table t3 (j int);",
+			"insert into t3 values (1), (3);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -133,8 +140,149 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{1, "a"}, {3, "b"}},
 			},
 			{
+				Query: "select i, j, k from `left` union select i, j, k from `right`",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "i",
+						Type: types.Int32,
+					},
+					{
+						Name: "j",
+						Type: types.Int64,
+					},
+					{
+						Name: "k",
+						Type: types.LongText,
+					},
+				},
+				Expected: []sql.Row{{1, 2, "a"}, {3, 4, "b"}},
+			},
+			{
 				Query:       "select i, k from `left` union select i, j, k from `right`",
 				ExpectedErr: planbuilder.ErrUnionSchemasDifferentLength,
+			},
+			{
+				Query: "table t1 union table t2 order by i;",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "i",
+						Type: types.Int32,
+					},
+				},
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "table t1 union table t2 order by i;",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "i",
+						Type: types.Int32,
+					},
+				},
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "table t3 union table t1 order by j;",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "j",
+						Type: types.Int32,
+					},
+				},
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "select j as i from t3 union table t1 order by i;",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "i",
+						Type: types.Int32,
+					},
+				},
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "table t1 union table t2 order by 1;",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "i",
+						Type: types.Int32,
+					},
+				},
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "table t1 union table t3 order by 1;",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "i",
+						Type: types.Int32,
+					},
+				},
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				// This looks wrong, but it actually matches MySQL
+				Query: "table t1 union select i as j from t2 order by i;",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "i",
+						Type: types.Int32,
+					},
+				},
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query:       "table t1 union table t3 order by j;",
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+			{
+				Query:       "table t1 union table t2 order by t1.i;",
+				ExpectedErr: planbuilder.ErrQualifiedOrderBy,
+			},
+			{
+				Query:       "table t1 union table t2 order by t2.i;",
+				ExpectedErr: planbuilder.ErrQualifiedOrderBy,
+			},
+			{
+				Query:       "table t1 union table t3 order by t3.i;",
+				ExpectedErr: planbuilder.ErrQualifiedOrderBy,
+			},
+			{
+				Query:       "table t1 union table t3 order by t3.j;",
+				ExpectedErr: planbuilder.ErrQualifiedOrderBy,
+			},
+			{
+				Query:       "table t1 union table t3 order by t1.j;",
+				ExpectedErr: planbuilder.ErrQualifiedOrderBy,
 			},
 		},
 	},
@@ -155,6 +303,10 @@ var ScriptTests = []ScriptTest{
 			"insert into l values (1), (1), (1);",
 			"create table r (i int);",
 			"insert into r values (1);",
+			"create table x (i int);",
+			"insert into x values (1), (2), (3);",
+			"create table y (i bigint);",
+			"insert into y values (1), (3);",
 		},
 		Assertions: []ScriptTestAssertion{
 			// Intersect tests
@@ -199,20 +351,26 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				// Resulting type is string for some reason
-				Skip:  true,
-				Query: "table t1 intersect table t2;",
+				Query: "table x intersect table y order by i;",
 				Expected: []sql.Row{
 					{1},
 					{3},
 				},
 			},
 			{
-				// Field indexing error
-				Skip:  true,
-				Query: "table t1 intersect table t2 order by i;",
+				Query: "table x intersect table y order by 1;",
 				Expected: []sql.Row{
-					{1.0},
+					{1},
+					{3},
+				},
+			},
+			{
+				// Resulting type is string for some reason
+				Skip:  true,
+				Query: "table t1 intersect table t2;",
+				Expected: []sql.Row{
+					{1},
+					{3},
 				},
 			},
 
@@ -262,11 +420,9 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				// Resulting type is string for some reason
-				Skip:  true,
-				Query: "table t1 except table t2 order by i;",
+				Query: "table x except table y order by i;",
 				Expected: []sql.Row{
-					{2.0},
+					{2},
 				},
 			},
 			{
