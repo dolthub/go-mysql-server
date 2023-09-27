@@ -3866,6 +3866,26 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "different cases of function name should result in the same outcome",
+		SetUpScript: []string{
+			"create table t (b binary(2) primary key);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "select hex(*) from t;",
+				ExpectedErr: sql.ErrStarUnsupported,
+			},
+			{
+				Query:       "select HEX(*) from t;",
+				ExpectedErr: sql.ErrStarUnsupported,
+			},
+			{
+				Query:       "select HeX(*) from t;",
+				ExpectedErr: sql.ErrStarUnsupported,
+			},
+		},
+	},
+	{
 		Name: "UNIX_TIMESTAMP function usage with session different time zones",
 		Assertions: []ScriptTestAssertion{
 			{
