@@ -203,7 +203,7 @@ func (d Database) DropStoredProcedure(ctx *sql.Context, name string) error {
 // GetEvent implements sql.EventDatabase
 func (d Database) GetEvent(ctx *sql.Context, name string) (sql.EventDefinition, bool, error) {
 	name = strings.ToLower(name)
-	events, err := d.GetEvents(ctx)
+	events, _, err := d.GetEvents(ctx)
 	if err != nil {
 		return sql.EventDefinition{}, false, err
 	}
@@ -216,31 +216,31 @@ func (d Database) GetEvent(ctx *sql.Context, name string) (sql.EventDefinition, 
 }
 
 // GetEvents implements sql.EventDatabase
-func (d Database) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, error) {
+func (d Database) GetEvents(_ *sql.Context) ([]sql.EventDefinition, interface{}, error) {
 	events, err := d.shim.QueryRows("", fmt.Sprintf("SHOW EVENTS WHERE Db = '%s';", d.name))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	eventDefinition := make([]sql.EventDefinition, len(events))
 	for i, event := range events {
 		// Db, Name, Definer, Time Zone, Type, ...
 		eventStmt, err := d.shim.QueryRows("", fmt.Sprintf("SHOW CREATE EVENT `%s`.`%s`;", d.name, event[1]))
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		// Event, sql_mode, time_zone, Create Event, ...
 		eventDefinition[i] = sql.EventDefinition{
-			Name:            eventStmt[0][0].(string),
-			CreateStatement: eventStmt[0][3].(string),
+			Name: eventStmt[0][0].(string),
 			// TODO: other fields should be added such as Created, LastAltered
 		}
 	}
-	return eventDefinition, nil
+	// MySQL shim doesn't support event reloading, so token is always nil
+	return eventDefinition, nil, nil
 }
 
 // SaveEvent implements sql.EventDatabase
-func (d Database) SaveEvent(ctx *sql.Context, ed sql.EventDefinition) error {
-	return d.shim.Exec(d.name, ed.CreateStatement)
+func (d Database) SaveEvent(ctx *sql.Context, event sql.EventDefinition) (bool, error) {
+	return event.Status == sql.EventStatus_Enable.String(), d.shim.Exec(d.name, event.CreateEventStatement())
 }
 
 // DropEvent implements sql.EventDatabase
@@ -249,12 +249,23 @@ func (d Database) DropEvent(ctx *sql.Context, name string) error {
 }
 
 // UpdateEvent implements sql.EventDatabase
-func (d Database) UpdateEvent(ctx *sql.Context, originalName string, ed sql.EventDefinition) error {
+func (d Database) UpdateEvent(_ *sql.Context, originalName string, event sql.EventDefinition) (bool, error) {
 	err := d.shim.Exec(d.name, fmt.Sprintf("DROP EVENT `%s`;", originalName))
 	if err != nil {
-		return err
+		return false, err
 	}
-	return d.shim.Exec(d.name, ed.CreateStatement)
+	return event.Status == sql.EventStatus_Enable.String(), d.shim.Exec(d.name, event.CreateEventStatement())
+}
+
+// NeedsToReloadEvents implements sql.EventDatabase
+func (d Database) NeedsToReloadEvents(_ *sql.Context, _ interface{}) (bool, error) {
+	// mysqlshim does not support event reloading
+	return false, nil
+}
+
+// UpdateLastExecuted implements sql.EventDatabase
+func (d Database) UpdateLastExecuted(ctx *sql.Context, eventName string, lastExecuted time.Time) error {
+	return nil
 }
 
 // CreateView implements the interface sql.ViewDatabase.

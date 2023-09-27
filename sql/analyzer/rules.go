@@ -19,6 +19,7 @@ package analyzer
 var OnceBeforeDefault = []Rule{
 	{applyDefaultSelectLimitId, applyDefaultSelectLimit},
 	{replaceCountStarId, replaceCountStar},
+	{applyEventSchedulerId, applyEventScheduler},
 	{validateOffsetAndLimitId, validateLimitAndOffset},
 	{validateCreateTableId, validateCreateTable},
 	{validateExprSemId, validateExprSem},

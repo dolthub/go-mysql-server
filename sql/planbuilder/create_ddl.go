@@ -234,16 +234,16 @@ func (b *Builder) buildCreateEvent(inScope *scope, query string, c *ast.DDL) (ou
 		onCompletionPreserve = true
 	}
 
-	var status plan.EventStatus
+	var status sql.EventStatus
 	switch eventSpec.Status {
 	case ast.EventStatus_Undefined:
-		status = plan.EventStatus_Enable
+		status = sql.EventStatus_Enable
 	case ast.EventStatus_Enable:
-		status = plan.EventStatus_Enable
+		status = sql.EventStatus_Enable
 	case ast.EventStatus_Disable:
-		status = plan.EventStatus_Disable
+		status = sql.EventStatus_Disable
 	case ast.EventStatus_DisableOnSlave:
-		status = plan.EventStatus_DisableOnSlave
+		status = sql.EventStatus_DisableOnSlave
 	}
 
 	bodyStr := strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
@@ -253,16 +253,16 @@ func (b *Builder) buildCreateEvent(inScope *scope, query string, c *ast.DDL) (ou
 	var everyInterval *expression.Interval
 	if eventSpec.OnSchedule.At != nil {
 		ts, intervals := b.buildEventScheduleTimeSpec(inScope, eventSpec.OnSchedule.At)
-		at = plan.NewOnScheduleTimestamp(ts, intervals)
+		at = plan.NewOnScheduleTimestamp("AT", ts, intervals)
 	} else {
 		everyInterval = b.intervalExprToExpression(inScope, &eventSpec.OnSchedule.EveryInterval)
 		if eventSpec.OnSchedule.Starts != nil {
 			startsTs, startsIntervals := b.buildEventScheduleTimeSpec(inScope, eventSpec.OnSchedule.Starts)
-			starts = plan.NewOnScheduleTimestamp(startsTs, startsIntervals)
+			starts = plan.NewOnScheduleTimestamp("STARTS", startsTs, startsIntervals)
 		}
 		if eventSpec.OnSchedule.Ends != nil {
 			endsTs, endsIntervals := b.buildEventScheduleTimeSpec(inScope, eventSpec.OnSchedule.Ends)
-			ends = plan.NewOnScheduleTimestamp(endsTs, endsIntervals)
+			ends = plan.NewOnScheduleTimestamp("ENDS", endsTs, endsIntervals)
 		}
 	}
 
@@ -318,7 +318,7 @@ func (b *Builder) buildAlterEvent(inScope *scope, query string, c *ast.DDL) (out
 		newName        string
 
 		alterStatus = eventSpec.Status != ast.EventStatus_Undefined
-		newStatus   plan.EventStatus
+		newStatus   sql.EventStatus
 
 		alterComment = eventSpec.Comment != nil
 		newComment   string
@@ -331,16 +331,16 @@ func (b *Builder) buildAlterEvent(inScope *scope, query string, c *ast.DDL) (out
 	if alterSchedule {
 		if eventSpec.OnSchedule.At != nil {
 			ts, intervals := b.buildEventScheduleTimeSpec(inScope, eventSpec.OnSchedule.At)
-			at = plan.NewOnScheduleTimestamp(ts, intervals)
+			at = plan.NewOnScheduleTimestamp("AT", ts, intervals)
 		} else {
 			everyInterval = b.intervalExprToExpression(inScope, &eventSpec.OnSchedule.EveryInterval)
 			if eventSpec.OnSchedule.Starts != nil {
 				startsTs, startsIntervals := b.buildEventScheduleTimeSpec(inScope, eventSpec.OnSchedule.Starts)
-				starts = plan.NewOnScheduleTimestamp(startsTs, startsIntervals)
+				starts = plan.NewOnScheduleTimestamp("STARTS", startsTs, startsIntervals)
 			}
 			if eventSpec.OnSchedule.Ends != nil {
 				endsTs, endsIntervals := b.buildEventScheduleTimeSpec(inScope, eventSpec.OnSchedule.Ends)
-				ends = plan.NewOnScheduleTimestamp(endsTs, endsIntervals)
+				ends = plan.NewOnScheduleTimestamp("ENDS", endsTs, endsIntervals)
 			}
 		}
 	}
@@ -358,13 +358,13 @@ func (b *Builder) buildAlterEvent(inScope *scope, query string, c *ast.DDL) (out
 		switch eventSpec.Status {
 		case ast.EventStatus_Undefined:
 			// this should not happen but sanity check
-			newStatus = plan.EventStatus_Enable
+			newStatus = sql.EventStatus_Enable
 		case ast.EventStatus_Enable:
-			newStatus = plan.EventStatus_Enable
+			newStatus = sql.EventStatus_Enable
 		case ast.EventStatus_Disable:
-			newStatus = plan.EventStatus_Disable
+			newStatus = sql.EventStatus_Disable
 		case ast.EventStatus_DisableOnSlave:
-			newStatus = plan.EventStatus_DisableOnSlave
+			newStatus = sql.EventStatus_DisableOnSlave
 		}
 	}
 	if alterComment {
@@ -383,7 +383,7 @@ func (b *Builder) buildAlterEvent(inScope *scope, query string, c *ast.DDL) (out
 		b.handleErr(err)
 	}
 
-	eventDef, exists, err := eventDb.GetEvent(b.ctx, eventName)
+	event, exists, err := eventDb.GetEvent(b.ctx, eventName)
 	if err != nil {
 		b.handleErr(err)
 	}
@@ -402,7 +402,7 @@ func (b *Builder) buildAlterEvent(inScope *scope, query string, c *ast.DDL) (out
 		alterComment, newComment,
 		alterDefinition, newDefinitionStr, newDefinition,
 	)
-	alterEvent.Event = b.loadEventDetails(eventDef)
+	alterEvent.Event = event
 	outScope.node = alterEvent
 	return
 }

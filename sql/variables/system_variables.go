@@ -15,6 +15,7 @@
 package variables
 
 import (
+	"fmt"
 	"math"
 	"strings"
 	"sync"
@@ -80,10 +81,13 @@ func (sv *globalSystemVariables) AssignValues(vals map[string]interface{}) error
 			Var: sysVar,
 			Val: convertedVal,
 		}
-		sv.sysVarVals[varName] = svv
 		if sysVar.NotifyChanged != nil {
-			sysVar.NotifyChanged(sql.SystemVariableScope_Global, svv)
+			err := sysVar.NotifyChanged(sql.SystemVariableScope_Global, svv)
+			if err != nil {
+				return err
+			}
 		}
+		sv.sysVarVals[varName] = svv
 	}
 	return nil
 }
@@ -157,10 +161,13 @@ func (sv *globalSystemVariables) SetGlobal(name string, val interface{}) error {
 		return err
 	}
 	svv := sql.SystemVarValue{Var: sysVar, Val: convertedVal}
-	sv.sysVarVals[name] = svv
 	if sysVar.NotifyChanged != nil {
-		sysVar.NotifyChanged(sql.SystemVariableScope_Global, svv)
+		err := sysVar.NotifyChanged(sql.SystemVariableScope_Global, svv)
+		if err != nil {
+			return err
+		}
 	}
+	sv.sysVarVals[name] = svv
 	return nil
 }
 
@@ -763,6 +770,22 @@ var systemVars = map[string]sql.SystemVariable{
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("event_scheduler", "ON", "OFF", "DISABLED"),
 		Default:           "ON",
+		NotifyChanged: func(scope sql.SystemVariableScope, value sql.SystemVarValue) error {
+			convertedVal, _, err := value.Var.Type.Convert(value.Val)
+			if err == nil {
+				// TODO: need to update EventScheduler state at runtime if applicable
+				s := strings.ToLower(convertedVal.(string))
+				switch s {
+				case "on", "1":
+					// need access to valid analyzer and ctx to call eventscheduler.TurnOnEventScheduler()
+				case "off", "0":
+					// need to call eventscheduler.TurnOffEventScheduler()
+				default:
+					return fmt.Errorf("variable 'event_scheduler' can't be set to the value '%s'", s)
+				}
+			}
+			return nil
+		},
 	},
 	"explicit_defaults_for_timestamp": {
 		Name:              "explicit_defaults_for_timestamp",

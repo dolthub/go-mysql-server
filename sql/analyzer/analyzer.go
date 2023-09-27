@@ -294,6 +294,9 @@ type Analyzer struct {
 	Coster memo.Coster
 	// ExecBuilder converts a sql.Node tree into an executable iterator.
 	ExecBuilder sql.NodeExecBuilder
+	// EventScheduler is used to communiate with the event scheduler
+	// for any EVENT related statements. It can be nil if EventScheduler is not defined.
+	EventScheduler sql.EventScheduler
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.

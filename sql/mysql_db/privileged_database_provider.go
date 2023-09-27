@@ -16,6 +16,7 @@ package mysql_db
 
 import (
 	"strings"
+	"time"
 
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 
@@ -382,19 +383,19 @@ func (pdb PrivilegedDatabase) GetEvent(ctx *sql.Context, name string) (sql.Event
 }
 
 // GetEvents implements sql.EventDatabase
-func (pdb PrivilegedDatabase) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, error) {
+func (pdb PrivilegedDatabase) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, interface{}, error) {
 	if db, ok := pdb.db.(sql.EventDatabase); ok {
 		return db.GetEvents(ctx)
 	}
-	return nil, sql.ErrEventsNotSupported.New(pdb.db.Name())
+	return nil, nil, sql.ErrEventsNotSupported.New(pdb.db.Name())
 }
 
 // SaveEvent implements sql.EventDatabase
-func (pdb PrivilegedDatabase) SaveEvent(ctx *sql.Context, ed sql.EventDefinition) error {
+func (pdb PrivilegedDatabase) SaveEvent(ctx *sql.Context, ed sql.EventDefinition) (bool, error) {
 	if db, ok := pdb.db.(sql.EventDatabase); ok {
 		return db.SaveEvent(ctx, ed)
 	}
-	return sql.ErrEventsNotSupported.New(pdb.db.Name())
+	return false, sql.ErrEventsNotSupported.New(pdb.db.Name())
 }
 
 // DropEvent implements sql.EventDatabase
@@ -406,9 +407,24 @@ func (pdb PrivilegedDatabase) DropEvent(ctx *sql.Context, name string) error {
 }
 
 // UpdateEvent implements sql.EventDatabase
-func (pdb PrivilegedDatabase) UpdateEvent(ctx *sql.Context, originalName string, ed sql.EventDefinition) error {
+func (pdb PrivilegedDatabase) UpdateEvent(ctx *sql.Context, originalName string, ed sql.EventDefinition) (bool, error) {
 	if db, ok := pdb.db.(sql.EventDatabase); ok {
 		return db.UpdateEvent(ctx, originalName, ed)
+	}
+	return false, sql.ErrEventsNotSupported.New(pdb.db.Name())
+}
+
+// NeedsToReloadEvents implements sql.EventDatabase
+func (pdb PrivilegedDatabase) NeedsToReloadEvents(ctx *sql.Context, token interface{}) (bool, error) {
+	if db, ok := pdb.db.(sql.EventDatabase); ok {
+		return db.NeedsToReloadEvents(ctx, token)
+	}
+	return false, sql.ErrEventsNotSupported.New(pdb.db.Name())
+}
+
+func (pdb PrivilegedDatabase) UpdateLastExecuted(ctx *sql.Context, eventName string, lastExecuted time.Time) error {
+	if db, ok := pdb.db.(sql.EventDatabase); ok {
+		return db.UpdateLastExecuted(ctx, eventName, lastExecuted)
 	}
 	return sql.ErrEventsNotSupported.New(pdb.db.Name())
 }

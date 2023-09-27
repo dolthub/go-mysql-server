@@ -53,6 +53,7 @@ const (
 	setInsertColumnsId                           // setInsertColumns
 	validateJoinComplexityId                     // validateJoinComplexity
 	applyBinlogReplicaControllerId               // applyBinlogReplicaController
+	applyEventSchedulerId                        // applyEventScheduler
 
 	// default
 	resolveUsingJoinsId            // resolveUsingJoins
