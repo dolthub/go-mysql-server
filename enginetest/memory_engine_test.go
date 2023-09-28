@@ -192,22 +192,30 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	// t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "add new generated column",
-			SetUpScript: []string{
-				"create table t1 (a int primary key, b int)",
-				"insert into t1 values (1,2), (2,3), (3,4)",
-			},
+			Name: "Identifier lengths",
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "alter table t1 add column c int as (a + b) stored",
+					// 64 characters
+					Query: "create table abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl (a int primary key)",
 					Expected: []sql.Row{{types.NewOkResult(0)}},
 				},
 				{
-					Query:    "select * from t1 order by a",
-					Expected: []sql.Row{{1, 2, 3}, {2, 3, 5}, {3, 4, 7}},
+					// 65 characters
+					Query: "create table abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm (a int primary key)",
+					ExpectedErr: sql.ErrInvalidIdentifier,
+				},
+				{
+					// 64 characters
+					Query: "create table a (abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl int primary key)",
+					Expected: []sql.Row{{types.NewOkResult(0)}},
+				},
+				{
+					// 65 characters
+					Query: "create table a (abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm int primary key)",
+					ExpectedErr: sql.ErrInvalidIdentifier,
 				},
 			},
 		},

@@ -417,6 +417,31 @@ var CreateTableScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Identifier lengths",
+		Assertions: []ScriptTestAssertion{
+			{
+				// 64 characters
+				Query: "create table abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl (a int primary key)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// 65 characters
+				Query: "create table abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm (a int primary key)",
+				ExpectedErr: sql.ErrInvalidIdentifier,
+			},
+			{
+				// 64 characters
+				Query: "create table a (abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl int primary key)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// 65 characters
+				Query: "create table a (abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm int primary key)",
+				ExpectedErr: sql.ErrInvalidIdentifier,
+			},
+		},
+	},
 }
 
 var CreateTableAutoIncrementTests = []ScriptTest{

@@ -26,6 +26,9 @@ var (
 	ErrUnexpectedType = errors.NewKind("value at %d has unexpected type: %s")
 )
 
+// MaxIdentifierLength is the maximum number of characters permissible in MySQL identifiers, like column or table names
+const MaxIdentifierLength = 64
+
 // Schema is the definition of a table.
 type Schema []*Column
 

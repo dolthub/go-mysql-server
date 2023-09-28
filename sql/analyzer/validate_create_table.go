@@ -34,7 +34,12 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 		return n, transform.SameTree, nil
 	}
 
-	err := validateIndexes(ctx, ct.TableSpec())
+	err := validateIdentifiers(ct.Name(), ct.TableSpec())
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
+	err = validateIndexes(ctx, ct.TableSpec())
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -54,6 +59,40 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 	}
 
 	return n, transform.SameTree, nil
+}
+
+// validateIdentifiers validates various constraints about identifiers in CREATE TABLE / ALTER TABLE 
+// statements.
+func validateIdentifiers(name string, spec *plan.TableSpec) error {
+	if len(name) > sql.MaxIdentifierLength {
+		return sql.ErrInvalidIdentifier.New(name)
+	}
+
+	for _, col := range spec.Schema.Schema {
+		if len(col.Name) > sql.MaxIdentifierLength {
+			return sql.ErrInvalidIdentifier.New(col.Name)
+		}
+	}
+
+	for _, chDef := range spec.ChDefs {
+		if len(chDef.Name) > sql.MaxIdentifierLength {
+			return sql.ErrInvalidIdentifier.New(chDef.Name)
+		}
+	}
+
+	for _, idxDef := range spec.IdxDefs {
+		if len(idxDef.IndexName) > sql.MaxIdentifierLength {
+			return sql.ErrInvalidIdentifier.New(idxDef.IndexName)
+		}
+	}
+
+	for _, fkDef := range spec.FkDefs {
+		if len(fkDef.Name) > sql.MaxIdentifierLength {
+			return sql.ErrInvalidIdentifier.New(fkDef.Name)
+		}
+	}
+	
+	return nil
 }
 
 func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
