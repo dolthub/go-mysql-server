@@ -328,6 +328,60 @@ func TestIntegrationQueryPlans(t *testing.T) {
 	}
 }
 
+func TestImdbQueryPlans(t *testing.T) {
+	t.Skip("tests are too slow")
+	indexBehaviors := []*indexBehaviorTestParams{
+		{"nativeIndexes", nil, true},
+	}
+
+	for _, indexInit := range indexBehaviors {
+		t.Run(indexInit.name, func(t *testing.T) {
+			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer)
+			enginetest.TestImdbPlans(t, harness)
+		})
+	}
+}
+
+func TestTpccQueryPlans(t *testing.T) {
+	indexBehaviors := []*indexBehaviorTestParams{
+		{"nativeIndexes", nil, true},
+	}
+
+	for _, indexInit := range indexBehaviors {
+		t.Run(indexInit.name, func(t *testing.T) {
+			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer)
+			enginetest.TestTpccPlans(t, harness)
+		})
+	}
+}
+
+func TestTpchQueryPlans(t *testing.T) {
+	indexBehaviors := []*indexBehaviorTestParams{
+		{"nativeIndexes", nil, true},
+	}
+
+	for _, indexInit := range indexBehaviors {
+		t.Run(indexInit.name, func(t *testing.T) {
+			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer)
+			enginetest.TestTpchPlans(t, harness)
+		})
+	}
+}
+
+func TestTpcdsQueryPlans(t *testing.T) {
+	t.Skip("missing features")
+	indexBehaviors := []*indexBehaviorTestParams{
+		{"nativeIndexes", nil, true},
+	}
+
+	for _, indexInit := range indexBehaviors {
+		t.Run(indexInit.name, func(t *testing.T) {
+			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer)
+			enginetest.TestTpcdsPlans(t, harness)
+		})
+	}
+}
+
 func TestIndexQueryPlans(t *testing.T) {
 	indexBehaviors := []*indexBehaviorTestParams{
 		{"nativeIndexes", nil, true},

@@ -1,0 +1,795 @@
+exec
+SET FOREIGN_KEY_CHECKS=0;
+----
+
+exec
+CREATE TABLE `customer1` (
+  `c_id` int NOT NULL,
+  `c_d_id` tinyint NOT NULL,
+  `c_w_id` smallint NOT NULL,
+  `c_first` varchar(16),
+  `c_middle` char(2),
+  `c_last` varchar(16),
+  `c_street_1` varchar(20),
+  `c_street_2` varchar(20),
+  `c_city` varchar(20),
+  `c_state` char(2),
+  `c_zip` char(9),
+  `c_phone` char(16),
+  `c_since` datetime,
+  `c_credit` char(2),
+  `c_credit_lim` bigint,
+  `c_discount` decimal(4,2),
+  `c_balance` decimal(12,2),
+  `c_ytd_payment` decimal(12,2),
+  `c_payment_cnt` smallint,
+  `c_delivery_cnt` smallint,
+  `c_data` text,
+  PRIMARY KEY (`c_w_id`,`c_d_id`,`c_id`),
+  KEY `idx_customer1` (`c_w_id`,`c_d_id`,`c_last`,`c_first`),
+  CONSTRAINT `fkey_customer_1_1` FOREIGN KEY (`c_w_id`,`c_d_id`) REFERENCES `district1` (`d_w_id`,`d_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `customer2` (
+  `c_id` int NOT NULL,
+  `c_d_id` tinyint NOT NULL,
+  `c_w_id` smallint NOT NULL,
+  `c_first` varchar(16),
+  `c_middle` char(2),
+  `c_last` varchar(16),
+  `c_street_1` varchar(20),
+  `c_street_2` varchar(20),
+  `c_city` varchar(20),
+  `c_state` char(2),
+  `c_zip` char(9),
+  `c_phone` char(16),
+  `c_since` datetime,
+  `c_credit` char(2),
+  `c_credit_lim` bigint,
+  `c_discount` decimal(4,2),
+  `c_balance` decimal(12,2),
+  `c_ytd_payment` decimal(12,2),
+  `c_payment_cnt` smallint,
+  `c_delivery_cnt` smallint,
+  `c_data` text,
+  PRIMARY KEY (`c_w_id`,`c_d_id`,`c_id`),
+  KEY `idx_customer2` (`c_w_id`,`c_d_id`,`c_last`,`c_first`),
+  CONSTRAINT `fkey_customer_1_2` FOREIGN KEY (`c_w_id`,`c_d_id`) REFERENCES `district2` (`d_w_id`,`d_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `customer3` (
+  `c_id` int NOT NULL,
+  `c_d_id` tinyint NOT NULL,
+  `c_w_id` smallint NOT NULL,
+  `c_first` varchar(16),
+  `c_middle` char(2),
+  `c_last` varchar(16),
+  `c_street_1` varchar(20),
+  `c_street_2` varchar(20),
+  `c_city` varchar(20),
+  `c_state` char(2),
+  `c_zip` char(9),
+  `c_phone` char(16),
+  `c_since` datetime,
+  `c_credit` char(2),
+  `c_credit_lim` bigint,
+  `c_discount` decimal(4,2),
+  `c_balance` decimal(12,2),
+  `c_ytd_payment` decimal(12,2),
+  `c_payment_cnt` smallint,
+  `c_delivery_cnt` smallint,
+  `c_data` text,
+  PRIMARY KEY (`c_w_id`,`c_d_id`,`c_id`),
+  KEY `idx_customer3` (`c_w_id`,`c_d_id`,`c_last`,`c_first`),
+  CONSTRAINT `fkey_customer_1_3` FOREIGN KEY (`c_w_id`,`c_d_id`) REFERENCES `district3` (`d_w_id`,`d_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `customer4` (
+  `c_id` int NOT NULL,
+  `c_d_id` tinyint NOT NULL,
+  `c_w_id` smallint NOT NULL,
+  `c_first` varchar(16),
+  `c_middle` char(2),
+  `c_last` varchar(16),
+  `c_street_1` varchar(20),
+  `c_street_2` varchar(20),
+  `c_city` varchar(20),
+  `c_state` char(2),
+  `c_zip` char(9),
+  `c_phone` char(16),
+  `c_since` datetime,
+  `c_credit` char(2),
+  `c_credit_lim` bigint,
+  `c_discount` decimal(4,2),
+  `c_balance` decimal(12,2),
+  `c_ytd_payment` decimal(12,2),
+  `c_payment_cnt` smallint,
+  `c_delivery_cnt` smallint,
+  `c_data` text,
+  PRIMARY KEY (`c_w_id`,`c_d_id`,`c_id`),
+  KEY `idx_customer4` (`c_w_id`,`c_d_id`,`c_last`,`c_first`),
+  CONSTRAINT `fkey_customer_1_4` FOREIGN KEY (`c_w_id`,`c_d_id`) REFERENCES `district4` (`d_w_id`,`d_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `district1` (
+  `d_id` tinyint NOT NULL,
+  `d_w_id` smallint NOT NULL,
+  `d_name` varchar(10),
+  `d_street_1` varchar(20),
+  `d_street_2` varchar(20),
+  `d_city` varchar(20),
+  `d_state` char(2),
+  `d_zip` char(9),
+  `d_tax` decimal(4,2),
+  `d_ytd` decimal(12,2),
+  `d_next_o_id` int,
+  PRIMARY KEY (`d_w_id`,`d_id`),
+  CONSTRAINT `fkey_district_1_1` FOREIGN KEY (`d_w_id`) REFERENCES `warehouse1` (`w_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `district2` (
+  `d_id` tinyint NOT NULL,
+  `d_w_id` smallint NOT NULL,
+  `d_name` varchar(10),
+  `d_street_1` varchar(20),
+  `d_street_2` varchar(20),
+  `d_city` varchar(20),
+  `d_state` char(2),
+  `d_zip` char(9),
+  `d_tax` decimal(4,2),
+  `d_ytd` decimal(12,2),
+  `d_next_o_id` int,
+  PRIMARY KEY (`d_w_id`,`d_id`),
+  CONSTRAINT `fkey_district_1_2` FOREIGN KEY (`d_w_id`) REFERENCES `warehouse2` (`w_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `district3` (
+  `d_id` tinyint NOT NULL,
+  `d_w_id` smallint NOT NULL,
+  `d_name` varchar(10),
+  `d_street_1` varchar(20),
+  `d_street_2` varchar(20),
+  `d_city` varchar(20),
+  `d_state` char(2),
+  `d_zip` char(9),
+  `d_tax` decimal(4,2),
+  `d_ytd` decimal(12,2),
+  `d_next_o_id` int,
+  PRIMARY KEY (`d_w_id`,`d_id`),
+  CONSTRAINT `fkey_district_1_3` FOREIGN KEY (`d_w_id`) REFERENCES `warehouse3` (`w_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `district4` (
+  `d_id` tinyint NOT NULL,
+  `d_w_id` smallint NOT NULL,
+  `d_name` varchar(10),
+  `d_street_1` varchar(20),
+  `d_street_2` varchar(20),
+  `d_city` varchar(20),
+  `d_state` char(2),
+  `d_zip` char(9),
+  `d_tax` decimal(4,2),
+  `d_ytd` decimal(12,2),
+  `d_next_o_id` int,
+  PRIMARY KEY (`d_w_id`,`d_id`),
+  CONSTRAINT `fkey_district_1_4` FOREIGN KEY (`d_w_id`) REFERENCES `warehouse4` (`w_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `history1` (
+  `h_c_id` int,
+  `h_c_d_id` tinyint,
+  `h_c_w_id` smallint,
+  `h_d_id` tinyint,
+  `h_w_id` smallint,
+  `h_date` datetime,
+  `h_amount` decimal(6,2),
+  `h_data` varchar(24),
+  KEY `fkey_history_11` (`h_c_w_id`,`h_c_d_id`,`h_c_id`),
+  KEY `fkey_history_21` (`h_w_id`,`h_d_id`),
+  CONSTRAINT `fkey_history_1_1` FOREIGN KEY (`h_c_w_id`,`h_c_d_id`,`h_c_id`) REFERENCES `customer1` (`c_w_id`,`c_d_id`,`c_id`),
+  CONSTRAINT `fkey_history_2_1` FOREIGN KEY (`h_w_id`,`h_d_id`) REFERENCES `district1` (`d_w_id`,`d_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `history2` (
+  `h_c_id` int,
+  `h_c_d_id` tinyint,
+  `h_c_w_id` smallint,
+  `h_d_id` tinyint,
+  `h_w_id` smallint,
+  `h_date` datetime,
+  `h_amount` decimal(6,2),
+  `h_data` varchar(24),
+  KEY `fkey_history_12` (`h_c_w_id`,`h_c_d_id`,`h_c_id`),
+  KEY `fkey_history_22` (`h_w_id`,`h_d_id`),
+  CONSTRAINT `fkey_history_1_2` FOREIGN KEY (`h_c_w_id`,`h_c_d_id`,`h_c_id`) REFERENCES `customer2` (`c_w_id`,`c_d_id`,`c_id`),
+  CONSTRAINT `fkey_history_2_2` FOREIGN KEY (`h_w_id`,`h_d_id`) REFERENCES `district2` (`d_w_id`,`d_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `history3` (
+  `h_c_id` int,
+  `h_c_d_id` tinyint,
+  `h_c_w_id` smallint,
+  `h_d_id` tinyint,
+  `h_w_id` smallint,
+  `h_date` datetime,
+  `h_amount` decimal(6,2),
+  `h_data` varchar(24),
+  KEY `fkey_history_13` (`h_c_w_id`,`h_c_d_id`,`h_c_id`),
+  KEY `fkey_history_23` (`h_w_id`,`h_d_id`),
+  CONSTRAINT `fkey_history_1_3` FOREIGN KEY (`h_c_w_id`,`h_c_d_id`,`h_c_id`) REFERENCES `customer3` (`c_w_id`,`c_d_id`,`c_id`),
+  CONSTRAINT `fkey_history_2_3` FOREIGN KEY (`h_w_id`,`h_d_id`) REFERENCES `district3` (`d_w_id`,`d_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `history4` (
+  `h_c_id` int,
+  `h_c_d_id` tinyint,
+  `h_c_w_id` smallint,
+  `h_d_id` tinyint,
+  `h_w_id` smallint,
+  `h_date` datetime,
+  `h_amount` decimal(6,2),
+  `h_data` varchar(24),
+  KEY `fkey_history_14` (`h_c_w_id`,`h_c_d_id`,`h_c_id`),
+  KEY `fkey_history_24` (`h_w_id`,`h_d_id`),
+  CONSTRAINT `fkey_history_1_4` FOREIGN KEY (`h_c_w_id`,`h_c_d_id`,`h_c_id`) REFERENCES `customer4` (`c_w_id`,`c_d_id`,`c_id`),
+  CONSTRAINT `fkey_history_2_4` FOREIGN KEY (`h_w_id`,`h_d_id`) REFERENCES `district4` (`d_w_id`,`d_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `item1` (
+  `i_id` int NOT NULL,
+  `i_im_id` int,
+  `i_name` varchar(24),
+  `i_price` decimal(5,2),
+  `i_data` varchar(50),
+  PRIMARY KEY (`i_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `item2` (
+  `i_id` int NOT NULL,
+  `i_im_id` int,
+  `i_name` varchar(24),
+  `i_price` decimal(5,2),
+  `i_data` varchar(50),
+  PRIMARY KEY (`i_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `item3` (
+  `i_id` int NOT NULL,
+  `i_im_id` int,
+  `i_name` varchar(24),
+  `i_price` decimal(5,2),
+  `i_data` varchar(50),
+  PRIMARY KEY (`i_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `item4` (
+  `i_id` int NOT NULL,
+  `i_im_id` int,
+  `i_name` varchar(24),
+  `i_price` decimal(5,2),
+  `i_data` varchar(50),
+  PRIMARY KEY (`i_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `new_orders1` (
+  `no_o_id` int NOT NULL,
+  `no_d_id` tinyint NOT NULL,
+  `no_w_id` smallint NOT NULL,
+  PRIMARY KEY (`no_w_id`,`no_d_id`,`no_o_id`),
+  CONSTRAINT `fkey_new_orders_1_1` FOREIGN KEY (`no_w_id`,`no_d_id`,`no_o_id`) REFERENCES `orders1` (`o_w_id`,`o_d_id`,`o_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `new_orders2` (
+  `no_o_id` int NOT NULL,
+  `no_d_id` tinyint NOT NULL,
+  `no_w_id` smallint NOT NULL,
+  PRIMARY KEY (`no_w_id`,`no_d_id`,`no_o_id`),
+  CONSTRAINT `fkey_new_orders_1_2` FOREIGN KEY (`no_w_id`,`no_d_id`,`no_o_id`) REFERENCES `orders2` (`o_w_id`,`o_d_id`,`o_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `new_orders3` (
+  `no_o_id` int NOT NULL,
+  `no_d_id` tinyint NOT NULL,
+  `no_w_id` smallint NOT NULL,
+  PRIMARY KEY (`no_w_id`,`no_d_id`,`no_o_id`),
+  CONSTRAINT `fkey_new_orders_1_3` FOREIGN KEY (`no_w_id`,`no_d_id`,`no_o_id`) REFERENCES `orders3` (`o_w_id`,`o_d_id`,`o_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `new_orders4` (
+  `no_o_id` int NOT NULL,
+  `no_d_id` tinyint NOT NULL,
+  `no_w_id` smallint NOT NULL,
+  PRIMARY KEY (`no_w_id`,`no_d_id`,`no_o_id`),
+  CONSTRAINT `fkey_new_orders_1_4` FOREIGN KEY (`no_w_id`,`no_d_id`,`no_o_id`) REFERENCES `orders4` (`o_w_id`,`o_d_id`,`o_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `order_line1` (
+  `ol_o_id` int NOT NULL,
+  `ol_d_id` tinyint NOT NULL,
+  `ol_w_id` smallint NOT NULL,
+  `ol_number` tinyint NOT NULL,
+  `ol_i_id` int,
+  `ol_supply_w_id` smallint,
+  `ol_delivery_d` datetime,
+  `ol_quantity` tinyint,
+  `ol_amount` decimal(6,2),
+  `ol_dist_info` char(24),
+  PRIMARY KEY (`ol_w_id`,`ol_d_id`,`ol_o_id`,`ol_number`),
+  KEY `fkey_order_line_21` (`ol_supply_w_id`,`ol_i_id`),
+  CONSTRAINT `fkey_order_line_1_1` FOREIGN KEY (`ol_w_id`,`ol_d_id`,`ol_o_id`) REFERENCES `orders1` (`o_w_id`,`o_d_id`,`o_id`),
+  CONSTRAINT `fkey_order_line_2_1` FOREIGN KEY (`ol_supply_w_id`,`ol_i_id`) REFERENCES `stock1` (`s_w_id`,`s_i_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `order_line2` (
+  `ol_o_id` int NOT NULL,
+  `ol_d_id` tinyint NOT NULL,
+  `ol_w_id` smallint NOT NULL,
+  `ol_number` tinyint NOT NULL,
+  `ol_i_id` int,
+  `ol_supply_w_id` smallint,
+  `ol_delivery_d` datetime,
+  `ol_quantity` tinyint,
+  `ol_amount` decimal(6,2),
+  `ol_dist_info` char(24),
+  PRIMARY KEY (`ol_w_id`,`ol_d_id`,`ol_o_id`,`ol_number`),
+  KEY `fkey_order_line_22` (`ol_supply_w_id`,`ol_i_id`),
+  CONSTRAINT `fkey_order_line_1_2` FOREIGN KEY (`ol_w_id`,`ol_d_id`,`ol_o_id`) REFERENCES `orders2` (`o_w_id`,`o_d_id`,`o_id`),
+  CONSTRAINT `fkey_order_line_2_2` FOREIGN KEY (`ol_supply_w_id`,`ol_i_id`) REFERENCES `stock2` (`s_w_id`,`s_i_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `order_line3` (
+  `ol_o_id` int NOT NULL,
+  `ol_d_id` tinyint NOT NULL,
+  `ol_w_id` smallint NOT NULL,
+  `ol_number` tinyint NOT NULL,
+  `ol_i_id` int,
+  `ol_supply_w_id` smallint,
+  `ol_delivery_d` datetime,
+  `ol_quantity` tinyint,
+  `ol_amount` decimal(6,2),
+  `ol_dist_info` char(24),
+  PRIMARY KEY (`ol_w_id`,`ol_d_id`,`ol_o_id`,`ol_number`),
+  KEY `fkey_order_line_23` (`ol_supply_w_id`,`ol_i_id`),
+  CONSTRAINT `fkey_order_line_1_3` FOREIGN KEY (`ol_w_id`,`ol_d_id`,`ol_o_id`) REFERENCES `orders3` (`o_w_id`,`o_d_id`,`o_id`),
+  CONSTRAINT `fkey_order_line_2_3` FOREIGN KEY (`ol_supply_w_id`,`ol_i_id`) REFERENCES `stock3` (`s_w_id`,`s_i_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `order_line4` (
+  `ol_o_id` int NOT NULL,
+  `ol_d_id` tinyint NOT NULL,
+  `ol_w_id` smallint NOT NULL,
+  `ol_number` tinyint NOT NULL,
+  `ol_i_id` int,
+  `ol_supply_w_id` smallint,
+  `ol_delivery_d` datetime,
+  `ol_quantity` tinyint,
+  `ol_amount` decimal(6,2),
+  `ol_dist_info` char(24),
+  PRIMARY KEY (`ol_w_id`,`ol_d_id`,`ol_o_id`,`ol_number`),
+  KEY `fkey_order_line_24` (`ol_supply_w_id`,`ol_i_id`),
+  CONSTRAINT `fkey_order_line_1_4` FOREIGN KEY (`ol_w_id`,`ol_d_id`,`ol_o_id`) REFERENCES `orders4` (`o_w_id`,`o_d_id`,`o_id`),
+  CONSTRAINT `fkey_order_line_2_4` FOREIGN KEY (`ol_supply_w_id`,`ol_i_id`) REFERENCES `stock4` (`s_w_id`,`s_i_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `orders1` (
+  `o_id` int NOT NULL,
+  `o_d_id` tinyint NOT NULL,
+  `o_w_id` smallint NOT NULL,
+  `o_c_id` int,
+  `o_entry_d` datetime,
+  `o_carrier_id` tinyint,
+  `o_ol_cnt` tinyint,
+  `o_all_local` tinyint,
+  PRIMARY KEY (`o_w_id`,`o_d_id`,`o_id`),
+  KEY `idx_orders1` (`o_w_id`,`o_d_id`,`o_c_id`,`o_id`),
+  CONSTRAINT `fkey_orders_1_1` FOREIGN KEY (`o_w_id`,`o_d_id`,`o_c_id`) REFERENCES `customer1` (`c_w_id`,`c_d_id`,`c_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `orders2` (
+  `o_id` int NOT NULL,
+  `o_d_id` tinyint NOT NULL,
+  `o_w_id` smallint NOT NULL,
+  `o_c_id` int,
+  `o_entry_d` datetime,
+  `o_carrier_id` tinyint,
+  `o_ol_cnt` tinyint,
+  `o_all_local` tinyint,
+  PRIMARY KEY (`o_w_id`,`o_d_id`,`o_id`),
+  KEY `idx_orders2` (`o_w_id`,`o_d_id`,`o_c_id`,`o_id`),
+  CONSTRAINT `fkey_orders_1_2` FOREIGN KEY (`o_w_id`,`o_d_id`,`o_c_id`) REFERENCES `customer2` (`c_w_id`,`c_d_id`,`c_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `orders3` (
+  `o_id` int NOT NULL,
+  `o_d_id` tinyint NOT NULL,
+  `o_w_id` smallint NOT NULL,
+  `o_c_id` int,
+  `o_entry_d` datetime,
+  `o_carrier_id` tinyint,
+  `o_ol_cnt` tinyint,
+  `o_all_local` tinyint,
+  PRIMARY KEY (`o_w_id`,`o_d_id`,`o_id`),
+  KEY `idx_orders3` (`o_w_id`,`o_d_id`,`o_c_id`,`o_id`),
+  CONSTRAINT `fkey_orders_1_3` FOREIGN KEY (`o_w_id`,`o_d_id`,`o_c_id`) REFERENCES `customer3` (`c_w_id`,`c_d_id`,`c_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `orders4` (
+  `o_id` int NOT NULL,
+  `o_d_id` tinyint NOT NULL,
+  `o_w_id` smallint NOT NULL,
+  `o_c_id` int,
+  `o_entry_d` datetime,
+  `o_carrier_id` tinyint,
+  `o_ol_cnt` tinyint,
+  `o_all_local` tinyint,
+  PRIMARY KEY (`o_w_id`,`o_d_id`,`o_id`),
+  KEY `idx_orders4` (`o_w_id`,`o_d_id`,`o_c_id`,`o_id`),
+  CONSTRAINT `fkey_orders_1_4` FOREIGN KEY (`o_w_id`,`o_d_id`,`o_c_id`) REFERENCES `customer4` (`c_w_id`,`c_d_id`,`c_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `stock1` (
+  `s_i_id` int NOT NULL,
+  `s_w_id` smallint NOT NULL,
+  `s_quantity` smallint,
+  `s_dist_01` char(24),
+  `s_dist_02` char(24),
+  `s_dist_03` char(24),
+  `s_dist_04` char(24),
+  `s_dist_05` char(24),
+  `s_dist_06` char(24),
+  `s_dist_07` char(24),
+  `s_dist_08` char(24),
+  `s_dist_09` char(24),
+  `s_dist_10` char(24),
+  `s_ytd` decimal(8,0),
+  `s_order_cnt` smallint,
+  `s_remote_cnt` smallint,
+  `s_data` varchar(50),
+  PRIMARY KEY (`s_w_id`,`s_i_id`),
+  KEY `fkey_stock_21` (`s_i_id`),
+  CONSTRAINT `fkey_stock_1_1` FOREIGN KEY (`s_w_id`) REFERENCES `warehouse1` (`w_id`),
+  CONSTRAINT `fkey_stock_2_1` FOREIGN KEY (`s_i_id`) REFERENCES `item1` (`i_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `stock2` (
+  `s_i_id` int NOT NULL,
+  `s_w_id` smallint NOT NULL,
+  `s_quantity` smallint,
+  `s_dist_01` char(24),
+  `s_dist_02` char(24),
+  `s_dist_03` char(24),
+  `s_dist_04` char(24),
+  `s_dist_05` char(24),
+  `s_dist_06` char(24),
+  `s_dist_07` char(24),
+  `s_dist_08` char(24),
+  `s_dist_09` char(24),
+  `s_dist_10` char(24),
+  `s_ytd` decimal(8,0),
+  `s_order_cnt` smallint,
+  `s_remote_cnt` smallint,
+  `s_data` varchar(50),
+  PRIMARY KEY (`s_w_id`,`s_i_id`),
+  KEY `fkey_stock_22` (`s_i_id`),
+  CONSTRAINT `fkey_stock_1_2` FOREIGN KEY (`s_w_id`) REFERENCES `warehouse2` (`w_id`),
+  CONSTRAINT `fkey_stock_2_2` FOREIGN KEY (`s_i_id`) REFERENCES `item2` (`i_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `stock3` (
+  `s_i_id` int NOT NULL,
+  `s_w_id` smallint NOT NULL,
+  `s_quantity` smallint,
+  `s_dist_01` char(24),
+  `s_dist_02` char(24),
+  `s_dist_03` char(24),
+  `s_dist_04` char(24),
+  `s_dist_05` char(24),
+  `s_dist_06` char(24),
+  `s_dist_07` char(24),
+  `s_dist_08` char(24),
+  `s_dist_09` char(24),
+  `s_dist_10` char(24),
+  `s_ytd` decimal(8,0),
+  `s_order_cnt` smallint,
+  `s_remote_cnt` smallint,
+  `s_data` varchar(50),
+  PRIMARY KEY (`s_w_id`,`s_i_id`),
+  KEY `fkey_stock_23` (`s_i_id`),
+  CONSTRAINT `fkey_stock_1_3` FOREIGN KEY (`s_w_id`) REFERENCES `warehouse3` (`w_id`),
+  CONSTRAINT `fkey_stock_2_3` FOREIGN KEY (`s_i_id`) REFERENCES `item3` (`i_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `stock4` (
+  `s_i_id` int NOT NULL,
+  `s_w_id` smallint NOT NULL,
+  `s_quantity` smallint,
+  `s_dist_01` char(24),
+  `s_dist_02` char(24),
+  `s_dist_03` char(24),
+  `s_dist_04` char(24),
+  `s_dist_05` char(24),
+  `s_dist_06` char(24),
+  `s_dist_07` char(24),
+  `s_dist_08` char(24),
+  `s_dist_09` char(24),
+  `s_dist_10` char(24),
+  `s_ytd` decimal(8,0),
+  `s_order_cnt` smallint,
+  `s_remote_cnt` smallint,
+  `s_data` varchar(50),
+  PRIMARY KEY (`s_w_id`,`s_i_id`),
+  KEY `fkey_stock_24` (`s_i_id`),
+  CONSTRAINT `fkey_stock_1_4` FOREIGN KEY (`s_w_id`) REFERENCES `warehouse4` (`w_id`),
+  CONSTRAINT `fkey_stock_2_4` FOREIGN KEY (`s_i_id`) REFERENCES `item4` (`i_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `warehouse1` (
+  `w_id` smallint NOT NULL,
+  `w_name` varchar(10),
+  `w_street_1` varchar(20),
+  `w_street_2` varchar(20),
+  `w_city` varchar(20),
+  `w_state` char(2),
+  `w_zip` char(9),
+  `w_tax` decimal(4,2),
+  `w_ytd` decimal(12,2),
+  PRIMARY KEY (`w_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `warehouse2` (
+  `w_id` smallint NOT NULL,
+  `w_name` varchar(10),
+  `w_street_1` varchar(20),
+  `w_street_2` varchar(20),
+  `w_city` varchar(20),
+  `w_state` char(2),
+  `w_zip` char(9),
+  `w_tax` decimal(4,2),
+  `w_ytd` decimal(12,2),
+  PRIMARY KEY (`w_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `warehouse3` (
+  `w_id` smallint NOT NULL,
+  `w_name` varchar(10),
+  `w_street_1` varchar(20),
+  `w_street_2` varchar(20),
+  `w_city` varchar(20),
+  `w_state` char(2),
+  `w_zip` char(9),
+  `w_tax` decimal(4,2),
+  `w_ytd` decimal(12,2),
+  PRIMARY KEY (`w_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+CREATE TABLE `warehouse4` (
+  `w_id` smallint NOT NULL,
+  `w_name` varchar(10),
+  `w_street_1` varchar(20),
+  `w_street_2` varchar(20),
+  `w_city` varchar(20),
+  `w_state` char(2),
+  `w_zip` char(9),
+  `w_tax` decimal(4,2),
+  `w_ytd` decimal(12,2),
+  PRIMARY KEY (`w_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+----
+
+exec
+SET FOREIGN_KEY_CHECKS=1;
+----
+
+exec
+update information_schema.statistics set cardinality = 30000 where table_name = 'customer1';
+----
+
+exec
+update information_schema.statistics set cardinality = 30000 where table_name = 'customer2';
+----
+
+exec
+update information_schema.statistics set cardinality = 30000 where table_name = 'customer3';
+----
+
+exec
+update information_schema.statistics set cardinality = 30000 where table_name = 'customer4';
+----
+
+exec
+update information_schema.statistics set cardinality = 10 where table_name = 'district1';
+----
+
+exec
+update information_schema.statistics set cardinality = 10 where table_name = 'district2';
+----
+
+exec
+update information_schema.statistics set cardinality = 10 where table_name = 'district3';
+----
+
+exec
+update information_schema.statistics set cardinality = 10 where table_name = 'district4';
+----
+
+exec
+update information_schema.statistics set cardinality = 30000 where table_name = 'history1';
+----
+
+exec
+update information_schema.statistics set cardinality = 30000 where table_name = 'history2';
+----
+
+exec
+update information_schema.statistics set cardinality = 30000 where table_name = 'history3';
+----
+
+exec
+update information_schema.statistics set cardinality = 30000 where table_name = 'history4';
+----
+
+exec
+update information_schema.statistics set cardinality = 100000 where table_name = 'item1';
+----
+
+exec
+update information_schema.statistics set cardinality = 100000 where table_name = 'item2';
+----
+
+exec
+update information_schema.statistics set cardinality = 100000 where table_name = 'item3';
+----
+
+exec
+update information_schema.statistics set cardinality = 100000 where table_name = 'item4';
+----
+
+exec
+update information_schema.statistics set cardinality = 9000 where table_name = 'new_orders1';
+----
+
+exec
+update information_schema.statistics set cardinality = 9000 where table_name = 'new_orders2';
+----
+
+exec
+update information_schema.statistics set cardinality = 9000 where table_name = 'new_orders3';
+----
+
+exec
+update information_schema.statistics set cardinality = 9000 where table_name = 'new_orders4';
+----
+
+exec
+update information_schema.statistics set cardinality = 299498 where table_name = 'order_line1';
+----
+
+exec
+update information_schema.statistics set cardinality = 299498 where table_name = 'order_line2';
+----
+
+exec
+update information_schema.statistics set cardinality = 299498 where table_name = 'order_line3';
+----
+
+exec
+update information_schema.statistics set cardinality = 299498 where table_name = 'order_line4';
+----
+
+exec
+update information_schema.statistics set cardinality = 30000 where table_name = 'orders1';
+----
+
+exec
+update information_schema.statistics set cardinality = 30000 where table_name = 'orders2';
+----
+
+exec
+update information_schema.statistics set cardinality = 30000 where table_name = 'orders3';
+----
+
+exec
+update information_schema.statistics set cardinality = 30000 where table_name = 'orders4';
+----
+
+exec
+update information_schema.statistics set cardinality = 100000 where table_name = 'stock1';
+----
+
+exec
+update information_schema.statistics set cardinality = 100000 where table_name = 'stock2';
+----
+
+exec
+update information_schema.statistics set cardinality = 100000 where table_name = 'stock3';
+----
+
+exec
+update information_schema.statistics set cardinality = 100000 where table_name = 'stock4';
+----
+
+exec
+update information_schema.statistics set cardinality = 1 where table_name = 'warehouse1';
+----
+
+exec
+update information_schema.statistics set cardinality = 1 where table_name = 'warehouse2';
+----
+
+exec
+update information_schema.statistics set cardinality = 1 where table_name = 'warehouse3';
+----
+
+exec
+update information_schema.statistics set cardinality = 1 where table_name = 'warehouse4';
+----

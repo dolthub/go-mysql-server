@@ -1,0 +1,15 @@
+plans:
+  - name: PlanTests
+    path: enginetest/queries/query_plans.go
+  - name: IndexPlanTests
+    path: enginetest/queries/index_query_plans.go
+  - name: IntegrationPlanTests
+    path: enginetest/queries/integration_plans.go
+  - name: TpchPlanTests
+    path: enginetest/queries/tpch_plans.go
+  - name: TpccPlanTests
+    path: enginetest/queries/tpcc_plans.go
+#  - name: TpcdsPlanTests
+#    path: enginetest/queries/tpcds_plans.go
+  - name: ImdbPlanTests
+    path: enginetest/queries/imdb_plans.go
