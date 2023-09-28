@@ -419,6 +419,9 @@ var CreateTableScriptTests = []ScriptTest{
 	},
 	{
 		Name: "Identifier lengths",
+		SetUpScript: []string{
+			"create table parent (a int primary key)",
+		},
 		Assertions: []ScriptTestAssertion{
 			{
 				// 64 characters
@@ -438,6 +441,36 @@ var CreateTableScriptTests = []ScriptTest{
 			{
 				// 65 characters
 				Query: "create table a (abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm int primary key)",
+				ExpectedErr: sql.ErrInvalidIdentifier,
+			},
+			{
+				// 64 characters
+				Query: "create table b (a int primary key, constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl check (a > 0))",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// 65 characters
+				Query: "create table b (a int primary key, constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm check (a > 0))",
+				ExpectedErr: sql.ErrInvalidIdentifier,
+			},
+			{
+				// 64 characters
+				Query: "create table c (a int primary key, b int, key abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl (b))",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// 65 characters
+				Query: "create table c (a int primary key, b int, key abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm (b))",
+				ExpectedErr: sql.ErrInvalidIdentifier,
+			},
+			{
+				// 64 characters
+				Query: "create table d (a int primary key, constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl foreign key (a) references parent(a))",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// 65 characters
+				Query: "create table d (a int primary key, constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm foreign key (a) references parent(a))",
 				ExpectedErr: sql.ErrInvalidIdentifier,
 			},
 		},
