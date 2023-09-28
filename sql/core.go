@@ -385,7 +385,7 @@ type SystemVariable struct {
 	// the global context and in a particular session. They should never
 	// block.  NotifyChanged is not called when a new system variable is
 	// registered.
-	NotifyChanged func(SystemVariableScope, SystemVarValue)
+	NotifyChanged func(SystemVariableScope, SystemVarValue) error
 	// ValueFunction defines an optional function that is executed to provide
 	// the value of this system variable whenever it is requested. System variables
 	// that provide a ValueFunction should also set Dynamic to false, since they

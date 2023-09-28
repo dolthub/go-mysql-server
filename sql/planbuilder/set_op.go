@@ -73,6 +73,12 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 	limit := b.buildLimit(inScope, u.Limit)
 	offset := b.buildOffset(inScope, u.Limit)
 
+	for _, o := range u.OrderBy {
+		if expr, ok := o.Expr.(*ast.ColName); ok && len(expr.Qualifier.Name.String()) != 0 {
+			b.handleErr(ErrQualifiedOrderBy.New(expr.Qualifier.Name.String()))
+		}
+	}
+
 	// mysql errors for order by right projection
 	orderByScope := b.analyzeOrderBy(leftScope, leftScope, u.OrderBy)
 
@@ -87,7 +93,7 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 			scalar = c.scalarGf()
 		}
 		// Unions pass order bys to the top scope, where the original
-		// order by get field may not longer be accessible. Here it is
+		// order by get field may no longer be accessible. Here it is
 		// safe to assume the alias has already been computed.
 		scalar, _, _ = transform.Expr(scalar, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			switch e := e.(type) {

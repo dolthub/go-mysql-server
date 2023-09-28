@@ -190,10 +190,14 @@ func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, value inte
 		Var: sysVar,
 		Val: convertedVal,
 	}
-	s.systemVars[sysVar.Name] = svv
+
 	if sysVar.NotifyChanged != nil {
-		sysVar.NotifyChanged(SystemVariableScope_Session, svv)
+		err := sysVar.NotifyChanged(SystemVariableScope_Session, svv)
+		if err != nil {
+			return err
+		}
 	}
+	s.systemVars[sysVar.Name] = svv
 	return nil
 }
 

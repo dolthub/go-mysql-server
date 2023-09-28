@@ -96,12 +96,19 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
-		Name: "union schema merge",
+		Name: "set op schema merge",
 		SetUpScript: []string{
 			"create table `left` (i int primary key, j mediumint, k varchar(20));",
 			"create table `right` (i int primary key, j bigint, k text);",
 			"insert into `left` values (1,2, 'a')",
 			"insert into `right` values (3,4, 'b')",
+
+			"create table t1 (i int);",
+			"insert into t1 values (1), (2), (3);",
+			"create table t2 (i int);",
+			"insert into t2 values (1), (3);",
+			"create table t3 (j int);",
+			"insert into t3 values (1), (3);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -133,8 +140,149 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{1, "a"}, {3, "b"}},
 			},
 			{
+				Query: "select i, j, k from `left` union select i, j, k from `right`",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "i",
+						Type: types.Int32,
+					},
+					{
+						Name: "j",
+						Type: types.Int64,
+					},
+					{
+						Name: "k",
+						Type: types.LongText,
+					},
+				},
+				Expected: []sql.Row{{1, 2, "a"}, {3, 4, "b"}},
+			},
+			{
 				Query:       "select i, k from `left` union select i, j, k from `right`",
 				ExpectedErr: planbuilder.ErrUnionSchemasDifferentLength,
+			},
+			{
+				Query: "table t1 union table t2 order by i;",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "i",
+						Type: types.Int32,
+					},
+				},
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "table t1 union table t2 order by i;",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "i",
+						Type: types.Int32,
+					},
+				},
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "table t3 union table t1 order by j;",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "j",
+						Type: types.Int32,
+					},
+				},
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "select j as i from t3 union table t1 order by i;",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "i",
+						Type: types.Int32,
+					},
+				},
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "table t1 union table t2 order by 1;",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "i",
+						Type: types.Int32,
+					},
+				},
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "table t1 union table t3 order by 1;",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "i",
+						Type: types.Int32,
+					},
+				},
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				// This looks wrong, but it actually matches MySQL
+				Query: "table t1 union select i as j from t2 order by i;",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "i",
+						Type: types.Int32,
+					},
+				},
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query:       "table t1 union table t3 order by j;",
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+			{
+				Query:       "table t1 union table t2 order by t1.i;",
+				ExpectedErr: planbuilder.ErrQualifiedOrderBy,
+			},
+			{
+				Query:       "table t1 union table t2 order by t2.i;",
+				ExpectedErr: planbuilder.ErrQualifiedOrderBy,
+			},
+			{
+				Query:       "table t1 union table t3 order by t3.i;",
+				ExpectedErr: planbuilder.ErrQualifiedOrderBy,
+			},
+			{
+				Query:       "table t1 union table t3 order by t3.j;",
+				ExpectedErr: planbuilder.ErrQualifiedOrderBy,
+			},
+			{
+				Query:       "table t1 union table t3 order by t1.j;",
+				ExpectedErr: planbuilder.ErrQualifiedOrderBy,
 			},
 		},
 	},
@@ -155,6 +303,10 @@ var ScriptTests = []ScriptTest{
 			"insert into l values (1), (1), (1);",
 			"create table r (i int);",
 			"insert into r values (1);",
+			"create table x (i int);",
+			"insert into x values (1), (2), (3);",
+			"create table y (i bigint);",
+			"insert into y values (1), (3);",
 		},
 		Assertions: []ScriptTestAssertion{
 			// Intersect tests
@@ -199,20 +351,26 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				// Resulting type is string for some reason
-				Skip:  true,
-				Query: "table t1 intersect table t2;",
+				Query: "table x intersect table y order by i;",
 				Expected: []sql.Row{
 					{1},
 					{3},
 				},
 			},
 			{
-				// Field indexing error
-				Skip:  true,
-				Query: "table t1 intersect table t2 order by i;",
+				Query: "table x intersect table y order by 1;",
 				Expected: []sql.Row{
-					{1.0},
+					{1},
+					{3},
+				},
+			},
+			{
+				// Resulting type is string for some reason
+				Skip:  true,
+				Query: "table t1 intersect table t2;",
+				Expected: []sql.Row{
+					{1},
+					{3},
 				},
 			},
 
@@ -262,11 +420,9 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				// Resulting type is string for some reason
-				Skip:  true,
-				Query: "table t1 except table t2 order by i;",
+				Query: "table x except table y order by i;",
 				Expected: []sql.Row{
-					{2.0},
+					{2},
 				},
 			},
 			{
@@ -3709,6 +3865,106 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "different cases of function name should result in the same outcome",
+		SetUpScript: []string{
+			"create table t (b binary(2) primary key);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "select hex(*) from t;",
+				ExpectedErr: sql.ErrStarUnsupported,
+			},
+			{
+				Query:       "select HEX(*) from t;",
+				ExpectedErr: sql.ErrStarUnsupported,
+			},
+			{
+				Query:       "select HeX(*) from t;",
+				ExpectedErr: sql.ErrStarUnsupported,
+			},
+		},
+	},
+	{
+		Name: "UNIX_TIMESTAMP function usage with session different time zones",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SET time_zone = '+07:00';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "SELECT UNIX_TIMESTAMP('2023-09-25 07:02:57');",
+				Expected: []sql.Row{{float64(1695600177)}},
+			},
+			{
+				Query:    "SELECT UNIX_TIMESTAMP(CONVERT_TZ('2023-09-25 07:02:57', '+00:00', @@session.time_zone));",
+				Expected: []sql.Row{{float64(1695625377)}},
+			},
+			{
+				Query:    "SET time_zone = '+00:00';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "SELECT UNIX_TIMESTAMP('2023-09-25 07:02:57');",
+				Expected: []sql.Row{{float64(1695625377)}},
+			},
+			{
+				Query:    "SET time_zone = '-06:00';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "SELECT UNIX_TIMESTAMP('2023-09-25 07:02:57');",
+				Expected: []sql.Row{{float64(1695646977)}},
+			},
+		},
+	},
+	{
+		Name: "Querying existing view that references non-existing table",
+		SetUpScript: []string{
+			"CREATE TABLE a(id int primary key, col1 int);",
+			"CREATE VIEW b AS SELECT * FROM a;",
+			"CREATE VIEW f AS SELECT col1 AS npk FROM a;",
+			"RENAME TABLE a TO d;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "CREATE VIEW g AS SELECT * FROM nonexistenttable;",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				// TODO: ALTER VIEWs are not supported
+				Skip:        true,
+				Query:       "ALTER VIEW b AS SELECT * FROM nonexistenttable;",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:       "SELECT * FROM b;",
+				ExpectedErr: sql.ErrInvalidRefInView,
+			},
+			{
+				Query:    "RENAME TABLE d TO a;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT * FROM b;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "ALTER TABLE a RENAME COLUMN col1 TO newcol;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// TODO: View definition should have 'SELECT *' be expanded to each column of the referenced table
+				Skip:        true,
+				Query:       "SELECT * FROM b;",
+				ExpectedErr: sql.ErrInvalidRefInView,
+			},
+			{
+				Query:       "SELECT * FROM f;",
+				ExpectedErr: sql.ErrInvalidRefInView,
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
@@ -5032,6 +5288,27 @@ var BrokenScriptTests = []ScriptTest{
 			{
 				Query:    "show warnings;",
 				Expected: []sql.Row{{"Warning", 1356, "View 'v1' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them"}},
+			},
+		},
+	},
+	{
+		Name: "TIMESTAMP type value should be converted from session TZ to UTC TZ to be stored",
+		SetUpScript: []string{
+			"CREATE TABLE timezone_test (ts TIMESTAMP, dt DATETIME)",
+			"INSERT INTO timezone_test VALUES ('2023-02-14 08:47', '2023-02-14 08:47');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SET SESSION time_zone = '-05:00';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "SELECT DATE_FORMAT(ts, '%H:%i:%s'), DATE_FORMAT(dt, '%H:%i:%s') from timezone_test;",
+				Expected: []sql.Row{{"11:47:00", "08:47:00"}},
+			},
+			{
+				Query:    "SELECT UNIX_TIMESTAMP(ts), UNIX_TIMESTAMP(dt) from timezone_test;",
+				Expected: []sql.Row{{float64(1676393220), float64(1676382420)}},
 			},
 		},
 	},

@@ -226,22 +226,40 @@ type StoredProcedureDatabase interface {
 }
 
 // EventDatabase is a database that supports the creation and execution of events. The engine will
-// handle execution logic for events. Integrators only need to store and retrieve EventDetails.
+// handle execution logic for events. Integrators only need to store and retrieve EventDefinition.
 type EventDatabase interface {
 	Database
-	// GetEvent returns the desired EventDetails and if it exists in the database.
+	// GetEvent returns the desired EventDefinition and if it exists in the database.
+	// All time values of EventDefinition needs to be converted into appropriate TZ.
 	GetEvent(ctx *Context, name string) (EventDefinition, bool, error)
-	// GetEvents returns all EventDetails for the database.
-	GetEvents(ctx *Context) ([]EventDefinition, error)
-	// SaveEvent stores the given EventDetails to the database. The integrator should verify that
-	// the name of the new event is unique amongst existing stored procedures.
-	SaveEvent(ctx *Context, ed EventDefinition) error
-	// DropEvent removes the EventDetails with the matching name from the database.
+	// GetEvents returns all EventDefinition for the database, as well as an opaque token that is used to
+	// track if events need to be reloaded. This token is specific to an EventDatabase and is passed to
+	// NeedsToReloadEvents so that integrators can examine it and signal if events need to be reloaded. If
+	// integrators do not need to implement out-of-band event reloading, then they can simply return nil for
+	// the token. All time values of EventDefinition needs to be converted into appropriate TZ.
+	GetEvents(ctx *Context) (events []EventDefinition, token interface{}, err error)
+	// SaveEvent stores the given EventDefinition to the database. The integrator should verify that
+	// the name of the new event is unique amongst existing events. The time values are converted
+	// into UTC TZ for storage. It returns whether the event status is enabled.
+	SaveEvent(ctx *Context, ed EventDefinition) (bool, error)
+	// DropEvent removes the EventDefinition with the matching name from the database.
 	DropEvent(ctx *Context, name string) error
-	// UpdateEvent updates existing event stored in the database with the given EventDetails with the updates.
-	// The original name event is required for renaming of an event.
-	UpdateEvent(ctx *Context, originalName string, ed EventDefinition) error
-	// TODO: add ExecuteEvent() method that executes given event and updates the LastExecutedAt value
+	// UpdateEvent updates existing event stored in the database with the given EventDefinition
+	// with the updates. The original name event is required for renaming of an event.
+	// The time values are converted into UTC TZ for storage. It returns whether the event status is enabled.
+	UpdateEvent(ctx *Context, originalName string, ed EventDefinition) (bool, error)
+	// UpdateLastExecuted updated the lastExecuted metadata for the given event.
+	// The lastExecuted time is converted into UTC TZ for storage.
+	UpdateLastExecuted(ctx *Context, eventName string, lastExecuted time.Time) error
+	// NeedsToReloadEvents allows integrators to signal that out-of-band changes have modified an event (i.e. an
+	// event was modified without going through the SaveEvent or UpdateEvent methods in this interface), and that
+	// event definitions need to be reloaded. The event executor will periodically check to see if it needs to reload
+	// the events from a database by calling this method and if this method returns true, then the event executor will
+	// call the ReloadEvents method next to load in the new event definitions. The opaque token is the same token
+	// returned from the last call to GetEvents and integrators are free to use whatever underlying data they
+	// need to track whether an out-of-band event change has occurred. If integrators to do not support events
+	// changing out-of-band, then they can simply return false from this method.
+	NeedsToReloadEvents(ctx *Context, token interface{}) (bool, error)
 }
 
 // ViewDatabase is implemented by databases that persist view definitions

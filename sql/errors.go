@@ -50,6 +50,10 @@ var (
 	// current scope.
 	ErrTableNotFound = errors.NewKind("table not found: %s")
 
+	// ErrInvalidRefInView is returned when querying existing view that references non-existent table.
+	// Creating new view or updating existing view to reference non-existent table/view do not apply here.
+	ErrInvalidRefInView = errors.NewKind("View '%s.%s' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them")
+
 	// ErrUnknownTable is returned when the non-table name is used for table actions.
 	ErrUnknownTable = errors.NewKind("Unknown table '%s'")
 

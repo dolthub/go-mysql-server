@@ -20,6 +20,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dolthub/vitess/go/mysql"
+
+	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -28,6 +31,7 @@ import (
 var _ sql.Node = (*AlterEvent)(nil)
 var _ sql.Expressioner = (*AlterEvent)(nil)
 var _ sql.Databaser = (*AlterEvent)(nil)
+var _ sql.EventSchedulerStatement = (*AlterEvent)(nil)
 
 type AlterEvent struct {
 	ddlNode
@@ -48,7 +52,7 @@ type AlterEvent struct {
 	RenameToName string
 
 	AlterStatus bool
-	Status      EventStatus
+	Status      sql.EventStatus
 
 	AlterComment bool
 	Comment      string
@@ -57,8 +61,11 @@ type AlterEvent struct {
 	DefinitionString string
 	DefinitionNode   sql.Node
 
-	// This will be defined during analyzer
-	Event sql.EventDetails
+	// Event will be set during analysis
+	Event sql.EventDefinition
+
+	// scheduler is used to notify EventSchedulerStatus of the event update
+	scheduler sql.EventScheduler
 }
 
 // NewAlterEvent returns a *AlterEvent node.
@@ -73,7 +80,7 @@ func NewAlterEvent(
 	alterName bool,
 	newName string,
 	alterStatus bool,
-	status EventStatus,
+	status sql.EventStatus,
 	alterComment bool,
 	comment string,
 	alterDefinition bool,
@@ -244,14 +251,15 @@ func (a *AlterEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	}
 	var err error
 	ed := a.Event
-	eventAlteredTime := time.Now()
+	eventAlteredTime := ctx.QueryTime()
+	sysTz := gmstime.SystemTimezoneOffset()
 	ed.LastAltered = eventAlteredTime
 	ed.Definer = a.Definer
 
 	if a.AlterOnSchedule {
 		if a.At != nil {
 			ed.HasExecuteAt = true
-			ed.ExecuteAt, err = a.At.EvalTime(ctx)
+			ed.ExecuteAt, err = a.At.EvalTime(ctx, sysTz)
 			if err != nil {
 				return nil, err
 			}
@@ -265,12 +273,12 @@ func (a *AlterEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			if err != nil {
 				return nil, err
 			}
-			interval := NewEveryInterval(delta.Years, delta.Months, delta.Days, delta.Hours, delta.Minutes, delta.Seconds)
+			interval := sql.NewEveryInterval(delta.Years, delta.Months, delta.Days, delta.Hours, delta.Minutes, delta.Seconds)
 			iVal, iField := interval.GetIntervalValAndField()
 			ed.ExecuteEvery = fmt.Sprintf("%s %s", iVal, iField)
 
 			if a.Starts != nil {
-				ed.Starts, err = a.Starts.EvalTime(ctx)
+				ed.Starts, err = a.Starts.EvalTime(ctx, sysTz)
 				if err != nil {
 					return nil, err
 				}
@@ -280,7 +288,7 @@ func (a *AlterEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			}
 			if a.Ends != nil {
 				ed.HasEnds = true
-				ed.Ends, err = a.Ends.EvalTime(ctx)
+				ed.Ends, err = a.Ends.EvalTime(ctx, sysTz)
 				if err != nil {
 					return nil, err
 				}
@@ -297,21 +305,32 @@ func (a *AlterEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		ed.Name = a.RenameToName
 	}
 	if a.AlterStatus {
-		ed.Status = a.Status.String()
+		// TODO: support DISABLE ON SLAVE event status
+		if a.Status == sql.EventStatus_DisableOnSlave {
+			ctx.Session.Warn(&sql.Warning{
+				Level:   "Warning",
+				Code:    mysql.ERNotSupportedYet,
+				Message: fmt.Sprintf("DISABLE ON SLAVE status is not supported yet, used DISABLE status instead."),
+			})
+			ed.Status = sql.EventStatus_Disable.String()
+		} else {
+			ed.Status = a.Status.String()
+		}
 	}
 	if a.AlterComment {
 		ed.Comment = a.Comment
 	}
 	if a.AlterDefinition {
-		ed.Definition = a.DefinitionString
+		ed.EventBody = a.DefinitionString
 	}
 
 	return &alterEventIter{
 		originalName:  a.EventName,
 		alterSchedule: a.AlterOnSchedule,
 		alterStatus:   a.AlterStatus,
-		eventDetails:  ed,
+		event:         ed,
 		eventDb:       eventDb,
+		scheduler:     a.scheduler,
 	}, nil
 }
 
@@ -384,39 +403,47 @@ func (a *AlterEvent) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 	return &na, nil
 }
 
+// WithEventScheduler is used to notify EventSchedulerStatus to update the events list for ALTER EVENT.
+func (a *AlterEvent) WithEventScheduler(scheduler sql.EventScheduler) sql.Node {
+	na := *a
+	na.scheduler = scheduler
+	return &na
+}
+
 // alterEventIter is the row iterator for *CreateEvent.
 type alterEventIter struct {
 	once          sync.Once
 	originalName  string
 	alterSchedule bool
 	alterStatus   bool
-	eventDetails  sql.EventDetails
+	event         sql.EventDefinition
 	eventDb       sql.EventDatabase
+	scheduler     sql.EventScheduler
 }
 
 // Next implements the sql.RowIter interface.
-func (c *alterEventIter) Next(ctx *sql.Context) (sql.Row, error) {
+func (a *alterEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 	run := false
-	c.once.Do(func() {
+	a.once.Do(func() {
 		run = true
 	})
 	if !run {
 		return nil, io.EOF
 	}
 
-	var eventEnded = false
-	if c.eventDetails.HasExecuteAt {
-		eventEnded = c.eventDetails.ExecuteAt.Sub(c.eventDetails.LastAltered).Seconds() < 0
-	} else if c.eventDetails.HasEnds {
-		eventEnded = c.eventDetails.Ends.Sub(c.eventDetails.LastAltered).Seconds() < 0
+	var eventEndingTime time.Time
+	if a.event.HasExecuteAt {
+		eventEndingTime = a.event.ExecuteAt
+	} else if a.event.HasEnds {
+		eventEndingTime = a.event.Ends
 	}
 
-	if eventEnded {
+	if (a.event.HasExecuteAt || a.event.HasEnds) && eventEndingTime.Sub(a.event.LastAltered).Seconds() < 0 {
 		// If the event execution/end time is altered and in the past.
-		if c.alterSchedule {
-			if c.eventDetails.OnCompletionPreserve {
+		if a.alterSchedule {
+			if a.event.OnCompletionPreserve {
 				// If ON COMPLETION PRESERVE is defined, the event is disabled.
-				c.eventDetails.Status = EventStatus_Disable.String()
+				a.event.Status = sql.EventStatus_Disable.String()
 				ctx.Session.Warn(&sql.Warning{
 					Level:   "Note",
 					Code:    1544,
@@ -427,13 +454,17 @@ func (c *alterEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 		}
 
-		if c.alterStatus {
-			if c.eventDetails.OnCompletionPreserve {
+		if a.alterStatus {
+			if a.event.OnCompletionPreserve {
 				// If the event execution/end time is in the past and is ON COMPLETION PRESERVE, status must stay as DISABLE.
-				c.eventDetails.Status = EventStatus_Disable.String()
+				a.event.Status = sql.EventStatus_Disable.String()
 			} else {
 				// If event status was set to ENABLE and ON COMPLETION NOT PRESERVE, it gets dropped.
-				err := c.eventDb.DropEvent(ctx, c.originalName)
+				// make sure to notify the EventSchedulerStatus before dropping the event in the database
+				if a.scheduler != nil {
+					a.scheduler.RemoveEvent(a.eventDb.Name(), a.originalName)
+				}
+				err := a.eventDb.DropEvent(ctx, a.originalName)
 				if err != nil {
 					return nil, err
 				}
@@ -442,27 +473,20 @@ func (c *alterEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
-	var eventDefinition = sql.EventDefinition{
-		Name:            c.eventDetails.Name,
-		CreateStatement: c.eventDetails.CreateEventStatement(),
-		CreatedAt:       c.eventDetails.Created,
-		LastAltered:     c.eventDetails.LastAltered,
-	}
-
-	err := c.eventDb.UpdateEvent(ctx, c.originalName, eventDefinition)
+	enabled, err := a.eventDb.UpdateEvent(ctx, a.originalName, a.event)
 	if err != nil {
 		return nil, err
 	}
 
-	// If Starts is set to current_timestamp or not set, then execute the event once and update last executed At.
-	if c.eventDetails.LastAltered.Sub(c.eventDetails.Starts).Abs().Seconds() <= 1 {
-		// TODO: execute the event once and update 'LastExecuted' and 'ExecutionCount'
+	// make sure to notify the EventSchedulerStatus after updating the event in the database
+	if a.scheduler != nil && enabled {
+		a.scheduler.UpdateEvent(ctx, a.eventDb, a.originalName, a.event)
 	}
 
 	return sql.Row{types.NewOkResult(0)}, nil
 }
 
 // Close implements the sql.RowIter interface.
-func (c *alterEventIter) Close(ctx *sql.Context) error {
+func (a *alterEventIter) Close(_ *sql.Context) error {
 	return nil
 }

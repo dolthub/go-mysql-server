@@ -94,11 +94,26 @@ func (s *idxScope) addParent(other *idxScope) {
 	s.parentScopes = append(s.parentScopes, other)
 }
 
+// unqualify is a helper function to remove the table prefix from a column, if it's present.
+func unqualify(s string) string {
+	if strings.Contains(s, ".") {
+		return strings.Split(s, ".")[1]
+	}
+	return s
+}
+
 func (s *idxScope) getIdx(n string) (int, bool) {
 	// We match the column closet to our current scope. We have already
 	// resolved columns, so there will be no in-scope collisions.
 	for i := len(s.columns) - 1; i >= 0; i-- {
 		if strings.EqualFold(n, s.columns[i]) {
+			return i, true
+		}
+	}
+	// This should only apply to column names for set_op, where we have two different tables
+	n = unqualify(n)
+	for i := len(s.columns) - 1; i >= 0; i-- {
+		if strings.EqualFold(n, unqualify(s.columns[i])) {
 			return i, true
 		}
 	}

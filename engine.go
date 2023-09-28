@@ -27,6 +27,7 @@ import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/pkg/errors"
 
+	"github.com/dolthub/go-mysql-server/eventscheduler"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -140,6 +141,8 @@ type Engine struct {
 	IsServerLocked    bool
 	PreparedDataCache *PreparedDataCache
 	mu                *sync.Mutex
+	Version           sql.AnalyzerVersion
+	EventScheduler    *eventscheduler.EventScheduler
 }
 
 type ColumnWithRawDefault struct {
@@ -177,6 +180,7 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		IsServerLocked:    cfg.IsServerLocked,
 		PreparedDataCache: NewPreparedDataCache(),
 		mu:                &sync.Mutex{},
+		EventScheduler:    nil,
 	}
 	ret.ReadOnly.Store(cfg.IsReadOnly)
 	return ret
@@ -620,6 +624,9 @@ func (e *Engine) beginTransaction(ctx *sql.Context) error {
 }
 
 func (e *Engine) Close() error {
+	if e.EventScheduler != nil {
+		e.EventScheduler.Close()
+	}
 	for _, p := range e.ProcessList.Processes() {
 		e.ProcessList.Kill(p.Connection)
 	}
@@ -645,7 +652,6 @@ func (e *Engine) readOnlyCheck(node sql.Node) error {
 	if e.IsServerLocked && !plan.IsReadOnly(node) {
 		return sql.ErrDatabaseWriteLocked.New()
 	}
-
 	return nil
 }
 
@@ -655,4 +661,85 @@ func (e *Engine) EnginePreparedDataCache() *PreparedDataCache {
 
 func (e *Engine) EngineAnalyzer() *analyzer.Analyzer {
 	return e.Analyzer
+}
+
+// InitializeEventScheduler initializes the EventScheduler for the engine with the given sql.Context
+// getter function, |ctxGetterFunc, the EventScheduler |status|, and the |period| for the event scheduler
+// to check for events to execute. If |period| is less than 1, then it is ignored and the default period
+// (30s currently) is used. This function also initializes the EventScheduler of the analyzer of this engine.
+func (e *Engine) InitializeEventScheduler(ctxGetterFunc func() (*sql.Context, func() error, error), status eventscheduler.SchedulerStatus, period int) error {
+	var err error
+	e.EventScheduler, err = eventscheduler.InitEventScheduler(e.Analyzer, e.BackgroundThreads, ctxGetterFunc, status, e.executeEvent, period)
+	if err != nil {
+		return err
+	}
+
+	e.Analyzer.EventScheduler = e.EventScheduler
+	return nil
+}
+
+// executeEvent executes an event with this Engine. The event is executed against the |dbName| database, and by the
+// account identified by |username| and |address|. The entire CREATE EVENT statement is passed in as the |createEventStatement|
+// parameter, but only the body of the event is executed. (The CREATE EVENT statement is passed in to support event
+// bodies that contain multiple statements in a BEGIN/END block.) If any problems are encounterd, the error return
+// value will be populated.
+func (e *Engine) executeEvent(ctx *sql.Context, dbName, createEventStatement, username, address string) error {
+	// the event must be executed against the correct database and with the definer's identity
+	ctx.SetCurrentDatabase(dbName)
+	ctx.Session.SetClient(sql.Client{User: username, Address: address})
+
+	// Analyze the CREATE EVENT statement
+	planTree, err := e.AnalyzeQuery(ctx, createEventStatement)
+	if err != nil {
+		return err
+	}
+
+	// and pull out the event body/definition
+	createEventNode, err := findCreateEventNode(planTree)
+	if err != nil {
+		return err
+	}
+	definitionNode := createEventNode.DefinitionNode
+
+	// Build an iterator to execute the event body
+	iter, err := e.Analyzer.ExecBuilder.Build(ctx, definitionNode, nil)
+	if err != nil {
+		clearAutocommitErr := clearAutocommitTransaction(ctx)
+		if clearAutocommitErr != nil {
+			return clearAutocommitErr
+		}
+		return err
+	}
+	iter = rowexec.AddExpressionCloser(definitionNode, iter)
+
+	// Drain the iterate to execute the event body/definition
+	// NOTE: No row data is returned for an event; we just need to execute the statements
+	_, err = sql.RowIterToRows(ctx, definitionNode.Schema(), iter)
+	return err
+}
+
+// findCreateEventNode searches |planTree| for the first plan.CreateEvent node and
+// returns it. If no matching node was found, the returned CreateEvent node will be
+// nil and an error will be populated.
+func findCreateEventNode(planTree sql.Node) (*plan.CreateEvent, error) {
+	// Search through the node to find the first CREATE EVENT node, and then grab its body
+	var targetNode sql.Node
+	transform.Inspect(planTree, func(node sql.Node) bool {
+		if cen, ok := node.(*plan.CreateEvent); ok {
+			targetNode = cen
+			return false
+		}
+		return true
+	})
+
+	if targetNode == nil {
+		return nil, fmt.Errorf("unable to find create event node in plan tree: %v", planTree)
+	}
+
+	createEventNode, ok := targetNode.(*plan.CreateEvent)
+	if !ok {
+		return nil, fmt.Errorf("unable to find create event node in plan tree: %v", planTree)
+	}
+
+	return createEventNode, nil
 }
