@@ -52,7 +52,7 @@ func (*Star) Children() []sql.Expression {
 
 // IsNullable implements the Expression interface.
 func (*Star) IsNullable() bool {
-	panic("star is just a placeholder node, but IsNullable was called")
+	return false
 }
 
 // Type implements the Expression interface.
