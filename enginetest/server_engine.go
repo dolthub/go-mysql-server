@@ -57,7 +57,7 @@ func NewServerQueryEngine(t *testing.T, engine *sqle.Engine, builder server.Sess
 		Protocol: "tcp",
 		Address:  fmt.Sprintf("%s:%d", address, port),
 	}
-	s, err := server.NewServer(config, engine, builder,nil)
+	s, err := server.NewServer(config, engine, builder, nil)
 	if err != nil {
 		return nil, err
 	}
