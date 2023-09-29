@@ -773,6 +773,18 @@ var AlterTableScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Add a column with the same case-insensitive name",
+		SetUpScript: []string {
+			"create table t1 (abc int primary key, def int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table t1 add column ABC int",
+				ExpectedErr: sql.ErrColumnExists,
+			},
+		},
+	},
 }
 
 var AlterTableAddAutoIncrementScripts = []ScriptTest{
