@@ -10,7 +10,7 @@ const (
 	validateOffsetAndLimitId                     // validateOffsetAndLimit
 	validateStarExpressionsId                    // validateStarExpressions
 	validateCreateTableId                        // validateCreateTable
-	validateAlterTableId	                          // validateAlterTable
+	validateAlterTableId                         // validateAlterTable
 	validateExprSemId                            // validateExprSem
 	resolveVariablesId                           // resolveVariables
 	resolveNamedWindowsId                        // resolveNamedWindows

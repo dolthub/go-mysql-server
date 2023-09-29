@@ -465,7 +465,7 @@ var (
 
 	// ErrInvalidIdentifier is returned when an identifier is invalid
 	ErrInvalidIdentifier = errors.NewKind("invalid identifier: `%s`")
-	
+
 	// ErrInvalidArgument is returned when an argument to a function is invalid.
 	ErrInvalidArgument = errors.NewKind("Invalid argument to %s")
 

@@ -61,11 +61,11 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 	return n, transform.SameTree, nil
 }
 
-// validateAlterTable is a set of validation functions for ALTER TABLE statements not handled by more specific 
+// validateAlterTable is a set of validation functions for ALTER TABLE statements not handled by more specific
 // validation rules
 func validateAlterTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	var err error
-	// Inspect is required here because alter table statements with multiple clauses are represented as a block of 
+	// Inspect is required here because alter table statements with multiple clauses are represented as a block of
 	// plan nodes
 	transform.Inspect(n, func(sql.Node) bool {
 		switch n := n.(type) {
@@ -87,18 +87,18 @@ func validateAlterTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 				return false
 			}
 		}
-		
+
 		return true
 	})
-	
+
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
-	
+
 	return n, transform.SameTree, nil
 }
 
-// validateIdentifiers validates various constraints about identifiers in CREATE TABLE / ALTER TABLE 
+// validateIdentifiers validates various constraints about identifiers in CREATE TABLE / ALTER TABLE
 // statements.
 func validateIdentifiers(name string, spec *plan.TableSpec) error {
 	if len(name) > sql.MaxIdentifierLength {
@@ -134,7 +134,7 @@ func validateIdentifiers(name string, spec *plan.TableSpec) error {
 			return sql.ErrInvalidIdentifier.New(fkDef.Name)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -386,7 +386,7 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Look for the old column and throw an error if it's not there. The column cannot have been renamed in the same
 	// statement. This matches the MySQL behavior.
 	if !schema.Contains(mc.Column(), nameable.Name()) ||
@@ -548,7 +548,7 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 		if err != nil {
 			return nil, err
 		}
-		
+
 		badColName, ok := missingIdxColumn(ai.Columns, sch, tableName)
 		if !ok {
 			return nil, sql.ErrKeyColumnDoesNotExist.New(badColName)
@@ -600,7 +600,7 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 		if err != nil {
 			return nil, err
 		}
-		
+
 		savedIdx := -1
 		for i, idx := range indexes {
 			if strings.EqualFold(idx, ai.PreviousIndexName) {
