@@ -30,7 +30,10 @@ import (
 
 func TestShowCreateTable(t *testing.T) {
 	var require = require.New(t)
-	ctx := sql.NewEmptyContext()
+
+	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
 
 	schema := sql.Schema{
 		&sql.Column{Name: "baz", Type: types.Text, Default: nil, Nullable: false, PrimaryKey: true},
@@ -39,7 +42,7 @@ func TestShowCreateTable(t *testing.T) {
 		&sql.Column{Name: "foo", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 123), Default: nil, Nullable: true},
 		&sql.Column{Name: "pok", Type: types.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: nil, Nullable: true},
 	}
-	table := memory.NewTable("test-table", sql.NewPrimaryKeySchema(schema), nil)
+	table := memory.NewTable(db.BaseDatabase, "test-table", sql.NewPrimaryKeySchema(schema), nil)
 
 	showCreateTable, err := NewShowCreateTable(NewResolvedTable(table, nil, nil), false).WithTargetSchema(schema)
 	require.NoError(err)
@@ -75,7 +78,10 @@ func TestShowCreateTable(t *testing.T) {
 
 func TestShowCreateTableWithNoPrimaryKey(t *testing.T) {
 	var require = require.New(t)
-	ctx := sql.NewEmptyContext()
+
+	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
 
 	schema := sql.Schema{
 		&sql.Column{Name: "baz", Type: types.Text, Default: nil, Nullable: false},
@@ -85,7 +91,7 @@ func TestShowCreateTableWithNoPrimaryKey(t *testing.T) {
 		&sql.Column{Name: "zab", Type: types.Int32, Default: planbuilder.MustStringToColumnDefaultValue(ctx, "0", types.Int32, true), Nullable: true},
 	}
 	pkSchema := sql.NewPrimaryKeySchema(schema)
-	table := memory.NewTable("test_table", pkSchema, nil)
+	table := memory.NewTable(db.BaseDatabase, "test_table", pkSchema, nil)
 
 	showCreateTable, err := NewShowCreateTable(NewResolvedTable(table, nil, nil), false).WithTargetSchema(schema)
 	require.NoError(err)
@@ -113,7 +119,10 @@ func TestShowCreateTableWithNoPrimaryKey(t *testing.T) {
 
 func TestShowCreateTableWithPrimaryKey(t *testing.T) {
 	var require = require.New(t)
-	ctx := sql.NewEmptyContext()
+
+	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
 
 	schema := sql.Schema{
 		&sql.Column{Name: "baz", Type: types.Text, Default: nil, Nullable: false, PrimaryKey: true},
@@ -123,7 +132,7 @@ func TestShowCreateTableWithPrimaryKey(t *testing.T) {
 		&sql.Column{Name: "zab", Type: types.Int32, Default: planbuilder.MustStringToColumnDefaultValue(ctx, "0", types.Int32, true), Nullable: true, PrimaryKey: true},
 	}
 	pkSchema := sql.NewPrimaryKeySchema(schema, 4, 0)
-	table := memory.NewTable("test-table", pkSchema, nil)
+	table := memory.NewTable(db.BaseDatabase, "test-table", pkSchema, nil)
 
 	showCreateTable, err := NewShowCreateTable(NewResolvedTable(table, nil, nil), false).WithTargetSchema(schema)
 	require.NoError(err)
@@ -152,7 +161,10 @@ func TestShowCreateTableWithPrimaryKey(t *testing.T) {
 
 func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 	var require = require.New(t)
-	ctx := sql.NewEmptyContext()
+
+	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
 
 	schema := sql.Schema{
 		&sql.Column{Name: "baz", Source: "test-table", Type: types.Text, Default: nil, Nullable: false, PrimaryKey: true},
@@ -161,7 +173,7 @@ func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 		&sql.Column{Name: "foo", Source: "test-table", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 123), Default: nil, Nullable: true},
 		&sql.Column{Name: "pok", Source: "test-table", Type: types.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: nil, Nullable: true},
 	}
-	table := memory.NewTable("test-table", sql.NewPrimaryKeySchema(schema), &memory.ForeignKeyCollection{})
+	table := memory.NewTable(db.BaseDatabase, "test-table", sql.NewPrimaryKeySchema(schema), &memory.ForeignKeyCollection{})
 
 	require.NoError(table.AddForeignKey(ctx, sql.ForeignKeyConstraint{
 		Name:           "fk1",
@@ -226,13 +238,13 @@ func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 		},
 	}
 
-	showCreateTable.(*ShowCreateTable).Checks = sql.CheckConstraints{
+	showCreateTable = showCreateTable.(*ShowCreateTable).WithChecks(sql.CheckConstraints{
 		{
 			Name:     "mycheck",
 			Expr:     expression.NewGreaterThan(expression.NewUnresolvedColumn("`zab`"), expression.NewLiteral(int8(0), types.Int8)),
 			Enforced: true,
 		},
-	}
+	})
 
 	rowIter, _ := DefaultBuilder.Build(ctx, showCreateTable, nil)
 
@@ -262,9 +274,12 @@ func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 
 func TestShowCreateView(t *testing.T) {
 	var require = require.New(t)
-	ctx := sql.NewEmptyContext()
 
-	table := memory.NewTable("test-table", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("testdb")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
+	table := memory.NewTable(db.BaseDatabase, "test-table", sql.NewPrimaryKeySchema(sql.Schema{
 		&sql.Column{Name: "baz", Type: types.Text, Default: nil, Nullable: false, PrimaryKey: true},
 		&sql.Column{Name: "zab", Type: types.Int32, Default: planbuilder.MustStringToColumnDefaultValue(ctx, "0", types.Int32, true), Nullable: true, PrimaryKey: true},
 		&sql.Column{Name: "bza", Type: types.Uint64, Default: planbuilder.MustStringToColumnDefaultValue(ctx, "0", types.Uint64, true), Nullable: true, Comment: "hello"},

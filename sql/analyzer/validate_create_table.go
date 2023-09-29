@@ -246,7 +246,7 @@ func validateRenameColumn(initialSch, sch sql.Schema, rc *plan.RenameColumn) (sq
 		return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), rc.ColumnName)
 	}
 
-	err := validateColumnNotUsedInCheckConstraint(rc.ColumnName, rc.Checks)
+	err := validateColumnNotUsedInCheckConstraint(rc.ColumnName, rc.Checks())
 	if err != nil {
 		return nil, err
 	}
@@ -352,7 +352,7 @@ func validateDropColumn(initialSch, sch sql.Schema, dc *plan.DropColumn) (sql.Sc
 		return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), dc.Column)
 	}
 
-	err := validateColumnSafeToDropWithCheckConstraint(dc.Column, dc.Checks)
+	err := validateColumnSafeToDropWithCheckConstraint(dc.Column, dc.Checks())
 	if err != nil {
 		return nil, err
 	}

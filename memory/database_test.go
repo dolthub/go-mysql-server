@@ -34,8 +34,10 @@ func TestDatabase_AddTable(t *testing.T) {
 	db := memory.NewDatabase("test")
 	tables := db.Tables()
 	require.Equal(0, len(tables))
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
 
-	err := db.CreateTable(sql.NewEmptyContext(), "test_table", sql.PrimaryKeySchema{}, sql.Collation_Default)
+	err := db.CreateTable(ctx, "test_table", sql.PrimaryKeySchema{}, sql.Collation_Default)
 	require.NoError(err)
 
 	tables = db.Tables()
@@ -44,6 +46,6 @@ func TestDatabase_AddTable(t *testing.T) {
 	require.True(ok)
 	require.NotNil(tt)
 
-	err = db.CreateTable(sql.NewEmptyContext(), "test_table", sql.PrimaryKeySchema{}, sql.Collation_Default)
+	err = db.CreateTable(ctx, "test_table", sql.PrimaryKeySchema{}, sql.Collation_Default)
 	require.Error(err)
 }

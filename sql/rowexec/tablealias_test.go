@@ -28,9 +28,12 @@ import (
 
 func TestTableAlias(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewEmptyContext()
 
-	table := memory.NewTable("bar", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("foo")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
+	table := memory.NewTable(db, "bar", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: types.Text, Nullable: true},
 		{Name: "b", Type: types.Text, Nullable: true},
 	}), nil)
@@ -43,7 +46,7 @@ func TestTableAlias(t *testing.T) {
 	}
 
 	for _, r := range rows {
-		require.NoError(table.Insert(sql.NewEmptyContext(), r))
+		require.NoError(table.Insert(ctx, r))
 	}
 
 	require.Equal(sql.Schema{

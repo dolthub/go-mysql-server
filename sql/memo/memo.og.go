@@ -451,6 +451,34 @@ func (r *EmptyTable) Children() []*ExprGroup {
 	return nil
 }
 
+type SetOp struct {
+	*sourceBase
+	Table *plan.SetOp
+}
+
+var _ RelExpr = (*SetOp)(nil)
+var _ SourceRel = (*SetOp)(nil)
+
+func (r *SetOp) String() string {
+	return FormatExpr(r)
+}
+
+func (r *SetOp) Name() string {
+	return ""
+}
+
+func (r *SetOp) TableId() TableId {
+	return TableIdForSource(r.g.Id)
+}
+
+func (r *SetOp) OutputCols() sql.Schema {
+	return r.Table.Schema()
+}
+
+func (r *SetOp) Children() []*ExprGroup {
+	return nil
+}
+
 type Project struct {
 	*relBase
 	Child       *ExprGroup
@@ -966,6 +994,8 @@ func FormatExpr(r exprType) string {
 		return fmt.Sprintf("jsontable: %s", r.Name())
 	case *EmptyTable:
 		return fmt.Sprintf("emptytable: %s", r.Name())
+	case *SetOp:
+		return fmt.Sprintf("setop: %s", r.Name())
 	case *Project:
 		return fmt.Sprintf("project: %d", r.Child.Id)
 	case *Distinct:
@@ -1068,6 +1098,8 @@ func buildRelExpr(b *ExecBuilder, r RelExpr, input sql.Schema, children ...sql.N
 		result, err = b.buildJSONTable(r, input, children...)
 	case *EmptyTable:
 		result, err = b.buildEmptyTable(r, input, children...)
+	case *SetOp:
+		result, err = b.buildSetOp(r, input, children...)
 	case *Project:
 		result, err = b.buildProject(r, input, children...)
 	case *Max1Row:

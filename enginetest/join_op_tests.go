@@ -71,6 +71,32 @@ var joinOpTests = []struct {
 	tests []JoinOpTests
 }{
 	{
+		name: "bug where transitive join edge drops filters",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table xy (x int primary key, y int, unique index y_idx(y));",
+				"CREATE table uv (u int primary key, v int);",
+				"CREATE table ab (a int primary key, b int);",
+				"insert into xy values (1,0), (2,1), (0,2), (3,3);",
+				"insert into uv values (0,1), (1,1), (2,2), (3,2);",
+				"insert into ab values (0,2), (1,2), (2,2), (3,1);",
+				"update information_schema.statistics set cardinality = 1000 where table_name in ('ab', 'rs', 'xy', 'uv');",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				// This query is a small repro of a larger query caused by the intersection of several
+				// bugs. The query below should 1) move the filters out of the join condition, and then
+				// 2) push those hoisted filters on top of |uv|, where they are safe for join planning.
+				// At the time of this addition, filters in the middle of join trees are unsafe and
+				// at risk of being lost.
+				Query:    "select /*+ JOIN_ORDER(ab,xy,uv) */ * from xy join uv on (x = u and u in (0,2)) join ab on (x = a and v < 2)",
+				Expected: []sql.Row{{0, 2, 0, 1, 0, 2}},
+			},
+		},
+	},
+	{
 		name: "issue 5633, nil comparison in merge join",
 		setup: [][]string{
 			setup.MydbData[0],
@@ -124,6 +150,26 @@ var joinOpTests = []struct {
 		},
 	},
 	{
+		name: "left join on array data",
+		setup: [][]string{
+			{
+				"create table xy (x binary(2) primary key, y binary(2))",
+				"create table uv (u binary(2) primary key, v binary(2))",
+				"insert into xy values (x'F0F0',x'1234'),(x'2345',x'3456');",
+				"insert into uv values (x'fedc',x'F0F0');",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query: "select HEX(x),HEX(u) from xy left join uv on x = v OR y = u",
+				Expected: []sql.Row{
+					{"2345", nil},
+					{"F0F0", "FEDC"},
+				},
+			},
+		},
+	},
+	{
 		name: "point lookups",
 		setup: [][]string{
 			setup.MydbData[0],
@@ -160,6 +206,69 @@ var joinOpTests = []struct {
 			{
 				Query:    `SELECT /*+ JOIN_ORDER(scalarSubq0,xy) */ count(*) from xy where y in (select distinct u from uv);`,
 				Expected: []sql.Row{{2}},
+			},
+		},
+	},
+	{
+		name: "union/intersect/except joins",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"create table uv (u int primary key, v int);",
+				"insert into uv values (1,1),(2,2),(3,1),(4,2);",
+				"create table xy (x int primary key, y int);",
+				"insert into xy values (1,1),(2,2);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select * from xy where x = 1 and exists (select 1 union select 1)",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:    "select * from xy where x = 1 and x in (select y from xy union select 1)",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:    "select * from xy where x = 1 and x in (select y from xy intersect select 1)",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:    "select * from xy where x = 1 and x in (select y from xy except select 2)",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query: "select * from xy where x = 1 intersect select * from uv;",
+				Expected: []sql.Row{
+					{1, 1},
+				},
+			},
+			{
+				Query: "select * from uv where u < 4 except select * from xy;",
+				Expected: []sql.Row{
+					{3, 1},
+				},
+			},
+			{
+				Query: "select * from xy, uv where x = u intersect select * from xy, uv where x = u order by x, y, u, v;",
+				Expected: []sql.Row{
+					{1, 1, 1, 1},
+					{2, 2, 2, 2},
+				},
+			},
+			{
+				Query: "select * from xy, uv where x != u except select * from xy, uv where y != v order by x, y, u, v;",
+				Expected: []sql.Row{
+					{1, 1, 3, 1},
+					{2, 2, 4, 2},
+				},
+			},
+			{
+				Query: "select * from (select * from uv where u < 4 except select * from xy) a, (select * from xy intersect select * from uv) b order by u, v, x, y;",
+				Expected: []sql.Row{
+					{3, 1, 1, 1},
+					{3, 1, 2, 2},
+				},
 			},
 		},
 	},

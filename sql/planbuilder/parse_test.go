@@ -16,6 +16,7 @@ package planbuilder
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -1733,9 +1734,13 @@ Project
 		}()
 	}
 
-	ctx := sql.NewEmptyContext()
+	db := memory.NewDatabase("mydb")
+	cat := newTestCatalog(db)
+	pro := memory.NewDBProvider(db)
+	sess := memory.NewSession(sql.NewBaseSession(), pro)
+
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 	ctx.SetCurrentDatabase("mydb")
-	cat := newTestCatalog()
 	b := New(ctx, cat)
 
 	for _, tt := range tests {
@@ -1769,27 +1774,26 @@ Project
 	}
 }
 
-func newTestCatalog() *sql.MapCatalog {
+func newTestCatalog(db *memory.Database) *sql.MapCatalog {
 	cat := &sql.MapCatalog{
 		Databases: make(map[string]sql.Database),
 		Tables:    make(map[string]sql.Table),
 	}
 
-	cat.Tables["xy"] = memory.NewTable("xy", sql.NewPrimaryKeySchema(sql.Schema{
+	cat.Tables["xy"] = memory.NewTable(db, "xy", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "x", Type: types.Int64},
 		{Name: "y", Type: types.Int64},
 		{Name: "z", Type: types.Int64},
 	}, 0), nil)
-	cat.Tables["uv"] = memory.NewTable("uv", sql.NewPrimaryKeySchema(sql.Schema{
+	cat.Tables["uv"] = memory.NewTable(db, "uv", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "u", Type: types.Int64},
 		{Name: "v", Type: types.Int64},
 		{Name: "w", Type: types.Int64},
 	}, 0), nil)
 
-	mydb := memory.NewDatabase("mydb")
-	mydb.AddTable("xy", cat.Tables["xy"])
-	mydb.AddTable("uv", cat.Tables["uv"])
-	cat.Databases["mydb"] = mydb
+	db.AddTable("xy", cat.Tables["xy"].(memory.MemTable))
+	db.AddTable("uv", cat.Tables["uv"].(memory.MemTable))
+	cat.Databases["mydb"] = db
 	cat.Funcs = function.NewRegistry()
 	return cat
 }
@@ -1804,7 +1808,24 @@ func TestParseColumnTypeString(t *testing.T) {
 			types.Int8,
 		},
 		{
+			"tinyint(0)",
+			types.Int8,
+		},
+		{
+			// MySQL 8.1.0 only honors display width for TINYINT and only when the display width is 1
+			"tinyint(1)",
+			types.MustCreateNumberTypeWithDisplayWidth(sqltypes.Int8, 1),
+		},
+		{
+			"tinyint(2)",
+			types.Int8,
+		},
+		{
 			"SMALLINT",
+			types.Int16,
+		},
+		{
+			"SMALLINT(1)",
 			types.Int16,
 		},
 		{
@@ -1812,7 +1833,15 @@ func TestParseColumnTypeString(t *testing.T) {
 			types.Int24,
 		},
 		{
+			"MEDIUMINT(1)",
+			types.Int24,
+		},
+		{
 			"INT",
+			types.Int32,
+		},
+		{
+			"INT(0)",
 			types.Int32,
 		},
 		{
@@ -1820,7 +1849,15 @@ func TestParseColumnTypeString(t *testing.T) {
 			types.Int64,
 		},
 		{
+			"BIGINT(1)",
+			types.Int64,
+		},
+		{
 			"TINYINT UNSIGNED",
+			types.Uint8,
+		},
+		{
+			"TINYINT(1) UNSIGNED",
 			types.Uint8,
 		},
 		{
@@ -1828,7 +1865,15 @@ func TestParseColumnTypeString(t *testing.T) {
 			types.Uint16,
 		},
 		{
+			"SMALLINT(1) UNSIGNED",
+			types.Uint16,
+		},
+		{
 			"MEDIUMINT UNSIGNED",
+			types.Uint24,
+		},
+		{
+			"MEDIUMINT(1) UNSIGNED",
 			types.Uint24,
 		},
 		{
@@ -1836,12 +1881,21 @@ func TestParseColumnTypeString(t *testing.T) {
 			types.Uint32,
 		},
 		{
+			"INT(1) UNSIGNED",
+			types.Uint32,
+		},
+		{
 			"BIGINT UNSIGNED",
 			types.Uint64,
 		},
 		{
+			"BIGINT(1) UNSIGNED",
+			types.Uint64,
+		},
+		{
+			// Boolean is a synonym for TINYINT(1)
 			"BOOLEAN",
-			types.Int8,
+			types.MustCreateNumberTypeWithDisplayWidth(sqltypes.Int8, 1),
 		},
 		{
 			"FLOAT",

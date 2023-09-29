@@ -290,6 +290,11 @@ var JoinPlanningTests = []struct {
 		},
 		tests: []JoinPlanTest{
 			{
+				q:     "select /*+ LOOKUP_JOIN(scalarSubq0,xy) JOIN_ORDER(scalarSubq0,xy) */ * from xy where x = 1 and y in (select a from ab);",
+				types: []plan.JoinType{plan.JoinTypeLookup},
+				exp:   []sql.Row{{1, 0}},
+			},
+			{
 				q:     "select /*+ LOOKUP_JOIN(xy,scalarSubq0) */ * from xy where x in (select b from ab where a in (0,1,2));",
 				types: []plan.JoinType{plan.JoinTypeLookup},
 				exp:   []sql.Row{{2, 1}},

@@ -32,7 +32,8 @@ type Database struct {
 
 type MemoryDatabase interface {
 	sql.Database
-	AddTable(name string, t sql.Table)
+	AddTable(name string, t MemTable)
+	Database() *BaseDatabase
 }
 
 var _ sql.Database = (*Database)(nil)
@@ -50,7 +51,7 @@ var _ fulltext.Database = (*Database)(nil)
 // BaseDatabase is an in-memory database that can't store views, only for testing the engine
 type BaseDatabase struct {
 	name              string
-	tables            map[string]sql.Table
+	tables            map[string]MemTable
 	fkColl            *ForeignKeyCollection
 	triggers          []sql.TriggerDefinition
 	storedProcedures  []sql.StoredProcedureDetails
@@ -74,7 +75,7 @@ func NewDatabase(name string) *Database {
 func NewViewlessDatabase(name string) *BaseDatabase {
 	return &BaseDatabase{
 		name:   name,
-		tables: map[string]sql.Table{},
+		tables: map[string]MemTable{},
 		fkColl: newForeignKeyCollection(),
 	}
 }
@@ -84,6 +85,10 @@ func (d *BaseDatabase) EnablePrimaryKeyIndexes() {
 	d.primaryKeyIndexes = true
 }
 
+func (d *BaseDatabase) Database() *BaseDatabase {
+	return d
+}
+
 // Name returns the database name.
 func (d *BaseDatabase) Name() string {
 	return d.name
@@ -91,12 +96,44 @@ func (d *BaseDatabase) Name() string {
 
 // Tables returns all tables in the database.
 func (d *BaseDatabase) Tables() map[string]sql.Table {
-	return d.tables
+	tables := make(map[string]sql.Table, len(d.tables))
+	for name, table := range d.tables {
+		tables[name] = table
+	}
+	return tables
 }
 
 func (d *BaseDatabase) GetTableInsensitive(ctx *sql.Context, tblName string) (sql.Table, bool, error) {
-	tbl, ok := sql.GetTableInsensitive(tblName, d.tables)
-	return tbl, ok, nil
+	tbl, ok := sql.GetTableInsensitive(tblName, d.Tables())
+	if !ok {
+		return nil, false, nil
+	}
+
+	memTable := tbl.(MemTable)
+	if memTable.IgnoreSessionData() {
+		return memTable, ok, nil
+	}
+
+	underlying := memTable.UnderlyingTable()
+	// look in the session for table data. If it's not there, then cache it in the session and return it
+	sess := SessionFromContext(ctx)
+	underlying = underlying.copy()
+	underlying.data = sess.tableData(underlying)
+
+	return underlying, ok, nil
+}
+
+// putTable writes the table given into database storage. A table with this name must already be present.
+func (d *BaseDatabase) putTable(t *Table) {
+	lowerName := strings.ToLower(t.name)
+	for name, table := range d.tables {
+		if strings.ToLower(name) == lowerName {
+			t.name = table.Name()
+			d.tables[name] = t
+			return
+		}
+	}
+	panic(fmt.Sprintf("table %s not found", t.name))
 }
 
 func (d *BaseDatabase) GetTableNames(ctx *sql.Context) ([]string, error) {
@@ -181,11 +218,11 @@ func (db *HistoryDatabase) AddTableAsOf(name string, t sql.Table, asOf interface
 	}
 
 	db.Revisions[strings.ToLower(name)][asOf] = t
-	db.tables[name] = t
+	db.tables[name] = t.(MemTable)
 }
 
 // AddTable adds a new table to the database.
-func (d *BaseDatabase) AddTable(name string, t sql.Table) {
+func (d *BaseDatabase) AddTable(name string, t MemTable) {
 	d.tables[name] = t
 }
 
@@ -196,12 +233,16 @@ func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.Pri
 		return sql.ErrTableAlreadyExists.New(name)
 	}
 
-	table := NewTableWithCollation(name, schema, d.fkColl, collation)
+	table := NewTableWithCollation(d, name, schema, d.fkColl, collation)
 	table.db = d
 	if d.primaryKeyIndexes {
 		table.EnablePrimaryKeyIndexes()
 	}
+
 	d.tables[name] = table
+	sess := SessionFromContext(ctx)
+	sess.putTable(table.data)
+
 	return nil
 }
 
@@ -212,7 +253,7 @@ func (d *BaseDatabase) CreateIndexedTable(ctx *sql.Context, name string, sch sql
 		return sql.ErrTableAlreadyExists.New(name)
 	}
 
-	table := NewTableWithCollation(name, sch, d.fkColl, collation)
+	table := NewTableWithCollation(d, name, sch, d.fkColl, collation)
 	table.db = d
 	if d.primaryKeyIndexes {
 		table.EnablePrimaryKeyIndexes()
@@ -235,10 +276,12 @@ func (d *BaseDatabase) CreateIndexedTable(ctx *sql.Context, name string, sch sql
 
 // DropTable drops the table with the given name
 func (d *BaseDatabase) DropTable(ctx *sql.Context, name string) error {
-	_, ok := d.tables[name]
+	t, ok := d.tables[name]
 	if !ok {
 		return sql.ErrTableNotFound.New(name)
 	}
+
+	SessionFromContext(ctx).dropTable(t.(*Table).data)
 
 	delete(d.tables, name)
 	return nil
@@ -256,20 +299,26 @@ func (d *BaseDatabase) RenameTable(ctx *sql.Context, oldName, newName string) er
 		return sql.ErrTableAlreadyExists.New(newName)
 	}
 
-	memTbl := tbl.(*Table)
+	sess := SessionFromContext(ctx)
+	sess.dropTable(tbl.(*Table).data)
+
+	memTbl := tbl.(*Table).copy()
 	memTbl.name = newName
-	for _, col := range memTbl.schema.Schema {
+	for _, col := range memTbl.data.schema.Schema {
 		col.Source = newName
 	}
-	for _, index := range memTbl.indexes {
+	for _, index := range memTbl.data.indexes {
 		memIndex := index.(*Index)
 		for i, expr := range memIndex.Exprs {
 			getField := expr.(*expression.GetField)
 			memIndex.Exprs[i] = expression.NewGetFieldWithTable(i, getField.Type(), newName, getField.Name(), getField.IsNullable())
 		}
 	}
-	d.tables[newName] = tbl
+	memTbl.data.tableName = newName
+
+	d.tables[newName] = memTbl
 	delete(d.tables, oldName)
+	sess.putTable(memTbl.data)
 
 	return nil
 }
@@ -423,6 +472,10 @@ func (d *BaseDatabase) GetCollation(ctx *sql.Context) sql.CollationID {
 func (d *BaseDatabase) SetCollation(ctx *sql.Context, collation sql.CollationID) error {
 	d.collation = collation
 	return nil
+}
+
+func (d *Database) Database() *BaseDatabase {
+	return d.BaseDatabase
 }
 
 // CreateView implements the interface sql.ViewDatabase.

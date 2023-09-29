@@ -19,6 +19,7 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -53,6 +54,13 @@ type ClientHarness interface {
 
 	// NewContextWithClient returns a context that will return the given client when requested from the session.
 	NewContextWithClient(client sql.Client) *sql.Context
+}
+
+type ServerHarness interface {
+	Harness
+
+	// SessinBuilder returns a function that creates a new session for connections to a server
+	SessionBuilder() server.SessionBuilder
 }
 
 // SkippingHarness provides a way for integrators to skip tests that are known to be broken. E.g., integrators that

@@ -28,7 +28,7 @@ type DbProvider struct {
 type ProviderOption func(*DbProvider)
 
 // NewDBProvider creates a new DbProvider with the default options and the databases specified
-func NewDBProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
+func NewDBProvider(dbs ...sql.Database) *DbProvider {
 	dbMap := make(map[string]sql.Database, len(dbs))
 	for _, db := range dbs {
 		dbMap[strings.ToLower(db.Name())] = db
@@ -51,7 +51,7 @@ func NewDBProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
 func NewDBProviderWithOpts(opts ...ProviderOption) sql.MutableDatabaseProvider {
 	pro := NewDBProvider()
 	for _, opt := range opts {
-		opt(pro.(*DbProvider))
+		opt(pro)
 	}
 
 	return pro

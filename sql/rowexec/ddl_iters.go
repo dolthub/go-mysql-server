@@ -18,7 +18,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log"
 	"strings"
 	"sync"
 	"time"
@@ -31,7 +30,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/fixidx"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -197,10 +195,18 @@ func (l loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expressi
 				}
 				var def sql.Expression = f.Default
 				var err error
+				colIdx := make(map[string]int)
+				for i, c := range l.destSch {
+					colIdx[fmt.Sprintf("%s.%s", strings.ToLower(c.Source), strings.ToLower(c.Name))] = i
+				}
 				def, _, err = transform.Expr(f.Default, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 					switch e := e.(type) {
 					case *expression.GetField:
-						return fixidx.FixFieldIndexes(nil, log.Printf, l.destSch, e.WithTable(l.destSch[0].Source))
+						idx, ok := colIdx[strings.ToLower(e.String())]
+						if !ok {
+							return nil, transform.SameTree, fmt.Errorf("field not found: %s", e.String())
+						}
+						return e.WithIndex(idx), transform.NewTree, nil
 					default:
 						return e, transform.SameTree, nil
 					}
@@ -324,11 +330,6 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 		if rewritten {
-			if hasFullText {
-				if err = rebuildFullText(ctx, i.alterable.Name(), i.m.Db); err != nil {
-					return nil, err
-				}
-			}
 			return sql.NewRow(types.NewOkResult(0)), nil
 		}
 	}
@@ -514,21 +515,29 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		if err == io.EOF {
 			break
 		} else if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return false, err
 		}
 
 		newRow, err := projectRowWithTypes(ctx, newSch, projections, r)
 		if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return false, err
 		}
 
 		err = i.validateNullability(ctx, newSch, newRow)
 		if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return false, err
 		}
 
 		err = inserter.Insert(ctx, newRow)
 		if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return false, err
 		}
 	}
@@ -868,7 +877,7 @@ func projectRowWithTypes(ctx *sql.Context, sch sql.Schema, projections []sql.Exp
 	return newRow, nil
 }
 
-// getTableFromDatabase returns the related sql.Table from a database in the case of a sql.Databasw
+// getTableFromDatabase returns table named from the database provided
 func getTableFromDatabase(ctx *sql.Context, db sql.Database, tableNode sql.Node) (sql.Table, error) {
 	// Grab the table fresh from the database.
 	tableName := getTableName(tableNode)
@@ -1001,11 +1010,6 @@ func (c *createPkIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if err != nil {
 			return nil, err
 		}
-		if hasFullText {
-			if err = rebuildFullText(ctx, c.pkAlterable.Name(), c.db); err != nil {
-				return nil, err
-			}
-		}
 		return sql.NewRow(types.NewOkResult(0)), nil
 	}
 
@@ -1048,6 +1052,8 @@ func (c *createPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) e
 		if err == io.EOF {
 			break
 		} else if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return err
 		}
 
@@ -1060,6 +1066,8 @@ func (c *createPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) e
 
 		err = inserter.Insert(ctx, r)
 		if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return err
 		}
 	}
@@ -1080,6 +1088,7 @@ func addKeyToSchema(tableName string, schema sql.Schema, columns []sql.IndexColu
 		idx := schema.IndexOf(columns[i].Name, tableName)
 		ordinals[i] = idx
 		newSch[idx].PrimaryKey = true
+		newSch[idx].Nullable = false
 	}
 	return sql.NewPrimaryKeySchema(newSch, ordinals...)
 }
@@ -1104,11 +1113,6 @@ func (d *dropPkIter) Next(ctx *sql.Context) (sql.Row, error) {
 		err := d.rewriteTable(ctx, rwt)
 		if err != nil {
 			return nil, err
-		}
-		if hasFullText {
-			if err = rebuildFullText(ctx, d.pkAlterable.Name(), d.db); err != nil {
-				return nil, err
-			}
 		}
 		return sql.NewRow(types.NewOkResult(0)), nil
 	}
@@ -1152,11 +1156,15 @@ func (d *dropPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) err
 		if err == io.EOF {
 			break
 		} else if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return err
 		}
 
 		err = inserter.Insert(ctx, r)
 		if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return err
 		}
 	}
@@ -1202,11 +1210,6 @@ func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 		if rewritten {
-			if hasFullText {
-				if err = rebuildFullText(ctx, i.alterable.Name(), i.a.Db); err != nil {
-					return nil, err
-				}
-			}
 			return sql.NewRow(types.NewOkResult(0)), nil
 		}
 	}
@@ -1330,12 +1333,11 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), sql.SchemaToPrimaryKeySchema(rwt, newSch)
 
 	rewriteRequired := false
-	if i.a.Column().Default != nil || !i.a.Column().Nullable || i.a.Column().AutoIncrement {
+	if i.a.Column().Default != nil || i.a.Column().Generated != nil || !i.a.Column().Nullable || i.a.Column().AutoIncrement {
 		rewriteRequired = true
 	}
 
-	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, nil, i.a.Column())
-	if !rewriteRequired && !rewriteRequested {
+	if !rewriteRequired && !rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, nil, i.a.Column()) {
 		return false, nil
 	}
 
@@ -1360,7 +1362,7 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 		}
 
 		autoIncColIdx = newSch.IndexOf(i.a.Column().Name, i.a.Column().Source)
-		val, err = t.GetNextAutoIncrementValue(ctx, 0)
+		val, err = t.GetNextAutoIncrementValue(ctx, 1)
 		if err != nil {
 			return false, err
 		}
@@ -1371,11 +1373,15 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 		if err == io.EOF {
 			break
 		} else if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return false, err
 		}
 
 		newRow, err := ProjectRow(ctx, projections, r)
 		if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return false, err
 		}
 
@@ -1390,6 +1396,8 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 
 		err = inserter.Insert(ctx, newRow)
 		if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return false, err
 		}
 	}
@@ -1560,19 +1568,11 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 	i.runOnce = true
 
-	// Full-Text indexes will need to be rebuilt
-	hasFullText := hasFullText(ctx, i.alterable)
-	if hasFullText {
-		if err := fulltext.DropColumnFromTables(ctx, i.alterable.(sql.IndexAddressableTable), i.d.Db.(fulltext.Database), i.d.Column); err != nil {
-			return nil, err
-		}
-	}
-
 	// drop constraints that reference the dropped column
 	cat, ok := i.alterable.(sql.CheckAlterableTable)
 	if ok {
 		// note: validations done earlier ensure safety of dropping any constraint referencing the column
-		err := dropConstraints(ctx, cat, i.d.Checks, i.d.Column)
+		err := dropConstraints(ctx, cat, i.d.Checks(), i.d.Column)
 		if err != nil {
 			return nil, err
 		}
@@ -1585,12 +1585,15 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 		if rewritten {
-			if hasFullText {
-				if err = rebuildFullText(ctx, i.alterable.Name(), i.d.Db); err != nil {
-					return nil, err
-				}
-			}
 			return sql.NewRow(types.NewOkResult(0)), nil
+		}
+	}
+
+	// Full-Text indexes will need to be rebuilt
+	hasFullText := hasFullText(ctx, i.alterable)
+	if hasFullText {
+		if err := fulltext.DropColumnFromTables(ctx, i.alterable.(sql.IndexAddressableTable), i.d.Db.(fulltext.Database), i.d.Column); err != nil {
+			return nil, err
 		}
 	}
 
@@ -1607,7 +1610,7 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return sql.NewRow(types.NewOkResult(0)), nil
 }
 
-// rewriteTable rewrites the table given if required or requested, and returns the whether it was rewritten
+// rewriteTable rewrites the table given if required or requested, and returns whether it was rewritten
 func (i *dropColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
 	newSch, projections, err := dropColumnFromSchema(i.d.TargetSchema(), i.d.Column, i.alterable.Name())
 	if err != nil {
@@ -1639,16 +1642,22 @@ func (i *dropColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable)
 		if err == io.EOF {
 			break
 		} else if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return false, err
 		}
 
 		newRow, err := ProjectRow(ctx, projections, r)
 		if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return false, err
 		}
 
 		err = inserter.Insert(ctx, newRow)
 		if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
 			return false, err
 		}
 	}
@@ -1719,14 +1728,19 @@ func (i *dropColumnIter) Close(context *sql.Context) error {
 
 // Execute inserts the rows in the database.
 func (b *BaseBuilder) executeCreateCheck(ctx *sql.Context, c *plan.CreateCheck) error {
-	chAlterable, err := getCheckAlterable(c.UnaryNode.Child)
+	table, err := getTableFromDatabase(ctx, c.Database(), c.Table)
+	if err != nil {
+		return err
+	}
+
+	chAlterable, err := getCheckAlterableTable(table)
 	if err != nil {
 		return err
 	}
 
 	// check existing rows in table
 	var res interface{}
-	rowIter, err := b.buildNodeExec(ctx, c.Child, nil)
+	rowIter, err := b.buildNodeExec(ctx, c.Table, nil)
 	if err != nil {
 		return err
 	}
@@ -1760,22 +1774,17 @@ func (b *BaseBuilder) executeCreateCheck(ctx *sql.Context, c *plan.CreateCheck) 
 }
 
 func (b *BaseBuilder) executeDropCheck(ctx *sql.Context, n *plan.DropCheck) error {
-	chAlterable, err := getCheckAlterable(n.Child)
+	table, err := getTableFromDatabase(ctx, n.Database(), n.Table)
 	if err != nil {
 		return err
 	}
-	return chAlterable.DropCheck(ctx, n.Name)
-}
 
-func getCheckAlterable(node sql.Node) (sql.CheckAlterableTable, error) {
-	switch node := node.(type) {
-	case sql.CheckAlterableTable:
-		return node, nil
-	case *plan.ResolvedTable:
-		return getCheckAlterableTable(node.Table)
-	default:
-		return nil, plan.ErrNoCheckConstraintSupport.New(node.String())
+	chAlterable, err := getCheckAlterableTable(table)
+	if err != nil {
+		return err
 	}
+
+	return chAlterable.DropCheck(ctx, n.Name)
 }
 
 func getCheckAlterableTable(t sql.Table) (sql.CheckAlterableTable, error) {
@@ -1909,11 +1918,15 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 			if err == io.EOF {
 				break
 			} else if err != nil {
+				_ = inserter.DiscardChanges(ctx, err)
+				_ = inserter.Close(ctx)
 				return err
 			}
 
 			err = inserter.Insert(ctx, r)
 			if err != nil {
+				_ = inserter.DiscardChanges(ctx, err)
+				_ = inserter.Close(ctx)
 				return err
 			}
 		}
@@ -2057,7 +2070,13 @@ func (b *BaseBuilder) executeAlterAutoInc(ctx *sql.Context, n *plan.AlterAutoInc
 		return nil
 	}
 
-	return autoTbl.AutoIncrementSetter(ctx).SetAutoIncrementValue(ctx, n.AutoVal)
+	setter := autoTbl.AutoIncrementSetter(ctx)
+	err = setter.SetAutoIncrementValue(ctx, n.AutoVal)
+	if err != nil {
+		return err
+	}
+
+	return setter.Close(ctx)
 }
 
 // hasFullText returns whether the given table has any Full-Text indexes.

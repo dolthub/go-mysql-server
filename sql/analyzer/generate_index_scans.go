@@ -70,7 +70,7 @@ func convertFiltersToIndexedAccess(
 			return false
 		case *plan.RecursiveCte:
 			// TODO: fix memory IndexLookup bugs that are not reproduceable in Dolt
-			// this probably fails for *plan.Union also, we just don't have tests for it
+			// this probably fails for *plan.SetOp also, we just don't have tests for it
 			return false
 		case *plan.JoinNode:
 			// avoid changing anti and semi join condition indexes

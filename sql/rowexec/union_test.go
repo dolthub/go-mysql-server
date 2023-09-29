@@ -30,12 +30,16 @@ import (
 func TestUnion(t *testing.T) {
 	require := require.New(t)
 
+	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: types.Text, Nullable: true},
 		{Name: "email", Type: types.Text, Nullable: true},
 	})
-	child := memory.NewTable("test", childSchema, nil)
-	empty := memory.NewTable("empty", childSchema, nil)
+	child := memory.NewTable(db, "test", childSchema, nil)
+	empty := memory.NewTable(db, "empty", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow("john", "john@doe.com"),
@@ -46,7 +50,7 @@ func TestUnion(t *testing.T) {
 	}
 
 	for _, r := range rows {
-		require.NoError(child.Insert(sql.NewEmptyContext(), r))
+		require.NoError(child.Insert(ctx, r))
 	}
 
 	name := []sql.Expression{
@@ -58,30 +62,28 @@ func TestUnion(t *testing.T) {
 		expected []string
 	}{
 		{
-			plan.NewUnion(plan.NewProject(name, plan.NewResolvedTable(child, nil, nil)), plan.NewProject(name, plan.NewResolvedTable(child, nil, nil)), false, nil, nil, nil),
+			plan.NewSetOp(plan.UnionType, plan.NewProject(name, plan.NewResolvedTable(child, nil, nil)), plan.NewProject(name, plan.NewResolvedTable(child, nil, nil)), false, nil, nil, nil),
 			[]string{
 				"john", "jane", "john", "martha", "martha",
 				"john", "jane", "john", "martha", "martha",
 			},
 		},
 		{
-			plan.NewUnion(plan.NewProject(name, plan.NewResolvedTable(empty, nil, nil)), plan.NewProject(name, plan.NewResolvedTable(child, nil, nil)), false, nil, nil, nil),
+			plan.NewSetOp(plan.UnionType, plan.NewProject(name, plan.NewResolvedTable(empty, nil, nil)), plan.NewProject(name, plan.NewResolvedTable(child, nil, nil)), false, nil, nil, nil),
 			[]string{
 				"john", "jane", "john", "martha", "martha",
 			},
 		},
 		{
-			plan.NewUnion(plan.NewProject(name, plan.NewResolvedTable(child, nil, nil)), plan.NewProject(name, plan.NewResolvedTable(empty, nil, nil)), false, nil, nil, nil),
+			plan.NewSetOp(plan.UnionType, plan.NewProject(name, plan.NewResolvedTable(child, nil, nil)), plan.NewProject(name, plan.NewResolvedTable(empty, nil, nil)), false, nil, nil, nil),
 			[]string{
 				"john", "jane", "john", "martha", "martha",
 			},
 		},
 	}
 
-	ctx := sql.NewEmptyContext()
-
 	for _, c := range cases {
-		iter, err := DefaultBuilder.Build(sql.NewEmptyContext(), c.node, nil)
+		iter, err := DefaultBuilder.Build(ctx, c.node, nil)
 		require.NoError(err)
 		require.NotNil(iter)
 

@@ -14,9 +14,33 @@
 
 package queries
 
-import "github.com/dolthub/go-mysql-server/sql"
+import (
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
+)
 
 var ViewScripts = []ScriptTest{
+	{
+		Name: "view columns retain original case",
+		SetUpScript: []string{
+			`CREATE TABLE strs ( id int NOT NULL AUTO_INCREMENT,
+                                 str  varchar(15) NOT NULL,
+                                 PRIMARY KEY (id));`,
+			`CREATE VIEW caseSensitive AS SELECT id as AbCdEfG FROM strs;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * from caseSensitive;",
+				Expected: []sql.Row{},
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "AbCdEfG",
+						Type: types.Int32,
+					},
+				},
+			},
+		},
+	},
 	{
 		Name: "check view with escaped strings",
 		SetUpScript: []string{
@@ -44,6 +68,27 @@ var ViewScripts = []ScriptTest{
 					{3, "bob's"},
 					{4, "joe's"},
 					{6, "jan's"}},
+			},
+		},
+	},
+	{
+		Name: "show view",
+		SetUpScript: []string{
+			"create table xy (x int primary key, y int)",
+			"create view v as select * from xy",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show keys from v",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "show index from v from mydb",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "show index from v where Column_name = 'x'",
+				Expected: []sql.Row{},
 			},
 		},
 	},

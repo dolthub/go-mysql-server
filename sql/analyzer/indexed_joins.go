@@ -20,7 +20,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/fixidx"
 	"github.com/dolthub/go-mysql-server/sql/memo"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -43,53 +42,21 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 
 	_, isUpdate := n.(*plan.Update)
 
-	reorder := true
-	transform.NodeWithCtx(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		switch n := c.Node.(type) {
-		case *plan.Project:
-			// TODO: fix natural joins, their project nodes should apply
-			// to the top-level scope not the middle of a join tree.
-			switch c.Parent.(type) {
-			case *plan.JoinNode:
-				reorder = false
-			}
-		case *plan.Union:
-			reorder = false
-		case *plan.JoinNode:
-			if n.JoinType().IsPhysical() {
-				// TODO: nested subqueries attempt to replan joins, which
-				// is not ideal but not the end of the world.
-				reorder = false
-			}
-		default:
-		}
-		return n, transform.SameTree, nil
-	})
-	return inOrderReplanJoin(ctx, a, scope, nil, n, reorder, isUpdate)
+	return inOrderReplanJoin(ctx, a, scope, nil, n, isUpdate)
 }
 
-// inOrderReplanJoin either fixes field indexes for join nodes or
-// replans a join.
-// TODO: fixing JSONTable and natural joins makes this unnecessary
-func inOrderReplanJoin(
-	ctx *sql.Context,
-	a *Analyzer,
-	scope *plan.Scope,
-	sch sql.Schema,
-	n sql.Node,
-	reorder, isUpdate bool,
-) (sql.Node, transform.TreeIdentity, error) {
+// inOrderReplanJoin replans the first join node found
+func inOrderReplanJoin(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sch sql.Schema, n sql.Node, isUpdate bool) (sql.Node, transform.TreeIdentity, error) {
 	if _, ok := n.(sql.OpaqueNode); ok {
 		return n, transform.SameTree, nil
 	}
-
 	children := n.Children()
 	var newChildren []sql.Node
 	allSame := transform.SameTree
 	j, ok := n.(*plan.JoinNode)
 	if !ok {
 		for i := range children {
-			newChild, same, err := inOrderReplanJoin(ctx, a, scope, sch, children[i], reorder, isUpdate)
+			newChild, same, err := inOrderReplanJoin(ctx, a, scope, sch, children[i], isUpdate)
 			if err != nil {
 				return n, transform.SameTree, err
 			}
@@ -112,45 +79,17 @@ func inOrderReplanJoin(
 		return ret, transform.NewTree, err
 	}
 
-	// two different base cases, depending on whether we reorder or not
-	if reorder {
-		scope.SetJoin(true)
-		scope.SetLateralJoin(j.Op.IsLateral())
-		ret, err := replanJoin(ctx, j, a, scope)
-		if err != nil {
-			return nil, transform.SameTree, fmt.Errorf("failed to replan join: %w", err)
-		}
-		if isUpdate {
-			ret = plan.NewProject(expression.SchemaToGetFields(n.Schema()), ret)
-		}
-		return ret, transform.NewTree, nil
-	}
-
-	l, lSame, err := inOrderReplanJoin(ctx, a, scope, sch, j.Left(), reorder, isUpdate)
+	scope.SetJoin(true)
+	scope.SetLateralJoin(j.Op.IsLateral())
+	ret, err := replanJoin(ctx, j, a, scope)
 	if err != nil {
-		return nil, transform.SameTree, err
+		return nil, transform.SameTree, fmt.Errorf("failed to replan join: %w", err)
 	}
-	rView := append(sch, j.Left().Schema()...)
-	r, rSame, err := inOrderReplanJoin(ctx, a, scope, rView, j.Right(), reorder, isUpdate)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-	ret, err := j.WithChildren(l, r)
-	if err != nil {
-		return n, transform.SameTree, nil
-	}
-	if j.JoinCond() != nil {
-		selfView := append(sch, j.Schema()...)
-		f, fSame, err := fixidx.FixFieldIndexes(scope, a.LogFn(), selfView, j.JoinCond())
-		if lSame && rSame && fSame {
-			return n, transform.SameTree, nil
-		}
-		ret, err = j.WithExpressions(f)
-		if err != nil {
-			return n, transform.SameTree, nil
-		}
+	if isUpdate {
+		ret = plan.NewProject(expression.SchemaToGetFields(n.Schema()), ret)
 	}
 	return ret, transform.NewTree, nil
+
 }
 
 func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Scope) (sql.Node, error) {
@@ -213,7 +152,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 		a.Log(m.String())
 	}
 
-	return m.BestRootPlan()
+	return m.BestRootPlan(ctx)
 }
 
 // addLookupJoins prefixes memo join group expressions with indexed join
@@ -522,6 +461,28 @@ func addRightSemiJoins(m *memo.Memo) error {
 			return nil
 		}
 		tableGrp, indexes, filters := lookupCandidates(semi.Left.First)
+		rightOutTables := semi.Right.RelProps.OutputTables()
+
+		var projectExpressions []*memo.ExprGroup
+		onlyEquality := true
+		for _, f := range semi.Filter {
+			_ = memo.DfsScalar(f, func(e memo.ScalarExpr) error {
+				switch e := e.(type) {
+				case *memo.ColRef:
+					if rightOutTables.Contains(int(memo.TableIdForSource(e.Table))) {
+						projectExpressions = append(projectExpressions, e.Group())
+					}
+				case *memo.Literal, *memo.And, *memo.Or, *memo.Equal, *memo.Arithmetic, *memo.Bindvar:
+				default:
+					onlyEquality = false
+					return memo.HaltErr
+				}
+				return nil
+			})
+			if !onlyEquality {
+				return nil
+			}
+		}
 
 		for _, idx := range indexes {
 			if !semi.Group().RelProps.FuncDeps().ColsAreStrictKey(idx.ColSet()) {
@@ -531,16 +492,6 @@ func addRightSemiJoins(m *memo.Memo) error {
 			keyExprs, _, nullmask := keyExprsForIndex(tableGrp, idx.Cols(), append(semi.Filter, filters...))
 			if keyExprs == nil {
 				continue
-			}
-
-			var projectExpressions []*memo.ExprGroup
-			for _, e := range keyExprs {
-				memo.DfsScalar(e, func(e memo.ScalarExpr) error {
-					if c, ok := e.(*memo.ColRef); ok {
-						projectExpressions = append(projectExpressions, c.Group())
-					}
-					return nil
-				})
 			}
 
 			rGroup := m.MemoizeProject(nil, semi.Right, projectExpressions)

@@ -583,7 +583,7 @@ func (m *Memo) updateBest(grp *ExprGroup, n RelExpr, cost float64) {
 	grp.updateBest(n, cost)
 }
 
-func (m *Memo) BestRootPlan() (sql.Node, error) {
+func (m *Memo) BestRootPlan(ctx *sql.Context) (sql.Node, error) {
 	b := NewExecBuilder()
 	return buildBestJoinPlan(b, m.root, nil)
 }

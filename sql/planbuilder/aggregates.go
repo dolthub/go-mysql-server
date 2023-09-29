@@ -104,7 +104,12 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 		switch e := e.(type) {
 		case *ast.ColName:
 			var ok bool
-			col, ok = projScope.resolveColumn(strings.ToLower(e.Qualifier.Name.String()), strings.ToLower(e.Name.String()), true)
+			// GROUP BY binds to column references before projections.
+			col, ok = fromScope.resolveColumn(strings.ToLower(e.Qualifier.Name.String()), strings.ToLower(e.Name.String()), true)
+			if !ok {
+				col, ok = projScope.resolveColumn(strings.ToLower(e.Qualifier.Name.String()), strings.ToLower(e.Name.String()), true)
+			}
+
 			if !ok {
 				b.handleErr(sql.ErrColumnNotFound.New(e.Name.String()))
 			}

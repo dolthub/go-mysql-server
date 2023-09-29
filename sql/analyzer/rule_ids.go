@@ -101,8 +101,8 @@ const (
 	subqueryIndexesId            // subqueryIndexes
 	pruneTablesId                // pruneTables
 	fixupAuxiliaryExprsId        // fixupAuxiliaryExprs
+	assignExecIndexesId          // assignExecIndexes
 	inlineSubqueryAliasRefsId    // inlineSubqueryAliasRefs
-	setJoinScopeLenId            // setJoinScopeLen
 	eraseProjectionId            // eraseProjection
 	replaceSortPkId              // replaceSortPk
 	insertTopNId                 // insertTopN

@@ -644,48 +644,84 @@ func (b *BaseBuilder) buildIndexedTableAccess(ctx *sql.Context, n *plan.IndexedT
 	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, n.Table, partIter)), nil
 }
 
-func (b *BaseBuilder) buildUnion(ctx *sql.Context, u *plan.Union, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Union")
+func (b *BaseBuilder) buildSetOp(ctx *sql.Context, s *plan.SetOp, row sql.Row) (sql.RowIter, error) {
+	span, ctx := ctx.Span("plan.SetOp")
 	var iter sql.RowIter
 	var err error
-	iter, err = b.buildNodeExec(ctx, u.Left(), row)
-
+	iter, err = b.buildNodeExec(ctx, s.Left(), row)
 	if err != nil {
 		span.End()
 		return nil, err
 	}
-	iter = &unionIter{
-		cur: iter,
-		nextIter: func(ctx *sql.Context) (sql.RowIter, error) {
-			return b.buildNodeExec(ctx, u.Right(), row)
-		},
+	switch s.SetOpType {
+	case plan.UnionType:
+		iter = &unionIter{
+			cur: iter,
+			nextIter: func(ctx *sql.Context) (sql.RowIter, error) {
+				return b.buildNodeExec(ctx, s.Right(), row)
+			},
+		}
+	case plan.IntersectType:
+		var iter2 sql.RowIter
+		iter2, err = b.buildNodeExec(ctx, s.Right(), row)
+		if err != nil {
+			span.End()
+			return nil, err
+		}
+		iter = &intersectIter{
+			lIter: iter,
+			rIter: iter2,
+		}
+	case plan.ExceptType:
+		var iter2 sql.RowIter
+		iter2, err = b.buildNodeExec(ctx, s.Right(), row)
+		if err != nil {
+			span.End()
+			return nil, err
+		}
+		if s.Distinct {
+			dIter := newDistinctIter(ctx, iter)
+			s.AddDispose(dIter.dispose)
+			iter = dIter
+
+			dIter2 := newDistinctIter(ctx, iter2)
+			s.AddDispose(dIter2.dispose)
+			iter2 = dIter2
+		}
+		iter = &exceptIter{
+			lIter: iter,
+			rIter: iter2,
+		}
 	}
-	if u.Distinct {
-		iter = newDistinctIter(ctx, iter)
+
+	if s.Distinct && s.SetOpType != plan.ExceptType {
+		dIter := newDistinctIter(ctx, iter)
+		s.AddDispose(dIter.dispose)
+		iter = dIter
 	}
 	// Limit must wrap offset, and not vice-versa, so that
 	// skipped rows don't count toward the returned row count.
-	if u.Offset != nil {
-		offset, err := getInt64Value(ctx, u.Offset)
+	if s.Offset != nil {
+		offset, err := getInt64Value(ctx, s.Offset)
 		if err != nil {
 			return nil, err
 		}
 		iter = &offsetIter{skip: offset, childIter: iter}
 	}
-	if u.Limit != nil && len(u.SortFields) > 0 {
-		limit, err := getInt64Value(ctx, u.Limit)
+	if s.Limit != nil && len(s.SortFields) > 0 {
+		limit, err := getInt64Value(ctx, s.Limit)
 		if err != nil {
 			return nil, err
 		}
-		iter = newTopRowsIter(u.SortFields, limit, false, iter, len(u.Schema()))
-	} else if u.Limit != nil {
-		limit, err := getInt64Value(ctx, u.Limit)
+		iter = newTopRowsIter(s.SortFields, limit, false, iter, len(s.Schema()))
+	} else if s.Limit != nil {
+		limit, err := getInt64Value(ctx, s.Limit)
 		if err != nil {
 			return nil, err
 		}
 		iter = &limitIter{limit: limit, childIter: iter}
-	} else if len(u.SortFields) > 0 {
-		iter = newSortIter(u.SortFields, iter)
+	} else if len(s.SortFields) > 0 {
+		iter = newSortIter(s.SortFields, iter)
 	}
 	return sql.NewSpanIter(span, iter), nil
 }

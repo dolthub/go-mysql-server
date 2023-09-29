@@ -25,6 +25,7 @@ type ExprDef struct {
 	SkipExec   bool        `yaml:"skipExec"`
 	Scalar     bool        `yaml:"scalar"`
 	Binary     bool        `yaml:"binary"`
+	SkipName   bool        `yaml:"skipName"`
 }
 
 func DecodeMemoExprs(path string) (MemoExprs, error) {
@@ -148,7 +149,11 @@ func (g *MemoGen) genStringer(define ExprDef) {
 
 func (g *MemoGen) genSourceRelInterface(define ExprDef) {
 	fmt.Fprintf(g.w, "func (r *%s) Name() string {\n", define.Name)
-	fmt.Fprintf(g.w, "  return strings.ToLower(r.Table.Name())\n")
+	if !define.SkipName {
+		fmt.Fprintf(g.w, "  return strings.ToLower(r.Table.Name())\n")
+	} else {
+		fmt.Fprintf(g.w, "  return \"\"\n")
+	}
 	fmt.Fprintf(g.w, "}\n\n")
 
 	fmt.Fprintf(g.w, "func (r *%s) TableId() TableId {\n", define.Name)

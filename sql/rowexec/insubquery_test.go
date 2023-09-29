@@ -29,12 +29,14 @@ import (
 )
 
 func TestInSubquery(t *testing.T) {
-	ctx := sql.NewEmptyContext()
-
 	varChar3 := types.MustCreateString(sqltypes.VarChar, 3, sql.Collation_Default)
 	varChar6 := types.MustCreateString(sqltypes.VarChar, 6, sql.Collation_Default)
 
-	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("foo")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
+	table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "t", Source: "foo", Type: varChar3},
 	}), nil)
 
@@ -127,7 +129,7 @@ func TestInSubquery(t *testing.T) {
 			result, err := plan.NewInSubquery(
 				tt.left,
 				plan.NewSubquery(tt.right, "").WithExecBuilder(DefaultBuilder),
-			).Eval(sql.NewEmptyContext(), tt.row)
+			).Eval(ctx, tt.row)
 			if tt.err != nil {
 				require.Error(err)
 				require.True(tt.err.Is(err))
@@ -140,8 +142,11 @@ func TestInSubquery(t *testing.T) {
 }
 
 func TestNotInSubquery(t *testing.T) {
-	ctx := sql.NewEmptyContext()
-	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("foo")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
+	table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "t", Source: "foo", Type: types.Text},
 	}), nil)
 
@@ -215,7 +220,7 @@ func TestNotInSubquery(t *testing.T) {
 			result, err := plan.NewNotInSubquery(
 				tt.left,
 				plan.NewSubquery(tt.right, "").WithExecBuilder(DefaultBuilder),
-			).Eval(sql.NewEmptyContext(), tt.row)
+			).Eval(ctx, tt.row)
 			if tt.err != nil {
 				require.Error(err)
 				require.True(tt.err.Is(err))

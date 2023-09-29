@@ -132,22 +132,7 @@ func (n *HashLookup) GetHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 		return nil, err
 	}
 	if s, ok := key.([]interface{}); ok {
-		switch len(s) {
-		case 0:
-			return [0]interface{}{}, nil
-		case 1:
-			return [1]interface{}{s[0]}, nil
-		case 2:
-			return [2]interface{}{s[0], s[1]}, nil
-		case 3:
-			return [3]interface{}{s[0], s[1], s[2]}, nil
-		case 4:
-			return [4]interface{}{s[0], s[1], s[2], s[3]}, nil
-		case 5:
-			return [5]interface{}{s[0], s[1], s[2], s[3], s[4]}, nil
-		default:
-			return sql.HashOf(s)
-		}
+		return sql.HashOf(s)
 	}
 	// byte slices are not hashable
 	if k, ok := key.([]byte); ok {

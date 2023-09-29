@@ -479,6 +479,7 @@ func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row) (sql.R
 	lookup := sql.IndexLookup{Ranges: []sql.Range{rang}, Index: mapper.Index}
 
 	editorData := mapper.Updater.IndexedAccess(lookup)
+
 	partIter, err := editorData.LookupPartitions(ctx, lookup)
 	if err != nil {
 		return nil, err

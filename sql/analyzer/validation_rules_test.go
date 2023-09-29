@@ -75,7 +75,11 @@ func TestValidateGroupBy(t *testing.T) {
 		{Name: "col2", Type: types.Int64},
 	})
 
-	child := memory.NewTable("test", childSchema, nil)
+	db := memory.NewDatabase("db")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
+	child := memory.NewTable(db, "test", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow("col1_1", int64(1111)),
@@ -86,7 +90,7 @@ func TestValidateGroupBy(t *testing.T) {
 	}
 
 	for _, r := range rows {
-		require.NoError(child.Insert(sql.NewEmptyContext(), r))
+		require.NoError(child.Insert(ctx, r))
 	}
 
 	p := plan.NewGroupBy(
@@ -119,7 +123,11 @@ func TestValidateGroupByErr(t *testing.T) {
 		{Name: "col2", Type: types.Int64},
 	})
 
-	child := memory.NewTable("test", childSchema, nil)
+	db := memory.NewDatabase("db")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
+	child := memory.NewTable(db, "test", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow("col1_1", int64(1111)),
@@ -130,7 +138,7 @@ func TestValidateGroupByErr(t *testing.T) {
 	}
 
 	for _, r := range rows {
-		require.NoError(child.Insert(sql.NewEmptyContext(), r))
+		require.NoError(child.Insert(ctx, r))
 	}
 
 	p := plan.NewGroupBy(
@@ -146,11 +154,15 @@ func TestValidateGroupByErr(t *testing.T) {
 
 	err = sql.SystemVariables.SetGlobal("sql_mode", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY")
 	require.NoError(err)
-	_, _, err = vr.Apply(sql.NewEmptyContext(), nil, p, nil, DefaultRuleSelector)
+	_, _, err = vr.Apply(ctx, nil, p, nil, DefaultRuleSelector)
 	require.Error(err)
 }
 
 func TestValidateSchemaSource(t *testing.T) {
+	db := memory.NewDatabase("db")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
 	testCases := []struct {
 		name string
 		node sql.Node
@@ -163,7 +175,7 @@ func TestValidateSchemaSource(t *testing.T) {
 		},
 		{
 			"table with valid schema",
-			plan.NewResolvedTable(memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
+			plan.NewResolvedTable(memory.NewTable(db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "foo", Source: "mytable"},
 				{Name: "bar", Source: "mytable"},
 			}), nil), nil, nil),
@@ -171,7 +183,7 @@ func TestValidateSchemaSource(t *testing.T) {
 		},
 		{
 			"table with invalid schema",
-			plan.NewResolvedTable(memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
+			plan.NewResolvedTable(memory.NewTable(db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "foo", Source: ""},
 				{Name: "bar", Source: "something"},
 			}), nil), nil, nil),
@@ -179,7 +191,7 @@ func TestValidateSchemaSource(t *testing.T) {
 		},
 		{
 			"table alias with table",
-			plan.NewTableAlias("foo", plan.NewResolvedTable(memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
+			plan.NewTableAlias("foo", plan.NewResolvedTable(memory.NewTable(db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "foo", Source: "mytable"},
 			}), nil), nil, nil)),
 			true,
@@ -204,7 +216,7 @@ func TestValidateSchemaSource(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			_, _, err := rule.Apply(sql.NewEmptyContext(), nil, tt.node, nil, DefaultRuleSelector)
+			_, _, err := rule.Apply(ctx, nil, tt.node, nil, DefaultRuleSelector)
 			if tt.ok {
 				require.NoError(err)
 			} else {
@@ -216,7 +228,11 @@ func TestValidateSchemaSource(t *testing.T) {
 }
 
 func TestValidateUnionSchemasMatch(t *testing.T) {
-	table := plan.NewResolvedTable(memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("db")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
+	table := plan.NewResolvedTable(memory.NewTable(db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "foo", Source: "mytable", Type: types.Text},
 		{Name: "bar", Source: "mytable", Type: types.Int64},
 		{Name: "rab", Source: "mytable", Type: types.Text},
@@ -241,91 +257,115 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 		},
 		{
 			"top-level union with matching schemas",
-			plan.NewUnion(plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetField(0, types.Text, "bar", false),
-					expression.NewGetField(1, types.Int64, "baz", false),
-				},
-				table,
-			), plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetField(2, types.Text, "rab", false),
-					expression.NewGetField(3, types.Int64, "zab", false),
-				},
-				table,
-			), false, nil, nil, nil),
+			plan.NewSetOp(
+				plan.UnionType,
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(0, types.Text, "bar", false),
+						expression.NewGetField(1, types.Int64, "baz", false),
+					},
+					table,
+				),
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(2, types.Text, "rab", false),
+						expression.NewGetField(3, types.Int64, "zab", false),
+					},
+					table,
+				),
+				false, nil, nil, nil,
+			),
 			true,
 		},
 		{
 			"top-level union with longer left schema",
-			plan.NewUnion(plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetField(0, types.Text, "bar", false),
-					expression.NewGetField(1, types.Int64, "baz", false),
-					expression.NewGetField(4, types.Boolean, "quuz", false),
-				},
-				table,
-			), plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetField(2, types.Text, "rab", false),
-					expression.NewGetField(3, types.Int64, "zab", false),
-				},
-				table,
-			), false, nil, nil, nil),
+			plan.NewSetOp(
+				plan.UnionType,
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(0, types.Text, "bar", false),
+						expression.NewGetField(1, types.Int64, "baz", false),
+						expression.NewGetField(4, types.Boolean, "quuz", false),
+					},
+					table,
+				),
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(2, types.Text, "rab", false),
+						expression.NewGetField(3, types.Int64, "zab", false),
+					},
+					table,
+				),
+				false, nil, nil, nil,
+			),
 			false,
 		},
 		{
 			"top-level union with longer right schema",
-			plan.NewUnion(plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetField(0, types.Text, "bar", false),
-					expression.NewGetField(1, types.Int64, "baz", false),
-				},
-				table,
-			), plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetField(2, types.Text, "rab", false),
-					expression.NewGetField(3, types.Int64, "zab", false),
-					expression.NewGetField(4, types.Boolean, "quuz", false),
-				},
-				table,
-			), false, nil, nil, nil),
+			plan.NewSetOp(
+				plan.UnionType,
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(0, types.Text, "bar", false),
+						expression.NewGetField(1, types.Int64, "baz", false),
+					},
+					table,
+				),
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(2, types.Text, "rab", false),
+						expression.NewGetField(3, types.Int64, "zab", false),
+						expression.NewGetField(4, types.Boolean, "quuz", false),
+					},
+					table,
+				),
+				false, nil, nil, nil,
+			),
 			false,
 		},
 		{
 			"top-level union with mismatched type in schema",
-			plan.NewUnion(plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetField(0, types.Text, "bar", false),
-					expression.NewGetField(1, types.Int64, "baz", false),
-				},
-				table,
-			), plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetField(2, types.Text, "rab", false),
-					expression.NewGetField(3, types.Boolean, "zab", false),
-				},
-				table,
-			), false, nil, nil, nil),
+			plan.NewSetOp(
+				plan.UnionType,
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(0, types.Text, "bar", false),
+						expression.NewGetField(1, types.Int64, "baz", false),
+					},
+					table,
+				),
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(2, types.Text, "rab", false),
+						expression.NewGetField(3, types.Boolean, "zab", false),
+					},
+					table,
+				),
+				false, nil, nil, nil,
+			),
 			false,
 		},
 		{
 			"subquery union",
 			plan.NewSubqueryAlias(
 				"aliased", "select bar, baz from mytable union select rab, zab from mytable",
-				plan.NewUnion(plan.NewProject(
-					[]sql.Expression{
-						expression.NewGetField(0, types.Text, "bar", false),
-						expression.NewGetField(1, types.Int64, "baz", false),
-					},
-					table,
-				), plan.NewProject(
-					[]sql.Expression{
-						expression.NewGetField(2, types.Text, "rab", false),
-						expression.NewGetField(3, types.Boolean, "zab", false),
-					},
-					table,
-				), false, nil, nil, nil),
+				plan.NewSetOp(
+					plan.UnionType,
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewGetField(0, types.Text, "bar", false),
+							expression.NewGetField(1, types.Int64, "baz", false),
+						},
+						table,
+					),
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewGetField(2, types.Text, "rab", false),
+							expression.NewGetField(3, types.Boolean, "zab", false),
+						},
+						table,
+					),
+					false, nil, nil, nil),
 			),
 			false,
 		},
@@ -335,7 +375,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			_, _, err := rule.Apply(sql.NewEmptyContext(), nil, tt.node, nil, DefaultRuleSelector)
+			_, _, err := rule.Apply(ctx, nil, tt.node, nil, DefaultRuleSelector)
 			if tt.ok {
 				require.NoError(err)
 			} else {
@@ -459,7 +499,11 @@ func TestValidateOperands(t *testing.T) {
 }
 
 func TestValidateIndexCreation(t *testing.T) {
-	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("db")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
+	table := memory.NewTable(db, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 	}), nil)
@@ -514,7 +558,7 @@ func TestValidateIndexCreation(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			_, _, err := rule.Apply(sql.NewEmptyContext(), nil, tt.node, nil, DefaultRuleSelector)
+			_, _, err := rule.Apply(ctx, nil, tt.node, nil, DefaultRuleSelector)
 			if tt.ok {
 				require.NoError(err)
 			} else {
@@ -649,12 +693,15 @@ func TestValidateSubqueryColumns(t *testing.T) {
 	t.Skip()
 
 	require := require.New(t)
-	ctx := sql.NewEmptyContext()
 
-	table := memory.NewTable("test", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("db")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
+	table := memory.NewTable(db, "test", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "foo", Type: types.Text},
 	}), nil)
-	subTable := memory.NewTable("subtest", sql.NewPrimaryKeySchema(sql.Schema{
+	subTable := memory.NewTable(db, "subtest", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "bar", Type: types.Text},
 	}), nil)
 

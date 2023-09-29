@@ -27,8 +27,11 @@ import (
 )
 
 func TestExistsSubquery(t *testing.T) {
-	ctx := sql.NewEmptyContext()
-	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
+	table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "t", Source: "foo", Type: types.Text},
 	}), nil)
 
@@ -36,7 +39,7 @@ func TestExistsSubquery(t *testing.T) {
 	require.NoError(t, table.Insert(ctx, sql.Row{"two"}))
 	require.NoError(t, table.Insert(ctx, sql.Row{"three"}))
 
-	emptyTable := memory.NewTable("empty", sql.NewPrimaryKeySchema(sql.Schema{
+	emptyTable := memory.NewTable(db.BaseDatabase, "empty", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "t", Source: "empty", Type: types.Int64},
 	}), nil)
 
@@ -84,14 +87,14 @@ func TestExistsSubquery(t *testing.T) {
 
 			result, err := plan.NewExistsSubquery(
 				plan.NewSubquery(tt.subquery, "").WithExecBuilder(DefaultBuilder),
-			).Eval(sql.NewEmptyContext(), tt.row)
+			).Eval(ctx, tt.row)
 			require.NoError(err)
 			require.Equal(tt.result, result)
 
 			// Test Not Exists
 			result, err = expression.NewNot(plan.NewExistsSubquery(
 				plan.NewSubquery(tt.subquery, "").WithExecBuilder(DefaultBuilder),
-			)).Eval(sql.NewEmptyContext(), tt.row)
+			)).Eval(ctx, tt.row)
 
 			require.NoError(err)
 			require.Equal(tt.result, !result.(bool))

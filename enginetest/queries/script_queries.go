@@ -139,6 +139,209 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "intersection and except tests",
+		SetUpScript: []string{
+			"create table a (m int, n int);",
+			"insert into a values (1,2), (2,3), (3,4);",
+			"create table b (m int, n int);",
+			"insert into b values (1,2), (1,3), (3,4);",
+			"create table c (m int, n int);",
+			"insert into c values (1,3), (1,3), (3,4);",
+			"create table t1 (i int);",
+			"insert into t1 values (1), (2), (3);",
+			"create table t2 (i float);",
+			"insert into t2 values (1.0), (1.99), (3.0);",
+			"create table l (i int);",
+			"insert into l values (1), (1), (1);",
+			"create table r (i int);",
+			"insert into r values (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			// Intersect tests
+			{
+				Query: "table a intersect table b order by m, n;",
+				Expected: []sql.Row{
+					{1, 2},
+					{3, 4},
+				},
+			},
+			{
+				Query: "table a intersect table c order by m, n;",
+				Expected: []sql.Row{
+					{3, 4},
+				},
+			},
+			{
+				Query: "table c intersect distinct table c order by m, n;",
+				Expected: []sql.Row{
+					{1, 3},
+					{3, 4},
+				},
+			},
+			{
+				Query: "table c intersect all table c order by m, n;",
+				Expected: []sql.Row{
+					{1, 3},
+					{1, 3},
+					{3, 4},
+				},
+			},
+			{
+				Query: "table a intersect table b intersect table c;",
+				Expected: []sql.Row{
+					{3, 4},
+				},
+			},
+			{
+				Query: "(table b order by m limit 1 offset 1) intersect (table c order by m limit 1);",
+				Expected: []sql.Row{
+					{1, 3},
+				},
+			},
+			{
+				// Resulting type is string for some reason
+				Skip:  true,
+				Query: "table t1 intersect table t2;",
+				Expected: []sql.Row{
+					{1},
+					{3},
+				},
+			},
+			{
+				// Field indexing error
+				Skip:  true,
+				Query: "table t1 intersect table t2 order by i;",
+				Expected: []sql.Row{
+					{1.0},
+				},
+			},
+
+			// Except tests
+			{
+				Query: "table a except table b order by m, n;",
+				Expected: []sql.Row{
+					{2, 3},
+				},
+			},
+			{
+				Query: "table a except table c order by m, n;",
+				Expected: []sql.Row{
+					{1, 2},
+					{2, 3},
+				},
+			},
+			{
+				Query: "table b except table c order by m, n;",
+				Expected: []sql.Row{
+					{1, 2},
+				},
+			},
+			{
+				Query: "table c except distinct table a order by m, n;",
+				Expected: []sql.Row{
+					{1, 3},
+				},
+			},
+			{
+				Query: "table c except all table a order by m, n;",
+				Expected: []sql.Row{
+					{1, 3},
+					{1, 3},
+				},
+			},
+			{
+				Query: "(table a order by m limit 1 offset 1) except (table c order by m limit 1);",
+				Expected: []sql.Row{
+					{2, 3},
+				},
+			},
+			{
+				Query: "table a except table b except table c;",
+				Expected: []sql.Row{
+					{2, 3},
+				},
+			},
+			{
+				// Resulting type is string for some reason
+				Skip:  true,
+				Query: "table t1 except table t2 order by i;",
+				Expected: []sql.Row{
+					{2.0},
+				},
+			},
+			{
+				Query:    "table l except table r;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "table l except distinct table r;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "table l except all table r;",
+				Expected: []sql.Row{
+					{1},
+					{1},
+				},
+			},
+
+			// Multiple set operation tests
+			{
+				Query: "table a except table b intersect table c order by m;",
+				Expected: []sql.Row{
+					{1, 2},
+					{2, 3},
+				},
+			},
+			{
+				Query: "table a intersect table b except table c order by m;",
+				Expected: []sql.Row{
+					{1, 2},
+				},
+			},
+			{
+				Query: "table a union table a intersect table b except table c order by m;",
+				Expected: []sql.Row{
+					{1, 2},
+					{2, 3},
+				},
+			},
+
+			// CTE tests
+			{
+				Query: "with cte as (table a union table a intersect table b except table c order by m) select * from cte",
+				Expected: []sql.Row{
+					{1, 2},
+					{2, 3},
+				},
+			},
+			{
+				Query: "with recursive cte(x) as (select 1) select * from cte",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "with recursive cte (x,y) as (select 1, 1 intersect select 1, 1 union select x + 1, y + 2 from cte where x < 5) select * from cte;",
+				Expected: []sql.Row{
+					{1, 1},
+					{2, 3},
+					{3, 5},
+					{4, 7},
+					{5, 9},
+				},
+			},
+			{
+				Query:       "with recursive cte (x,y) as (select 1, 1 intersect select 1, 1 intersect select x + 1, y + 2 from cte where x < 5) select * from cte;",
+				ExpectedErr: sql.ErrRecursiveCTEMissingUnion,
+			},
+			{
+				Query:       "with recursive cte (x,y) as (select 1, 1 union select 1, 1 intersect select x + 1, y + 2 from cte where x < 5) select * from cte;",
+				ExpectedErr: sql.ErrRecursiveCTENotUnion,
+			},
+		},
+	},
+	{
 		Name: "create table casing",
 		SetUpScript: []string{
 			"create table t (lower varchar(20) primary key, UPPER varchar(20), MiXeD varchar(20), un_der varchar(20), `da-sh` varchar(20));",
@@ -1313,7 +1516,7 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "ALTER TABLE ... ALTER COLUMN SET / DROP DEFAULT",
+		Name: "ALTER TABLE, ALTER COLUMN SET , DROP DEFAULT",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",
 		},

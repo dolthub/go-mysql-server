@@ -70,13 +70,10 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 	outScope = inScope.push()
 	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), ld, ld.IsReplace, ld.ColumnNames, nil, ld.IsIgnore)
 
+	outScope.node = ins
 	if rt != nil {
 		checks := b.loadChecksFromTable(destScope, rt.Table)
-		ins.Checks = checks
-
+		outScope.node = ins.WithChecks(checks)
 	}
-
-	outScope.node = ins
-
 	return outScope
 }

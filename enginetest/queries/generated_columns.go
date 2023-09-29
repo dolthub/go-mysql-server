@@ -148,4 +148,22 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 		},
 	},
+	// Broken: adding a column with a default doesn't work
+	// {
+	// 	Name: "add new generated column",
+	// 	SetUpScript: []string{
+	// 		"create table t1 (a int primary key, b int)",
+	// 		"insert into t1 values (1,2), (2,3), (3,4)",
+	// 	},
+	// 	Assertions: []ScriptTestAssertion{
+	// 		{
+	// 			Query:    "alter table t1 add column c int as (a + b) stored",
+	// 			Expected: []sql.Row{{types.NewOkResult(0)}},
+	// 		},
+	// 		{
+	// 			Query:    "select * from t1 order by a",
+	// 			Expected: []sql.Row{{1, 2, 3}, {2, 3, 5}, {3, 4, 7}},
+	// 		},
+	// 	},
+	// },
 }

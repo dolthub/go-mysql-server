@@ -995,6 +995,16 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemBoolType("inmemory_joins"),
 		Default:           int8(0),
 	},
+	// Row locking is currently not supported. This variable is provided for 3p tools, and we always return the
+	// Lowest value allowed by MySQL, which is 1. If you attempt to set this value to anything other than 1, errors ensue.
+	"innodb_lock_wait_timeout": {
+		Name:              "innodb_lock_wait_timeout",
+		Scope:             sql.SystemVariableScope_Global,
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemIntType("innodb_lock_wait_timeout", 1, 1, false),
+		Default:           int64(1),
+	},
 	"innodb_stats_auto_recalc": {
 		Name:              "innodb_stats_auto_recalc",
 		Scope:             sql.SystemVariableScope_Global,

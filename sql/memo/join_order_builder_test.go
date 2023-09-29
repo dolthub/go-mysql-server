@@ -15,6 +15,7 @@
 package memo
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -29,6 +30,9 @@ import (
 )
 
 func TestJoinOrderBuilder(t *testing.T) {
+	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+
 	tests := []struct {
 		in    sql.Node
 		name  string
@@ -39,14 +43,14 @@ func TestJoinOrderBuilder(t *testing.T) {
 			in: plan.NewInnerJoin(
 				plan.NewInnerJoin(
 					plan.NewInnerJoin(
-						tableNode("a"),
-						tableNode("b"),
+						tableNode(db, "a"),
+						tableNode(db, "b"),
 						newEq("a.x = b.x"),
 					),
-					tableNode("c"),
+					tableNode(db, "c"),
 					newEq("b.x = c.x"),
 				),
-				tableNode("d"),
+				tableNode(db, "d"),
 				newEq("c.x = d.x"),
 			),
 			plans: `memo:
@@ -82,24 +86,24 @@ func TestJoinOrderBuilder(t *testing.T) {
 			in: plan.NewInnerJoin(
 				plan.NewInnerJoin(
 					plan.NewLeftOuterJoin(
-						tableNode("a"),
-						tableNode("b"),
+						tableNode(db, "a"),
+						tableNode(db, "b"),
 						newEq("a.x = b.x"),
 					),
 					plan.NewLeftOuterJoin(
 						plan.NewFullOuterJoin(
-							tableNode("c"),
-							tableNode("d"),
+							tableNode(db, "c"),
+							tableNode(db, "d"),
 							newEq("c.x = d.x"),
 						),
-						tableNode("e"),
+						tableNode(db, "e"),
 						newEq("c.x = e.x"),
 					),
 					newEq("a.x = e.x"),
 				),
 				plan.NewInnerJoin(
-					tableNode("f"),
-					tableNode("g"),
+					tableNode(db, "f"),
+					tableNode(db, "g"),
 					newEq("f.x = g.x"),
 				),
 				newEq("e.x = g.x"),
@@ -155,14 +159,21 @@ func TestJoinOrderBuilder(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			j := NewJoinOrderBuilder(NewMemo(nil, nil, nil, 0, NewDefaultCoster(), NewDefaultCarder()))
+			j := NewJoinOrderBuilder(NewMemo(newContext(pro), nil, nil, 0, NewDefaultCoster(), NewDefaultCarder()))
 			j.ReorderJoin(tt.in)
 			require.Equal(t, tt.plans, j.m.String())
 		})
 	}
 }
 
+func newContext(provider *memory.DbProvider) *sql.Context {
+	return sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), provider)))
+}
+
 func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
+	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+
 	tests := []struct {
 		name     string
 		join     sql.Node
@@ -171,12 +182,12 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 		{
 			name: "cross join",
 			join: plan.NewCrossJoin(
-				tableNode("a"),
+				tableNode(db, "a"),
 				plan.NewInnerJoin(
-					tableNode("b"),
+					tableNode(db, "b"),
 					plan.NewLeftOuterJoin(
-						tableNode("c"),
-						tableNode("d"),
+						tableNode(db, "c"),
+						tableNode(db, "d"),
 						newEq("c.x=d.x"),
 					),
 					newEq("b.y=d.y"),
@@ -202,12 +213,12 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 		{
 			name: "right deep left join",
 			join: plan.NewInnerJoin(
-				tableNode("a"),
+				tableNode(db, "a"),
 				plan.NewInnerJoin(
-					tableNode("b"),
+					tableNode(db, "b"),
 					plan.NewLeftOuterJoin(
-						tableNode("c"),
-						tableNode("d"),
+						tableNode(db, "c"),
+						tableNode(db, "d"),
 						newEq("c.x=d.x"),
 					),
 					newEq("b.y=d.y"),
@@ -238,13 +249,13 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 			name: "bushy left joins",
 			join: plan.NewLeftOuterJoin(
 				plan.NewLeftOuterJoin(
-					tableNode("a"),
-					tableNode("b"),
+					tableNode(db, "a"),
+					tableNode(db, "b"),
 					newEq("a.x=b.x"),
 				),
 				plan.NewLeftOuterJoin(
-					tableNode("c"),
-					tableNode("d"),
+					tableNode(db, "c"),
+					tableNode(db, "d"),
 					newEq("c.x=d.x"),
 				),
 				newEq("b.y=c.y"),
@@ -277,10 +288,10 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 			name: "degenerate inner join",
 			join: plan.NewLeftOuterJoin(
 				plan.NewCrossJoin(
-					tableNode("a"),
-					tableNode("b"),
+					tableNode(db, "a"),
+					tableNode(db, "b"),
 				),
-				tableNode("c"),
+				tableNode(db, "c"),
 				newEq("b.x=c.x"),
 			),
 			expEdges: []edge{
@@ -301,13 +312,13 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 			name: "degenerate inner join",
 			join: plan.NewFullOuterJoin(
 				plan.NewInnerJoin(
-					tableNode("a"),
-					tableNode("b"),
+					tableNode(db, "a"),
+					tableNode(db, "b"),
 					expression.NewLiteral(true, types.Boolean),
 				),
 				plan.NewInnerJoin(
-					tableNode("c"),
-					tableNode("d"),
+					tableNode(db, "c"),
+					tableNode(db, "d"),
 					expression.NewLiteral(true, types.Boolean),
 				),
 				newEq("a.x=c.x"),
@@ -335,11 +346,11 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 			name: "semi join",
 			join: plan.NewSemiJoin(
 				plan.NewLeftOuterJoin(
-					tableNode("b"),
-					tableNode("c"),
+					tableNode(db, "b"),
+					tableNode(db, "c"),
 					newEq("b.x=c.x"),
 				),
-				tableNode("a"),
+				tableNode(db, "a"),
 				newEq("a.y=b.y"),
 			),
 			expEdges: []edge{
@@ -361,7 +372,7 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			b := NewJoinOrderBuilder(NewMemo(nil, nil, nil, 0, NewDefaultCoster(), NewDefaultCarder()))
+			b := NewJoinOrderBuilder(NewMemo(newContext(pro), nil, nil, 0, NewDefaultCoster(), NewDefaultCarder()))
 			b.populateSubgraph(tt.join)
 			edgesEq(t, tt.expEdges, b.edges)
 		})
@@ -555,6 +566,9 @@ func TestAssociativeTransforms(t *testing.T) {
 }
 
 func TestEnsureClosure(t *testing.T) {
+	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+
 	tests := []struct {
 		in       sql.Node
 		name     string
@@ -565,14 +579,14 @@ func TestEnsureClosure(t *testing.T) {
 			in: plan.NewInnerJoin(
 				plan.NewInnerJoin(
 					plan.NewInnerJoin(
-						tableNode("a"),
-						tableNode("b"),
+						tableNode(db, "a"),
+						tableNode(db, "b"),
 						newEq("a.x = b.x"),
 					),
-					tableNode("c"),
+					tableNode(db, "c"),
 					newEq("b.x = c.x"),
 				),
-				tableNode("d"),
+				tableNode(db, "d"),
 				newEq("c.x = d.x"),
 			),
 			expEdges: []edge{
@@ -603,14 +617,14 @@ func TestEnsureClosure(t *testing.T) {
 			in: plan.NewLeftOuterJoin(
 				plan.NewInnerJoin(
 					plan.NewInnerJoin(
-						tableNode("a"),
-						tableNode("b"),
+						tableNode(db, "a"),
+						tableNode(db, "b"),
 						newEq("a.x = b.x"),
 					),
-					tableNode("c"),
+					tableNode(db, "c"),
 					newEq("b.x = c.x"),
 				),
-				tableNode("d"),
+				tableNode(db, "d"),
 				newEq("c.x = d.x"),
 			),
 			expEdges: []edge{
@@ -627,14 +641,14 @@ func TestEnsureClosure(t *testing.T) {
 			in: plan.NewLeftOuterJoin(
 				plan.NewInnerJoin(
 					plan.NewInnerJoin(
-						tableNode("a"),
-						tableNode("b"),
+						tableNode(db, "a"),
+						tableNode(db, "b"),
 						newEq("a.x = b.x"),
 					),
-					tableNode("c"),
+					tableNode(db, "c"),
 					newEq("b.x = c.x"),
 				),
-				tableNode("d"),
+				tableNode(db, "d"),
 				newEq("c.x = d.x"),
 			),
 			expEdges: []edge{
@@ -650,7 +664,7 @@ func TestEnsureClosure(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			b := NewJoinOrderBuilder(NewMemo(nil, nil, nil, 0, NewDefaultCoster(), NewDefaultCarder()))
+			b := NewJoinOrderBuilder(NewMemo(newContext(pro), nil, nil, 0, NewDefaultCoster(), NewDefaultCarder()))
 			b.populateSubgraph(tt.in)
 			beforeLen := len(b.edges)
 			b.ensureClosure(b.m.Root())
@@ -666,8 +680,8 @@ var childSchema = sql.NewPrimaryKeySchema(sql.Schema{
 	{Name: "z", Type: types.Int64, Nullable: true},
 }, 0)
 
-func tableNode(name string) sql.Node {
-	t := memory.NewTable(name, childSchema, nil)
+func tableNode(db *memory.Database, name string) sql.Node {
+	t := memory.NewTable(db, name, childSchema, nil)
 	return plan.NewResolvedTable(t, nil, nil)
 }
 

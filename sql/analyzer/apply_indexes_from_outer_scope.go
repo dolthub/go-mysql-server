@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/fixidx"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -111,6 +109,10 @@ func pushdownIndexToTable(ctx *sql.Context, a *Analyzer, tableNode sql.NameableN
 					return n, transform.SameTree, nil
 				}
 				ia := iat.IndexedAccess(lookup)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+
 				ret := plan.NewIndexedTableAccess(n, ia, lb)
 				return ret, transform.NewTree, nil
 			}
@@ -145,7 +147,7 @@ func getOuterScopeIndexes(
 		case *plan.Filter:
 
 			var indexAnalyzer *indexAnalyzer
-			indexAnalyzer, err = newIndexAnalyzerForNode(ctx, node)
+			indexAnalyzer, err = newIndexAnalyzerForNode(ctx, node.Child)
 			if err != nil {
 				return false
 			}
@@ -282,7 +284,7 @@ func getSubqueryIndexes(
 func tablesInScope(scope *plan.Scope) []string {
 	tables := make(map[string]bool)
 	for _, node := range scope.InnerToOuter() {
-		for _, col := range fixidx.Schemas(node.Children()) {
+		for _, col := range Schemas(node.Children()) {
 			tables[col.Source] = true
 		}
 	}
@@ -291,4 +293,13 @@ func tablesInScope(scope *plan.Scope) []string {
 		tableSlice = append(tableSlice, table)
 	}
 	return tableSlice
+}
+
+// Schemas returns the Schemas for the nodes given appended in to a single one
+func Schemas(nodes []sql.Node) sql.Schema {
+	var schema sql.Schema
+	for _, n := range nodes {
+		schema = append(schema, n.Schema()...)
+	}
+	return schema
 }

@@ -38,18 +38,14 @@ import (
 )
 
 func TestHandlerOutput(t *testing.T) {
-	e, db1 := setupMemDB(require.New(t))
-	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
-		if dbName == "test" {
-			return db1, nil
-		}
-		return nil, sql.ErrDatabaseNotFound.New(dbName)
-	}
+	e, pro := setupMemDB(require.New(t))
+	dbFunc := pro.Database
+
 	dummyConn := newConn(1)
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			testSessionBuilder,
+			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
@@ -212,19 +208,14 @@ func TestHandlerOutput(t *testing.T) {
 }
 
 func TestHandlerComPrepare(t *testing.T) {
-	e, db := setupMemDB(require.New(t))
+	e, pro := setupMemDB(require.New(t))
 	dummyConn := newConn(1)
-	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
-		if dbName == "test" {
-			return db, nil
-		}
-		return nil, sql.ErrDatabaseNotFound.New(dbName)
-	}
+	dbFunc := pro.Database
 
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			testSessionBuilder,
+			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
@@ -261,7 +252,7 @@ func TestHandlerComPrepare(t *testing.T) {
 			name:      "select statement returns non-nil schema",
 			statement: "select c1 from test where c1 > ?",
 			expected: []*query.Field{
-				{Name: "c1", Type: query.Type_INT32, Charset: mysql.CharacterSetUtf8, ColumnLength: 11},
+				{Name: "c1", Type: query.Type_INT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 11},
 			},
 		},
 		{
@@ -289,18 +280,14 @@ func TestHandlerComPrepare(t *testing.T) {
 }
 
 func TestHandlerComPrepareExecute(t *testing.T) {
-	e, db := setupMemDB(require.New(t))
+	e, pro := setupMemDB(require.New(t))
 	dummyConn := newConn(1)
-	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
-		if dbName == "test" {
-			return db, nil
-		}
-		return nil, sql.ErrDatabaseNotFound.New(dbName)
-	}
+	dbFunc := pro.Database
+
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			testSessionBuilder,
+			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
@@ -332,7 +319,7 @@ func TestHandlerComPrepareExecute(t *testing.T) {
 				},
 			},
 			schema: []*query.Field{
-				{Name: "c1", Type: query.Type_INT32, Charset: mysql.CharacterSetUtf8, ColumnLength: 11},
+				{Name: "c1", Type: query.Type_INT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 11},
 			},
 			expected: []sql.Row{
 				{0}, {1}, {2}, {3}, {4},
@@ -368,18 +355,14 @@ func TestHandlerComPrepareExecute(t *testing.T) {
 }
 
 func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
-	e, db := setupMemDB(require.New(t))
+	e, pro := setupMemDB(require.New(t))
 	dummyConn := newConn(1)
-	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
-		if dbName == "test" {
-			return db, nil
-		}
-		return nil, sql.ErrDatabaseNotFound.New(dbName)
-	}
+	dbFunc := pro.Database
+
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			testSessionBuilder,
+			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
@@ -414,7 +397,7 @@ func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 				},
 			},
 			schema: []*query.Field{
-				{Name: "c1", Type: query.Type_INT32, Charset: mysql.CharacterSetUtf8, ColumnLength: 11},
+				{Name: "c1", Type: query.Type_INT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 11},
 			},
 			expected: []sql.Row{
 				{0}, {1}, {2}, {3}, {4},
@@ -479,13 +462,9 @@ func (tl *TestListener) QueryCompleted(success bool, duration time.Duration) {
 
 func TestServerEventListener(t *testing.T) {
 	require := require.New(t)
-	e, db := setupMemDB(require)
-	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
-		if dbName == "test" {
-			return db, nil
-		}
-		return nil, sql.ErrDatabaseNotFound.New(dbName)
-	}
+	e, pro := setupMemDB(require)
+	dbFunc := pro.Database
+
 	listener := &TestListener{}
 	handler := &Handler{
 		e: e,
@@ -565,13 +544,8 @@ func TestServerEventListener(t *testing.T) {
 
 func TestHandlerKill(t *testing.T) {
 	require := require.New(t)
-	e, db := setupMemDB(require)
-	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
-		if dbName == "test" {
-			return db, nil
-		}
-		return nil, sql.ErrDatabaseNotFound.New(dbName)
-	}
+	e, pro := setupMemDB(require)
+	dbFunc := pro.Database
 
 	handler := &Handler{
 		e: e,
@@ -688,69 +662,64 @@ func TestSchemaToFields(t *testing.T) {
 		{Name: "blob", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 65_535},
 		{Name: "mediumblob", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 16_777_215},
 		{Name: "longblob", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 4_294_967_295},
-		{Name: "tinytext", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8, ColumnLength: 1020},
-		{Name: "text", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8, ColumnLength: 262_140},
-		{Name: "mediumtext", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8, ColumnLength: 67_108_860},
-		{Name: "longtext", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8, ColumnLength: 4_294_967_295},
-		{Name: "json", Type: query.Type_JSON, Charset: mysql.CharacterSetUtf8, ColumnLength: 4_294_967_295},
+		{Name: "tinytext", Type: query.Type_TEXT, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 1020},
+		{Name: "text", Type: query.Type_TEXT, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 262_140},
+		{Name: "mediumtext", Type: query.Type_TEXT, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 67_108_860},
+		{Name: "longtext", Type: query.Type_TEXT, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 4_294_967_295},
+		{Name: "json", Type: query.Type_JSON, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 4_294_967_295},
 
 		// Geometry Types
-		{Name: "geometry", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetUtf8, ColumnLength: 4_294_967_295},
-		{Name: "point", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetUtf8, ColumnLength: 4_294_967_295},
-		{Name: "polygon", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetUtf8, ColumnLength: 4_294_967_295},
-		{Name: "linestring", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetUtf8, ColumnLength: 4_294_967_295},
+		{Name: "geometry", Type: query.Type_GEOMETRY, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 4_294_967_295},
+		{Name: "point", Type: query.Type_GEOMETRY, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 4_294_967_295},
+		{Name: "polygon", Type: query.Type_GEOMETRY, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 4_294_967_295},
+		{Name: "linestring", Type: query.Type_GEOMETRY, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 4_294_967_295},
 
 		// Integer Types
-		{Name: "uint8", Type: query.Type_UINT8, Charset: mysql.CharacterSetUtf8, ColumnLength: 3},
-		{Name: "int8", Type: query.Type_INT8, Charset: mysql.CharacterSetUtf8, ColumnLength: 4},
-		{Name: "uint16", Type: query.Type_UINT16, Charset: mysql.CharacterSetUtf8, ColumnLength: 5},
-		{Name: "int16", Type: query.Type_INT16, Charset: mysql.CharacterSetUtf8, ColumnLength: 6},
-		{Name: "uint24", Type: query.Type_UINT24, Charset: mysql.CharacterSetUtf8, ColumnLength: 8},
-		{Name: "int24", Type: query.Type_INT24, Charset: mysql.CharacterSetUtf8, ColumnLength: 9},
-		{Name: "uint32", Type: query.Type_UINT32, Charset: mysql.CharacterSetUtf8, ColumnLength: 10},
-		{Name: "int32", Type: query.Type_INT32, Charset: mysql.CharacterSetUtf8, ColumnLength: 11},
-		{Name: "uint64", Type: query.Type_UINT64, Charset: mysql.CharacterSetUtf8, ColumnLength: 20},
-		{Name: "int64", Type: query.Type_INT64, Charset: mysql.CharacterSetUtf8, ColumnLength: 20},
+		{Name: "uint8", Type: query.Type_UINT8, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 3},
+		{Name: "int8", Type: query.Type_INT8, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 4},
+		{Name: "uint16", Type: query.Type_UINT16, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 5},
+		{Name: "int16", Type: query.Type_INT16, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 6},
+		{Name: "uint24", Type: query.Type_UINT24, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 8},
+		{Name: "int24", Type: query.Type_INT24, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 9},
+		{Name: "uint32", Type: query.Type_UINT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 10},
+		{Name: "int32", Type: query.Type_INT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 11},
+		{Name: "uint64", Type: query.Type_UINT64, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 20},
+		{Name: "int64", Type: query.Type_INT64, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 20},
 
 		// Floating Point and Decimal Types
-		{Name: "float32", Type: query.Type_FLOAT32, Charset: mysql.CharacterSetUtf8, ColumnLength: 12},
-		{Name: "float64", Type: query.Type_FLOAT64, Charset: mysql.CharacterSetUtf8, ColumnLength: 22},
-		{Name: "decimal10_0", Type: query.Type_DECIMAL, Charset: mysql.CharacterSetUtf8, ColumnLength: 11, Decimals: 0},
-		{Name: "decimal60_30", Type: query.Type_DECIMAL, Charset: mysql.CharacterSetUtf8, ColumnLength: 62, Decimals: 30},
+		{Name: "float32", Type: query.Type_FLOAT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 12},
+		{Name: "float64", Type: query.Type_FLOAT64, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 22},
+		{Name: "decimal10_0", Type: query.Type_DECIMAL, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 11, Decimals: 0},
+		{Name: "decimal60_30", Type: query.Type_DECIMAL, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 62, Decimals: 30},
 
 		// Char, Binary, and Bit Types
-		{Name: "varchar50", Type: query.Type_VARCHAR, Charset: mysql.CharacterSetUtf8, ColumnLength: 50 * 4},
+		{Name: "varchar50", Type: query.Type_VARCHAR, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 50 * 4},
 		{Name: "varbinary12345", Type: query.Type_VARBINARY, Charset: mysql.CharacterSetBinary, ColumnLength: 12345},
 		{Name: "binary123", Type: query.Type_BINARY, Charset: mysql.CharacterSetBinary, ColumnLength: 123},
-		{Name: "char123", Type: query.Type_CHAR, Charset: mysql.CharacterSetUtf8, ColumnLength: 123 * 4},
-		{Name: "bit12", Type: query.Type_BIT, Charset: mysql.CharacterSetUtf8, ColumnLength: 12},
+		{Name: "char123", Type: query.Type_CHAR, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 123 * 4},
+		{Name: "bit12", Type: query.Type_BIT, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 12},
 
 		// Dates
-		{Name: "datetime", Type: query.Type_DATETIME, Charset: mysql.CharacterSetUtf8, ColumnLength: 26},
-		{Name: "timestamp", Type: query.Type_TIMESTAMP, Charset: mysql.CharacterSetUtf8, ColumnLength: 26},
-		{Name: "date", Type: query.Type_DATE, Charset: mysql.CharacterSetUtf8, ColumnLength: 10},
-		{Name: "time", Type: query.Type_TIME, Charset: mysql.CharacterSetUtf8, ColumnLength: 17},
-		{Name: "year", Type: query.Type_YEAR, Charset: mysql.CharacterSetUtf8, ColumnLength: 4},
+		{Name: "datetime", Type: query.Type_DATETIME, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 26},
+		{Name: "timestamp", Type: query.Type_TIMESTAMP, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 26},
+		{Name: "date", Type: query.Type_DATE, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 10},
+		{Name: "time", Type: query.Type_TIME, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 17},
+		{Name: "year", Type: query.Type_YEAR, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 4},
 
 		// Set and Enum Types
-		{Name: "set", Type: query.Type_SET, Charset: mysql.CharacterSetUtf8, ColumnLength: 72},
-		{Name: "enum", Type: query.Type_ENUM, Charset: mysql.CharacterSetUtf8, ColumnLength: 20},
+		{Name: "set", Type: query.Type_SET, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 72},
+		{Name: "enum", Type: query.Type_ENUM, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 20},
 	}
 
 	require.Equal(len(schema), len(expected))
 
-	e, db := setupMemDB(require)
-	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
-		if dbName == "test" {
-			return db, nil
-		}
-		return nil, sql.ErrDatabaseNotFound.New(dbName)
-	}
+	e, pro := setupMemDB(require)
+	dbFunc := pro.Database
 
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			testSessionBuilder,
+			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
@@ -823,25 +792,15 @@ func TestHandlerMaxTextResponseBytes(t *testing.T) {
 func TestHandlerTimeout(t *testing.T) {
 	require := require.New(t)
 
-	e, db1 := setupMemDB(require)
-	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
-		if dbName == "test" {
-			return db1, nil
-		}
-		return nil, sql.ErrDatabaseNotFound.New(dbName)
-	}
+	e, pro := setupMemDB(require)
+	dbFunc := pro.Database
 
-	e2, db2 := setupMemDB(require)
-	dbFunc2 := func(ctx *sql.Context, dbName string) (sql.Database, error) {
-		if dbName == "test" {
-			return db2, nil
-		}
-		return nil, sql.ErrDatabaseNotFound.New(dbName)
-	}
+	e2, pro2 := setupMemDB(require)
+	dbFunc2 := pro2.Database
 
 	timeOutHandler := &Handler{
 		e: e,
-		sm: NewSessionManager(testSessionBuilder,
+		sm: NewSessionManager(testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
@@ -852,7 +811,7 @@ func TestHandlerTimeout(t *testing.T) {
 
 	noTimeOutHandler := &Handler{
 		e: e2,
-		sm: NewSessionManager(testSessionBuilder,
+		sm: NewSessionManager(testSessionBuilder(pro2),
 			sql.NoopTracer,
 			dbFunc2,
 			sql.NewMemoryManager(nil),
@@ -888,13 +847,9 @@ func TestHandlerTimeout(t *testing.T) {
 
 func TestOkClosedConnection(t *testing.T) {
 	require := require.New(t)
-	e, db := setupMemDB(require)
-	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
-		if dbName == "test" {
-			return db, nil
-		}
-		return nil, sql.ErrDatabaseNotFound.New(dbName)
-	}
+	e, pro := setupMemDB(require)
+	dbFunc := pro.Database
+
 	port, err := getFreePort()
 	require.NoError(err)
 
@@ -910,7 +865,7 @@ func TestOkClosedConnection(t *testing.T) {
 	h := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			testSessionBuilder,
+			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
@@ -931,13 +886,8 @@ func TestOkClosedConnection(t *testing.T) {
 
 // Tests the CLIENT_FOUND_ROWS capabilities flag
 func TestHandlerFoundRowsCapabilities(t *testing.T) {
-	e, db := setupMemDB(require.New(t))
-	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
-		if dbName == "test" {
-			return db, nil
-		}
-		return nil, sql.ErrDatabaseNotFound.New(dbName)
-	}
+	e, pro := setupMemDB(require.New(t))
+	dbFunc := pro.Database
 	dummyConn := newConn(1)
 
 	// Set the capabilities to include found rows
@@ -947,7 +897,7 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			testSessionBuilder,
+			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
@@ -1008,24 +958,25 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 	}
 }
 
-func setupMemDB(require *require.Assertions) (*sqle.Engine, sql.Database) {
+func setupMemDB(require *require.Assertions) (*sqle.Engine, *memory.DbProvider) {
 	db := memory.NewDatabase("test")
 	pro := memory.NewDBProvider(db)
 	e := sqle.NewDefault(pro)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
 
-	tableTest := memory.NewTable("test", sql.NewPrimaryKeySchema(sql.Schema{{Name: "c1", Type: types.Int32, Source: "test"}}), nil)
+	tableTest := memory.NewTable(db, "test", sql.NewPrimaryKeySchema(sql.Schema{{Name: "c1", Type: types.Int32, Source: "test"}}), nil)
 	tableTest.EnablePrimaryKeyIndexes()
 
 	for i := 0; i < 1010; i++ {
 		require.NoError(tableTest.Insert(
-			sql.NewEmptyContext(),
+			ctx,
 			sql.NewRow(int32(i)),
 		))
 	}
 
 	db.AddTable("test", tableTest)
 
-	return e, db
+	return e, pro
 }
 
 func getFreePort() (string, error) {
@@ -1076,8 +1027,11 @@ func brokenTestServer(t *testing.T, ready chan struct{}, port string) {
 
 // This session builder is used as dummy mysql Conn is not complete and
 // causes panic when accessing remote address.
-func testSessionBuilder(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, error) {
-	return sql.NewBaseSessionWithClientServer(addr, sql.Client{Address: "127.0.0.1:34567", User: c.User, Capabilities: c.Capabilities}, c.ConnectionID), nil
+func testSessionBuilder(pro *memory.DbProvider) func(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, error) {
+	return func(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, error) {
+		base := sql.NewBaseSessionWithClientServer(addr, sql.Client{Address: "127.0.0.1:34567", User: c.User, Capabilities: c.Capabilities}, c.ConnectionID)
+		return memory.NewSession(base, pro), nil
+	}
 }
 
 type mockConn struct {

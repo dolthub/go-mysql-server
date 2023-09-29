@@ -146,7 +146,9 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 }
 
 func (b *BaseBuilder) buildDropConstraint(ctx *sql.Context, n *plan.DropConstraint, row sql.Row) (sql.RowIter, error) {
-	return nil, fmt.Errorf("%T does not have an execution iterator", n)
+	// DropConstraint should be replaced by another node type (DropForeignKey, DropCheck, etc.) during analysis,
+	// so this is an error
+	return nil, fmt.Errorf("%T does not have an execution iterator, this is a bug", n)
 }
 
 func (b *BaseBuilder) buildCreateView(ctx *sql.Context, n *plan.CreateView, row sql.Row) (sql.RowIter, error) {
@@ -511,9 +513,8 @@ func (b *BaseBuilder) buildCreateUser(ctx *sql.Context, n *plan.CreateUser, row 
 }
 
 func (b *BaseBuilder) buildAlterPK(ctx *sql.Context, n *plan.AlterPK, row sql.Row) (sql.RowIter, error) {
-	// We grab the table from the database to ensure that state is properly refreshed, thereby preventing multiple keys
-	// being defined.
-	// Grab the table fresh from the database.
+	// We need to get the current table from the database because this statement could be one clause in an alter table
+	// statement and the table may have changed since the analysis phase
 	table, err := getTableFromDatabase(ctx, n.Database(), n.Table)
 	if err != nil {
 		return nil, err
@@ -905,7 +906,7 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 		}
 	}
 
-	if len(n.ChDefs) > 0 {
+	if len(n.Checks()) > 0 {
 		err = n.CreateChecks(ctx, tableNode)
 		if err != nil {
 			return sql.RowsToRowIter(), err

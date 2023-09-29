@@ -28,7 +28,10 @@ import (
 
 func TestFilter(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewEmptyContext()
+
+	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
 
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col1", Type: types.Text, Nullable: true},
@@ -36,7 +39,7 @@ func TestFilter(t *testing.T) {
 		{Name: "col3", Type: types.Int32, Nullable: true},
 		{Name: "col4", Type: types.Int64, Nullable: true},
 	})
-	child := memory.NewTable("test", childSchema, nil)
+	child := memory.NewTable(db.BaseDatabase, "test", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow("col1_1", "col2_1", int32(1111), int64(2222)),
@@ -45,7 +48,7 @@ func TestFilter(t *testing.T) {
 	}
 
 	for _, r := range rows {
-		require.NoError(child.Insert(sql.NewEmptyContext(), r))
+		require.NoError(child.Insert(ctx, r))
 	}
 
 	f := plan.NewFilter(

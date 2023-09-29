@@ -421,7 +421,8 @@ func NewResolveSubqueryExprSelector(sel RuleSelector) RuleSelector {
 			hoistOutOfScopeFiltersId,
 			hoistSelectExistsId,
 			transformJoinApplyId,
-			finalizeSubqueriesId:
+			finalizeSubqueriesId,
+			assignExecIndexesId:
 			return false
 		}
 		return sel(id)
@@ -440,7 +441,8 @@ func NewFinalizeSubquerySel(sel RuleSelector) RuleSelector {
 			finalizeSubqueriesId,
 			hoistOutOfScopeFiltersId,
 			cacheSubqueryResultsId,
-			TrackProcessId:
+			TrackProcessId,
+			assignExecIndexesId:
 			return false
 		}
 		return sel(id)
