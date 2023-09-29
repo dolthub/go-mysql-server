@@ -277,7 +277,6 @@ func (b *BaseBuilder) loopAcquireRowIter(ctx *sql.Context, row sql.Row, label st
 	}
 	if err == io.EOF {
 		blockIter = sql.RowsToRowIter()
-		err = nil
 	}
 	return blockIter, err
 }
