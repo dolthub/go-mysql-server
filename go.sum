@@ -58,14 +58,6 @@ github.com/dolthub/jsonpath v0.0.2-0.20230525180605-8dc13778fd72 h1:NfWmngMi1CYU
 github.com/dolthub/jsonpath v0.0.2-0.20230525180605-8dc13778fd72/go.mod h1:ZWUdY4iszqRQ8OcoXClkxiAVAoWoK3cq0Hvv4ddGRuM=
 github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81 h1:7/v8q9XGFa6q5Ap4Z/OhNkAMBaK5YeuEzwJt+NZdhiE=
 github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81/go.mod h1:siLfyv2c92W1eN/R4QqG/+RjjX5W2+gCTRjZxBjI3TY=
-github.com/dolthub/vitess v0.0.0-20230920190630-648c869b4af5 h1:RfDb0ycMTSPu+0dpJZSNZAiI3lanJR5IrHirEVP/CVg=
-github.com/dolthub/vitess v0.0.0-20230920190630-648c869b4af5/go.mod h1:IwjNXSQPymrja5pVqmfnYdcy7Uv7eNJNBPK/MEh9OOw=
-github.com/dolthub/vitess v0.0.0-20230920203619-57d79c54890e h1:Rbnt8oJOE2ayE1XST4Dl9fv2m0kU1suMqDZEQRU5iBQ=
-github.com/dolthub/vitess v0.0.0-20230920203619-57d79c54890e/go.mod h1:IwjNXSQPymrja5pVqmfnYdcy7Uv7eNJNBPK/MEh9OOw=
-github.com/dolthub/vitess v0.0.0-20230920212116-eb645ef178c2 h1:L2ST5YNistuYVkVfZcTp5ItVpTNQ0i6oGGM7l6If9ME=
-github.com/dolthub/vitess v0.0.0-20230920212116-eb645ef178c2/go.mod h1:IwjNXSQPymrja5pVqmfnYdcy7Uv7eNJNBPK/MEh9OOw=
-github.com/dolthub/vitess v0.0.0-20230925173309-ea0c9a6095af h1:t4Fn1+oxtfdpW0tIJTlGFkuKiuLjbwNH0W72EiC9ueA=
-github.com/dolthub/vitess v0.0.0-20230925173309-ea0c9a6095af/go.mod h1:IwjNXSQPymrja5pVqmfnYdcy7Uv7eNJNBPK/MEh9OOw=
 github.com/dolthub/vitess v0.0.0-20230929000236-6c60b48b32da h1:QWw80StS0Sxn9UArlg8JE15Rka8g0Uz/nrIhC6K8PUA=
 github.com/dolthub/vitess v0.0.0-20230929000236-6c60b48b32da/go.mod h1:IwjNXSQPymrja5pVqmfnYdcy7Uv7eNJNBPK/MEh9OOw=
 github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
