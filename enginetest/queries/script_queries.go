@@ -2024,8 +2024,33 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "unix_timestamp function usage",
+		SetUpScript: []string{
+			// NOTE: session time zone needs to be set as UNIX_TIMESTAMP function depends on it and converts the final result
+			"SET @@SESSION.time_zone = 'UTC';",
+			"CREATE TABLE `datetime_table` (   `i` bigint NOT NULL,   `date_col` date,   `datetime_col` datetime,   `timestamp_col` timestamp,   `time_col` time(6),   PRIMARY KEY (`i`) )",
+			`insert into datetime_table values
+    (1, '2019-12-31T12:00:00Z', '2020-01-01T12:00:00Z', '2020-01-02T12:00:00Z', '03:10:0'),
+    (2, '2020-01-03T12:00:00Z', '2020-01-04T12:00:00Z', '2020-01-05T12:00:00Z', '04:00:44'),
+    (3, '2020-01-07T00:00:00Z', '2020-01-07T12:00:00Z', '2020-01-07T12:00:01Z', '15:00:00.005000')`,
+			`create index datetime_table_d on datetime_table (date_col)`,
+			`create index datetime_table_dt on datetime_table (datetime_col)`,
+			`create index datetime_table_ts on datetime_table (timestamp_col)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT unix_timestamp(timestamp_col) div 60 * 60 as timestamp_col, avg(i) from datetime_table group by 1 order by unix_timestamp(timestamp_col) div 60 * 60",
+				Expected: []sql.Row{
+					{int64(1577966400), 1.0},
+					{int64(1578225600), 2.0},
+					{int64(1578398400), 3.0}},
+			},
+		},
+	},
+	{
 		Name: "Issue #499", // https://github.com/dolthub/go-mysql-server/issues/499
 		SetUpScript: []string{
+			"SET @@SESSION.time_zone = 'UTC';",
 			"CREATE TABLE test (time TIMESTAMP, value DOUBLE);",
 			`INSERT INTO test VALUES 
 			("2021-07-04 10:00:00", 1.0),
