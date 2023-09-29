@@ -196,25 +196,109 @@ func TestSingleScript(t *testing.T) {
 	var scripts = []queries.ScriptTest{
 		{
 			Name: "Identifier lengths",
+			SetUpScript: []string{
+				"create table t1 (a int primary key, b int)",
+				"create table parent (a int primary key)",
+			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
 					// 64 characters
-					Query: "create table abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl (a int primary key)",
+					Query: "alter table t1 rename to abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl",
+					Expected: []sql.Row{{types.NewOkResult(0)}},
+				},
+				{
+					// reset name
+					Query: "alter table abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl rename to t1",
 					Expected: []sql.Row{{types.NewOkResult(0)}},
 				},
 				{
 					// 65 characters
-					Query: "create table abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm (a int primary key)",
+					Query: "alter table t1 rename to abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm",
 					ExpectedErr: sql.ErrInvalidIdentifier,
 				},
 				{
 					// 64 characters
-					Query: "create table a (abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl int primary key)",
+					Query: "alter table t1 rename column a to abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl",
+					Expected: []sql.Row{{types.NewOkResult(0)}},
+				},
+				{
+					// reset name
+					Query: "alter table t1 rename column abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl to a",
 					Expected: []sql.Row{{types.NewOkResult(0)}},
 				},
 				{
 					// 65 characters
-					Query: "create table a (abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm int primary key)",
+					Query: "alter table t1 rename column a to abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm",
+					ExpectedErr: sql.ErrInvalidIdentifier,
+				},
+				{
+					// 64 characters
+					Query: "alter table t1 add constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl check (a > 0)",
+					Expected: []sql.Row{{types.NewOkResult(0)}},
+				},
+				{
+					// 65 characters
+					Query: "alter table t1 add constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm check (a > 0)",
+					ExpectedErr: sql.ErrInvalidIdentifier,
+				},
+				{
+					// 64 characters
+					Query: "alter table t1 add constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk0 foreign key(a) references parent(a)",
+					Expected: []sql.Row{{types.NewOkResult(0)}},
+				},
+				{
+					// 65 characters
+					Query: "alter table t1 add constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm foreign key(a) references parent(a)",
+					ExpectedErr: sql.ErrInvalidIdentifier,
+				},
+				{
+					// 64 characters
+					Query: "alter table t1 add constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk1 unique key(a)",
+					Expected: []sql.Row{{types.NewOkResult(0)}},
+				},
+				{
+					// 65 characters
+					Query: "alter table t1 add constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm unique key(a)",
+					ExpectedErr: sql.ErrInvalidIdentifier,
+				},
+				{
+					// 64 characters
+					Query: "alter table t1 rename index abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk1 to abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk2",
+					Expected: []sql.Row{{types.NewOkResult(0)}},
+				},
+				{
+					// 65 characters
+					Query: "alter table t1 rename index abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk2 to abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm",
+					ExpectedErr: sql.ErrInvalidIdentifier,
+				},
+				{
+					// 64 characters
+					Query: "alter table t1 add column abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk2 int",
+					Expected: []sql.Row{{types.NewOkResult(0)}},
+				},
+				{
+					// 65 characters
+					Query: "alter table t1 add column abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm int",
+					ExpectedErr: sql.ErrInvalidIdentifier,
+				},
+				{
+					// 64 characters
+					Query: "alter table t1 change column abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk2 abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk3 int",
+					Expected: []sql.Row{{types.NewOkResult(0)}},
+				},
+				{
+					// 65 characters
+					Query: "alter table t1 change column abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk3 abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm int",
+					ExpectedErr: sql.ErrInvalidIdentifier,
+				},
+				{
+					// 64 characters
+					Query: "alter table t1 add index abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk3 (b)",
+					Expected: []sql.Row{{types.NewOkResult(0)}},
+				},
+				{
+					// 65 characters
+					Query: "alter table t1 add index abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm (b)",
 					ExpectedErr: sql.ErrInvalidIdentifier,
 				},
 			},

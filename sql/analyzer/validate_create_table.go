@@ -61,6 +61,10 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 	return n, transform.SameTree, nil
 }
 
+func validateAlterTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return n, transform.SameTree, nil	
+}
+
 // validateIdentifiers validates various constraints about identifiers in CREATE TABLE / ALTER TABLE 
 // statements.
 func validateIdentifiers(name string, spec *plan.TableSpec) error {
@@ -273,6 +277,11 @@ func validateRenameColumn(initialSch, sch sql.Schema, rc *plan.RenameColumn) (sq
 	table := rc.Table
 	nameable := table.(sql.Nameable)
 
+	err := validateIdentifier(rc.NewColumnName)
+	if err != nil {
+		return nil, err
+	}
+
 	// Check for column name collisions
 	if sch.Contains(rc.NewColumnName, nameable.Name()) {
 		return nil, sql.ErrColumnExists.New(rc.NewColumnName)
@@ -285,7 +294,7 @@ func validateRenameColumn(initialSch, sch sql.Schema, rc *plan.RenameColumn) (sq
 		return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), rc.ColumnName)
 	}
 
-	err := validateColumnNotUsedInCheckConstraint(rc.ColumnName, rc.Checks())
+	err = validateColumnNotUsedInCheckConstraint(rc.ColumnName, rc.Checks())
 	if err != nil {
 		return nil, err
 	}
@@ -296,6 +305,11 @@ func validateRenameColumn(initialSch, sch sql.Schema, rc *plan.RenameColumn) (sq
 func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddColumn) (sql.Schema, error) {
 	table := ac.Table
 	nameable := table.(sql.Nameable)
+
+	err := validateIdentifier(ac.Column().Name)
+	if err != nil {
+		return nil, err
+	}
 
 	// Name collisions
 	if schema.Contains(ac.Column().Name, nameable.Name()) {
@@ -329,6 +343,11 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 	table := mc.Table
 	nameable := table.(sql.Nameable)
 
+	err := validateIdentifier(mc.NewColumn().Name)
+	if err != nil {
+		return nil, err
+	}
+	
 	// Look for the old column and throw an error if it's not there. The column cannot have been renamed in the same
 	// statement. This matches the MySQL behavior.
 	if !schema.Contains(mc.Column(), nameable.Name()) ||
@@ -338,7 +357,7 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 
 	newSch := replaceInSchema(schema, mc.NewColumn(), nameable.Name())
 
-	err := validateAutoIncrementModify(newSch, keyedColumns)
+	err = validateAutoIncrementModify(newSch, keyedColumns)
 	if err != nil {
 		return nil, err
 	}
@@ -378,6 +397,13 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 	}
 
 	return newSch, nil
+}
+
+func validateIdentifier(name string) error {
+	if len(name) > sql.MaxIdentifierLength {
+		return sql.ErrInvalidIdentifier.New(name)
+	}
+	return nil
 }
 
 func validateDropColumn(initialSch, sch sql.Schema, dc *plan.DropColumn) (sql.Schema, error) {
@@ -479,11 +505,16 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 
 	switch ai.Action {
 	case plan.IndexAction_Create:
+		err := validateIdentifier(ai.IndexName)
+		if err != nil {
+			return nil, err
+		}
+		
 		badColName, ok := missingIdxColumn(ai.Columns, sch, tableName)
 		if !ok {
 			return nil, sql.ErrKeyColumnDoesNotExist.New(badColName)
 		}
-		err := validateIndexType(ctx, ai.Columns, sch, ai.Constraint == sql.IndexConstraint_Fulltext)
+		err = validateIndexType(ctx, ai.Columns, sch, ai.Constraint == sql.IndexConstraint_Fulltext)
 		if err != nil {
 			return nil, err
 		}
@@ -526,6 +557,11 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 		// Remove the index from the list
 		return append(indexes[:savedIdx], indexes[savedIdx+1:]...), nil
 	case plan.IndexAction_Rename:
+		err := validateIdentifier(ai.IndexName)
+		if err != nil {
+			return nil, err
+		}
+		
 		savedIdx := -1
 		for i, idx := range indexes {
 			if strings.EqualFold(idx, ai.PreviousIndexName) {
