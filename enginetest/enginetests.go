@@ -57,7 +57,6 @@ func TestQueries(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	ctx := NewContext(harness)
-	RunQuery(t, e, harness, "SET @@SESSION.time_zone = 'UTC';")
 	for _, tt := range queries.QueryTests {
 		t.Run(tt.Query, func(t *testing.T) {
 			if sh, ok := harness.(SkippingHarness); ok {
@@ -334,8 +333,6 @@ func TestReadOnlyDatabases(t *testing.T, harness ReadOnlyDatabaseHarness) {
 	engine := mustNewEngine(t, harness)
 	engine, err := harness.NewReadOnlyEngine(engine.EngineAnalyzer().Catalog.Provider)
 	require.NoError(t, err)
-
-	RunQuery(t, engine, harness, "SET @@SESSION.time_zone = 'UTC';")
 
 	for _, querySet := range [][]queries.QueryTest{
 		queries.QueryTests,
