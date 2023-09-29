@@ -669,6 +669,11 @@ var AlterTableScripts = []ScriptTest{
 				Query: "alter table t1 add index abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm (b)",
 				ExpectedErr: sql.ErrInvalidIdentifier,
 			},
+			{
+				// test of the same in an alter block
+				Query: "alter table t1 add column d int, add index abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm (b)",
+				ExpectedErr: sql.ErrInvalidIdentifier,
+			},
 		},
 	},
 }
