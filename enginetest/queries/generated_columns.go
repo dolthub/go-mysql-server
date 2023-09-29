@@ -164,14 +164,14 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{1, 2, 3}, {2, 3, 5}, {3, 4, 7}},
 			},
 			{
-				Query:    "show create table t1",
+				Query: "show create table t1",
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
-					"  `a` int NOT NULL,\n" +
-					"  `b` int,\n" +
-					"  `c` int GENERATED ALWAYS AS ((a + b)) STORED,\n" +
-					"  PRIMARY KEY (`a`)\n" +
-					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						"  `a` int NOT NULL,\n" +
+						"  `b` int,\n" +
+						"  `c` int GENERATED ALWAYS AS ((a + b)) STORED,\n" +
+						"  PRIMARY KEY (`a`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
