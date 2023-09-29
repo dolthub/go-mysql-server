@@ -475,6 +475,27 @@ var CreateTableScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "case insensitive column name uniqueness",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "create table t1 (abc int, abc int)",
+				ExpectedErr: sql.ErrDuplicateColumn,
+			},
+			{
+				Query: "create table t2 (ABC int, ABC int)",
+				ExpectedErr: sql.ErrDuplicateColumn,
+			},
+			{
+				Query: "create table t3 (a int, A int)",
+				ExpectedErr: sql.ErrDuplicateColumn,
+			},
+			{
+				Query: "create table t4 (abc int, def int, Abc int)",
+				ExpectedErr: sql.ErrDuplicateColumn,
+			},
+		},
+	},
 }
 
 var CreateTableAutoIncrementTests = []ScriptTest{

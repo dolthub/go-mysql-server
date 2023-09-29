@@ -105,10 +105,16 @@ func validateIdentifiers(name string, spec *plan.TableSpec) error {
 		return sql.ErrInvalidIdentifier.New(name)
 	}
 
+	colNames := make(map[string]bool)
 	for _, col := range spec.Schema.Schema {
 		if len(col.Name) > sql.MaxIdentifierLength {
 			return sql.ErrInvalidIdentifier.New(col.Name)
 		}
+		lower := strings.ToLower(col.Name)
+		if colNames[lower] {
+			return sql.ErrDuplicateColumn.New(col.Name)
+		}
+		colNames[lower] = true
 	}
 
 	for _, chDef := range spec.ChDefs {
