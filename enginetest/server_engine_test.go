@@ -2,25 +2,25 @@ package enginetest_test
 
 import (
 	"context"
+	gosql "database/sql"
 	"fmt"
 	"math"
 	"net"
 	"testing"
 
-	gosql "database/sql"
-	sqle "github.com/dolthub/go-mysql-server"
+	"github.com/dolthub/vitess/go/mysql"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/gocraft/dbr/v2"
+	"github.com/stretchr/testify/require"
 
+	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/vitess/go/mysql"
-	"github.com/gocraft/dbr/v2"
-	"github.com/stretchr/testify/require"
 )
 
 var (
-	address = "localhost"
+	address   = "localhost"
 	noUserFmt = "no_user:@tcp(%s:%d)/"
 )
 
@@ -87,8 +87,8 @@ type serverScriptTestAssertion struct {
 }
 
 type serverScriptTest struct {
-	name string
-	setup []string
+	name       string
+	setup      []string
 	assertions []serverScriptTestAssertion
 }
 
@@ -116,33 +116,33 @@ func TestServerPreparedStatements(t *testing.T) {
 			},
 			assertions: []serverScriptTestAssertion{
 				{
-					query: "insert into unsigned_tbl values (?)",
-					args: []any{uint64(math.MaxInt64)},
-					isExec: true,
+					query:                "insert into unsigned_tbl values (?)",
+					args:                 []any{uint64(math.MaxInt64)},
+					isExec:               true,
 					expectedRowsAffected: 1,
 				},
 				{
-					query: "insert into unsigned_tbl values (?)",
-					args: []any{uint64(math.MaxInt64+1)},
-					isExec: true,
+					query:                "insert into unsigned_tbl values (?)",
+					args:                 []any{uint64(math.MaxInt64 + 1)},
+					isExec:               true,
 					expectedRowsAffected: 1,
 				},
 				{
-					query: "insert into unsigned_tbl values (?)",
-					args: []any{uint64(math.MaxUint64)},
-					isExec: true,
+					query:                "insert into unsigned_tbl values (?)",
+					args:                 []any{uint64(math.MaxUint64)},
+					isExec:               true,
 					expectedRowsAffected: 1,
 				},
 				{
-					query: "insert into unsigned_tbl values (?)",
-					args: []any{int64(-1)},
-					isExec: true,
+					query:       "insert into unsigned_tbl values (?)",
+					args:        []any{int64(-1)},
+					isExec:      true,
 					expectedErr: true,
 				},
 				{
-					query: "insert into unsigned_tbl values (?)",
-					args: []any{int64(math.MinInt64)},
-					isExec: true,
+					query:       "insert into unsigned_tbl values (?)",
+					args:        []any{int64(math.MinInt64)},
+					isExec:      true,
 					expectedErr: true,
 				},
 				{
