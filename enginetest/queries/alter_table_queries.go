@@ -562,6 +562,229 @@ var AlterTableScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "ALTER TABLE ... ALTER ADD CHECK / DROP CHECK",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE test ADD CONSTRAINT cx CHECK (v1 < 100)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE test DROP CHECK cx, ADD CHECK (v1 < 50)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:       "INSERT INTO test VALUES (1, 99)",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+			{
+				Query:    "INSERT INTO test VALUES (2, 2)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE AUTO INCREMENT no-ops on table with no original auto increment key",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key)",
+			"ALTER TABLE `test` auto_increment = 2;",
+			"INSERT INTO test VALUES (1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM test",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE MODIFY column with UNIQUE KEY",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key, uk int unique)",
+			"ALTER TABLE `test` MODIFY column uk int auto_increment",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"uk", "int", "YES", "UNI", "NULL", "auto_increment"},
+				},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE MODIFY column making UNIQUE",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key, uk int)",
+			"ALTER TABLE `test` MODIFY column uk int unique",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "INSERT INTO test VALUES (1, 1), (2, 1)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE MODIFY column with KEY",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key, mk int, index (mk))",
+			"ALTER TABLE `test` MODIFY column mk int auto_increment",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"mk", "int", "YES", "MUL", "NULL", "auto_increment"},
+				},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE AUTO INCREMENT no-ops on table with no original auto increment key",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key)",
+			"ALTER TABLE `test` auto_increment = 2;",
+			"INSERT INTO test VALUES (1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM test",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
+		Name: "Identifier lengths",
+		SetUpScript: []string{
+			"create table t1 (a int primary key, b int)",
+			"create table parent (a int primary key)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// 64 characters
+				Query:    "alter table t1 rename to abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// reset name
+				Query:    "alter table abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl rename to t1",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// 65 characters
+				Query:       "alter table t1 rename to abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm",
+				ExpectedErr: sql.ErrInvalidIdentifier,
+			},
+			{
+				// 64 characters
+				Query:    "alter table t1 rename column a to abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// reset name
+				Query:    "alter table t1 rename column abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl to a",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// 65 characters
+				Query:       "alter table t1 rename column a to abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm",
+				ExpectedErr: sql.ErrInvalidIdentifier,
+			},
+			{
+				// 64 characters
+				Query:    "alter table t1 add constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl check (a > 0)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// 65 characters
+				Query:       "alter table t1 add constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm check (a > 0)",
+				ExpectedErr: sql.ErrInvalidIdentifier,
+			},
+			{
+				// 64 characters
+				Query:    "alter table t1 add constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk0 foreign key(a) references parent(a)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// 65 characters
+				Query:       "alter table t1 add constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm foreign key(a) references parent(a)",
+				ExpectedErr: sql.ErrInvalidIdentifier,
+			},
+			{
+				// 64 characters
+				Query:    "alter table t1 add constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk1 unique key(a)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// 65 characters
+				Query:       "alter table t1 add constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm unique key(a)",
+				ExpectedErr: sql.ErrInvalidIdentifier,
+			},
+			{
+				// 64 characters
+				Query:    "alter table t1 rename index abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk1 to abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk2",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// 65 characters
+				Query:       "alter table t1 rename index abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk2 to abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm",
+				ExpectedErr: sql.ErrInvalidIdentifier,
+			},
+			{
+				// 64 characters
+				Query:    "alter table t1 add column abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk2 int",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// 65 characters
+				Query:       "alter table t1 add column abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm int",
+				ExpectedErr: sql.ErrInvalidIdentifier,
+			},
+			{
+				// 64 characters
+				Query:    "alter table t1 change column abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk2 abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk3 int",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// 65 characters
+				Query:       "alter table t1 change column abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk3 abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm int",
+				ExpectedErr: sql.ErrInvalidIdentifier,
+			},
+			{
+				// 64 characters
+				Query:    "alter table t1 add index abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk3 (b)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// 65 characters
+				Query:       "alter table t1 add index abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm (b)",
+				ExpectedErr: sql.ErrInvalidIdentifier,
+			},
+			{
+				// test of the same in an alter block
+				Query:       "alter table t1 add column d int, add index abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm (b)",
+				ExpectedErr: sql.ErrInvalidIdentifier,
+			},
+		},
+	},
+	{
+		Name: "Add a column with the same case-insensitive name",
+		SetUpScript: []string{
+			"create table t1 (abc int primary key, def int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table t1 add column ABC int",
+				ExpectedErr: sql.ErrColumnExists,
+			},
+		},
+	},
 }
 
 var AlterTableAddAutoIncrementScripts = []ScriptTest{

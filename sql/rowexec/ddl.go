@@ -192,7 +192,7 @@ func (b *BaseBuilder) buildCreateCheck(ctx *sql.Context, n *plan.CreateCheck, ro
 	if err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(), nil
+	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
 
 func (b *BaseBuilder) buildAlterDefaultSet(ctx *sql.Context, n *plan.AlterDefaultSet, row sql.Row) (sql.RowIter, error) {

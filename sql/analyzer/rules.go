@@ -22,6 +22,7 @@ var OnceBeforeDefault = []Rule{
 	{applyEventSchedulerId, applyEventScheduler},
 	{validateOffsetAndLimitId, validateLimitAndOffset},
 	{validateCreateTableId, validateCreateTable},
+	{validateAlterTableId, validateAlterTable},
 	{validateExprSemId, validateExprSem},
 	{validateCreateProcedureId, validateCreateProcedure},
 	{resolveDropConstraintId, resolveDropConstraint},

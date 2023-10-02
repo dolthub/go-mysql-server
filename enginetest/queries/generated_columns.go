@@ -148,22 +148,31 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 		},
 	},
-	// Broken: adding a column with a default doesn't work
-	// {
-	// 	Name: "add new generated column",
-	// 	SetUpScript: []string{
-	// 		"create table t1 (a int primary key, b int)",
-	// 		"insert into t1 values (1,2), (2,3), (3,4)",
-	// 	},
-	// 	Assertions: []ScriptTestAssertion{
-	// 		{
-	// 			Query:    "alter table t1 add column c int as (a + b) stored",
-	// 			Expected: []sql.Row{{types.NewOkResult(0)}},
-	// 		},
-	// 		{
-	// 			Query:    "select * from t1 order by a",
-	// 			Expected: []sql.Row{{1, 2, 3}, {2, 3, 5}, {3, 4, 7}},
-	// 		},
-	// 	},
-	// },
+	{
+		Name: "add new generated column",
+		SetUpScript: []string{
+			"create table t1 (a int primary key, b int)",
+			"insert into t1 values (1,2), (2,3), (3,4)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t1 add column c int as (a + b) stored",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "select * from t1 order by a",
+				Expected: []sql.Row{{1, 2, 3}, {2, 3, 5}, {3, 4, 7}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+						"  `a` int NOT NULL,\n" +
+						"  `b` int,\n" +
+						"  `c` int GENERATED ALWAYS AS ((a + b)) STORED,\n" +
+						"  PRIMARY KEY (`a`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
 }
