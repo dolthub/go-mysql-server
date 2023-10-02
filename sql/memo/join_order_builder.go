@@ -151,11 +151,8 @@ func (j *joinOrderBuilder) ReorderJoin(n sql.Node) {
 	// `joinOrderBuilder.dbSube` currently computes every possible pair of relations-sets to see if they match an edge
 	// in the graph. This requires O(4^N) runtime on the number of relations and thus does not scale for large joins.
 	// If the number of relations is above a threshold, we won't attempt to reorder.
-	if len(j.vertices) > 20 {
-		return
-	}
 	j.ensureClosure(j.m.root)
-	j.dbSube()
+	j.dbSube(j.m.root)
 }
 
 // populateSubgraph recursively tracks new join nodes as edges and new
@@ -440,10 +437,63 @@ func (j *joinOrderBuilder) checkSize() {
 	}
 }
 
+func getColumnRefsFromScalar(s ScalarExpr) []*ColRef {
+	var result []*ColRef
+	DfsScalar(s, func(e ScalarExpr) (err error) {
+		if c, ok := e.(*ColRef); ok {
+			result = append(result, c)
+		}
+		return
+	})
+	return result
+}
+
+// fastReorder is an alternate implementation of dbSube that is optimized for joins on a large number of tables.
+// For these joins, a brute force approach is no longer practical. So instead, we only want to generate joins that we
+// believe will easy to optimize. In particular, we look for joins where one side of the join is an indexible table.
+// (This particular implementation uses the FDs strict keys as a proxy for indexible columns, since that information
+// is easier to query.)
+func (j *joinOrderBuilder) fastReorder(grp *ExprGroup, strictKey sql.ColSet) {
+	for _, edge := range j.edges {
+		for _, filter := range edge.filters {
+			for _, colRef := range getColumnRefsFromScalar(filter) {
+				colId := colRef.Col
+				table := colRef.Table
+				if strictKey.Contains(colId) {
+					var tableIdx uint64
+					for i, grpId := range j.vertexGroups {
+						if grpId == table {
+							tableIdx = uint64(i)
+							break
+						}
+					}
+					single := vertexSet(0).add(tableIdx)
+					// only add plans where the strict key is alone on one side of the join.
+					all := j.allVertices()
+					for subset := vertexSet(1); subset <= all; subset++ {
+						if subset == single {
+							continue
+						}
+						removed := subset.difference(single)
+						j.addPlans(removed, single)
+					}
+				}
+			}
+		}
+	}
+}
+
 // dpSube iterates all disjoint combinations of table sets,
 // adding plans to the tree when we find two sets that can
 // be joined
-func (j *joinOrderBuilder) dbSube() {
+func (j *joinOrderBuilder) dbSube(grp *ExprGroup) {
+	fds := grp.RelProps.FuncDeps()
+	strictKey, hasStrict := fds.StrictKey()
+	// Escape hatch: if there are too many relations, prefer a faster but less comprehensive approach.
+	if len(j.vertices) > 20 && hasStrict {
+		j.fastReorder(grp, strictKey)
+		return
+	}
 	all := j.allVertices()
 	for subset := vertexSet(1); subset <= all; subset++ {
 		if subset.isSingleton() {
