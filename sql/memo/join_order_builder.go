@@ -148,6 +148,12 @@ func NewJoinOrderBuilder(memo *Memo) *joinOrderBuilder {
 
 func (j *joinOrderBuilder) ReorderJoin(n sql.Node) {
 	j.populateSubgraph(n)
+	// `joinOrderBuilder.dbSube` currently computes every possible pair of relations-sets to see if they match an edge
+	// in the graph. This requires O(4^N) runtime on the number of relations and thus does not scale for large joins.
+	// If the number of relations is above a threshold, we won't attempt to reorder.
+	if len(j.vertices) > 20 {
+		return
+	}
 	j.ensureClosure(j.m.root)
 	j.dbSube()
 }

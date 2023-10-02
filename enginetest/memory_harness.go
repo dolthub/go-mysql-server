@@ -178,7 +178,7 @@ func (m *MemoryHarness) NewEngine(t *testing.T) (QueryEngine, error) {
 	}
 
 	if m.server {
-		return NewServerQueryEngine(t, engine)
+		return NewServerQueryEngine(t, engine, m.SessionBuilder())
 	}
 
 	return engine, nil

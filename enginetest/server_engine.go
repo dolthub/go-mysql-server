@@ -46,7 +46,7 @@ var address = "localhost"
 // TODO: get random port
 var port = 3306
 
-func NewServerQueryEngine(t *testing.T, engine *sqle.Engine) (*ServerQueryEngine, error) {
+func NewServerQueryEngine(t *testing.T, engine *sqle.Engine, builder server.SessionBuilder) (*ServerQueryEngine, error) {
 	ctx := sql.NewEmptyContext()
 
 	if err := enableUserAccounts(ctx, engine); err != nil {
@@ -57,7 +57,7 @@ func NewServerQueryEngine(t *testing.T, engine *sqle.Engine) (*ServerQueryEngine
 		Protocol: "tcp",
 		Address:  fmt.Sprintf("%s:%d", address, port),
 	}
-	s, err := server.NewDefaultServer(config, engine)
+	s, err := server.NewServer(config, engine, builder, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func (s ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, par
 	}
 
 	switch parsed.(type) {
-	case *sqlparser.Select, *sqlparser.SetOp:
+	case *sqlparser.Select, *sqlparser.SetOp, *sqlparser.Show:
 		rows, err := stmt.Query(bindingArgs...)
 		if err != nil {
 			return nil, nil, err
