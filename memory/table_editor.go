@@ -138,11 +138,11 @@ func (t *tableEditor) StatementComplete(ctx *sql.Context) error {
 
 // Insert inserts a new row into the table.
 func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
+	row = t.toStorageRow(row)
+
 	if err := checkRow(t.editedTable.data.schema.Schema, row); err != nil {
 		return err
 	}
-	
-	row = t.toStorageRow(row)
 
 	partitionRow, added, err := t.ea.Get(row)
 	if err != nil {
@@ -216,15 +216,15 @@ func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 
 // Update updates the given row in the table.
 func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) error {
+	oldRow = t.toStorageRow(oldRow)
+	newRow = t.toStorageRow(newRow)
+
 	if err := checkRow(t.editedTable.Schema(), oldRow); err != nil {
 		return err
 	}
 	if err := checkRow(t.editedTable.Schema(), newRow); err != nil {
 		return err
 	}
-	
-	oldRow = t.toStorageRow(newRow)
-	newRow = t.toStorageRow(newRow)
 
 	err := t.ea.Delete(oldRow)
 	if err != nil {
@@ -769,6 +769,8 @@ func formatRow(r sql.Row, idxs []int) string {
 }
 
 func checkRow(schema sql.Schema, row sql.Row) error {
+	schema = omitVirtualColumns(schema)
+	
 	if len(row) != len(schema) {
 		return sql.ErrUnexpectedRowLength.New(len(schema), len(row))
 	}
@@ -781,6 +783,16 @@ func checkRow(schema sql.Schema, row sql.Row) error {
 	}
 
 	return verifyRowTypes(row, schema)
+}
+
+func omitVirtualColumns(schema sql.Schema) sql.Schema {
+	var newSchema sql.Schema
+	for _, col := range schema {
+		if !col.Virtual {
+			newSchema = append(newSchema, col)
+		}
+	}
+	return newSchema
 }
 
 func verifyRowTypes(row sql.Row, schema sql.Schema) error {

@@ -195,15 +195,40 @@ func TestSingleScript(t *testing.T) {
 	// t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "virtual column inserts",
+			Name: "virtual column inserts, updates, deletes",
 			SetUpScript: []string{
 				"create table t1 (a int primary key, b int generated always as (a + 1) virtual)",
-				"insert into t1 (a) values (1), (2), (3)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
+					Query: 			"insert into t1 (a) values (1), (2), (3)",
+					Expected: 		[]sql.Row{{types.NewOkResult(3)}},
+				},
+				{
 					Query:    "select * from t1 order by a",
 					Expected: []sql.Row{{1, 2}, {2, 3}, {3, 4}},
+				},
+				{
+					Query:    "update t1 set a = 4 where a = 3",
+					Expected: []sql.Row{{types.OkResult{
+						RowsAffected: 1,
+						Info: plan.UpdateInfo{
+							Matched: 1,
+							Updated: 1,
+						}},
+					}},
+				},
+				{
+					Query:    "select * from t1 order by a",
+					Expected: []sql.Row{{1,2}, {2, 3}, {4, 5}},
+				},
+				{
+					Query:    "delete from t1 where a = 2",
+					Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				},
+				{
+					Query:    "select * from t1 order by a",
+					Expected: []sql.Row{{1, 2}, {4, 5}},
 				},
 			},
 		},

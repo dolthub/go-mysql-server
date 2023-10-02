@@ -16,6 +16,7 @@ package queries
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -172,6 +173,40 @@ var GeneratedColumnTests = []ScriptTest{
 						"  `c` int GENERATED ALWAYS AS ((a + b)) STORED,\n" +
 						"  PRIMARY KEY (`a`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "virtual column inserts, updates, deletes",
+		SetUpScript: []string{
+			"create table t1 (a int primary key, b int generated always as (a + 1) virtual)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: 			"insert into t1 (a) values (1), (2), (3)",
+				Expected: 		[]sql.Row{{types.NewOkResult(3)}},
+			},
+			{
+				Query:    "select * from t1 order by a",
+				Expected: []sql.Row{{1, 2}, {2, 3}, {3, 4}},
+			},
+			{
+				Query:    "update t1 set a = 4 where a = 3",
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 1,
+					Info: plan.UpdateInfo{
+						Matched: 1,
+						Updated: 1,
+					}},
+				}},
+			},
+			{
+				Query:    "select * from t1 order by a",
+				Expected: []sql.Row{{2, 3}, {3, 4}, {4, 5}},
+			},
+			{
+				Query:    "delete from t1 set a = 1",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
 		},
 	},
