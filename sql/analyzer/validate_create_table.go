@@ -61,6 +61,43 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 	return n, transform.SameTree, nil
 }
 
+// validateAlterTable is a set of validation functions for ALTER TABLE statements not handled by more specific
+// validation rules
+func validateAlterTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	var err error
+	// Inspect is required here because alter table statements with multiple clauses are represented as a block of
+	// plan nodes
+	transform.Inspect(n, func(sql.Node) bool {
+		switch n := n.(type) {
+		case *plan.RenameTable:
+			for _, name := range n.NewNames {
+				err = validateIdentifier(name)
+				if err != nil {
+					return false
+				}
+			}
+		case *plan.CreateCheck:
+			err = validateIdentifier(n.Check.Name)
+			if err != nil {
+				return false
+			}
+		case *plan.CreateForeignKey:
+			err = validateIdentifier(n.FkDef.Name)
+			if err != nil {
+				return false
+			}
+		}
+
+		return true
+	})
+
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
+	return n, transform.SameTree, nil
+}
+
 // validateIdentifiers validates various constraints about identifiers in CREATE TABLE / ALTER TABLE
 // statements.
 func validateIdentifiers(name string, spec *plan.TableSpec) error {
