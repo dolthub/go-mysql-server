@@ -160,27 +160,27 @@ func TestServerPreparedStatements(t *testing.T) {
 				},
 
 				{
-					query: "insert into signed_tbl values (?)",
-					args: []any{uint64(math.MaxInt64)},
-					isExec: true,
+					query:                "insert into signed_tbl values (?)",
+					args:                 []any{uint64(math.MaxInt64)},
+					isExec:               true,
 					expectedRowsAffected: 1,
 				},
 				{
 					query:     "insert into signed_tbl values (?)",
-					args:      []any{uint64(math.MaxInt64+1)},
+					args:      []any{uint64(math.MaxInt64 + 1)},
 					isExec:    true,
 					expectErr: true,
 				},
 				{
-					query:     "insert into signed_tbl values (?)",
-					args:      []any{int64(-1)},
-					isExec:    true,
+					query:                "insert into signed_tbl values (?)",
+					args:                 []any{int64(-1)},
+					isExec:               true,
 					expectedRowsAffected: 1,
 				},
 				{
-					query:     "insert into signed_tbl values (?)",
-					args:      []any{int64(math.MinInt64)},
-					isExec:    true,
+					query:                "insert into signed_tbl values (?)",
+					args:                 []any{int64(math.MinInt64)},
+					isExec:               true,
 					expectedRowsAffected: 1,
 				},
 				{
