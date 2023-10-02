@@ -482,15 +482,6 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return row, nil
 }
 
-func (i *tableIter) colIsProjected(idx int) bool {
-	for _, colIdx := range i.columns {
-		if idx == colIdx {
-			return true
-		}
-	}
-	return false
-}
-
 func (i *tableIter) Close(ctx *sql.Context) error {
 	if i.indexValues == nil {
 		return nil

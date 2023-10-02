@@ -15,6 +15,7 @@
 package planbuilder
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -359,9 +360,13 @@ func (b *Builder) buildVirtualTableScan(tab sql.Table, rt *plan.ResolvedTable) *
 	projections := make([]sql.Expression, len(tab.Schema()))
 	for i, c := range tab.Schema() {
 		if !c.Virtual {
-			projections[i] = expression.NewGetFieldWithTable(i, c.Type, tab.Name(), c.Name, c.Nullable)
+			projections[i] = expression.NewAlias(
+				fmt.Sprintf("%s.%s", tab.Name(), c.Name),
+				expression.NewGetFieldWithTable(i, c.Type, tab.Name(), c.Name, c.Nullable))
 		} else {
-			projections[i] = c.Generated
+			projections[i] = expression.NewAlias(
+				fmt.Sprintf("%s.%s", tab.Name(), c.Name),
+				c.Generated)
 		}
 	}
 	

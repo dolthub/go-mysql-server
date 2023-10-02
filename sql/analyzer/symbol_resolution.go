@@ -213,7 +213,7 @@ func pruneTableCols(
 	source := strings.ToLower(t.Name())
 	for _, col := range t.Schema() {
 		c := tableCol{table: strings.ToLower(source), col: strings.ToLower(col.Name)}
-		if selectStar || parentCols[c] > 0 {
+		if !col.Virtual && (selectStar || parentCols[c] > 0) {
 			cols = append(cols, c.col)
 		}
 	}
