@@ -372,17 +372,28 @@ func (b *Builder) buildRenameTable(inScope *scope, ddl *ast.DDL) (outScope *scop
 	if len(ddl.FromTables) != len(ddl.ToTables) {
 		panic("Expected from tables and to tables of equal length")
 	}
-
+	
 	var fromTables, toTables []string
 	for _, table := range ddl.FromTables {
 		fromTables = append(fromTables, table.Name.String())
 	}
 	for _, table := range ddl.ToTables {
+		err := validateIdentifier(table.Name.String())
+		if err != nil {
+			b.handleErr(err)
+		}
 		toTables = append(toTables, table.Name.String())
 	}
 
 	outScope.node = plan.NewRenameTable(b.currentDb(), fromTables, toTables, b.multiDDL)
 	return
+}
+
+func validateIdentifier(name string) error {
+	if len(name) > sql.MaxIdentifierLength {
+		return sql.ErrInvalidIdentifier.New(name)
+	}
+	return nil
 }
 
 func (b *Builder) isUniqueColumn(tableSpec *ast.TableSpec, columnName string) bool {
@@ -525,12 +536,22 @@ func (b *Builder) buildAlterConstraint(inScope *scope, ddl *ast.DDL, table *plan
 	case ast.AddStr:
 		switch c := parsedConstraint.(type) {
 		case *sql.ForeignKeyConstraint:
+			err := validateIdentifier(c.Name)
+			if err != nil {
+				b.handleErr(err)
+			}
+			
 			c.Database = table.SqlDatabase.Name()
 			c.Table = table.Name()
 			alterFk := plan.NewAlterAddForeignKey(c)
 			alterFk.DbProvider = b.cat
 			outScope.node = alterFk
 		case *sql.CheckConstraint:
+			err := validateIdentifier(c.Name)
+			if err != nil {
+				b.handleErr(err)
+			}
+			
 			outScope.node = plan.NewAlterAddCheck(table, c)
 		default:
 			err := sql.ErrUnsupportedFeature.New(ast.String(ddl))
