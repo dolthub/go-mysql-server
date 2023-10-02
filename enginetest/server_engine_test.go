@@ -78,7 +78,7 @@ type serverScriptTestAssertion struct {
 	args   []any
 	skip   bool
 
-	expectedErr          bool
+	expectErr            bool
 	expectedRowsAffected int64
 	expectedRows         []any
 
@@ -93,18 +93,6 @@ type serverScriptTest struct {
 }
 
 func TestServerPreparedStatements(t *testing.T) {
-	port, perr := findEmptyPort()
-	require.NoError(t, perr)
-
-	s, serr := initTestServer(port)
-	require.NoError(t, serr)
-	go s.Start()
-	defer s.Close()
-
-	conn, cerr := dbr.Open("mysql", fmt.Sprintf(noUserFmt, address, port), nil)
-	require.NoError(t, cerr)
-	defer conn.Close()
-
 	tests := []serverScriptTest{
 		{
 			name: "prepared inserts with big ints",
@@ -134,16 +122,16 @@ func TestServerPreparedStatements(t *testing.T) {
 					expectedRowsAffected: 1,
 				},
 				{
-					query: "insert into unsigned_tbl values (?)",
-					args: []any{int64(-1)},
-					isExec: true,
-					expectedErr: true,
+					query:     "insert into unsigned_tbl values (?)",
+					args:      []any{int64(-1)},
+					isExec:    true,
+					expectErr: true,
 				},
 				{
-					query: "insert into unsigned_tbl values (?)",
-					args: []any{int64(math.MinInt64)},
-					isExec: true,
-					expectedErr: true,
+					query:     "insert into unsigned_tbl values (?)",
+					args:      []any{int64(math.MinInt64)},
+					isExec:    true,
+					expectErr: true,
 				},
 				{
 					query: "select * from unsigned_tbl order by i",
@@ -170,39 +158,104 @@ func TestServerPreparedStatements(t *testing.T) {
 						return true, nil
 					},
 				},
+
+				{
+					query: "insert into signed_tbl values (?)",
+					args: []any{uint64(math.MaxInt64)},
+					isExec: true,
+					expectedRowsAffected: 1,
+				},
+				{
+					query:     "insert into signed_tbl values (?)",
+					args:      []any{uint64(math.MaxInt64+1)},
+					isExec:    true,
+					expectErr: true,
+				},
+				{
+					query:     "insert into signed_tbl values (?)",
+					args:      []any{int64(-1)},
+					isExec:    true,
+					expectedRowsAffected: 1,
+				},
+				{
+					query:     "insert into signed_tbl values (?)",
+					args:      []any{int64(math.MinInt64)},
+					isExec:    true,
+					expectedRowsAffected: 1,
+				},
+				{
+					query: "select * from signed_tbl order by i",
+					expectedRows: []any{
+						[]int64{int64(math.MinInt64)},
+						[]int64{int64(-1)},
+						[]int64{int64(math.MaxInt64)},
+					},
+					checkRows: func(rows *gosql.Rows, expectedRows []any) (bool, error) {
+						var i int64
+						var rowNum int
+						for rows.Next() {
+							if err := rows.Scan(&i); err != nil {
+								return false, err
+							}
+							if rowNum >= len(expectedRows) {
+								return false, fmt.Errorf("expected %d rows, got more", len(expectedRows))
+							}
+							if i != expectedRows[rowNum].([]int64)[0] {
+								return false, fmt.Errorf("expected %d, got %d", expectedRows[rowNum].([]int64)[0], i)
+							}
+							rowNum++
+						}
+						return true, nil
+					},
+				},
 			},
 		},
 	}
 
+	port, perr := findEmptyPort()
+	require.NoError(t, perr)
+
+	s, serr := initTestServer(port)
+	require.NoError(t, serr)
+	go s.Start()
+	defer s.Close()
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			conn, cerr := dbr.Open("mysql", fmt.Sprintf(noUserFmt, address, port), nil)
+			require.NoError(t, cerr)
+			defer conn.Close()
+
 			for _, stmt := range test.setup {
 				_, err := conn.Exec(stmt)
 				require.NoError(t, err)
 			}
 			for _, assertion := range test.assertions {
-				if assertion.skip {
-					continue
-				}
-				if assertion.isExec {
-					res, err := conn.Exec(assertion.query, assertion.args...)
-					if assertion.expectedErr {
-						require.Error(t, err)
-						continue
+				t.Run(assertion.query, func(t *testing.T) {
+					if assertion.skip {
+						t.Skip()
 					}
-					rowsAffected, err := res.RowsAffected()
+					if assertion.isExec {
+						res, err := conn.Exec(assertion.query, assertion.args...)
+						if assertion.expectErr {
+							require.Error(t, err)
+							return
+						}
+						require.NoError(t, err)
+						rowsAffected, err := res.RowsAffected()
+						require.NoError(t, err)
+						require.Equal(t, assertion.expectedRowsAffected, rowsAffected)
+						return
+					}
+					rows, err := conn.Query(assertion.query, assertion.args...)
+					if assertion.expectErr {
+						require.Error(t, err)
+						return
+					}
+					ok, err := assertion.checkRows(rows, assertion.expectedRows)
 					require.NoError(t, err)
-					require.Equal(t, assertion.expectedRowsAffected, rowsAffected)
-					continue
-				}
-				rows, err := conn.Query(assertion.query, assertion.args...)
-				if assertion.expectedErr {
-					require.Error(t, err)
-					continue
-				}
-				ok, err := assertion.checkRows(rows, assertion.expectedRows)
-				require.NoError(t, err)
-				require.True(t, ok)
+					require.True(t, ok)
+				})
 			}
 		})
 	}
