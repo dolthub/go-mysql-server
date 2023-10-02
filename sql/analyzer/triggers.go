@@ -204,7 +204,12 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 				return nil, transform.SameTree, sql.ErrTriggerCreateStatementInvalid.New(trigger.CreateStatement)
 			}
 
-			triggerTable := getTableName(ct.Table)
+			var triggerTable string
+			switch t := ct.Table.(type) {
+			case *plan.ResolvedTable:
+				triggerTable = t.Name()
+			default:
+			}
 			if stringContains(affectedTables, triggerTable) && triggerEventsMatch(triggerEvent, ct.TriggerEvent) {
 				// first pass allows unresolved before we know whether trigger is relevant
 				// TODO store destination table name with trigger, so we don't have to do parse twice

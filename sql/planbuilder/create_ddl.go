@@ -50,10 +50,10 @@ func (b *Builder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (
 		dbName = b.ctx.GetCurrentDatabase()
 	}
 
-	prevTriggerCtx := b.TriggerCtx().Active
+	prevTriggerCtxActive := b.TriggerCtx().Active
 	b.TriggerCtx().Active = true
 	defer func() {
-		b.TriggerCtx().Active = prevTriggerCtx
+		b.TriggerCtx().Active = prevTriggerCtxActive
 	}()
 
 	tableName := strings.ToLower(c.Table.Name.String())
@@ -95,7 +95,17 @@ func (b *Builder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (
 	db := b.resolveDb(dbName)
 
 	if _, ok := tableScope.node.(*plan.ResolvedTable); !ok {
-		b.handleErr(sql.ErrNotBaseTable.New(tableName))
+		if prevTriggerCtxActive {
+			// previous ctx set means this is an INSERT or SHOW
+			// old version of Dolt permitted a bad trigger on VIEW
+			// warn and noop
+			b.ctx.Warn(0, fmt.Sprintf("trigger on view is not supported; 'DROP TRIGGER  %s' to fix", c.TriggerSpec.TrigName.Name.String()))
+			bodyScope.node = plan.NewResolvedDualTable()
+		} else {
+			// top-level call is DDL
+			err := sql.ErrExpectedTableFoundView.New(tableName)
+			b.handleErr(err)
+		}
 	}
 
 	outScope.node = plan.NewCreateTrigger(
