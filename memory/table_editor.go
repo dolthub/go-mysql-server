@@ -214,7 +214,7 @@ func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 	return nil
 }
 
-// Update the given row from the table.
+// Update updates the given row in the table.
 func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) error {
 	if err := checkRow(t.editedTable.Schema(), oldRow); err != nil {
 		return err

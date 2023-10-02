@@ -604,6 +604,28 @@ func (b *Builder) buildJSONTable(inScope *scope, t *ast.JSONTableExpr) (outScope
 }
 
 func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf) (outScope *scope, ok bool) {
+	rtScope, ok := b.buildResolvedTable(inScope, db, name, asof)
+	if !ok {
+		return nil, false
+	}
+
+	hasVirtualCols := false
+	for _, c := range rtScope.node.Schema() {
+		if c.Virtual {
+			hasVirtualCols = true
+		}
+	}
+
+	outScope = rtScope
+	rt := rtScope.node.(*plan.ResolvedTable)
+	if hasVirtualCols {
+		outScope.node = b.buildVirtualTableScan(rt.Table, rt)
+	}
+	
+	return outScope, true
+}
+
+func (b *Builder) buildResolvedTable(inScope *scope, db, name string, asof *ast.AsOf) (outScope *scope, ok bool) {
 	outScope = inScope.push()
 
 	if b.ViewCtx().DbName != "" {
@@ -677,7 +699,7 @@ func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf
 		if c.Virtual {
 			hasVirtualCols = true
 		}
-		
+
 		outScope.newColumn(scopeColumn{
 			db:          strings.ToLower(db),
 			table:       strings.ToLower(tab.Name()),
@@ -687,7 +709,7 @@ func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf
 			nullable:    c.Nullable,
 		})
 	}
-	
+
 	if hasVirtualCols {
 		outScope.node = b.buildVirtualTableScan(tab, rt)
 	}

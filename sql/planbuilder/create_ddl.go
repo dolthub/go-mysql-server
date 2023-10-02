@@ -57,7 +57,7 @@ func (b *Builder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (
 	}()
 
 	tableName := strings.ToLower(c.Table.Name.String())
-	tableScope, ok := b.buildTablescan(inScope, dbName, tableName, nil)
+	tableScope, ok := b.buildResolvedTable(inScope, dbName, tableName, nil)
 	if !ok {
 		b.handleErr(sql.ErrTableNotFound.New(tableName))
 	}
