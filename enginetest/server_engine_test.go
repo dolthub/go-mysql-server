@@ -55,8 +55,8 @@ func initTestServer(port int) (*server.Server, error) {
 	return s, nil
 }
 
-// TestSanity checks that an in-memory server can be started and stopped without error.
-func TestSanity(t *testing.T) {
+// TestSmoke checks that an in-memory server can be started and stopped without error.
+func TestSmoke(t *testing.T) {
 	port, err := findEmptyPort()
 	require.NoError(t, err)
 
