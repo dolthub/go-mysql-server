@@ -677,6 +677,44 @@ func TestCallAsOf(t *testing.T) {
 	}
 }
 
+func TestTriggerViewWarning(t *testing.T) {
+	// Old versions of Dolt could create view triggers.
+	// Check that users in this state can still write to
+	// regular table.
+	harness := enginetest.NewDefaultMemoryHarness()
+	harness.Setup(setup.MydbData, setup.MytableData, []setup.SetupScript{{
+		"create view myview as select * from mytable",
+	}})
+	e, err := harness.NewEngine(t)
+	assert.NoError(t, err)
+
+	prov := e.EngineAnalyzer().Catalog.Provider.(*memory.DbProvider)
+	db, err := prov.Database(nil, "mydb")
+	assert.NoError(t, err)
+
+	baseDb := db.(*memory.HistoryDatabase).BaseDatabase
+	err = baseDb.CreateTrigger(nil, sql.TriggerDefinition{
+		Name:            "view_trig",
+		CreateStatement: "CREATE TRIGGER view_trig BEFORE INSERT ON myview FOR EACH ROW SET i=i+2",
+	})
+	assert.NoError(t, err)
+
+	ctx := harness.NewContext()
+
+	mytableIns := queries.QueryTest{
+		Query:    "insert into mytable values (4, 'fourth row')",
+		Expected: []sql.Row{{types.NewOkResult(1)}},
+	}
+	enginetest.TestQueryWithContext(t, ctx, e, harness, mytableIns.Query, mytableIns.Expected, nil, nil)
+	require.Equal(t, uint16(1), ctx.Session.WarningCount())
+
+	myViewIns := queries.QueryErrorTest{
+		Query:          "insert into myview values (5, 'fifth row')",
+		ExpectedErrStr: "expected insert destination to be resolved or unresolved table",
+	}
+	enginetest.AssertErr(t, e, harness, myViewIns.Query, nil, myViewIns.ExpectedErrStr)
+}
+
 func TestCollationCoercion(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
 	harness.Setup(setup.MydbData)

@@ -3145,6 +3145,6 @@ var TriggerErrorTests = []ScriptTest{
 			"create view v as select * from x",
 		},
 		Query:       "create trigger trig before insert on v for each row set b = 1",
-		ExpectedErr: sql.ErrNotBaseTable,
+		ExpectedErr: sql.ErrExpectedTableFoundView,
 	},
 }

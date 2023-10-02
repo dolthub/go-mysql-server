@@ -3636,7 +3636,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:       "alter table v1 rename to view1",
-				ExpectedErr: sql.ErrNotBaseTable,
+				ExpectedErr: sql.ErrExpectedTableFoundView,
 			},
 			{
 				Query:    "show tables;",

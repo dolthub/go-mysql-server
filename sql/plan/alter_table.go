@@ -176,7 +176,7 @@ func (r *RenameTable) renameView(ctx *sql.Context, viewDb sql.ViewDatabase, vr *
 		}
 
 		if r.alterTblDef {
-			return false, sql.ErrNotBaseTable.New(fmt.Sprintf("'%s.%s'", r.Db.Name(), oldName))
+			return false, sql.ErrExpectedTableFoundView.New(fmt.Sprintf("'%s.%s'", r.Db.Name(), oldName))
 		}
 
 		err = viewDb.DropView(ctx, oldName)
@@ -197,7 +197,7 @@ func (r *RenameTable) renameView(ctx *sql.Context, viewDb sql.ViewDatabase, vr *
 		}
 
 		if r.alterTblDef {
-			return false, sql.ErrNotBaseTable.New(fmt.Sprintf("'%s.%s'", r.Db.Name(), oldName))
+			return false, sql.ErrExpectedTableFoundView.New(fmt.Sprintf("'%s.%s'", r.Db.Name(), oldName))
 		}
 
 		err := vr.Delete(r.Db.Name(), oldName)
