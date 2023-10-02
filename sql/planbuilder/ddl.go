@@ -372,7 +372,7 @@ func (b *Builder) buildRenameTable(inScope *scope, ddl *ast.DDL) (outScope *scop
 	if len(ddl.FromTables) != len(ddl.ToTables) {
 		panic("Expected from tables and to tables of equal length")
 	}
-	
+
 	var fromTables, toTables []string
 	for _, table := range ddl.FromTables {
 		fromTables = append(fromTables, table.Name.String())
@@ -540,7 +540,7 @@ func (b *Builder) buildAlterConstraint(inScope *scope, ddl *ast.DDL, table *plan
 			if err != nil {
 				b.handleErr(err)
 			}
-			
+
 			c.Database = table.SqlDatabase.Name()
 			c.Table = table.Name()
 			alterFk := plan.NewAlterAddForeignKey(c)
@@ -551,7 +551,7 @@ func (b *Builder) buildAlterConstraint(inScope *scope, ddl *ast.DDL, table *plan
 			if err != nil {
 				b.handleErr(err)
 			}
-			
+
 			outScope.node = plan.NewAlterAddCheck(table, c)
 		default:
 			err := sql.ErrUnsupportedFeature.New(ast.String(ddl))
