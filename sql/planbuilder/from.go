@@ -694,12 +694,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, name string, asof *ast.
 	}
 	outScope.node = rt
 
-	hasVirtualCols := false
 	for _, c := range tab.Schema() {
-		if c.Virtual {
-			hasVirtualCols = true
-		}
-
 		outScope.newColumn(scopeColumn{
 			db:          strings.ToLower(db),
 			table:       strings.ToLower(tab.Name()),
@@ -708,10 +703,6 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, name string, asof *ast.
 			typ:         c.Type,
 			nullable:    c.Nullable,
 		})
-	}
-
-	if hasVirtualCols {
-		outScope.node = b.buildVirtualTableScan(tab, rt)
 	}
 
 	if dt, _ := rt.Table.(sql.DynamicColumnsTable); dt != nil {
