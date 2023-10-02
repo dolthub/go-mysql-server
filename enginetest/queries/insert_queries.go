@@ -1312,6 +1312,14 @@ var InsertScripts = []ScriptTest{
 				Expected: []sql.Row{{2}, {2}, {4}},
 			},
 			{
+				Query:    "INSERT INTO t3 (a, b) VALUES (5, DEFAULT)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "SELECT b FROM t3 ORDER BY b ASC",
+				Expected: []sql.Row{{2}, {2}, {4}, {10}},
+			},
+			{
 				Query:    "INSERT INTO T4 (c1, c0) values (DEFAULT, NULL)",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
@@ -2653,18 +2661,6 @@ var InsertBrokenScripts = []ScriptTest{
 					{types.OkResult{RowsAffected: 1}},
 				},
 				ExpectedWarning: mysql.ERTruncatedWrongValueForField,
-			},
-		},
-	},
-	{
-		Name: "Test explicit default with column reference",
-		SetUpScript: []string{
-			"CREATE TABLE t1 (a int default 1, b int default (a+1));",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "INSERT INTO t1 (a,b) values (1, DEFAULT)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
 		},
 	},

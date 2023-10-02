@@ -528,6 +528,10 @@ func (c scopeColumn) empty() bool {
 	return c.id == 0
 }
 
+func (c scopeColumn) ScopeColumnIdForSource() columnId {
+	return c.id - 1
+}
+
 func (c scopeColumn) withOriginal(col string) scopeColumn {
 	if c.db != sql.InformationSchemaDatabaseName {
 		// info schema columns always presented as uppercase
@@ -544,9 +548,9 @@ func (c scopeColumn) scalarGf() sql.Expression {
 		}
 	}
 	if c.originalCol != "" {
-		return expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.originalCol, c.nullable)
+		return expression.NewGetFieldWithTable(int(c.ScopeColumnIdForSource()), c.typ, c.table, c.originalCol, c.nullable)
 	}
-	return expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
+	return expression.NewGetFieldWithTable(int(c.ScopeColumnIdForSource()), c.typ, c.table, c.col, c.nullable)
 }
 
 func (c scopeColumn) String() string {

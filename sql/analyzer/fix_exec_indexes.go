@@ -432,7 +432,10 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 	ret, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
 		case *expression.GetField:
-			idx, _ := newScope.getIdx(e.String())
+			idx, ok := newScope.getIdx(e.String())
+			if !ok && e.Index() != -1 {
+				return e, transform.NewTree, nil
+			}
 			return e.WithIndex(idx), transform.NewTree, nil
 		case *plan.Subquery:
 			// this |outScope| prepends the subquery scope

@@ -79,9 +79,22 @@ func (b *BaseBuilder) buildValues(ctx *sql.Context, n *plan.Values, row sql.Row)
 	rows := make([]sql.Row, len(n.ExpressionTuples))
 	for i, et := range n.ExpressionTuples {
 		vals := make([]interface{}, len(et))
+		var secondPass []int
+		var err error
 		for j, e := range et {
-			var err error
+			if unwrapped, ok := e.(*expression.Wrapper); ok {
+				if _, ok = unwrapped.Unwrap().(*sql.ColumnDefaultValue); ok {
+					secondPass = append(secondPass, j)
+					continue
+				}
+			}
 			vals[j], err = e.Eval(ctx, row)
+			if err != nil {
+				return nil, err
+			}
+		}
+		for _, index := range secondPass {
+			vals[index], err = et[index].Eval(ctx, vals)
 			if err != nil {
 				return nil, err
 			}
