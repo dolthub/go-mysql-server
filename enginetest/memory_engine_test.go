@@ -192,114 +192,22 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	// t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "Identifier lengths",
+			Name: "add new generated column",
 			SetUpScript: []string{
 				"create table t1 (a int primary key, b int)",
-				"create table parent (a int primary key)",
+				"insert into t1 values (1,2), (2,3), (3,4)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					// 64 characters
-					Query:    "alter table t1 rename to abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl",
+					Query:    "alter table t1 add column c int as (a + b) stored",
 					Expected: []sql.Row{{types.NewOkResult(0)}},
 				},
 				{
-					// reset name
-					Query:    "alter table abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl rename to t1",
-					Expected: []sql.Row{{types.NewOkResult(0)}},
-				},
-				{
-					// 65 characters
-					Query:       "alter table t1 rename to abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm",
-					ExpectedErr: sql.ErrInvalidIdentifier,
-				},
-				{
-					// 64 characters
-					Query:    "alter table t1 rename column a to abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl",
-					Expected: []sql.Row{{types.NewOkResult(0)}},
-				},
-				{
-					// reset name
-					Query:    "alter table t1 rename column abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl to a",
-					Expected: []sql.Row{{types.NewOkResult(0)}},
-				},
-				{
-					// 65 characters
-					Query:       "alter table t1 rename column a to abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm",
-					ExpectedErr: sql.ErrInvalidIdentifier,
-				},
-				{
-					// 64 characters
-					Query:    "alter table t1 add constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl check (a > 0)",
-					Expected: []sql.Row{{types.NewOkResult(0)}},
-				},
-				{
-					// 65 characters
-					Query:       "alter table t1 add constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm check (a > 0)",
-					ExpectedErr: sql.ErrInvalidIdentifier,
-				},
-				{
-					// 64 characters
-					Query:    "alter table t1 add constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk0 foreign key(a) references parent(a)",
-					Expected: []sql.Row{{types.NewOkResult(0)}},
-				},
-				{
-					// 65 characters
-					Query:       "alter table t1 add constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm foreign key(a) references parent(a)",
-					ExpectedErr: sql.ErrInvalidIdentifier,
-				},
-				{
-					// 64 characters
-					Query:    "alter table t1 add constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk1 unique key(a)",
-					Expected: []sql.Row{{types.NewOkResult(0)}},
-				},
-				{
-					// 65 characters
-					Query:       "alter table t1 add constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm unique key(a)",
-					ExpectedErr: sql.ErrInvalidIdentifier,
-				},
-				{
-					// 64 characters
-					Query:    "alter table t1 rename index abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk1 to abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk2",
-					Expected: []sql.Row{{types.NewOkResult(0)}},
-				},
-				{
-					// 65 characters
-					Query:       "alter table t1 rename index abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk2 to abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm",
-					ExpectedErr: sql.ErrInvalidIdentifier,
-				},
-				{
-					// 64 characters
-					Query:    "alter table t1 add column abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk2 int",
-					Expected: []sql.Row{{types.NewOkResult(0)}},
-				},
-				{
-					// 65 characters
-					Query:       "alter table t1 add column abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm int",
-					ExpectedErr: sql.ErrInvalidIdentifier,
-				},
-				{
-					// 64 characters
-					Query:    "alter table t1 change column abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk2 abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk3 int",
-					Expected: []sql.Row{{types.NewOkResult(0)}},
-				},
-				{
-					// 65 characters
-					Query:       "alter table t1 change column abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk3 abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm int",
-					ExpectedErr: sql.ErrInvalidIdentifier,
-				},
-				{
-					// 64 characters
-					Query:    "alter table t1 add index abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk3 (b)",
-					Expected: []sql.Row{{types.NewOkResult(0)}},
-				},
-				{
-					// 65 characters
-					Query:       "alter table t1 add index abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm (b)",
-					ExpectedErr: sql.ErrInvalidIdentifier,
+					Query:    "select * from t1 order by a",
+					Expected: []sql.Row{{1, 2, 3}, {2, 3, 5}, {3, 4, 7}},
 				},
 			},
 		},
