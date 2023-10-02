@@ -53,6 +53,15 @@ func (s Schema) CheckRow(row Row) error {
 	return nil
 }
 
+func (s Schema) HasVirtualColumns() bool {
+	for _, col := range s {
+		if col.Virtual {
+			return true
+		}
+	}
+	return false
+}
+
 // Copy returns a deep copy of this schema, making a copy of all columns
 func (s Schema) Copy() Schema {
 	ns := make(Schema, len(s))

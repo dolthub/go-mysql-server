@@ -17,6 +17,7 @@ package planbuilder
 import (
 	"sync"
 
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -352,4 +353,17 @@ func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outSc
 		return b.buildDeallocate(inScope, n)
 	}
 	return
+}
+
+func (b *Builder) buildVirtualTableScan(tab sql.Table, rt *plan.ResolvedTable) *plan.Project {
+	projections := make([]sql.Expression, len(tab.Schema()))
+	for i, c := range tab.Schema() {
+		if !c.Virtual {
+			projections[i] = expression.NewGetFieldWithTable(i, c.Type, tab.Name(), c.Name, c.Nullable)
+		} else {
+			projections[i] = c.Generated
+		}
+	}
+	
+	return plan.NewProject(projections, rt) 
 }

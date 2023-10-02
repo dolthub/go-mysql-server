@@ -141,6 +141,8 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 	if err := checkRow(t.editedTable.data.schema.Schema, row); err != nil {
 		return err
 	}
+	
+	row = t.toStorageRow(row)
 
 	partitionRow, added, err := t.ea.Get(row)
 	if err != nil {
@@ -201,6 +203,8 @@ func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 	if err := checkRow(t.editedTable.Schema(), row); err != nil {
 		return err
 	}
+	
+	row = t.toStorageRow(row)
 
 	err := t.ea.Delete(row)
 	if err != nil {
@@ -218,6 +222,9 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 	if err := checkRow(t.editedTable.Schema(), newRow); err != nil {
 		return err
 	}
+	
+	oldRow = t.toStorageRow(newRow)
+	newRow = t.toStorageRow(newRow)
 
 	err := t.ea.Delete(oldRow)
 	if err != nil {
@@ -299,6 +306,25 @@ func (t *tableEditor) pkColumnIndexes() []int {
 func (t *tableEditor) pkColsDiffer(row, row2 sql.Row) bool {
 	pkColIdxes := t.pkColumnIndexes()
 	return !columnsMatch(pkColIdxes, nil, row, row2)
+}
+
+// toStorageRow returns the given row normalized for storage, omitting virtual columns
+func (t *tableEditor) toStorageRow(row sql.Row) sql.Row {
+	if !t.editedTable.data.schema.HasVirtualColumns() {
+		return row
+	}
+	
+	storageRow := make(sql.Row, len(t.editedTable.data.schema.Schema))
+	i := 0
+	for _, col := range t.editedTable.data.schema.Schema {
+		if col.Virtual {
+			continue
+		}
+		storageRow[i] = row[i]
+		i++
+	}
+	
+	return storageRow[:i]
 }
 
 // Returns whether the values for the columns given match in the two rows provided
