@@ -316,16 +316,16 @@ func (t *tableEditor) toStorageRow(row sql.Row) sql.Row {
 	}
 	
 	storageRow := make(sql.Row, len(t.editedTable.data.schema.Schema))
-	i := 0
-	for _, col := range t.editedTable.data.schema.Schema {
+	storageRowIdx := 0
+	for i, col := range t.editedTable.data.schema.Schema {
 		if col.Virtual {
 			continue
 		}
-		storageRow[i] = row[i]
-		i++
+		storageRow[storageRowIdx] = row[i]
+		storageRowIdx++
 	}
 	
-	return storageRow[:i]
+	return storageRow[:storageRowIdx]
 }
 
 // Returns whether the values for the columns given match in the two rows provided
