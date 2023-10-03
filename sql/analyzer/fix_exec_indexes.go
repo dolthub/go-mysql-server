@@ -433,6 +433,8 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 	ret, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
 		case *expression.GetField:
+			// TODO: this is a swallowed error. It triggers falsely in queries involving the dual table, or queries where 
+			//  the columns being selected are only found in subqueries
 			idx, _ := newScope.getIdx(e.String())
 			return e.WithIndex(idx), transform.NewTree, nil
 		case *plan.Subquery:
