@@ -729,7 +729,7 @@ func (b *BaseBuilder) buildSetOp(ctx *sql.Context, s *plan.SetOp, row sql.Row) (
 func (b *BaseBuilder) buildSubqueryAlias(ctx *sql.Context, n *plan.SubqueryAlias, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.SubqueryAlias")
 
-	if !n.OuterScopeVisibility {
+	if !n.OuterScopeVisibility && !n.IsLateral {
 		row = nil
 	}
 	iter, err := b.buildNodeExec(ctx, n.Child, row)

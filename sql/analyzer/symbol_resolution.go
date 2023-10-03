@@ -87,6 +87,11 @@ func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *plan.Scope, sel R
 			if n.JoinType().IsPhysical() || n.JoinType().IsUsing() {
 				return n, transform.SameTree, nil
 			}
+			// we cannot push projections past lateral joins as columns not in the projection,
+			// but are in the left subtree can be referenced by the right subtree or parent nodes
+			if sqa, ok := n.Right().(*plan.SubqueryAlias); ok && sqa.IsLateral {
+				return n, transform.SameTree, nil
+			}
 			if _, ok := n.Right().(*plan.JSONTable); ok {
 				outerCols, outerStars, outerUnq := gatherOuterCols(n.Right())
 				aliasCols, aliasStars := gatherTableAlias(n.Right(), parentCols, parentStars, unqualifiedStar)
