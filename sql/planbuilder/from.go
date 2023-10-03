@@ -617,8 +617,8 @@ func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf
 	}
 
 	outScope = rtScope
-	rt := rtScope.node.(*plan.ResolvedTable)
-	if hasVirtualCols {
+	rt, ok := rtScope.node.(*plan.ResolvedTable)
+	if ok && hasVirtualCols {
 		outScope.node = b.buildVirtualTableScan(rt.Table, rt)
 	}
 	
