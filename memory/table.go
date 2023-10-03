@@ -346,9 +346,33 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 
 	return &tableIter{
 		rows:    rowsCopy,
-		columns: t.columns,
+		columns: normalizeColumnsForRead(data.schema.Schema, t.columns),
 		filters: filters,
 	}, nil
+}
+
+// normalizeColumnsForRead returns adjusted column indexes for reading storage rows, omitting any virtual columns from
+// the schema provided and shifting any indexes to the left as necessary to conform to the storage schema
+func normalizeColumnsForRead(schema sql.Schema, columns []int) []int {
+	if len(columns) == 0 {
+		return columns
+	}
+	
+	storageIdx := 0
+	adjusted := make([]int, len(columns))
+	i := 0 
+	for j, column := range schema {
+		if column.Virtual {
+			continue
+		}
+		if j == columns[storageIdx] {
+			adjusted[i] = storageIdx
+			i++
+		}
+		storageIdx++
+	}
+	
+	return adjusted
 }
 
 func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
