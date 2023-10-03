@@ -9050,4 +9050,26 @@ WHERE keyless.c0 IN (
 			"         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
+	{
+		Query: `select x, u from xy, lateral (select * from uv where y = u) uv;`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [xy.x:0!null, uv.u:2!null]\n" +
+			" └─ LateralCrossJoin\n" +
+			"     ├─ true (tinyint(1))\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: xy\n" +
+			"     │   └─ columns: [x y]\n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: uv\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ cacheable: false\n" +
+			"         └─ Filter\n" +
+			"             ├─ Eq\n" +
+			"             │   ├─ xy.y:1\n" +
+			"             │   └─ uv.u:2!null\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: uv\n" +
+			"                 └─ columns: [u v]\n" +
+			"",
+	},
 }
