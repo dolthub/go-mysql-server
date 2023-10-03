@@ -1229,4 +1229,67 @@ var LateralJoinScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "multiple lateral joins with references to left tables",
+		SetUpScript: []string{
+			"create table students (id int primary key, name varchar(50), major int);",
+			"create table classes (id int primary key, name varchar(50), department int);",
+			"create table grades (grade float, student int, class int, primary key(class, student));",
+			"create table majors (id int, name varchar(50), department int, primary key(name, department));",
+			"create table departments (id int primary key, name varchar(50));",
+			`insert into students values
+					(1, 'Elle', 4), 
+					(2, 'Latham', 2);`,
+			`insert into classes values
+					(1, 'Corporate Finance', 1),
+					(2, 'ESG Studies', 1),
+					(3, 'Late Bronze Age Collapse', 2),
+					(4, 'Greek Mythology', 2);`,
+			`insert into majors values
+					(1, 'Roman Studies', 2),
+					(2, 'Bronze Age Studies', 2),
+					(3, 'Accounting', 1),
+					(4, 'Finance', 1);`,
+			`insert into departments values
+					(1, 'Business'),
+					(2, 'History');`,
+			`insert into grades values 
+					(94, 1, 1),
+					(97, 1, 2),
+					(85, 2, 3),
+					(92, 2, 4);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `
+select name, class.class_name, grade.max_grade
+from students,
+LATERAL (
+	select departments.id as did
+	from majors
+	join departments
+	on majors.department = departments.id
+	where majors.id = students.major
+) dept,
+LATERAL (
+	select
+		grade as max_grade,
+		classes.id as cid
+	from grades
+	join classes
+    on grades.class = classes.id
+	where grades.student = students.id and classes.department = dept.did
+	order by grade desc limit 1
+) grade,
+LATERAL (
+	select name as class_name from classes where grade.cid = classes.id
+) class
+`,
+				Expected: []sql.Row{
+					{"Elle", "ESG Studies", 97.0},
+					{"Latham", "Greek Mythology", 92.0},
+				},
+			},
+		},
+	},
 }
