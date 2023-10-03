@@ -113,5 +113,6 @@ var (
 		XyData,
 		Invert_pkData,
 		JoinData,
+		Default_tblData,
 	}
 )

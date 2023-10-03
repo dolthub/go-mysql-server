@@ -9072,4 +9072,11 @@ WHERE keyless.c0 IN (
 			"                 └─ columns: [u v]\n" +
 			"",
 	},
+	{
+		Query: `select * from default_tbl`,
+		ExpectedPlan: "Table\n" +
+			" ├─ name: default_tbl\n" +
+			" └─ columns: [i j]\n" +
+			"",
+	},
 }

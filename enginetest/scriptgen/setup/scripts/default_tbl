@@ -1,0 +1,7 @@
+exec
+CREATE TABLE `default_tbl` (
+  `i` int,
+  `j` int default 0,
+  PRIMARY KEY (`i`)
+)
+----

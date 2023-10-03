@@ -35,10 +35,17 @@ func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 	}
 
 	return transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		project, ok := node.(*plan.Project)
-		if ok && project.Schema().CaseSensitiveEquals(project.Child.Schema()) {
-			a.Log("project erased")
-			return project.Child, transform.NewTree, nil
+		if proj, ok := node.(*plan.Project); ok {
+			projSch := proj.Schema()
+			childSch := proj.Child.Schema().Copy()
+			// cols in projSch do not have Default, so remove them from childSch cols
+			for i := range childSch {
+				childSch[i].Default = nil
+			}
+			if projSch.CaseSensitiveEquals(childSch) {
+				a.Log("project erased")
+				return proj.Child, transform.NewTree, nil
+			}
 		}
 
 		return node, transform.SameTree, nil

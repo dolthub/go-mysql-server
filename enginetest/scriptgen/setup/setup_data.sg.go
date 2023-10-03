@@ -116,6 +116,10 @@ var DatetimetableData = []SetupScript{{
 	`create index datetime_table_ts on datetime_table (timestamp_col)`,
 }}
 
+var Default_tblData = []SetupScript{{
+	"CREATE TABLE `default_tbl` (   `i` int,   `j` int default 0,   PRIMARY KEY (`i`) )",
+}}
+
 var EmptytableData = []SetupScript{{
 	`create table emptytable (i mediumint primary key, s varchar(20))`,
 }}
