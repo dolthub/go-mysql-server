@@ -1261,7 +1261,7 @@ var LateralJoinScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    `
+				Query: `
 select name, class.class_name, grade.max_grade
 from students,
 LATERAL (
