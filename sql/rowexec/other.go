@@ -251,6 +251,7 @@ func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (
 	var returnSch sql.Schema
 
 	selectSeen := false
+
 	for _, s := range n.Children() {
 		// TODO: this should happen at iteration time, but this call is where the actual iteration happens
 		err := startTransaction(ctx)
@@ -264,9 +265,18 @@ func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (
 
 			var isSelect bool
 			subIter, err := b.buildNodeExec(ctx, s, row)
+
 			if err != nil {
-				return err
+				_, isFetch := s.(*plan.Fetch)
+				if err != io.EOF && !isFetch {
+					return err
+				}
+				// Special case here where we want to continue. Fetch returns io.EOF specifically when we are supposed to continue.
+				// Are there other cursor operations that should be handled here? Maybe it shouldn't return an error at all?
+
+				// Would it be beter to grab the Hander and determine if it's a CONTINUE handler?
 			}
+
 			subIterNode := s
 			subIterSch := s.Schema()
 			if blockSubIter, ok := subIter.(plan.BlockRowIter); ok {
