@@ -378,10 +378,11 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 	switch n := n.(type) {
 	case *plan.InsertInto:
 		s.addSchema(n.Destination.Schema())
-		n.Source = s.children[0]
-		n.Destination = s.children[1]
-		n.OnDupExprs = s.expressions
-		return n.WithChecks(s.checks), nil
+		nn := *n
+		nn.Source = s.children[0]
+		nn.Destination = s.children[1]
+		nn.OnDupExprs = s.expressions
+		return nn.WithChecks(s.checks), nil
 	default:
 		// child scopes don't account for projections
 		s.addSchema(n.Schema())
