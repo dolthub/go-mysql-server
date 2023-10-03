@@ -1401,6 +1401,38 @@ END;`,
 		},
 	},
 	{
+		Name: "ITERATE and CONTINUE LOOP",
+		SetUpScript: []string{
+			`CREATE TABLE t1 (pk int PRIMARY KEY);`,
+			`INSERT INTO t1 VALUES (1), (2), (3), (4)`,
+			`CREATE PROCEDURE p1()
+			             BEGIN
+			               DECLARE done INT DEFAULT 0;
+			               DECLARE a, b INT DEFAULT 1;
+			               DECLARE cur1 CURSOR FOR SELECT pk FROM t1;
+			               DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
+			               OPEN cur1;
+			               tloop: LOOP
+			                 FETCH cur1 INTO b;
+			                 IF done THEN
+			                   LEAVE tloop;
+			                 END IF;
+			                 SET a = (a + b) * 3;
+			               END LOOP;
+			               CLOSE cur1;
+			               SELECT a;
+			             END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{255},
+				},
+			},
+		},
+	},
+	{
 		Name: "ITERATE and LEAVE WHILE",
 		SetUpScript: []string{
 			`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
