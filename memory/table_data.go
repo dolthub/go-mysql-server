@@ -19,8 +19,6 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/dolthub/vitess/go/sqltypes"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -300,31 +298,4 @@ func insertValueInRows(ctx *sql.Context, data *TableData, colIdx int, colDefault
 		data.partitions[k] = newP
 	}
 	return nil
-}
-
-func rowsAreEqual(schema sql.Schema, left, right sql.Row) (bool, error) {
-	if len(left) != len(right) || len(left) != len(schema) {
-		return false, nil
-	}
-
-	for index := range left {
-		typ := schema[index].Type
-		if typ.Type() != sqltypes.TypeJSON {
-			if left[index] != right[index] {
-				return false, nil
-			}
-			continue
-		}
-
-		// TODO should Type.Compare be used for all columns?
-		cmp, err := typ.Compare(left[index], right[index])
-		if err != nil {
-			return false, err
-		}
-		if cmp != 0 {
-			return false, nil
-		}
-	}
-
-	return true, nil
 }

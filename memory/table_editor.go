@@ -201,11 +201,11 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 
 // Delete the given row from the table.
 func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
+	row = t.toStorageRow(row)
+
 	if err := checkRow(t.editedTable.Schema(), row); err != nil {
 		return err
 	}
-	
-	row = t.toStorageRow(row)
 
 	err := t.ea.Delete(row)
 	if err != nil {
@@ -551,7 +551,7 @@ func (pke *pkTableEditAccumulator) deleteHelper(table *TableData, row sql.Row) e
 			}
 
 			var err error
-			matches, err = rowsAreEqual(table.schema.Schema, row, partitionRow)
+			matches, err = partitionRow.Equals(row, table.schema.PhysicalSchema())
 			if err != nil {
 				return err
 			}
@@ -615,7 +615,7 @@ var _ tableEditAccumulator = (*keylessTableEditAccumulator)(nil)
 // Insert implements the tableEditAccumulator interface.
 func (k *keylessTableEditAccumulator) Insert(value sql.Row) error {
 	for i, row := range k.deletes {
-		eq, err := value.Equals(row, k.tableData.schema.Schema)
+		eq, err := value.Equals(row, k.tableData.schema.Schema.PhysicalSchema())
 		if err != nil {
 			return err
 		}
@@ -633,7 +633,7 @@ func (k *keylessTableEditAccumulator) Insert(value sql.Row) error {
 // Delete implements the tableEditAccumulator interface.
 func (k *keylessTableEditAccumulator) Delete(value sql.Row) error {
 	for i, row := range k.adds {
-		eq, err := value.Equals(row, k.tableData.schema.Schema)
+		eq, err := value.Equals(row, k.tableData.schema.Schema.PhysicalSchema())
 		if err != nil {
 			return err
 		}
@@ -724,7 +724,7 @@ func (k *keylessTableEditAccumulator) deleteHelper(table *TableData, row sql.Row
 		for partitionRowIndex, partitionRow := range partition {
 			matches = true
 			var err error
-			matches, err = rowsAreEqual(table.schema.Schema, row, partitionRow)
+			matches, err = partitionRow.Equals(row, table.schema.Schema.PhysicalSchema())
 			if err != nil {
 				return err
 			}
@@ -770,7 +770,7 @@ func formatRow(r sql.Row, idxs []int) string {
 }
 
 func checkRow(schema sql.Schema, row sql.Row) error {
-	schema = omitVirtualColumns(schema)
+	schema = schema.PhysicalSchema()
 	
 	if len(row) != len(schema) {
 		return sql.ErrUnexpectedRowLength.New(len(schema), len(row))
@@ -784,16 +784,6 @@ func checkRow(schema sql.Schema, row sql.Row) error {
 	}
 
 	return verifyRowTypes(row, schema)
-}
-
-func omitVirtualColumns(schema sql.Schema) sql.Schema {
-	var newSchema sql.Schema
-	for _, col := range schema {
-		if !col.Virtual {
-			newSchema = append(newSchema, col)
-		}
-	}
-	return newSchema
 }
 
 func verifyRowTypes(row sql.Row, schema sql.Schema) error {

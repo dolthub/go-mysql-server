@@ -517,7 +517,7 @@ func normalizeRowForRead(row sql.Row, numColumns int, columns []int, virtualCols
 			if j < len(virtualCols) && i == virtualCols[j] {
 				j++
 			} else {
-				virtualRow = append(virtualRow, row[i-j])
+				virtualRow[i] = row[i-j]
 			}
 		}
 	}

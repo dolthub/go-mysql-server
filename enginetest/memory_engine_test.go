@@ -248,15 +248,28 @@ func TestSingleScript(t *testing.T) {
 				},
 				{
 					Query:    "select * from t1 order by a",
-					Expected: []sql.Row{{1,2}, {2, 3}, {4, 5}},
+					Expected: []sql.Row{
+						{2, 1, 3, 5},
+						{2, 4, 6, 7},
+						{2, 6, 8, 5},
+						{2, 8, 10, 7},
+					},
 				},
 				{
-					Query:    "delete from t1 where a = 2",
+					Query:    "delete from t1 where v2 = 6",
 					Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 				},
+				// {
+				// 	Query:    "delete from t1 where a = 4",
+				// 	Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				// },
 				{
 					Query:    "select * from t1 order by a",
-					Expected: []sql.Row{{1, 2}, {4, 5}},
+					Expected: []sql.Row{
+						{2, 1, 3, 5},
+						{2, 6, 8, 5},
+						{2, 8, 10, 7},
+					},
 				},
 			},
 		},

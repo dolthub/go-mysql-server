@@ -91,6 +91,8 @@ func (b *BaseBuilder) buildDeleteFrom(ctx *sql.Context, n *plan.DeleteFrom, row 
 
 	targets := n.GetDeleteTargets()
 	schemaPositionDeleters := make([]schemaPositionDeleter, len(targets))
+	schema := n.Child.Schema()
+	
 	for i, target := range targets {
 		deletable, err := plan.GetDeletable(target)
 		if err != nil {
@@ -109,13 +111,13 @@ func (b *BaseBuilder) buildDeleteFrom(ctx *sql.Context, n *plan.DeleteFrom, row 
 			return true
 		})
 
-		start, end, err := findSourcePosition(n.Child.Schema(), sourceName)
+		start, end, err := findSourcePosition(schema, sourceName)
 		if err != nil {
 			return nil, err
 		}
 		schemaPositionDeleters[i] = schemaPositionDeleter{deleter, int(start), int(end)}
 	}
-	return newDeleteIter(iter, n.Child.Schema(), schemaPositionDeleters...), nil
+	return newDeleteIter(iter, schema, schemaPositionDeleters...), nil
 }
 
 func (b *BaseBuilder) buildForeignKeyHandler(ctx *sql.Context, n *plan.ForeignKeyHandler, row sql.Row) (sql.RowIter, error) {

@@ -26,16 +26,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func validateUniqueTableNames(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	// getTableAliases will error if any table name / alias is repeated
-	_, err := getTableAliases(n, scope)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	return n, transform.SameTree, err
-}
-
 // deferredColumn is a wrapper on UnresolvedColumn used to defer the resolution of the column because it may require
 // some work done by other analyzer phases.
 type deferredColumn struct {
