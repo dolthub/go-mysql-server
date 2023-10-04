@@ -358,7 +358,7 @@ func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outSc
 
 // buildVirtualTableScan returns a ProjectNode for a table that has virtual columns, projecting the values of any
 // generated columns 
-func (b *Builder) buildVirtualTableScan(tab sql.Table, rt *plan.ResolvedTable) *plan.Project {
+func (b *Builder) buildVirtualTableScan(tab sql.Table, rt *plan.ResolvedTable) *plan.VirtualColumnTable {
 	projections := make([]sql.Expression, len(tab.Schema()))
 	for i, c := range tab.Schema() {
 		if !c.Virtual {
@@ -373,5 +373,5 @@ func (b *Builder) buildVirtualTableScan(tab sql.Table, rt *plan.ResolvedTable) *
 		}
 	}
 	
-	return plan.NewProject(projections, rt) 
+	return plan.NewVirtualColumnTable(rt, projections) 
 }

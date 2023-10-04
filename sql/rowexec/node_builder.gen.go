@@ -221,6 +221,8 @@ func (b *BaseBuilder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (
 		return b.buildNoopTriggerRollback(ctx, n, row)
 	case *plan.With:
 		return b.buildWith(ctx, n, row)
+	case *plan.VirtualColumnTable:
+		return b.buildVirtualColumnTable(ctx, n, row)
 	case *plan.Project:
 		return b.buildProject(ctx, n, row)
 	case *plan.ModifyColumn:

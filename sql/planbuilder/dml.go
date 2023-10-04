@@ -452,6 +452,8 @@ func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 
 	transform.Inspect(node, func(node sql.Node) bool {
 		switch n := node.(type) {
+		case *plan.VirtualColumnTable:
+			ret[n.Table.Name()] = n.ResolvedTable
 		case *plan.ResolvedTable:
 			ret[n.Table.Name()] = n
 		case *plan.IndexedTableAccess:

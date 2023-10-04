@@ -108,39 +108,6 @@ func hasTable(name string, node sql.Node) bool {
 	return found
 }
 
-// getResolvedTableAndAlias returns the first resolved table in the specified node tree, along with its aliased name,
-// or the empty string if no table alias has been specified.
-func getResolvedTableAndAlias(node sql.Node) (*plan.ResolvedTable, string) {
-	var table *plan.ResolvedTable
-	var alias string
-
-	transform.Inspect(node, func(node sql.Node) bool {
-		// plan.Inspect will get called on all children of a node even if one of the children's calls returns false. We
-		// only want the first TableNode match.
-		if table != nil {
-			return false
-		}
-
-		switch n := node.(type) {
-		case *plan.TableAlias:
-			table = getResolvedTable(n)
-			alias = n.Name()
-			return false
-		case *plan.ResolvedTable:
-			table = n
-			return false
-		case *plan.IndexedTableAccess:
-			rt, ok := n.TableNode.(*plan.ResolvedTable)
-			if ok {
-				table = rt
-				return false
-			}
-		}
-		return true
-	})
-	return table, alias
-}
-
 // Finds first ResolvedTable node that is a descendant of the node given
 func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 	var table *plan.ResolvedTable
@@ -155,6 +122,11 @@ func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 		case *plan.ResolvedTable:
 			if !plan.IsDualTable(n) {
 				table = n
+				return false
+			}
+		case *plan.VirtualColumnTable:
+			if !plan.IsDualTable(n) {
+				table = n.ResolvedTable
 				return false
 			}
 		case *plan.IndexedTableAccess:
@@ -175,6 +147,8 @@ func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 
 	transform.Inspect(node, func(node sql.Node) bool {
 		switch n := node.(type) {
+		case *plan.VirtualColumnTable:
+			ret[n.Table.Name()] = n.ResolvedTable
 		case *plan.ResolvedTable:
 			ret[n.Table.Name()] = n
 		case *plan.IndexedTableAccess:
