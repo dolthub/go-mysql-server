@@ -501,6 +501,13 @@ var ScriptTests = []ScriptTest{
 					"        FROM ladder JOIN rt WHERE ladder.foo = rt.foo\n" +
 					"    )\n" +
 					"SELECT * FROM ladder;",
+				Expected: []sql.Row{
+					{1, nil},
+					{1, nil},
+					{1, nil},
+					{1, nil},
+					{1, nil},
+				},
 			},
 			{
 				Query:       "with recursive cte (x,y) as (select 1, 1 intersect select 1, 1 intersect select x + 1, y + 2 from cte where x < 5) select * from cte;",
