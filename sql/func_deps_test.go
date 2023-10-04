@@ -175,6 +175,23 @@ func TestFuncDeps_InnerJoin(t *testing.T) {
 		join := NewInnerJoinFDs(mnpq, abcde, [][2]ColumnId{{1, 7}})
 		assert.Equal(t, "key(6); constant(1-5,7); equiv(1,7)", join.String())
 	})
+	t.Run("simplify cols on join", func(t *testing.T) {
+		// create table t1 (id int primary key, value int)
+		// create table t2 (id int primary key, value int)
+
+		// SELECT * FROM t1 JOIN t2 ON t1.value = t2.id;
+
+		t1 := &FuncDepSet{all: cols(1, 2)}
+		t1.AddNotNullable(cols(1))
+		t1.AddStrictKey(cols(1))
+
+		t2 := &FuncDepSet{all: cols(3, 4)}
+		t2.AddNotNullable(cols(3))
+		t2.AddStrictKey(cols(3))
+
+		join := NewInnerJoinFDs(t1, t2, [][2]ColumnId{{2, 3}})
+		assert.Equal(t, "key(1); equiv(2,3)", join.String())
+	})
 }
 
 func TestFuncDeps_LeftJoin(t *testing.T) {
