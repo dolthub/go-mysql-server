@@ -105,9 +105,11 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 		case *ast.ColName:
 			var ok bool
 			// GROUP BY binds to column references before projections.
-			col, ok = fromScope.resolveColumn(strings.ToLower(e.Qualifier.Name.String()), strings.ToLower(e.Name.String()), true)
+			tblName := strings.ToLower(e.Qualifier.Name.String())
+			colName := strings.ToLower(e.Name.String())
+			col, ok = fromScope.resolveColumn(tblName, colName, true)
 			if !ok {
-				col, ok = projScope.resolveColumn(strings.ToLower(e.Qualifier.Name.String()), strings.ToLower(e.Name.String()), true)
+				col, ok = projScope.resolveColumn(tblName, colName, true)
 			}
 
 			if !ok {
@@ -712,12 +714,14 @@ func (b *Builder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) 
 			}
 		case *ast.ColName:
 			// add to extra cols
-			c, ok := projScope.resolveColumn(strings.ToLower(n.Qualifier.String()), strings.ToLower(n.Name.String()), false)
+			tblName := strings.ToLower(n.Qualifier.Name.String())
+			colName := strings.ToLower(n.Name.String())
+			c, ok := projScope.resolveColumn(tblName, colName, false)
 			if ok {
 				// references projection alias
 				break
 			}
-			c, ok = fromScope.resolveColumn(strings.ToLower(n.Qualifier.String()), strings.ToLower(n.Name.String()), true)
+			c, ok = fromScope.resolveColumn(tblName, colName, true)
 			if !ok {
 				err := sql.ErrColumnNotFound.New(n.Name)
 				b.handleErr(err)

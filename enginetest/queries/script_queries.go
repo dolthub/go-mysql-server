@@ -3915,6 +3915,49 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Multi-db Aliasing",
+		SetUpScript: []string{
+			"create database db1;",
+			"create table db1.t1 (i int primary key);",
+			"create table db1.t2 (j int primary key);",
+			"insert into db1.t1 values (1);",
+			"insert into db1.t2 values (2);",
+
+			"create database db2;",
+			"create table db2.t1 (i int primary key);",
+			"create table db2.t2 (j int primary key);",
+			"insert into db2.t1 values (10);",
+			"insert into db2.t2 values (20);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select db.t1.i from db1.t1 order by db.t1.i",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select db.t1.i from db1.t1 group by db.t1.i",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Skip: true, // incorrectly throws Not unique table/alias: t1
+				Query: "select db1.t1.i, db2.t1.i from db1.t1 join db2.t1 order by db1.t1, db2.t1.i",
+				Expected: []sql.Row{
+					{1, 10},
+				},
+			},
+			{
+				Query: "select i, j from db1.t1 join db2.t2 order by i, j",
+				Expected: []sql.Row{
+					{1, 20},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

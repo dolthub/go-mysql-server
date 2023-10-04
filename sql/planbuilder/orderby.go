@@ -52,7 +52,9 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 		switch e := o.Expr.(type) {
 		case *ast.ColName:
 			// check for projection alias first
-			c, ok := projScope.resolveColumn(strings.ToLower(e.Qualifier.String()), strings.ToLower(e.Name.String()), false)
+			tblName := strings.ToLower(e.Qualifier.Name.String())
+			colName := strings.ToLower(e.Name.String())
+			c, ok := projScope.resolveColumn(tblName, colName, false)
 			if ok {
 				c.descending = descending
 				outScope.addColumn(c)
@@ -60,7 +62,7 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 			}
 
 			// fromScope col
-			c, ok = fromScope.resolveColumn(strings.ToLower(e.Qualifier.String()), strings.ToLower(e.Name.String()), true)
+			c, ok = fromScope.resolveColumn(tblName, colName, true)
 			if !ok {
 				err := sql.ErrColumnNotFound.New(e.Name)
 				b.handleErr(err)
