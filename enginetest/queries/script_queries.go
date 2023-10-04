@@ -488,6 +488,21 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
+				Query: "WITH RECURSIVE\n" +
+					"    rt (foo) AS (\n" +
+					"        SELECT 1 as foo\n" +
+					"        UNION ALL\n" +
+					"        SELECT foo + 1 as foo FROM rt WHERE foo < 5\n" +
+					"    ),\n" +
+					"        ladder (depth, foo) AS (\n" +
+					"        SELECT 1 as depth, NULL as foo from rt\n" +
+					"        UNION ALL\n" +
+					"        SELECT ladder.depth + 1 as depth, rt.foo\n" +
+					"        FROM ladder JOIN rt WHERE ladder.foo = rt.foo\n" +
+					"    )\n" +
+					"SELECT * FROM ladder;",
+			},
+			{
 				Query:       "with recursive cte (x,y) as (select 1, 1 intersect select 1, 1 intersect select x + 1, y + 2 from cte where x < 5) select * from cte;",
 				ExpectedErr: sql.ErrRecursiveCTEMissingUnion,
 			},
