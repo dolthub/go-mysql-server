@@ -27,6 +27,8 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 	// We don't want to carry any information about keys, constraints, defaults, etc. from a `create table as select`
 	// statement. When the underlying select node is a table, we must remove all such info from its schema. The only
 	// exception is NOT NULL constraints, which we leave alone.
+	// TODO: we actually want to carry information about defaults, but we need to be able to evaluate them in the
+	//  context of the select query. This is a bit tricky, but we should do it.
 	selectSchema := stripSchema(analyzedSelect.Schema())
 	mergedSchema := mergeSchemas(inputSpec.Schema.Schema, selectSchema)
 	newSch := make(sql.Schema, len(mergedSchema))
@@ -61,7 +63,7 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 func stripSchema(schema sql.Schema) sql.Schema {
 	sch := schema.Copy()
 	for i := range schema {
-		sch[i].Default = nil
+		//sch[i].Default = nil
 		sch[i].Generated = nil
 		sch[i].AutoIncrement = false
 		sch[i].PrimaryKey = false

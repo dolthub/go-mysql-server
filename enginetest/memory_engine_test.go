@@ -192,22 +192,36 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "add new generated column",
+			// TODO: add tests using create ... from select ...
+			Name: "DELETE ME",
 			SetUpScript: []string{
-				"create table t1 (a int primary key, b int)",
-				"insert into t1 values (1,2), (2,3), (3,4)",
+				"create table t (i int primary key, j int default 0)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
+				//{
+				//	Query:    "explain select * from t",
+				//	Expected: []sql.Row{},
+				//},
+				//{
+				//	Query:    "explain select j, i from t",
+				//	Expected: []sql.Row{},
+				//},
+				//{
+				//	Query:    "explain select i as ii, j as jj from t",
+				//	Expected: []sql.Row{},
+				//},
 				{
-					Query:    "alter table t1 add column c int as (a + b) stored",
-					Expected: []sql.Row{{types.NewOkResult(0)}},
+					Query:    "create table tmp (j int default 0)",
 				},
 				{
-					Query:    "select * from t1 order by a",
-					Expected: []sql.Row{{1, 2, 3}, {2, 3, 5}, {3, 4, 7}},
+					Query: "create table tt as select * from t",
+					Expected: []sql.Row{},
+				},
+				{
+					Query: "show create table tt",
+					Expected: []sql.Row{},
 				},
 			},
 		},
@@ -220,11 +234,42 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		engine.EngineAnalyzer().Debug = true
-		engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
+	//t.Skip()
+	//var scripts = []queries.ScriptTest{
+	//	{
+	//		Name: "add new generated column",
+	//		SetUpScript: []string{
+	//			"create table t1 (a int primary key, b int)",
+	//			"insert into t1 values (1,2), (2,3), (3,4)",
+	//		},
+	//		Assertions: []queries.ScriptTestAssertion{
+	//			{
+	//				Query:    "alter table t1 add column c int as (a + b) stored",
+	//				Expected: []sql.Row{{types.NewOkResult(0)}},
+	//			},
+	//			{
+	//				Query:    "select * from t1 order by a",
+	//				Expected: []sql.Row{{1, 2, 3}, {2, 3, 5}, {3, 4, 7}},
+	//			},
+	//		},
+	//	},
+	//}
+	//
+	//for _, test := range scripts {
+	//	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+	//	harness.Setup(setup.MydbData)
+	//	engine, err := harness.NewEngine(t)
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//	engine.EngineAnalyzer().Debug = true
+	//	engine.EngineAnalyzer().Verbose = true
+	//
+	//	enginetest.TestScriptWithEngine(t, engine, harness, test)
+	//}
 }
 
 func TestUnbuildableIndex(t *testing.T) {

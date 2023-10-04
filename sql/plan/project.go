@@ -43,12 +43,40 @@ func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 	}
 }
 
+func extractGetField(expr sql.Expression) *expression.GetField {
+	if gf, ok := expr.(*expression.GetField); ok {
+		return gf
+	}
+	for _, child := range expr.Children() {
+		if gf := extractGetField(child); gf != nil {
+			return gf
+		}
+	}
+	return nil
+}
+
 // Schema implements the Node interface.
 func (p *Project) Schema() sql.Schema {
 	var s = make(sql.Schema, len(p.Projections))
 	for i, e := range p.Projections {
-		s[i] = transform.ExpressionToColumn(e, AliasSubqueryString(e))
+		ass := AliasSubqueryString(e)
+		s[i] = transform.ExpressionToColumn(e, ass)
 	}
+
+	childSch := p.Child.Schema()
+	for i, e := range p.Projections {
+		gf := extractGetField(e)
+		if gf == nil {
+			continue
+		}
+		for _, col := range childSch {
+			if strings.EqualFold(gf.Table(), col.Source) && strings.EqualFold(gf.Name(), col.Name) {
+				s[i].Default = col.Default
+				break
+			}
+		}
+	}
+
 	return s
 }
 
