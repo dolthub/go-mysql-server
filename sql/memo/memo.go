@@ -656,28 +656,39 @@ func (m *Memo) String() string {
 			r = r.Next()
 		}
 	}
+	maxId := 0
 	for len(groups) > 0 {
 		newGroups := make([]*ExprGroup, 0)
 		for _, g := range groups {
-			if exprs[int(TableIdForSource(g.Id))] != "" {
+			id := int(TableIdForSource(g.Id))
+			if exprs[id] != "" {
 				continue
 			}
-			exprs[int(TableIdForSource(g.Id))] = g.String()
+			exprs[id] = g.String()
 			newGroups = append(newGroups, g.children()...)
+			if id > maxId {
+				maxId = id
+			}
 		}
 		groups = newGroups
 	}
 	for _, e := range m.exprs {
-		exprs[int(TableIdForSource(e.Id))] = e.String()
+		id := int(TableIdForSource(e.Id))
+		exprs[id] = e.String()
+		if id > maxId {
+			maxId = id
+		}
 	}
 	b := strings.Builder{}
 	b.WriteString("memo:\n")
 	beg := "├──"
 	for i, g := range exprs {
-		if i == len(exprs)-1 {
+		if i == maxId {
 			beg = "└──"
 		}
-		b.WriteString(fmt.Sprintf("%s G%d: %s\n", beg, i+1, g))
+		if g != "" {
+			b.WriteString(fmt.Sprintf("%s G%d: %s\n", beg, i+1, g))
+		}
 	}
 	return b.String()
 }
