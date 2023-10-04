@@ -17,6 +17,7 @@ package enginetest_test
 import (
 	"fmt"
 	"log"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -889,16 +890,25 @@ func TestCharsetCollationEngine(t *testing.T) {
 }
 
 func TestCharsetCollationWire(t *testing.T) {
+	if _, ok := os.LookupEnv("CI_TEST"); !ok {
+		t.Skip("Skipping test that requires CI_TEST=true")
+	}
 	harness := enginetest.NewDefaultMemoryHarness()
 	enginetest.TestCharsetCollationWire(t, harness, harness.SessionBuilder())
 }
 
 func TestDatabaseCollationWire(t *testing.T) {
+	if _, ok := os.LookupEnv("CI_TEST"); !ok {
+		t.Skip("Skipping test that requires CI_TEST=true")
+	}
 	harness := enginetest.NewDefaultMemoryHarness()
 	enginetest.TestDatabaseCollationWire(t, harness, harness.SessionBuilder())
 }
 
 func TestTypesOverWire(t *testing.T) {
+	if _, ok := os.LookupEnv("CI_TEST"); !ok {
+		t.Skip("Skipping test that requires CI_TEST=true")
+	}
 	harness := enginetest.NewDefaultMemoryHarness()
 	enginetest.TestTypesOverWire(t, harness, harness.SessionBuilder())
 }
