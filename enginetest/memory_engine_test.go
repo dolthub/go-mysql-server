@@ -223,7 +223,7 @@ func TestSingleScript(t *testing.T) {
 					},
 				},
 				{
-					Skip: true, // incorrectly throws Not unique table/alias: t1
+					Skip:  true, // incorrectly throws Not unique table/alias: t1
 					Query: "select db1.t1.i, db2.t1.i from db1.t1 join db2.t1 order by db1.t1, db2.t1.i",
 					Expected: []sql.Row{
 						{1, 10},
