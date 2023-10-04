@@ -33,13 +33,14 @@ func TestQuery(t *testing.T) {
 		{"Select Name", "SELECT name FROM db.person", nil, []any{&name}, records.Columns(1)},
 		{"Select Count", "SELECT COUNT(1) FROM db.person", nil, []any{&count}, Records{{len(records)}}},
 
-		{"Insert", `INSERT INTO db.person (name, email, phone_numbers, created_at) VALUES ('foo', 'bar', '["baz"]', ?)`, []any{now}, []any{}, Records{}},
+		{"Insert", `INSERT INTO db.person (name, email, phone_numbers, created_at) VALUES ('foo', 'bar', '["baz"]', NOW())`, nil, []any{}, Records{}},
 		{"Select Inserted", "SELECT name, email, phone_numbers FROM db.person WHERE name = 'foo'", nil, []any{&name, &email, &numbers}, Records{{"foo", "bar", []any{"baz"}}}},
 
 		{"Update", "UPDATE db.person SET name = 'asdf' WHERE name = 'foo'", nil, []any{}, Records{}},
 		{"Delete", "DELETE FROM db.person WHERE name = 'asdf'", nil, []any{}, Records{}},
 
 		{"Select Binary Args", `SELECT ?`, []any{[]byte{1, 2, 3}}, []any{&blob}, Records{{[]byte{1, 2, 3}}}},
+		{"Insert With time.Time", `INSERT INTO db.person (name, email, phone_numbers, created_at) VALUES ('foo', 'bar', '["baz"]', ?)`, []any{now}, []any{}, Records{}},
 	}
 
 	for _, c := range cases {
