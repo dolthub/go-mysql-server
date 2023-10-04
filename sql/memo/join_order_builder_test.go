@@ -715,14 +715,17 @@ func TestEnsureClosure(t *testing.T) {
 	}
 }
 
-var childSchema = sql.NewPrimaryKeySchema(sql.Schema{
-	{Name: "x", Type: types.Int64, Nullable: true},
-	{Name: "y", Type: types.Text, Nullable: true},
-	{Name: "z", Type: types.Int64, Nullable: true},
-}, 0)
+func childSchema(source string) sql.PrimaryKeySchema {
+	return sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "x", Source: source, Type: types.Int64, Nullable: false},
+		{Name: "y", Source: source, Type: types.Text, Nullable: true},
+		{Name: "z", Source: source, Type: types.Int64, Nullable: true},
+	}, 0)
+}
 
 func tableNode(db *memory.Database, name string) sql.Node {
-	t := memory.NewTable(db, name, childSchema, nil)
+	t := memory.NewTable(db, name, childSchema(name), nil)
+	t.EnablePrimaryKeyIndexes()
 	return plan.NewResolvedTable(t, nil, nil)
 }
 
