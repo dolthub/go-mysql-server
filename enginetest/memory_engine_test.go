@@ -195,27 +195,19 @@ func TestSingleScript(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "Multi-db Aliasing",
+			Name: "add new generated column",
 			SetUpScript: []string{
-				"create database db1;",
-				"create table db1.t1 (i int primary key);",
-				"create table db1.t2 (j int primary key);",
-				"insert into db1.t1 values (1);",
-				"insert into db1.t2 values (2);",
-
-				"create database db2;",
-				"create table db2.t1 (i int primary key);",
-				"create table db2.t2 (j int primary key);",
-				"insert into db2.t1 values (10);",
-				"insert into db2.t2 values (20);",
+				"create table t1 (a int primary key, b int)",
+				"insert into t1 values (1,2), (2,3), (3,4)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					//Skip:  true, // incorrectly throws Not unique table/alias: t1
-					Query: "select db1.t1.i, db2.t1.i from db1.t1 join db2.t1 order by db1.t1.i, db2.t1.i",
-					Expected: []sql.Row{
-						{1, 10},
-					},
+					Query:    "alter table t1 add column c int as (a + b) stored",
+					Expected: []sql.Row{{types.NewOkResult(0)}},
+				},
+				{
+					Query:    "select * from t1 order by a",
+					Expected: []sql.Row{{1, 2, 3}, {2, 3, 5}, {3, 4, 7}},
 				},
 			},
 		},
@@ -228,42 +220,11 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
+		engine.EngineAnalyzer().Debug = true
+		engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
-	//t.Skip()
-	//var scripts = []queries.ScriptTest{
-	//	{
-	//		Name: "add new generated column",
-	//		SetUpScript: []string{
-	//			"create table t1 (a int primary key, b int)",
-	//			"insert into t1 values (1,2), (2,3), (3,4)",
-	//		},
-	//		Assertions: []queries.ScriptTestAssertion{
-	//			{
-	//				Query:    "alter table t1 add column c int as (a + b) stored",
-	//				Expected: []sql.Row{{types.NewOkResult(0)}},
-	//			},
-	//			{
-	//				Query:    "select * from t1 order by a",
-	//				Expected: []sql.Row{{1, 2, 3}, {2, 3, 5}, {3, 4, 7}},
-	//			},
-	//		},
-	//	},
-	//}
-	//
-	//for _, test := range scripts {
-	//	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	//	harness.Setup(setup.MydbData)
-	//	engine, err := harness.NewEngine(t)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	engine.EngineAnalyzer().Debug = true
-	//	engine.EngineAnalyzer().Verbose = true
-	//
-	//	enginetest.TestScriptWithEngine(t, engine, harness, test)
-	//}
 }
 
 func TestUnbuildableIndex(t *testing.T) {

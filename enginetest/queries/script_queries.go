@@ -3968,13 +3968,6 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true, // incorrectly throws Not unique table/alias: t1
-				Query: "select db1.t1.i, db2.t1.i from db1.t1 join db2.t1 order by db1.t1, db2.t1.i",
-				Expected: []sql.Row{
-					{1, 10},
-				},
-			},
-			{
 				Query: "select i, j from db1.t1 join db2.t2 order by i, j",
 				Expected: []sql.Row{
 					{1, 20},
@@ -3990,6 +3983,20 @@ var ScriptTests = []ScriptTest{
 				Query: "select db1.t1.i, db2.t2.j from db1.t1 join db2.t2 group by db1.t1.i order by db2.t2.j",
 				Expected: []sql.Row{
 					{1, 20},
+				},
+			},
+			{
+				Skip:  true, // incorrectly throws Not unique table/alias: t1
+				Query: "select db1.t1.i, db2.t1.i from db1.t1 join db2.t1 order by db1.t1, db2.t1.i",
+				Expected: []sql.Row{
+					{1, 10},
+				},
+			},
+			{
+				// Aliasing solves it
+				Query: "select a.i, b.i from db1.t1 a join db2.t1 b order by a.i, b.i",
+				Expected: []sql.Row{
+					{1, 10},
 				},
 			},
 		},
