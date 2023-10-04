@@ -243,7 +243,7 @@ func (f *FuncDepSet) EquivalenceClosure(cols ColSet) ColSet {
 }
 
 func (f *FuncDepSet) AddNotNullable(cols ColSet) {
-	cols = f.simplifyCols(cols)
+	cols = f.simplifyCols(cols, nil)
 	f.notNull = f.notNull.Union(cols)
 }
 
@@ -282,7 +282,7 @@ func (f *FuncDepSet) AddKey(k Key) {
 }
 
 func (f *FuncDepSet) AddStrictKey(cols ColSet) {
-	cols = f.simplifyCols(cols)
+	cols = f.simplifyCols(cols, nil)
 	newKey := Key{cols: cols, allCols: f.all, strict: true}
 	for i, key := range f.keys {
 		if key.implies(newKey) {
@@ -297,7 +297,7 @@ func (f *FuncDepSet) AddStrictKey(cols ColSet) {
 
 	if len(f.keys) > 1 {
 		lead := f.keys[0]
-		lead.cols = f.simplifyCols(lead.cols)
+		lead.cols = f.simplifyCols(lead.cols, nil)
 		if !lead.strict || lead.strict && lead.cols.Len() > cols.Len() {
 			// strict > lax
 			// short > long
@@ -313,7 +313,7 @@ func (f *FuncDepSet) AddLaxKey(cols ColSet) {
 		f.AddStrictKey(cols)
 	}
 
-	cols = f.simplifyCols(cols)
+	cols = f.simplifyCols(cols, nil)
 	newKey := Key{cols: cols, allCols: f.all, strict: false}
 	for i, key := range f.keys {
 		if key.implies(newKey) {
@@ -328,7 +328,7 @@ func (f *FuncDepSet) AddLaxKey(cols ColSet) {
 	if len(f.keys) > 1 && !f.keys[0].strict {
 		// only try to improve if lax key
 		lead := f.keys[0]
-		lead.cols = f.simplifyCols(lead.cols)
+		lead.cols = f.simplifyCols(lead.cols, nil)
 		if lead.cols.Len() > cols.Len() {
 			f.keys[0], f.keys[len(f.keys)-1] = f.keys[len(f.keys)-1], lead
 		}
@@ -337,7 +337,7 @@ func (f *FuncDepSet) AddLaxKey(cols ColSet) {
 
 // simplifyCols uses equivalence and constant sets to minimize
 // a key set
-func (f *FuncDepSet) simplifyCols(key ColSet) ColSet {
+func (f *FuncDepSet) simplifyCols(key ColSet, subKeys []Key) ColSet {
 	if key.Empty() {
 		return key
 	}
@@ -350,7 +350,7 @@ func (f *FuncDepSet) simplifyCols(key ColSet) ColSet {
 		ret.Remove(i)
 		plucked.Add(i)
 		notConst := f.consts.Intersection(plucked).Empty()
-		if notConst && !f.inClosureOf(plucked, ret) {
+		if notConst && !f.inClosureOf(plucked, ret, subKeys) {
 			// plucked is novel
 			ret.Add(i)
 		}
@@ -365,19 +365,29 @@ func (f *FuncDepSet) ColsAreStrictKey(cols ColSet) bool {
 	if len(f.keys) == 0 {
 		return false
 	}
-	return f.inClosureOf(f.keys[0].cols, cols)
+	return f.inClosureOf(f.keys[0].cols, cols, nil)
 }
 
-func (f *FuncDepSet) inClosureOf(cols1, cols2 ColSet) bool {
-	if cols1.SubsetOf(cols2) {
+func (f *FuncDepSet) inClosureOf(candidate, source ColSet, fdsKeys []Key) bool {
+	if candidate.SubsetOf(source) {
 		return true
 	}
-	for _, set := range f.equivs.Sets() {
-		if set.Intersects(cols2) {
-			cols2 = cols2.Union(set)
+	var oldClosure ColSet
+	newClosure := source.Copy()
+	for !oldClosure.Equals(newClosure) {
+		oldClosure = newClosure.Copy()
+		for _, set := range f.equivs.Sets() {
+			if set.Intersects(newClosure) {
+				newClosure = newClosure.Union(set)
+			}
+		}
+		for _, key := range fdsKeys {
+			if key.cols.SubsetOf(newClosure) {
+				newClosure = newClosure.Union(key.allCols)
+			}
 		}
 	}
-	if cols1.SubsetOf(cols2) {
+	if candidate.SubsetOf(newClosure) {
 		return true
 	}
 	return false
@@ -479,7 +489,11 @@ func NewInnerJoinFDs(left, right *FuncDepSet, filters [][2]ColumnId) *FuncDepSet
 	} else if rKey.Empty() {
 		jKey = lKey
 	} else {
-		jKey.cols = lKey.cols.Union(rKey.cols)
+		var subKeys []Key
+		subKeys = append(subKeys, leftKeys...)
+		subKeys = append(subKeys, rightKeys...)
+		jKey.cols = ret.simplifyCols(lKey.cols.Union(rKey.cols), subKeys)
+		jKey.allCols = ret.all
 		jKey.strict = lKey.strict && rKey.strict
 	}
 	ret.AddKey(jKey)
@@ -598,7 +612,7 @@ func NewLeftJoinFDs(left, right *FuncDepSet, filters [][2]ColumnId) *FuncDepSet 
 	if leftStrict {
 		// leftcols are strict key
 		j := NewInnerJoinFDs(left, right, filters)
-		leftColsAreInnerJoinKey = j.inClosureOf(j.keys[0].cols, left.all)
+		leftColsAreInnerJoinKey = j.inClosureOf(j.keys[0].cols, left.all, nil)
 	}
 
 	leftKeys := left.CopyKeys()
