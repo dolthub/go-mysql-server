@@ -345,34 +345,11 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	}
 
 	return &tableIter{
-		rows:    rowsCopy,
-		columns: normalizeColumnsForRead(data.schema.Schema, t.columns),
-		filters: filters,
+		rows:        rowsCopy,
+		columns:     t.columns,
+		virtualCols: data.virtualColIndexes(),
+		filters:     filters,
 	}, nil
-}
-
-// normalizeColumnsForRead returns adjusted column indexes for reading storage rows, omitting any virtual columns from
-// the schema provided and shifting any indexes to the left as necessary to conform to the storage schema
-func normalizeColumnsForRead(schema sql.Schema, columns []int) []int {
-	if len(columns) == 0 {
-		return columns
-	}
-	
-	storageIdx := 0
-	adjusted := make([]int, len(columns))
-	i := 0 
-	for j, column := range schema {
-		if column.Virtual {
-			continue
-		}
-		if j == columns[storageIdx] {
-			adjusted[i] = storageIdx
-			i++
-		}
-		storageIdx++
-	}
-	
-	return adjusted
 }
 
 func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
@@ -468,8 +445,9 @@ func (p *partitionIter) Next(*sql.Context) (sql.Partition, error) {
 func (p *partitionIter) Close(*sql.Context) error { return nil }
 
 type tableIter struct {
-	columns []int
-	filters []sql.Expression
+	columns     []int
+	virtualCols []int
+	filters     []sql.Expression
 
 	rows        []sql.Row
 	indexValues sql.IndexValueIter
@@ -483,6 +461,8 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if err != nil {
 		return nil, err
 	}
+	
+	row = normalizeRowForRead(row, i.columns, i.virtualCols)
 
 	for _, f := range i.filters {
 		result, err := f.Eval(ctx, row)
@@ -504,6 +484,26 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	return row, nil
+}
+
+// normalizeRowForRead returns a copy of the row with nil values inserted for any virtual columns
+func normalizeRowForRead(row sql.Row, columns []int, virtualCols []int) sql.Row {
+	if len(virtualCols) == 0 {
+		return row
+	}
+
+	virtualRow := make(sql.Row, len(columns))
+
+	var j int
+	for i := range columns {
+		if j < len(virtualCols) && columns[i] == virtualCols[j] {
+			j++
+		} else {
+			virtualRow[i] = row[i-j]
+		}
+	}
+
+	return virtualRow
 }
 
 func (i *tableIter) Close(ctx *sql.Context) error {

@@ -268,6 +268,16 @@ func (td *TableData) sortRows() {
 	sort.Sort(partitionssort{td.partitions, idx, less})
 }
 
+func (td TableData) virtualColIndexes() []int {
+	var indexes []int
+	for i, col := range td.schema.Schema {
+		if col.Virtual {
+			indexes = append(indexes, i)
+		}
+	}
+	return indexes
+}
+
 func insertValueInRows(ctx *sql.Context, data *TableData, colIdx int, colDefault *sql.ColumnDefaultValue) error {
 	for k, p := range data.partitions {
 		newP := make([]sql.Row, len(p))
