@@ -127,14 +127,16 @@ type joinOrderBuilder struct {
 	// ((xy, ab), uv), (ab, (xy, uv)), etc.
 	//
 	// The group for a single base relation is the base relation itself.
-	m             *Memo
-	plans         map[vertexSet]*ExprGroup
-	edges         []edge
-	vertices      []RelExpr
-	vertexGroups  []GroupId
-	innerEdges    edgeSet
-	nonInnerEdges edgeSet
-	newPlanCb     func(j *joinOrderBuilder, rel RelExpr)
+	m                       *Memo
+	plans                   map[vertexSet]*ExprGroup
+	edges                   []edge
+	vertices                []RelExpr
+	vertexGroups            []GroupId
+	innerEdges              edgeSet
+	nonInnerEdges           edgeSet
+	newPlanCb               func(j *joinOrderBuilder, rel RelExpr)
+	indexibleCols           sql.ColSet
+	forceFastReorderForTest bool
 }
 
 func NewJoinOrderBuilder(memo *Memo) *joinOrderBuilder {
@@ -148,9 +150,6 @@ func NewJoinOrderBuilder(memo *Memo) *joinOrderBuilder {
 
 func (j *joinOrderBuilder) ReorderJoin(n sql.Node) {
 	j.populateSubgraph(n)
-	// `joinOrderBuilder.dbSube` currently computes every possible pair of relations-sets to see if they match an edge
-	// in the graph. This requires O(4^N) runtime on the number of relations and thus does not scale for large joins.
-	// If the number of relations is above a threshold, we won't attempt to reorder.
 	j.ensureClosure(j.m.root)
 	j.dbSube(j.m.root)
 }
@@ -392,7 +391,31 @@ func (j *joinOrderBuilder) buildJoinLeaf(n sql.Node) *ExprGroup {
 	grp := j.m.memoizeSourceRel(rel)
 	j.plans[relSet] = grp
 	j.vertexGroups = append(j.vertexGroups, grp.Id)
+
+	if tableScan, ok := rel.(*TableScan); ok {
+		if indexibleTable, ok := tableScan.Table.UnderlyingTable().(sql.IndexAddressableTable); ok {
+			j.addIndexibleColumns(rel, indexibleTable)
+		}
+	}
+
 	return grp
+}
+
+func (j *joinOrderBuilder) addIndexibleColumns(rel SourceRel, t sql.IndexAddressable) {
+	indexes, err := t.GetIndexes(rel.Group().m.Ctx)
+	if err != nil {
+		panic("???")
+	}
+	for _, idx := range indexes {
+		if !idx.IsUnique() {
+			continue
+		}
+		exprs := denormIdxExprs(rel.Name(), idx)
+		if len(exprs) != 1 {
+			continue
+		}
+		j.indexibleCols.Add(rel.Group().m.Columns[exprs[0]])
+	}
 }
 
 func (j *joinOrderBuilder) buildInnerEdge(op *operator, filters ...ScalarExpr) {
@@ -437,61 +460,12 @@ func (j *joinOrderBuilder) checkSize() {
 	}
 }
 
-func getColumnRefsFromScalar(s ScalarExpr) []*ColRef {
-	var result []*ColRef
-	DfsScalar(s, func(e ScalarExpr) (err error) {
-		if c, ok := e.(*ColRef); ok {
-			result = append(result, c)
-		}
-		return
-	})
-	return result
-}
-
-// fastReorder is an alternate implementation of dbSube that is optimized for joins on a large number of tables.
-// For these joins, a brute force approach is no longer practical. So instead, we only want to generate joins that we
-// believe will easy to optimize. In particular, we look for joins where one side of the join is an indexible table.
-// (This particular implementation uses the FDs strict keys as a proxy for indexible columns, since that information
-// is easier to query.)
-func (j *joinOrderBuilder) fastReorder(grp *ExprGroup, strictKey sql.ColSet) {
-	for _, edge := range j.edges {
-		for _, filter := range edge.filters {
-			for _, colRef := range getColumnRefsFromScalar(filter) {
-				colId := colRef.Col
-				table := colRef.Table
-				if strictKey.Contains(colId) {
-					var tableIdx uint64
-					for i, grpId := range j.vertexGroups {
-						if grpId == table {
-							tableIdx = uint64(i)
-							break
-						}
-					}
-					single := vertexSet(0).add(tableIdx)
-					// only add plans where the strict key is alone on one side of the join.
-					all := j.allVertices()
-					for subset := vertexSet(1); subset <= all; subset++ {
-						if subset == single {
-							continue
-						}
-						removed := subset.difference(single)
-						j.addPlans(removed, single)
-					}
-				}
-			}
-		}
-	}
-}
-
 // dpSube iterates all disjoint combinations of table sets,
 // adding plans to the tree when we find two sets that can
 // be joined
 func (j *joinOrderBuilder) dbSube(grp *ExprGroup) {
-	fds := grp.RelProps.FuncDeps()
-	strictKey, hasStrict := fds.StrictKey()
-	// Escape hatch: if there are too many relations, prefer a faster but less comprehensive approach.
-	if len(j.vertices) > 20 && hasStrict {
-		j.fastReorder(grp, strictKey)
+	if j.forceFastReorderForTest || j.shouldUseFastReorder(grp) {
+		j.fastReorder()
 		return
 	}
 	all := j.allVertices()
@@ -506,6 +480,75 @@ func (j *joinOrderBuilder) dbSube(grp *ExprGroup) {
 			s2 := subset.difference(s1)
 			j.addPlans(s1, s2)
 		}
+	}
+}
+
+// shouldUseFastReorder returns whether we should use an alternate method of generating join plans that is
+// faster for graphs with large verticies, but may miss the optimal plan if the optimal plan is "bushy", that is,
+// contains a join between two expressions that are themselves joins.
+// We do this because `joinOrderBuilder.dbSube` currently computes every possible pair of relations-sets to see if they
+// match an edge in the graph. This requires O(4^N) runtime on the number of relations and thus does not scale
+// for large joins. Thus, if the number of relations is above a threshold, we won't attempt to reorder.
+func (j *joinOrderBuilder) shouldUseFastReorder(grp *ExprGroup) bool {
+	fds := grp.RelProps.FuncDeps()
+	_, hasStrictKey := fds.StrictKey()
+	return hasStrictKey && len(j.vertices) > 20
+}
+
+// fastReorder is an alternate implementation of dbSube that is optimized for joins on a large number of tables.
+// For these joins, a brute force approach is no longer practical. So instead, we only want to generate joins where
+// one side of the join is indexible. This will include the optimal plan for most joins with a small cardinality output.
+// (This particular implementation uses the FDs strict keys as an estimate for indexible columns, since that information
+// is easier to query.)
+func (j *joinOrderBuilder) fastReorder() {
+	visited := vertexSet(0)
+	for _, edge := range j.edges {
+		for _, filter := range edge.filters {
+			for _, colRef := range getColumnRefsFromScalar(filter) {
+				colId := colRef.Col
+				table := colRef.Table
+				if j.indexibleCols.Contains(colId) {
+					var tableIdx uint64
+					for i, grpId := range j.vertexGroups {
+						if grpId == table {
+							tableIdx = uint64(i)
+							break
+						}
+					}
+					if !visited.contains(tableIdx) {
+						visited = visited.add(tableIdx)
+						j.addNonBushyPlans(tableIdx)
+					}
+				}
+			}
+		}
+	}
+}
+
+func getColumnRefsFromScalar(s ScalarExpr) []*ColRef {
+	var result []*ColRef
+	DfsScalar(s, func(e ScalarExpr) (err error) {
+		if c, ok := e.(*ColRef); ok {
+			result = append(result, c)
+		}
+		return
+	})
+	return result
+}
+
+// addNonBushyPlans finds all join operations where one side of the join is a single table specified by `tableIdx`,
+// which is an index into `joinOrderBuilder.vertexGroups`.
+func (j *joinOrderBuilder) addNonBushyPlans(tableIdx uint64) {
+	single := vertexSet(0).add(tableIdx)
+	all := j.allVertices()
+	for subset := vertexSet(1); subset <= all; subset++ {
+		if subset == single {
+			continue
+		}
+		if single.isSubsetOf(subset) {
+			continue
+		}
+		j.addPlans(subset, single)
 	}
 }
 
@@ -1315,6 +1358,14 @@ func (s bitSet) add(idx uint64) bitSet {
 		panic(fmt.Sprintf("cannot insert %d into bitSet", idx))
 	}
 	return s | (1 << idx)
+}
+
+// contains returns whether a given value is in the bitset.
+func (s bitSet) contains(idx uint64) bool {
+	if idx > maxSetSize {
+		panic(fmt.Sprintf("cannot insert %d into bitSet", idx))
+	}
+	return s&(1<<idx) != 0
 }
 
 // union returns the set union of this set with the given set.
