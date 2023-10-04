@@ -223,6 +223,24 @@ func TestSingleScript(t *testing.T) {
 					},
 				},
 				{
+					Query: "select (select db.t1.i from db1.t1 order by db.t1.i)",
+					Expected: []sql.Row{
+						{1},
+					},
+				},
+				{
+					Query: "select i from (select db.t1.i from db1.t1 order by db.t1.i) as t",
+					Expected: []sql.Row{
+						{1},
+					},
+				},
+				{
+					Query: "with cte as (select db.t1.i from db1.t1 order by db.t1.i) select * from cte",
+					Expected: []sql.Row{
+						{1},
+					},
+				},
+				{
 					Skip:  true, // incorrectly throws Not unique table/alias: t1
 					Query: "select db1.t1.i, db2.t1.i from db1.t1 join db2.t1 order by db1.t1, db2.t1.i",
 					Expected: []sql.Row{
@@ -236,7 +254,13 @@ func TestSingleScript(t *testing.T) {
 					},
 				},
 				{
-					Query: "select i, j from db1.t1 join db2.t2 order by i group by i",
+					Query: "select i, j from db1.t1 join db2.t2 group by i order by j",
+					Expected: []sql.Row{
+						{1, 20},
+					},
+				},
+				{
+					Query: "select db1.t1.i, db2.t2.j from db1.t1 join db2.t2 group by db1.t1.i order by db2.t2.j",
 					Expected: []sql.Row{
 						{1, 20},
 					},
