@@ -192,7 +192,7 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
 			Name: "Multi-db Aliasing",
@@ -211,58 +211,10 @@ func TestSingleScript(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "select db.t1.i from db1.t1 order by db.t1.i",
-					Expected: []sql.Row{
-						{1},
-					},
-				},
-				{
-					Query: "select db.t1.i from db1.t1 group by db.t1.i",
-					Expected: []sql.Row{
-						{1},
-					},
-				},
-				{
-					Query: "select (select db.t1.i from db1.t1 order by db.t1.i)",
-					Expected: []sql.Row{
-						{1},
-					},
-				},
-				{
-					Query: "select i from (select db.t1.i from db1.t1 order by db.t1.i) as t",
-					Expected: []sql.Row{
-						{1},
-					},
-				},
-				{
-					Query: "with cte as (select db.t1.i from db1.t1 order by db.t1.i) select * from cte",
-					Expected: []sql.Row{
-						{1},
-					},
-				},
-				{
-					Skip:  true, // incorrectly throws Not unique table/alias: t1
-					Query: "select db1.t1.i, db2.t1.i from db1.t1 join db2.t1 order by db1.t1, db2.t1.i",
+					//Skip:  true, // incorrectly throws Not unique table/alias: t1
+					Query: "select db1.t1.i, db2.t1.i from db1.t1 join db2.t1 order by db1.t1.i, db2.t1.i",
 					Expected: []sql.Row{
 						{1, 10},
-					},
-				},
-				{
-					Query: "select i, j from db1.t1 join db2.t2 order by i, j",
-					Expected: []sql.Row{
-						{1, 20},
-					},
-				},
-				{
-					Query: "select i, j from db1.t1 join db2.t2 group by i order by j",
-					Expected: []sql.Row{
-						{1, 20},
-					},
-				},
-				{
-					Query: "select db1.t1.i, db2.t2.j from db1.t1 join db2.t2 group by db1.t1.i order by db2.t2.j",
-					Expected: []sql.Row{
-						{1, 20},
 					},
 				},
 			},

@@ -3932,13 +3932,37 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select db.t1.i from db1.t1 order by db.t1.i",
+				Query: "select db1.t1.i from db1.t1 order by db1.t1.i",
 				Expected: []sql.Row{
 					{1},
 				},
 			},
 			{
-				Query: "select db.t1.i from db1.t1 group by db.t1.i",
+				Query: "select db1.t1.i from db1.t1 group by db1.t1.i",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select db1.t1.i from db1.t1 having db1.t1.i > 0",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select (select db1.t1.i from db1.t1 order by db1.t1.i)",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select i from (select db1.t1.i from db1.t1 order by db1.t1.i) as t",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "with cte as (select db1.t1.i from db1.t1 order by db1.t1.i) select * from cte",
 				Expected: []sql.Row{
 					{1},
 				},
@@ -3957,7 +3981,13 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "select i, j from db1.t1 join db2.t2 order by i group by i",
+				Query: "select i, j from db1.t1 join db2.t2 group by i order by j",
+				Expected: []sql.Row{
+					{1, 20},
+				},
+			},
+			{
+				Query: "select db1.t1.i, db2.t2.j from db1.t1 join db2.t2 group by db1.t1.i order by db2.t2.j",
 				Expected: []sql.Row{
 					{1, 20},
 				},

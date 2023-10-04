@@ -52,9 +52,10 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 		switch e := o.Expr.(type) {
 		case *ast.ColName:
 			// check for projection alias first
+			dbName := strings.ToLower(e.Qualifier.Qualifier.String())
 			tblName := strings.ToLower(e.Qualifier.Name.String())
 			colName := strings.ToLower(e.Name.String())
-			c, ok := projScope.resolveColumn(tblName, colName, false)
+			c, ok := projScope.resolveColumn(dbName, tblName, colName, false)
 			if ok {
 				c.descending = descending
 				outScope.addColumn(c)
@@ -62,7 +63,7 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 			}
 
 			// fromScope col
-			c, ok = fromScope.resolveColumn(tblName, colName, true)
+			c, ok = fromScope.resolveColumn(dbName, tblName, colName, true)
 			if !ok {
 				err := sql.ErrColumnNotFound.New(e.Name)
 				b.handleErr(err)
@@ -129,7 +130,7 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 				//  get fields outside of aggs need to be in extra cols
 				switch e := e.(type) {
 				case *expression.GetField:
-					c, ok := fromScope.resolveColumn(strings.ToLower(e.Table()), strings.ToLower(e.Name()), true)
+					c, ok := fromScope.resolveColumn("", strings.ToLower(e.Table()), strings.ToLower(e.Name()), true)
 					if !ok {
 						err := sql.ErrColumnNotFound.New(e.Name)
 						b.handleErr(err)

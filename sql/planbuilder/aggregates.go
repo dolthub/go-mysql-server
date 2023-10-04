@@ -105,11 +105,12 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 		case *ast.ColName:
 			var ok bool
 			// GROUP BY binds to column references before projections.
+			dbName := strings.ToLower(e.Qualifier.Qualifier.String())
 			tblName := strings.ToLower(e.Qualifier.Name.String())
 			colName := strings.ToLower(e.Name.String())
-			col, ok = fromScope.resolveColumn(tblName, colName, true)
+			col, ok = fromScope.resolveColumn(dbName, tblName, colName, true)
 			if !ok {
-				col, ok = projScope.resolveColumn(tblName, colName, true)
+				col, ok = projScope.resolveColumn(dbName, tblName, colName, true)
 			}
 
 			if !ok {
@@ -714,14 +715,15 @@ func (b *Builder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) 
 			}
 		case *ast.ColName:
 			// add to extra cols
+			dbName := strings.ToLower(n.Qualifier.Qualifier.String())
 			tblName := strings.ToLower(n.Qualifier.Name.String())
 			colName := strings.ToLower(n.Name.String())
-			c, ok := projScope.resolveColumn(tblName, colName, false)
+			c, ok := projScope.resolveColumn(dbName, tblName, colName, false)
 			if ok {
 				// references projection alias
 				break
 			}
-			c, ok = fromScope.resolveColumn(tblName, colName, true)
+			c, ok = fromScope.resolveColumn(dbName, tblName, colName, true)
 			if !ok {
 				err := sql.ErrColumnNotFound.New(n.Name)
 				b.handleErr(err)
