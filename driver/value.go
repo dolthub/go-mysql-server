@@ -98,7 +98,11 @@ func namedValuesToBindings(v []driver.NamedValue) (map[string]*querypb.BindVaria
 			name = "v" + strconv.FormatInt(int64(v.Ordinal), 10)
 		}
 
-		b[name], err = sqltypes.BuildBindVariable(v.Value)
+		val := v.Value
+		if t, ok := val.(time.Time); ok {
+			val = t.Format(time.RFC3339Nano)
+		}
+		b[name], err = sqltypes.BuildBindVariable(val)
 		if err != nil {
 			return nil, err
 		}

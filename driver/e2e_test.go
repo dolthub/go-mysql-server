@@ -13,6 +13,7 @@ import (
 func TestQuery(t *testing.T) {
 	mtb, records := personMemTable("db", "person")
 	db := sqlOpen(t, mtb, t.Name()+"?jsonAs=object")
+	now := time.Now()
 
 	var id uint64
 	var name, email string
@@ -39,6 +40,7 @@ func TestQuery(t *testing.T) {
 		{"Delete", "DELETE FROM db.person WHERE name = 'asdf'", nil, []any{}, Records{}},
 
 		{"Select Binary Args", `SELECT ?`, []any{[]byte{1, 2, 3}}, []any{&blob}, Records{{[]byte{1, 2, 3}}}},
+		{"Insert With time.Time", `INSERT INTO db.person (name, email, phone_numbers, created_at) VALUES ('foo', 'bar', '["baz"]', ?)`, []any{now}, []any{}, Records{}},
 	}
 
 	for _, c := range cases {
