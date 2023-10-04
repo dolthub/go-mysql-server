@@ -3956,6 +3956,12 @@ var ScriptTests = []ScriptTest{
 					{1, 20},
 				},
 			},
+			{
+				Query: "select i, j from db1.t1 join db2.t2 order by i group by i",
+				Expected: []sql.Row{
+					{1, 20},
+				},
+			},
 		},
 	},
 }
