@@ -332,7 +332,13 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	rowsCopy := make([]sql.Row, len(rows))
 	copy(rowsCopy, rows)
 
+	numColumns := len(data.schema.Schema)
+	if len(t.columns) > 0 {
+		numColumns = len(t.columns)
+	}
+	
 	if r, ok := partition.(*spatialRangePartition); ok {
+		// TODO: virtual column support
 		return &spatialTableIter{
 			columns: t.columns,
 			ord:     r.ord,
@@ -347,6 +353,7 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	return &tableIter{
 		rows:        rowsCopy,
 		columns:     t.columns,
+		numColumns:  numColumns,
 		virtualCols: data.virtualColIndexes(),
 		filters:     filters,
 	}, nil
@@ -447,9 +454,10 @@ func (p *partitionIter) Close(*sql.Context) error { return nil }
 type tableIter struct {
 	columns     []int
 	virtualCols []int
-	filters     []sql.Expression
+	numColumns  int
 
 	rows        []sql.Row
+	filters     []sql.Expression
 	indexValues sql.IndexValueIter
 	pos         int
 }
@@ -462,7 +470,7 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 	
-	row = normalizeRowForRead(row, i.columns, i.virtualCols)
+	row = normalizeRowForRead(row, i.numColumns, i.columns, i.virtualCols)
 
 	for _, f := range i.filters {
 		result, err := f.Eval(ctx, row)
@@ -487,19 +495,30 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 // normalizeRowForRead returns a copy of the row with nil values inserted for any virtual columns
-func normalizeRowForRead(row sql.Row, columns []int, virtualCols []int) sql.Row {
+func normalizeRowForRead(row sql.Row, numColumns int, columns []int, virtualCols []int) sql.Row {
 	if len(virtualCols) == 0 {
 		return row
 	}
 
-	virtualRow := make(sql.Row, len(columns))
+	virtualRow := make(sql.Row, numColumns)
 
 	var j int
-	for i := range columns {
-		if j < len(virtualCols) && columns[i] == virtualCols[j] {
-			j++
-		} else {
-			virtualRow[i] = row[i-j]
+	if len(columns) != 0 {
+		virtualRow = make(sql.Row, len(columns))
+		for i := range columns {
+			if j < len(virtualCols) && columns[i] == virtualCols[j] {
+				j++
+			} else {
+				virtualRow[i] = row[i-j]
+			}
+		}
+	} else {
+		for i := 0; i < numColumns; i++ {
+			if j < len(virtualCols) && i == virtualCols[j] {
+				j++
+			} else {
+				virtualRow = append(virtualRow, row[i-j])
+			}
 		}
 	}
 
