@@ -353,6 +353,51 @@ func (f *FuncDepSet) simplifyCols(key ColSet) ColSet {
 	return ret
 }
 
+// simplifyColsInJoin minimizes the key set resulting from a join operation.
+func (f *FuncDepSet) simplifyColsInJoin(left, right *FuncDepSet) ColSet {
+	var plucked ColSet
+	var found bool
+	var leftKeyCols ColSet
+	if len(left.keys) > 0 {
+		leftKeyCols = left.keys[0].cols
+	}
+	var rightKeyCols ColSet
+	if len(right.keys) > 0 {
+		rightKeyCols = right.keys[0].cols
+	}
+	ret := leftKeyCols.Union(rightKeyCols)
+	for i, ok := leftKeyCols.Next(1); ok; i, ok = leftKeyCols.Next(i + 1) {
+		ret.Remove(i)
+		plucked.Add(i)
+		notConst := f.consts.Intersection(plucked).Empty()
+		// We know that all right fields are determined by the right key. By including them in closure,
+		// we get a more accurate estimate for which columns are still determined.
+		if notConst && !f.inClosureOf(plucked, ret.Union(right.all)) {
+			ret.Add(i)
+		} else {
+			found = true
+		}
+		plucked.Remove(i)
+	}
+	// If we removed a column from the left key, then the left key no longer determines all left columns.
+	// It is not safe to attempt to remove keys from the right key.
+	if found {
+		return ret
+	}
+	for i, ok := rightKeyCols.Next(1); ok; i, ok = rightKeyCols.Next(i + 1) {
+		ret.Remove(i)
+		plucked.Add(i)
+		notConst := f.consts.Intersection(plucked).Empty()
+		// We know that all left fields are determined by the left key. By including them in closure,
+		// we get a more accurate estimate for which columns are still determined.
+		if notConst && !f.inClosureOf(plucked, ret.Union(left.all)) {
+			ret.Add(i)
+		}
+		plucked.Remove(i)
+	}
+	return ret
+}
+
 // ColsAreStrictKey returns true if the set of columns acts
 // as a primary key into a relation.
 func (f *FuncDepSet) ColsAreStrictKey(cols ColSet) bool {
@@ -476,7 +521,7 @@ func NewInnerJoinFDs(left, right *FuncDepSet, filters [][2]ColumnId) *FuncDepSet
 	} else if rKey.Empty() {
 		jKey = lKey
 	} else {
-		jKey.cols = lKey.cols.Union(rKey.cols)
+		jKey.cols = ret.simplifyColsInJoin(left, right)
 		jKey.strict = lKey.strict && rKey.strict
 	}
 	ret.AddKey(jKey)
