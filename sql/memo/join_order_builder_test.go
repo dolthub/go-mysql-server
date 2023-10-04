@@ -34,9 +34,10 @@ func TestJoinOrderBuilder(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 
 	tests := []struct {
-		in    sql.Node
-		name  string
-		plans string
+		in               sql.Node
+		name             string
+		plans            string
+		forceFastReorder bool
 	}{
 		{
 			name: "inner joins",
@@ -155,11 +156,51 @@ func TestJoinOrderBuilder(t *testing.T) {
 └── G44: (innerjoin 20 34) (innerjoin 34 20) (innerjoin 36 33) (innerjoin 33 36) (innerjoin 38 31) (innerjoin 31 38) (innerjoin 39 19) (innerjoin 19 39) (innerjoin 24 30) (innerjoin 30 24) (innerjoin 41 16) (innerjoin 16 41) (innerjoin 43 1) (innerjoin 1 43)
 `,
 		},
+		{
+			name: "test fast reordering algorithm",
+			in: plan.NewInnerJoin(
+				plan.NewInnerJoin(
+					plan.NewInnerJoin(
+						tableNode(db, "a"),
+						tableNode(db, "b"),
+						newEq("a.x = b.x"),
+					),
+					tableNode(db, "c"),
+					newEq("b.x = c.x"),
+				),
+				tableNode(db, "d"),
+				newEq("c.x = d.x"),
+			),
+			forceFastReorder: true,
+			plans: `memo:
+├── G1: (tablescan: a)
+├── G2: (tablescan: b)
+├── G3: (colref: 'a.x')
+├── G4: (colref: 'b.x')
+├── G5: (equal 3 4)
+├── G6: (innerjoin 2 1) (innerjoin 1 2) (innerjoin 2 1) (innerjoin 1 2)
+├── G7: (tablescan: c)
+├── G8: (colref: 'c.x')
+├── G9: (equal 4 8)
+├── G10: (innerjoin 7 6) (innerjoin 2 18) (innerjoin 18 2) (innerjoin 6 7)
+├── G11: (tablescan: d)
+├── G12: (colref: 'd.x')
+├── G13: (equal 8 12)
+├── G14: (innerjoin 11 10) (innerjoin 7 22) (innerjoin 22 7) (innerjoin 10 11)
+├── G15: (equal 3 8)
+├── G16: (equal 3 12)
+├── G17: (equal 4 12)
+├── G18: (innerjoin 7 1) (innerjoin 1 7) (innerjoin 1 7) (innerjoin 7 1)
+├── G19: (innerjoin 11 1) (innerjoin 1 11) (innerjoin 1 11) (innerjoin 11 1)
+└── G22: (innerjoin 11 6) (innerjoin 6 11) (innerjoin 2 19) (innerjoin 19 2)
+`,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			j := NewJoinOrderBuilder(NewMemo(newContext(pro), nil, nil, 0, NewDefaultCoster(), NewDefaultCarder()))
+			j.forceFastReorderForTest = tt.forceFastReorder
 			j.ReorderJoin(tt.in)
 			require.Equal(t, tt.plans, j.m.String())
 		})
