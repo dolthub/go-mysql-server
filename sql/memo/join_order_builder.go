@@ -464,7 +464,7 @@ func (j *joinOrderBuilder) checkSize() {
 // adding plans to the tree when we find two sets that can
 // be joined
 func (j *joinOrderBuilder) dbSube(grp *ExprGroup) {
-	if j.forceFastReorderForTest || j.shouldUseFastReorder(grp) {
+	if j.forceFastReorderForTest || j.shouldUseFastReorder() {
 		j.fastReorder()
 		return
 	}
@@ -489,10 +489,8 @@ func (j *joinOrderBuilder) dbSube(grp *ExprGroup) {
 // We do this because `joinOrderBuilder.dbSube` currently computes every possible pair of relations-sets to see if they
 // match an edge in the graph. This requires O(4^N) runtime on the number of relations and thus does not scale
 // for large joins. Thus, if the number of relations is above a threshold, we won't attempt to reorder.
-func (j *joinOrderBuilder) shouldUseFastReorder(grp *ExprGroup) bool {
-	fds := grp.RelProps.FuncDeps()
-	_, hasStrictKey := fds.StrictKey()
-	return hasStrictKey && len(j.vertices) > 20
+func (j *joinOrderBuilder) shouldUseFastReorder() bool {
+	return len(j.vertices) > 20
 }
 
 // fastReorder is an alternate implementation of dbSube that is optimized for joins on a large number of tables.
