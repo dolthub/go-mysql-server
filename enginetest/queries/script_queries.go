@@ -3932,6 +3932,13 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				// surprisingly, this works
+				Query: "select db1.t1.i from db1.t1 where db1.``.i > 0",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
 				Query: "select db1.t1.i from db1.t1 where db1.t1.i > 0",
 				Expected: []sql.Row{
 					{1},
