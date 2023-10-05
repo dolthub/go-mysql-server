@@ -324,18 +324,18 @@ func (d *BaseDatabase) RenameTable(ctx *sql.Context, oldName, newName string) er
 	return nil
 }
 
-func (d *BaseDatabase) GetTriggers(ctx *sql.Context) ([]sql.TriggerDefinition, error) {
+func (d *BaseDatabase) GetTriggers(_ *sql.Context) ([]sql.TriggerDefinition, error) {
 	var triggers []sql.TriggerDefinition
 	triggers = append(triggers, d.triggers...)
 	return triggers, nil
 }
 
-func (d *BaseDatabase) CreateTrigger(ctx *sql.Context, definition sql.TriggerDefinition) error {
+func (d *BaseDatabase) CreateTrigger(_ *sql.Context, definition sql.TriggerDefinition) error {
 	d.triggers = append(d.triggers, definition)
 	return nil
 }
 
-func (d *BaseDatabase) DropTrigger(ctx *sql.Context, name string) error {
+func (d *BaseDatabase) DropTrigger(_ *sql.Context, name string) error {
 	found := false
 	for i, trigger := range d.triggers {
 		if trigger.Name == name {

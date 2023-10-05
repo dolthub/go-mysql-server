@@ -2187,7 +2187,7 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 			},
 			{
 				Query:    "CALL add_entry(4, 'aaa');",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 3}}},
 			},
 			{
 				Query:    "SELECT * FROM t0;",
@@ -3145,6 +3145,6 @@ var TriggerErrorTests = []ScriptTest{
 			"create view v as select * from x",
 		},
 		Query:       "create trigger trig before insert on v for each row set b = 1",
-		ExpectedErr: sql.ErrNotBaseTable,
+		ExpectedErr: sql.ErrExpectedTableFoundView,
 	},
 }

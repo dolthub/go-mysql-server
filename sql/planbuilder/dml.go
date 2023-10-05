@@ -267,14 +267,15 @@ func (b *Builder) buildOnDupLeft(inScope *scope, e ast.Expr) sql.Expression {
 	// expect col reference only
 	switch e := e.(type) {
 	case *ast.ColName:
-		tableName := strings.ToLower(e.Qualifier.Name.String())
+		dbName := strings.ToLower(e.Qualifier.Qualifier.String())
+		tblName := strings.ToLower(e.Qualifier.Name.String())
 		colName := strings.ToLower(e.Name.String())
-		c, ok := inScope.resolveColumn(tableName, colName, true)
+		c, ok := inScope.resolveColumn(dbName, tblName, colName, true)
 		if !ok {
-			if tableName != "" && !inScope.hasTable(tableName) {
-				b.handleErr(sql.ErrTableNotFound.New(tableName))
-			} else if tableName != "" {
-				b.handleErr(sql.ErrTableColumnNotFound.New(tableName, colName))
+			if tblName != "" && !inScope.hasTable(tblName) {
+				b.handleErr(sql.ErrTableNotFound.New(tblName))
+			} else if tblName != "" {
+				b.handleErr(sql.ErrTableColumnNotFound.New(tblName, colName))
 			}
 			b.handleErr(sql.ErrColumnNotFound.New(e))
 		}
