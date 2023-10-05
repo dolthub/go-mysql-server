@@ -291,6 +291,15 @@ func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
 		return
 	}
 
+	autoIncVal := i.getAutoIncVal(row)
+
+	if i.hasAutoAutoIncValue {
+		ctx.SetLastQueryInfo(sql.LastInsertId, autoIncVal)
+		i.lastInsertIdUpdated = true
+	}
+}
+
+func (i *insertIter) getAutoIncVal(row sql.Row) int64 {
 	var autoIncVal int64
 	for i, expr := range i.insertExprs {
 		if _, ok := expr.(*expression.AutoIncrement); ok {
@@ -298,11 +307,7 @@ func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
 			break
 		}
 	}
-	
-	if i.hasAutoAutoIncValue {
-		ctx.SetLastQueryInfo(sql.LastInsertId, autoIncVal)
-		i.lastInsertIdUpdated = true
-	}
+	return autoIncVal
 }
 
 func (i *insertIter) ignoreOrClose(ctx *sql.Context, row sql.Row, err error) error {

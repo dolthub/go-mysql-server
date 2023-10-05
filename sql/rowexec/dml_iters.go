@@ -295,17 +295,24 @@ type updateIgnoreAccumulatorRowHandler interface {
 
 type insertRowHandler struct {
 	rowsAffected int
+	lastInsertId uint64
+	updatedAutoIncrementValue bool
+	lastInsertIdGetter func(row sql.Row) int64
 }
 
-func (i *insertRowHandler) handleRowUpdate(_ sql.Row) error {
+func (i *insertRowHandler) handleRowUpdate(row sql.Row) error {
+	if !i.updatedAutoIncrementValue {
+		i.lastInsertId = uint64(i.lastInsertIdGetter(row))	
+	}
 	i.rowsAffected++
 	return nil
 }
 
 func (i *insertRowHandler) okResult() types.OkResult {
-	// TODO: the auto inserted id should be in this result. Needs to be passed up by the insert iter, which is a larger
-	//  change.
-	return types.NewOkResult(i.rowsAffected)
+	return types.OkResult{
+		RowsAffected: uint64(i.rowsAffected),
+		InsertID:     i.lastInsertId,
+	}
 }
 
 type replaceRowHandler struct {
@@ -516,16 +523,11 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 		default:
 		}
 		if err == io.EOF {
-			res := a.updateRowHandler.okResult() // TODO: Should add warnings here
-
 			// TODO: The information flow here is pretty gnarly. We
 			// set some session variables based on the result, and
 			// we actually use a session variable to set
 			// InsertID. This should be improved.
-
-			// By definition, ROW_COUNT() is equal to RowsAffected.
-			ctx.SetLastQueryInfo(sql.RowCount, int64(res.RowsAffected))
-
+			
 			// UPDATE statements also set FoundRows to the number of rows that
 			// matched the WHERE clause, same as a SELECT.
 			if ma, ok := a.updateRowHandler.(matchingAccumulator); ok {
@@ -533,11 +535,14 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 			}
 
 			newLastInsertId := ctx.Session.GetLastQueryInfo(sql.LastInsertId)
-			if newLastInsertId != -1 {
-				res.InsertID = uint64(newLastInsertId)
-			} else {
+			if newLastInsertId == -1 {
 				ctx.Session.SetLastQueryInfo(sql.LastInsertId, oldLastInsertId)
 			}
+
+			res := a.updateRowHandler.okResult() // TODO: Should add warnings here
+
+			// By definition, ROW_COUNT() is equal to RowsAffected.
+			ctx.SetLastQueryInfo(sql.RowCount, int64(res.RowsAffected))
 
 			return sql.NewRow(res), nil
 		} else if isIg {

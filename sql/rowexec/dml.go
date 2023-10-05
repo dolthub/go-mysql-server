@@ -297,7 +297,26 @@ func (b *BaseBuilder) buildRowUpdateAccumulator(ctx *sql.Context, n *plan.RowUpd
 	var rowHandler accumulatorRowHandler
 	switch n.RowUpdateType {
 	case plan.UpdateTypeInsert:
-		rowHandler = &insertRowHandler{}
+		var insertItr *insertIter
+		switch rowIter := rowIter.(type) {
+		case *plan.TableEditorIter:
+			var ok bool
+			insertItr, ok = rowIter.InnerIter().(*insertIter)
+			if !ok {
+				return nil, fmt.Errorf("unexpected iter type %T", rowIter)
+			}
+		case plan.CheckpointingTableEditorIter:
+			var ok bool
+			insertItr, ok = rowIter.InnerIter().(*insertIter)
+			if !ok {
+				return nil, fmt.Errorf("unexpected iter type %T", rowIter)
+			}
+		default:
+			return nil, fmt.Errorf("unexpected iter type %T", rowIter)
+		}
+		rowHandler = &insertRowHandler{
+			lastInsertIdGetter: insertItr.getAutoIncVal,
+		}
 	case plan.UpdateTypeReplace:
 		rowHandler = &replaceRowHandler{}
 	case plan.UpdateTypeDuplicateKeyUpdate:
