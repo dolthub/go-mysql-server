@@ -15,6 +15,7 @@
 package queries
 
 import (
+	"math"
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -1252,50 +1253,65 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.Row{{uint64(0)}},
 			},
 			{
-				Query:    "insert into a (y) values (1)",
+				Query:    "insert into a (x,y) values (1,1)",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
 			},
 			{
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.Row{{uint64(0)}},
+			},
+			{
+				Query:    "insert into a (y) values (1)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
+			},
+			{
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{uint64(2)}},
 			},
 			{
 				Query:    "insert into a (y) values (2), (3)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 2}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 3}}},
 			},
 			{
 				// last_insert_id() should return the insert id of the *first* value inserted in the last statement
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{2}},
+				Expected: []sql.Row{{uint64(3)}},
 			},
 			{
 				Query:    "insert into b (x) values (1), (2)",
 				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
+				// The above query doesn't have an auto increment column, so last_insert_id is unchanged
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{2}},
+				Expected: []sql.Row{{uint64(3)}},
 			},
 			{
-				Query: "insert into a (x, y) values (-1, 10)",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Query: "insert into a (x, y) values (-100, 10)",
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 1,
+					InsertID:    uint64(math.MaxUint64 - uint(100-1)),
+				}}},
 			},
 			{
 				// last_insert_id() should not update for manually inserted values
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{2}},
+				Expected: []sql.Row{{uint64(3)}},
 			},
 			{
 				Query: "insert into a (x, y) values (100, 10)",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 1,
+					InsertID:     100,
+				}}},
 			},
 			{
 				// last_insert_id() should not update for manually inserted values
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{2}},
+				Expected: []sql.Row{{uint64(3)}},
 			},
 		},
 	},
