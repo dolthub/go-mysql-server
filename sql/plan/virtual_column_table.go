@@ -35,6 +35,8 @@ func NewVirtualColumnTable(table *ResolvedTable, projections []sql.Expression) *
 	return &VirtualColumnTable{ResolvedTable: table, Projections: projections}
 }
 
+// TODO: this doesn't work, we can't expose the ResolvedTable node to transformations without breaking pushdown logic
+//  either fix pushdown to ignore this kind of node, or we need to fix assignExecIndexes to work with this node
 func (v *VirtualColumnTable) Children() []sql.Node {
 	return []sql.Node{v.ResolvedTable}
 }
