@@ -15,6 +15,9 @@
 package plan
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -32,12 +35,16 @@ func NewVirtualColumnTable(table *ResolvedTable, projections []sql.Expression) *
 	return &VirtualColumnTable{ResolvedTable: table, Projections: projections}
 }
 
-func (v *VirtualColumnTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (v *VirtualColumnTable) Children() []sql.Node {
+	return []sql.Node{v.ResolvedTable}
+}
+
+func (v VirtualColumnTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(v, len(children), 1)
 	}
-
-	return NewVirtualColumnTable(children[0].(*ResolvedTable), v.Projections), nil
+	v.ResolvedTable = children[0].(*ResolvedTable)
+	return &v, nil
 }
 
 // WithExpressions implements the Expressioner interface.
@@ -49,7 +56,38 @@ func (v *VirtualColumnTable) WithExpressions(exprs ...sql.Expression) (sql.Node,
 	return NewVirtualColumnTable(v.ResolvedTable, exprs), nil
 }
 
+func (v *VirtualColumnTable) Expressions() []sql.Expression {
+	return v.Projections
+}
+
+
 func (v VirtualColumnTable) WithComment(s string) sql.Node {
 	v.ResolvedTable = v.ResolvedTable.WithComment(s).(*ResolvedTable)
 	return &v
+}
+
+func (v *VirtualColumnTable) Debug() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("VirtualColumnTable")
+	var exprs = make([]string, len(v.Projections))
+	for i, expr := range v.Projections {
+		exprs[i] = expr.String()
+	}
+	columns := fmt.Sprintf("columns: [%s]", strings.Join(exprs, ", "))
+	_ = pr.WriteChildren(columns, v.ResolvedTable.String())
+
+	return pr.String()
+}
+
+func (v *VirtualColumnTable) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("VirtualColumnTable")
+	var exprs = make([]string, len(v.Projections))
+	for i, expr := range v.Projections {
+		exprs[i] = sql.DebugString(expr)
+	}
+	columns := fmt.Sprintf("columns: [%s]", strings.Join(exprs, ", "))
+	_ = pr.WriteChildren(columns, sql.DebugString(v.ResolvedTable))
+
+	return pr.String()
 }
