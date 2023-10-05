@@ -136,7 +136,7 @@ func (r LastInsertId) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 		return unsigned, nil
 	}
-	
+
 	// If an expression is provided, we set the next insert id for this session as well as returning it
 	res, err := r.Child.Eval(ctx, row)
 	if err != nil {
@@ -146,7 +146,7 @@ func (r LastInsertId) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	ctx.SetLastQueryInfo(sql.LastInsertId, id.(int64))
 	return id, nil
 }

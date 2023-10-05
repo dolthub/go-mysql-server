@@ -17,7 +17,7 @@ package queries
 import (
 	"math"
 	"time"
-	
+
 	"github.com/dolthub/vitess/go/sqltypes"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
@@ -1293,7 +1293,7 @@ var ScriptTests = []ScriptTest{
 				Query: "insert into a (x, y) values (-100, 10)",
 				Expected: []sql.Row{{types.OkResult{
 					RowsAffected: 1,
-					InsertID:    uint64(math.MaxUint64 - uint(100-1)),
+					InsertID:     uint64(math.MaxUint64 - uint(100-1)),
 				}}},
 			},
 			{
@@ -1334,11 +1334,11 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 1}}},
 			},
 			{
-				Query: "select * from a order by x",
-				Expected: []sql.Row{{1,2}},
+				Query:    "select * from a order by x",
+				Expected: []sql.Row{{1, 2}},
 			},
 			{
-				Query: "insert into a (y) values (100)",
+				Query:    "insert into a (y) values (100)",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
 			},
 			{

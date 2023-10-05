@@ -124,13 +124,13 @@ func existsNonZeroValueCount(values sql.Node) bool {
 	return false
 }
 
-// wrapRowSource returns a projection that wraps the original row source so that its schema matches the full schema of 
+// wrapRowSource returns a projection that wraps the original row source so that its schema matches the full schema of
 // the underlying table, in the same order. Also returns a boolean value that indicates whether this row source will
 // result in an automatically generated value for an auto_increment column.
 func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string) (sql.Node, bool, error) {
 	projExprs := make([]sql.Expression, len(schema))
 	autoAutoIncrement := false
-	
+
 	for i, f := range schema {
 		columnExplicitlySpecified := false
 		for j, col := range columnNames {
@@ -180,7 +180,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 				return nil, false, err
 			}
 			projExprs[i] = ai
-			
+
 			if !columnExplicitlySpecified {
 				autoAutoIncrement = true
 			}

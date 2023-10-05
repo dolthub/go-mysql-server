@@ -301,7 +301,7 @@ func (b *BaseBuilder) buildRowUpdateAccumulator(ctx *sql.Context, n *plan.RowUpd
 		if err != nil {
 			return nil, err
 		}
-		
+
 		rowHandler = &insertRowHandler{
 			lastInsertIdGetter: insertItr.getAutoIncVal,
 		}

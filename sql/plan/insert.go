@@ -299,7 +299,7 @@ func (ii *InsertInto) WithSource(src sql.Node) *InsertInto {
 }
 
 // WithUnspecifiedAutoIncrement sets the unspecified auto increment flag for this insert operation. Inserts with this
-// property set the LAST_INSERT_ID session variable, whereas inserts that manually specify values for an auto-insert 
+// property set the LAST_INSERT_ID session variable, whereas inserts that manually specify values for an auto-insert
 // column do not.
 func (ii *InsertInto) WithUnspecifiedAutoIncrement(unspecifiedAutoIncrement bool) *InsertInto {
 	np := *ii

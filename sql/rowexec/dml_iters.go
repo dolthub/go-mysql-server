@@ -294,10 +294,10 @@ type updateIgnoreAccumulatorRowHandler interface {
 }
 
 type insertRowHandler struct {
-	rowsAffected int
-	lastInsertId uint64
+	rowsAffected              int
+	lastInsertId              uint64
 	updatedAutoIncrementValue bool
-	lastInsertIdGetter func(row sql.Row) int64
+	lastInsertIdGetter        func(row sql.Row) int64
 }
 
 func (i *insertRowHandler) handleRowUpdate(row sql.Row) error {
@@ -528,7 +528,7 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 			// set some session variables based on the result, and
 			// we actually use a session variable to set
 			// InsertID. This should be improved.
-			
+
 			// UPDATE statements also set FoundRows to the number of rows that
 			// matched the WHERE clause, same as a SELECT.
 			if ma, ok := a.updateRowHandler.(matchingAccumulator); ok {
@@ -541,9 +541,9 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 			}
 
 			res := a.updateRowHandler.okResult() // TODO: Should add warnings here
-			
+
 			// For some update accumulators, we don't accurately track the last insert ID in the handler and need to set
-			// it manually in the result by getting it from the session. This doesn't work correctly in all cases and needs 
+			// it manually in the result by getting it from the session. This doesn't work correctly in all cases and needs
 			// to be fixed. See comment in buildRowUpdateAccumulator in rowexec/dml.go
 			switch a.updateRowHandler.(type) {
 			case *onDuplicateUpdateHandler, *replaceRowHandler:
