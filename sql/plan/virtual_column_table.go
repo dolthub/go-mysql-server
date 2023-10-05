@@ -24,49 +24,35 @@ import (
 // VirtualColumnTable is a sql.TableNode that combines a ResolvedTable with a Project, the latter of which is used 
 // to add the values of virtual columns to the table.
 type VirtualColumnTable struct {
-	*ResolvedTable
+	sql.Table
 	Projections []sql.Expression
 }
 
-var _ sql.TableNode = (*VirtualColumnTable)(nil)
+func (v *VirtualColumnTable) Underlying() sql.Table {
+	return v.Table
+}
 
 // NewVirtualColumnTable creates a new VirtualColumnTable.
-func NewVirtualColumnTable(table *ResolvedTable, projections []sql.Expression) *VirtualColumnTable {
-	return &VirtualColumnTable{ResolvedTable: table, Projections: projections}
-}
-
-// TODO: this doesn't work, we can't expose the ResolvedTable node to transformations without breaking pushdown logic
-//  either fix pushdown to ignore this kind of node, or we need to fix assignExecIndexes to work with this node
-func (v *VirtualColumnTable) Children() []sql.Node {
-	return []sql.Node{v.ResolvedTable}
-}
-
-func (v VirtualColumnTable) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(v, len(children), 1)
+func NewVirtualColumnTable(table sql.Table, projections []sql.Expression) *VirtualColumnTable {
+	return &VirtualColumnTable{
+		Table:       table,
+		Projections: projections,
 	}
-	v.ResolvedTable = children[0].(*ResolvedTable)
-	return &v, nil
 }
 
 // WithExpressions implements the Expressioner interface.
-func (v *VirtualColumnTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (v *VirtualColumnTable) WithExpressions(exprs ...sql.Expression) (sql.TableWrapper, error) {
 	if len(exprs) != len(v.Projections) {
 		return nil, sql.ErrInvalidChildrenNumber.New(v, len(exprs), len(v.Projections))
 	}
 
-	return NewVirtualColumnTable(v.ResolvedTable, exprs), nil
+	return NewVirtualColumnTable(v.Table, exprs), nil
 }
 
 func (v *VirtualColumnTable) Expressions() []sql.Expression {
 	return v.Projections
 }
 
-
-func (v VirtualColumnTable) WithComment(s string) sql.Node {
-	v.ResolvedTable = v.ResolvedTable.WithComment(s).(*ResolvedTable)
-	return &v
-}
 
 func (v *VirtualColumnTable) Debug() string {
 	pr := sql.NewTreePrinter()
@@ -76,7 +62,7 @@ func (v *VirtualColumnTable) Debug() string {
 		exprs[i] = expr.String()
 	}
 	columns := fmt.Sprintf("columns: [%s]", strings.Join(exprs, ", "))
-	_ = pr.WriteChildren(columns, v.ResolvedTable.String())
+	_ = pr.WriteChildren(columns, v.Table.String())
 
 	return pr.String()
 }
@@ -89,7 +75,7 @@ func (v *VirtualColumnTable) DebugString() string {
 		exprs[i] = sql.DebugString(expr)
 	}
 	columns := fmt.Sprintf("columns: [%s]", strings.Join(exprs, ", "))
-	_ = pr.WriteChildren(columns, sql.DebugString(v.ResolvedTable))
+	_ = pr.WriteChildren(columns, sql.DebugString(v.Table))
 
 	return pr.String()
 }

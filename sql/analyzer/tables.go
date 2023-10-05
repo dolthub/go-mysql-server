@@ -124,11 +124,6 @@ func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 				table = n
 				return false
 			}
-		case *plan.VirtualColumnTable:
-			if !plan.IsDualTable(n) {
-				table = n.ResolvedTable
-				return false
-			}
 		case *plan.IndexedTableAccess:
 			rt, ok := n.TableNode.(*plan.ResolvedTable)
 			if ok {
@@ -147,8 +142,6 @@ func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 
 	transform.Inspect(node, func(node sql.Node) bool {
 		switch n := node.(type) {
-		case *plan.VirtualColumnTable:
-			ret[n.Table.Name()] = n.ResolvedTable
 		case *plan.ResolvedTable:
 			ret[n.Table.Name()] = n
 		case *plan.IndexedTableAccess:

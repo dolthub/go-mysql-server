@@ -302,20 +302,14 @@ func (b *BaseBuilder) buildProject(ctx *sql.Context, n *plan.Project, row sql.Ro
 	}), nil
 }
 
-func (b *BaseBuilder) buildVirtualColumnTable(ctx *sql.Context, n *plan.VirtualColumnTable, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildVirtualColumnTable(ctx *sql.Context, n *plan.VirtualColumnTable, tableIter sql.RowIter, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.VirtualColumnTable", trace.WithAttributes(
 		attribute.Int("projections", len(n.Projections)),
 	))
-
-	i, err := b.buildNodeExec(ctx, n.ResolvedTable, row)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-
+	
 	return sql.NewSpanIter(span, &projectIter{
 		p:         n.Projections,
-		childIter: i,
+		childIter: tableIter,
 	}), nil
 }
 
