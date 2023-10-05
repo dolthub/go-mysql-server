@@ -85,9 +85,10 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	case *ast.NullVal:
 		return expression.NewLiteral(nil, types.Null)
 	case *ast.ColName:
-		tableName := strings.ToLower(v.Qualifier.Name.String())
+		dbName := strings.ToLower(v.Qualifier.Qualifier.String())
+		tblName := strings.ToLower(v.Qualifier.Name.String())
 		colName := strings.ToLower(v.Name.String())
-		c, ok := inScope.resolveColumn(tableName, colName, true)
+		c, ok := inScope.resolveColumn(dbName, tblName, colName, true)
 		if !ok {
 			sysVar, scope, ok := b.buildSysVar(v, ast.SetScope_None)
 			if ok {
@@ -100,10 +101,10 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 				err = sql.ErrUnknownUserVariable.New(colName)
 			} else if scope == ast.SetScope_Global || scope == ast.SetScope_Session {
 				err = sql.ErrUnknownSystemVariable.New(colName)
-			} else if tableName != "" && !inScope.hasTable(tableName) {
-				err = sql.ErrTableNotFound.New(tableName)
-			} else if tableName != "" {
-				err = sql.ErrTableColumnNotFound.New(tableName, colName)
+			} else if tblName != "" && !inScope.hasTable(tblName) {
+				err = sql.ErrTableNotFound.New(tblName)
+			} else if tblName != "" {
+				err = sql.ErrTableColumnNotFound.New(tblName, colName)
 			} else {
 				err = sql.ErrColumnNotFound.New(v)
 			}
@@ -264,9 +265,10 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 			if v.Name.Qualifier.Name.String() == "" {
 				v.Name.Qualifier.Name = ast.NewTableIdent(OnDupValuesPrefix)
 			}
-			tableName := strings.ToLower(v.Name.Qualifier.Name.String())
+			dbName := strings.ToLower(v.Name.Qualifier.Qualifier.String())
+			tblName := strings.ToLower(v.Name.Qualifier.Name.String())
 			colName := strings.ToLower(v.Name.Name.String())
-			col, ok := inScope.resolveColumn(tableName, colName, false)
+			col, ok := inScope.resolveColumn(dbName, tblName, colName, false)
 			if !ok {
 				err := fmt.Errorf("expected ON DUPLICATE KEY ... VALUES() to reference a column, found: %s", v.Name.String())
 				b.handleErr(err)
