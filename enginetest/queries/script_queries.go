@@ -17,8 +17,7 @@ package queries
 import (
 	"math"
 	"time"
-
-	"github.com/dolthub/go-mysql-server/enginetest/queries"
+	
 	"github.com/dolthub/vitess/go/sqltypes"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
