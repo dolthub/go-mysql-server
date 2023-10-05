@@ -3974,6 +3974,12 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
+				Query: "select i, j from db1.t1 inner join db2.t2 on 20 * i = j",
+				Expected: []sql.Row{
+					{1, 20},
+				},
+			},
+			{
 				Query: "select i, j from db1.t1 join db2.t2 order by i, j",
 				Expected: []sql.Row{
 					{1, 20},
