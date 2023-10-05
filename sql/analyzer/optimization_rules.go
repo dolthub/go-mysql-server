@@ -38,6 +38,7 @@ func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 		if proj, ok := node.(*plan.Project); ok {
 			projSch := proj.Schema()
 			childSch := proj.Child.Schema()
+			
 			if projSch.CaseSensitiveEquals(childSch) {
 				a.Log("project erased")
 				return proj.Child, transform.NewTree, nil
