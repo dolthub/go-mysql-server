@@ -214,19 +214,19 @@ func TestSingleScript(t *testing.T) {
 					Expected: []sql.Row{},
 				},
 				{
-					Query: "create table tt as select * from t",
+					Query:    "create table tt as select * from t",
 					Expected: []sql.Row{},
 				},
 				{
-					Query: "show create table tt",
+					Query:    "show create table tt",
 					Expected: []sql.Row{},
 				},
 				{
-					Query: "create table ttt as select j, i from t",
+					Query:    "create table ttt as select j, i from t",
 					Expected: []sql.Row{},
 				},
 				{
-					Query: "show create table ttt",
+					Query:    "show create table ttt",
 					Expected: []sql.Row{},
 				},
 			},
