@@ -514,8 +514,8 @@ var CreateTableScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip: true,
-				Query:    "show create table t1",
+				Skip:  true,
+				Query: "show create table t1",
 				Expected: []sql.Row{
 					{"t1", "CREATE TABLE `t1` (\n  `i` int NOT NULL,\n  `j` int DEFAULT '0'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
@@ -527,8 +527,8 @@ var CreateTableScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip: true,
-				Query:    "show create table t2",
+				Skip:  true,
+				Query: "show create table t2",
 				Expected: []sql.Row{
 					{"t2", "CREATE TABLE `t2` (\n  `j` int DEFAULT '0',\n  `i` int NOT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
@@ -540,8 +540,8 @@ var CreateTableScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip: true,
-				Query:    "show create table t3",
+				Skip:  true,
+				Query: "show create table t3",
 				Expected: []sql.Row{
 					{"t3", "CREATE TABLE `t3` (\n  `a` int NOT NULL,\n  `b` int DEFAULT '0'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
@@ -553,7 +553,7 @@ var CreateTableScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:    "show create table tt",
+				Query: "show create table tt",
 				Expected: []sql.Row{
 					{"tt", "CREATE TABLE `tt` (\n  `1` tinyint NOT NULL,\n  `2.0` decimal(2,1) NOT NULL,\n  `'3'` longtext NOT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
