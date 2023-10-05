@@ -36,6 +36,7 @@ type insertIter struct {
 	updater             sql.RowUpdater
 	rowSource           sql.RowIter
 	lastInsertIdUpdated bool
+	hasAutoAutoIncValue bool
 	ctx                 *sql.Context
 	insertExprs         []sql.Expression
 	updateExprs         []sql.Expression
@@ -291,16 +292,14 @@ func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
 	}
 
 	var autoIncVal int64
-	var found bool
 	for i, expr := range i.insertExprs {
 		if _, ok := expr.(*expression.AutoIncrement); ok {
 			autoIncVal = toInt64(row[i])
-			found = true
 			break
 		}
 	}
-
-	if found {
+	
+	if i.hasAutoAutoIncValue {
 		ctx.SetLastQueryInfo(sql.LastInsertId, autoIncVal)
 		i.lastInsertIdUpdated = true
 	}

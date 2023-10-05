@@ -1267,6 +1267,7 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 2}}},
 			},
 			{
+				// last_insert_id() should return the insert id of the *first* value inserted in the last statement
 				Query:    "select last_insert_id()",
 				Expected: []sql.Row{{2}},
 			},
@@ -1283,8 +1284,18 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
+				// last_insert_id() should not update for manually inserted values
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query: "insert into a (x, y) values (100, 10)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				// last_insert_id() should not update for manually inserted values
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{2}},
 			},
 		},
 	},
@@ -1304,6 +1315,10 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "insert into a (x, y) values (1, 1) on duplicate key update y = 2, x=last_insert_id(x)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 1}}},
+			},
+			{
+				Query: "insert into a (y) values (100)",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 1}}},
 			},
 			{

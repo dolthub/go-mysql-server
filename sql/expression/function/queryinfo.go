@@ -127,21 +127,26 @@ func (r LastInsertId) IsNullable() bool {
 
 // Eval implements sql.Expression
 func (r LastInsertId) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// if no expr like LAST_INSERT_ID(), we should return lastInsertId from ctx
+	// With no arguments, just return the last insert id for this session
 	if len(r.Children()) == 0 {
-		return ctx.GetLastQueryInfo(sql.LastInsertId), nil
+		lastInsertId := ctx.GetLastQueryInfo(sql.LastInsertId)
+		unsigned, _, err := types.Uint64.Convert(lastInsertId)
+		if err != nil {
+			return nil, err
+		}
+		return unsigned, nil
 	}
-	// if expr is provided like LAST_INSERT_ID(id + 1), then the return value is the
-	// value of expr and we also need to save the lastinsertid into ctx for next query
+	
+	// If an expression is provided, we set the next insert id for this session as well as returning it
 	res, err := r.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	id, _, err := types.Uint64.Convert(res)
+	id, _, err := types.Int64.Convert(res)
 	if err != nil {
 		return nil, err
 	}
-	// if we goes here id is must int64, we don't need to checkout the err of convert interface type to int64
+	
 	ctx.SetLastQueryInfo(sql.LastInsertId, id.(int64))
 	return id, nil
 }
