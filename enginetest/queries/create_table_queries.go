@@ -496,6 +496,70 @@ var CreateTableScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "create table as select with defaults",
+		SetUpScript: []string{
+			"create table t (i int primary key, j int default 0);",
+			"insert into t(i) values (1);",
+			"create table t1 as select * from t;",
+			"create table t2 as select j, i from t;",
+			"create table t3 as select i as a, j as b from t;",
+			"create table tt as select 1, 2.0, '3';",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t1;",
+				Expected: []sql.Row{
+					{1, 0},
+				},
+			},
+			{
+				Skip: true,
+				Query:    "show create table t1",
+				Expected: []sql.Row{
+					{"t1", "CREATE TABLE `t1` (\n  `i` int NOT NULL,\n  `j` int DEFAULT '0'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "select * from t2;",
+				Expected: []sql.Row{
+					{0, 1},
+				},
+			},
+			{
+				Skip: true,
+				Query:    "show create table t2",
+				Expected: []sql.Row{
+					{"t2", "CREATE TABLE `t2` (\n  `j` int DEFAULT '0',\n  `i` int NOT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "select * from t3;",
+				Expected: []sql.Row{
+					{1, 0},
+				},
+			},
+			{
+				Skip: true,
+				Query:    "show create table t3",
+				Expected: []sql.Row{
+					{"t3", "CREATE TABLE `t3` (\n  `a` int NOT NULL,\n  `b` int DEFAULT '0'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "select * from tt;",
+				Expected: []sql.Row{
+					{1, "2.0", "3"},
+				},
+			},
+			{
+				Query:    "show create table tt",
+				Expected: []sql.Row{
+					{"tt", "CREATE TABLE `tt` (\n  `1` tinyint NOT NULL,\n  `2.0` decimal(2,1) NOT NULL,\n  `'3'` longtext NOT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
 }
 
 var CreateTableAutoIncrementTests = []ScriptTest{
