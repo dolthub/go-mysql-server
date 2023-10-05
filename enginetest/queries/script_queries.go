@@ -18,6 +18,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/vitess/go/sqltypes"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
@@ -1327,19 +1328,23 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.Row{{uint64(1)}},
 			},
 			{
 				Query:    "insert into a (x, y) values (1, 1) on duplicate key update y = 2, x=last_insert_id(x)",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 1}}},
 			},
 			{
+				Query: "select * from a order by x",
+				Expected: []sql.Row{{1,2}},
+			},
+			{
 				Query: "insert into a (y) values (100)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 1}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
 			},
 			{
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.Row{{uint64(2)}},
 			},
 		},
 	},

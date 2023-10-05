@@ -541,6 +541,14 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 			}
 
 			res := a.updateRowHandler.okResult() // TODO: Should add warnings here
+			
+			// For some update accumulators, we don't accurately track the last insert ID in the handler and need to set
+			// it manually in the result by getting it from the session. This doesn't work correctly in all cases and needs 
+			// to be fixed. See comment in buildRowUpdateAccumulator in rowexec/dml.go
+			switch a.updateRowHandler.(type) {
+			case *onDuplicateUpdateHandler, *replaceRowHandler:
+				res.InsertID = uint64(newLastInsertId)
+			}
 
 			// By definition, ROW_COUNT() is equal to RowsAffected.
 			ctx.SetLastQueryInfo(sql.RowCount, int64(res.RowsAffected))
