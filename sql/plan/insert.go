@@ -60,14 +60,15 @@ var IgnorableErrors = []*errors.Kind{sql.ErrInsertIntoNonNullableProvidedNull,
 // InsertInto is the top level node for INSERT INTO statements. It has a source for rows and a destination to insert
 // them into.
 type InsertInto struct {
-	db          sql.Database
-	Destination sql.Node
-	Source      sql.Node
-	ColumnNames []string
-	IsReplace   bool
-	OnDupExprs  []sql.Expression
-	checks      sql.CheckConstraints
-	Ignore      bool
+	db                    sql.Database
+	Destination           sql.Node
+	Source                sql.Node
+	ColumnNames           []string
+	IsReplace             bool
+	HasUnspecifiedAutoInc bool
+	OnDupExprs            []sql.Expression
+	checks                sql.CheckConstraints
+	Ignore                bool
 }
 
 var _ sql.Databaser = (*InsertInto)(nil)
@@ -91,12 +92,12 @@ func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []st
 
 var _ sql.CheckConstraintNode = (*RenameColumn)(nil)
 
-func (r *InsertInto) Checks() sql.CheckConstraints {
-	return r.checks
+func (ii *InsertInto) Checks() sql.CheckConstraints {
+	return ii.checks
 }
 
-func (r *InsertInto) WithChecks(checks sql.CheckConstraints) sql.Node {
-	ret := *r
+func (ii *InsertInto) WithChecks(checks sql.CheckConstraints) sql.Node {
+	ret := *ii
 	ret.checks = checks
 	return &ret
 }
@@ -291,9 +292,18 @@ func (ii *InsertInto) WithDisjointedChildren(children [][]sql.Node) (sql.Node, e
 }
 
 // WithSource sets the source node for this insert, which is analyzed separately
-func (ii *InsertInto) WithSource(src sql.Node) sql.Node {
+func (ii *InsertInto) WithSource(src sql.Node) *InsertInto {
 	np := *ii
 	np.Source = src
+	return &np
+}
+
+// WithUnspecifiedAutoIncrement sets the unspecified auto increment flag for this insert operation. Inserts with this
+// property set the LAST_INSERT_ID session variable, whereas inserts that manually specify values for an auto-insert
+// column do not.
+func (ii *InsertInto) WithUnspecifiedAutoIncrement(unspecifiedAutoIncrement bool) *InsertInto {
+	np := *ii
+	np.HasUnspecifiedAutoInc = unspecifiedAutoIncrement
 	return &np
 }
 
