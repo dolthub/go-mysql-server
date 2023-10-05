@@ -192,6 +192,7 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
 			// TODO: add tests using create ... from select ...
@@ -200,20 +201,17 @@ func TestSingleScript(t *testing.T) {
 				"create table t (i int primary key, j int default 0)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
-				//{
-				//	Query:    "explain select * from t",
-				//	Expected: []sql.Row{},
-				//},
-				//{
-				//	Query:    "explain select j, i from t",
-				//	Expected: []sql.Row{},
-				//},
-				//{
-				//	Query:    "explain select i as ii, j as jj from t",
-				//	Expected: []sql.Row{},
-				//},
 				{
-					Query:    "create table tmp (j int default 0)",
+					Query:    "explain select * from t",
+					Expected: []sql.Row{},
+				},
+				{
+					Query:    "explain select j, i from t",
+					Expected: []sql.Row{},
+				},
+				{
+					Query:    "explain select i as ii, j as jj from t",
+					Expected: []sql.Row{},
 				},
 				{
 					Query: "create table tt as select * from t",
@@ -221,6 +219,14 @@ func TestSingleScript(t *testing.T) {
 				},
 				{
 					Query: "show create table tt",
+					Expected: []sql.Row{},
+				},
+				{
+					Query: "create table ttt as select j, i from t",
+					Expected: []sql.Row{},
+				},
+				{
+					Query: "show create table ttt",
 					Expected: []sql.Row{},
 				},
 			},
