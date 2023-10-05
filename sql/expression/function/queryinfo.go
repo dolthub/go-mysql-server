@@ -112,7 +112,7 @@ func (r LastInsertId) String() string {
 
 // Type implements sql.Expression
 func (r LastInsertId) Type() sql.Type {
-	return types.Int64
+	return types.Uint64
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -137,13 +137,13 @@ func (r LastInsertId) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	id, _, err := types.Int64.Convert(res)
+	id, _, err := types.Uint64.Convert(res)
 	if err != nil {
 		return nil, err
 	}
 	// if we goes here id is must int64, we don't need to checkout the err of convert interface type to int64
 	ctx.SetLastQueryInfo(sql.LastInsertId, id.(int64))
-	return res, nil
+	return id, nil
 }
 
 // Children implements sql.Expression

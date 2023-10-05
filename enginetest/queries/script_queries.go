@@ -1278,6 +1278,14 @@ var ScriptTests = []ScriptTest{
 				Query:    "select last_insert_id()",
 				Expected: []sql.Row{{2}},
 			},
+			{
+				Query: "insert into a (x, y) values (-1, 10)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{0}},
+			},
 		},
 	},
 	{
