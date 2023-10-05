@@ -302,7 +302,8 @@ type insertRowHandler struct {
 
 func (i *insertRowHandler) handleRowUpdate(row sql.Row) error {
 	if !i.updatedAutoIncrementValue {
-		i.lastInsertId = uint64(i.lastInsertIdGetter(row))	
+		i.updatedAutoIncrementValue = true
+		i.lastInsertId = uint64(i.lastInsertIdGetter(row))
 	}
 	i.rowsAffected++
 	return nil
