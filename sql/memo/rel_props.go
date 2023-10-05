@@ -78,17 +78,16 @@ func newRelProps(rel RelExpr) *relProps {
 	return p
 }
 
-// denormIdxExprs replaces the native table name in index
-// expression strings with the aliased name.
+// idxExprsColumns returns the column names used in an index's expressions.
 // TODO: this is unstable as long as periods in Index.Expressions()
 // identifiers are ambiguous.
-func denormIdxExprs(table string, idx sql.Index) []string {
-	denormExpr := make([]string, len(idx.Expressions()))
+func idxExprsColumns(idx sql.Index) []string {
+	columns := make([]string, len(idx.Expressions()))
 	for i, e := range idx.Expressions() {
 		parts := strings.Split(e, ".")
-		denormExpr[i] = strings.ToLower(fmt.Sprintf("%s.%s", table, parts[1]))
+		columns[i] = strings.ToLower(parts[1])
 	}
-	return denormExpr
+	return columns
 }
 
 func (p *relProps) populateFds() {
@@ -152,11 +151,14 @@ func (p *relProps) populateFds() {
 		var indexesNorm []*Index
 		for _, idx := range indexes {
 			// strict if primary key or all nonNull and unique
-			exprs := denormIdxExprs(rel.Name(), idx)
+			columns := idxExprsColumns(idx)
 			strict := true
-			normIdx := &Index{idx: idx, order: make([]sql.ColumnId, len(exprs))}
-			for i, e := range exprs {
-				colId := rel.Group().m.Columns[e]
+			normIdx := &Index{idx: idx, order: make([]sql.ColumnId, len(columns))}
+			for i, c := range columns {
+				colId := rel.Group().m.Columns[TableAndColumn{
+					tableName:  rel.Name(),
+					columnName: c,
+				}]
 				if colId == 0 {
 					panic("unregistered column")
 				}
