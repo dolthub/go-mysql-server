@@ -1338,6 +1338,10 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{1, 2}},
 			},
 			{
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{uint64(1)}},
+			},
+			{
 				Query:    "insert into a (y) values (100)",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
 			},
