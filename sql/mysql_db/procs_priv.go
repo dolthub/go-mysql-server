@@ -15,6 +15,7 @@
 package mysql_db
 
 import (
+	"strings"
 	"sync"
 	"time"
 
@@ -36,15 +37,76 @@ func NewUserProcsIndexedSetTable(set in_mem_table.IndexedSet[*User], lock, rlock
 		sql.Collation_utf8mb3_bin,
 		set,
 		in_mem_table.MultiValueOps[*User]{
-			ToRows:    nil, // NM4
-			FromRow:   nil, // NM4
-			AddRow:    nil, // NM4
-			DeleteRow: nil, // NM4
+			ToRows:    UserToProcsPrivRows,
+			FromRow:   UserFromProcsPrivRow,
+			AddRow:    UserAddProcsPrivRow,
+			DeleteRow: UserRemoveProcsPrivRow,
 		},
 		lock,
 		rlock,
 	)
 	return table
+}
+
+func newEmptyRow(ctx *sql.Context) sql.Row {
+	row := make(sql.Row, len(procsPrivTblSchema))
+	var err error
+	for i, col := range procsPrivTblSchema {
+		row[i], err = col.Default.Eval(ctx, nil)
+		if err != nil {
+			panic(err) // Schema is static. New rows should never fail.
+		}
+	}
+	return row
+}
+
+func UserToProcsPrivRows(ctx *sql.Context, user *User) ([]sql.Row, error) {
+
+	var ans []sql.Row
+	for _, dbSet := range user.PrivilegeSet.GetDatabases() {
+		for _, routineSet := range dbSet.GetRoutines() {
+			if routineSet.Count() == 0 {
+				continue
+			}
+			row := newEmptyRow(ctx)
+
+			row[procsPrivTblColIndex_Host] = user.Host
+			row[procsPrivTblColIndex_Db] = dbSet.Name()
+			row[procsPrivTblColIndex_User] = user.User
+			row[procsPrivTblColIndex_RoutineName] = routineSet.RoutineName()
+			row[procsPrivTblColIndex_RoutineType] = routineSet.RoutineType()
+
+			var privs []string
+			for _, priv := range routineSet.ToSlice() {
+				switch priv {
+				case sql.PrivilegeType_Execute:
+					privs = append(privs, "Execute")
+				case sql.PrivilegeType_GrantOption:
+					privs = append(privs, "Grant") // MySQL prints just "Grant", and not "Grant Option"
+				case sql.PrivilegeType_AlterRoutine:
+					privs = append(privs, "Alter Routine")
+				}
+			}
+			privsStr := strings.Join(privs, ",")
+			row[procsPrivTblColIndex_ProcPriv] = privsStr
+
+			ans = append(ans, row)
+		}
+	}
+
+	return ans, nil
+}
+
+func UserFromProcsPrivRow(ctx *sql.Context, row sql.Row) (*User, error) {
+	panic("implement me") // Currently inaccessible code path.
+}
+
+func UserAddProcsPrivRow(ctx *sql.Context, row sql.Row, user *User) (*User, error) {
+	panic("implement me") // Currently inaccessible code path.
+}
+
+func UserRemoveProcsPrivRow(ctx *sql.Context, row sql.Row, user *User) (*User, error) {
+	panic("implement me") // Currently inaccessible code path.
 }
 
 // buildProcsPrivSchema builds the schema for the "procs_priv" Grant Table.
