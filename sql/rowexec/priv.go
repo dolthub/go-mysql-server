@@ -247,16 +247,31 @@ func (b *BaseBuilder) buildRevoke(ctx *sql.Context, n *plan.Revoke, row sql.Row)
 			}
 		}
 		if n.ObjectType != plan.ObjectType_Any {
-			//TODO: implement object types
-			return nil, fmt.Errorf("GRANT has not yet implemented object types")
-		}
-		for _, grantUser := range n.Users {
-			user := mysqlDb.GetUser(editor, grantUser.Name, grantUser.Host, false)
-			if user == nil {
-				return nil, sql.ErrGrantUserDoesNotExist.New()
+			// NM4 - Refactor this change. This function is unmanagable. Full copy paste from buildGrant.
+			if n.ObjectType == plan.ObjectType_Procedure || n.ObjectType == plan.ObjectType_Function {
+				isProc := n.ObjectType == plan.ObjectType_Procedure
+				for _, grantUser := range n.Users {
+					user := mysqlDb.GetUser(editor, grantUser.Name, grantUser.Host, false)
+					if user == nil {
+						return nil, sql.ErrGrantUserDoesNotExist.New()
+					}
+					if err := n.HandleRoutinePrivileges(user, database, n.PrivilegeLevel.TableRoutine, isProc); err != nil {
+						return nil, err
+					}
+				}
+			} else {
+				//TODO: implement object types
+				return nil, fmt.Errorf("GRANT has not yet implemented object types")
 			}
-			if err := n.HandleTablePrivileges(user, database, n.PrivilegeLevel.TableRoutine); err != nil {
-				return nil, err
+		} else {
+			for _, grantUser := range n.Users {
+				user := mysqlDb.GetUser(editor, grantUser.Name, grantUser.Host, false)
+				if user == nil {
+					return nil, sql.ErrGrantUserDoesNotExist.New()
+				}
+				if err := n.HandleTablePrivileges(user, database, n.PrivilegeLevel.TableRoutine); err != nil {
+					return nil, err
+				}
 			}
 		}
 	}
@@ -331,22 +346,37 @@ func (b *BaseBuilder) buildGrant(ctx *sql.Context, n *plan.Grant, row sql.Row) (
 			}
 		}
 		if n.ObjectType != plan.ObjectType_Any {
-			//TODO: implement object types
-			return nil, fmt.Errorf("GRANT has not yet implemented object types")
-		}
-		if n.As != nil {
-			return nil, fmt.Errorf("GRANT has not yet implemented user assumption")
-		}
-		for _, grantUser := range n.Users {
-			user := mysqlDb.GetUser(editor, grantUser.Name, grantUser.Host, false)
-			if user == nil {
-				return nil, sql.ErrGrantUserDoesNotExist.New()
+			// NM4 - Refactor this change. This function is unmanagable.
+			if n.ObjectType == plan.ObjectType_Procedure || n.ObjectType == plan.ObjectType_Function {
+				isProc := n.ObjectType == plan.ObjectType_Procedure
+				for _, grantUser := range n.Users {
+					user := mysqlDb.GetUser(editor, grantUser.Name, grantUser.Host, false)
+					if user == nil {
+						return nil, sql.ErrGrantUserDoesNotExist.New()
+					}
+					if err := n.HandleRoutinePrivileges(user, database, n.PrivilegeLevel.TableRoutine, isProc); err != nil {
+						return nil, err
+					}
+				}
+			} else {
+				//TODO: implement object types
+				return nil, fmt.Errorf("GRANT has not yet implemented object types")
 			}
-			if err := n.HandleTablePrivileges(user, database, n.PrivilegeLevel.TableRoutine); err != nil {
-				return nil, err
+		} else {
+			if n.As != nil {
+				return nil, fmt.Errorf("GRANT has not yet implemented user assumption")
 			}
-			if n.WithGrantOption {
-				user.PrivilegeSet.AddTable(database, n.PrivilegeLevel.TableRoutine, sql.PrivilegeType_GrantOption)
+			for _, grantUser := range n.Users {
+				user := mysqlDb.GetUser(editor, grantUser.Name, grantUser.Host, false)
+				if user == nil {
+					return nil, sql.ErrGrantUserDoesNotExist.New()
+				}
+				if err := n.HandleTablePrivileges(user, database, n.PrivilegeLevel.TableRoutine); err != nil {
+					return nil, err
+				}
+				if n.WithGrantOption {
+					user.PrivilegeSet.AddTable(database, n.PrivilegeLevel.TableRoutine, sql.PrivilegeType_GrantOption)
+				}
 			}
 		}
 	}

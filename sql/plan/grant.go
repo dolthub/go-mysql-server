@@ -486,6 +486,22 @@ func (n *Grant) HandleTablePrivileges(user *mysql_db.User, dbName string, tblNam
 	return nil
 }
 
+func (n *Grant) HandleRoutinePrivileges(user *mysql_db.User, dbName string, routineName string, isProcedureType bool) error {
+	for _, priv := range n.Privileges {
+		switch priv.Type {
+		case PrivilegeType_Execute:
+			user.PrivilegeSet.AddRoutine(dbName, routineName, isProcedureType, sql.PrivilegeType_Execute)
+		case PrivilegeType_AlterRoutine:
+			user.PrivilegeSet.AddRoutine(dbName, routineName, isProcedureType, sql.PrivilegeType_AlterRoutine)
+		case PrivilegeType_GrantOption:
+			user.PrivilegeSet.AddRoutine(dbName, routineName, isProcedureType, sql.PrivilegeType_GrantOption)
+		default:
+			return sql.ErrGrantRevokeIllegalPrivilege.New()
+		}
+	}
+	return nil
+}
+
 // GrantRole represents the statement GRANT [role...] TO [user...].
 type GrantRole struct {
 	Roles           []UserName

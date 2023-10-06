@@ -400,6 +400,22 @@ func (n *Revoke) HandleTablePrivileges(user *mysql_db.User, dbName string, tblNa
 	return nil
 }
 
+func (n *Revoke) HandleRoutinePrivileges(user *mysql_db.User, dbName string, routineName string, isProcedureType bool) error {
+	for _, priv := range n.Privileges {
+		switch priv.Type {
+		case PrivilegeType_AlterRoutine:
+			user.PrivilegeSet.RemoveRoutine(dbName, routineName, isProcedureType, sql.PrivilegeType_AlterRoutine)
+		case PrivilegeType_Execute:
+			user.PrivilegeSet.RemoveRoutine(dbName, routineName, isProcedureType, sql.PrivilegeType_Execute)
+		case PrivilegeType_GrantOption:
+			user.PrivilegeSet.RemoveRoutine(dbName, routineName, isProcedureType, sql.PrivilegeType_GrantOption)
+		default:
+			return sql.ErrGrantRevokeIllegalPrivilege.New()
+		}
+	}
+	return nil
+}
+
 // RevokeAll represents the statement REVOKE ALL PRIVILEGES.
 type RevokeAll struct {
 	Users []UserName
