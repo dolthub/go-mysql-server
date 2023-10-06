@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/stats"
 	"time"
 )
 
@@ -29,23 +30,14 @@ type StatisticsTable interface {
 	RowCount(ctx *Context) (uint64, error)
 }
 
-type StatsReader interface {
-	CatalogTable
-	// Hist returns a HistogramMap providing statistics for a table's columns
-	Hist(ctx *Context, db, table string) (HistogramMap, error)
-	// RowCount returns a table's row count if the table implements sql.StatisticsTable,
-	// false if the table does not, or an error if the table was not found.
-	RowCount(ctx *Context, db, table string) (uint64, bool, error)
-}
-
-type StatsWriter interface {
-	CatalogTable
-	Analyze(ctx *Context, db, table string) error
-}
-
-type StatsReadWriter interface {
-	StatsReader
-	StatsWriter
+type StatsProvider interface {
+	GetTableStats(ctx *Context, db, table string) ([]*stats.Stats, error)
+	RefreshTableStats(ctx *Context, table Table, db string) error
+	SetStats(ctx *Context, db, table string, stats *stats.Stats) error
+	GetStats(ctx *Context, db, table string, cols []string) (*stats.Stats, bool)
+	DropStats(ctx *Context, db, table string, cols []string) error
+	RowCount(ctx *Context, db, table string) (uint64, error)
+	DataLength(ctx *Context, db, table string) (uint64, error)
 }
 
 // HistogramBucket represents a bucket in a histogram

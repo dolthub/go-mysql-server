@@ -16,6 +16,7 @@ package test
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/stats"
 )
 
 type Catalog struct {
@@ -143,10 +144,6 @@ func (c *Catalog) UnlockTables(ctx *sql.Context, id uint32) error {
 	return nil
 }
 
-func (c *Catalog) Statistics(ctx *sql.Context) (sql.StatsReadWriter, error) {
-	return nil, nil
-}
-
 func (c *Catalog) TableFunction(ctx *sql.Context, name string) (sql.TableFunction, error) {
 	//TODO implement me
 	panic("implement me")
@@ -158,6 +155,41 @@ func (c *Catalog) ExternalStoredProcedure(ctx *sql.Context, name string, numOfPa
 }
 
 func (c *Catalog) ExternalStoredProcedures(ctx *sql.Context, name string) ([]sql.ExternalStoredProcedureDetails, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Catalog) RefreshTableStats(ctx *sql.Context, table sql.Table, db string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Catalog) GetTableStats(ctx *sql.Context, db, table string) ([]*stats.Stats, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Catalog) SetStats(ctx *sql.Context, db, table string, stats *stats.Stats) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Catalog) GetStats(ctx *sql.Context, db, table string, cols []string) (*stats.Stats, bool) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Catalog) DropStats(ctx *sql.Context, db, table string, cols []string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Catalog) RowCount(ctx *sql.Context, db, table string) (uint64, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Catalog) DataLength(ctx *sql.Context, db, table string) (uint64, error) {
 	//TODO implement me
 	panic("implement me")
 }

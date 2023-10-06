@@ -15,6 +15,10 @@
 package planbuilder
 
 import (
+	"encoding/json"
+	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/stats"
 	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
@@ -25,26 +29,121 @@ import (
 
 func (b *Builder) buildAnalyze(inScope *scope, n *ast.Analyze, query string) (outScope *scope) {
 	outScope = inScope.push()
-	names := make([]sql.DbTable, len(n.Tables))
 	defaultDb := b.ctx.GetCurrentDatabase()
-	for i, table := range n.Tables {
-		dbName := table.Qualifier.String()
-		if dbName == "" {
-			if defaultDb == "" {
-				err := sql.ErrNoDatabaseSelected.New()
+
+	if n.Action == "" {
+		tables := make([]sql.Table, len(n.Tables))
+		for i, table := range n.Tables {
+			dbName := table.Qualifier.String()
+			if dbName == "" {
+				if defaultDb == "" {
+					err := sql.ErrNoDatabaseSelected.New()
+					b.handleErr(err)
+				}
+				dbName = defaultDb
+			}
+			tableName := strings.ToLower(table.Name.String())
+			tableScope, ok := b.buildTablescan(inScope, dbName, tableName, nil)
+			if !ok {
+				err := sql.ErrTableNotFound.New(tableName)
 				b.handleErr(err)
 			}
-			dbName = defaultDb
-		}
-		names[i] = sql.DbTable{Db: dbName, Table: strings.ToLower(table.Name.String())}
-	}
-	analyze := plan.NewAnalyze(names)
+			rt, ok := tableScope.node.(*plan.ResolvedTable)
+			if !ok {
+				err := fmt.Errorf("can only update statistics for base tables, found %s: %s", tableName, tableScope.node)
+				b.handleErr(err)
+			}
 
-	stats, err := b.cat.Statistics(b.ctx)
-	if err != nil {
+			tables[i] = rt.Table
+		}
+		analyze := plan.NewAnalyze(tables)
+		outScope.node = analyze.WithDb(defaultDb).WithStats(b.cat)
+		return
+	}
+	// table and columns
+	if len(n.Tables) != 1 {
+		err := fmt.Errorf("ANALYZE %s expected 1 table name, found %d", n.Action, len(n.Tables))
 		b.handleErr(err)
 	}
 
-	outScope.node = analyze.WithDb(defaultDb).WithStats(stats)
+	dbName := strings.ToLower(n.Tables[0].Qualifier.String())
+	if dbName == "" {
+		if defaultDb == "" {
+			err := sql.ErrNoDatabaseSelected.New()
+			b.handleErr(err)
+		}
+		dbName = defaultDb
+	}
+	tableName := strings.ToLower(n.Tables[0].Name.String())
+
+	tableScope, ok := b.buildTablescan(inScope, dbName, tableName, nil)
+	if !ok {
+		err := sql.ErrTableNotFound.New(tableName)
+		b.handleErr(err)
+	}
+	_, ok = tableScope.node.(*plan.ResolvedTable)
+	if !ok {
+		err := fmt.Errorf("can only update statistics for base tables, found %s: %s", tableName, tableScope.node)
+		b.handleErr(err)
+	}
+
+	columns := make([]string, len(n.Columns))
+	types := make([]string, len(n.Columns))
+	for i, c := range n.Columns {
+		col, ok := tableScope.resolveColumn(tableName, c.Lowered(), false)
+		if !ok {
+			err := sql.ErrTableColumnNotFound.New(tableName, c.Lowered())
+			b.handleErr(err)
+		}
+		columns[i] = col.col
+		types[i] = col.typ.String()
+	}
+
+	switch n.Action {
+	case ast.UpdateStr:
+		statistics := new(stats.Stats)
+		using := b.buildScalar(inScope, n.Using)
+		if l, ok := using.(*expression.Literal); ok {
+			if typ, ok := l.Type().(sql.StringType); ok {
+				val, _, err := typ.Convert(l.Value())
+				if err != nil {
+					b.handleErr(err)
+				}
+				if str, ok := val.(string); ok {
+					err := json.Unmarshal([]byte(str), statistics)
+					if err != nil {
+						err = fmt.Errorf("encountered error unmarshaling statistics: %s", err.Error())
+						b.handleErr(err)
+					}
+				}
+
+			}
+		}
+		if statistics == nil {
+			err := fmt.Errorf("no statistics found for update")
+			b.handleErr(err)
+		}
+		statistics.Columns = columns
+		statistics.Types = types
+		for i, b := range statistics.Histogram {
+			switch val := b.UpperBound.(type) {
+			case []interface{}:
+				b.UpperBound = sql.Row(val)
+			default:
+				b.UpperBound = sql.Row{val}
+			}
+			if b.BoundCount == 0 {
+				b.BoundCount = 1
+			}
+			// todo type coercion
+			statistics.Histogram[i] = b
+		}
+		outScope.node = plan.NewUpdateHistogram(dbName, tableName, columns, statistics).WithProvider(b.cat)
+	case ast.DropStr:
+		outScope.node = plan.NewDropHistogram(dbName, tableName, columns).WithProvider(b.cat)
+	default:
+		err := fmt.Errorf("invalid ANALYZE action: %s, expected UPDATE or DROP", n.Action)
+		b.handleErr(err)
+	}
 	return
 }
