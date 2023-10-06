@@ -109,6 +109,11 @@ func (m *Memo) AddColumnId(table, column string) {
 	m.ColumnNames[newId] = tableAndColumn
 }
 
+func (m *Memo) GetTableAndColumn(id sql.ColumnId) (table, column string) {
+	tableAndColumn := m.ColumnNames[id]
+	return tableAndColumn.tableName, tableAndColumn.columnName
+}
+
 // TODO we need to remove this as soon as name resolution refactor is in
 func (m *Memo) assignColumnIds(rel SourceRel) {
 	if rel.Name() == "" {

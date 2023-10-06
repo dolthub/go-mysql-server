@@ -148,9 +148,7 @@ func NewJoinOrderBuilder(memo *Memo) *joinOrderBuilder {
 
 func (j *joinOrderBuilder) ReorderJoin(n sql.Node) {
 	j.populateSubgraph(n)
-	// `joinOrderBuilder.dbSube` currently computes every possible pair of relations-sets to see if they match an edge
-	// in the graph. This requires O(4^N) runtime on the number of relations and thus does not scale for large joins.
-	// If the number of relations is above a threshold, we won't attempt to reorder.
+	// j.buildSingleLookupPlan()
 	if len(j.vertices) > 20 {
 		return
 	}
@@ -188,6 +186,83 @@ func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet, *Ex
 		panic(fmt.Sprintf("expected Nameable node, found: %T", n))
 	}
 	return j.allVertices().difference(startV), j.allEdges().Difference(startE), group
+}
+
+// If the join can be uniquely expressed as a chained series of lookups, build that plan.
+func (j *joinOrderBuilder) buildSingleLookupPlan() {
+	fds := j.m.root.RelProps.FuncDeps()
+	fdKey, hasKey := fds.StrictKey()
+	if !hasKey {
+		return
+	}
+	if fdKey.Len() != 1 {
+		return
+	}
+	keyColumn, _ := fdKey.Next(1)
+	tableName, _ := j.m.GetTableAndColumn(keyColumn)
+	keyTableGroup, ok := j.m.TableProps.GetId(tableName)
+	if !ok {
+		panic(fmt.Sprintf("Could not find table %s in TableProps. This shouldn't be possible.", tableName))
+	}
+	// fdKey is a set of columns which constrain all other columns in the join.
+	// If a chain of lookups exist, then the columns in fdKey must be in the innermost join.
+
+	lastTableGroup := keyTableGroup
+	currentlyJoinedTables := newBitSet(j.findVertexFromGroup(lastTableGroup))
+
+	nextEdgeIdx := -1
+	var nextTableGroup GroupId
+	var tablesInEdge []GroupId
+	removedEdges := edgeSet{}
+	for removedEdges.Len() < len(j.edges) {
+
+		for i, edge := range j.edges {
+			if removedEdges.Contains(i) {
+				continue
+			}
+			if len(edge.filters) != 1 {
+				// The plan includes an outer join with multiple filters. We can't currently optimize this.
+				return
+			}
+			filter := edge.filters[0]
+			// Find the filter that contains the table with the key column, use that for the innermost join.
+			tablesInEdge = getTablesReferencedInScalar(filter)
+			if len(tablesInEdge) != 2 {
+				return
+			}
+			if tablesInEdge[0] == keyTableGroup {
+				nextEdgeIdx = i
+				nextTableGroup = tablesInEdge[1]
+				// break out here.
+			} else if tablesInEdge[1] == keyTableGroup {
+				nextEdgeIdx = i
+				nextTableGroup = tablesInEdge[0]
+			}
+		}
+		if nextEdgeIdx == -1 {
+			panic("There are no filters on the FDS key's table. This shouldn't be possible.")
+		}
+		// Remove the chosen filter from the chosen edge and add a join plan.
+
+		nextVert := newBitSet(j.findVertexFromGroup(nextTableGroup))
+
+		j.addPlans(currentlyJoinedTables, nextVert)
+
+		currentlyJoinedTables = currentlyJoinedTables.union(nextVert)
+		removedEdges.Add(nextEdgeIdx)
+	}
+
+}
+
+func getTablesReferencedInScalar(s ScalarExpr) []GroupId {
+	var result []GroupId
+	DfsScalar(s, func(e ScalarExpr) (err error) {
+		if c, ok := e.(*ColRef); ok {
+			result = append(result, c.Table)
+		}
+		return
+	})
+	return result
 }
 
 // ensureClosure adds the closure of all transitive equivalency groups
@@ -234,23 +309,35 @@ func (j joinOrderBuilder) hasEqEdge(leftCol, rightCol sql.ColumnId) bool {
 	return false
 }
 
+func (j *joinOrderBuilder) findVertexFromCol(col sql.ColumnId) (vertexIndex, GroupId) {
+	for i, v := range j.vertices {
+		if t, ok := v.(SourceRel); ok {
+			if t.Group().RelProps.FuncDeps().All().Contains(col) {
+				return vertexIndex(i), t.Group().Id
+			}
+		}
+	}
+	panic("vertex not found")
+}
+
+func (j *joinOrderBuilder) findVertexFromGroup(grp GroupId) vertexIndex {
+	for i, v := range j.vertices {
+		if t, ok := v.(SourceRel); ok {
+			if t.Group().Id == grp {
+				return vertexIndex(i)
+			}
+		}
+	}
+	panic("vertex not found")
+}
+
 // makeTransitiveEdge constructs a new join tree edge and memo group
 // on an equality filter between two columns.
 func (j *joinOrderBuilder) makeTransitiveEdge(col1, col2 sql.ColumnId) {
 	var vert vertexSet
-	var tab1 GroupId
-	var tab2 GroupId
-	for i, v := range j.vertices {
-		if t, ok := v.(SourceRel); ok {
-			if t.Group().RelProps.FuncDeps().All().Contains(col1) {
-				vert = vert.add(vertexIndex(i))
-				tab1 = t.Group().Id
-			} else if t.Group().RelProps.FuncDeps().All().Contains(col2) {
-				vert = vert.add(vertexIndex(i))
-				tab2 = t.Group().Id
-			}
-		}
-	}
+	v1, tab1 := j.findVertexFromCol(col1)
+	v2, tab2 := j.findVertexFromCol(col2)
+	vert = vert.add(v1).add(v2)
 
 	// find edge where the vertices are provided but partitioned
 	var op *operator
@@ -1259,12 +1346,34 @@ const maxSetSize = 63
 // JoinOrderBuilder vertexes field. vertexIndex must be less than maxSetSize.
 type vertexIndex = uint64
 
+func newBitSet(idxs ...uint64) (res bitSet) {
+	for _, idx := range idxs {
+		res = res.add(idx)
+	}
+	return res
+}
+
 // add returns a copy of the bitSet with the given element added.
 func (s bitSet) add(idx uint64) bitSet {
 	if idx > maxSetSize {
 		panic(fmt.Sprintf("cannot insert %d into bitSet", idx))
 	}
 	return s | (1 << idx)
+}
+
+// add returns a copy of the bitSet with the given element removed.
+func (s bitSet) remove(idx uint64) bitSet {
+	if idx > maxSetSize {
+		panic(fmt.Sprintf("cannot insert %d into bitSet", idx))
+	}
+	return s & ^(1 << idx)
+}
+
+func (s bitSet) contains(idx uint64) bool {
+	if idx > maxSetSize {
+		panic(fmt.Sprintf("cannot insert %d into bitSet", idx))
+	}
+	return s&(1<<idx) != 0
 }
 
 // union returns the set union of this set with the given set.

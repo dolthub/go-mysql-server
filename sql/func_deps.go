@@ -59,8 +59,9 @@ func (e *EquivSets) String() string {
 
 // Key maintains a strict or lax dependency
 type Key struct {
-	strict bool
-	cols   ColSet
+	strict  bool
+	cols    ColSet
+	allCols ColSet
 }
 
 func (k *Key) Empty() bool {
@@ -277,7 +278,7 @@ func (f *FuncDepSet) AddKey(k Key) {
 
 func (f *FuncDepSet) AddStrictKey(cols ColSet) {
 	cols = f.simplifyCols(cols)
-	newKey := Key{cols: cols, strict: true}
+	newKey := Key{cols: cols, allCols: f.all, strict: true}
 	for i, key := range f.keys {
 		if key.implies(newKey) {
 			return
@@ -308,7 +309,7 @@ func (f *FuncDepSet) AddLaxKey(cols ColSet) {
 	}
 
 	cols = f.simplifyCols(cols)
-	newKey := Key{cols: cols, strict: false}
+	newKey := Key{cols: cols, allCols: f.all, strict: false}
 	for i, key := range f.keys {
 		if key.implies(newKey) {
 			return
@@ -353,45 +354,45 @@ func (f *FuncDepSet) simplifyCols(key ColSet) ColSet {
 	return ret
 }
 
-// simplifyColsInJoin minimizes the key set resulting from a join operation.
-func (f *FuncDepSet) simplifyColsInJoin(left, right *FuncDepSet) ColSet {
+// simplifyCols uses equivalence and constant sets to minimize
+// a key set
+func (f *FuncDepSet) simplifyCols2(key ColSet, subKeys []Key) ColSet {
+	if key.Empty() {
+		return key
+	}
+	// for each column, attempt to remove and verify
+	// the remaining set does not determine it
+	// i.e. check if removedCol is in closure of rest of set
+	ret := key.Copy()
 	var plucked ColSet
-	var found bool
-	var leftKeyCols ColSet
-	if len(left.keys) > 0 {
-		leftKeyCols = left.keys[0].cols
-	}
-	var rightKeyCols ColSet
-	if len(right.keys) > 0 {
-		rightKeyCols = right.keys[0].cols
-	}
-	ret := leftKeyCols.Union(rightKeyCols)
-	for i, ok := leftKeyCols.Next(1); ok; i, ok = leftKeyCols.Next(i + 1) {
+	for i, ok := key.Next(1); ok; i, ok = key.Next(i + 1) {
 		ret.Remove(i)
 		plucked.Add(i)
+		var dependent ColSet
+		var newSubKeys []Key
+		var removedSubKeys []Key
+		for _, subKey := range subKeys {
+			// Does the subKey constrain its allcols? It does if its cols are a subset of ret.
+
+			if subKey.cols.SubsetOf(ret) {
+				newSubKeys = append(newSubKeys, subKey)
+				dependent = dependent.Union(subKey.allCols)
+			} else {
+				removedSubKeys = append(removedSubKeys, subKey)
+			}
+		}
 		notConst := f.consts.Intersection(plucked).Empty()
-		// We know that all right fields are determined by the right key. By including them in closure,
-		// we get a more accurate estimate for which columns are still determined.
-		if notConst && !f.inClosureOf(plucked, ret.Union(right.all)) {
+		if notConst && !f.inClosureOf(plucked, ret.Union(dependent)) {
+			// plucked is novel
 			ret.Add(i)
 		} else {
-			found = true
-		}
-		plucked.Remove(i)
-	}
-	// If we removed a column from the left key, then the left key no longer determines all left columns.
-	// It is not safe to attempt to remove keys from the right key.
-	if found {
-		return ret
-	}
-	for i, ok := rightKeyCols.Next(1); ok; i, ok = rightKeyCols.Next(i + 1) {
-		ret.Remove(i)
-		plucked.Add(i)
-		notConst := f.consts.Intersection(plucked).Empty()
-		// We know that all left fields are determined by the left key. By including them in closure,
-		// we get a more accurate estimate for which columns are still determined.
-		if notConst && !f.inClosureOf(plucked, ret.Union(left.all)) {
-			ret.Add(i)
+			subKeys = newSubKeys
+			for _, key := range removedSubKeys {
+				key.cols.Remove(i)
+				// TODO: Do I need to modify subKeys.allcol too?
+				// commenting out this line passes some tests but breaks others.
+				//subKeys = append(subKeys, key)
+			}
 		}
 		plucked.Remove(i)
 	}
@@ -408,6 +409,21 @@ func (f *FuncDepSet) ColsAreStrictKey(cols ColSet) bool {
 }
 
 func (f *FuncDepSet) inClosureOf(cols1, cols2 ColSet) bool {
+	if cols1.SubsetOf(cols2) {
+		return true
+	}
+	for _, set := range f.equivs.Sets() {
+		if set.Intersects(cols2) {
+			cols2 = cols2.Union(set)
+		}
+	}
+	if cols1.SubsetOf(cols2) {
+		return true
+	}
+	return false
+}
+
+func (f *FuncDepSet) inClosureOfWithFDS(cols1, cols2 ColSet) bool {
 	if cols1.SubsetOf(cols2) {
 		return true
 	}
@@ -452,11 +468,9 @@ func NewCrossJoinFDs(left, right *FuncDepSet) *FuncDepSet {
 	var lKey, rKey Key
 	if len(left.keys) > 0 {
 		lKey = left.keys[0]
-		left.keys = left.keys[1:]
 	}
 	if len(right.keys) > 0 {
 		rKey = right.keys[0]
-		right.keys = right.keys[1:]
 	}
 	var jKey Key
 	if lKey.Empty() && rKey.Empty() {
@@ -467,6 +481,7 @@ func NewCrossJoinFDs(left, right *FuncDepSet) *FuncDepSet {
 		jKey = lKey
 	} else {
 		jKey.cols = lKey.cols.Union(rKey.cols)
+		jKey.allCols = ret.all
 		jKey.strict = lKey.strict && rKey.strict
 	}
 	ret.keys = append(ret.keys, jKey)
@@ -506,11 +521,11 @@ func NewInnerJoinFDs(left, right *FuncDepSet, filters [][2]ColumnId) *FuncDepSet
 	var lKey, rKey Key
 	if len(leftKeys) > 0 {
 		lKey = leftKeys[0]
-		leftKeys = leftKeys[1:]
+		//leftKeys = leftKeys[1:]
 	}
 	if len(rightKeys) > 0 {
 		rKey = rightKeys[0]
-		rightKeys = rightKeys[1:]
+		//rightKeys = rightKeys[1:]
 	}
 	var jKey Key
 	if lKey.Empty() && rKey.Empty() {
@@ -521,22 +536,44 @@ func NewInnerJoinFDs(left, right *FuncDepSet, filters [][2]ColumnId) *FuncDepSet
 	} else if rKey.Empty() {
 		jKey = lKey
 	} else {
-		jKey.cols = ret.simplifyColsInJoin(left, right)
+		var subKeys []Key
+		subKeys = append(subKeys, leftKeys...)
+		/*subKeys = append(subKeys, Key{
+			strict:  false,
+			cols:    left.all,
+			allCols: left.all,
+		})*/
+		subKeys = append(subKeys, rightKeys...)
+		/*subKeys = append(subKeys, Key{
+			strict:  false,
+			cols:    right.all,
+			allCols: right.all,
+		})*/
+		jKey.cols = ret.simplifyCols2(lKey.cols.Union(rKey.cols), subKeys)
+		jKey.allCols = ret.all
 		jKey.strict = lKey.strict && rKey.strict
 	}
 	ret.AddKey(jKey)
-	for _, k := range leftKeys {
-		k.cols = ret.simplifyCols(k.cols)
-		if !ret.keys[0].implies(k) {
-			ret.keys = append(ret.keys, k)
+	/*
+		for _, k := range leftKeys {
+			k.cols = ret.simplifyCols(k.cols)
+			if !ret.keys[0].implies(k) {
+				ret.keys = append(ret.keys, k)
+			}
 		}
+		for _, k := range rightKeys {
+			k.cols = ret.simplifyCols(k.cols)
+			if !ret.keys[0].implies(k) {
+				ret.keys = append(ret.keys, k)
+			}
+		}*/
+	for _, k := range leftKeys {
+		ret.keys = append(ret.keys, k)
 	}
 	for _, k := range rightKeys {
-		k.cols = ret.simplifyCols(k.cols)
-		if !ret.keys[0].implies(k) {
-			ret.keys = append(ret.keys, k)
-		}
+		ret.keys = append(ret.keys, k)
 	}
+
 	return ret
 }
 
@@ -626,7 +663,7 @@ func NewProjectFDs(fds *FuncDepSet, cols ColSet, distinct bool) *FuncDepSet {
 			newKey.Add(replace)
 		}
 		if allOk {
-			ret.AddKey(Key{strict: key.strict, cols: newKey})
+			ret.AddKey(Key{strict: key.strict, allCols: ret.all, cols: newKey})
 		}
 	}
 
@@ -690,7 +727,7 @@ func NewLeftJoinFDs(left, right *FuncDepSet, filters [][2]ColumnId) *FuncDepSet 
 	}
 
 	if leftStrict && leftColsAreInnerJoinKey {
-		strictKey := Key{true, leftKey}
+		strictKey := Key{strict: true, allCols: ret.all, cols: leftKey}
 		ret.keys = append(ret.keys, strictKey)
 		if !strictKey.implies(rKey) {
 			ret.keys = append(ret.keys, rKey)

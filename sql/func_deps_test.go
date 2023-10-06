@@ -192,6 +192,128 @@ func TestFuncDeps_InnerJoin(t *testing.T) {
 		join := NewInnerJoinFDs(t1, t2, [][2]ColumnId{{2, 3}})
 		assert.Equal(t, "key(1); equiv(2,3)", join.String())
 	})
+	t.Run("simplify cols on bushy join", func(t *testing.T) {
+		// create table t1 (id int primary key, value int)
+		// create table t2 (id int primary key, value int)
+		// create table t3 (id int primary key, value int)
+		// create table t4 (id int primary key, value int)
+
+		// SELECT * FROM (t2 JOIN t3 ON t2.value = t3.id) JOIN (t4 JOIN t1) ON t1.value = t2.id AND t3.value = t4.id;
+
+		t1 := &FuncDepSet{all: cols(1, 2)}
+		t1.AddNotNullable(cols(1))
+		t1.AddStrictKey(cols(1))
+
+		t2 := &FuncDepSet{all: cols(3, 4)}
+		t2.AddNotNullable(cols(3))
+		t2.AddStrictKey(cols(3))
+
+		t3 := &FuncDepSet{all: cols(5, 6)}
+		t3.AddNotNullable(cols(5))
+		t3.AddStrictKey(cols(5))
+
+		t4 := &FuncDepSet{all: cols(7, 8)}
+		t4.AddNotNullable(cols(7))
+		t4.AddStrictKey(cols(7))
+
+		join23 := NewInnerJoinFDs(t2, t3, [][2]ColumnId{{4, 5}})
+		join14 := NewCrossJoinFDs(t1, t4)
+		join := NewInnerJoinFDs(join23, join14, [][2]ColumnId{{2, 3}, {6, 7}})
+		assert.Equal(t, "key(1); equiv(4,5); equiv(2,3); equiv(6,7)", join.String())
+	})
+	t.Run("simplify cols on nested join", func(t *testing.T) {
+		// create table t1 (id int primary key, value int)
+		// create table t2 (id int primary key, value int)
+		// create table t3 (id int primary key, value int)
+
+		// SELECT * FROM (t1 JOIN t3) JOIN t2 ON t1.value = t2.id AND t2.value = t3.id;
+
+		t1 := &FuncDepSet{all: cols(1, 2)}
+		t1.AddNotNullable(cols(1))
+		t1.AddStrictKey(cols(1))
+
+		t2 := &FuncDepSet{all: cols(3, 4)}
+		t2.AddNotNullable(cols(3))
+		t2.AddStrictKey(cols(3))
+
+		t3 := &FuncDepSet{all: cols(5, 6)}
+		t3.AddNotNullable(cols(5))
+		t3.AddStrictKey(cols(5))
+
+		join13 := NewCrossJoinFDs(t1, t3)
+		join := NewInnerJoinFDs(join13, t2, [][2]ColumnId{{2, 3}, {4, 5}})
+		assert.Equal(t, "key(1); equiv(2,3); equiv(4,5)", join.String())
+	})
+	t.Run("simplify cols on nested join", func(t *testing.T) {
+		// create table t1 (id int primary key, value int)
+		// create table t2 (id int primary key, value int)
+		// create table t3 (id int primary key, value int)
+
+		// SELECT * FROM (t1 JOIN t3) JOIN t2 ON t1.value = t2.id AND t2.value = t3.id AND t3.id=10;
+
+		t1 := &FuncDepSet{all: cols(1, 2)}
+		t1.AddNotNullable(cols(1))
+		t1.AddStrictKey(cols(1))
+
+		t2 := &FuncDepSet{all: cols(3, 4)}
+		t2.AddNotNullable(cols(3))
+		t2.AddStrictKey(cols(3))
+
+		t3 := &FuncDepSet{all: cols(5, 6)}
+		t3.AddNotNullable(cols(5))
+		t3.AddStrictKey(cols(5))
+		t3.AddConstants(cols(5))
+
+		join13 := NewCrossJoinFDs(t1, t3)
+		join := NewInnerJoinFDs(join13, t2, [][2]ColumnId{{2, 3}, {4, 5}})
+		assert.Equal(t, "key(1); equiv(2,3); equiv(4,5)", join.String())
+	})
+	t.Run("simplify cols on nested join", func(t *testing.T) {
+		// create table t1 (id int primary key, value int)
+		// create table t2 (id int primary key, value int)
+		// create table t3 (id int primary key, value int)
+
+		// SELECT * FROM (t1 JOIN t3) JOIN t2 ON t1.value = t2.id AND t2.value = t3.id;
+
+		t1 := &FuncDepSet{all: cols(6, 5)}
+		t1.AddNotNullable(cols(6))
+		t1.AddStrictKey(cols(6))
+
+		t2 := &FuncDepSet{all: cols(4, 3)}
+		t2.AddNotNullable(cols(4))
+		t2.AddStrictKey(cols(4))
+
+		t3 := &FuncDepSet{all: cols(2, 1)}
+		t3.AddNotNullable(cols(2))
+		t3.AddStrictKey(cols(2))
+
+		join13 := NewCrossJoinFDs(t1, t3)
+		join := NewInnerJoinFDs(join13, t2, [][2]ColumnId{{5, 4}, {3, 2}})
+		assert.Equal(t, "key(6); equiv(5,4); equiv(3,2)", join.String())
+	})
+	t.Run("simplify cols on nested join", func(t *testing.T) {
+		// create table t1 (id int primary key, value int)
+		// create table t2 (id int primary key, value int)
+		// create table t3 (id int primary key, value int)
+
+		// SELECT * FROM (t1 JOIN t3) JOIN t2 ON t1.id = t2.value AND t2.id = t3.value;
+
+		t1 := &FuncDepSet{all: cols(1, 2)}
+		t1.AddNotNullable(cols(1))
+		t1.AddStrictKey(cols(1))
+
+		t2 := &FuncDepSet{all: cols(3, 4)}
+		t2.AddNotNullable(cols(3))
+		t2.AddStrictKey(cols(3))
+
+		t3 := &FuncDepSet{all: cols(5, 6)}
+		t3.AddNotNullable(cols(5))
+		t3.AddStrictKey(cols(5))
+
+		join13 := NewCrossJoinFDs(t1, t3)
+		join := NewInnerJoinFDs(join13, t2, [][2]ColumnId{{1, 4}, {3, 6}})
+		assert.Equal(t, "key(5); equiv(2,3); equiv(4,5)", join.String())
+	})
 }
 
 func TestFuncDeps_LeftJoin(t *testing.T) {
