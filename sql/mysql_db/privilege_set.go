@@ -224,14 +224,12 @@ func (ps PrivilegeSet) Database(dbName string) sql.PrivilegeSetDatabase {
 
 // GetDatabases returns all databases.
 func (ps PrivilegeSet) GetDatabases() []sql.PrivilegeSetDatabase {
-	dbSets := make([]sql.PrivilegeSetDatabase, len(ps.databases))
-	i := 0
+	dbSets := make([]sql.PrivilegeSetDatabase, 0, len(ps.databases))
 	for _, dbSet := range ps.databases {
 		// Only return databases that have a database-level privilege, or a privilege on an underlying table or column.
 		// Otherwise, there is no difference between the returned database and the zero-value for any database.
 		if dbSet.HasPrivileges() {
-			dbSets[i] = dbSet
-			i++
+			dbSets = append(dbSets, dbSet)
 		}
 	}
 	sort.Slice(dbSets, func(i, j int) bool {
@@ -242,14 +240,12 @@ func (ps PrivilegeSet) GetDatabases() []sql.PrivilegeSetDatabase {
 
 // getDatabases returns all databases of the native type.
 func (ps PrivilegeSet) getDatabases() []PrivilegeSetDatabase {
-	dbSets := make([]PrivilegeSetDatabase, len(ps.databases))
-	i := 0
+	dbSets := make([]PrivilegeSetDatabase, 0, len(ps.databases))
 	for _, dbSet := range ps.databases {
 		// Only return databases that have a database-level privilege, or a privilege on an underlying table or column.
 		// Otherwise, there is no difference between the returned database and the zero-value for any database.
 		if dbSet.HasPrivileges() {
-			dbSets[i] = dbSet
-			i++
+			dbSets = append(dbSets, dbSet)
 		}
 	}
 	sort.Slice(dbSets, func(i, j int) bool {
@@ -340,11 +336,9 @@ func (ps PrivilegeSet) Copy() PrivilegeSet {
 
 // ToSlice returns all of the global static privileges contained as a sorted slice.
 func (ps PrivilegeSet) ToSlice() []sql.PrivilegeType {
-	privs := make([]sql.PrivilegeType, len(ps.globalStatic))
-	i := 0
+	privs := make([]sql.PrivilegeType, 0, len(ps.globalStatic))
 	for priv := range ps.globalStatic {
-		privs[i] = priv
-		i++
+		privs = append(privs, priv)
 	}
 	sort.Slice(privs, func(i, j int) bool {
 		return privs[i] < privs[j]
@@ -436,14 +430,12 @@ func (ps PrivilegeSetDatabase) Table(tblName string) sql.PrivilegeSetTable {
 
 // GetTables returns all tables.
 func (ps PrivilegeSetDatabase) GetTables() []sql.PrivilegeSetTable {
-	tblSets := make([]sql.PrivilegeSetTable, len(ps.tables))
-	i := 0
+	tblSets := make([]sql.PrivilegeSetTable, 0, len(ps.tables))
 	for _, tblSet := range ps.tables {
 		// Only return tables that have a table-level privilege, or a privilege on an underlying column.
 		// Otherwise, there is no difference between the returned table and the zero-value for any table.
 		if tblSet.HasPrivileges() {
-			tblSets[i] = tblSet
-			i++
+			tblSets = append(tblSets, tblSet)
 		}
 	}
 	sort.Slice(tblSets, func(i, j int) bool {
@@ -454,14 +446,12 @@ func (ps PrivilegeSetDatabase) GetTables() []sql.PrivilegeSetTable {
 
 // getTables returns all tables of the native type.
 func (ps PrivilegeSetDatabase) getTables() []PrivilegeSetTable {
-	tblSets := make([]PrivilegeSetTable, len(ps.tables))
-	i := 0
+	tblSets := make([]PrivilegeSetTable, 0, len(ps.tables))
 	for _, tblSet := range ps.tables {
 		// Only return tables that have a table-level privilege, or a privilege on an underlying column.
 		// Otherwise, there is no difference between the returned table and the zero-value for any table.
 		if tblSet.HasPrivileges() {
-			tblSets[i] = tblSet
-			i++
+			tblSets = append(tblSets, tblSet)
 		}
 	}
 	sort.Slice(tblSets, func(i, j int) bool {
@@ -492,11 +482,9 @@ func (ps PrivilegeSetDatabase) Equals(otherPsd sql.PrivilegeSetDatabase) bool {
 
 // ToSlice returns all of the database privileges contained as a sorted slice.
 func (ps PrivilegeSetDatabase) ToSlice() []sql.PrivilegeType {
-	privs := make([]sql.PrivilegeType, len(ps.privs))
-	i := 0
+	privs := make([]sql.PrivilegeType, 0, len(ps.privs))
 	for priv := range ps.privs {
-		privs[i] = priv
-		i++
+		privs = append(privs, priv)
 	}
 	sort.Slice(privs, func(i, j int) bool {
 		return privs[i] < privs[j]
@@ -590,14 +578,12 @@ func (ps PrivilegeSetTable) Column(colName string) sql.PrivilegeSetColumn {
 
 // GetColumns returns all columns.
 func (ps PrivilegeSetTable) GetColumns() []sql.PrivilegeSetColumn {
-	colSets := make([]sql.PrivilegeSetColumn, len(ps.columns))
-	i := 0
+	colSets := make([]sql.PrivilegeSetColumn, 0, len(ps.columns))
 	for _, colSet := range ps.columns {
 		// Only return columns that have privileges. Otherwise, there is no difference between the returned column and
 		// the zero-value for any column.
 		if colSet.Count() > 0 {
-			colSets[i] = colSet
-			i++
+			colSets = append(colSets, colSet)
 		}
 	}
 	sort.Slice(colSets, func(i, j int) bool {
@@ -608,14 +594,12 @@ func (ps PrivilegeSetTable) GetColumns() []sql.PrivilegeSetColumn {
 
 // getColumns returns all columns of the native type.
 func (ps PrivilegeSetTable) getColumns() []PrivilegeSetColumn {
-	colSets := make([]PrivilegeSetColumn, len(ps.columns))
-	i := 0
+	colSets := make([]PrivilegeSetColumn, 0, len(ps.columns))
 	for _, colSet := range ps.columns {
 		// Only return columns that have privileges. Otherwise, there is no difference between the returned column and
 		// the zero-value for any column.
 		if colSet.Count() > 0 {
-			colSets[i] = colSet
-			i++
+			colSets = append(colSets, colSet)
 		}
 	}
 	sort.Slice(colSets, func(i, j int) bool {
@@ -646,11 +630,9 @@ func (ps PrivilegeSetTable) Equals(otherPst sql.PrivilegeSetTable) bool {
 
 // ToSlice returns all of the table privileges contained as a sorted slice.
 func (ps PrivilegeSetTable) ToSlice() []sql.PrivilegeType {
-	privs := make([]sql.PrivilegeType, len(ps.privs))
-	i := 0
+	privs := make([]sql.PrivilegeType, 0, len(ps.privs))
 	for priv := range ps.privs {
-		privs[i] = priv
-		i++
+		privs = append(privs, priv)
 	}
 	sort.Slice(privs, func(i, j int) bool {
 		return privs[i] < privs[j]
@@ -733,11 +715,9 @@ func (ps PrivilegeSetColumn) Equals(otherPsc sql.PrivilegeSetColumn) bool {
 
 // ToSlice returns all of the column privileges contained as a sorted slice.
 func (ps PrivilegeSetColumn) ToSlice() []sql.PrivilegeType {
-	privs := make([]sql.PrivilegeType, len(ps.privs))
-	i := 0
+	privs := make([]sql.PrivilegeType, 0, len(ps.privs))
 	for priv := range ps.privs {
-		privs[i] = priv
-		i++
+		privs = append(privs, priv)
 	}
 	sort.Slice(privs, func(i, j int) bool {
 		return privs[i] < privs[j]
