@@ -18,14 +18,11 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	errors "gopkg.in/src-d/go-errors.v1"
 	"io"
-	"math"
 	"sort"
 	"strconv"
 	"strings"
-	"time"
-
-	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -59,8 +56,7 @@ type Table struct {
 	lookup  sql.DriverIndexLookup
 	filters []sql.Expression
 
-	db         *BaseDatabase
-	tableStats *sql.TableStatistics
+	db *BaseDatabase
 }
 
 var _ sql.Table = (*Table)(nil)
@@ -388,27 +384,6 @@ func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
 	}
 
 	return numBytesPerRow * numRows, nil
-}
-
-// AnalyzeTable implements the sql.StatisticsTable interface.
-func (t *Table) AnalyzeTable(ctx *sql.Context) error {
-	// initialize histogram map
-	t.tableStats = &sql.TableStatistics{
-		CreatedAt: time.Now(),
-	}
-
-	histMap, err := NewHistogramMapFromTable(ctx, t)
-	if err != nil {
-		return err
-	}
-
-	t.tableStats.Histograms = histMap
-	for _, v := range histMap {
-		t.tableStats.RowCount = v.Count + v.NullCount
-		break
-	}
-
-	return nil
 }
 
 func (t *Table) RowCount(ctx *sql.Context) (uint64, error) {
@@ -1996,117 +1971,6 @@ func (i *indexKeyValueIter) Next(ctx *sql.Context) ([]interface{}, []byte, error
 
 func (i *indexKeyValueIter) Close(ctx *sql.Context) error {
 	return i.iter.Close(ctx)
-}
-
-// NewHistogramMapFromTable will construct a HistogramMap given a Table
-// TODO: this is copied from the information_schema package, and should be moved to a more general location
-func NewHistogramMapFromTable(ctx *sql.Context, t sql.Table) (sql.HistogramMap, error) {
-	// initialize histogram map
-	histMap := make(sql.HistogramMap)
-	cols := t.Schema()
-	for _, col := range cols {
-		hist := new(sql.Histogram)
-		hist.Min = math.MaxFloat64
-		hist.Max = -math.MaxFloat64
-		histMap[col.Name] = hist
-	}
-
-	// freqMap can be adapted to a histogram with any number of buckets
-	freqMap := make(map[string]map[float64]uint64)
-	for _, col := range cols {
-		freqMap[col.Name] = make(map[float64]uint64)
-	}
-
-	partIter, err := t.Partitions(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	for {
-		part, err := partIter.Next(ctx)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		iter, err := t.PartitionRows(ctx, part)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		for {
-			row, err := iter.Next(ctx)
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				return nil, err
-			}
-
-			for i, col := range cols {
-				hist, ok := histMap[col.Name]
-				if !ok {
-					panic("histogram was not initialized for this column; shouldn't be possible")
-				}
-
-				if row[i] == nil {
-					hist.NullCount++
-					continue
-				}
-
-				val, _, err := types.Float64.Convert(row[i])
-				if err != nil {
-					continue // silently skip unsupported column types for now
-				}
-				v := val.(float64)
-
-				if freq, ok := freqMap[col.Name][v]; ok {
-					freq++
-				} else {
-					freqMap[col.Name][v] = 1
-					hist.DistinctCount++
-				}
-
-				hist.Mean += v
-				hist.Min = math.Min(hist.Min, v)
-				hist.Max = math.Max(hist.Max, v)
-				hist.Count++
-			}
-		}
-	}
-
-	// add buckets to histogram in sorted order
-	for colName, freqs := range freqMap {
-		keys := make([]float64, 0)
-		for k := range freqs {
-			keys = append(keys, k)
-		}
-		sort.Float64s(keys)
-
-		hist := histMap[colName]
-		if hist.Count == 0 {
-			hist.Min = 0
-			hist.Max = 0
-			continue
-		}
-
-		hist.Mean /= float64(hist.Count)
-		for _, k := range keys {
-			bucket := &sql.HistogramBucket{
-				LowerBound: k,
-				UpperBound: k,
-				Frequency:  float64(freqs[k]) / float64(hist.Count),
-			}
-			hist.Buckets = append(hist.Buckets, bucket)
-		}
-	}
-
-	return histMap, nil
 }
 
 func (t Table) ShouldRewriteTable(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column) bool {

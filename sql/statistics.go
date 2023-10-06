@@ -15,9 +15,7 @@
 package sql
 
 import (
-	"fmt"
 	"github.com/dolthub/go-mysql-server/sql/stats"
-	"time"
 )
 
 // StatisticsTable is a table that can provide information about its number of rows and other facts to improve query
@@ -38,43 +36,4 @@ type StatsProvider interface {
 	DropStats(ctx *Context, db, table string, cols []string) error
 	RowCount(ctx *Context, db, table string) (uint64, error)
 	DataLength(ctx *Context, db, table string) (uint64, error)
-}
-
-// HistogramBucket represents a bucket in a histogram
-// inspiration pulled from MySQL and Cockroach DB
-type HistogramBucket struct {
-	LowerBound float64 // inclusive
-	UpperBound float64 // inclusive
-	Frequency  float64
-}
-
-// Histogram is all statistics we care about for each column
-type Histogram struct {
-	Buckets       []*HistogramBucket
-	Mean          float64
-	Min           float64
-	Max           float64
-	Count         uint64
-	NullCount     uint64
-	DistinctCount uint64
-}
-
-// HistogramMap is a map from column name to associated histogram
-type HistogramMap map[string]*Histogram
-
-// TableStatistics provides access to statistical information about the values stored in a table
-type TableStatistics struct {
-	// RowCount returns the number of rows in this table.
-	RowCount uint64
-	// CreatedAt returns the time at which the current statistics for this table were generated.
-	CreatedAt time.Time
-	// Histograms returns a map from all column names to their associated histograms.
-	Histograms HistogramMap
-}
-
-func (ts *TableStatistics) Histogram(colName string) (*Histogram, error) {
-	if res, ok := ts.Histograms[colName]; ok {
-		return res, nil
-	}
-	return &Histogram{}, fmt.Errorf("column %s not found", colName)
 }

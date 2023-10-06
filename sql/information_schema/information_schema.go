@@ -18,13 +18,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"io"
 	"sort"
 	"strings"
-	"time"
-
-	"github.com/dolthub/vitess/go/sqltypes"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	. "github.com/dolthub/go-mysql-server/sql"
@@ -2255,12 +2253,6 @@ func emptyRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(), nil
 }
 
-func NewUpdatableInformationSchemaDatabase() Database {
-	db := NewInformationSchemaDatabase().(*informationSchemaDatabase)
-	db.tables[StatisticsTableName] = newUpdatableStatsTable()
-	return db
-}
-
 // NewInformationSchemaDatabase creates a new INFORMATION_SCHEMA Database.
 func NewInformationSchemaDatabase() Database {
 	isDb := &informationSchemaDatabase{
@@ -2755,106 +2747,19 @@ func NewDefaultStats() *defaultStatsTable {
 			schema: statisticsSchema,
 			reader: statisticsRowIter,
 		},
-		stats: make(catalogStatistics),
 	}
 }
-
-// catalogStatistics holds TableStatistics keyed by table and database
-type catalogStatistics map[DbTable]*TableStatistics
 
 // defaultStatsTable is a statistics table implementation
 // with a cache to save ANALYZE results. RowCount defers to
 // the underlying table in the absence of a cached statistic.
 type defaultStatsTable struct {
 	*informationSchemaTable
-	stats catalogStatistics
 }
 
 func (n *defaultStatsTable) AssignCatalog(cat Catalog) Table {
 	n.catalog = cat
 	return n
-}
-
-func newUpdatableStatsTable() *updatableStatsTable {
-	return &updatableStatsTable{
-		defaultStatsTable: NewDefaultStats(),
-	}
-}
-
-// updatableStatsTable provides a statistics table that can
-// be edited with UPDATE statements.
-type updatableStatsTable struct {
-	*defaultStatsTable
-}
-
-var _ UpdatableTable = (*updatableStatsTable)(nil)
-
-// AssignCatalog implements sql.CatalogTable
-func (t *updatableStatsTable) AssignCatalog(cat Catalog) Table {
-	t.catalog = cat
-	return t
-}
-
-// Updater implements sql.UpdatableTable
-func (t *updatableStatsTable) Updater(_ *Context) RowUpdater {
-	return newStatsEditor(t.catalog, t.stats)
-}
-
-func newStatsEditor(c Catalog, stats map[DbTable]*TableStatistics) RowUpdater {
-	return &statsEditor{c: c, s: stats}
-}
-
-// statsEditor is an internal-only object used to mock table
-// statistics for testing.
-type statsEditor struct {
-	c Catalog
-	s map[DbTable]*TableStatistics
-}
-
-var _ RowUpdater = (*statsEditor)(nil)
-
-// StatementBegin implements sql.RowUpdater
-func (s *statsEditor) StatementBegin(_ *Context) {}
-
-// DiscardChanges implements sql.RowUpdater
-func (s *statsEditor) DiscardChanges(_ *Context, _ error) error {
-	return fmt.Errorf("discarding statsEditor changes not supported")
-}
-
-// StatementComplete implements sql.RowUpdater
-func (s *statsEditor) StatementComplete(_ *Context) error { return nil }
-
-// Update implements sql.RowUpdater
-func (s *statsEditor) Update(ctx *Context, old, new Row) error {
-	db, ok := old[1].(string)
-	if !ok {
-		return fmt.Errorf("expected string type databaseName; found type: '%T', value: '%v'", old[1], old[1])
-	}
-	table, ok := old[2].(string)
-	if !ok {
-		return fmt.Errorf("expected string type tableName; found type: '%T', value: '%v'", old[2], old[2])
-	}
-
-	_, _, err := s.c.Table(ctx, db, table)
-	if err != nil {
-		return err
-	}
-
-	card, ok := new[9].(int64)
-	if !ok {
-		return fmt.Errorf("expeceted integer cardinality; found type: '%T', value: '%s'", new[9], new[9])
-	}
-	stats := &TableStatistics{
-		RowCount:   uint64(card),
-		CreatedAt:  time.Now(),
-		Histograms: make(HistogramMap),
-	}
-	s.s[NewDbTable(db, table)] = stats
-	return nil
-}
-
-func (s *statsEditor) Close(context *Context) error {
-	return nil
 }
 
 func printTable(name string, tableSchema Schema) string {
