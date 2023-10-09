@@ -105,7 +105,7 @@ func TestFuncDeps_InnerJoin(t *testing.T) {
 		mnpq.AddStrictKey(cols(6, 7))
 
 		join := NewInnerJoinFDs(abcde, mnpq, [][2]ColumnId{{1, 6}})
-		assert.Equal(t, "key(6); constant(7); equiv(1,6); lax-fd(2,3)", join.String())
+		assert.Equal(t, "key(6); constant(7); equiv(1,6); fd(1)/(1-5); lax-fd(2,3)/(1-5); fd(6)/(6-9)", join.String())
 	})
 
 	t.Run("ware X cust", func(t *testing.T) {
@@ -129,7 +129,7 @@ func TestFuncDeps_InnerJoin(t *testing.T) {
 		ware.AddStrictKey(cols(6))
 
 		join := NewInnerJoinFDs(cust, ware, [][2]ColumnId{{3, 6}})
-		assert.Equal(t, "key(); constant(1-3,6); equiv(3,6)", join.String())
+		assert.Equal(t, "key(); constant(1-3,6); equiv(3,6); fd(3)/(1-5); fd()/(6)", join.String())
 	})
 	t.Run("equiv on both sides inner join", func(t *testing.T) {
 		abcde := &FuncDepSet{all: cols(1, 2, 3, 4, 5)}
@@ -144,7 +144,7 @@ func TestFuncDeps_InnerJoin(t *testing.T) {
 		mnpq.AddStrictKey(cols(6, 7))
 
 		join := NewInnerJoinFDs(mnpq, abcde, [][2]ColumnId{})
-		assert.Equal(t, "key(1,6,7); equiv(6,8,9); equiv(2-4); lax-fd(3)", join.String())
+		assert.Equal(t, "key(1,6,7); equiv(6,8,9); equiv(2-4); fd(6,7)/(6-9); fd(1)/(1-5); lax-fd(3)/(1-5)", join.String())
 	})
 	t.Run("max1Row inner join", func(t *testing.T) {
 		abcde := &FuncDepSet{all: cols(1, 2, 3, 4, 5)}
@@ -173,7 +173,7 @@ func TestFuncDeps_InnerJoin(t *testing.T) {
 		mnpq.AddStrictKey(cols(6))
 
 		join := NewInnerJoinFDs(mnpq, abcde, [][2]ColumnId{{1, 7}})
-		assert.Equal(t, "key(6); constant(1-5,7); equiv(1,7)", join.String())
+		assert.Equal(t, "key(6); constant(1-5,7); equiv(1,7); fd(6)/(6-9); fd()/(1-5)", join.String())
 	})
 	t.Run("simplify cols on join", func(t *testing.T) {
 		// create table t1 (id int primary key, value int)

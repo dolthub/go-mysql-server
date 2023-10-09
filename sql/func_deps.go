@@ -59,8 +59,9 @@ func (e *EquivSets) String() string {
 
 // Key maintains a strict or lax dependency
 type Key struct {
-	strict bool
-	cols   ColSet
+	strict  bool
+	cols    ColSet
+	allCols ColSet
 }
 
 func (k *Key) Empty() bool {
@@ -102,18 +103,17 @@ func (k *Key) implies(other Key) bool {
 // the entire relation, which seems good enough for many cases.
 // Maintaining partials sets also requires much less bookkeeping.
 //
-// One observed downside of this approach is that left joins fail to
-// convert equivalencies on the null-extended side to lax functional
-// dependencies. For example, in the query below, the left join loses
-// (a) == (m) because (m) can now be NULL:
+// TODO: We used to not track dependency sets and only add keys that
+// determined the entire relation. One observed downside of that approach
+// is that left joins fail to convert equivalencies on the null-extended
+// side to lax functional dependencies. For example, in the query below,
+// the left join loses (a) == (m) because (m) can now be NULL:
 //
 // SELECT * from adbcd LEFT_JOIN mnpq WHERE a = m
 //
 // But we could maintain (m)~~>(n), which higher-level null enforcement
-// (ex: GROUPING) can reclaim as equivalence. We would need to represent
-// full functional dependencies with determinant and dependency sets,
-// rather than just determinant FDs whose dependents are always the whole
-// relation.
+// (ex: GROUPING) can reclaim as equivalence. Although we now track partial
+// dependency sets, this may still not be supported.
 type FuncDepSet struct {
 	// all columns in this relation
 	all ColSet
@@ -213,10 +213,16 @@ func (f *FuncDepSet) String() string {
 		return b.String()
 	}
 	for _, k := range f.keys[1:] {
-		if k.strict {
-			b.WriteString(fmt.Sprintf("%sfd%s", sep, k.cols))
+		var cols string
+		if k.allCols == f.all {
+			cols = k.cols.String()
 		} else {
-			b.WriteString(fmt.Sprintf("%slax-fd%s", sep, k.cols))
+			cols = fmt.Sprintf("%s/%s", k.cols, k.allCols)
+		}
+		if k.strict {
+			b.WriteString(fmt.Sprintf("%sfd%s", sep, cols))
+		} else {
+			b.WriteString(fmt.Sprintf("%slax-fd%s", sep, cols))
 		}
 		sep = "; "
 	}
@@ -277,7 +283,7 @@ func (f *FuncDepSet) AddKey(k Key) {
 
 func (f *FuncDepSet) AddStrictKey(cols ColSet) {
 	cols = f.simplifyCols(cols)
-	newKey := Key{cols: cols, strict: true}
+	newKey := Key{cols: cols, allCols: f.all, strict: true}
 	for i, key := range f.keys {
 		if key.implies(newKey) {
 			return
@@ -308,7 +314,7 @@ func (f *FuncDepSet) AddLaxKey(cols ColSet) {
 	}
 
 	cols = f.simplifyCols(cols)
-	newKey := Key{cols: cols, strict: false}
+	newKey := Key{cols: cols, allCols: f.all, strict: false}
 	for i, key := range f.keys {
 		if key.implies(newKey) {
 			return
@@ -407,11 +413,9 @@ func NewCrossJoinFDs(left, right *FuncDepSet) *FuncDepSet {
 	var lKey, rKey Key
 	if len(left.keys) > 0 {
 		lKey = left.keys[0]
-		left.keys = left.keys[1:]
 	}
 	if len(right.keys) > 0 {
 		rKey = right.keys[0]
-		right.keys = right.keys[1:]
 	}
 	var jKey Key
 	if lKey.Empty() && rKey.Empty() {
@@ -422,6 +426,7 @@ func NewCrossJoinFDs(left, right *FuncDepSet) *FuncDepSet {
 		jKey = lKey
 	} else {
 		jKey.cols = lKey.cols.Union(rKey.cols)
+		jKey.allCols = ret.all
 		jKey.strict = lKey.strict && rKey.strict
 	}
 	ret.keys = append(ret.keys, jKey)
@@ -461,11 +466,9 @@ func NewInnerJoinFDs(left, right *FuncDepSet, filters [][2]ColumnId) *FuncDepSet
 	var lKey, rKey Key
 	if len(leftKeys) > 0 {
 		lKey = leftKeys[0]
-		leftKeys = leftKeys[1:]
 	}
 	if len(rightKeys) > 0 {
 		rKey = rightKeys[0]
-		rightKeys = rightKeys[1:]
 	}
 	var jKey Key
 	if lKey.Empty() && rKey.Empty() {
@@ -481,17 +484,12 @@ func NewInnerJoinFDs(left, right *FuncDepSet, filters [][2]ColumnId) *FuncDepSet
 	}
 	ret.AddKey(jKey)
 	for _, k := range leftKeys {
-		k.cols = ret.simplifyCols(k.cols)
-		if !ret.keys[0].implies(k) {
-			ret.keys = append(ret.keys, k)
-		}
+		ret.keys = append(ret.keys, k)
 	}
 	for _, k := range rightKeys {
-		k.cols = ret.simplifyCols(k.cols)
-		if !ret.keys[0].implies(k) {
-			ret.keys = append(ret.keys, k)
-		}
+		ret.keys = append(ret.keys, k)
 	}
+
 	return ret
 }
 
@@ -581,7 +579,7 @@ func NewProjectFDs(fds *FuncDepSet, cols ColSet, distinct bool) *FuncDepSet {
 			newKey.Add(replace)
 		}
 		if allOk {
-			ret.AddKey(Key{strict: key.strict, cols: newKey})
+			ret.AddKey(Key{strict: key.strict, allCols: ret.all, cols: newKey})
 		}
 	}
 
@@ -645,7 +643,7 @@ func NewLeftJoinFDs(left, right *FuncDepSet, filters [][2]ColumnId) *FuncDepSet 
 	}
 
 	if leftStrict && leftColsAreInnerJoinKey {
-		strictKey := Key{true, leftKey}
+		strictKey := Key{strict: true, allCols: ret.all, cols: leftKey}
 		ret.keys = append(ret.keys, strictKey)
 		if !strictKey.implies(rKey) {
 			ret.keys = append(ret.keys, rKey)
