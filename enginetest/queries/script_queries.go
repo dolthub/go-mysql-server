@@ -15,6 +15,7 @@
 package queries
 
 import (
+	"math"
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -1252,31 +1253,65 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.Row{{uint64(0)}},
 			},
 			{
-				Query:    "insert into a (y) values (1)",
+				Query:    "insert into a (x,y) values (1,1)",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
 			},
 			{
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.Row{{uint64(0)}},
 			},
 			{
-				Query:    "insert into a (y) values (2), (3)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 2}}},
+				Query:    "insert into a (y) values (1)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
 			},
 			{
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{2}},
+				Expected: []sql.Row{{uint64(2)}},
+			},
+			{
+				Query:    "insert into a (y) values (2), (3)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 3}}},
+			},
+			{
+				// last_insert_id() should return the insert id of the *first* value inserted in the last statement
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{uint64(3)}},
 			},
 			{
 				Query:    "insert into b (x) values (1), (2)",
 				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
+				// The above query doesn't have an auto increment column, so last_insert_id is unchanged
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{2}},
+				Expected: []sql.Row{{uint64(3)}},
+			},
+			{
+				Query: "insert into a (x, y) values (-100, 10)",
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 1,
+					InsertID:     uint64(math.MaxUint64 - uint(100-1)),
+				}}},
+			},
+			{
+				// last_insert_id() should not update for manually inserted values
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{uint64(3)}},
+			},
+			{
+				Query: "insert into a (x, y) values (100, 10)",
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 1,
+					InsertID:     100,
+				}}},
+			},
+			{
+				// last_insert_id() should not update for manually inserted values
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{uint64(3)}},
 			},
 		},
 	},
@@ -1292,15 +1327,27 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.Row{{uint64(1)}},
 			},
 			{
 				Query:    "insert into a (x, y) values (1, 1) on duplicate key update y = 2, x=last_insert_id(x)",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 1}}},
 			},
 			{
+				Query:    "select * from a order by x",
+				Expected: []sql.Row{{1, 2}},
+			},
+			{
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.Row{{uint64(1)}},
+			},
+			{
+				Query:    "insert into a (y) values (100)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
+			},
+			{
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{uint64(2)}},
 			},
 		},
 	},
@@ -3912,6 +3959,117 @@ var ScriptTests = []ScriptTest{
 			{
 				Query:       "SELECT * FROM f;",
 				ExpectedErr: sql.ErrInvalidRefInView,
+			},
+		},
+	},
+	{
+		Name: "Multi-db Aliasing",
+		SetUpScript: []string{
+			"create database db1;",
+			"create table db1.t1 (i int primary key);",
+			"create table db1.t2 (j int primary key);",
+			"insert into db1.t1 values (1);",
+			"insert into db1.t2 values (2);",
+
+			"create database db2;",
+			"create table db2.t1 (i int primary key);",
+			"create table db2.t2 (j int primary key);",
+			"insert into db2.t1 values (10);",
+			"insert into db2.t2 values (20);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// surprisingly, this works
+				Query: "select db1.t1.i from db1.t1 where db1.``.i > 0",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select db1.t1.i from db1.t1 where db1.t1.i > 0",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select db1.t1.i from db1.t1 order by db1.t1.i",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select db1.t1.i from db1.t1 group by db1.t1.i",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select db1.t1.i from db1.t1 having db1.t1.i > 0",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select (select db1.t1.i from db1.t1 order by db1.t1.i)",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select i from (select db1.t1.i from db1.t1 order by db1.t1.i) as t",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "with cte as (select db1.t1.i from db1.t1 order by db1.t1.i) select * from cte",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select i, j from db1.t1 inner join db2.t2 on 20 * i = j",
+				Expected: []sql.Row{
+					{1, 20},
+				},
+			},
+			{
+				Query: "select db1.t1.i, db2.t2.j from db1.t1 inner join db2.t2 on 20 * db1.t1.i = db2.t2.j",
+				Expected: []sql.Row{
+					{1, 20},
+				},
+			},
+			{
+				Query: "select i, j from db1.t1 join db2.t2 order by i, j",
+				Expected: []sql.Row{
+					{1, 20},
+				},
+			},
+			{
+				Query: "select i, j from db1.t1 join db2.t2 group by i order by j",
+				Expected: []sql.Row{
+					{1, 20},
+				},
+			},
+			{
+				Query: "select db1.t1.i, db2.t2.j from db1.t1 join db2.t2 group by db1.t1.i order by db2.t2.j",
+				Expected: []sql.Row{
+					{1, 20},
+				},
+			},
+			{
+				Skip:  true, // incorrectly throws Not unique table/alias: t1
+				Query: "select db1.t1.i, db2.t1.i from db1.t1 join db2.t1 order by db1.t1, db2.t1.i",
+				Expected: []sql.Row{
+					{1, 10},
+				},
+			},
+			{
+				// Aliasing solves it
+				Query: "select a.i, b.i from db1.t1 a join db2.t1 b order by a.i, b.i",
+				Expected: []sql.Row{
+					{1, 10},
+				},
 			},
 		},
 	},

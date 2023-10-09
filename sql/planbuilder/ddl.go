@@ -938,24 +938,25 @@ func (b *Builder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (outSco
 		}
 	}
 
-	dbName := ddl.Table.Qualifier.String()
-	tableName := ddl.Table.Name.String()
+	dbName := strings.ToLower(ddl.Table.Qualifier.String())
+	tblName := strings.ToLower(ddl.Table.Name.String())
 	var ok bool
-	outScope, ok = b.buildTablescan(inScope, dbName, tableName, nil)
+	outScope, ok = b.buildTablescan(inScope, dbName, tblName, nil)
 	if !ok {
-		b.handleErr(sql.ErrTableNotFound.New(tableName))
+		b.handleErr(sql.ErrTableNotFound.New(tblName))
 	}
 	table, ok := outScope.node.(*plan.ResolvedTable)
 	if !ok {
-		err := fmt.Errorf("expected resolved table: %s", tableName)
+		err := fmt.Errorf("expected resolved table: %s", tblName)
 		b.handleErr(err)
 	}
 
 	cols := make([]sql.Expression, len(ddl.IndexSpec.Columns))
 	for i, col := range ddl.IndexSpec.Columns {
-		c, ok := inScope.resolveColumn(tableName, strings.ToLower(col.Column.String()), true)
+		colName := strings.ToLower(col.Column.String())
+		c, ok := inScope.resolveColumn(dbName, tblName, colName, true)
 		if !ok {
-			b.handleErr(sql.ErrColumnNotFound.New(col.Column.String()))
+			b.handleErr(sql.ErrColumnNotFound.New(colName))
 		}
 		cols[i] = expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
 	}
