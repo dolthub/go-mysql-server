@@ -18,11 +18,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/dolthub/vitess/go/sqltypes"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"io"
 	"sort"
 	"strings"
+
+	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	. "github.com/dolthub/go-mysql-server/sql"

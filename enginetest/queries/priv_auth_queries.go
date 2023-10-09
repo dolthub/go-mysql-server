@@ -15,7 +15,6 @@
 package queries
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/stats"
 	"testing"
 	"time"
 
@@ -25,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/stats"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
