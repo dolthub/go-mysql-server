@@ -54,15 +54,17 @@ func (v *VirtualColumnTable) Expressions() []sql.Expression {
 }
 
 
-func (v *VirtualColumnTable) Debug() string {
+func (v *VirtualColumnTable) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("VirtualColumnTable")
-	var exprs = make([]string, len(v.Projections))
+	children := make([]string, 2)
+	children[0] = fmt.Sprintf("name: %s", v.Name())
+	exprs := make([]string, len(v.Projections))
 	for i, expr := range v.Projections {
 		exprs[i] = expr.String()
 	}
-	columns := fmt.Sprintf("columns: [%s]", strings.Join(exprs, ", "))
-	_ = pr.WriteChildren(columns, v.Table.String())
+	children[1] = fmt.Sprintf("columns: [%s]", strings.Join(exprs, ", "))
+	_ = pr.WriteChildren(children...)
 
 	return pr.String()
 }
@@ -70,12 +72,15 @@ func (v *VirtualColumnTable) Debug() string {
 func (v *VirtualColumnTable) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("VirtualColumnTable")
-	var exprs = make([]string, len(v.Projections))
+	children := make([]string, 2)
+	children[0] = fmt.Sprintf("name: %s", v.Name())
+	exprs := make([]string, len(v.Projections))
 	for i, expr := range v.Projections {
 		exprs[i] = sql.DebugString(expr)
 	}
-	columns := fmt.Sprintf("columns: [%s]", strings.Join(exprs, ", "))
-	_ = pr.WriteChildren(columns, sql.DebugString(v.Table))
+	
+	children[1] = fmt.Sprintf("columns: [%s]", strings.Join(exprs, ", "))
+	_ = pr.WriteChildren(children...)
 
 	return pr.String()
 }

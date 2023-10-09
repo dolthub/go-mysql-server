@@ -775,7 +775,17 @@ func (b *BaseBuilder) buildResolvedTable(ctx *sql.Context, n *plan.ResolvedTable
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, n.Table, partitions)), nil
+	var iter sql.RowIter
+	iter = sql.NewTableRowIter(ctx, n.Table, partitions)
+	
+	if vct, ok := n.Table.(*plan.VirtualColumnTable); ok {
+		iter, err = b.buildVirtualColumnTable(ctx, vct, iter, row)
+		if err != nil {
+			return nil, err
+		}
+	}
+	
+	return sql.NewSpanIter(span, iter), nil
 }
 
 func (b *BaseBuilder) buildTableCount(_ *sql.Context, n *plan.TableCountLookup, _ sql.Row) (sql.RowIter, error) {

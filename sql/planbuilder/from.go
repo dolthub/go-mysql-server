@@ -670,7 +670,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, name string, asof *ast.
 	}
 
 	if tab.Schema().HasVirtualColumns() {
-		tab = b.buildVirtualTableScan(tab)
+		tab = b.buildVirtualTableScan(inScope, tab)
 	}
 	
 	rt := plan.NewResolvedTable(tab, database, asOfLit)

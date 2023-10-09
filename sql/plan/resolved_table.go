@@ -121,9 +121,15 @@ func (t *ResolvedTable) String() string {
 
 func (t *ResolvedTable) DebugString() string {
 	pr := sql.NewTreePrinter()
+	table := t.Table
+	var children []string
+	// TableWrappers may want to print their own debug info
+	if wrapper, ok := table.(sql.TableWrapper); ok {
+		return sql.DebugString(wrapper)
+	}
+
 	pr.WriteNode("Table")
-	table := t.UnderlyingTable()
-	children := []string{fmt.Sprintf("name: %s", t.Name())}
+	children = []string{fmt.Sprintf("name: %s", t.Name())}
 
 	var columns []string
 	if pt, ok := table.(sql.ProjectedTable); ok && pt.Projections() != nil {

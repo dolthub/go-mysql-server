@@ -358,7 +358,7 @@ func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outSc
 
 // buildVirtualTableScan returns a ProjectNode for a table that has virtual columns, projecting the values of any
 // generated columns 
-func (b *Builder) buildVirtualTableScan(tab sql.Table) *plan.VirtualColumnTable {
+func (b *Builder) buildVirtualTableScan(inScope *scope, tab sql.Table) *plan.VirtualColumnTable {
 	projections := make([]sql.Expression, len(tab.Schema()))
 	for i, c := range tab.Schema() {
 		if !c.Virtual {
@@ -367,9 +367,10 @@ func (b *Builder) buildVirtualTableScan(tab sql.Table) *plan.VirtualColumnTable 
 			// Tha alias below is used to make sure that a project node on top of this one (which doesn't know which 
 			// columns are virtual) will match the fields in this one. We could do a better job matching by assigning an 
 			// ID here.
+			// TODO: still necessary with VirtualColumnTable?
 			projections[i] = expression.NewAlias(
 				fmt.Sprintf("%s.%s", tab.Name(), c.Name),
-				c.Generated)
+				b.resolveColumnDefaultExpression(inScope, c, c.Generated))
 		}
 	}
 	
