@@ -73,7 +73,7 @@ func TestFuncDeps_CrossJoin(t *testing.T) {
 		mnpq.AddStrictKey(cols(6, 7))
 
 		join := NewCrossJoinFDs(abcde, mnpq)
-		assert.Equal(t, "key(1,6,7); lax-fd(2,3)", join.String())
+		assert.Equal(t, "key(1,6,7); fd(1); lax-fd(2,3); fd(6,7)", join.String())
 	})
 	t.Run("cross product one-sided equiv", func(t *testing.T) {
 		abcde := &FuncDepSet{}
@@ -87,7 +87,7 @@ func TestFuncDeps_CrossJoin(t *testing.T) {
 		mnpq.AddStrictKey(cols(6, 7))
 
 		join := NewCrossJoinFDs(abcde, mnpq)
-		assert.Equal(t, "key(1,6,7); equiv(1,5); lax-fd(2,3)", join.String())
+		assert.Equal(t, "key(1,6,7); equiv(1,5); fd(1); lax-fd(2,3); fd(6,7)", join.String())
 	})
 }
 
@@ -288,7 +288,7 @@ func TestFuncDeps_LeftJoin(t *testing.T) {
 		mnpq.AddStrictKey(cols(6, 7))
 
 		join := NewLeftJoinFDs(mnpq, abcde, [][2]ColumnId{})
-		assert.Equal(t, "key(1,6,7); constant(8,9); lax-fd(2,3)", join.String())
+		assert.Equal(t, "key(1,6,7); constant(8,9); lax-fd(2,3)/(1-5)", join.String())
 	})
 	t.Run("preserved-side equiv constants kept", func(t *testing.T) {
 		abcde := &FuncDepSet{all: cols(1, 2, 3, 4, 5)}
@@ -303,7 +303,7 @@ func TestFuncDeps_LeftJoin(t *testing.T) {
 		mnpq.AddStrictKey(cols(6, 7))
 
 		join := NewLeftJoinFDs(mnpq, abcde, [][2]ColumnId{})
-		assert.Equal(t, "key(1,6,7); constant(8,9); equiv(8,9); lax-fd(2,3)", join.String())
+		assert.Equal(t, "key(1,6,7); constant(8,9); equiv(8,9); lax-fd(2,3)/(1-5)", join.String())
 	})
 	t.Run("preserved-side key constants kept", func(t *testing.T) {
 		abcde := &FuncDepSet{all: cols(1, 2, 3, 4, 5)}
@@ -317,7 +317,7 @@ func TestFuncDeps_LeftJoin(t *testing.T) {
 		mnpq.AddStrictKey(cols(6, 7))
 
 		join := NewLeftJoinFDs(mnpq, abcde, [][2]ColumnId{})
-		assert.Equal(t, "key(1,7); constant(6,8,9); lax-fd(2,3)", join.String())
+		assert.Equal(t, "key(1,7); constant(6,8,9); lax-fd(2,3)/(1-5)", join.String())
 	})
 	t.Run("null-project side constants removed", func(t *testing.T) {
 		abcde := &FuncDepSet{all: cols(1, 2, 3, 4, 5)}
@@ -331,7 +331,7 @@ func TestFuncDeps_LeftJoin(t *testing.T) {
 		mnpq.AddStrictKey(cols(6, 7))
 
 		join := NewLeftJoinFDs(mnpq, abcde, [][2]ColumnId{})
-		assert.Equal(t, "key(1,6,7); lax-fd(2)", join.String())
+		assert.Equal(t, "key(1,6,7); lax-fd(2)/(1-5)", join.String())
 	})
 	t.Run("equiv on both sides left join", func(t *testing.T) {
 		abcde := &FuncDepSet{all: cols(1, 2, 3, 4, 5)}
@@ -346,7 +346,7 @@ func TestFuncDeps_LeftJoin(t *testing.T) {
 		mnpq.AddStrictKey(cols(6, 7))
 
 		join := NewLeftJoinFDs(mnpq, abcde, [][2]ColumnId{})
-		assert.Equal(t, "key(1,6,7); equiv(6,8,9); lax-fd(3)", join.String())
+		assert.Equal(t, "key(1,6,7); equiv(6,8,9); lax-fd(3)/(1-5)", join.String())
 	})
 	t.Run("join filter equiv", func(t *testing.T) {
 		// SELECT * FROM abcde RIGHT OUTER JOIN mnpq ON a=m
@@ -360,7 +360,7 @@ func TestFuncDeps_LeftJoin(t *testing.T) {
 		mnpq.AddStrictKey(cols(6, 7))
 
 		join := NewLeftJoinFDs(mnpq, abcde, [][2]ColumnId{{1, 6}})
-		assert.Equal(t, "key(6,7); fd(1); lax-fd(2,3)", join.String())
+		assert.Equal(t, "key(6,7); fd(1)/(1-5); lax-fd(2,3)/(1-5)", join.String())
 	})
 	t.Run("join filter equiv and null-side rel equiv", func(t *testing.T) {
 		//   SELECT * FROM abcde RIGHT OUTER JOIN mnpq ON a=m AND a=b
@@ -374,7 +374,7 @@ func TestFuncDeps_LeftJoin(t *testing.T) {
 		mnpq.AddStrictKey(cols(6, 7))
 
 		join := NewLeftJoinFDs(mnpq, abcde, [][2]ColumnId{{1, 6}, {1, 2}})
-		assert.Equal(t, "key(6,7); fd(1); lax-fd(2,3)", join.String())
+		assert.Equal(t, "key(6,7); fd(1)/(1-5); lax-fd(2,3)/(1-5)", join.String())
 	})
 	t.Run("max1Row left join", func(t *testing.T) {
 		abcde := &FuncDepSet{all: cols(1, 2, 3, 4, 5)}
