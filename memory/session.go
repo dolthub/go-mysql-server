@@ -24,7 +24,7 @@ import (
 type GlobalsMap = map[string]interface{}
 type Session struct {
 	*sql.BaseSession
-	dbProvider       *DbProvider
+	dbProvider       sql.DatabaseProvider
 	tables           map[tableKey]*TableData
 	editAccumulators map[tableKey]tableEditAccumulator
 	persistedGlobals GlobalsMap
@@ -37,7 +37,7 @@ var _ sql.Transaction = (*Transaction)(nil)
 var _ sql.PersistableSession = (*Session)(nil)
 
 // NewSession returns the new session for this object
-func NewSession(baseSession *sql.BaseSession, provider *DbProvider) *Session {
+func NewSession(baseSession *sql.BaseSession, provider sql.DatabaseProvider) *Session {
 	return &Session{
 		BaseSession:      baseSession,
 		dbProvider:       provider,
