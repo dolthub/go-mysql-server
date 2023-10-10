@@ -120,16 +120,26 @@ func (t *ResolvedTable) String() string {
 }
 
 func (t *ResolvedTable) DebugString() string {
-	pr := sql.NewTreePrinter()
 	table := t.Table
-	var children []string
 	// TableWrappers may want to print their own debug info
 	if wrapper, ok := table.(sql.TableWrapper); ok {
-		return sql.DebugString(wrapper)
+		if ds, ok := wrapper.(sql.DebugStringer); ok {
+			return sql.DebugString(ds)
+		}
 	}
 
+	var additionalChildren []string
+	if t.comment != "" {
+		additionalChildren = []string{fmt.Sprintf("comment: %s", t.comment)}
+	}
+
+	return TableDebugString(table, additionalChildren...)
+}
+
+func TableDebugString(table sql.Table, additionalChildren ...string) string {
+	pr := sql.NewTreePrinter()
 	pr.WriteNode("Table")
-	children = []string{fmt.Sprintf("name: %s", t.Name())}
+	children := []string{fmt.Sprintf("name: %s", table.Name())}
 
 	var columns []string
 	if pt, ok := table.(sql.ProjectedTable); ok && pt.Projections() != nil {
@@ -145,9 +155,6 @@ func (t *ResolvedTable) DebugString() string {
 		}
 	}
 	children = append(children, fmt.Sprintf("columns: %v", columns))
-	if t.comment != "" {
-		children = append(children, fmt.Sprintf("comment: %s", t.comment))
-	}
 
 	if ft, ok := table.(sql.FilteredTable); ok {
 		var filters []string
@@ -202,6 +209,25 @@ func (t *ResolvedTable) WithTable(table sql.Table) (*ResolvedTable, error) {
 		return nil, fmt.Errorf("attempted to update TableNode `%s` with table `%s`", t.Name(), table.Name())
 	}
 	nt := *t
+	
 	nt.Table = table
 	return &nt, nil
 }
+
+// WithWrappedTable returns this Node with the given table, re-wrapping it with any MutableTableWrapper that was 
+// wrapping it prior to this call.
+func (t *ResolvedTable) WithWrappedTable(table sql.Table) (*ResolvedTable, error) {
+	if t.Name() != table.Name() {
+		return nil, fmt.Errorf("attempted to update TableNode `%s` with table `%s`", t.Name(), table.Name())
+	}
+	nt := *t
+
+	if mtw, ok := nt.Table.(sql.MutableTableWrapper); ok {
+		nt.Table = mtw.WithUnderlying(table)
+	} else {
+		nt.Table = table
+	}
+
+	return &nt, nil
+}
+

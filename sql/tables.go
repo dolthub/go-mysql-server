@@ -67,6 +67,11 @@ type TableWrapper interface {
 	Underlying() Table
 }
 
+type MutableTableWrapper interface {
+	TableWrapper
+	WithUnderlying(Table) Table
+}
+
 // FilteredTable is a table that can filter its result rows from RowIter using filter expressions that would otherwise
 // be applied by a separate Filter node.
 type FilteredTable interface {

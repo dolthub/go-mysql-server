@@ -28,8 +28,16 @@ type VirtualColumnTable struct {
 	Projections []sql.Expression
 }
 
+var _ sql.TableWrapper = (*VirtualColumnTable)(nil)
+var _ sql.MutableTableWrapper = (*VirtualColumnTable)(nil)
+
 func (v *VirtualColumnTable) Underlying() sql.Table {
 	return v.Table
+}
+
+func (v VirtualColumnTable) WithUnderlying(table sql.Table) sql.Table {
+	v.Table = table
+	return &v
 }
 
 // NewVirtualColumnTable creates a new VirtualColumnTable.
@@ -53,7 +61,6 @@ func (v *VirtualColumnTable) Expressions() []sql.Expression {
 	return v.Projections
 }
 
-
 func (v *VirtualColumnTable) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("VirtualColumnTable")
@@ -72,7 +79,7 @@ func (v *VirtualColumnTable) String() string {
 func (v *VirtualColumnTable) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("VirtualColumnTable")
-	children := make([]string, 2)
+	children := make([]string, 3)
 	children[0] = fmt.Sprintf("name: %s", v.Name())
 	exprs := make([]string, len(v.Projections))
 	for i, expr := range v.Projections {
@@ -80,6 +87,7 @@ func (v *VirtualColumnTable) DebugString() string {
 	}
 	
 	children[1] = fmt.Sprintf("columns: [%s]", strings.Join(exprs, ", "))
+	children[2] = TableDebugString(v.Table)
 	_ = pr.WriteChildren(children...)
 
 	return pr.String()

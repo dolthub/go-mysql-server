@@ -88,26 +88,6 @@ func getTable(node sql.Node) sql.Table {
 	return table
 }
 
-// Finds first unresolved table node that is a descendant of the node given
-func hasTable(name string, node sql.Node) bool {
-	var found bool
-	transform.Inspect(node, func(node sql.Node) bool {
-		switch n := node.(type) {
-		case *plan.UnresolvedTable:
-			found = found ||
-				name == n.Name()
-		case *plan.TableAlias:
-			switch n := n.Child.(type) {
-			case *plan.UnresolvedTable:
-				found = found || name == n.Name()
-			}
-		default:
-		}
-		return !found
-	})
-	return found
-}
-
 // Finds first ResolvedTable node that is a descendant of the node given
 func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 	var table *plan.ResolvedTable
