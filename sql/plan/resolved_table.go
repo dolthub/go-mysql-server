@@ -235,7 +235,7 @@ func (t *ResolvedTable) WithWrappedTable(table sql.Table) (*ResolvedTable, error
 func (t *ResolvedTable) ReWrapTable(table sql.IndexedTable) (sql.IndexedTable, error) {
 	if mtw, ok := t.Table.(sql.MutableTableWrapper); ok {
 		return mtw.WithUnderlying(table).(sql.IndexedTable), nil
-	} else {
-		return nil, fmt.Errorf("cannot rewrap table of type %T", t.Table)
 	}
+	
+	return table, nil
 }

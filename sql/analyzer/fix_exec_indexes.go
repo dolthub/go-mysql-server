@@ -409,9 +409,10 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 		// VirtualColumnTable is a pseudo-node that needs its pseudo projections resolved
 		vct, ok := plan.FindVirtualColumnTable(n.Table)
 		if !ok {
-			return n, nil
+			// TODO: might need this for virtual tables as well
+			return s.finalizeSelfDefault(n)
 		}
-
+	
 		vct, err := vct.WithExpressions(s.expressions...)
 		if err != nil {
 			return nil, err
@@ -422,7 +423,7 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 		// VirtualColumnTable is a pseudo-node that needs its pseudo projections resolved
 		vct, ok := plan.FindVirtualColumnTable(n.Table)
 		if !ok {
-			return s.visitSelfDefault(n)
+			return s.finalizeSelfDefault(n)
 		}
 		
 		vct, err := vct.WithExpressions(s.expressions[len(n.Expressions()):]...)
@@ -436,14 +437,14 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 			return nil, err
 		}
 		
-		return s.visitSelfDefault(newNode)
+		return s.finalizeSelfDefault(newNode)
 	default:
-		return s.visitSelfDefault(n)
+		return s.finalizeSelfDefault(n)
 	}
 }
 
-// visitSelfDefault handles the logic for fixing index assignments for most nodes that don't require special treatment
-func (s *idxScope) visitSelfDefault(n sql.Node) (sql.Node, error) {
+// finalizeSelfDefault handles the logic for fixing index assignments for most nodes that don't require special treatment
+func (s *idxScope) finalizeSelfDefault(n sql.Node) (sql.Node, error) {
 	// child scopes don't account for projections
 	s.addSchema(n.Schema())
 	var err error
