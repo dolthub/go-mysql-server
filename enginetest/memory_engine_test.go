@@ -30,6 +30,9 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	_ "github.com/dolthub/go-mysql-server/sql/variables"
+
+	memharness "github.com/dolthub/go-mysql-server/enginetest/sqllogictest/harness"
+	"github.com/dolthub/sqllogictest/go/logictest"
 )
 
 // This file is for validating both the engine itself and the in-memory database implementation in the memory package.
@@ -928,4 +931,12 @@ func mergeSetupScripts(scripts ...setup.SetupScript) []string {
 		all = append(all, s...)
 	}
 	return all
+}
+
+func TestSQLLogicTestFiles(t *testing.T) {
+	h := memharness.NewMemoryHarness(enginetest.NewDefaultMemoryHarness())
+	paths := []string{
+		"./tmp/join.test",
+	}
+	logictest.RunTestFiles(h, paths...)
 }
