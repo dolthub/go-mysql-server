@@ -60,7 +60,7 @@ func NewMemo(ctx *sql.Context, stats sql.StatsProvider, s *plan.Scope, scopeLen 
 		Ctx:         ctx,
 		c:           cost,
 		s:           card,
-		statsProv:     stats,
+		statsProv:   stats,
 		scope:       s,
 		scopeLen:    scopeLen,
 		TableProps:  newTableProps(),
