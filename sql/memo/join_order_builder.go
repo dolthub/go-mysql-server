@@ -127,15 +127,15 @@ type joinOrderBuilder struct {
 	// ((xy, ab), uv), (ab, (xy, uv)), etc.
 	//
 	// The group for a single base relation is the base relation itself.
-	m                       *Memo
-	plans                   map[vertexSet]*ExprGroup
-	edges                   []edge
-	vertices                []RelExpr
-	vertexGroups            []GroupId
-	innerEdges              edgeSet
-	nonInnerEdges           edgeSet
-	newPlanCb               func(j *joinOrderBuilder, rel RelExpr)
-	forceFastReorderForTest bool
+	m                         *Memo
+	plans                     map[vertexSet]*ExprGroup
+	edges                     []edge
+	vertices                  []RelExpr
+	vertexGroups              []GroupId
+	innerEdges                edgeSet
+	nonInnerEdges             edgeSet
+	newPlanCb                 func(j *joinOrderBuilder, rel RelExpr)
+	forceFastDFSLookupForTest bool
 }
 
 func NewJoinOrderBuilder(memo *Memo) *joinOrderBuilder {
@@ -151,7 +151,7 @@ func NewJoinOrderBuilder(memo *Memo) *joinOrderBuilder {
 // planning algorithm that analyzes the join tree to find a sequence that can be implemented purely as lookup joins.
 // Currently we only use it for large joins (20+ tables) with no join hints.
 func (j *joinOrderBuilder) useFastReorder() bool {
-	if j.forceFastReorderForTest {
+	if j.forceFastDFSLookupForTest {
 		return true
 	}
 	if j.m.hints.order != nil {
@@ -234,13 +234,18 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() {
 
 	currentlyJoinedTables := newBitSet(j.findVertexFromGroup(keyTableGroup))
 
-	var nextTableGroup GroupId
-	var tablesInEdge []GroupId
 	// removedEdges contains the edges that have already been incorporated into the new plan, so we don't repeat them.
 	removedEdges := edgeSet{}
-	tablesJoined := 1
 	for removedEdges.Len() < len(j.vertices)-1 {
-		nextEdgeIdx := -1
+
+		type joinCandidate struct {
+			nextEdgeIdx    int
+			nextTableGroup GroupId
+		}
+		var joinCandidates []joinCandidate
+
+		// Find all possible filters that could be used for the next join in the sequence.
+		// Store their corresponding edge and table ids in `joinCandidates`.
 		for i, edge := range j.edges {
 			if removedEdges.Contains(i) {
 				continue
@@ -252,31 +257,32 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() {
 				panic("Found an edge with multiple filters (that was previously validated as an inner join.) This shouldn't be possible.")
 			}
 			filter := edge.filters[0]
-			tablesInEdge = getTablesReferencedInScalar(filter)
+			tablesInEdge := getTablesReferencedInScalar(filter)
 			if len(tablesInEdge) != 2 {
 				// We have encountered a filter condition more complicated than a simple equality check.
 				// We probably can't optimize this, so bail out.
 				return
 			}
 			if currentlyJoinedTables.contains(j.findVertexFromGroup(tablesInEdge[0])) {
-				if nextEdgeIdx != -1 {
-					// We end up here if there are multiple possible choices for the next join.
-					// This could happen if there are redundant rules. For now, we bail out if this happens.
-					return
-				}
-				nextEdgeIdx = i
-				nextTableGroup = tablesInEdge[1]
+				joinCandidates = append(joinCandidates, joinCandidate{
+					nextEdgeIdx:    i,
+					nextTableGroup: tablesInEdge[1],
+				})
 			} else if currentlyJoinedTables.contains(j.findVertexFromGroup(tablesInEdge[1])) {
-				if nextEdgeIdx != -1 {
-					// We end up here if there are multiple possible choices for the next join.
-					// This could happen if there are redundant rules. For now, we bail out if this happens.
-					return
-				}
-				nextEdgeIdx = i
-				nextTableGroup = tablesInEdge[0]
+				joinCandidates = append(joinCandidates, joinCandidate{
+					nextEdgeIdx:    i,
+					nextTableGroup: tablesInEdge[0],
+				})
 			}
 		}
-		if nextEdgeIdx == -1 {
+
+		if len(joinCandidates) > 1 {
+			// We end up here if there are multiple possible choices for the next join.
+			// This could happen if there are redundant rules. For now, we bail out if this happens.
+			return
+		}
+
+		if len(joinCandidates) == 0 {
 			// There are still tables left to join, but no more filters that match the already joined tables.
 			// This can happen, for instance, if the remaining table is a single-row table that was cross-joined.
 			// It's probably safe to just join the remaining tables here.
@@ -288,8 +294,10 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() {
 				currentlyJoinedTables = currentlyJoinedTables.union(nextVertGroup)
 			}
 			return
-
 		}
+
+		nextEdgeIdx := joinCandidates[0].nextEdgeIdx
+		nextTableGroup := joinCandidates[0].nextTableGroup
 
 		nextVertIndex := j.findVertexFromGroup(nextTableGroup)
 		nextVertGroup := newBitSet(nextVertIndex)
@@ -301,7 +309,6 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() {
 
 		currentlyJoinedTables = currentlyJoinedTables.union(nextVertGroup)
 		removedEdges.Add(nextEdgeIdx)
-		tablesJoined++
 	}
 }
 

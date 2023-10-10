@@ -368,6 +368,12 @@ func (f *FuncDepSet) ColsAreStrictKey(cols ColSet) bool {
 	return f.inClosureOf(f.keys[0].cols, cols, nil)
 }
 
+// inClosureOf returns whether all the columns in `candidate` are uniquely determined by the columns in `source`.
+// It computes this by checking whether `candidate` is contained within the transitive closure of `source`, over
+// both equivalence rules (which state two columns must have the same value) and the functional dependencies
+// specified by `fdsKeys` (each of which states that one or more columns determine one of more other columns.)
+// Note that callers that don't want to consider functional dependencies (such as outer joins) can pass a nil value
+// to `fdsKeys`.
 func (f *FuncDepSet) inClosureOf(candidate, source ColSet, fdsKeys []Key) bool {
 	if candidate.SubsetOf(source) {
 		return true
