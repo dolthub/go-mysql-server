@@ -23,8 +23,7 @@ func NewStatsProv() *StatsProv {
 type statsKey string
 
 type StatsProv struct {
-	colStats   map[statsKey]*stats.Stats
-	dbProvider sql.DatabaseProvider
+	colStats map[statsKey]*stats.Stats
 }
 
 var _ sql.StatsProvider = (*StatsProv)(nil)
