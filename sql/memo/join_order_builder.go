@@ -157,7 +157,7 @@ func (j *joinOrderBuilder) useFastReorder() bool {
 	if j.m.hints.order != nil {
 		return false
 	}
-	return len(j.vertices) > 20
+	return len(j.vertices) > 15
 }
 
 func (j *joinOrderBuilder) ReorderJoin(n sql.Node) {
