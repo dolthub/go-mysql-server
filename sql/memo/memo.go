@@ -45,22 +45,22 @@ type Memo struct {
 	ColumnNames map[sql.ColumnId]TableAndColumn
 	hints       *joinHints
 
-	c        Coster
-	s        Carder
-	statsRw  sql.StatsReadWriter
-	Ctx      *sql.Context
-	scope    *plan.Scope
-	scopeLen int
+	c         Coster
+	s         Carder
+	statsProv sql.StatsProvider
+	Ctx       *sql.Context
+	scope     *plan.Scope
+	scopeLen  int
 
 	TableProps *tableProps
 }
 
-func NewMemo(ctx *sql.Context, stats sql.StatsReadWriter, s *plan.Scope, scopeLen int, cost Coster, card Carder) *Memo {
+func NewMemo(ctx *sql.Context, stats sql.StatsProvider, s *plan.Scope, scopeLen int, cost Coster, card Carder) *Memo {
 	return &Memo{
 		Ctx:         ctx,
 		c:           cost,
 		s:           card,
-		statsRw:     stats,
+		statsProv:     stats,
 		scope:       s,
 		scopeLen:    scopeLen,
 		TableProps:  newTableProps(),
@@ -550,7 +550,7 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 			}
 			cost += g.Cost
 		}
-		relCost, err := m.c.EstimateCost(m.Ctx, n, m.statsRw)
+		relCost, err := m.c.EstimateCost(m.Ctx, n, m.statsProv)
 		if err != nil {
 			return err
 		}
@@ -561,7 +561,7 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 				n.SetDistinct(SortedDistinctOp)
 			} else {
 				n.SetDistinct(HashDistinctOp)
-				dCost, err = m.c.EstimateCost(m.Ctx, &Distinct{Child: grp}, m.statsRw)
+				dCost, err = m.c.EstimateCost(m.Ctx, &Distinct{Child: grp}, m.statsProv)
 				if err != nil {
 					return err
 				}
@@ -578,7 +578,7 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 	}
 
 	grp.Done = true
-	grp.RelProps.card, err = m.s.EstimateCard(m.Ctx, grp.Best, m.statsRw)
+	grp.RelProps.card, err = m.s.EstimateCard(m.Ctx, grp.Best, m.statsProv)
 	if err != nil {
 		return err
 	}
@@ -753,7 +753,7 @@ type Coster interface {
 	// EstimateCost cost returns the incremental CPU and memory cost for an
 	// operator, or an error. Cost is dependent on physical operator type,
 	// and the cardinality of inputs.
-	EstimateCost(*sql.Context, RelExpr, sql.StatsReader) (float64, error)
+	EstimateCost(*sql.Context, RelExpr, sql.StatsProvider) (float64, error)
 }
 
 // Carder types can estimate the cardinality (row count) of relational
@@ -761,7 +761,7 @@ type Coster interface {
 type Carder interface {
 	// EstimateCard returns the estimate row count outputs for a relational
 	// expression. Cardinality is an expression group property.
-	EstimateCard(*sql.Context, RelExpr, sql.StatsReader) (float64, error)
+	EstimateCard(*sql.Context, RelExpr, sql.StatsProvider) (float64, error)
 }
 
 type unaryScalarExpr interface {

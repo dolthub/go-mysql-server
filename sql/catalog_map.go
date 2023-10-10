@@ -2,6 +2,8 @@ package sql
 
 import (
 	"fmt"
+
+	"github.com/dolthub/go-mysql-server/sql/stats"
 )
 
 type MapCatalog struct {
@@ -106,7 +108,37 @@ func (t MapCatalog) UnlockTables(ctx *Context, id uint32) error {
 	panic("implement me")
 }
 
-func (t MapCatalog) Statistics(ctx *Context) (StatsReadWriter, error) {
+func (t MapCatalog) RefreshTableStats(ctx *Context, table Table, db string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t MapCatalog) GetTableStats(ctx *Context, db, table string) ([]*stats.Stats, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t MapCatalog) SetStats(ctx *Context, db, table string, stats *stats.Stats) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t MapCatalog) GetStats(ctx *Context, db, table string, cols []string) (*stats.Stats, bool) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t MapCatalog) DropStats(ctx *Context, db, table string, cols []string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t MapCatalog) RowCount(ctx *Context, db, table string) (uint64, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t MapCatalog) DataLength(ctx *Context, db, table string) (uint64, error) {
 	//TODO implement me
 	panic("implement me")
 }

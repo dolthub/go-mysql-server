@@ -14,12 +14,12 @@ type SessionBuilder interface {
 
 // DefaultSessionBuilder creates basic SQL sessions.
 type DefaultSessionBuilder struct {
-	provider *memory.DbProvider
+	provider sql.DatabaseProvider
 }
 
-func NewDefaultSessionBuilder() *DefaultSessionBuilder {
+func NewDefaultSessionBuilder(provider sql.DatabaseProvider) *DefaultSessionBuilder {
 	return &DefaultSessionBuilder{
-		provider: memory.NewDBProvider(),
+		provider: provider,
 	}
 }
 

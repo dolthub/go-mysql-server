@@ -93,33 +93,33 @@ CREATE TABLE lineitem ( L_ORDERKEY INTEGER NOT NULL,
 ----
 
 exec
-update information_schema.statistics set cardinality = 1000 where table_name = 'customer';
+analyze table customer update histogram on (C_CUSTKEY) using data '{"row_count": 1000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 1000 where table_name = 'orders';
+analyze table orders update histogram on (O_ORDERKEY) using data '{"row_count": 1000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 1000 where table_name = 'lineitem';
+analyze table lineitem update histogram on (L_ORDERKEY) using data '{"row_count": 1000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 1000 where table_name = 'nation';
+analyze table nation update histogram on (N_NATIONKEY) using data '{"row_count": 1000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 1000 where table_name = 'part';
+analyze table part update histogram on (P_PARTKEY) using data '{"row_count": 1000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 1000 where table_name = 'partsupp';
+analyze table partsupp update histogram on (PS_PARTKEY) using data '{"row_count": 1000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 1000 where table_name = 'region';
+analyze table region update histogram on (R_REGIONKEY) using data '{"row_count": 1000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 1000 where table_name = 'supplier';
+analyze table supplier update histogram on (S_SUPPKEY) using data '{"row_count": 1000}';
 ----

@@ -1,4 +1,4 @@
-exec
+analyze table x update histogram on w_id using data '{\"row_countc\: 1}
 SET FOREIGN_KEY_CHECKS=0;
 ----
 
@@ -651,145 +651,145 @@ SET FOREIGN_KEY_CHECKS=1;
 ----
 
 exec
-update information_schema.statistics set cardinality = 30000 where table_name = 'customer1';
+analyze table customer1 update histogram on (`c_w_id`,`c_d_id`,`c_id`) using data '{\"row_count\": 30000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 30000 where table_name = 'customer2';
+analyze table customer2 update histogram on (`c_w_id`,`c_d_id`,`c_id`) using data '{\"row_count\": 30000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 30000 where table_name = 'customer3';
+analyze table customer3 update histogram on (`c_w_id`,`c_d_id`,`c_id`) using data '{\"row_count\": 30000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 30000 where table_name = 'customer4';
+analyze table customer4 update histogram on (`c_w_id`,`c_d_id`,`c_id`) using data '{\"row_count\": 30000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 10 where table_name = 'district1';
+analyze table district1 update histogram on (`d_w_id`,`d_id`) using data '{\"row_count\": 10}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 10 where table_name = 'district2';
+analyze table district2 update histogram on (`d_w_id`,`d_id`) using data '{\"row_count\": 10}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 10 where table_name = 'district3';
+analyze table district3 update histogram on (`d_w_id`,`d_id`) using data '{\"row_count\": 10}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 10 where table_name = 'district4';
+analyze table district4 update histogram on (`d_w_id`,`d_id`) using data '{\"row_count\": 10}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 30000 where table_name = 'history1';
+analyze table history1 update histogram on (`h_c_w_id`,`h_c_d_id`,`h_c_id`) using data '{\"row_count\": 30000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 30000 where table_name = 'history2';
+analyze table history2 update histogram on (`h_c_w_id`,`h_c_d_id`,`h_c_id`) using data '{\"row_count\": 30000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 30000 where table_name = 'history3';
+analyze table history3 update histogram on (`h_c_w_id`,`h_c_d_id`,`h_c_id`) using data '{\"row_count\": 30000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 30000 where table_name = 'history4';
+analyze table history4 update histogram on (`h_c_w_id`,`h_c_d_id`,`h_c_id`) using data '{\"row_count\": 30000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 100000 where table_name = 'item1';
+analyze table item1 update histogram on i_id using data '{\"row_count\": 100000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 100000 where table_name = 'item2';
+analyze table item2 update histogram on i_id using data '{\"row_count\": 100000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 100000 where table_name = 'item3';
+analyze table item3 update histogram on i_id using data '{\"row_count\": 100000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 100000 where table_name = 'item4';
+analyze table item4 update histogram on i_id using data '{\"row_count\": 100000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 9000 where table_name = 'new_orders1';
+analyze table new_orders1 update histogram on (`no_w_id`,`no_d_id`,`no_o_id`) using data '{\"row_count\": 9000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 9000 where table_name = 'new_orders2';
+analyze table new_orders2 update histogram on (`no_w_id`,`no_d_id`,`no_o_id`) using data '{\"row_count\": 9000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 9000 where table_name = 'new_orders3';
+analyze table new_orders3 update histogram on (`no_w_id`,`no_d_id`,`no_o_id`) using data '{\"row_count\": 9000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 9000 where table_name = 'new_orders4';
+analyze table new_orders4 update histogram on (`no_w_id`,`no_d_id`,`no_o_id`) using data '{\"row_count\": 9000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 299498 where table_name = 'order_line1';
+analyze table order_line1 update histogram on (`ol_w_id`,`ol_d_id`,`ol_o_id`,`ol_number`) using data '{\"row_count\": 299498}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 299498 where table_name = 'order_line2';
+analyze table order_line2 update histogram on (`ol_w_id`,`ol_d_id`,`ol_o_id`,`ol_number`) using data '{\"row_count\": 299498}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 299498 where table_name = 'order_line3';
+analyze table order_line3 update histogram on (`ol_w_id`,`ol_d_id`,`ol_o_id`,`ol_number`) using data '{\"row_count\": 299498}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 299498 where table_name = 'order_line4';
+analyze table order_line4 update histogram on (`ol_w_id`,`ol_d_id`,`ol_o_id`,`ol_number`) using data '{\"row_count\": 299498}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 30000 where table_name = 'orders1';
+analyze table orders1 update histogram on (`o_w_id`,`o_d_id`,`o_id`) using data '{\"row_count\": 30000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 30000 where table_name = 'orders2';
+analyze table orders2 update histogram on (`o_w_id`,`o_d_id`,`o_id`) using data '{\"row_count\": 30000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 30000 where table_name = 'orders3';
+analyze table orders3 update histogram on (`o_w_id`,`o_d_id`,`o_id`) using data '{\"row_count\": 30000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 30000 where table_name = 'orders4';
+analyze table orders4 update histogram on (`o_w_id`,`o_d_id`,`o_id`) using data '{\"row_count\": 30000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 100000 where table_name = 'stock1';
+analyze table stock1 update histogram on (`s_w_id`,`s_i_id`) using data '{\"row_count\": 100000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 100000 where table_name = 'stock2';
+analyze table stock2 update histogram on (`s_w_id`,`s_i_id`) using data '{\"row_count\": 100000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 100000 where table_name = 'stock3';
+analyze table stock3 update histogram on (`s_w_id`,`s_i_id`) using data '{\"row_count\": 100000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 100000 where table_name = 'stock4';
+analyze table stock4 update histogram on (`s_w_id`,`s_i_id`) using data '{\"row_count\": 100000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 1 where table_name = 'warehouse1';
+analyze table warehouse1 update histogram on w_id using data '{\"row_count\": 1}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 1 where table_name = 'warehouse2';
+analyze table warehouse2 update histogram on w_id using data '{\"row_count\": 1}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 1 where table_name = 'warehouse3';
+analyze table warehouse3 update histogram on w_id using data '{\"row_count\": 1}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 1 where table_name = 'warehouse4';
+analyze table warehouse4 update histogram on w_id using data '{\"row_count\": 1}';
 ----

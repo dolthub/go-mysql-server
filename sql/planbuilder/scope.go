@@ -61,7 +61,7 @@ type scope struct {
 	proc  *procCtx
 }
 
-func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn, bool) {
+func (s *scope) resolveColumn(db, table, col string, checkParent bool) (scopeColumn, bool) {
 	// procedure params take precedence
 	if table == "" && checkParent && s.procActive() {
 		col, ok := s.proc.GetVar(col)
@@ -80,7 +80,7 @@ func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn,
 	var found scopeColumn
 	var foundCand bool
 	for _, c := range s.cols {
-		if strings.EqualFold(c.col, col) && (c.table == table || table == "") {
+		if strings.EqualFold(c.col, col) && (c.table == table || table == "") && (c.db == db || db == "") {
 			if foundCand {
 				if !s.b.TriggerCtx().Call && len(s.b.TriggerCtx().UnresolvedTables) > 0 {
 					c, ok := s.triggerCol(table, col)
@@ -108,7 +108,7 @@ func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn,
 	}
 
 	if s.groupBy != nil {
-		if c, ok := s.groupBy.outScope.resolveColumn(table, col, false); ok {
+		if c, ok := s.groupBy.outScope.resolveColumn(db, table, col, false); ok {
 			return c, true
 		}
 	}
@@ -124,7 +124,7 @@ func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn,
 		return scopeColumn{}, false
 	}
 
-	c, foundCand := s.parent.resolveColumn(table, col, true)
+	c, foundCand := s.parent.resolveColumn(db, table, col, true)
 	if !foundCand {
 		return scopeColumn{}, false
 	}

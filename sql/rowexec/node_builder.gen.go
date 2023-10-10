@@ -39,6 +39,10 @@ func (b *BaseBuilder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (
 		return b.buildDropColumn(ctx, n, row)
 	case *plan.AnalyzeTable:
 		return b.buildAnalyzeTable(ctx, n, row)
+	case *plan.UpdateHistogram:
+		return b.buildUpdateHistogram(ctx, n, row)
+	case *plan.DropHistogram:
+		return b.buildDropHistogram(ctx, n, row)
 	case *plan.QueryProcess:
 		return b.buildQueryProcess(ctx, n, row)
 	case *plan.ShowReplicaStatus:
