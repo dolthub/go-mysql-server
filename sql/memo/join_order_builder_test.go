@@ -227,7 +227,7 @@ func TestJoinOrderBuilder(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			j := NewJoinOrderBuilder(NewMemo(newContext(pro), nil, nil, 0, NewDefaultCoster(), NewDefaultCarder()))
-			j.forceFastReorderForTest = tt.forceFastReorder
+			j.forceFastDFSLookupForTest = tt.forceFastReorder
 			j.ReorderJoin(tt.in)
 			require.Equal(t, tt.plans, j.m.String())
 		})
