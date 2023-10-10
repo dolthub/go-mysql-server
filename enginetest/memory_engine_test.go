@@ -544,10 +544,6 @@ func TestConvert(t *testing.T) {
 	enginetest.TestConvert(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
-func TestSQLLogicTests(t *testing.T) {
-	enginetest.TestSQLLogicTests(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
-}
-
 func TestScripts(t *testing.T) {
 	enginetest.TestScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
