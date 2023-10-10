@@ -230,4 +230,3 @@ func (t *ResolvedTable) WithWrappedTable(table sql.Table) (*ResolvedTable, error
 
 	return &nt, nil
 }
-

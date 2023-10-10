@@ -219,6 +219,19 @@ func (t *ProcessTable) PartitionRows(ctx *sql.Context, p sql.Partition) (sql.Row
 	return NewTrackedRowIter(nil, iter, onNext, onDone), nil
 }
 
+func (t *ProcessTable) DebugString() string {
+	tp := sql.NewTreePrinter()
+	_ = tp.WriteNode("ProcessTable")
+	underlying := t.Underlying()
+	if _, ok := underlying.(sql.DebugStringer); ok {
+		_ = tp.WriteChildren(sql.DebugString(underlying))
+	} else {
+		_ = tp.WriteChildren(underlying.String())
+	}
+
+	return tp.String()
+}
+
 // notifyFuncsForPartition returns the OnDone and OnNext NotifyFuncs for the partition given
 func (t *ProcessTable) notifyFuncsForPartition(p sql.Partition) (NotifyFunc, NotifyFunc) {
 	partitionName := partitionName(p)
