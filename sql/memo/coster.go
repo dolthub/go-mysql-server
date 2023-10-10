@@ -44,14 +44,14 @@ type coster struct{}
 
 var _ Coster = (*coster)(nil)
 
-func (c *coster) EstimateCost(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float64, error) {
+func (c *coster) EstimateCost(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (float64, error) {
 	return c.costRel(ctx, n, s)
 }
 
 // costRel returns the estimated compute cost for a given physical
 // operator. Two physical operators in the same expression group will have
 // the same input and output cardinalities, but different evaluation costs.
-func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float64, error) {
+func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (float64, error) {
 	switch n := n.(type) {
 	case *TableScan:
 		return c.costScan(ctx, n, s)
@@ -110,7 +110,7 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 	}
 }
 
-func (c *coster) costTableAlias(ctx *sql.Context, n *TableAlias, s sql.StatsReader) (float64, error) {
+func (c *coster) costTableAlias(ctx *sql.Context, n *TableAlias, s sql.StatsProvider) (float64, error) {
 	switch n := n.Table.Child.(type) {
 	case *plan.ResolvedTable:
 		return c.costRead(ctx, n.Table, s)
@@ -119,52 +119,52 @@ func (c *coster) costTableAlias(ctx *sql.Context, n *TableAlias, s sql.StatsRead
 	}
 }
 
-func (c *coster) costScan(ctx *sql.Context, t *TableScan, s sql.StatsReader) (float64, error) {
+func (c *coster) costScan(ctx *sql.Context, t *TableScan, s sql.StatsProvider) (float64, error) {
 	return c.costRead(ctx, t.Table.UnderlyingTable(), s)
 }
 
-func (c *coster) costRead(ctx *sql.Context, t sql.Table, s sql.StatsReader) (float64, error) {
+func (c *coster) costRead(ctx *sql.Context, t sql.Table, s sql.StatsProvider) (float64, error) {
 	db := ctx.GetCurrentDatabase()
-	card, ok, err := s.RowCount(ctx, db, t.Name())
-	if err != nil || !ok {
+	card, err := s.RowCount(ctx, db, t.Name())
+	if err != nil {
 		// TODO: better estimates for derived tables
 		return float64(1000), nil
 	}
 	return float64(card) * seqIOCostFactor, nil
 }
 
-func (c *coster) costValues(ctx *sql.Context, v *Values, _ sql.StatsReader) (float64, error) {
+func (c *coster) costValues(ctx *sql.Context, v *Values, _ sql.StatsProvider) (float64, error) {
 	return float64(len(v.Table.ExpressionTuples)) * cpuCostFactor, nil
 }
 
-func (c *coster) costRecursiveTable(ctx *sql.Context, t *RecursiveTable, _ sql.StatsReader) (float64, error) {
+func (c *coster) costRecursiveTable(ctx *sql.Context, t *RecursiveTable, _ sql.StatsProvider) (float64, error) {
 	return float64(100) * seqIOCostFactor, nil
 }
 
-func (c *coster) costInnerJoin(ctx *sql.Context, n *InnerJoin, _ sql.StatsReader) (float64, error) {
+func (c *coster) costInnerJoin(ctx *sql.Context, n *InnerJoin, _ sql.StatsProvider) (float64, error) {
 	l := n.Left.RelProps.card
 	r := n.Right.RelProps.card
 	return (l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor, nil
 }
 
-func (c *coster) costCrossJoin(ctx *sql.Context, n *CrossJoin, _ sql.StatsReader) (float64, error) {
+func (c *coster) costCrossJoin(ctx *sql.Context, n *CrossJoin, _ sql.StatsProvider) (float64, error) {
 	l := n.Left.RelProps.card
 	r := n.Right.RelProps.card
 	return ((l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor) * degeneratePenalty, nil
 }
 
-func (c *coster) costLeftJoin(ctx *sql.Context, n *LeftJoin, _ sql.StatsReader) (float64, error) {
+func (c *coster) costLeftJoin(ctx *sql.Context, n *LeftJoin, _ sql.StatsProvider) (float64, error) {
 	l := n.Left.RelProps.card
 	r := n.Right.RelProps.card
 	return (l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor, nil
 }
-func (c *coster) costFullOuterJoin(ctx *sql.Context, n *FullOuterJoin, _ sql.StatsReader) (float64, error) {
+func (c *coster) costFullOuterJoin(ctx *sql.Context, n *FullOuterJoin, _ sql.StatsProvider) (float64, error) {
 	l := n.Left.RelProps.card
 	r := n.Right.RelProps.card
 	return ((l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor) * degeneratePenalty, nil
 }
 
-func (c *coster) costHashJoin(ctx *sql.Context, n *HashJoin, _ sql.StatsReader) (float64, error) {
+func (c *coster) costHashJoin(ctx *sql.Context, n *HashJoin, _ sql.StatsProvider) (float64, error) {
 	if n.Op.IsPartial() {
 		l, err := c.costPartial(n.Left, n.Right)
 		return l * 0.5, err
@@ -174,7 +174,7 @@ func (c *coster) costHashJoin(ctx *sql.Context, n *HashJoin, _ sql.StatsReader) 
 	return l*cpuCostFactor + r*(seqIOCostFactor+memCostFactor), nil
 }
 
-func (c *coster) costMergeJoin(_ *sql.Context, n *MergeJoin, _ sql.StatsReader) (float64, error) {
+func (c *coster) costMergeJoin(_ *sql.Context, n *MergeJoin, _ sql.StatsProvider) (float64, error) {
 
 	l := n.Left.RelProps.card
 	r := n.Right.RelProps.card
@@ -265,7 +265,7 @@ func keyForExprFromTupleComparison(targetCol sql.ColumnId, tableGrp GroupId, lef
 	return nil, false
 }
 
-func (c *coster) costLookupJoin(_ *sql.Context, n *LookupJoin, _ sql.StatsReader) (float64, error) {
+func (c *coster) costLookupJoin(_ *sql.Context, n *LookupJoin, _ sql.StatsProvider) (float64, error) {
 	l := n.Left.RelProps.card
 	r := n.Right.RelProps.card
 	sel := lookupJoinSelectivity(n.Lookup)
@@ -275,7 +275,7 @@ func (c *coster) costLookupJoin(_ *sql.Context, n *LookupJoin, _ sql.StatsReader
 	return l*r*sel*(cpuCostFactor+randIOCostFactor) - r*seqIOCostFactor, nil
 }
 
-func (c *coster) costRangeHeapJoin(_ *sql.Context, n *RangeHeapJoin, _ sql.StatsReader) (float64, error) {
+func (c *coster) costRangeHeapJoin(_ *sql.Context, n *RangeHeapJoin, _ sql.StatsProvider) (float64, error) {
 	l := n.Left.RelProps.card
 	r := n.Right.RelProps.card
 
@@ -285,13 +285,13 @@ func (c *coster) costRangeHeapJoin(_ *sql.Context, n *RangeHeapJoin, _ sql.Stats
 	return l * expectedNumberOfOverlappingJoins * (seqIOCostFactor), nil
 }
 
-func (c *coster) costLateralJoin(ctx *sql.Context, n *LateralJoin, _ sql.StatsReader) (float64, error) {
+func (c *coster) costLateralJoin(ctx *sql.Context, n *LateralJoin, _ sql.StatsProvider) (float64, error) {
 	l := n.Left.RelProps.card
 	r := n.Right.RelProps.card
 	return (l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor, nil
 }
 
-func (c *coster) costConcatJoin(_ *sql.Context, n *ConcatJoin, _ sql.StatsReader) (float64, error) {
+func (c *coster) costConcatJoin(_ *sql.Context, n *ConcatJoin, _ sql.StatsProvider) (float64, error) {
 	l := n.Left.RelProps.card
 	var sel float64
 	for _, l := range n.Concat {
@@ -300,19 +300,19 @@ func (c *coster) costConcatJoin(_ *sql.Context, n *ConcatJoin, _ sql.StatsReader
 	return l*sel*concatCostFactor*(randIOCostFactor+cpuCostFactor) - n.Right.RelProps.card*seqIOCostFactor, nil
 }
 
-func (c *coster) costRecursiveCte(_ *sql.Context, n *RecursiveCte, _ sql.StatsReader) (float64, error) {
+func (c *coster) costRecursiveCte(_ *sql.Context, n *RecursiveCte, _ sql.StatsProvider) (float64, error) {
 	return 1000 * seqIOCostFactor, nil
 }
 
-func (c *coster) costJSONTable(_ *sql.Context, n *JSONTable, _ sql.StatsReader) (float64, error) {
+func (c *coster) costJSONTable(_ *sql.Context, n *JSONTable, _ sql.StatsProvider) (float64, error) {
 	return 1000 * seqIOCostFactor, nil
 }
 
-func (c *coster) costProject(_ *sql.Context, n *Project, _ sql.StatsReader) (float64, error) {
+func (c *coster) costProject(_ *sql.Context, n *Project, _ sql.StatsProvider) (float64, error) {
 	return n.Child.RelProps.card * cpuCostFactor, nil
 }
 
-func (c *coster) costDistinct(_ *sql.Context, n *Distinct, _ sql.StatsReader) (float64, error) {
+func (c *coster) costDistinct(_ *sql.Context, n *Distinct, _ sql.StatsProvider) (float64, error) {
 	return n.Child.Cost * (cpuCostFactor + .75*memCostFactor), nil
 }
 
@@ -356,11 +356,11 @@ func isInjectiveLookup(idx *Index, joinBase *JoinBase, keyExprs []ScalarExpr, nu
 	return fds.HasMax1Row()
 }
 
-func (c *coster) costAntiJoin(_ *sql.Context, n *AntiJoin, _ sql.StatsReader) (float64, error) {
+func (c *coster) costAntiJoin(_ *sql.Context, n *AntiJoin, _ sql.StatsProvider) (float64, error) {
 	return c.costPartial(n.Left, n.Right)
 }
 
-func (c *coster) costSemiJoin(_ *sql.Context, n *SemiJoin, _ sql.StatsReader) (float64, error) {
+func (c *coster) costSemiJoin(_ *sql.Context, n *SemiJoin, _ sql.StatsProvider) (float64, error) {
 	return c.costPartial(n.Left, n.Right)
 }
 
@@ -370,29 +370,29 @@ func (c *coster) costPartial(left, Right *ExprGroup) (float64, error) {
 	return l * (r / 2.0) * (seqIOCostFactor + cpuCostFactor), nil
 }
 
-func (c *coster) costSubqueryAlias(_ *sql.Context, _ *SubqueryAlias, _ sql.StatsReader) (float64, error) {
+func (c *coster) costSubqueryAlias(_ *sql.Context, _ *SubqueryAlias, _ sql.StatsProvider) (float64, error) {
 	// TODO: if the whole plan was memo, we would have accurate costs for subqueries
 	return 1000 * seqIOCostFactor, nil
 }
 
-func (c *coster) costMax1RowSubquery(_ *sql.Context, _ *Max1Row, _ sql.StatsReader) (float64, error) {
+func (c *coster) costMax1RowSubquery(_ *sql.Context, _ *Max1Row, _ sql.StatsProvider) (float64, error) {
 	return 1 * seqIOCostFactor, nil
 }
 
-func (c *coster) costTableFunc(_ *sql.Context, _ *TableFunc, _ sql.StatsReader) (float64, error) {
+func (c *coster) costTableFunc(_ *sql.Context, _ *TableFunc, _ sql.StatsProvider) (float64, error) {
 	// TODO: sql.TableFunction should expose RowCount()
 	return 10 * seqIOCostFactor, nil
 }
 
-func (c *coster) costEmptyTable(_ *sql.Context, _ *EmptyTable, _ sql.StatsReader) (float64, error) {
+func (c *coster) costEmptyTable(_ *sql.Context, _ *EmptyTable, _ sql.StatsProvider) (float64, error) {
 	return 0, nil
 }
 
-func (c *coster) costSetOp(_ *sql.Context, _ *SetOp, _ sql.StatsReader) (float64, error) {
+func (c *coster) costSetOp(_ *sql.Context, _ *SetOp, _ sql.StatsProvider) (float64, error) {
 	return 1000 * seqIOCostFactor, nil
 }
 
-func (c *coster) costFilter(_ *sql.Context, f *Filter, _ sql.StatsReader) (float64, error) {
+func (c *coster) costFilter(_ *sql.Context, f *Filter, _ sql.StatsProvider) (float64, error) {
 	// 1 unit of compute for each input row
 	return f.Child.RelProps.card * cpuCostFactor * float64(len(f.Filters)), nil
 }
@@ -404,7 +404,7 @@ var _ Carder = (*carder)(nil)
 
 type carder struct{}
 
-func (c *carder) EstimateCard(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float64, error) {
+func (c *carder) EstimateCard(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (float64, error) {
 	return c.cardRel(ctx, n, s)
 }
 
@@ -413,7 +413,7 @@ func (c *carder) EstimateCard(ctx *sql.Context, n RelExpr, s sql.StatsReader) (f
 // identical for all operators in the same expression group.
 // TODO: this should intersect index statistic histograms to
 // get more accurate values
-func (c *carder) cardRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float64, error) {
+func (c *carder) cardRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (float64, error) {
 	switch n := n.(type) {
 	case *TableScan:
 		return c.statsScan(ctx, n, s)
@@ -477,7 +477,7 @@ func (c *carder) cardRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 	}
 }
 
-func (c *carder) statsTableAlias(ctx *sql.Context, n *TableAlias, s sql.StatsReader) (float64, error) {
+func (c *carder) statsTableAlias(ctx *sql.Context, n *TableAlias, s sql.StatsProvider) (float64, error) {
 	switch n := n.Table.Child.(type) {
 	case *plan.ResolvedTable:
 		return c.statsRead(ctx, n.UnderlyingTable(), n.SqlDatabase.Name(), s)
@@ -486,55 +486,55 @@ func (c *carder) statsTableAlias(ctx *sql.Context, n *TableAlias, s sql.StatsRea
 	}
 }
 
-func (c *carder) statsScan(ctx *sql.Context, t *TableScan, s sql.StatsReader) (float64, error) {
+func (c *carder) statsScan(ctx *sql.Context, t *TableScan, s sql.StatsProvider) (float64, error) {
 	return c.statsRead(ctx, t.Table.UnderlyingTable(), t.Table.Database().Name(), s)
 }
 
-func (c *carder) statsRead(ctx *sql.Context, t sql.Table, db string, s sql.StatsReader) (float64, error) {
-	card, ok, err := s.RowCount(ctx, db, t.Name())
-	if err != nil || !ok {
+func (c *carder) statsRead(ctx *sql.Context, t sql.Table, db string, s sql.StatsProvider) (float64, error) {
+	card, err := s.RowCount(ctx, db, t.Name())
+	if err != nil {
 		// TODO: better estimates for derived tables
 		return float64(1000), nil
 	}
 	return float64(card) * seqIOCostFactor, nil
 }
 
-func (c *carder) statsValues(_ *sql.Context, v *Values, _ sql.StatsReader) (float64, error) {
+func (c *carder) statsValues(_ *sql.Context, v *Values, _ sql.StatsProvider) (float64, error) {
 	return float64(len(v.Table.ExpressionTuples)) * cpuCostFactor, nil
 }
 
-func (c *carder) statsJSONTable(_ *sql.Context, v *JSONTable, _ sql.StatsReader) (float64, error) {
+func (c *carder) statsJSONTable(_ *sql.Context, v *JSONTable, _ sql.StatsProvider) (float64, error) {
 	return float64(100) * seqIOCostFactor, nil
 }
 
-func (c *carder) statsRecursiveTable(_ *sql.Context, t *RecursiveTable, _ sql.StatsReader) (float64, error) {
+func (c *carder) statsRecursiveTable(_ *sql.Context, t *RecursiveTable, _ sql.StatsProvider) (float64, error) {
 	return float64(100) * seqIOCostFactor, nil
 }
 
-func (c *carder) statsSubqueryAlias(_ *sql.Context, _ *SubqueryAlias, _ sql.StatsReader) (float64, error) {
+func (c *carder) statsSubqueryAlias(_ *sql.Context, _ *SubqueryAlias, _ sql.StatsProvider) (float64, error) {
 	// TODO: if the whole plan was memo, we would have accurate costs for subqueries
 	return 1000, nil
 }
 
-func (c *carder) statsRecursiveCte(_ *sql.Context, _ *RecursiveCte, _ sql.StatsReader) (float64, error) {
+func (c *carder) statsRecursiveCte(_ *sql.Context, _ *RecursiveCte, _ sql.StatsProvider) (float64, error) {
 	// TODO: if the whole plan was memo, we would have accurate costs for subqueries
 	return 1000, nil
 }
 
-func (c *carder) statsMax1RowSubquery(_ *sql.Context, _ *Max1Row, _ sql.StatsReader) (float64, error) {
+func (c *carder) statsMax1RowSubquery(_ *sql.Context, _ *Max1Row, _ sql.StatsProvider) (float64, error) {
 	return 1, nil
 }
 
-func (c *carder) statsTableFunc(_ *sql.Context, _ *TableFunc, _ sql.StatsReader) (float64, error) {
+func (c *carder) statsTableFunc(_ *sql.Context, _ *TableFunc, _ sql.StatsProvider) (float64, error) {
 	// TODO: sql.TableFunction should expose RowCount()
 	return 10, nil
 }
 
-func (c *carder) statsEmptyTable(_ *sql.Context, _ *EmptyTable, _ sql.StatsReader) (float64, error) {
+func (c *carder) statsEmptyTable(_ *sql.Context, _ *EmptyTable, _ sql.StatsProvider) (float64, error) {
 	return 0, nil
 }
 
-func (c *carder) statsSetOp(_ *sql.Context, _ *SetOp, _ sql.StatsReader) (float64, error) {
+func (c *carder) statsSetOp(_ *sql.Context, _ *SetOp, _ sql.StatsProvider) (float64, error) {
 	return float64(100) * seqIOCostFactor, nil
 }
 
@@ -546,7 +546,7 @@ type innerBiasedCoster struct {
 	*coster
 }
 
-func (c *innerBiasedCoster) EstimateCost(ctx *sql.Context, r RelExpr, s sql.StatsReader) (float64, error) {
+func (c *innerBiasedCoster) EstimateCost(ctx *sql.Context, r RelExpr, s sql.StatsProvider) (float64, error) {
 	switch r.(type) {
 	case *InnerJoin:
 		return -biasFactor, nil
@@ -563,7 +563,7 @@ type hashBiasedCoster struct {
 	*coster
 }
 
-func (c *hashBiasedCoster) EstimateCost(ctx *sql.Context, r RelExpr, s sql.StatsReader) (float64, error) {
+func (c *hashBiasedCoster) EstimateCost(ctx *sql.Context, r RelExpr, s sql.StatsProvider) (float64, error) {
 	switch r.(type) {
 	case *HashJoin:
 		return -biasFactor, nil
@@ -580,7 +580,7 @@ type lookupBiasedCoster struct {
 	*coster
 }
 
-func (c *lookupBiasedCoster) EstimateCost(ctx *sql.Context, r RelExpr, s sql.StatsReader) (float64, error) {
+func (c *lookupBiasedCoster) EstimateCost(ctx *sql.Context, r RelExpr, s sql.StatsProvider) (float64, error) {
 	switch r.(type) {
 	case *LookupJoin, *ConcatJoin:
 		return -biasFactor, nil
@@ -597,7 +597,7 @@ type mergeBiasedCoster struct {
 	*coster
 }
 
-func (c *mergeBiasedCoster) EstimateCost(ctx *sql.Context, r RelExpr, s sql.StatsReader) (float64, error) {
+func (c *mergeBiasedCoster) EstimateCost(ctx *sql.Context, r RelExpr, s sql.StatsProvider) (float64, error) {
 	switch r.(type) {
 	case *MergeJoin:
 		return -biasFactor, nil
@@ -614,7 +614,7 @@ func NewPartialBiasedCoster() Coster {
 	return &partialBiasedCoster{coster: &coster{}}
 }
 
-func (c *partialBiasedCoster) EstimateCost(ctx *sql.Context, r RelExpr, s sql.StatsReader) (float64, error) {
+func (c *partialBiasedCoster) EstimateCost(ctx *sql.Context, r RelExpr, s sql.StatsProvider) (float64, error) {
 	switch r.(type) {
 	case *AntiJoin, *SemiJoin:
 		return -biasFactor, nil
@@ -631,7 +631,7 @@ func NewRangeHeapBiasedCoster() Coster {
 	return &rangeHeapBiasedCoster{coster: &coster{}}
 }
 
-func (c *rangeHeapBiasedCoster) EstimateCost(ctx *sql.Context, r RelExpr, s sql.StatsReader) (float64, error) {
+func (c *rangeHeapBiasedCoster) EstimateCost(ctx *sql.Context, r RelExpr, s sql.StatsProvider) (float64, error) {
 	switch r.(type) {
 	case *RangeHeapJoin:
 		return -biasFactor, nil

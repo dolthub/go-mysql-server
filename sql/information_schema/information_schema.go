@@ -21,7 +21,6 @@ import (
 	"io"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -874,12 +873,10 @@ func collationsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 // columnStatisticsRowIter implements the sql.RowIter for the information_schema.COLUMN_STATISTICS table.
 func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
-	statsTbl, err := c.Statistics(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	privSet, privSetCount := ctx.GetPrivilegeSet()
+	if privSetCount == 0 {
+		return nil, nil
+	}
 	if privSet == nil {
 		return RowsToRowIter(rows...), nil
 	}
@@ -889,42 +886,21 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 			privSetTbl := privSetDb.Table(t.Name())
-			tableHist, err := statsTbl.Hist(ctx, dbName, t.Name())
+			tableStats, err := c.GetTableStats(ctx, dbName, t.Name())
 			if err != nil {
 				return true, nil
 			}
-
-			if tableHist == nil {
-				return true, nil
-			}
-
-			for _, col := range t.Schema() {
-				privSetCol := privSetTbl.Column(col.Name)
-				if privSetCount == 0 && privSetDb.Count() == 0 && privSetTbl.Count() == 0 && privSetCol.Count() == 0 {
-					continue
+			for _, stats := range tableStats {
+				for _, c := range stats.Columns {
+					if privSetTbl.Count() == 0 && privSetDb.Count() == 0 && privSetTbl.Column(c).Count() == 0 {
+						continue
+					}
 				}
-				if _, ok := col.Type.(StringType); ok {
-					continue
-				}
-
-				hist, ok := tableHist[col.Name]
-				if !ok {
-					return false, fmt.Errorf("column histogram not found: %s", col.Name)
-				}
-
-				buckets := make([]interface{}, len(hist.Buckets))
-				for i, b := range hist.Buckets {
-					buckets[i] = []interface{}{fmt.Sprintf("%.2f", b.LowerBound), fmt.Sprintf("%.2f", b.UpperBound), fmt.Sprintf("%.2f", b.Frequency)}
-				}
-
-				// TODO: missing other key/value pairs in the JSON
-				histogram := types.JSONDocument{Val: map[string]interface{}{"buckets": buckets}}
-
 				rows = append(rows, Row{
-					db.Name(), // table_schema
-					t.Name(),  // table_name
-					col.Name,  // column_name
-					histogram, // histogram
+					db.Name(),                        // table_schema
+					t.Name(),                         // table_name
+					strings.Join(stats.Columns, ","), // column_name
+					types.JSONDocument{Val: map[string]interface{}{"buckets": stats.Histogram}}, // histogram
 				})
 			}
 			return true, nil
@@ -2278,12 +2254,6 @@ func emptyRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(), nil
 }
 
-func NewUpdatableInformationSchemaDatabase() Database {
-	db := NewInformationSchemaDatabase().(*informationSchemaDatabase)
-	db.tables[StatisticsTableName] = newUpdatableStatsTable()
-	return db
-}
-
 // NewInformationSchemaDatabase creates a new INFORMATION_SCHEMA Database.
 func NewInformationSchemaDatabase() Database {
 	isDb := &informationSchemaDatabase{
@@ -2778,172 +2748,19 @@ func NewDefaultStats() *defaultStatsTable {
 			schema: statisticsSchema,
 			reader: statisticsRowIter,
 		},
-		stats: make(catalogStatistics),
 	}
 }
-
-// catalogStatistics holds TableStatistics keyed by table and database
-type catalogStatistics map[DbTable]*TableStatistics
 
 // defaultStatsTable is a statistics table implementation
 // with a cache to save ANALYZE results. RowCount defers to
 // the underlying table in the absence of a cached statistic.
 type defaultStatsTable struct {
 	*informationSchemaTable
-	stats catalogStatistics
 }
-
-var _ StatsReadWriter = (*defaultStatsTable)(nil)
 
 func (n *defaultStatsTable) AssignCatalog(cat Catalog) Table {
 	n.catalog = cat
 	return n
-}
-
-func (n *defaultStatsTable) Hist(ctx *Context, db, table string) (HistogramMap, error) {
-	if s, ok := n.stats[NewDbTable(db, table)]; ok {
-		return s.Histograms, nil
-	} else {
-		err := fmt.Errorf("histogram not found for table '%s.%s'", db, table)
-		return nil, err
-	}
-}
-
-// RowCount returns a sql.StatisticsTable's row count, or false if the table does not
-// implement the interface, or an error if the table was not found.
-func (n *defaultStatsTable) RowCount(ctx *Context, db, table string) (uint64, bool, error) {
-	s, ok := n.stats[NewDbTable(db, table)]
-	if ok {
-		return s.RowCount, true, nil
-	}
-
-	t, _, err := n.catalog.Table(ctx, db, table)
-	if err != nil {
-		return 0, false, err
-	}
-	st, ok := t.(StatisticsTable)
-	if !ok {
-		return 0, false, nil
-	}
-	cnt, err := st.RowCount(ctx)
-	if err != nil {
-		return 0, false, err
-	}
-	return cnt, true, nil
-}
-
-func (n *defaultStatsTable) Analyze(ctx *Context, dbName, table string) error {
-	tableStats := &TableStatistics{
-		CreatedAt: time.Now(),
-	}
-
-	db, err := n.catalog.Database(ctx, dbName)
-	if err != nil {
-		return err
-	}
-
-	effectiveDbName := plan.CheckPrivilegeNameForDatabase(db)
-
-	t, _, err := n.catalog.DatabaseTable(ctx, db, table)
-	if err != nil {
-		return err
-	}
-	histMap, err := NewHistogramMapFromTable(ctx, t)
-	if err != nil {
-		return err
-	}
-
-	tableStats.Histograms = histMap
-	for _, v := range histMap {
-		tableStats.RowCount = v.Count + v.NullCount
-		break
-	}
-
-	n.stats[NewDbTable(effectiveDbName, table)] = tableStats
-	return nil
-}
-
-func newUpdatableStatsTable() *updatableStatsTable {
-	return &updatableStatsTable{
-		defaultStatsTable: NewDefaultStats(),
-	}
-}
-
-// updatableStatsTable provides a statistics table that can
-// be edited with UPDATE statements.
-type updatableStatsTable struct {
-	*defaultStatsTable
-}
-
-var _ UpdatableTable = (*updatableStatsTable)(nil)
-var _ StatsReadWriter = (*updatableStatsTable)(nil)
-
-// AssignCatalog implements sql.CatalogTable
-func (t *updatableStatsTable) AssignCatalog(cat Catalog) Table {
-	t.catalog = cat
-	return t
-}
-
-// Updater implements sql.UpdatableTable
-func (t *updatableStatsTable) Updater(_ *Context) RowUpdater {
-	return newStatsEditor(t.catalog, t.stats)
-}
-
-func newStatsEditor(c Catalog, stats map[DbTable]*TableStatistics) RowUpdater {
-	return &statsEditor{c: c, s: stats}
-}
-
-// statsEditor is an internal-only object used to mock table
-// statistics for testing.
-type statsEditor struct {
-	c Catalog
-	s map[DbTable]*TableStatistics
-}
-
-var _ RowUpdater = (*statsEditor)(nil)
-
-// StatementBegin implements sql.RowUpdater
-func (s *statsEditor) StatementBegin(_ *Context) {}
-
-// DiscardChanges implements sql.RowUpdater
-func (s *statsEditor) DiscardChanges(_ *Context, _ error) error {
-	return fmt.Errorf("discarding statsEditor changes not supported")
-}
-
-// StatementComplete implements sql.RowUpdater
-func (s *statsEditor) StatementComplete(_ *Context) error { return nil }
-
-// Update implements sql.RowUpdater
-func (s *statsEditor) Update(ctx *Context, old, new Row) error {
-	db, ok := old[1].(string)
-	if !ok {
-		return fmt.Errorf("expected string type databaseName; found type: '%T', value: '%v'", old[1], old[1])
-	}
-	table, ok := old[2].(string)
-	if !ok {
-		return fmt.Errorf("expected string type tableName; found type: '%T', value: '%v'", old[2], old[2])
-	}
-
-	_, _, err := s.c.Table(ctx, db, table)
-	if err != nil {
-		return err
-	}
-
-	card, ok := new[9].(int64)
-	if !ok {
-		return fmt.Errorf("expeceted integer cardinality; found type: '%T', value: '%s'", new[9], new[9])
-	}
-	stats := &TableStatistics{
-		RowCount:   uint64(card),
-		CreatedAt:  time.Now(),
-		Histograms: make(HistogramMap),
-	}
-	s.s[NewDbTable(db, table)] = stats
-	return nil
-}
-
-func (s *statsEditor) Close(context *Context) error {
-	return nil
 }
 
 func printTable(name string, tableSchema Schema) string {

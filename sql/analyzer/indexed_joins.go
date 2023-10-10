@@ -93,16 +93,12 @@ func inOrderReplanJoin(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sch sql
 }
 
 func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Scope) (sql.Node, error) {
-	stats, err := a.Catalog.Statistics(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	m := memo.NewMemo(ctx, stats, scope, len(scope.Schema()), a.Coster, a.Carder)
+	m := memo.NewMemo(ctx, a.Catalog, scope, len(scope.Schema()), a.Coster, a.Carder)
 
 	j := memo.NewJoinOrderBuilder(m)
 	j.ReorderJoin(n)
 
+	var err error
 	err = convertSemiToInnerJoin(a, m)
 	if err != nil {
 		return nil, err

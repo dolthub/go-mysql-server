@@ -304,64 +304,64 @@ create index role_id_cast_info on cast_info(role_id);
 ----
 
 exec
-update information_schema.statistics set cardinality = 900662 where table_name = 'aka_name';
+analyze table aka_name update histogram on id using data '{"row_count": 900662}';
 ----
 exec
-update information_schema.statistics set cardinality = 361376 where table_name = 'aka_title';
+analyze table aka_title update histogram on id using data '{"row_count": 361376}';
 ----
 exec
-update information_schema.statistics set cardinality = 36124530 where table_name = 'cast_info';
+analyze table cast_info update histogram on id using data '{"row_count": 36124530}';
 ----
 exec
-update information_schema.statistics set cardinality = 3136382 where table_name = 'char_name';
+analyze table char_name update histogram on id using data '{"row_count": 3136382}';
 ----
 exec
-update information_schema.statistics set cardinality = 234825 where table_name = 'company_name';
+analyze table company_name update histogram on id using data '{"row_count": 234825}';
 ----
 exec
-update information_schema.statistics set cardinality = 4 where table_name = 'company_type';
+analyze table company_type update histogram on id using data '{"row_count": 4}';
 ----
 exec
-update information_schema.statistics set cardinality = 135086 where table_name = 'complete_cast';
+analyze table complete_cast update histogram on id using data '{"row_count": 135086}';
 ----
 exec
-update information_schema.statistics set cardinality = 4 where table_name = 'comp_cast_type';
+analyze table comp_cast_type update histogram on id using data '{"row_count": 4}';
 ----
 exec
-update information_schema.statistics set cardinality = 113 where table_name = 'info_type';
+analyze table info_type update histogram on id using data '{"row_count": 113}';
 ----
 exec
-update information_schema.statistics set cardinality = 134110 where table_name = 'keyword';
+analyze table keyword update histogram on id using data '{"row_count": 134110}';
 ----
 exec
-update information_schema.statistics set cardinality = 7 where table_name = 'kind_type';
+analyze table kind_type update histogram on id using data '{"row_count": 7}';
 ----
 exec
-update information_schema.statistics set cardinality = 18 where table_name = 'link_type';
+analyze table link_type update histogram on id using data '{"row_count": 18}';
 ----
 exec
-update information_schema.statistics set cardinality = 2604067 where table_name = 'movie_companies';
+analyze table movie_companies update histogram on id using data '{"row_count": 2604067}';
 ----
 exec
-update information_schema.statistics set cardinality = 14355706 where table_name = 'movie_info';
+analyze table movie_info update histogram on id using data '{"row_count": 14355706}';
 ----
 exec
-update information_schema.statistics set cardinality = 1380035 where table_name = 'movie_info_idx';
+analyze table movie_info_idx update histogram on id using data '{"row_count": 1380035}';
 ----
 exec
-update information_schema.statistics set cardinality = 4523930 where table_name = 'movie_keyword';
+analyze table movie_keyword update histogram on id using data '{"row_count": 4523930}';
 ----
 exec
-update information_schema.statistics set cardinality = 29997 where table_name = 'movie_link';
+analyze table movie_link update histogram on id using data '{"row_count": 29997}';
 ----
 exec
-update information_schema.statistics set cardinality = 4167453 where table_name = 'name';
+analyze table name update histogram on id using data '{"row_count": 4167453}';
 ----
 exec
-update information_schema.statistics set cardinality = 2024951 where table_name = 'person_info';
+analyze table person_info update histogram on id using data '{"row_count": 2024951}';
 ----
 exec
-update information_schema.statistics set cardinality = 12 where table_name = 'row_type';
+analyze table row_type update histogram on id using data '{"row_count": 12}';
 ----
-update information_schema.statistics set cardinality = 2527799 where table_name = 'title';
+analyze table title update histogram on id using data '{"row_count": 2527799}';
 ----

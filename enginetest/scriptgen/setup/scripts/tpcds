@@ -16,7 +16,7 @@ create table catalog_returns (
  cr_ship_mode_sk        bigint ,
  cr_warehouse_sk        bigint ,
  cr_reason_sk           bigint ,
- cr_order_number        bigint not null,
+ cr_order_number        bigint not null primary key,
  cr_return_quantity         int,
  cr_return_amount       decimal(7,2),
  cr_return_tax          decimal(7,2),
@@ -49,7 +49,7 @@ create table catalog_sales (
  cs_warehouse_sk           bigint,
  cs_item_sk                bigint not null,
  cs_promo_sk               bigint,
- cs_order_number           bigint not null,
+ cs_order_number           bigint not null primary key,
  cs_quantity               int,
  cs_wholesale_cost         decimal(7,2),
  cs_list_price             decimal(7,2),
@@ -74,7 +74,8 @@ create table inventory (
  inv_date_sk               bigint not null,
  inv_item_sk               bigint not null,
  inv_warehouse_sk          bigint not null,
- inv_quantity_on_hand      int
+ inv_quantity_on_hand      int,
+ primary key (inv_date_sk, inv_item_sk, inv_warehouse_sk)
 );
 ----
 
@@ -89,7 +90,7 @@ create table store_returns (
  sr_addr_sk                bigint,
  sr_store_sk               bigint,
  sr_reason_sk              bigint,
- sr_ticket_number          bigint not null,
+ sr_ticket_number          bigint not null primary key,
  sr_return_quantity        int,
  sr_return_amt             decimal(7,2),
  sr_return_tax             decimal(7,2),
@@ -114,7 +115,7 @@ create table store_sales (
  ss_addr_sk                bigint,
  ss_store_sk               bigint,
  ss_promo_sk               bigint,
- ss_ticket_number          bigint not null,
+ ss_ticket_number          bigint not null primary key,
  ss_quantity               int,
  ss_wholesale_cost         decimal(7,2),
  ss_list_price             decimal(7,2),
@@ -195,7 +196,8 @@ create table web_sales (
  ws_net_paid_inc_tax       decimal(7,2),
  ws_net_paid_inc_ship      decimal(7,2),
  ws_net_paid_inc_ship_tax  decimal(7,2),
- ws_net_profit             decimal(7,2)
+ ws_net_profit             decimal(7,2),
+ primary key (ws_order_number)
 );
 ----
 
@@ -563,77 +565,74 @@ create table web_site (
 ----
 
 exec
-update information_schema.statistics set cardinality =       6 where table_name = 'call_center';
+analyze table call_center update histogram on (cc_call_center_sk) using data '{"row_count": 6}';
 ----
 exec
-update information_schema.statistics set cardinality =   11718 where table_name = 'catalog_page';
+ analyze table catalog_page update histogram on (cp_catalog_page_sk) using data '{"row_count": 11718}';
 ----
 exec
-update information_schema.statistics set cardinality =  144067 where table_name = 'catalog_returns';
+analyze table catalog_returns update histogram on (cr_order_number) using data '{"row_count": 144067}';
 ----
 exec
-update information_schema.statistics set cardinality = 1441548 where table_name = 'catalog_sales';
+analyze table catalog_sales update histogram on (cs_order_number) using data '{"row_count": 441548}';
 ----
 exec
-update information_schema.statistics set cardinality =  100000 where table_name = 'customer';
+analyze table customer update histogram on (c_customer_sk) using data '{"row_count": 100000}';
 ----
 exec
-update information_schema.statistics set cardinality =   50000 where table_name = 'customer_address';
+analyze table customer_address update histogram on (ca_address_sk) using data '{"row_count": 50000}';
 ----
 exec
-update information_schema.statistics set cardinality = 1920800 where table_name = 'customer_demographics';
+analyze table customer_demographics update histogram on (cd_demo_sk) using data '{"row_count": 920800}';
 ----
 exec
-update information_schema.statistics set cardinality =   73049 where table_name = 'date_dim';
+analyze table date_dim update histogram on (d_date_sk) using data '{"row_count": 73049}';
 ----
 exec
-update information_schema.statistics set cardinality =       1 where table_name = 'dbgen_version';
+analyze table household_demographics update histogram on (hd_demo_sk) using data '{"row_count": 7200}';
 ----
 exec
-update information_schema.statistics set cardinality =    7200 where table_name = 'household_demographics';
+analyze table income_band update histogram on (ib_income_band_sk) using data '{"row_count": 20}';
 ----
 exec
-update information_schema.statistics set cardinality =      20 where table_name = 'income_band';
+analyze table inventory update histogram on (inv_date_sk, inv_item_sk, inv_warehouse_sk) using data '{"row_count": 1745000}';
 ----
 exec
-update information_schema.statistics set cardinality = 11745000 where table_name = 'inventory';
+ analyze table item update histogram on (i_item_sk) using data '{"row_count": 18000}';
 ----
 exec
-update information_schema.statistics set cardinality =   18000 where table_name = 'item';
+analyze table promotion update histogram on (p_promo_sk) using data '{"row_count": 300}';
 ----
 exec
-update information_schema.statistics set cardinality =     300 where table_name = 'promotion';
+analyze table reason update histogram on (r_reason_sk) using data '{"row_count": 35}';
 ----
 exec
-update information_schema.statistics set cardinality =      35 where table_name = 'reason';
+analyze table ship_mode update histogram on (sm_ship_mode_sk) using data '{"row_count": 20}';
 ----
 exec
-update information_schema.statistics set cardinality =      20 where table_name = 'ship_mode';
+analyze table store update histogram on (s_store_sk) using data '{"row_count": 12}';
 ----
 exec
-update information_schema.statistics set cardinality =      12 where table_name = 'store';
+analyze table store_returns update histogram on (sr_ticket_number) using data '{"row_count": 287514}';
 ----
 exec
-update information_schema.statistics set cardinality =  287514 where table_name = 'store_returns';
+analyze table store_sales update histogram on (store_sales) using data '{"row_count": 880404}';
 ----
 exec
-update information_schema.statistics set cardinality = 2880404 where table_name = 'store_sales';
+ analyze table time_dim update histogram on (t_time_sk) using data '{"row_count": 86400}';
 ----
 exec
-update information_schema.statistics set cardinality =   86400 where table_name = 'time_dim';
+analyze table warehouse update histogram on (w_warehouse_sk) using data '{"row_count": 5}';
 ----
 exec
-update information_schema.statistics set cardinality =       5 where table_name = 'warehouse';
+analyze table web_page update histogram on (wp_web_page_sk) using data '{"row_count": 60}';
 ----
 exec
-update information_schema.statistics set cardinality =      60 where table_name = 'web_page';
+analyze table web_returns update histogram on (wr_order_number) using data '{"row_count": 71763}';
 ----
 exec
-update information_schema.statistics set cardinality =   71763 where table_name = 'web_returns';
+analyze table web_sales update histogram on (ws_order_number) using data '{"row_count": 719384}';
 ----
 exec
-update information_schema.statistics set cardinality =  719384 where table_name = 'web_sales';
-----
-exec
-update information_schema.statistics set cardinality =      30 where table_name = 'web_site';
+analyze table web_site update histogram on (web_site_sk) using data '{"row_count": 30}';
 ----

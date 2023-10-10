@@ -688,7 +688,7 @@ func TestTriggerViewWarning(t *testing.T) {
 	e, err := harness.NewEngine(t)
 	assert.NoError(t, err)
 
-	prov := e.EngineAnalyzer().Catalog.Provider.(*memory.DbProvider)
+	prov := e.EngineAnalyzer().Catalog.DbProvider.(*memory.DbProvider)
 	db, err := prov.Database(nil, "mydb")
 	assert.NoError(t, err)
 

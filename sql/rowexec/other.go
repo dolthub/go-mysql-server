@@ -378,8 +378,40 @@ func (b *BaseBuilder) buildAnalyzeTable(ctx *sql.Context, n *plan.AnalyzeTable, 
 
 	return &analyzeTableIter{
 		idx:    0,
+		db:     n.Db,
 		tables: n.Tables,
 		stats:  n.Stats,
+	}, nil
+}
+
+func (b *BaseBuilder) buildDropHistogram(ctx *sql.Context, n *plan.DropHistogram, row sql.Row) (sql.RowIter, error) {
+	// Assume table is in current database
+	database := ctx.GetCurrentDatabase()
+	if database == "" {
+		return nil, sql.ErrNoDatabaseSelected.New()
+	}
+
+	return &dropHistogramIter{
+		db:      n.Db(),
+		table:   n.Table(),
+		columns: n.Cols(),
+		prov:    n.StatsProvider(),
+	}, nil
+}
+
+func (b *BaseBuilder) buildUpdateHistogram(ctx *sql.Context, n *plan.UpdateHistogram, row sql.Row) (sql.RowIter, error) {
+	// Assume table is in current database
+	database := ctx.GetCurrentDatabase()
+	if database == "" {
+		return nil, sql.ErrNoDatabaseSelected.New()
+	}
+
+	return &updateHistogramIter{
+		db:      n.Db(),
+		table:   n.Table(),
+		columns: n.Cols(),
+		stats:   n.Stats(),
+		prov:    n.StatsProvider(),
 	}, nil
 }
 
