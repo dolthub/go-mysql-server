@@ -15,7 +15,6 @@
 package planbuilder
 
 import (
-	"fmt"
 	"strings"
 	"sync"
 
@@ -377,13 +376,7 @@ func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualC
 		if !c.Virtual {
 			projections[i] = expression.NewGetFieldWithTable(i, c.Type, tab.Name(), c.Name, c.Nullable)
 		} else {
-			// Tha alias below is used to make sure that a project node on top of this one (which doesn't know which 
-			// columns are virtual) will match the fields in this one. We could do a better job matching by assigning an 
-			// ID here.
-			// TODO: still necessary with VirtualColumnTable?
-			projections[i] = expression.NewAlias(
-				fmt.Sprintf("%s.%s", tab.Name(), c.Name),
-				b.resolveColumnDefaultExpression(tableScope, c, c.Generated))
+			projections[i] = b.resolveColumnDefaultExpression(tableScope, c, c.Generated)
 		}
 	}
 	
