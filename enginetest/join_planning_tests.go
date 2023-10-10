@@ -55,10 +55,10 @@ var JoinPlanningTests = []struct {
 			"insert into rs values (0,0), (1,0), (2,0), (4,4), (5,4);",
 			"insert into uv values (0,1), (1,1), (2,2), (3,2);",
 			"insert into ab values (0,2), (1,2), (2,2), (3,1);",
-			`analyze table xy update histogram on x using '{"row_count":1000}'`,
-			`analyze table rs update histogram on r using '{"row_count":1000}'`,
-			`analyze table uv update histogram on u using '{"row_count":1000}'`,
-			`analyze table ab update histogram on a using '{"row_count":1000}'`,
+			`analyze table xy update histogram on x using data '{"row_count":1000}'`,
+			`analyze table rs update histogram on r using data '{"row_count":1000}'`,
+			`analyze table uv update histogram on u using data '{"row_count":1000}'`,
+			`analyze table ab update histogram on a using data '{"row_count":1000}'`,
 		},
 		tests: []JoinPlanTest{
 			{
@@ -143,8 +143,8 @@ var JoinPlanningTests = []struct {
 			"create table rs (r int primary key, s int, index s_idx(s));",
 			"insert into xy values (1,0), (2,1), (0,8), (3,7), (5,4), (4,0);",
 			"insert into rs values (0,0),(2,3),(3,0), (4,8), (5,4);",
-			`analyze table xy update histogram on x using '{"row_count":1000}'`,
-			`analyze table rs update histogram on r using '{"row_count":1000}'`,
+			`analyze table xy update histogram on x using data '{"row_count":1000}'`,
+			`analyze table rs update histogram on r using data '{"row_count":1000}'`,
 		},
 		tests: []JoinPlanTest{
 			{
@@ -160,8 +160,8 @@ var JoinPlanningTests = []struct {
 			"CREATE table xy (x int primary key, y int, index y_idx(y));",
 			"create table rs (r int primary key, s int, index s_idx(s));",
 			"insert into xy values (1,0);",
-			`analyze table xy update histogram on x using '{"row_count":10}'`,
-			`analyze table rs update histogram on r using '{"row_count":1000}'`,
+			`analyze table xy update histogram on x using data '{"row_count":10}'`,
+			`analyze table rs update histogram on r using data '{"row_count":1000}'`,
 		},
 		tests: []JoinPlanTest{
 			{
@@ -178,8 +178,8 @@ var JoinPlanningTests = []struct {
 			"create table rs (r int primary key, s int, index s_idx(s));",
 			"insert into xy values (1,0), (2,1), (0,8), (3,7), (5,4), (4,0);",
 			"insert into rs values (0,0),(2,3),(3,0), (4,8), (5,4);",
-			`analyze table xy update histogram on x using '{"row_count":10}'`,
-			`analyze table rs update histogram on r using '{"row_count":1000000000}'`,
+			`analyze table xy update histogram on x using data '{"row_count":10}'`,
+			`analyze table rs update histogram on r using data '{"row_count":1000000000}'`,
 		},
 		tests: []JoinPlanTest{
 			{
@@ -203,8 +203,8 @@ var JoinPlanningTests = []struct {
 			"create table rs (r int primary key, s int, index s_idx(s));",
 			"insert into xy values (1,0), (2,1), (0,8), (3,7), (5,4), (4,0);",
 			"insert into rs values (0,0),(2,3),(3,0), (4,8), (5,4);",
-			`analyze table xy update histogram on x using '{"row_count":1000}'`,
-			`analyze table rs update histogram on r using '{"row_count":1000}'`,
+			`analyze table xy update histogram on x using data '{"row_count":1000}'`,
+			`analyze table rs update histogram on r using data '{"row_count":1000}'`,
 		},
 		tests: []JoinPlanTest{
 			{
@@ -270,8 +270,8 @@ var JoinPlanningTests = []struct {
 			"create table rs (r int, s int, index s_idx(s));",
 			"insert into xy values (1,0), (2,1), (0,8), (3,7), (5,4), (4,0);",
 			"insert into rs values (0,0),(2,3),(3,0), (4,8), (5,4);",
-			`analyze table xy update histogram on x using '{"row_count":1000}'`,
-			`analyze table rs update histogram on r using '{"row_count":1000}'`,
+			`analyze table xy update histogram on x using data '{"row_count":1000}'`,
+			`analyze table rs update histogram on r using data '{"row_count":1000}'`,
 		},
 		tests: []JoinPlanTest{
 			{
@@ -292,10 +292,10 @@ var JoinPlanningTests = []struct {
 			"insert into rs values (0,0), (1,0), (2,0), (4,4);",
 			"insert into uv values (0,1), (1,1), (2,2), (3,2);",
 			"insert into ab values (0,2), (1,2), (2,2), (3,1);",
-			`analyze table xy update histogram on x using '{"row_count":100}'`,
-			`analyze table rs update histogram on r using '{"row_count":100}'`,
-			`analyze table uv update histogram on u using '{"row_count":100}'`,
-			`analyze table ab update histogram on a using '{"row_count":100}'`,
+			`analyze table xy update histogram on x using data '{"row_count":100}'`,
+			`analyze table rs update histogram on r using data '{"row_count":100}'`,
+			`analyze table uv update histogram on u using data '{"row_count":100}'`,
+			`analyze table ab update histogram on a using data '{"row_count":100}'`,
 		},
 		tests: []JoinPlanTest{
 			{
@@ -739,9 +739,9 @@ where u in (select * from rec);`,
 			"insert into xy values (1,0), (2,1), (0,2), (3,3);",
 			"insert into uv values (0,1), (1,1), (2,2), (3,2);",
 			"insert into ab values (0,2), (1,2), (2,2), (3,1);",
-			`analyze table xy update histogram on x using '{"row_count":100}'`,
-			`analyze table uv update histogram on u using '{"row_count":100}'`,
-			`analyze table ab update histogram on a using '{"row_count":100}'`,
+			`analyze table xy update histogram on x using data '{"row_count":100}'`,
+			`analyze table uv update histogram on u using data '{"row_count":100}'`,
+			`analyze table ab update histogram on a using data '{"row_count":100}'`,
 		},
 		tests: []JoinPlanTest{
 			{
@@ -867,8 +867,8 @@ where u in (select * from rec);`,
 			"CREATE table uv (u int primary key, v int);",
 			"insert into xy values (1,0), (2,1), (0,2), (3,3);",
 			"insert into uv values (0,1), (1,1), (2,2), (3,2);",
-			`analyze table xy update histogram on x using '{"row_count":100}'`,
-			`analyze table uv update histogram on u using '{"row_count":100}'`,
+			`analyze table xy update histogram on x using data '{"row_count":100}'`,
+			`analyze table uv update histogram on u using data '{"row_count":100}'`,
 		},
 		tests: []JoinPlanTest{
 			{
@@ -885,8 +885,8 @@ where u in (select * from rec);`,
 			"CREATE table uv (u int primary key, v int);",
 			"insert into xy values (1,0), (2,1), (0,2), (3,3);",
 			"insert into uv values (0,1), (1,1), (2,2), (3,2);",
-			`analyze table xy update histogram on x using '{"row_count":100}'`,
-			`analyze table uv update histogram on u using '{"row_count":100}'`,
+			`analyze table xy update histogram on x using data '{"row_count":100}'`,
+			`analyze table uv update histogram on u using data '{"row_count":100}'`,
 		},
 		tests: []JoinPlanTest{
 			{

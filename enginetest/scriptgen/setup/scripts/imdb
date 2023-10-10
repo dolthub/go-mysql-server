@@ -304,64 +304,64 @@ create index role_id_cast_info on cast_info(role_id);
 ----
 
 exec
-analyze table aka_name update histogram on id using '{"row_count": 900662}';
+analyze table aka_name update histogram on id using data '{"row_count": 900662}';
 ----
 exec
-analyze table aka_title update histogram on id using '{"row_count": 361376}';
+analyze table aka_title update histogram on id using data '{"row_count": 361376}';
 ----
 exec
-analyze table cast_info update histogram on id using '{"row_count": 36124530}';
+analyze table cast_info update histogram on id using data '{"row_count": 36124530}';
 ----
 exec
-analyze table char_name update histogram on id using '{"row_count": 3136382}';
+analyze table char_name update histogram on id using data '{"row_count": 3136382}';
 ----
 exec
-analyze table company_name update histogram on id using '{"row_count": 234825}';
+analyze table company_name update histogram on id using data '{"row_count": 234825}';
 ----
 exec
-analyze table company_type update histogram on id using '{"row_count": 4}';
+analyze table company_type update histogram on id using data '{"row_count": 4}';
 ----
 exec
-analyze table complete_cast update histogram on id using '{"row_count": 135086}';
+analyze table complete_cast update histogram on id using data '{"row_count": 135086}';
 ----
 exec
-analyze table comp_cast_type update histogram on id using '{"row_count": 4}';
+analyze table comp_cast_type update histogram on id using data '{"row_count": 4}';
 ----
 exec
-analyze table info_type update histogram on id using '{"row_count": 113}';
+analyze table info_type update histogram on id using data '{"row_count": 113}';
 ----
 exec
-analyze table keyword update histogram on id using '{"row_count": 134110}';
+analyze table keyword update histogram on id using data '{"row_count": 134110}';
 ----
 exec
-analyze table kind_type update histogram on id using '{"row_count": 7}';
+analyze table kind_type update histogram on id using data '{"row_count": 7}';
 ----
 exec
-analyze table link_type update histogram on id using '{"row_count": 18}';
+analyze table link_type update histogram on id using data '{"row_count": 18}';
 ----
 exec
-analyze table movie_companies update histogram on id using '{"row_count": 2604067}';
+analyze table movie_companies update histogram on id using data '{"row_count": 2604067}';
 ----
 exec
-analyze table movie_info update histogram on id using '{"row_count": 14355706}';
+analyze table movie_info update histogram on id using data '{"row_count": 14355706}';
 ----
 exec
-analyze table movie_info_idx update histogram on id using '{"row_count": 1380035}';
+analyze table movie_info_idx update histogram on id using data '{"row_count": 1380035}';
 ----
 exec
-analyze table movie_keyword update histogram on id using '{"row_count": 4523930}';
+analyze table movie_keyword update histogram on id using data '{"row_count": 4523930}';
 ----
 exec
-analyze table movie_link update histogram on id using '{"row_count": 29997}';
+analyze table movie_link update histogram on id using data '{"row_count": 29997}';
 ----
 exec
-analyze table name update histogram on id using '{"row_count": 4167453}';
+analyze table name update histogram on id using data '{"row_count": 4167453}';
 ----
 exec
-analyze table person_info update histogram on id using '{"row_count": 2024951}';
+analyze table person_info update histogram on id using data '{"row_count": 2024951}';
 ----
 exec
-analyze table row_type update histogram on id using '{"row_count": 12}';
+analyze table row_type update histogram on id using data '{"row_count": 12}';
 ----
-analyze table title update histogram on id using '{"row_count": 2527799}';
+analyze table title update histogram on id using data '{"row_count": 2527799}';
 ----

@@ -96,21 +96,21 @@ insert into rs values
 ----
 
 exec
-analyze table ab update histogram on (a) using '{"row_count": 1000}';
+analyze table ab update histogram on (a) using data '{"row_count": 1000}';
 ----
 
 exec
-analyze table ab_hasnull update histogram on (a) using '{"row_count": 1000}';
+analyze table ab_hasnull update histogram on (a) using data '{"row_count": 1000}';
 ----
 
 exec
-analyze table xy update histogram on (x) using '{"row_count": 1000}';
+analyze table xy update histogram on (x) using data '{"row_count": 1000}';
 ----
 
 exec
-analyze table xy_hasnull update histogram on (x) using '{"row_count": 1000}';
+analyze table xy_hasnull update histogram on (x) using data '{"row_count": 1000}';
 ----
 
 exec
-analyze table rs update histogram on (r) using '{"row_count": 1000}'
+analyze table rs update histogram on (r) using data '{"row_count": 1000}'
 ----

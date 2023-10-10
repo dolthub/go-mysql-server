@@ -905,227 +905,227 @@ create table FBPKL (
 ----
 
 exec
-analyze table TPXBU update histogram on (id) using '{"row_count": 123867}';
+analyze table TPXBU update histogram on (id) using data '{"row_count": 123867}';
 ----
 
 exec
-analyze table THNTS update histogram on (id) using '{"row_count": 2498}';
+analyze table THNTS update histogram on (id) using data '{"row_count": 2498}';
 ----
 
 exec
-analyze table JMRQL update histogram on (id) using '{"row_count": 3}';
+analyze table JMRQL update histogram on (id) using data '{"row_count": 3}';
 ----
 
 exec
-analyze table YK2GW update histogram on (id) using '{"row_count": 2498}';
+analyze table YK2GW update histogram on (id) using data '{"row_count": 2498}';
 ----
 
 exec
-analyze table IJLXP update histogram on (id) using '{"row_count": 5661}';
+analyze table IJLXP update histogram on (id) using data '{"row_count": 5661}';
 ----
 
 exec
-analyze table HU5A5 update histogram on (id) using '{"row_count": 34}';
+analyze table HU5A5 update histogram on (id) using data '{"row_count": 34}';
 ----
 
 exec
-analyze table EPZU6 update histogram on (id) using '{"row_count": 213}';
+analyze table EPZU6 update histogram on (id) using data '{"row_count": 213}';
 ----
 
 exec
-analyze table WGSDC update histogram on (id) using '{"row_count": 68}';
+analyze table WGSDC update histogram on (id) using data '{"row_count": 68}';
 ----
 
 exec
-analyze table SZW6V update histogram on (id) using '{"row_count": 0}';
+analyze table SZW6V update histogram on (id) using data '{"row_count": 0}';
 ----
 
 exec
-analyze table SFEGG update histogram on (id) using '{"row_count": 380}';
+analyze table SFEGG update histogram on (id) using data '{"row_count": 380}';
 ----
 
 exec
-analyze table JDLNA update histogram on (id) using '{"row_count": 399}';
+analyze table JDLNA update histogram on (id) using data '{"row_count": 399}';
 ----
 
 exec
-analyze table I66GN update histogram on (id) using '{"row_count": 239}';
+analyze table I66GN update histogram on (id) using data '{"row_count": 239}';
 ----
 
 exec
-analyze table BACOW update histogram on (id) using '{"row_count": 5148}';
+analyze table BACOW update histogram on (id) using data '{"row_count": 5148}';
 ----
 
 exec
-analyze table FLQLP update histogram on (id) using '{"row_count": 14781}';
+analyze table FLQLP update histogram on (id) using data '{"row_count": 14781}';
 ----
 
 exec
-analyze table S3FQX update histogram on (id) using '{"row_count": 1}';
+analyze table S3FQX update histogram on (id) using data '{"row_count": 1}';
 ----
 
 exec
-analyze table JJGQT update histogram on (id) using '{"row_count": 6}';
+analyze table JJGQT update histogram on (id) using data '{"row_count": 6}';
 ----
 
 exec
-analyze table AMYXQ update histogram on (id) using '{"row_count": 4786678}';
+analyze table AMYXQ update histogram on (id) using data '{"row_count": 4786678}';
 ----
 
 exec
-analyze table XGSJM update histogram on (id) using '{"row_count": 5}';
+analyze table XGSJM update histogram on (id) using data '{"row_count": 5}';
 ----
 
 exec
-analyze table WE72E update histogram on (id) using '{"row_count": 3181}';
+analyze table WE72E update histogram on (id) using data '{"row_count": 3181}';
 ----
 
 exec
-analyze table FCBVZ update histogram on (id) using '{"row_count": 0}';
+analyze table FCBVZ update histogram on (id) using data '{"row_count": 0}';
 ----
 
 exec
-analyze table RLOHD update histogram on (id) using '{"row_count": 226}';
+analyze table RLOHD update histogram on (id) using data '{"row_count": 226}';
 ----
 
 exec
-analyze table T52LX update histogram on (id) using '{"row_count": 10}';
+analyze table T52LX update histogram on (id) using data '{"row_count": 10}';
 ----
 
 exec
-analyze table HDDVB update histogram on (id) using '{"row_count": 1112}';
+analyze table HDDVB update histogram on (id) using data '{"row_count": 1112}';
 ----
 
 exec
-analyze table YYBCX update histogram on (id) using '{"row_count": 12}';
+analyze table YYBCX update histogram on (id) using data '{"row_count": 12}';
 ----
 
 exec
-analyze table FEVH4 update histogram on (id) using '{"row_count": 56}';
+analyze table FEVH4 update histogram on (id) using data '{"row_count": 56}';
 ----
 
 exec
-analyze table SR2I6 update histogram on (id) using '{"row_count": 71}';
+analyze table SR2I6 update histogram on (id) using data '{"row_count": 71}';
 ----
 
 exec
-analyze table NMYH3 update histogram on (id) using '{"row_count": 415}';
+analyze table NMYH3 update histogram on (id) using data '{"row_count": 415}';
 ----
 
 exec
-analyze table IMJ6V update histogram on (id) using '{"row_count": 6140}';
+analyze table IMJ6V update histogram on (id) using data '{"row_count": 6140}';
 ----
 
 exec
-analyze table TDRVG update histogram on (id) using '{"row_count": 47285}';
+analyze table TDRVG update histogram on (id) using data '{"row_count": 47285}';
 ----
 
 exec
-analyze table IIISV update histogram on (id) using '{"row_count": 13}';
+analyze table IIISV update histogram on (id) using data '{"row_count": 13}';
 ----
 
 exec
-analyze table moa update histogram on (id) using '{"row_count": 36}';
+analyze table moa update histogram on (id) using data '{"row_count": 36}';
 ----
 
 exec
-analyze table FBPKL update histogram on (id) using '{"row_count": 60}';
+analyze table FBPKL update histogram on (id) using data '{"row_count": 60}';
 ----
 
 exec
-analyze table TA5EB update histogram on (id) using '{"row_count": 70}';
+analyze table TA5EB update histogram on (id) using data '{"row_count": 70}';
 ----
 
 exec
-analyze table HGMQ6 update histogram on (id) using '{"row_count": 511969}';
+analyze table HGMQ6 update histogram on (id) using data '{"row_count": 511969}';
 ----
 
 exec
-analyze table SEQS3 update histogram on (id) using '{"row_count": 535843}';
+analyze table SEQS3 update histogram on (id) using data '{"row_count": 535843}';
 ----
 
 exec
-analyze table SZQWJ update histogram on (id) using '{"row_count": 3936}';
+analyze table SZQWJ update histogram on (id) using data '{"row_count": 3936}';
 ----
 
 exec
-analyze table E2I7U update histogram on (id) using '{"row_count": 3842}';
+analyze table E2I7U update histogram on (id) using data '{"row_count": 3842}';
 ----
 
 exec
-analyze table ARLV5 update histogram on (id) using '{"row_count": 291}';
+analyze table ARLV5 update histogram on (id) using data '{"row_count": 291}';
 ----
 
 exec
-analyze table FEIOE update histogram on (id) using '{"row_count": 6367}';
+analyze table FEIOE update histogram on (id) using data '{"row_count": 6367}';
 ----
 
 exec
-analyze table TNMXI update histogram on (id) using '{"row_count": 5}';
+analyze table TNMXI update histogram on (id) using data '{"row_count": 5}';
 ----
 
 exec
-analyze table F35MI update histogram on (id) using '{"row_count": 5}';
+analyze table F35MI update histogram on (id) using data '{"row_count": 5}';
 ----
 
 exec
-analyze table XOAOP update histogram on (id) using '{"row_count": 74}';
+analyze table XOAOP update histogram on (id) using data '{"row_count": 74}';
 ----
 
 exec
-analyze table PG27A update histogram on (id) using '{"row_count": 11}';
+analyze table PG27A update histogram on (id) using data '{"row_count": 11}';
 ----
 
 exec
-analyze table NPCYY update histogram on (id) using '{"row_count": 89}';
+analyze table NPCYY update histogram on (id) using data '{"row_count": 89}';
 ----
 
 exec
-analyze table TTGWX update histogram on (id) using '{"row_count": 3}';
+analyze table TTGWX update histogram on (id) using data '{"row_count": 3}';
 ----
 
 exec
-analyze table QYWQD update histogram on (id) using '{"row_count": 70692}';
+analyze table QYWQD update histogram on (id) using data '{"row_count": 70692}';
 ----
 
 exec
-analyze table NOXN3 update histogram on (id) using '{"row_count": 11813}';
+analyze table NOXN3 update histogram on (id) using data '{"row_count": 11813}';
 ----
 
 exec
-analyze table ZYGMF update histogram on (id) using '{"row_count": 81}';
+analyze table ZYGMF update histogram on (id) using data '{"row_count": 81}';
 ----
 
 exec
-analyze table TPXHZ update histogram on (id) using '{"row_count": 16}';
+analyze table TPXHZ update histogram on (id) using data '{"row_count": 16}';
 ----
 
 exec
-analyze table OUBDL update histogram on (id) using '{"row_count": 18395}';
+analyze table OUBDL update histogram on (id) using data '{"row_count": 18395}';
 ----
 
 exec
-analyze table SISUT update histogram on (id) using '{"row_count": 103907130}';
+analyze table SISUT update histogram on (id) using data '{"row_count": 103907130}';
 ----
 
 exec
-analyze table WRZVO update histogram on (id) using '{"row_count": 39091}';
+analyze table WRZVO update histogram on (id) using data '{"row_count": 39091}';
 ----
 
 exec
-analyze table NZKPM update histogram on (id) using '{"row_count": 18779716}';
+analyze table NZKPM update histogram on (id) using data '{"row_count": 18779716}';
 ----
 
 exec
-analyze table FG26Y update histogram on (id) using '{"row_count": 1001}';
+analyze table FG26Y update histogram on (id) using data '{"row_count": 1001}';
 ----
 
 exec
-analyze table D34QP update histogram on (id) using '{"row_count": 36}';
+analyze table D34QP update histogram on (id) using data '{"row_count": 36}';
 ----
 
 exec
-analyze table ZTFET update histogram on (id) using '{"row_count": 64}';
+analyze table ZTFET update histogram on (id) using data '{"row_count": 64}';
 ----
 
 exec

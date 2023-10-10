@@ -1677,7 +1677,7 @@ var StatisticsQueries = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "analyze table t update histogram on (i) using '{\"row_count\": 40, \"histogram\": [{\"count\": 20, \"upper_bound\": 50}, {\"count\": 20, \"upper_bound\": 80}]}'",
+				Query:    "analyze table t update histogram on (i) using data '{\"row_count\": 40, \"histogram\": [{\"count\": 20, \"upper_bound\": 50}, {\"count\": 20, \"upper_bound\": 80}]}'",
 				Expected: []sql.Row{{"t", "histogram", "status", "OK"}},
 			},
 			{

@@ -15,6 +15,7 @@
 package queries
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"math"
 	"time"
 
@@ -8486,6 +8487,10 @@ type QueryErrorTest struct {
 }
 
 var ErrorQueries = []QueryErrorTest{
+	{
+		Query:       "analyze table mytable update histogram on i using data 'unknown'",
+		ExpectedErr: planbuilder.ErrFailedToParseStats,
+	},
 	{
 		Query:       "select i from (select * from mytable a join mytable b on a.i = b.i) dt",
 		ExpectedErr: sql.ErrAmbiguousColumnName,

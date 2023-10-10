@@ -46,7 +46,7 @@ func TestPlanBuilder(t *testing.T) {
 
 	var tests = []planTest{
 		{
-			Query: "analyze table xy update histogram on (x, y) using '{\"row_count\": 40, \"columns\": [\"x\", \"y\"], \"types\": [\"int\", \"int\"], \"histogram\": [{\"count\": 20, \"upper_bound\": 50.0}, {\"count\": 20, \"upper_bound\": 80.0}]}'",
+			Query: "analyze table xy update histogram on (x, y) using data '{\"row_count\": 40, \"columns\": [\"x\", \"y\"], \"types\": [\"int\", \"int\"], \"histogram\": [{\"count\": 20, \"upper_bound\": 50.0}, {\"count\": 20, \"upper_bound\": 80.0}]}'",
 			ExpectedPlan: `
 update histogram  xy.(x,y) using {"row_count": 40, "histogram": [{"count": 20, "upper_bound": [50]}, {"count": 20, "upper_bound": [80]}], "columns": ["x","y"], "types": ["bigint","bigint"], "version": 0}`,
 		},

@@ -1,4 +1,4 @@
-analyze table x update histogram on w_id using '{\"row_countc\: 1}
+analyze table x update histogram on w_id using data '{\"row_countc\: 1}
 SET FOREIGN_KEY_CHECKS=0;
 ----
 
@@ -651,145 +651,145 @@ SET FOREIGN_KEY_CHECKS=1;
 ----
 
 exec
-analyze table customer1 update histogram on (`c_w_id`,`c_d_id`,`c_id`) using '{\"row_count\": 30000}';
+analyze table customer1 update histogram on (`c_w_id`,`c_d_id`,`c_id`) using data '{\"row_count\": 30000}';
 ----
 
 exec
-analyze table customer2 update histogram on (`c_w_id`,`c_d_id`,`c_id`) using '{\"row_count\": 30000}';
+analyze table customer2 update histogram on (`c_w_id`,`c_d_id`,`c_id`) using data '{\"row_count\": 30000}';
 ----
 
 exec
-analyze table customer3 update histogram on (`c_w_id`,`c_d_id`,`c_id`) using '{\"row_count\": 30000}';
+analyze table customer3 update histogram on (`c_w_id`,`c_d_id`,`c_id`) using data '{\"row_count\": 30000}';
 ----
 
 exec
-analyze table customer4 update histogram on (`c_w_id`,`c_d_id`,`c_id`) using '{\"row_count\": 30000}';
+analyze table customer4 update histogram on (`c_w_id`,`c_d_id`,`c_id`) using data '{\"row_count\": 30000}';
 ----
 
 exec
-analyze table district1 update histogram on (`d_w_id`,`d_id`) using '{\"row_count\": 10}';
+analyze table district1 update histogram on (`d_w_id`,`d_id`) using data '{\"row_count\": 10}';
 ----
 
 exec
-analyze table district2 update histogram on (`d_w_id`,`d_id`) using '{\"row_count\": 10}';
+analyze table district2 update histogram on (`d_w_id`,`d_id`) using data '{\"row_count\": 10}';
 ----
 
 exec
-analyze table district3 update histogram on (`d_w_id`,`d_id`) using '{\"row_count\": 10}';
+analyze table district3 update histogram on (`d_w_id`,`d_id`) using data '{\"row_count\": 10}';
 ----
 
 exec
-analyze table district4 update histogram on (`d_w_id`,`d_id`) using '{\"row_count\": 10}';
+analyze table district4 update histogram on (`d_w_id`,`d_id`) using data '{\"row_count\": 10}';
 ----
 
 exec
-analyze table history1 update histogram on (`h_c_w_id`,`h_c_d_id`,`h_c_id`) using '{\"row_count\": 30000}';
+analyze table history1 update histogram on (`h_c_w_id`,`h_c_d_id`,`h_c_id`) using data '{\"row_count\": 30000}';
 ----
 
 exec
-analyze table history2 update histogram on (`h_c_w_id`,`h_c_d_id`,`h_c_id`) using '{\"row_count\": 30000}';
+analyze table history2 update histogram on (`h_c_w_id`,`h_c_d_id`,`h_c_id`) using data '{\"row_count\": 30000}';
 ----
 
 exec
-analyze table history3 update histogram on (`h_c_w_id`,`h_c_d_id`,`h_c_id`) using '{\"row_count\": 30000}';
+analyze table history3 update histogram on (`h_c_w_id`,`h_c_d_id`,`h_c_id`) using data '{\"row_count\": 30000}';
 ----
 
 exec
-analyze table history4 update histogram on (`h_c_w_id`,`h_c_d_id`,`h_c_id`) using '{\"row_count\": 30000}';
+analyze table history4 update histogram on (`h_c_w_id`,`h_c_d_id`,`h_c_id`) using data '{\"row_count\": 30000}';
 ----
 
 exec
-analyze table item1 update histogram on i_id using '{\"row_count\": 100000}';
+analyze table item1 update histogram on i_id using data '{\"row_count\": 100000}';
 ----
 
 exec
-analyze table item2 update histogram on i_id using '{\"row_count\": 100000}';
+analyze table item2 update histogram on i_id using data '{\"row_count\": 100000}';
 ----
 
 exec
-analyze table item3 update histogram on i_id using '{\"row_count\": 100000}';
+analyze table item3 update histogram on i_id using data '{\"row_count\": 100000}';
 ----
 
 exec
-analyze table item4 update histogram on i_id using '{\"row_count\": 100000}';
+analyze table item4 update histogram on i_id using data '{\"row_count\": 100000}';
 ----
 
 exec
-analyze table new_orders1 update histogram on (`no_w_id`,`no_d_id`,`no_o_id`) using '{\"row_count\": 9000}';
+analyze table new_orders1 update histogram on (`no_w_id`,`no_d_id`,`no_o_id`) using data '{\"row_count\": 9000}';
 ----
 
 exec
-analyze table new_orders2 update histogram on (`no_w_id`,`no_d_id`,`no_o_id`) using '{\"row_count\": 9000}';
+analyze table new_orders2 update histogram on (`no_w_id`,`no_d_id`,`no_o_id`) using data '{\"row_count\": 9000}';
 ----
 
 exec
-analyze table new_orders3 update histogram on (`no_w_id`,`no_d_id`,`no_o_id`) using '{\"row_count\": 9000}';
+analyze table new_orders3 update histogram on (`no_w_id`,`no_d_id`,`no_o_id`) using data '{\"row_count\": 9000}';
 ----
 
 exec
-analyze table new_orders4 update histogram on (`no_w_id`,`no_d_id`,`no_o_id`) using '{\"row_count\": 9000}';
+analyze table new_orders4 update histogram on (`no_w_id`,`no_d_id`,`no_o_id`) using data '{\"row_count\": 9000}';
 ----
 
 exec
-analyze table order_line1 update histogram on (`ol_w_id`,`ol_d_id`,`ol_o_id`,`ol_number`) using '{\"row_count\": 299498}';
+analyze table order_line1 update histogram on (`ol_w_id`,`ol_d_id`,`ol_o_id`,`ol_number`) using data '{\"row_count\": 299498}';
 ----
 
 exec
-analyze table order_line2 update histogram on (`ol_w_id`,`ol_d_id`,`ol_o_id`,`ol_number`) using '{\"row_count\": 299498}';
+analyze table order_line2 update histogram on (`ol_w_id`,`ol_d_id`,`ol_o_id`,`ol_number`) using data '{\"row_count\": 299498}';
 ----
 
 exec
-analyze table order_line3 update histogram on (`ol_w_id`,`ol_d_id`,`ol_o_id`,`ol_number`) using '{\"row_count\": 299498}';
+analyze table order_line3 update histogram on (`ol_w_id`,`ol_d_id`,`ol_o_id`,`ol_number`) using data '{\"row_count\": 299498}';
 ----
 
 exec
-analyze table order_line4 update histogram on (`ol_w_id`,`ol_d_id`,`ol_o_id`,`ol_number`) using '{\"row_count\": 299498}';
+analyze table order_line4 update histogram on (`ol_w_id`,`ol_d_id`,`ol_o_id`,`ol_number`) using data '{\"row_count\": 299498}';
 ----
 
 exec
-analyze table orders1 update histogram on (`o_w_id`,`o_d_id`,`o_id`) using '{\"row_count\": 30000}';
+analyze table orders1 update histogram on (`o_w_id`,`o_d_id`,`o_id`) using data '{\"row_count\": 30000}';
 ----
 
 exec
-analyze table orders2 update histogram on (`o_w_id`,`o_d_id`,`o_id`) using '{\"row_count\": 30000}';
+analyze table orders2 update histogram on (`o_w_id`,`o_d_id`,`o_id`) using data '{\"row_count\": 30000}';
 ----
 
 exec
-analyze table orders3 update histogram on (`o_w_id`,`o_d_id`,`o_id`) using '{\"row_count\": 30000}';
+analyze table orders3 update histogram on (`o_w_id`,`o_d_id`,`o_id`) using data '{\"row_count\": 30000}';
 ----
 
 exec
-analyze table orders4 update histogram on (`o_w_id`,`o_d_id`,`o_id`) using '{\"row_count\": 30000}';
+analyze table orders4 update histogram on (`o_w_id`,`o_d_id`,`o_id`) using data '{\"row_count\": 30000}';
 ----
 
 exec
-analyze table stock1 update histogram on (`s_w_id`,`s_i_id`) using '{\"row_count\": 100000}';
+analyze table stock1 update histogram on (`s_w_id`,`s_i_id`) using data '{\"row_count\": 100000}';
 ----
 
 exec
-analyze table stock2 update histogram on (`s_w_id`,`s_i_id`) using '{\"row_count\": 100000}';
+analyze table stock2 update histogram on (`s_w_id`,`s_i_id`) using data '{\"row_count\": 100000}';
 ----
 
 exec
-analyze table stock3 update histogram on (`s_w_id`,`s_i_id`) using '{\"row_count\": 100000}';
+analyze table stock3 update histogram on (`s_w_id`,`s_i_id`) using data '{\"row_count\": 100000}';
 ----
 
 exec
-analyze table stock4 update histogram on (`s_w_id`,`s_i_id`) using '{\"row_count\": 100000}';
+analyze table stock4 update histogram on (`s_w_id`,`s_i_id`) using data '{\"row_count\": 100000}';
 ----
 
 exec
-analyze table warehouse1 update histogram on w_id using '{\"row_count\": 1}';
+analyze table warehouse1 update histogram on w_id using data '{\"row_count\": 1}';
 ----
 
 exec
-analyze table warehouse2 update histogram on w_id using '{\"row_count\": 1}';
+analyze table warehouse2 update histogram on w_id using data '{\"row_count\": 1}';
 ----
 
 exec
-analyze table warehouse3 update histogram on w_id using '{\"row_count\": 1}';
+analyze table warehouse3 update histogram on w_id using data '{\"row_count\": 1}';
 ----
 
 exec
-analyze table warehouse4 update histogram on w_id using '{\"row_count\": 1}';
+analyze table warehouse4 update histogram on w_id using data '{\"row_count\": 1}';
 ----

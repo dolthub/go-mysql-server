@@ -142,6 +142,8 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 	return nil
 }
 
+// reservoirSample selects a random subset of values from the table.
+// Algorithm L from: https://dl.acm.org/doi/pdf/10.1145/198429.198435
 func (s *StatsProv) reservoirSample(ctx *sql.Context, table sql.Table) ([]sql.Row, error) {
 	// read through table
 	var maxQueue float64 = 100

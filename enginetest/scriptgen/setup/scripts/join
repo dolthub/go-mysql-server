@@ -162,29 +162,29 @@ CREATE TABLE `order_line1` (
 ----
 
 exec
-analyze table customer1 update histogram on (`c_w_id`,`c_d_id`,`c_id`) using '{\"row_count\": 300000}';
+analyze table customer1 update histogram on (`c_w_id`,`c_d_id`,`c_id`) using data '{\"row_count\": 300000}';
 ----
 
 exec
-analyze table warehouse1 update histogram on (w_id) using '{\"row_count\": 10}';
+analyze table warehouse1 update histogram on (w_id) using data '{\"row_count\": 10}';
 ----
 
 exec
-analyze table stock1 update histogram on (`s_w_id`,`s_i_id`) using '{\"row_count\": 1000000}';
+analyze table stock1 update histogram on (`s_w_id`,`s_i_id`) using data '{\"row_count\": 1000000}';
 ----
 
 exec
-analyze table order_line1 update histogram on (`ol_w_id`,`ol_d_id`,`ol_o_id`,`ol_number`) using '{\"row_count\": 3006058}';
+analyze table order_line1 update histogram on (`ol_w_id`,`ol_d_id`,`ol_o_id`,`ol_number`) using data '{\"row_count\": 3006058}';
 ----
 
 exec
-analyze table district1 update histogram on (`d_w_id`,`d_id`) using '{\"row_count\": 100}';
+analyze table district1 update histogram on (`d_w_id`,`d_id`) using data '{\"row_count\": 100}';
 ----
 
 exec
-analyze table item1 update histogram on (i_id) using '{\"row_count\": 100000}';
+analyze table item1 update histogram on (i_id) using data '{\"row_count\": 100000}';
 ----
 
 exec
-analyze table orders1 update histogram on (`o_w_id`,`o_d_id`,`o_id`) using '{\"row_count\": 300520}';
+analyze table orders1 update histogram on (`o_w_id`,`o_d_id`,`o_id`) using data '{\"row_count\": 300520}';
 ----

@@ -81,9 +81,9 @@ var joinOpTests = []struct {
 				"insert into xy values (1,0), (2,1), (0,2), (3,3);",
 				"insert into uv values (0,1), (1,1), (2,2), (3,2);",
 				"insert into ab values (0,2), (1,2), (2,2), (3,1);",
-				`analyze table xy update histogram on x using '{"row_count":1000}'`,
-				`analyze table ab update histogram on a using '{"row_count":1000}'`,
-				`analyze table uv update histogram on u using '{"row_count":1000}'`,
+				`analyze table xy update histogram on x using data '{"row_count":1000}'`,
+				`analyze table ab update histogram on a using data '{"row_count":1000}'`,
+				`analyze table uv update histogram on u using data '{"row_count":1000}'`,
 			},
 		},
 		tests: []JoinOpTests{
