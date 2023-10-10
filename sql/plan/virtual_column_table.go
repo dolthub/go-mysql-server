@@ -30,6 +30,7 @@ type VirtualColumnTable struct {
 
 var _ sql.TableWrapper = (*VirtualColumnTable)(nil)
 var _ sql.MutableTableWrapper = (*VirtualColumnTable)(nil)
+var _ sql.IndexedTable = (*VirtualColumnTable)(nil)
 
 func (v *VirtualColumnTable) Underlying() sql.Table {
 	return v.Table
@@ -59,6 +60,12 @@ func (v *VirtualColumnTable) WithExpressions(exprs ...sql.Expression) (*VirtualC
 
 func (v *VirtualColumnTable) Expressions() []sql.Expression {
 	return v.Projections
+}
+
+func (v *VirtualColumnTable) LookupPartitions(context *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
+	// this will panic if we fail to correctly unwrap the underlying table during analysis to determine if it supports 
+	// index lookups
+	return v.Table.(sql.IndexedTable).LookupPartitions(context, lookup)
 }
 
 func (v *VirtualColumnTable) String() string {

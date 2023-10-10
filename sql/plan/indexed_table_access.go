@@ -110,12 +110,20 @@ func NewStaticIndexedAccessForTableNode(node sql.TableNode, lookup sql.IndexLook
 	if !lookup.Index.CanSupport(lookup.Ranges...) {
 		return nil, ErrInvalidLookupForIndexedTable.New(lookup.Ranges.DebugString())
 	}
-	ia := iaTable.IndexedAccess(lookup)
+	indexedTable := iaTable.IndexedAccess(lookup)
+
+	if wrn, ok := node.(sql.MutableWrappedTableNode); ok {
+		var err error
+		indexedTable, err = wrn.ReWrapTable(indexedTable)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	return &IndexedTableAccess{
 		TableNode: node,
 		lookup:    lookup,
-		Table:     ia,
+		Table:     indexedTable,
 		Typ:       ItaTypeStatic,
 	}, nil
 }
