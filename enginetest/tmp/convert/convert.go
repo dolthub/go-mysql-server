@@ -3,9 +3,10 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/enginetest/tmp/utils"
 	"os"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/enginetest/tmp/utils"
 
 	_ "github.com/go-sql-driver/mysql"
 )
