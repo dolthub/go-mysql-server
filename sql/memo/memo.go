@@ -28,16 +28,22 @@ import (
 type GroupId uint16
 type TableId uint16
 
+type TableAndColumn struct {
+	tableName  string
+	columnName string
+}
+
 // Memo collects a forest of query plans structured by logical and
 // physical equivalency. Logically equivalent plans, represented by
 // an exprGroup, produce the same rows (possibly unordered) and schema.
 // Physical plans are stored in a linked list within an expression group.
 type Memo struct {
-	cnt     uint16
-	root    *ExprGroup
-	exprs   map[uint64]*ExprGroup
-	Columns map[string]sql.ColumnId
-	hints   *joinHints
+	cnt         uint16
+	root        *ExprGroup
+	exprs       map[uint64]*ExprGroup
+	Columns     map[TableAndColumn]sql.ColumnId
+	ColumnNames map[sql.ColumnId]TableAndColumn
+	hints       *joinHints
 
 	c         Coster
 	s         Carder
@@ -51,16 +57,17 @@ type Memo struct {
 
 func NewMemo(ctx *sql.Context, stats sql.StatsProvider, s *plan.Scope, scopeLen int, cost Coster, card Carder) *Memo {
 	return &Memo{
-		Ctx:        ctx,
-		c:          cost,
-		s:          card,
-		statsProv:  stats,
-		scope:      s,
-		scopeLen:   scopeLen,
-		TableProps: newTableProps(),
-		hints:      &joinHints{},
-		Columns:    make(map[string]sql.ColumnId),
-		exprs:      make(map[uint64]*ExprGroup),
+		Ctx:         ctx,
+		c:           cost,
+		s:           card,
+		statsProv:   stats,
+		scope:       s,
+		scopeLen:    scopeLen,
+		TableProps:  newTableProps(),
+		hints:       &joinHints{},
+		Columns:     make(map[TableAndColumn]sql.ColumnId),
+		ColumnNames: make(map[sql.ColumnId]TableAndColumn),
+		exprs:       make(map[uint64]*ExprGroup),
 	}
 }
 
@@ -89,19 +96,38 @@ func (m *Memo) memoizeSourceRel(rel SourceRel) *ExprGroup {
 	return grp
 }
 
+func (m *Memo) AddColumnId(table, column string) {
+	tableAndColumn := TableAndColumn{
+		tableName:  table,
+		columnName: column,
+	}
+	if m.Columns[tableAndColumn] != 0 {
+		return
+	}
+	newId := sql.ColumnId(len(m.Columns) + 1)
+	m.Columns[tableAndColumn] = newId
+	m.ColumnNames[newId] = tableAndColumn
+}
+
+func (m *Memo) GetTableAndColumn(id sql.ColumnId) (table, column string) {
+	tableAndColumn := m.ColumnNames[id]
+	return tableAndColumn.tableName, tableAndColumn.columnName
+}
+
 // TODO we need to remove this as soon as name resolution refactor is in
 func (m *Memo) assignColumnIds(rel SourceRel) {
 	if rel.Name() == "" {
-		m.Columns["1"] = sql.ColumnId(len(m.Columns) + 1)
+		m.AddColumnId("", "1")
 	} else {
 		for _, c := range allTableCols(rel) {
-			var name string
+			var tableName string
 			if c.Source != "" {
-				name = fmt.Sprintf("%s.%s", strings.ToLower(c.Source), strings.ToLower(c.Name))
+				tableName = strings.ToLower(c.Source)
+
 			} else {
-				name = fmt.Sprintf("%s.%s", strings.ToLower(rel.Name()), strings.ToLower(c.Name))
+				tableName = strings.ToLower(rel.Name())
 			}
-			m.Columns[name] = sql.ColumnId(len(m.Columns) + 1)
+			m.AddColumnId(tableName, strings.ToLower(c.Name))
 		}
 	}
 }
@@ -111,13 +137,10 @@ func (m *Memo) getTableId(table string) (GroupId, bool) {
 }
 
 func (m *Memo) getColumnId(table, name string) (sql.ColumnId, bool) {
-	var tag string
-	if table != "" {
-		tag = fmt.Sprintf("%s.%s", strings.ToLower(table), strings.ToLower(name))
-	} else {
-		tag = name
-	}
-	id, ok := m.Columns[tag]
+	id, ok := m.Columns[TableAndColumn{
+		tableName:  strings.ToLower(table),
+		columnName: strings.ToLower(name),
+	}]
 	return id, ok
 }
 

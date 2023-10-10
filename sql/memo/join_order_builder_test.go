@@ -34,9 +34,10 @@ func TestJoinOrderBuilder(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 
 	tests := []struct {
-		in    sql.Node
-		name  string
-		plans string
+		in               sql.Node
+		name             string
+		plans            string
+		forceFastReorder bool
 	}{
 		{
 			name: "inner joins",
@@ -155,11 +156,78 @@ func TestJoinOrderBuilder(t *testing.T) {
 └── G44: (innerjoin 20 34) (innerjoin 34 20) (innerjoin 36 33) (innerjoin 33 36) (innerjoin 38 31) (innerjoin 31 38) (innerjoin 39 19) (innerjoin 19 39) (innerjoin 24 30) (innerjoin 30 24) (innerjoin 41 16) (innerjoin 16 41) (innerjoin 43 1) (innerjoin 1 43)
 `,
 		},
+		{
+			name: "test fast reordering algorithm",
+			// Optimized plan appears as G11 - (innerjoin 1 12)
+			in: plan.NewInnerJoin(
+				plan.NewCrossJoin(
+					tableNode(db, "t1"),
+					tableNode(db, "t3"),
+				),
+				tableNode(db, "t2"),
+				expression.NewAnd(newEq("t1.x = t2.z"), newEq("t2.x = t3.z")),
+			),
+
+			forceFastReorder: true,
+			plans: `memo:
+├── G1: (tablescan: t1)
+├── G2: (tablescan: t3)
+├── G3: (crossjoin 1 2)
+├── G4: (tablescan: t2)
+├── G5: (colref: 't1.x')
+├── G6: (colref: 't2.z')
+├── G7: (equal 5 6)
+├── G8: (colref: 't2.x')
+├── G9: (colref: 't3.z')
+├── G10: (equal 8 9)
+├── G11: (innerjoin 1 12) (innerjoin 12 1) (innerjoin 3 4)
+└── G12: (innerjoin 4 2) (innerjoin 2 4)
+`,
+		},
+		{
+			name: "test fast reordering algorithm on bushy join",
+			// Optimized plan appears as G16: (innerjoin 7 17)
+			in: plan.NewInnerJoin(
+				plan.NewInnerJoin(
+					tableNode(db, "t3"),
+					tableNode(db, "t4"),
+					newEq("t3.x = t4.z"),
+				),
+				plan.NewInnerJoin(
+					tableNode(db, "t1"),
+					tableNode(db, "t2"),
+					newEq("t1.x = t2.z"),
+				),
+				newEq("t2.x = t3.z"),
+			),
+
+			forceFastReorder: true,
+			plans: `memo:
+├── G1: (tablescan: t3)
+├── G2: (tablescan: t4)
+├── G3: (colref: 't3.x')
+├── G4: (colref: 't4.z')
+├── G5: (equal 3 4)
+├── G6: (innerjoin 1 2) (innerjoin 2 1) (innerjoin 1 2)
+├── G7: (tablescan: t1)
+├── G8: (tablescan: t2)
+├── G9: (colref: 't1.x')
+├── G10: (colref: 't2.z')
+├── G11: (equal 9 10)
+├── G12: (innerjoin 7 8)
+├── G13: (colref: 't2.x')
+├── G14: (colref: 't3.z')
+├── G15: (equal 13 14)
+├── G16: (innerjoin 7 17) (innerjoin 17 7) (innerjoin 6 12)
+└── G17: (innerjoin 8 6) (innerjoin 6 8)
+`,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			j := NewJoinOrderBuilder(NewMemo(newContext(pro), nil, nil, 0, NewDefaultCoster(), NewDefaultCarder()))
+			j.forceFastDFSLookupForTest = tt.forceFastReorder
 			j.ReorderJoin(tt.in)
 			require.Equal(t, tt.plans, j.m.String())
 		})
@@ -674,14 +742,17 @@ func TestEnsureClosure(t *testing.T) {
 	}
 }
 
-var childSchema = sql.NewPrimaryKeySchema(sql.Schema{
-	{Name: "x", Type: types.Int64, Nullable: true},
-	{Name: "y", Type: types.Text, Nullable: true},
-	{Name: "z", Type: types.Int64, Nullable: true},
-}, 0)
+func childSchema(source string) sql.PrimaryKeySchema {
+	return sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "x", Source: source, Type: types.Int64, Nullable: false},
+		{Name: "y", Source: source, Type: types.Text, Nullable: true},
+		{Name: "z", Source: source, Type: types.Int64, Nullable: true},
+	}, 0)
+}
 
 func tableNode(db *memory.Database, name string) sql.Node {
-	t := memory.NewTable(db, name, childSchema, nil)
+	t := memory.NewTable(db, name, childSchema(name), nil)
+	t.EnablePrimaryKeyIndexes()
 	return plan.NewResolvedTable(t, nil, nil)
 }
 

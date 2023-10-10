@@ -402,7 +402,7 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 			p := expression.NewLiteral(1, types.Int64)
 			projectExpressions = append(projectExpressions, m.MemoizeScalar(p))
 			gf := expression.NewGetField(0, types.Int64, "1", true)
-			m.Columns[gf.String()] = sql.ColumnId(len(m.Columns) + 1)
+			m.AddColumnId(gf.Table(), gf.Name())
 			m.MemoizeScalar(gf)
 			nullify = append(nullify, gf)
 		}
