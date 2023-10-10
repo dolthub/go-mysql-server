@@ -329,6 +329,11 @@ func (i *IndexedTableAccess) WithExpressions(exprs ...sql.Expression) (sql.Node,
 	return &ret, nil
 }
 
+func (i IndexedTableAccess) WithTable(table sql.IndexedTable) (sql.Node, error) {
+	i.Table = table
+	return &i, nil
+}
+
 // Partitions implements sql.Table
 func (i *IndexedTableAccess) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 	return i.Table.LookupPartitions(ctx, i.lookup)
