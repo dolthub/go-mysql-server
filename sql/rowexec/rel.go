@@ -778,7 +778,7 @@ func (b *BaseBuilder) buildResolvedTable(ctx *sql.Context, n *plan.ResolvedTable
 	var iter sql.RowIter
 	iter = sql.NewTableRowIter(ctx, n.Table, partitions)
 	
-	if vct, ok := findVirtualColumnTable(n.Table); ok {
+	if vct, ok := plan.FindVirtualColumnTable(n.Table); ok {
 		iter, err = b.buildVirtualColumnTable(ctx, vct, iter, row)
 		if err != nil {
 			return nil, err
@@ -786,17 +786,6 @@ func (b *BaseBuilder) buildResolvedTable(ctx *sql.Context, n *plan.ResolvedTable
 	}
 	
 	return sql.NewSpanIter(span, iter), nil
-}
-
-// findVirtualColumnTable returns the plan.VirtualTableColumn being wrapped by the given table, if any.
-func findVirtualColumnTable(table sql.Table) (*plan.VirtualColumnTable, bool) {
-	if vct, ok := table.(*plan.VirtualColumnTable); ok {
-		return vct, true	
-	}
-	if tw, ok := table.(sql.TableWrapper); ok {
-		return findVirtualColumnTable(tw.Underlying())
-	}
-	return nil, false
 }
 
 func (b *BaseBuilder) buildTableCount(_ *sql.Context, n *plan.TableCountLookup, _ sql.Row) (sql.RowIter, error) {

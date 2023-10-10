@@ -92,3 +92,15 @@ func (v *VirtualColumnTable) DebugString() string {
 
 	return pr.String()
 }
+
+// FindVirtualColumnTable returns the plan.VirtualTableColumn being wrapped by the given table, if any.
+func FindVirtualColumnTable(table sql.Table) (*VirtualColumnTable, bool) {
+	if vct, ok := table.(*VirtualColumnTable); ok {
+		return vct, true
+	}
+	if tw, ok := table.(sql.TableWrapper); ok {
+		return FindVirtualColumnTable(tw.Underlying())
+	}
+	return nil, false
+}
+

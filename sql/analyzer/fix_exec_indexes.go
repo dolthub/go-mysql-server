@@ -232,17 +232,6 @@ func (s *idxScope) visitChildren(n sql.Node) error {
 	return nil
 }
 
-// findVirtualColumnTable returns the plan.VirtualTableColumn being wrapped by the given table, if any.
-func findVirtualColumnTable(table sql.Table) (*plan.VirtualColumnTable, bool) {
-	if vct, ok := table.(*plan.VirtualColumnTable); ok {
-		return vct, true
-	}
-	if tw, ok := table.(sql.TableWrapper); ok {
-		return findVirtualColumnTable(tw.Underlying())
-	}
-	return nil, false
-}
-
 // visitSelf fixes expression indexes for this node. Assumes |s.childScopes|
 // is set, any partial |s.lateralScopes| are filled, and the self scope is
 // unset.
@@ -250,7 +239,7 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 	switch n := n.(type) {
 	case *plan.ResolvedTable:
 		// VirtualColumnTable is a psuedo-node that needs to be handled like a projection
-		vct, ok := findVirtualColumnTable(n.Table)
+		vct, ok := plan.FindVirtualColumnTable(n.Table)
 		if !ok {
 			return nil
 		}
@@ -407,7 +396,7 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 		return nn.WithChecks(s.checks), nil
 	case *plan.ResolvedTable:
 		// VirtualColumnTable is a pseudo-node that needs its pseudo projections resolved
-		vct, ok := findVirtualColumnTable(n.Table)
+		vct, ok := plan.FindVirtualColumnTable(n.Table)
 		if !ok {
 			return n, nil
 		}
