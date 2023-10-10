@@ -651,8 +651,18 @@ func (b *BaseBuilder) buildIndexedTableAccess(ctx *sql.Context, n *plan.IndexedT
 	if err != nil {
 		return nil, err
 	}
+	
+	var tableIter sql.RowIter
+	tableIter = sql.NewTableRowIter(ctx, n.Table, partIter)
+	
+	if vct, ok := plan.FindVirtualColumnTable(n.Table); ok {
+		tableIter, err = b.buildVirtualColumnTable(ctx, vct, tableIter, row)
+		if err != nil {
+			return nil, err
+		}
+	}
 
-	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, n.Table, partIter)), nil
+	return sql.NewSpanIter(span, tableIter), nil
 }
 
 func (b *BaseBuilder) buildSetOp(ctx *sql.Context, s *plan.SetOp, row sql.Row) (sql.RowIter, error) {
