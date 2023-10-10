@@ -669,8 +669,9 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, name string, asof *ast.
 		return outScope, false
 	}
 
+	// TODO: this is maybe too broad for this method, we don't need this for some statements
 	if tab.Schema().HasVirtualColumns() {
-		tab = b.buildVirtualTableScan(inScope, tab)
+		tab = b.buildVirtualTableScan(db, tab)
 	}
 	
 	rt := plan.NewResolvedTable(tab, database, asOfLit)

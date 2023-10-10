@@ -169,6 +169,20 @@ func NewPartitionedTableWithCollation(db *BaseDatabase, name string, schema sql.
 			unrDef := sql.NewUnresolvedColumnDefaultValue(defStr)
 			cCopy.Default = unrDef
 		}
+		if cCopy.Generated != nil {
+			newDef, _, _ := transform.Expr(cCopy.Generated, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				switch e := e.(type) {
+				case *expression.GetField:
+					// strip table names
+					return expression.NewGetField(e.Index(), e.Type(), e.Name(), e.IsNullable()), transform.NewTree, nil
+				default:
+				}
+				return e, transform.SameTree, nil
+			})
+			defStr := newDef.String()
+			unrDef := sql.NewUnresolvedColumnDefaultValue(defStr)
+			cCopy.Generated = unrDef
+		}
 		newSchema[i] = cCopy
 	}
 

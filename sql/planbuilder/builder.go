@@ -16,6 +16,7 @@ package planbuilder
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -358,7 +359,19 @@ func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outSc
 
 // buildVirtualTableScan returns a ProjectNode for a table that has virtual columns, projecting the values of any
 // generated columns 
-func (b *Builder) buildVirtualTableScan(inScope *scope, tab sql.Table) *plan.VirtualColumnTable {
+func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualColumnTable {
+	tableScope := b.newScope()
+	for _, c := range tab.Schema() {
+		tableScope.newColumn(scopeColumn{
+			db:          strings.ToLower(db),
+			table:       strings.ToLower(tab.Name()),
+			col:         strings.ToLower(c.Name),
+			originalCol: c.Name,
+			typ:         c.Type,
+			nullable:    c.Nullable,
+		})
+	}
+	
 	projections := make([]sql.Expression, len(tab.Schema()))
 	for i, c := range tab.Schema() {
 		if !c.Virtual {
@@ -370,7 +383,7 @@ func (b *Builder) buildVirtualTableScan(inScope *scope, tab sql.Table) *plan.Vir
 			// TODO: still necessary with VirtualColumnTable?
 			projections[i] = expression.NewAlias(
 				fmt.Sprintf("%s.%s", tab.Name(), c.Name),
-				b.resolveColumnDefaultExpression(inScope, c, c.Generated))
+				b.resolveColumnDefaultExpression(tableScope, c, c.Generated))
 		}
 	}
 	

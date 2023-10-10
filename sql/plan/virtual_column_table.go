@@ -49,7 +49,7 @@ func NewVirtualColumnTable(table sql.Table, projections []sql.Expression) *Virtu
 }
 
 // WithExpressions implements the Expressioner interface.
-func (v *VirtualColumnTable) WithExpressions(exprs ...sql.Expression) (sql.TableWrapper, error) {
+func (v *VirtualColumnTable) WithExpressions(exprs ...sql.Expression) (*VirtualColumnTable, error) {
 	if len(exprs) != len(v.Projections) {
 		return nil, sql.ErrInvalidChildrenNumber.New(v, len(exprs), len(v.Projections))
 	}
