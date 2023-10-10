@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/enginetest/tmp/utils"
+	"github.com/dolthub/go-mysql-server/enginetest/sqllogictest/utils"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gocraft/dbr/v2"
@@ -75,6 +75,8 @@ func main() {
 			continue
 		}
 	}
+
+	fmt.Println("All tests passed")
 }
 
 func handleQuery(scanner *bufio.Scanner, conn *dbr.Connection) error {
