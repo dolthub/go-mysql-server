@@ -67,6 +67,11 @@ type TableWrapper interface {
 	Underlying() Table
 }
 
+type IndexedTableWrapper interface {
+	TableWrapper
+	IndexedTable
+}
+
 type MutableTableWrapper interface {
 	TableWrapper
 	WithUnderlying(Table) Table
@@ -389,4 +394,9 @@ type TableNode interface {
 	CollationCoercible
 	Databaser
 	UnderlyingTable() Table
+}
+
+type MutableWrappedTableNode interface {
+	TableNode
+	ReWrapTable(IndexedTable) (IndexedTable, error)
 }

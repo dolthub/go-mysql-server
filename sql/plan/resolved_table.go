@@ -54,6 +54,7 @@ var _ sql.Databaser = (*ResolvedTable)(nil)
 var _ sql.CommentedNode = (*ResolvedTable)(nil)
 var _ sql.RenameableNode = (*ResolvedTable)(nil)
 var _ sql.CollationCoercible = (*ResolvedTable)(nil)
+var _ sql.MutableWrappedTableNode = (*ResolvedTable)(nil)
 
 // NewResolvedTable creates a new instance of ResolvedTable.
 func NewResolvedTable(table sql.Table, db sql.Database, asOf interface{}) *ResolvedTable {
@@ -166,7 +167,7 @@ func TableDebugString(table sql.Table, additionalChildren ...string) string {
 		}
 	}
 
-	pr.WriteChildren(children...)
+	pr.WriteChildren(append(children, additionalChildren...)...)
 	return pr.String()
 }
 
@@ -229,4 +230,12 @@ func (t *ResolvedTable) WithWrappedTable(table sql.Table) (*ResolvedTable, error
 	}
 
 	return &nt, nil
+}
+
+func (t *ResolvedTable) ReWrapTable(table sql.IndexedTable) (sql.IndexedTable, error) {
+	if mtw, ok := t.Table.(sql.MutableTableWrapper); ok {
+		return mtw.WithUnderlying(table).(sql.IndexedTable), nil
+	} else {
+		return nil, fmt.Errorf("cannot rewrap table of type %T", t.Table)
+	}
 }
