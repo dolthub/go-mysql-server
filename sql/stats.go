@@ -75,9 +75,10 @@ type Histogram []Bucket
 type Bucket struct {
 	Count      uint64   `json:"count"`
 	Distinct   uint64   `json:"distinct"`
-	BoundCount uint64   `json:"bound_count"`
+	Null       uint64   `json:"null"`
 	Mcv        []Row    `json:"mcv"`
 	McvCount   []uint64 `json:"mvc_count"`
+	BoundCount uint64   `json:"bound_count"`
 	UpperBound Row      `json:"upper_bound"`
 }
 
