@@ -32,8 +32,8 @@ var SQLLogicJoinTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				// This panics somewhere in the memo
-				Skip: true,
-				Query: "SELECT * FROM foo JOIN bar ON max(foo.c) < 2",
+				Skip:           true,
+				Query:          "SELECT * FROM foo JOIN bar ON max(foo.c) < 2",
 				ExpectedErrStr: "invalid use of group function",
 			},
 			{
@@ -57,7 +57,7 @@ var SQLLogicJoinTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Skip: true,
+				Skip:  true,
 				Query: "SELECT s, str1.s, str2.s FROM str1 INNER JOIN str2 USING(s)",
 				Expected: []sql.Row{
 					{"A", "A", "A"},
@@ -66,7 +66,7 @@ var SQLLogicJoinTests = []ScriptTest{
 				},
 			},
 			{
-				Skip: true,
+				Skip:  true,
 				Query: "SELECT s, str1.s, str2.s FROM str1 LEFT OUTER JOIN str2 USING(s)",
 				Expected: []sql.Row{
 					{"a", "a", "A"},
@@ -76,7 +76,7 @@ var SQLLogicJoinTests = []ScriptTest{
 				},
 			},
 			{
-				Skip: true,
+				Skip:  true,
 				Query: "SELECT s, str1.s, str2.s FROM str1 RIGHT OUTER JOIN str2 USING(s)",
 				Expected: []sql.Row{
 					{"A", "A", "A"},
@@ -96,7 +96,7 @@ var SQLLogicJoinTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				// Syntax error
-				Skip: true,
+				Skip:  true,
 				Query: "INSERT INTO xy (VALUES ROW(1, 1))",
 				Expected: []sql.Row{
 					{types.NewOkResult(1)},
