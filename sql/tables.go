@@ -389,7 +389,7 @@ type TableNode interface {
 	Node
 	CollationCoercible
 	Databaser
-	// UnderlyingTable returns the table that this node is wrapping, recursively unwrapping any further layers of 
+	// UnderlyingTable returns the table that this node is wrapping, recursively unwrapping any further layers of
 	// wrapping to get to the base sql.Table.
 	UnderlyingTable() Table
 }
@@ -404,7 +404,7 @@ type MutableTableNode interface {
 	// WithTable returns a new TableNode with the table given. If the MutableTableNode has a MutableTableWrapper, it must
 	// re-wrap the table given with this wrapper.
 	WithTable(Table) (MutableTableNode, error)
-	// ReplaceTable replaces the table with the table given, with no re-wrapping semantics. 
+	// ReplaceTable replaces the table with the table given, with no re-wrapping semantics.
 	ReplaceTable(table Table) (MutableTableNode, error)
 	// WrappedTable returns the Table this node wraps, without unwinding any additional layers of wrapped tables.
 	WrappedTable() Table

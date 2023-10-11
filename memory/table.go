@@ -493,8 +493,8 @@ func normalizeRowForRead(row sql.Row, numColumns int, columns []int, virtualCols
 	var virtualRow sql.Row
 
 	// Columns are the indexes of projected columns, which we don't always have. In either case, we are filling the row
-	// with nil values for virtual columns. The simple iteration below only works when the column and virtual column 
-	// indexes are in ascending order, which is true for the time being. 
+	// with nil values for virtual columns. The simple iteration below only works when the column and virtual column
+	// indexes are in ascending order, which is true for the time being.
 	var j int
 	if len(columns) != 0 {
 		virtualRow = make(sql.Row, len(columns))
