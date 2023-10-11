@@ -26,7 +26,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
-	"github.com/dolthub/go-mysql-server/sql/stats"
 )
 
 type Catalog struct {
@@ -348,15 +347,15 @@ func (c *Catalog) RefreshTableStats(ctx *sql.Context, table sql.Table, db string
 	return c.StatsProvider.RefreshTableStats(ctx, table, db)
 }
 
-func (c *Catalog) GetTableStats(ctx *sql.Context, db, table string) ([]*stats.Stats, error) {
+func (c *Catalog) GetTableStats(ctx *sql.Context, db, table string) ([]*sql.Stats, error) {
 	return c.StatsProvider.GetTableStats(ctx, db, table)
 }
 
-func (c *Catalog) SetStats(ctx *sql.Context, db, table string, stats *stats.Stats) error {
+func (c *Catalog) SetStats(ctx *sql.Context, db, table string, stats *sql.Stats) error {
 	return c.StatsProvider.SetStats(ctx, db, table, stats)
 }
 
-func (c *Catalog) GetStats(ctx *sql.Context, db, table string, cols []string) (*stats.Stats, bool) {
+func (c *Catalog) GetStats(ctx *sql.Context, db, table string, cols []string) (*sql.Stats, bool) {
 	return c.StatsProvider.GetStats(ctx, db, table, cols)
 }
 

@@ -2,8 +2,6 @@ package sql
 
 import (
 	"fmt"
-
-	"github.com/dolthub/go-mysql-server/sql/stats"
 )
 
 type MapCatalog struct {
@@ -113,17 +111,17 @@ func (t MapCatalog) RefreshTableStats(ctx *Context, table Table, db string) erro
 	panic("implement me")
 }
 
-func (t MapCatalog) GetTableStats(ctx *Context, db, table string) ([]*stats.Stats, error) {
+func (t MapCatalog) GetTableStats(ctx *Context, db, table string) ([]*Stats, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (t MapCatalog) SetStats(ctx *Context, db, table string, stats *stats.Stats) error {
+func (t MapCatalog) SetStats(ctx *Context, db, table string, stats *Stats) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (t MapCatalog) GetStats(ctx *Context, db, table string, cols []string) (*stats.Stats, bool) {
+func (t MapCatalog) GetStats(ctx *Context, db, table string, cols []string) (*Stats, bool) {
 	//TODO implement me
 	panic("implement me")
 }

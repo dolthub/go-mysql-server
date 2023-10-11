@@ -14,10 +14,6 @@
 
 package sql
 
-import (
-	"github.com/dolthub/go-mysql-server/sql/stats"
-)
-
 // StatisticsTable is a table that can provide information about its number of rows and other facts to improve query
 // planning performance.
 type StatisticsTable interface {
@@ -30,13 +26,13 @@ type StatisticsTable interface {
 
 type StatsProvider interface {
 	// GetTableStats returns all statistics for the table
-	GetTableStats(ctx *Context, db, table string) ([]*stats.Stats, error)
+	GetTableStats(ctx *Context, db, table string) ([]*Stats, error)
 	// RefreshTableStats updates all statistics associated with a given table
 	RefreshTableStats(ctx *Context, table Table, db string) error
 	// SetStats updates or overwrites a set of table statistics
-	SetStats(ctx *Context, db, table string, stats *stats.Stats) error
+	SetStats(ctx *Context, db, table string, stats *Stats) error
 	// GetStats fetches a set of statistics for a set of table columns
-	GetStats(ctx *Context, db, table string, cols []string) (*stats.Stats, bool)
+	GetStats(ctx *Context, db, table string, cols []string) (*Stats, bool)
 	// DropStats deletes a set of column statistics
 	DropStats(ctx *Context, db, table string, cols []string) error
 	// RowCount returns the number of rows in a table

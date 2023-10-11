@@ -17,8 +17,6 @@ package queries
 import (
 	"github.com/dolthub/vitess/go/sqltypes"
 
-	"github.com/dolthub/go-mysql-server/sql/stats"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -1644,7 +1642,7 @@ var StatisticsQueries = []ScriptTest{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
 					{"mydb", "t", "i", types.JSONDocument{Val: map[string]interface{}{
-						"buckets": stats.Histogram{
+						"buckets": sql.Histogram{
 							{
 								Count:      1,
 								Distinct:   1,
@@ -1684,7 +1682,7 @@ var StatisticsQueries = []ScriptTest{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
 					{"mydb", "t", "i", types.JSONDocument{Val: map[string]interface{}{
-						"buckets": stats.Histogram{
+						"buckets": sql.Histogram{
 							{
 								Count:      20,
 								BoundCount: 1,
@@ -1721,7 +1719,7 @@ var StatisticsQueries = []ScriptTest{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
 					{"mydb", "t", "i", types.JSONDocument{Val: map[string]interface{}{
-						"buckets": stats.Histogram{
+						"buckets": sql.Histogram{
 							{
 								Count:      1,
 								Distinct:   1,
@@ -1743,7 +1741,7 @@ var StatisticsQueries = []ScriptTest{
 						},
 					}}},
 					{"mydb", "t", "j", types.JSONDocument{Val: map[string]interface{}{
-						"buckets": stats.Histogram{
+						"buckets": sql.Histogram{
 							{
 								Count:      1,
 								Distinct:   1,
@@ -1780,7 +1778,7 @@ var StatisticsQueries = []ScriptTest{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
 					{"mydb", "t", "i", types.JSONDocument{Val: map[string]interface{}{
-						"buckets": stats.Histogram{
+						"buckets": sql.Histogram{
 							{
 								Count:      1,
 								Distinct:   1,

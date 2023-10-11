@@ -11,19 +11,18 @@ import (
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/stats"
 )
 
 func NewStatsProv() *StatsProv {
 	return &StatsProv{
-		colStats: make(map[statsKey]*stats.Stats),
+		colStats: make(map[statsKey]*sql.Stats),
 	}
 }
 
 type statsKey string
 
 type StatsProv struct {
-	colStats map[statsKey]*stats.Stats
+	colStats map[statsKey]*sql.Stats
 }
 
 var _ sql.StatsProvider = (*StatsProv)(nil)
@@ -112,7 +111,7 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 			bucketCnt = len(keyVals)
 		}
 		offset := len(keyVals) / bucketCnt
-		histogram := make([]stats.Bucket, bucketCnt)
+		histogram := make([]sql.Bucket, bucketCnt)
 		for i := range histogram {
 			histogram[i].UpperBound = keyVals[i*offset]
 			histogram[i].Count = uint64(offset)
@@ -127,7 +126,7 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 			types = append(types, sch[i].Type.String())
 		}
 
-		s.colStats[key] = &stats.Stats{
+		s.colStats[key] = &sql.Stats{
 			Rows:      rowCount,
 			Distinct:  rowCount,
 			AvgSize:   dataLen,
@@ -199,9 +198,9 @@ func (s *StatsProv) reservoirSample(ctx *sql.Context, table sql.Table) ([]sql.Ro
 	return queue, nil
 }
 
-func (s *StatsProv) GetTableStats(ctx *sql.Context, db, table string) ([]*stats.Stats, error) {
+func (s *StatsProv) GetTableStats(ctx *sql.Context, db, table string) ([]*sql.Stats, error) {
 	pref := fmt.Sprintf("%s.%s", strings.ToLower(db), strings.ToLower(table))
-	var ret []*stats.Stats
+	var ret []*sql.Stats
 	for key, stats := range s.colStats {
 		if strings.HasPrefix(string(key), pref) {
 			ret = append(ret, stats)
@@ -210,13 +209,13 @@ func (s *StatsProv) GetTableStats(ctx *sql.Context, db, table string) ([]*stats.
 	return ret, nil
 }
 
-func (s *StatsProv) SetStats(ctx *sql.Context, db, table string, stats *stats.Stats) error {
+func (s *StatsProv) SetStats(ctx *sql.Context, db, table string, stats *sql.Stats) error {
 	key := statsKey(fmt.Sprintf("%s.%s.(%s)", strings.ToLower(db), strings.ToLower(table), strings.Join(stats.Columns, ",")))
 	s.colStats[key] = stats
 	return nil
 }
 
-func (s *StatsProv) GetStats(ctx *sql.Context, db, table string, cols []string) (*stats.Stats, bool) {
+func (s *StatsProv) GetStats(ctx *sql.Context, db, table string, cols []string) (*sql.Stats, bool) {
 	key := statsKey(fmt.Sprintf("%s.%s.(%s)", strings.ToLower(db), strings.ToLower(table), strings.Join(cols, ",")))
 	if stats, ok := s.colStats[key]; ok {
 		return stats, false

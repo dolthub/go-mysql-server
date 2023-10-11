@@ -24,7 +24,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/stats"
 )
 
 func (b *Builder) buildAnalyze(inScope *scope, n *ast.Analyze, query string) (outScope *scope) {
@@ -120,7 +119,7 @@ func (b *Builder) buildAnalyzeTables(inScope *scope, n *ast.Analyze, query strin
 
 func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tableName string, columns, types []string) (outScope *scope) {
 	outScope = inScope.push()
-	statistics := new(stats.Stats)
+	statistics := new(sql.Stats)
 	using := b.buildScalar(inScope, n.Using)
 	if l, ok := using.(*expression.Literal); ok {
 		if typ, ok := l.Type().(sql.StringType); ok {
@@ -145,12 +144,6 @@ func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tab
 	statistics.Columns = columns
 	statistics.Types = types
 	for i, b := range statistics.Histogram {
-		switch val := b.UpperBound.(type) {
-		case []interface{}:
-			b.UpperBound = sql.Row(val)
-		default:
-			b.UpperBound = sql.Row{val}
-		}
 		if b.BoundCount == 0 {
 			b.BoundCount = 1
 		}

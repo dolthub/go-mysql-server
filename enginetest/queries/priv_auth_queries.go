@@ -24,7 +24,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/stats"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -1695,7 +1694,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				Query: "SELECT * FROM information_schema.column_statistics where schema_name = 'mydb';",
 				Expected: []sql.Row{
 					{"mydb", "one", "f", types.JSONDocument{Val: map[string]interface{}{
-						"buckets": stats.Histogram{
+						"buckets": sql.Histogram{
 							{
 								Count:      1,
 								Distinct:   1,
@@ -1736,7 +1735,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				Query: "SELECT * FROM information_schema.column_statistics where schema_name = 'mydb';",
 				Expected: []sql.Row{
 					{"mydb", "one", "f", types.JSONDocument{Val: map[string]interface{}{
-						"buckets": stats.Histogram{
+						"buckets": sql.Histogram{
 							{
 								Count:      1,
 								Distinct:   1,
@@ -1764,7 +1763,7 @@ var UserPrivTests = []UserPrivilegeTest{
 						},
 					}}},
 					{"mydb", "two", "i", types.JSONDocument{Val: map[string]interface{}{
-						"buckets": stats.Histogram{
+						"buckets": sql.Histogram{
 							{
 								Count:      1,
 								Distinct:   1,
@@ -1786,7 +1785,7 @@ var UserPrivTests = []UserPrivilegeTest{
 						},
 					}}},
 					{"mydb", "two", "j", types.JSONDocument{Val: map[string]interface{}{
-						"buckets": stats.Histogram{
+						"buckets": sql.Histogram{
 							{
 								Count:      1,
 								Distinct:   1,

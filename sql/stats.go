@@ -1,4 +1,4 @@
-package stats
+package sql
 
 import (
 	"fmt"
@@ -73,12 +73,12 @@ func (s *Stats) String() string {
 type Histogram []Bucket
 
 type Bucket struct {
-	Count      uint64        `json:"count"`
-	Distinct   uint64        `json:"distinct"`
-	BoundCount uint64        `json:"bound_count"`
-	Mcv        []interface{} `json:"mcv"`
-	McvCount   []uint64      `json:"mvc_count"`
-	UpperBound interface{}   `json:"upper_bound"`
+	Count      uint64   `json:"count"`
+	Distinct   uint64   `json:"distinct"`
+	BoundCount uint64   `json:"bound_count"`
+	Mcv        []Row    `json:"mcv"`
+	McvCount   []uint64 `json:"mvc_count"`
+	UpperBound Row      `json:"upper_bound"`
 }
 
 func (h Histogram) String() string {
