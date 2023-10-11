@@ -49,19 +49,6 @@ func NewVirtualColumnTable(table sql.Table, projections []sql.Expression) *Virtu
 	}
 }
 
-// WithExpressions implements the Expressioner interface.
-func (v *VirtualColumnTable) WithExpressions(exprs ...sql.Expression) (*VirtualColumnTable, error) {
-	if len(exprs) != len(v.Projections) {
-		return nil, sql.ErrInvalidChildrenNumber.New(v, len(exprs), len(v.Projections))
-	}
-
-	return NewVirtualColumnTable(v.Table, exprs), nil
-}
-
-func (v *VirtualColumnTable) Expressions() []sql.Expression {
-	return v.Projections
-}
-
 func (v *VirtualColumnTable) LookupPartitions(context *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
 	// this will panic if we fail to correctly unwrap the underlying table during analysis to determine if it supports
 	// index lookups

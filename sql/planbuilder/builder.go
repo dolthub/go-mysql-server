@@ -18,6 +18,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -360,7 +361,9 @@ func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outSc
 // generated columns
 func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualColumnTable {
 	tableScope := b.newScope()
-	for _, c := range tab.Schema() {
+	schema := tab.Schema()
+	
+	for _, c := range schema {
 		tableScope.newColumn(scopeColumn{
 			db:          strings.ToLower(db),
 			table:       strings.ToLower(tab.Name()),
@@ -371,8 +374,8 @@ func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualC
 		})
 	}
 
-	projections := make([]sql.Expression, len(tab.Schema()))
-	for i, c := range tab.Schema() {
+	projections := make([]sql.Expression, len(schema))
+	for i, c := range schema {
 		if !c.Virtual {
 			projections[i] = expression.NewGetFieldWithTable(i, c.Type, tab.Name(), c.Name, c.Nullable)
 		} else {
@@ -380,5 +383,23 @@ func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualC
 		}
 	}
 
+	// Unlike other kinds of nodes, the projection on this table wrapper is invisible to the analyzer, so we need to 
+	// get the column indexes correct here, they won't be fixed later like other kinds of expressions.
+	for i, p := range projections {
+		projections[i] = assignColumnIndexes(p, schema)
+	}
+
 	return plan.NewVirtualColumnTable(tab, projections)
+}
+
+// assignColumnIndexes fixes the column indexes in the expression to match the schema given
+func assignColumnIndexes(e sql.Expression, schema sql.Schema) sql.Expression {
+	e, _, _ = transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		if gf, ok := e.(*expression.GetField); ok {
+			idx := schema.IndexOfColName(gf.Name())
+			return gf.WithIndex(idx), transform.NewTree, nil
+		}
+		return e, transform.SameTree, nil	
+	})
+	return e
 }
