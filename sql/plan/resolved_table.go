@@ -38,6 +38,10 @@ func (t *ResolvedTable) UnderlyingTable() sql.Table {
 	return t.Table
 }
 
+func (t *ResolvedTable) WrappedTable() sql.Table {
+	return t.Table
+}
+
 func (t *ResolvedTable) Database() sql.Database {
 	return t.SqlDatabase
 }
@@ -54,7 +58,7 @@ var _ sql.Databaser = (*ResolvedTable)(nil)
 var _ sql.CommentedNode = (*ResolvedTable)(nil)
 var _ sql.RenameableNode = (*ResolvedTable)(nil)
 var _ sql.CollationCoercible = (*ResolvedTable)(nil)
-var _ sql.MutableWrappedTableNode = (*ResolvedTable)(nil)
+var _ sql.MutableTableNode = (*ResolvedTable)(nil)
 
 // NewResolvedTable creates a new instance of ResolvedTable.
 func NewResolvedTable(table sql.Table, db sql.Database, asOf interface{}) *ResolvedTable {
@@ -204,38 +208,28 @@ func (*ResolvedTable) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 	return sql.Collation_binary, 7
 }
 
-// WithTable returns this Node with the given table. The new table should have the same name as the previous table.
-func (t *ResolvedTable) WithTable(table sql.Table) (*ResolvedTable, error) {
-	if t.Name() != table.Name() {
-		return nil, fmt.Errorf("attempted to update TableNode `%s` with table `%s`", t.Name(), table.Name())
-	}
-	nt := *t
-
-	nt.Table = table
-	return &nt, nil
-}
-
-// WithWrappedTable returns this Node with the given table, re-wrapping it with any MutableTableWrapper that was
+// WithTable returns this Node with the given table, re-wrapping it with any MutableTableWrapper that was
 // wrapping it prior to this call.
-func (t *ResolvedTable) WithWrappedTable(table sql.Table) (*ResolvedTable, error) {
+func (t ResolvedTable) WithTable(table sql.Table) (sql.MutableTableNode, error) {
 	if t.Name() != table.Name() {
 		return nil, fmt.Errorf("attempted to update TableNode `%s` with table `%s`", t.Name(), table.Name())
 	}
-	nt := *t
 
-	if mtw, ok := nt.Table.(sql.MutableTableWrapper); ok {
-		nt.Table = mtw.WithUnderlying(table)
+	if mtw, ok := t.Table.(sql.MutableTableWrapper); ok {
+		t.Table = mtw.WithUnderlying(table)
 	} else {
-		nt.Table = table
+		t.Table = table
 	}
 
-	return &nt, nil
+	return &t, nil
 }
 
-func (t *ResolvedTable) ReWrapTable(table sql.IndexedTable) (sql.IndexedTable, error) {
-	if mtw, ok := t.Table.(sql.MutableTableWrapper); ok {
-		return mtw.WithUnderlying(table).(sql.IndexedTable), nil
+// ReplaceTable returns this Node with the given table without performing any re-wrapping of any MutableTableWrapper
+func (t ResolvedTable) ReplaceTable(table sql.Table) (sql.MutableTableNode, error) {
+	if t.Name() != table.Name() {
+		return nil, fmt.Errorf("attempted to update TableNode `%s` with table `%s`", t.Name(), table.Name())
 	}
 
-	return table, nil
+	t.Table = table
+	return &t, nil
 }

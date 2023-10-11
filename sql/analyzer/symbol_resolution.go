@@ -217,7 +217,7 @@ func pruneTableCols(
 		}
 	}
 
-	ret, err := n.WithWrappedTable(ptab.WithProjections(cols))
+	ret, err := n.WithTable(ptab.WithProjections(cols))
 	if err != nil {
 		return n, transform.SameTree, nil
 	}

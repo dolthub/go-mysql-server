@@ -82,11 +82,18 @@ func NewIndexedAccessForTableNode(node sql.TableNode, lb *LookupBuilder) (*Index
 		return nil, err
 	}
 
-	if wrn, ok := node.(sql.MutableWrappedTableNode); ok {
-		indexedTable, err = wrn.ReWrapTable(indexedTable)
+	if mtn, ok := node.(sql.MutableTableNode); ok {
+		mtn, err = mtn.WithTable(indexedTable)
 		if err != nil {
 			return nil, err
 		}
+		
+		indexedTable, ok = mtn.WrappedTable().(sql.IndexedTable)
+		if !ok {
+			return nil, fmt.Errorf("table is not index addressable: %s", table.Name())
+		}
+		
+		node = mtn
 	}
 
 	return &IndexedTableAccess{
@@ -112,12 +119,19 @@ func NewStaticIndexedAccessForTableNode(node sql.TableNode, lookup sql.IndexLook
 	}
 	indexedTable := iaTable.IndexedAccess(lookup)
 
-	if wrn, ok := node.(sql.MutableWrappedTableNode); ok {
+	if mtn, ok := node.(sql.MutableTableNode); ok {
 		var err error
-		indexedTable, err = wrn.ReWrapTable(indexedTable)
+		mtn, err = mtn.WithTable(indexedTable)
 		if err != nil {
 			return nil, err
 		}
+		
+		indexedTable, ok = mtn.WrappedTable().(sql.IndexedTable)
+		if !ok {
+			return nil, fmt.Errorf("table is not index addressable: %s", table.Name())
+		}
+		
+		node = mtn
 	}
 
 	return &IndexedTableAccess{

@@ -67,11 +67,7 @@ type TableWrapper interface {
 	Underlying() Table
 }
 
-type IndexedTableWrapper interface {
-	TableWrapper
-	IndexedTable
-}
-
+// MutableTableWrapper is a TableWrapper that can change its underlying table.
 type MutableTableWrapper interface {
 	TableWrapper
 	WithUnderlying(Table) Table
@@ -396,7 +392,16 @@ type TableNode interface {
 	UnderlyingTable() Table
 }
 
-type MutableWrappedTableNode interface {
+// MutableTableNode is a TableNode that can update its underlying table. TableNodes that have a MutableTableWrapper
+// underlying them must re-wrap the table given with the existing wrapper. Some uses of these methods might require
+// that the table wrapper implement all the same subinterfaces as the wrapped table, e.g. IndexedTable, 
+// ProjectableTable, etc. Callers of these methods should verify that the MutableTableNode's new table respects this 
+// contract.
+type MutableTableNode interface {
 	TableNode
-	ReWrapTable(IndexedTable) (IndexedTable, error)
+	// WithTable returns a new TableNode with the table given. If the MutableTableNode has a MutableTableWrapper, it must
+	// re-wrap the table given with this wrapper.
+	WithTable(Table) (MutableTableNode, error)
+	// WrappedTable returns the Table this node wraps, without unwinding any additional layers of wrapped tables.
+	WrappedTable() Table
 }
