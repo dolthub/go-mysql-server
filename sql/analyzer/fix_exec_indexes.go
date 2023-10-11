@@ -383,98 +383,45 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 		nn.Destination = s.children[1]
 		nn.OnDupExprs = s.expressions
 		return nn.WithChecks(s.checks), nil
-	case *plan.ResolvedTable:
-		// VirtualColumnTable is a pseudo-node that needs its pseudo projections resolved
-		vct, ok := plan.FindVirtualColumnTable(n.Table)
-		if !ok {
-			return s.finalizeSelfDefault(n)
-		}
-
-		virtScope := s.push()
-		virtScope.addSchema(vct.Schema())
-		for _, e := range vct.Expressions() {
-			virtScope.expressions = append(virtScope.expressions, fixExprToScope(e, virtScope))
-		}
-
-		vct, err := vct.WithExpressions(virtScope.expressions...)
-		if err != nil {
-			return nil, err
-		}
-
-		newNode, err := n.WithTable(vct)
-		if err != nil {
-			return nil, err
-		}
-
-		return s.finalizeSelfDefault(newNode)
-	case *plan.IndexedTableAccess:
-		// VirtualColumnTable is a pseudo-node that needs its pseudo projections resolved
-		vct, ok := plan.FindVirtualColumnTable(n.Table)
-		if !ok {
-			return s.finalizeSelfDefault(n)
-		}
-
-		virtScope := s.push()
-		virtScope.addSchema(vct.Schema())
-		for _, e := range vct.Expressions() {
-			virtScope.expressions = append(virtScope.expressions, fixExprToScope(e, virtScope))
-		}
-
-		vct, err := vct.WithExpressions(virtScope.expressions...)
-		if err != nil {
-			return nil, err
-		}
-
-		newNode, err := n.WithTable(vct)
-		if err != nil {
-			return nil, err
-		}
-
-		return s.finalizeSelfDefault(newNode)
 	default:
-		return s.finalizeSelfDefault(n)
-	}
-}
-
-// finalizeSelfDefault handles the logic for fixing index assignments for most nodes that don't require special treatment
-func (s *idxScope) finalizeSelfDefault(n sql.Node) (sql.Node, error) {
-	// child scopes don't account for projections
-	s.addSchema(n.Schema())
-	var err error
-	if s.children != nil {
-		n, err = n.WithChildren(s.children...)
-		if err != nil {
-			return nil, err
+		// child scopes don't account for projections
+		s.addSchema(n.Schema())
+		var err error
+		if s.children != nil {
+			n, err = n.WithChildren(s.children...)
+			if err != nil {
+				return nil, err
+			}
 		}
-	}
-	if ne, ok := n.(sql.Expressioner); ok && s.expressions != nil {
-		n, err = ne.WithExpressions(s.expressions...)
-		if err != nil {
-			return nil, err
+		if ne, ok := n.(sql.Expressioner); ok && s.expressions != nil {
+			n, err = ne.WithExpressions(s.expressions...)
+			if err != nil {
+				return nil, err
+			}
 		}
-	}
-	if nc, ok := n.(sql.CheckConstraintNode); ok && s.checks != nil {
-		n = nc.WithChecks(s.checks)
-	}
-	if jn, ok := n.(*plan.JoinNode); ok {
-		if len(s.parentScopes) == 0 {
-			return n, nil
+		if nc, ok := n.(sql.CheckConstraintNode); ok && s.checks != nil {
+			n = nc.WithChecks(s.checks)
 		}
-		// TODO: combine scopes?
-		scopeLen := len(s.parentScopes[0].columns)
-		if scopeLen == 0 {
-			return n, nil
+		if jn, ok := n.(*plan.JoinNode); ok {
+			if len(s.parentScopes) == 0 {
+				return n, nil
+			}
+			// TODO: combine scopes?
+			scopeLen := len(s.parentScopes[0].columns)
+			if scopeLen == 0 {
+				return n, nil
+			}
+			n = jn.WithScopeLen(scopeLen)
+			n, err = n.WithChildren(
+				plan.NewStripRowNode(jn.Left(), scopeLen),
+				plan.NewStripRowNode(jn.Right(), scopeLen),
+			)
+			if err != nil {
+				return nil, err
+			}
 		}
-		n = jn.WithScopeLen(scopeLen)
-		n, err = n.WithChildren(
-			plan.NewStripRowNode(jn.Left(), scopeLen),
-			plan.NewStripRowNode(jn.Right(), scopeLen),
-		)
-		if err != nil {
-			return nil, err
-		}
+		return n, nil
 	}
-	return n, nil
 }
 
 func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
