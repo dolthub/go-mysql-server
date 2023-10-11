@@ -222,9 +222,12 @@ func (t *ProcessTable) PartitionRows(ctx *sql.Context, p sql.Partition) (sql.Row
 func (t *ProcessTable) DebugString() string {
 	tp := sql.NewTreePrinter()
 	_ = tp.WriteNode("ProcessTable")
+	
 	underlying := t.Underlying()
-	if _, ok := underlying.(sql.DebugStringer); ok {
-		_ = tp.WriteChildren(sql.DebugString(underlying))
+	if _, ok := underlying.(sql.TableWrapper); ok {
+		if _, ok := underlying.(sql.DebugStringer); ok {
+			_ = tp.WriteChildren(sql.DebugString(underlying))
+		}
 	} else {
 		_ = tp.WriteChildren(underlying.String())
 	}
