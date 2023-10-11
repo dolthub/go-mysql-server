@@ -111,6 +111,13 @@ func (ps PrivilegeSet) AddTable(dbName string, tblName string, privileges ...sql
 	}
 }
 
+func (ps PrivilegeSet) AddRoutine(dbName string, procName string, isProc bool, privileges ...sql.PrivilegeType) {
+	procSet := ps.getUseableDb(dbName).getUseableRoutine(procName, isProc)
+	for _, priv := range privileges {
+		procSet.privs[priv] = struct{}{}
+	}
+}
+
 // AddColumn adds the given column privilege(s).
 func (ps PrivilegeSet) AddColumn(dbName string, tblName string, colName string, privileges ...sql.PrivilegeType) {
 	colSet := ps.getUseableDb(dbName).getUseableTbl(tblName).getUseableCol(colName)
@@ -167,6 +174,17 @@ func (ps PrivilegeSet) RemoveColumn(dbName string, tblName string, colName strin
 		for _, priv := range privileges {
 			delete(colSet.privs, priv)
 		}
+	}
+}
+
+func (ps PrivilegeSet) RemoveRoutine(dbName string, procName string, isProc bool, privileges ...sql.PrivilegeType) {
+	procSet := ps.getUseableDb(dbName).getUseableRoutine(procName, isProc)
+	for _, priv := range privileges {
+		delete(procSet.privs, priv)
+	}
+
+	if len(procSet.privs) == 0 {
+		delete(ps.getUseableDb(dbName).routines, routineKey{name: procName, isProc: isProc})
 	}
 }
 
@@ -367,20 +385,28 @@ func (ps PrivilegeSet) getUseableDb(dbName string) PrivilegeSetDatabase {
 	dbSet, ok := ps.databases[lowerDbName]
 	if !ok {
 		dbSet = PrivilegeSetDatabase{
-			name:   dbName,
-			privs:  make(map[sql.PrivilegeType]struct{}),
-			tables: make(map[string]PrivilegeSetTable),
+			name:     dbName,
+			privs:    make(map[sql.PrivilegeType]struct{}),
+			tables:   make(map[string]PrivilegeSetTable),
+			routines: make(map[routineKey]PrivilegeSetRoutine),
 		}
 		ps.databases[lowerDbName] = dbSet
 	}
 	return dbSet
 }
 
+// routineKey is used as a key for the routines map in PrivilegeSetDatabase.
+type routineKey struct {
+	name   string
+	isProc bool // true for proc, false for func
+}
+
 // PrivilegeSetDatabase is a set containing database-level privileges.
 type PrivilegeSetDatabase struct {
-	name   string
-	privs  map[sql.PrivilegeType]struct{}
-	tables map[string]PrivilegeSetTable
+	name     string
+	privs    map[sql.PrivilegeType]struct{}
+	tables   map[string]PrivilegeSetTable
+	routines map[routineKey]PrivilegeSetRoutine
 }
 
 var _ sql.PrivilegeSetDatabase = PrivilegeSetDatabase{}
@@ -460,6 +486,27 @@ func (ps PrivilegeSetDatabase) getTables() []PrivilegeSetTable {
 	return tblSets
 }
 
+func (ps PrivilegeSetDatabase) GetRoutines() []sql.PrivilegeSetRoutine {
+	if ps.routines == nil || len(ps.routines) == 0 {
+		return []sql.PrivilegeSetRoutine{}
+	}
+
+	routineSets := make([]sql.PrivilegeSetRoutine, 0, len(ps.routines))
+
+	for _, routine := range ps.routines {
+		routineSets = append(routineSets, routine)
+	}
+
+	sort.Slice(routineSets, func(i, j int) bool {
+		if routineSets[i].RoutineName() != routineSets[j].RoutineType() {
+			return routineSets[i].RoutineName() < routineSets[j].RoutineName()
+		}
+		return routineSets[i].RoutineType() < routineSets[j].RoutineType()
+	})
+
+	return routineSets
+}
+
 // Equals returns whether the given set of privileges is equivalent to the calling set.
 func (ps PrivilegeSetDatabase) Equals(otherPsd sql.PrivilegeSetDatabase) bool {
 	otherPs := otherPsd.(PrivilegeSetDatabase)
@@ -477,6 +524,12 @@ func (ps PrivilegeSetDatabase) Equals(otherPsd sql.PrivilegeSetDatabase) bool {
 			return false
 		}
 	}
+	for routineKey, routineSet := range ps.routines {
+		if !routineSet.Equals(otherPs.routines[routineKey]) {
+			return false
+		}
+	}
+
 	return true
 }
 
@@ -505,6 +558,22 @@ func (ps PrivilegeSetDatabase) getUseableTbl(tblName string) PrivilegeSetTable {
 		ps.tables[lowerTblName] = tblSet
 	}
 	return tblSet
+}
+
+func (ps PrivilegeSetDatabase) getUseableRoutine(routineName string, isProc bool) PrivilegeSetRoutine {
+	lowerProcName := strings.ToLower(routineName)
+	rKey := routineKey{name: lowerProcName, isProc: isProc}
+
+	routineSet, ok := ps.routines[rKey]
+	if !ok {
+		routineSet = PrivilegeSetRoutine{
+			name:   routineName,
+			privs:  make(map[sql.PrivilegeType]struct{}),
+			isProc: isProc,
+		}
+		ps.routines[rKey] = routineSet
+	}
+	return routineSet
 }
 
 // unionWith merges the given set of privileges to the calling set of privileges.
@@ -737,4 +806,62 @@ func (ps PrivilegeSetColumn) clear() {
 	for priv := range ps.privs {
 		delete(ps.privs, priv)
 	}
+}
+
+type PrivilegeSetRoutine struct {
+	name   string
+	isProc bool // true = procedure, false = function
+	privs  map[sql.PrivilegeType]struct{}
+}
+
+var _ sql.PrivilegeSetRoutine = PrivilegeSetRoutine{}
+
+func (ps PrivilegeSetRoutine) Count() int {
+	return len(ps.privs)
+}
+
+func (ps PrivilegeSetRoutine) RoutineName() string {
+	return ps.name
+}
+
+func (ps PrivilegeSetRoutine) RoutineType() string {
+	if ps.isProc {
+		return "PROCEDURE"
+	} else {
+		return "FUNCTION"
+	}
+}
+
+// ToSlice returns all of the privileges contained as a sorted slice.
+func (ps PrivilegeSetRoutine) ToSlice() []sql.PrivilegeType {
+	privs := make([]sql.PrivilegeType, 0, len(ps.privs))
+	for priv := range ps.privs {
+		privs = append(privs, priv)
+	}
+	sort.Slice(privs, func(i, j int) bool {
+		return privs[i] < privs[j]
+	})
+	return privs
+}
+
+func (ps PrivilegeSetRoutine) Equals(otherPs sql.PrivilegeSetRoutine) bool {
+	if ps.RoutineName() != otherPs.RoutineName() {
+		return false
+	}
+	if ps.RoutineType() != otherPs.RoutineType() {
+		return false
+	}
+
+	thisSlice := ps.ToSlice()
+	thatSlice := otherPs.ToSlice()
+
+	if len(thisSlice) != len(thatSlice) {
+		return false
+	}
+	for i, val := range thisSlice {
+		if val != thatSlice[i] {
+			return false
+		}
+	}
+	return true
 }
