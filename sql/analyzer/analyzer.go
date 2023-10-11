@@ -523,6 +523,7 @@ func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *plan
 		err     error
 	)
 	a.Log("starting analysis of node of type: %T", n)
+	a.LogNode(n)
 	for _, batch := range a.Batches {
 		if batchSelector(batch.Desc) {
 			a.PushDebugContext(batch.Desc)

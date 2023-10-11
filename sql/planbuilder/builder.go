@@ -15,6 +15,7 @@
 package planbuilder
 
 import (
+	"strings"
 	"sync"
 
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
@@ -22,7 +23,9 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 var BinderFactory = &sync.Pool{New: func() interface{} {
@@ -352,4 +355,51 @@ func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outSc
 		return b.buildDeallocate(inScope, n)
 	}
 	return
+}
+
+// buildVirtualTableScan returns a ProjectNode for a table that has virtual columns, projecting the values of any
+// generated columns
+func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualColumnTable {
+	tableScope := b.newScope()
+	schema := tab.Schema()
+
+	for _, c := range schema {
+		tableScope.newColumn(scopeColumn{
+			db:          strings.ToLower(db),
+			table:       strings.ToLower(tab.Name()),
+			col:         strings.ToLower(c.Name),
+			originalCol: c.Name,
+			typ:         c.Type,
+			nullable:    c.Nullable,
+		})
+	}
+
+	projections := make([]sql.Expression, len(schema))
+	for i, c := range schema {
+		if !c.Virtual {
+			projections[i] = expression.NewGetFieldWithTable(i, c.Type, tab.Name(), c.Name, c.Nullable)
+		} else {
+			projections[i] = b.resolveColumnDefaultExpression(tableScope, c, c.Generated)
+		}
+	}
+
+	// Unlike other kinds of nodes, the projection on this table wrapper is invisible to the analyzer, so we need to
+	// get the column indexes correct here, they won't be fixed later like other kinds of expressions.
+	for i, p := range projections {
+		projections[i] = assignColumnIndexes(p, schema)
+	}
+
+	return plan.NewVirtualColumnTable(tab, projections)
+}
+
+// assignColumnIndexes fixes the column indexes in the expression to match the schema given
+func assignColumnIndexes(e sql.Expression, schema sql.Schema) sql.Expression {
+	e, _, _ = transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		if gf, ok := e.(*expression.GetField); ok {
+			idx := schema.IndexOfColName(gf.Name())
+			return gf.WithIndex(idx), transform.NewTree, nil
+		}
+		return e, transform.SameTree, nil
+	})
+	return e
 }

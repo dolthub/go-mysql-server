@@ -604,6 +604,10 @@ func (b *Builder) buildJSONTable(inScope *scope, t *ast.JSONTableExpr) (outScope
 }
 
 func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf) (outScope *scope, ok bool) {
+	return b.buildResolvedTable(inScope, db, name, asof)
+}
+
+func (b *Builder) buildResolvedTable(inScope *scope, db, name string, asof *ast.AsOf) (outScope *scope, ok bool) {
 	outScope = inScope.push()
 
 	if b.ViewCtx().DbName != "" {
@@ -663,6 +667,11 @@ func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf
 			return outScope, true
 		}
 		return outScope, false
+	}
+
+	// TODO: this is maybe too broad for this method, we don't need this for some statements
+	if tab.Schema().HasVirtualColumns() {
+		tab = b.buildVirtualTableScan(db, tab)
 	}
 
 	rt := plan.NewResolvedTable(tab, database, asOfLit)

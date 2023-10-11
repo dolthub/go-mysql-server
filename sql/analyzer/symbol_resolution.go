@@ -194,20 +194,14 @@ func pruneTableCols(
 	unqualifiedStar bool,
 ) (sql.Node, transform.TreeIdentity, error) {
 	table := getTable(n)
-	t, ok := table.(sql.ProjectedTable)
-	if !ok || t.Name() == plan.DualTableName {
+	ptab, ok := table.(sql.ProjectedTable)
+	if !ok || table.Name() == plan.DualTableName {
 		return n, transform.SameTree, nil
 	}
 
-	_, selectStar := parentStars[t.Name()]
+	_, selectStar := parentStars[table.Name()]
 	if unqualifiedStar {
 		selectStar = true
-	}
-
-	tab := getTable(n)
-	ptab, ok := tab.(sql.ProjectedTable)
-	if !ok {
-		return n, transform.SameTree, nil
 	}
 
 	if len(ptab.Projections()) > 0 {
@@ -215,8 +209,8 @@ func pruneTableCols(
 	}
 
 	cols := make([]string, 0)
-	source := strings.ToLower(t.Name())
-	for _, col := range t.Schema() {
+	source := strings.ToLower(table.Name())
+	for _, col := range table.Schema() {
 		c := tableCol{table: strings.ToLower(source), col: strings.ToLower(col.Name)}
 		if selectStar || parentCols[c] > 0 {
 			cols = append(cols, c.col)
@@ -319,12 +313,4 @@ func gatherTableAlias(
 	default:
 	}
 	return cols, nodeStars
-}
-
-// todo(max): implement this
-func gatherSubqueryExpression(n sql.Node) ([]tableCol, []string, bool) {
-	if sq := findSubqueryExpr(n); sq != nil {
-		return gatherOuterCols(sq.Query)
-	}
-	return nil, nil, false
 }

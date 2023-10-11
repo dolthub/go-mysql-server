@@ -133,11 +133,14 @@ func (t *tableEditor) StatementComplete(ctx *sql.Context) error {
 		sess.putTable(t.editedTable.data)
 	}
 
+	// TODO next: first problem is that column indexes are incorrect on insert
 	return nil
 }
 
 // Insert inserts a new row into the table.
 func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
+	row = t.toStorageRow(row)
+
 	if err := checkRow(t.editedTable.data.schema.Schema, row); err != nil {
 		return err
 	}
@@ -198,6 +201,8 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 
 // Delete the given row from the table.
 func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
+	row = t.toStorageRow(row)
+
 	if err := checkRow(t.editedTable.Schema(), row); err != nil {
 		return err
 	}
@@ -210,8 +215,11 @@ func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 	return nil
 }
 
-// Update the given row from the table.
+// Update updates the given row in the table.
 func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) error {
+	oldRow = t.toStorageRow(oldRow)
+	newRow = t.toStorageRow(newRow)
+
 	if err := checkRow(t.editedTable.Schema(), oldRow); err != nil {
 		return err
 	}
@@ -299,6 +307,25 @@ func (t *tableEditor) pkColumnIndexes() []int {
 func (t *tableEditor) pkColsDiffer(row, row2 sql.Row) bool {
 	pkColIdxes := t.pkColumnIndexes()
 	return !columnsMatch(pkColIdxes, nil, row, row2)
+}
+
+// toStorageRow returns the given row normalized for storage, omitting virtual columns
+func (t *tableEditor) toStorageRow(row sql.Row) sql.Row {
+	if !t.editedTable.data.schema.HasVirtualColumns() {
+		return row
+	}
+
+	storageRow := make(sql.Row, len(t.editedTable.data.schema.Schema))
+	storageRowIdx := 0
+	for i, col := range t.editedTable.data.schema.Schema {
+		if col.Virtual {
+			continue
+		}
+		storageRow[storageRowIdx] = row[i]
+		storageRowIdx++
+	}
+
+	return storageRow[:storageRowIdx]
 }
 
 // Returns whether the values for the columns given match in the two rows provided
@@ -524,7 +551,7 @@ func (pke *pkTableEditAccumulator) deleteHelper(table *TableData, row sql.Row) e
 			}
 
 			var err error
-			matches, err = rowsAreEqual(table.schema.Schema, row, partitionRow)
+			matches, err = partitionRow.Equals(row, table.schema.PhysicalSchema())
 			if err != nil {
 				return err
 			}
@@ -588,7 +615,7 @@ var _ tableEditAccumulator = (*keylessTableEditAccumulator)(nil)
 // Insert implements the tableEditAccumulator interface.
 func (k *keylessTableEditAccumulator) Insert(value sql.Row) error {
 	for i, row := range k.deletes {
-		eq, err := value.Equals(row, k.tableData.schema.Schema)
+		eq, err := value.Equals(row, k.tableData.schema.Schema.PhysicalSchema())
 		if err != nil {
 			return err
 		}
@@ -606,7 +633,7 @@ func (k *keylessTableEditAccumulator) Insert(value sql.Row) error {
 // Delete implements the tableEditAccumulator interface.
 func (k *keylessTableEditAccumulator) Delete(value sql.Row) error {
 	for i, row := range k.adds {
-		eq, err := value.Equals(row, k.tableData.schema.Schema)
+		eq, err := value.Equals(row, k.tableData.schema.Schema.PhysicalSchema())
 		if err != nil {
 			return err
 		}
@@ -697,7 +724,7 @@ func (k *keylessTableEditAccumulator) deleteHelper(table *TableData, row sql.Row
 		for partitionRowIndex, partitionRow := range partition {
 			matches = true
 			var err error
-			matches, err = rowsAreEqual(table.schema.Schema, row, partitionRow)
+			matches, err = partitionRow.Equals(row, table.schema.Schema.PhysicalSchema())
 			if err != nil {
 				return err
 			}
@@ -743,6 +770,8 @@ func formatRow(r sql.Row, idxs []int) string {
 }
 
 func checkRow(schema sql.Schema, row sql.Row) error {
+	schema = schema.PhysicalSchema()
+
 	if len(row) != len(schema) {
 		return sql.ErrUnexpectedRowLength.New(len(schema), len(row))
 	}

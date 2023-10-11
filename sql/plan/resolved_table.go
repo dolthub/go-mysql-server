@@ -38,6 +38,10 @@ func (t *ResolvedTable) UnderlyingTable() sql.Table {
 	return t.Table
 }
 
+func (t *ResolvedTable) WrappedTable() sql.Table {
+	return t.Table
+}
+
 func (t *ResolvedTable) Database() sql.Database {
 	return t.SqlDatabase
 }
@@ -54,6 +58,7 @@ var _ sql.Databaser = (*ResolvedTable)(nil)
 var _ sql.CommentedNode = (*ResolvedTable)(nil)
 var _ sql.RenameableNode = (*ResolvedTable)(nil)
 var _ sql.CollationCoercible = (*ResolvedTable)(nil)
+var _ sql.MutableTableNode = (*ResolvedTable)(nil)
 
 // NewResolvedTable creates a new instance of ResolvedTable.
 func NewResolvedTable(table sql.Table, db sql.Database, asOf interface{}) *ResolvedTable {
@@ -120,10 +125,26 @@ func (t *ResolvedTable) String() string {
 }
 
 func (t *ResolvedTable) DebugString() string {
+	table := t.Table
+	// TableWrappers may want to print their own debug info
+	if wrapper, ok := table.(sql.TableWrapper); ok {
+		if ds, ok := wrapper.(sql.DebugStringer); ok {
+			return sql.DebugString(ds)
+		}
+	}
+
+	var additionalChildren []string
+	if t.comment != "" {
+		additionalChildren = []string{fmt.Sprintf("comment: %s", t.comment)}
+	}
+
+	return TableDebugString(table, additionalChildren...)
+}
+
+func TableDebugString(table sql.Table, additionalChildren ...string) string {
 	pr := sql.NewTreePrinter()
 	pr.WriteNode("Table")
-	table := t.UnderlyingTable()
-	children := []string{fmt.Sprintf("name: %s", t.Name())}
+	children := []string{fmt.Sprintf("name: %s", table.Name())}
 
 	var columns []string
 	if pt, ok := table.(sql.ProjectedTable); ok && pt.Projections() != nil {
@@ -139,9 +160,6 @@ func (t *ResolvedTable) DebugString() string {
 		}
 	}
 	children = append(children, fmt.Sprintf("columns: %v", columns))
-	if t.comment != "" {
-		children = append(children, fmt.Sprintf("comment: %s", t.comment))
-	}
 
 	if ft, ok := table.(sql.FilteredTable); ok {
 		var filters []string
@@ -153,7 +171,7 @@ func (t *ResolvedTable) DebugString() string {
 		}
 	}
 
-	pr.WriteChildren(children...)
+	pr.WriteChildren(append(children, additionalChildren...)...)
 	return pr.String()
 }
 
@@ -190,12 +208,28 @@ func (*ResolvedTable) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 	return sql.Collation_binary, 7
 }
 
-// WithTable returns this Node with the given table. The new table should have the same name as the previous table.
-func (t *ResolvedTable) WithTable(table sql.Table) (*ResolvedTable, error) {
+// WithTable returns this Node with the given table, re-wrapping it with any MutableTableWrapper that was
+// wrapping it prior to this call.
+func (t ResolvedTable) WithTable(table sql.Table) (sql.MutableTableNode, error) {
 	if t.Name() != table.Name() {
 		return nil, fmt.Errorf("attempted to update TableNode `%s` with table `%s`", t.Name(), table.Name())
 	}
-	nt := *t
-	nt.Table = table
-	return &nt, nil
+
+	if mtw, ok := t.Table.(sql.MutableTableWrapper); ok {
+		t.Table = mtw.WithUnderlying(table)
+	} else {
+		t.Table = table
+	}
+
+	return &t, nil
+}
+
+// ReplaceTable returns this Node with the given table without performing any re-wrapping of any MutableTableWrapper
+func (t ResolvedTable) ReplaceTable(table sql.Table) (sql.MutableTableNode, error) {
+	if t.Name() != table.Name() {
+		return nil, fmt.Errorf("attempted to update TableNode `%s` with table `%s`", t.Name(), table.Name())
+	}
+
+	t.Table = table
+	return &t, nil
 }

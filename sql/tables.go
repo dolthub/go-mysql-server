@@ -67,6 +67,12 @@ type TableWrapper interface {
 	Underlying() Table
 }
 
+// MutableTableWrapper is a TableWrapper that can change its underlying table.
+type MutableTableWrapper interface {
+	TableWrapper
+	WithUnderlying(Table) Table
+}
+
 // FilteredTable is a table that can filter its result rows from RowIter using filter expressions that would otherwise
 // be applied by a separate Filter node.
 type FilteredTable interface {
@@ -383,5 +389,23 @@ type TableNode interface {
 	Node
 	CollationCoercible
 	Databaser
+	// UnderlyingTable returns the table that this node is wrapping, recursively unwrapping any further layers of
+	// wrapping to get to the base sql.Table.
 	UnderlyingTable() Table
+}
+
+// MutableTableNode is a TableNode that can update its underlying table. Different methods are provided to accommodate
+// different use cases that require working with base-level tables v. wrappers on top of them. Some uses of these
+// methods might require that return values that implement all the same subinterfaces as the wrapped table, e.g.
+// IndexedTable, ProjectableTable, etc. Callers of these methods should verify that the MutableTableNode's
+// new table respects this contract.
+type MutableTableNode interface {
+	TableNode
+	// WithTable returns a new TableNode with the table given. If the MutableTableNode has a MutableTableWrapper, it must
+	// re-wrap the table given with this wrapper.
+	WithTable(Table) (MutableTableNode, error)
+	// ReplaceTable replaces the table with the table given, with no re-wrapping semantics.
+	ReplaceTable(table Table) (MutableTableNode, error)
+	// WrappedTable returns the Table this node wraps, without unwinding any additional layers of wrapped tables.
+	WrappedTable() Table
 }

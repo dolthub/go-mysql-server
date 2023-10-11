@@ -108,7 +108,7 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 	}
 
 	tableName := strings.ToLower(s.Table.Name.String())
-	tableScope, ok := b.buildTablescan(inScope, db, tableName, asOf)
+	tableScope, ok := b.buildResolvedTable(inScope, db, tableName, asOf)
 	if !ok {
 		err := sql.ErrTableNotFound.New(tableName)
 		b.handleErr(err)
@@ -442,7 +442,7 @@ func (b *Builder) buildShowIndex(inScope *scope, s *ast.Show) (outScope *scope) 
 		dbName = b.ctx.GetCurrentDatabase()
 	}
 	tableName := strings.ToLower(s.Table.Name.String())
-	tableScope, ok := b.buildTablescan(inScope, strings.ToLower(dbName), tableName, nil)
+	tableScope, ok := b.buildResolvedTable(inScope, strings.ToLower(dbName), tableName, nil)
 	if !ok {
 		err := sql.ErrTableNotFound.New(tableName)
 		b.handleErr(err)
@@ -677,7 +677,7 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 	}
 
 	tableName := strings.ToLower(s.Table.Name.String())
-	tableScope, ok := b.buildTablescan(inScope, db, tableName, asOf)
+	tableScope, ok := b.buildResolvedTable(inScope, db, tableName, asOf)
 	if !ok {
 		err := sql.ErrTableNotFound.New(tableName)
 		b.handleErr(err)
