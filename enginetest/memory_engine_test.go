@@ -928,6 +928,10 @@ func mergeSetupScripts(scripts ...setup.SetupScript) []string {
 	return all
 }
 
+func TestSQLLogicTests(t *testing.T) {
+	enginetest.TestSQLLogicTests(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
 func TestSQLLogicTestFiles(t *testing.T) {
 	t.Skip()
 	h := memharness.NewMemoryHarness(enginetest.NewDefaultMemoryHarness())

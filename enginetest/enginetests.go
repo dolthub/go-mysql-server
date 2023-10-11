@@ -6328,3 +6328,18 @@ func TestIndexPrefix(t *testing.T, h Harness) {
 		TestScript(t, h, tt)
 	}
 }
+
+func TestSQLLogicTests(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.SQLLogicJoinTests {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(script.Name) {
+				t.Run(script.Name, func(t *testing.T) {
+					t.Skip(script.Name)
+				})
+				continue
+			}
+		}
+		TestScript(t, harness, script)
+	}
+}
