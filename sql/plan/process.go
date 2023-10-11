@@ -123,7 +123,7 @@ func (t *ProcessIndexableTable) DebugString() string {
 	tp := sql.NewTreePrinter()
 	// This is a bit of a misnomer -- some db implementations get this node, rather than ProcessTable, but the two
 	// nodes are functionally equivalent for testing which is where this output is used. We could fix this by making a
-	// version of the memory package that doesn't implement sql.DriverIndexableTable 
+	// version of the memory package that doesn't implement sql.DriverIndexableTable
 	_ = tp.WriteNode("ProcessTable")
 	_ = tp.WriteChildren(TableDebugString(t.Underlying()))
 	return tp.String()
