@@ -56,8 +56,8 @@ NULL
 # Customers with orders or with no orders (should return all customers).
 query IT nosort
 SELECT *
-FROM c
-WHERE
+  FROM c
+  WHERE
     EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id)
     OR NOT EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id);
 ----
@@ -93,8 +93,8 @@ TX
 # Customers that have at least one order shipped to WY or to WA.
 query IT nosort
 SELECT *
-FROM c
-WHERE
+  FROM c
+  WHERE
     'WY' IN (SELECT ship FROM o WHERE o.c_id=c.c_id)
     OR 'WA' IN (SELECT ship FROM o WHERE o.c_id=c.c_id);
 ----
@@ -106,8 +106,8 @@ FL
 # Customers that have at least one order shipped to CA, but none to TX.
 query IT nosort
 SELECT *
-FROM c
-WHERE
+  FROM c
+  WHERE
     'CA' IN (SELECT ship FROM o WHERE o.c_id=c.c_id)
     AND 'TX' NOT IN (SELECT ship FROM o WHERE o.c_id=c.c_id);
 ----
@@ -289,8 +289,8 @@ TX
 # one order shipped to WY.
 query IT nosort
 SELECT *
-FROM c
-WHERE
+  FROM c
+  WHERE
     bill = ALL(SELECT ship FROM o WHERE o.c_id=c.c_id)
     OR EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id AND ship='WY');
 ----
@@ -307,8 +307,8 @@ NULL
 # one order.
 query IT nosort
 SELECT *
-FROM c
-WHERE
+  FROM c
+  WHERE
     bill = ALL(SELECT ship FROM o WHERE o.c_id=c.c_id)
     AND EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id);
 ----
@@ -338,7 +338,7 @@ TX
 # For each customer, orders shipped to lowest state (alphabetically).
 query IIT nosort
 SELECT c.c_id, o.o_id, o.ship
-FROM c
+  FROM c
 INNER JOIN o
 ON c.c_id=o.c_id AND o.ship = (SELECT min(o.ship) FROM o WHERE o.c_id=c.c_id)
 ORDER BY c.c_id, o.o_id, o.ship;
@@ -366,10 +366,10 @@ WA
 # customers have shipped to that state, combined.
 query ITI nosort
 SELECT c.c_id, o.ship, count(*)
-FROM c
+  FROM c
 INNER JOIN o
 ON c.c_id=o.c_id
-WHERE
+  WHERE
     (SELECT count(*) FROM o AS o2 WHERE o2.ship = o.ship AND o2.c_id = o.c_id) >
     (SELECT count(*) FROM o AS o2 WHERE o2.ship = o.ship AND o2.c_id <> o.c_id)
 GROUP BY c.c_id, o.ship;
@@ -390,8 +390,8 @@ WA
 # Customers with more than one order and with the highest state = 'CA'.
 query IT nosort
 SELECT *
-FROM c
-WHERE
+  FROM c
+  WHERE
     (SELECT count(*) FROM o WHERE o.c_id=c.c_id) > 1
     AND (SELECT max(ship) FROM o WHERE o.c_id=c.c_id) = 'CA';
 ----
@@ -401,8 +401,8 @@ CA
 # Customers with more than one order or with an unknown ship state.
 query IT nosort
 SELECT *
-FROM c
-WHERE
+  FROM c
+  WHERE
     (SELECT count(*) FROM o WHERE o.c_id=c.c_id) > 1
     OR EXISTS(SELECT ship FROM o WHERE o.c_id=c.c_id AND ship IS NULL);
 ----
@@ -417,8 +417,8 @@ TX
 # orders (alphabetically).
 query IT nosort
 SELECT c_id, bill
-FROM c AS c2
-WHERE EXISTS
+  FROM c AS c2
+  WHERE EXISTS
 (
     SELECT * FROM c WHERE bill=(SELECT max(ship) FROM o WHERE c_id=c2.c_id AND c_id=c.c_id)
 )
@@ -432,8 +432,8 @@ TX
 # the ship state is null).
 query IT nosort
 SELECT c_id, bill
-FROM c AS c2
-WHERE EXISTS
+  FROM c AS c2
+  WHERE EXISTS
 (
     SELECT *
     FROM (SELECT c_id, coalesce(ship, bill) AS state FROM o WHERE c_id=c2.c_id) AS o
@@ -473,8 +473,8 @@ TX
 # Customers that have no orders with a NULL ship state.
 query IT nosort
 SELECT *
-FROM c
-WHERE (SELECT ship FROM o WHERE o.c_id=c.c_id ORDER BY ship LIMIT 1) IS NOT NULL
+  FROM c
+  WHERE (SELECT ship FROM o WHERE o.c_id=c.c_id ORDER BY ship LIMIT 1) IS NOT NULL
 ----
 1
 CA
@@ -484,8 +484,8 @@ FL
 # Customers that have first order shipping to 'CA' or 'WY' (no NULL ship).
 query IT nosort
 SELECT *
-FROM c
-WHERE
+  FROM c
+  WHERE
     (SELECT ship FROM o WHERE o.c_id=c.c_id AND ship IS NOT NULL ORDER BY ship LIMIT 1)='CA'
     OR (SELECT ship FROM o WHERE o.c_id=c.c_id AND ship IS NOT NULL ORDER BY ship LIMIT 1)='WY'
 ORDER BY c_id
@@ -500,8 +500,8 @@ TX
 # Apply
 query IT nosort
 SELECT *
-FROM c
-WHERE (SELECT o_id FROM o WHERE o.c_id=c.c_id AND ship='WY')=4;
+  FROM c
+  WHERE (SELECT o_id FROM o WHERE o.c_id=c.c_id AND ship='WY')=4;
 ----
 
 # Try to find customers other than customer #2 that have at most one order that
@@ -542,8 +542,8 @@ FL
 # remaining customers with at least one order shipping to 'WA'.
 query IT nosort
 SELECT *
-FROM c
-WHERE (
+  FROM c
+  WHERE (
   SELECT ship
   FROM o
   WHERE o.c_id=c.c_id AND ship IS NOT NULL AND (SELECT count(*) FROM o WHERE o.c_id=c.c_id)<=1
@@ -599,7 +599,7 @@ SELECT
     c_id,
     EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id)
     OR NOT EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id)
-FROM c
+  FROM c
 ORDER BY c_id;
 ----
 1
@@ -655,7 +655,7 @@ SELECT
     c_id,
     'WY' IN (SELECT ship FROM o WHERE o.c_id=c.c_id)
     OR 'WA' IN (SELECT ship FROM o WHERE o.c_id=c.c_id)
-FROM c
+  FROM c
 ORDER BY c_id;
 ----
 1
@@ -677,7 +677,7 @@ SELECT
     c_id,
     'CA' IN (SELECT ship FROM o WHERE o.c_id=c.c_id)
     AND 'TX' NOT IN (SELECT ship FROM o WHERE o.c_id=c.c_id)
-FROM c
+  FROM c
 ORDER BY c_id;
 ----
 1
@@ -747,7 +747,7 @@ NULL
 # Customers with no order with billing addr = shipping addr (no NULL ship).
 query IB nosort
 SELECT c_id, bill NOT IN (SELECT ship FROM o WHERE o.c_id=c.c_id AND ship IS NOT NULL)
-FROM c
+  FROM c
 ORDER BY c_id;
 ----
 1
@@ -766,7 +766,7 @@ ORDER BY c_id;
 # Customers with no order with billing addr = shipping addr (only NULL ship).
 query IB nosort
 SELECT c_id, bill NOT IN (SELECT ship FROM o WHERE o.c_id=c.c_id AND ship IS NULL)
-FROM c
+  FROM c
 ORDER BY c_id;
 ----
 1
@@ -921,7 +921,7 @@ SELECT c_id, bill = ANY(SELECT ship FROM o WHERE ship IS NOT NULL) OR bill IS NU
 # Test NULL IN case.
 query IB nosort
 SELECT c_id, (NULL IN (SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NOT NULL
-FROM c
+  FROM c
 ORDER BY c_id;
 ----
 1
@@ -940,7 +940,7 @@ ORDER BY c_id;
 # Test NULL NOT IN case. Use IS NOT NULL to prevent normalize ANY into EXISTS.
 query IB nosort
 SELECT c_id, (NULL NOT IN (SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NOT NULL
-FROM c
+  FROM c
 ORDER BY c_id;
 ----
 1
@@ -960,7 +960,7 @@ ORDER BY c_id;
 # states. This tests a more complex scalar expression as argument to IN.
 query IB nosort
 SELECT c_id, (replace(bill, 'TX', 'WY') IN (SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NULL
-FROM c
+  FROM c
 ORDER BY c_id;
 ----
 1
@@ -983,7 +983,7 @@ SELECT
     c_id,
     bill = ALL(SELECT ship FROM o WHERE o.c_id=c.c_id)
     OR EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id AND ship='WY')
-FROM c
+  FROM c
 ORDER BY c_id;
 ----
 1
@@ -1006,7 +1006,7 @@ SELECT
     c_id,
     bill = ALL(SELECT ship FROM o WHERE o.c_id=c.c_id)
     AND EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id)
-FROM c
+  FROM c
 ORDER BY c_id;
 ----
 1
@@ -1025,8 +1025,8 @@ ORDER BY c_id;
 # Apply.
 query IT nosort
 SELECT *
-FROM c
-WHERE (SELECT min(ship) FROM o WHERE o.c_id=c.c_id) IN (SELECT ship FROM o WHERE o.c_id=c.c_id);
+  FROM c
+  WHERE (SELECT min(ship) FROM o WHERE o.c_id=c.c_id) IN (SELECT ship FROM o WHERE o.c_id=c.c_id);
 ----
 1
 CA
@@ -1042,7 +1042,7 @@ query IB nosort
 SELECT
     c_id,
     (SELECT min(ship) FROM o WHERE o.c_id=c.c_id) IN (SELECT ship FROM o WHERE o.c_id=c.c_id)
-FROM c
+  FROM c
 ORDER BY c_id;
 ----
 1
@@ -1069,7 +1069,7 @@ query II nosort
 SELECT
     c_id,
     (SELECT count(*) FROM o WHERE o.c_id=c.c_id)
-FROM c
+  FROM c
 ORDER BY c_id;
 ----
 1
@@ -1090,7 +1090,7 @@ query TI nosort
 SELECT
     s.st,
     (SELECT count(*) FROM c WHERE c.bill=s.st) + (SELECT count(*) FROM o WHERE o.ship=s.st)
-FROM (SELECT c.bill AS st FROM c UNION SELECT o.ship AS st FROM o) s
+  FROM (SELECT c.bill AS st FROM c UNION SELECT o.ship AS st FROM o) s
 ORDER BY s.st;
 ----
 NULL
@@ -1113,7 +1113,7 @@ WY
 query ITII nosort
 SELECT c.c_id, o.ship, count(*) AS cust,
     (SELECT count(*) FROM o AS o2 WHERE o2.ship = o.ship AND o2.c_id <> c.c_id) AS other
-FROM c
+  FROM c
 INNER JOIN o
 ON c.c_id=o.c_id
 GROUP BY c.c_id, o.ship;
@@ -1158,7 +1158,7 @@ SELECT
         FROM c AS c2, o AS o2
         WHERE c2.c_id=o2.c_id AND c2.c_id=c.c_id
     )
-FROM c
+  FROM c
 LEFT JOIN o
 ON c.c_id=o.c_id
 ORDER BY c.c_id, o.o_id
@@ -1203,7 +1203,7 @@ query IB nosort
 SELECT
     c.c_id,
     (SELECT ship FROM o WHERE o.c_id=c.c_id ORDER BY ship LIMIT 1) IS NOT NULL
-FROM c
+  FROM c
 ORDER BY c.c_id
 ----
 1
@@ -1226,7 +1226,7 @@ SELECT
     c.c_id,
     (SELECT ship FROM o WHERE o.c_id=c.c_id AND ship IS NOT NULL ORDER BY ship LIMIT 1)='CA'
     OR (SELECT ship FROM o WHERE o.c_id=c.c_id AND ship IS NOT NULL ORDER BY ship LIMIT 1)='WY'
-FROM c
+  FROM c
 ORDER BY c_id
 ----
 1
@@ -1294,7 +1294,7 @@ NULL
 query ITI nosort
 SELECT
     *
-FROM
+  FROM
     (SELECT c_id AS c_c_id, bill FROM c) sq1,
     LATERAL (SELECT row_number() OVER () AS rownum FROM o WHERE c_id = c_c_id) sq2
 ORDER BY c_c_id, bill, rownum
@@ -1330,7 +1330,7 @@ FL
 query TI nosort
 SELECT
     *
-FROM
+  FROM
     (SELECT bill FROM c) sq1,
     LATERAL (SELECT row_number() OVER (PARTITION BY bill) AS rownum FROM o WHERE ship = bill) sq2
 ORDER BY bill, rownum
@@ -1357,7 +1357,7 @@ query II nosort
 SELECT
     (SELECT count(*) FROM o WHERE o.c_id=c.c_id) AS order_cnt,
     count(*) AS cust_cnt
-FROM c
+  FROM c
 GROUP BY (SELECT count(*) FROM o WHERE o.c_id=c.c_id)
 ORDER BY (SELECT count(*) FROM o WHERE o.c_id=c.c_id) DESC;
 ----
@@ -1373,8 +1373,8 @@ ORDER BY (SELECT count(*) FROM o WHERE o.c_id=c.c_id) DESC;
 # Subquery in VALUES clause.
 query III nosort
 SELECT c_cnt, o_cnt, c_cnt + o_cnt AS total
-FROM (VALUES ROW((SELECT count(*) FROM c), (SELECT count(*) FROM o))) AS v(c_cnt, o_cnt)
-WHERE c_cnt > 0 AND o_cnt > 0;
+  FROM (VALUES ROW((SELECT count(*) FROM c), (SELECT count(*) FROM o))) AS v(c_cnt, o_cnt)
+  WHERE c_cnt > 0 AND o_cnt > 0;
 ----
 6
 9
@@ -1383,7 +1383,7 @@ WHERE c_cnt > 0 AND o_cnt > 0;
 # Subquery in JOIN condition.
 query II nosort
 SELECT c.c_id, o.o_id
-FROM c
+  FROM c
 INNER JOIN o
 ON c.c_id=o.c_id AND EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id AND ship IS NULL);
 ----
@@ -1400,15 +1400,15 @@ ON c.c_id=o.c_id AND EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id AND ship IS NULL
 
 # statement error
 # TODO: gosql driver ignores error for some reason
-SELECT c.c_id, o.o_id
-FROM c
-INNER JOIN o
-ON c.c_id=o.c_id AND o.ship = (SELECT o.ship FROM o WHERE o.c_id=c.c_id);
+# SELECT c.c_id, o.o_id
+# FROM c
+# INNER JOIN o
+# ON c.c_id=o.c_id AND o.ship = (SELECT o.ship FROM o WHERE o.c_id=c.c_id);
 
 statement error
 SELECT (SELECT c_id FROM o AS OF SYSTEM TIME '-1us')
-FROM c
-WHERE EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id)
+  FROM c
+  WHERE EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id)
 
 # Subquery in ARRAY(...)
 # query ITT nosort
@@ -1794,8 +1794,8 @@ INSERT INTO t_48638 values (7, 8);
 
 query II nosort
 SELECT *
-FROM t_48638
-WHERE `key` IN (
+  FROM t_48638
+  WHERE `key` IN (
   WITH v AS (
     SELECT
       level1.`value` AS `value`, level1.`key` AS level1, level2.`key` AS level2, level3.`key` AS level3
