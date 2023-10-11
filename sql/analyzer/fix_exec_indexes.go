@@ -237,17 +237,6 @@ func (s *idxScope) visitChildren(n sql.Node) error {
 // unset.
 func (s *idxScope) visitSelf(n sql.Node) error {
 	switch n := n.(type) {
-	// case *plan.ResolvedTable:
-	// 	// VirtualColumnTable is a psuedo-node that needs to be handled like a projection
-	// 	vct, ok := plan.FindVirtualColumnTable(n.Table)
-	// 	if !ok {
-	// 		return nil
-	// 	}
-	// 	
-	// 	s.addSchema(vct.Schema())
-	// 	for _, e := range vct.Expressions() {
-	// 		s.expressions = append(s.expressions, fixExprToScope(e, s))
-	// 	}
 	case *plan.JoinNode:
 		// join on expressions see everything
 		scopes := append(append(s.parentScopes, s.lateralScopes...), s.childScopes...)
@@ -287,17 +276,6 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 		for _, e := range n.Expressions() {
 			s.expressions = append(s.expressions, fixExprToScope(e, scope...))
 		}
-
-		// // VirtualColumnTable is a psuedo-node that needs to be handled like a projection
-		// vct, ok := plan.FindVirtualColumnTable(n.Table)
-		// if !ok {
-		// 	return nil
-		// }
-		// 
-		// s.addSchema(vct.Schema())
-		// for _, e := range vct.Expressions() {
-		// 	s.expressions = append(s.expressions, fixExprToScope(e, s))
-		// }
 	case *plan.ShowVariables:
 		if n.Filter != nil {
 			selfScope := s.copy()
@@ -422,8 +400,13 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		newNode, err := n.WithTable(vct)
+		if err != nil {
+			return nil, err
+		}
 		
-		return n.WithTable(vct)
+		return s.finalizeSelfDefault(newNode)
 	case *plan.IndexedTableAccess:
 		// VirtualColumnTable is a pseudo-node that needs its pseudo projections resolved
 		vct, ok := plan.FindVirtualColumnTable(n.Table)
