@@ -15569,7 +15569,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `select * from comp_index_t3 where v1 like 'a%'`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ comp_index_t3.v1 LIKE 'a%'\n" +
-			" └─ ProcessIndexableTable\n" +
+			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: comp_index_t3\n" +
 			"         └─ columns: [pk v1 v2]\n" +
@@ -15581,7 +15581,7 @@ var IndexPlanTests = []QueryPlanTest{
 			" ├─ Eq\n" +
 			" │   ├─ comp_index_t3.v2:2\n" +
 			" │   └─ a (longtext)\n" +
-			" └─ ProcessIndexableTable\n" +
+			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: comp_index_t3\n" +
 			"         └─ columns: [pk v1 v2]\n" +
@@ -15591,7 +15591,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `select * from comp_index_t3 where v2 like 'a%'`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ comp_index_t3.v2 LIKE 'a%'\n" +
-			" └─ ProcessIndexableTable\n" +
+			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: comp_index_t3\n" +
 			"         └─ columns: [pk v1 v2]\n" +

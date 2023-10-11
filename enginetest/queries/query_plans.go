@@ -100,7 +100,7 @@ From xy;`,
 			"     │                                   ├─ name: uv\n" +
 			"     │                                   └─ columns: [u]\n" +
 			"     │   THEN 1 (tinyint) ELSE 2 (tinyint) END as s]\n" +
-			"     └─ ProcessIndexableTable\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
 			"             └─ columns: [x y]\n" +
@@ -141,7 +141,7 @@ From xy;`,
 			"             │   └─ Project\n" +
 			"             │       ├─ columns: [scalarSubq0.v:1]\n" +
 			"             │       └─ TableAlias(scalarSubq0)\n" +
-			"             │           └─ ProcessIndexableTable\n" +
+			"             │           └─ ProcessTable\n" +
 			"             │               └─ Table\n" +
 			"             │                   ├─ name: uv\n" +
 			"             │                   └─ columns: [u v]\n" +
@@ -167,7 +167,7 @@ From xy;`,
 			"         │   └─ Project\n" +
 			"         │       ├─ columns: [scalarSubq0.u:0!null]\n" +
 			"         │       └─ TableAlias(scalarSubq0)\n" +
-			"         │           └─ ProcessIndexableTable\n" +
+			"         │           └─ ProcessTable\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: uv\n" +
 			"         │                   └─ columns: [u v]\n" +
@@ -203,7 +203,7 @@ From xy;`,
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(1 (bigint))\n" +
 			"     ├─ group: \n" +
-			"     └─ ProcessIndexableTable\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: keyless\n" +
 			"             └─ columns: []\n" +
@@ -244,14 +244,14 @@ From xy;`,
 			"     ├─ select: COUNT(1 (tinyint))\n" +
 			"     ├─ group: \n" +
 			"     └─ CrossHashJoin\n" +
-			"         ├─ ProcessIndexableTable\n" +
+			"         ├─ ProcessTable\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: xy\n" +
 			"         │       └─ columns: []\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: TUPLE()\n" +
 			"             ├─ right-key: TUPLE()\n" +
-			"             └─ ProcessIndexableTable\n" +
+			"             └─ ProcessTable\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: uv\n" +
 			"                     └─ columns: []\n" +
@@ -290,7 +290,7 @@ From xy;`,
 			" │           ├─ columns: [uv.COUNT(1):1!null as COUNT(1)]\n" +
 			" │           └─ table_count(uv) as COUNT(1)\n" +
 			" │   as (select count(*) from uv)]\n" +
-			" └─ ProcessIndexableTable\n" +
+			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: \n" +
 			"         └─ columns: []\n" +
@@ -835,7 +835,7 @@ Select * from (
 			" ├─ Eq\n" +
 			" │   ├─ xy.x:0!null\n" +
 			" │   └─ scalarSubq0.a:2!null\n" +
-			" ├─ ProcessIndexableTable\n" +
+			" ├─ ProcessTable\n" +
 			" │   └─ Table\n" +
 			" │       ├─ name: xy\n" +
 			" │       └─ columns: [x y]\n" +
@@ -896,11 +896,11 @@ Select * from (
 			" │           └─ Eq\n" +
 			" │               ├─ uv.u:0!null\n" +
 			" │               └─ 1 (tinyint)\n" +
-			" ├─ ProcessIndexableTable\n" +
+			" ├─ ProcessTable\n" +
 			" │   └─ Table\n" +
 			" │       ├─ name: uv\n" +
 			" │       └─ columns: [u v]\n" +
-			" └─ ProcessIndexableTable\n" +
+			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: xy\n" +
 			"         └─ columns: [x y]\n" +
@@ -967,7 +967,7 @@ Select * from (
 			"     │               │   ├─ scalarSubq0.s2:0!null\n" +
 			"     │               │   └─ second (longtext)\n" +
 			"     │               └─ TableAlias(scalarSubq0)\n" +
-			"     │                   └─ ProcessIndexableTable\n" +
+			"     │                   └─ ProcessTable\n" +
 			"     │                       └─ Table\n" +
 			"     │                           ├─ name: othertable\n" +
 			"     │                           └─ columns: [s2 i2]\n" +
@@ -1016,14 +1016,14 @@ Select * from (
 			"         ├─ Eq\n" +
 			"         │   ├─ xy.y:3\n" +
 			"         │   └─ rs.s:1\n" +
-			"         ├─ ProcessIndexableTable\n" +
+			"         ├─ ProcessTable\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: rs\n" +
 			"         │       └─ columns: [r s]\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: TUPLE(rs.s:1)\n" +
 			"             ├─ right-key: TUPLE(xy.y:1)\n" +
-			"             └─ ProcessIndexableTable\n" +
+			"             └─ ProcessTable\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: xy\n" +
 			"                     └─ columns: [x y]\n" +
@@ -1060,7 +1060,7 @@ Select * from (
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(r.a:0!null)\n" +
 			"         ├─ right-key: TUPLE(uv.u:0!null)\n" +
-			"         └─ ProcessIndexableTable\n" +
+			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: uv\n" +
 			"                 └─ columns: [u v]\n" +
@@ -1133,14 +1133,14 @@ Select * from (
 			" ├─ Eq\n" +
 			" │   ├─ (xy.y:3 + 10 (tinyint))\n" +
 			" │   └─ rs.s:1\n" +
-			" ├─ ProcessIndexableTable\n" +
+			" ├─ ProcessTable\n" +
 			" │   └─ Table\n" +
 			" │       ├─ name: rs\n" +
 			" │       └─ columns: [r s]\n" +
 			" └─ HashLookup\n" +
 			"     ├─ left-key: TUPLE(rs.s:1)\n" +
 			"     ├─ right-key: TUPLE((xy.y:1 + 10 (tinyint)))\n" +
-			"     └─ ProcessIndexableTable\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
 			"             └─ columns: [x y]\n" +
@@ -1152,11 +1152,11 @@ Select * from (
 			" ├─ Eq\n" +
 			" │   ├─ 10 (tinyint)\n" +
 			" │   └─ (rs.s:1 + xy.y:3)\n" +
-			" ├─ ProcessIndexableTable\n" +
+			" ├─ ProcessTable\n" +
 			" │   └─ Table\n" +
 			" │       ├─ name: rs\n" +
 			" │       └─ columns: [r s]\n" +
-			" └─ ProcessIndexableTable\n" +
+			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: xy\n" +
 			"         └─ columns: [x y]\n" +
@@ -1190,7 +1190,7 @@ Select * from (
 			" │               └─ Table\n" +
 			" │                   ├─ name: xy\n" +
 			" │                   └─ columns: [x y]\n" +
-			" └─ ProcessIndexableTable\n" +
+			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: ab\n" +
 			"         └─ columns: [a b]\n" +
@@ -1222,7 +1222,7 @@ Select * from (
 			" │               └─ Table\n" +
 			" │                   ├─ name: xy\n" +
 			" │                   └─ columns: [x y]\n" +
-			" └─ ProcessIndexableTable\n" +
+			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: ab\n" +
 			"         └─ columns: [a b]\n" +
@@ -1254,7 +1254,7 @@ Select * from (
 			" │               └─ Table\n" +
 			" │                   ├─ name: xy\n" +
 			" │                   └─ columns: [x y]\n" +
-			" └─ ProcessIndexableTable\n" +
+			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: ab\n" +
 			"         └─ columns: [a b]\n" +
@@ -1295,7 +1295,7 @@ Select * from (
 			"                 ├─ Eq\n" +
 			"                 │   ├─ ab.a:2!null\n" +
 			"                 │   └─ pq.p:0!null\n" +
-			"                 ├─ ProcessIndexableTable\n" +
+			"                 ├─ ProcessTable\n" +
 			"                 │   └─ Table\n" +
 			"                 │       ├─ name: pq\n" +
 			"                 │       └─ columns: [p q]\n" +
@@ -1353,7 +1353,7 @@ Select * from (
 			"             ├─ Eq\n" +
 			"             │   ├─ xy.x:2!null\n" +
 			"             │   └─ uv.v:1\n" +
-			"             ├─ ProcessIndexableTable\n" +
+			"             ├─ ProcessTable\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: uv\n" +
 			"             │       └─ columns: [u v]\n" +
@@ -1447,7 +1447,7 @@ Select * from (
 			"         ├─ Eq\n" +
 			"         │   ├─ xy.x:2!null\n" +
 			"         │   └─ uv.v:1\n" +
-			"         ├─ ProcessIndexableTable\n" +
+			"         ├─ ProcessTable\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: uv\n" +
 			"         │       └─ columns: [u v]\n" +
@@ -1526,7 +1526,7 @@ Select * from (
 			"             ├─ Eq\n" +
 			"             │   ├─ xy.x:0!null\n" +
 			"             │   └─ scalarSubq0.u:2!null\n" +
-			"             ├─ ProcessIndexableTable\n" +
+			"             ├─ ProcessTable\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: xy\n" +
 			"             │       └─ columns: [x y]\n" +
@@ -1591,7 +1591,7 @@ Select * from (
 			"     └─ Window\n" +
 			"         ├─ lag(mytable.i, 1) over ( order by mytable.s ASC)\n" +
 			"         ├─ mytable.i:0!null\n" +
-			"         └─ ProcessIndexableTable\n" +
+			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
 			"                 └─ columns: [i s]\n" +
@@ -1606,7 +1606,7 @@ Select * from (
 			"         ├─ lag(floattable.i, 1) over ( order by floattable.f64 ASC)\n" +
 			"         ├─ floattable.f64:2!null\n" +
 			"         ├─ floattable.f32:1!null\n" +
-			"         └─ ProcessIndexableTable\n" +
+			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: floattable\n" +
 			"                 └─ columns: [i f32 f64]\n" +
@@ -1624,7 +1624,7 @@ Select * from (
 			"     │   └─ Eq\n" +
 			"     │       ├─ uv.v:2\n" +
 			"     │       └─ ab.b:0\n" +
-			"     ├─ ProcessIndexableTable\n" +
+			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: ab\n" +
 			"     │       └─ columns: [b]\n" +
@@ -1755,7 +1755,7 @@ Select * from (
 			"     │   └─ Eq\n" +
 			"     │       ├─ (ab.a:0!null + 3 (tinyint))\n" +
 			"     │       └─ xy.x:1!null\n" +
-			"     ├─ ProcessIndexableTable\n" +
+			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: ab\n" +
 			"     │       └─ columns: [a]\n" +
@@ -1828,7 +1828,7 @@ Select * from (
 			"     │                       ├─ name: ab\n" +
 			"     │                       └─ columns: [a b]\n" +
 			"     │   as s]\n" +
-			"     └─ ProcessIndexableTable\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
 			"             └─ columns: [x y]\n" +
@@ -1860,7 +1860,7 @@ Select * from (
 			"         ├─ left-key: TUPLE()\n" +
 			"         ├─ right-key: TUPLE()\n" +
 			"         └─ Limit(1)\n" +
-			"             └─ ProcessIndexableTable\n" +
+			"             └─ ProcessTable\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: uv\n" +
 			"                     └─ columns: [u v]\n" +
@@ -1871,7 +1871,7 @@ Select * from (
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [ab.a:0!null, ab.b:1]\n" +
 			" └─ CrossHashJoin\n" +
-			"     ├─ ProcessIndexableTable\n" +
+			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: ab\n" +
 			"     │       └─ columns: [a b]\n" +
@@ -1903,7 +1903,7 @@ Select * from (
 			" │       ├─ s.a:0!null\n" +
 			" │       └─ 1 (tinyint)\n" +
 			" ├─ TableAlias(s)\n" +
-			" │   └─ ProcessIndexableTable\n" +
+			" │   └─ ProcessTable\n" +
 			" │       └─ Table\n" +
 			" │           ├─ name: ab\n" +
 			" │           └─ columns: [a b]\n" +
@@ -1918,7 +1918,7 @@ Select * from (
 			" ├─ Eq\n" +
 			" │   ├─ uv.u:0!null\n" +
 			" │   └─ ab.a:2!null\n" +
-			" ├─ ProcessIndexableTable\n" +
+			" ├─ ProcessTable\n" +
 			" │   └─ Table\n" +
 			" │       ├─ name: uv\n" +
 			" │       └─ columns: [u v]\n" +
@@ -1936,7 +1936,7 @@ Select * from (
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(1 (bigint)), emptytable.i:0!null\n" +
 			"     ├─ group: \n" +
-			"     └─ ProcessIndexableTable\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: emptytable\n" +
 			"             └─ columns: [i]\n" +
@@ -1963,7 +1963,7 @@ Select * from (
 			"         ├─ Eq\n" +
 			"         │   ├─ xy.x:2!null\n" +
 			"         │   └─ ab.a:0!null\n" +
-			"         ├─ ProcessIndexableTable\n" +
+			"         ├─ ProcessTable\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: ab\n" +
 			"         │       └─ columns: [a b]\n" +
@@ -1994,7 +1994,7 @@ Select * from (
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(uv.u:0!null)\n" +
 			"         ├─ right-key: TUPLE(one_pk.pk:0!null)\n" +
-			"         └─ ProcessIndexableTable\n" +
+			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk\n" +
 			"                 └─ columns: [pk]\n" +
@@ -2021,7 +2021,7 @@ Select * from (
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(uv.u:0!null)\n" +
 			"         ├─ right-key: TUPLE(one_pk.pk:0!null)\n" +
-			"         └─ ProcessIndexableTable\n" +
+			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk\n" +
 			"                 └─ columns: [pk]\n" +
@@ -2035,7 +2035,7 @@ Select * from (
 			"     ├─ Eq\n" +
 			"     │   ├─ TUPLE(one_pk.pk:0!null, 123 (tinyint))\n" +
 			"     │   └─ TUPLE(scalarSubq0.u:6!null, scalarSubq0.v:7!null)\n" +
-			"     ├─ ProcessIndexableTable\n" +
+			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: one_pk\n" +
 			"     │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -2058,7 +2058,7 @@ Select * from (
 			"     ├─ Eq\n" +
 			"     │   ├─ TUPLE(one_pk.pk:0!null, 123 (tinyint))\n" +
 			"     │   └─ TUPLE(scalarSubq0.u:6!null, scalarSubq0.v:7!null)\n" +
-			"     ├─ ProcessIndexableTable\n" +
+			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: one_pk\n" +
 			"     │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -2092,7 +2092,7 @@ Select * from (
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE()\n" +
 			"         ├─ right-key: TUPLE()\n" +
-			"         └─ ProcessIndexableTable\n" +
+			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
 			"                 └─ columns: [i s]\n" +
@@ -2117,7 +2117,7 @@ Select * from (
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(1 (bigint))\n" +
 			"     ├─ group: \n" +
-			"     └─ ProcessIndexableTable\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: \n" +
 			"             └─ columns: []\n" +
@@ -2155,7 +2155,7 @@ Select * from (
 			"     ├─ Eq\n" +
 			"     │   ├─ ab.a:2!null\n" +
 			"     │   └─ xy.x:0!null\n" +
-			"     ├─ ProcessIndexableTable\n" +
+			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: xy\n" +
 			"     │       └─ columns: [x y]\n" +
@@ -2174,7 +2174,7 @@ Select * from (
 			"         ├─ Eq\n" +
 			"         │   ├─ ab.a:2!null\n" +
 			"         │   └─ xy.x:0!null\n" +
-			"         ├─ ProcessIndexableTable\n" +
+			"         ├─ ProcessTable\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: xy\n" +
 			"         │       └─ columns: [x y]\n" +
@@ -2322,7 +2322,7 @@ where exists (select * from pq where a = p)
 			"         └─ OrderedDistinct\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [pq.p:0!null]\n" +
-			"                 └─ ProcessIndexableTable\n" +
+			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: pq\n" +
 			"                         └─ columns: [p q]\n" +
@@ -2344,7 +2344,7 @@ full join pq on a = p
 			"     │   ├─ Eq\n" +
 			"     │   │   ├─ ab.a:2!null\n" +
 			"     │   │   └─ uv.u:0!null\n" +
-			"     │   ├─ ProcessIndexableTable\n" +
+			"     │   ├─ ProcessTable\n" +
 			"     │   │   └─ Table\n" +
 			"     │   │       ├─ name: uv\n" +
 			"     │   │       └─ columns: [u v]\n" +
@@ -2353,7 +2353,7 @@ full join pq on a = p
 			"     │       └─ Table\n" +
 			"     │           ├─ name: ab\n" +
 			"     │           └─ columns: [a b]\n" +
-			"     └─ ProcessIndexableTable\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: pq\n" +
 			"             └─ columns: [p q]\n" +
@@ -2390,14 +2390,14 @@ inner join pq on true
 			" │   └─ HashLookup\n" +
 			" │       ├─ left-key: TUPLE()\n" +
 			" │       ├─ right-key: TUPLE()\n" +
-			" │       └─ ProcessIndexableTable\n" +
+			" │       └─ ProcessTable\n" +
 			" │           └─ Table\n" +
 			" │               ├─ name: uv\n" +
 			" │               └─ columns: [u v]\n" +
 			" └─ HashLookup\n" +
 			"     ├─ left-key: TUPLE()\n" +
 			"     ├─ right-key: TUPLE()\n" +
-			"     └─ ProcessIndexableTable\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: pq\n" +
 			"             └─ columns: [p q]\n" +
@@ -2447,14 +2447,14 @@ inner join pq on true
 			"     │           └─ OrderedDistinct\n" +
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [uv.u:0!null]\n" +
-			"     │                   └─ ProcessIndexableTable\n" +
+			"     │                   └─ ProcessTable\n" +
 			"     │                       └─ Table\n" +
 			"     │                           ├─ name: uv\n" +
 			"     │                           └─ columns: [u v]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(alias1.a:0!null)\n" +
 			"         ├─ right-key: TUPLE(pq.p:0!null)\n" +
-			"         └─ ProcessIndexableTable\n" +
+			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: pq\n" +
 			"                 └─ columns: [p q]\n" +
@@ -2523,11 +2523,11 @@ inner join pq on true
 			"     ├─ Eq\n" +
 			"     │   ├─ mytable.i:0!null\n" +
 			"     │   └─ othertable.i2:1!null\n" +
-			"     ├─ ProcessIndexableTable\n" +
+			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [i]\n" +
-			"     └─ ProcessIndexableTable\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: othertable\n" +
 			"             └─ columns: [i2]\n" +
@@ -2619,7 +2619,7 @@ inner join pq on true
 			" └─ Sort(two_pk.pk1:0!null as one ASC nullsFirst, two_pk.pk2:1!null as two ASC nullsFirst)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [two_pk.pk1:0!null, two_pk.pk2:1!null, two_pk.c1:2!null, two_pk.c2:3!null, two_pk.c3:4!null, two_pk.c4:5!null, two_pk.c5:6!null, two_pk.pk1:0!null as one, two_pk.pk2:1!null as two]\n" +
-			"         └─ ProcessIndexableTable\n" +
+			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
 			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -2776,7 +2776,7 @@ inner join pq on true
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Insert(i, s)\n" +
 			"     ├─ InsertDestination\n" +
-			"     │   └─ ProcessIndexableTable\n" +
+			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i s]\n" +
@@ -2969,7 +2969,7 @@ inner join pq on true
 			"     │   └─ Eq\n" +
 			"     │       ├─ mytable.s:3!null\n" +
 			"     │       └─ othertable.s2:0!null\n" +
-			"     ├─ ProcessIndexableTable\n" +
+			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: othertable\n" +
 			"     │       └─ columns: [s2 i2]\n" +
@@ -2999,7 +2999,7 @@ inner join pq on true
 			"     │       ├─ mytable.s:3!null\n" +
 			"     │       └─ ot.s2:0!null\n" +
 			"     ├─ TableAlias(ot)\n" +
-			"     │   └─ ProcessIndexableTable\n" +
+			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: othertable\n" +
 			"     │           └─ columns: [s2 i2]\n" +
@@ -3028,7 +3028,7 @@ inner join pq on true
 			"     │   └─ Eq\n" +
 			"     │       ├─ SUBSTRING_INDEX(mytable.s, ' ', 1)\n" +
 			"     │       └─ othertable.s2:2!null\n" +
-			"     ├─ ProcessIndexableTable\n" +
+			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [i s]\n" +
@@ -3061,7 +3061,7 @@ inner join pq on true
 			"     │   └─ Eq\n" +
 			"     │       ├─ SUBSTRING_INDEX(mytable.s, ' ', 2)\n" +
 			"     │       └─ othertable.s2:2!null\n" +
-			"     ├─ ProcessIndexableTable\n" +
+			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [i s]\n" +
@@ -3159,7 +3159,7 @@ inner join pq on true
 			"         ├─ left-key: TUPLE(sub.i:0!null)\n" +
 			"         ├─ right-key: TUPLE(ot.i2:1!null)\n" +
 			"         └─ TableAlias(ot)\n" +
-			"             └─ ProcessIndexableTable\n" +
+			"             └─ ProcessTable\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: othertable\n" +
 			"                     └─ columns: [s2 i2]\n" +
@@ -3199,7 +3199,7 @@ inner join pq on true
 			"         ├─ left-key: TUPLE(sub.i:0!null)\n" +
 			"         ├─ right-key: TUPLE(ot.i2:1!null)\n" +
 			"         └─ TableAlias(ot)\n" +
-			"             └─ ProcessIndexableTable\n" +
+			"             └─ ProcessTable\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: othertable\n" +
 			"                     └─ columns: [s2 i2]\n" +
@@ -3330,7 +3330,7 @@ inner join pq on true
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Insert(i, s)\n" +
 			"     ├─ InsertDestination\n" +
-			"     │   └─ ProcessIndexableTable\n" +
+			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i s]\n" +
@@ -3368,7 +3368,7 @@ inner join pq on true
 			"                     ├─ left-key: TUPLE(sub.i:0!null)\n" +
 			"                     ├─ right-key: TUPLE(ot.i2:1!null)\n" +
 			"                     └─ TableAlias(ot)\n" +
-			"                         └─ ProcessIndexableTable\n" +
+			"                         └─ ProcessTable\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: othertable\n" +
 			"                                 └─ columns: [s2 i2]\n" +
@@ -3700,7 +3700,7 @@ inner join pq on true
 			"     ├─ Eq\n" +
 			"     │   ├─ othertable.i2:2!null\n" +
 			"     │   └─ mytable.i:0!null\n" +
-			"     ├─ ProcessIndexableTable\n" +
+			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [i]\n" +
@@ -3724,7 +3724,7 @@ inner join pq on true
 			"     ├─ Eq\n" +
 			"     │   ├─ othertable.i2:2!null\n" +
 			"     │   └─ mytable.i:0!null\n" +
-			"     ├─ ProcessIndexableTable\n" +
+			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [i]\n" +
@@ -3950,7 +3950,7 @@ inner join pq on true
 			" ├─ HashIn\n" +
 			" │   ├─ upper(mytable.s)\n" +
 			" │   └─ TUPLE(FIRST ROW (longtext), SECOND ROW (longtext))\n" +
-			" └─ ProcessIndexableTable\n" +
+			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +
@@ -3964,7 +3964,7 @@ inner join pq on true
 			" │   │   ├─ type: char\n" +
 			" │   │   └─ mytable.i:0!null\n" +
 			" │   └─ TUPLE(a (longtext), b (longtext))\n" +
-			" └─ ProcessIndexableTable\n" +
+			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +
@@ -3978,7 +3978,7 @@ inner join pq on true
 			" │   │   ├─ type: char\n" +
 			" │   │   └─ mytable.i:0!null\n" +
 			" │   └─ TUPLE(1 (longtext), 2 (longtext))\n" +
-			" └─ ProcessIndexableTable\n" +
+			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +
@@ -3992,7 +3992,7 @@ inner join pq on true
 			" │   │   ├─ mytable.i:0!null\n" +
 			" │   │   └─ 2 (tinyint)\n" +
 			" │   └─ TUPLE(true (tinyint(1)))\n" +
-			" └─ ProcessIndexableTable\n" +
+			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +
@@ -4004,7 +4004,7 @@ inner join pq on true
 			" ├─ HashIn\n" +
 			" │   ├─ (mytable.i:0!null + 6 (tinyint))\n" +
 			" │   └─ TUPLE(7 (tinyint), 8 (tinyint))\n" +
-			" └─ ProcessIndexableTable\n" +
+			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +
@@ -4016,7 +4016,7 @@ inner join pq on true
 			" ├─ HashIn\n" +
 			" │   ├─ (mytable.i:0!null + 40 (tinyint))\n" +
 			" │   └─ TUPLE(7 (tinyint), 8 (tinyint))\n" +
-			" └─ ProcessIndexableTable\n" +
+			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +
@@ -4030,7 +4030,7 @@ inner join pq on true
 			" │   │   ├─ mytable.i:0!null\n" +
 			" │   │   └─ 1 (bigint)\n" +
 			" │   └─ TUPLE(true (tinyint(1)))\n" +
-			" └─ ProcessIndexableTable\n" +
+			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +
@@ -4044,7 +4044,7 @@ inner join pq on true
 			" │   │   ├─ mytable.i:0!null\n" +
 			" │   │   └─ 0 (bigint)\n" +
 			" │   └─ TUPLE(true (tinyint(1)))\n" +
-			" └─ ProcessIndexableTable\n" +
+			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +
@@ -4056,7 +4056,7 @@ inner join pq on true
 			" ├─ IN\n" +
 			" │   ├─ left: mytable.i:0!null\n" +
 			" │   └─ right: TUPLE((2 (tinyint) * mytable.i:0!null))\n" +
-			" └─ ProcessIndexableTable\n" +
+			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +
@@ -4068,7 +4068,7 @@ inner join pq on true
 			" ├─ IN\n" +
 			" │   ├─ left: mytable.i:0!null\n" +
 			" │   └─ right: TUPLE(mytable.i:0!null)\n" +
-			" └─ ProcessIndexableTable\n" +
+			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +
@@ -4080,7 +4080,7 @@ inner join pq on true
 			" ├─ IN\n" +
 			" │   ├─ left: 4 (tinyint)\n" +
 			" │   └─ right: TUPLE((mytable.i:0!null + 2 (tinyint)))\n" +
-			" └─ ProcessIndexableTable\n" +
+			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +
@@ -4123,7 +4123,7 @@ inner join pq on true
 			" │       ├─ mytable.i:0!null\n" +
 			" │       └─ 3 (tinyint)\n" +
 			" │      )\n" +
-			" └─ ProcessIndexableTable\n" +
+			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +
@@ -4166,7 +4166,7 @@ inner join pq on true
 			"     │       ├─ a.i:1!null\n" +
 			"     │       └─ 1 (tinyint)\n" +
 			"     ├─ TableAlias(b)\n" +
-			"     │   └─ ProcessIndexableTable\n" +
+			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i]\n" +
@@ -4198,7 +4198,7 @@ inner join pq on true
 			"     │           ├─ a.s:1!null\n" +
 			"     │           └─ b.i:2!null\n" +
 			"     ├─ TableAlias(a)\n" +
-			"     │   └─ ProcessIndexableTable\n" +
+			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i s]\n" +
@@ -4219,7 +4219,7 @@ inner join pq on true
 			"     │   │   └─ b.s:3!null\n" +
 			"     │   └─ (a.s = b.i) IS FALSE\n" +
 			"     ├─ TableAlias(a)\n" +
-			"     │   └─ ProcessIndexableTable\n" +
+			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i s]\n" +
@@ -4238,7 +4238,7 @@ inner join pq on true
 			"     │   ├─ a.i:0!null\n" +
 			"     │   └─ b.i:2!null\n" +
 			"     ├─ TableAlias(a)\n" +
-			"     │   └─ ProcessIndexableTable\n" +
+			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i s]\n" +
@@ -4252,7 +4252,7 @@ inner join pq on true
 		Query: `SELECT a.* FROM mytable a, mytable b where a.i = a.s`,
 		ExpectedPlan: "CrossHashJoin\n" +
 			" ├─ TableAlias(b)\n" +
-			" │   └─ ProcessIndexableTable\n" +
+			" │   └─ ProcessTable\n" +
 			" │       └─ Table\n" +
 			" │           ├─ name: mytable\n" +
 			" │           └─ columns: []\n" +
@@ -4273,7 +4273,7 @@ inner join pq on true
 		Query: `SELECT a.* FROM mytable a, mytable b where a.i in (2, 432, 7)`,
 		ExpectedPlan: "CrossHashJoin\n" +
 			" ├─ TableAlias(b)\n" +
-			" │   └─ ProcessIndexableTable\n" +
+			" │   └─ ProcessTable\n" +
 			" │       └─ Table\n" +
 			" │           ├─ name: mytable\n" +
 			" │           └─ columns: []\n" +
@@ -4374,7 +4374,7 @@ inner join pq on true
 			"     │   │   │       ├─ c.i:1!null\n" +
 			"     │   │   │       └─ 2 (tinyint)\n" +
 			"     │   │   ├─ TableAlias(d)\n" +
-			"     │   │   │   └─ ProcessIndexableTable\n" +
+			"     │   │   │   └─ ProcessTable\n" +
 			"     │   │   │       └─ Table\n" +
 			"     │   │   │           ├─ name: mytable\n" +
 			"     │   │   │           └─ columns: [s]\n" +
@@ -4410,7 +4410,7 @@ inner join pq on true
 			" ├─ columns: [a.i:1!null, a.s:2!null]\n" +
 			" └─ CrossHashJoin\n" +
 			"     ├─ TableAlias(d)\n" +
-			"     │   └─ ProcessIndexableTable\n" +
+			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: []\n" +
@@ -4488,7 +4488,7 @@ inner join pq on true
 			"     │       ├─ a.i:2!null\n" +
 			"     │       └─ b.s:1!null\n" +
 			"     ├─ TableAlias(b)\n" +
-			"     │   └─ ProcessIndexableTable\n" +
+			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i s]\n" +
@@ -4520,7 +4520,7 @@ inner join pq on true
 			"     │           ├─ a.s:1!null\n" +
 			"     │           └─ b.i:2!null\n" +
 			"     ├─ TableAlias(a)\n" +
-			"     │   └─ ProcessIndexableTable\n" +
+			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i s]\n" +
@@ -4541,7 +4541,7 @@ inner join pq on true
 			"     │   │   └─ b.s:3!null\n" +
 			"     │   └─ (a.s = b.i) IS FALSE\n" +
 			"     ├─ TableAlias(a)\n" +
-			"     │   └─ ProcessIndexableTable\n" +
+			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i s]\n" +
@@ -4560,7 +4560,7 @@ inner join pq on true
 			"     │   ├─ a.i:0!null\n" +
 			"     │   └─ b.i:2!null\n" +
 			"     ├─ TableAlias(a)\n" +
-			"     │   └─ ProcessIndexableTable\n" +
+			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i s]\n" +
@@ -4574,7 +4574,7 @@ inner join pq on true
 		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = a.i`,
 		ExpectedPlan: "CrossHashJoin\n" +
 			" ├─ TableAlias(b)\n" +
-			" │   └─ ProcessIndexableTable\n" +
+			" │   └─ ProcessTable\n" +
 			" │       └─ Table\n" +
 			" │           ├─ name: mytable\n" +
 			" │           └─ columns: []\n" +
@@ -4672,7 +4672,7 @@ inner join pq on true
 			"     │   │   │       ├─ c.i:1!null\n" +
 			"     │   │   │       └─ 2 (tinyint)\n" +
 			"     │   │   ├─ TableAlias(d)\n" +
-			"     │   │   │   └─ ProcessIndexableTable\n" +
+			"     │   │   │   └─ ProcessTable\n" +
 			"     │   │   │       └─ Table\n" +
 			"     │   │   │           ├─ name: mytable\n" +
 			"     │   │   │           └─ columns: [s]\n" +
@@ -4708,7 +4708,7 @@ inner join pq on true
 			" ├─ columns: [a.i:3!null, a.s:4!null]\n" +
 			" └─ CrossHashJoin\n" +
 			"     ├─ TableAlias(d)\n" +
-			"     │   └─ ProcessIndexableTable\n" +
+			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: []\n" +
@@ -4827,7 +4827,7 @@ inner join pq on true
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(othertable.i2:1!null)\n" +
 			"         ├─ right-key: TUPLE(mytable.i:0!null)\n" +
-			"         └─ ProcessIndexableTable\n" +
+			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
 			"                 └─ columns: [i]\n" +
@@ -4849,7 +4849,7 @@ inner join pq on true
 			" └─ HashLookup\n" +
 			"     ├─ left-key: TUPLE(othertable.i2:1!null)\n" +
 			"     ├─ right-key: TUPLE(mytable.i:0!null)\n" +
-			"     └─ ProcessIndexableTable\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i]\n" +
@@ -4922,7 +4922,7 @@ inner join pq on true
 			" └─ HashLookup\n" +
 			"     ├─ left-key: TUPLE(othertable.i2:1!null)\n" +
 			"     ├─ right-key: TUPLE(mytable.i:0!null)\n" +
-			"     └─ ProcessIndexableTable\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i]\n" +
@@ -4996,7 +4996,7 @@ inner join pq on true
 			" │               └─ Table\n" +
 			" │                   ├─ name: othertable\n" +
 			" │                   └─ columns: [i2]\n" +
-			" └─ ProcessIndexableTable\n" +
+			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +
@@ -5063,7 +5063,7 @@ inner join pq on true
 			"     ├─ Eq\n" +
 			"     │   ├─ mytable.i:2!null\n" +
 			"     │   └─ (othertable.i2:1!null - 1 (tinyint))\n" +
-			"     ├─ ProcessIndexableTable\n" +
+			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: othertable\n" +
 			"     │       └─ columns: [s2 i2]\n" +
@@ -5079,7 +5079,7 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [tabletest.i:0!null, tabletest.s:1!null, mt.i:4!null, mt.s:5!null, ot.s2:2!null, ot.i2:3!null]\n" +
 			" └─ CrossHashJoin\n" +
-			"     ├─ ProcessIndexableTable\n" +
+			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: tabletest\n" +
 			"     │       └─ columns: [i s]\n" +
@@ -5115,7 +5115,7 @@ inner join pq on true
 			"     │   ├─ t1.TIMESTAMP:0!null\n" +
 			"     │   └─ t2.tImEstamp:1!null\n" +
 			"     ├─ TableAlias(t1)\n" +
-			"     │   └─ ProcessIndexableTable\n" +
+			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: reservedWordsTable\n" +
 			"     │           └─ columns: [timestamp]\n" +
@@ -5163,11 +5163,11 @@ inner join pq on true
 			"     │   └─ Eq\n" +
 			"     │       ├─ one_pk.c2:1\n" +
 			"     │       └─ two_pk.c3:4!null\n" +
-			"     ├─ ProcessIndexableTable\n" +
+			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: one_pk\n" +
 			"     │       └─ columns: [pk c2]\n" +
-			"     └─ ProcessIndexableTable\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
 			"             └─ columns: [pk1 pk2 c3]\n" +
@@ -5229,7 +5229,7 @@ inner join pq on true
 			"     │   └─ Eq\n" +
 			"     │       ├─ one_pk.pk:0!null\n" +
 			"     │       └─ two_pk.pk2:2!null\n" +
-			"     ├─ ProcessIndexableTable\n" +
+			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: one_pk\n" +
 			"     │       └─ columns: [pk]\n" +
@@ -5271,7 +5271,7 @@ inner join pq on true
 			"     ├─ AND\n" +
 			"     │   ├─ (one_pk.pk:0!null <=> two_pk.pk1:1!null)\n" +
 			"     │   └─ (one_pk.pk:0!null <=> two_pk.pk2:2!null)\n" +
-			"     ├─ ProcessIndexableTable\n" +
+			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: one_pk\n" +
 			"     │       └─ columns: [pk]\n" +
@@ -5335,7 +5335,7 @@ inner join pq on true
 	{
 		Query: `SELECT * FROM datetime_table ORDER BY date_col ASC`,
 		ExpectedPlan: "Sort(datetime_table.date_col:1 ASC nullsFirst)\n" +
-			" └─ ProcessIndexableTable\n" +
+			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: datetime_table\n" +
 			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5345,7 +5345,7 @@ inner join pq on true
 		Query: `SELECT * FROM datetime_table ORDER BY date_col ASC LIMIT 100`,
 		ExpectedPlan: "Limit(100)\n" +
 			" └─ TopN(Limit: [100 (bigint)]; datetime_table.date_col:1 ASC nullsFirst)\n" +
-			"     └─ ProcessIndexableTable\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: datetime_table\n" +
 			"             └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5531,7 +5531,7 @@ inner join pq on true
 			"             │   ├─ dt1.date_col:6\n" +
 			"             │   └─ DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY))\n" +
 			"             ├─ TableAlias(dt2)\n" +
-			"             │   └─ ProcessIndexableTable\n" +
+			"             │   └─ ProcessTable\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: datetime_table\n" +
 			"             │           └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5558,7 +5558,7 @@ inner join pq on true
 			"                 │   ├─ dt1.date_col:6\n" +
 			"                 │   └─ DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY))\n" +
 			"                 ├─ TableAlias(dt2)\n" +
-			"                 │   └─ ProcessIndexableTable\n" +
+			"                 │   └─ ProcessTable\n" +
 			"                 │       └─ Table\n" +
 			"                 │           ├─ name: datetime_table\n" +
 			"                 │           └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5585,7 +5585,7 @@ inner join pq on true
 			"                 │   ├─ dt1.date_col:6\n" +
 			"                 │   └─ DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY))\n" +
 			"                 ├─ TableAlias(dt2)\n" +
-			"                 │   └─ ProcessIndexableTable\n" +
+			"                 │   └─ ProcessTable\n" +
 			"                 │       └─ Table\n" +
 			"                 │           ├─ name: datetime_table\n" +
 			"                 │           └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5932,7 +5932,7 @@ inner join pq on true
 			"     │       ├─ tpk.pk2:3!null\n" +
 			"     │       └─ tpk2.pk1:0!null\n" +
 			"     ├─ TableAlias(tpk2)\n" +
-			"     │   └─ ProcessIndexableTable\n" +
+			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: two_pk\n" +
 			"     │           └─ columns: [pk1 pk2]\n" +
@@ -5968,7 +5968,7 @@ inner join pq on true
 			" │   └─ Eq\n" +
 			" │       ├─ (mytable.i:0!null - 2 (tinyint))\n" +
 			" │       └─ two_pk.pk2:2!null\n" +
-			" ├─ ProcessIndexableTable\n" +
+			" ├─ ProcessTable\n" +
 			" │   └─ Table\n" +
 			" │       ├─ name: mytable\n" +
 			" │       └─ columns: [i]\n" +
@@ -6056,7 +6056,7 @@ inner join pq on true
 			"     │   ├─ one_pk.pk:2!null\n" +
 			"     │   └─ (nt2.i:0!null + 1 (tinyint))\n" +
 			"     ├─ TableAlias(nt2)\n" +
-			"     │   └─ ProcessIndexableTable\n" +
+			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: niltable\n" +
 			"     │           └─ columns: [i]\n" +
@@ -6295,7 +6295,7 @@ inner join pq on true
 			"         └─ LookupJoin\n" +
 			"             ├─ (l.i2:5 <=> r.i2:1)\n" +
 			"             ├─ TableAlias(r)\n" +
-			"             │   └─ ProcessIndexableTable\n" +
+			"             │   └─ ProcessTable\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: niltable\n" +
 			"             │           └─ columns: [i i2 b f]\n" +
@@ -6420,7 +6420,7 @@ inner join pq on true
 			"             │       ├─ a.pk2:8!null\n" +
 			"             │       └─ b.pk1:0!null\n" +
 			"             ├─ TableAlias(b)\n" +
-			"             │   └─ ProcessIndexableTable\n" +
+			"             │   └─ ProcessTable\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: two_pk\n" +
 			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -6529,7 +6529,7 @@ inner join pq on true
 			"             │       ├─ a.pk2:8!null\n" +
 			"             │       └─ b.pk1:0!null\n" +
 			"             ├─ TableAlias(b)\n" +
-			"             │   └─ ProcessIndexableTable\n" +
+			"             │   └─ ProcessTable\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: two_pk\n" +
 			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -6950,7 +6950,7 @@ inner join pq on true
 			" ├─ GreaterThan\n" +
 			" │   ├─ (two_pk.pk1:1!null - one_pk.pk:0!null)\n" +
 			" │   └─ 0 (tinyint)\n" +
-			" ├─ ProcessIndexableTable\n" +
+			" ├─ ProcessTable\n" +
 			" │   └─ Table\n" +
 			" │       ├─ name: one_pk\n" +
 			" │       └─ columns: [pk]\n" +
@@ -6958,7 +6958,7 @@ inner join pq on true
 			"     ├─ LessThan\n" +
 			"     │   ├─ two_pk.pk2:1!null\n" +
 			"     │   └─ 1 (tinyint)\n" +
-			"     └─ ProcessIndexableTable\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
 			"             └─ columns: [pk1 pk2]\n" +
@@ -6972,14 +6972,14 @@ inner join pq on true
 			"     └─ Project\n" +
 			"         ├─ columns: [one_pk.pk:7!null, one_pk.c1:8, one_pk.c2:9, one_pk.c3:10, one_pk.c4:11, one_pk.c5:12, two_pk.pk1:0!null, two_pk.pk2:1!null, two_pk.c1:2!null, two_pk.c2:3!null, two_pk.c3:4!null, two_pk.c4:5!null, two_pk.c5:6!null]\n" +
 			"         └─ CrossHashJoin\n" +
-			"             ├─ ProcessIndexableTable\n" +
+			"             ├─ ProcessTable\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: two_pk\n" +
 			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: TUPLE()\n" +
 			"                 ├─ right-key: TUPLE()\n" +
-			"                 └─ ProcessIndexableTable\n" +
+			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: one_pk\n" +
 			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -7128,14 +7128,14 @@ inner join pq on true
 			"             ├─ Eq\n" +
 			"             │   ├─ one_pk.c1:8\n" +
 			"             │   └─ two_pk.c1:2!null\n" +
-			"             ├─ ProcessIndexableTable\n" +
+			"             ├─ ProcessTable\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: two_pk\n" +
 			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: TUPLE(two_pk.c1:2!null)\n" +
 			"                 ├─ right-key: TUPLE(one_pk.c1:1)\n" +
-			"                 └─ ProcessIndexableTable\n" +
+			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: one_pk\n" +
 			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -7152,14 +7152,14 @@ inner join pq on true
 			"             ├─ Eq\n" +
 			"             │   ├─ one_pk.c1:8\n" +
 			"             │   └─ two_pk.c1:2!null\n" +
-			"             ├─ ProcessIndexableTable\n" +
+			"             ├─ ProcessTable\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: two_pk\n" +
 			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: TUPLE(two_pk.c1:2!null)\n" +
 			"                 ├─ right-key: TUPLE(one_pk.c1:1)\n" +
-			"                 └─ ProcessIndexableTable\n" +
+			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: one_pk\n" +
 			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -7173,7 +7173,7 @@ inner join pq on true
 			"     ├─ Eq\n" +
 			"     │   ├─ one_pk.c1:4\n" +
 			"     │   └─ two_pk.c1:2!null\n" +
-			"     ├─ ProcessIndexableTable\n" +
+			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: two_pk\n" +
 			"     │       └─ columns: [pk1 pk2 c1]\n" +
@@ -7184,7 +7184,7 @@ inner join pq on true
 			"             ├─ Eq\n" +
 			"             │   ├─ one_pk.c1:1\n" +
 			"             │   └─ 10 (tinyint)\n" +
-			"             └─ ProcessIndexableTable\n" +
+			"             └─ ProcessTable\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: one_pk\n" +
 			"                     └─ columns: [pk c1]\n" +
@@ -7203,7 +7203,7 @@ inner join pq on true
 			"             │   │   ├─ t2.pk2:1!null\n" +
 			"             │   │   └─ 1 (tinyint)\n" +
 			"             │   └─ TableAlias(t2)\n" +
-			"             │       └─ ProcessIndexableTable\n" +
+			"             │       └─ ProcessTable\n" +
 			"             │           └─ Table\n" +
 			"             │               ├─ name: two_pk\n" +
 			"             │               └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -7300,7 +7300,7 @@ inner join pq on true
 			"     │                       └─ columns: [i2]\n" +
 			"     │           IS NULL\n" +
 			"     └─ TableAlias(mt)\n" +
-			"         └─ ProcessIndexableTable\n" +
+			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
 			"                 └─ columns: [i s]\n" +
@@ -7347,7 +7347,7 @@ inner join pq on true
 			"     │                       └─ columns: [i2]\n" +
 			"     │           IS NULL\n" +
 			"     └─ TableAlias(mt)\n" +
-			"         └─ ProcessIndexableTable\n" +
+			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
 			"                 └─ columns: [i s]\n" +
@@ -7376,7 +7376,7 @@ inner join pq on true
 			"             │   │   ├─ t2.pk2:1!null\n" +
 			"             │   │   └─ 1 (tinyint)\n" +
 			"             │   └─ TableAlias(t2)\n" +
-			"             │       └─ ProcessIndexableTable\n" +
+			"             │       └─ ProcessTable\n" +
 			"             │           └─ Table\n" +
 			"             │               ├─ name: two_pk\n" +
 			"             │               └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -7412,7 +7412,7 @@ inner join pq on true
 			"                 │   └─ Eq\n" +
 			"                 │       ├─ othertable.s2:0!null\n" +
 			"                 │       └─ second (longtext)\n" +
-			"                 └─ ProcessIndexableTable\n" +
+			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: othertable\n" +
 			"                         └─ columns: [s2 i2]\n" +
@@ -7462,7 +7462,7 @@ inner join pq on true
 			"                 │   └─ GreaterThan\n" +
 			"                 │       ├─ othertable.i2:1!null\n" +
 			"                 │       └─ 2 (tinyint)\n" +
-			"                 └─ ProcessIndexableTable\n" +
+			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: othertable\n" +
 			"                         └─ columns: [s2 i2]\n" +
@@ -7504,7 +7504,7 @@ inner join pq on true
 			"     ├─ lag(bigtable.t, 1, (bigtable.t + 1)) over ( partition by bigtable.n ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)\n" +
 			"     ├─ bigtable.t:0!null\n" +
 			"     ├─ bigtable.n:1\n" +
-			"     └─ ProcessIndexableTable\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: bigtable\n" +
 			"             └─ columns: [t n]\n" +
@@ -7517,7 +7517,7 @@ inner join pq on true
 			" └─ Window\n" +
 			"     ├─ row_number() over ( ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)\n" +
 			"     ├─ mytable.i:0!null\n" +
-			"     └─ ProcessIndexableTable\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i]\n" +
@@ -7530,7 +7530,7 @@ inner join pq on true
 			" └─ Window\n" +
 			"     ├─ row_number() over ( partition by mytable.s order by mytable.i ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)\n" +
 			"     ├─ mytable.i:0!null\n" +
-			"     └─ ProcessIndexableTable\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i s]\n" +
@@ -7544,7 +7544,7 @@ inner join pq on true
 			"         ├─ GreaterThan\n" +
 			"         │   ├─ two_pk.c1:2!null\n" +
 			"         │   └─ 1 (tinyint)\n" +
-			"         └─ ProcessIndexableTable\n" +
+			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
 			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -7571,7 +7571,7 @@ inner join pq on true
 			"             ├─ GreaterThan\n" +
 			"             │   ├─ two_pk.c1:2!null\n" +
 			"             │   └─ 1 (tinyint)\n" +
-			"             └─ ProcessIndexableTable\n" +
+			"             └─ ProcessTable\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: two_pk\n" +
 			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -7638,7 +7638,7 @@ inner join pq on true
 			"                     └─ HashLookup\n" +
 			"                         ├─ left-key: TUPLE(t2.pk1:0!null)\n" +
 			"                         ├─ right-key: TUPLE(one_pk.pk:0!null)\n" +
-			"                         └─ ProcessIndexableTable\n" +
+			"                         └─ ProcessTable\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: one_pk\n" +
 			"                                 └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -7653,7 +7653,7 @@ inner join pq on true
 			"     │   ├─ a.y:2!null\n" +
 			"     │   └─ b.z:0!null\n" +
 			"     ├─ TableAlias(b)\n" +
-			"     │   └─ ProcessIndexableTable\n" +
+			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: invert_pk\n" +
 			"     │           └─ columns: [z]\n" +
@@ -7674,7 +7674,7 @@ inner join pq on true
 			"     │   ├─ a.y:2!null\n" +
 			"     │   └─ b.z:0!null\n" +
 			"     ├─ TableAlias(b)\n" +
-			"     │   └─ ProcessIndexableTable\n" +
+			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: invert_pk\n" +
 			"     │           └─ columns: [z]\n" +
@@ -7744,7 +7744,7 @@ inner join pq on true
 			"     │       └─ a.pk:1!null\n" +
 			"     ├─ CrossHashJoin\n" +
 			"     │   ├─ TableAlias(c)\n" +
-			"     │   │   └─ ProcessIndexableTable\n" +
+			"     │   │   └─ ProcessTable\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: one_pk\n" +
 			"     │   │           └─ columns: [pk]\n" +
@@ -7776,7 +7776,7 @@ inner join pq on true
 			"     │       ├─ b.pk:0!null\n" +
 			"     │       └─ a.pk:2!null\n" +
 			"     ├─ TableAlias(b)\n" +
-			"     │   └─ ProcessIndexableTable\n" +
+			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: one_pk\n" +
 			"     │           └─ columns: [pk]\n" +
@@ -7841,7 +7841,7 @@ inner join pq on true
 			"     │   └─ d.pk:8!null\n" +
 			"     ├─ CrossHashJoin\n" +
 			"     │   ├─ TableAlias(a)\n" +
-			"     │   │   └─ ProcessIndexableTable\n" +
+			"     │   │   └─ ProcessTable\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: one_pk\n" +
 			"     │   │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -7894,7 +7894,7 @@ inner join pq on true
 			"         ├─ right-key: TUPLE(c.pk:0!null)\n" +
 			"         └─ CrossHashJoin\n" +
 			"             ├─ TableAlias(c)\n" +
-			"             │   └─ ProcessIndexableTable\n" +
+			"             │   └─ ProcessTable\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: one_pk\n" +
 			"             │           └─ columns: [pk]\n" +
@@ -7918,14 +7918,14 @@ inner join pq on true
 			"         │   └─ ot.i2:5!null\n" +
 			"         ├─ CrossHashJoin\n" +
 			"         │   ├─ TableAlias(mt)\n" +
-			"         │   │   └─ ProcessIndexableTable\n" +
+			"         │   │   └─ ProcessTable\n" +
 			"         │   │       └─ Table\n" +
 			"         │   │           ├─ name: mytable\n" +
 			"         │   │           └─ columns: [i s]\n" +
 			"         │   └─ HashLookup\n" +
 			"         │       ├─ left-key: TUPLE()\n" +
 			"         │       ├─ right-key: TUPLE()\n" +
-			"         │       └─ ProcessIndexableTable\n" +
+			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: tabletest\n" +
 			"         │               └─ columns: [i s]\n" +
@@ -7954,7 +7954,7 @@ inner join pq on true
 			"         │   │   ├─ c.v2:1\n" +
 			"         │   │   └─ 0 (tinyint)\n" +
 			"         │   └─ TableAlias(c)\n" +
-			"         │       └─ ProcessIndexableTable\n" +
+			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: one_pk_three_idx\n" +
 			"         │               └─ columns: [v1 v2]\n" +
@@ -8003,7 +8003,7 @@ inner join pq on true
 			"     │           │   ├─ a.v2:1\n" +
 			"     │           │   └─ 1 (tinyint)\n" +
 			"     │           └─ TableAlias(a)\n" +
-			"     │               └─ ProcessIndexableTable\n" +
+			"     │               └─ ProcessTable\n" +
 			"     │                   └─ Table\n" +
 			"     │                       ├─ name: one_pk_three_idx\n" +
 			"     │                       └─ columns: [pk v2]\n" +
@@ -8024,7 +8024,7 @@ inner join pq on true
 			"     │   ├─ (a.i:2!null + 1 (tinyint))\n" +
 			"     │   └─ (c.i:0!null - 1 (tinyint))\n" +
 			"     ├─ TableAlias(c)\n" +
-			"     │   └─ ProcessIndexableTable\n" +
+			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i s]\n" +
@@ -8058,7 +8058,7 @@ inner join pq on true
 			"     │   ├─ b.i:1!null\n" +
 			"     │   └─ d.i:0!null\n" +
 			"     ├─ TableAlias(d)\n" +
-			"     │   └─ ProcessIndexableTable\n" +
+			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i]\n" +
@@ -8121,7 +8121,7 @@ inner join pq on true
 			"     │   │               ├─ name: mytable\n" +
 			"     │   │               └─ columns: [i s]\n" +
 			"     │   └─ TableAlias(c)\n" +
-			"     │       └─ ProcessIndexableTable\n" +
+			"     │       └─ ProcessTable\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: mytable\n" +
 			"     │               └─ columns: [i]\n" +
@@ -8146,7 +8146,7 @@ inner join pq on true
 			"     │   │   ├─ a.i:3!null\n" +
 			"     │   │   └─ (c.i:0!null - 1 (tinyint))\n" +
 			"     │   ├─ TableAlias(c)\n" +
-			"     │   │   └─ ProcessIndexableTable\n" +
+			"     │   │   └─ ProcessTable\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: mytable\n" +
 			"     │   │           └─ columns: [i]\n" +
@@ -8360,7 +8360,7 @@ inner join pq on true
 			"     │       ├─ left-key: TUPLE(i.v1:1)\n" +
 			"     │       ├─ right-key: TUPLE(a.pk:0!null)\n" +
 			"     │       └─ TableAlias(a)\n" +
-			"     │           └─ ProcessIndexableTable\n" +
+			"     │           └─ ProcessTable\n" +
 			"     │               └─ Table\n" +
 			"     │                   ├─ name: one_pk_two_idx\n" +
 			"     │                   └─ columns: [pk v1 v2]\n" +
@@ -8400,7 +8400,7 @@ inner join pq on true
 			"     │   │   ├─ k.v2:2\n" +
 			"     │   │   └─ l.v3:1\n" +
 			"     │   ├─ TableAlias(l)\n" +
-			"     │   │   └─ ProcessIndexableTable\n" +
+			"     │   │   └─ ProcessTable\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: one_pk_three_idx\n" +
 			"     │   │           └─ columns: [v2 v3]\n" +
@@ -8408,7 +8408,7 @@ inner join pq on true
 			"     │       ├─ left-key: TUPLE(l.v3:1)\n" +
 			"     │       ├─ right-key: TUPLE(k.v2:0)\n" +
 			"     │       └─ TableAlias(k)\n" +
-			"     │           └─ ProcessIndexableTable\n" +
+			"     │           └─ ProcessTable\n" +
 			"     │               └─ Table\n" +
 			"     │                   ├─ name: one_pk_two_idx\n" +
 			"     │                   └─ columns: [v2]\n" +
@@ -8535,7 +8535,7 @@ inner join pq on true
 			" │   │   └─ b.i:2!null\n" +
 			" │   └─ (b.b:4 <=> NULL (null))\n" +
 			" ├─ TableAlias(a)\n" +
-			" │   └─ ProcessIndexableTable\n" +
+			" │   └─ ProcessTable\n" +
 			" │       └─ Table\n" +
 			" │           ├─ name: mytable\n" +
 			" │           └─ columns: [i s]\n" +
@@ -8557,7 +8557,7 @@ inner join pq on true
 			" │   └─ NOT\n" +
 			" │       └─ b.b:4 IS NULL\n" +
 			" ├─ TableAlias(a)\n" +
-			" │   └─ ProcessIndexableTable\n" +
+			" │   └─ ProcessTable\n" +
 			" │       └─ Table\n" +
 			" │           ├─ name: mytable\n" +
 			" │           └─ columns: [i s]\n" +
@@ -8608,7 +8608,7 @@ inner join pq on true
 			" │   └─ NOT\n" +
 			" │       └─ a.s:1!null IS NULL\n" +
 			" ├─ TableAlias(a)\n" +
-			" │   └─ ProcessIndexableTable\n" +
+			" │   └─ ProcessTable\n" +
 			" │       └─ Table\n" +
 			" │           ├─ name: mytable\n" +
 			" │           └─ columns: [i s]\n" +
@@ -8628,7 +8628,7 @@ inner join pq on true
 			" │       ├─ a.i:0!null\n" +
 			" │       └─ b.i:2!null\n" +
 			" ├─ TableAlias(a)\n" +
-			" │   └─ ProcessIndexableTable\n" +
+			" │   └─ ProcessTable\n" +
 			" │       └─ Table\n" +
 			" │           ├─ name: mytable\n" +
 			" │           └─ columns: [i s]\n" +
@@ -8638,7 +8638,7 @@ inner join pq on true
 			"     │       ├─ b.b:2\n" +
 			"     │       └─ 0 (tinyint)\n" +
 			"     └─ TableAlias(b)\n" +
-			"         └─ ProcessIndexableTable\n" +
+			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: niltable\n" +
 			"                 └─ columns: [i i2 b f]\n" +
@@ -8652,12 +8652,12 @@ inner join pq on true
 			" │       ├─ a.i:0!null\n" +
 			" │       └─ b.i:2!null\n" +
 			" ├─ TableAlias(a)\n" +
-			" │   └─ ProcessIndexableTable\n" +
+			" │   └─ ProcessTable\n" +
 			" │       └─ Table\n" +
 			" │           ├─ name: mytable\n" +
 			" │           └─ columns: [i s]\n" +
 			" └─ TableAlias(b)\n" +
-			"     └─ ProcessIndexableTable\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: niltable\n" +
 			"             └─ columns: [i i2 b f]\n" +
@@ -9070,7 +9070,7 @@ inner join pq on true
 			" ├─ Union distinct\n" +
 			" │   ├─ Project\n" +
 			" │   │   ├─ columns: [1 (tinyint)]\n" +
-			" │   │   └─ ProcessIndexableTable\n" +
+			" │   │   └─ ProcessTable\n" +
 			" │   │       └─ Table\n" +
 			" │   │           ├─ name: \n" +
 			" │   │           └─ columns: []\n" +
@@ -9091,7 +9091,7 @@ inner join pq on true
 			" │                   └─ columns: []\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [4 (tinyint)]\n" +
-			"     └─ ProcessIndexableTable\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: \n" +
 			"             └─ columns: []\n" +
@@ -9103,7 +9103,7 @@ inner join pq on true
 			" ├─ Union distinct\n" +
 			" │   ├─ Project\n" +
 			" │   │   ├─ columns: [1 (tinyint)]\n" +
-			" │   │   └─ ProcessIndexableTable\n" +
+			" │   │   └─ ProcessTable\n" +
 			" │   │       └─ Table\n" +
 			" │   │           ├─ name: \n" +
 			" │   │           └─ columns: []\n" +
@@ -9124,7 +9124,7 @@ inner join pq on true
 			" │                   └─ columns: []\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [4 (tinyint)]\n" +
-			"     └─ ProcessIndexableTable\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: \n" +
 			"             └─ columns: []\n" +
@@ -9877,7 +9877,7 @@ WHERE keyless.c0 IN (
 			"         │                           └─ Table\n" +
 			"         │                               ├─ name: keyless\n" +
 			"         │                               └─ columns: [c0]\n" +
-			"         └─ ProcessIndexableTable\n" +
+			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: keyless\n" +
 			"                 └─ columns: [c0 c1]\n" +
@@ -9959,7 +9959,7 @@ WHERE keyless.c0 IN (
 			"         │                           └─ Table\n" +
 			"         │                               ├─ name: keyless\n" +
 			"         │                               └─ columns: [c0]\n" +
-			"         └─ ProcessIndexableTable\n" +
+			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: keyless\n" +
 			"                 └─ columns: [c0 c1]\n" +
@@ -10008,7 +10008,7 @@ WHERE keyless.c0 IN (
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [two_pk.pk1:0!null, two_pk.pk2:1!null]\n" +
 			" └─ Sort(two_pk.pk1:0!null ASC nullsFirst, two_pk.pk2:1!null DESC nullsFirst)\n" +
-			"     └─ ProcessIndexableTable\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
 			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -10033,7 +10033,7 @@ WHERE keyless.c0 IN (
 			" └─ GroupBy\n" +
 			"     ├─ select: two_pk.pk1:0!null, two_pk.pk2:1!null\n" +
 			"     ├─ group: two_pk.pk1:0!null, two_pk.pk2:1!null\n" +
-			"     └─ ProcessIndexableTable\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
 			"             └─ columns: [pk1 pk2]\n" +
@@ -10045,7 +10045,7 @@ WHERE keyless.c0 IN (
 			" └─ GroupBy\n" +
 			"     ├─ select: two_pk.pk1:0!null, two_pk.pk2:1!null\n" +
 			"     ├─ group: two_pk.pk1:0!null, two_pk.pk2:1!null\n" +
-			"     └─ ProcessIndexableTable\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
 			"             └─ columns: [pk1 pk2]\n" +
@@ -10060,7 +10060,7 @@ WHERE keyless.c0 IN (
 			"         ├─ row_number() over ( partition by two_pk.pk1 order by two_pk.c1 DESC)\n" +
 			"         ├─ two_pk.pk1:0!null\n" +
 			"         ├─ two_pk.pk2:1!null\n" +
-			"         └─ ProcessIndexableTable\n" +
+			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
 			"                 └─ columns: [pk1 pk2 c1]\n" +
@@ -10093,7 +10093,7 @@ WHERE keyless.c0 IN (
 			" ├─ columns: [xy.x:0!null, uv.u:2!null]\n" +
 			" └─ LateralCrossJoin\n" +
 			"     ├─ true (tinyint(1))\n" +
-			"     ├─ ProcessIndexableTable\n" +
+			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: xy\n" +
 			"     │       └─ columns: [x y]\n" +

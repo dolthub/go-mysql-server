@@ -36,7 +36,7 @@ WHERE
 			"             ├─ Eq\n" +
 			"             │   ├─ yk2gw.id:0!null\n" +
 			"             │   └─ scalarSubq0.IXUXU:30\n" +
-			"             ├─ ProcessIndexableTable\n" +
+			"             ├─ ProcessTable\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: YK2GW\n" +
 			"             │       └─ columns: [id ftqlq tuxml paef5 rucy4 tpnj6 lbl53 nb3qs eo7iv muhjf fm34l ty5rf zhtlh npb7w sx3hh isbnf ya7yb c5ykb qk7kt ffge6 fiigj sh3nc ntena m4aub x5air sab6m g5qi5 zvqvd ykssu fhcyt]\n" +
@@ -46,7 +46,7 @@ WHERE
 			"                 └─ Project\n" +
 			"                     ├─ columns: [scalarSubq0.IXUXU:2]\n" +
 			"                     └─ TableAlias(scalarSubq0)\n" +
-			"                         └─ ProcessIndexableTable\n" +
+			"                         └─ ProcessTable\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: THNTS\n" +
 			"                                 └─ columns: [id nfryn ixuxu fhcyt]\n" +
@@ -395,7 +395,7 @@ WHERE
 			" │                                                       ├─ name: HDDVB\n" +
 			" │                                                       └─ columns: [pruv2]\n" +
 			" └─ TableAlias(ism)\n" +
-			"     └─ ProcessIndexableTable\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: HDDVB\n" +
 			"             └─ columns: [id fv24e uj6xy m22qn nz4mq etpqv pruv2 ykssu fhcyt]\n" +
@@ -518,7 +518,7 @@ WHERE
 			"             └─ Project\n" +
 			"                 ├─ columns: [scalarSubq1.ETPQV:5]\n" +
 			"                 └─ TableAlias(scalarSubq1)\n" +
-			"                     └─ ProcessIndexableTable\n" +
+			"                     └─ ProcessTable\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: HDDVB\n" +
 			"                             └─ columns: [id fv24e uj6xy m22qn nz4mq etpqv pruv2 ykssu fhcyt]\n" +
@@ -641,7 +641,7 @@ WHERE
 			"             └─ Project\n" +
 			"                 ├─ columns: [scalarSubq1.ETPQV:5]\n" +
 			"                 └─ TableAlias(scalarSubq1)\n" +
-			"                     └─ ProcessIndexableTable\n" +
+			"                     └─ ProcessTable\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: HDDVB\n" +
 			"                             └─ columns: [id fv24e uj6xy m22qn nz4mq etpqv pruv2 ykssu fhcyt]\n" +
@@ -964,7 +964,7 @@ WHERE
 			"         │   │   │   ├─ aac.id:12!null\n" +
 			"         │   │   │   └─ ct.M22QN:3!null\n" +
 			"         │   │   ├─ TableAlias(ct)\n" +
-			"         │   │   │   └─ ProcessIndexableTable\n" +
+			"         │   │   │   └─ ProcessTable\n" +
 			"         │   │   │       └─ Table\n" +
 			"         │   │   │           ├─ name: FLQLP\n" +
 			"         │   │   │           └─ columns: [id fz2r5 luevy m22qn ove3e nrurt oca7e xmm6q v5dpx s3q3y zrv3b fhcyt]\n" +
@@ -978,7 +978,7 @@ WHERE
 			"         │       ├─ left-key: TUPLE(ct.FZ2R5:1!null)\n" +
 			"         │       ├─ right-key: TUPLE(ci.id:0!null)\n" +
 			"         │       └─ TableAlias(ci)\n" +
-			"         │           └─ ProcessIndexableTable\n" +
+			"         │           └─ ProcessTable\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: JDLNA\n" +
 			"         │                   └─ columns: [id ftqlq fwwiq o3qxw fhcyt]\n" +
@@ -986,7 +986,7 @@ WHERE
 			"             ├─ left-key: TUPLE(ct.LUEVY:2!null)\n" +
 			"             ├─ right-key: TUPLE(nd.id:0!null)\n" +
 			"             └─ TableAlias(nd)\n" +
-			"                 └─ ProcessIndexableTable\n" +
+			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: E2I7U\n" +
 			"                         └─ columns: [id dkcaj kng7t tw55n qrqxw ecxaj fgg57 zh72s fsk67 xqdyt tce7a iwv2h hpcms n5cc2 fhcyt etaq7 a75x7]\n" +
@@ -1154,7 +1154,7 @@ WHERE
 			"     │   │   │   │   ├─ aac.id:8!null\n" +
 			"     │   │   │   │   └─ ct.M22QN:3!null\n" +
 			"     │   │   │   ├─ TableAlias(ct)\n" +
-			"     │   │   │   │   └─ ProcessIndexableTable\n" +
+			"     │   │   │   │   └─ ProcessTable\n" +
 			"     │   │   │   │       └─ Table\n" +
 			"     │   │   │   │           ├─ name: FLQLP\n" +
 			"     │   │   │   │           └─ columns: [id fz2r5 luevy m22qn xmm6q v5dpx s3q3y zrv3b]\n" +
@@ -1172,7 +1172,7 @@ WHERE
 			"     │   │           │   ├─ tvtjs.SWCQV:1!null\n" +
 			"     │   │           │   └─ 1 (tinyint)\n" +
 			"     │   │           └─ TableAlias(tvtjs)\n" +
-			"     │   │               └─ ProcessIndexableTable\n" +
+			"     │   │               └─ ProcessTable\n" +
 			"     │   │                   └─ Table\n" +
 			"     │   │                       ├─ name: HU5A5\n" +
 			"     │   │                       └─ columns: [id swcqv]\n" +
@@ -1180,7 +1180,7 @@ WHERE
 			"     │       ├─ left-key: TUPLE(ct.FZ2R5:1!null)\n" +
 			"     │       ├─ right-key: TUPLE(ci.id:0!null)\n" +
 			"     │       └─ TableAlias(ci)\n" +
-			"     │           └─ ProcessIndexableTable\n" +
+			"     │           └─ ProcessTable\n" +
 			"     │               └─ Table\n" +
 			"     │                   ├─ name: JDLNA\n" +
 			"     │                   └─ columns: [id ftqlq]\n" +
@@ -1188,7 +1188,7 @@ WHERE
 			"         ├─ left-key: TUPLE(ct.LUEVY:2!null)\n" +
 			"         ├─ right-key: TUPLE(nd.id:0!null)\n" +
 			"         └─ TableAlias(nd)\n" +
-			"             └─ ProcessIndexableTable\n" +
+			"             └─ ProcessTable\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: E2I7U\n" +
 			"                     └─ columns: [id tw55n]\n" +
@@ -1328,7 +1328,7 @@ WHERE
 			"         │   │       ├─ left-key: TUPLE(pv6r5.FFTBJ:4!null)\n" +
 			"         │   │       ├─ right-key: TUPLE(lqncx.id:0!null)\n" +
 			"         │   │       └─ TableAlias(lqncx)\n" +
-			"         │   │           └─ ProcessIndexableTable\n" +
+			"         │   │           └─ ProcessTable\n" +
 			"         │   │               └─ Table\n" +
 			"         │   │                   ├─ name: E2I7U\n" +
 			"         │   │                   └─ columns: [id tw55n]\n" +
@@ -1336,7 +1336,7 @@ WHERE
 			"         │       ├─ left-key: TUPLE(pv6r5.id:2!null)\n" +
 			"         │       ├─ right-key: TUPLE(rn.WNUNU:1!null)\n" +
 			"         │       └─ TableAlias(rn)\n" +
-			"         │           └─ ProcessIndexableTable\n" +
+			"         │           └─ ProcessTable\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: QYWQD\n" +
 			"         │                   └─ columns: [id wnunu hhvlx hvhrz]\n" +
@@ -1496,7 +1496,7 @@ WHERE
 			"         │       ├─ left-key: TUPLE(sn.id:7!null, skpm6.id:2!null)\n" +
 			"         │       ├─ right-key: TUPLE(rn.WNUNU:0!null, rn.HHVLX:1!null)\n" +
 			"         │       └─ TableAlias(rn)\n" +
-			"         │           └─ ProcessIndexableTable\n" +
+			"         │           └─ ProcessTable\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: QYWQD\n" +
 			"         │                   └─ columns: [wnunu hhvlx]\n" +
@@ -1800,7 +1800,7 @@ WHERE
 			"         │   │           │   ├─ ufc.id:0!null\n" +
 			"         │   │           │   └─ scalarSubq0.KKGN5:11\n" +
 			"         │   │           ├─ TableAlias(ufc)\n" +
-			"         │   │           │   └─ ProcessIndexableTable\n" +
+			"         │   │           │   └─ ProcessTable\n" +
 			"         │   │           │       └─ Table\n" +
 			"         │   │           │           ├─ name: SISUT\n" +
 			"         │   │           │           └─ columns: [id t4ibq zh72s amyxq ktnz2 hiid2 dn3oq vvknb sh7tp srzzo qz6vt]\n" +
@@ -1810,7 +1810,7 @@ WHERE
 			"         │   │               └─ Project\n" +
 			"         │   │                   ├─ columns: [scalarSubq0.KKGN5:7]\n" +
 			"         │   │                   └─ TableAlias(scalarSubq0)\n" +
-			"         │   │                       └─ ProcessIndexableTable\n" +
+			"         │   │                       └─ ProcessTable\n" +
 			"         │   │                           └─ Table\n" +
 			"         │   │                               ├─ name: AMYXQ\n" +
 			"         │   │                               └─ columns: [id gxlub luevy xqdyt amyxq oztqf z35gy kkgn5]\n" +
@@ -1818,7 +1818,7 @@ WHERE
 			"         │       ├─ left-key: TUPLE(ufc.T4IBQ:1)\n" +
 			"         │       ├─ right-key: TUPLE(cla.FTQLQ:1!null)\n" +
 			"         │       └─ TableAlias(cla)\n" +
-			"         │           └─ ProcessIndexableTable\n" +
+			"         │           └─ ProcessTable\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: YK2GW\n" +
 			"         │                   └─ columns: [id ftqlq tuxml paef5 rucy4 tpnj6 lbl53 nb3qs eo7iv muhjf fm34l ty5rf zhtlh npb7w sx3hh isbnf ya7yb c5ykb qk7kt ffge6 fiigj sh3nc ntena m4aub x5air sab6m g5qi5 zvqvd ykssu fhcyt]\n" +
@@ -1876,7 +1876,7 @@ WHERE
 			"         │   │           │   ├─ ufc.id:0!null\n" +
 			"         │   │           │   └─ scalarSubq0.KKGN5:11\n" +
 			"         │   │           ├─ TableAlias(ufc)\n" +
-			"         │   │           │   └─ ProcessIndexableTable\n" +
+			"         │   │           │   └─ ProcessTable\n" +
 			"         │   │           │       └─ Table\n" +
 			"         │   │           │           ├─ name: SISUT\n" +
 			"         │   │           │           └─ columns: [id t4ibq zh72s amyxq ktnz2 hiid2 dn3oq vvknb sh7tp srzzo qz6vt]\n" +
@@ -1886,7 +1886,7 @@ WHERE
 			"         │   │               └─ Project\n" +
 			"         │   │                   ├─ columns: [scalarSubq0.KKGN5:7]\n" +
 			"         │   │                   └─ TableAlias(scalarSubq0)\n" +
-			"         │   │                       └─ ProcessIndexableTable\n" +
+			"         │   │                       └─ ProcessTable\n" +
 			"         │   │                           └─ Table\n" +
 			"         │   │                               ├─ name: AMYXQ\n" +
 			"         │   │                               └─ columns: [id gxlub luevy xqdyt amyxq oztqf z35gy kkgn5]\n" +
@@ -1894,7 +1894,7 @@ WHERE
 			"         │       ├─ left-key: TUPLE(ufc.T4IBQ:1)\n" +
 			"         │       ├─ right-key: TUPLE(cla.FTQLQ:1!null)\n" +
 			"         │       └─ TableAlias(cla)\n" +
-			"         │           └─ ProcessIndexableTable\n" +
+			"         │           └─ ProcessTable\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: YK2GW\n" +
 			"         │                   └─ columns: [id ftqlq tuxml paef5 rucy4 tpnj6 lbl53 nb3qs eo7iv muhjf fm34l ty5rf zhtlh npb7w sx3hh isbnf ya7yb c5ykb qk7kt ffge6 fiigj sh3nc ntena m4aub x5air sab6m g5qi5 zvqvd ykssu fhcyt]\n" +
@@ -1941,7 +1941,7 @@ WHERE
 			"             │   │   ├─ cla.FTQLQ:8!null\n" +
 			"             │   │   └─ ums.T4IBQ:1\n" +
 			"             │   ├─ TableAlias(ums)\n" +
-			"             │   │   └─ ProcessIndexableTable\n" +
+			"             │   │   └─ ProcessTable\n" +
 			"             │   │       └─ Table\n" +
 			"             │   │           ├─ name: FG26Y\n" +
 			"             │   │           └─ columns: [id t4ibq ner ber hr mmr qz6vt]\n" +
@@ -1957,7 +1957,7 @@ WHERE
 			"                 └─ Project\n" +
 			"                     ├─ columns: [scalarSubq0.JOGI6:4]\n" +
 			"                     └─ TableAlias(scalarSubq0)\n" +
-			"                         └─ ProcessIndexableTable\n" +
+			"                         └─ ProcessTable\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: SZQWJ\n" +
 			"                                 └─ columns: [id gxlub ch3fr d237e jogi6]\n" +
@@ -2161,7 +2161,7 @@ WHERE
 			"         │       ├─ left-key: TUPLE(mf.M22QN:20!null)\n" +
 			"         │       ├─ right-key: TUPLE(aac.id:0!null)\n" +
 			"         │       └─ TableAlias(aac)\n" +
-			"         │           └─ ProcessIndexableTable\n" +
+			"         │           └─ ProcessTable\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: TPXBU\n" +
 			"         │                   └─ columns: [id btxc5 fhcyt]\n" +
@@ -2233,7 +2233,7 @@ WHERE
 			"     │   │           │   │       ├─ umf.ARN5P:7\n" +
 			"     │   │           │   │       └─ N/A (longtext)\n" +
 			"     │   │           │   └─ TableAlias(umf)\n" +
-			"     │   │           │       └─ ProcessIndexableTable\n" +
+			"     │   │           │       └─ ProcessTable\n" +
 			"     │   │           │           └─ Table\n" +
 			"     │   │           │               ├─ name: NZKPM\n" +
 			"     │   │           │               └─ columns: [id t4ibq fgg57 sshpj nla6o sfj6l tjpt7 arn5p sypkf ivfmk ide43 az6sp fsdy2 xosd4 hmw4h s76om vaf zroh6 qcgts lnfm6 tvawl hdlcl bhhw6 fhcyt qz6vt]\n" +
@@ -2243,7 +2243,7 @@ WHERE
 			"     │   │               └─ Project\n" +
 			"     │   │                   ├─ columns: [scalarSubq0.TEUJA:14]\n" +
 			"     │   │                   └─ TableAlias(scalarSubq0)\n" +
-			"     │   │                       └─ ProcessIndexableTable\n" +
+			"     │   │                       └─ ProcessTable\n" +
 			"     │   │                           └─ Table\n" +
 			"     │   │                               ├─ name: HGMQ6\n" +
 			"     │   │                               └─ columns: [id gxlub luevy m22qn tjpt7 arn5p xosd4 ide43 hmw4h zbt6r fsdy2 lt7k6 sppyd qcgts teuja qqv4m fhcyt]\n" +
@@ -2251,7 +2251,7 @@ WHERE
 			"     │       ├─ left-key: TUPLE(umf.T4IBQ:1)\n" +
 			"     │       ├─ right-key: TUPLE(cla.FTQLQ:1!null)\n" +
 			"     │       └─ TableAlias(cla)\n" +
-			"     │           └─ ProcessIndexableTable\n" +
+			"     │           └─ ProcessTable\n" +
 			"     │               └─ Table\n" +
 			"     │                   ├─ name: YK2GW\n" +
 			"     │                   └─ columns: [id ftqlq tuxml paef5 rucy4 tpnj6 lbl53 nb3qs eo7iv muhjf fm34l ty5rf zhtlh npb7w sx3hh isbnf ya7yb c5ykb qk7kt ffge6 fiigj sh3nc ntena m4aub x5air sab6m g5qi5 zvqvd ykssu fhcyt]\n" +
@@ -2439,7 +2439,7 @@ WHERE
 			" │               │   │       ├─ sl3s5.M22QN:19!null\n" +
 			" │               │   │       └─ mf.M22QN:3!null\n" +
 			" │               │   ├─ TableAlias(mf)\n" +
-			" │               │   │   └─ ProcessIndexableTable\n" +
+			" │               │   │   └─ ProcessTable\n" +
 			" │               │   │       └─ Table\n" +
 			" │               │   │           ├─ name: HGMQ6\n" +
 			" │               │   │           └─ columns: [id gxlub luevy m22qn tjpt7 arn5p xosd4 ide43 hmw4h zbt6r fsdy2 lt7k6 sppyd qcgts teuja qqv4m fhcyt]\n" +
@@ -2860,7 +2860,7 @@ WHERE
 			" │               │   │       ├─ sl3s5.M22QN:19!null\n" +
 			" │               │   │       └─ mf.M22QN:3!null\n" +
 			" │               │   ├─ TableAlias(mf)\n" +
-			" │               │   │   └─ ProcessIndexableTable\n" +
+			" │               │   │   └─ ProcessTable\n" +
 			" │               │   │       └─ Table\n" +
 			" │               │   │           ├─ name: HGMQ6\n" +
 			" │               │   │           └─ columns: [id gxlub luevy m22qn tjpt7 arn5p xosd4 ide43 hmw4h zbt6r fsdy2 lt7k6 sppyd qcgts teuja qqv4m fhcyt]\n" +
@@ -3323,7 +3323,7 @@ WHERE
 			"                     ├─ left-key: TUPLE(sn.BRQP2:3!null)\n" +
 			"                     ├─ right-key: TUPLE(s7egw.id:0!null)\n" +
 			"                     └─ TableAlias(s7egw)\n" +
-			"                         └─ ProcessIndexableTable\n" +
+			"                         └─ ProcessTable\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: E2I7U\n" +
 			"                                 └─ columns: [id tw55n]\n" +
@@ -3338,7 +3338,7 @@ WHERE
 			"     ├─ row_number() over ( order by sn.id ASC)\n" +
 			"     ├─ sn.id:0!null\n" +
 			"     └─ TableAlias(sn)\n" +
-			"         └─ ProcessIndexableTable\n" +
+			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: NOXN3\n" +
 			"                 └─ columns: [id]\n" +
@@ -3372,7 +3372,7 @@ WHERE
 			"         │   │   ├─ il.LUEVY:1!null\n" +
 			"         │   │   └─ nd.id:8!null\n" +
 			"         │   ├─ TableAlias(il)\n" +
-			"         │   │   └─ ProcessIndexableTable\n" +
+			"         │   │   └─ ProcessTable\n" +
 			"         │   │       └─ Table\n" +
 			"         │   │           ├─ name: RLOHD\n" +
 			"         │   │           └─ columns: [id luevy liilr ksfxh klmau ecm rqi4m fhcyt]\n" +
@@ -3579,7 +3579,7 @@ WHERE
 			"                 ├─ left-key: TUPLE(athcu.YYKXN:2!null, athcu.B2TX3:0!null)\n" +
 			"                 ├─ right-key: TUPLE(fc.LUEVY:2!null, fc.GXLUB:1!null)\n" +
 			"                 └─ TableAlias(fc)\n" +
-			"                     └─ ProcessIndexableTable\n" +
+			"                     └─ ProcessTable\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: AMYXQ\n" +
 			"                             └─ columns: [id gxlub luevy xqdyt amyxq oztqf z35gy kkgn5]\n" +
@@ -5951,7 +5951,7 @@ WHERE
 			"         │   │                                               ├─ name: NOXN3\n" +
 			"         │   │                                               └─ columns: [id brqp2 fftbj]\n" +
 			"         │   └─ TableAlias(sn)\n" +
-			"         │       └─ ProcessIndexableTable\n" +
+			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: NOXN3\n" +
 			"         │               └─ columns: [id brqp2 fftbj a7xo2 kbo7r ecdkm numk2 letoe ykssu fhcyt]\n" +
@@ -7829,7 +7829,7 @@ FROM
 			" └─ Window\n" +
 			"     ├─ row_number() over ( order by e2i7u.id ASC)\n" +
 			"     ├─ e2i7u.TW55N:1!null\n" +
-			"     └─ ProcessIndexableTable\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: E2I7U\n" +
 			"             └─ columns: [id tw55n]\n" +
@@ -8102,7 +8102,7 @@ ORDER BY cla.FTQLQ ASC`,
 			"                 │                       └─ Project\n" +
 			"                 │                           ├─ columns: [scalarSubq2.GXLUB:1!null]\n" +
 			"                 │                           └─ TableAlias(scalarSubq2)\n" +
-			"                 │                               └─ ProcessIndexableTable\n" +
+			"                 │                               └─ ProcessTable\n" +
 			"                 │                                   └─ Table\n" +
 			"                 │                                       ├─ name: AMYXQ\n" +
 			"                 │                                       └─ columns: [id gxlub luevy xqdyt amyxq oztqf z35gy kkgn5]\n" +
@@ -8110,7 +8110,7 @@ ORDER BY cla.FTQLQ ASC`,
 			"                     ├─ left-key: TUPLE(scalarSubq0.IXUXU:0)\n" +
 			"                     ├─ right-key: TUPLE(cla.id:0!null)\n" +
 			"                     └─ TableAlias(cla)\n" +
-			"                         └─ ProcessIndexableTable\n" +
+			"                         └─ ProcessTable\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: YK2GW\n" +
 			"                                 └─ columns: [id ftqlq tuxml paef5 rucy4 tpnj6 lbl53 nb3qs eo7iv muhjf fm34l ty5rf zhtlh npb7w sx3hh isbnf ya7yb c5ykb qk7kt ffge6 fiigj sh3nc ntena m4aub x5air sab6m g5qi5 zvqvd ykssu fhcyt]\n" +
@@ -8158,7 +8158,7 @@ ORDER BY cla.FTQLQ ASC`,
 			"                     ├─ left-key: TUPLE(bs.IXUXU:2)\n" +
 			"                     ├─ right-key: TUPLE(cla.id:0!null)\n" +
 			"                     └─ TableAlias(cla)\n" +
-			"                         └─ ProcessIndexableTable\n" +
+			"                         └─ ProcessTable\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: YK2GW\n" +
 			"                                 └─ columns: [id ftqlq tuxml paef5 rucy4 tpnj6 lbl53 nb3qs eo7iv muhjf fm34l ty5rf zhtlh npb7w sx3hh isbnf ya7yb c5ykb qk7kt ffge6 fiigj sh3nc ntena m4aub x5air sab6m g5qi5 zvqvd ykssu fhcyt]\n" +
@@ -8213,7 +8213,7 @@ ORDER BY cla.FTQLQ ASC`,
 			"                     ├─ left-key: TUPLE(scalarSubq0.IXUXU:0)\n" +
 			"                     ├─ right-key: TUPLE(cla.id:0!null)\n" +
 			"                     └─ TableAlias(cla)\n" +
-			"                         └─ ProcessIndexableTable\n" +
+			"                         └─ ProcessTable\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: YK2GW\n" +
 			"                                 └─ columns: [id ftqlq tuxml paef5 rucy4 tpnj6 lbl53 nb3qs eo7iv muhjf fm34l ty5rf zhtlh npb7w sx3hh isbnf ya7yb c5ykb qk7kt ffge6 fiigj sh3nc ntena m4aub x5air sab6m g5qi5 zvqvd ykssu fhcyt]\n" +
@@ -8399,7 +8399,7 @@ ORDER BY LUEVY`,
 			"                 ├─ left-key: TUPLE(ypgda.I3L5A:8)\n" +
 			"                 ├─ right-key: TUPLE(ybbg5.id:0!null)\n" +
 			"                 └─ TableAlias(ybbg5)\n" +
-			"                     └─ ProcessIndexableTable\n" +
+			"                     └─ ProcessTable\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: XGSJM\n" +
 			"                             └─ columns: [id dzlim f3yue]\n" +
@@ -8408,7 +8408,7 @@ ORDER BY LUEVY`,
 	{
 		Query: `
 SELECT LUEVY, F6NSZ FROM ARLV5`,
-		ExpectedPlan: "ProcessIndexableTable\n" +
+		ExpectedPlan: "ProcessTable\n" +
 			" └─ Table\n" +
 			"     ├─ name: ARLV5\n" +
 			"     └─ columns: [luevy f6nsz]\n" +
@@ -8417,7 +8417,7 @@ SELECT LUEVY, F6NSZ FROM ARLV5`,
 	{
 		Query: `
 SELECT id, DZLIM FROM IIISV`,
-		ExpectedPlan: "ProcessIndexableTable\n" +
+		ExpectedPlan: "ProcessTable\n" +
 			" └─ Table\n" +
 			"     ├─ name: IIISV\n" +
 			"     └─ columns: [id dzlim]\n" +
@@ -8486,7 +8486,7 @@ ORDER BY sn.id ASC`,
 			"             │   │   │   ├─ sn.BRQP2:1!null\n" +
 			"             │   │   │   └─ tvqg4.id:10!null\n" +
 			"             │   │   ├─ TableAlias(sn)\n" +
-			"             │   │   │   └─ ProcessIndexableTable\n" +
+			"             │   │   │   └─ ProcessTable\n" +
 			"             │   │   │       └─ Table\n" +
 			"             │   │   │           ├─ name: NOXN3\n" +
 			"             │   │   │           └─ columns: [id brqp2 fftbj a7xo2 kbo7r ecdkm numk2 letoe ykssu fhcyt]\n" +
@@ -8494,7 +8494,7 @@ ORDER BY sn.id ASC`,
 			"             │   │       ├─ left-key: TUPLE(sn.BRQP2:1!null)\n" +
 			"             │   │       ├─ right-key: TUPLE(tvqg4.id:0!null)\n" +
 			"             │   │       └─ TableAlias(tvqg4)\n" +
-			"             │   │           └─ ProcessIndexableTable\n" +
+			"             │   │           └─ ProcessTable\n" +
 			"             │   │               └─ Table\n" +
 			"             │   │                   ├─ name: E2I7U\n" +
 			"             │   │                   └─ columns: [id dkcaj kng7t tw55n qrqxw ecxaj fgg57 zh72s fsk67 xqdyt tce7a iwv2h hpcms n5cc2 fhcyt etaq7 a75x7]\n" +
@@ -8509,7 +8509,7 @@ ORDER BY sn.id ASC`,
 			"                 ├─ left-key: TUPLE(sn.A7XO2:3)\n" +
 			"                 ├─ right-key: TUPLE(it.id:0!null)\n" +
 			"                 └─ TableAlias(it)\n" +
-			"                     └─ ProcessIndexableTable\n" +
+			"                     └─ ProcessTable\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: FEVH4\n" +
 			"                             └─ columns: [id dzlim f3yue]\n" +
@@ -8605,7 +8605,7 @@ ORDER BY rn.id ASC`,
 			"             │   │   │   │   │   ├─ rn.WNUNU:1!null\n" +
 			"             │   │   │   │   │   └─ jgt2h.id:6!null\n" +
 			"             │   │   │   │   ├─ TableAlias(rn)\n" +
-			"             │   │   │   │   │   └─ ProcessIndexableTable\n" +
+			"             │   │   │   │   │   └─ ProcessTable\n" +
 			"             │   │   │   │   │       └─ Table\n" +
 			"             │   │   │   │   │           ├─ name: QYWQD\n" +
 			"             │   │   │   │   │           └─ columns: [id wnunu hhvlx hvhrz ykssu fhcyt]\n" +
@@ -8613,7 +8613,7 @@ ORDER BY rn.id ASC`,
 			"             │   │   │   │       ├─ left-key: TUPLE(rn.WNUNU:1!null)\n" +
 			"             │   │   │   │       ├─ right-key: TUPLE(jgt2h.id:0!null)\n" +
 			"             │   │   │   │       └─ TableAlias(jgt2h)\n" +
-			"             │   │   │   │           └─ ProcessIndexableTable\n" +
+			"             │   │   │   │           └─ ProcessTable\n" +
 			"             │   │   │   │               └─ Table\n" +
 			"             │   │   │   │                   ├─ name: NOXN3\n" +
 			"             │   │   │   │                   └─ columns: [id brqp2 fftbj a7xo2 kbo7r ecdkm numk2 letoe ykssu fhcyt]\n" +
@@ -8628,7 +8628,7 @@ ORDER BY rn.id ASC`,
 			"             │   │       ├─ left-key: TUPLE(jgt2h.BRQP2:7!null)\n" +
 			"             │   │       ├─ right-key: TUPLE(sdllr.id:0!null)\n" +
 			"             │   │       └─ TableAlias(sdllr)\n" +
-			"             │   │           └─ ProcessIndexableTable\n" +
+			"             │   │           └─ ProcessTable\n" +
 			"             │   │               └─ Table\n" +
 			"             │   │                   ├─ name: E2I7U\n" +
 			"             │   │                   └─ columns: [id dkcaj kng7t tw55n qrqxw ecxaj fgg57 zh72s fsk67 xqdyt tce7a iwv2h hpcms n5cc2 fhcyt etaq7 a75x7]\n" +
@@ -8766,7 +8766,7 @@ INNER JOIN XOAOP pa
 			"     │   │   ├─ qnrbh.CH3FR:0!null\n" +
 			"     │   │   └─ pa.id:2!null\n" +
 			"     │   ├─ TableAlias(qnrbh)\n" +
-			"     │   │   └─ ProcessIndexableTable\n" +
+			"     │   │   └─ ProcessTable\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: JJGQT\n" +
 			"     │   │           └─ columns: [ch3fr luevy]\n" +
@@ -8818,7 +8818,7 @@ WHERE
 			"         │   └─ HashIn\n" +
 			"         │       ├─ hddvb.UJ6XY:2!null\n" +
 			"         │       └─ TUPLE(1 (longtext), 2 (longtext), 3 (longtext))\n" +
-			"         └─ ProcessIndexableTable\n" +
+			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: HDDVB\n" +
 			"                 └─ columns: [id fv24e uj6xy m22qn nz4mq etpqv pruv2 ykssu fhcyt]\n" +
@@ -9024,7 +9024,7 @@ UPDATE S3FQX SET ADWYM = 0, FPUYA = 0`,
 			"              END IF;\n" +
 			"            END//)\n" +
 			"             ├─ UpdateSource(SET s3fqx.ADWYM:1!null = 0 (tinyint),SET s3fqx.FPUYA:2!null = 0 (tinyint))\n" +
-			"             │   └─ ProcessIndexableTable\n" +
+			"             │   └─ ProcessTable\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: S3FQX\n" +
 			"             │           └─ columns: [id adwym fpuya]\n" +
@@ -9065,7 +9065,7 @@ WHERE
 			" └─ RowUpdateAccumulator\n" +
 			"     └─ Insert(id, NFRYN, IXUXU, FHCYT)\n" +
 			"         ├─ InsertDestination\n" +
-			"         │   └─ ProcessIndexableTable\n" +
+			"         │   └─ ProcessTable\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: THNTS\n" +
 			"         │           └─ columns: [id nfryn ixuxu fhcyt]\n" +
@@ -9169,7 +9169,7 @@ FROM
 			" └─ RowUpdateAccumulator\n" +
 			"     └─ Insert(id, WNUNU, HHVLX, HVHRZ, YKSSU, FHCYT)\n" +
 			"         ├─ InsertDestination\n" +
-			"         │   └─ ProcessIndexableTable\n" +
+			"         │   └─ ProcessTable\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: QYWQD\n" +
 			"         │           └─ columns: [id wnunu hhvlx hvhrz ykssu fhcyt]\n" +
@@ -9286,7 +9286,7 @@ WHERE
 			" └─ RowUpdateAccumulator\n" +
 			"     └─ Insert(id, QZ7E7, SSHPJ, FHCYT)\n" +
 			"         ├─ InsertDestination\n" +
-			"         │   └─ ProcessIndexableTable\n" +
+			"         │   └─ ProcessTable\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: WE72E\n" +
 			"         │           └─ columns: [id qz7e7 sshpj fhcyt]\n" +
@@ -9387,7 +9387,7 @@ WHERE
 			" └─ RowUpdateAccumulator\n" +
 			"     └─ Insert(id, GXLUB, LUEVY, XQDYT, AMYXQ, OZTQF, Z35GY, KKGN5)\n" +
 			"         ├─ InsertDestination\n" +
-			"         │   └─ ProcessIndexableTable\n" +
+			"         │   └─ ProcessTable\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: AMYXQ\n" +
 			"         │           └─ columns: [id gxlub luevy xqdyt amyxq oztqf z35gy kkgn5]\n" +
@@ -9593,7 +9593,7 @@ WHERE
 			" └─ RowUpdateAccumulator\n" +
 			"     └─ Insert(id, GXLUB, CH3FR, D237E, JOGI6)\n" +
 			"         ├─ InsertDestination\n" +
-			"         │   └─ ProcessIndexableTable\n" +
+			"         │   └─ ProcessTable\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: SZQWJ\n" +
 			"         │           └─ columns: [id gxlub ch3fr d237e jogi6]\n" +
@@ -9782,7 +9782,7 @@ WHERE
 			" └─ RowUpdateAccumulator\n" +
 			"     └─ Insert(id, GXLUB, CH3FR, D237E, JOGI6)\n" +
 			"         ├─ InsertDestination\n" +
-			"         │   └─ ProcessIndexableTable\n" +
+			"         │   └─ ProcessTable\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: SZQWJ\n" +
 			"         │           └─ columns: [id gxlub ch3fr d237e jogi6]\n" +
@@ -9971,7 +9971,7 @@ WHERE
 			" └─ RowUpdateAccumulator\n" +
 			"     └─ Insert(id, GXLUB, CH3FR, D237E, JOGI6)\n" +
 			"         ├─ InsertDestination\n" +
-			"         │   └─ ProcessIndexableTable\n" +
+			"         │   └─ ProcessTable\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: SZQWJ\n" +
 			"         │           └─ columns: [id gxlub ch3fr d237e jogi6]\n" +
@@ -10160,7 +10160,7 @@ WHERE
 			" └─ RowUpdateAccumulator\n" +
 			"     └─ Insert(id, GXLUB, CH3FR, D237E, JOGI6)\n" +
 			"         ├─ InsertDestination\n" +
-			"         │   └─ ProcessIndexableTable\n" +
+			"         │   └─ ProcessTable\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: SZQWJ\n" +
 			"         │           └─ columns: [id gxlub ch3fr d237e jogi6]\n" +
@@ -10354,7 +10354,7 @@ WHERE
 			" └─ RowUpdateAccumulator\n" +
 			"     └─ Insert(id, BTXC5, FHCYT)\n" +
 			"         ├─ InsertDestination\n" +
-			"         │   └─ ProcessIndexableTable\n" +
+			"         │   └─ ProcessTable\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: TPXBU\n" +
 			"         │           └─ columns: [id btxc5 fhcyt]\n" +
@@ -10503,7 +10503,7 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			" └─ RowUpdateAccumulator\n" +
 			"     └─ Insert(id, GXLUB, LUEVY, M22QN, TJPT7, ARN5P, XOSD4, IDE43, HMW4H, ZBT6R, FSDY2, LT7K6, SPPYD, QCGTS, TEUJA, QQV4M, FHCYT)\n" +
 			"         ├─ InsertDestination\n" +
-			"         │   └─ ProcessIndexableTable\n" +
+			"         │   └─ ProcessTable\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: HGMQ6\n" +
 			"         │           └─ columns: [id gxlub luevy m22qn tjpt7 arn5p xosd4 ide43 hmw4h zbt6r fsdy2 lt7k6 sppyd qcgts teuja qqv4m fhcyt]\n" +
@@ -10754,7 +10754,7 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"             │               │   │   ├─ cla.id:29!null\n" +
 			"             │               │   │   └─ bs.IXUXU:2\n" +
 			"             │               │   ├─ TableAlias(bs)\n" +
-			"             │               │   │   └─ ProcessIndexableTable\n" +
+			"             │               │   │   └─ ProcessTable\n" +
 			"             │               │   │       └─ Table\n" +
 			"             │               │   │           ├─ name: THNTS\n" +
 			"             │               │   │           └─ columns: [id nfryn ixuxu fhcyt]\n" +
@@ -10815,7 +10815,7 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"             │               │                       ├─ name: YK2GW\n" +
 			"             │               │                       └─ columns: [id ftqlq tuxml paef5 rucy4 tpnj6 lbl53 nb3qs eo7iv muhjf fm34l ty5rf zhtlh npb7w sx3hh isbnf ya7yb c5ykb qk7kt ffge6 fiigj sh3nc ntena m4aub x5air sab6m g5qi5 zvqvd ykssu fhcyt]\n" +
 			"             │               └─ TableAlias(tj5d2)\n" +
-			"             │                   └─ ProcessIndexableTable\n" +
+			"             │                   └─ ProcessTable\n" +
 			"             │                       └─ Table\n" +
 			"             │                           ├─ name: SZW6V\n" +
 			"             │                           └─ columns: [id t4ibq v7ufh sypkf h4dmt swcqv ykssu fhcyt]\n" +
@@ -10921,7 +10921,7 @@ INNER JOIN D34QP vc ON C6PUD.AZ6SP LIKE CONCAT(CONCAT('%', vc.TWMSR), '%')`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Insert(id, Z7CP5, YH4XB)\n" +
 			"     ├─ InsertDestination\n" +
-			"     │   └─ ProcessIndexableTable\n" +
+			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: SEQS3\n" +
 			"     │           └─ columns: [id z7cp5 yh4xb]\n" +
@@ -10956,7 +10956,7 @@ INNER JOIN D34QP vc ON C6PUD.AZ6SP LIKE CONCAT(CONCAT('%', vc.TWMSR), '%')`,
 			"                 │                           ├─ name: NZKPM\n" +
 			"                 │                           └─ columns: [id az6sp]\n" +
 			"                 └─ TableAlias(vc)\n" +
-			"                     └─ ProcessIndexableTable\n" +
+			"                     └─ ProcessTable\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: D34QP\n" +
 			"                             └─ columns: [id twmsr]\n" +
@@ -11072,7 +11072,7 @@ FROM
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Insert(id, FV24E, UJ6XY, M22QN, NZ4MQ, ETPQV, PRUV2, YKSSU, FHCYT)\n" +
 			"     ├─ InsertDestination\n" +
-			"     │   └─ ProcessIndexableTable\n" +
+			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: HDDVB\n" +
 			"     │           └─ columns: [id fv24e uj6xy m22qn nz4mq etpqv pruv2 ykssu fhcyt]\n" +
@@ -11511,7 +11511,7 @@ WHERE
 			" └─ RowUpdateAccumulator\n" +
 			"     └─ Insert(id, NO52D, VYO5E, DKCAJ, ADURZ, FHCYT)\n" +
 			"         ├─ InsertDestination\n" +
-			"         │   └─ ProcessIndexableTable\n" +
+			"         │   └─ ProcessTable\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: SFEGG\n" +
 			"         │           └─ columns: [id no52d vyo5e dkcaj adurz fhcyt]\n" +
@@ -11821,7 +11821,7 @@ WHERE
 			" └─ RowUpdateAccumulator\n" +
 			"     └─ Insert(id, FZ2R5, LUEVY, M22QN, OVE3E, NRURT, OCA7E, XMM6Q, V5DPX, S3Q3Y, ZRV3B, FHCYT)\n" +
 			"         ├─ InsertDestination\n" +
-			"         │   └─ ProcessIndexableTable\n" +
+			"         │   └─ ProcessTable\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: FLQLP\n" +
 			"         │           └─ columns: [id fz2r5 luevy m22qn ove3e nrurt oca7e xmm6q v5dpx s3q3y zrv3b fhcyt]\n" +
@@ -12205,7 +12205,7 @@ WHERE
 			" └─ RowUpdateAccumulator\n" +
 			"     └─ Insert(id, NO52D, VYO5E, DKCAJ, ADURZ, FHCYT)\n" +
 			"         ├─ InsertDestination\n" +
-			"         │   └─ ProcessIndexableTable\n" +
+			"         │   └─ ProcessTable\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: SFEGG\n" +
 			"         │           └─ columns: [id no52d vyo5e dkcaj adurz fhcyt]\n" +
@@ -12413,7 +12413,7 @@ WHERE
 			" └─ RowUpdateAccumulator\n" +
 			"     └─ Insert(id, FZ2R5, LUEVY, M22QN, OVE3E, NRURT, OCA7E, XMM6Q, V5DPX, S3Q3Y, ZRV3B, FHCYT)\n" +
 			"         ├─ InsertDestination\n" +
-			"         │   └─ ProcessIndexableTable\n" +
+			"         │   └─ ProcessTable\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: FLQLP\n" +
 			"         │           └─ columns: [id fz2r5 luevy m22qn ove3e nrurt oca7e xmm6q v5dpx s3q3y zrv3b fhcyt]\n" +

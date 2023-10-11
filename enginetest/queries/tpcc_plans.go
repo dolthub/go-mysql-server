@@ -102,7 +102,7 @@ from
 			"         │       ├─ t.o_c_id:4\n" +
 			"         │       └─ o.o_c_id:3\n" +
 			"         ├─ TableAlias(o)\n" +
-			"         │   └─ ProcessIndexableTable\n" +
+			"         │   └─ ProcessTable\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: orders2\n" +
 			"         │           └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +

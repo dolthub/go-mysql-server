@@ -53,7 +53,7 @@ order by
 			"                 ├─ LessThanOrEqual\n" +
 			"                 │   ├─ lineitem.l_shipdate:6!null\n" +
 			"                 │   └─ 1998-09-02 00:00:00 +0000 UTC (datetime(6))\n" +
-			"                 └─ ProcessIndexableTable\n" +
+			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: lineitem\n" +
 			"                         └─ columns: [l_quantity l_extendedprice l_discount l_tax l_returnflag l_linestatus l_shipdate]\n" +
@@ -175,7 +175,7 @@ order by
 			"                 │   │   │   ├─ Eq\n" +
 			"                 │   │   │   │   ├─ supplier.s_suppkey:5!null\n" +
 			"                 │   │   │   │   └─ partsupp.ps_suppkey:1!null\n" +
-			"                 │   │   │   ├─ ProcessIndexableTable\n" +
+			"                 │   │   │   ├─ ProcessTable\n" +
 			"                 │   │   │   │   └─ Table\n" +
 			"                 │   │   │   │       ├─ name: partsupp\n" +
 			"                 │   │   │   │       └─ columns: [ps_partkey ps_suppkey ps_availqty ps_supplycost ps_comment]\n" +
@@ -279,7 +279,7 @@ order by
 			"                         ├─ Eq\n" +
 			"                         │   ├─ customer.c_mktsegment:1!null\n" +
 			"                         │   └─ BUILDING (longtext)\n" +
-			"                         └─ ProcessIndexableTable\n" +
+			"                         └─ ProcessTable\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: customer\n" +
 			"                                 └─ columns: [c_custkey c_mktsegment]\n" +
@@ -403,7 +403,7 @@ order by
 			"                 │   ├─ Eq\n" +
 			"                 │   │   ├─ lineitem.l_suppkey:1!null\n" +
 			"                 │   │   └─ supplier.s_suppkey:4!null\n" +
-			"                 │   ├─ ProcessIndexableTable\n" +
+			"                 │   ├─ ProcessTable\n" +
 			"                 │   │   └─ Table\n" +
 			"                 │   │       ├─ name: lineitem\n" +
 			"                 │   │       └─ columns: [l_orderkey l_suppkey l_extendedprice l_discount]\n" +
@@ -435,7 +435,7 @@ order by
 			"                         │   │   │   │   └─ LessThan\n" +
 			"                         │   │   │   │       ├─ orders.o_orderdate:2!null\n" +
 			"                         │   │   │   │       └─ 1995-01-01 00:00:00 +0000 UTC (datetime(6))\n" +
-			"                         │   │   │   └─ ProcessIndexableTable\n" +
+			"                         │   │   │   └─ ProcessTable\n" +
 			"                         │   │   │       └─ Table\n" +
 			"                         │   │   │           ├─ name: orders\n" +
 			"                         │   │   │           └─ columns: [o_orderkey o_custkey o_orderdate]\n" +
@@ -491,7 +491,7 @@ where
 			"         │   └─ LessThan\n" +
 			"         │       ├─ lineitem.l_quantity:0!null\n" +
 			"         │       └─ 24 (tinyint)\n" +
-			"         └─ ProcessIndexableTable\n" +
+			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: lineitem\n" +
 			"                 └─ columns: [l_quantity l_extendedprice l_discount l_shipdate]\n" +
@@ -932,7 +932,7 @@ order by
 			"                 │   │   │   │   └─ LessThan\n" +
 			"                 │   │   │   │       ├─ orders.o_orderdate:2!null\n" +
 			"                 │   │   │   │       └─ 1994-01-01 00:00:00 +0000 UTC (datetime(6))\n" +
-			"                 │   │   │   └─ ProcessIndexableTable\n" +
+			"                 │   │   │   └─ ProcessTable\n" +
 			"                 │   │   │       └─ Table\n" +
 			"                 │   │   │           ├─ name: orders\n" +
 			"                 │   │   │           └─ columns: [o_orderkey o_custkey o_orderdate]\n" +
@@ -953,7 +953,7 @@ order by
 			"                         ├─ Eq\n" +
 			"                         │   ├─ lineitem.l_returnflag:3!null\n" +
 			"                         │   └─ R (longtext)\n" +
-			"                         └─ ProcessIndexableTable\n" +
+			"                         └─ ProcessTable\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: lineitem\n" +
 			"                                 └─ columns: [l_orderkey l_extendedprice l_discount l_returnflag]\n" +
@@ -1038,7 +1038,7 @@ order by
 			"                     │   ├─ Eq\n" +
 			"                     │   │   ├─ partsupp.ps_suppkey:1!null\n" +
 			"                     │   │   └─ supplier.s_suppkey:5!null\n" +
-			"                     │   ├─ ProcessIndexableTable\n" +
+			"                     │   ├─ ProcessTable\n" +
 			"                     │   │   └─ Table\n" +
 			"                     │   │       ├─ name: partsupp\n" +
 			"                     │   │       └─ columns: [ps_partkey ps_suppkey ps_availqty ps_supplycost ps_comment]\n" +
@@ -1239,7 +1239,7 @@ where
 			"         │   │   └─ LessThan\n" +
 			"         │   │       ├─ lineitem.l_shipdate:3!null\n" +
 			"         │   │       └─ 1995-10-01 00:00:00 +0000 UTC (datetime(6))\n" +
-			"         │   └─ ProcessIndexableTable\n" +
+			"         │   └─ ProcessTable\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: lineitem\n" +
 			"         │           └─ columns: [l_partkey l_extendedprice l_discount l_shipdate]\n" +
@@ -1408,7 +1408,7 @@ order by
 			"                 │   ├─ Eq\n" +
 			"                 │   │   ├─ partsupp.ps_suppkey:1!null\n" +
 			"                 │   │   └─ scalarSubq0.s_suppkey:5!null\n" +
-			"                 │   ├─ ProcessIndexableTable\n" +
+			"                 │   ├─ ProcessTable\n" +
 			"                 │   │   └─ Table\n" +
 			"                 │   │       ├─ name: partsupp\n" +
 			"                 │   │       └─ columns: [ps_partkey ps_suppkey ps_availqty ps_supplycost ps_comment]\n" +
@@ -1492,7 +1492,7 @@ where
 			"             ├─ Eq\n" +
 			"             │   ├─ part.p_partkey:16!null\n" +
 			"             │   └─ lineitem.l_partkey:1!null\n" +
-			"             ├─ ProcessIndexableTable\n" +
+			"             ├─ ProcessTable\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: lineitem\n" +
 			"             │       └─ columns: [l_orderkey l_partkey l_suppkey l_linenumber l_quantity l_extendedprice l_discount l_tax l_returnflag l_linestatus l_shipdate l_commitdate l_receiptdate l_shipinstruct l_shipmode l_comment]\n" +
@@ -1596,7 +1596,7 @@ order by
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: TUPLE(orders.o_orderkey:0!null)\n" +
 			"                 ├─ right-key: TUPLE(lineitem.l_orderkey:0!null)\n" +
-			"                 └─ ProcessIndexableTable\n" +
+			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: lineitem\n" +
 			"                         └─ columns: [l_orderkey l_partkey l_suppkey l_linenumber l_quantity l_extendedprice l_discount l_tax l_returnflag l_linestatus l_shipdate l_commitdate l_receiptdate l_shipinstruct l_shipmode l_comment]\n" +
@@ -1735,7 +1735,7 @@ where
 			"         │       └─ Eq\n" +
 			"         │           ├─ lineitem.l_shipinstruct:4!null\n" +
 			"         │           └─ DELIVER IN PERSON (longtext)\n" +
-			"         ├─ ProcessIndexableTable\n" +
+			"         ├─ ProcessTable\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: lineitem\n" +
 			"         │       └─ columns: [l_partkey l_quantity l_extendedprice l_discount l_shipinstruct l_shipmode]\n" +
@@ -1904,7 +1904,7 @@ order by
 			"                         ├─ Eq\n" +
 			"                         │   ├─ supplier.s_nationkey:4!null\n" +
 			"                         │   └─ nation.n_nationkey:8!null\n" +
-			"                         ├─ ProcessIndexableTable\n" +
+			"                         ├─ ProcessTable\n" +
 			"                         │   └─ Table\n" +
 			"                         │       ├─ name: supplier\n" +
 			"                         │       └─ columns: [s_suppkey s_name s_address s_nationkey s_phone s_acctbal s_comment]\n" +
@@ -2004,7 +2004,7 @@ order by
 			"                 │   │   │   │   │   │   ├─ l1.l_receiptdate:12!null\n" +
 			"                 │   │   │   │   │   │   └─ l1.l_commitdate:11!null\n" +
 			"                 │   │   │   │   │   └─ TableAlias(l1)\n" +
-			"                 │   │   │   │   │       └─ ProcessIndexableTable\n" +
+			"                 │   │   │   │   │       └─ ProcessTable\n" +
 			"                 │   │   │   │   │           └─ Table\n" +
 			"                 │   │   │   │   │               ├─ name: lineitem\n" +
 			"                 │   │   │   │   │               └─ columns: [l_orderkey l_partkey l_suppkey l_linenumber l_quantity l_extendedprice l_discount l_tax l_returnflag l_linestatus l_shipdate l_commitdate l_receiptdate l_shipinstruct l_shipmode l_comment]\n" +
