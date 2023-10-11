@@ -42,7 +42,7 @@ func main() {
 			rewriteStmt(scanner)
 			continue
 		}
-		if strings.HasPrefix(line, "query error") {
+		if strings.HasPrefix(line, "query error") || strings.HasPrefix(line, "statement error") {
 			rewriteError(scanner)
 			continue
 		}
@@ -55,6 +55,7 @@ func main() {
 
 func rewriteStmt(scanner *bufio.Scanner) {
 	var stmt string
+	once := true
 	for {
 		if !scanner.Scan() {
 			panic("expected statement")
@@ -69,13 +70,20 @@ func rewriteStmt(scanner *bufio.Scanner) {
 			// multiple statements in one line for some reason
 			for _, p := range parts {
 				writeStmt(p)
+				once = true
 			}
 			continue
 		}
 
-		stmt += part
+		if once {
+			once = false
+			stmt += part
+		} else {
+			stmt += "\n" + part
+		}
 		if strings.HasSuffix(part, ";") {
 			writeStmt(stmt)
+			once = true
 			stmt = ""
 		}
 	}
@@ -94,23 +102,8 @@ func writeStmt(stmt string) {
 func rewriteError(scanner *bufio.Scanner) {
 	fmt.Println("statement error")
 
-	// expect a query, then blank line
-	if !scanner.Scan() {
-		panic("expected error query")
-	}
-	line := scanner.Text()
-	if len(line) == 0 {
-		panic("expected error query, but got blank line")
-	}
-	fmt.Println(line)
-
-	if !scanner.Scan() {
-		panic("expected blank line")
-	}
-	line = scanner.Text()
-	if len(line) != 0 {
-		panic("expected blank line, but got query")
-	}
+	stmt := utils.ReadStmt(scanner)
+	fmt.Println(stmt)
 	fmt.Println()
 }
 

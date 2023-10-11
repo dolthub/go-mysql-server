@@ -11,6 +11,7 @@ const SEP = "----"
 
 func ReadStmt(scanner *bufio.Scanner) string {
 	var stmt string
+	once := true
 	for {
 		if !scanner.Scan() {
 			panic("unexpected EOF")
@@ -19,7 +20,12 @@ func ReadStmt(scanner *bufio.Scanner) string {
 		if len(part) == 0 {
 			break
 		}
-		stmt += part
+		if once {
+			once = false
+			stmt += part
+		} else {
+			stmt += "\n" + part
+		}
 	}
 	return stmt
 }
@@ -27,6 +33,7 @@ func ReadStmt(scanner *bufio.Scanner) string {
 // ReadQuery reads queries, stopping at separator
 func ReadQuery(scanner *bufio.Scanner) string {
 	var query string
+	once := true
 	for {
 		if !scanner.Scan() {
 			panic("unexpected EOF")
@@ -38,7 +45,12 @@ func ReadQuery(scanner *bufio.Scanner) string {
 		if part == SEP {
 			break
 		}
-		query += part
+		if once {
+			once = false
+			query += part
+		} else {
+			query += "\n" + part
+		}
 	}
 	return query
 }

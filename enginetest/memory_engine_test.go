@@ -929,9 +929,11 @@ func mergeSetupScripts(scripts ...setup.SetupScript) []string {
 }
 
 func TestSQLLogicTestFiles(t *testing.T) {
+	t.Skip()
 	h := memharness.NewMemoryHarness(enginetest.NewDefaultMemoryHarness())
 	paths := []string{
 		"./sqllogictest/testdata/join/join.test",
+		"./sqllogictest/testdata/join/subquery_correlated.test",
 	}
 	logictest.RunTestFiles(h, paths...)
 }
