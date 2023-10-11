@@ -122,7 +122,7 @@ type ProcessIndexableTable struct {
 func (t *ProcessIndexableTable) DebugString() string {
 	tp := sql.NewTreePrinter()
 	_ = tp.WriteNode("ProcessIndexableTable")
-	_ = tp.WriteChildren(sql.DebugString(t.Underlying()))
+	_ = tp.WriteChildren(TableDebugString(t.Underlying()))
 	return tp.String()
 }
 
@@ -229,7 +229,7 @@ func (t *ProcessTable) DebugString() string {
 			_ = tp.WriteChildren(sql.DebugString(underlying))
 		}
 	} else {
-		_ = tp.WriteChildren(underlying.String())
+		_ = tp.WriteChildren(TableDebugString(underlying))
 	}
 
 	return tp.String()
