@@ -202,15 +202,15 @@ func TestSingleScript(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: 			"insert into t1 (a) values (1), (2), (3)",
-					Expected: 		[]sql.Row{{types.NewOkResult(3)}},
+					Query:    "insert into t1 (a) values (1), (2), (3)",
+					Expected: []sql.Row{{types.NewOkResult(3)}},
 				},
 				{
 					Query:    "select * from t1 order by a",
 					Expected: []sql.Row{{1, 2}, {2, 3}, {3, 4}},
 				},
 				{
-					Query:    "update t1 set a = 4 where a = 3",
+					Query: "update t1 set a = 4 where a = 3",
 					Expected: []sql.Row{{types.OkResult{
 						RowsAffected: 1,
 						Info: plan.UpdateInfo{
@@ -221,7 +221,7 @@ func TestSingleScript(t *testing.T) {
 				},
 				{
 					Query:    "select * from t1 order by a",
-					Expected: []sql.Row{{1,2}, {2, 3}, {4, 5}},
+					Expected: []sql.Row{{1, 2}, {2, 3}, {4, 5}},
 				},
 				{
 					Query:    "delete from t1 where a = 2",
@@ -241,15 +241,15 @@ func TestSingleScript(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: 			"insert into t1 (a, c) values (1,5), (3,7)",
-					Expected: 		[]sql.Row{{types.NewOkResult(2)}},
+					Query:    "insert into t1 (a, c) values (1,5), (3,7)",
+					Expected: []sql.Row{{types.NewOkResult(2)}},
 				},
 				{
-					Query: 			"insert into t1 (c, a) values (5,6), (7,8)",
-					Expected: 		[]sql.Row{{types.NewOkResult(2)}},
+					Query:    "insert into t1 (c, a) values (5,6), (7,8)",
+					Expected: []sql.Row{{types.NewOkResult(2)}},
 				},
 				{
-					Query:    "select * from t1 order by a",
+					Query: "select * from t1 order by a",
 					Expected: []sql.Row{
 						{2, 1, 3, 5},
 						{2, 3, 5, 7},
@@ -258,7 +258,7 @@ func TestSingleScript(t *testing.T) {
 					},
 				},
 				{
-					Query:    "update t1 set a = 4 where a = 3",
+					Query: "update t1 set a = 4 where a = 3",
 					Expected: []sql.Row{{types.OkResult{
 						RowsAffected: 1,
 						Info: plan.UpdateInfo{
@@ -268,7 +268,7 @@ func TestSingleScript(t *testing.T) {
 					}},
 				},
 				{
-					Query:    "select * from t1 order by a",
+					Query: "select * from t1 order by a",
 					Expected: []sql.Row{
 						{2, 1, 3, 5},
 						{2, 4, 6, 7},
@@ -281,7 +281,7 @@ func TestSingleScript(t *testing.T) {
 					Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 				},
 				{
-					Query:    "select * from t1 order by a",
+					Query: "select * from t1 order by a",
 					Expected: []sql.Row{
 						{2, 1, 3, 5},
 						{2, 6, 8, 5},

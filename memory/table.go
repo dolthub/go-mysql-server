@@ -347,7 +347,7 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	if len(t.columns) > 0 {
 		numColumns = len(t.columns)
 	}
-	
+
 	if r, ok := partition.(*spatialRangePartition); ok {
 		// TODO: virtual column support
 		return &spatialTableIter{
@@ -459,7 +459,7 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	row = normalizeRowForRead(row, i.numColumns, i.columns, i.virtualCols)
 
 	for _, f := range i.filters {

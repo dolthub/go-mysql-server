@@ -314,7 +314,7 @@ func (t *tableEditor) toStorageRow(row sql.Row) sql.Row {
 	if !t.editedTable.data.schema.HasVirtualColumns() {
 		return row
 	}
-	
+
 	storageRow := make(sql.Row, len(t.editedTable.data.schema.Schema))
 	storageRowIdx := 0
 	for i, col := range t.editedTable.data.schema.Schema {
@@ -324,7 +324,7 @@ func (t *tableEditor) toStorageRow(row sql.Row) sql.Row {
 		storageRow[storageRowIdx] = row[i]
 		storageRowIdx++
 	}
-	
+
 	return storageRow[:storageRowIdx]
 }
 
@@ -771,7 +771,7 @@ func formatRow(r sql.Row, idxs []int) string {
 
 func checkRow(schema sql.Schema, row sql.Row) error {
 	schema = schema.PhysicalSchema()
-	
+
 	if len(row) != len(schema) {
 		return sql.ErrUnexpectedRowLength.New(len(schema), len(row))
 	}

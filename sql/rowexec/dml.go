@@ -93,7 +93,7 @@ func (b *BaseBuilder) buildDeleteFrom(ctx *sql.Context, n *plan.DeleteFrom, row 
 	targets := n.GetDeleteTargets()
 	schemaPositionDeleters := make([]schemaPositionDeleter, len(targets))
 	schema := n.Child.Schema()
-	
+
 	for i, target := range targets {
 		deletable, err := plan.GetDeletable(target)
 		if err != nil {

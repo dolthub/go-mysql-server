@@ -18,12 +18,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -357,7 +357,7 @@ func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outSc
 }
 
 // buildVirtualTableScan returns a ProjectNode for a table that has virtual columns, projecting the values of any
-// generated columns 
+// generated columns
 func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualColumnTable {
 	tableScope := b.newScope()
 	for _, c := range tab.Schema() {
@@ -370,7 +370,7 @@ func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualC
 			nullable:    c.Nullable,
 		})
 	}
-	
+
 	projections := make([]sql.Expression, len(tab.Schema()))
 	for i, c := range tab.Schema() {
 		if !c.Virtual {
@@ -379,6 +379,6 @@ func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualC
 			projections[i] = b.resolveColumnDefaultExpression(tableScope, c, c.Generated)
 		}
 	}
-	
-	return plan.NewVirtualColumnTable(tab, projections) 
+
+	return plan.NewVirtualColumnTable(tab, projections)
 }

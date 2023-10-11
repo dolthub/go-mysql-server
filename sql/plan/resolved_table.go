@@ -210,12 +210,12 @@ func (t *ResolvedTable) WithTable(table sql.Table) (*ResolvedTable, error) {
 		return nil, fmt.Errorf("attempted to update TableNode `%s` with table `%s`", t.Name(), table.Name())
 	}
 	nt := *t
-	
+
 	nt.Table = table
 	return &nt, nil
 }
 
-// WithWrappedTable returns this Node with the given table, re-wrapping it with any MutableTableWrapper that was 
+// WithWrappedTable returns this Node with the given table, re-wrapping it with any MutableTableWrapper that was
 // wrapping it prior to this call.
 func (t *ResolvedTable) WithWrappedTable(table sql.Table) (*ResolvedTable, error) {
 	if t.Name() != table.Name() {
@@ -236,6 +236,6 @@ func (t *ResolvedTable) ReWrapTable(table sql.IndexedTable) (sql.IndexedTable, e
 	if mtw, ok := t.Table.(sql.MutableTableWrapper); ok {
 		return mtw.WithUnderlying(table).(sql.IndexedTable), nil
 	}
-	
+
 	return table, nil
 }

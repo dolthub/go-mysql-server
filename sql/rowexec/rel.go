@@ -306,7 +306,7 @@ func (b *BaseBuilder) buildVirtualColumnTable(ctx *sql.Context, n *plan.VirtualC
 	span, ctx := ctx.Span("plan.VirtualColumnTable", trace.WithAttributes(
 		attribute.Int("projections", len(n.Projections)),
 	))
-	
+
 	return sql.NewSpanIter(span, &projectIter{
 		p:         n.Projections,
 		childIter: tableIter,
@@ -651,10 +651,10 @@ func (b *BaseBuilder) buildIndexedTableAccess(ctx *sql.Context, n *plan.IndexedT
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var tableIter sql.RowIter
 	tableIter = sql.NewTableRowIter(ctx, n.Table, partIter)
-	
+
 	if vct, ok := plan.FindVirtualColumnTable(n.Table); ok {
 		tableIter, err = b.buildVirtualColumnTable(ctx, vct, tableIter, row)
 		if err != nil {
@@ -787,14 +787,14 @@ func (b *BaseBuilder) buildResolvedTable(ctx *sql.Context, n *plan.ResolvedTable
 
 	var iter sql.RowIter
 	iter = sql.NewTableRowIter(ctx, n.Table, partitions)
-	
+
 	if vct, ok := plan.FindVirtualColumnTable(n.Table); ok {
 		iter, err = b.buildVirtualColumnTable(ctx, vct, iter, row)
 		if err != nil {
 			return nil, err
 		}
 	}
-	
+
 	return sql.NewSpanIter(span, iter), nil
 }
 

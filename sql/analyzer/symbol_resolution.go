@@ -203,7 +203,7 @@ func pruneTableCols(
 	if unqualifiedStar {
 		selectStar = true
 	}
-	
+
 	if len(ptab.Projections()) > 0 {
 		return n, transform.SameTree, nil
 	}

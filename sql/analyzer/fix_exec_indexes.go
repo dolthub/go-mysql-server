@@ -389,13 +389,13 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 		if !ok {
 			return s.finalizeSelfDefault(n)
 		}
-	
+
 		virtScope := s.push()
 		virtScope.addSchema(vct.Schema())
 		for _, e := range vct.Expressions() {
 			virtScope.expressions = append(virtScope.expressions, fixExprToScope(e, virtScope))
 		}
-		
+
 		vct, err := vct.WithExpressions(virtScope.expressions...)
 		if err != nil {
 			return nil, err
@@ -405,7 +405,7 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		
+
 		return s.finalizeSelfDefault(newNode)
 	case *plan.IndexedTableAccess:
 		// VirtualColumnTable is a pseudo-node that needs its pseudo projections resolved
@@ -429,7 +429,7 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		
+
 		return s.finalizeSelfDefault(newNode)
 	default:
 		return s.finalizeSelfDefault(n)
@@ -485,7 +485,7 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 	ret, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
 		case *expression.GetField:
-			// TODO: this is a swallowed error. It triggers falsely in queries involving the dual table, or queries where 
+			// TODO: this is a swallowed error. It triggers falsely in queries involving the dual table, or queries where
 			//  the columns being selected are only found in subqueries
 			idx, _ := newScope.getIdx(e.String())
 			return e.WithIndex(idx), transform.NewTree, nil

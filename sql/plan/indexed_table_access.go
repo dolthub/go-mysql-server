@@ -81,7 +81,7 @@ func NewIndexedAccessForTableNode(node sql.TableNode, lb *LookupBuilder) (*Index
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if wrn, ok := node.(sql.MutableWrappedTableNode); ok {
 		indexedTable, err = wrn.ReWrapTable(indexedTable)
 		if err != nil {
@@ -298,7 +298,7 @@ func (i *IndexedTableAccess) DebugString() string {
 	} else {
 		children = append(children, TableDebugString(i.Table))
 	}
-	
+
 	pr.WriteChildren(children...)
 	return pr.String()
 }

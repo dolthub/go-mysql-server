@@ -21,7 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// VirtualColumnTable is a sql.TableNode that combines a ResolvedTable with a Project, the latter of which is used 
+// VirtualColumnTable is a sql.TableNode that combines a ResolvedTable with a Project, the latter of which is used
 // to add the values of virtual columns to the table.
 type VirtualColumnTable struct {
 	sql.Table
@@ -63,7 +63,7 @@ func (v *VirtualColumnTable) Expressions() []sql.Expression {
 }
 
 func (v *VirtualColumnTable) LookupPartitions(context *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
-	// this will panic if we fail to correctly unwrap the underlying table during analysis to determine if it supports 
+	// this will panic if we fail to correctly unwrap the underlying table during analysis to determine if it supports
 	// index lookups
 	return v.Table.(sql.IndexedTable).LookupPartitions(context, lookup)
 }
@@ -92,7 +92,7 @@ func (v *VirtualColumnTable) DebugString() string {
 	for i, expr := range v.Projections {
 		exprs[i] = sql.DebugString(expr)
 	}
-	
+
 	children[1] = fmt.Sprintf("columns: [%s]", strings.Join(exprs, ", "))
 	children[2] = TableDebugString(v.Table)
 	_ = pr.WriteChildren(children...)
@@ -110,4 +110,3 @@ func FindVirtualColumnTable(table sql.Table) (*VirtualColumnTable, bool) {
 	}
 	return nil, false
 }
-
