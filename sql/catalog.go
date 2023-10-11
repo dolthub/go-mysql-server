@@ -24,6 +24,7 @@ type Catalog interface {
 	FunctionProvider
 	TableFunctionProvider
 	ExternalStoredProcedureProvider
+	StatsProvider
 
 	// CreateDatabase creates a new database, or returns an error if the operation isn't supported or fails.
 	CreateDatabase(ctx *Context, dbName string, collation CollationID) error
@@ -55,9 +56,6 @@ type Catalog interface {
 
 	// UnlockTables unlocks all tables locked by the session id given
 	UnlockTables(ctx *Context, id uint32) error
-
-	// Statistics returns a StatsReadWriter for saving and updating table statistics
-	Statistics(ctx *Context) (StatsReadWriter, error)
 }
 
 // CatalogTable is a Table that depends on a Catalog.

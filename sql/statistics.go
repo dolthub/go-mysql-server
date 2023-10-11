@@ -15,8 +15,7 @@
 package sql
 
 import (
-	"fmt"
-	"time"
+	"github.com/dolthub/go-mysql-server/sql/stats"
 )
 
 // StatisticsTable is a table that can provide information about its number of rows and other facts to improve query
@@ -29,60 +28,19 @@ type StatisticsTable interface {
 	RowCount(ctx *Context) (uint64, error)
 }
 
-type StatsReader interface {
-	CatalogTable
-	// Hist returns a HistogramMap providing statistics for a table's columns
-	Hist(ctx *Context, db, table string) (HistogramMap, error)
-	// RowCount returns a table's row count if the table implements sql.StatisticsTable,
-	// false if the table does not, or an error if the table was not found.
-	RowCount(ctx *Context, db, table string) (uint64, bool, error)
-}
-
-type StatsWriter interface {
-	CatalogTable
-	Analyze(ctx *Context, db, table string) error
-}
-
-type StatsReadWriter interface {
-	StatsReader
-	StatsWriter
-}
-
-// HistogramBucket represents a bucket in a histogram
-// inspiration pulled from MySQL and Cockroach DB
-type HistogramBucket struct {
-	LowerBound float64 // inclusive
-	UpperBound float64 // inclusive
-	Frequency  float64
-}
-
-// Histogram is all statistics we care about for each column
-type Histogram struct {
-	Buckets       []*HistogramBucket
-	Mean          float64
-	Min           float64
-	Max           float64
-	Count         uint64
-	NullCount     uint64
-	DistinctCount uint64
-}
-
-// HistogramMap is a map from column name to associated histogram
-type HistogramMap map[string]*Histogram
-
-// TableStatistics provides access to statistical information about the values stored in a table
-type TableStatistics struct {
-	// RowCount returns the number of rows in this table.
-	RowCount uint64
-	// CreatedAt returns the time at which the current statistics for this table were generated.
-	CreatedAt time.Time
-	// Histograms returns a map from all column names to their associated histograms.
-	Histograms HistogramMap
-}
-
-func (ts *TableStatistics) Histogram(colName string) (*Histogram, error) {
-	if res, ok := ts.Histograms[colName]; ok {
-		return res, nil
-	}
-	return &Histogram{}, fmt.Errorf("column %s not found", colName)
+type StatsProvider interface {
+	// GetTableStats returns all statistics for the table
+	GetTableStats(ctx *Context, db, table string) ([]*stats.Stats, error)
+	// RefreshTableStats updates all statistics associated with a given table
+	RefreshTableStats(ctx *Context, table Table, db string) error
+	// SetStats updates or overwrites a set of table statistics
+	SetStats(ctx *Context, db, table string, stats *stats.Stats) error
+	// GetStats fetches a set of statistics for a set of table columns
+	GetStats(ctx *Context, db, table string, cols []string) (*stats.Stats, bool)
+	// DropStats deletes a set of column statistics
+	DropStats(ctx *Context, db, table string, cols []string) error
+	// RowCount returns the number of rows in a table
+	RowCount(ctx *Context, db, table string) (uint64, error)
+	// DataLength returns the estimated size of each row in the table
+	DataLength(ctx *Context, db, table string) (uint64, error)
 }

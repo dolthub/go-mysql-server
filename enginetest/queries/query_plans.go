@@ -149,22 +149,20 @@ From xy;`,
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(1 (bigint))\n" +
 			"     ├─ group: \n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [xy.x:1!null, xy.y:2]\n" +
-			"         └─ LookupJoin\n" +
-			"             ├─ Eq\n" +
-			"             │   ├─ xy.y:2\n" +
-			"             │   └─ scalarSubq0.u:0!null\n" +
-			"             ├─ OrderedDistinct\n" +
-			"             │   └─ Project\n" +
-			"             │       ├─ columns: [scalarSubq0.u:0!null]\n" +
-			"             │       └─ TableAlias(scalarSubq0)\n" +
-			"             │           └─ Table\n" +
-			"             │               ├─ name: uv\n" +
-			"             │               └─ columns: [u v]\n" +
-			"             └─ IndexedTableAccess(xy)\n" +
-			"                 ├─ index: [xy.y]\n" +
-			"                 └─ columns: [x y]\n" +
+			"     └─ LookupJoin\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ xy.y:2\n" +
+			"         │   └─ scalarSubq0.u:0!null\n" +
+			"         ├─ OrderedDistinct\n" +
+			"         │   └─ Project\n" +
+			"         │       ├─ columns: [scalarSubq0.u:0!null]\n" +
+			"         │       └─ TableAlias(scalarSubq0)\n" +
+			"         │           └─ Table\n" +
+			"         │               ├─ name: uv\n" +
+			"         │               └─ columns: [u v]\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.y]\n" +
+			"             └─ columns: [x y]\n" +
 			"",
 	},
 	{

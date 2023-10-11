@@ -127,14 +127,15 @@ type joinOrderBuilder struct {
 	// ((xy, ab), uv), (ab, (xy, uv)), etc.
 	//
 	// The group for a single base relation is the base relation itself.
-	m             *Memo
-	plans         map[vertexSet]*ExprGroup
-	edges         []edge
-	vertices      []RelExpr
-	vertexGroups  []GroupId
-	innerEdges    edgeSet
-	nonInnerEdges edgeSet
-	newPlanCb     func(j *joinOrderBuilder, rel RelExpr)
+	m                         *Memo
+	plans                     map[vertexSet]*ExprGroup
+	edges                     []edge
+	vertices                  []RelExpr
+	vertexGroups              []GroupId
+	innerEdges                edgeSet
+	nonInnerEdges             edgeSet
+	newPlanCb                 func(j *joinOrderBuilder, rel RelExpr)
+	forceFastDFSLookupForTest bool
 }
 
 func NewJoinOrderBuilder(memo *Memo) *joinOrderBuilder {
@@ -146,14 +147,28 @@ func NewJoinOrderBuilder(memo *Memo) *joinOrderBuilder {
 	}
 }
 
+// useFastReorder determines whether to skip the current brute force join planning and use an alternate
+// planning algorithm that analyzes the join tree to find a sequence that can be implemented purely as lookup joins.
+// Currently we only use it for large joins (20+ tables) with no join hints.
+func (j *joinOrderBuilder) useFastReorder() bool {
+	if j.forceFastDFSLookupForTest {
+		return true
+	}
+	if j.m.hints.order != nil {
+		return false
+	}
+	return len(j.vertices) > 15
+}
+
 func (j *joinOrderBuilder) ReorderJoin(n sql.Node) {
 	j.populateSubgraph(n)
-	// `joinOrderBuilder.dbSube` currently computes every possible pair of relations-sets to see if they match an edge
-	// in the graph. This requires O(4^N) runtime on the number of relations and thus does not scale for large joins.
-	// If the number of relations is above a threshold, we won't attempt to reorder.
-	if len(j.vertices) > 20 {
+	if j.useFastReorder() {
+		j.buildSingleLookupPlan()
 		return
 	}
+	// TODO: consider if buildSingleLookupPlan can/should run after ensureClosure. This could allow us to use analysis
+	// from ensureClosure in buildSingleLookupPlan, but the equivalence sets could create multiple possible join orders
+	// for the single-lookup plan, which would complicate things.
 	j.ensureClosure(j.m.root)
 	j.dbSube()
 }
@@ -188,6 +203,124 @@ func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet, *Ex
 		panic(fmt.Sprintf("expected Nameable node, found: %T", n))
 	}
 	return j.allVertices().difference(startV), j.allEdges().Difference(startE), group
+}
+
+// buildSingleLookupPlan attempts to build a plan consisting only of lookup joins.
+func (j *joinOrderBuilder) buildSingleLookupPlan() {
+	fds := j.m.root.RelProps.FuncDeps()
+	fdKey, hasKey := fds.StrictKey()
+	// fdKey is a set of columns which constrain all other columns in the join.
+	// If a chain of lookups exist, then the columns in fdKey must be in the innermost join.
+	if !hasKey {
+		return
+	}
+	// We need to include all of the fdKey columns in the innermost join.
+	// For now, we just handle the case where the key is exactly one column.
+	if fdKey.Len() != 1 {
+		return
+	}
+	for _, edge := range j.edges {
+		if !edge.op.joinType.IsInner() {
+			// This optimization currently only supports inner joins.
+			return
+		}
+	}
+	keyColumn, _ := fdKey.Next(1)
+	tableName, _ := j.m.GetTableAndColumn(keyColumn)
+	keyTableGroup, ok := j.m.TableProps.GetId(tableName)
+	if !ok {
+		panic(fmt.Sprintf("Could not find table %s in TableProps. This shouldn't be possible.", tableName))
+	}
+
+	currentlyJoinedTables := newBitSet(j.findVertexFromGroup(keyTableGroup))
+
+	// removedEdges contains the edges that have already been incorporated into the new plan, so we don't repeat them.
+	removedEdges := edgeSet{}
+	for removedEdges.Len() < len(j.vertices)-1 {
+
+		type joinCandidate struct {
+			nextEdgeIdx    int
+			nextTableGroup GroupId
+		}
+		var joinCandidates []joinCandidate
+
+		// Find all possible filters that could be used for the next join in the sequence.
+		// Store their corresponding edge and table ids in `joinCandidates`.
+		for i, edge := range j.edges {
+			if removedEdges.Contains(i) {
+				continue
+			}
+			if len(edge.filters) == 0 {
+				continue
+			}
+			if len(edge.filters) != 1 {
+				panic("Found an edge with multiple filters (that was previously validated as an inner join.) This shouldn't be possible.")
+			}
+			filter := edge.filters[0]
+			tablesInEdge := getTablesReferencedInScalar(filter)
+			if len(tablesInEdge) != 2 {
+				// We have encountered a filter condition more complicated than a simple equality check.
+				// We probably can't optimize this, so bail out.
+				return
+			}
+			if currentlyJoinedTables.contains(j.findVertexFromGroup(tablesInEdge[0])) {
+				joinCandidates = append(joinCandidates, joinCandidate{
+					nextEdgeIdx:    i,
+					nextTableGroup: tablesInEdge[1],
+				})
+			} else if currentlyJoinedTables.contains(j.findVertexFromGroup(tablesInEdge[1])) {
+				joinCandidates = append(joinCandidates, joinCandidate{
+					nextEdgeIdx:    i,
+					nextTableGroup: tablesInEdge[0],
+				})
+			}
+		}
+
+		if len(joinCandidates) > 1 {
+			// We end up here if there are multiple possible choices for the next join.
+			// This could happen if there are redundant rules. For now, we bail out if this happens.
+			return
+		}
+
+		if len(joinCandidates) == 0 {
+			// There are still tables left to join, but no more filters that match the already joined tables.
+			// This can happen, for instance, if the remaining table is a single-row table that was cross-joined.
+			// It's probably safe to just join the remaining tables here.
+			remainingTables := j.allVertices().difference(currentlyJoinedTables)
+			for idx, ok := remainingTables.next(0); ok; idx, ok = remainingTables.next(idx + 1) {
+				nextVertGroup := newBitSet(idx)
+				j.addJoin(plan.JoinTypeCross, currentlyJoinedTables, nextVertGroup, nil, nil, false)
+
+				currentlyJoinedTables = currentlyJoinedTables.union(nextVertGroup)
+			}
+			return
+		}
+
+		nextEdgeIdx := joinCandidates[0].nextEdgeIdx
+		nextTableGroup := joinCandidates[0].nextTableGroup
+
+		nextVertIndex := j.findVertexFromGroup(nextTableGroup)
+		nextVertGroup := newBitSet(nextVertIndex)
+
+		edge := j.edges[nextEdgeIdx]
+
+		isRedundant := edge.joinIsRedundant(currentlyJoinedTables, nextVertGroup)
+		j.addJoin(plan.JoinTypeInner, currentlyJoinedTables, nextVertGroup, j.edges[nextEdgeIdx].filters, nil, isRedundant)
+
+		currentlyJoinedTables = currentlyJoinedTables.union(nextVertGroup)
+		removedEdges.Add(nextEdgeIdx)
+	}
+}
+
+func getTablesReferencedInScalar(s ScalarExpr) []GroupId {
+	var result []GroupId
+	DfsScalar(s, func(e ScalarExpr) (err error) {
+		if c, ok := e.(*ColRef); ok {
+			result = append(result, c.Table)
+		}
+		return
+	})
+	return result
 }
 
 // ensureClosure adds the closure of all transitive equivalency groups
@@ -234,23 +367,35 @@ func (j joinOrderBuilder) hasEqEdge(leftCol, rightCol sql.ColumnId) bool {
 	return false
 }
 
+func (j *joinOrderBuilder) findVertexFromCol(col sql.ColumnId) (vertexIndex, GroupId) {
+	for i, v := range j.vertices {
+		if t, ok := v.(SourceRel); ok {
+			if t.Group().RelProps.FuncDeps().All().Contains(col) {
+				return vertexIndex(i), t.Group().Id
+			}
+		}
+	}
+	panic("vertex not found")
+}
+
+func (j *joinOrderBuilder) findVertexFromGroup(grp GroupId) vertexIndex {
+	for i, v := range j.vertices {
+		if t, ok := v.(SourceRel); ok {
+			if t.Group().Id == grp {
+				return vertexIndex(i)
+			}
+		}
+	}
+	panic("vertex not found")
+}
+
 // makeTransitiveEdge constructs a new join tree edge and memo group
 // on an equality filter between two columns.
 func (j *joinOrderBuilder) makeTransitiveEdge(col1, col2 sql.ColumnId) {
 	var vert vertexSet
-	var tab1 GroupId
-	var tab2 GroupId
-	for i, v := range j.vertices {
-		if t, ok := v.(SourceRel); ok {
-			if t.Group().RelProps.FuncDeps().All().Contains(col1) {
-				vert = vert.add(vertexIndex(i))
-				tab1 = t.Group().Id
-			} else if t.Group().RelProps.FuncDeps().All().Contains(col2) {
-				vert = vert.add(vertexIndex(i))
-				tab2 = t.Group().Id
-			}
-		}
-	}
+	v1, tab1 := j.findVertexFromCol(col1)
+	v2, tab2 := j.findVertexFromCol(col2)
+	vert = vert.add(v1).add(v2)
 
 	// find edge where the vertices are provided but partitioned
 	var op *operator
@@ -1259,12 +1404,35 @@ const maxSetSize = 63
 // JoinOrderBuilder vertexes field. vertexIndex must be less than maxSetSize.
 type vertexIndex = uint64
 
+func newBitSet(idxs ...uint64) (res bitSet) {
+	for _, idx := range idxs {
+		res = res.add(idx)
+	}
+	return res
+}
+
 // add returns a copy of the bitSet with the given element added.
 func (s bitSet) add(idx uint64) bitSet {
 	if idx > maxSetSize {
 		panic(fmt.Sprintf("cannot insert %d into bitSet", idx))
 	}
 	return s | (1 << idx)
+}
+
+// remove returns a copy of the bitSet with the given element removed.
+func (s bitSet) remove(idx uint64) bitSet {
+	if idx > maxSetSize {
+		panic(fmt.Sprintf("%d is invalid index for bitSet", idx))
+	}
+	return s & ^(1 << idx)
+}
+
+// contains returns whether a bitset contains a given element.
+func (s bitSet) contains(idx uint64) bool {
+	if idx > maxSetSize {
+		panic(fmt.Sprintf("%d is invalid index for bitSet", idx))
+	}
+	return s&(1<<idx) != 0
 }
 
 // union returns the set union of this set with the given set.

@@ -95,8 +95,6 @@ func New(provider Provider, options *Options) *Driver {
 	var sessionBuilder SessionBuilder
 	if provWithSessionBuilder, ok := provider.(ProviderWithSessionBuilder); ok {
 		sessionBuilder = provWithSessionBuilder
-	} else {
-		sessionBuilder = NewDefaultSessionBuilder()
 	}
 
 	var contextBuilder ContextBuilder
@@ -156,6 +154,10 @@ func (d *Driver) OpenConnector(dsn string) (driver.Connector, error) {
 	serverName, pro, err := d.provider.Resolve(dsn, options)
 	if err != nil {
 		return nil, err
+	}
+
+	if d.sessions == nil {
+		d.sessions = NewDefaultSessionBuilder(pro)
 	}
 
 	d.mu.Lock()
