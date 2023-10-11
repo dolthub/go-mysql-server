@@ -932,8 +932,8 @@ func TestSQLLogicTestFiles(t *testing.T) {
 	t.Skip()
 	h := memharness.NewMemoryHarness(enginetest.NewDefaultMemoryHarness())
 	paths := []string{
-		"./sqllogictest/testdata/join/join.test",
-		"./sqllogictest/testdata/join/subquery_correlated.test",
+		"./sqllogictest/testdata/join/join.txt",
+		"./sqllogictest/testdata/join/subquery_correlated.txt",
 	}
 	logictest.RunTestFiles(h, paths...)
 }
