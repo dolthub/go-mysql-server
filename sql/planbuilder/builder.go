@@ -18,7 +18,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dolthub/go-mysql-server/sql/transform"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -26,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 var BinderFactory = &sync.Pool{New: func() interface{} {
@@ -362,7 +362,7 @@ func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outSc
 func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualColumnTable {
 	tableScope := b.newScope()
 	schema := tab.Schema()
-	
+
 	for _, c := range schema {
 		tableScope.newColumn(scopeColumn{
 			db:          strings.ToLower(db),
@@ -383,7 +383,7 @@ func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualC
 		}
 	}
 
-	// Unlike other kinds of nodes, the projection on this table wrapper is invisible to the analyzer, so we need to 
+	// Unlike other kinds of nodes, the projection on this table wrapper is invisible to the analyzer, so we need to
 	// get the column indexes correct here, they won't be fixed later like other kinds of expressions.
 	for i, p := range projections {
 		projections[i] = assignColumnIndexes(p, schema)
@@ -399,7 +399,7 @@ func assignColumnIndexes(e sql.Expression, schema sql.Schema) sql.Expression {
 			idx := schema.IndexOfColName(gf.Name())
 			return gf.WithIndex(idx), transform.NewTree, nil
 		}
-		return e, transform.SameTree, nil	
+		return e, transform.SameTree, nil
 	})
 	return e
 }
