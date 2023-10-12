@@ -512,6 +512,26 @@ func (ps PrivilegeSetDatabase) GetRoutines() []sql.PrivilegeSetRoutine {
 	return routineSets
 }
 
+func (ps PrivilegeSetDatabase) getRoutines() []PrivilegeSetRoutine {
+	if ps.routines == nil || len(ps.routines) == 0 {
+		return []PrivilegeSetRoutine{}
+	}
+
+	routineSets := make([]PrivilegeSetRoutine, 0, len(ps.routines))
+	for _, routine := range ps.routines {
+		routineSets = append(routineSets, routine)
+	}
+
+	sort.Slice(routineSets, func(i, j int) bool {
+		if routineSets[i].RoutineName() != routineSets[j].RoutineType() {
+			return routineSets[i].RoutineName() < routineSets[j].RoutineName()
+		}
+		return routineSets[i].RoutineType() < routineSets[j].RoutineType()
+	})
+
+	return routineSets
+}
+
 // Equals returns whether the given set of privileges is equivalent to the calling set.
 func (ps PrivilegeSetDatabase) Equals(otherPsd sql.PrivilegeSetDatabase) bool {
 	otherPs := otherPsd.(PrivilegeSetDatabase)

@@ -97,6 +97,24 @@ func serializeTables(b *flatbuffers.Builder, tables []PrivilegeSetTable) flatbuf
 	return serializeVectorOffsets(b, serial.PrivilegeSetDatabaseStartTablesVector, offsets)
 }
 
+func serializeRoutines(b *flatbuffers.Builder, routines []PrivilegeSetRoutine) flatbuffers.UOffsetT {
+
+	offsets := make([]flatbuffers.UOffsetT, len(routines))
+	for i, routine := range routines {
+		name := b.CreateString(routine.RoutineName())
+		privs := serializePrivilegeTypes(b, serial.PrivilegeSetTableStartPrivsVector, routine.ToSlice())
+
+		serial.PrivilegeSetRoutineStart(b)
+		serial.PrivilegeSetRoutineAddName(b, name)
+		serial.PrivilegeSetRoutineAddPrivs(b, privs)
+		serial.PrivilegeSetRoutineAddIsProc(b, routine.isProc)
+
+		offsets[len(offsets)-i-1] = serial.PrivilegeSetRoutineEnd(b)
+	}
+
+	return serializeVectorOffsets(b, serial.PrivilegeSetDatabaseStartRoutinesVector, offsets)
+}
+
 // serializeDatabases writes the given Privilege Set Databases into the flatbuffer Builder, and returns the offset
 func serializeDatabases(b *flatbuffers.Builder, databases []PrivilegeSetDatabase) flatbuffers.UOffsetT {
 	// Write database variables, and save offsets
@@ -105,11 +123,13 @@ func serializeDatabases(b *flatbuffers.Builder, databases []PrivilegeSetDatabase
 		name := b.CreateString(database.Name())
 		privs := serializePrivilegeTypes(b, serial.PrivilegeSetDatabaseStartPrivsVector, database.ToSlice())
 		tables := serializeTables(b, database.getTables())
+		routines := serializeRoutines(b, database.getRoutines())
 
 		serial.PrivilegeSetDatabaseStart(b)
 		serial.PrivilegeSetDatabaseAddName(b, name)
 		serial.PrivilegeSetDatabaseAddPrivs(b, privs)
 		serial.PrivilegeSetDatabaseAddTables(b, tables)
+		serial.PrivilegeSetDatabaseAddRoutines(b, routines)
 		offsets[len(offsets)-i-1] = serial.PrivilegeSetDatabaseEnd(b)
 	}
 
