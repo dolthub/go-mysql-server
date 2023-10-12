@@ -113,7 +113,11 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 		offset := len(keyVals) / bucketCnt
 		histogram := make([]sql.Bucket, bucketCnt)
 		for i := range histogram {
-			histogram[i].UpperBound = keyVals[i*offset]
+			var upperBound []string
+			for _, v := range keyVals[i*offset] {
+				upperBound = append(upperBound, fmt.Sprintf("%v", v))
+			}
+			histogram[i].UpperBound = upperBound
 			histogram[i].Count = uint64(offset)
 			histogram[i].Distinct = uint64(offset)
 			histogram[i].BoundCount = 1
