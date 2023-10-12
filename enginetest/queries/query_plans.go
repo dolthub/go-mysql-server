@@ -9148,11 +9148,10 @@ WHERE keyless.c0 IN (
 		ExpectedPlan: "Limit(1)\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [xy.x:0!null as min(x)]\n" +
-			"     └─ Sort(xy.x:0!null ASC nullsFirst)\n" +
-			"         └─ IndexedTableAccess(xy)\n" +
-			"             ├─ index: [xy.x]\n" +
-			"             ├─ static: [{(0, ∞)}]\n" +
-			"             └─ columns: [x]\n" +
+			"     └─ IndexedTableAccess(xy)\n" +
+			"         ├─ index: [xy.x]\n" +
+			"         ├─ static: [{(0, ∞)}]\n" +
+			"         └─ columns: [x]\n" +
 			"",
 	},
 	{
@@ -9237,6 +9236,18 @@ WHERE keyless.c0 IN (
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
 			"             └─ columns: [x]\n" +
+			"",
+	},
+	{
+		Query: "select max(x) from xy group by y",
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [max(xy.x):0!null as max(x)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(xy.x:0!null)\n" +
+			"     ├─ group: xy.y:1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: xy\n" +
+			"         └─ columns: [x y]\n" +
 			"",
 	},
 }

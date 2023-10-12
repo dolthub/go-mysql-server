@@ -16,38 +16,6 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 	return replacePkSortHelper(ctx, scope, n, nil)
 }
 
-// isSortFieldsValidPrefix checks is the SortFields in sortNode are a valid prefix of the PrimaryKey
-func isSortFieldsValidPrefix(sortNode *plan.Sort, tableAliases TableAliases, pkColNames []string) bool {
-	sfExprs := normalizeExpressions(tableAliases, sortNode.SortFields.ToExpressions()...)
-	sfAliases := aliasedExpressionsInNode(sortNode)
-	if len(sfExprs) > len(pkColNames) {
-		return false
-	}
-
-	for i, fieldExpr := range sfExprs {
-		fieldName := fieldExpr.String()
-		if alias, ok := sfAliases[strings.ToLower(pkColNames[i])]; ok && alias == fieldName {
-			continue
-		}
-		if !strings.EqualFold(pkColNames[i], fieldName) {
-			return false
-		}
-	}
-	return true
-}
-
-// isValidSortFieldOrder checks if all the sortfields are in the same order
-func isValidSortFieldOrder(sfs sql.SortFields) bool {
-	for _, sf := range sfs {
-		// TODO: could generalize this to more monotonic expressions.
-		//   For example, order by x+1 is ok, but order by mod(x) is not
-		if sfs[0].Order != sf.Order {
-			return false
-		}
-	}
-	return true
-}
-
 func replacePkSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sortNode *plan.Sort) (sql.Node, transform.TreeIdentity, error) {
 	switch n := node.(type) {
 	case *plan.Sort:
@@ -74,7 +42,7 @@ func replacePkSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sor
 
 		// if the lookup does not need any reversing, do nothing
 		if sortNode.SortFields[0].Order != sql.Descending {
-			return n, transform.SameTree, nil
+			return n, transform.NewTree, nil
 		}
 
 		// modify existing lookup to preserve pushed down filters
@@ -187,7 +155,7 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 			return n, transform.SameTree, nil
 		}
 		// TODO: optimize when there are multiple aggregations; use LATERAL JOINS
-		if len(gb.SelectedExprs) != 1 {
+		if len(gb.SelectedExprs) != 1 || len(gb.GroupByExprs) != 0 {
 			return n, transform.SameTree, nil
 		}
 
@@ -268,6 +236,39 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 	})
 }
 
+// isSortFieldsValidPrefix checks is the SortFields in sortNode are a valid prefix of the PrimaryKey
+func isSortFieldsValidPrefix(sortNode *plan.Sort, tableAliases TableAliases, pkColNames []string) bool {
+	sfExprs := normalizeExpressions(tableAliases, sortNode.SortFields.ToExpressions()...)
+	sfAliases := aliasedExpressionsInNode(sortNode)
+	if len(sfExprs) > len(pkColNames) {
+		return false
+	}
+
+	for i, fieldExpr := range sfExprs {
+		fieldName := fieldExpr.String()
+		if alias, ok := sfAliases[strings.ToLower(pkColNames[i])]; ok && alias == fieldName {
+			continue
+		}
+		if !strings.EqualFold(pkColNames[i], fieldName) {
+			return false
+		}
+	}
+	return true
+}
+
+// isValidSortFieldOrder checks if all the sortfields are in the same order
+func isValidSortFieldOrder(sfs sql.SortFields) bool {
+	for _, sf := range sfs {
+		// TODO: could generalize this to more monotonic expressions.
+		//   For example, order by x+1 is ok, but order by mod(x) is not
+		if sfs[0].Order != sf.Order {
+			return false
+		}
+	}
+	return true
+}
+
+// getPKIndex returns the primary key index of an IndexAddressableTable
 func getPKIndex(ctx *sql.Context, idxTbl sql.IndexAddressableTable) (sql.Index, error) {
 	idxs, err := idxTbl.GetIndexes(ctx)
 	if err != nil {

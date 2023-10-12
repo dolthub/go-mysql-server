@@ -8167,6 +8167,15 @@ ORDER BY 1;`,
 			{3},
 		},
 	},
+	{
+		Query: "select max(x) from xy group by y",
+		Expected: []sql.Row{
+			{0},
+			{1},
+			{2},
+			{3},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
