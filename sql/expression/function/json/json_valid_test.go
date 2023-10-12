@@ -37,6 +37,7 @@ func TestValid(t *testing.T) {
 		{f1, sql.Row{`null`}, true},
 		{f1, sql.Row{`1`}, true},
 		{f1, sql.Row{`[1]`}, true},
+		{f1, sql.Row{`"fjsadflkd"`}, true},
 		{f1, sql.Row{`[1, false]`}, true},
 		{f1, sql.Row{`[1, {"a": 1}]`}, true},
 		{f1, sql.Row{`{"a": 1}`}, true},
