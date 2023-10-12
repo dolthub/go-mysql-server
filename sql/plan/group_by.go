@@ -180,16 +180,3 @@ func (g *GroupBy) Expressions() []sql.Expression {
 func (g *GroupBy) ProjectedExprs() []sql.Expression {
 	return g.SelectedExprs
 }
-
-// WithProjectedExprs implements the sql.Projector interface
-func (g *GroupBy) WithProjectedExprs(exprs ...sql.Expression) (sql.Projector, error) {
-	expected := len(g.SelectedExprs)
-	if len(exprs) != expected {
-		return nil, sql.ErrInvalidChildrenNumber.New(g, len(exprs), expected)
-	}
-
-	projections := make([]sql.Expression, len(g.SelectedExprs))
-	copy(projections, exprs)
-
-	return NewGroupBy(projections, g.GroupByExprs, g.Child), nil
-}

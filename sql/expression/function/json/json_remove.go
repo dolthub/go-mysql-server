@@ -129,3 +129,8 @@ func (j JSONRemove) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 	return doc, nil
 }
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONRemove) IsUnsupported() bool {
+	return false
+}

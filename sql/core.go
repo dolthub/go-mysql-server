@@ -149,8 +149,6 @@ type OpaqueNode interface {
 type Projector interface {
 	// ProjectedExprs returns the list of expressions projected by this node.
 	ProjectedExprs() []Expression
-	// WithProjectedExprs returns a new Projector instance with the specified expressions set as its projected expressions.
-	WithProjectedExprs(...Expression) (Projector, error)
 }
 
 // Expressioner is a node that contains expressions.

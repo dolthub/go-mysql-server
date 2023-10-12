@@ -97,8 +97,11 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 				t = plan.NewProcessTable(table, onPartitionDone, onPartitionStart, onRowNext)
 			}
 
-			n, err := n.WithTable(t)
-			return n, transform.NewTree, err
+			rt, err := n.ReplaceTable(t)
+			if err != nil {
+				return nil, false, err
+			}
+			return rt, transform.NewTree, nil
 		default:
 			return n, transform.SameTree, nil
 		}

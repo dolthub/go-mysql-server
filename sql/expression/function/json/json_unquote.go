@@ -51,7 +51,7 @@ func (js *JSONUnquote) Description() string {
 
 // IsUnsupported implements sql.UnsupportedFunctionStub
 func (js *JSONUnquote) IsUnsupported() bool {
-	return true
+	return false
 }
 
 func (js *JSONUnquote) String() string {

@@ -19,8 +19,6 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/dolthub/vitess/go/sqltypes"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -268,6 +266,16 @@ func (td *TableData) sortRows() {
 	sort.Sort(partitionssort{td.partitions, idx, less})
 }
 
+func (td TableData) virtualColIndexes() []int {
+	var indexes []int
+	for i, col := range td.schema.Schema {
+		if col.Virtual {
+			indexes = append(indexes, i)
+		}
+	}
+	return indexes
+}
+
 func insertValueInRows(ctx *sql.Context, data *TableData, colIdx int, colDefault *sql.ColumnDefaultValue) error {
 	for k, p := range data.partitions {
 		newP := make([]sql.Row, len(p))
@@ -290,31 +298,4 @@ func insertValueInRows(ctx *sql.Context, data *TableData, colIdx int, colDefault
 		data.partitions[k] = newP
 	}
 	return nil
-}
-
-func rowsAreEqual(schema sql.Schema, left, right sql.Row) (bool, error) {
-	if len(left) != len(right) || len(left) != len(schema) {
-		return false, nil
-	}
-
-	for index := range left {
-		typ := schema[index].Type
-		if typ.Type() != sqltypes.TypeJSON {
-			if left[index] != right[index] {
-				return false, nil
-			}
-			continue
-		}
-
-		// TODO should Type.Compare be used for all columns?
-		cmp, err := typ.Compare(left[index], right[index])
-		if err != nil {
-			return false, err
-		}
-		if cmp != 0 {
-			return false, nil
-		}
-	}
-
-	return true, nil
 }

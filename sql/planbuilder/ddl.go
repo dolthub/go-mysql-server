@@ -176,7 +176,7 @@ func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 			}
 		}
 
-		tableScope, ok := b.buildTablescan(inScope, dbName, tableName, nil)
+		tableScope, ok := b.buildResolvedTable(inScope, dbName, tableName, nil)
 		if ok {
 			dropTables = append(dropTables, tableScope.node)
 		} else if !c.IfExists {
@@ -193,7 +193,7 @@ func (b *Builder) buildTruncateTable(inScope *scope, c *ast.DDL) (outScope *scop
 	outScope = inScope.push()
 	dbName := c.Table.Qualifier.String()
 	tabName := c.Table.Name.String()
-	tableScope, ok := b.buildTablescan(inScope, dbName, tabName, nil)
+	tableScope, ok := b.buildResolvedTable(inScope, dbName, tabName, nil)
 	if !ok {
 		b.handleErr(sql.ErrTableNotFound.New(tabName))
 	}
@@ -408,7 +408,7 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 		dbName := ddl.Table.Qualifier.String()
 		tableName := ddl.Table.Name.String()
 		var ok bool
-		tableScope, ok := b.buildTablescan(inScope, dbName, tableName, nil)
+		tableScope, ok := b.buildResolvedTable(inScope, dbName, tableName, nil)
 		if !ok {
 			b.handleErr(sql.ErrTableNotFound.New(tableName))
 		}
