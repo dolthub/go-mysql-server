@@ -253,6 +253,117 @@ func PrivilegeSetTableEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()
 }
 
+type PrivilegeSetRoutine struct {
+	_tab flatbuffers.Table
+}
+
+func InitPrivilegeSetRoutineRoot(o *PrivilegeSetRoutine, buf []byte, offset flatbuffers.UOffsetT) error {
+	n := flatbuffers.GetUOffsetT(buf[offset:])
+	o.Init(buf, n+offset)
+	if PrivilegeSetRoutineNumFields < o.Table().NumFields() {
+		return flatbuffers.ErrTableHasUnknownFields
+	}
+	return nil
+}
+
+func TryGetRootAsPrivilegeSetRoutine(buf []byte, offset flatbuffers.UOffsetT) (*PrivilegeSetRoutine, error) {
+	x := &PrivilegeSetRoutine{}
+	return x, InitPrivilegeSetRoutineRoot(x, buf, offset)
+}
+
+func GetRootAsPrivilegeSetRoutine(buf []byte, offset flatbuffers.UOffsetT) *PrivilegeSetRoutine {
+	x := &PrivilegeSetRoutine{}
+	InitPrivilegeSetRoutineRoot(x, buf, offset)
+	return x
+}
+
+func TryGetSizePrefixedRootAsPrivilegeSetRoutine(buf []byte, offset flatbuffers.UOffsetT) (*PrivilegeSetRoutine, error) {
+	x := &PrivilegeSetRoutine{}
+	return x, InitPrivilegeSetRoutineRoot(x, buf, offset+flatbuffers.SizeUint32)
+}
+
+func GetSizePrefixedRootAsPrivilegeSetRoutine(buf []byte, offset flatbuffers.UOffsetT) *PrivilegeSetRoutine {
+	x := &PrivilegeSetRoutine{}
+	InitPrivilegeSetRoutineRoot(x, buf, offset+flatbuffers.SizeUint32)
+	return x
+}
+
+func (rcv *PrivilegeSetRoutine) Init(buf []byte, i flatbuffers.UOffsetT) {
+	rcv._tab.Bytes = buf
+	rcv._tab.Pos = i
+}
+
+func (rcv *PrivilegeSetRoutine) Table() flatbuffers.Table {
+	return rcv._tab
+}
+
+func (rcv *PrivilegeSetRoutine) Name() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *PrivilegeSetRoutine) Privs(j int) int32 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
+	if o != 0 {
+		a := rcv._tab.Vector(o)
+		return rcv._tab.GetInt32(a + flatbuffers.UOffsetT(j*4))
+	}
+	return 0
+}
+
+func (rcv *PrivilegeSetRoutine) PrivsLength() int {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
+	if o != 0 {
+		return rcv._tab.VectorLen(o)
+	}
+	return 0
+}
+
+func (rcv *PrivilegeSetRoutine) MutatePrivs(j int, n int32) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
+	if o != 0 {
+		a := rcv._tab.Vector(o)
+		return rcv._tab.MutateInt32(a+flatbuffers.UOffsetT(j*4), n)
+	}
+	return false
+}
+
+func (rcv *PrivilegeSetRoutine) IsProc() bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
+	if o != 0 {
+		return rcv._tab.GetBool(o + rcv._tab.Pos)
+	}
+	return false
+}
+
+func (rcv *PrivilegeSetRoutine) MutateIsProc(n bool) bool {
+	return rcv._tab.MutateBoolSlot(8, n)
+}
+
+const PrivilegeSetRoutineNumFields = 3
+
+func PrivilegeSetRoutineStart(builder *flatbuffers.Builder) {
+	builder.StartObject(PrivilegeSetRoutineNumFields)
+}
+func PrivilegeSetRoutineAddName(builder *flatbuffers.Builder, name flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(name), 0)
+}
+func PrivilegeSetRoutineAddPrivs(builder *flatbuffers.Builder, privs flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(1, flatbuffers.UOffsetT(privs), 0)
+}
+func PrivilegeSetRoutineStartPrivsVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
+	return builder.StartVector(4, numElems, 4)
+}
+func PrivilegeSetRoutineAddIsProc(builder *flatbuffers.Builder, isProc bool) {
+	builder.PrependBoolSlot(2, isProc, false)
+}
+func PrivilegeSetRoutineEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	return builder.EndObject()
+}
+
 type PrivilegeSetDatabase struct {
 	_tab flatbuffers.Table
 }
@@ -366,7 +477,42 @@ func (rcv *PrivilegeSetDatabase) TablesLength() int {
 	return 0
 }
 
-const PrivilegeSetDatabaseNumFields = 3
+func (rcv *PrivilegeSetDatabase) Routines(obj *PrivilegeSetRoutine, j int) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
+	if o != 0 {
+		x := rcv._tab.Vector(o)
+		x += flatbuffers.UOffsetT(j) * 4
+		x = rcv._tab.Indirect(x)
+		obj.Init(rcv._tab.Bytes, x)
+		return true
+	}
+	return false
+}
+
+func (rcv *PrivilegeSetDatabase) TryRoutines(obj *PrivilegeSetRoutine, j int) (bool, error) {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
+	if o != 0 {
+		x := rcv._tab.Vector(o)
+		x += flatbuffers.UOffsetT(j) * 4
+		x = rcv._tab.Indirect(x)
+		obj.Init(rcv._tab.Bytes, x)
+		if PrivilegeSetRoutineNumFields < obj.Table().NumFields() {
+			return false, flatbuffers.ErrTableHasUnknownFields
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
+func (rcv *PrivilegeSetDatabase) RoutinesLength() int {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
+	if o != 0 {
+		return rcv._tab.VectorLen(o)
+	}
+	return 0
+}
+
+const PrivilegeSetDatabaseNumFields = 4
 
 func PrivilegeSetDatabaseStart(builder *flatbuffers.Builder) {
 	builder.StartObject(PrivilegeSetDatabaseNumFields)
@@ -384,6 +530,12 @@ func PrivilegeSetDatabaseAddTables(builder *flatbuffers.Builder, tables flatbuff
 	builder.PrependUOffsetTSlot(2, flatbuffers.UOffsetT(tables), 0)
 }
 func PrivilegeSetDatabaseStartTablesVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
+	return builder.StartVector(4, numElems, 4)
+}
+func PrivilegeSetDatabaseAddRoutines(builder *flatbuffers.Builder, routines flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(3, flatbuffers.UOffsetT(routines), 0)
+}
+func PrivilegeSetDatabaseStartRoutinesVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
 	return builder.StartVector(4, numElems, 4)
 }
 func PrivilegeSetDatabaseEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
