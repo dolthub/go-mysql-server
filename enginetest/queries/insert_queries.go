@@ -1349,7 +1349,7 @@ var InsertScripts = []ScriptTest{
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
-				Query: "select * from t1 order by a",
+				Query:    "select * from t1 order by a",
 				Expected: []sql.Row{{1, 2}},
 			},
 			{
@@ -1357,7 +1357,7 @@ var InsertScripts = []ScriptTest{
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
-				Query: "select * from t1 where a = 2 order by a",
+				Query:    "select * from t1 where a = 2 order by a",
 				Expected: []sql.Row{{2, 3}},
 			},
 			{
@@ -1365,7 +1365,7 @@ var InsertScripts = []ScriptTest{
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
-				Query: "select * from t1 where a = 3 order by a",
+				Query:    "select * from t1 where a = 3 order by a",
 				Expected: []sql.Row{{3, 4}},
 			},
 		},

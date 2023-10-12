@@ -224,7 +224,7 @@ func validGeneratedColumnValue(idx int, source sql.Node) bool {
 	case *plan.Values:
 		for _, tuple := range source.ExpressionTuples {
 			switch val := tuple[idx].(type) {
-			// explicit default values (`DEFAULT`) are the only valid values to specify for a generated column 
+			// explicit default values (`DEFAULT`) are the only valid values to specify for a generated column
 			case *expression.Wrapper:
 				if _, ok := val.Unwrap().(*sql.ColumnDefaultValue); ok {
 					return true
