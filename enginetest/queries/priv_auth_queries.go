@@ -1691,39 +1691,9 @@ var UserPrivTests = []UserPrivilegeTest{
 			{
 				User:  "tester",
 				Host:  "localhost",
-				Query: "SELECT * FROM information_schema.column_statistics where schema_name = 'mydb';",
+				Query: "SELECT table_name, column_name FROM information_schema.column_statistics where schema_name = 'mydb';",
 				Expected: []sql.Row{
-					{"mydb", "one", "f", types.JSONDocument{Val: map[string]interface{}{
-						"distinct":  float64(4),
-						"nulls":     float64(0),
-						"row_count": float64(4),
-						"buckets": sql.Histogram{
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{float64(1.25)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{float64(7.5)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{float64(10.5)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{float64(45.25)},
-							},
-						},
-					}}},
+					{"one", "f"},
 				},
 			},
 			{
@@ -1735,89 +1705,11 @@ var UserPrivTests = []UserPrivilegeTest{
 			{
 				User:  "tester",
 				Host:  "localhost",
-				Query: "SELECT * FROM information_schema.column_statistics where schema_name = 'mydb';",
+				Query: "SELECT table_name, column_name FROM information_schema.column_statistics where schema_name = 'mydb';",
 				Expected: []sql.Row{
-					{"mydb", "one", "f", types.JSONDocument{Val: map[string]interface{}{
-						"distinct":  float64(4),
-						"nulls":     float64(0),
-						"row_count": float64(4),
-						"buckets": sql.Histogram{
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{float64(1.25)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{float64(7.5)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{float64(10.5)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{float64(45.25)},
-							},
-						},
-					}}},
-					{"mydb", "two", "i", types.JSONDocument{Val: map[string]interface{}{
-						"distinct":  float64(3),
-						"nulls":     float64(0),
-						"row_count": float64(3),
-						"buckets": sql.Histogram{
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{int64(1)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{int64(2)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{int64(3)},
-							},
-						},
-					}}},
-					{"mydb", "two", "j", types.JSONDocument{Val: map[string]interface{}{
-						"distinct":  float64(3),
-						"nulls":     float64(0),
-						"row_count": float64(3),
-						"buckets": sql.Histogram{
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{int64(4)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{int64(5)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{int64(6)},
-							},
-						},
-					}}},
+					{"one", "f"},
+					{"two", "i"},
+					{"two", "j"},
 				},
 			},
 		},

@@ -17,6 +17,7 @@ package mysqlshim
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/memory"
 	"strings"
 	"testing"
 
@@ -51,7 +52,7 @@ func (m *MySQLHarness) Setup(setupData ...[]setup.SetupScript) {
 }
 
 func (m *MySQLHarness) NewEngine(t *testing.T) (enginetest.QueryEngine, error) {
-	return enginetest.NewEngine(t, m, m.Provider(), m.setupData)
+	return enginetest.NewEngine(t, m, m.Provider(), m.setupData, memory.NewStatsProv())
 }
 
 func (m *MySQLHarness) NewContextWithClient(client sql.Client) *sql.Context {
