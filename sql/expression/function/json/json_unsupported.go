@@ -408,37 +408,6 @@ func (j JSONType) IsUnsupported() bool {
 	return true
 }
 
-// JSON_VALID(val)
-//
-// Returns 0 or 1 to indicate whether a value is valid JSON. Returns NULL if the argument is NULL.
-//
-// https://dev.mysql.com/doc/refman/8.0/en/json-attribute-functions.html#function_json-valid
-type JSONValid struct {
-	sql.Expression
-}
-
-var _ sql.FunctionExpression = JSONValid{}
-
-// NewJSONValid creates a new JSONValid function.
-func NewJSONValid(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONValid{}.FunctionName())
-}
-
-// FunctionName implements sql.FunctionExpression
-func (j JSONValid) FunctionName() string {
-	return "json_valid"
-}
-
-// Description implements sql.FunctionExpression
-func (j JSONValid) Description() string {
-	return "returns whether JSON value is valid."
-}
-
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONValid) IsUnsupported() bool {
-	return true
-}
-
 //////////////////////////
 // JSON table functions //
 //////////////////////////
