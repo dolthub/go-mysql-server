@@ -2,6 +2,7 @@ package json
 
 import (
 	"fmt"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -12,7 +13,7 @@ import (
 //
 // https://dev.mysql.com/doc/refman/8.0/en/json-attribute-functions.html#function_json-valid
 type JSONValid struct {
-	JSON  sql.Expression
+	JSON sql.Expression
 }
 
 var _ sql.FunctionExpression = JSONValid{}

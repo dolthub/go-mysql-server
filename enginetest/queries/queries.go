@@ -8982,11 +8982,11 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
-		Query: `SELECT JSON_VALID()`,
+		Query:       `SELECT JSON_VALID()`,
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
-		Query: `SELECT JSON_VALID('{"a": 1}','[1]')`,
+		Query:       `SELECT JSON_VALID('{"a": 1}','[1]')`,
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	// This gets an error "unable to cast "second row" of type string to int64"
