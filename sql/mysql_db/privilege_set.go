@@ -312,6 +312,10 @@ func (ps PrivilegeSet) ClearColumn(dbName string, tblName string, colName string
 	ps.getUseableDb(dbName).getUseableTbl(tblName).getUseableCol(colName).clear()
 }
 
+func (ps PrivilegeSet) ClearRoutine(dbName string, procName string, isProc bool) {
+	ps.getUseableDb(dbName).getUseableRoutine(procName, isProc).clear()
+}
+
 // ClearAll removes all privileges.
 func (ps *PrivilegeSet) ClearAll() {
 	ps.globalStatic = make(map[sql.PrivilegeType]struct{})
@@ -584,6 +588,9 @@ func (ps PrivilegeSetDatabase) unionWith(otherPs PrivilegeSetDatabase) {
 	for _, otherTblSet := range otherPs.tables {
 		ps.getUseableTbl(otherTblSet.name).unionWith(otherTblSet)
 	}
+	for _, otherRoutineSet := range otherPs.routines {
+		ps.getUseableRoutine(otherRoutineSet.name, otherRoutineSet.isProc).unionWith(otherRoutineSet)
+	}
 }
 
 // clear removes all database privileges.
@@ -738,6 +745,9 @@ func (ps PrivilegeSetTable) clear() {
 	for priv := range ps.privs {
 		delete(ps.privs, priv)
 	}
+	for col := range ps.columns {
+		delete(ps.columns, col)
+	}
 }
 
 // PrivilegeSetColumn is a set containing column privileges.
@@ -761,6 +771,11 @@ func (ps PrivilegeSetColumn) Has(privileges ...sql.PrivilegeType) bool {
 		}
 	}
 	return true
+}
+
+// HasPrivileges returns whether this column has any privileges.
+func (ps PrivilegeSetColumn) HasPrivileges() bool {
+	return len(ps.privs) > 0
 }
 
 // Count returns the number of column privileges.
@@ -814,6 +829,18 @@ type PrivilegeSetRoutine struct {
 	privs  map[sql.PrivilegeType]struct{}
 }
 
+func (ps PrivilegeSetRoutine) unionWith(otherPs PrivilegeSetRoutine) {
+	for priv := range otherPs.privs {
+		ps.privs[priv] = struct{}{}
+	}
+}
+
+func (ps PrivilegeSetRoutine) clear() {
+	for priv := range ps.privs {
+		delete(ps.privs, priv)
+	}
+}
+
 var _ sql.PrivilegeSetRoutine = PrivilegeSetRoutine{}
 
 func (ps PrivilegeSetRoutine) Count() int {
@@ -830,6 +857,19 @@ func (ps PrivilegeSetRoutine) RoutineType() string {
 	} else {
 		return "FUNCTION"
 	}
+}
+
+func (ps PrivilegeSetRoutine) Has(privileges ...sql.PrivilegeType) bool {
+	for _, priv := range privileges {
+		if _, ok := ps.privs[priv]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func (ps PrivilegeSetRoutine) HasPrivileges() bool {
+	return len(ps.privs) > 0
 }
 
 // ToSlice returns all of the privileges contained as a sorted slice.
