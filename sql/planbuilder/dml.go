@@ -170,6 +170,9 @@ func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []
 			switch e := e.(type) {
 			case *ast.Default:
 				exprs[j] = expression.WrapExpression(columnDefaultValues[j])
+				// explicit DEFAULT values need their column indexes assigned early, since we analyze the insert values in 
+				// isolation (no access to the destination schema) 
+				exprs[j] = assignColumnIndexes(exprs[j], destSchema)
 			default:
 				exprs[j] = b.buildScalar(inScope, e)
 			}

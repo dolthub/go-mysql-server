@@ -78,10 +78,12 @@ func (b *BaseBuilder) buildValueDerivedTable(ctx *sql.Context, n *plan.ValueDeri
 func (b *BaseBuilder) buildValues(ctx *sql.Context, n *plan.Values, row sql.Row) (sql.RowIter, error) {
 	rows := make([]sql.Row, len(n.ExpressionTuples))
 	for i, et := range n.ExpressionTuples {
-		vals := make([]interface{}, len(et))
+		vals := make(sql.Row, len(et))
 		for j, e := range et {
+			// for the values node, the relevant values to evaluate are the tuple itself. this is a partially constructed 
+			// list during eval, but since column default values can only refer to columns defined before themselves, it works 
 			var err error
-			vals[j], err = e.Eval(ctx, row)
+			vals[j], err = e.Eval(ctx, vals)
 			if err != nil {
 				return nil, err
 			}
