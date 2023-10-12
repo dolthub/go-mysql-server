@@ -74,13 +74,13 @@ func (s *Stats) String() string {
 type Histogram []Bucket
 
 type Bucket struct {
-	Count      uint64     `json:"count"`
-	Distinct   uint64     `json:"distinct"`
-	Null       uint64     `json:"null"`
-	Mcv        [][]string `json:"mcv"`
-	McvCount   []uint64   `json:"mvc_count"`
-	BoundCount uint64     `json:"bound_count"`
-	UpperBound []string   `json:"upper_bound"`
+	Count      uint64          `json:"count"`
+	Distinct   uint64          `json:"distinct"`
+	Null       uint64          `json:"null"`
+	Mcv        [][]interface{} `json:"mcv"`
+	McvCount   []uint64        `json:"mvc_count"`
+	BoundCount uint64          `json:"bound_count"`
+	UpperBound []interface{}   `json:"upper_bound"`
 }
 
 func (b Bucket) MarshalJSON() ([]byte, error) {
@@ -88,10 +88,10 @@ func (b Bucket) MarshalJSON() ([]byte, error) {
 		Count      uint64
 		Distinct   uint64
 		Null       uint64
-		Mcv        [][]string
+		Mcv        [][]interface{}
 		McvCount   []uint64
 		BoundCount uint64
-		UpperBound []string
+		UpperBound []interface{}
 	}{
 		Count:      b.Count,
 		Distinct:   b.Distinct,

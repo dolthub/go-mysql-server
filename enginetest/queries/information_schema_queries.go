@@ -1642,24 +1642,27 @@ var StatisticsQueries = []ScriptTest{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
 					{"mydb", "t", "i", types.JSONDocument{Val: map[string]interface{}{
+						"distinct":  float64(3),
+						"nulls":     float64(0),
+						"row_count": float64(3),
 						"buckets": sql.Histogram{
 							{
 								Count:      1,
 								Distinct:   1,
 								BoundCount: 1,
-								UpperBound: []string{"1"},
+								UpperBound: []interface{}{int64(1)},
 							},
 							{
 								Count:      1,
 								Distinct:   1,
 								BoundCount: 1,
-								UpperBound: []string{"2"},
+								UpperBound: []interface{}{int64(2)},
 							},
 							{
 								Count:      1,
 								Distinct:   1,
 								BoundCount: 1,
-								UpperBound: []string{"3"},
+								UpperBound: []interface{}{int64(3)},
 							},
 						},
 					}}},
@@ -1675,23 +1678,26 @@ var StatisticsQueries = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "analyze table t update histogram on (i) using data '{\"row_count\": 40, \"histogram\": [{\"count\": 20, \"upper_bound\": 50}, {\"count\": 20, \"upper_bound\": 80}]}'",
+				Query:    "analyze table t update histogram on (i) using data '{\"row_count\": 40, \"distinct_count\": 40, \"null_count\": 1, \"histogram\": [{\"count\": 20, \"upper_bound\": [50]}, {\"count\": 20, \"upper_bound\": [80]}]}'",
 				Expected: []sql.Row{{"t", "histogram", "status", "OK"}},
 			},
 			{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
 					{"mydb", "t", "i", types.JSONDocument{Val: map[string]interface{}{
+						"distinct":  float64(40),
+						"nulls":     float64(1),
+						"row_count": float64(40),
 						"buckets": sql.Histogram{
 							{
 								Count:      20,
 								BoundCount: 1,
-								UpperBound: []string{"50"},
+								UpperBound: []interface{}{float64(50)},
 							},
 							{
 								Count:      20,
 								BoundCount: 1,
-								UpperBound: []string{"80"},
+								UpperBound: []interface{}{float64(80)},
 							},
 						},
 					}}},
@@ -1719,46 +1725,52 @@ var StatisticsQueries = []ScriptTest{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
 					{"mydb", "t", "i", types.JSONDocument{Val: map[string]interface{}{
+						"distinct":  float64(3),
+						"nulls":     float64(0),
+						"row_count": float64(3),
 						"buckets": sql.Histogram{
 							{
 								Count:      1,
 								Distinct:   1,
 								BoundCount: 1,
-								UpperBound: []string{"1"},
+								UpperBound: []interface{}{int64(1)},
 							},
 							{
 								Count:      1,
 								Distinct:   1,
 								BoundCount: 1,
-								UpperBound: []string{"2"},
+								UpperBound: []interface{}{int64(2)},
 							},
 							{
 								Count:      1,
 								Distinct:   1,
 								BoundCount: 1,
-								UpperBound: []string{"3"},
+								UpperBound: []interface{}{int64(3)},
 							},
 						},
 					}}},
 					{"mydb", "t", "j", types.JSONDocument{Val: map[string]interface{}{
+						"distinct":  float64(3),
+						"nulls":     float64(0),
+						"row_count": float64(3),
 						"buckets": sql.Histogram{
 							{
 								Count:      1,
 								Distinct:   1,
 								BoundCount: 1,
-								UpperBound: []string{"4"},
+								UpperBound: []interface{}{int64(4)},
 							},
 							{
 								Count:      1,
 								Distinct:   1,
 								BoundCount: 1,
-								UpperBound: []string{"5"},
+								UpperBound: []interface{}{int64(5)},
 							},
 							{
 								Count:      1,
 								Distinct:   1,
 								BoundCount: 1,
-								UpperBound: []string{"6"},
+								UpperBound: []interface{}{int64(6)},
 							},
 						},
 					}}},
@@ -1769,7 +1781,7 @@ var StatisticsQueries = []ScriptTest{
 	{
 		Name: "analyze float columns",
 		SetUpScript: []string{
-			"CREATE TABLE t (i float primary key)",
+			"CREATE TABLE t (i double primary key)",
 			"INSERT INTO t VALUES (1.25), (45.25), (7.5), (10.5)",
 			"ANALYZE TABLE t",
 		},
@@ -1778,30 +1790,33 @@ var StatisticsQueries = []ScriptTest{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
 					{"mydb", "t", "i", types.JSONDocument{Val: map[string]interface{}{
+						"distinct":  float64(4),
+						"nulls":     float64(0),
+						"row_count": float64(4),
 						"buckets": sql.Histogram{
 							{
 								Count:      1,
 								Distinct:   1,
 								BoundCount: 1,
-								UpperBound: []string{"1.25"},
+								UpperBound: []interface{}{float64(1.25)},
 							},
 							{
 								Count:      1,
 								Distinct:   1,
 								BoundCount: 1,
-								UpperBound: []string{"7.5"},
+								UpperBound: []interface{}{float64(7.5)},
 							},
 							{
 								Count:      1,
 								Distinct:   1,
 								BoundCount: 1,
-								UpperBound: []string{"10.5"},
+								UpperBound: []interface{}{float64(10.5)},
 							},
 							{
 								Count:      1,
 								Distinct:   1,
 								BoundCount: 1,
-								UpperBound: []string{"45.25"},
+								UpperBound: []interface{}{float64(45.25)},
 							},
 						},
 					}}},

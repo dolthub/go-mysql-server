@@ -900,7 +900,12 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					db.Name(),                        // table_schema
 					t.Name(),                         // table_name
 					strings.Join(stats.Columns, ","), // column_name
-					types.JSONDocument{Val: map[string]interface{}{"buckets": stats.Histogram}}, // histogram
+					types.JSONDocument{Val: map[string]interface{}{
+						"buckets":   stats.Histogram,
+						"distinct":  stats.Distinct,
+						"row_count": stats.Rows,
+						"nulls":     stats.Nulls,
+					}}, // histogram
 				})
 			}
 			return true, nil
