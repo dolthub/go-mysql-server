@@ -172,7 +172,7 @@ func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []
 				exprs[j] = expression.WrapExpression(columnDefaultValues[j])
 				// explicit DEFAULT values need their column indexes assigned early, since we analyze the insert values in 
 				// isolation (no access to the destination schema) 
-				exprs[j] = assignColumnIndexes(exprs[j], destSchema)
+				exprs[j] = assignColumnIndexes(exprs[j], reorderSchema(columnNames, destSchema))
 			default:
 				exprs[j] = b.buildScalar(inScope, e)
 			}
@@ -182,6 +182,15 @@ func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []
 	outScope = inScope.push()
 	outScope.node = plan.NewValues(exprTuples)
 	return
+}
+
+// reorderSchema returns the schemas columns in the order specified by names
+func reorderSchema(names []string, schema sql.Schema) sql.Schema {
+	newSch := make(sql.Schema, len(names))
+	for i, name := range names {
+		newSch[i] = schema[schema.IndexOfColName(name)]
+	}
+	return newSch
 }
 
 func (b *Builder) buildValues(inScope *scope, v ast.Values) (outScope *scope) {

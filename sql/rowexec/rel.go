@@ -83,7 +83,11 @@ func (b *BaseBuilder) buildValues(ctx *sql.Context, n *plan.Values, row sql.Row)
 			// for the values node, the relevant values to evaluate are the tuple itself. this is a partially constructed 
 			// list during eval, but since column default values can only refer to columns defined before themselves, it works 
 			var err error
-			vals[j], err = e.Eval(ctx, vals)
+			if len(row) > 0 {
+				vals[j], err = e.Eval(ctx, row)
+			} else {
+				vals[j], err = e.Eval(ctx, vals)
+			}
 			if err != nil {
 				return nil, err
 			}
