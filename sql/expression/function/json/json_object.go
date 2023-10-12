@@ -53,11 +53,6 @@ func (j JSONObject) Description() string {
 	return "creates JSON object."
 }
 
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONObject) IsUnsupported() bool {
-	return true
-}
-
 func (j JSONObject) Resolved() bool {
 	for _, child := range j.Children() {
 		if child != nil && !child.Resolved() {

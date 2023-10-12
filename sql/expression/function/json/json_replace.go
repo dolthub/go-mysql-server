@@ -129,3 +129,8 @@ func (j JSONReplace) FunctionName() string {
 func (j JSONReplace) Description() string {
 	return "replaces values in JSON document."
 }
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONReplace) IsUnsupported() bool {
+	return false
+}
