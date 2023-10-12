@@ -1,9 +1,12 @@
 package analyzer
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -34,17 +37,11 @@ func replacePkSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sor
 		if !ok {
 			return n, transform.SameTree, nil
 		}
-		idxs, err := idxTbl.GetIndexes(ctx)
+
+		// TODO: support secondary indexes
+		pkIndex, err := getPKIndex(ctx, idxTbl)
 		if err != nil {
 			return nil, transform.SameTree, err
-		}
-
-		var pkIndex sql.Index // TODO: support secondary indexes
-		for _, idx := range idxs {
-			if idx.ID() == "PRIMARY" {
-				pkIndex = idx
-				break
-			}
 		}
 		if pkIndex == nil {
 			return n, transform.SameTree, nil
@@ -64,7 +61,7 @@ func replacePkSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sor
 			if alias, ok := sfAliases[strings.ToLower(pkColNames[i])]; ok && alias == fieldName {
 				continue
 			}
-			if strings.ToLower(pkColNames[i]) != strings.ToLower(fieldExpr.String()) {
+			if !strings.EqualFold(pkColNames[i], fieldName) {
 				return n, transform.SameTree, nil
 			}
 		}
@@ -122,4 +119,106 @@ func replacePkSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sor
 		return nil, transform.SameTree, err
 	}
 	return newNode, transform.NewTree, nil
+}
+
+// replaceAgg converts aggregate functions to order by + limit 1 when possible
+func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		// project with groupby child
+		proj, ok := n.(*plan.Project)
+		if !ok {
+			return n, transform.SameTree, nil
+		}
+		gb, ok := proj.Child.(*plan.GroupBy)
+		if !ok {
+			return n, transform.SameTree, nil
+		}
+		// TODO: optimize when there are multiple aggregations; use LATERAL JOINS
+		if len(gb.SelectedExprs) != 1 {
+			return n, transform.SameTree, nil
+		}
+
+		var idxTbl sql.IndexAddressableTable
+		transform.Inspect(gb.Child, func(n sql.Node) bool {
+			switch t := gb.Child.(type) {
+			case *plan.ResolvedTable:
+				if tbl, ok := t.UnderlyingTable().(sql.IndexAddressableTable); ok {
+					idxTbl = tbl
+					return false
+				}
+			}
+			return true
+		})
+
+		// no indexes on table, unable to apply optimization
+		if idxTbl == nil {
+			return n, transform.SameTree, nil
+		}
+
+		// generate sort fields from aggregations
+		var sf sql.SortField
+		switch agg := gb.SelectedExprs[0].(type) {
+		case *aggregation.Max:
+			gf, ok := agg.UnaryExpression.Child.(*expression.GetField)
+			if !ok {
+				return n, transform.SameTree, nil
+			}
+			sf = sql.SortField{
+				Column: gf,
+				Order:  sql.Descending,
+			}
+		case *aggregation.Min:
+			gf, ok := agg.UnaryExpression.Child.(*expression.GetField)
+			if !ok {
+				return n, transform.SameTree, nil
+			}
+			sf = sql.SortField{
+				Column: gf,
+				Order:  sql.Ascending,
+			}
+		default:
+			return n, transform.SameTree, nil
+		}
+
+		// TODO: support secondary indexes
+		pkIdx, err := getPKIndex(ctx, idxTbl)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		if pkIdx == nil {
+			return n, transform.SameTree, nil
+		}
+		// since we're only supporting one aggregation, it must be on the first column of the primary key
+		if !strings.EqualFold(pkIdx.Expressions()[0], sf.Column.String()) {
+			return n, transform.SameTree, nil
+		}
+
+		// replace all aggs in proj.Projections with GetField
+		name := gb.SelectedExprs[0].String()
+		newProjs, _, err := transform.Exprs(proj.Projections, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			if strings.EqualFold(e.String(), name) {
+				return sf.Column, transform.NewTree, nil
+			}
+			return e, transform.SameTree, nil
+		})
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		newProj := plan.NewProject(newProjs, plan.NewSort(sql.SortFields{sf}, gb.Child))
+		limit := plan.NewLimit(expression.NewLiteral(1, types.Int64), newProj)
+		return limit, transform.NewTree, nil
+	})
+}
+
+func getPKIndex(ctx *sql.Context, idxTbl sql.IndexAddressableTable) (sql.Index, error) {
+	idxs, err := idxTbl.GetIndexes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, idx := range idxs {
+		if idx.ID() == "PRIMARY" {
+			return idx, nil
+		}
+	}
+	return nil, nil
 }
