@@ -559,6 +559,9 @@ func ProjectRow(
 }
 
 func defaultValFromProjectExpr(e sql.Expression) (*sql.ColumnDefaultValue, bool) {
+	if defaultVal, ok := e.(*expression.Wrapper); ok {
+		e = defaultVal.Unwrap()
+	}
 	if defaultVal, ok := e.(*sql.ColumnDefaultValue); ok {
 		return defaultVal, true
 	}
