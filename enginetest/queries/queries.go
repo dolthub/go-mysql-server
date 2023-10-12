@@ -9069,7 +9069,14 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       "SELECT json_set() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
-
+	{
+		Query:       `SELECT JSON_VALID()`,
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       `SELECT JSON_VALID('{"a": 1}','[1]')`,
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
 	// This gets an error "unable to cast "second row" of type string to int64"
 	// Should throw sql.ErrAmbiguousColumnInOrderBy
 	{

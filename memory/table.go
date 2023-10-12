@@ -166,6 +166,20 @@ func NewPartitionedTableWithCollation(db *BaseDatabase, name string, schema sql.
 			unrDef := sql.NewUnresolvedColumnDefaultValue(defStr)
 			cCopy.Default = unrDef
 		}
+		if cCopy.Generated != nil {
+			newDef, _, _ := transform.Expr(cCopy.Generated, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				switch e := e.(type) {
+				case *expression.GetField:
+					// strip table names
+					return expression.NewGetField(e.Index(), e.Type(), e.Name(), e.IsNullable()), transform.NewTree, nil
+				default:
+				}
+				return e, transform.SameTree, nil
+			})
+			defStr := newDef.String()
+			unrDef := sql.NewUnresolvedColumnDefaultValue(defStr)
+			cCopy.Generated = unrDef
+		}
 		newSchema[i] = cCopy
 	}
 
@@ -329,7 +343,13 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	rowsCopy := make([]sql.Row, len(rows))
 	copy(rowsCopy, rows)
 
+	numColumns := len(data.schema.Schema)
+	if len(t.columns) > 0 {
+		numColumns = len(t.columns)
+	}
+
 	if r, ok := partition.(*spatialRangePartition); ok {
+		// TODO: virtual column support
 		return &spatialTableIter{
 			columns: t.columns,
 			ord:     r.ord,
@@ -342,9 +362,11 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	}
 
 	return &tableIter{
-		rows:    rowsCopy,
-		columns: t.columns,
-		filters: filters,
+		rows:        rowsCopy,
+		columns:     t.columns,
+		numColumns:  numColumns,
+		virtualCols: data.virtualColIndexes(),
+		filters:     filters,
 	}, nil
 }
 
@@ -420,10 +442,12 @@ func (p *partitionIter) Next(*sql.Context) (sql.Partition, error) {
 func (p *partitionIter) Close(*sql.Context) error { return nil }
 
 type tableIter struct {
-	columns []int
-	filters []sql.Expression
+	columns     []int
+	virtualCols []int
+	numColumns  int
 
 	rows        []sql.Row
+	filters     []sql.Expression
 	indexValues sql.IndexValueIter
 	pos         int
 }
@@ -435,6 +459,8 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	row = normalizeRowForRead(row, i.numColumns, i.columns, i.virtualCols)
 
 	for _, f := range i.filters {
 		result, err := f.Eval(ctx, row)
@@ -458,13 +484,39 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return row, nil
 }
 
-func (i *tableIter) colIsProjected(idx int) bool {
-	for _, colIdx := range i.columns {
-		if idx == colIdx {
-			return true
+// normalizeRowForRead returns a copy of the row with nil values inserted for any virtual columns
+func normalizeRowForRead(row sql.Row, numColumns int, columns []int, virtualCols []int) sql.Row {
+	if len(virtualCols) == 0 {
+		return row
+	}
+
+	var virtualRow sql.Row
+
+	// Columns are the indexes of projected columns, which we don't always have. In either case, we are filling the row
+	// with nil values for virtual columns. The simple iteration below only works when the column and virtual column
+	// indexes are in ascending order, which is true for the time being.
+	var j int
+	if len(columns) != 0 {
+		virtualRow = make(sql.Row, len(columns))
+		for i := range columns {
+			if j < len(virtualCols) && columns[i] == virtualCols[j] {
+				j++
+			} else {
+				virtualRow[i] = row[i-j]
+			}
+		}
+	} else {
+		virtualRow = make(sql.Row, numColumns)
+		for i := 0; i < numColumns; i++ {
+			if j < len(virtualCols) && i == virtualCols[j] {
+				j++
+			} else {
+				virtualRow[i] = row[i-j]
+			}
 		}
 	}
-	return false
+
+	return virtualRow
 }
 
 func (i *tableIter) Close(ctx *sql.Context) error {

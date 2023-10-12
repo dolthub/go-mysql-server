@@ -277,9 +277,6 @@ func validateColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrap
 		case *plan.Subquery:
 			err = sql.ErrColumnDefaultSubquery.New(col.Name)
 			return false
-		case *deferredColumn:
-			err = sql.ErrInvalidColumnDefaultValue.New(col.Name)
-			return false
 		case *expression.GetField:
 			if newDefault.IsParenthesized() == false {
 				err = sql.ErrInvalidColumnDefaultValue.New(col.Name)

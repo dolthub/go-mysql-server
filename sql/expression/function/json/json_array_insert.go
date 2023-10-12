@@ -131,3 +131,8 @@ func (j JSONArrayInsert) FunctionName() string {
 func (j JSONArrayInsert) Description() string {
 	return "inserts into JSON array."
 }
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONArrayInsert) IsUnsupported() bool {
+	return false
+}

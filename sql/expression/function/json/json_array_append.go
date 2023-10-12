@@ -129,3 +129,8 @@ func (j JSONArrayAppend) FunctionName() string {
 func (j JSONArrayAppend) Description() string {
 	return "appends data to JSON document."
 }
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONArrayAppend) IsUnsupported() bool {
+	return false
+}

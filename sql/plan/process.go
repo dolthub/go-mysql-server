@@ -121,8 +121,11 @@ type ProcessIndexableTable struct {
 
 func (t *ProcessIndexableTable) DebugString() string {
 	tp := sql.NewTreePrinter()
-	_ = tp.WriteNode("ProcessIndexableTable")
-	_ = tp.WriteChildren(sql.DebugString(t.Underlying()))
+	// This is a bit of a misnomer -- some db implementations get this node, rather than ProcessTable, but the two
+	// nodes are functionally equivalent for testing which is where this output is used. We could fix this by making a
+	// version of the memory package that doesn't implement sql.DriverIndexableTable
+	_ = tp.WriteNode("ProcessTable")
+	_ = tp.WriteChildren(TableDebugString(t.Underlying()))
 	return tp.String()
 }
 
@@ -217,6 +220,22 @@ func (t *ProcessTable) PartitionRows(ctx *sql.Context, p sql.Partition) (sql.Row
 	onDone, onNext := t.notifyFuncsForPartition(p)
 
 	return NewTrackedRowIter(nil, iter, onNext, onDone), nil
+}
+
+func (t *ProcessTable) DebugString() string {
+	tp := sql.NewTreePrinter()
+	_ = tp.WriteNode("ProcessTable")
+
+	underlying := t.Underlying()
+	if _, ok := underlying.(sql.TableWrapper); ok {
+		if _, ok := underlying.(sql.DebugStringer); ok {
+			_ = tp.WriteChildren(sql.DebugString(underlying))
+		}
+	} else {
+		_ = tp.WriteChildren(TableDebugString(underlying))
+	}
+
+	return tp.String()
 }
 
 // notifyFuncsForPartition returns the OnDone and OnNext NotifyFuncs for the partition given

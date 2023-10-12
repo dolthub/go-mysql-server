@@ -46,7 +46,9 @@ WHERE
 			"     │                   └─ IndexedTableAccess(orders2)\n" +
 			"     │                       ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
 			"     │                       ├─ static: [{[1, 1], [3, 3], [20001, 20001], [NULL, ∞)}]\n" +
-			"     │                       └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
+			"     │                       └─ Table\n" +
+			"     │                           ├─ name: orders2\n" +
+			"     │                           └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
 			"     └─ Filter\n" +
 			"         ├─ AND\n" +
 			"         │   ├─ AND\n" +
@@ -61,7 +63,9 @@ WHERE
 			"         │       └─ 20001 (smallint)\n" +
 			"         └─ IndexedTableAccess(orders2)\n" +
 			"             ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
-			"             └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id o_ol_cnt o_all_local]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: orders2\n" +
+			"                 └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id o_ol_cnt o_all_local]\n" +
 			"",
 	},
 	{
@@ -98,9 +102,10 @@ from
 			"         │       ├─ t.o_c_id:4\n" +
 			"         │       └─ o.o_c_id:3\n" +
 			"         ├─ TableAlias(o)\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: orders2\n" +
-			"         │       └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
+			"         │   └─ ProcessTable\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: orders2\n" +
+			"         │           └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: TUPLE(o.o_w_id:2!null, o.o_d_id:1!null, o.o_c_id:3)\n" +
 			"             ├─ right-key: TUPLE(t.o_w_id:1!null, t.o_d_id:2!null, t.o_c_id:0)\n" +
@@ -129,7 +134,9 @@ from
 			"                                     └─ IndexedTableAccess(orders2)\n" +
 			"                                         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
 			"                                         ├─ static: [{[1, 1], [NULL, ∞), [NULL, ∞)}]\n" +
-			"                                         └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id o_ol_cnt o_all_local]\n" +
+			"                                         └─ Table\n" +
+			"                                             ├─ name: orders2\n" +
+			"                                             └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id o_ol_cnt o_all_local]\n" +
 			"",
 	},
 }

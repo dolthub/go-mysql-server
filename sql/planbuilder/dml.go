@@ -34,7 +34,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	}
 	dbName := i.Table.Qualifier.String()
 	tableName := i.Table.Name.String()
-	destScope, ok := b.buildTablescan(inScope, dbName, tableName, nil)
+	destScope, ok := b.buildResolvedTable(inScope, dbName, tableName, nil)
 	if !ok {
 		b.handleErr(sql.ErrTableNotFound.New(tableName))
 	}
@@ -324,7 +324,7 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 					return false
 				})
 			} else {
-				tableScope, ok := b.buildTablescan(inScope, dbName, tabName, nil)
+				tableScope, ok := b.buildResolvedTable(inScope, dbName, tabName, nil)
 				if !ok {
 					b.handleErr(sql.ErrTableNotFound.New(tabName))
 				}

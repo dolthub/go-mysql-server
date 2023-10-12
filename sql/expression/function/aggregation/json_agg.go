@@ -17,14 +17,9 @@ package aggregation
 import (
 	"fmt"
 
-	"gopkg.in/src-d/go-errors.v1"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
-
-// ErrUnsupportedJSONFunction is returned when a unsupported JSON function is called.
-var ErrUnsupportedJSONFunction = errors.NewKind("unsupported JSON function: %s")
 
 // JSON_OBJECTAGG(key, value) [over_clause]
 //

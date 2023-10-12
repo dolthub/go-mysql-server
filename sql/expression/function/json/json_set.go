@@ -138,3 +138,8 @@ func (j *JSONSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	return doc, nil
 }
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONSet) IsUnsupported() bool {
+	return false
+}

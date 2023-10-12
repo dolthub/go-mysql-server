@@ -117,13 +117,6 @@ func unresolvedError(n sql.Node) error {
 			if err != nil {
 				return false
 			}
-		case *deferredColumn:
-			if e.Table() != "" {
-				err = sql.ErrTableColumnNotFound.New(e.Table(), e.Name())
-			} else {
-				err = sql.ErrColumnNotFound.New(e.Name())
-			}
-			return false
 		}
 		return true
 	}
