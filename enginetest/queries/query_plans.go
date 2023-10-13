@@ -10236,30 +10236,32 @@ WHERE keyless.c0 IN (
 	},
 	{
 		Query: "select min(x) from xy where y > 0",
-		ExpectedPlan: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [xy.x:0!null as min(x)]\n" +
-			"     └─ Sort(xy.x:0!null ASC nullsFirst)\n" +
-			"         └─ IndexedTableAccess(xy)\n" +
-			"             ├─ index: [xy.y]\n" +
-			"             ├─ static: [{(0, ∞)}]\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: xy\n" +
-			"                 └─ columns: [x y]\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [min(xy.x):0!null as min(x)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MIN(xy.x:0!null)\n" +
+			"     ├─ group: \n" +
+			"     └─ IndexedTableAccess(xy)\n" +
+			"         ├─ index: [xy.y]\n" +
+			"         ├─ static: [{(0, ∞)}]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x y]\n" +
 			"",
 	},
 	{
 		Query: "select max(x) from xy where y < 3",
-		ExpectedPlan: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [xy.x:0!null as max(x)]\n" +
-			"     └─ Sort(xy.x:0!null DESC nullsFirst)\n" +
-			"         └─ IndexedTableAccess(xy)\n" +
-			"             ├─ index: [xy.y]\n" +
-			"             ├─ static: [{(NULL, 3)}]\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: xy\n" +
-			"                 └─ columns: [x y]\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [max(xy.x):0!null as max(x)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(xy.x:0!null)\n" +
+			"     ├─ group: \n" +
+			"     └─ IndexedTableAccess(xy)\n" +
+			"         ├─ index: [xy.y]\n" +
+			"         ├─ static: [{(NULL, 3)}]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x y]\n" +
 			"",
 	},
 	{

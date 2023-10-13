@@ -160,15 +160,27 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 			return n, transform.SameTree, nil
 		}
 
-		var idxTbl sql.IndexAddressableTable
+		// TODO: support secondary indexes
+		var pkIdx sql.Index
 		switch t := gb.Child.(type) {
 		case *plan.IndexedTableAccess:
-			if tbl, ok := t.Table.(sql.IndexAddressableTable); ok {
-				idxTbl = tbl
+			if _, ok := t.Table.(sql.IndexAddressableTable); ok {
+				idx := t.Index()
+				if idx.ID() != "PRIMARY" {
+					return n, transform.SameTree, nil
+				}
+				pkIdx = idx
 			}
 		case *plan.ResolvedTable:
 			if tbl, ok := t.UnderlyingTable().(sql.IndexAddressableTable); ok {
-				idxTbl = tbl
+				idx, err := getPKIndex(ctx, tbl)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				if idx == nil {
+					return n, transform.SameTree, nil
+				}
+				pkIdx = idx
 			}
 		default:
 			return n, transform.SameTree, nil
@@ -199,14 +211,6 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 			return n, transform.SameTree, nil
 		}
 
-		// TODO: support secondary indexes
-		pkIdx, err := getPKIndex(ctx, idxTbl)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-		if pkIdx == nil {
-			return n, transform.SameTree, nil
-		}
 		// since we're only supporting one aggregation, it must be on the first column of the primary key
 		if !strings.EqualFold(pkIdx.Expressions()[0], sf.Column.String()) {
 			return n, transform.SameTree, nil
