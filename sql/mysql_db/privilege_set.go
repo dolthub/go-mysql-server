@@ -490,6 +490,7 @@ func (ps PrivilegeSetDatabase) getTables() []PrivilegeSetTable {
 	return tblSets
 }
 
+// GetRoutines returns all routines.
 func (ps PrivilegeSetDatabase) GetRoutines() []sql.PrivilegeSetRoutine {
 	if ps.routines == nil || len(ps.routines) == 0 {
 		return []sql.PrivilegeSetRoutine{}
@@ -501,11 +502,11 @@ func (ps PrivilegeSetDatabase) GetRoutines() []sql.PrivilegeSetRoutine {
 		routineSets = append(routineSets, routine)
 	}
 
-	sort.Slice(routineSets, func(i, j int) bool {
-		if routineSets[i].RoutineName() != routineSets[j].RoutineType() {
-			return routineSets[i].RoutineName() < routineSets[j].RoutineName()
+	sort.Slice(routineSets, func(a, b int) bool {
+		if routineSets[a].RoutineName() != routineSets[b].RoutineName() {
+			return routineSets[a].RoutineName() < routineSets[b].RoutineName()
 		}
-		return routineSets[i].RoutineType() < routineSets[j].RoutineType()
+		return routineSets[a].RoutineType() < routineSets[b].RoutineType()
 	})
 
 	return routineSets
@@ -829,12 +830,14 @@ type PrivilegeSetRoutine struct {
 	privs  map[sql.PrivilegeType]struct{}
 }
 
+// unionWith merges the given set of privileges to the calling set of privileges.
 func (ps PrivilegeSetRoutine) unionWith(otherPs PrivilegeSetRoutine) {
 	for priv := range otherPs.privs {
 		ps.privs[priv] = struct{}{}
 	}
 }
 
+// clear removes all routine privileges.
 func (ps PrivilegeSetRoutine) clear() {
 	for priv := range ps.privs {
 		delete(ps.privs, priv)
@@ -843,14 +846,12 @@ func (ps PrivilegeSetRoutine) clear() {
 
 var _ sql.PrivilegeSetRoutine = PrivilegeSetRoutine{}
 
-func (ps PrivilegeSetRoutine) Count() int {
-	return len(ps.privs)
-}
-
+// RoutineName returns the name of the routine that this privilege set belongs to.
 func (ps PrivilegeSetRoutine) RoutineName() string {
 	return ps.name
 }
 
+// RoutineType returns the type of routine this is (PROCEDURE or FUNCTION).
 func (ps PrivilegeSetRoutine) RoutineType() string {
 	if ps.isProc {
 		return "PROCEDURE"
@@ -859,6 +860,12 @@ func (ps PrivilegeSetRoutine) RoutineType() string {
 	}
 }
 
+// Count returns the number of routine privileges.
+func (ps PrivilegeSetRoutine) Count() int {
+	return len(ps.privs)
+}
+
+// Has returns whether the given column privilege(s) exists.
 func (ps PrivilegeSetRoutine) Has(privileges ...sql.PrivilegeType) bool {
 	for _, priv := range privileges {
 		if _, ok := ps.privs[priv]; !ok {
@@ -868,6 +875,7 @@ func (ps PrivilegeSetRoutine) Has(privileges ...sql.PrivilegeType) bool {
 	return true
 }
 
+// HasPrivileges returns whether this routine has any privileges.
 func (ps PrivilegeSetRoutine) HasPrivileges() bool {
 	return len(ps.privs) > 0
 }
@@ -884,6 +892,7 @@ func (ps PrivilegeSetRoutine) ToSlice() []sql.PrivilegeType {
 	return privs
 }
 
+// Equals returns whether the given set of privileges is equivalent to the calling set.
 func (ps PrivilegeSetRoutine) Equals(otherPs sql.PrivilegeSetRoutine) bool {
 	if ps.RoutineName() != otherPs.RoutineName() {
 		return false
