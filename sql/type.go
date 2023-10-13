@@ -37,7 +37,7 @@ var (
 
 	// ErrConvertToSQL is returned when Convert failed.
 	// It makes an error less verbose comparing to what spf13/cast returns.
-	ErrConvertToSQL = errors.NewKind("incompatible conversion to SQL type: %s")
+	ErrConvertToSQL = errors.NewKind("incompatible conversion to SQL type: '%v'->%s")
 )
 
 const (

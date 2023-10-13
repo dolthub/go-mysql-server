@@ -17,13 +17,12 @@ package json
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+	"github.com/dolthub/vitess/go/sqltypes"
 	"strings"
 
 	"github.com/dolthub/jsonpath"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -40,12 +39,14 @@ type JsonValue struct {
 var _ sql.FunctionExpression = (*JsonValue)(nil)
 var _ sql.CollationCoercible = (*JsonValue)(nil)
 
+var jsonValueDefaultType = types.MustCreateString(sqltypes.VarChar, 512, sql.Collation_Default)
+
 // NewJsonValue creates a new JsonValue UDF.
 func NewJsonValue(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 2 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_VALUE", 2, len(args))
 	} else if len(args) == 2 {
-		return &JsonValue{JSON: args[0], Path: args[1], Typ: nil}, nil
+		return &JsonValue{JSON: args[0], Path: args[1], Typ: jsonValueDefaultType}, nil
 	} else {
 		// third argument is literal zero of the coercion type
 		return &JsonValue{JSON: args[0], Path: args[1], Typ: args[2].Type()}, nil
@@ -104,29 +105,33 @@ func (j *JsonValue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	strPrint := js.(string)
-	log.Println(strPrint)
 	var jsonData interface{}
 	if err = json.Unmarshal(strData.([]byte), &jsonData); err != nil {
 		return nil, err
 	}
 
-	log.Println(j.Path.(*expression.Literal).Value())
-	pathStr := j.Path.(*expression.Literal).Value().(string)
-	print(pathStr)
 	path, err := j.Path.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	jsonPathData, err := jsonpath.JsonPathLookup(jsonData, path.(string))
+	res, err := jsonpath.JsonPathLookup(jsonData, path.(string))
 	if err != nil {
 		return nil, err
 	}
 
-	res, _, err := j.Typ.Convert(jsonPathData)
-	if err != nil {
-		return nil, err
+	switch r := res.(type) {
+	case []interface{}:
+		if len(r) == 1 {
+			res = r[0]
+		}
+	}
+
+	if j.Typ != nil {
+		res, _, err = j.Typ.Convert(res)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return res, nil

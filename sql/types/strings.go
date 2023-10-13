@@ -373,7 +373,7 @@ func ConvertToString(v interface{}, t sql.StringType) (string, error) {
 	case GeometryValue:
 		return string(s.Serialize()), nil
 	default:
-		return "", sql.ErrConvertToSQL.New(t)
+		return "", sql.ErrConvertToSQL.New(s, t)
 	}
 
 	s := t.(StringType)

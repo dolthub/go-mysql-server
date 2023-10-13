@@ -76,7 +76,11 @@ func (j *JsonLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return 0, err
 	}
 
-	countable, err := js.(types.JSONValue).Unmarshall(ctx)
+	jVal, ok := js.(types.JSONValue)
+	if !ok {
+		return 1, nil
+	}
+	countable, err := jVal.Unmarshall(ctx)
 	if err != nil {
 		return nil, err
 	}
