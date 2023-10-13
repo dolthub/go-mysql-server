@@ -66,6 +66,7 @@ var OnceAfterDefault = []Rule{
 	{generateIndexScansId, generateIndexScans},
 	{finalizeSubqueriesId, finalizeSubqueries},
 	{subqueryIndexesId, applyIndexesFromOuterScope},
+	{replaceAggId, replaceAgg},
 	{replaceSortPkId, replacePkSort},
 	{eraseProjectionId, eraseProjection},
 	{insertTopNId, insertTopNNodes},
