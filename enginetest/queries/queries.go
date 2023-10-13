@@ -8090,6 +8090,14 @@ ORDER BY 1;`,
 	},
 
 	{
+		Query: "select x from xy where x > 0 and x <= 2 order by x",
+		Expected: []sql.Row{
+			{1},
+			{2},
+		},
+	},
+
+	{
 		Query: "select max(x) from xy",
 		Expected: []sql.Row{
 			{3},

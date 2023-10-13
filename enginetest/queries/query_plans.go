@@ -10111,6 +10111,19 @@ WHERE keyless.c0 IN (
 			"",
 	},
 
+	{
+		Query: "select x from xy where x > 0 and x <= 2 order by x",
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [xy.x:0!null]\n" +
+			" └─ IndexedTableAccess(xy)\n" +
+			"     ├─ index: [xy.x]\n" +
+			"     ├─ static: [{(0, 2]}]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: xy\n" +
+			"         └─ columns: [x y]\n" +
+			"",
+	},
+
 	// aggregation optimization tests
 	{
 		Query: "select max(x) from xy",
