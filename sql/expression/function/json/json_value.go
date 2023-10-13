@@ -17,11 +17,15 @@ package json
 import (
 	"encoding/json"
 	"fmt"
+<<<<<<< HEAD
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/vitess/go/sqltypes"
+=======
+>>>>>>> 7ef10beef20c2ba716f36f909fc66f4a4475782a
 	"strings"
 
 	"github.com/dolthub/jsonpath"
+	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
