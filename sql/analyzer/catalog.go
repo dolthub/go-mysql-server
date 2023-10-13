@@ -19,20 +19,22 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
-
 	"github.com/dolthub/go-mysql-server/internal/similartext"
+	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/stats"
 )
 
 type Catalog struct {
-	MySQLDb    *mysql_db.MySQLDb
-	InfoSchema sql.Database
+	MySQLDb       *mysql_db.MySQLDb
+	InfoSchema    sql.Database
+	StatsProvider sql.StatsProvider
 
-	Provider         sql.DatabaseProvider
+	DbProvider       sql.DatabaseProvider
 	builtInFunctions function.Registry
 
 	// BinlogReplicaController holds an optional controller that receives forwarded binlog
@@ -60,8 +62,9 @@ func NewCatalog(provider sql.DatabaseProvider) *Catalog {
 	return &Catalog{
 		MySQLDb:          mysql_db.CreateEmptyMySQLDb(),
 		InfoSchema:       information_schema.NewInformationSchemaDatabase(),
-		Provider:         provider,
+		DbProvider:       provider,
 		builtInFunctions: function.NewRegistry(),
+		StatsProvider:    memory.NewStatsProv(),
 		locks:            make(sessionLocks),
 	}
 }
@@ -84,9 +87,9 @@ func (c *Catalog) AllDatabases(ctx *sql.Context) []sql.Database {
 	dbs = append(dbs, c.InfoSchema)
 
 	if c.MySQLDb.Enabled() {
-		dbs = append(dbs, mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.Provider).AllDatabases(ctx)...)
+		dbs = append(dbs, mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.DbProvider).AllDatabases(ctx)...)
 	} else {
-		dbs = append(dbs, c.Provider.AllDatabases(ctx)...)
+		dbs = append(dbs, c.DbProvider.AllDatabases(ctx)...)
 	}
 
 	return dbs
@@ -97,10 +100,10 @@ func (c *Catalog) CreateDatabase(ctx *sql.Context, dbName string, collation sql.
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if collatedDbProvider, ok := c.Provider.(sql.CollatedDatabaseProvider); ok {
+	if collatedDbProvider, ok := c.DbProvider.(sql.CollatedDatabaseProvider); ok {
 		// If the database provider supports creation with a collation, then we call that function directly
 		return collatedDbProvider.CreateCollatedDatabase(ctx, dbName, collation)
-	} else if mut, ok := c.Provider.(sql.MutableDatabaseProvider); ok {
+	} else if mut, ok := c.DbProvider.(sql.MutableDatabaseProvider); ok {
 		err := mut.CreateDatabase(ctx, dbName)
 		if err != nil {
 			return err
@@ -124,7 +127,7 @@ func (c *Catalog) RemoveDatabase(ctx *sql.Context, dbName string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	mut, ok := c.Provider.(sql.MutableDatabaseProvider)
+	mut, ok := c.DbProvider.(sql.MutableDatabaseProvider)
 	if ok {
 		return mut.DropDatabase(ctx, dbName)
 	} else {
@@ -137,9 +140,9 @@ func (c *Catalog) HasDatabase(ctx *sql.Context, db string) bool {
 	if db == "information_schema" {
 		return true
 	} else if c.MySQLDb.Enabled() {
-		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.Provider).HasDatabase(ctx, db)
+		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.DbProvider).HasDatabase(ctx, db)
 	} else {
-		return c.Provider.HasDatabase(ctx, db)
+		return c.DbProvider.HasDatabase(ctx, db)
 	}
 }
 
@@ -148,9 +151,9 @@ func (c *Catalog) Database(ctx *sql.Context, db string) (sql.Database, error) {
 	if strings.ToLower(db) == "information_schema" {
 		return c.InfoSchema, nil
 	} else if c.MySQLDb.Enabled() {
-		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.Provider).Database(ctx, db)
+		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.DbProvider).Database(ctx, db)
 	} else {
-		return c.Provider.Database(ctx, db)
+		return c.DbProvider.Database(ctx, db)
 	}
 }
 
@@ -183,7 +186,7 @@ func (c *Catalog) UnlockTables(ctx *sql.Context, id uint32) error {
 	var errors []string
 	for db, tables := range c.locks[id] {
 		for t := range tables {
-			database, err := c.Provider.Database(ctx, db)
+			database, err := c.DbProvider.Database(ctx, db)
 			if err != nil {
 				return err
 			}
@@ -287,7 +290,7 @@ func (c *Catalog) RegisterFunction(ctx *sql.Context, fns ...sql.Function) {
 
 // Function returns the function with the name given, or sql.ErrFunctionNotFound if it doesn't exist
 func (c *Catalog) Function(ctx *sql.Context, name string) (sql.Function, error) {
-	if fp, ok := c.Provider.(sql.FunctionProvider); ok {
+	if fp, ok := c.DbProvider.(sql.FunctionProvider); ok {
 		f, err := fp.Function(ctx, name)
 		if err != nil && !sql.ErrFunctionNotFound.Is(err) {
 			return nil, err
@@ -301,7 +304,7 @@ func (c *Catalog) Function(ctx *sql.Context, name string) (sql.Function, error) 
 
 // ExternalStoredProcedure implements sql.ExternalStoredProcedureProvider
 func (c *Catalog) ExternalStoredProcedure(ctx *sql.Context, name string, numOfParams int) (*sql.ExternalStoredProcedureDetails, error) {
-	if espp, ok := c.Provider.(sql.ExternalStoredProcedureProvider); ok {
+	if espp, ok := c.DbProvider.(sql.ExternalStoredProcedureProvider); ok {
 		esp, err := espp.ExternalStoredProcedure(ctx, name, numOfParams)
 		if err != nil {
 			return nil, err
@@ -315,7 +318,7 @@ func (c *Catalog) ExternalStoredProcedure(ctx *sql.Context, name string, numOfPa
 
 // ExternalStoredProcedures implements sql.ExternalStoredProcedureProvider
 func (c *Catalog) ExternalStoredProcedures(ctx *sql.Context, name string) ([]sql.ExternalStoredProcedureDetails, error) {
-	if espp, ok := c.Provider.(sql.ExternalStoredProcedureProvider); ok {
+	if espp, ok := c.DbProvider.(sql.ExternalStoredProcedureProvider); ok {
 		esps, err := espp.ExternalStoredProcedures(ctx, name)
 		if err != nil {
 			return nil, err
@@ -329,7 +332,7 @@ func (c *Catalog) ExternalStoredProcedures(ctx *sql.Context, name string) ([]sql
 
 // TableFunction implements the TableFunctionProvider interface
 func (c *Catalog) TableFunction(ctx *sql.Context, name string) (sql.TableFunction, error) {
-	if fp, ok := c.Provider.(sql.TableFunctionProvider); ok {
+	if fp, ok := c.DbProvider.(sql.TableFunctionProvider); ok {
 		tf, err := fp.TableFunction(ctx, name)
 		if err != nil {
 			return nil, err
@@ -341,16 +344,58 @@ func (c *Catalog) TableFunction(ctx *sql.Context, name string) (sql.TableFunctio
 	return nil, sql.ErrTableFunctionNotFound.New(name)
 }
 
-func (c *Catalog) Statistics(ctx *sql.Context) (sql.StatsReadWriter, error) {
-	t, _, err := c.Table(ctx, sql.InformationSchemaDatabaseName, information_schema.StatisticsTableName)
+func (c *Catalog) RefreshTableStats(ctx *sql.Context, table sql.Table, db string) error {
+	return c.StatsProvider.RefreshTableStats(ctx, table, db)
+}
+
+func (c *Catalog) GetTableStats(ctx *sql.Context, db, table string) ([]*stats.Stats, error) {
+	return c.StatsProvider.GetTableStats(ctx, db, table)
+}
+
+func (c *Catalog) SetStats(ctx *sql.Context, db, table string, stats *stats.Stats) error {
+	return c.StatsProvider.SetStats(ctx, db, table, stats)
+}
+
+func (c *Catalog) GetStats(ctx *sql.Context, db, table string, cols []string) (*stats.Stats, bool) {
+	return c.StatsProvider.GetStats(ctx, db, table, cols)
+}
+
+func (c *Catalog) DropStats(ctx *sql.Context, db, table string, cols []string) error {
+	return c.StatsProvider.DropStats(ctx, db, table, cols)
+}
+
+func (c *Catalog) RowCount(ctx *sql.Context, db, table string) (uint64, error) {
+	cnt, err := c.StatsProvider.RowCount(ctx, db, table)
+	if err == nil && cnt > 0 {
+		return cnt, nil
+	}
+	// fallback to on-table statistics
+	t, _, err := c.Table(ctx, db, table)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-	stats, ok := t.(sql.StatsReadWriter)
+	st, ok := t.(sql.StatisticsTable)
 	if !ok {
-		return nil, fmt.Errorf("information_schema.statistics does not implement sql.StatsReadWriter")
+		return 0, nil
 	}
-	return stats.AssignCatalog(c).(sql.StatsReadWriter), nil
+	return st.RowCount(ctx)
+}
+
+func (c *Catalog) DataLength(ctx *sql.Context, db, table string) (uint64, error) {
+	length, err := c.StatsProvider.DataLength(ctx, db, table)
+	if err == nil && length > 0 {
+		return length, nil
+	}
+	// fallback to on-table statistics
+	t, _, err := c.Table(ctx, db, table)
+	if err != nil {
+		return 0, err
+	}
+	st, ok := t.(sql.StatisticsTable)
+	if !ok {
+		return 0, nil
+	}
+	return st.DataLength(ctx)
 }
 
 func suggestSimilarTables(db sql.Database, ctx *sql.Context, tableName string) error {

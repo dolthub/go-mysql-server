@@ -19,11 +19,9 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io"
-	"math"
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	errors "gopkg.in/src-d/go-errors.v1"
 
@@ -59,8 +57,7 @@ type Table struct {
 	lookup  sql.DriverIndexLookup
 	filters []sql.Expression
 
-	db         *BaseDatabase
-	tableStats *sql.TableStatistics
+	db *BaseDatabase
 }
 
 var _ sql.Table = (*Table)(nil)
@@ -168,6 +165,20 @@ func NewPartitionedTableWithCollation(db *BaseDatabase, name string, schema sql.
 			defStr := newDef.String()
 			unrDef := sql.NewUnresolvedColumnDefaultValue(defStr)
 			cCopy.Default = unrDef
+		}
+		if cCopy.Generated != nil {
+			newDef, _, _ := transform.Expr(cCopy.Generated, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				switch e := e.(type) {
+				case *expression.GetField:
+					// strip table names
+					return expression.NewGetField(e.Index(), e.Type(), e.Name(), e.IsNullable()), transform.NewTree, nil
+				default:
+				}
+				return e, transform.SameTree, nil
+			})
+			defStr := newDef.String()
+			unrDef := sql.NewUnresolvedColumnDefaultValue(defStr)
+			cCopy.Generated = unrDef
 		}
 		newSchema[i] = cCopy
 	}
@@ -332,7 +343,13 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	rowsCopy := make([]sql.Row, len(rows))
 	copy(rowsCopy, rows)
 
+	numColumns := len(data.schema.Schema)
+	if len(t.columns) > 0 {
+		numColumns = len(t.columns)
+	}
+
 	if r, ok := partition.(*spatialRangePartition); ok {
+		// TODO: virtual column support
 		return &spatialTableIter{
 			columns: t.columns,
 			ord:     r.ord,
@@ -345,9 +362,11 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	}
 
 	return &tableIter{
-		rows:    rowsCopy,
-		columns: t.columns,
-		filters: filters,
+		rows:        rowsCopy,
+		columns:     t.columns,
+		numColumns:  numColumns,
+		virtualCols: data.virtualColIndexes(),
+		filters:     filters,
 	}, nil
 }
 
@@ -390,27 +409,6 @@ func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
 	return numBytesPerRow * numRows, nil
 }
 
-// AnalyzeTable implements the sql.StatisticsTable interface.
-func (t *Table) AnalyzeTable(ctx *sql.Context) error {
-	// initialize histogram map
-	t.tableStats = &sql.TableStatistics{
-		CreatedAt: time.Now(),
-	}
-
-	histMap, err := NewHistogramMapFromTable(ctx, t)
-	if err != nil {
-		return err
-	}
-
-	t.tableStats.Histograms = histMap
-	for _, v := range histMap {
-		t.tableStats.RowCount = v.Count + v.NullCount
-		break
-	}
-
-	return nil
-}
-
 func (t *Table) RowCount(ctx *sql.Context) (uint64, error) {
 	data := t.sessionTableData(ctx)
 	return data.numRows(ctx)
@@ -444,10 +442,12 @@ func (p *partitionIter) Next(*sql.Context) (sql.Partition, error) {
 func (p *partitionIter) Close(*sql.Context) error { return nil }
 
 type tableIter struct {
-	columns []int
-	filters []sql.Expression
+	columns     []int
+	virtualCols []int
+	numColumns  int
 
 	rows        []sql.Row
+	filters     []sql.Expression
 	indexValues sql.IndexValueIter
 	pos         int
 }
@@ -459,6 +459,8 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	row = normalizeRowForRead(row, i.numColumns, i.columns, i.virtualCols)
 
 	for _, f := range i.filters {
 		result, err := f.Eval(ctx, row)
@@ -482,13 +484,39 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return row, nil
 }
 
-func (i *tableIter) colIsProjected(idx int) bool {
-	for _, colIdx := range i.columns {
-		if idx == colIdx {
-			return true
+// normalizeRowForRead returns a copy of the row with nil values inserted for any virtual columns
+func normalizeRowForRead(row sql.Row, numColumns int, columns []int, virtualCols []int) sql.Row {
+	if len(virtualCols) == 0 {
+		return row
+	}
+
+	var virtualRow sql.Row
+
+	// Columns are the indexes of projected columns, which we don't always have. In either case, we are filling the row
+	// with nil values for virtual columns. The simple iteration below only works when the column and virtual column
+	// indexes are in ascending order, which is true for the time being.
+	var j int
+	if len(columns) != 0 {
+		virtualRow = make(sql.Row, len(columns))
+		for i := range columns {
+			if j < len(virtualCols) && columns[i] == virtualCols[j] {
+				j++
+			} else {
+				virtualRow[i] = row[i-j]
+			}
+		}
+	} else {
+		virtualRow = make(sql.Row, numColumns)
+		for i := 0; i < numColumns; i++ {
+			if j < len(virtualCols) && i == virtualCols[j] {
+				j++
+			} else {
+				virtualRow[i] = row[i-j]
+			}
 		}
 	}
-	return false
+
+	return virtualRow
 }
 
 func (i *tableIter) Close(ctx *sql.Context) error {
@@ -1996,117 +2024,6 @@ func (i *indexKeyValueIter) Next(ctx *sql.Context) ([]interface{}, []byte, error
 
 func (i *indexKeyValueIter) Close(ctx *sql.Context) error {
 	return i.iter.Close(ctx)
-}
-
-// NewHistogramMapFromTable will construct a HistogramMap given a Table
-// TODO: this is copied from the information_schema package, and should be moved to a more general location
-func NewHistogramMapFromTable(ctx *sql.Context, t sql.Table) (sql.HistogramMap, error) {
-	// initialize histogram map
-	histMap := make(sql.HistogramMap)
-	cols := t.Schema()
-	for _, col := range cols {
-		hist := new(sql.Histogram)
-		hist.Min = math.MaxFloat64
-		hist.Max = -math.MaxFloat64
-		histMap[col.Name] = hist
-	}
-
-	// freqMap can be adapted to a histogram with any number of buckets
-	freqMap := make(map[string]map[float64]uint64)
-	for _, col := range cols {
-		freqMap[col.Name] = make(map[float64]uint64)
-	}
-
-	partIter, err := t.Partitions(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	for {
-		part, err := partIter.Next(ctx)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		iter, err := t.PartitionRows(ctx, part)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		for {
-			row, err := iter.Next(ctx)
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				return nil, err
-			}
-
-			for i, col := range cols {
-				hist, ok := histMap[col.Name]
-				if !ok {
-					panic("histogram was not initialized for this column; shouldn't be possible")
-				}
-
-				if row[i] == nil {
-					hist.NullCount++
-					continue
-				}
-
-				val, _, err := types.Float64.Convert(row[i])
-				if err != nil {
-					continue // silently skip unsupported column types for now
-				}
-				v := val.(float64)
-
-				if freq, ok := freqMap[col.Name][v]; ok {
-					freq++
-				} else {
-					freqMap[col.Name][v] = 1
-					hist.DistinctCount++
-				}
-
-				hist.Mean += v
-				hist.Min = math.Min(hist.Min, v)
-				hist.Max = math.Max(hist.Max, v)
-				hist.Count++
-			}
-		}
-	}
-
-	// add buckets to histogram in sorted order
-	for colName, freqs := range freqMap {
-		keys := make([]float64, 0)
-		for k := range freqs {
-			keys = append(keys, k)
-		}
-		sort.Float64s(keys)
-
-		hist := histMap[colName]
-		if hist.Count == 0 {
-			hist.Min = 0
-			hist.Max = 0
-			continue
-		}
-
-		hist.Mean /= float64(hist.Count)
-		for _, k := range keys {
-			bucket := &sql.HistogramBucket{
-				LowerBound: k,
-				UpperBound: k,
-				Frequency:  float64(freqs[k]) / float64(hist.Count),
-			}
-			hist.Buckets = append(hist.Buckets, bucket)
-		}
-	}
-
-	return histMap, nil
 }
 
 func (t Table) ShouldRewriteTable(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column) bool {

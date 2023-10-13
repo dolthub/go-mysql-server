@@ -30,7 +30,7 @@ type Column struct {
 	Name string
 	// Type is the data type of the column.
 	Type Type
-	// Default contains the default value of the column or nil if it was not explicitly defined. A nil instance is valid, thus calls do not error.
+	// Default contains the default value of the column or nil if it was not explicitly defined.
 	Default *ColumnDefaultValue
 	// AutoIncrement is true if the column auto-increments.
 	AutoIncrement bool
@@ -50,6 +50,8 @@ type Column struct {
 	// Generated is non-nil if the column is defined with a generated value. Mutually exclusive with Default
 	Generated *ColumnDefaultValue
 	// Virtual is true if the column is defined as a virtual column. Generated must be non-nil in this case.
+	// Virtual column values will be provided for write operations, in case integrators need to use them to update
+	// indexes, but must not be returned in rows from tables that include them.
 	Virtual bool
 }
 

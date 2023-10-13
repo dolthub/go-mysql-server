@@ -378,41 +378,41 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 	switch n := n.(type) {
 	case *plan.InsertInto:
 		s.addSchema(n.Destination.Schema())
-		n.Source = s.children[0]
-		n.Destination = s.children[1]
-		n.OnDupExprs = s.expressions
-		return n.WithChecks(s.checks), nil
+		nn := *n
+		nn.Source = s.children[0]
+		nn.Destination = s.children[1]
+		nn.OnDupExprs = s.expressions
+		return nn.WithChecks(s.checks), nil
 	default:
 		// child scopes don't account for projections
 		s.addSchema(n.Schema())
-		ret := n
 		var err error
 		if s.children != nil {
-			ret, err = n.WithChildren(s.children...)
+			n, err = n.WithChildren(s.children...)
 			if err != nil {
 				return nil, err
 			}
 		}
-		if ne, ok := ret.(sql.Expressioner); ok && s.expressions != nil {
-			ret, err = ne.WithExpressions(s.expressions...)
+		if ne, ok := n.(sql.Expressioner); ok && s.expressions != nil {
+			n, err = ne.WithExpressions(s.expressions...)
 			if err != nil {
 				return nil, err
 			}
 		}
-		if nc, ok := ret.(sql.CheckConstraintNode); ok && s.checks != nil {
-			ret = nc.WithChecks(s.checks)
+		if nc, ok := n.(sql.CheckConstraintNode); ok && s.checks != nil {
+			n = nc.WithChecks(s.checks)
 		}
-		if jn, ok := ret.(*plan.JoinNode); ok {
+		if jn, ok := n.(*plan.JoinNode); ok {
 			if len(s.parentScopes) == 0 {
-				return ret, nil
+				return n, nil
 			}
 			// TODO: combine scopes?
 			scopeLen := len(s.parentScopes[0].columns)
 			if scopeLen == 0 {
-				return ret, nil
+				return n, nil
 			}
-			ret = jn.WithScopeLen(scopeLen)
-			ret, err = ret.WithChildren(
+			n = jn.WithScopeLen(scopeLen)
+			n, err = n.WithChildren(
 				plan.NewStripRowNode(jn.Left(), scopeLen),
 				plan.NewStripRowNode(jn.Right(), scopeLen),
 			)
@@ -420,7 +420,7 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 				return nil, err
 			}
 		}
-		return ret, nil
+		return n, nil
 	}
 }
 
@@ -432,6 +432,8 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 	ret, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
 		case *expression.GetField:
+			// TODO: this is a swallowed error. It triggers falsely in queries involving the dual table, or queries where
+			//  the columns being selected are only found in subqueries
 			idx, _ := newScope.getIdx(e.String())
 			return e.WithIndex(idx), transform.NewTree, nil
 		case *plan.Subquery:

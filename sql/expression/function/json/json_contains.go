@@ -81,7 +81,7 @@ func (j *JSONContains) Description() string {
 
 // IsUnsupported implements sql.UnsupportedFunctionStub
 func (j JSONContains) IsUnsupported() bool {
-	return true
+	return false
 }
 
 func (j *JSONContains) Resolved() bool {

@@ -162,29 +162,29 @@ CREATE TABLE `order_line1` (
 ----
 
 exec
-UPDATE information_schema.statistics set cardinality = 300000 where table_name = 'customer1';
+analyze table customer1 update histogram on (`c_w_id`,`c_d_id`,`c_id`) using data '{\"row_count\": 300000}';
 ----
 
 exec
-UPDATE information_schema.statistics set cardinality = 10 where table_name = 'warehouse1';
+analyze table warehouse1 update histogram on (w_id) using data '{\"row_count\": 10}';
 ----
 
 exec
-UPDATE information_schema.statistics set cardinality = 1000000 where table_name = 'stock1';
+analyze table stock1 update histogram on (`s_w_id`,`s_i_id`) using data '{\"row_count\": 1000000}';
 ----
 
 exec
-UPDATE information_schema.statistics set cardinality = 3006058 where table_name = 'order_line1';
+analyze table order_line1 update histogram on (`ol_w_id`,`ol_d_id`,`ol_o_id`,`ol_number`) using data '{\"row_count\": 3006058}';
 ----
 
 exec
-UPDATE information_schema.statistics set cardinality = 100 where table_name = 'district1';
+analyze table district1 update histogram on (`d_w_id`,`d_id`) using data '{\"row_count\": 100}';
 ----
 
 exec
-UPDATE information_schema.statistics set cardinality = 100000 where table_name = 'item1';
+analyze table item1 update histogram on (i_id) using data '{\"row_count\": 100000}';
 ----
 
 exec
-UPDATE information_schema.statistics set cardinality = 300520 where table_name = 'orders1';
+analyze table orders1 update histogram on (`o_w_id`,`o_d_id`,`o_id`) using data '{\"row_count\": 300520}';
 ----

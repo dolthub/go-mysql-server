@@ -2187,7 +2187,7 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 			},
 			{
 				Query:    "CALL add_entry(4, 'aaa');",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 3}}},
 			},
 			{
 				Query:    "SELECT * FROM t0;",

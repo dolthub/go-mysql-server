@@ -302,6 +302,17 @@ func (b *BaseBuilder) buildProject(ctx *sql.Context, n *plan.Project, row sql.Ro
 	}), nil
 }
 
+func (b *BaseBuilder) buildVirtualColumnTable(ctx *sql.Context, n *plan.VirtualColumnTable, tableIter sql.RowIter, row sql.Row) (sql.RowIter, error) {
+	span, ctx := ctx.Span("plan.VirtualColumnTable", trace.WithAttributes(
+		attribute.Int("projections", len(n.Projections)),
+	))
+
+	return sql.NewSpanIter(span, &projectIter{
+		p:         n.Projections,
+		childIter: tableIter,
+	}), nil
+}
+
 func (b *BaseBuilder) buildProcedure(ctx *sql.Context, n *plan.Procedure, row sql.Row) (sql.RowIter, error) {
 	return b.buildNodeExec(ctx, n.Body, row)
 }
@@ -641,7 +652,17 @@ func (b *BaseBuilder) buildIndexedTableAccess(ctx *sql.Context, n *plan.IndexedT
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, n.Table, partIter)), nil
+	var tableIter sql.RowIter
+	tableIter = sql.NewTableRowIter(ctx, n.Table, partIter)
+
+	if vct, ok := plan.FindVirtualColumnTable(n.Table); ok {
+		tableIter, err = b.buildVirtualColumnTable(ctx, vct, tableIter, row)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return sql.NewSpanIter(span, tableIter), nil
 }
 
 func (b *BaseBuilder) buildSetOp(ctx *sql.Context, s *plan.SetOp, row sql.Row) (sql.RowIter, error) {
@@ -764,7 +785,17 @@ func (b *BaseBuilder) buildResolvedTable(ctx *sql.Context, n *plan.ResolvedTable
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, n.Table, partitions)), nil
+	var iter sql.RowIter
+	iter = sql.NewTableRowIter(ctx, n.Table, partitions)
+
+	if vct, ok := plan.FindVirtualColumnTable(n.Table); ok {
+		iter, err = b.buildVirtualColumnTable(ctx, vct, iter, row)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return sql.NewSpanIter(span, iter), nil
 }
 
 func (b *BaseBuilder) buildTableCount(_ *sql.Context, n *plan.TableCountLookup, _ sql.Row) (sql.RowIter, error) {

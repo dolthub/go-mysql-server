@@ -53,17 +53,6 @@ func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *
 					err = sql.ErrInvalidUseOfOldNew.New("old", ct.TriggerEvent)
 				}
 			}
-		case *deferredColumn:
-			if strings.ToLower(e.Table()) == "new" {
-				if ct.TriggerEvent == sqlparser.DeleteStr {
-					err = sql.ErrInvalidUseOfOldNew.New("new", ct.TriggerEvent)
-				}
-			}
-			if strings.ToLower(e.Table()) == "old" {
-				if ct.TriggerEvent == sqlparser.InsertStr {
-					err = sql.ErrInvalidUseOfOldNew.New("old", ct.TriggerEvent)
-				}
-			}
 		}
 		return true
 	})
@@ -109,12 +98,6 @@ func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *
 	transform.InspectExpressions(ct.Body, func(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.UnresolvedColumn:
-			if strings.ToLower(e.Table()) == "old" || strings.ToLower(e.Table()) == "new" {
-				if _, ok := colsList[e.Name()]; !ok {
-					err = sql.ErrUnknownColumn.New(e.Name(), e.Table())
-				}
-			}
-		case *deferredColumn:
 			if strings.ToLower(e.Table()) == "old" || strings.ToLower(e.Table()) == "new" {
 				if _, ok := colsList[e.Name()]; !ok {
 					err = sql.ErrUnknownColumn.New(e.Name(), e.Table())

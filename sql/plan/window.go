@@ -113,13 +113,6 @@ func (w *Window) ProjectedExprs() []sql.Expression {
 	return w.SelectExprs
 }
 
-// WithProjectedExprs implements sql.Projector
-func (w *Window) WithProjectedExprs(exprs ...sql.Expression) (sql.Projector, error) {
-	node, err := w.WithExpressions(exprs...)
-
-	return node.(sql.Projector), err
-}
-
 // WithExpressions implements sql.Expressioner
 func (w *Window) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 	if len(e) != len(w.SelectExprs) {

@@ -10,8 +10,8 @@ import (
 
 type AnalyzeTable struct {
 	Db     string
-	Stats  sql.StatsReadWriter
-	Tables []sql.DbTable
+	Stats  sql.StatsProvider
+	Tables []sql.Table
 }
 
 var _ sql.Node = (*AnalyzeTable)(nil)
@@ -24,7 +24,7 @@ var analyzeSchema = sql.Schema{
 	{Name: "Msg_text", Type: types.LongText},
 }
 
-func NewAnalyze(names []sql.DbTable) *AnalyzeTable {
+func NewAnalyze(names []sql.Table) *AnalyzeTable {
 	return &AnalyzeTable{
 		Tables: names,
 	}
@@ -38,11 +38,10 @@ func (n *AnalyzeTable) Schema() sql.Schema {
 
 func (n *AnalyzeTable) WithCatalog(cat sql.Catalog) *AnalyzeTable {
 	ret := *n
-	ret.Stats = ret.Stats.AssignCatalog(cat).(sql.StatsReadWriter)
 	return &ret
 }
 
-func (n *AnalyzeTable) WithTables(tables []sql.DbTable) *AnalyzeTable {
+func (n *AnalyzeTable) WithTables(tables []sql.Table) *AnalyzeTable {
 	n.Tables = tables
 	return n
 }
@@ -52,7 +51,7 @@ func (n *AnalyzeTable) WithDb(db string) *AnalyzeTable {
 	return n
 }
 
-func (n *AnalyzeTable) WithStats(stats sql.StatsReadWriter) *AnalyzeTable {
+func (n *AnalyzeTable) WithStats(stats sql.StatsProvider) *AnalyzeTable {
 	n.Stats = stats
 	return n
 }

@@ -30,8 +30,6 @@ const (
 	ItaTypeLookup
 )
 
-var ErrNoIndexableTable = errors.NewKind("expected an IndexableTable, couldn't find one in %v")
-var ErrNoIndexedTableAccess = errors.NewKind("expected an IndexedTableAccess, couldn't find one in %v")
 var ErrInvalidLookupForIndexedTable = errors.NewKind("indexable table does not support given lookup: %s")
 
 // IndexedTableAccess represents an indexed lookup of a particular plan.TableNode. The values for the key used to access
@@ -78,15 +76,30 @@ func NewIndexedAccessForTableNode(node sql.TableNode, lb *LookupBuilder) (*Index
 	if !lookup.Index.CanSupport(lookup.Ranges...) {
 		return nil, ErrInvalidLookupForIndexedTable.New(lookup.Ranges.DebugString())
 	}
-	ia := iaTable.IndexedAccess(lookup)
+	var indexedTable sql.IndexedTable
+	indexedTable = iaTable.IndexedAccess(lookup)
 	if err != nil {
 		return nil, err
+	}
+
+	if mtn, ok := node.(sql.MutableTableNode); ok {
+		mtn, err = mtn.WithTable(indexedTable)
+		if err != nil {
+			return nil, err
+		}
+
+		indexedTable, ok = mtn.WrappedTable().(sql.IndexedTable)
+		if !ok {
+			return nil, fmt.Errorf("table is not index addressable: %s", table.Name())
+		}
+
+		node = mtn
 	}
 
 	return &IndexedTableAccess{
 		TableNode: node,
 		lb:        lb,
-		Table:     ia,
+		Table:     indexedTable,
 		Typ:       ItaTypeLookup,
 	}, nil
 }
@@ -104,12 +117,27 @@ func NewStaticIndexedAccessForTableNode(node sql.TableNode, lookup sql.IndexLook
 	if !lookup.Index.CanSupport(lookup.Ranges...) {
 		return nil, ErrInvalidLookupForIndexedTable.New(lookup.Ranges.DebugString())
 	}
-	ia := iaTable.IndexedAccess(lookup)
+	indexedTable := iaTable.IndexedAccess(lookup)
+
+	if mtn, ok := node.(sql.MutableTableNode); ok {
+		var err error
+		mtn, err = mtn.WithTable(indexedTable)
+		if err != nil {
+			return nil, err
+		}
+
+		indexedTable, ok = mtn.WrappedTable().(sql.IndexedTable)
+		if !ok {
+			return nil, fmt.Errorf("table is not index addressable: %s", table.Name())
+		}
+
+		node = mtn
+	}
 
 	return &IndexedTableAccess{
 		TableNode: node,
 		lookup:    lookup,
-		Table:     ia,
+		Table:     indexedTable,
 		Typ:       ItaTypeStatic,
 	}, nil
 }
@@ -271,35 +299,18 @@ func (i *IndexedTableAccess) DebugString() string {
 	children = append(children, fmt.Sprintf("index: %s", formatIndexDecoratorString(i.Index())))
 	if !i.lookup.IsEmpty() {
 		children = append(children, fmt.Sprintf("static: %s", i.lookup.Ranges.DebugString()))
+		if i.lookup.IsReverse {
+			children = append(children, fmt.Sprintf("reverse: %v", i.lookup.IsReverse))
+		}
 	}
 
-	var columns []string
-	if pt, ok := i.Table.(sql.ProjectedTable); ok && pt.Projections() != nil {
-		projections := pt.Projections()
-		columns = make([]string, len(projections))
-		for i, c := range projections {
-			columns[i] = strings.ToLower(c)
+	// TableWrappers may want to print their own debug info
+	if wrapper, ok := i.Table.(sql.TableWrapper); ok {
+		if ds, ok := wrapper.(sql.DebugStringer); ok {
+			children = append(children, sql.DebugString(ds))
 		}
 	} else {
-		columns = make([]string, len(i.Table.Schema()))
-		for i, c := range i.Table.Schema() {
-			columns[i] = strings.ToLower(c.Name)
-		}
-	}
-	children = append(children, fmt.Sprintf("columns: %v", columns))
-
-	if ft, ok := i.Table.(sql.FilteredTable); ok {
-		var filters []string
-		for _, f := range ft.Filters() {
-			filters = append(filters, f.String())
-		}
-		if len(filters) > 0 {
-			pr.WriteChildren(fmt.Sprintf("filters: %v", filters))
-		}
-	}
-
-	if i.lookup.IsReverse {
-		children = append(children, fmt.Sprintf("reverse: %v", i.lookup.IsReverse))
+		children = append(children, TableDebugString(i.Table))
 	}
 
 	pr.WriteChildren(children...)
@@ -330,6 +341,11 @@ func (i *IndexedTableAccess) WithExpressions(exprs ...sql.Expression) (sql.Node,
 	ret := *i
 	ret.lb = lb
 	return &ret, nil
+}
+
+func (i IndexedTableAccess) WithTable(table sql.IndexedTable) (sql.Node, error) {
+	i.Table = table
+	return &i, nil
 }
 
 // Partitions implements sql.Table

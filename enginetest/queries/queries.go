@@ -26,6 +26,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -8487,6 +8488,10 @@ type QueryErrorTest struct {
 
 var ErrorQueries = []QueryErrorTest{
 	{
+		Query:       "analyze table mytable update histogram on i using data 'unknown'",
+		ExpectedErr: planbuilder.ErrFailedToParseStats,
+	},
+	{
 		Query:       "select i from (select * from mytable a join mytable b on a.i = b.i) dt",
 		ExpectedErr: sql.ErrAmbiguousColumnName,
 	},
@@ -8976,7 +8981,14 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       "SELECT json_set() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
-
+	{
+		Query:       `SELECT JSON_VALID()`,
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       `SELECT JSON_VALID('{"a": 1}','[1]')`,
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
 	// This gets an error "unable to cast "second row" of type string to int64"
 	// Should throw sql.ErrAmbiguousColumnInOrderBy
 	{

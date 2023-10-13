@@ -40,4 +40,6 @@ var (
 	ErrQualifiedOrderBy = errors.NewKind("Table '%s' from one of the SELECTs cannot be used in global ORDER clause")
 
 	ErrOrderByBinding = errors.NewKind("bindings in sort clauses not supported yet")
+
+	ErrFailedToParseStats = errors.NewKind("failed to parse data: %s")
 )

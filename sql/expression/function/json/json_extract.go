@@ -151,3 +151,8 @@ func (j *JSONExtract) String() string {
 	}
 	return fmt.Sprintf("json_extract(%s)", strings.Join(parts, ", "))
 }
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONExtract) IsUnsupported() bool {
+	return false
+}

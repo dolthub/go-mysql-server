@@ -25,13 +25,15 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/stats"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 type analyzeTableIter struct {
 	idx    int
-	tables []sql.DbTable
-	stats  sql.StatsReadWriter
+	db     string
+	tables []sql.Table
+	stats  sql.StatsProvider
 }
 
 var _ sql.RowIter = &analyzeTableIter{}
@@ -45,16 +47,73 @@ func (itr *analyzeTableIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	msgType := "status"
 	msgText := "OK"
-	err := itr.stats.Analyze(ctx, t.Db, t.Table)
+	err := itr.stats.RefreshTableStats(ctx, t, itr.db)
 	if err != nil {
 		msgType = "Error"
 		msgText = err.Error()
 	}
 	itr.idx++
-	return sql.Row{t.Table, "analyze", msgType, msgText}, nil
+	return sql.Row{t.Name(), "analyze", msgType, msgText}, nil
 }
 
 func (itr *analyzeTableIter) Close(ctx *sql.Context) error {
+	return nil
+}
+
+type updateHistogramIter struct {
+	db      string
+	table   string
+	columns []string
+	stats   *stats.Stats
+	prov    sql.StatsProvider
+	done    bool
+}
+
+var _ sql.RowIter = &updateHistogramIter{}
+
+func (itr *updateHistogramIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if itr.done {
+		return nil, io.EOF
+	}
+	defer func() {
+		itr.done = true
+	}()
+	err := itr.prov.SetStats(ctx, itr.db, itr.table, itr.stats)
+	if err != nil {
+		return sql.Row{itr.table, "histogram", "error", err.Error()}, nil
+	}
+	return sql.Row{itr.table, "histogram", "status", "OK"}, nil
+}
+
+func (itr *updateHistogramIter) Close(_ *sql.Context) error {
+	return nil
+}
+
+type dropHistogramIter struct {
+	db      string
+	table   string
+	columns []string
+	prov    sql.StatsProvider
+	done    bool
+}
+
+var _ sql.RowIter = &dropHistogramIter{}
+
+func (itr *dropHistogramIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if itr.done {
+		return nil, io.EOF
+	}
+	defer func() {
+		itr.done = true
+	}()
+	err := itr.prov.DropStats(ctx, itr.db, itr.table, itr.columns)
+	if err != nil {
+		return sql.Row{itr.table, "histogram", "error", err.Error()}, nil
+	}
+	return sql.Row{itr.table, "histogram", "status", "OK"}, nil
+}
+
+func (itr *dropHistogramIter) Close(_ *sql.Context) error {
 	return nil
 }
 

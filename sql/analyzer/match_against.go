@@ -46,6 +46,7 @@ func matchAgainst(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 //
 // A fully resolved MatchAgainst expression is also used by the index filter, since we only need to load the tables once.
 // All steps after this one can assume that the expression has been fully resolved and is valid.
+// TODO: this won't work with a virtual column
 func processMatchAgainst(ctx *sql.Context, matchAgainstExpr *expression.MatchAgainst, tbl *plan.ResolvedTable) (*expression.MatchAgainst, transform.TreeIdentity, error) {
 	// Grab the table
 	if tbl == nil {

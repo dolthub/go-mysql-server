@@ -55,7 +55,7 @@ func (j JSONObject) Description() string {
 
 // IsUnsupported implements sql.UnsupportedFunctionStub
 func (j JSONObject) IsUnsupported() bool {
-	return true
+	return false
 }
 
 func (j JSONObject) Resolved() bool {

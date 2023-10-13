@@ -26,42 +26,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func validateUniqueTableNames(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	// getTableAliases will error if any table name / alias is repeated
-	_, err := getTableAliases(n, scope)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	return n, transform.SameTree, err
-}
-
-// deferredColumn is a wrapper on UnresolvedColumn used to defer the resolution of the column because it may require
-// some work done by other analyzer phases.
-type deferredColumn struct {
-	*expression.UnresolvedColumn
-}
-
-func (dc *deferredColumn) DebugString() string {
-	return fmt.Sprintf("deferred(%s)", dc.UnresolvedColumn.String())
-}
-
-// IsNullable implements the Expression interface.
-func (*deferredColumn) IsNullable() bool {
-	return true
-}
-
-// Children implements the Expression interface.
-func (*deferredColumn) Children() []sql.Expression { return nil }
-
-// WithChildren implements the Expression interface.
-func (dc *deferredColumn) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != 0 {
-		return nil, sql.ErrInvalidChildrenNumber.New(dc, len(children), 0)
-	}
-	return dc, nil
-}
-
 type tableCol struct {
 	table string
 	col   string

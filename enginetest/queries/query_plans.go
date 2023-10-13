@@ -28,10 +28,14 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ IndexedTableAccess(uv)\n" +
 			"     │   ├─ index: [uv.u]\n" +
 			"     │   ├─ static: [{(0, 2)}]\n" +
-			"     │   └─ columns: [u v]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: uv\n" +
+			"     │       └─ columns: [u v]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
-			"         └─ columns: [x y]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x y]\n" +
 			"",
 	},
 	{
@@ -96,9 +100,10 @@ From xy;`,
 			"     │                                   ├─ name: uv\n" +
 			"     │                                   └─ columns: [u]\n" +
 			"     │   THEN 1 (tinyint) ELSE 2 (tinyint) END as s]\n" +
-			"     └─ Table\n" +
-			"         ├─ name: xy\n" +
-			"         └─ columns: [x y]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x y]\n" +
 			"",
 	},
 	{
@@ -114,7 +119,9 @@ From xy;`,
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.s,mytable.i]\n" +
 			"     ├─ static: [{[first row, first row], [2, 2]}]\n" +
-			"     └─ columns: [i s]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -134,12 +141,15 @@ From xy;`,
 			"             │   └─ Project\n" +
 			"             │       ├─ columns: [scalarSubq0.v:1]\n" +
 			"             │       └─ TableAlias(scalarSubq0)\n" +
-			"             │           └─ Table\n" +
-			"             │               ├─ name: uv\n" +
-			"             │               └─ columns: [u v]\n" +
+			"             │           └─ ProcessTable\n" +
+			"             │               └─ Table\n" +
+			"             │                   ├─ name: uv\n" +
+			"             │                   └─ columns: [u v]\n" +
 			"             └─ IndexedTableAccess(xy)\n" +
 			"                 ├─ index: [xy.y]\n" +
-			"                 └─ columns: [x y]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: xy\n" +
+			"                     └─ columns: [x y]\n" +
 			"",
 	},
 	{
@@ -149,21 +159,22 @@ From xy;`,
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(1 (bigint))\n" +
 			"     ├─ group: \n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [xy.x:1!null, xy.y:2]\n" +
-			"         └─ LookupJoin\n" +
-			"             ├─ Eq\n" +
-			"             │   ├─ xy.y:2\n" +
-			"             │   └─ scalarSubq0.u:0!null\n" +
-			"             ├─ OrderedDistinct\n" +
-			"             │   └─ Project\n" +
-			"             │       ├─ columns: [scalarSubq0.u:0!null]\n" +
-			"             │       └─ TableAlias(scalarSubq0)\n" +
-			"             │           └─ Table\n" +
-			"             │               ├─ name: uv\n" +
-			"             │               └─ columns: [u v]\n" +
-			"             └─ IndexedTableAccess(xy)\n" +
-			"                 ├─ index: [xy.y]\n" +
+			"     └─ LookupJoin\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ xy.y:2\n" +
+			"         │   └─ scalarSubq0.u:0!null\n" +
+			"         ├─ OrderedDistinct\n" +
+			"         │   └─ Project\n" +
+			"         │       ├─ columns: [scalarSubq0.u:0!null]\n" +
+			"         │       └─ TableAlias(scalarSubq0)\n" +
+			"         │           └─ ProcessTable\n" +
+			"         │               └─ Table\n" +
+			"         │                   ├─ name: uv\n" +
+			"         │                   └─ columns: [u v]\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.y]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: xy\n" +
 			"                 └─ columns: [x y]\n" +
 			"",
 	},
@@ -192,9 +203,10 @@ From xy;`,
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(1 (bigint))\n" +
 			"     ├─ group: \n" +
-			"     └─ Table\n" +
-			"         ├─ name: keyless\n" +
-			"         └─ columns: []\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: keyless\n" +
+			"             └─ columns: []\n" +
 			"",
 	},
 	{
@@ -232,15 +244,17 @@ From xy;`,
 			"     ├─ select: COUNT(1 (tinyint))\n" +
 			"     ├─ group: \n" +
 			"     └─ CrossHashJoin\n" +
-			"         ├─ Table\n" +
-			"         │   ├─ name: xy\n" +
-			"         │   └─ columns: []\n" +
+			"         ├─ ProcessTable\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: xy\n" +
+			"         │       └─ columns: []\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: TUPLE()\n" +
 			"             ├─ right-key: TUPLE()\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: uv\n" +
-			"                 └─ columns: []\n" +
+			"             └─ ProcessTable\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: uv\n" +
+			"                     └─ columns: []\n" +
 			"",
 	},
 	{
@@ -276,9 +290,10 @@ From xy;`,
 			" │           ├─ columns: [uv.COUNT(1):1!null as COUNT(1)]\n" +
 			" │           └─ table_count(uv) as COUNT(1)\n" +
 			" │   as (select count(*) from uv)]\n" +
-			" └─ Table\n" +
-			"     ├─ name: \n" +
-			"     └─ columns: []\n" +
+			" └─ ProcessTable\n" +
+			"     └─ Table\n" +
+			"         ├─ name: \n" +
+			"         └─ columns: []\n" +
 			"",
 	},
 	{
@@ -330,7 +345,9 @@ WHERE
 			"         ├─ IndexedTableAccess(order_line1)\n" +
 			"         │   ├─ index: [order_line1.ol_w_id,order_line1.ol_d_id,order_line1.ol_o_id,order_line1.ol_number]\n" +
 			"         │   ├─ static: [{[5, 5], [2, 2], [2981, 3001), [NULL, ∞)}]\n" +
-			"         │   └─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id]\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: order_line1\n" +
+			"         │       └─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id]\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: TUPLE(order_line1.ol_i_id:3)\n" +
 			"             ├─ right-key: TUPLE(stock1.s_i_id:0!null)\n" +
@@ -341,7 +358,9 @@ WHERE
 			"                 └─ IndexedTableAccess(stock1)\n" +
 			"                     ├─ index: [stock1.s_w_id,stock1.s_i_id]\n" +
 			"                     ├─ static: [{[5, 5], [NULL, ∞)}]\n" +
-			"                     └─ columns: [s_i_id s_w_id s_quantity]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: stock1\n" +
+			"                         └─ columns: [s_i_id s_w_id s_quantity]\n" +
 			"",
 	},
 	{
@@ -363,7 +382,9 @@ WHERE
 			"     ├─ IndexedTableAccess(warehouse1)\n" +
 			"     │   ├─ index: [warehouse1.w_id]\n" +
 			"     │   ├─ static: [{[1, 1]}]\n" +
-			"     │   └─ columns: [w_id w_tax]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: warehouse1\n" +
+			"     │       └─ columns: [w_id w_tax]\n" +
 			"     └─ Filter\n" +
 			"         ├─ AND\n" +
 			"         │   ├─ Eq\n" +
@@ -374,7 +395,9 @@ WHERE
 			"         │       └─ 2327 (smallint)\n" +
 			"         └─ IndexedTableAccess(customer1)\n" +
 			"             ├─ index: [customer1.c_w_id,customer1.c_d_id,customer1.c_id]\n" +
-			"             └─ columns: [c_id c_d_id c_w_id c_last c_credit c_discount]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: customer1\n" +
+			"                 └─ columns: [c_id c_d_id c_w_id c_last c_credit c_discount]\n" +
 			"",
 	},
 	{
@@ -389,12 +412,16 @@ WHERE
 			"     │   └─ IndexedTableAccess(asset)\n" +
 			"     │       ├─ index: [asset.orgId,asset.name,asset.val]\n" +
 			"     │       ├─ static: [{[NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
-			"     │       └─ columns: [id orgid assetid name val]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: asset\n" +
+			"     │           └─ columns: [id orgid assetid name val]\n" +
 			"     └─ TableAlias(am)\n" +
 			"         └─ IndexedTableAccess(asset)\n" +
 			"             ├─ index: [asset.orgId,asset.name,asset.val]\n" +
 			"             ├─ static: [{[NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
-			"             └─ columns: [id orgid assetid name val]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: asset\n" +
+			"                 └─ columns: [id orgid assetid name val]\n" +
 			"",
 	},
 	{
@@ -446,7 +473,9 @@ where
 			"     │   │       └─ IndexedTableAccess(asset)\n" +
 			"     │   │           ├─ index: [asset.orgId,asset.name,asset.val]\n" +
 			"     │   │           ├─ static: [{[org1, org1], [color, color], [blue, blue]}]\n" +
-			"     │   │           └─ columns: [orgid assetid name val]\n" +
+			"     │   │           └─ Table\n" +
+			"     │   │               ├─ name: asset\n" +
+			"     │   │               └─ columns: [orgid assetid name val]\n" +
 			"     │   └─ Filter\n" +
 			"     │       ├─ AND\n" +
 			"     │       │   ├─ AND\n" +
@@ -462,7 +491,9 @@ where
 			"     │       └─ TableAlias(dimension)\n" +
 			"     │           └─ IndexedTableAccess(asset)\n" +
 			"     │               ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
-			"     │               └─ columns: [orgid assetid name val]\n" +
+			"     │               └─ Table\n" +
+			"     │                   ├─ name: asset\n" +
+			"     │                   └─ columns: [orgid assetid name val]\n" +
 			"     └─ Filter\n" +
 			"         ├─ AND\n" +
 			"         │   ├─ AND\n" +
@@ -478,7 +509,9 @@ where
 			"         └─ TableAlias(style)\n" +
 			"             └─ IndexedTableAccess(asset)\n" +
 			"                 ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
-			"                 └─ columns: [orgid assetid name val]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: asset\n" +
+			"                     └─ columns: [orgid assetid name val]\n" +
 			"",
 	},
 	{
@@ -495,7 +528,9 @@ where
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.s,mytable.i]\n" +
 			"         ├─ static: [{[first row, first row], [1, 1]}]\n" +
-			"         └─ columns: [i s]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -575,7 +610,9 @@ where
 			"                 │       │                       └─ columns: [part sub_part quantity]\n" +
 			"                 │       └─ IndexedTableAccess(parts)\n" +
 			"                 │           ├─ index: [parts.part,parts.sub_part]\n" +
-			"                 │           └─ columns: [part sub_part quantity]\n" +
+			"                 │           └─ Table\n" +
+			"                 │               ├─ name: parts\n" +
+			"                 │               └─ columns: [part sub_part quantity]\n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [p.sub_part:4!null, p.part:3!null, p.quantity:5!null]\n" +
 			"                     └─ HashJoin\n" +
@@ -660,7 +697,9 @@ Select * from (
 			"     │                       ├─ RecursiveTable(cte)\n" +
 			"     │                       └─ IndexedTableAccess(xy)\n" +
 			"     │                           ├─ index: [xy.x]\n" +
-			"     │                           └─ columns: [x]\n" +
+			"     │                           └─ Table\n" +
+			"     │                               ├─ name: xy\n" +
+			"     │                               └─ columns: [x]\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [convert\n" +
 			"         │   ├─ type: signed\n" +
@@ -698,7 +737,9 @@ Select * from (
 			"                 │                               ├─ RecursiveTable(cte)\n" +
 			"                 │                               └─ IndexedTableAccess(xy)\n" +
 			"                 │                                   ├─ index: [xy.x]\n" +
-			"                 │                                   └─ columns: [x]\n" +
+			"                 │                                   └─ Table\n" +
+			"                 │                                       ├─ name: xy\n" +
+			"                 │                                       └─ columns: [x]\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: xy\n" +
 			"                     └─ columns: [x y]\n" +
@@ -739,7 +780,9 @@ Select * from (
 			"     │                       ├─ RecursiveTable(cte)\n" +
 			"     │                       └─ IndexedTableAccess(xy)\n" +
 			"     │                           ├─ index: [xy.x]\n" +
-			"     │                           └─ columns: [x]\n" +
+			"     │                           └─ Table\n" +
+			"     │                               ├─ name: xy\n" +
+			"     │                               └─ columns: [x]\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [convert\n" +
 			"         │   ├─ type: signed\n" +
@@ -776,10 +819,14 @@ Select * from (
 			"                 │                           ├─ RecursiveTable(cte)\n" +
 			"                 │                           └─ IndexedTableAccess(xy)\n" +
 			"                 │                               ├─ index: [xy.x]\n" +
-			"                 │                               └─ columns: [x]\n" +
+			"                 │                               └─ Table\n" +
+			"                 │                                   ├─ name: xy\n" +
+			"                 │                                   └─ columns: [x]\n" +
 			"                 └─ IndexedTableAccess(xy)\n" +
 			"                     ├─ index: [xy.x]\n" +
-			"                     └─ columns: [x y]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: xy\n" +
+			"                         └─ columns: [x y]\n" +
 			"",
 	},
 	{
@@ -788,14 +835,16 @@ Select * from (
 			" ├─ Eq\n" +
 			" │   ├─ xy.x:0!null\n" +
 			" │   └─ scalarSubq0.a:2!null\n" +
-			" ├─ Table\n" +
-			" │   ├─ name: xy\n" +
-			" │   ├─ columns: [x y]\n" +
-			" │   └─ comment: /*+ RIGHT_SEMI_LOOKUP_JOIN(xy,scalarSubq0) */\n" +
+			" ├─ ProcessTable\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: xy\n" +
+			" │       └─ columns: [x y]\n" +
 			" └─ TableAlias(scalarSubq0)\n" +
 			"     └─ IndexedTableAccess(ab)\n" +
 			"         ├─ index: [ab.a]\n" +
-			"         └─ columns: [a b]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: ab\n" +
+			"             └─ columns: [a b]\n" +
 			"",
 	},
 	{
@@ -816,14 +865,20 @@ Select * from (
 			"     │           ├─ IndexedTableAccess(ab)\n" +
 			"     │           │   ├─ index: [ab.a]\n" +
 			"     │           │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           │   └─ columns: [a]\n" +
+			"     │           │   └─ Table\n" +
+			"     │           │       ├─ name: ab\n" +
+			"     │           │       └─ columns: [a]\n" +
 			"     │           └─ IndexedTableAccess(uv)\n" +
 			"     │               ├─ index: [uv.u]\n" +
 			"     │               ├─ static: [{[NULL, ∞)}]\n" +
-			"     │               └─ columns: [u]\n" +
+			"     │               └─ Table\n" +
+			"     │                   ├─ name: uv\n" +
+			"     │                   └─ columns: [u]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
-			"         └─ columns: [x y]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x y]\n" +
 			"",
 	},
 	{
@@ -841,12 +896,14 @@ Select * from (
 			" │           └─ Eq\n" +
 			" │               ├─ uv.u:0!null\n" +
 			" │               └─ 1 (tinyint)\n" +
-			" ├─ Table\n" +
-			" │   ├─ name: uv\n" +
-			" │   └─ columns: [u v]\n" +
-			" └─ Table\n" +
-			"     ├─ name: xy\n" +
-			"     └─ columns: [x y]\n" +
+			" ├─ ProcessTable\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: uv\n" +
+			" │       └─ columns: [u v]\n" +
+			" └─ ProcessTable\n" +
+			"     └─ Table\n" +
+			"         ├─ name: xy\n" +
+			"         └─ columns: [x y]\n" +
 			"",
 	},
 	{
@@ -875,7 +932,9 @@ Select * from (
 			"     │           │       │   └─ sq.p:0!null\n" +
 			"     │           │       └─ IndexedTableAccess(uv)\n" +
 			"     │           │           ├─ index: [uv.u]\n" +
-			"     │           │           └─ columns: [u]\n" +
+			"     │           │           └─ Table\n" +
+			"     │           │               ├─ name: uv\n" +
+			"     │           │               └─ columns: [u]\n" +
 			"     │           │   as (select u from uv where u = sq.p)]\n" +
 			"     │           └─ SubqueryAlias\n" +
 			"     │               ├─ name: sq\n" +
@@ -886,7 +945,9 @@ Select * from (
 			"     │                   └─ columns: [p]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
-			"         └─ columns: [x y]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x y]\n" +
 			"",
 	},
 	{
@@ -906,12 +967,15 @@ Select * from (
 			"     │               │   ├─ scalarSubq0.s2:0!null\n" +
 			"     │               │   └─ second (longtext)\n" +
 			"     │               └─ TableAlias(scalarSubq0)\n" +
-			"     │                   └─ Table\n" +
-			"     │                       ├─ name: othertable\n" +
-			"     │                       └─ columns: [s2 i2]\n" +
+			"     │                   └─ ProcessTable\n" +
+			"     │                       └─ Table\n" +
+			"     │                           ├─ name: othertable\n" +
+			"     │                           └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
-			"         └─ columns: [i s]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -932,11 +996,15 @@ Select * from (
 			"             │           └─ IndexedTableAccess(othertable)\n" +
 			"             │               ├─ index: [othertable.i2]\n" +
 			"             │               ├─ static: [{[NULL, ∞)}]\n" +
-			"             │               └─ columns: [s2 i2]\n" +
+			"             │               └─ Table\n" +
+			"             │                   ├─ name: othertable\n" +
+			"             │                   └─ columns: [s2 i2]\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [i s]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -948,15 +1016,17 @@ Select * from (
 			"         ├─ Eq\n" +
 			"         │   ├─ xy.y:3\n" +
 			"         │   └─ rs.s:1\n" +
-			"         ├─ Table\n" +
-			"         │   ├─ name: rs\n" +
-			"         │   └─ columns: [r s]\n" +
+			"         ├─ ProcessTable\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: rs\n" +
+			"         │       └─ columns: [r s]\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: TUPLE(rs.s:1)\n" +
 			"             ├─ right-key: TUPLE(xy.y:1)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: xy\n" +
-			"                 └─ columns: [x y]\n" +
+			"             └─ ProcessTable\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: xy\n" +
+			"                     └─ columns: [x y]\n" +
 			"",
 	},
 	{
@@ -978,17 +1048,22 @@ Select * from (
 			"     │       ├─ IndexedTableAccess(ab)\n" +
 			"     │       │   ├─ index: [ab.a]\n" +
 			"     │       │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       │   └─ columns: [a b]\n" +
+			"     │       │   └─ Table\n" +
+			"     │       │       ├─ name: ab\n" +
+			"     │       │       └─ columns: [a b]\n" +
 			"     │       └─ IndexedTableAccess(xy)\n" +
 			"     │           ├─ index: [xy.y]\n" +
 			"     │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           └─ columns: [x y]\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: xy\n" +
+			"     │               └─ columns: [x y]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(r.a:0!null)\n" +
 			"         ├─ right-key: TUPLE(uv.u:0!null)\n" +
-			"         └─ Table\n" +
-			"             ├─ name: uv\n" +
-			"             └─ columns: [u v]\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: uv\n" +
+			"                 └─ columns: [u v]\n" +
 			"",
 	},
 	{
@@ -1000,11 +1075,15 @@ Select * from (
 			" ├─ IndexedTableAccess(ab)\n" +
 			" │   ├─ index: [ab.a]\n" +
 			" │   ├─ static: [{[NULL, ∞)}]\n" +
-			" │   └─ columns: [a b]\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: ab\n" +
+			" │       └─ columns: [a b]\n" +
 			" └─ IndexedTableAccess(xy)\n" +
 			"     ├─ index: [xy.y]\n" +
 			"     ├─ static: [{[NULL, ∞)}]\n" +
-			"     └─ columns: [x y]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: xy\n" +
+			"         └─ columns: [x y]\n" +
 			"",
 	},
 	{
@@ -1017,11 +1096,15 @@ Select * from (
 			"     ├─ IndexedTableAccess(rs)\n" +
 			"     │   ├─ index: [rs.s]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [r s]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: rs\n" +
+			"     │       └─ columns: [r s]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.y]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [x y]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x y]\n" +
 			"",
 	},
 	{
@@ -1033,11 +1116,15 @@ Select * from (
 			" ├─ IndexedTableAccess(rs)\n" +
 			" │   ├─ index: [rs.s]\n" +
 			" │   ├─ static: [{[NULL, ∞)}]\n" +
-			" │   └─ columns: [r s]\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: rs\n" +
+			" │       └─ columns: [r s]\n" +
 			" └─ IndexedTableAccess(xy)\n" +
 			"     ├─ index: [xy.y]\n" +
 			"     ├─ static: [{[NULL, ∞)}]\n" +
-			"     └─ columns: [x y]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: xy\n" +
+			"         └─ columns: [x y]\n" +
 			"",
 	},
 	{
@@ -1046,15 +1133,17 @@ Select * from (
 			" ├─ Eq\n" +
 			" │   ├─ (xy.y:3 + 10 (tinyint))\n" +
 			" │   └─ rs.s:1\n" +
-			" ├─ Table\n" +
-			" │   ├─ name: rs\n" +
-			" │   └─ columns: [r s]\n" +
+			" ├─ ProcessTable\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: rs\n" +
+			" │       └─ columns: [r s]\n" +
 			" └─ HashLookup\n" +
 			"     ├─ left-key: TUPLE(rs.s:1)\n" +
 			"     ├─ right-key: TUPLE((xy.y:1 + 10 (tinyint)))\n" +
-			"     └─ Table\n" +
-			"         ├─ name: xy\n" +
-			"         └─ columns: [x y]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x y]\n" +
 			"",
 	},
 	{
@@ -1063,12 +1152,14 @@ Select * from (
 			" ├─ Eq\n" +
 			" │   ├─ 10 (tinyint)\n" +
 			" │   └─ (rs.s:1 + xy.y:3)\n" +
-			" ├─ Table\n" +
-			" │   ├─ name: rs\n" +
-			" │   └─ columns: [r s]\n" +
-			" └─ Table\n" +
-			"     ├─ name: xy\n" +
-			"     └─ columns: [x y]\n" +
+			" ├─ ProcessTable\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: rs\n" +
+			" │       └─ columns: [r s]\n" +
+			" └─ ProcessTable\n" +
+			"     └─ Table\n" +
+			"         ├─ name: xy\n" +
+			"         └─ columns: [x y]\n" +
 			"",
 	},
 	{
@@ -1093,13 +1184,16 @@ Select * from (
 			" │               │           │   └─ ab.a:0!null\n" +
 			" │               │           └─ IndexedTableAccess(uv)\n" +
 			" │               │               ├─ index: [uv.u]\n" +
-			" │               │               └─ columns: [u]\n" +
+			" │               │               └─ Table\n" +
+			" │               │                   ├─ name: uv\n" +
+			" │               │                   └─ columns: [u]\n" +
 			" │               └─ Table\n" +
 			" │                   ├─ name: xy\n" +
 			" │                   └─ columns: [x y]\n" +
-			" └─ Table\n" +
-			"     ├─ name: ab\n" +
-			"     └─ columns: [a b]\n" +
+			" └─ ProcessTable\n" +
+			"     └─ Table\n" +
+			"         ├─ name: ab\n" +
+			"         └─ columns: [a b]\n" +
 			"",
 	},
 	{
@@ -1128,9 +1222,10 @@ Select * from (
 			" │               └─ Table\n" +
 			" │                   ├─ name: xy\n" +
 			" │                   └─ columns: [x y]\n" +
-			" └─ Table\n" +
-			"     ├─ name: ab\n" +
-			"     └─ columns: [a b]\n" +
+			" └─ ProcessTable\n" +
+			"     └─ Table\n" +
+			"         ├─ name: ab\n" +
+			"         └─ columns: [a b]\n" +
 			"",
 	},
 	{
@@ -1159,9 +1254,10 @@ Select * from (
 			" │               └─ Table\n" +
 			" │                   ├─ name: xy\n" +
 			" │                   └─ columns: [x y]\n" +
-			" └─ Table\n" +
-			"     ├─ name: ab\n" +
-			"     └─ columns: [a b]\n" +
+			" └─ ProcessTable\n" +
+			"     └─ Table\n" +
+			"         ├─ name: ab\n" +
+			"         └─ columns: [a b]\n" +
 			"",
 	},
 	{
@@ -1199,12 +1295,15 @@ Select * from (
 			"                 ├─ Eq\n" +
 			"                 │   ├─ ab.a:2!null\n" +
 			"                 │   └─ pq.p:0!null\n" +
-			"                 ├─ Table\n" +
-			"                 │   ├─ name: pq\n" +
-			"                 │   └─ columns: [p q]\n" +
+			"                 ├─ ProcessTable\n" +
+			"                 │   └─ Table\n" +
+			"                 │       ├─ name: pq\n" +
+			"                 │       └─ columns: [p q]\n" +
 			"                 └─ IndexedTableAccess(ab)\n" +
 			"                     ├─ index: [ab.a]\n" +
-			"                     └─ columns: [a b]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: ab\n" +
+			"                         └─ columns: [a b]\n" +
 			"",
 	},
 	{
@@ -1225,7 +1324,9 @@ Select * from (
 			" │           │       └─ xy.x:0!null\n" +
 			" │           └─ IndexedTableAccess(uv)\n" +
 			" │               ├─ index: [uv.u]\n" +
-			" │               └─ columns: [u]\n" +
+			" │               └─ Table\n" +
+			" │                   ├─ name: uv\n" +
+			" │                   └─ columns: [u]\n" +
 			" │   as is_one]\n" +
 			" └─ Sort(xy.y:1 ASC nullsFirst)\n" +
 			"     └─ Project\n" +
@@ -1244,18 +1345,23 @@ Select * from (
 			"         │           │       └─ xy.x:2!null\n" +
 			"         │           └─ IndexedTableAccess(uv)\n" +
 			"         │               ├─ index: [uv.u]\n" +
-			"         │               └─ columns: [u]\n" +
+			"         │               └─ Table\n" +
+			"         │                   ├─ name: uv\n" +
+			"         │                   └─ columns: [u]\n" +
 			"         │   as is_one]\n" +
 			"         └─ LookupJoin\n" +
 			"             ├─ Eq\n" +
 			"             │   ├─ xy.x:2!null\n" +
 			"             │   └─ uv.v:1\n" +
-			"             ├─ Table\n" +
-			"             │   ├─ name: uv\n" +
-			"             │   └─ columns: [u v]\n" +
+			"             ├─ ProcessTable\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: uv\n" +
+			"             │       └─ columns: [u v]\n" +
 			"             └─ IndexedTableAccess(xy)\n" +
 			"                 ├─ index: [xy.x]\n" +
-			"                 └─ columns: [x y]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: xy\n" +
+			"                     └─ columns: [x y]\n" +
 			"",
 	},
 	{
@@ -1302,7 +1408,9 @@ Select * from (
 			"                 │   └─ columns: [u v]\n" +
 			"                 └─ IndexedTableAccess(xy)\n" +
 			"                     ├─ index: [xy.x]\n" +
-			"                     └─ columns: [x y]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: xy\n" +
+			"                         └─ columns: [x y]\n" +
 			"",
 	},
 	{
@@ -1339,12 +1447,15 @@ Select * from (
 			"         ├─ Eq\n" +
 			"         │   ├─ xy.x:2!null\n" +
 			"         │   └─ uv.v:1\n" +
-			"         ├─ Table\n" +
-			"         │   ├─ name: uv\n" +
-			"         │   └─ columns: [u v]\n" +
+			"         ├─ ProcessTable\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: uv\n" +
+			"         │       └─ columns: [u v]\n" +
 			"         └─ IndexedTableAccess(xy)\n" +
 			"             ├─ index: [xy.x]\n" +
-			"             └─ columns: [x y]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: xy\n" +
+			"                 └─ columns: [x y]\n" +
 			"",
 	},
 	{
@@ -1386,7 +1497,9 @@ Select * from (
 			"             │       └─ IndexedTableAccess(bus_routes)\n" +
 			"             │           ├─ index: [bus_routes.origin,bus_routes.dst]\n" +
 			"             │           ├─ static: [{[New York, New York], [NULL, ∞)}]\n" +
-			"             │           └─ columns: [origin]\n" +
+			"             │           └─ Table\n" +
+			"             │               ├─ name: bus_routes\n" +
+			"             │               └─ columns: [origin]\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [bus_routes.dst:2!null]\n" +
 			"                 └─ HashJoin\n" +
@@ -1413,9 +1526,10 @@ Select * from (
 			"             ├─ Eq\n" +
 			"             │   ├─ xy.x:0!null\n" +
 			"             │   └─ scalarSubq0.u:2!null\n" +
-			"             ├─ Table\n" +
-			"             │   ├─ name: xy\n" +
-			"             │   └─ columns: [x y]\n" +
+			"             ├─ ProcessTable\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: xy\n" +
+			"             │       └─ columns: [x y]\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: TUPLE(xy.x:0!null)\n" +
 			"                 ├─ right-key: TUPLE(scalarSubq0.u:0!null)\n" +
@@ -1464,7 +1578,9 @@ Select * from (
 			"                                                             └─ IndexedTableAccess(uv)\n" +
 			"                                                                 ├─ index: [uv.u]\n" +
 			"                                                                 ├─ static: [{[2, 2]}, {[3, 3]}]\n" +
-			"                                                                 └─ columns: [u v]\n" +
+			"                                                                 └─ Table\n" +
+			"                                                                     ├─ name: uv\n" +
+			"                                                                     └─ columns: [u v]\n" +
 			"",
 	},
 	{
@@ -1475,9 +1591,10 @@ Select * from (
 			"     └─ Window\n" +
 			"         ├─ lag(mytable.i, 1) over ( order by mytable.s ASC)\n" +
 			"         ├─ mytable.i:0!null\n" +
-			"         └─ Table\n" +
-			"             ├─ name: mytable\n" +
-			"             └─ columns: [i s]\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -1489,9 +1606,10 @@ Select * from (
 			"         ├─ lag(floattable.i, 1) over ( order by floattable.f64 ASC)\n" +
 			"         ├─ floattable.f64:2!null\n" +
 			"         ├─ floattable.f32:1!null\n" +
-			"         └─ Table\n" +
-			"             ├─ name: floattable\n" +
-			"             └─ columns: [i f32 f64]\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: floattable\n" +
+			"                 └─ columns: [i f32 f64]\n" +
 			"",
 	},
 	{
@@ -1506,9 +1624,10 @@ Select * from (
 			"     │   └─ Eq\n" +
 			"     │       ├─ uv.v:2\n" +
 			"     │       └─ ab.b:0\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: ab\n" +
-			"     │   └─ columns: [b]\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: ab\n" +
+			"     │       └─ columns: [b]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(ab.b:0, ab.b:0)\n" +
 			"         ├─ right-key: TUPLE(xy.y:3, uv.v:1)\n" +
@@ -1519,10 +1638,14 @@ Select * from (
 			"             ├─ IndexedTableAccess(uv)\n" +
 			"             │   ├─ index: [uv.u]\n" +
 			"             │   ├─ static: [{[-1, -1]}]\n" +
-			"             │   └─ columns: [u v]\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: uv\n" +
+			"             │       └─ columns: [u v]\n" +
 			"             └─ IndexedTableAccess(xy)\n" +
 			"                 ├─ index: [xy.y]\n" +
-			"                 └─ columns: [x y]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: xy\n" +
+			"                     └─ columns: [x y]\n" +
 			"",
 	},
 	{
@@ -1548,7 +1671,9 @@ Select * from (
 			"     │           │   └─ columns: [p q]\n" +
 			"     │           └─ IndexedTableAccess(xy)\n" +
 			"     │               ├─ index: [xy.x]\n" +
-			"     │               └─ columns: [x]\n" +
+			"     │               └─ Table\n" +
+			"     │                   ├─ name: xy\n" +
+			"     │                   └─ columns: [x]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(xq.x:0!null)\n" +
 			"         ├─ right-key: TUPLE(av.v:1)\n" +
@@ -1567,7 +1692,9 @@ Select * from (
 			"                     │   └─ columns: [u v]\n" +
 			"                     └─ IndexedTableAccess(ab)\n" +
 			"                         ├─ index: [ab.a]\n" +
-			"                         └─ columns: [a]\n" +
+			"                         └─ Table\n" +
+			"                             ├─ name: ab\n" +
+			"                             └─ columns: [a]\n" +
 			"",
 	},
 	{
@@ -1594,16 +1721,22 @@ Select * from (
 			"     │   │   └─ IndexedTableAccess(othertable)\n" +
 			"     │   │       ├─ index: [othertable.i2]\n" +
 			"     │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [s2 i2]\n" +
+			"     │   │       └─ Table\n" +
+			"     │   │           ├─ name: othertable\n" +
+			"     │   │           └─ columns: [s2 i2]\n" +
 			"     │   └─ TableAlias(t1)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
 			"     │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           └─ columns: [i s]\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: mytable\n" +
+			"     │               └─ columns: [i s]\n" +
 			"     └─ TableAlias(t2)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.s,mytable.i]\n" +
-			"             └─ columns: [i s]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -1622,20 +1755,27 @@ Select * from (
 			"     │   └─ Eq\n" +
 			"     │       ├─ (ab.a:0!null + 3 (tinyint))\n" +
 			"     │       └─ xy.x:1!null\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: ab\n" +
-			"     │   └─ columns: [a]\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: ab\n" +
+			"     │       └─ columns: [a]\n" +
 			"     └─ Concat\n" +
 			"         ├─ IndexedTableAccess(xy)\n" +
 			"         │   ├─ index: [xy.x]\n" +
-			"         │   └─ columns: [x]\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: xy\n" +
+			"         │       └─ columns: [x]\n" +
 			"         └─ Concat\n" +
 			"             ├─ IndexedTableAccess(xy)\n" +
 			"             │   ├─ index: [xy.x]\n" +
-			"             │   └─ columns: [x]\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: xy\n" +
+			"             │       └─ columns: [x]\n" +
 			"             └─ IndexedTableAccess(xy)\n" +
 			"                 ├─ index: [xy.x]\n" +
-			"                 └─ columns: [x]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: xy\n" +
+			"                     └─ columns: [x]\n" +
 			"",
 	},
 	{
@@ -1660,7 +1800,9 @@ Select * from (
 			" │               │           └─ columns: [u v]\n" +
 			" │               └─ IndexedTableAccess(ab)\n" +
 			" │                   ├─ index: [ab.a]\n" +
-			" │                   └─ columns: [a b]\n" +
+			" │                   └─ Table\n" +
+			" │                       ├─ name: ab\n" +
+			" │                       └─ columns: [a b]\n" +
 			" │   as s]\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [xy.x:0!null, xy.y:1, InSubquery\n" +
@@ -1682,11 +1824,14 @@ Select * from (
 			"     │               │           └─ columns: [u v]\n" +
 			"     │               └─ IndexedTableAccess(ab)\n" +
 			"     │                   ├─ index: [ab.a]\n" +
-			"     │                   └─ columns: [a b]\n" +
+			"     │                   └─ Table\n" +
+			"     │                       ├─ name: ab\n" +
+			"     │                       └─ columns: [a b]\n" +
 			"     │   as s]\n" +
-			"     └─ Table\n" +
-			"         ├─ name: xy\n" +
-			"         └─ columns: [x y]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x y]\n" +
 			"",
 	},
 	{
@@ -1708,14 +1853,17 @@ Select * from (
 			"     ├─ IndexedTableAccess(ab)\n" +
 			"     │   ├─ index: [ab.a]\n" +
 			"     │   ├─ static: [{[1, 1]}]\n" +
-			"     │   └─ columns: [a b]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: ab\n" +
+			"     │       └─ columns: [a b]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE()\n" +
 			"         ├─ right-key: TUPLE()\n" +
 			"         └─ Limit(1)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: uv\n" +
-			"                 └─ columns: [u v]\n" +
+			"             └─ ProcessTable\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: uv\n" +
+			"                     └─ columns: [u v]\n" +
 			"",
 	},
 	{
@@ -1723,9 +1871,10 @@ Select * from (
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [ab.a:0!null, ab.b:1]\n" +
 			" └─ CrossHashJoin\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: ab\n" +
-			"     │   └─ columns: [a b]\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: ab\n" +
+			"     │       └─ columns: [a b]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE()\n" +
 			"         ├─ right-key: TUPLE()\n" +
@@ -1738,7 +1887,9 @@ Select * from (
 			"                     └─ IndexedTableAccess(ab)\n" +
 			"                         ├─ index: [ab.a]\n" +
 			"                         ├─ static: [{[1, 1]}]\n" +
-			"                         └─ columns: [a b]\n" +
+			"                         └─ Table\n" +
+			"                             ├─ name: ab\n" +
+			"                             └─ columns: [a b]\n" +
 			"",
 	},
 	{
@@ -1752,9 +1903,10 @@ Select * from (
 			" │       ├─ s.a:0!null\n" +
 			" │       └─ 1 (tinyint)\n" +
 			" ├─ TableAlias(s)\n" +
-			" │   └─ Table\n" +
-			" │       ├─ name: ab\n" +
-			" │       └─ columns: [a b]\n" +
+			" │   └─ ProcessTable\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: ab\n" +
+			" │           └─ columns: [a b]\n" +
 			" └─ Table\n" +
 			"     ├─ name: ab\n" +
 			"     └─ columns: [a b]\n" +
@@ -1766,12 +1918,15 @@ Select * from (
 			" ├─ Eq\n" +
 			" │   ├─ uv.u:0!null\n" +
 			" │   └─ ab.a:2!null\n" +
-			" ├─ Table\n" +
-			" │   ├─ name: uv\n" +
-			" │   └─ columns: [u v]\n" +
+			" ├─ ProcessTable\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: uv\n" +
+			" │       └─ columns: [u v]\n" +
 			" └─ IndexedTableAccess(ab)\n" +
 			"     ├─ index: [ab.a]\n" +
-			"     └─ columns: [a]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: ab\n" +
+			"         └─ columns: [a]\n" +
 			"",
 	},
 	{
@@ -1781,9 +1936,10 @@ Select * from (
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(1 (bigint)), emptytable.i:0!null\n" +
 			"     ├─ group: \n" +
-			"     └─ Table\n" +
-			"         ├─ name: emptytable\n" +
-			"         └─ columns: [i]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: emptytable\n" +
+			"             └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -1807,12 +1963,15 @@ Select * from (
 			"         ├─ Eq\n" +
 			"         │   ├─ xy.x:2!null\n" +
 			"         │   └─ ab.a:0!null\n" +
-			"         ├─ Table\n" +
-			"         │   ├─ name: ab\n" +
-			"         │   └─ columns: [a b]\n" +
+			"         ├─ ProcessTable\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: ab\n" +
+			"         │       └─ columns: [a b]\n" +
 			"         └─ IndexedTableAccess(xy)\n" +
 			"             ├─ index: [xy.x]\n" +
-			"             └─ columns: [x y]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: xy\n" +
+			"                 └─ columns: [x y]\n" +
 			"",
 	},
 	{
@@ -1835,9 +1994,10 @@ Select * from (
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(uv.u:0!null)\n" +
 			"         ├─ right-key: TUPLE(one_pk.pk:0!null)\n" +
-			"         └─ Table\n" +
-			"             ├─ name: one_pk\n" +
-			"             └─ columns: [pk]\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: one_pk\n" +
+			"                 └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -1861,9 +2021,10 @@ Select * from (
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(uv.u:0!null)\n" +
 			"         ├─ right-key: TUPLE(one_pk.pk:0!null)\n" +
-			"         └─ Table\n" +
-			"             ├─ name: one_pk\n" +
-			"             └─ columns: [pk]\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: one_pk\n" +
+			"                 └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -1874,9 +2035,10 @@ Select * from (
 			"     ├─ Eq\n" +
 			"     │   ├─ TUPLE(one_pk.pk:0!null, 123 (tinyint))\n" +
 			"     │   └─ TUPLE(scalarSubq0.u:6!null, scalarSubq0.v:7!null)\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: one_pk\n" +
-			"     │   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: one_pk\n" +
+			"     │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: scalarSubq0\n" +
 			"         ├─ outerVisibility: false\n" +
@@ -1896,9 +2058,10 @@ Select * from (
 			"     ├─ Eq\n" +
 			"     │   ├─ TUPLE(one_pk.pk:0!null, 123 (tinyint))\n" +
 			"     │   └─ TUPLE(scalarSubq0.u:6!null, scalarSubq0.v:7!null)\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: one_pk\n" +
-			"     │   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: one_pk\n" +
+			"     │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: scalarSubq0\n" +
 			"         ├─ outerVisibility: false\n" +
@@ -1929,9 +2092,10 @@ Select * from (
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE()\n" +
 			"         ├─ right-key: TUPLE()\n" +
-			"         └─ Table\n" +
-			"             ├─ name: mytable\n" +
-			"             └─ columns: [i s]\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -1946,14 +2110,17 @@ Select * from (
 			" │       └─ IndexedTableAccess(mytable)\n" +
 			" │           ├─ index: [mytable.i]\n" +
 			" │           ├─ static: [{[1, 1]}]\n" +
-			" │           └─ columns: [i]\n" +
+			" │           └─ Table\n" +
+			" │               ├─ name: mytable\n" +
+			" │               └─ columns: [i]\n" +
 			" │   as (SELECT i FROM mytable WHERE i = 1 group by i)]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(1 (bigint))\n" +
 			"     ├─ group: \n" +
-			"     └─ Table\n" +
-			"         ├─ name: \n" +
-			"         └─ columns: []\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: \n" +
+			"             └─ columns: []\n" +
 			"",
 	},
 	{
@@ -1976,7 +2143,9 @@ Select * from (
 			"     │               └─ columns: [a b]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
-			"         └─ columns: [x y]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x y]\n" +
 			"",
 	},
 	{
@@ -1986,12 +2155,15 @@ Select * from (
 			"     ├─ Eq\n" +
 			"     │   ├─ ab.a:2!null\n" +
 			"     │   └─ xy.x:0!null\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: xy\n" +
-			"     │   └─ columns: [x y]\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: xy\n" +
+			"     │       └─ columns: [x y]\n" +
 			"     └─ IndexedTableAccess(ab)\n" +
 			"         ├─ index: [ab.a]\n" +
-			"         └─ columns: [a b]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: ab\n" +
+			"             └─ columns: [a b]\n" +
 			"",
 	},
 	{
@@ -2002,12 +2174,15 @@ Select * from (
 			"         ├─ Eq\n" +
 			"         │   ├─ ab.a:2!null\n" +
 			"         │   └─ xy.x:0!null\n" +
-			"         ├─ Table\n" +
-			"         │   ├─ name: xy\n" +
-			"         │   └─ columns: [x y]\n" +
+			"         ├─ ProcessTable\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: xy\n" +
+			"         │       └─ columns: [x y]\n" +
 			"         └─ IndexedTableAccess(ab)\n" +
 			"             ├─ index: [ab.a]\n" +
-			"             └─ columns: [a b]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: ab\n" +
+			"                 └─ columns: [a b]\n" +
 			"",
 	},
 	{
@@ -2057,7 +2232,9 @@ inner join xy on a = x;`,
 			" │                           └─ columns: [p q]\n" +
 			" └─ IndexedTableAccess(xy)\n" +
 			"     ├─ index: [xy.x]\n" +
-			"     └─ columns: [x y]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: xy\n" +
+			"         └─ columns: [x y]\n" +
 			"",
 	},
 	{
@@ -2085,14 +2262,20 @@ where exists
 			"     │           ├─ IndexedTableAccess(uv)\n" +
 			"     │           │   ├─ index: [uv.u]\n" +
 			"     │           │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           │   └─ columns: [u v]\n" +
+			"     │           │   └─ Table\n" +
+			"     │           │       ├─ name: uv\n" +
+			"     │           │       └─ columns: [u v]\n" +
 			"     │           └─ IndexedTableAccess(pq)\n" +
 			"     │               ├─ index: [pq.p]\n" +
 			"     │               ├─ static: [{[NULL, ∞)}]\n" +
-			"     │               └─ columns: [p q]\n" +
+			"     │               └─ Table\n" +
+			"     │                   ├─ name: pq\n" +
+			"     │                   └─ columns: [p q]\n" +
 			"     └─ IndexedTableAccess(ab)\n" +
 			"         ├─ index: [ab.a]\n" +
-			"         └─ columns: [a b]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: ab\n" +
+			"             └─ columns: [a b]\n" +
 			"",
 	},
 	{
@@ -2139,9 +2322,10 @@ where exists (select * from pq where a = p)
 			"         └─ OrderedDistinct\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [pq.p:0!null]\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: pq\n" +
-			"                     └─ columns: [p q]\n" +
+			"                 └─ ProcessTable\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: pq\n" +
+			"                         └─ columns: [p q]\n" +
 			"",
 	},
 	{
@@ -2160,15 +2344,19 @@ full join pq on a = p
 			"     │   ├─ Eq\n" +
 			"     │   │   ├─ ab.a:2!null\n" +
 			"     │   │   └─ uv.u:0!null\n" +
-			"     │   ├─ Table\n" +
-			"     │   │   ├─ name: uv\n" +
-			"     │   │   └─ columns: [u v]\n" +
+			"     │   ├─ ProcessTable\n" +
+			"     │   │   └─ Table\n" +
+			"     │   │       ├─ name: uv\n" +
+			"     │   │       └─ columns: [u v]\n" +
 			"     │   └─ IndexedTableAccess(ab)\n" +
 			"     │       ├─ index: [ab.a]\n" +
-			"     │       └─ columns: [a b]\n" +
-			"     └─ Table\n" +
-			"         ├─ name: pq\n" +
-			"         └─ columns: [p q]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: ab\n" +
+			"     │           └─ columns: [a b]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: pq\n" +
+			"             └─ columns: [p q]\n" +
 			"",
 	},
 	{
@@ -2202,15 +2390,17 @@ inner join pq on true
 			" │   └─ HashLookup\n" +
 			" │       ├─ left-key: TUPLE()\n" +
 			" │       ├─ right-key: TUPLE()\n" +
-			" │       └─ Table\n" +
-			" │           ├─ name: uv\n" +
-			" │           └─ columns: [u v]\n" +
+			" │       └─ ProcessTable\n" +
+			" │           └─ Table\n" +
+			" │               ├─ name: uv\n" +
+			" │               └─ columns: [u v]\n" +
 			" └─ HashLookup\n" +
 			"     ├─ left-key: TUPLE()\n" +
 			"     ├─ right-key: TUPLE()\n" +
-			"     └─ Table\n" +
-			"         ├─ name: pq\n" +
-			"         └─ columns: [p q]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: pq\n" +
+			"             └─ columns: [p q]\n" +
 			"",
 	},
 	{
@@ -2248,22 +2438,26 @@ inner join pq on true
 			"     │       │       │   └─ columns: [a b]\n" +
 			"     │       │       └─ IndexedTableAccess(xy)\n" +
 			"     │       │           ├─ index: [xy.x]\n" +
-			"     │       │           └─ columns: [x y]\n" +
+			"     │       │           └─ Table\n" +
+			"     │       │               ├─ name: xy\n" +
+			"     │       │               └─ columns: [x y]\n" +
 			"     │       └─ HashLookup\n" +
 			"     │           ├─ left-key: TUPLE(alias1.a:0!null)\n" +
 			"     │           ├─ right-key: TUPLE(uv.u:0!null)\n" +
 			"     │           └─ OrderedDistinct\n" +
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [uv.u:0!null]\n" +
-			"     │                   └─ Table\n" +
-			"     │                       ├─ name: uv\n" +
-			"     │                       └─ columns: [u v]\n" +
+			"     │                   └─ ProcessTable\n" +
+			"     │                       └─ Table\n" +
+			"     │                           ├─ name: uv\n" +
+			"     │                           └─ columns: [u v]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(alias1.a:0!null)\n" +
 			"         ├─ right-key: TUPLE(pq.p:0!null)\n" +
-			"         └─ Table\n" +
-			"             ├─ name: pq\n" +
-			"             └─ columns: [p q]\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: pq\n" +
+			"                 └─ columns: [p q]\n" +
 			"",
 	},
 	{
@@ -2281,12 +2475,16 @@ inner join pq on true
 			"         │       └─ IndexedTableAccess(mytable)\n" +
 			"         │           ├─ index: [mytable.i]\n" +
 			"         │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │           └─ columns: [i]\n" +
+			"         │           └─ Table\n" +
+			"         │               ├─ name: mytable\n" +
+			"         │               └─ columns: [i]\n" +
 			"         └─ TableAlias(a)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [i s]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -2305,12 +2503,16 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(mytable)\n" +
 			"             │       ├─ index: [mytable.i]\n" +
 			"             │       ├─ static: [{[NULL, ∞)}]\n" +
-			"             │       └─ columns: [i s]\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: mytable\n" +
+			"             │           └─ columns: [i s]\n" +
 			"             └─ TableAlias(b)\n" +
 			"                 └─ IndexedTableAccess(mytable)\n" +
 			"                     ├─ index: [mytable.i]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [i]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: mytable\n" +
+			"                         └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -2321,12 +2523,14 @@ inner join pq on true
 			"     ├─ Eq\n" +
 			"     │   ├─ mytable.i:0!null\n" +
 			"     │   └─ othertable.i2:1!null\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: mytable\n" +
-			"     │   └─ columns: [i]\n" +
-			"     └─ Table\n" +
-			"         ├─ name: othertable\n" +
-			"         └─ columns: [i2]\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: mytable\n" +
+			"     │       └─ columns: [i]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: othertable\n" +
+			"             └─ columns: [i2]\n" +
 			"",
 	},
 	{
@@ -2347,15 +2551,21 @@ inner join pq on true
 			"             │   ├─ IndexedTableAccess(othertable)\n" +
 			"             │   │   ├─ index: [othertable.i2]\n" +
 			"             │   │   ├─ static: [{[NULL, ∞)}]\n" +
-			"             │   │   └─ columns: [s2 i2]\n" +
+			"             │   │   └─ Table\n" +
+			"             │   │       ├─ name: othertable\n" +
+			"             │   │       └─ columns: [s2 i2]\n" +
 			"             │   └─ IndexedTableAccess(mytable)\n" +
 			"             │       ├─ index: [mytable.i]\n" +
 			"             │       ├─ static: [{[NULL, ∞)}]\n" +
-			"             │       └─ columns: [i s]\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: mytable\n" +
+			"             │           └─ columns: [i s]\n" +
 			"             └─ TableAlias(t4)\n" +
 			"                 └─ IndexedTableAccess(othertable)\n" +
 			"                     ├─ index: [othertable.i2]\n" +
-			"                     └─ columns: [s2 i2]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: othertable\n" +
+			"                         └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -2363,7 +2573,9 @@ inner join pq on true
 		ExpectedPlan: "IndexedTableAccess(one_pk)\n" +
 			" ├─ index: [one_pk.pk]\n" +
 			" ├─ static: [{[NULL, ∞)}]\n" +
-			" └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			" └─ Table\n" +
+			"     ├─ name: one_pk\n" +
+			"     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -2371,7 +2583,9 @@ inner join pq on true
 		ExpectedPlan: "IndexedTableAccess(two_pk)\n" +
 			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			" ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			" └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			" └─ Table\n" +
+			"     ├─ name: two_pk\n" +
+			"     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -2379,7 +2593,9 @@ inner join pq on true
 		ExpectedPlan: "IndexedTableAccess(two_pk)\n" +
 			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			" ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			" └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			" └─ Table\n" +
+			"     ├─ name: two_pk\n" +
+			"     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -2391,7 +2607,9 @@ inner join pq on true
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -2401,9 +2619,10 @@ inner join pq on true
 			" └─ Sort(two_pk.pk1:0!null as one ASC nullsFirst, two_pk.pk2:1!null as two ASC nullsFirst)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [two_pk.pk1:0!null, two_pk.pk2:1!null, two_pk.c1:2!null, two_pk.c2:3!null, two_pk.c3:4!null, two_pk.c4:5!null, two_pk.c5:6!null, two_pk.pk1:0!null as one, two_pk.pk2:1!null as two]\n" +
-			"         └─ Table\n" +
-			"             ├─ name: two_pk\n" +
-			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -2422,7 +2641,9 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
 			"     │           ├─ static: [{[1, 1]}]\n" +
-			"     │           └─ columns: [i]\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: mytable\n" +
+			"     │               └─ columns: [i]\n" +
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
 			"         │   ├─ t1.i:0!null\n" +
@@ -2430,7 +2651,9 @@ inner join pq on true
 			"         └─ TableAlias(t1)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
-			"                 └─ columns: [i]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -2451,11 +2674,15 @@ inner join pq on true
 			"                 ├─ IndexedTableAccess(othertable)\n" +
 			"                 │   ├─ index: [othertable.i2]\n" +
 			"                 │   ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │   └─ columns: [i2]\n" +
+			"                 │   └─ Table\n" +
+			"                 │       ├─ name: othertable\n" +
+			"                 │       └─ columns: [i2]\n" +
 			"                 └─ IndexedTableAccess(mytable)\n" +
 			"                     ├─ index: [mytable.i]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [i]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: mytable\n" +
+			"                         └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -2466,7 +2693,9 @@ inner join pq on true
 			" └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"     ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
 			"     ├─ static: [{(NULL, 2), (NULL, ∞)}]\n" +
-			"     └─ columns: [pk v1 v2]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: one_pk_two_idx\n" +
+			"         └─ columns: [pk v1 v2]\n" +
 			"",
 	},
 	{
@@ -2478,7 +2707,9 @@ inner join pq on true
 			" └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"     ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
 			"     ├─ static: [{[1, 1], (NULL, 2]}, {[2, 2], (NULL, 2]}]\n" +
-			"     └─ columns: [pk v1 v2]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: one_pk_two_idx\n" +
+			"         └─ columns: [pk v1 v2]\n" +
 			"",
 	},
 	{
@@ -2486,7 +2717,9 @@ inner join pq on true
 		ExpectedPlan: "IndexedTableAccess(one_pk_three_idx)\n" +
 			" ├─ index: [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3]\n" +
 			" ├─ static: [{(2, ∞), [3, 3], [NULL, ∞)}]\n" +
-			" └─ columns: [pk v1 v2 v3]\n" +
+			" └─ Table\n" +
+			"     ├─ name: one_pk_three_idx\n" +
+			"     └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
 	{
@@ -2498,7 +2731,9 @@ inner join pq on true
 			" └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     ├─ index: [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3]\n" +
 			"     ├─ static: [{(2, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
-			"     └─ columns: [pk v1 v2 v3]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: one_pk_three_idx\n" +
+			"         └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
 	{
@@ -2521,7 +2756,9 @@ inner join pq on true
 			"                 ├─ IndexedTableAccess(othertable)\n" +
 			"                 │   ├─ index: [othertable.i2]\n" +
 			"                 │   ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │   └─ columns: [i2]\n" +
+			"                 │   └─ Table\n" +
+			"                 │       ├─ name: othertable\n" +
+			"                 │       └─ columns: [i2]\n" +
 			"                 └─ Filter\n" +
 			"                     ├─ Eq\n" +
 			"                     │   ├─ mytable.i:0!null\n" +
@@ -2529,7 +2766,9 @@ inner join pq on true
 			"                     └─ IndexedTableAccess(mytable)\n" +
 			"                         ├─ index: [mytable.i]\n" +
 			"                         ├─ static: [{[2, 2]}]\n" +
-			"                         └─ columns: [i]\n" +
+			"                         └─ Table\n" +
+			"                             ├─ name: mytable\n" +
+			"                             └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -2537,9 +2776,10 @@ inner join pq on true
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Insert(i, s)\n" +
 			"     ├─ InsertDestination\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: mytable\n" +
-			"     │       └─ columns: [i s]\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [i s]\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [i:0!null, s:1!null]\n" +
 			"         └─ Project\n" +
@@ -2556,7 +2796,9 @@ inner join pq on true
 			"                 │       └─ IndexedTableAccess(mytable)\n" +
 			"                 │           ├─ index: [mytable.i]\n" +
 			"                 │           ├─ static: [{[1, 1]}]\n" +
-			"                 │           └─ columns: [i]\n" +
+			"                 │           └─ Table\n" +
+			"                 │               ├─ name: mytable\n" +
+			"                 │               └─ columns: [i]\n" +
 			"                 └─ Filter\n" +
 			"                     ├─ Eq\n" +
 			"                     │   ├─ t1.i:0!null\n" +
@@ -2564,7 +2806,9 @@ inner join pq on true
 			"                     └─ TableAlias(t1)\n" +
 			"                         └─ IndexedTableAccess(mytable)\n" +
 			"                             ├─ index: [mytable.i]\n" +
-			"                             └─ columns: [i]\n" +
+			"                             └─ Table\n" +
+			"                                 ├─ name: mytable\n" +
+			"                                 └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -2583,7 +2827,9 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
 			"     │           ├─ static: [{[2, 2]}]\n" +
-			"     │           └─ columns: [i]\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: mytable\n" +
+			"     │               └─ columns: [i]\n" +
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
 			"         │   ├─ t2.i:0!null\n" +
@@ -2591,7 +2837,9 @@ inner join pq on true
 			"         └─ TableAlias(t2)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
-			"                 └─ columns: [i]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -2610,7 +2858,9 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
 			"     │           ├─ static: [{[1, 1]}]\n" +
-			"     │           └─ columns: [i]\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: mytable\n" +
+			"     │               └─ columns: [i]\n" +
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
 			"         │   ├─ t1.i:0!null\n" +
@@ -2618,7 +2868,9 @@ inner join pq on true
 			"         └─ TableAlias(t1)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
-			"                 └─ columns: [i]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -2637,7 +2889,9 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
 			"     │           ├─ static: [{[1, 1]}]\n" +
-			"     │           └─ columns: [i]\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: mytable\n" +
+			"     │               └─ columns: [i]\n" +
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
 			"         │   ├─ t1.i:0!null\n" +
@@ -2645,7 +2899,9 @@ inner join pq on true
 			"         └─ TableAlias(t1)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
-			"                 └─ columns: [i]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -2664,7 +2920,9 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
 			"     │           ├─ static: [{[1, 1]}]\n" +
-			"     │           └─ columns: [i]\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: mytable\n" +
+			"     │               └─ columns: [i]\n" +
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
 			"         │   ├─ t1.i:0!null\n" +
@@ -2672,7 +2930,9 @@ inner join pq on true
 			"         └─ TableAlias(t1)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
-			"                 └─ columns: [i]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -2686,11 +2946,15 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(othertable)\n" +
 			"     │   ├─ index: [othertable.i2]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [s2 i2]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: othertable\n" +
+			"     │       └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -2705,16 +2969,21 @@ inner join pq on true
 			"     │   └─ Eq\n" +
 			"     │       ├─ mytable.s:3!null\n" +
 			"     │       └─ othertable.s2:0!null\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: othertable\n" +
-			"     │   └─ columns: [s2 i2]\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: othertable\n" +
+			"     │       └─ columns: [s2 i2]\n" +
 			"     └─ Concat\n" +
 			"         ├─ IndexedTableAccess(mytable)\n" +
 			"         │   ├─ index: [mytable.s,mytable.i]\n" +
-			"         │   └─ columns: [i s]\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: mytable\n" +
+			"         │       └─ columns: [i s]\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
-			"             └─ columns: [i s]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -2730,16 +2999,21 @@ inner join pq on true
 			"     │       ├─ mytable.s:3!null\n" +
 			"     │       └─ ot.s2:0!null\n" +
 			"     ├─ TableAlias(ot)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: othertable\n" +
-			"     │       └─ columns: [s2 i2]\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: othertable\n" +
+			"     │           └─ columns: [s2 i2]\n" +
 			"     └─ Concat\n" +
 			"         ├─ IndexedTableAccess(mytable)\n" +
 			"         │   ├─ index: [mytable.s,mytable.i]\n" +
-			"         │   └─ columns: [i s]\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: mytable\n" +
+			"         │       └─ columns: [i s]\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
-			"             └─ columns: [i s]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -2754,16 +3028,21 @@ inner join pq on true
 			"     │   └─ Eq\n" +
 			"     │       ├─ SUBSTRING_INDEX(mytable.s, ' ', 1)\n" +
 			"     │       └─ othertable.s2:2!null\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: mytable\n" +
-			"     │   └─ columns: [i s]\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: mytable\n" +
+			"     │       └─ columns: [i s]\n" +
 			"     └─ Concat\n" +
 			"         ├─ IndexedTableAccess(othertable)\n" +
 			"         │   ├─ index: [othertable.s2]\n" +
-			"         │   └─ columns: [s2 i2]\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: othertable\n" +
+			"         │       └─ columns: [s2 i2]\n" +
 			"         └─ IndexedTableAccess(othertable)\n" +
 			"             ├─ index: [othertable.i2]\n" +
-			"             └─ columns: [s2 i2]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: othertable\n" +
+			"                 └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -2782,20 +3061,27 @@ inner join pq on true
 			"     │   └─ Eq\n" +
 			"     │       ├─ SUBSTRING_INDEX(mytable.s, ' ', 2)\n" +
 			"     │       └─ othertable.s2:2!null\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: mytable\n" +
-			"     │   └─ columns: [i s]\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: mytable\n" +
+			"     │       └─ columns: [i s]\n" +
 			"     └─ Concat\n" +
 			"         ├─ IndexedTableAccess(othertable)\n" +
 			"         │   ├─ index: [othertable.s2]\n" +
-			"         │   └─ columns: [s2 i2]\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: othertable\n" +
+			"         │       └─ columns: [s2 i2]\n" +
 			"         └─ Concat\n" +
 			"             ├─ IndexedTableAccess(othertable)\n" +
 			"             │   ├─ index: [othertable.i2]\n" +
-			"             │   └─ columns: [s2 i2]\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: othertable\n" +
+			"             │       └─ columns: [s2 i2]\n" +
 			"             └─ IndexedTableAccess(othertable)\n" +
 			"                 ├─ index: [othertable.s2]\n" +
-			"                 └─ columns: [s2 i2]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: othertable\n" +
+			"                     └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -2810,11 +3096,15 @@ inner join pq on true
 			" │       ├─ IndexedTableAccess(othertable)\n" +
 			" │       │   ├─ index: [othertable.i2]\n" +
 			" │       │   ├─ static: [{[NULL, ∞)}]\n" +
-			" │       │   └─ columns: [s2 i2]\n" +
+			" │       │   └─ Table\n" +
+			" │       │       ├─ name: othertable\n" +
+			" │       │       └─ columns: [s2 i2]\n" +
 			" │       └─ IndexedTableAccess(mytable)\n" +
 			" │           ├─ index: [mytable.i]\n" +
 			" │           ├─ static: [{[NULL, ∞)}]\n" +
-			" │           └─ columns: [i]\n" +
+			" │           └─ Table\n" +
+			" │               ├─ name: mytable\n" +
+			" │               └─ columns: [i]\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [mytable.i:2!null, othertable.i2:1!null, othertable.s2:0!null]\n" +
 			"     └─ MergeJoin\n" +
@@ -2824,11 +3114,15 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(othertable)\n" +
 			"         │   ├─ index: [othertable.i2]\n" +
 			"         │   ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   └─ columns: [s2 i2]\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: othertable\n" +
+			"         │       └─ columns: [s2 i2]\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -2852,18 +3146,23 @@ inner join pq on true
 			"     │           ├─ IndexedTableAccess(othertable)\n" +
 			"     │           │   ├─ index: [othertable.i2]\n" +
 			"     │           │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           │   └─ columns: [s2 i2]\n" +
+			"     │           │   └─ Table\n" +
+			"     │           │       ├─ name: othertable\n" +
+			"     │           │       └─ columns: [s2 i2]\n" +
 			"     │           └─ IndexedTableAccess(mytable)\n" +
 			"     │               ├─ index: [mytable.i]\n" +
 			"     │               ├─ static: [{[NULL, ∞)}]\n" +
-			"     │               └─ columns: [i]\n" +
+			"     │               └─ Table\n" +
+			"     │                   ├─ name: mytable\n" +
+			"     │                   └─ columns: [i]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(sub.i:0!null)\n" +
 			"         ├─ right-key: TUPLE(ot.i2:1!null)\n" +
 			"         └─ TableAlias(ot)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: othertable\n" +
-			"                 └─ columns: [s2 i2]\n" +
+			"             └─ ProcessTable\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: othertable\n" +
+			"                     └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -2887,18 +3186,23 @@ inner join pq on true
 			"     │           ├─ IndexedTableAccess(othertable)\n" +
 			"     │           │   ├─ index: [othertable.i2]\n" +
 			"     │           │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           │   └─ columns: [s2 i2]\n" +
+			"     │           │   └─ Table\n" +
+			"     │           │       ├─ name: othertable\n" +
+			"     │           │       └─ columns: [s2 i2]\n" +
 			"     │           └─ IndexedTableAccess(mytable)\n" +
 			"     │               ├─ index: [mytable.i]\n" +
 			"     │               ├─ static: [{[NULL, ∞)}]\n" +
-			"     │               └─ columns: [i]\n" +
+			"     │               └─ Table\n" +
+			"     │                   ├─ name: mytable\n" +
+			"     │                   └─ columns: [i]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(sub.i:0!null)\n" +
 			"         ├─ right-key: TUPLE(ot.i2:1!null)\n" +
 			"         └─ TableAlias(ot)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: othertable\n" +
-			"                 └─ columns: [s2 i2]\n" +
+			"             └─ ProcessTable\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: othertable\n" +
+			"                     └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -2917,7 +3221,9 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(othertable)\n" +
 			"     │           ├─ index: [othertable.i2]\n" +
 			"     │           ├─ static: [{(0, ∞)}]\n" +
-			"     │           └─ columns: [s2 i2]\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: othertable\n" +
+			"     │               └─ columns: [s2 i2]\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: sub\n" +
 			"         ├─ outerVisibility: false\n" +
@@ -2938,11 +3244,15 @@ inner join pq on true
 			"                 │   └─ IndexedTableAccess(othertable)\n" +
 			"                 │       ├─ index: [othertable.i2]\n" +
 			"                 │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │       └─ columns: [s2 i2]\n" +
+			"                 │       └─ Table\n" +
+			"                 │           ├─ name: othertable\n" +
+			"                 │           └─ columns: [s2 i2]\n" +
 			"                 └─ IndexedTableAccess(mytable)\n" +
 			"                     ├─ index: [mytable.i]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [i]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: mytable\n" +
+			"                         └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -2959,12 +3269,16 @@ inner join pq on true
 			" │   │   └─ IndexedTableAccess(one_pk)\n" +
 			" │   │       ├─ index: [one_pk.pk]\n" +
 			" │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			" │   │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			" │   │       └─ Table\n" +
+			" │   │           ├─ name: one_pk\n" +
+			" │   │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			" │   └─ TableAlias(k)\n" +
 			" │       └─ IndexedTableAccess(one_pk)\n" +
 			" │           ├─ index: [one_pk.pk]\n" +
 			" │           ├─ static: [{[NULL, ∞)}]\n" +
-			" │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			" │           └─ Table\n" +
+			" │               ├─ name: one_pk\n" +
+			" │               └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: j\n" +
 			"     ├─ outerVisibility: false\n" +
@@ -2990,12 +3304,16 @@ inner join pq on true
 			" │   │   └─ IndexedTableAccess(one_pk)\n" +
 			" │   │       ├─ index: [one_pk.pk]\n" +
 			" │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			" │   │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			" │   │       └─ Table\n" +
+			" │   │           ├─ name: one_pk\n" +
+			" │   │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			" │   └─ TableAlias(k)\n" +
 			" │       └─ IndexedTableAccess(one_pk)\n" +
 			" │           ├─ index: [one_pk.pk]\n" +
 			" │           ├─ static: [{[NULL, ∞)}]\n" +
-			" │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			" │           └─ Table\n" +
+			" │               ├─ name: one_pk\n" +
+			" │               └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: j\n" +
 			"     ├─ outerVisibility: false\n" +
@@ -3012,9 +3330,10 @@ inner join pq on true
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Insert(i, s)\n" +
 			"     ├─ InsertDestination\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: mytable\n" +
-			"     │       └─ columns: [i s]\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [i s]\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [i:0!null, s:1!null]\n" +
 			"         └─ Project\n" +
@@ -3036,18 +3355,23 @@ inner join pq on true
 			"                 │           ├─ IndexedTableAccess(othertable)\n" +
 			"                 │           │   ├─ index: [othertable.i2]\n" +
 			"                 │           │   ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │           │   └─ columns: [s2 i2]\n" +
+			"                 │           │   └─ Table\n" +
+			"                 │           │       ├─ name: othertable\n" +
+			"                 │           │       └─ columns: [s2 i2]\n" +
 			"                 │           └─ IndexedTableAccess(mytable)\n" +
 			"                 │               ├─ index: [mytable.i]\n" +
 			"                 │               ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │               └─ columns: [i]\n" +
+			"                 │               └─ Table\n" +
+			"                 │                   ├─ name: mytable\n" +
+			"                 │                   └─ columns: [i]\n" +
 			"                 └─ HashLookup\n" +
 			"                     ├─ left-key: TUPLE(sub.i:0!null)\n" +
 			"                     ├─ right-key: TUPLE(ot.i2:1!null)\n" +
 			"                     └─ TableAlias(ot)\n" +
-			"                         └─ Table\n" +
-			"                             ├─ name: othertable\n" +
-			"                             └─ columns: [s2 i2]\n" +
+			"                         └─ ProcessTable\n" +
+			"                             └─ Table\n" +
+			"                                 ├─ name: othertable\n" +
+			"                                 └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -3081,11 +3405,15 @@ inner join pq on true
 			"                 │   └─ IndexedTableAccess(mytable)\n" +
 			"                 │       ├─ index: [mytable.i]\n" +
 			"                 │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │       └─ columns: [i s]\n" +
+			"                 │       └─ Table\n" +
+			"                 │           ├─ name: mytable\n" +
+			"                 │           └─ columns: [i s]\n" +
 			"                 └─ IndexedTableAccess(mytable)\n" +
 			"                     ├─ index: [mytable.i]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [i s]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: mytable\n" +
+			"                         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3097,11 +3425,15 @@ inner join pq on true
 			" ├─ IndexedTableAccess(othertable)\n" +
 			" │   ├─ index: [othertable.i2]\n" +
 			" │   ├─ static: [{[NULL, ∞)}]\n" +
-			" │   └─ columns: [s2 i2]\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: othertable\n" +
+			" │       └─ columns: [s2 i2]\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.i]\n" +
 			"     ├─ static: [{[NULL, ∞)}]\n" +
-			"     └─ columns: [i]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -3115,11 +3447,15 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(mytable)\n" +
 			"     │   ├─ index: [mytable.i]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [i]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: mytable\n" +
+			"     │       └─ columns: [i]\n" +
 			"     └─ IndexedTableAccess(othertable)\n" +
 			"         ├─ index: [othertable.i2]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [s2 i2]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: othertable\n" +
+			"             └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -3133,11 +3469,15 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(mytable)\n" +
 			"     │   ├─ index: [mytable.i]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [i]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: mytable\n" +
+			"     │       └─ columns: [i]\n" +
 			"     └─ IndexedTableAccess(othertable)\n" +
 			"         ├─ index: [othertable.i2]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [s2 i2]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: othertable\n" +
+			"             └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -3151,11 +3491,15 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(mytable)\n" +
 			"     │   ├─ index: [mytable.i]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [i]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: mytable\n" +
+			"     │       └─ columns: [i]\n" +
 			"     └─ IndexedTableAccess(othertable)\n" +
 			"         ├─ index: [othertable.i2]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [s2 i2]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: othertable\n" +
+			"             └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -3170,11 +3514,15 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(mytable)\n" +
 			"         │   ├─ index: [mytable.i]\n" +
 			"         │   ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   └─ columns: [i]\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: mytable\n" +
+			"         │       └─ columns: [i]\n" +
 			"         └─ IndexedTableAccess(othertable)\n" +
 			"             ├─ index: [othertable.i2]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [s2 i2]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: othertable\n" +
+			"                 └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -3188,11 +3536,15 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(othertable)\n" +
 			"     │   ├─ index: [othertable.i2]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [s2 i2]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: othertable\n" +
+			"     │       └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -3204,11 +3556,15 @@ inner join pq on true
 			" ├─ IndexedTableAccess(othertable)\n" +
 			" │   ├─ index: [othertable.i2]\n" +
 			" │   ├─ static: [{[NULL, ∞)}]\n" +
-			" │   └─ columns: [s2 i2]\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: othertable\n" +
+			" │       └─ columns: [s2 i2]\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.i]\n" +
 			"     ├─ static: [{[NULL, ∞)}]\n" +
-			"     └─ columns: [i]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -3224,11 +3580,15 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(othertable)\n" +
 			"     │   ├─ index: [othertable.i2]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [s2 i2]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: othertable\n" +
+			"     │       └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i s]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3246,11 +3606,15 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(othertable)\n" +
 			"     │   ├─ index: [othertable.i2]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [s2 i2]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: othertable\n" +
+			"     │       └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i s]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3266,11 +3630,15 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(othertable)\n" +
 			"     │   ├─ index: [othertable.i2]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [s2 i2]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: othertable\n" +
+			"     │       └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i s]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3287,11 +3655,15 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(othertable)\n" +
 			"     │   ├─ index: [othertable.i2]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [s2 i2]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: othertable\n" +
+			"     │       └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i s]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3309,11 +3681,15 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(othertable)\n" +
 			"     │   ├─ index: [othertable.i2]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [s2 i2]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: othertable\n" +
+			"     │       └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i s]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3324,9 +3700,10 @@ inner join pq on true
 			"     ├─ Eq\n" +
 			"     │   ├─ othertable.i2:2!null\n" +
 			"     │   └─ mytable.i:0!null\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: mytable\n" +
-			"     │   └─ columns: [i]\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: mytable\n" +
+			"     │       └─ columns: [i]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(mytable.i:0!null)\n" +
 			"         ├─ right-key: TUPLE(othertable.i2:1!null)\n" +
@@ -3347,9 +3724,10 @@ inner join pq on true
 			"     ├─ Eq\n" +
 			"     │   ├─ othertable.i2:2!null\n" +
 			"     │   └─ mytable.i:0!null\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: mytable\n" +
-			"     │   └─ columns: [i]\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: mytable\n" +
+			"     │       └─ columns: [i]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(mytable.i:0!null)\n" +
 			"         ├─ right-key: TUPLE(othertable.i2:1!null)\n" +
@@ -3398,7 +3776,9 @@ inner join pq on true
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.s]\n" +
 			"         ├─ static: [{(NULL, ∞)}]\n" +
-			"         └─ columns: [i s]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3413,7 +3793,9 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.s,mytable.i]\n" +
 			"     │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │       └─ columns: [s]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [s]\n" +
 			"     └─ Filter\n" +
 			"         ├─ NOT\n" +
 			"         │   └─ a.s:1!null IS NULL\n" +
@@ -3421,7 +3803,9 @@ inner join pq on true
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [i s]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3436,7 +3820,9 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.s,mytable.i]\n" +
 			"     │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │       └─ columns: [s]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [s]\n" +
 			"     └─ Filter\n" +
 			"         ├─ NOT\n" +
 			"         │   └─ a.s:1!null IS NULL\n" +
@@ -3444,7 +3830,9 @@ inner join pq on true
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [i s]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3459,7 +3847,9 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.s,mytable.i]\n" +
 			"     │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │       └─ columns: [s]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [s]\n" +
 			"     └─ Filter\n" +
 			"         ├─ NOT\n" +
 			"         │   └─ HashIn\n" +
@@ -3469,7 +3859,9 @@ inner join pq on true
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [i s]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3484,7 +3876,9 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.s,mytable.i]\n" +
 			"     │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │       └─ columns: [s]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [s]\n" +
 			"     └─ Filter\n" +
 			"         ├─ HashIn\n" +
 			"         │   ├─ a.i:0!null\n" +
@@ -3493,7 +3887,9 @@ inner join pq on true
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [i s]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3505,7 +3901,9 @@ inner join pq on true
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.i]\n" +
 			"     ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}, {[4, 4]}]\n" +
-			"     └─ columns: [i s]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3517,7 +3915,9 @@ inner join pq on true
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.i]\n" +
 			"     ├─ static: [{[1, 1]}]\n" +
-			"     └─ columns: [i s]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3529,7 +3929,9 @@ inner join pq on true
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.i]\n" +
 			"     ├─ static: [{[2, 2]}, {[3, 3]}, {[4, 4]}]\n" +
-			"     └─ columns: [i s]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3537,7 +3939,9 @@ inner join pq on true
 		ExpectedPlan: "IndexedTableAccess(mytable)\n" +
 			" ├─ index: [mytable.i]\n" +
 			" ├─ static: [{[3, 3]}]\n" +
-			" └─ columns: [i s]\n" +
+			" └─ Table\n" +
+			"     ├─ name: mytable\n" +
+			"     └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3546,9 +3950,10 @@ inner join pq on true
 			" ├─ HashIn\n" +
 			" │   ├─ upper(mytable.s)\n" +
 			" │   └─ TUPLE(FIRST ROW (longtext), SECOND ROW (longtext))\n" +
-			" └─ Table\n" +
-			"     ├─ name: mytable\n" +
-			"     └─ columns: [i s]\n" +
+			" └─ ProcessTable\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3559,9 +3964,10 @@ inner join pq on true
 			" │   │   ├─ type: char\n" +
 			" │   │   └─ mytable.i:0!null\n" +
 			" │   └─ TUPLE(a (longtext), b (longtext))\n" +
-			" └─ Table\n" +
-			"     ├─ name: mytable\n" +
-			"     └─ columns: [i s]\n" +
+			" └─ ProcessTable\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3572,9 +3978,10 @@ inner join pq on true
 			" │   │   ├─ type: char\n" +
 			" │   │   └─ mytable.i:0!null\n" +
 			" │   └─ TUPLE(1 (longtext), 2 (longtext))\n" +
-			" └─ Table\n" +
-			"     ├─ name: mytable\n" +
-			"     └─ columns: [i s]\n" +
+			" └─ ProcessTable\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3585,9 +3992,10 @@ inner join pq on true
 			" │   │   ├─ mytable.i:0!null\n" +
 			" │   │   └─ 2 (tinyint)\n" +
 			" │   └─ TUPLE(true (tinyint(1)))\n" +
-			" └─ Table\n" +
-			"     ├─ name: mytable\n" +
-			"     └─ columns: [i s]\n" +
+			" └─ ProcessTable\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3596,9 +4004,10 @@ inner join pq on true
 			" ├─ HashIn\n" +
 			" │   ├─ (mytable.i:0!null + 6 (tinyint))\n" +
 			" │   └─ TUPLE(7 (tinyint), 8 (tinyint))\n" +
-			" └─ Table\n" +
-			"     ├─ name: mytable\n" +
-			"     └─ columns: [i s]\n" +
+			" └─ ProcessTable\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3607,9 +4016,10 @@ inner join pq on true
 			" ├─ HashIn\n" +
 			" │   ├─ (mytable.i:0!null + 40 (tinyint))\n" +
 			" │   └─ TUPLE(7 (tinyint), 8 (tinyint))\n" +
-			" └─ Table\n" +
-			"     ├─ name: mytable\n" +
-			"     └─ columns: [i s]\n" +
+			" └─ ProcessTable\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3620,9 +4030,10 @@ inner join pq on true
 			" │   │   ├─ mytable.i:0!null\n" +
 			" │   │   └─ 1 (bigint)\n" +
 			" │   └─ TUPLE(true (tinyint(1)))\n" +
-			" └─ Table\n" +
-			"     ├─ name: mytable\n" +
-			"     └─ columns: [i s]\n" +
+			" └─ ProcessTable\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3633,9 +4044,10 @@ inner join pq on true
 			" │   │   ├─ mytable.i:0!null\n" +
 			" │   │   └─ 0 (bigint)\n" +
 			" │   └─ TUPLE(true (tinyint(1)))\n" +
-			" └─ Table\n" +
-			"     ├─ name: mytable\n" +
-			"     └─ columns: [i s]\n" +
+			" └─ ProcessTable\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3644,9 +4056,10 @@ inner join pq on true
 			" ├─ IN\n" +
 			" │   ├─ left: mytable.i:0!null\n" +
 			" │   └─ right: TUPLE((2 (tinyint) * mytable.i:0!null))\n" +
-			" └─ Table\n" +
-			"     ├─ name: mytable\n" +
-			"     └─ columns: [i s]\n" +
+			" └─ ProcessTable\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3655,9 +4068,10 @@ inner join pq on true
 			" ├─ IN\n" +
 			" │   ├─ left: mytable.i:0!null\n" +
 			" │   └─ right: TUPLE(mytable.i:0!null)\n" +
-			" └─ Table\n" +
-			"     ├─ name: mytable\n" +
-			"     └─ columns: [i s]\n" +
+			" └─ ProcessTable\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3666,9 +4080,10 @@ inner join pq on true
 			" ├─ IN\n" +
 			" │   ├─ left: 4 (tinyint)\n" +
 			" │   └─ right: TUPLE((mytable.i:0!null + 2 (tinyint)))\n" +
-			" └─ Table\n" +
-			"     ├─ name: mytable\n" +
-			"     └─ columns: [i s]\n" +
+			" └─ ProcessTable\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3680,7 +4095,9 @@ inner join pq on true
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.s]\n" +
 			"     ├─ static: [{[first row, first row]}]\n" +
-			"     └─ columns: [i s]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3692,7 +4109,9 @@ inner join pq on true
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.s]\n" +
 			"     ├─ static: [{[FIRST ROW, FIRST ROW]}, {[second row, second row]}]\n" +
-			"     └─ columns: [i s]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3704,9 +4123,10 @@ inner join pq on true
 			" │       ├─ mytable.i:0!null\n" +
 			" │       └─ 3 (tinyint)\n" +
 			" │      )\n" +
-			" └─ Table\n" +
-			"     ├─ name: mytable\n" +
-			"     └─ columns: [i s]\n" +
+			" └─ ProcessTable\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3721,12 +4141,16 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [i]\n" +
 			"     └─ TableAlias(a)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i s]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3742,17 +4166,22 @@ inner join pq on true
 			"     │       ├─ a.i:1!null\n" +
 			"     │       └─ 1 (tinyint)\n" +
 			"     ├─ TableAlias(b)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: mytable\n" +
-			"     │       └─ columns: [i]\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [i]\n" +
 			"     └─ TableAlias(a)\n" +
 			"         └─ Concat\n" +
 			"             ├─ IndexedTableAccess(mytable)\n" +
 			"             │   ├─ index: [mytable.i]\n" +
-			"             │   └─ columns: [i s]\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: mytable\n" +
+			"             │       └─ columns: [i s]\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.s,mytable.i]\n" +
-			"                 └─ columns: [i s]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3769,9 +4198,10 @@ inner join pq on true
 			"     │           ├─ a.s:1!null\n" +
 			"     │           └─ b.i:2!null\n" +
 			"     ├─ TableAlias(a)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: mytable\n" +
-			"     │       └─ columns: [i s]\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
@@ -3789,9 +4219,10 @@ inner join pq on true
 			"     │   │   └─ b.s:3!null\n" +
 			"     │   └─ (a.s = b.i) IS FALSE\n" +
 			"     ├─ TableAlias(a)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: mytable\n" +
-			"     │       └─ columns: [i s]\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
@@ -3807,9 +4238,10 @@ inner join pq on true
 			"     │   ├─ a.i:0!null\n" +
 			"     │   └─ b.i:2!null\n" +
 			"     ├─ TableAlias(a)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: mytable\n" +
-			"     │       └─ columns: [i s]\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
@@ -3820,9 +4252,10 @@ inner join pq on true
 		Query: `SELECT a.* FROM mytable a, mytable b where a.i = a.s`,
 		ExpectedPlan: "CrossHashJoin\n" +
 			" ├─ TableAlias(b)\n" +
-			" │   └─ Table\n" +
-			" │       ├─ name: mytable\n" +
-			" │       └─ columns: []\n" +
+			" │   └─ ProcessTable\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: mytable\n" +
+			" │           └─ columns: []\n" +
 			" └─ HashLookup\n" +
 			"     ├─ left-key: TUPLE()\n" +
 			"     ├─ right-key: TUPLE()\n" +
@@ -3840,9 +4273,10 @@ inner join pq on true
 		Query: `SELECT a.* FROM mytable a, mytable b where a.i in (2, 432, 7)`,
 		ExpectedPlan: "CrossHashJoin\n" +
 			" ├─ TableAlias(b)\n" +
-			" │   └─ Table\n" +
-			" │       ├─ name: mytable\n" +
-			" │       └─ columns: []\n" +
+			" │   └─ ProcessTable\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: mytable\n" +
+			" │           └─ columns: []\n" +
 			" └─ HashLookup\n" +
 			"     ├─ left-key: TUPLE()\n" +
 			"     ├─ right-key: TUPLE()\n" +
@@ -3854,7 +4288,9 @@ inner join pq on true
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ static: [{[2, 2]}, {[7, 7]}, {[432, 432]}]\n" +
-			"                 └─ columns: [i s]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3885,7 +4321,9 @@ inner join pq on true
 			"     │   │   │   └─ IndexedTableAccess(mytable)\n" +
 			"     │   │   │       ├─ index: [mytable.i]\n" +
 			"     │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │   │       └─ columns: [i s]\n" +
+			"     │   │   │       └─ Table\n" +
+			"     │   │   │           ├─ name: mytable\n" +
+			"     │   │   │           └─ columns: [i s]\n" +
 			"     │   │   └─ Filter\n" +
 			"     │   │       ├─ Eq\n" +
 			"     │   │       │   ├─ c.i:0!null\n" +
@@ -3894,15 +4332,21 @@ inner join pq on true
 			"     │   │           └─ IndexedTableAccess(mytable)\n" +
 			"     │   │               ├─ index: [mytable.i]\n" +
 			"     │   │               ├─ static: [{[2, 2]}]\n" +
-			"     │   │               └─ columns: [i]\n" +
+			"     │   │               └─ Table\n" +
+			"     │   │                   ├─ name: mytable\n" +
+			"     │   │                   └─ columns: [i]\n" +
 			"     │   └─ TableAlias(d)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
-			"     │           └─ columns: [i]\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: mytable\n" +
+			"     │               └─ columns: [i]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
-			"             └─ columns: [i]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -3930,25 +4374,34 @@ inner join pq on true
 			"     │   │   │       ├─ c.i:1!null\n" +
 			"     │   │   │       └─ 2 (tinyint)\n" +
 			"     │   │   ├─ TableAlias(d)\n" +
-			"     │   │   │   └─ Table\n" +
-			"     │   │   │       ├─ name: mytable\n" +
-			"     │   │   │       └─ columns: [s]\n" +
+			"     │   │   │   └─ ProcessTable\n" +
+			"     │   │   │       └─ Table\n" +
+			"     │   │   │           ├─ name: mytable\n" +
+			"     │   │   │           └─ columns: [s]\n" +
 			"     │   │   └─ TableAlias(c)\n" +
 			"     │   │       └─ Concat\n" +
 			"     │   │           ├─ IndexedTableAccess(mytable)\n" +
 			"     │   │           │   ├─ index: [mytable.i]\n" +
-			"     │   │           │   └─ columns: [i]\n" +
+			"     │   │           │   └─ Table\n" +
+			"     │   │           │       ├─ name: mytable\n" +
+			"     │   │           │       └─ columns: [i]\n" +
 			"     │   │           └─ IndexedTableAccess(mytable)\n" +
 			"     │   │               ├─ index: [mytable.i]\n" +
-			"     │   │               └─ columns: [i]\n" +
+			"     │   │               └─ Table\n" +
+			"     │   │                   ├─ name: mytable\n" +
+			"     │   │                   └─ columns: [i]\n" +
 			"     │   └─ TableAlias(a)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
-			"     │           └─ columns: [i s]\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: mytable\n" +
+			"     │               └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
-			"             └─ columns: [i]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -3957,9 +4410,10 @@ inner join pq on true
 			" ├─ columns: [a.i:1!null, a.s:2!null]\n" +
 			" └─ CrossHashJoin\n" +
 			"     ├─ TableAlias(d)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: mytable\n" +
-			"     │       └─ columns: []\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: []\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE()\n" +
 			"         ├─ right-key: TUPLE()\n" +
@@ -3979,16 +4433,22 @@ inner join pq on true
 			"             │   │   └─ IndexedTableAccess(mytable)\n" +
 			"             │   │       ├─ index: [mytable.i]\n" +
 			"             │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"             │   │       └─ columns: [i]\n" +
+			"             │   │       └─ Table\n" +
+			"             │   │           ├─ name: mytable\n" +
+			"             │   │           └─ columns: [i]\n" +
 			"             │   └─ TableAlias(a)\n" +
 			"             │       └─ IndexedTableAccess(mytable)\n" +
 			"             │           ├─ index: [mytable.i]\n" +
 			"             │           ├─ static: [{[NULL, ∞)}]\n" +
-			"             │           └─ columns: [i s]\n" +
+			"             │           └─ Table\n" +
+			"             │               ├─ name: mytable\n" +
+			"             │               └─ columns: [i s]\n" +
 			"             └─ TableAlias(b)\n" +
 			"                 └─ IndexedTableAccess(mytable)\n" +
 			"                     ├─ index: [mytable.i]\n" +
-			"                     └─ columns: [i]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: mytable\n" +
+			"                         └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -4003,12 +4463,16 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [i]\n" +
 			"     └─ TableAlias(a)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i s]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -4024,17 +4488,22 @@ inner join pq on true
 			"     │       ├─ a.i:2!null\n" +
 			"     │       └─ b.s:1!null\n" +
 			"     ├─ TableAlias(b)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: mytable\n" +
-			"     │       └─ columns: [i s]\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [i s]\n" +
 			"     └─ TableAlias(a)\n" +
 			"         └─ Concat\n" +
 			"             ├─ IndexedTableAccess(mytable)\n" +
 			"             │   ├─ index: [mytable.i]\n" +
-			"             │   └─ columns: [i s]\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: mytable\n" +
+			"             │       └─ columns: [i s]\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
-			"                 └─ columns: [i s]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -4051,9 +4520,10 @@ inner join pq on true
 			"     │           ├─ a.s:1!null\n" +
 			"     │           └─ b.i:2!null\n" +
 			"     ├─ TableAlias(a)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: mytable\n" +
-			"     │       └─ columns: [i s]\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
@@ -4071,9 +4541,10 @@ inner join pq on true
 			"     │   │   └─ b.s:3!null\n" +
 			"     │   └─ (a.s = b.i) IS FALSE\n" +
 			"     ├─ TableAlias(a)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: mytable\n" +
-			"     │       └─ columns: [i s]\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
@@ -4089,9 +4560,10 @@ inner join pq on true
 			"     │   ├─ a.i:0!null\n" +
 			"     │   └─ b.i:2!null\n" +
 			"     ├─ TableAlias(a)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: mytable\n" +
-			"     │       └─ columns: [i s]\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
@@ -4102,9 +4574,10 @@ inner join pq on true
 		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = a.i`,
 		ExpectedPlan: "CrossHashJoin\n" +
 			" ├─ TableAlias(b)\n" +
-			" │   └─ Table\n" +
-			" │       ├─ name: mytable\n" +
-			" │       └─ columns: []\n" +
+			" │   └─ ProcessTable\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: mytable\n" +
+			" │           └─ columns: []\n" +
 			" └─ HashLookup\n" +
 			"     ├─ left-key: TUPLE()\n" +
 			"     ├─ right-key: TUPLE()\n" +
@@ -4146,7 +4619,9 @@ inner join pq on true
 			"     │   │   │   └─ IndexedTableAccess(mytable)\n" +
 			"     │   │   │       ├─ index: [mytable.i]\n" +
 			"     │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │   │       └─ columns: [i s]\n" +
+			"     │   │   │       └─ Table\n" +
+			"     │   │   │           ├─ name: mytable\n" +
+			"     │   │   │           └─ columns: [i s]\n" +
 			"     │   │   └─ Filter\n" +
 			"     │   │       ├─ Eq\n" +
 			"     │   │       │   ├─ c.i:0!null\n" +
@@ -4155,15 +4630,21 @@ inner join pq on true
 			"     │   │           └─ IndexedTableAccess(mytable)\n" +
 			"     │   │               ├─ index: [mytable.i]\n" +
 			"     │   │               ├─ static: [{[2, 2]}]\n" +
-			"     │   │               └─ columns: [i]\n" +
+			"     │   │               └─ Table\n" +
+			"     │   │                   ├─ name: mytable\n" +
+			"     │   │                   └─ columns: [i]\n" +
 			"     │   └─ TableAlias(d)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
-			"     │           └─ columns: [i]\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: mytable\n" +
+			"     │               └─ columns: [i]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
-			"             └─ columns: [i]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -4191,25 +4672,34 @@ inner join pq on true
 			"     │   │   │       ├─ c.i:1!null\n" +
 			"     │   │   │       └─ 2 (tinyint)\n" +
 			"     │   │   ├─ TableAlias(d)\n" +
-			"     │   │   │   └─ Table\n" +
-			"     │   │   │       ├─ name: mytable\n" +
-			"     │   │   │       └─ columns: [s]\n" +
+			"     │   │   │   └─ ProcessTable\n" +
+			"     │   │   │       └─ Table\n" +
+			"     │   │   │           ├─ name: mytable\n" +
+			"     │   │   │           └─ columns: [s]\n" +
 			"     │   │   └─ TableAlias(c)\n" +
 			"     │   │       └─ Concat\n" +
 			"     │   │           ├─ IndexedTableAccess(mytable)\n" +
 			"     │   │           │   ├─ index: [mytable.i]\n" +
-			"     │   │           │   └─ columns: [i]\n" +
+			"     │   │           │   └─ Table\n" +
+			"     │   │           │       ├─ name: mytable\n" +
+			"     │   │           │       └─ columns: [i]\n" +
 			"     │   │           └─ IndexedTableAccess(mytable)\n" +
 			"     │   │               ├─ index: [mytable.i]\n" +
-			"     │   │               └─ columns: [i]\n" +
+			"     │   │               └─ Table\n" +
+			"     │   │                   ├─ name: mytable\n" +
+			"     │   │                   └─ columns: [i]\n" +
 			"     │   └─ TableAlias(a)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
-			"     │           └─ columns: [i s]\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: mytable\n" +
+			"     │               └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
-			"             └─ columns: [i]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -4218,9 +4708,10 @@ inner join pq on true
 			" ├─ columns: [a.i:3!null, a.s:4!null]\n" +
 			" └─ CrossHashJoin\n" +
 			"     ├─ TableAlias(d)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: mytable\n" +
-			"     │       └─ columns: []\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: []\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE()\n" +
 			"         ├─ right-key: TUPLE()\n" +
@@ -4236,16 +4727,22 @@ inner join pq on true
 			"             │   │   └─ IndexedTableAccess(mytable)\n" +
 			"             │   │       ├─ index: [mytable.s,mytable.i]\n" +
 			"             │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │   │       └─ columns: [s]\n" +
+			"             │   │       └─ Table\n" +
+			"             │   │           ├─ name: mytable\n" +
+			"             │   │           └─ columns: [s]\n" +
 			"             │   └─ TableAlias(b)\n" +
 			"             │       └─ IndexedTableAccess(mytable)\n" +
 			"             │           ├─ index: [mytable.s]\n" +
 			"             │           ├─ static: [{[NULL, ∞)}]\n" +
-			"             │           └─ columns: [i s]\n" +
+			"             │           └─ Table\n" +
+			"             │               ├─ name: mytable\n" +
+			"             │               └─ columns: [i s]\n" +
 			"             └─ TableAlias(a)\n" +
 			"                 └─ IndexedTableAccess(mytable)\n" +
 			"                     ├─ index: [mytable.i]\n" +
-			"                     └─ columns: [i s]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: mytable\n" +
+			"                         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -4260,14 +4757,18 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.s,mytable.i]\n" +
 			"     │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │       └─ columns: [s]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [s]\n" +
 			"     └─ Filter\n" +
 			"         ├─ (a.i:0!null BETWEEN 10 (tinyint) AND 20 (tinyint))\n" +
 			"         └─ TableAlias(a)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [i s]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -4326,9 +4827,10 @@ inner join pq on true
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(othertable.i2:1!null)\n" +
 			"         ├─ right-key: TUPLE(mytable.i:0!null)\n" +
-			"         └─ Table\n" +
-			"             ├─ name: mytable\n" +
-			"             └─ columns: [i]\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -4347,9 +4849,10 @@ inner join pq on true
 			" └─ HashLookup\n" +
 			"     ├─ left-key: TUPLE(othertable.i2:1!null)\n" +
 			"     ├─ right-key: TUPLE(mytable.i:0!null)\n" +
-			"     └─ Table\n" +
-			"         ├─ name: mytable\n" +
-			"         └─ columns: [i]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -4365,7 +4868,9 @@ inner join pq on true
 			"     └─ IndexedTableAccess(othertable)\n" +
 			"         ├─ index: [othertable.s2]\n" +
 			"         ├─ static: [{[a, a]}]\n" +
-			"         └─ columns: [s2 i2]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: othertable\n" +
+			"             └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -4389,7 +4894,9 @@ inner join pq on true
 			"             └─ IndexedTableAccess(othertable)\n" +
 			"                 ├─ index: [othertable.s2]\n" +
 			"                 ├─ static: [{[a, a]}]\n" +
-			"                 └─ columns: [s2 i2]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: othertable\n" +
+			"                     └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -4409,13 +4916,16 @@ inner join pq on true
 			" │       └─ IndexedTableAccess(othertable)\n" +
 			" │           ├─ index: [othertable.s2]\n" +
 			" │           ├─ static: [{(a, ∞)}]\n" +
-			" │           └─ columns: [s2 i2]\n" +
+			" │           └─ Table\n" +
+			" │               ├─ name: othertable\n" +
+			" │               └─ columns: [s2 i2]\n" +
 			" └─ HashLookup\n" +
 			"     ├─ left-key: TUPLE(othertable.i2:1!null)\n" +
 			"     ├─ right-key: TUPLE(mytable.i:0!null)\n" +
-			"     └─ Table\n" +
-			"         ├─ name: mytable\n" +
-			"         └─ columns: [i]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -4438,7 +4948,9 @@ inner join pq on true
 			"     │                   └─ columns: [i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
-			"         └─ columns: [i s]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -4456,11 +4968,15 @@ inner join pq on true
 			"     │           └─ IndexedTableAccess(othertable)\n" +
 			"     │               ├─ index: [othertable.i2]\n" +
 			"     │               ├─ static: [{[NULL, ∞)}]\n" +
-			"     │               └─ columns: [s2 i2]\n" +
+			"     │               └─ Table\n" +
+			"     │                   ├─ name: othertable\n" +
+			"     │                   └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i s]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -4477,10 +4993,13 @@ inner join pq on true
 			" │           │   └─ othertable.i2:2!null\n" +
 			" │           └─ IndexedTableAccess(othertable)\n" +
 			" │               ├─ index: [othertable.i2]\n" +
-			" │               └─ columns: [i2]\n" +
-			" └─ Table\n" +
-			"     ├─ name: mytable\n" +
-			"     └─ columns: [i s]\n" +
+			" │               └─ Table\n" +
+			" │                   ├─ name: othertable\n" +
+			" │                   └─ columns: [i2]\n" +
+			" └─ ProcessTable\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -4495,7 +5014,9 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(othertable)\n" +
 			"     │       ├─ index: [othertable.i2]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [s2 i2]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: othertable\n" +
+			"     │           └─ columns: [s2 i2]\n" +
 			"     └─ Filter\n" +
 			"         ├─ GreaterThan\n" +
 			"         │   ├─ mt.i:0!null\n" +
@@ -4504,7 +5025,9 @@ inner join pq on true
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [i s]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -4520,12 +5043,16 @@ inner join pq on true
 			" │   └─ IndexedTableAccess(mytable)\n" +
 			" │       ├─ index: [mytable.i]\n" +
 			" │       ├─ static: [{[NULL, ∞)}]\n" +
-			" │       └─ columns: [i s]\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: mytable\n" +
+			" │           └─ columns: [i s]\n" +
 			" └─ TableAlias(o)\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: one_pk\n" +
+			"             └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -4536,12 +5063,15 @@ inner join pq on true
 			"     ├─ Eq\n" +
 			"     │   ├─ mytable.i:2!null\n" +
 			"     │   └─ (othertable.i2:1!null - 1 (tinyint))\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: othertable\n" +
-			"     │   └─ columns: [s2 i2]\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: othertable\n" +
+			"     │       └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
-			"         └─ columns: [i]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -4549,9 +5079,10 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [tabletest.i:0!null, tabletest.s:1!null, mt.i:4!null, mt.s:5!null, ot.s2:2!null, ot.i2:3!null]\n" +
 			" └─ CrossHashJoin\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: tabletest\n" +
-			"     │   └─ columns: [i s]\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: tabletest\n" +
+			"     │       └─ columns: [i s]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE()\n" +
 			"         ├─ right-key: TUPLE()\n" +
@@ -4563,12 +5094,16 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(othertable)\n" +
 			"             │       ├─ index: [othertable.i2]\n" +
 			"             │       ├─ static: [{[NULL, ∞)}]\n" +
-			"             │       └─ columns: [s2 i2]\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: othertable\n" +
+			"             │           └─ columns: [s2 i2]\n" +
 			"             └─ TableAlias(mt)\n" +
 			"                 └─ IndexedTableAccess(mytable)\n" +
 			"                     ├─ index: [mytable.i]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [i s]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: mytable\n" +
+			"                         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -4580,9 +5115,10 @@ inner join pq on true
 			"     │   ├─ t1.TIMESTAMP:0!null\n" +
 			"     │   └─ t2.tImEstamp:1!null\n" +
 			"     ├─ TableAlias(t1)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: reservedWordsTable\n" +
-			"     │       └─ columns: [timestamp]\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: reservedWordsTable\n" +
+			"     │           └─ columns: [timestamp]\n" +
 			"     └─ TableAlias(t2)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: reservedWordsTable\n" +
@@ -4600,11 +5136,15 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(two_pk)\n" +
 			"     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   └─ columns: [pk1 pk2]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: two_pk\n" +
+			"     │       └─ columns: [pk1 pk2]\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [pk]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: one_pk\n" +
+			"             └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -4623,12 +5163,14 @@ inner join pq on true
 			"     │   └─ Eq\n" +
 			"     │       ├─ one_pk.c2:1\n" +
 			"     │       └─ two_pk.c3:4!null\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: one_pk\n" +
-			"     │   └─ columns: [pk c2]\n" +
-			"     └─ Table\n" +
-			"         ├─ name: two_pk\n" +
-			"         └─ columns: [pk1 pk2 c3]\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: one_pk\n" +
+			"     │       └─ columns: [pk c2]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2 c3]\n" +
 			"",
 	},
 	{
@@ -4643,12 +5185,16 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(two_pk)\n" +
 			"     │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │       └─ columns: [pk1 pk2]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: two_pk\n" +
+			"     │           └─ columns: [pk1 pk2]\n" +
 			"     └─ TableAlias(opk)\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [pk]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: one_pk\n" +
+			"                 └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -4662,11 +5208,15 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(two_pk)\n" +
 			"     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   └─ columns: [pk1 pk2]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: two_pk\n" +
+			"     │       └─ columns: [pk1 pk2]\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [pk]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: one_pk\n" +
+			"             └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -4679,12 +5229,15 @@ inner join pq on true
 			"     │   └─ Eq\n" +
 			"     │       ├─ one_pk.pk:0!null\n" +
 			"     │       └─ two_pk.pk2:2!null\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: one_pk\n" +
-			"     │   └─ columns: [pk]\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: one_pk\n" +
+			"     │       └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         └─ columns: [pk1 pk2]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
@@ -4699,11 +5252,15 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   ├─ index: [one_pk.pk]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [pk]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: one_pk\n" +
+			"     │       └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         └─ columns: [pk1 pk2]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
@@ -4714,12 +5271,15 @@ inner join pq on true
 			"     ├─ AND\n" +
 			"     │   ├─ (one_pk.pk:0!null <=> two_pk.pk1:1!null)\n" +
 			"     │   └─ (one_pk.pk:0!null <=> two_pk.pk2:2!null)\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: one_pk\n" +
-			"     │   └─ columns: [pk]\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: one_pk\n" +
+			"     │       └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         └─ columns: [pk1 pk2]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
@@ -4733,11 +5293,15 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(two_pk)\n" +
 			"     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   └─ columns: [pk1 pk2]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: two_pk\n" +
+			"     │       └─ columns: [pk1 pk2]\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [pk]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: one_pk\n" +
+			"             └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -4749,7 +5313,9 @@ inner join pq on true
 			" └─ IndexedTableAccess(othertable)\n" +
 			"     ├─ index: [othertable.i2]\n" +
 			"     ├─ static: [{[1, 1]}]\n" +
-			"     └─ columns: [s2 i2]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: othertable\n" +
+			"         └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -4761,24 +5327,28 @@ inner join pq on true
 			" └─ IndexedTableAccess(othertable)\n" +
 			"     ├─ index: [othertable.i2]\n" +
 			"     ├─ static: [{[1, 1]}]\n" +
-			"     └─ columns: [s2 i2]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: othertable\n" +
+			"         └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM datetime_table ORDER BY date_col ASC`,
 		ExpectedPlan: "Sort(datetime_table.date_col:1 ASC nullsFirst)\n" +
-			" └─ Table\n" +
-			"     ├─ name: datetime_table\n" +
-			"     └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			" └─ ProcessTable\n" +
+			"     └─ Table\n" +
+			"         ├─ name: datetime_table\n" +
+			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM datetime_table ORDER BY date_col ASC LIMIT 100`,
 		ExpectedPlan: "Limit(100)\n" +
 			" └─ TopN(Limit: [100 (bigint)]; datetime_table.date_col:1 ASC nullsFirst)\n" +
-			"     └─ Table\n" +
-			"         ├─ name: datetime_table\n" +
-			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: datetime_table\n" +
+			"             └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{
@@ -4800,7 +5370,9 @@ inner join pq on true
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.date_col]\n" +
 			"     ├─ static: [{[2020-01-01, 2020-01-01]}]\n" +
-			"     └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: datetime_table\n" +
+			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{
@@ -4812,7 +5384,9 @@ inner join pq on true
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.date_col]\n" +
 			"     ├─ static: [{(2020-01-01, ∞)}]\n" +
-			"     └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: datetime_table\n" +
+			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{
@@ -4824,7 +5398,9 @@ inner join pq on true
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.datetime_col]\n" +
 			"     ├─ static: [{[2020-01-01, 2020-01-01]}]\n" +
-			"     └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: datetime_table\n" +
+			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{
@@ -4836,7 +5412,9 @@ inner join pq on true
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.datetime_col]\n" +
 			"     ├─ static: [{(2020-01-01, ∞)}]\n" +
-			"     └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: datetime_table\n" +
+			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{
@@ -4848,7 +5426,9 @@ inner join pq on true
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.timestamp_col]\n" +
 			"     ├─ static: [{[2020-01-01, 2020-01-01]}]\n" +
-			"     └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: datetime_table\n" +
+			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{
@@ -4860,7 +5440,9 @@ inner join pq on true
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.timestamp_col]\n" +
 			"     ├─ static: [{(2020-01-01, ∞)}]\n" +
-			"     └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: datetime_table\n" +
+			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{
@@ -4875,12 +5457,16 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(datetime_table)\n" +
 			"     │       ├─ index: [datetime_table.timestamp_col]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: datetime_table\n" +
+			"     │           └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"     └─ TableAlias(dt1)\n" +
 			"         └─ IndexedTableAccess(datetime_table)\n" +
 			"             ├─ index: [datetime_table.timestamp_col]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: datetime_table\n" +
+			"                 └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{
@@ -4895,12 +5481,16 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(datetime_table)\n" +
 			"     │       ├─ index: [datetime_table.timestamp_col]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: datetime_table\n" +
+			"     │           └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"     └─ TableAlias(dt1)\n" +
 			"         └─ IndexedTableAccess(datetime_table)\n" +
 			"             ├─ index: [datetime_table.date_col]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: datetime_table\n" +
+			"                 └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{
@@ -4915,12 +5505,16 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(datetime_table)\n" +
 			"     │       ├─ index: [datetime_table.timestamp_col]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: datetime_table\n" +
+			"     │           └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"     └─ TableAlias(dt1)\n" +
 			"         └─ IndexedTableAccess(datetime_table)\n" +
 			"             ├─ index: [datetime_table.datetime_col]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: datetime_table\n" +
+			"                 └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{
@@ -4937,13 +5531,16 @@ inner join pq on true
 			"             │   ├─ dt1.date_col:6\n" +
 			"             │   └─ DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY))\n" +
 			"             ├─ TableAlias(dt2)\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: datetime_table\n" +
-			"             │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"             │   └─ ProcessTable\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: datetime_table\n" +
+			"             │           └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"             └─ TableAlias(dt1)\n" +
 			"                 └─ IndexedTableAccess(datetime_table)\n" +
 			"                     ├─ index: [datetime_table.date_col]\n" +
-			"                     └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: datetime_table\n" +
+			"                         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{
@@ -4961,13 +5558,16 @@ inner join pq on true
 			"                 │   ├─ dt1.date_col:6\n" +
 			"                 │   └─ DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY))\n" +
 			"                 ├─ TableAlias(dt2)\n" +
-			"                 │   └─ Table\n" +
-			"                 │       ├─ name: datetime_table\n" +
-			"                 │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"                 │   └─ ProcessTable\n" +
+			"                 │       └─ Table\n" +
+			"                 │           ├─ name: datetime_table\n" +
+			"                 │           └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"                 └─ TableAlias(dt1)\n" +
 			"                     └─ IndexedTableAccess(datetime_table)\n" +
 			"                         ├─ index: [datetime_table.date_col]\n" +
-			"                         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"                         └─ Table\n" +
+			"                             ├─ name: datetime_table\n" +
+			"                             └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{
@@ -4985,13 +5585,16 @@ inner join pq on true
 			"                 │   ├─ dt1.date_col:6\n" +
 			"                 │   └─ DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY))\n" +
 			"                 ├─ TableAlias(dt2)\n" +
-			"                 │   └─ Table\n" +
-			"                 │       ├─ name: datetime_table\n" +
-			"                 │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"                 │   └─ ProcessTable\n" +
+			"                 │       └─ Table\n" +
+			"                 │           ├─ name: datetime_table\n" +
+			"                 │           └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"                 └─ TableAlias(dt1)\n" +
 			"                     └─ IndexedTableAccess(datetime_table)\n" +
 			"                         ├─ index: [datetime_table.date_col]\n" +
-			"                         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"                         └─ Table\n" +
+			"                             ├─ name: datetime_table\n" +
+			"                             └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{
@@ -5032,15 +5635,21 @@ inner join pq on true
 			"     │   │   └─ IndexedTableAccess(two_pk)\n" +
 			"     │   │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [pk1 pk2]\n" +
+			"     │   │       └─ Table\n" +
+			"     │   │           ├─ name: two_pk\n" +
+			"     │   │           └─ columns: [pk1 pk2]\n" +
 			"     │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │       ├─ index: [one_pk.pk]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [pk]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: one_pk\n" +
+			"     │           └─ columns: [pk]\n" +
 			"     └─ TableAlias(tpk)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             └─ columns: [pk1 pk2]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
@@ -5082,15 +5691,21 @@ inner join pq on true
 			"     │   │   └─ IndexedTableAccess(two_pk)\n" +
 			"     │   │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [pk1 pk2]\n" +
+			"     │   │       └─ Table\n" +
+			"     │   │           ├─ name: two_pk\n" +
+			"     │   │           └─ columns: [pk1 pk2]\n" +
 			"     │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │       ├─ index: [one_pk.pk]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [pk]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: one_pk\n" +
+			"     │           └─ columns: [pk]\n" +
 			"     └─ TableAlias(tpk)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             └─ columns: [pk1 pk2]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
@@ -5116,15 +5731,21 @@ inner join pq on true
 			"     │   │   └─ IndexedTableAccess(two_pk)\n" +
 			"     │   │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [pk1 pk2]\n" +
+			"     │   │       └─ Table\n" +
+			"     │   │           ├─ name: two_pk\n" +
+			"     │   │           └─ columns: [pk1 pk2]\n" +
 			"     │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │       ├─ index: [one_pk.pk]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [pk]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: one_pk\n" +
+			"     │           └─ columns: [pk]\n" +
 			"     └─ TableAlias(tpk2)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             └─ columns: [pk1 pk2]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
@@ -5156,15 +5777,21 @@ inner join pq on true
 			"             │   │   └─ IndexedTableAccess(two_pk)\n" +
 			"             │   │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │   │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             │   │       └─ Table\n" +
+			"             │   │           ├─ name: two_pk\n" +
+			"             │   │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             │   └─ IndexedTableAccess(one_pk)\n" +
 			"             │       ├─ index: [one_pk.pk]\n" +
 			"             │       ├─ static: [{[NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: one_pk\n" +
+			"             │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"             └─ TableAlias(tpk2)\n" +
 			"                 └─ IndexedTableAccess(two_pk)\n" +
 			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: two_pk\n" +
+			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -5191,16 +5818,22 @@ inner join pq on true
 			"     │   ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   │   ├─ index: [one_pk.pk]\n" +
 			"     │   │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │   └─ columns: [pk]\n" +
+			"     │   │   └─ Table\n" +
+			"     │   │       ├─ name: one_pk\n" +
+			"     │   │       └─ columns: [pk]\n" +
 			"     │   └─ TableAlias(tpk)\n" +
 			"     │       └─ IndexedTableAccess(two_pk)\n" +
 			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │           └─ columns: [pk1 pk2]\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: two_pk\n" +
+			"     │               └─ columns: [pk1 pk2]\n" +
 			"     └─ TableAlias(tpk2)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             └─ columns: [pk1 pk2]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
@@ -5227,16 +5860,22 @@ inner join pq on true
 			"     │   ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   │   ├─ index: [one_pk.pk]\n" +
 			"     │   │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │   └─ columns: [pk]\n" +
+			"     │   │   └─ Table\n" +
+			"     │   │       ├─ name: one_pk\n" +
+			"     │   │       └─ columns: [pk]\n" +
 			"     │   └─ TableAlias(tpk)\n" +
 			"     │       └─ IndexedTableAccess(two_pk)\n" +
 			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │           └─ columns: [pk1 pk2]\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: two_pk\n" +
+			"     │               └─ columns: [pk1 pk2]\n" +
 			"     └─ TableAlias(tpk2)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             └─ columns: [pk1 pk2]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
@@ -5261,15 +5900,21 @@ inner join pq on true
 			"     │   │   └─ IndexedTableAccess(two_pk)\n" +
 			"     │   │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [pk1 pk2]\n" +
+			"     │   │       └─ Table\n" +
+			"     │   │           ├─ name: two_pk\n" +
+			"     │   │           └─ columns: [pk1 pk2]\n" +
 			"     │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │       ├─ index: [one_pk.pk]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [pk]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: one_pk\n" +
+			"     │           └─ columns: [pk]\n" +
 			"     └─ TableAlias(tpk2)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             └─ columns: [pk1 pk2]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
@@ -5287,9 +5932,10 @@ inner join pq on true
 			"     │       ├─ tpk.pk2:3!null\n" +
 			"     │       └─ tpk2.pk1:0!null\n" +
 			"     ├─ TableAlias(tpk2)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: two_pk\n" +
-			"     │       └─ columns: [pk1 pk2]\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: two_pk\n" +
+			"     │           └─ columns: [pk1 pk2]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(tpk2.pk2:1!null, tpk2.pk1:0!null)\n" +
 			"         ├─ right-key: TUPLE(tpk.pk1:0!null, tpk.pk2:1!null)\n" +
@@ -5301,11 +5947,15 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(two_pk)\n" +
 			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2]\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: two_pk\n" +
+			"             │           └─ columns: [pk1 pk2]\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [pk]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: one_pk\n" +
+			"                     └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -5318,12 +5968,15 @@ inner join pq on true
 			" │   └─ Eq\n" +
 			" │       ├─ (mytable.i:0!null - 2 (tinyint))\n" +
 			" │       └─ two_pk.pk2:2!null\n" +
-			" ├─ Table\n" +
-			" │   ├─ name: mytable\n" +
-			" │   └─ columns: [i]\n" +
+			" ├─ ProcessTable\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: mytable\n" +
+			" │       └─ columns: [i]\n" +
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     └─ columns: [pk1 pk2]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
@@ -5337,11 +5990,15 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   ├─ index: [one_pk.pk]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [pk]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: one_pk\n" +
+			"     │       └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         └─ columns: [pk1 pk2]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
@@ -5355,11 +6012,15 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   ├─ index: [one_pk.pk]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [pk]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: one_pk\n" +
+			"     │       └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(niltable)\n" +
 			"         ├─ index: [niltable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i f]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: niltable\n" +
+			"             └─ columns: [i f]\n" +
 			"",
 	},
 	{
@@ -5373,11 +6034,15 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(niltable)\n" +
 			"     │   ├─ index: [niltable.i]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [i f]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: niltable\n" +
+			"     │       └─ columns: [i f]\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [pk]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: one_pk\n" +
+			"             └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -5391,9 +6056,10 @@ inner join pq on true
 			"     │   ├─ one_pk.pk:2!null\n" +
 			"     │   └─ (nt2.i:0!null + 1 (tinyint))\n" +
 			"     ├─ TableAlias(nt2)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: niltable\n" +
-			"     │       └─ columns: [i]\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: niltable\n" +
+			"     │           └─ columns: [i]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE((nt2.i:0!null + 1 (tinyint)))\n" +
 			"         ├─ right-key: TUPLE(one_pk.pk:1!null)\n" +
@@ -5405,11 +6071,15 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(niltable)\n" +
 			"             │       ├─ index: [niltable.i]\n" +
 			"             │       ├─ static: [{[NULL, ∞)}]\n" +
-			"             │       └─ columns: [i]\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: niltable\n" +
+			"             │           └─ columns: [i]\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [pk]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: one_pk\n" +
+			"                     └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -5425,11 +6095,15 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   ├─ index: [one_pk.pk]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [pk]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: one_pk\n" +
+			"     │       └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(niltable)\n" +
 			"         ├─ index: [niltable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i f]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: niltable\n" +
+			"             └─ columns: [i f]\n" +
 			"",
 	},
 	{
@@ -5446,11 +6120,15 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(niltable)\n" +
 			"     │   ├─ index: [niltable.i]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [i f]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: niltable\n" +
+			"     │       └─ columns: [i f]\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [pk]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: one_pk\n" +
+			"             └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -5467,11 +6145,15 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(one_pk)\n" +
 			"         │   ├─ index: [one_pk.pk]\n" +
 			"         │   ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   └─ columns: [pk]\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: one_pk\n" +
+			"         │       └─ columns: [pk]\n" +
 			"         └─ IndexedTableAccess(niltable)\n" +
 			"             ├─ index: [niltable.i]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i f]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: niltable\n" +
+			"                 └─ columns: [i f]\n" +
 			"",
 	},
 	{
@@ -5489,11 +6171,15 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(one_pk)\n" +
 			"         │   ├─ index: [one_pk.pk]\n" +
 			"         │   ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   └─ columns: [pk]\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: one_pk\n" +
+			"         │       └─ columns: [pk]\n" +
 			"         └─ IndexedTableAccess(niltable)\n" +
 			"             ├─ index: [niltable.i]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i i2 f]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: niltable\n" +
+			"                 └─ columns: [i i2 f]\n" +
 			"",
 	},
 	{
@@ -5511,11 +6197,15 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(one_pk)\n" +
 			"         │   ├─ index: [one_pk.pk]\n" +
 			"         │   ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   └─ columns: [pk]\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: one_pk\n" +
+			"         │       └─ columns: [pk]\n" +
 			"         └─ IndexedTableAccess(niltable)\n" +
 			"             ├─ index: [niltable.i]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i f]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: niltable\n" +
+			"                 └─ columns: [i f]\n" +
 			"",
 	},
 	{
@@ -5533,11 +6223,15 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │       ├─ index: [one_pk.pk]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [pk c1]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: one_pk\n" +
+			"     │           └─ columns: [pk c1]\n" +
 			"     └─ IndexedTableAccess(niltable)\n" +
 			"         ├─ index: [niltable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i f]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: niltable\n" +
+			"             └─ columns: [i f]\n" +
 			"",
 	},
 	{
@@ -5554,11 +6248,15 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(niltable)\n" +
 			"     │       ├─ index: [niltable.i]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i f]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: niltable\n" +
+			"     │           └─ columns: [i f]\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [pk]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: one_pk\n" +
+			"             └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -5576,11 +6274,15 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │       ├─ index: [one_pk.pk]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [pk]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: one_pk\n" +
+			"     │           └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(niltable)\n" +
 			"         ├─ index: [niltable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i f]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: niltable\n" +
+			"             └─ columns: [i f]\n" +
 			"",
 	},
 	{
@@ -5593,13 +6295,16 @@ inner join pq on true
 			"         └─ LookupJoin\n" +
 			"             ├─ (l.i2:5 <=> r.i2:1)\n" +
 			"             ├─ TableAlias(r)\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: niltable\n" +
-			"             │       └─ columns: [i i2 b f]\n" +
+			"             │   └─ ProcessTable\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: niltable\n" +
+			"             │           └─ columns: [i i2 b f]\n" +
 			"             └─ TableAlias(l)\n" +
 			"                 └─ IndexedTableAccess(niltable)\n" +
 			"                     ├─ index: [niltable.i2]\n" +
-			"                     └─ columns: [i i2 b f]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: niltable\n" +
+			"                         └─ columns: [i i2 b f]\n" +
 			"",
 	},
 	{
@@ -5617,11 +6322,15 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(niltable)\n" +
 			"         │   ├─ index: [niltable.i]\n" +
 			"         │   ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   └─ columns: [i f]\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: niltable\n" +
+			"         │       └─ columns: [i f]\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [pk]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: one_pk\n" +
+			"                 └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -5635,11 +6344,15 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(two_pk)\n" +
 			"     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   └─ columns: [pk1 pk2]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: two_pk\n" +
+			"     │       └─ columns: [pk1 pk2]\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [pk]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: one_pk\n" +
+			"             └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -5653,11 +6366,15 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(two_pk)\n" +
 			"     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   └─ columns: [pk1 pk2]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: two_pk\n" +
+			"     │       └─ columns: [pk1 pk2]\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [pk]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: one_pk\n" +
+			"             └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -5675,12 +6392,16 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(two_pk)\n" +
 			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: two_pk\n" +
+			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ TableAlias(a)\n" +
 			"                 └─ IndexedTableAccess(two_pk)\n" +
 			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"                     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: two_pk\n" +
+			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -5699,13 +6420,16 @@ inner join pq on true
 			"             │       ├─ a.pk2:8!null\n" +
 			"             │       └─ b.pk1:0!null\n" +
 			"             ├─ TableAlias(b)\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: two_pk\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             │   └─ ProcessTable\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: two_pk\n" +
+			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ TableAlias(a)\n" +
 			"                 └─ IndexedTableAccess(two_pk)\n" +
 			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: two_pk\n" +
+			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -5723,12 +6447,16 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(two_pk)\n" +
 			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: two_pk\n" +
+			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ TableAlias(a)\n" +
 			"                 └─ IndexedTableAccess(two_pk)\n" +
 			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"                     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: two_pk\n" +
+			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -5746,12 +6474,16 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(two_pk)\n" +
 			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: two_pk\n" +
+			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ TableAlias(a)\n" +
 			"                 └─ IndexedTableAccess(two_pk)\n" +
 			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"                     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: two_pk\n" +
+			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -5769,12 +6501,16 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(two_pk)\n" +
 			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: two_pk\n" +
+			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ TableAlias(a)\n" +
 			"                 └─ IndexedTableAccess(two_pk)\n" +
 			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"                     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: two_pk\n" +
+			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -5793,13 +6529,16 @@ inner join pq on true
 			"             │       ├─ a.pk2:8!null\n" +
 			"             │       └─ b.pk1:0!null\n" +
 			"             ├─ TableAlias(b)\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: two_pk\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             │   └─ ProcessTable\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: two_pk\n" +
+			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ TableAlias(a)\n" +
 			"                 └─ IndexedTableAccess(two_pk)\n" +
 			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: two_pk\n" +
+			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -5816,11 +6555,15 @@ inner join pq on true
 			"             ├─ IndexedTableAccess(two_pk)\n" +
 			"             │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │   └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: two_pk\n" +
+			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: one_pk\n" +
+			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -5838,12 +6581,16 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(two_pk)\n" +
 			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: two_pk\n" +
+			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ TableAlias(opk)\n" +
 			"                 └─ IndexedTableAccess(one_pk)\n" +
 			"                     ├─ index: [one_pk.pk]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: one_pk\n" +
+			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -5861,12 +6608,16 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(two_pk)\n" +
 			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: two_pk\n" +
+			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ TableAlias(opk)\n" +
 			"                 └─ IndexedTableAccess(one_pk)\n" +
 			"                     ├─ index: [one_pk.pk]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: one_pk\n" +
+			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -5884,12 +6635,16 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(two_pk)\n" +
 			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: two_pk\n" +
+			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ TableAlias(opk)\n" +
 			"                 └─ IndexedTableAccess(one_pk)\n" +
 			"                     ├─ index: [one_pk.pk]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: one_pk\n" +
+			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -5906,11 +6661,15 @@ inner join pq on true
 			"             ├─ IndexedTableAccess(two_pk)\n" +
 			"             │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │   └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: two_pk\n" +
+			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: one_pk\n" +
+			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -5922,7 +6681,9 @@ inner join pq on true
 			" └─ IndexedTableAccess(niltable)\n" +
 			"     ├─ index: [niltable.i2]\n" +
 			"     ├─ static: [{(∞, ∞)}]\n" +
-			"     └─ columns: [i i2 b f]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: niltable\n" +
+			"         └─ columns: [i i2 b f]\n" +
 			"",
 	},
 	{
@@ -5935,7 +6696,9 @@ inner join pq on true
 			" └─ IndexedTableAccess(niltable)\n" +
 			"     ├─ index: [niltable.i2]\n" +
 			"     ├─ static: [{(∞, ∞)}]\n" +
-			"     └─ columns: [i i2 b f]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: niltable\n" +
+			"         └─ columns: [i i2 b f]\n" +
 			"",
 	},
 	{
@@ -5947,7 +6710,9 @@ inner join pq on true
 			" └─ IndexedTableAccess(niltable)\n" +
 			"     ├─ index: [niltable.i2]\n" +
 			"     ├─ static: [{(∞, ∞)}]\n" +
-			"     └─ columns: [i i2 b f]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: niltable\n" +
+			"         └─ columns: [i i2 b f]\n" +
 			"",
 	},
 	{
@@ -5957,7 +6722,9 @@ inner join pq on true
 			" └─ IndexedTableAccess(niltable)\n" +
 			"     ├─ index: [niltable.i2]\n" +
 			"     ├─ static: [{[NULL, NULL]}]\n" +
-			"     └─ columns: [i i2 b f]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: niltable\n" +
+			"         └─ columns: [i i2 b f]\n" +
 			"",
 	},
 	{
@@ -5974,11 +6741,15 @@ inner join pq on true
 			"             ├─ IndexedTableAccess(one_pk)\n" +
 			"             │   ├─ index: [one_pk.pk]\n" +
 			"             │   ├─ static: [{[NULL, ∞)}]\n" +
-			"             │   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: one_pk\n" +
+			"             │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"             └─ IndexedTableAccess(niltable)\n" +
 			"                 ├─ index: [niltable.i]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [i i2 b f]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: niltable\n" +
+			"                     └─ columns: [i i2 b f]\n" +
 			"",
 	},
 	{
@@ -5998,11 +6769,15 @@ inner join pq on true
 			"                 ├─ IndexedTableAccess(one_pk)\n" +
 			"                 │   ├─ index: [one_pk.pk]\n" +
 			"                 │   ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                 │   └─ Table\n" +
+			"                 │       ├─ name: one_pk\n" +
+			"                 │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"                 └─ IndexedTableAccess(niltable)\n" +
 			"                     ├─ index: [niltable.i]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [i i2 b f]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: niltable\n" +
+			"                         └─ columns: [i i2 b f]\n" +
 			"",
 	},
 	{
@@ -6023,11 +6798,15 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(one_pk)\n" +
 			"             │       ├─ index: [one_pk.pk]\n" +
 			"             │       ├─ static: [{[NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: one_pk\n" +
+			"             │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"             └─ IndexedTableAccess(niltable)\n" +
 			"                 ├─ index: [niltable.i]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [i i2 b f]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: niltable\n" +
+			"                     └─ columns: [i i2 b f]\n" +
 			"",
 	},
 	{
@@ -6044,11 +6823,15 @@ inner join pq on true
 			"             ├─ IndexedTableAccess(niltable)\n" +
 			"             │   ├─ index: [niltable.i]\n" +
 			"             │   ├─ static: [{[NULL, ∞)}]\n" +
-			"             │   └─ columns: [i i2 b f]\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: niltable\n" +
+			"             │       └─ columns: [i i2 b f]\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: one_pk\n" +
+			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -6068,11 +6851,15 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(niltable)\n" +
 			"             │       ├─ index: [niltable.i]\n" +
 			"             │       ├─ static: [{[NULL, ∞)}]\n" +
-			"             │       └─ columns: [i i2 b f]\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: niltable\n" +
+			"             │           └─ columns: [i i2 b f]\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: one_pk\n" +
+			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -6093,11 +6880,15 @@ inner join pq on true
 			"                 ├─ IndexedTableAccess(niltable)\n" +
 			"                 │   ├─ index: [niltable.i]\n" +
 			"                 │   ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │   └─ columns: [i i2 b f]\n" +
+			"                 │   └─ Table\n" +
+			"                 │       ├─ name: niltable\n" +
+			"                 │       └─ columns: [i i2 b f]\n" +
 			"                 └─ IndexedTableAccess(one_pk)\n" +
 			"                     ├─ index: [one_pk.pk]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: one_pk\n" +
+			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -6117,11 +6908,15 @@ inner join pq on true
 			"             ├─ IndexedTableAccess(niltable)\n" +
 			"             │   ├─ index: [niltable.i]\n" +
 			"             │   ├─ static: [{[NULL, ∞)}]\n" +
-			"             │   └─ columns: [i i2 b f]\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: niltable\n" +
+			"             │       └─ columns: [i i2 b f]\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: one_pk\n" +
+			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -6138,11 +6933,15 @@ inner join pq on true
 			"             ├─ IndexedTableAccess(two_pk)\n" +
 			"             │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │   └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: two_pk\n" +
+			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: one_pk\n" +
+			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -6151,16 +6950,18 @@ inner join pq on true
 			" ├─ GreaterThan\n" +
 			" │   ├─ (two_pk.pk1:1!null - one_pk.pk:0!null)\n" +
 			" │   └─ 0 (tinyint)\n" +
-			" ├─ Table\n" +
-			" │   ├─ name: one_pk\n" +
-			" │   └─ columns: [pk]\n" +
+			" ├─ ProcessTable\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: one_pk\n" +
+			" │       └─ columns: [pk]\n" +
 			" └─ Filter\n" +
 			"     ├─ LessThan\n" +
 			"     │   ├─ two_pk.pk2:1!null\n" +
 			"     │   └─ 1 (tinyint)\n" +
-			"     └─ Table\n" +
-			"         ├─ name: two_pk\n" +
-			"         └─ columns: [pk1 pk2]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
@@ -6171,15 +6972,17 @@ inner join pq on true
 			"     └─ Project\n" +
 			"         ├─ columns: [one_pk.pk:7!null, one_pk.c1:8, one_pk.c2:9, one_pk.c3:10, one_pk.c4:11, one_pk.c5:12, two_pk.pk1:0!null, two_pk.pk2:1!null, two_pk.c1:2!null, two_pk.c2:3!null, two_pk.c3:4!null, two_pk.c4:5!null, two_pk.c5:6!null]\n" +
 			"         └─ CrossHashJoin\n" +
-			"             ├─ Table\n" +
-			"             │   ├─ name: two_pk\n" +
-			"             │   └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             ├─ ProcessTable\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: two_pk\n" +
+			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: TUPLE()\n" +
 			"                 ├─ right-key: TUPLE()\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: one_pk\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                 └─ ProcessTable\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: one_pk\n" +
+			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -6199,11 +7002,15 @@ inner join pq on true
 			"             ├─ IndexedTableAccess(one_pk)\n" +
 			"             │   ├─ index: [one_pk.pk]\n" +
 			"             │   ├─ static: [{[NULL, ∞)}]\n" +
-			"             │   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: one_pk\n" +
+			"             │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"             └─ IndexedTableAccess(two_pk)\n" +
 			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"                 ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: two_pk\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -6220,11 +7027,15 @@ inner join pq on true
 			"             ├─ IndexedTableAccess(one_pk)\n" +
 			"             │   ├─ index: [one_pk.pk]\n" +
 			"             │   ├─ static: [{[NULL, ∞)}]\n" +
-			"             │   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: one_pk\n" +
+			"             │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"             └─ IndexedTableAccess(two_pk)\n" +
 			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"                 ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: two_pk\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -6241,11 +7052,15 @@ inner join pq on true
 			"             ├─ IndexedTableAccess(two_pk)\n" +
 			"             │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │   └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: two_pk\n" +
+			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: one_pk\n" +
+			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -6263,12 +7078,16 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(two_pk)\n" +
 			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: two_pk\n" +
+			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ TableAlias(opk)\n" +
 			"                 └─ IndexedTableAccess(one_pk)\n" +
 			"                     ├─ index: [one_pk.pk]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: one_pk\n" +
+			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -6286,12 +7105,16 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(two_pk)\n" +
 			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: two_pk\n" +
+			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ TableAlias(opk)\n" +
 			"                 └─ IndexedTableAccess(one_pk)\n" +
 			"                     ├─ index: [one_pk.pk]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: one_pk\n" +
+			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -6305,15 +7128,17 @@ inner join pq on true
 			"             ├─ Eq\n" +
 			"             │   ├─ one_pk.c1:8\n" +
 			"             │   └─ two_pk.c1:2!null\n" +
-			"             ├─ Table\n" +
-			"             │   ├─ name: two_pk\n" +
-			"             │   └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             ├─ ProcessTable\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: two_pk\n" +
+			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: TUPLE(two_pk.c1:2!null)\n" +
 			"                 ├─ right-key: TUPLE(one_pk.c1:1)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: one_pk\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                 └─ ProcessTable\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: one_pk\n" +
+			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -6327,15 +7152,17 @@ inner join pq on true
 			"             ├─ Eq\n" +
 			"             │   ├─ one_pk.c1:8\n" +
 			"             │   └─ two_pk.c1:2!null\n" +
-			"             ├─ Table\n" +
-			"             │   ├─ name: two_pk\n" +
-			"             │   └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             ├─ ProcessTable\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: two_pk\n" +
+			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: TUPLE(two_pk.c1:2!null)\n" +
 			"                 ├─ right-key: TUPLE(one_pk.c1:1)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: one_pk\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                 └─ ProcessTable\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: one_pk\n" +
+			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -6346,9 +7173,10 @@ inner join pq on true
 			"     ├─ Eq\n" +
 			"     │   ├─ one_pk.c1:4\n" +
 			"     │   └─ two_pk.c1:2!null\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: two_pk\n" +
-			"     │   └─ columns: [pk1 pk2 c1]\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: two_pk\n" +
+			"     │       └─ columns: [pk1 pk2 c1]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(two_pk.c1:2!null)\n" +
 			"         ├─ right-key: TUPLE(one_pk.c1:1)\n" +
@@ -6356,9 +7184,10 @@ inner join pq on true
 			"             ├─ Eq\n" +
 			"             │   ├─ one_pk.c1:1\n" +
 			"             │   └─ 10 (tinyint)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: one_pk\n" +
-			"                 └─ columns: [pk c1]\n" +
+			"             └─ ProcessTable\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: one_pk\n" +
+			"                     └─ columns: [pk c1]\n" +
 			"",
 	},
 	{
@@ -6374,9 +7203,10 @@ inner join pq on true
 			"             │   │   ├─ t2.pk2:1!null\n" +
 			"             │   │   └─ 1 (tinyint)\n" +
 			"             │   └─ TableAlias(t2)\n" +
-			"             │       └─ Table\n" +
-			"             │           ├─ name: two_pk\n" +
-			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             │       └─ ProcessTable\n" +
+			"             │           └─ Table\n" +
+			"             │               ├─ name: two_pk\n" +
+			"             │               └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: TUPLE()\n" +
 			"                 ├─ right-key: TUPLE()\n" +
@@ -6388,7 +7218,9 @@ inner join pq on true
 			"                         └─ IndexedTableAccess(one_pk)\n" +
 			"                             ├─ index: [one_pk.pk]\n" +
 			"                             ├─ static: [{[1, 1]}]\n" +
-			"                             └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                             └─ Table\n" +
+			"                                 ├─ name: one_pk\n" +
+			"                                 └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -6411,7 +7243,9 @@ inner join pq on true
 			"             │       └─ IndexedTableAccess(two_pk)\n" +
 			"             │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │           ├─ static: [{[1, 1], [1, 1]}]\n" +
-			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             │           └─ Table\n" +
+			"             │               ├─ name: two_pk\n" +
+			"             │               └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: TUPLE()\n" +
 			"                 ├─ right-key: TUPLE()\n" +
@@ -6423,7 +7257,9 @@ inner join pq on true
 			"                         └─ IndexedTableAccess(one_pk)\n" +
 			"                             ├─ index: [one_pk.pk]\n" +
 			"                             ├─ static: [{[1, 1]}]\n" +
-			"                             └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                             └─ Table\n" +
+			"                                 ├─ name: one_pk\n" +
+			"                                 └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -6445,7 +7281,9 @@ inner join pq on true
 			"     │   │           └─ IndexedTableAccess(mytable)\n" +
 			"     │   │               ├─ index: [mytable.i]\n" +
 			"     │   │               ├─ static: [{(2, ∞)}]\n" +
-			"     │   │               └─ columns: [i]\n" +
+			"     │   │               └─ Table\n" +
+			"     │   │                   ├─ name: mytable\n" +
+			"     │   │                   └─ columns: [i]\n" +
 			"     │   │       IS NULL\n" +
 			"     │   └─ NOT\n" +
 			"     │       └─ Subquery\n" +
@@ -6457,12 +7295,15 @@ inner join pq on true
 			"     │               │   └─ mt.i:0!null\n" +
 			"     │               └─ IndexedTableAccess(othertable)\n" +
 			"     │                   ├─ index: [othertable.i2]\n" +
-			"     │                   └─ columns: [i2]\n" +
+			"     │                   └─ Table\n" +
+			"     │                       ├─ name: othertable\n" +
+			"     │                       └─ columns: [i2]\n" +
 			"     │           IS NULL\n" +
 			"     └─ TableAlias(mt)\n" +
-			"         └─ Table\n" +
-			"             ├─ name: mytable\n" +
-			"             └─ columns: [i s]\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -6483,7 +7324,9 @@ inner join pq on true
 			"     │   │           │   └─ mt.i:0!null\n" +
 			"     │   │           └─ IndexedTableAccess(mytable)\n" +
 			"     │   │               ├─ index: [mytable.i]\n" +
-			"     │   │               └─ columns: [i]\n" +
+			"     │   │               └─ Table\n" +
+			"     │   │                   ├─ name: mytable\n" +
+			"     │   │                   └─ columns: [i]\n" +
 			"     │   │       IS NULL\n" +
 			"     │   └─ NOT\n" +
 			"     │       └─ Subquery\n" +
@@ -6499,12 +7342,15 @@ inner join pq on true
 			"     │               │       └─ 2 (tinyint)\n" +
 			"     │               └─ IndexedTableAccess(othertable)\n" +
 			"     │                   ├─ index: [othertable.i2]\n" +
-			"     │                   └─ columns: [i2]\n" +
+			"     │                   └─ Table\n" +
+			"     │                       ├─ name: othertable\n" +
+			"     │                       └─ columns: [i2]\n" +
 			"     │           IS NULL\n" +
 			"     └─ TableAlias(mt)\n" +
-			"         └─ Table\n" +
-			"             ├─ name: mytable\n" +
-			"             └─ columns: [i s]\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -6517,7 +7363,9 @@ inner join pq on true
 			" │       └─ IndexedTableAccess(one_pk)\n" +
 			" │           ├─ index: [one_pk.pk]\n" +
 			" │           ├─ static: [{[1, 1]}]\n" +
-			" │           └─ columns: [pk]\n" +
+			" │           └─ Table\n" +
+			" │               ├─ name: one_pk\n" +
+			" │               └─ columns: [pk]\n" +
 			" │   as (SELECT pk from one_pk where pk = 1 limit 1)]\n" +
 			" └─ Sort(t1.pk:0!null ASC nullsFirst, t2.pk2:7!null ASC nullsFirst)\n" +
 			"     └─ Project\n" +
@@ -6528,9 +7376,10 @@ inner join pq on true
 			"             │   │   ├─ t2.pk2:1!null\n" +
 			"             │   │   └─ 1 (tinyint)\n" +
 			"             │   └─ TableAlias(t2)\n" +
-			"             │       └─ Table\n" +
-			"             │           ├─ name: two_pk\n" +
-			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             │       └─ ProcessTable\n" +
+			"             │           └─ Table\n" +
+			"             │               ├─ name: two_pk\n" +
+			"             │               └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: TUPLE()\n" +
 			"                 ├─ right-key: TUPLE()\n" +
@@ -6542,7 +7391,9 @@ inner join pq on true
 			"                         └─ IndexedTableAccess(one_pk)\n" +
 			"                             ├─ index: [one_pk.pk]\n" +
 			"                             ├─ static: [{[1, 1]}]\n" +
-			"                             └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                             └─ Table\n" +
+			"                                 ├─ name: one_pk\n" +
+			"                                 └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -6561,9 +7412,10 @@ inner join pq on true
 			"                 │   └─ Eq\n" +
 			"                 │       ├─ othertable.s2:0!null\n" +
 			"                 │       └─ second (longtext)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: othertable\n" +
-			"                     └─ columns: [s2 i2]\n" +
+			"                 └─ ProcessTable\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: othertable\n" +
+			"                         └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -6610,9 +7462,10 @@ inner join pq on true
 			"                 │   └─ GreaterThan\n" +
 			"                 │       ├─ othertable.i2:1!null\n" +
 			"                 │       └─ 2 (tinyint)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: othertable\n" +
-			"                     └─ columns: [s2 i2]\n" +
+			"                 └─ ProcessTable\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: othertable\n" +
+			"                         └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -6651,9 +7504,10 @@ inner join pq on true
 			"     ├─ lag(bigtable.t, 1, (bigtable.t + 1)) over ( partition by bigtable.n ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)\n" +
 			"     ├─ bigtable.t:0!null\n" +
 			"     ├─ bigtable.n:1\n" +
-			"     └─ Table\n" +
-			"         ├─ name: bigtable\n" +
-			"         └─ columns: [t n]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: bigtable\n" +
+			"             └─ columns: [t n]\n" +
 			"",
 	},
 	{
@@ -6663,9 +7517,10 @@ inner join pq on true
 			" └─ Window\n" +
 			"     ├─ row_number() over ( ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)\n" +
 			"     ├─ mytable.i:0!null\n" +
-			"     └─ Table\n" +
-			"         ├─ name: mytable\n" +
-			"         └─ columns: [i]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -6675,9 +7530,10 @@ inner join pq on true
 			" └─ Window\n" +
 			"     ├─ row_number() over ( partition by mytable.s order by mytable.i ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)\n" +
 			"     ├─ mytable.i:0!null\n" +
-			"     └─ Table\n" +
-			"         ├─ name: mytable\n" +
-			"         └─ columns: [i s]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -6688,9 +7544,10 @@ inner join pq on true
 			"         ├─ GreaterThan\n" +
 			"         │   ├─ two_pk.c1:2!null\n" +
 			"         │   └─ 1 (tinyint)\n" +
-			"         └─ Table\n" +
-			"             ├─ name: two_pk\n" +
-			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -6700,7 +7557,9 @@ inner join pq on true
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         ├─ static: [{[1, 1], [2, 2]}]\n" +
-			"         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -6712,9 +7571,10 @@ inner join pq on true
 			"             ├─ GreaterThan\n" +
 			"             │   ├─ two_pk.c1:2!null\n" +
 			"             │   └─ 1 (tinyint)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: two_pk\n" +
-			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             └─ ProcessTable\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: two_pk\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -6725,7 +7585,9 @@ inner join pq on true
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             ├─ static: [{[1, 1], [2, 2]}]\n" +
-			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -6743,11 +7605,15 @@ inner join pq on true
 			"                     ├─ IndexedTableAccess(two_pk)\n" +
 			"                     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"                     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     │   └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                     │   └─ Table\n" +
+			"                     │       ├─ name: two_pk\n" +
+			"                     │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"                     └─ IndexedTableAccess(one_pk)\n" +
 			"                         ├─ index: [one_pk.pk]\n" +
 			"                         ├─ static: [{[NULL, ∞)}]\n" +
-			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                         └─ Table\n" +
+			"                             ├─ name: one_pk\n" +
+			"                             └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -6772,9 +7638,10 @@ inner join pq on true
 			"                     └─ HashLookup\n" +
 			"                         ├─ left-key: TUPLE(t2.pk1:0!null)\n" +
 			"                         ├─ right-key: TUPLE(one_pk.pk:0!null)\n" +
-			"                         └─ Table\n" +
-			"                             ├─ name: one_pk\n" +
-			"                             └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                         └─ ProcessTable\n" +
+			"                             └─ Table\n" +
+			"                                 ├─ name: one_pk\n" +
+			"                                 └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -6786,13 +7653,16 @@ inner join pq on true
 			"     │   ├─ a.y:2!null\n" +
 			"     │   └─ b.z:0!null\n" +
 			"     ├─ TableAlias(b)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: invert_pk\n" +
-			"     │       └─ columns: [z]\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: invert_pk\n" +
+			"     │           └─ columns: [z]\n" +
 			"     └─ TableAlias(a)\n" +
 			"         └─ IndexedTableAccess(invert_pk)\n" +
 			"             ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
-			"             └─ columns: [x y z]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: invert_pk\n" +
+			"                 └─ columns: [x y z]\n" +
 			"",
 	},
 	{
@@ -6804,9 +7674,10 @@ inner join pq on true
 			"     │   ├─ a.y:2!null\n" +
 			"     │   └─ b.z:0!null\n" +
 			"     ├─ TableAlias(b)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: invert_pk\n" +
-			"     │       └─ columns: [z]\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: invert_pk\n" +
+			"     │           └─ columns: [z]\n" +
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
 			"         │   ├─ a.z:2!null\n" +
@@ -6814,7 +7685,9 @@ inner join pq on true
 			"         └─ TableAlias(a)\n" +
 			"             └─ IndexedTableAccess(invert_pk)\n" +
 			"                 ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
-			"                 └─ columns: [x y z]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: invert_pk\n" +
+			"                     └─ columns: [x y z]\n" +
 			"",
 	},
 	{
@@ -6822,7 +7695,9 @@ inner join pq on true
 		ExpectedPlan: "IndexedTableAccess(invert_pk)\n" +
 			" ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
 			" ├─ static: [{[0, 0], [NULL, ∞), [NULL, ∞)}]\n" +
-			" └─ columns: [x y z]\n" +
+			" └─ Table\n" +
+			"     ├─ name: invert_pk\n" +
+			"     └─ columns: [x y z]\n" +
 			"",
 	},
 	{
@@ -6830,7 +7705,9 @@ inner join pq on true
 		ExpectedPlan: "IndexedTableAccess(invert_pk)\n" +
 			" ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
 			" ├─ static: [{[0, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
-			" └─ columns: [x y z]\n" +
+			" └─ Table\n" +
+			"     ├─ name: invert_pk\n" +
+			"     └─ columns: [x y z]\n" +
 			"",
 	},
 	{
@@ -6838,7 +7715,9 @@ inner join pq on true
 		ExpectedPlan: "IndexedTableAccess(invert_pk)\n" +
 			" ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
 			" ├─ static: [{[0, ∞), (NULL, 1), [NULL, ∞)}]\n" +
-			" └─ columns: [x y z]\n" +
+			" └─ Table\n" +
+			"     ├─ name: invert_pk\n" +
+			"     └─ columns: [x y z]\n" +
 			"",
 	},
 	{
@@ -6846,7 +7725,9 @@ inner join pq on true
 		ExpectedPlan: "IndexedTableAccess(one_pk)\n" +
 			" ├─ index: [one_pk.pk]\n" +
 			" ├─ static: [{[1, 1]}]\n" +
-			" └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			" └─ Table\n" +
+			"     ├─ name: one_pk\n" +
+			"     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -6863,9 +7744,10 @@ inner join pq on true
 			"     │       └─ a.pk:1!null\n" +
 			"     ├─ CrossHashJoin\n" +
 			"     │   ├─ TableAlias(c)\n" +
-			"     │   │   └─ Table\n" +
-			"     │   │       ├─ name: one_pk\n" +
-			"     │   │       └─ columns: [pk]\n" +
+			"     │   │   └─ ProcessTable\n" +
+			"     │   │       └─ Table\n" +
+			"     │   │           ├─ name: one_pk\n" +
+			"     │   │           └─ columns: [pk]\n" +
 			"     │   └─ HashLookup\n" +
 			"     │       ├─ left-key: TUPLE()\n" +
 			"     │       ├─ right-key: TUPLE()\n" +
@@ -6876,7 +7758,9 @@ inner join pq on true
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
-			"             └─ columns: [pk]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: one_pk\n" +
+			"                 └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -6892,9 +7776,10 @@ inner join pq on true
 			"     │       ├─ b.pk:0!null\n" +
 			"     │       └─ a.pk:2!null\n" +
 			"     ├─ TableAlias(b)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: one_pk\n" +
-			"     │       └─ columns: [pk]\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: one_pk\n" +
+			"     │           └─ columns: [pk]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(b.pk:0!null, b.pk:0!null)\n" +
 			"         ├─ right-key: TUPLE(c.pk:0!null, a.pk:1!null)\n" +
@@ -6928,16 +7813,22 @@ inner join pq on true
 			"     │   │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │   │       ├─ index: [one_pk.pk]\n" +
 			"     │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [pk]\n" +
+			"     │   │       └─ Table\n" +
+			"     │   │           ├─ name: one_pk\n" +
+			"     │   │           └─ columns: [pk]\n" +
 			"     │   └─ TableAlias(a)\n" +
 			"     │       └─ IndexedTableAccess(one_pk)\n" +
 			"     │           ├─ index: [one_pk.pk]\n" +
 			"     │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: one_pk\n" +
+			"     │               └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"     └─ TableAlias(c)\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
-			"             └─ columns: [pk]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: one_pk\n" +
+			"                 └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -6950,9 +7841,10 @@ inner join pq on true
 			"     │   └─ d.pk:8!null\n" +
 			"     ├─ CrossHashJoin\n" +
 			"     │   ├─ TableAlias(a)\n" +
-			"     │   │   └─ Table\n" +
-			"     │   │       ├─ name: one_pk\n" +
-			"     │   │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     │   │   └─ ProcessTable\n" +
+			"     │   │       └─ Table\n" +
+			"     │   │           ├─ name: one_pk\n" +
+			"     │   │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"     │   └─ HashLookup\n" +
 			"     │       ├─ left-key: TUPLE()\n" +
 			"     │       ├─ right-key: TUPLE()\n" +
@@ -6964,16 +7856,22 @@ inner join pq on true
 			"     │           │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │           │       ├─ index: [one_pk.pk]\n" +
 			"     │           │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           │       └─ columns: [pk]\n" +
+			"     │           │       └─ Table\n" +
+			"     │           │           ├─ name: one_pk\n" +
+			"     │           │           └─ columns: [pk]\n" +
 			"     │           └─ TableAlias(b)\n" +
 			"     │               └─ IndexedTableAccess(one_pk)\n" +
 			"     │                   ├─ index: [one_pk.pk]\n" +
 			"     │                   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │                   └─ columns: [pk]\n" +
+			"     │                   └─ Table\n" +
+			"     │                       ├─ name: one_pk\n" +
+			"     │                       └─ columns: [pk]\n" +
 			"     └─ TableAlias(d)\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
-			"             └─ columns: [pk]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: one_pk\n" +
+			"                 └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -6996,9 +7894,10 @@ inner join pq on true
 			"         ├─ right-key: TUPLE(c.pk:0!null)\n" +
 			"         └─ CrossHashJoin\n" +
 			"             ├─ TableAlias(c)\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: one_pk\n" +
-			"             │       └─ columns: [pk]\n" +
+			"             │   └─ ProcessTable\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: one_pk\n" +
+			"             │           └─ columns: [pk]\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: TUPLE()\n" +
 			"                 ├─ right-key: TUPLE()\n" +
@@ -7019,19 +7918,23 @@ inner join pq on true
 			"         │   └─ ot.i2:5!null\n" +
 			"         ├─ CrossHashJoin\n" +
 			"         │   ├─ TableAlias(mt)\n" +
-			"         │   │   └─ Table\n" +
-			"         │   │       ├─ name: mytable\n" +
-			"         │   │       └─ columns: [i s]\n" +
+			"         │   │   └─ ProcessTable\n" +
+			"         │   │       └─ Table\n" +
+			"         │   │           ├─ name: mytable\n" +
+			"         │   │           └─ columns: [i s]\n" +
 			"         │   └─ HashLookup\n" +
 			"         │       ├─ left-key: TUPLE()\n" +
 			"         │       ├─ right-key: TUPLE()\n" +
-			"         │       └─ Table\n" +
-			"         │           ├─ name: tabletest\n" +
-			"         │           └─ columns: [i s]\n" +
+			"         │       └─ ProcessTable\n" +
+			"         │           └─ Table\n" +
+			"         │               ├─ name: tabletest\n" +
+			"         │               └─ columns: [i s]\n" +
 			"         └─ TableAlias(ot)\n" +
 			"             └─ IndexedTableAccess(othertable)\n" +
 			"                 ├─ index: [othertable.i2]\n" +
-			"                 └─ columns: [s2 i2]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: othertable\n" +
+			"                     └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -7051,9 +7954,10 @@ inner join pq on true
 			"         │   │   ├─ c.v2:1\n" +
 			"         │   │   └─ 0 (tinyint)\n" +
 			"         │   └─ TableAlias(c)\n" +
-			"         │       └─ Table\n" +
-			"         │           ├─ name: one_pk_three_idx\n" +
-			"         │           └─ columns: [v1 v2]\n" +
+			"         │       └─ ProcessTable\n" +
+			"         │           └─ Table\n" +
+			"         │               ├─ name: one_pk_three_idx\n" +
+			"         │               └─ columns: [v1 v2]\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: TUPLE(c.v1:0)\n" +
 			"             ├─ right-key: TUPLE(b.pk:0!null)\n" +
@@ -7088,7 +7992,9 @@ inner join pq on true
 			"     │   │       └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     │   │           ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │   │           ├─ static: [{[0, 0]}]\n" +
-			"     │   │           └─ columns: [pk]\n" +
+			"     │   │           └─ Table\n" +
+			"     │   │               ├─ name: one_pk_three_idx\n" +
+			"     │   │               └─ columns: [pk]\n" +
 			"     │   └─ HashLookup\n" +
 			"     │       ├─ left-key: TUPLE()\n" +
 			"     │       ├─ right-key: TUPLE()\n" +
@@ -7097,13 +8003,16 @@ inner join pq on true
 			"     │           │   ├─ a.v2:1\n" +
 			"     │           │   └─ 1 (tinyint)\n" +
 			"     │           └─ TableAlias(a)\n" +
-			"     │               └─ Table\n" +
-			"     │                   ├─ name: one_pk_three_idx\n" +
-			"     │                   └─ columns: [pk v2]\n" +
+			"     │               └─ ProcessTable\n" +
+			"     │                   └─ Table\n" +
+			"     │                       ├─ name: one_pk_three_idx\n" +
+			"     │                       └─ columns: [pk v2]\n" +
 			"     └─ TableAlias(c)\n" +
 			"         └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"             ├─ index: [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3]\n" +
-			"             └─ columns: [v1 v2]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: one_pk_three_idx\n" +
+			"                 └─ columns: [v1 v2]\n" +
 			"",
 	},
 	{
@@ -7115,9 +8024,10 @@ inner join pq on true
 			"     │   ├─ (a.i:2!null + 1 (tinyint))\n" +
 			"     │   └─ (c.i:0!null - 1 (tinyint))\n" +
 			"     ├─ TableAlias(c)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: mytable\n" +
-			"     │       └─ columns: [i s]\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [i s]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE((c.i:0!null - 1 (tinyint)))\n" +
 			"         ├─ right-key: TUPLE((a.i:0!null + 1 (tinyint)))\n" +
@@ -7148,9 +8058,10 @@ inner join pq on true
 			"     │   ├─ b.i:1!null\n" +
 			"     │   └─ d.i:0!null\n" +
 			"     ├─ TableAlias(d)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: mytable\n" +
-			"     │       └─ columns: [i]\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [i]\n" +
 			"     └─ LeftOuterJoin\n" +
 			"         ├─ Eq\n" +
 			"         │   ├─ a.i:2!null\n" +
@@ -7163,12 +8074,16 @@ inner join pq on true
 			"         │   │   └─ IndexedTableAccess(mytable)\n" +
 			"         │   │       ├─ index: [mytable.i]\n" +
 			"         │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │       └─ columns: [i]\n" +
+			"         │   │       └─ Table\n" +
+			"         │   │           ├─ name: mytable\n" +
+			"         │   │           └─ columns: [i]\n" +
 			"         │   └─ TableAlias(a)\n" +
 			"         │       └─ IndexedTableAccess(mytable)\n" +
 			"         │           ├─ index: [mytable.i]\n" +
 			"         │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │           └─ columns: [i s]\n" +
+			"         │           └─ Table\n" +
+			"         │               ├─ name: mytable\n" +
+			"         │               └─ columns: [i s]\n" +
 			"         └─ TableAlias(c)\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
@@ -7195,20 +8110,27 @@ inner join pq on true
 			"     │   │   │   └─ IndexedTableAccess(othertable)\n" +
 			"     │   │   │       ├─ index: [othertable.i2]\n" +
 			"     │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │   │       └─ columns: [s2 i2]\n" +
+			"     │   │   │       └─ Table\n" +
+			"     │   │   │           ├─ name: othertable\n" +
+			"     │   │   │           └─ columns: [s2 i2]\n" +
 			"     │   │   └─ TableAlias(a)\n" +
 			"     │   │       └─ IndexedTableAccess(mytable)\n" +
 			"     │   │           ├─ index: [mytable.i]\n" +
 			"     │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │           └─ columns: [i s]\n" +
+			"     │   │           └─ Table\n" +
+			"     │   │               ├─ name: mytable\n" +
+			"     │   │               └─ columns: [i s]\n" +
 			"     │   └─ TableAlias(c)\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: mytable\n" +
-			"     │           └─ columns: [i]\n" +
+			"     │       └─ ProcessTable\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: mytable\n" +
+			"     │               └─ columns: [i]\n" +
 			"     └─ TableAlias(d)\n" +
 			"         └─ IndexedTableAccess(othertable)\n" +
 			"             ├─ index: [othertable.i2]\n" +
-			"             └─ columns: [i2]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: othertable\n" +
+			"                 └─ columns: [i2]\n" +
 			"",
 	},
 	{
@@ -7224,9 +8146,10 @@ inner join pq on true
 			"     │   │   ├─ a.i:3!null\n" +
 			"     │   │   └─ (c.i:0!null - 1 (tinyint))\n" +
 			"     │   ├─ TableAlias(c)\n" +
-			"     │   │   └─ Table\n" +
-			"     │   │       ├─ name: mytable\n" +
-			"     │   │       └─ columns: [i]\n" +
+			"     │   │   └─ ProcessTable\n" +
+			"     │   │       └─ Table\n" +
+			"     │   │           ├─ name: mytable\n" +
+			"     │   │           └─ columns: [i]\n" +
 			"     │   └─ LeftOuterMergeJoin\n" +
 			"     │       ├─ cmp: Eq\n" +
 			"     │       │   ├─ (b.i2:2!null + 1 (tinyint))\n" +
@@ -7235,16 +8158,22 @@ inner join pq on true
 			"     │       │   └─ IndexedTableAccess(othertable)\n" +
 			"     │       │       ├─ index: [othertable.i2]\n" +
 			"     │       │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       │       └─ columns: [s2 i2]\n" +
+			"     │       │       └─ Table\n" +
+			"     │       │           ├─ name: othertable\n" +
+			"     │       │           └─ columns: [s2 i2]\n" +
 			"     │       └─ TableAlias(a)\n" +
 			"     │           └─ IndexedTableAccess(mytable)\n" +
 			"     │               ├─ index: [mytable.i]\n" +
 			"     │               ├─ static: [{[NULL, ∞)}]\n" +
-			"     │               └─ columns: [i s]\n" +
+			"     │               └─ Table\n" +
+			"     │                   ├─ name: mytable\n" +
+			"     │                   └─ columns: [i s]\n" +
 			"     └─ TableAlias(d)\n" +
 			"         └─ IndexedTableAccess(othertable)\n" +
 			"             ├─ index: [othertable.i2]\n" +
-			"             └─ columns: [i2]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: othertable\n" +
+			"                 └─ columns: [i2]\n" +
 			"",
 	},
 	{
@@ -7259,12 +8188,16 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     │       ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [pk v3]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: one_pk_three_idx\n" +
+			"     │           └─ columns: [pk v3]\n" +
 			"     └─ TableAlias(i)\n" +
 			"         └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"             ├─ index: [one_pk_two_idx.v1]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [pk v1]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: one_pk_two_idx\n" +
+			"                 └─ columns: [pk v1]\n" +
 			"",
 	},
 	{
@@ -7283,16 +8216,22 @@ inner join pq on true
 			"     │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     │   │       ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [pk v3]\n" +
+			"     │   │       └─ Table\n" +
+			"     │   │           ├─ name: one_pk_three_idx\n" +
+			"     │   │           └─ columns: [pk v3]\n" +
 			"     │   └─ TableAlias(i)\n" +
 			"     │       └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"     │           ├─ index: [one_pk_two_idx.v1]\n" +
 			"     │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           └─ columns: [pk v1]\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: one_pk_two_idx\n" +
+			"     │               └─ columns: [pk v1]\n" +
 			"     └─ TableAlias(k)\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
-			"             └─ columns: [pk c1]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: one_pk\n" +
+			"                 └─ columns: [pk c1]\n" +
 			"",
 	},
 	{
@@ -7307,12 +8246,16 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     │       ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [pk v3]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: one_pk_three_idx\n" +
+			"     │           └─ columns: [pk v3]\n" +
 			"     └─ TableAlias(i)\n" +
 			"         └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"             ├─ index: [one_pk_two_idx.v1]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [pk v1]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: one_pk_two_idx\n" +
+			"                 └─ columns: [pk v1]\n" +
 			"",
 	},
 	{
@@ -7331,16 +8274,22 @@ inner join pq on true
 			"     │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     │   │       ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [pk v3]\n" +
+			"     │   │       └─ Table\n" +
+			"     │   │           ├─ name: one_pk_three_idx\n" +
+			"     │   │           └─ columns: [pk v3]\n" +
 			"     │   └─ TableAlias(i)\n" +
 			"     │       └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"     │           ├─ index: [one_pk_two_idx.v1]\n" +
 			"     │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           └─ columns: [pk v1]\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: one_pk_two_idx\n" +
+			"     │               └─ columns: [pk v1]\n" +
 			"     └─ TableAlias(k)\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
-			"             └─ columns: [pk c1]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: one_pk\n" +
+			"                 └─ columns: [pk c1]\n" +
 			"",
 	},
 	{
@@ -7359,16 +8308,22 @@ inner join pq on true
 			"     │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     │   │       ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [pk v3]\n" +
+			"     │   │       └─ Table\n" +
+			"     │   │           ├─ name: one_pk_three_idx\n" +
+			"     │   │           └─ columns: [pk v3]\n" +
 			"     │   └─ TableAlias(i)\n" +
 			"     │       └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"     │           ├─ index: [one_pk_two_idx.v1]\n" +
 			"     │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           └─ columns: [pk v1]\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: one_pk_two_idx\n" +
+			"     │               └─ columns: [pk v1]\n" +
 			"     └─ TableAlias(k)\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
-			"             └─ columns: [pk c1]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: one_pk\n" +
+			"                 └─ columns: [pk c1]\n" +
 			"",
 	},
 	{
@@ -7391,19 +8346,24 @@ inner join pq on true
 			"     │   │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     │   │   │       ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │   │       └─ columns: [pk]\n" +
+			"     │   │   │       └─ Table\n" +
+			"     │   │   │           ├─ name: one_pk_three_idx\n" +
+			"     │   │   │           └─ columns: [pk]\n" +
 			"     │   │   └─ TableAlias(i)\n" +
 			"     │   │       └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"     │   │           ├─ index: [one_pk_two_idx.v1]\n" +
 			"     │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │           └─ columns: [v1]\n" +
+			"     │   │           └─ Table\n" +
+			"     │   │               ├─ name: one_pk_two_idx\n" +
+			"     │   │               └─ columns: [v1]\n" +
 			"     │   └─ HashLookup\n" +
 			"     │       ├─ left-key: TUPLE(i.v1:1)\n" +
 			"     │       ├─ right-key: TUPLE(a.pk:0!null)\n" +
 			"     │       └─ TableAlias(a)\n" +
-			"     │           └─ Table\n" +
-			"     │               ├─ name: one_pk_two_idx\n" +
-			"     │               └─ columns: [pk v1 v2]\n" +
+			"     │           └─ ProcessTable\n" +
+			"     │               └─ Table\n" +
+			"     │                   ├─ name: one_pk_two_idx\n" +
+			"     │                   └─ columns: [pk v1 v2]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(a.pk:2!null)\n" +
 			"         ├─ right-key: TUPLE(l.v2:1)\n" +
@@ -7415,12 +8375,16 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"             │       ├─ index: [one_pk_three_idx.pk]\n" +
 			"             │       ├─ static: [{[NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk v2]\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: one_pk_three_idx\n" +
+			"             │           └─ columns: [pk v2]\n" +
 			"             └─ TableAlias(k)\n" +
 			"                 └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"                     ├─ index: [one_pk_two_idx.v1]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [v1]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: one_pk_two_idx\n" +
+			"                         └─ columns: [v1]\n" +
 			"",
 	},
 	{
@@ -7436,16 +8400,18 @@ inner join pq on true
 			"     │   │   ├─ k.v2:2\n" +
 			"     │   │   └─ l.v3:1\n" +
 			"     │   ├─ TableAlias(l)\n" +
-			"     │   │   └─ Table\n" +
-			"     │   │       ├─ name: one_pk_three_idx\n" +
-			"     │   │       └─ columns: [v2 v3]\n" +
+			"     │   │   └─ ProcessTable\n" +
+			"     │   │       └─ Table\n" +
+			"     │   │           ├─ name: one_pk_three_idx\n" +
+			"     │   │           └─ columns: [v2 v3]\n" +
 			"     │   └─ HashLookup\n" +
 			"     │       ├─ left-key: TUPLE(l.v3:1)\n" +
 			"     │       ├─ right-key: TUPLE(k.v2:0)\n" +
 			"     │       └─ TableAlias(k)\n" +
-			"     │           └─ Table\n" +
-			"     │               ├─ name: one_pk_two_idx\n" +
-			"     │               └─ columns: [v2]\n" +
+			"     │           └─ ProcessTable\n" +
+			"     │               └─ Table\n" +
+			"     │                   ├─ name: one_pk_two_idx\n" +
+			"     │                   └─ columns: [v2]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(l.v2:0)\n" +
 			"         ├─ right-key: TUPLE(a.v1:1)\n" +
@@ -7471,7 +8437,9 @@ inner join pq on true
 			"                     └─ TableAlias(i)\n" +
 			"                         └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"                             ├─ index: [one_pk_two_idx.pk]\n" +
-			"                             └─ columns: [pk]\n" +
+			"                             └─ Table\n" +
+			"                                 ├─ name: one_pk_two_idx\n" +
+			"                                 └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -7486,7 +8454,9 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [i]\n" +
 			"     └─ Filter\n" +
 			"         ├─ GreaterThan\n" +
 			"         │   ├─ a.i:0!null\n" +
@@ -7495,7 +8465,9 @@ inner join pq on true
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [i s]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -7510,7 +8482,9 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [i]\n" +
 			"     └─ Filter\n" +
 			"         ├─ GreaterThanOrEqual\n" +
 			"         │   ├─ NOW()\n" +
@@ -7519,7 +8493,9 @@ inner join pq on true
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [i s]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -7531,7 +8507,9 @@ inner join pq on true
 			" └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     ├─ index: [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3]\n" +
 			"     ├─ static: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
-			"     └─ columns: [pk v1 v2 v3]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: one_pk_three_idx\n" +
+			"         └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
 	{
@@ -7543,7 +8521,9 @@ inner join pq on true
 			" └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     ├─ index: [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3]\n" +
 			"     ├─ static: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
-			"     └─ columns: [pk v1 v2 v3]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: one_pk_three_idx\n" +
+			"         └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
 	{
@@ -7555,13 +8535,16 @@ inner join pq on true
 			" │   │   └─ b.i:2!null\n" +
 			" │   └─ (b.b:4 <=> NULL (null))\n" +
 			" ├─ TableAlias(a)\n" +
-			" │   └─ Table\n" +
-			" │       ├─ name: mytable\n" +
-			" │       └─ columns: [i s]\n" +
+			" │   └─ ProcessTable\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: mytable\n" +
+			" │           └─ columns: [i s]\n" +
 			" └─ TableAlias(b)\n" +
 			"     └─ IndexedTableAccess(niltable)\n" +
 			"         ├─ index: [niltable.i]\n" +
-			"         └─ columns: [i i2 b f]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: niltable\n" +
+			"             └─ columns: [i i2 b f]\n" +
 			"",
 	},
 	{
@@ -7574,13 +8557,16 @@ inner join pq on true
 			" │   └─ NOT\n" +
 			" │       └─ b.b:4 IS NULL\n" +
 			" ├─ TableAlias(a)\n" +
-			" │   └─ Table\n" +
-			" │       ├─ name: mytable\n" +
-			" │       └─ columns: [i s]\n" +
+			" │   └─ ProcessTable\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: mytable\n" +
+			" │           └─ columns: [i s]\n" +
 			" └─ TableAlias(b)\n" +
 			"     └─ IndexedTableAccess(niltable)\n" +
 			"         ├─ index: [niltable.i]\n" +
-			"         └─ columns: [i i2 b f]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: niltable\n" +
+			"             └─ columns: [i i2 b f]\n" +
 			"",
 	},
 	{
@@ -7600,12 +8586,16 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(niltable)\n" +
 			"     │           ├─ index: [niltable.i]\n" +
 			"     │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           └─ columns: [i i2 b f]\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: niltable\n" +
+			"     │               └─ columns: [i i2 b f]\n" +
 			"     └─ TableAlias(a)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i s]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -7618,13 +8608,16 @@ inner join pq on true
 			" │   └─ NOT\n" +
 			" │       └─ a.s:1!null IS NULL\n" +
 			" ├─ TableAlias(a)\n" +
-			" │   └─ Table\n" +
-			" │       ├─ name: mytable\n" +
-			" │       └─ columns: [i s]\n" +
+			" │   └─ ProcessTable\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: mytable\n" +
+			" │           └─ columns: [i s]\n" +
 			" └─ TableAlias(b)\n" +
 			"     └─ IndexedTableAccess(niltable)\n" +
 			"         ├─ index: [niltable.i]\n" +
-			"         └─ columns: [i i2 b f]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: niltable\n" +
+			"             └─ columns: [i i2 b f]\n" +
 			"",
 	},
 	{
@@ -7635,18 +8628,20 @@ inner join pq on true
 			" │       ├─ a.i:0!null\n" +
 			" │       └─ b.i:2!null\n" +
 			" ├─ TableAlias(a)\n" +
-			" │   └─ Table\n" +
-			" │       ├─ name: mytable\n" +
-			" │       └─ columns: [i s]\n" +
+			" │   └─ ProcessTable\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: mytable\n" +
+			" │           └─ columns: [i s]\n" +
 			" └─ Filter\n" +
 			"     ├─ NOT\n" +
 			"     │   └─ Eq\n" +
 			"     │       ├─ b.b:2\n" +
 			"     │       └─ 0 (tinyint)\n" +
 			"     └─ TableAlias(b)\n" +
-			"         └─ Table\n" +
-			"             ├─ name: niltable\n" +
-			"             └─ columns: [i i2 b f]\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: niltable\n" +
+			"                 └─ columns: [i i2 b f]\n" +
 			"",
 	},
 	{
@@ -7657,13 +8652,15 @@ inner join pq on true
 			" │       ├─ a.i:0!null\n" +
 			" │       └─ b.i:2!null\n" +
 			" ├─ TableAlias(a)\n" +
-			" │   └─ Table\n" +
-			" │       ├─ name: mytable\n" +
-			" │       └─ columns: [i s]\n" +
+			" │   └─ ProcessTable\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: mytable\n" +
+			" │           └─ columns: [i s]\n" +
 			" └─ TableAlias(b)\n" +
-			"     └─ Table\n" +
-			"         ├─ name: niltable\n" +
-			"         └─ columns: [i i2 b f]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: niltable\n" +
+			"             └─ columns: [i i2 b f]\n" +
 			"",
 	},
 	{
@@ -7726,7 +8723,9 @@ inner join pq on true
 			"             │       └─ IndexedTableAccess(two_pk)\n" +
 			"             │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │           ├─ static: [{[1, 1], [1, 1]}]\n" +
-			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             │           └─ Table\n" +
+			"             │               ├─ name: two_pk\n" +
+			"             │               └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: TUPLE()\n" +
 			"                 ├─ right-key: TUPLE()\n" +
@@ -7738,7 +8737,9 @@ inner join pq on true
 			"                         └─ IndexedTableAccess(one_pk)\n" +
 			"                             ├─ index: [one_pk.pk]\n" +
 			"                             ├─ static: [{[1, 1]}]\n" +
-			"                             └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                             └─ Table\n" +
+			"                                 ├─ name: one_pk\n" +
+			"                                 └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -8069,9 +9070,10 @@ inner join pq on true
 			" ├─ Union distinct\n" +
 			" │   ├─ Project\n" +
 			" │   │   ├─ columns: [1 (tinyint)]\n" +
-			" │   │   └─ Table\n" +
-			" │   │       ├─ name: \n" +
-			" │   │       └─ columns: []\n" +
+			" │   │   └─ ProcessTable\n" +
+			" │   │       └─ Table\n" +
+			" │   │           ├─ name: \n" +
+			" │   │           └─ columns: []\n" +
 			" │   └─ SubqueryAlias\n" +
 			" │       ├─ name: a\n" +
 			" │       ├─ outerVisibility: false\n" +
@@ -8089,9 +9091,10 @@ inner join pq on true
 			" │                   └─ columns: []\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [4 (tinyint)]\n" +
-			"     └─ Table\n" +
-			"         ├─ name: \n" +
-			"         └─ columns: []\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: \n" +
+			"             └─ columns: []\n" +
 			"",
 	},
 	{
@@ -8100,9 +9103,10 @@ inner join pq on true
 			" ├─ Union distinct\n" +
 			" │   ├─ Project\n" +
 			" │   │   ├─ columns: [1 (tinyint)]\n" +
-			" │   │   └─ Table\n" +
-			" │   │       ├─ name: \n" +
-			" │   │       └─ columns: []\n" +
+			" │   │   └─ ProcessTable\n" +
+			" │   │       └─ Table\n" +
+			" │   │           ├─ name: \n" +
+			" │   │           └─ columns: []\n" +
 			" │   └─ SubqueryAlias\n" +
 			" │       ├─ name: a\n" +
 			" │       ├─ outerVisibility: false\n" +
@@ -8120,9 +9124,10 @@ inner join pq on true
 			" │                   └─ columns: []\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [4 (tinyint)]\n" +
-			"     └─ Table\n" +
-			"         ├─ name: \n" +
-			"         └─ columns: []\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: \n" +
+			"             └─ columns: []\n" +
 			"",
 	},
 	{
@@ -8509,7 +9514,9 @@ With c as (
 			"             │           └─ IndexedTableAccess(mytable)\n" +
 			"             │               ├─ index: [mytable.i]\n" +
 			"             │               ├─ static: [{[2, 2]}, {[3, 3]}]\n" +
-			"             │               └─ columns: [i s]\n" +
+			"             │               └─ Table\n" +
+			"             │                   ├─ name: mytable\n" +
+			"             │                   └─ columns: [i s]\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: TUPLE(e.i:0!null, e.i:0!null)\n" +
 			"                 ├─ right-key: TUPLE(b.i:0!null, a.i:2!null)\n" +
@@ -8529,7 +9536,9 @@ With c as (
 			"                     │           └─ IndexedTableAccess(mytable)\n" +
 			"                     │               ├─ index: [mytable.i]\n" +
 			"                     │               ├─ static: [{[1, 1]}, {[2, 2]}]\n" +
-			"                     │               └─ columns: [i s]\n" +
+			"                     │               └─ Table\n" +
+			"                     │                   ├─ name: mytable\n" +
+			"                     │                   └─ columns: [i s]\n" +
 			"                     └─ HashLookup\n" +
 			"                         ├─ left-key: TUPLE(b.i:2!null)\n" +
 			"                         ├─ right-key: TUPLE(a.i:0!null)\n" +
@@ -8591,8 +9600,10 @@ With c as (
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 ├─ columns: [i s]\n" +
-			"                 └─ reverse: true\n" +
+			"                 ├─ reverse: true\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -8615,8 +9626,10 @@ With c as (
 			"                 └─ IndexedTableAccess(mytable)\n" +
 			"                     ├─ index: [mytable.i]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     ├─ columns: [i s]\n" +
-			"                     └─ reverse: true\n" +
+			"                     ├─ reverse: true\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: mytable\n" +
+			"                         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -8629,7 +9642,9 @@ With c as (
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ static: [{(1, ∞)}]\n" +
-			"         └─ columns: [i]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -8646,7 +9661,9 @@ With c as (
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ static: [{(1, ∞)}]\n" +
-			"             └─ columns: [i]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -8663,7 +9680,9 @@ With c as (
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ static: [{(1, ∞)}]\n" +
-			"             └─ columns: [i]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -8758,7 +9777,9 @@ With c as (
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
 			"     │           ├─ static: [{(1, ∞)}]\n" +
-			"     │           └─ columns: [i]\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: mytable\n" +
+			"     │               └─ columns: [i]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE()\n" +
 			"         ├─ right-key: TUPLE()\n" +
@@ -8856,9 +9877,10 @@ WHERE keyless.c0 IN (
 			"         │                           └─ Table\n" +
 			"         │                               ├─ name: keyless\n" +
 			"         │                               └─ columns: [c0]\n" +
-			"         └─ Table\n" +
-			"             ├─ name: keyless\n" +
-			"             └─ columns: [c0 c1]\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: keyless\n" +
+			"                 └─ columns: [c0 c1]\n" +
 			"",
 	},
 	{
@@ -8937,9 +9959,10 @@ WHERE keyless.c0 IN (
 			"         │                           └─ Table\n" +
 			"         │                               ├─ name: keyless\n" +
 			"         │                               └─ columns: [c0]\n" +
-			"         └─ Table\n" +
-			"             ├─ name: keyless\n" +
-			"             └─ columns: [c0 c1]\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: keyless\n" +
+			"                 └─ columns: [c0 c1]\n" +
 			"",
 	},
 	{
@@ -8950,7 +9973,9 @@ WHERE keyless.c0 IN (
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i s]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -8960,8 +9985,10 @@ WHERE keyless.c0 IN (
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.i]\n" +
 			"     ├─ static: [{[NULL, ∞)}]\n" +
-			"     ├─ columns: [i s]\n" +
-			"     └─ reverse: true\n" +
+			"     ├─ reverse: true\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -8971,7 +9998,9 @@ WHERE keyless.c0 IN (
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -8979,9 +10008,10 @@ WHERE keyless.c0 IN (
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [two_pk.pk1:0!null, two_pk.pk2:1!null]\n" +
 			" └─ Sort(two_pk.pk1:0!null ASC nullsFirst, two_pk.pk2:1!null DESC nullsFirst)\n" +
-			"     └─ Table\n" +
-			"         ├─ name: two_pk\n" +
-			"         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -8991,8 +10021,10 @@ WHERE keyless.c0 IN (
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     ├─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"     └─ reverse: true\n" +
+			"     ├─ reverse: true\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -9001,9 +10033,10 @@ WHERE keyless.c0 IN (
 			" └─ GroupBy\n" +
 			"     ├─ select: two_pk.pk1:0!null, two_pk.pk2:1!null\n" +
 			"     ├─ group: two_pk.pk1:0!null, two_pk.pk2:1!null\n" +
-			"     └─ Table\n" +
-			"         ├─ name: two_pk\n" +
-			"         └─ columns: [pk1 pk2]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
@@ -9012,9 +10045,10 @@ WHERE keyless.c0 IN (
 			" └─ GroupBy\n" +
 			"     ├─ select: two_pk.pk1:0!null, two_pk.pk2:1!null\n" +
 			"     ├─ group: two_pk.pk1:0!null, two_pk.pk2:1!null\n" +
-			"     └─ Table\n" +
-			"         ├─ name: two_pk\n" +
-			"         └─ columns: [pk1 pk2]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
@@ -9026,9 +10060,10 @@ WHERE keyless.c0 IN (
 			"         ├─ row_number() over ( partition by two_pk.pk1 order by two_pk.c1 DESC)\n" +
 			"         ├─ two_pk.pk1:0!null\n" +
 			"         ├─ two_pk.pk2:1!null\n" +
-			"         └─ Table\n" +
-			"             ├─ name: two_pk\n" +
-			"             └─ columns: [pk1 pk2 c1]\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2 c1]\n" +
 			"",
 	},
 	{
@@ -9037,7 +10072,9 @@ WHERE keyless.c0 IN (
 			" └─ IndexedTableAccess(one_pk)\n" +
 			"     ├─ index: [one_pk.pk]\n" +
 			"     ├─ static: [{[NULL, ∞)}]\n" +
-			"     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: one_pk\n" +
+			"         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -9056,9 +10093,10 @@ WHERE keyless.c0 IN (
 			" ├─ columns: [xy.x:0!null, uv.u:2!null]\n" +
 			" └─ LateralCrossJoin\n" +
 			"     ├─ true (tinyint(1))\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: xy\n" +
-			"     │   └─ columns: [x y]\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: xy\n" +
+			"     │       └─ columns: [x y]\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: uv\n" +
 			"         ├─ outerVisibility: false\n" +

@@ -331,7 +331,7 @@ func TestReadOnlyDatabases(t *testing.T, harness ReadOnlyDatabaseHarness) {
 	// and provider with the data inserted
 	harness.Setup(setup.SimpleSetup...)
 	engine := mustNewEngine(t, harness)
-	engine, err := harness.NewReadOnlyEngine(engine.EngineAnalyzer().Catalog.Provider)
+	engine, err := harness.NewReadOnlyEngine(engine.EngineAnalyzer().Catalog.DbProvider)
 	require.NoError(t, err)
 
 	for _, querySet := range [][]queries.QueryTest{

@@ -21,8 +21,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// tableEditorIter wraps the given iterator and calls the Begin and Complete functions on the given table.
-type tableEditorIter struct {
+// TableEditorIter wraps the given iterator and calls the Begin and Complete functions on the given table.
+type TableEditorIter struct {
 	once             *sync.Once
 	onceCtx          *sql.Context
 	openerClosers    []sql.EditOpenerCloser
@@ -30,14 +30,14 @@ type tableEditorIter struct {
 	errorEncountered error
 }
 
-var _ sql.RowIter = (*tableEditorIter)(nil)
+var _ sql.RowIter = (*TableEditorIter)(nil)
 
 // NewTableEditorIter returns a new *tableEditorIter by wrapping the given iterator. If the
 // "statement_boundaries" session variable is set to false, then the original iterator is returned.
 // Each of the |openerClosers| specified will be called to begin, complete, and discard statements as
 // needed as the |wrappedIter| is processed.
 func NewTableEditorIter(wrappedIter sql.RowIter, openerClosers ...sql.EditOpenerCloser) sql.RowIter {
-	return &tableEditorIter{
+	return &TableEditorIter{
 		once:             &sync.Once{},
 		openerClosers:    openerClosers,
 		inner:            wrappedIter,
@@ -46,7 +46,7 @@ func NewTableEditorIter(wrappedIter sql.RowIter, openerClosers ...sql.EditOpener
 }
 
 // Next implements the interface sql.RowIter.
-func (s *tableEditorIter) Next(ctx *sql.Context) (sql.Row, error) {
+func (s *TableEditorIter) Next(ctx *sql.Context) (sql.Row, error) {
 	s.once.Do(func() {
 		for _, openerCloser := range s.openerClosers {
 			openerCloser.StatementBegin(ctx)
@@ -66,7 +66,7 @@ func (s *tableEditorIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 // Close implements the interface sql.RowIter.
-func (s *tableEditorIter) Close(ctx *sql.Context) error {
+func (s *TableEditorIter) Close(ctx *sql.Context) error {
 	err := s.errorEncountered
 	_, ignoreError := err.(sql.IgnorableError)
 
@@ -93,12 +93,16 @@ func (s *tableEditorIter) Close(ctx *sql.Context) error {
 	return err
 }
 
-type checkpointingTableEditorIter struct {
+func (s *TableEditorIter) InnerIter() sql.RowIter {
+	return s.inner
+}
+
+type CheckpointingTableEditorIter struct {
 	editIter sql.EditOpenerCloser
 	inner    sql.RowIter
 }
 
-var _ sql.RowIter = (*tableEditorIter)(nil)
+var _ sql.RowIter = (*TableEditorIter)(nil)
 
 // NewCheckpointingTableEditorIter is similar to NewTableEditorIter except that
 // it returns an iter that calls BeginStatement and CompleteStatement on |table|
@@ -106,13 +110,13 @@ var _ sql.RowIter = (*tableEditorIter)(nil)
 // correctness for statements that need to rollback individual statements that
 // error such as INSERT IGNORE INTO.
 func NewCheckpointingTableEditorIter(wrappedIter sql.RowIter, table sql.EditOpenerCloser) sql.RowIter {
-	return &checkpointingTableEditorIter{
+	return &CheckpointingTableEditorIter{
 		editIter: table,
 		inner:    wrappedIter,
 	}
 }
 
-func (c checkpointingTableEditorIter) Next(ctx *sql.Context) (sql.Row, error) {
+func (c CheckpointingTableEditorIter) Next(ctx *sql.Context) (sql.Row, error) {
 	c.editIter.StatementBegin(ctx)
 	row, err := c.inner.Next(ctx)
 	if err != nil && err != io.EOF {
@@ -127,6 +131,10 @@ func (c checkpointingTableEditorIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return row, err
 }
 
-func (c checkpointingTableEditorIter) Close(context *sql.Context) error {
+func (c CheckpointingTableEditorIter) InnerIter() sql.RowIter {
+	return c.inner
+}
+
+func (c CheckpointingTableEditorIter) Close(context *sql.Context) error {
 	return c.inner.Close(context)
 }
