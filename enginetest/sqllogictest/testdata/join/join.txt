@@ -1,4 +1,6 @@
-# TEST ADAPTED FROM https://github.com/cockroachdb/cockroach/blob/7a2796a8d45e4a4031c1861747483e5390fbff6c/pkg/sql/logictest/testdata/logic_test/join
+# TEST ADAPTED FROM COCKROACHDB
+# SOURCE https://github.com/cockroachdb/cockroach/blob/7a2796a8d45e4a4031c1861747483e5390fbff6c/pkg/sql/logictest/testdata/logic_test/join
+# PREVIOUSLY UNDER BSL LICENSE, NOW UNDER APACHE 2.0 LICENSE
 
 # The join condition logic is tricky to get right with NULL
 # values. Simple implementations can deal well with NULLs on the first

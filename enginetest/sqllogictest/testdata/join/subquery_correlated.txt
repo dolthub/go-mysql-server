@@ -1,4 +1,8 @@
-# TESTS ADAPTED FROM: https://github.com/cockroachdb/cockroach/blob/78f7da402bec149b403cd27479a3af38bed6d69b/pkg/sql/logictest/testdata/logic_test/subquery_correlated
+# TESTS ADAPTED FROM:
+# TEST ADAPTED FROM COCKROACHDB
+# SOURCE https://github.com/cockroachdb/cockroach/blob/78f7da402bec149b403cd27479a3af38bed6d69b/pkg/sql/logictest/testdata/logic_test/subquery_correlated
+# PREVIOUSLY UNDER BSL LICENSE, NOW UNDER APACHE 2.0 LICENSE
+
 # ------------------------------------------------------------------------------
 # Create a simple schema that models customers and orders. Each customer has an
 # id (c_id), and has zero or more orders that are related via a foreign `key` of
