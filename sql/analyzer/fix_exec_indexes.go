@@ -432,10 +432,15 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 	ret, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
 		case *expression.GetField:
-			// TODO: this is a swallowed error. It triggers falsely in queries involving the dual table, or queries where
-			//  the columns being selected are only found in subqueries
+			// TODO: this is a swallowed error in some cases. It triggers falsely in queries involving the dual table, or
+			//  queries where the columns being selected are only found in subqueries. Conversely, we actually want to ignore
+			//  this error for the case of DEFAULT in a `plan.Values`, since we analyze the insert source in isolation (we
+			//  don't have the destination schema, and column references in default values are determined in the build phase)
 			idx, _ := newScope.getIdx(e.String())
-			return e.WithIndex(idx), transform.NewTree, nil
+			if idx >= 0 {
+				return e.WithIndex(idx), transform.NewTree, nil
+			}
+			return e, transform.SameTree, nil
 		case *plan.Subquery:
 			// this |outScope| prepends the subquery scope
 			newQ, _, err := assignIndexesHelper(e.Query, newScope.push())

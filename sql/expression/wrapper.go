@@ -86,6 +86,14 @@ func (w *Wrapper) String() string {
 	return fmt.Sprintf("(%s)", w.inner.String())
 }
 
+// DebugString implements sql.DebugStringer
+func (w *Wrapper) DebugString() string {
+	if w.inner == nil {
+		return ""
+	}
+	return fmt.Sprintf("(%s)", sql.DebugString(w.inner))
+}
+
 // Type implements sql.Expression
 func (w *Wrapper) Type() sql.Type {
 	if w.inner == nil {

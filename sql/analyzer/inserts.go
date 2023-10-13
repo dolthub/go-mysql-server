@@ -88,7 +88,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 				columnNames[i] = f.Name
 			}
 		} else {
-			err = validateColumns(table.Name(), columnNames, dstSchema)
+			err = validateColumns(table.Name(), columnNames, dstSchema, source)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -195,18 +195,18 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 	return plan.NewProject(projExprs, insertSource), autoAutoIncrement, nil
 }
 
-func validateColumns(tableName string, columnNames []string, dstSchema sql.Schema) error {
+func validateColumns(tableName string, columnNames []string, dstSchema sql.Schema, source sql.Node) error {
 	dstColNames := make(map[string]*sql.Column)
 	for _, dstCol := range dstSchema {
 		dstColNames[strings.ToLower(dstCol.Name)] = dstCol
 	}
 	usedNames := make(map[string]struct{})
-	for _, columnName := range columnNames {
+	for i, columnName := range columnNames {
 		dstCol, exists := dstColNames[columnName]
 		if !exists {
 			return plan.ErrInsertIntoNonexistentColumn.New(columnName)
 		}
-		if dstCol.Generated != nil {
+		if dstCol.Generated != nil && !validGeneratedColumnValue(i, source) {
 			return sql.ErrGeneratedColumnValue.New(dstCol.Name, tableName)
 		}
 		if _, exists := usedNames[columnName]; !exists {
@@ -216,6 +216,30 @@ func validateColumns(tableName string, columnNames []string, dstSchema sql.Schem
 		}
 	}
 	return nil
+}
+
+// validGeneratedColumnValue returns true if the column is a generated column and the source node is not a values node.
+// Explicit default values (`DEFAULT`) are the only valid values to specify for a generated column
+func validGeneratedColumnValue(idx int, source sql.Node) bool {
+	switch source := source.(type) {
+	case *plan.Values:
+		for _, tuple := range source.ExpressionTuples {
+			switch val := tuple[idx].(type) {
+			case *sql.ColumnDefaultValue: // should be wrapped, but just in case
+				return true
+			case *expression.Wrapper:
+				if _, ok := val.Unwrap().(*sql.ColumnDefaultValue); ok {
+					return true
+				}
+				return false
+			default:
+				return false
+			}
+		}
+		return false
+	default:
+		return false
+	}
 }
 
 func validateValueCount(columnNames []string, values sql.Node) error {

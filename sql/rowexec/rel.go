@@ -78,10 +78,23 @@ func (b *BaseBuilder) buildValueDerivedTable(ctx *sql.Context, n *plan.ValueDeri
 func (b *BaseBuilder) buildValues(ctx *sql.Context, n *plan.Values, row sql.Row) (sql.RowIter, error) {
 	rows := make([]sql.Row, len(n.ExpressionTuples))
 	for i, et := range n.ExpressionTuples {
-		vals := make([]interface{}, len(et))
-		for j, e := range et {
+		vals := make(sql.Row, len(et))
+
+		// A non-zero row means that we're executing in a trigger context, so we evaluate against the row provided
+		// TODO: this probably won't work with triggers that define explicit DEFAULT values
+		if len(row) > 0 {
+			for j, e := range et {
+				var err error
+				vals[j], err = e.Eval(ctx, row)
+				if err != nil {
+					return nil, err
+				}
+			}
+		} else {
+			// For the values node, the relevant values to evaluate are the tuple itself. We may need to project
+			// DEFAULT values onto them, which ProjectRow handles correctly (could require multiple passes)
 			var err error
-			vals[j], err = e.Eval(ctx, row)
+			vals, err = ProjectRow(ctx, et, vals)
 			if err != nil {
 				return nil, err
 			}
