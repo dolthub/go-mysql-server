@@ -17,9 +17,10 @@ package mysqlshim
 import (
 	"context"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/memory"
 	"strings"
 	"testing"
+
+	"github.com/dolthub/go-mysql-server/memory"
 
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
