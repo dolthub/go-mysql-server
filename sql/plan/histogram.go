@@ -2,12 +2,13 @@ package plan
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/stats"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-func NewUpdateHistogram(db, table string, cols []string, stats *sql.Stats) *UpdateHistogram {
+func NewUpdateHistogram(db, table string, cols []string, stats *stats.Stats) *UpdateHistogram {
 	return &UpdateHistogram{db: db, cols: cols, table: table, stats: stats}
 }
 
@@ -15,7 +16,7 @@ type UpdateHistogram struct {
 	db    string
 	table string
 	cols  []string
-	stats *sql.Stats
+	stats *stats.Stats
 	prov  sql.StatsProvider
 }
 
@@ -33,7 +34,7 @@ func (u *UpdateHistogram) Cols() []string {
 	return u.cols
 }
 
-func (u *UpdateHistogram) Stats() *sql.Stats {
+func (u *UpdateHistogram) Stats() *stats.Stats {
 	return u.stats
 }
 

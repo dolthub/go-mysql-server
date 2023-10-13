@@ -15,18 +15,22 @@
 package json
 
 import (
+	"encoding/json"
 	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/jsonpath"
+	"log"
 )
 
-// JSON_EXTRACT(json_doc, path[, path] ...)
+// JSON_LENGTH(json_doc [, path])
 //
-// JsonLength extracts data from a json document using json paths.
-// https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html#function_json-extract
+// JsonLength returns the length of a JSON document, or the length of the value extracted from the specified path.
+// https://dev.mysql.com/doc/refman/8.0/en/json-attribute-functions.html#function_json-length
 type JsonLength struct {
 	JSON sql.Expression
+	Path sql.Expression
 }
 
 var _ sql.FunctionExpression = (*JsonLength)(nil)
@@ -34,10 +38,13 @@ var _ sql.CollationCoercible = (*JsonLength)(nil)
 
 // NewJsonLength creates a new JsonLength UDF.
 func NewJsonLength(args ...sql.Expression) (sql.Expression, error) {
-	if len(args) != 1 {
-		return nil, sql.ErrInvalidArgumentNumber.New("JSON_EXTRACT", 2, len(args))
+	if len(args) == 0 || len(args) > 2 {
+		return nil, sql.ErrInvalidArgumentNumber.New("JSON_LENGTH", 2, len(args))
+	} else if len(args) == 1 {
+		return &JsonLength{args[0], expression.NewLiteral("$", types.Text)}, nil
+	} else {
+		return &JsonLength{args[0], args[1]}, nil
 	}
-	return &JsonLength{args[0]}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -73,24 +80,42 @@ func (j *JsonLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if js == nil {
-		return 0, err
+		return nil, err
 	}
 
-	jVal, ok := js.(types.JSONValue)
-	if !ok {
-		return 1, nil
+	strData, _, err := types.LongBlob.Convert(js)
+	if err != nil {
+		return nil, fmt.Errorf("invalid data type for JSON data in argument 1 to function json_length; a JSON string or JSON type is required")
 	}
-	countable, err := jVal.Unmarshall(ctx)
+	if strData == nil {
+		return nil, nil
+	}
+
+	var jsonData interface{}
+	if err = json.Unmarshal(strData.([]byte), &jsonData); err != nil {
+		return nil, err
+	}
+
+	path, err := j.Path.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("%v", path)
+
+	res, err := jsonpath.JsonPathLookup(jsonData, path.(string))
 	if err != nil {
 		return nil, err
 	}
 
-	switch v := countable.Val.(type) {
+	switch v := res.(type) {
+	case nil:
+		return nil, nil
 	case []interface{}:
+		if len(v) == 0 {
+			return nil, nil
+		}
 		return len(v), nil
 	case map[any]any:
-		return len(v), nil
-	case sql.Histogram:
 		return len(v), nil
 	default:
 		return 1, nil
@@ -104,7 +129,7 @@ func (j *JsonLength) IsNullable() bool {
 
 // Children implements the sql.Expression interface.
 func (j *JsonLength) Children() []sql.Expression {
-	return append([]sql.Expression{j.JSON})
+	return []sql.Expression{j.JSON, j.Path}
 }
 
 // WithChildren implements the Expression interface.

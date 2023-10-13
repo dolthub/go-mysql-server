@@ -16,6 +16,7 @@ package test
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/stats"
 )
 
 type Catalog struct {
@@ -163,17 +164,17 @@ func (c *Catalog) RefreshTableStats(ctx *sql.Context, table sql.Table, db string
 	panic("implement me")
 }
 
-func (c *Catalog) GetTableStats(ctx *sql.Context, db, table string) ([]*sql.Stats, error) {
+func (c *Catalog) GetTableStats(ctx *sql.Context, db, table string) ([]*stats.Stats, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (c *Catalog) SetStats(ctx *sql.Context, db, table string, stats *sql.Stats) error {
+func (c *Catalog) SetStats(ctx *sql.Context, db, table string, stats *stats.Stats) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (c *Catalog) GetStats(ctx *sql.Context, db, table string, cols []string) (*sql.Stats, bool) {
+func (c *Catalog) GetStats(ctx *sql.Context, db, table string, cols []string) (*stats.Stats, bool) {
 	//TODO implement me
 	panic("implement me")
 }

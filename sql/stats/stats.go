@@ -1,4 +1,4 @@
-package sql
+package stats
 
 import (
 	"encoding/json"

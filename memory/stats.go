@@ -1,8 +1,23 @@
+// Copyright 2020-2021 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package memory
 
 import (
 	"errors"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/stats"
 	"io"
 	"math"
 	"math/rand"
@@ -15,14 +30,14 @@ import (
 
 func NewStatsProv() *StatsProv {
 	return &StatsProv{
-		colStats: make(map[statsKey]*sql.Stats),
+		colStats: make(map[statsKey]*stats.Stats),
 	}
 }
 
 type statsKey string
 
 type StatsProv struct {
-	colStats map[statsKey]*sql.Stats
+	colStats map[statsKey]*stats.Stats
 }
 
 var _ sql.StatsProvider = (*StatsProv)(nil)
@@ -111,7 +126,7 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 			bucketCnt = len(keyVals)
 		}
 		offset := len(keyVals) / bucketCnt
-		histogram := make([]sql.Bucket, bucketCnt)
+		histogram := make([]stats.Bucket, bucketCnt)
 		for i := range histogram {
 			var upperBound []interface{}
 			for _, v := range keyVals[i*offset] {
@@ -130,7 +145,7 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 			types = append(types, sch[i].Type.String())
 		}
 
-		s.colStats[key] = &sql.Stats{
+		s.colStats[key] = &stats.Stats{
 			Rows:      rowCount,
 			Distinct:  rowCount,
 			AvgSize:   dataLen,
@@ -202,9 +217,9 @@ func (s *StatsProv) reservoirSample(ctx *sql.Context, table sql.Table) ([]sql.Ro
 	return queue, nil
 }
 
-func (s *StatsProv) GetTableStats(ctx *sql.Context, db, table string) ([]*sql.Stats, error) {
+func (s *StatsProv) GetTableStats(ctx *sql.Context, db, table string) ([]*stats.Stats, error) {
 	pref := fmt.Sprintf("%s.%s", strings.ToLower(db), strings.ToLower(table))
-	var ret []*sql.Stats
+	var ret []*stats.Stats
 	for key, stats := range s.colStats {
 		if strings.HasPrefix(string(key), pref) {
 			ret = append(ret, stats)
@@ -213,13 +228,13 @@ func (s *StatsProv) GetTableStats(ctx *sql.Context, db, table string) ([]*sql.St
 	return ret, nil
 }
 
-func (s *StatsProv) SetStats(ctx *sql.Context, db, table string, stats *sql.Stats) error {
+func (s *StatsProv) SetStats(ctx *sql.Context, db, table string, stats *stats.Stats) error {
 	key := statsKey(fmt.Sprintf("%s.%s.(%s)", strings.ToLower(db), strings.ToLower(table), strings.Join(stats.Columns, ",")))
 	s.colStats[key] = stats
 	return nil
 }
 
-func (s *StatsProv) GetStats(ctx *sql.Context, db, table string, cols []string) (*sql.Stats, bool) {
+func (s *StatsProv) GetStats(ctx *sql.Context, db, table string, cols []string) (*stats.Stats, bool) {
 	key := statsKey(fmt.Sprintf("%s.%s.(%s)", strings.ToLower(db), strings.ToLower(table), strings.Join(cols, ",")))
 	if stats, ok := s.colStats[key]; ok {
 		return stats, false

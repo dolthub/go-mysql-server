@@ -360,6 +360,16 @@ func ConvertToString(v interface{}, t sql.StringType) (string, error) {
 			return "", nil
 		}
 		val = s.Decimal.String()
+
+	case JSONDocument:
+		str, err := s.ToString(nil)
+		if err != nil {
+			return "", err
+		}
+		val, err = strings.Unquote(str)
+		if err != nil {
+			return "", err
+		}
 	case JSONValue:
 		str, err := s.ToString(nil)
 		if err != nil {

@@ -17,6 +17,7 @@ package rowexec
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/stats"
 	"io"
 	"sync"
 
@@ -63,7 +64,7 @@ type updateHistogramIter struct {
 	db      string
 	table   string
 	columns []string
-	stats   *sql.Stats
+	stats   *stats.Stats
 	prov    sql.StatsProvider
 	done    bool
 }

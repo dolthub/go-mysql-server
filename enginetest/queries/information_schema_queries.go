@@ -15,6 +15,7 @@
 package queries
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/stats"
 	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -1645,7 +1646,7 @@ var StatisticsQueries = []ScriptTest{
 						"distinct":  float64(3),
 						"nulls":     float64(0),
 						"row_count": float64(3),
-						"buckets": sql.Histogram{
+						"buckets": stats.Histogram{
 							{
 								Count:      1,
 								Distinct:   1,
@@ -1688,7 +1689,7 @@ var StatisticsQueries = []ScriptTest{
 						"distinct":  float64(40),
 						"nulls":     float64(1),
 						"row_count": float64(40),
-						"buckets": sql.Histogram{
+						"buckets": stats.Histogram{
 							{
 								Count:      20,
 								BoundCount: 1,
@@ -1728,7 +1729,7 @@ var StatisticsQueries = []ScriptTest{
 						"distinct":  float64(3),
 						"nulls":     float64(0),
 						"row_count": float64(3),
-						"buckets": sql.Histogram{
+						"buckets": stats.Histogram{
 							{
 								Count:      1,
 								Distinct:   1,
@@ -1753,7 +1754,7 @@ var StatisticsQueries = []ScriptTest{
 						"distinct":  float64(3),
 						"nulls":     float64(0),
 						"row_count": float64(3),
-						"buckets": sql.Histogram{
+						"buckets": stats.Histogram{
 							{
 								Count:      1,
 								Distinct:   1,
@@ -1793,7 +1794,7 @@ var StatisticsQueries = []ScriptTest{
 						"distinct":  float64(4),
 						"nulls":     float64(0),
 						"row_count": float64(4),
-						"buckets": sql.Histogram{
+						"buckets": stats.Histogram{
 							{
 								Count:      1,
 								Distinct:   1,

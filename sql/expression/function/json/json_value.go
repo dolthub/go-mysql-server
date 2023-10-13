@@ -17,6 +17,7 @@ package json
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"strings"
 
@@ -26,10 +27,12 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// JSON_VALUE(json_doc, path, [returning type])
-//
-// JsonValue values data from a json document using json paths.
+// JsonValue selects data from a json document using a json path and
+// optional type coercion.
 // https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html#function_json-value
+// usage: JSON_VALUE(json_doc, path, [returning type])
+// TODO: [RETURNING TYPE] should be appended to path option in parser
+// TODO: missing [on empty] and [on error] support
 type JsonValue struct {
 	JSON sql.Expression
 	Path sql.Expression
@@ -43,8 +46,10 @@ var jsonValueDefaultType = types.MustCreateString(sqltypes.VarChar, 512, sql.Col
 
 // NewJsonValue creates a new JsonValue UDF.
 func NewJsonValue(args ...sql.Expression) (sql.Expression, error) {
-	if len(args) < 2 || len(args) > 3 {
+	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_VALUE", 2, len(args))
+	} else if len(args) == 1 {
+		return &JsonValue{JSON: args[0], Path: expression.NewLiteral("$", types.Text), Typ: jsonValueDefaultType}, nil
 	} else if len(args) == 2 {
 		return &JsonValue{JSON: args[0], Path: args[1], Typ: jsonValueDefaultType}, nil
 	} else {
@@ -90,16 +95,9 @@ func (j *JsonValue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	if jd, ok := js.(types.JSONDocument); ok {
-		js, err = jd.ToString(ctx)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	strData, _, err := types.LongBlob.Convert(js)
 	if err != nil {
-		return nil, fmt.Errorf("invalid data type for JSON data in argument 1 to function json_table; a JSON string or JSON type is required")
+		return nil, fmt.Errorf("invalid data type for JSON data in argument 1 to function json_value; a JSON string or JSON type is required")
 	}
 	if strData == nil {
 		return nil, nil
@@ -121,10 +119,15 @@ func (j *JsonValue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	switch r := res.(type) {
+	case nil:
+		return nil, nil
 	case []interface{}:
-		if len(r) == 1 {
-			res = r[0]
+		if len(r) == 0 {
+			return nil, nil
 		}
+		res = types.JSONDocument{Val: res}
+	case map[string]interface{}:
+		res = types.JSONDocument{Val: res}
 	}
 
 	if j.Typ != nil {

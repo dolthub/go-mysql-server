@@ -17,6 +17,7 @@ package planbuilder
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/stats"
 	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
@@ -119,7 +120,7 @@ func (b *Builder) buildAnalyzeTables(inScope *scope, n *ast.Analyze, query strin
 
 func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tableName string, columns, types []string) (outScope *scope) {
 	outScope = inScope.push()
-	statistics := new(sql.Stats)
+	statistics := new(stats.Stats)
 	using := b.buildScalar(inScope, n.Using)
 	if l, ok := using.(*expression.Literal); ok {
 		if typ, ok := l.Type().(sql.StringType); ok {

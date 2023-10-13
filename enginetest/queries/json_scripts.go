@@ -27,30 +27,37 @@ var JsonScripts = []ScriptTest{
 		SetUpScript: []string{
 			"CREATE TABLE xy (x bigint primary key, y JSON)",
 			`INSERT INTO xy VALUES (0, CAST('["a", "b"]' AS JSON)), (1, CAST('["a", "b", "c", "d"]' AS JSON));`,
-			`INSERT INTO xy VALUES (2, CAST('{"a": [{"b": 1}, {"c": 2}]}' AS JSON)), (3, CAST('{"a": {"b": ["c","d"]}}' AS JSON));`,
+			`INSERT INTO xy VALUES (2, CAST('{"a": [{"b": 1}, {"c": 2}]}' AS JSON)), (3, CAST('{"a": {"b": ["c","d"]}}' AS JSON)), (4,NULL);`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `select json_value(y, '$.a', 'json') from xy`,
 				Expected: []sql.Row{
-					{types.MustJSON("[]")},
-					{types.MustJSON("[]")},
+					{nil},
+					{nil},
 					{types.MustJSON("[{\"b\": 1}, {\"c\": 2}]")},
 					{types.MustJSON("{\"b\": [\"c\",\"d\"]}")},
+					{nil},
 				},
 			},
 			{
-				Query: `select json_value(y, '$.a.b', 'signed') from xy where x = 2`,
+				Query: `select json_value(y, '$.a[0].b', 'signed') from xy where x = 2`,
 				Expected: []sql.Row{
 					{int64(1)},
 				},
 			},
 			{
-				Query: `select json_value(y, '$.a.b') from xy where x = 2`,
+				Query: `select json_value(y, '$.a[0].b') from xy where x = 2`,
 				Expected: []sql.Row{
 					{"1"},
 				},
 			},
+			//{
+			//	Query: `select json_value(y, '$.a.b', 'signed') from xy where x = 2`,
+			//	Expected: []sql.Row{
+			//		{nil},
+			//	},
+			//},
 		},
 	},
 	{
@@ -58,7 +65,7 @@ var JsonScripts = []ScriptTest{
 		SetUpScript: []string{
 			"CREATE TABLE xy (x bigint primary key, y JSON)",
 			`INSERT INTO xy VALUES (0, CAST('["a", "b"]' AS JSON)), (1, CAST('["a", "b", "c", "d"]' AS JSON));`,
-			`INSERT INTO xy VALUES (2, CAST('{"a": [{"b": 1}, {"c": 2}]}' AS JSON)), (3, CAST('{"a": {"b": ["c","d"]}}' AS JSON));`,
+			`INSERT INTO xy VALUES (2, CAST('{"a": [{"b": 1}, {"c": 2}]}' AS JSON)), (3, CAST('{"a": {"b": ["c","d"]}}' AS JSON)), (4,NULL);`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -68,6 +75,7 @@ var JsonScripts = []ScriptTest{
 					{4},
 					{1},
 					{1},
+					{nil},
 				},
 			},
 			{
@@ -77,19 +85,29 @@ var JsonScripts = []ScriptTest{
 			{
 				Query: `select json_length(json_extract(y, "$.a")) from xy`,
 				Expected: []sql.Row{
-					{0},
-					{0},
+					{nil},
+					{nil},
 					{2},
 					{1},
+					{nil},
 				},
 			},
 			{
-				Query: `select json_length(json_extract(y, "$.a.b")) from xy`,
+				Query: `select json_length(json_extract(y, "$.a.b")) from xy where x = 3`,
 				Expected: []sql.Row{
-					{0},
-					{0},
-					{1},
 					{2},
+				},
+			},
+			{
+				Query: `select json_length(y, "$.a.b") from xy where x = 3`,
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+			{
+				Query: `select json_length(y, "$.a[0].b") from xy where x = 2`,
+				Expected: []sql.Row{
+					{1},
 				},
 			},
 		},
