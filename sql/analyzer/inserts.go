@@ -219,12 +219,14 @@ func validateColumns(tableName string, columnNames []string, dstSchema sql.Schem
 }
 
 // validGeneratedColumnValue returns true if the column is a generated column and the source node is not a values node.
+// Explicit default values (`DEFAULT`) are the only valid values to specify for a generated column
 func validGeneratedColumnValue(idx int, source sql.Node) bool {
 	switch source := source.(type) {
 	case *plan.Values:
 		for _, tuple := range source.ExpressionTuples {
 			switch val := tuple[idx].(type) {
-			// explicit default values (`DEFAULT`) are the only valid values to specify for a generated column
+			case *sql.ColumnDefaultValue: // should be wrapped, but just in case
+				return true
 			case *expression.Wrapper:
 				if _, ok := val.Unwrap().(*sql.ColumnDefaultValue); ok {
 					return true
@@ -234,7 +236,7 @@ func validGeneratedColumnValue(idx int, source sql.Node) bool {
 				return false
 			}
 		}
-		return true
+		return false
 	default:
 		return false
 	}
