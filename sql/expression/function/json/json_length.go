@@ -17,11 +17,13 @@ package json
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+
+	"github.com/dolthub/jsonpath"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/jsonpath"
-	"log"
 )
 
 // JSON_LENGTH(json_doc [, path])
