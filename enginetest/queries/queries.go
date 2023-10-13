@@ -8184,6 +8184,12 @@ ORDER BY 1;`,
 			{3},
 		},
 	},
+	{
+		Query: "select max(x) from xy join uv where x = u",
+		Expected: []sql.Row{
+			{3},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{

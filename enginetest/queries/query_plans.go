@@ -10327,4 +10327,26 @@ WHERE keyless.c0 IN (
 			"             └─ columns: [x y]\n" +
 			"",
 	},
+	{
+		Query: "select max(x) from xy join uv where x = u",
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [max(xy.x):0!null as max(x)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(xy.x:1!null)\n" +
+			"     ├─ group: \n" +
+			"     └─ LookupJoin\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ xy.x:1!null\n" +
+			"         │   └─ uv.u:0!null\n" +
+			"         ├─ ProcessTable\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: uv\n" +
+			"         │       └─ columns: [u]\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: xy\n" +
+			"                 └─ columns: [x]\n" +
+			"",
+	},
 }

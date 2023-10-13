@@ -161,24 +161,16 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 		}
 
 		var idxTbl sql.IndexAddressableTable
-		transform.Inspect(gb.Child, func(n sql.Node) bool {
-			switch t := gb.Child.(type) {
-			case *plan.IndexedTableAccess:
-				if tbl, ok := t.Table.(sql.IndexAddressableTable); ok {
-					idxTbl = tbl
-					return false
-				}
-			case *plan.ResolvedTable:
-				if tbl, ok := t.UnderlyingTable().(sql.IndexAddressableTable); ok {
-					idxTbl = tbl
-					return false
-				}
+		switch t := gb.Child.(type) {
+		case *plan.IndexedTableAccess:
+			if tbl, ok := t.Table.(sql.IndexAddressableTable); ok {
+				idxTbl = tbl
 			}
-			return true
-		})
-
-		// no indexes on table, unable to apply optimization
-		if idxTbl == nil {
+		case *plan.ResolvedTable:
+			if tbl, ok := t.UnderlyingTable().(sql.IndexAddressableTable); ok {
+				idxTbl = tbl
+			}
+		default:
 			return n, transform.SameTree, nil
 		}
 
