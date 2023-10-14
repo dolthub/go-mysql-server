@@ -16,9 +16,10 @@ package analyzer
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/stats"
 	"strings"
 	"sync"
+
+	"github.com/dolthub/go-mysql-server/sql/stats"
 
 	"github.com/dolthub/go-mysql-server/internal/similartext"
 	"github.com/dolthub/go-mysql-server/memory"

@@ -17,13 +17,14 @@ package memory
 import (
 	"errors"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/stats"
 	"io"
 	"math"
 	"math/rand"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/dolthub/go-mysql-server/sql/stats"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
