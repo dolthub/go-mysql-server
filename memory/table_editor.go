@@ -133,7 +133,6 @@ func (t *tableEditor) StatementComplete(ctx *sql.Context) error {
 		sess.putTable(t.editedTable.data)
 	}
 
-	// TODO next: first problem is that column indexes are incorrect on insert
 	return nil
 }
 

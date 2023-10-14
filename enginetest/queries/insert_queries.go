@@ -1339,6 +1339,38 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "Explicit default with column reference",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (a int default 1, b int default (a+1));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO t1 (a,b) values (1, DEFAULT)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select * from t1 order by a",
+				Expected: []sql.Row{{1, 2}},
+			},
+			{
+				Query:    "INSERT INTO t1 values (2, DEFAULT)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select * from t1 where a = 2 order by a",
+				Expected: []sql.Row{{2, 3}},
+			},
+			{
+				Query:    "INSERT INTO t1 (b,a) values (DEFAULT, 3)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select * from t1 where a = 3 order by a",
+				Expected: []sql.Row{{3, 4}},
+			},
+		},
+	},
+	{
 		Name: "Try INSERT IGNORE with primary key, non null, and single row violations",
 		SetUpScript: []string{
 			"CREATE TABLE y (pk int primary key, c1 int NOT NULL);",
@@ -2653,18 +2685,6 @@ var InsertBrokenScripts = []ScriptTest{
 					{types.OkResult{RowsAffected: 1}},
 				},
 				ExpectedWarning: mysql.ERTruncatedWrongValueForField,
-			},
-		},
-	},
-	{
-		Name: "Test explicit default with column reference",
-		SetUpScript: []string{
-			"CREATE TABLE t1 (a int default 1, b int default (a+1));",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "INSERT INTO t1 (a,b) values (1, DEFAULT)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
 		},
 	},

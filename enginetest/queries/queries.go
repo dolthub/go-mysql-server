@@ -8088,6 +8088,108 @@ ORDER BY 1;`,
 			{3, "third row"},
 		},
 	},
+
+	{
+		Query: "select x from xy where x > 0 and x <= 2 order by x",
+		Expected: []sql.Row{
+			{1},
+			{2},
+		},
+	},
+
+	{
+		Query: "select max(x) from xy",
+		Expected: []sql.Row{
+			{3},
+		},
+	},
+	{
+		Query: "select min(x) from xy",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query: "select max(y) from xy",
+		Expected: []sql.Row{
+			{3},
+		},
+	},
+	{
+		Query: "select max(x)+100 from xy",
+		Expected: []sql.Row{
+			{103},
+		},
+	},
+	{
+		Query: "select max(x) as xx from xy",
+		Expected: []sql.Row{
+			{3},
+		},
+	},
+	{
+		Query: "select 1, 2.0, '3', max(x) from xy",
+		Expected: []sql.Row{
+			{1, "2.0", "3", 3},
+		},
+	},
+	{
+		Query: "select min(x) from xy where x > 0",
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query: "select max(x) from xy where x < 3",
+		Expected: []sql.Row{
+			{2},
+		},
+	},
+	{
+		Query: "select min(x) from xy where y > 0",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query: "select max(x) from xy where y < 3",
+		Expected: []sql.Row{
+			{2},
+		},
+	},
+	{
+		Query: "select * from (select max(x) from xy) sq",
+		Expected: []sql.Row{
+			{3},
+		},
+	},
+	{
+		Query: "with cte(i) as (select max(x) from xy) select i + 100 from cte",
+		Expected: []sql.Row{
+			{103},
+		},
+	},
+	{
+		Query: "with cte(i) as (select x from xy) select max(i) from cte",
+		Expected: []sql.Row{
+			{3},
+		},
+	},
+	{
+		Query: "select max(x) from xy group by y",
+		Expected: []sql.Row{
+			{0},
+			{1},
+			{2},
+			{3},
+		},
+	},
+	{
+		Query: "select max(x) from xy join uv where x = u",
+		Expected: []sql.Row{
+			{3},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{

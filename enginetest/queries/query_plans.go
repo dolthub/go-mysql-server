@@ -10110,4 +10110,245 @@ WHERE keyless.c0 IN (
 			"                 └─ columns: [u v]\n" +
 			"",
 	},
+
+	{
+		Query: "select x from xy where x > 0 and x <= 2 order by x",
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [xy.x:0!null]\n" +
+			" └─ IndexedTableAccess(xy)\n" +
+			"     ├─ index: [xy.x]\n" +
+			"     ├─ static: [{(0, 2]}]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: xy\n" +
+			"         └─ columns: [x y]\n" +
+			"",
+	},
+
+	// aggregation optimization tests
+	{
+		Query: "select max(x) from xy",
+		ExpectedPlan: "Limit(1)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [xy.x:0!null as max(x)]\n" +
+			"     └─ IndexedTableAccess(xy)\n" +
+			"         ├─ index: [xy.x]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ reverse: true\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x]\n" +
+			"",
+	},
+	{
+		Query: "select min(x) from xy",
+		ExpectedPlan: "Limit(1)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [xy.x:0!null as min(x)]\n" +
+			"     └─ IndexedTableAccess(xy)\n" +
+			"         ├─ index: [xy.x]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x]\n" +
+			"",
+	},
+	{
+		Query: "select max(y) from xy",
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [max(xy.y):0!null as max(y)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(xy.y:0)\n" +
+			"     ├─ group: \n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [y]\n" +
+			"",
+	},
+	{
+		Query: "select max(x)+100 from xy",
+		ExpectedPlan: "Limit(1)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [(xy.x:0!null + 100 (tinyint)) as max(x)+100]\n" +
+			"     └─ IndexedTableAccess(xy)\n" +
+			"         ├─ index: [xy.x]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ reverse: true\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x]\n" +
+			"",
+	},
+	{
+		Query: "select max(x) as xx from xy",
+		ExpectedPlan: "Limit(1)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [xy.x:0!null as xx]\n" +
+			"     └─ IndexedTableAccess(xy)\n" +
+			"         ├─ index: [xy.x]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ reverse: true\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x]\n" +
+			"",
+	},
+	{
+		Query: "select 1, 2.0, '3', max(x) from xy",
+		ExpectedPlan: "Limit(1)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [1 (tinyint), 2 (decimal(2,1)), 3 (longtext) as 3, xy.x:0!null as max(x)]\n" +
+			"     └─ IndexedTableAccess(xy)\n" +
+			"         ├─ index: [xy.x]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ reverse: true\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x]\n" +
+			"",
+	},
+	{
+		Query: "select min(x) from xy where x > 0",
+		ExpectedPlan: "Limit(1)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [xy.x:0!null as min(x)]\n" +
+			"     └─ IndexedTableAccess(xy)\n" +
+			"         ├─ index: [xy.x]\n" +
+			"         ├─ static: [{(0, ∞)}]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x]\n" +
+			"",
+	},
+	{
+		Query: "select max(x) from xy where x < 3",
+		ExpectedPlan: "Limit(1)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [xy.x:0!null as max(x)]\n" +
+			"     └─ IndexedTableAccess(xy)\n" +
+			"         ├─ index: [xy.x]\n" +
+			"         ├─ static: [{(NULL, 3)}]\n" +
+			"         ├─ reverse: true\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x]\n" +
+			"",
+	},
+	{
+		Query: "select min(x) from xy where y > 0",
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [min(xy.x):0!null as min(x)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MIN(xy.x:0!null)\n" +
+			"     ├─ group: \n" +
+			"     └─ IndexedTableAccess(xy)\n" +
+			"         ├─ index: [xy.y]\n" +
+			"         ├─ static: [{(0, ∞)}]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: "select max(x) from xy where y < 3",
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [max(xy.x):0!null as max(x)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(xy.x:0!null)\n" +
+			"     ├─ group: \n" +
+			"     └─ IndexedTableAccess(xy)\n" +
+			"         ├─ index: [xy.y]\n" +
+			"         ├─ static: [{(NULL, 3)}]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: "select * from (select max(x) from xy) sq",
+		ExpectedPlan: "SubqueryAlias\n" +
+			" ├─ name: sq\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ cacheable: true\n" +
+			" └─ Limit(1)\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [xy.x:0!null as max(x)]\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ reverse: true\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: xy\n" +
+			"                 └─ columns: [x]\n" +
+			"",
+	},
+	{
+		Query: "with cte(i) as (select max(x) from xy) select i + 100 from cte",
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [(cte.i:0!null + 100 (tinyint)) as i + 100]\n" +
+			" └─ SubqueryAlias\n" +
+			"     ├─ name: cte\n" +
+			"     ├─ outerVisibility: false\n" +
+			"     ├─ cacheable: true\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ reverse: true\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: xy\n" +
+			"                 └─ columns: [x]\n" +
+			"",
+	},
+	{
+		Query: "with cte(i) as (select x from xy) select max(i) from cte",
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [max(cte.i):0!null as max(i)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(cte.i:0!null)\n" +
+			"     ├─ group: \n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: cte\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ cacheable: true\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x]\n" +
+			"",
+	},
+	{
+		Query: "select max(x) from xy group by y",
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [max(xy.x):0!null as max(x)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(xy.x:0!null)\n" +
+			"     ├─ group: xy.y:1\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: "select max(x) from xy join uv where x = u",
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [max(xy.x):0!null as max(x)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(xy.x:1!null)\n" +
+			"     ├─ group: \n" +
+			"     └─ LookupJoin\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ xy.x:1!null\n" +
+			"         │   └─ uv.u:0!null\n" +
+			"         ├─ ProcessTable\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: uv\n" +
+			"         │       └─ columns: [u]\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: xy\n" +
+			"                 └─ columns: [x]\n" +
+			"",
+	},
 }
