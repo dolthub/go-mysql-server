@@ -10159,15 +10159,15 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "select * from xy where x in (3, 0, 1) order by x desc",
+		Query:        "select * from xy where x in (3, 0, 1) order by x desc",
 		ExpectedPlan: "",
 	},
 	{
-		Query: "select * from xy where y in (3, 0, 1) order by y",
+		Query:        "select * from xy where y in (3, 0, 1) order by y",
 		ExpectedPlan: "",
 	},
 	{
-		Query: "select * from xy where y in (3, 0, 1) order by y desc",
+		Query:        "select * from xy where y in (3, 0, 1) order by y desc",
 		ExpectedPlan: "",
 	},
 
