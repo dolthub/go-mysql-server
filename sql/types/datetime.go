@@ -324,7 +324,7 @@ func (t datetimeType) ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
 		}
 		return nowTime.Add(value.AsTimeDuration()), nil
 	default:
-		return zeroTime, sql.ErrConvertToSQL.New(t)
+		return zeroTime, sql.ErrConvertToSQL.New(value, t)
 	}
 
 	if t.baseType == sqltypes.Date {

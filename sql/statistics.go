@@ -14,9 +14,7 @@
 
 package sql
 
-import (
-	"github.com/dolthub/go-mysql-server/sql/stats"
-)
+import "github.com/dolthub/go-mysql-server/sql/stats"
 
 // StatisticsTable is a table that can provide information about its number of rows and other facts to improve query
 // planning performance.

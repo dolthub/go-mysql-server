@@ -8908,7 +8908,7 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrCteRecursionLimitExceeded,
 	},
 	{
-		Query:       "with recursive t (n) as (select (1) from dual union all select n + 1 from t where n < 1002) select sum(n) from t",
+		Query:       "with recursive t (n) as (select (1) from dual union all select n + 1 from t where n < 10002) select sum(n) from t",
 		ExpectedErr: sql.ErrCteRecursionLimitExceeded,
 	},
 	{

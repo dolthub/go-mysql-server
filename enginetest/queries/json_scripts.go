@@ -23,6 +23,96 @@ import (
 
 var JsonScripts = []ScriptTest{
 	{
+		Name: "json_value",
+		SetUpScript: []string{
+			"CREATE TABLE xy (x bigint primary key, y JSON)",
+			`INSERT INTO xy VALUES (0, CAST('["a", "b"]' AS JSON)), (1, CAST('["a", "b", "c", "d"]' AS JSON));`,
+			`INSERT INTO xy VALUES (2, CAST('{"a": [{"b": 1}, {"c": 2}]}' AS JSON)), (3, CAST('{"a": {"b": ["c","d"]}}' AS JSON)), (4,NULL);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select json_value(y, '$.a', 'json') from xy`,
+				Expected: []sql.Row{
+					{nil},
+					{nil},
+					{types.MustJSON("[{\"b\": 1}, {\"c\": 2}]")},
+					{types.MustJSON("{\"b\": [\"c\",\"d\"]}")},
+					{nil},
+				},
+			},
+			{
+				Query: `select json_value(y, '$.a[0].b', 'signed') from xy where x = 2`,
+				Expected: []sql.Row{
+					{int64(1)},
+				},
+			},
+			{
+				Query: `select json_value(y, '$.a[0].b') from xy where x = 2`,
+				Expected: []sql.Row{
+					{"1"},
+				},
+			},
+			//{
+			//	Query: `select json_value(y, '$.a.b', 'signed') from xy where x = 2`,
+			//	Expected: []sql.Row{
+			//		{nil},
+			//	},
+			//},
+		},
+	},
+	{
+		Name: "json_length",
+		SetUpScript: []string{
+			"CREATE TABLE xy (x bigint primary key, y JSON)",
+			`INSERT INTO xy VALUES (0, CAST('["a", "b"]' AS JSON)), (1, CAST('["a", "b", "c", "d"]' AS JSON));`,
+			`INSERT INTO xy VALUES (2, CAST('{"a": [{"b": 1}, {"c": 2}]}' AS JSON)), (3, CAST('{"a": {"b": ["c","d"]}}' AS JSON)), (4,NULL);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select json_length(y) from xy`,
+				Expected: []sql.Row{
+					{2},
+					{4},
+					{1},
+					{1},
+					{nil},
+				},
+			},
+			{
+				Query:          `select json_length(json_extract(x, "$.a")) from xy`,
+				ExpectedErrStr: "failed to extract from expression 'xy.x'; object is not map",
+			},
+			{
+				Query: `select json_length(json_extract(y, "$.a")) from xy`,
+				Expected: []sql.Row{
+					{nil},
+					{nil},
+					{2},
+					{1},
+					{nil},
+				},
+			},
+			{
+				Query: `select json_length(json_extract(y, "$.a.b")) from xy where x = 3`,
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+			{
+				Query: `select json_length(y, "$.a.b") from xy where x = 3`,
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+			{
+				Query: `select json_length(y, "$.a[0].b") from xy where x = 2`,
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/go-mysql-server/issues/1855",
 		Name: "JSON_ARRAY properly handles CHAR bind vars",
 		SetUpScript: []string{

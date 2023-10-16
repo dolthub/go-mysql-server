@@ -181,6 +181,14 @@ func (b *BaseBuilder) buildJSONTable(ctx *sql.Context, n *plan.JSONTable, row sq
 	if err != nil {
 		return nil, err
 	}
+
+	if jd, ok := data.(types.JSONDocument); ok {
+		data, err = jd.ToString(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	strData, _, err := types.LongBlob.Convert(data)
 	if err != nil {
 		return nil, fmt.Errorf("invalid data type for JSON data in argument 1 to function json_table; a JSON string or JSON type is required")

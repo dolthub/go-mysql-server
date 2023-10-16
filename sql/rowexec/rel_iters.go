@@ -769,7 +769,7 @@ func (d *declareHandlerIter) Close(ctx *sql.Context) error {
 	return nil
 }
 
-const cteRecursionLimit = 1000
+const cteRecursionLimit = 10001
 
 // recursiveCteIter exhaustively executes a recursive
 // relation [rec] populated by an [init] base case.

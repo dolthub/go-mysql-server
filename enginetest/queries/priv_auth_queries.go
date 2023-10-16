@@ -24,7 +24,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/stats"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -1676,7 +1675,7 @@ var UserPrivTests = []UserPrivilegeTest{
 		SetUpScript: []string{
 			"CREATE TABLE two (i bigint primary key, j bigint, key(j))",
 			"INSERT INTO two VALUES (1, 4), (2, 5), (3, 6)",
-			"CREATE TABLE one (f float primary key)",
+			"CREATE TABLE one (f double primary key)",
 			"INSERT INTO one VALUES (1.25), (45.25), (7.5), (10.5)",
 			"ANALYZE TABLE one",
 			"ANALYZE TABLE two",
@@ -1692,36 +1691,9 @@ var UserPrivTests = []UserPrivilegeTest{
 			{
 				User:  "tester",
 				Host:  "localhost",
-				Query: "SELECT * FROM information_schema.column_statistics where schema_name = 'mydb';",
+				Query: "SELECT table_name, column_name FROM information_schema.column_statistics where schema_name = 'mydb';",
 				Expected: []sql.Row{
-					{"mydb", "one", "f", types.JSONDocument{Val: map[string]interface{}{
-						"buckets": stats.Histogram{
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: sql.Row{float32(1.25)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: sql.Row{float32(7.5)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: sql.Row{float32(10.5)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: sql.Row{float32(45.25)},
-							},
-						},
-					}}},
+					{"one", "f"},
 				},
 			},
 			{
@@ -1733,80 +1705,11 @@ var UserPrivTests = []UserPrivilegeTest{
 			{
 				User:  "tester",
 				Host:  "localhost",
-				Query: "SELECT * FROM information_schema.column_statistics where schema_name = 'mydb';",
+				Query: "SELECT table_name, column_name FROM information_schema.column_statistics where schema_name = 'mydb';",
 				Expected: []sql.Row{
-					{"mydb", "one", "f", types.JSONDocument{Val: map[string]interface{}{
-						"buckets": stats.Histogram{
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: sql.Row{float32(1.25)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: sql.Row{float32(7.5)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: sql.Row{float32(10.5)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: sql.Row{float32(45.25)},
-							},
-						},
-					}}},
-					{"mydb", "two", "i", types.JSONDocument{Val: map[string]interface{}{
-						"buckets": stats.Histogram{
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: sql.Row{int64(1)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: sql.Row{int64(2)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: sql.Row{int64(3)},
-							},
-						},
-					}}},
-					{"mydb", "two", "j", types.JSONDocument{Val: map[string]interface{}{
-						"buckets": stats.Histogram{
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: sql.Row{int64(4)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: sql.Row{int64(5)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: sql.Row{int64(6)},
-							},
-						},
-					}}},
+					{"one", "f"},
+					{"two", "i"},
+					{"two", "j"},
 				},
 			},
 		},

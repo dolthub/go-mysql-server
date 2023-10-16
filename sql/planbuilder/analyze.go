@@ -145,12 +145,6 @@ func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tab
 	statistics.Columns = columns
 	statistics.Types = types
 	for i, b := range statistics.Histogram {
-		switch val := b.UpperBound.(type) {
-		case []interface{}:
-			b.UpperBound = sql.Row(val)
-		default:
-			b.UpperBound = sql.Row{val}
-		}
 		if b.BoundCount == 0 {
 			b.BoundCount = 1
 		}
