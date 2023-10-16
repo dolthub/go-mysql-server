@@ -120,22 +120,34 @@ type IndexLookup struct {
 
 var emptyLookup = IndexLookup{}
 
-func (il IndexLookup) IsEmpty() bool {
+func (il *IndexLookup) IsEmpty() bool {
 	return il.Index == nil
 }
 
-func (il IndexLookup) String() string {
+func (il *IndexLookup) String() string {
 	pr := NewTreePrinter()
 	_ = pr.WriteNode("IndexLookup")
 	pr.WriteChildren(fmt.Sprintf("index: %s", il.Index), fmt.Sprintf("ranges: %s", il.Ranges.String()))
 	return pr.String()
 }
 
-func (il IndexLookup) DebugString() string {
+func (il *IndexLookup) DebugString() string {
 	pr := NewTreePrinter()
 	_ = pr.WriteNode("IndexLookup")
 	pr.WriteChildren(fmt.Sprintf("index: %s", il.Index), fmt.Sprintf("ranges: %s", il.Ranges.DebugString()))
 	return pr.String()
+}
+
+// Reverse flips the order of the ranges in the lookup, and marks the lookup as reversed.
+// This will do nothing if the lookup is already reversed
+func (il *IndexLookup) Reverse() {
+	if il.IsReverse {
+		return
+	}
+	il.IsReverse = true
+	for i, j := 0, len(il.Ranges) - 1; i < j; i, j = i+1, j-1 {
+		il.Ranges[i], il.Ranges[j] = il.Ranges[j], il.Ranges[i]
+	}
 }
 
 // FilteredIndex is an extension of |Index| that allows an index to declare certain filter predicates handled,
