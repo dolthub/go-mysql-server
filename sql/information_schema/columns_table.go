@@ -32,6 +32,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+const defaultColumnsTableRowCount = 1000
+
 var typeToNumericPrecision = map[query.Type]int{
 	sqltypes.Int8:    3,
 	sqltypes.Uint8:   3,
@@ -90,12 +92,12 @@ func (c *ColumnsTable) Database() string {
 	return sql.InformationSchemaDatabaseName
 }
 
-func (c *ColumnsTable) DataLength(ctx *sql.Context) (uint64, error) {
-	return 500, nil
+func (c *ColumnsTable) DataLength(_ *sql.Context) (uint64, error) {
+	return uint64(len(c.Schema()) * int(types.Text.MaxByteLength()) * defaultColumnsTableRowCount), nil
 }
 
-func (c *ColumnsTable) RowCount(ctx *sql.Context) (uint64, error) {
-	return 1000, nil
+func (c *ColumnsTable) RowCount(_ *sql.Context) (uint64, error) {
+	return defaultColumnsTableRowCount, nil
 }
 
 func (c *ColumnsTable) AssignCatalog(cat sql.Catalog) sql.Table {

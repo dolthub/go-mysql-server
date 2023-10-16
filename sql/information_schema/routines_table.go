@@ -25,6 +25,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+const defaultRoutinesTableRowCount = 10
+
 type routineTable struct {
 	name       string
 	schema     Schema
@@ -77,12 +79,12 @@ func (r *routineTable) Database() string {
 	return InformationSchemaDatabaseName
 }
 
-func (r *routineTable) DataLength(ctx *Context) (uint64, error) {
-	return 500, nil
+func (r *routineTable) DataLength(_ *Context) (uint64, error) {
+	return uint64(len(r.Schema()) * int(types.Text.MaxByteLength()) * defaultRoutinesTableRowCount), nil
 }
 
-func (r *routineTable) RowCount(ctx *Context) (uint64, error) {
-	return 1000, nil
+func (r *routineTable) RowCount(_ *Context) (uint64, error) {
+	return defaultRoutinesTableRowCount, nil
 }
 
 // Name implements the sql.Table interface.

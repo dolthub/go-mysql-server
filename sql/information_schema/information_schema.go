@@ -130,6 +130,8 @@ const (
 	ViewTableUsageTableName = "view_table_usage"
 	// ViewsTableName is the name of the VIEWS table.
 	ViewsTableName = "views"
+	// defaultInfoSchemaRowCount is a default row count estimate
+	defaultInfoSchemaRowCount = 1000
 )
 
 var sqlModeSetType = types.MustCreateSetType([]string{
@@ -2701,12 +2703,12 @@ func (t *informationSchemaTable) Schema() Schema {
 	return t.schema
 }
 
-func (t *informationSchemaTable) DataLength(ctx *Context) (uint64, error) {
-	return 500, nil
+func (t *informationSchemaTable) DataLength(_ *Context) (uint64, error) {
+	return uint64(len(t.Schema()) * int(types.Text.MaxByteLength()) * defaultInfoSchemaRowCount), nil
 }
 
-func (t *informationSchemaTable) RowCount(ctx *Context) (uint64, error) {
-	return 1000, nil
+func (t *informationSchemaTable) RowCount(_ *Context) (uint64, error) {
+	return defaultInfoSchemaRowCount, nil
 }
 
 // Collation implements the sql.Table interface.
