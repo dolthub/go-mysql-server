@@ -10159,7 +10159,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query:        "select * from xy where x in (3, 0, 1) order by x desc",
+		Query: "select * from xy where x in (3, 0, 1) order by x desc",
 		ExpectedPlan: "Filter\n" +
 			" ├─ HashIn\n" +
 			" │   ├─ xy.x:0!null\n" +
@@ -10174,7 +10174,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query:        "select * from xy where y in (3, 0, 1) order by y",
+		Query: "select * from xy where y in (3, 0, 1) order by y",
 		ExpectedPlan: "Filter\n" +
 			" ├─ HashIn\n" +
 			" │   ├─ xy.y:1\n" +
@@ -10188,7 +10188,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query:        "select * from xy where y in (3, 0, 1) order by y desc",
+		Query: "select * from xy where y in (3, 0, 1) order by y desc",
 		ExpectedPlan: "Filter\n" +
 			" ├─ HashIn\n" +
 			" │   ├─ xy.y:1\n" +
