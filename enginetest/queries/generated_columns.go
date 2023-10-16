@@ -225,7 +225,7 @@ var GeneratedColumnTests = []ScriptTest{
 		Name: "virtual column selects",
 		SetUpScript: []string{
 			"create table t1 (a int primary key, b int generated always as (a + 1) virtual)",
-			"create table t2 (c int primary key, b int generated always as (c - 1) virtual)",
+			"create table t2 (c int primary key, d int generated always as (c - 1) virtual)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -249,23 +249,23 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{1, 2}},
 			},
 			{
-				Query:    "select * from t2 where d = 2 order by a",
+				Query:    "select * from t2 where d = 2 order by c",
 				Expected: []sql.Row{{3, 2}},
 			},
 			{
-				Query:    "select sum(b) from t1 where b = > 2",
+				Query:    "select sum(b) from t1 where b >= 2",
 				Expected: []sql.Row{{7.0}},
 			},
 			{
-				Query:    "select sum(d) from t1 where d = > 1",
-				Expected: []sql.Row{{2.0}},
+				Query:    "select sum(d) from t2 where d >= 1",
+				Expected: []sql.Row{{3.0}},
 			},
 			{
 				Query:    "select a, (select b from t1 t1a where t1a.a = a+1) from t1 order by a",
 				Expected: []sql.Row{{1, 3}, {2, 4}, {3, nil}},
 			},
 			{
-				Query:    "select c, (select d from t2 t2a where t2a.c = c+1) from t2 order by b",
+				Query:    "select c, (select d from t2 t2a where t2a.c = c+1) from t2 order by c",
 				Expected: []sql.Row{{1, 1}, {2, 2}, {3, nil}},
 			},
 			{
