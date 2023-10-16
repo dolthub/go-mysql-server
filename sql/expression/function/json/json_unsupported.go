@@ -153,38 +153,6 @@ func (j JSONSearch) IsUnsupported() bool {
 	return true
 }
 
-// JSON_VALUE(json_doc, path)
-//
-// JSONValue Extracts a value from a JSON document at the path given in the specified document, and returns the
-// extracted value, optionally converting it to a desired type.
-//
-// https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html#function_json-value
-type JSONValue struct {
-	sql.Expression
-}
-
-var _ sql.FunctionExpression = JSONValue{}
-
-// NewJSONValue creates a new JSONValue function.
-func NewJSONValue(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONValue{}.FunctionName())
-}
-
-// FunctionName implements sql.FunctionExpression
-func (j JSONValue) FunctionName() string {
-	return "json_value"
-}
-
-// Description implements sql.FunctionExpression
-func (j JSONValue) Description() string {
-	return "extract value from JSON document at location pointed to by path provided; return this value as VARCHAR(512) or specified type."
-}
-
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONValue) IsUnsupported() bool {
-	return true
-}
-
 // value MEMBER OF(json_array)
 //
 // Returns true (1) if value is an element of json_array, otherwise returns false (0). value must be a scalar or a JSON
@@ -335,44 +303,6 @@ func (j JSONDepth) Description() string {
 
 // IsUnsupported implements sql.UnsupportedFunctionStub
 func (j JSONDepth) IsUnsupported() bool {
-	return true
-}
-
-// JSON_LENGTH(json_doc[, path])
-//
-// JSONLength Returns the length of a JSON document, or, if a path argument is given, the length of the value within
-// the document identified by the path. Returns NULL if any argument is NULL or the path argument does not identify a
-// value in the document. An error occurs if the json_doc argument is not a valid JSON document or the path argument is
-// not a valid path expression or contains a * or ** wildcard. The length of a document is determined as follows:
-//   - The length of a scalar is 1.
-//   - The length of an array is the number of array elements.
-//   - The length of an object is the number of object members.
-//   - The length does not count the length of nested arrays or objects.
-//
-// https://dev.mysql.com/doc/refman/8.0/en/json-attribute-functions.html#function_json-length
-type JSONLength struct {
-	sql.Expression
-}
-
-var _ sql.FunctionExpression = JSONLength{}
-
-// NewJSONLength creates a new JSONLength function.
-func NewJSONLength(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONLength{}.FunctionName())
-}
-
-// FunctionName implements sql.FunctionExpression
-func (j JSONLength) FunctionName() string {
-	return "json_length("
-}
-
-// Description implements sql.FunctionExpression
-func (j JSONLength) Description() string {
-	return "returns number of elements in JSON document."
-}
-
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONLength) IsUnsupported() bool {
 	return true
 }
 

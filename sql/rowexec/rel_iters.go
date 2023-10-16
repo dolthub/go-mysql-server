@@ -559,6 +559,9 @@ func ProjectRow(
 }
 
 func defaultValFromProjectExpr(e sql.Expression) (*sql.ColumnDefaultValue, bool) {
+	if defaultVal, ok := e.(*expression.Wrapper); ok {
+		e = defaultVal.Unwrap()
+	}
 	if defaultVal, ok := e.(*sql.ColumnDefaultValue); ok {
 		return defaultVal, true
 	}
@@ -766,7 +769,7 @@ func (d *declareHandlerIter) Close(ctx *sql.Context) error {
 	return nil
 }
 
-const cteRecursionLimit = 1000
+const cteRecursionLimit = 10001
 
 // recursiveCteIter exhaustively executes a recursive
 // relation [rec] populated by an [init] base case.

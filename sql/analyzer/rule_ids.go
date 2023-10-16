@@ -106,6 +106,7 @@ const (
 	assignExecIndexesId          // assignExecIndexes
 	inlineSubqueryAliasRefsId    // inlineSubqueryAliasRefs
 	eraseProjectionId            // eraseProjection
+	replaceAggId                 // replaceAgg
 	replaceSortPkId              // replaceSortPk
 	insertTopNId                 // insertTopN
 	applyHashInId                // applyHashIn

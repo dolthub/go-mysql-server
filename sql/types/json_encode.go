@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"reflect"
@@ -312,7 +313,13 @@ func writeMarshalledValue(writer io.Writer, val interface{}) error {
 		writer.Write([]byte(val.Format(time.RFC3339)))
 		writer.Write([]byte{'"'})
 		return nil
-
+	case json.Marshaler:
+		bytes, err := val.MarshalJSON()
+		if err != nil {
+			return err
+		}
+		writer.Write(bytes)
+		return nil
 	default:
 		r := reflect.ValueOf(val)
 		switch r.Kind() {

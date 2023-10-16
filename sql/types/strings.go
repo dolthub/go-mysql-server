@@ -360,6 +360,16 @@ func ConvertToString(v interface{}, t sql.StringType) (string, error) {
 			return "", nil
 		}
 		val = s.Decimal.String()
+
+	case JSONDocument:
+		str, err := s.ToString(nil)
+		if err != nil {
+			return "", err
+		}
+		val, err = strings.Unquote(str)
+		if err != nil {
+			return "", err
+		}
 	case JSONValue:
 		str, err := s.ToString(nil)
 		if err != nil {
@@ -373,7 +383,7 @@ func ConvertToString(v interface{}, t sql.StringType) (string, error) {
 	case GeometryValue:
 		return string(s.Serialize()), nil
 	default:
-		return "", sql.ErrConvertToSQL.New(t)
+		return "", sql.ErrConvertToSQL.New(s, t)
 	}
 
 	s := t.(StringType)

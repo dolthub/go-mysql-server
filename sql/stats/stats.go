@@ -1,6 +1,7 @@
 package stats
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -73,12 +74,75 @@ func (s *Stats) String() string {
 type Histogram []Bucket
 
 type Bucket struct {
-	Count      uint64        `json:"count"`
-	Distinct   uint64        `json:"distinct"`
-	BoundCount uint64        `json:"bound_count"`
-	Mcv        []interface{} `json:"mcv"`
-	McvCount   []uint64      `json:"mvc_count"`
-	UpperBound interface{}   `json:"upper_bound"`
+	Count      uint64          `json:"count"`
+	Distinct   uint64          `json:"distinct"`
+	Null       uint64          `json:"null"`
+	Mcv        [][]interface{} `json:"mcv"`
+	McvCount   []uint64        `json:"mvc_count"`
+	BoundCount uint64          `json:"bound_count"`
+	UpperBound []interface{}   `json:"upper_bound"`
+}
+
+func (b Bucket) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		Count      uint64
+		Distinct   uint64
+		Null       uint64
+		Mcv        [][]interface{}
+		McvCount   []uint64
+		BoundCount uint64
+		UpperBound []interface{}
+	}{
+		Count:      b.Count,
+		Distinct:   b.Distinct,
+		Null:       b.Null,
+		UpperBound: b.UpperBound,
+		BoundCount: b.BoundCount,
+		Mcv:        b.Mcv,
+		McvCount:   b.McvCount,
+	})
+}
+
+func (b Bucket) String() string {
+	build := strings.Builder{}
+	buckSep := ""
+	if b.Count > 0 {
+		build.WriteString(fmt.Sprintf("%s\"count\": %d", buckSep, b.Count))
+		buckSep = ", "
+	}
+	if b.Distinct > 0 {
+		build.WriteString(fmt.Sprintf("%s\"distinct\": %d", buckSep, b.Distinct))
+		buckSep = ", "
+	}
+	if b.UpperBound != nil {
+		build.WriteString(fmt.Sprintf("%s\"upper_bound\": %v", buckSep, b.UpperBound))
+		buckSep = ", "
+	}
+	if b.Null > 0 {
+		build.WriteString(fmt.Sprintf("%s\"null\": %v", buckSep, b.Null))
+		buckSep = ", "
+	}
+	var mcvs []string
+	for _, v := range b.Mcv {
+		if v != nil {
+			mcvs = append(mcvs, fmt.Sprintf("%v", v))
+		}
+	}
+	if len(mcvs) > 0 {
+		buckSep = ", "
+		build.WriteString(fmt.Sprintf("%s\"mcv\": [%s]", buckSep, strings.Join(mcvs, ", ")))
+	}
+	var mcvCounts []string
+	for _, v := range b.McvCount {
+		if v > 0 {
+			mcvCounts = append(mcvCounts, fmt.Sprintf("%d", v))
+		}
+	}
+	if len(mcvs) > 0 {
+		buckSep = ", "
+		build.WriteString(fmt.Sprintf("%s\"mcv_count\": [%s]", buckSep, strings.Join(mcvCounts, ", ")))
+	}
+	return build.String()
 }
 
 func (h Histogram) String() string {

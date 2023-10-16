@@ -46,9 +46,9 @@ func TestPlanBuilder(t *testing.T) {
 
 	var tests = []planTest{
 		{
-			Query: "analyze table xy update histogram on (x, y) using data '{\"row_count\": 40, \"columns\": [\"x\", \"y\"], \"types\": [\"int\", \"int\"], \"histogram\": [{\"count\": 20, \"upper_bound\": 50.0}, {\"count\": 20, \"upper_bound\": 80.0}]}'",
+			Query: "analyze table xy update histogram on (x, y) using data '{\"row_count\": 40, \"distinct_count\": 40, \"null_count\": 1, \"columns\": [\"x\", \"y\"], \"types\": [\"int\", \"int\"], \"histogram\": [{\"count\": 20, \"upper_bound\": [50.0]}, {\"count\": 20, \"upper_bound\": [80.0]}]}'",
 			ExpectedPlan: `
-update histogram  xy.(x,y) using {"row_count": 40, "histogram": [{"count": 20, "upper_bound": [50]}, {"count": 20, "upper_bound": [80]}], "columns": ["x","y"], "types": ["bigint","bigint"], "version": 0}`,
+update histogram  xy.(x,y) using {"row_count": 40, "distinct_count": 40, "null_count": 1, "histogram": [{"count": 20, "upper_bound": [50]}, {"count": 20, "upper_bound": [80]}], "columns": ["x","y"], "types": ["bigint","bigint"], "version": 0}`,
 		},
 		{
 			Query: "SELECT b.y as s1, a.y as s2, first_value(a.z) over (partition by a.y) from xy a join xy b on a.y = b.y",
