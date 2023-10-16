@@ -145,7 +145,7 @@ func (il *IndexLookup) Reverse() {
 		return
 	}
 	il.IsReverse = true
-	for i, j := 0, len(il.Ranges) - 1; i < j; i, j = i+1, j-1 {
+	for i, j := 0, len(il.Ranges)-1; i < j; i, j = i+1, j-1 {
 		il.Ranges[i], il.Ranges[j] = il.Ranges[j], il.Ranges[i]
 	}
 }
