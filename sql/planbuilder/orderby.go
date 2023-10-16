@@ -86,14 +86,14 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 				if !ok {
 					b.handleErr(fmt.Errorf("expected integer order by literal"))
 				}
-				if intIdx < 1 {
-					b.handleErr(fmt.Errorf("expected positive integer order by literal"))
+				if intIdx < 0 {
+					continue
 				}
 				if projScope == nil || len(projScope.cols) == 0 {
 					err := fmt.Errorf("invalid order by ordinal context")
 					b.handleErr(err)
 				}
-				if intIdx > int64(len(projScope.cols)) {
+				if intIdx > int64(len(projScope.cols)) || intIdx == 0 {
 					err := sql.ErrColumnNotFound.New(fmt.Sprintf("%d", intIdx))
 					b.handleErr(err)
 				}
