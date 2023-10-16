@@ -9098,7 +9098,7 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrAmbiguousColumnOrAliasName,
 	},
 	{
-		Query: "select * from mytable order by 999",
+		Query:          "select * from mytable order by 999",
 		ExpectedErrStr: "column \"999\" could not be found in any table in scope",
 	},
 }
