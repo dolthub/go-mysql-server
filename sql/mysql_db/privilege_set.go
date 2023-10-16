@@ -441,6 +441,12 @@ func (ps PrivilegeSetDatabase) HasPrivileges() bool {
 			return true
 		}
 	}
+	for _, routineSet := range ps.routines {
+		if routineSet.HasPrivileges() {
+			return true
+		}
+	}
+
 	return false
 }
 
