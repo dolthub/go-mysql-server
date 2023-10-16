@@ -4073,6 +4073,30 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "order by with numbers",
+		SetUpScript: []string{
+			"create table t (i int primary key, `100` int);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t order by `100`",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from t order by 100",
+				ExpectedErrStr: "column \"100\" could not be found in any table in scope",
+			},
+			{
+				Query: "select i as `200` from t order by `200`",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select i as `200` from t order by 200",
+				ExpectedErrStr: "column \"200\" could not be found in any table in scope",
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
