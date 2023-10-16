@@ -61,6 +61,8 @@ type ColumnsTable struct {
 }
 
 var _ sql.Table = (*ColumnsTable)(nil)
+var _ sql.StatisticsTable = (*ColumnsTable)(nil)
+var _ sql.Databaseable = (*ColumnsTable)(nil)
 var _ sql.DynamicColumnsTable = (*ColumnsTable)(nil)
 
 // String implements the sql.Table interface.
@@ -81,6 +83,19 @@ func (c *ColumnsTable) Collation() sql.CollationID {
 // Name implements the sql.Table interface.
 func (c *ColumnsTable) Name() string {
 	return ColumnsTableName
+}
+
+// Database implements the sql.Databaseable interface.
+func (c *ColumnsTable) Database() string {
+	return sql.InformationSchemaDatabaseName
+}
+
+func (c *ColumnsTable) DataLength(ctx *sql.Context) (uint64, error) {
+	return 500, nil
+}
+
+func (c *ColumnsTable) RowCount(ctx *sql.Context) (uint64, error) {
+	return 1000, nil
 }
 
 func (c *ColumnsTable) AssignCatalog(cat sql.Catalog) sql.Table {

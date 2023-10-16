@@ -45,6 +45,19 @@ var JoinPlanningTests = []struct {
 	tests []JoinPlanTest
 }{
 	{
+		name: "info schema plans",
+		setup: []string{
+			"CREATE table xy (x int primary key, y int);",
+		},
+		tests: []JoinPlanTest{
+			{
+				q:     "select count(t.*) from information_schema.columns c join information_schema.tables t on `t`.`TABLE_NAME` = `c`.`TABLE_NAME`",
+				types: []plan.JoinType{plan.JoinTypeHash},
+				exp:   []sql.Row{{735}},
+			},
+		},
+	},
+	{
 		name: "merge join unary index",
 		setup: []string{
 			"CREATE table xy (x int primary key, y int, unique index y_idx(y));",

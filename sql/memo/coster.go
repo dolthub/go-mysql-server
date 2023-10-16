@@ -124,7 +124,12 @@ func (c *coster) costScan(ctx *sql.Context, t *TableScan, s sql.StatsProvider) (
 }
 
 func (c *coster) costRead(ctx *sql.Context, t sql.Table, s sql.StatsProvider) (float64, error) {
-	db := ctx.GetCurrentDatabase()
+	var db string
+	if dbt, ok := t.(sql.Databaseable); ok {
+		db = dbt.Database()
+	} else {
+		db = ctx.GetCurrentDatabase()
+	}
 	card, err := s.RowCount(ctx, db, t.Name())
 	if err != nil {
 		// TODO: better estimates for derived tables

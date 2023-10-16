@@ -35,7 +35,9 @@ type routineTable struct {
 }
 
 var (
-	_ Table = (*routineTable)(nil)
+	_ Table           = (*routineTable)(nil)
+	_ Databaseable    = (*ColumnsTable)(nil)
+	_ StatisticsTable = (*ColumnsTable)(nil)
 )
 
 var doltProcedureAliasSet = map[string]interface{}{
@@ -59,15 +61,28 @@ var doltProcedureAliasSet = map[string]interface{}{
 	"dverify_all_constraints": nil,
 }
 
-func (t *routineTable) AssignCatalog(cat Catalog) Table {
-	t.catalog = cat
-	return t
+func (r *routineTable) AssignCatalog(cat Catalog) Table {
+	r.catalog = cat
+	return r
 }
 
 func (r *routineTable) AssignProcedures(p map[string][]*plan.Procedure) Table {
 	// TODO: should also assign functions
 	r.procedures = p
 	return r
+}
+
+// Database implements the sql.Databaseable interface.
+func (r *routineTable) Database() string {
+	return InformationSchemaDatabaseName
+}
+
+func (r *routineTable) DataLength(ctx *Context) (uint64, error) {
+	return 500, nil
+}
+
+func (r *routineTable) RowCount(ctx *Context) (uint64, error) {
+	return 1000, nil
 }
 
 // Name implements the sql.Table interface.

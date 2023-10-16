@@ -164,10 +164,12 @@ type informationSchemaPartitionIter struct {
 }
 
 var (
-	_ Database      = (*informationSchemaDatabase)(nil)
-	_ Table         = (*informationSchemaTable)(nil)
-	_ Partition     = (*informationSchemaPartition)(nil)
-	_ PartitionIter = (*informationSchemaPartitionIter)(nil)
+	_ Database        = (*informationSchemaDatabase)(nil)
+	_ Table           = (*informationSchemaTable)(nil)
+	_ StatisticsTable = (*informationSchemaTable)(nil)
+	_ Databaseable    = (*informationSchemaTable)(nil)
+	_ Partition       = (*informationSchemaPartition)(nil)
+	_ PartitionIter   = (*informationSchemaPartitionIter)(nil)
 )
 
 var administrableRoleAuthorizationsSchema = Schema{
@@ -2689,9 +2691,22 @@ func (t *informationSchemaTable) Name() string {
 	return t.name
 }
 
+// Database implements the sql.Databaseable interface.
+func (c *informationSchemaTable) Database() string {
+	return InformationSchemaDatabaseName
+}
+
 // Schema implements the sql.Table interface.
 func (t *informationSchemaTable) Schema() Schema {
 	return t.schema
+}
+
+func (t *informationSchemaTable) DataLength(ctx *Context) (uint64, error) {
+	return 500, nil
+}
+
+func (t *informationSchemaTable) RowCount(ctx *Context) (uint64, error) {
+	return 1000, nil
 }
 
 // Collation implements the sql.Table interface.
