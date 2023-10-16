@@ -14,46 +14,52 @@ import (
 func main() {
 	args := os.Args[1:]
 
-	if len(args) != 1 {
-		panic("expected 1 arg")
+	if len(args) != 2 {
+		panic("expected 2 args")
 	}
 
-	file, err := os.Open(args[0])
+	infile, err := os.Open(args[0])
 	if err != nil {
 		panic(err)
 	}
-	defer file.Close()
+	defer infile.Close()
 
-	scanner := bufio.NewScanner(file)
+	outfile, err := os.Create(args[1])
+	if err != nil {
+		panic(err)
+	}
+	defer outfile.Close()
+
+	scanner := bufio.NewScanner(infile)
 	for {
 		if !scanner.Scan() {
 			break
 		}
 		line := scanner.Text()
 		if len(line) == 0 {
-			fmt.Println()
+			outfile.WriteString("\n")
 			continue
 		}
 		if strings.HasPrefix(line, "#") {
-			fmt.Println(line)
+			outfile.WriteString(line + "\n")
 			continue
 		}
 		if strings.HasPrefix(line, "statement ok") {
-			rewriteStmt(scanner)
+			rewriteStmt(scanner, outfile)
 			continue
 		}
 		if strings.HasPrefix(line, "query error") || strings.HasPrefix(line, "statement error") {
-			rewriteError(scanner)
+			rewriteError(scanner, outfile)
 			continue
 		}
 		if strings.HasPrefix(line, "query") {
-			rewriteQuery(scanner, line)
+			rewriteQuery(scanner, line, outfile)
 			continue
 		}
 	}
 }
 
-func rewriteStmt(scanner *bufio.Scanner) {
+func rewriteStmt(scanner *bufio.Scanner, outfile *os.File) {
 	var stmt string
 	once := true
 	for {
@@ -69,7 +75,7 @@ func rewriteStmt(scanner *bufio.Scanner) {
 		if len(parts) > 1 {
 			// multiple statements in one line for some reason
 			for _, p := range parts {
-				writeStmt(p)
+				writeStmt(p, outfile)
 				once = true
 			}
 			continue
@@ -82,32 +88,30 @@ func rewriteStmt(scanner *bufio.Scanner) {
 			stmt += "\n" + part
 		}
 		if strings.HasSuffix(part, ";") {
-			writeStmt(stmt)
+			writeStmt(stmt, outfile)
 			once = true
 			stmt = ""
 		}
 	}
 
 	if len(stmt) != 0 {
-		writeStmt(stmt)
+		writeStmt(stmt, outfile)
 	}
 }
 
-func writeStmt(stmt string) {
-	fmt.Println("statement ok")
-	fmt.Println(stmt)
-	fmt.Println()
+func writeStmt(stmt string, outfile *os.File) {
+	outfile.WriteString("statement ok\n")
+	outfile.WriteString(stmt + "\n\n")
 }
 
-func rewriteError(scanner *bufio.Scanner) {
-	fmt.Println("statement error")
+func rewriteError(scanner *bufio.Scanner, outfile *os.File) {
+	outfile.WriteString("statement error\n")
 
 	stmt := utils.ReadStmt(scanner)
-	fmt.Println(stmt)
-	fmt.Println()
+	outfile.WriteString(stmt + "\n\n")
 }
 
-func rewriteQuery(scanner *bufio.Scanner, line string) {
+func rewriteQuery(scanner *bufio.Scanner, line string, outfile *os.File) {
 	schema := strings.Split(line, " ")[1]
 	hasColNames := strings.Contains(line, "colnames")
 	hasRowSort := strings.Contains(line, "rowsort")
@@ -132,11 +136,11 @@ func rewriteQuery(scanner *bufio.Scanner, line string) {
 		return
 	}
 
-	fmt.Printf("query %s nosort\n", schema)
-	fmt.Println(query)
-	fmt.Println(utils.SEP)
+	outfile.WriteString(fmt.Sprintf("query %s nosort\n", schema))
+	outfile.WriteString(query + "\n")
+	outfile.WriteString(utils.SEP + "\n")
 	for _, row := range rows {
-		fmt.Println(row)
+		outfile.WriteString(row + "\n")
 	}
-	fmt.Println()
+	outfile.WriteString("\n")
 }
