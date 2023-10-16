@@ -8201,7 +8201,7 @@ ORDER BY 1;`,
 	{
 		Query:    "SELECT JSON_EXTRACT('0.4', '$') <= 0;",
 		Expected: []sql.Row{{false}},
-	},{
+	}, {
 		Query:    "SELECT JSON_EXTRACT('0.4', '$') = 0;",
 		Expected: []sql.Row{{false}},
 	},
