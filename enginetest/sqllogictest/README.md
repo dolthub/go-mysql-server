@@ -6,7 +6,7 @@ SQLLogicTest format, which is readable and runnable by our SQLLogicTest suite.
 ## Converter Usage
 From within the `gms/enginetest/sqllogictest` directory, run the following command:
 ```shell
-go run ./convert/convert.go <path_to_file> > <output_file>
+go run ./convert/convert.go <infile> <outfile>
 ```
 
 CochroachDB's tests use PostgreSQL syntax, while we expect MySQL syntax; the converter does not
@@ -14,7 +14,7 @@ take this into account. This is where the Checker is useful.
 
 ## Checker Usage 
 ```shell
-go run ./check/check.go <path_to_file>
+go run ./check/check.go <infile>
 ```
 
 This will run the SQLLogicTests against a running MySQL/Dolt server.
