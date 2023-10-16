@@ -8190,25 +8190,6 @@ ORDER BY 1;`,
 			{3},
 		},
 	},
-	{
-		Query:    "SELECT JSON_EXTRACT('0.4', '$')",
-		Expected: []sql.Row{{types.MustJSON(`0.4`)}},
-	},
-	{
-		Query:    "SELECT JSON_EXTRACT('0.4', '$') > 0;",
-		Expected: []sql.Row{{true}},
-	},
-	{
-		Query:    "SELECT JSON_EXTRACT('0.4', '$') <= 0;",
-		Expected: []sql.Row{{false}},
-	}, {
-		Query:    "SELECT JSON_EXTRACT('0.4', '$') = 0;",
-		Expected: []sql.Row{{false}},
-	},
-	{
-		Query:    "SELECT JSON_EXTRACT('0.4', '$') = 0.4;",
-		Expected: []sql.Row{{true}},
-	},
 }
 
 var KeylessQueries = []QueryTest{

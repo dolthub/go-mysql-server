@@ -718,4 +718,28 @@ var JsonScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "json type value compared with number type value",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT JSON_EXTRACT('0.4', '$')",
+				Expected: []sql.Row{{types.MustJSON(`0.4`)}},
+			},
+			{
+				Query:    "SELECT JSON_EXTRACT('0.4', '$') > 0;",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT JSON_EXTRACT('0.4', '$') <= 0;",
+				Expected: []sql.Row{{false}},
+			}, {
+				Query:    "SELECT JSON_EXTRACT('0.4', '$') = 0;",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "SELECT JSON_EXTRACT('0.4', '$') = 0.4;",
+				Expected: []sql.Row{{true}},
+			},
+		},
+	},
 }
