@@ -57,7 +57,6 @@ var GeneratedColumnTests = []ScriptTest{
 				Query:    "select * from t1 order by a",
 				Expected: []sql.Row{{1, 2}, {2, 3}, {3, 4}},
 			},
-			// Bug in explicit DEFAULT when a column reference is involved
 			{
 				Query:    "insert into t1(a,b) values (4, DEFAULT)",
 				Expected: []sql.Row{{types.NewOkResult(1)}},
@@ -65,6 +64,10 @@ var GeneratedColumnTests = []ScriptTest{
 			{
 				Query:    "select * from t1 where b = 5 order by a",
 				Expected: []sql.Row{{4, 5}},
+			},
+			{
+				Query:    "update t1 set b = b + 1",
+				ExpectedErr: sql.ErrGeneratedColumnValue,
 			},
 		},
 	},
@@ -211,6 +214,75 @@ var GeneratedColumnTests = []ScriptTest{
 			{
 				Query:    "select * from t1 order by a",
 				Expected: []sql.Row{{1, 2}, {4, 5}},
+			},
+			{
+				Query:    "update t1 set b = b + 1",
+				ExpectedErr: sql.ErrGeneratedColumnValue,
+			},
+		},
+	},
+	{
+		Name: "virtual column selects",
+		SetUpScript: []string{
+			"create table t1 (a int primary key, b int generated always as (a + 1) virtual)",
+			"create table t2 (c int primary key, b int generated always as (c - 1) virtual)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into t1 (a) values (1), (2), (3)",
+				Expected: []sql.Row{{types.NewOkResult(3)}},
+			},
+			{
+				Query:    "select * from t1 order by a",
+				Expected: []sql.Row{{1, 2}, {2, 3}, {3, 4}},
+			},
+			{
+				Query:    "insert into t2 (c) values (1), (2), (3)",
+				Expected: []sql.Row{{types.NewOkResult(3)}},
+			},
+			{
+				Query:    "select * from t2 order by c",
+				Expected: []sql.Row{{1, 0}, {2, 1}, {3, 2}},
+			},
+			{
+				Query:    "select * from t1 where b = 2 order by a",
+				Expected: []sql.Row{{1, 2}},
+			},
+			{
+				Query:    "select * from t2 where d = 2 order by a",
+				Expected: []sql.Row{{3, 2}},
+			},
+			{
+				Query:    "select sum(b) from t1 where b = > 2",
+				Expected: []sql.Row{{7.0}},
+			},
+			{
+				Query:    "select sum(d) from t1 where d = > 1",
+				Expected: []sql.Row{{2.0}},
+			},
+			{
+				Query:    "select a, (select b from t1 t1a where t1a.a = a+1) from t1 order by a",
+				Expected: []sql.Row{{1, 3}, {2, 4}, {3, nil}},
+			},
+			{
+				Query:    "select c, (select d from t2 t2a where t2a.c = c+1) from t2 order by b",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, nil}},
+			},
+			{
+				Query:    "select * from t1 join t2 on a = c order by a",
+				Expected: []sql.Row{{1, 2, 1, 0}, {2, 3, 2, 1}, {3, 4, 3, 2}},
+			},
+			{
+				Query:    "select * from t1 join t2 on a = d order by a",
+				Expected: []sql.Row{{1, 2, 2, 1}, {2, 3, 3, 2}},
+			},
+			{
+				Query:    "select * from t1 join t2 on b = d order by a",
+				Expected: []sql.Row{{1, 2, 3, 2}},
+			},
+			{
+				Query:    "select * from t1 join (select * from t2) as t3 on b = d order by a",
+				Expected: []sql.Row{{1, 2, 3, 2}},
 			},
 		},
 	},
