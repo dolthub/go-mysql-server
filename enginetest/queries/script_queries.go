@@ -4081,7 +4081,7 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select * from t order by `100`",
+				Query: "select * from t order by `100`",
 				Expected: []sql.Row{
 					{2, 1},
 					{1, 2},
@@ -4092,7 +4092,7 @@ var ScriptTests = []ScriptTest{
 				ExpectedErrStr: "column \"100\" could not be found in any table in scope",
 			},
 			{
-				Query:    "select i as `200`, `100` from t order by `200`",
+				Query: "select i as `200`, `100` from t order by `200`",
 				Expected: []sql.Row{
 					{1, 2},
 					{2, 1},
@@ -4103,11 +4103,11 @@ var ScriptTests = []ScriptTest{
 				ExpectedErrStr: "column \"200\" could not be found in any table in scope",
 			},
 			{
-				Query:    "select * from t order by 0",
+				Query:          "select * from t order by 0",
 				ExpectedErrStr: "column \"0\" could not be found in any table in scope",
 			},
 			{
-				Query:    "select * from t order by -999",
+				Query: "select * from t order by -999",
 				Expected: []sql.Row{
 					{1, 2},
 					{2, 1},
