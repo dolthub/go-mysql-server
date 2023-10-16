@@ -32,12 +32,15 @@ func replacePkSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sor
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		idxExprs := lookup.Index.Expressions()
+
 		tableAliases, err := getTableAliases(sortNode, scope)
 		if err != nil {
 			return n, transform.SameTree, nil
 		}
-		if !isSortFieldsValidPrefix(sortNode, tableAliases, idxExprs) {
+
+		sfExprs := normalizeExpressions(tableAliases, sortNode.SortFields.ToExpressions()...)
+		sfAliases := aliasedExpressionsInNode(sortNode)
+		if !isSortFieldsValidPrefix(sfExprs, sfAliases, lookup.Index.Expressions()) {
 			return n, transform.SameTree, nil
 		}
 
@@ -46,18 +49,16 @@ func replacePkSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sor
 			return n, transform.NewTree, nil
 		}
 
-		// modify existing lookup to preserve pushed down filters
-		lookup.IsReverse = true
-
-		// Some Primary Keys (like doltHistoryTable) are not in order
-		if oi, ok := lookup.Index.(sql.OrderedIndex); ok && ((lookup.IsReverse && !oi.Reversible()) || oi.Order() == sql.IndexOrderNone) {
+		// some indexes (like doltHistoryTable) can't be reversed
+		if oi, ok := lookup.Index.(sql.OrderedIndex); ok && !oi.Reversible() {
 			return n, transform.SameTree, nil
 		}
+
+		lookup.Reverse()
 		nn, err := plan.NewStaticIndexedAccessForTableNode(n.TableNode, lookup)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-
 		return nn, transform.NewTree, err
 	case *plan.ResolvedTable:
 		if sortNode == nil || !isValidSortFieldOrder(sortNode.SortFields) {
@@ -70,36 +71,43 @@ func replacePkSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sor
 			return n, transform.SameTree, nil
 		}
 
-		// TODO: support secondary indexes
-		pkIndex, err := getPKIndex(ctx, idxTbl)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-		if pkIndex == nil {
-			return n, transform.SameTree, nil
-		}
-		pkColNames := pkIndex.Expressions()
-
 		tableAliases, err := getTableAliases(sortNode, scope)
 		if err != nil {
 			return n, transform.SameTree, nil
 		}
-		if !isSortFieldsValidPrefix(sortNode, tableAliases, pkColNames) {
+
+		var idx sql.Index
+		idxs, err := idxTbl.GetIndexes(ctx)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		sfExprs := normalizeExpressions(tableAliases, sortNode.SortFields.ToExpressions()...)
+		sfAliases := aliasedExpressionsInNode(sortNode)
+		for _, idxCandidate := range idxs {
+			if isSortFieldsValidPrefix(sfExprs, sfAliases, idxCandidate.Expressions()) {
+				idx = idxCandidate
+				break
+			}
+		}
+		if idx == nil {
 			return n, transform.SameTree, nil
 		}
 
 		// Create lookup based off of PrimaryKey
-		indexBuilder := sql.NewIndexBuilder(pkIndex)
+		indexBuilder := sql.NewIndexBuilder(idx)
 		lookup, err := indexBuilder.Build(ctx)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		lookup.IsReverse = sortNode.SortFields[0].Order == sql.Descending
+		if sortNode.SortFields[0].Order == sql.Descending {
+			lookup.Reverse()
+		}
+
 		// Some Primary Keys (like doltHistoryTable) are not in order
-		if oi, ok := pkIndex.(sql.OrderedIndex); ok && ((lookup.IsReverse && !oi.Reversible()) || oi.Order() == sql.IndexOrderNone) {
+		if oi, ok := idx.(sql.OrderedIndex); ok && ((lookup.IsReverse && !oi.Reversible()) || oi.Order() == sql.IndexOrderNone) {
 			return n, transform.SameTree, nil
 		}
-		if !pkIndex.CanSupport(lookup.Ranges...) {
+		if !idx.CanSupport(lookup.Ranges...) {
 			return n, transform.SameTree, nil
 		}
 		nn, err := plan.NewStaticIndexedAccessForTableNode(n, lookup)
@@ -233,27 +241,24 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 	})
 }
 
-// isSortFieldsValidPrefix checks is the SortFields in sortNode are a valid prefix of the PrimaryKey
-func isSortFieldsValidPrefix(sortNode *plan.Sort, tableAliases TableAliases, pkColNames []string) bool {
-	sfExprs := normalizeExpressions(tableAliases, sortNode.SortFields.ToExpressions()...)
-	sfAliases := aliasedExpressionsInNode(sortNode)
-	if len(sfExprs) > len(pkColNames) {
+// isSortFieldsValidPrefix checks if the SortFields in sortNode are a valid prefix of the index columns
+func isSortFieldsValidPrefix(sfExprs []sql.Expression, sfAliases map[string]string, idxColExprs []string) bool {
+	if len(sfExprs) > len(idxColExprs) {
 		return false
 	}
-
 	for i, fieldExpr := range sfExprs {
 		fieldName := fieldExpr.String()
-		if alias, ok := sfAliases[strings.ToLower(pkColNames[i])]; ok && alias == fieldName {
+		if alias, ok := sfAliases[strings.ToLower(idxColExprs[i])]; ok && alias == fieldName {
 			continue
 		}
-		if !strings.EqualFold(pkColNames[i], fieldName) {
+		if !strings.EqualFold(idxColExprs[i], fieldName) {
 			return false
 		}
 	}
 	return true
 }
 
-// isValidSortFieldOrder checks if all the sortfields are in the same order
+// isValidSortFieldOrder checks if all the sortFields are in the same order
 func isValidSortFieldOrder(sfs sql.SortFields) bool {
 	for _, sf := range sfs {
 		// TODO: could generalize this to more monotonic expressions.
