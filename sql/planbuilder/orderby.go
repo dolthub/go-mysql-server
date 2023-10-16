@@ -93,6 +93,10 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 					err := fmt.Errorf("invalid order by ordinal context")
 					b.handleErr(err)
 				}
+				if intIdx > int64(len(projScope.cols)) {
+					err := sql.ErrColumnNotFound.New(fmt.Sprintf("%d", intIdx))
+					b.handleErr(err)
+				}
 				target := projScope.cols[intIdx-1]
 				scalar := target.scalar
 				if scalar == nil {
