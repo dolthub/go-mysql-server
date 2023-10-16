@@ -25,6 +25,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+const defaultRoutinesTableRowCount = 10
+
 type routineTable struct {
 	name       string
 	schema     Schema
@@ -35,7 +37,9 @@ type routineTable struct {
 }
 
 var (
-	_ Table = (*routineTable)(nil)
+	_ Table           = (*routineTable)(nil)
+	_ Databaseable    = (*ColumnsTable)(nil)
+	_ StatisticsTable = (*ColumnsTable)(nil)
 )
 
 var doltProcedureAliasSet = map[string]interface{}{
@@ -59,15 +63,28 @@ var doltProcedureAliasSet = map[string]interface{}{
 	"dverify_all_constraints": nil,
 }
 
-func (t *routineTable) AssignCatalog(cat Catalog) Table {
-	t.catalog = cat
-	return t
+func (r *routineTable) AssignCatalog(cat Catalog) Table {
+	r.catalog = cat
+	return r
 }
 
 func (r *routineTable) AssignProcedures(p map[string][]*plan.Procedure) Table {
 	// TODO: should also assign functions
 	r.procedures = p
 	return r
+}
+
+// Database implements the sql.Databaseable interface.
+func (r *routineTable) Database() string {
+	return InformationSchemaDatabaseName
+}
+
+func (r *routineTable) DataLength(_ *Context) (uint64, error) {
+	return uint64(len(r.Schema()) * int(types.Text.MaxByteLength()) * defaultRoutinesTableRowCount), nil
+}
+
+func (r *routineTable) RowCount(_ *Context) (uint64, error) {
+	return defaultRoutinesTableRowCount, nil
 }
 
 // Name implements the sql.Table interface.

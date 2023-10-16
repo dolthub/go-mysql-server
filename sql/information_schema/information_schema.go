@@ -130,6 +130,8 @@ const (
 	ViewTableUsageTableName = "view_table_usage"
 	// ViewsTableName is the name of the VIEWS table.
 	ViewsTableName = "views"
+	// defaultInfoSchemaRowCount is a default row count estimate
+	defaultInfoSchemaRowCount = 1000
 )
 
 var sqlModeSetType = types.MustCreateSetType([]string{
@@ -164,10 +166,12 @@ type informationSchemaPartitionIter struct {
 }
 
 var (
-	_ Database      = (*informationSchemaDatabase)(nil)
-	_ Table         = (*informationSchemaTable)(nil)
-	_ Partition     = (*informationSchemaPartition)(nil)
-	_ PartitionIter = (*informationSchemaPartitionIter)(nil)
+	_ Database        = (*informationSchemaDatabase)(nil)
+	_ Table           = (*informationSchemaTable)(nil)
+	_ StatisticsTable = (*informationSchemaTable)(nil)
+	_ Databaseable    = (*informationSchemaTable)(nil)
+	_ Partition       = (*informationSchemaPartition)(nil)
+	_ PartitionIter   = (*informationSchemaPartitionIter)(nil)
 )
 
 var administrableRoleAuthorizationsSchema = Schema{
@@ -2689,9 +2693,22 @@ func (t *informationSchemaTable) Name() string {
 	return t.name
 }
 
+// Database implements the sql.Databaseable interface.
+func (c *informationSchemaTable) Database() string {
+	return InformationSchemaDatabaseName
+}
+
 // Schema implements the sql.Table interface.
 func (t *informationSchemaTable) Schema() Schema {
 	return t.schema
+}
+
+func (t *informationSchemaTable) DataLength(_ *Context) (uint64, error) {
+	return uint64(len(t.Schema()) * int(types.Text.MaxByteLength()) * defaultInfoSchemaRowCount), nil
+}
+
+func (t *informationSchemaTable) RowCount(_ *Context) (uint64, error) {
+	return defaultInfoSchemaRowCount, nil
 }
 
 // Collation implements the sql.Table interface.
