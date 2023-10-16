@@ -206,13 +206,22 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 			return l, r, types.Float64, nil
 		}
 
-		if types.IsSigned(leftType) || types.IsSigned(rightType) {
+		if types.IsSigned(leftType) && types.IsSigned(rightType) {
 			l, r, err := convertLeftAndRight(left, right, ConvertToSigned)
 			if err != nil {
 				return nil, nil, nil, err
 			}
 
 			return l, r, types.Int64, nil
+		}
+
+		if types.IsNumber(leftType) || types.IsNumber(rightType) {
+			l, r, err := convertLeftAndRight(left, right, ConvertToDouble)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+
+			return l, r, types.Float64, nil
 		}
 
 		l, r, err := convertLeftAndRight(left, right, ConvertToUnsigned)
