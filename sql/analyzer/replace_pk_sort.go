@@ -93,7 +93,9 @@ func replacePkSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sor
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		lookup.IsReverse = sortNode.SortFields[0].Order == sql.Descending
+		if sortNode.SortFields[0].Order == sql.Descending {
+			lookup.Reverse()
+		}
 		// Some Primary Keys (like doltHistoryTable) are not in order
 		if oi, ok := pkIndex.(sql.OrderedIndex); ok && ((lookup.IsReverse && !oi.Reversible()) || oi.Order() == sql.IndexOrderNone) {
 			return n, transform.SameTree, nil
