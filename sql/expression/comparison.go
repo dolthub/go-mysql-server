@@ -215,21 +215,21 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 			return l, r, types.Int64, nil
 		}
 
-		if types.IsNumber(leftType) || types.IsNumber(rightType) {
-			l, r, err := convertLeftAndRight(left, right, ConvertToDouble)
+		if types.IsUnsigned(leftType) && types.IsUnsigned(rightType) {
+			l, r, err := convertLeftAndRight(left, right, ConvertToUnsigned)
 			if err != nil {
 				return nil, nil, nil, err
 			}
 
-			return l, r, types.Float64, nil
+			return l, r, types.Uint64, nil
 		}
 
-		l, r, err := convertLeftAndRight(left, right, ConvertToUnsigned)
+		l, r, err := convertLeftAndRight(left, right, ConvertToDouble)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 
-		return l, r, types.Uint64, nil
+		return l, r, types.Float64, nil
 	}
 
 	left, right, err := convertLeftAndRight(left, right, ConvertToChar)
