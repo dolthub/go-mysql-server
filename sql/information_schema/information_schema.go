@@ -1839,7 +1839,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 			tableCollation = t.Collation().String()
 			if db.Name() != InformationSchemaDatabaseName {
 				if st, ok := t.(StatisticsTable); ok {
-					tableRows, err = st.RowCount(ctx)
+					tableRows, _, err = st.RowCount(ctx)
 					if err != nil {
 						return false, err
 					}
@@ -2707,8 +2707,8 @@ func (t *informationSchemaTable) DataLength(_ *Context) (uint64, error) {
 	return uint64(len(t.Schema()) * int(types.Text.MaxByteLength()) * defaultInfoSchemaRowCount), nil
 }
 
-func (t *informationSchemaTable) RowCount(_ *Context) (uint64, error) {
-	return defaultInfoSchemaRowCount, nil
+func (t *informationSchemaTable) RowCount(ctx *Context) (uint64, bool, error) {
+	return defaultInfoSchemaRowCount, false, nil
 }
 
 // Collation implements the sql.Table interface.
