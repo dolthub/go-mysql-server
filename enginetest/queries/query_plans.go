@@ -10123,6 +10123,53 @@ WHERE keyless.c0 IN (
 			"         └─ columns: [x y]\n" +
 			"",
 	},
+	{
+		Query: "select * from xy where y < 1 or y > 2 order by y",
+		ExpectedPlan: "IndexedTableAccess(xy)\n" +
+			" ├─ index: [xy.y]\n" +
+			" ├─ static: [{(NULL, 1)}, {(2, ∞)}]\n" +
+			" └─ Table\n" +
+			"     ├─ name: xy\n" +
+			"     └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: "select * from xy where y < 1 or y > 2 order by y desc",
+		ExpectedPlan: "IndexedTableAccess(xy)\n" +
+			" ├─ index: [xy.y]\n" +
+			" ├─ static: [{(2, ∞)}, {(NULL, 1)}]\n" +
+			" ├─ reverse: true\n" +
+			" └─ Table\n" +
+			"     ├─ name: xy\n" +
+			"     └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: "select * from xy where x in (3, 0, 1) order by x",
+		ExpectedPlan: "Filter\n" +
+			" ├─ HashIn\n" +
+			" │   ├─ xy.x:0!null\n" +
+			" │   └─ TUPLE(3 (tinyint), 0 (tinyint), 1 (tinyint))\n" +
+			" └─ IndexedTableAccess(xy)\n" +
+			"     ├─ index: [xy.x]\n" +
+			"     ├─ static: [{[0, 0]}, {[1, 1]}, {[3, 3]}]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: xy\n" +
+			"         └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: "select * from xy where x in (3, 0, 1) order by x desc",
+		ExpectedPlan: "",
+	},
+	{
+		Query: "select * from xy where y in (3, 0, 1) order by y",
+		ExpectedPlan: "",
+	},
+	{
+		Query: "select * from xy where y in (3, 0, 1) order by y desc",
+		ExpectedPlan: "",
+	},
 
 	// aggregation optimization tests
 	{
