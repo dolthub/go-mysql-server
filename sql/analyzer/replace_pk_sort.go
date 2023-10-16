@@ -46,13 +46,12 @@ func replacePkSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sor
 			return n, transform.NewTree, nil
 		}
 
-		// modify existing lookup to preserve pushed down filters
-		lookup.IsReverse = true
-
-		// Some Primary Keys (like doltHistoryTable) are not in order
-		if oi, ok := lookup.Index.(sql.OrderedIndex); ok && ((lookup.IsReverse && !oi.Reversible()) || oi.Order() == sql.IndexOrderNone) {
+		// if the index is not reversible, do nothing
+		if oi, ok := lookup.Index.(sql.OrderedIndex); ok && !oi.Reversible() {
 			return n, transform.SameTree, nil
 		}
+
+		lookup.Reverse()
 		nn, err := plan.NewStaticIndexedAccessForTableNode(n.TableNode, lookup)
 		if err != nil {
 			return nil, transform.SameTree, err
