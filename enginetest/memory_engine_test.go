@@ -20,11 +20,13 @@ import (
 	"os"
 	"testing"
 
+	"github.com/dolthub/sqllogictest/go/logictest"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	memharness "github.com/dolthub/go-mysql-server/enginetest/sqllogictest/harness"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -1012,4 +1014,18 @@ func mergeSetupScripts(scripts ...setup.SetupScript) []string {
 		all = append(all, s...)
 	}
 	return all
+}
+
+func TestSQLLogicTests(t *testing.T) {
+	enginetest.TestSQLLogicTests(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestSQLLogicTestFiles(t *testing.T) {
+	t.Skip()
+	h := memharness.NewMemoryHarness(enginetest.NewDefaultMemoryHarness())
+	paths := []string{
+		"./sqllogictest/testdata/join/join.txt",
+		"./sqllogictest/testdata/join/subquery_correlated.txt",
+	}
+	logictest.RunTestFiles(h, paths...)
 }
