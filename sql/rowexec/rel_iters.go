@@ -565,11 +565,6 @@ func defaultValFromProjectExpr(e sql.Expression) (*sql.ColumnDefaultValue, bool)
 	if defaultVal, ok := e.(*sql.ColumnDefaultValue); ok {
 		return defaultVal, true
 	}
-	if alias, ok := e.(*expression.Alias); ok {
-		if defaultVal, ok := alias.Child.(*sql.ColumnDefaultValue); ok {
-			return defaultVal, true
-		}
-	}
 
 	return nil, false
 }

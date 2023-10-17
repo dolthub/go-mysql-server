@@ -415,4 +415,24 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "adding a virtual column",
+		SetUpScript: []string{
+			"create table t1 (a int primary key, b int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into t1 (a, b) values (1, 2), (3, 4)",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "alter table t1 add column c int generated always as (a + b) virtual",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "select * from t1 order by a",
+				Expected: []sql.Row{{1, 2, 3}, {3, 4, 7}},
+			},
+		},
+	},
 }
