@@ -12,12 +12,12 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-// replacePkSort applies an IndexAccess when there is an `OrderBy` over a prefix of any `PrimaryKey`s
-func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	return replacePkSortHelper(ctx, scope, n, nil)
+// replaceIdxSort applies an IndexAccess when there is an `OrderBy` over a prefix of any columns with Indexes
+func replaceIdxSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return replaceIdxSortHelper(ctx, scope, n, nil)
 }
 
-func replacePkSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sortNode *plan.Sort) (sql.Node, transform.TreeIdentity, error) {
+func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sortNode *plan.Sort) (sql.Node, transform.TreeIdentity, error) {
 	switch n := node.(type) {
 	case *plan.Sort:
 		sortNode = n // lowest parent sort node
@@ -96,7 +96,7 @@ func replacePkSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sor
 			return n, transform.SameTree, nil
 		}
 
-		// Create lookup based off of PrimaryKey
+		// Create lookup based off of index
 		indexBuilder := sql.NewIndexBuilder(idx)
 		lookup, err := indexBuilder.Build(ctx)
 		if err != nil {
@@ -127,7 +127,7 @@ func replacePkSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sor
 		same := transform.SameTree
 		switch c := child.(type) {
 		case *plan.Project, *plan.TableAlias, *plan.ResolvedTable, *plan.Filter, *plan.Limit, *plan.Offset, *plan.Sort, *plan.IndexedTableAccess:
-			newChildren[i], same, err = replacePkSortHelper(ctx, scope, child, sortNode)
+			newChildren[i], same, err = replaceIdxSortHelper(ctx, scope, child, sortNode)
 		default:
 			newChildren[i] = c
 		}
