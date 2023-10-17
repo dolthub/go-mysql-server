@@ -198,19 +198,21 @@ func TestSingleScript(t *testing.T) {
 	// t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "virtual column selects",
+			Name: "virtual column json extract",
 			SetUpScript: []string{
-				"create table t1 (a int primary key, b int generated always as (a + 1) virtual)",
-				"create table t2 (c int primary key, d int generated always as (c - 1) virtual)",
+				"create table t1 (a int primary key, j json, b int generated always as (j->>'$.b') virtual)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "insert into t1 (a) values (1), (2), (3)",
+					Query:    `insert into t1 (a, j) values (1, '{"a": 1, "b": 2}'), (2, '{"a": 1}'), (3, '{"b": "300"}')`,
 					Expected: []sql.Row{{types.NewOkResult(3)}},
 				},
 				{
-					Query:    "select a, (select b from t1 t1a where t1a.a = t1.a+1) from t1 order by a",
-					Expected: []sql.Row{{1, 3}, {2, 4}, {3, nil}},
+					Query:    "select * from t1 order by a",
+					Expected: []sql.Row{
+						{1, types.MustJSON(`{"a": 1, "b": 2}`), 2},
+						{2, types.MustJSON(`{"a": 1}`), nil},
+						{3, types.MustJSON(`{"b": "300"}`), 300}},
 				},
 			},
 		},

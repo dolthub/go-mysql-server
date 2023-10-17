@@ -225,9 +225,12 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 	for i, updateExpr := range e {
 		colName := b.buildScalar(inScope, updateExpr.Name)
 		
+		// Prevent update of generated columns. Some plans don't have a 
 		if gf, ok := colName.(*expression.GetField); ok {
 			colIdx := tableSch.IndexOfColName(gf.Name())
-			if tableSch[colIdx].Generated != nil {
+			// TODO: during trigger parsing the table in the node is unresolved, so we need this additional bounds check
+			//  This means that trigger execution will be able to update generated columns
+			if colIdx >= 0 && tableSch[colIdx].Generated != nil {
 				err := sql.ErrGeneratedColumnValue.New(tableSch[colIdx].Name, inScope.node.(sql.NameableNode).Name())
 				b.handleErr(err)
 			}
