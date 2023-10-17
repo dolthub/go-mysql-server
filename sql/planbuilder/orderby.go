@@ -86,11 +86,17 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 				if !ok {
 					b.handleErr(fmt.Errorf("expected integer order by literal"))
 				}
-				if intIdx < 1 {
-					b.handleErr(fmt.Errorf("expected positive integer order by literal"))
+				// negative intIdx is allowed in MySQL, and is treated as a no-op
+				if intIdx < 0 {
+					continue
 				}
 				if projScope == nil || len(projScope.cols) == 0 {
 					err := fmt.Errorf("invalid order by ordinal context")
+					b.handleErr(err)
+				}
+				// MySQL throws a column not found for intIdx = 0 and intIdx > len(cols)
+				if intIdx > int64(len(projScope.cols)) || intIdx == 0 {
+					err := sql.ErrColumnNotFound.New(fmt.Sprintf("%d", intIdx))
 					b.handleErr(err)
 				}
 				target := projScope.cols[intIdx-1]
