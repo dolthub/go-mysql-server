@@ -90,7 +90,7 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 	var dataLen uint64
 	var rowCount uint64
 	if statsTab, ok := table.(sql.StatisticsTable); ok {
-		rowCount, err = statsTab.RowCount(ctx)
+		rowCount, _, err = statsTab.RowCount(ctx)
 		if err != nil {
 			return err
 		}
