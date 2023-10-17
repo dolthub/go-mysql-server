@@ -436,3 +436,21 @@ var GeneratedColumnTests = []ScriptTest{
 		},
 	},
 }
+
+var BrokenGeneratedColumnTests = []ScriptTest{
+	{
+		Name: "update a virtual column with a trigger",
+		SetUpScript: []string{
+			"create table t1 (a int primary key, b int, c int generated always as (a + b) virtual)",
+			"create table t2 (a int primary key)",
+			"create trigger t1insert before update on t1 for each row set new.c = 2",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Not sure if this should be an error at trigger creation time or execution time
+				Query:    "insert into t1 (a, b) values (1, 2), (3, 4)",
+				ExpectedErr: sql.ErrGeneratedColumnValue,
+			},
+		},
+	},
+}
