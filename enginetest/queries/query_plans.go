@@ -5334,31 +5334,33 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT * FROM datetime_table ORDER BY date_col ASC`,
-		ExpectedPlan: "Sort(datetime_table.date_col:1 ASC nullsFirst)\n" +
-			" └─ ProcessTable\n" +
+		ExpectedPlan: "IndexedTableAccess(datetime_table)\n" +
+			" ├─ index: [datetime_table.date_col]\n" +
+			" ├─ static: [{[NULL, ∞)}]\n" +
+			" └─ Table\n" +
+			"     ├─ name: datetime_table\n" +
+			"     └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM datetime_table ORDER BY date_col ASC LIMIT 100`,
+		ExpectedPlan: "Limit(100)\n" +
+			" └─ IndexedTableAccess(datetime_table)\n" +
+			"     ├─ index: [datetime_table.date_col]\n" +
+			"     ├─ static: [{[NULL, ∞)}]\n" +
 			"     └─ Table\n" +
 			"         ├─ name: datetime_table\n" +
 			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{
-		Query: `SELECT * FROM datetime_table ORDER BY date_col ASC LIMIT 100`,
-		ExpectedPlan: "Limit(100)\n" +
-			" └─ TopN(Limit: [100 (bigint)]; datetime_table.date_col:1 ASC nullsFirst)\n" +
-			"     └─ ProcessTable\n" +
-			"         └─ Table\n" +
-			"             ├─ name: datetime_table\n" +
-			"             └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"",
-	},
-	{
 		Query: `SELECT * FROM datetime_table ORDER BY date_col ASC LIMIT 100 OFFSET 100`,
 		ExpectedPlan: "Limit(100)\n" +
 			" └─ Offset(100)\n" +
-			"     └─ TopN(Limit: [(100 + 100)]; datetime_table.date_col ASC)\n" +
-			"         └─ Table\n" +
-			"             ├─ name: datetime_table\n" +
-			"             └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"     └─ IndexedTableAccess(datetime_table)\n" +
+			"         ├─ index: [datetime_table.date_col]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{

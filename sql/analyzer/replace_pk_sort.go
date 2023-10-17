@@ -84,6 +84,9 @@ func replacePkSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sor
 		sfExprs := normalizeExpressions(tableAliases, sortNode.SortFields.ToExpressions()...)
 		sfAliases := aliasedExpressionsInNode(sortNode)
 		for _, idxCandidate := range idxs {
+			if idxCandidate.IsSpatial() {
+				continue
+			}
 			if isSortFieldsValidPrefix(sfExprs, sfAliases, idxCandidate.Expressions()) {
 				idx = idxCandidate
 				break
