@@ -209,16 +209,8 @@ func TestSingleScript(t *testing.T) {
 					Expected: []sql.Row{{types.NewOkResult(3)}},
 				},
 				{
-					Query:    "update t1 set b = b + 1",
-					ExpectedErr: sql.ErrGeneratedColumnValue,
-				},
-				{
-					Query:    "select b from t1 where b >= 2",
-					Expected: []sql.Row{{2}, {3}, {4}},
-				},
-				{
-					Query:    "select sum(b) from t1 where b >= 3",
-					Expected: []sql.Row{{7.0}},
+					Query:    "select a, (select b from t1 t1a where t1a.a = t1.a+1) from t1 order by a",
+					Expected: []sql.Row{{1, 3}, {2, 4}, {3, nil}},
 				},
 			},
 		},

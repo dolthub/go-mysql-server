@@ -100,7 +100,7 @@ const (
 	generateIndexScansId         // generateIndexScans
 	matchAgainstId               // matchAgainst
 	pushFiltersId                // pushFilters
-	subqueryIndexesId            // subqueryIndexes
+	applyIndexesFromOuterScopeId // applyIndexesFromOuterScope
 	pruneTablesId                // pruneTables
 	fixupAuxiliaryExprsId        // fixupAuxiliaryExprs
 	assignExecIndexesId          // assignExecIndexes

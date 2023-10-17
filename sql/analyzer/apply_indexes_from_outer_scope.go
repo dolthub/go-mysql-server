@@ -98,7 +98,7 @@ func pushdownIndexToTable(ctx *sql.Context, a *Analyzer, tableNode sql.NameableN
 			if table == nil {
 				return n, transform.SameTree, nil
 			}
-			if iat, ok := table.(sql.IndexAddressableTable); ok {
+			if _, ok := table.(sql.IndexAddressableTable); ok {
 				a.Log("table %q transformed with pushdown of index", tableNode.Name())
 				lb := plan.NewLookupBuilder(index, keyExpr, nullmask)
 				lookup, err := lb.GetLookup(lb.GetZeroKey())
@@ -108,12 +108,12 @@ func pushdownIndexToTable(ctx *sql.Context, a *Analyzer, tableNode sql.NameableN
 				if !index.CanSupport(lookup.Ranges...) {
 					return n, transform.SameTree, nil
 				}
-				ia := iat.IndexedAccess(lookup)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
 
-				ret := plan.NewIndexedTableAccess(n, ia, lb)
+				ret, err := plan.NewIndexedAccessForTableNode(n, lb)
+				if err != nil {
+					return nil, false, err
+				}
+				
 				return ret, transform.NewTree, nil
 			}
 		}
