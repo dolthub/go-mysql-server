@@ -1477,7 +1477,7 @@ where
 			"         │       ├─ cacheable: false\n" +
 			"         │       ├─ alias-string: select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey\n" +
 			"         │       └─ Project\n" +
-			"         │           ├─ columns: [(0.200000 (double) * avg(lineitem.l_quantity):25) as 0.2 * avg(l_quantity)]\n" +
+			"         │           ├─ columns: [(0.2 (decimal(2,1)) * avg(lineitem.l_quantity):25) as 0.2 * avg(l_quantity)]\n" +
 			"         │           └─ GroupBy\n" +
 			"         │               ├─ select: AVG(lineitem.l_quantity:26!null)\n" +
 			"         │               ├─ group: \n" +
@@ -1819,7 +1819,7 @@ order by
 			"                 │           │       ├─ cacheable: false\n" +
 			"                 │           │       ├─ alias-string: select 0.5 * sum(l_quantity) from lineitem where l_partkey = ps_partkey and l_suppkey = ps_suppkey and l_shipdate >= '1994-01-01' and l_shipdate < '1994-01-01' + interval '1' year\n" +
 			"                 │           │       └─ Project\n" +
-			"                 │           │           ├─ columns: [(0.500000 (double) * sum(lineitem.l_quantity):5!null) as 0.5 * sum(l_quantity)]\n" +
+			"                 │           │           ├─ columns: [(0.5 (decimal(2,1)) * sum(lineitem.l_quantity):5!null) as 0.5 * sum(l_quantity)]\n" +
 			"                 │           │           └─ GroupBy\n" +
 			"                 │           │               ├─ select: SUM(lineitem.l_quantity:7!null)\n" +
 			"                 │           │               ├─ group: \n" +

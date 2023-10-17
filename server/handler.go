@@ -603,6 +603,7 @@ func schemaToFields(ctx *sql.Context, s sql.Schema) []*query.Field {
 			Type:         c.Type.Type(),
 			Charset:      charset,
 			ColumnLength: c.Type.MaxTextResponseByteLength(ctx),
+			//Flags:        getFieldFlags(c),
 		}
 
 		if types.IsDecimal(c.Type) {
@@ -613,6 +614,38 @@ func schemaToFields(ctx *sql.Context, s sql.Schema) []*query.Field {
 
 	return fields
 }
+
+func getFieldFlags(c *sql.Column) uint32 {
+	var f fieldFlag
+	if !c.Nullable {
+		f = f | flagNotNULL
+	}
+	if c.PrimaryKey {
+		f = f | flagPriKey
+	}
+	if types.IsUnsigned(c.Type) {
+		f = f | flagUnsigned
+	}
+	return uint32(f)
+}
+
+type fieldFlag uint32
+
+const (
+	flagNotNULL fieldFlag = 1 << iota
+	flagPriKey
+	flagUniqueKey
+	flagMultipleKey
+	flagBLOB
+	flagUnsigned
+	flagZeroFill
+	flagBinary
+	flagEnum
+	flagAutoIncrement
+	flagTimestamp
+	flagSet
+	flagNoDefaultValue
+)
 
 var (
 	// QueryCounter describes a metric that accumulates number of queries monotonically.

@@ -57,7 +57,7 @@ type DecimalType_ struct {
 var InternalDecimalType sql.DecimalType = DecimalType_{
 	exclusiveUpperBound: decimal.New(1, int32(65)),
 	definesColumn:       false,
-	precision:           95,
+	precision:           65,
 	scale:               30,
 }
 

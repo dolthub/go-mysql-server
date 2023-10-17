@@ -8,7 +8,7 @@ require (
 	github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81
 	github.com/dolthub/vitess v0.0.0-20231011212939-750452c13fa0
 	github.com/go-kit/kit v0.10.0
-	github.com/go-sql-driver/mysql v1.6.0
+	github.com/go-sql-driver/mysql v1.7.1
 	github.com/gocraft/dbr/v2 v2.7.2
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/golang-lru v0.5.4
