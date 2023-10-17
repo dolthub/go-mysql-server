@@ -460,7 +460,7 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
-	row = normalizeRowForRead(row, i.numColumns, i.columns, i.virtualCols)
+	row = normalizeRowForRead(row, i.numColumns, i.virtualCols)
 
 	for _, f := range i.filters {
 		result, err := f.Eval(ctx, row)
@@ -472,7 +472,7 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return i.Next(ctx)
 		}
 	}
-
+	
 	if i.columns != nil {
 		resultRow := make(sql.Row, len(i.columns))
 		for i, j := range i.columns {
@@ -485,7 +485,7 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 // normalizeRowForRead returns a copy of the row with nil values inserted for any virtual columns
-func normalizeRowForRead(row sql.Row, numColumns int, columns []int, virtualCols []int) sql.Row {
+func normalizeRowForRead(row sql.Row, numColumns int, virtualCols []int) sql.Row {
 	if len(virtualCols) == 0 {
 		return row
 	}
@@ -496,23 +496,12 @@ func normalizeRowForRead(row sql.Row, numColumns int, columns []int, virtualCols
 	// with nil values for virtual columns. The simple iteration below only works when the column and virtual column
 	// indexes are in ascending order, which is true for the time being.
 	var j int
-	if len(columns) != 0 {
-		virtualRow = make(sql.Row, len(columns))
-		for i := range columns {
-			if j < len(virtualCols) && columns[i] == virtualCols[j] {
-				j++
-			} else {
-				virtualRow[i] = row[i-j]
-			}
-		}
-	} else {
-		virtualRow = make(sql.Row, numColumns)
-		for i := 0; i < numColumns; i++ {
-			if j < len(virtualCols) && i == virtualCols[j] {
-				j++
-			} else {
-				virtualRow[i] = row[i-j]
-			}
+	virtualRow = make(sql.Row, numColumns)
+	for i := 0; i < numColumns; i++ {
+		if j < len(virtualCols) && i == virtualCols[j] {
+			j++
+		} else {
+			virtualRow[i] = row[i-j]
 		}
 	}
 

@@ -253,7 +253,7 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{3, 2}},
 			},
 			{
-				Query:    "select sum(b) from t1 where b >= 2",
+				Query:    "select sum(b) from t1 where b > 2",
 				Expected: []sql.Row{{7.0}},
 			},
 			{

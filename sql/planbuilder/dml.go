@@ -219,8 +219,20 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 	if inScope.windowFuncs != nil {
 		startWinCnt = len(inScope.windowFuncs)
 	}
+	
+	tableSch := inScope.node.Schema()
+	
 	for i, updateExpr := range e {
 		colName := b.buildScalar(inScope, updateExpr.Name)
+		
+		if gf, ok := colName.(*expression.GetField); ok {
+			colIdx := tableSch.IndexOfColName(gf.Name())
+			if tableSch[colIdx].Generated != nil {
+				err := sql.ErrGeneratedColumnValue.New(tableSch[colIdx].Name, inScope.node.(sql.NameableNode).Name())
+				b.handleErr(err)
+			}
+		}
+
 		innerExpr := b.buildScalar(inScope, updateExpr.Expr)
 		res[i] = expression.NewSetField(colName, innerExpr)
 		if inScope.groupBy != nil {
