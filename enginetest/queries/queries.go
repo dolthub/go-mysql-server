@@ -26,6 +26,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -3354,14 +3355,6 @@ Select * from (
 	{
 		Query:    "SELECT dt1.i FROM datetime_table dt1 join datetime_table dt2 on dt1.date_col = date(date_sub(dt2.timestamp_col, interval 2 day)) order by 1",
 		Expected: []sql.Row{{1}, {2}},
-	},
-	{
-		Query: "SELECT unix_timestamp(timestamp_col) div 60 * 60 as timestamp_col, avg(i) from datetime_table group by 1 order by unix_timestamp(timestamp_col) div 60 * 60",
-		Expected: []sql.Row{
-			{int64(1577966400), 1.0},
-			{int64(1578225600), 2.0},
-			{int64(1578398400), 3.0}},
-		SkipPrepared: true,
 	},
 	{
 		Query:    "SELECT COUNT(*) FROM mytable;",
@@ -7880,74 +7873,7 @@ SELECT * FROM my_cte;`,
 		Query:    `SELECT SUM(0) * -1`,
 		Expected: []sql.Row{{0.0}},
 	},
-}
 
-var KeylessQueries = []QueryTest{
-	{
-		Query: "SELECT * FROM keyless ORDER BY c0",
-		Expected: []sql.Row{
-			{0, 0},
-			{1, 1},
-			{1, 1},
-			{2, 2},
-		},
-	},
-	{
-		Query: "SELECT * FROM keyless ORDER BY c1 DESC",
-		Expected: []sql.Row{
-			{2, 2},
-			{1, 1},
-			{1, 1},
-			{0, 0},
-		},
-	},
-	{
-		Query: "SELECT * FROM keyless JOIN myTable where c0 = i",
-		Expected: []sql.Row{
-			{1, 1, 1, "first row"},
-			{1, 1, 1, "first row"},
-			{2, 2, 2, "second row"},
-		},
-	},
-	{
-		Query: "SELECT * FROM myTable JOIN keyless WHERE i = c0 ORDER BY i",
-		Expected: []sql.Row{
-			{1, "first row", 1, 1},
-			{1, "first row", 1, 1},
-			{2, "second row", 2, 2},
-		},
-	},
-	{
-		Query: "DESCRIBE keyless",
-		Expected: []sql.Row{
-			{"c0", "bigint", "YES", "", "NULL", ""},
-			{"c1", "bigint", "YES", "", "NULL", ""},
-		},
-	},
-	{
-		Query: "SHOW COLUMNS FROM keyless",
-		Expected: []sql.Row{
-			{"c0", "bigint", "YES", "", "NULL", ""},
-			{"c1", "bigint", "YES", "", "NULL", ""},
-		},
-	},
-	{
-		Query: "SHOW FULL COLUMNS FROM keyless",
-		Expected: []sql.Row{
-			{"c0", "bigint", nil, "YES", "", "NULL", "", "", ""},
-			{"c1", "bigint", nil, "YES", "", "NULL", "", "", ""},
-		},
-	},
-	{
-		Query: "SHOW CREATE TABLE keyless",
-		Expected: []sql.Row{
-			{"keyless", "CREATE TABLE `keyless` (\n  `c0` bigint,\n  `c1` bigint\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-		},
-	},
-}
-
-// BrokenQueries are queries that are known to be broken in the engine.
-var BrokenQueries = []QueryTest{
 	{
 		Query: `WITH RECURSIVE
 rt (foo) AS (
@@ -7962,20 +7888,15 @@ ladder (depth, foo) AS (
  FROM ladder JOIN rt WHERE ladder.foo = rt.foo
 )
 SELECT * FROM ladder;`,
-	},
-	// union and aggregation typing are tricky
-	{
-		Query: "with recursive t (n) as (select sum('1') from dual union all select (2.00) from dual) select sum(n) from t;",
 		Expected: []sql.Row{
-			{float64(3)},
+			{1, nil},
+			{1, nil},
+			{1, nil},
+			{1, nil},
+			{1, nil},
 		},
 	},
-	{
-		Query: "with recursive t (n) as (select sum(1.0) from dual union all select n+1 from t where n < 10) select sum(n) from t;",
-		Expected: []sql.Row{
-			{"55.0"},
-		},
-	},
+
 	{
 		// natural join filter columns do not hide duplicated columns
 		Query: "select t2.* from mytable t1 natural join mytable t2 join othertable t3 on t2.i = t3.i2;",
@@ -7995,31 +7916,6 @@ SELECT * FROM ladder;`,
 		},
 	},
 	{
-		// mysql is case-sensitive with CTE name
-		Query:    "with recursive MYTABLE(j) as (select 2 union select MYTABLE.j from MYTABLE join mytable on MYTABLE.j = mytable.i) select j from MYTABLE",
-		Expected: []sql.Row{{2}},
-	},
-	{
-		// mysql is case-sensitive with CTE name
-		Query:    "with recursive MYTABLE(j) as (select 2 union select MYTABLE.j from MYTABLE join mytable on MYTABLE.j = mytable.i) select i from mytable;",
-		Expected: []sql.Row{{1}, {2}, {3}},
-	},
-	{
-		// edge case where mysql moves an orderby between scopes
-		Query:    "with a(j) as (select 1), b(i) as (select 2) (select j from a union select i from b order by 1 desc) union select j from a;",
-		Expected: []sql.Row{{2}, {1}},
-	},
-	{
-		// mysql converts boolean to int8
-		Query:    "with a(j) as (select 1 union select 2 union select 3), b(i) as (select 2 union select 3) select (3,4) in (select a.j, b.i+1 from a, b where a.j = b.i) as k group by k having k = 1;",
-		Expected: []sql.Row{{1}},
-	},
-	{
-		// mysql converts boolean to int8 and deduplicates with other 1
-		Query:    "With recursive a(x) as (select 1 union select 2 union select x in (select t1.i from mytable t1) from a) select x from a;",
-		Expected: []sql.Row{{1}, {2}},
-	},
-	{
 		// mysql overwrites outer CTEs on seeing inner CTE definition
 		Query:    "with a(j) as (select 1) ( with c(k) as (select 3) select k from c union select 6) union select k from c;",
 		Expected: []sql.Row{{3}, {6}},
@@ -8028,52 +7924,27 @@ SELECT * FROM ladder;`,
 		Query:    "SELECT pk1, SUM(c1) FROM two_pk",
 		Expected: []sql.Row{{0, 60.0}},
 	},
-	// this doesn't parse in MySQL (can't use an alias in a where clause), panics in engine
-	{
-		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x 
-						FROM one_pk opk WHERE x > 0 ORDER BY x`,
-		Expected: []sql.Row{
-			{2, 1},
-			{3, 2},
-		},
-	},
-	{
-		Query: `SELECT pk,
-					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS min,
-					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS max
-					FROM one_pk opk
-					WHERE max > 1
-					ORDER BY max;`,
-		Expected: []sql.Row{
-			{1, 0, 2},
-			{2, 1, 3},
-		},
-	},
-	// AVG gives the wrong result for the first row
 	{
 		Query: `SELECT pk,
 						(SELECT sum(c1) FROM two_pk WHERE c1 IN (SELECT c4 FROM two_pk WHERE c3 > opk.c5)) AS sum,
 						(SELECT avg(c1) FROM two_pk WHERE pk2 IN (SELECT pk2 FROM two_pk WHERE c1 < opk.c2)) AS avg
 					FROM one_pk opk ORDER BY pk`,
 		Expected: []sql.Row{
-			{0, 60.0, nil},
-			{1, 50.0, 10.0},
-			{2, 30.0, 15.0},
+			{0, nil, 10.0},
+			{1, nil, 15.0},
+			{2, nil, 15.0},
 			{3, nil, 15.0},
 		},
 	},
-	// something broken in the resolve_having analysis for this
 	{
-		Query: `SELECT column_0, sum(column_1) FROM 
-			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a 
+		Query: `SELECT column_0, sum(column_1) FROM
+			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a
 			group by 1 having avg(column_1) > 2 order by 1`,
 		Expected: []sql.Row{
 			{2, 7.0},
 			{3, 9.0},
 		},
 	},
-	// The outer CTE currently resolves before the inner one, which causes
-	// this to return { {1}, {1}, } instead.
 	{
 		Query: `WITH t AS (SELECT 1) SELECT * FROM t UNION (WITH t AS (SELECT 2) SELECT * FROM t)`,
 		Expected: []sql.Row{
@@ -8083,91 +7954,16 @@ SELECT * FROM ladder;`,
 	},
 	{
 		Query: "SELECT json_array() FROM dual;",
-	},
-	{
-		Query: "SELECT json_array_append() FROM dual;",
-	},
-	{
-		Query: "SELECT json_array_insert() FROM dual;",
-	},
-	{
-		Query: "SELECT json_contains() FROM dual;",
-	},
-	{
-		Query: "SELECT json_contains_path() FROM dual;",
-	},
-	{
-		Query: "SELECT json_depth() FROM dual;",
-	},
-	{
-		Query: "SELECT json_insert() FROM dual;",
-	},
-	{
-		Query: "SELECT json_keys() FROM dual;",
-	},
-	{
-		Query: "SELECT json_length() FROM dual;",
-	},
-	{
-		Query: "SELECT json_merge_patch() FROM dual;",
-	},
-	{
-		Query: "SELECT json_merge_preserve() FROM dual;",
+		Expected: []sql.Row{
+			{types.MustJSON(`[]`)},
+		},
 	},
 	{
 		Query: "SELECT json_object() FROM dual;",
+		Expected: []sql.Row{
+			{types.MustJSON(`{}`)},
+		},
 	},
-	{
-		Query: "SELECT json_overlaps() FROM dual;",
-	},
-	{
-		Query: "SELECT json_pretty() FROM dual;",
-	},
-	{
-		Query: "SELECT json_quote() FROM dual;",
-	},
-	{
-		Query: "SELECT json_remove() FROM dual;",
-	},
-	{
-		Query: "SELECT json_replace() FROM dual;",
-	},
-	{
-		Query: "SELECT json_schema_valid() FROM dual;",
-	},
-	{
-		Query: "SELECT json_schema_validation_report() FROM dual;",
-	},
-	{
-		Query: "SELECT json_set() FROM dual;",
-	},
-	{
-		Query: "SELECT json_search() FROM dual;",
-	},
-	{
-		Query: "SELECT json_storage_free() FROM dual;",
-	},
-	{
-		Query: "SELECT json_storage_size() FROM dual;",
-	},
-	{
-		Query: "SELECT json_type() FROM dual;",
-	},
-	{
-		Query: "SELECT json_table() FROM dual;",
-	},
-	{
-		Query: "SELECT json_valid() FROM dual;",
-	},
-	{
-		Query: "SELECT json_value() FROM dual;",
-	},
-	// This gets an error "unable to cast "second row" of type string to int64"
-	// Should throw sql.ErrAmbiguousColumnInOrderBy
-	{
-		Query: `SELECT s as i, i as i from mytable order by i`,
-	},
-	// These three queries return the right results, but the casing is wrong in the result schema.
 	{
 		Query: "SELECT i, I, s, S FROM mytable;",
 		Expected: []sql.Row{
@@ -8251,6 +8047,263 @@ SELECT * FROM ladder;`,
 		Query:    `SELECT json_unquote(json_extract('{"hi":"there"}', '$.nope'))`,
 		Expected: []sql.Row{{nil}}, // currently returns string "null"
 	},
+	{
+		Query: "SELECT 1 FROM DUAL WHERE (1, null) != (0, null)",
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query: "SELECT 1 FROM DUAL WHERE ('0', 0) = (0, '0')",
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query: "SELECT c AS i_do_not_conflict, COUNT(*), MIN((SELECT COUNT(*) FROM (SELECT 1 AS d) b WHERE b.d = a.c)) FROM (SELECT 1 AS c) a GROUP BY i_do_not_conflict;",
+		Expected: []sql.Row{
+			{1, 1, 1},
+		},
+	},
+	{
+		Query: "SELECT c AS c, COUNT(*), MIN((SELECT COUNT(*) FROM (SELECT 1 AS d) b WHERE b.d = a.c)) FROM (SELECT 1 AS c) a GROUP BY a.c;",
+		Expected: []sql.Row{
+			{1, 1, 1},
+		},
+	},
+	{
+		// Results should be sorted, but they are not
+		Query: `
+SELECT * FROM
+(SELECT * FROM mytable) t
+UNION ALL
+(SELECT * FROM mytable)
+ORDER BY 1;`,
+		Expected: []sql.Row{
+			{1, "first row"},
+			{1, "first row"},
+			{2, "second row"},
+			{2, "second row"},
+			{3, "third row"},
+			{3, "third row"},
+		},
+	},
+
+	{
+		Query: "select x from xy where x > 0 and x <= 2 order by x",
+		Expected: []sql.Row{
+			{1},
+			{2},
+		},
+	},
+
+	{
+		Query: "select max(x) from xy",
+		Expected: []sql.Row{
+			{3},
+		},
+	},
+	{
+		Query: "select min(x) from xy",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query: "select max(y) from xy",
+		Expected: []sql.Row{
+			{3},
+		},
+	},
+	{
+		Query: "select max(x)+100 from xy",
+		Expected: []sql.Row{
+			{103},
+		},
+	},
+	{
+		Query: "select max(x) as xx from xy",
+		Expected: []sql.Row{
+			{3},
+		},
+	},
+	{
+		Query: "select 1, 2.0, '3', max(x) from xy",
+		Expected: []sql.Row{
+			{1, "2.0", "3", 3},
+		},
+	},
+	{
+		Query: "select min(x) from xy where x > 0",
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query: "select max(x) from xy where x < 3",
+		Expected: []sql.Row{
+			{2},
+		},
+	},
+	{
+		Query: "select min(x) from xy where y > 0",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query: "select max(x) from xy where y < 3",
+		Expected: []sql.Row{
+			{2},
+		},
+	},
+	{
+		Query: "select * from (select max(x) from xy) sq",
+		Expected: []sql.Row{
+			{3},
+		},
+	},
+	{
+		Query: "with cte(i) as (select max(x) from xy) select i + 100 from cte",
+		Expected: []sql.Row{
+			{103},
+		},
+	},
+	{
+		Query: "with cte(i) as (select x from xy) select max(i) from cte",
+		Expected: []sql.Row{
+			{3},
+		},
+	},
+	{
+		Query: "select max(x) from xy group by y",
+		Expected: []sql.Row{
+			{0},
+			{1},
+			{2},
+			{3},
+		},
+	},
+	{
+		Query: "select max(x) from xy join uv where x = u",
+		Expected: []sql.Row{
+			{3},
+		},
+	},
+}
+
+var KeylessQueries = []QueryTest{
+	{
+		Query: "SELECT * FROM keyless ORDER BY c0",
+		Expected: []sql.Row{
+			{0, 0},
+			{1, 1},
+			{1, 1},
+			{2, 2},
+		},
+	},
+	{
+		Query: "SELECT * FROM keyless ORDER BY c1 DESC",
+		Expected: []sql.Row{
+			{2, 2},
+			{1, 1},
+			{1, 1},
+			{0, 0},
+		},
+	},
+	{
+		Query: "SELECT * FROM keyless JOIN myTable where c0 = i",
+		Expected: []sql.Row{
+			{1, 1, 1, "first row"},
+			{1, 1, 1, "first row"},
+			{2, 2, 2, "second row"},
+		},
+	},
+	{
+		Query: "SELECT * FROM myTable JOIN keyless WHERE i = c0 ORDER BY i",
+		Expected: []sql.Row{
+			{1, "first row", 1, 1},
+			{1, "first row", 1, 1},
+			{2, "second row", 2, 2},
+		},
+	},
+	{
+		Query: "DESCRIBE keyless",
+		Expected: []sql.Row{
+			{"c0", "bigint", "YES", "", "NULL", ""},
+			{"c1", "bigint", "YES", "", "NULL", ""},
+		},
+	},
+	{
+		Query: "SHOW COLUMNS FROM keyless",
+		Expected: []sql.Row{
+			{"c0", "bigint", "YES", "", "NULL", ""},
+			{"c1", "bigint", "YES", "", "NULL", ""},
+		},
+	},
+	{
+		Query: "SHOW FULL COLUMNS FROM keyless",
+		Expected: []sql.Row{
+			{"c0", "bigint", nil, "YES", "", "NULL", "", "", ""},
+			{"c1", "bigint", nil, "YES", "", "NULL", "", "", ""},
+		},
+	},
+	{
+		Query: "SHOW CREATE TABLE keyless",
+		Expected: []sql.Row{
+			{"keyless", "CREATE TABLE `keyless` (\n  `c0` bigint,\n  `c1` bigint\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+		},
+	},
+}
+
+// BrokenQueries are queries that are known to be broken in the engine.
+var BrokenQueries = []QueryTest{
+	// union and aggregation typing are tricky
+	{
+		Query: "with recursive t (n) as (select sum('1') from dual union all select (2.00) from dual) select sum(n) from t;",
+		Expected: []sql.Row{
+			{float64(3)},
+		},
+	},
+	{
+		Query: "with recursive t (n) as (select sum(1.0) from dual union all select n+1 from t where n < 10) select sum(n) from t;",
+		Expected: []sql.Row{
+			{"55.0"},
+		},
+	},
+	{
+		// mysql is case-sensitive with CTE name
+		Query:    "with recursive MYTABLE(j) as (select 2 union select MYTABLE.j from MYTABLE join mytable on MYTABLE.j = mytable.i) select j from MYTABLE",
+		Expected: []sql.Row{{2}},
+	},
+	{
+		// mysql is case-sensitive with CTE name
+		Query:    "with recursive MYTABLE(j) as (select 2 union select MYTABLE.j from MYTABLE join mytable on MYTABLE.j = mytable.i) select i from mytable;",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
+		// edge case where mysql moves an orderby between scopes
+		Query:    "with a(j) as (select 1), b(i) as (select 2) (select j from a union select i from b order by 1 desc) union select j from a;",
+		Expected: []sql.Row{{2}, {1}},
+	},
+	{
+		// mysql converts boolean to int8
+		Query:    "with a(j) as (select 1 union select 2 union select 3), b(i) as (select 2 union select 3) select (3,4) in (select a.j, b.i+1 from a, b where a.j = b.i) as k group by k having k = 1;",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		// mysql converts boolean to int8 and deduplicates with other 1
+		Query:    "With recursive a(x) as (select 1 union select 2 union select x in (select t1.i from mytable t1) from a) select x from a;",
+		Expected: []sql.Row{{1}, {2}},
+	},
+	// this doesn't parse in MySQL (can't use an alias in a where clause), panics in engine
+	// AVG gives the wrong result for the first row
+	{
+		Query: "SELECT json_table() FROM dual;", // syntax error
+	},
+	{
+		Query: "SELECT json_value() FROM dual;", // syntax error
+	},
 	// Null-safe and type conversion tuple comparison is not correctly
 	// implemented yet.
 	{
@@ -8258,29 +8311,12 @@ SELECT * FROM ladder;`,
 		Expected: []sql.Row{},
 	},
 	{
-		Query:    "SELECT 1 FROM DUAL WHERE (1, null) != (0, null)",
-		Expected: []sql.Row{},
-	},
-	{
 		Query:    "SELECT 1 FROM DUAL WHERE (0, null) = (0, null)",
 		Expected: []sql.Row{},
 	},
 	{
-		Query:    "SELECT 1 FROM DUAL WHERE ('0', 0) = (0, '0')",
-		Expected: []sql.Row{{1}},
-	},
-	{
 		Query:    "SELECT 1 FROM DUAL WHERE (null, null) = (select null, null from dual)",
 		Expected: []sql.Row{},
-	},
-	// pushdownGroupByAliases breaks queries where subquery expressions
-	// reference the outer table and an alias gets pushed to a projection
-	// below a group by node.
-	{
-		Query: "SELECT c AS i_do_not_conflict, COUNT(*), MIN((SELECT COUNT(*) FROM (SELECT 1 AS d) b WHERE b.d = a.c)) FROM (SELECT 1 AS c) a GROUP BY i_do_not_conflict;",
-	},
-	{
-		Query: "SELECT c AS c, COUNT(*), MIN((SELECT COUNT(*) FROM (SELECT 1 AS d) b WHERE b.d = a.c)) FROM (SELECT 1 AS c) a GROUP BY a.c;",
 	},
 	// TODO: support nested recursive CTEs
 	{
@@ -8323,7 +8359,7 @@ SELECT * FROM ladder;`,
 	},
 	// Parsers for u, U, v, V, w, W, x and X are not supported yet.
 	{
-		Query:    "STR_TO_DATE('2013 32 Tuesday', '%X %V %W')", // Tuesday of 32th week
+		Query:    "SELECT STR_TO_DATE('2013 32 Tuesday', '%X %V %W')", // Tuesday of 32th week
 		Expected: []sql.Row{{"2013-08-13"}},
 	},
 	{
@@ -8352,23 +8388,6 @@ FROM mytable;`,
 		Expected: []sql.Row{
 			{1, "first row"},
 			{2, "second row"},
-			{3, "third row"},
-		},
-	},
-	{
-		// Results should be sorted, but they are not
-		Query: `
-SELECT * FROM
-(SELECT * FROM mytable) t
-UNION ALL
-(SELECT * FROM mytable)
-ORDER BY 1;`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{1, "first row"},
-			{2, "second row"},
-			{2, "second row"},
-			{3, "third row"},
 			{3, "third row"},
 		},
 	},
@@ -8570,6 +8589,10 @@ type QueryErrorTest struct {
 }
 
 var ErrorQueries = []QueryErrorTest{
+	{
+		Query:       "analyze table mytable update histogram on i using data 'unknown'",
+		ExpectedErr: planbuilder.ErrFailedToParseStats,
+	},
 	{
 		Query:       "select i from (select * from mytable a join mytable b on a.i = b.i) dt",
 		ExpectedErr: sql.ErrAmbiguousColumnName,
@@ -8885,7 +8908,7 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrCteRecursionLimitExceeded,
 	},
 	{
-		Query:       "with recursive t (n) as (select (1) from dual union all select n + 1 from t where n < 1002) select sum(n) from t",
+		Query:       "with recursive t (n) as (select (1) from dual union all select n + 1 from t where n < 10002) select sum(n) from t",
 		ExpectedErr: sql.ErrCteRecursionLimitExceeded,
 	},
 	{
@@ -9009,6 +9032,75 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)), 4294967296)`,
 		ExpectedErr: sql.ErrInvalidSRID,
 	},
+	{
+		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
+						FROM one_pk opk WHERE x > 0 ORDER BY x`,
+		ExpectedErr: sql.ErrColumnNotFound,
+	},
+	{
+		Query: `SELECT pk,
+					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS min,
+					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS max
+					FROM one_pk opk
+					WHERE max > 1
+					ORDER BY max;`,
+		ExpectedErr: sql.ErrColumnNotFound,
+	},
+
+	{
+		Query:       "SELECT json_array_append() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       "SELECT json_array_insert() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       "SELECT json_contains() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       "SELECT json_contains_path() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       "SELECT json_insert() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       "SELECT json_merge_preserve() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       "SELECT json_remove() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       "SELECT json_replace() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       "SELECT json_set() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       `SELECT JSON_VALID()`,
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       `SELECT JSON_VALID('{"a": 1}','[1]')`,
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	// This gets an error "unable to cast "second row" of type string to int64"
+	// Should throw sql.ErrAmbiguousColumnInOrderBy
+	{
+		Query:       `SELECT s as i, i as i from mytable order by i`,
+		ExpectedErr: sql.ErrAmbiguousColumnOrAliasName,
+	},
+	{
+		Query:          "select * from mytable order by 999",
+		ExpectedErrStr: "column \"999\" could not be found in any table in scope",
+	},
 }
 
 var BrokenErrorQueries = []QueryErrorTest{
@@ -9070,6 +9162,63 @@ var BrokenErrorQueries = []QueryErrorTest{
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0
 						GROUP BY (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) ORDER BY x`,
 		// No error, but we get opk.pk does not exist
+	},
+	// Unimplemented JSON functions
+	{
+		Query:       "SELECT json_depth() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       "SELECT json_keys() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       "SELECT json_length() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       "SELECT json_merge_patch() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       "SELECT json_overlaps() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       "SELECT json_pretty() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       "SELECT json_quote() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       "SELECT json_schema_valid() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       "SELECT json_schema_validation_report() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       "SELECT json_search() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       "SELECT json_storage_free() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       "SELECT json_storage_size() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       "SELECT json_type() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       "SELECT json_valid() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 }
 

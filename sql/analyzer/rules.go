@@ -19,8 +19,10 @@ package analyzer
 var OnceBeforeDefault = []Rule{
 	{applyDefaultSelectLimitId, applyDefaultSelectLimit},
 	{replaceCountStarId, replaceCountStar},
+	{applyEventSchedulerId, applyEventScheduler},
 	{validateOffsetAndLimitId, validateLimitAndOffset},
 	{validateCreateTableId, validateCreateTable},
+	{validateAlterTableId, validateAlterTable},
 	{validateExprSemId, validateExprSem},
 	{validateCreateProcedureId, validateCreateProcedure},
 	{resolveDropConstraintId, resolveDropConstraint},
@@ -64,6 +66,7 @@ var OnceAfterDefault = []Rule{
 	{generateIndexScansId, generateIndexScans},
 	{finalizeSubqueriesId, finalizeSubqueries},
 	{subqueryIndexesId, applyIndexesFromOuterScope},
+	{replaceAggId, replaceAgg},
 	{replaceSortPkId, replacePkSort},
 	{eraseProjectionId, eraseProjection},
 	{insertTopNId, insertTopNNodes},

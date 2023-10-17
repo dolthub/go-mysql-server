@@ -117,7 +117,7 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseP
 	a.Catalog.MySQLDb.AddRootAccount()
 	// Almost no tests require an information schema that can be updated, but test setup makes it difficult to not
 	// provide everywhere
-	a.Catalog.InfoSchema = information_schema.NewUpdatableInformationSchemaDatabase()
+	a.Catalog.InfoSchema = information_schema.NewInformationSchemaDatabase()
 
 	engine := sqle.New(a, new(sqle.Config))
 
@@ -129,8 +129,9 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseP
 }
 
 // NewEngine creates an engine and sets it up for testing using harness, provider, and setup data given.
-func NewEngine(t *testing.T, harness Harness, provider sql.DatabaseProvider, setupData []setup.SetupScript) (*sqle.Engine, error) {
-	e := NewEngineWithProvider(t, harness, provider)
+func NewEngine(t *testing.T, harness Harness, dbProvider sql.DatabaseProvider, setupData []setup.SetupScript, statsProvider sql.StatsProvider) (*sqle.Engine, error) {
+	e := NewEngineWithProvider(t, harness, dbProvider)
+	e.Analyzer.Catalog.StatsProvider = statsProvider
 	ctx := NewContext(harness)
 
 	var supportsIndexes bool

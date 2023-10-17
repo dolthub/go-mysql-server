@@ -1673,9 +1673,9 @@ var UserPrivTests = []UserPrivilegeTest{
 	{
 		Name: "information_schema.column_statistics shows columns with privileges only",
 		SetUpScript: []string{
-			"CREATE TABLE two (i int primary key, j int)",
+			"CREATE TABLE two (i bigint primary key, j bigint, key(j))",
 			"INSERT INTO two VALUES (1, 4), (2, 5), (3, 6)",
-			"CREATE TABLE one (f float)",
+			"CREATE TABLE one (f double primary key)",
 			"INSERT INTO one VALUES (1.25), (45.25), (7.5), (10.5)",
 			"ANALYZE TABLE one",
 			"ANALYZE TABLE two",
@@ -1689,10 +1689,12 @@ var UserPrivTests = []UserPrivilegeTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				User:     "tester",
-				Host:     "localhost",
-				Query:    "SELECT * FROM information_schema.column_statistics where schema_name = 'mydb';",
-				Expected: []sql.Row{{"mydb", "one", "f", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.25", "1.25", "0.25"}, []interface{}{"7.50", "7.50", "0.25"}, []interface{}{"10.50", "10.50", "0.25"}, []interface{}{"45.25", "45.25", "0.25"}}}}}},
+				User:  "tester",
+				Host:  "localhost",
+				Query: "SELECT table_name, column_name FROM information_schema.column_statistics where schema_name = 'mydb';",
+				Expected: []sql.Row{
+					{"one", "f"},
+				},
 			},
 			{
 				User:     "root",
@@ -1703,10 +1705,12 @@ var UserPrivTests = []UserPrivilegeTest{
 			{
 				User:  "tester",
 				Host:  "localhost",
-				Query: "SELECT * FROM information_schema.column_statistics where schema_name = 'mydb';",
-				Expected: []sql.Row{{"mydb", "one", "f", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.25", "1.25", "0.25"}, []interface{}{"7.50", "7.50", "0.25"}, []interface{}{"10.50", "10.50", "0.25"}, []interface{}{"45.25", "45.25", "0.25"}}}}},
-					{"mydb", "two", "i", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.00", "1.00", "0.33"}, []interface{}{"2.00", "2.00", "0.33"}, []interface{}{"3.00", "3.00", "0.33"}}}}},
-					{"mydb", "two", "j", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"4.00", "4.00", "0.33"}, []interface{}{"5.00", "5.00", "0.33"}, []interface{}{"6.00", "6.00", "0.33"}}}}}},
+				Query: "SELECT table_name, column_name FROM information_schema.column_statistics where schema_name = 'mydb';",
+				Expected: []sql.Row{
+					{"one", "f"},
+					{"two", "i"},
+					{"two", "j"},
+				},
 			},
 		},
 	},

@@ -1339,6 +1339,38 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "Explicit default with column reference",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (a int default 1, b int default (a+1));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO t1 (a,b) values (1, DEFAULT)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select * from t1 order by a",
+				Expected: []sql.Row{{1, 2}},
+			},
+			{
+				Query:    "INSERT INTO t1 values (2, DEFAULT)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select * from t1 where a = 2 order by a",
+				Expected: []sql.Row{{2, 3}},
+			},
+			{
+				Query:    "INSERT INTO t1 (b,a) values (DEFAULT, 3)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select * from t1 where a = 3 order by a",
+				Expected: []sql.Row{{3, 4}},
+			},
+		},
+	},
+	{
 		Name: "Try INSERT IGNORE with primary key, non null, and single row violations",
 		SetUpScript: []string{
 			"CREATE TABLE y (pk int primary key, c1 int NOT NULL);",
@@ -1936,6 +1968,61 @@ var InsertScripts = []ScriptTest{
 					{types.OkResult{RowsAffected: 0}},
 				},
 				ExpectedWarning: mysql.ErNoReferencedRow2,
+			},
+		},
+	},
+	{
+		Name: "insert duplicate key doesn't prevent other updates",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (pk BIGINT PRIMARY KEY, v1 VARCHAR(3));",
+			"INSERT INTO t1 VALUES (1, 'abc');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t1 order by pk",
+				Expected: []sql.Row{{1, "abc"}},
+			},
+			{
+				Query:       "INSERT INTO t1 VALUES (1, 'abc');",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query:    "INSERT INTO t1 VALUES (2, 'def');",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select * from t1 order by pk",
+				Expected: []sql.Row{{1, "abc"}, {2, "def"}},
+			},
+		},
+	},
+	{
+		Name: "insert duplicate key doesn't prevent other updates, autocommit off",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (pk BIGINT PRIMARY KEY, v1 VARCHAR(3));",
+			"INSERT INTO t1 VALUES (1, 'abc');",
+			"SET autocommit = 0;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t1 order by pk",
+				Expected: []sql.Row{{1, "abc"}},
+			},
+			{
+				Query:       "INSERT INTO t1 VALUES (1, 'abc');",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query:    "INSERT INTO t1 VALUES (2, 'def');",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:            "commit",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:    "select * from t1 order by pk",
+				Expected: []sql.Row{{1, "abc"}, {2, "def"}},
 			},
 		},
 	},
@@ -2598,18 +2685,6 @@ var InsertBrokenScripts = []ScriptTest{
 					{types.OkResult{RowsAffected: 1}},
 				},
 				ExpectedWarning: mysql.ERTruncatedWrongValueForField,
-			},
-		},
-	},
-	{
-		Name: "Test explicit default with column reference",
-		SetUpScript: []string{
-			"CREATE TABLE t1 (a int default 1, b int default (a+1));",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "INSERT INTO t1 (a,b) values (1, DEFAULT)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
 		},
 	},

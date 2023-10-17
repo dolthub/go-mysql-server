@@ -21,7 +21,6 @@ import (
 	"github.com/dolthub/go-mysql-server/driver"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -30,7 +29,6 @@ type factory struct{}
 func (factory) Resolve(name string, options *driver.Options) (string, sql.DatabaseProvider, error) {
 	provider := memory.NewDBProvider(
 		createTestDatabase(),
-		information_schema.NewInformationSchemaDatabase(),
 	)
 	return name, provider, nil
 }

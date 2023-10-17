@@ -20,6 +20,7 @@ import (
 	"sort"
 	"strings"
 
+	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -138,7 +139,7 @@ func (b *BaseBuilder) buildShowTableStatus(ctx *sql.Context, n *plan.ShowTableSt
 		var dataLength uint64
 
 		if st, ok := table.(sql.StatisticsTable); ok {
-			numRows, err = st.RowCount(ctx)
+			numRows, _, err = st.RowCount(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -802,14 +803,18 @@ func (b *BaseBuilder) buildShowCreateEvent(ctx *sql.Context, n *plan.ShowCreateE
 		return nil, err
 	}
 
-	// TODO: fill sql_mode and time_zone with appropriate values
+	// Convert the Event's timestamps into the session's timezone (they are always stored in UTC)
+	newEvent := n.Event.ConvertTimesFromUTCToTz(gmstime.SystemTimezoneOffset())
+	n.Event = *newEvent
+
+	// TODO: fill time_zone with appropriate values
 	return sql.RowsToRowIter(sql.Row{
-		n.Event.Name,            // Event
-		"",                      // sql_mode
-		"SYSTEM",                // time_zone
-		n.Event.CreateStatement, // Create Event
-		characterSetClient,      // character_set_client
-		collationConnection,     // collation_connection
-		collationServer,         // Database Collation
+		n.Event.Name,                   // Event
+		n.Event.SqlMode,                // sql_mode
+		"SYSTEM",                       // time_zone
+		n.Event.CreateEventStatement(), // Create Event
+		characterSetClient,             // character_set_client
+		collationConnection,            // collation_connection
+		collationServer,                // Database Collation
 	}), nil
 }

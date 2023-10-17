@@ -20,6 +20,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/memory"
+
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -51,7 +53,7 @@ func (m *MySQLHarness) Setup(setupData ...[]setup.SetupScript) {
 }
 
 func (m *MySQLHarness) NewEngine(t *testing.T) (enginetest.QueryEngine, error) {
-	return enginetest.NewEngine(t, m, m.Provider(), m.setupData)
+	return enginetest.NewEngine(t, m, m.Provider(), m.setupData, memory.NewStatsProv())
 }
 
 func (m *MySQLHarness) NewContextWithClient(client sql.Client) *sql.Context {

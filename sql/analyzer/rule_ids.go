@@ -10,6 +10,7 @@ const (
 	validateOffsetAndLimitId                     // validateOffsetAndLimit
 	validateStarExpressionsId                    // validateStarExpressions
 	validateCreateTableId                        // validateCreateTable
+	validateAlterTableId                         // validateAlterTable
 	validateExprSemId                            // validateExprSem
 	resolveVariablesId                           // resolveVariables
 	resolveNamedWindowsId                        // resolveNamedWindows
@@ -53,6 +54,7 @@ const (
 	setInsertColumnsId                           // setInsertColumns
 	validateJoinComplexityId                     // validateJoinComplexity
 	applyBinlogReplicaControllerId               // applyBinlogReplicaController
+	applyEventSchedulerId                        // applyEventScheduler
 
 	// default
 	resolveUsingJoinsId            // resolveUsingJoins
@@ -104,6 +106,7 @@ const (
 	assignExecIndexesId          // assignExecIndexes
 	inlineSubqueryAliasRefsId    // inlineSubqueryAliasRefs
 	eraseProjectionId            // eraseProjection
+	replaceAggId                 // replaceAgg
 	replaceSortPkId              // replaceSortPk
 	insertTopNId                 // insertTopN
 	applyHashInId                // applyHashIn

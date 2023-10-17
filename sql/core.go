@@ -149,8 +149,6 @@ type OpaqueNode interface {
 type Projector interface {
 	// ProjectedExprs returns the list of expressions projected by this node.
 	ProjectedExprs() []Expression
-	// WithProjectedExprs returns a new Projector instance with the specified expressions set as its projected expressions.
-	WithProjectedExprs(...Expression) (Projector, error)
 }
 
 // Expressioner is a node that contains expressions.
@@ -385,7 +383,7 @@ type SystemVariable struct {
 	// the global context and in a particular session. They should never
 	// block.  NotifyChanged is not called when a new system variable is
 	// registered.
-	NotifyChanged func(SystemVariableScope, SystemVarValue)
+	NotifyChanged func(SystemVariableScope, SystemVarValue) error
 	// ValueFunction defines an optional function that is executed to provide
 	// the value of this system variable whenever it is requested. System variables
 	// that provide a ValueFunction should also set Dynamic to false, since they

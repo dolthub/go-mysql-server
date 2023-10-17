@@ -21,11 +21,11 @@ import (
 	"io"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
+	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	. "github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -130,6 +130,8 @@ const (
 	ViewTableUsageTableName = "view_table_usage"
 	// ViewsTableName is the name of the VIEWS table.
 	ViewsTableName = "views"
+	// defaultInfoSchemaRowCount is a default row count estimate
+	defaultInfoSchemaRowCount = 1000
 )
 
 var sqlModeSetType = types.MustCreateSetType([]string{
@@ -164,10 +166,12 @@ type informationSchemaPartitionIter struct {
 }
 
 var (
-	_ Database      = (*informationSchemaDatabase)(nil)
-	_ Table         = (*informationSchemaTable)(nil)
-	_ Partition     = (*informationSchemaPartition)(nil)
-	_ PartitionIter = (*informationSchemaPartitionIter)(nil)
+	_ Database        = (*informationSchemaDatabase)(nil)
+	_ Table           = (*informationSchemaTable)(nil)
+	_ StatisticsTable = (*informationSchemaTable)(nil)
+	_ Databaseable    = (*informationSchemaTable)(nil)
+	_ Partition       = (*informationSchemaPartition)(nil)
+	_ PartitionIter   = (*informationSchemaPartitionIter)(nil)
 )
 
 var administrableRoleAuthorizationsSchema = Schema{
@@ -873,12 +877,10 @@ func collationsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 // columnStatisticsRowIter implements the sql.RowIter for the information_schema.COLUMN_STATISTICS table.
 func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
-	statsTbl, err := c.Statistics(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	privSet, privSetCount := ctx.GetPrivilegeSet()
+	if privSetCount == 0 {
+		return nil, nil
+	}
 	if privSet == nil {
 		return RowsToRowIter(rows...), nil
 	}
@@ -888,42 +890,26 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 			privSetTbl := privSetDb.Table(t.Name())
-			tableHist, err := statsTbl.Hist(ctx, dbName, t.Name())
+			tableStats, err := c.GetTableStats(ctx, dbName, t.Name())
 			if err != nil {
 				return true, nil
 			}
-
-			if tableHist == nil {
-				return true, nil
-			}
-
-			for _, col := range t.Schema() {
-				privSetCol := privSetTbl.Column(col.Name)
-				if privSetCount == 0 && privSetDb.Count() == 0 && privSetTbl.Count() == 0 && privSetCol.Count() == 0 {
-					continue
+			for _, stats := range tableStats {
+				for _, c := range stats.Columns {
+					if privSetTbl.Count() == 0 && privSetDb.Count() == 0 && privSetTbl.Column(c).Count() == 0 {
+						continue
+					}
 				}
-				if _, ok := col.Type.(StringType); ok {
-					continue
-				}
-
-				hist, ok := tableHist[col.Name]
-				if !ok {
-					return false, fmt.Errorf("column histogram not found: %s", col.Name)
-				}
-
-				buckets := make([]interface{}, len(hist.Buckets))
-				for i, b := range hist.Buckets {
-					buckets[i] = []interface{}{fmt.Sprintf("%.2f", b.LowerBound), fmt.Sprintf("%.2f", b.UpperBound), fmt.Sprintf("%.2f", b.Frequency)}
-				}
-
-				// TODO: missing other key/value pairs in the JSON
-				histogram := types.JSONDocument{Val: map[string]interface{}{"buckets": buckets}}
-
 				rows = append(rows, Row{
-					db.Name(), // table_schema
-					t.Name(),  // table_name
-					col.Name,  // column_name
-					histogram, // histogram
+					db.Name(),                        // table_schema
+					t.Name(),                         // table_name
+					strings.Join(stats.Columns, ","), // column_name
+					types.JSONDocument{Val: map[string]interface{}{
+						"buckets":   stats.Histogram,
+						"distinct":  stats.Distinct,
+						"row_count": stats.Rows,
+						"nulls":     stats.Nulls,
+					}}, // histogram
 				})
 			}
 			return true, nil
@@ -975,6 +961,116 @@ func enginesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 			c.Savepoints(),
 		})
 	}
+	return RowsToRowIter(rows...), nil
+}
+
+// eventsRowIter implements the sql.RowIter for the information_schema.EVENTS table.
+func eventsRowIter(ctx *Context, c Catalog) (RowIter, error) {
+	var rows []Row
+
+	characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
+	if err != nil {
+		return nil, err
+	}
+	collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
+	if err != nil {
+		return nil, err
+	}
+	sysVal, err := ctx.Session.GetSessionVariable(ctx, "sql_mode")
+	if err != nil {
+		return nil, err
+	}
+	sqlMode, sok := sysVal.(string)
+	if !sok {
+		return nil, ErrSystemVariableCodeFail.New("sql_mode", sysVal)
+	}
+
+	for _, db := range c.AllDatabases(ctx) {
+		dbCollation := plan.GetDatabaseCollation(ctx, db)
+		dbName := db.Name()
+		eventDb, ok := db.(EventDatabase)
+		if ok {
+			eventDefs, _, err := eventDb.GetEvents(ctx)
+			if err != nil {
+				return nil, err
+			}
+			if len(eventDefs) == 0 {
+				continue
+			}
+
+			for _, e := range eventDefs {
+				ed := e.ConvertTimesFromUTCToTz(gmstime.SystemTimezoneOffset())
+				var at, intervalVal, intervalField, starts, ends interface{}
+				var eventType, status string
+				if ed.HasExecuteAt {
+					eventType = "ONE TIME"
+					at = ed.ExecuteAt.Format(EventDateSpaceTimeFormat)
+				} else {
+					eventType = "RECURRING"
+					interval, err := EventOnScheduleEveryIntervalFromString(ed.ExecuteEvery)
+					if err != nil {
+						return nil, err
+					}
+					intervalVal, intervalField = interval.GetIntervalValAndField()
+					starts = ed.Starts.Format(EventDateSpaceTimeFormat)
+					if ed.HasEnds {
+						ends = ed.Ends.Format(EventDateSpaceTimeFormat)
+					}
+				}
+
+				eventStatus, err := EventStatusFromString(ed.Status)
+				if err != nil {
+					return nil, err
+				}
+				switch eventStatus {
+				case EventStatus_Enable:
+					status = "ENABLED"
+				case EventStatus_Disable:
+					status = "DISABLED"
+				case EventStatus_DisableOnSlave:
+					status = "SLAVESIDE_DISABLED"
+				}
+
+				onCompPerserve := "NOT PRESERVE"
+				if ed.OnCompletionPreserve {
+					onCompPerserve = "PRESERVE"
+				}
+
+				created := ed.CreatedAt.Format(EventDateSpaceTimeFormat)
+				lastAltered := ed.LastAltered.Format(EventDateSpaceTimeFormat)
+				lastExecuted := ed.LastExecuted.Format(EventDateSpaceTimeFormat)
+				// TODO: timezone should use e.TimezoneOffest, but is always 'SYSTEM' for now.
+
+				rows = append(rows, Row{
+					"def",                // event_catalog
+					dbName,               // event_schema
+					ed.Name,              // event_name
+					ed.Definer,           // definer
+					"SYSTEM",             // time_zone
+					"SQL",                // event_body
+					ed.EventBody,         // event_definition
+					eventType,            // event_type
+					at,                   // execute_at
+					intervalVal,          // interval_value
+					intervalField,        // interval_field
+					sqlMode,              // sql_mode
+					starts,               // starts
+					ends,                 // ends
+					status,               // status
+					onCompPerserve,       // on_completion
+					created,              // created
+					lastAltered,          // last_altered
+					lastExecuted,         // last_executed
+					ed.Comment,           // event_comment
+					0,                    // originator
+					characterSetClient,   // character_set_client
+					collationConnection,  // collation_connection
+					dbCollation.String(), // database_collation
+				})
+			}
+		}
+	}
+
 	return RowsToRowIter(rows...), nil
 }
 
@@ -1743,7 +1839,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 			tableCollation = t.Collation().String()
 			if db.Name() != InformationSchemaDatabaseName {
 				if st, ok := t.(StatisticsTable); ok {
-					tableRows, err = st.RowCount(ctx)
+					tableRows, _, err = st.RowCount(ctx)
 					if err != nil {
 						return false, err
 					}
@@ -2167,12 +2263,6 @@ func emptyRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(), nil
 }
 
-func NewUpdatableInformationSchemaDatabase() Database {
-	db := NewInformationSchemaDatabase().(*informationSchemaDatabase)
-	db.tables[StatisticsTableName] = newUpdatableStatsTable()
-	return db
-}
-
 // NewInformationSchemaDatabase creates a new INFORMATION_SCHEMA Database.
 func NewInformationSchemaDatabase() Database {
 	isDb := &informationSchemaDatabase{
@@ -2241,7 +2331,7 @@ func NewInformationSchemaDatabase() Database {
 			EventsTableName: &informationSchemaTable{
 				name:   EventsTableName,
 				schema: eventsSchema,
-				reader: emptyRowIter,
+				reader: eventsRowIter,
 			},
 			FilesTableName: &informationSchemaTable{
 				name:   FilesTableName,
@@ -2603,9 +2693,22 @@ func (t *informationSchemaTable) Name() string {
 	return t.name
 }
 
+// Database implements the sql.Databaseable interface.
+func (c *informationSchemaTable) Database() string {
+	return InformationSchemaDatabaseName
+}
+
 // Schema implements the sql.Table interface.
 func (t *informationSchemaTable) Schema() Schema {
 	return t.schema
+}
+
+func (t *informationSchemaTable) DataLength(_ *Context) (uint64, error) {
+	return uint64(len(t.Schema()) * int(types.Text.MaxByteLength()) * defaultInfoSchemaRowCount), nil
+}
+
+func (t *informationSchemaTable) RowCount(ctx *Context) (uint64, bool, error) {
+	return defaultInfoSchemaRowCount, false, nil
 }
 
 // Collation implements the sql.Table interface.
@@ -2667,172 +2770,19 @@ func NewDefaultStats() *defaultStatsTable {
 			schema: statisticsSchema,
 			reader: statisticsRowIter,
 		},
-		stats: make(catalogStatistics),
 	}
 }
-
-// catalogStatistics holds TableStatistics keyed by table and database
-type catalogStatistics map[DbTable]*TableStatistics
 
 // defaultStatsTable is a statistics table implementation
 // with a cache to save ANALYZE results. RowCount defers to
 // the underlying table in the absence of a cached statistic.
 type defaultStatsTable struct {
 	*informationSchemaTable
-	stats catalogStatistics
 }
-
-var _ StatsReadWriter = (*defaultStatsTable)(nil)
 
 func (n *defaultStatsTable) AssignCatalog(cat Catalog) Table {
 	n.catalog = cat
 	return n
-}
-
-func (n *defaultStatsTable) Hist(ctx *Context, db, table string) (HistogramMap, error) {
-	if s, ok := n.stats[NewDbTable(db, table)]; ok {
-		return s.Histograms, nil
-	} else {
-		err := fmt.Errorf("histogram not found for table '%s.%s'", db, table)
-		return nil, err
-	}
-}
-
-// RowCount returns a sql.StatisticsTable's row count, or false if the table does not
-// implement the interface, or an error if the table was not found.
-func (n *defaultStatsTable) RowCount(ctx *Context, db, table string) (uint64, bool, error) {
-	s, ok := n.stats[NewDbTable(db, table)]
-	if ok {
-		return s.RowCount, true, nil
-	}
-
-	t, _, err := n.catalog.Table(ctx, db, table)
-	if err != nil {
-		return 0, false, err
-	}
-	st, ok := t.(StatisticsTable)
-	if !ok {
-		return 0, false, nil
-	}
-	cnt, err := st.RowCount(ctx)
-	if err != nil {
-		return 0, false, err
-	}
-	return cnt, true, nil
-}
-
-func (n *defaultStatsTable) Analyze(ctx *Context, dbName, table string) error {
-	tableStats := &TableStatistics{
-		CreatedAt: time.Now(),
-	}
-
-	db, err := n.catalog.Database(ctx, dbName)
-	if err != nil {
-		return err
-	}
-
-	effectiveDbName := plan.CheckPrivilegeNameForDatabase(db)
-
-	t, _, err := n.catalog.DatabaseTable(ctx, db, table)
-	if err != nil {
-		return err
-	}
-	histMap, err := NewHistogramMapFromTable(ctx, t)
-	if err != nil {
-		return err
-	}
-
-	tableStats.Histograms = histMap
-	for _, v := range histMap {
-		tableStats.RowCount = v.Count + v.NullCount
-		break
-	}
-
-	n.stats[NewDbTable(effectiveDbName, table)] = tableStats
-	return nil
-}
-
-func newUpdatableStatsTable() *updatableStatsTable {
-	return &updatableStatsTable{
-		defaultStatsTable: NewDefaultStats(),
-	}
-}
-
-// updatableStatsTable provides a statistics table that can
-// be edited with UPDATE statements.
-type updatableStatsTable struct {
-	*defaultStatsTable
-}
-
-var _ UpdatableTable = (*updatableStatsTable)(nil)
-var _ StatsReadWriter = (*updatableStatsTable)(nil)
-
-// AssignCatalog implements sql.CatalogTable
-func (t *updatableStatsTable) AssignCatalog(cat Catalog) Table {
-	t.catalog = cat
-	return t
-}
-
-// Updater implements sql.UpdatableTable
-func (t *updatableStatsTable) Updater(_ *Context) RowUpdater {
-	return newStatsEditor(t.catalog, t.stats)
-}
-
-func newStatsEditor(c Catalog, stats map[DbTable]*TableStatistics) RowUpdater {
-	return &statsEditor{c: c, s: stats}
-}
-
-// statsEditor is an internal-only object used to mock table
-// statistics for testing.
-type statsEditor struct {
-	c Catalog
-	s map[DbTable]*TableStatistics
-}
-
-var _ RowUpdater = (*statsEditor)(nil)
-
-// StatementBegin implements sql.RowUpdater
-func (s *statsEditor) StatementBegin(_ *Context) {}
-
-// DiscardChanges implements sql.RowUpdater
-func (s *statsEditor) DiscardChanges(_ *Context, _ error) error {
-	return fmt.Errorf("discarding statsEditor changes not supported")
-}
-
-// StatementComplete implements sql.RowUpdater
-func (s *statsEditor) StatementComplete(_ *Context) error { return nil }
-
-// Update implements sql.RowUpdater
-func (s *statsEditor) Update(ctx *Context, old, new Row) error {
-	db, ok := old[1].(string)
-	if !ok {
-		return fmt.Errorf("expected string type databaseName; found type: '%T', value: '%v'", old[1], old[1])
-	}
-	table, ok := old[2].(string)
-	if !ok {
-		return fmt.Errorf("expected string type tableName; found type: '%T', value: '%v'", old[2], old[2])
-	}
-
-	_, _, err := s.c.Table(ctx, db, table)
-	if err != nil {
-		return err
-	}
-
-	card, ok := new[9].(int64)
-	if !ok {
-		return fmt.Errorf("expeceted integer cardinality; found type: '%T', value: '%s'", new[9], new[9])
-	}
-	stats := &TableStatistics{
-		RowCount:   uint64(card),
-		CreatedAt:  time.Now(),
-		Histograms: make(HistogramMap),
-	}
-	s.s[NewDbTable(db, table)] = stats
-	return nil
-}
-
-func (s *statsEditor) Close(context *Context) error {
-	return nil
 }
 
 func printTable(name string, tableSchema Schema) string {

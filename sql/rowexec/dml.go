@@ -56,17 +56,18 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 
 	insertExpressions := getInsertExpressions(ii.Source)
 	insertIter := &insertIter{
-		schema:      dstSchema,
-		tableNode:   ii.Destination,
-		inserter:    inserter,
-		replacer:    replacer,
-		updater:     updater,
-		rowSource:   rowIter,
-		updateExprs: ii.OnDupExprs,
-		insertExprs: insertExpressions,
-		checks:      ii.Checks(),
-		ctx:         ctx,
-		ignore:      ii.Ignore,
+		schema:              dstSchema,
+		tableNode:           ii.Destination,
+		inserter:            inserter,
+		replacer:            replacer,
+		updater:             updater,
+		rowSource:           rowIter,
+		hasAutoAutoIncValue: ii.HasUnspecifiedAutoInc,
+		updateExprs:         ii.OnDupExprs,
+		insertExprs:         insertExpressions,
+		checks:              ii.Checks(),
+		ctx:                 ctx,
+		ignore:              ii.Ignore,
 	}
 
 	var ed sql.EditOpenerCloser
@@ -91,6 +92,8 @@ func (b *BaseBuilder) buildDeleteFrom(ctx *sql.Context, n *plan.DeleteFrom, row 
 
 	targets := n.GetDeleteTargets()
 	schemaPositionDeleters := make([]schemaPositionDeleter, len(targets))
+	schema := n.Child.Schema()
+
 	for i, target := range targets {
 		deletable, err := plan.GetDeletable(target)
 		if err != nil {
@@ -109,13 +112,13 @@ func (b *BaseBuilder) buildDeleteFrom(ctx *sql.Context, n *plan.DeleteFrom, row 
 			return true
 		})
 
-		start, end, err := findSourcePosition(n.Child.Schema(), sourceName)
+		start, end, err := findSourcePosition(schema, sourceName)
 		if err != nil {
 			return nil, err
 		}
 		schemaPositionDeleters[i] = schemaPositionDeleter{deleter, int(start), int(end)}
 	}
-	return newDeleteIter(iter, n.Child.Schema(), schemaPositionDeleters...), nil
+	return newDeleteIter(iter, schema, schemaPositionDeleters...), nil
 }
 
 func (b *BaseBuilder) buildForeignKeyHandler(ctx *sql.Context, n *plan.ForeignKeyHandler, row sql.Row) (sql.RowIter, error) {
@@ -296,7 +299,15 @@ func (b *BaseBuilder) buildRowUpdateAccumulator(ctx *sql.Context, n *plan.RowUpd
 	var rowHandler accumulatorRowHandler
 	switch n.RowUpdateType {
 	case plan.UpdateTypeInsert:
-		rowHandler = &insertRowHandler{}
+		insertItr, err := findInsertIter(rowIter)
+		if err != nil {
+			return nil, err
+		}
+
+		rowHandler = &insertRowHandler{
+			lastInsertIdGetter: insertItr.getAutoIncVal,
+		}
+		// TODO: some of these other row handlers also need to keep track of the last insert id
 	case plan.UpdateTypeReplace:
 		rowHandler = &replaceRowHandler{}
 	case plan.UpdateTypeDuplicateKeyUpdate:
@@ -337,6 +348,33 @@ func (b *BaseBuilder) buildRowUpdateAccumulator(ctx *sql.Context, n *plan.RowUpd
 		iter:             rowIter,
 		updateRowHandler: rowHandler,
 	}, nil
+}
+
+func findInsertIter(rowIter sql.RowIter) (*insertIter, error) {
+	var insertItr *insertIter
+	switch rowIter := rowIter.(type) {
+	case *plan.TableEditorIter:
+		var ok bool
+		insertItr, ok = rowIter.InnerIter().(*insertIter)
+		if !ok {
+			return nil, fmt.Errorf("unexpected iter type %T", rowIter)
+		}
+	case *plan.CheckpointingTableEditorIter:
+		var ok bool
+		insertItr, ok = rowIter.InnerIter().(*insertIter)
+		if !ok {
+			return nil, fmt.Errorf("unexpected iter type %T", rowIter)
+		}
+	case *triggerIter:
+		var err error
+		insertItr, err = findInsertIter(rowIter.child)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("unexpected iter type %T", rowIter)
+	}
+	return insertItr, nil
 }
 
 func (b *BaseBuilder) buildTruncate(ctx *sql.Context, n *plan.Truncate, row sql.Row) (sql.RowIter, error) {

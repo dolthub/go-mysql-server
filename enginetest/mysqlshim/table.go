@@ -347,8 +347,8 @@ func (t Table) DataLength(ctx *sql.Context) (uint64, error) {
 }
 
 // Cardinality implements the interface sql.StatisticsTable.
-func (t Table) RowCount(ctx *sql.Context) (uint64, error) {
-	return 0, nil
+func (t Table) RowCount(ctx *sql.Context) (uint64, bool, error) {
+	return 0, false, nil
 }
 
 // CreatePrimaryKey implements the interface sql.PrimaryKeyAlterableTable.

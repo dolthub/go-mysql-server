@@ -17,6 +17,7 @@ package memory
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -323,18 +324,18 @@ func (d *BaseDatabase) RenameTable(ctx *sql.Context, oldName, newName string) er
 	return nil
 }
 
-func (d *BaseDatabase) GetTriggers(ctx *sql.Context) ([]sql.TriggerDefinition, error) {
+func (d *BaseDatabase) GetTriggers(_ *sql.Context) ([]sql.TriggerDefinition, error) {
 	var triggers []sql.TriggerDefinition
 	triggers = append(triggers, d.triggers...)
 	return triggers, nil
 }
 
-func (d *BaseDatabase) CreateTrigger(ctx *sql.Context, definition sql.TriggerDefinition) error {
+func (d *BaseDatabase) CreateTrigger(_ *sql.Context, definition sql.TriggerDefinition) error {
 	d.triggers = append(d.triggers, definition)
 	return nil
 }
 
-func (d *BaseDatabase) DropTrigger(ctx *sql.Context, name string) error {
+func (d *BaseDatabase) DropTrigger(_ *sql.Context, name string) error {
 	found := false
 	for i, trigger := range d.triggers {
 		if trigger.Name == name {
@@ -408,22 +409,23 @@ func (d *BaseDatabase) GetEvent(ctx *sql.Context, name string) (sql.EventDefinit
 }
 
 // GetEvents implements sql.EventDatabase
-func (d *BaseDatabase) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, error) {
+func (d *BaseDatabase) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, interface{}, error) {
 	var eds []sql.EventDefinition
 	eds = append(eds, d.events...)
-	return eds, nil
+	// memory DB doesn't support event reloading, so token is always nil
+	return eds, nil, nil
 }
 
 // SaveEvent implements sql.EventDatabase
-func (d *BaseDatabase) SaveEvent(ctx *sql.Context, ed sql.EventDefinition) error {
-	loweredName := strings.ToLower(ed.Name)
-	for _, existingEd := range d.events {
-		if strings.ToLower(existingEd.Name) == loweredName {
-			return sql.ErrEventAlreadyExists.New(ed.Name)
+func (d *BaseDatabase) SaveEvent(_ *sql.Context, event sql.EventDefinition) (bool, error) {
+	loweredName := strings.ToLower(event.Name)
+	for _, existingEvent := range d.events {
+		if strings.ToLower(existingEvent.Name) == loweredName {
+			return false, sql.ErrEventAlreadyExists.New(event.Name)
 		}
 	}
-	d.events = append(d.events, ed)
-	return nil
+	d.events = append(d.events, event)
+	return event.Status == sql.EventStatus_Enable.String(), nil
 }
 
 // DropEvent implements sql.EventDatabase
@@ -444,23 +446,46 @@ func (d *BaseDatabase) DropEvent(ctx *sql.Context, name string) error {
 }
 
 // UpdateEvent implements sql.EventDatabase
-func (d *BaseDatabase) UpdateEvent(ctx *sql.Context, originalName string, ed sql.EventDefinition) error {
+func (d *BaseDatabase) UpdateEvent(_ *sql.Context, originalName string, event sql.EventDefinition) (bool, error) {
 	loweredOriginalName := strings.ToLower(originalName)
-	loweredNewName := strings.ToLower(ed.Name)
+	loweredNewName := strings.ToLower(event.Name)
 	found := false
 	for i, existingEd := range d.events {
 		if loweredOriginalName != loweredNewName && strings.ToLower(existingEd.Name) == loweredNewName {
 			// renaming event to existing name
-			return sql.ErrEventAlreadyExists.New(loweredNewName)
+			return false, sql.ErrEventAlreadyExists.New(loweredNewName)
 		} else if strings.ToLower(existingEd.Name) == loweredOriginalName {
-			d.events[i] = ed
+			d.events[i] = event
 			found = true
 		}
 	}
 	if !found {
-		return sql.ErrEventDoesNotExist.New(ed.Name)
+		return false, sql.ErrEventDoesNotExist.New(event.Name)
+	}
+	return event.Status == sql.EventStatus_Enable.String(), nil
+}
+
+// UpdateLastExecuted implements sql.EventDatabase
+func (d *BaseDatabase) UpdateLastExecuted(ctx *sql.Context, eventName string, lastExecuted time.Time) error {
+	loweredName := strings.ToLower(eventName)
+	found := false
+	for _, existingEd := range d.events {
+		if strings.ToLower(existingEd.Name) == loweredName {
+			found = true
+			existingEd.LastExecuted = lastExecuted
+		}
+	}
+	// this should not happen, but sanity check
+	if !found {
+		return sql.ErrEventDoesNotExist.New(eventName)
 	}
 	return nil
+}
+
+// NeedsToReloadEvents implements sql.EventDatabase
+func (d *Database) NeedsToReloadEvents(_ *sql.Context, token interface{}) (bool, error) {
+	// Event reloading not supported for in-memory database
+	return false, nil
 }
 
 // GetCollation implements sql.CollatedDatabase.

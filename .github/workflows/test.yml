@@ -22,6 +22,10 @@ jobs:
     - name: Test
       if: ${{ matrix.platform != 'ubuntu-latest' }}
       run: go test ./...
+      env:
+        CI_TEST: "true"
     - name: Test
       if: ${{ matrix.platform == 'ubuntu-latest' }}
       run: go test -race ./...
+      env:
+        CI_TEST: "true"

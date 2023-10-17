@@ -50,6 +50,10 @@ var (
 	// current scope.
 	ErrTableNotFound = errors.NewKind("table not found: %s")
 
+	// ErrInvalidRefInView is returned when querying existing view that references non-existent table.
+	// Creating new view or updating existing view to reference non-existent table/view do not apply here.
+	ErrInvalidRefInView = errors.NewKind("View '%s.%s' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them")
+
 	// ErrUnknownTable is returned when the non-table name is used for table actions.
 	ErrUnknownTable = errors.NewKind("Unknown table '%s'")
 
@@ -459,6 +463,9 @@ var (
 	// ErrDuplicateColumn is returned when a table has two columns with the same name.
 	ErrDuplicateColumn = errors.NewKind("duplicate column name: `%s`")
 
+	// ErrInvalidIdentifier is returned when an identifier is invalid
+	ErrInvalidIdentifier = errors.NewKind("invalid identifier: `%s`")
+
 	// ErrInvalidArgument is returned when an argument to a function is invalid.
 	ErrInvalidArgument = errors.NewKind("Invalid argument to %s")
 
@@ -561,8 +568,8 @@ var (
 	// ErrViewsNotSupported is returned when attempting to access a view on a database that doesn't support them.
 	ErrViewsNotSupported = errors.NewKind("database '%s' doesn't support views")
 
-	// ErrNotBaseTable is returned when attempting to rename a view using ALTER TABLE statement.
-	ErrNotBaseTable = errors.NewKind("'%s' is not BASE TABLE")
+	// ErrExpectedTableFoundView is returned when attempting to rename a view using ALTER TABLE statement.
+	ErrExpectedTableFoundView = errors.NewKind("expected a table and found view: '%s' ")
 
 	// ErrExistingView is returned when a CREATE VIEW statement uses a name that already exists
 	ErrExistingView = errors.NewKind("the view %s.%s already exists")

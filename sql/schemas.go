@@ -26,6 +26,9 @@ var (
 	ErrUnexpectedType = errors.NewKind("value at %d has unexpected type: %s")
 )
 
+// MaxIdentifierLength is the maximum number of characters permissible in MySQL identifiers, like column or table names
+const MaxIdentifierLength = 64
+
 // Schema is the definition of a table.
 type Schema []*Column
 
@@ -48,6 +51,27 @@ func (s Schema) CheckRow(row Row) error {
 	}
 
 	return nil
+}
+
+// HasVirtualColumns returns whether the schema has any virtual columns
+func (s Schema) HasVirtualColumns() bool {
+	for _, col := range s {
+		if col.Virtual {
+			return true
+		}
+	}
+	return false
+}
+
+// PhysicalSchema returns a schema with only the physical (non-virtual) columns
+func (s Schema) PhysicalSchema() Schema {
+	var physical Schema
+	for _, col := range s {
+		if !col.Virtual {
+			physical = append(physical, col)
+		}
+	}
+	return physical
 }
 
 // Copy returns a deep copy of this schema, making a copy of all columns

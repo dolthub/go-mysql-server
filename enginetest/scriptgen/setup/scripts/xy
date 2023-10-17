@@ -96,21 +96,21 @@ insert into rs values
 ----
 
 exec
-update information_schema.statistics set cardinality = 1000 where table_name = 'ab';
+analyze table ab update histogram on (a) using data '{"row_count": 1000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 1000 where table_name = 'ab_hasnull';
+analyze table ab_hasnull update histogram on (a) using data '{"row_count": 1000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 1000 where table_name = 'xy';
+analyze table xy update histogram on (x) using data '{"row_count": 1000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 1000 where table_name = 'xy_hasnull';
+analyze table xy_hasnull update histogram on (x) using data '{"row_count": 1000}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 1000 where table_name = 'rs'
+analyze table rs update histogram on (r) using data '{"row_count": 1000}'
 ----

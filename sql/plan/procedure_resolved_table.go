@@ -144,7 +144,11 @@ func (t *ProcedureResolvedTable) NewestTable(ctx *sql.Context) (*ResolvedTable, 
 		} else if !ok {
 			return nil, sql.ErrTableNotFound.New(t.ResolvedTable.Table.Name())
 		}
-		return t.ResolvedTable.WithTable(tbl)
+		rt, err := t.ResolvedTable.ReplaceTable(tbl)
+		if err != nil {
+			return nil, err
+		}
+		return rt.(*ResolvedTable), nil
 	} else {
 		versionedDb, ok := t.ResolvedTable.SqlDatabase.(sql.VersionedDatabase)
 		if !ok {
@@ -157,6 +161,10 @@ func (t *ProcedureResolvedTable) NewestTable(ctx *sql.Context) (*ResolvedTable, 
 		} else if !ok {
 			return nil, sql.ErrTableNotFound.New(t.ResolvedTable.Table.Name())
 		}
-		return t.ResolvedTable.WithTable(tbl)
+		rt, err := t.ResolvedTable.ReplaceTable(tbl)
+		if err != nil {
+			return nil, err
+		}
+		return rt.(*ResolvedTable), nil
 	}
 }

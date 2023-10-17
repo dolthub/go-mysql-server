@@ -30,11 +30,11 @@ var offsetRegex = regexp.MustCompile(`(?m)^([+\-])(\d{2}):(\d{2})$`)
 // the name of a timezone (e.g. "UTC") or a MySQL-formatted timezone offset (e.g. "+01:00"). If the time was converted
 // successfully, then the second return value will be true, otherwise the time was not able to be converted.
 func ConvertTimeZone(datetime time.Time, fromLocation string, toLocation string) (time.Time, bool) {
-	convertedFromTime, err := convertTimeToLocation(datetime, fromLocation)
+	convertedFromTime, err := ConvertTimeToLocation(datetime, fromLocation)
 	if err != nil {
 		return time.Time{}, false
 	}
-	convertedToTime, err := convertTimeToLocation(datetime, toLocation)
+	convertedToTime, err := ConvertTimeToLocation(datetime, toLocation)
 	if err != nil {
 		return time.Time{}, false
 	}
@@ -65,6 +65,14 @@ func SystemTimezoneOffset() string {
 	return SecondsToMySQLOffset(offset)
 }
 
+// SystemTimezoneName returns the current system timezone name.
+func SystemTimezoneName() string {
+	t := time.Now()
+	name, _ := t.Zone()
+
+	return name
+}
+
 // SecondsToMySQLOffset takes in a timezone offset in seconds (as returned by time.Time.Zone()) and returns it as a
 // MySQL timezone offset (e.g. "+01:00").
 func SecondsToMySQLOffset(offset int) string {
@@ -83,10 +91,10 @@ func SecondsToMySQLOffset(offset int) string {
 	return result
 }
 
-// convertTimeToLocation converts |datetime| to the given |location|. |location| can be either the name of a timezone
+// ConvertTimeToLocation converts |datetime| to the given |location|. |location| can be either the name of a timezone
 // (e.g. "UTC") or a MySQL-formatted timezone offset (e.g. "+01:00"). If the time was converted successfully, then
 // the converted time is returned, otherwise an error is returned.
-func convertTimeToLocation(datetime time.Time, location string) (time.Time, error) {
+func ConvertTimeToLocation(datetime time.Time, location string) (time.Time, error) {
 	// Try to load the timezone location string first
 	loc, err := time.LoadLocation(location)
 	if err == nil {

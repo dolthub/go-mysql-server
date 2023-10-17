@@ -112,7 +112,7 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 		results[i], err = searchable.Extract(ctx, path.(string))
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to extract from expression '%s'; %s", j.JSON.String(), err.Error())
 		}
 	}
 
@@ -150,4 +150,9 @@ func (j *JSONExtract) String() string {
 		parts[i] = c.String()
 	}
 	return fmt.Sprintf("json_extract(%s)", strings.Join(parts, ", "))
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONExtract) IsUnsupported() bool {
+	return false
 }

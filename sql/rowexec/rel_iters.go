@@ -534,7 +534,8 @@ func ProjectRow(
 		// Also default expressions may not refer to other columns that come after them if they also have a default expr.
 		// This ensures that all columns referenced by expressions will have already been evaluated.
 		// Since literals do not reference other columns, they're evaluated on the first pass.
-		if defaultVal, ok := expr.(*sql.ColumnDefaultValue); ok && !defaultVal.IsLiteral() {
+		defaultVal, isDefaultVal := defaultValFromProjectExpr(expr)
+		if isDefaultVal && !defaultVal.IsLiteral() {
 			fields = append(fields, nil)
 			secondPass = append(secondPass, i)
 			continue
@@ -555,6 +556,22 @@ func ProjectRow(
 		fields[index] = field
 	}
 	return sql.NewRow(fields...), nil
+}
+
+func defaultValFromProjectExpr(e sql.Expression) (*sql.ColumnDefaultValue, bool) {
+	if defaultVal, ok := e.(*expression.Wrapper); ok {
+		e = defaultVal.Unwrap()
+	}
+	if defaultVal, ok := e.(*sql.ColumnDefaultValue); ok {
+		return defaultVal, true
+	}
+	if alias, ok := e.(*expression.Alias); ok {
+		if defaultVal, ok := alias.Child.(*sql.ColumnDefaultValue); ok {
+			return defaultVal, true
+		}
+	}
+
+	return nil, false
 }
 
 // normalizeNegativeZeros converts negative zero into positive zero.
@@ -752,7 +769,7 @@ func (d *declareHandlerIter) Close(ctx *sql.Context) error {
 	return nil
 }
 
-const cteRecursionLimit = 1000
+const cteRecursionLimit = 10001
 
 // recursiveCteIter exhaustively executes a recursive
 // relation [rec] populated by an [init] base case.

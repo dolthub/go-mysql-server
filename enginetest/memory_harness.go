@@ -172,13 +172,13 @@ func (m *MemoryHarness) NewEngine(t *testing.T) (QueryEngine, error) {
 		m.session = nil
 		m.provider = nil
 	}
-	engine, err := NewEngine(t, m, m.getProvider(), m.setupData)
+	engine, err := NewEngine(t, m, m.getProvider(), m.setupData, memory.NewStatsProv())
 	if err != nil {
 		return nil, err
 	}
 
 	if m.server {
-		return NewServerQueryEngine(t, engine)
+		return NewServerQueryEngine(t, engine, m.SessionBuilder())
 	}
 
 	return engine, nil

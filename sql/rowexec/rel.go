@@ -78,10 +78,23 @@ func (b *BaseBuilder) buildValueDerivedTable(ctx *sql.Context, n *plan.ValueDeri
 func (b *BaseBuilder) buildValues(ctx *sql.Context, n *plan.Values, row sql.Row) (sql.RowIter, error) {
 	rows := make([]sql.Row, len(n.ExpressionTuples))
 	for i, et := range n.ExpressionTuples {
-		vals := make([]interface{}, len(et))
-		for j, e := range et {
+		vals := make(sql.Row, len(et))
+
+		// A non-zero row means that we're executing in a trigger context, so we evaluate against the row provided
+		// TODO: this probably won't work with triggers that define explicit DEFAULT values
+		if len(row) > 0 {
+			for j, e := range et {
+				var err error
+				vals[j], err = e.Eval(ctx, row)
+				if err != nil {
+					return nil, err
+				}
+			}
+		} else {
+			// For the values node, the relevant values to evaluate are the tuple itself. We may need to project
+			// DEFAULT values onto them, which ProjectRow handles correctly (could require multiple passes)
 			var err error
-			vals[j], err = e.Eval(ctx, row)
+			vals, err = ProjectRow(ctx, et, vals)
 			if err != nil {
 				return nil, err
 			}
@@ -168,6 +181,14 @@ func (b *BaseBuilder) buildJSONTable(ctx *sql.Context, n *plan.JSONTable, row sq
 	if err != nil {
 		return nil, err
 	}
+
+	if jd, ok := data.(types.JSONDocument); ok {
+		data, err = jd.ToString(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	strData, _, err := types.LongBlob.Convert(data)
 	if err != nil {
 		return nil, fmt.Errorf("invalid data type for JSON data in argument 1 to function json_table; a JSON string or JSON type is required")
@@ -299,6 +320,17 @@ func (b *BaseBuilder) buildProject(ctx *sql.Context, n *plan.Project, row sql.Ro
 	return sql.NewSpanIter(span, &projectIter{
 		p:         n.Projections,
 		childIter: i,
+	}), nil
+}
+
+func (b *BaseBuilder) buildVirtualColumnTable(ctx *sql.Context, n *plan.VirtualColumnTable, tableIter sql.RowIter, row sql.Row) (sql.RowIter, error) {
+	span, ctx := ctx.Span("plan.VirtualColumnTable", trace.WithAttributes(
+		attribute.Int("projections", len(n.Projections)),
+	))
+
+	return sql.NewSpanIter(span, &projectIter{
+		p:         n.Projections,
+		childIter: tableIter,
 	}), nil
 }
 
@@ -641,7 +673,17 @@ func (b *BaseBuilder) buildIndexedTableAccess(ctx *sql.Context, n *plan.IndexedT
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, n.Table, partIter)), nil
+	var tableIter sql.RowIter
+	tableIter = sql.NewTableRowIter(ctx, n.Table, partIter)
+
+	if vct, ok := plan.FindVirtualColumnTable(n.Table); ok {
+		tableIter, err = b.buildVirtualColumnTable(ctx, vct, tableIter, row)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return sql.NewSpanIter(span, tableIter), nil
 }
 
 func (b *BaseBuilder) buildSetOp(ctx *sql.Context, s *plan.SetOp, row sql.Row) (sql.RowIter, error) {
@@ -729,7 +771,7 @@ func (b *BaseBuilder) buildSetOp(ctx *sql.Context, s *plan.SetOp, row sql.Row) (
 func (b *BaseBuilder) buildSubqueryAlias(ctx *sql.Context, n *plan.SubqueryAlias, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.SubqueryAlias")
 
-	if !n.OuterScopeVisibility {
+	if !n.OuterScopeVisibility && !n.IsLateral {
 		row = nil
 	}
 	iter, err := b.buildNodeExec(ctx, n.Child, row)
@@ -764,7 +806,17 @@ func (b *BaseBuilder) buildResolvedTable(ctx *sql.Context, n *plan.ResolvedTable
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, n.Table, partitions)), nil
+	var iter sql.RowIter
+	iter = sql.NewTableRowIter(ctx, n.Table, partitions)
+
+	if vct, ok := plan.FindVirtualColumnTable(n.Table); ok {
+		iter, err = b.buildVirtualColumnTable(ctx, vct, iter, row)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return sql.NewSpanIter(span, iter), nil
 }
 
 func (b *BaseBuilder) buildTableCount(_ *sql.Context, n *plan.TableCountLookup, _ sql.Row) (sql.RowIter, error) {

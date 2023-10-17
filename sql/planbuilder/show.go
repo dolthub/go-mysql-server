@@ -108,7 +108,7 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 	}
 
 	tableName := strings.ToLower(s.Table.Name.String())
-	tableScope, ok := b.buildTablescan(inScope, db, tableName, asOf)
+	tableScope, ok := b.buildResolvedTable(inScope, db, tableName, asOf)
 	if !ok {
 		err := sql.ErrTableNotFound.New(tableName)
 		b.handleErr(err)
@@ -264,7 +264,7 @@ func (b *Builder) buildShowAllEvents(inScope *scope, s *ast.Show) (outScope *sco
 	}
 	db := b.resolveDb(dbName)
 	showEvents := plan.NewShowEvents(db)
-	showEvents.Events = b.loadAllEventDetails(db)
+	showEvents.Events = b.loadAllEventDefinitions(db)
 
 	var node sql.Node = showEvents
 	for _, c := range node.Schema() {
@@ -293,37 +293,15 @@ func (b *Builder) buildShowAllEvents(inScope *scope, s *ast.Show) (outScope *sco
 	return
 }
 
-func (b *Builder) loadAllEventDetails(db sql.Database) []sql.EventDetails {
+func (b *Builder) loadAllEventDefinitions(db sql.Database) []sql.EventDefinition {
 	if eventDb, ok := db.(sql.EventDatabase); ok {
-		events, err := eventDb.GetEvents(b.ctx)
+		events, _, err := eventDb.GetEvents(b.ctx)
 		if err != nil {
 			b.handleErr(err)
 		}
-		loadedEvents := make([]sql.EventDetails, len(events))
-		for i, event := range events {
-			loadedEvents[i] = b.loadEventDetails(event)
-		}
-		return loadedEvents
+		return events
 	}
 	return nil
-}
-
-func (b *Builder) loadEventDetails(event sql.EventDefinition) sql.EventDetails {
-	parsed, _, err := ast.ParseOneWithOptions(event.CreateStatement, sql.NewSqlModeFromString(event.SqlMode).ParserOptions())
-	if err != nil {
-		b.handleErr(fmt.Errorf("failed to parse create event '%s': %w", event.Name, err))
-	}
-	eventScope := b.build(b.newScope(), parsed, event.CreateStatement)
-	eventPlan, ok := eventScope.node.(*plan.CreateEvent)
-	if !ok {
-		err := sql.ErrEventCreateStatementInvalid.New(event.CreateStatement)
-		b.handleErr(err)
-	}
-	ed, err := eventPlan.GetEventDetails(b.ctx, event.CreatedAt)
-	if err != nil {
-		b.handleErr(err)
-	}
-	return ed
 }
 
 func (b *Builder) buildShowProcedure(inScope *scope, s *ast.Show) (outScope *scope) {
@@ -464,7 +442,7 @@ func (b *Builder) buildShowIndex(inScope *scope, s *ast.Show) (outScope *scope) 
 		dbName = b.ctx.GetCurrentDatabase()
 	}
 	tableName := strings.ToLower(s.Table.Name.String())
-	tableScope, ok := b.buildTablescan(inScope, strings.ToLower(dbName), tableName, nil)
+	tableScope, ok := b.buildResolvedTable(inScope, strings.ToLower(dbName), tableName, nil)
 	if !ok {
 		err := sql.ErrTableNotFound.New(tableName)
 		b.handleErr(err)
@@ -699,7 +677,7 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 	}
 
 	tableName := strings.ToLower(s.Table.Name.String())
-	tableScope, ok := b.buildTablescan(inScope, db, tableName, asOf)
+	tableScope, ok := b.buildResolvedTable(inScope, db, tableName, asOf)
 	if !ok {
 		err := sql.ErrTableNotFound.New(tableName)
 		b.handleErr(err)

@@ -31,7 +31,7 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 	}
 
 	tableName := strings.ToLower(d.Table.Name.String())
-	destScope, ok := b.buildTablescan(inScope, dbName, tableName, nil)
+	destScope, ok := b.buildResolvedTable(inScope, dbName, tableName, nil)
 	if !ok {
 		b.handleErr(sql.ErrTableNotFound.New(tableName))
 	}

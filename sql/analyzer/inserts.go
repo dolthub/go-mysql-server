@@ -88,7 +88,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 				columnNames[i] = f.Name
 			}
 		} else {
-			err = validateColumns(table.Name(), columnNames, dstSchema)
+			err = validateColumns(table.Name(), columnNames, dstSchema, source)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -100,12 +100,12 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		}
 
 		// The schema of the destination node and the underlying table differ subtly in terms of defaults
-		project, err := wrapRowSource(ctx, scope, a.LogFn(), source, insertable, insert.Destination.Schema(), columnNames)
+		project, autoAutoIncrement, err := wrapRowSource(ctx, source, insertable, insert.Destination.Schema(), columnNames)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
 
-		return insert.WithSource(project), transform.NewTree, nil
+		return insert.WithSource(project).WithUnspecifiedAutoIncrement(autoAutoIncrement), transform.NewTree, nil
 	})
 }
 
@@ -124,28 +124,31 @@ func existsNonZeroValueCount(values sql.Node) bool {
 	return false
 }
 
-// wrapRowSource wraps the original row source in a projection so that its schema matches the full schema of the
-// underlying table, in the same order.
-func wrapRowSource(ctx *sql.Context, scope *plan.Scope, logFn func(string, ...any), insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string) (sql.Node, error) {
+// wrapRowSource returns a projection that wraps the original row source so that its schema matches the full schema of
+// the underlying table, in the same order. Also returns a boolean value that indicates whether this row source will
+// result in an automatically generated value for an auto_increment column.
+func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string) (sql.Node, bool, error) {
 	projExprs := make([]sql.Expression, len(schema))
+	autoAutoIncrement := false
+
 	for i, f := range schema {
-		found := false
+		columnExplicitlySpecified := false
 		for j, col := range columnNames {
 			if strings.EqualFold(f.Name, col) {
 				projExprs[i] = expression.NewGetField(j, f.Type, f.Name, f.Nullable)
-				found = true
+				columnExplicitlySpecified = true
 				break
 			}
 		}
 
-		if !found {
+		if !columnExplicitlySpecified {
 			defaultExpr := f.Default
 			if defaultExpr == nil {
 				defaultExpr = f.Generated
 			}
 
 			if !f.Nullable && defaultExpr == nil && !f.AutoIncrement {
-				return nil, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
+				return nil, false, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
 			}
 			var err error
 
@@ -166,7 +169,7 @@ func wrapRowSource(ctx *sql.Context, scope *plan.Scope, logFn func(string, ...an
 				}
 			})
 			if err != nil {
-				return nil, err
+				return nil, false, err
 			}
 			projExprs[i] = def
 		}
@@ -174,32 +177,36 @@ func wrapRowSource(ctx *sql.Context, scope *plan.Scope, logFn func(string, ...an
 		if f.AutoIncrement {
 			ai, err := expression.NewAutoIncrement(ctx, destTbl, projExprs[i])
 			if err != nil {
-				return nil, err
+				return nil, false, err
 			}
 			projExprs[i] = ai
+
+			if !columnExplicitlySpecified {
+				autoAutoIncrement = true
+			}
 		}
 	}
 
 	err := validateRowSource(insertSource, projExprs)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
-	return plan.NewProject(projExprs, insertSource), nil
+	return plan.NewProject(projExprs, insertSource), autoAutoIncrement, nil
 }
 
-func validateColumns(tableName string, columnNames []string, dstSchema sql.Schema) error {
+func validateColumns(tableName string, columnNames []string, dstSchema sql.Schema, source sql.Node) error {
 	dstColNames := make(map[string]*sql.Column)
 	for _, dstCol := range dstSchema {
 		dstColNames[strings.ToLower(dstCol.Name)] = dstCol
 	}
 	usedNames := make(map[string]struct{})
-	for _, columnName := range columnNames {
+	for i, columnName := range columnNames {
 		dstCol, exists := dstColNames[columnName]
 		if !exists {
 			return plan.ErrInsertIntoNonexistentColumn.New(columnName)
 		}
-		if dstCol.Generated != nil {
+		if dstCol.Generated != nil && !validGeneratedColumnValue(i, source) {
 			return sql.ErrGeneratedColumnValue.New(dstCol.Name, tableName)
 		}
 		if _, exists := usedNames[columnName]; !exists {
@@ -209,6 +216,30 @@ func validateColumns(tableName string, columnNames []string, dstSchema sql.Schem
 		}
 	}
 	return nil
+}
+
+// validGeneratedColumnValue returns true if the column is a generated column and the source node is not a values node.
+// Explicit default values (`DEFAULT`) are the only valid values to specify for a generated column
+func validGeneratedColumnValue(idx int, source sql.Node) bool {
+	switch source := source.(type) {
+	case *plan.Values:
+		for _, tuple := range source.ExpressionTuples {
+			switch val := tuple[idx].(type) {
+			case *sql.ColumnDefaultValue: // should be wrapped, but just in case
+				return true
+			case *expression.Wrapper:
+				if _, ok := val.Unwrap().(*sql.ColumnDefaultValue); ok {
+					return true
+				}
+				return false
+			default:
+				return false
+			}
+		}
+		return false
+	default:
+		return false
+	}
 }
 
 func validateValueCount(columnNames []string, values sql.Node) error {

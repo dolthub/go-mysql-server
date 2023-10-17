@@ -132,11 +132,6 @@ func TestJoinQueries(t *testing.T, harness Harness) {
 	for _, ts := range queries.JoinScriptTests {
 		TestScript(t, harness, ts)
 	}
-
-	t.Skip()
-	for _, tt := range queries.SkippedJoinQueryTests {
-		TestQuery2(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
-	}
 }
 
 func TestLateralJoinQueries(t *testing.T, harness Harness) {
@@ -244,18 +239,10 @@ func TestJoinQueriesPrepared(t *testing.T, harness Harness) {
 		}
 		TestScriptPrepared(t, harness, ts)
 	}
-
-	t.Skip()
-	for _, tt := range queries.SkippedJoinQueryTests {
-		if tt.SkipPrepared {
-			continue
-		}
-		TestPreparedQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns)
-	}
 }
 
 func TestBrokenQueries(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.Fk_tblData)
+	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.Fk_tblData, setup.OthertableData)
 	RunQueryTests(t, harness, queries.BrokenQueries)
 }
 
@@ -344,7 +331,7 @@ func TestReadOnlyDatabases(t *testing.T, harness ReadOnlyDatabaseHarness) {
 	// and provider with the data inserted
 	harness.Setup(setup.SimpleSetup...)
 	engine := mustNewEngine(t, harness)
-	engine, err := harness.NewReadOnlyEngine(engine.EngineAnalyzer().Catalog.Provider)
+	engine, err := harness.NewReadOnlyEngine(engine.EngineAnalyzer().Catalog.DbProvider)
 	require.NoError(t, err)
 
 	for _, querySet := range [][]queries.QueryTest{
@@ -423,6 +410,42 @@ func TestIntegrationPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.IntegrationPlanTests {
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
+	}
+}
+
+func TestImdbPlans(t *testing.T, harness Harness) {
+	harness.Setup(setup.ImdbPlanSetup...)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	for _, tt := range queries.ImdbPlanTests {
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
+	}
+}
+
+func TestTpchPlans(t *testing.T, harness Harness) {
+	harness.Setup(setup.TpchPlanSetup...)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	for _, tt := range queries.TpchPlanTests {
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
+	}
+}
+
+func TestTpccPlans(t *testing.T, harness Harness) {
+	harness.Setup(setup.TpccPlanSetup...)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	for _, tt := range queries.TpccPlanTests {
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
+	}
+}
+
+func TestTpcdsPlans(t *testing.T, harness Harness) {
+	harness.Setup(setup.TpcdsPlanSetup...)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	for _, tt := range queries.TpcdsPlanTests {
 		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
 	}
 }
@@ -6303,5 +6326,20 @@ func TestIndexPrefix(t *testing.T, h Harness) {
 
 	for _, tt := range queries.IndexPrefixQueries {
 		TestScript(t, h, tt)
+	}
+}
+
+func TestSQLLogicTests(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.SQLLogicJoinTests {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(script.Name) {
+				t.Run(script.Name, func(t *testing.T) {
+					t.Skip(script.Name)
+				})
+				continue
+			}
+		}
+		TestScript(t, harness, script)
 	}
 }

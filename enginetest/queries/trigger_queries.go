@@ -2187,7 +2187,7 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 			},
 			{
 				Query:    "CALL add_entry(4, 'aaa');",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 3}}},
 			},
 			{
 				Query:    "SELECT * FROM t0;",
@@ -3137,5 +3137,14 @@ var TriggerErrorTests = []ScriptTest{
 		},
 		Query:       "create trigger not_found before insert on x for each row set new.d = new.a + 1",
 		ExpectedErr: sql.ErrTableNotFound,
+	},
+	{
+		Name: "prevent creating trigger over views",
+		SetUpScript: []string{
+			"create table x (a int primary key, b int, c int)",
+			"create view v as select * from x",
+		},
+		Query:       "create trigger trig before insert on v for each row set b = 1",
+		ExpectedErr: sql.ErrExpectedTableFoundView,
 	},
 }

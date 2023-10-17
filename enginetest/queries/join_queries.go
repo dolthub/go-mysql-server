@@ -746,6 +746,16 @@ on w = 0;`,
 
 var JoinScriptTests = []ScriptTest{
 	{
+		Name:        "Simple join query",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "select x from xy, uv join ab on x = a and u = -1;",
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+		},
+	},
+	{
 		Name: "Complex join query with foreign key constraints",
 		SetUpScript: []string{
 			"CREATE TABLE `users` (`id` int NOT NULL AUTO_INCREMENT, `username` varchar(255) NOT NULL, PRIMARY KEY (`id`));",
@@ -1106,14 +1116,6 @@ var JoinScriptTests = []ScriptTest{
 	},
 }
 
-var SkippedJoinQueryTests = []QueryTest{
-	{
-		// resolve error: table "xy" does not have column "x"
-		Query:    "select x from xy, uv join ab on x = a and u = -1",
-		Expected: []sql.Row{{}},
-	},
-}
-
 var LateralJoinScriptTests = []ScriptTest{
 	{
 		Name: "basic lateral join test",
@@ -1152,7 +1154,6 @@ var LateralJoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "select * from t, lateral (select * from t1 where t.i = t1.j) tt, lateral (select * from t1 where t.i != t1.j) as ttt order by t.i, tt.j, ttt.j;",
 				Expected: []sql.Row{
 					{1, 1, 4},
@@ -1160,7 +1161,6 @@ var LateralJoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: `WITH RECURSIVE cte(x) AS (SELECT 1 union all SELECT x + 1 from cte where x < 5) SELECT * FROM cte, lateral (select * from t where t.i = cte.x) tt;`,
 				Expected: []sql.Row{
 					{1, 1},
@@ -1225,6 +1225,89 @@ var LateralJoinScriptTests = []ScriptTest{
 					{nil, 5},
 					{2, 1},
 					{3, 1},
+				},
+			},
+		},
+	},
+	{
+		Name: "multiple lateral joins with references to left tables",
+		SetUpScript: []string{
+			"create table students (id int primary key, name varchar(50), major int);",
+			"create table classes (id int primary key, name varchar(50), department int);",
+			"create table grades (grade float, student int, class int, primary key(class, student));",
+			"create table majors (id int, name varchar(50), department int, primary key(name, department));",
+			"create table departments (id int primary key, name varchar(50));",
+			`insert into students values
+					(1, 'Elle', 4), 
+					(2, 'Latham', 2);`,
+			`insert into classes values
+					(1, 'Corporate Finance', 1),
+					(2, 'ESG Studies', 1),
+					(3, 'Late Bronze Age Collapse', 2),
+					(4, 'Greek Mythology', 2);`,
+			`insert into majors values
+					(1, 'Roman Studies', 2),
+					(2, 'Bronze Age Studies', 2),
+					(3, 'Accounting', 1),
+					(4, 'Finance', 1);`,
+			`insert into departments values
+					(1, 'Business'),
+					(2, 'History');`,
+			`insert into grades values 
+					(94, 1, 1),
+					(97, 1, 2),
+					(85, 2, 3),
+					(92, 2, 4);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `
+select name, class.class_name, grade.max_grade
+from students,
+LATERAL (
+	select departments.id as did
+	from majors
+	join departments
+	on majors.department = departments.id
+	where majors.id = students.major
+) dept,
+LATERAL (
+	select
+		grade as max_grade,
+		classes.id as cid
+	from grades
+	join classes
+    on grades.class = classes.id
+	where grades.student = students.id and classes.department = dept.did
+	order by grade desc limit 1
+) grade,
+LATERAL (
+	select name as class_name from classes where grade.cid = classes.id
+) class
+`,
+				Expected: []sql.Row{
+					{"Elle", "ESG Studies", 97.0},
+					{"Latham", "Greek Mythology", 92.0},
+				},
+			},
+		},
+	},
+	{
+		Name: "lateral join with subquery",
+		SetUpScript: []string{
+			"create table xy (x int primary key, y int);",
+			"create table uv (u int primary key, v int);",
+			"insert into xy values (1, 0), (2, 1), (3, 2), (4, 3);",
+			"insert into uv values (0, 0), (1, 1), (2, 2), (3, 3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x, u from xy, lateral (select * from uv where y = u) uv;",
+				Expected: []sql.Row{
+					{1, 0},
+					{2, 1},
+					{3, 2},
+					{4, 3},
 				},
 			},
 		},

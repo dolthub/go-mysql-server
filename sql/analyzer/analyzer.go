@@ -33,6 +33,7 @@ import (
 )
 
 const debugAnalyzerKey = "DEBUG_ANALYZER"
+const verboseAnalyzerKey = "VERBOSE_ANALYZER"
 
 const maxAnalysisIterations = 8
 
@@ -211,6 +212,7 @@ func (s simpleLogFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 // Build creates a new Analyzer from the builder parameters
 func (ab *Builder) Build() *Analyzer {
 	_, debug := os.LookupEnv(debugAnalyzerKey)
+	_, verbose := os.LookupEnv(verboseAnalyzerKey)
 	var batches = []*Batch{
 		{
 			Desc:       "pre-analyzer",
@@ -261,6 +263,7 @@ func (ab *Builder) Build() *Analyzer {
 
 	return &Analyzer{
 		Debug:        debug || ab.debug,
+		Verbose:      verbose,
 		contextStack: make([]string, 0),
 		Batches:      batches,
 		Catalog:      NewCatalog(ab.provider),
@@ -291,6 +294,9 @@ type Analyzer struct {
 	Coster memo.Coster
 	// ExecBuilder converts a sql.Node tree into an executable iterator.
 	ExecBuilder sql.NodeExecBuilder
+	// EventScheduler is used to communiate with the event scheduler
+	// for any EVENT related statements. It can be nil if EventScheduler is not defined.
+	EventScheduler sql.EventScheduler
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.
@@ -517,6 +523,7 @@ func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *plan
 		err     error
 	)
 	a.Log("starting analysis of node of type: %T", n)
+	a.LogNode(n)
 	for _, batch := range a.Batches {
 		if batchSelector(batch.Desc) {
 			a.PushDebugContext(batch.Desc)

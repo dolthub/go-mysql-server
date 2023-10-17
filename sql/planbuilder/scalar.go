@@ -85,9 +85,10 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	case *ast.NullVal:
 		return expression.NewLiteral(nil, types.Null)
 	case *ast.ColName:
-		tableName := strings.ToLower(v.Qualifier.Name.String())
+		dbName := strings.ToLower(v.Qualifier.Qualifier.String())
+		tblName := strings.ToLower(v.Qualifier.Name.String())
 		colName := strings.ToLower(v.Name.String())
-		c, ok := inScope.resolveColumn(tableName, colName, true)
+		c, ok := inScope.resolveColumn(dbName, tblName, colName, true)
 		if !ok {
 			sysVar, scope, ok := b.buildSysVar(v, ast.SetScope_None)
 			if ok {
@@ -100,10 +101,10 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 				err = sql.ErrUnknownUserVariable.New(colName)
 			} else if scope == ast.SetScope_Global || scope == ast.SetScope_Session {
 				err = sql.ErrUnknownSystemVariable.New(colName)
-			} else if tableName != "" && !inScope.hasTable(tableName) {
-				err = sql.ErrTableNotFound.New(tableName)
-			} else if tableName != "" {
-				err = sql.ErrTableColumnNotFound.New(tableName, colName)
+			} else if tblName != "" && !inScope.hasTable(tblName) {
+				err = sql.ErrTableNotFound.New(tblName)
+			} else if tblName != "" {
+				err = sql.ErrTableColumnNotFound.New(tblName, colName)
 			} else {
 				err = sql.ErrColumnNotFound.New(v)
 			}
@@ -132,6 +133,12 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 			args[i] = b.selectExprToExpression(inScope, e)
 		}
 
+		if name == "json_value" {
+			if len(args) == 3 {
+				args[2] = b.getJsonValueTypeLiteral(args[2])
+			}
+		}
+
 		rf, err := f.NewInstance(args)
 		if err != nil {
 			b.handleErr(err)
@@ -143,7 +150,6 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 			if len(args) != 1 {
 				return nil
 			}
-
 			args[0] = expression.NewDistinctExpression(args[0])
 		}
 
@@ -264,9 +270,10 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 			if v.Name.Qualifier.Name.String() == "" {
 				v.Name.Qualifier.Name = ast.NewTableIdent(OnDupValuesPrefix)
 			}
-			tableName := strings.ToLower(v.Name.Qualifier.Name.String())
+			dbName := strings.ToLower(v.Name.Qualifier.Qualifier.String())
+			tblName := strings.ToLower(v.Name.Qualifier.Name.String())
 			colName := strings.ToLower(v.Name.Name.String())
-			col, ok := inScope.resolveColumn(tableName, colName, false)
+			col, ok := inScope.resolveColumn(dbName, tblName, colName, false)
 			if !ok {
 				err := fmt.Errorf("expected ON DUPLICATE KEY ... VALUES() to reference a column, found: %s", v.Name.String())
 				b.handleErr(err)
@@ -319,6 +326,48 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(e)))
 	}
 	return nil
+}
+
+// getJsonValueTypeLiteral converts a type coercion string into a literal
+// expression with the zero type of the coercion (see json_value function).
+func (b *Builder) getJsonValueTypeLiteral(e sql.Expression) sql.Expression {
+	typLit, ok := e.(*expression.Literal)
+	if !ok {
+		err := fmt.Errorf("invalid json_value coercion type: %s", e)
+		b.handleErr(err)
+	}
+	convStr, _, err := types.LongText.Convert(typLit.Value())
+	if err != nil {
+		err := fmt.Errorf("invalid json_value coercion type: %s; %s", typLit.Value(), err.Error())
+		b.handleErr(err)
+	}
+	var typ sql.Type
+	switch strings.ToLower(convStr.(string)) {
+	case "float":
+		typ = types.Float32
+	case "double", "decimal":
+		typ = types.Float64
+	case "signed":
+		typ = types.Int64
+	case "unsigned":
+		typ = types.Uint64
+	case "char":
+		typ = types.Text
+	case "json":
+		typ = types.JSON
+	case "time":
+		typ = types.Time
+	case "datetime":
+		typ = types.Datetime
+	case "date":
+		typ = types.Date
+	case "year":
+		typ = types.Year
+	default:
+		err := fmt.Errorf("invalid type for json_value: %s", convStr)
+		b.handleErr(err)
+	}
+	return expression.NewLiteral(typ.Zero(), typ)
 }
 
 func (b *Builder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Expression {

@@ -94,11 +94,26 @@ func (s *idxScope) addParent(other *idxScope) {
 	s.parentScopes = append(s.parentScopes, other)
 }
 
+// unqualify is a helper function to remove the table prefix from a column, if it's present.
+func unqualify(s string) string {
+	if strings.Contains(s, ".") {
+		return strings.Split(s, ".")[1]
+	}
+	return s
+}
+
 func (s *idxScope) getIdx(n string) (int, bool) {
 	// We match the column closet to our current scope. We have already
 	// resolved columns, so there will be no in-scope collisions.
 	for i := len(s.columns) - 1; i >= 0; i-- {
 		if strings.EqualFold(n, s.columns[i]) {
+			return i, true
+		}
+	}
+	// This should only apply to column names for set_op, where we have two different tables
+	n = unqualify(n)
+	for i := len(s.columns) - 1; i >= 0; i-- {
+		if strings.EqualFold(n, unqualify(s.columns[i])) {
 			return i, true
 		}
 	}
@@ -363,41 +378,41 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 	switch n := n.(type) {
 	case *plan.InsertInto:
 		s.addSchema(n.Destination.Schema())
-		n.Source = s.children[0]
-		n.Destination = s.children[1]
-		n.OnDupExprs = s.expressions
-		return n.WithChecks(s.checks), nil
+		nn := *n
+		nn.Source = s.children[0]
+		nn.Destination = s.children[1]
+		nn.OnDupExprs = s.expressions
+		return nn.WithChecks(s.checks), nil
 	default:
 		// child scopes don't account for projections
 		s.addSchema(n.Schema())
-		ret := n
 		var err error
 		if s.children != nil {
-			ret, err = n.WithChildren(s.children...)
+			n, err = n.WithChildren(s.children...)
 			if err != nil {
 				return nil, err
 			}
 		}
-		if ne, ok := ret.(sql.Expressioner); ok && s.expressions != nil {
-			ret, err = ne.WithExpressions(s.expressions...)
+		if ne, ok := n.(sql.Expressioner); ok && s.expressions != nil {
+			n, err = ne.WithExpressions(s.expressions...)
 			if err != nil {
 				return nil, err
 			}
 		}
-		if nc, ok := ret.(sql.CheckConstraintNode); ok && s.checks != nil {
-			ret = nc.WithChecks(s.checks)
+		if nc, ok := n.(sql.CheckConstraintNode); ok && s.checks != nil {
+			n = nc.WithChecks(s.checks)
 		}
-		if jn, ok := ret.(*plan.JoinNode); ok {
+		if jn, ok := n.(*plan.JoinNode); ok {
 			if len(s.parentScopes) == 0 {
-				return ret, nil
+				return n, nil
 			}
 			// TODO: combine scopes?
 			scopeLen := len(s.parentScopes[0].columns)
 			if scopeLen == 0 {
-				return ret, nil
+				return n, nil
 			}
-			ret = jn.WithScopeLen(scopeLen)
-			ret, err = ret.WithChildren(
+			n = jn.WithScopeLen(scopeLen)
+			n, err = n.WithChildren(
 				plan.NewStripRowNode(jn.Left(), scopeLen),
 				plan.NewStripRowNode(jn.Right(), scopeLen),
 			)
@@ -405,7 +420,7 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 				return nil, err
 			}
 		}
-		return ret, nil
+		return n, nil
 	}
 }
 
@@ -417,8 +432,15 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 	ret, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
 		case *expression.GetField:
+			// TODO: this is a swallowed error in some cases. It triggers falsely in queries involving the dual table, or
+			//  queries where the columns being selected are only found in subqueries. Conversely, we actually want to ignore
+			//  this error for the case of DEFAULT in a `plan.Values`, since we analyze the insert source in isolation (we
+			//  don't have the destination schema, and column references in default values are determined in the build phase)
 			idx, _ := newScope.getIdx(e.String())
-			return e.WithIndex(idx), transform.NewTree, nil
+			if idx >= 0 {
+				return e.WithIndex(idx), transform.NewTree, nil
+			}
+			return e, transform.SameTree, nil
 		case *plan.Subquery:
 			// this |outScope| prepends the subquery scope
 			newQ, _, err := assignIndexesHelper(e.Query, newScope.push())

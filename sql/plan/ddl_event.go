@@ -21,6 +21,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dolthub/vitess/go/mysql"
+
+	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -29,6 +32,7 @@ import (
 var _ sql.Node = (*CreateEvent)(nil)
 var _ sql.Expressioner = (*CreateEvent)(nil)
 var _ sql.Databaser = (*CreateEvent)(nil)
+var _ sql.EventSchedulerStatement = (*CreateEvent)(nil)
 
 type CreateEvent struct {
 	ddlNode
@@ -39,11 +43,13 @@ type CreateEvent struct {
 	Starts           *OnScheduleTimestamp
 	Ends             *OnScheduleTimestamp
 	OnCompPreserve   bool
-	Status           EventStatus
+	Status           sql.EventStatus
 	Comment          string
 	DefinitionString string
 	DefinitionNode   sql.Node
 	IfNotExists      bool
+	// eventScheduler is used to notify EventSchedulerStatus of the event creation
+	eventScheduler sql.EventScheduler
 }
 
 // NewCreateEvent returns a *CreateEvent node.
@@ -53,7 +59,7 @@ func NewCreateEvent(
 	at, starts, ends *OnScheduleTimestamp,
 	every *expression.Interval,
 	onCompletionPreserve bool,
-	status EventStatus,
+	status sql.EventStatus,
 	comment, definitionString string,
 	definition sql.Node,
 	ifNotExists bool,
@@ -70,7 +76,7 @@ func NewCreateEvent(
 		Status:           status,
 		Comment:          comment,
 		DefinitionString: definitionString,
-		DefinitionNode:   definition,
+		DefinitionNode:   prepareCreateEventDefinitionNode(definition),
 		IfNotExists:      ifNotExists,
 	}
 }
@@ -113,7 +119,7 @@ func (c *CreateEvent) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	nc := *c
-	nc.DefinitionNode = children[0]
+	nc.DefinitionNode = prepareCreateEventDefinitionNode(children[0])
 
 	return &nc, nil
 }
@@ -145,7 +151,7 @@ func (c *CreateEvent) String() string {
 
 	onSchedule := ""
 	if c.At != nil {
-		onSchedule = fmt.Sprintf(" ON SCHEDULE AT %s", c.At.String())
+		onSchedule = fmt.Sprintf(" ON SCHEDULE %s", c.At.String())
 	} else {
 		onSchedule = onScheduleEveryString(c.Every, c.Starts, c.Ends)
 	}
@@ -227,14 +233,13 @@ func (c *CreateEvent) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 }
 
 // RowIter implements the sql.Node interface.
-func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	eventCreationTime := time.Now()
-	eventDetails, err := c.GetEventDetails(ctx, eventCreationTime)
+func (c *CreateEvent) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
+	eventCreationTime := ctx.QueryTime()
+	// TODO: event time values are evaluated in 'SYSTEM' TZ for now (should be session TZ)
+	eventDefinition, err := c.GetEventDefinition(ctx, eventCreationTime, eventCreationTime, time.Time{}, gmstime.SystemTimezoneOffset())
 	if err != nil {
 		return nil, err
 	}
-
-	eventDetails.LastAltered = eventCreationTime
 
 	eventDb, ok := c.Db.(sql.EventDatabase)
 	if !ok {
@@ -242,70 +247,113 @@ func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 	}
 
 	return &createEventIter{
-		eventDetails: eventDetails,
-		eventDb:      eventDb,
-		ifNotExists:  c.IfNotExists,
+		event:          eventDefinition,
+		eventDb:        eventDb,
+		ifNotExists:    c.IfNotExists,
+		eventScheduler: c.eventScheduler,
 	}, nil
 }
 
-// GetEventDetails returns EventDetails based on CreateEvent object.
-// It expects all timestamp and interval values to be resolved.
-// This function gets called either from RowIter of CreateEvent plan,
-// or from anywhere that getting EventDetails from EventDefinition retrieved from a database.
-func (c *CreateEvent) GetEventDetails(ctx *sql.Context, eventCreationTime time.Time) (sql.EventDetails, error) {
-	eventDetails := sql.EventDetails{
+// WithEventScheduler is used to notify EventSchedulerStatus to update the events list for CREATE EVENT.
+func (c *CreateEvent) WithEventScheduler(scheduler sql.EventScheduler) sql.Node {
+	nc := *c
+	nc.eventScheduler = scheduler
+	return &nc
+}
+
+// GetEventDefinition returns an EventDefinition object with all of its fields populated from the details
+// of this CREATE EVENT statement.
+func (c *CreateEvent) GetEventDefinition(ctx *sql.Context, eventCreationTime, lastAltered, lastExecuted time.Time, tz string) (sql.EventDefinition, error) {
+	// TODO: support DISABLE ON SLAVE event status
+	if c.Status == sql.EventStatus_DisableOnSlave {
+		ctx.Session.Warn(&sql.Warning{
+			Level:   "Warning",
+			Code:    mysql.ERNotSupportedYet,
+			Message: fmt.Sprintf("DISABLE ON SLAVE status is not supported yet, used DISABLE status instead."),
+		})
+		c.Status = sql.EventStatus_Disable
+	}
+
+	eventDefinition := sql.EventDefinition{
 		Name:                 c.EventName,
 		Definer:              c.Definer,
 		OnCompletionPreserve: c.OnCompPreserve,
 		Status:               c.Status.String(),
 		Comment:              c.Comment,
-		Definition:           c.DefinitionString,
+		EventBody:            c.DefinitionString,
+		TimezoneOffset:       tz,
 	}
 
-	var err error
 	if c.At != nil {
-		eventDetails.HasExecuteAt = true
-		eventDetails.ExecuteAt, err = c.At.EvalTime(ctx)
+		var err error
+		eventDefinition.HasExecuteAt = true
+		eventDefinition.ExecuteAt, err = c.At.EvalTime(ctx, tz)
 		if err != nil {
-			return sql.EventDetails{}, err
+			return sql.EventDefinition{}, err
 		}
 	} else {
 		delta, err := c.Every.EvalDelta(ctx, nil)
 		if err != nil {
-			return sql.EventDetails{}, err
+			return sql.EventDefinition{}, err
 		}
-		interval := NewEveryInterval(delta.Years, delta.Months, delta.Days, delta.Hours, delta.Minutes, delta.Seconds)
+		interval := sql.NewEveryInterval(delta.Years, delta.Months, delta.Days, delta.Hours, delta.Minutes, delta.Seconds)
 		iVal, iField := interval.GetIntervalValAndField()
-		eventDetails.ExecuteEvery = fmt.Sprintf("%s %s", iVal, iField)
+		eventDefinition.ExecuteEvery = fmt.Sprintf("%s %s", iVal, iField)
 
 		if c.Starts != nil {
-			eventDetails.Starts, err = c.Starts.EvalTime(ctx)
+			eventDefinition.Starts, err = c.Starts.EvalTime(ctx, tz)
 			if err != nil {
-				return sql.EventDetails{}, err
+				return sql.EventDefinition{}, err
 			}
 		} else {
 			// If STARTS is not defined, it defaults to CURRENT_TIMESTAMP
-			eventDetails.Starts = eventCreationTime
+			eventDefinition.Starts = eventCreationTime
 		}
 		if c.Ends != nil {
-			eventDetails.HasEnds = true
-			eventDetails.Ends, err = c.Ends.EvalTime(ctx)
+			eventDefinition.HasEnds = true
+			eventDefinition.Ends, err = c.Ends.EvalTime(ctx, tz)
 			if err != nil {
-				return sql.EventDetails{}, err
+				return sql.EventDefinition{}, err
 			}
 		}
 	}
 
-	eventDetails.Created = eventCreationTime
-	return eventDetails, nil
+	eventDefinition.CreatedAt = eventCreationTime
+	eventDefinition.LastAltered = lastAltered
+	eventDefinition.LastExecuted = lastExecuted
+	return eventDefinition, nil
+}
+
+// prepareCreateEventDefinitionNode fills in any missing ProcedureReference structures for
+// BeginEndBlocks in the event's definition.
+func prepareCreateEventDefinitionNode(definition sql.Node) sql.Node {
+	beginEndBlock, ok := definition.(*BeginEndBlock)
+	if !ok {
+		return definition
+	}
+
+	// NOTE: To execute a multi-statement event body in a BeginEndBlock, a ProcedureReference
+	//       must be set in the BeginEndBlock, but this currently only gets initialized in the
+	//       analyzer for ProcedureCalls, so we initialize it here.
+	// TODO: How does this work for triggers, which would have the same issue; seems like there
+	//       should be a cleaner way to handle this
+	beginEndBlock.Pref = expression.NewProcedureReference()
+
+	newChildren := make([]sql.Node, len(beginEndBlock.Children()))
+	for i, child := range beginEndBlock.Children() {
+		newChildren[i] = prepareCreateEventDefinitionNode(child)
+	}
+	newNode, _ := beginEndBlock.WithChildren(newChildren...)
+	return newNode
 }
 
 // createEventIter is the row iterator for *CreateEvent.
 type createEventIter struct {
-	once         sync.Once
-	eventDetails sql.EventDetails
-	eventDb      sql.EventDatabase
-	ifNotExists  bool
+	once           sync.Once
+	event          sql.EventDefinition
+	eventDb        sql.EventDatabase
+	ifNotExists    bool
+	eventScheduler sql.EventScheduler
 }
 
 // Next implements the sql.RowIter interface.
@@ -318,24 +366,17 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, io.EOF
 	}
 
+	mode := sql.LoadSqlMode(ctx)
+	c.event.SqlMode = mode.String()
+
 	// checks if the defined ENDS time is before STARTS time
-	if c.eventDetails.HasEnds {
-		if c.eventDetails.Ends.Sub(c.eventDetails.Starts).Seconds() < 0 {
+	if c.event.HasEnds {
+		if c.event.Ends.Sub(c.event.Starts).Seconds() < 0 {
 			return nil, fmt.Errorf("ENDS is either invalid or before STARTS")
 		}
 	}
 
-	sqlMode := sql.LoadSqlMode(ctx)
-
-	var eventDefinition = sql.EventDefinition{
-		Name:            c.eventDetails.Name,
-		CreateStatement: c.eventDetails.CreateEventStatement(),
-		CreatedAt:       c.eventDetails.Created,
-		LastAltered:     c.eventDetails.LastAltered,
-		SqlMode:         sqlMode.String(),
-	}
-
-	err := c.eventDb.SaveEvent(ctx, eventDefinition)
+	enabled, err := c.eventDb.SaveEvent(ctx, c.event)
 	if err != nil {
 		if sql.ErrEventAlreadyExists.Is(err) && c.ifNotExists {
 			ctx.Session.Warn(&sql.Warning{
@@ -348,14 +389,13 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
-	if c.eventDetails.HasExecuteAt {
-		// If the event execution time is in the past and  is set.
-		if c.eventDetails.ExecuteAt.Sub(c.eventDetails.Created).Seconds() < 0 {
-			if c.eventDetails.OnCompletionPreserve {
+	if c.event.HasExecuteAt {
+		// If the event execution time is in the past and is set.
+		if c.event.ExecuteAt.Sub(c.event.CreatedAt).Seconds() <= -1 {
+			if c.event.OnCompletionPreserve {
 				// If ON COMPLETION PRESERVE is defined, the event is disabled.
-				c.eventDetails.Status = EventStatus_Disable.String()
-				eventDefinition.CreateStatement = c.eventDetails.CreateEventStatement()
-				err = c.eventDb.UpdateEvent(ctx, c.eventDetails.Name, eventDefinition)
+				c.event.Status = sql.EventStatus_Disable.String()
+				_, err = c.eventDb.UpdateEvent(ctx, c.event.Name, c.event)
 				if err != nil {
 					return nil, err
 				}
@@ -366,7 +406,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 				})
 			} else {
 				// If ON COMPLETION NOT PRESERVE is defined, the event is dropped immediately after creation.
-				err = c.eventDb.DropEvent(ctx, c.eventDetails.Name)
+				err = c.eventDb.DropEvent(ctx, c.event.Name)
 				if err != nil {
 					return nil, err
 				}
@@ -380,9 +420,9 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
-	// If Starts is set to current_timestamp or not set, then execute the event once and update last executed At.
-	if c.eventDetails.Created.Sub(c.eventDetails.Starts).Abs().Seconds() <= 1 {
-		// TODO: execute the event once and update 'LastExecuted' and 'ExecutionCount'
+	// make sure to notify the EventSchedulerStatus AFTER adding the event in the database
+	if c.eventScheduler != nil && enabled {
+		c.eventScheduler.AddEvent(ctx, c.eventDb, c.event)
 	}
 
 	return sql.Row{types.NewOkResult(0)}, nil
@@ -398,11 +438,11 @@ func onScheduleEveryString(every sql.Expression, starts, ends *OnScheduleTimesta
 	everyInterval := strings.TrimPrefix(every.String(), "INTERVAL ")
 	startsStr := ""
 	if starts != nil {
-		startsStr = fmt.Sprintf(" STARTS %s", starts.String())
+		startsStr = fmt.Sprintf(" %s", starts.String())
 	}
 	endsStr := ""
 	if ends != nil {
-		endsStr = fmt.Sprintf(" ENDS %s", ends.String())
+		endsStr = fmt.Sprintf(" %s", ends.String())
 	}
 
 	return fmt.Sprintf("ON SCHEDULE EVERY %s%s%s", everyInterval, startsStr, endsStr)
@@ -410,6 +450,7 @@ func onScheduleEveryString(every sql.Expression, starts, ends *OnScheduleTimesta
 
 // OnScheduleTimestamp is object used for EVENT ON SCHEDULE { AT / STARTS / ENDS } optional fields only.
 type OnScheduleTimestamp struct {
+	field     string
 	timestamp sql.Expression
 	intervals []sql.Expression
 }
@@ -417,8 +458,9 @@ type OnScheduleTimestamp struct {
 var _ sql.Expression = (*OnScheduleTimestamp)(nil)
 
 // NewOnScheduleTimestamp creates OnScheduleTimestamp object used for EVENT ON SCHEDULE { AT / STARTS / ENDS } optional fields only.
-func NewOnScheduleTimestamp(ts sql.Expression, i []sql.Expression) *OnScheduleTimestamp {
+func NewOnScheduleTimestamp(f string, ts sql.Expression, i []sql.Expression) *OnScheduleTimestamp {
 	return &OnScheduleTimestamp{
+		field:     f,
 		timestamp: ts,
 		intervals: i,
 	}
@@ -459,7 +501,7 @@ func (ost *OnScheduleTimestamp) WithChildren(children ...sql.Expression) (sql.Ex
 		intervals = append(intervals, children[1:]...)
 	}
 
-	return NewOnScheduleTimestamp(children[0], intervals), nil
+	return NewOnScheduleTimestamp(ost.field, children[0], intervals), nil
 }
 
 // Resolved implements the sql.Node interface.
@@ -480,34 +522,35 @@ func (ost *OnScheduleTimestamp) String() string {
 	for _, interval := range ost.intervals {
 		intervals = fmt.Sprintf("%s + %s", intervals, interval.String())
 	}
-	return fmt.Sprintf("%s%s", ost.timestamp.String(), intervals)
+	return fmt.Sprintf("%s %s%s", ost.field, ost.timestamp.String(), intervals)
 }
 
 func (ost *OnScheduleTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	panic("OnScheduleTimestamp.Eval is just a placeholder method and should not be called directly")
 }
 
-// EvalTime returns time.Time value converted to UTC evaluating given expressions as expected to be time value and optional
-// interval values. The value returned is time.Time value from timestamp value plus all intervals given.
-func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context) (time.Time, error) {
+// EvalTime returns time.Time value converted to UTC evaluating given expressions as expected to be time value
+// and optional interval values. The value returned is time.Time value from timestamp value plus all intervals given.
+func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context, tz string) (time.Time, error) {
 	value, err := ost.timestamp.Eval(ctx, nil)
 	if err != nil {
 		return time.Time{}, err
 	}
+
+	if bs, ok := value.([]byte); ok {
+		value = string(bs)
+	}
+
 	var t time.Time
 	switch v := value.(type) {
 	case time.Time:
+		// TODO: check if this value is in session timezone
 		t = v
-	case string, []byte:
-		d, _, err := types.Datetime.Convert(v)
+	case string:
+		t, err = sql.GetTimeValueFromStringInput(ost.field, v)
 		if err != nil {
 			return time.Time{}, err
 		}
-		tt, ok := d.(time.Time)
-		if !ok {
-			return time.Time{}, fmt.Errorf("expected time.Time type but got: %s", d)
-		}
-		t = tt
 	default:
 		return time.Time{}, fmt.Errorf("unexpected type: %s", v)
 	}
@@ -525,16 +568,24 @@ func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context) (time.Time, error) {
 		t = timeDelta.Add(t)
 	}
 
-	return t.UTC(), nil
+	// truncates the timezone part from the time value and returns the time value in given TZ
+	truncatedVal, err := time.Parse(sql.EventDateSpaceTimeFormat, t.Format(sql.EventDateSpaceTimeFormat))
+	if err != nil {
+		return time.Time{}, err
+	}
+	return gmstime.ConvertTimeToLocation(truncatedVal, tz)
 }
 
 var _ sql.Node = (*DropEvent)(nil)
 var _ sql.Databaser = (*DropEvent)(nil)
+var _ sql.EventSchedulerStatement = (*DropEvent)(nil)
 
 type DropEvent struct {
 	ddlNode
 	EventName string
 	IfExists  bool
+	// eventScheduler is used to notify EventSchedulerStatus of the event deletion
+	eventScheduler sql.EventScheduler
 }
 
 // NewDropEvent creates a new *DropEvent node.
@@ -574,6 +625,12 @@ func (d *DropEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 			return nil, sql.ErrEventsNotSupported.New(d.EventName)
 		}
 	}
+
+	// make sure to notify the EventSchedulerStatus before dropping the event in the database
+	if d.eventScheduler != nil {
+		d.eventScheduler.RemoveEvent(eventDb.Name(), d.EventName)
+	}
+
 	err := eventDb.DropEvent(ctx, d.EventName)
 	if d.IfExists && sql.ErrEventDoesNotExist.Is(err) {
 		ctx.Session.Warn(&sql.Warning{
@@ -581,10 +638,10 @@ func (d *DropEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 			Code:    1305,
 			Message: fmt.Sprintf("Event %s does not exist", d.EventName),
 		})
-		return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 	} else if err != nil {
 		return nil, err
 	}
+
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
 
@@ -604,4 +661,11 @@ func (d *DropEvent) WithDatabase(database sql.Database) (sql.Node, error) {
 	nde := *d
 	nde.Db = database
 	return &nde, nil
+}
+
+// WithEventScheduler is used to notify EventSchedulerStatus to update the events list for DROP EVENT.
+func (d *DropEvent) WithEventScheduler(scheduler sql.EventScheduler) sql.Node {
+	nd := *d
+	nd.eventScheduler = scheduler
+	return &nd
 }

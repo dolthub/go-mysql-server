@@ -34,7 +34,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	}
 	dbName := i.Table.Qualifier.String()
 	tableName := i.Table.Name.String()
-	destScope, ok := b.buildTablescan(inScope, dbName, tableName, nil)
+	destScope, ok := b.buildResolvedTable(inScope, dbName, tableName, nil)
 	if !ok {
 		b.handleErr(sql.ErrTableNotFound.New(tableName))
 	}
@@ -170,6 +170,9 @@ func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []
 			switch e := e.(type) {
 			case *ast.Default:
 				exprs[j] = expression.WrapExpression(columnDefaultValues[j])
+				// explicit DEFAULT values need their column indexes assigned early, since we analyze the insert values in
+				// isolation (no access to the destination schema)
+				exprs[j] = assignColumnIndexes(exprs[j], reorderSchema(columnNames, destSchema))
 			default:
 				exprs[j] = b.buildScalar(inScope, e)
 			}
@@ -179,6 +182,15 @@ func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []
 	outScope = inScope.push()
 	outScope.node = plan.NewValues(exprTuples)
 	return
+}
+
+// reorderSchema returns the schemas columns in the order specified by names
+func reorderSchema(names []string, schema sql.Schema) sql.Schema {
+	newSch := make(sql.Schema, len(names))
+	for i, name := range names {
+		newSch[i] = schema[schema.IndexOfColName(name)]
+	}
+	return newSch
 }
 
 func (b *Builder) buildValues(inScope *scope, v ast.Values) (outScope *scope) {
@@ -267,14 +279,15 @@ func (b *Builder) buildOnDupLeft(inScope *scope, e ast.Expr) sql.Expression {
 	// expect col reference only
 	switch e := e.(type) {
 	case *ast.ColName:
-		tableName := strings.ToLower(e.Qualifier.Name.String())
+		dbName := strings.ToLower(e.Qualifier.Qualifier.String())
+		tblName := strings.ToLower(e.Qualifier.Name.String())
 		colName := strings.ToLower(e.Name.String())
-		c, ok := inScope.resolveColumn(tableName, colName, true)
+		c, ok := inScope.resolveColumn(dbName, tblName, colName, true)
 		if !ok {
-			if tableName != "" && !inScope.hasTable(tableName) {
-				b.handleErr(sql.ErrTableNotFound.New(tableName))
-			} else if tableName != "" {
-				b.handleErr(sql.ErrTableColumnNotFound.New(tableName, colName))
+			if tblName != "" && !inScope.hasTable(tblName) {
+				b.handleErr(sql.ErrTableNotFound.New(tblName))
+			} else if tblName != "" {
+				b.handleErr(sql.ErrTableColumnNotFound.New(tblName, colName))
 			}
 			b.handleErr(sql.ErrColumnNotFound.New(e))
 		}
@@ -323,7 +336,7 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 					return false
 				})
 			} else {
-				tableScope, ok := b.buildTablescan(inScope, dbName, tabName, nil)
+				tableScope, ok := b.buildResolvedTable(inScope, dbName, tabName, nil)
 				if !ok {
 					b.handleErr(sql.ErrTableNotFound.New(tabName))
 				}

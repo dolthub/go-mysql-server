@@ -15,13 +15,14 @@
 package plan
 
 import (
+	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type ShowEvents struct {
 	db     sql.Database
-	Events []sql.EventDetails
+	Events []sql.EventDefinition
 }
 
 var _ sql.Databaser = (*ShowEvents)(nil)
@@ -99,40 +100,41 @@ func (s *ShowEvents) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	for _, event := range s.Events {
 		eventType := "RECURRING"
 		var executeAt, intervalVal, intervalField, starts, ends, status interface{}
-		if event.HasExecuteAt {
+		e := event.ConvertTimesFromUTCToTz(gmstime.SystemTimezoneOffset())
+		if e.HasExecuteAt {
 			eventType = "ONE TIME"
-			executeAt = event.ExecuteAt.Format(sql.EventTimeStampFormat)
+			executeAt = e.ExecuteAt.Format(sql.EventDateSpaceTimeFormat)
 		} else {
-			interval, err := EventOnScheduleEveryIntervalFromString(event.ExecuteEvery)
+			interval, err := sql.EventOnScheduleEveryIntervalFromString(e.ExecuteEvery)
 			if err != nil {
 				return nil, err
 			}
 			intervalVal, intervalField = interval.GetIntervalValAndField()
 			// STARTS will always have defined value
-			starts = event.Starts.Format(sql.EventTimeStampFormat)
-			if event.HasEnds {
-				ends = event.Ends.Format(sql.EventTimeStampFormat)
+			starts = e.Starts.Format(sql.EventDateSpaceTimeFormat)
+			if e.HasEnds {
+				ends = e.Ends.Format(sql.EventDateSpaceTimeFormat)
 			}
 		}
 
-		eventStatus, err := EventStatusFromString(event.Status)
+		eventStatus, err := sql.EventStatusFromString(e.Status)
 		if err != nil {
 			return nil, err
 		}
 		switch eventStatus {
-		case EventStatus_Enable:
+		case sql.EventStatus_Enable:
 			status = "ENABLED"
-		case EventStatus_Disable:
+		case sql.EventStatus_Disable:
 			status = "DISABLED"
-		case EventStatus_DisableOnSlave:
+		case sql.EventStatus_DisableOnSlave:
 			status = "SLAVESIDE_DISABLED"
 		}
 
 		// TODO: Time zone and Originator are set to default for now.
 		rows = append(rows, sql.Row{
 			dbName,              // Db
-			event.Name,          // Name
-			event.Definer,       // Definer
+			e.Name,              // Name
+			e.Definer,           // Definer
 			"SYSTEM",            // Time zone
 			eventType,           // Type
 			executeAt,           // Execute At

@@ -15,6 +15,7 @@
 package queries
 
 import (
+	"math"
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -96,12 +97,19 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
-		Name: "union schema merge",
+		Name: "set op schema merge",
 		SetUpScript: []string{
 			"create table `left` (i int primary key, j mediumint, k varchar(20));",
 			"create table `right` (i int primary key, j bigint, k text);",
 			"insert into `left` values (1,2, 'a')",
 			"insert into `right` values (3,4, 'b')",
+
+			"create table t1 (i int);",
+			"insert into t1 values (1), (2), (3);",
+			"create table t2 (i int);",
+			"insert into t2 values (1), (3);",
+			"create table t3 (j int);",
+			"insert into t3 values (1), (3);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -133,8 +141,149 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{1, "a"}, {3, "b"}},
 			},
 			{
+				Query: "select i, j, k from `left` union select i, j, k from `right`",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "i",
+						Type: types.Int32,
+					},
+					{
+						Name: "j",
+						Type: types.Int64,
+					},
+					{
+						Name: "k",
+						Type: types.LongText,
+					},
+				},
+				Expected: []sql.Row{{1, 2, "a"}, {3, 4, "b"}},
+			},
+			{
 				Query:       "select i, k from `left` union select i, j, k from `right`",
 				ExpectedErr: planbuilder.ErrUnionSchemasDifferentLength,
+			},
+			{
+				Query: "table t1 union table t2 order by i;",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "i",
+						Type: types.Int32,
+					},
+				},
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "table t1 union table t2 order by i;",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "i",
+						Type: types.Int32,
+					},
+				},
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "table t3 union table t1 order by j;",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "j",
+						Type: types.Int32,
+					},
+				},
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "select j as i from t3 union table t1 order by i;",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "i",
+						Type: types.Int32,
+					},
+				},
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "table t1 union table t2 order by 1;",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "i",
+						Type: types.Int32,
+					},
+				},
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "table t1 union table t3 order by 1;",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "i",
+						Type: types.Int32,
+					},
+				},
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				// This looks wrong, but it actually matches MySQL
+				Query: "table t1 union select i as j from t2 order by i;",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "i",
+						Type: types.Int32,
+					},
+				},
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query:       "table t1 union table t3 order by j;",
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+			{
+				Query:       "table t1 union table t2 order by t1.i;",
+				ExpectedErr: planbuilder.ErrQualifiedOrderBy,
+			},
+			{
+				Query:       "table t1 union table t2 order by t2.i;",
+				ExpectedErr: planbuilder.ErrQualifiedOrderBy,
+			},
+			{
+				Query:       "table t1 union table t3 order by t3.i;",
+				ExpectedErr: planbuilder.ErrQualifiedOrderBy,
+			},
+			{
+				Query:       "table t1 union table t3 order by t3.j;",
+				ExpectedErr: planbuilder.ErrQualifiedOrderBy,
+			},
+			{
+				Query:       "table t1 union table t3 order by t1.j;",
+				ExpectedErr: planbuilder.ErrQualifiedOrderBy,
 			},
 		},
 	},
@@ -155,6 +304,10 @@ var ScriptTests = []ScriptTest{
 			"insert into l values (1), (1), (1);",
 			"create table r (i int);",
 			"insert into r values (1);",
+			"create table x (i int);",
+			"insert into x values (1), (2), (3);",
+			"create table y (i bigint);",
+			"insert into y values (1), (3);",
 		},
 		Assertions: []ScriptTestAssertion{
 			// Intersect tests
@@ -199,20 +352,26 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				// Resulting type is string for some reason
-				Skip:  true,
-				Query: "table t1 intersect table t2;",
+				Query: "table x intersect table y order by i;",
 				Expected: []sql.Row{
 					{1},
 					{3},
 				},
 			},
 			{
-				// Field indexing error
-				Skip:  true,
-				Query: "table t1 intersect table t2 order by i;",
+				Query: "table x intersect table y order by 1;",
 				Expected: []sql.Row{
-					{1.0},
+					{1},
+					{3},
+				},
+			},
+			{
+				// Resulting type is string for some reason
+				Skip:  true,
+				Query: "table t1 intersect table t2;",
+				Expected: []sql.Row{
+					{1},
+					{3},
 				},
 			},
 
@@ -262,11 +421,9 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				// Resulting type is string for some reason
-				Skip:  true,
-				Query: "table t1 except table t2 order by i;",
+				Query: "table x except table y order by i;",
 				Expected: []sql.Row{
-					{2.0},
+					{2},
 				},
 			},
 			{
@@ -329,6 +486,28 @@ var ScriptTests = []ScriptTest{
 					{3, 5},
 					{4, 7},
 					{5, 9},
+				},
+			},
+			{
+				Query: "WITH RECURSIVE\n" +
+					"    rt (foo) AS (\n" +
+					"        SELECT 1 as foo\n" +
+					"        UNION ALL\n" +
+					"        SELECT foo + 1 as foo FROM rt WHERE foo < 5\n" +
+					"    ),\n" +
+					"        ladder (depth, foo) AS (\n" +
+					"        SELECT 1 as depth, NULL as foo from rt\n" +
+					"        UNION ALL\n" +
+					"        SELECT ladder.depth + 1 as depth, rt.foo\n" +
+					"        FROM ladder JOIN rt WHERE ladder.foo = rt.foo\n" +
+					"    )\n" +
+					"SELECT * FROM ladder;",
+				Expected: []sql.Row{
+					{1, nil},
+					{1, nil},
+					{1, nil},
+					{1, nil},
+					{1, nil},
 				},
 			},
 			{
@@ -1074,31 +1253,65 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.Row{{uint64(0)}},
 			},
 			{
-				Query:    "insert into a (y) values (1)",
+				Query:    "insert into a (x,y) values (1,1)",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
 			},
 			{
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.Row{{uint64(0)}},
 			},
 			{
-				Query:    "insert into a (y) values (2), (3)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 2}}},
+				Query:    "insert into a (y) values (1)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
 			},
 			{
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{2}},
+				Expected: []sql.Row{{uint64(2)}},
+			},
+			{
+				Query:    "insert into a (y) values (2), (3)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 3}}},
+			},
+			{
+				// last_insert_id() should return the insert id of the *first* value inserted in the last statement
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{uint64(3)}},
 			},
 			{
 				Query:    "insert into b (x) values (1), (2)",
 				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
+				// The above query doesn't have an auto increment column, so last_insert_id is unchanged
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{2}},
+				Expected: []sql.Row{{uint64(3)}},
+			},
+			{
+				Query: "insert into a (x, y) values (-100, 10)",
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 1,
+					InsertID:     uint64(math.MaxUint64 - uint(100-1)),
+				}}},
+			},
+			{
+				// last_insert_id() should not update for manually inserted values
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{uint64(3)}},
+			},
+			{
+				Query: "insert into a (x, y) values (100, 10)",
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 1,
+					InsertID:     100,
+				}}},
+			},
+			{
+				// last_insert_id() should not update for manually inserted values
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{uint64(3)}},
 			},
 		},
 	},
@@ -1114,15 +1327,27 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.Row{{uint64(1)}},
 			},
 			{
 				Query:    "insert into a (x, y) values (1, 1) on duplicate key update y = 2, x=last_insert_id(x)",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 1}}},
 			},
 			{
+				Query:    "select * from a order by x",
+				Expected: []sql.Row{{1, 2}},
+			},
+			{
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.Row{{uint64(1)}},
+			},
+			{
+				Query:    "insert into a (y) values (100)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
+			},
+			{
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{uint64(2)}},
 			},
 		},
 	},
@@ -1587,103 +1812,6 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "ALTER TABLE ... ALTER ADD CHECK / DROP CHECK",
-		SetUpScript: []string{
-			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "ALTER TABLE test ADD CONSTRAINT cx CHECK (v1 < 100)",
-				Expected: []sql.Row{},
-			},
-			{
-				Query:    "ALTER TABLE test DROP CHECK cx, ADD CHECK (v1 < 50)",
-				Expected: []sql.Row{},
-			},
-			{
-				Query:       "INSERT INTO test VALUES (1, 99)",
-				ExpectedErr: sql.ErrCheckConstraintViolated,
-			},
-			{
-				Query:    "INSERT INTO test VALUES (2, 2)",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-		},
-	},
-	{
-		Name: "ALTER TABLE AUTO INCREMENT no-ops on table with no original auto increment key",
-		SetUpScript: []string{
-			"CREATE table test (pk int primary key)",
-			"ALTER TABLE `test` auto_increment = 2;",
-			"INSERT INTO test VALUES (1)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT * FROM test",
-				Expected: []sql.Row{{1}},
-			},
-		},
-	},
-	{
-		Name: "ALTER TABLE MODIFY column with UNIQUE KEY",
-		SetUpScript: []string{
-			"CREATE table test (pk int primary key, uk int unique)",
-			"ALTER TABLE `test` MODIFY column uk int auto_increment",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "describe test",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "NULL", ""},
-					{"uk", "int", "YES", "UNI", "NULL", "auto_increment"},
-				},
-			},
-		},
-	},
-	{
-		Name: "ALTER TABLE MODIFY column making UNIQUE",
-		SetUpScript: []string{
-			"CREATE table test (pk int primary key, uk int)",
-			"ALTER TABLE `test` MODIFY column uk int unique",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "INSERT INTO test VALUES (1, 1), (2, 1)",
-				ExpectedErr: sql.ErrUniqueKeyViolation,
-			},
-		},
-	},
-	{
-		Name: "ALTER TABLE MODIFY column with KEY",
-		SetUpScript: []string{
-			"CREATE table test (pk int primary key, mk int, index (mk))",
-			"ALTER TABLE `test` MODIFY column mk int auto_increment",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "describe test",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "NULL", ""},
-					{"mk", "int", "YES", "MUL", "NULL", "auto_increment"},
-				},
-			},
-		},
-	},
-	{
-		Name: "ALTER TABLE AUTO INCREMENT no-ops on table with no original auto increment key",
-		SetUpScript: []string{
-			"CREATE table test (pk int primary key)",
-			"ALTER TABLE `test` auto_increment = 2;",
-			"INSERT INTO test VALUES (1)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT * FROM test",
-				Expected: []sql.Row{{1}},
-			},
-		},
-	},
-	{
 		Name: "Run through some complex queries with DISTINCT and aggregates",
 		SetUpScript: []string{
 			"CREATE TABLE tab1(col0 INTEGER, col1 INTEGER, col2 INTEGER)",
@@ -1868,8 +1996,33 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "unix_timestamp function usage",
+		SetUpScript: []string{
+			// NOTE: session time zone needs to be set as UNIX_TIMESTAMP function depends on it and converts the final result
+			"SET @@SESSION.time_zone = 'UTC';",
+			"CREATE TABLE `datetime_table` (   `i` bigint NOT NULL,   `date_col` date,   `datetime_col` datetime,   `timestamp_col` timestamp,   `time_col` time(6),   PRIMARY KEY (`i`) )",
+			`insert into datetime_table values
+    (1, '2019-12-31T12:00:00Z', '2020-01-01T12:00:00Z', '2020-01-02T12:00:00Z', '03:10:0'),
+    (2, '2020-01-03T12:00:00Z', '2020-01-04T12:00:00Z', '2020-01-05T12:00:00Z', '04:00:44'),
+    (3, '2020-01-07T00:00:00Z', '2020-01-07T12:00:00Z', '2020-01-07T12:00:01Z', '15:00:00.005000')`,
+			`create index datetime_table_d on datetime_table (date_col)`,
+			`create index datetime_table_dt on datetime_table (datetime_col)`,
+			`create index datetime_table_ts on datetime_table (timestamp_col)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT unix_timestamp(timestamp_col) div 60 * 60 as timestamp_col, avg(i) from datetime_table group by 1 order by unix_timestamp(timestamp_col) div 60 * 60",
+				Expected: []sql.Row{
+					{int64(1577966400), 1.0},
+					{int64(1578225600), 2.0},
+					{int64(1578398400), 3.0}},
+			},
+		},
+	},
+	{
 		Name: "Issue #499", // https://github.com/dolthub/go-mysql-server/issues/499
 		SetUpScript: []string{
+			"SET @@SESSION.time_zone = 'UTC';",
 			"CREATE TABLE test (time TIMESTAMP, value DOUBLE);",
 			`INSERT INTO test VALUES 
 			("2021-07-04 10:00:00", 1.0),
@@ -3455,7 +3608,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:       "alter table v1 rename to view1",
-				ExpectedErr: sql.ErrNotBaseTable,
+				ExpectedErr: sql.ErrExpectedTableFoundView,
 			},
 			{
 				Query:    "show tables;",
@@ -3706,6 +3859,259 @@ var ScriptTests = []ScriptTest{
 					"  `vAL3` int,\n" +
 					"  PRIMARY KEY (`iD`)\n" +
 					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "different cases of function name should result in the same outcome",
+		SetUpScript: []string{
+			"create table t (b binary(2) primary key);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "select hex(*) from t;",
+				ExpectedErr: sql.ErrStarUnsupported,
+			},
+			{
+				Query:       "select HEX(*) from t;",
+				ExpectedErr: sql.ErrStarUnsupported,
+			},
+			{
+				Query:       "select HeX(*) from t;",
+				ExpectedErr: sql.ErrStarUnsupported,
+			},
+		},
+	},
+	{
+		Name: "UNIX_TIMESTAMP function usage with session different time zones",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SET time_zone = '+07:00';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "SELECT UNIX_TIMESTAMP('2023-09-25 07:02:57');",
+				Expected: []sql.Row{{float64(1695600177)}},
+			},
+			{
+				Query:    "SELECT UNIX_TIMESTAMP(CONVERT_TZ('2023-09-25 07:02:57', '+00:00', @@session.time_zone));",
+				Expected: []sql.Row{{float64(1695625377)}},
+			},
+			{
+				Query:    "SET time_zone = '+00:00';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "SELECT UNIX_TIMESTAMP('2023-09-25 07:02:57');",
+				Expected: []sql.Row{{float64(1695625377)}},
+			},
+			{
+				Query:    "SET time_zone = '-06:00';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "SELECT UNIX_TIMESTAMP('2023-09-25 07:02:57');",
+				Expected: []sql.Row{{float64(1695646977)}},
+			},
+		},
+	},
+	{
+		Name: "Querying existing view that references non-existing table",
+		SetUpScript: []string{
+			"CREATE TABLE a(id int primary key, col1 int);",
+			"CREATE VIEW b AS SELECT * FROM a;",
+			"CREATE VIEW f AS SELECT col1 AS npk FROM a;",
+			"RENAME TABLE a TO d;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "CREATE VIEW g AS SELECT * FROM nonexistenttable;",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				// TODO: ALTER VIEWs are not supported
+				Skip:        true,
+				Query:       "ALTER VIEW b AS SELECT * FROM nonexistenttable;",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:       "SELECT * FROM b;",
+				ExpectedErr: sql.ErrInvalidRefInView,
+			},
+			{
+				Query:    "RENAME TABLE d TO a;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT * FROM b;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "ALTER TABLE a RENAME COLUMN col1 TO newcol;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// TODO: View definition should have 'SELECT *' be expanded to each column of the referenced table
+				Skip:        true,
+				Query:       "SELECT * FROM b;",
+				ExpectedErr: sql.ErrInvalidRefInView,
+			},
+			{
+				Query:       "SELECT * FROM f;",
+				ExpectedErr: sql.ErrInvalidRefInView,
+			},
+		},
+	},
+	{
+		Name: "Multi-db Aliasing",
+		SetUpScript: []string{
+			"create database db1;",
+			"create table db1.t1 (i int primary key);",
+			"create table db1.t2 (j int primary key);",
+			"insert into db1.t1 values (1);",
+			"insert into db1.t2 values (2);",
+
+			"create database db2;",
+			"create table db2.t1 (i int primary key);",
+			"create table db2.t2 (j int primary key);",
+			"insert into db2.t1 values (10);",
+			"insert into db2.t2 values (20);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// surprisingly, this works
+				Query: "select db1.t1.i from db1.t1 where db1.``.i > 0",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select db1.t1.i from db1.t1 where db1.t1.i > 0",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select db1.t1.i from db1.t1 order by db1.t1.i",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select db1.t1.i from db1.t1 group by db1.t1.i",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select db1.t1.i from db1.t1 having db1.t1.i > 0",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select (select db1.t1.i from db1.t1 order by db1.t1.i)",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select i from (select db1.t1.i from db1.t1 order by db1.t1.i) as t",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "with cte as (select db1.t1.i from db1.t1 order by db1.t1.i) select * from cte",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select i, j from db1.t1 inner join db2.t2 on 20 * i = j",
+				Expected: []sql.Row{
+					{1, 20},
+				},
+			},
+			{
+				Query: "select db1.t1.i, db2.t2.j from db1.t1 inner join db2.t2 on 20 * db1.t1.i = db2.t2.j",
+				Expected: []sql.Row{
+					{1, 20},
+				},
+			},
+			{
+				Query: "select i, j from db1.t1 join db2.t2 order by i, j",
+				Expected: []sql.Row{
+					{1, 20},
+				},
+			},
+			{
+				Query: "select i, j from db1.t1 join db2.t2 group by i order by j",
+				Expected: []sql.Row{
+					{1, 20},
+				},
+			},
+			{
+				Query: "select db1.t1.i, db2.t2.j from db1.t1 join db2.t2 group by db1.t1.i order by db2.t2.j",
+				Expected: []sql.Row{
+					{1, 20},
+				},
+			},
+			{
+				Skip:  true, // incorrectly throws Not unique table/alias: t1
+				Query: "select db1.t1.i, db2.t1.i from db1.t1 join db2.t1 order by db1.t1, db2.t1.i",
+				Expected: []sql.Row{
+					{1, 10},
+				},
+			},
+			{
+				// Aliasing solves it
+				Query: "select a.i, b.i from db1.t1 a join db2.t1 b order by a.i, b.i",
+				Expected: []sql.Row{
+					{1, 10},
+				},
+			},
+		},
+	},
+	{
+		Name: "order by with index",
+		SetUpScript: []string{
+			"create table t (i int primary key, `100` int);",
+			"insert into t values (1, 2), (2, 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t order by `100`",
+				Expected: []sql.Row{
+					{2, 1},
+					{1, 2},
+				},
+			},
+			{
+				Query:          "select * from t order by 100",
+				ExpectedErrStr: "column \"100\" could not be found in any table in scope",
+			},
+			{
+				Query: "select i as `200`, `100` from t order by `200`",
+				Expected: []sql.Row{
+					{1, 2},
+					{2, 1},
+				},
+			},
+			{
+				Query:          "select i as `200` from t order by 200",
+				ExpectedErrStr: "column \"200\" could not be found in any table in scope",
+			},
+			{
+				Query:          "select * from t order by 0",
+				ExpectedErrStr: "column \"0\" could not be found in any table in scope",
+			},
+			{
+				Query: "select * from t order by -999",
+				Expected: []sql.Row{
+					{1, 2},
+					{2, 1},
+				},
 			},
 		},
 	},
@@ -5032,6 +5438,27 @@ var BrokenScriptTests = []ScriptTest{
 			{
 				Query:    "show warnings;",
 				Expected: []sql.Row{{"Warning", 1356, "View 'v1' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them"}},
+			},
+		},
+	},
+	{
+		Name: "TIMESTAMP type value should be converted from session TZ to UTC TZ to be stored",
+		SetUpScript: []string{
+			"CREATE TABLE timezone_test (ts TIMESTAMP, dt DATETIME)",
+			"INSERT INTO timezone_test VALUES ('2023-02-14 08:47', '2023-02-14 08:47');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SET SESSION time_zone = '-05:00';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "SELECT DATE_FORMAT(ts, '%H:%i:%s'), DATE_FORMAT(dt, '%H:%i:%s') from timezone_test;",
+				Expected: []sql.Row{{"11:47:00", "08:47:00"}},
+			},
+			{
+				Query:    "SELECT UNIX_TIMESTAMP(ts), UNIX_TIMESTAMP(dt) from timezone_test;",
+				Expected: []sql.Row{{float64(1676393220), float64(1676382420)}},
 			},
 		},
 	},

@@ -83,6 +83,8 @@ type PrivilegeSetDatabase interface {
 	Table(tblName string) PrivilegeSetTable
 	// GetTables returns all tables.
 	GetTables() []PrivilegeSetTable
+	// GetRoutines returns all routines.
+	GetRoutines() []PrivilegeSetRoutine
 	// Equals returns whether the given set of privileges is equivalent to the calling set.
 	Equals(otherPs PrivilegeSetDatabase) bool
 	// ToSlice returns all of the database privileges contained as a sorted slice.
@@ -132,6 +134,25 @@ type PrivilegeSetColumn interface {
 	// Equals returns whether the given set of privileges is equivalent to the calling set.
 	Equals(otherPs PrivilegeSetColumn) bool
 	// ToSlice returns all of the column privileges contained as a sorted slice.
+	ToSlice() []PrivilegeType
+}
+
+// PrivilegeSetRoutine is a set containing routine privileges. Routines are either functions or procedures, and permissions
+// for them are handled identically.
+type PrivilegeSetRoutine interface {
+	// RoutineName returns the name of the routine that this privilege set belongs to.
+	RoutineName() string
+	// RoutineType returns "FUNCTION" or "PROCEDURE".
+	RoutineType() string
+	// Has returns true if all PrivilegeTypes are present in the PrivilegeSet.
+	Has(privileges ...PrivilegeType) bool
+	// HasPrivileges returns whether this routine has any privileges.
+	HasPrivileges() bool
+	// Count returns the number of privileges on the routine
+	Count() int
+	// Equals returns whether the given set of privileges is equivalent to the calling set.
+	Equals(otherPs PrivilegeSetRoutine) bool
+	// ToSlice returns all of the routines privileges as a sorted slice.
 	ToSlice() []PrivilegeType
 }
 

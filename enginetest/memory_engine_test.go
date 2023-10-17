@@ -17,13 +17,16 @@ package enginetest_test
 import (
 	"fmt"
 	"log"
+	"os"
 	"testing"
 
+	"github.com/dolthub/sqllogictest/go/logictest"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	memharness "github.com/dolthub/go-mysql-server/enginetest/sqllogictest/harness"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -195,19 +198,97 @@ func TestSingleScript(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "add new generated column",
+			Name: "virtual column inserts, updates, deletes",
 			SetUpScript: []string{
-				"create table t1 (a int primary key, b int)",
-				"insert into t1 values (1,2), (2,3), (3,4)",
+				"create table t1 (a int primary key, b int generated always as (a + 1) virtual)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "alter table t1 add column c int as (a + b) stored",
-					Expected: []sql.Row{{types.NewOkResult(0)}},
+					Query:    "insert into t1 (a) values (1), (2), (3)",
+					Expected: []sql.Row{{types.NewOkResult(3)}},
 				},
 				{
 					Query:    "select * from t1 order by a",
-					Expected: []sql.Row{{1, 2, 3}, {2, 3, 5}, {3, 4, 7}},
+					Expected: []sql.Row{{1, 2}, {2, 3}, {3, 4}},
+				},
+				{
+					Query: "update t1 set a = 4 where a = 3",
+					Expected: []sql.Row{{types.OkResult{
+						RowsAffected: 1,
+						Info: plan.UpdateInfo{
+							Matched: 1,
+							Updated: 1,
+						}},
+					}},
+				},
+				{
+					Query:    "select * from t1 order by a",
+					Expected: []sql.Row{{1, 2}, {2, 3}, {4, 5}},
+				},
+				{
+					Query:    "delete from t1 where a = 2",
+					Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				},
+				{
+					Query:    "select * from t1 order by a",
+					Expected: []sql.Row{{1, 2}, {4, 5}},
+				},
+			},
+		},
+		{
+			Name: "virtual column ordering",
+			SetUpScript: []string{
+				// virtual is the default for generated columns
+				"create table t1 (v1 int generated always as (2), a int, v2 int generated always as (a + v1), c int)",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query:    "insert into t1 (a, c) values (1,5), (3,7)",
+					Expected: []sql.Row{{types.NewOkResult(2)}},
+				},
+				{
+					Query:    "insert into t1 (c, a) values (5,6), (7,8)",
+					Expected: []sql.Row{{types.NewOkResult(2)}},
+				},
+				{
+					Query: "select * from t1 order by a",
+					Expected: []sql.Row{
+						{2, 1, 3, 5},
+						{2, 3, 5, 7},
+						{2, 6, 8, 5},
+						{2, 8, 10, 7},
+					},
+				},
+				{
+					Query: "update t1 set a = 4 where a = 3",
+					Expected: []sql.Row{{types.OkResult{
+						RowsAffected: 1,
+						Info: plan.UpdateInfo{
+							Matched: 1,
+							Updated: 1,
+						}},
+					}},
+				},
+				{
+					Query: "select * from t1 order by a",
+					Expected: []sql.Row{
+						{2, 1, 3, 5},
+						{2, 4, 6, 7},
+						{2, 6, 8, 5},
+						{2, 8, 10, 7},
+					},
+				},
+				{
+					Query:    "delete from t1 where v2 = 6",
+					Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				},
+				{
+					Query: "select * from t1 order by a",
+					Expected: []sql.Row{
+						{2, 1, 3, 5},
+						{2, 6, 8, 5},
+						{2, 8, 10, 7},
+					},
 				},
 			},
 		},
@@ -324,6 +405,60 @@ func TestIntegrationQueryPlans(t *testing.T) {
 		t.Run(indexInit.name, func(t *testing.T) {
 			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer)
 			enginetest.TestIntegrationPlans(t, harness)
+		})
+	}
+}
+
+func TestImdbQueryPlans(t *testing.T) {
+	t.Skip("tests are too slow")
+	indexBehaviors := []*indexBehaviorTestParams{
+		{"nativeIndexes", nil, true},
+	}
+
+	for _, indexInit := range indexBehaviors {
+		t.Run(indexInit.name, func(t *testing.T) {
+			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer)
+			enginetest.TestImdbPlans(t, harness)
+		})
+	}
+}
+
+func TestTpccQueryPlans(t *testing.T) {
+	indexBehaviors := []*indexBehaviorTestParams{
+		{"nativeIndexes", nil, true},
+	}
+
+	for _, indexInit := range indexBehaviors {
+		t.Run(indexInit.name, func(t *testing.T) {
+			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer)
+			enginetest.TestTpccPlans(t, harness)
+		})
+	}
+}
+
+func TestTpchQueryPlans(t *testing.T) {
+	indexBehaviors := []*indexBehaviorTestParams{
+		{"nativeIndexes", nil, true},
+	}
+
+	for _, indexInit := range indexBehaviors {
+		t.Run(indexInit.name, func(t *testing.T) {
+			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer)
+			enginetest.TestTpchPlans(t, harness)
+		})
+	}
+}
+
+func TestTpcdsQueryPlans(t *testing.T) {
+	t.Skip("missing features")
+	indexBehaviors := []*indexBehaviorTestParams{
+		{"nativeIndexes", nil, true},
+	}
+
+	for _, indexInit := range indexBehaviors {
+		t.Run(indexInit.name, func(t *testing.T) {
+			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer)
+			enginetest.TestTpcdsPlans(t, harness)
 		})
 	}
 }
@@ -773,16 +908,25 @@ func TestCharsetCollationEngine(t *testing.T) {
 }
 
 func TestCharsetCollationWire(t *testing.T) {
+	if _, ok := os.LookupEnv("CI_TEST"); !ok {
+		t.Skip("Skipping test that requires CI_TEST=true")
+	}
 	harness := enginetest.NewDefaultMemoryHarness()
 	enginetest.TestCharsetCollationWire(t, harness, harness.SessionBuilder())
 }
 
 func TestDatabaseCollationWire(t *testing.T) {
+	if _, ok := os.LookupEnv("CI_TEST"); !ok {
+		t.Skip("Skipping test that requires CI_TEST=true")
+	}
 	harness := enginetest.NewDefaultMemoryHarness()
 	enginetest.TestDatabaseCollationWire(t, harness, harness.SessionBuilder())
 }
 
 func TestTypesOverWire(t *testing.T) {
+	if _, ok := os.LookupEnv("CI_TEST"); !ok {
+		t.Skip("Skipping test that requires CI_TEST=true")
+	}
 	harness := enginetest.NewDefaultMemoryHarness()
 	enginetest.TestTypesOverWire(t, harness, harness.SessionBuilder())
 }
@@ -870,4 +1014,18 @@ func mergeSetupScripts(scripts ...setup.SetupScript) []string {
 		all = append(all, s...)
 	}
 	return all
+}
+
+func TestSQLLogicTests(t *testing.T) {
+	enginetest.TestSQLLogicTests(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestSQLLogicTestFiles(t *testing.T) {
+	t.Skip()
+	h := memharness.NewMemoryHarness(enginetest.NewDefaultMemoryHarness())
+	paths := []string{
+		"./sqllogictest/testdata/join/join.txt",
+		"./sqllogictest/testdata/join/subquery_correlated.txt",
+	}
+	logictest.RunTestFiles(h, paths...)
 }

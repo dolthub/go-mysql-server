@@ -417,6 +417,85 @@ var CreateTableScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Identifier lengths",
+		SetUpScript: []string{
+			"create table parent (a int primary key)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// 64 characters
+				Query:    "create table abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl (a int primary key)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// 65 characters
+				Query:       "create table abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm (a int primary key)",
+				ExpectedErr: sql.ErrInvalidIdentifier,
+			},
+			{
+				// 64 characters
+				Query:    "create table a (abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl int primary key)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// 65 characters
+				Query:       "create table a (abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm int primary key)",
+				ExpectedErr: sql.ErrInvalidIdentifier,
+			},
+			{
+				// 64 characters
+				Query:    "create table b (a int primary key, constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl check (a > 0))",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// 65 characters
+				Query:       "create table b (a int primary key, constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm check (a > 0))",
+				ExpectedErr: sql.ErrInvalidIdentifier,
+			},
+			{
+				// 64 characters
+				Query:    "create table c (a int primary key, b int, key abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl (b))",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// 65 characters
+				Query:       "create table c (a int primary key, b int, key abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm (b))",
+				ExpectedErr: sql.ErrInvalidIdentifier,
+			},
+			{
+				// 64 characters
+				Query:    "create table d (a int primary key, constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl foreign key (a) references parent(a))",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// 65 characters
+				Query:       "create table d (a int primary key, constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklm foreign key (a) references parent(a))",
+				ExpectedErr: sql.ErrInvalidIdentifier,
+			},
+		},
+	},
+	{
+		Name: "case insensitive column name uniqueness",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "create table t1 (abc int, abc int)",
+				ExpectedErr: sql.ErrDuplicateColumn,
+			},
+			{
+				Query:       "create table t2 (ABC int, ABC int)",
+				ExpectedErr: sql.ErrDuplicateColumn,
+			},
+			{
+				Query:       "create table t3 (a int, A int)",
+				ExpectedErr: sql.ErrDuplicateColumn,
+			},
+			{
+				Query:       "create table t4 (abc int, def int, Abc int)",
+				ExpectedErr: sql.ErrDuplicateColumn,
+			},
+		},
+	},
 }
 
 var CreateTableAutoIncrementTests = []ScriptTest{
