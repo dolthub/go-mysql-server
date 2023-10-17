@@ -472,7 +472,7 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return i.Next(ctx)
 		}
 	}
-	
+
 	if i.columns != nil {
 		resultRow := make(sql.Row, len(i.columns))
 		for i, j := range i.columns {

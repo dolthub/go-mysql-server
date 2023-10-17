@@ -66,7 +66,7 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{4, 5}},
 			},
 			{
-				Query:    "update t1 set b = b + 1",
+				Query:       "update t1 set b = b + 1",
 				ExpectedErr: sql.ErrGeneratedColumnValue,
 			},
 		},
@@ -216,7 +216,7 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{1, 2}, {4, 5}},
 			},
 			{
-				Query:    "update t1 set b = b + 1",
+				Query:       "update t1 set b = b + 1",
 				ExpectedErr: sql.ErrGeneratedColumnValue,
 			},
 		},
@@ -302,7 +302,7 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 			{
-				Query: "create trigger t1insert before insert on t1 for each row insert into t2 (c) values (new.b + 1)",
+				Query:    "create trigger t1insert before insert on t1 for each row insert into t2 (c) values (new.b + 1)",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
@@ -330,7 +330,7 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 			{
-				Query:    "select * from t1 order by a",
+				Query: "select * from t1 order by a",
 				Expected: []sql.Row{
 					{1, types.MustJSON(`{"a": 1, "b": 2}`), 2},
 					{2, types.MustJSON(`{"a": 1}`), nil},
@@ -349,7 +349,7 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 			{
-				Query:    "select * from t1 order by a",
+				Query: "select * from t1 order by a",
 				Expected: []sql.Row{
 					{"abc", "123", "abc123"},
 					{"def", nil, nil},

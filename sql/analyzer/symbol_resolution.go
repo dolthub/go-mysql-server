@@ -207,7 +207,7 @@ func pruneTableCols(
 	if len(ptab.Projections()) > 0 {
 		return n, transform.SameTree, nil
 	}
-	
+
 	// Don't prune columns if they're needed by a virtual column
 	virtualColDeps := make(map[tableCol]int)
 	if vct, ok := n.WrappedTable().(*plan.VirtualColumnTable); ok {
@@ -217,12 +217,12 @@ func pruneTableCols(
 					transform.Expr(cd.Expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 						if gf, ok := e.(*expression.GetField); ok {
 							c := tableCol{table: strings.ToLower(gf.Table()), col: strings.ToLower(gf.Name())}
-							virtualColDeps[c] = virtualColDeps[c] + 1 
+							virtualColDeps[c] = virtualColDeps[c] + 1
 						}
 						return e, transform.SameTree, nil
 					})
 				}
-				return e, transform.SameTree, nil					
+				return e, transform.SameTree, nil
 			})
 		}
 	}

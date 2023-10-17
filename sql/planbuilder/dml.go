@@ -219,13 +219,13 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 	if inScope.windowFuncs != nil {
 		startWinCnt = len(inScope.windowFuncs)
 	}
-	
+
 	tableSch := inScope.node.Schema()
-	
+
 	for i, updateExpr := range e {
 		colName := b.buildScalar(inScope, updateExpr.Name)
-		
-		// Prevent update of generated columns. Some plans don't have a 
+
+		// Prevent update of generated columns. Some plans don't have a
 		if gf, ok := colName.(*expression.GetField); ok {
 			colIdx := tableSch.IndexOfColName(gf.Name())
 			// TODO: during trigger parsing the table in the node is unresolved, so we need this additional bounds check
