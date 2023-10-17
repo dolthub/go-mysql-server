@@ -207,12 +207,31 @@ func pruneTableCols(
 	if len(ptab.Projections()) > 0 {
 		return n, transform.SameTree, nil
 	}
+	
+	// Don't prune columns if they're needed by a virtual column
+	virtualColDeps := make(map[tableCol]int)
+	if vct, ok := n.WrappedTable().(*plan.VirtualColumnTable); ok {
+		for _, projection := range vct.Projections {
+			transform.Expr(projection, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				if cd, ok := e.(*sql.ColumnDefaultValue); ok {
+					transform.Expr(cd.Expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+						if gf, ok := e.(*expression.GetField); ok {
+							c := tableCol{table: strings.ToLower(gf.Table()), col: strings.ToLower(gf.Name())}
+							virtualColDeps[c] = virtualColDeps[c] + 1 
+						}
+						return e, transform.SameTree, nil
+					})
+				}
+				return e, transform.SameTree, nil					
+			})
+		}
+	}
 
 	cols := make([]string, 0)
 	source := strings.ToLower(table.Name())
 	for _, col := range table.Schema() {
 		c := tableCol{table: strings.ToLower(source), col: strings.ToLower(col.Name)}
-		if selectStar || parentCols[c] > 0 {
+		if selectStar || parentCols[c] > 0 || virtualColDeps[c] > 0 {
 			cols = append(cols, c.col)
 		}
 	}
