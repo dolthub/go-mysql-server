@@ -643,9 +643,15 @@ func (b *BaseBuilder) buildShowGrants(ctx *sql.Context, n *plan.ShowGrants, row 
 			privStr = generatePrivStrings(dbStr, tblStr, userStr, tbl.ToSlice())
 			rows = append(rows, sql.Row{privStr})
 		}
-	}
 
-	// TODO: display column privileges
+		for _, routine := range db.GetRoutines() {
+			quotedRoutine := fmt.Sprintf("`%s`", routine.RoutineName())
+			privStr = generateRoutinePrivStrings(dbStr, quotedRoutine, routine.RoutineType(), userStr, routine.ToSlice())
+			rows = append(rows, sql.Row{privStr})
+		}
+
+		// TODO: display column privileges
+	}
 
 	sb := strings.Builder{}
 

@@ -132,6 +132,30 @@ func generatePrivStrings(db, tbl, user string, privs []sql.PrivilegeType) string
 	return fmt.Sprintf("GRANT %s ON %s.%s TO %s%s", privStr, db, tbl, user, withGrantOption)
 }
 
+// generateRoutinePrivStrings creates a formatted GRANT <PRILEDGE_LIST> on <ROUTINE_TYPE> <ROUTINE> to <user@host> string
+func generateRoutinePrivStrings(db, routine, routine_type, user string, privs []sql.PrivilegeType) string {
+	privStrs := make([]string, 0, len(privs))
+	grantOption := ""
+	for _, priv := range privs {
+		if priv == sql.PrivilegeType_GrantOption {
+			grantOption = " WITH GRANT OPTION"
+			continue
+		}
+
+		privStr := priv.String()
+		privStrs = append(privStrs, privStr)
+	}
+
+	// This is kind of an odd word to insert in the output, but it's what MySQL does when you have no privileges other
+	// than Grant Options.
+	finalPrivStr := "USAGE"
+	if len(privStrs) > 0 {
+		finalPrivStr = strings.Join(privStrs, ", ")
+	}
+
+	return fmt.Sprintf("GRANT %s ON %s %s.%s TO %s%s", finalPrivStr, routine_type, db, routine, user, grantOption)
+}
+
 func newIndexesToShow(indexes []sql.Index) *indexesToShow {
 	return &indexesToShow{
 		indexes: indexes,
