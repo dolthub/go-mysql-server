@@ -433,14 +433,18 @@ func (j *JoinNode) String() string {
 	pr := sql.NewTreePrinter()
 	var children []string
 	if j.Filter != nil {
-		if j.Op.IsMerge() {
-			filters := expression.SplitConjunction(j.Filter)
-			children = append(children, fmt.Sprintf("cmp: %s", filters[0]))
-			if len(filters) > 1 {
-				children = append(children, fmt.Sprintf("sel: %s", expression.JoinAnd(filters[1:]...)))
+		// Don't print a filter that's always true, it's just noise.
+		literal, isLiteral := j.Filter.(*expression.Literal)
+		if !isLiteral || literal.Value() != true {
+			if j.Op.IsMerge() {
+				filters := expression.SplitConjunction(j.Filter)
+				children = append(children, fmt.Sprintf("cmp: %s", filters[0]))
+				if len(filters) > 1 {
+					children = append(children, fmt.Sprintf("sel: %s", expression.JoinAnd(filters[1:]...)))
+				}
+			} else {
+				children = append(children, j.Filter.String())
 			}
-		} else {
-			children = append(children, j.Filter.String())
 		}
 	}
 	children = append(children, j.left.String(), j.right.String())
@@ -453,14 +457,18 @@ func (j *JoinNode) DebugString() string {
 	pr := sql.NewTreePrinter()
 	var children []string
 	if j.Filter != nil {
-		if j.Op.IsMerge() {
-			filters := expression.SplitConjunction(j.Filter)
-			children = append(children, fmt.Sprintf("cmp: %s", sql.DebugString(filters[0])))
-			if len(filters) > 1 {
-				children = append(children, fmt.Sprintf("sel: %s", sql.DebugString(expression.JoinAnd(filters[1:]...))))
+		// Don't print a filter that's always true, it's just noise.
+		literal, isLiteral := j.Filter.(*expression.Literal)
+		if !isLiteral || literal.Value() != true {
+			if j.Op.IsMerge() {
+				filters := expression.SplitConjunction(j.Filter)
+				children = append(children, fmt.Sprintf("cmp: %s", sql.DebugString(filters[0])))
+				if len(filters) > 1 {
+					children = append(children, fmt.Sprintf("sel: %s", sql.DebugString(expression.JoinAnd(filters[1:]...))))
+				}
+			} else {
+				children = append(children, sql.DebugString(j.Filter))
 			}
-		} else {
-			children = append(children, sql.DebugString(j.Filter))
 		}
 	}
 	children = append(children, sql.DebugString(j.left), sql.DebugString(j.right))
