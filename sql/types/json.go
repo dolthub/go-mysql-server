@@ -15,6 +15,7 @@
 package types
 
 import (
+	"bytes"
 	"encoding/json"
 	"reflect"
 
@@ -25,7 +26,7 @@ import (
 )
 
 var (
-	jsonValueType = reflect.TypeOf((*JSONValue)(nil)).Elem()
+	jsonValueType = reflect.TypeOf((*sql.JSONWrapper)(nil)).Elem()
 
 	MaxJsonFieldByteLength = int64(1024) * int64(1024) * int64(1024)
 )
@@ -48,13 +49,13 @@ func (t JsonType) Compare(a interface{}, b interface{}) (int, error) {
 		return 0, err
 	}
 	// todo: making a context here is expensive
-	return a.(JSONValue).Compare(sql.NewEmptyContext(), b.(JSONValue))
+	return CompareJSON(a.(sql.JSONWrapper).ToInterface(), b.(sql.JSONWrapper).ToInterface())
 }
 
 // Convert implements Type interface.
 func (t JsonType) Convert(v interface{}) (doc interface{}, inRange sql.ConvertInRange, err error) {
 	switch v := v.(type) {
-	case JSONValue:
+	case sql.JSONWrapper:
 		return v, sql.InRange, nil
 	case []byte:
 		if int64(len(v)) > MaxJsonFieldByteLength {
@@ -120,14 +121,26 @@ func (t JsonType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 	if err != nil {
 		return sqltypes.NULL, err
 	}
-	js := jsVal.(JSONValue)
+	js := jsVal.(sql.JSONWrapper)
 
-	s, err := js.ToString(ctx)
-	if err != nil {
-		return sqltypes.NULL, err
+	var val []byte
+	switch j := js.(type) {
+	case JSONStringer:
+		str, err := j.JSONString()
+		if err != nil {
+			return sqltypes.NULL, err
+		}
+		val = AppendAndSliceString(dest, str)
+	default:
+		jsonBytes, err := json.Marshal(js.ToInterface())
+		if err != nil {
+			return sqltypes.NULL, err
+		}
+
+		jsonBytes = bytes.ReplaceAll(jsonBytes, []byte(",\""), []byte(", \""))
+		jsonBytes = bytes.ReplaceAll(jsonBytes, []byte("\":"), []byte("\": "))
+		val = AppendAndSliceBytes(dest, jsonBytes)
 	}
-
-	val := AppendAndSliceString(dest, s)
 
 	return sqltypes.MakeTrusted(sqltypes.TypeJSON, val), nil
 }

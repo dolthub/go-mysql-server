@@ -147,22 +147,22 @@ func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 			return nil, err
 		}
 
-		result, err := target.Extract(ctx, path.(string))
+		extracted, err := types.LookupJSONValue(target, path.(string))
 		if err != nil {
 			return nil, err
 		}
-		if result == nil {
+		var ok bool
+		target, ok = extracted.(sql.JSONWrapper)
+		if !ok {
 			return nil, nil
 		}
-
-		target, err = result.Unmarshall(ctx)
-		if err != nil {
-			return nil, err
+		if target == nil {
+			return nil, nil
 		}
 	}
 
 	// Now determine whether the candidate value exists in the target
-	return target.Contains(ctx, candidate)
+	return types.ContainsJSON(target.ToInterface(), candidate.ToInterface())
 }
 
 func (j *JSONContains) Children() []sql.Expression {

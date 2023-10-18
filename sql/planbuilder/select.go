@@ -107,8 +107,7 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	b.buildProjection(outScope, projScope)
 	outScope = projScope
 
-	// DISTINCT when
-	b.buildDistinct(outScope, s.Distinct)
+	b.buildDistinct(outScope, s.QueryOpts.Distinct)
 
 	// OFFSET and LIMIT are last
 	offset := b.buildOffset(outScope, s.Limit)
@@ -118,7 +117,7 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	limit := b.buildLimit(outScope, s.Limit)
 	if limit != nil {
 		l := plan.NewLimit(limit, outScope.node)
-		l.CalcFoundRows = s.CalcFoundRows
+		l.CalcFoundRows = s.QueryOpts.SQLCalcFoundRows
 		outScope.node = l
 	}
 
@@ -167,8 +166,10 @@ func (b *Builder) buildOffset(inScope *scope, limit *ast.Limit) sql.Expression {
 	return nil
 }
 
-func (b *Builder) buildDistinct(inScope *scope, distinct string) {
-	if distinct != "" {
+// buildDistinct creates a new plan.Distinct node if the query has a DISTINCT option.
+// If the query has both DISTINCT and ALL, an error is returned.
+func (b *Builder) buildDistinct(inScope *scope, distinct bool) {
+	if distinct {
 		inScope.node = plan.NewDistinct(inScope.node)
 	}
 }

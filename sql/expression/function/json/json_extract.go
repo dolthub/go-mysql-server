@@ -85,20 +85,17 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	js, _, err = j.Type().Convert(js)
+	js, _, err = types.JSON.Convert(js)
 	if err != nil {
 		return nil, err
 	}
 
-	searchable, ok := js.(types.SearchableJSONValue)
+	searchable, ok := js.(sql.JSONWrapper)
 	if !ok {
-		searchable, err = js.(types.JSONValue).Unmarshall(ctx)
-		if err != nil {
-			return nil, err
-		}
+		return fmt.Errorf("expected types.JSONValue, found: %T", js), nil
 	}
 
-	var results = make([]types.JSONValue, len(j.Paths))
+	var results = make([]sql.JSONWrapper, len(j.Paths))
 	for i, p := range j.Paths {
 		path, err := p.Eval(ctx, row)
 		if err != nil {
@@ -110,7 +107,7 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
-		results[i], err = searchable.Extract(ctx, path.(string))
+		results[i], err = types.LookupJSONValue(searchable, path.(string))
 		if err != nil {
 			return nil, fmt.Errorf("failed to extract from expression '%s'; %s", j.JSON.String(), err.Error())
 		}
