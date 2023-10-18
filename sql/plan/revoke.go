@@ -37,20 +37,6 @@ var _ sql.Node = (*Revoke)(nil)
 var _ sql.Databaser = (*Revoke)(nil)
 var _ sql.CollationCoercible = (*Revoke)(nil)
 
-// NewRevoke returns a new Revoke node.
-func NewRevoke(privileges []Privilege, objType ObjectType, level PrivilegeLevel, users []UserName, revoker string) (*Revoke, error) {
-	if strings.ToLower(level.Database) == sql.InformationSchemaDatabaseName {
-		return nil, sql.ErrDatabaseAccessDeniedForUser.New(revoker, level.Database)
-	}
-	return &Revoke{
-		Privileges:     privileges,
-		ObjectType:     objType,
-		PrivilegeLevel: level,
-		Users:          users,
-		MySQLDb:        sql.UnresolvedDatabase("mysql"),
-	}, nil
-}
-
 // Schema implements the interface sql.Node.
 func (n *Revoke) Schema() sql.Schema {
 	return types.OkResultSchema
@@ -203,75 +189,6 @@ func (n *Revoke) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpera
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Revoke) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
-}
-
-// RowIter implements the interface sql.Node.
-func (n *Revoke) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
-	if !ok {
-		return nil, sql.ErrDatabaseNotFound.New("mysql")
-	}
-	editor := mysqlDb.Editor()
-	defer editor.Close()
-	if n.PrivilegeLevel.Database == "*" && n.PrivilegeLevel.TableRoutine == "*" {
-		if n.ObjectType != ObjectType_Any {
-			return nil, sql.ErrGrantRevokeIllegalPrivilege.New()
-		}
-		for _, revokeUser := range n.Users {
-			user := mysqlDb.GetUser(editor, revokeUser.Name, revokeUser.Host, false)
-			if user == nil {
-				return nil, sql.ErrGrantUserDoesNotExist.New()
-			}
-			if err := n.HandleGlobalPrivileges(user); err != nil {
-				return nil, err
-			}
-		}
-	} else if n.PrivilegeLevel.Database != "*" && n.PrivilegeLevel.TableRoutine == "*" {
-		database := n.PrivilegeLevel.Database
-		if database == "" {
-			database = ctx.GetCurrentDatabase()
-			if database == "" {
-				return nil, sql.ErrNoDatabaseSelected.New()
-			}
-		}
-		if n.ObjectType != ObjectType_Any {
-			return nil, sql.ErrGrantRevokeIllegalPrivilege.New()
-		}
-		for _, revokeUser := range n.Users {
-			user := mysqlDb.GetUser(editor, revokeUser.Name, revokeUser.Host, false)
-			if user == nil {
-				return nil, sql.ErrGrantUserDoesNotExist.New()
-			}
-			if err := n.HandleDatabasePrivileges(user, database); err != nil {
-				return nil, err
-			}
-		}
-	} else {
-		database := n.PrivilegeLevel.Database
-		if database == "" {
-			database = ctx.GetCurrentDatabase()
-			if database == "" {
-				return nil, sql.ErrNoDatabaseSelected.New()
-			}
-		}
-		if n.ObjectType != ObjectType_Any {
-			//TODO: implement object types
-			return nil, fmt.Errorf("GRANT has not yet implemented object types")
-		}
-		for _, grantUser := range n.Users {
-			user := mysqlDb.GetUser(editor, grantUser.Name, grantUser.Host, false)
-			if user == nil {
-				return nil, sql.ErrGrantUserDoesNotExist.New()
-			}
-			if err := n.HandleTablePrivileges(user, database, n.PrivilegeLevel.TableRoutine); err != nil {
-				return nil, err
-			}
-		}
-	}
-	if err := mysqlDb.Persist(ctx, editor); err != nil {
-		return nil, err
-	}
-	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
 
 // HandleGlobalPrivileges handles removing global privileges from a user.
@@ -549,11 +466,6 @@ func (*RevokeAll) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 	return sql.Collation_binary, 7
 }
 
-// RowIter implements the interface sql.Node.
-func (n *RevokeAll) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return nil, fmt.Errorf("not yet implemented")
-}
-
 // RevokeRole represents the statement REVOKE [role...] FROM [user...].
 type RevokeRole struct {
 	Roles       []UserName
@@ -667,41 +579,6 @@ ROLES:
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*RevokeRole) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
-}
-
-// RowIter implements the interface sql.Node.
-func (n *RevokeRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
-	if !ok {
-		return nil, sql.ErrDatabaseNotFound.New("mysql")
-	}
-
-	editor := mysqlDb.Editor()
-	defer editor.Close()
-
-	for _, targetUser := range n.TargetUsers {
-		user := mysqlDb.GetUser(editor, targetUser.Name, targetUser.Host, false)
-		if user == nil {
-			return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetUser.String("`"))
-		}
-		for _, targetRole := range n.Roles {
-			role := mysqlDb.GetUser(editor, targetRole.Name, targetRole.Host, true)
-			if role == nil {
-				return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetRole.String("`"))
-			}
-			//TODO: if a role is mentioned in the "mandatory_roles" system variable then they cannot be revoked
-			editor.RemoveRoleEdge(mysql_db.RoleEdgesPrimaryKey{
-				FromHost: role.Host,
-				FromUser: role.User,
-				ToHost:   user.Host,
-				ToUser:   user.User,
-			})
-		}
-	}
-	if err := mysqlDb.Persist(ctx, editor); err != nil {
-		return nil, err
-	}
-	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
 
 // RevokeProxy represents the statement REVOKE PROXY.
