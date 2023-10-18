@@ -10035,6 +10035,75 @@ WHERE keyless.c0 IN (
 			"         └─ columns: [x y]\n" +
 			"",
 	},
+	{
+		Query: "select * from xy_hasnull_idx order by y",
+		ExpectedPlan: "IndexedTableAccess(xy_hasnull_idx)\n" +
+			" ├─ index: [xy_hasnull_idx.y]\n" +
+			" ├─ static: [{[NULL, ∞)}]\n" +
+			" └─ Table\n" +
+			"     ├─ name: xy_hasnull_idx\n" +
+			"     └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: "select * from xy_hasnull_idx order by y desc",
+		ExpectedPlan: "IndexedTableAccess(xy_hasnull_idx)\n" +
+			" ├─ index: [xy_hasnull_idx.y]\n" +
+			" ├─ static: [{[NULL, ∞)}]\n" +
+			" ├─ reverse: true\n" +
+			" └─ Table\n" +
+			"     ├─ name: xy_hasnull_idx\n" +
+			"     └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: "select * from xy_hasnull_idx where y < 1 or y > 1 order by y desc",
+		ExpectedPlan: "IndexedTableAccess(xy_hasnull_idx)\n" +
+			" ├─ index: [xy_hasnull_idx.y]\n" +
+			" ├─ static: [{(1, ∞)}, {(NULL, 1)}]\n" +
+			" ├─ reverse: true\n" +
+			" └─ Table\n" +
+			"     ├─ name: xy_hasnull_idx\n" +
+			"     └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: "select * from xy_hasnull_idx where y < 1 or y > 1 or y is null order by y desc",
+		ExpectedPlan: "Filter\n" +
+			" ├─ Or\n" +
+			" │   ├─ Or\n" +
+			" │   │   ├─ LessThan\n" +
+			" │   │   │   ├─ xy_hasnull_idx.y:1\n" +
+			" │   │   │   └─ 1 (tinyint)\n" +
+			" │   │   └─ GreaterThan\n" +
+			" │   │       ├─ xy_hasnull_idx.y:1\n" +
+			" │   │       └─ 1 (tinyint)\n" +
+			" │   └─ xy_hasnull_idx.y:1 IS NULL\n" +
+			" └─ IndexedTableAccess(xy_hasnull_idx)\n" +
+			"     ├─ index: [xy_hasnull_idx.y]\n" +
+			"     ├─ static: [{(1, ∞)}, {[NULL, 1)}]\n" +
+			"     ├─ reverse: true\n" +
+			"     └─ Table\n" +
+			"         ├─ name: xy_hasnull_idx\n" +
+			"         └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: "select * from xy_hasnull_idx where y in (0, 2) or y is null order by y",
+		ExpectedPlan: "Filter\n" +
+			" ├─ Or\n" +
+			" │   ├─ HashIn\n" +
+			" │   │   ├─ xy_hasnull_idx.y:1\n" +
+			" │   │   └─ TUPLE(0 (tinyint), 2 (tinyint))\n" +
+			" │   └─ xy_hasnull_idx.y:1 IS NULL\n" +
+			" └─ IndexedTableAccess(xy_hasnull_idx)\n" +
+			"     ├─ index: [xy_hasnull_idx.y]\n" +
+			"     ├─ static: [{[NULL, NULL]}, {[0, 0]}, {[2, 2]}]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: xy_hasnull_idx\n" +
+			"         └─ columns: [x y]\n" +
+			"",
+	},
 
 	// aggregation optimization tests
 	{

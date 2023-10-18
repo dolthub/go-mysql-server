@@ -3722,6 +3722,7 @@ var XyData = []SetupScript{{
 	`create table rs (r int primary key, s int, index s_idx(s));`,
 	`CREATE table xy_hasnull (x int primary key, y int);`,
 	`CREATE table ab_hasnull (a int primary key, b int);`,
+	`CREATE table xy_hasnull_idx (x int primary key, y int, index y_idx(y));`,
 	`insert into xy_hasnull values
   (1,0),
   (2,1),
@@ -3732,6 +3733,11 @@ var XyData = []SetupScript{{
   (1,2),
   (2,NULL),
   (3,1);`,
+	`insert into xy_hasnull_idx values
+  (1,0),
+  (2,1),
+  (0,2),
+  (3,NULL);`,
 	`insert into xy values
   (1,0),
   (2,1),
