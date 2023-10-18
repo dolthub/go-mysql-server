@@ -1501,6 +1501,18 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{1}},
 			},
 			{
+				Query:    "select * from b order by x limit 100",
+				Expected: []sql.Row{{1}, {2}, {3}, {4}},
+			},
+			{
+				Query:    "select found_rows()",
+				Expected: []sql.Row{{4}},
+			},
+			{
+				Query:    "select found_rows()",
+				Expected: []sql.Row{{1}},
+			},
+			{
 				Query:    "select sql_calc_found_rows * from b order by x limit 3",
 				Expected: []sql.Row{{1}, {2}, {3}},
 			},
