@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -9,7 +10,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-func NewUpdateHistogram(db, table string, cols []string, stats *stats.Stats) *UpdateHistogram {
+func NewUpdateHistogram(db, table string, cols []string, stats *stats.Statistic) *UpdateHistogram {
 	return &UpdateHistogram{db: db, cols: cols, table: table, stats: stats}
 }
 
@@ -17,7 +18,7 @@ type UpdateHistogram struct {
 	db    string
 	table string
 	cols  []string
-	stats *stats.Stats
+	stats *stats.Statistic
 	prov  sql.StatsProvider
 }
 
@@ -35,7 +36,7 @@ func (u *UpdateHistogram) Cols() []string {
 	return u.cols
 }
 
-func (u *UpdateHistogram) Stats() *stats.Stats {
+func (u *UpdateHistogram) Stats() *stats.Statistic {
 	return u.stats
 }
 
@@ -54,7 +55,9 @@ func (u *UpdateHistogram) Resolved() bool {
 }
 
 func (u *UpdateHistogram) String() string {
-	return fmt.Sprintf("update histogram  %s.(%s) using %s", u.table, strings.Join(u.cols, ","), u.stats)
+	statMap := u.stats.ToInterface()
+	statBytes, _ := json.Marshal(statMap)
+	return fmt.Sprintf("update histogram  %s.(%s) using %s", u.table, strings.Join(u.cols, ","), statBytes)
 }
 
 func (u *UpdateHistogram) Schema() sql.Schema {

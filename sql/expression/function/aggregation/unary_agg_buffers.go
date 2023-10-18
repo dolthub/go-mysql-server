@@ -628,12 +628,8 @@ func (j *jsonArrayBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	}
 
 	// unwrap JSON values
-	if js, ok := v.(types.JSONValue); ok {
-		doc, err := js.Unmarshall(ctx)
-		if err != nil {
-			return err
-		}
-		v = doc.Val
+	if js, ok := v.(sql.JSONWrapper); ok {
+		v = js.ToInterface()
 	}
 
 	j.vals = append(j.vals, v)

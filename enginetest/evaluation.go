@@ -621,23 +621,25 @@ func WidenRow(sch sql.Schema, row sql.Row) sql.Row {
 	return widened
 }
 
-func widenJSONValues(val interface{}) types.JSONValue {
+func widenJSONValues(val interface{}) sql.JSONWrapper {
 	if val == nil {
 		return nil
 	}
 
-	js, ok := val.(types.JSONValue)
+	js, ok := val.(sql.JSONWrapper)
 	if !ok {
 		panic(fmt.Sprintf("%v is not json", val))
 	}
 
-	doc, err := js.Unmarshall(sql.NewEmptyContext())
-	if err != nil {
-		panic(err)
+	doc := js.ToInterface()
+
+	if _, ok := js.(sql.Statistic); ok {
+		// avoid comparing time values in statistics
+		delete(doc.(map[string]interface{})["statistic"].(map[string]interface{}), "created_at")
 	}
 
-	doc.Val = widenJSON(doc.Val)
-	return doc
+	doc = widenJSON(doc)
+	return types.JSONDocument{Val: doc}
 }
 
 func widenJSON(val interface{}) interface{} {

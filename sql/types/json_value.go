@@ -27,92 +27,63 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// JSONValue is an integrator specific implementation of a JSON field value.
-type JSONValue interface {
-	// Unmarshall converts a JSONValue to a JSONDocument
-	Unmarshall(ctx *sql.Context) (val JSONDocument, err error)
-	// Compare compares two JSONValues. It maintains the same return value
-	// semantics as Type.Compare()
-	Compare(ctx *sql.Context, v JSONValue) (cmp int, err error)
-	// ToString marshalls a JSONValue to a valid JSON-encoded string.
-	ToString(ctx *sql.Context) (string, error)
+type JSONStringer interface {
+	JSONString() (string, error)
 }
 
-// SearchableJSONValue is JSONValue supporting in-place access operations.
-// The query engine can utilize these optimized access methods improve performance
-// by minimizing the need to unmarshall a JSONValue into a JSONDocument.
-type SearchableJSONValue interface {
-	JSONValue
-
-	// Contains is value-specific implementation of JSON_Contains()
-	Contains(ctx *sql.Context, candidate JSONValue) (val interface{}, err error)
-	// Extract is value-specific implementation of JSON_Extract()
-	Extract(ctx *sql.Context, path string) (val JSONValue, err error)
-	// Keys is value-specific implementation of JSON_Keys()
-	Keys(ctx *sql.Context, path string) (val JSONValue, err error)
-	// Overlaps is value-specific implementation of JSON_Overlaps()
-	Overlaps(ctx *sql.Context, val SearchableJSONValue) (ok bool, err error)
-	// Search is value-specific implementation of JSON_Search()
-	Search(ctx *sql.Context) (path string, err error)
-}
-
-type MutableJSONValue interface {
+type MutableJSON interface {
 	// Insert Adds the value at the given path, only if it is not present. Updated value returned, and bool indicating if
 	// a change was made.
-	Insert(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
+	Insert(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error)
 	// Remove the value at the given path. Updated value returned, and bool indicating if a change was made.
-	Remove(ctx *sql.Context, path string) (MutableJSONValue, bool, error)
+	Remove(ctx *sql.Context, path string) (MutableJSON, bool, error)
 	// Set the value at the given path. Updated value returned, and bool indicating if a change was made.
-	Set(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
+	Set(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error)
 	// Replace the value at the given path with the new value. If the path does not exist, no modification is made.
-	Replace(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
+	Replace(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error)
 	// ArrayInsert inserts into the array object referenced by the given path. If the path does not exist, no modification is made.
-	ArrayInsert(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
+	ArrayInsert(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error)
 	// ArrayAppend appends to an  array object referenced by the given path. If the path does not exist, no modification is made,
 	// or if the path exists and is not an array, the element will be converted into an array and the element will be
 	// appended to it.
-	ArrayAppend(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error)
+	ArrayAppend(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error)
 }
 
 type JSONDocument struct {
 	Val interface{}
 }
 
-var _ JSONValue = JSONDocument{}
+var _ sql.JSONWrapper = JSONDocument{}
 
-func (doc JSONDocument) Unmarshall(_ *sql.Context) (JSONDocument, error) {
-	return doc, nil
+func (doc JSONDocument) ToInterface() interface{} {
+	return doc.Val
 }
 
-func (doc JSONDocument) Compare(ctx *sql.Context, v JSONValue) (int, error) {
-	other, err := v.Unmarshall(ctx)
-	if err != nil {
-		return 0, err
-	}
-	return compareJSON(doc.Val, other.Val)
+func (doc JSONDocument) Compare(other sql.JSONWrapper) (int, error) {
+	return CompareJSON(doc.Val, other.ToInterface())
 }
 
-func (doc JSONDocument) ToString(_ *sql.Context) (string, error) {
+func (doc JSONDocument) JSONString() (string, error) {
 	return marshalToMySqlString(doc.Val)
 }
 
-var _ SearchableJSONValue = JSONDocument{}
-var _ MutableJSONValue = JSONDocument{}
+var _ sql.JSONWrapper = JSONDocument{}
+var _ MutableJSON = JSONDocument{}
 
 // Contains returns nil in case of a nil value for either the doc.Val or candidate. Otherwise
 // it returns a bool
-func (doc JSONDocument) Contains(ctx *sql.Context, candidate JSONValue) (val interface{}, err error) {
-	other, err := candidate.Unmarshall(ctx)
-	if err != nil {
-		return false, err
-	}
-	return containsJSON(doc.Val, other.Val)
+func (doc JSONDocument) Contains(candidate sql.JSONWrapper) (val interface{}, err error) {
+	return ContainsJSON(doc.Val, candidate.ToInterface())
 }
 
-func (doc JSONDocument) Extract(ctx *sql.Context, path string) (JSONValue, error) {
+func (doc JSONDocument) Extract(path string) (sql.JSONWrapper, error) {
+	return LookupJSONValue(doc, path)
+}
+
+func LookupJSONValue(j sql.JSONWrapper, path string) (sql.JSONWrapper, error) {
 	if path == "$" {
 		// Special case the identity operation to handle a nil value for doc.Val
-		return doc, nil
+		return j, nil
 	}
 
 	c, err := jsonpath.Compile(path)
@@ -127,7 +98,7 @@ func (doc JSONDocument) Extract(ctx *sql.Context, path string) (JSONValue, error
 	// Lookup(obj) throws an error if obj is nil. We want lookups on a json null
 	// to always result in sql NULL, except in the case of the identity lookup
 	// $.
-	r := doc.Val
+	r := j.ToInterface()
 	if r == nil {
 		return nil, nil
 	}
@@ -142,18 +113,6 @@ func (doc JSONDocument) Extract(ctx *sql.Context, path string) (JSONValue, error
 	}
 
 	return JSONDocument{Val: val}, nil
-}
-
-func (doc JSONDocument) Keys(ctx *sql.Context, path string) (val JSONValue, err error) {
-	panic("not implemented")
-}
-
-func (doc JSONDocument) Overlaps(ctx *sql.Context, val SearchableJSONValue) (ok bool, err error) {
-	panic("not implemented")
-}
-
-func (doc JSONDocument) Search(ctx *sql.Context) (path string, err error) {
-	panic("not implemented")
 }
 
 var _ driver.Valuer = JSONDocument{}
@@ -172,19 +131,15 @@ func (doc JSONDocument) Value() (driver.Value, error) {
 	return mysqlString, nil
 }
 
-func ConcatenateJSONValues(ctx *sql.Context, vals ...JSONValue) (JSONValue, error) {
+func ConcatenateJSONValues(ctx *sql.Context, vals ...sql.JSONWrapper) (sql.JSONWrapper, error) {
 	arr := make([]interface{}, len(vals))
 	for i, v := range vals {
-		d, err := v.Unmarshall(ctx)
-		if err != nil {
-			return nil, err
-		}
-		arr[i] = d.Val
+		arr[i] = v.ToInterface()
 	}
 	return JSONDocument{Val: arr}, nil
 }
 
-func containsJSON(a, b interface{}) (interface{}, error) {
+func ContainsJSON(a, b interface{}) (interface{}, error) {
 	if a == nil || b == nil {
 		return nil, nil
 	}
@@ -240,7 +195,7 @@ func containsJSONArray(a []interface{}, b interface{}) (bool, error) {
 	} else {
 		// A candidate non-array is contained in a target array if and only if the candidate is contained in some element of the target.
 		for _, aa := range a {
-			contains, err := containsJSON(aa, b)
+			contains, err := ContainsJSON(aa, b)
 			if err != nil {
 				return false, err
 			}
@@ -282,7 +237,7 @@ func containsJSONObject(a map[string]interface{}, b interface{}) (bool, error) {
 			return false, nil
 		}
 
-		contains, err := containsJSON(avalue, bvalue)
+		contains, err := ContainsJSON(avalue, bvalue)
 		if err != nil {
 			return false, err
 		}
@@ -375,7 +330,7 @@ func containsJSONNumber(a float64, b interface{}) (bool, error) {
 //     TODO(andy): BLOB, BIT, OPAQUE, DATETIME, TIME, DATE, INTEGER
 //
 // https://dev.mysql.com/doc/refman/8.0/en/json.html#json-comparison
-func compareJSON(a, b interface{}) (int, error) {
+func CompareJSON(a, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(b, a); hasNulls {
 		return res, nil
 	}
@@ -391,6 +346,11 @@ func compareJSON(a, b interface{}) (int, error) {
 		return compareJSONString(a, b)
 	case float64:
 		return compareJSONNumber(a, b)
+	case sql.JSONWrapper:
+		if jw, ok := b.(sql.JSONWrapper); ok {
+			b = jw.ToInterface()
+		}
+		return CompareJSON(a.ToInterface(), b)
 	default:
 		return 0, sql.ErrInvalidType.New(a)
 	}
@@ -434,7 +394,7 @@ func compareJSONArray(a []interface{}, b interface{}) (int, error) {
 				return 1, nil
 			}
 
-			cmp, err := compareJSON(aa, b[i])
+			cmp, err := CompareJSON(aa, b[i])
 			if err != nil {
 				return 0, err
 			}
@@ -467,7 +427,7 @@ func compareJSONObject(a map[string]interface{}, b interface{}) (int, error) {
 		// objects. The order of two objects that are not equal is unspecified but deterministic.
 		inter := jsonObjectKeyIntersection(a, b)
 		for _, key := range inter {
-			cmp, err := compareJSON(a[key], b[key])
+			cmp, err := CompareJSON(a[key], b[key])
 			if err != nil {
 				return 0, err
 			}
@@ -574,12 +534,12 @@ func jsonObjectDeterministicOrder(a, b map[string]interface{}, inter []string) (
 	return strings.Compare(aa, bb), nil
 }
 
-func (doc JSONDocument) Insert(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
+func (doc JSONDocument) Insert(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
 	path = strings.TrimSpace(path)
 	return doc.unwrapAndExecute(ctx, path, val, INSERT)
 }
 
-func (doc JSONDocument) Remove(ctx *sql.Context, path string) (MutableJSONValue, bool, error) {
+func (doc JSONDocument) Remove(ctx *sql.Context, path string) (MutableJSON, bool, error) {
 	path = strings.TrimSpace(path)
 	if path == "$" {
 		return nil, false, fmt.Errorf("The path expression '$' is not allowed in this context.")
@@ -588,22 +548,22 @@ func (doc JSONDocument) Remove(ctx *sql.Context, path string) (MutableJSONValue,
 	return doc.unwrapAndExecute(ctx, path, nil, REMOVE)
 }
 
-func (doc JSONDocument) Set(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
+func (doc JSONDocument) Set(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
 	path = strings.TrimSpace(path)
 	return doc.unwrapAndExecute(ctx, path, val, SET)
 }
 
-func (doc JSONDocument) Replace(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
+func (doc JSONDocument) Replace(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
 	path = strings.TrimSpace(path)
 	return doc.unwrapAndExecute(ctx, path, val, REPLACE)
 }
 
-func (doc JSONDocument) ArrayAppend(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
+func (doc JSONDocument) ArrayAppend(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
 	path = strings.TrimSpace(path)
 	return doc.unwrapAndExecute(ctx, path, val, ARRAY_APPEND)
 }
 
-func (doc JSONDocument) ArrayInsert(ctx *sql.Context, path string, val JSONValue) (MutableJSONValue, bool, error) {
+func (doc JSONDocument) ArrayInsert(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
 	path = strings.TrimSpace(path)
 
 	if path == "$" {
@@ -625,18 +585,15 @@ const (
 
 // unwrapAndExecute unwraps the JSONDocument and executes the given path on the unwrapped value. The path string passed
 // in at this point should be unmodified.
-func (doc JSONDocument) unwrapAndExecute(ctx *sql.Context, path string, val JSONValue, mode int) (MutableJSONValue, bool, error) {
+func (doc JSONDocument) unwrapAndExecute(ctx *sql.Context, path string, val sql.JSONWrapper, mode int) (MutableJSON, bool, error) {
 	if path == "" {
 		return nil, false, fmt.Errorf("Invalid JSON path expression. Empty path")
 	}
 
 	var err error
-	var unmarshalled JSONDocument
+	var unmarshalled interface{}
 	if val != nil {
-		unmarshalled, err = val.Unmarshall(ctx)
-		if err != nil {
-			return nil, false, err
-		}
+		unmarshalled = val.ToInterface()
 	} else if mode != REMOVE {
 		return nil, false, fmt.Errorf("Invariant violation. value may not be nil")
 	}
@@ -650,7 +607,7 @@ func (doc JSONDocument) unwrapAndExecute(ctx *sql.Context, path string, val JSON
 	// and is passed as a pointer because some function parse a variable number of characters.
 	cursor := 1
 
-	resultRaw, changed, parseErr := walkPathAndUpdate(path, doc.Val, unmarshalled.Val, mode, &cursor)
+	resultRaw, changed, parseErr := walkPathAndUpdate(path, doc.Val, unmarshalled, mode, &cursor)
 	if parseErr != nil {
 		err = fmt.Errorf("%s at character %d of $%s", parseErr.msg, parseErr.character, path)
 		return nil, false, err
