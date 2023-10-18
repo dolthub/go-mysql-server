@@ -1205,7 +1205,7 @@ Project
  ├─ columns: [convert
  │   ├─ type: char
  │   ├─ typeLength: 3
- │   └─ 10.567890 (double)
+ │   └─ 10.56789 (decimal(7,5))
  │   as CAST(10.56789 as CHAR(3))]
  └─ Table
      ├─ name: 
