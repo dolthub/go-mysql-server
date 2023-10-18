@@ -136,18 +136,18 @@ func NewIndexLookup(idx Index, ranges RangeCollection, isPointLookup, isEmptyRan
 	}
 }
 
-func (il *IndexLookup) IsEmpty() bool {
+func (il IndexLookup) IsEmpty() bool {
 	return il.Index == nil
 }
 
-func (il *IndexLookup) String() string {
+func (il IndexLookup) String() string {
 	pr := NewTreePrinter()
 	_ = pr.WriteNode("IndexLookup")
 	pr.WriteChildren(fmt.Sprintf("index: %s", il.Index), fmt.Sprintf("ranges: %s", il.Ranges.String()))
 	return pr.String()
 }
 
-func (il *IndexLookup) DebugString() string {
+func (il IndexLookup) DebugString() string {
 	pr := NewTreePrinter()
 	_ = pr.WriteNode("IndexLookup")
 	pr.WriteChildren(fmt.Sprintf("index: %s", il.Index), fmt.Sprintf("ranges: %s", il.Ranges.DebugString()))
