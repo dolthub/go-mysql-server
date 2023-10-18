@@ -127,12 +127,12 @@ func NewIndexLookup(idx Index, ranges RangeCollection, isPointLookup, isEmptyRan
 		}
 	}
 	return IndexLookup{
-		Index: idx,
-		Ranges: ranges,
-		IsPointLookup: isPointLookup,
-		IsEmptyRange: isEmptyRange,
+		Index:           idx,
+		Ranges:          ranges,
+		IsPointLookup:   isPointLookup,
+		IsEmptyRange:    isEmptyRange,
 		IsSpatialLookup: isSpatialLookup,
-		IsReverse: isReverse,
+		IsReverse:       isReverse,
 	}
 }
 
