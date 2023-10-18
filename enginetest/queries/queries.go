@@ -8096,6 +8096,52 @@ ORDER BY 1;`,
 			{2},
 		},
 	},
+	{
+		Query: "select * from xy where y < 1 or y > 2 order by y",
+		Expected: []sql.Row{
+			{1, 0},
+			{3, 3},
+		},
+	},
+	{
+		Query: "select * from xy where y < 1 or y > 2 order by y desc",
+		Expected: []sql.Row{
+			{3, 3},
+			{1, 0},
+		},
+	},
+	{
+		Query: "select * from xy where x in (3, 0, 1) order by x",
+		Expected: []sql.Row{
+			{0, 2},
+			{1, 0},
+			{3, 3},
+		},
+	},
+	{
+		Query: "select * from xy where x in (3, 0, 1) order by x desc",
+		Expected: []sql.Row{
+			{3, 3},
+			{1, 0},
+			{0, 2},
+		},
+	},
+	{
+		Query: "select * from xy where y in (3, 0, 1) order by y",
+		Expected: []sql.Row{
+			{1, 0},
+			{2, 1},
+			{3, 3},
+		},
+	},
+	{
+		Query: "select * from xy where y in (3, 0, 1) order by y desc",
+		Expected: []sql.Row{
+			{3, 3},
+			{2, 1},
+			{1, 0},
+		},
+	},
 
 	{
 		Query: "select max(x) from xy",
