@@ -538,6 +538,14 @@ func checkResults(
 				}
 				widenedExpected[i][j] = actual // ensure it passes equality check later
 			}
+			// used for server engine tests
+			if b, ok := widenedExpected[i][j].(bool); ok {
+				if b {
+					widenedExpected[i][j] = int64(1)
+				} else {
+					widenedExpected[i][j] = int64(0)
+				}
+			}
 		}
 	}
 

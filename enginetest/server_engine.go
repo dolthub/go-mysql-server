@@ -191,7 +191,7 @@ func rowIterForGoSqlRows(sch sql.Schema, rows *gosql.Rows) (sql.RowIter, error) 
 			return nil, err
 		}
 
-		row = convertJsonAndGeometryTypes(sch, row)
+		row = convertValue(sch, row)
 
 		result = append(result, row)
 	}
@@ -199,7 +199,9 @@ func rowIterForGoSqlRows(sch sql.Schema, rows *gosql.Rows) (sql.RowIter, error) 
 	return sql.RowsToRowIter(result...), nil
 }
 
-func convertJsonAndGeometryTypes(sch sql.Schema, row sql.Row) sql.Row {
+// convertValue converts the row value scanned from go sql driver client to type that we expect.
+// This method helps with testing existing enginetests that expects specific type as returned value.
+func convertValue(sch sql.Schema, row sql.Row) sql.Row {
 	for i, col := range sch {
 		switch col.Type.Type() {
 		case query.Type_GEOMETRY:
