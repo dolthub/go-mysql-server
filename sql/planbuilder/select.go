@@ -107,7 +107,7 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	b.buildProjection(outScope, projScope)
 	outScope = projScope
 
-	b.buildDistinct(outScope, s.QueryOpts)
+	b.buildDistinct(outScope, s.QueryOpts.Distinct)
 
 	// OFFSET and LIMIT are last
 	offset := b.buildOffset(outScope, s.Limit)
@@ -117,12 +117,7 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	limit := b.buildLimit(outScope, s.Limit)
 	if limit != nil {
 		l := plan.NewLimit(limit, outScope.node)
-		for _, opt := range s.QueryOpts {
-			if opt == ast.SQLCalcFoundRowsStr {
-				l.CalcFoundRows = true
-				break
-			}
-		}
+		l.CalcFoundRows = s.QueryOpts.SQLCalcFoundRows
 		outScope.node = l
 	}
 
@@ -173,19 +168,8 @@ func (b *Builder) buildOffset(inScope *scope, limit *ast.Limit) sql.Expression {
 
 // buildDistinct creates a new plan.Distinct node if the query has a DISTINCT option.
 // If the query has both DISTINCT and ALL, an error is returned.
-func (b *Builder) buildDistinct(inScope *scope, queryOpts []string) {
-	hasAll, hasDistinct := false, false
-	for _, opt := range queryOpts {
-		if opt == ast.DistinctStr {
-			hasDistinct = true
-		} else if opt == ast.AllStr {
-			hasAll = true
-		}
-	}
-	if hasAll && hasDistinct {
-		b.handleErr(fmt.Errorf("incorrect usage of ALL and DISTINCT"))
-	}
-	if hasDistinct {
+func (b *Builder) buildDistinct(inScope *scope, distinct bool) {
+	if distinct {
 		inScope.node = plan.NewDistinct(inScope.node)
 	}
 }
