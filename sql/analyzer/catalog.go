@@ -379,7 +379,8 @@ func (c *Catalog) RowCount(ctx *sql.Context, db, table string) (uint64, error) {
 	if !ok {
 		return 0, nil
 	}
-	return st.RowCount(ctx)
+	cnt, _, err = st.RowCount(ctx)
+	return cnt, err
 }
 
 func (c *Catalog) DataLength(ctx *sql.Context, db, table string) (uint64, error) {

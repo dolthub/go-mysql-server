@@ -96,8 +96,8 @@ func (c *ColumnsTable) DataLength(_ *sql.Context) (uint64, error) {
 	return uint64(len(c.Schema()) * int(types.Text.MaxByteLength()) * defaultColumnsTableRowCount), nil
 }
 
-func (c *ColumnsTable) RowCount(_ *sql.Context) (uint64, error) {
-	return defaultColumnsTableRowCount, nil
+func (c *ColumnsTable) RowCount(ctx *sql.Context) (uint64, bool, error) {
+	return defaultColumnsTableRowCount, false, nil
 }
 
 func (c *ColumnsTable) AssignCatalog(cat sql.Catalog) sql.Table {

@@ -49,12 +49,19 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			return n, transform.NewTree, nil
 		}
 
-		// some indexes (like doltHistoryTable) can't be reversed
+		// if the index is not reversible, do nothing
 		if oi, ok := lookup.Index.(sql.OrderedIndex); ok && !oi.Reversible() {
 			return n, transform.SameTree, nil
 		}
 
-		lookup.Reverse()
+		lookup = sql.NewIndexLookup(
+			lookup.Index,
+			lookup.Ranges,
+			lookup.IsPointLookup,
+			lookup.IsEmptyRange,
+			lookup.IsSpatialLookup,
+			true,
+		)
 		nn, err := plan.NewStaticIndexedAccessForTableNode(n.TableNode, lookup)
 		if err != nil {
 			return nil, transform.SameTree, err
@@ -103,7 +110,14 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			return nil, transform.SameTree, err
 		}
 		if sortNode.SortFields[0].Order == sql.Descending {
-			lookup.Reverse()
+			lookup = sql.NewIndexLookup(
+				lookup.Index,
+				lookup.Ranges,
+				lookup.IsPointLookup,
+				lookup.IsEmptyRange,
+				lookup.IsSpatialLookup,
+				true,
+			)
 		}
 		// Some Primary Keys (like doltHistoryTable) are not in order
 		if oi, ok := idx.(sql.OrderedIndex); ok && ((lookup.IsReverse && !oi.Reversible()) || oi.Order() == sql.IndexOrderNone) {

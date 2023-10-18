@@ -130,7 +130,7 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error
 }
 
 func (h *Handler) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
-	_, err := h.errorWrappedDoQuery(c, prepare.PrepareStmt, MultiStmtModeOff, prepare.BindVars, func(res *sqltypes.Result, more bool) error {
+	_, err := h.errorWrappedDoQuery(c, prepare.PrepareStmt, nil, MultiStmtModeOff, prepare.BindVars, func(res *sqltypes.Result, more bool) error {
 		return callback(res)
 	})
 	return err
@@ -180,7 +180,7 @@ func (h *Handler) ComMultiQuery(
 	query string,
 	callback func(*sqltypes.Result, bool) error,
 ) (string, error) {
-	return h.errorWrappedDoQuery(c, query, MultiStmtModeOn, nil, callback)
+	return h.errorWrappedDoQuery(c, query, nil, MultiStmtModeOn, nil, callback)
 }
 
 // ComQuery executes a SQL query on the SQLe engine.
@@ -189,7 +189,18 @@ func (h *Handler) ComQuery(
 	query string,
 	callback func(*sqltypes.Result, bool) error,
 ) error {
-	_, err := h.errorWrappedDoQuery(c, query, MultiStmtModeOff, nil, callback)
+	_, err := h.errorWrappedDoQuery(c, query, nil, MultiStmtModeOff, nil, callback)
+	return err
+}
+
+// ComParsedQuery executes a pre-parsed SQL query on the SQLe engine.
+func (h *Handler) ComParsedQuery(
+	c *mysql.Conn,
+	query string,
+	parsed sqlparser.Statement,
+	callback func(*sqltypes.Result, bool) error,
+) error {
+	_, err := h.errorWrappedDoQuery(c, query, parsed, MultiStmtModeOff, nil, callback)
 	return err
 }
 
@@ -198,6 +209,7 @@ var queryLoggingRegex = regexp.MustCompile(`[\r\n\t ]+`)
 func (h *Handler) doQuery(
 	c *mysql.Conn,
 	query string,
+	parsed sqlparser.Statement,
 	mode MultiStmtMode,
 	bindings map[string]*query.BindVariable,
 	callback func(*sqltypes.Result, bool) error,
@@ -209,11 +221,12 @@ func (h *Handler) doQuery(
 
 	var remainder string
 	var prequery string
-	var parsed sqlparser.Statement
-	if _, ok := h.e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query); mode == MultiStmtModeOn && !ok {
-		parsed, prequery, remainder, err = planbuilder.ParseOnly(ctx, query, true)
-		if prequery != "" {
-			query = prequery
+	if parsed == nil {
+		if _, ok := h.e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query); mode == MultiStmtModeOn && !ok {
+			parsed, prequery, remainder, err = planbuilder.ParseOnly(ctx, query, true)
+			if prequery != "" {
+				query = prequery
+			}
 		}
 	}
 
@@ -443,6 +456,7 @@ func isSessionAutocommit(ctx *sql.Context) (bool, error) {
 func (h *Handler) errorWrappedDoQuery(
 	c *mysql.Conn,
 	query string,
+	parsed sqlparser.Statement,
 	mode MultiStmtMode,
 	bindings map[string]*query.BindVariable,
 	callback func(*sqltypes.Result, bool) error,
@@ -452,7 +466,7 @@ func (h *Handler) errorWrappedDoQuery(
 		h.sel.QueryStarted()
 	}
 
-	remainder, err := h.doQuery(c, query, mode, bindings, callback)
+	remainder, err := h.doQuery(c, query, parsed, mode, bindings, callback)
 	if err != nil {
 		err = sql.CastSQLError(err)
 	}

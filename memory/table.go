@@ -409,9 +409,10 @@ func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
 	return numBytesPerRow * numRows, nil
 }
 
-func (t *Table) RowCount(ctx *sql.Context) (uint64, error) {
+func (t *Table) RowCount(ctx *sql.Context) (uint64, bool, error) {
 	data := t.sessionTableData(ctx)
-	return data.numRows(ctx)
+	rows, err := data.numRows(ctx)
+	return rows, true, err
 }
 
 func NewPartition(key []byte) *Partition {
