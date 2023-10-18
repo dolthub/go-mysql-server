@@ -277,7 +277,7 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 			return
 		}
 		// Load the number of rows from the parent table, since it's used in the relevancy calculation
-		expr.parentRowCount, nErr = expr.ParentTable.(sql.StatisticsTable).RowCount(ctx)
+		expr.parentRowCount, _, nErr = expr.ParentTable.(sql.StatisticsTable).RowCount(ctx)
 		if nErr != nil {
 			err = nErr
 			return

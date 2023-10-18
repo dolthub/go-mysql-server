@@ -3285,9 +3285,6 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   ├─ CrossJoin\n" +
 			"         │   │   │   │   ├─ CrossJoin\n" +
 			"         │   │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   ├─ an.person_id:2!null\n" +
-			"         │   │   │   │   │   │   │   └─ ci.person_id:0!null\n" +
 			"         │   │   │   │   │   │   ├─ TableAlias(ci)\n" +
 			"         │   │   │   │   │   │   │   └─ ProcessTable\n" +
 			"         │   │   │   │   │   │   │       └─ Table\n" +
@@ -3296,6 +3293,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │   │   └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │       └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │           ├─ index: [aka_name.person_id]\n" +
+			"         │   │   │   │   │   │           ├─ keys: [ci.person_id]\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │               └─ columns: [person_id name]\n" +
@@ -3422,9 +3420,6 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   ├─ CrossJoin\n" +
 			"         │   │   │   │   ├─ CrossJoin\n" +
 			"         │   │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   ├─ an.person_id:2!null\n" +
-			"         │   │   │   │   │   │   │   └─ ci.person_id:0!null\n" +
 			"         │   │   │   │   │   │   ├─ TableAlias(ci)\n" +
 			"         │   │   │   │   │   │   │   └─ ProcessTable\n" +
 			"         │   │   │   │   │   │   │       └─ Table\n" +
@@ -3433,6 +3428,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │   │   └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │       └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │           ├─ index: [aka_name.person_id]\n" +
+			"         │   │   │   │   │   │           ├─ keys: [ci.person_id]\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │               └─ columns: [person_id name]\n" +
@@ -3552,9 +3548,6 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   ├─ CrossJoin\n" +
 			"         │   │   │   │   ├─ CrossJoin\n" +
 			"         │   │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   ├─ an.person_id:2!null\n" +
-			"         │   │   │   │   │   │   │   └─ ci.person_id:0!null\n" +
 			"         │   │   │   │   │   │   ├─ TableAlias(ci)\n" +
 			"         │   │   │   │   │   │   │   └─ ProcessTable\n" +
 			"         │   │   │   │   │   │   │       └─ Table\n" +
@@ -3563,6 +3556,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │   │   └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │       └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │           ├─ index: [aka_name.person_id]\n" +
+			"         │   │   │   │   │   │           ├─ keys: [ci.person_id]\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │               └─ columns: [person_id name]\n" +
@@ -3687,9 +3681,6 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   ├─ CrossJoin\n" +
 			"         │   │   │   │   ├─ CrossJoin\n" +
 			"         │   │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   ├─ an.person_id:2!null\n" +
-			"         │   │   │   │   │   │   │   └─ ci.person_id:0!null\n" +
 			"         │   │   │   │   │   │   ├─ TableAlias(ci)\n" +
 			"         │   │   │   │   │   │   │   └─ ProcessTable\n" +
 			"         │   │   │   │   │   │   │       └─ Table\n" +
@@ -3698,6 +3689,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │   │   └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │       └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │           ├─ index: [aka_name.person_id]\n" +
+			"         │   │   │   │   │   │           ├─ keys: [ci.person_id]\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │               └─ columns: [person_id name]\n" +
@@ -4946,9 +4938,6 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │   │   │           ├─ name: char_name\n" +
 			"         │   │   │   │   │   │   │   │           └─ columns: [id]\n" +
 			"         │   │   │   │   │   │   │   └─ LookupJoin\n" +
-			"         │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │       │   ├─ ci.person_id:1!null\n" +
-			"         │   │   │   │   │   │   │       │   └─ an.person_id:6!null\n" +
 			"         │   │   │   │   │   │   │       ├─ Filter\n" +
 			"         │   │   │   │   │   │   │       │   ├─ HashIn\n" +
 			"         │   │   │   │   │   │   │       │   │   ├─ ci.note:3\n" +
@@ -4961,6 +4950,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
+			"         │   │   │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
 			"         │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │   │                   └─ columns: [person_id]\n" +
@@ -5139,9 +5129,6 @@ WHERE ci.note = '(voice)'
 			"         │   │   │   │   │   │   │   │           ├─ name: char_name\n" +
 			"         │   │   │   │   │   │   │   │           └─ columns: [id]\n" +
 			"         │   │   │   │   │   │   │   └─ LookupJoin\n" +
-			"         │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │       │   ├─ ci.person_id:1!null\n" +
-			"         │   │   │   │   │   │   │       │   └─ an.person_id:6!null\n" +
 			"         │   │   │   │   │   │   │       ├─ Filter\n" +
 			"         │   │   │   │   │   │   │       │   ├─ Eq\n" +
 			"         │   │   │   │   │   │   │       │   │   ├─ ci.note:3\n" +
@@ -5154,6 +5141,7 @@ WHERE ci.note = '(voice)'
 			"         │   │   │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
+			"         │   │   │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
 			"         │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │   │                   └─ columns: [person_id]\n" +
@@ -5332,9 +5320,6 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │   │   │           ├─ name: char_name\n" +
 			"         │   │   │   │   │   │   │   │           └─ columns: [id]\n" +
 			"         │   │   │   │   │   │   │   └─ LookupJoin\n" +
-			"         │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │       │   ├─ ci.person_id:1!null\n" +
-			"         │   │   │   │   │   │   │       │   └─ an.person_id:6!null\n" +
 			"         │   │   │   │   │   │   │       ├─ Filter\n" +
 			"         │   │   │   │   │   │   │       │   ├─ HashIn\n" +
 			"         │   │   │   │   │   │   │       │   │   ├─ ci.note:3\n" +
@@ -5347,6 +5332,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
+			"         │   │   │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
 			"         │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │   │                   └─ columns: [person_id]\n" +
@@ -5515,9 +5501,6 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │   │   │           ├─ name: char_name\n" +
 			"         │   │   │   │   │   │   │   │           └─ columns: [id]\n" +
 			"         │   │   │   │   │   │   │   └─ LookupJoin\n" +
-			"         │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │       │   ├─ ci.person_id:1!null\n" +
-			"         │   │   │   │   │   │   │       │   └─ an.person_id:6!null\n" +
 			"         │   │   │   │   │   │   │       ├─ Filter\n" +
 			"         │   │   │   │   │   │   │       │   ├─ HashIn\n" +
 			"         │   │   │   │   │   │   │       │   │   ├─ ci.note:3\n" +
@@ -5530,6 +5513,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
+			"         │   │   │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
 			"         │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │   │                   └─ columns: [person_id]\n" +
@@ -8649,9 +8633,6 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │   │   │   │   │           ├─ name: char_name\n" +
 			"         │   │   │   │   │   │   │   │   │   │           └─ columns: [id name]\n" +
 			"         │   │   │   │   │   │   │   │   │   └─ LookupJoin\n" +
-			"         │   │   │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │       │   ├─ ci.person_id:2!null\n" +
-			"         │   │   │   │   │   │   │   │   │       │   └─ an.person_id:7!null\n" +
 			"         │   │   │   │   │   │   │   │   │       ├─ Filter\n" +
 			"         │   │   │   │   │   │   │   │   │       │   ├─ HashIn\n" +
 			"         │   │   │   │   │   │   │   │   │       │   │   ├─ ci.note:3\n" +
@@ -8664,6 +8645,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
 			"         │   │   │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │   │   │   │                   └─ columns: [person_id]\n" +
@@ -8885,9 +8867,6 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │   │   │   │   │           ├─ name: char_name\n" +
 			"         │   │   │   │   │   │   │   │   │   │           └─ columns: [id name]\n" +
 			"         │   │   │   │   │   │   │   │   │   └─ LookupJoin\n" +
-			"         │   │   │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │       │   ├─ ci.person_id:2!null\n" +
-			"         │   │   │   │   │   │   │   │   │       │   └─ an.person_id:7!null\n" +
 			"         │   │   │   │   │   │   │   │   │       ├─ Filter\n" +
 			"         │   │   │   │   │   │   │   │   │       │   ├─ HashIn\n" +
 			"         │   │   │   │   │   │   │   │   │       │   │   ├─ ci.note:3\n" +
@@ -8900,6 +8879,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
 			"         │   │   │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │   │   │   │                   └─ columns: [person_id]\n" +
@@ -16857,9 +16837,6 @@ WHERE an.name LIKE '%a%'
 			"         │   │   │   ├─ CrossJoin\n" +
 			"         │   │   │   │   ├─ CrossJoin\n" +
 			"         │   │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   ├─ an.person_id:2!null\n" +
-			"         │   │   │   │   │   │   │   └─ ci.person_id:0!null\n" +
 			"         │   │   │   │   │   │   ├─ TableAlias(ci)\n" +
 			"         │   │   │   │   │   │   │   └─ ProcessTable\n" +
 			"         │   │   │   │   │   │   │       └─ Table\n" +
@@ -16870,6 +16847,7 @@ WHERE an.name LIKE '%a%'
 			"         │   │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
+			"         │   │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
 			"         │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │                   └─ columns: [person_id name]\n" +
@@ -17017,9 +16995,6 @@ WHERE an.name LIKE '%a%'
 			"         │   │   │   ├─ CrossJoin\n" +
 			"         │   │   │   │   ├─ CrossJoin\n" +
 			"         │   │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   ├─ an.person_id:2!null\n" +
-			"         │   │   │   │   │   │   │   └─ ci.person_id:0!null\n" +
 			"         │   │   │   │   │   │   ├─ TableAlias(ci)\n" +
 			"         │   │   │   │   │   │   │   └─ ProcessTable\n" +
 			"         │   │   │   │   │   │   │       └─ Table\n" +
@@ -17030,6 +17005,7 @@ WHERE an.name LIKE '%a%'
 			"         │   │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
+			"         │   │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
 			"         │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │                   └─ columns: [person_id name]\n" +
@@ -17178,9 +17154,6 @@ WHERE an.name IS NOT NULL
 			"         │   │   │   ├─ CrossJoin\n" +
 			"         │   │   │   │   ├─ CrossJoin\n" +
 			"         │   │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   ├─ an.person_id:2!null\n" +
-			"         │   │   │   │   │   │   │   └─ ci.person_id:0!null\n" +
 			"         │   │   │   │   │   │   ├─ TableAlias(ci)\n" +
 			"         │   │   │   │   │   │   │   └─ ProcessTable\n" +
 			"         │   │   │   │   │   │   │       └─ Table\n" +
@@ -17202,6 +17175,7 @@ WHERE an.name IS NOT NULL
 			"         │   │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
+			"         │   │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
 			"         │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │                   └─ columns: [person_id name]\n" +
@@ -17331,9 +17305,6 @@ WHERE ci.note ='(voice: English version)'
 			"         │   │   │   │       └─ mc.movie_id:8!null\n" +
 			"         │   │   │   ├─ CrossJoin\n" +
 			"         │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   ├─ an1.person_id:4!null\n" +
-			"         │   │   │   │   │   │   └─ ci.person_id:0!null\n" +
 			"         │   │   │   │   │   ├─ Filter\n" +
 			"         │   │   │   │   │   │   ├─ Eq\n" +
 			"         │   │   │   │   │   │   │   ├─ ci.note:2\n" +
@@ -17346,6 +17317,7 @@ WHERE ci.note ='(voice: English version)'
 			"         │   │   │   │   │   └─ TableAlias(an1)\n" +
 			"         │   │   │   │   │       └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │           ├─ index: [aka_name.person_id]\n" +
+			"         │   │   │   │   │           ├─ keys: [ci.person_id]\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: aka_name\n" +
 			"         │   │   │   │   │               └─ columns: [person_id name]\n" +
@@ -17462,9 +17434,6 @@ WHERE ci.note ='(voice: English version)'
 			"         │   │   │   │       └─ mc.movie_id:8!null\n" +
 			"         │   │   │   ├─ CrossJoin\n" +
 			"         │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   ├─ an.person_id:4!null\n" +
-			"         │   │   │   │   │   │   └─ ci.person_id:0!null\n" +
 			"         │   │   │   │   │   ├─ Filter\n" +
 			"         │   │   │   │   │   │   ├─ Eq\n" +
 			"         │   │   │   │   │   │   │   ├─ ci.note:2\n" +
@@ -17477,6 +17446,7 @@ WHERE ci.note ='(voice: English version)'
 			"         │   │   │   │   │   └─ TableAlias(an)\n" +
 			"         │   │   │   │   │       └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │           ├─ index: [aka_name.person_id]\n" +
+			"         │   │   │   │   │           ├─ keys: [ci.person_id]\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: aka_name\n" +
 			"         │   │   │   │   │               └─ columns: [person_id name]\n" +
@@ -17605,9 +17575,6 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │       └─ mc.movie_id:7!null\n" +
 			"         │   │   │   ├─ CrossJoin\n" +
 			"         │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   ├─ a1.person_id:3!null\n" +
-			"         │   │   │   │   │   │   └─ ci.person_id:0!null\n" +
 			"         │   │   │   │   │   ├─ TableAlias(ci)\n" +
 			"         │   │   │   │   │   │   └─ ProcessTable\n" +
 			"         │   │   │   │   │   │       └─ Table\n" +
@@ -17616,6 +17583,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │   └─ TableAlias(a1)\n" +
 			"         │   │   │   │   │       └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │           ├─ index: [aka_name.person_id]\n" +
+			"         │   │   │   │   │           ├─ keys: [ci.person_id]\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: aka_name\n" +
 			"         │   │   │   │   │               └─ columns: [person_id name]\n" +
@@ -17712,9 +17680,6 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │       └─ mc.movie_id:7!null\n" +
 			"         │   │   │   ├─ CrossJoin\n" +
 			"         │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   ├─ an1.person_id:3!null\n" +
-			"         │   │   │   │   │   │   └─ ci.person_id:0!null\n" +
 			"         │   │   │   │   │   ├─ TableAlias(ci)\n" +
 			"         │   │   │   │   │   │   └─ ProcessTable\n" +
 			"         │   │   │   │   │   │       └─ Table\n" +
@@ -17723,6 +17688,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │   └─ TableAlias(an1)\n" +
 			"         │   │   │   │   │       └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │           ├─ index: [aka_name.person_id]\n" +
+			"         │   │   │   │   │           ├─ keys: [ci.person_id]\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: aka_name\n" +
 			"         │   │   │   │   │               └─ columns: [person_id name]\n" +
@@ -17841,9 +17807,6 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │           ├─ name: char_name\n" +
 			"         │   │   │   │   │   │           └─ columns: [id name]\n" +
 			"         │   │   │   │   │   └─ LookupJoin\n" +
-			"         │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │       │   ├─ an.person_id:7!null\n" +
-			"         │   │   │   │   │       │   └─ ci.person_id:2!null\n" +
 			"         │   │   │   │   │       ├─ Filter\n" +
 			"         │   │   │   │   │       │   ├─ HashIn\n" +
 			"         │   │   │   │   │       │   │   ├─ ci.note:3\n" +
@@ -17856,6 +17819,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
+			"         │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │                   └─ columns: [person_id name]\n" +
@@ -17987,9 +17951,6 @@ WHERE ci.note = '(voice)'
 			"         │   │   │   │   │   │           ├─ name: char_name\n" +
 			"         │   │   │   │   │   │           └─ columns: [id name]\n" +
 			"         │   │   │   │   │   └─ LookupJoin\n" +
-			"         │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │       │   ├─ an.person_id:7!null\n" +
-			"         │   │   │   │   │       │   └─ ci.person_id:2!null\n" +
 			"         │   │   │   │   │       ├─ Filter\n" +
 			"         │   │   │   │   │       │   ├─ Eq\n" +
 			"         │   │   │   │   │       │   │   ├─ ci.note:3\n" +
@@ -18002,6 +17963,7 @@ WHERE ci.note = '(voice)'
 			"         │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
+			"         │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │                   └─ columns: [person_id name]\n" +
@@ -18131,9 +18093,6 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │           ├─ name: char_name\n" +
 			"         │   │   │   │   │   │           └─ columns: [id name]\n" +
 			"         │   │   │   │   │   └─ LookupJoin\n" +
-			"         │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │       │   ├─ an.person_id:7!null\n" +
-			"         │   │   │   │   │       │   └─ ci.person_id:2!null\n" +
 			"         │   │   │   │   │       ├─ Filter\n" +
 			"         │   │   │   │   │       │   ├─ HashIn\n" +
 			"         │   │   │   │   │       │   │   ├─ ci.note:3\n" +
@@ -18146,6 +18105,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
+			"         │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │                   └─ columns: [person_id name]\n" +
@@ -18266,9 +18226,6 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │           ├─ name: char_name\n" +
 			"         │   │   │   │   │   │           └─ columns: [id name]\n" +
 			"         │   │   │   │   │   └─ LookupJoin\n" +
-			"         │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │       │   ├─ an.person_id:7!null\n" +
-			"         │   │   │   │   │       │   └─ ci.person_id:2!null\n" +
 			"         │   │   │   │   │       ├─ Filter\n" +
 			"         │   │   │   │   │       │   ├─ HashIn\n" +
 			"         │   │   │   │   │       │   │   ├─ ci.note:3\n" +
@@ -18281,6 +18238,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
+			"         │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │                   └─ columns: [person_id name]\n" +

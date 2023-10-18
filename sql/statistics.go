@@ -22,8 +22,8 @@ type StatisticsTable interface {
 	Table
 	// DataLength returns the length of the data file (varies by engine).
 	DataLength(ctx *Context) (uint64, error)
-	// RowCount returns the row count for this table
-	RowCount(ctx *Context) (uint64, error)
+	// RowCount returns the row count for this table and whether the count is exact
+	RowCount(ctx *Context) (uint64, bool, error)
 }
 
 type StatsProvider interface {

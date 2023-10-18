@@ -139,7 +139,7 @@ func (b *BaseBuilder) buildShowTableStatus(ctx *sql.Context, n *plan.ShowTableSt
 		var dataLength uint64
 
 		if st, ok := table.(sql.StatisticsTable); ok {
-			numRows, err = st.RowCount(ctx)
+			numRows, _, err = st.RowCount(ctx)
 			if err != nil {
 				return nil, err
 			}

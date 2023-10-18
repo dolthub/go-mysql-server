@@ -470,6 +470,9 @@ func (b *ExecBuilder) buildScalar(e ScalarExpr, sch sql.Schema) (sql.Expression,
 
 func (b *ExecBuilder) buildFilterConjunction(scope *plan.Scope, s sql.Schema, filters ...ScalarExpr) (sql.Expression, error) {
 	var ret sql.Expression
+	if len(filters) == 0 {
+		return expression.NewLiteral(true, types.Boolean), nil
+	}
 	for i := range filters {
 		filter, err := b.buildScalar(filters[i], s)
 		if err != nil {
