@@ -917,10 +917,10 @@ func (li *limitIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	childRow, err := li.childIter.Next(ctx)
-	li.currentPos++
 	if err != nil {
 		return nil, err
 	}
+	li.currentPos++
 
 	return childRow, nil
 }
