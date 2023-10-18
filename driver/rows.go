@@ -126,7 +126,7 @@ func (r *Rows) convert(col int, v driver.Value) interface{} {
 			return doc.Val
 		}
 
-		str, err := doc.ToString(r.ctx)
+		str, err := doc.JSONString()
 		if err != nil {
 			break
 		}

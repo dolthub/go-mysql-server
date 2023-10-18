@@ -895,21 +895,16 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				return true, nil
 			}
 			for _, stats := range tableStats {
-				for _, c := range stats.Columns {
+				for _, c := range stats.Columns() {
 					if privSetTbl.Count() == 0 && privSetDb.Count() == 0 && privSetTbl.Column(c).Count() == 0 {
 						continue
 					}
 				}
 				rows = append(rows, Row{
-					db.Name(),                        // table_schema
-					t.Name(),                         // table_name
-					strings.Join(stats.Columns, ","), // column_name
-					types.JSONDocument{Val: map[string]interface{}{
-						"buckets":   stats.Histogram,
-						"distinct":  stats.Distinct,
-						"row_count": stats.Rows,
-						"nulls":     stats.Nulls,
-					}}, // histogram
+					db.Name(),                          // table_schema
+					t.Name(),                           // table_name
+					strings.Join(stats.Columns(), ","), // column_name
+					stats,
 				})
 			}
 			return true, nil

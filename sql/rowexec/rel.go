@@ -183,7 +183,7 @@ func (b *BaseBuilder) buildJSONTable(ctx *sql.Context, n *plan.JSONTable, row sq
 	}
 
 	if jd, ok := data.(types.JSONDocument); ok {
-		data, err = jd.ToString(ctx)
+		data, err = jd.JSONString()
 		if err != nil {
 			return nil, err
 		}

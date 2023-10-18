@@ -24,7 +24,7 @@ import (
 // getMutableJSONVal returns a JSONValue from the given row and expression. The underling value is deeply copied so that
 // you are free to use the mutation functions on the returned value.
 // nil will be returned only if the inputs are nil. This will not return an error, so callers must check.
-func getMutableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (types.MutableJSONValue, error) {
+func getMutableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (types.MutableJSON, error) {
 	doc, err := getJSONDocumentFromRow(ctx, row, json)
 	if err != nil || doc == nil || doc.Val == nil {
 		return nil, err
@@ -37,7 +37,7 @@ func getMutableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (type
 // getSearchableJSONVal returns a SearchableJSONValue from the given row and expression. The underling value is not copied
 // so it is intended to be used for read-only operations.
 // nil will be returned only if the inputs are nil. This will not return an error, so callers must check.
-func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (types.SearchableJSONValue, error) {
+func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (sql.JSONWrapper, error) {
 	doc, err := getJSONDocumentFromRow(ctx, row, json)
 	if err != nil || doc == nil || doc.Val == nil {
 		return nil, err
@@ -56,7 +56,7 @@ func getJSONDocumentFromRow(ctx *sql.Context, row sql.Row, json sql.Expression) 
 
 	var converted interface{}
 	switch js.(type) {
-	case string, []interface{}, map[string]interface{}, types.JSONValue:
+	case string, []interface{}, map[string]interface{}, sql.JSONWrapper:
 		converted, _, err = types.JSON.Convert(js)
 		if err != nil {
 			return nil, sql.ErrInvalidJSONText.New(js)
@@ -68,10 +68,7 @@ func getJSONDocumentFromRow(ctx *sql.Context, row sql.Row, json sql.Expression) 
 	doc, ok := converted.(types.JSONDocument)
 	if !ok {
 		// This should never happen, but just in case.
-		doc, err = js.(types.JSONValue).Unmarshall(ctx)
-		if err != nil {
-			return nil, err
-		}
+		doc = types.JSONDocument{Val: js.(sql.JSONWrapper).ToInterface()}
 	}
 
 	return &doc, nil
@@ -80,7 +77,7 @@ func getJSONDocumentFromRow(ctx *sql.Context, row sql.Row, json sql.Expression) 
 // pathValPair is a helper struct for use by functions which take json paths paired with a json value. eg. JSON_SET, JSON_INSERT, etc.
 type pathValPair struct {
 	path string
-	val  types.JSONValue
+	val  sql.JSONWrapper
 }
 
 // buildPathValue builds a pathValPair from the given row and expressions. This is a common pattern in json methods to have
@@ -105,7 +102,7 @@ func buildPathValue(ctx *sql.Context, pathExp sql.Expression, valExp sql.Express
 	if err != nil {
 		return nil, err
 	}
-	jsonVal, ok := val.(types.JSONValue)
+	jsonVal, ok := val.(sql.JSONWrapper)
 	if !ok {
 		jsonVal = types.JSONDocument{val}
 	}
