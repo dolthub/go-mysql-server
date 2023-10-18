@@ -39,22 +39,6 @@ var _ sql.Node = (*Grant)(nil)
 var _ sql.Databaser = (*Grant)(nil)
 var _ sql.CollationCoercible = (*Grant)(nil)
 
-// NewGrant returns a new Grant node.
-func NewGrant(db sql.Database, privileges []Privilege, objType ObjectType, level PrivilegeLevel, users []UserName, withGrant bool, as *GrantUserAssumption, granter string) (*Grant, error) {
-	if strings.ToLower(level.Database) == sql.InformationSchemaDatabaseName {
-		return nil, sql.ErrDatabaseAccessDeniedForUser.New(granter, level.Database)
-	}
-	return &Grant{
-		Privileges:      privileges,
-		ObjectType:      objType,
-		PrivilegeLevel:  level,
-		Users:           users,
-		WithGrantOption: withGrant,
-		As:              as,
-		MySQLDb:         db,
-	}, nil
-}
-
 // Schema implements the interface sql.Node.
 func (n *Grant) Schema() sql.Schema {
 	return types.OkResultSchema
@@ -207,94 +191,6 @@ func (n *Grant) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperat
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Grant) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
-}
-
-// RowIter implements the interface sql.Node.
-func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
-	if !ok {
-		return nil, sql.ErrDatabaseNotFound.New("mysql")
-	}
-	editor := mysqlDb.Editor()
-	defer editor.Close()
-	if n.PrivilegeLevel.Database == "*" && n.PrivilegeLevel.TableRoutine == "*" {
-		if n.ObjectType != ObjectType_Any {
-			return nil, sql.ErrGrantRevokeIllegalPrivilege.New()
-		}
-		if n.As != nil {
-			return nil, fmt.Errorf("GRANT has not yet implemented user assumption")
-		}
-		for _, grantUser := range n.Users {
-			user := mysqlDb.GetUser(editor, grantUser.Name, grantUser.Host, false)
-			if user == nil {
-				return nil, sql.ErrGrantUserDoesNotExist.New()
-			}
-			if err := n.HandleGlobalPrivileges(user); err != nil {
-				return nil, err
-			}
-			if n.WithGrantOption {
-				user.PrivilegeSet.AddGlobalStatic(sql.PrivilegeType_GrantOption)
-			}
-		}
-	} else if n.PrivilegeLevel.Database != "*" && n.PrivilegeLevel.TableRoutine == "*" {
-		database := n.PrivilegeLevel.Database
-		if database == "" {
-			database = ctx.GetCurrentDatabase()
-			if database == "" {
-				return nil, sql.ErrNoDatabaseSelected.New()
-			}
-		}
-		if n.ObjectType != ObjectType_Any {
-			return nil, sql.ErrGrantRevokeIllegalPrivilege.New()
-		}
-		if n.As != nil {
-			return nil, fmt.Errorf("GRANT has not yet implemented user assumption")
-		}
-		for _, grantUser := range n.Users {
-			user := mysqlDb.GetUser(editor, grantUser.Name, grantUser.Host, false)
-			if user == nil {
-				return nil, sql.ErrGrantUserDoesNotExist.New()
-			}
-			if err := n.HandleDatabasePrivileges(user, database); err != nil {
-				return nil, err
-			}
-			if n.WithGrantOption {
-				user.PrivilegeSet.AddDatabase(database, sql.PrivilegeType_GrantOption)
-			}
-		}
-	} else {
-		database := n.PrivilegeLevel.Database
-		if database == "" {
-			database = ctx.GetCurrentDatabase()
-			if database == "" {
-				return nil, sql.ErrNoDatabaseSelected.New()
-			}
-		}
-		if n.ObjectType != ObjectType_Any {
-			//TODO: implement object types
-			return nil, fmt.Errorf("GRANT has not yet implemented object types")
-		}
-		if n.As != nil {
-			return nil, fmt.Errorf("GRANT has not yet implemented user assumption")
-		}
-		for _, grantUser := range n.Users {
-			user := mysqlDb.GetUser(editor, grantUser.Name, grantUser.Host, false)
-			if user == nil {
-				return nil, sql.ErrGrantUserDoesNotExist.New()
-			}
-			if err := n.HandleTablePrivileges(user, database, n.PrivilegeLevel.TableRoutine); err != nil {
-				return nil, err
-			}
-			if n.WithGrantOption {
-				user.PrivilegeSet.AddTable(database, n.PrivilegeLevel.TableRoutine, sql.PrivilegeType_GrantOption)
-			}
-		}
-	}
-	if err := mysqlDb.Persist(ctx, editor); err != nil {
-		return nil, err
-	}
-
-	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
 
 // grantAllGlobalPrivileges adds all global static privileges to the given user, except for the grant privilege (which
@@ -706,41 +602,6 @@ func (*GrantRole) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 	return sql.Collation_binary, 7
 }
 
-// RowIter implements the interface sql.Node.
-func (n *GrantRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
-	if !ok {
-		return nil, sql.ErrDatabaseNotFound.New("mysql")
-	}
-
-	editor := mysqlDb.Editor()
-	defer editor.Close()
-
-	for _, targetUser := range n.TargetUsers {
-		user := mysqlDb.GetUser(editor, targetUser.Name, targetUser.Host, false)
-		if user == nil {
-			return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetUser.String("`"))
-		}
-		for _, targetRole := range n.Roles {
-			role := mysqlDb.GetUser(editor, targetRole.Name, targetRole.Host, true)
-			if role == nil {
-				return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetRole.String("`"))
-			}
-			editor.PutRoleEdge(&mysql_db.RoleEdge{
-				FromHost:        role.Host,
-				FromUser:        role.User,
-				ToHost:          user.Host,
-				ToUser:          user.User,
-				WithAdminOption: n.WithAdminOption,
-			})
-		}
-	}
-	if err := mysqlDb.Persist(ctx, editor); err != nil {
-		return nil, err
-	}
-	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
-}
-
 // GrantProxy represents the statement GRANT PROXY.
 type GrantProxy struct {
 	On              UserName
@@ -805,9 +666,4 @@ func (n *GrantProxy) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*GrantProxy) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
-}
-
-// RowIter implements the interface sql.Node.
-func (n *GrantProxy) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return nil, fmt.Errorf("not yet implemented")
 }

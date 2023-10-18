@@ -46,13 +46,19 @@ func replacePkSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sor
 			return n, transform.NewTree, nil
 		}
 
-		// modify existing lookup to preserve pushed down filters
-		lookup.IsReverse = true
-
-		// Some Primary Keys (like doltHistoryTable) are not in order
-		if oi, ok := lookup.Index.(sql.OrderedIndex); ok && ((lookup.IsReverse && !oi.Reversible()) || oi.Order() == sql.IndexOrderNone) {
+		// if the index is not reversible, do nothing
+		if oi, ok := lookup.Index.(sql.OrderedIndex); ok && !oi.Reversible() {
 			return n, transform.SameTree, nil
 		}
+
+		lookup = sql.NewIndexLookup(
+			lookup.Index,
+			lookup.Ranges,
+			lookup.IsPointLookup,
+			lookup.IsEmptyRange,
+			lookup.IsSpatialLookup,
+			true,
+		)
 		nn, err := plan.NewStaticIndexedAccessForTableNode(n.TableNode, lookup)
 		if err != nil {
 			return nil, transform.SameTree, err
@@ -94,7 +100,16 @@ func replacePkSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sor
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		lookup.IsReverse = sortNode.SortFields[0].Order == sql.Descending
+		if sortNode.SortFields[0].Order == sql.Descending {
+			lookup = sql.NewIndexLookup(
+				lookup.Index,
+				lookup.Ranges,
+				lookup.IsPointLookup,
+				lookup.IsEmptyRange,
+				lookup.IsSpatialLookup,
+				true,
+			)
+		}
 		// Some Primary Keys (like doltHistoryTable) are not in order
 		if oi, ok := pkIndex.(sql.OrderedIndex); ok && ((lookup.IsReverse && !oi.Reversible()) || oi.Order() == sql.IndexOrderNone) {
 			return n, transform.SameTree, nil

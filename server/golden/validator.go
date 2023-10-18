@@ -143,6 +143,16 @@ func (v Validator) ComQuery(
 	return nil
 }
 
+// ComQuery executes a SQL query on the SQLe engine.
+func (v Validator) ComParsedQuery(
+	c *mysql.Conn,
+	query string,
+	parsed sqlparser.Statement,
+	callback func(*sqltypes.Result, bool) error,
+) error {
+	return v.ComQuery(c, query, callback)
+}
+
 // WarningCount is called at the end of each query to obtain
 // the value to be returned to the client in the EOF packet.
 // Note that this will be called either in the context of the
