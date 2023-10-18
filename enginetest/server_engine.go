@@ -226,9 +226,6 @@ func convertValue(sch sql.Schema, row sql.Row) sql.Row {
 			// TODO: check todo in 'emptyValuePointerForType' method
 			//  we try to cast any value we got to uint64
 			if row[i] != nil {
-				f := fmt.Sprintf("%v", row[i])
-				if f == "" {
-				}
 				r, err := toUint64(row[i])
 				if err == nil {
 					row[i] = r
