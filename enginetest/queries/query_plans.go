@@ -2575,13 +2575,14 @@ inner join pq on true
 		Query: `SELECT pk1 AS one, pk2 AS two FROM two_pk ORDER BY one, two`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [two_pk.pk1:0!null as one, two_pk.pk2:1!null as two]\n" +
-			" └─ Sort(two_pk.pk1:0!null as one ASC nullsFirst, two_pk.pk2:1!null as two ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [two_pk.pk1:0!null, two_pk.pk2:1!null, two_pk.c1:2!null, two_pk.c2:3!null, two_pk.c3:4!null, two_pk.c4:5!null, two_pk.c5:6!null, two_pk.pk1:0!null as one, two_pk.pk2:1!null as two]\n" +
-			"         └─ ProcessTable\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: two_pk\n" +
-			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk1:0!null, two_pk.pk2:1!null, two_pk.c1:2!null, two_pk.c2:3!null, two_pk.c3:4!null, two_pk.c4:5!null, two_pk.c5:6!null, two_pk.pk1:0!null as one, two_pk.pk2:1!null as two]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -10108,13 +10109,15 @@ WHERE keyless.c0 IN (
 		Query: "select x as xx, y as yy from xy_hasnull_idx order by yy desc",
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [xy_hasnull_idx.x:0!null as xx, xy_hasnull_idx.y:1 as yy]\n" +
-			" └─ Sort(xy_hasnull_idx.y:1 as yy DESC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [xy_hasnull_idx.x:0!null, xy_hasnull_idx.y:1, xy_hasnull_idx.x:0!null as xx, xy_hasnull_idx.y:1 as yy]\n" +
-			"         └─ ProcessTable\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: xy_hasnull_idx\n" +
-			"                 └─ columns: [x y]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [xy_hasnull_idx.x:0!null, xy_hasnull_idx.y:1, xy_hasnull_idx.x:0!null as xx, xy_hasnull_idx.y:1 as yy]\n" +
+			"     └─ IndexedTableAccess(xy_hasnull_idx)\n" +
+			"         ├─ index: [xy_hasnull_idx.y]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ reverse: true\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy_hasnull_idx\n" +
+			"             └─ columns: [x y]\n" +
 			"",
 	},
 

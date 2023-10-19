@@ -263,7 +263,12 @@ func isSortFieldsValidPrefix(sfExprs []sql.Expression, sfAliases map[string]stri
 		return false
 	}
 	for i, fieldExpr := range sfExprs {
-		fieldName := fieldExpr.String()
+		var fieldName string
+		if alias, ok := fieldExpr.(*expression.Alias); ok {
+			fieldName = alias.Child.String()
+		} else {
+			fieldName = fieldExpr.String()
+		}
 		if alias, ok := sfAliases[strings.ToLower(idxColExprs[i])]; ok && alias == fieldName {
 			continue
 		}
