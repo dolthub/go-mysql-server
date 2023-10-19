@@ -1877,6 +1877,26 @@ func (ps partitionssort) Swap(i, j int) {
 	lidx := ps.allRows[i]
 	ridx := ps.allRows[j]
 	ps.ps[lidx.partitionName][lidx.rowIdx], ps.ps[ridx.partitionName][ridx.rowIdx] = ps.ps[ridx.partitionName][ridx.rowIdx], ps.ps[lidx.partitionName][lidx.rowIdx]
+	
+	// Now update the index storage locations for the swap we just performed as well. This is frankly awful performance
+	// that turns the sort operation into worse than cubic. Doing better requires doing something more intelligent than
+	// sorted slices for rows and indexes, some sort of sorted collection.
+	for _, indexRows := range ps.indexes {
+		for _, idxRow := range indexRows {
+			rowLoc := idxRow[len(idxRow)-1].(primaryRowLocation)
+			if rowLoc.partition == lidx.partitionName && rowLoc.idx == lidx.rowIdx {
+				idxRow[len(idxRow)-1] = primaryRowLocation{
+					partition: ridx.partitionName,
+					idx:       ridx.rowIdx,
+				}
+			} else if rowLoc.partition == ridx.partitionName && rowLoc.idx == ridx.rowIdx {
+				idxRow[len(idxRow)-1] = primaryRowLocation{
+					partition: lidx.partitionName,
+					idx:       lidx.rowIdx,
+				}
+			}
+		}
+	}
 }
 
 func (t Table) copy() *Table {
