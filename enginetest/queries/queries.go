@@ -8640,7 +8640,39 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: planbuilder.ErrFailedToParseStats,
 	},
 	{
+		Query:       "select * from othertable join foo.othertable on foo.othertable.s2 = 'a'",
+		ExpectedErr: sql.ErrTableColumnNotFound,
+	},
+	{
+		Query:       "select * from foo.othertable join othertable on foo.othertable.s2 = 'a'",
+		ExpectedErr: sql.ErrTableColumnNotFound,
+	},
+	{
+		Query:       "select i from mytable a join mytable b on a.i = b.i",
+		ExpectedErr: sql.ErrAmbiguousColumnName,
+	},
+	{
+		Query:       "select i from mytable join mytable",
+		ExpectedErr: sql.ErrAmbiguousColumnName,
+	},
+	{
+		Query:       "select * from mytable join mytable",
+		ExpectedErr: sql.ErrDuplicateAliasOrTable,
+	},
+	{
+		Query:       "select * from (select * from othertable) mytable join mytable",
+		ExpectedErr: sql.ErrDuplicateAliasOrTable,
+	},
+	{
+		Query:       "select * from (select * from foo.othertable) mytable join mytable",
+		ExpectedErr: sql.ErrDuplicateAliasOrTable,
+	},
+	{
 		Query:       "select i from (select * from mytable a join mytable b on a.i = b.i) dt",
+		ExpectedErr: sql.ErrAmbiguousColumnName,
+	},
+	{
+		Query:       "select i from (select * from mytable join mytable) a join mytable b on a.i = b.i",
 		ExpectedErr: sql.ErrAmbiguousColumnName,
 	},
 	{
@@ -8731,10 +8763,10 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		// case-insensitive duplicate
 		Query:       "select * from mytable a join mytable A on a.i = A.i;",
-		ExpectedErr: sql.ErrDuplicateAliasOrTable,
+		ExpectedErr: sql.ErrAmbiguousColumnName,
 	},
 	{
-		Query:       "SELECT * FROM mytable AS t UNION SELECT * FROM mytable AS t, othertable AS t", // duplicate alias in union
+		Query:       "SELECT * FROM mytable AS t, othertable UNION SELECT * FROM mytable AS t, othertable AS t", // duplicate alias in union
 		ExpectedErr: sql.ErrDuplicateAliasOrTable,
 	},
 	{
@@ -9265,6 +9297,14 @@ var BrokenErrorQueries = []QueryErrorTest{
 	{
 		Query:       "SELECT json_valid() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       "select * from othertable join foo.othertable on othertable.text = 'third'",
+		ExpectedErr: sql.ErrUnknownColumn,
+	},
+	{
+		Query:       "select * from foo.othertable join othertable on othertable.text = 'third'",
+		ExpectedErr: sql.ErrUnknownColumn,
 	},
 }
 

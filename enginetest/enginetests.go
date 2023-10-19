@@ -736,7 +736,7 @@ func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 }
 
 func TestQueryErrors(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.MyhistorytableData, setup.OthertableData, setup.SpecialtableData, setup.DatetimetableData, setup.NiltableData)
+	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.MyhistorytableData, setup.OthertableData, setup.SpecialtableData, setup.DatetimetableData, setup.NiltableData, setup.FooData)
 	for _, tt := range queries.ErrorQueries {
 		runQueryErrorTest(t, harness, tt)
 	}
