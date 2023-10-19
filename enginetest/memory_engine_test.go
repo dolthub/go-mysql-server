@@ -195,7 +195,7 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	// t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
 			Name: "virtual column inserts, updates, deletes",
@@ -212,83 +212,12 @@ func TestSingleScript(t *testing.T) {
 					Expected: []sql.Row{{1, 2}, {2, 3}, {3, 4}},
 				},
 				{
-					Query: "update t1 set a = 4 where a = 3",
-					Expected: []sql.Row{{types.OkResult{
-						RowsAffected: 1,
-						Info: plan.UpdateInfo{
-							Matched: 1,
-							Updated: 1,
-						}},
-					}},
+					Query:    "create index t1_c on t1 (b)",
+					Expected: []sql.Row{{types.NewOkResult(0)}},
 				},
 				{
-					Query:    "select * from t1 order by a",
-					Expected: []sql.Row{{1, 2}, {2, 3}, {4, 5}},
-				},
-				{
-					Query:    "delete from t1 where a = 2",
-					Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
-				},
-				{
-					Query:    "select * from t1 order by a",
-					Expected: []sql.Row{{1, 2}, {4, 5}},
-				},
-			},
-		},
-		{
-			Name: "virtual column ordering",
-			SetUpScript: []string{
-				// virtual is the default for generated columns
-				"create table t1 (v1 int generated always as (2), a int, v2 int generated always as (a + v1), c int)",
-			},
-			Assertions: []queries.ScriptTestAssertion{
-				{
-					Query:    "insert into t1 (a, c) values (1,5), (3,7)",
-					Expected: []sql.Row{{types.NewOkResult(2)}},
-				},
-				{
-					Query:    "insert into t1 (c, a) values (5,6), (7,8)",
-					Expected: []sql.Row{{types.NewOkResult(2)}},
-				},
-				{
-					Query: "select * from t1 order by a",
-					Expected: []sql.Row{
-						{2, 1, 3, 5},
-						{2, 3, 5, 7},
-						{2, 6, 8, 5},
-						{2, 8, 10, 7},
-					},
-				},
-				{
-					Query: "update t1 set a = 4 where a = 3",
-					Expected: []sql.Row{{types.OkResult{
-						RowsAffected: 1,
-						Info: plan.UpdateInfo{
-							Matched: 1,
-							Updated: 1,
-						}},
-					}},
-				},
-				{
-					Query: "select * from t1 order by a",
-					Expected: []sql.Row{
-						{2, 1, 3, 5},
-						{2, 4, 6, 7},
-						{2, 6, 8, 5},
-						{2, 8, 10, 7},
-					},
-				},
-				{
-					Query:    "delete from t1 where v2 = 6",
-					Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
-				},
-				{
-					Query: "select * from t1 order by a",
-					Expected: []sql.Row{
-						{2, 1, 3, 5},
-						{2, 6, 8, 5},
-						{2, 8, 10, 7},
-					},
+					Query:    "select * from t1 where b = 2",
+					Expected: []sql.Row{{1, 2}},
 				},
 			},
 		},

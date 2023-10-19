@@ -1826,48 +1826,56 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) er
 			return sql.ErrKeyColumnDoesNotExist.New(newCol.Name)
 		}
 	}
-
-	// TODO: fix
-	// pkSchema := sql.NewPrimaryKeySchema(potentialSchema, pkOrdinals...)
-	// newTable, err := newTable(ctx, t, pkSchema)
-	// if err != nil {
-	// 	return err
-	// }
-	//
-	// t.data.schema = pkSchema
-	// t.data.partitions = newTable.data.partitions
-	// t.partitionKeys = newTable.partitionKeys
-
+	
 	return nil
 }
 
-type partidx struct {
-	key string
-	i   int
+type pkfield struct {
+	i int
+	c *sql.Column
+}
+
+type partitionRow struct {
+	partitionName string
+	rowIdx        int
 }
 
 type partitionssort struct {
-	ps   map[string][]sql.Row
-	idx  []partidx
-	less func(l, r sql.Row) bool
+	pk      []pkfield
+	ps      map[string][]sql.Row
+	allRows []partitionRow
+	indexes map[indexName][]sql.Row
 }
 
 func (ps partitionssort) Len() int {
-	return len(ps.idx)
+	return len(ps.allRows)
 }
 
 func (ps partitionssort) Less(i, j int) bool {
-	lidx := ps.idx[i]
-	ridx := ps.idx[j]
-	lr := ps.ps[lidx.key][lidx.i]
-	rr := ps.ps[ridx.key][ridx.i]
-	return ps.less(lr, rr)
+	lidx := ps.allRows[i]
+	ridx := ps.allRows[j]
+	lr := ps.ps[lidx.partitionName][lidx.rowIdx]
+	rr := ps.ps[ridx.partitionName][ridx.rowIdx]
+	return ps.pkLess(lr, rr)
+}
+
+func (ps partitionssort) pkLess(l, r sql.Row) bool {
+	for _, f := range ps.pk {
+		r, err := f.c.Type.Compare(l[f.i], r[f.i])
+		if err != nil {
+			panic(err)
+		}
+		if r != 0 {
+			return r < 0
+		}
+	}
+	return false
 }
 
 func (ps partitionssort) Swap(i, j int) {
-	lidx := ps.idx[i]
-	ridx := ps.idx[j]
-	ps.ps[lidx.key][lidx.i], ps.ps[ridx.key][ridx.i] = ps.ps[ridx.key][ridx.i], ps.ps[lidx.key][lidx.i]
+	lidx := ps.allRows[i]
+	ridx := ps.allRows[j]
+	ps.ps[lidx.partitionName][lidx.rowIdx], ps.ps[ridx.partitionName][ridx.rowIdx] = ps.ps[ridx.partitionName][ridx.rowIdx], ps.ps[lidx.partitionName][lidx.rowIdx]
 }
 
 func (t Table) copy() *Table {

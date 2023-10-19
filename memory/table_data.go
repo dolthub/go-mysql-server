@@ -45,8 +45,23 @@ type TableData struct {
 	partitionKeys [][]byte
 	autoIncVal    uint64
 
+	// Indexes are implemented as an unordered slice of rows. The first N elements in the row are the values of the
+	// indexed columns, and the final value is the location of the row in the primary storage.
+	// We could make these index lookups performant by keeping the rows sorted. That also requires sorting primary row
+	// storage during edits, rather than applying edits and sorting after the fact. Using a tree or other ordered 
+	// collection would probably be less work and work better at that point. 
+	indexStorage map[indexName][]sql.Row
+
 	// Insert bookkeeping (spread inserts across partitions)
 	insertPartIdx int
+}
+
+type indexName string
+
+// primaryRowLocation is a special marker element in index storage rows containing the partition and index of the row in the primary storage.
+type primaryRowLocation struct {
+	partition string
+	idx       int
 }
 
 // Table returns a table with this data
@@ -110,14 +125,6 @@ func (td *TableData) truncate(schema sql.PrimaryKeySchema) *TableData {
 	}
 
 	return td
-}
-
-func allColumns(schema sql.PrimaryKeySchema) []int {
-	columns := make([]int, len(schema.Schema))
-	for i := range schema.Schema {
-		columns[i] = i
-	}
-	return columns
 }
 
 func (td *TableData) columnIndexes(colNames []string) ([]int, error) {
@@ -230,10 +237,6 @@ func (td *TableData) indexColsForTableEditor() ([][]int, [][]uint16) {
 
 // Sorts the rows in the partitions of the table to be in primary key order.
 func (td *TableData) sortRows() {
-	type pkfield struct {
-		i int
-		c *sql.Column
-	}
 	var pk []pkfield
 	for _, column := range td.schema.Schema {
 		if column.PrimaryKey {
@@ -242,28 +245,15 @@ func (td *TableData) sortRows() {
 		}
 	}
 
-	less := func(l, r sql.Row) bool {
-		for _, f := range pk {
-			r, err := f.c.Type.Compare(l[f.i], r[f.i])
-			if err != nil {
-				panic(err)
-			}
-			if r != 0 {
-				return r < 0
-			}
-		}
-		return false
-	}
-
-	var idx []partidx
+	var idx []partitionRow
 	for _, k := range td.partitionKeys {
 		p := td.partitions[string(k)]
 		for i := 0; i < len(p); i++ {
-			idx = append(idx, partidx{string(k), i})
+			idx = append(idx, partitionRow{string(k), i})
 		}
 	}
 
-	sort.Sort(partitionssort{td.partitions, idx, less})
+	sort.Sort(partitionssort{ps: td.partitions, allRows: idx, indexes: td.indexStorage})
 }
 
 func (td TableData) virtualColIndexes() []int {

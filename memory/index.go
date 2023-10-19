@@ -116,6 +116,27 @@ func (idx *Index) IndexType() string {
 	return "BTREE" // fake but so are you
 }
 
+func (idx *Index) rowToIndexStorage(ctx *sql.Context, row sql.Row, partitionName string, rowIdx int) (sql.Row, error) {
+	if idx.Name == "PRIMARY" {
+		return row, nil
+	}
+
+	newRow := make(sql.Row, len(idx.Exprs) + 1)
+	for i, expr := range idx.Exprs {
+		var err error
+		newRow[i], err = expr.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+	}
+	newRow[len(idx.Exprs)] = primaryRowLocation{
+		partition: partitionName,
+		idx:       rowIdx,
+	}
+	
+	return newRow, nil
+}
+
 func (idx *Index) rangeFilterExpr(ctx *sql.Context, ranges ...sql.Range) (sql.Expression, error) {
 	if idx.CommentStr == CommentPreventingIndexBuilding {
 		return nil, nil
