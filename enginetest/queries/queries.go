@@ -8648,6 +8648,14 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrTableColumnNotFound,
 	},
 	{
+		Query:       "select * from othertable join foo.othertable on mydb.othertable.text = 'third'",
+		ExpectedErr: sql.ErrTableColumnNotFound,
+	},
+	{
+		Query:       "select * from foo.othertable join othertable on mydb.othertable.text = 'third'",
+		ExpectedErr: sql.ErrTableColumnNotFound,
+	},
+	{
 		Query:       "select i from mytable a join mytable b on a.i = b.i",
 		ExpectedErr: sql.ErrAmbiguousColumnName,
 	},
@@ -9304,6 +9312,14 @@ var BrokenErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:       "select * from foo.othertable join othertable on othertable.text = 'third'",
+		ExpectedErr: sql.ErrUnknownColumn,
+	},
+	{
+		Query:       "select * from mydb.othertable join foo.othertable on othertable.text = 'third'",
+		ExpectedErr: sql.ErrUnknownColumn,
+	},
+	{
+		Query:       "select * from foo.othertable join mydb.othertable on othertable.text = 'third'",
 		ExpectedErr: sql.ErrUnknownColumn,
 	},
 }

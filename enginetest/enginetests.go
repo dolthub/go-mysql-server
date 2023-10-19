@@ -122,7 +122,7 @@ func TestSpatialQueriesPrepared(t *testing.T, harness Harness) {
 
 // TestJoinQueries tests join queries against a provided harness.
 func TestJoinQueries(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.OthertableData, setup.NiltableData, setup.XyData)
+	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.OthertableData, setup.NiltableData, setup.XyData, setup.FooData)
 	e, err := harness.NewEngine(t)
 	require.NoError(t, err)
 

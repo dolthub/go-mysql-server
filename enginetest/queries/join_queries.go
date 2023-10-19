@@ -747,6 +747,10 @@ on w = 0;`,
 		Expected: []sql.Row{{"third", 1, "a", 4}, {"third", 1, "b", 2}, {"third", 1, "c", 0}},
 	},
 	{
+		Query:    "select * from othertable join foo.othertable on mydb.othertable.s2 = 'third'",
+		Expected: []sql.Row{{"third", 1, "a", 4}, {"third", 1, "b", 2}, {"third", 1, "c", 0}},
+	},
+	{
 		Query:    "select * from othertable join foo.othertable on foo.othertable.text = 'a'",
 		Expected: []sql.Row{{"third", 1, "a", 4}, {"second", 2, "a", 4}, {"first", 3, "a", 4}},
 	},
@@ -755,7 +759,35 @@ on w = 0;`,
 		Expected: []sql.Row{{"a", 4, "third", 1}, {"b", 2, "third", 1}, {"c", 0, "third", 1}},
 	},
 	{
+		Query:    "select * from foo.othertable join othertable on mydb.othertable.s2 = 'third'",
+		Expected: []sql.Row{{"a", 4, "third", 1}, {"b", 2, "third", 1}, {"c", 0, "third", 1}},
+	},
+	{
 		Query:    "select * from foo.othertable join othertable on foo.othertable.text = 'a'",
+		Expected: []sql.Row{{"a", 4, "third", 1}, {"a", 4, "second", 2}, {"a", 4, "first", 3}},
+	},
+	{
+		Query:    "select * from mydb.othertable join foo.othertable on othertable.s2 = 'third'",
+		Expected: []sql.Row{{"third", 1, "a", 4}, {"third", 1, "b", 2}, {"third", 1, "c", 0}},
+	},
+	{
+		Query:    "select * from mydb.othertable join foo.othertable on mydb.othertable.s2 = 'third'",
+		Expected: []sql.Row{{"third", 1, "a", 4}, {"third", 1, "b", 2}, {"third", 1, "c", 0}},
+	},
+	{
+		Query:    "select * from mydb.othertable join foo.othertable on foo.othertable.text = 'a'",
+		Expected: []sql.Row{{"third", 1, "a", 4}, {"second", 2, "a", 4}, {"first", 3, "a", 4}},
+	},
+	{
+		Query:    "select * from foo.othertable join mydb.othertable on othertable.s2 = 'third'",
+		Expected: []sql.Row{{"a", 4, "third", 1}, {"b", 2, "third", 1}, {"c", 0, "third", 1}},
+	},
+	{
+		Query:    "select * from foo.othertable join mydb.othertable on mydb.othertable.s2 = 'third'",
+		Expected: []sql.Row{{"a", 4, "third", 1}, {"b", 2, "third", 1}, {"c", 0, "third", 1}},
+	},
+	{
+		Query:    "select * from foo.othertable join mydb.othertable on foo.othertable.text = 'a'",
 		Expected: []sql.Row{{"a", 4, "third", 1}, {"a", 4, "second", 2}, {"a", 4, "first", 3}},
 	},
 }
