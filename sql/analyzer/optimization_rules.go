@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -139,9 +140,10 @@ func nodeSources(node sql.Node) []string {
 	var result []string
 
 	for _, col := range node.Schema() {
-		if _, ok := sources[col.Source]; !ok {
-			sources[col.Source] = struct{}{}
-			result = append(result, col.Source)
+		source := fmt.Sprintf("%s.%s", col.DatabaseSource, col.Source)
+		if _, ok := sources[source]; !ok {
+			sources[source] = struct{}{}
+			result = append(result, source)
 		}
 	}
 
@@ -159,9 +161,10 @@ func expressionSources(expr sql.Expression) ([]string, bool) {
 	sql.Inspect(expr, func(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.GetField:
-			if _, ok := sources[e.Table()]; !ok {
-				sources[e.Table()] = struct{}{}
-				result = append(result, e.Table())
+			source := fmt.Sprintf("%s.%s", e.Database(), e.Table())
+			if _, ok := sources[source]; !ok {
+				sources[source] = struct{}{}
+				result = append(result, source)
 			}
 		case *expression.IsNull:
 			nullRejecting = false
