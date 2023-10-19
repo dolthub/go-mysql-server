@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // TableData encapsulates all schema and data for a table's schema and rows. Other aspects of a table can change
@@ -91,6 +92,14 @@ func (td TableData) copy() *TableData {
 		keys[i] = make([]byte, len(td.partitionKeys[i]))
 		copy(keys[i], td.partitionKeys[i])
 	}
+	
+	idxStorage := make(map[indexName][]sql.Row, len(td.indexStorage))
+	for k, v := range td.indexStorage {
+		data := make([]sql.Row, len(v))
+		copy(data, v)
+		idxStorage[k] = data
+	}
+	td.indexStorage = idxStorage
 
 	td.partitionKeys, td.partitions = keys, parts
 
@@ -119,12 +128,58 @@ func (td *TableData) truncate(schema sql.PrimaryKeySchema) *TableData {
 	td.schema = schema
 	td.insertPartIdx = 0
 
+	td.indexes = rewriteIndexes(td.indexes, schema)
+	td.indexStorage = make(map[indexName][]sql.Row)
+	
 	td.autoIncVal = 0
 	if schema.HasAutoIncrement() {
 		td.autoIncVal = 1
 	}
 
 	return td
+}
+
+// rewriteIndexes returns a new set of indexes appropriate for the new schema provided. Index expressions are adjusted
+// as necessary, and any indexes for columns that no longer exist are removed from the set.  
+func rewriteIndexes(indexes map[string]sql.Index, schema sql.PrimaryKeySchema) map[string]sql.Index {
+	newIdxes := make(map[string]sql.Index)
+	for name, idx := range indexes {
+		newIdx := rewriteIndex(idx.(*Index), schema)
+		if newIdx != nil {
+			newIdxes[name] = newIdx
+		}
+	}
+	return newIdxes
+}
+
+// rewriteIndex returns a new index appropriate for the new schema provided, or nil if no columns remain to be indexed 
+// in the schema
+func rewriteIndex(idx *Index, schema sql.PrimaryKeySchema) *Index {
+	var newExprs []sql.Expression 
+	for _, expr := range idx.Exprs {
+		newE, _, _ := transform.Expr(expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			if gf, ok := e.(*expression.GetField); ok {
+				newIdx := schema.IndexOfColName(gf.Name())
+				if newIdx < 0 {
+					return nil, transform.SameTree, nil
+				}
+				return gf.WithIndex(newIdx), transform.NewTree, nil
+			}
+			
+			return e, transform.SameTree, nil
+		})
+		if newE != nil {
+			newExprs = append(newExprs, newE)
+		}
+	}
+	
+	if len(newExprs) == 0 {
+		return nil
+	}
+	
+	newIdx := *idx
+	newIdx.Exprs = newExprs
+	return &newIdx
 }
 
 func (td *TableData) columnIndexes(colNames []string) ([]int, error) {
@@ -245,15 +300,20 @@ func (td *TableData) sortRows() {
 		}
 	}
 
-	var idx []partitionRow
+	var flattenedRows []partitionRow
 	for _, k := range td.partitionKeys {
 		p := td.partitions[string(k)]
 		for i := 0; i < len(p); i++ {
-			idx = append(idx, partitionRow{string(k), i})
+			flattenedRows = append(flattenedRows, partitionRow{string(k), i})
 		}
 	}
 
-	sort.Sort(partitionssort{ps: td.partitions, allRows: idx, indexes: td.indexStorage})
+	sort.Sort(partitionssort{
+		pk:pk,
+		ps: td.partitions,
+		allRows: flattenedRows,
+		indexes: td.indexStorage,
+	})
 }
 
 func (td TableData) virtualColIndexes() []int {

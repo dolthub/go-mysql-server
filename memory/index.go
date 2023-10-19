@@ -116,7 +116,7 @@ func (idx *Index) IndexType() string {
 	return "BTREE" // fake but so are you
 }
 
-func (idx *Index) rowToIndexStorage(ctx *sql.Context, row sql.Row, partitionName string, rowIdx int) (sql.Row, error) {
+func (idx *Index) rowToIndexStorage(row sql.Row, partitionName string, rowIdx int) (sql.Row, error) {
 	if idx.Name == "PRIMARY" {
 		return row, nil
 	}
@@ -124,7 +124,7 @@ func (idx *Index) rowToIndexStorage(ctx *sql.Context, row sql.Row, partitionName
 	newRow := make(sql.Row, len(idx.Exprs) + 1)
 	for i, expr := range idx.Exprs {
 		var err error
-		newRow[i], err = expr.Eval(ctx, row)
+		newRow[i], err = expr.Eval(nil, row)
 		if err != nil {
 			return nil, err
 		}

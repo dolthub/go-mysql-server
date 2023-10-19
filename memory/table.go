@@ -202,6 +202,7 @@ func NewPartitionedTableWithCollation(db *BaseDatabase, name string, schema sql.
 			partitionKeys: keys,
 			autoIncVal:    autoIncVal,
 			autoColIdx:    autoIncIdx,
+			indexStorage: make(map[indexName][]sql.Row),
 		},
 		db: db,
 	}

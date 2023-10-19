@@ -593,10 +593,26 @@ func (pke *pkTableEditAccumulator) insertHelper(table *TableData, row sql.Row) e
 		}
 	}
 
+	var partKey string
+	var rowIdx int
 	if savedPartitionRowIndex > -1 {
 		table.partitions[savedPartitionIndex][savedPartitionRowIndex] = row
+		partKey = savedPartitionIndex
+		rowIdx = savedPartitionRowIndex
 	} else {
 		table.partitions[key] = append(table.partitions[key], row)
+		partKey = key
+		rowIdx = len(table.partitions[key]) - 1
+	}
+	
+	// insert a new index entry for this new row in every index the table has
+	for _, idx := range table.indexes {
+		memIdx := idx.(*Index)
+		idxRow, err := memIdx.rowToIndexStorage(row, partKey, rowIdx)
+		if err != nil {
+			return err
+		}
+		table.indexStorage[indexName(memIdx.ID())] = append(table.indexStorage[indexName(memIdx.ID())], idxRow)
 	}
 
 	return nil
