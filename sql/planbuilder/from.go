@@ -57,15 +57,6 @@ func (b *Builder) buildFrom(inScope *scope, te ast.TableExprs) (outScope *scope)
 	return b.buildDataSource(inScope, te[0])
 }
 
-func (b *Builder) validateJoinTableNames(leftScope, rightScope *scope) {
-	for t, _ := range leftScope.tables {
-		if _, ok := rightScope.tables[t]; ok {
-			err := sql.ErrDuplicateAliasOrTable.New(t)
-			b.handleErr(err)
-		}
-	}
-}
-
 func (b *Builder) isLateral(te ast.TableExpr) bool {
 	switch t := te.(type) {
 	case *ast.JSONTableExpr:
@@ -95,8 +86,6 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 		rightInScope = leftScope
 	}
 	rightScope := b.buildDataSource(rightInScope, te.RightExpr)
-
-	b.validateJoinTableNames(leftScope, rightScope)
 
 	if b.isUsingJoin(te) {
 		return b.buildUsingJoin(inScope, leftScope, rightScope, te)
