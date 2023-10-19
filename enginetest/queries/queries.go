@@ -1379,13 +1379,13 @@ Select * from (
 	{
 		Query: `SELECT * FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a order by 1`,
 		Expected: []sql.Row{
-			{1.0, "ab"},
-			{2.0, "4"},
+			{1, "ab"},
+			{2, "4"},
 		},
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "column_0",
-				Type: types.Float64,
+				Type: types.Int64,
 			},
 			{
 				Name: "column_1",
@@ -1396,13 +1396,13 @@ Select * from (
 	{
 		Query: `SELECT * FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a (c,d) order by 1`,
 		Expected: []sql.Row{
-			{1.0, "ab"},
-			{2.0, "4"},
+			{1, "ab"},
+			{2, "4"},
 		},
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "c",
-				Type: types.Float64,
+				Type: types.Int64,
 			},
 			{
 				Name: "d",
@@ -1413,8 +1413,8 @@ Select * from (
 	{
 		Query: `SELECT column_0 FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a order by 1`,
 		Expected: []sql.Row{
-			{1.0},
-			{2.0},
+			{1},
+			{2},
 		},
 	},
 	{
@@ -1448,9 +1448,8 @@ Select * from (
 		Expected:     []sql.Row{{"1"}, {"1.5"}},
 	},
 	{
-		// the result on sql shell are '1' and '1.5' but instead it should have decimal values of '1.0' and '1.5'
 		Query:    `SELECT column_0 FROM (values row(1.5,2+2), row(floor(1.5),concat("a","b"))) a order by 1;`,
-		Expected: []sql.Row{{float64(1)}, {1.5}},
+		Expected: []sql.Row{{"1.0"}, {"1.5"}},
 	},
 	{
 		Query: `SELECT FORMAT(val, 2) FROM
@@ -1675,8 +1674,8 @@ Select * from (
 			join (values row(2,4), row(1.0,"ab")) b on a.column_0 = b.column_0 and a.column_0 = b.column_0
 			order by 1`,
 		Expected: []sql.Row{
-			{1.0, "ab"},
-			{2.0, "4"},
+			{1, "ab"},
+			{2, "4"},
 		},
 	},
 	{

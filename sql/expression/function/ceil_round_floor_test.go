@@ -65,17 +65,8 @@ func TestCeil(t *testing.T) {
 				require.Equal(tt.expected, result)
 			}
 
-			switch {
-			case types.IsFloat(tt.rowType):
-				require.True(types.IsFloat(f.Type()))
-				require.False(f.IsNullable())
-			case types.IsInteger(tt.rowType):
-				require.True(types.IsInteger(f.Type()))
-				require.False(f.IsNullable())
-			default:
-				require.True(types.IsInteger(f.Type()))
-				require.False(f.IsNullable())
-			}
+			require.True(types.IsInteger(f.Type()))
+			require.False(f.IsNullable())
 		})
 	}
 }
@@ -120,17 +111,8 @@ func TestFloor(t *testing.T) {
 				require.Equal(tt.expected, result)
 			}
 
-			switch {
-			case types.IsFloat(tt.rowType):
-				require.True(types.IsFloat(f.Type()))
-				require.False(f.IsNullable())
-			case types.IsInteger(tt.rowType):
-				require.True(types.IsInteger(f.Type()))
-				require.False(f.IsNullable())
-			default:
-				require.True(types.IsInteger(f.Type()))
-				require.False(f.IsNullable())
-			}
+			require.True(types.IsInteger(f.Type()))
+			require.False(f.IsNullable())
 		})
 	}
 }

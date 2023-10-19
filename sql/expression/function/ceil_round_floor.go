@@ -53,7 +53,7 @@ func (c *Ceil) Description() string {
 // Type implements the Expression interface.
 func (c *Ceil) Type() sql.Type {
 	childType := c.Child.Type()
-	if types.IsNumber(childType) {
+	if types.IsInteger(childType) {
 		return childType
 	}
 	return types.Int32
@@ -137,7 +137,7 @@ func (f *Floor) Description() string {
 // Type implements the Expression interface.
 func (f *Floor) Type() sql.Type {
 	childType := f.Child.Type()
-	if types.IsNumber(childType) {
+	if types.IsInteger(childType) {
 		return childType
 	}
 	return types.Int32

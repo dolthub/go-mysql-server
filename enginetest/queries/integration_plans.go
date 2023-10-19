@@ -3697,7 +3697,7 @@ WHERE
 			"                 ├─ select: SUM(CASE  WHEN Or\n" +
 			"                 │   ├─ LessThan\n" +
 			"                 │   │   ├─ nrfj3.OZTQF:5!null\n" +
-			"                 │   │   └─ 0.500000 (double)\n" +
+			"                 │   │   └─ 0.5 (decimal(2,1))\n" +
 			"                 │   └─ Eq\n" +
 			"                 │       ├─ nrfj3.YHYLK:6\n" +
 			"                 │       └─ 0 (tinyint)\n" +
@@ -4161,7 +4161,7 @@ WHERE
 			"                 ├─ select: SUM(CASE  WHEN Or\n" +
 			"                 │   ├─ LessThan\n" +
 			"                 │   │   ├─ nrfj3.OZTQF:5!null\n" +
-			"                 │   │   └─ 0.500000 (double)\n" +
+			"                 │   │   └─ 0.5 (decimal(2,1))\n" +
 			"                 │   └─ Eq\n" +
 			"                 │       ├─ nrfj3.YHYLK:6\n" +
 			"                 │       └─ 0 (tinyint)\n" +
@@ -4841,7 +4841,7 @@ WHERE
 			"                 │               │   └─ mf.LT7K6:9 IS NULL\n" +
 			"                 │               │   THEN mf.LT7K6:9 ELSE mf.SPPYD:10 END as vaf, CASE  WHEN NOT\n" +
 			"                 │               │   └─ mf.QCGTS:11 IS NULL\n" +
-			"                 │               │   THEN mf.QCGTS:11 ELSE 0.500000 (double) END as QCGTS, CASE  WHEN Eq\n" +
+			"                 │               │   THEN mf.QCGTS:11 ELSE 0.5 (decimal(2,1)) END as QCGTS, CASE  WHEN Eq\n" +
 			"                 │               │   ├─ vc.ZNP4P:19!null\n" +
 			"                 │               │   └─ L5Q44 (longtext)\n" +
 			"                 │               │   THEN 1 (tinyint) ELSE 0 (tinyint) END as SNY4H]\n" +
@@ -4939,13 +4939,13 @@ WHERE
 			"                         └─ Project\n" +
 			"                             ├─ columns: [nd.TW55N:13!null as KUXQY, sn.id:0!null as BDNYB, nma.DZLIM:28!null as YHVEZ, CASE  WHEN LessThan\n" +
 			"                             │   ├─ nd.TCE7A:20\n" +
-			"                             │   └─ 0.900000 (double)\n" +
+			"                             │   └─ 0.9 (decimal(2,1))\n" +
 			"                             │   THEN 1 (tinyint) ELSE 0 (tinyint) END as YAZ4X]\n" +
 			"                             └─ Sort(sn.id:0!null ASC nullsFirst)\n" +
 			"                                 └─ Project\n" +
 			"                                     ├─ columns: [sn.id:0!null, sn.BRQP2:1!null, sn.FFTBJ:2!null, sn.A7XO2:3, sn.KBO7R:4!null, sn.ECDKM:5, sn.NUMK2:6!null, sn.LETOE:7!null, sn.YKSSU:8, sn.FHCYT:9, nd.id:10!null, nd.DKCAJ:11!null, nd.KNG7T:12, nd.TW55N:13!null, nd.QRQXW:14!null, nd.ECXAJ:15!null, nd.FGG57:16, nd.ZH72S:17, nd.FSK67:18!null, nd.XQDYT:19!null, nd.TCE7A:20, nd.IWV2H:21, nd.HPCMS:22!null, nd.N5CC2:23, nd.FHCYT:24, nd.ETAQ7:25, nd.A75X7:26, nma.id:27!null, nma.DZLIM:28!null, nma.F3YUE:29, nd.TW55N:13!null as KUXQY, sn.id:0!null as BDNYB, nma.DZLIM:28!null as YHVEZ, CASE  WHEN LessThan\n" +
 			"                                     │   ├─ nd.TCE7A:20\n" +
-			"                                     │   └─ 0.900000 (double)\n" +
+			"                                     │   └─ 0.9 (decimal(2,1))\n" +
 			"                                     │   THEN 1 (tinyint) ELSE 0 (tinyint) END as YAZ4X]\n" +
 			"                                     └─ Filter\n" +
 			"                                         ├─ NOT\n" +
@@ -5088,7 +5088,7 @@ WHERE
 			"                 │               │   └─ mf.LT7K6:5 IS NULL\n" +
 			"                 │               │   THEN mf.LT7K6:5 ELSE mf.SPPYD:6 END as vaf, CASE  WHEN NOT\n" +
 			"                 │               │   └─ mf.QCGTS:7 IS NULL\n" +
-			"                 │               │   THEN mf.QCGTS:7 ELSE 0.500000 (double) END as QCGTS, CASE  WHEN Eq\n" +
+			"                 │               │   THEN mf.QCGTS:7 ELSE 0.5 (decimal(2,1)) END as QCGTS, CASE  WHEN Eq\n" +
 			"                 │               │   ├─ vc.ZNP4P:17!null\n" +
 			"                 │               │   └─ L5Q44 (longtext)\n" +
 			"                 │               │   THEN 1 (tinyint) ELSE 0 (tinyint) END as SNY4H]\n" +
@@ -5186,13 +5186,13 @@ WHERE
 			"                         └─ Project\n" +
 			"                             ├─ columns: [nd.TW55N:13!null as KUXQY, sn.id:0!null as BDNYB, nma.DZLIM:28!null as YHVEZ, CASE  WHEN LessThan\n" +
 			"                             │   ├─ nd.TCE7A:20\n" +
-			"                             │   └─ 0.900000 (double)\n" +
+			"                             │   └─ 0.9 (decimal(2,1))\n" +
 			"                             │   THEN 1 (tinyint) ELSE 0 (tinyint) END as YAZ4X]\n" +
 			"                             └─ Sort(sn.id:0!null ASC nullsFirst)\n" +
 			"                                 └─ Project\n" +
 			"                                     ├─ columns: [sn.id:0!null, sn.BRQP2:1!null, sn.FFTBJ:2!null, sn.A7XO2:3, sn.KBO7R:4!null, sn.ECDKM:5, sn.NUMK2:6!null, sn.LETOE:7!null, sn.YKSSU:8, sn.FHCYT:9, nd.id:10!null, nd.DKCAJ:11!null, nd.KNG7T:12, nd.TW55N:13!null, nd.QRQXW:14!null, nd.ECXAJ:15!null, nd.FGG57:16, nd.ZH72S:17, nd.FSK67:18!null, nd.XQDYT:19!null, nd.TCE7A:20, nd.IWV2H:21, nd.HPCMS:22!null, nd.N5CC2:23, nd.FHCYT:24, nd.ETAQ7:25, nd.A75X7:26, nma.id:27!null, nma.DZLIM:28!null, nma.F3YUE:29, nd.TW55N:13!null as KUXQY, sn.id:0!null as BDNYB, nma.DZLIM:28!null as YHVEZ, CASE  WHEN LessThan\n" +
 			"                                     │   ├─ nd.TCE7A:20\n" +
-			"                                     │   └─ 0.900000 (double)\n" +
+			"                                     │   └─ 0.9 (decimal(2,1))\n" +
 			"                                     │   THEN 1 (tinyint) ELSE 0 (tinyint) END as YAZ4X]\n" +
 			"                                     └─ Filter\n" +
 			"                                         ├─ NOT\n" +
@@ -9633,10 +9633,10 @@ WHERE
 			"             │       │                   └─ columns: [id dzlim]\n" +
 			"             │       │   as CH3FR, CASE  WHEN GreaterThan\n" +
 			"             │       │   ├─ ums.ner:2\n" +
-			"             │       │   └─ 0.500000 (double)\n" +
+			"             │       │   └─ 0.5 (decimal(2,1))\n" +
 			"             │       │   THEN 1 (tinyint) WHEN LessThan\n" +
 			"             │       │   ├─ ums.ner:2\n" +
-			"             │       │   └─ 0.500000 (double)\n" +
+			"             │       │   └─ 0.5 (decimal(2,1))\n" +
 			"             │       │   THEN 0 (tinyint) ELSE NULL (null) END as D237E, ums.id:0!null as JOGI6]\n" +
 			"             │       └─ Project\n" +
 			"             │           ├─ columns: [ums.id:0!null, ums.T4IBQ:1, ums.ner:2, ums.ber:3, ums.hr:4, ums.mmr:5, ums.QZ6VT:6, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, Subquery\n" +
@@ -9683,10 +9683,10 @@ WHERE
 			"             │           │                   └─ columns: [id dzlim]\n" +
 			"             │           │   as CH3FR, CASE  WHEN GreaterThan\n" +
 			"             │           │   ├─ ums.ner:2\n" +
-			"             │           │   └─ 0.500000 (double)\n" +
+			"             │           │   └─ 0.5 (decimal(2,1))\n" +
 			"             │           │   THEN 1 (tinyint) WHEN LessThan\n" +
 			"             │           │   ├─ ums.ner:2\n" +
-			"             │           │   └─ 0.500000 (double)\n" +
+			"             │           │   └─ 0.5 (decimal(2,1))\n" +
 			"             │           │   THEN 0 (tinyint) ELSE NULL (null) END as D237E, ums.id:0!null as JOGI6]\n" +
 			"             │           └─ Filter\n" +
 			"             │               ├─ HashIn\n" +
@@ -9823,10 +9823,10 @@ WHERE
 			"             │       │                   └─ columns: [id dzlim]\n" +
 			"             │       │   as CH3FR, CASE  WHEN GreaterThan\n" +
 			"             │       │   ├─ ums.ber:3\n" +
-			"             │       │   └─ 0.500000 (double)\n" +
+			"             │       │   └─ 0.5 (decimal(2,1))\n" +
 			"             │       │   THEN 1 (tinyint) WHEN LessThan\n" +
 			"             │       │   ├─ ums.ber:3\n" +
-			"             │       │   └─ 0.500000 (double)\n" +
+			"             │       │   └─ 0.5 (decimal(2,1))\n" +
 			"             │       │   THEN 0 (tinyint) ELSE NULL (null) END as D237E, ums.id:0!null as JOGI6]\n" +
 			"             │       └─ Project\n" +
 			"             │           ├─ columns: [ums.id:0!null, ums.T4IBQ:1, ums.ner:2, ums.ber:3, ums.hr:4, ums.mmr:5, ums.QZ6VT:6, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, Subquery\n" +
@@ -9873,10 +9873,10 @@ WHERE
 			"             │           │                   └─ columns: [id dzlim]\n" +
 			"             │           │   as CH3FR, CASE  WHEN GreaterThan\n" +
 			"             │           │   ├─ ums.ber:3\n" +
-			"             │           │   └─ 0.500000 (double)\n" +
+			"             │           │   └─ 0.5 (decimal(2,1))\n" +
 			"             │           │   THEN 1 (tinyint) WHEN LessThan\n" +
 			"             │           │   ├─ ums.ber:3\n" +
-			"             │           │   └─ 0.500000 (double)\n" +
+			"             │           │   └─ 0.5 (decimal(2,1))\n" +
 			"             │           │   THEN 0 (tinyint) ELSE NULL (null) END as D237E, ums.id:0!null as JOGI6]\n" +
 			"             │           └─ Filter\n" +
 			"             │               ├─ HashIn\n" +
@@ -10013,10 +10013,10 @@ WHERE
 			"             │       │                   └─ columns: [id dzlim]\n" +
 			"             │       │   as CH3FR, CASE  WHEN GreaterThan\n" +
 			"             │       │   ├─ ums.hr:4\n" +
-			"             │       │   └─ 0.500000 (double)\n" +
+			"             │       │   └─ 0.5 (decimal(2,1))\n" +
 			"             │       │   THEN 1 (tinyint) WHEN LessThan\n" +
 			"             │       │   ├─ ums.hr:4\n" +
-			"             │       │   └─ 0.500000 (double)\n" +
+			"             │       │   └─ 0.5 (decimal(2,1))\n" +
 			"             │       │   THEN 0 (tinyint) ELSE NULL (null) END as D237E, ums.id:0!null as JOGI6]\n" +
 			"             │       └─ Project\n" +
 			"             │           ├─ columns: [ums.id:0!null, ums.T4IBQ:1, ums.ner:2, ums.ber:3, ums.hr:4, ums.mmr:5, ums.QZ6VT:6, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, Subquery\n" +
@@ -10063,10 +10063,10 @@ WHERE
 			"             │           │                   └─ columns: [id dzlim]\n" +
 			"             │           │   as CH3FR, CASE  WHEN GreaterThan\n" +
 			"             │           │   ├─ ums.hr:4\n" +
-			"             │           │   └─ 0.500000 (double)\n" +
+			"             │           │   └─ 0.5 (decimal(2,1))\n" +
 			"             │           │   THEN 1 (tinyint) WHEN LessThan\n" +
 			"             │           │   ├─ ums.hr:4\n" +
-			"             │           │   └─ 0.500000 (double)\n" +
+			"             │           │   └─ 0.5 (decimal(2,1))\n" +
 			"             │           │   THEN 0 (tinyint) ELSE NULL (null) END as D237E, ums.id:0!null as JOGI6]\n" +
 			"             │           └─ Filter\n" +
 			"             │               ├─ HashIn\n" +
@@ -10203,10 +10203,10 @@ WHERE
 			"             │       │                   └─ columns: [id dzlim]\n" +
 			"             │       │   as CH3FR, CASE  WHEN GreaterThan\n" +
 			"             │       │   ├─ ums.mmr:5\n" +
-			"             │       │   └─ 0.500000 (double)\n" +
+			"             │       │   └─ 0.5 (decimal(2,1))\n" +
 			"             │       │   THEN 1 (tinyint) WHEN LessThan\n" +
 			"             │       │   ├─ ums.mmr:5\n" +
-			"             │       │   └─ 0.500000 (double)\n" +
+			"             │       │   └─ 0.5 (decimal(2,1))\n" +
 			"             │       │   THEN 0 (tinyint) ELSE NULL (null) END as D237E, ums.id:0!null as JOGI6]\n" +
 			"             │       └─ Project\n" +
 			"             │           ├─ columns: [ums.id:0!null, ums.T4IBQ:1, ums.ner:2, ums.ber:3, ums.hr:4, ums.mmr:5, ums.QZ6VT:6, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, Subquery\n" +
@@ -10253,10 +10253,10 @@ WHERE
 			"             │           │                   └─ columns: [id dzlim]\n" +
 			"             │           │   as CH3FR, CASE  WHEN GreaterThan\n" +
 			"             │           │   ├─ ums.mmr:5\n" +
-			"             │           │   └─ 0.500000 (double)\n" +
+			"             │           │   └─ 0.5 (decimal(2,1))\n" +
 			"             │           │   THEN 1 (tinyint) WHEN LessThan\n" +
 			"             │           │   ├─ ums.mmr:5\n" +
-			"             │           │   └─ 0.500000 (double)\n" +
+			"             │           │   └─ 0.5 (decimal(2,1))\n" +
 			"             │           │   THEN 0 (tinyint) ELSE NULL (null) END as D237E, ums.id:0!null as JOGI6]\n" +
 			"             │           └─ Filter\n" +
 			"             │               ├─ HashIn\n" +
@@ -10870,7 +10870,7 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"                             └─ NOT\n" +
 			"                                 └─ Eq\n" +
 			"                                     ├─ new.SPPYD:12\n" +
-			"                                     └─ 0.500000 (double)\n" +
+			"                                     └─ 0.5 (decimal(2,1))\n" +
 			"                        )\n" +
 			"                         └─ BLOCK\n" +
 			"                             └─ SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = If LT7K6 does not have value, SPPYD must be 0.5., MYSQL_ERRNO = 1644\n" +
