@@ -535,7 +535,9 @@ func (pke *pkTableEditAccumulator) deleteHelper(table *TableData, row sql.Row) e
 	}
 
 	matches := false
-	for partitionIndex, partition := range table.partitions {
+	var partKey string
+	var rowIdx int
+	for partName, partition := range table.partitions {
 		for partitionRowIndex, partitionRow := range partition {
 			matches = true
 
@@ -544,7 +546,9 @@ func (pke *pkTableEditAccumulator) deleteHelper(table *TableData, row sql.Row) e
 			pkColIdxes := pke.pkColumnIndexes()
 			if len(pkColIdxes) > 0 {
 				if columnsMatch(pkColIdxes, nil, partitionRow, row) {
-					table.partitions[partitionIndex] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
+					table.partitions[partName] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
+					partKey = partName
+					rowIdx = partitionRowIndex
 					break
 				}
 			}
@@ -556,15 +560,31 @@ func (pke *pkTableEditAccumulator) deleteHelper(table *TableData, row sql.Row) e
 			}
 
 			if matches {
-				table.partitions[partitionIndex] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
+				table.partitions[partName] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
+				partKey = partName
+				rowIdx = partitionRowIndex
 				break
 			}
 		}
+		
 		if matches {
 			break
 		}
 	}
-
+	
+	// delete this row from every index in the table
+	for _, idx := range table.indexes {
+		memIdx := idx.(*Index)
+		idxStorage := table.indexStorage[indexName(memIdx.ID())]
+		for i, idxRow := range idxStorage {
+			rowLoc := idxRow[len(idxRow)-1].(primaryRowLocation)
+			if rowLoc.partition == partKey && rowLoc.idx == rowIdx {
+				table.indexStorage[indexName(memIdx.ID())] = append(idxStorage[:i], idxStorage[i+1:]...)
+				break
+			}
+		}
+	}
+	
 	return nil
 }
 
