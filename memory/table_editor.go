@@ -571,21 +571,31 @@ func (pke *pkTableEditAccumulator) deleteHelper(table *TableData, row sql.Row) e
 			break
 		}
 	}
-	
-	// delete this row from every index in the table
+
+	deleteRowFromIndexes(table, partKey, rowIdx)
+
+	return nil
+}
+
+// deleteRowFromIndexes removes the row at the given partition and index from all indexes
+func deleteRowFromIndexes(table *TableData, partKey string, rowIdx int) {
 	for _, idx := range table.indexes {
 		memIdx := idx.(*Index)
 		idxStorage := table.indexStorage[indexName(memIdx.ID())]
-		for i, idxRow := range idxStorage {
+		// Iterate backwards so we can remove the trailing N elements without triggering range errors on multiple passes 
+		// through the loop
+		for i := len(idxStorage) - 1; i >= 0; i-- {
+			idxRow := idxStorage[i]
 			rowLoc := idxRow[len(idxRow)-1].(primaryRowLocation)
 			if rowLoc.partition == partKey && rowLoc.idx == rowIdx {
-				table.indexStorage[indexName(memIdx.ID())] = append(idxStorage[:i], idxStorage[i+1:]...)
-				break
+				idxStorage = append(idxStorage[:i], idxStorage[i+1:]...)
+			} else if rowLoc.partition == partKey && rowLoc.idx > rowIdx {
+				// For rows after the one we deleted, offset the row index by -1
+				idxRow[len(idxRow)-1] = primaryRowLocation{rowLoc.partition, rowLoc.idx - 1}
 			}
 		}
+		table.indexStorage[indexName(memIdx.ID())] = idxStorage
 	}
-	
-	return nil
 }
 
 // insertHelper inserts the given row into the given tableData.
@@ -625,7 +635,16 @@ func (pke *pkTableEditAccumulator) insertHelper(table *TableData, row sql.Row) e
 		rowIdx = len(table.partitions[key]) - 1
 	}
 	
-	// insert a new index entry for this new row in every index the table has
+	err := addRowToIndexes(table, row, partKey, rowIdx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// addRowToIndexes adds the given row to all indexes
+func addRowToIndexes(table *TableData, row sql.Row, partKey string, rowIdx int) error {
 	for _, idx := range table.indexes {
 		memIdx := idx.(*Index)
 		idxRow, err := memIdx.rowToIndexStorage(row, partKey, rowIdx)
@@ -634,7 +653,6 @@ func (pke *pkTableEditAccumulator) insertHelper(table *TableData, row sql.Row) e
 		}
 		table.indexStorage[indexName(memIdx.ID())] = append(table.indexStorage[indexName(memIdx.ID())], idxRow)
 	}
-
 	return nil
 }
 
@@ -755,6 +773,8 @@ func (k *keylessTableEditAccumulator) deleteHelper(table *TableData, row sql.Row
 	}
 
 	matches := false
+	var partKey string
+	var rowIdx int
 	for partitionIndex, partition := range table.partitions {
 		for partitionRowIndex, partitionRow := range partition {
 			matches = true
@@ -766,6 +786,8 @@ func (k *keylessTableEditAccumulator) deleteHelper(table *TableData, row sql.Row
 
 			if matches {
 				table.partitions[partitionIndex] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
+				partKey = partitionIndex
+				rowIdx = partitionRowIndex
 				break
 			}
 		}
@@ -773,6 +795,8 @@ func (k *keylessTableEditAccumulator) deleteHelper(table *TableData, row sql.Row
 			break
 		}
 	}
+
+	deleteRowFromIndexes(table, partKey, rowIdx)
 
 	return nil
 }
@@ -786,6 +810,11 @@ func (k *keylessTableEditAccumulator) insertHelper(table *TableData, row sql.Row
 	}
 
 	table.partitions[key] = append(table.partitions[key], row)
+
+	err := addRowToIndexes(table, row, key, len(table.partitions[key])-1)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
