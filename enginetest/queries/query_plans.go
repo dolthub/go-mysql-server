@@ -10120,6 +10120,32 @@ WHERE keyless.c0 IN (
 			"             └─ columns: [x y]\n" +
 			"",
 	},
+	{
+		Query: "select x as xx, y as yy from xy_hasnull_idx order by YY desc",
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [xy_hasnull_idx.x:0!null as xx, xy_hasnull_idx.y:1 as yy]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [xy_hasnull_idx.x:0!null, xy_hasnull_idx.y:1, xy_hasnull_idx.x:0!null as xx, xy_hasnull_idx.y:1 as yy]\n" +
+			"     └─ IndexedTableAccess(xy_hasnull_idx)\n" +
+			"         ├─ index: [xy_hasnull_idx.y]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ reverse: true\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy_hasnull_idx\n" +
+			"             └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: "select * from xy_hasnull_idx order by Y desc",
+		ExpectedPlan: "IndexedTableAccess(xy_hasnull_idx)\n" +
+			" ├─ index: [xy_hasnull_idx.y]\n" +
+			" ├─ static: [{[NULL, ∞)}]\n" +
+			" ├─ reverse: true\n" +
+			" └─ Table\n" +
+			"     ├─ name: xy_hasnull_idx\n" +
+			"     └─ columns: [x y]\n" +
+			"",
+	},
 
 	// aggregation optimization tests
 	{

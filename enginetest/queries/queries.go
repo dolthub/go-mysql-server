@@ -8191,6 +8191,24 @@ ORDER BY 1;`,
 			{3, nil},
 		},
 	},
+	{
+		Query: "select x as xx, y as yy from xy_hasnull_idx order by YY desc",
+		Expected: []sql.Row{
+			{0, 2},
+			{2, 1},
+			{1, 0},
+			{3, nil},
+		},
+	},
+	{
+		Query: "select * from xy_hasnull_idx order by Y desc",
+		Expected: []sql.Row{
+			{0, 2},
+			{2, 1},
+			{1, 0},
+			{3, nil},
+		},
+	},
 
 	{
 		Query: "select max(x) from xy",
