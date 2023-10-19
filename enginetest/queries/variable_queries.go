@@ -334,7 +334,7 @@ var VariableQueries = []ScriptTest{
 		},
 		Query: "SELECT @myvar",
 		Expected: []sql.Row{
-			{123.4},
+			{"123.4"},
 		},
 	},
 	{
@@ -344,7 +344,7 @@ var VariableQueries = []ScriptTest{
 		},
 		Query: "SELECT @myvar, @@auto_increment_increment",
 		Expected: []sql.Row{
-			{123.4, 1234},
+			{"123.4", 1234},
 		},
 	},
 	{
