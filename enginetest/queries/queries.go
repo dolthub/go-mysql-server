@@ -8183,6 +8183,15 @@ ORDER BY 1;`,
 			{0, 2},
 		},
 	},
+	{
+		Query: "select x as xx, y as yy from xy_hasnull_idx order by yy desc",
+		Expected: []sql.Row{
+			{0, 2},
+			{2, 1},
+			{1, 0},
+			{3, nil},
+		},
+	},
 
 
 	{

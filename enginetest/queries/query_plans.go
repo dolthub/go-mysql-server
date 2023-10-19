@@ -10104,6 +10104,19 @@ WHERE keyless.c0 IN (
 			"         └─ columns: [x y]\n" +
 			"",
 	},
+	{
+		Query: "select x as xx, y as yy from xy_hasnull_idx order by yy desc",
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [xy_hasnull_idx.x:0!null as xx, xy_hasnull_idx.y:1 as yy]\n" +
+			" └─ Sort(xy_hasnull_idx.y:1 as yy DESC nullsFirst)\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [xy_hasnull_idx.x:0!null, xy_hasnull_idx.y:1, xy_hasnull_idx.x:0!null as xx, xy_hasnull_idx.y:1 as yy]\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: xy_hasnull_idx\n" +
+			"                 └─ columns: [x y]\n" +
+			"",
+	},
 
 	// aggregation optimization tests
 	{
