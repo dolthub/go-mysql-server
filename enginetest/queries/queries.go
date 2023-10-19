@@ -8192,7 +8192,6 @@ ORDER BY 1;`,
 		},
 	},
 
-
 	{
 		Query: "select max(x) from xy",
 		Expected: []sql.Row{
