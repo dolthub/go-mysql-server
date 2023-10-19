@@ -59,6 +59,6 @@ func lit(n interface{}, typ sql.Type) sql.Expression {
 	return expression.NewLiteral(n, typ)
 }
 
-func col(idx int, typ sql.Type, table, col string) sql.Expression {
-	return expression.NewGetFieldWithTable(idx, typ, table, col, false)
+func col(idx int, typ sql.Type, db, table, col string) sql.Expression {
+	return expression.NewGetFieldWithTable(idx, typ, db, table, col, false)
 }

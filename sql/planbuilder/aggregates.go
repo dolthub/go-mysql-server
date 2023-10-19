@@ -150,7 +150,7 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 			}
 		}
 		if col.scalar == nil {
-			gf := expression.NewGetFieldWithTable(0, col.typ, col.table, col.col, col.nullable)
+			gf := expression.NewGetFieldWithTable(0, col.typ, col.db, col.table, col.col, col.nullable)
 			id, ok := fromScope.getExpr(gf.String(), true)
 			if !ok {
 				err := sql.ErrColumnNotFound.New(gf.String())
@@ -363,7 +363,7 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 	aggName := strings.ToLower(plan.AliasSubqueryString(agg))
 	if id, ok := gb.outScope.getExpr(aggName, true); ok {
 		// if we've already computed use reference here
-		gf := expression.NewGetFieldWithTable(int(id), aggType, "", aggName, agg.IsNullable())
+		gf := expression.NewGetFieldWithTable(int(id), aggType, "", "", aggName, agg.IsNullable())
 		return gf
 	}
 
@@ -728,7 +728,7 @@ func (b *Builder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) 
 				err := sql.ErrColumnNotFound.New(n.Name)
 				b.handleErr(err)
 			}
-			c.scalar = expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
+			c.scalar = expression.NewGetFieldWithTable(int(c.id), c.typ, c.db, c.table, c.col, c.nullable)
 			fromScope.addExtraColumn(c)
 		}
 		return true, nil

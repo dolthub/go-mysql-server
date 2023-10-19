@@ -73,9 +73,9 @@ func TestApplyHashIn(t *testing.T) {
 
 	child := plan.NewProject(
 		[]sql.Expression{
-			expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
-			expression.NewGetFieldWithTable(1, types.Int64, "foo", "b", false),
-			expression.NewGetFieldWithTable(2, types.Int64, "foo", "c", false),
+			expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "a", false),
+			expression.NewGetFieldWithTable(1, types.Int64, "db", "foo", "b", false),
+			expression.NewGetFieldWithTable(2, types.Int64, "db", "foo", "c", false),
 		},
 		plan.NewResolvedTable(table, nil, nil),
 	)

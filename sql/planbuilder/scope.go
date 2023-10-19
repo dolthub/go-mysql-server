@@ -544,9 +544,9 @@ func (c scopeColumn) scalarGf() sql.Expression {
 		}
 	}
 	if c.originalCol != "" {
-		return expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.originalCol, c.nullable)
+		return expression.NewGetFieldWithTable(int(c.id), c.typ, c.db, c.table, c.originalCol, c.nullable)
 	}
-	return expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
+	return expression.NewGetFieldWithTable(int(c.id), c.typ, c.db, c.table, c.col, c.nullable)
 }
 
 func (c scopeColumn) String() string {

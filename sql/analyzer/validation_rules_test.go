@@ -518,8 +518,8 @@ func TestValidateIndexCreation(t *testing.T) {
 			plan.NewCreateIndex(
 				"idx", plan.NewResolvedTable(table, nil, nil),
 				[]sql.Expression{expression.NewEquals(
-					expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
-					expression.NewGetFieldWithTable(0, types.Int64, "bar", "b", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "a", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "db", "bar", "b", false),
 				)},
 				"",
 				make(map[string]string),
@@ -531,8 +531,8 @@ func TestValidateIndexCreation(t *testing.T) {
 			plan.NewCreateIndex(
 				"idx", plan.NewResolvedTable(table, nil, nil),
 				[]sql.Expression{expression.NewEquals(
-					expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
-					expression.NewGetFieldWithTable(0, types.Int64, "foo", "c", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "a", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "c", false),
 				)},
 				"",
 				make(map[string]string),
@@ -544,8 +544,8 @@ func TestValidateIndexCreation(t *testing.T) {
 			plan.NewCreateIndex(
 				"idx", plan.NewResolvedTable(table, nil, nil),
 				[]sql.Expression{expression.NewEquals(
-					expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
-					expression.NewGetFieldWithTable(0, types.Int64, "foo", "b", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "a", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "b", false),
 				)},
 				"",
 				make(map[string]string),

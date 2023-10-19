@@ -229,11 +229,11 @@ func TestGroupByCollations(t *testing.T) {
 			p := plan.NewGroupBy(
 				[]sql.Expression{
 					aggregation.NewSum(
-						expression.NewGetFieldWithTable(1, types.Int64, "test", "col2", false),
+						expression.NewGetFieldWithTable(1, types.Int64, "db", "test", "col2", false),
 					),
 				},
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, tc.Type, "test", "col1", false),
+					expression.NewGetFieldWithTable(0, tc.Type, "db", "test", "col1", false),
 				},
 				plan.NewResolvedTable(child, nil, nil),
 			)

@@ -312,7 +312,7 @@ func (d *BaseDatabase) RenameTable(ctx *sql.Context, oldName, newName string) er
 		memIndex := index.(*Index)
 		for i, expr := range memIndex.Exprs {
 			getField := expr.(*expression.GetField)
-			memIndex.Exprs[i] = expression.NewGetFieldWithTable(i, getField.Type(), newName, getField.Name(), getField.IsNullable())
+			memIndex.Exprs[i] = expression.NewGetFieldWithTable(i, getField.Type(), getField.Database(), newName, getField.Name(), getField.IsNullable())
 		}
 	}
 	memTbl.data.tableName = newName

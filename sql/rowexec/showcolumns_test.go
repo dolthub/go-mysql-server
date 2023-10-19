@@ -81,8 +81,8 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 			table: "foo",
 			id:    "a",
 			exprs: []sql.Expression{
-				expression.NewGetFieldWithTable(0, types.Int64, "foo", "b", true),
-				expression.NewGetFieldWithTable(0, types.Int64, "foo", "c", true),
+				expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "b", true),
+				expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "c", true),
 			},
 			unique: true,
 		},
@@ -91,8 +91,8 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 			table: "foo",
 			id:    "b",
 			exprs: []sql.Expression{
-				expression.NewGetFieldWithTable(0, types.Int64, "foo", "d", true),
-				expression.NewGetFieldWithTable(0, types.Int64, "foo", "e", true),
+				expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "d", true),
+				expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "e", true),
 			},
 			unique: false,
 		},
@@ -121,8 +121,8 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 			table: "foo",
 			id:    "c",
 			exprs: []sql.Expression{
-				expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", true),
-				expression.NewGetFieldWithTable(0, types.Int64, "foo", "b", true),
+				expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "a", true),
+				expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "b", true),
 			},
 			unique: true,
 		},
@@ -131,8 +131,8 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 			table: "foo",
 			id:    "d",
 			exprs: []sql.Expression{
-				expression.NewGetFieldWithTable(0, types.Int64, "foo", "b", true),
-				expression.NewGetFieldWithTable(0, types.Int64, "foo", "d", true),
+				expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "b", true),
+				expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "d", true),
 			},
 			unique: false,
 		},
