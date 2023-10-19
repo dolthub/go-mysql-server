@@ -147,8 +147,8 @@ var FloattableData = []SetupScript{{
 
 var FooData = []SetupScript{{
 	`create database if not exists foo`,
-	`create table foo.other_table (text varchar(20) primary key, number mediumint)`,
-	`insert into foo.other_table values
+	`create table foo.othertable (text varchar(20) primary key, number mediumint)`,
+	`insert into foo.othertable values
     ('a', 4),
     ('b', 2),
     ('c', 0)`,

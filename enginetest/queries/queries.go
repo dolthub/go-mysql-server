@@ -4981,7 +4981,7 @@ Select * from (
 		},
 	},
 	{
-		Query: `SELECT * FROM foo.other_table`,
+		Query: `SELECT * FROM foo.othertable`,
 		Expected: []sql.Row{
 			{"a", int32(4)},
 			{"b", int32(2)},
