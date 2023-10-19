@@ -8141,6 +8141,74 @@ ORDER BY 1;`,
 			{1, 0},
 		},
 	},
+	{
+		Query: "select * from xy_hasnull_idx order by y",
+		Expected: []sql.Row{
+			{3, nil},
+			{1, 0},
+			{2, 1},
+			{0, 2},
+		},
+	},
+	{
+		Query: "select * from xy_hasnull_idx order by y desc",
+		Expected: []sql.Row{
+			{0, 2},
+			{2, 1},
+			{1, 0},
+			{3, nil},
+		},
+	},
+	{
+		Query: "select * from xy_hasnull_idx where y < 1 or y > 1 order by y desc",
+		Expected: []sql.Row{
+			{0, 2},
+			{1, 0},
+		},
+	},
+	{
+		Query: "select * from xy_hasnull_idx where y < 1 or y > 1 or y is null order by y desc",
+		Expected: []sql.Row{
+			{0, 2},
+			{1, 0},
+			{3, nil},
+		},
+	},
+	{
+		Query: "select * from xy_hasnull_idx where y in (0, 2) or y is null order by y",
+		Expected: []sql.Row{
+			{3, nil},
+			{1, 0},
+			{0, 2},
+		},
+	},
+	{
+		Query: "select x as xx, y as yy from xy_hasnull_idx order by yy desc",
+		Expected: []sql.Row{
+			{0, 2},
+			{2, 1},
+			{1, 0},
+			{3, nil},
+		},
+	},
+	{
+		Query: "select x as xx, y as yy from xy_hasnull_idx order by YY desc",
+		Expected: []sql.Row{
+			{0, 2},
+			{2, 1},
+			{1, 0},
+			{3, nil},
+		},
+	},
+	{
+		Query: "select * from xy_hasnull_idx order by Y desc",
+		Expected: []sql.Row{
+			{0, 2},
+			{2, 1},
+			{1, 0},
+			{3, nil},
+		},
+	},
 
 	{
 		Query: "select max(x) from xy",
