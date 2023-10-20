@@ -436,6 +436,9 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 			//  queries where the columns being selected are only found in subqueries. Conversely, we actually want to ignore
 			//  this error for the case of DEFAULT in a `plan.Values`, since we analyze the insert source in isolation (we
 			//  don't have the destination schema, and column references in default values are determined in the build phase)
+			if e.Name() == "hash" {
+				print()
+			}
 			idx, _ := newScope.getIdx(e.String())
 			if idx >= 0 {
 				return e.WithIndex(idx), transform.NewTree, nil

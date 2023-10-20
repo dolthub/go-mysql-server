@@ -53,7 +53,38 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	span, ctx := ctx.Span("finalize_subqueries")
 	defer span.End()
 
-	return finalizeSubqueriesHelper(ctx, a, n, scope, sel)
+	nn, same1, err := finalizeSubqueriesHelper(ctx, a, n, scope, sel)
+	if err != nil {
+		return nil, same1, err
+	}
+
+	return nn, same1, err
+
+	nnn, same2, err := transform.NodeWithOpaque(nn, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		if parentSQA, ok := n.(*plan.SubqueryAlias); ok && parentSQA.IsLateral {
+			newSqaChild, sqaSame, sqaErr := transform.NodeWithOpaque(parentSQA.Child, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+				if sqa, ok := n.(*plan.SubqueryAlias); ok {
+					sqa.IsLateral = true
+					return sqa, transform.NewTree, nil
+				}
+				return n, transform.SameTree, nil
+			})
+			if sqaErr != nil {
+				return n, transform.SameTree, sqaErr
+			}
+			if sqaSame {
+				return n, transform.SameTree, nil
+			}
+			newSqa, err := parentSQA.WithChildren(newSqaChild)
+			if err != nil {
+				return n, transform.SameTree, err
+			}
+			return newSqa, transform.NewTree, nil
+		}
+		return n, transform.SameTree, nil
+	})
+
+	return nnn, same1 && same2, err
 }
 
 // finalizeSubqueriesHelper finalizes all subqueries and subquery expressions,
