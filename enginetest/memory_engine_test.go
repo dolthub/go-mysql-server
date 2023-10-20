@@ -136,11 +136,9 @@ func TestBrokenJSONTableScripts(t *testing.T) {
 func TestSingleQuery(t *testing.T) {
 	// t.Skip()
 	var test queries.QueryTest
-	test = queries.QueryTest	{
-		Query: "select i from mytable where i = 1",
-		Expected: []sql.Row{
-			{1},
-		},
+	test = queries.QueryTest{
+		Query:    "SELECT i FROM mytable WHERE i >= 2 ORDER BY 1",
+		Expected: []sql.Row{{int64(2)}, {int64(3)}},
 	}
 	// test = queries.QueryTest	{
 	// 	Query: "SELECT s, (select i from mytable mt where sub.i = mt.i) as subi FROM (select i,s,'hello' FROM mytable where s = 'first row') as sub;",

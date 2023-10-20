@@ -288,3 +288,16 @@ func (idx *Index) Reversible() bool {
 func (idx Index) copy() *Index {
 	return &idx
 }
+
+// columnIndexes returns the indexes in the given schema for the fields in this index
+func (idx *Index) columnIndexes(schema sql.Schema) []int {
+	indexes := make([]int, len(idx.Exprs))
+	for i, expr := range idx.Exprs {
+		gf, ok := expr.(*expression.GetField)
+		if !ok {
+			panic(fmt.Sprintf("expected GetField expression, got %T", expr))
+		}
+		indexes[i] = schema.IndexOfColName(gf.Name())
+	}
+	return indexes
+}

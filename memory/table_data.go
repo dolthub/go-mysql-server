@@ -354,6 +354,25 @@ func (td *TableData) sortRows() {
 		allRows: flattenedRows,
 		indexes: td.indexStorage,
 	})
+
+	// resort all the indexes as well
+	for idxName, idxStorage := range td.indexStorage {
+		idx := td.indexes[string(idxName)].(*Index)
+		fieldIndexes := idx.columnIndexes(td.schema.Schema)
+		types := make([]sql.Type, len(fieldIndexes))
+		for i, idx := range fieldIndexes {
+			types[i] = td.schema.Schema[idx].Type
+		}
+		sort.Slice(idxStorage, func(i, j int) bool {
+			for t, typ := range types {
+				compare, _ := typ.Compare(idxStorage[i][t], idxStorage[j][t])
+				if compare != 0 {
+					return compare < 0
+				}
+			}
+			return false
+		})
+	}
 }
 
 func (td TableData) virtualColIndexes() []int {

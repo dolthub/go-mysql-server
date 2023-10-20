@@ -384,6 +384,7 @@ func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 		idxRow := i.indexRows[i.i]
 		rowLoc := idxRow[len(idxRow)-1].(primaryRowLocation)
 		candidate := i.primaryRows[rowLoc.partition][rowLoc.idx]
+
 		matches, err := rowMatches(i.ranges, candidate)
 		if err != nil {
 			return nil, err
