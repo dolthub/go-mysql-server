@@ -82,6 +82,7 @@ var _ sql.ProjectedTable = (*Table)(nil)
 var _ sql.PrimaryKeyAlterableTable = (*Table)(nil)
 var _ sql.PrimaryKeyTable = (*Table)(nil)
 var _ fulltext.IndexAlterableTable = (*Table)(nil)
+var _ sql.IndexBuildingTable = (*Table)(nil)
 
 // NewTable creates a new Table with the given name and schema. Assigns the default collation, therefore if a different
 // collation is desired, please use NewTableWithCollation.
@@ -2285,6 +2286,48 @@ func hasNullForAnyCols(row sql.Row, cols []int) bool {
 		}
 	}
 	return false
+}
+
+func (t Table) ShouldBuildIndex(ctx *sql.Context, indexDef sql.IndexDef) (bool, error) {
+	// We always want help building new indexes
+	return true, nil
+}
+
+func (t Table) BuildIndex(ctx *sql.Context, indexDef sql.IndexDef) (sql.RowInserter, error) {
+	data := t.sessionTableData(ctx)
+	idx, ok := data.indexes[indexDef.Name]
+	if !ok {
+		return nil, sql.ErrIndexNotFound.New(indexDef.Name)
+	}
+	
+	return &indexBuilder{
+		tableData: data.copy(),
+		index:     idx.(*Index),
+	}, nil
+}
+
+type indexBuilder struct {
+	tableData *TableData
+	index *Index
+}
+
+func (i indexBuilder) StatementBegin(ctx *sql.Context) {}
+
+func (i indexBuilder) DiscardChanges(ctx *sql.Context, errorEncountered error) error {
+	return nil
+}
+
+func (i indexBuilder) StatementComplete(ctx *sql.Context) error {
+	return nil
+}
+
+func (i indexBuilder) Insert(context *sql.Context, row sql.Row) error {
+	addRowToIndexes(i.tableData, row, ) 
+}
+
+func (i indexBuilder) Close(context *sql.Context) error {
+	// TODO implement me
+	panic("implement me")
 }
 
 // TableRevision is a container for memory tables to run basic smoke tests for versioned queries. It overrides only

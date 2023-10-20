@@ -1866,6 +1866,15 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 				}
 			}
 		}
+		
+		indexDef := sql.IndexDef{
+			Name:       indexName,
+			Columns:    n.Columns,
+			Constraint: n.Constraint,
+			Storage:    n.Using,
+			Comment:    n.Comment,
+		}
+		
 		if n.Constraint == sql.IndexConstraint_Fulltext {
 			database, ok := n.Database().(fulltext.Database)
 			if !ok {
@@ -1877,66 +1886,38 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 					return sql.ErrIncompleteFullTextIntegration.New()
 				}
 			}
-			return fulltext.CreateFulltextIndexes(ctx, database, indexable, nil, sql.IndexDef{
-				Name:       indexName,
-				Columns:    n.Columns,
-				Constraint: n.Constraint,
-				Storage:    n.Using,
-				Comment:    n.Comment,
-			})
+			return fulltext.CreateFulltextIndexes(ctx, database, indexable, nil, indexDef)
 		}
-		err = indexable.CreateIndex(ctx, sql.IndexDef{
-			Name:       indexName,
-			Columns:    n.Columns,
-			Constraint: n.Constraint,
-			Storage:    n.Using,
-			Comment:    n.Comment,
-		})
+		
+		err = indexable.CreateIndex(ctx, indexDef)
 		if err != nil {
 			return err
 		}
-		rwt, ok := indexable.(sql.RewritableTable)
-		if !ok || n.Constraint != sql.IndexConstraint_Unique {
+		
+		shouldBuild := false
+		ibt, isIndexBuilding := indexable.(sql.IndexBuildingTable)
+		if isIndexBuilding {
+			shouldBuild, err = ibt.ShouldBuildIndex(ctx, indexDef)
+			if err != nil {
+				return err
+			}
+		}
+
+		if !indexCreateRequiresBuild(n) && !shouldBuild {
 			return nil
 		}
 
-		sch := sql.SchemaToPrimaryKeySchema(table, n.TargetSchema())
-		inserter, err := rwt.RewriteInserter(ctx, sch, sch, nil, nil, n.Columns)
-		if err != nil {
-			return err
+		if isIndexBuilding {
+			return buildIndex(ctx, ibt, indexDef)
 		}
 
-		partitions, err := rwt.Partitions(ctx)
-		if err != nil {
-			return err
+		// TODO: remove this in favor of the above, but it's still used by Dolt
+		rwt, isRewritable := indexable.(sql.RewritableTable)
+		if !isRewritable {
+			return nil
 		}
 
-		rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
-
-		for {
-			r, err := rowIter.Next(ctx)
-			if err == io.EOF {
-				break
-			} else if err != nil {
-				_ = inserter.DiscardChanges(ctx, err)
-				_ = inserter.Close(ctx)
-				return err
-			}
-
-			err = inserter.Insert(ctx, r)
-			if err != nil {
-				_ = inserter.DiscardChanges(ctx, err)
-				_ = inserter.Close(ctx)
-				return err
-			}
-		}
-
-		// TODO: move this into iter.close, probably
-		err = inserter.Close(ctx)
-		if err != nil {
-			return err
-		}
-		return nil
+		return rewriteTableForIndexCreate(ctx, n, table, rwt)
 	case plan.IndexAction_Drop:
 		if fkTable, ok := indexable.(sql.ForeignKeyTable); ok {
 			fks, err := fkTable.GetDeclaredForeignKeys(ctx)
@@ -2042,6 +2023,103 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 	default:
 		return plan.ErrIndexActionNotImplemented.New(n.Action)
 	}
+}
+
+func buildIndex(ctx *sql.Context, ibt sql.IndexBuildingTable, indexDef sql.IndexDef) error {
+	inserter, err := ibt.BuildIndex(ctx, indexDef)
+	if err != nil {
+		return err
+	}
+
+	partitions, err := ibt.Partitions(ctx)
+	if err != nil {
+		return err
+	}
+
+	rowIter := sql.NewTableRowIter(ctx, ibt, partitions)
+
+	for {
+		r, err := rowIter.Next(ctx)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
+			return err
+		}
+
+		err = inserter.Insert(ctx, r)
+		if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
+			return err
+		}
+	}
+
+	// TODO: move this into iter.close, probably
+	err = inserter.Close(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func rewriteTableForIndexCreate(ctx *sql.Context, n *plan.AlterIndex, table sql.Table, rwt sql.RewritableTable) error {
+	sch := sql.SchemaToPrimaryKeySchema(table, n.TargetSchema())
+	inserter, err := rwt.RewriteInserter(ctx, sch, sch, nil, nil, n.Columns)
+	if err != nil {
+		return err
+	}
+
+	partitions, err := rwt.Partitions(ctx)
+	if err != nil {
+		return err
+	}
+
+	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
+
+	for {
+		r, err := rowIter.Next(ctx)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
+			return err
+		}
+
+		err = inserter.Insert(ctx, r)
+		if err != nil {
+			_ = inserter.DiscardChanges(ctx, err)
+			_ = inserter.Close(ctx)
+			return err
+		}
+	}
+
+	// TODO: move this into iter.close, probably
+	err = inserter.Close(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+
+func indexCreateRequiresBuild(n *plan.AlterIndex) bool {
+	return n.Constraint == sql.IndexConstraint_Unique || indexOnVirtualColumn(n.Columns, n.TargetSchema())
+}
+
+func indexOnVirtualColumn(columns []sql.IndexColumn, schema sql.Schema) bool {
+	for _, col := range columns {
+		idx := schema.IndexOfColName(col.Name)
+		if idx < 0 {
+			return false // should be impossible
+		}
+		if schema[idx].Virtual {
+			return true
+		}
+	}
+	return false
 }
 
 // Execute inserts the rows in the database.
