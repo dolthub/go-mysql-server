@@ -137,7 +137,7 @@ func TestSingleQuery(t *testing.T) {
 	// t.Skip()
 	var test queries.QueryTest
 	test = queries.QueryTest	{
-		Query: "SELECT s, (select i from mytable mt where sub.i = mt.i) as subi FROM (select i,s,'hello' FROM mytable where s = 'first row') as sub;",
+		Query: "SELECT s,i from mytable where s = 'first row';",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
 		},

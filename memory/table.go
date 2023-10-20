@@ -388,6 +388,7 @@ func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 		
 		if matches {
 			row = candidate
+			i.i++
 			break
 		}
 	}
