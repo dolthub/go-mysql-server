@@ -137,9 +137,9 @@ func TestSingleQuery(t *testing.T) {
 	// t.Skip()
 	var test queries.QueryTest
 	test = queries.QueryTest	{
-		Query: "SELECT s,i from mytable where s = 'first row';",
+		Query: "select i from mytable alias where i = 1 and s = 'first row'",
 		Expected: []sql.Row{
-			{"first row", int64(1)},
+			{1},
 		},
 	}
 	// test = queries.QueryTest	{

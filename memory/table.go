@@ -372,6 +372,7 @@ type indexScanRowIter struct {
 }
 
 func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
+	// TODO next: index is empty after index creation, only is updated on table creation
 	if i.i >= len(i.indexRows) {
 		return nil, io.EOF
 	}

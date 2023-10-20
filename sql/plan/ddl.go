@@ -18,11 +18,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -292,72 +290,6 @@ func (c *CreateTable) WithParentForeignKeyTables(refTbls []sql.ForeignKeyTable) 
 	nc := *c
 	nc.fkParentTbls = refTbls
 	return &nc, nil
-}
-
-func (c *CreateTable) CreateIndexes(ctx *sql.Context, tableNode sql.Table, idxes []*IndexDefinition) (err error) {
-	idxAlterable, ok := tableNode.(sql.IndexAlterableTable)
-	if !ok {
-		return ErrNotIndexable.New()
-	}
-
-	indexMap := make(map[string]struct{})
-	fulltextIndexes := make([]sql.IndexDef, 0, len(idxes))
-	for _, idxDef := range idxes {
-		indexName := idxDef.IndexName
-		// If the name is empty, we create a new name using the columns provided while appending an ascending integer
-		// until we get a non-colliding name if the original name (or each preceding name) already exists.
-		if indexName == "" {
-			indexName = strings.Join(idxDef.ColumnNames(), "")
-			if _, ok = indexMap[strings.ToLower(indexName)]; ok {
-				for i := 0; true; i++ {
-					newIndexName := fmt.Sprintf("%s_%d", indexName, i)
-					if _, ok = indexMap[strings.ToLower(newIndexName)]; !ok {
-						indexName = newIndexName
-						break
-					}
-				}
-			}
-		} else if _, ok = indexMap[strings.ToLower(idxDef.IndexName)]; ok {
-			return sql.ErrIndexIDAlreadyRegistered.New(idxDef.IndexName)
-		}
-		// We'll create the Full-Text indexes after all others
-		if idxDef.Constraint == sql.IndexConstraint_Fulltext {
-			otherDef := idxDef.AsIndexDef()
-			otherDef.Name = indexName
-			fulltextIndexes = append(fulltextIndexes, otherDef)
-			continue
-		}
-		err := idxAlterable.CreateIndex(ctx, sql.IndexDef{
-			Name:       indexName,
-			Columns:    idxDef.Columns,
-			Constraint: idxDef.Constraint,
-			Storage:    idxDef.Using,
-			Comment:    idxDef.Comment,
-		})
-		if err != nil {
-			return err
-		}
-		indexMap[strings.ToLower(indexName)] = struct{}{}
-	}
-
-	// Evaluate our Full-Text indexes now
-	if len(fulltextIndexes) > 0 {
-		database, ok := c.Db.(fulltext.Database)
-		if !ok {
-			if privDb, ok := c.Db.(mysql_db.PrivilegedDatabase); ok {
-				if database, ok = privDb.Unwrap().(fulltext.Database); !ok {
-					return sql.ErrCreateTableNotSupported.New(c.Db.Name())
-				}
-			} else {
-				return sql.ErrCreateTableNotSupported.New(c.Db.Name())
-			}
-		}
-		if err = fulltext.CreateFulltextIndexes(ctx, database, idxAlterable, nil, fulltextIndexes...); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func (c *CreateTable) CreateForeignKeys(ctx *sql.Context, tableNode sql.Table) error {
