@@ -134,13 +134,21 @@ func TestBrokenJSONTableScripts(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
+	// t.Skip()
 	var test queries.QueryTest
-	test = queries.QueryTest{
-		Query:    `select count((select * from (select pk from one_pk limit 1) as sq)) from one_pk;`,
-		Expected: []sql.Row{{0}, {1}},
+	test = queries.QueryTest	{
+		Query: "SELECT s, (select i from mytable mt where sub.i = mt.i) as subi FROM (select i,s,'hello' FROM mytable where s = 'first row') as sub;",
+		Expected: []sql.Row{
+			{"first row", int64(1)},
+		},
 	}
-
+	// test = queries.QueryTest	{
+	// 	Query: "SELECT s, (select i from mytable mt where sub.i = mt.i) as subi FROM (select i,s,'hello' FROM mytable where s = 'first row') as sub;",
+	// 	Expected: []sql.Row{
+	// 		{"first row", int64(1)},
+	// 	},
+	// }
+	
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, false, nil)
 	// harness.UseServer()

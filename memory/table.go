@@ -22,6 +22,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	errors "gopkg.in/src-d/go-errors.v1"
 
@@ -279,6 +280,42 @@ func (i rangePartitionIter) Next(ctx *sql.Context) (sql.Partition, error) {
 	}, nil
 }
 
+// indexScanPartitionIter is a partition iterator that returns a single partition for an index scan
+type indexScanPartitionIter struct {
+	once sync.Once
+	index *Index
+	ranges sql.Expression
+}
+
+type indexScanPartition struct {
+	index *Index
+	ranges sql.Expression
+}
+
+func (i indexScanPartition) Key() []byte {
+	return []byte("indexScanPartition")
+}
+
+var _ sql.PartitionIter = (*indexScanPartitionIter)(nil)
+
+func (i *indexScanPartitionIter) Close(ctx *sql.Context) error {
+	return nil
+}
+
+func (i *indexScanPartitionIter) Next(ctx *sql.Context) (sql.Partition, error) {
+	part, err := indexScanPartition{
+	}, io.EOF
+	
+	i.once.Do(func() {
+			part, err = indexScanPartition{
+				index: i.index,
+				ranges: i.ranges,
+			}, nil
+	})
+	
+	return part, err
+}
+
 type rangePartition struct {
 	*Partition
 	rang sql.Expression
@@ -325,10 +362,69 @@ func (t *Table) PartitionCount(ctx *sql.Context) (int64, error) {
 	return int64(len(data.partitions)), nil
 }
 
+type indexScanRowIter struct {
+	i int
+	index *Index
+	ranges sql.Expression
+	primaryRows map[string][]sql.Row
+	// TODO: we need to sort these by their indexed columns as well
+	indexRows []sql.Row
+}
+
+func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if i.i >= len(i.indexRows) {
+		return nil, io.EOF
+	}
+	
+	var row sql.Row
+	for ; i.i < len(i.indexRows); i.i++ {
+		idxRow := i.indexRows[i.i]
+		rowLoc := idxRow[len(idxRow)-1].(primaryRowLocation)
+		candidate := i.primaryRows[rowLoc.partition][rowLoc.idx]
+		matches, err := rowMatches(i.ranges, candidate)
+		if err != nil {
+			return nil, err
+		}
+		
+		if matches {
+			row = candidate
+			break
+		}
+	}
+	
+	if row == nil {
+		return nil, io.EOF
+	}
+	
+	return row, nil
+}
+
+func rowMatches(ranges sql.Expression, candidate sql.Row) (bool, error) {
+	result, err := ranges.Eval(nil, candidate)
+	if err != nil {
+		return false, err
+	}
+	
+	return sql.IsTrue(result), nil
+}
+
+func (i *indexScanRowIter) Close(context *sql.Context) error {
+	return nil
+}
+
 // PartitionRows implements the sql.PartitionRows interface.
 func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
 	data := t.sessionTableData(ctx)
-
+	
+	if isp, ok := partition.(indexScanPartition); ok {
+		return &indexScanRowIter{
+			index:       isp.index,
+			ranges:      isp.ranges,
+			primaryRows: data.partitions,
+			indexRows:   data.indexStorage[indexName(isp.index.Name)],
+		}, nil
+	}
+	
 	filters := t.filters
 	if r, ok := partition.(*rangePartition); ok && r.rang != nil {
 		// index lookup is currently a single filter applied to a full table scan
@@ -1307,12 +1403,13 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 	if err != nil {
 		return nil, err
 	}
-	child, err := t.Table.Partitions(ctx)
-	if err != nil {
-		return nil, err
-	}
 
 	if lookup.Index.IsSpatial() {
+		child, err := t.Table.Partitions(ctx)
+		if err != nil {
+			return nil, err
+		}
+
 		lower := sql.GetRangeCutKey(lookup.Ranges[0][0].LowerBound)
 		upper := sql.GetRangeCutKey(lookup.Ranges[0][0].UpperBound)
 		minPoint, ok := lower.(types.Point)
@@ -1335,7 +1432,10 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 		}, nil
 	}
 
-	return rangePartitionIter{child: child.(*partitionIter), ranges: filter}, nil
+	return &indexScanPartitionIter{
+		index:  lookup.Index.(*Index),
+		ranges: filter,
+	}, nil
 }
 
 // PartitionRows implements the sql.PartitionRows interface.
@@ -1344,6 +1444,12 @@ func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) 
 	if err != nil {
 		return nil, err
 	}
+
+	// Sorting code below is only for spatial indexes, which use a different partition iterator
+	if _, ok := partition.(indexScanPartition); ok {
+		return iter, nil
+	}
+	
 	if t.Lookup.Index != nil {
 		idx := t.Lookup.Index.(*Index)
 		sf := make(sql.SortFields, len(idx.Exprs))
