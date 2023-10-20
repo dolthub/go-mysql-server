@@ -1227,7 +1227,7 @@ order by
 			"             │       │   ├─ outerVisibility: false\n" +
 			"             │       │   ├─ cacheable: true\n" +
 			"             │       │   └─ Project\n" +
-			"             │       │       ├─ columns: [lineitem.l_suppkey:1!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null]\n" +
+			"             │       │       ├─ columns: [lineitem.l_suppkey:1!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null as sum(l_extendedprice * (1 - l_discount))]\n" +
 			"             │       │       └─ GroupBy\n" +
 			"             │       │           ├─ select: SUM((lineitem.l_extendedprice:1!null * (1 (tinyint) - lineitem.l_discount:2!null))), lineitem.l_suppkey:0!null\n" +
 			"             │       │           ├─ group: lineitem.l_suppkey:0!null\n" +
@@ -1261,7 +1261,7 @@ order by
 			"             │                                   ├─ outerVisibility: false\n" +
 			"             │                                   ├─ cacheable: true\n" +
 			"             │                                   └─ Project\n" +
-			"             │                                       ├─ columns: [lineitem.l_suppkey:1!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null]\n" +
+			"             │                                       ├─ columns: [lineitem.l_suppkey:1!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null as sum(l_extendedprice * (1 - l_discount))]\n" +
 			"             │                                       └─ GroupBy\n" +
 			"             │                                           ├─ select: SUM((lineitem.l_extendedprice:1!null * (1 (tinyint) - lineitem.l_discount:2!null))), lineitem.l_suppkey:0!null\n" +
 			"             │                                           ├─ group: lineitem.l_suppkey:0!null\n" +
