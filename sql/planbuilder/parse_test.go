@@ -39,12 +39,50 @@ type planTest struct {
 	Skip         bool
 }
 
+type planErrTest struct {
+	Query string
+	Err   string
+	Skip  bool
+}
+
 func TestPlanBuilder(t *testing.T) {
 	var verbose, rewrite bool
 	//verbose = true
 	//rewrite = true
 
 	var tests = []planTest{
+		{
+			Query: `select x, x from xy order by x`,
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.x:1!null, xy.x:1!null]
+ └─ Sort(xy.x:1!null ASC nullsFirst)
+     └─ Project
+         ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y z]
+`,
+		},
+		{
+			Query: `select t1.x as x, t1.x as x from xy t1, xy t2 order by x;`,
+			ExpectedPlan: `
+Project
+ ├─ columns: [t1.x:1!null as x, t1.x:1!null as x]
+ └─ Sort(t1.x:1!null as x ASC nullsFirst)
+     └─ Project
+         ├─ columns: [t1.x:1!null, t1.y:2!null, t1.z:3!null, t2.x:4!null, t2.y:5!null, t2.z:6!null, t1.x:1!null as x, t1.x:1!null as x]
+         └─ CrossJoin
+             ├─ TableAlias(t1)
+             │   └─ Table
+             │       ├─ name: xy
+             │       └─ columns: [x y z]
+             └─ TableAlias(t2)
+                 └─ Table
+                     ├─ name: xy
+                     └─ columns: [x y z]
+`,
+		},
 		{
 			Query: "analyze table xy update histogram on (x, y) using data '{\"row_count\": 40, \"distinct_count\": 40, \"null_count\": 1, \"columns\": [\"x\", \"y\"], \"histogram\": [{\"row_count\": 20, \"upper_bound\": [50.0]}, {\"row_count\": 20, \"upper_bound\": [80.0]}]}'",
 			ExpectedPlan: `
@@ -1773,6 +1811,7 @@ Project
 			if verbose {
 				print(plan)
 			}
+
 			require.Equal(t, tt.ExpectedPlan, "\n"+sql.DebugString(outScope.node))
 			require.True(t, outScope.node.Resolved())
 		})
@@ -2054,6 +2093,40 @@ func TestParseColumnTypeString(t *testing.T) {
 			}
 			require.Equal(t, test.expectedSqlType, typ)
 			require.Equal(t, typ.String(), str)
+		})
+	}
+}
+
+func TestPlanBuilderErr(t *testing.T) {
+	var tests = []planErrTest{
+		{
+			Query: "select x, y as x from xy order by x;",
+			Err:   "ambiguous column or alias name \"x\"",
+		},
+	}
+
+	db := memory.NewDatabase("mydb")
+	cat := newTestCatalog(db)
+	pro := memory.NewDBProvider(db)
+	sess := memory.NewSession(sql.NewBaseSession(), pro)
+
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+	ctx.SetCurrentDatabase("mydb")
+	b := New(ctx, cat)
+
+	for _, tt := range tests {
+		t.Run(tt.Query, func(t *testing.T) {
+			if tt.Skip {
+				t.Skip()
+			}
+			stmt, err := sqlparser.Parse(tt.Query)
+			require.NoError(t, err)
+
+			_, err = b.BindOnly(stmt, tt.Query)
+			defer b.Reset()
+
+			require.Error(t, err)
+			require.Equal(t, tt.Err, err.Error())
 		})
 	}
 }
