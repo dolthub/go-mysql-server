@@ -600,11 +600,11 @@ func deleteRowFromIndexes(table *TableData, partKey string, rowIdx int) {
 
 // insertHelper inserts the given row into the given tableData.
 func (pke *pkTableEditAccumulator) insertHelper(table *TableData, row sql.Row) error {
-	key := string(table.partitionKeys[table.insertPartIdx])
-	table.insertPartIdx++
-	if table.insertPartIdx == len(table.partitionKeys) {
-		table.insertPartIdx = 0
+	partIdx, err := table.partition(row)
+	if err != nil {
+		return err
 	}
+	key := string(table.partitionKeys[partIdx])
 
 	pkColIdxes := pke.pkColumnIndexes()
 	savedPartitionIndex := ""
@@ -635,7 +635,7 @@ func (pke *pkTableEditAccumulator) insertHelper(table *TableData, row sql.Row) e
 		rowIdx = len(table.partitions[key]) - 1
 	}
 	
-	err := addRowToIndexes(table, row, partKey, rowIdx)
+	err = addRowToIndexes(table, row, partKey, rowIdx)
 	if err != nil {
 		return err
 	}
@@ -803,15 +803,15 @@ func (k *keylessTableEditAccumulator) deleteHelper(table *TableData, row sql.Row
 
 // insertHelper inserts into a keyless tableData.
 func (k *keylessTableEditAccumulator) insertHelper(table *TableData, row sql.Row) error {
-	key := string(table.partitionKeys[table.insertPartIdx])
-	table.insertPartIdx++
-	if table.insertPartIdx == len(table.partitionKeys) {
-		table.insertPartIdx = 0
+	partIdx, err := table.partition(row)
+	if err != nil {
+		return err
 	}
+	key := string(table.partitionKeys[partIdx])
 
 	table.partitions[key] = append(table.partitions[key], row)
 
-	err := addRowToIndexes(table, row, key, len(table.partitions[key])-1)
+	err = addRowToIndexes(table, row, key, len(table.partitions[key])-1)
 	if err != nil {
 		return err
 	}

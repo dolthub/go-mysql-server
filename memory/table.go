@@ -2307,7 +2307,7 @@ func (t Table) BuildIndex(ctx *sql.Context, indexDef sql.IndexDef) (sql.RowInser
 }
 
 type indexBuilder struct {
-	tableData *TableData
+	tableData *TableData 
 	index *Index
 }
 
@@ -2322,12 +2322,13 @@ func (i indexBuilder) StatementComplete(ctx *sql.Context) error {
 }
 
 func (i indexBuilder) Insert(context *sql.Context, row sql.Row) error {
-	addRowToIndexes(i.tableData, row, ) 
+	// TODO: we don't have a partition index here and can't scan all the partitions to get one
+	// need to have a deterministic partition
+	return nil
 }
 
 func (i indexBuilder) Close(context *sql.Context) error {
-	// TODO implement me
-	panic("implement me")
+	return nil
 }
 
 // TableRevision is a container for memory tables to run basic smoke tests for versioned queries. It overrides only

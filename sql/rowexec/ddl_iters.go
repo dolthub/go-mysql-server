@@ -1908,7 +1908,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 		}
 
 		if isIndexBuilding {
-			return buildIndex(ctx, ibt, indexDef)
+			// return buildIndex(ctx, ibt, indexDef)
 		}
 
 		// TODO: remove this in favor of the above, but it's still used by Dolt

@@ -19,9 +19,11 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/cespare/xxhash"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // TableData encapsulates all schema and data for a table's schema and rows. Other aspects of a table can change
@@ -52,9 +54,6 @@ type TableData struct {
 	// storage during edits, rather than applying edits and sorting after the fact. Using a tree or other ordered 
 	// collection would probably be less work and work better at that point. 
 	indexStorage map[indexName][]sql.Row
-
-	// Insert bookkeeping (spread inserts across partitions)
-	insertPartIdx int
 }
 
 type indexName string
@@ -112,6 +111,48 @@ func (td TableData) copy() *TableData {
 	return &td
 }
 
+// partition returns the partition for the row given. Uses the primary key columns if they exist, or all columns 
+// otherwise
+func (td TableData) partition(row sql.Row) (int, error) {
+	var keyColumns []int
+	if td.schema.PkOrdinals != nil {
+		keyColumns = td.schema.PkOrdinals
+	} else {
+		keyColumns = make([]int, len(td.schema.Schema))
+		for i := range keyColumns {
+			keyColumns[i] = i
+		}
+	}
+
+	hash := xxhash.New()
+	var err error
+	for i := range keyColumns {
+		v := row[keyColumns[i]]
+		if i > 0 {
+			// separate each column with a null byte
+			if _, err = hash.Write([]byte{0}); err != nil {
+				return 0, err
+			}
+		}
+
+		t, isStringType := td.schema.Schema[i].Type.(sql.StringType)
+		if isStringType && v != nil {
+			v, err = types.ConvertToString(v, t)
+			if err == nil {
+				err = t.Collation().WriteWeightString(hash, v.(string))
+			}
+		} else {
+			_, err = fmt.Fprintf(hash, "%v", v)
+		}
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	return int(hash.Sum64() % uint64(len(td.partitionKeys))), nil
+}
+
+
 func (td *TableData) truncate(schema sql.PrimaryKeySchema) *TableData {
 	var keys [][]byte
 	var partitions = map[string][]sql.Row{}
@@ -126,7 +167,6 @@ func (td *TableData) truncate(schema sql.PrimaryKeySchema) *TableData {
 	td.partitionKeys = keys
 	td.partitions = partitions
 	td.schema = schema
-	td.insertPartIdx = 0
 
 	td.indexes = rewriteIndexes(td.indexes, schema)
 	td.indexStorage = make(map[indexName][]sql.Row)
