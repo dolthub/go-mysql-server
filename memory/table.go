@@ -370,6 +370,7 @@ type indexScanRowIter struct {
 	primaryRows map[string][]sql.Row
 	// TODO: we need to sort these by their indexed columns as well
 	indexRows []sql.Row
+	columns []int
 }
 
 func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -399,7 +400,7 @@ func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, io.EOF
 	}
 	
-	return row, nil
+	return projectRow(i.columns, row), nil
 }
 
 func rowMatches(ranges sql.Expression, candidate sql.Row) (bool, error) {
@@ -425,6 +426,7 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 			ranges:      isp.ranges,
 			primaryRows: data.partitions,
 			indexRows:   data.indexStorage[indexName(isp.index.Name)],
+			columns:     t.columns,
 		}, nil
 	}
 	
@@ -573,15 +575,18 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
-	if i.columns != nil {
-		resultRow := make(sql.Row, len(i.columns))
-		for i, j := range i.columns {
+	return projectRow(i.columns, row), nil
+}
+
+func projectRow(columns []int, row sql.Row) sql.Row {
+	if columns != nil {
+		resultRow := make(sql.Row, len(columns))
+		for i, j := range columns {
 			resultRow[i] = row[j]
 		}
-		return resultRow, nil
+		return resultRow
 	}
-
-	return row, nil
+	return row
 }
 
 // normalizeRowForRead returns a copy of the row with nil values inserted for any virtual columns
