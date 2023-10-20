@@ -36,7 +36,7 @@ type indexLookup struct {
 	expr2   sql.Expression2
 }
 
-type indexLookupsByTable map[string]*indexLookup
+type indexLookupsByTable map[expression.TableID]*indexLookup
 
 func isSpatialAnalysisFunc(e sql.Expression) bool {
 	switch e.(type) {
@@ -173,7 +173,7 @@ func getIndexes(
 					return result, nil
 				}
 
-				result[strings.ToLower(getField.Table())] = &indexLookup{
+				result[getField.TableID()] = &indexLookup{
 					fields:  []sql.Expression{e},
 					indexes: []sql.Index{idx},
 					lookup:  newLookup,
@@ -197,7 +197,7 @@ func getIndexes(
 			return result, nil
 		}
 
-		result[strings.ToLower(getField.Table())] = lookup
+		result[getField.TableID()] = lookup
 	case *expression.IsNull:
 		return getIndexes(ctx, ia, expression.NewNullSafeEquals(e.Child, expression.NewLiteral(nil, types.Null)), tableAliases)
 	case *expression.Not:
@@ -241,7 +241,7 @@ func getIndexes(
 					return result, nil
 				}
 
-				result[strings.ToLower(getField.Table())] = &indexLookup{
+				result[getField.TableID()] = &indexLookup{
 					fields:  []sql.Expression{getField},
 					indexes: []sql.Index{idx},
 					lookup:  lookup,
@@ -350,7 +350,7 @@ func getIndexes(
 			return nil, err
 		}
 
-		result[strings.ToLower(getField.Table())] = &indexLookup{
+		result[getField.TableID()] = &indexLookup{
 			fields:  []sql.Expression{getField},
 			indexes: []sql.Index{idx},
 			lookup:  lookup,
@@ -364,7 +364,7 @@ func getIndexes(
 			for i, getField := range getFields {
 				exprFields[i] = getField
 			}
-			result[getFields[0].Table()] = &indexLookup{
+			result[getFields[0].TableID()] = &indexLookup{
 				fields:  exprFields,
 				indexes: []sql.Index{ftIndex},
 				lookup: sql.IndexLookup{
@@ -537,7 +537,7 @@ func getNegatedIndexes(
 		}
 
 		result := indexLookupsByTable{
-			strings.ToLower(getField.Table()): {
+			getField.TableID(): &indexLookup{
 				fields:  []sql.Expression{left},
 				indexes: []sql.Index{idx},
 				lookup:  lookup,
@@ -587,7 +587,7 @@ func getNegatedIndexes(
 				}
 
 				return indexLookupsByTable{
-					getField.Table(): {
+					getField.TableID(): {
 						fields:  []sql.Expression{cmp.Left()},
 						indexes: []sql.Index{idx},
 						lookup:  lookup,
@@ -690,7 +690,6 @@ func getMultiColumnIndexes(
 	usedExprs := make(map[sql.Expression]struct{})
 	columnExprs := columnExprsByTable(exprs)
 	for table, exps := range columnExprs {
-		table = strings.ToLower(table)
 		colExprs := make([]sql.Expression, len(exps))
 
 		nilColExpr := false
@@ -768,13 +767,13 @@ func getMultiColumnIndexes(
 func getMultiColumnIndexForExpressions(
 	ctx *sql.Context,
 	ia *indexAnalyzer,
-	table string,
+	table expression.TableID,
 	selected []sql.Expression,
 	exprs []joinColExpr,
 	tableAliases TableAliases,
 ) (*indexLookup, error) {
 	normalizedExpressions := normalizeExpressions(tableAliases, selected...)
-	index := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), table, normalizedExpressions...)
+	index := ia.MatchingIndex(ctx, table.DatabaseName, table.TableName, normalizedExpressions...)
 	if index == nil {
 		return nil, nil
 	}
@@ -960,8 +959,10 @@ func findColumns(cols []joinColExpr, column string) []*joinColExpr {
 	return returnedCols
 }
 
-func columnExprsByTable(exprs []sql.Expression) map[string][]joinColExpr {
-	var result = make(map[string][]joinColExpr)
+type columnExprsPerTable map[expression.TableID][]joinColExpr
+
+func columnExprsByTable(exprs []sql.Expression) columnExprsPerTable {
+	var result = make(columnExprsPerTable)
 
 	for _, expr := range exprs {
 		table, colExpr := extractColumnExpr(expr)
@@ -975,7 +976,7 @@ func columnExprsByTable(exprs []sql.Expression) map[string][]joinColExpr {
 	return result
 }
 
-func extractColumnExpr(e sql.Expression) (string, *joinColExpr) {
+func extractColumnExpr(e sql.Expression) (expression.TableID, *joinColExpr) {
 	switch e := e.(type) {
 	case *expression.Not:
 		table, colExpr := extractColumnExpr(e.Child)
@@ -1004,17 +1005,17 @@ func extractColumnExpr(e sql.Expression) (string, *joinColExpr) {
 		}
 
 		if !isEvaluable(right) {
-			return "", nil
+			return expression.TableID{}, nil
 		}
 
 		_, matchnull := e.(*expression.NullSafeEquals)
 
 		leftCol, rightCol := expression.ExtractGetField(left), expression.ExtractGetField(right)
 		if leftCol == nil {
-			return "", nil
+			return expression.TableID{}, nil
 		}
 
-		return leftCol.Table(), &joinColExpr{
+		return leftCol.TableID(), &joinColExpr{
 			col:          leftCol,
 			colExpr:      left,
 			comparand:    right,
@@ -1024,15 +1025,15 @@ func extractColumnExpr(e sql.Expression) (string, *joinColExpr) {
 		}
 	case *expression.Between:
 		if !isEvaluable(e.Upper) || !isEvaluable(e.Lower) || isEvaluable(e.Val) {
-			return "", nil
+			return expression.TableID{}, nil
 		}
 
 		col := expression.ExtractGetField(e)
 		if col == nil {
-			return "", nil
+			return expression.TableID{}, nil
 		}
 
-		return col.Table(), &joinColExpr{
+		return col.TableID(), &joinColExpr{
 			col:          col,
 			colExpr:      e.Val,
 			comparand:    nil,
@@ -1043,9 +1044,9 @@ func extractColumnExpr(e sql.Expression) (string, *joinColExpr) {
 	case *expression.InTuple:
 		col := expression.ExtractGetField(e.Left())
 		if col == nil {
-			return "", nil
+			return expression.TableID{}, nil
 		}
-		return col.Table(), &joinColExpr{
+		return col.TableID(), &joinColExpr{
 			col:          col,
 			colExpr:      e.Left(),
 			comparand:    e.Right(),
@@ -1054,7 +1055,7 @@ func extractColumnExpr(e sql.Expression) (string, *joinColExpr) {
 			matchnull:    false,
 		}
 	default:
-		return "", nil
+		return expression.TableID{}, nil
 	}
 }
 

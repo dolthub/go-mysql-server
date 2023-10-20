@@ -2,8 +2,6 @@ package analyzer
 
 import (
 	"fmt"
-	"strings"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
@@ -149,17 +147,24 @@ func convertFiltersToIndexedAccess(
 
 // pushdownIndexesToTable attempts to convert filter predicates to indexes on tables that implement
 // sql.IndexAddressableTable
-func pushdownIndexesToTable(ctx *sql.Context, scope *plan.Scope, a *Analyzer, tableNode sql.NameableNode, indexes map[string]*indexLookup) (sql.Node, transform.TreeIdentity, error, *indexLookup) {
+func pushdownIndexesToTable(ctx *sql.Context, scope *plan.Scope, a *Analyzer, tableNode sql.NameableNode, indexes indexLookupsByTable) (sql.Node, transform.TreeIdentity, error, *indexLookup) {
 	var lookup *indexLookup
 	ret, same, err := transform.Node(tableNode, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case sql.TableNode:
+			dbName := ""
+			if n.Database() != nil {
+				dbName = n.Database().Name()
+			}
 			table := getTable(tableNode)
 			if table == nil {
 				return n, transform.SameTree, nil
 			}
 			if _, ok := table.(sql.IndexAddressableTable); ok {
-				if indexLookup, ok := indexes[strings.ToLower(tableNode.Name())]; ok {
+				if indexLookup, ok := indexes[expression.TableID{
+					DatabaseName: dbName,
+					TableName:    tableNode.Name(),
+				}]; ok {
 					if indexLookup.lookup.Index.IsFullText() {
 						matchAgainst, ok := indexLookup.expr.(*expression.MatchAgainst)
 						if !ok {
