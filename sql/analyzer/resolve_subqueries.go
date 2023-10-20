@@ -58,7 +58,7 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 		return nil, same1, err
 	}
 
-	return nn, same1, err
+	//return nn, same1, err
 
 	nnn, same2, err := transform.NodeWithOpaque(nn, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if parentSQA, ok := n.(*plan.SubqueryAlias); ok && parentSQA.IsLateral {
