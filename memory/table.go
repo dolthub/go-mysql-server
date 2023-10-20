@@ -2100,7 +2100,7 @@ func (t *Table) modifyFulltextIndexesForRewrite(
 	data *TableData,
 	oldSchema sql.PrimaryKeySchema,
 ) error {
-	keyCols, _, err := fulltext.GetKeyColumns(ctx, data.Table(nil))
+	keyCols, _, err := fulltext.GetKeyColumns(ctx, data.Table(t.db))
 	if err != nil {
 		return err
 	}

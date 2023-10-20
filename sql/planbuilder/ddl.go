@@ -1024,6 +1024,7 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 		cd.Type.GeneratedExpr = nil
 
 		column := b.columnDefinitionToColumn(inScope, cd, tableSpec.Indexes)
+		column.DatabaseSource = db.Name()
 
 		if column.PrimaryKey && bool(cd.Type.Null) {
 			b.handleErr(ErrPrimaryKeyOnNullField.New())
