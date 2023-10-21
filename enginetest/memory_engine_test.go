@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/dolthub/sqllogictest/go/logictest"
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/enginetest"
@@ -137,8 +138,22 @@ func TestSingleQuery(t *testing.T) {
 	// t.Skip()
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query:    "SELECT i FROM mytable WHERE i >= 2 ORDER BY 1",
-		Expected: []sql.Row{{int64(2)}, {int64(3)}},
+		Query: `SELECT I,S from mytable order by 1`,
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "I",
+				Type: types.Int64,
+			},
+			{
+				Name: "S",
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+			},
+		},
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
 	}
 	// test = queries.QueryTest	{
 	// 	Query: "SELECT s, (select i from mytable mt where sub.i = mt.i) as subi FROM (select i,s,'hello' FROM mytable where s = 'first row') as sub;",
@@ -148,7 +163,7 @@ func TestSingleQuery(t *testing.T) {
 	// }
 	
 	fmt.Sprintf("%v", test)
-	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, false, nil)
+	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
 	// harness.UseServer()
 	harness.Setup(setup.MydbData, setup.MytableData)
 	engine, err := harness.NewEngine(t)

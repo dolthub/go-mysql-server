@@ -385,6 +385,7 @@ func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 		rowLoc := idxRow[len(idxRow)-1].(primaryRowLocation)
 		candidate := i.primaryRows[rowLoc.partition][rowLoc.idx]
 
+		ctx.GetLogger().Warnf("Found row %v", candidate)
 		matches, err := rowMatches(i.ranges, candidate)
 		if err != nil {
 			return nil, err
@@ -1438,6 +1439,18 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 			minY:  minPoint.Y,
 			maxX:  maxPoint.X,
 			maxY:  maxPoint.Y,
+		}, nil
+	}
+	
+	if lookup.Index.ID() == "PRIMARY" {
+		child, err := t.Table.Partitions(ctx)
+		if err != nil {
+			return nil, err
+		}
+		
+		return rangePartitionIter{
+			child:  child.(*partitionIter),
+			ranges: filter,
 		}, nil
 	}
 
