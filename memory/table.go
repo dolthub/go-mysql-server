@@ -1806,17 +1806,18 @@ func (t *Table) CreateIndex(ctx *sql.Context, idx sql.IndexDef) error {
 }
 
 // DropIndex implements sql.IndexAlterableTable
-func (t *Table) DropIndex(ctx *sql.Context, indexName string) error {
+func (t *Table) DropIndex(ctx *sql.Context, name string) error {
 	data := t.sessionTableData(ctx)
 
-	for name := range data.indexes {
-		if strings.ToLower(name) == strings.ToLower(indexName) {
-			delete(data.indexes, name)
+	for idxName := range data.indexes {
+		if strings.ToLower(idxName) == strings.ToLower(name) {
+			delete(data.indexes, idxName)
+			delete(data.indexStorage, indexName(idxName))
 			return nil
 		}
 	}
 
-	return sql.ErrIndexNotFound.New(indexName)
+	return sql.ErrIndexNotFound.New(name)
 }
 
 // RenameIndex implements sql.IndexAlterableTable
