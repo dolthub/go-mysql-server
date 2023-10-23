@@ -502,7 +502,7 @@ func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope
 	for _, c := range newAlias.Schema() {
 		outScope.newColumn(scopeColumn{
 			// table function names do not belong to a database.
-			tableId: sql.NewTableID("", name),
+			tableId: sql.NewAliasID(name),
 			col:     c.Name,
 			typ:     c.Type,
 		})
@@ -578,7 +578,7 @@ func (b *Builder) buildJSONTable(inScope *scope, t *ast.JSONTableExpr) (outScope
 		}
 		if col.Opts != nil {
 			outScope.newColumn(scopeColumn{
-				tableId: sql.NewTableID("", alias),
+				tableId: sql.NewAliasID(alias),
 				col:     col.Opts.Name,
 				typ:     col.Opts.Type,
 			})

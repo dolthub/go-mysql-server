@@ -152,7 +152,7 @@ func (s *scope) triggerCol(table, col string) (scopeColumn, bool) {
 	// hallucinate tablecol
 	for _, t := range s.b.TriggerCtx().UnresolvedTables {
 		if strings.EqualFold(t, table) {
-			col := scopeColumn{tableId: sql.NewTableID("", table), col: col}
+			col := scopeColumn{tableId: sql.NewAliasID(table), col: col}
 			id := s.newColumn(col)
 			col.id = id
 			return col, true
