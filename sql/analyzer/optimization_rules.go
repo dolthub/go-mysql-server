@@ -15,7 +15,6 @@
 package analyzer
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -116,7 +115,7 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 }
 
 // containsSources checks that all `needle` sources are contained inside `haystack`.
-func containsSources(haystack, needle []string) bool {
+func containsSources(haystack, needle []sql.TableID) bool {
 	for _, s := range needle {
 		var found bool
 		for _, s2 := range haystack {
@@ -135,12 +134,12 @@ func containsSources(haystack, needle []string) bool {
 }
 
 // nodeSources returns the set of column sources from the schema of the node given.
-func nodeSources(node sql.Node) []string {
-	var sources = make(map[string]struct{})
-	var result []string
+func nodeSources(node sql.Node) []sql.TableID {
+	var sources = make(map[sql.TableID]struct{})
+	var result []sql.TableID
 
 	for _, col := range node.Schema() {
-		source := fmt.Sprintf("%s.%s", col.DatabaseSource, col.Source)
+		source := col.TableID()
 		if _, ok := sources[source]; !ok {
 			sources[source] = struct{}{}
 			result = append(result, source)
@@ -153,15 +152,15 @@ func nodeSources(node sql.Node) []string {
 // expressionSources returns the set of sources from any GetField expressions
 // in the expression given, and a boolean indicating whether the expression
 // is null rejecting from those sources.
-func expressionSources(expr sql.Expression) ([]string, bool) {
-	var sources = make(map[string]struct{})
-	var result []string
+func expressionSources(expr sql.Expression) ([]sql.TableID, bool) {
+	var sources = make(map[sql.TableID]struct{})
+	var result []sql.TableID
 	var nullRejecting bool = true
 
 	sql.Inspect(expr, func(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.GetField:
-			source := fmt.Sprintf("%s.%s", e.Database(), e.Table())
+			source := e.TableID()
 			if _, ok := sources[source]; !ok {
 				sources[source] = struct{}{}
 				result = append(result, source)
