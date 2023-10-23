@@ -365,8 +365,7 @@ func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualC
 
 	for _, c := range schema {
 		tableScope.newColumn(scopeColumn{
-			db:          strings.ToLower(db),
-			table:       strings.ToLower(tab.Name()),
+			tableId:     sql.NewTableID(db, tab.Name()),
 			col:         strings.ToLower(c.Name),
 			originalCol: c.Name,
 			typ:         c.Type,

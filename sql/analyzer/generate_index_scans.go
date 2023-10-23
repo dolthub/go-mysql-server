@@ -161,10 +161,7 @@ func pushdownIndexesToTable(ctx *sql.Context, scope *plan.Scope, a *Analyzer, ta
 				return n, transform.SameTree, nil
 			}
 			if _, ok := table.(sql.IndexAddressableTable); ok {
-				if indexLookup, ok := indexes[sql.TableID{
-					DatabaseName: dbName,
-					TableName:    tableNode.Name(),
-				}]; ok {
+				if indexLookup, ok := indexes[sql.NewTableID(dbName, tableNode.Name())]; ok {
 					if indexLookup.lookup.Index.IsFullText() {
 						matchAgainst, ok := indexLookup.expr.(*expression.MatchAgainst)
 						if !ok {

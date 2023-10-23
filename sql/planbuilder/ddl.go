@@ -958,7 +958,7 @@ func (b *Builder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (outSco
 		if !ok {
 			b.handleErr(sql.ErrColumnNotFound.New(colName))
 		}
-		cols[i] = expression.NewGetFieldWithTable(int(c.id), c.typ, c.db, c.table, c.col, c.nullable)
+		cols[i] = expression.NewGetFieldWithTable(int(c.id), c.typ, c.tableId.DatabaseName, c.tableId.TableName, c.col, c.nullable)
 	}
 
 	createIndex := plan.NewCreateIndex(
@@ -1032,8 +1032,7 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 
 		schema = append(schema, column)
 		outScope.newColumn(scopeColumn{
-			db:       db.Name(),
-			table:    tableName,
+			tableId:  sql.NewTableID(db.Name(), tableName),
 			col:      strings.ToLower(column.Name),
 			typ:      column.Type,
 			nullable: column.Nullable,
