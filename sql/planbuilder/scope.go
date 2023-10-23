@@ -82,6 +82,10 @@ func (s *scope) resolveColumn(db, table, col string, checkParent bool) (scopeCol
 	for _, c := range s.cols {
 		if strings.EqualFold(c.col, col) && (c.tableId.TableName == table || table == "") && (c.tableId.DatabaseName == db || db == "") {
 			if foundCand {
+				if found.equals(c) {
+					continue
+				}
+
 				if !s.b.TriggerCtx().Call && len(s.b.TriggerCtx().UnresolvedTables) > 0 {
 					c, ok := s.triggerCol(table, col)
 					if ok {
@@ -529,6 +533,27 @@ type scopeColumn struct {
 // empty returns true if a scopeColumn is the null value
 func (c scopeColumn) empty() bool {
 	return c.id == 0
+}
+
+func (c scopeColumn) equals(other scopeColumn) bool {
+	if c.id == other.id {
+		return true
+	}
+	if c.unwrapGetFieldAliasId() == other.unwrapGetFieldAliasId() {
+		return true
+	}
+	return false
+}
+
+func (c scopeColumn) unwrapGetFieldAliasId() columnId {
+	if c.scalar != nil {
+		if a, ok := c.scalar.(*expression.Alias); ok {
+			if gf, ok := a.Child.(*expression.GetField); ok {
+				return columnId(gf.Id())
+			}
+		}
+	}
+	return c.id
 }
 
 func (c scopeColumn) withOriginal(col string) scopeColumn {

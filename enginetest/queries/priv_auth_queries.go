@@ -2002,7 +2002,7 @@ var ServerAuthTests = []ServerAuthenticationTest{
 				Username:       "root",
 				Password:       "",
 				Query:          "DROP USER xyz;",
-				ExpectedErrStr: "Error 1105: Operation DROP USER failed for 'xyz'@'%'",
+				ExpectedErrStr: "Error 1105 (HY000): Operation DROP USER failed for 'xyz'@'%'",
 			},
 		},
 	},

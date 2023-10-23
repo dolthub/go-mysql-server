@@ -31,6 +31,10 @@ CREATE table ab_hasnull (a int primary key, b int);
 ----
 
 exec
+CREATE table xy_hasnull_idx (x int primary key, y int, index y_idx(y));
+----
+
+exec
 insert into xy_hasnull values
   (1,0),
   (2,1),
@@ -44,6 +48,14 @@ insert into ab_hasnull values
   (1,2),
   (2,NULL),
   (3,1);
+----
+
+exec
+insert into xy_hasnull_idx values
+  (1,0),
+  (2,1),
+  (0,2),
+  (3,NULL);
 ----
 
 exec

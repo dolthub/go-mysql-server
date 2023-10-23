@@ -2575,13 +2575,14 @@ inner join pq on true
 		Query: `SELECT pk1 AS one, pk2 AS two FROM two_pk ORDER BY one, two`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [two_pk.pk1:0!null as one, two_pk.pk2:1!null as two]\n" +
-			" └─ Sort(two_pk.pk1:0!null as one ASC nullsFirst, two_pk.pk2:1!null as two ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [two_pk.pk1:0!null, two_pk.pk2:1!null, two_pk.c1:2!null, two_pk.c2:3!null, two_pk.c3:4!null, two_pk.c4:5!null, two_pk.c5:6!null, two_pk.pk1:0!null as one, two_pk.pk2:1!null as two]\n" +
-			"         └─ ProcessTable\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: two_pk\n" +
-			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk1:0!null, two_pk.pk2:1!null, two_pk.c1:2!null, two_pk.c2:3!null, two_pk.c3:4!null, two_pk.c4:5!null, two_pk.c5:6!null, two_pk.pk1:0!null as one, two_pk.pk2:1!null as two]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -5270,31 +5271,33 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT * FROM datetime_table ORDER BY date_col ASC`,
-		ExpectedPlan: "Sort(datetime_table.date_col:1 ASC nullsFirst)\n" +
-			" └─ ProcessTable\n" +
+		ExpectedPlan: "IndexedTableAccess(datetime_table)\n" +
+			" ├─ index: [datetime_table.date_col]\n" +
+			" ├─ static: [{[NULL, ∞)}]\n" +
+			" └─ Table\n" +
+			"     ├─ name: datetime_table\n" +
+			"     └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM datetime_table ORDER BY date_col ASC LIMIT 100`,
+		ExpectedPlan: "Limit(100)\n" +
+			" └─ IndexedTableAccess(datetime_table)\n" +
+			"     ├─ index: [datetime_table.date_col]\n" +
+			"     ├─ static: [{[NULL, ∞)}]\n" +
 			"     └─ Table\n" +
 			"         ├─ name: datetime_table\n" +
 			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{
-		Query: `SELECT * FROM datetime_table ORDER BY date_col ASC LIMIT 100`,
-		ExpectedPlan: "Limit(100)\n" +
-			" └─ TopN(Limit: [100 (bigint)]; datetime_table.date_col:1 ASC nullsFirst)\n" +
-			"     └─ ProcessTable\n" +
-			"         └─ Table\n" +
-			"             ├─ name: datetime_table\n" +
-			"             └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"",
-	},
-	{
 		Query: `SELECT * FROM datetime_table ORDER BY date_col ASC LIMIT 100 OFFSET 100`,
 		ExpectedPlan: "Limit(100)\n" +
 			" └─ Offset(100)\n" +
-			"     └─ TopN(Limit: [(100 + 100)]; datetime_table.date_col ASC)\n" +
-			"         └─ Table\n" +
-			"             ├─ name: datetime_table\n" +
-			"             └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"     └─ IndexedTableAccess(datetime_table)\n" +
+			"         ├─ index: [datetime_table.date_col]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{
@@ -8792,7 +8795,7 @@ inner join pq on true
 			"                 │       ├─ name: \n" +
 			"                 │       └─ columns: []\n" +
 			"                 └─ Project\n" +
-			"                     ├─ columns: [(n.i:0!null + 1 (tinyint))]\n" +
+			"                     ├─ columns: [(n.i:0!null + 1 (tinyint)) as i + 1]\n" +
 			"                     └─ Filter\n" +
 			"                         ├─ LessThanOrEqual\n" +
 			"                         │   ├─ (n.i:0!null + 1 (tinyint))\n" +
@@ -8819,7 +8822,7 @@ inner join pq on true
 			"                 │       ├─ name: \n" +
 			"                 │       └─ columns: []\n" +
 			"                 └─ Project\n" +
-			"                     ├─ columns: [(n.i:0!null + 1 (tinyint))]\n" +
+			"                     ├─ columns: [(n.i:0!null + 1 (tinyint)) as i + 1]\n" +
 			"                     └─ Having\n" +
 			"                         ├─ LessThanOrEqual\n" +
 			"                         │   ├─ (n.i:0!null + 1 (tinyint))\n" +
@@ -8850,7 +8853,7 @@ inner join pq on true
 			"                 │       ├─ name: \n" +
 			"                 │       └─ columns: []\n" +
 			"                 └─ Project\n" +
-			"                     ├─ columns: [(n.i:0!null + 1 (tinyint))]\n" +
+			"                     ├─ columns: [(n.i:0!null + 1 (tinyint)) as i + 1]\n" +
 			"                     └─ Filter\n" +
 			"                         ├─ LessThanOrEqual\n" +
 			"                         │   ├─ (n.i:0!null + 1 (tinyint))\n" +
@@ -9004,7 +9007,7 @@ inner join pq on true
 			"                 │                   ├─ name: \n" +
 			"                 │                   └─ columns: []\n" +
 			"                 └─ Project\n" +
-			"                     ├─ columns: [(a.x:0!null + 1 (tinyint))]\n" +
+			"                     ├─ columns: [(a.x:0!null + 1 (tinyint)) as x+1]\n" +
 			"                     └─ Filter\n" +
 			"                         ├─ LessThan\n" +
 			"                         │   ├─ a.x:0!null\n" +
@@ -9690,7 +9693,7 @@ WHERE keyless.c0 IN (
 			"         │                   │           │               ├─ name: keyless\n" +
 			"         │                   │           │               └─ columns: [c0 c1]\n" +
 			"         │                   │           └─ Project\n" +
-			"         │                   │               ├─ columns: [(cte.depth:2!null + 1 (tinyint)), cte.i:3, (t2.c1:6 + 1 (tinyint))]\n" +
+			"         │                   │               ├─ columns: [(cte.depth:2!null + 1 (tinyint)) as cte.depth + 1, cte.i:3, (t2.c1:6 + 1 (tinyint)) as T2.c1 + 1]\n" +
 			"         │                   │               └─ HashJoin\n" +
 			"         │                   │                   ├─ Eq\n" +
 			"         │                   │                   │   ├─ cte.depth:2!null\n" +
@@ -9772,7 +9775,7 @@ WHERE keyless.c0 IN (
 			"         │                   │           │               ├─ name: keyless\n" +
 			"         │                   │           │               └─ columns: [c0 c1]\n" +
 			"         │                   │           └─ Project\n" +
-			"         │                   │               ├─ columns: [(cte.depth:2!null + 1 (tinyint)), cte.i:3, (t2.c1:6 + 1 (tinyint))]\n" +
+			"         │                   │               ├─ columns: [(cte.depth:2!null + 1 (tinyint)) as cte.depth + 1, cte.i:3, (t2.c1:6 + 1 (tinyint)) as T2.c1 + 1]\n" +
 			"         │                   │               └─ HashJoin\n" +
 			"         │                   │                   ├─ Eq\n" +
 			"         │                   │                   │   ├─ cte.depth:2!null\n" +
@@ -10033,6 +10036,116 @@ WHERE keyless.c0 IN (
 			"         └─ columns: [x y]\n" +
 			"",
 	},
+	{
+		Query: "select * from xy_hasnull_idx order by y",
+		ExpectedPlan: "IndexedTableAccess(xy_hasnull_idx)\n" +
+			" ├─ index: [xy_hasnull_idx.y]\n" +
+			" ├─ static: [{[NULL, ∞)}]\n" +
+			" └─ Table\n" +
+			"     ├─ name: xy_hasnull_idx\n" +
+			"     └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: "select * from xy_hasnull_idx order by y desc",
+		ExpectedPlan: "IndexedTableAccess(xy_hasnull_idx)\n" +
+			" ├─ index: [xy_hasnull_idx.y]\n" +
+			" ├─ static: [{[NULL, ∞)}]\n" +
+			" ├─ reverse: true\n" +
+			" └─ Table\n" +
+			"     ├─ name: xy_hasnull_idx\n" +
+			"     └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: "select * from xy_hasnull_idx where y < 1 or y > 1 order by y desc",
+		ExpectedPlan: "IndexedTableAccess(xy_hasnull_idx)\n" +
+			" ├─ index: [xy_hasnull_idx.y]\n" +
+			" ├─ static: [{(1, ∞)}, {(NULL, 1)}]\n" +
+			" ├─ reverse: true\n" +
+			" └─ Table\n" +
+			"     ├─ name: xy_hasnull_idx\n" +
+			"     └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: "select * from xy_hasnull_idx where y < 1 or y > 1 or y is null order by y desc",
+		ExpectedPlan: "Filter\n" +
+			" ├─ Or\n" +
+			" │   ├─ Or\n" +
+			" │   │   ├─ LessThan\n" +
+			" │   │   │   ├─ xy_hasnull_idx.y:1\n" +
+			" │   │   │   └─ 1 (tinyint)\n" +
+			" │   │   └─ GreaterThan\n" +
+			" │   │       ├─ xy_hasnull_idx.y:1\n" +
+			" │   │       └─ 1 (tinyint)\n" +
+			" │   └─ xy_hasnull_idx.y:1 IS NULL\n" +
+			" └─ IndexedTableAccess(xy_hasnull_idx)\n" +
+			"     ├─ index: [xy_hasnull_idx.y]\n" +
+			"     ├─ static: [{(1, ∞)}, {[NULL, 1)}]\n" +
+			"     ├─ reverse: true\n" +
+			"     └─ Table\n" +
+			"         ├─ name: xy_hasnull_idx\n" +
+			"         └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: "select * from xy_hasnull_idx where y in (0, 2) or y is null order by y",
+		ExpectedPlan: "Filter\n" +
+			" ├─ Or\n" +
+			" │   ├─ HashIn\n" +
+			" │   │   ├─ xy_hasnull_idx.y:1\n" +
+			" │   │   └─ TUPLE(0 (tinyint), 2 (tinyint))\n" +
+			" │   └─ xy_hasnull_idx.y:1 IS NULL\n" +
+			" └─ IndexedTableAccess(xy_hasnull_idx)\n" +
+			"     ├─ index: [xy_hasnull_idx.y]\n" +
+			"     ├─ static: [{[NULL, NULL]}, {[0, 0]}, {[2, 2]}]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: xy_hasnull_idx\n" +
+			"         └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: "select x as xx, y as yy from xy_hasnull_idx order by yy desc",
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [xy_hasnull_idx.x:0!null as xx, xy_hasnull_idx.y:1 as yy]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [xy_hasnull_idx.x:0!null, xy_hasnull_idx.y:1, xy_hasnull_idx.x:0!null as xx, xy_hasnull_idx.y:1 as yy]\n" +
+			"     └─ IndexedTableAccess(xy_hasnull_idx)\n" +
+			"         ├─ index: [xy_hasnull_idx.y]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ reverse: true\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy_hasnull_idx\n" +
+			"             └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: "select x as xx, y as yy from xy_hasnull_idx order by YY desc",
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [xy_hasnull_idx.x:0!null as xx, xy_hasnull_idx.y:1 as yy]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [xy_hasnull_idx.x:0!null, xy_hasnull_idx.y:1, xy_hasnull_idx.x:0!null as xx, xy_hasnull_idx.y:1 as yy]\n" +
+			"     └─ IndexedTableAccess(xy_hasnull_idx)\n" +
+			"         ├─ index: [xy_hasnull_idx.y]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ reverse: true\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy_hasnull_idx\n" +
+			"             └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: "select * from xy_hasnull_idx order by Y desc",
+		ExpectedPlan: "IndexedTableAccess(xy_hasnull_idx)\n" +
+			" ├─ index: [xy_hasnull_idx.y]\n" +
+			" ├─ static: [{[NULL, ∞)}]\n" +
+			" ├─ reverse: true\n" +
+			" └─ Table\n" +
+			"     ├─ name: xy_hasnull_idx\n" +
+			"     └─ columns: [x y]\n" +
+			"",
+	},
 
 	// aggregation optimization tests
 	{
@@ -10201,13 +10314,15 @@ WHERE keyless.c0 IN (
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ Limit(1)\n" +
-			"         └─ IndexedTableAccess(xy)\n" +
-			"             ├─ index: [xy.x]\n" +
-			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ reverse: true\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: xy\n" +
-			"                 └─ columns: [x]\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [xy.x:0!null as max(x)]\n" +
+			"             └─ IndexedTableAccess(xy)\n" +
+			"                 ├─ index: [xy.x]\n" +
+			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 ├─ reverse: true\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: xy\n" +
+			"                     └─ columns: [x]\n" +
 			"",
 	},
 	{
