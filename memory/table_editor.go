@@ -755,8 +755,11 @@ func (k *keylessTableEditAccumulator) ApplyEdits(table *Table) error {
 			return err
 		}
 	}
-	table.replaceData(k.tableData)
+	
+	// The primary index is unsorted, but we still need to sort the secondary indexes
+	k.tableData.sortSecondaryIndexes()
 
+	table.replaceData(k.tableData)
 	return nil
 }
 

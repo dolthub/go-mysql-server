@@ -355,7 +355,10 @@ func (td *TableData) sortRows() {
 		indexes: td.indexStorage,
 	})
 
-	// resort all the indexes as well
+	td.sortSecondaryIndexes()
+}
+
+func (td *TableData) sortSecondaryIndexes() {
 	for idxName, idxStorage := range td.indexStorage {
 		idx := td.indexes[string(idxName)].(*Index)
 		fieldIndexes := idx.columnIndexes(td.schema.Schema)
@@ -378,7 +381,7 @@ func (td *TableData) sortRows() {
 				} else if right == nil {
 					return false
 				}
-				
+
 				compare, err := typ.Compare(left, right)
 				if err != nil {
 					panic(err)
