@@ -295,7 +295,6 @@ func decorrelateOuterCols(sqChild sql.Node, aliasDisambig *aliasDisambiguator, c
 			return nil, err
 		}
 		if !ok {
-			target, ok, err = nodeAliases.resolveName(goodAlias)
 			return nil, fmt.Errorf("node alias %s is not in nodeAliases", goodAlias)
 		}
 		err = outsideAliases.addUnqualified(goodAlias, target)
