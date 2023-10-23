@@ -312,7 +312,7 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 		switch e := e.(type) {
 		case *expression.GetField:
 			args = append(args, e)
-			col := scopeColumn{table: e.Table(), col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable()}
+			col := scopeColumn{db: e.Database(), table: e.Table(), col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable()}
 			gb.addInCol(col)
 		case *expression.Star:
 			err := sql.ErrStarUnsupported.New()
