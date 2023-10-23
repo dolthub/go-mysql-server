@@ -755,7 +755,7 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 				b.ViewCtx().DbName = outerDb
 			}()
 			b.parserOpts = sql.NewSqlModeFromString(viewDef.SqlMode).ParserOptions()
-			node, _, _, err := b.Parse(viewDef.TextDefinition, false)
+			node, _, _, err := b.Parse(viewDef.CreateViewStatement, false)
 			if err != nil {
 				// TODO: Need to account for non-existing functions or
 				//  users without appropriate privilege to the referenced table/column/function.
@@ -765,7 +765,16 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 				}
 				b.handleErr(err)
 			}
-			view = plan.NewSubqueryAlias(name, viewDef.TextDefinition, node).AsView(viewDef.CreateViewStatement)
+			create, ok := node.(*plan.CreateView)
+			if !ok {
+				err = fmt.Errorf("expected create view statement, found: %T", node)
+			}
+			switch n := create.Child.(type) {
+			case *plan.SubqueryAlias:
+				view = n.AsView(viewDef.CreateViewStatement)
+			default:
+				view = plan.NewSubqueryAlias(name, viewDef.TextDefinition, n).AsView(viewDef.CreateViewStatement)
+			}
 
 		}
 	}

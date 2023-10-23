@@ -21,6 +21,43 @@ import (
 
 var ViewScripts = []ScriptTest{
 	{
+		Name: "view with column names",
+		SetUpScript: []string{
+			`CREATE TABLE xy (x int primary key, y int);`,
+			`create view v_today(today) as select CURRENT_DATE()`,
+			`CREATE VIEW xyv (u,v) AS SELECT * from xy;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * from xyv;",
+				Expected: []sql.Row{},
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "u",
+						Type: types.Int32,
+					},
+					{
+						Name: "v",
+						Type: types.Int32,
+					},
+				},
+			},
+			{
+				Query: "SELECT * from v_today;",
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "today",
+						Type: types.LongText,
+					},
+				},
+			},
+			{
+				Query:       "CREATE VIEW xyv (u) AS SELECT * from xy;",
+				ExpectedErr: sql.ErrInvalidColumnNumber,
+			},
+		},
+	},
+	{
 		Name: "view columns retain original case",
 		SetUpScript: []string{
 			`CREATE TABLE strs ( id int NOT NULL AUTO_INCREMENT,
