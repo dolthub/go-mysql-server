@@ -15,7 +15,6 @@
 package analyzer
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"sort"
 	"strings"
 
@@ -129,7 +128,7 @@ func (r *indexAnalyzer) IndexesByTable(ctx *sql.Context, db, table string) []sql
 
 // MatchingIndex returns the index that best fits the given expressions. See MatchingIndexes for the rules regarding
 // which index is considered the best.
-func (r *indexAnalyzer) MatchingIndex(ctx *sql.Context, tableId expression.TableID, exprs ...sql.Expression) sql.Index {
+func (r *indexAnalyzer) MatchingIndex(ctx *sql.Context, tableId sql.TableID, exprs ...sql.Expression) sql.Index {
 	indexes := r.MatchingIndexes(ctx, tableId, exprs...)
 	if len(indexes) > 0 {
 		return indexes[0]
@@ -151,7 +150,7 @@ func (r *indexAnalyzer) MatchingIndex(ctx *sql.Context, tableId expression.Table
 // It is worth noting that all returned indexes will have at least the first index expression satisfied (creating a
 // partial index), as otherwise the index would be no better than a table scan (for which integrators may have
 // optimizations).
-func (r *indexAnalyzer) MatchingIndexes(ctx *sql.Context, tableId expression.TableID, exprs ...sql.Expression) []sql.Index {
+func (r *indexAnalyzer) MatchingIndexes(ctx *sql.Context, tableId sql.TableID, exprs ...sql.Expression) []sql.Index {
 	// As multiple expressions may be the same, we filter out duplicates
 	distinctExprs := make(map[string]struct{})
 	var exprStrs []string

@@ -36,7 +36,7 @@ type indexLookup struct {
 	expr2   sql.Expression2
 }
 
-type indexLookupsByTable map[expression.TableID]*indexLookup
+type indexLookupsByTable map[sql.TableID]*indexLookup
 
 func isSpatialAnalysisFunc(e sql.Expression) bool {
 	switch e.(type) {
@@ -767,7 +767,7 @@ func getMultiColumnIndexes(
 func getMultiColumnIndexForExpressions(
 	ctx *sql.Context,
 	ia *indexAnalyzer,
-	table expression.TableID,
+	table sql.TableID,
 	selected []sql.Expression,
 	exprs []joinColExpr,
 	tableAliases TableAliases,
@@ -959,7 +959,7 @@ func findColumns(cols []joinColExpr, column string) []*joinColExpr {
 	return returnedCols
 }
 
-type columnExprsPerTable map[expression.TableID][]joinColExpr
+type columnExprsPerTable map[sql.TableID][]joinColExpr
 
 func columnExprsByTable(exprs []sql.Expression) columnExprsPerTable {
 	var result = make(columnExprsPerTable)
@@ -976,7 +976,7 @@ func columnExprsByTable(exprs []sql.Expression) columnExprsPerTable {
 	return result
 }
 
-func extractColumnExpr(e sql.Expression) (expression.TableID, *joinColExpr) {
+func extractColumnExpr(e sql.Expression) (sql.TableID, *joinColExpr) {
 	switch e := e.(type) {
 	case *expression.Not:
 		table, colExpr := extractColumnExpr(e.Child)
@@ -1005,14 +1005,14 @@ func extractColumnExpr(e sql.Expression) (expression.TableID, *joinColExpr) {
 		}
 
 		if !isEvaluable(right) {
-			return expression.TableID{}, nil
+			return sql.TableID{}, nil
 		}
 
 		_, matchnull := e.(*expression.NullSafeEquals)
 
 		leftCol, rightCol := expression.ExtractGetField(left), expression.ExtractGetField(right)
 		if leftCol == nil {
-			return expression.TableID{}, nil
+			return sql.TableID{}, nil
 		}
 
 		return leftCol.TableID(), &joinColExpr{
@@ -1025,12 +1025,12 @@ func extractColumnExpr(e sql.Expression) (expression.TableID, *joinColExpr) {
 		}
 	case *expression.Between:
 		if !isEvaluable(e.Upper) || !isEvaluable(e.Lower) || isEvaluable(e.Val) {
-			return expression.TableID{}, nil
+			return sql.TableID{}, nil
 		}
 
 		col := expression.ExtractGetField(e)
 		if col == nil {
-			return expression.TableID{}, nil
+			return sql.TableID{}, nil
 		}
 
 		return col.TableID(), &joinColExpr{
@@ -1044,7 +1044,7 @@ func extractColumnExpr(e sql.Expression) (expression.TableID, *joinColExpr) {
 	case *expression.InTuple:
 		col := expression.ExtractGetField(e.Left())
 		if col == nil {
-			return expression.TableID{}, nil
+			return sql.TableID{}, nil
 		}
 		return col.TableID(), &joinColExpr{
 			col:          col,
@@ -1055,7 +1055,7 @@ func extractColumnExpr(e sql.Expression) (expression.TableID, *joinColExpr) {
 			matchnull:    false,
 		}
 	default:
-		return expression.TableID{}, nil
+		return sql.TableID{}, nil
 	}
 }
 

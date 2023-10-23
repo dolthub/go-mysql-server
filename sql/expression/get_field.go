@@ -23,11 +23,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-type TableID struct {
-	DatabaseName string
-	TableName    string
-}
-
 // GetField is an expression to get the field of a table.
 type GetField struct {
 	database   string
@@ -83,11 +78,8 @@ func (p *GetField) Table() string { return p.table }
 // Database returns the name of table's database.
 func (p *GetField) Database() string { return p.database }
 
-func (p *GetField) TableID() TableID {
-	return TableID{
-		DatabaseName: strings.ToLower(p.database),
-		TableName:    strings.ToLower(p.table),
-	}
+func (p *GetField) TableID() sql.TableID {
+	return sql.NewTableID(p.database, p.table)
 }
 
 // WithTable returns a copy of this expression with the table given

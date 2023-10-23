@@ -125,3 +125,26 @@ func (c Column) Copy() *Column {
 	}
 	return &c
 }
+
+// TableID returns the unique identifier of the column's source table.
+func (c *Column) TableID() TableID {
+	return NewTableID(c.DatabaseSource, c.Source)
+}
+
+// TableID is the unique identifier of a table or table alias in a multi-db environment.
+// For aliases, DatabaseName is nil.
+type TableID struct {
+	DatabaseName string
+	TableName    string
+}
+
+func NewTableID(db, table string) TableID {
+	return TableID{
+		DatabaseName: strings.ToLower(db),
+		TableName:    strings.ToLower(table),
+	}
+}
+
+func (i TableID) IsEmpty() bool {
+	return i == TableID{}
+}

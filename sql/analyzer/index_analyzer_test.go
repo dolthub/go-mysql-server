@@ -64,7 +64,7 @@ func TestMatchingIndexes(t *testing.T) {
 		registryIdxes:  nil,
 	}
 
-	tableId := expression.TableID{
+	tableId := sql.TableID{
 		DatabaseName: testDb,
 		TableName:    testTable,
 	}
