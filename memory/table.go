@@ -374,15 +374,24 @@ type indexScanRowIter struct {
 }
 
 func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
-	// TODO next: index is empty after index creation, only is updated on table creation
 	if i.i >= len(i.indexRows) {
 		return nil, io.EOF
 	}
+	
+	ctx.GetLogger().Warnf("query is %s, index rows are %v", ctx.Query(), i.indexRows)
 	
 	var row sql.Row
 	for ; i.i < len(i.indexRows); i.i++ {
 		idxRow := i.indexRows[i.i]
 		rowLoc := idxRow[len(idxRow)-1].(primaryRowLocation)
+		// this is a bit of a hack: during self-referential foreign key delete cascades, the index storage rows don't get
+		// updated at the same time the primary table storage does, since we update the slices directly in the case of
+		// the primary index but update the map entries for the secondary index storage.
+		// TODO: revisit this once we have b-tree storage in place
+		if len(i.primaryRows[rowLoc.partition]) <= rowLoc.idx {
+			continue
+		}
+		
 		candidate := i.primaryRows[rowLoc.partition][rowLoc.idx]
 
 		// ctx.GetLogger().Warnf("Found row %v", candidate)
