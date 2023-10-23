@@ -364,13 +364,15 @@ func (t *Table) PartitionCount(ctx *sql.Context) (int64, error) {
 }
 
 type indexScanRowIter struct {
-	i int
-	index *Index
-	ranges sql.Expression
+	i           int
+	index       *Index
+	ranges      sql.Expression
 	primaryRows map[string][]sql.Row
-	// TODO: we need to sort these by their indexed columns as well
-	indexRows []sql.Row
-	columns []int
+	indexRows   []sql.Row
+	
+	columns     []int
+	numColumns  int
+	virtualCols []int
 }
 
 func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -395,7 +397,7 @@ func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 		candidate := i.primaryRows[rowLoc.partition][rowLoc.idx]
 
 		// ctx.GetLogger().Warnf("Found row %v", candidate)
-		matches, err := rowMatches(i.ranges, candidate)
+		matches, err := indexRowMatches(i.ranges, idxRow[:len(idxRow)-1])
 		if err != nil {
 			return nil, err
 		}
@@ -412,11 +414,13 @@ func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 	
 	ctx.GetLogger().Warnf("Returning row %v", row)
+
+	row = normalizeRowForRead(row, i.numColumns, i.virtualCols)
 	
 	return projectRow(i.columns, row), nil
 }
 
-func rowMatches(ranges sql.Expression, candidate sql.Row) (bool, error) {
+func indexRowMatches(ranges sql.Expression, candidate sql.Row) (bool, error) {
 	result, err := ranges.Eval(nil, candidate)
 	if err != nil {
 		return false, err
@@ -434,12 +438,19 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	data := t.sessionTableData(ctx)
 	
 	if isp, ok := partition.(indexScanPartition); ok {
+		numColumns := len(data.schema.Schema)
+		if len(t.columns) > 0 {
+			numColumns = len(t.columns)
+		}
+
 		return &indexScanRowIter{
 			index:       isp.index,
 			ranges:      isp.ranges,
 			primaryRows: data.partitions,
 			indexRows:   data.indexStorage[indexName(isp.index.Name)],
 			columns:     t.columns,
+			numColumns:  numColumns,
+			virtualCols: data.virtualColIndexes(),
 		}, nil
 	}
 	
@@ -1422,7 +1433,8 @@ type IndexedTable struct {
 }
 
 func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
-	filter, err := lookup.Index.(*Index).rangeFilterExpr(ctx, lookup.Ranges...)
+	memIdx := lookup.Index.(*Index)
+	filter, err := memIdx.rangeFilterExpr(ctx, lookup.Ranges...)
 	if err != nil {
 		return nil, err
 	}
@@ -1444,7 +1456,7 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 			return nil, sql.ErrInvalidGISData.New()
 		}
 
-		ord := lookup.Index.(*Index).Exprs[0].(*expression.GetField).Index()
+		ord := memIdx.Exprs[0].(*expression.GetField).Index()
 		return spatialRangePartitionIter{
 			child: child.(*partitionIter),
 			ord:   ord,
@@ -1477,10 +1489,35 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 	// 	ranges: filter,
 	// }, nil
 
+	indexFilter := adjustRangeScanFilterForIndexLookup(filter, memIdx) 
+	
 	return &indexScanPartitionIter{
-		index:  lookup.Index.(*Index),
-		ranges: filter,
+		index:  memIdx,
+		ranges: indexFilter,
 	}, nil
+}
+
+func adjustRangeScanFilterForIndexLookup(filter sql.Expression, index *Index) sql.Expression {
+	indexStorageSchema := make(sql.Schema, len(index.Exprs))
+	for i, e := range index.Exprs {
+		indexStorageSchema[i] = &sql.Column{
+			Name:     e.(*expression.GetField).Name(),
+		}
+	}
+	
+	filter, _, err := transform.Expr(filter, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		if gf, ok := e.(*expression.GetField); ok {
+			idxIdx := indexStorageSchema.IndexOfColName(gf.Name())
+			return gf.WithIndex(idxIdx), transform.NewTree, nil
+		}
+		return e, transform.SameTree, nil
+	})
+	
+	if err != nil {
+		panic(err)
+	}
+	
+	return filter
 }
 
 // PartitionRows implements the sql.PartitionRows interface.

@@ -15,6 +15,7 @@
 package queries
 
 import (
+	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -432,6 +433,27 @@ var GeneratedColumnTests = []ScriptTest{
 			{
 				Query:    "select * from t1 order by a",
 				Expected: []sql.Row{{1, 2, 3}, {3, 4, 7}},
+			},
+		},
+	},
+	{
+		Name: "virtual column index",
+		SetUpScript: []string{
+			"create table t1 (a int primary key, b int, c int generated always as (a + b) virtual, index idx_c (c))",
+			"insert into t1 (a, b) values (1, 2), (3, 4)",
+		},
+		Assertions: []queries.ScriptTestAssertion{
+			{
+				Query:    "select * from t1 where c = 7",
+				Expected: []sql.Row{{3, 4, 7}},
+			},
+			{
+				Query: "explain select * from t1 where c = 7",
+				Expected: []sql.Row{
+					{"IndexedTableAccess(t1)"},
+					{" ├─ index: [t1.c]"},
+					{" └─ filters: [{[7, 7]}]"},
+				},
 			},
 		},
 	},

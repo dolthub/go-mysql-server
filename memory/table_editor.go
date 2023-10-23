@@ -138,8 +138,6 @@ func (t *tableEditor) StatementComplete(ctx *sql.Context) error {
 
 // Insert inserts a new row into the table.
 func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
-	row = t.toStorageRow(row)
-
 	if err := checkRow(t.editedTable.data.schema.Schema, row); err != nil {
 		return err
 	}
@@ -200,8 +198,6 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 
 // Delete the given row from the table.
 func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
-	row = t.toStorageRow(row)
-
 	if err := checkRow(t.editedTable.Schema(), row); err != nil {
 		return err
 	}
@@ -216,9 +212,6 @@ func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 
 // Update updates the given row in the table.
 func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) error {
-	oldRow = t.toStorageRow(oldRow)
-	newRow = t.toStorageRow(newRow)
-
 	if err := checkRow(t.editedTable.Schema(), oldRow); err != nil {
 		return err
 	}
@@ -306,25 +299,6 @@ func (t *tableEditor) pkColumnIndexes() []int {
 func (t *tableEditor) pkColsDiffer(row, row2 sql.Row) bool {
 	pkColIdxes := t.pkColumnIndexes()
 	return !columnsMatch(pkColIdxes, nil, row, row2)
-}
-
-// toStorageRow returns the given row normalized for storage, omitting virtual columns
-func (t *tableEditor) toStorageRow(row sql.Row) sql.Row {
-	if !t.editedTable.data.schema.HasVirtualColumns() {
-		return row
-	}
-
-	storageRow := make(sql.Row, len(t.editedTable.data.schema.Schema))
-	storageRowIdx := 0
-	for i, col := range t.editedTable.data.schema.Schema {
-		if col.Virtual {
-			continue
-		}
-		storageRow[storageRowIdx] = row[i]
-		storageRowIdx++
-	}
-
-	return storageRow[:storageRowIdx]
 }
 
 // Returns whether the values for the columns given match in the two rows provided
@@ -622,14 +596,16 @@ func (pke *pkTableEditAccumulator) insertHelper(table *TableData, row sql.Row) e
 		}
 	}
 
+	storageRow := pke.tableData.toStorageRow(row)
+	
 	var partKey string
 	var rowIdx int
 	if savedPartitionRowIndex > -1 {
-		table.partitions[savedPartitionIndex][savedPartitionRowIndex] = row
+		table.partitions[savedPartitionIndex][savedPartitionRowIndex] = storageRow
 		partKey = savedPartitionIndex
 		rowIdx = savedPartitionRowIndex
 	} else {
-		table.partitions[key] = append(table.partitions[key], row)
+		table.partitions[key] = append(table.partitions[key], storageRow)
 		partKey = key
 		rowIdx = len(table.partitions[key]) - 1
 	}
@@ -811,7 +787,8 @@ func (k *keylessTableEditAccumulator) insertHelper(table *TableData, row sql.Row
 	}
 	key := string(table.partitionKeys[partIdx])
 
-	table.partitions[key] = append(table.partitions[key], row)
+	storageRow := k.tableData.toStorageRow(row)
+	table.partitions[key] = append(table.partitions[key], storageRow)
 
 	err = addRowToIndexes(table, row, key, len(table.partitions[key])-1)
 	if err != nil {
@@ -836,12 +813,6 @@ func formatRow(r sql.Row, idxs []int) string {
 }
 
 func checkRow(schema sql.Schema, row sql.Row) error {
-	schema = schema.PhysicalSchema()
-
-	if len(row) != len(schema) {
-		return sql.ErrUnexpectedRowLength.New(len(schema), len(row))
-	}
-
 	for i, value := range row {
 		c := schema[i]
 		if !c.Check(value) {

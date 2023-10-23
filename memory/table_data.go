@@ -237,6 +237,25 @@ func (td *TableData) columnIndexes(colNames []string) ([]int, error) {
 	return columns, nil
 }
 
+// toStorageRow returns the given row normalized for storage, omitting virtual columns
+func (td *TableData) toStorageRow(row sql.Row) sql.Row {
+	if !td.schema.HasVirtualColumns() {
+		return row
+	}
+
+	storageRow := make(sql.Row, len(td.schema.Schema))
+	storageRowIdx := 0
+	for i, col := range td.schema.Schema {
+		if col.Virtual {
+			continue
+		}
+		storageRow[storageRowIdx] = row[i]
+		storageRowIdx++
+	}
+
+	return storageRow[:storageRowIdx]
+}
+
 func (td *TableData) numRows(ctx *sql.Context) (uint64, error) {
 	var count uint64
 	for _, rows := range td.partitions {
