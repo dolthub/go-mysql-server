@@ -8795,7 +8795,7 @@ inner join pq on true
 			"                 │       ├─ name: \n" +
 			"                 │       └─ columns: []\n" +
 			"                 └─ Project\n" +
-			"                     ├─ columns: [(n.i:0!null + 1 (tinyint))]\n" +
+			"                     ├─ columns: [(n.i:0!null + 1 (tinyint)) as i + 1]\n" +
 			"                     └─ Filter\n" +
 			"                         ├─ LessThanOrEqual\n" +
 			"                         │   ├─ (n.i:0!null + 1 (tinyint))\n" +
@@ -8822,7 +8822,7 @@ inner join pq on true
 			"                 │       ├─ name: \n" +
 			"                 │       └─ columns: []\n" +
 			"                 └─ Project\n" +
-			"                     ├─ columns: [(n.i:0!null + 1 (tinyint))]\n" +
+			"                     ├─ columns: [(n.i:0!null + 1 (tinyint)) as i + 1]\n" +
 			"                     └─ Having\n" +
 			"                         ├─ LessThanOrEqual\n" +
 			"                         │   ├─ (n.i:0!null + 1 (tinyint))\n" +
@@ -8853,7 +8853,7 @@ inner join pq on true
 			"                 │       ├─ name: \n" +
 			"                 │       └─ columns: []\n" +
 			"                 └─ Project\n" +
-			"                     ├─ columns: [(n.i:0!null + 1 (tinyint))]\n" +
+			"                     ├─ columns: [(n.i:0!null + 1 (tinyint)) as i + 1]\n" +
 			"                     └─ Filter\n" +
 			"                         ├─ LessThanOrEqual\n" +
 			"                         │   ├─ (n.i:0!null + 1 (tinyint))\n" +
@@ -9007,7 +9007,7 @@ inner join pq on true
 			"                 │                   ├─ name: \n" +
 			"                 │                   └─ columns: []\n" +
 			"                 └─ Project\n" +
-			"                     ├─ columns: [(a.x:0!null + 1 (tinyint))]\n" +
+			"                     ├─ columns: [(a.x:0!null + 1 (tinyint)) as x+1]\n" +
 			"                     └─ Filter\n" +
 			"                         ├─ LessThan\n" +
 			"                         │   ├─ a.x:0!null\n" +
@@ -9693,7 +9693,7 @@ WHERE keyless.c0 IN (
 			"         │                   │           │               ├─ name: keyless\n" +
 			"         │                   │           │               └─ columns: [c0 c1]\n" +
 			"         │                   │           └─ Project\n" +
-			"         │                   │               ├─ columns: [(cte.depth:2!null + 1 (tinyint)), cte.i:3, (t2.c1:6 + 1 (tinyint))]\n" +
+			"         │                   │               ├─ columns: [(cte.depth:2!null + 1 (tinyint)) as cte.depth + 1, cte.i:3, (t2.c1:6 + 1 (tinyint)) as T2.c1 + 1]\n" +
 			"         │                   │               └─ HashJoin\n" +
 			"         │                   │                   ├─ Eq\n" +
 			"         │                   │                   │   ├─ cte.depth:2!null\n" +
@@ -9775,7 +9775,7 @@ WHERE keyless.c0 IN (
 			"         │                   │           │               ├─ name: keyless\n" +
 			"         │                   │           │               └─ columns: [c0 c1]\n" +
 			"         │                   │           └─ Project\n" +
-			"         │                   │               ├─ columns: [(cte.depth:2!null + 1 (tinyint)), cte.i:3, (t2.c1:6 + 1 (tinyint))]\n" +
+			"         │                   │               ├─ columns: [(cte.depth:2!null + 1 (tinyint)) as cte.depth + 1, cte.i:3, (t2.c1:6 + 1 (tinyint)) as T2.c1 + 1]\n" +
 			"         │                   │               └─ HashJoin\n" +
 			"         │                   │                   ├─ Eq\n" +
 			"         │                   │                   │   ├─ cte.depth:2!null\n" +
@@ -10314,13 +10314,15 @@ WHERE keyless.c0 IN (
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ Limit(1)\n" +
-			"         └─ IndexedTableAccess(xy)\n" +
-			"             ├─ index: [xy.x]\n" +
-			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ reverse: true\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: xy\n" +
-			"                 └─ columns: [x]\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [xy.x:0!null as max(x)]\n" +
+			"             └─ IndexedTableAccess(xy)\n" +
+			"                 ├─ index: [xy.x]\n" +
+			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 ├─ reverse: true\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: xy\n" +
+			"                     └─ columns: [x]\n" +
 			"",
 	},
 	{
