@@ -224,7 +224,6 @@ func TestSingleScript(t *testing.T) {
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
 
-
 	//t.Skip()
 	//var scripts = []queries.ScriptTest{
 	//	{
