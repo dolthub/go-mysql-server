@@ -501,8 +501,7 @@ func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope
 	outScope.node = newAlias
 	for _, c := range newAlias.Schema() {
 		outScope.newColumn(scopeColumn{
-			// table function names do not belong to a database.
-			tableId: sql.NewAliasID(name),
+			tableId: sql.NewTableID(database.Name(), name),
 			col:     c.Name,
 			typ:     c.Type,
 		})
