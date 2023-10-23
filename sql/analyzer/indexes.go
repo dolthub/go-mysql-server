@@ -135,7 +135,7 @@ func getIndexes(
 			}
 
 			colExprs := normalizeExpressions(tableAliases, cmp.Left())
-			idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), gf.Table(), colExprs...)
+			idx := ia.MatchingIndex(ctx, gf.TableID(), colExprs...)
 			if idx != nil {
 				value, err := cmp.Right().Eval(ctx, nil)
 				if err != nil {
@@ -217,7 +217,7 @@ func getIndexes(
 			}
 
 			normalizedExpressions := normalizeExpressions(tableAliases, e.Val)
-			idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), gf.Table(), normalizedExpressions...)
+			idx := ia.MatchingIndex(ctx, gf.TableID(), normalizedExpressions...)
 			if idx != nil {
 
 				upper, err := e.Upper.Eval(ctx, nil)
@@ -338,7 +338,7 @@ func getIndexes(
 		upper := types.Point{X: maxX, Y: maxY}
 
 		normalizedExpressions := normalizeExpressions(tableAliases, left)
-		idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), getField.Table(), normalizedExpressions...)
+		idx := ia.MatchingIndex(ctx, getField.TableID(), normalizedExpressions...)
 		if idx == nil || !idx.IsSpatial() {
 			return nil, nil
 		}
@@ -409,7 +409,7 @@ func getComparisonIndexLookup(
 	}
 
 	normalizedExpressions := normalizeExpressions(tableAliases, left)
-	idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), gf.Table(), normalizedExpressions...)
+	idx := ia.MatchingIndex(ctx, gf.TableID(), normalizedExpressions...)
 
 	if idx == nil {
 		return nil, nil
@@ -509,7 +509,7 @@ func getNegatedIndexes(
 		}
 
 		normalizedExpressions := normalizeExpressions(tableAliases, left)
-		idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), gf.Table(), normalizedExpressions...)
+		idx := ia.MatchingIndex(ctx, gf.TableID(), normalizedExpressions...)
 		if idx == nil {
 			return nil, nil
 		}
@@ -557,7 +557,7 @@ func getNegatedIndexes(
 			}
 
 			normalizedExpressions := normalizeExpressions(tableAliases, cmp.Left())
-			idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), gf.Table(), normalizedExpressions...)
+			idx := ia.MatchingIndex(ctx, gf.TableID(), normalizedExpressions...)
 			if idx != nil {
 				value, err := cmp.Right().Eval(ctx, nil)
 				if err != nil {
@@ -773,7 +773,7 @@ func getMultiColumnIndexForExpressions(
 	tableAliases TableAliases,
 ) (*indexLookup, error) {
 	normalizedExpressions := normalizeExpressions(tableAliases, selected...)
-	index := ia.MatchingIndex(ctx, table.DatabaseName, table.TableName, normalizedExpressions...)
+	index := ia.MatchingIndex(ctx, table, normalizedExpressions...)
 	if index == nil {
 		return nil, nil
 	}
