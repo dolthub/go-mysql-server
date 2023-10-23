@@ -226,7 +226,7 @@ func TestQueriesPrepared(t *testing.T, harness Harness) {
 
 // TestJoinQueriesPrepared tests join queries as prepared statements against a provided harness.
 func TestJoinQueriesPrepared(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.OthertableData, setup.NiltableData, setup.XyData)
+	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.OthertableData, setup.NiltableData, setup.XyData, setup.FooData)
 	for _, tt := range queries.JoinQueryTests {
 		if tt.SkipPrepared {
 			continue
