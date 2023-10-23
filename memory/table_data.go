@@ -365,7 +365,24 @@ func (td *TableData) sortRows() {
 		}
 		sort.Slice(idxStorage, func(i, j int) bool {
 			for t, typ := range types {
-				compare, _ := typ.Compare(idxStorage[i][t], idxStorage[j][t])
+				left := idxStorage[i][t]
+				right := idxStorage[j][t]
+
+				// Compare doesn't handle nil values, so we need to handle that case. Nils sort before other values
+				if left == nil {
+					if right == nil {
+						continue
+					} else {
+						return true
+					}
+				} else if right == nil {
+					return false
+				}
+				
+				compare, err := typ.Compare(left, right)
+				if err != nil {
+					panic(err)
+				}
 				if compare != 0 {
 					return compare < 0
 				}

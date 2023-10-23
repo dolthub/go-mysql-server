@@ -385,7 +385,7 @@ func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 		rowLoc := idxRow[len(idxRow)-1].(primaryRowLocation)
 		candidate := i.primaryRows[rowLoc.partition][rowLoc.idx]
 
-		ctx.GetLogger().Warnf("Found row %v", candidate)
+		// ctx.GetLogger().Warnf("Found row %v", candidate)
 		matches, err := rowMatches(i.ranges, candidate)
 		if err != nil {
 			return nil, err
@@ -401,6 +401,8 @@ func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if row == nil {
 		return nil, io.EOF
 	}
+	
+	ctx.GetLogger().Warnf("Returning row %v", row)
 	
 	return projectRow(i.columns, row), nil
 }
@@ -577,6 +579,8 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
+	ctx.GetLogger().Warnf("table scan row: %v", row)
+	
 	return projectRow(i.columns, row), nil
 }
 
@@ -1453,6 +1457,16 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 			ranges: filter,
 		}, nil
 	}
+
+	// child, err := t.Table.Partitions(ctx)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// 
+	// return rangePartitionIter{
+	// 	child:  child.(*partitionIter),
+	// 	ranges: filter,
+	// }, nil
 
 	return &indexScanPartitionIter{
 		index:  lookup.Index.(*Index),
