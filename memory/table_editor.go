@@ -419,7 +419,6 @@ var _ tableEditAccumulator = (*pkTableEditAccumulator)(nil)
 // Insert implements the tableEditAccumulator interface.
 func (pke *pkTableEditAccumulator) Insert(value sql.Row) error {
 	rowKey := pke.getRowKey(value)
-	delete(pke.deletes, rowKey)
 	pke.adds[rowKey] = value
 	return nil
 }
