@@ -10388,7 +10388,7 @@ select * from mytable,
 ) sqa 
 where i = a
 order by i;`,
-	ExpectedPlan: "Sort(mytable.i:0!null ASC nullsFirst)\n" +
+		ExpectedPlan: "Sort(mytable.i:0!null ASC nullsFirst)\n" +
 			" └─ Filter\n" +
 			"     ├─ Eq\n" +
 			"     │   ├─ mytable.i:0!null\n" +

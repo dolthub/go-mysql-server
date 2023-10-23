@@ -441,7 +441,7 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 			}
 			if e.Table() == "cte" {
 				print()
-		    }
+			}
 			idx, _ := newScope.getIdx(e.String())
 			if idx >= 0 {
 				return e.WithIndex(idx), transform.NewTree, nil

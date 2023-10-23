@@ -8319,7 +8319,7 @@ select * from mytable,
 ) sqa 
 where i = a
 order by i;`,
-		Expected: []sql.Row {
+		Expected: []sql.Row{
 			{1, "first row", 1},
 			{2, "second row", 2},
 			{3, "third row", 3},
