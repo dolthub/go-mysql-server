@@ -150,16 +150,20 @@ func (s *scope) hasTable(table string) bool {
 // when we fail a resolveColumn.
 func (s *scope) triggerCol(table, col string) (scopeColumn, bool) {
 	// hallucinate tablecol
+	dbName := ""
+	if s.b.currentDatabase != nil {
+		dbName = s.b.currentDatabase.Name()
+	}
 	for _, t := range s.b.TriggerCtx().UnresolvedTables {
 		if strings.EqualFold(t, table) {
-			col := scopeColumn{tableId: sql.NewAliasID(table), col: col}
+			col := scopeColumn{tableId: sql.NewTableID(dbName, table), col: col}
 			id := s.newColumn(col)
 			col.id = id
 			return col, true
 		}
 	}
 	if table == "" {
-		col := scopeColumn{col: col}
+		col := scopeColumn{tableId: sql.NewTableID(dbName, table), col: col}
 		id := s.newColumn(col)
 		col.id = id
 		return col, true
