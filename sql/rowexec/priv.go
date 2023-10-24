@@ -203,38 +203,29 @@ func (b *BaseBuilder) buildRevoke(ctx *sql.Context, n *plan.Revoke, row sql.Row)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
+
 	editor := mysqlDb.Editor()
 	defer editor.Close()
-	if n.PrivilegeLevel.Database == "*" && n.PrivilegeLevel.TableRoutine == "*" {
+
+	users := make([]*mysql_db.User, 0, len(n.Users))
+	for _, revokeUser := range n.Users {
+		user := mysqlDb.GetUser(editor, revokeUser.Name, revokeUser.Host, false)
+		if user == nil {
+			return nil, sql.ErrGrantUserDoesNotExist.New()
+		}
+		users = append(users, user)
+	}
+
+	if n.PrivilegeLevel.Database == "*" {
+		// Global privileges
+		if n.PrivilegeLevel.TableRoutine != "*" {
+			return nil, sql.ErrGrantRevokeIllegalPrivilege.New()
+		}
 		if n.ObjectType != plan.ObjectType_Any {
 			return nil, sql.ErrGrantRevokeIllegalPrivilege.New()
 		}
-		for _, revokeUser := range n.Users {
-			user := mysqlDb.GetUser(editor, revokeUser.Name, revokeUser.Host, false)
-			if user == nil {
-				return nil, sql.ErrGrantUserDoesNotExist.New()
-			}
+		for _, user := range users {
 			if err := n.HandleGlobalPrivileges(user); err != nil {
-				return nil, err
-			}
-		}
-	} else if n.PrivilegeLevel.Database != "*" && n.PrivilegeLevel.TableRoutine == "*" {
-		database := n.PrivilegeLevel.Database
-		if database == "" {
-			database = ctx.GetCurrentDatabase()
-			if database == "" {
-				return nil, sql.ErrNoDatabaseSelected.New()
-			}
-		}
-		if n.ObjectType != plan.ObjectType_Any {
-			return nil, sql.ErrGrantRevokeIllegalPrivilege.New()
-		}
-		for _, revokeUser := range n.Users {
-			user := mysqlDb.GetUser(editor, revokeUser.Name, revokeUser.Host, false)
-			if user == nil {
-				return nil, sql.ErrGrantUserDoesNotExist.New()
-			}
-			if err := n.HandleDatabasePrivileges(user, database); err != nil {
 				return nil, err
 			}
 		}
@@ -246,35 +237,40 @@ func (b *BaseBuilder) buildRevoke(ctx *sql.Context, n *plan.Revoke, row sql.Row)
 				return nil, sql.ErrNoDatabaseSelected.New()
 			}
 		}
-		if n.ObjectType != plan.ObjectType_Any {
-			// NM4 - Refactor this change. This function is unmanagable. Full copy paste from buildGrant.
-			if n.ObjectType == plan.ObjectType_Procedure || n.ObjectType == plan.ObjectType_Function {
-				isProc := n.ObjectType == plan.ObjectType_Procedure
-				for _, grantUser := range n.Users {
-					user := mysqlDb.GetUser(editor, grantUser.Name, grantUser.Host, false)
-					if user == nil {
-						return nil, sql.ErrGrantUserDoesNotExist.New()
-					}
-					if err := n.HandleRoutinePrivileges(user, database, n.PrivilegeLevel.TableRoutine, isProc); err != nil {
-						return nil, err
-					}
+		if n.PrivilegeLevel.TableRoutine == "*" {
+			// Database privileges
+			if n.ObjectType != plan.ObjectType_Any {
+				return nil, sql.ErrGrantRevokeIllegalPrivilege.New()
+			}
+			for _, user := range users {
+				if err := n.HandleDatabasePrivileges(user, database); err != nil {
+					return nil, err
 				}
-			} else {
-				//TODO: implement object types
-				return nil, fmt.Errorf("GRANT has not yet implemented object types")
 			}
 		} else {
-			for _, grantUser := range n.Users {
-				user := mysqlDb.GetUser(editor, grantUser.Name, grantUser.Host, false)
-				if user == nil {
-					return nil, sql.ErrGrantUserDoesNotExist.New()
+			if n.ObjectType != plan.ObjectType_Any {
+				if n.ObjectType == plan.ObjectType_Procedure || n.ObjectType == plan.ObjectType_Function {
+					// Routine Privileges
+					isProc := n.ObjectType == plan.ObjectType_Procedure
+					for _, user := range users {
+						if err := n.HandleRoutinePrivileges(user, database, n.PrivilegeLevel.TableRoutine, isProc); err != nil {
+							return nil, err
+						}
+					}
+				} else {
+					return nil, fmt.Errorf("runtime error: unexpected object type: %d", n.ObjectType)
 				}
-				if err := n.HandleTablePrivileges(user, database, n.PrivilegeLevel.TableRoutine); err != nil {
-					return nil, err
+			} else {
+				// Table Privileges
+				for _, user := range users {
+					if err := n.HandleTablePrivileges(user, database, n.PrivilegeLevel.TableRoutine); err != nil {
+						return nil, err
+					}
 				}
 			}
 		}
 	}
+
 	if err := mysqlDb.Persist(ctx, editor); err != nil {
 		return nil, err
 	}
