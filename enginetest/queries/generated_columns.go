@@ -456,6 +456,27 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "virtual column index on a keyless table",
+		SetUpScript: []string{
+			"create table t1 (j json, v int generated always as (j->>'$.a') virtual, index idx_v (v))",
+			"insert into t1(j) values ('{\"a\": 1}'), ('{\"a\": 2}'), ('{\"b\": 3}')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t1 where v = 2",
+				Expected: []sql.Row{{"{\"a\": 2}", 2}},
+			},
+			{
+				Query: "explain select * from t1 where v = 2",
+				Expected: []sql.Row{
+					{"IndexedTableAccess(t1)"},
+					{" ├─ index: [t1.v]"},
+					{" └─ filters: [{[2, 2]}]"},
+				},
+			},
+		},
+	},
 }
 
 var BrokenGeneratedColumnTests = []ScriptTest{
