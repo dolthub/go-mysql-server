@@ -259,6 +259,7 @@ From xy;`,
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: dt\n" +
 			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [count(1):0!null as count(*)]\n" +
@@ -530,6 +531,7 @@ where
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: dt\n" +
 			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [json_object('key1',1,'key2','abc') as JSON_OBJECT('key1', 1, 'key2', 'abc')]\n" +
@@ -545,6 +547,7 @@ where
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: dt\n" +
 			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [json_object('key1',1,'key2','abc') as JSON_OBJECT('key1', 1, 'key2', 'abc')]\n" +
@@ -573,6 +576,7 @@ where
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: included_parts\n" +
 			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ RecursiveCTE\n" +
 			"             └─ Union all\n" +
@@ -638,6 +642,7 @@ offset 2;`,
 			" │   └─ SubqueryAlias\n" +
 			" │       ├─ name: sq1\n" +
 			" │       ├─ outerVisibility: false\n" +
+			" │       ├─ isLateral: false\n" +
 			" │       ├─ cacheable: true\n" +
 			" │       └─ Table\n" +
 			" │           ├─ name: xy\n" +
@@ -647,6 +652,7 @@ offset 2;`,
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: sq2\n" +
 			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ Table\n" +
 			"             ├─ name: uv\n" +
@@ -664,6 +670,7 @@ Select * from (
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: dt\n" +
 			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
 			" └─ Union distinct\n" +
 			"     ├─ Project\n" +
@@ -671,6 +678,7 @@ Select * from (
 			"     │   └─ SubqueryAlias\n" +
 			"     │       ├─ name: cte\n" +
 			"     │       ├─ outerVisibility: false\n" +
+			"     │       ├─ isLateral: false\n" +
 			"     │       ├─ cacheable: true\n" +
 			"     │       └─ RecursiveCTE\n" +
 			"     │           └─ Union distinct\n" +
@@ -709,6 +717,7 @@ Select * from (
 			"                 │           └─ SubqueryAlias\n" +
 			"                 │               ├─ name: cte\n" +
 			"                 │               ├─ outerVisibility: true\n" +
+			"                 │               ├─ isLateral: false\n" +
 			"                 │               ├─ cacheable: true\n" +
 			"                 │               └─ RecursiveCTE\n" +
 			"                 │                   └─ Union distinct\n" +
@@ -743,6 +752,7 @@ Select * from (
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: dt\n" +
 			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
 			" └─ Union distinct\n" +
 			"     ├─ Project\n" +
@@ -750,6 +760,7 @@ Select * from (
 			"     │   └─ SubqueryAlias\n" +
 			"     │       ├─ name: cte\n" +
 			"     │       ├─ outerVisibility: false\n" +
+			"     │       ├─ isLateral: false\n" +
 			"     │       ├─ cacheable: true\n" +
 			"     │       └─ RecursiveCTE\n" +
 			"     │           └─ Union distinct\n" +
@@ -783,10 +794,12 @@ Select * from (
 			"                 │   └─ SubqueryAlias\n" +
 			"                 │       ├─ name: scalarSubq0\n" +
 			"                 │       ├─ outerVisibility: false\n" +
+			"                 │       ├─ isLateral: false\n" +
 			"                 │       ├─ cacheable: true\n" +
 			"                 │       └─ SubqueryAlias\n" +
 			"                 │           ├─ name: cte\n" +
 			"                 │           ├─ outerVisibility: false\n" +
+			"                 │           ├─ isLateral: false\n" +
 			"                 │           ├─ cacheable: true\n" +
 			"                 │           └─ RecursiveCTE\n" +
 			"                 │               └─ Union distinct\n" +
@@ -904,6 +917,7 @@ Select * from (
 			"     │   └─ SubqueryAlias\n" +
 			"     │       ├─ name: scalarSubq0\n" +
 			"     │       ├─ outerVisibility: false\n" +
+			"     │       ├─ isLateral: false\n" +
 			"     │       ├─ cacheable: true\n" +
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [Subquery\n" +
@@ -923,6 +937,7 @@ Select * from (
 			"     │           └─ SubqueryAlias\n" +
 			"     │               ├─ name: sq\n" +
 			"     │               ├─ outerVisibility: false\n" +
+			"     │               ├─ isLateral: false\n" +
 			"     │               ├─ cacheable: true\n" +
 			"     │               └─ Table\n" +
 			"     │                   ├─ name: pq\n" +
@@ -1026,6 +1041,7 @@ Select * from (
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: r\n" +
 			"     │   ├─ outerVisibility: false\n" +
+			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
 			"     │   └─ MergeJoin\n" +
 			"     │       ├─ cmp: Eq\n" +
@@ -1355,6 +1371,7 @@ Select * from (
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: sq\n" +
 			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [xy.y:1, Subquery\n" +
@@ -1447,6 +1464,7 @@ Select * from (
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: mt\n" +
 			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
@@ -1466,6 +1484,7 @@ Select * from (
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: bus_dst\n" +
 			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ RecursiveCTE\n" +
 			"         └─ Union distinct\n" +
@@ -1517,12 +1536,14 @@ Select * from (
 			"                 └─ SubqueryAlias\n" +
 			"                     ├─ name: scalarSubq0\n" +
 			"                     ├─ outerVisibility: false\n" +
+			"                     ├─ isLateral: false\n" +
 			"                     ├─ cacheable: true\n" +
 			"                     └─ Project\n" +
 			"                         ├─ columns: [cte1.u:0!null]\n" +
 			"                         └─ SubqueryAlias\n" +
 			"                             ├─ name: cte1\n" +
 			"                             ├─ outerVisibility: false\n" +
+			"                             ├─ isLateral: false\n" +
 			"                             ├─ cacheable: true\n" +
 			"                             └─ Project\n" +
 			"                                 ├─ columns: [cte2.u:1!null, cte2.v:2]\n" +
@@ -1539,6 +1560,7 @@ Select * from (
 			"                                         └─ SubqueryAlias\n" +
 			"                                             ├─ name: cte2\n" +
 			"                                             ├─ outerVisibility: false\n" +
+			"                                             ├─ isLateral: false\n" +
 			"                                             ├─ cacheable: true\n" +
 			"                                             └─ Project\n" +
 			"                                                 ├─ columns: [uv.u:1!null, uv.v:2]\n" +
@@ -1638,6 +1660,7 @@ Select * from (
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: xq\n" +
 			"     │   ├─ outerVisibility: false\n" +
+			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [xy.x:2!null, pq.q:1]\n" +
@@ -1657,6 +1680,7 @@ Select * from (
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: av\n" +
 			"             ├─ outerVisibility: false\n" +
+			"             ├─ isLateral: false\n" +
 			"             ├─ cacheable: true\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [ab.a:2!null, uv.v:1]\n" +
@@ -1812,6 +1836,7 @@ Select * from (
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: cte\n" +
 			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
 			" └─ Table\n" +
 			"     ├─ name: ab\n" +
@@ -1954,6 +1979,7 @@ Select * from (
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: uv\n" +
 			"     │   ├─ outerVisibility: false\n" +
+			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [count(1):0!null as u, 123 (tinyint) as v]\n" +
@@ -1980,6 +2006,7 @@ Select * from (
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: uv\n" +
 			"     │   ├─ outerVisibility: false\n" +
+			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [count(1):0!null as u, 123 (tinyint) as v]\n" +
@@ -2011,6 +2038,7 @@ Select * from (
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: scalarSubq0\n" +
 			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [count(1):0!null as u, 123 (tinyint) as v]\n" +
@@ -2034,6 +2062,7 @@ Select * from (
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: scalarSubq0\n" +
 			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [count(1):0!null as u, 123 (tinyint) as v]\n" +
@@ -2052,6 +2081,7 @@ Select * from (
 			"     │   └─ SubqueryAlias\n" +
 			"     │       ├─ name: uv\n" +
 			"     │       ├─ outerVisibility: true\n" +
+			"     │       ├─ isLateral: false\n" +
 			"     │       ├─ cacheable: true\n" +
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [count(1):0!null as u, 123 (tinyint) as v]\n" +
@@ -2106,6 +2136,7 @@ Select * from (
 			"     │       └─ SubqueryAlias\n" +
 			"     │           ├─ name: cte\n" +
 			"     │           ├─ outerVisibility: true\n" +
+			"     │           ├─ isLateral: false\n" +
 			"     │           ├─ cacheable: true\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: ab\n" +
@@ -2164,6 +2195,7 @@ inner join xy on a = x;`,
 			" ├─ SubqueryAlias\n" +
 			" │   ├─ name: alias2\n" +
 			" │   ├─ outerVisibility: false\n" +
+			" │   ├─ isLateral: false\n" +
 			" │   ├─ cacheable: true\n" +
 			" │   └─ Project\n" +
 			" │       ├─ columns: [ab.a:0!null, ab.b:1, uv.u:2!null, uv.v:3]\n" +
@@ -2261,6 +2293,7 @@ where exists (select * from pq where a = p)
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: alias1\n" +
 			"     │   ├─ outerVisibility: false\n" +
+			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [ab.a:0!null, ab.b:1]\n" +
@@ -2337,6 +2370,7 @@ inner join pq on true
 			" │   ├─ SubqueryAlias\n" +
 			" │   │   ├─ name: alias1\n" +
 			" │   │   ├─ outerVisibility: false\n" +
+			" │   │   ├─ isLateral: false\n" +
 			" │   │   ├─ cacheable: true\n" +
 			" │   │   └─ Project\n" +
 			" │   │       ├─ columns: [ab.a:2!null, ab.b:3, xy.x:0!null, xy.y:1]\n" +
@@ -2391,6 +2425,7 @@ inner join pq on true
 			"     │       ├─ SubqueryAlias\n" +
 			"     │       │   ├─ name: alias1\n" +
 			"     │       │   ├─ outerVisibility: false\n" +
+			"     │       │   ├─ isLateral: false\n" +
 			"     │       │   ├─ cacheable: true\n" +
 			"     │       │   └─ AntiLookupJoin\n" +
 			"     │       │       ├─ Table\n" +
@@ -3096,6 +3131,7 @@ inner join pq on true
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: sub\n" +
 			"     │   ├─ outerVisibility: false\n" +
+			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [mytable.i:2!null, othertable.i2:1!null, othertable.s2:0!null]\n" +
@@ -3136,6 +3172,7 @@ inner join pq on true
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: sub\n" +
 			"     │   ├─ outerVisibility: false\n" +
+			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [mytable.i:2!null, othertable.i2:1!null, othertable.s2:0!null]\n" +
@@ -3187,6 +3224,7 @@ inner join pq on true
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: sub\n" +
 			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [mytable.i:2!null, othertable.i2:1!null, othertable.s2:0!null]\n" +
@@ -3242,6 +3280,7 @@ inner join pq on true
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: j\n" +
 			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: false\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [one_pk.pk:0!null, rand() as r]\n" +
@@ -3277,6 +3316,7 @@ inner join pq on true
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: j\n" +
 			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: false\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [one_pk.pk:0!null, rand() as r]\n" +
@@ -3305,6 +3345,7 @@ inner join pq on true
 			"                 ├─ SubqueryAlias\n" +
 			"                 │   ├─ name: sub\n" +
 			"                 │   ├─ outerVisibility: false\n" +
+			"                 │   ├─ isLateral: false\n" +
 			"                 │   ├─ cacheable: true\n" +
 			"                 │   └─ Project\n" +
 			"                 │       ├─ columns: [mytable.i:2!null, othertable.i2:1!null, othertable.s2:0!null]\n" +
@@ -3348,6 +3389,7 @@ inner join pq on true
 			"         │   └─ SubqueryAlias\n" +
 			"         │       ├─ name: scalarSubq0\n" +
 			"         │       ├─ outerVisibility: false\n" +
+			"         │       ├─ isLateral: false\n" +
 			"         │       ├─ cacheable: true\n" +
 			"         │       └─ Project\n" +
 			"         │           ├─ columns: [1 (tinyint)]\n" +
@@ -3670,6 +3712,7 @@ inner join pq on true
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: othertable\n" +
 			"             ├─ outerVisibility: false\n" +
+			"             ├─ isLateral: false\n" +
 			"             ├─ cacheable: true\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: othertable\n" +
@@ -3694,6 +3737,7 @@ inner join pq on true
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: othertable\n" +
 			"             ├─ outerVisibility: false\n" +
+			"             ├─ isLateral: false\n" +
 			"             ├─ cacheable: true\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: othertable\n" +
@@ -3711,6 +3755,7 @@ inner join pq on true
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: othertable\n" +
 			"     │   ├─ outerVisibility: false\n" +
+			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: othertable\n" +
@@ -3721,6 +3766,7 @@ inner join pq on true
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: mytable\n" +
 			"             ├─ outerVisibility: false\n" +
+			"             ├─ isLateral: false\n" +
 			"             ├─ cacheable: true\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
@@ -4736,6 +4782,7 @@ inner join pq on true
 			"             ├─ SubqueryAlias\n" +
 			"             │   ├─ name: righttable\n" +
 			"             │   ├─ outerVisibility: false\n" +
+			"             │   ├─ isLateral: false\n" +
 			"             │   ├─ cacheable: true\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: mytable\n" +
@@ -4746,6 +4793,7 @@ inner join pq on true
 			"                 └─ SubqueryAlias\n" +
 			"                     ├─ name: lefttable\n" +
 			"                     ├─ outerVisibility: false\n" +
+			"                     ├─ isLateral: false\n" +
 			"                     ├─ cacheable: true\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: mytable\n" +
@@ -4763,6 +4811,7 @@ inner join pq on true
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: othertable\n" +
 			"     │   ├─ outerVisibility: false\n" +
+			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: othertable\n" +
@@ -4785,6 +4834,7 @@ inner join pq on true
 			" ├─ SubqueryAlias\n" +
 			" │   ├─ name: othertable\n" +
 			" │   ├─ outerVisibility: false\n" +
+			" │   ├─ isLateral: false\n" +
 			" │   ├─ cacheable: true\n" +
 			" │   └─ Table\n" +
 			" │       ├─ name: othertable\n" +
@@ -4803,6 +4853,7 @@ inner join pq on true
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: othertable_alias\n" +
 			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
 			" └─ Filter\n" +
 			"     ├─ Eq\n" +
@@ -4821,14 +4872,17 @@ inner join pq on true
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: othertable_three\n" +
 			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: othertable_two\n" +
 			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: othertable_one\n" +
 			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ Filter\n" +
 			"             ├─ Eq\n" +
@@ -4851,6 +4905,7 @@ inner join pq on true
 			" ├─ SubqueryAlias\n" +
 			" │   ├─ name: othertable\n" +
 			" │   ├─ outerVisibility: false\n" +
+			" │   ├─ isLateral: false\n" +
 			" │   ├─ cacheable: true\n" +
 			" │   └─ Filter\n" +
 			" │       ├─ GreaterThan\n" +
@@ -4884,6 +4939,7 @@ inner join pq on true
 			"     │       └─ SubqueryAlias\n" +
 			"     │           ├─ name: scalarSubq0\n" +
 			"     │           ├─ outerVisibility: false\n" +
+			"     │           ├─ isLateral: false\n" +
 			"     │           ├─ cacheable: true\n" +
 			"     │           └─ Limit(1)\n" +
 			"     │               └─ Table\n" +
@@ -5246,6 +5302,7 @@ inner join pq on true
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: othertable_alias\n" +
 			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
 			" └─ IndexedTableAccess(othertable)\n" +
 			"     ├─ index: [othertable.i2]\n" +
@@ -5260,6 +5317,7 @@ inner join pq on true
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: othertable_alias\n" +
 			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
 			" └─ IndexedTableAccess(othertable)\n" +
 			"     ├─ index: [othertable.i2]\n" +
@@ -7297,6 +7355,7 @@ inner join pq on true
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: a\n" +
 			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
 			" └─ Filter\n" +
 			"     ├─ NOT\n" +
@@ -7347,6 +7406,7 @@ inner join pq on true
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: a\n" +
 			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
 			" └─ Filter\n" +
 			"     ├─ Or\n" +
@@ -7505,6 +7565,7 @@ inner join pq on true
 			"                     ├─ SubqueryAlias\n" +
 			"                     │   ├─ name: t2\n" +
 			"                     │   ├─ outerVisibility: false\n" +
+			"                     │   ├─ isLateral: false\n" +
 			"                     │   ├─ cacheable: true\n" +
 			"                     │   └─ Table\n" +
 			"                     │       ├─ name: two_pk\n" +
@@ -7748,6 +7809,7 @@ inner join pq on true
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: b\n" +
 			"     │   ├─ outerVisibility: false\n" +
+			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: one_pk\n" +
@@ -7893,6 +7955,7 @@ inner join pq on true
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: a\n" +
 			"             ├─ outerVisibility: false\n" +
+			"             ├─ isLateral: false\n" +
 			"             ├─ cacheable: true\n" +
 			"             └─ CrossHashJoin\n" +
 			"                 ├─ TableAlias(b)\n" +
@@ -8508,6 +8571,7 @@ inner join pq on true
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: temp\n" +
 			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [1 (tinyint)]\n" +
@@ -8522,10 +8586,12 @@ inner join pq on true
 			"             └─ SubqueryAlias\n" +
 			"                 ├─ name: scalarSubq0\n" +
 			"                 ├─ outerVisibility: false\n" +
+			"                 ├─ isLateral: false\n" +
 			"                 ├─ cacheable: true\n" +
 			"                 └─ SubqueryAlias\n" +
 			"                     ├─ name: a\n" +
 			"                     ├─ outerVisibility: false\n" +
+			"                     ├─ isLateral: false\n" +
 			"                     ├─ cacheable: true\n" +
 			"                     └─ Union distinct\n" +
 			"                         ├─ Project\n" +
@@ -8586,6 +8652,7 @@ inner join pq on true
 			" ├─ SubqueryAlias\n" +
 			" │   ├─ name: a\n" +
 			" │   ├─ outerVisibility: false\n" +
+			" │   ├─ isLateral: false\n" +
 			" │   ├─ cacheable: true\n" +
 			" │   └─ Union distinct\n" +
 			" │       ├─ Project\n" +
@@ -8601,6 +8668,7 @@ inner join pq on true
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: a\n" +
 			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ Union distinct\n" +
 			"         ├─ Project\n" +
@@ -8625,6 +8693,7 @@ inner join pq on true
 			" │   └─ SubqueryAlias\n" +
 			" │       ├─ name: a\n" +
 			" │       ├─ outerVisibility: false\n" +
+			" │       ├─ isLateral: false\n" +
 			" │       ├─ cacheable: true\n" +
 			" │       └─ Union distinct\n" +
 			" │           ├─ Project\n" +
@@ -8644,6 +8713,7 @@ inner join pq on true
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: a\n" +
 			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ Union distinct\n" +
 			"             ├─ Project\n" +
@@ -8668,6 +8738,7 @@ inner join pq on true
 			" │   └─ SubqueryAlias\n" +
 			" │       ├─ name: a\n" +
 			" │       ├─ outerVisibility: false\n" +
+			" │       ├─ isLateral: false\n" +
 			" │       ├─ cacheable: true\n" +
 			" │       └─ Union distinct\n" +
 			" │           ├─ Project\n" +
@@ -8687,6 +8758,7 @@ inner join pq on true
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: a\n" +
 			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ Union distinct\n" +
 			"             ├─ Project\n" +
@@ -8707,6 +8779,7 @@ inner join pq on true
 			" ├─ SubqueryAlias\n" +
 			" │   ├─ name: a\n" +
 			" │   ├─ outerVisibility: false\n" +
+			" │   ├─ isLateral: false\n" +
 			" │   ├─ cacheable: true\n" +
 			" │   └─ Union distinct\n" +
 			" │       ├─ Project\n" +
@@ -8725,6 +8798,7 @@ inner join pq on true
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: a\n" +
 			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ Union distinct\n" +
 			"             ├─ Project\n" +
@@ -8746,6 +8820,7 @@ inner join pq on true
 			" ├─ SubqueryAlias\n" +
 			" │   ├─ name: a\n" +
 			" │   ├─ outerVisibility: false\n" +
+			" │   ├─ isLateral: false\n" +
 			" │   ├─ cacheable: true\n" +
 			" │   └─ Union distinct\n" +
 			" │       ├─ Project\n" +
@@ -8761,6 +8836,7 @@ inner join pq on true
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: a\n" +
 			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ Union distinct\n" +
 			"         ├─ Project\n" +
@@ -8785,6 +8861,7 @@ inner join pq on true
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: n\n" +
 			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ RecursiveCTE\n" +
 			"             └─ Union all\n" +
@@ -8813,6 +8890,7 @@ inner join pq on true
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: n\n" +
 			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ RecursiveCTE\n" +
 			"             └─ Union all\n" +
@@ -8843,6 +8921,7 @@ inner join pq on true
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: n\n" +
 			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ RecursiveCTE\n" +
 			"             └─ Union all\n" +
@@ -8868,6 +8947,7 @@ inner join pq on true
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: temp\n" +
 			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [1 (tinyint)]\n" +
@@ -8882,10 +8962,12 @@ inner join pq on true
 			"             └─ SubqueryAlias\n" +
 			"                 ├─ name: scalarSubq0\n" +
 			"                 ├─ outerVisibility: false\n" +
+			"                 ├─ isLateral: false\n" +
 			"                 ├─ cacheable: true\n" +
 			"                 └─ SubqueryAlias\n" +
 			"                     ├─ name: a\n" +
 			"                     ├─ outerVisibility: false\n" +
+			"                     ├─ isLateral: false\n" +
 			"                     ├─ cacheable: true\n" +
 			"                     └─ Union distinct\n" +
 			"                         ├─ Project\n" +
@@ -8913,6 +8995,7 @@ inner join pq on true
 			" │   └─ SubqueryAlias\n" +
 			" │       ├─ name: a\n" +
 			" │       ├─ outerVisibility: false\n" +
+			" │       ├─ isLateral: false\n" +
 			" │       ├─ cacheable: true\n" +
 			" │       └─ Union distinct\n" +
 			" │           ├─ Project\n" +
@@ -8946,6 +9029,7 @@ inner join pq on true
 			" │   └─ SubqueryAlias\n" +
 			" │       ├─ name: a\n" +
 			" │       ├─ outerVisibility: false\n" +
+			" │       ├─ isLateral: false\n" +
 			" │       ├─ cacheable: true\n" +
 			" │       └─ Union distinct\n" +
 			" │           ├─ Project\n" +
@@ -8976,6 +9060,7 @@ inner join pq on true
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: a\n" +
 			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ RecursiveCTE\n" +
 			"             └─ Union distinct\n" +
@@ -8994,6 +9079,7 @@ inner join pq on true
 			"                 │   └─ SubqueryAlias\n" +
 			"                 │       ├─ name: b\n" +
 			"                 │       ├─ outerVisibility: false\n" +
+			"                 │       ├─ isLateral: false\n" +
 			"                 │       ├─ cacheable: true\n" +
 			"                 │       └─ Union distinct\n" +
 			"                 │           ├─ Project\n" +
@@ -9022,6 +9108,7 @@ inner join pq on true
 			" │   ├─ SubqueryAlias\n" +
 			" │   │   ├─ name: a\n" +
 			" │   │   ├─ outerVisibility: false\n" +
+			" │   │   ├─ isLateral: false\n" +
 			" │   │   ├─ cacheable: true\n" +
 			" │   │   └─ Project\n" +
 			" │   │       ├─ columns: [1 (tinyint)]\n" +
@@ -9032,6 +9119,7 @@ inner join pq on true
 			" │       └─ SubqueryAlias\n" +
 			" │           ├─ name: b\n" +
 			" │           ├─ outerVisibility: false\n" +
+			" │           ├─ isLateral: false\n" +
 			" │           ├─ cacheable: true\n" +
 			" │           └─ Project\n" +
 			" │               ├─ columns: [2 (tinyint)]\n" +
@@ -9041,6 +9129,7 @@ inner join pq on true
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: a\n" +
 			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [1 (tinyint)]\n" +
@@ -9064,6 +9153,7 @@ inner join pq on true
 			" │   │       ├─ SubqueryAlias\n" +
 			" │   │       │   ├─ name: t2\n" +
 			" │   │       │   ├─ outerVisibility: false\n" +
+			" │   │       │   ├─ isLateral: false\n" +
 			" │   │       │   ├─ cacheable: true\n" +
 			" │   │       │   └─ Project\n" +
 			" │   │       │       ├─ columns: [1 (tinyint)]\n" +
@@ -9076,6 +9166,7 @@ inner join pq on true
 			" │   │           └─ SubqueryAlias\n" +
 			" │   │               ├─ name: t1\n" +
 			" │   │               ├─ outerVisibility: false\n" +
+			" │   │               ├─ isLateral: false\n" +
 			" │   │               ├─ cacheable: true\n" +
 			" │   │               └─ Project\n" +
 			" │   │                   ├─ columns: [1 (tinyint)]\n" +
@@ -9085,6 +9176,7 @@ inner join pq on true
 			" │   └─ SubqueryAlias\n" +
 			" │       ├─ name: b\n" +
 			" │       ├─ outerVisibility: false\n" +
+			" │       ├─ isLateral: false\n" +
 			" │       ├─ cacheable: true\n" +
 			" │       └─ Project\n" +
 			" │           ├─ columns: [2 (tinyint)]\n" +
@@ -9094,6 +9186,7 @@ inner join pq on true
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: a\n" +
 			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [1 (tinyint)]\n" +
@@ -9117,6 +9210,7 @@ inner join pq on true
 			" │   │       ├─ SubqueryAlias\n" +
 			" │   │       │   ├─ name: t2\n" +
 			" │   │       │   ├─ outerVisibility: false\n" +
+			" │   │       │   ├─ isLateral: false\n" +
 			" │   │       │   ├─ cacheable: true\n" +
 			" │   │       │   └─ Union distinct\n" +
 			" │   │       │       ├─ Union distinct\n" +
@@ -9141,6 +9235,7 @@ inner join pq on true
 			" │   │           └─ SubqueryAlias\n" +
 			" │   │               ├─ name: t1\n" +
 			" │   │               ├─ outerVisibility: false\n" +
+			" │   │               ├─ isLateral: false\n" +
 			" │   │               ├─ cacheable: true\n" +
 			" │   │               └─ Union distinct\n" +
 			" │   │                   ├─ Union distinct\n" +
@@ -9162,6 +9257,7 @@ inner join pq on true
 			" │   └─ SubqueryAlias\n" +
 			" │       ├─ name: b\n" +
 			" │       ├─ outerVisibility: false\n" +
+			" │       ├─ isLateral: false\n" +
 			" │       ├─ cacheable: true\n" +
 			" │       └─ Union distinct\n" +
 			" │           ├─ Project\n" +
@@ -9177,6 +9273,7 @@ inner join pq on true
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: a\n" +
 			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ Union distinct\n" +
 			"         ├─ Union distinct\n" +
@@ -9206,6 +9303,7 @@ inner join pq on true
 			" │   ├─ SubqueryAlias\n" +
 			" │   │   ├─ name: a\n" +
 			" │   │   ├─ outerVisibility: false\n" +
+			" │   │   ├─ isLateral: false\n" +
 			" │   │   ├─ cacheable: true\n" +
 			" │   │   └─ Project\n" +
 			" │   │       ├─ columns: [1 (tinyint)]\n" +
@@ -9215,6 +9313,7 @@ inner join pq on true
 			" │   └─ SubqueryAlias\n" +
 			" │       ├─ name: b\n" +
 			" │       ├─ outerVisibility: false\n" +
+			" │       ├─ isLateral: false\n" +
 			" │       ├─ cacheable: true\n" +
 			" │       └─ Project\n" +
 			" │           ├─ columns: [2 (tinyint)]\n" +
@@ -9224,6 +9323,7 @@ inner join pq on true
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: a\n" +
 			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [1 (tinyint)]\n" +
@@ -9241,6 +9341,7 @@ inner join pq on true
 			" │   ├─ SubqueryAlias\n" +
 			" │   │   ├─ name: a\n" +
 			" │   │   ├─ outerVisibility: false\n" +
+			" │   │   ├─ isLateral: false\n" +
 			" │   │   ├─ cacheable: true\n" +
 			" │   │   └─ Project\n" +
 			" │   │       ├─ columns: [1 (tinyint)]\n" +
@@ -9250,6 +9351,7 @@ inner join pq on true
 			" │   └─ SubqueryAlias\n" +
 			" │       ├─ name: b\n" +
 			" │       ├─ outerVisibility: false\n" +
+			" │       ├─ isLateral: false\n" +
 			" │       ├─ cacheable: true\n" +
 			" │       └─ Project\n" +
 			" │           ├─ columns: [2 (tinyint)]\n" +
@@ -9259,6 +9361,7 @@ inner join pq on true
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: a\n" +
 			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [1 (tinyint)]\n" +
@@ -9274,6 +9377,7 @@ inner join pq on true
 			" │   ├─ SubqueryAlias\n" +
 			" │   │   ├─ name: a\n" +
 			" │   │   ├─ outerVisibility: false\n" +
+			" │   │   ├─ isLateral: false\n" +
 			" │   │   ├─ cacheable: true\n" +
 			" │   │   └─ Project\n" +
 			" │   │       ├─ columns: [1 (tinyint)]\n" +
@@ -9283,6 +9387,7 @@ inner join pq on true
 			" │   └─ SubqueryAlias\n" +
 			" │       ├─ name: b\n" +
 			" │       ├─ outerVisibility: false\n" +
+			" │       ├─ isLateral: false\n" +
 			" │       ├─ cacheable: true\n" +
 			" │       └─ Project\n" +
 			" │           ├─ columns: [1 (tinyint)]\n" +
@@ -9292,6 +9397,7 @@ inner join pq on true
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: a\n" +
 			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [1 (tinyint)]\n" +
@@ -9323,10 +9429,12 @@ With c as (
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: c\n" +
 			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: d\n" +
 			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [a.s:5!null]\n" +
@@ -9341,6 +9449,7 @@ With c as (
 			"             ├─ SubqueryAlias\n" +
 			"             │   ├─ name: e\n" +
 			"             │   ├─ outerVisibility: false\n" +
+			"             │   ├─ isLateral: false\n" +
 			"             │   ├─ cacheable: true\n" +
 			"             │   └─ Filter\n" +
 			"             │       ├─ HashIn\n" +
@@ -9363,6 +9472,7 @@ With c as (
 			"                     ├─ SubqueryAlias\n" +
 			"                     │   ├─ name: b\n" +
 			"                     │   ├─ outerVisibility: false\n" +
+			"                     │   ├─ isLateral: false\n" +
 			"                     │   ├─ cacheable: true\n" +
 			"                     │   └─ Filter\n" +
 			"                     │       ├─ HashIn\n" +
@@ -9389,6 +9499,7 @@ With c as (
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: sq\n" +
 			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
 			" └─ Filter\n" +
 			"     ├─ Eq\n" +
@@ -9405,10 +9516,12 @@ With c as (
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: sq2\n" +
 			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: sq1\n" +
 			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
@@ -9425,6 +9538,7 @@ With c as (
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: sq\n" +
 			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
 			" └─ Filter\n" +
 			"     ├─ Eq\n" +
@@ -9447,10 +9561,12 @@ With c as (
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: sq2\n" +
 			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: sq1\n" +
 			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
@@ -9474,6 +9590,7 @@ With c as (
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: sq\n" +
 			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
@@ -9489,10 +9606,12 @@ With c as (
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: sq2\n" +
 			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: sq1\n" +
 			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
@@ -9508,10 +9627,12 @@ With c as (
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: sq2\n" +
 			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: sq1\n" +
 			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
@@ -9527,10 +9648,12 @@ With c as (
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: sq2\n" +
 			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: sq1\n" +
 			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ Filter\n" +
 			"             ├─ GreaterThan\n" +
@@ -9547,6 +9670,7 @@ With c as (
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: sq\n" +
 			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
 			" └─ Filter\n" +
 			"     ├─ NOT\n" +
@@ -9576,6 +9700,7 @@ With c as (
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: sq\n" +
 			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
 			" └─ Filter\n" +
 			"     ├─ NOT\n" +
@@ -9608,6 +9733,7 @@ With c as (
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: b\n" +
 			"     │   ├─ outerVisibility: false\n" +
+			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
 			"     │   └─ Limit(1)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
@@ -9622,6 +9748,7 @@ With c as (
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: a\n" +
 			"             ├─ outerVisibility: false\n" +
+			"             ├─ isLateral: false\n" +
 			"             ├─ cacheable: true\n" +
 			"             └─ Filter\n" +
 			"                 ├─ GreaterThanOrEqual\n" +
@@ -9679,6 +9806,7 @@ WHERE keyless.c0 IN (
 			"         │                   ├─ SubqueryAlias\n" +
 			"         │                   │   ├─ name: cte\n" +
 			"         │                   │   ├─ outerVisibility: true\n" +
+			"         │                   │   ├─ isLateral: false\n" +
 			"         │                   │   ├─ cacheable: true\n" +
 			"         │                   │   └─ RecursiveCTE\n" +
 			"         │                   │       └─ Union all\n" +
@@ -9761,6 +9889,7 @@ WHERE keyless.c0 IN (
 			"         │                   ├─ SubqueryAlias\n" +
 			"         │                   │   ├─ name: cte\n" +
 			"         │                   │   ├─ outerVisibility: true\n" +
+			"         │                   │   ├─ isLateral: false\n" +
 			"         │                   │   ├─ cacheable: true\n" +
 			"         │                   │   └─ RecursiveCTE\n" +
 			"         │                   │       └─ Union all\n" +
@@ -9935,6 +10064,7 @@ WHERE keyless.c0 IN (
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: uv\n" +
 			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: true\n" +
 			"         ├─ cacheable: false\n" +
 			"         └─ Filter\n" +
 			"             ├─ Eq\n" +
@@ -9958,7 +10088,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "select * from xy where y < 1 or y > 2 order by y",
+		Query: `select * from xy where y < 1 or y > 2 order by y`,
 		ExpectedPlan: "IndexedTableAccess(xy)\n" +
 			" ├─ index: [xy.y]\n" +
 			" ├─ static: [{(NULL, 1)}, {(2, ∞)}]\n" +
@@ -9968,7 +10098,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "select * from xy where y < 1 or y > 2 order by y desc",
+		Query: `select * from xy where y < 1 or y > 2 order by y desc`,
 		ExpectedPlan: "IndexedTableAccess(xy)\n" +
 			" ├─ index: [xy.y]\n" +
 			" ├─ static: [{(2, ∞)}, {(NULL, 1)}]\n" +
@@ -9979,7 +10109,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "select * from xy where x in (3, 0, 1) order by x",
+		Query: `select * from xy where x in (3, 0, 1) order by x`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ HashIn\n" +
 			" │   ├─ xy.x:0!null\n" +
@@ -9993,7 +10123,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "select * from xy where x in (3, 0, 1) order by x desc",
+		Query: `select * from xy where x in (3, 0, 1) order by x desc`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ HashIn\n" +
 			" │   ├─ xy.x:0!null\n" +
@@ -10008,7 +10138,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "select * from xy where y in (3, 0, 1) order by y",
+		Query: `select * from xy where y in (3, 0, 1) order by y`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ HashIn\n" +
 			" │   ├─ xy.y:1\n" +
@@ -10022,7 +10152,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "select * from xy where y in (3, 0, 1) order by y desc",
+		Query: `select * from xy where y in (3, 0, 1) order by y desc`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ HashIn\n" +
 			" │   ├─ xy.y:1\n" +
@@ -10037,7 +10167,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "select * from xy_hasnull_idx order by y",
+		Query: `select * from xy_hasnull_idx order by y`,
 		ExpectedPlan: "IndexedTableAccess(xy_hasnull_idx)\n" +
 			" ├─ index: [xy_hasnull_idx.y]\n" +
 			" ├─ static: [{[NULL, ∞)}]\n" +
@@ -10047,7 +10177,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "select * from xy_hasnull_idx order by y desc",
+		Query: `select * from xy_hasnull_idx order by y desc`,
 		ExpectedPlan: "IndexedTableAccess(xy_hasnull_idx)\n" +
 			" ├─ index: [xy_hasnull_idx.y]\n" +
 			" ├─ static: [{[NULL, ∞)}]\n" +
@@ -10058,7 +10188,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "select * from xy_hasnull_idx where y < 1 or y > 1 order by y desc",
+		Query: `select * from xy_hasnull_idx where y < 1 or y > 1 order by y desc`,
 		ExpectedPlan: "IndexedTableAccess(xy_hasnull_idx)\n" +
 			" ├─ index: [xy_hasnull_idx.y]\n" +
 			" ├─ static: [{(1, ∞)}, {(NULL, 1)}]\n" +
@@ -10069,7 +10199,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "select * from xy_hasnull_idx where y < 1 or y > 1 or y is null order by y desc",
+		Query: `select * from xy_hasnull_idx where y < 1 or y > 1 or y is null order by y desc`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
 			" │   ├─ Or\n" +
@@ -10090,7 +10220,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "select * from xy_hasnull_idx where y in (0, 2) or y is null order by y",
+		Query: `select * from xy_hasnull_idx where y in (0, 2) or y is null order by y`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
 			" │   ├─ HashIn\n" +
@@ -10106,7 +10236,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "select x as xx, y as yy from xy_hasnull_idx order by yy desc",
+		Query: `select x as xx, y as yy from xy_hasnull_idx order by yy desc`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [xy_hasnull_idx.x:0!null as xx, xy_hasnull_idx.y:1 as yy]\n" +
 			" └─ Project\n" +
@@ -10121,7 +10251,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "select x as xx, y as yy from xy_hasnull_idx order by YY desc",
+		Query: `select x as xx, y as yy from xy_hasnull_idx order by YY desc`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [xy_hasnull_idx.x:0!null as xx, xy_hasnull_idx.y:1 as yy]\n" +
 			" └─ Project\n" +
@@ -10136,7 +10266,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "select * from xy_hasnull_idx order by Y desc",
+		Query: `select * from xy_hasnull_idx order by Y desc`,
 		ExpectedPlan: "IndexedTableAccess(xy_hasnull_idx)\n" +
 			" ├─ index: [xy_hasnull_idx.y]\n" +
 			" ├─ static: [{[NULL, ∞)}]\n" +
@@ -10146,8 +10276,6 @@ WHERE keyless.c0 IN (
 			"     └─ columns: [x y]\n" +
 			"",
 	},
-
-	// aggregation optimization tests
 	{
 		Query: `select max(x) from xy`,
 		ExpectedPlan: "Limit(1)\n" +
@@ -10292,6 +10420,7 @@ WHERE keyless.c0 IN (
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: sq\n" +
 			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
 			" └─ Limit(1)\n" +
 			"     └─ Project\n" +
@@ -10312,6 +10441,7 @@ WHERE keyless.c0 IN (
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: cte\n" +
 			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ Limit(1)\n" +
 			"         └─ Project\n" +
@@ -10335,6 +10465,7 @@ WHERE keyless.c0 IN (
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: cte\n" +
 			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
@@ -10403,10 +10534,12 @@ order by i;`,
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: sqa\n" +
 			"             ├─ outerVisibility: false\n" +
+			"             ├─ isLateral: true\n" +
 			"             ├─ cacheable: true\n" +
 			"             └─ SubqueryAlias\n" +
 			"                 ├─ name: cte\n" +
 			"                 ├─ outerVisibility: false\n" +
+			"                 ├─ isLateral: true\n" +
 			"                 ├─ cacheable: true\n" +
 			"                 └─ RecursiveCTE\n" +
 			"                     └─ Union distinct\n" +

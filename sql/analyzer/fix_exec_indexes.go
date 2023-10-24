@@ -181,6 +181,7 @@ func (s *idxScope) visitChildren(n sql.Node) error {
 	case *plan.SubqueryAlias:
 		sqScope := s.copy()
 		if !n.OuterScopeVisibility && !n.IsLateral {
+			// TODO: this should not apply to subqueries inside of lateral joins
 			// Subqueries with no visibility have no parent scopes. Lateral
 			// join subquery aliases continue to enjoy full visibility.
 			sqScope.parentScopes = sqScope.parentScopes[:0]
