@@ -454,6 +454,50 @@ var GeneratedColumnTests = []ScriptTest{
 					{" └─ filters: [{[7, 7]}]"},
 				},
 			},
+			{
+				Query:    "select * from t1 where c = 8",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "explain update t1 set b = 5 where c = 3",
+				Expected: []sql.Row{
+					{"Update"},
+					{" └─ UpdateSource(SET t1.b = 5)"},
+					{"     └─ IndexedTableAccess(t1)"},
+					{"         ├─ index: [t1.c]"},
+					{"         └─ filters: [{[3, 3]}]"},
+				},
+			},
+			{
+				Query:    "update t1 set b = 5 where c = 3",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+			},
+			{
+				Query: "select * from t1 order by a",
+				Expected: []sql.Row{
+					{1, 5, 6},
+					{3, 4, 7},
+				},
+			},
+			{
+				Query:    "explain delete from t1 where c = 6",
+				Expected: []sql.Row{
+					{"Delete"},
+					{" └─ IndexedTableAccess(t1)"},
+					{"     ├─ index: [t1.c]"},
+					{"     └─ filters: [{[6, 6]}]"},
+				},
+			},
+			{
+				Query:    "delete from t1 where c = 6",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query: "select * from t1 order by a",
+				Expected: []sql.Row{
+					{3, 4, 7},
+				},
+			},
 		},
 	},
 	{
@@ -473,6 +517,47 @@ var GeneratedColumnTests = []ScriptTest{
 					{"IndexedTableAccess(t1)"},
 					{" ├─ index: [t1.v]"},
 					{" └─ filters: [{[2, 2]}]"},
+				},
+			},
+			{
+				Query: "explain update t1 set j = '{\"a\": 5}' where v = 2",
+				Expected:  []sql.Row{
+					{"Update"},
+					{" └─ UpdateSource(SET t1.j = '{\"a\": 5}')"},
+					{"     └─ IndexedTableAccess(t1)"},
+					{"         ├─ index: [t1.v]"},
+					{"         └─ filters: [{[2, 2]}]"},
+				},
+			},
+			{
+				Query: "update t1 set j = '{\"a\": 5}' where v = 2",
+				Expected:  []sql.Row{{newUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "select * from t1 order by v",
+				Expected: []sql.Row{
+					{"{\"b\": 3}", nil},
+					{"{\"a\": 1}", 1},
+					{"{\"a\": 5}", 5}},
+			},
+			{
+				Query: "explain delete from t1 where v = 5",
+				Expected:  []sql.Row{
+					{"Delete"},
+					{" └─ IndexedTableAccess(t1)"},
+					{"     ├─ index: [t1.v]"},
+					{"     └─ filters: [{[5, 5]}]"},
+				},
+			},
+			{
+				Query: "delete from t1 where v = 5",
+				Expected:  []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select * from t1 order by v",
+				Expected: []sql.Row{
+					{"{\"b\": 3}", nil},
+					{"{\"a\": 1}", 1},
 				},
 			},
 		},
