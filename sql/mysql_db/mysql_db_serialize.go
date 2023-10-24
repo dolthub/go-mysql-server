@@ -98,7 +98,6 @@ func serializeTables(b *flatbuffers.Builder, tables []PrivilegeSetTable) flatbuf
 }
 
 func serializeRoutines(b *flatbuffers.Builder, routines []PrivilegeSetRoutine) flatbuffers.UOffsetT {
-
 	offsets := make([]flatbuffers.UOffsetT, len(routines))
 	for i, routine := range routines {
 		name := b.CreateString(routine.RoutineName())

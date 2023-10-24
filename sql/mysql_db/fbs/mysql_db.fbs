@@ -22,6 +22,7 @@ table PrivilegeSetTable {
     privs:[int];
     columns:[PrivilegeSetColumn];
 }
+
 table PrivilegeSetRoutine {
     name:string;
     privs:[int];
