@@ -37,6 +37,11 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
+var samplePrepareData = &mysql.PrepareData{
+	StatementID: 42,
+	ParamsCount: 1,
+}
+
 func TestHandlerOutput(t *testing.T) {
 	e, pro := setupMemDB(require.New(t))
 	dbFunc := pro.Database
@@ -263,7 +268,7 @@ func TestHandlerComPrepare(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			handler.ComInitDB(dummyConn, "test")
-			schema, err := handler.ComPrepare(dummyConn, test.statement)
+			schema, err := handler.ComPrepare(dummyConn, test.statement, samplePrepareData)
 			if test.expectedErr == nil {
 				require.NoError(t, err)
 				require.Equal(t, test.expected, schema)
@@ -328,7 +333,7 @@ func TestHandlerComPrepareExecute(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			handler.ComInitDB(dummyConn, "test")
-			schema, err := handler.ComPrepare(dummyConn, test.prepare.PrepareStmt)
+			schema, err := handler.ComPrepare(dummyConn, test.prepare.PrepareStmt, samplePrepareData)
 			require.NoError(t, err)
 			require.Equal(t, test.schema, schema)
 
@@ -406,7 +411,7 @@ func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			handler.ComInitDB(dummyConn, "test")
-			schema, err := handler.ComPrepare(dummyConn, test.prepare.PrepareStmt)
+			schema, err := handler.ComPrepare(dummyConn, test.prepare.PrepareStmt, samplePrepareData)
 			require.NoError(t, err)
 			require.Equal(t, test.schema, schema)
 
@@ -533,7 +538,7 @@ func TestServerEventListener(t *testing.T) {
 
 	conn3 := newConn(3)
 	query := "SELECT ?"
-	_, err = handler.ComPrepare(conn3, query)
+	_, err = handler.ComPrepare(conn3, query, samplePrepareData)
 	require.NoError(err)
 	require.Equal(1, len(e.PreparedDataCache.GetSessionData(conn3.ConnectionID)))
 	require.NotNil(e.PreparedDataCache.GetCachedStmt(conn3.ConnectionID, query))
