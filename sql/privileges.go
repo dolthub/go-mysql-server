@@ -91,6 +91,8 @@ type PrivilegeSetDatabase interface {
 	Table(tblName string) PrivilegeSetTable
 	// GetTables returns all tables.
 	GetTables() []PrivilegeSetTable
+	// Routine returns the set of privileges for the given routine. Returns an empty set if the routine does not exist.
+	Routine(routineName string, isProcedure bool) PrivilegeSetRoutine
 	// GetRoutines returns all routines.
 	GetRoutines() []PrivilegeSetRoutine
 	// Equals returns whether the given set of privileges is equivalent to the calling set.

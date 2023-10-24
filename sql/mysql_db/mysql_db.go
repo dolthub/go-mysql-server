@@ -610,12 +610,23 @@ func (db *MySQLDb) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
 // UserHasPrivileges fetches the User, and returns whether they have the desired privileges necessary to perform the
 // privileged operation. This takes into account the active roles, which are set in the context, therefore the user is
 // also pulled from the context.
+//
+// This functions implements the global/database/table|routine hierarchy of permissions. If a user has Execute permissions
+// on the database, then they implicitly have that same permission on all tables and routines in that database. This
+// is how all MySQL permissions work.
 func (db *MySQLDb) UserHasPrivileges(ctx *sql.Context, operations ...sql.PrivilegedOperation) bool {
+	privSet := db.UserActivePrivilegeSet(ctx)
+	// Super users have all privileges, so if they have global super privs, then
+	// they have all dynamic privs and we don't need to check them.
+	if privSet.Has(sql.PrivilegeType_Super) {
+		return true
+	}
+
 	if !db.Enabled() {
 		return true
 	}
-	privSet := db.UserActivePrivilegeSet(ctx)
 	for _, operation := range operations {
+
 		for _, operationPriv := range operation.StaticPrivileges {
 			if privSet.Has(operationPriv) {
 				//TODO: Handle partial revokes
@@ -633,16 +644,13 @@ func (db *MySQLDb) UserHasPrivileges(ctx *sql.Context, operations ...sql.Privile
 			if tblSet.Has(operationPriv) {
 				continue
 			}
-			colSet := tblSet.Column(operation.Column)
-			if !colSet.Has(operationPriv) {
-				return false
+			routineSet := dbSet.Routine(operation.Routine, operation.IsProcedure)
+			if routineSet.Has(operationPriv) {
+				continue
 			}
-		}
 
-		// Super users have all privileges, so if they have global super privs, then
-		// they have all dynamic privs and we don't need to check them.
-		if privSet.Has(sql.PrivilegeType_Super) {
-			continue
+			// User does not have permission to perform the operation.
+			return false
 		}
 
 		for _, operationPriv := range operation.DynamicPrivileges {

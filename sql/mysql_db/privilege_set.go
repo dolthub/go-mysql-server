@@ -496,6 +496,16 @@ func (ps PrivilegeSetDatabase) getTables() []PrivilegeSetTable {
 	return tblSets
 }
 
+// Routine returns the set of privileges for the given procedure or function
+func (ps PrivilegeSetDatabase) Routine(routineName string, isProc bool) sql.PrivilegeSetRoutine {
+	routineName = strings.ToLower(routineName)
+	set, ok := ps.routines[routineKey{routineName, isProc}]
+	if ok {
+		return set
+	}
+	return PrivilegeSetRoutine{name: routineName, isProc: isProc}
+}
+
 // GetRoutines returns all routines.
 func (ps PrivilegeSetDatabase) GetRoutines() []sql.PrivilegeSetRoutine {
 	if ps.routines == nil || len(ps.routines) == 0 {
