@@ -115,16 +115,20 @@ func replaceAggregatesWithGetFieldProjections(_ *sql.Context, scope *plan.Scope,
 		}
 
 		if same {
+			var getField *expression.GetField
 			// add to plan.GroupBy.SelectedExprs iff expression has an expression.GetField
 			hasGetField := transform.InspectExpr(e, func(expr sql.Expression) bool {
-				_, ok := expr.(*expression.GetField)
+				gf, ok := expr.(*expression.GetField)
+				if ok {
+					getField = gf
+				}
 				return ok
 			})
 			if hasGetField {
 				newAggregates = append(newAggregates, e)
 				name, source := getNameAndSource(e)
 				newProjection[i] = expression.NewGetFieldWithTable(
-					scopeLen+len(newAggregates)-1, e.Type(), source, name, e.IsNullable(),
+					scopeLen+len(newAggregates)-1, e.Type(), getField.Database(), source, name, e.IsNullable(),
 				)
 			} else {
 				newProjection[i] = e

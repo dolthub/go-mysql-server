@@ -128,8 +128,8 @@ func (r *indexAnalyzer) IndexesByTable(ctx *sql.Context, db, table string) []sql
 
 // MatchingIndex returns the index that best fits the given expressions. See MatchingIndexes for the rules regarding
 // which index is considered the best.
-func (r *indexAnalyzer) MatchingIndex(ctx *sql.Context, db string, table string, exprs ...sql.Expression) sql.Index {
-	indexes := r.MatchingIndexes(ctx, db, table, exprs...)
+func (r *indexAnalyzer) MatchingIndex(ctx *sql.Context, tableId sql.TableID, exprs ...sql.Expression) sql.Index {
+	indexes := r.MatchingIndexes(ctx, tableId, exprs...)
 	if len(indexes) > 0 {
 		return indexes[0]
 	}
@@ -150,7 +150,7 @@ func (r *indexAnalyzer) MatchingIndex(ctx *sql.Context, db string, table string,
 // It is worth noting that all returned indexes will have at least the first index expression satisfied (creating a
 // partial index), as otherwise the index would be no better than a table scan (for which integrators may have
 // optimizations).
-func (r *indexAnalyzer) MatchingIndexes(ctx *sql.Context, db string, table string, exprs ...sql.Expression) []sql.Index {
+func (r *indexAnalyzer) MatchingIndexes(ctx *sql.Context, tableId sql.TableID, exprs ...sql.Expression) []sql.Index {
 	// As multiple expressions may be the same, we filter out duplicates
 	distinctExprs := make(map[string]struct{})
 	var exprStrs []string
@@ -169,7 +169,7 @@ func (r *indexAnalyzer) MatchingIndexes(ctx *sql.Context, db string, table strin
 	}
 
 	var indexes []idxWithLen
-	for _, idx := range r.indexesByTable[strings.ToLower(table)] {
+	for _, idx := range r.indexesByTable[strings.ToLower(tableId.TableName)] {
 		indexExprs := idx.Expressions()
 		if ok, prefixCount := exprsAreIndexSubset(exprStrs, indexExprs); ok && prefixCount >= 1 {
 			indexes = append(indexes, idxWithLen{idx, len(indexExprs), prefixCount})
@@ -177,7 +177,7 @@ func (r *indexAnalyzer) MatchingIndexes(ctx *sql.Context, db string, table strin
 	}
 
 	if r.indexRegistry != nil {
-		idx, prefixCount, err := r.indexRegistry.MatchingIndex(ctx, db, exprs...)
+		idx, prefixCount, err := r.indexRegistry.MatchingIndex(ctx, tableId.DatabaseName, exprs...)
 		if err != nil {
 			// We just abandon indexes rather than returning an error here
 			return nil

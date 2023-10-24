@@ -24,24 +24,120 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-type TableAliases map[string]sql.Nameable
+// dBQualifiedNameables represents either a single sql.Nameable without a database (such as an alias),
+// or multiple sql.Nameables each belonging to a different database.
+type dBQualifiedNameables struct {
+	unqualified sql.Nameable
+	qualified   map[string]sql.Nameable
+}
 
-// add adds the given table alias referring to the node given. Adding a case insensitive alias that already exists
-// returns an error.
-func (ta TableAliases) add(alias sql.Nameable, target sql.Nameable) error {
-	lowerName := strings.ToLower(alias.Name())
-	if _, ok := ta[lowerName]; ok && lowerName != plan.DualTableName {
-		return sql.ErrDuplicateAliasOrTable.New(alias.Name())
+type TableAliases struct {
+	aliases map[string]dBQualifiedNameables
+}
+
+// addQualified adds the given table alias (qualified by a database name), referring to the node given.
+func (ta *TableAliases) addQualified(db string, alias string, target sql.Nameable) error {
+	if alias == plan.DualTableName {
+		return nil
 	}
 
-	ta[lowerName] = target
+	if ta.aliases == nil {
+		ta.aliases = make(map[string]dBQualifiedNameables)
+	}
+
+	lowerName := strings.ToLower(alias)
+	candidates := ta.aliases[lowerName]
+	// A table name can map to multiple tables from different databases (qualified)
+	// or a single unqualified target, but not both.
+	if candidates.unqualified != nil {
+		return sql.ErrDuplicateAliasOrTable.New(alias)
+	}
+
+	if candidates.qualified == nil {
+		candidates.qualified = make(map[string]sql.Nameable)
+	}
+
+	lowerDbName := strings.ToLower(db)
+	_, hasExistingTarget := candidates.qualified[lowerDbName]
+
+	candidates.qualified[lowerDbName] = target
+	ta.aliases[lowerName] = candidates
+	if hasExistingTarget {
+		return sql.ErrDuplicateAliasOrTable.New(alias)
+	}
 	return nil
 }
 
+// addUnqualified adds the given table alias (not belonging a database), referring to the node given.
+func (ta *TableAliases) addUnqualified(alias string, target sql.Nameable) error {
+	if alias == plan.DualTableName {
+		return nil
+	}
+
+	if ta.aliases == nil {
+		ta.aliases = make(map[string]dBQualifiedNameables)
+	}
+
+	lowerName := strings.ToLower(alias)
+	candidates := ta.aliases[lowerName]
+	// A table name can map to multiple tables from different databases (qualified)
+	// or a single unqualified target, but not both.
+	if len(candidates.qualified) > 0 {
+		return sql.ErrDuplicateAliasOrTable.New(alias)
+	}
+
+	if candidates.unqualified != nil {
+		return sql.ErrDuplicateAliasOrTable.New(alias)
+	}
+	candidates.unqualified = target
+	ta.aliases[lowerName] = candidates
+	return nil
+}
+
+func (ta TableAliases) resolveName(name string) (sql.Nameable, bool, error) {
+	candidates := ta.aliases[strings.ToLower(name)]
+
+	// We already verified when adding aliases: a name can map to multiple tables
+	// from different databases (qualified) or a single unqualified target, but not both.
+	if candidates.unqualified != nil {
+		return candidates.unqualified, true, nil
+	}
+
+	if len(candidates.qualified) > 1 {
+		// This name maps to multiple tables from different databases.
+		return nil, false, sql.ErrDuplicateAliasOrTable.New(name)
+	}
+
+	// If there's only one match, return it.
+	for _, node := range candidates.qualified {
+		return node, true, nil
+	}
+
+	// No matches.
+	return nil, false, nil
+}
+
+func (ta TableAliases) resolveQualifiedName(db, name string) (sql.Nameable, error) {
+	node := ta.aliases[strings.ToLower(name)].qualified[strings.ToLower(db)]
+	if node == nil {
+		return nil, sql.ErrTableNotFound.New(name)
+	}
+	return node, nil
+}
+
 // putAll adds all aliases in the given aliases to the receiver. Silently overwrites existing entries.
-func (ta TableAliases) putAll(other TableAliases) {
-	for alias, target := range other {
-		ta[alias] = target
+func (ta *TableAliases) putAll(other TableAliases) {
+	for name, targets := range other.aliases {
+		if ta.aliases == nil {
+			ta.aliases = make(map[string]dBQualifiedNameables)
+		}
+		aliases := ta.aliases[name]
+		aliases.unqualified = targets.unqualified
+		ta.aliases[name] = aliases
+		for db, target := range targets.qualified {
+			_ = ta.addQualified(db, name, target)
+		}
+
 	}
 }
 
@@ -51,8 +147,8 @@ func (ta TableAliases) findConflicts(other TableAliases) (conflicts []string, no
 	conflicts = []string{}
 	nonConflicted = []string{}
 
-	for alias := range other {
-		if _, ok := ta[alias]; ok {
+	for alias := range other.aliases {
+		if _, ok := ta.aliases[alias]; ok {
 			conflicts = append(conflicts, alias)
 		} else {
 			nonConflicted = append(nonConflicted, alias)
@@ -82,7 +178,7 @@ func getTableAliases(n sql.Node, scope *plan.Scope) (TableAliases, error) {
 			switch t := at.Child.(type) {
 			case *plan.RecursiveCte:
 			case sql.NameableNode:
-				analysisErr = passAliases.add(at, t)
+				analysisErr = passAliases.addUnqualified(at.Name(), t)
 			case *plan.UnresolvedTable:
 				panic("Table not resolved")
 			default:
@@ -95,7 +191,7 @@ func getTableAliases(n sql.Node, scope *plan.Scope) (TableAliases, error) {
 		case *plan.CreateTrigger:
 			// trigger bodies are evaluated separately
 			rt := getResolvedTable(node.Table)
-			analysisErr = passAliases.add(rt, rt)
+			analysisErr = passAliases.addQualified(rt.Database().Name(), rt.Name(), rt)
 			return false
 		case *plan.Procedure:
 			return false
@@ -110,15 +206,18 @@ func getTableAliases(n sql.Node, scope *plan.Scope) (TableAliases, error) {
 			return false
 		case *plan.InsertInto:
 			if rt := getResolvedTable(node.Destination); rt != nil {
-				analysisErr = passAliases.add(rt, rt)
+				analysisErr = passAliases.addQualified(rt.Database().Name(), rt.Name(), rt)
 			}
 			return false
 		case *plan.IndexedTableAccess:
 			rt := getResolvedTable(node.TableNode)
-			analysisErr = passAliases.add(rt, node)
+			analysisErr = passAliases.addQualified(rt.Database().Name(), rt.Name(), node)
+			return false
+		case *plan.ResolvedTable:
+			analysisErr = passAliases.addQualified(node.Database().Name(), node.Name(), node)
 			return false
 		case sql.Nameable:
-			analysisErr = passAliases.add(node, node)
+			analysisErr = passAliases.addUnqualified(node.Name(), node)
 			return false
 		case *plan.UnresolvedTable:
 			panic("Table not resolved")
@@ -132,26 +231,26 @@ func getTableAliases(n sql.Node, scope *plan.Scope) (TableAliases, error) {
 		return true
 	}
 	if analysisErr != nil {
-		return nil, analysisErr
+		return TableAliases{}, analysisErr
 	}
 
 	// Inspect all of the scopes, outer to inner. Within a single scope, a name conflict is an error. But an inner scope
 	// can overwrite a name in an outer scope, and it's not an error.
-	aliases := make(TableAliases)
+	aliases := TableAliases{}
 	for _, scopeNode := range scope.OuterToInner() {
-		passAliases = make(TableAliases)
+		passAliases = TableAliases{}
 		transform.Inspect(scopeNode, aliasFn)
 		if analysisErr != nil {
-			return nil, analysisErr
+			return TableAliases{}, analysisErr
 		}
 		recScope = recScope.NewScope(scopeNode)
 		aliases.putAll(passAliases)
 	}
 
-	passAliases = make(TableAliases)
+	passAliases = TableAliases{}
 	transform.Inspect(n, aliasFn)
 	if analysisErr != nil {
-		return nil, analysisErr
+		return TableAliases{}, analysisErr
 	}
 	aliases.putAll(passAliases)
 
@@ -217,7 +316,7 @@ func normalizeExpression(tableAliases TableAliases, e sql.Expression) sql.Expres
 	normalized, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		if field, ok := e.(*expression.GetField); ok {
 			table := strings.ToLower(field.Table())
-			if rt, ok := tableAliases[table]; ok {
+			if rt, ok, _ := tableAliases.resolveName(table); ok {
 				return field.WithTable(strings.ToLower(rt.Name())).WithName(strings.ToLower(field.Name())), transform.NewTree, nil
 			} else {
 				return field.WithTable(strings.ToLower(field.Table())).WithName(strings.ToLower(field.Name())), transform.NewTree, nil

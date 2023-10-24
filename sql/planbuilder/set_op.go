@@ -152,8 +152,8 @@ func (b *Builder) mergeSetOpSchemas(u *plan.SetOp) sql.Node {
 	hasdiff := false
 	var err error
 	for i := range ls {
-		les[i] = expression.NewGetFieldWithTable(i, ls[i].Type, ls[i].Source, ls[i].Name, ls[i].Nullable)
-		res[i] = expression.NewGetFieldWithTable(i, rs[i].Type, rs[i].Source, rs[i].Name, rs[i].Nullable)
+		les[i] = expression.NewGetFieldWithTable(i, ls[i].Type, ls[i].DatabaseSource, ls[i].Source, ls[i].Name, ls[i].Nullable)
+		res[i] = expression.NewGetFieldWithTable(i, rs[i].Type, ls[i].DatabaseSource, rs[i].Source, rs[i].Name, rs[i].Nullable)
 		if reflect.DeepEqual(ls[i].Type, rs[i].Type) {
 			continue
 		}

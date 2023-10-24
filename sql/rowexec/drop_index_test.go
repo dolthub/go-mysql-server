@@ -48,8 +48,8 @@ func TestDeleteIndex(t *testing.T) {
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
 	var expressions = []sql.Expression{
-		expression.NewGetFieldWithTable(0, types.Int64, "foo", "c", true),
-		expression.NewGetFieldWithTable(1, types.Int64, "foo", "a", true),
+		expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "c", true),
+		expression.NewGetFieldWithTable(1, types.Int64, "db", "foo", "a", true),
 	}
 
 	done, ready, err := idxReg.AddIndex(&mockIndex{id: "idx", db: "foo", table: "foo", exprs: expressions})
@@ -97,8 +97,8 @@ func TestDeleteIndexNotReady(t *testing.T) {
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
 	var expressions = []sql.Expression{
-		expression.NewGetFieldWithTable(0, types.Int64, "foo", "c", true),
-		expression.NewGetFieldWithTable(1, types.Int64, "foo", "a", true),
+		expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "c", true),
+		expression.NewGetFieldWithTable(1, types.Int64, "db", "foo", "a", true),
 	}
 
 	baseSess := sql.NewBaseSession()
@@ -148,8 +148,8 @@ func TestDeleteIndexOutdated(t *testing.T) {
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
 	var expressions = []sql.Expression{
-		expression.NewGetFieldWithTable(0, types.Int64, "foo", "c", true),
-		expression.NewGetFieldWithTable(1, types.Int64, "foo", "a", true),
+		expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "c", true),
+		expression.NewGetFieldWithTable(1, types.Int64, "db", "foo", "a", true),
 	}
 
 	baseSess := sql.NewBaseSession()

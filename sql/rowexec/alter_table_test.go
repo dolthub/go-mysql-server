@@ -334,24 +334,24 @@ func TestModifyColumnInSchema(t *testing.T) {
 				{Name: "one", Type: types.Int64, Source: "mytable", PrimaryKey: true},
 				{Name: "two", Type: types.Int64, Source: "mytable"},
 				{Name: "three", Type: types.Int64, Source: "mytable", Default: mustDefault(
-					expression.NewGetFieldWithTable(1, types.Int64, "mytable", "two", false),
+					expression.NewGetFieldWithTable(1, types.Int64, "db", "mytable", "two", false),
 					types.Int64, false, true, false),
 				},
 			},
 			colName: "two",
 			order:   &sql.ColumnOrder{First: true},
 			newColumn: &sql.Column{Name: "two", Type: types.Int64, Source: "mytable", Default: mustDefault(
-				expression.NewGetFieldWithTable(0, types.Int64, "mytable", "one", false),
+				expression.NewGetFieldWithTable(0, types.Int64, "db", "mytable", "one", false),
 				types.Int64, false, true, false),
 			},
 			newSchema: sql.Schema{
 				{Name: "two", Type: types.Int64, Source: "mytable", Default: mustDefault(
-					expression.NewGetFieldWithTable(1, types.Int64, "mytable", "one", false),
+					expression.NewGetFieldWithTable(1, types.Int64, "db", "mytable", "one", false),
 					types.Int64, false, true, false),
 				},
 				{Name: "one", Type: types.Int64, Source: "mytable", PrimaryKey: true},
 				{Name: "three", Type: types.Int64, Source: "mytable", Default: mustDefault(
-					expression.NewGetFieldWithTable(0, types.Int64, "mytable", "two", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "db", "mytable", "two", false),
 					types.Int64, false, true, false),
 				},
 			},

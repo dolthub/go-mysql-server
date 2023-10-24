@@ -92,7 +92,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 			combinedScope.newColumn(srcScope.cols[i])
 		} else {
 			// check for VALUES refs
-			c.table = OnDupValuesPrefix
+			c.tableId.TableName = OnDupValuesPrefix
 			combinedScope.newColumn(c)
 		}
 	}
@@ -402,8 +402,7 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 					tableScope := inScope.push()
 					for _, c := range rt.Schema() {
 						tableScope.addColumn(scopeColumn{
-							db:       rt.SqlDatabase.Name(),
-							table:    strings.ToLower(n.Name()),
+							tableId:  sql.NewTableID(rt.SqlDatabase.Name(), n.Name()),
 							col:      strings.ToLower(c.Name),
 							typ:      c.Type,
 							nullable: c.Nullable,

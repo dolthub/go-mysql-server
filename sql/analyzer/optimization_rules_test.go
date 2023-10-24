@@ -40,7 +40,7 @@ func TestEraseProjection(t *testing.T) {
 		[]sql.SortField{{Column: expression.NewGetField(2, types.Int64, "foo", false)}},
 		plan.NewProject(
 			[]sql.Expression{
-				expression.NewGetFieldWithTable(0, types.Int64, "mytable", "i", false),
+				expression.NewGetFieldWithTable(0, types.Int64, "db", "mytable", "i", false),
 				expression.NewGetField(1, types.Int64, "bar", false),
 				expression.NewAlias("foo", expression.NewLiteral(1, types.Int64)),
 			},
@@ -51,7 +51,7 @@ func TestEraseProjection(t *testing.T) {
 				),
 				plan.NewProject(
 					[]sql.Expression{
-						expression.NewGetFieldWithTable(0, types.Int64, "mytable", "i", false),
+						expression.NewGetFieldWithTable(0, types.Int64, "db", "mytable", "i", false),
 						expression.NewAlias("bar", expression.NewLiteral(2, types.Int64)),
 					},
 					plan.NewResolvedTable(table, nil, nil),
@@ -62,7 +62,7 @@ func TestEraseProjection(t *testing.T) {
 
 	node := plan.NewProject(
 		[]sql.Expression{
-			expression.NewGetFieldWithTable(0, types.Int64, "mytable", "i", false),
+			expression.NewGetFieldWithTable(0, types.Int64, "db", "mytable", "i", false),
 			expression.NewGetField(1, types.Int64, "bar", false),
 			expression.NewGetField(2, types.Int64, "foo", false),
 		},

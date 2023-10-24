@@ -365,8 +365,7 @@ func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualC
 
 	for _, c := range schema {
 		tableScope.newColumn(scopeColumn{
-			db:          strings.ToLower(db),
-			table:       strings.ToLower(tab.Name()),
+			tableId:     sql.NewTableID(db, tab.Name()),
 			col:         strings.ToLower(c.Name),
 			originalCol: c.Name,
 			typ:         c.Type,
@@ -377,7 +376,7 @@ func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualC
 	projections := make([]sql.Expression, len(schema))
 	for i, c := range schema {
 		if !c.Virtual {
-			projections[i] = expression.NewGetFieldWithTable(i, c.Type, tab.Name(), c.Name, c.Nullable)
+			projections[i] = expression.NewGetFieldWithTable(i, c.Type, c.DatabaseSource, tab.Name(), c.Name, c.Nullable)
 		} else {
 			projections[i] = b.resolveColumnDefaultExpression(tableScope, c, c.Generated)
 		}

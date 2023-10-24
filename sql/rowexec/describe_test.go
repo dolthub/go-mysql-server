@@ -81,12 +81,12 @@ func TestDescribeQuery(t *testing.T) {
 
 	node := plan.NewDescribeQuery("tree", plan.NewProject(
 		[]sql.Expression{
-			expression.NewGetFieldWithTable(0, types.Text, "foo", "a", false),
-			expression.NewGetFieldWithTable(1, types.Text, "foo", "b", false),
+			expression.NewGetFieldWithTable(0, types.Text, "db", "foo", "a", false),
+			expression.NewGetFieldWithTable(1, types.Text, "db", "foo", "b", false),
 		},
 		plan.NewFilter(
 			expression.NewEquals(
-				expression.NewGetFieldWithTable(0, types.Text, "foo", "a", false),
+				expression.NewGetFieldWithTable(0, types.Text, "db", "foo", "a", false),
 				expression.NewLiteral("foo", types.LongText),
 			),
 			plan.NewResolvedTable(table, nil, nil),

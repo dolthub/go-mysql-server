@@ -38,7 +38,7 @@ func newCreateView(db memory.MemoryDatabase, isReplace bool) *plan.CreateView {
 	subqueryAlias := plan.NewSubqueryAlias("myview", "select i from mytable",
 		plan.NewProject(
 			[]sql.Expression{
-				expression.NewGetFieldWithTable(1, types.Int32, table.Name(), "i", true),
+				expression.NewGetFieldWithTable(1, types.Int32, "db", table.Name(), "i", true),
 			},
 			plan.NewUnresolvedTable(table.Name(), ""),
 		),
@@ -101,7 +101,7 @@ func TestReplaceExistingViewNative(t *testing.T) {
 		plan.NewProject(
 			[]sql.Expression{
 				expression.NewArithmetic(
-					expression.NewGetFieldWithTable(1, types.Int32, "mytable", "i", true),
+					expression.NewGetFieldWithTable(1, types.Int32, "db", "mytable", "i", true),
 					expression.NewLiteral(1, types.Int8),
 					"+",
 				),
