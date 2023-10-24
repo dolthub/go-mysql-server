@@ -462,7 +462,7 @@ var GeneratedColumnTests = []ScriptTest{
 				Query:    "explain update t1 set b = 5 where c = 3",
 				Expected: []sql.Row{
 					{"Update"},
-					{" └─ UpdateSource(SET t1.b = 5)"},
+					{" └─ UpdateSource(SET t1.b = 5,SET t1.c = ((t1.a + t1.b)))"},
 					{"     └─ IndexedTableAccess(t1)"},
 					{"         ├─ index: [t1.c]"},
 					{"         └─ filters: [{[3, 3]}]"},
@@ -529,7 +529,7 @@ var GeneratedColumnTests = []ScriptTest{
 				Query: "explain update t1 set j = '{\"a\": 5}' where v = 2",
 				Expected:  []sql.Row{
 					{"Update"},
-					{" └─ UpdateSource(SET t1.j = '{\"a\": 5}')"},
+					{" └─ UpdateSource(SET t1.j = '{\"a\": 5}',SET t1.v = (json_unquote(json_extract(t1.j, '$.a'))))"},
 					{"     └─ IndexedTableAccess(t1)"},
 					{"         ├─ index: [t1.v]"},
 					{"         └─ filters: [{[2, 2]}]"},
