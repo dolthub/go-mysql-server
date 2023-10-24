@@ -750,6 +750,8 @@ func (k *keylessTableEditAccumulator) deleteHelper(table *TableData, row sql.Row
 		return err
 	}
 
+	storageRow := k.tableData.toStorageRow(row)
+
 	matches := false
 	var partKey string
 	var rowIdx int
@@ -757,7 +759,7 @@ func (k *keylessTableEditAccumulator) deleteHelper(table *TableData, row sql.Row
 		for partitionRowIndex, partitionRow := range partition {
 			matches = true
 			var err error
-			matches, err = partitionRow.Equals(row, table.schema.Schema.PhysicalSchema())
+			matches, err = partitionRow.Equals(storageRow, table.schema.Schema.PhysicalSchema())
 			if err != nil {
 				return err
 			}
