@@ -15,9 +15,6 @@
 package plan
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -32,7 +29,6 @@ type CreateView struct {
 	UnaryNode
 	database         sql.Database
 	Name             string
-	Columns          []string
 	IsReplace        bool
 	Definition       *SubqueryAlias
 	CreateViewString string
@@ -47,19 +43,11 @@ var _ sql.CollationCoercible = (*CreateView)(nil)
 
 // NewCreateView creates a CreateView node with the specified parameters,
 // setting its catalog to nil.
-func NewCreateView(
-	database sql.Database,
-	name string,
-	columns []string,
-	definition *SubqueryAlias,
-	isReplace bool,
-	createViewStr, algorithm, definer, security string,
-) *CreateView {
+func NewCreateView(database sql.Database, name string, definition *SubqueryAlias, isReplace bool, createViewStr, algorithm, definer, security string) *CreateView {
 	return &CreateView{
 		UnaryNode:        UnaryNode{Child: definition},
 		database:         database,
 		Name:             name,
-		Columns:          columns,
 		IsReplace:        isReplace,
 		Definition:       definition,
 		CreateViewString: createViewStr,
@@ -99,10 +87,6 @@ func (cv *CreateView) Schema() sql.Schema { return nil }
 func (cv *CreateView) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("CreateView(%s)", cv.Name)
-	_ = pr.WriteChildren(
-		fmt.Sprintf("Columns (%s)", strings.Join(cv.Columns, ", ")),
-		cv.Child.String(),
-	)
 	return pr.String()
 }
 

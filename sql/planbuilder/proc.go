@@ -81,7 +81,7 @@ func (p *procCtx) AddVar(param *expression.ProcedureParam) {
 		err := sql.ErrDeclareVariableDuplicate.New(lowerName)
 		p.s.b.handleErr(err)
 	}
-	col := scopeColumn{table: "", col: lowerName, typ: param.Type(), scalar: param}
+	col := scopeColumn{tableId: sql.TableID{}, col: lowerName, typ: param.Type(), scalar: param}
 	p.vars[lowerName] = col
 }
 
@@ -325,7 +325,7 @@ func (b *Builder) buildDeclareVariables(inScope *scope, d *ast.Declare) (outScop
 		names[i] = varName
 		param := expression.NewProcedureParam(varName)
 		inScope.proc.AddVar(param)
-		inScope.newColumn(scopeColumn{table: "", col: varName, typ: typ, scalar: param})
+		inScope.newColumn(scopeColumn{tableId: sql.TableID{}, col: varName, typ: typ, scalar: param})
 	}
 	defaultVal := b.buildDefaultExpression(inScope, dVars.VarType.Default)
 

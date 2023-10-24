@@ -115,7 +115,7 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 }
 
 // containsSources checks that all `needle` sources are contained inside `haystack`.
-func containsSources(haystack, needle []string) bool {
+func containsSources(haystack, needle []sql.TableID) bool {
 	for _, s := range needle {
 		var found bool
 		for _, s2 := range haystack {
@@ -134,14 +134,15 @@ func containsSources(haystack, needle []string) bool {
 }
 
 // nodeSources returns the set of column sources from the schema of the node given.
-func nodeSources(node sql.Node) []string {
-	var sources = make(map[string]struct{})
-	var result []string
+func nodeSources(node sql.Node) []sql.TableID {
+	var sources = make(map[sql.TableID]struct{})
+	var result []sql.TableID
 
 	for _, col := range node.Schema() {
-		if _, ok := sources[col.Source]; !ok {
-			sources[col.Source] = struct{}{}
-			result = append(result, col.Source)
+		source := col.TableID()
+		if _, ok := sources[source]; !ok {
+			sources[source] = struct{}{}
+			result = append(result, source)
 		}
 	}
 
@@ -151,17 +152,18 @@ func nodeSources(node sql.Node) []string {
 // expressionSources returns the set of sources from any GetField expressions
 // in the expression given, and a boolean indicating whether the expression
 // is null rejecting from those sources.
-func expressionSources(expr sql.Expression) ([]string, bool) {
-	var sources = make(map[string]struct{})
-	var result []string
+func expressionSources(expr sql.Expression) ([]sql.TableID, bool) {
+	var sources = make(map[sql.TableID]struct{})
+	var result []sql.TableID
 	var nullRejecting bool = true
 
 	sql.Inspect(expr, func(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.GetField:
-			if _, ok := sources[e.Table()]; !ok {
-				sources[e.Table()] = struct{}{}
-				result = append(result, e.Table())
+			source := e.TableID()
+			if _, ok := sources[source]; !ok {
+				sources[source] = struct{}{}
+				result = append(result, source)
 			}
 		case *expression.IsNull:
 			nullRejecting = false

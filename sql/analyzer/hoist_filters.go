@@ -2,7 +2,6 @@ package analyzer
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -186,32 +185,6 @@ func partitionFilterByScope(e sql.Expression, corr sql.ColSet) (inScope, outOfSc
 		default:
 		}
 		return false
-	})
-	return
-}
-
-// exprRefsTableSet returns |foundRef| if the expression directly
-// references a table in the table set, and |foundAlias| if the expression
-// references an alias that is scope-ambiguous.
-func exprRefsTableSet(e sql.Expression, tables TableAliases) (foundRef, foundAlias bool) {
-	transform.InspectExpr(e, func(e sql.Expression) bool {
-		switch e := e.(type) {
-		case *expression.GetField:
-			tName := strings.ToLower(e.Table())
-			if tName == "" {
-				foundAlias = true
-			} else if _, ok := tables[tName]; ok {
-				foundRef = true
-			}
-		case *plan.Subquery:
-			transform.InspectExpressions(e.Query, func(e sql.Expression) bool {
-				subqRef, subqAlias := exprRefsTableSet(e, tables)
-				foundRef = foundRef || subqRef
-				foundAlias = foundAlias || subqAlias
-				return foundRef && foundAlias
-			})
-		}
-		return foundRef && foundAlias
 	})
 	return
 }

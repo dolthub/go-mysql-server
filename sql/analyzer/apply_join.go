@@ -129,11 +129,11 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 				var rightF sql.Expression
 				if len(sch) == 1 {
 					subqCol := subq.Query.Schema()[0]
-					rightF = expression.NewGetFieldWithTable(len(scope.Schema()), subqCol.Type, name, subqCol.Name, subqCol.Nullable)
+					rightF = expression.NewGetFieldWithTable(len(scope.Schema()), subqCol.Type, subqCol.DatabaseSource, name, subqCol.Name, subqCol.Nullable)
 				} else {
 					tup := make(expression.Tuple, len(sch))
 					for i, c := range sch {
-						tup[i] = expression.NewGetFieldWithTable(len(scope.Schema())+i, c.Type, name, c.Name, c.Nullable)
+						tup[i] = expression.NewGetFieldWithTable(len(scope.Schema())+i, c.Type, c.DatabaseSource, name, c.Name, c.Nullable)
 					}
 					rightF = tup
 				}

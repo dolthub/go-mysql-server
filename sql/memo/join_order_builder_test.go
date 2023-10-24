@@ -454,7 +454,7 @@ func newColRef(table GroupId, col sql.ColumnId, gf string) *ExprGroup {
 			scalarBase: &scalarBase{},
 			Table:      table,
 			Col:        col,
-			Gf:         expression.NewGetFieldWithTable(0, types.Int64, parts[0], parts[1], false),
+			Gf:         expression.NewGetFieldWithTable(0, types.Int64, "db", parts[0], parts[1], false),
 		},
 	}
 }
@@ -467,8 +467,8 @@ func newEq(eq string) sql.Expression {
 	left := strings.Split(vars[0], ".")
 	right := strings.Split(vars[1], ".")
 	return expression.NewEquals(
-		expression.NewGetFieldWithTable(0, types.Int64, left[0], left[1], false),
-		expression.NewGetFieldWithTable(0, types.Int64, right[0], right[1], false),
+		expression.NewGetFieldWithTable(0, types.Int64, "db", left[0], left[1], false),
+		expression.NewGetFieldWithTable(0, types.Int64, "db", right[0], right[1], false),
 	)
 }
 

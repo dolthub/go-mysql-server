@@ -57,15 +57,6 @@ func (b *Builder) buildFrom(inScope *scope, te ast.TableExprs) (outScope *scope)
 	return b.buildDataSource(inScope, te[0])
 }
 
-func (b *Builder) validateJoinTableNames(leftScope, rightScope *scope) {
-	for t, _ := range leftScope.tables {
-		if _, ok := rightScope.tables[t]; ok {
-			err := sql.ErrDuplicateAliasOrTable.New(t)
-			b.handleErr(err)
-		}
-	}
-}
-
 func (b *Builder) isLateral(te ast.TableExpr) bool {
 	switch t := te.(type) {
 	case *ast.JSONTableExpr:
@@ -95,8 +86,6 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 		rightInScope = leftScope
 	}
 	rightScope := b.buildDataSource(rightInScope, te.RightExpr)
-
-	b.validateJoinTableNames(leftScope, rightScope)
 
 	if b.isUsingJoin(te) {
 		return b.buildUsingJoin(inScope, leftScope, rightScope, te)
@@ -330,8 +319,10 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 					col = renameCols[i]
 				}
 				toId := outScope.newColumn(scopeColumn{
-					db:       c.db,
-					table:    alias,
+					tableId: sql.TableID{
+						DatabaseName: c.tableId.DatabaseName,
+						TableName:    alias,
+					},
 					col:      col,
 					id:       0,
 					typ:      c.typ,
@@ -358,7 +349,8 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 			outScope = inScope.push()
 			vdt := plan.NewValueDerivedTable(plan.NewValues(exprTuples), t.As.String())
 			for _, c := range vdt.Schema() {
-				outScope.newColumn(scopeColumn{col: c.Name, table: c.Source, typ: c.Type, nullable: c.Nullable})
+				outScope.newColumn(scopeColumn{col: c.Name, tableId: c.TableID(),
+					typ: c.Type, nullable: c.Nullable})
 			}
 			var renameCols []string
 			if len(e.Columns) > 0 {
@@ -509,10 +501,9 @@ func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope
 	outScope.node = newAlias
 	for _, c := range newAlias.Schema() {
 		outScope.newColumn(scopeColumn{
-			db:    database.Name(),
-			table: name,
-			col:   c.Name,
-			typ:   c.Type,
+			tableId: sql.NewTableID(database.Name(), name),
+			col:     c.Name,
+			typ:     c.Type,
 		})
 	}
 	return
@@ -586,9 +577,9 @@ func (b *Builder) buildJSONTable(inScope *scope, t *ast.JSONTableExpr) (outScope
 		}
 		if col.Opts != nil {
 			outScope.newColumn(scopeColumn{
-				table: strings.ToLower(alias),
-				col:   col.Opts.Name,
-				typ:   col.Opts.Type,
+				tableId: sql.NewAliasID(alias),
+				col:     col.Opts.Name,
+				typ:     col.Opts.Type,
 			})
 		}
 	}
@@ -637,8 +628,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, name string, asof *ast.
 		outScope.node = view
 		for _, c := range view.Schema() {
 			outScope.newColumn(scopeColumn{
-				db:          strings.ToLower(db),
-				table:       strings.ToLower(name),
+				tableId:     sql.NewTableID(db, name),
 				col:         strings.ToLower(c.Name),
 				originalCol: c.Name,
 				typ:         c.Type,
@@ -683,8 +673,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, name string, asof *ast.
 
 	for _, c := range tab.Schema() {
 		outScope.newColumn(scopeColumn{
-			db:          strings.ToLower(db),
-			table:       strings.ToLower(tab.Name()),
+			tableId:     sql.NewTableID(db, tab.Name()),
 			col:         strings.ToLower(c.Name),
 			originalCol: c.Name,
 			typ:         c.Type,
@@ -705,8 +694,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, name string, asof *ast.
 		for i, c := range sch {
 			// bucket schema fragments into colsets for resolving defaults
 			newCol := scopeColumn{
-				db:          strings.ToLower(db),
-				table:       strings.ToLower(c.Source),
+				tableId:     c.TableID(),
 				col:         strings.ToLower(c.Name),
 				originalCol: c.Name,
 				typ:         c.Type,
@@ -755,7 +743,7 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 				b.ViewCtx().DbName = outerDb
 			}()
 			b.parserOpts = sql.NewSqlModeFromString(viewDef.SqlMode).ParserOptions()
-			node, _, _, err := b.Parse(viewDef.TextDefinition, false)
+			node, _, _, err := b.Parse(viewDef.CreateViewStatement, false)
 			if err != nil {
 				// TODO: Need to account for non-existing functions or
 				//  users without appropriate privilege to the referenced table/column/function.
@@ -765,7 +753,16 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 				}
 				b.handleErr(err)
 			}
-			view = plan.NewSubqueryAlias(name, viewDef.TextDefinition, node).AsView(viewDef.CreateViewStatement)
+			create, ok := node.(*plan.CreateView)
+			if !ok {
+				err = fmt.Errorf("expected create view statement, found: %T", node)
+			}
+			switch n := create.Child.(type) {
+			case *plan.SubqueryAlias:
+				view = n.AsView(viewDef.CreateViewStatement)
+			default:
+				view = plan.NewSubqueryAlias(name, viewDef.TextDefinition, n).AsView(viewDef.CreateViewStatement)
+			}
 
 		}
 	}

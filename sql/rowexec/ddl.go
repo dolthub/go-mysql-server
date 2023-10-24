@@ -178,7 +178,6 @@ func (b *BaseBuilder) buildCreateView(ctx *sql.Context, n *plan.CreateView, row 
 
 	// TODO: isUpdatable should be defined at CREATE VIEW time
 	// isUpdatable := GetIsUpdatableFromCreateView(cv)
-
 	creator, ok := n.Database().(sql.ViewDatabase)
 	if ok {
 		return sql.RowsToRowIter(), creator.CreateView(ctx, n.Name, n.Definition.TextDefinition, n.CreateViewString)
