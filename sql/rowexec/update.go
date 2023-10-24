@@ -75,28 +75,51 @@ func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 // Applies the update expressions given to the row given, returning the new resultant row. In the case that ignore is
 // provided and there is a type conversion error, this function sets the value to the zero value as per the MySQL standard.
-// TODO: a set of update expressions should probably be its own expression type with an Eval method that does this
 func applyUpdateExpressionsWithIgnore(ctx *sql.Context, updateExprs []sql.Expression, tableSchema sql.Schema, row sql.Row, ignore bool) (sql.Row, error) {
-	var ok bool
-	prev := row
-	for _, updateExpr := range updateExprs {
-		val, err := updateExpr.Eval(ctx, prev)
+	var secondPass []int
+	
+	for i, updateExpr := range updateExprs {
+		defaultVal, isDefaultVal := defaultValFromSetExpression(updateExpr)
+		// Any generated columns must be projected into place so that the caller gets their newest values as well. We 
+		// do this in a second pass as necessary.
+		if isDefaultVal && !defaultVal.IsLiteral() {
+			secondPass = append(secondPass, i)
+			continue
+		}
+
+		val, err := updateExpr.Eval(ctx, row)
 		if err != nil {
-			wtce, ok2 := err.(sql.WrappedTypeConversionError)
-			if !ok2 || !ignore {
+			var wtce sql.WrappedTypeConversionError
+			isTypeConversionError := errors.As(err, &wtce)
+			if !isTypeConversionError || !ignore {
 				return nil, err
 			}
 
-			cpy := prev.Copy()
+			cpy := row.Copy()
 			cpy[wtce.OffendingIdx] = wtce.OffendingVal // Needed for strings
 			val = convertDataAndWarn(ctx, tableSchema, cpy, wtce.OffendingIdx, wtce.Err)
 		}
-		prev, ok = val.(sql.Row)
+		var ok bool
+		row, ok = val.(sql.Row)
 		if !ok {
 			return nil, plan.ErrUpdateUnexpectedSetResult.New(val)
 		}
 	}
-	return prev, nil
+	
+	for _, index := range secondPass {
+		val, err := updateExprs[index].Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+
+		var ok bool
+		row, ok = val.(sql.Row)
+		if !ok {
+			return nil, plan.ErrUpdateUnexpectedSetResult.New(val)
+		}
+	}
+	
+	return row, nil
 }
 
 func (u *updateIter) validateNullability(ctx *sql.Context, row sql.Row, schema sql.Schema) error {

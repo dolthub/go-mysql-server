@@ -210,7 +210,7 @@ func (b *Builder) buildValues(inScope *scope, v ast.Values) (outScope *scope) {
 }
 
 func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentExprs) []sql.Expression {
-	res := make([]sql.Expression, len(e))
+	updateExprs := make([]sql.Expression, len(e))
 	var startAggCnt int
 	if inScope.groupBy != nil {
 		startAggCnt = len(inScope.groupBy.aggs)
@@ -237,21 +237,32 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 		}
 
 		innerExpr := b.buildScalar(inScope, updateExpr.Expr)
-		res[i] = expression.NewSetField(colName, innerExpr)
+		updateExprs[i] = expression.NewSetField(colName, innerExpr)
 		if inScope.groupBy != nil {
 			if len(inScope.groupBy.aggs) > startAggCnt {
-				err := sql.ErrAggregationUnsupported.New(res[i])
+				err := sql.ErrAggregationUnsupported.New(updateExprs[i])
 				b.handleErr(err)
 			}
 		}
 		if inScope.windowFuncs != nil {
 			if len(inScope.windowFuncs) > startWinCnt {
-				err := sql.ErrWindowUnsupported.New(res[i])
+				err := sql.ErrWindowUnsupported.New(updateExprs[i])
 				b.handleErr(err)
 			}
 		}
 	}
-	return res
+	
+	// We need additional update expressions for any generated columns, since they won't be part of the update 
+	// expressions, but their value in the row must be updated before being passed to the integrator for storage.
+	for i, col := range tableSch {
+		if col.Generated != nil {
+			colName := expression.NewGetFieldWithTable(i, col.Type, col.Source, col.Name, col.Nullable)
+			generated := b.resolveColumnDefaultExpression(inScope, col, col.Generated)
+			updateExprs = append(updateExprs, expression.NewSetField(colName, assignColumnIndexes(generated, tableSch)))
+		}
+	}
+	
+	return updateExprs
 }
 
 func (b *Builder) buildOnDupUpdateExprs(combinedScope, destScope *scope, e ast.AssignmentExprs) []sql.Expression {

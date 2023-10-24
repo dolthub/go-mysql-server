@@ -569,6 +569,13 @@ func defaultValFromProjectExpr(e sql.Expression) (*sql.ColumnDefaultValue, bool)
 	return nil, false
 }
 
+func defaultValFromSetExpression(e sql.Expression) (*sql.ColumnDefaultValue, bool) {
+	if sf, ok := e.(*expression.SetField); ok {
+		return defaultValFromProjectExpr(sf.Right)
+	}
+	return nil, false
+}
+
 // normalizeNegativeZeros converts negative zero into positive zero.
 // We do this so that floats and decimals have the same representation when displayed to the user.
 func normalizeNegativeZeros(val interface{}) interface{} {

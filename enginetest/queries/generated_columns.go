@@ -480,6 +480,12 @@ var GeneratedColumnTests = []ScriptTest{
 				},
 			},
 			{
+				Query: "select * from t1 where c = 6",
+				Expected: []sql.Row{
+					{1, 5, 6},
+				},
+			},
+			{
 				Query:    "explain delete from t1 where c = 6",
 				Expected: []sql.Row{
 					{"Delete"},
