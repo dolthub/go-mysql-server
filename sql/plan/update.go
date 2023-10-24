@@ -183,12 +183,12 @@ func (u *Update) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpera
 	//TODO: If column values are retrieved then the SELECT privilege is required
 	// For example: "UPDATE table SET x = y + 1 WHERE z > 0"
 	// We would need SELECT privileges on both the "y" and "z" columns as they're retrieving values
-	db := u.DB()
-	checkName := CheckPrivilegeNameForDatabase(db)
-
-	return opChecker.UserHasPrivileges(ctx,
-		// TODO: this needs a real database, fix it
-		sql.NewPrivilegedOperation(checkName, getTableName(u.Child), "", sql.PrivilegeType_Update))
+	subject := sql.PrivilegeCheckSubject{
+		Database: CheckPrivilegeNameForDatabase(u.DB()),
+		Table:    getTableName(u.Child),
+	}
+	// TODO: this needs a real database, fix it
+	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Update))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

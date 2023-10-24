@@ -366,8 +366,7 @@ func (r *ResetReplica) WithChildren(children ...sql.Node) (sql.Node, error) {
 }
 
 func (r *ResetReplica) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Reload))
+	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_Reload))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

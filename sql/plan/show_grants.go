@@ -102,10 +102,10 @@ func (n *ShowGrants) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (n *ShowGrants) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	if n.CurrentUser {
 		return true
-	} else {
-		return opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation("mysql", "", "", sql.PrivilegeType_Select))
 	}
+
+	subject := sql.PrivilegeCheckSubject{Database: "mysql"}
+	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Select))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

@@ -136,11 +136,16 @@ func (s *ShowCreateProcedure) CheckPrivileges(ctx *sql.Context, opChecker sql.Pr
 	// TODO: set definer
 	// TODO: dynamic privilege SHOW ROUTINE
 	// According to: https://dev.mysql.com/doc/refman/8.0/en/show-create-procedure.html
-	// Must have SELECT, SHOW_ROUTINE, CREATE_ROUTINE, ALTER_ROUTINE, or EXECUTE privileges.
-	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Select)) ||
-		opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(s.db.Name(), "", "", sql.PrivilegeType_CreateRoutine)) ||
-		opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(s.db.Name(), "", "", sql.PrivilegeType_AlterRoutine)) ||
-		opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(s.db.Name(), "", "", sql.PrivilegeType_Execute))
+	// Must have Global SELECT, SHOW_ROUTINE, CREATE_ROUTINE, ALTER_ROUTINE, or EXECUTE privileges.
+
+	dbSubject := sql.PrivilegeCheckSubject{
+		Database: s.db.Name(),
+	}
+
+	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_Select)) ||
+		opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(dbSubject, sql.PrivilegeType_CreateRoutine)) ||
+		opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(dbSubject, sql.PrivilegeType_AlterRoutine)) ||
+		opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(dbSubject, sql.PrivilegeType_Execute))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

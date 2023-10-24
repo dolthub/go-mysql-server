@@ -450,13 +450,12 @@ func (c CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (c *CreateTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	priv := sql.PrivilegeType_Create
 	if c.temporary == IsTempTable {
-		return opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(c.Db), "", "", sql.PrivilegeType_CreateTempTable))
-	} else {
-		return opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(c.Db), "", "", sql.PrivilegeType_Create))
+		priv = sql.PrivilegeType_CreateTempTable
 	}
+	subject := sql.PrivilegeCheckSubject{Database: CheckPrivilegeNameForDatabase(c.Db)}
+	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, priv))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -714,9 +713,12 @@ func (d *DropTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (d *DropTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	for _, tbl := range d.Tables {
-		db := GetDatabase(tbl)
-		if !opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(db), getTableName(tbl), "", sql.PrivilegeType_Drop)) {
+		subject := sql.PrivilegeCheckSubject{
+			Database: CheckPrivilegeNameForDatabase(GetDatabase(tbl)),
+			Table:    getTableName(tbl),
+		}
+
+		if !opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Drop)) {
 			return false
 		}
 	}

@@ -88,13 +88,14 @@ func (n *Revoke) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (n *Revoke) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	subject := sql.PrivilegeCheckSubject{Database: "mysql"}
 	if opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation("mysql", "", "", sql.PrivilegeType_Update)) {
+		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Update)) {
 		return true
 	}
 	if n.PrivilegeLevel.Database == "*" && n.PrivilegeLevel.TableRoutine == "*" {
 		if n.Privileges[0].Type == PrivilegeType_All {
-			return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation("", "", "",
+			return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{},
 				sql.PrivilegeType_Select,
 				sql.PrivilegeType_Insert,
 				sql.PrivilegeType_Update,
@@ -128,15 +129,17 @@ func (n *Revoke) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpera
 				sql.PrivilegeType_GrantOption,
 			))
 		}
-		return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation("", "", "",
+		return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{},
 			convertToSqlPrivilegeType(true, n.Privileges...)...))
 	} else if n.PrivilegeLevel.Database != "*" && n.PrivilegeLevel.TableRoutine == "*" {
 		database := n.PrivilegeLevel.Database
 		if database == "" {
 			database = ctx.GetCurrentDatabase()
 		}
+		subject = sql.PrivilegeCheckSubject{Database: database}
+
 		if n.Privileges[0].Type == PrivilegeType_All {
-			return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(database, "", "",
+			return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject,
 				sql.PrivilegeType_Alter,
 				sql.PrivilegeType_AlterRoutine,
 				sql.PrivilegeType_Create,
@@ -158,13 +161,18 @@ func (n *Revoke) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpera
 				sql.PrivilegeType_GrantOption,
 			))
 		}
-		return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(database, "", "",
+		return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject,
 			convertToSqlPrivilegeType(true, n.Privileges...)...))
 	} else {
 		//TODO: add column checks
+		subject = sql.PrivilegeCheckSubject{
+			Database: n.PrivilegeLevel.Database,
+			Table:    n.PrivilegeLevel.TableRoutine,
+		}
+
 		if n.Privileges[0].Type == PrivilegeType_All {
 			return opChecker.UserHasPrivileges(ctx,
-				sql.NewPrivilegedOperation(n.PrivilegeLevel.Database, n.PrivilegeLevel.TableRoutine, "",
+				sql.NewPrivilegedOperation(subject,
 					sql.PrivilegeType_Alter,
 					sql.PrivilegeType_Create,
 					sql.PrivilegeType_CreateView,
@@ -181,7 +189,7 @@ func (n *Revoke) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpera
 				))
 		}
 		return opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation(n.PrivilegeLevel.Database, n.PrivilegeLevel.TableRoutine, "",
+			sql.NewPrivilegedOperation(subject,
 				convertToSqlPrivilegeType(true, n.Privileges...)...))
 	}
 }
@@ -469,12 +477,15 @@ func (n *RevokeAll) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (n *RevokeAll) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_CreateUser)) ||
-		opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Super)) ||
-		opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation("mysql", "", "", sql.PrivilegeType_Update))
+	createUser := sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_CreateUser)
+	superUser := sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_Super)
+
+	subject := sql.PrivilegeCheckSubject{Database: "mysql"}
+	mysqlUpdate := sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Update)
+
+	return opChecker.UserHasPrivileges(ctx, createUser) ||
+		opChecker.UserHasPrivileges(ctx, superUser) ||
+		opChecker.UserHasPrivileges(ctx, mysqlUpdate)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -558,7 +569,7 @@ func (n *RevokeRole) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (n *RevokeRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	if opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Super)) {
+		sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_Super)) {
 		return true
 	}
 	//TODO: only active roles may be revoked if the SUPER privilege is not held
