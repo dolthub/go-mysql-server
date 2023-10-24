@@ -27,7 +27,7 @@ import (
 type aliasDisambiguator struct {
 	n                   sql.Node
 	scope               *plan.Scope
-	aliases             TableAliases
+	aliases             *TableAliases
 	disambiguationIndex int
 }
 
@@ -35,11 +35,11 @@ func (ad *aliasDisambiguator) GetAliases() (TableAliases, error) {
 	if ad.aliases == nil {
 		aliases, err := getTableAliases(ad.n, ad.scope)
 		if err != nil {
-			return nil, err
+			return TableAliases{}, err
 		}
-		ad.aliases = aliases
+		ad.aliases = &aliases
 	}
-	return ad.aliases, nil
+	return *ad.aliases, nil
 }
 
 func (ad *aliasDisambiguator) Disambiguate(alias string) (string, error) {
@@ -52,7 +52,10 @@ func (ad *aliasDisambiguator) Disambiguate(alias string) (string, error) {
 	for {
 		ad.disambiguationIndex++
 		aliasName := fmt.Sprintf("%s_%d", alias, ad.disambiguationIndex)
-		if _, ok := nodeAliases[aliasName]; !ok {
+		if _, ok, err := nodeAliases.resolveName(aliasName); !ok {
+			if err != nil {
+				return "", err
+			}
 			return aliasName, nil
 		}
 	}
@@ -287,12 +290,14 @@ func decorrelateOuterCols(sqChild sql.Node, aliasDisambig *aliasDisambiguator, c
 	}
 	conflicts, nonConflicted := outsideAliases.findConflicts(nodeAliases)
 	for _, goodAlias := range nonConflicted {
-		target, ok := nodeAliases[goodAlias]
+		target, ok, err := nodeAliases.resolveName(goodAlias)
+		if err != nil {
+			return nil, err
+		}
 		if !ok {
 			return nil, fmt.Errorf("node alias %s is not in nodeAliases", goodAlias)
 		}
-		nameable := fakeNameable{name: goodAlias}
-		err = outsideAliases.add(nameable, target)
+		err = outsideAliases.addUnqualified(goodAlias, target)
 		if err != nil {
 			return nil, err
 		}
@@ -334,14 +339,16 @@ func decorrelateOuterCols(sqChild sql.Node, aliasDisambig *aliasDisambiguator, c
 			}
 
 			// retrieve the new target
-			target, ok := nodeAliases[newAlias]
+			target, ok, err := nodeAliases.resolveName(newAlias)
+			if err != nil {
+				return nil, err
+			}
 			if !ok {
 				return nil, fmt.Errorf("node alias %s is not in nodeAliases", newAlias)
 			}
 
 			// add the new target to the outside aliases collection
-			nameable := fakeNameable{name: newAlias}
-			err = outsideAliases.add(nameable, target)
+			err = outsideAliases.addUnqualified(newAlias, target)
 			if err != nil {
 				return nil, err
 			}

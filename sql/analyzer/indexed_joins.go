@@ -362,7 +362,7 @@ func convertSemiToInnerJoin(a *Analyzer, m *memo.Memo) error {
 			if col.Name == "" && col.Source == "" {
 				continue
 			}
-			projections = append(projections, m.MemoizeScalar(expression.NewGetFieldWithTable(0, col.Type, col.Source, col.Name, col.Nullable)))
+			projections = append(projections, m.MemoizeScalar(expression.NewGetFieldWithTable(0, col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)))
 		}
 
 		if len(projections) == 0 {
@@ -435,7 +435,7 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 		projections := make([]*memo.ExprGroup, len(leftCols))
 		for i := range leftCols {
 			col := leftCols[i]
-			projections[i] = m.MemoizeColRef(expression.NewGetFieldWithTable(0, col.Type, col.Source, col.Name, col.Nullable))
+			projections[i] = m.MemoizeColRef(expression.NewGetFieldWithTable(0, col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable))
 		}
 
 		m.MemoizeProject(e.Group(), filterGrp, projections)

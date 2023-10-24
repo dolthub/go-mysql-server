@@ -185,7 +185,7 @@ var InfoSchemaQueries = []QueryTest{
 	{
 		Query: "SHOW TABLES FROM foo",
 		Expected: []sql.Row{
-			{"other_table"},
+			{"othertable"},
 		},
 	},
 	{
@@ -388,7 +388,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"def", "mydb", "PRIMARY", "mydb", "fk_tbl", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "mytable_s", "mydb", "mytable", "UNIQUE", "YES"},
-			{"def", "foo", "PRIMARY", "foo", "other_table", "PRIMARY KEY", "YES"},
+			{"def", "foo", "PRIMARY", "foo", "othertable", "PRIMARY KEY", "YES"},
 		},
 	},
 	{
@@ -398,7 +398,7 @@ var InfoSchemaQueries = []QueryTest{
 	{
 		Query: "SELECT * FROM information_schema.key_column_usage ORDER BY constraint_schema, table_name",
 		Expected: []sql.Row{
-			{"def", "foo", "PRIMARY", "def", "foo", "other_table", "text", 1, nil, nil, nil, nil},
+			{"def", "foo", "PRIMARY", "def", "foo", "othertable", "text", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "fk_tbl", "pk", 1, nil, nil, nil, nil},
 			{"def", "mydb", "fk1", "def", "mydb", "fk_tbl", "a", 1, 1, "mydb", "mytable", "i"},
 			{"def", "mydb", "fk1", "def", "mydb", "fk_tbl", "b", 2, 2, "mydb", "mytable", "s"},
@@ -1006,7 +1006,7 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 		Name: "information_schema.columns for view",
 		SetUpScript: []string{
 			"USE foo",
-			"drop table other_table",
+			"drop table othertable",
 			"CREATE TABLE t (i int)",
 			"CREATE VIEW v as select * from t",
 		},

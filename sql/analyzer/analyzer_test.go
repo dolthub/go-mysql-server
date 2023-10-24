@@ -177,9 +177,9 @@ func TestDeepCopyNode(t *testing.T) {
 				plan.NewWindow(
 					[]sql.Expression{
 						aggregation.NewSum(
-							expression.NewGetFieldWithTable(0, types.Int64, "a", "x", false),
+							expression.NewGetFieldWithTable(0, types.Int64, "db", "a", "x", false),
 						),
-						expression.NewGetFieldWithTable(1, types.Int64, "a", "x", false),
+						expression.NewGetFieldWithTable(1, types.Int64, "db", "a", "x", false),
 						expression.NewBindVar("v1"),
 					},
 					plan.NewProject(

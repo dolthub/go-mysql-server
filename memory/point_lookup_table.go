@@ -56,7 +56,7 @@ func (s PointLookupTable) GetIndexes(ctx *sql.Context) (indexes []sql.Index, err
 			Tbl:        nil,
 			TableName:  s.Name(),
 			Exprs: []sql.Expression{
-				expression.NewGetFieldWithTable(0, types.Int64, s.Name(), s.name, false),
+				expression.NewGetFieldWithTable(0, types.Int64, "", s.Name(), s.name, false),
 			},
 			Name:         s.name,
 			Unique:       true,

@@ -62,7 +62,7 @@ func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 								if err == nil && exact {
 									return plan.NewProject(
 										[]sql.Expression{
-											expression.NewAlias(name, expression.NewGetFieldWithTable(0, types.Int64, statsTable.Name(), name, false)),
+											expression.NewAlias(name, expression.NewGetFieldWithTable(0, types.Int64, "db", statsTable.Name(), name, false)),
 										},
 										plan.NewTableCount(name, rt.SqlDatabase, statsTable, cnt),
 									), transform.NewTree, nil

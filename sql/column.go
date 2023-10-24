@@ -125,3 +125,38 @@ func (c Column) Copy() *Column {
 	}
 	return &c
 }
+
+// TableID returns the unique identifier of the column's source table.
+func (c *Column) TableID() TableID {
+	return NewTableID(c.DatabaseSource, c.Source)
+}
+
+// TableID is the unique identifier of a table or table alias in a multi-db environment.
+// The long-term goal is to migrate all uses of table name strings to this and minimize places where we
+// construct/inspect TableIDs. By treating this as an opaque identifier, it will be easier to migrate to
+// a system where we compute IDs once during plan building.
+// For aliases, DatabaseName is nil.
+type TableID struct {
+	DatabaseName string
+	TableName    string
+}
+
+// NewTableID returns a new TableID struct that uniquely identifies a table in a multi-db environment.
+func NewTableID(db, table string) TableID {
+	return TableID{
+		DatabaseName: strings.ToLower(db),
+		TableName:    strings.ToLower(table),
+	}
+}
+
+// NewAliasID returns a new TableID struct that uniquely identifies an alias that does not belong to a database.
+func NewAliasID(table string) TableID {
+	return TableID{
+		DatabaseName: "",
+		TableName:    strings.ToLower(table),
+	}
+}
+
+func (i TableID) IsEmpty() bool {
+	return i == TableID{}
+}

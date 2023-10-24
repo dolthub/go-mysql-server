@@ -168,7 +168,7 @@ func assignMatchAgainstIndex(ctx *sql.Context, e *expression.MatchAgainst, ia *i
 	if len(getFields) == 0 {
 		return nil
 	}
-	ftIndexes := ia.MatchingIndexes(ctx, ctx.GetCurrentDatabase(), getFields[0].Table(), e.Columns...)
+	ftIndexes := ia.MatchingIndexes(ctx, getFields[0].TableID(), e.Columns...)
 	for _, idx := range ftIndexes {
 		// Full-Text does not support partial matches, so we filter for the exact match
 		if idx.IsFullText() && len(getFields) == len(idx.Expressions()) {

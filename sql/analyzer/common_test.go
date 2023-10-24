@@ -30,7 +30,7 @@ import (
 )
 
 func col(idx int, table, col string) sql.Expression {
-	return expression.NewGetFieldWithTable(idx, types.Int64, table, col, false)
+	return expression.NewGetFieldWithTable(idx, types.Int64, "", table, col, false)
 }
 
 func and(left, right sql.Expression) sql.Expression {
@@ -58,15 +58,15 @@ func litT(n interface{}, t sql.Type) sql.Expression {
 }
 
 func gf(idx int, table, name string) *expression.GetField {
-	return expression.NewGetFieldWithTable(idx, types.Int64, table, name, false)
+	return expression.NewGetFieldWithTable(idx, types.Int64, "", table, name, false)
 }
 
 func gfCol(idx int, col *sql.Column) *expression.GetField {
-	return expression.NewGetFieldWithTable(idx, col.Type, col.Source, col.Name, true)
+	return expression.NewGetFieldWithTable(idx, col.Type, col.DatabaseSource, col.Source, col.Name, true)
 }
 
 func gfColAlias(idx int, col *sql.Column, tableAlias string) *expression.GetField {
-	return expression.NewGetFieldWithTable(idx, col.Type, tableAlias, col.Name, true)
+	return expression.NewGetFieldWithTable(idx, col.Type, col.DatabaseSource, tableAlias, col.Name, true)
 }
 
 func uc(name string) *expression.UnresolvedColumn {

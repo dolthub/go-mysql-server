@@ -38,13 +38,13 @@ func newCreateView(db memory.MemoryDatabase, isReplace bool) *plan.CreateView {
 	subqueryAlias := plan.NewSubqueryAlias("myview", "select i from mytable",
 		plan.NewProject(
 			[]sql.Expression{
-				expression.NewGetFieldWithTable(1, types.Int32, table.Name(), "i", true),
+				expression.NewGetFieldWithTable(1, types.Int32, "db", table.Name(), "i", true),
 			},
 			plan.NewUnresolvedTable(table.Name(), ""),
 		),
 	)
 
-	createView := plan.NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, isReplace, "CREATE VIEW myview AS SELECT i FROM mytable", "", "", "")
+	createView := plan.NewCreateView(db, subqueryAlias.Name(), subqueryAlias, isReplace, "CREATE VIEW myview AS SELECT i FROM mytable", "", "", "")
 
 	return createView
 }
@@ -101,7 +101,7 @@ func TestReplaceExistingViewNative(t *testing.T) {
 		plan.NewProject(
 			[]sql.Expression{
 				expression.NewArithmetic(
-					expression.NewGetFieldWithTable(1, types.Int32, "mytable", "i", true),
+					expression.NewGetFieldWithTable(1, types.Int32, "db", "mytable", "i", true),
 					expression.NewLiteral(1, types.Int8),
 					"+",
 				),
@@ -110,7 +110,7 @@ func TestReplaceExistingViewNative(t *testing.T) {
 		),
 	)
 
-	createView = plan.NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, true, "CREATE VIEW myview AS SELECT i + 1 FROM mytable", "", "", "")
+	createView = plan.NewCreateView(db, subqueryAlias.Name(), subqueryAlias, true, "CREATE VIEW myview AS SELECT i + 1 FROM mytable", "", "", "")
 	_, err = DefaultBuilder.buildNodeExec(ctx, createView, nil)
 	require.NoError(t, err)
 

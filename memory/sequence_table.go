@@ -20,6 +20,7 @@ var _ sql.TableNode = IntSequenceTable{}
 // IntSequenceTable a simple table function that returns a sequence
 // of integers.
 type IntSequenceTable struct {
+	db   sql.Database
 	name string
 	Len  int64
 }
@@ -28,7 +29,7 @@ func (s IntSequenceTable) UnderlyingTable() sql.Table {
 	return s
 }
 
-func (s IntSequenceTable) NewInstance(_ *sql.Context, _ sql.Database, args []sql.Expression) (sql.Node, error) {
+func (s IntSequenceTable) NewInstance(_ *sql.Context, db sql.Database, args []sql.Expression) (sql.Node, error) {
 	if len(args) != 2 {
 		return nil, fmt.Errorf("sequence table expects 2 arguments: (name, len)")
 	}
@@ -48,7 +49,7 @@ func (s IntSequenceTable) NewInstance(_ *sql.Context, _ sql.Database, args []sql
 	if !ok {
 		return nil, fmt.Errorf("%w; sequence table expects 2nd argument to be a sequence length integer", err)
 	}
-	return IntSequenceTable{name: name, Len: length.(int64)}, nil
+	return IntSequenceTable{db: db, name: name, Len: length.(int64)}, nil
 }
 
 func (s IntSequenceTable) Resolved() bool {
@@ -76,9 +77,11 @@ func (s IntSequenceTable) DebugString() string {
 
 func (s IntSequenceTable) Schema() sql.Schema {
 	schema := []*sql.Column{
-		&sql.Column{
-			Name: s.name,
-			Type: types.Int64,
+		{
+			DatabaseSource: s.db.Name(),
+			Source:         s.Name(),
+			Name:           s.name,
+			Type:           types.Int64,
 		},
 	}
 
@@ -121,7 +124,7 @@ func (s IntSequenceTable) WithExpressions(e ...sql.Expression) (sql.Node, error)
 }
 
 func (s IntSequenceTable) Database() sql.Database {
-	return nil
+	return s.db
 }
 
 func (s IntSequenceTable) WithDatabase(_ sql.Database) (sql.Node, error) {
@@ -222,12 +225,12 @@ func (s IntSequenceTable) IndexedAccess(lookup sql.IndexLookup) sql.IndexedTable
 func (s IntSequenceTable) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 	return []sql.Index{
 		&Index{
-			DB:         "",
+			DB:         s.db.Name(),
 			DriverName: "",
 			Tbl:        nil,
 			TableName:  s.Name(),
 			Exprs: []sql.Expression{
-				expression.NewGetFieldWithTable(0, types.Int64, s.Name(), s.name, false),
+				expression.NewGetFieldWithTable(0, types.Int64, "", s.Name(), s.name, false),
 			},
 			Name:         s.name,
 			Unique:       true,

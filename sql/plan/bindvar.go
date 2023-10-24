@@ -57,7 +57,7 @@ func fixBindings(expr sql.Expression, bindings map[string]sql.Expression) (sql.E
 			return expr, transform.SameTree, nil, nil
 		}
 		usedBindings[t.Name()] = true
-		return expression.NewGetFieldWithTable(e.Index(), val.Type().Promote(), e.Table(), e.Name(), val.IsNullable()), transform.NewTree, usedBindings, nil
+		return expression.NewGetFieldWithTable(e.Index(), val.Type().Promote(), e.Database(), e.Table(), e.Name(), val.IsNullable()), transform.NewTree, usedBindings, nil
 	case *Subquery:
 		// *Subquery is a sql.Expression with a sql.Node not reachable
 		// by the visitor. Manually apply bindings to [Query] field.
