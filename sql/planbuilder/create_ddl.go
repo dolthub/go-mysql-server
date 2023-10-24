@@ -431,21 +431,19 @@ func (b *Builder) buildCreateView(inScope *scope, query string, c *ast.DDL) (out
 	queryAlias := plan.NewSubqueryAlias(c.ViewSpec.ViewName.Name.String(), selectStr, queryScope.node)
 	definer := getCurrentUserForDefiner(b.ctx, c.ViewSpec.Definer)
 
+	if len(c.ViewSpec.Columns) > 0 {
+		if len(c.ViewSpec.Columns) != len(queryScope.cols) {
+			err := sql.ErrInvalidColumnNumber.New(len(queryScope.cols), len(c.ViewSpec.Columns))
+			b.handleErr(err)
+		}
+		queryAlias = queryAlias.WithColumns(columnsToStrings(c.ViewSpec.Columns))
+	}
+
 	dbName := c.Table.Qualifier.String()
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
 	}
 	db := b.resolveDb(dbName)
-	outScope.node = plan.NewCreateView(
-		db,
-		c.ViewSpec.ViewName.Name.String(),
-		[]string{},
-		queryAlias,
-		c.OrReplace,
-		query,
-		c.ViewSpec.Algorithm,
-		definer,
-		c.ViewSpec.Security,
-	)
+	outScope.node = plan.NewCreateView(db, c.ViewSpec.ViewName.Name.String(), queryAlias, c.OrReplace, query, c.ViewSpec.Algorithm, definer, c.ViewSpec.Security)
 	return outScope
 }
