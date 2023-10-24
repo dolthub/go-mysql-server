@@ -16,6 +16,7 @@ package rowexec
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -342,8 +343,8 @@ func (b *BaseBuilder) buildGrant(ctx *sql.Context, n *plan.Grant, row sql.Row) (
 			}
 		}
 		if n.ObjectType != plan.ObjectType_Any {
-			// NM4 - Refactor this change. This function is unmanagable.
-			if n.ObjectType == plan.ObjectType_Procedure || n.ObjectType == plan.ObjectType_Function {
+
+			if routineGrantsEnabled() && (n.ObjectType == plan.ObjectType_Procedure || n.ObjectType == plan.ObjectType_Function) {
 				isProc := n.ObjectType == plan.ObjectType_Procedure
 				for _, grantUser := range n.Users {
 					user := mysqlDb.GetUser(editor, grantUser.Name, grantUser.Host, false)
@@ -381,6 +382,14 @@ func (b *BaseBuilder) buildGrant(ctx *sql.Context, n *plan.Grant, row sql.Row) (
 	}
 
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+}
+
+// routineGrantsEnabled temporary function to gate routing grants based on env vars. This will be removed
+// when the feature is complete.
+func routineGrantsEnabled() bool {
+	env := os.Getenv("DOLT_ROUTINE_GRANTS_ENABLED")
+
+	return env != ""
 }
 
 func (b *BaseBuilder) buildCreateRole(ctx *sql.Context, n *plan.CreateRole, row sql.Row) (sql.RowIter, error) {
