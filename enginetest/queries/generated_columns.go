@@ -69,6 +69,22 @@ var GeneratedColumnTests = []ScriptTest{
 				Query:       "update t1 set b = b + 1",
 				ExpectedErr: sql.ErrGeneratedColumnValue,
 			},
+			{
+				Query:      "update t1 set a = 10 where a = 1",
+				Expected:   []sql.Row{{newUpdateResult(1,1)}},
+			},
+			{
+				Query:    "select * from t1 order by a",
+				Expected: []sql.Row{{2, 3}, {3, 4}, {4, 5}, {10, 11}},
+			},
+			{
+				Query:    "delete from t1 where b = 11",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select * from t1 order by a",
+				Expected: []sql.Row{{2, 3}, {3, 4}, {4, 5}},
+			},
 		},
 	},
 	{
@@ -92,8 +108,8 @@ var GeneratedColumnTests = []ScriptTest{
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query:    "insert into t1(a) values (1)",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Query:    "insert into t1(a) values (1), (2)",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "select * from t1 where b = 2 order by a",
@@ -108,6 +124,30 @@ var GeneratedColumnTests = []ScriptTest{
 					{"     ├─ filters: [{[2, 2]}]"},
 					{"     └─ columns: [a b]"},
 				},
+			},
+			{
+				Query:    "select * from t1 order by a",
+				Expected: []sql.Row{{1, 2}, {2, 3}},
+			},
+			{
+				Query:    "select * from t1 order by b",
+				Expected: []sql.Row{{1, 2}, {2, 3}},
+			},
+			{
+				Query:      "update t1 set a = 10 where a = 1",
+				Expected:   []sql.Row{{newUpdateResult(1,1)}},
+			},
+			{
+				Query:    "select * from t1 where b = 11 order by a",
+				Expected: []sql.Row{{10, 11}},
+			},
+			{
+				Query:    "delete from t1 where b = 11",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select * from t1 where b = 3 order by a",
+				Expected: []sql.Row{{2, 3}},
 			},
 		},
 	},
@@ -149,6 +189,49 @@ var GeneratedColumnTests = []ScriptTest{
 					{"     ├─ filters: [{[2, 2], [3, 3]}]"},
 					{"     └─ columns: [a b c]"},
 				},
+			},
+			{
+				Query: "insert into t1(a,c) values (2,4)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "explain delete from t1 where b = 3 and c = 4",
+				Expected: []sql.Row{
+					{"Delete"},
+					{" └─ IndexedTableAccess(t1)"},
+					{"     ├─ index: [t1.b,t1.c]"},
+					{"     └─ filters: [{[3, 3], [4, 4]}]"},
+				},
+			},
+			{
+				Query:    "delete from t1 where b = 3 and c = 4",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select * from t1 order by a",
+				Expected: []sql.Row{{1, 2, 3}},
+			},
+			{
+				Query:    "explain update t1 set a = 5, c = 10 where b = 2 and c = 3",
+				Expected: []sql.Row{
+					{"Update"},
+					{" └─ UpdateSource(SET t1.a = 5,SET t1.c = 10,SET t1.b = ((t1.a + 1)))"},
+					{"     └─ IndexedTableAccess(t1)"},
+					{"         ├─ index: [t1.b,t1.c]"},
+					{"         └─ filters: [{[2, 2], [3, 3]}]"},
+				},
+			},
+			{
+				Query:    "update t1 set a = 5, c = 10 where b = 2 and c = 3",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "select * from t1 where b = 6 and c = 10 order by a",
+				Expected: []sql.Row{{5, 6, 10}},
+			},
+			{
+				Query:    "select * from t1 order by a",
+				Expected: []sql.Row{{5, 6, 10}},
 			},
 		},
 	},
