@@ -1894,25 +1894,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 		if err != nil {
 			return err
 		}
-
-		shouldBuild := false
-		ibt, isIndexBuilding := indexable.(sql.IndexBuildingTable)
-		if isIndexBuilding {
-			shouldBuild, err = ibt.ShouldBuildIndex(ctx, indexDef)
-			if err != nil {
-				return err
-			}
-		}
-
-		if !indexCreateRequiresBuild(n) && !shouldBuild {
-			return nil
-		}
-
-		if isIndexBuilding {
-			// TODO: implement and enable
-			// return buildIndex(ctx, ibt, indexDef)
-		}
-
+		
 		// TODO: remove this in favor of the above, but it's still used by Dolt
 		rwt, isRewritable := indexable.(sql.RewritableTable)
 		if !isRewritable {
@@ -2027,6 +2009,8 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 	}
 }
 
+// buildIndex builds an index on a table, as a less expensive alternative to doing a complete table rewrite.
+// Currently unused: needs to be plugged into CreateIndex.
 func buildIndex(ctx *sql.Context, ibt sql.IndexBuildingTable, indexDef sql.IndexDef) error {
 	inserter, err := ibt.BuildIndex(ctx, indexDef)
 	if err != nil {
