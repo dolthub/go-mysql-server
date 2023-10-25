@@ -26,9 +26,7 @@ import (
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
-	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 func NewContext(harness Harness) *sql.Context {
@@ -72,13 +70,6 @@ func NewSession(harness Harness) *sql.Context {
 		currentDB = "mydb"
 		ctx.SetCurrentDatabase(currentDB)
 	}
-
-	_ = ctx.GetViewRegistry().Register(currentDB,
-		plan.NewSubqueryAlias(
-			"myview",
-			"SELECT * FROM mytable",
-			plan.NewProject([]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("mytable", "mydb")),
-		).AsView("CREATE VIEW myview AS SELECT * FROM mytable"))
 
 	ctx.ApplyOpts(sql.WithPid(atomic.AddUint64(&pid, 1)))
 
