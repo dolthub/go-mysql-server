@@ -10558,4 +10558,59 @@ order by i;`,
 			"                                         └─ columns: [x]\n" +
 			"",
 	},
+	{
+		Query: `
+    select * from mytable,
+    	lateral (
+    	with recursive cte(a) as (
+    		select y from xy
+    		union
+    		select x from cte
+    		join
+    		xy
+    		on x = a
+    		limit 3
+    		)
+    	select * from cte
+    ) sqa 
+    where i = a
+    order by i;`,
+		ExpectedPlan: "Sort(mytable.i:0!null ASC nullsFirst)\n" +
+			" └─ Filter\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ mytable.i:0!null\n" +
+			"     │   └─ sqa.a:2\n" +
+			"     └─ LateralCrossJoin\n" +
+			"         ├─ ProcessTable\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: mytable\n" +
+			"         │       └─ columns: [i s]\n" +
+			"         └─ SubqueryAlias\n" +
+			"             ├─ name: sqa\n" +
+			"             ├─ outerVisibility: false\n" +
+			"             ├─ isLateral: true\n" +
+			"             ├─ cacheable: true\n" +
+			"             └─ SubqueryAlias\n" +
+			"                 ├─ name: cte\n" +
+			"                 ├─ outerVisibility: false\n" +
+			"                 ├─ isLateral: true\n" +
+			"                 ├─ cacheable: true\n" +
+			"                 └─ RecursiveCTE\n" +
+			"                     └─ Union distinct\n" +
+			"                         ├─ limit: 3\n" +
+			"                         ├─ Table\n" +
+			"                         │   ├─ name: xy\n" +
+			"                         │   └─ columns: [y]\n" +
+			"                         └─ Project\n" +
+			"                             ├─ columns: [xy.x:3!null]\n" +
+			"                             └─ LookupJoin\n" +
+			"                                 ├─ RecursiveTable(cte)\n" +
+			"                                 └─ IndexedTableAccess(xy)\n" +
+			"                                     ├─ index: [xy.x]\n" +
+			"                                     ├─ keys: [cte.a]\n" +
+			"                                     └─ Table\n" +
+			"                                         ├─ name: xy\n" +
+			"                                         └─ columns: [x]\n" +
+			"",
+	},
 }
