@@ -78,10 +78,10 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 	// Assign indexes. This mimics what happens during analysis
 	showColumns.(*ShowColumns).Indexes = []sql.Index{
 		&memory.Index{
-			DB:    "mydb",
+			DB:        "mydb",
 			TableName: "foo",
-			Tbl: memTable,
-			Name:    "a",
+			Tbl:       memTable,
+			Name:      "a",
 			Exprs: []sql.Expression{
 				expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "b", true),
 				expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "c", true),
@@ -89,10 +89,10 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 			Unique: true,
 		},
 		&memory.Index{
-			DB:    "mydb",
+			DB:        "mydb",
 			TableName: "foo",
-			Tbl: memTable,
-			Name:    "b",
+			Tbl:       memTable,
+			Name:      "b",
 			Exprs: []sql.Expression{
 				expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "d", true),
 				expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "e", true),
@@ -120,10 +120,10 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 	// Test the precedence of key type. PRI > UNI > MUL
 	showColumns.(*ShowColumns).Indexes = append(showColumns.(*ShowColumns).Indexes,
 		&memory.Index{
-			DB:    "mydb",
+			DB:        "mydb",
 			TableName: "foo",
-			Tbl: memTable,
-			Name:    "c",
+			Tbl:       memTable,
+			Name:      "c",
 			Exprs: []sql.Expression{
 				expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "a", true),
 				expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "b", true),
@@ -131,10 +131,10 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 			Unique: true,
 		},
 		&memory.Index{
-			DB:    "mydb",
+			DB:        "mydb",
 			TableName: "foo",
-			Tbl: memTable,
-			Name:    "d",
+			Tbl:       memTable,
+			Name:      "d",
 			Exprs: []sql.Expression{
 				expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "b", true),
 				expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "d", true),

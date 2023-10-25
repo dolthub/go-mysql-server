@@ -1894,7 +1894,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 		if err != nil {
 			return err
 		}
-		
+
 		// TODO: remove this in favor of the above, but it's still used by Dolt
 		rwt, isRewritable := indexable.(sql.RewritableTable)
 		if !isRewritable {

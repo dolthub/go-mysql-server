@@ -36,7 +36,7 @@ func HashOf(v Row) (uint64, error) {
 
 		// TODO: probably much faster to do this with a type switch
 		// TODO: we don't have the type info necessary to appropriately encode the value of a string with a non-standard
-		//  collation, which means that two strings that differ only in their collations will hash to the same value. 
+		//  collation, which means that two strings that differ only in their collations will hash to the same value.
 		//  See rowexec/grouping_key()
 		if _, err := hash.Write([]byte(fmt.Sprintf("%v,", x))); err != nil {
 			return 0, err

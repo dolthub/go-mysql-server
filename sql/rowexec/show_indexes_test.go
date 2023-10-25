@@ -88,11 +88,11 @@ func TestShowIndexes(t *testing.T) {
 			}
 
 			idx := &memory.Index{
-				DB:    "test",
+				DB:        "test",
 				TableName: test.table.Name(),
-				Tbl: test.table.(*memory.Table),
-				Name:    test.name + "_idx",
-				Exprs: expressions,
+				Tbl:       test.table.(*memory.Table),
+				Name:      test.name + "_idx",
+				Exprs:     expressions,
 			}
 
 			// Assigning tables and indexes manually. This mimics what happens during analysis

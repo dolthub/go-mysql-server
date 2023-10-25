@@ -364,13 +364,13 @@ func (t *Table) PartitionCount(ctx *sql.Context) (int64, error) {
 }
 
 type indexScanRowIter struct {
-	i           int
+	i             int
 	incrementFunc func()
-	index       *Index
-	lookup      sql.IndexLookup
-	ranges      sql.Expression
-	primaryRows map[string][]sql.Row
-	indexRows   []sql.Row
+	index         *Index
+	lookup        sql.IndexLookup
+	ranges        sql.Expression
+	primaryRows   map[string][]sql.Row
+	indexRows     []sql.Row
 
 	columns     []int
 	numColumns  int
@@ -378,16 +378,16 @@ type indexScanRowIter struct {
 }
 
 func newIndexScanRowIter(
-		index *Index,
-		lookup sql.IndexLookup,
-		ranges sql.Expression,
-		primaryRows map[string][]sql.Row,
-		indexRows []sql.Row,
-		columns []int,
-		numColumns int,
-		virtualCols []int,
+	index *Index,
+	lookup sql.IndexLookup,
+	ranges sql.Expression,
+	primaryRows map[string][]sql.Row,
+	indexRows []sql.Row,
+	columns []int,
+	numColumns int,
+	virtualCols []int,
 ) *indexScanRowIter {
-	
+
 	i := 0
 	if lookup.IsReverse {
 		i = len(indexRows) - 1
@@ -404,7 +404,7 @@ func newIndexScanRowIter(
 		numColumns:  numColumns,
 		virtualCols: virtualCols,
 	}
-	
+
 	if lookup.IsReverse {
 		iter.incrementFunc = func() {
 			iter.i--
@@ -414,7 +414,7 @@ func newIndexScanRowIter(
 			iter.i++
 		}
 	}
-	
+
 	return iter
 }
 
@@ -452,7 +452,7 @@ func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if row == nil {
 		return nil, io.EOF
 	}
-	
+
 	row = normalizeRowForRead(row, i.numColumns, i.virtualCols)
 
 	return projectRow(i.columns, row), nil

@@ -44,7 +44,7 @@ type IndexDriver interface {
 // DriverIndexableTable represents a table that supports being indexed and receiving indexes to be able to speed up its
 // execution.
 // Deprecated. DriverIndexableTable support is currently incomplete. The engine will pass CREATE INDEX with a custom
-// driver through to |IndexKeyValues|, but will not apply DriverIndexes via |WithDriverIndexLookup|. There are 
+// driver through to |IndexKeyValues|, but will not apply DriverIndexes via |WithDriverIndexLookup|. There are
 // currently no plans to revive this interface.
 type DriverIndexableTable interface {
 	IndexAddressableTable

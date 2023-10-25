@@ -331,21 +331,21 @@ func TestFilterAndProject(t *testing.T) {
 // 			db := memory.NewDatabase("db")
 // 			pro := memory.NewDBProvider(db)
 // 			ctx := newContext(pro)
-// 
+//
 // 			table := memory.NewPartitionedTable(db.BaseDatabase, test.name, test.schema, nil, test.numPartitions)
 // 			for _, row := range test.rows {
 // 				require.NoError(table.Insert(ctx, row))
 // 			}
-// 
+//
 // 			projected := table.WithProjections(test.columns)
 // 			indexed := projected.(*memory.Table).IndexedAccess(test.lookup)
-// 
+//
 // 			iter, err := indexed.PartitionRows(ctx, test.partition)
 // 			require.NoError(err)
-// 
+//
 // 			rows, err := sql.RowIterToRows(ctx, indexed.Schema(), iter)
 // 			require.NoError(err)
-// 
+//
 // 			require.Equal(test.expectedIndexed, rows)
 // 		})
 // 	}
@@ -378,4 +378,3 @@ func getAllRows(t *testing.T, ctx *sql.Context, table sql.Table) []sql.Row {
 
 	return allRows
 }
-

@@ -57,7 +57,7 @@ type TableData struct {
 
 type indexName string
 
-// primaryRowLocation is a special marker element in index storage rows containing the partition and index of the row 
+// primaryRowLocation is a special marker element in index storage rows containing the partition and index of the row
 // in the primary storage.
 type primaryRowLocation struct {
 	partition string
