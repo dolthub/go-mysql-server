@@ -24,10 +24,10 @@ var SQLLogicJoinTests = []ScriptTest{
 	{
 		Name: "joining on different types panics",
 		SetUpScript: []string{
-			"CREATE TABLE foo (  a INT,  b INT,  c FLOAT,  d FLOAT)",
-			"INSERT INTO foo VALUES  (1, 1, 1, 1),  (2, 2, 2, 2),  (3, 3, 3, 3)",
-			"CREATE TABLE bar (  a INT,  b FLOAT,  c FLOAT,  d INT)",
-			"INSERT INTO bar VALUES  (1, 1, 1, 1),  (2, 2, 2, 2),  (3, 3, 3, 3)",
+			"CREATE TABLE foo (  a INT,  b INT,  c FLOAT,  d FLOAT);",
+			"INSERT INTO foo VALUES  (1, 1, 1, 1),  (2, 2, 2, 2),  (3, 3, 3, 3);",
+			"CREATE TABLE bar (  a INT,  b FLOAT,  c FLOAT,  d INT);",
+			"INSERT INTO bar VALUES  (1, 1, 1, 1),  (2, 2, 2, 2),  (3, 3, 3, 3);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -43,6 +43,62 @@ var SQLLogicJoinTests = []ScriptTest{
 					{1, 1, 1.0, 1.0},
 					{2, 2, 2.0, 2.0},
 					{3, 3, 3.0, 3.0},
+				},
+			},
+			{
+				Query: "SELECT * FROM foo JOIN bar USING (b);",
+				Expected: []sql.Row{
+					{1, 1, 1.0, 1.0, 1, 1.0, 1},
+                    {2, 2, 2.0, 2.0, 2, 2.0, 2},
+                    {3, 3, 3.0, 3.0, 3, 3.0, 3},
+				},
+			},
+			{
+				Query: "SELECT * FROM foo JOIN bar USING (a, b);",
+				Expected: []sql.Row{
+					{1, 1, 1.0, 1.0, 1.0, 1},
+					{2, 2, 2.0, 2.0, 2.0, 2},
+					{3, 3, 3.0, 3.0, 3.0, 3},
+				},
+			},
+			{
+				Query: "SELECT * FROM foo JOIN bar USING (a, b, c);",
+				Expected: []sql.Row{
+					{1, 1, 1.0, 1.0, 1},
+					{2, 2, 2.0, 2.0, 2},
+					{3, 3, 3.0, 3.0, 3},
+				},
+			},
+			{
+				Query: "SELECT * FROM foo JOIN bar ON foo.b = bar.b;",
+				Expected: []sql.Row{
+					{1, 1, 1.0, 1.0, 1, 1.0, 1.0, 1},
+                    {2, 2, 2.0, 2.0, 2, 2.0, 2.0, 2},
+                    {3, 3, 3.0, 3.0, 3, 3.0, 3.0, 3},
+				},
+			},
+			{
+				Query: "SELECT * FROM foo JOIN bar ON foo.a = bar.a AND foo.b = bar.b;",
+				Expected: []sql.Row{
+					{1, 1, 1.0, 1.0, 1, 1.0, 1.0, 1},
+					{2, 2, 2.0, 2.0, 2, 2.0, 2.0, 2},
+					{3, 3, 3.0, 3.0, 3, 3.0, 3.0, 3},
+				},
+			},
+			{
+				Query: "SELECT * FROM foo, bar WHERE foo.b = bar.b;",
+				Expected: []sql.Row{
+					{1, 1, 1.0, 1.0, 1, 1.0, 1.0, 1},
+					{2, 2, 2.0, 2.0, 2, 2.0, 2.0, 2},
+					{3, 3, 3.0, 3.0, 3, 3.0, 3.0, 3},
+				},
+			},
+			{
+				Query: "SELECT * FROM foo, bar WHERE foo.a = bar.a AND foo.b = bar.b;",
+				Expected: []sql.Row{
+					{1, 1, 1.0, 1.0, 1, 1.0, 1.0, 1},
+					{2, 2, 2.0, 2.0, 2, 2.0, 2.0, 2},
+					{3, 3, 3.0, 3.0, 3, 3.0, 3.0, 3},
 				},
 			},
 		},
