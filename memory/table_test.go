@@ -324,32 +324,32 @@ func TestFilterAndProject(t *testing.T) {
 	}
 }
 
-func TestIndexed(t *testing.T) {
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			var require = require.New(t)
-			db := memory.NewDatabase("db")
-			pro := memory.NewDBProvider(db)
-			ctx := newContext(pro)
-
-			table := memory.NewPartitionedTable(db.BaseDatabase, test.name, test.schema, nil, test.numPartitions)
-			for _, row := range test.rows {
-				require.NoError(table.Insert(ctx, row))
-			}
-
-			projected := table.WithProjections(test.columns)
-			indexed := projected.(*memory.Table).WithDriverIndexLookup(test.lookup)
-
-			iter, err := indexed.PartitionRows(ctx, test.partition)
-			require.NoError(err)
-
-			rows, err := sql.RowIterToRows(ctx, indexed.Schema(), iter)
-			require.NoError(err)
-
-			require.Equal(test.expectedIndexed, rows)
-		})
-	}
-}
+// func TestIndexed(t *testing.T) {
+// 	for _, test := range tests {
+// 		t.Run(test.name, func(t *testing.T) {
+// 			var require = require.New(t)
+// 			db := memory.NewDatabase("db")
+// 			pro := memory.NewDBProvider(db)
+// 			ctx := newContext(pro)
+// 
+// 			table := memory.NewPartitionedTable(db.BaseDatabase, test.name, test.schema, nil, test.numPartitions)
+// 			for _, row := range test.rows {
+// 				require.NoError(table.Insert(ctx, row))
+// 			}
+// 
+// 			projected := table.WithProjections(test.columns)
+// 			indexed := projected.(*memory.Table).IndexedAccess(test.lookup)
+// 
+// 			iter, err := indexed.PartitionRows(ctx, test.partition)
+// 			require.NoError(err)
+// 
+// 			rows, err := sql.RowIterToRows(ctx, indexed.Schema(), iter)
+// 			require.NoError(err)
+// 
+// 			require.Equal(test.expectedIndexed, rows)
+// 		})
+// 	}
+// }
 
 func getAllRows(t *testing.T, ctx *sql.Context, table sql.Table) []sql.Row {
 	var require = require.New(t)
@@ -379,60 +379,3 @@ func getAllRows(t *testing.T, ctx *sql.Context, table sql.Table) []sql.Row {
 	return allRows
 }
 
-func TestTableIndexKeyValueIter(t *testing.T) {
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			var require = require.New(t)
-			db := memory.NewDatabase("db")
-			pro := memory.NewDBProvider(db)
-			ctx := newContext(pro)
-
-			table := memory.NewPartitionedTable(db.BaseDatabase, test.name, test.schema, nil, test.numPartitions)
-			for _, row := range test.rows {
-				require.NoError(table.Insert(ctx, row))
-			}
-
-			pIter, err := table.IndexKeyValues(
-				ctx,
-				[]string{test.schema.Schema[0].Name, test.schema.Schema[2].Name},
-			)
-			require.NoError(err)
-
-			var iter sql.IndexKeyValueIter
-			idxKVs := []*indexKeyValue{}
-			for {
-				if iter == nil {
-					_, iter, err = pIter.Next(ctx)
-					if err != nil {
-						if err == io.EOF {
-							iter = nil
-							break
-						}
-
-						require.NoError(err)
-					}
-				}
-
-				row, data, err := iter.Next(ctx)
-				if err != nil {
-					if err == io.EOF {
-						iter = nil
-						continue
-					}
-
-					require.NoError(err)
-				}
-
-				value, err := memory.DecodeIndexValue(data)
-				require.NoError(err)
-
-				idxKVs = append(idxKVs, &indexKeyValue{key: row, value: value})
-			}
-
-			require.Len(idxKVs, len(test.expectedKeyValues))
-			for i, e := range test.expectedKeyValues {
-				require.Equal(e, idxKVs[i])
-			}
-		})
-	}
-}

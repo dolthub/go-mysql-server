@@ -115,7 +115,7 @@ func (td TableData) copy() *TableData {
 // otherwise
 func (td TableData) partition(row sql.Row) (int, error) {
 	var keyColumns []int
-	if td.schema.PkOrdinals != nil {
+	if len(td.schema.PkOrdinals) > 0 {
 		keyColumns = td.schema.PkOrdinals
 	} else {
 		keyColumns = make([]int, len(td.schema.Schema))
@@ -149,7 +149,8 @@ func (td TableData) partition(row sql.Row) (int, error) {
 		}
 	}
 
-	return int(hash.Sum64() % uint64(len(td.partitionKeys))), nil
+	sum64 := hash.Sum64()
+	return int(sum64 % uint64(len(td.partitionKeys))), nil
 }
 
 func (td *TableData) truncate(schema sql.PrimaryKeySchema) *TableData {

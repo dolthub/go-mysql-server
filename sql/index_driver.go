@@ -43,15 +43,21 @@ type IndexDriver interface {
 
 // DriverIndexableTable represents a table that supports being indexed and receiving indexes to be able to speed up its
 // execution.
+// Deprecated. DriverIndexableTable support is currently incomplete. The engine will pass CREATE INDEX with a custom
+// driver through to |IndexKeyValues|, but will not apply DriverIndexes via |WithDriverIndexLookup|. There are 
+// currently no plans to revive this interface.
 type DriverIndexableTable interface {
 	IndexAddressableTable
+	// WithDriverIndexLookup returns a version of this table with the given lookup applied.
+	// This method is currently unused in the engine.
 	WithDriverIndexLookup(DriverIndexLookup) Table
 	// IndexKeyValues returns an iterator over partitions and ultimately the rows of the table to compute the value of an
 	// index for every row in this table. Used when creating an index for access through an IndexDriver.
 	IndexKeyValues(*Context, []string) (PartitionIndexKeyValueIter, error)
 }
 
-// An indexed managed by a driver, as opposed to natively by a DB table.
+// DriverIndex is an index managed by a driver, as opposed to natively by a DB table.
+// Deprecated. This interface is incompletely supported and may be removed.
 type DriverIndex interface {
 	Index
 	// Driver ID of the index.
@@ -60,6 +66,7 @@ type DriverIndex interface {
 
 // DriverIndexLookup is a subset of an index. More specific interfaces can be
 // implemented to grant more capabilities to the index lookup.
+// Deprecated. This interface is incompletely supported and may be removed.
 type DriverIndexLookup interface {
 	Lookup() IndexLookup
 

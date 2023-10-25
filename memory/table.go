@@ -54,8 +54,7 @@ type Table struct {
 	projectedSchema  sql.Schema
 	columns          []int
 
-	// Indexed lookups
-	lookup  sql.DriverIndexLookup
+	// fiters is used for primary index scans with an index lookup
 	filters []sql.Expression
 
 	db *BaseDatabase
@@ -68,7 +67,6 @@ var _ sql.UpdatableTable = (*Table)(nil)
 var _ sql.DeletableTable = (*Table)(nil)
 var _ sql.ReplaceableTable = (*Table)(nil)
 var _ sql.TruncateableTable = (*Table)(nil)
-var _ sql.DriverIndexableTable = (*Table)(nil)
 var _ sql.AlterableTable = (*Table)(nil)
 var _ sql.IndexAlterableTable = (*Table)(nil)
 var _ sql.CollationAlterableTable = (*Table)(nil)
@@ -1384,9 +1382,6 @@ func (t *Table) DebugString() string {
 	p := sql.NewTreePrinter()
 
 	children := []string{fmt.Sprintf("name: %s", t.name)}
-	if t.lookup != nil {
-		children = append(children, fmt.Sprintf("index: %s", t.lookup))
-	}
 
 	if len(t.columns) > 0 {
 		var projections []string
@@ -1990,40 +1985,6 @@ func (t *Table) ModifyDefaultCollation(ctx *sql.Context, collation sql.Collation
 	return nil
 }
 
-// WithDriverIndexLookup implements the sql.IndexAddressableTable interface.
-func (t *Table) WithDriverIndexLookup(lookup sql.DriverIndexLookup) sql.Table {
-	if t.lookup != nil {
-		return t
-	}
-
-	nt := *t
-	nt.lookup = lookup
-
-	return &nt
-}
-
-// IndexKeyValues implements the sql.IndexableTable interface.
-func (t *Table) IndexKeyValues(
-	ctx *sql.Context,
-	colNames []string,
-) (sql.PartitionIndexKeyValueIter, error) {
-	iter, err := t.Partitions(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	columns, err := t.data.columnIndexes(colNames)
-	if err != nil {
-		return nil, err
-	}
-
-	return &partitionIndexKeyValueIter{
-		table:   t,
-		iter:    iter,
-		columns: columns,
-	}, nil
-}
-
 // Filters implements the sql.FilteredTable interface.
 func (t *Table) Filters() []sql.Expression {
 	return t.filters
@@ -2223,62 +2184,7 @@ func columnInFkRelationship(col string, fkc []sql.ForeignKeyConstraint) (string,
 	return fkName, ok
 }
 
-type partitionIndexKeyValueIter struct {
-	table   *Table
-	iter    sql.PartitionIter
-	columns []int
-}
-
-func (i *partitionIndexKeyValueIter) Next(ctx *sql.Context) (sql.Partition, sql.IndexKeyValueIter, error) {
-	p, err := i.iter.Next(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	iter, err := i.table.PartitionRows(ctx, p)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return p, &indexKeyValueIter{
-		key:     string(p.Key()),
-		iter:    iter,
-		columns: i.columns,
-	}, nil
-}
-
-func (i *partitionIndexKeyValueIter) Close(ctx *sql.Context) error {
-	return i.iter.Close(ctx)
-}
-
 var errColumnNotFound = errors.NewKind("could not find column %s")
-
-type indexKeyValueIter struct {
-	key     string
-	iter    sql.RowIter
-	columns []int
-	pos     int
-}
-
-func (i *indexKeyValueIter) Next(ctx *sql.Context) ([]interface{}, []byte, error) {
-	row, err := i.iter.Next(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	value := &IndexValue{Key: i.key, Pos: i.pos}
-	data, err := EncodeIndexValue(value)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	i.pos++
-	return projectOnRow(i.columns, row), data, nil
-}
-
-func (i *indexKeyValueIter) Close(ctx *sql.Context) error {
-	return i.iter.Close(ctx)
-}
 
 func (t Table) ShouldRewriteTable(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column) bool {
 	return orderChanged(oldSchema, newSchema, oldColumn, newColumn) ||
