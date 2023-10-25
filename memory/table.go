@@ -1479,16 +1479,6 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 		}, nil
 	}
 
-	// child, err := t.Table.Partitions(ctx)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// 
-	// return rangePartitionIter{
-	// 	child:  child.(*partitionIter),
-	// 	ranges: filter,
-	// }, nil
-
 	indexFilter := adjustRangeScanFilterForIndexLookup(filter, memIdx) 
 	
 	return &indexScanPartitionIter{
@@ -1498,8 +1488,10 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 }
 
 func adjustRangeScanFilterForIndexLookup(filter sql.Expression, index *Index) sql.Expression {
-	indexStorageSchema := make(sql.Schema, len(index.Exprs))
-	for i, e := range index.Exprs {
+	exprs := index.ExtendedExprs()
+	
+	indexStorageSchema := make(sql.Schema, len(exprs))
+	for i, e := range exprs {
 		indexStorageSchema[i] = &sql.Column{
 			Name:     e.(*expression.GetField).Name(),
 		}
