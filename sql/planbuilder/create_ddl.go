@@ -419,15 +419,19 @@ func (b *Builder) buildAlterEvent(inScope *scope, query string, c *ast.DDL) (out
 
 func (b *Builder) buildCreateView(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
-	selectStatement, ok := c.ViewSpec.ViewExpr.(ast.SelectStatement)
+
+	selectStr := query[c.SubStatementPositionStart:c.SubStatementPositionEnd]
+	stmt, _, err := ast.ParseOneWithOptions(selectStr, b.parserOpts)
+	if err != nil {
+		b.handleErr(err)
+	}
+	selectStatement, ok := stmt.(ast.SelectStatement)
 	if !ok {
 		err := sql.ErrUnsupportedSyntax.New(ast.String(c.ViewSpec.ViewExpr))
 		b.handleErr(err)
 	}
-
 	queryScope := b.buildSelectStmt(inScope, selectStatement)
 
-	selectStr := query[c.SubStatementPositionStart:c.SubStatementPositionEnd]
 	queryAlias := plan.NewSubqueryAlias(c.ViewSpec.ViewName.Name.String(), selectStr, queryScope.node)
 	definer := getCurrentUserForDefiner(b.ctx, c.ViewSpec.Definer)
 

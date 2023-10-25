@@ -70,8 +70,13 @@ func (p *CreateForeignKey) WithChildren(children ...sql.Node) (sql.Node, error) 
 
 // CheckPrivileges implements the interface sql.Node.
 func (p *CreateForeignKey) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	subject := sql.PrivilegeCheckSubject{
+		Database: p.FkDef.ParentDatabase,
+		Table:    p.FkDef.ParentTable,
+	}
+
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(p.FkDef.ParentDatabase, p.FkDef.ParentTable, "", sql.PrivilegeType_References))
+		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_References))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -324,8 +329,12 @@ func (p *DropForeignKey) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (p *DropForeignKey) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	subject := sql.PrivilegeCheckSubject{
+		Database: p.database,
+		Table:    p.Table,
+	}
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(p.database, p.Table, "", sql.PrivilegeType_Alter))
+		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Alter))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

@@ -56,6 +56,14 @@ func loadTable(serialTable *serial.PrivilegeSetTable) *PrivilegeSetTable {
 	}
 }
 
+func loadRoutine(serialRoutine *serial.PrivilegeSetRoutine) *PrivilegeSetRoutine {
+	return &PrivilegeSetRoutine{
+		name:   string(serialRoutine.Name()),
+		privs:  loadPrivilegeTypes(serialRoutine.PrivsLength(), serialRoutine.Privs),
+		isProc: serialRoutine.IsProc(),
+	}
+}
+
 func loadDatabase(serialDatabase *serial.PrivilegeSetDatabase) *PrivilegeSetDatabase {
 	tables := make(map[string]PrivilegeSetTable, serialDatabase.TablesLength())
 	for i := 0; i < serialDatabase.TablesLength(); i++ {
@@ -67,10 +75,22 @@ func loadDatabase(serialDatabase *serial.PrivilegeSetDatabase) *PrivilegeSetData
 		tables[table.Name()] = *table
 	}
 
+	routines := make(map[routineKey]PrivilegeSetRoutine, serialDatabase.RoutinesLength())
+	for i := 0; i < serialDatabase.RoutinesLength(); i++ {
+		serialRoutine := new(serial.PrivilegeSetRoutine)
+		if !serialDatabase.Routines(serialRoutine, i) {
+			continue
+		}
+		routine := loadRoutine(serialRoutine)
+		key := routineKey{routine.RoutineName(), routine.isProc}
+		routines[key] = *routine
+	}
+
 	return &PrivilegeSetDatabase{
-		name:   string(serialDatabase.Name()),
-		privs:  loadPrivilegeTypes(serialDatabase.PrivsLength(), serialDatabase.Privs),
-		tables: tables,
+		name:     string(serialDatabase.Name()),
+		privs:    loadPrivilegeTypes(serialDatabase.PrivsLength(), serialDatabase.Privs),
+		tables:   tables,
+		routines: routines,
 	}
 }
 

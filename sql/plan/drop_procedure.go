@@ -76,8 +76,9 @@ func (d *DropProcedure) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (d *DropProcedure) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	subject := sql.PrivilegeCheckSubject{Database: d.Db.Name()}
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(d.Db.Name(), "", "", sql.PrivilegeType_AlterRoutine))
+		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_AlterRoutine))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

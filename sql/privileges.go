@@ -23,12 +23,20 @@ type PrivilegedOperation struct {
 	DynamicPrivileges []string
 }
 
+// PrivilegeCheckSubject is a struct that contains the entity information for an access check. It's specifically what
+// is being accessed - but not what operation is being attempted.
+type PrivilegeCheckSubject struct {
+	Database string
+	Table    string
+	Column   string
+}
+
 // NewPrivilegedOperation returns a new PrivilegedOperation with the given parameters.
-func NewPrivilegedOperation(dbName string, tblName string, colName string, privs ...PrivilegeType) PrivilegedOperation {
+func NewPrivilegedOperation(subject PrivilegeCheckSubject, privs ...PrivilegeType) PrivilegedOperation {
 	return PrivilegedOperation{
-		Database:         dbName,
-		Table:            tblName,
-		Column:           colName,
+		Database:         subject.Database,
+		Table:            subject.Table,
+		Column:           subject.Column,
 		StaticPrivileges: privs,
 	}
 }

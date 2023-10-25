@@ -64,8 +64,7 @@ func (c *CreateDB) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (c *CreateDB) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Create))
+	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_Create))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -137,8 +136,7 @@ func (d *DropDB) WithEventScheduler(scheduler sql.EventScheduler) sql.Node {
 
 // CheckPrivileges implements the interface sql.Node.
 func (d *DropDB) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Drop))
+	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_Drop))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -198,8 +196,10 @@ func (c *AlterDB) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (c *AlterDB) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(c.Database(ctx), "", "", sql.PrivilegeType_Alter))
+	subject := sql.PrivilegeCheckSubject{
+		Database: c.Database(ctx),
+	}
+	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Alter))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

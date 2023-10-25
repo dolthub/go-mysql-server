@@ -104,8 +104,9 @@ func (cv *CreateView) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (cv *CreateView) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	subject := sql.PrivilegeCheckSubject{Database: cv.database.Name()}
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(cv.database.Name(), "", "", sql.PrivilegeType_CreateView)) &&
+		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_CreateView)) &&
 		cv.Child.CheckPrivileges(ctx, opChecker)
 }
 

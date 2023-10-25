@@ -95,8 +95,13 @@ func (p *Truncate) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (p *Truncate) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	subject := sql.PrivilegeCheckSubject{
+		Database: p.db,
+		Table:    getTableName(p.Child),
+	}
+
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(p.db, getTableName(p.Child), "", sql.PrivilegeType_Drop))
+		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Drop))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
