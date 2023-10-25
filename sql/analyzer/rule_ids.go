@@ -107,7 +107,7 @@ const (
 	inlineSubqueryAliasRefsId    // inlineSubqueryAliasRefs
 	eraseProjectionId            // eraseProjection
 	replaceAggId                 // replaceAgg
-	replaceSortPkId              // replaceSortPk
+	replaceIdxSortId             // replaceIdxSort
 	insertTopNId                 // insertTopN
 	applyHashInId                // applyHashIn
 	resolveInsertRowsId          // resolveInsertRows

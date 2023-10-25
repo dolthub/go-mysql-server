@@ -62,7 +62,7 @@ func (b *Builder) buildAnalyze(inScope *scope, n *ast.Analyze, query string) (ou
 	}
 
 	columns := make([]string, len(n.Columns))
-	types := make([]string, len(n.Columns))
+	types := make([]sql.Type, len(n.Columns))
 	for i, c := range n.Columns {
 		col, ok := tableScope.resolveColumn(dbName, tableName, c.Lowered(), false)
 		if !ok {
@@ -70,7 +70,7 @@ func (b *Builder) buildAnalyze(inScope *scope, n *ast.Analyze, query string) (ou
 			b.handleErr(err)
 		}
 		columns[i] = col.col
-		types[i] = col.typ.String()
+		types[i] = col.typ
 	}
 
 	switch n.Action {
@@ -118,9 +118,9 @@ func (b *Builder) buildAnalyzeTables(inScope *scope, n *ast.Analyze, query strin
 	return
 }
 
-func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tableName string, columns, types []string) (outScope *scope) {
+func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tableName string, columns []string, types []sql.Type) (outScope *scope) {
 	outScope = inScope.push()
-	statistics := new(stats.Stats)
+	statistic := new(stats.Statistic)
 	using := b.buildScalar(inScope, n.Using)
 	if l, ok := using.(*expression.Literal); ok {
 		if typ, ok := l.Type().(sql.StringType); ok {
@@ -129,7 +129,7 @@ func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tab
 				b.handleErr(err)
 			}
 			if str, ok := val.(string); ok {
-				err := json.Unmarshal([]byte(str), statistics)
+				err := json.Unmarshal([]byte(str), statistic)
 				if err != nil {
 					err = ErrFailedToParseStats.New(err.Error())
 					b.handleErr(err)
@@ -138,19 +138,13 @@ func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tab
 
 		}
 	}
-	if statistics == nil {
+	if statistic == nil {
 		err := fmt.Errorf("no statistics found for update")
 		b.handleErr(err)
 	}
-	statistics.Columns = columns
-	statistics.Types = types
-	for i, b := range statistics.Histogram {
-		if b.BoundCount == 0 {
-			b.BoundCount = 1
-		}
-		// todo type coercion
-		statistics.Histogram[i] = b
-	}
-	outScope.node = plan.NewUpdateHistogram(dbName, tableName, columns, statistics).WithProvider(b.cat)
+	statistic.SetQualifier(sql.NewStatQualifier(dbName, tableName, ""))
+	statistic.SetColumns(columns)
+	statistic.SetTypes(types)
+	outScope.node = plan.NewUpdateHistogram(dbName, tableName, columns, statistic).WithProvider(b.cat)
 	return outScope
 }

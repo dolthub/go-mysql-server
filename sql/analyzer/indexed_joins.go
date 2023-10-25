@@ -196,7 +196,7 @@ func addLookupJoins(m *memo.Memo) error {
 			for _, on := range conds {
 				filters := memo.SplitConjunction(on)
 				for _, idx := range indexes {
-					keyExprs, nullmask := keyExprsForIndex(tableGrp, idx.Cols(), append(filters, extraFilters...))
+					keyExprs, _, nullmask := keyExprsForIndex(tableGrp, idx.Cols(), append(filters, extraFilters...))
 					if keyExprs != nil {
 						concat = append(concat, &memo.Lookup{
 							Index:    idx,
@@ -223,7 +223,7 @@ func addLookupJoins(m *memo.Memo) error {
 		}
 
 		for _, idx := range indexes {
-			keyExprs, nullmask := keyExprsForIndex(tableGrp, idx.Cols(), append(join.Filter, extraFilters...))
+			keyExprs, matchedFilters, nullmask := keyExprsForIndex(tableGrp, idx.Cols(), append(join.Filter, extraFilters...))
 			if keyExprs == nil {
 				continue
 			}
@@ -235,6 +235,19 @@ func addLookupJoins(m *memo.Memo) error {
 					Nullmask: nullmask,
 				},
 			}
+			var filters []memo.ScalarExpr
+			for _, filter := range rel.Filter {
+				found := false
+				for _, matchedFilter := range matchedFilters {
+					if filter == matchedFilter {
+						found = true
+					}
+				}
+				if !found {
+					filters = append(filters, filter)
+				}
+			}
+			rel.Filter = filters
 			rel.Op = rel.Op.AsLookup()
 			rel.Lookup.Parent = rel.JoinBase
 			e.Group().Prepend(rel)
@@ -246,30 +259,28 @@ func addLookupJoins(m *memo.Memo) error {
 // keyExprsForIndex returns a list of expression groups that compute a lookup
 // key into the given index. The key fields will either be equality filters
 // (from ON conditions) or constants.
-func keyExprsForIndex(tableGrp memo.GroupId, idxExprs []sql.ColumnId, filters []memo.ScalarExpr) ([]memo.ScalarExpr, []bool) {
-	var keyExprs []memo.ScalarExpr
-	var nullmask []bool
+func keyExprsForIndex(tableGrp memo.GroupId, idxExprs []sql.ColumnId, filters []memo.ScalarExpr) (keyExprs, matchedFilters []memo.ScalarExpr, nullmask []bool) {
 	for _, col := range idxExprs {
-		key, nullable := keyForExpr(col, tableGrp, filters)
+		key, filter, nullable := keyForExpr(col, tableGrp, filters)
 		if key == nil {
 			break
 		}
 		keyExprs = append(keyExprs, key)
+		matchedFilters = append(matchedFilters, filter)
 		nullmask = append(nullmask, nullable)
 	}
 	if len(keyExprs) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
-	return keyExprs, nullmask
+	return keyExprs, matchedFilters, nullmask
 }
 
 // keyForExpr returns an equivalence or constant value to satisfy the
 // lookup index expression.
-func keyForExpr(targetCol sql.ColumnId, tableGrp memo.GroupId, filters []memo.ScalarExpr) (memo.ScalarExpr, bool) {
+func keyForExpr(targetCol sql.ColumnId, tableGrp memo.GroupId, filters []memo.ScalarExpr) (key memo.ScalarExpr, filter memo.ScalarExpr, nullable bool) {
 	for _, f := range filters {
 		var left memo.ScalarExpr
 		var right memo.ScalarExpr
-		var nullable bool
 		switch e := f.Group().Scalar.(type) {
 		case *memo.Equal:
 			left = e.Left.Scalar
@@ -280,7 +291,6 @@ func keyForExpr(targetCol sql.ColumnId, tableGrp memo.GroupId, filters []memo.Sc
 			right = e.Right.Scalar
 		default:
 		}
-		var key memo.ScalarExpr
 		if ref, ok := left.(*memo.ColRef); ok && ref.Col == targetCol {
 			key = right
 		} else if ref, ok := right.(*memo.ColRef); ok && ref.Col == targetCol {
@@ -291,10 +301,10 @@ func keyForExpr(targetCol sql.ColumnId, tableGrp memo.GroupId, filters []memo.Sc
 		// expression key can be arbitrarily complex (or simple), but cannot
 		// reference the lookup table
 		if !key.Group().ScalarProps().Tables.Contains(int(memo.TableIdForSource(tableGrp))) {
-			return key, nullable
+			return key, f, nullable
 		}
 	}
-	return nil, false
+	return nil, nil, false
 }
 
 // convertSemiToInnerJoin adds inner join alternatives for semi joins.
@@ -352,7 +362,7 @@ func convertSemiToInnerJoin(a *Analyzer, m *memo.Memo) error {
 			if col.Name == "" && col.Source == "" {
 				continue
 			}
-			projections = append(projections, m.MemoizeScalar(expression.NewGetFieldWithTable(0, col.Type, col.Source, col.Name, col.Nullable)))
+			projections = append(projections, m.MemoizeScalar(expression.NewGetFieldWithTable(0, col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)))
 		}
 
 		if len(projections) == 0 {
@@ -425,7 +435,7 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 		projections := make([]*memo.ExprGroup, len(leftCols))
 		for i := range leftCols {
 			col := leftCols[i]
-			projections[i] = m.MemoizeColRef(expression.NewGetFieldWithTable(0, col.Type, col.Source, col.Name, col.Nullable))
+			projections[i] = m.MemoizeColRef(expression.NewGetFieldWithTable(0, col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable))
 		}
 
 		m.MemoizeProject(e.Group(), filterGrp, projections)
@@ -475,7 +485,7 @@ func addRightSemiJoins(m *memo.Memo) error {
 				continue
 			}
 
-			keyExprs, nullmask := keyExprsForIndex(tableGrp, idx.Cols(), append(semi.Filter, filters...))
+			keyExprs, _, nullmask := keyExprsForIndex(tableGrp, idx.Cols(), append(semi.Filter, filters...))
 			if keyExprs == nil {
 				continue
 			}

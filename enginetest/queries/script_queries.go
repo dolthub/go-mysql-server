@@ -1501,6 +1501,18 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{1}},
 			},
 			{
+				Query:    "select * from b order by x limit 100",
+				Expected: []sql.Row{{1}, {2}, {3}, {4}},
+			},
+			{
+				Query:    "select found_rows()",
+				Expected: []sql.Row{{4}},
+			},
+			{
+				Query:    "select found_rows()",
+				Expected: []sql.Row{{1}},
+			},
+			{
 				Query:    "select sql_calc_found_rows * from b order by x limit 3",
 				Expected: []sql.Row{{1}, {2}, {3}},
 			},
@@ -4069,6 +4081,48 @@ var ScriptTests = []ScriptTest{
 				Query: "select a.i, b.i from db1.t1 a join db2.t1 b order by a.i, b.i",
 				Expected: []sql.Row{
 					{1, 10},
+				},
+			},
+		},
+	},
+	{
+		Name: "order by with index",
+		SetUpScript: []string{
+			"create table t (i int primary key, `100` int);",
+			"insert into t values (1, 2), (2, 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t order by `100`",
+				Expected: []sql.Row{
+					{2, 1},
+					{1, 2},
+				},
+			},
+			{
+				Query:          "select * from t order by 100",
+				ExpectedErrStr: "column \"100\" could not be found in any table in scope",
+			},
+			{
+				Query: "select i as `200`, `100` from t order by `200`",
+				Expected: []sql.Row{
+					{1, 2},
+					{2, 1},
+				},
+			},
+			{
+				Query:          "select i as `200` from t order by 200",
+				ExpectedErrStr: "column \"200\" could not be found in any table in scope",
+			},
+			{
+				Query:          "select * from t order by 0",
+				ExpectedErrStr: "column \"0\" could not be found in any table in scope",
+			},
+			{
+				Query: "select * from t order by -999",
+				Expected: []sql.Row{
+					{1, 2},
+					{2, 1},
 				},
 			},
 		},

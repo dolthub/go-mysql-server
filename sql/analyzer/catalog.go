@@ -19,8 +19,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dolthub/go-mysql-server/sql/stats"
-
 	"github.com/dolthub/go-mysql-server/internal/similartext"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -349,20 +347,20 @@ func (c *Catalog) RefreshTableStats(ctx *sql.Context, table sql.Table, db string
 	return c.StatsProvider.RefreshTableStats(ctx, table, db)
 }
 
-func (c *Catalog) GetTableStats(ctx *sql.Context, db, table string) ([]*stats.Stats, error) {
+func (c *Catalog) GetTableStats(ctx *sql.Context, db, table string) ([]sql.Statistic, error) {
 	return c.StatsProvider.GetTableStats(ctx, db, table)
 }
 
-func (c *Catalog) SetStats(ctx *sql.Context, db, table string, stats *stats.Stats) error {
-	return c.StatsProvider.SetStats(ctx, db, table, stats)
+func (c *Catalog) SetStats(ctx *sql.Context, stats sql.Statistic) error {
+	return c.StatsProvider.SetStats(ctx, stats)
 }
 
-func (c *Catalog) GetStats(ctx *sql.Context, db, table string, cols []string) (*stats.Stats, bool) {
-	return c.StatsProvider.GetStats(ctx, db, table, cols)
+func (c *Catalog) GetStats(ctx *sql.Context, qual sql.StatQualifier, cols []string) (sql.Statistic, bool) {
+	return c.StatsProvider.GetStats(ctx, qual, cols)
 }
 
-func (c *Catalog) DropStats(ctx *sql.Context, db, table string, cols []string) error {
-	return c.StatsProvider.DropStats(ctx, db, table, cols)
+func (c *Catalog) DropStats(ctx *sql.Context, qual sql.StatQualifier, cols []string) error {
+	return c.StatsProvider.DropStats(ctx, qual, cols)
 }
 
 func (c *Catalog) RowCount(ctx *sql.Context, db, table string) (uint64, error) {
@@ -379,7 +377,8 @@ func (c *Catalog) RowCount(ctx *sql.Context, db, table string) (uint64, error) {
 	if !ok {
 		return 0, nil
 	}
-	return st.RowCount(ctx)
+	cnt, _, err = st.RowCount(ctx)
+	return cnt, err
 }
 
 func (c *Catalog) DataLength(ctx *sql.Context, db, table string) (uint64, error) {

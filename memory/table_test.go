@@ -151,7 +151,7 @@ var tests = []struct {
 		},
 		filters: []sql.Expression{
 			expression.NewEquals(
-				expression.NewGetFieldWithTable(1, types.Int32, "test", "col2", false),
+				expression.NewGetFieldWithTable(1, types.Int32, "db", "test", "col2", false),
 				expression.NewLiteral(int32(10), types.Int32),
 			),
 		},

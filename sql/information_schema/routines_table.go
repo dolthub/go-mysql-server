@@ -83,8 +83,8 @@ func (r *routineTable) DataLength(_ *Context) (uint64, error) {
 	return uint64(len(r.Schema()) * int(types.Text.MaxByteLength()) * defaultRoutinesTableRowCount), nil
 }
 
-func (r *routineTable) RowCount(_ *Context) (uint64, error) {
-	return defaultRoutinesTableRowCount, nil
+func (r *routineTable) RowCount(ctx *Context) (uint64, bool, error) {
+	return defaultRoutinesTableRowCount, false, nil
 }
 
 // Name implements the sql.Table interface.

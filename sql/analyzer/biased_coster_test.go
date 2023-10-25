@@ -63,8 +63,8 @@ func TestBiasedCoster(t *testing.T) {
 		plan.NewResolvedTable(xy, db, nil),
 		plan.NewResolvedTable(ab, db, nil),
 		expression.NewEquals(
-			expression.NewGetFieldWithTable(0, types.Int64, "xy", "x", false),
-			expression.NewGetFieldWithTable(0, types.Int64, "ab", "a", false),
+			expression.NewGetFieldWithTable(0, types.Int64, "db", "xy", "x", false),
+			expression.NewGetFieldWithTable(0, types.Int64, "db", "ab", "a", false),
 		),
 	)
 

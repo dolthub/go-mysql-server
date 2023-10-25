@@ -77,7 +77,7 @@ func TestShowIndexes(t *testing.T) {
 			expressions := make([]sql.Expression, len(test.table.Schema()))
 			for i, col := range test.table.Schema() {
 				var ex sql.Expression = expression.NewGetFieldWithTable(
-					i, col.Type, test.name, col.Name, col.Nullable,
+					i, col.Type, col.DatabaseSource, test.name, col.Name, col.Nullable,
 				)
 
 				if test.isExpression {

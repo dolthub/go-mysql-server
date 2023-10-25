@@ -206,6 +206,16 @@ func (h MySqlProxy) ComQuery(
 	return err
 }
 
+// ComParsedQuery implements mysql.Handler.
+func (h MySqlProxy) ComParsedQuery(
+	c *mysql.Conn,
+	query string,
+	parsed sqlparser.Statement,
+	callback func(*sqltypes.Result, bool) error,
+) error {
+	return h.ComQuery(c, query, callback)
+}
+
 func (h MySqlProxy) processQuery(
 	c *mysql.Conn,
 	proxy proxyConn,

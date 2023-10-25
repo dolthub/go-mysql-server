@@ -241,12 +241,8 @@ func (t NumberTypeImpl_) Convert(v interface{}) (interface{}, sql.ConvertInRange
 		v = ti.UTC().Unix()
 	}
 
-	if jv, ok := v.(JSONValue); ok {
-		jd, err := jv.Unmarshall(nil)
-		if err != nil {
-			return nil, sql.OutOfRange, err
-		}
-		v = jd.Val
+	if jv, ok := v.(sql.JSONWrapper); ok {
+		v = jv.ToInterface()
 	}
 
 	switch t.baseType {

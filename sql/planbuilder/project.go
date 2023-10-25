@@ -85,7 +85,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 				b.handleErr(err)
 			}
 			e = e.WithIndex(int(id)).(*expression.GetField)
-			outScope.addColumn(scopeColumn{table: e.Table(), col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable(), id: id})
+			outScope.addColumn(scopeColumn{tableId: e.TableID(), col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable(), id: id})
 		case *expression.Star:
 			tableName := strings.ToLower(e.Table)
 			if tableName == "" && len(inScope.cols) == 0 {
@@ -98,7 +98,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 				if col, ok := inScope.redirectCol[c.col]; tableName == "" && ok && col != c {
 					continue
 				}
-				if c.table == tableName || tableName == "" {
+				if c.tableId.TableName == tableName || tableName == "" {
 					gf := c.scalarGf()
 					exprs = append(exprs, gf)
 					id, ok := inScope.getExpr(gf.String(), true)
@@ -106,7 +106,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 						err := sql.ErrColumnNotFound.New(gf.String())
 						b.handleErr(err)
 					}
-					outScope.addColumn(scopeColumn{table: c.table, col: c.col, scalar: gf, typ: gf.Type(), nullable: gf.IsNullable(), id: id})
+					outScope.addColumn(scopeColumn{tableId: c.tableId, col: c.col, scalar: gf, typ: gf.Type(), nullable: gf.IsNullable(), id: id})
 				}
 			}
 			if tableName != "" && len(outScope.cols) == startLen {
@@ -134,7 +134,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 					err := sql.ErrColumnNotFound.New(gf.String())
 					b.handleErr(err)
 				}
-				col = scopeColumn{id: id, table: "", col: e.Name(), scalar: e, typ: gf.Type(), nullable: gf.IsNullable()}
+				col = scopeColumn{id: id, tableId: sql.TableID{}, col: e.Name(), scalar: e, typ: gf.Type(), nullable: gf.IsNullable()}
 			} else if sq, ok := e.Child.(*plan.Subquery); ok {
 				col = scopeColumn{col: e.Name(), scalar: e, typ: sq.Type(), nullable: sq.IsNullable()}
 			} else {

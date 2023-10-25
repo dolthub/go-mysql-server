@@ -31,14 +31,14 @@ import (
 
 func NewStatsProv() *StatsProv {
 	return &StatsProv{
-		colStats: make(map[statsKey]*stats.Stats),
+		colStats: make(map[statsKey]sql.Statistic),
 	}
 }
 
 type statsKey string
 
 type StatsProv struct {
-	colStats map[statsKey]*stats.Stats
+	colStats map[statsKey]sql.Statistic
 }
 
 var _ sql.StatsProvider = (*StatsProv)(nil)
@@ -68,7 +68,7 @@ func (s *StatsProv) RefreshTableStats(ctx *sql.Context, table sql.Table, db stri
 		}
 		for i := 1; i < len(cols)+1; i++ {
 			pref := cols[:i]
-			key := statsKey(fmt.Sprintf("%s.%s.(%s)", strings.ToLower(db), strings.ToLower(idx.Table()), strings.Join(pref, ",")))
+			key := statsKey(fmt.Sprintf("%s.%s.%s.(%s)", strings.ToLower(db), strings.ToLower(idx.Table()), strings.ToLower(idx.ID()), strings.Join(pref, ",")))
 			if _, ok := newStats[key]; !ok {
 				ords := make([]int, len(pref))
 				for i, c := range pref {
@@ -90,7 +90,7 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 	var dataLen uint64
 	var rowCount uint64
 	if statsTab, ok := table.(sql.StatisticsTable); ok {
-		rowCount, err = statsTab.RowCount(ctx)
+		rowCount, _, err = statsTab.RowCount(ctx)
 		if err != nil {
 			return err
 		}
@@ -127,35 +127,28 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 			bucketCnt = len(keyVals)
 		}
 		offset := len(keyVals) / bucketCnt
-		histogram := make([]stats.Bucket, bucketCnt)
-		for i := range histogram {
+		buckets := make([]*stats.Bucket, bucketCnt)
+		for i := range buckets {
 			var upperBound []interface{}
 			for _, v := range keyVals[i*offset] {
 				upperBound = append(upperBound, v)
 			}
-			histogram[i].UpperBound = upperBound
-			histogram[i].Count = uint64(offset)
-			histogram[i].Distinct = uint64(offset)
-			histogram[i].BoundCount = 1
+			buckets[i] = stats.NewHistogramBucket(uint64(offset), uint64(offset), 0, 1, upperBound, nil, nil)
 		}
 
 		var cols []string
-		var types []string
+		var types []sql.Type
 		for _, i := range ordinals {
 			cols = append(cols, sch[i].Name)
-			types = append(types, sch[i].Type.String())
+			types = append(types, sch[i].Type)
 		}
 
-		s.colStats[key] = &stats.Stats{
-			Rows:      rowCount,
-			Distinct:  rowCount,
-			AvgSize:   dataLen,
-			Histogram: histogram,
-			Columns:   cols,
-			Types:     types,
-			Version:   0,
-			CreatedAt: time.Now(),
+		qual, err := sql.NewQualifierFromString(string(key))
+		if err != nil {
+			return err
 		}
+
+		s.colStats[key] = stats.NewStatistic(rowCount, rowCount, 0, dataLen, time.Now(), qual, cols, types, buckets)
 	}
 	return nil
 }
@@ -218,9 +211,9 @@ func (s *StatsProv) reservoirSample(ctx *sql.Context, table sql.Table) ([]sql.Ro
 	return queue, nil
 }
 
-func (s *StatsProv) GetTableStats(ctx *sql.Context, db, table string) ([]*stats.Stats, error) {
+func (s *StatsProv) GetTableStats(ctx *sql.Context, db, table string) ([]sql.Statistic, error) {
 	pref := fmt.Sprintf("%s.%s", strings.ToLower(db), strings.ToLower(table))
-	var ret []*stats.Stats
+	var ret []sql.Statistic
 	for key, stats := range s.colStats {
 		if strings.HasPrefix(string(key), pref) {
 			ret = append(ret, stats)
@@ -229,23 +222,27 @@ func (s *StatsProv) GetTableStats(ctx *sql.Context, db, table string) ([]*stats.
 	return ret, nil
 }
 
-func (s *StatsProv) SetStats(ctx *sql.Context, db, table string, stats *stats.Stats) error {
-	key := statsKey(fmt.Sprintf("%s.%s.(%s)", strings.ToLower(db), strings.ToLower(table), strings.Join(stats.Columns, ",")))
+func (s *StatsProv) SetStats(ctx *sql.Context, stats sql.Statistic) error {
+	key := statsKey(fmt.Sprintf("%s.(%s)", stats.Qualifier(), strings.Join(stats.Columns(), ",")))
 	s.colStats[key] = stats
 	return nil
 }
 
-func (s *StatsProv) GetStats(ctx *sql.Context, db, table string, cols []string) (*stats.Stats, bool) {
-	key := statsKey(fmt.Sprintf("%s.%s.(%s)", strings.ToLower(db), strings.ToLower(table), strings.Join(cols, ",")))
+func (s *StatsProv) GetStats(ctx *sql.Context, qual sql.StatQualifier, cols []string) (sql.Statistic, bool) {
+	key := statsKey(fmt.Sprintf("%s.(%s)", qual, strings.Join(cols, ",")))
 	if stats, ok := s.colStats[key]; ok {
 		return stats, false
 	}
 	return nil, false
 }
 
-func (s *StatsProv) DropStats(ctx *sql.Context, db, table string, cols []string) error {
-	key := statsKey(fmt.Sprintf("%s.%s.(%s)", strings.ToLower(db), strings.ToLower(table), strings.Join(cols, ",")))
-	delete(s.colStats, key)
+func (s *StatsProv) DropStats(ctx *sql.Context, qual sql.StatQualifier, cols []string) error {
+	colsSuff := strings.Join(cols, ",") + ")"
+	for key, _ := range s.colStats {
+		if strings.HasPrefix(string(key), qual.String()) && strings.HasSuffix(string(key), colsSuff) {
+			delete(s.colStats, key)
+		}
+	}
 	return nil
 }
 
@@ -254,8 +251,8 @@ func (s *StatsProv) RowCount(ctx *sql.Context, db, table string) (uint64, error)
 	var cnt uint64
 	for key, stats := range s.colStats {
 		if strings.HasPrefix(string(key), pref) {
-			if stats.Rows > cnt {
-				cnt = stats.Rows
+			if stats.RowCount() > cnt {
+				cnt = stats.RowCount()
 			}
 		}
 	}
@@ -267,8 +264,8 @@ func (s *StatsProv) DataLength(ctx *sql.Context, db, table string) (uint64, erro
 	var size uint64
 	for key, stats := range s.colStats {
 		if strings.HasPrefix(string(key), pref) {
-			if stats.AvgSize > size {
-				size = stats.AvgSize
+			if stats.AvgSize() > size {
+				size = stats.AvgSize()
 			}
 		}
 	}

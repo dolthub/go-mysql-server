@@ -290,6 +290,14 @@ func (i *IndexedTableAccess) DebugString() string {
 		if i.lookup.IsReverse {
 			children = append(children, fmt.Sprintf("reverse: %v", i.lookup.IsReverse))
 		}
+	} else {
+		var filters []string
+		for _, e := range i.lb.keyExprs {
+			filters = append(filters, e.String())
+		}
+		if len(filters) > 0 {
+			children = append(children, fmt.Sprintf(fmt.Sprintf("keys: %v", filters)))
+		}
 	}
 
 	// TableWrappers may want to print their own debug info

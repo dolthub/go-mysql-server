@@ -80,21 +80,25 @@ func (s *scope) resolveColumn(db, table, col string, checkParent bool) (scopeCol
 	var found scopeColumn
 	var foundCand bool
 	for _, c := range s.cols {
-		if strings.EqualFold(c.col, col) && (c.table == table || table == "") && (c.db == db || db == "") {
+		if strings.EqualFold(c.col, col) && (c.tableId.TableName == table || table == "") && (c.tableId.DatabaseName == db || db == "") {
 			if foundCand {
+				if found.equals(c) {
+					continue
+				}
+
 				if !s.b.TriggerCtx().Call && len(s.b.TriggerCtx().UnresolvedTables) > 0 {
 					c, ok := s.triggerCol(table, col)
 					if ok {
 						return c, true
 					}
 				}
-				if c.table == OnDupValuesPrefix {
+				if c.tableId.TableName == OnDupValuesPrefix {
 					return found, true
-				} else if found.table == OnDupValuesPrefix {
+				} else if found.tableId.TableName == OnDupValuesPrefix {
 					return c, true
 				}
-				err := sql.ErrAmbiguousColumnName.New(col, []string{c.table, found.table})
-				if c.table == "" {
+				err := sql.ErrAmbiguousColumnName.New(col, []string{c.tableId.TableName, found.tableId.TableName})
+				if c.tableId.TableName == "" {
 					err = sql.ErrAmbiguousColumnOrAliasName.New(c.col)
 				}
 				s.handleErr(err)
@@ -150,16 +154,20 @@ func (s *scope) hasTable(table string) bool {
 // when we fail a resolveColumn.
 func (s *scope) triggerCol(table, col string) (scopeColumn, bool) {
 	// hallucinate tablecol
+	dbName := ""
+	if s.b.currentDatabase != nil {
+		dbName = s.b.currentDatabase.Name()
+	}
 	for _, t := range s.b.TriggerCtx().UnresolvedTables {
 		if strings.EqualFold(t, table) {
-			col := scopeColumn{table: t, col: col}
+			col := scopeColumn{tableId: sql.NewTableID(dbName, table), col: col}
 			id := s.newColumn(col)
 			col.id = id
 			return col, true
 		}
 	}
 	if table == "" {
-		col := scopeColumn{col: col}
+		col := scopeColumn{tableId: sql.NewTableID(dbName, table), col: col}
 		id := s.newColumn(col)
 		col.id = id
 		return col, true
@@ -264,9 +272,9 @@ func (s *scope) setTableAlias(t string) {
 	for i := range s.cols {
 		beforeColStr := s.cols[i].String()
 		if oldTable == "" {
-			oldTable = s.cols[i].table
+			oldTable = s.cols[i].tableId.TableName
 		}
-		s.cols[i].table = t
+		s.cols[i].tableId.TableName = t
 		id, ok := s.getExpr(beforeColStr, true)
 		if ok {
 			// todo better way to do projections
@@ -444,7 +452,7 @@ func (s *scope) newColumn(col scopeColumn) columnId {
 	s.b.colId++
 	col.id = s.b.colId
 	s.addColumn(col)
-	s.addTable(col.table)
+	s.addTable(col.tableId.TableName)
 	return col.id
 }
 
@@ -517,8 +525,7 @@ type scopeColumn struct {
 	id          columnId
 	typ         sql.Type
 	scalar      sql.Expression
-	db          string
-	table       string
+	tableId     sql.TableID
 	col         string
 	originalCol string
 }
@@ -528,8 +535,29 @@ func (c scopeColumn) empty() bool {
 	return c.id == 0
 }
 
+func (c scopeColumn) equals(other scopeColumn) bool {
+	if c.id == other.id {
+		return true
+	}
+	if c.unwrapGetFieldAliasId() == other.unwrapGetFieldAliasId() {
+		return true
+	}
+	return false
+}
+
+func (c scopeColumn) unwrapGetFieldAliasId() columnId {
+	if c.scalar != nil {
+		if a, ok := c.scalar.(*expression.Alias); ok {
+			if gf, ok := a.Child.(*expression.GetField); ok {
+				return columnId(gf.Id())
+			}
+		}
+	}
+	return c.id
+}
+
 func (c scopeColumn) withOriginal(col string) scopeColumn {
-	if c.db != sql.InformationSchemaDatabaseName {
+	if c.tableId.DatabaseName != sql.InformationSchemaDatabaseName {
 		// info schema columns always presented as uppercase
 		c.originalCol = col
 	}
@@ -544,15 +572,15 @@ func (c scopeColumn) scalarGf() sql.Expression {
 		}
 	}
 	if c.originalCol != "" {
-		return expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.originalCol, c.nullable)
+		return expression.NewGetFieldWithTable(int(c.id), c.typ, c.tableId.DatabaseName, c.tableId.TableName, c.originalCol, c.nullable)
 	}
-	return expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
+	return expression.NewGetFieldWithTable(int(c.id), c.typ, c.tableId.DatabaseName, c.tableId.TableName, c.col, c.nullable)
 }
 
 func (c scopeColumn) String() string {
-	if c.table == "" {
+	if c.tableId.TableName == "" {
 		return c.col
 	} else {
-		return fmt.Sprintf("%s.%s", c.table, c.col)
+		return fmt.Sprintf("%s.%s", c.tableId.TableName, c.col)
 	}
 }

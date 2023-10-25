@@ -535,9 +535,10 @@ func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
 	return numBytesPerRow * numRows, nil
 }
 
-func (t *Table) RowCount(ctx *sql.Context) (uint64, error) {
+func (t *Table) RowCount(ctx *sql.Context) (uint64, bool, error) {
 	data := t.sessionTableData(ctx)
-	return data.numRows(ctx)
+	rows, err := data.numRows(ctx)
+	return rows, true, err
 }
 
 func NewPartition(key []byte) *Partition {
@@ -1299,7 +1300,7 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 		for i, expr := range memIndex.Exprs {
 			getField := expr.(*expression.GetField)
 			if strings.ToLower(getField.Name()) == nameLowercase {
-				memIndex.Exprs[i] = expression.NewGetFieldWithTable(newIdx, column.Type, getField.Table(), column.Name, column.Nullable)
+				memIndex.Exprs[i] = expression.NewGetFieldWithTable(newIdx, column.Type, getField.Database(), getField.Table(), column.Name, column.Nullable)
 			}
 		}
 	}
@@ -1598,6 +1599,13 @@ func (t *Table) EnablePrimaryKeyIndexes() {
 	t.data.primaryKeyIndexes = true
 }
 
+func (t *Table) dbName() string {
+	if t.db != nil {
+		return t.db.Name()
+	}
+	return ""
+}
+
 // GetIndexes implements sql.IndexedTable
 func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 	data := t.sessionTableData(ctx)
@@ -1610,10 +1618,10 @@ func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 			for i, ord := range data.schema.PkOrdinals {
 				column := data.schema.Schema[ord]
 				idx, field := data.getColumnOrdinal(column.Name)
-				exprs[i] = expression.NewGetFieldWithTable(idx, field.Type, t.name, field.Name, field.Nullable)
+				exprs[i] = expression.NewGetFieldWithTable(idx, field.Type, t.db.Name(), t.name, field.Name, field.Nullable)
 			}
 			indexes = append(indexes, &Index{
-				DB:         "",
+				DB:         t.dbName(),
 				DriverName: "",
 				Tbl:        t,
 				TableName:  t.name,
@@ -1795,7 +1803,7 @@ func (t *Table) createIndex(data *TableData, name string, columns []sql.IndexCol
 	colNames := make([]string, len(columns))
 	for i, column := range columns {
 		idx, field := data.getColumnOrdinal(column.Name)
-		exprs[i] = expression.NewGetFieldWithTable(idx, field.Type, t.name, field.Name, field.Nullable)
+		exprs[i] = expression.NewGetFieldWithTable(idx, field.Type, t.db.Name(), t.name, field.Name, field.Nullable)
 		colNames[i] = column.Name
 	}
 
@@ -1822,7 +1830,7 @@ func (t *Table) createIndex(data *TableData, name string, columns []sql.IndexCol
 	}
 
 	return &Index{
-		DB:         "",
+		DB:         t.dbName(),
 		DriverName: "",
 		Tbl:        t,
 		TableName:  t.name,
@@ -2298,7 +2306,7 @@ func (t *Table) modifyFulltextIndexesForRewrite(
 	data *TableData,
 	oldSchema sql.PrimaryKeySchema,
 ) error {
-	keyCols, _, err := fulltext.GetKeyColumns(ctx, data.Table(nil))
+	keyCols, _, err := fulltext.GetKeyColumns(ctx, data.Table(t.db))
 	if err != nil {
 		return err
 	}

@@ -67,7 +67,7 @@ var OnceAfterDefault = []Rule{
 	{finalizeSubqueriesId, finalizeSubqueries},
 	{applyIndexesFromOuterScopeId, applyIndexesFromOuterScope},
 	{replaceAggId, replaceAgg},
-	{replaceSortPkId, replacePkSort},
+	{replaceIdxSortId, replaceIdxSort},
 	{eraseProjectionId, eraseProjection},
 	{insertTopNId, insertTopNNodes},
 	{applyHashInId, applyHashIn},

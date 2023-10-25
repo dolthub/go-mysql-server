@@ -41,13 +41,13 @@ func setupView(t *testing.T, db memory.MemoryDatabase) (*sql.Context, *sql.View)
 	subqueryAlias := plan.NewSubqueryAlias("myview", "select i from mytable",
 		plan.NewProject(
 			[]sql.Expression{
-				expression.NewGetFieldWithTable(1, types.Int32, table.Name(), "i", true),
+				expression.NewGetFieldWithTable(1, types.Int32, "db", table.Name(), "i", true),
 			},
 			plan.NewUnresolvedTable(table.Name(), ""),
 		),
 	)
 
-	createView := plan.NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, false, "CREATE VIEW myview AS SELECT i FROM mytable", "", "", "")
+	createView := plan.NewCreateView(db, subqueryAlias.Name(), subqueryAlias, false, "CREATE VIEW myview AS SELECT i FROM mytable", "", "", "")
 
 	ctx := sql.NewContext(context.Background())
 

@@ -64,7 +64,7 @@ type updateHistogramIter struct {
 	db      string
 	table   string
 	columns []string
-	stats   *stats.Stats
+	stats   *stats.Statistic
 	prov    sql.StatsProvider
 	done    bool
 }
@@ -78,7 +78,7 @@ func (itr *updateHistogramIter) Next(ctx *sql.Context) (sql.Row, error) {
 	defer func() {
 		itr.done = true
 	}()
-	err := itr.prov.SetStats(ctx, itr.db, itr.table, itr.stats)
+	err := itr.prov.SetStats(ctx, itr.stats)
 	if err != nil {
 		return sql.Row{itr.table, "histogram", "error", err.Error()}, nil
 	}
@@ -106,7 +106,8 @@ func (itr *dropHistogramIter) Next(ctx *sql.Context) (sql.Row, error) {
 	defer func() {
 		itr.done = true
 	}()
-	err := itr.prov.DropStats(ctx, itr.db, itr.table, itr.columns)
+	qual := sql.NewStatQualifier(itr.db, itr.table, "")
+	err := itr.prov.DropStats(ctx, qual, itr.columns)
 	if err != nil {
 		return sql.Row{itr.table, "histogram", "error", err.Error()}, nil
 	}

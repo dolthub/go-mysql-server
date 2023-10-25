@@ -15,11 +15,12 @@
 package queries
 
 import (
+	"time"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 
-	"github.com/dolthub/go-mysql-server/sql/stats"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/stats"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -184,7 +185,7 @@ var InfoSchemaQueries = []QueryTest{
 	{
 		Query: "SHOW TABLES FROM foo",
 		Expected: []sql.Row{
-			{"other_table"},
+			{"othertable"},
 		},
 	},
 	{
@@ -387,7 +388,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"def", "mydb", "PRIMARY", "mydb", "fk_tbl", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "mytable_s", "mydb", "mytable", "UNIQUE", "YES"},
-			{"def", "foo", "PRIMARY", "foo", "other_table", "PRIMARY KEY", "YES"},
+			{"def", "foo", "PRIMARY", "foo", "othertable", "PRIMARY KEY", "YES"},
 		},
 	},
 	{
@@ -397,7 +398,7 @@ var InfoSchemaQueries = []QueryTest{
 	{
 		Query: "SELECT * FROM information_schema.key_column_usage ORDER BY constraint_schema, table_name",
 		Expected: []sql.Row{
-			{"def", "foo", "PRIMARY", "def", "foo", "other_table", "text", 1, nil, nil, nil, nil},
+			{"def", "foo", "PRIMARY", "def", "foo", "othertable", "text", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "fk_tbl", "pk", 1, nil, nil, nil, nil},
 			{"def", "mydb", "fk1", "def", "mydb", "fk_tbl", "a", 1, 1, "mydb", "mytable", "i"},
 			{"def", "mydb", "fk1", "def", "mydb", "fk_tbl", "b", 2, 2, "mydb", "mytable", "s"},
@@ -1005,7 +1006,7 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 		Name: "information_schema.columns for view",
 		SetUpScript: []string{
 			"USE foo",
-			"drop table other_table",
+			"drop table othertable",
 			"CREATE TABLE t (i int)",
 			"CREATE VIEW v as select * from t",
 		},
@@ -1643,31 +1644,13 @@ var StatisticsQueries = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", types.JSONDocument{Val: map[string]interface{}{
-						"distinct":  float64(3),
-						"nulls":     float64(0),
-						"row_count": float64(3),
-						"buckets": stats.Histogram{
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{int64(1)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{int64(2)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{int64(3)},
-							},
-						},
-					}}},
+					{"mydb", "t", "i", stats.NewStatistic(3, 3, 0, 24, time.Now(), sql.NewStatQualifier("mydb", "t", "primary"), []string{"i"}, []sql.Type{types.Int64},
+						[]*stats.Bucket{
+							stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(1)}, nil, nil),
+							stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(2)}, nil, nil),
+							stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(3)}, nil, nil),
+						}),
+					},
 				},
 			},
 		},
@@ -1680,29 +1663,21 @@ var StatisticsQueries = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "analyze table t update histogram on (i) using data '{\"row_count\": 40, \"distinct_count\": 40, \"null_count\": 1, \"histogram\": [{\"count\": 20, \"upper_bound\": [50]}, {\"count\": 20, \"upper_bound\": [80]}]}'",
+				Query:    "analyze table t update histogram on (i) using data '{\"row_count\": 40, \"distinct_count\": 40, \"null_count\": 1, \"buckets\": [{\"row_count\": 20, \"distinct_count\": 20, \"upper_bound\": [50], \"bound_count\": 1}, {\"row_count\": 20, \"distinct_count\": 20, \"upper_bound\": [80], \"bound_count\": 1}]}'",
 				Expected: []sql.Row{{"t", "histogram", "status", "OK"}},
 			},
 			{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", types.JSONDocument{Val: map[string]interface{}{
-						"distinct":  float64(40),
-						"nulls":     float64(1),
-						"row_count": float64(40),
-						"buckets": stats.Histogram{
-							{
-								Count:      20,
-								BoundCount: 1,
-								UpperBound: []interface{}{float64(50)},
-							},
-							{
-								Count:      20,
-								BoundCount: 1,
-								UpperBound: []interface{}{float64(80)},
-							},
-						},
-					}}},
+					{"mydb", "t", "i", stats.NewStatistic(40, 40, 1, 0, time.Now(),
+						sql.NewStatQualifier("mydb", "t", ""),
+						[]string{"i"},
+						[]sql.Type{types.Int64},
+						[]*stats.Bucket{
+							stats.NewHistogramBucket(20, 20, 0, 1, sql.Row{float64(50)}, nil, nil),
+							stats.NewHistogramBucket(20, 20, 0, 1, sql.Row{float64(80)}, nil, nil),
+						}),
+					},
 				},
 			},
 			{
@@ -1726,56 +1701,26 @@ var StatisticsQueries = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", types.JSONDocument{Val: map[string]interface{}{
-						"distinct":  float64(3),
-						"nulls":     float64(0),
-						"row_count": float64(3),
-						"buckets": stats.Histogram{
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{int64(1)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{int64(2)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{int64(3)},
-							},
-						},
-					}}},
-					{"mydb", "t", "j", types.JSONDocument{Val: map[string]interface{}{
-						"distinct":  float64(3),
-						"nulls":     float64(0),
-						"row_count": float64(3),
-						"buckets": stats.Histogram{
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{int64(4)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{int64(5)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{int64(6)},
-							},
-						},
-					}}},
+					{"mydb", "t", "i", stats.NewStatistic(3, 3, 0, 48, time.Now(),
+						sql.NewStatQualifier("mydb", "t", "primary"),
+						[]string{"i"},
+						[]sql.Type{types.Int64},
+						[]*stats.Bucket{
+							stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(1)}, nil, []sql.Row{}),
+							stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(2)}, nil, []sql.Row{}),
+							stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(3)}, nil, []sql.Row{}),
+						}),
+					},
+					{"mydb", "t", "j", stats.NewStatistic(3, 3, 0, 48, time.Now(),
+						sql.NewStatQualifier("mydb", "t", "j"),
+						[]string{"j"},
+						[]sql.Type{types.Int64},
+						[]*stats.Bucket{
+							stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(4)}, nil, []sql.Row{}),
+							stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(5)}, nil, []sql.Row{}),
+							stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(6)}, nil, []sql.Row{}),
+						}),
+					},
 				},
 			},
 		},
@@ -1791,37 +1736,17 @@ var StatisticsQueries = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", types.JSONDocument{Val: map[string]interface{}{
-						"distinct":  float64(4),
-						"nulls":     float64(0),
-						"row_count": float64(4),
-						"buckets": stats.Histogram{
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{float64(1.25)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{float64(7.5)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{float64(10.5)},
-							},
-							{
-								Count:      1,
-								Distinct:   1,
-								BoundCount: 1,
-								UpperBound: []interface{}{float64(45.25)},
-							},
-						},
-					}}},
+					{"mydb", "t", "i", stats.NewStatistic(4, 4, 0, 32, time.Now(),
+						sql.NewStatQualifier("mydb", "t", "primary"),
+						[]string{"i"},
+						[]sql.Type{types.Float64},
+						[]*stats.Bucket{
+							stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{float64(1.25)}, nil, []sql.Row{}),
+							stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{float64(7.5)}, nil, []sql.Row{}),
+							stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{float64(10.5)}, nil, []sql.Row{}),
+							stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{float64(45.25)}, nil, []sql.Row{}),
+						}),
+					},
 				},
 			},
 		},

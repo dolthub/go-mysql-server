@@ -895,21 +895,16 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				return true, nil
 			}
 			for _, stats := range tableStats {
-				for _, c := range stats.Columns {
+				for _, c := range stats.Columns() {
 					if privSetTbl.Count() == 0 && privSetDb.Count() == 0 && privSetTbl.Column(c).Count() == 0 {
 						continue
 					}
 				}
 				rows = append(rows, Row{
-					db.Name(),                        // table_schema
-					t.Name(),                         // table_name
-					strings.Join(stats.Columns, ","), // column_name
-					types.JSONDocument{Val: map[string]interface{}{
-						"buckets":   stats.Histogram,
-						"distinct":  stats.Distinct,
-						"row_count": stats.Rows,
-						"nulls":     stats.Nulls,
-					}}, // histogram
+					db.Name(),                          // table_schema
+					t.Name(),                           // table_name
+					strings.Join(stats.Columns(), ","), // column_name
+					stats,
 				})
 			}
 			return true, nil
@@ -1839,7 +1834,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 			tableCollation = t.Collation().String()
 			if db.Name() != InformationSchemaDatabaseName {
 				if st, ok := t.(StatisticsTable); ok {
-					tableRows, err = st.RowCount(ctx)
+					tableRows, _, err = st.RowCount(ctx)
 					if err != nil {
 						return false, err
 					}
@@ -2707,8 +2702,8 @@ func (t *informationSchemaTable) DataLength(_ *Context) (uint64, error) {
 	return uint64(len(t.Schema()) * int(types.Text.MaxByteLength()) * defaultInfoSchemaRowCount), nil
 }
 
-func (t *informationSchemaTable) RowCount(_ *Context) (uint64, error) {
-	return defaultInfoSchemaRowCount, nil
+func (t *informationSchemaTable) RowCount(ctx *Context) (uint64, bool, error) {
+	return defaultInfoSchemaRowCount, false, nil
 }
 
 // Collation implements the sql.Table interface.

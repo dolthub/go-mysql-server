@@ -17,6 +17,8 @@ package enginetest
 import (
 	gosql "database/sql"
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -75,7 +77,8 @@ func NewServerQueryEngine(t *testing.T, engine *sqle.Engine, builder server.Sess
 
 func newConnection(ctx *sql.Context) (*gosql.DB, error) {
 	db := ctx.GetCurrentDatabase()
-	return gosql.Open("mysql", fmt.Sprintf("root:@tcp(127.0.0.1)/%s", db))
+	// https://stackoverflow.com/questions/29341590/how-to-parse-time-from-database/29343013#29343013
+	return gosql.Open("mysql", fmt.Sprintf("root:@tcp(127.0.0.1)/%s?parseTime=true", db))
 }
 
 func (s ServerQueryEngine) PrepareQuery(ctx *sql.Context, query string) (sql.Node, error) {
@@ -112,7 +115,7 @@ func (s ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, par
 		return nil, nil, err
 	}
 
-	bindingArgs := bindingArgs(bindings)
+	args := prepareBindingArgs(bindings)
 
 	if parsed == nil {
 		parsed, err = sqlparser.Parse(query)
@@ -122,14 +125,14 @@ func (s ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, par
 	}
 
 	switch parsed.(type) {
-	case *sqlparser.Select, *sqlparser.SetOp, *sqlparser.Show:
-		rows, err := stmt.Query(bindingArgs...)
+	case *sqlparser.Select, *sqlparser.SetOp, *sqlparser.Show, *sqlparser.Set:
+		rows, err := stmt.Query(args...)
 		if err != nil {
 			return nil, nil, err
 		}
 		return convertRowsResult(rows)
 	default:
-		exec, err := stmt.Exec(bindingArgs...)
+		exec, err := stmt.Exec(args...)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -172,13 +175,12 @@ func convertRowsResult(rows *gosql.Rows) (sql.Schema, sql.RowIter, error) {
 
 func rowIterForGoSqlRows(sch sql.Schema, rows *gosql.Rows) (sql.RowIter, error) {
 	result := make([]sql.Row, 0)
+	r, err := emptyRowForSchema(sch)
+	if err != nil {
+		return nil, err
+	}
 
 	for rows.Next() {
-		r, err := emptyRowForSchema(sch)
-		if err != nil {
-			return nil, err
-		}
-
 		err = rows.Scan(r...)
 		if err != nil {
 			return nil, err
@@ -189,10 +191,78 @@ func rowIterForGoSqlRows(sch sql.Schema, rows *gosql.Rows) (sql.RowIter, error) 
 			return nil, err
 		}
 
+		row = convertValue(sch, row)
+
 		result = append(result, row)
 	}
 
 	return sql.RowsToRowIter(result...), nil
+}
+
+// convertValue converts the row value scanned from go sql driver client to type that we expect.
+// This method helps with testing existing enginetests that expects specific type as returned value.
+func convertValue(sch sql.Schema, row sql.Row) sql.Row {
+	for i, col := range sch {
+		switch col.Type.Type() {
+		case query.Type_GEOMETRY:
+			if row[i] != nil {
+				r, _, err := types.GeometryType{}.Convert(row[i].([]byte))
+				if err == nil {
+					row[i] = r
+				}
+			}
+		case query.Type_JSON:
+			if row[i] != nil {
+				row[i] = types.MustJSON(string(row[i].([]byte)))
+			}
+		case query.Type_TIME:
+			if row[i] != nil {
+				r, _, err := types.TimespanType_{}.Convert(string(row[i].([]byte)))
+				if err == nil {
+					row[i] = r
+				}
+			}
+		case query.Type_UINT8, query.Type_UINT16, query.Type_UINT24, query.Type_UINT32, query.Type_UINT64:
+			// TODO: check todo in 'emptyValuePointerForType' method
+			//  we try to cast any value we got to uint64
+			if row[i] != nil {
+				r, err := toUint64(row[i])
+				if err == nil {
+					row[i] = r
+				}
+			}
+		}
+	}
+	return row
+}
+
+func toUint64(v any) (uint64, error) {
+	switch val := v.(type) {
+	case int8:
+		return uint64(val), nil
+	case int16:
+		return uint64(val), nil
+	case int32:
+		return uint64(val), nil
+	case int64:
+		return uint64(val), nil
+	case uint8:
+		return uint64(val), nil
+	case uint16:
+		return uint64(val), nil
+	case uint32:
+		return uint64(val), nil
+	case uint64:
+		return val, nil
+	case []byte:
+		u, err := strconv.ParseUint(string(val), 10, 64)
+		if err != nil {
+			return 0, fmt.Errorf("expected uint64 number, but received: %s", string(val))
+		}
+		return u, nil
+	default:
+		return 0, fmt.Errorf("expected uint64 number, but received unexpected type: %T", v)
+	}
 }
 
 func derefRow(r []any) (sql.Row, error) {
@@ -207,8 +277,8 @@ func derefRow(r []any) (sql.Row, error) {
 	return row, nil
 }
 
-func deref(v any) (any, error) {
-	switch v := v.(type) {
+func deref(val any) (any, error) {
+	switch v := val.(type) {
 	case *int8:
 		return *v, nil
 	case *int16:
@@ -247,6 +317,9 @@ func deref(v any) (any, error) {
 		}
 		return nil, nil
 	case *[]byte:
+		if *v == nil {
+			return nil, nil
+		}
 		return *v, nil
 	case *bool:
 		return *v, nil
@@ -262,6 +335,11 @@ func deref(v any) (any, error) {
 			return v.Byte, nil
 		}
 		return nil, nil
+	case *any:
+		if *v == nil {
+			return nil, nil
+		}
+		return *v, nil
 	default:
 		return nil, fmt.Errorf("unhandled type %T", v)
 	}
@@ -282,20 +360,30 @@ func emptyRowForSchema(sch sql.Schema) ([]any, error) {
 func emptyValuePointerForType(t sql.Type) (any, error) {
 	switch t.Type() {
 	case query.Type_INT8, query.Type_INT16, query.Type_INT24, query.Type_INT32, query.Type_INT64,
-		query.Type_UINT8, query.Type_UINT16, query.Type_UINT24, query.Type_UINT32, query.Type_UINT64,
 		query.Type_BIT, query.Type_YEAR:
 		var i gosql.NullInt64
 		return &i, nil
-	case query.Type_DATE, query.Type_DATETIME, query.Type_TIMESTAMP, query.Type_TIME:
+	case query.Type_UINT8, query.Type_UINT16, query.Type_UINT24, query.Type_UINT32, query.Type_UINT64:
+		//var i uint64
+		// TODO: currently there is no gosql.NullUint64 type, so null value for unsigned integer value cannot be scanned.
+		//  this might be resolved in Go 1.22, that is not out yet, https://github.com/go-sql-driver/mysql/issues/1433
+		var i any
+		return &i, nil
+	case query.Type_DATE, query.Type_DATETIME, query.Type_TIMESTAMP:
 		var t gosql.NullTime
 		return &t, nil
-	case query.Type_TEXT, query.Type_VARCHAR, query.Type_CHAR, query.Type_BINARY, query.Type_VARBINARY, query.Type_ENUM, query.Type_SET:
+	case query.Type_TEXT, query.Type_VARCHAR, query.Type_CHAR, query.Type_BINARY, query.Type_VARBINARY,
+		query.Type_ENUM, query.Type_SET, query.Type_DECIMAL:
+		// We have DECIMAL type results in enginetests be checked in STRING format.
 		var s gosql.NullString
 		return &s, nil
-	case query.Type_FLOAT32, query.Type_FLOAT64, query.Type_DECIMAL:
+	case query.Type_FLOAT32, query.Type_FLOAT64:
 		var f gosql.NullFloat64
 		return &f, nil
-	case query.Type_JSON, query.Type_BLOB:
+	case query.Type_JSON, query.Type_BLOB, query.Type_TIME, query.Type_GEOMETRY:
+		var f []byte
+		return &f, nil
+	case query.Type_NULL_TYPE:
 		var f gosql.NullByte
 		return &f, nil
 	default:
@@ -331,8 +419,10 @@ func schemaForRows(rows *gosql.Rows) (sql.Schema, error) {
 
 func convertGoSqlType(columnType *gosql.ColumnType) (sql.Type, error) {
 	switch strings.ToLower(columnType.DatabaseTypeName()) {
-	case "int", "integer", "tinyint", "smallint", "mediumint", "bigint":
+	case "tinyint", "smallint", "mediumint", "int", "bigint":
 		return types.Int64, nil
+	case "unsigned tinyint", "unsigned smallint", "unsigned mediumint", "unsigned int", "unsigned bigint":
+		return types.Uint64, nil
 	case "float", "double":
 		return types.Float64, nil
 	case "decimal":
@@ -371,12 +461,17 @@ func convertGoSqlType(columnType *gosql.ColumnType) (sql.Type, error) {
 		return types.EnumType{}, nil
 	case "set":
 		return types.SetType{}, nil
+	case "null":
+		return types.Null, nil
+	case "geometry":
+		return types.GeometryType{}, nil
 	default:
 		return nil, fmt.Errorf("unhandled type %s", columnType.DatabaseTypeName())
 	}
 }
 
-func bindingArgs(bindings map[string]*query.BindVariable) []any {
+// prepareBindingArgs returns an array of the binding variable converted from given map.
+func prepareBindingArgs(bindings map[string]*query.BindVariable) []any {
 	names := make([]string, len(bindings))
 	var i int
 	for name := range bindings {
@@ -384,9 +479,13 @@ func bindingArgs(bindings map[string]*query.BindVariable) []any {
 		i++
 	}
 
+	// the binding values need in specific order
+	// it is in random order as stored in a map
+	sort.Strings(names)
+
 	args := make([]any, len(bindings))
-	for i, name := range names {
-		args[i] = bindings[name].Value
+	for j, name := range names {
+		args[j] = bindings[name].Value
 	}
 
 	return args

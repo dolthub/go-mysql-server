@@ -28,14 +28,14 @@ import (
 
 var (
 	partitionByX = []sql.Expression{
-		expression.NewGetFieldWithTable(1, types.Text, "a", "x", false),
+		expression.NewGetFieldWithTable(1, types.Text, "db", "a", "x", false),
 	}
 	sortByW = sql.SortFields{{
-		Column: expression.NewGetFieldWithTable(0, types.Int64, "a", "w", false),
+		Column: expression.NewGetFieldWithTable(0, types.Int64, "db", "a", "w", false),
 	}}
 	sortByWDesc = sql.SortFields{
 		{
-			Column: expression.NewGetFieldWithTable(0, types.Int64, "a", "w", false),
+			Column: expression.NewGetFieldWithTable(0, types.Int64, "db", "a", "w", false),
 			Order:  sql.Descending,
 		},
 	}

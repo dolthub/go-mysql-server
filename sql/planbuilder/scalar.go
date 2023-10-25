@@ -759,34 +759,32 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 	case ast.IntVal:
 		return b.convertInt(string(v.Val), 10)
 	case ast.FloatVal:
-		val, err := strconv.ParseFloat(string(v.Val), 64)
-		if err != nil {
-			b.handleErr(err)
+		// any float value is parsed as decimal except when the value has scientific notation
+		ogVal := string(v.Val)
+		if strings.Contains(ogVal, "e") {
+			val, err := strconv.ParseFloat(string(v.Val), 64)
+			if err != nil {
+				b.handleErr(err)
+			}
+			return expression.NewLiteral(val, types.Float64)
 		}
 
-		// use the value as string format to keep precision and scale as defined for DECIMAL data type to avoid rounded up float64 value
+		// using DECIMAL data type avoids precision error of rounded up float64 value
 		if ps := strings.Split(string(v.Val), "."); len(ps) == 2 {
-			ogVal := string(v.Val)
-			var fmtStr byte = 'f'
-			if strings.Contains(ogVal, "e") {
-				fmtStr = 'e'
+			p, s := expression.GetDecimalPrecisionAndScale(ogVal)
+			dt, err := types.CreateDecimalType(p, s)
+			if err != nil {
+				return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))
 			}
-			floatVal := strconv.FormatFloat(val, fmtStr, -1, 64)
-			if len(ogVal) >= len(floatVal) && ogVal != floatVal {
-				p, s := expression.GetDecimalPrecisionAndScale(ogVal)
-				dt, err := types.CreateDecimalType(p, s)
-				if err != nil {
-					return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))
-				}
-				dVal, _, err := dt.Convert(ogVal)
-				if err != nil {
-					return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))
-				}
-				return expression.NewLiteral(dVal, dt)
+			dVal, _, err := dt.Convert(ogVal)
+			if err != nil {
+				return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))
 			}
+			return expression.NewLiteral(dVal, dt)
+		} else {
+			// if the value is not float type - this should not happen
+			return b.convertInt(string(v.Val), 10)
 		}
-
-		return expression.NewLiteral(val, types.Float64)
 	case ast.HexNum:
 		//TODO: binary collation?
 		v := strings.ToLower(string(v.Val))

@@ -1379,13 +1379,13 @@ Select * from (
 	{
 		Query: `SELECT * FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a order by 1`,
 		Expected: []sql.Row{
-			{1.0, "ab"},
-			{2.0, "4"},
+			{1, "ab"},
+			{2, "4"},
 		},
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "column_0",
-				Type: types.Float64,
+				Type: types.Int64,
 			},
 			{
 				Name: "column_1",
@@ -1396,13 +1396,13 @@ Select * from (
 	{
 		Query: `SELECT * FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a (c,d) order by 1`,
 		Expected: []sql.Row{
-			{1.0, "ab"},
-			{2.0, "4"},
+			{1, "ab"},
+			{2, "4"},
 		},
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "c",
-				Type: types.Float64,
+				Type: types.Int64,
 			},
 			{
 				Name: "d",
@@ -1413,8 +1413,8 @@ Select * from (
 	{
 		Query: `SELECT column_0 FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a order by 1`,
 		Expected: []sql.Row{
-			{1.0},
-			{2.0},
+			{1},
+			{2},
 		},
 	},
 	{
@@ -1448,9 +1448,8 @@ Select * from (
 		Expected:     []sql.Row{{"1"}, {"1.5"}},
 	},
 	{
-		// the result on sql shell are '1' and '1.5' but instead it should have decimal values of '1.0' and '1.5'
 		Query:    `SELECT column_0 FROM (values row(1.5,2+2), row(floor(1.5),concat("a","b"))) a order by 1;`,
-		Expected: []sql.Row{{float64(1)}, {1.5}},
+		Expected: []sql.Row{{"1.0"}, {"1.5"}},
 	},
 	{
 		Query: `SELECT FORMAT(val, 2) FROM
@@ -1675,8 +1674,8 @@ Select * from (
 			join (values row(2,4), row(1.0,"ab")) b on a.column_0 = b.column_0 and a.column_0 = b.column_0
 			order by 1`,
 		Expected: []sql.Row{
-			{1.0, "ab"},
-			{2.0, "4"},
+			{1, "ab"},
+			{2, "4"},
 		},
 	},
 	{
@@ -4981,7 +4980,7 @@ Select * from (
 		},
 	},
 	{
-		Query: `SELECT * FROM foo.other_table`,
+		Query: `SELECT * FROM foo.othertable`,
 		Expected: []sql.Row{
 			{"a", int32(4)},
 			{"b", int32(2)},
@@ -8096,6 +8095,120 @@ ORDER BY 1;`,
 			{2},
 		},
 	},
+	{
+		Query: "select * from xy where y < 1 or y > 2 order by y",
+		Expected: []sql.Row{
+			{1, 0},
+			{3, 3},
+		},
+	},
+	{
+		Query: "select * from xy where y < 1 or y > 2 order by y desc",
+		Expected: []sql.Row{
+			{3, 3},
+			{1, 0},
+		},
+	},
+	{
+		Query: "select * from xy where x in (3, 0, 1) order by x",
+		Expected: []sql.Row{
+			{0, 2},
+			{1, 0},
+			{3, 3},
+		},
+	},
+	{
+		Query: "select * from xy where x in (3, 0, 1) order by x desc",
+		Expected: []sql.Row{
+			{3, 3},
+			{1, 0},
+			{0, 2},
+		},
+	},
+	{
+		Query: "select * from xy where y in (3, 0, 1) order by y",
+		Expected: []sql.Row{
+			{1, 0},
+			{2, 1},
+			{3, 3},
+		},
+	},
+	{
+		Query: "select * from xy where y in (3, 0, 1) order by y desc",
+		Expected: []sql.Row{
+			{3, 3},
+			{2, 1},
+			{1, 0},
+		},
+	},
+	{
+		Query: "select * from xy_hasnull_idx order by y",
+		Expected: []sql.Row{
+			{3, nil},
+			{1, 0},
+			{2, 1},
+			{0, 2},
+		},
+	},
+	{
+		Query: "select * from xy_hasnull_idx order by y desc",
+		Expected: []sql.Row{
+			{0, 2},
+			{2, 1},
+			{1, 0},
+			{3, nil},
+		},
+	},
+	{
+		Query: "select * from xy_hasnull_idx where y < 1 or y > 1 order by y desc",
+		Expected: []sql.Row{
+			{0, 2},
+			{1, 0},
+		},
+	},
+	{
+		Query: "select * from xy_hasnull_idx where y < 1 or y > 1 or y is null order by y desc",
+		Expected: []sql.Row{
+			{0, 2},
+			{1, 0},
+			{3, nil},
+		},
+	},
+	{
+		Query: "select * from xy_hasnull_idx where y in (0, 2) or y is null order by y",
+		Expected: []sql.Row{
+			{3, nil},
+			{1, 0},
+			{0, 2},
+		},
+	},
+	{
+		Query: "select x as xx, y as yy from xy_hasnull_idx order by yy desc",
+		Expected: []sql.Row{
+			{0, 2},
+			{2, 1},
+			{1, 0},
+			{3, nil},
+		},
+	},
+	{
+		Query: "select x as xx, y as yy from xy_hasnull_idx order by YY desc",
+		Expected: []sql.Row{
+			{0, 2},
+			{2, 1},
+			{1, 0},
+			{3, nil},
+		},
+	},
+	{
+		Query: "select * from xy_hasnull_idx order by Y desc",
+		Expected: []sql.Row{
+			{0, 2},
+			{2, 1},
+			{1, 0},
+			{3, nil},
+		},
+	},
 
 	{
 		Query: "select max(x) from xy",
@@ -8594,7 +8707,47 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: planbuilder.ErrFailedToParseStats,
 	},
 	{
+		Query:       "select * from othertable join foo.othertable on foo.othertable.s2 = 'a'",
+		ExpectedErr: sql.ErrTableColumnNotFound,
+	},
+	{
+		Query:       "select * from foo.othertable join othertable on foo.othertable.s2 = 'a'",
+		ExpectedErr: sql.ErrTableColumnNotFound,
+	},
+	{
+		Query:       "select * from othertable join foo.othertable on mydb.othertable.text = 'third'",
+		ExpectedErr: sql.ErrTableColumnNotFound,
+	},
+	{
+		Query:       "select * from foo.othertable join othertable on mydb.othertable.text = 'third'",
+		ExpectedErr: sql.ErrTableColumnNotFound,
+	},
+	{
+		Query:       "select i from mytable a join mytable b on a.i = b.i",
+		ExpectedErr: sql.ErrAmbiguousColumnName,
+	},
+	{
+		Query:       "select i from mytable join mytable",
+		ExpectedErr: sql.ErrAmbiguousColumnName,
+	},
+	{
+		Query:       "select * from mytable join mytable",
+		ExpectedErr: sql.ErrDuplicateAliasOrTable,
+	},
+	{
+		Query:       "select * from (select * from othertable) mytable join mytable",
+		ExpectedErr: sql.ErrDuplicateAliasOrTable,
+	},
+	{
+		Query:       "select * from (select * from foo.othertable) mytable join mytable",
+		ExpectedErr: sql.ErrDuplicateAliasOrTable,
+	},
+	{
 		Query:       "select i from (select * from mytable a join mytable b on a.i = b.i) dt",
+		ExpectedErr: sql.ErrAmbiguousColumnName,
+	},
+	{
+		Query:       "select i from (select * from mytable join mytable) a join mytable b on a.i = b.i",
 		ExpectedErr: sql.ErrAmbiguousColumnName,
 	},
 	{
@@ -8685,10 +8838,10 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		// case-insensitive duplicate
 		Query:       "select * from mytable a join mytable A on a.i = A.i;",
-		ExpectedErr: sql.ErrDuplicateAliasOrTable,
+		ExpectedErr: sql.ErrAmbiguousColumnName,
 	},
 	{
-		Query:       "SELECT * FROM mytable AS t UNION SELECT * FROM mytable AS t, othertable AS t", // duplicate alias in union
+		Query:       "SELECT * FROM mytable AS t, othertable UNION SELECT * FROM mytable AS t, othertable AS t", // duplicate alias in union
 		ExpectedErr: sql.ErrDuplicateAliasOrTable,
 	},
 	{
@@ -9097,6 +9250,10 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       `SELECT s as i, i as i from mytable order by i`,
 		ExpectedErr: sql.ErrAmbiguousColumnOrAliasName,
 	},
+	{
+		Query:          "select * from mytable order by 999",
+		ExpectedErrStr: "column \"999\" could not be found in any table in scope",
+	},
 }
 
 var BrokenErrorQueries = []QueryErrorTest{
@@ -9215,6 +9372,22 @@ var BrokenErrorQueries = []QueryErrorTest{
 	{
 		Query:       "SELECT json_valid() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       "select * from othertable join foo.othertable on othertable.text = 'third'",
+		ExpectedErr: sql.ErrUnknownColumn,
+	},
+	{
+		Query:       "select * from foo.othertable join othertable on othertable.text = 'third'",
+		ExpectedErr: sql.ErrUnknownColumn,
+	},
+	{
+		Query:       "select * from mydb.othertable join foo.othertable on othertable.text = 'third'",
+		ExpectedErr: sql.ErrUnknownColumn,
+	},
+	{
+		Query:       "select * from foo.othertable join mydb.othertable on othertable.text = 'third'",
+		ExpectedErr: sql.ErrUnknownColumn,
 	},
 }
 
