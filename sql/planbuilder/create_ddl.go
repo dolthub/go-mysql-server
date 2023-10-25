@@ -421,7 +421,7 @@ func (b *Builder) buildCreateView(inScope *scope, query string, c *ast.DDL) (out
 	outScope = inScope.push()
 
 	selectStr := query[c.SubStatementPositionStart:c.SubStatementPositionEnd]
-	stmt, _, err := ast.ParseOne(selectStr)
+	stmt, _, err := ast.ParseOneWithOptions(selectStr, b.parserOpts)
 	if err != nil {
 		b.handleErr(err)
 	}

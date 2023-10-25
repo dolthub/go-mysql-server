@@ -107,6 +107,7 @@ func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool, options 
 	}
 
 	b := New(ctx, cat)
+	b.SetParserOptions(options)
 	outScope := b.build(nil, stmt, s)
 
 	return outScope.node, parsed, remainder, err

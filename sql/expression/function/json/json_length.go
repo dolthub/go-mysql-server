@@ -17,8 +17,6 @@ package json
 import (
 	"encoding/json"
 	"fmt"
-	"log"
-
 	"github.com/dolthub/jsonpath"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -102,7 +100,6 @@ func (j *JsonLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("%v", path)
 
 	res, err := jsonpath.JsonPathLookup(jsonData, path.(string))
 	if err != nil {
