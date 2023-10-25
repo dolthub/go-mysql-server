@@ -554,7 +554,7 @@ func (pke *pkTableEditAccumulator) deleteHelper(table *TableData, row sql.Row) e
 func deleteRowFromIndexes(table *TableData, partKey string, rowIdx int) {
 	for _, idx := range table.indexes {
 		memIdx := idx.(*Index)
-		idxStorage := table.indexStorage[indexName(memIdx.ID())]
+		idxStorage := table.secondaryIndexStorage[indexName(memIdx.ID())]
 		// Iterate backwards so we can remove the trailing N elements without triggering range errors on multiple passes
 		// through the loop
 		for i := len(idxStorage) - 1; i >= 0; i-- {
@@ -567,7 +567,7 @@ func deleteRowFromIndexes(table *TableData, partKey string, rowIdx int) {
 				idxRow[len(idxRow)-1] = primaryRowLocation{rowLoc.partition, rowLoc.idx - 1}
 			}
 		}
-		table.indexStorage[indexName(memIdx.ID())] = idxStorage
+		table.secondaryIndexStorage[indexName(memIdx.ID())] = idxStorage
 	}
 }
 
@@ -626,7 +626,7 @@ func addRowToIndexes(table *TableData, row sql.Row, partKey string, rowIdx int) 
 		if err != nil {
 			return err
 		}
-		table.indexStorage[indexName(memIdx.ID())] = append(table.indexStorage[indexName(memIdx.ID())], idxRow)
+		table.secondaryIndexStorage[indexName(memIdx.ID())] = append(table.secondaryIndexStorage[indexName(memIdx.ID())], idxRow)
 	}
 	return nil
 }

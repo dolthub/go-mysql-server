@@ -195,16 +195,16 @@ func NewPartitionedTableWithCollation(db *BaseDatabase, name string, schema sql.
 	return &Table{
 		name: name,
 		data: &TableData{
-			dbName:        dbName,
-			tableName:     name,
-			schema:        schema,
-			fkColl:        fkColl,
-			collation:     collation,
-			partitions:    partitions,
-			partitionKeys: keys,
-			autoIncVal:    autoIncVal,
-			autoColIdx:    autoIncIdx,
-			indexStorage:  make(map[indexName][]sql.Row),
+			dbName:                dbName,
+			tableName:             name,
+			schema:                schema,
+			fkColl:                fkColl,
+			collation:             collation,
+			partitions:            partitions,
+			partitionKeys:         keys,
+			autoIncVal:            autoIncVal,
+			autoColIdx:            autoIncIdx,
+			secondaryIndexStorage: make(map[indexName][]sql.Row),
 		},
 		db: db,
 	}
@@ -493,7 +493,7 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 			isp.lookup,
 			isp.ranges,
 			data.partitions,
-			data.indexStorage[indexName(isp.index.Name)],
+			data.secondaryIndexStorage[indexName(isp.index.Name)],
 			t.columns,
 			numColumns,
 			data.virtualColIndexes(),
@@ -1919,7 +1919,7 @@ func (t *Table) DropIndex(ctx *sql.Context, name string) error {
 	for idxName := range data.indexes {
 		if strings.ToLower(idxName) == strings.ToLower(name) {
 			delete(data.indexes, idxName)
-			delete(data.indexStorage, indexName(idxName))
+			delete(data.secondaryIndexStorage, indexName(idxName))
 			return nil
 		}
 	}

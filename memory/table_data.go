@@ -51,15 +51,14 @@ type TableData struct {
 
 	// Indexes are implemented as an unordered slice of rows. The first N elements in the row are the values of the
 	// indexed columns, and the final value is the location of the row in the primary storage.
-	// We could make these index lookups performant by keeping the rows sorted. That also requires sorting primary row
-	// storage during edits, rather than applying edits and sorting after the fact. Using a tree or other ordered
-	// collection would probably be less work and work better at that point.
-	indexStorage map[indexName][]sql.Row
+	// TODO: we could make these much more performant by using a tree or other ordered collection
+	secondaryIndexStorage map[indexName][]sql.Row
 }
 
 type indexName string
 
-// primaryRowLocation is a special marker element in index storage rows containing the partition and index of the row in the primary storage.
+// primaryRowLocation is a special marker element in index storage rows containing the partition and index of the row 
+// in the primary storage.
 type primaryRowLocation struct {
 	partition string
 	idx       int
@@ -93,13 +92,13 @@ func (td TableData) copy() *TableData {
 		copy(keys[i], td.partitionKeys[i])
 	}
 
-	idxStorage := make(map[indexName][]sql.Row, len(td.indexStorage))
-	for k, v := range td.indexStorage {
+	idxStorage := make(map[indexName][]sql.Row, len(td.secondaryIndexStorage))
+	for k, v := range td.secondaryIndexStorage {
 		data := make([]sql.Row, len(v))
 		copy(data, v)
 		idxStorage[k] = data
 	}
-	td.indexStorage = idxStorage
+	td.secondaryIndexStorage = idxStorage
 
 	td.partitionKeys, td.partitions = keys, parts
 
@@ -169,7 +168,7 @@ func (td *TableData) truncate(schema sql.PrimaryKeySchema) *TableData {
 	td.schema = schema
 
 	td.indexes = rewriteIndexes(td.indexes, schema)
-	td.indexStorage = make(map[indexName][]sql.Row)
+	td.secondaryIndexStorage = make(map[indexName][]sql.Row)
 
 	td.autoIncVal = 0
 	if schema.HasAutoIncrement() {
@@ -371,14 +370,14 @@ func (td *TableData) sortRows() {
 		pk:      pk,
 		ps:      td.partitions,
 		allRows: flattenedRows,
-		indexes: td.indexStorage,
+		indexes: td.secondaryIndexStorage,
 	})
 
 	td.sortSecondaryIndexes()
 }
 
 func (td *TableData) sortSecondaryIndexes() {
-	for idxName, idxStorage := range td.indexStorage {
+	for idxName, idxStorage := range td.secondaryIndexStorage {
 		idx := td.indexes[string(idxName)].(*Index)
 		fieldIndexes := idx.columnIndexes(td.schema.Schema)
 		types := make([]sql.Type, len(fieldIndexes))

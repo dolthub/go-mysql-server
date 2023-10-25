@@ -147,6 +147,7 @@ func (idx *Index) rowToIndexStorage(row sql.Row, partitionName string, rowIdx in
 			return nil, err
 		}
 	}
+	// The final element of the row is the location of the row in the primary table storage slice.
 	newRow[len(exprs)] = primaryRowLocation{
 		partition: partitionName,
 		idx:       rowIdx,
