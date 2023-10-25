@@ -2804,6 +2804,7 @@ var MytableData = []SetupScript{{
 	`create unique index mytable_s on mytable (s)`,
 	`create index mytable_i_s on mytable (i,s)`,
 	"create index `idx_si` on mytable (`s`,`i`)",
+	`create view myview as SELECT * FROM mytable`,
 }}
 
 var Mytable_del_idxData = []SetupScript{{

@@ -79,7 +79,7 @@ var AnsiQuotesTests = []ScriptTest{
 			},
 			{
 				Query:    `show tables;`,
-				Expected: []sql.Row{{"auctions"}, {"myview"}},
+				Expected: []sql.Row{{"auctions"}},
 			},
 		},
 	},
@@ -127,7 +127,7 @@ var AnsiQuotesTests = []ScriptTest{
 			},
 			{
 				Query:    `show tables;`,
-				Expected: []sql.Row{{"myview"}, {"public_keys"}, {"view1"}},
+				Expected: []sql.Row{{"public_keys"}, {"view1"}},
 			},
 			{
 				Query:    `show create table view1;`,

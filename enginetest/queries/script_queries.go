@@ -3587,7 +3587,7 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "show tables;",
-				Expected: []sql.Row{{"myview"}, {"t1"}, {"v1"}},
+				Expected: []sql.Row{{"t1"}, {"v1"}},
 			},
 			{
 				Query:    "rename table v1 to view1",
@@ -3595,7 +3595,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "show tables;",
-				Expected: []sql.Row{{"myview"}, {"t1"}, {"view1"}},
+				Expected: []sql.Row{{"t1"}, {"view1"}},
 			},
 			{
 				Query:    "rename table view1 to newViewName, t1 to newTableName",
@@ -3603,7 +3603,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "show tables;",
-				Expected: []sql.Row{{"myview"}, {"newTableName"}, {"newViewName"}},
+				Expected: []sql.Row{{"newTableName"}, {"newViewName"}},
 			},
 		},
 	},
@@ -3616,7 +3616,7 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "show tables;",
-				Expected: []sql.Row{{"myview"}, {"t1"}, {"v1"}},
+				Expected: []sql.Row{{"t1"}, {"v1"}},
 			},
 			{
 				Query:       "alter table v1 rename to view1",
@@ -3624,7 +3624,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "show tables;",
-				Expected: []sql.Row{{"myview"}, {"t1"}, {"v1"}},
+				Expected: []sql.Row{{"t1"}, {"v1"}},
 			},
 		},
 	},

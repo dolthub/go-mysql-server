@@ -53,7 +53,7 @@ var JoinPlanningTests = []struct {
 			{
 				q:     "select count(t.*) from information_schema.columns c join information_schema.tables t on `t`.`TABLE_NAME` = `c`.`TABLE_NAME`",
 				types: []plan.JoinType{plan.JoinTypeHash},
-				exp:   []sql.Row{{735}},
+				exp:   []sql.Row{{734}},
 			},
 		},
 	},

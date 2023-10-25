@@ -682,9 +682,7 @@ func TestTriggerViewWarning(t *testing.T) {
 	// Check that users in this state can still write to
 	// regular table.
 	harness := enginetest.NewDefaultMemoryHarness()
-	harness.Setup(setup.MydbData, setup.MytableData, []setup.SetupScript{{
-		"create view myview as select * from mytable",
-	}})
+	harness.Setup(setup.MydbData, setup.MytableData)
 	e, err := harness.NewEngine(t)
 	assert.NoError(t, err)
 
