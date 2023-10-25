@@ -8303,6 +8303,54 @@ ORDER BY 1;`,
 			{3},
 		},
 	},
+	{
+		Query: `
+select * from mytable,
+	lateral (
+	with recursive cte(a) as (
+		select y from xy
+		union
+		select x from cte
+		join
+		xy
+		on x = a
+		)
+	select * from cte
+) sqa 
+where i = a
+order by i;`,
+		Expected: []sql.Row{
+			{1, "first row", 1},
+			{2, "second row", 2},
+			{3, "third row", 3},
+		},
+	},
+	{
+		Query: `
+select * from mytable,
+	lateral (
+	with recursive cte(a) as (
+		select y from xy
+		union
+		select x from cte
+		join
+		(
+			select * 
+			from xy
+			where x = 1
+		 ) sqa1
+		on x = a
+		limit 3
+		)
+	select * from cte
+) sqa2
+where i = a
+order by i;`,
+		Expected: []sql.Row{
+			{1, "first row", 1},
+			{2, "second row", 2},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
