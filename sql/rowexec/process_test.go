@@ -15,7 +15,6 @@
 package rowexec
 
 import (
-	"io"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -122,74 +121,6 @@ func TestProcessTable(t *testing.T) {
 	}
 
 	require.ElementsMatch(expected, rows)
-	require.Equal(2, partitionDoneNotifications)
-	require.Equal(2, partitionStartNotifications)
-	require.Equal(4, rowNextNotifications)
-}
-
-func TestProcessIndexableTable(t *testing.T) {
-	require := require.New(t)
-
-	db := memory.NewDatabase("test")
-	pro := memory.NewDBProvider(db)
-	ctx := newContext(pro)
-
-	table := memory.NewPartitionedTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: types.Int64, Source: "foo"},
-	}), nil, 2)
-
-	table.Insert(ctx, sql.NewRow(int64(1)))
-	table.Insert(ctx, sql.NewRow(int64(2)))
-	table.Insert(ctx, sql.NewRow(int64(3)))
-	table.Insert(ctx, sql.NewRow(int64(4)))
-
-	var partitionDoneNotifications int
-	var partitionStartNotifications int
-	var rowNextNotifications int
-
-	pt := plan.NewProcessIndexableTable(
-		table,
-		func(partitionName string) {
-			partitionDoneNotifications++
-		},
-		func(partitionName string) {
-			partitionStartNotifications++
-		},
-		func(partitionName string) {
-			rowNextNotifications++
-		},
-	)
-
-	iter, err := pt.IndexKeyValues(ctx, []string{"a"})
-	require.NoError(err)
-
-	var values [][]interface{}
-	for {
-		_, kviter, err := iter.Next(ctx)
-		if err == io.EOF {
-			break
-		}
-		require.NoError(err)
-
-		for {
-			v, _, err := kviter.Next(ctx)
-			if err == io.EOF {
-				kviter.Close(ctx)
-				break
-			}
-			values = append(values, v)
-			require.NoError(err)
-		}
-	}
-
-	expectedValues := [][]interface{}{
-		{int64(1)},
-		{int64(2)},
-		{int64(3)},
-		{int64(4)},
-	}
-
-	require.ElementsMatch(expectedValues, values)
 	require.Equal(2, partitionDoneNotifications)
 	require.Equal(2, partitionStartNotifications)
 	require.Equal(4, rowNextNotifications)

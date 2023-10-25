@@ -423,8 +423,6 @@ func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, io.EOF
 	}
 
-	// ctx.GetLogger().Warnf("query is %s, index rows are %v", ctx.Query(), i.indexRows)
-
 	var row sql.Row
 	for ; i.i < len(i.indexRows) && i.i >= 0; i.incrementFunc() {
 		idxRow := i.indexRows[i.i]
@@ -439,7 +437,6 @@ func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 		candidate := i.primaryRows[rowLoc.partition][rowLoc.idx]
 
-		// ctx.GetLogger().Warnf("Found row %v", candidate)
 		matches, err := indexRowMatches(i.ranges, idxRow[:len(idxRow)-1])
 		if err != nil {
 			return nil, err
@@ -455,9 +452,7 @@ func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if row == nil {
 		return nil, io.EOF
 	}
-
-	ctx.GetLogger().Warnf("Returning row %v", row)
-
+	
 	row = normalizeRowForRead(row, i.numColumns, i.virtualCols)
 
 	return projectRow(i.columns, row), nil
@@ -643,8 +638,6 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return i.Next(ctx)
 		}
 	}
-
-	ctx.GetLogger().Warnf("table scan row: %v", row)
 
 	return projectRow(i.columns, row), nil
 }
