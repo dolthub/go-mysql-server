@@ -23,10 +23,17 @@ table PrivilegeSetTable {
     columns:[PrivilegeSetColumn];
 }
 
+table PrivilegeSetRoutine {
+    name:string;
+    privs:[int];
+    is_proc:bool;
+}
+
 table PrivilegeSetDatabase {
     name:string;
     privs:[int];
     tables:[PrivilegeSetTable];
+    routines:[PrivilegeSetRoutine];
 }
 
 table PrivilegeSet {

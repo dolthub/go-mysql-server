@@ -859,6 +859,70 @@ var UserPrivTests = []UserPrivilegeTest{
 		},
 	},
 	{
+		Name: "GRANT Procedure and function privileges reflect in mysql.procs_priv",
+		SetUpScript: []string{
+			"CREATE USER tester1@localhost;",
+			"CREATE USER tester2@localhost;",
+			"GRANT EXECUTE ON PROCEDURE mydb.proc1 TO tester1@localhost;",
+			"GRANT GRANT OPTION ON PROCEDURE mydb.proc1 TO tester1@localhost;",
+			"GRANT ALTER ROUTINE ON FUNCTION mydb.func1 TO tester1@localhost;",
+			"GRANT GRANT OPTION ON FUNCTION mydb.func1 TO tester2@localhost;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT proc_priv from mysql.procs_priv WHERE Routine_type = 'PROCEDURE' AND User = 'tester1'",
+				Expected: []sql.Row{{"Grant,Execute"}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT proc_priv from mysql.procs_priv WHERE Routine_type = 'FUNCTION' AND User = 'tester1'",
+				Expected: []sql.Row{{"Alter Routine"}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT proc_priv from mysql.procs_priv WHERE Routine_type = 'FUNCTION' AND User = 'tester2'",
+				Expected: []sql.Row{{"Grant"}},
+			},
+		},
+	},
+	{
+		Name: "GRANT Procedure and function privileges reflect in mysql.procs_priv",
+		SetUpScript: []string{
+			"CREATE USER tester1@localhost;",
+			"CREATE USER tester2@localhost;",
+			"GRANT EXECUTE ON PROCEDURE mydb.proc1 TO tester1@localhost;",
+			"GRANT GRANT OPTION ON PROCEDURE mydb.proc1 TO tester1@localhost;",
+			"GRANT ALTER ROUTINE ON FUNCTION mydb.func1 TO tester1@localhost;",
+			"GRANT GRANT OPTION ON FUNCTION mydb.func1 TO tester2@localhost;",
+			"REVOKE EXECUTE ON PROCEDURE mydb.proc1 FROM tester1@localhost;",
+			"REVOKE ALTER ROUTINE ON FUNCTION mydb.func1 FROM tester1@localhost;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT proc_priv from mysql.procs_priv WHERE Routine_type = 'PROCEDURE' AND User = 'tester1'",
+				Expected: []sql.Row{{"Grant"}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT proc_priv from mysql.procs_priv WHERE Routine_type = 'FUNCTION' AND User = 'tester1'",
+				Expected: []sql.Row{},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT proc_priv from mysql.procs_priv WHERE Routine_type = 'FUNCTION' AND User = 'tester2'",
+				Expected: []sql.Row{{"Grant"}},
+			},
+		},
+	},
+	{
 		Name: "Basic revoke SELECT privilege",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT PRIMARY KEY);",

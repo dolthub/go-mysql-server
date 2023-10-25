@@ -34,16 +34,6 @@ var _ sql.Node = (*ShowGrants)(nil)
 var _ sql.Databaser = (*ShowGrants)(nil)
 var _ sql.CollationCoercible = (*ShowGrants)(nil)
 
-// NewShowGrants returns a new ShowGrants node.
-func NewShowGrants(currentUser bool, targetUser *UserName, using []UserName) *ShowGrants {
-	return &ShowGrants{
-		CurrentUser: currentUser,
-		For:         targetUser,
-		Using:       using,
-		MySQLDb:     sql.UnresolvedDatabase("mysql"),
-	}
-}
-
 // Schema implements the interface sql.Node.
 func (n *ShowGrants) Schema() sql.Schema {
 	user := n.For

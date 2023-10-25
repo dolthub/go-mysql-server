@@ -68,11 +68,11 @@ type MySQLDb struct {
 
 	db            *in_mem_table.MultiIndexedSetTable[*User]
 	tables_priv   *in_mem_table.MultiIndexedSetTable[*User]
+	procs_priv    *in_mem_table.MultiIndexedSetTable[*User]
 	global_grants *in_mem_table.MultiIndexedSetTable[*User]
 
 	//TODO: add the rest of these tables
 	//columns_priv     *mysqlTable
-	//procs_priv       *mysqlTable
 	//proxies_priv     *mysqlTable
 	//default_roles    *mysqlTable
 	//password_history *mysqlTable
@@ -120,6 +120,7 @@ func CreateEmptyMySQLDb() *MySQLDb {
 	// multi tables
 	mysqlDb.db = NewUserDBIndexedSetTable(userSet, lock, rlock)
 	mysqlDb.tables_priv = NewUserTablesIndexedSetTable(userSet, lock, rlock)
+	mysqlDb.procs_priv = NewUserProcsIndexedSetTable(userSet, lock, rlock)
 	mysqlDb.global_grants = NewUserGlobalGrantsIndexedSetTable(userSet, lock, rlock)
 
 	// Start the counter at 1, all new sessions will start at zero so this forces an update for any new session
@@ -673,6 +674,8 @@ func (db *MySQLDb) GetTableInsensitive(_ *sql.Context, tblName string) (sql.Tabl
 		return db.db, true, nil
 	case tablesPrivTblName:
 		return db.tables_priv, true, nil
+	case procsPrivTblName:
+		return db.procs_priv, true, nil
 	case replicaSourceInfoTblName:
 		return db.replica_source_info, true, nil
 	case helpTopicTableName:
@@ -694,6 +697,7 @@ func (db *MySQLDb) GetTableNames(ctx *sql.Context) ([]string, error) {
 		userTblName,
 		dbTblName,
 		tablesPrivTblName,
+		procsPrivTblName,
 		roleEdgesTblName,
 		replicaSourceInfoTblName,
 		helpTopicTableName,
