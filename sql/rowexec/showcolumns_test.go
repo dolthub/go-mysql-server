@@ -69,32 +69,35 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 		{Name: "d", Source: "foo", Type: types.Int64, Nullable: true},
 		{Name: "e", Source: "foo", Type: types.Int64, Default: planbuilder.MustStringToColumnDefaultValue(ctx, "1", types.Int64, false)},
 	}
-	table := NewResolvedTable(memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(schema), nil), nil, nil)
+	memTable := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(schema), nil)
+	table := NewResolvedTable(memTable, nil, nil)
 
 	showColumns, err := NewShowColumns(false, table).WithTargetSchema(schema)
 	require.NoError(err)
 
 	// Assign indexes. This mimics what happens during analysis
 	showColumns.(*ShowColumns).Indexes = []sql.Index{
-		&mockIndex{
-			db:    "mydb",
-			table: "foo",
-			id:    "a",
-			exprs: []sql.Expression{
+		&memory.Index{
+			DB:    "mydb",
+			TableName: "foo",
+			Tbl: memTable,
+			Name:    "a",
+			Exprs: []sql.Expression{
 				expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "b", true),
 				expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "c", true),
 			},
-			unique: true,
+			Unique: true,
 		},
-		&mockIndex{
-			db:    "mydb",
-			table: "foo",
-			id:    "b",
-			exprs: []sql.Expression{
+		&memory.Index{
+			DB:    "mydb",
+			TableName: "foo",
+			Tbl: memTable,
+			Name:    "b",
+			Exprs: []sql.Expression{
 				expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "d", true),
 				expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "e", true),
 			},
-			unique: false,
+			Unique: false,
 		},
 	}
 
@@ -116,25 +119,27 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 
 	// Test the precedence of key type. PRI > UNI > MUL
 	showColumns.(*ShowColumns).Indexes = append(showColumns.(*ShowColumns).Indexes,
-		&mockIndex{
-			db:    "mydb",
-			table: "foo",
-			id:    "c",
-			exprs: []sql.Expression{
+		&memory.Index{
+			DB:    "mydb",
+			TableName: "foo",
+			Tbl: memTable,
+			Name:    "c",
+			Exprs: []sql.Expression{
 				expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "a", true),
 				expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "b", true),
 			},
-			unique: true,
+			Unique: true,
 		},
-		&mockIndex{
-			db:    "mydb",
-			table: "foo",
-			id:    "d",
-			exprs: []sql.Expression{
+		&memory.Index{
+			DB:    "mydb",
+			TableName: "foo",
+			Tbl: memTable,
+			Name:    "d",
+			Exprs: []sql.Expression{
 				expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "b", true),
 				expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "d", true),
 			},
-			unique: false,
+			Unique: false,
 		},
 	)
 
