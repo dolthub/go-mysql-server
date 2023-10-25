@@ -90,13 +90,15 @@ func (n *Grant) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (n *Grant) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	subject := sql.PrivilegeCheckSubject{Database: "mysql"}
 	if opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation("mysql", "", "", sql.PrivilegeType_Update)) {
+		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Update)) {
 		return true
 	}
+
 	if n.PrivilegeLevel.Database == "*" && n.PrivilegeLevel.TableRoutine == "*" {
 		if n.Privileges[0].Type == PrivilegeType_All {
-			return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation("", "", "",
+			return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{},
 				sql.PrivilegeType_Select,
 				sql.PrivilegeType_Insert,
 				sql.PrivilegeType_Update,
@@ -130,15 +132,16 @@ func (n *Grant) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperat
 				sql.PrivilegeType_GrantOption,
 			))
 		}
-		return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation("", "", "",
+		return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{},
 			convertToSqlPrivilegeType(true, n.Privileges...)...))
 	} else if n.PrivilegeLevel.Database != "*" && n.PrivilegeLevel.TableRoutine == "*" {
 		database := n.PrivilegeLevel.Database
 		if database == "" {
 			database = ctx.GetCurrentDatabase()
 		}
+		subject := sql.PrivilegeCheckSubject{Database: database}
 		if n.Privileges[0].Type == PrivilegeType_All {
-			return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(database, "", "",
+			return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject,
 				sql.PrivilegeType_Alter,
 				sql.PrivilegeType_AlterRoutine,
 				sql.PrivilegeType_Create,
@@ -160,13 +163,17 @@ func (n *Grant) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperat
 				sql.PrivilegeType_GrantOption,
 			))
 		}
-		return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(database, "", "",
+		return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject,
 			convertToSqlPrivilegeType(true, n.Privileges...)...))
 	} else {
 		//TODO: add column checks
+		subject = sql.PrivilegeCheckSubject{
+			Database: n.PrivilegeLevel.Database,
+			Table:    n.PrivilegeLevel.TableRoutine,
+		}
 		if n.Privileges[0].Type == PrivilegeType_All {
 			return opChecker.UserHasPrivileges(ctx,
-				sql.NewPrivilegedOperation(n.PrivilegeLevel.Database, n.PrivilegeLevel.TableRoutine, "",
+				sql.NewPrivilegedOperation(subject,
 					sql.PrivilegeType_Alter,
 					sql.PrivilegeType_Create,
 					sql.PrivilegeType_CreateView,
@@ -183,8 +190,7 @@ func (n *Grant) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperat
 				))
 		}
 		return opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation(n.PrivilegeLevel.Database, n.PrivilegeLevel.TableRoutine, "",
-				convertToSqlPrivilegeType(true, n.Privileges...)...))
+			sql.NewPrivilegedOperation(subject, convertToSqlPrivilegeType(true, n.Privileges...)...))
 	}
 }
 
@@ -486,6 +492,22 @@ func (n *Grant) HandleTablePrivileges(user *mysql_db.User, dbName string, tblNam
 	return nil
 }
 
+func (n *Grant) HandleRoutinePrivileges(user *mysql_db.User, dbName string, routineName string, isProcedureType bool) error {
+	for _, priv := range n.Privileges {
+		switch priv.Type {
+		case PrivilegeType_Execute:
+			user.PrivilegeSet.AddRoutine(dbName, routineName, isProcedureType, sql.PrivilegeType_Execute)
+		case PrivilegeType_AlterRoutine:
+			user.PrivilegeSet.AddRoutine(dbName, routineName, isProcedureType, sql.PrivilegeType_AlterRoutine)
+		case PrivilegeType_GrantOption:
+			user.PrivilegeSet.AddRoutine(dbName, routineName, isProcedureType, sql.PrivilegeType_GrantOption)
+		default:
+			return sql.ErrGrantRevokeIllegalPrivilege.New()
+		}
+	}
+	return nil
+}
+
 // GrantRole represents the statement GRANT [role...] TO [user...].
 type GrantRole struct {
 	Roles           []UserName
@@ -564,7 +586,7 @@ func (n *GrantRole) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (n *GrantRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	if opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Super)) {
+		sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_Super)) {
 		return true
 	}
 	//TODO: only active roles may be assigned if the SUPER privilege is not held

@@ -98,10 +98,9 @@ func (n *CreateRole) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (n *CreateRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	// Both CREATE ROLE and CREATE USER are valid privileges, so we use an OR
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_CreateRole)) ||
-		opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_CreateUser))
+	subject := sql.PrivilegeCheckSubject{}
+	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_CreateRole)) ||
+		opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_CreateUser))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

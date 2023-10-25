@@ -193,8 +193,12 @@ func (p AlterIndex) WithExpressions(expressions ...sql.Expression) (sql.Node, er
 
 // CheckPrivileges implements the interface sql.Node.
 func (p *AlterIndex) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	subject := sql.PrivilegeCheckSubject{
+		Database: CheckPrivilegeNameForDatabase(p.ddlNode.Database()),
+		Table:    getTableName(p.Table),
+	}
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(p.ddlNode.Database()), getTableName(p.Table), "", sql.PrivilegeType_Index))
+		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Index))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

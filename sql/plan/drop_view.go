@@ -85,8 +85,11 @@ func (dv *SingleDropView) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (dv *SingleDropView) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	subject := sql.PrivilegeCheckSubject{
+		Database: dv.database.Name(),
+	}
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(dv.database.Name(), "", "", sql.PrivilegeType_Drop))
+		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Drop))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

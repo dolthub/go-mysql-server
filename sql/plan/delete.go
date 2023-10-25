@@ -124,9 +124,11 @@ func (p *DeleteFrom) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 			return false
 		}
 
-		db := GetDatabase(target)
-		checkName := CheckPrivilegeNameForDatabase(db)
-		op := sql.NewPrivilegedOperation(checkName, deletable.Name(), "", sql.PrivilegeType_Delete)
+		subject := sql.PrivilegeCheckSubject{
+			Database: CheckPrivilegeNameForDatabase(GetDatabase(target)),
+			Table:    deletable.Name(),
+		}
+		op := sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Delete)
 		if opChecker.UserHasPrivileges(ctx, op) == false {
 			return false
 		}

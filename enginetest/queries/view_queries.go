@@ -21,6 +21,24 @@ import (
 
 var ViewScripts = []ScriptTest{
 	{
+		Name: "view with expression name",
+		SetUpScript: []string{
+			`create view v as select 2+2`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * from v;",
+				Expected: []sql.Row{{4}},
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "2+2",
+						Type: types.Int64,
+					},
+				},
+			},
+		},
+	},
+	{
 		Name: "view with column names",
 		SetUpScript: []string{
 			`CREATE TABLE xy (x int primary key, y int);`,

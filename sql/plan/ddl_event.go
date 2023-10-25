@@ -126,8 +126,10 @@ func (c *CreateEvent) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (c *CreateEvent) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(c.Db.Name(), "", "", sql.PrivilegeType_Event))
+	subject := sql.PrivilegeCheckSubject{
+		Database: c.Db.Name(),
+	}
+	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Event))
 }
 
 // Database implements the sql.Databaser interface.
@@ -652,8 +654,10 @@ func (d *DropEvent) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (d *DropEvent) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(d.Db.Name(), "", "", sql.PrivilegeType_Event))
+	subject := sql.PrivilegeCheckSubject{
+		Database: d.Db.Name(),
+	}
+	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Event))
 }
 
 // WithDatabase implements the sql.Databaser interface.
