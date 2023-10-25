@@ -1895,9 +1895,13 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 			return err
 		}
 
-		// TODO: remove this in favor of the above, but it's still used by Dolt
+		// TODO: don't rewrite the entire table, just rewrite the index we're adding
 		rwt, isRewritable := indexable.(sql.RewritableTable)
 		if !isRewritable {
+			return nil
+		}
+
+		if !indexCreateRequiresBuild(n) {
 			return nil
 		}
 

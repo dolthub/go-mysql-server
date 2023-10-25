@@ -785,6 +785,31 @@ var AlterTableScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Prefix index with same columns as another index",
+		SetUpScript: []string{
+			"CREATE table t (pk int primary key, col1 varchar(100));",
+			"INSERT into t values (1, '100'), (2, '200');",
+			"alter table t add unique index idx1 (col1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       			"alter table t add index idx2 (col1(10));",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table t",
+				Expected: []sql.Row{{"t",
+					"CREATE TABLE `t` (\n" +
+							"  `pk` int NOT NULL,\n" +
+							"  `col1` varchar(100),\n" +
+							"  PRIMARY KEY (`pk`),\n" +
+							"  UNIQUE KEY `idx1` (`col1`),\n" +
+							"  KEY `idx2` (`col1`(10))\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
 }
 
 var AlterTableAddAutoIncrementScripts = []ScriptTest{
