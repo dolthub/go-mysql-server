@@ -105,8 +105,11 @@ func (t *LockTables) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (t *LockTables) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	operations := make([]sql.PrivilegedOperation, len(t.Locks))
 	for i, tableLock := range t.Locks {
-		operations[i] = sql.NewPrivilegedOperation(GetDatabaseName(tableLock.Table),
-			getTableName(tableLock.Table), "", sql.PrivilegeType_Select, sql.PrivilegeType_LockTables)
+		subject := sql.PrivilegeCheckSubject{
+			Database: GetDatabaseName(tableLock.Table),
+			Table:    getTableName(tableLock.Table),
+		}
+		operations[i] = sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Select, sql.PrivilegeType_LockTables)
 	}
 	return opChecker.UserHasPrivileges(ctx, operations...)
 }

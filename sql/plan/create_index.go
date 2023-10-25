@@ -139,9 +139,13 @@ func (c *CreateIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (c *CreateIndex) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	db := GetDatabase(c.Table)
+	subject := sql.PrivilegeCheckSubject{
+		Database: CheckPrivilegeNameForDatabase(GetDatabase(c.Table)),
+		Table:    getTableName(c.Table),
+	}
+
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(db), getTableName(c.Table), "", sql.PrivilegeType_Index))
+		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Index))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

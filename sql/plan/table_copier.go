@@ -143,8 +143,8 @@ func (tc *TableCopier) WithChildren(...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (tc *TableCopier) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	//TODO: add a new branch when the INSERT optimization is added
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(tc.db.Name(), "", "", sql.PrivilegeType_Create)) &&
+	subject := sql.PrivilegeCheckSubject{Database: tc.db.Name()}
+	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Create)) &&
 		tc.Source.CheckPrivileges(ctx, opChecker)
 }
 

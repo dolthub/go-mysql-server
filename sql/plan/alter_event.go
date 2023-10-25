@@ -216,12 +216,12 @@ func (a *AlterEvent) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the sql.Node interface.
 func (a *AlterEvent) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	hasPriv := opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(a.Db.Name(), "", "", sql.PrivilegeType_Event))
+	subject := sql.PrivilegeCheckSubject{Database: a.Db.Name()}
+	hasPriv := opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Event))
 
 	if a.AlterName && a.RenameToDb != "" {
-		hasPriv = hasPriv && opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation(a.RenameToDb, "", "", sql.PrivilegeType_Event))
+		subject = sql.PrivilegeCheckSubject{Database: a.RenameToDb}
+		hasPriv = hasPriv && opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Event))
 	}
 	return hasPriv
 }

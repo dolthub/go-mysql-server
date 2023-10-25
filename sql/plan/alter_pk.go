@@ -146,8 +146,13 @@ func (a AlterPK) WithDatabase(database sql.Database) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (a *AlterPK) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	subject := sql.PrivilegeCheckSubject{
+		Database: a.Database().Name(),
+		Table:    getTableName(a.Table),
+	}
+
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(a.Database().Name(), getTableName(a.Table), "", sql.PrivilegeType_Alter))
+		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Alter))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

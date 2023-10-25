@@ -196,11 +196,12 @@ func (t *ResolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileg
 		return true
 	}
 
-	db := t.SqlDatabase
-	checkDbName := CheckPrivilegeNameForDatabase(db)
-
+	subject := sql.PrivilegeCheckSubject{
+		Database: CheckPrivilegeNameForDatabase(t.SqlDatabase),
+		Table:    t.Table.Name(),
+	}
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(checkDbName, t.Table.Name(), "", sql.PrivilegeType_Select))
+		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Select))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
