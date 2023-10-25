@@ -286,10 +286,12 @@ type indexScanPartitionIter struct {
 	once   sync.Once
 	index  *Index
 	ranges sql.Expression
+	lookup sql.IndexLookup
 }
 
 type indexScanPartition struct {
 	index  *Index
+	lookup sql.IndexLookup
 	ranges sql.Expression
 }
 
@@ -309,6 +311,7 @@ func (i *indexScanPartitionIter) Next(ctx *sql.Context) (sql.Partition, error) {
 	i.once.Do(func() {
 		part, err = indexScanPartition{
 			index:  i.index,
+			lookup: i.lookup,
 			ranges: i.ranges,
 		}, nil
 	})
@@ -364,7 +367,9 @@ func (t *Table) PartitionCount(ctx *sql.Context) (int64, error) {
 
 type indexScanRowIter struct {
 	i           int
+	incrementFunc func()
 	index       *Index
+	lookup      sql.IndexLookup
 	ranges      sql.Expression
 	primaryRows map[string][]sql.Row
 	indexRows   []sql.Row
@@ -374,15 +379,56 @@ type indexScanRowIter struct {
 	virtualCols []int
 }
 
+func newIndexScanRowIter(
+		index *Index,
+		lookup sql.IndexLookup,
+		ranges sql.Expression,
+		primaryRows map[string][]sql.Row,
+		indexRows []sql.Row,
+		columns []int,
+		numColumns int,
+		virtualCols []int,
+) *indexScanRowIter {
+	
+	i := 0
+	if lookup.IsReverse {
+		i = len(indexRows) - 1
+	}
+
+	iter := &indexScanRowIter{
+		i:           i,
+		index:       index,
+		lookup:      lookup,
+		ranges:      ranges,
+		primaryRows: primaryRows,
+		indexRows:   indexRows,
+		columns:     columns,
+		numColumns:  numColumns,
+		virtualCols: virtualCols,
+	}
+	
+	if lookup.IsReverse {
+		iter.incrementFunc = func() {
+			iter.i--
+		}
+	} else {
+		iter.incrementFunc = func() {
+			iter.i++
+		}
+	}
+	
+	return iter
+}
+
 func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if i.i >= len(i.indexRows) {
+	if i.i >= len(i.indexRows) || i.i < 0 {
 		return nil, io.EOF
 	}
 
-	ctx.GetLogger().Warnf("query is %s, index rows are %v", ctx.Query(), i.indexRows)
+	// ctx.GetLogger().Warnf("query is %s, index rows are %v", ctx.Query(), i.indexRows)
 
 	var row sql.Row
-	for ; i.i < len(i.indexRows); i.i++ {
+	for ; i.i < len(i.indexRows) && i.i >= 0; i.incrementFunc() {
 		idxRow := i.indexRows[i.i]
 		rowLoc := idxRow[len(idxRow)-1].(primaryRowLocation)
 		// this is a bit of a hack: during self-referential foreign key delete cascades, the index storage rows don't get
@@ -403,7 +449,7 @@ func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 		if matches {
 			row = candidate
-			i.i++
+			i.incrementFunc()
 			break
 		}
 	}
@@ -442,15 +488,16 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 			numColumns = len(t.columns)
 		}
 
-		return &indexScanRowIter{
-			index:       isp.index,
-			ranges:      isp.ranges,
-			primaryRows: data.partitions,
-			indexRows:   data.indexStorage[indexName(isp.index.Name)],
-			columns:     t.columns,
-			numColumns:  numColumns,
-			virtualCols: data.virtualColIndexes(),
-		}, nil
+		return newIndexScanRowIter(
+			isp.index,
+			isp.lookup,
+			isp.ranges,
+			data.partitions,
+			data.indexStorage[indexName(isp.index.Name)],
+			t.columns,
+			numColumns,
+			data.virtualColIndexes(),
+		), nil
 	}
 
 	filters := t.filters
@@ -1483,6 +1530,7 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 
 	return &indexScanPartitionIter{
 		index:  memIdx,
+		lookup: lookup,
 		ranges: indexFilter,
 	}, nil
 }
