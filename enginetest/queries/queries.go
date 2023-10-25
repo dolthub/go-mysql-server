@@ -8346,11 +8346,11 @@ select * from mytable,
 ) sqa2
 where i = a
 order by i;`,
-    		Expected: []sql.Row{
-    			{1, "first row", 1},
-    			{2, "second row", 2},
-    		},
-    	},
+		Expected: []sql.Row{
+			{1, "first row", 1},
+			{2, "second row", 2},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{

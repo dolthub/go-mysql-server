@@ -10579,7 +10579,7 @@ select * from mytable,
 ) sqa2
 where i = a
 order by i;`,
-    		ExpectedPlan: "Sort(mytable.i:0!null ASC nullsFirst)\n" +
+		ExpectedPlan: "Sort(mytable.i:0!null ASC nullsFirst)\n" +
 			" └─ Filter\n" +
 			"     ├─ Eq\n" +
 			"     │   ├─ mytable.i:0!null\n" +
@@ -10627,5 +10627,5 @@ order by i;`,
 			"                                     ├─ right-key: TUPLE(cte.a:2)\n" +
 			"                                     └─ RecursiveTable(cte)\n" +
 			"",
-    	},
+	},
 }
