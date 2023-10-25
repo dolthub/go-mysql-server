@@ -10560,33 +10560,37 @@ order by i;`,
 	},
 	{
 		Query: `
-    select * from mytable,
-    	lateral (
-    	with recursive cte(a) as (
-    		select y from xy
-    		union
-    		select x from cte
-    		join
-    		xy
-    		on x = a
-    		limit 3
-    		)
-    	select * from cte
-    ) sqa 
-    where i = a
-    order by i;`,
-		ExpectedPlan: "Sort(mytable.i:0!null ASC nullsFirst)\n" +
+select * from mytable,
+	lateral (
+	with recursive cte(a) as (
+		select y from xy
+		union
+		select x from cte
+		join
+		(
+			select * 
+			from xy
+			where x = 1
+		 ) sqa1
+		on x = a
+		limit 3
+		)
+	select * from cte
+) sqa2
+where i = a
+order by i;`,
+    		ExpectedPlan: "Sort(mytable.i:0!null ASC nullsFirst)\n" +
 			" └─ Filter\n" +
 			"     ├─ Eq\n" +
 			"     │   ├─ mytable.i:0!null\n" +
-			"     │   └─ sqa.a:2\n" +
+			"     │   └─ sqa2.a:2\n" +
 			"     └─ LateralCrossJoin\n" +
 			"         ├─ ProcessTable\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: mytable\n" +
 			"         │       └─ columns: [i s]\n" +
 			"         └─ SubqueryAlias\n" +
-			"             ├─ name: sqa\n" +
+			"             ├─ name: sqa2\n" +
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ isLateral: true\n" +
 			"             ├─ cacheable: true\n" +
@@ -10602,15 +10606,26 @@ order by i;`,
 			"                         │   ├─ name: xy\n" +
 			"                         │   └─ columns: [y]\n" +
 			"                         └─ Project\n" +
-			"                             ├─ columns: [xy.x:3!null]\n" +
-			"                             └─ LookupJoin\n" +
-			"                                 ├─ RecursiveTable(cte)\n" +
-			"                                 └─ IndexedTableAccess(xy)\n" +
-			"                                     ├─ index: [xy.x]\n" +
-			"                                     ├─ keys: [cte.a]\n" +
-			"                                     └─ Table\n" +
-			"                                         ├─ name: xy\n" +
-			"                                         └─ columns: [x]\n" +
+			"                             ├─ columns: [sqa1.x:2!null]\n" +
+			"                             └─ HashJoin\n" +
+			"                                 ├─ Eq\n" +
+			"                                 │   ├─ sqa1.x:2!null\n" +
+			"                                 │   └─ cte.a:4\n" +
+			"                                 ├─ SubqueryAlias\n" +
+			"                                 │   ├─ name: sqa1\n" +
+			"                                 │   ├─ outerVisibility: false\n" +
+			"                                 │   ├─ isLateral: true\n" +
+			"                                 │   ├─ cacheable: true\n" +
+			"                                 │   └─ IndexedTableAccess(xy)\n" +
+			"                                 │       ├─ index: [xy.x]\n" +
+			"                                 │       ├─ static: [{[1, 1]}]\n" +
+			"                                 │       └─ Table\n" +
+			"                                 │           ├─ name: xy\n" +
+			"                                 │           └─ columns: [x y]\n" +
+			"                                 └─ HashLookup\n" +
+			"                                     ├─ left-key: TUPLE(sqa1.x:2!null)\n" +
+			"                                     ├─ right-key: TUPLE(cte.a:2)\n" +
+			"                                     └─ RecursiveTable(cte)\n" +
 			"",
-	},
+    	},
 }
