@@ -251,8 +251,8 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 			}
 		}
 	}
-	
-	// We need additional update expressions for any generated columns, since they won't be part of the update 
+
+	// We need additional update expressions for any generated columns, since they won't be part of the update
 	// expressions, but their value in the row must be updated before being passed to the integrator for storage.
 	for i, col := range tableSch {
 		if col.Generated != nil {
@@ -261,7 +261,7 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 			updateExprs = append(updateExprs, expression.NewSetField(colName, assignColumnIndexes(generated, tableSch)))
 		}
 	}
-	
+
 	return updateExprs
 }
 

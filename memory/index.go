@@ -85,7 +85,7 @@ func (idx *Index) ExtendedExpressions() []string {
 	return exprs
 }
 
-// ExtendedExprs returns the same information as ExtendedExpressions, but in sql.Expression form. 
+// ExtendedExprs returns the same information as ExtendedExpressions, but in sql.Expression form.
 func (idx *Index) ExtendedExprs() []sql.Expression {
 	var exprs []sql.Expression
 	foundCols := make(map[string]struct{})
@@ -139,7 +139,7 @@ func (idx *Index) rowToIndexStorage(row sql.Row, partitionName string, rowIdx in
 	}
 
 	exprs := idx.ExtendedExprs()
-	newRow := make(sql.Row, len(exprs) + 1)
+	newRow := make(sql.Row, len(exprs)+1)
 	for i, expr := range exprs {
 		var err error
 		newRow[i], err = expr.Eval(nil, row)
@@ -151,7 +151,7 @@ func (idx *Index) rowToIndexStorage(row sql.Row, partitionName string, rowIdx in
 		partition: partitionName,
 		idx:       rowIdx,
 	}
-	
+
 	return newRow, nil
 }
 

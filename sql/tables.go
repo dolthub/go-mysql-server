@@ -140,12 +140,12 @@ type IndexAlterableTable interface {
 // indexes on virtual columns, as the engine must provide a value for these columns.
 type IndexBuildingTable interface {
 	IndexAlterableTable
-	// ShouldBuildIndex returns whether the given index should be build via BuildIndex. Some indexes require building, 
-	// in which case this method is not called. 
+	// ShouldBuildIndex returns whether the given index should be build via BuildIndex. Some indexes require building,
+	// in which case this method is not called.
 	ShouldBuildIndex(ctx *Context, indexDef IndexDef) (bool, error)
 	// BuildIndex returns a RowInserter for that will be passed all existing rows of the table. The returned RowInserter
 	// should use the rows provided to populate the newly created index given by the definition. When |Close| is called
-	// on the RowInserter, the index should be fully populated and available for further use in the session. 
+	// on the RowInserter, the index should be fully populated and available for further use in the session.
 	BuildIndex(ctx *Context, indexDef IndexDef) (RowInserter, error)
 }
 

@@ -625,7 +625,7 @@ func widenJSONValues(val interface{}) sql.JSONWrapper {
 	if val == nil {
 		return nil
 	}
-	
+
 	js, ok := val.(sql.JSONWrapper)
 	if !ok {
 		str, ok := val.(string)

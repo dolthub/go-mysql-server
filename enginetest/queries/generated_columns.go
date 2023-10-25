@@ -70,8 +70,8 @@ var GeneratedColumnTests = []ScriptTest{
 				ExpectedErr: sql.ErrGeneratedColumnValue,
 			},
 			{
-				Query:      "update t1 set a = 10 where a = 1",
-				Expected:   []sql.Row{{newUpdateResult(1,1)}},
+				Query:    "update t1 set a = 10 where a = 1",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "select * from t1 order by a",
@@ -134,8 +134,8 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{1, 2}, {2, 3}},
 			},
 			{
-				Query:      "update t1 set a = 10 where a = 1",
-				Expected:   []sql.Row{{newUpdateResult(1,1)}},
+				Query:    "update t1 set a = 10 where a = 1",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "select * from t1 where b = 11 order by a",
@@ -191,11 +191,11 @@ var GeneratedColumnTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "insert into t1(a,c) values (2,4)",
+				Query:    "insert into t1(a,c) values (2,4)",
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				Query:    "explain delete from t1 where b = 3 and c = 4",
+				Query: "explain delete from t1 where b = 3 and c = 4",
 				Expected: []sql.Row{
 					{"Delete"},
 					{" └─ IndexedTableAccess(t1)"},
@@ -212,7 +212,7 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{1, 2, 3}},
 			},
 			{
-				Query:    "explain update t1 set a = 5, c = 10 where b = 2 and c = 3",
+				Query: "explain update t1 set a = 5, c = 10 where b = 2 and c = 3",
 				Expected: []sql.Row{
 					{"Update"},
 					{" └─ UpdateSource(SET t1.a = 5,SET t1.c = 10,SET t1.b = ((t1.a + 1)))"},
@@ -542,7 +542,7 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{},
 			},
 			{
-				Query:    "explain update t1 set b = 5 where c = 3",
+				Query: "explain update t1 set b = 5 where c = 3",
 				Expected: []sql.Row{
 					{"Update"},
 					{" └─ UpdateSource(SET t1.b = 5,SET t1.c = ((t1.a + t1.b)))"},
@@ -569,7 +569,7 @@ var GeneratedColumnTests = []ScriptTest{
 				},
 			},
 			{
-				Query:    "explain delete from t1 where c = 6",
+				Query: "explain delete from t1 where c = 6",
 				Expected: []sql.Row{
 					{"Delete"},
 					{" └─ IndexedTableAccess(t1)"},
@@ -610,7 +610,7 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 			{
 				Query: "explain update t1 set j = '{\"a\": 5}' where v = 2",
-				Expected:  []sql.Row{
+				Expected: []sql.Row{
 					{"Update"},
 					{" └─ UpdateSource(SET t1.j = '{\"a\": 5}',SET t1.v = (json_unquote(json_extract(t1.j, '$.a'))))"},
 					{"     └─ IndexedTableAccess(t1)"},
@@ -619,11 +619,11 @@ var GeneratedColumnTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "update t1 set j = '{\"a\": 5}' where v = 2",
-				Expected:  []sql.Row{{newUpdateResult(1, 1)}},
+				Query:    "update t1 set j = '{\"a\": 5}' where v = 2",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
 			},
 			{
-				Query:    "select * from t1 order by v",
+				Query: "select * from t1 order by v",
 				Expected: []sql.Row{
 					{"{\"b\": 3}", nil},
 					{"{\"a\": 1}", 1},
@@ -631,7 +631,7 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 			{
 				Query: "explain delete from t1 where v = 5",
-				Expected:  []sql.Row{
+				Expected: []sql.Row{
 					{"Delete"},
 					{" └─ IndexedTableAccess(t1)"},
 					{"     ├─ index: [t1.v]"},
@@ -639,11 +639,11 @@ var GeneratedColumnTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "delete from t1 where v = 5",
-				Expected:  []sql.Row{{types.NewOkResult(1)}},
+				Query:    "delete from t1 where v = 5",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				Query:    "select * from t1 order by v",
+				Query: "select * from t1 order by v",
 				Expected: []sql.Row{
 					{"{\"b\": 3}", nil},
 					{"{\"a\": 1}", 1},

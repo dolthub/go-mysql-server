@@ -539,7 +539,7 @@ func (pke *pkTableEditAccumulator) deleteHelper(table *TableData, row sql.Row) e
 				break
 			}
 		}
-		
+
 		if matches {
 			break
 		}
@@ -555,7 +555,7 @@ func deleteRowFromIndexes(table *TableData, partKey string, rowIdx int) {
 	for _, idx := range table.indexes {
 		memIdx := idx.(*Index)
 		idxStorage := table.indexStorage[indexName(memIdx.ID())]
-		// Iterate backwards so we can remove the trailing N elements without triggering range errors on multiple passes 
+		// Iterate backwards so we can remove the trailing N elements without triggering range errors on multiple passes
 		// through the loop
 		for i := len(idxStorage) - 1; i >= 0; i-- {
 			idxRow := idxStorage[i]
@@ -597,7 +597,7 @@ func (pke *pkTableEditAccumulator) insertHelper(table *TableData, row sql.Row) e
 	}
 
 	storageRow := pke.tableData.toStorageRow(row)
-	
+
 	var partKey string
 	var rowIdx int
 	if savedPartitionRowIndex > -1 {
@@ -609,7 +609,7 @@ func (pke *pkTableEditAccumulator) insertHelper(table *TableData, row sql.Row) e
 		partKey = key
 		rowIdx = len(table.partitions[key]) - 1
 	}
-	
+
 	err = addRowToIndexes(table, row, partKey, rowIdx)
 	if err != nil {
 		return err
@@ -730,7 +730,7 @@ func (k *keylessTableEditAccumulator) ApplyEdits(table *Table) error {
 			return err
 		}
 	}
-	
+
 	// The primary index is unsorted, but we still need to sort the secondary indexes
 	k.tableData.sortSecondaryIndexes()
 

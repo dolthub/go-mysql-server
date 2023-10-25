@@ -77,10 +77,10 @@ func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
 // provided and there is a type conversion error, this function sets the value to the zero value as per the MySQL standard.
 func applyUpdateExpressionsWithIgnore(ctx *sql.Context, updateExprs []sql.Expression, tableSchema sql.Schema, row sql.Row, ignore bool) (sql.Row, error) {
 	var secondPass []int
-	
+
 	for i, updateExpr := range updateExprs {
 		defaultVal, isDefaultVal := defaultValFromSetExpression(updateExpr)
-		// Any generated columns must be projected into place so that the caller gets their newest values as well. We 
+		// Any generated columns must be projected into place so that the caller gets their newest values as well. We
 		// do this in a second pass as necessary.
 		if isDefaultVal && !defaultVal.IsLiteral() {
 			secondPass = append(secondPass, i)
@@ -105,7 +105,7 @@ func applyUpdateExpressionsWithIgnore(ctx *sql.Context, updateExprs []sql.Expres
 			return nil, plan.ErrUpdateUnexpectedSetResult.New(val)
 		}
 	}
-	
+
 	for _, index := range secondPass {
 		val, err := updateExprs[index].Eval(ctx, row)
 		if err != nil {
@@ -118,7 +118,7 @@ func applyUpdateExpressionsWithIgnore(ctx *sql.Context, updateExprs []sql.Expres
 			return nil, plan.ErrUpdateUnexpectedSetResult.New(val)
 		}
 	}
-	
+
 	return row, nil
 }
 

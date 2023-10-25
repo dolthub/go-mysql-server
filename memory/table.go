@@ -204,7 +204,7 @@ func NewPartitionedTableWithCollation(db *BaseDatabase, name string, schema sql.
 			partitionKeys: keys,
 			autoIncVal:    autoIncVal,
 			autoColIdx:    autoIncIdx,
-			indexStorage: make(map[indexName][]sql.Row),
+			indexStorage:  make(map[indexName][]sql.Row),
 		},
 		db: db,
 	}
@@ -283,13 +283,13 @@ func (i rangePartitionIter) Next(ctx *sql.Context) (sql.Partition, error) {
 
 // indexScanPartitionIter is a partition iterator that returns a single partition for an index scan
 type indexScanPartitionIter struct {
-	once sync.Once
-	index *Index
+	once   sync.Once
+	index  *Index
 	ranges sql.Expression
 }
 
 type indexScanPartition struct {
-	index *Index
+	index  *Index
 	ranges sql.Expression
 }
 
@@ -304,16 +304,15 @@ func (i *indexScanPartitionIter) Close(ctx *sql.Context) error {
 }
 
 func (i *indexScanPartitionIter) Next(ctx *sql.Context) (sql.Partition, error) {
-	part, err := indexScanPartition{
-	}, io.EOF
-	
+	part, err := indexScanPartition{}, io.EOF
+
 	i.once.Do(func() {
-			part, err = indexScanPartition{
-				index: i.index,
-				ranges: i.ranges,
-			}, nil
+		part, err = indexScanPartition{
+			index:  i.index,
+			ranges: i.ranges,
+		}, nil
 	})
-	
+
 	return part, err
 }
 
@@ -369,7 +368,7 @@ type indexScanRowIter struct {
 	ranges      sql.Expression
 	primaryRows map[string][]sql.Row
 	indexRows   []sql.Row
-	
+
 	columns     []int
 	numColumns  int
 	virtualCols []int
@@ -379,9 +378,9 @@ func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if i.i >= len(i.indexRows) {
 		return nil, io.EOF
 	}
-	
+
 	ctx.GetLogger().Warnf("query is %s, index rows are %v", ctx.Query(), i.indexRows)
-	
+
 	var row sql.Row
 	for ; i.i < len(i.indexRows); i.i++ {
 		idxRow := i.indexRows[i.i]
@@ -393,7 +392,7 @@ func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if len(i.primaryRows[rowLoc.partition]) <= rowLoc.idx {
 			continue
 		}
-		
+
 		candidate := i.primaryRows[rowLoc.partition][rowLoc.idx]
 
 		// ctx.GetLogger().Warnf("Found row %v", candidate)
@@ -401,22 +400,22 @@ func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if err != nil {
 			return nil, err
 		}
-		
+
 		if matches {
 			row = candidate
 			i.i++
 			break
 		}
 	}
-	
+
 	if row == nil {
 		return nil, io.EOF
 	}
-	
+
 	ctx.GetLogger().Warnf("Returning row %v", row)
 
 	row = normalizeRowForRead(row, i.numColumns, i.virtualCols)
-	
+
 	return projectRow(i.columns, row), nil
 }
 
@@ -425,7 +424,7 @@ func indexRowMatches(ranges sql.Expression, candidate sql.Row) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	
+
 	return sql.IsTrue(result), nil
 }
 
@@ -436,7 +435,7 @@ func (i *indexScanRowIter) Close(context *sql.Context) error {
 // PartitionRows implements the sql.PartitionRows interface.
 func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
 	data := t.sessionTableData(ctx)
-	
+
 	if isp, ok := partition.(indexScanPartition); ok {
 		numColumns := len(data.schema.Schema)
 		if len(t.columns) > 0 {
@@ -453,7 +452,7 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 			virtualCols: data.virtualColIndexes(),
 		}, nil
 	}
-	
+
 	filters := t.filters
 	if r, ok := partition.(*rangePartition); ok && r.rang != nil {
 		// index lookup is currently a single filter applied to a full table scan
@@ -601,7 +600,7 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	ctx.GetLogger().Warnf("table scan row: %v", row)
-	
+
 	return projectRow(i.columns, row), nil
 }
 
@@ -1467,21 +1466,21 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 			maxY:  maxPoint.Y,
 		}, nil
 	}
-	
+
 	if lookup.Index.ID() == "PRIMARY" {
 		child, err := t.Table.Partitions(ctx)
 		if err != nil {
 			return nil, err
 		}
-		
+
 		return rangePartitionIter{
 			child:  child.(*partitionIter),
 			ranges: filter,
 		}, nil
 	}
 
-	indexFilter := adjustRangeScanFilterForIndexLookup(filter, memIdx) 
-	
+	indexFilter := adjustRangeScanFilterForIndexLookup(filter, memIdx)
+
 	return &indexScanPartitionIter{
 		index:  memIdx,
 		ranges: indexFilter,
@@ -1490,14 +1489,14 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 
 func adjustRangeScanFilterForIndexLookup(filter sql.Expression, index *Index) sql.Expression {
 	exprs := index.ExtendedExprs()
-	
+
 	indexStorageSchema := make(sql.Schema, len(exprs))
 	for i, e := range exprs {
 		indexStorageSchema[i] = &sql.Column{
-			Name:     e.(*expression.GetField).Name(),
+			Name: e.(*expression.GetField).Name(),
 		}
 	}
-	
+
 	filter, _, err := transform.Expr(filter, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		if gf, ok := e.(*expression.GetField); ok {
 			idxIdx := indexStorageSchema.IndexOfColName(gf.Name())
@@ -1505,11 +1504,11 @@ func adjustRangeScanFilterForIndexLookup(filter sql.Expression, index *Index) sq
 		}
 		return e, transform.SameTree, nil
 	})
-	
+
 	if err != nil {
 		panic(err)
 	}
-	
+
 	return filter
 }
 
@@ -1524,7 +1523,7 @@ func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) 
 	if _, ok := partition.(indexScanPartition); ok {
 		return iter, nil
 	}
-	
+
 	if t.Lookup.Index != nil {
 		idx := t.Lookup.Index.(*Index)
 		sf := make(sql.SortFields, len(idx.Exprs))
@@ -2016,7 +2015,7 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) er
 			return sql.ErrKeyColumnDoesNotExist.New(newCol.Name)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -2066,7 +2065,7 @@ func (ps partitionssort) Swap(i, j int) {
 	lidx := ps.allRows[i]
 	ridx := ps.allRows[j]
 	ps.ps[lidx.partitionName][lidx.rowIdx], ps.ps[ridx.partitionName][ridx.rowIdx] = ps.ps[ridx.partitionName][ridx.rowIdx], ps.ps[lidx.partitionName][lidx.rowIdx]
-	
+
 	// Now update the index storage locations for the swap we just performed as well. This is frankly awful performance
 	// that turns the sort operation into worse than cubic. Doing better requires doing something more intelligent than
 	// sorted slices for rows and indexes, some sort of sorted collection.
@@ -2379,7 +2378,7 @@ func (t Table) BuildIndex(ctx *sql.Context, indexDef sql.IndexDef) (sql.RowInser
 	if !ok {
 		return nil, sql.ErrIndexNotFound.New(indexDef.Name)
 	}
-	
+
 	return &indexBuilder{
 		tableData: data.copy(),
 		index:     idx.(*Index),
@@ -2387,8 +2386,8 @@ func (t Table) BuildIndex(ctx *sql.Context, indexDef sql.IndexDef) (sql.RowInser
 }
 
 type indexBuilder struct {
-	tableData *TableData 
-	index *Index
+	tableData *TableData
+	index     *Index
 }
 
 func (i indexBuilder) StatementBegin(ctx *sql.Context) {}
