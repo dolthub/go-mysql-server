@@ -52,16 +52,6 @@ func newContextSetup(ctx *sql.Context) *sql.Context {
 		ctx.SetCurrentDatabase("mydb")
 	}
 
-	// Add our in-session view to the context
-	//_ = ctx.GetViewRegistry().Register("mydb",
-	//	plan.NewSubqueryAlias(
-	//		"myview",
-	//		"SELECT * FROM mytable",
-	//		plan.NewProject([]sql.Expression{
-	//			expression.NewGetFieldWithTable(0, types.Int64, "mydb", "mytable", "i", false),
-	//			expression.NewGetFieldWithTable(1, types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), "mydb", "mytable", "s", false),
-	//		}, plan.NewUnresolvedTable("mytable", "mydb")),
-	//	).AsView("CREATE VIEW myview AS SELECT * FROM mytable"))
 	ctx.ApplyOpts(sql.WithPid(atomic.AddUint64(&pid, 1)))
 
 	// We don't want to show any external procedures in our engine tests, so we exclude them
