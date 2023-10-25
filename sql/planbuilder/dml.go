@@ -256,7 +256,7 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 	// expressions, but their value in the row must be updated before being passed to the integrator for storage.
 	for i, col := range tableSch {
 		if col.Generated != nil {
-			colName := expression.NewGetFieldWithTable(i, col.Type, col.Source, col.Name, col.Nullable)
+			colName := expression.NewGetFieldWithTable(i, col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
 			generated := b.resolveColumnDefaultExpression(inScope, col, col.Generated)
 			updateExprs = append(updateExprs, expression.NewSetField(colName, assignColumnIndexes(generated, tableSch)))
 		}

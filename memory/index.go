@@ -96,7 +96,7 @@ func (idx *Index) ExtendedExprs() []sql.Expression {
 	for _, ord := range idx.Tbl.data.schema.PkOrdinals {
 		col := idx.Tbl.data.schema.Schema[ord]
 		if _, ok := foundCols[strings.ToLower(col.Name)]; !ok {
-			exprs = append(exprs, expression.NewGetFieldWithTable(ord, col.Type, idx.Tbl.name, col.Name, col.Nullable))
+			exprs = append(exprs, expression.NewGetFieldWithTable(ord, col.Type, idx.Database(), idx.Tbl.name, col.Name, col.Nullable))
 		}
 	}
 	return exprs

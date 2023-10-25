@@ -1909,6 +1909,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 		}
 
 		if isIndexBuilding {
+			// TODO: implement and enable
 			// return buildIndex(ctx, ibt, indexDef)
 		}
 

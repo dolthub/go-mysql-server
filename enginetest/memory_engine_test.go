@@ -134,18 +134,12 @@ func TestBrokenJSONTableScripts(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	// t.Skip()
+	t.Skip()
 	var test queries.QueryTest
 	test = queries.QueryTest{
 		Query:    `select a.i,a.f, b.i2 from niltable a left join niltable b on a.i = b.i2 order by a.i`,
 		Expected: []sql.Row{{1, nil, nil}, {2, nil, 2}, {3, nil, nil}, {4, 4.0, 4}, {5, 5.0, nil}, {6, 6.0, 6}},
 	}
-	// test = queries.QueryTest	{
-	// 	Query: "SELECT s, (select i from mytable mt where sub.i = mt.i) as subi FROM (select i,s,'hello' FROM mytable where s = 'first row') as sub;",
-	// 	Expected: []sql.Row{
-	// 		{"first row", int64(1)},
-	// 	},
-	// }
 
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
@@ -201,7 +195,7 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	// t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
 			Name: "virtual column index",
@@ -679,10 +673,7 @@ func TestDropForeignKeys(t *testing.T) {
 }
 
 func TestForeignKeys(t *testing.T) {
-	harness := enginetest.NewDefaultMemoryHarness()
-	// TOD
-	harness.QueriesToSkip("UPDATE over_limit SET pk = 2 WHERE pk = 1;")
-	enginetest.TestForeignKeys(t, harness)
+	enginetest.TestForeignKeys(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestFulltextIndexes(t *testing.T) {
