@@ -664,7 +664,7 @@ var BrokenGeneratedColumnTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				// Not sure if this should be an error at trigger creation time or execution time
-				Query:    "insert into t1 (a, b) values (1, 2), (3, 4)",
+				Query:       "insert into t1 (a, b) values (1, 2), (3, 4)",
 				ExpectedErr: sql.ErrGeneratedColumnValue,
 			},
 		},
