@@ -17,6 +17,7 @@ package json
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/dolthub/jsonpath"
 
 	"github.com/dolthub/go-mysql-server/sql"
