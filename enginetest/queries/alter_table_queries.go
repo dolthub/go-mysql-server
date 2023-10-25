@@ -794,19 +794,19 @@ var AlterTableScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:       			"alter table t add index idx2 (col1(10));",
+				Query:    "alter table t add index idx2 (col1(10));",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "show create table t",
+				Query: "show create table t",
 				Expected: []sql.Row{{"t",
 					"CREATE TABLE `t` (\n" +
-							"  `pk` int NOT NULL,\n" +
-							"  `col1` varchar(100),\n" +
-							"  PRIMARY KEY (`pk`),\n" +
-							"  UNIQUE KEY `idx1` (`col1`),\n" +
-							"  KEY `idx2` (`col1`(10))\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						"  `pk` int NOT NULL,\n" +
+						"  `col1` varchar(100),\n" +
+						"  PRIMARY KEY (`pk`),\n" +
+						"  UNIQUE KEY `idx1` (`col1`),\n" +
+						"  KEY `idx2` (`col1`(10))\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
