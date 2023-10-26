@@ -880,18 +880,17 @@ Select * from (
 	{
 		Query: `select * from uv where not exists (select * from xy where not exists (select * from xy where not(u = 1)))`,
 		ExpectedPlan: "AntiJoin\n" +
-			" ├─ NOT\n" +
-			" │   └─ AND\n" +
-			" │       ├─ EXISTS Subquery\n" +
-			" │       │   ├─ cacheable: true\n" +
-			" │       │   ├─ alias-string: select * from xy where not (u = 1)\n" +
-			" │       │   └─ Table\n" +
-			" │       │       ├─ name: xy\n" +
-			" │       │       └─ columns: [x y]\n" +
-			" │       └─ NOT\n" +
-			" │           └─ Eq\n" +
-			" │               ├─ uv.u:0!null\n" +
-			" │               └─ 1 (tinyint)\n" +
+			" ├─ Or\n" +
+			" │   ├─ NOT\n" +
+			" │   │   └─ EXISTS Subquery\n" +
+			" │   │       ├─ cacheable: true\n" +
+			" │   │       ├─ alias-string: select * from xy where not (u = 1)\n" +
+			" │   │       └─ Table\n" +
+			" │   │           ├─ name: xy\n" +
+			" │   │           └─ columns: [x y]\n" +
+			" │   └─ Eq\n" +
+			" │       ├─ uv.u:0!null\n" +
+			" │       └─ 1 (tinyint)\n" +
 			" ├─ ProcessTable\n" +
 			" │   └─ Table\n" +
 			" │       ├─ name: uv\n" +
@@ -3676,10 +3675,9 @@ inner join pq on true
 			"     ├─ cmp: Eq\n" +
 			"     │   ├─ othertable.i2:1!null\n" +
 			"     │   └─ mytable.i:2!null\n" +
-			"     ├─ sel: NOT\n" +
-			"     │   └─ GreaterThan\n" +
-			"     │       ├─ mytable.s:3!null\n" +
-			"     │       └─ othertable.s2:0!null\n" +
+			"     ├─ sel: LessThanOrEqual\n" +
+			"     │   ├─ mytable.s:3!null\n" +
+			"     │   └─ othertable.s2:0!null\n" +
 			"     ├─ IndexedTableAccess(othertable)\n" +
 			"     │   ├─ index: [othertable.i2]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
@@ -4197,11 +4195,12 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.i:0!null, a.s:1!null]\n" +
 			" └─ InnerJoin\n" +
-			"     ├─ NOT\n" +
-			"     │   └─ Or\n" +
-			"     │       ├─ Eq\n" +
-			"     │       │   ├─ a.i:0!null\n" +
-			"     │       │   └─ b.s:3!null\n" +
+			"     ├─ AND\n" +
+			"     │   ├─ NOT\n" +
+			"     │   │   └─ Eq\n" +
+			"     │   │       ├─ a.i:0!null\n" +
+			"     │   │       └─ b.s:3!null\n" +
+			"     │   └─ NOT\n" +
 			"     │       └─ Eq\n" +
 			"     │           ├─ a.s:1!null\n" +
 			"     │           └─ b.i:2!null\n" +
@@ -4510,11 +4509,12 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.i:0!null, a.s:1!null]\n" +
 			" └─ InnerJoin\n" +
-			"     ├─ NOT\n" +
-			"     │   └─ Or\n" +
-			"     │       ├─ Eq\n" +
-			"     │       │   ├─ a.i:0!null\n" +
-			"     │       │   └─ b.s:3!null\n" +
+			"     ├─ AND\n" +
+			"     │   ├─ NOT\n" +
+			"     │   │   └─ Eq\n" +
+			"     │   │       ├─ a.i:0!null\n" +
+			"     │   │       └─ b.s:3!null\n" +
+			"     │   └─ NOT\n" +
 			"     │       └─ Eq\n" +
 			"     │           ├─ a.s:1!null\n" +
 			"     │           └─ b.i:2!null\n" +
