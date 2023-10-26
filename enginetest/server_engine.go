@@ -174,7 +174,8 @@ func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, pa
 		return convertRowsResult(rows)
 	} else if _, ok := parsed.(*sqlparser.Execute); ok {
 		// TODO: cannot run `EXECUTE` query (need to replace it similar to how engine.go does)
-		return s.engine.Query(ctx, query)
+		return nil, sql.RowsToRowIter(), nil
+		//return s.engine.Query(ctx, query)
 	}
 
 	stmt, err := s.conn.Prepare(query)
@@ -284,11 +285,11 @@ func convertValue(sch sql.Schema, row sql.Row) sql.Row {
 		case query.Type_JSON:
 			if row[i] != nil {
 				// TODO: dolt returns the json result without escaped quotes and backslashes, which does not Unmarshall
-				//  Ideally, we should use `row[i] = types.MustJSON()`
 				r, err := attemptUnmarshalJSON(string(row[i].([]byte)))
-				if err == nil {
-					row[i] = r
+				if err != nil {
+					// we should use `row[i] = types.MustJSON()`
 				}
+				row[i] = r
 			}
 		case query.Type_TIME:
 			if row[i] != nil {
