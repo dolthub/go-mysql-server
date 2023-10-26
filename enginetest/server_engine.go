@@ -166,16 +166,13 @@ func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, pa
 
 	// NOTE: MySQL does not support LOAD DATA query as PREPARED STATEMENT.
 	//  However, Dolt supports, but not go-sql-driver client
-	if _, ok := parsed.(*sqlparser.Load); ok {
+	switch parsed.(type) {
+	case *sqlparser.Load, *sqlparser.Execute, *sqlparser.Prepare:
 		rows, err := s.conn.Query(query)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, trimMySQLErrCodePrefix(err)
 		}
 		return convertRowsResult(rows)
-	} else if _, ok := parsed.(*sqlparser.Execute); ok {
-		// TODO: cannot run `EXECUTE` query (need to replace it similar to how engine.go does)
-		return nil, sql.RowsToRowIter(), nil
-		//return s.engine.Query(ctx, query)
 	}
 
 	stmt, err := s.conn.Prepare(query)
@@ -386,6 +383,11 @@ func deref(val any) (any, error) {
 		return *v, nil
 	case *uint64:
 		return *v, nil
+	case *gosql.NullInt32:
+		if v.Valid {
+			return v.Int32, nil
+		}
+		return nil, nil
 	case *gosql.NullInt64:
 		if v.Valid {
 			return v.Int64, nil
@@ -450,9 +452,12 @@ func emptyRowForSchema(sch sql.Schema) ([]any, error) {
 
 func emptyValuePointerForType(t sql.Type) (any, error) {
 	switch t.Type() {
-	case query.Type_INT8, query.Type_INT16, query.Type_INT24, query.Type_INT32, query.Type_INT64,
+	case query.Type_INT8, query.Type_INT16, query.Type_INT24, query.Type_INT64,
 		query.Type_BIT, query.Type_YEAR:
 		var i gosql.NullInt64
+		return &i, nil
+	case query.Type_INT32:
+		var i gosql.NullInt32
 		return &i, nil
 	case query.Type_UINT8, query.Type_UINT16, query.Type_UINT24, query.Type_UINT32, query.Type_UINT64:
 		//var i uint64

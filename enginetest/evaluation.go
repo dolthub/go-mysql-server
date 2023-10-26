@@ -61,13 +61,24 @@ func TestScript(t *testing.T, harness Harness, script queries.ScriptTest) {
 	TestScriptWithEngine(t, e, harness, script)
 }
 
+func IsServerEngine(e QueryEngine) bool {
+	_, ok := e.(*ServerQueryEngine)
+	return ok
+}
+
+func CreateNewConnectionForServerEngine(ctx *sql.Context, e QueryEngine) error {
+	if IsServerEngine(e) {
+		return e.(*ServerQueryEngine).NewConnection(ctx)
+	}
+	return nil
+}
+
 // TestScriptWithEngine runs the test script given with the engine provided.
 func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script queries.ScriptTest) {
 	ctx := NewContext(harness)
-	if se, ok := e.(*ServerQueryEngine); ok {
-		err := se.NewConnection(ctx)
-		require.NoError(t, err, nil)
-	}
+	err := CreateNewConnectionForServerEngine(ctx, e)
+	require.NoError(t, err, nil)
+
 	t.Run(script.Name, func(t *testing.T) {
 		for _, statement := range script.SetUpScript {
 			if sh, ok := harness.(SkippingHarness); ok {
@@ -142,10 +153,9 @@ func TestScriptPrepared(t *testing.T, harness Harness, script queries.ScriptTest
 // using the engine provided.
 func TestScriptWithEnginePrepared(t *testing.T, e QueryEngine, harness Harness, script queries.ScriptTest) {
 	ctx := NewContext(harness)
-	if se, ok := e.(*ServerQueryEngine); ok {
-		err := se.NewConnection(ctx)
-		require.NoError(t, err, nil)
-	}
+	err := CreateNewConnectionForServerEngine(ctx, e)
+	require.NoError(t, err, nil)
+
 	t.Run(script.Name, func(t *testing.T) {
 		for _, statement := range script.SetUpScript {
 			if sh, ok := harness.(SkippingHarness); ok {
@@ -391,7 +401,7 @@ func injectBindVarsAndPrepare(
 	}
 
 	switch p := parsed.(type) {
-	case *sqlparser.Load:
+	case *sqlparser.Load, *sqlparser.Prepare, *sqlparser.Execute:
 		// LOAD DATA query cannot be used as PREPARED STATEMENT
 		return q, nil, nil
 	case *sqlparser.Set:
@@ -528,8 +538,7 @@ func checkResults(
 	q string,
 	e QueryEngine,
 ) {
-	_, isServerEngine := e.(*ServerQueryEngine)
-	if isServerEngine {
+	if IsServerEngine(e) {
 		// TODO: do not check for result for now
 		return
 	}
@@ -581,7 +590,11 @@ func checkResults(
 				widenedExpected[i][j] = actual // ensure it passes equality check later
 			}
 
-			if isServerEngine {
+			// TODO: in MySQL, boolean values sent over the wire are tinyint.
+			//  Current engine tests assert on go boolean type values. Should
+			//  remove this conversion in the future when we match the return
+			//  type for boolean results.
+			if IsServerEngine(e) {
 				if b, isBool := widenedExpected[i][j].(bool); isBool {
 					if b {
 						widenedExpected[i][j] = int64(1)

@@ -598,7 +598,6 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 		defer e.Close()
 		ctx := NewContext(harness)
 
-		_, isServerTest := e.(*ServerQueryEngine)
 		RunQueryWithContext(t, e, harness, ctx, "create table members (id int primary key, team text);")
 		RunQueryWithContext(t, e, harness, ctx, "insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');")
 
@@ -609,9 +608,11 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 
 		// group by with any_value or non-strict are non-deterministic (unless there's only one value), so we must accept multiple
 		// group by with any_value()
+
 		_, rowIter, err = e.Query(ctx, "select any_value(id), team from members group by team order by id")
 		require.NoError(t, err)
 		rowCount = 0
+		isServerTest := IsServerEngine(e)
 		for {
 			row, err = rowIter.Next(ctx)
 			if err == io.EOF {
@@ -620,6 +621,8 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 			rowCount++
 			require.NoError(t, err)
 
+			// TODO: needs fix to match MySQL, which its type is `LONG` = Int32
+			// currently, we convert any int result to SQL int64 type before sending it over the wire
 			var val int64
 			if isServerTest {
 				val = row[0].(int64)
@@ -653,6 +656,8 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 			rowCount++
 			require.NoError(t, err)
 
+			// TODO: needs fix to match MySQL, which its type is `LONG` = Int32
+			// currently, we convert any int result to SQL int64 type before sending it over the wire
 			var val int64
 			if isServerTest {
 				val = row[0].(int64)
@@ -5006,10 +5011,8 @@ func TestClearWarnings(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	ctx := NewContext(harness)
-	if se, ok := e.(*ServerQueryEngine); ok {
-		err := se.NewConnection(ctx)
-		require.NoError(err)
-	}
+	err := CreateNewConnectionForServerEngine(ctx, e)
+	require.NoError(err)
 
 	sch, iter, err := e.Query(ctx, "-- some empty query as a comment")
 	require.NoError(err)
@@ -5058,62 +5061,47 @@ func TestUse(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	ctx := NewContext(harness)
-	se, isServer := e.(*ServerQueryEngine)
-	if isServer {
-		err := se.NewConnection(ctx)
-		require.NoError(err)
-	}
-
-	require.Equal("mydb", ctx.GetCurrentDatabase())
-
-	_, _, err := e.Query(ctx, "USE bar")
-	require.Error(err)
-
-	if isServer {
-		sch, iter, err := e.Query(ctx, "SELECT DATABASE()")
-		require.NoError(err)
-
-		rows, err := sql.RowIterToRows(ctx, sch, iter)
-		require.NoError(err)
-		require.Len(rows, 1)
-		require.Equal(rows, []sql.Row{{"mydb"}})
-	} else {
-		require.Equal("mydb", ctx.GetCurrentDatabase())
-	}
-
-	sch, iter, err := e.Query(ctx, "USE foo")
+	err := CreateNewConnectionForServerEngine(ctx, e)
 	require.NoError(err)
 
-	rows, err := sql.RowIterToRows(ctx, sch, iter)
-	require.NoError(err)
-	require.Len(rows, 0)
-
-	if isServer {
-		sch, iter, err := e.Query(ctx, "SELECT DATABASE()")
-		require.NoError(err)
-
-		rows, err := sql.RowIterToRows(ctx, sch, iter)
-		require.NoError(err)
-		require.Len(rows, 1)
-		require.Equal(rows, []sql.Row{{"foo"}})
-	} else {
-		require.Equal("foo", ctx.GetCurrentDatabase())
+	var script = queries.ScriptTest{
+		Name: "ALTER TABLE, ALTER COLUMN SET , DROP DEFAULT",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL default 88);",
+		},
+		Assertions: []queries.ScriptTestAssertion{
+			{
+				Query:    "SELECT DATABASE();",
+				Expected: []sql.Row{{"mydb"}},
+			},
+			{
+				Query:          "USE bar;",
+				ExpectedErrStr: "database not found: bar",
+			},
+			{
+				Query:    "SELECT DATABASE();",
+				Expected: []sql.Row{{"mydb"}},
+			},
+			{
+				Query:    "USE foo;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT DATABASE();",
+				Expected: []sql.Row{{"foo"}},
+			},
+			{
+				Query:    "USE MYDB;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT DATABASE();",
+				Expected: []sql.Row{{"mydb"}},
+			},
+		},
 	}
 
-	_, _, err = e.Query(ctx, "USE MYDB")
-	require.NoError(err)
-
-	if isServer {
-		sch, iter, err := e.Query(ctx, "SELECT DATABASE()")
-		require.NoError(err)
-
-		rows, err := sql.RowIterToRows(ctx, sch, iter)
-		require.NoError(err)
-		require.Len(rows, 1)
-		require.Equal(rows, []sql.Row{{"mydb"}})
-	} else {
-		require.Equal("mydb", ctx.GetCurrentDatabase())
-	}
+	TestScriptWithEngine(t, e, harness, script)
 }
 
 // TestConcurrentTransactions tests that two concurrent processes/transactions can successfully execute without early
@@ -5298,8 +5286,8 @@ func TestSessionSelectLimit(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	ctx := NewContext(harness)
-	if se, ok := e.(*ServerQueryEngine); ok {
-		err := se.NewConnection(ctx)
+	if IsServerEngine(e) {
+		err := CreateNewConnectionForServerEngine(ctx, e)
 		require.NoError(t, err, nil)
 		RunQueryWithContext(t, e, harness, ctx, "SET @@sql_select_limit = 2")
 	} else {
