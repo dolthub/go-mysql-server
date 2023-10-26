@@ -1895,17 +1895,27 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 			return err
 		}
 
-		// TODO: don't rewrite the entire table, just rewrite the index we're adding
+		// Two ways to build an index for an integrator, implemented by two different interfaces. 
+		// The first way is building just an index with a special Inserter, only if the integrator requests it 
+		ibt, isIndexBuilding := indexable.(sql.IndexBuildingTable)
+		if isIndexBuilding {
+			shouldRebuild, err := ibt.ShouldBuildIndex(ctx, indexDef)
+			if err != nil {
+				return err
+			}
+			
+			if shouldRebuild || indexCreateRequiresBuild(n) {
+				return buildIndex(ctx, ibt, indexDef)
+			}
+		}
+		
+		// The second way to rebuild an index is with a full table rewrite
 		rwt, isRewritable := indexable.(sql.RewritableTable)
-		if !isRewritable {
-			return nil
+		if isRewritable && indexCreateRequiresBuild(n) {
+			return rewriteTableForIndexCreate(ctx, n, table, rwt)
 		}
 
-		if !indexCreateRequiresBuild(n) {
-			return nil
-		}
-
-		return rewriteTableForIndexCreate(ctx, n, table, rwt)
+		return nil 
 	case plan.IndexAction_Drop:
 		if fkTable, ok := indexable.(sql.ForeignKeyTable); ok {
 			fks, err := fkTable.GetDeclaredForeignKeys(ctx)
@@ -2094,6 +2104,7 @@ func rewriteTableForIndexCreate(ctx *sql.Context, n *plan.AlterIndex, table sql.
 	return nil
 }
 
+// indexRequiresBuild returns whether the given index requires a build operation to be performed as part of its creation 
 func indexCreateRequiresBuild(n *plan.AlterIndex) bool {
 	return n.Constraint == sql.IndexConstraint_Unique || indexOnVirtualColumn(n.Columns, n.TargetSchema())
 }

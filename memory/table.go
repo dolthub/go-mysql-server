@@ -2321,40 +2321,13 @@ func (t Table) ShouldBuildIndex(ctx *sql.Context, indexDef sql.IndexDef) (bool, 
 
 func (t Table) BuildIndex(ctx *sql.Context, indexDef sql.IndexDef) (sql.RowInserter, error) {
 	data := t.sessionTableData(ctx)
-	idx, ok := data.indexes[indexDef.Name]
+	_, ok := data.indexes[indexDef.Name]
 	if !ok {
 		return nil, sql.ErrIndexNotFound.New(indexDef.Name)
 	}
 
-	return &indexBuilder{
-		tableData: data.copy(),
-		index:     idx.(*Index),
-	}, nil
-}
-
-type indexBuilder struct {
-	tableData *TableData
-	index     *Index
-}
-
-func (i indexBuilder) StatementBegin(ctx *sql.Context) {}
-
-func (i indexBuilder) DiscardChanges(ctx *sql.Context, errorEncountered error) error {
-	return nil
-}
-
-func (i indexBuilder) StatementComplete(ctx *sql.Context) error {
-	return nil
-}
-
-func (i indexBuilder) Insert(context *sql.Context, row sql.Row) error {
-	// TODO: we don't have a partition index here and can't scan all the partitions to get one
-	// need to have a deterministic partition
-	return nil
-}
-
-func (i indexBuilder) Close(context *sql.Context) error {
-	return nil
+	// For now we're just rewriting the entire table, but we could also just rewrite the index with a little work
+	return t.getRewriteTableEditor(ctx, data.schema, data.schema), nil
 }
 
 // TableRevision is a container for memory tables to run basic smoke tests for versioned queries. It overrides only
