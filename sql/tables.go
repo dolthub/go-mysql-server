@@ -135,6 +135,20 @@ type IndexAlterableTable interface {
 	RenameIndex(ctx *Context, fromIndexName string, toIndexName string) error
 }
 
+// IndexBuildingTable is an optional extension to IndexAlterableTable that supports the engine's assistance in building
+// a newly created index, or rebuilding an existing one. This interface is non-optional for tables that wish to create
+// indexes on virtual columns, as the engine must provide a value for these columns.
+type IndexBuildingTable interface {
+	IndexAlterableTable
+	// ShouldBuildIndex returns whether the given index should be build via BuildIndex. Some indexes require building,
+	// in which case this method is not called.
+	ShouldBuildIndex(ctx *Context, indexDef IndexDef) (bool, error)
+	// BuildIndex returns a RowInserter for that will be passed all existing rows of the table. The returned RowInserter
+	// should use the rows provided to populate the newly created index given by the definition. When |Close| is called
+	// on the RowInserter, the index should be fully populated and available for further use in the session.
+	BuildIndex(ctx *Context, indexDef IndexDef) (RowInserter, error)
+}
+
 // ForeignKeyTable is a table that declares foreign key constraints, and can be referenced by other tables' foreign
 // key constraints.
 type ForeignKeyTable interface {

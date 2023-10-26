@@ -97,6 +97,7 @@ WHERE
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: cl3dt\n" +
 			"     │   ├─ outerVisibility: false\n" +
+			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
 			"     │   └─ Filter\n" +
 			"     │       ├─ AND\n" +
@@ -120,6 +121,7 @@ WHERE
 			"     │                       └─ SubqueryAlias\n" +
 			"     │                           ├─ name: ccefl\n" +
 			"     │                           ├─ outerVisibility: false\n" +
+			"     │                           ├─ isLateral: false\n" +
 			"     │                           ├─ cacheable: true\n" +
 			"     │                           └─ Project\n" +
 			"     │                               ├─ columns: [nd.id:0!null as id, nd.ZH72S:7 as ZH72S, Subquery\n" +
@@ -449,6 +451,7 @@ WHERE
 			"         │   │   └─ SubqueryAlias\n" +
 			"         │   │       ├─ name: scalarSubq0\n" +
 			"         │   │       ├─ outerVisibility: false\n" +
+			"         │   │       ├─ isLateral: false\n" +
 			"         │   │       ├─ cacheable: true\n" +
 			"         │   │       └─ Distinct\n" +
 			"         │   │           └─ Project\n" +
@@ -573,6 +576,7 @@ WHERE
 			"         │   │   └─ SubqueryAlias\n" +
 			"         │   │       ├─ name: scalarSubq0\n" +
 			"         │   │       ├─ outerVisibility: false\n" +
+			"         │   │       ├─ isLateral: false\n" +
 			"         │   │       ├─ cacheable: true\n" +
 			"         │   │       └─ Distinct\n" +
 			"         │   │           └─ Project\n" +
@@ -696,6 +700,7 @@ WHERE
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: cl3dt\n" +
 			"     │   ├─ outerVisibility: false\n" +
+			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
 			"     │   └─ Filter\n" +
 			"     │       ├─ AND\n" +
@@ -719,6 +724,7 @@ WHERE
 			"     │                       └─ SubqueryAlias\n" +
 			"     │                           ├─ name: wooj5\n" +
 			"     │                           ├─ outerVisibility: false\n" +
+			"     │                           ├─ isLateral: false\n" +
 			"     │                           ├─ cacheable: true\n" +
 			"     │                           └─ Project\n" +
 			"     │                               ├─ columns: [nd.id:0!null as id, nd.ZH72S:7 as ZH72S, Subquery\n" +
@@ -1033,6 +1039,7 @@ WHERE
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: fzwbd\n" +
 			"     │   ├─ outerVisibility: false\n" +
+			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
 			"     │   └─ Distinct\n" +
 			"     │       └─ Project\n" +
@@ -1554,6 +1561,7 @@ WHERE
 			"     │   └─ SubqueryAlias\n" +
 			"     │       ├─ name: scalarSubq0\n" +
 			"     │       ├─ outerVisibility: false\n" +
+			"     │       ├─ isLateral: false\n" +
 			"     │       ├─ cacheable: true\n" +
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [Subquery\n" +
@@ -1597,6 +1605,7 @@ WHERE
 			"     │                   ├─ SubqueryAlias\n" +
 			"     │                   │   ├─ name: s7byt\n" +
 			"     │                   │   ├─ outerVisibility: false\n" +
+			"     │                   │   ├─ isLateral: false\n" +
 			"     │                   │   ├─ cacheable: true\n" +
 			"     │                   │   └─ Distinct\n" +
 			"     │                   │       └─ Project\n" +
@@ -1673,6 +1682,7 @@ WHERE
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: cl3dt\n" +
 			"     │   ├─ outerVisibility: false\n" +
+			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
 			"     │   └─ Filter\n" +
 			"     │       ├─ AND\n" +
@@ -1696,6 +1706,7 @@ WHERE
 			"     │                       └─ SubqueryAlias\n" +
 			"     │                           ├─ name: tq57w\n" +
 			"     │                           ├─ outerVisibility: false\n" +
+			"     │                           ├─ isLateral: false\n" +
 			"     │                           ├─ cacheable: true\n" +
 			"     │                           └─ Project\n" +
 			"     │                               ├─ columns: [nd.id:0!null as id, nd.ZH72S:7 as ZH72S, Subquery\n" +
@@ -2442,6 +2453,7 @@ WHERE
 			" │               │           ├─ SubqueryAlias\n" +
 			" │               │           │   ├─ name: sl3s5\n" +
 			" │               │           │   ├─ outerVisibility: false\n" +
+			" │               │           │   ├─ isLateral: false\n" +
 			" │               │           │   ├─ cacheable: true\n" +
 			" │               │           │   └─ Project\n" +
 			" │               │           │       ├─ columns: [khjjo.BDNYB:12!null as BDNYB, ci.FTQLQ:1!null as TOFPN, ct.M22QN:4!null as M22QN, cec.ADURZ:10!null as ADURZ, cec.NO52D:9!null as NO52D, ct.S3Q3Y:6!null as IDPK7]\n" +
@@ -2496,6 +2508,7 @@ WHERE
 			" │               │           │               └─ SubqueryAlias\n" +
 			" │               │           │                   ├─ name: khjjo\n" +
 			" │               │           │                   ├─ outerVisibility: false\n" +
+			" │               │           │                   ├─ isLateral: false\n" +
 			" │               │           │                   ├─ cacheable: true\n" +
 			" │               │           │                   └─ Distinct\n" +
 			" │               │           │                       └─ Project\n" +
@@ -2553,6 +2566,7 @@ WHERE
 			"         ├─ SubqueryAlias\n" +
 			"         │   ├─ name: aoev5\n" +
 			"         │   ├─ outerVisibility: false\n" +
+			"         │   ├─ isLateral: false\n" +
 			"         │   ├─ cacheable: true\n" +
 			"         │   └─ Project\n" +
 			"         │       ├─ columns: [temp_aoev5.t4ibq:0!null]\n" +
@@ -2573,6 +2587,7 @@ WHERE
 			"             └─ SubqueryAlias\n" +
 			"                 ├─ name: vumuy\n" +
 			"                 ├─ outerVisibility: false\n" +
+			"                 ├─ isLateral: false\n" +
 			"                 ├─ cacheable: true\n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [sl3s5.TOFPN:11!null as DL754, sn.id:0!null as BDNYB, sl3s5.ADURZ:13!null as ADURZ, Subquery\n" +
@@ -2614,6 +2629,7 @@ WHERE
 			"                             ├─ SubqueryAlias\n" +
 			"                             │   ├─ name: sl3s5\n" +
 			"                             │   ├─ outerVisibility: false\n" +
+			"                             │   ├─ isLateral: false\n" +
 			"                             │   ├─ cacheable: true\n" +
 			"                             │   └─ Project\n" +
 			"                             │       ├─ columns: [sn.id:17!null as BDNYB, ci.FTQLQ:1!null as TOFPN, ct.M22QN:5!null as M22QN, cec.ADURZ:16!null as ADURZ, cec.NO52D:15!null as NO52D, ct.S3Q3Y:11!null as IDPK7]\n" +
@@ -2863,6 +2879,7 @@ WHERE
 			" │               │           ├─ SubqueryAlias\n" +
 			" │               │           │   ├─ name: sl3s5\n" +
 			" │               │           │   ├─ outerVisibility: false\n" +
+			" │               │           │   ├─ isLateral: false\n" +
 			" │               │           │   ├─ cacheable: true\n" +
 			" │               │           │   └─ Project\n" +
 			" │               │           │       ├─ columns: [khjjo.BDNYB:12!null as BDNYB, ci.FTQLQ:1!null as TOFPN, ct.M22QN:4!null as M22QN, cec.ADURZ:10!null as ADURZ, cec.NO52D:9!null as NO52D, ct.S3Q3Y:6!null as IDPK7]\n" +
@@ -2917,6 +2934,7 @@ WHERE
 			" │               │           │               └─ SubqueryAlias\n" +
 			" │               │           │                   ├─ name: khjjo\n" +
 			" │               │           │                   ├─ outerVisibility: false\n" +
+			" │               │           │                   ├─ isLateral: false\n" +
 			" │               │           │                   ├─ cacheable: true\n" +
 			" │               │           │                   └─ Distinct\n" +
 			" │               │           │                       └─ Project\n" +
@@ -2974,6 +2992,7 @@ WHERE
 			"         ├─ SubqueryAlias\n" +
 			"         │   ├─ name: aoev5\n" +
 			"         │   ├─ outerVisibility: false\n" +
+			"         │   ├─ isLateral: false\n" +
 			"         │   ├─ cacheable: true\n" +
 			"         │   └─ Project\n" +
 			"         │       ├─ columns: [temp_aoev5.t4ibq:0!null]\n" +
@@ -2994,6 +3013,7 @@ WHERE
 			"             └─ SubqueryAlias\n" +
 			"                 ├─ name: vumuy\n" +
 			"                 ├─ outerVisibility: false\n" +
+			"                 ├─ isLateral: false\n" +
 			"                 ├─ cacheable: true\n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [sl3s5.TOFPN:11!null as DL754, sn.id:0!null as BDNYB, sl3s5.ADURZ:13!null as ADURZ, Subquery\n" +
@@ -3035,6 +3055,7 @@ WHERE
 			"                             ├─ SubqueryAlias\n" +
 			"                             │   ├─ name: sl3s5\n" +
 			"                             │   ├─ outerVisibility: false\n" +
+			"                             │   ├─ isLateral: false\n" +
 			"                             │   ├─ cacheable: true\n" +
 			"                             │   └─ Project\n" +
 			"                             │       ├─ columns: [sn.id:17!null as BDNYB, ci.FTQLQ:1!null as TOFPN, ct.M22QN:5!null as M22QN, cec.ADURZ:16!null as ADURZ, cec.NO52D:15!null as NO52D, ct.S3Q3Y:11!null as IDPK7]\n" +
@@ -3166,6 +3187,7 @@ WHERE
 			"             │   ├─ SubqueryAlias\n" +
 			"             │   │   ├─ name: nb6pj\n" +
 			"             │   │   ├─ outerVisibility: false\n" +
+			"             │   │   ├─ isLateral: false\n" +
 			"             │   │   ├─ cacheable: true\n" +
 			"             │   │   └─ Project\n" +
 			"             │   │       ├─ columns: [row_number() over ( order by noxn3.id asc):0!null as Y3IOU, noxn3.id:1!null, noxn3.BRQP2:2!null, noxn3.FFTBJ:3!null, noxn3.NUMK2:4!null, noxn3.LETOE:5!null]\n" +
@@ -3228,6 +3250,7 @@ WHERE
 			"             ├─ SubqueryAlias\n" +
 			"             │   ├─ name: nb6pj\n" +
 			"             │   ├─ outerVisibility: false\n" +
+			"             │   ├─ isLateral: false\n" +
 			"             │   ├─ cacheable: true\n" +
 			"             │   └─ Project\n" +
 			"             │       ├─ columns: [row_number() over ( order by noxn3.id asc):0!null as Y3IOU, noxn3.id:1!null, noxn3.BRQP2:2!null, noxn3.FFTBJ:3!null, noxn3.NUMK2:4!null, noxn3.LETOE:5!null]\n" +
@@ -3486,6 +3509,7 @@ WHERE
 			"             ├─ SubqueryAlias\n" +
 			"             │   ├─ name: athcu\n" +
 			"             │   ├─ outerVisibility: false\n" +
+			"             │   ├─ isLateral: false\n" +
 			"             │   ├─ cacheable: true\n" +
 			"             │   └─ Project\n" +
 			"             │       ├─ columns: [tmdtp.B2TX3:0!null, tmdtp.T4IBQ:1!null, nd.id:2!null as YYKXN, nd.TW55N:5!null as TW55N, nd.FSK67:10!null as SOWRY, Subquery\n" +
@@ -3534,6 +3558,7 @@ WHERE
 			"             │                   └─ SubqueryAlias\n" +
 			"             │                       ├─ name: tmdtp\n" +
 			"             │                       ├─ outerVisibility: false\n" +
+			"             │                       ├─ isLateral: false\n" +
 			"             │                       ├─ cacheable: true\n" +
 			"             │                       └─ Project\n" +
 			"             │                           ├─ columns: [bs.id:0!null as B2TX3, cla.FTQLQ:3!null as T4IBQ]\n" +
@@ -3690,6 +3715,7 @@ WHERE
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: xprw6\n" +
 			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [nrfj3.T4IBQ:1!null as T4IBQ, nrfj3.ECUWU:2!null as ECUWU, nrfj3.GSTQA:3!null as GSTQA, nrfj3.B5OUF:4 as B5OUF, sum(case  when ((nrfj3.oztqf < 0.5) or (nrfj3.yhylk = 0)) then 1 else 0 end):0!null as SP4SI]\n" +
@@ -3706,6 +3732,7 @@ WHERE
 			"                 └─ SubqueryAlias\n" +
 			"                     ├─ name: nrfj3\n" +
 			"                     ├─ outerVisibility: false\n" +
+			"                     ├─ isLateral: false\n" +
 			"                     ├─ cacheable: true\n" +
 			"                     └─ Distinct\n" +
 			"                         └─ Project\n" +
@@ -3713,6 +3740,7 @@ WHERE
 			"                             └─ SubqueryAlias\n" +
 			"                                 ├─ name: ax7fv\n" +
 			"                                 ├─ outerVisibility: false\n" +
+			"                                 ├─ isLateral: false\n" +
 			"                                 ├─ cacheable: true\n" +
 			"                                 └─ Project\n" +
 			"                                     ├─ columns: [bs.T4IBQ:1!null as T4IBQ, pa.DZLIM:8!null as ECUWU, pga.DZLIM:17!null as GSTQA, pog.B5OUF:15, fc.OZTQF:20!null, f26zw.YHYLK:24, nd.TW55N:3!null as TW55N]\n" +
@@ -3747,6 +3775,7 @@ WHERE
 			"                                             │   │   │   ├─ SubqueryAlias\n" +
 			"                                             │   │   │   │   ├─ name: bs\n" +
 			"                                             │   │   │   │   ├─ outerVisibility: false\n" +
+			"                                             │   │   │   │   ├─ isLateral: false\n" +
 			"                                             │   │   │   │   ├─ cacheable: true\n" +
 			"                                             │   │   │   │   └─ Filter\n" +
 			"                                             │   │   │   │       ├─ HashIn\n" +
@@ -3851,6 +3880,7 @@ WHERE
 			"                                             │       └─ SubqueryAlias\n" +
 			"                                             │           ├─ name: f26zw\n" +
 			"                                             │           ├─ outerVisibility: false\n" +
+			"                                             │           ├─ isLateral: false\n" +
 			"                                             │           ├─ cacheable: true\n" +
 			"                                             │           └─ Project\n" +
 			"                                             │               ├─ columns: [iq.T4IBQ:0!null, iq.BRQP2:1!null, iq.Z7CP5:2!null, CASE  WHEN AND\n" +
@@ -3934,6 +3964,7 @@ WHERE
 			"                                             │                   │   ├─ SubqueryAlias\n" +
 			"                                             │                   │   │   ├─ name: iq\n" +
 			"                                             │                   │   │   ├─ outerVisibility: false\n" +
+			"                                             │                   │   │   ├─ isLateral: false\n" +
 			"                                             │                   │   │   ├─ cacheable: true\n" +
 			"                                             │                   │   │   └─ Project\n" +
 			"                                             │                   │   │       ├─ columns: [cla.FTQLQ:1!null as T4IBQ, sn.BRQP2:12!null, mf.id:4!null as Z7CP5, mf.FSDY2:7!null, nma.DZLIM:11!null as IDWIO]\n" +
@@ -4154,6 +4185,7 @@ WHERE
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: xprw6\n" +
 			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [nrfj3.T4IBQ:1!null as T4IBQ, nrfj3.ECUWU:2!null as ECUWU, nrfj3.GSTQA:3!null as GSTQA, nrfj3.B5OUF:4 as B5OUF, sum(case  when ((nrfj3.oztqf < 0.5) or (nrfj3.yhylk = 0)) then 1 else 0 end):0!null as SP4SI]\n" +
@@ -4170,6 +4202,7 @@ WHERE
 			"                 └─ SubqueryAlias\n" +
 			"                     ├─ name: nrfj3\n" +
 			"                     ├─ outerVisibility: false\n" +
+			"                     ├─ isLateral: false\n" +
 			"                     ├─ cacheable: true\n" +
 			"                     └─ Distinct\n" +
 			"                         └─ Project\n" +
@@ -4177,6 +4210,7 @@ WHERE
 			"                             └─ SubqueryAlias\n" +
 			"                                 ├─ name: ax7fv\n" +
 			"                                 ├─ outerVisibility: false\n" +
+			"                                 ├─ isLateral: false\n" +
 			"                                 ├─ cacheable: true\n" +
 			"                                 └─ Project\n" +
 			"                                     ├─ columns: [bs.T4IBQ:1!null as T4IBQ, pa.DZLIM:8!null as ECUWU, pga.DZLIM:17!null as GSTQA, pog.B5OUF:15, fc.OZTQF:20!null, f26zw.YHYLK:24, nd.TW55N:3!null as TW55N]\n" +
@@ -4211,6 +4245,7 @@ WHERE
 			"                                             │   │   │   ├─ SubqueryAlias\n" +
 			"                                             │   │   │   │   ├─ name: bs\n" +
 			"                                             │   │   │   │   ├─ outerVisibility: false\n" +
+			"                                             │   │   │   │   ├─ isLateral: false\n" +
 			"                                             │   │   │   │   ├─ cacheable: true\n" +
 			"                                             │   │   │   │   └─ Filter\n" +
 			"                                             │   │   │   │       ├─ HashIn\n" +
@@ -4315,6 +4350,7 @@ WHERE
 			"                                             │       └─ SubqueryAlias\n" +
 			"                                             │           ├─ name: f26zw\n" +
 			"                                             │           ├─ outerVisibility: false\n" +
+			"                                             │           ├─ isLateral: false\n" +
 			"                                             │           ├─ cacheable: true\n" +
 			"                                             │           └─ Project\n" +
 			"                                             │               ├─ columns: [iq.T4IBQ:0!null, iq.BRQP2:1!null, iq.Z7CP5:2!null, CASE  WHEN AND\n" +
@@ -4398,6 +4434,7 @@ WHERE
 			"                                             │                   │   ├─ SubqueryAlias\n" +
 			"                                             │                   │   │   ├─ name: iq\n" +
 			"                                             │                   │   │   ├─ outerVisibility: false\n" +
+			"                                             │                   │   │   ├─ isLateral: false\n" +
 			"                                             │                   │   │   ├─ cacheable: true\n" +
 			"                                             │                   │   │   └─ Project\n" +
 			"                                             │                   │   │       ├─ columns: [cla.FTQLQ:7!null as T4IBQ, sn.BRQP2:8!null, mf.id:2!null as Z7CP5, mf.FSDY2:5!null, nma.DZLIM:10!null as IDWIO]\n" +
@@ -4532,6 +4569,7 @@ WHERE
 			"             ├─ SubqueryAlias\n" +
 			"             │   ├─ name: tusay\n" +
 			"             │   ├─ outerVisibility: false\n" +
+			"             │   ├─ isLateral: false\n" +
 			"             │   ├─ cacheable: true\n" +
 			"             │   └─ Project\n" +
 			"             │       ├─ columns: [row_number() over ( order by noxn3.id asc):0!null as Y3IOU, noxn3.id:1!null as XLFIA]\n" +
@@ -4547,6 +4585,7 @@ WHERE
 			"                 └─ SubqueryAlias\n" +
 			"                     ├─ name: xj2rd\n" +
 			"                     ├─ outerVisibility: false\n" +
+			"                     ├─ isLateral: false\n" +
 			"                     ├─ cacheable: true\n" +
 			"                     └─ Project\n" +
 			"                         ├─ columns: [qywqd.id:0!null as Y46B2, qywqd.WNUNU:1!null as WNUNU, qywqd.HVHRZ:2!null as HVHRZ]\n" +
@@ -4603,6 +4642,7 @@ WHERE
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: yzxyp\n" +
 			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [nd.T722E:0!null, fc.Z35GY:2!null]\n" +
@@ -4616,6 +4656,7 @@ WHERE
 			"                     ├─ SubqueryAlias\n" +
 			"                     │   ├─ name: nd\n" +
 			"                     │   ├─ outerVisibility: false\n" +
+			"                     │   ├─ isLateral: false\n" +
 			"                     │   ├─ cacheable: true\n" +
 			"                     │   └─ Project\n" +
 			"                     │       ├─ columns: [e2i7u.id:0!null as T722E]\n" +
@@ -4628,6 +4669,7 @@ WHERE
 			"                         └─ SubqueryAlias\n" +
 			"                             ├─ name: fc\n" +
 			"                             ├─ outerVisibility: false\n" +
+			"                             ├─ isLateral: false\n" +
 			"                             ├─ cacheable: true\n" +
 			"                             └─ Project\n" +
 			"                                 ├─ columns: [amyxq.LUEVY:1!null as ZPAIK, max(amyxq.z35gy):0!null as Z35GY]\n" +
@@ -4820,6 +4862,7 @@ WHERE
 			"                 │   ├─ SubqueryAlias\n" +
 			"                 │   │   ├─ name: ckele\n" +
 			"                 │   │   ├─ outerVisibility: false\n" +
+			"                 │   │   ├─ isLateral: false\n" +
 			"                 │   │   ├─ cacheable: true\n" +
 			"                 │   │   └─ Project\n" +
 			"                 │   │       ├─ columns: [noxn3.id:1!null as LWQ6O, row_number() over ( order by noxn3.id asc):0!null as M6T2N]\n" +
@@ -4835,6 +4878,7 @@ WHERE
 			"                 │       └─ SubqueryAlias\n" +
 			"                 │           ├─ name: oxxei\n" +
 			"                 │           ├─ outerVisibility: false\n" +
+			"                 │           ├─ isLateral: false\n" +
 			"                 │           ├─ cacheable: true\n" +
 			"                 │           └─ Project\n" +
 			"                 │               ├─ columns: [cla.FTQLQ:1!null as T4IBQ, sn.id:12!null as BDNYB, aac.BTXC5:15 as BTXC5, mf.id:4!null as Z7CP5, CASE  WHEN NOT\n" +
@@ -4935,6 +4979,7 @@ WHERE
 			"                     └─ SubqueryAlias\n" +
 			"                         ├─ name: e52ap\n" +
 			"                         ├─ outerVisibility: false\n" +
+			"                         ├─ isLateral: false\n" +
 			"                         ├─ cacheable: true\n" +
 			"                         └─ Project\n" +
 			"                             ├─ columns: [nd.TW55N:13!null as KUXQY, sn.id:0!null as BDNYB, nma.DZLIM:28!null as YHVEZ, CASE  WHEN LessThan\n" +
@@ -5067,6 +5112,7 @@ WHERE
 			"                 │   ├─ SubqueryAlias\n" +
 			"                 │   │   ├─ name: ckele\n" +
 			"                 │   │   ├─ outerVisibility: false\n" +
+			"                 │   │   ├─ isLateral: false\n" +
 			"                 │   │   ├─ cacheable: true\n" +
 			"                 │   │   └─ Project\n" +
 			"                 │   │       ├─ columns: [noxn3.id:1!null as LWQ6O, row_number() over ( order by noxn3.id asc):0!null as M6T2N]\n" +
@@ -5082,6 +5128,7 @@ WHERE
 			"                 │       └─ SubqueryAlias\n" +
 			"                 │           ├─ name: oxxei\n" +
 			"                 │           ├─ outerVisibility: false\n" +
+			"                 │           ├─ isLateral: false\n" +
 			"                 │           ├─ cacheable: true\n" +
 			"                 │           └─ Project\n" +
 			"                 │               ├─ columns: [cla.FTQLQ:15!null as T4IBQ, sn.id:8!null as BDNYB, aac.BTXC5:11 as BTXC5, mf.id:0!null as Z7CP5, CASE  WHEN NOT\n" +
@@ -5182,6 +5229,7 @@ WHERE
 			"                     └─ SubqueryAlias\n" +
 			"                         ├─ name: e52ap\n" +
 			"                         ├─ outerVisibility: false\n" +
+			"                         ├─ isLateral: false\n" +
 			"                         ├─ cacheable: true\n" +
 			"                         └─ Project\n" +
 			"                             ├─ columns: [nd.TW55N:13!null as KUXQY, sn.id:0!null as BDNYB, nma.DZLIM:28!null as YHVEZ, CASE  WHEN LessThan\n" +
@@ -5412,6 +5460,7 @@ WHERE
 			" │           └─ SubqueryAlias\n" +
 			" │               ├─ name: ei\n" +
 			" │               ├─ outerVisibility: true\n" +
+			" │               ├─ isLateral: false\n" +
 			" │               ├─ cacheable: true\n" +
 			" │               └─ Project\n" +
 			" │                   ├─ columns: [noxn3.id:35!null, (row_number() over ( order by noxn3.id asc):34!null - 1 (tinyint)) as M6T2N]\n" +
@@ -5435,6 +5484,7 @@ WHERE
 			" │           └─ SubqueryAlias\n" +
 			" │               ├─ name: ei\n" +
 			" │               ├─ outerVisibility: true\n" +
+			" │               ├─ isLateral: false\n" +
 			" │               ├─ cacheable: true\n" +
 			" │               └─ Project\n" +
 			" │                   ├─ columns: [noxn3.id:35!null, (row_number() over ( order by noxn3.id asc):34!null - 1 (tinyint)) as M6T2N]\n" +
@@ -5460,6 +5510,7 @@ WHERE
 			"     │           └─ SubqueryAlias\n" +
 			"     │               ├─ name: ei\n" +
 			"     │               ├─ outerVisibility: true\n" +
+			"     │               ├─ isLateral: false\n" +
 			"     │               ├─ cacheable: true\n" +
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [noxn3.id:28!null, (row_number() over ( order by noxn3.id asc):27!null - 1 (tinyint)) as M6T2N]\n" +
@@ -5483,6 +5534,7 @@ WHERE
 			"     │           └─ SubqueryAlias\n" +
 			"     │               ├─ name: ei\n" +
 			"     │               ├─ outerVisibility: true\n" +
+			"     │               ├─ isLateral: false\n" +
 			"     │               ├─ cacheable: true\n" +
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [noxn3.id:28!null, (row_number() over ( order by noxn3.id asc):27!null - 1 (tinyint)) as M6T2N]\n" +
@@ -5591,6 +5643,7 @@ WHERE
 			"         │   ├─ SubqueryAlias\n" +
 			"         │   │   ├─ name: mjr3d\n" +
 			"         │   │   ├─ outerVisibility: false\n" +
+			"         │   │   ├─ isLateral: false\n" +
 			"         │   │   ├─ cacheable: true\n" +
 			"         │   │   └─ Union distinct\n" +
 			"         │   │       ├─ Project\n" +
@@ -5607,6 +5660,7 @@ WHERE
 			"         │   │       │       │   └─ SubqueryAlias\n" +
 			"         │   │       │       │       ├─ name: jchir\n" +
 			"         │   │       │       │       ├─ outerVisibility: false\n" +
+			"         │   │       │       │       ├─ isLateral: false\n" +
 			"         │   │       │       │       ├─ cacheable: true\n" +
 			"         │   │       │       │       └─ Filter\n" +
 			"         │   │       │       │           ├─ Or\n" +
@@ -5719,6 +5773,7 @@ WHERE
 			"         │   │       │               └─ SubqueryAlias\n" +
 			"         │   │       │                   ├─ name: jchir\n" +
 			"         │   │       │                   ├─ outerVisibility: false\n" +
+			"         │   │       │                   ├─ isLateral: false\n" +
 			"         │   │       │                   ├─ cacheable: true\n" +
 			"         │   │       │                   └─ Filter\n" +
 			"         │   │       │                       ├─ AND\n" +
@@ -5830,6 +5885,7 @@ WHERE
 			"         │   │               └─ SubqueryAlias\n" +
 			"         │   │                   ├─ name: jchir\n" +
 			"         │   │                   ├─ outerVisibility: false\n" +
+			"         │   │                   ├─ isLateral: false\n" +
 			"         │   │                   ├─ cacheable: true\n" +
 			"         │   │                   └─ Filter\n" +
 			"         │   │                       ├─ AND\n" +
@@ -5943,6 +5999,7 @@ WHERE
 			"                 ├─ SubqueryAlias\n" +
 			"                 │   ├─ name: aac\n" +
 			"                 │   ├─ outerVisibility: false\n" +
+			"                 │   ├─ isLateral: false\n" +
 			"                 │   ├─ cacheable: true\n" +
 			"                 │   └─ Table\n" +
 			"                 │       ├─ name: TPXBU\n" +
@@ -5953,6 +6010,7 @@ WHERE
 			"                     └─ SubqueryAlias\n" +
 			"                         ├─ name: mf\n" +
 			"                         ├─ outerVisibility: false\n" +
+			"                         ├─ isLateral: false\n" +
 			"                         ├─ cacheable: true\n" +
 			"                         └─ Project\n" +
 			"                             ├─ columns: [cla.FTQLQ:6!null, mf.LUEVY:1!null, mf.M22QN:2!null]\n" +
@@ -6156,6 +6214,7 @@ WHERE
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: fs\n" +
 			"     │   ├─ outerVisibility: false\n" +
+			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [rsa3y.T4IBQ:0!null as T4IBQ, jmhie.M6T2N:1 as M6T2N, jmhie.BTXC5:2 as BTXC5, jmhie.TUV25:3 as TUV25]\n" +
@@ -6163,6 +6222,7 @@ WHERE
 			"     │           ├─ SubqueryAlias\n" +
 			"     │           │   ├─ name: rsa3y\n" +
 			"     │           │   ├─ outerVisibility: false\n" +
+			"     │           │   ├─ isLateral: false\n" +
 			"     │           │   ├─ cacheable: true\n" +
 			"     │           │   └─ Distinct\n" +
 			"     │           │       └─ Project\n" +
@@ -6170,6 +6230,7 @@ WHERE
 			"     │           │           └─ SubqueryAlias\n" +
 			"     │           │               ├─ name: htkbs\n" +
 			"     │           │               ├─ outerVisibility: false\n" +
+			"     │           │               ├─ isLateral: false\n" +
 			"     │           │               ├─ cacheable: true\n" +
 			"     │           │               └─ Project\n" +
 			"     │           │                   ├─ columns: [cla.FTQLQ:1!null as T4IBQ, sn.id:7!null as BDNYB, mf.M22QN:6!null as M22QN]\n" +
@@ -6223,6 +6284,7 @@ WHERE
 			"     │               └─ SubqueryAlias\n" +
 			"     │                   ├─ name: jmhie\n" +
 			"     │                   ├─ outerVisibility: false\n" +
+			"     │                   ├─ isLateral: false\n" +
 			"     │                   ├─ cacheable: true\n" +
 			"     │                   └─ Distinct\n" +
 			"     │                       └─ Project\n" +
@@ -6230,6 +6292,7 @@ WHERE
 			"     │                           └─ SubqueryAlias\n" +
 			"     │                               ├─ name: jqhrg\n" +
 			"     │                               ├─ outerVisibility: false\n" +
+			"     │                               ├─ isLateral: false\n" +
 			"     │                               ├─ cacheable: true\n" +
 			"     │                               └─ Project\n" +
 			"     │                                   ├─ columns: [CASE  WHEN NOT\n" +
@@ -6246,6 +6309,7 @@ WHERE
 			"     │                                   │           └─ SubqueryAlias\n" +
 			"     │                                   │               ├─ name: ei\n" +
 			"     │                                   │               ├─ outerVisibility: true\n" +
+			"     │                                   │               ├─ isLateral: false\n" +
 			"     │                                   │               ├─ cacheable: true\n" +
 			"     │                                   │               └─ Project\n" +
 			"     │                                   │                   ├─ columns: [noxn3.id:26!null, (row_number() over ( order by noxn3.id asc):25!null - 1 (tinyint)) as M6T2N]\n" +
@@ -6269,6 +6333,7 @@ WHERE
 			"     │                                   │           └─ SubqueryAlias\n" +
 			"     │                                   │               ├─ name: ei\n" +
 			"     │                                   │               ├─ outerVisibility: true\n" +
+			"     │                                   │               ├─ isLateral: false\n" +
 			"     │                                   │               ├─ cacheable: true\n" +
 			"     │                                   │               └─ Project\n" +
 			"     │                                   │                   ├─ columns: [noxn3.id:26!null, (row_number() over ( order by noxn3.id asc):25!null - 1 (tinyint)) as M6T2N]\n" +
@@ -6294,6 +6359,7 @@ WHERE
 			"     │                                       │           └─ SubqueryAlias\n" +
 			"     │                                       │               ├─ name: ei\n" +
 			"     │                                       │               ├─ outerVisibility: true\n" +
+			"     │                                       │               ├─ isLateral: false\n" +
 			"     │                                       │               ├─ cacheable: true\n" +
 			"     │                                       │               └─ Project\n" +
 			"     │                                       │                   ├─ columns: [noxn3.id:21!null, (row_number() over ( order by noxn3.id asc):20!null - 1 (tinyint)) as M6T2N]\n" +
@@ -6317,6 +6383,7 @@ WHERE
 			"     │                                       │           └─ SubqueryAlias\n" +
 			"     │                                       │               ├─ name: ei\n" +
 			"     │                                       │               ├─ outerVisibility: true\n" +
+			"     │                                       │               ├─ isLateral: false\n" +
 			"     │                                       │               ├─ cacheable: true\n" +
 			"     │                                       │               └─ Project\n" +
 			"     │                                       │                   ├─ columns: [noxn3.id:21!null, (row_number() over ( order by noxn3.id asc):20!null - 1 (tinyint)) as M6T2N]\n" +
@@ -6414,6 +6481,7 @@ WHERE
 			"     │                                           │   ├─ SubqueryAlias\n" +
 			"     │                                           │   │   ├─ name: mjr3d\n" +
 			"     │                                           │   │   ├─ outerVisibility: false\n" +
+			"     │                                           │   │   ├─ isLateral: false\n" +
 			"     │                                           │   │   ├─ cacheable: true\n" +
 			"     │                                           │   │   └─ Distinct\n" +
 			"     │                                           │   │       └─ Project\n" +
@@ -6512,10 +6580,12 @@ WHERE
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: scalarSubq0\n" +
 			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: zmspr\n" +
 			"             ├─ outerVisibility: false\n" +
+			"             ├─ isLateral: false\n" +
 			"             ├─ cacheable: true\n" +
 			"             └─ Distinct\n" +
 			"                 └─ Project\n" +
@@ -6534,6 +6604,7 @@ WHERE
 			"                             ├─ SubqueryAlias\n" +
 			"                             │   ├─ name: cld\n" +
 			"                             │   ├─ outerVisibility: false\n" +
+			"                             │   ├─ isLateral: false\n" +
 			"                             │   ├─ cacheable: true\n" +
 			"                             │   └─ Project\n" +
 			"                             │       ├─ columns: [cla.FTQLQ:1!null as T4IBQ, sn.id:7!null as BDNYB, mf.M22QN:6!null as M22QN]\n" +
@@ -6587,6 +6658,7 @@ WHERE
 			"                                 └─ SubqueryAlias\n" +
 			"                                     ├─ name: p4pjz\n" +
 			"                                     ├─ outerVisibility: false\n" +
+			"                                     ├─ isLateral: false\n" +
 			"                                     ├─ cacheable: true\n" +
 			"                                     └─ Project\n" +
 			"                                         ├─ columns: [CASE  WHEN NOT\n" +
@@ -6603,6 +6675,7 @@ WHERE
 			"                                         │           └─ SubqueryAlias\n" +
 			"                                         │               ├─ name: ei\n" +
 			"                                         │               ├─ outerVisibility: true\n" +
+			"                                         │               ├─ isLateral: false\n" +
 			"                                         │               ├─ cacheable: true\n" +
 			"                                         │               └─ Project\n" +
 			"                                         │                   ├─ columns: [noxn3.id:26!null, (row_number() over ( order by noxn3.id asc):25!null - 1 (tinyint)) as M6T2N]\n" +
@@ -6626,6 +6699,7 @@ WHERE
 			"                                         │           └─ SubqueryAlias\n" +
 			"                                         │               ├─ name: ei\n" +
 			"                                         │               ├─ outerVisibility: true\n" +
+			"                                         │               ├─ isLateral: false\n" +
 			"                                         │               ├─ cacheable: true\n" +
 			"                                         │               └─ Project\n" +
 			"                                         │                   ├─ columns: [noxn3.id:26!null, (row_number() over ( order by noxn3.id asc):25!null - 1 (tinyint)) as M6T2N]\n" +
@@ -6651,6 +6725,7 @@ WHERE
 			"                                             │           └─ SubqueryAlias\n" +
 			"                                             │               ├─ name: ei\n" +
 			"                                             │               ├─ outerVisibility: true\n" +
+			"                                             │               ├─ isLateral: false\n" +
 			"                                             │               ├─ cacheable: true\n" +
 			"                                             │               └─ Project\n" +
 			"                                             │                   ├─ columns: [noxn3.id:21!null, (row_number() over ( order by noxn3.id asc):20!null - 1 (tinyint)) as M6T2N]\n" +
@@ -6674,6 +6749,7 @@ WHERE
 			"                                             │           └─ SubqueryAlias\n" +
 			"                                             │               ├─ name: ei\n" +
 			"                                             │               ├─ outerVisibility: true\n" +
+			"                                             │               ├─ isLateral: false\n" +
 			"                                             │               ├─ cacheable: true\n" +
 			"                                             │               └─ Project\n" +
 			"                                             │                   ├─ columns: [noxn3.id:21!null, (row_number() over ( order by noxn3.id asc):20!null - 1 (tinyint)) as M6T2N]\n" +
@@ -6771,6 +6847,7 @@ WHERE
 			"                                                 │   ├─ SubqueryAlias\n" +
 			"                                                 │   │   ├─ name: mjr3d\n" +
 			"                                                 │   │   ├─ outerVisibility: false\n" +
+			"                                                 │   │   ├─ isLateral: false\n" +
 			"                                                 │   │   ├─ cacheable: true\n" +
 			"                                                 │   │   └─ Distinct\n" +
 			"                                                 │   │       └─ Project\n" +
@@ -7031,6 +7108,7 @@ WHERE
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: fs\n" +
 			"     │   ├─ outerVisibility: false\n" +
+			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [rsa3y.T4IBQ:0!null as T4IBQ, jmhie.M6T2N:1 as M6T2N, jmhie.BTXC5:2 as BTXC5, jmhie.TUV25:3 as TUV25]\n" +
@@ -7038,6 +7116,7 @@ WHERE
 			"     │           ├─ SubqueryAlias\n" +
 			"     │           │   ├─ name: rsa3y\n" +
 			"     │           │   ├─ outerVisibility: false\n" +
+			"     │           │   ├─ isLateral: false\n" +
 			"     │           │   ├─ cacheable: true\n" +
 			"     │           │   └─ Distinct\n" +
 			"     │           │       └─ Project\n" +
@@ -7045,6 +7124,7 @@ WHERE
 			"     │           │           └─ SubqueryAlias\n" +
 			"     │           │               ├─ name: htkbs\n" +
 			"     │           │               ├─ outerVisibility: false\n" +
+			"     │           │               ├─ isLateral: false\n" +
 			"     │           │               ├─ cacheable: true\n" +
 			"     │           │               └─ Project\n" +
 			"     │           │                   ├─ columns: [cla.FTQLQ:6!null as T4IBQ, sn.id:3!null as BDNYB, mf.M22QN:2!null as M22QN]\n" +
@@ -7098,6 +7178,7 @@ WHERE
 			"     │               └─ SubqueryAlias\n" +
 			"     │                   ├─ name: jmhie\n" +
 			"     │                   ├─ outerVisibility: false\n" +
+			"     │                   ├─ isLateral: false\n" +
 			"     │                   ├─ cacheable: true\n" +
 			"     │                   └─ Distinct\n" +
 			"     │                       └─ Project\n" +
@@ -7105,6 +7186,7 @@ WHERE
 			"     │                           └─ SubqueryAlias\n" +
 			"     │                               ├─ name: jqhrg\n" +
 			"     │                               ├─ outerVisibility: false\n" +
+			"     │                               ├─ isLateral: false\n" +
 			"     │                               ├─ cacheable: true\n" +
 			"     │                               └─ Project\n" +
 			"     │                                   ├─ columns: [CASE  WHEN NOT\n" +
@@ -7121,6 +7203,7 @@ WHERE
 			"     │                                   │           └─ SubqueryAlias\n" +
 			"     │                                   │               ├─ name: ei\n" +
 			"     │                                   │               ├─ outerVisibility: true\n" +
+			"     │                                   │               ├─ isLateral: false\n" +
 			"     │                                   │               ├─ cacheable: true\n" +
 			"     │                                   │               └─ Project\n" +
 			"     │                                   │                   ├─ columns: [noxn3.id:26!null, (row_number() over ( order by noxn3.id asc):25!null - 1 (tinyint)) as M6T2N]\n" +
@@ -7144,6 +7227,7 @@ WHERE
 			"     │                                   │           └─ SubqueryAlias\n" +
 			"     │                                   │               ├─ name: ei\n" +
 			"     │                                   │               ├─ outerVisibility: true\n" +
+			"     │                                   │               ├─ isLateral: false\n" +
 			"     │                                   │               ├─ cacheable: true\n" +
 			"     │                                   │               └─ Project\n" +
 			"     │                                   │                   ├─ columns: [noxn3.id:26!null, (row_number() over ( order by noxn3.id asc):25!null - 1 (tinyint)) as M6T2N]\n" +
@@ -7169,6 +7253,7 @@ WHERE
 			"     │                                       │           └─ SubqueryAlias\n" +
 			"     │                                       │               ├─ name: ei\n" +
 			"     │                                       │               ├─ outerVisibility: true\n" +
+			"     │                                       │               ├─ isLateral: false\n" +
 			"     │                                       │               ├─ cacheable: true\n" +
 			"     │                                       │               └─ Project\n" +
 			"     │                                       │                   ├─ columns: [noxn3.id:21!null, (row_number() over ( order by noxn3.id asc):20!null - 1 (tinyint)) as M6T2N]\n" +
@@ -7192,6 +7277,7 @@ WHERE
 			"     │                                       │           └─ SubqueryAlias\n" +
 			"     │                                       │               ├─ name: ei\n" +
 			"     │                                       │               ├─ outerVisibility: true\n" +
+			"     │                                       │               ├─ isLateral: false\n" +
 			"     │                                       │               ├─ cacheable: true\n" +
 			"     │                                       │               └─ Project\n" +
 			"     │                                       │                   ├─ columns: [noxn3.id:21!null, (row_number() over ( order by noxn3.id asc):20!null - 1 (tinyint)) as M6T2N]\n" +
@@ -7289,6 +7375,7 @@ WHERE
 			"     │                                           │   ├─ SubqueryAlias\n" +
 			"     │                                           │   │   ├─ name: mjr3d\n" +
 			"     │                                           │   │   ├─ outerVisibility: false\n" +
+			"     │                                           │   │   ├─ isLateral: false\n" +
 			"     │                                           │   │   ├─ cacheable: true\n" +
 			"     │                                           │   │   └─ Distinct\n" +
 			"     │                                           │   │       └─ Project\n" +
@@ -7387,10 +7474,12 @@ WHERE
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: scalarSubq0\n" +
 			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: zmspr\n" +
 			"             ├─ outerVisibility: false\n" +
+			"             ├─ isLateral: false\n" +
 			"             ├─ cacheable: true\n" +
 			"             └─ Distinct\n" +
 			"                 └─ Project\n" +
@@ -7409,6 +7498,7 @@ WHERE
 			"                             ├─ SubqueryAlias\n" +
 			"                             │   ├─ name: cld\n" +
 			"                             │   ├─ outerVisibility: false\n" +
+			"                             │   ├─ isLateral: false\n" +
 			"                             │   ├─ cacheable: true\n" +
 			"                             │   └─ Project\n" +
 			"                             │       ├─ columns: [cla.FTQLQ:6!null as T4IBQ, sn.id:3!null as BDNYB, mf.M22QN:2!null as M22QN]\n" +
@@ -7462,6 +7552,7 @@ WHERE
 			"                                 └─ SubqueryAlias\n" +
 			"                                     ├─ name: p4pjz\n" +
 			"                                     ├─ outerVisibility: false\n" +
+			"                                     ├─ isLateral: false\n" +
 			"                                     ├─ cacheable: true\n" +
 			"                                     └─ Project\n" +
 			"                                         ├─ columns: [CASE  WHEN NOT\n" +
@@ -7478,6 +7569,7 @@ WHERE
 			"                                         │           └─ SubqueryAlias\n" +
 			"                                         │               ├─ name: ei\n" +
 			"                                         │               ├─ outerVisibility: true\n" +
+			"                                         │               ├─ isLateral: false\n" +
 			"                                         │               ├─ cacheable: true\n" +
 			"                                         │               └─ Project\n" +
 			"                                         │                   ├─ columns: [noxn3.id:26!null, (row_number() over ( order by noxn3.id asc):25!null - 1 (tinyint)) as M6T2N]\n" +
@@ -7501,6 +7593,7 @@ WHERE
 			"                                         │           └─ SubqueryAlias\n" +
 			"                                         │               ├─ name: ei\n" +
 			"                                         │               ├─ outerVisibility: true\n" +
+			"                                         │               ├─ isLateral: false\n" +
 			"                                         │               ├─ cacheable: true\n" +
 			"                                         │               └─ Project\n" +
 			"                                         │                   ├─ columns: [noxn3.id:26!null, (row_number() over ( order by noxn3.id asc):25!null - 1 (tinyint)) as M6T2N]\n" +
@@ -7526,6 +7619,7 @@ WHERE
 			"                                             │           └─ SubqueryAlias\n" +
 			"                                             │               ├─ name: ei\n" +
 			"                                             │               ├─ outerVisibility: true\n" +
+			"                                             │               ├─ isLateral: false\n" +
 			"                                             │               ├─ cacheable: true\n" +
 			"                                             │               └─ Project\n" +
 			"                                             │                   ├─ columns: [noxn3.id:21!null, (row_number() over ( order by noxn3.id asc):20!null - 1 (tinyint)) as M6T2N]\n" +
@@ -7549,6 +7643,7 @@ WHERE
 			"                                             │           └─ SubqueryAlias\n" +
 			"                                             │               ├─ name: ei\n" +
 			"                                             │               ├─ outerVisibility: true\n" +
+			"                                             │               ├─ isLateral: false\n" +
 			"                                             │               ├─ cacheable: true\n" +
 			"                                             │               └─ Project\n" +
 			"                                             │                   ├─ columns: [noxn3.id:21!null, (row_number() over ( order by noxn3.id asc):20!null - 1 (tinyint)) as M6T2N]\n" +
@@ -7646,6 +7741,7 @@ WHERE
 			"                                                 │   ├─ SubqueryAlias\n" +
 			"                                                 │   │   ├─ name: mjr3d\n" +
 			"                                                 │   │   ├─ outerVisibility: false\n" +
+			"                                                 │   │   ├─ isLateral: false\n" +
 			"                                                 │   │   ├─ cacheable: true\n" +
 			"                                                 │   │   └─ Distinct\n" +
 			"                                                 │   │       └─ Project\n" +
@@ -7837,6 +7933,7 @@ ORDER BY Y46B2 ASC`,
 			"             ├─ SubqueryAlias\n" +
 			"             │   ├─ name: tusay\n" +
 			"             │   ├─ outerVisibility: false\n" +
+			"             │   ├─ isLateral: false\n" +
 			"             │   ├─ cacheable: true\n" +
 			"             │   └─ Project\n" +
 			"             │       ├─ columns: [row_number() over ( order by noxn3.id asc):0!null as Y3IOU, noxn3.id:1!null as XLFIA]\n" +
@@ -7852,6 +7949,7 @@ ORDER BY Y46B2 ASC`,
 			"                 └─ SubqueryAlias\n" +
 			"                     ├─ name: xj2rd\n" +
 			"                     ├─ outerVisibility: false\n" +
+			"                     ├─ isLateral: false\n" +
 			"                     ├─ cacheable: true\n" +
 			"                     └─ Project\n" +
 			"                         ├─ columns: [qywqd.id:0!null as Y46B2, qywqd.HHVLX:1!null as HHVLX, qywqd.HVHRZ:2!null as HVHRZ]\n" +
@@ -7905,6 +8003,7 @@ ORDER BY sn.XLFIA ASC`,
 			"             ├─ SubqueryAlias\n" +
 			"             │   ├─ name: sn\n" +
 			"             │   ├─ outerVisibility: false\n" +
+			"             │   ├─ isLateral: false\n" +
 			"             │   ├─ cacheable: true\n" +
 			"             │   └─ Project\n" +
 			"             │       ├─ columns: [noxn3.id:0!null as XLFIA, noxn3.BRQP2:1!null]\n" +
@@ -7922,6 +8021,7 @@ ORDER BY sn.XLFIA ASC`,
 			"                 └─ SubqueryAlias\n" +
 			"                     ├─ name: i2gj5\n" +
 			"                     ├─ outerVisibility: false\n" +
+			"                     ├─ isLateral: false\n" +
 			"                     ├─ cacheable: true\n" +
 			"                     └─ Project\n" +
 			"                         ├─ columns: [nd.LUEVY:0!null, CASE  WHEN Eq\n" +
@@ -7935,6 +8035,7 @@ ORDER BY sn.XLFIA ASC`,
 			"                             ├─ SubqueryAlias\n" +
 			"                             │   ├─ name: nd\n" +
 			"                             │   ├─ outerVisibility: false\n" +
+			"                             │   ├─ isLateral: false\n" +
 			"                             │   ├─ cacheable: true\n" +
 			"                             │   └─ Project\n" +
 			"                             │       ├─ columns: [e2i7u.id:0!null as LUEVY, e2i7u.HPCMS:1!null as HPCMS]\n" +
@@ -7947,6 +8048,7 @@ ORDER BY sn.XLFIA ASC`,
 			"                                 └─ SubqueryAlias\n" +
 			"                                     ├─ name: nma\n" +
 			"                                     ├─ outerVisibility: false\n" +
+			"                                     ├─ isLateral: false\n" +
 			"                                     ├─ cacheable: true\n" +
 			"                                     └─ Project\n" +
 			"                                         ├─ columns: [tnmxi.id:0!null as MLECF, tnmxi.DZLIM:1!null]\n" +
@@ -7985,6 +8087,7 @@ ORDER BY GRRB6.XLFIA ASC`,
 			"             ├─ SubqueryAlias\n" +
 			"             │   ├─ name: grrb6\n" +
 			"             │   ├─ outerVisibility: false\n" +
+			"             │   ├─ isLateral: false\n" +
 			"             │   ├─ cacheable: true\n" +
 			"             │   └─ Project\n" +
 			"             │       ├─ columns: [noxn3.id:0!null as XLFIA, noxn3.BRQP2:1!null as AHMDT]\n" +
@@ -7997,6 +8100,7 @@ ORDER BY GRRB6.XLFIA ASC`,
 			"                 └─ SubqueryAlias\n" +
 			"                     ├─ name: qi2ie\n" +
 			"                     ├─ outerVisibility: false\n" +
+			"                     ├─ isLateral: false\n" +
 			"                     ├─ cacheable: true\n" +
 			"                     └─ Project\n" +
 			"                         ├─ columns: [row_number() over ( order by e2i7u.id asc):0!null as DICQO, e2i7u.id:1!null as VIBZI]\n" +
@@ -8315,6 +8419,7 @@ ORDER BY LUEVY`,
 			"             ├─ SubqueryAlias\n" +
 			"             │   ├─ name: ypgda\n" +
 			"             │   ├─ outerVisibility: false\n" +
+			"             │   ├─ isLateral: false\n" +
 			"             │   ├─ cacheable: true\n" +
 			"             │   └─ Project\n" +
 			"             │       ├─ columns: [nd.id:0!null as LUEVY, nd.TW55N:3!null as TW55N, nd.FGG57:6 as IYDZV, nd.QRQXW:4!null as QRQXW, nd.IWV2H:11 as CAECS, nd.ECXAJ:5!null as CJLLY, nma.DZLIM:18!null as SHP7H, nd.N5CC2:13 as HARAZ, Subquery\n" +
@@ -8658,6 +8763,7 @@ ORDER BY id ASC`,
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: sn\n" +
 			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ Filter\n" +
 			"             ├─ Eq\n" +
@@ -9159,6 +9265,7 @@ FROM
 			"             │       └─ SubqueryAlias\n" +
 			"             │           ├─ name: itwml\n" +
 			"             │           ├─ outerVisibility: false\n" +
+			"             │           ├─ isLateral: false\n" +
 			"             │           ├─ cacheable: true\n" +
 			"             │           └─ Project\n" +
 			"             │               ├─ columns: [sn.id:2!null as DRIWM, skpm6.id:0!null as JIEVY, sn.ECDKM:4 as HVHRZ]\n" +
@@ -10351,6 +10458,7 @@ WHERE
 			"             │       └─ SubqueryAlias\n" +
 			"             │           ├─ name: ncvd2\n" +
 			"             │           ├─ outerVisibility: false\n" +
+			"             │           ├─ isLateral: false\n" +
 			"             │           ├─ cacheable: true\n" +
 			"             │           └─ Distinct\n" +
 			"             │               └─ Project\n" +
@@ -10744,6 +10852,7 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"             │               │           ├─ SubqueryAlias\n" +
 			"             │               │           │   ├─ name: umf\n" +
 			"             │               │           │   ├─ outerVisibility: false\n" +
+			"             │               │           │   ├─ isLateral: false\n" +
 			"             │               │           │   ├─ cacheable: true\n" +
 			"             │               │           │   └─ Filter\n" +
 			"             │               │           │       ├─ AND\n" +
@@ -10911,6 +11020,7 @@ INNER JOIN D34QP vc ON C6PUD.AZ6SP LIKE CONCAT(CONCAT('%', vc.TWMSR), '%')`,
 			"                 ├─ SubqueryAlias\n" +
 			"                 │   ├─ name: c6pud\n" +
 			"                 │   ├─ outerVisibility: false\n" +
+			"                 │   ├─ isLateral: false\n" +
 			"                 │   ├─ cacheable: true\n" +
 			"                 │   └─ Project\n" +
 			"                 │       ├─ columns: [mf.id:0!null as id, umf.AZ6SP:3 as AZ6SP]\n" +
@@ -11070,6 +11180,7 @@ FROM
 			"             │       └─ SubqueryAlias\n" +
 			"             │           ├─ name: bpnw2\n" +
 			"             │           ├─ outerVisibility: false\n" +
+			"             │           ├─ isLateral: false\n" +
 			"             │           ├─ cacheable: true\n" +
 			"             │           └─ Distinct\n" +
 			"             │               └─ Project\n" +
@@ -11237,6 +11348,7 @@ FROM
 			"                         └─ SubqueryAlias\n" +
 			"                             ├─ name: bpnw2\n" +
 			"                             ├─ outerVisibility: false\n" +
+			"                             ├─ isLateral: false\n" +
 			"                             ├─ cacheable: true\n" +
 			"                             └─ Distinct\n" +
 			"                                 └─ Project\n" +
@@ -11599,6 +11711,7 @@ WHERE
 			"             │           └─ SubqueryAlias\n" +
 			"             │               ├─ name: rs\n" +
 			"             │               ├─ outerVisibility: false\n" +
+			"             │               ├─ isLateral: false\n" +
 			"             │               ├─ cacheable: true\n" +
 			"             │               └─ Distinct\n" +
 			"             │                   └─ Project\n" +
@@ -11626,6 +11739,7 @@ WHERE
 			"             │                           │   ├─ SubqueryAlias\n" +
 			"             │                           │   │   ├─ name: nk7fp\n" +
 			"             │                           │   │   ├─ outerVisibility: false\n" +
+			"             │                           │   │   ├─ isLateral: false\n" +
 			"             │                           │   │   ├─ cacheable: true\n" +
 			"             │                           │   │   └─ Distinct\n" +
 			"             │                           │   │       └─ Project\n" +
@@ -11883,6 +11997,7 @@ WHERE
 			"             │                   ├─ SubqueryAlias\n" +
 			"             │                   │   ├─ name: pqsxb\n" +
 			"             │                   │   ├─ outerVisibility: false\n" +
+			"             │                   │   ├─ isLateral: false\n" +
 			"             │                   │   ├─ cacheable: true\n" +
 			"             │                   │   └─ Project\n" +
 			"             │                   │       ├─ columns: [Subquery\n" +
@@ -12307,6 +12422,7 @@ WHERE
 			"             │           └─ SubqueryAlias\n" +
 			"             │               ├─ name: rs\n" +
 			"             │               ├─ outerVisibility: false\n" +
+			"             │               ├─ isLateral: false\n" +
 			"             │               ├─ cacheable: true\n" +
 			"             │               └─ Distinct\n" +
 			"             │                   └─ Project\n" +

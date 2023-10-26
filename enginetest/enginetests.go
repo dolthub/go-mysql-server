@@ -1340,6 +1340,10 @@ func TestGeneratedColumns(t *testing.T, harness Harness) {
 	for _, script := range queries.GeneratedColumnTests {
 		TestScriptPrepared(t, harness, script)
 	}
+	for _, script := range queries.BrokenGeneratedColumnTests {
+		t.Skip(script.Name)
+		TestScriptPrepared(t, harness, script)
+	}
 }
 
 func TestComplexIndexQueriesPrepared(t *testing.T, harness Harness) {

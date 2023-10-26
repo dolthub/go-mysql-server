@@ -141,7 +141,7 @@ func (h MySqlProxy) ComInitDB(c *mysql.Conn, schemaName string) error {
 }
 
 // ComPrepare implements mysql.Handler.
-func (h MySqlProxy) ComPrepare(c *mysql.Conn, query string) ([]*querypb.Field, error) {
+func (h MySqlProxy) ComPrepare(_ *mysql.Conn, _ string, _ *mysql.PrepareData) ([]*querypb.Field, error) {
 	return nil, fmt.Errorf("ComPrepare unsupported")
 }
 

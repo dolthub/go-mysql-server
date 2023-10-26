@@ -628,7 +628,11 @@ func widenJSONValues(val interface{}) sql.JSONWrapper {
 
 	js, ok := val.(sql.JSONWrapper)
 	if !ok {
-		panic(fmt.Sprintf("%v is not json", val))
+		str, ok := val.(string)
+		if !ok {
+			panic(fmt.Sprintf("%v is not json", val))
+		}
+		js = types.MustJSON(str)
 	}
 
 	doc := js.ToInterface()

@@ -37,6 +37,7 @@ WHERE
 			"     │       └─ SubqueryAlias\n" +
 			"     │           ├─ name: scalarSubq0\n" +
 			"     │           ├─ outerVisibility: false\n" +
+			"     │           ├─ isLateral: false\n" +
 			"     │           ├─ cacheable: true\n" +
 			"     │           └─ Project\n" +
 			"     │               ├─ columns: [max(orders2.o_id):0!null as MAX(o_id)]\n" +
@@ -113,6 +114,7 @@ from
 			"             └─ SubqueryAlias\n" +
 			"                 ├─ name: t\n" +
 			"                 ├─ outerVisibility: false\n" +
+			"                 ├─ isLateral: false\n" +
 			"                 ├─ cacheable: true\n" +
 			"                 └─ Limit(1)\n" +
 			"                     └─ Project\n" +

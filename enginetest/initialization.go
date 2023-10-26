@@ -20,17 +20,13 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
-	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func NewContext(harness Harness) *sql.Context {
@@ -54,16 +50,6 @@ func newContextSetup(ctx *sql.Context) *sql.Context {
 		ctx.SetCurrentDatabase("mydb")
 	}
 
-	// Add our in-session view to the context
-	_ = ctx.GetViewRegistry().Register("mydb",
-		plan.NewSubqueryAlias(
-			"myview",
-			"SELECT * FROM mytable",
-			plan.NewProject([]sql.Expression{
-				expression.NewGetFieldWithTable(0, types.Int64, "mydb", "mytable", "i", false),
-				expression.NewGetFieldWithTable(1, types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), "mydb", "mytable", "s", false),
-			}, plan.NewUnresolvedTable("mytable", "mydb")),
-		).AsView("CREATE VIEW myview AS SELECT * FROM mytable"))
 	ctx.ApplyOpts(sql.WithPid(atomic.AddUint64(&pid, 1)))
 
 	// We don't want to show any external procedures in our engine tests, so we exclude them
@@ -84,13 +70,6 @@ func NewSession(harness Harness) *sql.Context {
 		currentDB = "mydb"
 		ctx.SetCurrentDatabase(currentDB)
 	}
-
-	_ = ctx.GetViewRegistry().Register(currentDB,
-		plan.NewSubqueryAlias(
-			"myview",
-			"SELECT * FROM mytable",
-			plan.NewProject([]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("mytable", "mydb")),
-		).AsView("CREATE VIEW myview AS SELECT * FROM mytable"))
 
 	ctx.ApplyOpts(sql.WithPid(atomic.AddUint64(&pid, 1)))
 

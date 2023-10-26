@@ -8303,6 +8303,54 @@ ORDER BY 1;`,
 			{3},
 		},
 	},
+	{
+		Query: `
+select * from mytable,
+	lateral (
+	with recursive cte(a) as (
+		select y from xy
+		union
+		select x from cte
+		join
+		xy
+		on x = a
+		)
+	select * from cte
+) sqa 
+where i = a
+order by i;`,
+		Expected: []sql.Row{
+			{1, "first row", 1},
+			{2, "second row", 2},
+			{3, "third row", 3},
+		},
+	},
+	{
+		Query: `
+select * from mytable,
+	lateral (
+	with recursive cte(a) as (
+		select y from xy
+		union
+		select x from cte
+		join
+		(
+			select * 
+			from xy
+			where x = 1
+		 ) sqa1
+		on x = a
+		limit 3
+		)
+	select * from cte
+) sqa2
+where i = a
+order by i;`,
+		Expected: []sql.Row{
+			{1, "first row", 1},
+			{2, "second row", 2},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -9660,7 +9708,6 @@ var VersionedViewTests = []QueryTest{
 	{
 		Query: "select * from information_schema.views where table_schema = 'mydb'",
 		Expected: []sql.Row{
-			sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
 			sql.NewRow("def", "mydb", "myview1", "SELECT * FROM myhistorytable", "NONE", "YES", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
 			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview1 WHERE i = 1", "NONE", "YES", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
 			sql.NewRow("def", "mydb", "myview3", "SELECT i from myview1 union select s from myhistorytable", "NONE", "YES", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
@@ -9671,7 +9718,6 @@ var VersionedViewTests = []QueryTest{
 	{
 		Query: "select table_name from information_schema.tables where table_schema = 'mydb' and table_type = 'VIEW' order by 1",
 		Expected: []sql.Row{
-			sql.NewRow("myview"),
 			sql.NewRow("myview1"),
 			sql.NewRow("myview2"),
 			sql.NewRow("myview3"),

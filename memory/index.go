@@ -85,6 +85,23 @@ func (idx *Index) ExtendedExpressions() []string {
 	return exprs
 }
 
+// ExtendedExprs returns the same information as ExtendedExpressions, but in sql.Expression form.
+func (idx *Index) ExtendedExprs() []sql.Expression {
+	var exprs []sql.Expression
+	foundCols := make(map[string]struct{})
+	for _, e := range idx.Exprs {
+		foundCols[strings.ToLower(e.(*expression.GetField).Name())] = struct{}{}
+		exprs = append(exprs, e)
+	}
+	for _, ord := range idx.Tbl.data.schema.PkOrdinals {
+		col := idx.Tbl.data.schema.Schema[ord]
+		if _, ok := foundCols[strings.ToLower(col.Name)]; !ok {
+			exprs = append(exprs, expression.NewGetFieldWithTable(ord, col.Type, idx.Database(), idx.Tbl.name, col.Name, col.Nullable))
+		}
+	}
+	return exprs
+}
+
 func (idx *Index) CanSupport(...sql.Range) bool {
 	return true
 }
@@ -116,48 +133,35 @@ func (idx *Index) IndexType() string {
 	return "BTREE" // fake but so are you
 }
 
+func (idx *Index) rowToIndexStorage(row sql.Row, partitionName string, rowIdx int) (sql.Row, error) {
+	if idx.Name == "PRIMARY" {
+		return row, nil
+	}
+
+	exprs := idx.ExtendedExprs()
+	newRow := make(sql.Row, len(exprs)+1)
+	for i, expr := range exprs {
+		var err error
+		newRow[i], err = expr.Eval(nil, row)
+		if err != nil {
+			return nil, err
+		}
+	}
+	// The final element of the row is the location of the row in the primary table storage slice.
+	newRow[len(exprs)] = primaryRowLocation{
+		partition: partitionName,
+		idx:       rowIdx,
+	}
+
+	return newRow, nil
+}
+
 func (idx *Index) rangeFilterExpr(ctx *sql.Context, ranges ...sql.Range) (sql.Expression, error) {
 	if idx.CommentStr == CommentPreventingIndexBuilding {
 		return nil, nil
 	}
 
-	exprs := idx.Exprs
-	if idx.Name == "PRIMARY" {
-		return expression.NewRangeFilterExpr(exprs, ranges)
-	}
-
-	// Append any missing primary key columns to the secondary index
-	idxs, err := idx.Tbl.GetIndexes(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var pkIndex sql.Index
-	for _, i := range idxs {
-		if i.ID() == "PRIMARY" {
-			pkIndex = i
-			break
-		}
-	}
-
-	if pkIndex == nil {
-		return expression.NewRangeFilterExpr(exprs, ranges)
-	}
-
-	exprMap := make(map[string]struct{})
-	for _, expr := range exprs {
-		exprMap[expr.String()] = struct{}{}
-	}
-	if memIdx, ok := pkIndex.(*Index); ok {
-		for _, pkExpr := range memIdx.Exprs {
-			if _, ok := exprMap[pkExpr.String()]; ok {
-				continue
-			}
-			exprs = append(exprs, pkExpr)
-		}
-	}
-
-	return expression.NewRangeFilterExpr(exprs, ranges)
+	return expression.NewRangeFilterExpr(idx.ExtendedExprs(), ranges)
 }
 
 // ColumnExpressionTypes implements the interface sql.Index.
@@ -266,4 +270,17 @@ func (idx *Index) Reversible() bool {
 
 func (idx Index) copy() *Index {
 	return &idx
+}
+
+// columnIndexes returns the indexes in the given schema for the fields in this index
+func (idx *Index) columnIndexes(schema sql.Schema) []int {
+	indexes := make([]int, len(idx.Exprs))
+	for i, expr := range idx.Exprs {
+		gf, ok := expr.(*expression.GetField)
+		if !ok {
+			panic(fmt.Sprintf("expected GetField expression, got %T", expr))
+		}
+		indexes[i] = schema.IndexOfColName(gf.Name())
+	}
+	return indexes
 }

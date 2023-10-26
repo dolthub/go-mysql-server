@@ -324,12 +324,12 @@ func TestTrackProcess(t *testing.T) {
 
 	lhs, ok := join.Left().(*plan.ResolvedTable)
 	require.True(ok)
-	_, ok = lhs.Table.(*plan.ProcessIndexableTable)
+	_, ok = lhs.Table.(*plan.ProcessTable)
 	require.True(ok)
 
 	rhs, ok := join.Right().(*plan.ResolvedTable)
 	require.True(ok)
-	_, ok = rhs.Table.(*plan.ProcessIndexableTable)
+	_, ok = rhs.Table.(*plan.ProcessTable)
 	require.True(ok)
 
 	iter, err := rowexec.DefaultBuilder.Build(ctx, proc, nil)
@@ -682,9 +682,7 @@ func TestTriggerViewWarning(t *testing.T) {
 	// Check that users in this state can still write to
 	// regular table.
 	harness := enginetest.NewDefaultMemoryHarness()
-	harness.Setup(setup.MydbData, setup.MytableData, []setup.SetupScript{{
-		"create view myview as select * from mytable",
-	}})
+	harness.Setup(setup.MydbData, setup.MytableData)
 	e, err := harness.NewEngine(t)
 	assert.NoError(t, err)
 
