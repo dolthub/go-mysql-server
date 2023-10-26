@@ -73,7 +73,7 @@ func (v Validator) ComInitDB(c *mysql.Conn, schemaName string) error {
 
 // ComPrepare parses, partially analyzes, and caches a prepared statement's plan
 // with the given [c.ConnectionID].
-func (v Validator) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error) {
+func (v Validator) ComPrepare(_ *mysql.Conn, _ string, _ *mysql.PrepareData) ([]*query.Field, error) {
 	return nil, fmt.Errorf("ComPrepare unsupported")
 }
 

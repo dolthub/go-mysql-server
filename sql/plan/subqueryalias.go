@@ -139,11 +139,12 @@ func (sq *SubqueryAlias) Opaque() bool {
 func (sq *SubqueryAlias) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("SubqueryAlias")
-	children := make([]string, 4)
+	children := make([]string, 5)
 	children[0] = fmt.Sprintf("name: %s", sq.name)
 	children[1] = fmt.Sprintf("outerVisibility: %t", sq.OuterScopeVisibility)
-	children[2] = fmt.Sprintf("cacheable: %t", sq.CanCacheResults())
-	children[3] = sq.Child.String()
+	children[2] = fmt.Sprintf("isLateral: %t", sq.IsLateral)
+	children[3] = fmt.Sprintf("cacheable: %t", sq.CanCacheResults())
+	children[4] = sq.Child.String()
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
@@ -151,11 +152,12 @@ func (sq *SubqueryAlias) String() string {
 func (sq *SubqueryAlias) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("SubqueryAlias")
-	children := make([]string, 4)
+	children := make([]string, 5)
 	children[0] = fmt.Sprintf("name: %s", sq.name)
 	children[1] = fmt.Sprintf("outerVisibility: %t", sq.OuterScopeVisibility)
-	children[2] = fmt.Sprintf("cacheable: %t", sq.CanCacheResults())
-	children[3] = sql.DebugString(sq.Child)
+	children[2] = fmt.Sprintf("isLateral: %t", sq.IsLateral)
+	children[3] = fmt.Sprintf("cacheable: %t", sq.CanCacheResults())
+	children[4] = sql.DebugString(sq.Child)
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }

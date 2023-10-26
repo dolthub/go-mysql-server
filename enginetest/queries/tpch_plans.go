@@ -528,6 +528,7 @@ order by
 			"             └─ SubqueryAlias\n" +
 			"                 ├─ name: shipping\n" +
 			"                 ├─ outerVisibility: false\n" +
+			"                 ├─ isLateral: false\n" +
 			"                 ├─ cacheable: true\n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [n1.n_name:14!null as supp_nation, n2.n_name:12!null as cust_nation, extract('YEAR' from lineitem.l_shipdate) as l_year, (lineitem.l_extendedprice:2!null * (1 (tinyint) - lineitem.l_discount:3!null)) as volume]\n" +
@@ -645,6 +646,7 @@ order by
 			"             └─ SubqueryAlias\n" +
 			"                 ├─ name: all_nations\n" +
 			"                 ├─ outerVisibility: false\n" +
+			"                 ├─ isLateral: false\n" +
 			"                 ├─ cacheable: true\n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [extract('YEAR' from orders.o_orderdate) as o_year, (lineitem.l_extendedprice:3!null * (1 (tinyint) - lineitem.l_discount:4!null)) as volume, n2.n_name:10!null as nation]\n" +
@@ -763,6 +765,7 @@ order by
 			"             └─ SubqueryAlias\n" +
 			"                 ├─ name: profit\n" +
 			"                 ├─ outerVisibility: false\n" +
+			"                 ├─ isLateral: false\n" +
 			"                 ├─ cacheable: true\n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [nation.n_name:14!null as nation, extract('YEAR' from orders.o_orderdate) as o_year, ((lineitem.l_extendedprice:4!null * (1 (tinyint) - lineitem.l_discount:5!null)) - (partsupp.ps_supplycost:10!null * lineitem.l_quantity:3!null)) as amount]\n" +
@@ -1114,6 +1117,7 @@ order by
 			"             └─ SubqueryAlias\n" +
 			"                 ├─ name: c_orders\n" +
 			"                 ├─ outerVisibility: false\n" +
+			"                 ├─ isLateral: false\n" +
 			"                 ├─ cacheable: true\n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [customer.c_custkey:1!null, count(orders.o_orderkey):0!null as count(o_orderkey)]\n" +
@@ -1225,6 +1229,7 @@ order by
 			"             │       ├─ SubqueryAlias\n" +
 			"             │       │   ├─ name: revenue0\n" +
 			"             │       │   ├─ outerVisibility: false\n" +
+			"             │       │   ├─ isLateral: false\n" +
 			"             │       │   ├─ cacheable: true\n" +
 			"             │       │   └─ Project\n" +
 			"             │       │       ├─ columns: [lineitem.l_suppkey:1!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null as sum(l_extendedprice * (1 - l_discount))]\n" +
@@ -1250,6 +1255,7 @@ order by
 			"             │                   └─ SubqueryAlias\n" +
 			"             │                       ├─ name: scalarSubq0\n" +
 			"             │                       ├─ outerVisibility: false\n" +
+			"             │                       ├─ isLateral: false\n" +
 			"             │                       ├─ cacheable: true\n" +
 			"             │                       └─ Project\n" +
 			"             │                           ├─ columns: [max(revenue0.total_revenue):0!null as max(total_revenue)]\n" +
@@ -1259,6 +1265,7 @@ order by
 			"             │                               └─ SubqueryAlias\n" +
 			"             │                                   ├─ name: revenue0\n" +
 			"             │                                   ├─ outerVisibility: false\n" +
+			"             │                                   ├─ isLateral: false\n" +
 			"             │                                   ├─ cacheable: true\n" +
 			"             │                                   └─ Project\n" +
 			"             │                                       ├─ columns: [lineitem.l_suppkey:1!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null as sum(l_extendedprice * (1 - l_discount))]\n" +
@@ -1497,6 +1504,7 @@ order by
 			"             │   │       │   └─ SubqueryAlias\n" +
 			"             │   │       │       ├─ name: scalarSubq0\n" +
 			"             │   │       │       ├─ outerVisibility: false\n" +
+			"             │   │       │       ├─ isLateral: false\n" +
 			"             │   │       │       ├─ cacheable: true\n" +
 			"             │   │       │       └─ Project\n" +
 			"             │   │       │           ├─ columns: [lineitem.l_orderkey:1!null]\n" +
@@ -2020,6 +2028,7 @@ order by
 			"             └─ SubqueryAlias\n" +
 			"                 ├─ name: custsale\n" +
 			"                 ├─ outerVisibility: false\n" +
+			"                 ├─ isLateral: false\n" +
 			"                 ├─ cacheable: true\n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [SUBSTRING(customer.c_phone, 1, 2) as cntrycode, customer.c_acctbal:5!null]\n" +
@@ -2046,6 +2055,7 @@ order by
 			"                                 │       └─ SubqueryAlias\n" +
 			"                                 │           ├─ name: scalarSubq0\n" +
 			"                                 │           ├─ outerVisibility: false\n" +
+			"                                 │           ├─ isLateral: false\n" +
 			"                                 │           ├─ cacheable: true\n" +
 			"                                 │           └─ Project\n" +
 			"                                 │               ├─ columns: [avg(customer.c_acctbal):0 as avg(c_acctbal)]\n" +

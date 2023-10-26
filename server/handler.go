@@ -25,7 +25,6 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/netutil"
 	"github.com/dolthub/vitess/go/sqltypes"
-	"github.com/dolthub/vitess/go/vt/log"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/go-kit/kit/metrics/discard"
@@ -62,15 +61,6 @@ const (
 	MultiStmtModeOn  MultiStmtMode = 1
 )
 
-func init() {
-	// Set the log.Error and log.Errorf functions in Vitess so that any errors
-	// logged by Vitess will appear in our logs. Without this, errors from Vitess
-	// can be swallowed (e.g. any parse error for a ComPrepare event is silently
-	// swallowed without this wired up), which makes debugging failures harder.
-	log.Error = logrus.StandardLogger().Error
-	log.Errorf = logrus.StandardLogger().Errorf
-}
-
 // Handler is a connection handler for a SQLe engine, implementing the Vitess mysql.Handler interface.
 type Handler struct {
 	e                 *sqle.Engine
@@ -102,7 +92,11 @@ func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) error {
 
 // ComPrepare parses, partially analyzes, and caches a prepared statement's plan
 // with the given [c.ConnectionID].
-func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error) {
+func (h *Handler) ComPrepare(c *mysql.Conn, query string, prepare *mysql.PrepareData) ([]*query.Field, error) {
+	logrus.WithField("query", query).
+		WithField("paramsCount", prepare.ParamsCount).
+		WithField("statementId", prepare.StatementID).Debugf("preparing query")
+
 	ctx, err := h.sm.NewContextWithQuery(c, query)
 	if err != nil {
 		return nil, err

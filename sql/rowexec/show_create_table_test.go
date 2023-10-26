@@ -217,24 +217,25 @@ func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 
 	// This mimics what happens during analysis (indexes get filled in for the table)
 	showCreateTable.(*ShowCreateTable).Indexes = []sql.Index{
-		&mockIndex{
-			db:    "testdb",
-			table: "test-table",
-			id:    "`qux`",
-			exprs: []sql.Expression{
-				expression.NewGetFieldWithTable(3, types.Int64, "db", "test-table", "foo", true),
-			},
-			unique: true,
+		&memory.Index{
+			DB:        "testdb",
+			Tbl:       table,
+			TableName: table.Name(),
+			Exprs: []sql.Expression{
+				expression.NewGetFieldWithTable(3, types.Int64, "db", "test-table", "foo", true)},
+			Name:   "`qux`",
+			Unique: true,
 		},
-		&mockIndex{
-			db:    "testdb",
-			table: "test-table",
-			id:    "zug",
-			exprs: []sql.Expression{
+		&memory.Index{
+			DB:        "testdb",
+			Tbl:       table,
+			TableName: "test-table",
+			Name:      "zug",
+			Exprs: []sql.Expression{
 				expression.NewGetFieldWithTable(4, types.Int64, "db", "test-table", "pok", true),
 				expression.NewGetFieldWithTable(3, types.Int64, "db", "test-table", "foo", true),
 			},
-			comment: "test comment",
+			CommentStr: "test comment",
 		},
 	}
 

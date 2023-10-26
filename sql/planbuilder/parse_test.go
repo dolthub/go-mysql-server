@@ -141,6 +141,7 @@ Project
  └─ SubqueryAlias
      ├─ name: cte
      ├─ outerVisibility: false
+     ├─ isLateral: false
      ├─ cacheable: true
      └─ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null]
@@ -281,6 +282,7 @@ Project
      └─ SubqueryAlias
          ├─ name: s
          ├─ outerVisibility: false
+         ├─ isLateral: false
          ├─ cacheable: true
          └─ Project
              ├─ columns: [uv.u:4!null, uv.v:5!null, uv.w:6!null]
@@ -322,6 +324,7 @@ Project
  └─ SubqueryAlias
      ├─ name: cte
      ├─ outerVisibility: false
+     ├─ isLateral: false
      ├─ cacheable: true
      └─ Project
          ├─ columns: [1 (tinyint)]
@@ -338,6 +341,7 @@ Project
  └─ SubqueryAlias
      ├─ name: cte
      ├─ outerVisibility: false
+     ├─ isLateral: false
      ├─ cacheable: true
      └─ RecursiveCTE
          └─ Union distinct
@@ -524,6 +528,7 @@ Project
      └─ SubqueryAlias
          ├─ name: dt
          ├─ outerVisibility: false
+         ├─ isLateral: false
          ├─ cacheable: true
          └─ Project
              ├─ columns: [count(1):4!null as count(*)]
@@ -543,6 +548,7 @@ Project
  └─ SubqueryAlias
      ├─ name: dt
      ├─ outerVisibility: false
+     ├─ isLateral: false
      ├─ cacheable: true
      └─ Project
          ├─ columns: [count(1):4!null as s]
@@ -798,6 +804,7 @@ Project
      │           └─ SubqueryAlias
      │               ├─ name: dt
      │               ├─ outerVisibility: false
+     │               ├─ isLateral: false
      │               ├─ cacheable: false
      │               └─ Project
      │                   ├─ columns: [uv.u:4!null as u]
@@ -829,6 +836,7 @@ Project
      │           └─ SubqueryAlias
      │               ├─ name: dt
      │               ├─ outerVisibility: false
+     │               ├─ isLateral: false
      │               ├─ cacheable: false
      │               └─ Project
      │                   ├─ columns: [uv.u:4!null as u]
@@ -858,6 +866,7 @@ Project
  │       └─ SubqueryAlias
  │           ├─ name: dt
  │           ├─ outerVisibility: false
+ │           ├─ isLateral: false
  │           ├─ cacheable: false
  │           └─ Project
  │               ├─ columns: [uv.u:4!null as z]
@@ -891,6 +900,7 @@ Project
  │           └─ SubqueryAlias
  │               ├─ name: dt
  │               ├─ outerVisibility: false
+ │               ├─ isLateral: false
  │               ├─ cacheable: false
  │               └─ Project
  │                   ├─ columns: [uv.u:4!null as z]
@@ -924,6 +934,7 @@ Project
  │           └─ SubqueryAlias
  │               ├─ name: dt
  │               ├─ outerVisibility: false
+ │               ├─ isLateral: false
  │               ├─ cacheable: false
  │               └─ Project
  │                   ├─ columns: [uv.u:4!null as u]
@@ -1408,6 +1419,7 @@ Project
  └─ SubqueryAlias
      ├─ name: ladder
      ├─ outerVisibility: false
+     ├─ isLateral: false
      ├─ cacheable: true
      └─ RecursiveCTE
          └─ Union all
@@ -1416,6 +1428,7 @@ Project
              │   └─ SubqueryAlias
              │       ├─ name: rt
              │       ├─ outerVisibility: false
+             │       ├─ isLateral: false
              │       ├─ cacheable: true
              │       └─ RecursiveCTE
              │           └─ Union all
@@ -1442,6 +1455,7 @@ Project
                          └─ SubqueryAlias
                              ├─ name: rt
                              ├─ outerVisibility: false
+                             ├─ isLateral: false
                              ├─ cacheable: true
                              └─ RecursiveCTE
                                  └─ Union all
@@ -1590,6 +1604,7 @@ Project
          └─ SubqueryAlias
              ├─ name: t
              ├─ outerVisibility: false
+             ├─ isLateral: false
              ├─ cacheable: true
              └─ Project
                  ├─ columns: [tbl.x:1!null as fi]
@@ -1678,6 +1693,7 @@ Project
  │           └─ SubqueryAlias
  │               ├─ name: dt
  │               ├─ outerVisibility: false
+ │               ├─ isLateral: false
  │               ├─ cacheable: false
  │               └─ Project
  │                   ├─ columns: [xy.x:1!null as a]
@@ -1697,6 +1713,7 @@ Project
      │           └─ SubqueryAlias
      │               ├─ name: dt
      │               ├─ outerVisibility: false
+     │               ├─ isLateral: false
      │               ├─ cacheable: false
      │               └─ Project
      │                   ├─ columns: [xy.x:1!null as a]
@@ -1717,6 +1734,7 @@ Project
          │           └─ SubqueryAlias
          │               ├─ name: dt
          │               ├─ outerVisibility: false
+         │               ├─ isLateral: false
          │               ├─ cacheable: false
          │               └─ Project
          │                   ├─ columns: [xy.x:1!null as a]

@@ -48,18 +48,6 @@ var _ sql.Nameable = (*IndexedTableAccess)(nil)
 var _ sql.Expressioner = (*IndexedTableAccess)(nil)
 var _ sql.CollationCoercible = (*IndexedTableAccess)(nil)
 
-// NewIndexedTableAccess returns a new IndexedTableAccess node that will use
-// the LookupBuilder to build lookups. An index lookup will be calculated and
-// applied for the row given in RowIter().
-func NewIndexedTableAccess(node sql.TableNode, t sql.IndexedTable, lb *LookupBuilder) *IndexedTableAccess {
-	return &IndexedTableAccess{
-		TableNode: node,
-		lb:        lb,
-		Table:     t,
-		Typ:       ItaTypeStatic,
-	}
-}
-
 // NewIndexedAccessForTableNode creates an IndexedTableAccess node if the resolved table embeds
 // an IndexAddressableTable, otherwise returns an error.
 func NewIndexedAccessForTableNode(node sql.TableNode, lb *LookupBuilder) (*IndexedTableAccess, error) {

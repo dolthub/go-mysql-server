@@ -41,6 +41,33 @@ func addLeftTablesToScope(outerScope *plan.Scope, leftNode sql.Node) *plan.Scope
 	return subScope
 }
 
+// finalizeSubqueryLateral ensures that all SubqueryAliases with IsLateral set to true have their children also set to true.
+func finalizeSubqueryLateral(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeWithOpaque(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		if parentSQA, ok := n.(*plan.SubqueryAlias); ok && parentSQA.IsLateral {
+			newSqaChild, sqaSame, sqaErr := transform.NodeWithOpaque(parentSQA.Child, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+				if sqa, ok := n.(*plan.SubqueryAlias); ok {
+					sqa.IsLateral = true
+					return sqa, transform.NewTree, nil
+				}
+				return n, transform.SameTree, nil
+			})
+			if sqaErr != nil {
+				return n, transform.SameTree, sqaErr
+			}
+			if sqaSame {
+				return n, transform.SameTree, nil
+			}
+			newSqa, err := parentSQA.WithChildren(newSqaChild)
+			if err != nil {
+				return n, transform.SameTree, err
+			}
+			return newSqa, transform.NewTree, nil
+		}
+		return n, transform.SameTree, nil
+	})
+}
+
 // finalizeSubqueries runs the final analysis pass on subquery expressions and subquery aliases in the node tree to ensure
 // they are fully resolved and that the plan is ready to be executed. The logic is similar to when subqueries are initially
 // resolved with resolveSubqueries, but with a few important differences:
@@ -53,7 +80,17 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	span, ctx := ctx.Span("finalize_subqueries")
 	defer span.End()
 
-	return finalizeSubqueriesHelper(ctx, a, n, scope, sel)
+	node, same1, err := finalizeSubqueriesHelper(ctx, a, n, scope, sel)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
+	newNode, same2, err := finalizeSubqueryLateral(ctx, a, node, scope, sel)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
+	return newNode, same1 && same2, nil
 }
 
 // finalizeSubqueriesHelper finalizes all subqueries and subquery expressions,
