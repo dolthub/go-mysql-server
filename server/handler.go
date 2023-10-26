@@ -569,10 +569,12 @@ func rowToSQL(ctx *sql.Context, s sql.Schema, row sql.Row) ([]sqltypes.Value, er
 			o[i] = sqltypes.NULL
 			continue
 		}
-
-		o[i], err = s[i].Type.SQL(ctx, nil, v)
-		if err != nil {
-			return nil, err
+		// TODO: need to make sure the schema is not null as some plan schema is defined as null (e.g. IfElseBlock)
+		if s != nil {
+			o[i], err = s[i].Type.SQL(ctx, nil, v)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -589,9 +591,12 @@ func row2ToSQL(s sql.Schema, row sql.Row2) ([]sqltypes.Value, error) {
 			continue
 		}
 
-		o[i], err = s[i].Type.(sql.Type2).SQL2(v)
-		if err != nil {
-			return nil, err
+		// TODO: need to make sure the schema is not null as some plan schema is defined as null (e.g. IfElseBlock)
+		if s != nil {
+			o[i], err = s[i].Type.(sql.Type2).SQL2(v)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
