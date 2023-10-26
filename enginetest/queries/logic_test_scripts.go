@@ -182,7 +182,7 @@ var SQLLogicJoinTests = []ScriptTest{
 // SQLLogicSubqueryTests is a list of all the logic tests that are run against the sql engine.
 var SQLLogicSubqueryTests = []ScriptTest{
 	{
-		Name: "exists, in, all, in subquery",
+		Name: "exists, in, all, any subquery",
 		SetUpScript: []string{
 			"CREATE TABLE c (c_id INT PRIMARY KEY, bill TEXT);",
 			"CREATE TABLE o (o_id INT PRIMARY KEY, c_id INT, ship TEXT);",
@@ -422,7 +422,6 @@ var SQLLogicSubqueryTests = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "SELECT c.c_id, o.ship, count(*) FROM c INNER JOIN o ON c.c_id=o.c_id WHERE (SELECT count(*) FROM o AS o2 WHERE o2.ship = o.ship AND o2.c_id = o.c_id) > (SELECT count(*) FROM o AS o2 WHERE o2.ship = o.ship AND o2.c_id <> o.c_id) GROUP BY c.c_id, o.ship;",
 				Expected: []sql.Row{
 					{1, "CA", 3},
