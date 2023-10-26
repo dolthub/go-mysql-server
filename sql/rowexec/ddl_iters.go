@@ -2024,7 +2024,6 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 }
 
 // buildIndex builds an index on a table, as a less expensive alternative to doing a complete table rewrite.
-// Currently unused: needs to be plugged into CreateIndex.
 func buildIndex(ctx *sql.Context, ibt sql.IndexBuildingTable, indexDef sql.IndexDef) error {
 	inserter, err := ibt.BuildIndex(ctx, indexDef)
 	if err != nil {
