@@ -607,6 +607,34 @@ func (db *MySQLDb) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
 	return privSet
 }
 
+func (db *MySQLDb) UserHasExplicitRoutinePrivileges(ctx *sql.Context, operations ...sql.PrivilegedOperation) bool {
+	privSet := db.UserActivePrivilegeSet(ctx)
+
+	if privSet.Has(sql.PrivilegeType_Super) {
+		// Superpowers allow you to fly and look through walls, surely you can execute whatever you want.
+		return true
+	}
+
+	for _, operation := range operations {
+
+		for _, operationPriv := range operation.StaticPrivileges {
+			database := operation.Database
+			if database == "" {
+				database = ctx.GetCurrentDatabase()
+			}
+			dbSet := privSet.Database(database)
+			routineSet := dbSet.Routine(operation.Routine, operation.IsProcedure)
+			if routineSet.Has(operationPriv) {
+				continue
+			}
+
+			// User does not have permission to perform the operation.
+			return false
+		}
+	}
+	return true
+}
+
 // UserHasPrivileges fetches the User, and returns whether they have the desired privileges necessary to perform the
 // privileged operation. This takes into account the active roles, which are set in the context, therefore the user is
 // also pulled from the context.

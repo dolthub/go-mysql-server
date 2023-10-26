@@ -19,6 +19,8 @@ type PrivilegedOperation struct {
 	Database          string
 	Table             string
 	Column            string
+	Routine           string
+	IsProcedure       bool // true if the routine is a procedure, false if it's a function
 	StaticPrivileges  []PrivilegeType
 	DynamicPrivileges []string
 }
@@ -26,9 +28,11 @@ type PrivilegedOperation struct {
 // PrivilegeCheckSubject is a struct that contains the entity information for an access check. It's specifically what
 // is being accessed - but not what operation is being attempted.
 type PrivilegeCheckSubject struct {
-	Database string
-	Table    string
-	Column   string
+	Database    string
+	Table       string
+	Column      string
+	Routine     string
+	IsProcedure bool // true if the routine is a procedure, false if it's a function
 }
 
 // NewPrivilegedOperation returns a new PrivilegedOperation with the given parameters.
@@ -37,6 +41,8 @@ func NewPrivilegedOperation(subject PrivilegeCheckSubject, privs ...PrivilegeTyp
 		Database:         subject.Database,
 		Table:            subject.Table,
 		Column:           subject.Column,
+		Routine:          subject.Routine,
+		IsProcedure:      subject.IsProcedure,
 		StaticPrivileges: privs,
 	}
 }
@@ -56,6 +62,10 @@ type PrivilegedOperationChecker interface {
 	// privileged operation(s). This takes into account the active roles, which are set in the context, therefore both
 	// the user and the active roles are pulled from the context.
 	UserHasPrivileges(ctx *Context, operations ...PrivilegedOperation) bool
+	// UserHasExplicitRoutinePrivileges fetches the User from the context, and specifically evaluates, the permission check
+	// assuming the operation is for a stored procedure or function. This allows us to have more fine grain control over
+	// permissions for stored procedures (many of which are critical to Dolt).
+	UserHasExplicitRoutinePrivileges(ctx *Context, operations ...PrivilegedOperation) bool
 }
 
 // PrivilegeSet is a set containing privileges. Integrators should not implement this interface.
