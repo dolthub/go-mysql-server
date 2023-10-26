@@ -324,12 +324,12 @@ func TestTrackProcess(t *testing.T) {
 
 	lhs, ok := join.Left().(*plan.ResolvedTable)
 	require.True(ok)
-	_, ok = lhs.Table.(*plan.ProcessIndexableTable)
+	_, ok = lhs.Table.(*plan.ProcessTable)
 	require.True(ok)
 
 	rhs, ok := join.Right().(*plan.ResolvedTable)
 	require.True(ok)
-	_, ok = rhs.Table.(*plan.ProcessIndexableTable)
+	_, ok = rhs.Table.(*plan.ProcessTable)
 	require.True(ok)
 
 	iter, err := rowexec.DefaultBuilder.Build(ctx, proc, nil)

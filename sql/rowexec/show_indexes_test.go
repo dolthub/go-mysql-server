@@ -87,11 +87,12 @@ func TestShowIndexes(t *testing.T) {
 				expressions[i] = ex
 			}
 
-			idx := &mockIndex{
-				db:    "test",
-				table: test.name,
-				id:    test.name + "_idx",
-				exprs: expressions,
+			idx := &memory.Index{
+				DB:        "test",
+				TableName: test.table.Name(),
+				Tbl:       test.table.(*memory.Table),
+				Name:      test.name + "_idx",
+				Exprs:     expressions,
 			}
 
 			// Assigning tables and indexes manually. This mimics what happens during analysis
@@ -130,7 +131,7 @@ func TestShowIndexes(t *testing.T) {
 					"BTREE",
 					"",
 					"",
-					"NO",
+					"YES",
 					ex,
 				)
 

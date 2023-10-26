@@ -22,6 +22,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	errors "gopkg.in/src-d/go-errors.v1"
 
@@ -53,8 +54,7 @@ type Table struct {
 	projectedSchema  sql.Schema
 	columns          []int
 
-	// Indexed lookups
-	lookup  sql.DriverIndexLookup
+	// fiters is used for primary index scans with an index lookup
 	filters []sql.Expression
 
 	db *BaseDatabase
@@ -67,7 +67,6 @@ var _ sql.UpdatableTable = (*Table)(nil)
 var _ sql.DeletableTable = (*Table)(nil)
 var _ sql.ReplaceableTable = (*Table)(nil)
 var _ sql.TruncateableTable = (*Table)(nil)
-var _ sql.DriverIndexableTable = (*Table)(nil)
 var _ sql.AlterableTable = (*Table)(nil)
 var _ sql.IndexAlterableTable = (*Table)(nil)
 var _ sql.CollationAlterableTable = (*Table)(nil)
@@ -81,6 +80,7 @@ var _ sql.ProjectedTable = (*Table)(nil)
 var _ sql.PrimaryKeyAlterableTable = (*Table)(nil)
 var _ sql.PrimaryKeyTable = (*Table)(nil)
 var _ fulltext.IndexAlterableTable = (*Table)(nil)
+var _ sql.IndexBuildingTable = (*Table)(nil)
 
 // NewTable creates a new Table with the given name and schema. Assigns the default collation, therefore if a different
 // collation is desired, please use NewTableWithCollation.
@@ -193,15 +193,16 @@ func NewPartitionedTableWithCollation(db *BaseDatabase, name string, schema sql.
 	return &Table{
 		name: name,
 		data: &TableData{
-			dbName:        dbName,
-			tableName:     name,
-			schema:        schema,
-			fkColl:        fkColl,
-			collation:     collation,
-			partitions:    partitions,
-			partitionKeys: keys,
-			autoIncVal:    autoIncVal,
-			autoColIdx:    autoIncIdx,
+			dbName:                dbName,
+			tableName:             name,
+			schema:                schema,
+			fkColl:                fkColl,
+			collation:             collation,
+			partitions:            partitions,
+			partitionKeys:         keys,
+			autoIncVal:            autoIncVal,
+			autoColIdx:            autoIncIdx,
+			secondaryIndexStorage: make(map[indexName][]sql.Row),
 		},
 		db: db,
 	}
@@ -278,6 +279,44 @@ func (i rangePartitionIter) Next(ctx *sql.Context) (sql.Partition, error) {
 	}, nil
 }
 
+// indexScanPartitionIter is a partition iterator that returns a single partition for an index scan
+type indexScanPartitionIter struct {
+	once   sync.Once
+	index  *Index
+	ranges sql.Expression
+	lookup sql.IndexLookup
+}
+
+type indexScanPartition struct {
+	index  *Index
+	lookup sql.IndexLookup
+	ranges sql.Expression
+}
+
+func (i indexScanPartition) Key() []byte {
+	return []byte("indexScanPartition")
+}
+
+var _ sql.PartitionIter = (*indexScanPartitionIter)(nil)
+
+func (i *indexScanPartitionIter) Close(ctx *sql.Context) error {
+	return nil
+}
+
+func (i *indexScanPartitionIter) Next(ctx *sql.Context) (sql.Partition, error) {
+	part, err := indexScanPartition{}, io.EOF
+
+	i.once.Do(func() {
+		part, err = indexScanPartition{
+			index:  i.index,
+			lookup: i.lookup,
+			ranges: i.ranges,
+		}, nil
+	})
+
+	return part, err
+}
+
 type rangePartition struct {
 	*Partition
 	rang sql.Expression
@@ -324,9 +363,135 @@ func (t *Table) PartitionCount(ctx *sql.Context) (int64, error) {
 	return int64(len(data.partitions)), nil
 }
 
+type indexScanRowIter struct {
+	i             int
+	incrementFunc func()
+	index         *Index
+	lookup        sql.IndexLookup
+	ranges        sql.Expression
+	primaryRows   map[string][]sql.Row
+	indexRows     []sql.Row
+
+	columns     []int
+	numColumns  int
+	virtualCols []int
+}
+
+func newIndexScanRowIter(
+	index *Index,
+	lookup sql.IndexLookup,
+	ranges sql.Expression,
+	primaryRows map[string][]sql.Row,
+	indexRows []sql.Row,
+	columns []int,
+	numColumns int,
+	virtualCols []int,
+) *indexScanRowIter {
+
+	i := 0
+	if lookup.IsReverse {
+		i = len(indexRows) - 1
+	}
+
+	iter := &indexScanRowIter{
+		i:           i,
+		index:       index,
+		lookup:      lookup,
+		ranges:      ranges,
+		primaryRows: primaryRows,
+		indexRows:   indexRows,
+		columns:     columns,
+		numColumns:  numColumns,
+		virtualCols: virtualCols,
+	}
+
+	if lookup.IsReverse {
+		iter.incrementFunc = func() {
+			iter.i--
+		}
+	} else {
+		iter.incrementFunc = func() {
+			iter.i++
+		}
+	}
+
+	return iter
+}
+
+func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if i.i >= len(i.indexRows) || i.i < 0 {
+		return nil, io.EOF
+	}
+
+	var row sql.Row
+	for ; i.i < len(i.indexRows) && i.i >= 0; i.incrementFunc() {
+		idxRow := i.indexRows[i.i]
+		rowLoc := idxRow[len(idxRow)-1].(primaryRowLocation)
+		// this is a bit of a hack: during self-referential foreign key delete cascades, the index storage rows don't get
+		// updated at the same time the primary table storage does, since we update the slices directly in the case of
+		// the primary index but update the map entries for the secondary index storage.
+		// TODO: revisit this once we have b-tree storage in place
+		if len(i.primaryRows[rowLoc.partition]) <= rowLoc.idx {
+			continue
+		}
+
+		candidate := i.primaryRows[rowLoc.partition][rowLoc.idx]
+
+		matches, err := indexRowMatches(i.ranges, idxRow[:len(idxRow)-1])
+		if err != nil {
+			return nil, err
+		}
+
+		if matches {
+			row = candidate
+			i.incrementFunc()
+			break
+		}
+	}
+
+	if row == nil {
+		return nil, io.EOF
+	}
+
+	row = normalizeRowForRead(row, i.numColumns, i.virtualCols)
+
+	return projectRow(i.columns, row), nil
+}
+
+func indexRowMatches(ranges sql.Expression, candidate sql.Row) (bool, error) {
+	result, err := ranges.Eval(nil, candidate)
+	if err != nil {
+		return false, err
+	}
+
+	return sql.IsTrue(result), nil
+}
+
+func (i *indexScanRowIter) Close(context *sql.Context) error {
+	return nil
+}
+
 // PartitionRows implements the sql.PartitionRows interface.
 func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
 	data := t.sessionTableData(ctx)
+
+	if isp, ok := partition.(indexScanPartition); ok {
+		numColumns := len(data.schema.Schema)
+		if len(t.columns) > 0 {
+			numColumns = len(t.columns)
+		}
+
+		return newIndexScanRowIter(
+			isp.index,
+			isp.lookup,
+			isp.ranges,
+			data.partitions,
+			data.secondaryIndexStorage[indexName(isp.index.Name)],
+			t.columns,
+			numColumns,
+			data.virtualColIndexes(),
+		), nil
+	}
 
 	filters := t.filters
 	if r, ok := partition.(*rangePartition); ok && r.rang != nil {
@@ -461,7 +626,7 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
-	row = normalizeRowForRead(row, i.numColumns, i.columns, i.virtualCols)
+	row = normalizeRowForRead(row, i.numColumns, i.virtualCols)
 
 	for _, f := range i.filters {
 		result, err := f.Eval(ctx, row)
@@ -474,19 +639,22 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
-	if i.columns != nil {
-		resultRow := make(sql.Row, len(i.columns))
-		for i, j := range i.columns {
+	return projectRow(i.columns, row), nil
+}
+
+func projectRow(columns []int, row sql.Row) sql.Row {
+	if columns != nil {
+		resultRow := make(sql.Row, len(columns))
+		for i, j := range columns {
 			resultRow[i] = row[j]
 		}
-		return resultRow, nil
+		return resultRow
 	}
-
-	return row, nil
+	return row
 }
 
 // normalizeRowForRead returns a copy of the row with nil values inserted for any virtual columns
-func normalizeRowForRead(row sql.Row, numColumns int, columns []int, virtualCols []int) sql.Row {
+func normalizeRowForRead(row sql.Row, numColumns int, virtualCols []int) sql.Row {
 	if len(virtualCols) == 0 {
 		return row
 	}
@@ -497,23 +665,12 @@ func normalizeRowForRead(row sql.Row, numColumns int, columns []int, virtualCols
 	// with nil values for virtual columns. The simple iteration below only works when the column and virtual column
 	// indexes are in ascending order, which is true for the time being.
 	var j int
-	if len(columns) != 0 {
-		virtualRow = make(sql.Row, len(columns))
-		for i := range columns {
-			if j < len(virtualCols) && columns[i] == virtualCols[j] {
-				j++
-			} else {
-				virtualRow[i] = row[i-j]
-			}
-		}
-	} else {
-		virtualRow = make(sql.Row, numColumns)
-		for i := 0; i < numColumns; i++ {
-			if j < len(virtualCols) && i == virtualCols[j] {
-				j++
-			} else {
-				virtualRow[i] = row[i-j]
-			}
+	virtualRow = make(sql.Row, numColumns)
+	for i := 0; i < numColumns; i++ {
+		if j < len(virtualCols) && i == virtualCols[j] {
+			j++
+		} else {
+			virtualRow[i] = row[i-j]
 		}
 	}
 
@@ -1218,9 +1375,6 @@ func (t *Table) DebugString() string {
 	p := sql.NewTreePrinter()
 
 	children := []string{fmt.Sprintf("name: %s", t.name)}
-	if t.lookup != nil {
-		children = append(children, fmt.Sprintf("index: %s", t.lookup))
-	}
 
 	if len(t.columns) > 0 {
 		var projections []string
@@ -1314,16 +1468,18 @@ type IndexedTable struct {
 }
 
 func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
-	filter, err := lookup.Index.(*Index).rangeFilterExpr(ctx, lookup.Ranges...)
-	if err != nil {
-		return nil, err
-	}
-	child, err := t.Table.Partitions(ctx)
+	memIdx := lookup.Index.(*Index)
+	filter, err := memIdx.rangeFilterExpr(ctx, lookup.Ranges...)
 	if err != nil {
 		return nil, err
 	}
 
 	if lookup.Index.IsSpatial() {
+		child, err := t.Table.Partitions(ctx)
+		if err != nil {
+			return nil, err
+		}
+
 		lower := sql.GetRangeCutKey(lookup.Ranges[0][0].LowerBound)
 		upper := sql.GetRangeCutKey(lookup.Ranges[0][0].UpperBound)
 		minPoint, ok := lower.(types.Point)
@@ -1335,7 +1491,7 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 			return nil, sql.ErrInvalidGISData.New()
 		}
 
-		ord := lookup.Index.(*Index).Exprs[0].(*expression.GetField).Index()
+		ord := memIdx.Exprs[0].(*expression.GetField).Index()
 		return spatialRangePartitionIter{
 			child: child.(*partitionIter),
 			ord:   ord,
@@ -1346,7 +1502,50 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 		}, nil
 	}
 
-	return rangePartitionIter{child: child.(*partitionIter), ranges: filter}, nil
+	if lookup.Index.ID() == "PRIMARY" {
+		child, err := t.Table.Partitions(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		return rangePartitionIter{
+			child:  child.(*partitionIter),
+			ranges: filter,
+		}, nil
+	}
+
+	indexFilter := adjustRangeScanFilterForIndexLookup(filter, memIdx)
+
+	return &indexScanPartitionIter{
+		index:  memIdx,
+		lookup: lookup,
+		ranges: indexFilter,
+	}, nil
+}
+
+func adjustRangeScanFilterForIndexLookup(filter sql.Expression, index *Index) sql.Expression {
+	exprs := index.ExtendedExprs()
+
+	indexStorageSchema := make(sql.Schema, len(exprs))
+	for i, e := range exprs {
+		indexStorageSchema[i] = &sql.Column{
+			Name: e.(*expression.GetField).Name(),
+		}
+	}
+
+	filter, _, err := transform.Expr(filter, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		if gf, ok := e.(*expression.GetField); ok {
+			idxIdx := indexStorageSchema.IndexOfColName(gf.Name())
+			return gf.WithIndex(idxIdx), transform.NewTree, nil
+		}
+		return e, transform.SameTree, nil
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	return filter
 }
 
 // PartitionRows implements the sql.PartitionRows interface.
@@ -1355,6 +1554,12 @@ func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) 
 	if err != nil {
 		return nil, err
 	}
+
+	// Sorting code below is only for spatial indexes, which use a different partition iterator
+	if _, ok := partition.(indexScanPartition); ok {
+		return iter, nil
+	}
+
 	if t.Lookup.Index != nil {
 		idx := t.Lookup.Index.(*Index)
 		sf := make(sql.SortFields, len(idx.Exprs))
@@ -1696,17 +1901,18 @@ func (t *Table) CreateIndex(ctx *sql.Context, idx sql.IndexDef) error {
 }
 
 // DropIndex implements sql.IndexAlterableTable
-func (t *Table) DropIndex(ctx *sql.Context, indexName string) error {
+func (t *Table) DropIndex(ctx *sql.Context, name string) error {
 	data := t.sessionTableData(ctx)
 
-	for name := range data.indexes {
-		if strings.ToLower(name) == strings.ToLower(indexName) {
-			delete(data.indexes, name)
+	for idxName := range data.indexes {
+		if strings.ToLower(idxName) == strings.ToLower(name) {
+			delete(data.indexes, idxName)
+			delete(data.secondaryIndexStorage, indexName(idxName))
 			return nil
 		}
 	}
 
-	return sql.ErrIndexNotFound.New(indexName)
+	return sql.ErrIndexNotFound.New(name)
 }
 
 // RenameIndex implements sql.IndexAlterableTable
@@ -1772,40 +1978,6 @@ func (t *Table) ModifyDefaultCollation(ctx *sql.Context, collation sql.Collation
 	return nil
 }
 
-// WithDriverIndexLookup implements the sql.IndexAddressableTable interface.
-func (t *Table) WithDriverIndexLookup(lookup sql.DriverIndexLookup) sql.Table {
-	if t.lookup != nil {
-		return t
-	}
-
-	nt := *t
-	nt.lookup = lookup
-
-	return &nt
-}
-
-// IndexKeyValues implements the sql.IndexableTable interface.
-func (t *Table) IndexKeyValues(
-	ctx *sql.Context,
-	colNames []string,
-) (sql.PartitionIndexKeyValueIter, error) {
-	iter, err := t.Partitions(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	columns, err := t.data.columnIndexes(colNames)
-	if err != nil {
-		return nil, err
-	}
-
-	return &partitionIndexKeyValueIter{
-		table:   t,
-		iter:    iter,
-		columns: columns,
-	}, nil
-}
-
 // Filters implements the sql.FilteredTable interface.
 func (t *Table) Filters() []sql.Expression {
 	return t.filters
@@ -1846,47 +2018,75 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) er
 		}
 	}
 
-	// TODO: fix
-	// pkSchema := sql.NewPrimaryKeySchema(potentialSchema, pkOrdinals...)
-	// newTable, err := newTable(ctx, t, pkSchema)
-	// if err != nil {
-	// 	return err
-	// }
-	//
-	// t.data.schema = pkSchema
-	// t.data.partitions = newTable.data.partitions
-	// t.partitionKeys = newTable.partitionKeys
-
 	return nil
 }
 
-type partidx struct {
-	key string
-	i   int
+type pkfield struct {
+	i int
+	c *sql.Column
+}
+
+type partitionRow struct {
+	partitionName string
+	rowIdx        int
 }
 
 type partitionssort struct {
-	ps   map[string][]sql.Row
-	idx  []partidx
-	less func(l, r sql.Row) bool
+	pk      []pkfield
+	ps      map[string][]sql.Row
+	allRows []partitionRow
+	indexes map[indexName][]sql.Row
 }
 
 func (ps partitionssort) Len() int {
-	return len(ps.idx)
+	return len(ps.allRows)
 }
 
 func (ps partitionssort) Less(i, j int) bool {
-	lidx := ps.idx[i]
-	ridx := ps.idx[j]
-	lr := ps.ps[lidx.key][lidx.i]
-	rr := ps.ps[ridx.key][ridx.i]
-	return ps.less(lr, rr)
+	lidx := ps.allRows[i]
+	ridx := ps.allRows[j]
+	lr := ps.ps[lidx.partitionName][lidx.rowIdx]
+	rr := ps.ps[ridx.partitionName][ridx.rowIdx]
+	return ps.pkLess(lr, rr)
+}
+
+func (ps partitionssort) pkLess(l, r sql.Row) bool {
+	for _, f := range ps.pk {
+		r, err := f.c.Type.Compare(l[f.i], r[f.i])
+		if err != nil {
+			panic(err)
+		}
+		if r != 0 {
+			return r < 0
+		}
+	}
+	return false
 }
 
 func (ps partitionssort) Swap(i, j int) {
-	lidx := ps.idx[i]
-	ridx := ps.idx[j]
-	ps.ps[lidx.key][lidx.i], ps.ps[ridx.key][ridx.i] = ps.ps[ridx.key][ridx.i], ps.ps[lidx.key][lidx.i]
+	lidx := ps.allRows[i]
+	ridx := ps.allRows[j]
+	ps.ps[lidx.partitionName][lidx.rowIdx], ps.ps[ridx.partitionName][ridx.rowIdx] = ps.ps[ridx.partitionName][ridx.rowIdx], ps.ps[lidx.partitionName][lidx.rowIdx]
+
+	// Now update the index storage locations for the swap we just performed as well. This is frankly awful performance
+	// that turns the sort operation into worse than cubic. Doing better requires doing something more intelligent than
+	// sorted slices for rows and indexes, some sort of sorted collection.
+	for _, indexRows := range ps.indexes {
+		for _, idxRow := range indexRows {
+			rowLoc := idxRow[len(idxRow)-1].(primaryRowLocation)
+			if rowLoc.partition == lidx.partitionName && rowLoc.idx == lidx.rowIdx {
+				idxRow[len(idxRow)-1] = primaryRowLocation{
+					partition: ridx.partitionName,
+					idx:       ridx.rowIdx,
+				}
+			} else if rowLoc.partition == ridx.partitionName && rowLoc.idx == ridx.rowIdx {
+				idxRow[len(idxRow)-1] = primaryRowLocation{
+					partition: lidx.partitionName,
+					idx:       lidx.rowIdx,
+				}
+			}
+		}
+	}
 }
 
 func (t Table) copy() *Table {
@@ -1977,62 +2177,7 @@ func columnInFkRelationship(col string, fkc []sql.ForeignKeyConstraint) (string,
 	return fkName, ok
 }
 
-type partitionIndexKeyValueIter struct {
-	table   *Table
-	iter    sql.PartitionIter
-	columns []int
-}
-
-func (i *partitionIndexKeyValueIter) Next(ctx *sql.Context) (sql.Partition, sql.IndexKeyValueIter, error) {
-	p, err := i.iter.Next(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	iter, err := i.table.PartitionRows(ctx, p)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return p, &indexKeyValueIter{
-		key:     string(p.Key()),
-		iter:    iter,
-		columns: i.columns,
-	}, nil
-}
-
-func (i *partitionIndexKeyValueIter) Close(ctx *sql.Context) error {
-	return i.iter.Close(ctx)
-}
-
 var errColumnNotFound = errors.NewKind("could not find column %s")
-
-type indexKeyValueIter struct {
-	key     string
-	iter    sql.RowIter
-	columns []int
-	pos     int
-}
-
-func (i *indexKeyValueIter) Next(ctx *sql.Context) ([]interface{}, []byte, error) {
-	row, err := i.iter.Next(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	value := &IndexValue{Key: i.key, Pos: i.pos}
-	data, err := EncodeIndexValue(value)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	i.pos++
-	return projectOnRow(i.columns, row), data, nil
-}
-
-func (i *indexKeyValueIter) Close(ctx *sql.Context) error {
-	return i.iter.Close(ctx)
-}
 
 func (t Table) ShouldRewriteTable(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column) bool {
 	return orderChanged(oldSchema, newSchema, oldColumn, newColumn) ||
@@ -2167,6 +2312,22 @@ func hasNullForAnyCols(row sql.Row, cols []int) bool {
 		}
 	}
 	return false
+}
+
+func (t Table) ShouldBuildIndex(ctx *sql.Context, indexDef sql.IndexDef) (bool, error) {
+	// We always want help building new indexes
+	return true, nil
+}
+
+func (t Table) BuildIndex(ctx *sql.Context, indexDef sql.IndexDef) (sql.RowInserter, error) {
+	data := t.sessionTableData(ctx)
+	_, ok := data.indexes[indexDef.Name]
+	if !ok {
+		return nil, sql.ErrIndexNotFound.New(indexDef.Name)
+	}
+
+	// For now we're just rewriting the entire table, but we could also just rewrite the index with a little work
+	return t.getRewriteTableEditor(ctx, data.schema, data.schema), nil
 }
 
 // TableRevision is a container for memory tables to run basic smoke tests for versioned queries. It overrides only
