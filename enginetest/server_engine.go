@@ -273,31 +273,28 @@ func convertValue(sch sql.Schema, row sql.Row) sql.Row {
 		switch col.Type.Type() {
 		case query.Type_GEOMETRY:
 			if row[i] != nil {
-				b := row[i].([]byte)
-				r, _, err := types.GeometryType{}.Convert(b)
+				r, _, err := types.GeometryType{}.Convert(row[i].([]byte))
 				if err != nil {
-					//t.Skip(fmt.Sprintf("received error converting returned geometry result: %v", b))
+					//t.Skip(fmt.Sprintf("received error converting returned geometry result"))
 				} else {
 					row[i] = r
 				}
 			}
 		case query.Type_JSON:
 			if row[i] != nil {
-				s := string(row[i].([]byte))
 				// TODO: dolt returns the json result without escaped quotes and backslashes, which does not Unmarshall
-				r, err := attemptUnmarshalJSON(s)
+				r, err := attemptUnmarshalJSON(string(row[i].([]byte)))
 				if err != nil {
-					//t.Skip(fmt.Sprintf("received error unmarshalling returned json result: %s", s))
+					//t.Skip(fmt.Sprintf("received error unmarshalling returned json result"))
 				} else {
 					row[i] = r
 				}
 			}
 		case query.Type_TIME:
 			if row[i] != nil {
-				s := string(row[i].([]byte))
-				r, _, err := types.TimespanType_{}.Convert(s)
+				r, _, err := types.TimespanType_{}.Convert(string(row[i].([]byte)))
 				if err != nil {
-					//t.Skip(fmt.Sprintf("received error converting returned timespan result: %s", s))
+					//t.Skip(fmt.Sprintf("received error converting returned timespan result"))
 				} else {
 					row[i] = r
 				}
@@ -312,7 +309,7 @@ func convertValue(sch sql.Schema, row sql.Row) sql.Row {
 			if row[i] != nil {
 				r, err := castToUint64(row[i])
 				if err != nil {
-					//t.Skip(fmt.Sprintf("received error converting returned unsigned int result: %v", row[i]))
+					//t.Skip(fmt.Sprintf("received error converting returned unsigned int result"))
 				} else {
 					row[i] = r
 				}
