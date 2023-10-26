@@ -856,19 +856,22 @@ func AssertWarningAndTestQuery(
 	rows, err := sql.RowIterToRows(ctx, sch, iter)
 	require.NoError(err, "Unexpected error for query %s", query)
 
-	if expectedWarningsCount > 0 {
-		assert.Equal(t, expectedWarningsCount, len(ctx.Warnings()))
-	}
-
-	if expectedCode > 0 {
-		for _, warning := range ctx.Warnings() {
-			assert.Equal(t, expectedCode, warning.Code, "Unexpected warning code")
+	if !IsServerEngine(e) {
+		// check warnings depend on context, which ServerEngine does not depend on
+		if expectedWarningsCount > 0 {
+			assert.Equal(t, expectedWarningsCount, len(ctx.Warnings()))
 		}
-	}
 
-	if len(expectedWarningMessageSubstring) > 0 {
-		for _, warning := range ctx.Warnings() {
-			assert.Contains(t, warning.Message, expectedWarningMessageSubstring, "Unexpected warning message")
+		if expectedCode > 0 {
+			for _, warning := range ctx.Warnings() {
+				assert.Equal(t, expectedCode, warning.Code, "Unexpected warning code")
+			}
+		}
+
+		if len(expectedWarningMessageSubstring) > 0 {
+			for _, warning := range ctx.Warnings() {
+				assert.Contains(t, warning.Message, expectedWarningMessageSubstring, "Unexpected warning message")
+			}
 		}
 	}
 

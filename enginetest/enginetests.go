@@ -1421,6 +1421,9 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 		t.Run(script.Name, func(t *testing.T) {
 			engine := mustNewEngine(t, harness)
 			defer engine.Close()
+			if IsServerEngine(engine) {
+				t.Skip("TestUserPrivileges test depend on Context to switch the user to run test queries")
+			}
 
 			ctx := NewContext(harness)
 			ctx.NewCtxWithClient(sql.Client{
@@ -1486,6 +1489,9 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 		t.Run(strings.Join(script.Queries, "\n > "), func(t *testing.T) {
 			engine := mustNewEngine(t, harness)
 			defer engine.Close()
+			if IsServerEngine(engine) {
+				t.Skip("TestUserPrivileges test depend on Context to switch the user to run test queries")
+			}
 
 			engine.EngineAnalyzer().Catalog.MySQLDb.AddRootAccount()
 			engine.EngineAnalyzer().Catalog.MySQLDb.SetPersister(&mysql_db.NoopPersister{})
@@ -1588,6 +1594,9 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 			}
 
 			e := mustNewEngine(t, clientHarness)
+			if IsServerEngine(e) {
+				t.Skip("TestUserPrivileges test depend on Context to switch the user to run test queries")
+			}
 			engine, ok := e.(*sqle.Engine)
 			require.True(t, ok, "Need a *sqle.Engine for TestUserAuthentication")
 
@@ -2253,7 +2262,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 	t.Run("create table with blob column with null default", func(t *testing.T) {
 		ctx := NewContext(harness)
-		ctx.SetCurrentDatabase("mydb")
+		RunQuery(t, e, harness, "USE mydb")
 		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t_blob_default_null(c BLOB DEFAULT NULL)",
 			[]sql.Row{{types.NewOkResult(0)}}, nil, nil)
 
@@ -2264,7 +2273,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 	t.Run("create table like works and can have keys removed", func(t *testing.T) {
 		ctx := NewContext(harness)
-		ctx.SetCurrentDatabase("mydb")
+		RunQuery(t, e, harness, "USE mydb")
 		RunQuery(t, e, harness, "CREATE TABLE test(pk int AUTO_INCREMENT PRIMARY KEY, val int)")
 
 		RunQuery(t, e, harness, "CREATE TABLE test2 like test")
@@ -5306,6 +5315,9 @@ func TestTracing(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
+	if IsServerEngine(e) {
+		t.Skip("this test depends on Context, which ServerEngine does not depend on or update the current context")
+	}
 	ctx := NewContext(harness)
 
 	tracer := new(test.MemTracer)
@@ -5647,6 +5659,9 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
+	if IsServerEngine(e) {
+		t.Skip("this test depends on Context, which ServerEngine does not depend on or update the current context")
+	}
 
 	for _, tt := range q {
 		t.Run(tt.Name, func(t *testing.T) {
