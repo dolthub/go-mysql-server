@@ -83,9 +83,9 @@ func NewServerQueryEngine(t *testing.T, engine *sqle.Engine, builder server.Sess
 }
 
 // NewConnection creates a new connection to the server regardless of whether there is an existing connection.
-// If there is an existing connection, it closes it and creates a new connection. This method allows running
-// multiple queries in the same session. Otherwise, new connection uses new session that some session state data
-// will not be persisted. This function is also called when there is no connection is set while running a query.
+// If there is an existing connection, it closes it and creates a new connection. New connection uses new session
+// that the previous session state data will not persist. This function is also called when there is no connection
+// when running a query.
 func (s *ServerQueryEngine) NewConnection(ctx *sql.Context) error {
 	if s.conn != nil {
 		err := s.conn.Close()
@@ -131,7 +131,6 @@ func (s *ServerQueryEngine) Query(ctx *sql.Context, query string) (sql.Schema, s
 		//  we can try preparing and if it errors, then pass the original query
 		// For example, `USE db` does not change the db in the ctx.
 		return s.QueryWithBindings(ctx, query, nil, nil)
-		//return nil, nil, err
 	}
 	return s.QueryWithBindings(ctx, q, nil, bindVars)
 }

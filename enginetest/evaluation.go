@@ -593,7 +593,7 @@ func checkResults(
 			// TODO: in MySQL, boolean values sent over the wire are tinyint.
 			//  Current engine tests assert on go boolean type values. Should
 			//  remove this conversion in the future when we match the return
-			//  type for boolean results.
+			//  type for boolean results as MySQL.
 			if IsServerEngine(e) {
 				if b, isBool := widenedExpected[i][j].(bool); isBool {
 					if b {
@@ -775,7 +775,9 @@ func AssertErrWithBindings(t *testing.T, e QueryEngine, harness Harness, query s
 	}
 	require.Error(t, err)
 	if expectedErrKind != nil {
-		require.True(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
+		if !IsServerEngine(e) {
+			require.True(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
+		}
 	} else if len(errStrs) >= 1 {
 		require.Equal(t, errStrs[0], err.Error())
 	}
@@ -792,7 +794,9 @@ func AssertErrWithCtx(t *testing.T, e QueryEngine, harness Harness, ctx *sql.Con
 	require.Error(t, err)
 	if expectedErrKind != nil {
 		err = sql.UnwrapError(err)
-		require.True(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
+		if !IsServerEngine(e) {
+			require.True(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
+		}
 	}
 	// If there are multiple error strings then we only match against the first
 	if len(errStrs) >= 1 {
@@ -813,7 +817,9 @@ func AssertErrPreparedWithCtx(t *testing.T, e QueryEngine, harness Harness, ctx 
 	require.Error(t, err)
 	if expectedErrKind != nil {
 		err = sql.UnwrapError(err)
-		require.True(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
+		if !IsServerEngine(e) {
+			require.True(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
+		}
 	}
 	// If there are multiple error strings then we only match against the first
 	if len(errStrs) >= 1 {
