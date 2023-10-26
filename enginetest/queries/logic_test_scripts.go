@@ -295,6 +295,14 @@ var SQLLogicSubqueryTests = []ScriptTest{
 			},
 			{
 				Skip:  true,
+				Query: "SELECT * FROM c WHERE bill < SOME(SELECT ship FROM o WHERE o.c_id=c.c_id);",
+				Expected: []sql.Row{
+					{4, "TX"},
+					{6, "FL"},
+				},
+			},
+			{
+				Skip:  true,
 				Query: "SELECT * FROM c WHERE (bill < ANY(SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NULL;",
 				Expected: []sql.Row{
 					{2, "TX"},
@@ -885,7 +893,7 @@ var SQLLogicSubqueryTests = []ScriptTest{
 			},
 			{
 				Skip:  true,
-				Query: "SELECT *  FROM (SELECT c_id AS c_c_id, bill FROM c) sq1, LATERAL (SELECT row_number() OVER () AS rownum FROM o WHERE c_id = c_c_id) sq2 ORDER BY c_c_id, bill, rownum;",
+				Query: "SELECT * FROM (SELECT c_id AS c_c_id, bill FROM c) sq1, LATERAL (SELECT row_number() OVER () AS rownum FROM o WHERE c_id = c_c_id) sq2 ORDER BY c_c_id, bill, rownum;",
 				Expected: []sql.Row{
 					{1, "CA", 1},
 					{1, "CA", 2},
