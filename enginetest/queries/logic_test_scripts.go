@@ -49,8 +49,8 @@ var SQLLogicJoinTests = []ScriptTest{
 				Query: "SELECT * FROM foo JOIN bar USING (b);",
 				Expected: []sql.Row{
 					{1, 1, 1.0, 1.0, 1, 1.0, 1},
-                    {2, 2, 2.0, 2.0, 2, 2.0, 2},
-                    {3, 3, 3.0, 3.0, 3, 3.0, 3},
+					{2, 2, 2.0, 2.0, 2, 2.0, 2},
+					{3, 3, 3.0, 3.0, 3, 3.0, 3},
 				},
 			},
 			{
@@ -73,8 +73,8 @@ var SQLLogicJoinTests = []ScriptTest{
 				Query: "SELECT * FROM foo JOIN bar ON foo.b = bar.b;",
 				Expected: []sql.Row{
 					{1, 1, 1.0, 1.0, 1, 1.0, 1.0, 1},
-                    {2, 2, 2.0, 2.0, 2, 2.0, 2.0, 2},
-                    {3, 3, 3.0, 3.0, 3, 3.0, 3.0, 3},
+					{2, 2, 2.0, 2.0, 2, 2.0, 2.0, 2},
+					{3, 3, 3.0, 3.0, 3, 3.0, 3.0, 3},
 				},
 			},
 			{
@@ -185,29 +185,29 @@ var SQLLogicSubqueryTests = []ScriptTest{
 		Name: "exists, in, all, in subquery",
 		SetUpScript: []string{
 			"CREATE TABLE c (c_id INT PRIMARY KEY, bill TEXT);",
-            "CREATE TABLE o (o_id INT PRIMARY KEY, c_id INT, ship TEXT);",
-            "INSERT INTO c VALUES (1, 'CA'), (2, 'TX'), (3, 'MA'), (4, 'TX'), (5, NULL), (6, 'FL');",
-            "INSERT INTO o VALUES (10, 1, 'CA'), (20, 1, 'CA'), (30, 1, 'CA'), (40, 2, 'CA'), (50, 2, 'TX'), (60, 2, NULL), (70, 4, 'WY'), (80, 4, NULL), (90, 6, 'WA');",
+			"CREATE TABLE o (o_id INT PRIMARY KEY, c_id INT, ship TEXT);",
+			"INSERT INTO c VALUES (1, 'CA'), (2, 'TX'), (3, 'MA'), (4, 'TX'), (5, NULL), (6, 'FL');",
+			"INSERT INTO o VALUES (10, 1, 'CA'), (20, 1, 'CA'), (30, 1, 'CA'), (40, 2, 'CA'), (50, 2, 'TX'), (60, 2, NULL), (70, 4, 'WY'), (80, 4, NULL), (90, 6, 'WA');",
 		},
 		Assertions: []ScriptTestAssertion{
-            {
-                Query: "SELECT * FROM c WHERE EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id);",
+			{
+				Query: "SELECT * FROM c WHERE EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id);",
 				Expected: []sql.Row{
 					{1, "CA"},
 					{2, "TX"},
 					{4, "TX"},
 					{6, "FL"},
 				},
-            },
-            {
-                Query: "SELECT * FROM c WHERE NOT EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id);",
+			},
+			{
+				Query: "SELECT * FROM c WHERE NOT EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id);",
 				Expected: []sql.Row{
 					{3, "MA"},
 					{5, nil},
 				},
-            },
-            {
-                Query: "SELECT * FROM c WHERE EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id) OR NOT EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id);",
+			},
+			{
+				Query: "SELECT * FROM c WHERE EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id) OR NOT EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id);",
 				Expected: []sql.Row{
 					{1, "CA"},
 					{2, "TX"},
@@ -216,93 +216,93 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, nil},
 					{6, "FL"},
 				},
-            },
-            {
+			},
+			{
 				Query: "SELECT * FROM c WHERE EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id AND c.bill='TX');",
 				Expected: []sql.Row{
 					{2, "TX"},
 					{4, "TX"},
 				},
-            },
-            {
-                Query: "SELECT * FROM c WHERE 'WY' IN (SELECT ship FROM o WHERE o.c_id=c.c_id);",
+			},
+			{
+				Query: "SELECT * FROM c WHERE 'WY' IN (SELECT ship FROM o WHERE o.c_id=c.c_id);",
 				Expected: []sql.Row{
 					{4, "TX"},
 				},
-            },
-            {
-                Query: "SELECT * FROM c WHERE 'WY' IN (SELECT ship FROM o WHERE o.c_id=c.c_id) OR 'WA' IN (SELECT ship FROM o WHERE o.c_id=c.c_id);",
+			},
+			{
+				Query: "SELECT * FROM c WHERE 'WY' IN (SELECT ship FROM o WHERE o.c_id=c.c_id) OR 'WA' IN (SELECT ship FROM o WHERE o.c_id=c.c_id);",
 				Expected: []sql.Row{
 					{4, "TX"},
 					{6, "FL"},
 				},
-            },
-            {
-                Query: "SELECT * FROM c WHERE 'CA' IN (SELECT ship FROM o WHERE o.c_id=c.c_id) AND 'TX' NOT IN (SELECT ship FROM o WHERE o.c_id=c.c_id);",
+			},
+			{
+				Query: "SELECT * FROM c WHERE 'CA' IN (SELECT ship FROM o WHERE o.c_id=c.c_id) AND 'TX' NOT IN (SELECT ship FROM o WHERE o.c_id=c.c_id);",
 				Expected: []sql.Row{
 					{1, "CA"},
 				},
-            },
-            {
-                Query: "SELECT * FROM c WHERE bill IN (SELECT ship FROM o WHERE o.c_id=c.c_id);",
+			},
+			{
+				Query: "SELECT * FROM c WHERE bill IN (SELECT ship FROM o WHERE o.c_id=c.c_id);",
 				Expected: []sql.Row{
 					{1, "CA"},
 					{2, "TX"},
 				},
-            },
-            {
-				Skip: true,
-                Query: "SELECT * FROM c WHERE bill = ALL(SELECT ship FROM o WHERE o.c_id=c.c_id);",
+			},
+			{
+				Skip:  true,
+				Query: "SELECT * FROM c WHERE bill = ALL(SELECT ship FROM o WHERE o.c_id=c.c_id);",
 				Expected: []sql.Row{
 					{1, "CA"},
-                    {3, "MA"},
-                    {5, nil},
+					{3, "MA"},
+					{5, nil},
 				},
-            },
-            {
-                Query: "SELECT * FROM c WHERE bill NOT IN (SELECT ship FROM o WHERE o.c_id=c.c_id);",
+			},
+			{
+				Query: "SELECT * FROM c WHERE bill NOT IN (SELECT ship FROM o WHERE o.c_id=c.c_id);",
 				Expected: []sql.Row{
 					{3, "MA"},
 					{5, nil},
 					{6, "FL"},
 				},
-            },
-            {
-                Query: "SELECT * FROM c WHERE bill NOT IN (SELECT ship FROM o WHERE o.c_id=c.c_id AND ship IS NOT NULL);",
+			},
+			{
+				Query: "SELECT * FROM c WHERE bill NOT IN (SELECT ship FROM o WHERE o.c_id=c.c_id AND ship IS NOT NULL);",
 				Expected: []sql.Row{
 					{3, "MA"},
 					{4, "TX"},
 					{5, nil},
 					{6, "FL"},
 				},
-            },
-            {
-                Query: "SELECT * FROM c WHERE bill NOT IN (SELECT ship FROM o WHERE o.c_id=c.c_id AND ship IS NULL);",
+			},
+			{
+				Query: "SELECT * FROM c WHERE bill NOT IN (SELECT ship FROM o WHERE o.c_id=c.c_id AND ship IS NULL);",
 				Expected: []sql.Row{
 					{1, "CA"},
 					{3, "MA"},
 					{5, nil},
 					{6, "FL"},
 				},
-            },
-            {
-				Skip: true,
-                Query: "SELECT * FROM c WHERE bill < ANY(SELECT ship FROM o WHERE o.c_id=c.c_id);",
+			},
+			{
+				Skip:  true,
+				Query: "SELECT * FROM c WHERE bill < ANY(SELECT ship FROM o WHERE o.c_id=c.c_id);",
 				Expected: []sql.Row{
 					{4, "TX"},
 					{6, "FL"},
 				},
-            },
-            {
-				Skip: true,
-                Query: "SELECT * FROM c WHERE (bill < ANY(SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NULL;",
+			},
+			{
+				Skip:  true,
+				Query: "SELECT * FROM c WHERE (bill < ANY(SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NULL;",
 				Expected: []sql.Row{
 					{2, "TX"},
 				},
-            },
-            {
-				Skip: true,
-                Query: "SELECT * FROM c WHERE (bill < ANY(SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NOT NULL;",
+			},
+			{
+				Skip:  true,
+				Query: "SELECT * FROM c WHERE (bill < ANY(SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NOT NULL;",
 				Expected: []sql.Row{
 					{1, "CA"},
 					{3, "MA"},
@@ -310,24 +310,24 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, nil},
 					{6, "FL"},
 				},
-            },
-            {
-				Skip: true,
-                Query: "SELECT * FROM c WHERE bill > ANY(SELECT ship FROM o WHERE o.c_id=c.c_id);",
+			},
+			{
+				Skip:  true,
+				Query: "SELECT * FROM c WHERE bill > ANY(SELECT ship FROM o WHERE o.c_id=c.c_id);",
 				Expected: []sql.Row{
 					{2, "TX"},
 				},
-            },
-            {
-				Skip: true,
-                Query: "SELECT * FROM c WHERE (bill > ANY(SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NULL;",
+			},
+			{
+				Skip:  true,
+				Query: "SELECT * FROM c WHERE (bill > ANY(SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NULL;",
 				Expected: []sql.Row{
 					{4, "TX"},
 				},
-            },
-            {
-				Skip: true,
-                Query: "SELECT * FROM c WHERE (bill > ANY(SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NOT NULL;",
+			},
+			{
+				Skip:  true,
+				Query: "SELECT * FROM c WHERE (bill > ANY(SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NOT NULL;",
 				Expected: []sql.Row{
 					{1, "CA"},
 					{3, "MA"},
@@ -335,10 +335,10 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, nil},
 					{6, "FL"},
 				},
-            },
-            {
-				Skip: true,
-                Query: "SELECT * FROM c WHERE bill = ANY(SELECT ship FROM o);",
+			},
+			{
+				Skip:  true,
+				Query: "SELECT * FROM c WHERE bill = ANY(SELECT ship FROM o);",
 				Expected: []sql.Row{
 					{1, "CA"},
 					{3, "MA"},
@@ -346,161 +346,161 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, nil},
 					{6, "FL"},
 				},
-            },
-            {
-				Skip: true,
-                Query: "SELECT * FROM c WHERE bill = ANY(SELECT ship FROM o) OR bill IS NULL;",
+			},
+			{
+				Skip:  true,
+				Query: "SELECT * FROM c WHERE bill = ANY(SELECT ship FROM o) OR bill IS NULL;",
 				Expected: []sql.Row{
 					{1, "CA"},
 					{3, "MA"},
 					{4, "TX"},
 					{5, nil},
 				},
-            },
-            {
-                Query: "SELECT * FROM c WHERE (NULL IN (SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NOT NULL;",
+			},
+			{
+				Query: "SELECT * FROM c WHERE (NULL IN (SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NOT NULL;",
 				Expected: []sql.Row{
 					{3, "MA"},
 					{5, nil},
 				},
-            },
-            {
-                Query: "SELECT * FROM c WHERE (NULL NOT IN (SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NOT NULL;",
+			},
+			{
+				Query: "SELECT * FROM c WHERE (NULL NOT IN (SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NOT NULL;",
 				Expected: []sql.Row{
 					{3, "MA"},
 					{5, nil},
 				},
-            },
-            {
-                Query: "SELECT * FROM c WHERE (replace(bill, 'TX', 'WY') IN (SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NULL;",
+			},
+			{
+				Query: "SELECT * FROM c WHERE (replace(bill, 'TX', 'WY') IN (SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NULL;",
 				Expected: []sql.Row{
 					{2, "TX"},
 				},
-            },
-            {
-				Skip: true,
-                Query: "SELECT * FROM c WHERE bill = ALL(SELECT ship FROM o WHERE o.c_id=c.c_id) OR EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id AND ship='WY');",
+			},
+			{
+				Skip:  true,
+				Query: "SELECT * FROM c WHERE bill = ALL(SELECT ship FROM o WHERE o.c_id=c.c_id) OR EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id AND ship='WY');",
 				Expected: []sql.Row{
 					{1, "CA"},
 					{3, "MA"},
 					{4, "TX"},
 					{5, nil},
 				},
-            },
-            {
-				Skip: true,
-                Query: "SELECT * FROM c WHERE bill = ALL(SELECT ship FROM o WHERE o.c_id=c.c_id) AND EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id);",
+			},
+			{
+				Skip:  true,
+				Query: "SELECT * FROM c WHERE bill = ALL(SELECT ship FROM o WHERE o.c_id=c.c_id) AND EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id);",
 				Expected: []sql.Row{
 					{1, "CA"},
 				},
-            },
-            {
-                Query: "SELECT * FROM c WHERE (SELECT count(*) FROM o WHERE o.c_id=c.c_id) > 1;",
+			},
+			{
+				Query: "SELECT * FROM c WHERE (SELECT count(*) FROM o WHERE o.c_id=c.c_id) > 1;",
 				Expected: []sql.Row{
 					{1, "CA"},
 					{2, "TX"},
 					{4, "TX"},
 				},
 			},
-            {
-                Query: "SELECT * FROM c WHERE (SELECT count(ship) FROM o WHERE o.c_id=c.c_id) > 1;",
+			{
+				Query: "SELECT * FROM c WHERE (SELECT count(ship) FROM o WHERE o.c_id=c.c_id) > 1;",
 				Expected: []sql.Row{
 					{1, "CA"},
 					{2, "TX"},
 				},
 			},
-            {
-				Skip: true,
-                Query: "SELECT c.c_id, o.o_id, o.ship FROM c INNER JOIN o ON c.c_id=o.c_id AND o.ship = (SELECT min(o.ship) FROM o WHERE o.c_id=c.c_id) ORDER BY c.c_id, o.o_id, o.ship;",
+			{
+				Skip:  true,
+				Query: "SELECT c.c_id, o.o_id, o.ship FROM c INNER JOIN o ON c.c_id=o.c_id AND o.ship = (SELECT min(o.ship) FROM o WHERE o.c_id=c.c_id) ORDER BY c.c_id, o.o_id, o.ship;",
 				Expected: []sql.Row{
 					{1, 10, "CA"},
-                    {1, 20, "CA"},
-                    {1, 30, "CA"},
-                    {2, 40, "CA"},
-                    {4, 70, "WY"},
-                    {6, 90, "WA"},
+					{1, 20, "CA"},
+					{1, 30, "CA"},
+					{2, 40, "CA"},
+					{4, 70, "WY"},
+					{6, 90, "WA"},
 				},
-            },
-            {
-				Skip: true,
-                Query: "SELECT c.c_id, o.ship, count(*) FROM c INNER JOIN o ON c.c_id=o.c_id WHERE (SELECT count(*) FROM o AS o2 WHERE o2.ship = o.ship AND o2.c_id = o.c_id) > (SELECT count(*) FROM o AS o2 WHERE o2.ship = o.ship AND o2.c_id <> o.c_id) GROUP BY c.c_id, o.ship;",
+			},
+			{
+				Skip:  true,
+				Query: "SELECT c.c_id, o.ship, count(*) FROM c INNER JOIN o ON c.c_id=o.c_id WHERE (SELECT count(*) FROM o AS o2 WHERE o2.ship = o.ship AND o2.c_id = o.c_id) > (SELECT count(*) FROM o AS o2 WHERE o2.ship = o.ship AND o2.c_id <> o.c_id) GROUP BY c.c_id, o.ship;",
 				Expected: []sql.Row{
 					{1, "CA", 3},
-                    {2, "TX", 1},
-                    {4, "WY", 1},
-                    {6, "WA", 1},
+					{2, "TX", 1},
+					{4, "WY", 1},
+					{6, "WA", 1},
 				},
 			},
-            {
-                Query: "SELECT * FROM c WHERE (SELECT count(*) FROM o WHERE o.c_id=c.c_id) > 1 AND (SELECT max(ship) FROM o WHERE o.c_id=c.c_id) = 'CA';",
-				Expected: []sql.Row{
-					{1, "CA"},
-				},
-            },
 			{
-                Query: "SELECT * FROM c WHERE (SELECT count(*) FROM o WHERE o.c_id=c.c_id) > 1 OR EXISTS(SELECT ship FROM o WHERE o.c_id=c.c_id AND ship IS NULL);",
+				Query: "SELECT * FROM c WHERE (SELECT count(*) FROM o WHERE o.c_id=c.c_id) > 1 AND (SELECT max(ship) FROM o WHERE o.c_id=c.c_id) = 'CA';",
+				Expected: []sql.Row{
+					{1, "CA"},
+				},
+			},
+			{
+				Query: "SELECT * FROM c WHERE (SELECT count(*) FROM o WHERE o.c_id=c.c_id) > 1 OR EXISTS(SELECT ship FROM o WHERE o.c_id=c.c_id AND ship IS NULL);",
 				Expected: []sql.Row{
 					{1, "CA"},
 					{2, "TX"},
 					{4, "TX"},
 				},
 			},
-            {
-				Skip: true,
-                Query: "SELECT c_id, bill FROM c AS c2 WHERE EXISTS(SELECT * FROM c WHERE bill=(SELECT max(ship) FROM o WHERE c_id=c2.c_id AND c_id=c.c_id));",
+			{
+				Skip:  true,
+				Query: "SELECT c_id, bill FROM c AS c2 WHERE EXISTS(SELECT * FROM c WHERE bill=(SELECT max(ship) FROM o WHERE c_id=c2.c_id AND c_id=c.c_id));",
 				Expected: []sql.Row{
 					{1, "CA"},
 					{2, "TX"},
 				},
-            },
-            {
-				Skip: true,
-                Query: "SELECT c_id, bill FROM c AS c2 WHERE EXISTS(SELECT * FROM (SELECT c_id, coalesce(ship, bill) AS state FROM o WHERE c_id=c2.c_id) AS o WHERE state=bill);",
+			},
+			{
+				Skip:  true,
+				Query: "SELECT c_id, bill FROM c AS c2 WHERE EXISTS(SELECT * FROM (SELECT c_id, coalesce(ship, bill) AS state FROM o WHERE c_id=c2.c_id) AS o WHERE state=bill);",
 				Expected: []sql.Row{
 					{1, "CA"},
 					{2, "TX"},
 					{4, "TX"},
 				},
-            },
-            {
-                Query: "SELECT * FROM c WHERE (SELECT ship FROM o WHERE o.c_id=c.c_id ORDER BY ship LIMIT 1) IS NOT NULL",
+			},
+			{
+				Query: "SELECT * FROM c WHERE (SELECT ship FROM o WHERE o.c_id=c.c_id ORDER BY ship LIMIT 1) IS NOT NULL",
 				Expected: []sql.Row{
 					{1, "CA"},
 					{6, "FL"},
 				},
-            },
-            {
-                Query: "SELECT * FROM c WHERE (SELECT ship FROM o WHERE o.c_id=c.c_id AND ship IS NOT NULL ORDER BY ship LIMIT 1)='CA' OR (SELECT ship FROM o WHERE o.c_id=c.c_id AND ship IS NOT NULL ORDER BY ship LIMIT 1)='WY' ORDER BY c_id",
+			},
+			{
+				Query: "SELECT * FROM c WHERE (SELECT ship FROM o WHERE o.c_id=c.c_id AND ship IS NOT NULL ORDER BY ship LIMIT 1)='CA' OR (SELECT ship FROM o WHERE o.c_id=c.c_id AND ship IS NOT NULL ORDER BY ship LIMIT 1)='WY' ORDER BY c_id",
 				Expected: []sql.Row{
 					{1, "CA"},
 					{2, "TX"},
 					{4, "TX"},
 				},
-            },
-            {
-                Query: "SELECT * FROM c WHERE (SELECT o_id FROM o WHERE o.c_id=c.c_id AND ship='WY')=4;",
+			},
+			{
+				Query:    "SELECT * FROM c WHERE (SELECT o_id FROM o WHERE o.c_id=c.c_id AND ship='WY')=4;",
 				Expected: []sql.Row{},
-            },
-            {
-                Query: "SELECT * FROM c WHERE c_id=(SELECT c_id FROM o WHERE ship='CA' AND c_id<>1 AND bill='TX');",
+			},
+			{
+				Query: "SELECT * FROM c WHERE c_id=(SELECT c_id FROM o WHERE ship='CA' AND c_id<>1 AND bill='TX');",
 				Expected: []sql.Row{
 					{2, "TX"},
 				},
-            },
-            {
-                Query: "SELECT * FROM c WHERE c_id=(SELECT c_id FROM o WHERE ship='WA' AND bill='FL')",
+			},
+			{
+				Query: "SELECT * FROM c WHERE c_id=(SELECT c_id FROM o WHERE ship='WA' AND bill='FL')",
 				Expected: []sql.Row{
 					{6, "FL"},
 				},
-            },
-            {
-                Query: "SELECT * FROM c WHERE (SELECT ship  FROM o WHERE o.c_id=c.c_id AND ship IS NOT NULL AND (SELECT count(*) FROM o WHERE o.c_id=c.c_id)<=1)='WA';",
+			},
+			{
+				Query: "SELECT * FROM c WHERE (SELECT ship  FROM o WHERE o.c_id=c.c_id AND ship IS NOT NULL AND (SELECT count(*) FROM o WHERE o.c_id=c.c_id)<=1)='WA';",
 				Expected: []sql.Row{
 					{6, "FL"},
 				},
-            },
-            {
-                Query: "SELECT c_id, EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
+			},
+			{
+				Query: "SELECT c_id, EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, true},
 					{2, true},
@@ -509,9 +509,9 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, false},
 					{6, true},
 				},
-            },
-            {
-                Query: "SELECT c_id, NOT EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
+			},
+			{
+				Query: "SELECT c_id, NOT EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, false},
 					{2, false},
@@ -520,9 +520,9 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, true},
 					{6, false},
 				},
-            },
-            {
-                Query: "SELECT c_id, EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id) OR NOT EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
+			},
+			{
+				Query: "SELECT c_id, EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id) OR NOT EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, true},
 					{2, true},
@@ -531,9 +531,9 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, true},
 					{6, true},
 				},
-            },
-            {
-                Query: "SELECT c_id, EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id AND c.bill='TX') FROM c ORDER BY c_id;",
+			},
+			{
+				Query: "SELECT c_id, EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id AND c.bill='TX') FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, false},
 					{2, true},
@@ -542,9 +542,9 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, false},
 					{6, false},
 				},
-            },
-            {
-                Query: "SELECT c_id, 'WY' IN (SELECT ship FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
+			},
+			{
+				Query: "SELECT c_id, 'WY' IN (SELECT ship FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, false},
 					{2, nil},
@@ -553,9 +553,9 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, false},
 					{6, false},
 				},
-            },
-            {
-                Query: "SELECT c_id, 'WY' IN (SELECT ship FROM o WHERE o.c_id=c.c_id) OR 'WA' IN (SELECT ship FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
+			},
+			{
+				Query: "SELECT c_id, 'WY' IN (SELECT ship FROM o WHERE o.c_id=c.c_id) OR 'WA' IN (SELECT ship FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, false},
 					{2, nil},
@@ -564,9 +564,9 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, false},
 					{6, true},
 				},
-            },
-            {
-                Query: "SELECT c_id, 'CA' IN (SELECT ship FROM o WHERE o.c_id=c.c_id) AND 'TX' NOT IN (SELECT ship FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
+			},
+			{
+				Query: "SELECT c_id, 'CA' IN (SELECT ship FROM o WHERE o.c_id=c.c_id) AND 'TX' NOT IN (SELECT ship FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, true},
 					{2, false},
@@ -575,9 +575,9 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, false},
 					{6, false},
 				},
-            },
-            {
-                Query: "SELECT c_id, bill IN (SELECT ship FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
+			},
+			{
+				Query: "SELECT c_id, bill IN (SELECT ship FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, true},
 					{2, true},
@@ -586,10 +586,10 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, false},
 					{6, false},
 				},
-            },
-            {
-				Skip: true,
-                Query: "SELECT c_id, bill = ALL(SELECT ship FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
+			},
+			{
+				Skip:  true,
+				Query: "SELECT c_id, bill = ALL(SELECT ship FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, 1},
 					{2, 0},
@@ -598,9 +598,9 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, true},
 					{6, 0},
 				},
-            },
-            {
-                Query: "SELECT c_id, bill NOT IN (SELECT ship FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
+			},
+			{
+				Query: "SELECT c_id, bill NOT IN (SELECT ship FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, false},
 					{2, false},
@@ -609,9 +609,9 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, true},
 					{6, true},
 				},
-            },
-            {
-                Query: "SELECT c_id, bill NOT IN (SELECT ship FROM o WHERE o.c_id=c.c_id AND ship IS NOT NULL) FROM c ORDER BY c_id;",
+			},
+			{
+				Query: "SELECT c_id, bill NOT IN (SELECT ship FROM o WHERE o.c_id=c.c_id AND ship IS NOT NULL) FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, false},
 					{2, false},
@@ -620,9 +620,9 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, true},
 					{6, true},
 				},
-            },
-            {
-                Query: "SELECT c_id, bill NOT IN (SELECT ship FROM o WHERE o.c_id=c.c_id AND ship IS NULL) FROM c ORDER BY c_id;",
+			},
+			{
+				Query: "SELECT c_id, bill NOT IN (SELECT ship FROM o WHERE o.c_id=c.c_id AND ship IS NULL) FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, true},
 					{2, nil},
@@ -631,10 +631,10 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, true},
 					{6, true},
 				},
-            },
-            {
-				Skip: true,
-                Query: "SELECT c_id, bill < ANY(SELECT ship FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
+			},
+			{
+				Skip:  true,
+				Query: "SELECT c_id, bill < ANY(SELECT ship FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, false},
 					{2, nil},
@@ -643,10 +643,10 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, false},
 					{6, true},
 				},
-            },
-            {
-				Skip: true,
-                Query: "SELECT c_id, (bill < ANY(SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NULL FROM c ORDER BY c_id;",
+			},
+			{
+				Skip:  true,
+				Query: "SELECT c_id, (bill < ANY(SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NULL FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, false},
 					{2, true},
@@ -655,10 +655,10 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, false},
 					{6, false},
 				},
-            },
-            {
-				Skip: true,
-                Query: "SELECT c_id, (bill < ANY(SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NOT NULL FROM c ORDER BY c_id;",
+			},
+			{
+				Skip:  true,
+				Query: "SELECT c_id, (bill < ANY(SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NOT NULL FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, true},
 					{2, false},
@@ -667,10 +667,10 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, true},
 					{6, true},
 				},
-            },
-            {
-				Skip: true,
-                Query: "SELECT c_id, bill > ANY(SELECT ship FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
+			},
+			{
+				Skip:  true,
+				Query: "SELECT c_id, bill > ANY(SELECT ship FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, false},
 					{2, true},
@@ -679,10 +679,10 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, false},
 					{6, false},
 				},
-            },
-            {
-				Skip: true,
-                Query: "SELECT c_id, (bill > ANY(SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NULL FROM c ORDER BY c_id;",
+			},
+			{
+				Skip:  true,
+				Query: "SELECT c_id, (bill > ANY(SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NULL FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, false},
 					{2, false},
@@ -691,10 +691,10 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, false},
 					{6, false},
 				},
-            },
-            {
-				Skip: true,
-                Query: "SELECT c_id, (bill > ANY(SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NOT NULL FROM c ORDER BY c_id;",
+			},
+			{
+				Skip:  true,
+				Query: "SELECT c_id, (bill > ANY(SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NOT NULL FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, true},
 					{2, true},
@@ -703,10 +703,10 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, true},
 					{6, true},
 				},
-            },
-            {
-				Skip: true,
-                Query: "SELECT c_id, bill = ANY(SELECT ship FROM o WHERE ship IS NOT NULL) FROM c;",
+			},
+			{
+				Skip:  true,
+				Query: "SELECT c_id, bill = ANY(SELECT ship FROM o WHERE ship IS NOT NULL) FROM c;",
 				Expected: []sql.Row{
 					{1, true},
 					{2, true},
@@ -715,10 +715,10 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, nil},
 					{6, false},
 				},
-            },
-            {
-				Skip: true,
-                Query: "SELECT c_id, bill = ANY(SELECT ship FROM o WHERE ship IS NOT NULL) OR bill IS NULL FROM c;",
+			},
+			{
+				Skip:  true,
+				Query: "SELECT c_id, bill = ANY(SELECT ship FROM o WHERE ship IS NOT NULL) OR bill IS NULL FROM c;",
 				Expected: []sql.Row{
 					{1, true},
 					{2, true},
@@ -727,9 +727,9 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, true},
 					{6, false},
 				},
-            },
-            {
-                Query: "SELECT c_id, (NULL IN (SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NOT NULL FROM c ORDER BY c_id;",
+			},
+			{
+				Query: "SELECT c_id, (NULL IN (SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NOT NULL FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, false},
 					{2, false},
@@ -738,9 +738,9 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, true},
 					{6, false},
 				},
-            },
-            {
-                Query: "SELECT c_id, (NULL NOT IN (SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NOT NULL FROM c ORDER BY c_id;",
+			},
+			{
+				Query: "SELECT c_id, (NULL NOT IN (SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NOT NULL FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, false},
 					{2, false},
@@ -749,9 +749,9 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, true},
 					{6, false},
 				},
-            },
-            {
-                Query: "SELECT c_id, (replace(bill, 'TX', 'WY') IN (SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NULL FROM c ORDER BY c_id;",
+			},
+			{
+				Query: "SELECT c_id, (replace(bill, 'TX', 'WY') IN (SELECT ship FROM o WHERE o.c_id=c.c_id)) IS NULL FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, false},
 					{2, true},
@@ -760,10 +760,10 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, false},
 					{6, false},
 				},
-            },
-            {
-				Skip: true,
-                Query: "SELECT c_id, bill = ALL(SELECT ship FROM o WHERE o.c_id=c.c_id) OR EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id AND ship='WY') FROM c ORDER BY c_id;",
+			},
+			{
+				Skip:  true,
+				Query: "SELECT c_id, bill = ALL(SELECT ship FROM o WHERE o.c_id=c.c_id) OR EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id AND ship='WY') FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, true},
 					{2, false},
@@ -772,10 +772,10 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, true},
 					{6, false},
 				},
-            },
-            {
-				Skip: true,
-                Query: "SELECT c_id, bill = ALL(SELECT ship FROM o WHERE o.c_id=c.c_id) AND EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
+			},
+			{
+				Skip:  true,
+				Query: "SELECT c_id, bill = ALL(SELECT ship FROM o WHERE o.c_id=c.c_id) AND EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, true},
 					{2, false},
@@ -784,18 +784,18 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, false},
 					{6, false},
 				},
-            },
-            {
-                Query: "SELECT * FROM c WHERE (SELECT min(ship) FROM o WHERE o.c_id=c.c_id) IN (SELECT ship FROM o WHERE o.c_id=c.c_id);",
+			},
+			{
+				Query: "SELECT * FROM c WHERE (SELECT min(ship) FROM o WHERE o.c_id=c.c_id) IN (SELECT ship FROM o WHERE o.c_id=c.c_id);",
 				Expected: []sql.Row{
 					{1, "CA"},
 					{2, "TX"},
 					{4, "TX"},
 					{6, "FL"},
 				},
-            },
-            {
-                Query: "SELECT c_id, (SELECT min(ship) FROM o WHERE o.c_id=c.c_id) IN (SELECT ship FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
+			},
+			{
+				Query: "SELECT c_id, (SELECT min(ship) FROM o WHERE o.c_id=c.c_id) IN (SELECT ship FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, true},
 					{2, true},
@@ -804,15 +804,15 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, false},
 					{6, true},
 				},
-            },
-            {
-                Query: "SELECT max((SELECT count(*) FROM o WHERE o.c_id=c.c_id)) FROM c;",
+			},
+			{
+				Query: "SELECT max((SELECT count(*) FROM o WHERE o.c_id=c.c_id)) FROM c;",
 				Expected: []sql.Row{
 					{3},
 				},
-            },
-            {
-                Query: "SELECT c_id, (SELECT count(*) FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
+			},
+			{
+				Query: "SELECT c_id, (SELECT count(*) FROM o WHERE o.c_id=c.c_id) FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, 3},
 					{2, 3},
@@ -821,11 +821,11 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{5, 0},
 					{6, 1},
 				},
-            },
-            {
-                Query: "SELECT s.st, (SELECT count(*) FROM c WHERE c.bill=s.st) + (SELECT count(*) FROM o WHERE o.ship=s.st) FROM (SELECT c.bill AS st FROM c UNION SELECT o.ship AS st FROM o) s ORDER BY s.st;",
+			},
+			{
+				Query: "SELECT s.st, (SELECT count(*) FROM c WHERE c.bill=s.st) + (SELECT count(*) FROM o WHERE o.ship=s.st) FROM (SELECT c.bill AS st FROM c UNION SELECT o.ship AS st FROM o) s ORDER BY s.st;",
 				Expected: []sql.Row{
-					{nil,  0},
+					{nil, 0},
 					{"CA", 5},
 					{"FL", 1},
 					{"MA", 1},
@@ -833,8 +833,8 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{"WA", 1},
 					{"WY", 1},
 				},
-            },
-            {
+			},
+			{
 				Query: "SELECT c.c_id, o.ship, count(*) AS cust, (SELECT count(*) FROM o AS o2 WHERE o2.ship = o.ship AND o2.c_id <> c.c_id) AS other  FROM c INNER JOIN o ON c.c_id=o.c_id GROUP BY c.c_id, o.ship;",
 				Expected: []sql.Row{
 					{1, "CA", 3, 1},
@@ -846,7 +846,7 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{6, "WA", 1, 0},
 				},
 			},
-            {
+			{
 				Query: "SELECT c.c_id, o.o_id, (SELECT max(CASE WHEN c2.bill > o2.ship THEN c2.bill ELSE o2.ship END) FROM c AS c2, o AS o2 WHERE c2.c_id=o2.c_id AND c2.c_id=c.c_id)  FROM c LEFT JOIN o ON c.c_id=o.c_id ORDER BY c.c_id, o.o_id;",
 				Expected: []sql.Row{
 					{1, 10, "CA"},
@@ -862,7 +862,7 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{6, 90, "WA"},
 				},
 			},
-            {
+			{
 				Query: "SELECT c.c_id, (SELECT ship FROM o WHERE o.c_id=c.c_id ORDER BY ship LIMIT 1) IS NOT NULL  FROM c ORDER BY c.c_id;",
 				Expected: []sql.Row{
 					{1, true},
@@ -873,7 +873,7 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{6, true},
 				},
 			},
-            {
+			{
 				Query: "SELECT c.c_id, (SELECT ship FROM o WHERE o.c_id=c.c_id AND ship IS NOT NULL ORDER BY ship LIMIT 1)='CA' OR (SELECT ship FROM o WHERE o.c_id=c.c_id AND ship IS NOT NULL ORDER BY ship LIMIT 1)='WY' FROM c ORDER BY c_id;",
 				Expected: []sql.Row{
 					{1, true},
@@ -884,8 +884,8 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{6, false},
 				},
 			},
-            {
-				Skip: true,
+			{
+				Skip:  true,
 				Query: "SELECT *  FROM (SELECT c_id AS c_c_id, bill FROM c) sq1, LATERAL (SELECT row_number() OVER () AS rownum FROM o WHERE c_id = c_c_id) sq2 ORDER BY c_c_id, bill, rownum;",
 				Expected: []sql.Row{
 					{1, "CA", 1},
@@ -899,7 +899,7 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{6, "FL", 1},
 				},
 			},
-            {
+			{
 				Query: "SELECT *  FROM (SELECT bill FROM c) sq1, LATERAL (SELECT row_number() OVER (PARTITION BY bill) AS rownum FROM o WHERE ship = bill) sq2 ORDER BY bill, rownum;",
 				Expected: []sql.Row{
 					{"CA", 1},
@@ -910,8 +910,8 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{"TX", 1},
 				},
 			},
-            {
-				Skip: true,
+			{
+				Skip:  true,
 				Query: "SELECT (SELECT count(*) FROM o WHERE o.c_id=c.c_id) AS order_cnt, count(*) AS cust_cnt  FROM c GROUP BY (SELECT count(*) FROM o WHERE o.c_id=c.c_id) ORDER BY (SELECT count(*) FROM o WHERE o.c_id=c.c_id) DESC;",
 				Expected: []sql.Row{
 					{3, 2},
@@ -920,13 +920,13 @@ var SQLLogicSubqueryTests = []ScriptTest{
 					{0, 2},
 				},
 			},
-            {
+			{
 				Query: "SELECT c_cnt, o_cnt, c_cnt + o_cnt AS total  FROM (VALUES ROW((SELECT count(*) FROM c), (SELECT count(*) FROM o))) AS v(c_cnt, o_cnt)  WHERE c_cnt > 0 AND o_cnt > 0;",
 				Expected: []sql.Row{
 					{6, 9, 15},
 				},
 			},
-            {
+			{
 				Query: "SELECT c.c_id, o.o_id  FROM c INNER JOIN o ON c.c_id=o.c_id AND EXISTS(SELECT * FROM o WHERE o.c_id=c.c_id AND ship IS NULL);",
 				Expected: []sql.Row{
 					{2, 40},
@@ -950,14 +950,14 @@ var SQLLogicSubqueryTests = []ScriptTest{
 	//		"CREATE TABLE users (id INT8 NOT NULL, name VARCHAR(50), PRIMARY KEY (id));",
 	//		"INSERT INTO users(id, name) VALUES (1, 'user1');",
 	//		"INSERT INTO users(id, name) VALUES (2, 'user2');",
-    //        "INSERT INTO users(id, name) VALUES (3, 'user3');",
-    //        "CREATE TABLE stuff(id INT8 NOT NULL, date DATE, user_id INT8, PRIMARY KEY (id), FOREIGN KEY (user_id) REFERENCES users (id));",
-    //        "INSERT INTO stuff(id, date, user_id) VALUES (1, '2007-10-15', 1);",
-    //        "INSERT INTO stuff(id, date, user_id) VALUES (2, '2007-12-15', 1);",
-    //        "INSERT INTO stuff(id, date, user_id) VALUES (3, '2007-11-15', 1);",
-    //        "INSERT INTO stuff(id, date, user_id) VALUES (4, '2008-01-15', 2);",
-    //        "INSERT INTO stuff(id, date, user_id) VALUES (5, '2007-06-15', 3);",
-    //        "INSERT INTO stuff(id, date, user_id) VALUES (6, '2007-03-15', 3);",
+	//        "INSERT INTO users(id, name) VALUES (3, 'user3');",
+	//        "CREATE TABLE stuff(id INT8 NOT NULL, date DATE, user_id INT8, PRIMARY KEY (id), FOREIGN KEY (user_id) REFERENCES users (id));",
+	//        "INSERT INTO stuff(id, date, user_id) VALUES (1, '2007-10-15', 1);",
+	//        "INSERT INTO stuff(id, date, user_id) VALUES (2, '2007-12-15', 1);",
+	//        "INSERT INTO stuff(id, date, user_id) VALUES (3, '2007-11-15', 1);",
+	//        "INSERT INTO stuff(id, date, user_id) VALUES (4, '2008-01-15', 2);",
+	//        "INSERT INTO stuff(id, date, user_id) VALUES (5, '2007-06-15', 3);",
+	//        "INSERT INTO stuff(id, date, user_id) VALUES (6, '2007-03-15', 3);",
 	//	},
 	//	Assertions: []ScriptTestAssertion{
 	//		{
@@ -965,35 +965,35 @@ var SQLLogicSubqueryTests = []ScriptTest{
 	//			Query: "SELECT users.id AS users_id, users.name AS users_name, stuff_1.id AS stuff_1_id, stuff_1.date AS stuff_1_date, stuff_1.user_id AS stuff_1_user_id FROM users LEFT JOIN stuff AS stuff_1 ON users.id = stuff_1.user_id AND stuff_1.id = (SELECT stuff_2.id FROM stuff AS stuff_2 WHERE stuff_2.user_id = users.id ORDER BY stuff_2.date DESC LIMIT 1) ORDER BY users.name;",
 	//			Expected: []sql.Row{
 	//				{1, "user1", 2, 2007-12-15, 1},
-    //				{2, "user2", 4, 2008-01-15, 2},
-    //				{3, "user3", 5, 2007-06-15, 3},
+	//				{2, "user2", 4, 2008-01-15, 2},
+	//				{3, "user3", 5, 2007-06-15, 3},
 	//			},
 	//		},
 	//	},
 	//},
 	{
-    		Name: "multiple nested subquery again",
-    		SetUpScript: []string{
-                "CREATE TABLE IF NOT EXISTS t_48638 (`key` INT NOT NULL, `value` INTEGER NOT NULL, PRIMARY KEY (`key`, `value`));",
-                "INSERT INTO t_48638 values (1, 4);",
-                "INSERT INTO t_48638 values (4, 3);",
-                "INSERT INTO t_48638 values (3, 2);",
-                "INSERT INTO t_48638 values (4, 1);",
-                "INSERT INTO t_48638 values (1, 2);",
-                "INSERT INTO t_48638 values (6, 5);",
-                "INSERT INTO t_48638 values (7, 8);",
-    		},
-    		Assertions: []ScriptTestAssertion{
-    			{
-    				Query: "SELECT *  FROM t_48638  WHERE `key` IN (WITH v AS (SELECT level1.`value` AS `value`, level1.`key`AS level1, level2.`key` AS level2, level3.`key` AS level3 FROM t_48638 AS level2 RIGHT JOIN (SELECT * FROM t_48638 WHERE `value` = 4) AS level1 ON level1.`value` = level2.`key`      LEFT JOIN (SELECT * FROM t_48638) AS level3 ON level3.`key` = level2.`value`  )  SELECT v.level1 FROM v WHERE v.level1 IS NOT NULL  UNION ALL SELECT v.level2 FROM v WHERE v.level2 IS NOT NULL  UNION ALL SELECT v.level3 FROM v WHERE v.level3 IS NOT NULL);",
-    				Expected: []sql.Row{
-    					{1, 2},
-    					{1, 4},
-    					{3, 2},
-    					{4, 1},
-    					{4, 3},
-    				},
-    			},
-    		},
-    	},
+		Name: "multiple nested subquery again",
+		SetUpScript: []string{
+			"CREATE TABLE IF NOT EXISTS t_48638 (`key` INT NOT NULL, `value` INTEGER NOT NULL, PRIMARY KEY (`key`, `value`));",
+			"INSERT INTO t_48638 values (1, 4);",
+			"INSERT INTO t_48638 values (4, 3);",
+			"INSERT INTO t_48638 values (3, 2);",
+			"INSERT INTO t_48638 values (4, 1);",
+			"INSERT INTO t_48638 values (1, 2);",
+			"INSERT INTO t_48638 values (6, 5);",
+			"INSERT INTO t_48638 values (7, 8);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT *  FROM t_48638  WHERE `key` IN (WITH v AS (SELECT level1.`value` AS `value`, level1.`key`AS level1, level2.`key` AS level2, level3.`key` AS level3 FROM t_48638 AS level2 RIGHT JOIN (SELECT * FROM t_48638 WHERE `value` = 4) AS level1 ON level1.`value` = level2.`key`      LEFT JOIN (SELECT * FROM t_48638) AS level3 ON level3.`key` = level2.`value`  )  SELECT v.level1 FROM v WHERE v.level1 IS NOT NULL  UNION ALL SELECT v.level2 FROM v WHERE v.level2 IS NOT NULL  UNION ALL SELECT v.level3 FROM v WHERE v.level3 IS NOT NULL);",
+				Expected: []sql.Row{
+					{1, 2},
+					{1, 4},
+					{3, 2},
+					{4, 1},
+					{4, 3},
+				},
+			},
+		},
+	},
 }

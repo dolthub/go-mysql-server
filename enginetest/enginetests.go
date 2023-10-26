@@ -6346,14 +6346,14 @@ func TestSQLLogicTests(t *testing.T, harness Harness) {
 		TestScript(t, harness, script)
 	}
 	for _, script := range queries.SQLLogicSubqueryTests {
-    		if sh, ok := harness.(SkippingHarness); ok {
-    			if sh.SkipQueryTest(script.Name) {
-    				t.Run(script.Name, func(t *testing.T) {
-    					t.Skip(script.Name)
-    				})
-    				continue
-    			}
-    		}
-    		TestScript(t, harness, script)
-    	}
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(script.Name) {
+				t.Run(script.Name, func(t *testing.T) {
+					t.Skip(script.Name)
+				})
+				continue
+			}
+		}
+		TestScript(t, harness, script)
+	}
 }
