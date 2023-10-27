@@ -385,6 +385,7 @@ func pushNotFilters(_ *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ Ru
 	})
 }
 
+// TODO maybe: NOT(INTUPLE(c...)), NOT(EQ(c))=>OR(LT(c), GT(c))
 func pushNotFiltersHelper(e sql.Expression) (sql.Expression, error) {
 	// NOT(NOT(c))=>c
 	if not, _ := e.(*expression.Not); not != nil {
@@ -406,17 +407,6 @@ func pushNotFiltersHelper(e sql.Expression) (sql.Expression, error) {
 			return pushNotFiltersHelper(expression.NewAnd(expression.NewNot(f.Left), expression.NewNot(f.Right)))
 		}
 	}
-
-	// TODO this doesn't appear to be correct
-	// NOT(ISNULL(c))=>OR(LT(c,NULL), GT(c,NULL))
-	//if not, _ := e.(*expression.Not); not != nil {
-	//	if f, _ := not.Child.(*expression.IsNull); f != nil {
-	//		return pushNotFiltersHelper(expression.NewOr(
-	//			expression.NewLessThan(f.Child, expression.NewLiteral(nil, types.Null)),
-	//			expression.NewGreaterThan(f.Child, expression.NewLiteral(nil, types.Null)),
-	//		))
-	//	}
-	//}
 
 	// NOT(GT(c))=>LTE(c)
 	if not, _ := e.(*expression.Not); not != nil {
@@ -455,10 +445,6 @@ func pushNotFiltersHelper(e sql.Expression) (sql.Expression, error) {
 			))
 		}
 	}
-
-	// TODO
-	// NOT(INTUPLE(c...))
-	// NOT(EQ(c))=>OR(LT(c), GT(c))
 
 	var newChildren []sql.Expression
 	for _, c := range e.Children() {
