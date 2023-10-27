@@ -1370,14 +1370,13 @@ order by
 			"                         │   │   │   └─ Eq\n" +
 			"                         │   │   │       ├─ part.p_brand:3!null\n" +
 			"                         │   │   │       └─ Brand#45 (longtext)\n" +
-			"                         │   │   └─ NOT\n" +
-			"                         │   │       └─ AND\n" +
-			"                         │   │           ├─ GreaterThanOrEqual\n" +
-			"                         │   │           │   ├─ part.p_type:4!null\n" +
-			"                         │   │           │   └─ MEDIUM POLISHED (longtext)\n" +
-			"                         │   │           └─ LessThanOrEqual\n" +
-			"                         │   │               ├─ part.p_type:4!null\n" +
-			"                         │   │               └─ MEDIUM POLISHEDÿ (longtext)\n" +
+			"                         │   │   └─ Or\n" +
+			"                         │   │       ├─ LessThan\n" +
+			"                         │   │       │   ├─ part.p_type:4!null\n" +
+			"                         │   │       │   └─ MEDIUM POLISHED (longtext)\n" +
+			"                         │   │       └─ GreaterThan\n" +
+			"                         │   │           ├─ part.p_type:4!null\n" +
+			"                         │   │           └─ MEDIUM POLISHEDÿ (longtext)\n" +
 			"                         │   └─ HashIn\n" +
 			"                         │       ├─ part.p_size:5!null\n" +
 			"                         │       └─ TUPLE(49 (tinyint), 14 (tinyint), 23 (tinyint), 45 (tinyint), 19 (tinyint), 3 (tinyint), 36 (tinyint), 9 (tinyint))\n" +
