@@ -342,18 +342,20 @@ func (b *BaseBuilder) buildGrant(ctx *sql.Context, n *plan.Grant, row sql.Row) (
 			}
 		}
 		if n.ObjectType != plan.ObjectType_Any {
-
-			if n.ObjectType == plan.ObjectType_Procedure || n.ObjectType == plan.ObjectType_Function {
-				isProc := n.ObjectType == plan.ObjectType_Procedure
+			if n.ObjectType == plan.ObjectType_Procedure {
 				for _, grantUser := range n.Users {
 					user := mysqlDb.GetUser(editor, grantUser.Name, grantUser.Host, false)
 					if user == nil {
 						return nil, sql.ErrGrantUserDoesNotExist.New()
 					}
-					if err := n.HandleRoutinePrivileges(user, database, n.PrivilegeLevel.TableRoutine, isProc); err != nil {
+					if err := n.HandleRoutinePrivileges(user, database, n.PrivilegeLevel.TableRoutine, true); err != nil {
 						return nil, err
 					}
 				}
+			} else if n.ObjectType == plan.ObjectType_Function {
+				// We currently model function permissions, but don't have a common place to enfource them, so punting
+				// on allowing them to be granted.
+				return nil, fmt.Errorf("fine grain function permissions currently unsupported")
 			} else {
 				// This fall through will only happen if we add new object types, which is unlikely.
 				return nil, fmt.Errorf("runtime error: unexpected object type: %d", n.ObjectType)
