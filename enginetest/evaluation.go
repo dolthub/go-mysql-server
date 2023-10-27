@@ -163,7 +163,7 @@ func TestScriptWithEnginePrepared(t *testing.T, e QueryEngine, harness Harness, 
 					t.Skip()
 				}
 			}
-			ctx.WithQuery(statement)
+			ctx = NewContext(harness).WithQuery(statement)
 			RunQueryWithContext(t, e, harness, ctx, statement)
 			validateEngine(t, ctx, harness, e)
 		}
@@ -200,11 +200,11 @@ func TestScriptWithEnginePrepared(t *testing.T, e QueryEngine, harness Harness, 
 						assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
 						assertion.ExpectedWarningMessageSubstring, assertion.SkipResultsCheck)
 				} else if assertion.SkipResultsCheck {
-					ctx.WithQuery(assertion.Query)
+					ctx = NewContext(harness).WithQuery(assertion.Query)
 					_, _, err := runQueryPreparedWithCtx(t, ctx, e, assertion.Query, assertion.Bindings)
 					require.NoError(t, err)
 				} else {
-					ctx.WithQuery(assertion.Query)
+					ctx = NewContext(harness).WithQuery(assertion.Query)
 					TestPreparedQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, nil, assertion.Bindings)
 				}
 				if assertion.ExpectedIndexes != nil {
