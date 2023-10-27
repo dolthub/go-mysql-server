@@ -16,8 +16,10 @@ package enginetest
 
 import (
 	gosql "database/sql"
+	"encoding/json"
+	"errors"
 	"fmt"
-	"sort"
+	"net"
 	"strconv"
 	"strings"
 	"testing"
@@ -39,14 +41,13 @@ type ServerQueryEngine struct {
 	engine *sqle.Engine
 	server *server.Server
 	t      *testing.T
+	port   int
+	conn   *gosql.DB
 }
 
 var _ QueryEngine = (*ServerQueryEngine)(nil)
 
 var address = "localhost"
-
-// TODO: get random port
-var port = 3306
 
 func NewServerQueryEngine(t *testing.T, engine *sqle.Engine, builder server.SessionBuilder) (*ServerQueryEngine, error) {
 	ctx := sql.NewEmptyContext()
@@ -55,9 +56,14 @@ func NewServerQueryEngine(t *testing.T, engine *sqle.Engine, builder server.Sess
 		panic(err)
 	}
 
+	p, err := findEmptyPort()
+	if err != nil {
+		return nil, err
+	}
+
 	config := server.Config{
 		Protocol: "tcp",
-		Address:  fmt.Sprintf("%s:%d", address, port),
+		Address:  fmt.Sprintf("%s:%d", address, p),
 	}
 	s, err := server.NewServer(config, engine, builder, nil)
 	if err != nil {
@@ -72,72 +78,133 @@ func NewServerQueryEngine(t *testing.T, engine *sqle.Engine, builder server.Sess
 		t:      t,
 		engine: engine,
 		server: s,
+		port:   p,
 	}, nil
 }
 
-func newConnection(ctx *sql.Context) (*gosql.DB, error) {
+// NewConnection creates a new connection to the server regardless of whether there is an existing connection.
+// If there is an existing connection, it closes it and creates a new connection. New connection uses new session
+// that the previous session state data will not persist. This function is also called when there is no connection
+// when running a query.
+func (s *ServerQueryEngine) NewConnection(ctx *sql.Context) error {
+	if s.conn != nil {
+		err := s.conn.Close()
+		if err != nil {
+			return err
+		}
+	}
+
 	db := ctx.GetCurrentDatabase()
 	// https://stackoverflow.com/questions/29341590/how-to-parse-time-from-database/29343013#29343013
-	return gosql.Open("mysql", fmt.Sprintf("root:@tcp(127.0.0.1)/%s?parseTime=true", db))
+	conn, err := gosql.Open("mysql", fmt.Sprintf("root:@tcp(127.0.0.1:%d)/%s?parseTime=true", s.port, db))
+	if err != nil {
+		return err
+	}
+	s.conn = conn
+	return nil
 }
 
-func (s ServerQueryEngine) PrepareQuery(ctx *sql.Context, query string) (sql.Node, error) {
+func (s *ServerQueryEngine) PrepareQuery(ctx *sql.Context, query string) (sql.Node, error) {
+	if s.conn == nil {
+		err := s.NewConnection(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
 	// TODO
 	// q, bindVars, err := injectBindVarsAndPrepare(s.t, ctx, s.engine, query)
 	return nil, nil
 }
 
-func (s ServerQueryEngine) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter, error) {
-	q, bindVars, err := injectBindVarsAndPrepare(s.t, ctx, s.engine, query)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return s.QueryWithBindings(ctx, q, nil, bindVars)
-}
-
-func (s ServerQueryEngine) EngineAnalyzer() *analyzer.Analyzer {
-	return s.engine.Analyzer
-}
-
-func (s ServerQueryEngine) EnginePreparedDataCache() *sqle.PreparedDataCache {
-	return s.engine.PreparedDataCache
-}
-
-func (s ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*query.BindVariable) (sql.Schema, sql.RowIter, error) {
-	conn, err := newConnection(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	stmt, err := conn.Prepare(query)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	args := prepareBindingArgs(bindings)
-
-	if parsed == nil {
-		parsed, err = sqlparser.Parse(query)
+func (s *ServerQueryEngine) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter, error) {
+	if s.conn == nil {
+		err := s.NewConnection(ctx)
 		if err != nil {
 			return nil, nil, err
 		}
 	}
 
-	switch parsed.(type) {
-	case *sqlparser.Select, *sqlparser.SetOp, *sqlparser.Show, *sqlparser.Set:
-		rows, err := stmt.Query(args...)
+	// we prepare each query as prepared statement if possible to add more coverage to prepared tests
+	q, bindVars, err := injectBindVarsAndPrepare(s.t, ctx, s.engine, query)
+	if err != nil {
+		// TODO: ctx being used does not get updated when running the queries through go sql driver.
+		//  we can try preparing and if it errors, then pass the original query
+		// For example, `USE db` does not change the db in the ctx.
+		return s.QueryWithBindings(ctx, query, nil, nil)
+	}
+	return s.QueryWithBindings(ctx, q, nil, bindVars)
+}
+
+func (s *ServerQueryEngine) EngineAnalyzer() *analyzer.Analyzer {
+	return s.engine.Analyzer
+}
+
+func (s *ServerQueryEngine) EnginePreparedDataCache() *sqle.PreparedDataCache {
+	return s.engine.PreparedDataCache
+}
+
+func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*query.BindVariable) (sql.Schema, sql.RowIter, error) {
+	if s.conn == nil {
+		err := s.NewConnection(ctx)
 		if err != nil {
 			return nil, nil, err
+		}
+	}
+
+	var err error
+	if parsed == nil {
+		parsed, err = sqlparser.Parse(query)
+		if err != nil {
+			// TODO: conn.Query() empty query does not error
+			if strings.HasSuffix(err.Error(), "empty statement") {
+				return nil, sql.RowsToRowIter(), nil
+			}
+			return nil, nil, err
+		}
+	}
+
+	// NOTE: MySQL does not support LOAD DATA query as PREPARED STATEMENT.
+	//  However, Dolt supports, but not go-sql-driver client
+	switch parsed.(type) {
+	case *sqlparser.Load, *sqlparser.Execute, *sqlparser.Prepare:
+		rows, err := s.conn.Query(query)
+		if err != nil {
+			return nil, nil, trimMySQLErrCodePrefix(err)
+		}
+		return convertRowsResult(rows)
+	}
+
+	stmt, err := s.conn.Prepare(query)
+	if err != nil {
+		return nil, nil, trimMySQLErrCodePrefix(err)
+	}
+
+	args := prepareBindingArgs(bindings)
+
+	switch parsed.(type) {
+	case *sqlparser.Select, *sqlparser.SetOp, *sqlparser.Show, *sqlparser.Set, *sqlparser.Call, *sqlparser.Begin, *sqlparser.Use:
+		rows, err := stmt.Query(args...)
+		if err != nil {
+			return nil, nil, trimMySQLErrCodePrefix(err)
 		}
 		return convertRowsResult(rows)
 	default:
 		exec, err := stmt.Exec(args...)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, trimMySQLErrCodePrefix(err)
 		}
 		return convertExecResult(exec)
 	}
+}
+
+// trimMySQLErrCodePrefix temporarily removes the error code part of the error message returned from the server.
+// This allows us to assert the error message strings in the enginetest.
+func trimMySQLErrCodePrefix(err error) error {
+	r := strings.Split(err.Error(), "(HY000): ")
+	if len(r) == 2 {
+		return errors.New(r[1])
+	}
+	return err
 }
 
 func convertExecResult(exec gosql.Result) (sql.Schema, sql.RowIter, error) {
@@ -207,27 +274,43 @@ func convertValue(sch sql.Schema, row sql.Row) sql.Row {
 		case query.Type_GEOMETRY:
 			if row[i] != nil {
 				r, _, err := types.GeometryType{}.Convert(row[i].([]byte))
-				if err == nil {
+				if err != nil {
+					//t.Skip(fmt.Sprintf("received error converting returned geometry result"))
+				} else {
 					row[i] = r
 				}
 			}
 		case query.Type_JSON:
 			if row[i] != nil {
-				row[i] = types.MustJSON(string(row[i].([]byte)))
+				// TODO: dolt returns the json result without escaped quotes and backslashes, which does not Unmarshall
+				r, err := attemptUnmarshalJSON(string(row[i].([]byte)))
+				if err != nil {
+					//t.Skip(fmt.Sprintf("received error unmarshalling returned json result"))
+				} else {
+					row[i] = r
+				}
 			}
 		case query.Type_TIME:
 			if row[i] != nil {
 				r, _, err := types.TimespanType_{}.Convert(string(row[i].([]byte)))
-				if err == nil {
+				if err != nil {
+					//t.Skip(fmt.Sprintf("received error converting returned timespan result"))
+				} else {
 					row[i] = r
 				}
+			}
+		case query.Type_DATETIME:
+			if row[i] != nil {
+				row[i] = row[i].(time.Time).Format(time.DateOnly)
 			}
 		case query.Type_UINT8, query.Type_UINT16, query.Type_UINT24, query.Type_UINT32, query.Type_UINT64:
 			// TODO: check todo in 'emptyValuePointerForType' method
 			//  we try to cast any value we got to uint64
 			if row[i] != nil {
-				r, err := toUint64(row[i])
-				if err == nil {
+				r, err := castToUint64(row[i])
+				if err != nil {
+					//t.Skip(fmt.Sprintf("received error converting returned unsigned int result"))
+				} else {
 					row[i] = r
 				}
 			}
@@ -236,7 +319,17 @@ func convertValue(sch sql.Schema, row sql.Row) sql.Row {
 	return row
 }
 
-func toUint64(v any) (uint64, error) {
+// attemptUnmarshalJSON is returns error if the result cannot be unmarshalled
+// instead of panicking from using `types.MustJSON()` method.
+func attemptUnmarshalJSON(s string) (types.JSONDocument, error) {
+	var doc interface{}
+	if err := json.Unmarshal([]byte(s), &doc); err != nil {
+		return types.JSONDocument{}, err
+	}
+	return types.JSONDocument{Val: doc}, nil
+}
+
+func castToUint64(v any) (uint64, error) {
 	switch val := v.(type) {
 	case int8:
 		return uint64(val), nil
@@ -295,6 +388,11 @@ func deref(val any) (any, error) {
 		return *v, nil
 	case *uint64:
 		return *v, nil
+	case *gosql.NullInt32:
+		if v.Valid {
+			return v.Int32, nil
+		}
+		return nil, nil
 	case *gosql.NullInt64:
 		if v.Valid {
 			return v.Int64, nil
@@ -359,9 +457,12 @@ func emptyRowForSchema(sch sql.Schema) ([]any, error) {
 
 func emptyValuePointerForType(t sql.Type) (any, error) {
 	switch t.Type() {
-	case query.Type_INT8, query.Type_INT16, query.Type_INT24, query.Type_INT32, query.Type_INT64,
+	case query.Type_INT8, query.Type_INT16, query.Type_INT24, query.Type_INT64,
 		query.Type_BIT, query.Type_YEAR:
 		var i gosql.NullInt64
+		return &i, nil
+	case query.Type_INT32:
+		var i gosql.NullInt32
 		return &i, nil
 	case query.Type_UINT8, query.Type_UINT16, query.Type_UINT24, query.Type_UINT32, query.Type_UINT64:
 		//var i uint64
@@ -419,7 +520,7 @@ func schemaForRows(rows *gosql.Rows) (sql.Schema, error) {
 
 func convertGoSqlType(columnType *gosql.ColumnType) (sql.Type, error) {
 	switch strings.ToLower(columnType.DatabaseTypeName()) {
-	case "tinyint", "smallint", "mediumint", "int", "bigint":
+	case "tinyint", "smallint", "mediumint", "int", "bigint", "bit":
 		return types.Int64, nil
 	case "unsigned tinyint", "unsigned smallint", "unsigned mediumint", "unsigned int", "unsigned bigint":
 		return types.Uint64, nil
@@ -471,31 +572,37 @@ func convertGoSqlType(columnType *gosql.ColumnType) (sql.Type, error) {
 }
 
 // prepareBindingArgs returns an array of the binding variable converted from given map.
+// The binding variables need to be sorted in order of position in the query. The variable in binding map
+// is in random order. The function expects binding variables starting with `:v1` and do not skip number.
+// It cannot sort user-defined binding variables (e.g. :var, :foo)
 func prepareBindingArgs(bindings map[string]*query.BindVariable) []any {
-	names := make([]string, len(bindings))
-	var i int
-	for name := range bindings {
-		names[i] = name
-		i++
-	}
-
-	// the binding values need in specific order
-	// it is in random order as stored in a map
-	sort.Strings(names)
-
-	args := make([]any, len(bindings))
-	for j, name := range names {
-		args[j] = bindings[name].Value
+	numBindVars := len(bindings)
+	args := make([]any, numBindVars)
+	for i := 0; i < numBindVars; i++ {
+		args[i] = bindings[fmt.Sprintf("v%d", i+1)].Value
 	}
 
 	return args
 }
 
-func (s ServerQueryEngine) CloseSession(connID uint32) {
+func findEmptyPort() (int, error) {
+	listener, err := net.Listen("tcp", ":0")
+	if err != nil {
+		return -1, err
+	}
+	port := listener.Addr().(*net.TCPAddr).Port
+	if err = listener.Close(); err != nil {
+		return -1, err
+
+	}
+	return port, nil
+}
+
+func (s *ServerQueryEngine) CloseSession(connID uint32) {
 	// TODO
 }
 
-func (s ServerQueryEngine) Close() error {
+func (s *ServerQueryEngine) Close() error {
 	return s.server.Close()
 }
 

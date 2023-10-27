@@ -79,6 +79,7 @@ func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useN
 		skippedQueries:            make(map[string]struct{}),
 		externalProcedureRegistry: externalProcedureRegistry,
 		mu:                        &sync.Mutex{},
+		//server:                    true,
 	}
 }
 

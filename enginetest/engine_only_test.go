@@ -162,6 +162,9 @@ func TestRootSpanFinish(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
+	if enginetest.IsServerEngine(e) {
+		t.Skip("this test depends on Context, which ServerEngine does not depend on or update the current context")
+	}
 	sqlCtx := harness.NewContext()
 	ctx, fakeSpan := newMockSpan(sqlCtx)
 	sql.WithRootSpan(fakeSpan)(sqlCtx)
@@ -685,6 +688,9 @@ func TestTriggerViewWarning(t *testing.T) {
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e, err := harness.NewEngine(t)
 	assert.NoError(t, err)
+	if enginetest.IsServerEngine(e) {
+		t.Skip("this test depends on Context, which ServerEngine does not depend on or update the current context")
+	}
 
 	prov := e.EngineAnalyzer().Catalog.DbProvider.(*memory.DbProvider)
 	db, err := prov.Database(nil, "mydb")

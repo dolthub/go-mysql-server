@@ -806,6 +806,10 @@ func convertToInt64(t NumberTypeImpl_, v interface{}) (int64, sql.ConvertInRange
 		}
 		return i, sql.InRange, nil
 	case string:
+		if v == "" {
+			// StringType{}.Zero() returns empty string, but should represent "0" for number value
+			return 0, sql.InRange, nil
+		}
 		// Parse first an integer, which allows for more values than float64
 		i, err := strconv.ParseInt(v, 10, 64)
 		if err == nil {

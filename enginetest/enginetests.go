@@ -75,6 +75,15 @@ func TestQueries(t *testing.T, harness Harness) {
 			TestQuery2(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 		}
 	}
+
+	t.Run("date parse tests", func(t *testing.T) {
+		harness.Setup(setup.MydbData)
+		for _, tt := range queries.DateParseQueries {
+			t.Run(tt.Query, func(t *testing.T) {
+				TestQueryWithEngine(t, harness, e, tt)
+			})
+		}
+	})
 }
 
 // TestStatistics tests the statistics from ANALYZE TABLE
@@ -588,6 +597,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 		e := mustNewEngine(t, harness)
 		defer e.Close()
 		ctx := NewContext(harness)
+
 		RunQueryWithContext(t, e, harness, ctx, "create table members (id int primary key, team text);")
 		RunQueryWithContext(t, e, harness, ctx, "insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');")
 
@@ -598,9 +608,11 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 
 		// group by with any_value or non-strict are non-deterministic (unless there's only one value), so we must accept multiple
 		// group by with any_value()
+
 		_, rowIter, err = e.Query(ctx, "select any_value(id), team from members group by team order by id")
 		require.NoError(t, err)
 		rowCount = 0
+		isServerTest := IsServerEngine(e)
 		for {
 			row, err = rowIter.Next(ctx)
 			if err == io.EOF {
@@ -608,7 +620,16 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 			}
 			rowCount++
 			require.NoError(t, err)
-			val := row[0].(int32)
+
+			// TODO: needs fix to match MySQL, which its type is `LONG` = Int32
+			// currently, we convert any int result to SQL int64 type before sending it over the wire
+			var val int64
+			if isServerTest {
+				val = row[0].(int64)
+			} else {
+				val = int64(row[0].(int32))
+			}
+
 			team := row[1].(string)
 			switch team {
 			case "red":
@@ -634,7 +655,16 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 			}
 			rowCount++
 			require.NoError(t, err)
-			val := row[0].(int32)
+
+			// TODO: needs fix to match MySQL, which its type is `LONG` = Int32
+			// currently, we convert any int result to SQL int64 type before sending it over the wire
+			var val int64
+			if isServerTest {
+				val = row[0].(int64)
+			} else {
+				val = int64(row[0].(int32))
+			}
+
 			team := row[1].(string)
 			switch team {
 			case "red":
@@ -1391,6 +1421,9 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 		t.Run(script.Name, func(t *testing.T) {
 			engine := mustNewEngine(t, harness)
 			defer engine.Close()
+			if IsServerEngine(engine) {
+				t.Skip("TestUserPrivileges test depend on Context to switch the user to run test queries")
+			}
 
 			ctx := NewContext(harness)
 			ctx.NewCtxWithClient(sql.Client{
@@ -1456,6 +1489,9 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 		t.Run(strings.Join(script.Queries, "\n > "), func(t *testing.T) {
 			engine := mustNewEngine(t, harness)
 			defer engine.Close()
+			if IsServerEngine(engine) {
+				t.Skip("TestUserPrivileges test depend on Context to switch the user to run test queries")
+			}
 
 			engine.EngineAnalyzer().Catalog.MySQLDb.AddRootAccount()
 			engine.EngineAnalyzer().Catalog.MySQLDb.SetPersister(&mysql_db.NoopPersister{})
@@ -1528,7 +1564,7 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 					// See the comment on QuickPrivilegeTest for a more in-depth explanation, but essentially we treat
 					// nil in script.Expected as matching "any" non-error result.
 					if script.Expected != nil && (rows != nil || len(script.Expected) != 0) {
-						checkResults(t, script.Expected, nil, sch, rows, lastQuery)
+						checkResults(t, script.Expected, nil, sch, rows, lastQuery, engine)
 					}
 				})
 			}
@@ -1558,6 +1594,9 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 			}
 
 			e := mustNewEngine(t, clientHarness)
+			if IsServerEngine(e) {
+				t.Skip("TestUserPrivileges test depend on Context to switch the user to run test queries")
+			}
 			engine, ok := e.(*sqle.Engine)
 			require.True(t, ok, "Need a *sqle.Engine for TestUserAuthentication")
 
@@ -2223,7 +2262,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 	t.Run("create table with blob column with null default", func(t *testing.T) {
 		ctx := NewContext(harness)
-		ctx.SetCurrentDatabase("mydb")
+		RunQuery(t, e, harness, "USE mydb")
 		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t_blob_default_null(c BLOB DEFAULT NULL)",
 			[]sql.Row{{types.NewOkResult(0)}}, nil, nil)
 
@@ -2234,7 +2273,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 	t.Run("create table like works and can have keys removed", func(t *testing.T) {
 		ctx := NewContext(harness)
-		ctx.SetCurrentDatabase("mydb")
+		RunQuery(t, e, harness, "USE mydb")
 		RunQuery(t, e, harness, "CREATE TABLE test(pk int AUTO_INCREMENT PRIMARY KEY, val int)")
 
 		RunQuery(t, e, harness, "CREATE TABLE test2 like test")
@@ -4981,6 +5020,8 @@ func TestClearWarnings(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	ctx := NewContext(harness)
+	err := CreateNewConnectionForServerEngine(ctx, e)
+	require.NoError(err)
 
 	sch, iter, err := e.Query(ctx, "-- some empty query as a comment")
 	require.NoError(err)
@@ -5029,26 +5070,47 @@ func TestUse(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	ctx := NewContext(harness)
-	require.Equal("mydb", ctx.GetCurrentDatabase())
-
-	_, _, err := e.Query(ctx, "USE bar")
-	require.Error(err)
-
-	require.Equal("mydb", ctx.GetCurrentDatabase())
-
-	sch, iter, err := e.Query(ctx, "USE foo")
+	err := CreateNewConnectionForServerEngine(ctx, e)
 	require.NoError(err)
 
-	rows, err := sql.RowIterToRows(ctx, sch, iter)
-	require.NoError(err)
-	require.Len(rows, 0)
+	var script = queries.ScriptTest{
+		Name: "ALTER TABLE, ALTER COLUMN SET , DROP DEFAULT",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL default 88);",
+		},
+		Assertions: []queries.ScriptTestAssertion{
+			{
+				Query:    "SELECT DATABASE();",
+				Expected: []sql.Row{{"mydb"}},
+			},
+			{
+				Query:          "USE bar;",
+				ExpectedErrStr: "database not found: bar",
+			},
+			{
+				Query:    "SELECT DATABASE();",
+				Expected: []sql.Row{{"mydb"}},
+			},
+			{
+				Query:    "USE foo;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT DATABASE();",
+				Expected: []sql.Row{{"foo"}},
+			},
+			{
+				Query:    "USE MYDB;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT DATABASE();",
+				Expected: []sql.Row{{"mydb"}},
+			},
+		},
+	}
 
-	require.Equal("foo", ctx.GetCurrentDatabase())
-
-	_, _, err = e.Query(ctx, "USE MYDB")
-	require.NoError(err)
-
-	require.Equal("mydb", ctx.GetCurrentDatabase())
+	TestScriptWithEngine(t, e, harness, script)
 }
 
 // TestConcurrentTransactions tests that two concurrent processes/transactions can successfully execute without early
@@ -5233,9 +5295,14 @@ func TestSessionSelectLimit(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	ctx := NewContext(harness)
-
-	err := ctx.Session.SetSessionVariable(ctx, "sql_select_limit", int64(2))
-	require.NoError(t, err)
+	if IsServerEngine(e) {
+		err := CreateNewConnectionForServerEngine(ctx, e)
+		require.NoError(t, err, nil)
+		RunQueryWithContext(t, e, harness, ctx, "SET @@sql_select_limit = 2")
+	} else {
+		err := ctx.Session.SetSessionVariable(ctx, "sql_select_limit", int64(2))
+		require.NoError(t, err)
+	}
 
 	for _, tt := range q {
 		t.Run(tt.Query, func(t *testing.T) {
@@ -5248,6 +5315,9 @@ func TestTracing(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
+	if IsServerEngine(e) {
+		t.Skip("this test depends on Context, which ServerEngine does not depend on or update the current context")
+	}
 	ctx := NewContext(harness)
 
 	tracer := new(test.MemTracer)
@@ -5589,6 +5659,9 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
+	if IsServerEngine(e) {
+		t.Skip("this test depends on Context, which ServerEngine does not depend on or update the current context")
+	}
 
 	for _, tt := range q {
 		t.Run(tt.Name, func(t *testing.T) {
@@ -5653,11 +5726,12 @@ func TestPrepared(t *testing.T, harness Harness) {
 			},
 		},
 		{
-			Query: "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = :var) AS a HAVING bar = :var ORDER BY foo, i",
+			Query: "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = ?) AS a HAVING bar = ? ORDER BY foo, i",
 			Expected: []sql.Row{
 				{2, 1, 2}},
 			Bindings: map[string]*query.BindVariable{
-				"var": sqltypes.Int64BindVariable(int64(2)),
+				"v1": sqltypes.Int64BindVariable(int64(2)),
+				"v2": sqltypes.Int64BindVariable(int64(2)),
 			},
 		},
 		{
@@ -5668,51 +5742,51 @@ func TestPrepared(t *testing.T, harness Harness) {
 			},
 		},
 		{
-			Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable HAVING bar = :bar AND foo = :foo ORDER BY foo, i;",
+			Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable HAVING bar = ? AND foo = ? ORDER BY foo, i;",
 			Expected: []sql.Row{},
 			Bindings: map[string]*query.BindVariable{
-				"bar": sqltypes.Int64BindVariable(int64(1)),
-				"foo": sqltypes.Int64BindVariable(int64(1)),
+				"v1": sqltypes.Int64BindVariable(int64(1)),
+				"v2": sqltypes.Int64BindVariable(int64(1)),
 			},
 		},
 		{
-			Query: "SELECT :foo * 2",
+			Query: "SELECT ? * 2",
 			Expected: []sql.Row{
 				{2},
 			},
 			Bindings: map[string]*query.BindVariable{
-				"foo": sqltypes.Int64BindVariable(int64(1)),
+				"v1": sqltypes.Int64BindVariable(int64(1)),
 			},
 		},
 		{
-			Query: "SELECT i from mytable where i in (:foo, :bar) order by 1",
+			Query: "SELECT i from mytable where i in (?, ?) order by 1",
 			Expected: []sql.Row{
 				{1},
 				{2},
 			},
 			Bindings: map[string]*query.BindVariable{
-				"foo": sqltypes.Int64BindVariable(int64(1)),
-				"bar": sqltypes.Int64BindVariable(int64(2)),
+				"v1": sqltypes.Int64BindVariable(int64(1)),
+				"v2": sqltypes.Int64BindVariable(int64(2)),
 			},
 		},
 		{
-			Query: "SELECT i from mytable where i = :foo * 2",
+			Query: "SELECT i from mytable where i = ? * 2",
 			Expected: []sql.Row{
 				{2},
 			},
 			Bindings: map[string]*query.BindVariable{
-				"foo": sqltypes.Int64BindVariable(int64(1)),
+				"v1": sqltypes.Int64BindVariable(int64(1)),
 			},
 		},
 		{
-			Query: "SELECT i from mytable where 4 = :foo * 2 order by 1",
+			Query: "SELECT i from mytable where 4 = ? * 2 order by 1",
 			Expected: []sql.Row{
 				{1},
 				{2},
 				{3},
 			},
 			Bindings: map[string]*query.BindVariable{
-				"foo": sqltypes.Int64BindVariable(int64(2)),
+				"v1": sqltypes.Int64BindVariable(int64(2)),
 			},
 		},
 		{
@@ -5796,17 +5870,17 @@ func TestPrepared(t *testing.T, harness Harness) {
 			Expected: []sql.Row{{0}},
 		},
 		{
-			Query:    "SELECT DATE_ADD(TIMESTAMP(:var), INTERVAL 1 DAY);",
+			Query:    "SELECT DATE_ADD(TIMESTAMP(?), INTERVAL 1 DAY);",
 			Expected: []sql.Row{{time.Date(2022, time.October, 27, 13, 14, 15, 0, time.UTC)}},
 			Bindings: map[string]*query.BindVariable{
-				"var": mustBuildBindVariable("2022-10-26 13:14:15"),
+				"v1": mustBuildBindVariable("2022-10-26 13:14:15"),
 			},
 		},
 		{
-			Query:    "SELECT DATE_ADD(:var, INTERVAL 1 DAY);",
+			Query:    "SELECT DATE_ADD(?, INTERVAL 1 DAY);",
 			Expected: []sql.Row{{time.Date(2022, time.October, 27, 13, 14, 15, 0, time.UTC)}},
 			Bindings: map[string]*query.BindVariable{
-				"var": mustBuildBindVariable("2022-10-26 13:14:15"),
+				"v1": mustBuildBindVariable("2022-10-26 13:14:15"),
 			},
 		},
 	}
