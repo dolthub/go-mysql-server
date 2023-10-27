@@ -616,7 +616,6 @@ func (db *MySQLDb) UserHasExplicitRoutinePrivileges(ctx *sql.Context, operations
 	}
 
 	for _, operation := range operations {
-
 		for _, operationPriv := range operation.StaticPrivileges {
 			database := operation.Database
 			if database == "" {
