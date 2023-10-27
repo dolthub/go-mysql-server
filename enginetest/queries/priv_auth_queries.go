@@ -682,6 +682,63 @@ var UserPrivTests = []UserPrivilegeTest{
 		},
 	},
 	{
+		Name: "procedure grants and restrictions",
+		SetUpScript: []string{
+			"CREATE USER granted@localhost",
+			"GRANT EXECUTE ON mydb.* TO granted@localhost",
+			"GRANT EXECUTE ON PROCEDURE mydb.memory_admin_only TO granted@localhost", // Explicit grant on admin only proc
+			"CREATE USER denied@localhost",
+			"GRANT EXECUTE ON mydb.* TO denied@localhost", // Access to DB, but not to admin proc.
+			"CREATE USER targeted@localhost",
+			"GRANT EXECUTE ON PROCEDURE mydb.memory_admin_only TO targeted@localhost", // Explicit grant on admin only proc, even though no access to DB.
+			"CREATE USER noaccess@localhost",                                          // Ensure this user can't run any procedure
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:     "granted",
+				Host:     "localhost",
+				Query:    "CALL mydb.memory_admin_only(1,2)",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				User:     "denied",
+				Host:     "localhost",
+				Query:    "CALL mydb.memory_variadic_add(3,2)", // Verify this user _can_ access non-admin proc
+				Expected: []sql.Row{{5}},
+			},
+			{
+				User:           "denied",
+				Host:           "localhost",
+				Query:          "CALL mydb.memory_admin_only(1,2)",
+				ExpectedErrStr: "command denied to user 'denied'@'localhost'",
+			},
+			{
+				User:           "targeted",
+				Host:           "localhost",
+				Query:          "CALL mydb.memory_variadic_add(3,2)", // Verify this user _can_ access non-admin proc
+				ExpectedErrStr: "command denied to user 'targeted'@'localhost'",
+			},
+			{
+				User:     "targeted",
+				Host:     "localhost",
+				Query:    "CALL mydb.memory_admin_only(7,2)",
+				Expected: []sql.Row{{9}},
+			},
+			{
+				User:           "noaccess",
+				Host:           "localhost",
+				Query:          "CALL mydb.memory_variadic_add(3,2)", // Verify this user can't access non-admin proc
+				ExpectedErrStr: "Access denied for user 'noaccess'@'localhost' to database 'mydb'",
+			},
+			{
+				User:           "noaccess",
+				Host:           "localhost",
+				Query:          "CALL mydb.memory_admin_only(1,2)",
+				ExpectedErrStr: "Access denied for user 'noaccess'@'localhost' to database 'mydb'",
+			},
+		},
+	},
+	{
 		Name: "Valid users without privileges may use the dual table",
 		SetUpScript: []string{
 			"CREATE USER tester@localhost;",
