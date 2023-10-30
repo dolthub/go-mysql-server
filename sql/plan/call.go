@@ -113,7 +113,7 @@ func (c *Call) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperati
 	}
 
 	subject := sql.PrivilegeCheckSubject{Database: c.Database().Name(), Routine: c.Name, IsProcedure: true}
-	return opChecker.UserHasExplicitRoutinePrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Execute))
+	return opChecker.RoutineAdminCheck(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Execute))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

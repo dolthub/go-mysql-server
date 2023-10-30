@@ -715,7 +715,7 @@ var UserPrivTests = []UserPrivilegeTest{
 			{
 				User:           "targeted",
 				Host:           "localhost",
-				Query:          "CALL mydb.memory_variadic_add(3,2)", // Verify this user _can_ access non-admin proc
+				Query:          "CALL mydb.memory_variadic_add(3,2)", // Verify this user _can't_ access non-admin proc
 				ExpectedErrStr: "command denied to user 'targeted'@'localhost'",
 			},
 			{

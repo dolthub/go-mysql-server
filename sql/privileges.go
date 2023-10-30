@@ -60,12 +60,16 @@ func NewDynamicPrivilegedOperation(privs ...string) PrivilegedOperation {
 type PrivilegedOperationChecker interface {
 	// UserHasPrivileges fetches the User, and returns whether they have the desired privileges necessary to perform the
 	// privileged operation(s). This takes into account the active roles, which are set in the context, therefore both
-	// the user and the active roles are pulled from the context.
+	// the user and the active roles are pulled from the context. This method is sufficient for all MySQL behaviors.
+	// The one exception, currently, is for stored procedures and functions, which have a more fine-grained permission
+	// due to Dolt's use of the AdminOnly flag in procedure definitions.
 	UserHasPrivileges(ctx *Context, operations ...PrivilegedOperation) bool
-	// UserHasExplicitRoutinePrivileges fetches the User from the context, and specifically evaluates, the permission check
+	// RoutineAdminCheck fetches the User from the context, and specifically evaluates, the permission check
 	// assuming the operation is for a stored procedure or function. This allows us to have more fine grain control over
-	// permissions for stored procedures (many of which are critical to Dolt).
-	UserHasExplicitRoutinePrivileges(ctx *Context, operations ...PrivilegedOperation) bool
+	// permissions for stored procedures (many of which are critical to Dolt). This method specifically checks exists
+	// for the use of AdminOnly procedures which require more fine-grained access control. For procedures which are
+	// not AdminOnly, then |UserHasPrivileges| should be used instead.
+	RoutineAdminCheck(ctx *Context, operations ...PrivilegedOperation) bool
 }
 
 // PrivilegeSet is a set containing privileges. Integrators should not implement this interface.

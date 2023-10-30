@@ -353,7 +353,7 @@ func (b *BaseBuilder) buildGrant(ctx *sql.Context, n *plan.Grant, row sql.Row) (
 					}
 				}
 			} else if n.ObjectType == plan.ObjectType_Function {
-				// We currently model function permissions, but don't have a common place to enfource them, so punting
+				// TODO: We currently model function permissions, but don't have a common place to enforce them, so punting
 				// on allowing them to be granted.
 				return nil, fmt.Errorf("fine grain function permissions currently unsupported")
 			} else {

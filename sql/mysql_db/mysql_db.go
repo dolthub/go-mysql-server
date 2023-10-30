@@ -607,7 +607,12 @@ func (db *MySQLDb) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
 	return privSet
 }
 
-func (db *MySQLDb) UserHasExplicitRoutinePrivileges(ctx *sql.Context, operations ...sql.PrivilegedOperation) bool {
+// RoutineAdminCheck fetches the User from the context, and specifically evaluates, the permission check
+// assuming the operation is for a stored procedure or function. This allows us to have more fine grain control over
+// permissions for stored procedures (many of which are critical to Dolt). This method specifically checks exists
+// for the use of AdminOnly procedures which require more fine-grained access control. For procedures which are
+// not AdminOnly, then |UserHasPrivileges| should be used instead.
+func (db *MySQLDb) RoutineAdminCheck(ctx *sql.Context, operations ...sql.PrivilegedOperation) bool {
 	privSet := db.UserActivePrivilegeSet(ctx)
 
 	if privSet.Has(sql.PrivilegeType_Super) {
@@ -635,8 +640,10 @@ func (db *MySQLDb) UserHasExplicitRoutinePrivileges(ctx *sql.Context, operations
 }
 
 // UserHasPrivileges fetches the User, and returns whether they have the desired privileges necessary to perform the
-// privileged operation. This takes into account the active roles, which are set in the context, therefore the user is
-// also pulled from the context.
+// privileged operation(s). This takes into account the active roles, which are set in the context, therefore both
+// the user and the active roles are pulled from the context. This method is sufficient for all MySQL behaviors.
+// The one exception, currently, is for stored procedures and functions, which have a more fine-grained permission
+// due to Dolt's use of the AdminOnly flag in procedure definitions.
 //
 // This functions implements the global/database/table|routine hierarchy of permissions. If a user has Execute permissions
 // on the database, then they implicitly have that same permission on all tables and routines in that database. This
@@ -671,6 +678,13 @@ func (db *MySQLDb) UserHasPrivileges(ctx *sql.Context, operations ...sql.Privile
 			if tblSet.Has(operationPriv) {
 				continue
 			}
+
+			// TODO: Complete the column check support.
+			// colSet := tblSet.Column(operation.Column)
+			// if colSet.Has(operationPriv) {
+			//  	continue
+			// }
+
 			routineSet := dbSet.Routine(operation.Routine, operation.IsProcedure)
 			if routineSet.Has(operationPriv) {
 				continue
