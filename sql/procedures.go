@@ -65,6 +65,11 @@ type ExternalStoredProcedureDetails struct {
 	Function interface{}
 	// If true, the procedure is ReadOnly and can be run against a locked or read-only server.
 	ReadOnly bool
+	// If true, then this procedure's access control requires that the user must have explicit Execute permissions
+	// on the procedure in question. If false, then the user will be granted access to the procedure if they have Execute
+	// permissions on the DB. MySQL does not support anything like this, but it is useful for Dolt procedures which
+	// grant elevated access.
+	AdminOnly bool
 }
 
 // FakeCreateProcedureStmt returns a parseable CREATE PROCEDURE statement for this external stored procedure, as some

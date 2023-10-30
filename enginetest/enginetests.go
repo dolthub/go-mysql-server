@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -1414,8 +1413,6 @@ func TestInsertErrorScriptsPrepared(t *testing.T, harness Harness) {
 }
 
 func TestUserPrivileges(t *testing.T, harness ClientHarness) {
-	os.Setenv("DOLT_ROUTINE_GRANTS_ENABLED", "1")
-
 	harness.Setup(setup.MydbData, setup.MytableData)
 	for _, script := range queries.UserPrivTests {
 		t.Run(script.Name, func(t *testing.T) {

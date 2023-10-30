@@ -19,6 +19,8 @@ type PrivilegedOperation struct {
 	Database          string
 	Table             string
 	Column            string
+	Routine           string
+	IsProcedure       bool // true if the routine is a procedure, false if it's a function
 	StaticPrivileges  []PrivilegeType
 	DynamicPrivileges []string
 }
@@ -26,9 +28,11 @@ type PrivilegedOperation struct {
 // PrivilegeCheckSubject is a struct that contains the entity information for an access check. It's specifically what
 // is being accessed - but not what operation is being attempted.
 type PrivilegeCheckSubject struct {
-	Database string
-	Table    string
-	Column   string
+	Database    string
+	Table       string
+	Column      string
+	Routine     string
+	IsProcedure bool // true if the routine is a procedure, false if it's a function
 }
 
 // NewPrivilegedOperation returns a new PrivilegedOperation with the given parameters.
@@ -37,6 +41,8 @@ func NewPrivilegedOperation(subject PrivilegeCheckSubject, privs ...PrivilegeTyp
 		Database:         subject.Database,
 		Table:            subject.Table,
 		Column:           subject.Column,
+		Routine:          subject.Routine,
+		IsProcedure:      subject.IsProcedure,
 		StaticPrivileges: privs,
 	}
 }
@@ -54,8 +60,16 @@ func NewDynamicPrivilegedOperation(privs ...string) PrivilegedOperation {
 type PrivilegedOperationChecker interface {
 	// UserHasPrivileges fetches the User, and returns whether they have the desired privileges necessary to perform the
 	// privileged operation(s). This takes into account the active roles, which are set in the context, therefore both
-	// the user and the active roles are pulled from the context.
+	// the user and the active roles are pulled from the context. This method is sufficient for all MySQL behaviors.
+	// The one exception, currently, is for stored procedures and functions, which have a more fine-grained permission
+	// due to Dolt's use of the AdminOnly flag in procedure definitions.
 	UserHasPrivileges(ctx *Context, operations ...PrivilegedOperation) bool
+	// RoutineAdminCheck fetches the User from the context, and specifically evaluates, the permission check
+	// assuming the operation is for a stored procedure or function. This allows us to have more fine grain control over
+	// permissions for stored procedures (many of which are critical to Dolt). This method specifically checks exists
+	// for the use of AdminOnly procedures which require more fine-grained access control. For procedures which are
+	// not AdminOnly, then |UserHasPrivileges| should be used instead.
+	RoutineAdminCheck(ctx *Context, operations ...PrivilegedOperation) bool
 }
 
 // PrivilegeSet is a set containing privileges. Integrators should not implement this interface.
@@ -91,6 +105,8 @@ type PrivilegeSetDatabase interface {
 	Table(tblName string) PrivilegeSetTable
 	// GetTables returns all tables.
 	GetTables() []PrivilegeSetTable
+	// Routine returns the set of privileges for the given routine. Returns an empty set if the routine does not exist.
+	Routine(routineName string, isProcedure bool) PrivilegeSetRoutine
 	// GetRoutines returns all routines.
 	GetRoutines() []PrivilegeSetRoutine
 	// Equals returns whether the given set of privileges is equivalent to the calling set.

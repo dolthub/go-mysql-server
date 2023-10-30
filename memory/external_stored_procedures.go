@@ -121,6 +121,13 @@ var (
 			Function: variadic_add,
 			ReadOnly: false,
 		},
+		{
+			Name:      "memory_admin_only",
+			Schema:    externalSPSchemaInt,
+			Function:  variadic_add,
+			ReadOnly:  false,
+			AdminOnly: true,
+		},
 	}
 )
 
