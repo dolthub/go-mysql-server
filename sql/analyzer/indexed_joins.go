@@ -352,6 +352,7 @@ func convertSemiToInnerJoin(a *Analyzer, m *memo.Memo) error {
 
 		// join and its commute are a new group
 		joinGrp := m.MemoizeInnerJoin(nil, semi.Left, rightGrp, plan.JoinTypeInner, semi.Filter)
+		// TODO: can't commute if right SubqueryAlias references outside scope (OuterScopeVisibility/IsLateral)
 		m.MemoizeInnerJoin(joinGrp, rightGrp, semi.Left, plan.JoinTypeInner, semi.Filter)
 
 		// project belongs to the original group
