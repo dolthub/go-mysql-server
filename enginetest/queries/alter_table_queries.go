@@ -15,6 +15,7 @@
 package queries
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -1186,6 +1187,199 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 					{2, 2},
 					{3, 3},
 				},
+			},
+		},
+	},
+}
+
+var AddColumnScripts = []ScriptTest{
+	{
+		Name:        "column at end with default",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE mytable ADD COLUMN i2 INT COMMENT 'hello' default 42",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "SHOW FULL COLUMNS FROM mytable",
+				// | Field | Type | Collation | Null | Key | Default | Extra | Privileges | Comment |
+				// TODO: missing privileges
+				Expected: []sql.Row{
+					{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
+					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", "NULL", "", "", "column s"},
+					{"i2", "int", nil, "YES", "", "42", "", "", "hello"},
+				},
+			},
+			{
+				Query: "SELECT * FROM mytable ORDER BY i;",
+				Expected: []sql.Row{
+					sql.NewRow(int64(1), "first row", int32(42)),
+					sql.NewRow(int64(2), "second row", int32(42)),
+					sql.NewRow(int64(3), "third row", int32(42)),
+				},
+			},
+		},
+	},
+	{
+		Name:        "in middle, no default",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE mytable ADD COLUMN s2 TEXT COMMENT 'hello' AFTER i;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "SHOW FULL COLUMNS FROM mytable",
+				Expected: []sql.Row{
+					{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
+					{"s2", "text", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", "hello"},
+					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", "NULL", "", "", "column s"},
+					{"i2", "int", nil, "YES", "", "42", "", "", "hello"},
+				},
+			},
+			{
+				Query: "SELECT * FROM mytable ORDER BY i;",
+				Expected: []sql.Row{
+					sql.NewRow(int64(1), nil, "first row", int32(42)),
+					sql.NewRow(int64(2), nil, "second row", int32(42)),
+					sql.NewRow(int64(3), nil, "third row", int32(42)),
+				},
+			},
+			{
+				Query:    "insert into mytable values (4, 's2', 'fourth row', 11);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "update mytable set s2 = 'updated s2' where i2 = 42;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{Matched: 3, Updated: 3}}}},
+			},
+			{
+				Query: "SELECT * FROM mytable ORDER BY i;",
+				Expected: []sql.Row{
+					sql.NewRow(int64(1), "updated s2", "first row", int32(42)),
+					sql.NewRow(int64(2), "updated s2", "second row", int32(42)),
+					sql.NewRow(int64(3), "updated s2", "third row", int32(42)),
+					sql.NewRow(int64(4), "s2", "fourth row", int32(11)),
+				},
+			},
+		},
+	},
+	{
+		Name:        "first with default",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE mytable ADD COLUMN s3 VARCHAR(25) COMMENT 'hello' default 'yay' FIRST",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "SHOW FULL COLUMNS FROM mytable",
+				// | Field | Type | Collation | Null | Key | Default | Extra | Privileges | Comment |
+				Expected: []sql.Row{
+					{"s3", "varchar(25)", "utf8mb4_0900_bin", "YES", "", "'yay'", "", "", "hello"},
+					{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
+					{"s2", "text", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", "hello"},
+					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", "NULL", "", "", "column s"},
+					{"i2", "int", nil, "YES", "", "42", "", "", "hello"},
+				},
+			},
+			{
+				Query: "SELECT * FROM mytable ORDER BY i;",
+				Expected: []sql.Row{
+					sql.NewRow("yay", int64(1), "updated s2", "first row", int32(42)),
+					sql.NewRow("yay", int64(2), "updated s2", "second row", int32(42)),
+					sql.NewRow("yay", int64(3), "updated s2", "third row", int32(42)),
+					sql.NewRow("yay", int64(4), "s2", "fourth row", int32(11)),
+				},
+			},
+		},
+	},
+	{
+		Name:        "middle, no default, non null",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE mytable ADD COLUMN s4 VARCHAR(1) not null after s3",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "SHOW FULL COLUMNS FROM mytable",
+				Expected: []sql.Row{
+					{"s3", "varchar(25)", "utf8mb4_0900_bin", "YES", "", "'yay'", "", "", "hello"},
+					{"s4", "varchar(1)", "utf8mb4_0900_bin", "NO", "", "NULL", "", "", ""},
+					{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
+					{"s2", "text", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", "hello"},
+					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", "NULL", "", "", "column s"},
+					{"i2", "int", nil, "YES", "", "42", "", "", "hello"},
+				},
+			},
+			{
+				Query: "SELECT * FROM mytable ORDER BY i;",
+				Expected: []sql.Row{
+					sql.NewRow("yay", "", int64(1), "updated s2", "first row", int32(42)),
+					sql.NewRow("yay", "", int64(2), "updated s2", "second row", int32(42)),
+					sql.NewRow("yay", "", int64(3), "updated s2", "third row", int32(42)),
+					sql.NewRow("yay", "", int64(4), "s2", "fourth row", int32(11)),
+				},
+			},
+		},
+	},
+	{
+		Name:        "multiple in one statement",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE mytable ADD COLUMN s5 VARCHAR(26), ADD COLUMN s6 VARCHAR(27)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "SHOW FULL COLUMNS FROM mytable",
+				Expected: []sql.Row{
+					{"s3", "varchar(25)", "utf8mb4_0900_bin", "YES", "", "'yay'", "", "", "hello"},
+					{"s4", "varchar(1)", "utf8mb4_0900_bin", "NO", "", "NULL", "", "", ""},
+					{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
+					{"s2", "text", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", "hello"},
+					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", "NULL", "", "", "column s"},
+					{"i2", "int", nil, "YES", "", "42", "", "", "hello"},
+					{"s5", "varchar(26)", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", ""},
+					{"s6", "varchar(27)", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", ""},
+				},
+			},
+			{
+				Query: "SELECT * FROM mytable ORDER BY i;",
+				Expected: []sql.Row{
+					sql.NewRow("yay", "", int64(1), "updated s2", "first row", int32(42), nil, nil),
+					sql.NewRow("yay", "", int64(2), "updated s2", "second row", int32(42), nil, nil),
+					sql.NewRow("yay", "", int64(3), "updated s2", "third row", int32(42), nil, nil),
+					sql.NewRow("yay", "", int64(4), "s2", "fourth row", int32(11), nil, nil),
+				},
+			},
+		},
+	},
+	{
+		Name:        "error cases",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE not_exist ADD COLUMN i2 INT COMMENT 'hello'",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:       "ALTER TABLE mytable ADD COLUMN b BIGINT COMMENT 'ok' AFTER not_exist",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "ALTER TABLE mytable ADD COLUMN i BIGINT COMMENT 'ok'",
+				ExpectedErr: sql.ErrColumnExists,
+			},
+			{
+				Query:       "ALTER TABLE mytable ADD COLUMN b INT NOT NULL DEFAULT 'yes'",
+				ExpectedErr: sql.ErrIncompatibleDefaultType,
+			},
+			{
+				Query:       "ALTER TABLE mytable ADD COLUMN c int, add c int",
+				ExpectedErr: sql.ErrColumnExists,
 			},
 		},
 	},
