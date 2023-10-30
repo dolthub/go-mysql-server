@@ -104,6 +104,13 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 
 		for _, assertion := range assertions {
 			t.Run(assertion.Query, func(t *testing.T) {
+				if assertion.NewSession {
+					th, ok := harness.(TransactionHarness)
+					require.True(t, ok, "ScriptTestAssertion requested a NewSession, "+
+						"but harness doesn't implement TransactionHarness")
+					ctx = th.NewSession()
+				}
+
 				if sh, ok := harness.(SkippingHarness); ok && sh.SkipQueryTest(assertion.Query) {
 					t.Skip()
 				}
