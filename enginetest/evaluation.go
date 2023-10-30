@@ -198,6 +198,13 @@ func TestScriptWithEnginePrepared(t *testing.T, e QueryEngine, harness Harness, 
 					t.Skip()
 				}
 
+				if assertion.NewSession {
+					th, ok := harness.(TransactionHarness)
+					require.True(t, ok, "ScriptTestAssertion requested a NewSession, "+
+						"but harness doesn't implement TransactionHarness")
+					ctx = th.NewSession()
+				}
+
 				if assertion.ExpectedErr != nil {
 					AssertErrPrepared(t, e, harness, assertion.Query, assertion.ExpectedErr)
 				} else if assertion.ExpectedErrStr != "" {
