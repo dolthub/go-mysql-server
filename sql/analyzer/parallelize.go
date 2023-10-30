@@ -89,7 +89,12 @@ func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope
 		return node, transform.SameTree, err
 	}
 
-	return transform.Node(newNode, removeRedundantExchanges)
+	newNode, _, err = transform.Node(newNode, removeRedundantExchanges)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+	
+	return newNode, transform.NewTree, nil
 }
 
 // removeRedundantExchanges removes all the exchanges except for the topmost
