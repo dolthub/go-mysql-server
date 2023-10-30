@@ -37,7 +37,7 @@ type Harness interface {
 	Parallelism() int
 	// NewContext allows a harness to specify any sessions or context variables necessary for the proper functioning of
 	// their engine implementation. Every harnessed engine test uses the context created by this method, with some
-	// additional information (e.g. current DB) set uniformly. To replicated the behavior of tests during setup,
+	// additional information (e.g. current DB) set uniformly. To replicate the behavior of tests during setup,
 	// harnesses should generally dispatch to enginetest.NewContext(harness), rather than calling this method themselves.
 	NewContext() *sql.Context
 	// Setup supplies a test suite's setup scripts, which must be stored and used to create a new Engine on demand via
@@ -59,7 +59,7 @@ type ClientHarness interface {
 type ServerHarness interface {
 	Harness
 
-	// SessinBuilder returns a function that creates a new session for connections to a server
+	// SessionBuilder returns a function that creates a new session for connections to a server
 	SessionBuilder() server.SessionBuilder
 }
 
