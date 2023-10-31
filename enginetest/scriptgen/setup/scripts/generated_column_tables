@@ -48,6 +48,6 @@ create table generated_virtual_keyless (
 ----
 
 exec
-insert into t1(j) values ('{"a": 1}'), ('{"a": 2}'), ('{"b": 3}')
+insert into generated_virtual_keyless(j) values ('{"a": 1}'), ('{"a": 2}'), ('{"b": 3}')
 ----
 

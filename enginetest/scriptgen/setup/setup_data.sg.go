@@ -177,7 +177,7 @@ var Generated_column_tablesData = []SetupScript{{
     v int generated always as (j->>'$.a') virtual,
     index idx_v (v)
 )`,
-	`insert into t1(j) values ('{"a": 1}'), ('{"a": 2}'), ('{"b": 3}')`,
+	`insert into generated_virtual_keyless(j) values ('{"a": 1}'), ('{"a": 2}'), ('{"b": 3}')`,
 }}
 
 var Graph_tablesData = []SetupScript{{

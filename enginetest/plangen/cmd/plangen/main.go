@@ -214,6 +214,8 @@ func specSetup(name string) [][]setup.SetupScript {
 		return setup.IntegrationPlanSetup
 	case "TpccPlanTests":
 		return setup.TpccPlanSetup
+	case "GeneratedColumnPlanTests":
+		return setup.GeneratedColumnSetup
 	default:
 		exit(fmt.Errorf("setup not found for plan suite: %s", name))
 		return nil
