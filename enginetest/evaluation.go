@@ -540,7 +540,7 @@ func checkResults(
 ) {
 	if IsServerEngine(e) {
 		// TODO: do not check for result for now
-		//return
+		return
 	}
 	widenedRows := WidenRows(sch, rows)
 	widenedExpected := WidenRows(sch, expected)

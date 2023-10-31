@@ -25,92 +25,98 @@ import (
 	"github.com/dolthub/sqllogictest/go/logictest"
 	"github.com/stretchr/testify/suite"
 	"os"
+	"sync"
 	"testing"
 )
 
 type ServerEngineTestSuite struct {
 	suite.Suite
-	harness *enginetest.MemoryHarness
-}
-
-// this function executes after all tests executed
-func (suite *ServerEngineTestSuite) TearDownSuite() {
-	fmt.Println(">>> From TearDownSuite")
-	suite.harness = nil
+	hmu           *sync.Mutex
+	memoryHarness *enginetest.MemoryHarness
 }
 
 // this function executes before each test case
 func (suite *ServerEngineTestSuite) SetupTest() {
 	// reset StartingNumber to one
 	fmt.Println("-- From SetupTest")
-	suite.harness = enginetest.NewMemoryHarness("", 1, testNumPartitions, false, nil)
-
-	suite.harness.UseServer()
-}
-
-// this function executes before each test case
-func (suite *ServerEngineTestSuite) BeforeTest() {
-	// reset StartingNumber to one
-	fmt.Println("-- From SetupTest")
-	suite.harness = enginetest.NewMemoryHarness("", 1, testNumPartitions, false, nil)
-	suite.harness.UseServer()
+	suite.hmu.Lock()
+	defer suite.hmu.Unlock()
+	if suite.memoryHarness == nil {
+		suite.memoryHarness = enginetest.NewDefaultMemoryHarness()
+		suite.memoryHarness.UseServer()
+	}
 }
 
 // this function executes after each test case
 func (suite *ServerEngineTestSuite) TearDownTest() {
 	fmt.Println("-- From TearDownTest")
+	suite.hmu.Lock()
+	defer suite.hmu.Unlock()
+	suite.memoryHarness = nil
+}
+
+// setHarness is called from any Test that uses non-default MemoryHarness.
+// It sets the suite harness to given harness and calls UseServer() method of it.
+func (suite *ServerEngineTestSuite) setHarness(mh *enginetest.MemoryHarness) {
+	fmt.Println("-- From TearDownTest")
+	suite.hmu.Lock()
+	defer suite.hmu.Unlock()
+	suite.memoryHarness = mh
+	suite.memoryHarness.UseServer()
 }
 
 func TestServerEngineTestSuite(t *testing.T) {
-	suite.Run(t, new(ServerEngineTestSuite))
+	s := new(ServerEngineTestSuite)
+	s.hmu = &sync.Mutex{}
+	suite.Run(t, s)
 }
 
 // TestQueriesPreparedSimple runs the canonical test queries against a single threaded index enabled harness.
-func (suite *ServerEngineTestSuite) TestQueriesPreparedSimple() {
-	enginetest.TestQueriesPrepared(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestQueriesPreparedSimpleWithServer() {
+	enginetest.TestQueriesPrepared(suite.T(), suite.memoryHarness)
 }
 
 // TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
-func (suite *ServerEngineTestSuite) TestQueriesSimple() {
-	enginetest.TestQueries(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestQueriesSimpleWithServer() {
+	enginetest.TestQueries(suite.T(), suite.memoryHarness)
 }
 
 // TestJoinQueries runs the canonical test queries against a single threaded index enabled harness.
-func (suite *ServerEngineTestSuite) TestJoinQueries() {
-	enginetest.TestJoinQueries(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestJoinQueriesWithServer() {
+	enginetest.TestJoinQueries(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestLateralJoin() {
-	enginetest.TestLateralJoinQueries(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestLateralJoinWithServer() {
+	enginetest.TestLateralJoinQueries(suite.T(), suite.memoryHarness)
 }
 
 //// TestJoinPlanning runs join-specific tests for merge
-//func (suite *ServerEngineTestSuite) TestJoinPlanning() {
-//	enginetest.TestJoinPlanning(suite.T(), suite.harness)
+//func (suite *ServerEngineTestSuite) TestJoinPlanningWithServer() {
+//	enginetest.TestJoinPlanning(suite.T(), suite.memoryHarness)
 //}
 
 // TestJoinOps runs join-specific tests for merge
-func (suite *ServerEngineTestSuite) TestJoinOps() {
-	enginetest.TestJoinOps(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestJoinOpsWithServer() {
+	enginetest.TestJoinOps(suite.T(), suite.memoryHarness)
 }
 
 // TestJSONTableQueries runs the canonical test queries against a single threaded index enabled harness.
-func (suite *ServerEngineTestSuite) TestJSONTableQueries() {
-	enginetest.TestJSONTableQueries(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestJSONTableQueriesWithServer() {
+	enginetest.TestJSONTableQueries(suite.T(), suite.memoryHarness)
 }
 
 // TestJSONTableScripts runs the canonical test queries against a single threaded index enabled harness.
-func (suite *ServerEngineTestSuite) TestJSONTableScripts() {
-	enginetest.TestJSONTableScripts(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestJSONTableScriptsWithServer() {
+	enginetest.TestJSONTableScripts(suite.T(), suite.memoryHarness)
 }
 
 // TestBrokenJSONTableScripts runs the canonical test queries against a single threaded index enabled harness.
-func (suite *ServerEngineTestSuite) TestBrokenJSONTableScripts() {
+func (suite *ServerEngineTestSuite) TestBrokenJSONTableScriptsWithServer() {
 	suite.T().Skip("incorrect errors and unsupported json_table functionality")
-	enginetest.TestBrokenJSONTableScripts(suite.T(), suite.harness)
+	enginetest.TestBrokenJSONTableScripts(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestUnbuildableIndex() {
+func (suite *ServerEngineTestSuite) TestUnbuildableIndexWithServer() {
 	var scripts = []queries.ScriptTest{
 		{
 			Name: "Failing index builder still returning correct results",
@@ -134,17 +140,19 @@ func (suite *ServerEngineTestSuite) TestUnbuildableIndex() {
 	}
 
 	for _, test := range scripts {
-		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-		enginetest.TestScript(suite.T(), harness, test)
+		enginetest.TestScript(suite.T(), suite.memoryHarness, test)
 	}
 }
 
-func (suite *ServerEngineTestSuite) TestBrokenQueries() {
-	enginetest.TestBrokenQueries(suite.T(), enginetest.NewSkippingMemoryHarness())
+func (suite *ServerEngineTestSuite) TestBrokenQueriesWithServer() {
+	harness := enginetest.NewSkippingMemoryHarness()
+	suite.setHarness(&harness.MemoryHarness)
+	enginetest.TestBrokenQueries(suite.T(), harness)
 }
 
-func (suite *ServerEngineTestSuite) TestQueryPlanTODOs() {
+func (suite *ServerEngineTestSuite) TestQueryPlanTODOsWithServer() {
 	harness := enginetest.NewSkippingMemoryHarness()
+	suite.setHarness(&harness.MemoryHarness)
 	harness.Setup(setup.MydbData, setup.Pk_tablesData, setup.NiltableData)
 	e, err := harness.NewEngine(suite.T())
 	if err != nil {
@@ -157,32 +165,32 @@ func (suite *ServerEngineTestSuite) TestQueryPlanTODOs() {
 	}
 }
 
-func (suite *ServerEngineTestSuite) TestVersionedQueries() {
+func (suite *ServerEngineTestSuite) TestVersionedQueriesWithServer() {
 	for _, numPartitions := range numPartitionsVals {
 		for _, indexInit := range indexBehaviors {
 			for _, parallelism := range parallelVals {
 				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexInit.name, parallelism)
-				harness := enginetest.NewMemoryHarness(testName, parallelism, numPartitions, indexInit.nativeIndexes, indexInit.driverInitializer)
+				suite.setHarness(enginetest.NewMemoryHarness(testName, parallelism, numPartitions, indexInit.nativeIndexes, indexInit.driverInitializer))
 
 				suite.Run(testName, func() {
-					enginetest.TestVersionedQueries(suite.T(), harness)
+					enginetest.TestVersionedQueries(suite.T(), suite.memoryHarness)
 				})
 			}
 		}
 	}
 }
 
-func (suite *ServerEngineTestSuite) TestAnsiQuotesSqlMode() {
-	enginetest.TestAnsiQuotesSqlMode(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestAnsiQuotesSqlModeWithServer() {
+	enginetest.TestAnsiQuotesSqlMode(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestAnsiQuotesSqlModePrepared() {
-	enginetest.TestAnsiQuotesSqlModePrepared(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestAnsiQuotesSqlModePreparedWithServer() {
+	enginetest.TestAnsiQuotesSqlModePrepared(suite.T(), suite.memoryHarness)
 }
 
 // Tests of choosing the correct execution plan independent of result correctness. Mostly useful for confirming that
 // the right indexes are being used for joining tables.
-func (suite *ServerEngineTestSuite) TestQueryPlans() {
+func (suite *ServerEngineTestSuite) TestQueryPlansWithServer() {
 	indexBehaviors := []*indexBehaviorTestParams{
 		{"nativeIndexes", nil, true},
 		{"nativeAndMergable", mergableIndexDriver, true},
@@ -190,82 +198,82 @@ func (suite *ServerEngineTestSuite) TestQueryPlans() {
 
 	for _, indexInit := range indexBehaviors {
 		suite.Run(indexInit.name, func() {
-			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 2, indexInit.nativeIndexes, indexInit.driverInitializer)
+			suite.setHarness(enginetest.NewMemoryHarness(indexInit.name, 1, 2, indexInit.nativeIndexes, indexInit.driverInitializer))
 			// The IN expression requires mergeable indexes meaning that an unmergeable index returns a different result, so we skip this test
-			harness.QueriesToSkip("SELECT a.* FROM mytable a inner join mytable b on (a.i = b.s) WHERE a.i in (1, 2, 3, 4)")
-			enginetest.TestQueryPlans(suite.T(), harness, queries.PlanTests)
+			suite.memoryHarness.QueriesToSkip("SELECT a.* FROM mytable a inner join mytable b on (a.i = b.s) WHERE a.i in (1, 2, 3, 4)")
+			enginetest.TestQueryPlans(suite.T(), suite.memoryHarness, queries.PlanTests)
 		})
 	}
 }
 
-func (suite *ServerEngineTestSuite) TestIntegrationQueryPlans() {
+func (suite *ServerEngineTestSuite) TestIntegrationQueryPlansWithServer() {
 	indexBehaviors := []*indexBehaviorTestParams{
 		{"nativeIndexes", nil, true},
 	}
 
 	for _, indexInit := range indexBehaviors {
 		suite.Run(indexInit.name, func() {
-			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer)
-			enginetest.TestIntegrationPlans(suite.T(), harness)
+			suite.setHarness(enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer))
+			enginetest.TestIntegrationPlans(suite.T(), suite.memoryHarness)
 		})
 	}
 }
 
-//func (suite *ServerEngineTestSuite) TestImdbQueryPlans() {
-//	suite.T().Skip("tests are too slow")
-//	indexBehaviors := []*indexBehaviorTestParams{
-//		{"nativeIndexes", nil, true},
-//	}
-//
-//	for _, indexInit := range indexBehaviors {
-//		suite.Run(indexInit.name, func() {
-//			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer)
-//			enginetest.TestImdbPlans(suite.T(), harness)
-//		})
-//	}
-//}
+func (suite *ServerEngineTestSuite) TestImdbQueryPlansWithServer() {
+	suite.T().Skip("tests are too slow")
+	indexBehaviors := []*indexBehaviorTestParams{
+		{"nativeIndexes", nil, true},
+	}
 
-func (suite *ServerEngineTestSuite) TestTpccQueryPlans() {
+	for _, indexInit := range indexBehaviors {
+		suite.Run(indexInit.name, func() {
+			suite.setHarness(enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer))
+			enginetest.TestImdbPlans(suite.T(), suite.memoryHarness)
+		})
+	}
+}
+
+func (suite *ServerEngineTestSuite) TestTpccQueryPlansWithServer() {
 	ibs := []*indexBehaviorTestParams{
 		{"nativeIndexes", nil, true},
 	}
 
 	for _, indexInit := range ibs {
 		suite.Run(indexInit.name, func() {
-			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer)
-			enginetest.TestTpccPlans(suite.T(), harness)
+			suite.setHarness(enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer))
+			enginetest.TestTpccPlans(suite.T(), suite.memoryHarness)
 		})
 	}
 }
 
-func (suite *ServerEngineTestSuite) TestTpchQueryPlans() {
+func (suite *ServerEngineTestSuite) TestTpchQueryPlansWithServer() {
 	indexBehaviors := []*indexBehaviorTestParams{
 		{"nativeIndexes", nil, true},
 	}
 
 	for _, indexInit := range indexBehaviors {
 		suite.Run(indexInit.name, func() {
-			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer)
-			enginetest.TestTpchPlans(suite.T(), harness)
+			suite.setHarness(enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer))
+			enginetest.TestTpchPlans(suite.T(), suite.memoryHarness)
 		})
 	}
 }
 
-//func (suite *ServerEngineTestSuite) TestTpcdsQueryPlans() {
-//	suite.T().Skip("missing features")
-//	indexBehaviors := []*indexBehaviorTestParams{
-//		{"nativeIndexes", nil, true},
-//	}
-//
-//	for _, indexInit := range indexBehaviors {
-//		suite.Run(indexInit.name, func() {
-//			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer)
-//			enginetest.TestTpcdsPlans(suite.T(), harness)
-//		})
-//	}
-//}
+func (suite *ServerEngineTestSuite) TestTpcdsQueryPlansWithServer() {
+	suite.T().Skip("missing features")
+	indexBehaviors := []*indexBehaviorTestParams{
+		{"nativeIndexes", nil, true},
+	}
 
-func (suite *ServerEngineTestSuite) TestIndexQueryPlans() {
+	for _, indexInit := range indexBehaviors {
+		suite.Run(indexInit.name, func() {
+			suite.setHarness(enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer))
+			enginetest.TestTpcdsPlans(suite.T(), suite.memoryHarness)
+		})
+	}
+}
+
+func (suite *ServerEngineTestSuite) TestIndexQueryPlansWithServer() {
 	indexBehaviors := []*indexBehaviorTestParams{
 		{"nativeIndexes", nil, true},
 		{"nativeAndMergable", mergableIndexDriver, true},
@@ -273,207 +281,226 @@ func (suite *ServerEngineTestSuite) TestIndexQueryPlans() {
 
 	for _, indexInit := range indexBehaviors {
 		suite.Run(indexInit.name, func() {
-			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 2, indexInit.nativeIndexes, indexInit.driverInitializer)
-			enginetest.TestIndexQueryPlans(suite.T(), harness)
+			suite.setHarness(enginetest.NewMemoryHarness(indexInit.name, 1, 2, indexInit.nativeIndexes, indexInit.driverInitializer))
+			enginetest.TestIndexQueryPlans(suite.T(), suite.memoryHarness)
 		})
 	}
 }
 
-func (suite *ServerEngineTestSuite) TestParallelismQueries() {
-	enginetest.TestParallelismQueries(suite.T(), enginetest.NewMemoryHarness("default", 2, testNumPartitions, true, nil))
+func (suite *ServerEngineTestSuite) TestParallelismQueriesWithServer() {
+	suite.setHarness(enginetest.NewMemoryHarness("default", 2, testNumPartitions, true, nil))
+	enginetest.TestParallelismQueries(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestQueryErrors() {
-	enginetest.TestQueryErrors(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestQueryErrorsWithServer() {
+	enginetest.TestQueryErrors(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestInfoSchema() {
-	enginetest.TestInfoSchema(suite.T(), enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+func (suite *ServerEngineTestSuite) TestInfoSchemaWithServer() {
+	suite.setHarness(enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestInfoSchema(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestMySqlDb() {
-	enginetest.TestMySqlDb(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestMySqlDbWithServer() {
+	enginetest.TestMySqlDb(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestReadOnlyDatabases() {
-	enginetest.TestReadOnlyDatabases(suite.T(), enginetest.NewReadOnlyMemoryHarness())
+func (suite *ServerEngineTestSuite) TestReadOnlyDatabasesWithServer() {
+	suite.setHarness(enginetest.NewReadOnlyMemoryHarness())
+	enginetest.TestReadOnlyDatabases(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestReadOnlyVersionedQueries() {
-	enginetest.TestReadOnlyVersionedQueries(suite.T(), enginetest.NewReadOnlyMemoryHarness())
+func (suite *ServerEngineTestSuite) TestReadOnlyVersionedQueriesWithServer() {
+	suite.setHarness(enginetest.NewReadOnlyMemoryHarness())
+	enginetest.TestReadOnlyVersionedQueries(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestColumnAliases() {
-	enginetest.TestColumnAliases(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestColumnAliasesWithServer() {
+	enginetest.TestColumnAliases(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestDerivedTableOuterScopeVisibility() {
-	harness := enginetest.NewDefaultMemoryHarness()
-	harness.QueriesToSkip(
+func (suite *ServerEngineTestSuite) TestDerivedTableOuterScopeVisibilityWithServer() {
+	suite.memoryHarness.QueriesToSkip(
 		"SELECT max(val), (select max(dt.a) from (SELECT val as a) as dt(a)) as a1 from numbers group by a1;",            // memoization to fix
 		"select 'foo' as foo, (select dt.b from (select 1 as a, foo as b) dt);",                                          // need to error
 		"SELECT n1.val as a1 from numbers n1, (select n1.val, n2.val * -1 from numbers n2 where n1.val = n2.val) as dt;", // different OK error
 	)
-	enginetest.TestDerivedTableOuterScopeVisibility(suite.T(), harness)
+	enginetest.TestDerivedTableOuterScopeVisibility(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestOrderByGroupBy() {
+func (suite *ServerEngineTestSuite) TestOrderByGroupByWithServer() {
 	// TODO: window validation expecting error message
-	enginetest.TestOrderByGroupBy(suite.T(), suite.harness)
+	enginetest.TestOrderByGroupBy(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestAmbiguousColumnResolution() {
-	enginetest.TestAmbiguousColumnResolution(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestAmbiguousColumnResolutionWithServer() {
+	enginetest.TestAmbiguousColumnResolution(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestInsertInto() {
-	harness := enginetest.NewDefaultMemoryHarness()
-	harness.QueriesToSkip(
+func (suite *ServerEngineTestSuite) TestInsertIntoWithServer() {
+	suite.memoryHarness.QueriesToSkip(
 		// should be column not found error
 		"insert into a (select * from b) on duplicate key update b.i = a.i",
 		"insert into a (select * from b as t) on duplicate key update a.i = b.j + 100",
 	)
-	enginetest.TestInsertInto(suite.T(), harness)
+	enginetest.TestInsertInto(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestInsertIgnoreInto() {
-	enginetest.TestInsertIgnoreInto(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestInsertIgnoreIntoWithServer() {
+	enginetest.TestInsertIgnoreInto(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestInsertDuplicateKeyKeyless() {
-	enginetest.TestInsertDuplicateKeyKeyless(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestInsertDuplicateKeyKeylessWithServer() {
+	enginetest.TestInsertDuplicateKeyKeyless(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestIgnoreIntoWithDuplicateUniqueKeyKeyless() {
-	enginetest.TestIgnoreIntoWithDuplicateUniqueKeyKeyless(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestIgnoreIntoWithDuplicateUniqueKeyKeylessWithServer() {
+	enginetest.TestIgnoreIntoWithDuplicateUniqueKeyKeyless(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestInsertIntoErrors() {
-	enginetest.TestInsertIntoErrors(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestInsertIntoErrorsWithServer() {
+	enginetest.TestInsertIntoErrors(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestBrokenInsertScripts() {
-	enginetest.TestBrokenInsertScripts(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestBrokenInsertScriptsWithServer() {
+	enginetest.TestBrokenInsertScripts(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestGeneratedColumns() {
-	enginetest.TestGeneratedColumns(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestGeneratedColumnsWithServer() {
+	enginetest.TestGeneratedColumns(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestStatistics() {
-	enginetest.TestStatistics(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestStatisticsWithServer() {
+	enginetest.TestStatistics(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestSpatialInsertInto() {
-	enginetest.TestSpatialInsertInto(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestSpatialInsertIntoWithServer() {
+	enginetest.TestSpatialInsertInto(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestLoadData() {
-	enginetest.TestLoadData(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestLoadDataWithServer() {
+	enginetest.TestLoadData(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestLoadDataErrors() {
-	enginetest.TestLoadDataErrors(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestLoadDataErrorsWithServer() {
+	enginetest.TestLoadDataErrors(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestLoadDataFailing() {
-	enginetest.TestLoadDataFailing(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestLoadDataFailingWithServer() {
+	enginetest.TestLoadDataFailing(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestReplaceInto() {
-	enginetest.TestReplaceInto(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestReplaceIntoWithServer() {
+	enginetest.TestReplaceInto(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestReplaceIntoErrors() {
-	enginetest.TestReplaceIntoErrors(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestReplaceIntoErrorsWithServer() {
+	enginetest.TestReplaceIntoErrors(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestUpdate() {
-	enginetest.TestUpdate(suite.T(), enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+func (suite *ServerEngineTestSuite) TestUpdateWithServer() {
+	suite.setHarness(enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestUpdate(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestUpdateIgnore() {
-	enginetest.TestUpdateIgnore(suite.T(), enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+func (suite *ServerEngineTestSuite) TestUpdateIgnoreWithServer() {
+	suite.setHarness(enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestUpdateIgnore(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestUpdateErrors() {
+func (suite *ServerEngineTestSuite) TestUpdateErrorsWithServer() {
 	// TODO different errors
-	enginetest.TestUpdateErrors(suite.T(), enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	suite.setHarness(enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestUpdateErrors(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestSpatialUpdate() {
-	enginetest.TestSpatialUpdate(suite.T(), enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+func (suite *ServerEngineTestSuite) TestSpatialUpdateWithServer() {
+	suite.setHarness(enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestSpatialUpdate(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestDeleteFromErrors() {
-	enginetest.TestDeleteErrors(suite.T(), enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+func (suite *ServerEngineTestSuite) TestDeleteFromErrorsWithServer() {
+	suite.setHarness(enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestDeleteErrors(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestSpatialDeleteFrom() {
-	enginetest.TestSpatialDelete(suite.T(), enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+func (suite *ServerEngineTestSuite) TestSpatialDeleteFromWithServer() {
+	suite.setHarness(enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestSpatialDelete(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestTruncate() {
-	enginetest.TestTruncate(suite.T(), enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+func (suite *ServerEngineTestSuite) TestTruncateWithServer() {
+	suite.setHarness(enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestTruncate(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestDeleteFrom() {
-	enginetest.TestDelete(suite.T(), enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+func (suite *ServerEngineTestSuite) TestDeleteFromWithServer() {
+	suite.setHarness(enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestDelete(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestConvert() {
-	enginetest.TestConvert(suite.T(), enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+func (suite *ServerEngineTestSuite) TestConvertWithServer() {
+	suite.setHarness(enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestConvert(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestScripts() {
-	enginetest.TestScripts(suite.T(), enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+func (suite *ServerEngineTestSuite) TestScriptsWithServer() {
+	suite.setHarness(enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestScripts(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestSpatialScripts() {
-	enginetest.TestSpatialScripts(suite.T(), enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+func (suite *ServerEngineTestSuite) TestSpatialScriptsWithServer() {
+	suite.setHarness(enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestSpatialScripts(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestSpatialIndexScripts() {
-	enginetest.TestSpatialIndexScripts(suite.T(), enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+func (suite *ServerEngineTestSuite) TestSpatialIndexScriptsWithServer() {
+	suite.setHarness(enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestSpatialIndexScripts(suite.T(), suite.memoryHarness)
 }
 
-//func (suite *ServerEngineTestSuite) TestSpatialIndexPlans() {
-//	enginetest.TestSpatialIndexPlans(suite.T(), enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+//func (suite *ServerEngineTestSuite) TestSpatialIndexPlansWithServer() {
+//  suite.setHarness(enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+//	enginetest.TestSpatialIndexPlans(suite.T(), suite.memoryHarness)
 //}
 
-func (suite *ServerEngineTestSuite) TestUserPrivileges() {
+func (suite *ServerEngineTestSuite) TestUserPrivilegesWithServer() {
+	suite.setHarness(enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 	enginetest.TestUserPrivileges(suite.T(), enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
-func (suite *ServerEngineTestSuite) TestUserAuthentication() {
-	enginetest.TestUserAuthentication(suite.T(), enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+func (suite *ServerEngineTestSuite) TestUserAuthenticationWithServer() {
+	suite.setHarness(enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestUserAuthentication(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestPrivilegePersistence() {
-	enginetest.TestPrivilegePersistence(suite.T(), enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+func (suite *ServerEngineTestSuite) TestPrivilegePersistenceWithServer() {
+	suite.setHarness(enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestPrivilegePersistence(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestComplexIndexQueries() {
-	harness := enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver)
-	enginetest.TestComplexIndexQueries(suite.T(), harness)
+func (suite *ServerEngineTestSuite) TestComplexIndexQueriesWithServer() {
+	suite.setHarness(enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestComplexIndexQueries(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestTriggers() {
-	enginetest.TestTriggers(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestTriggersWithServer() {
+	enginetest.TestTriggers(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestShowTriggers() {
-	enginetest.TestShowTriggers(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestShowTriggersWithServer() {
+	enginetest.TestShowTriggers(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestBrokenTriggers() {
-	h := enginetest.NewSkippingMemoryHarness()
+func (suite *ServerEngineTestSuite) TestBrokenTriggersWithServer() {
+	harness := enginetest.NewSkippingMemoryHarness()
+	suite.setHarness(&harness.MemoryHarness)
 	for _, script := range queries.BrokenTriggerQueries {
-		enginetest.TestScript(suite.T(), h, script)
+		enginetest.TestScript(suite.T(), harness, script)
 	}
 }
 
-func (suite *ServerEngineTestSuite) TestStoredProcedures() {
+func (suite *ServerEngineTestSuite) TestStoredProceduresWithServer() {
 	for i, test := range queries.ProcedureLogicTests {
 		//TODO: the RowIter returned from a SELECT should not take future changes into account
 		if test.Name == "FETCH captures state at OPEN" {
@@ -481,265 +508,262 @@ func (suite *ServerEngineTestSuite) TestStoredProcedures() {
 			queries.ProcedureLogicTests = queries.ProcedureLogicTests[1:]
 		}
 	}
-	enginetest.TestStoredProcedures(suite.T(), suite.harness)
+	enginetest.TestStoredProcedures(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestEvents() {
-	enginetest.TestEvents(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestEventsWithServer() {
+	enginetest.TestEvents(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestTriggersErrors() {
-	enginetest.TestTriggerErrors(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestTriggersErrorsWithServer() {
+	enginetest.TestTriggerErrors(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestCreateTable() {
-	enginetest.TestCreateTable(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestCreateTableWithServer() {
+	enginetest.TestCreateTable(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestDropTable() {
-	enginetest.TestDropTable(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestDropTableWithServer() {
+	enginetest.TestDropTable(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestRenameTable() {
-	enginetest.TestRenameTable(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestRenameTableWithServer() {
+	enginetest.TestRenameTable(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestRenameColumn() {
-	enginetest.TestRenameColumn(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestRenameColumnWithServer() {
+	enginetest.TestRenameColumn(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestAddColumn() {
-	enginetest.TestAddColumn(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestAddColumnWithServer() {
+	enginetest.TestAddColumn(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestModifyColumn() {
-	enginetest.TestModifyColumn(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestModifyColumnWithServer() {
+	enginetest.TestModifyColumn(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestDropColumn() {
-	enginetest.TestDropColumn(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestDropColumnWithServer() {
+	enginetest.TestDropColumn(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestDropColumnKeylessTables() {
-	enginetest.TestDropColumnKeylessTables(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestDropColumnKeylessTablesWithServer() {
+	enginetest.TestDropColumnKeylessTables(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestCreateDatabase() {
-	enginetest.TestCreateDatabase(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestCreateDatabaseWithServer() {
+	enginetest.TestCreateDatabase(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestPkOrdinalsDDL() {
-	enginetest.TestPkOrdinalsDDL(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestPkOrdinalsDDLWithServer() {
+	enginetest.TestPkOrdinalsDDL(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestPkOrdinalsDML() {
-	enginetest.TestPkOrdinalsDML(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestPkOrdinalsDMLWithServer() {
+	enginetest.TestPkOrdinalsDML(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestDropDatabase() {
-	enginetest.TestDropDatabase(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestDropDatabaseWithServer() {
+	enginetest.TestDropDatabase(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestCreateForeignKeys() {
-	enginetest.TestCreateForeignKeys(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestCreateForeignKeysWithServer() {
+	enginetest.TestCreateForeignKeys(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestDropForeignKeys() {
-	enginetest.TestDropForeignKeys(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestDropForeignKeysWithServer() {
+	enginetest.TestDropForeignKeys(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestForeignKeys() {
-	enginetest.TestForeignKeys(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestForeignKeysWithServer() {
+	enginetest.TestForeignKeys(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestFulltextIndexes() {
-	enginetest.TestFulltextIndexes(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestFulltextIndexesWithServer() {
+	enginetest.TestFulltextIndexes(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestCreateCheckConstraints() {
-	enginetest.TestCreateCheckConstraints(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestCreateCheckConstraintsWithServer() {
+	enginetest.TestCreateCheckConstraints(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestChecksOnInsert() {
-	enginetest.TestChecksOnInsert(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestChecksOnInsertWithServer() {
+	enginetest.TestChecksOnInsert(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestChecksOnUpdate() {
-	enginetest.TestChecksOnUpdate(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestChecksOnUpdateWithServer() {
+	enginetest.TestChecksOnUpdate(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestDisallowedCheckConstraints() {
-	enginetest.TestDisallowedCheckConstraints(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestDisallowedCheckConstraintsWithServer() {
+	enginetest.TestDisallowedCheckConstraints(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestDropCheckConstraints() {
-	enginetest.TestDropCheckConstraints(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestDropCheckConstraintsWithServer() {
+	enginetest.TestDropCheckConstraints(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestDropConstraints() {
-	enginetest.TestDropConstraints(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestDropConstraintsWithServer() {
+	enginetest.TestDropConstraints(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestReadOnly() {
-	enginetest.TestReadOnly(suite.T(), suite.harness, true /* testStoredProcedures */)
+func (suite *ServerEngineTestSuite) TestReadOnlyWithServer() {
+	enginetest.TestReadOnly(suite.T(), suite.memoryHarness, true /* testStoredProcedures */)
 }
 
-func (suite *ServerEngineTestSuite) TestViews() {
-	enginetest.TestViews(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestViewsWithServer() {
+	enginetest.TestViews(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestVersionedViews() {
-	enginetest.TestVersionedViews(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestVersionedViewsWithServer() {
+	enginetest.TestVersionedViews(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestNaturalJoin() {
-	enginetest.TestNaturalJoin(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestNaturalJoinWithServer() {
+	enginetest.TestNaturalJoin(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestWindowFunctions() {
-	enginetest.TestWindowFunctions(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestWindowFunctionsWithServer() {
+	enginetest.TestWindowFunctions(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestWindowRangeFrames() {
-	enginetest.TestWindowRangeFrames(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestWindowRangeFramesWithServer() {
+	enginetest.TestWindowRangeFrames(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestNamedWindows() {
-	enginetest.TestNamedWindows(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestNamedWindowsWithServer() {
+	enginetest.TestNamedWindows(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestNaturalJoinEqual() {
-	enginetest.TestNaturalJoinEqual(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestNaturalJoinEqualWithServer() {
+	enginetest.TestNaturalJoinEqual(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestNaturalJoinDisjoint() {
-	enginetest.TestNaturalJoinDisjoint(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestNaturalJoinDisjointWithServer() {
+	enginetest.TestNaturalJoinDisjoint(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestInnerNestedInNaturalJoins() {
-	enginetest.TestInnerNestedInNaturalJoins(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestInnerNestedInNaturalJoinsWithServer() {
+	enginetest.TestInnerNestedInNaturalJoins(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestColumnDefaults() {
-	enginetest.TestColumnDefaults(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestColumnDefaultsWithServer() {
+	enginetest.TestColumnDefaults(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestAlterTable() {
-	enginetest.TestAlterTable(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestAlterTableWithServer() {
+	enginetest.TestAlterTable(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestDateParse() {
-	enginetest.TestDateParse(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestDateParseWithServer() {
+	enginetest.TestDateParse(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestJsonScripts() {
+func (suite *ServerEngineTestSuite) TestJsonScriptsWithServer() {
 	// TODO different error messages
-	enginetest.TestJsonScripts(suite.T(), suite.harness)
+	enginetest.TestJsonScripts(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestShowTableStatus() {
-	enginetest.TestShowTableStatus(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestShowTableStatusWithServer() {
+	enginetest.TestShowTableStatus(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestAddDropPks() {
-	enginetest.TestAddDropPks(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestAddDropPksWithServer() {
+	enginetest.TestAddDropPks(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestAddAutoIncrementColumn() {
+func (suite *ServerEngineTestSuite) TestAddAutoIncrementColumnWithServer() {
 	for _, script := range queries.AlterTableAddAutoIncrementScripts {
-		enginetest.TestScript(suite.T(), suite.harness, script)
+		enginetest.TestScript(suite.T(), suite.memoryHarness, script)
 	}
 }
 
-func (suite *ServerEngineTestSuite) TestNullRanges() {
-	enginetest.TestNullRanges(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestNullRangesWithServer() {
+	enginetest.TestNullRanges(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestBlobs() {
-	enginetest.TestBlobs(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestBlobsWithServer() {
+	enginetest.TestBlobs(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestIndexes() {
-	enginetest.TestIndexes(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestIndexesWithServer() {
+	enginetest.TestIndexes(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestIndexPrefix() {
-	enginetest.TestIndexPrefix(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestIndexPrefixWithServer() {
+	enginetest.TestIndexPrefix(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestPersist() {
-	harness := enginetest.NewDefaultMemoryHarness()
+func (suite *ServerEngineTestSuite) TestPersistWithServer() {
 	newSess := func(_ *sql.Context) sql.PersistableSession {
-		ctx := harness.NewSession()
+		ctx := suite.memoryHarness.NewSession()
 		persistedGlobals := memory.GlobalsMap{}
 		memSession := ctx.Session.(*memory.Session).SetGlobals(persistedGlobals)
 		return memSession
 	}
-	enginetest.TestPersist(suite.T(), harness, newSess)
+	enginetest.TestPersist(suite.T(), suite.memoryHarness, newSess)
 }
 
-func (suite *ServerEngineTestSuite) TestValidateSession() {
+func (suite *ServerEngineTestSuite) TestValidateSessionWithServer() {
 	count := 0
 	incrementValidateCb := func() {
 		count++
 	}
 
-	harness := enginetest.NewDefaultMemoryHarness()
 	newSess := func(ctx *sql.Context) sql.PersistableSession {
 		memSession := ctx.Session.(*memory.Session)
 		memSession.SetValidationCallback(incrementValidateCb)
 		return memSession
 	}
-	enginetest.TestValidateSession(suite.T(), harness, newSess, &count)
+	enginetest.TestValidateSession(suite.T(), suite.memoryHarness, newSess, &count)
 }
 
-func (suite *ServerEngineTestSuite) TestPrepared() {
-	enginetest.TestPrepared(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestPreparedWithServer() {
+	enginetest.TestPrepared(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestPreparedInsert() {
-	enginetest.TestPreparedInsert(suite.T(), enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+func (suite *ServerEngineTestSuite) TestPreparedInsertWithServer() {
+	suite.setHarness(enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestPreparedInsert(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestPreparedStatements() {
-	enginetest.TestPreparedStatements(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestPreparedStatementsWithServer() {
+	enginetest.TestPreparedStatements(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestCharsetCollationEngine() {
-	enginetest.TestCharsetCollationEngine(suite.T(), suite.harness)
+func (suite *ServerEngineTestSuite) TestCharsetCollationEngineWithServer() {
+	enginetest.TestCharsetCollationEngine(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestCharsetCollationWire() {
+func (suite *ServerEngineTestSuite) TestCharsetCollationWireWithServer() {
 	if _, ok := os.LookupEnv("CI_TEST"); !ok {
 		suite.T().Skip("Skipping test that requires CI_TEST=true")
 	}
-	harness := enginetest.NewDefaultMemoryHarness()
-	enginetest.TestCharsetCollationWire(suite.T(), harness, harness.SessionBuilder())
+	enginetest.TestCharsetCollationWire(suite.T(), suite.memoryHarness, suite.memoryHarness.SessionBuilder())
 }
 
-func (suite *ServerEngineTestSuite) TestDatabaseCollationWire() {
+func (suite *ServerEngineTestSuite) TestDatabaseCollationWireWithServer() {
 	if _, ok := os.LookupEnv("CI_TEST"); !ok {
 		suite.T().Skip("Skipping test that requires CI_TEST=true")
 	}
-	harness := enginetest.NewDefaultMemoryHarness()
-	enginetest.TestDatabaseCollationWire(suite.T(), harness, harness.SessionBuilder())
+	enginetest.TestDatabaseCollationWire(suite.T(), suite.memoryHarness, suite.memoryHarness.SessionBuilder())
 }
 
-func (suite *ServerEngineTestSuite) TestTypesOverWire() {
+func (suite *ServerEngineTestSuite) TestTypesOverWireWithServer() {
 	if _, ok := os.LookupEnv("CI_TEST"); !ok {
 		suite.T().Skip("Skipping test that requires CI_TEST=true")
 	}
-	harness := enginetest.NewDefaultMemoryHarness()
-	enginetest.TestTypesOverWire(suite.T(), harness, harness.SessionBuilder())
+	enginetest.TestTypesOverWire(suite.T(), suite.memoryHarness, suite.memoryHarness.SessionBuilder())
 }
 
-func (suite *ServerEngineTestSuite) TestSQLLogicTests() {
-	enginetest.TestSQLLogicTests(suite.T(), enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+func (suite *ServerEngineTestSuite) TestSQLLogicTestsWithServer() {
+	suite.setHarness(enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestSQLLogicTests(suite.T(), suite.memoryHarness)
 }
 
-func (suite *ServerEngineTestSuite) TestSQLLogicTestFiles() {
+func (suite *ServerEngineTestSuite) TestSQLLogicTestFilesWithServer() {
 	suite.T().Skip()
-	h := memharness.NewMemoryHarness(enginetest.NewDefaultMemoryHarness())
+	h := memharness.NewMemoryHarness(suite.memoryHarness)
 	paths := []string{
 		"./sqllogictest/testdata/join/join.txt",
 		"./sqllogictest/testdata/join/subquery_correlated.txt",

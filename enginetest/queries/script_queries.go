@@ -4659,6 +4659,80 @@ var SpatialIndexScriptTests = []ScriptTest{
 
 var CreateCheckConstraintsScripts = []ScriptTest{
 	{
+		Name:        "simple check constraint check on ChecksSetup data",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT TC.CONSTRAINT_NAME, CC.CHECK_CLAUSE, TC.ENFORCED 
+FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC 
+WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK';`,
+				Expected: []sql.Row{{"chk1", "(B > 0)", "YES"}, {"chk2", "(b > 0)", "NO"}, {"chk3", "(B > 1)", "YES"}, {"chk4", "(upper(C) = c)", "YES"}},
+			},
+		},
+	},
+	{
+		Name: "unnamed constraint",
+		SetUpScript: []string{
+			"ALTER TABLE checks ADD CONSTRAINT CHECK (b > 100)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT LENGTH(TC.CONSTRAINT_NAME) > 0
+FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC 
+WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK' AND  CC.CHECK_CLAUSE = '(b > 100)';`,
+				Expected: []sql.Row{{true}},
+			},
+		},
+	},
+	{
+		Name: "check statements in CREATE TABLE statements",
+		SetUpScript: []string{
+			`
+CREATE TABLE T2
+(
+  CHECK (c1 = c2),
+  c1 INT CHECK (c1 > 10),
+  c2 INT CONSTRAINT c2_positive CHECK (c2 > 0),
+  c3 INT CHECK (c3 < 100),
+  CONSTRAINT c1_nonzero CHECK (c1 = 0),
+  CHECK (C1 > C3)
+);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT CC.CHECK_CLAUSE
+FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC 
+WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 't2' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK';`,
+				Expected: []sql.Row{{"(c1 = c2)"}, {"(c1 > 10)"}, {"(c2 > 0)"}, {"(c3 < 100)"}, {"(c1 = 0)"}, {"(C1 > C3)"}},
+			},
+		},
+	},
+	{
+		Name:        "error cases",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE t3 ADD CONSTRAINT chk2 CHECK (c > 0)",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:       "ALTER TABLE checks ADD CONSTRAINT chk3 CHECK (d > 0)",
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+			{
+				Query: `
+CREATE TABLE t4
+(
+  CHECK (c1 = c2),
+  c1 INT CHECK (c1 > 10),
+  c2 INT CONSTRAINT c2_positive CHECK (c2 > 0),
+  CHECK (c1 > c3)
+);`,
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+		},
+	},
+	{
 		Name: "Run SHOW CREATE TABLE with different types of check constraints",
 		SetUpScript: []string{
 			"CREATE TABLE mytable1(pk int PRIMARY KEY, CONSTRAINT check1 CHECK (pk = 5))",

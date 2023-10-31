@@ -24,6 +24,88 @@ import (
 
 var AlterTableScripts = []ScriptTest{
 	{
+		Name: "variety of alter column statements in a single statement",
+		SetUpScript: []string{
+			"CREATE TABLE t32(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int default (v1), toRename int)",
+			`alter table t32 add column v4 int after pk,
+			drop column v2, modify v1 varchar(100) not null,
+			alter column v3 set default 100, rename column toRename to newName`,
+			"CREATE TABLE t32_2(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int)",
+			`alter table t32_2 drop v1, add v1 int`,
+			"CREATE TABLE t32_3(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int)",
+			`alter table t32_3 rename column v1 to v5, add v1 int`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SHOW FULL COLUMNS FROM t32",
+				// | Field | Type | Collation | Null | Key | Default | Extra | Privileges | Comment |
+				Expected: []sql.Row{
+					{"pk", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
+					{"v4", "int", nil, "YES", "", "NULL", "", "", ""},
+					{"v1", "varchar(100)", "utf8mb4_0900_bin", "NO", "", "NULL", "", "", ""},
+					{"v3", "int", nil, "YES", "", "100", "", "", ""},
+					{"newName", "int", nil, "YES", "", "NULL", "", "", ""},
+				},
+			},
+			{
+				Query: "SHOW FULL COLUMNS FROM t32_2",
+				Expected: []sql.Row{
+					{"pk", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
+					{"v2", "int", nil, "YES", "", "NULL", "", "", ""},
+					{"v3", "int", nil, "YES", "", "NULL", "", "", ""},
+					{"v1", "int", nil, "YES", "", "NULL", "", "", ""},
+				},
+			},
+			{
+				Query: "SHOW FULL COLUMNS FROM t32_3",
+				Expected: []sql.Row{
+					{"pk", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
+					{"v5", "int", nil, "YES", "", "NULL", "", "", ""},
+					{"v2", "int", nil, "YES", "", "NULL", "", "", ""},
+					{"v3", "int", nil, "YES", "", "NULL", "", "", ""},
+					{"v1", "int", nil, "YES", "", "NULL", "", "", ""},
+				},
+			},
+			{
+				Query:       "alter table t32 add column vnew int, drop column vnew",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "alter table t32 rename column v3 to v5, drop column v5",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "alter table t32 rename column v3 to v5, drop column v3",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+		},
+	},
+	{
+		Name: "mix of alter column, add and drop constraints in one statement",
+		SetUpScript: []string{
+			"CREATE TABLE t33(pk BIGINT PRIMARY KEY, v1 int, v2 int)",
+			`alter table t33 add column v4 int after pk,
+			drop column v2, add constraint v1gt0 check (v1 > 0)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SHOW FULL COLUMNS FROM t33",
+				// | Field | Type | Collation | Null | Key | Default | Extra | Privileges | Comment |
+				Expected: []sql.Row{
+					{"pk", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
+					{"v4", "int", nil, "YES", "", "NULL", "", "", ""},
+					{"v1", "int", nil, "YES", "", "NULL", "", "", ""},
+				},
+			},
+			{
+				Query: "SELECT * FROM information_schema.CHECK_CONSTRAINTS",
+				Expected: []sql.Row{
+					{"def", "mydb", "v1gt0", "(v1 > 0)"},
+				},
+			},
+		},
+	},
+	{
 		// This script relies on setup.Pk_tablesData
 		Name: "Error queries",
 		Assertions: []ScriptTestAssertion{
@@ -1275,7 +1357,6 @@ var AddColumnScripts = []ScriptTest{
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable",
-				// | Field | Type | Collation | Null | Key | Default | Extra | Privileges | Comment |
 				Expected: []sql.Row{
 					{"s3", "varchar(25)", "utf8mb4_0900_bin", "YES", "", "'yay'", "", "", "hello"},
 					{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
