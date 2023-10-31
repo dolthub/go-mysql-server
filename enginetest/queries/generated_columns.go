@@ -653,6 +653,12 @@ var GeneratedColumnTests = []ScriptTest{
 	},
 }
 
+var GeneratedColumnPlanTests = []QueryPlanTest {
+	{
+		
+	},
+}
+
 var BrokenGeneratedColumnTests = []ScriptTest{
 	{
 		Name: "update a virtual column with a trigger",
