@@ -2936,89 +2936,122 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 	harness.Setup()
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	ctx := NewContext(harness)
 
-	t.Run("CREATE DATABASE and create table", func(t *testing.T) {
-		TestQueryWithContext(t, ctx, e, harness, "CREATE DATABASE testdb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
+	var scripts = []queries.ScriptTest{
+		{
+			Name: "CREATE DATABASE and create table",
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query:    "CREATE DATABASE testdb",
+					Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				},
+				{
+					Query:    "USE testdb",
+					Expected: []sql.Row{},
+				},
+				{
+					Query:    "SELECT DATABASE()",
+					Expected: []sql.Row{{"testdb"}},
+				},
+				{
+					Query:    "CREATE TABLE test (pk int primary key)",
+					Expected: []sql.Row{{types.NewOkResult(0)}},
+				},
+				{
+					Query:    "SHOW TABLES",
+					Expected: []sql.Row{{"test"}},
+				},
+			},
+		},
+		{
+			Name: "CREATE DATABASE IF NOT EXISTS",
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query:    "CREATE DATABASE IF NOT EXISTS testdb2",
+					Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				},
+				{
+					Query:    "USE testdb2",
+					Expected: []sql.Row{},
+				},
+				{
+					Query:    "SELECT DATABASE()",
+					Expected: []sql.Row{{"testdb2"}},
+				},
+				{
+					Query:    "CREATE TABLE test (pk int primary key)",
+					Expected: []sql.Row{{types.NewOkResult(0)}},
+				},
+				{
+					Query:    "SHOW TABLES",
+					Expected: []sql.Row{{"test"}},
+				},
+			},
+		},
+		{
+			Name: "CREATE SCHEMA",
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query:    "CREATE SCHEMA testdb3",
+					Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				},
+				{
+					Query:    "USE testdb3",
+					Expected: []sql.Row{},
+				},
+				{
+					Query:    "SELECT DATABASE()",
+					Expected: []sql.Row{{"testdb3"}},
+				},
+				{
+					Query:    "CREATE TABLE test (pk int primary key)",
+					Expected: []sql.Row{{types.NewOkResult(0)}},
+				},
+				{
+					Query:    "SHOW TABLES",
+					Expected: []sql.Row{{"test"}},
+				},
+			},
+		},
+		{
+			Name: "CREATE DATABASE error handling",
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query:    "CREATE DATABASE newtestdb CHARACTER SET utf8mb4 ENCRYPTION='N'",
+					Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: nil}}},
+				},
+				{
+					Query:    "SHOW WARNINGS /* 1 */",
+					Expected: []sql.Row{{"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"}},
+				},
+				{
+					Query:    "CREATE DATABASE newtest1db DEFAULT COLLATE binary ENCRYPTION='Y'",
+					Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: nil}}},
+				},
+				{
+					// TODO: There should only be one warning (the warnings are not clearing for create database query) AND 'PREPARE' statements should not create warning from its query
+					Query:    "SHOW WARNINGS /* 2 */",
+					Expected: []sql.Row{{"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"}, {"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"}},
+				},
+				{
+					Query:       "CREATE DATABASE mydb",
+					ExpectedErr: sql.ErrDatabaseExists,
+				},
+				{
+					Query:    "CREATE DATABASE IF NOT EXISTS mydb",
+					Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				},
+				{
+					Query:    "SHOW WARNINGS /* 3 */",
+					Expected: []sql.Row{{"Note", 1007, "Can't create database mydb; database exists "}},
+				},
+			},
+		},
+	}
 
-		db, err := e.EngineAnalyzer().Catalog.Database(ctx, "testdb")
-		require.NoError(t, err)
-
-		TestQueryWithContext(t, ctx, e, harness, "USE testdb", []sql.Row(nil), nil, nil)
-
-		require.Equal(t, ctx.GetCurrentDatabase(), "testdb")
-
-		ctx = NewContext(harness)
-		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE test (pk int primary key)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		db, err = e.EngineAnalyzer().Catalog.Database(ctx, "testdb")
-		require.NoError(t, err)
-
-		_, ok, err := db.GetTableInsensitive(ctx, "test")
-
-		require.NoError(t, err)
-		require.True(t, ok)
-	})
-
-	t.Run("CREATE DATABASE IF NOT EXISTS", func(t *testing.T) {
-		TestQueryWithContext(t, ctx, e, harness, "CREATE DATABASE IF NOT EXISTS testdb2", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
-
-		db, err := e.EngineAnalyzer().Catalog.Database(ctx, "testdb2")
-		require.NoError(t, err)
-
-		TestQueryWithContext(t, ctx, e, harness, "USE testdb2", []sql.Row(nil), nil, nil)
-
-		require.Equal(t, ctx.GetCurrentDatabase(), "testdb2")
-
-		ctx = NewContext(harness)
-		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE test (pk int primary key)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		db, err = e.EngineAnalyzer().Catalog.Database(ctx, "testdb2")
-		require.NoError(t, err)
-
-		_, ok, err := db.GetTableInsensitive(ctx, "test")
-
-		require.NoError(t, err)
-		require.True(t, ok)
-	})
-
-	t.Run("CREATE SCHEMA", func(t *testing.T) {
-		TestQueryWithContext(t, ctx, e, harness, "CREATE SCHEMA testdb3", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
-
-		db, err := e.EngineAnalyzer().Catalog.Database(ctx, "testdb3")
-		require.NoError(t, err)
-
-		TestQueryWithContext(t, ctx, e, harness, "USE testdb3", []sql.Row(nil), nil, nil)
-
-		require.Equal(t, ctx.GetCurrentDatabase(), "testdb3")
-
-		ctx = NewContext(harness)
-		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE test (pk int primary key)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		db, err = e.EngineAnalyzer().Catalog.Database(ctx, "testdb3")
-		require.NoError(t, err)
-
-		_, ok, err := db.GetTableInsensitive(ctx, "test")
-
-		require.NoError(t, err)
-		require.True(t, ok)
-	})
-
-	t.Run("CREATE DATABASE error handling", func(t *testing.T) {
-		AssertWarningAndTestQuery(t, e, ctx, harness, "CREATE DATABASE newtestdb CHARACTER SET utf8mb4 ENCRYPTION='N'",
-			[]sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: nil}}}, nil, mysql.ERNotSupportedYet, 1,
-			"", false)
-
-		AssertWarningAndTestQuery(t, e, ctx, harness, "CREATE DATABASE newtest1db DEFAULT COLLATE binary ENCRYPTION='Y'",
-			[]sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: nil}}}, nil, mysql.ERNotSupportedYet, 1,
-			"", false)
-
-		AssertErr(t, e, harness, "CREATE DATABASE mydb", sql.ErrDatabaseExists)
-
-		AssertWarningAndTestQuery(t, e, nil, harness, "CREATE DATABASE IF NOT EXISTS mydb",
-			[]sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, mysql.ERDbCreateExists,
-			-1, "", false)
-	})
+	for _, tt := range scripts {
+		TestScriptWithEngine(t, e, harness, tt)
+	}
 }
 
 func TestPkOrdinalsDDL(t *testing.T, harness Harness) {
