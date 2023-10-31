@@ -1341,8 +1341,10 @@ func TestGeneratedColumns(t *testing.T, harness Harness) {
 		TestScriptPrepared(t, harness, script)
 	}
 	for _, script := range queries.BrokenGeneratedColumnTests {
-		t.Skip(script.Name)
-		TestScriptPrepared(t, harness, script)
+		t.Run(script.Name, func(t *testing.T) {
+			t.Skip(script.Name)
+			TestScriptPrepared(t, harness, script)
+		})
 	}
 }
 

@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/vitess/go/sqltypes"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -28,7 +29,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
-	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -137,64 +137,62 @@ func TestScriptPrepared(t *testing.T, harness Harness, script queries.ScriptTest
 // TestScriptWithEnginePrepared runs the test script with bindvars substituted for literals
 // using the engine provided.
 func TestScriptWithEnginePrepared(t *testing.T, e QueryEngine, harness Harness, script queries.ScriptTest) {
-	t.Run(script.Name, func(t *testing.T) {
-		for _, statement := range script.SetUpScript {
+	for _, statement := range script.SetUpScript {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(statement) {
+				t.Skip()
+			}
+		}
+		ctx := NewContext(harness).WithQuery(statement)
+		RunQueryWithContext(t, e, harness, ctx, statement)
+		validateEngine(t, ctx, harness, e)
+	}
+
+	assertions := script.Assertions
+	if len(assertions) == 0 {
+		assertions = []queries.ScriptTestAssertion{
+			{
+				Query:           script.Query,
+				Expected:        script.Expected,
+				ExpectedErr:     script.ExpectedErr,
+				ExpectedIndexes: script.ExpectedIndexes,
+			},
+		}
+	}
+
+	for _, assertion := range assertions {
+		t.Run(assertion.Query, func(t *testing.T) {
+
 			if sh, ok := harness.(SkippingHarness); ok {
-				if sh.SkipQueryTest(statement) {
+				if sh.SkipQueryTest(assertion.Query) {
 					t.Skip()
 				}
 			}
-			ctx := NewContext(harness).WithQuery(statement)
-			RunQueryWithContext(t, e, harness, ctx, statement)
-			validateEngine(t, ctx, harness, e)
-		}
-
-		assertions := script.Assertions
-		if len(assertions) == 0 {
-			assertions = []queries.ScriptTestAssertion{
-				{
-					Query:           script.Query,
-					Expected:        script.Expected,
-					ExpectedErr:     script.ExpectedErr,
-					ExpectedIndexes: script.ExpectedIndexes,
-				},
+			if assertion.Skip {
+				t.Skip()
 			}
-		}
 
-		for _, assertion := range assertions {
-			t.Run(assertion.Query, func(t *testing.T) {
-
-				if sh, ok := harness.(SkippingHarness); ok {
-					if sh.SkipQueryTest(assertion.Query) {
-						t.Skip()
-					}
-				}
-				if assertion.Skip {
-					t.Skip()
-				}
-
-				if assertion.ExpectedErr != nil {
-					AssertErrPrepared(t, e, harness, assertion.Query, assertion.ExpectedErr)
-				} else if assertion.ExpectedErrStr != "" {
-					AssertErrPrepared(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
-				} else if assertion.ExpectedWarning != 0 {
-					AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query,
-						assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
-						assertion.ExpectedWarningMessageSubstring, assertion.SkipResultsCheck)
-				} else if assertion.SkipResultsCheck {
-					ctx := NewContext(harness).WithQuery(assertion.Query)
-					_, _, err := runQueryPreparedWithCtx(t, ctx, e, assertion.Query, assertion.Bindings)
-					require.NoError(t, err)
-				} else {
-					ctx := NewContext(harness).WithQuery(assertion.Query)
-					TestPreparedQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, nil, assertion.Bindings)
-				}
-				if assertion.ExpectedIndexes != nil {
-					evalIndexTest(t, harness, e, assertion.Query, assertion.ExpectedIndexes, assertion.Skip)
-				}
-			})
-		}
-	})
+			if assertion.ExpectedErr != nil {
+				AssertErrPrepared(t, e, harness, assertion.Query, assertion.ExpectedErr)
+			} else if assertion.ExpectedErrStr != "" {
+				AssertErrPrepared(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
+			} else if assertion.ExpectedWarning != 0 {
+				AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query,
+					assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
+					assertion.ExpectedWarningMessageSubstring, assertion.SkipResultsCheck)
+			} else if assertion.SkipResultsCheck {
+				ctx := NewContext(harness).WithQuery(assertion.Query)
+				_, _, err := runQueryPreparedWithCtx(t, ctx, e, assertion.Query, assertion.Bindings)
+				require.NoError(t, err)
+			} else {
+				ctx := NewContext(harness).WithQuery(assertion.Query)
+				TestPreparedQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, nil, assertion.Bindings)
+			}
+			if assertion.ExpectedIndexes != nil {
+				evalIndexTest(t, harness, e, assertion.Query, assertion.ExpectedIndexes, assertion.Skip)
+			}
+		})
+	}
 }
 
 // TestTransactionScript runs the test script given, making any assertions given
