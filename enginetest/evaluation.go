@@ -163,17 +163,16 @@ func TestScriptWithEnginePrepared(t *testing.T, e QueryEngine, harness Harness, 
 	err := CreateNewConnectionForServerEngine(ctx, e)
 	require.NoError(t, err, nil)
 
-	t.Run(script.Name, func(t *testing.T) {
-		for _, statement := range script.SetUpScript {
-			if sh, ok := harness.(SkippingHarness); ok {
-				if sh.SkipQueryTest(statement) {
-					t.Skip()
-				}
+	for _, statement := range script.SetUpScript {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(statement) {
+				t.Skip()
 			}
-			ctx = NewContext(harness).WithQuery(statement)
-			RunQueryWithContext(t, e, harness, ctx, statement)
-			validateEngine(t, ctx, harness, e)
 		}
+		ctx = NewContext(harness).WithQuery(statement)
+		RunQueryWithContext(t, e, harness, ctx, statement)
+		validateEngine(t, ctx, harness, e)
+	}
 
 	assertions := script.Assertions
 	if len(assertions) == 0 {
@@ -200,11 +199,12 @@ func TestScriptWithEnginePrepared(t *testing.T, e QueryEngine, harness Harness, 
 			}
 
 			if assertion.NewSession {
-					th, ok := harness.(TransactionHarness)
-					require.True(t, ok, "ScriptTestAssertion requested a NewSession, "+
+				th, ok := harness.(TransactionHarness)
+				require.True(t, ok, "ScriptTestAssertion requested a NewSession, "+
 						"but harness doesn't implement TransactionHarness")
-					ctx = th.NewSession()
-				}if assertion.ExpectedErr != nil {
+				ctx = th.NewSession()
+			}
+			if assertion.ExpectedErr != nil {
 				AssertErrPrepared(t, e, harness, assertion.Query, assertion.ExpectedErr)
 			} else if assertion.ExpectedErrStr != "" {
 				AssertErrPrepared(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
