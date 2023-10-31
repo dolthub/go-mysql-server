@@ -238,6 +238,8 @@ func specQueries(name string) []queries.QueryPlanTest {
 		return queries.TpcdsPlanTests
 	case "IntegrationPlanTests":
 		return queries.IntegrationPlanTests
+	case "GeneratedColumnPlanTests":
+		return queries.GeneratedColumnPlanTests
 	default:
 		exit(fmt.Errorf("queries not found for plan suite: %s", name))
 		return nil
