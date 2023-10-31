@@ -29,14 +29,14 @@ import (
 
 func TestStoredProcedureNotFoundWithNoDatabaseSelected(t *testing.T) {
 	db := memory.NewDatabase("mydb")
-	analyzer := NewBuilder(sql.NewDatabaseProvider(db)).Build()
+	a := NewBuilder(sql.NewDatabaseProvider(db)).Build()
 	ctx := sql.NewContext(context.Background(), sql.WithSession(sql.NewBaseSession()))
 
-	call := plan.NewCall(nil, "non_existent_procedure", []sql.Expression{}, nil)
-	scope, err := loadStoredProcedures(ctx, analyzer, call, newTestScope(call), DefaultRuleSelector)
+	call := plan.NewCall(nil, "non_existent_procedure", []sql.Expression{}, nil, nil)
+	scope, err := loadStoredProcedures(ctx, a, call, newTestScope(call), DefaultRuleSelector)
 	require.NoError(t, err)
 
-	node, identity, err := applyProceduresCall(ctx, analyzer, call, scope, DefaultRuleSelector)
+	node, identity, err := applyProceduresCall(ctx, a, call, scope, DefaultRuleSelector)
 	assert.Nil(t, node)
 	assert.Equal(t, transform.SameTree, identity)
 	assert.Contains(t, err.Error(), "stored procedure \"non_existent_procedure\" does not exist")

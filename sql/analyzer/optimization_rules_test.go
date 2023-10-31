@@ -15,6 +15,8 @@
 package analyzer
 
 import (
+	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -22,7 +24,9 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -251,7 +255,7 @@ func TestEvalFilter(t *testing.T) {
 	ctx := newContext(pro)
 
 	inner := memory.NewTable(db, "foo", sql.PrimaryKeySchema{}, nil)
-	rule := getRule(evalFilterId)
+	rule := getRule(simplifyFiltersId)
 
 	testCases := []struct {
 		filter   sql.Expression
@@ -350,4 +354,104 @@ func TestEvalFilter(t *testing.T) {
 			require.Equal(tt.expected, result)
 		})
 	}
+}
+
+func TestPushNotFilters(t *testing.T) {
+	tests := []struct {
+		in  string
+		exp string
+	}{
+		{
+			in:  "NOT(NOT(x IS NULL))",
+			exp: "xy.x IS NULL",
+		},
+		{
+			in:  "NOT(x BETWEEN 0 AND 5)",
+			exp: "((xy.x < 0) OR (xy.x > 5))",
+		},
+		{
+			in:  "NOT(x <= 0)",
+			exp: "(xy.x > 0)",
+		},
+		{
+			in:  "NOT(x < 0)",
+			exp: "(xy.x >= 0)",
+		},
+		{
+			in:  "NOT(x > 0)",
+			exp: "(xy.x <= 0)",
+		},
+		{
+			in:  "NOT(x >= 0)",
+			exp: "(xy.x < 0)",
+		},
+		// TODO this isn't correct for join filters
+		//{
+		//	in:  "NOT(y IS NULL)",
+		//	exp: "((xy.x < NULL) OR (xy.x > NULL))",
+		//},
+		{
+			in:  "NOT (x > 2 AND y > 2)",
+			exp: "((xy.x <= 2) OR (xy.y <= 2))",
+		},
+		{
+			in:  "NOT (x > 2 AND NOT(y > 2))",
+			exp: "((xy.x <= 2) OR (xy.y > 2))",
+		},
+		{
+			in:  "((NOT(x > 1 AND NOT((x > 0) OR (y < 2))) OR (y > 1)) OR NOT(y < 3))",
+			exp: "((((xy.x <= 1) OR ((xy.x > 0) OR (xy.y < 2))) OR (xy.y > 1)) OR (xy.y >= 3))",
+		},
+	}
+
+	// todo dummy catalog and table
+	db := memory.NewDatabase("mydb")
+	cat := newTestCatalog(db)
+	pro := memory.NewDBProvider(db)
+	sess := memory.NewSession(sql.NewBaseSession(), pro)
+
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+	ctx.SetCurrentDatabase("mydb")
+
+	b := planbuilder.New(ctx, cat)
+
+	for _, tt := range tests {
+		t.Run(tt.in, func(t *testing.T) {
+			q := fmt.Sprintf("SELECT 1 from xy WHERE %s", tt.in)
+			node, err := b.ParseOne(q)
+			require.NoError(t, err)
+
+			cmp, _, err := pushNotFilters(ctx, nil, node, nil, nil)
+			require.NoError(t, err)
+
+			cmpF := cmp.(*plan.Project).Child.(*plan.Filter).Expression
+			cmpStr := cmpF.String()
+
+			require.Equal(t, tt.exp, cmpStr, fmt.Sprintf("\nexpected: %s\nfound:%s\n", tt.exp, cmpStr))
+		})
+	}
+}
+
+func newTestCatalog(db *memory.Database) *sql.MapCatalog {
+	cat := &sql.MapCatalog{
+		Databases: make(map[string]sql.Database),
+		Tables:    make(map[string]sql.Table),
+	}
+
+	cat.Tables["xy"] = memory.NewTable(db, "xy", sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "x", Type: types.Int64},
+		{Name: "y", Type: types.Int64},
+		{Name: "z", Type: types.Int64},
+	}, 0), nil)
+	cat.Tables["uv"] = memory.NewTable(db, "uv", sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "u", Type: types.Int64},
+		{Name: "v", Type: types.Int64},
+		{Name: "w", Type: types.Int64},
+	}, 0), nil)
+
+	db.AddTable("xy", cat.Tables["xy"].(memory.MemTable))
+	db.AddTable("uv", cat.Tables["uv"].(memory.MemTable))
+	cat.Databases["mydb"] = db
+	cat.Funcs = function.NewRegistry()
+	return cat
 }

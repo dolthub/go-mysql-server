@@ -39,7 +39,8 @@ var OnceBeforeDefault = []Rule{
 	{validateDatabaseSetId, validateDatabaseSet},
 	{validateDeleteFromId, validateDeleteFrom},
 	{validatePrivilegesId, validatePrivileges}, // Ensure that checking privileges happens after db, table  & table function resolution
-	{evalFilterId, simplifyFilters},            //TODO inline?
+	{simplifyFiltersId, simplifyFilters},       //TODO inline?
+	{pushNotFiltersId, pushNotFilters},         //TODO inline?
 	{hoistOutOfScopeFiltersId, hoistOutOfScopeFilters},
 }
 
@@ -56,7 +57,7 @@ var DefaultRules = []Rule{
 
 var OnceAfterDefault = []Rule{
 	{hoistSelectExistsId, hoistSelectExists},
-	{moveJoinCondsToFilterId, moveJoinConditionsToFilter}, // depends on indexes being correct
+	{moveJoinCondsToFilterId, moveJoinConditionsToFilter},
 	{finalizeUnionsId, finalizeUnions},
 	{loadTriggersId, loadTriggers},
 	{processTruncateId, processTruncate},

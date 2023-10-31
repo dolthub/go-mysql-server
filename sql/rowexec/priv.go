@@ -16,7 +16,6 @@ package rowexec
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -343,21 +342,23 @@ func (b *BaseBuilder) buildGrant(ctx *sql.Context, n *plan.Grant, row sql.Row) (
 			}
 		}
 		if n.ObjectType != plan.ObjectType_Any {
-
-			if routineGrantsEnabled() && (n.ObjectType == plan.ObjectType_Procedure || n.ObjectType == plan.ObjectType_Function) {
-				isProc := n.ObjectType == plan.ObjectType_Procedure
+			if n.ObjectType == plan.ObjectType_Procedure {
 				for _, grantUser := range n.Users {
 					user := mysqlDb.GetUser(editor, grantUser.Name, grantUser.Host, false)
 					if user == nil {
 						return nil, sql.ErrGrantUserDoesNotExist.New()
 					}
-					if err := n.HandleRoutinePrivileges(user, database, n.PrivilegeLevel.TableRoutine, isProc); err != nil {
+					if err := n.HandleRoutinePrivileges(user, database, n.PrivilegeLevel.TableRoutine, true); err != nil {
 						return nil, err
 					}
 				}
+			} else if n.ObjectType == plan.ObjectType_Function {
+				// TODO: We currently model function permissions, but don't have a common place to enforce them, so punting
+				// on allowing them to be granted.
+				return nil, fmt.Errorf("fine grain function permissions currently unsupported")
 			} else {
-				//TODO: implement object types
-				return nil, fmt.Errorf("GRANT has not yet implemented object types")
+				// This fall through will only happen if we add new object types, which is unlikely.
+				return nil, fmt.Errorf("runtime error: unexpected object type: %d", n.ObjectType)
 			}
 		} else {
 			if n.As != nil {
@@ -382,14 +383,6 @@ func (b *BaseBuilder) buildGrant(ctx *sql.Context, n *plan.Grant, row sql.Row) (
 	}
 
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
-}
-
-// routineGrantsEnabled temporary function to gate routing grants based on env vars. This will be removed
-// when the feature is complete.
-func routineGrantsEnabled() bool {
-	env := os.Getenv("DOLT_ROUTINE_GRANTS_ENABLED")
-
-	return env != ""
 }
 
 func (b *BaseBuilder) buildCreateRole(ctx *sql.Context, n *plan.CreateRole, row sql.Row) (sql.RowIter, error) {

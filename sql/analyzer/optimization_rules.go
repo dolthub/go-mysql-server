@@ -355,3 +355,104 @@ func isTrue(e sql.Expression) bool {
 	}
 	return false
 }
+
+// pushNotFilters applies De'Morgan's laws to push NOT expressions as low
+// in expression trees as possible and inverts NOT leaf expressions.
+// ref: https://en.wikipedia.org/wiki/De_Morgan%27s_laws
+// note: the output tree identity will not be accurate
+func pushNotFilters(_ *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		var e sql.Expression
+		var err error
+		switch n := n.(type) {
+		case *plan.Filter:
+			e, err = pushNotFiltersHelper(n.Expression)
+		case *plan.JoinNode:
+			if n.Filter != nil {
+				e, err = pushNotFiltersHelper(n.Filter)
+			}
+		default:
+			return n, transform.SameTree, nil
+		}
+		if err != nil {
+			return n, transform.SameTree, nil
+		}
+		ret, err := n.(sql.Expressioner).WithExpressions(e)
+		if err != nil {
+			return n, transform.SameTree, nil
+		}
+		return ret, transform.NewTree, nil
+	})
+}
+
+// TODO maybe: NOT(INTUPLE(c...)), NOT(EQ(c))=>OR(LT(c), GT(c))
+func pushNotFiltersHelper(e sql.Expression) (sql.Expression, error) {
+	// NOT(NOT(c))=>c
+	if not, _ := e.(*expression.Not); not != nil {
+		if f, _ := not.Child.(*expression.Not); f != nil {
+			return pushNotFiltersHelper(f.Child)
+		}
+	}
+
+	// NOT(AND(left,right))=>OR(NOT(left), NOT(right))
+	if not, _ := e.(*expression.Not); not != nil {
+		if f, _ := not.Child.(*expression.And); f != nil {
+			return pushNotFiltersHelper(expression.NewOr(expression.NewNot(f.Left), expression.NewNot(f.Right)))
+		}
+	}
+
+	// NOT(OR(left,right))=>AND(NOT(left), NOT(right))
+	if not, _ := e.(*expression.Not); not != nil {
+		if f, _ := not.Child.(*expression.Or); f != nil {
+			return pushNotFiltersHelper(expression.NewAnd(expression.NewNot(f.Left), expression.NewNot(f.Right)))
+		}
+	}
+
+	// NOT(GT(c))=>LTE(c)
+	if not, _ := e.(*expression.Not); not != nil {
+		if f, _ := not.Child.(*expression.GreaterThan); f != nil {
+			return pushNotFiltersHelper(expression.NewLessThanOrEqual(f.Left(), f.Right()))
+		}
+	}
+
+	// NOT(GTE(c))=>LT(c)
+	if not, _ := e.(*expression.Not); not != nil {
+		if f, _ := not.Child.(*expression.GreaterThanOrEqual); f != nil {
+			return pushNotFiltersHelper(expression.NewLessThan(f.Left(), f.Right()))
+		}
+	}
+
+	// NOT(LT(c))=>GTE(c)
+	if not, _ := e.(*expression.Not); not != nil {
+		if f, _ := not.Child.(*expression.LessThan); f != nil {
+			return pushNotFiltersHelper(expression.NewGreaterThanOrEqual(f.Left(), f.Right()))
+		}
+	}
+
+	// NOT(LTE(c))=>GT(c)
+	if not, _ := e.(*expression.Not); not != nil {
+		if f, _ := not.Child.(*expression.LessThanOrEqual); f != nil {
+			return pushNotFiltersHelper(expression.NewGreaterThan(f.Left(), f.Right()))
+		}
+	}
+
+	//NOT(BETWEEN(left,right))=>OR(LT(left), GT(right))
+	if not, _ := e.(*expression.Not); not != nil {
+		if f, _ := not.Child.(*expression.Between); f != nil {
+			return pushNotFiltersHelper(expression.NewOr(
+				expression.NewLessThan(f.Val, f.Lower),
+				expression.NewGreaterThan(f.Val, f.Upper),
+			))
+		}
+	}
+
+	var newChildren []sql.Expression
+	for _, c := range e.Children() {
+		newC, err := pushNotFiltersHelper(c)
+		if err != nil {
+			return nil, err
+		}
+		newChildren = append(newChildren, newC)
+	}
+	return e.WithChildren(newChildren...)
+}
