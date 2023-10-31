@@ -93,7 +93,7 @@ func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
-	
+
 	return newNode, transform.NewTree, nil
 }
 

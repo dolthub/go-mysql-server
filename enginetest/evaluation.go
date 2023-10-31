@@ -20,7 +20,6 @@ import (
 	"testing"
 	"time"
 
-	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/vitess/go/sqltypes"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -29,6 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
+	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -201,7 +201,7 @@ func TestScriptWithEnginePrepared(t *testing.T, e QueryEngine, harness Harness, 
 			if assertion.NewSession {
 				th, ok := harness.(TransactionHarness)
 				require.True(t, ok, "ScriptTestAssertion requested a NewSession, "+
-						"but harness doesn't implement TransactionHarness")
+					"but harness doesn't implement TransactionHarness")
 				ctx = th.NewSession()
 			}
 			if assertion.ExpectedErr != nil {
