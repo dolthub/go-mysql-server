@@ -154,6 +154,32 @@ var FooData = []SetupScript{{
     ('c', 0)`,
 }}
 
+var Generated_column_tablesData = []SetupScript{{
+	`create table generated_stored_1 (a int primary key, b int as (a + 1) stored)`,
+	`create index i1 on generated_stored_1(b)`,
+	`insert into generated_stored_1 (a) values (1), (2)`,
+	`create table generated_stored_2 (
+    a int primary key,
+    b int as (a + 1) stored,
+    c int
+)`,
+	`insert into generated_stored_2 (a,c) values (1,3)`,
+	`create index i2 on generated_stored_2(b,c)`,
+	`create table generated_virtual_1 (
+    a int primary key,
+    b int,
+    c int generated always as (a + b) virtual,
+    index idx_c (c)
+)`,
+	`insert into generated_virtual_1 (a, b) values (1, 2), (3, 4)`,
+	`create table generated_virtual_keyless (
+    j json,
+    v int generated always as (j->>'$.a') virtual,
+    index idx_v (v)
+)`,
+	`insert into t1(j) values ('{"a": 1}'), ('{"a": 2}'), ('{"b": 3}')`,
+}}
+
 var Graph_tablesData = []SetupScript{{
 	"CREATE TABLE `bus_routes` (   `origin` varchar(20) NOT NULL,   `dst` varchar(20) NOT NULL,   PRIMARY KEY (`origin`,`dst`) )",
 	`insert into bus_routes values
