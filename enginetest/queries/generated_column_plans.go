@@ -37,12 +37,12 @@ var GeneratedColumnPlanTests = []QueryPlanTest{
 		Query: "explain delete from generated_virtual_1 where c = 6",
 	},
 	{
-		Query: "explain select * from t1 where v = 2",
+		Query: "explain select * from generated_virtual_keyless where v = 2",
 	},
 	{
-		Query: "explain update t1 set j = '{\"a\": 5}' where v = 2",
+		Query: "explain update generated_virtual_keyless set j = '{\"a\": 5}' where v = 2",
 	},
 	{
-		Query: "explain delete from t1 where v = 5",
+		Query: "explain delete from generated_virtual_keyless where v = 5",
 	},
 }
