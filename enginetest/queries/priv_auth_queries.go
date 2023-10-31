@@ -935,12 +935,23 @@ var UserPrivTests = []UserPrivilegeTest{
 					{"proc2", "PROCEDURE", "Alter Routine"},
 				},
 			},
-
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT Routine_name,Routine_type,proc_priv from mysql.procs_priv WHERE User = 'tester2'",
 				Expected: []sql.Row{{"proc1", "PROCEDURE", "Grant"}},
+			},
+			{
+				User:     "tester1",
+				Host:     "localhost",
+				Query:    "GRANT Execute ON PROCEDURE mydb.proc1 TO tester2@localhost",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				User:           "tester2",
+				Host:           "localhost",
+				Query:          "GRANT Execute ON PROCEDURE mydb.proc2 TO tester1@localhost",
+				ExpectedErrStr: "command denied to user 'tester2'@'localhost'",
 			},
 		},
 	},

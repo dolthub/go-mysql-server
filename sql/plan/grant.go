@@ -33,6 +33,7 @@ type Grant struct {
 	WithGrantOption bool
 	As              *GrantUserAssumption
 	MySQLDb         sql.Database
+	Catalog         *sql.Catalog
 }
 
 var _ sql.Node = (*Grant)(nil)
@@ -139,7 +140,7 @@ func (n *Grant) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperat
 		if database == "" {
 			database = ctx.GetCurrentDatabase()
 		}
-		subject := sql.PrivilegeCheckSubject{Database: database}
+		subject = sql.PrivilegeCheckSubject{Database: database}
 		if n.Privileges[0].Type == PrivilegeType_All {
 			return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject,
 				sql.PrivilegeType_Alter,
@@ -166,31 +167,59 @@ func (n *Grant) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperat
 		return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject,
 			convertToSqlPrivilegeType(true, n.Privileges...)...))
 	} else {
-		//TODO: add column checks
-		subject = sql.PrivilegeCheckSubject{
-			Database: n.PrivilegeLevel.Database,
-			Table:    n.PrivilegeLevel.TableRoutine,
-		}
-		if n.Privileges[0].Type == PrivilegeType_All {
+		if n.ObjectType == ObjectType_Procedure {
+
+			adminOnly := false
+			if n.Catalog != nil {
+				proc, err := (*n.Catalog).ExternalStoredProcedure(ctx, n.PrivilegeLevel.TableRoutine, -1)
+				if proc != nil && err == nil && proc.AdminOnly {
+					adminOnly = true
+				}
+			}
+
+			subject = sql.PrivilegeCheckSubject{
+				Database:    n.PrivilegeLevel.Database,
+				Routine:     n.PrivilegeLevel.TableRoutine,
+				IsProcedure: true,
+			}
+			operation := sql.NewPrivilegedOperation(subject, sql.PrivilegeType_GrantOption)
+
+			if !adminOnly {
+				if opChecker.UserHasPrivileges(ctx, operation) {
+					return true
+				}
+			}
+			return opChecker.RoutineAdminCheck(ctx, operation)
+		} else if n.ObjectType == ObjectType_Function {
+			// TODO: Function Permissions.
+			return false
+		} else {
+			//TODO: add column checks
+			subject = sql.PrivilegeCheckSubject{
+				Database: n.PrivilegeLevel.Database,
+				Table:    n.PrivilegeLevel.TableRoutine,
+			}
+			if n.Privileges[0].Type == PrivilegeType_All {
+				return opChecker.UserHasPrivileges(ctx,
+					sql.NewPrivilegedOperation(subject,
+						sql.PrivilegeType_Alter,
+						sql.PrivilegeType_Create,
+						sql.PrivilegeType_CreateView,
+						sql.PrivilegeType_Delete,
+						sql.PrivilegeType_Drop,
+						sql.PrivilegeType_Index,
+						sql.PrivilegeType_Insert,
+						sql.PrivilegeType_References,
+						sql.PrivilegeType_Select,
+						sql.PrivilegeType_ShowView,
+						sql.PrivilegeType_Trigger,
+						sql.PrivilegeType_Update,
+						sql.PrivilegeType_GrantOption,
+					))
+			}
 			return opChecker.UserHasPrivileges(ctx,
-				sql.NewPrivilegedOperation(subject,
-					sql.PrivilegeType_Alter,
-					sql.PrivilegeType_Create,
-					sql.PrivilegeType_CreateView,
-					sql.PrivilegeType_Delete,
-					sql.PrivilegeType_Drop,
-					sql.PrivilegeType_Index,
-					sql.PrivilegeType_Insert,
-					sql.PrivilegeType_References,
-					sql.PrivilegeType_Select,
-					sql.PrivilegeType_ShowView,
-					sql.PrivilegeType_Trigger,
-					sql.PrivilegeType_Update,
-					sql.PrivilegeType_GrantOption,
-				))
+				sql.NewPrivilegedOperation(subject, convertToSqlPrivilegeType(true, n.Privileges...)...))
 		}
-		return opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation(subject, convertToSqlPrivilegeType(true, n.Privileges...)...))
 	}
 }
 
