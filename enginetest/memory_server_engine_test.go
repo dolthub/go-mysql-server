@@ -16,6 +16,10 @@ package enginetest_test
 
 import (
 	"fmt"
+	"os"
+	"sync"
+	"testing"
+
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
@@ -24,9 +28,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/sqllogictest/go/logictest"
 	"github.com/stretchr/testify/suite"
-	"os"
-	"sync"
-	"testing"
 )
 
 type ServerEngineTestSuite struct {
@@ -37,19 +38,16 @@ type ServerEngineTestSuite struct {
 
 // this function executes before each test case
 func (suite *ServerEngineTestSuite) SetupTest() {
-	// reset StartingNumber to one
-	fmt.Println("-- From SetupTest")
 	suite.hmu.Lock()
 	defer suite.hmu.Unlock()
 	if suite.memoryHarness == nil {
 		suite.memoryHarness = enginetest.NewDefaultMemoryHarness()
-		suite.memoryHarness.UseServer()
+		//suite.memoryHarness.UseServer()
 	}
 }
 
 // this function executes after each test case
 func (suite *ServerEngineTestSuite) TearDownTest() {
-	fmt.Println("-- From TearDownTest")
 	suite.hmu.Lock()
 	defer suite.hmu.Unlock()
 	suite.memoryHarness = nil
@@ -62,7 +60,7 @@ func (suite *ServerEngineTestSuite) setHarness(mh *enginetest.MemoryHarness) {
 	suite.hmu.Lock()
 	defer suite.hmu.Unlock()
 	suite.memoryHarness = mh
-	suite.memoryHarness.UseServer()
+	//suite.memoryHarness.UseServer()
 }
 
 func TestServerEngineTestSuite(t *testing.T) {
@@ -466,7 +464,7 @@ func (suite *ServerEngineTestSuite) TestSpatialIndexScriptsWithServer() {
 
 func (suite *ServerEngineTestSuite) TestUserPrivilegesWithServer() {
 	suite.setHarness(enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
-	enginetest.TestUserPrivileges(suite.T(), enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestUserPrivileges(suite.T(), suite.memoryHarness)
 }
 
 func (suite *ServerEngineTestSuite) TestUserAuthenticationWithServer() {
