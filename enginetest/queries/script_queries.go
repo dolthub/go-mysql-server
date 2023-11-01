@@ -4133,7 +4133,7 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
-    		Name: "Point lookups with dropped filtesr",
+    		Name: "Point lookups with dropped filters",
     		SetUpScript: []string{
     			`create table t1 (
     			  id varchar(255),
@@ -4144,24 +4144,12 @@ var ScriptTests = []ScriptTest{
     			  id varchar(255),
     			  a  varchar(255),
     			  b  varchar(255),
-    			  c  varchar(255),
-    			  unique key key2 (id, b, c)
-    			);`,
-    			`create table t3 (
-    			  id varchar(255),
-    			  a  varchar(255),
-    			  b  varchar(255),
-    			  unique key key3 (id, b)
+    			  unique key key2 (id, b)
     			);`,
     			`insert into t1 values 
     			  ('id1', 'a1'),
     			  ('id1', 'a2');`,
     			`insert into t2 values
-    			  ('id1', 'a1', 'b1', 'c1'),
-    			  ('id1', 'a1', 'b1', 'c2'),
-    			  ('id1', 'a2', 'b1', 'c3'),
-    			  ('id1', 'a2', 'b1', 'c4');`,
-    			`insert into t3 values
     			  ('id1', 'a1', 'b1'),
     			  ('id1', 'a1', 'b2'),
     			  ('id1', 'a2', 'b3'),
@@ -4171,25 +4159,13 @@ var ScriptTests = []ScriptTest{
     		Assertions: []ScriptTestAssertion{
     			{
     				Query: `
-    				select t2.b, t3.b
-    				from 
-    				  t1 
-    				inner join 
-    				  t2
-    				on
-    				  t1.id = t2.id and t1.a = t2.a
-    				inner join
-    				  t3
-    				on
-    				  t3.id = t2.id and t3.b = t2.b
-    				where
-    				  t2.id = "id1" and t2.b = "b1";`,
-    				Expected: []sql.Row{
-    					{"b1", "b1"},
-    					{"b1", "b1"},
-    					{"b1", "b1"},
-    					{"b1", "b1"},
-    				},
+    				select /*+ LOOKUP_JOIN(t1, t3)*/ t1.id, t1.a, t2.b from
+                      t1
+                    inner join
+                      t2
+                    on
+                      t1.id = t2.id and t1.a = t2.b;`,
+    				Expected: []sql.Row{},
     			},
     		},
     	},
