@@ -13,3 +13,5 @@ plans:
 #    path: enginetest/queries/tpcds_plans.go
   - name: ImdbPlanTests
     path: enginetest/queries/imdb_plans.go
+  - name: GeneratedColumnPlanTests
+    path: enginetest/queries/generated_column_plans.go

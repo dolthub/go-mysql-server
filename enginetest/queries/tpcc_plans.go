@@ -27,7 +27,7 @@ WHERE
   o_c_id = 20001 AND
   o_id = (SELECT MAX(o_id) FROM orders2 WHERE o_w_id = 1 AND o_d_id = 3 AND o_c_id = 20001)`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [orders2.o_id:1!null, orders2.o_entry_d:5, coalesce(orders2.o_carrier_id,0) as COALESCE(o_carrier_id,0)]\n" +
+			" ├─ columns: [orders2.o_id:1!null, orders2.o_entry_d:5, coalesce(orders2.o_carrier_id:6,0 (tinyint)) as COALESCE(o_carrier_id,0)]\n" +
 			" └─ LookupJoin\n" +
 			"     ├─ Eq\n" +
 			"     │   ├─ orders2.o_id:1!null\n" +

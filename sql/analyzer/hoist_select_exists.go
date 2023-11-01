@@ -160,6 +160,12 @@ func hoistExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, filt
 			}
 		}
 
+		if sqa, ok := s.inner.(*plan.SubqueryAlias); ok {
+			if !sqa.CanCacheResults() {
+				return filter, transform.SameTree, nil
+			}
+		}
+
 		// if we reached here, |s| contains the state we need to
 		// decorrelate the subquery expression into a new node
 		same = transform.NewTree

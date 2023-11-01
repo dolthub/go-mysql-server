@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -1370,8 +1369,19 @@ func TestGeneratedColumns(t *testing.T, harness Harness) {
 		TestScriptPrepared(t, harness, script)
 	}
 	for _, script := range queries.BrokenGeneratedColumnTests {
-		t.Skip(script.Name)
-		TestScriptPrepared(t, harness, script)
+		t.Run(script.Name, func(t *testing.T) {
+			t.Skip(script.Name)
+			TestScriptPrepared(t, harness, script)
+		})
+	}
+}
+
+func TestGeneratedColumnPlans(t *testing.T, harness Harness) {
+	harness.Setup(setup.GeneratedColumnSetup...)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	for _, tt := range queries.GeneratedColumnPlanTests {
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
 	}
 }
 
@@ -1413,8 +1423,6 @@ func TestInsertErrorScriptsPrepared(t *testing.T, harness Harness) {
 }
 
 func TestUserPrivileges(t *testing.T, harness ClientHarness) {
-	os.Setenv("DOLT_ROUTINE_GRANTS_ENABLED", "1")
-
 	harness.Setup(setup.MydbData, setup.MytableData)
 	for _, script := range queries.UserPrivTests {
 		t.Run(script.Name, func(t *testing.T) {
