@@ -4142,7 +4142,6 @@ var ScriptTests = []ScriptTest{
     			);`,
 			`create table t2 (
     			  id varchar(255),
-    			  a  varchar(255),
     			  b  varchar(255),
     			  unique key key2 (id, b)
     			);`,
@@ -4150,11 +4149,11 @@ var ScriptTests = []ScriptTest{
     			  ('id1', 'a1'),
     			  ('id1', 'a2');`,
 			`insert into t2 values
-    			  ('id1', 'a1', 'b1'),
-    			  ('id1', 'a1', 'b2'),
-    			  ('id1', 'a2', 'b3'),
-    			  ('id2', 'a3', 'b4'),
-    			  ('id2', 'a4', 'b5');`,
+    			  ('id1', 'b1'),
+    			  ('id1', 'b2'),
+    			  ('id1', 'b3'),
+    			  ('id2', 'b4'),
+    			  ('id2', 'b5');`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
