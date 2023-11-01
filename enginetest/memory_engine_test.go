@@ -195,26 +195,25 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "delete me",
+			Name: "virtual column index",
 			SetUpScript: []string{
-				"CREATE TABLE `sup_supplier` (`rowId` varbinary(16) NOT NULL,`product` varchar(255),`supplierKey` varchar(255),`order` decimal(65,30) NOT NULL DEFAULT '0',`name` varchar(255),UNIQUE KEY `product_supplierKey_unique` (`product`,`supplierKey`));",
-				"INSERT INTO `sup_supplier` (`rowId`,`product`,`supplierKey`,`order`,`name`) VALUES (0x343962396232366631613531,'carports','eagle',1.000000000000000000000000000000,'Eagle Carports'), (0x343962396232366631613532,'carports','infinity',1.000000000000000000000000000000,'Infinity Carports');",
-				"CREATE TABLE `ven_region` (`rowId` varbinary(16) NOT NULL,`product` varchar(255),`vendorKey` varchar(255),`regionKey` varchar(60),`supplierKey` varchar(255),`order` decimal(65,30) NOT NULL DEFAULT '0',UNIQUE KEY `product_vendorKey_regionKey_unique` (`product`,`vendorKey`,`regionKey`));",
-				"INSERT INTO `ven_region` (`rowId`,`product`,`vendorKey`,`regionKey`,`supplierKey`,`order`) VALUES (0x343962396232366631613531,'carports','dealer-with-multiple-suppliers','west-region','infinity',2.000000000000000000000000000000), (0x343962396232366631613531,'carports','dealer-with-multiple-suppliers','black-region','eagle',3.000000000000000000000000000000), (0x343962396232366631613531,'carports','dealer-with-multiple-suppliers','blue-region','eagle',4.000000000000000000000000000000), (0x343962396232366631613531,'carports','dealer-with-multiple-suppliers','east-region','infinity',1.000000000000000000000000000000);",
-				"CREATE TABLE `ven_vendor` (`rowId` varbinary(16) NOT NULL,`product` varchar(255),`vendorKey` varchar(255),`supplierKey` varchar(255),`order` decimal(65,30) NOT NULL DEFAULT '0',`name` varchar(255),`address` varchar(255),`city` varchar(255),`productionURL` varchar(1000),UNIQUE KEY `product_vendorKey_unique` (`product`,`vendorKey`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;",
-				"INSERT INTO `ven_vendor` (`rowId`,`product`,`vendorKey`,`supplierKey`,`order`,`name`,`address`,`city`,`productionURL`) VALUES (0x343962396232366631613532,'sheds','premier','premier',1.000000000000000000000000000000,NULL,NULL,NULL,NULL), (0x343962396232366631613533,'carports','eagle','eagle',1.000000000000000000000000000000,NULL,NULL,NULL,NULL), (0x343962396232366631613531,'sheds','dakota','dakota',1.000000000000000000000000000000,NULL,NULL,NULL,NULL), (0x343962396232366631613533,'carports','infinity','infinity',1.000000000000000000000000000000,NULL,NULL,NULL,NULL), (0x343962396232366631613534,'carports','dealer-with-multiple-suppliers','eagle',1.000000000000000000000000000000,NULL,NULL,NULL,NULL);",
+				"create table t1 (a int primary key, b int, c int generated always as (a + b) virtual, index idx_c (c))",
+				"insert into t1 (a, b) values (1, 2), (3, 4)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "select v.vendorKey, vr.vendorKey\nfrom\n  `ven_region` as `vr`\ninner join\n  `ven_vendor` as `v`\n  on `v`.`vendorKey` = `vr`.`vendorKey` and `v`.`product` = `vr`.`product`\ninner join `sup_supplier` as `s`\n  on `s`.`supplierKey` = `vr`.`supplierKey` and `s`.`product` = `vr`.`product`\nwhere\n  `vr`.`vendorKey` = 'dealer-with-multiple-suppliers' and\n  `vr`.`product` = 'carports';",
+					Query:    "select * from t1 where c = 7",
+					Expected: []sql.Row{{3, 4, 7}},
+				},
+				{
+					Query: "explain select * from t1 where c = 7",
 					Expected: []sql.Row{
-						{"dealer-with-multiple-suppliers", "dealer-with-multiple-suppliers"},
-						{"dealer-with-multiple-suppliers", "dealer-with-multiple-suppliers"},
-						{"dealer-with-multiple-suppliers", "dealer-with-multiple-suppliers"},
-						{"dealer-with-multiple-suppliers", "dealer-with-multiple-suppliers"},
+						{"IndexedTableAccess(t1)"},
+						{" ├─ index: [t1.c]"},
+						{" └─ filters: [{[7, 7]}]"},
 					},
 				},
 			},
@@ -228,48 +227,11 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		//engine.EngineAnalyzer().Debug = true
-		//engine.EngineAnalyzer().Verbose = true
+		engine.EngineAnalyzer().Debug = true
+		engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
-	//t.Skip()
-	//var scripts = []queries.ScriptTest{
-	//	{
-	//		Name: "virtual column index",
-	//		SetUpScript: []string{
-	//			"create table t1 (a int primary key, b int, c int generated always as (a + b) virtual, index idx_c (c))",
-	//			"insert into t1 (a, b) values (1, 2), (3, 4)",
-	//		},
-	//		Assertions: []queries.ScriptTestAssertion{
-	//			{
-	//				Query:    "select * from t1 where c = 7",
-	//				Expected: []sql.Row{{3, 4, 7}},
-	//			},
-	//			{
-	//				Query: "explain select * from t1 where c = 7",
-	//				Expected: []sql.Row{
-	//					{"IndexedTableAccess(t1)"},
-	//					{" ├─ index: [t1.c]"},
-	//					{" └─ filters: [{[7, 7]}]"},
-	//				},
-	//			},
-	//		},
-	//	},
-	//}
-	//
-	//for _, test := range scripts {
-	//	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	//	harness.Setup(setup.MydbData, setup.Parent_childData)
-	//	engine, err := harness.NewEngine(t)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	engine.EngineAnalyzer().Debug = true
-	//	engine.EngineAnalyzer().Verbose = true
-	//
-	//	enginetest.TestScriptWithEngine(t, engine, harness, test)
-	//}
 }
 
 func TestUnbuildableIndex(t *testing.T) {
