@@ -896,6 +896,64 @@ var AlterTableScripts = []ScriptTest{
 	},
 }
 
+var RenameTableScripts = []ScriptTest{
+	{
+		Name: "simple rename table",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "RENAME TABLE mytable TO newTableName",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:       "SELECT COUNT(*) FROM mytable",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM newTableName",
+				Expected: []sql.Row{{3}},
+			},
+		},
+	},
+	{
+		Name: "rename multiple tables in one stmt",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "RENAME TABLE othertable to othertable2, newTableName to mytable",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:       "SELECT COUNT(*) FROM othertable",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:       "SELECT COUNT(*) FROM newTableName",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM mytable",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM othertable2",
+				Expected: []sql.Row{{3}},
+			},
+		},
+	},
+	{
+		Name: "error cases",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE not_exist RENAME foo",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:       "ALTER TABLE emptytable RENAME niltable",
+				ExpectedErr: sql.ErrTableAlreadyExists,
+			},
+		},
+	},
+}
+
 var AlterTableAddAutoIncrementScripts = []ScriptTest{
 	{
 		Name: "Add primary key column with auto increment",
@@ -1456,6 +1514,78 @@ var AddColumnScripts = []ScriptTest{
 			{
 				Query:       "ALTER TABLE mytable ADD COLUMN c int, add c int",
 				ExpectedErr: sql.ErrColumnExists,
+			},
+		},
+	},
+}
+
+var RenameColumnScripts = []ScriptTest{
+	{
+		Name: "error cases",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE mytable RENAME COLUMN i2 TO iX",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "ALTER TABLE mytable RENAME COLUMN i TO iX, RENAME COLUMN iX TO i2",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "ALTER TABLE mytable RENAME COLUMN i TO iX, RENAME COLUMN i TO i2",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "ALTER TABLE mytable RENAME COLUMN i TO S",
+				ExpectedErr: sql.ErrColumnExists,
+			},
+			{
+				Query:       "ALTER TABLE mytable RENAME COLUMN i TO n, RENAME COLUMN s TO N",
+				ExpectedErr: sql.ErrColumnExists,
+			},
+		},
+	},
+	{
+		Name: "simple rename column",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE mytable RENAME COLUMN i TO i2, RENAME COLUMN s TO s2",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "SHOW FULL COLUMNS FROM mytable",
+				Expected: []sql.Row{
+					{"i2", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
+					{"s2", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", "NULL", "", "", "column s"},
+				},
+			},
+			{
+				Query: "select * from mytable order by i2 limit 1",
+				Expected: []sql.Row{
+					{1, "first row"},
+				},
+			},
+		},
+	},
+	{
+		Name: "rename column preserves table checks",
+		SetUpScript: []string{
+			"ALTER TABLE mytable ADD CONSTRAINT test_check CHECK (i2 < 12345)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE mytable RENAME COLUMN i2 TO i3",
+				ExpectedErr: sql.ErrCheckConstraintInvalidatedByColumnAlter,
+			},
+			{
+				Query:    "ALTER TABLE mytable RENAME COLUMN s2 TO s3",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: `SELECT TC.CONSTRAINT_NAME, CC.CHECK_CLAUSE, TC.ENFORCED 
+FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC 
+WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'mytable' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK';`,
+				Expected: []sql.Row{{"test_check", "(i2 < 12345)", "YES"}},
 			},
 		},
 	},

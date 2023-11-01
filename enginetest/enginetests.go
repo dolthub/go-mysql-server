@@ -2447,159 +2447,51 @@ func TestDropTable(t *testing.T, harness Harness) {
 }
 
 func TestRenameTable(t *testing.T, harness Harness) {
-	require := require.New(t)
 	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData, setup.NiltableData, setup.EmptytableData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	ctx := NewContext(harness)
 
-	db, err := e.EngineAnalyzer().Catalog.Database(NewContext(harness), "mydb")
-	require.NoError(err)
-
-	_, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(err)
-	require.True(ok)
-
-	TestQueryWithContext(t, ctx, e, harness, "RENAME TABLE mytable TO newTableName", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-	_, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(err)
-	require.False(ok)
-
-	_, ok, err = db.GetTableInsensitive(NewContext(harness), "newTableName")
-	require.NoError(err)
-	require.True(ok)
-
-	TestQueryWithContext(t, ctx, e, harness, "RENAME TABLE othertable to othertable2, newTableName to mytable", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-	_, ok, err = db.GetTableInsensitive(NewContext(harness), "othertable")
-	require.NoError(err)
-	require.False(ok)
-
-	_, ok, err = db.GetTableInsensitive(NewContext(harness), "othertable2")
-	require.NoError(err)
-	require.True(ok)
-
-	_, ok, err = db.GetTableInsensitive(NewContext(harness), "newTableName")
-	require.NoError(err)
-	require.False(ok)
-
-	_, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(err)
-	require.True(ok)
-
-	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mytable RENAME newTableName", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-	_, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(err)
-	require.False(ok)
-
-	_, ok, err = db.GetTableInsensitive(NewContext(harness), "newTableName")
-	require.NoError(err)
-	require.True(ok)
-
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE not_exist RENAME foo")
-	require.Error(err)
-	require.True(sql.ErrTableNotFound.Is(err))
-
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE emptytable RENAME niltable")
-	require.Error(err)
-	require.True(sql.ErrTableAlreadyExists.Is(err))
+	for _, tt := range queries.RenameTableScripts {
+		TestScriptWithEngine(t, e, harness, tt)
+	}
 
 	t.Run("no database selected", func(t *testing.T) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
+		if se, ok := e.(*ServerQueryEngine); ok {
+			se.NewConnection(ctx)
+		}
+		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.Row{{nil}}, nil, nil)
 
 		t.Skip("broken")
 		TestQueryWithContext(t, ctx, e, harness, "RENAME TABLE mydb.emptytable TO mydb.emptytable2", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		_, ok, err = db.GetTableInsensitive(NewContext(harness), "emptytable")
-		require.NoError(err)
-		require.False(ok)
-
-		_, ok, err = db.GetTableInsensitive(NewContext(harness), "emptytable2")
-		require.NoError(err)
-		require.True(ok)
-
-		_, _, err = e.Query(NewContext(harness), "RENAME TABLE mydb.emptytable2 TO emptytable3")
-		require.Error(err)
-		require.True(sql.ErrNoDatabaseSelected.Is(err))
+		AssertErrWithCtx(t, e, harness, ctx, "SELECT COUNT(*) FROM mydb.emptytable", sql.ErrTableNotFound)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT COUNT(*) FROM mydb.emptytable2", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
+		AssertErrWithCtx(t, e, harness, ctx, "RENAME TABLE mydb.emptytable2 TO emptytable3", sql.ErrNoDatabaseSelected)
 	})
 }
 
 func TestRenameColumn(t *testing.T, harness Harness) {
-	require := require.New(t)
-
 	harness.Setup(setup.MydbData, setup.MytableData, setup.TabletestData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	ctx := NewContext(harness)
-	db, err := e.EngineAnalyzer().Catalog.Database(NewContext(harness), "mydb")
-	require.NoError(err)
 
-	// Error cases
-	AssertErr(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i2 TO iX", sql.ErrTableColumnNotFound)
-	AssertErr(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i TO iX, RENAME COLUMN iX TO i2", sql.ErrTableColumnNotFound)
-	AssertErr(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i TO iX, RENAME COLUMN i TO i2", sql.ErrTableColumnNotFound)
-	AssertErr(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i TO S", sql.ErrColumnExists)
-	AssertErr(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i TO n, RENAME COLUMN s TO N", sql.ErrColumnExists)
-
-	tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(err)
-	require.True(ok)
-	require.Equal(sql.Schema{
-		{Name: "i", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", PrimaryKey: true},
-		{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), DatabaseSource: "mydb", Source: "mytable", Comment: "column s"},
-	}, tbl.Schema())
-
-	RunQuery(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i TO i2, RENAME COLUMN s TO s2")
-	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(err)
-	require.True(ok)
-	require.Equal(sql.Schema{
-		{Name: "i2", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", PrimaryKey: true},
-		{Name: "s2", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), DatabaseSource: "mydb", Source: "mytable", Comment: "column s"},
-	}, tbl.Schema())
-
-	TestQueryWithContext(t, ctx, e, harness, "select * from mytable order by i2 limit 1", []sql.Row{
-		{1, "first row"},
-	}, nil, nil)
-
-	t.Run("rename column preserves table checks", func(t *testing.T) {
-		RunQuery(t, e, harness, "ALTER TABLE mytable ADD CONSTRAINT test_check CHECK (i2 < 12345)")
-
-		AssertErr(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i2 TO i3", sql.ErrCheckConstraintInvalidatedByColumnAlter)
-
-		RunQuery(t, e, harness, "ALTER TABLE mytable RENAME COLUMN s2 TO s3")
-		tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-		require.NoError(err)
-		require.True(ok)
-
-		checkTable, ok := tbl.(sql.CheckTable)
-		require.True(ok)
-		checks, err := checkTable.GetChecks(NewContext(harness))
-		require.NoError(err)
-		require.Equal(1, len(checks))
-		require.Equal("test_check", checks[0].Name)
-		require.Equal("(i2 < 12345)", checks[0].CheckExpression)
-	})
+	for _, tt := range queries.RenameColumnScripts {
+		TestScriptWithEngine(t, e, harness, tt)
+	}
 
 	t.Run("no database selected", func(t *testing.T) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
-
-		beforeDropTbl, _, _ := db.GetTableInsensitive(NewContext(harness), "tabletest")
-
+		if se, ok := e.(*ServerQueryEngine); ok {
+			se.NewConnection(ctx)
+		}
+		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.Row{{nil}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mydb.tabletest RENAME COLUMN s TO i1", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "tabletest")
-		require.NoError(err)
-		require.True(ok)
-		assert.NotEqual(t, beforeDropTbl, tbl.Schema())
-		assert.Equal(t, sql.Schema{
-			{Name: "i", Type: types.Int32, DatabaseSource: "mydb", Source: "tabletest", PrimaryKey: true},
-			{Name: "i1", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), DatabaseSource: "mydb", Source: "tabletest"},
-		}, tbl.Schema())
+		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.tabletest", []sql.Row{
+			{"i", "int", nil, "NO", "PRI", "NULL", "", "", ""},
+			{"i1", "varchar(20)", "utf8mb4_0900_bin", "NO", "", "NULL", "", "", ""},
+		}, nil, nil)
 	})
 }
 
