@@ -2070,7 +2070,7 @@ var ForeignKeyTests = []ScriptTest{
 
 var CreateForeignKeyTests = []ScriptTest{
 	{
-		Name: "",
+		Name: "basic create foreign key tests",
 		SetUpScript: []string{
 			"CREATE TABLE parent(a INTEGER PRIMARY KEY, b INTEGER)",
 			"ALTER TABLE parent ADD INDEX pb (b)",
@@ -2078,6 +2078,9 @@ var CreateForeignKeyTests = []ScriptTest{
 					CONSTRAINT fk1 FOREIGN KEY (D) REFERENCES parent(B) ON DELETE CASCADE
 				)`,
 			"ALTER TABLE child ADD CONSTRAINT fk4 FOREIGN KEY (D) REFERENCES child(C)",
+			"CREATE TABLE child2(e INTEGER PRIMARY KEY, f INTEGER)",
+			"ALTER TABLE child2 ADD CONSTRAINT fk2 FOREIGN KEY (f) REFERENCES parent(b) ON DELETE RESTRICT",
+			"ALTER TABLE child2 ADD CONSTRAINT fk3 FOREIGN KEY (f) REFERENCES child(d) ON UPDATE SET NULL",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -2091,16 +2094,6 @@ var CreateForeignKeyTests = []ScriptTest{
 					{"fk4", "mydb", "child", "d", "mydb", "child", "c", "NO ACTION", "NO ACTION"},
 				},
 			},
-		},
-	},
-	{
-		Name: "",
-		SetUpScript: []string{
-			"CREATE TABLE child2(e INTEGER PRIMARY KEY, f INTEGER)",
-			"ALTER TABLE child2 ADD CONSTRAINT fk2 FOREIGN KEY (f) REFERENCES parent(b) ON DELETE RESTRICT",
-			"ALTER TABLE child2 ADD CONSTRAINT fk3 FOREIGN KEY (f) REFERENCES child(d) ON UPDATE SET NULL",
-		},
-		Assertions: []ScriptTestAssertion{
 			{
 				Query: `SELECT RC.CONSTRAINT_NAME, RC.CONSTRAINT_SCHEMA, RC.TABLE_NAME, KCU.COLUMN_NAME, 
 						KCU.REFERENCED_TABLE_SCHEMA, KCU.REFERENCED_TABLE_NAME, KCU.REFERENCED_COLUMN_NAME, RC.UPDATE_RULE, RC.DELETE_RULE 
@@ -2115,8 +2108,7 @@ var CreateForeignKeyTests = []ScriptTest{
 		},
 	},
 	{
-		Name:        "error cases",
-		SetUpScript: []string{},
+		Name: "error cases",
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "ALTER TABLE child2 ADD CONSTRAINT fk3 FOREIGN KEY (f) REFERENCES dne(d) ON UPDATE SET NULL",
@@ -2159,6 +2151,67 @@ var CreateForeignKeyTests = []ScriptTest{
 			{
 				Query:    "CREATE TABLE delayed_parent4 (pk BIGINT PRIMARY KEY)",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
+}
+
+var DropForeignKeyTests = []ScriptTest{
+	{
+		Name: "basic drop foreign key tests",
+		SetUpScript: []string{
+			"CREATE TABLE parent(a INTEGER PRIMARY KEY, b INTEGER)",
+			"ALTER TABLE parent ADD INDEX pb (b)",
+			`CREATE TABLE child(c INTEGER PRIMARY KEY, d INTEGER,
+					CONSTRAINT fk1 FOREIGN KEY (D) REFERENCES parent(B) ON DELETE CASCADE
+				)`,
+			"CREATE TABLE child2(e INTEGER PRIMARY KEY, f INTEGER)",
+			`ALTER TABLE child2 ADD CONSTRAINT fk2 FOREIGN KEY (f) REFERENCES parent(b) ON DELETE RESTRICT, 
+			ADD CONSTRAINT fk3 FOREIGN KEY (f) REFERENCES child(d) ON UPDATE SET NULL`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE child2 DROP CONSTRAINT fk2",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: `SELECT RC.CONSTRAINT_NAME, RC.CONSTRAINT_SCHEMA, RC.TABLE_NAME, KCU.COLUMN_NAME, 
+						KCU.REFERENCED_TABLE_SCHEMA, KCU.REFERENCED_TABLE_NAME, KCU.REFERENCED_COLUMN_NAME, RC.UPDATE_RULE, RC.DELETE_RULE 
+						FROM information_schema.REFERENTIAL_CONSTRAINTS RC, information_schema.KEY_COLUMN_USAGE KCU 
+						WHERE RC.TABLE_NAME = 'child2' AND RC.CONSTRAINT_NAME = KCU.CONSTRAINT_NAME AND
+						RC.TABLE_NAME = KCU.TABLE_NAME AND RC.REFERENCED_TABLE_NAME = KCU.REFERENCED_TABLE_NAME;`,
+				Expected: []sql.Row{
+					{"fk3", "mydb", "child2", "f", "mydb", "child", "d", "SET NULL", "NO ACTION"},
+				},
+			},
+			{
+				Query:    "ALTER TABLE child2 DROP CONSTRAINT fk3",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: `SELECT RC.CONSTRAINT_NAME, RC.CONSTRAINT_SCHEMA, RC.TABLE_NAME, KCU.COLUMN_NAME, 
+						KCU.REFERENCED_TABLE_SCHEMA, KCU.REFERENCED_TABLE_NAME, KCU.REFERENCED_COLUMN_NAME, RC.UPDATE_RULE, RC.DELETE_RULE 
+						FROM information_schema.REFERENTIAL_CONSTRAINTS RC, information_schema.KEY_COLUMN_USAGE KCU 
+						WHERE RC.TABLE_NAME = 'child2' AND RC.CONSTRAINT_NAME = KCU.CONSTRAINT_NAME AND
+						RC.TABLE_NAME = KCU.TABLE_NAME AND RC.REFERENCED_TABLE_NAME = KCU.REFERENCED_TABLE_NAME;`,
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "error cases",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE child3 DROP CONSTRAINT dne",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:       "ALTER TABLE child2 DROP CONSTRAINT fk3",
+				ExpectedErr: sql.ErrUnknownConstraint,
+			},
+			{
+				Query:       "ALTER TABLE child2 DROP FOREIGN KEY fk3",
+				ExpectedErr: sql.ErrForeignKeyNotFound,
 			},
 		},
 	},
