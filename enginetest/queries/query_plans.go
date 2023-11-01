@@ -8398,7 +8398,7 @@ inner join pq on true
 			"     └─ Filter\n" +
 			"         ├─ GreaterThanOrEqual\n" +
 			"         │   ├─ NOW()\n" +
-			"         │   └─ coalesce(NULL,NULL,NOW())\n" +
+			"         │   └─ coalesce(NULL (null),NULL (null),NOW())\n" +
 			"         └─ TableAlias(a)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +

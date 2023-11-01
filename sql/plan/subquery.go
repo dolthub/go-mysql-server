@@ -91,10 +91,7 @@ func (srn *StripRowNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(srn, len(children), 1)
 	}
-	return &StripRowNode{
-		UnaryNode: UnaryNode{Child: children[0]},
-		NumCols:   srn.NumCols,
-	}, nil
+	return NewStripRowNode(children[0], srn.NumCols), nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
@@ -116,6 +113,13 @@ type PrependNode struct {
 var _ sql.Node = (*PrependNode)(nil)
 var _ sql.CollationCoercible = (*PrependNode)(nil)
 
+func NewPrependNode(child sql.Node, row sql.Row) sql.Node {
+	return &PrependNode{
+		UnaryNode: UnaryNode{Child: child},
+		Row:       row,
+	}
+}
+
 func (p *PrependNode) String() string {
 	return p.Child.String()
 }
@@ -135,10 +139,7 @@ func (p *PrependNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
-	return &PrependNode{
-		UnaryNode: UnaryNode{Child: children[0]},
-		Row:       p.Row,
-	}, nil
+	return NewPrependNode(children[0], p.Row), nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
@@ -194,10 +195,7 @@ func PrependRowInPlan(row sql.Row, lateral bool) func(n sql.Node) (sql.Node, tra
 	return func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case sql.Table, sql.Projector, *ValueDerivedTable, *TableCountLookup:
-			return &PrependNode{
-				UnaryNode: UnaryNode{Child: n},
-				Row:       row,
-			}, transform.NewTree, nil
+			return NewPrependNode(n, row), transform.NewTree, nil
 		case *SetOp:
 			newSetOp := *n
 			newRight, _, err := transform.Node(n.Right(), PrependRowInPlan(row, lateral))
@@ -227,10 +225,7 @@ func PrependRowInPlan(row sql.Row, lateral bool) func(n sql.Node) (sql.Node, tra
 				newSubqueryAlias.Child = newChildNode
 				return &newSubqueryAlias, transform.NewTree, err
 			} else {
-				return &PrependNode{
-					UnaryNode: UnaryNode{Child: n},
-					Row:       row,
-				}, transform.NewTree, nil
+				return NewPrependNode(n, row), transform.NewTree, nil
 			}
 		}
 

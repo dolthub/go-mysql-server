@@ -97,6 +97,14 @@ func (c *Coalesce) String() string {
 	return fmt.Sprintf("%s(%s)", c.FunctionName(), strings.Join(args, ","))
 }
 
+func (c *Coalesce) DebugString() string {
+	var args = make([]string, len(c.args))
+	for i, arg := range c.args {
+		args[i] = sql.DebugString(arg)
+	}
+	return fmt.Sprintf("%s(%s)", c.FunctionName(), strings.Join(args, ","))
+}
+
 // WithChildren implements the Expression interface.
 func (*Coalesce) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewCoalesce(children...)
