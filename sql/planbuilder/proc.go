@@ -260,7 +260,8 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 		db,
 		c.ProcName.Name.String(),
 		params,
-		asOf)
+		asOf,
+		&b.cat)
 	return outScope
 }
 

@@ -80,6 +80,11 @@ type ScriptTestAssertion struct {
 	// For tests that perform join operations, JoinTypes can be set for the type of merge we expect to perform.
 	JoinTypes []plan.JoinType
 
+	// NewSession instructs the test framework that this assertion requires a new session to be created before the
+	// query is executed. This is generally only needed when a test script is testing functionality that invalidates
+	// a session and prevents additional queries from being executed on the session.
+	NewSession bool
+
 	// SkipResultsCheck is used to skip assertions on expected Rows returned from a query. This should be used
 	// sparingly, such as in cases where you only want to test warning messages.
 	SkipResultsCheck bool

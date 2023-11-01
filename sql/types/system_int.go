@@ -110,6 +110,13 @@ func (t systemIntType) Convert(v interface{}) (interface{}, sql.ConvertInRange, 
 			f, _ := value.Decimal.Float64()
 			return t.Convert(f)
 		}
+	case string:
+		// try getting int out of string value
+		i, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return nil, sql.OutOfRange, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
+		}
+		return t.Convert(i)
 	}
 
 	return nil, sql.OutOfRange, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
