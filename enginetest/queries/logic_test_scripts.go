@@ -485,6 +485,14 @@ var SQLLogicSubqueryTests = []ScriptTest{
 				},
 			},
 			{
+				Query: "SELECT c_id, bill FROM c AS c2 WHERE EXISTS(SELECT c_id, ship FROM o WHERE c_id = c2.c_id AND coalesce(ship, bill) = bill);",
+				Expected: []sql.Row{
+					{1, "CA"},
+					{2, "TX"},
+					{4, "TX"},
+				},
+			},
+			{
 				Query: "SELECT c_id, bill FROM c AS c2 WHERE EXISTS(SELECT * FROM (SELECT c_id, ship AS state FROM o) AS o WHERE c_id = c2.c_id AND coalesce(state, bill) = bill);",
 				Expected: []sql.Row{
 					{1, "CA"},
