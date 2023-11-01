@@ -414,6 +414,33 @@ func TestQueryPlans(t *testing.T, harness Harness, planTests []queries.QueryPlan
 	}
 }
 
+func TestQueryPlanScripts(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.PlanScriptTests {
+		e := mustNewEngine(t, harness)
+		defer e.Close()
+
+		ctx := NewContext(harness)
+		err := CreateNewConnectionForServerEngine(ctx, e)
+		require.NoError(t, err, nil)
+
+		t.Run(script.Name, func(t *testing.T) {
+			for _, statement := range script.SetupScript {
+				ctx.WithQuery(statement)
+				RunQueryWithContext(t, e, harness, ctx, statement)
+			}
+		})
+
+		for _, tt := range script.Assertions {
+			if tt.Skip {
+				continue
+			}
+			TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
+			TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, nil, nil)
+		}
+	}
+}
+
 func TestIntegrationPlans(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.Integration_testData)
 	e := mustNewEngine(t, harness)
