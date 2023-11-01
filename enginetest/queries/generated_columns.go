@@ -582,6 +582,49 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "generated columns in primary key",
+		SetUpScript: []string{
+			"create table t2 (a int, b int generated always as (a + 2) stored, primary key (b))",
+			"create table t3 (a int, b int generated always as (a + 2) stored, primary key (a, b))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t2 (a) values (1), (2)",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query: "select * from t2 order by a",
+				Expected: []sql.Row{
+					{1, 3},
+					{2, 4},
+				},
+			},
+			{
+				Query: "select * from t2 where b = 4",
+				Expected: []sql.Row{
+					{2, 4},
+				},
+			},
+			{
+				Query: "insert into t3 (a) values (1), (2)",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query: "select * from t3 order by a",
+				Expected: []sql.Row{
+					{1, 3},
+					{2, 4},
+				},
+			},
+			{
+				Query: "select * from t3 where a = 2 and b = 4",
+				Expected: []sql.Row{
+					{2, 4},
+				},
+			},
+		},
+	},
 }
 
 var BrokenGeneratedColumnTests = []ScriptTest{
