@@ -173,16 +173,10 @@ func prependRowInPlanForTriggerExecution(row sql.Row) func(c transform.Context) 
 			case *plan.InsertInto, *plan.TriggerExecutor:
 				return n, transform.SameTree, nil
 			default:
-				return &plan.PrependNode{
-					UnaryNode: plan.UnaryNode{Child: n},
-					Row:       row,
-				}, transform.NewTree, nil
+				return plan.NewPrependNode(n, row), transform.NewTree, nil
 			}
 		case *plan.ResolvedTable, *plan.IndexedTableAccess:
-			return &plan.PrependNode{
-				UnaryNode: plan.UnaryNode{Child: n},
-				Row:       row,
-			}, transform.NewTree, nil
+			return plan.NewPrependNode(n, row), transform.NewTree, nil
 		default:
 			return n, transform.SameTree, nil
 		}
