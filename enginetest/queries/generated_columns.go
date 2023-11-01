@@ -558,6 +558,30 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "illegal table definitions",
+		SetUpScript: []string{
+			"create table t2 (a int generated always as (2), b int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "create table t1 (a int generated always as (2), b int, primary key (a))",
+				ExpectedErr: sql.ErrVirtualColumnPrimaryKey,
+			},
+			{
+				Query:       "create table t1 (a int generated always as (2), b int, primary key (a, b))",
+				ExpectedErr: sql.ErrVirtualColumnPrimaryKey,
+			},
+			{
+				Query:       "alter table t2 add primary key (a)",
+				ExpectedErr: sql.ErrVirtualColumnPrimaryKey,
+			},
+			{
+				Query:       "alter table t2 add primary key (a, b)",
+				ExpectedErr: sql.ErrVirtualColumnPrimaryKey,
+			},
+		},
+	},
 }
 
 var BrokenGeneratedColumnTests = []ScriptTest{

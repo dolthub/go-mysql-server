@@ -856,6 +856,9 @@ var (
 
 	// ErrGeneratedColumnValue is returned when a value is provided for a generated column
 	ErrGeneratedColumnValue = errors.NewKind("The value specified for generated column %q in table %q is not allowed.")
+	
+	// ErrVirtualColumnPrimaryKey is returned when a virtual column is defined as a primary key
+	ErrVirtualColumnPrimaryKey = errors.NewKind("Defining a virtual generated column as primary key is not supported")
 
 	// ErrGeneratedColumnWithDefault is returned when a column specifies both a default and a generated value
 	ErrGeneratedColumnWithDefault = errors.NewKind("Incorrect usage of DEFAULT and generated column")
