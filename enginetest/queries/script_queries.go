@@ -4149,7 +4149,7 @@ var ScriptTests = []ScriptTest{
 			`insert into t1 values 
     			  ('id1', 'a1'),
     			  ('id1', 'a2');`,
-    			`insert into t2 values
+			`insert into t2 values
     			  ('id1', 'a1', 'b1'),
     			  ('id1', 'a1', 'b2'),
     			  ('id1', 'a2', 'b3'),
@@ -4165,10 +4165,10 @@ var ScriptTests = []ScriptTest{
                       t2
                     on
                       t1.id = t2.id and t1.a = t2.b;`,
-    				Expected: []sql.Row{},
-    			},
-    		},
-    	},
+				Expected: []sql.Row{},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
