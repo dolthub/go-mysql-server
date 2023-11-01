@@ -2603,7 +2603,6 @@ func TestRenameColumn(t *testing.T, harness Harness) {
 	})
 }
 
-// todo(max): convert to WriteQueryTest
 func TestAddColumn(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e := mustNewEngine(t, harness)
@@ -2635,102 +2634,28 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	})
 }
 
-// todo(max): convert to WriteQueryTest
 func TestModifyColumn(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.Mytable_del_idxData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	ctx := NewContext(harness)
 
-	db, err := e.EngineAnalyzer().Catalog.Database(NewContext(harness), "mydb")
-	require.NoError(t, err)
-
-	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mytable MODIFY COLUMN i bigint NOT NULL COMMENT 'modified'", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-	tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(t, err)
-	require.True(t, ok)
-	require.Equal(t, sql.Schema{
-		{Name: "i", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", Comment: "modified", PrimaryKey: true},
-		{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), DatabaseSource: "mydb", Source: "mytable", Comment: "column s"},
-	}, tbl.Schema())
-
-	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mytable MODIFY COLUMN i TINYINT NOT NULL COMMENT 'yes' AFTER s", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(t, err)
-	require.True(t, ok)
-	require.Equal(t, sql.Schema{
-		{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), DatabaseSource: "mydb", Source: "mytable", Comment: "column s"},
-		{Name: "i", Type: types.Int8, DatabaseSource: "mydb", Source: "mytable", Comment: "yes", PrimaryKey: true},
-	}, tbl.Schema())
-
-	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mytable MODIFY COLUMN i BIGINT NOT NULL COMMENT 'ok' FIRST", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(t, err)
-	require.True(t, ok)
-	require.Equal(t, sql.Schema{
-		{Name: "i", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", Comment: "ok", PrimaryKey: true},
-		{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), DatabaseSource: "mydb", Source: "mytable", Comment: "column s"},
-	}, tbl.Schema())
-
-	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mytable MODIFY COLUMN s VARCHAR(20) NULL COMMENT 'changed'", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(t, err)
-	require.True(t, ok)
-	require.Equal(t, sql.Schema{
-		{Name: "i", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", Comment: "ok", PrimaryKey: true},
-		{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: true, DatabaseSource: "mydb", Source: "mytable", Comment: "changed"},
-	}, tbl.Schema())
-
-	AssertErr(t, e, harness, "ALTER TABLE mytable MODIFY not_exist BIGINT NOT NULL COMMENT 'ok' FIRST", sql.ErrTableColumnNotFound)
-	AssertErr(t, e, harness, "ALTER TABLE mytable MODIFY i BIGINT NOT NULL COMMENT 'ok' AFTER not_exist", sql.ErrTableColumnNotFound)
-	AssertErr(t, e, harness, "ALTER TABLE not_exist MODIFY COLUMN i INT NOT NULL COMMENT 'hello'", sql.ErrTableNotFound)
-
-	t.Run("auto increment attribute", func(t *testing.T) {
-		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mytable MODIFY i BIGINT auto_increment", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
-		require.NoError(t, err)
-		require.True(t, ok)
-		assert.Equal(t, sql.Schema{
-			{Name: "i", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", PrimaryKey: true, AutoIncrement: true, Nullable: false, Extra: "auto_increment"},
-			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: true, DatabaseSource: "mydb", Source: "mytable", Comment: "changed"},
-		}, tbl.Schema())
-
-		RunQuery(t, e, harness, "insert into mytable (s) values ('new row')")
-		TestQueryWithContext(t, ctx, e, harness, "select i from mytable where s = 'new row'", []sql.Row{{4}}, nil, nil)
-
-		AssertErr(t, e, harness, "ALTER TABLE mytable add column i2 bigint auto_increment", sql.ErrInvalidAutoIncCols)
-
-		RunQuery(t, e, harness, "alter table mytable add column i2 bigint")
-		AssertErr(t, e, harness, "ALTER TABLE mytable modify column i2 bigint auto_increment", sql.ErrInvalidAutoIncCols)
-
-		tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-		require.NoError(t, err)
-		require.True(t, ok)
-		assert.Equal(t, sql.Schema{
-			{Name: "i", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", PrimaryKey: true, AutoIncrement: true, Extra: "auto_increment"},
-			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: true, DatabaseSource: "mydb", Source: "mytable", Comment: "changed"},
-			{Name: "i2", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", Nullable: true},
-		}, tbl.Schema())
-	})
+	for _, tt := range queries.ModifyColumnScripts {
+		TestScriptWithEngine(t, e, harness, tt)
+	}
 
 	t.Run("no database selected", func(t *testing.T) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
-
+		if se, ok := e.(*ServerQueryEngine); ok {
+			se.NewConnection(ctx)
+		}
+		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.Row{{nil}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mydb.mytable MODIFY COLUMN s VARCHAR(21) NULL COMMENT 'changed again'", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-		require.NoError(t, err)
-		require.True(t, ok)
-		assert.Equal(t, sql.Schema{
-			{Name: "i", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", PrimaryKey: true, AutoIncrement: true, Extra: "auto_increment"},
-			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 21), Nullable: true, DatabaseSource: "mydb", Source: "mytable", Comment: "changed again"},
-			{Name: "i2", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", Nullable: true},
-		}, tbl.Schema())
+		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.mytable", []sql.Row{
+			{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", "ok"},
+			{"s", "varchar(21)", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", "changed again"},
+			{"i2", "bigint", nil, "YES", "", "NULL", "", "", ""},
+		}, nil, nil)
 	})
 }
 

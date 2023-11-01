@@ -39,29 +39,23 @@ type ServerEngineTestSuite struct {
 
 // this function executes before each test case
 func (suite *ServerEngineTestSuite) SetupTest() {
-	suite.hmu.Lock()
-	defer suite.hmu.Unlock()
-	if suite.memoryHarness == nil {
-		suite.memoryHarness = enginetest.NewDefaultMemoryHarness()
-		//suite.memoryHarness.UseServer()
-	}
+	suite.setHarness(enginetest.NewDefaultMemoryHarness())
 }
 
 // this function executes after each test case
 func (suite *ServerEngineTestSuite) TearDownTest() {
-	suite.hmu.Lock()
-	defer suite.hmu.Unlock()
-	suite.memoryHarness = nil
+	suite.setHarness(nil)
 }
 
 // setHarness is called from any Test that uses non-default MemoryHarness.
 // It sets the suite harness to given harness and calls UseServer() method of it.
 func (suite *ServerEngineTestSuite) setHarness(mh *enginetest.MemoryHarness) {
-	fmt.Println("-- From TearDownTest")
 	suite.hmu.Lock()
 	defer suite.hmu.Unlock()
 	suite.memoryHarness = mh
-	//suite.memoryHarness.UseServer()
+	if mh != nil {
+		suite.memoryHarness.UseServer()
+	}
 }
 
 func TestServerEngineTestSuite(t *testing.T) {
