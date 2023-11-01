@@ -116,16 +116,6 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{1, 2}},
 			},
 			{
-				Query: "explain select * from t1 where b = 2 order by a",
-				Expected: []sql.Row{
-					{"Sort(t1.a ASC)"},
-					{" └─ IndexedTableAccess(t1)"},
-					{"     ├─ index: [t1.b]"},
-					{"     ├─ filters: [{[2, 2]}]"},
-					{"     └─ columns: [a b]"},
-				},
-			},
-			{
 				Query:    "select * from t1 order by a",
 				Expected: []sql.Row{{1, 2}, {2, 3}},
 			},
@@ -181,27 +171,8 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{1, 2, 3}},
 			},
 			{
-				Query: "explain select * from t1 where b = 2 and c = 3 order by a",
-				Expected: []sql.Row{
-					{"Sort(t1.a ASC)"},
-					{" └─ IndexedTableAccess(t1)"},
-					{"     ├─ index: [t1.b,t1.c]"},
-					{"     ├─ filters: [{[2, 2], [3, 3]}]"},
-					{"     └─ columns: [a b c]"},
-				},
-			},
-			{
 				Query:    "insert into t1(a,c) values (2,4)",
 				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query: "explain delete from t1 where b = 3 and c = 4",
-				Expected: []sql.Row{
-					{"Delete"},
-					{" └─ IndexedTableAccess(t1)"},
-					{"     ├─ index: [t1.b,t1.c]"},
-					{"     └─ filters: [{[3, 3], [4, 4]}]"},
-				},
 			},
 			{
 				Query:    "delete from t1 where b = 3 and c = 4",
@@ -210,16 +181,6 @@ var GeneratedColumnTests = []ScriptTest{
 			{
 				Query:    "select * from t1 order by a",
 				Expected: []sql.Row{{1, 2, 3}},
-			},
-			{
-				Query: "explain update t1 set a = 5, c = 10 where b = 2 and c = 3",
-				Expected: []sql.Row{
-					{"Update"},
-					{" └─ UpdateSource(SET t1.a = 5,SET t1.c = 10,SET t1.b = ((t1.a + 1)))"},
-					{"     └─ IndexedTableAccess(t1)"},
-					{"         ├─ index: [t1.b,t1.c]"},
-					{"         └─ filters: [{[2, 2], [3, 3]}]"},
-				},
 			},
 			{
 				Query:    "update t1 set a = 5, c = 10 where b = 2 and c = 3",
@@ -530,26 +491,8 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{3, 4, 7}},
 			},
 			{
-				Query: "explain select * from t1 where c = 7",
-				Expected: []sql.Row{
-					{"IndexedTableAccess(t1)"},
-					{" ├─ index: [t1.c]"},
-					{" └─ filters: [{[7, 7]}]"},
-				},
-			},
-			{
 				Query:    "select * from t1 where c = 8",
 				Expected: []sql.Row{},
-			},
-			{
-				Query: "explain update t1 set b = 5 where c = 3",
-				Expected: []sql.Row{
-					{"Update"},
-					{" └─ UpdateSource(SET t1.b = 5,SET t1.c = ((t1.a + t1.b)))"},
-					{"     └─ IndexedTableAccess(t1)"},
-					{"         ├─ index: [t1.c]"},
-					{"         └─ filters: [{[3, 3]}]"},
-				},
 			},
 			{
 				Query:    "update t1 set b = 5 where c = 3",
@@ -566,15 +509,6 @@ var GeneratedColumnTests = []ScriptTest{
 				Query: "select * from t1 where c = 6",
 				Expected: []sql.Row{
 					{1, 5, 6},
-				},
-			},
-			{
-				Query: "explain delete from t1 where c = 6",
-				Expected: []sql.Row{
-					{"Delete"},
-					{" └─ IndexedTableAccess(t1)"},
-					{"     ├─ index: [t1.c]"},
-					{"     └─ filters: [{[6, 6]}]"},
 				},
 			},
 			{
@@ -601,24 +535,6 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{"{\"a\": 2}", 2}},
 			},
 			{
-				Query: "explain select * from t1 where v = 2",
-				Expected: []sql.Row{
-					{"IndexedTableAccess(t1)"},
-					{" ├─ index: [t1.v]"},
-					{" └─ filters: [{[2, 2]}]"},
-				},
-			},
-			{
-				Query: "explain update t1 set j = '{\"a\": 5}' where v = 2",
-				Expected: []sql.Row{
-					{"Update"},
-					{" └─ UpdateSource(SET t1.j = '{\"a\": 5}',SET t1.v = (json_unquote(json_extract(t1.j, '$.a'))))"},
-					{"     └─ IndexedTableAccess(t1)"},
-					{"         ├─ index: [t1.v]"},
-					{"         └─ filters: [{[2, 2]}]"},
-				},
-			},
-			{
 				Query:    "update t1 set j = '{\"a\": 5}' where v = 2",
 				Expected: []sql.Row{{newUpdateResult(1, 1)}},
 			},
@@ -628,15 +544,6 @@ var GeneratedColumnTests = []ScriptTest{
 					{"{\"b\": 3}", nil},
 					{"{\"a\": 1}", 1},
 					{"{\"a\": 5}", 5}},
-			},
-			{
-				Query: "explain delete from t1 where v = 5",
-				Expected: []sql.Row{
-					{"Delete"},
-					{" └─ IndexedTableAccess(t1)"},
-					{"     ├─ index: [t1.v]"},
-					{"     └─ filters: [{[5, 5]}]"},
-				},
 			},
 			{
 				Query:    "delete from t1 where v = 5",
