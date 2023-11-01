@@ -1370,8 +1370,19 @@ func TestGeneratedColumns(t *testing.T, harness Harness) {
 		TestScriptPrepared(t, harness, script)
 	}
 	for _, script := range queries.BrokenGeneratedColumnTests {
-		t.Skip(script.Name)
-		TestScriptPrepared(t, harness, script)
+		t.Run(script.Name, func(t *testing.T) {
+			t.Skip(script.Name)
+			TestScriptPrepared(t, harness, script)
+		})
+	}
+}
+
+func TestGeneratedColumnPlans(t *testing.T, harness Harness) {
+	harness.Setup(setup.GeneratedColumnSetup...)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	for _, tt := range queries.GeneratedColumnPlanTests {
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
 	}
 }
 
