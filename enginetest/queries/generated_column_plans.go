@@ -18,7 +18,7 @@ package queries
 
 var GeneratedColumnPlanTests = []QueryPlanTest{
 	{
-		Query: `explain select * from generated_stored_1 where b = 2 order by a`,
+		Query: `select * from generated_stored_1 where b = 2 order by a`,
 		ExpectedPlan: "DescribeQuery(format=tree)\n" +
 			" └─ Sort(generated_stored_1.a:0!null ASC nullsFirst)\n" +
 			"     └─ IndexedTableAccess(generated_stored_1)\n" +
@@ -30,7 +30,7 @@ var GeneratedColumnPlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query: `explain select * from generated_stored_2 where b = 2 and c = 3 order by a`,
+		Query: `select * from generated_stored_2 where b = 2 and c = 3 order by a`,
 		ExpectedPlan: "DescribeQuery(format=tree)\n" +
 			" └─ Sort(generated_stored_2.a:0!null ASC nullsFirst)\n" +
 			"     └─ IndexedTableAccess(generated_stored_2)\n" +
@@ -42,7 +42,7 @@ var GeneratedColumnPlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query: `explain delete from generated_stored_2 where b = 3 and c = 4`,
+		Query: `delete from generated_stored_2 where b = 3 and c = 4`,
 		ExpectedPlan: "DescribeQuery(format=tree)\n" +
 			" └─ RowUpdateAccumulator\n" +
 			"     └─ Delete\n" +
@@ -55,7 +55,7 @@ var GeneratedColumnPlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query: `explain update generated_stored_2 set a = 5, c = 10 where b = 2 and c = 3`,
+		Query: `update generated_stored_2 set a = 5, c = 10 where b = 2 and c = 3`,
 		ExpectedPlan: "DescribeQuery(format=tree)\n" +
 			" └─ RowUpdateAccumulator\n" +
 			"     └─ Update\n" +
@@ -69,7 +69,7 @@ var GeneratedColumnPlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query: `explain select * from generated_virtual_1 where c = 7`,
+		Query: `select * from generated_virtual_1 where c = 7`,
 		ExpectedPlan: "DescribeQuery(format=tree)\n" +
 			" └─ IndexedTableAccess(generated_virtual_1)\n" +
 			"     ├─ index: [generated_virtual_1.c]\n" +
@@ -83,7 +83,7 @@ var GeneratedColumnPlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query: `explain update generated_virtual_1 set b = 5 where c = 3`,
+		Query: `update generated_virtual_1 set b = 5 where c = 3`,
 		ExpectedPlan: "DescribeQuery(format=tree)\n" +
 			" └─ RowUpdateAccumulator\n" +
 			"     └─ Update\n" +
@@ -100,7 +100,7 @@ var GeneratedColumnPlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query: `explain delete from generated_virtual_1 where c = 6`,
+		Query: `delete from generated_virtual_1 where c = 6`,
 		ExpectedPlan: "DescribeQuery(format=tree)\n" +
 			" └─ RowUpdateAccumulator\n" +
 			"     └─ Delete\n" +
@@ -116,7 +116,7 @@ var GeneratedColumnPlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query: `explain select * from generated_virtual_keyless where v = 2`,
+		Query: `select * from generated_virtual_keyless where v = 2`,
 		ExpectedPlan: "DescribeQuery(format=tree)\n" +
 			" └─ IndexedTableAccess(generated_virtual_keyless)\n" +
 			"     ├─ index: [generated_virtual_keyless.v]\n" +
@@ -130,7 +130,7 @@ var GeneratedColumnPlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query: `explain update generated_virtual_keyless set j = '{"a": 5}' where v = 2`,
+		Query: `update generated_virtual_keyless set j = '{"a": 5}' where v = 2`,
 		ExpectedPlan: "DescribeQuery(format=tree)\n" +
 			" └─ RowUpdateAccumulator\n" +
 			"     └─ Update\n" +
@@ -147,7 +147,7 @@ var GeneratedColumnPlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query: `explain delete from generated_virtual_keyless where v = 5`,
+		Query: `delete from generated_virtual_keyless where v = 5`,
 		ExpectedPlan: "DescribeQuery(format=tree)\n" +
 			" └─ RowUpdateAccumulator\n" +
 			"     └─ Delete\n" +

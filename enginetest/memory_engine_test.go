@@ -484,6 +484,10 @@ func TestGeneratedColumns(t *testing.T) {
 	enginetest.TestGeneratedColumns(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestGeneratedColumnPlans(t *testing.T) {
+	enginetest.TestGeneratedColumnPlans(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestStatistics(t *testing.T) {
 	enginetest.TestStatistics(t, enginetest.NewDefaultMemoryHarness())
 }

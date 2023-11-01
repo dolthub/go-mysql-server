@@ -1377,6 +1377,15 @@ func TestGeneratedColumns(t *testing.T, harness Harness) {
 	}
 }
 
+func TestGeneratedColumnPlans(t *testing.T, harness Harness) {
+	harness.Setup(setup.GeneratedColumnSetup...)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	for _, tt := range queries.GeneratedColumnPlanTests {
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
+	}
+}
+
 func TestComplexIndexQueriesPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.ComplexIndexSetup...)
 	e := mustNewEngine(t, harness)
