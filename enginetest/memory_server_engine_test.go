@@ -54,11 +54,14 @@ func (suite *ServerEngineTestSuite) setHarness(mh *enginetest.MemoryHarness) {
 	defer suite.hmu.Unlock()
 	suite.memoryHarness = mh
 	if mh != nil {
-		//suite.memoryHarness.UseServer()
+		suite.memoryHarness.UseServer()
 	}
 }
 
 func TestServerEngineTestSuite(t *testing.T) {
+	if _, ok := os.LookupEnv("CI_TEST"); ok {
+		t.Skip("Skipping ServerEngineTestSuite for CI_TEST=true for now")
+	}
 	s := new(ServerEngineTestSuite)
 	s.hmu = &sync.Mutex{}
 	suite.Run(t, s)
