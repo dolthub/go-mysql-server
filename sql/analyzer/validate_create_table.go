@@ -43,7 +43,7 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
-	
+
 	err = validateNoVirtualColumnsInPrimaryKey(ct.TableSpec())
 	if err != nil {
 		return nil, transform.SameTree, err
@@ -914,7 +914,7 @@ func validatePrimaryKey(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 			if err != nil {
 				return nil, err
 			}
-			
+
 			if schCol.Virtual {
 				return nil, sql.ErrVirtualColumnPrimaryKey.New()
 			}

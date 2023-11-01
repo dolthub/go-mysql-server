@@ -590,7 +590,7 @@ var GeneratedColumnTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "insert into t2 (a) values (1), (2)",
+				Query:    "insert into t2 (a) values (1), (2)",
 				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
@@ -607,7 +607,7 @@ var GeneratedColumnTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "insert into t3 (a) values (1), (2)",
+				Query:    "insert into t3 (a) values (1), (2)",
 				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
