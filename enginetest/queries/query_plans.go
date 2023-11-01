@@ -10660,28 +10660,28 @@ var PlanScriptTests = []QueryPlanScriptTest{
               a  varchar(255),
               unique key key1 (id, a)
             );`,
-            `create table t2 (
+			`create table t2 (
               id varchar(255),
               a  varchar(255),
               b  varchar(255),
               c  varchar(255),
               unique key key2 (id, b, c)
             );`,
-            `create table t3 (
+			`create table t3 (
               id varchar(255),
               a  varchar(255),
               b  varchar(255),
               unique key key3 (id, b)
             );`,
-            `insert into t1 values 
+			`insert into t1 values 
               ('id1', 'a1'),
               ('id1', 'a2');`,
-            `insert into t2 values
+			`insert into t2 values
               ('id1', 'a1', 'b1', 'c1'),
               ('id1', 'a1', 'b1', 'c2'),
               ('id1', 'a2', 'b1', 'c3'),
               ('id1', 'a2', 'b1', 'c4');`,
-            `insert into t3 values
+			`insert into t3 values
               ('id1', 'a1', 'b1'),
               ('id1', 'a1', 'b2'),
               ('id1', 'a2', 'b3'),
