@@ -419,7 +419,7 @@ func (suite *ServerEngineTestSuite) TestSpatialUpdateWithServer() {
 
 func (suite *ServerEngineTestSuite) TestDeleteFromErrorsWithServer() {
 	suite.setHarness(enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
-	enginetest.TestDeleteFromErrors(suite.T(), suite.memoryHarness)
+	enginetest.TestDeleteErrors(suite.T(), suite.memoryHarness)
 }
 
 func (suite *ServerEngineTestSuite) TestSpatialDeleteFromWithServer() {

@@ -980,7 +980,7 @@ func TestReplaceQueriesPrepared(t *testing.T, harness Harness) {
 	}
 }
 
-func TestDeleteFromErrors(t *testing.T, harness Harness) {
+func TestDeleteErrors(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.TabletestData, setup.TestdbData, []setup.SetupScript{{"create table test.other (pk int primary key);"}})
 	for _, tt := range queries.DeleteErrorTests {
 		TestScript(t, harness, tt)
@@ -1402,7 +1402,7 @@ func TestJsonScriptsPrepared(t *testing.T, harness Harness) {
 }
 
 func TestCreateCheckConstraintsScriptsPrepared(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData)
+	harness.Setup(setup.MydbData, setup.Check_constraintData)
 	for _, script := range queries.CreateCheckConstraintsScripts {
 		TestScriptPrepared(t, harness, script)
 	}

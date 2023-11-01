@@ -534,7 +534,7 @@ func TestSpatialUpdate(t *testing.T) {
 }
 
 func TestDeleteFromErrors(t *testing.T) {
-	enginetest.TestDeleteFromErrors(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestDeleteErrors(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
 func TestSpatialDeleteFrom(t *testing.T) {
