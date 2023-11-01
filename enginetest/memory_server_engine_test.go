@@ -20,14 +20,15 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/dolthub/sqllogictest/go/logictest"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	memharness "github.com/dolthub/go-mysql-server/enginetest/sqllogictest/harness"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/sqllogictest/go/logictest"
-	"github.com/stretchr/testify/suite"
 )
 
 type ServerEngineTestSuite struct {
