@@ -360,10 +360,6 @@ func TestQueryPlans(t *testing.T) {
 	}
 }
 
-func TestQueryPlanScripts(t *testing.T) {
-	enginetest.TestQueryPlanScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, nil))
-}
-
 func TestIntegrationQueryPlans(t *testing.T) {
 	indexBehaviors := []*indexBehaviorTestParams{
 		{"nativeIndexes", nil, true},

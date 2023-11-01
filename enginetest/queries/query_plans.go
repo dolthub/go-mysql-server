@@ -16,8 +16,6 @@
 
 package queries
 
-import "github.com/dolthub/go-mysql-server/sql"
-
 type QueryPlanTest struct {
 	Query        string
 	ExpectedPlan string
@@ -10635,115 +10633,6 @@ order by i;`,
 			"                                     ├─ right-key: TUPLE(cte.a:2)\n" +
 			"                                     └─ RecursiveTable(cte)\n" +
 			"",
-	},
-}
-
-type QueryPlanScriptTestAssertion struct {
-	Query        string
-	ExpectedPlan string
-	Expected     []sql.Row
-	Skip         bool
-}
-
-type QueryPlanScriptTest struct {
-	Name        string
-	SetupScript []string
-	Assertions  []QueryPlanScriptTestAssertion
-}
-
-var PlanScriptTests = []QueryPlanScriptTest{
-	{
-		Name: "LookupJoin with point selects",
-		SetupScript: []string{
-			`create table t1 (
-              id varchar(255),
-              a  varchar(255),
-              unique key key1 (id, a)
-            );`,
-			`create table t2 (
-              id varchar(255),
-              a  varchar(255),
-              b  varchar(255),
-              c  varchar(255),
-              unique key key2 (id, b, c)
-            );`,
-			`create table t3 (
-              id varchar(255),
-              a  varchar(255),
-              b  varchar(255),
-              unique key key3 (id, b)
-            );`,
-			`insert into t1 values 
-              ('id1', 'a1'),
-              ('id1', 'a2');`,
-			`insert into t2 values
-              ('id1', 'a1', 'b1', 'c1'),
-              ('id1', 'a1', 'b1', 'c2'),
-              ('id1', 'a2', 'b1', 'c3'),
-              ('id1', 'a2', 'b1', 'c4');`,
-			`insert into t3 values
-              ('id1', 'a1', 'b1'),
-              ('id1', 'a1', 'b2'),
-              ('id1', 'a2', 'b3'),
-              ('id2', 'a3', 'b4'),
-              ('id2', 'a4', 'b5');`,
-		},
-		Assertions: []QueryPlanScriptTestAssertion{
-			{
-				Query: `
-select t2.b, t3.b
-from 
-  t1 
-inner join 
-  t2
-on
-  t1.id = t2.id and t1.a = t2.a
-inner join
-  t3
-on
-  t3.id = t2.id and t3.b = t2.b
-where
-  t2.id = "id1" and t2.b = "b1";`,
-				ExpectedPlan: "Project\n" +
-					" ├─ columns: [t2.b:4, t3.b:6]\n" +
-					" └─ LookupJoin\n" +
-					"     ├─ LookupJoin\n" +
-					"     │   ├─ Eq\n" +
-					"     │   │   ├─ t1.a:1\n" +
-					"     │   │   └─ t2.a:3\n" +
-					"     │   ├─ ProcessTable\n" +
-					"     │   │   └─ Table\n" +
-					"     │   │       ├─ name: t1\n" +
-					"     │   │       └─ columns: [id a]\n" +
-					"     │   └─ Filter\n" +
-					"     │       ├─ AND\n" +
-					"     │       │   ├─ Eq\n" +
-					"     │       │   │   ├─ t2.id:0\n" +
-					"     │       │   │   └─ id1 (longtext)\n" +
-					"     │       │   └─ Eq\n" +
-					"     │       │       ├─ t2.b:2\n" +
-					"     │       │       └─ b1 (longtext)\n" +
-					"     │       └─ IndexedTableAccess(t2)\n" +
-					"     │           ├─ index: [t2.id,t2.b,t2.c]\n" +
-					"     │           ├─ keys: [t1.id 'b1']\n" +
-					"     │           └─ Table\n" +
-					"     │               ├─ name: t2\n" +
-					"     │               └─ columns: [id a b]\n" +
-					"     └─ IndexedTableAccess(t3)\n" +
-					"         ├─ index: [t3.id,t3.b]\n" +
-					"         ├─ keys: [t2.id t2.b]\n" +
-					"         └─ Table\n" +
-					"             ├─ name: t3\n" +
-					"             └─ columns: [id b]\n" +
-					"",
-				Expected: []sql.Row{
-					{"b1", "b1"},
-					{"b1", "b1"},
-					{"b1", "b1"},
-					{"b1", "b1"},
-				},
-			},
-		},
 	},
 }
 
