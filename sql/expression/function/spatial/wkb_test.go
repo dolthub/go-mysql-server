@@ -598,7 +598,7 @@ func TestGeomFromWKB(t *testing.T) {
 		_, err := NewPointFromWKB()
 		require.Error(err)
 		_, err = NewLineFromWKB()
-        require.Error(err)
+		require.Error(err)
 		_, err = NewPolyFromWKB()
 		require.Error(err)
 		_, err = NewMultiPoint()
