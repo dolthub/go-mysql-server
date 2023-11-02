@@ -1020,9 +1020,6 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 		defaults[i] = cd.Type.Default
 		generated[i] = cd.Type.GeneratedExpr
 
-		cd.Type.Default = nil
-		cd.Type.GeneratedExpr = nil
-
 		column := b.columnDefinitionToColumn(inScope, cd, tableSpec.Indexes)
 		column.DatabaseSource = db.Name()
 

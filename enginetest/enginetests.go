@@ -24,7 +24,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	_ "github.com/go-sql-driver/mysql"
@@ -1403,7 +1402,7 @@ func TestJsonScriptsPrepared(t *testing.T, harness Harness) {
 }
 
 func TestCreateCheckConstraintsScriptsPrepared(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData)
+	harness.Setup(setup.MydbData, setup.Check_constraintData)
 	for _, script := range queries.CreateCheckConstraintsScripts {
 		TestScriptPrepared(t, harness, script)
 	}
@@ -2456,620 +2455,151 @@ func TestDropTable(t *testing.T, harness Harness) {
 }
 
 func TestRenameTable(t *testing.T, harness Harness) {
-	require := require.New(t)
 	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData, setup.NiltableData, setup.EmptytableData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	ctx := NewContext(harness)
 
-	db, err := e.EngineAnalyzer().Catalog.Database(NewContext(harness), "mydb")
-	require.NoError(err)
-
-	_, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(err)
-	require.True(ok)
-
-	TestQueryWithContext(t, ctx, e, harness, "RENAME TABLE mytable TO newTableName", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-	_, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(err)
-	require.False(ok)
-
-	_, ok, err = db.GetTableInsensitive(NewContext(harness), "newTableName")
-	require.NoError(err)
-	require.True(ok)
-
-	TestQueryWithContext(t, ctx, e, harness, "RENAME TABLE othertable to othertable2, newTableName to mytable", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-	_, ok, err = db.GetTableInsensitive(NewContext(harness), "othertable")
-	require.NoError(err)
-	require.False(ok)
-
-	_, ok, err = db.GetTableInsensitive(NewContext(harness), "othertable2")
-	require.NoError(err)
-	require.True(ok)
-
-	_, ok, err = db.GetTableInsensitive(NewContext(harness), "newTableName")
-	require.NoError(err)
-	require.False(ok)
-
-	_, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(err)
-	require.True(ok)
-
-	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mytable RENAME newTableName", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-	_, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(err)
-	require.False(ok)
-
-	_, ok, err = db.GetTableInsensitive(NewContext(harness), "newTableName")
-	require.NoError(err)
-	require.True(ok)
-
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE not_exist RENAME foo")
-	require.Error(err)
-	require.True(sql.ErrTableNotFound.Is(err))
-
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE emptytable RENAME niltable")
-	require.Error(err)
-	require.True(sql.ErrTableAlreadyExists.Is(err))
+	for _, tt := range queries.RenameTableScripts {
+		TestScriptWithEngine(t, e, harness, tt)
+	}
 
 	t.Run("no database selected", func(t *testing.T) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
+		if se, ok := e.(*ServerQueryEngine); ok {
+			se.NewConnection(ctx)
+		}
+		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.Row{{nil}}, nil, nil)
 
 		t.Skip("broken")
 		TestQueryWithContext(t, ctx, e, harness, "RENAME TABLE mydb.emptytable TO mydb.emptytable2", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		_, ok, err = db.GetTableInsensitive(NewContext(harness), "emptytable")
-		require.NoError(err)
-		require.False(ok)
-
-		_, ok, err = db.GetTableInsensitive(NewContext(harness), "emptytable2")
-		require.NoError(err)
-		require.True(ok)
-
-		_, _, err = e.Query(NewContext(harness), "RENAME TABLE mydb.emptytable2 TO emptytable3")
-		require.Error(err)
-		require.True(sql.ErrNoDatabaseSelected.Is(err))
+		AssertErrWithCtx(t, e, harness, ctx, "SELECT COUNT(*) FROM mydb.emptytable", sql.ErrTableNotFound)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT COUNT(*) FROM mydb.emptytable2", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
+		AssertErrWithCtx(t, e, harness, ctx, "RENAME TABLE mydb.emptytable2 TO emptytable3", sql.ErrNoDatabaseSelected)
 	})
 }
 
 func TestRenameColumn(t *testing.T, harness Harness) {
-	require := require.New(t)
-
 	harness.Setup(setup.MydbData, setup.MytableData, setup.TabletestData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	ctx := NewContext(harness)
-	db, err := e.EngineAnalyzer().Catalog.Database(NewContext(harness), "mydb")
-	require.NoError(err)
 
-	// Error cases
-	AssertErr(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i2 TO iX", sql.ErrTableColumnNotFound)
-	AssertErr(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i TO iX, RENAME COLUMN iX TO i2", sql.ErrTableColumnNotFound)
-	AssertErr(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i TO iX, RENAME COLUMN i TO i2", sql.ErrTableColumnNotFound)
-	AssertErr(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i TO S", sql.ErrColumnExists)
-	AssertErr(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i TO n, RENAME COLUMN s TO N", sql.ErrColumnExists)
-
-	tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(err)
-	require.True(ok)
-	require.Equal(sql.Schema{
-		{Name: "i", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", PrimaryKey: true},
-		{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), DatabaseSource: "mydb", Source: "mytable", Comment: "column s"},
-	}, tbl.Schema())
-
-	RunQuery(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i TO i2, RENAME COLUMN s TO s2")
-	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(err)
-	require.True(ok)
-	require.Equal(sql.Schema{
-		{Name: "i2", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", PrimaryKey: true},
-		{Name: "s2", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), DatabaseSource: "mydb", Source: "mytable", Comment: "column s"},
-	}, tbl.Schema())
-
-	TestQueryWithContext(t, ctx, e, harness, "select * from mytable order by i2 limit 1", []sql.Row{
-		{1, "first row"},
-	}, nil, nil)
-
-	t.Run("rename column preserves table checks", func(t *testing.T) {
-		RunQuery(t, e, harness, "ALTER TABLE mytable ADD CONSTRAINT test_check CHECK (i2 < 12345)")
-
-		AssertErr(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i2 TO i3", sql.ErrCheckConstraintInvalidatedByColumnAlter)
-
-		RunQuery(t, e, harness, "ALTER TABLE mytable RENAME COLUMN s2 TO s3")
-		tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-		require.NoError(err)
-		require.True(ok)
-
-		checkTable, ok := tbl.(sql.CheckTable)
-		require.True(ok)
-		checks, err := checkTable.GetChecks(NewContext(harness))
-		require.NoError(err)
-		require.Equal(1, len(checks))
-		require.Equal("test_check", checks[0].Name)
-		require.Equal("(i2 < 12345)", checks[0].CheckExpression)
-	})
+	for _, tt := range queries.RenameColumnScripts {
+		TestScriptWithEngine(t, e, harness, tt)
+	}
 
 	t.Run("no database selected", func(t *testing.T) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
-
-		beforeDropTbl, _, _ := db.GetTableInsensitive(NewContext(harness), "tabletest")
-
+		if se, ok := e.(*ServerQueryEngine); ok {
+			se.NewConnection(ctx)
+		}
+		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.Row{{nil}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mydb.tabletest RENAME COLUMN s TO i1", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "tabletest")
-		require.NoError(err)
-		require.True(ok)
-		assert.NotEqual(t, beforeDropTbl, tbl.Schema())
-		assert.Equal(t, sql.Schema{
-			{Name: "i", Type: types.Int32, DatabaseSource: "mydb", Source: "tabletest", PrimaryKey: true},
-			{Name: "i1", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), DatabaseSource: "mydb", Source: "tabletest"},
-		}, tbl.Schema())
+		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.tabletest", []sql.Row{
+			{"i", "int", nil, "NO", "PRI", "NULL", "", "", ""},
+			{"i1", "varchar(20)", "utf8mb4_0900_bin", "NO", "", "NULL", "", "", ""},
+		}, nil, nil)
 	})
 }
 
-// todo(max): convert to WriteQueryTest
 func TestAddColumn(t *testing.T, harness Harness) {
-	require := require.New(t)
-
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	ctx := NewContext(harness)
-	db, err := e.EngineAnalyzer().Catalog.Database(NewContext(harness), "mydb")
-	require.NoError(err)
 
-	t.Run("column at end with default", func(t *testing.T) {
-		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mytable ADD COLUMN i2 INT COMMENT 'hello' default 42", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
-		require.NoError(err)
-		require.True(ok)
-		assertSchemasEqualWithDefaults(t, sql.Schema{
-			{Name: "i", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", PrimaryKey: true},
-			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), DatabaseSource: "mydb", Source: "mytable", Comment: "column s"},
-			{Name: "i2", Type: types.Int32, DatabaseSource: "mydb", Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
-		}, tbl.Schema())
-
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM mytable ORDER BY i", []sql.Row{
-			sql.NewRow(int64(1), "first row", int32(42)),
-			sql.NewRow(int64(2), "second row", int32(42)),
-			sql.NewRow(int64(3), "third row", int32(42)),
-		}, nil, nil)
-	})
-
-	t.Run("in middle, no default", func(t *testing.T) {
-		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mytable ADD COLUMN s2 TEXT COMMENT 'hello' AFTER i", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-		tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
-		require.NoError(err)
-		require.True(ok)
-		assertSchemasEqualWithDefaults(t, sql.Schema{
-			{Name: "i", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", PrimaryKey: true},
-			{Name: "s2", Type: types.Text, DatabaseSource: "mydb", Source: "mytable", Comment: "hello", Nullable: true},
-			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), DatabaseSource: "mydb", Source: "mytable", Comment: "column s"},
-			{Name: "i2", Type: types.Int32, DatabaseSource: "mydb", Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
-		}, tbl.Schema())
-
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM mytable ORDER BY i", []sql.Row{
-			sql.NewRow(int64(1), nil, "first row", int32(42)),
-			sql.NewRow(int64(2), nil, "second row", int32(42)),
-			sql.NewRow(int64(3), nil, "third row", int32(42)),
-		}, nil, nil)
-
-		TestQueryWithContext(t, ctx, e, harness, "insert into mytable values (4, 's2', 'fourth row', 11)", []sql.Row{
-			{types.NewOkResult(1)},
-		}, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "update mytable set s2 = 'updated s2' where i2 = 42", []sql.Row{
-			{types.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{
-				Matched: 3, Updated: 3,
-			}}},
-		}, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM mytable ORDER BY i", []sql.Row{
-			sql.NewRow(int64(1), "updated s2", "first row", int32(42)),
-			sql.NewRow(int64(2), "updated s2", "second row", int32(42)),
-			sql.NewRow(int64(3), "updated s2", "third row", int32(42)),
-			sql.NewRow(int64(4), "s2", "fourth row", int32(11)),
-		}, nil, nil)
-	})
-
-	t.Run("first with default", func(t *testing.T) {
-		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mytable ADD COLUMN s3 VARCHAR(25) COMMENT 'hello' default 'yay' FIRST", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
-		require.NoError(err)
-		require.True(ok)
-		assertSchemasEqualWithDefaults(t, sql.Schema{
-			{Name: "s3", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), DatabaseSource: "mydb", Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
-			{Name: "i", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", PrimaryKey: true},
-			{Name: "s2", Type: types.Text, DatabaseSource: "mydb", Source: "mytable", Comment: "hello", Nullable: true},
-			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), DatabaseSource: "mydb", Source: "mytable", Comment: "column s"},
-			{Name: "i2", Type: types.Int32, DatabaseSource: "mydb", Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
-		}, tbl.Schema())
-
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM mytable ORDER BY i", []sql.Row{
-			sql.NewRow("yay", int64(1), "updated s2", "first row", int32(42)),
-			sql.NewRow("yay", int64(2), "updated s2", "second row", int32(42)),
-			sql.NewRow("yay", int64(3), "updated s2", "third row", int32(42)),
-			sql.NewRow("yay", int64(4), "s2", "fourth row", int32(11)),
-		}, nil, nil)
-	})
-
-	t.Run("middle, no default, non null", func(t *testing.T) {
-		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mytable ADD COLUMN s4 VARCHAR(1) not null after s3", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
-		require.NoError(err)
-		require.True(ok)
-		assertSchemasEqualWithDefaults(t, sql.Schema{
-			{Name: "s3", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), DatabaseSource: "mydb", Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
-			{Name: "s4", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 1), DatabaseSource: "mydb", Source: "mytable"},
-			{Name: "i", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", PrimaryKey: true},
-			{Name: "s2", Type: types.Text, DatabaseSource: "mydb", Source: "mytable", Comment: "hello", Nullable: true},
-			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), DatabaseSource: "mydb", Source: "mytable", Comment: "column s"},
-			{Name: "i2", Type: types.Int32, DatabaseSource: "mydb", Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
-		}, tbl.Schema())
-
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM mytable ORDER BY i", []sql.Row{
-			sql.NewRow("yay", "", int64(1), "updated s2", "first row", int32(42)),
-			sql.NewRow("yay", "", int64(2), "updated s2", "second row", int32(42)),
-			sql.NewRow("yay", "", int64(3), "updated s2", "third row", int32(42)),
-			sql.NewRow("yay", "", int64(4), "s2", "fourth row", int32(11)),
-		}, nil, nil)
-	})
-
-	t.Run("multiple in one statement", func(t *testing.T) {
-		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mytable ADD COLUMN s5 VARCHAR(26), ADD COLUMN s6 VARCHAR(27)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
-		require.NoError(err)
-		require.True(ok)
-		assertSchemasEqualWithDefaults(t, sql.Schema{
-			{Name: "s3", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), DatabaseSource: "mydb", Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
-			{Name: "s4", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 1), DatabaseSource: "mydb", Source: "mytable"},
-			{Name: "i", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", PrimaryKey: true},
-			{Name: "s2", Type: types.Text, DatabaseSource: "mydb", Source: "mytable", Comment: "hello", Nullable: true},
-			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), DatabaseSource: "mydb", Source: "mytable", Comment: "column s"},
-			{Name: "i2", Type: types.Int32, DatabaseSource: "mydb", Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
-			{Name: "s5", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 26), DatabaseSource: "mydb", Source: "mytable", Nullable: true},
-			{Name: "s6", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 27), DatabaseSource: "mydb", Source: "mytable", Nullable: true},
-		}, tbl.Schema())
-
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM mytable ORDER BY i", []sql.Row{
-			sql.NewRow("yay", "", int64(1), "updated s2", "first row", int32(42), nil, nil),
-			sql.NewRow("yay", "", int64(2), "updated s2", "second row", int32(42), nil, nil),
-			sql.NewRow("yay", "", int64(3), "updated s2", "third row", int32(42), nil, nil),
-			sql.NewRow("yay", "", int64(4), "s2", "fourth row", int32(11), nil, nil),
-		}, nil, nil)
-	})
-
-	t.Run("error cases", func(t *testing.T) {
-		AssertErr(t, e, harness, "ALTER TABLE not_exist ADD COLUMN i2 INT COMMENT 'hello'", sql.ErrTableNotFound)
-		AssertErr(t, e, harness, "ALTER TABLE mytable ADD COLUMN b BIGINT COMMENT 'ok' AFTER not_exist", sql.ErrTableColumnNotFound)
-		AssertErr(t, e, harness, "ALTER TABLE mytable ADD COLUMN i BIGINT COMMENT 'ok'", sql.ErrColumnExists)
-		AssertErr(t, e, harness, "ALTER TABLE mytable ADD COLUMN b INT NOT NULL DEFAULT 'yes'", sql.ErrIncompatibleDefaultType)
-		AssertErr(t, e, harness, "ALTER TABLE mytable ADD COLUMN c int, add c int", sql.ErrColumnExists)
-	})
+	for _, tt := range queries.AddColumnScripts {
+		TestScriptWithEngine(t, e, harness, tt)
+	}
 
 	t.Run("no database selected", func(t *testing.T) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
-
+		if se, ok := e.(*ServerQueryEngine); ok {
+			se.NewConnection(ctx)
+		}
+		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.Row{{nil}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mydb.mytable ADD COLUMN s10 VARCHAR(26)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
-		require.NoError(err)
-		require.True(ok)
-		assertSchemasEqualWithDefaults(t, sql.Schema{
-			{Name: "s3", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), DatabaseSource: "mydb", Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
-			{Name: "s4", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 1), DatabaseSource: "mydb", Source: "mytable"},
-			{Name: "i", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", PrimaryKey: true},
-			{Name: "s2", Type: types.Text, DatabaseSource: "mydb", Source: "mytable", Comment: "hello", Nullable: true},
-			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), DatabaseSource: "mydb", Source: "mytable", Comment: "column s"},
-			{Name: "i2", Type: types.Int32, DatabaseSource: "mydb", Source: "mytable", Comment: "hello", Nullable: true, Default: planbuilder.MustStringToColumnDefaultValue(NewContext(harness), "42", types.Int32, true)},
-			{Name: "s5", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 26), DatabaseSource: "mydb", Source: "mytable", Nullable: true},
-			{Name: "s6", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 27), DatabaseSource: "mydb", Source: "mytable", Nullable: true},
-			{Name: "s10", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 26), DatabaseSource: "mydb", Source: "mytable", Nullable: true},
-		}, tbl.Schema())
+		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.mytable", []sql.Row{
+			{"s3", "varchar(25)", "utf8mb4_0900_bin", "YES", "", "'yay'", "", "", "hello"},
+			{"s4", "varchar(1)", "utf8mb4_0900_bin", "NO", "", "NULL", "", "", ""},
+			{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
+			{"s2", "text", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", "hello"},
+			{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", "NULL", "", "", "column s"},
+			{"i2", "int", nil, "YES", "", "42", "", "", "hello"},
+			{"s5", "varchar(26)", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", ""},
+			{"s6", "varchar(27)", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", ""},
+			{"s10", "varchar(26)", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", ""},
+		}, nil, nil)
 	})
 }
 
-// todo(max): convert to WriteQueryTest
 func TestModifyColumn(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.Mytable_del_idxData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	ctx := NewContext(harness)
 
-	db, err := e.EngineAnalyzer().Catalog.Database(NewContext(harness), "mydb")
-	require.NoError(t, err)
-
-	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mytable MODIFY COLUMN i bigint NOT NULL COMMENT 'modified'", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-	tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(t, err)
-	require.True(t, ok)
-	require.Equal(t, sql.Schema{
-		{Name: "i", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", Comment: "modified", PrimaryKey: true},
-		{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), DatabaseSource: "mydb", Source: "mytable", Comment: "column s"},
-	}, tbl.Schema())
-
-	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mytable MODIFY COLUMN i TINYINT NOT NULL COMMENT 'yes' AFTER s", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(t, err)
-	require.True(t, ok)
-	require.Equal(t, sql.Schema{
-		{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), DatabaseSource: "mydb", Source: "mytable", Comment: "column s"},
-		{Name: "i", Type: types.Int8, DatabaseSource: "mydb", Source: "mytable", Comment: "yes", PrimaryKey: true},
-	}, tbl.Schema())
-
-	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mytable MODIFY COLUMN i BIGINT NOT NULL COMMENT 'ok' FIRST", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(t, err)
-	require.True(t, ok)
-	require.Equal(t, sql.Schema{
-		{Name: "i", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", Comment: "ok", PrimaryKey: true},
-		{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), DatabaseSource: "mydb", Source: "mytable", Comment: "column s"},
-	}, tbl.Schema())
-
-	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mytable MODIFY COLUMN s VARCHAR(20) NULL COMMENT 'changed'", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(t, err)
-	require.True(t, ok)
-	require.Equal(t, sql.Schema{
-		{Name: "i", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", Comment: "ok", PrimaryKey: true},
-		{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: true, DatabaseSource: "mydb", Source: "mytable", Comment: "changed"},
-	}, tbl.Schema())
-
-	AssertErr(t, e, harness, "ALTER TABLE mytable MODIFY not_exist BIGINT NOT NULL COMMENT 'ok' FIRST", sql.ErrTableColumnNotFound)
-	AssertErr(t, e, harness, "ALTER TABLE mytable MODIFY i BIGINT NOT NULL COMMENT 'ok' AFTER not_exist", sql.ErrTableColumnNotFound)
-	AssertErr(t, e, harness, "ALTER TABLE not_exist MODIFY COLUMN i INT NOT NULL COMMENT 'hello'", sql.ErrTableNotFound)
-
-	t.Run("auto increment attribute", func(t *testing.T) {
-		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mytable MODIFY i BIGINT auto_increment", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
-		require.NoError(t, err)
-		require.True(t, ok)
-		assert.Equal(t, sql.Schema{
-			{Name: "i", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", PrimaryKey: true, AutoIncrement: true, Nullable: false, Extra: "auto_increment"},
-			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: true, DatabaseSource: "mydb", Source: "mytable", Comment: "changed"},
-		}, tbl.Schema())
-
-		RunQuery(t, e, harness, "insert into mytable (s) values ('new row')")
-		TestQueryWithContext(t, ctx, e, harness, "select i from mytable where s = 'new row'", []sql.Row{{4}}, nil, nil)
-
-		AssertErr(t, e, harness, "ALTER TABLE mytable add column i2 bigint auto_increment", sql.ErrInvalidAutoIncCols)
-
-		RunQuery(t, e, harness, "alter table mytable add column i2 bigint")
-		AssertErr(t, e, harness, "ALTER TABLE mytable modify column i2 bigint auto_increment", sql.ErrInvalidAutoIncCols)
-
-		tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-		require.NoError(t, err)
-		require.True(t, ok)
-		assert.Equal(t, sql.Schema{
-			{Name: "i", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", PrimaryKey: true, AutoIncrement: true, Extra: "auto_increment"},
-			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: true, DatabaseSource: "mydb", Source: "mytable", Comment: "changed"},
-			{Name: "i2", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", Nullable: true},
-		}, tbl.Schema())
-	})
+	for _, tt := range queries.ModifyColumnScripts {
+		TestScriptWithEngine(t, e, harness, tt)
+	}
 
 	t.Run("no database selected", func(t *testing.T) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
-
+		if se, ok := e.(*ServerQueryEngine); ok {
+			se.NewConnection(ctx)
+		}
+		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.Row{{nil}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mydb.mytable MODIFY COLUMN s VARCHAR(21) NULL COMMENT 'changed again'", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-		require.NoError(t, err)
-		require.True(t, ok)
-		assert.Equal(t, sql.Schema{
-			{Name: "i", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", PrimaryKey: true, AutoIncrement: true, Extra: "auto_increment"},
-			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 21), Nullable: true, DatabaseSource: "mydb", Source: "mytable", Comment: "changed again"},
-			{Name: "i2", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", Nullable: true},
-		}, tbl.Schema())
+		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.mytable", []sql.Row{
+			{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", "ok"},
+			{"s", "varchar(21)", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", "changed again"},
+			{"i2", "bigint", nil, "YES", "", "NULL", "", "", ""},
+		}, nil, nil)
 	})
 }
 
-// todo(max): convert to WriteQueryTest
 func TestDropColumn(t *testing.T, harness Harness) {
-	require := require.New(t)
-
 	harness.Setup(setup.MydbData, setup.MytableData, setup.TabletestData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	ctx := NewContext(harness)
-	db, err := e.EngineAnalyzer().Catalog.Database(ctx, "mydb")
-	require.NoError(err)
 
-	t.Run("drop last column", func(t *testing.T) {
-		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mytable DROP COLUMN s", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-		tbl, ok, err := db.GetTableInsensitive(ctx, "mytable")
-		require.NoError(err)
-		require.True(ok)
-		assert.Equal(t, sql.Schema{
-			{Name: "i", Type: types.Int64, DatabaseSource: "mydb", Source: "mytable", PrimaryKey: true},
-		}, tbl.Schema())
-
-		TestQueryWithContext(t, ctx, e, harness, "select * from mytable order by i", []sql.Row{
-			{1}, {2}, {3},
-		}, nil, nil)
-	})
-
-	t.Run("drop first column", func(t *testing.T) {
-		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t1 (a int, b varchar(10), c bigint, k bigint primary key)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-		RunQuery(t, e, harness, "insert into t1 values (1, 'abc', 2, 3), (4, 'def', 5, 6)")
-		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE t1 DROP COLUMN a", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		tbl, ok, err := db.GetTableInsensitive(ctx, "t1")
-		require.NoError(err)
-		require.True(ok)
-		assert.Equal(t, sql.Schema{
-			{Name: "b", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 10), DatabaseSource: "mydb", Source: "t1", Nullable: true},
-			{Name: "c", Type: types.Int64, DatabaseSource: "mydb", Source: "t1", Nullable: true},
-			{Name: "k", Type: types.Int64, DatabaseSource: "mydb", Source: "t1", PrimaryKey: true},
-		}, tbl.Schema())
-
-		TestQueryWithContext(t, ctx, e, harness, "select * from t1 order by b", []sql.Row{
-			{"abc", 2, 3},
-			{"def", 5, 6},
-		}, nil, nil)
-	})
-
-	t.Run("drop middle column", func(t *testing.T) {
-		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t2 (a int, b varchar(10), c bigint, k bigint primary key)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-		RunQuery(t, e, harness, "insert into t2 values (1, 'abc', 2, 3), (4, 'def', 5, 6)")
-		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE t2 DROP COLUMN b", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		tbl, ok, err := db.GetTableInsensitive(ctx, "t2")
-		require.NoError(err)
-		require.True(ok)
-		assert.Equal(t, sql.Schema{
-			{Name: "a", Type: types.Int32, DatabaseSource: "mydb", Source: "t2", Nullable: true},
-			{Name: "c", Type: types.Int64, DatabaseSource: "mydb", Source: "t2", Nullable: true},
-			{Name: "k", Type: types.Int64, DatabaseSource: "mydb", Source: "t2", PrimaryKey: true},
-		}, tbl.Schema())
-
-		TestQueryWithContext(t, ctx, e, harness, "select * from t2 order by c", []sql.Row{
-			{1, 2, 3},
-			{4, 5, 6},
-		}, nil, nil)
-	})
-
-	t.Run("drop primary key column", func(t *testing.T) {
-		t.Skip("primary key column drops not well supported yet")
-
-		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t3 (a int primary key, b varchar(10), c bigint)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-		RunQuery(t, e, harness, "insert into t3 values (1, 'abc', 2), (3, 'def', 4)")
-		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE t3 DROP COLUMN a", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		tbl, ok, err := db.GetTableInsensitive(ctx, "t1")
-		require.NoError(err)
-		require.True(ok)
-		assert.Equal(t, sql.Schema{
-			{Name: "b", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 10), DatabaseSource: "mydb", Source: "t3", Nullable: true},
-			{Name: "c", Type: types.Int64, DatabaseSource: "mydb", Source: "t3", Nullable: true},
-		}, tbl.Schema())
-
-		TestQueryWithContext(t, ctx, e, harness, "select * from t3 order by b", []sql.Row{
-			{"abc", 2, 3},
-			{"def", 4, 5},
-		}, nil, nil)
-	})
+	for _, tt := range queries.DropColumnScripts {
+		TestScriptWithEngine(t, e, harness, tt)
+	}
 
 	t.Run("no database selected", func(t *testing.T) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
+		if se, ok := e.(*ServerQueryEngine); ok {
+			se.NewConnection(ctx)
+		}
 
-		beforeDropTbl, _, _ := db.GetTableInsensitive(NewContext(harness), "tabletest")
-
+		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.Row{{nil}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mydb.tabletest DROP COLUMN s", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "tabletest")
-		require.NoError(err)
-		require.True(ok)
-		assert.NotEqual(t, beforeDropTbl, tbl.Schema())
-		assert.Equal(t, sql.Schema{
-			{Name: "i", Type: types.Int32, DatabaseSource: "mydb", Source: "tabletest", PrimaryKey: true},
-		}, tbl.Schema())
-	})
-
-	t.Run("error cases", func(t *testing.T) {
-		AssertErr(t, e, harness, "ALTER TABLE not_exist DROP COLUMN s", sql.ErrTableNotFound)
-		AssertErr(t, e, harness, "ALTER TABLE mytable DROP COLUMN s", sql.ErrTableColumnNotFound)
-
-		// Dropping a column referred to in another column's default
-		RunQuery(t, e, harness, "create table t3 (a int primary key, b int, c int default (b+10))")
-		AssertErr(t, e, harness, "ALTER TABLE t3 DROP COLUMN b", sql.ErrDropColumnReferencedInDefault)
+		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.tabletest", []sql.Row{{"i", "int", nil, "NO", "PRI", "NULL", "", "", ""}}, nil, nil)
 	})
 }
 
 func TestDropColumnKeylessTables(t *testing.T, harness Harness) {
-	require := require.New(t)
-
 	harness.Setup(setup.MydbData, setup.TabletestData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	ctx := NewContext(harness)
-	db, err := e.EngineAnalyzer().Catalog.Database(ctx, "mydb")
-	require.NoError(err)
 
-	t.Run("drop last column", func(t *testing.T) {
-		RunQuery(t, e, harness, "create table t0 (i bigint, s varchar(20))")
-
-		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE t0 DROP COLUMN s", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		tbl, ok, err := db.GetTableInsensitive(ctx, "t0")
-		require.NoError(err)
-		require.True(ok)
-		assert.Equal(t, sql.Schema{
-			{Name: "i", Type: types.Int64, DatabaseSource: "mydb", Source: "t0", Nullable: true},
-		}, tbl.Schema())
-	})
-
-	t.Run("drop first column", func(t *testing.T) {
-		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t1 (a int, b varchar(10), c bigint)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-		RunQuery(t, e, harness, "insert into t1 values (1, 'abc', 2), (4, 'def', 5)")
-		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE t1 DROP COLUMN a", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		tbl, ok, err := db.GetTableInsensitive(ctx, "t1")
-		require.NoError(err)
-		require.True(ok)
-		assert.Equal(t, sql.Schema{
-			{Name: "b", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 10), DatabaseSource: "mydb", Source: "t1", Nullable: true},
-			{Name: "c", Type: types.Int64, DatabaseSource: "mydb", Source: "t1", Nullable: true},
-		}, tbl.Schema())
-
-		TestQueryWithContext(t, ctx, e, harness, "select * from t1 order by b", []sql.Row{
-			{"abc", 2},
-			{"def", 5},
-		}, nil, nil)
-	})
-
-	t.Run("drop middle column", func(t *testing.T) {
-		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t2 (a int, b varchar(10), c bigint)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-		RunQuery(t, e, harness, "insert into t2 values (1, 'abc', 2), (4, 'def', 5)")
-		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE t2 DROP COLUMN b", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		tbl, ok, err := db.GetTableInsensitive(ctx, "t2")
-		require.NoError(err)
-		require.True(ok)
-		assert.Equal(t, sql.Schema{
-			{Name: "a", Type: types.Int32, DatabaseSource: "mydb", Source: "t2", Nullable: true},
-			{Name: "c", Type: types.Int64, DatabaseSource: "mydb", Source: "t2", Nullable: true},
-		}, tbl.Schema())
-
-		TestQueryWithContext(t, ctx, e, harness, "select * from t2 order by c", []sql.Row{
-			{1, 2},
-			{4, 5},
-		}, nil, nil)
-	})
+	for _, tt := range queries.DropColumnKeylessTablesScripts {
+		TestScriptWithEngine(t, e, harness, tt)
+	}
 
 	t.Run("no database selected", func(t *testing.T) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
+		if se, ok := e.(*ServerQueryEngine); ok {
+			se.NewConnection(ctx)
+		}
 
-		beforeDropTbl, _, _ := db.GetTableInsensitive(NewContext(harness), "tabletest")
-
+		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.Row{{nil}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mydb.tabletest DROP COLUMN s", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "tabletest")
-		require.NoError(err)
-		require.True(ok)
-		assert.NotEqual(t, beforeDropTbl, tbl.Schema())
-		assert.Equal(t, sql.Schema{
-			{Name: "i", Type: types.Int32, DatabaseSource: "mydb", Source: "tabletest", PrimaryKey: true},
-		}, tbl.Schema())
-	})
-
-	t.Run("error cases", func(t *testing.T) {
-		AssertErr(t, e, harness, "ALTER TABLE not_exist DROP COLUMN s", sql.ErrTableNotFound)
-		AssertErr(t, e, harness, "ALTER TABLE t0 DROP COLUMN s", sql.ErrTableColumnNotFound)
+		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.tabletest", []sql.Row{{"i", "int", nil, "NO", "PRI", "NULL", "", "", ""}}, nil, nil)
 	})
 }
 
@@ -3077,89 +2607,10 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 	harness.Setup()
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	ctx := NewContext(harness)
 
-	t.Run("CREATE DATABASE and create table", func(t *testing.T) {
-		TestQueryWithContext(t, ctx, e, harness, "CREATE DATABASE testdb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
-
-		db, err := e.EngineAnalyzer().Catalog.Database(ctx, "testdb")
-		require.NoError(t, err)
-
-		TestQueryWithContext(t, ctx, e, harness, "USE testdb", []sql.Row(nil), nil, nil)
-
-		require.Equal(t, ctx.GetCurrentDatabase(), "testdb")
-
-		ctx = NewContext(harness)
-		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE test (pk int primary key)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		db, err = e.EngineAnalyzer().Catalog.Database(ctx, "testdb")
-		require.NoError(t, err)
-
-		_, ok, err := db.GetTableInsensitive(ctx, "test")
-
-		require.NoError(t, err)
-		require.True(t, ok)
-	})
-
-	t.Run("CREATE DATABASE IF NOT EXISTS", func(t *testing.T) {
-		TestQueryWithContext(t, ctx, e, harness, "CREATE DATABASE IF NOT EXISTS testdb2", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
-
-		db, err := e.EngineAnalyzer().Catalog.Database(ctx, "testdb2")
-		require.NoError(t, err)
-
-		TestQueryWithContext(t, ctx, e, harness, "USE testdb2", []sql.Row(nil), nil, nil)
-
-		require.Equal(t, ctx.GetCurrentDatabase(), "testdb2")
-
-		ctx = NewContext(harness)
-		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE test (pk int primary key)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		db, err = e.EngineAnalyzer().Catalog.Database(ctx, "testdb2")
-		require.NoError(t, err)
-
-		_, ok, err := db.GetTableInsensitive(ctx, "test")
-
-		require.NoError(t, err)
-		require.True(t, ok)
-	})
-
-	t.Run("CREATE SCHEMA", func(t *testing.T) {
-		TestQueryWithContext(t, ctx, e, harness, "CREATE SCHEMA testdb3", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
-
-		db, err := e.EngineAnalyzer().Catalog.Database(ctx, "testdb3")
-		require.NoError(t, err)
-
-		TestQueryWithContext(t, ctx, e, harness, "USE testdb3", []sql.Row(nil), nil, nil)
-
-		require.Equal(t, ctx.GetCurrentDatabase(), "testdb3")
-
-		ctx = NewContext(harness)
-		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE test (pk int primary key)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-		db, err = e.EngineAnalyzer().Catalog.Database(ctx, "testdb3")
-		require.NoError(t, err)
-
-		_, ok, err := db.GetTableInsensitive(ctx, "test")
-
-		require.NoError(t, err)
-		require.True(t, ok)
-	})
-
-	t.Run("CREATE DATABASE error handling", func(t *testing.T) {
-		AssertWarningAndTestQuery(t, e, ctx, harness, "CREATE DATABASE newtestdb CHARACTER SET utf8mb4 ENCRYPTION='N'",
-			[]sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: nil}}}, nil, mysql.ERNotSupportedYet, 1,
-			"", false)
-
-		AssertWarningAndTestQuery(t, e, ctx, harness, "CREATE DATABASE newtest1db DEFAULT COLLATE binary ENCRYPTION='Y'",
-			[]sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: nil}}}, nil, mysql.ERNotSupportedYet, 1,
-			"", false)
-
-		AssertErr(t, e, harness, "CREATE DATABASE mydb", sql.ErrDatabaseExists)
-
-		AssertWarningAndTestQuery(t, e, nil, harness, "CREATE DATABASE IF NOT EXISTS mydb",
-			[]sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, mysql.ERDbCreateExists,
-			-1, "", false)
-	})
+	for _, tt := range queries.CreateDatabaseScripts {
+		TestScriptWithEngine(t, e, harness, tt)
+	}
 }
 
 func TestPkOrdinalsDDL(t *testing.T, harness Harness) {
@@ -3334,301 +2785,27 @@ func TestPkOrdinalsDML(t *testing.T, harness Harness) {
 
 func TestDropDatabase(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
-	t.Run("DROP DATABASE correctly works", func(t *testing.T) {
-		e := mustNewEngine(t, harness)
-		defer e.Close()
-		ctx := NewContext(harness)
-
-		TestQueryWithContext(t, ctx, e, harness, "DROP DATABASE mydb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
-
-		_, err := e.EngineAnalyzer().Catalog.Database(NewContext(harness), "mydb")
-		require.Error(t, err)
-
-		// TODO: Deal with handling this error.
-		//AssertErr(t, e, harness, "SHOW TABLES", sql.ErrNoDatabaseSelected)
-	})
-
-	t.Run("DROP DATABASE works on newly created databases.", func(t *testing.T) {
-		e := mustNewEngine(t, harness)
-		defer e.Close()
-		ctx := NewContext(harness)
-		TestQueryWithContext(t, ctx, e, harness, "CREATE DATABASE testdb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
-
-		_, err := e.EngineAnalyzer().Catalog.Database(NewContext(harness), "testdb")
-		require.NoError(t, err)
-
-		ctx.SetCurrentDatabase("testdb")
-		TestQueryWithContext(t, ctx, e, harness, "DROP DATABASE testdb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
-
-		AssertErr(t, e, harness, "USE testdb", sql.ErrDatabaseNotFound)
-	})
-
-	t.Run("DROP DATABASE works on current database and sets current database to empty.", func(t *testing.T) {
-		e := mustNewEngine(t, harness)
-		defer e.Close()
-		ctx := NewContext(harness)
-		TestQueryWithContext(t, ctx, e, harness, "CREATE DATABASE testdb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
-		RunQueryWithContext(t, e, harness, ctx, "USE TESTdb")
-
-		_, err := e.EngineAnalyzer().Catalog.Database(NewContext(harness), "testdb")
-		require.NoError(t, err)
-
-		TestQueryWithContext(t, ctx, e, harness, "DROP DATABASE TESTDB", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SELECT DATABASE()", []sql.Row{{nil}}, nil, nil)
-		AssertErr(t, e, harness, "USE testdb", sql.ErrDatabaseNotFound)
-	})
-
-	t.Run("DROP SCHEMA works on newly created databases.", func(t *testing.T) {
-		e := mustNewEngine(t, harness)
-		defer e.Close()
-		ctx := NewContext(harness)
-		TestQueryWithContext(t, ctx, e, harness, "CREATE SCHEMA testdb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
-
-		_, err := e.EngineAnalyzer().Catalog.Database(NewContext(harness), "testdb")
-		require.NoError(t, err)
-
-		TestQueryWithContext(t, ctx, e, harness, "DROP SCHEMA testdb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
-
-		AssertErr(t, e, harness, "USE testdb", sql.ErrDatabaseNotFound)
-	})
-
-	t.Run("DROP DATABASE IF EXISTS correctly works.", func(t *testing.T) {
-		e := mustNewEngine(t, harness)
-		defer e.Close()
-
-		// The test setup sets a database name, which interferes with DROP DATABASE tests
-		ctx := NewContext(harness)
-		TestQueryWithContext(t, ctx, e, harness, "DROP DATABASE mydb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
-		AssertWarningAndTestQuery(t, e, ctx, harness, "DROP DATABASE IF EXISTS mydb",
-			[]sql.Row{{types.OkResult{RowsAffected: 0}}}, nil, mysql.ERDbDropExists,
-			-1, "", false)
-
-		TestQueryWithContext(t, ctx, e, harness, "CREATE DATABASE testdb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
-
-		_, err := e.EngineAnalyzer().Catalog.Database(ctx, "testdb")
-		require.NoError(t, err)
-
-		TestQueryWithContext(t, ctx, e, harness, "DROP DATABASE IF EXISTS testdb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
-
-		// After dropping the selected database, the current db field should be cleared out
-		require.Equal(t, "", ctx.GetCurrentDatabase())
-
-		sch, iter, err := e.Query(ctx, "USE testdb")
-		if err == nil {
-			_, err = sql.RowIterToRows(ctx, sch, iter)
-		}
-		require.Error(t, err)
-		require.True(t, sql.ErrDatabaseNotFound.Is(err), "Expected error of type %s but got %s", sql.ErrDatabaseNotFound, err)
-
-		AssertWarningAndTestQuery(t, e, ctx, harness, "DROP DATABASE IF EXISTS testdb",
-			[]sql.Row{{types.OkResult{RowsAffected: 0}}}, nil, mysql.ERDbDropExists,
-			-1, "", false)
-	})
+	for _, tt := range queries.DropDatabaseScripts {
+		TestScript(t, harness, tt)
+	}
 }
 
 func TestCreateForeignKeys(t *testing.T, harness Harness) {
-	require := require.New(t)
-
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	ctx := NewContext(harness)
-	TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE parent(a INTEGER PRIMARY KEY, b INTEGER)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE parent ADD INDEX pb (b)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE child(c INTEGER PRIMARY KEY, d INTEGER, "+
-		"CONSTRAINT fk1 FOREIGN KEY (D) REFERENCES parent(B) ON DELETE CASCADE"+
-		")", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE child ADD CONSTRAINT fk4 FOREIGN KEY (D) REFERENCES child(C)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-	db, err := e.EngineAnalyzer().Catalog.Database(ctx, "mydb")
-	require.NoError(err)
-
-	child, ok, err := db.GetTableInsensitive(ctx, "child")
-	require.NoError(err)
-	require.True(ok)
-
-	fkt, ok := child.(sql.ForeignKeyTable)
-	require.True(ok)
-
-	fks, err := fkt.GetDeclaredForeignKeys(NewContext(harness))
-	require.NoError(err)
-
-	expected := []sql.ForeignKeyConstraint{
-		{
-			Name:           "fk1",
-			Database:       "mydb",
-			Table:          "child",
-			Columns:        []string{"d"},
-			ParentDatabase: "mydb",
-			ParentTable:    "parent",
-			ParentColumns:  []string{"b"},
-			OnUpdate:       sql.ForeignKeyReferentialAction_DefaultAction,
-			OnDelete:       sql.ForeignKeyReferentialAction_Cascade,
-			IsResolved:     true,
-		},
-		{
-			Name:           "fk4",
-			Database:       "mydb",
-			Table:          "child",
-			Columns:        []string{"d"},
-			ParentDatabase: "mydb",
-			ParentTable:    "child",
-			ParentColumns:  []string{"c"},
-			OnUpdate:       sql.ForeignKeyReferentialAction_DefaultAction,
-			OnDelete:       sql.ForeignKeyReferentialAction_DefaultAction,
-			IsResolved:     true,
-		},
+	for _, tt := range queries.CreateForeignKeyTests {
+		TestScriptWithEngine(t, e, harness, tt)
 	}
-	assert.Equal(t, expected, fks)
-
-	TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE child2(e INTEGER PRIMARY KEY, f INTEGER)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE child2 ADD CONSTRAINT fk2 FOREIGN KEY (f) REFERENCES parent(b) ON DELETE RESTRICT", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE child2 ADD CONSTRAINT fk3 FOREIGN KEY (f) REFERENCES child(d) ON UPDATE SET NULL", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-	child, ok, err = db.GetTableInsensitive(ctx, "child2")
-	require.NoError(err)
-	require.True(ok)
-
-	fkt, ok = child.(sql.ForeignKeyTable)
-	require.True(ok)
-
-	fks, err = fkt.GetDeclaredForeignKeys(NewContext(harness))
-	require.NoError(err)
-
-	expected = []sql.ForeignKeyConstraint{
-		{
-			Name:           "fk2",
-			Database:       "mydb",
-			Table:          "child2",
-			Columns:        []string{"f"},
-			ParentDatabase: "mydb",
-			ParentTable:    "parent",
-			ParentColumns:  []string{"b"},
-			OnUpdate:       sql.ForeignKeyReferentialAction_DefaultAction,
-			OnDelete:       sql.ForeignKeyReferentialAction_Restrict,
-			IsResolved:     true,
-		},
-		{
-			Name:           "fk3",
-			Database:       "mydb",
-			Table:          "child2",
-			Columns:        []string{"f"},
-			ParentDatabase: "mydb",
-			ParentTable:    "child",
-			ParentColumns:  []string{"d"},
-			OnUpdate:       sql.ForeignKeyReferentialAction_SetNull,
-			OnDelete:       sql.ForeignKeyReferentialAction_DefaultAction,
-			IsResolved:     true,
-		},
-	}
-	assert.Equal(t, expected, fks)
-
-	// Some faulty create statements
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE child2 ADD CONSTRAINT fk3 FOREIGN KEY (f) REFERENCES dne(d) ON UPDATE SET NULL")
-	require.Error(err)
-
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE child2 ADD CONSTRAINT fk4 FOREIGN KEY (f) REFERENCES dne(d) ON UPDATE SET NULL")
-	require.Error(err)
-	assert.True(t, sql.ErrTableNotFound.Is(err))
-
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE dne ADD CONSTRAINT fk4 FOREIGN KEY (f) REFERENCES child(d) ON UPDATE SET NULL")
-	require.Error(err)
-	assert.True(t, sql.ErrTableNotFound.Is(err))
-
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE child2 ADD CONSTRAINT fk5 FOREIGN KEY (f) REFERENCES child(dne) ON UPDATE SET NULL")
-	require.Error(err)
-	assert.True(t, sql.ErrTableColumnNotFound.Is(err))
-
-	t.Run("Add a column then immediately add a foreign key", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE parent3 (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX (v1))")
-		RunQuery(t, e, harness, "CREATE TABLE child3 (pk BIGINT PRIMARY KEY);")
-		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE child3 ADD COLUMN v1 BIGINT NULL, ADD CONSTRAINT fk_child3 FOREIGN KEY (v1) REFERENCES parent3(v1);", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-	})
-
-	TestScript(t, harness, queries.ScriptTest{
-		Name: "Do not validate foreign keys if FOREIGN_KEY_CHECKS is set to zero",
-		Assertions: []queries.ScriptTestAssertion{
-			{
-				Query:    "SET FOREIGN_KEY_CHECKS=0;",
-				Expected: []sql.Row{{}},
-			},
-			{
-				Query:    "CREATE TABLE child4 (pk BIGINT PRIMARY KEY, CONSTRAINT fk_child4 FOREIGN KEY (pk) REFERENCES delayed_parent4 (pk))",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "CREATE TABLE delayed_parent4 (pk BIGINT PRIMARY KEY)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-		},
-	})
 }
 
 func TestDropForeignKeys(t *testing.T, harness Harness) {
-	require := require.New(t)
-
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	ctx := NewContext(harness)
-
-	TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE parent(a INTEGER PRIMARY KEY, b INTEGER)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE parent ADD INDEX pb (b)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE child(c INTEGER PRIMARY KEY, d INTEGER, "+
-		"CONSTRAINT fk1 FOREIGN KEY (d) REFERENCES parent(b) ON DELETE CASCADE"+
-		")", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-	TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE child2(e INTEGER PRIMARY KEY, f INTEGER)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE child2 ADD CONSTRAINT fk2 FOREIGN KEY (f) REFERENCES parent(b) ON DELETE RESTRICT, "+
-		"ADD CONSTRAINT fk3 FOREIGN KEY (f) REFERENCES child(d) ON UPDATE SET NULL", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE child2 DROP CONSTRAINT fk2", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-	db, err := e.EngineAnalyzer().Catalog.Database(NewContext(harness), "mydb")
-	require.NoError(err)
-
-	child, ok, err := db.GetTableInsensitive(NewContext(harness), "child2")
-	require.NoError(err)
-	require.True(ok)
-
-	fkt, ok := child.(sql.ForeignKeyTable)
-	require.True(ok)
-
-	fks, err := fkt.GetDeclaredForeignKeys(NewContext(harness))
-	require.NoError(err)
-
-	expected := []sql.ForeignKeyConstraint{
-		{
-			Name:           "fk3",
-			Database:       "mydb",
-			Table:          "child2",
-			Columns:        []string{"f"},
-			ParentDatabase: "mydb",
-			ParentTable:    "child",
-			ParentColumns:  []string{"d"},
-			OnUpdate:       sql.ForeignKeyReferentialAction_SetNull,
-			OnDelete:       sql.ForeignKeyReferentialAction_DefaultAction,
-			IsResolved:     true,
-		},
+	for _, tt := range queries.DropForeignKeyTests {
+		TestScriptWithEngine(t, e, harness, tt)
 	}
-	assert.Equal(t, expected, fks)
-
-	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE child2 DROP FOREIGN KEY fk3", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-	child, ok, err = db.GetTableInsensitive(NewContext(harness), "child2")
-	require.NoError(err)
-	require.True(ok)
-
-	fkt, ok = child.(sql.ForeignKeyTable)
-	require.True(ok)
-
-	fks, err = fkt.GetDeclaredForeignKeys(NewContext(harness))
-	require.NoError(err)
-	assert.Len(t, fks, 0)
-
-	// Some error queries
-	AssertErr(t, e, harness, "ALTER TABLE child3 DROP CONSTRAINT dne", sql.ErrTableNotFound)
-	AssertErr(t, e, harness, "ALTER TABLE child2 DROP CONSTRAINT fk3", sql.ErrUnknownConstraint)
-	AssertErr(t, e, harness, "ALTER TABLE child2 DROP FOREIGN KEY fk3", sql.ErrForeignKeyNotFound)
 }
 
 func TestForeignKeys(t *testing.T, harness Harness) {
@@ -3667,126 +2844,10 @@ func TestFulltextIndexes(t *testing.T, harness Harness) {
 	})
 }
 
-// todo(max): rewrite this using info schema and []QueryTest
 func TestCreateCheckConstraints(t *testing.T, harness Harness) {
-	require := require.New(t)
-
 	harness.Setup(setup.ChecksSetup...)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	ctx := NewContext(harness)
-
-	db, err := e.EngineAnalyzer().Catalog.Database(NewContext(harness), "mydb")
-	require.NoError(err)
-
-	table, ok, err := db.GetTableInsensitive(ctx, "checks")
-	require.NoError(err)
-	require.True(ok)
-
-	cht, ok := table.(sql.CheckTable)
-	require.True(ok)
-
-	checks, err := cht.GetChecks(NewContext(harness))
-	require.NoError(err)
-
-	expected := []sql.CheckDefinition{
-		{
-			Name:            "chk1",
-			CheckExpression: "(B > 0)",
-			Enforced:        true,
-		},
-		{
-			Name:            "chk2",
-			CheckExpression: "(b > 0)",
-			Enforced:        false,
-		},
-		{
-			Name:            "chk3",
-			CheckExpression: "(B > 1)",
-			Enforced:        true,
-		},
-		{
-			Name:            "chk4",
-			CheckExpression: "(upper(C) = c)",
-			Enforced:        true,
-		},
-	}
-	assert.Equal(t, expected, checks)
-
-	// Unnamed constraint
-	RunQuery(t, e, harness, "ALTER TABLE checks ADD CONSTRAINT CHECK (b > 100)")
-
-	table, ok, err = db.GetTableInsensitive(NewContext(harness), "checks")
-	require.NoError(err)
-	require.True(ok)
-
-	cht, ok = table.(sql.CheckTable)
-	require.True(ok)
-
-	checks, err = cht.GetChecks(NewContext(harness))
-	require.NoError(err)
-
-	foundChk4 := false
-	for _, check := range checks {
-		if check.CheckExpression == "(b > 100)" {
-			assert.True(t, len(check.Name) > 0, "empty check name")
-			foundChk4 = true
-			break
-		}
-	}
-	assert.True(t, foundChk4, "check b > 100 not found")
-
-	// Check statements in CREATE TABLE statements
-	// TODO: <> gets parsed / serialized as NOT(=), needs to be fixed for full round trip compatibility
-	RunQuery(t, e, harness, `
-CREATE TABLE T2
-(
-  CHECK (c1 = c2),
-  c1 INT CHECK (c1 > 10),
-  c2 INT CONSTRAINT c2_positive CHECK (c2 > 0),
-  c3 INT CHECK (c3 < 100),
-  CONSTRAINT c1_nonzero CHECK (c1 = 0),
-  CHECK (C1 > C3)
-);`)
-
-	table, ok, err = db.GetTableInsensitive(NewContext(harness), "t2")
-	require.NoError(err)
-	require.True(ok)
-
-	cht, ok = table.(sql.CheckTable)
-	require.True(ok)
-
-	checks, err = cht.GetChecks(NewContext(harness))
-	require.NoError(err)
-
-	expectedCheckConds := []string{
-		"(c1 = c2)",
-		"(c1 > 10)",
-		"(c2 > 0)",
-		"(c3 < 100)",
-		"(c1 = 0)",
-		"(C1 > C3)",
-	}
-
-	var checkConds []string
-	for _, check := range checks {
-		checkConds = append(checkConds, check.CheckExpression)
-	}
-
-	assert.Equal(t, expectedCheckConds, checkConds)
-
-	// Some faulty create statements
-	AssertErr(t, e, harness, "ALTER TABLE t3 ADD CONSTRAINT chk2 CHECK (c > 0)", sql.ErrTableNotFound)
-	AssertErr(t, e, harness, "ALTER TABLE checks ADD CONSTRAINT chk3 CHECK (d > 0)", sql.ErrColumnNotFound)
-
-	AssertErr(t, e, harness, `
-CREATE TABLE t4
-(
-  CHECK (c1 = c2),
-  c1 INT CHECK (c1 > 10),
-  c2 INT CONSTRAINT c2_positive CHECK (c2 > 0),
-  CHECK (c1 > c3)
-);`, sql.ErrColumnNotFound)
 
 	// Test any scripts relevant to CheckConstraints. We do this separately from the rest of the scripts
 	// as certain integrators might not implement check constraints.
@@ -3795,60 +2856,13 @@ CREATE TABLE t4
 	}
 }
 
-// todo(max): rewrite into []ScriptTest
 func TestChecksOnInsert(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	ctx := NewContext(harness)
-
-	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER, c varchar(20))")
-	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (b > 10) NOT ENFORCED")
-	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0)")
-	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk3 CHECK ((a + b) / 2 >= 1) ENFORCED")
-
-	// TODO: checks get serialized as strings, which means that the String() method of functions is load-bearing.
-	//  We do not have tests for all of them. Write some.
-	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk4 CHECK (upper(c) = c) ENFORCED")
-	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk5 CHECK (trim(c) = c) ENFORCED")
-	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk6 CHECK (trim(leading ' ' from c) = c) ENFORCED")
-
-	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (1,1,'ABC')")
-
-	TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1`, []sql.Row{
-		{1, 1, "ABC"},
-	}, nil, nil)
-	AssertErr(t, e, harness, "INSERT INTO t1 (a,b) VALUES (0,0)", sql.ErrCheckConstraintViolated)
-	AssertErr(t, e, harness, "INSERT INTO t1 (a,b) VALUES (0,1)", sql.ErrCheckConstraintViolated)
-	AssertErr(t, e, harness, "INSERT INTO t1 (a,b,c) VALUES (2,2,'abc')", sql.ErrCheckConstraintViolated)
-	AssertErr(t, e, harness, "INSERT INTO t1 (a,b,c) VALUES (2,2,'ABC ')", sql.ErrCheckConstraintViolated)
-	AssertErr(t, e, harness, "INSERT INTO t1 (a,b,c) VALUES (2,2,' ABC')", sql.ErrCheckConstraintViolated)
-
-	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (2,2,'ABC')")
-	RunQuery(t, e, harness, "INSERT INTO t1 (a,b) VALUES (4,NULL)")
-
-	TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1`, []sql.Row{
-		{1, 1, "ABC"},
-		{2, 2, "ABC"},
-		{4, nil, nil},
-	}, nil, nil)
-
-	RunQuery(t, e, harness, "CREATE TABLE t2 (a INTEGER PRIMARY KEY, b INTEGER)")
-	RunQuery(t, e, harness, "INSERT INTO t2 VALUES (2,2),(3,3)")
-	RunQuery(t, e, harness, "DELETE FROM t1")
-
-	AssertErr(t, e, harness, "INSERT INTO t1 (a,b) select a - 2, b - 1 from t2", sql.ErrCheckConstraintViolated)
-	RunQuery(t, e, harness, "INSERT INTO t1 (a,b) select a, b from t2")
-
-	// Check that INSERT IGNORE correctly drops errors with check constraints and does not update the actual table.
-	RunQuery(t, e, harness, "INSERT IGNORE INTO t1 VALUES (5,2, 'abc')")
-	TestQueryWithContext(t, ctx, e, harness, `SELECT count(*) FROM t1 where a = 5`, []sql.Row{{0}}, nil, nil)
-
-	// One value is correctly accepted and the other value is not accepted due to a check constraint violation.
-	// The accepted value is correctly added to the table.
-	RunQuery(t, e, harness, "INSERT IGNORE INTO t1 VALUES (4,4, null), (5,2, 'abc')")
-	TestQueryWithContext(t, ctx, e, harness, `SELECT count(*) FROM t1 where a = 5`, []sql.Row{{0}}, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT count(*) FROM t1 where a = 4`, []sql.Row{{1}}, nil, nil)
+	for _, tt := range queries.ChecksOnInsertScripts {
+		TestScriptWithEngine(t, e, harness, tt)
+	}
 }
 
 func TestChecksOnUpdate(t *testing.T, harness Harness) {
@@ -3863,229 +2877,20 @@ func TestDisallowedCheckConstraints(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 
-	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER)")
-
-	// non-deterministic functions
-	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (current_user = \"root@\")", sql.ErrInvalidConstraintFunctionNotSupported)
-	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (user() = \"root@\")", sql.ErrInvalidConstraintFunctionNotSupported)
-	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (now() > '2021')", sql.ErrInvalidConstraintFunctionNotSupported)
-	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (current_date() > '2021')", sql.ErrInvalidConstraintFunctionNotSupported)
-	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (uuid() > 'a')", sql.ErrInvalidConstraintFunctionNotSupported)
-	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (database() = 'foo')", sql.ErrInvalidConstraintFunctionNotSupported)
-	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (schema() = 'foo')", sql.ErrInvalidConstraintFunctionNotSupported)
-	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (version() = 'foo')", sql.ErrInvalidConstraintFunctionNotSupported)
-	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (last_insert_id() = 0)", sql.ErrInvalidConstraintFunctionNotSupported)
-	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (rand() < .8)", sql.ErrInvalidConstraintFunctionNotSupported)
-	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (row_count() = 0)", sql.ErrInvalidConstraintFunctionNotSupported)
-	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (found_rows() = 0)", sql.ErrInvalidConstraintFunctionNotSupported)
-	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (curdate() > '2021')", sql.ErrInvalidConstraintFunctionNotSupported)
-	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (curtime() > '2021')", sql.ErrInvalidConstraintFunctionNotSupported)
-	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (current_timestamp() > '2021')", sql.ErrInvalidConstraintFunctionNotSupported)
-	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (connection_id() = 2)", sql.ErrInvalidConstraintFunctionNotSupported)
-
-	// locks
-	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (get_lock('abc', 0) is null)", sql.ErrInvalidConstraintFunctionNotSupported)
-	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (release_all_locks() is null)", sql.ErrInvalidConstraintFunctionNotSupported)
-	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (release_lock('abc') is null)", sql.ErrInvalidConstraintFunctionNotSupported)
-	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (is_free_lock('abc') is null)", sql.ErrInvalidConstraintFunctionNotSupported)
-	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (is_used_lock('abc') is null)", sql.ErrInvalidConstraintFunctionNotSupported)
-
-	// subqueries
-	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK ((select count(*) from t1) = 0)", sql.ErrInvalidConstraintSubqueryNotSupported)
-
 	// TODO: need checks for stored procedures, also not allowed
-
-	// Some spot checks on create table forms of the above
-	AssertErr(t, e, harness, `
-CREATE TABLE t3 (
-	a int primary key CONSTRAINT chk2 CHECK (current_user = "root@")
-)
-`, sql.ErrInvalidConstraintFunctionNotSupported)
-
-	AssertErr(t, e, harness, `
-CREATE TABLE t3 (
-	a int primary key,
-	CHECK (current_user = "root@")
-)
-`, sql.ErrInvalidConstraintFunctionNotSupported)
-
-	AssertErr(t, e, harness, `
-CREATE TABLE t3 (
-	a int primary key CONSTRAINT chk2 CHECK (a = (select count(*) from t1))
-)
-`, sql.ErrInvalidConstraintSubqueryNotSupported)
-
-	AssertErr(t, e, harness, `
-CREATE TABLE t3 (
-	a int primary key,
-	CHECK (a = (select count(*) from t1))
-)
-`, sql.ErrInvalidConstraintSubqueryNotSupported)
+	for _, tt := range queries.DisallowedCheckConstraintsScripts {
+		TestScriptWithEngine(t, e, harness, tt)
+	}
 }
 
-// todo(max): rewrite with []ScriptTest
 func TestDropCheckConstraints(t *testing.T, harness Harness) {
-	require := require.New(t)
-
 	harness.Setup(setup.MydbData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	ctx := NewContext(harness)
 
-	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER, c integer)")
-	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (a > 0)")
-	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0) NOT ENFORCED")
-	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk3 CHECK (c > 0)")
-	RunQuery(t, e, harness, "ALTER TABLE t1 DROP CONSTRAINT chk2")
-	RunQuery(t, e, harness, "ALTER TABLE t1 DROP CHECK chk1")
-
-	db, err := e.EngineAnalyzer().Catalog.Database(ctx, "mydb")
-	require.NoError(err)
-
-	table, ok, err := db.GetTableInsensitive(ctx, "t1")
-	require.NoError(err)
-	require.True(ok)
-
-	cht, ok := table.(sql.CheckTable)
-	require.True(ok)
-
-	checks, err := cht.GetChecks(NewContext(harness))
-	require.NoError(err)
-
-	expected := []sql.CheckDefinition{
-		{
-			Name:            "chk3",
-			CheckExpression: "(c > 0)",
-			Enforced:        true,
-		},
+	for _, tt := range queries.DropCheckConstraintsScripts {
+		TestScriptWithEngine(t, e, harness, tt)
 	}
-
-	assert.Equal(t, expected, checks)
-
-	RunQuery(t, e, harness, "ALTER TABLE t1 DROP CHECK chk3")
-
-	// Some faulty drop statements
-	AssertErr(t, e, harness, "ALTER TABLE t2 DROP CONSTRAINT chk2", sql.ErrTableNotFound)
-	AssertErr(t, e, harness, "ALTER TABLE t1 DROP CONSTRAINT dne", sql.ErrUnknownConstraint)
-}
-
-func TestDropConstraints(t *testing.T, harness Harness) {
-	require := require.New(t)
-
-	harness.Setup(setup.MydbData)
-	e := mustNewEngine(t, harness)
-	defer e.Close()
-	ctx := NewContext(harness)
-
-	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER, c integer)")
-	RunQuery(t, e, harness, "CREATE TABLE t2 (a INTEGER PRIMARY KEY, b INTEGER, c integer, INDEX (b))")
-	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (a > 0)")
-	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT fk1 FOREIGN KEY (a) REFERENCES t2(b)")
-
-	db, err := e.EngineAnalyzer().Catalog.Database(ctx, "mydb")
-	require.NoError(err)
-
-	table, ok, err := db.GetTableInsensitive(ctx, "t1")
-	require.NoError(err)
-	require.True(ok)
-
-	cht, ok := table.(sql.CheckTable)
-	require.True(ok)
-
-	checks, err := cht.GetChecks(NewContext(harness))
-	require.NoError(err)
-
-	expected := []sql.CheckDefinition{
-		{
-			Name:            "chk1",
-			CheckExpression: "(a > 0)",
-			Enforced:        true,
-		},
-	}
-	assert.Equal(t, expected, checks)
-
-	fkt, ok := table.(sql.ForeignKeyTable)
-	require.True(ok)
-
-	fks, err := fkt.GetDeclaredForeignKeys(NewContext(harness))
-	require.NoError(err)
-
-	expectedFks := []sql.ForeignKeyConstraint{
-		{
-			Name:           "fk1",
-			Database:       "mydb",
-			Table:          "t1",
-			Columns:        []string{"a"},
-			ParentDatabase: "mydb",
-			ParentTable:    "t2",
-			ParentColumns:  []string{"b"},
-			OnUpdate:       "DEFAULT",
-			OnDelete:       "DEFAULT",
-			IsResolved:     true,
-		},
-	}
-	assert.Equal(t, expectedFks, fks)
-
-	RunQuery(t, e, harness, "ALTER TABLE t1 DROP CONSTRAINT chk1")
-
-	table, ok, err = db.GetTableInsensitive(ctx, "t1")
-	require.NoError(err)
-	require.True(ok)
-
-	cht, ok = table.(sql.CheckTable)
-	require.True(ok)
-
-	checks, err = cht.GetChecks(NewContext(harness))
-	require.NoError(err)
-
-	expected = []sql.CheckDefinition{}
-	assert.Equal(t, expected, checks)
-
-	fkt, ok = table.(sql.ForeignKeyTable)
-	require.True(ok)
-
-	fks, err = fkt.GetDeclaredForeignKeys(NewContext(harness))
-	require.NoError(err)
-
-	expectedFks = []sql.ForeignKeyConstraint{
-		{
-			Name:           "fk1",
-			Database:       "mydb",
-			Table:          "t1",
-			Columns:        []string{"a"},
-			ParentDatabase: "mydb",
-			ParentTable:    "t2",
-			ParentColumns:  []string{"b"},
-			OnUpdate:       "DEFAULT",
-			OnDelete:       "DEFAULT",
-			IsResolved:     true,
-		},
-	}
-	assert.Equal(t, expectedFks, fks)
-
-	RunQuery(t, e, harness, "ALTER TABLE t1 DROP CONSTRAINT fk1")
-
-	table, ok, err = db.GetTableInsensitive(ctx, "t1")
-	require.NoError(err)
-	require.True(ok)
-
-	cht, ok = table.(sql.CheckTable)
-	require.True(ok)
-
-	checks, err = cht.GetChecks(NewContext(harness))
-	require.NoError(err)
-	assert.Len(t, checks, 0)
-
-	fkt, ok = table.(sql.ForeignKeyTable)
-	require.True(ok)
-
-	fks, err = fkt.GetDeclaredForeignKeys(NewContext(harness))
-	require.NoError(err)
-	assert.Len(t, fks, 0)
-
-	// Some error statements
-	AssertErr(t, e, harness, "ALTER TABLE t3 DROP CONSTRAINT fk1", sql.ErrTableNotFound)
-	AssertErr(t, e, harness, "ALTER TABLE t1 DROP CONSTRAINT fk1", sql.ErrUnknownConstraint)
 }
 
 func TestWindowFunctions(t *testing.T, harness Harness) {
@@ -5469,82 +4274,6 @@ func TestAlterTable(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 
-	t.Run("variety of alter column statements in a single statement", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t32(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int default (v1), toRename int)")
-		RunQuery(t, e, harness, `alter table t32 add column v4 int after pk,
-			drop column v2, modify v1 varchar(100) not null,
-			alter column v3 set default 100, rename column toRename to newName`)
-
-		ctx := NewContext(harness)
-		t32, _, err := e.EngineAnalyzer().Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t32")
-		require.NoError(t, err)
-		assertSchemasEqualWithDefaults(t, sql.Schema{
-			{Name: "pk", Type: types.Int64, Nullable: false, DatabaseSource: "mydb", Source: "t32", PrimaryKey: true},
-			{Name: "v4", Type: types.Int32, Nullable: true, DatabaseSource: "mydb", Source: "t32"},
-			{Name: "v1", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 100), DatabaseSource: "mydb", Source: "t32"},
-			{Name: "v3", Type: types.Int32, Nullable: true, DatabaseSource: "mydb", Source: "t32", Default: NewColumnDefaultValue(expression.NewLiteral(int8(100), types.Int8), types.Int32, true, false, true)},
-			{Name: "newName", Type: types.Int32, Nullable: true, DatabaseSource: "mydb", Source: "t32"},
-		}, t32.Schema())
-
-		RunQuery(t, e, harness, "CREATE TABLE t32_2(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int)")
-		RunQuery(t, e, harness, `alter table t32_2 drop v1, add v1 int`)
-
-		t32, _, err = e.EngineAnalyzer().Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t32_2")
-		require.NoError(t, err)
-		assertSchemasEqualWithDefaults(t, sql.Schema{
-			{Name: "pk", Type: types.Int64, Nullable: false, DatabaseSource: "mydb", Source: "t32_2", PrimaryKey: true},
-			{Name: "v2", Type: types.Int32, Nullable: true, DatabaseSource: "mydb", Source: "t32_2"},
-			{Name: "v3", Type: types.Int32, Nullable: true, DatabaseSource: "mydb", Source: "t32_2"},
-			{Name: "v1", Type: types.Int32, Nullable: true, DatabaseSource: "mydb", Source: "t32_2"},
-		}, t32.Schema())
-
-		RunQuery(t, e, harness, "CREATE TABLE t32_3(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int)")
-		RunQuery(t, e, harness, `alter table t32_3 rename column v1 to v5, add v1 int`)
-
-		t32, _, err = e.EngineAnalyzer().Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t32_3")
-		require.NoError(t, err)
-		assertSchemasEqualWithDefaults(t, sql.Schema{
-			{Name: "pk", Type: types.Int64, Nullable: false, DatabaseSource: "mydb", Source: "t32_3", PrimaryKey: true},
-			{Name: "v5", Type: types.Int32, Nullable: true, DatabaseSource: "mydb", Source: "t32_3"},
-			{Name: "v2", Type: types.Int32, Nullable: true, DatabaseSource: "mydb", Source: "t32_3"},
-			{Name: "v3", Type: types.Int32, Nullable: true, DatabaseSource: "mydb", Source: "t32_3"},
-			{Name: "v1", Type: types.Int32, Nullable: true, DatabaseSource: "mydb", Source: "t32_3"},
-		}, t32.Schema())
-
-		// Error cases: dropping a column added in the same statement, dropping a column not present in the original schema,
-		// dropping a column renamed away
-		AssertErr(t, e, harness, "alter table t32 add column vnew int, drop column vnew", sql.ErrTableColumnNotFound)
-		AssertErr(t, e, harness, "alter table t32 rename column v3 to v5, drop column v5", sql.ErrTableColumnNotFound)
-		AssertErr(t, e, harness, "alter table t32 rename column v3 to v5, drop column v3", sql.ErrTableColumnNotFound)
-	})
-
-	t.Run("mix of alter column, add and drop constraints in one statement", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t33(pk BIGINT PRIMARY KEY, v1 int, v2 int)")
-		RunQuery(t, e, harness, `alter table t33 add column v4 int after pk,
-			drop column v2, add constraint v1gt0 check (v1 > 0)`)
-
-		ctx := NewContext(harness)
-		t33, _, err := e.EngineAnalyzer().Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t33")
-		require.NoError(t, err)
-		assert.Equal(t, sql.Schema{
-			{Name: "pk", Type: types.Int64, Nullable: false, DatabaseSource: "mydb", Source: "t33", PrimaryKey: true},
-			{Name: "v4", Type: types.Int32, Nullable: true, DatabaseSource: "mydb", Source: "t33"},
-			{Name: "v1", Type: types.Int32, Nullable: true, DatabaseSource: "mydb", Source: "t33"},
-		}, t33.Schema())
-
-		ct, ok := t33.(sql.CheckTable)
-		require.True(t, ok, "CheckTable required for this test")
-		checks, err := ct.GetChecks(ctx)
-		require.NoError(t, err)
-		assert.Equal(t, []sql.CheckDefinition{
-			{
-				Name:            "v1gt0",
-				CheckExpression: "(v1 > 0)",
-				Enforced:        true,
-			},
-		}, checks)
-	})
-
 	for _, script := range queries.AlterTableScripts {
 		TestScript(t, harness, script)
 	}
@@ -5571,6 +4300,10 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 
 	// Some tests can't currently be run with as a script because they do additional checks
 	t.Run("DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP current_timestamp", func(t *testing.T) {
+		// TODO: fix result formatting for server engine tests
+		if IsServerEngine(e) {
+			t.Skip()
+		}
 		// ctx = NewContext(harness)
 		// e.Query(ctx, "set @@session.time_zone='SYSTEM';")
 		// TODO: NOW() and CURRENT_TIMESTAMP() are supposed to be the same function in MySQL, but we have two different
@@ -5594,6 +4327,10 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	// TODO: zero timestamps work slightly differently than they do in MySQL, where the zero time is "0000-00-00 00:00:00"
 	//  We use "0000-01-01 00:00:00"
 	t.Run("DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP literals", func(t *testing.T) {
+		// TODO: fix result formatting for server engine tests
+		if IsServerEngine(e) {
+			t.Skip()
+		}
 		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t10zero(pk BIGINT PRIMARY KEY, v1 DATETIME DEFAULT '2020-01-01 01:02:03', v2 DATETIME DEFAULT 0,"+
 			"v3 TIMESTAMP DEFAULT '2020-01-01 01:02:03', v4 TIMESTAMP DEFAULT 0)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
 
