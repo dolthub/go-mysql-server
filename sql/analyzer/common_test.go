@@ -41,6 +41,10 @@ func gt(left, right sql.Expression) sql.Expression {
 	return expression.NewGreaterThan(left, right)
 }
 
+func lt(left, right sql.Expression) sql.Expression {
+	return expression.NewLessThan(left, right)
+}
+
 func or(left, right sql.Expression) sql.Expression {
 	return expression.NewOr(left, right)
 }
