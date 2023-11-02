@@ -44,6 +44,11 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 		return nil, transform.SameTree, err
 	}
 
+	err = validateNoVirtualColumnsInPrimaryKey(ct.TableSpec())
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
 	// passed validateIndexes, so they all must be valid indexes
 	// extract map of columns that have indexes defined over them
 	keyedColumns := make(map[string]bool)
@@ -59,6 +64,15 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 	}
 
 	return n, transform.SameTree, nil
+}
+
+func validateNoVirtualColumnsInPrimaryKey(spec *plan.TableSpec) error {
+	for _, c := range spec.Schema.Schema {
+		if c.PrimaryKey && c.Virtual {
+			return sql.ErrVirtualColumnPrimaryKey.New()
+		}
+	}
+	return nil
 }
 
 // validateAlterTable is a set of validation functions for ALTER TABLE statements not handled by more specific
@@ -899,6 +913,10 @@ func validatePrimaryKey(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 			err := validatePrefixLength(ctx, schCol, idxCol)
 			if err != nil {
 				return nil, err
+			}
+
+			if schCol.Virtual {
+				return nil, sql.ErrVirtualColumnPrimaryKey.New()
 			}
 		}
 

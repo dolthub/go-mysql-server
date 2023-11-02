@@ -558,6 +558,73 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "illegal table definitions",
+		SetUpScript: []string{
+			"create table t2 (a int generated always as (2), b int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "create table t1 (a int generated always as (2), b int, primary key (a))",
+				ExpectedErr: sql.ErrVirtualColumnPrimaryKey,
+			},
+			{
+				Query:       "create table t1 (a int generated always as (2), b int, primary key (a, b))",
+				ExpectedErr: sql.ErrVirtualColumnPrimaryKey,
+			},
+			{
+				Query:       "alter table t2 add primary key (a)",
+				ExpectedErr: sql.ErrVirtualColumnPrimaryKey,
+			},
+			{
+				Query:       "alter table t2 add primary key (a, b)",
+				ExpectedErr: sql.ErrVirtualColumnPrimaryKey,
+			},
+		},
+	},
+	{
+		Name: "generated columns in primary key",
+		SetUpScript: []string{
+			"create table t2 (a int, b int generated always as (a + 2) stored, primary key (b))",
+			"create table t3 (a int, b int generated always as (a + 2) stored, primary key (a, b))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into t2 (a) values (1), (2)",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query: "select * from t2 order by a",
+				Expected: []sql.Row{
+					{1, 3},
+					{2, 4},
+				},
+			},
+			{
+				Query: "select * from t2 where b = 4",
+				Expected: []sql.Row{
+					{2, 4},
+				},
+			},
+			{
+				Query:    "insert into t3 (a) values (1), (2)",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query: "select * from t3 order by a",
+				Expected: []sql.Row{
+					{1, 3},
+					{2, 4},
+				},
+			},
+			{
+				Query: "select * from t3 where a = 2 and b = 4",
+				Expected: []sql.Row{
+					{2, 4},
+				},
+			},
+		},
+	},
 }
 
 var BrokenGeneratedColumnTests = []ScriptTest{
