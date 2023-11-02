@@ -4132,6 +4132,42 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Point lookups with dropped filters",
+		SetUpScript: []string{
+			`create table t1 (
+    			  id varchar(255),
+    			  a  varchar(255),
+    			  unique key key1 (id, a)
+    			);`,
+			`create table t2 (
+    			  id varchar(255),
+    			  b  varchar(255),
+    			  unique key key2 (id, b)
+    			);`,
+			`insert into t1 values 
+    			  ('id1', 'a1'),
+    			  ('id1', 'a2');`,
+			`insert into t2 values
+    			  ('id1', 'b1'),
+    			  ('id1', 'b2'),
+    			  ('id1', 'b3'),
+    			  ('id2', 'b4'),
+    			  ('id2', 'b5');`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `
+    				select /*+ LOOKUP_JOIN(t1, t3)*/ t1.id, t1.a, t2.b from
+                      t1
+                    inner join
+                      t2
+                    on
+                      t1.id = t2.id and t1.a = t2.b;`,
+				Expected: []sql.Row{},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

@@ -256,6 +256,14 @@ func (i *IndexedTableAccess) String() string {
 		}
 	}
 
+	if i.lb != nil && len(i.lb.keyExprs) > 0 {
+		keys := make([]string, len(i.lb.keyExprs))
+		for i, e := range i.lb.keyExprs {
+			keys[i] = e.String()
+		}
+		children = append(children, fmt.Sprintf("keys: %s", strings.Join(keys, ", ")))
+	}
+
 	if ft, ok := i.Table.(sql.FilteredTable); ok {
 		var filters []string
 		for _, f := range ft.Filters() {
