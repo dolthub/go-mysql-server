@@ -193,9 +193,6 @@ func TestQueriesPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.SimpleSetup...)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	if IsServerEngine(e) {
-		t.Skip("issue: https://github.com/dolthub/dolt/issues/6904 and https://github.com/dolthub/dolt/issues/6901")
-	}
 	t.Run("query prepared tests", func(t *testing.T) {
 		for _, tt := range queries.QueryTests {
 			if tt.SkipPrepared {
@@ -1423,9 +1420,6 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 		t.Run(script.Name, func(t *testing.T) {
 			engine := mustNewEngine(t, harness)
 			defer engine.Close()
-			if IsServerEngine(engine) {
-				t.Skip("TestUserPrivileges test depend on Context to switch the user to run test queries")
-			}
 
 			ctx := NewContext(harness)
 			ctx.NewCtxWithClient(sql.Client{
@@ -1491,9 +1485,6 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 		t.Run(strings.Join(script.Queries, "\n > "), func(t *testing.T) {
 			engine := mustNewEngine(t, harness)
 			defer engine.Close()
-			if IsServerEngine(engine) {
-				t.Skip("TestUserPrivileges test depend on Context to switch the user to run test queries")
-			}
 
 			engine.EngineAnalyzer().Catalog.MySQLDb.AddRootAccount()
 			engine.EngineAnalyzer().Catalog.MySQLDb.SetPersister(&mysql_db.NoopPersister{})
@@ -1596,9 +1587,6 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 			}
 
 			e := mustNewEngine(t, clientHarness)
-			if IsServerEngine(e) {
-				t.Skip("TestUserPrivileges test depend on Context to switch the user to run test queries")
-			}
 			engine, ok := e.(*sqle.Engine)
 			if !ok {
 				t.Skip("Need a *sqle.Engine for TestUserAuthentication")
@@ -3829,10 +3817,7 @@ func TestClearWarnings(t *testing.T, harness Harness) {
 	harness.Setup(setup.Mytable...)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	if IsServerEngine(e) {
-		// TODO: needs more investigation on this test
-		t.Skip("depends on Warnings() method call on context")
-	}
+
 	ctx := NewContext(harness)
 	err := CreateNewConnectionForServerEngine(ctx, e)
 	require.NoError(err)
@@ -4129,11 +4114,8 @@ func TestTracing(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	if IsServerEngine(e) {
-		t.Skip("this test depends on Context, which ServerEngine does not depend on or update the current context")
-	}
-	ctx := NewContext(harness)
 
+	ctx := NewContext(harness)
 	tracer := new(test.MemTracer)
 
 	sql.WithTracer(tracer)(ctx)
@@ -4301,9 +4283,8 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 
 	// Some tests can't currently be run with as a script because they do additional checks
 	t.Run("DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP current_timestamp", func(t *testing.T) {
-		// TODO: fix result formatting for server engine tests
 		if IsServerEngine(e) {
-			t.Skip()
+			t.Skip("TODO: fix result formatting for server engine tests")
 		}
 		// ctx = NewContext(harness)
 		// e.Query(ctx, "set @@session.time_zone='SYSTEM';")
@@ -4328,9 +4309,8 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	// TODO: zero timestamps work slightly differently than they do in MySQL, where the zero time is "0000-00-00 00:00:00"
 	//  We use "0000-01-01 00:00:00"
 	t.Run("DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP literals", func(t *testing.T) {
-		// TODO: fix result formatting for server engine tests
 		if IsServerEngine(e) {
-			t.Skip()
+			t.Skip("TODO: fix result formatting for server engine tests")
 		}
 		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t10zero(pk BIGINT PRIMARY KEY, v1 DATETIME DEFAULT '2020-01-01 01:02:03', v2 DATETIME DEFAULT 0,"+
 			"v3 TIMESTAMP DEFAULT '2020-01-01 01:02:03', v4 TIMESTAMP DEFAULT 0)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
@@ -4405,9 +4385,6 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	if IsServerEngine(e) {
-		t.Skip("this test depends on Context, which ServerEngine does not depend on or update the current context")
-	}
 
 	for _, tt := range q {
 		t.Run(tt.Name, func(t *testing.T) {
@@ -4440,9 +4417,6 @@ func TestValidateSession(t *testing.T, harness Harness, newSessFunc func(ctx *sq
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	if IsServerEngine(e) {
-		t.Skip("depends on ValidateSession() method call on context")
-	}
 
 	ctx := NewContext(harness)
 	ctx.Session = newSessFunc(ctx)
@@ -4735,11 +4709,7 @@ func TestCharsetCollationEngine(t *testing.T, harness Harness) {
 		t.Run(script.Name, func(t *testing.T) {
 			engine := mustNewEngine(t, harness)
 			defer engine.Close()
-			if IsServerEngine(engine) {
-				// Note: charset introducer needs to be handled with the SQLVal when preparing
-				//  e.g. what we do currently for `_utf16'hi'` is `_utf16 :v1` with v1 = "hi", instead of `:v1` with v1 = "_utf16'hi'".
-				t.Skip("way we prepare the queries with injectBindVarsAndPrepare() method does not work for ServerEngine test")
-			}
+
 			ctx := harness.NewContext()
 			ctx.SetCurrentDatabase("mydb")
 

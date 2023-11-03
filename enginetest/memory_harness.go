@@ -150,6 +150,10 @@ func (m *MemoryHarness) UseServer() {
 	m.server = true
 }
 
+func (m *MemoryHarness) IsUsingServer() bool {
+	return m.server
+}
+
 type SkippingMemoryHarness struct {
 	MemoryHarness
 }

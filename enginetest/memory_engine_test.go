@@ -88,7 +88,11 @@ func TestQueries(t *testing.T) {
 
 // TestQueriesPreparedSimple runs the canonical test queries against a single threaded index enabled harness.
 func TestQueriesPreparedSimple(t *testing.T) {
-	enginetest.TestQueriesPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+	harness := enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil)
+	if harness.IsUsingServer() {
+		t.Skip("issue: https://github.com/dolthub/dolt/issues/6904 and https://github.com/dolthub/dolt/issues/6901")
+	}
+	enginetest.TestQueriesPrepared(t, harness)
 }
 
 // TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
@@ -297,11 +301,13 @@ func TestVersionedQueries(t *testing.T) {
 }
 
 func TestAnsiQuotesSqlMode(t *testing.T) {
+
 	enginetest.TestAnsiQuotesSqlMode(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestAnsiQuotesSqlModePrepared(t *testing.T) {
-	if _, ok := os.LookupEnv("SERVER_ENGINE_TEST"); ok {
+	harness := enginetest.NewDefaultMemoryHarness()
+	if harness.IsUsingServer() {
 		t.Skip("prepared test depend on context for current sql_mode information, but it does not get updated when using ServerEngine")
 	}
 	enginetest.TestAnsiQuotesSqlModePrepared(t, enginetest.NewDefaultMemoryHarness())
@@ -573,11 +579,19 @@ func TestSpatialIndexPlans(t *testing.T) {
 }
 
 func TestUserPrivileges(t *testing.T) {
-	enginetest.TestUserPrivileges(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	harness := enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver)
+	if harness.IsUsingServer() {
+		t.Skip("TestUserPrivileges test depend on Context to switch the user to run test queries")
+	}
+	enginetest.TestUserPrivileges(t, harness)
 }
 
 func TestUserAuthentication(t *testing.T) {
-	enginetest.TestUserAuthentication(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	harness := enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver)
+	if harness.IsUsingServer() {
+		t.Skip("TestUserPrivileges test depend on Context to switch the user to run test queries")
+	}
+	enginetest.TestUserAuthentication(t, harness)
 }
 
 func TestPrivilegePersistence(t *testing.T) {
@@ -756,7 +770,8 @@ func TestAlterTable(t *testing.T) {
 }
 
 func TestDateParse(t *testing.T) {
-	if _, ok := os.LookupEnv("SERVER_ENGINE_TEST"); ok {
+	harness := enginetest.NewDefaultMemoryHarness()
+	if harness.IsUsingServer() {
 		t.Skip("issue: https://github.com/dolthub/dolt/issues/6901")
 	}
 	enginetest.TestDateParse(t, enginetest.NewDefaultMemoryHarness())
@@ -799,6 +814,9 @@ func TestIndexPrefix(t *testing.T) {
 
 func TestPersist(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
+	if harness.IsUsingServer() {
+		t.Skip("this test depends on Context, which ServerEngine does not depend on or update the current context")
+	}
 	newSess := func(_ *sql.Context) sql.PersistableSession {
 		ctx := harness.NewSession()
 		persistedGlobals := memory.GlobalsMap{}
@@ -815,6 +833,9 @@ func TestValidateSession(t *testing.T) {
 	}
 
 	harness := enginetest.NewDefaultMemoryHarness()
+	if harness.IsUsingServer() {
+		t.Skip("It depends on ValidateSession() method call on context")
+	}
 	newSess := func(ctx *sql.Context) sql.PersistableSession {
 		memSession := ctx.Session.(*memory.Session)
 		memSession.SetValidationCallback(incrementValidateCb)
@@ -836,7 +857,13 @@ func TestPreparedStatements(t *testing.T) {
 }
 
 func TestCharsetCollationEngine(t *testing.T) {
-	enginetest.TestCharsetCollationEngine(t, enginetest.NewDefaultMemoryHarness())
+	harness := enginetest.NewDefaultMemoryHarness()
+	if harness.IsUsingServer() {
+		// Note: charset introducer needs to be handled with the SQLVal when preparing
+		//  e.g. what we do currently for `_utf16'hi'` is `_utf16 :v1` with v1 = "hi", instead of `:v1` with v1 = "_utf16'hi'".
+		t.Skip("way we prepare the queries with injectBindVarsAndPrepare() method does not work for ServerEngine test")
+	}
+	enginetest.TestCharsetCollationEngine(t, harness)
 }
 
 func TestCharsetCollationWire(t *testing.T) {
