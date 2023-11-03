@@ -433,3 +433,20 @@ type MutableTableNode interface {
 	// WrappedTable returns the Table this node wraps, without unwinding any additional layers of wrapped tables.
 	WrappedTable() Table
 }
+
+// IndexSearchable lets a node use custom logic to create
+// *plan.IndexedTableAccess
+type IndexSearchable interface {
+	// SkipIndexCosting defers to an integrator for provide a suitable
+	// index lookup.
+	SkipIndexCosting() bool
+	// LookupForExpressions returns an sql.IndexLookup for an expression
+	// set.
+	LookupForExpressions(*Context, []Expression) (IndexLookup, error)
+}
+
+// IndexSearchableTable is a Table supports custom index generation.
+type IndexSearchableTable interface {
+	IndexAddressableTable
+	IndexSearchable
+}

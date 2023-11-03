@@ -70,8 +70,20 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 			return n, transform.SameTree, nil
 		}
 
-		//var statistics []sql.Statistic
-		//var err error
+		if is, ok := rt.UnderlyingTable().(sql.IndexSearchableTable); ok && is.SkipIndexCosting() {
+			lookup, err := is.LookupForExpressions(ctx, expression.SplitConjunction(filter.Expression))
+			if err != nil {
+				return n, transform.SameTree, err
+			}
+			if lookup.IsEmpty() {
+				return n, transform.SameTree, nil
+			}
+			ret, err := plan.NewStaticIndexedAccessForTableNode(rt, lookup)
+			if err != nil {
+				return n, transform.SameTree, err
+			}
+			return plan.NewFilter(filter.Expression, ret), transform.NewTree, nil
+		}
 		statistics, err := a.Catalog.StatsProvider.GetTableStats(ctx, strings.ToLower(rt.Database().Name()), strings.ToLower(rt.Name()))
 		if err != nil {
 			return n, transform.SameTree, err

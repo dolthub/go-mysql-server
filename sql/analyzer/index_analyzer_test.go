@@ -136,7 +136,7 @@ type dummyIdx struct {
 var _ sql.Index = (*dummyIdx)(nil)
 
 func (i dummyIdx) CanSupport(r ...sql.Range) bool {
-	return false
+	return true
 }
 
 func (i dummyIdx) Expressions() []string {
