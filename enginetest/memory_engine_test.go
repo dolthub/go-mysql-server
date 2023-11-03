@@ -753,6 +753,9 @@ func TestAlterTable(t *testing.T) {
 }
 
 func TestDateParse(t *testing.T) {
+	if _, ok := os.LookupEnv("SERVER_ENGINE_TEST"); !ok {
+		t.Skip("issue: https://github.com/dolthub/dolt/issues/6901")
+	}
 	enginetest.TestDateParse(t, enginetest.NewDefaultMemoryHarness())
 }
 

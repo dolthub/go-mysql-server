@@ -280,6 +280,16 @@ func WithServices(services Services) ContextOption {
 	}
 }
 
+// WithQueryTime sets the query time for the Context
+func WithQueryTime(t time.Time) ContextOption {
+	// NOTE: when using over the wire session context, the query time does not get time.Now()
+	return func(ctx *Context) {
+		if ctx.queryTime.Equal(time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)) {
+			ctx.queryTime = t
+		}
+	}
+}
+
 var ctxNowFunc = time.Now
 var ctxNowFuncMutex = &sync.Mutex{}
 
@@ -315,7 +325,7 @@ func NewContext(
 	c := &Context{
 		Context:   ctx,
 		Session:   nil,
-		queryTime: time.Now(),
+		queryTime: ctxNowFunc(),
 		tracer:    NoopTracer,
 	}
 	for _, opt := range opts {

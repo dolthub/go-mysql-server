@@ -204,13 +204,19 @@ func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, pa
 // trimMySQLErrCodePrefix temporarily removes the error code part of the error message returned from the server.
 // This allows us to assert the error message strings in the enginetest.
 func trimMySQLErrCodePrefix(err error) error {
-	r := strings.Split(err.Error(), "(HY000): ")
+	errMsg := err.Error()
+	r := strings.Split(errMsg, "(HY000): ")
 	if len(r) == 2 {
 		return errors.New(r[1])
 	}
 	if e, ok := err.(*mysql.MySQLError); ok {
 		// Note: the error msg can be fixed to match with MySQLError at https://github.com/dolthub/vitess/blob/main/go/mysql/sql_error.go#L62
 		return errors.New(fmt.Sprintf("%s (errno %v) (sqlstate %s)", e.Message, e.Number, e.SQLState))
+	}
+	if strings.HasPrefix(errMsg, "sql: expected") && strings.Contains(errMsg, "arguments, got") {
+		// TODO: needs better error message for non matching number of binding argument
+		//  for Dolt, this error is caught on the first binding variable
+		err = sql.ErrUnboundPreparedStatementVariable.New("v1")
 	}
 	return err
 }

@@ -239,6 +239,7 @@ func (s *SessionManager) NewContextWithQuery(conn *mysql.Conn, query string) (*s
 			KillConnection: s.KillConnection,
 			LoadInfile:     conn.LoadInfile,
 		}),
+		sql.WithQueryTime(time.Now()),
 	)
 
 	return context, nil
