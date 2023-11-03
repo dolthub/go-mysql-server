@@ -94,9 +94,13 @@ func (s *idxScope) addParent(other *idxScope) {
 	s.parentScopes = append(s.parentScopes, other)
 }
 
+func isQualified(s string) bool {
+	return strings.Contains(s, ".")
+}
+
 // unqualify is a helper function to remove the table prefix from a column, if it's present.
 func unqualify(s string) string {
-	if strings.Contains(s, ".") {
+	if isQualified(s) {
 		return strings.Split(s, ".")[1]
 	}
 	return s
@@ -113,7 +117,7 @@ func (s *idxScope) getIdx(n string) (int, bool) {
 	// This should only apply to column names for set_op, where we have two different tables
 	n = unqualify(n)
 	for i := len(s.columns) - 1; i >= 0; i-- {
-		if strings.EqualFold(n, unqualify(s.columns[i])) {
+		if strings.EqualFold(n, s.columns[i]) {
 			return i, true
 		}
 	}
@@ -360,6 +364,13 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 			newCheck.Expr = newE
 			s.checks = append(s.checks, &newCheck)
 		}
+	case *plan.Filter:
+		scope := append(s.parentScopes, s.childScopes...)
+		for _, e := range n.Expressions() {
+			// default nodes can't see lateral join nodes, unless we're in lateral
+			// join and lateral scopes are promoted to parent status
+			s.expressions = append(s.expressions, fixExprToScope(e, scope...))
+		}
 	default:
 		if ne, ok := n.(sql.Expressioner); ok {
 			scope := append(s.parentScopes, s.childScopes...)
@@ -438,12 +449,23 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 			//  this error for the case of DEFAULT in a `plan.Values`, since we analyze the insert source in isolation (we
 			//  don't have the destination schema, and column references in default values are determined in the build phase)
 			idx, _ := newScope.getIdx(e.String())
+			if e.String() == "c.c_id" && idx == 3 {
+				print()
+			}
+			if e.String() == "o.c_id" && idx == 3 {
+				print()
+			}
 			if idx >= 0 {
 				return e.WithIndex(idx), transform.NewTree, nil
 			}
 			return e, transform.SameTree, nil
 		case *plan.Subquery:
 			// this |outScope| prepends the subquery scope
+			//for _, s := range scopes {
+			//	for _, ls := range s.lateralScopes {
+			//		newScope.addScope(ls)
+			//	}
+			//}
 			newQ, _, err := assignIndexesHelper(e.Query, newScope.push())
 			if err != nil {
 				return nil, transform.SameTree, err

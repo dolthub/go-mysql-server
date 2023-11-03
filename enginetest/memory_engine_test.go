@@ -203,19 +203,50 @@ func TestSingleScript(t *testing.T) {
 				"CREATE TABLE o (o_id INT PRIMARY KEY, c_id INT, ship TEXT);",
 				"INSERT INTO c VALUES (1, 'CA'), (2, 'TX'), (3, 'MA'), (4, 'TX'), (5, NULL), (6, 'FL');",
 				"INSERT INTO o VALUES (10, 1, 'CA'), (20, 1, 'CA'), (30, 1, 'CA'), (40, 2, 'CA'), (50, 2, 'TX'), (60, 2, NULL), (70, 4, 'WY'), (80, 4, NULL), (90, 6, 'WA');",
+				"create table x (i int);",
+				"insert into x values (1), (2), (3);",
+				"create table y (i bigint);",
+				"insert into y values (1), (3);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "SELECT c.c_id, o.o_id, o.ship FROM c INNER JOIN o ON c.c_id=o.c_id AND o.ship = (SELECT min(o.ship) FROM o WHERE o.c_id=c.c_id) ORDER BY c.c_id, o.o_id, o.ship;",
+					Query: "table x intersect table y order by i;",
 					Expected: []sql.Row{
-						{1, 10, "CA"},
-						{1, 20, "CA"},
-						{1, 30, "CA"},
-						{2, 40, "CA"},
-						{4, 70, "WY"},
-						{6, 90, "WA"},
+						{1},
+						{3},
 					},
 				},
+				//{
+				//	Query: "SELECT c.c_id, o.o_id, o.ship FROM c INNER JOIN o ON c.c_id=o.c_id AND o.ship = (SELECT min(o.ship) FROM o WHERE o.c_id=c.c_id) ORDER BY c.c_id, o.o_id, o.ship;",
+				//	Expected: []sql.Row{
+				//		{1, 10, "CA"},
+				//		{1, 20, "CA"},
+				//		{1, 30, "CA"},
+				//		{2, 40, "CA"},
+				//		{4, 70, "WY"},
+				//		{6, 90, "WA"},
+				//	},
+				//},
+				//{
+				//	Query: `SELECT /*+ INNER_JOIN(c, o)*/ c.c_id, o.c_id, o.ship
+                //            FROM c INNER JOIN o
+                //            ON
+                //              o.ship = (
+                //                SELECT min(o.ship)
+                //                FROM
+                //                  o
+                //                WHERE
+                //                  c.c_id = o.c_id
+                //              );`,
+				//	Expected: []sql.Row{
+                //    	{1, 10, "CA"},
+                //    	{1, 20, "CA"},
+                //    	{1, 30, "CA"},
+                //    	{2, 40, "CA"},
+                //    	{4, 70, "WY"},
+                //    	{6, 90, "WA"},
+                //    },
+				//},
 			},
 		},
 	}
