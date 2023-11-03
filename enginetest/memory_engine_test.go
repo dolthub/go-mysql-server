@@ -297,14 +297,14 @@ func TestVersionedQueries(t *testing.T) {
 }
 
 func TestAnsiQuotesSqlMode(t *testing.T) {
-	if _, ok := os.LookupEnv("SERVER_ENGINE_TEST"); !ok {
+	if _, ok := os.LookupEnv("SERVER_ENGINE_TEST"); ok {
 		t.Skip("TODO: more investigation on session sql_mode not persisting")
 	}
 	enginetest.TestAnsiQuotesSqlMode(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestAnsiQuotesSqlModePrepared(t *testing.T) {
-	if _, ok := os.LookupEnv("SERVER_ENGINE_TEST"); !ok {
+	if _, ok := os.LookupEnv("SERVER_ENGINE_TEST"); ok {
 		t.Skip("TODO: more investigation on session sql_mode not persisting")
 	}
 	enginetest.TestAnsiQuotesSqlModePrepared(t, enginetest.NewDefaultMemoryHarness())
@@ -759,7 +759,7 @@ func TestAlterTable(t *testing.T) {
 }
 
 func TestDateParse(t *testing.T) {
-	if _, ok := os.LookupEnv("SERVER_ENGINE_TEST"); !ok {
+	if _, ok := os.LookupEnv("SERVER_ENGINE_TEST"); ok {
 		t.Skip("issue: https://github.com/dolthub/dolt/issues/6901")
 	}
 	enginetest.TestDateParse(t, enginetest.NewDefaultMemoryHarness())
