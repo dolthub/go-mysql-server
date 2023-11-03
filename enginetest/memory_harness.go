@@ -64,7 +64,7 @@ var _ ClientHarness = (*MemoryHarness)(nil)
 var _ ServerHarness = (*MemoryHarness)(nil)
 var _ sql.ExternalStoredProcedureProvider = (*MemoryHarness)(nil)
 
-func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useNativeIndexes bool, driverInitalizer IndexDriverInitializer) *MemoryHarness {
+func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useNativeIndexes bool, driverInitializer IndexDriverInitializer) *MemoryHarness {
 	externalProcedureRegistry := sql.NewExternalStoredProcedureRegistry()
 	for _, esp := range memory.ExternalStoredProcedures {
 		externalProcedureRegistry.Register(esp)
@@ -73,13 +73,12 @@ func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useN
 	return &MemoryHarness{
 		name:                      name,
 		numTablePartitions:        numTablePartitions,
-		indexDriverInitializer:    driverInitalizer,
+		indexDriverInitializer:    driverInitializer,
 		parallelism:               parallelism,
 		nativeIndexSupport:        useNativeIndexes,
 		skippedQueries:            make(map[string]struct{}),
 		externalProcedureRegistry: externalProcedureRegistry,
 		mu:                        &sync.Mutex{},
-		//server:                    true,
 	}
 }
 

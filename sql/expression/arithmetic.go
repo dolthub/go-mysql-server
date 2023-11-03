@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -630,6 +631,13 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return -int64(n), nil
 	case decimal.Decimal:
 		return n.Neg(), err
+	case string:
+		// try getting int out of string value
+		i, iErr := strconv.ParseInt(n, 10, 64)
+		if iErr != nil {
+			return nil, sql.ErrInvalidType.New(reflect.TypeOf(n))
+		}
+		return -i, nil
 	default:
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(n))
 	}

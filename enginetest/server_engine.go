@@ -286,6 +286,7 @@ func convertValue(sch sql.Schema, row sql.Row) sql.Row {
 				r, err := attemptUnmarshalJSON(string(row[i].([]byte)))
 				if err != nil {
 					//t.Skip(fmt.Sprintf("received error unmarshalling returned json result"))
+					row[i] = nil
 				} else {
 					row[i] = r
 				}
