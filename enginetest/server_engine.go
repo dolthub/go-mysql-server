@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-sql-driver/mysql"
 	"net"
 	"strconv"
 	"strings"
@@ -28,6 +27,7 @@ import (
 
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
+	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
 
 	sqle "github.com/dolthub/go-mysql-server"
