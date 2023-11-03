@@ -4736,7 +4736,9 @@ func TestCharsetCollationEngine(t *testing.T, harness Harness) {
 			engine := mustNewEngine(t, harness)
 			defer engine.Close()
 			if IsServerEngine(engine) {
-				t.Skip("currently fails from ErrCharSetIntroducer when queried as prepared statement")
+				// Note: charset introducer needs to be handled with the SQLVal when preparing
+				//  e.g. what we do currently for `_utf16'hi'` is `_utf16 :v1` with v1 = "hi", instead of `:v1` with v1 = "_utf16'hi'".
+				t.Skip("way we prepare the queries with injectBindVarsAndPrepare() method does not work for ServerEngine test")
 			}
 			ctx := harness.NewContext()
 			ctx.SetCurrentDatabase("mydb")
