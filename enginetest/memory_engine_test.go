@@ -297,15 +297,12 @@ func TestVersionedQueries(t *testing.T) {
 }
 
 func TestAnsiQuotesSqlMode(t *testing.T) {
-	if _, ok := os.LookupEnv("SERVER_ENGINE_TEST"); ok {
-		t.Skip("TODO: more investigation on session sql_mode not persisting")
-	}
 	enginetest.TestAnsiQuotesSqlMode(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestAnsiQuotesSqlModePrepared(t *testing.T) {
 	if _, ok := os.LookupEnv("SERVER_ENGINE_TEST"); ok {
-		t.Skip("TODO: more investigation on session sql_mode not persisting")
+		t.Skip("prepared test depend on context for current sql_mode information, but it does not get updated when using ServerEngine")
 	}
 	enginetest.TestAnsiQuotesSqlModePrepared(t, enginetest.NewDefaultMemoryHarness())
 }

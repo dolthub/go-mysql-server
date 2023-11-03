@@ -4112,8 +4112,6 @@ func TestSessionSelectLimit(t *testing.T, harness Harness) {
 	defer e.Close()
 	ctx := NewContext(harness)
 	if IsServerEngine(e) {
-		err := CreateNewConnectionForServerEngine(ctx, e)
-		require.NoError(t, err, nil)
 		RunQueryWithContext(t, e, harness, ctx, "SET @@sql_select_limit = 2")
 	} else {
 		err := ctx.Session.SetSessionVariable(ctx, "sql_select_limit", int64(2))
