@@ -17,6 +17,7 @@ package enginetest
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -70,6 +71,12 @@ func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useN
 		externalProcedureRegistry.Register(esp)
 	}
 
+	var useServer bool
+	if t, ok := os.LookupEnv("SERVER_ENGINE_TEST"); ok && strings.ToLower(t) == "true" {
+		useServer = true
+	}
+	useServer = true
+
 	return &MemoryHarness{
 		name:                      name,
 		numTablePartitions:        numTablePartitions,
@@ -79,6 +86,7 @@ func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useN
 		skippedQueries:            make(map[string]struct{}),
 		externalProcedureRegistry: externalProcedureRegistry,
 		mu:                        &sync.Mutex{},
+		server:                    useServer,
 	}
 }
 

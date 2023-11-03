@@ -684,7 +684,9 @@ func TestReadOnly(t *testing.T, harness Harness, testStoredProcedures bool) {
 	engine := mustNewEngine(t, harness)
 
 	e, ok := engine.(*sqle.Engine)
-	require.True(t, ok, "Need a *sqle.Engine for TestReadOnly")
+	if !ok {
+		t.Skip("Need a *sqle.Engine for TestReadOnly")
+	}
 
 	e.ReadOnly.Store(true)
 	defer e.Close()
@@ -1017,8 +1019,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "CREATE TABLE t2parent (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX (v1))")
 		RunQuery(t, e, harness, "CREATE TABLE t2child (pk BIGINT PRIMARY KEY, v1 BIGINT, "+
 			"FOREIGN KEY (v1) REFERENCES t2parent (v1))")
-		_, _, err := e.Query(ctx, "TRUNCATE t2parent")
-		require.True(t, sql.ErrTruncateReferencedFromForeignKey.Is(err))
+		AssertErrWithCtx(t, e, harness, ctx, "TRUNCATE t2parent", sql.ErrTruncateReferencedFromForeignKey)
 	})
 
 	t.Run("ON DELETE Triggers", func(t *testing.T) {
@@ -1605,7 +1606,9 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 				t.Skip("TestUserPrivileges test depend on Context to switch the user to run test queries")
 			}
 			engine, ok := e.(*sqle.Engine)
-			require.True(t, ok, "Need a *sqle.Engine for TestUserAuthentication")
+			if !ok {
+				t.Skip("Need a *sqle.Engine for TestUserAuthentication")
+			}
 
 			defer engine.Close()
 			engine.EngineAnalyzer().Catalog.MySQLDb.AddRootAccount()
@@ -3934,7 +3937,9 @@ func TestConcurrentTransactions(t *testing.T, harness Harness) {
 	engine := mustNewEngine(t, harness)
 
 	e, ok := engine.(*sqle.Engine)
-	require.True(ok, "Need a *sqle.Engine for TestConcurrentTransactions")
+	if !ok {
+		t.Skip("Need a *sqle.Engine for TestConcurrentTransactions")
+	}
 	defer e.Close()
 
 	pl := e.ProcessList
@@ -4797,7 +4802,9 @@ func testCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 
 			engine, ok := e.(*sqle.Engine)
 			// TODO: do we?
-			require.True(t, ok, "Need a *sqle.Engine for testCharsetCollationWire")
+			if !ok {
+				t.Skip("Need a *sqle.Engine for testCharsetCollationWire")
+			}
 
 			defer engine.Close()
 			engine.EngineAnalyzer().Catalog.MySQLDb.AddRootAccount()
@@ -4873,7 +4880,9 @@ func TestTypesOverWire(t *testing.T, harness ClientHarness, sessionBuilder serve
 
 			engine, ok := e.(*sqle.Engine)
 			// TODO: do we?
-			require.True(t, ok, "Need a *sqle.Engine for TestTypesOverWire")
+			if !ok {
+				t.Skip("Need a *sqle.Engine for TestTypesOverWire")
+			}
 			defer engine.Close()
 
 			ctx := NewContextWithClient(harness, sql.Client{

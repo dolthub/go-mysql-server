@@ -315,7 +315,7 @@ func NewContext(
 	c := &Context{
 		Context:   ctx,
 		Session:   nil,
-		queryTime: ctxNowFunc(),
+		queryTime: time.Now(),
 		tracer:    NoopTracer,
 	}
 	for _, opt := range opts {
