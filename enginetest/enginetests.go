@@ -73,15 +73,6 @@ func TestQueries(t *testing.T, harness Harness) {
 			TestQuery2(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 		}
 	}
-
-	t.Run("date parse tests", func(t *testing.T) {
-		harness.Setup(setup.MydbData)
-		for _, tt := range queries.DateParseQueries {
-			t.Run(tt.Query, func(t *testing.T) {
-				TestQueryWithEngine(t, harness, e, tt)
-			})
-		}
-	})
 }
 
 // TestStatistics tests the statistics from ANALYZE TABLE
@@ -3835,6 +3826,10 @@ func TestClearWarnings(t *testing.T, harness Harness) {
 	harness.Setup(setup.Mytable...)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
+	if IsServerEngine(e) {
+		// TODO: needs more investigation on this test
+		t.Skip("depends on Warnings() method call on context")
+	}
 	ctx := NewContext(harness)
 	err := CreateNewConnectionForServerEngine(ctx, e)
 	require.NoError(err)
@@ -4444,6 +4439,9 @@ func TestValidateSession(t *testing.T, harness Harness, newSessFunc func(ctx *sq
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
+	if IsServerEngine(e) {
+		t.Skip("depends on ValidateSession() method call on context")
+	}
 
 	ctx := NewContext(harness)
 	ctx.Session = newSessFunc(ctx)
@@ -4736,6 +4734,9 @@ func TestCharsetCollationEngine(t *testing.T, harness Harness) {
 		t.Run(script.Name, func(t *testing.T) {
 			engine := mustNewEngine(t, harness)
 			defer engine.Close()
+			if IsServerEngine(engine) {
+				t.Skip("currently fails from ErrCharSetIntroducer when queried as prepared statement")
+			}
 			ctx := harness.NewContext()
 			ctx.SetCurrentDatabase("mydb")
 

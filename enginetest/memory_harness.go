@@ -75,7 +75,6 @@ func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useN
 	if t, ok := os.LookupEnv("SERVER_ENGINE_TEST"); ok && strings.ToLower(t) == "true" {
 		useServer = true
 	}
-	useServer = true
 
 	return &MemoryHarness{
 		name:                      name,
