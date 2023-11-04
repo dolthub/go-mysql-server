@@ -195,58 +195,27 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
 			Name: "virtual column index",
 			SetUpScript: []string{
-				"CREATE TABLE c (c_id INT PRIMARY KEY, bill TEXT);",
-				"CREATE TABLE o (o_id INT PRIMARY KEY, c_id INT, ship TEXT);",
-				"INSERT INTO c VALUES (1, 'CA'), (2, 'TX'), (3, 'MA'), (4, 'TX'), (5, NULL), (6, 'FL');",
-				"INSERT INTO o VALUES (10, 1, 'CA'), (20, 1, 'CA'), (30, 1, 'CA'), (40, 2, 'CA'), (50, 2, 'TX'), (60, 2, NULL), (70, 4, 'WY'), (80, 4, NULL), (90, 6, 'WA');",
-				"create table x (i int);",
-				"insert into x values (1), (2), (3);",
-				"create table y (i bigint);",
-				"insert into y values (1), (3);",
+				"create table t1 (a int primary key, b int, c int generated always as (a + b) virtual, index idx_c (c))",
+				"insert into t1 (a, b) values (1, 2), (3, 4)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "table x intersect table y order by i;",
+					Query:    "select * from t1 where c = 7",
+					Expected: []sql.Row{{3, 4, 7}},
+				},
+				{
+					Query: "explain select * from t1 where c = 7",
 					Expected: []sql.Row{
-						{1},
-						{3},
+						{"IndexedTableAccess(t1)"},
+						{" ├─ index: [t1.c]"},
+						{" └─ filters: [{[7, 7]}]"},
 					},
 				},
-				//{
-				//	Query: "SELECT c.c_id, o.o_id, o.ship FROM c INNER JOIN o ON c.c_id=o.c_id AND o.ship = (SELECT min(o.ship) FROM o WHERE o.c_id=c.c_id) ORDER BY c.c_id, o.o_id, o.ship;",
-				//	Expected: []sql.Row{
-				//		{1, 10, "CA"},
-				//		{1, 20, "CA"},
-				//		{1, 30, "CA"},
-				//		{2, 40, "CA"},
-				//		{4, 70, "WY"},
-				//		{6, 90, "WA"},
-				//	},
-				//},
-				//{
-				//	Query: `SELECT /*+ INNER_JOIN(c, o)*/ c.c_id, o.c_id, o.ship
-                //            FROM c INNER JOIN o
-                //            ON
-                //              o.ship = (
-                //                SELECT min(o.ship)
-                //                FROM
-                //                  o
-                //                WHERE
-                //                  c.c_id = o.c_id
-                //              );`,
-				//	Expected: []sql.Row{
-                //    	{1, 10, "CA"},
-                //    	{1, 20, "CA"},
-                //    	{1, 30, "CA"},
-                //    	{2, 40, "CA"},
-                //    	{4, 70, "WY"},
-                //    	{6, 90, "WA"},
-                //    },
-				//},
 			},
 		},
 	}
@@ -258,46 +227,11 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
+		engine.EngineAnalyzer().Debug = true
+		engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
-	//t.Skip()
-	//var scripts = []queries.ScriptTest{
-	//	{
-	//		Name: "virtual column index",
-	//		SetUpScript: []string{
-	//			"create table t1 (a int primary key, b int, c int generated always as (a + b) virtual, index idx_c (c))",
-	//			"insert into t1 (a, b) values (1, 2), (3, 4)",
-	//		},
-	//		Assertions: []queries.ScriptTestAssertion{
-	//			{
-	//				Query:    "select * from t1 where c = 7",
-	//				Expected: []sql.Row{{3, 4, 7}},
-	//			},
-	//			{
-	//				Query: "explain select * from t1 where c = 7",
-	//				Expected: []sql.Row{
-	//					{"IndexedTableAccess(t1)"},
-	//					{" ├─ index: [t1.c]"},
-	//					{" └─ filters: [{[7, 7]}]"},
-	//				},
-	//			},
-	//		},
-	//	},
-	//}
-	//
-	//for _, test := range scripts {
-	//	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	//	harness.Setup(setup.MydbData, setup.Parent_childData)
-	//	engine, err := harness.NewEngine(t)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	engine.EngineAnalyzer().Debug = true
-	//	engine.EngineAnalyzer().Verbose = true
-	//
-	//	enginetest.TestScriptWithEngine(t, engine, harness, test)
-	//}
 }
 
 func TestUnbuildableIndex(t *testing.T) {

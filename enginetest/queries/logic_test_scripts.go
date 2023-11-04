@@ -418,7 +418,6 @@ var SQLLogicSubqueryTests = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "SELECT c.c_id, o.o_id, o.ship FROM c INNER JOIN o ON c.c_id=o.c_id AND o.ship = (SELECT min(o.ship) FROM o WHERE o.c_id=c.c_id) ORDER BY c.c_id, o.o_id, o.ship;",
 				Expected: []sql.Row{
 					{1, 10, "CA"},

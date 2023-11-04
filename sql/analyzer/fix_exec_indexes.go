@@ -109,16 +109,24 @@ func unqualify(s string) string {
 func (s *idxScope) getIdx(n string) (int, bool) {
 	// We match the column closet to our current scope. We have already
 	// resolved columns, so there will be no in-scope collisions.
-	for i := len(s.columns) - 1; i >= 0; i-- {
-		if strings.EqualFold(n, s.columns[i]) {
-			return i, true
+	if isQualified(n) {
+		for i := len(s.columns) - 1; i >= 0; i-- {
+			if strings.EqualFold(n, s.columns[i]) {
+				return i, true
+			}
 		}
-	}
-	// This should only apply to column names for set_op, where we have two different tables
-	n = unqualify(n)
-	for i := len(s.columns) - 1; i >= 0; i-- {
-		if strings.EqualFold(n, s.columns[i]) {
-			return i, true
+		// This should only apply to column names for set_op, where we have two different tables
+		n = unqualify(n)
+		for i := len(s.columns) - 1; i >= 0; i-- {
+			if strings.EqualFold(n, s.columns[i]) {
+				return i, true
+			}
+		}
+	} else {
+		for i := len(s.columns) - 1; i >= 0; i-- {
+			if strings.EqualFold(n, unqualify(s.columns[i])) {
+				return i, true
+			}
 		}
 	}
 	return -1, false
@@ -364,13 +372,6 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 			newCheck.Expr = newE
 			s.checks = append(s.checks, &newCheck)
 		}
-	case *plan.Filter:
-		scope := append(s.parentScopes, s.childScopes...)
-		for _, e := range n.Expressions() {
-			// default nodes can't see lateral join nodes, unless we're in lateral
-			// join and lateral scopes are promoted to parent status
-			s.expressions = append(s.expressions, fixExprToScope(e, scope...))
-		}
 	default:
 		if ne, ok := n.(sql.Expressioner); ok {
 			scope := append(s.parentScopes, s.childScopes...)
@@ -449,12 +450,6 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 			//  this error for the case of DEFAULT in a `plan.Values`, since we analyze the insert source in isolation (we
 			//  don't have the destination schema, and column references in default values are determined in the build phase)
 			idx, _ := newScope.getIdx(e.String())
-			if e.String() == "c.c_id" && idx == 3 {
-				print()
-			}
-			if e.String() == "o.c_id" && idx == 3 {
-				print()
-			}
 			if idx >= 0 {
 				return e.WithIndex(idx), transform.NewTree, nil
 			}
