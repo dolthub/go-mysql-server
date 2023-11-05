@@ -456,11 +456,6 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 			return e, transform.SameTree, nil
 		case *plan.Subquery:
 			// this |outScope| prepends the subquery scope
-			//for _, s := range scopes {
-			//	for _, ls := range s.lateralScopes {
-			//		newScope.addScope(ls)
-			//	}
-			//}
 			newQ, _, err := assignIndexesHelper(e.Query, newScope.push())
 			if err != nil {
 				return nil, transform.SameTree, err
