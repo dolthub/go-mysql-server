@@ -9,19 +9,20 @@ func _() {
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
 	_ = x[indexScanOpEq-0]
-	_ = x[indexScanOpGt-1]
-	_ = x[indexScanOpGte-2]
-	_ = x[indexScanOpLt-3]
-	_ = x[indexScanOpLte-4]
-	_ = x[indexScanOpAnd-5]
-	_ = x[indexScanOpOr-6]
-	_ = x[indexScanOpIsNull-7]
-	_ = x[indexScanOpIsNotNull-8]
+	_ = x[indexScanOpNullSafeEq-1]
+	_ = x[indexScanOpGt-2]
+	_ = x[indexScanOpGte-3]
+	_ = x[indexScanOpLt-4]
+	_ = x[indexScanOpLte-5]
+	_ = x[indexScanOpAnd-6]
+	_ = x[indexScanOpOr-7]
+	_ = x[indexScanOpIsNull-8]
+	_ = x[indexScanOpIsNotNull-9]
 }
 
-const _indexScanOp_name = "=>>=<<=&&||IS NULLIS NOT NULL"
+const _indexScanOp_name = "=<=>>>=<<=&&||IS NULLIS NOT NULL"
 
-var _indexScanOp_index = [...]uint8{0, 1, 2, 4, 5, 7, 9, 11, 18, 29}
+var _indexScanOp_index = [...]uint8{0, 1, 4, 5, 7, 8, 10, 12, 14, 21, 32}
 
 func (i indexScanOp) String() string {
 	if i >= indexScanOp(len(_indexScanOp_index)-1) {

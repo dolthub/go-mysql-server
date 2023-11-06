@@ -10,7 +10,7 @@ func Intersect(s1, s2 sql.Statistic) sql.Statistic {
 	return nil
 }
 
-func PrefixKey(s1 sql.Statistic, key []interface{}) sql.Statistic {
+func PrefixKey(s1 sql.Statistic, key []interface{}, nullable []bool) sql.Statistic {
 	return nil
 }
 
