@@ -269,8 +269,8 @@ UPDATE warehouse1 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 			"         │   ├─ customer1.c_last:3\n" +
 			"         │   └─ ESEEINGABLE (longtext)\n" +
 			"         └─ IndexedTableAccess(customer1)\n" +
-			"             ├─ index: [customer1.c_w_id,customer1.c_d_id,customer1.c_id]\n" +
-			"             ├─ static: [{[1, 1], [5, 5], [NULL, ∞)}]\n" +
+			"             ├─ index: [customer1.c_w_id,customer1.c_d_id,customer1.c_last,customer1.c_first]\n" +
+			"             ├─ static: [{[1, 1], [5, 5], [ESEEINGABLE, ESEEINGABLE], [NULL, ∞)}]\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: customer1\n" +
 			"                 └─ columns: [c_id c_d_id c_w_id c_last]\n" +
@@ -286,8 +286,8 @@ UPDATE warehouse1 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 			"         │   ├─ customer1.c_last:5\n" +
 			"         │   └─ ESEEINGABLE (longtext)\n" +
 			"         └─ IndexedTableAccess(customer1)\n" +
-			"             ├─ index: [customer1.c_w_id,customer1.c_d_id,customer1.c_id]\n" +
-			"             ├─ static: [{[1, 1], [5, 5], [NULL, ∞)}]\n" +
+			"             ├─ index: [customer1.c_w_id,customer1.c_d_id,customer1.c_last,customer1.c_first]\n" +
+			"             ├─ static: [{[1, 1], [5, 5], [ESEEINGABLE, ESEEINGABLE], [NULL, ∞)}]\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: customer1\n" +
 			"                 └─ columns: [c_id c_d_id c_w_id c_first c_middle c_last c_street_1 c_street_2 c_city c_state c_zip c_phone c_since c_credit c_credit_lim c_discount c_balance c_ytd_payment c_payment_cnt c_delivery_cnt c_data]\n" +
@@ -346,8 +346,8 @@ SELECT count(c_id) namecnt FROM customer3 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 			"         │   ├─ customer3.c_last:3\n" +
 			"         │   └─ PRIESEPRES (longtext)\n" +
 			"         └─ IndexedTableAccess(customer3)\n" +
-			"             ├─ index: [customer3.c_w_id,customer3.c_d_id,customer3.c_id]\n" +
-			"             ├─ static: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
+			"             ├─ index: [customer3.c_w_id,customer3.c_d_id,customer3.c_last,customer3.c_first]\n" +
+			"             ├─ static: [{[1, 1], [1, 1], [PRIESEPRES, PRIESEPRES], [NULL, ∞)}]\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: customer3\n" +
 			"                 └─ columns: [c_id c_d_id c_w_id c_last]\n" +
@@ -363,8 +363,8 @@ SELECT count(c_id) namecnt FROM customer3 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 			"         │   ├─ customer2.c_last:5\n" +
 			"         │   └─ PRIESEPRES (longtext)\n" +
 			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
-			"             ├─ static: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
+			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"             ├─ static: [{[1, 1], [1, 1], [PRIESEPRES, PRIESEPRES], [NULL, ∞)}]\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: customer2\n" +
 			"                 └─ columns: [c_id c_d_id c_w_id c_first c_middle c_last c_street_1 c_street_2 c_city c_state c_zip c_phone c_since c_credit c_credit_lim c_discount c_balance c_ytd_payment c_payment_cnt c_delivery_cnt c_data]\n" +
@@ -375,16 +375,12 @@ SELECT count(c_id) namecnt FROM customer3 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [orders2.o_id:0!null, orders2.o_carrier_id:5, orders2.o_entry_d:4]\n" +
 			" └─ Sort(orders2.o_id:0!null DESC nullsFirst)\n" +
-			"     └─ Filter\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ orders2.o_c_id:3\n" +
-			"         │   └─ 355 (smallint)\n" +
-			"         └─ IndexedTableAccess(orders2)\n" +
-			"             ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
-			"             ├─ static: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: orders2\n" +
-			"                 └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id o_ol_cnt o_all_local]\n" +
+			"     └─ IndexedTableAccess(orders2)\n" +
+			"         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
+			"         ├─ static: [{[1, 1], [1, 1], [355, 355], [NULL, ∞)}]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: orders2\n" +
+			"             └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id o_ol_cnt o_all_local]\n" +
 			"",
 	},
 	{
@@ -416,33 +412,31 @@ SELECT d_next_o_id FROM district3 WHERE d_id = 5 AND d_w_id= 1`,
 	{
 		Query: `SELECT COUNT(DISTINCT (s_i_id)) FROM order_line3, stock3 WHERE ol_w_id = 1 AND ol_d_id = 5 AND ol_o_id < 3003 AND ol_o_id >= 2983 AND s_w_id= 1 AND s_i_id=ol_i_id AND s_quantity < 18`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [countdistinct([stock3.s_i_id]):0!null as COUNT(DISTINCT (s_i_id))\n" +
+			" ├─ columns: [countdistinct([stock3.s_i_id]):0!null as COUNT(DISTINCT (s_i_id))]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNTDISTINCT([stock3.s_i_id])\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ stock3.s_i_id:4!null\n" +
-			"         │   └─ order_line3.ol_i_id:3\n" +
+			"     └─ LookupJoin\n" +
 			"         ├─ IndexedTableAccess(order_line3)\n" +
 			"         │   ├─ index: [order_line3.ol_w_id,order_line3.ol_d_id,order_line3.ol_o_id,order_line3.ol_number]\n" +
 			"         │   ├─ static: [{[1, 1], [5, 5], [2983, 3003), [NULL, ∞)}]\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: order_line3\n" +
 			"         │       └─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: TUPLE(order_line3.ol_i_id:3)\n" +
-			"             ├─ right-key: TUPLE(stock3.s_i_id:0!null)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ LessThan\n" +
-			"                 │   ├─ stock3.s_quantity:2\n" +
-			"                 │   └─ 18 (tinyint)\n" +
-			"                 └─ IndexedTableAccess(stock3)\n" +
-			"                     ├─ index: [stock3.s_w_id,stock3.s_i_id]\n" +
-			"                     ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: stock3\n" +
-			"                         └─ columns: [s_i_id s_w_id s_quantity]\n" +
+			"         └─ Filter\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ Eq\n" +
+			"             │   │   ├─ stock3.s_w_id:1!null\n" +
+			"             │   │   └─ 1 (tinyint)\n" +
+			"             │   └─ LessThan\n" +
+			"             │       ├─ stock3.s_quantity:2\n" +
+			"             │       └─ 18 (tinyint)\n" +
+			"             └─ IndexedTableAccess(stock3)\n" +
+			"                 ├─ index: [stock3.s_w_id,stock3.s_i_id]\n" +
+			"                 ├─ keys: [1 order_line3.ol_i_id]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: stock3\n" +
+			"                     └─ columns: [s_i_id s_w_id s_quantity]\n" +
 			"",
 	},
 	{
