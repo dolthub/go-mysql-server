@@ -445,12 +445,7 @@ order by 1;`,
 			},
 			{
 				q:     "select * from xy where x in (select u from uv join ab on u = a and a = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeMerge},
-				exp:   []sql.Row{{2, 1}},
-			},
-			{
-				q:     "select * from xy where x = (select u from uv join ab on u = a and a = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeMerge},
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeLookup},
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
@@ -620,7 +615,7 @@ FROM xy
 			},
 			{
 				q:     `select * from xy where exists (select * from uv join ab on u = a)`,
-				types: []plan.JoinType{plan.JoinTypeCrossHash, plan.JoinTypeMerge},
+				types: []plan.JoinType{plan.JoinTypeCrossHash, plan.JoinTypeLookup},
 				exp:   []sql.Row{{0, 2}, {1, 0}, {2, 1}, {3, 3}},
 			},
 		},
@@ -759,7 +754,7 @@ where u in (select * from rec);`,
 		tests: []JoinPlanTest{
 			{
 				q:     "select * from xy where x in (select u from uv join ab on u = a and a = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeMerge},
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeLookup},
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
