@@ -301,7 +301,6 @@ func TestVersionedQueries(t *testing.T) {
 }
 
 func TestAnsiQuotesSqlMode(t *testing.T) {
-
 	enginetest.TestAnsiQuotesSqlMode(t, enginetest.NewDefaultMemoryHarness())
 }
 
