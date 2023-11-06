@@ -88,7 +88,7 @@ func TestQueries(t *testing.T) {
 
 // TestQueriesPreparedSimple runs the canonical test queries against a single threaded index enabled harness.
 func TestQueriesPreparedSimple(t *testing.T) {
-	harness := enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil)
+	harness := enginetest.NewDefaultMemoryHarness()
 	if harness.IsUsingServer() {
 		t.Skip("issue: https://github.com/dolthub/dolt/issues/6904 and https://github.com/dolthub/dolt/issues/6901")
 	}
@@ -97,43 +97,43 @@ func TestQueriesPreparedSimple(t *testing.T) {
 
 // TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
 func TestQueriesSimple(t *testing.T) {
-	harness := enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil)
+	harness := enginetest.NewDefaultMemoryHarness()
 	enginetest.TestQueries(t, harness)
 }
 
 // TestJoinQueries runs the canonical test queries against a single threaded index enabled harness.
 func TestJoinQueries(t *testing.T) {
-	enginetest.TestJoinQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+	enginetest.TestJoinQueries(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestLateralJoin(t *testing.T) {
-	enginetest.TestLateralJoinQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+	enginetest.TestLateralJoinQueries(t, enginetest.NewDefaultMemoryHarness())
 }
 
 // TestJoinPlanning runs join-specific tests for merge
 func TestJoinPlanning(t *testing.T) {
-	enginetest.TestJoinPlanning(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+	enginetest.TestJoinPlanning(t, enginetest.NewDefaultMemoryHarness())
 }
 
 // TestJoinOps runs join-specific tests for merge
 func TestJoinOps(t *testing.T) {
-	enginetest.TestJoinOps(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+	enginetest.TestJoinOps(t, enginetest.NewDefaultMemoryHarness())
 }
 
 // TestJSONTableQueries runs the canonical test queries against a single threaded index enabled harness.
 func TestJSONTableQueries(t *testing.T) {
-	enginetest.TestJSONTableQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+	enginetest.TestJSONTableQueries(t, enginetest.NewDefaultMemoryHarness())
 }
 
 // TestJSONTableScripts runs the canonical test queries against a single threaded index enabled harness.
 func TestJSONTableScripts(t *testing.T) {
-	enginetest.TestJSONTableScripts(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+	enginetest.TestJSONTableScripts(t, enginetest.NewDefaultMemoryHarness())
 }
 
 // TestBrokenJSONTableScripts runs the canonical test queries against a single threaded index enabled harness.
 func TestBrokenJSONTableScripts(t *testing.T) {
 	t.Skip("incorrect errors and unsupported json_table functionality")
-	enginetest.TestBrokenJSONTableScripts(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+	enginetest.TestBrokenJSONTableScripts(t, enginetest.NewDefaultMemoryHarness())
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
@@ -262,7 +262,7 @@ func TestUnbuildableIndex(t *testing.T) {
 	}
 
 	for _, test := range scripts {
-		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+		harness := enginetest.NewDefaultMemoryHarness()
 		enginetest.TestScript(t, harness, test)
 	}
 }

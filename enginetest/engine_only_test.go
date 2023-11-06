@@ -642,7 +642,7 @@ func TestShowCharset(t *testing.T) {
 
 func TestTableFunctions(t *testing.T) {
 	// TODO different error messages
-	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+	harness := enginetest.NewDefaultMemoryHarness()
 	harness.Setup(setup.MydbData)
 
 	databaseProvider := harness.NewDatabaseProvider()

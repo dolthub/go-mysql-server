@@ -75,6 +75,7 @@ func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useN
 	if _, ok := os.LookupEnv("SERVER_ENGINE_TEST"); ok {
 		useServer = true
 	}
+	useServer = true
 
 	return &MemoryHarness{
 		name:                      name,
@@ -94,7 +95,7 @@ func NewDefaultMemoryHarness() *MemoryHarness {
 }
 
 func NewReadOnlyMemoryHarness() *MemoryHarness {
-	h := NewMemoryHarness("default", 1, testNumPartitions, true, nil)
+	h := NewDefaultMemoryHarness()
 	h.readonly = true
 	return h
 }
