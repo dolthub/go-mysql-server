@@ -142,9 +142,14 @@ func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tab
 		err := fmt.Errorf("no statistics found for update")
 		b.handleErr(err)
 	}
-	statistic.SetQualifier(sql.NewStatQualifier(dbName, tableName, ""))
+	var indexName string
+	if statistic.Qual.Index() == "" {
+		indexName = "primary"
+	}
+	statistic.SetQualifier(sql.NewStatQualifier(dbName, tableName, indexName))
 	statistic.SetColumns(columns)
 	statistic.SetTypes(types)
-	outScope.node = plan.NewUpdateHistogram(dbName, tableName, columns, statistic).WithProvider(b.cat)
+	// TODO make sure index has the given columns
+	outScope.node = plan.NewUpdateHistogram(dbName, tableName, indexName, columns, statistic).WithProvider(b.cat)
 	return outScope
 }

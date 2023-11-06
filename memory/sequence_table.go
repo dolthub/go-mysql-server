@@ -222,6 +222,10 @@ func (s IntSequenceTable) IndexedAccess(lookup sql.IndexLookup) sql.IndexedTable
 	return s
 }
 
+func (s IntSequenceTable) PreciseMatch() bool {
+	return true
+}
+
 func (s IntSequenceTable) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 	return []sql.Index{
 		&Index{

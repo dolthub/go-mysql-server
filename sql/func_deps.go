@@ -167,6 +167,10 @@ func (f *FuncDepSet) All() ColSet {
 	return f.all
 }
 
+func (f *FuncDepSet) Empty() bool {
+	return f.all.Empty()
+}
+
 func (f *FuncDepSet) NotNull() ColSet {
 	return f.notNull
 }

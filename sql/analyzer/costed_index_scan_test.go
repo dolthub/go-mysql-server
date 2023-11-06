@@ -16,16 +16,17 @@ package analyzer
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/memory"
-	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestExprFlatten(t *testing.T) {
@@ -67,10 +68,8 @@ func TestExprFlatten(t *testing.T) {
   (3: xy.x = 1)
   (4: xy.y = 2)
   (5: or
-    (7: and
-      (6: xy.y > 0))
-    (8: and
-      (7: xy.y < 7))))`,
+    (6: xy.y > 0)
+    (7: xy.y < 7)))`,
 		},
 		{
 			name: "ors with and",
@@ -86,10 +85,8 @@ func TestExprFlatten(t *testing.T) {
 			),
 			exp: `
 (1: or
-  (4: and
-    (3: xy.x = 1))
-  (5: and
-    (4: xy.y = 2))
+  (3: xy.x = 1)
+  (4: xy.y = 2)
   (5: and
     (6: xy.y > 0)
     (7: xy.y < 7)))`,
@@ -190,8 +187,8 @@ Or
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := newIndexCoster()
-			root, leftover := c.flatten(tt.in, false)
+			c := newIndexCoster("xyz")
+			root, leftover, _ := c.flatten(tt.in)
 			costTree := formatIndexFilter(root)
 			require.Equal(t, strings.TrimSpace(tt.exp), strings.TrimSpace(costTree), costTree)
 			if leftover != nil {
@@ -208,9 +205,9 @@ var rangeType = types.Uint8
 
 func TestRangeBuilder(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	x := expression.NewGetField(0, rangeType, "x", true)
-	y := expression.NewGetField(1, rangeType, "y", true)
-	z := expression.NewGetField(2, rangeType, "z", true)
+	x := expression.NewGetFieldWithTable(0, rangeType, "mydb", "xyz", "x", true)
+	y := expression.NewGetFieldWithTable(1, rangeType, "mydb", "xyz", "y", true)
+	z := expression.NewGetFieldWithTable(2, rangeType, "mydb", "xyz", "z", true)
 
 	tests := []struct {
 		filter sql.Expression
@@ -513,11 +510,16 @@ func TestRangeBuilder(t *testing.T) {
 		TableName: testTable,
 	}
 
+	var sch = make(sql.Schema, 3)
+	for i, e := range []*expression.GetField{x, y, z} {
+		sch[i] = transform.ExpressionToColumn(e, testTable)
+	}
+
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", tt.filter.String(), tt.exp.DebugString()), func(t *testing.T) {
 
-			c := newIndexCoster()
-			root, _ := c.flatten(tt.filter, false)
+			c := newIndexCoster(testTable)
+			root, _, _ := c.flatten(tt.filter)
 
 			var idx sql.Index
 			switch len(tt.exp[0]) {
@@ -527,8 +529,10 @@ func TestRangeBuilder(t *testing.T) {
 				idx = idx_3
 			}
 
-			stat := newUniformDistStatistic("mydb", "xyz", idx, 10, 10)
-			err := c.cost(root, stat)
+			stat, err := newUniformDistStatistic("mydb", testTable, sch, idx, 10, 10)
+			require.NoError(t, err)
+
+			err = c.cost(root, stat)
 			require.NoError(t, err)
 
 			include := c.bestFilters
@@ -537,7 +541,7 @@ func TestRangeBuilder(t *testing.T) {
 			require.Equal(t, include.Len(), 1)
 			require.True(t, include.Contains(1))
 
-			b := newIndexScanRangeBuilder(ctx, idx, include, c.idToExpr)
+			b := newIndexScanRangeBuilder(ctx, idx, include, sql.FastIntSet{}, c.idToExpr)
 			cmpRanges, err := b.buildRangeCollection(root)
 			require.NoError(t, err)
 			require.Equal(t, 0, len(b.leftover))
@@ -561,8 +565,8 @@ func TestRangeBuilder(t *testing.T) {
 
 func TestRangeBuilderInclude(t *testing.T) {
 
-	x := expression.NewGetField(0, rangeType, "x", true)
-	y := expression.NewGetField(1, rangeType, "y", true)
+	x := expression.NewGetFieldWithTable(0, rangeType, "mydb", "xyz", "x", true)
+	y := expression.NewGetFieldWithTable(1, rangeType, "mydb", "xyz", "y", true)
 
 	tests := []struct {
 		name    string
@@ -606,7 +610,7 @@ func TestRangeBuilderInclude(t *testing.T) {
 	}
 
 	const testDb = "mydb"
-	const testTable = "test"
+	const testTable = "xyz"
 	dummy1 := &memory.Index{
 		Name:      "dummy1",
 		Exprs:     []sql.Expression{x, y},
@@ -620,9 +624,9 @@ func TestRangeBuilderInclude(t *testing.T) {
 			//t.Skip("todo add tests and implement")
 
 			// TODO make index
-			c := newIndexCoster()
-			root, _ := c.flatten(tt.in, false)
-			b := newIndexScanRangeBuilder(ctx, dummy1, tt.include, c.idToExpr)
+			c := newIndexCoster("xyz")
+			root, _, _ := c.flatten(tt.in)
+			b := newIndexScanRangeBuilder(ctx, dummy1, tt.include, sql.FastIntSet{}, c.idToExpr)
 			cmpRanges, err := b.buildRangeCollection(root)
 			require.NoError(t, err)
 			cmpRanges, err = sql.SortRanges(cmpRanges...)

@@ -236,7 +236,7 @@ func (idx *Index) HandledFilters(filters []sql.Expression) []sql.Expression {
 		return handled
 	}
 	for _, expr := range filters {
-		if expression.ContainsImpreciseComparison(expr) {
+		if !expression.PreciseComparison(expr) {
 			continue
 		}
 		handled = append(handled, expr)

@@ -95,6 +95,9 @@ type ScriptTestAssertion struct {
 
 	// Bindings are variable mappings only used for prepared tests
 	Bindings map[string]*querypb.BindVariable
+
+	// CheckIndexedAccess indicates whether we should verify the query plan uses an index
+	CheckIndexedAccess bool
 }
 
 // ScriptTests are a set of test scripts to run.

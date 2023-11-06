@@ -465,7 +465,13 @@ where
 			"         │   │   │   └─ LessThan\n" +
 			"         │   │   │       ├─ lineitem.l_shipdate:3!null\n" +
 			"         │   │   │       └─ 1995-01-01 00:00:00 +0000 UTC (datetime(6))\n" +
-			"         │   │   └─ (lineitem.l_discount:2!null BETWEEN 0.05 (decimal(3,2)) AND 0.07 (decimal(3,2)))\n" +
+			"         │   │   └─ AND\n" +
+			"         │   │       ├─ GreaterThanOrEqual\n" +
+			"         │   │       │   ├─ lineitem.l_discount:2!null\n" +
+			"         │   │       │   └─ 0.05 (decimal(3,2))\n" +
+			"         │   │       └─ LessThanOrEqual\n" +
+			"         │   │           ├─ lineitem.l_discount:2!null\n" +
+			"         │   │           └─ 0.07 (decimal(3,2))\n" +
 			"         │   └─ LessThan\n" +
 			"         │       ├─ lineitem.l_quantity:0!null\n" +
 			"         │       └─ 24 (tinyint)\n" +
@@ -554,7 +560,13 @@ order by
 			"                             │   │   ├─ LookupJoin\n" +
 			"                             │   │   │   ├─ LookupJoin\n" +
 			"                             │   │   │   │   ├─ Filter\n" +
-			"                             │   │   │   │   │   ├─ (lineitem.l_shipdate:4!null BETWEEN 1995-01-01 (longtext) AND 1996-12-31 (longtext))\n" +
+			"                             │   │   │   │   │   ├─ AND\n" +
+			"                             │   │   │   │   │   │   ├─ GreaterThanOrEqual\n" +
+			"                             │   │   │   │   │   │   │   ├─ lineitem.l_shipdate:4!null\n" +
+			"                             │   │   │   │   │   │   │   └─ 1995-01-01 (longtext)\n" +
+			"                             │   │   │   │   │   │   └─ LessThanOrEqual\n" +
+			"                             │   │   │   │   │   │       ├─ lineitem.l_shipdate:4!null\n" +
+			"                             │   │   │   │   │   │       └─ 1996-12-31 (longtext)\n" +
 			"                             │   │   │   │   │   └─ Table\n" +
 			"                             │   │   │   │   │       ├─ name: lineitem\n" +
 			"                             │   │   │   │   │       └─ columns: [l_orderkey l_suppkey l_extendedprice l_discount l_shipdate]\n" +
@@ -690,7 +702,13 @@ order by
 			"                                 ├─ LookupJoin\n" +
 			"                                 │   ├─ LookupJoin\n" +
 			"                                 │   │   ├─ Filter\n" +
-			"                                 │   │   │   ├─ (orders.o_orderdate:2!null BETWEEN 1995-01-01 (longtext) AND 1996-12-31 (longtext))\n" +
+			"                                 │   │   │   ├─ AND\n" +
+			"                                 │   │   │   │   ├─ GreaterThanOrEqual\n" +
+			"                                 │   │   │   │   │   ├─ orders.o_orderdate:2!null\n" +
+			"                                 │   │   │   │   │   └─ 1995-01-01 (longtext)\n" +
+			"                                 │   │   │   │   └─ LessThanOrEqual\n" +
+			"                                 │   │   │   │       ├─ orders.o_orderdate:2!null\n" +
+			"                                 │   │   │   │       └─ 1996-12-31 (longtext)\n" +
 			"                                 │   │   │   └─ Table\n" +
 			"                                 │   │   │       ├─ name: orders\n" +
 			"                                 │   │   │       └─ columns: [o_orderkey o_custkey o_orderdate]\n" +
@@ -1606,7 +1624,13 @@ where
 			"         │   │   │   │   │   │   └─ LessThanOrEqual\n" +
 			"         │   │   │   │   │   │       ├─ lineitem.l_quantity:1!null\n" +
 			"         │   │   │   │   │   │       └─ 11 (bigint)\n" +
-			"         │   │   │   │   │   └─ (part.p_size:8!null BETWEEN 1 (tinyint) AND 5 (tinyint))\n" +
+			"         │   │   │   │   │   └─ AND\n" +
+			"         │   │   │   │   │       ├─ GreaterThanOrEqual\n" +
+			"         │   │   │   │   │       │   ├─ part.p_size:8!null\n" +
+			"         │   │   │   │   │       │   └─ 1 (tinyint)\n" +
+			"         │   │   │   │   │       └─ LessThanOrEqual\n" +
+			"         │   │   │   │   │           ├─ part.p_size:8!null\n" +
+			"         │   │   │   │   │           └─ 5 (tinyint)\n" +
 			"         │   │   │   │   └─ IN\n" +
 			"         │   │   │   │       ├─ left: lineitem.l_shipmode:5!null\n" +
 			"         │   │   │   │       └─ right: TUPLE(AIR (longtext), AIR REG (longtext))\n" +
@@ -1635,7 +1659,13 @@ where
 			"         │   │       │   │   │   └─ LessThanOrEqual\n" +
 			"         │   │       │   │   │       ├─ lineitem.l_quantity:1!null\n" +
 			"         │   │       │   │   │       └─ 20 (bigint)\n" +
-			"         │   │       │   │   └─ (part.p_size:8!null BETWEEN 1 (tinyint) AND 10 (tinyint))\n" +
+			"         │   │       │   │   └─ AND\n" +
+			"         │   │       │   │       ├─ GreaterThanOrEqual\n" +
+			"         │   │       │   │       │   ├─ part.p_size:8!null\n" +
+			"         │   │       │   │       │   └─ 1 (tinyint)\n" +
+			"         │   │       │   │       └─ LessThanOrEqual\n" +
+			"         │   │       │   │           ├─ part.p_size:8!null\n" +
+			"         │   │       │   │           └─ 10 (tinyint)\n" +
 			"         │   │       │   └─ IN\n" +
 			"         │   │       │       ├─ left: lineitem.l_shipmode:5!null\n" +
 			"         │   │       │       └─ right: TUPLE(AIR (longtext), AIR REG (longtext))\n" +
@@ -1664,7 +1694,13 @@ where
 			"         │       │   │   │   └─ LessThanOrEqual\n" +
 			"         │       │   │   │       ├─ lineitem.l_quantity:1!null\n" +
 			"         │       │   │   │       └─ 30 (bigint)\n" +
-			"         │       │   │   └─ (part.p_size:8!null BETWEEN 1 (tinyint) AND 15 (tinyint))\n" +
+			"         │       │   │   └─ AND\n" +
+			"         │       │   │       ├─ GreaterThanOrEqual\n" +
+			"         │       │   │       │   ├─ part.p_size:8!null\n" +
+			"         │       │   │       │   └─ 1 (tinyint)\n" +
+			"         │       │   │       └─ LessThanOrEqual\n" +
+			"         │       │   │           ├─ part.p_size:8!null\n" +
+			"         │       │   │           └─ 15 (tinyint)\n" +
 			"         │       │   └─ IN\n" +
 			"         │       │       ├─ left: lineitem.l_shipmode:5!null\n" +
 			"         │       │       └─ right: TUPLE(AIR (longtext), AIR REG (longtext))\n" +

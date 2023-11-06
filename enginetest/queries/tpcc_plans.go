@@ -44,12 +44,16 @@ WHERE
 			"     │               └─ GroupBy\n" +
 			"     │                   ├─ select: MAX(orders2.o_id:0!null)\n" +
 			"     │                   ├─ group: \n" +
-			"     │                   └─ IndexedTableAccess(orders2)\n" +
-			"     │                       ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
-			"     │                       ├─ static: [{[1, 1], [3, 3], [20001, 20001], [NULL, ∞)}]\n" +
-			"     │                       └─ Table\n" +
-			"     │                           ├─ name: orders2\n" +
-			"     │                           └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
+			"     │                   └─ Filter\n" +
+			"     │                       ├─ Eq\n" +
+			"     │                       │   ├─ orders2.o_c_id:3\n" +
+			"     │                       │   └─ 20001 (smallint)\n" +
+			"     │                       └─ IndexedTableAccess(orders2)\n" +
+			"     │                           ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
+			"     │                           ├─ static: [{[1, 1], [3, 3], [NULL, ∞)}]\n" +
+			"     │                           └─ Table\n" +
+			"     │                               ├─ name: orders2\n" +
+			"     │                               └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
 			"     └─ Filter\n" +
 			"         ├─ AND\n" +
 			"         │   ├─ AND\n" +
@@ -126,20 +130,12 @@ from
 			"                             └─ GroupBy\n" +
 			"                                 ├─ select: COUNTDISTINCT([orders2.o_id]), orders2.o_c_id:3, orders2.o_w_id:2!null, orders2.o_d_id:1!null, orders2.o_id:0!null\n" +
 			"                                 ├─ group: orders2.o_c_id:3, orders2.o_d_id:1!null, orders2.o_w_id:2!null\n" +
-			"                                 └─ Filter\n" +
-			"                                     ├─ AND\n" +
-			"                                     │   ├─ GreaterThan\n" +
-			"                                     │   │   ├─ orders2.o_id:0!null\n" +
-			"                                     │   │   └─ 2100 (smallint)\n" +
-			"                                     │   └─ LessThan\n" +
-			"                                     │       ├─ orders2.o_id:0!null\n" +
-			"                                     │       └─ 11153 (smallint)\n" +
-			"                                     └─ IndexedTableAccess(orders2)\n" +
-			"                                         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
-			"                                         ├─ static: [{[1, 1], [NULL, ∞), [NULL, ∞)}]\n" +
-			"                                         └─ Table\n" +
-			"                                             ├─ name: orders2\n" +
-			"                                             └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id o_ol_cnt o_all_local]\n" +
+			"                                 └─ IndexedTableAccess(orders2)\n" +
+			"                                     ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
+			"                                     ├─ static: [{[1, 1], [NULL, ∞), (2100, 11153)}]\n" +
+			"                                     └─ Table\n" +
+			"                                         ├─ name: orders2\n" +
+			"                                         └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id o_ol_cnt o_all_local]\n" +
 			"",
 	},
 }

@@ -104,6 +104,10 @@ func (s *ServerQueryEngine) NewConnection(ctx *sql.Context) error {
 	return nil
 }
 
+func (s *ServerQueryEngine) AnalyzeQuery(ctx *sql.Context, query string) (sql.Node, error) {
+	return s.engine.AnalyzeQuery(ctx, query)
+}
+
 func (s *ServerQueryEngine) PrepareQuery(ctx *sql.Context, query string) (sql.Node, error) {
 	if s.conn == nil {
 		err := s.NewConnection(ctx)

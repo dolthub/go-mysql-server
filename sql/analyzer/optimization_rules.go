@@ -205,6 +205,11 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 					return e, transform.SameTree, err
 				}
 				return e.WithQuery(newQ), transform.NewTree, nil
+			case *expression.Between:
+				return expression.NewAnd(
+					expression.NewGreaterThanOrEqual(e.Val, e.Lower),
+					expression.NewLessThanOrEqual(e.Val, e.Upper),
+				), transform.NewTree, nil
 			case *expression.Or:
 				if isTrue(e.Left) {
 					return e.Left, transform.NewTree, nil

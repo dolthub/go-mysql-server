@@ -481,7 +481,13 @@ WHERE cn.country_code !='[pl]'
 			"         │               ├─ name: movie_link\n" +
 			"         │               └─ columns: [movie_id link_type_id]\n" +
 			"         └─ Filter\n" +
-			"             ├─ (t.production_year:2 BETWEEN 1950 (smallint) AND 2000 (smallint))\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ GreaterThanOrEqual\n" +
+			"             │   │   ├─ t.production_year:2\n" +
+			"             │   │   └─ 1950 (smallint)\n" +
+			"             │   └─ LessThanOrEqual\n" +
+			"             │       ├─ t.production_year:2\n" +
+			"             │       └─ 2000 (smallint)\n" +
 			"             └─ TableAlias(t)\n" +
 			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
@@ -1092,7 +1098,13 @@ WHERE cn.country_code = '[us]'
 			"         │                   ├─ name: movie_info_idx\n" +
 			"         │                   └─ columns: [movie_id info_type_id info]\n" +
 			"         └─ Filter\n" +
-			"             ├─ (t.production_year:2 BETWEEN 2005 (smallint) AND 2008 (smallint))\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ GreaterThanOrEqual\n" +
+			"             │   │   ├─ t.production_year:2\n" +
+			"             │   │   └─ 2005 (smallint)\n" +
+			"             │   └─ LessThanOrEqual\n" +
+			"             │       ├─ t.production_year:2\n" +
+			"             │       └─ 2008 (smallint)\n" +
 			"             └─ TableAlias(t)\n" +
 			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
@@ -1401,7 +1413,13 @@ WHERE cn.country_code = '[us]'
 			"         │                   ├─ name: movie_info_idx\n" +
 			"         │                   └─ columns: [movie_id info_type_id info]\n" +
 			"         └─ Filter\n" +
-			"             ├─ (t.production_year:2 BETWEEN 2000 (smallint) AND 2010 (smallint))\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ GreaterThanOrEqual\n" +
+			"             │   │   ├─ t.production_year:2\n" +
+			"             │   │   └─ 2000 (smallint)\n" +
+			"             │   └─ LessThanOrEqual\n" +
+			"             │       ├─ t.production_year:2\n" +
+			"             │       └─ 2010 (smallint)\n" +
 			"             └─ TableAlias(t)\n" +
 			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
@@ -2872,7 +2890,13 @@ WHERE cn.country_code = '[us]'
 			"         │               ├─ name: movie_keyword\n" +
 			"         │               └─ columns: [movie_id keyword_id]\n" +
 			"         └─ Filter\n" +
-			"             ├─ (t.production_year:2 BETWEEN 2005 (smallint) AND 2010 (smallint))\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ GreaterThanOrEqual\n" +
+			"             │   │   ├─ t.production_year:2\n" +
+			"             │   │   └─ 2005 (smallint)\n" +
+			"             │   └─ LessThanOrEqual\n" +
+			"             │       ├─ t.production_year:2\n" +
+			"             │       └─ 2010 (smallint)\n" +
 			"             └─ TableAlias(t)\n" +
 			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
@@ -4688,7 +4712,13 @@ WHERE ci.note IN ('(writer)',
 			"         │                   ├─ name: name\n" +
 			"         │                   └─ columns: [id gender]\n" +
 			"         └─ Filter\n" +
-			"             ├─ (t.production_year:2 BETWEEN 2008 (smallint) AND 2014 (smallint))\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ GreaterThanOrEqual\n" +
+			"             │   │   ├─ t.production_year:2\n" +
+			"             │   │   └─ 2008 (smallint)\n" +
+			"             │   └─ LessThanOrEqual\n" +
+			"             │       ├─ t.production_year:2\n" +
+			"             │       └─ 2014 (smallint)\n" +
 			"             └─ TableAlias(t)\n" +
 			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
@@ -5017,7 +5047,13 @@ WHERE ci.note IN ('(voice)',
 			"         │                   ├─ name: role_type\n" +
 			"         │                   └─ columns: [id role]\n" +
 			"         └─ Filter\n" +
-			"             ├─ (t.production_year:2 BETWEEN 2005 (smallint) AND 2009 (smallint))\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ GreaterThanOrEqual\n" +
+			"             │   │   ├─ t.production_year:2\n" +
+			"             │   │   └─ 2005 (smallint)\n" +
+			"             │   └─ LessThanOrEqual\n" +
+			"             │       ├─ t.production_year:2\n" +
+			"             │       └─ 2009 (smallint)\n" +
 			"             └─ TableAlias(t)\n" +
 			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
@@ -5208,7 +5244,13 @@ WHERE ci.note = '(voice)'
 			"         │                   └─ columns: [id role]\n" +
 			"         └─ Filter\n" +
 			"             ├─ AND\n" +
-			"             │   ├─ (t.production_year:2 BETWEEN 2007 (smallint) AND 2008 (smallint))\n" +
+			"             │   ├─ AND\n" +
+			"             │   │   ├─ GreaterThanOrEqual\n" +
+			"             │   │   │   ├─ t.production_year:2\n" +
+			"             │   │   │   └─ 2007 (smallint)\n" +
+			"             │   │   └─ LessThanOrEqual\n" +
+			"             │   │       ├─ t.production_year:2\n" +
+			"             │   │       └─ 2008 (smallint)\n" +
 			"             │   └─ t.title LIKE '%Kung%Fu%Panda%'\n" +
 			"             └─ TableAlias(t)\n" +
 			"                 └─ ProcessTable\n" +
@@ -5743,7 +5785,13 @@ WHERE ct.kind = 'production companies'
 			"         │               ├─ name: movie_info_idx\n" +
 			"         │               └─ columns: [movie_id info_type_id]\n" +
 			"         └─ Filter\n" +
-			"             ├─ (t.production_year:2 BETWEEN 2005 (smallint) AND 2010 (smallint))\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ GreaterThanOrEqual\n" +
+			"             │   │   ├─ t.production_year:2\n" +
+			"             │   │   └─ 2005 (smallint)\n" +
+			"             │   └─ LessThanOrEqual\n" +
+			"             │       ├─ t.production_year:2\n" +
+			"             │       └─ 2010 (smallint)\n" +
 			"             └─ TableAlias(t)\n" +
 			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
@@ -6636,7 +6684,13 @@ WHERE cn.country_code !='[pl]'
 			"         │               ├─ name: movie_link\n" +
 			"         │               └─ columns: [movie_id link_type_id]\n" +
 			"         └─ Filter\n" +
-			"             ├─ (t.production_year:2 BETWEEN 1950 (smallint) AND 2000 (smallint))\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ GreaterThanOrEqual\n" +
+			"             │   │   ├─ t.production_year:2\n" +
+			"             │   │   └─ 1950 (smallint)\n" +
+			"             │   └─ LessThanOrEqual\n" +
+			"             │       ├─ t.production_year:2\n" +
+			"             │       └─ 2000 (smallint)\n" +
 			"             └─ TableAlias(t)\n" +
 			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
@@ -6814,7 +6868,13 @@ WHERE cn.country_code !='[pl]'
 			"         │               ├─ name: movie_link\n" +
 			"         │               └─ columns: [movie_id link_type_id]\n" +
 			"         └─ Filter\n" +
-			"             ├─ (t.production_year:2 BETWEEN 2000 (smallint) AND 2010 (smallint))\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ GreaterThanOrEqual\n" +
+			"             │   │   ├─ t.production_year:2\n" +
+			"             │   │   └─ 2000 (smallint)\n" +
+			"             │   └─ LessThanOrEqual\n" +
+			"             │       ├─ t.production_year:2\n" +
+			"             │       └─ 2010 (smallint)\n" +
 			"             └─ TableAlias(t)\n" +
 			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
@@ -6999,7 +7059,13 @@ WHERE cn.country_code !='[pl]'
 			"         │               ├─ name: movie_link\n" +
 			"         │               └─ columns: [movie_id link_type_id]\n" +
 			"         └─ Filter\n" +
-			"             ├─ (t.production_year:2 BETWEEN 1950 (smallint) AND 2010 (smallint))\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ GreaterThanOrEqual\n" +
+			"             │   │   ├─ t.production_year:2\n" +
+			"             │   │   └─ 1950 (smallint)\n" +
+			"             │   └─ LessThanOrEqual\n" +
+			"             │       ├─ t.production_year:2\n" +
+			"             │       └─ 2010 (smallint)\n" +
 			"             └─ TableAlias(t)\n" +
 			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
@@ -10437,7 +10503,13 @@ WHERE cct1.kind IN ('cast',
 			"         │               ├─ name: movie_link\n" +
 			"         │               └─ columns: [movie_id link_type_id]\n" +
 			"         └─ Filter\n" +
-			"             ├─ (t.production_year:2 BETWEEN 1950 (smallint) AND 2000 (smallint))\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ GreaterThanOrEqual\n" +
+			"             │   │   ├─ t.production_year:2\n" +
+			"             │   │   └─ 1950 (smallint)\n" +
+			"             │   └─ LessThanOrEqual\n" +
+			"             │       ├─ t.production_year:2\n" +
+			"             │       └─ 2000 (smallint)\n" +
 			"             └─ TableAlias(t)\n" +
 			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
@@ -10935,7 +11007,13 @@ WHERE cct1.kind = 'cast'
 			"         │               ├─ name: movie_link\n" +
 			"         │               └─ columns: [movie_id link_type_id]\n" +
 			"         └─ Filter\n" +
-			"             ├─ (t.production_year:2 BETWEEN 1950 (smallint) AND 2010 (smallint))\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ GreaterThanOrEqual\n" +
+			"             │   │   ├─ t.production_year:2\n" +
+			"             │   │   └─ 1950 (smallint)\n" +
+			"             │   └─ LessThanOrEqual\n" +
+			"             │       ├─ t.production_year:2\n" +
+			"             │       └─ 2010 (smallint)\n" +
 			"             └─ TableAlias(t)\n" +
 			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
@@ -12125,10 +12203,16 @@ WHERE cct1.kind ='cast'
 			"         │                   └─ columns: [id role]\n" +
 			"         └─ Filter\n" +
 			"             ├─ AND\n" +
-			"             │   ├─ Eq\n" +
-			"             │   │   ├─ t.title:1!null\n" +
-			"             │   │   └─ Shrek 2 (longtext)\n" +
-			"             │   └─ (t.production_year:2 BETWEEN 2000 (smallint) AND 2010 (smallint))\n" +
+			"             │   ├─ AND\n" +
+			"             │   │   ├─ Eq\n" +
+			"             │   │   │   ├─ t.title:1!null\n" +
+			"             │   │   │   └─ Shrek 2 (longtext)\n" +
+			"             │   │   └─ GreaterThanOrEqual\n" +
+			"             │   │       ├─ t.production_year:2\n" +
+			"             │   │       └─ 2000 (smallint)\n" +
+			"             │   └─ LessThanOrEqual\n" +
+			"             │       ├─ t.production_year:2\n" +
+			"             │       └─ 2010 (smallint)\n" +
 			"             └─ TableAlias(t)\n" +
 			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
@@ -12451,10 +12535,16 @@ WHERE cct1.kind ='cast'
 			"         │                   └─ columns: [id role]\n" +
 			"         └─ Filter\n" +
 			"             ├─ AND\n" +
-			"             │   ├─ Eq\n" +
-			"             │   │   ├─ t.title:1!null\n" +
-			"             │   │   └─ Shrek 2 (longtext)\n" +
-			"             │   └─ (t.production_year:2 BETWEEN 2000 (smallint) AND 2005 (smallint))\n" +
+			"             │   ├─ AND\n" +
+			"             │   │   ├─ Eq\n" +
+			"             │   │   │   ├─ t.title:1!null\n" +
+			"             │   │   │   └─ Shrek 2 (longtext)\n" +
+			"             │   │   └─ GreaterThanOrEqual\n" +
+			"             │   │       ├─ t.production_year:2\n" +
+			"             │   │       └─ 2000 (smallint)\n" +
+			"             │   └─ LessThanOrEqual\n" +
+			"             │       ├─ t.production_year:2\n" +
+			"             │       └─ 2005 (smallint)\n" +
 			"             └─ TableAlias(t)\n" +
 			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
@@ -12778,7 +12868,13 @@ WHERE cct1.kind ='cast'
 			"         │                   ├─ name: role_type\n" +
 			"         │                   └─ columns: [id role]\n" +
 			"         └─ Filter\n" +
-			"             ├─ (t.production_year:2 BETWEEN 2000 (smallint) AND 2010 (smallint))\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ GreaterThanOrEqual\n" +
+			"             │   │   ├─ t.production_year:2\n" +
+			"             │   │   └─ 2000 (smallint)\n" +
+			"             │   └─ LessThanOrEqual\n" +
+			"             │       ├─ t.production_year:2\n" +
+			"             │       └─ 2010 (smallint)\n" +
 			"             └─ TableAlias(t)\n" +
 			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
@@ -14984,7 +15080,13 @@ WHERE cn1.country_code = '[us]'
 			"         │               ├─ name: title\n" +
 			"         │               └─ columns: [id title kind_id]\n" +
 			"         └─ Filter\n" +
-			"             ├─ (t2.production_year:3 BETWEEN 2005 (smallint) AND 2008 (smallint))\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ GreaterThanOrEqual\n" +
+			"             │   │   ├─ t2.production_year:3\n" +
+			"             │   │   └─ 2005 (smallint)\n" +
+			"             │   └─ LessThanOrEqual\n" +
+			"             │       ├─ t2.production_year:3\n" +
+			"             │       └─ 2008 (smallint)\n" +
 			"             └─ TableAlias(t2)\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: title\n" +
@@ -15457,7 +15559,13 @@ WHERE cn1.country_code != '[us]'
 			"         │               ├─ name: title\n" +
 			"         │               └─ columns: [id title kind_id]\n" +
 			"         └─ Filter\n" +
-			"             ├─ (t2.production_year:3 BETWEEN 2000 (smallint) AND 2010 (smallint))\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ GreaterThanOrEqual\n" +
+			"             │   │   ├─ t2.production_year:3\n" +
+			"             │   │   └─ 2000 (smallint)\n" +
+			"             │   └─ LessThanOrEqual\n" +
+			"             │       ├─ t2.production_year:3\n" +
+			"             │       └─ 2010 (smallint)\n" +
 			"             └─ TableAlias(t2)\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: title\n" +
@@ -16876,7 +16984,13 @@ WHERE an.name LIKE '%a%'
 			"         │   │   │               └─ columns: [linked_movie_id link_type_id]\n" +
 			"         │   │   └─ Filter\n" +
 			"         │   │       ├─ AND\n" +
-			"         │   │       │   ├─ (n.name_pcode_cf:3 BETWEEN A (longtext) AND F (longtext))\n" +
+			"         │   │       │   ├─ AND\n" +
+			"         │   │       │   │   ├─ GreaterThanOrEqual\n" +
+			"         │   │       │   │   │   ├─ n.name_pcode_cf:3\n" +
+			"         │   │       │   │   │   └─ A (longtext)\n" +
+			"         │   │       │   │   └─ LessThanOrEqual\n" +
+			"         │   │       │   │       ├─ n.name_pcode_cf:3\n" +
+			"         │   │       │   │       └─ F (longtext)\n" +
 			"         │   │       │   └─ Or\n" +
 			"         │   │       │       ├─ Eq\n" +
 			"         │   │       │       │   ├─ n.gender:2\n" +
@@ -16907,7 +17021,13 @@ WHERE an.name LIKE '%a%'
 			"         │                   ├─ name: person_info\n" +
 			"         │                   └─ columns: [person_id info_type_id note]\n" +
 			"         └─ Filter\n" +
-			"             ├─ (t.production_year:2 BETWEEN 1980 (smallint) AND 1995 (smallint))\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ GreaterThanOrEqual\n" +
+			"             │   │   ├─ t.production_year:2\n" +
+			"             │   │   └─ 1980 (smallint)\n" +
+			"             │   └─ LessThanOrEqual\n" +
+			"             │       ├─ t.production_year:2\n" +
+			"             │       └─ 1995 (smallint)\n" +
 			"             └─ TableAlias(t)\n" +
 			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
@@ -17059,7 +17179,13 @@ WHERE an.name LIKE '%a%'
 			"         │                   ├─ name: person_info\n" +
 			"         │                   └─ columns: [person_id info_type_id note]\n" +
 			"         └─ Filter\n" +
-			"             ├─ (t.production_year:2 BETWEEN 1980 (smallint) AND 1984 (smallint))\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ GreaterThanOrEqual\n" +
+			"             │   │   ├─ t.production_year:2\n" +
+			"             │   │   └─ 1980 (smallint)\n" +
+			"             │   └─ LessThanOrEqual\n" +
+			"             │       ├─ t.production_year:2\n" +
+			"             │       └─ 1984 (smallint)\n" +
 			"             └─ TableAlias(t)\n" +
 			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
@@ -17204,7 +17330,13 @@ WHERE an.name IS NOT NULL
 			"         │   │   │               └─ columns: [linked_movie_id link_type_id]\n" +
 			"         │   │   └─ Filter\n" +
 			"         │   │       ├─ AND\n" +
-			"         │   │       │   ├─ (n.name_pcode_cf:3 BETWEEN A (longtext) AND F (longtext))\n" +
+			"         │   │       │   ├─ AND\n" +
+			"         │   │       │   │   ├─ GreaterThanOrEqual\n" +
+			"         │   │       │   │   │   ├─ n.name_pcode_cf:3\n" +
+			"         │   │       │   │   │   └─ A (longtext)\n" +
+			"         │   │       │   │   └─ LessThanOrEqual\n" +
+			"         │   │       │   │       ├─ n.name_pcode_cf:3\n" +
+			"         │   │       │   │       └─ F (longtext)\n" +
 			"         │   │       │   └─ Or\n" +
 			"         │   │       │       ├─ Eq\n" +
 			"         │   │       │       │   ├─ n.gender:2\n" +
@@ -17234,7 +17366,13 @@ WHERE an.name IS NOT NULL
 			"         │                   ├─ name: person_info\n" +
 			"         │                   └─ columns: [person_id info_type_id info note]\n" +
 			"         └─ Filter\n" +
-			"             ├─ (t.production_year:1 BETWEEN 1980 (smallint) AND 2010 (smallint))\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ GreaterThanOrEqual\n" +
+			"             │   │   ├─ t.production_year:1\n" +
+			"             │   │   └─ 1980 (smallint)\n" +
+			"             │   └─ LessThanOrEqual\n" +
+			"             │       ├─ t.production_year:1\n" +
+			"             │       └─ 2010 (smallint)\n" +
 			"             └─ TableAlias(t)\n" +
 			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
@@ -17494,7 +17632,13 @@ WHERE ci.note ='(voice: English version)'
 			"         │                   └─ columns: [id role]\n" +
 			"         └─ Filter\n" +
 			"             ├─ AND\n" +
-			"             │   ├─ (t.production_year:2 BETWEEN 2006 (smallint) AND 2007 (smallint))\n" +
+			"             │   ├─ AND\n" +
+			"             │   │   ├─ GreaterThanOrEqual\n" +
+			"             │   │   │   ├─ t.production_year:2\n" +
+			"             │   │   │   └─ 2006 (smallint)\n" +
+			"             │   │   └─ LessThanOrEqual\n" +
+			"             │   │       ├─ t.production_year:2\n" +
+			"             │   │       └─ 2007 (smallint)\n" +
 			"             │   └─ Or\n" +
 			"             │       ├─ AND\n" +
 			"             │       │   ├─ GreaterThanOrEqual\n" +
@@ -17865,7 +18009,13 @@ WHERE ci.note IN ('(voice)',
 			"         │                   ├─ name: role_type\n" +
 			"         │                   └─ columns: [id role]\n" +
 			"         └─ Filter\n" +
-			"             ├─ (t.production_year:2 BETWEEN 2005 (smallint) AND 2015 (smallint))\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ GreaterThanOrEqual\n" +
+			"             │   │   ├─ t.production_year:2\n" +
+			"             │   │   └─ 2005 (smallint)\n" +
+			"             │   └─ LessThanOrEqual\n" +
+			"             │       ├─ t.production_year:2\n" +
+			"             │       └─ 2015 (smallint)\n" +
 			"             └─ TableAlias(t)\n" +
 			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
@@ -18008,7 +18158,13 @@ WHERE ci.note = '(voice)'
 			"         │                   ├─ name: role_type\n" +
 			"         │                   └─ columns: [id role]\n" +
 			"         └─ Filter\n" +
-			"             ├─ (t.production_year:2 BETWEEN 2007 (smallint) AND 2010 (smallint))\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ GreaterThanOrEqual\n" +
+			"             │   │   ├─ t.production_year:2\n" +
+			"             │   │   └─ 2007 (smallint)\n" +
+			"             │   └─ LessThanOrEqual\n" +
+			"             │       ├─ t.production_year:2\n" +
+			"             │       └─ 2010 (smallint)\n" +
 			"             └─ TableAlias(t)\n" +
 			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +

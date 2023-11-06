@@ -126,6 +126,10 @@ func (editor MultiTableEditor) IndexedAccess(lookup sql.IndexLookup) sql.Indexed
 	return editor.primary.(sql.ForeignKeyEditor).IndexedAccess(lookup)
 }
 
+func (editor MultiTableEditor) PreciseMatch() bool {
+	return true
+}
+
 // GetIndexes implements the interface ForeignKeyEditor.
 func (editor MultiTableEditor) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 	return editor.primary.(sql.ForeignKeyEditor).GetIndexes(ctx)
