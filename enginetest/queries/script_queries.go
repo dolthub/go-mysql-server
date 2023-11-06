@@ -4698,232 +4698,6 @@ var SpatialIndexScriptTests = []ScriptTest{
 	},
 }
 
-var CreateCheckConstraintsScripts = []ScriptTest{
-	{
-		Name: "Run SHOW CREATE TABLE with different types of check constraints",
-		SetUpScript: []string{
-			"CREATE TABLE mytable1(pk int PRIMARY KEY, CONSTRAINT check1 CHECK (pk = 5))",
-			"ALTER TABLE mytable1 ADD CONSTRAINT check11 CHECK (pk < 6)",
-			"CREATE TABLE mytable2(pk int PRIMARY KEY, v int, CONSTRAINT check2 CHECK (v < 5))",
-			"ALTER TABLE mytable2 ADD CONSTRAINT check12 CHECK (pk  + v = 6)",
-			"CREATE TABLE mytable3(pk int PRIMARY KEY, v int, CONSTRAINT check3 CHECK (pk > 2 AND v < 5))",
-			"ALTER TABLE mytable3 ADD CONSTRAINT check13 CHECK (pk BETWEEN 2 AND 100)",
-			"CREATE TABLE mytable4(pk int PRIMARY KEY, v int, CONSTRAINT check4 CHECK (pk > 2 AND v < 5 AND pk < 9))",
-			"CREATE TABLE mytable5(pk int PRIMARY KEY, v int, CONSTRAINT check5 CHECK (pk > 2 OR (v < 5 AND pk < 9)))",
-			"CREATE TABLE mytable6(pk int PRIMARY KEY, v int, CONSTRAINT check6 CHECK (NOT pk))",
-			"CREATE TABLE mytable7(pk int PRIMARY KEY, v int, CONSTRAINT check7 CHECK (pk != v))",
-			"CREATE TABLE mytable8(pk int PRIMARY KEY, v int, CONSTRAINT check8 CHECK (pk > 2 OR v < 5 OR pk < 10))",
-			"CREATE TABLE mytable9(pk int PRIMARY KEY, v int, CONSTRAINT check9 CHECK ((pk + v) / 2 >= 1))",
-			"CREATE TABLE mytable10(pk int PRIMARY KEY, v int, CONSTRAINT check10 CHECK (v < 5) NOT ENFORCED)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "SHOW CREATE TABLE mytable1",
-				Expected: []sql.Row{
-					{
-						"mytable1",
-						"CREATE TABLE `mytable1` (\n  `pk` int NOT NULL,\n" +
-							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check1` CHECK ((`pk` = 5)),\n" +
-							"  CONSTRAINT `check11` CHECK ((`pk` < 6))\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
-					},
-				},
-			},
-			{
-				Query: "SHOW CREATE TABLE mytable2",
-				Expected: []sql.Row{
-					{
-						"mytable2",
-						"CREATE TABLE `mytable2` (\n  `pk` int NOT NULL,\n" +
-							"  `v` int,\n" +
-							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check2` CHECK ((`v` < 5)),\n" +
-							"  CONSTRAINT `check12` CHECK (((`pk` + `v`) = 6))\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
-					},
-				},
-			},
-			{
-				Query: "SHOW CREATE TABLE mytable3",
-				Expected: []sql.Row{
-					{
-						"mytable3",
-						"CREATE TABLE `mytable3` (\n  `pk` int NOT NULL,\n" +
-							"  `v` int,\n" +
-							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check3` CHECK (((`pk` > 2) AND (`v` < 5))),\n" +
-							"  CONSTRAINT `check13` CHECK ((`pk` BETWEEN 2 AND 100))\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
-					},
-				},
-			},
-			{
-				Query: "SHOW CREATE TABLE mytable4",
-				Expected: []sql.Row{
-					{
-						"mytable4",
-						"CREATE TABLE `mytable4` (\n  `pk` int NOT NULL,\n" +
-							"  `v` int,\n" +
-							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check4` CHECK ((((`pk` > 2) AND (`v` < 5)) AND (`pk` < 9)))\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
-					},
-				},
-			},
-			{
-				Query: "SHOW CREATE TABLE mytable5",
-				Expected: []sql.Row{
-					{
-						"mytable5",
-						"CREATE TABLE `mytable5` (\n  `pk` int NOT NULL,\n" +
-							"  `v` int,\n" +
-							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check5` CHECK (((`pk` > 2) OR ((`v` < 5) AND (`pk` < 9))))\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
-					},
-				},
-			},
-			{
-				Query: "SHOW CREATE TABLE mytable6",
-				Expected: []sql.Row{
-					{
-						"mytable6",
-						"CREATE TABLE `mytable6` (\n  `pk` int NOT NULL,\n" +
-							"  `v` int,\n" +
-							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check6` CHECK ((NOT(`pk`)))\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
-					},
-				},
-			},
-			{
-				Query: "SHOW CREATE TABLE mytable7",
-				Expected: []sql.Row{
-					{
-						"mytable7",
-						"CREATE TABLE `mytable7` (\n  `pk` int NOT NULL,\n" +
-							"  `v` int,\n" +
-							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check7` CHECK ((NOT((`pk` = `v`))))\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
-					},
-				},
-			},
-			{
-				Query: "SHOW CREATE TABLE mytable8",
-				Expected: []sql.Row{
-					{
-						"mytable8",
-						"CREATE TABLE `mytable8` (\n  `pk` int NOT NULL,\n" +
-							"  `v` int,\n" +
-							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check8` CHECK ((((`pk` > 2) OR (`v` < 5)) OR (`pk` < 10)))\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
-					},
-				},
-			},
-			{
-				Query: "SHOW CREATE TABLE mytable9",
-				Expected: []sql.Row{
-					{
-						"mytable9",
-						"CREATE TABLE `mytable9` (\n  `pk` int NOT NULL,\n" +
-							"  `v` int,\n" +
-							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check9` CHECK ((((`pk` + `v`) / 2) >= 1))\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
-					},
-				},
-			},
-			{
-				Query: "SHOW CREATE TABLE mytable10",
-				Expected: []sql.Row{
-					{
-						"mytable10",
-						"CREATE TABLE `mytable10` (\n  `pk` int NOT NULL,\n" +
-							"  `v` int,\n" +
-							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check10` CHECK ((`v` < 5)) /*!80016 NOT ENFORCED */\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
-					},
-				},
-			},
-		},
-	},
-	{
-		Name: "Create a table with a check and validate that it appears in check_constraints and table_constraints",
-		SetUpScript: []string{
-			"CREATE TABLE mytable (pk int primary key, test_score int, height int, CONSTRAINT mycheck CHECK (test_score >= 50), CONSTRAINT hcheck CHECK (height < 10), CONSTRAINT vcheck CHECK (height > 0))",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "SELECT * from information_schema.check_constraints where constraint_name IN ('mycheck', 'hcheck') ORDER BY constraint_name",
-				Expected: []sql.Row{
-					{"def", "mydb", "hcheck", "(height < 10)"},
-					{"def", "mydb", "mycheck", "(test_score >= 50)"},
-				},
-			},
-			{
-				Query: "SELECT * FROM information_schema.table_constraints where table_name='mytable' ORDER BY constraint_type,constraint_name",
-				Expected: []sql.Row{
-					{"def", "mydb", "hcheck", "mydb", "mytable", "CHECK", "YES"},
-					{"def", "mydb", "mycheck", "mydb", "mytable", "CHECK", "YES"},
-					{"def", "mydb", "vcheck", "mydb", "mytable", "CHECK", "YES"},
-					{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
-				},
-			},
-		},
-	},
-	{
-		Name: "multi column index, lower()",
-		SetUpScript: []string{
-			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 varchar(100), v2 varchar(100), INDEX (v1,v2));",
-			"INSERT INTO test VALUES (1,'happy','birthday'), (2,'HAPPY','BIRTHDAY'), (3,'hello','sailor');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT pk FROM test where lower(v1) = 'happy' and lower(v2) = 'birthday' order by 1",
-				Expected: []sql.Row{{1}, {2}},
-			},
-		},
-	},
-	{
-		Name: "adding check constraint to a table that violates said constraint correctly throws an error",
-		SetUpScript: []string{
-			"CREATE TABLE test (pk int)",
-			"INSERT INTO test VALUES (1),(2),(300)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "ALTER TABLE test ADD CONSTRAINT bad_check CHECK (pk < 5)",
-				ExpectedErr: plan.ErrCheckViolated,
-			},
-		},
-	},
-	{
-		Name: "duplicate indexes still returns correct results",
-		SetUpScript: []string{
-			"CREATE TABLE test (i int)",
-			"CREATE INDEX test_idx1 on test (i)",
-			"CREATE INDEX test_idx2 on test (i)",
-			"INSERT INTO test values (1), (2), (3)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT * FROM test ORDER BY i",
-				Expected: []sql.Row{{1}, {2}, {3}},
-			},
-			{
-				Query: "SELECT * FROM test where i = 2",
-				Expected: []sql.Row{
-					{2},
-				},
-			},
-		},
-	},
-}
-
 var PreparedScriptTests = []ScriptTest{
 	{
 		Name: "table_count optimization refreshes result",
@@ -5512,6 +5286,240 @@ var BrokenScriptTests = []ScriptTest{
 			{
 				Query:    "SELECT UNIX_TIMESTAMP(ts), UNIX_TIMESTAMP(dt) from timezone_test;",
 				Expected: []sql.Row{{float64(1676393220), float64(1676382420)}},
+			},
+		},
+	},
+}
+
+var CreateDatabaseScripts = []ScriptTest{
+	{
+		Name: "CREATE DATABASE and create table",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CREATE DATABASE testdb",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "USE testdb",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT DATABASE()",
+				Expected: []sql.Row{{"testdb"}},
+			},
+			{
+				Query:    "CREATE TABLE test (pk int primary key)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SHOW TABLES",
+				Expected: []sql.Row{{"test"}},
+			},
+		},
+	},
+	{
+		Name: "CREATE DATABASE IF NOT EXISTS",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CREATE DATABASE IF NOT EXISTS testdb2",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "USE testdb2",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT DATABASE()",
+				Expected: []sql.Row{{"testdb2"}},
+			},
+			{
+				Query:    "CREATE TABLE test (pk int primary key)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SHOW TABLES",
+				Expected: []sql.Row{{"test"}},
+			},
+		},
+	},
+	{
+		Name: "CREATE SCHEMA",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CREATE SCHEMA testdb3",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "USE testdb3",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT DATABASE()",
+				Expected: []sql.Row{{"testdb3"}},
+			},
+			{
+				Query:    "CREATE TABLE test (pk int primary key)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SHOW TABLES",
+				Expected: []sql.Row{{"test"}},
+			},
+		},
+	},
+	{
+		Name: "CREATE DATABASE error handling",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CREATE DATABASE newtestdb CHARACTER SET utf8mb4 ENCRYPTION='N'",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: nil}}},
+			},
+			{
+				Query:    "SHOW WARNINGS /* 1 */",
+				Expected: []sql.Row{{"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"}},
+			},
+			{
+				Query:    "CREATE DATABASE newtest1db DEFAULT COLLATE binary ENCRYPTION='Y'",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: nil}}},
+			},
+			{
+				// TODO: There should only be one warning (the warnings are not clearing for create database query) AND 'PREPARE' statements should not create warning from its query
+				Query:    "SHOW WARNINGS /* 2 */",
+				Expected: []sql.Row{{"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"}, {"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"}},
+			},
+			{
+				Query:       "CREATE DATABASE mydb",
+				ExpectedErr: sql.ErrDatabaseExists,
+			},
+			{
+				Query:    "CREATE DATABASE IF NOT EXISTS mydb",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "SHOW WARNINGS /* 3 */",
+				Expected: []sql.Row{{"Note", 1007, "Can't create database mydb; database exists "}},
+			},
+		},
+	},
+}
+
+var DropDatabaseScripts = []ScriptTest{
+	{
+		Name: "DROP DATABASE correctly works",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "DROP DATABASE mydb",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "SELECT DATABASE()",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				// TODO: incorrect error returned because the currentdb is not set to empty
+				Skip:        true,
+				Query:       "SHOW TABLES",
+				ExpectedErr: sql.ErrNoDatabaseSelected,
+			},
+		},
+	},
+	{
+		Name: "DROP DATABASE works on newly created databases.",
+		SetUpScript: []string{
+			"CREATE DATABASE testdb",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "USE testdb",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "DROP DATABASE testdb",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:       "USE testdb",
+				ExpectedErr: sql.ErrDatabaseNotFound,
+			},
+		},
+	},
+	{
+		Name: "DROP DATABASE works on current database and sets current database to empty.",
+		SetUpScript: []string{
+			"CREATE DATABASE testdb",
+			"USE TESTdb",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "DROP DATABASE TESTDB",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "SELECT DATABASE()",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:       "USE testdb",
+				ExpectedErr: sql.ErrDatabaseNotFound,
+			},
+		},
+	},
+	{
+		Name: "DROP SCHEMA works on newly created databases.",
+		SetUpScript: []string{
+			"CREATE SCHEMA testdb",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "DROP SCHEMA TESTDB",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:       "USE testdb",
+				ExpectedErr: sql.ErrDatabaseNotFound,
+			},
+		},
+	},
+	{
+		Name: "DROP DATABASE IF EXISTS correctly works.",
+		SetUpScript: []string{
+			"DROP DATABASE mydb",
+			"CREATE DATABASE testdb",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "DROP DATABASE IF EXISTS mydb",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "SHOW WARNINGS",
+				Expected: []sql.Row{{"Note", 1008, "Can't drop database mydb; database doesn't exist "}},
+			},
+			{
+				Query:    "DROP DATABASE IF EXISTS testdb",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				// TODO: there should not be warning
+				//  https://github.com/dolthub/dolt/issues/6921
+				Query:    "SHOW WARNINGS",
+				Expected: []sql.Row{{"Note", 1008, "Can't drop database mydb; database doesn't exist "}},
+			},
+			{
+				Query:    "SELECT DATABASE()",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:       "USE testdb",
+				ExpectedErr: sql.ErrDatabaseNotFound,
+			},
+			{
+				Query:    "DROP DATABASE IF EXISTS testdb",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "SHOW WARNINGS",
+				Expected: []sql.Row{{"Note", 1008, "Can't drop database testdb; database doesn't exist "}},
 			},
 		},
 	},

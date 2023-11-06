@@ -266,7 +266,7 @@ var _ sql.CollationCoercible = (*PointFromWKB)(nil)
 
 // NewPointFromWKB creates a new point expression.
 func NewPointFromWKB(args ...sql.Expression) (sql.Expression, error) {
-	if len(args) < 1 && len(args) > 3 {
+	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_POINTFROMWKB", "1, 2, or 3", len(args))
 	}
 	return &PointFromWKB{expression.NaryExpression{ChildExpressions: args}}, nil

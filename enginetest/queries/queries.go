@@ -9218,7 +9218,9 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErrStr: "length is 123456789 but max allowed is 65535",
 	},
 	{
-		Query:       `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)), 1234)`,
+		// Note: cannot use SRID `1234` because it is created in another test,
+		// which affects this test to not return error
+		Query:       `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)), 1235)`,
 		ExpectedErr: sql.ErrNoSRID,
 	},
 	{
