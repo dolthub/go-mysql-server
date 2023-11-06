@@ -25,7 +25,6 @@ import (
 
 type QueryEngine interface {
 	PrepareQuery(*sql.Context, string) (sql.Node, error)
-	//BindQuery(*sql.Context, string) (sql.Node, error)
 	AnalyzeQuery(*sql.Context, string) (sql.Node, error)
 	Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter, error)
 	// TODO: get rid of this, should not be exposed to engine tests
