@@ -663,6 +663,10 @@ func enableUserAccounts(ctx *sql.Context, engine *sqle.Engine) error {
 	return nil
 }
 
+// We skip preparing these queries using injectBindVarsAndPrepare() method. They fail because
+// injectBindVarsAndPrepare() method causes the non-string sql values to become string values.
+// Other queries simply cause incorrect type result, which is not checked for ServerEngine test for now.
+// TODO: remove this map when we fix this issue.
 var cannotBePrepared = map[string]bool{
 	"with recursive t (n) as (select (1) from dual union all select n + 1 from t where n < 10002) select sum(n) from t": true,
 	//"DELETE FROM mytable WHERE i = ?": true,

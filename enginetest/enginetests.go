@@ -1703,8 +1703,8 @@ func TestShowTriggers(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	e := mustNewEngine(t, harness)
 
-	// Pick a date
-	date := time.Unix(0, 0).UTC()
+	// Pick a valid date
+	date := time.Unix(1257894000, 0).UTC()
 
 	// Set up Harness to contain triggers; created at a specific time
 	var ctx *sql.Context
