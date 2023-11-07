@@ -178,7 +178,6 @@ func expressionSources(expr sql.Expression) ([]sql.TableID, bool) {
 			}
 		case *plan.Subquery:
 			transform.InspectExpressions(e.Query, func(innerExpr sql.Expression) bool {
-				// TODO: recurse?
 				switch ie := innerExpr.(type) {
 				case *expression.GetField:
 					source := ie.TableID()
