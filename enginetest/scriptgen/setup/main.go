@@ -25,8 +25,6 @@ import (
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
-//go:generate go run ../cmd/scriptgen/main.go -out setup_data.sg.go -pkg setup setup scripts
-
 type setupSource interface {
 	Next() (bool, error)
 	Close() error

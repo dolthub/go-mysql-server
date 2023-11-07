@@ -15,3 +15,5 @@ plans:
     path: enginetest/queries/imdb_plans.go
   - name: GeneratedColumnPlanTests
     path: enginetest/queries/generated_column_plans.go
+  - name: SysbenchPlanTests
+    path: enginetest/queries/sysbench_plans.go
