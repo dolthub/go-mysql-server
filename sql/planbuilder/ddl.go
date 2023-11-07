@@ -233,12 +233,11 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 		qualifier = b.ctx.GetCurrentDatabase()
 	}
 	database := b.resolveDb(qualifier)
-	// todo resolve defaults in schema
 	schema, collation := b.tableSpecToSchema(inScope, outScope, database, strings.ToLower(c.Table.Name.String()), c.TableSpec, false)
 	fkDefs, chDefs := b.buildConstraintsDefs(outScope, c.Table, c.TableSpec)
 
-	schema.Schema = b.resolveSchemaDefaults(outScope, schema.Schema)
-
+	schema.Schema = assignColumnIndexesInDefaults(schema.Schema)
+	
 	tableSpec := &plan.TableSpec{
 		Schema:    schema,
 		IdxDefs:   idxDefs,
@@ -256,6 +255,20 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 	}
 
 	return
+}
+
+func assignColumnIndexesInDefaults(schema sql.Schema) sql.Schema {
+	newSch := make(sql.Schema, len(schema))
+	for i, col := range schema {
+		newSch[i] = col
+		if col.Default != nil {
+			newSch[i].Default = assignColumnIndexes(col.Default, schema).(*sql.ColumnDefaultValue)
+		}
+		if col.Generated != nil {
+			newSch[i].Generated = assignColumnIndexes(col.Generated, schema).(*sql.ColumnDefaultValue)
+		}
+	}
+	return newSch
 }
 
 func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
