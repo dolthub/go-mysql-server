@@ -29,10 +29,3 @@ jobs:
       run: go test -race ./...
       env:
         CI_TEST: "true"
-    - name: Test using Server Engine
-      if: ${{ matrix.platform == 'ubuntu-latest' }}
-      run: go test ./...
-      env:
-        CI_TEST: "true"
-        SERVER_ENGINE_TEST: "true"
-

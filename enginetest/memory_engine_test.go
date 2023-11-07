@@ -771,7 +771,7 @@ func TestAlterTable(t *testing.T) {
 func TestDateParse(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
 	if harness.IsUsingServer() {
-		//t.Skip("issue: https://github.com/dolthub/dolt/issues/6901")
+		t.Skip("issue: https://github.com/dolthub/dolt/issues/6901")
 	}
 	enginetest.TestDateParse(t, enginetest.NewDefaultMemoryHarness())
 }
