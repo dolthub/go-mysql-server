@@ -561,7 +561,7 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "trigger with signal and user var",
+		Name: "alter table out of range value error of column type change",
 		SetUpScript: []string{
 			"create table t (i int primary key, i2 int, key(i2));",
 			"insert into t values (0,-1)",

@@ -25,6 +25,7 @@ var (
 	GraphSetup           = [][]SetupScript{MydbData, Graph_tablesData}
 	ReservedSetup        = [][]SetupScript{MydbData, Reserved_keywordsData}
 	GeneratedColumnSetup = [][]SetupScript{MydbData, Generated_column_tablesData}
+	SysbenchSetup        = [][]SetupScript{MydbData, SysbenchData}
 	Mytable              = [][]SetupScript{MydbData, MytableData}
 	ChecksSetup          = [][]SetupScript{MydbData, Check_constraintData}
 	NullsSetup           = [][]SetupScript{MydbData, Null_rangesData}
