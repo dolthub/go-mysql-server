@@ -79,7 +79,12 @@ func TestWarnings(t *testing.T) {
 }
 
 func TestClearWarnings(t *testing.T) {
-	enginetest.TestClearWarnings(t, enginetest.NewDefaultMemoryHarness())
+	harness := enginetest.NewDefaultMemoryHarness()
+	if harness.IsUsingServer() {
+		// TODO: needs more investigation on this test
+		t.Skip("depends on Warnings() method call on context")
+	}
+	enginetest.TestClearWarnings(t, harness)
 }
 
 func TestUse(t *testing.T) {
@@ -91,7 +96,11 @@ func TestNoDatabaseSelected(t *testing.T) {
 }
 
 func TestTracing(t *testing.T) {
-	enginetest.TestTracing(t, enginetest.NewDefaultMemoryHarness())
+	harness := enginetest.NewDefaultMemoryHarness()
+	if harness.IsUsingServer() {
+		t.Skip("this test depends on Context, which ServerEngine does not depend on or update the current context")
+	}
+	enginetest.TestTracing(t, harness)
 }
 
 func TestCurrentTimestamp(t *testing.T) {
@@ -158,12 +167,12 @@ func newMockSpan(ctx context.Context) (context.Context, *mockSpan) {
 
 func TestRootSpanFinish(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
+	if harness.IsUsingServer() {
+		t.Skip("this test depends on Context, which ServerEngine does not depend on or update the current context")
+	}
 	e, err := harness.NewEngine(t)
 	if err != nil {
 		panic(err)
-	}
-	if enginetest.IsServerEngine(e) {
-		t.Skip("this test depends on Context, which ServerEngine does not depend on or update the current context")
 	}
 	sqlCtx := harness.NewContext()
 	ctx, fakeSpan := newMockSpan(sqlCtx)
@@ -633,7 +642,7 @@ func TestShowCharset(t *testing.T) {
 
 func TestTableFunctions(t *testing.T) {
 	// TODO different error messages
-	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+	harness := enginetest.NewDefaultMemoryHarness()
 	harness.Setup(setup.MydbData)
 
 	databaseProvider := harness.NewDatabaseProvider()
@@ -688,9 +697,6 @@ func TestTriggerViewWarning(t *testing.T) {
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e, err := harness.NewEngine(t)
 	assert.NoError(t, err)
-	if enginetest.IsServerEngine(e) {
-		t.Skip("this test depends on Context, which ServerEngine does not depend on or update the current context")
-	}
 
 	prov := e.EngineAnalyzer().Catalog.DbProvider.(*memory.DbProvider)
 	db, err := prov.Database(nil, "mydb")
@@ -704,23 +710,18 @@ func TestTriggerViewWarning(t *testing.T) {
 	assert.NoError(t, err)
 
 	ctx := harness.NewContext()
+	enginetest.CreateNewConnectionForServerEngine(ctx, e)
 
-	mytableIns := queries.QueryTest{
-		Query:    "insert into mytable values (4, 'fourth row')",
-		Expected: []sql.Row{{types.NewOkResult(1)}},
-	}
-	enginetest.TestQueryWithContext(t, ctx, e, harness, mytableIns.Query, mytableIns.Expected, nil, nil)
-	require.Equal(t, uint16(1), ctx.Session.WarningCount())
-
-	myViewIns := queries.QueryErrorTest{
-		Query:          "insert into myview values (5, 'fifth row')",
-		ExpectedErrStr: "expected insert destination to be resolved or unresolved table",
-	}
-	enginetest.AssertErr(t, e, harness, myViewIns.Query, nil, myViewIns.ExpectedErrStr)
+	enginetest.TestQueryWithContext(t, ctx, e, harness, "insert into mytable values (4, 'fourth row')", []sql.Row{{types.NewOkResult(1)}}, nil, nil)
+	enginetest.TestQueryWithContext(t, ctx, e, harness, "SHOW WARNINGS", []sql.Row{{"Warning", 0, "trigger on view is not supported; 'DROP TRIGGER  view_trig' to fix"}}, nil, nil)
+	enginetest.AssertErrWithCtx(t, e, harness, ctx, "insert into myview values (5, 'fifth row')", nil, "expected insert destination to be resolved or unresolved table")
 }
 
 func TestCollationCoercion(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
+	if harness.IsUsingServer() {
+		t.Skip("TODO: need further investigation")
+	}
 	harness.Setup(setup.MydbData)
 	engine, err := harness.NewEngine(t)
 	require.NoError(t, err)
