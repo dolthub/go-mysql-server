@@ -804,7 +804,7 @@ func validateSchema(ftTblName string, parentSch sql.Schema, sch sql.Schema, expe
 		}
 		// We can't just use the Equals() function on the columns as they care about fields that we do not.
 		if col.Name != expectedCol.Name || !col.Type.Equals(expectedCol.Type) || col.PrimaryKey != expectedCol.PrimaryKey || col.Nullable != expectedCol.Nullable ||
-			col.AutoIncrement != expectedCol.AutoIncrement || col.Default != expectedCol.Default {
+			col.AutoIncrement != expectedCol.AutoIncrement {
 			return fmt.Errorf("Full-Text table `%s` column `%s` has an incorrect definition", ftTblName, col.Name)
 		}
 	}

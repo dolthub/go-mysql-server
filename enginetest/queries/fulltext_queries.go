@@ -1040,4 +1040,28 @@ var FulltextTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Full-Text with default columns",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT UNSIGNED NOT NULL DEFAULT '1', v1 VARCHAR(200) DEFAULT 'def', PRIMARY KEY(pk), FULLTEXT idx (v1));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO test (v1) VALUES ('abc');",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "INSERT INTO test (pk, v1) VALUES (2, 'def');",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{uint64(1), "abc"}, {uint64(2), "def"}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1) AGAINST ('def');",
+				Expected: []sql.Row{{uint64(2), "def"}},
+			},
+		},
+	},
 }
