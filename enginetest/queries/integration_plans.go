@@ -8834,7 +8834,7 @@ INNER JOIN E2I7U nd
 INNER JOIN XOAOP pa
     ON QNRBH.CH3FR = pa.id`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [pa.DZLIM:3!null as ECUWU, nd.TW55N:5!null]\n" +
+			" ├─ columns: [pa.DZLIM:5!null as ECUWU, nd.TW55N:3!null]\n" +
 			" └─ LookupJoin\n" +
 			"     ├─ LookupJoin\n" +
 			"     │   ├─ TableAlias(qnrbh)\n" +
@@ -8842,20 +8842,20 @@ INNER JOIN XOAOP pa
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: JJGQT\n" +
 			"     │   │           └─ columns: [ch3fr luevy]\n" +
-			"     │   └─ TableAlias(pa)\n" +
-			"     │       └─ IndexedTableAccess(XOAOP)\n" +
-			"     │           ├─ index: [XOAOP.id]\n" +
-			"     │           ├─ keys: [qnrbh.CH3FR]\n" +
+			"     │   └─ TableAlias(nd)\n" +
+			"     │       └─ IndexedTableAccess(E2I7U)\n" +
+			"     │           ├─ index: [E2I7U.id]\n" +
+			"     │           ├─ keys: [qnrbh.LUEVY]\n" +
 			"     │           └─ Table\n" +
-			"     │               ├─ name: XOAOP\n" +
-			"     │               └─ columns: [id dzlim]\n" +
-			"     └─ TableAlias(nd)\n" +
-			"         └─ IndexedTableAccess(E2I7U)\n" +
-			"             ├─ index: [E2I7U.id]\n" +
-			"             ├─ keys: [qnrbh.LUEVY]\n" +
+			"     │               ├─ name: E2I7U\n" +
+			"     │               └─ columns: [id tw55n]\n" +
+			"     └─ TableAlias(pa)\n" +
+			"         └─ IndexedTableAccess(XOAOP)\n" +
+			"             ├─ index: [XOAOP.id]\n" +
+			"             ├─ keys: [qnrbh.CH3FR]\n" +
 			"             └─ Table\n" +
-			"                 ├─ name: E2I7U\n" +
-			"                 └─ columns: [id tw55n]\n" +
+			"                 ├─ name: XOAOP\n" +
+			"                 └─ columns: [id dzlim]\n" +
 			"",
 	},
 	{
