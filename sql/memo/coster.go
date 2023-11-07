@@ -26,7 +26,7 @@ const (
 	// reference https://github.com/postgres/postgres/blob/master/src/include/optimizer/cost.h
 	cpuCostFactor     = 0.01
 	seqIOCostFactor   = 1
-	randIOCostFactor  = 1
+	randIOCostFactor  = 1.3
 	memCostFactor     = 2
 	concatCostFactor  = 0.75
 	degeneratePenalty = 2.0
