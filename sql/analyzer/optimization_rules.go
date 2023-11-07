@@ -176,6 +176,30 @@ func expressionSources(expr sql.Expression) ([]sql.TableID, bool) {
 			if lit, ok := e.Right().(*expression.Literal); ok && lit.Value() == nil {
 				nullRejecting = false
 			}
+		case *plan.Subquery:
+			transform.InspectExpressions(e.Query, func(innerExpr sql.Expression) bool {
+				// TODO: recurse?
+				switch ie := innerExpr.(type) {
+				case *expression.GetField:
+					source := ie.TableID()
+					if _, ok := sources[source]; !ok {
+						sources[source] = struct{}{}
+						result = append(result, source)
+					}
+				case *expression.IsNull:
+					nullRejecting = false
+				case *expression.NullSafeEquals:
+					nullRejecting = false
+				case *expression.Equals:
+					if lit, ok := ie.Left().(*expression.Literal); ok && lit.Value() == nil {
+						nullRejecting = false
+					}
+					if lit, ok := ie.Right().(*expression.Literal); ok && lit.Value() == nil {
+						nullRejecting = false
+					}
+				}
+				return true
+			})
 		}
 		return true
 	})

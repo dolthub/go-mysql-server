@@ -199,15 +199,26 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "DELETE ME",
+			Name: "virtual column index",
 			SetUpScript: []string{
+				"create table t1 (a int primary key, b int, c int generated always as (a + b) virtual, index idx_c (c))",
+				"insert into t1 (a, b) values (1, 2), (3, 4)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "SELECT c.c_id, o.o_id, o.ship FROM c INNER JOIN o ON c.c_id=o.c_id AND o.ship = (SELECT min(o.ship) FROM o WHERE o.c_id=c.c_id) ORDER BY c.c_id, o.o_id, o.ship;",
-					Expected: []sql.Row{},
+					Query:    "select * from t1 where c = 7",
+					Expected: []sql.Row{{3, 4, 7}},
+				},
+				{
+					Query: "explain select * from t1 where c = 7",
+					Expected: []sql.Row{
+						{"IndexedTableAccess(t1)"},
+						{" ├─ index: [t1.c]"},
+						{" └─ filters: [{[7, 7]}]"},
+					},
 				},
 			},
 		},
@@ -225,43 +236,6 @@ func TestSingleScript(t *testing.T) {
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
-	//t.Skip()
-	//var scripts = []queries.ScriptTest{
-	//	{
-	//		Name: "virtual column index",
-	//		SetUpScript: []string{
-	//			"create table t1 (a int primary key, b int, c int generated always as (a + b) virtual, index idx_c (c))",
-	//			"insert into t1 (a, b) values (1, 2), (3, 4)",
-	//		},
-	//		Assertions: []queries.ScriptTestAssertion{
-	//			{
-	//				Query:    "select * from t1 where c = 7",
-	//				Expected: []sql.Row{{3, 4, 7}},
-	//			},
-	//			{
-	//				Query: "explain select * from t1 where c = 7",
-	//				Expected: []sql.Row{
-	//					{"IndexedTableAccess(t1)"},
-	//					{" ├─ index: [t1.c]"},
-	//					{" └─ filters: [{[7, 7]}]"},
-	//				},
-	//			},
-	//		},
-	//	},
-	//}
-	//
-	//for _, test := range scripts {
-	//	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	//	harness.Setup(setup.MydbData, setup.Parent_childData)
-	//	engine, err := harness.NewEngine(t)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	engine.EngineAnalyzer().Debug = true
-	//	engine.EngineAnalyzer().Verbose = true
-	//
-	//	enginetest.TestScriptWithEngine(t, engine, harness, test)
-	//}
 }
 
 func TestUnbuildableIndex(t *testing.T) {
