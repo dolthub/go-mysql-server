@@ -638,17 +638,27 @@ func checkResults(
 				widenedExpected[i][j] = actual // ensure it passes equality check later
 			}
 
-			// TODO: in MySQL, boolean values sent over the wire are tinyint.
-			//  Current engine tests assert on go boolean type values. Should
-			//  remove this conversion in the future when we match the return
-			//  type for boolean results as MySQL.
 			if IsServerEngine(e) {
+				// TODO: in MySQL, boolean values sent over the wire are tinyint.
+				//  Current engine tests assert on go boolean type values. Should
+				//  remove this conversion in the future when we match the return
+				//  type for boolean results as MySQL.
 				if b, isBool := widenedExpected[i][j].(bool); isBool {
 					if b {
 						widenedExpected[i][j] = int64(1)
 					} else {
 						widenedExpected[i][j] = int64(0)
 					}
+				}
+				// The result received from go sql driver does not have 'Info'
+				// data returned, so we set it to 'nil' for server engine tests only.
+				if okRes, ok := widenedExpected[i][j].(types.OkResult); ok {
+					okResult := types.OkResult{
+						RowsAffected: okRes.RowsAffected,
+						InsertID:     okRes.InsertID,
+						Info:         nil,
+					}
+					widenedExpected[i][j] = okResult
 				}
 			}
 		}

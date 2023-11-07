@@ -750,6 +750,10 @@ func (b *indexScanRangeBuilder) rangeBuildDefaultLeaf(bb *sql.IndexBuilder, f *i
 		bb.NotEquals(b.ctx, name, f.litValue)
 	case indexScanOpInSet:
 		bb.Equals(b.ctx, name, f.setValues...)
+	case indexScanOpNotInSet:
+		for _, v := range f.setValues {
+			bb.NotEquals(b.ctx, name, v)
+		}
 	case indexScanOpGt:
 		bb.GreaterThan(b.ctx, name, f.litValue)
 	case indexScanOpGte:
@@ -935,7 +939,7 @@ func formatIndexFilterRec(b *strings.Builder, nesting int, f indexFilter) {
 		switch f.Op() {
 		case indexScanOpIsNull, indexScanOpIsNotNull:
 			fmt.Fprintf(b, "(%d: %s %s)", f.Id(), f.gf, f.Op())
-		case indexScanOpInSet:
+		case indexScanOpInSet, indexScanOpNotInSet:
 			var valStrs []string
 			for _, v := range f.setValues {
 				valStrs = append(valStrs, fmt.Sprintf("%v", v))
@@ -1073,6 +1077,7 @@ const (
 	indexScanOpEq         indexScanOp = iota // =
 	indexScanOpNullSafeEq                    // <=>
 	indexScanOpInSet                         // =
+	indexScanOpNotInSet                      // !=
 	indexScanOpNotEq                         // !=
 	indexScanOpGt                            // >
 	indexScanOpGte                           // >=
@@ -1151,6 +1156,14 @@ func newLeaf(id indexScanId, e sql.Expression, underlying string) (*iScanLeaf, b
 			left = e.Left()
 			right = e.Right()
 			op = indexScanOpNotEq
+		case *expression.InTuple:
+			op = indexScanOpNotInSet
+			right = e.Right()
+			left = e.Left()
+		case *expression.HashInTuple:
+			op = indexScanOpNotInSet
+			right = e.Right()
+			left = e.Left()
 		default:
 			return nil, false
 		}
@@ -1184,7 +1197,7 @@ func newLeaf(id indexScanId, e sql.Expression, underlying string) (*iScanLeaf, b
 		return nil, false
 	}
 
-	if op == indexScanOpInSet {
+	if op == indexScanOpInSet || op == indexScanOpNotInSet {
 		tup := right.(expression.Tuple)
 		var litSet []interface{}
 		for _, lit := range tup {

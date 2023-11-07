@@ -9240,7 +9240,9 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErrStr: "length is 123456789 but max allowed is 65535",
 	},
 	{
-		Query:       `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)), 1234)`,
+		// Note: cannot use SRID `1234` because it is created in another test,
+		// which affects this test to not return error
+		Query:       `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)), 1235)`,
 		ExpectedErr: sql.ErrNoSRID,
 	},
 	{
@@ -10367,7 +10369,7 @@ var IndexPrefixQueries = []ScriptTest{
 				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `b` blob,\n  PRIMARY KEY (`i`),\n  KEY `b` (`b`(1))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query:    "insert into t values (998, X'4242');;",
+				Query:    "insert into t values (998, X'4242');",
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{

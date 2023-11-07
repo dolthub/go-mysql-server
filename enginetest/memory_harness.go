@@ -17,6 +17,7 @@ package enginetest
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -64,22 +65,27 @@ var _ ClientHarness = (*MemoryHarness)(nil)
 var _ ServerHarness = (*MemoryHarness)(nil)
 var _ sql.ExternalStoredProcedureProvider = (*MemoryHarness)(nil)
 
-func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useNativeIndexes bool, driverInitalizer IndexDriverInitializer) *MemoryHarness {
+func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useNativeIndexes bool, driverInitializer IndexDriverInitializer) *MemoryHarness {
 	externalProcedureRegistry := sql.NewExternalStoredProcedureRegistry()
 	for _, esp := range memory.ExternalStoredProcedures {
 		externalProcedureRegistry.Register(esp)
 	}
 
+	var useServer bool
+	if _, ok := os.LookupEnv("SERVER_ENGINE_TEST"); ok {
+		useServer = true
+	}
+
 	return &MemoryHarness{
 		name:                      name,
 		numTablePartitions:        numTablePartitions,
-		indexDriverInitializer:    driverInitalizer,
+		indexDriverInitializer:    driverInitializer,
 		parallelism:               parallelism,
 		nativeIndexSupport:        useNativeIndexes,
 		skippedQueries:            make(map[string]struct{}),
 		externalProcedureRegistry: externalProcedureRegistry,
 		mu:                        &sync.Mutex{},
-		//server:                    true,
+		server:                    useServer,
 	}
 }
 
@@ -88,7 +94,7 @@ func NewDefaultMemoryHarness() *MemoryHarness {
 }
 
 func NewReadOnlyMemoryHarness() *MemoryHarness {
-	h := NewMemoryHarness("default", 1, testNumPartitions, true, nil)
+	h := NewDefaultMemoryHarness()
 	h.readonly = true
 	return h
 }
@@ -142,6 +148,10 @@ func (m *MemoryHarness) QueriesToSkip(queries ...string) {
 
 func (m *MemoryHarness) UseServer() {
 	m.server = true
+}
+
+func (m *MemoryHarness) IsUsingServer() bool {
+	return m.server
 }
 
 type SkippingMemoryHarness struct {
