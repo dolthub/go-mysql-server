@@ -2799,7 +2799,7 @@ func TestForeignKeys(t *testing.T, harness Harness) {
 		TestScript(t, harness, script)
 	}
 }
-		
+
 func TestFulltextIndexes(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.FulltextTests {
