@@ -354,7 +354,7 @@ func TestQueryWithIndexCheck(t *testing.T, ctx *sql.Context, e QueryEngine, harn
 		require.NoError(err)
 	}
 
-	if _, ok := e.(*ServerQueryEngine); !ok {
+	if !IsServerEngine(e) {
 		node, err := e.AnalyzeQuery(ctx, q)
 		require.NoError(err, "Unexpected error for query %s: %s", q, err)
 		require.True(CheckIndexedAccess(node), "expected plan to have index, but found: %s", sql.DebugString(node))
