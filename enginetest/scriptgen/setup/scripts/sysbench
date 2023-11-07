@@ -1,0 +1,49 @@
+exec
+ CREATE TABLE `sbtest1` (
+  `id` int NOT NULL,
+  `tiny_int_col` tinyint NOT NULL,
+  `unsigned_tiny_int_col` tinyint unsigned NOT NULL,
+  `small_int_col` smallint NOT NULL,
+  `unsigned_small_int_col` smallint unsigned NOT NULL,
+  `medium_int_col` mediumint NOT NULL,
+  `unsigned_medium_int_col` mediumint unsigned NOT NULL,
+  `int_col` int NOT NULL,
+  `unsigned_int_col` int unsigned NOT NULL,
+  `big_int_col` bigint NOT NULL,
+  `unsigned_big_int_col` bigint unsigned NOT NULL,
+  `decimal_col` decimal(10,0) NOT NULL,
+  `float_col` float NOT NULL,
+  `double_col` double NOT NULL,
+  `bit_col` bit(1) NOT NULL,
+  `char_col` char(1) NOT NULL,
+  `var_char_col` varchar(64) NOT NULL,
+  `enum_col` enum('val0','val1','val2') NOT NULL,
+  `set_col` set('val0','val1','val2') NOT NULL,
+  `date_col` date NOT NULL,
+  `time_col` time(6) NOT NULL,
+  `datetime_col` datetime NOT NULL,
+  `timestamp_col` timestamp NOT NULL,
+  `year_col` year NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `big_int_col` (`big_int_col`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin
+---
+
+exec
+CREATE TABLE `sbtest2` (
+  `id` int NOT NULL,
+  `int_col` int NOT NULL,
+  `unsigned_int_col` int unsigned NOT NULL,
+  `char_col` char(1) NOT NULL,
+  `var_char_col` varchar(64) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin
+----
+
+exec
+analyze table sbtest1 update histogram on id using data '{\"row_count\": 10000}';
+----
+
+exec
+analyze table sbtest2 update histogram on id using data '{\"row_count\": 10000}';
+----

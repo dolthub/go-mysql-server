@@ -216,6 +216,8 @@ func specSetup(name string) [][]setup.SetupScript {
 		return setup.TpccPlanSetup
 	case "GeneratedColumnPlanTests":
 		return setup.GeneratedColumnSetup
+	case "SysbenchPlanTests":
+		return setup.SysbenchSetup
 	default:
 		exit(fmt.Errorf("setup not found for plan suite: %s", name))
 		return nil
@@ -240,6 +242,8 @@ func specQueries(name string) []queries.QueryPlanTest {
 		return queries.IntegrationPlanTests
 	case "GeneratedColumnPlanTests":
 		return queries.GeneratedColumnPlanTests
+	case "SysbenchPlanTests":
+		return queries.SysbenchPlanTests
 	default:
 		exit(fmt.Errorf("queries not found for plan suite: %s", name))
 		return nil

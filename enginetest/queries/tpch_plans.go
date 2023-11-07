@@ -232,43 +232,38 @@ order by
 			"             ├─ group: lineitem.l_orderkey:0!null, orders.o_orderdate:6!null, orders.o_shippriority:7!null\n" +
 			"             └─ HashJoin\n" +
 			"                 ├─ Eq\n" +
-			"                 │   ├─ customer.c_custkey:8!null\n" +
-			"                 │   └─ orders.o_custkey:5!null\n" +
-			"                 ├─ MergeJoin\n" +
-			"                 │   ├─ cmp: Eq\n" +
-			"                 │   │   ├─ lineitem.l_orderkey:0!null\n" +
-			"                 │   │   └─ orders.o_orderkey:4!null\n" +
-			"                 │   ├─ Filter\n" +
-			"                 │   │   ├─ GreaterThan\n" +
-			"                 │   │   │   ├─ lineitem.l_shipdate:3!null\n" +
-			"                 │   │   │   └─ 1995-03-15 (longtext)\n" +
-			"                 │   │   └─ IndexedTableAccess(lineitem)\n" +
-			"                 │   │       ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                 │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                 │   │       └─ Table\n" +
-			"                 │   │           ├─ name: lineitem\n" +
-			"                 │   │           └─ columns: [l_orderkey l_extendedprice l_discount l_shipdate]\n" +
-			"                 │   └─ Filter\n" +
-			"                 │       ├─ LessThan\n" +
-			"                 │       │   ├─ orders.o_orderdate:2!null\n" +
-			"                 │       │   └─ 1995-03-15 (longtext)\n" +
-			"                 │       └─ IndexedTableAccess(orders)\n" +
-			"                 │           ├─ index: [orders.O_ORDERKEY]\n" +
-			"                 │           ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │           └─ Table\n" +
-			"                 │               ├─ name: orders\n" +
-			"                 │               └─ columns: [o_orderkey o_custkey o_orderdate o_shippriority]\n" +
+			"                 │   ├─ lineitem.l_orderkey:0!null\n" +
+			"                 │   └─ orders.o_orderkey:4!null\n" +
+			"                 ├─ Filter\n" +
+			"                 │   ├─ GreaterThan\n" +
+			"                 │   │   ├─ lineitem.l_shipdate:3!null\n" +
+			"                 │   │   └─ 1995-03-15 (longtext)\n" +
+			"                 │   └─ ProcessTable\n" +
+			"                 │       └─ Table\n" +
+			"                 │           ├─ name: lineitem\n" +
+			"                 │           └─ columns: [l_orderkey l_extendedprice l_discount l_shipdate]\n" +
 			"                 └─ HashLookup\n" +
-			"                     ├─ left-key: TUPLE(orders.o_custkey:5!null)\n" +
-			"                     ├─ right-key: TUPLE(customer.c_custkey:0!null)\n" +
-			"                     └─ Filter\n" +
-			"                         ├─ Eq\n" +
-			"                         │   ├─ customer.c_mktsegment:1!null\n" +
-			"                         │   └─ BUILDING (longtext)\n" +
-			"                         └─ ProcessTable\n" +
-			"                             └─ Table\n" +
-			"                                 ├─ name: customer\n" +
-			"                                 └─ columns: [c_custkey c_mktsegment]\n" +
+			"                     ├─ left-key: TUPLE(lineitem.l_orderkey:0!null)\n" +
+			"                     ├─ right-key: TUPLE(orders.o_orderkey:0!null)\n" +
+			"                     └─ LookupJoin\n" +
+			"                         ├─ Filter\n" +
+			"                         │   ├─ LessThan\n" +
+			"                         │   │   ├─ orders.o_orderdate:2!null\n" +
+			"                         │   │   └─ 1995-03-15 (longtext)\n" +
+			"                         │   └─ ProcessTable\n" +
+			"                         │       └─ Table\n" +
+			"                         │           ├─ name: orders\n" +
+			"                         │           └─ columns: [o_orderkey o_custkey o_orderdate o_shippriority]\n" +
+			"                         └─ Filter\n" +
+			"                             ├─ Eq\n" +
+			"                             │   ├─ customer.c_mktsegment:1!null\n" +
+			"                             │   └─ BUILDING (longtext)\n" +
+			"                             └─ IndexedTableAccess(customer)\n" +
+			"                                 ├─ index: [customer.C_CUSTKEY]\n" +
+			"                                 ├─ keys: [orders.o_custkey]\n" +
+			"                                 └─ Table\n" +
+			"                                     ├─ name: customer\n" +
+			"                                     └─ columns: [c_custkey c_mktsegment]\n" +
 			"",
 	},
 	{
@@ -371,71 +366,66 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null, nation.n_name:1!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null as revenue]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ select: SUM((lineitem.l_extendedprice:2!null * (1 (tinyint) - lineitem.l_discount:3!null))), nation.n_name:12!null\n" +
-			"             ├─ group: nation.n_name:12!null\n" +
-			"             └─ HashJoin\n" +
+			"             ├─ select: SUM((lineitem.l_extendedprice:2!null * (1 (tinyint) - lineitem.l_discount:3!null))), nation.n_name:10!null\n" +
+			"             ├─ group: nation.n_name:10!null\n" +
+			"             └─ LookupJoin\n" +
 			"                 ├─ AND\n" +
-			"                 │   ├─ AND\n" +
-			"                 │   │   ├─ Eq\n" +
-			"                 │   │   │   ├─ lineitem.l_orderkey:0!null\n" +
-			"                 │   │   │   └─ orders.o_orderkey:6!null\n" +
-			"                 │   │   └─ Eq\n" +
-			"                 │   │       ├─ customer.c_nationkey:10!null\n" +
-			"                 │   │       └─ supplier.s_nationkey:5!null\n" +
+			"                 │   ├─ Eq\n" +
+			"                 │   │   ├─ customer.c_nationkey:15!null\n" +
+			"                 │   │   └─ supplier.s_nationkey:5!null\n" +
 			"                 │   └─ Eq\n" +
-			"                 │       ├─ supplier.s_nationkey:5!null\n" +
-			"                 │       └─ nation.n_nationkey:11!null\n" +
+			"                 │       ├─ customer.c_nationkey:15!null\n" +
+			"                 │       └─ nation.n_nationkey:9!null\n" +
 			"                 ├─ LookupJoin\n" +
-			"                 │   ├─ ProcessTable\n" +
-			"                 │   │   └─ Table\n" +
-			"                 │   │       ├─ name: lineitem\n" +
-			"                 │   │       └─ columns: [l_orderkey l_suppkey l_extendedprice l_discount]\n" +
-			"                 │   └─ IndexedTableAccess(supplier)\n" +
-			"                 │       ├─ index: [supplier.S_SUPPKEY]\n" +
-			"                 │       ├─ keys: [lineitem.l_suppkey]\n" +
-			"                 │       └─ Table\n" +
-			"                 │           ├─ name: supplier\n" +
-			"                 │           └─ columns: [s_suppkey s_nationkey]\n" +
-			"                 └─ HashLookup\n" +
-			"                     ├─ left-key: TUPLE(lineitem.l_orderkey:0!null, supplier.s_nationkey:5!null, supplier.s_nationkey:5!null)\n" +
-			"                     ├─ right-key: TUPLE(orders.o_orderkey:0!null, customer.c_nationkey:4!null, nation.n_nationkey:5!null)\n" +
-			"                     └─ LookupJoin\n" +
-			"                         ├─ LookupJoin\n" +
-			"                         │   ├─ LookupJoin\n" +
-			"                         │   │   ├─ Filter\n" +
-			"                         │   │   │   ├─ AND\n" +
-			"                         │   │   │   │   ├─ GreaterThanOrEqual\n" +
-			"                         │   │   │   │   │   ├─ orders.o_orderdate:2!null\n" +
-			"                         │   │   │   │   │   └─ 1994-01-01 (longtext)\n" +
-			"                         │   │   │   │   └─ LessThan\n" +
-			"                         │   │   │   │       ├─ orders.o_orderdate:2!null\n" +
-			"                         │   │   │   │       └─ 1995-01-01 00:00:00 +0000 UTC (datetime(6))\n" +
-			"                         │   │   │   └─ ProcessTable\n" +
-			"                         │   │   │       └─ Table\n" +
-			"                         │   │   │           ├─ name: orders\n" +
-			"                         │   │   │           └─ columns: [o_orderkey o_custkey o_orderdate]\n" +
-			"                         │   │   └─ IndexedTableAccess(customer)\n" +
-			"                         │   │       ├─ index: [customer.C_CUSTKEY]\n" +
-			"                         │   │       ├─ keys: [orders.o_custkey]\n" +
-			"                         │   │       └─ Table\n" +
-			"                         │   │           ├─ name: customer\n" +
-			"                         │   │           └─ columns: [c_custkey c_nationkey]\n" +
-			"                         │   └─ IndexedTableAccess(nation)\n" +
-			"                         │       ├─ index: [nation.N_NATIONKEY]\n" +
-			"                         │       ├─ keys: [customer.c_nationkey]\n" +
-			"                         │       └─ Table\n" +
-			"                         │           ├─ name: nation\n" +
-			"                         │           └─ columns: [n_nationkey n_name n_regionkey]\n" +
-			"                         └─ Filter\n" +
-			"                             ├─ Eq\n" +
-			"                             │   ├─ region.r_name:1!null\n" +
-			"                             │   └─ ASIA (longtext)\n" +
-			"                             └─ IndexedTableAccess(region)\n" +
-			"                                 ├─ index: [region.R_REGIONKEY]\n" +
-			"                                 ├─ keys: [nation.n_regionkey]\n" +
-			"                                 └─ Table\n" +
-			"                                     ├─ name: region\n" +
-			"                                     └─ columns: [r_regionkey r_name]\n" +
+			"                 │   ├─ LookupJoin\n" +
+			"                 │   │   ├─ LookupJoin\n" +
+			"                 │   │   │   ├─ LookupJoin\n" +
+			"                 │   │   │   │   ├─ ProcessTable\n" +
+			"                 │   │   │   │   │   └─ Table\n" +
+			"                 │   │   │   │   │       ├─ name: lineitem\n" +
+			"                 │   │   │   │   │       └─ columns: [l_orderkey l_suppkey l_extendedprice l_discount]\n" +
+			"                 │   │   │   │   └─ IndexedTableAccess(supplier)\n" +
+			"                 │   │   │   │       ├─ index: [supplier.S_SUPPKEY]\n" +
+			"                 │   │   │   │       ├─ keys: [lineitem.l_suppkey]\n" +
+			"                 │   │   │   │       └─ Table\n" +
+			"                 │   │   │   │           ├─ name: supplier\n" +
+			"                 │   │   │   │           └─ columns: [s_suppkey s_nationkey]\n" +
+			"                 │   │   │   └─ Filter\n" +
+			"                 │   │   │       ├─ AND\n" +
+			"                 │   │   │       │   ├─ GreaterThanOrEqual\n" +
+			"                 │   │   │       │   │   ├─ orders.o_orderdate:2!null\n" +
+			"                 │   │   │       │   │   └─ 1994-01-01 (longtext)\n" +
+			"                 │   │   │       │   └─ LessThan\n" +
+			"                 │   │   │       │       ├─ orders.o_orderdate:2!null\n" +
+			"                 │   │   │       │       └─ 1995-01-01 00:00:00 +0000 UTC (datetime(6))\n" +
+			"                 │   │   │       └─ IndexedTableAccess(orders)\n" +
+			"                 │   │   │           ├─ index: [orders.O_ORDERKEY]\n" +
+			"                 │   │   │           ├─ keys: [lineitem.l_orderkey]\n" +
+			"                 │   │   │           └─ Table\n" +
+			"                 │   │   │               ├─ name: orders\n" +
+			"                 │   │   │               └─ columns: [o_orderkey o_custkey o_orderdate]\n" +
+			"                 │   │   └─ IndexedTableAccess(nation)\n" +
+			"                 │   │       ├─ index: [nation.N_NATIONKEY]\n" +
+			"                 │   │       ├─ keys: [supplier.s_nationkey]\n" +
+			"                 │   │       └─ Table\n" +
+			"                 │   │           ├─ name: nation\n" +
+			"                 │   │           └─ columns: [n_nationkey n_name n_regionkey]\n" +
+			"                 │   └─ Filter\n" +
+			"                 │       ├─ Eq\n" +
+			"                 │       │   ├─ region.r_name:1!null\n" +
+			"                 │       │   └─ ASIA (longtext)\n" +
+			"                 │       └─ IndexedTableAccess(region)\n" +
+			"                 │           ├─ index: [region.R_REGIONKEY]\n" +
+			"                 │           ├─ keys: [nation.n_regionkey]\n" +
+			"                 │           └─ Table\n" +
+			"                 │               ├─ name: region\n" +
+			"                 │               └─ columns: [r_regionkey r_name]\n" +
+			"                 └─ IndexedTableAccess(customer)\n" +
+			"                     ├─ index: [customer.C_CUSTKEY]\n" +
+			"                     ├─ keys: [orders.o_custkey]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: customer\n" +
+			"                         └─ columns: [c_custkey c_nationkey]\n" +
 			"",
 	},
 	{
@@ -570,24 +560,24 @@ order by
 			"                             │   │   │   │   │   └─ Table\n" +
 			"                             │   │   │   │   │       ├─ name: lineitem\n" +
 			"                             │   │   │   │   │       └─ columns: [l_orderkey l_suppkey l_extendedprice l_discount l_shipdate]\n" +
-			"                             │   │   │   │   └─ IndexedTableAccess(supplier)\n" +
-			"                             │   │   │   │       ├─ index: [supplier.S_SUPPKEY]\n" +
-			"                             │   │   │   │       ├─ keys: [lineitem.l_suppkey]\n" +
+			"                             │   │   │   │   └─ IndexedTableAccess(orders)\n" +
+			"                             │   │   │   │       ├─ index: [orders.O_ORDERKEY]\n" +
+			"                             │   │   │   │       ├─ keys: [lineitem.l_orderkey]\n" +
 			"                             │   │   │   │       └─ Table\n" +
-			"                             │   │   │   │           ├─ name: supplier\n" +
-			"                             │   │   │   │           └─ columns: [s_suppkey s_nationkey]\n" +
-			"                             │   │   │   └─ IndexedTableAccess(orders)\n" +
-			"                             │   │   │       ├─ index: [orders.O_ORDERKEY]\n" +
-			"                             │   │   │       ├─ keys: [lineitem.l_orderkey]\n" +
+			"                             │   │   │   │           ├─ name: orders\n" +
+			"                             │   │   │   │           └─ columns: [o_orderkey o_custkey]\n" +
+			"                             │   │   │   └─ IndexedTableAccess(customer)\n" +
+			"                             │   │   │       ├─ index: [customer.C_CUSTKEY]\n" +
+			"                             │   │   │       ├─ keys: [orders.o_custkey]\n" +
 			"                             │   │   │       └─ Table\n" +
-			"                             │   │   │           ├─ name: orders\n" +
-			"                             │   │   │           └─ columns: [o_orderkey o_custkey]\n" +
-			"                             │   │   └─ IndexedTableAccess(customer)\n" +
-			"                             │   │       ├─ index: [customer.C_CUSTKEY]\n" +
-			"                             │   │       ├─ keys: [orders.o_custkey]\n" +
+			"                             │   │   │           ├─ name: customer\n" +
+			"                             │   │   │           └─ columns: [c_custkey c_nationkey]\n" +
+			"                             │   │   └─ IndexedTableAccess(supplier)\n" +
+			"                             │   │       ├─ index: [supplier.S_SUPPKEY]\n" +
+			"                             │   │       ├─ keys: [lineitem.l_suppkey]\n" +
 			"                             │   │       └─ Table\n" +
-			"                             │   │           ├─ name: customer\n" +
-			"                             │   │           └─ columns: [c_custkey c_nationkey]\n" +
+			"                             │   │           ├─ name: supplier\n" +
+			"                             │   │           └─ columns: [s_suppkey s_nationkey]\n" +
 			"                             │   └─ TableAlias(n2)\n" +
 			"                             │       └─ IndexedTableAccess(nation)\n" +
 			"                             │           ├─ index: [nation.N_NATIONKEY]\n" +
@@ -661,80 +651,77 @@ order by
 			"                 ├─ isLateral: false\n" +
 			"                 ├─ cacheable: true\n" +
 			"                 └─ Project\n" +
-			"                     ├─ columns: [extract('YEAR' from orders.o_orderdate) as o_year, (lineitem.l_extendedprice:3!null * (1 (tinyint) - lineitem.l_discount:4!null)) as volume, n2.n_name:10!null as nation]\n" +
-			"                     └─ HashJoin\n" +
-			"                         ├─ Eq\n" +
-			"                         │   ├─ lineitem.l_orderkey:0!null\n" +
-			"                         │   └─ orders.o_orderkey:11!null\n" +
+			"                     ├─ columns: [extract('YEAR' from orders.o_orderdate) as o_year, (lineitem.l_extendedprice:3!null * (1 (tinyint) - lineitem.l_discount:4!null)) as volume, n2.n_name:19!null as nation]\n" +
+			"                     └─ LookupJoin\n" +
 			"                         ├─ LookupJoin\n" +
 			"                         │   ├─ LookupJoin\n" +
 			"                         │   │   ├─ LookupJoin\n" +
-			"                         │   │   │   ├─ Table\n" +
-			"                         │   │   │   │   ├─ name: lineitem\n" +
-			"                         │   │   │   │   └─ columns: [l_orderkey l_partkey l_suppkey l_extendedprice l_discount]\n" +
-			"                         │   │   │   └─ Filter\n" +
-			"                         │   │   │       ├─ Eq\n" +
-			"                         │   │   │       │   ├─ part.p_type:1!null\n" +
-			"                         │   │   │       │   └─ ECONOMY ANODIZED STEEL (longtext)\n" +
-			"                         │   │   │       └─ IndexedTableAccess(part)\n" +
-			"                         │   │   │           ├─ index: [part.P_PARTKEY]\n" +
-			"                         │   │   │           ├─ keys: [lineitem.l_partkey]\n" +
+			"                         │   │   │   ├─ LookupJoin\n" +
+			"                         │   │   │   │   ├─ LookupJoin\n" +
+			"                         │   │   │   │   │   ├─ LookupJoin\n" +
+			"                         │   │   │   │   │   │   ├─ Table\n" +
+			"                         │   │   │   │   │   │   │   ├─ name: lineitem\n" +
+			"                         │   │   │   │   │   │   │   └─ columns: [l_orderkey l_partkey l_suppkey l_extendedprice l_discount]\n" +
+			"                         │   │   │   │   │   │   └─ Filter\n" +
+			"                         │   │   │   │   │   │       ├─ Eq\n" +
+			"                         │   │   │   │   │   │       │   ├─ part.p_type:1!null\n" +
+			"                         │   │   │   │   │   │       │   └─ ECONOMY ANODIZED STEEL (longtext)\n" +
+			"                         │   │   │   │   │   │       └─ IndexedTableAccess(part)\n" +
+			"                         │   │   │   │   │   │           ├─ index: [part.P_PARTKEY]\n" +
+			"                         │   │   │   │   │   │           ├─ keys: [lineitem.l_partkey]\n" +
+			"                         │   │   │   │   │   │           └─ Table\n" +
+			"                         │   │   │   │   │   │               ├─ name: part\n" +
+			"                         │   │   │   │   │   │               └─ columns: [p_partkey p_type]\n" +
+			"                         │   │   │   │   │   └─ Filter\n" +
+			"                         │   │   │   │   │       ├─ AND\n" +
+			"                         │   │   │   │   │       │   ├─ GreaterThanOrEqual\n" +
+			"                         │   │   │   │   │       │   │   ├─ orders.o_orderdate:2!null\n" +
+			"                         │   │   │   │   │       │   │   └─ 1995-01-01 (longtext)\n" +
+			"                         │   │   │   │   │       │   └─ LessThanOrEqual\n" +
+			"                         │   │   │   │   │       │       ├─ orders.o_orderdate:2!null\n" +
+			"                         │   │   │   │   │       │       └─ 1996-12-31 (longtext)\n" +
+			"                         │   │   │   │   │       └─ IndexedTableAccess(orders)\n" +
+			"                         │   │   │   │   │           ├─ index: [orders.O_ORDERKEY]\n" +
+			"                         │   │   │   │   │           ├─ keys: [lineitem.l_orderkey]\n" +
+			"                         │   │   │   │   │           └─ Table\n" +
+			"                         │   │   │   │   │               ├─ name: orders\n" +
+			"                         │   │   │   │   │               └─ columns: [o_orderkey o_custkey o_orderdate]\n" +
+			"                         │   │   │   │   └─ IndexedTableAccess(customer)\n" +
+			"                         │   │   │   │       ├─ index: [customer.C_CUSTKEY]\n" +
+			"                         │   │   │   │       ├─ keys: [orders.o_custkey]\n" +
+			"                         │   │   │   │       └─ Table\n" +
+			"                         │   │   │   │           ├─ name: customer\n" +
+			"                         │   │   │   │           └─ columns: [c_custkey c_nationkey]\n" +
+			"                         │   │   │   └─ TableAlias(n1)\n" +
+			"                         │   │   │       └─ IndexedTableAccess(nation)\n" +
+			"                         │   │   │           ├─ index: [nation.N_NATIONKEY]\n" +
+			"                         │   │   │           ├─ keys: [customer.c_nationkey]\n" +
 			"                         │   │   │           └─ Table\n" +
-			"                         │   │   │               ├─ name: part\n" +
-			"                         │   │   │               └─ columns: [p_partkey p_type]\n" +
+			"                         │   │   │               ├─ name: nation\n" +
+			"                         │   │   │               └─ columns: [n_nationkey n_regionkey]\n" +
 			"                         │   │   └─ IndexedTableAccess(supplier)\n" +
 			"                         │   │       ├─ index: [supplier.S_SUPPKEY]\n" +
 			"                         │   │       ├─ keys: [lineitem.l_suppkey]\n" +
 			"                         │   │       └─ Table\n" +
 			"                         │   │           ├─ name: supplier\n" +
 			"                         │   │           └─ columns: [s_suppkey s_nationkey]\n" +
-			"                         │   └─ TableAlias(n2)\n" +
-			"                         │       └─ IndexedTableAccess(nation)\n" +
-			"                         │           ├─ index: [nation.N_NATIONKEY]\n" +
-			"                         │           ├─ keys: [supplier.s_nationkey]\n" +
+			"                         │   └─ Filter\n" +
+			"                         │       ├─ Eq\n" +
+			"                         │       │   ├─ region.r_name:1!null\n" +
+			"                         │       │   └─ AMERICA (longtext)\n" +
+			"                         │       └─ IndexedTableAccess(region)\n" +
+			"                         │           ├─ index: [region.R_REGIONKEY]\n" +
+			"                         │           ├─ keys: [n1.n_regionkey]\n" +
 			"                         │           └─ Table\n" +
-			"                         │               ├─ name: nation\n" +
-			"                         │               └─ columns: [n_nationkey n_name]\n" +
-			"                         └─ HashLookup\n" +
-			"                             ├─ left-key: TUPLE(lineitem.l_orderkey:0!null)\n" +
-			"                             ├─ right-key: TUPLE(orders.o_orderkey:0!null)\n" +
-			"                             └─ LookupJoin\n" +
-			"                                 ├─ LookupJoin\n" +
-			"                                 │   ├─ LookupJoin\n" +
-			"                                 │   │   ├─ Filter\n" +
-			"                                 │   │   │   ├─ AND\n" +
-			"                                 │   │   │   │   ├─ GreaterThanOrEqual\n" +
-			"                                 │   │   │   │   │   ├─ orders.o_orderdate:2!null\n" +
-			"                                 │   │   │   │   │   └─ 1995-01-01 (longtext)\n" +
-			"                                 │   │   │   │   └─ LessThanOrEqual\n" +
-			"                                 │   │   │   │       ├─ orders.o_orderdate:2!null\n" +
-			"                                 │   │   │   │       └─ 1996-12-31 (longtext)\n" +
-			"                                 │   │   │   └─ Table\n" +
-			"                                 │   │   │       ├─ name: orders\n" +
-			"                                 │   │   │       └─ columns: [o_orderkey o_custkey o_orderdate]\n" +
-			"                                 │   │   └─ IndexedTableAccess(customer)\n" +
-			"                                 │   │       ├─ index: [customer.C_CUSTKEY]\n" +
-			"                                 │   │       ├─ keys: [orders.o_custkey]\n" +
-			"                                 │   │       └─ Table\n" +
-			"                                 │   │           ├─ name: customer\n" +
-			"                                 │   │           └─ columns: [c_custkey c_nationkey]\n" +
-			"                                 │   └─ TableAlias(n1)\n" +
-			"                                 │       └─ IndexedTableAccess(nation)\n" +
-			"                                 │           ├─ index: [nation.N_NATIONKEY]\n" +
-			"                                 │           ├─ keys: [customer.c_nationkey]\n" +
-			"                                 │           └─ Table\n" +
-			"                                 │               ├─ name: nation\n" +
-			"                                 │               └─ columns: [n_nationkey n_regionkey]\n" +
-			"                                 └─ Filter\n" +
-			"                                     ├─ Eq\n" +
-			"                                     │   ├─ region.r_name:1!null\n" +
-			"                                     │   └─ AMERICA (longtext)\n" +
-			"                                     └─ IndexedTableAccess(region)\n" +
-			"                                         ├─ index: [region.R_REGIONKEY]\n" +
-			"                                         ├─ keys: [n1.n_regionkey]\n" +
-			"                                         └─ Table\n" +
-			"                                             ├─ name: region\n" +
-			"                                             └─ columns: [r_regionkey r_name]\n" +
+			"                         │               ├─ name: region\n" +
+			"                         │               └─ columns: [r_regionkey r_name]\n" +
+			"                         └─ TableAlias(n2)\n" +
+			"                             └─ IndexedTableAccess(nation)\n" +
+			"                                 ├─ index: [nation.N_NATIONKEY]\n" +
+			"                                 ├─ keys: [supplier.s_nationkey]\n" +
+			"                                 └─ Table\n" +
+			"                                     ├─ name: nation\n" +
+			"                                     └─ columns: [n_nationkey n_name]\n" +
 			"",
 	},
 	{
@@ -1063,10 +1050,7 @@ order by
 			"             │       └─ 2-HIGH (longtext)\n" +
 			"             │   THEN 1 (tinyint) ELSE 0 (tinyint) END), lineitem.l_shipmode:4!null\n" +
 			"             ├─ group: lineitem.l_shipmode:4!null\n" +
-			"             └─ MergeJoin\n" +
-			"                 ├─ cmp: Eq\n" +
-			"                 │   ├─ lineitem.l_orderkey:0!null\n" +
-			"                 │   └─ orders.o_orderkey:5!null\n" +
+			"             └─ LookupJoin\n" +
 			"                 ├─ Filter\n" +
 			"                 │   ├─ AND\n" +
 			"                 │   │   ├─ AND\n" +
@@ -1087,15 +1071,13 @@ order by
 			"                 │   │   └─ LessThan\n" +
 			"                 │   │       ├─ lineitem.l_receiptdate:3!null\n" +
 			"                 │   │       └─ 1995-01-01 00:00:00 +0000 UTC (datetime(6))\n" +
-			"                 │   └─ IndexedTableAccess(lineitem)\n" +
-			"                 │       ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                 │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 │   └─ ProcessTable\n" +
 			"                 │       └─ Table\n" +
 			"                 │           ├─ name: lineitem\n" +
 			"                 │           └─ columns: [l_orderkey l_shipdate l_commitdate l_receiptdate l_shipmode]\n" +
 			"                 └─ IndexedTableAccess(orders)\n" +
 			"                     ├─ index: [orders.O_ORDERKEY]\n" +
-			"                     ├─ static: [{[NULL, ∞)}]\n" +
+			"                     ├─ keys: [lineitem.l_orderkey]\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: orders\n" +
 			"                         └─ columns: [o_orderkey o_orderpriority]\n" +
@@ -1777,119 +1759,105 @@ order by
 			" ├─ columns: [supplier.s_name:1!null, supplier.s_address:2!null]\n" +
 			" └─ Sort(supplier.s_name:1!null ASC nullsFirst)\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [supplier.S_SUPPKEY:4!null, supplier.S_NAME:5!null, supplier.S_ADDRESS:6!null, supplier.S_NATIONKEY:7!null, supplier.S_PHONE:8!null, supplier.S_ACCTBAL:9!null, supplier.S_COMMENT:10!null, nation.N_NATIONKEY:0!null, nation.N_NAME:1!null, nation.N_REGIONKEY:2!null, nation.N_COMMENT:3]\n" +
-			"         └─ Project\n" +
-			"             ├─ columns: [nation.n_nationkey:8!null, nation.n_name:9!null, nation.N_REGIONKEY:10!null, nation.N_COMMENT:11, supplier.s_suppkey:1!null, supplier.S_NAME:2!null, supplier.S_ADDRESS:3!null, supplier.s_nationkey:4!null, supplier.S_PHONE:5!null, supplier.S_ACCTBAL:6!null, supplier.S_COMMENT:7!null]\n" +
-			"             └─ HashJoin\n" +
+			"         ├─ columns: [supplier.S_SUPPKEY:0!null, supplier.S_NAME:1!null, supplier.S_ADDRESS:2!null, supplier.S_NATIONKEY:3!null, supplier.S_PHONE:4!null, supplier.S_ACCTBAL:5!null, supplier.S_COMMENT:6!null, nation.N_NATIONKEY:7!null, nation.N_NAME:8!null, nation.N_REGIONKEY:9!null, nation.N_COMMENT:10]\n" +
+			"         └─ LookupJoin\n" +
+			"             ├─ Project\n" +
+			"             │   ├─ columns: [supplier.s_suppkey:1!null, supplier.S_NAME:2!null, supplier.S_ADDRESS:3!null, supplier.s_nationkey:4!null, supplier.S_PHONE:5!null, supplier.S_ACCTBAL:6!null, supplier.S_COMMENT:7!null]\n" +
+			"             │   └─ LookupJoin\n" +
+			"             │       ├─ Distinct\n" +
+			"             │       │   └─ Project\n" +
+			"             │       │       ├─ columns: [scalarSubq0.ps_suppkey:1!null]\n" +
+			"             │       │       └─ Filter\n" +
+			"             │       │           ├─ GreaterThan\n" +
+			"             │       │           │   ├─ scalarSubq0.ps_availqty:2!null\n" +
+			"             │       │           │   └─ Subquery\n" +
+			"             │       │           │       ├─ cacheable: false\n" +
+			"             │       │           │       ├─ alias-string: select 0.5 * sum(l_quantity) from lineitem where l_partkey = ps_partkey and l_suppkey = ps_suppkey and l_shipdate >= '1994-01-01' and l_shipdate < '1994-01-01' + interval '1' year\n" +
+			"             │       │           │       └─ Project\n" +
+			"             │       │           │           ├─ columns: [(0.5 (decimal(2,1)) * sum(lineitem.l_quantity):5!null) as 0.5 * sum(l_quantity)]\n" +
+			"             │       │           │           └─ GroupBy\n" +
+			"             │       │           │               ├─ select: SUM(lineitem.l_quantity:7!null)\n" +
+			"             │       │           │               ├─ group: \n" +
+			"             │       │           │               └─ Filter\n" +
+			"             │       │           │                   ├─ AND\n" +
+			"             │       │           │                   │   ├─ AND\n" +
+			"             │       │           │                   │   │   ├─ AND\n" +
+			"             │       │           │                   │   │   │   ├─ Eq\n" +
+			"             │       │           │                   │   │   │   │   ├─ lineitem.l_partkey:5!null\n" +
+			"             │       │           │                   │   │   │   │   └─ partsupp.ps_partkey:0!null\n" +
+			"             │       │           │                   │   │   │   └─ Eq\n" +
+			"             │       │           │                   │   │   │       ├─ lineitem.l_suppkey:6!null\n" +
+			"             │       │           │                   │   │   │       └─ partsupp.ps_suppkey:1!null\n" +
+			"             │       │           │                   │   │   └─ GreaterThanOrEqual\n" +
+			"             │       │           │                   │   │       ├─ lineitem.l_shipdate:8!null\n" +
+			"             │       │           │                   │   │       └─ 1994-01-01 (longtext)\n" +
+			"             │       │           │                   │   └─ LessThan\n" +
+			"             │       │           │                   │       ├─ lineitem.l_shipdate:8!null\n" +
+			"             │       │           │                   │       └─ 1995-01-01 00:00:00 +0000 UTC (datetime(6))\n" +
+			"             │       │           │                   └─ Table\n" +
+			"             │       │           │                       ├─ name: lineitem\n" +
+			"             │       │           │                       └─ columns: [l_partkey l_suppkey l_quantity l_shipdate]\n" +
+			"             │       │           └─ SemiLookupJoin\n" +
+			"             │       │               ├─ TableAlias(scalarSubq0)\n" +
+			"             │       │               │   └─ ProcessTable\n" +
+			"             │       │               │       └─ Table\n" +
+			"             │       │               │           ├─ name: partsupp\n" +
+			"             │       │               │           └─ columns: [ps_partkey ps_suppkey ps_availqty ps_supplycost ps_comment]\n" +
+			"             │       │               └─ Filter\n" +
+			"             │       │                   ├─ AND\n" +
+			"             │       │                   │   ├─ AND\n" +
+			"             │       │                   │   │   ├─ AND\n" +
+			"             │       │                   │   │   │   ├─ AND\n" +
+			"             │       │                   │   │   │   │   ├─ AND\n" +
+			"             │       │                   │   │   │   │   │   ├─ AND\n" +
+			"             │       │                   │   │   │   │   │   │   ├─ AND\n" +
+			"             │       │                   │   │   │   │   │   │   │   ├─ GreaterThanOrEqual\n" +
+			"             │       │                   │   │   │   │   │   │   │   │   ├─ scalarSubq1.p_name:1!null\n" +
+			"             │       │                   │   │   │   │   │   │   │   │   └─ forest (longtext)\n" +
+			"             │       │                   │   │   │   │   │   │   │   └─ LessThanOrEqual\n" +
+			"             │       │                   │   │   │   │   │   │   │       ├─ scalarSubq1.p_name:1!null\n" +
+			"             │       │                   │   │   │   │   │   │   │       └─ forestÿ (longtext)\n" +
+			"             │       │                   │   │   │   │   │   │   └─ GreaterThanOrEqual\n" +
+			"             │       │                   │   │   │   │   │   │       ├─ scalarSubq1.p_name:1!null\n" +
+			"             │       │                   │   │   │   │   │   │       └─ forest (longtext)\n" +
+			"             │       │                   │   │   │   │   │   └─ LessThanOrEqual\n" +
+			"             │       │                   │   │   │   │   │       ├─ scalarSubq1.p_name:1!null\n" +
+			"             │       │                   │   │   │   │   │       └─ forestÿ (longtext)\n" +
+			"             │       │                   │   │   │   │   └─ GreaterThanOrEqual\n" +
+			"             │       │                   │   │   │   │       ├─ scalarSubq1.p_name:1!null\n" +
+			"             │       │                   │   │   │   │       └─ forest (longtext)\n" +
+			"             │       │                   │   │   │   └─ LessThanOrEqual\n" +
+			"             │       │                   │   │   │       ├─ scalarSubq1.p_name:1!null\n" +
+			"             │       │                   │   │   │       └─ forestÿ (longtext)\n" +
+			"             │       │                   │   │   └─ GreaterThanOrEqual\n" +
+			"             │       │                   │   │       ├─ scalarSubq1.p_name:1!null\n" +
+			"             │       │                   │   │       └─ forest (longtext)\n" +
+			"             │       │                   │   └─ LessThanOrEqual\n" +
+			"             │       │                   │       ├─ scalarSubq1.p_name:1!null\n" +
+			"             │       │                   │       └─ forestÿ (longtext)\n" +
+			"             │       │                   └─ TableAlias(scalarSubq1)\n" +
+			"             │       │                       └─ IndexedTableAccess(part)\n" +
+			"             │       │                           ├─ index: [part.P_PARTKEY]\n" +
+			"             │       │                           ├─ keys: [scalarSubq0.ps_partkey]\n" +
+			"             │       │                           └─ Table\n" +
+			"             │       │                               ├─ name: part\n" +
+			"             │       │                               └─ columns: [p_partkey p_name p_mfgr p_brand p_type p_size p_container p_retailprice p_comment]\n" +
+			"             │       └─ IndexedTableAccess(supplier)\n" +
+			"             │           ├─ index: [supplier.S_SUPPKEY]\n" +
+			"             │           ├─ keys: [scalarSubq0.ps_suppkey]\n" +
+			"             │           └─ Table\n" +
+			"             │               ├─ name: supplier\n" +
+			"             │               └─ columns: [s_suppkey s_name s_address s_nationkey s_phone s_acctbal s_comment]\n" +
+			"             └─ Filter\n" +
 			"                 ├─ Eq\n" +
-			"                 │   ├─ supplier.s_suppkey:1!null\n" +
-			"                 │   └─ scalarSubq0.ps_suppkey:0!null\n" +
-			"                 ├─ Distinct\n" +
-			"                 │   └─ Project\n" +
-			"                 │       ├─ columns: [scalarSubq0.ps_suppkey:1!null]\n" +
-			"                 │       └─ Filter\n" +
-			"                 │           ├─ GreaterThan\n" +
-			"                 │           │   ├─ scalarSubq0.ps_availqty:2!null\n" +
-			"                 │           │   └─ Subquery\n" +
-			"                 │           │       ├─ cacheable: false\n" +
-			"                 │           │       ├─ alias-string: select 0.5 * sum(l_quantity) from lineitem where l_partkey = ps_partkey and l_suppkey = ps_suppkey and l_shipdate >= '1994-01-01' and l_shipdate < '1994-01-01' + interval '1' year\n" +
-			"                 │           │       └─ Project\n" +
-			"                 │           │           ├─ columns: [(0.5 (decimal(2,1)) * sum(lineitem.l_quantity):5!null) as 0.5 * sum(l_quantity)]\n" +
-			"                 │           │           └─ GroupBy\n" +
-			"                 │           │               ├─ select: SUM(lineitem.l_quantity:7!null)\n" +
-			"                 │           │               ├─ group: \n" +
-			"                 │           │               └─ Filter\n" +
-			"                 │           │                   ├─ AND\n" +
-			"                 │           │                   │   ├─ AND\n" +
-			"                 │           │                   │   │   ├─ AND\n" +
-			"                 │           │                   │   │   │   ├─ Eq\n" +
-			"                 │           │                   │   │   │   │   ├─ lineitem.l_partkey:5!null\n" +
-			"                 │           │                   │   │   │   │   └─ partsupp.ps_partkey:0!null\n" +
-			"                 │           │                   │   │   │   └─ Eq\n" +
-			"                 │           │                   │   │   │       ├─ lineitem.l_suppkey:6!null\n" +
-			"                 │           │                   │   │   │       └─ partsupp.ps_suppkey:1!null\n" +
-			"                 │           │                   │   │   └─ GreaterThanOrEqual\n" +
-			"                 │           │                   │   │       ├─ lineitem.l_shipdate:8!null\n" +
-			"                 │           │                   │   │       └─ 1994-01-01 (longtext)\n" +
-			"                 │           │                   │   └─ LessThan\n" +
-			"                 │           │                   │       ├─ lineitem.l_shipdate:8!null\n" +
-			"                 │           │                   │       └─ 1995-01-01 00:00:00 +0000 UTC (datetime(6))\n" +
-			"                 │           │                   └─ Table\n" +
-			"                 │           │                       ├─ name: lineitem\n" +
-			"                 │           │                       └─ columns: [l_partkey l_suppkey l_quantity l_shipdate]\n" +
-			"                 │           └─ Project\n" +
-			"                 │               ├─ columns: [scalarSubq0.ps_partkey:1!null, scalarSubq0.ps_suppkey:2!null, scalarSubq0.ps_availqty:3!null, scalarSubq0.PS_SUPPLYCOST:4!null, scalarSubq0.PS_COMMENT:5!null]\n" +
-			"                 │               └─ MergeJoin\n" +
-			"                 │                   ├─ cmp: Eq\n" +
-			"                 │                   │   ├─ scalarSubq1.p_partkey:0!null\n" +
-			"                 │                   │   └─ scalarSubq0.ps_partkey:1!null\n" +
-			"                 │                   ├─ Distinct\n" +
-			"                 │                   │   └─ Project\n" +
-			"                 │                   │       ├─ columns: [scalarSubq1.p_partkey:0!null]\n" +
-			"                 │                   │       └─ Filter\n" +
-			"                 │                   │           ├─ AND\n" +
-			"                 │                   │           │   ├─ AND\n" +
-			"                 │                   │           │   │   ├─ AND\n" +
-			"                 │                   │           │   │   │   ├─ AND\n" +
-			"                 │                   │           │   │   │   │   ├─ AND\n" +
-			"                 │                   │           │   │   │   │   │   ├─ AND\n" +
-			"                 │                   │           │   │   │   │   │   │   ├─ AND\n" +
-			"                 │                   │           │   │   │   │   │   │   │   ├─ GreaterThanOrEqual\n" +
-			"                 │                   │           │   │   │   │   │   │   │   │   ├─ scalarSubq1.p_name:1!null\n" +
-			"                 │                   │           │   │   │   │   │   │   │   │   └─ forest (longtext)\n" +
-			"                 │                   │           │   │   │   │   │   │   │   └─ LessThanOrEqual\n" +
-			"                 │                   │           │   │   │   │   │   │   │       ├─ scalarSubq1.p_name:1!null\n" +
-			"                 │                   │           │   │   │   │   │   │   │       └─ forestÿ (longtext)\n" +
-			"                 │                   │           │   │   │   │   │   │   └─ GreaterThanOrEqual\n" +
-			"                 │                   │           │   │   │   │   │   │       ├─ scalarSubq1.p_name:1!null\n" +
-			"                 │                   │           │   │   │   │   │   │       └─ forest (longtext)\n" +
-			"                 │                   │           │   │   │   │   │   └─ LessThanOrEqual\n" +
-			"                 │                   │           │   │   │   │   │       ├─ scalarSubq1.p_name:1!null\n" +
-			"                 │                   │           │   │   │   │   │       └─ forestÿ (longtext)\n" +
-			"                 │                   │           │   │   │   │   └─ GreaterThanOrEqual\n" +
-			"                 │                   │           │   │   │   │       ├─ scalarSubq1.p_name:1!null\n" +
-			"                 │                   │           │   │   │   │       └─ forest (longtext)\n" +
-			"                 │                   │           │   │   │   └─ LessThanOrEqual\n" +
-			"                 │                   │           │   │   │       ├─ scalarSubq1.p_name:1!null\n" +
-			"                 │                   │           │   │   │       └─ forestÿ (longtext)\n" +
-			"                 │                   │           │   │   └─ GreaterThanOrEqual\n" +
-			"                 │                   │           │   │       ├─ scalarSubq1.p_name:1!null\n" +
-			"                 │                   │           │   │       └─ forest (longtext)\n" +
-			"                 │                   │           │   └─ LessThanOrEqual\n" +
-			"                 │                   │           │       ├─ scalarSubq1.p_name:1!null\n" +
-			"                 │                   │           │       └─ forestÿ (longtext)\n" +
-			"                 │                   │           └─ TableAlias(scalarSubq1)\n" +
-			"                 │                   │               └─ IndexedTableAccess(part)\n" +
-			"                 │                   │                   ├─ index: [part.P_PARTKEY]\n" +
-			"                 │                   │                   ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │                   │                   └─ Table\n" +
-			"                 │                   │                       ├─ name: part\n" +
-			"                 │                   │                       └─ columns: [p_partkey p_name p_mfgr p_brand p_type p_size p_container p_retailprice p_comment]\n" +
-			"                 │                   └─ TableAlias(scalarSubq0)\n" +
-			"                 │                       └─ IndexedTableAccess(partsupp)\n" +
-			"                 │                           ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
-			"                 │                           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                 │                           └─ Table\n" +
-			"                 │                               ├─ name: partsupp\n" +
-			"                 │                               └─ columns: [ps_partkey ps_suppkey ps_availqty ps_supplycost ps_comment]\n" +
-			"                 └─ HashLookup\n" +
-			"                     ├─ left-key: TUPLE(scalarSubq0.ps_suppkey:0!null)\n" +
-			"                     ├─ right-key: TUPLE(supplier.s_suppkey:0!null)\n" +
-			"                     └─ LookupJoin\n" +
-			"                         ├─ ProcessTable\n" +
-			"                         │   └─ Table\n" +
-			"                         │       ├─ name: supplier\n" +
-			"                         │       └─ columns: [s_suppkey s_name s_address s_nationkey s_phone s_acctbal s_comment]\n" +
-			"                         └─ Filter\n" +
-			"                             ├─ Eq\n" +
-			"                             │   ├─ nation.n_name:1!null\n" +
-			"                             │   └─ CANADA (longtext)\n" +
-			"                             └─ IndexedTableAccess(nation)\n" +
-			"                                 ├─ index: [nation.N_NATIONKEY]\n" +
-			"                                 ├─ keys: [supplier.s_nationkey]\n" +
-			"                                 └─ Table\n" +
-			"                                     ├─ name: nation\n" +
-			"                                     └─ columns: [n_nationkey n_name n_regionkey n_comment]\n" +
+			"                 │   ├─ nation.n_name:1!null\n" +
+			"                 │   └─ CANADA (longtext)\n" +
+			"                 └─ IndexedTableAccess(nation)\n" +
+			"                     ├─ index: [nation.N_NATIONKEY]\n" +
+			"                     ├─ keys: [supplier.s_nationkey]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: nation\n" +
+			"                         └─ columns: [n_nationkey n_name n_regionkey n_comment]\n" +
 			"",
 	},
 	{

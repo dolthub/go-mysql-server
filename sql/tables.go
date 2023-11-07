@@ -181,6 +181,14 @@ type ForeignKeyEditor interface {
 	IndexAddressable
 }
 
+// ReferenceChecker is usually an IndexAddressableTable that does key
+// lookups for existence checks. Indicating that the engine is performing
+// a reference check lets the integrator avoid expensive deserialization
+// steps.
+type ReferenceChecker interface {
+	SetReferenceCheck() error
+}
+
 // CheckTable is a table that declares check constraints.
 type CheckTable interface {
 	Table

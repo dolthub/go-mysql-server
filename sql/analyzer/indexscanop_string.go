@@ -11,20 +11,23 @@ func _() {
 	_ = x[indexScanOpEq-0]
 	_ = x[indexScanOpNullSafeEq-1]
 	_ = x[indexScanOpInSet-2]
-	_ = x[indexScanOpNotEq-3]
-	_ = x[indexScanOpGt-4]
-	_ = x[indexScanOpGte-5]
-	_ = x[indexScanOpLt-6]
-	_ = x[indexScanOpLte-7]
-	_ = x[indexScanOpAnd-8]
-	_ = x[indexScanOpOr-9]
-	_ = x[indexScanOpIsNull-10]
-	_ = x[indexScanOpIsNotNull-11]
+	_ = x[indexScanOpNotInSet-3]
+	_ = x[indexScanOpNotEq-4]
+	_ = x[indexScanOpGt-5]
+	_ = x[indexScanOpGte-6]
+	_ = x[indexScanOpLt-7]
+	_ = x[indexScanOpLte-8]
+	_ = x[indexScanOpAnd-9]
+	_ = x[indexScanOpOr-10]
+	_ = x[indexScanOpIsNull-11]
+	_ = x[indexScanOpIsNotNull-12]
+	_ = x[indexScanOpSpatialEq-13]
+	_ = x[indexScanOpFulltextEq-14]
 }
 
-const _indexScanOp_name = "=<=>=!=>>=<<=&&||IS NULLIS NOT NULL"
+const _indexScanOp_name = "=<=>=!=!=>>=<<=&&||IS NULLIS NOT NULLSpatialEqFulltextEq"
 
-var _indexScanOp_index = [...]uint8{0, 1, 4, 5, 7, 8, 10, 11, 13, 15, 17, 24, 35}
+var _indexScanOp_index = [...]uint8{0, 1, 4, 5, 7, 9, 10, 12, 13, 15, 17, 19, 26, 37, 46, 56}
 
 func (i indexScanOp) String() string {
 	if i >= indexScanOp(len(_indexScanOp_index)-1) {

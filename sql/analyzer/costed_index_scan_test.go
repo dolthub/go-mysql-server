@@ -564,7 +564,6 @@ func TestRangeBuilder(t *testing.T) {
 }
 
 func TestRangeBuilderInclude(t *testing.T) {
-
 	x := expression.NewGetFieldWithTable(0, rangeType, "mydb", "xyz", "x", true)
 	y := expression.NewGetFieldWithTable(1, rangeType, "mydb", "xyz", "y", true)
 
