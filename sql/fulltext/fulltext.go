@@ -791,6 +791,11 @@ func validateSchema(ftTblName string, parentSch sql.Schema, sch sql.Schema, expe
 	for i := range sch {
 		col := *sch[i]
 		expectedCol := *revisedExpected[i]
+		if col.Generated != nil || expectedCol.Generated != nil {
+			// It might be fine for Full-Text to reference generated columns, but we aren't completely sure of any
+			// potential implementation issues, so it's disabled for now.
+			return fmt.Errorf("Full-Text does not currently support generated columns")
+		}
 		// The expected schemas use the default collation, so we set them to the given column's collation for comparison
 		if expectedColStrType, ok := expectedCol.Type.(sql.TypeWithCollation); ok {
 			colStrType, ok := col.Type.(sql.TypeWithCollation)
@@ -804,7 +809,7 @@ func validateSchema(ftTblName string, parentSch sql.Schema, sch sql.Schema, expe
 		}
 		// We can't just use the Equals() function on the columns as they care about fields that we do not.
 		if col.Name != expectedCol.Name || !col.Type.Equals(expectedCol.Type) || col.PrimaryKey != expectedCol.PrimaryKey || col.Nullable != expectedCol.Nullable ||
-			col.AutoIncrement != expectedCol.AutoIncrement || col.Default != expectedCol.Default {
+			col.AutoIncrement != expectedCol.AutoIncrement {
 			return fmt.Errorf("Full-Text table `%s` column `%s` has an incorrect definition", ftTblName, col.Name)
 		}
 	}
