@@ -94,9 +94,13 @@ func (s *idxScope) addParent(other *idxScope) {
 	s.parentScopes = append(s.parentScopes, other)
 }
 
+func isQualified(s string) bool {
+	return strings.Contains(s, ".")
+}
+
 // unqualify is a helper function to remove the table prefix from a column, if it's present.
 func unqualify(s string) string {
-	if strings.Contains(s, ".") {
+	if isQualified(s) {
 		return strings.Split(s, ".")[1]
 	}
 	return s
@@ -105,16 +109,25 @@ func unqualify(s string) string {
 func (s *idxScope) getIdx(n string) (int, bool) {
 	// We match the column closet to our current scope. We have already
 	// resolved columns, so there will be no in-scope collisions.
-	for i := len(s.columns) - 1; i >= 0; i-- {
-		if strings.EqualFold(n, s.columns[i]) {
-			return i, true
+	if isQualified(n) {
+		for i := len(s.columns) - 1; i >= 0; i-- {
+			if strings.EqualFold(n, s.columns[i]) {
+				return i, true
+			}
 		}
-	}
-	// This should only apply to column names for set_op, where we have two different tables
-	n = unqualify(n)
-	for i := len(s.columns) - 1; i >= 0; i-- {
-		if strings.EqualFold(n, unqualify(s.columns[i])) {
-			return i, true
+		// TODO: we do not have a good way to match columns over set_ops where the column has the same name, but are
+		//  from different tables and have different types.
+		n = unqualify(n)
+		for i := len(s.columns) - 1; i >= 0; i-- {
+			if strings.EqualFold(n, s.columns[i]) {
+				return i, true
+			}
+		}
+	} else {
+		for i := len(s.columns) - 1; i >= 0; i-- {
+			if strings.EqualFold(n, unqualify(s.columns[i])) {
+				return i, true
+			}
 		}
 	}
 	return -1, false

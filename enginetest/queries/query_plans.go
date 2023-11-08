@@ -10574,4 +10574,46 @@ order by i;`,
 			"                                     └─ RecursiveTable(cte)\n" +
 			"",
 	},
+	{
+		Query: `
+select *
+from xy inner join uv
+on xy.x = uv.u and uv.v = (select max(v) from uv where xy.x = uv.u)
+order by xy.x, xy.y, uv.u, uv.v;`,
+		ExpectedPlan: "Sort(xy.x:0!null ASC nullsFirst, xy.y:1 ASC nullsFirst, uv.u:2!null ASC nullsFirst, uv.v:3 ASC nullsFirst)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [xy.x:2!null, xy.y:3, uv.u:0!null, uv.v:1]\n" +
+			"     └─ LookupJoin\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ uv.v:1\n" +
+			"         │   └─ Subquery\n" +
+			"         │       ├─ cacheable: false\n" +
+			"         │       ├─ alias-string: select max(v) from uv where xy.x = uv.u\n" +
+			"         │       └─ Project\n" +
+			"         │           ├─ columns: [max(uv.v):4!null as max(v)]\n" +
+			"         │           └─ GroupBy\n" +
+			"         │               ├─ select: MAX(uv.v:5)\n" +
+			"         │               ├─ group: \n" +
+			"         │               └─ Filter\n" +
+			"         │                   ├─ Eq\n" +
+			"         │                   │   ├─ xy.x:2!null\n" +
+			"         │                   │   └─ uv.u:4!null\n" +
+			"         │                   └─ IndexedTableAccess(uv)\n" +
+			"         │                       ├─ index: [uv.u]\n" +
+			"         │                       ├─ keys: [xy.x]\n" +
+			"         │                       └─ Table\n" +
+			"         │                           ├─ name: uv\n" +
+			"         │                           └─ columns: [u v]\n" +
+			"         ├─ ProcessTable\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: uv\n" +
+			"         │       └─ columns: [u v]\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ keys: [uv.u]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: xy\n" +
+			"                 └─ columns: [x y]\n" +
+			"",
+	},
 }
