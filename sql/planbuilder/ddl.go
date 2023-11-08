@@ -236,7 +236,8 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 	schema, collation := b.tableSpecToSchema(inScope, outScope, database, strings.ToLower(c.Table.Name.String()), c.TableSpec, false)
 	fkDefs, chDefs := b.buildConstraintsDefs(outScope, c.Table, c.TableSpec)
 
-	schema.Schema = assignColumnIndexesInDefaults(schema.Schema)
+	schema.Schema = assignColumnIndexesInSchema(schema.Schema)
+	chDefs = assignColumnIndexesInCheckDefs(chDefs, schema.Schema)
 	
 	tableSpec := &plan.TableSpec{
 		Schema:    schema,
@@ -257,7 +258,16 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 	return
 }
 
-func assignColumnIndexesInDefaults(schema sql.Schema) sql.Schema {
+func assignColumnIndexesInCheckDefs(defs []*sql.CheckConstraint, schema sql.Schema) []*sql.CheckConstraint {
+	newDefs := make([]*sql.CheckConstraint, len(defs))
+	for i, def := range defs {
+		newDefs[i] = def
+		newDefs[i].Expr = assignColumnIndexes(def.Expr, schema).(sql.Expression)
+	}
+	return newDefs
+}
+
+func assignColumnIndexesInSchema(schema sql.Schema) sql.Schema {
 	newSch := make(sql.Schema, len(schema))
 	for i, col := range schema {
 		newSch[i] = col
