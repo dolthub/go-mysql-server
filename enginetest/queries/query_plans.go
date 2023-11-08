@@ -10522,4 +10522,49 @@ order by xy.x, xy.y, uv.u, uv.v;`,
 			"                 └─ columns: [x y]\n" +
 			"",
 	},
+	{
+		Query: `
+select a, b
+from ab as ab2
+where exists (
+    select *
+    from ab
+	where ab.b = (
+        select max(v)
+        from uv
+        where uv.v = ab2.a and uv.v = ab.a
+    )
+);`,
+		ExpectedPlan: "SemiJoin\n" +
+			" ├─ Eq\n" +
+			" │   ├─ ab.b:3\n" +
+			" │   └─ Subquery\n" +
+			" │       ├─ cacheable: false\n" +
+			" │       ├─ alias-string: select max(v) from uv where uv.v = ab2.a and uv.v = ab.a\n" +
+			" │       └─ Project\n" +
+			" │           ├─ columns: [max(uv.v):4!null as max(v)]\n" +
+			" │           └─ GroupBy\n" +
+			" │               ├─ select: MAX(uv.v:4)\n" +
+			" │               ├─ group: \n" +
+			" │               └─ Filter\n" +
+			" │                   ├─ AND\n" +
+			" │                   │   ├─ Eq\n" +
+			" │                   │   │   ├─ uv.v:4\n" +
+			" │                   │   │   └─ ab2.a:0!null\n" +
+			" │                   │   └─ Eq\n" +
+			" │                   │       ├─ uv.v:4\n" +
+			" │                   │       └─ ab.a:2!null\n" +
+			" │                   └─ Table\n" +
+			" │                       ├─ name: uv\n" +
+			" │                       └─ columns: [v]\n" +
+			" ├─ TableAlias(ab2)\n" +
+			" │   └─ ProcessTable\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: ab\n" +
+			" │           └─ columns: [a b]\n" +
+			" └─ Table\n" +
+			"     ├─ name: ab\n" +
+			"     └─ columns: [a b]\n" +
+			"",
+	},
 }

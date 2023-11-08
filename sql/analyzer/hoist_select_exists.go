@@ -260,6 +260,18 @@ func decorrelateOuterCols(sqChild sql.Node, aliasDisambig *aliasDisambiguator, c
 				if gf, ok := e.(*expression.GetField); ok && corr.Contains(gf.Id()) {
 					return true
 				}
+				if sq, ok := e.(*plan.Subquery); ok {
+					innerOuterRef := false
+					transform.InspectExpressions(sq.Query, func(e sql.Expression) bool {
+						if gf, ok := e.(*expression.GetField); ok && corr.Contains(gf.Id()) {
+							innerOuterRef = true
+						}
+						return true
+					})
+					if innerOuterRef {
+						return true
+					}
+				}
 				return false
 			})
 

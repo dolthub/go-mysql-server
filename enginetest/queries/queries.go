@@ -8373,6 +8373,23 @@ order by i;`,
 			{2, "second row", 2},
 		},
 	},
+	{
+		Query: `
+select a, b
+from ab as ab2
+where exists (
+    select *
+    from ab
+	where ab.b = (
+        select max(v)
+        from uv
+        where uv.v = ab2.a and uv.v = ab.a
+    )
+);`,
+		Expected: []sql.Row{
+			{2, 2},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{

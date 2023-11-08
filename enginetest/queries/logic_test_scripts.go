@@ -467,11 +467,28 @@ var SQLLogicSubqueryTests = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "SELECT c_id, bill FROM c AS c2 WHERE EXISTS(SELECT * FROM c WHERE bill=(SELECT max(ship) FROM o WHERE c_id=c2.c_id AND c_id=c.c_id));",
 				Expected: []sql.Row{
 					{1, "CA"},
 					{2, "TX"},
+				},
+			},
+			{
+				Query: "SELECT c_id, bill FROM c AS c2 WHERE EXISTS(SELECT * FROM c WHERE bill=(SELECT min(ship) FROM o WHERE c_id=c2.c_id AND c_id=c.c_id));",
+				Expected: []sql.Row{
+					{1, "CA"},
+				},
+			},
+			{
+				Skip: true,
+				Query: "SELECT c_id, bill FROM c AS c2 WHERE EXISTS(SELECT * FROM c WHERE bill=(SELECT coalesce(min(ship), bill) FROM o WHERE c_id=c2.c_id AND c_id=c.c_id));",
+				Expected: []sql.Row{
+                    {1, "CA"},
+					{2, "TX"},
+					{3, "MA"},
+					{4, "TX"},
+					{5, nil},
+					{6, "FL"},
 				},
 			},
 			{
