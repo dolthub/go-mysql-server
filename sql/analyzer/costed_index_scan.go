@@ -596,6 +596,9 @@ func (b *indexScanRangeBuilder) rangeBuildAnd(f *iScanAnd, inScan bool) (sql.Ran
 		if err != nil {
 			return nil, err
 		}
+		if ranges == nil {
+			continue
+		}
 		if ret == nil {
 			ret = ranges
 			continue
