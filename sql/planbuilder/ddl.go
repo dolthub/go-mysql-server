@@ -238,7 +238,7 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 
 	schema.Schema = assignColumnIndexesInSchema(schema.Schema)
 	chDefs = assignColumnIndexesInCheckDefs(chDefs, schema.Schema)
-	
+
 	tableSpec := &plan.TableSpec{
 		Schema:    schema,
 		IdxDefs:   idxDefs,
