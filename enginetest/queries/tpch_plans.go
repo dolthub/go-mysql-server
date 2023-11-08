@@ -1748,10 +1748,10 @@ order by
 			"             │       │           │                   │   │   ├─ AND\n" +
 			"             │       │           │                   │   │   │   ├─ Eq\n" +
 			"             │       │           │                   │   │   │   │   ├─ lineitem.l_partkey:5!null\n" +
-			"             │       │           │                   │   │   │   │   └─ partsupp.ps_partkey:0!null\n" +
+			"             │       │           │                   │   │   │   │   └─ partsupp.ps_partkey:12!null\n" +
 			"             │       │           │                   │   │   │   └─ Eq\n" +
 			"             │       │           │                   │   │   │       ├─ lineitem.l_suppkey:6!null\n" +
-			"             │       │           │                   │   │   │       └─ partsupp.ps_suppkey:1!null\n" +
+			"             │       │           │                   │   │   │       └─ partsupp.ps_suppkey:13!null\n" +
 			"             │       │           │                   │   │   └─ GreaterThanOrEqual\n" +
 			"             │       │           │                   │   │       ├─ lineitem.l_shipdate:8!null\n" +
 			"             │       │           │                   │   │       └─ 1994-01-01 (longtext)\n" +
