@@ -115,7 +115,8 @@ func (s *idxScope) getIdx(n string) (int, bool) {
 				return i, true
 			}
 		}
-		// This should only apply to column names for set_op, where we have two different tables
+		// TODO: we do not have a good way to match columns over set_ops where the column has the same name, but are
+		//  from different tables and have different types.
 		n = unqualify(n)
 		for i := len(s.columns) - 1; i >= 0; i-- {
 			if strings.EqualFold(n, s.columns[i]) {
