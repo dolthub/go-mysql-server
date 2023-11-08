@@ -38,10 +38,10 @@ type Comparer interface {
 // ErrNilOperand ir returned if some or both of the comparison's operands is nil.
 var ErrNilOperand = errors.NewKind("nil operand found in comparison")
 
-// ContainsImpreciseComparison searches an expression tree for comparison
+// PreciseComparison searches an expression tree for comparison
 // expressions that require a conversion or type promotion.
 // This utility helps determine if filter predicates can be pushed down.
-func ContainsImpreciseComparison(e sql.Expression) bool {
+func PreciseComparison(e sql.Expression) bool {
 	var imprecise bool
 	sql.Inspect(e, func(expr sql.Expression) bool {
 		if cmp, ok := expr.(Comparer); ok {
@@ -60,7 +60,7 @@ func ContainsImpreciseComparison(e sql.Expression) bool {
 		}
 		return true
 	})
-	return imprecise
+	return !imprecise
 }
 
 type comparison struct {

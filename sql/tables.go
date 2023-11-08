@@ -107,6 +107,8 @@ type IndexAddressable interface {
 	IndexedAccess(lookup IndexLookup) IndexedTable
 	// GetIndexes returns an array of this table's Indexes
 	GetIndexes(ctx *Context) ([]Index, error)
+	// PreciseMatch returns whether an indexed access can substitute for filters
+	PreciseMatch() bool
 }
 
 // IndexAddressableTable is a table that can be accessed through an index

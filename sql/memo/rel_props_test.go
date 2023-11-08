@@ -154,6 +154,10 @@ func (t *dummyTable) IndexedAccess(sql.IndexLookup) sql.IndexedTable {
 	panic("implement me")
 }
 
+func (t *dummyTable) PreciseMatch() bool {
+	return true
+}
+
 func (t *dummyTable) GetIndexes(*sql.Context) ([]sql.Index, error) {
 	var exprs []string
 	for _, i := range t.schema.PkOrdinals {

@@ -49,6 +49,14 @@ type StatsProvider interface {
 	DataLength(ctx *Context, db, table string) (uint64, error)
 }
 
+type IndexClass uint8
+
+const (
+	IndexClassDefault = iota
+	IndexClassSpatial
+	IndexClassFulltext
+)
+
 // Statistic is the top-level interface for accessing cardinality and
 // costing estimates for an index prefix.
 type Statistic interface {
@@ -62,6 +70,11 @@ type Statistic interface {
 	Types() []Type
 	Qualifier() StatQualifier
 	Histogram() Histogram
+	IndexClass() IndexClass
+	FuncDeps() *FuncDepSet
+	SetFuncDeps(*FuncDepSet)
+	ColSet() ColSet
+	SetColSet(ColSet)
 }
 
 func NewQualifierFromString(q string) (StatQualifier, error) {

@@ -34,6 +34,10 @@ func (t *tableEditor) IndexedAccess(lookup sql.IndexLookup) sql.IndexedTable {
 	panic("implement me")
 }
 
+func (t *tableEditor) PreciseMatch() bool {
+	return true
+}
+
 func (t *tableEditor) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 	//TODO implement me
 	panic("implement me")
