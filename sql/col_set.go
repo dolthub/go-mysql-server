@@ -19,6 +19,10 @@ func NewColSet(vals ...ColumnId) ColSet {
 	return ret
 }
 
+func NewColSetFromIntSet(set FastIntSet) ColSet {
+	return ColSet{set: set}
+}
+
 // We offset the ColumnIDs in the underlying FastIntSet by 1, so that the
 // internal set fast-path can be used for ColumnIDs in the range [1, 64] instead
 // of [0, 63]. ColumnId 0 is reserved as an unknown ColumnId, and a ColSet

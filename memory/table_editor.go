@@ -270,6 +270,10 @@ func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val uint64) error 
 	return nil
 }
 
+func (t *tableEditor) PreciseMatch() bool {
+	return true
+}
+
 func (t *tableEditor) IndexedAccess(lookup sql.IndexLookup) sql.IndexedTable {
 	// Before we return an indexed access for this table, we need to apply all the edits to the table
 	// TODO: optimize this, should create some struct that encloses the tableEditor and filters based on the lookup

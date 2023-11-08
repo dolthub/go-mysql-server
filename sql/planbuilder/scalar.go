@@ -953,6 +953,8 @@ func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expressio
 	}
 
 	matchAgainst := expression.NewMatchAgainst(genericCols, matchExpr, searchModifier)
+	matchAgainst.SetIndex(ftIndex)
+
 	return matchAgainst.WithInfo(indexedTbl, idxTables[0], idxTables[1], idxTables[2], idxTables[3], idxTables[4], keyCols)
 }
 

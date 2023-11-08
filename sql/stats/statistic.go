@@ -29,7 +29,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func NewStatistic(rowCount, distinctCount, nullCount, avgSize uint64, createdAt time.Time, qualifier sql.StatQualifier, columns []string, types []sql.Type, histogram []*Bucket) *Statistic {
+func NewStatistic(rowCount, distinctCount, nullCount, avgSize uint64, createdAt time.Time, qualifier sql.StatQualifier, columns []string, types []sql.Type, histogram []*Bucket, class sql.IndexClass) *Statistic {
 	return &Statistic{
 		RowCnt:      rowCount,
 		DistinctCnt: distinctCount,
@@ -40,6 +40,7 @@ func NewStatistic(rowCount, distinctCount, nullCount, avgSize uint64, createdAt 
 		Cols:        columns,
 		Typs:        types,
 		Hist:        histogram,
+		IdxClass:    uint8(class),
 	}
 }
 
@@ -53,6 +54,28 @@ type Statistic struct {
 	Cols        []string          `json:"columns"`
 	Typs        []sql.Type        `json:"types"`
 	Hist        []*Bucket         `json:"buckets"`
+	IdxClass    uint8             `json:"index_class"`
+	fds         *sql.FuncDepSet   `json:"-"`
+	colSet      sql.ColSet        `json:"-"`
+}
+
+var _ sql.JSONWrapper = (*Statistic)(nil)
+var _ sql.Statistic = (*Statistic)(nil)
+
+func (s *Statistic) FuncDeps() *sql.FuncDepSet {
+	return s.fds
+}
+
+func (s *Statistic) SetFuncDeps(fds *sql.FuncDepSet) {
+	s.fds = fds
+}
+
+func (s *Statistic) ColSet() sql.ColSet {
+	return s.colSet
+}
+
+func (s *Statistic) SetColSet(cols sql.ColSet) {
+	s.colSet = cols
 }
 
 func (s *Statistic) SetTypes(t []sql.Type) {
@@ -107,8 +130,9 @@ func (s *Statistic) Histogram() sql.Histogram {
 	return buckets
 }
 
-var _ sql.JSONWrapper = (*Statistic)(nil)
-var _ sql.Statistic = (*Statistic)(nil)
+func (s *Statistic) IndexClass() sql.IndexClass {
+	return sql.IndexClass(s.IdxClass)
+}
 
 func (s *Statistic) ToInterface() interface{} {
 	typs := make([]string, len(s.Typs))
