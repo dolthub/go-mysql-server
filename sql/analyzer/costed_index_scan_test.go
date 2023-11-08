@@ -212,7 +212,28 @@ func TestRangeBuilder(t *testing.T) {
 	tests := []struct {
 		filter sql.Expression
 		exp    sql.RangeCollection
+		cnt    int
 	}{
+		{
+			and2(
+				gt2(x, 7),
+				or2(
+					and2(
+						gte2(x, 9),
+						lte2(x, 8),
+					),
+					isNull(x),
+				),
+				or2(
+					gte2(y, 1),
+					gte2(x, 10),
+				),
+			),
+			sql.RangeCollection{
+				r(sql.EmptyRangeColumnExpr(rangeType)),
+			},
+			2,
+		},
 		// two column
 		{
 			or2(
@@ -225,6 +246,7 @@ func TestRangeBuilder(t *testing.T) {
 				r(rgt(8), rgt(5)),
 				r(rgt(5), rgt(8)),
 			},
+			1,
 		},
 		{
 			or2(
@@ -237,6 +259,7 @@ func TestRangeBuilder(t *testing.T) {
 				r(rgt(8), rgt(5)),
 				r(rgt(5), rlt(8)),
 			},
+			1,
 		},
 		{
 			or2(
@@ -279,6 +302,7 @@ func TestRangeBuilder(t *testing.T) {
 				r(rlt(8), rlt(8)),
 				r(rlt(9), rlt(9)),
 			},
+			1,
 		},
 		{
 			or2(
@@ -295,6 +319,7 @@ func TestRangeBuilder(t *testing.T) {
 				r(req(6), req(6)),
 				r(req(8), req(8)),
 			},
+			1,
 		},
 		{
 			or2(
@@ -311,6 +336,7 @@ func TestRangeBuilder(t *testing.T) {
 				r(req(6), req(6)),
 				r(req(8), req(8)),
 			},
+			1,
 		},
 		{
 			or2(
@@ -325,6 +351,7 @@ func TestRangeBuilder(t *testing.T) {
 				r(roo(4, 8), roo(2, 5)),
 				r(roc(5, 10), roc(4, 7)),
 			},
+			1,
 		},
 		{
 			or2(
@@ -340,6 +367,7 @@ func TestRangeBuilder(t *testing.T) {
 				r(rcc(3, 4), rcc(1, 3)),
 				r(rcc(5, 6), rcc(1, 3)),
 			},
+			1,
 		},
 		{
 			or2(
@@ -352,6 +380,7 @@ func TestRangeBuilder(t *testing.T) {
 				r(rcc(4, 5), rcc(3, 8)),
 				r(rcc(3, 8), rcc(1, 6)),
 			},
+			1,
 		},
 		// three columns
 		{
@@ -363,6 +392,7 @@ func TestRangeBuilder(t *testing.T) {
 				r(rgt(2), rgt(2), rgt(2)),
 				r(rlt(8), rlt(8), rlt(8)),
 			},
+			1,
 		},
 		{
 			or2(
@@ -373,6 +403,7 @@ func TestRangeBuilder(t *testing.T) {
 				r(rgte(3), rgte(3), rgte(3)),
 				r(rlte(5), rlte(5), rlte(5)),
 			},
+			1,
 		},
 		{
 			or2(
@@ -383,6 +414,7 @@ func TestRangeBuilder(t *testing.T) {
 				r(rgte(3), rgte(4), rgt(5)),
 				r(rlte(6), rlt(7), rlte(8)),
 			},
+			1,
 		},
 		{
 			or2(
@@ -393,6 +425,7 @@ func TestRangeBuilder(t *testing.T) {
 				r(rgte(4), rgte(4), rgte(3)),
 				r(rlte(4), rlte(4), rlte(5)),
 			},
+			1,
 		},
 		{
 			or2(
@@ -403,6 +436,7 @@ func TestRangeBuilder(t *testing.T) {
 				r(rgte(4), rgte(3), rgte(4)),
 				r(rlte(4), rlte(5), rlte(4)),
 			},
+			1,
 		},
 		{
 			or2(
@@ -413,6 +447,7 @@ func TestRangeBuilder(t *testing.T) {
 				r(rgte(3), rgte(4), rgte(4)),
 				r(rlte(5), rlte(4), rlte(4)),
 			},
+			1,
 		},
 		{
 			or2(
@@ -423,6 +458,7 @@ func TestRangeBuilder(t *testing.T) {
 				r(rlt(4), rgte(3), rlt(4)),
 				r(rgt(4), rlte(5), rgt(4)),
 			},
+			1,
 		},
 		{
 			or2(
@@ -435,6 +471,7 @@ func TestRangeBuilder(t *testing.T) {
 				r(rlt(4), rgte(7), rlte(2)),
 				r(rlte(9), rgt(5), rgt(1)),
 			},
+			1,
 		},
 		// nulls
 		{
@@ -444,6 +481,7 @@ func TestRangeBuilder(t *testing.T) {
 			sql.RangeCollection{
 				r(null2(), rgt(5)),
 			},
+			1,
 		},
 		{
 			or2(
@@ -452,6 +490,7 @@ func TestRangeBuilder(t *testing.T) {
 			sql.RangeCollection{
 				r(null2(), notNull()),
 			},
+			1,
 		},
 		{
 			or2(
@@ -460,6 +499,7 @@ func TestRangeBuilder(t *testing.T) {
 			sql.RangeCollection{
 				r(null2(), rlt(5)),
 			},
+			1,
 		},
 		{
 			or2(
@@ -468,6 +508,7 @@ func TestRangeBuilder(t *testing.T) {
 			sql.RangeCollection{
 				r(null2(), rgte(5)),
 			},
+			1,
 		},
 		{
 			or2(
@@ -476,6 +517,7 @@ func TestRangeBuilder(t *testing.T) {
 			sql.RangeCollection{
 				r(null2(), rlte(5)),
 			},
+			1,
 		},
 		{
 			or2(
@@ -484,6 +526,7 @@ func TestRangeBuilder(t *testing.T) {
 			sql.RangeCollection{
 				r(null2(), rlte(5)),
 			},
+			1,
 		},
 		{
 			or2(
@@ -492,11 +535,18 @@ func TestRangeBuilder(t *testing.T) {
 			sql.RangeCollection{
 				r(null2(), req(1)),
 			},
+			1,
 		},
 	}
 
 	const testDb = "mydb"
 	const testTable = "xyz"
+	idx_1 := &memory.Index{
+		Name:      "x",
+		Exprs:     []sql.Expression{x},
+		DB:        testDb,
+		TableName: testTable,
+	}
 	idx_2 := &memory.Index{
 		Name:      "x_y",
 		Exprs:     []sql.Expression{x, y},
@@ -527,6 +577,8 @@ func TestRangeBuilder(t *testing.T) {
 				idx = idx_2
 			case 3:
 				idx = idx_3
+			default:
+				idx = idx_1
 			}
 
 			stat, err := newUniformDistStatistic("mydb", testTable, sch, idx, 10, 10)
@@ -536,15 +588,19 @@ func TestRangeBuilder(t *testing.T) {
 			require.NoError(t, err)
 
 			include := c.bestFilters
-			// these tests are designed so that all filters are supported
+			// most tests are designed so that all filters are supported
 			// |included| = |root.id|
-			require.Equal(t, include.Len(), 1)
-			require.True(t, include.Contains(1))
+			require.Equal(t, tt.cnt, include.Len())
+			if tt.cnt == 1 {
+				require.True(t, include.Contains(1))
+			}
 
 			b := newIndexScanRangeBuilder(ctx, idx, include, sql.FastIntSet{}, c.idToExpr)
 			cmpRanges, err := b.buildRangeCollection(root)
 			require.NoError(t, err)
-			require.Equal(t, 0, len(b.leftover))
+			if tt.cnt == 1 {
+				require.Equal(t, 0, len(b.leftover))
+			}
 			cmpRanges, err = sql.SortRanges(cmpRanges...)
 			require.NoError(t, err)
 
