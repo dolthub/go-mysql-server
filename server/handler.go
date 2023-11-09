@@ -604,11 +604,19 @@ func row2ToSQL(s sql.Schema, row sql.Row2) ([]sqltypes.Value, error) {
 }
 
 func schemaToFields(ctx *sql.Context, s sql.Schema) []*query.Field {
+	charSetResults := ctx.GetCharacterSetResults()
 	fields := make([]*query.Field, len(s))
 	for i, c := range s {
 		charset := uint32(sql.Collation_Default.CharacterSet())
 		if collatedType, ok := c.Type.(sql.TypeWithCollation); ok {
 			charset = uint32(collatedType.Collation().CharacterSet())
+		}
+
+		// If a result character set has been set for this session, make sure we use that
+		// TODO: This only sends the expected metadata, to fully honor character_set_results, we need to
+		//       translate the character data into the target character set when we send it out over the wire.
+		if charSetResults != sql.CharacterSet_Unspecified {
+			charset = uint32(charSetResults)
 		}
 
 		fields[i] = &query.Field{
