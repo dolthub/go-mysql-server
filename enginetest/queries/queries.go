@@ -8390,6 +8390,23 @@ where exists (
 			{2, 2},
 		},
 	},
+	{
+		Query: `
+select x, y
+from xy as xy2
+where exists (
+    select *
+    from xy
+        where xy.y = (
+        select max(v)
+        from uv
+        where uv.v = xy2.x and uv.v = xy.x
+    )
+)
+order by x, y;`,
+		Expected: []sql.Row{
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{

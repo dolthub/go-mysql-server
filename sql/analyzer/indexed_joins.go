@@ -291,6 +291,16 @@ func keyForExpr(targetCol sql.ColumnId, tableGrp memo.GroupId, filters []memo.Sc
 			right = e.Right.Scalar
 		default:
 		}
+		if hidden, ok := left.(*memo.Hidden); ok {
+			if _, ok := hidden.E.(*plan.Subquery); ok {
+				continue
+			}
+		}
+		if hidden, ok := right.(*memo.Hidden); ok {
+			if _, ok := hidden.E.(*plan.Subquery); ok {
+				continue
+			}
+		}
 		if ref, ok := left.(*memo.ColRef); ok && ref.Col == targetCol {
 			key = right
 		} else if ref, ok := right.(*memo.ColRef); ok && ref.Col == targetCol {

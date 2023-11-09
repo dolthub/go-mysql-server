@@ -10567,4 +10567,52 @@ where exists (
 			"     └─ columns: [a b]\n" +
 			"",
 	},
+	{
+		Query: `
+select x, y
+from xy as xy2
+where exists (
+    select *
+    from xy
+        where xy.y = (
+        select max(v)
+        from uv
+        where uv.v = xy2.x and uv.v = xy.x
+    )
+)
+order by x, y;
+`,
+		ExpectedPlan: "Sort(xy2.x:0!null ASC nullsFirst, xy2.y:1 ASC nullsFirst)\n" +
+			" └─ SemiJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ xy.y:3\n" +
+			"     │   └─ Subquery\n" +
+			"     │       ├─ cacheable: false\n" +
+			"     │       ├─ alias-string: select max(v) from uv where uv.v = xy2.x and uv.v = xy.x\n" +
+			"     │       └─ Project\n" +
+			"     │           ├─ columns: [max(uv.v):4!null as max(v)]\n" +
+			"     │           └─ GroupBy\n" +
+			"     │               ├─ select: MAX(uv.v:4)\n" +
+			"     │               ├─ group: \n" +
+			"     │               └─ Filter\n" +
+			"     │                   ├─ AND\n" +
+			"     │                   │   ├─ Eq\n" +
+			"     │                   │   │   ├─ uv.v:4\n" +
+			"     │                   │   │   └─ xy2.x:0!null\n" +
+			"     │                   │   └─ Eq\n" +
+			"     │                   │       ├─ uv.v:4\n" +
+			"     │                   │       └─ xy.x:2!null\n" +
+			"     │                   └─ Table\n" +
+			"     │                       ├─ name: uv\n" +
+			"     │                       └─ columns: [v]\n" +
+			"     ├─ TableAlias(xy2)\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: xy\n" +
+			"     │           └─ columns: [x y]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: xy\n" +
+			"         └─ columns: [x y]\n" +
+			"",
+	},
 }
