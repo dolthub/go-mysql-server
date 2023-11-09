@@ -291,16 +291,6 @@ func keyForExpr(targetCol sql.ColumnId, tableGrp memo.GroupId, filters []memo.Sc
 			right = e.Right.Scalar
 		default:
 		}
-		if hidden, ok := left.(*memo.Hidden); ok {
-			if _, ok := hidden.E.(*plan.Subquery); ok {
-				continue
-			}
-		}
-		if hidden, ok := right.(*memo.Hidden); ok {
-			if _, ok := hidden.E.(*plan.Subquery); ok {
-				continue
-			}
-		}
 		if ref, ok := left.(*memo.ColRef); ok && ref.Col == targetCol {
 			key = right
 		} else if ref, ok := right.(*memo.ColRef); ok && ref.Col == targetCol {
@@ -308,6 +298,13 @@ func keyForExpr(targetCol sql.ColumnId, tableGrp memo.GroupId, filters []memo.Sc
 		} else {
 			continue
 		}
+
+		if hidden, isHidden := key.(*memo.Hidden); isHidden {
+			if sq, isSubq := hidden.E.(*plan.Subquery); isSubq && !sq.Correlated().Empty() {
+				continue
+			}
+		}
+
 		// expression key can be arbitrarily complex (or simple), but cannot
 		// reference the lookup table
 		if !key.Group().ScalarProps().Tables.Contains(int(memo.TableIdForSource(tableGrp))) {
