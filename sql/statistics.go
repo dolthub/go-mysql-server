@@ -61,6 +61,7 @@ const (
 // costing estimates for an index prefix.
 type Statistic interface {
 	JSONWrapper
+	MutableStatistic
 	RowCount() uint64
 	DistinctCount() uint64
 	NullCount() uint64
@@ -72,9 +73,17 @@ type Statistic interface {
 	Histogram() Histogram
 	IndexClass() IndexClass
 	FuncDeps() *FuncDepSet
-	SetFuncDeps(*FuncDepSet)
 	ColSet() ColSet
-	SetColSet(ColSet)
+}
+
+type MutableStatistic interface {
+	WithColSet(ColSet) Statistic
+	WithFuncDeps(*FuncDepSet) Statistic
+	WithHistogram(Histogram) (Statistic, error)
+	WithDistinct(uint64) Statistic
+	WithRowCount(uint64) Statistic
+	WithNullCount(uint64) Statistic
+	WithAvgSize(uint64) Statistic
 }
 
 func NewQualifierFromString(q string) (StatQualifier, error) {
