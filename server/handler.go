@@ -612,8 +612,9 @@ func schemaToFields(ctx *sql.Context, s sql.Schema) []*query.Field {
 			charset = uint32(collatedType.Collation().CharacterSet())
 		}
 
-		// If a result character set has been set for this session, make sure we use that
-		if charSetResults != sql.CharacterSet_Unspecified {
+		// If a result character set has been set for this session, make sure we use
+		// it for any non-binary types
+		if !types.IsBinaryType(c.Type) && charSetResults != sql.CharacterSet_Unspecified {
 			charset = uint32(charSetResults)
 		}
 
