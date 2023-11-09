@@ -16,9 +16,11 @@ package enginetest
 
 import (
 	"context"
+	dsql "database/sql"
 	"fmt"
 	"io"
 	"net"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -4835,6 +4837,12 @@ func testCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 								}
 							}
 							assert.Equal(t, query.Expected[rowIdx], outRow)
+
+							if query.ExpectedCharSets != nil {
+								for i, expectedCharSet := range query.ExpectedCharSets {
+									assert.Equal(t, uint64(expectedCharSet), extractCharSetIdForField(r, i))
+								}
+							}
 						}
 					}
 				})
@@ -4842,6 +4850,20 @@ func testCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 			require.NoError(t, conn.Close())
 		})
 	}
+}
+
+// extractCharSetIdForField uses reflection to access the MySQL field metadata for field |i| in result set |r| and
+// returns the field's character set ID metadata. This character set ID is not exposed through the standard golang
+// sql database interfaces, so we have to use reflection to access this so we can validate that we are sending the
+// correct character set metadata for fields.
+func extractCharSetIdForField(r *dsql.Rows, i int) uint64 {
+	rowsi := reflect.ValueOf(r).Elem().FieldByName("rowsi")
+	mysqlRows := rowsi.Elem().Elem().FieldByName("mysqlRows")
+	rs := mysqlRows.FieldByName("rs")
+	columns := rs.FieldByName("columns")
+	column := columns.Index(i)
+	charSet := column.FieldByName("charSet")
+	return charSet.Uint()
 }
 
 func TestTypesOverWire(t *testing.T, harness ClientHarness, sessionBuilder server.SessionBuilder) {

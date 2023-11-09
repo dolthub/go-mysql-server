@@ -613,8 +613,6 @@ func schemaToFields(ctx *sql.Context, s sql.Schema) []*query.Field {
 		}
 
 		// If a result character set has been set for this session, make sure we use that
-		// TODO: This only sends the expected metadata, to fully honor character_set_results, we need to
-		//       translate the character data into the target character set when we send it out over the wire.
 		if charSetResults != sql.CharacterSet_Unspecified {
 			charset = uint32(charSetResults)
 		}
