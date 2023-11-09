@@ -8404,8 +8404,7 @@ where exists (
     )
 )
 order by x, y;`,
-		Expected: []sql.Row{
-		},
+		Expected: []sql.Row{},
 	},
 }
 
