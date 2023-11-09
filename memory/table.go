@@ -1132,12 +1132,16 @@ func addColumnToSchema(ctx *sql.Context, data *TableData, newCol *sql.Column, or
 		i++
 	}
 
+	numPrecedingVirtuals := 0
 	for _, col := range data.schema.Schema {
 		newSch[i] = col
+		if col.Virtual {
+			numPrecedingVirtuals++
+		}
 		i++
 		if (order != nil && order.AfterColumn == col.Name) || (order == nil && i == len(data.schema.Schema)) {
 			newSch[i] = newCol
-			newColIdx = i
+			newColIdx = i - numPrecedingVirtuals
 			i++
 		}
 	}
