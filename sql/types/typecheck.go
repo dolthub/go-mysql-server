@@ -36,7 +36,7 @@ func IsBinaryType(t sql.Type) bool {
 		return false
 	}
 	switch t.Type() {
-	case sqltypes.Binary, sqltypes.VarBinary, sqltypes.Blob:
+	case sqltypes.Binary, sqltypes.VarBinary, sqltypes.Blob, sqltypes.TypeJSON, sqltypes.Geometry:
 		return true
 	default:
 		return false
