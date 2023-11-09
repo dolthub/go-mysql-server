@@ -245,6 +245,39 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		},
 	},
 	{
+		Name: "SET validates character set and collation variables",
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "SET character_set_client = 'does_not_exist';",
+				Error: true,
+			},
+			{
+				Query: "SET character_set_connection = 'invalid_charset';",
+				Error: true,
+			},
+			{
+				Query: "SET character_set_results = 'whoops';",
+				Error: true,
+			},
+			{
+				Query: "SET collation_connection = 'cant_be';",
+				Error: true,
+			},
+			{
+				Query: "SET collation_database = 'something_else';",
+				Error: true,
+			},
+			{
+				Query: "SET collation_server = 'why_try';",
+				Error: true,
+			},
+			{
+				Query: "SET NAMES outside_correct;",
+				Error: true,
+			},
+		},
+	},
+	{
 		Name: "Coercibility test using HEX",
 		SetUpScript: []string{
 			"SET NAMES utf8mb4;",
