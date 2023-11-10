@@ -156,11 +156,11 @@ var GeneratedColumnTests = []ScriptTest{
 				Query: "show create table t1",
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
-							"  `a` int NOT NULL,\n" +
-							"  `b` int GENERATED ALWAYS AS ((a + 1)) STORED,\n" +
-							"  PRIMARY KEY (`a`),\n" +
-							"  KEY `i1` (`b`)\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						"  `a` int NOT NULL,\n" +
+						"  `b` int GENERATED ALWAYS AS ((a + 1)) STORED,\n" +
+						"  PRIMARY KEY (`a`),\n" +
+						"  KEY `i1` (`b`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "select * from t1 where b = 2 order by a",

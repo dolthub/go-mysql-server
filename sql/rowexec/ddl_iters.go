@@ -2036,14 +2036,14 @@ func buildIndex(ctx *sql.Context, n *plan.AlterIndex, ibt sql.IndexBuildingTable
 	}
 
 	rowIter := sql.NewTableRowIter(ctx, ibt, partitions)
-	
+
 	// Our table scan needs to include projections for virtual columns if there are any
 	isVirtual := ibt.Schema().HasVirtualColumns()
 	var projections []sql.Expression
 	if isVirtual {
 		projections = virtualTableProjections(n.TargetSchema(), ibt.Name())
 	}
-	
+
 	for {
 		r, err := rowIter.Next(ctx)
 		if err == io.EOF {
@@ -2060,7 +2060,7 @@ func buildIndex(ctx *sql.Context, n *plan.AlterIndex, ibt sql.IndexBuildingTable
 				return err
 			}
 		}
-		
+
 		err = inserter.Insert(ctx, r)
 		if err != nil {
 			_ = inserter.DiscardChanges(ctx, err)
@@ -2077,9 +2077,9 @@ func buildIndex(ctx *sql.Context, n *plan.AlterIndex, ibt sql.IndexBuildingTable
 	return nil
 }
 
-// virtualTableProjections returns the projections for a virtual table with the schema and name provided. 
+// virtualTableProjections returns the projections for a virtual table with the schema and name provided.
 // Typically virtual tables have their projections applied by the analyzer and row executor process, but this is
-// equivalent when we need it at runtime. 
+// equivalent when we need it at runtime.
 func virtualTableProjections(schema sql.Schema, tableName string) []sql.Expression {
 	projections := make([]sql.Expression, len(schema))
 	for i, c := range schema {
