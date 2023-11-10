@@ -466,6 +466,7 @@ var systemVars = map[string]sql.SystemVariable{
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("character_set_client"),
 		Default:           sql.Collation_Default.CharacterSet().String(),
+		NotifyChanged:     validateCharacterSet,
 	},
 	"character_set_connection": {
 		Name:              "character_set_connection",
@@ -474,6 +475,7 @@ var systemVars = map[string]sql.SystemVariable{
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("character_set_connection"),
 		Default:           sql.Collation_Default.CharacterSet().String(),
+		NotifyChanged:     validateCharacterSet,
 	},
 	"character_set_database": {
 		Name:              "character_set_database",
@@ -482,6 +484,7 @@ var systemVars = map[string]sql.SystemVariable{
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("character_set_database"),
 		Default:           sql.Collation_Default.CharacterSet().String(),
+		NotifyChanged:     validateCharacterSet,
 	},
 	"character_set_filesystem": {
 		Name:              "character_set_filesystem",
@@ -490,6 +493,7 @@ var systemVars = map[string]sql.SystemVariable{
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("character_set_filesystem"),
 		Default:           "binary",
+		NotifyChanged:     validateCharacterSet,
 	},
 	"character_set_results": {
 		Name:              "character_set_results",
@@ -498,6 +502,7 @@ var systemVars = map[string]sql.SystemVariable{
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("character_set_results"),
 		Default:           sql.Collation_Default.CharacterSet().String(),
+		NotifyChanged:     validateCharacterSet,
 	},
 	"character_set_server": {
 		Name:              "character_set_server",
@@ -506,6 +511,7 @@ var systemVars = map[string]sql.SystemVariable{
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("character_set_server"),
 		Default:           sql.Collation_Default.CharacterSet().String(),
+		NotifyChanged:     validateCharacterSet,
 	},
 	"character_set_system": {
 		Name:              "character_set_system",
@@ -514,6 +520,7 @@ var systemVars = map[string]sql.SystemVariable{
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("character_set_system"),
 		Default:           sql.Collation_Default.CharacterSet().String(),
+		NotifyChanged:     validateCharacterSet,
 	},
 	"character_sets_dir": {
 		Name:              "character_sets_dir",
@@ -538,6 +545,7 @@ var systemVars = map[string]sql.SystemVariable{
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("collation_connection"),
 		Default:           sql.Collation_Default.String(),
+		NotifyChanged:     validateCollation,
 	},
 	"collation_database": {
 		Name:              "collation_database",
@@ -546,6 +554,7 @@ var systemVars = map[string]sql.SystemVariable{
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("collation_database"),
 		Default:           sql.Collation_Default.String(),
+		NotifyChanged:     validateCollation,
 	},
 	"collation_server": {
 		Name:              "collation_server",
@@ -554,6 +563,7 @@ var systemVars = map[string]sql.SystemVariable{
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("collation_server"),
 		Default:           sql.Collation_Default.String(),
+		NotifyChanged:     validateCollation,
 	},
 	"completion_type": {
 		Name:              "completion_type",

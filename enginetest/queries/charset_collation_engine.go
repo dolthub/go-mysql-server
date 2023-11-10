@@ -420,6 +420,39 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 		},
 	},
 	{
+		Name: "SET validates character set and collation variables",
+		Queries: []CharsetCollationEngineTestQuery{
+			{
+				Query:   "SET character_set_client = 'am_i_wrong';",
+				ErrKind: sql.ErrCharSetUnknown,
+			},
+			{
+				Query:   "SET character_set_connection = 'to_believe';",
+				ErrKind: sql.ErrCharSetUnknown,
+			},
+			{
+				Query:   "SET character_set_results = 'in_crusty_cheese';",
+				ErrKind: sql.ErrCharSetUnknown,
+			},
+			{
+				Query:   "SET collation_connection = 'is_it_wrong';",
+				ErrKind: sql.ErrCollationUnknown,
+			},
+			{
+				Query:   "SET collation_database = 'to_believe';",
+				ErrKind: sql.ErrCollationUnknown,
+			},
+			{
+				Query:   "SET collation_server = 'in_deez';",
+				ErrKind: sql.ErrCollationUnknown,
+			},
+			{
+				Query:   "SET NAMES things;",
+				ErrKind: sql.ErrCharSetUnknown,
+			},
+		},
+	},
+	{
 		Name: "ENUM collation handling",
 		SetUpScript: []string{
 			"CREATE TABLE test1 (pk BIGINT PRIMARY KEY, v1 ENUM('abc','def','ghi') COLLATE utf16_unicode_ci);",
