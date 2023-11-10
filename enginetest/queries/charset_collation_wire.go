@@ -31,6 +31,9 @@ type CharsetCollationWireTestQuery struct {
 	Query    string
 	Expected []sql.Row
 	Error    bool
+	// ExpectedCollations is an optional field, and when populated the test framework will assert that
+	// the MySQL field metadata has these expected collation IDs.
+	ExpectedCollations []sql.CollationID
 }
 
 // CharsetCollationWireTests are used to ensure that character sets and collations have the correct behavior over the
@@ -245,6 +248,39 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		},
 	},
 	{
+		Name: "SET validates character set and collation variables",
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "SET character_set_client = 'does_not_exist';",
+				Error: true,
+			},
+			{
+				Query: "SET character_set_connection = 'invalid_charset';",
+				Error: true,
+			},
+			{
+				Query: "SET character_set_results = 'whoops';",
+				Error: true,
+			},
+			{
+				Query: "SET collation_connection = 'cant_be';",
+				Error: true,
+			},
+			{
+				Query: "SET collation_database = 'something_else';",
+				Error: true,
+			},
+			{
+				Query: "SET collation_server = 'why_try';",
+				Error: true,
+			},
+			{
+				Query: "SET NAMES outside_correct;",
+				Error: true,
+			},
+		},
+	},
+	{
 		Name: "Coercibility test using HEX",
 		SetUpScript: []string{
 			"SET NAMES utf8mb4;",
@@ -361,24 +397,36 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		},
 		Queries: []CharsetCollationWireTestQuery{
 			{
-				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{"\x00h\x00e\x00y"}},
+				Query:              "SELECT * FROM test;",
+				Expected:           []sql.Row{{"\x00h\x00e\x00y"}},
+				ExpectedCollations: []sql.CollationID{sql.Collation_binary},
 			},
 			{
 				Query:    "SET character_set_results = 'utf8mb4';",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{"hey"}},
+				Query:              "SELECT * FROM test;",
+				Expected:           []sql.Row{{"hey"}},
+				ExpectedCollations: []sql.CollationID{sql.Collation_utf8mb4_0900_ai_ci},
 			},
 			{
 				Query:    "SET character_set_results = 'utf32';",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{"\x00\x00\x00h\x00\x00\x00e\x00\x00\x00y"}},
+				Query:              "SELECT * FROM test;",
+				Expected:           []sql.Row{{"\x00\x00\x00h\x00\x00\x00e\x00\x00\x00y"}},
+				ExpectedCollations: []sql.CollationID{sql.Collation_utf32_general_ci},
+			},
+			{
+				Query:    "SET character_set_results = NULL;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:              "SELECT * FROM test;",
+				Expected:           []sql.Row{{"\x00h\x00e\x00y"}},
+				ExpectedCollations: []sql.CollationID{sql.Collation_utf16_general_ci},
 			},
 		},
 	},

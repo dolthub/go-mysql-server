@@ -260,6 +260,11 @@ func decorrelateOuterCols(sqChild sql.Node, aliasDisambig *aliasDisambiguator, c
 				if gf, ok := e.(*expression.GetField); ok && corr.Contains(gf.Id()) {
 					return true
 				}
+				if sq, ok := e.(*plan.Subquery); ok {
+					if !sq.Correlated().Intersection(corr).Empty() {
+						return true
+					}
+				}
 				return false
 			})
 

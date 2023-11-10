@@ -671,13 +671,13 @@ func TestSchemaToFields(t *testing.T) {
 		{Name: "text", Type: query.Type_TEXT, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 262_140},
 		{Name: "mediumtext", Type: query.Type_TEXT, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 67_108_860},
 		{Name: "longtext", Type: query.Type_TEXT, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 4_294_967_295},
-		{Name: "json", Type: query.Type_JSON, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 4_294_967_295},
+		{Name: "json", Type: query.Type_JSON, Charset: mysql.CharacterSetBinary, ColumnLength: 4_294_967_295},
 
 		// Geometry Types
-		{Name: "geometry", Type: query.Type_GEOMETRY, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 4_294_967_295},
-		{Name: "point", Type: query.Type_GEOMETRY, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 4_294_967_295},
-		{Name: "polygon", Type: query.Type_GEOMETRY, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 4_294_967_295},
-		{Name: "linestring", Type: query.Type_GEOMETRY, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 4_294_967_295},
+		{Name: "geometry", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetBinary, ColumnLength: 4_294_967_295},
+		{Name: "point", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetBinary, ColumnLength: 4_294_967_295},
+		{Name: "polygon", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetBinary, ColumnLength: 4_294_967_295},
+		{Name: "linestring", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetBinary, ColumnLength: 4_294_967_295},
 
 		// Integer Types
 		{Name: "uint8", Type: query.Type_UINT8, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 3},

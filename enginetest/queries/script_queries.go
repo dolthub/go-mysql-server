@@ -95,12 +95,41 @@ type ScriptTestAssertion struct {
 
 	// Bindings are variable mappings only used for prepared tests
 	Bindings map[string]*querypb.BindVariable
+
+	// CheckIndexedAccess indicates whether we should verify the query plan uses an index
+	CheckIndexedAccess bool
 }
 
 // ScriptTests are a set of test scripts to run.
 // Unlike other engine tests, ScriptTests must be self-contained. No other tables are created outside the definition of
 // the tests.
 var ScriptTests = []ScriptTest{
+	{
+		Name: "correctness test indexes",
+		SetUpScript: []string{
+			`
+CREATE TABLE tab3 (
+  pk int NOT NULL,
+  col0 int,
+  col1 float,
+  col2 text,
+  col3 int,
+  col4 float,
+  col5 text,
+  PRIMARY KEY (pk),
+  KEY idx_tab3_0 (col1),
+  UNIQUE KEY idx_tab3_1 (col0),
+  UNIQUE KEY idx_tab3_4 (col3,col4)
+)`,
+			"insert into tab3 values (1 , 101 , 83.86, 'pgprm', 50  , 58.56, 'nugdy')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select count(*) from tab3 WHERE (80 < col0 AND (((col0 BETWEEN 87 AND 9 OR (((col0 IS NULL)))))) AND (71.70 <= col1 OR 94 <= col0 AND ((66 > col0) OR (85 = col0 AND ((42.15 >= col1))) OR 30 = col0)));",
+				Expected: []sql.Row{{0}},
+			},
+		},
+	},
 	{
 		Name: "set op schema merge",
 		SetUpScript: []string{
@@ -561,7 +590,7 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "trigger with signal and user var",
+		Name: "alter table out of range value error of column type change",
 		SetUpScript: []string{
 			"create table t (i int primary key, i2 int, key(i2));",
 			"insert into t values (0,-1)",

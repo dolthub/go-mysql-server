@@ -295,3 +295,149 @@ func Schemas(nodes []sql.Node) sql.Schema {
 	}
 	return schema
 }
+
+// A joinColExpr  captures a GetField expression used in a comparison, as well as some additional contextual
+// information. Example, for the base expression col1 + 1 > col2 - 1:
+// col refers to `col1`
+// colExpr refers to `col1 + 1`
+// comparand refers to `col2 - 1`
+// comparandCol refers to `col2`
+// comparison refers to `col1 + 1 > col2 - 1`
+// indexes contains any indexes onto col1's table that can be used during the join
+// TODO: rename
+type joinColExpr struct {
+	// The field (column) being evaluated, which may not be the entire term in the comparison
+	col *expression.GetField
+	// The entire expression on this side of the comparison
+	colExpr sql.Expression
+	// The expression this field is being compared to (the other term in the comparison)
+	comparand sql.Expression
+	// The other field (column) this field is being compared to (the other term in the comparison)
+	comparandCol *expression.GetField
+	// The comparison expression in which this joinColExpr is one term
+	comparison sql.Expression
+	// Whether the comparison expression will match null or not.
+	matchnull bool
+}
+
+type joinColExprs []*joinColExpr
+type joinExpressionsByTable map[string]joinColExprs
+
+// extractComparands returns the comparand Expressions in the slice of joinColExpr given.
+func extractComparands(colExprs []*joinColExpr) []sql.Expression {
+	result := make([]sql.Expression, len(colExprs))
+	for i, expr := range colExprs {
+		result[i] = expr.comparand
+	}
+	return result
+}
+
+// joinExprsByTable returns a map of the expressions given keyed by their table name.
+func joinExprsByTable(exprs []sql.Expression) joinExpressionsByTable {
+	var result = make(joinExpressionsByTable)
+
+	for _, expr := range exprs {
+		leftExpr, rightExpr := extractJoinColumnExpr(expr)
+		if leftExpr != nil {
+			result[leftExpr.col.Table()] = append(result[leftExpr.col.Table()], leftExpr)
+		}
+
+		if rightExpr != nil {
+			result[rightExpr.col.Table()] = append(result[rightExpr.col.Table()], rightExpr)
+		}
+	}
+
+	return result
+}
+
+// extractJoinColumnExpr extracts a pair of joinColExprs from a join condition, one each for the left and right side of
+// the expression. Returns nils if either side of the expression doesn't reference a table column.
+// Both sides have to have getField (this is currently invalid: a.x + b.y = 1)
+func extractJoinColumnExpr(e sql.Expression) (leftCol *joinColExpr, rightCol *joinColExpr) {
+	switch e := e.(type) {
+	case *expression.Equals, *expression.NullSafeEquals:
+		cmp := e.(expression.Comparer)
+		left, right := cmp.Left(), cmp.Right()
+		if isEvaluable(left) || isEvaluable(right) {
+			return nil, nil
+		}
+
+		leftField, rightField := expression.ExtractGetField(left), expression.ExtractGetField(right)
+		if leftField == nil || rightField == nil {
+			return nil, nil
+		}
+
+		_, matchnull := e.(*expression.NullSafeEquals)
+
+		leftCol = &joinColExpr{
+			col:          leftField,
+			colExpr:      left,
+			comparand:    right,
+			comparandCol: rightField,
+			comparison:   cmp,
+			matchnull:    matchnull,
+		}
+		rightCol = &joinColExpr{
+			col:          rightField,
+			colExpr:      right,
+			comparand:    left,
+			comparandCol: leftField,
+			comparison:   cmp,
+			matchnull:    matchnull,
+		}
+		return leftCol, rightCol
+	default:
+		return nil, nil
+	}
+}
+
+func containsColumns(e sql.Expression) bool {
+	var result bool
+	sql.Inspect(e, func(e sql.Expression) bool {
+		_, ok1 := e.(*expression.GetField)
+		_, ok2 := e.(*expression.UnresolvedColumn)
+		if ok1 || ok2 {
+			result = true
+			return false
+		}
+		return true
+	})
+	return result
+}
+
+func containsSubquery(e sql.Expression) bool {
+	var result bool
+	sql.Inspect(e, func(e sql.Expression) bool {
+		if _, ok := e.(*plan.Subquery); ok {
+			result = true
+			return false
+		}
+		return true
+	})
+	return result
+}
+
+func isEvaluable(e sql.Expression) bool {
+	return !containsColumns(e) && !containsSubquery(e) && !containsBindvars(e) && !containsProcedureParam(e)
+}
+
+func containsBindvars(e sql.Expression) bool {
+	var result bool
+	sql.Inspect(e, func(e sql.Expression) bool {
+		if _, ok := e.(*expression.BindVar); ok {
+			result = true
+			return false
+		}
+		return true
+	})
+	return result
+}
+
+func containsProcedureParam(e sql.Expression) bool {
+	var result bool
+	sql.Inspect(e, func(e sql.Expression) bool {
+		_, result = e.(*expression.ProcedureParam)
+		return !result
+	})
+	return result
+}

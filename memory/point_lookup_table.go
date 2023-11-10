@@ -48,6 +48,10 @@ func (s PointLookupTable) Description() string {
 
 var _ sql.Partition = (*sequencePartition)(nil)
 
+func (s PointLookupTable) PreciseMatch() bool {
+	return true
+}
+
 func (s PointLookupTable) GetIndexes(ctx *sql.Context) (indexes []sql.Index, err error) {
 	return []sql.Index{
 		pointLookupIndex{&Index{

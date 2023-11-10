@@ -298,6 +298,13 @@ func keyForExpr(targetCol sql.ColumnId, tableGrp memo.GroupId, filters []memo.Sc
 		} else {
 			continue
 		}
+
+		if hidden, isHidden := key.(*memo.Hidden); isHidden {
+			if sq, isSubq := hidden.E.(*plan.Subquery); isSubq && !sq.Correlated().Empty() {
+				continue
+			}
+		}
+
 		// expression key can be arbitrarily complex (or simple), but cannot
 		// reference the lookup table
 		if !key.Group().ScalarProps().Tables.Contains(int(memo.TableIdForSource(tableGrp))) {

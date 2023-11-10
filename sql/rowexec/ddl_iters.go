@@ -1176,6 +1176,13 @@ func (d *dropPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) err
 		return err
 	}
 
+	hasFullText := hasFullText(ctx, d.pkAlterable)
+	if hasFullText {
+		if err = rebuildFullText(ctx, d.pkAlterable.Name(), d.db); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

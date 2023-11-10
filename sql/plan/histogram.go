@@ -10,13 +10,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-func NewUpdateHistogram(db, table string, cols []string, stats *stats.Statistic) *UpdateHistogram {
-	return &UpdateHistogram{db: db, cols: cols, table: table, stats: stats}
+func NewUpdateHistogram(db, table, index string, cols []string, stats *stats.Statistic) *UpdateHistogram {
+	return &UpdateHistogram{db: db, cols: cols, index: index, table: table, stats: stats}
 }
 
 type UpdateHistogram struct {
 	db    string
 	table string
+	index string
 	cols  []string
 	stats *stats.Statistic
 	prov  sql.StatsProvider
@@ -30,6 +31,10 @@ func (u *UpdateHistogram) Db() string {
 
 func (u *UpdateHistogram) Table() string {
 	return u.table
+}
+
+func (u *UpdateHistogram) Index() string {
+	return u.index
 }
 
 func (u *UpdateHistogram) Cols() []string {

@@ -176,6 +176,29 @@ func expressionSources(expr sql.Expression) ([]sql.TableID, bool) {
 			if lit, ok := e.Right().(*expression.Literal); ok && lit.Value() == nil {
 				nullRejecting = false
 			}
+		case *plan.Subquery:
+			transform.InspectExpressions(e.Query, func(innerExpr sql.Expression) bool {
+				switch ie := innerExpr.(type) {
+				case *expression.GetField:
+					source := ie.TableID()
+					if _, ok := sources[source]; !ok {
+						sources[source] = struct{}{}
+						result = append(result, source)
+					}
+				case *expression.IsNull:
+					nullRejecting = false
+				case *expression.NullSafeEquals:
+					nullRejecting = false
+				case *expression.Equals:
+					if lit, ok := ie.Left().(*expression.Literal); ok && lit.Value() == nil {
+						nullRejecting = false
+					}
+					if lit, ok := ie.Right().(*expression.Literal); ok && lit.Value() == nil {
+						nullRejecting = false
+					}
+				}
+				return true
+			})
 		}
 		return true
 	})
@@ -205,6 +228,11 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 					return e, transform.SameTree, err
 				}
 				return e.WithQuery(newQ), transform.NewTree, nil
+			case *expression.Between:
+				return expression.NewAnd(
+					expression.NewGreaterThanOrEqual(e.Val, e.Lower),
+					expression.NewLessThanOrEqual(e.Val, e.Upper),
+				), transform.NewTree, nil
 			case *expression.Or:
 				if isTrue(e.Left) {
 					return e.Left, transform.NewTree, nil

@@ -16,9 +16,11 @@ package enginetest
 
 import (
 	"context"
+	dsql "database/sql"
 	"fmt"
 	"io"
 	"net"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -73,15 +75,6 @@ func TestQueries(t *testing.T, harness Harness) {
 			TestQuery2(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 		}
 	}
-
-	t.Run("date parse tests", func(t *testing.T) {
-		harness.Setup(setup.MydbData)
-		for _, tt := range queries.DateParseQueries {
-			t.Run(tt.Query, func(t *testing.T) {
-				TestQueryWithEngine(t, harness, e, tt)
-			})
-		}
-	})
 }
 
 // TestStatistics tests the statistics from ANALYZE TABLE
@@ -684,7 +677,9 @@ func TestReadOnly(t *testing.T, harness Harness, testStoredProcedures bool) {
 	engine := mustNewEngine(t, harness)
 
 	e, ok := engine.(*sqle.Engine)
-	require.True(t, ok, "Need a *sqle.Engine for TestReadOnly")
+	if !ok {
+		t.Skip("Need a *sqle.Engine for TestReadOnly")
+	}
 
 	e.ReadOnly.Store(true)
 	defer e.Close()
@@ -1017,8 +1012,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "CREATE TABLE t2parent (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX (v1))")
 		RunQuery(t, e, harness, "CREATE TABLE t2child (pk BIGINT PRIMARY KEY, v1 BIGINT, "+
 			"FOREIGN KEY (v1) REFERENCES t2parent (v1))")
-		_, _, err := e.Query(ctx, "TRUNCATE t2parent")
-		require.True(t, sql.ErrTruncateReferencedFromForeignKey.Is(err))
+		AssertErrWithCtx(t, e, harness, ctx, "TRUNCATE t2parent", sql.ErrTruncateReferencedFromForeignKey)
 	})
 
 	t.Run("ON DELETE Triggers", func(t *testing.T) {
@@ -1428,9 +1422,6 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 		t.Run(script.Name, func(t *testing.T) {
 			engine := mustNewEngine(t, harness)
 			defer engine.Close()
-			if IsServerEngine(engine) {
-				t.Skip("TestUserPrivileges test depend on Context to switch the user to run test queries")
-			}
 
 			ctx := NewContext(harness)
 			ctx.NewCtxWithClient(sql.Client{
@@ -1496,9 +1487,6 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 		t.Run(strings.Join(script.Queries, "\n > "), func(t *testing.T) {
 			engine := mustNewEngine(t, harness)
 			defer engine.Close()
-			if IsServerEngine(engine) {
-				t.Skip("TestUserPrivileges test depend on Context to switch the user to run test queries")
-			}
 
 			engine.EngineAnalyzer().Catalog.MySQLDb.AddRootAccount()
 			engine.EngineAnalyzer().Catalog.MySQLDb.SetPersister(&mysql_db.NoopPersister{})
@@ -1601,11 +1589,10 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 			}
 
 			e := mustNewEngine(t, clientHarness)
-			if IsServerEngine(e) {
-				t.Skip("TestUserPrivileges test depend on Context to switch the user to run test queries")
-			}
 			engine, ok := e.(*sqle.Engine)
-			require.True(t, ok, "Need a *sqle.Engine for TestUserAuthentication")
+			if !ok {
+				t.Skip("Need a *sqle.Engine for TestUserAuthentication")
+			}
 
 			defer engine.Close()
 			engine.EngineAnalyzer().Catalog.MySQLDb.AddRootAccount()
@@ -1718,8 +1705,8 @@ func TestShowTriggers(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	e := mustNewEngine(t, harness)
 
-	// Pick a date
-	date := time.Unix(0, 0).UTC()
+	// Pick a valid date
+	date := time.Unix(1257894000, 0).UTC()
 
 	// Set up Harness to contain triggers; created at a specific time
 	var ctx *sql.Context
@@ -3832,6 +3819,7 @@ func TestClearWarnings(t *testing.T, harness Harness) {
 	harness.Setup(setup.Mytable...)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
+
 	ctx := NewContext(harness)
 	err := CreateNewConnectionForServerEngine(ctx, e)
 	require.NoError(err)
@@ -3934,7 +3922,9 @@ func TestConcurrentTransactions(t *testing.T, harness Harness) {
 	engine := mustNewEngine(t, harness)
 
 	e, ok := engine.(*sqle.Engine)
-	require.True(ok, "Need a *sqle.Engine for TestConcurrentTransactions")
+	if !ok {
+		t.Skip("Need a *sqle.Engine for TestConcurrentTransactions")
+	}
 	defer e.Close()
 
 	pl := e.ProcessList
@@ -4109,8 +4099,6 @@ func TestSessionSelectLimit(t *testing.T, harness Harness) {
 	defer e.Close()
 	ctx := NewContext(harness)
 	if IsServerEngine(e) {
-		err := CreateNewConnectionForServerEngine(ctx, e)
-		require.NoError(t, err, nil)
 		RunQueryWithContext(t, e, harness, ctx, "SET @@sql_select_limit = 2")
 	} else {
 		err := ctx.Session.SetSessionVariable(ctx, "sql_select_limit", int64(2))
@@ -4128,11 +4116,8 @@ func TestTracing(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	if IsServerEngine(e) {
-		t.Skip("this test depends on Context, which ServerEngine does not depend on or update the current context")
-	}
-	ctx := NewContext(harness)
 
+	ctx := NewContext(harness)
 	tracer := new(test.MemTracer)
 
 	sql.WithTracer(tracer)(ctx)
@@ -4300,9 +4285,8 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 
 	// Some tests can't currently be run with as a script because they do additional checks
 	t.Run("DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP current_timestamp", func(t *testing.T) {
-		// TODO: fix result formatting for server engine tests
 		if IsServerEngine(e) {
-			t.Skip()
+			t.Skip("TODO: fix result formatting for server engine tests")
 		}
 		// ctx = NewContext(harness)
 		// e.Query(ctx, "set @@session.time_zone='SYSTEM';")
@@ -4327,9 +4311,8 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	// TODO: zero timestamps work slightly differently than they do in MySQL, where the zero time is "0000-00-00 00:00:00"
 	//  We use "0000-01-01 00:00:00"
 	t.Run("DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP literals", func(t *testing.T) {
-		// TODO: fix result formatting for server engine tests
 		if IsServerEngine(e) {
-			t.Skip()
+			t.Skip("TODO: fix result formatting for server engine tests")
 		}
 		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t10zero(pk BIGINT PRIMARY KEY, v1 DATETIME DEFAULT '2020-01-01 01:02:03', v2 DATETIME DEFAULT 0,"+
 			"v3 TIMESTAMP DEFAULT '2020-01-01 01:02:03', v4 TIMESTAMP DEFAULT 0)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
@@ -4404,9 +4387,6 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	if IsServerEngine(e) {
-		t.Skip("this test depends on Context, which ServerEngine does not depend on or update the current context")
-	}
 
 	for _, tt := range q {
 		t.Run(tt.Name, func(t *testing.T) {
@@ -4731,6 +4711,7 @@ func TestCharsetCollationEngine(t *testing.T, harness Harness) {
 		t.Run(script.Name, func(t *testing.T) {
 			engine := mustNewEngine(t, harness)
 			defer engine.Close()
+
 			ctx := harness.NewContext()
 			ctx.SetCurrentDatabase("mydb")
 
@@ -4797,7 +4778,9 @@ func testCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 
 			engine, ok := e.(*sqle.Engine)
 			// TODO: do we?
-			require.True(t, ok, "Need a *sqle.Engine for testCharsetCollationWire")
+			if !ok {
+				t.Skip("Need a *sqle.Engine for testCharsetCollationWire")
+			}
 
 			defer engine.Close()
 			engine.EngineAnalyzer().Catalog.MySQLDb.AddRootAccount()
@@ -4854,6 +4837,12 @@ func testCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 								}
 							}
 							assert.Equal(t, query.Expected[rowIdx], outRow)
+
+							if query.ExpectedCollations != nil {
+								for i, expectedCollation := range query.ExpectedCollations {
+									assert.Equal(t, uint64(expectedCollation), extractCollationIdForField(r, i))
+								}
+							}
 						}
 					}
 				})
@@ -4861,6 +4850,20 @@ func testCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 			require.NoError(t, conn.Close())
 		})
 	}
+}
+
+// extractCollationIdForField uses reflection to access the MySQL field metadata for field |i| in result set |r| and
+// returns the field's character set ID metadata. This character set ID is not exposed through the standard golang
+// sql database interfaces, so we have to use reflection to access this so we can validate that we are sending the
+// correct character set metadata for fields.
+func extractCollationIdForField(r *dsql.Rows, i int) uint64 {
+	rowsi := reflect.ValueOf(r).Elem().FieldByName("rowsi")
+	mysqlRows := rowsi.Elem().Elem().FieldByName("mysqlRows")
+	rs := mysqlRows.FieldByName("rs")
+	columns := rs.FieldByName("columns")
+	column := columns.Index(i)
+	charSet := column.FieldByName("charSet")
+	return charSet.Uint()
 }
 
 func TestTypesOverWire(t *testing.T, harness ClientHarness, sessionBuilder server.SessionBuilder) {
@@ -4873,7 +4876,9 @@ func TestTypesOverWire(t *testing.T, harness ClientHarness, sessionBuilder serve
 
 			engine, ok := e.(*sqle.Engine)
 			// TODO: do we?
-			require.True(t, ok, "Need a *sqle.Engine for TestTypesOverWire")
+			if !ok {
+				t.Skip("Need a *sqle.Engine for TestTypesOverWire")
+			}
 			defer engine.Close()
 
 			ctx := NewContextWithClient(harness, sql.Client{

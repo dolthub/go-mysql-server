@@ -21,7 +21,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // pushFilters moves filter nodes down to their appropriate relations.
@@ -340,76 +339,4 @@ func removePushedDownPredicates(ctx *sql.Context, a *Analyzer, node *plan.Filter
 	)
 
 	return plan.NewFilter(expression.JoinAnd(unhandled...), node.Child)
-}
-
-// getIndexesByTable returns applicable index lookups for each table named in the query node given
-func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope) (indexLookupsByTable, error) {
-	indexSpan, ctx := ctx.Span("getIndexesByTable")
-	defer indexSpan.End()
-
-	tableAliases, err := getTableAliases(node, scope)
-	if err != nil {
-		return nil, err
-	}
-
-	var indexes indexLookupsByTable
-	cont := true
-	var errInAnalysis error
-	transform.Inspect(node, func(node sql.Node) bool {
-		if !cont || errInAnalysis != nil {
-			return false
-		}
-
-		filter, ok := node.(*plan.Filter)
-		if !ok {
-			return true
-		}
-
-		indexAnalyzer, err := newIndexAnalyzerForNode(ctx, filter.Child)
-		if err != nil {
-			errInAnalysis = err
-			return false
-		}
-		defer indexAnalyzer.releaseUsedIndexes()
-
-		var result indexLookupsByTable
-		filterExpression := convertIsNullForIndexes(ctx, filter.Expression)
-		result, err = getIndexes(ctx, indexAnalyzer, filterExpression, tableAliases)
-		if err != nil {
-			errInAnalysis = err
-			return false
-		}
-
-		if !canMergeIndexLookups(indexes, result) {
-			indexes = nil
-			cont = false
-			return false
-		}
-
-		indexes, err = indexesIntersection(ctx, indexes, result)
-		if err != nil {
-			errInAnalysis = err
-			return false
-		}
-		return true
-	})
-
-	if errInAnalysis != nil {
-		return nil, errInAnalysis
-	}
-
-	return indexes, nil
-}
-
-// convertIsNullForIndexes converts all nested IsNull(col) expressions to Equals(col, nil) expressions, as they are
-// equivalent as far as the index interfaces are concerned.
-func convertIsNullForIndexes(ctx *sql.Context, e sql.Expression) sql.Expression {
-	expr, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		isNull, ok := e.(*expression.IsNull)
-		if !ok {
-			return e, transform.SameTree, nil
-		}
-		return expression.NewNullSafeEquals(isNull.Child, expression.NewLiteral(nil, types.Null)), transform.NewTree, nil
-	})
-	return expr
 }

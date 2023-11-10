@@ -81,6 +81,7 @@ var _ sql.PrimaryKeyAlterableTable = (*Table)(nil)
 var _ sql.PrimaryKeyTable = (*Table)(nil)
 var _ fulltext.IndexAlterableTable = (*Table)(nil)
 var _ sql.IndexBuildingTable = (*Table)(nil)
+var _ sql.Databaseable = (*Table)(nil)
 
 // NewTable creates a new Table with the given name and schema. Assigns the default collation, therefore if a different
 // collation is desired, please use NewTableWithCollation.
@@ -211,6 +212,10 @@ func NewPartitionedTableWithCollation(db *BaseDatabase, name string, schema sql.
 // Name implements the sql.Table interface.
 func (t Table) Name() string {
 	return t.name
+}
+
+func (t Table) Database() string {
+	return t.dbName()
 }
 
 // Schema implements the sql.Table interface.
@@ -1599,6 +1604,10 @@ func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) 
 
 func (t *Table) IndexedAccess(lookup sql.IndexLookup) sql.IndexedTable {
 	return &IndexedTable{Table: t, Lookup: lookup}
+}
+
+func (t *Table) PreciseMatch() bool {
+	return true
 }
 
 // WithProjections implements sql.ProjectedTable

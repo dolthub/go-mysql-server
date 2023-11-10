@@ -51,6 +51,10 @@ func (t Table) IndexedAccess(sql.IndexLookup) sql.IndexedTable {
 	panic("not implemented")
 }
 
+func (t Table) PreciseMatch() bool {
+	return true
+}
+
 func (t Table) IndexedPartitions(ctx *sql.Context, _ sql.IndexLookup) (sql.PartitionIter, error) {
 	return t.Partitions(ctx)
 }

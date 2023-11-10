@@ -8373,6 +8373,39 @@ order by i;`,
 			{2, "second row", 2},
 		},
 	},
+	{
+		Query: `
+select a, b
+from ab as ab2
+where exists (
+    select *
+    from ab
+	where ab.b = (
+        select max(v)
+        from uv
+        where uv.v = ab2.a and uv.v = ab.a
+    )
+);`,
+		Expected: []sql.Row{
+			{2, 2},
+		},
+	},
+	{
+		Query: `
+select x, y
+from xy as xy2
+where exists (
+    select *
+    from xy
+        where xy.y = (
+        select max(v)
+        from uv
+        where uv.v = xy2.x and uv.v = xy.x
+    )
+)
+order by x, y;`,
+		Expected: []sql.Row{},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -10369,7 +10402,7 @@ var IndexPrefixQueries = []ScriptTest{
 				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `b` blob,\n  PRIMARY KEY (`i`),\n  KEY `b` (`b`(1))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query:    "insert into t values (998, X'4242');;",
+				Query:    "insert into t values (998, X'4242');",
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
