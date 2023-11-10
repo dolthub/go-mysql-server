@@ -196,7 +196,8 @@ analyze table xy update histogram on (x,y) using data '{
     ]
   }
 }'`,
-			`analyze table xy update histogram on (y,w) using data '{
+			`
+analyze table xy update histogram on (y,w) using data '{
   "statistic": {
     "qual": {
       "database": "mydb",
