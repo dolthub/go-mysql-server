@@ -270,26 +270,26 @@ func PrefixIsNotNull(statistic sql.Statistic) (sql.Statistic, error) {
 	return UpdateCounts(ret), nil
 }
 
-func McvIndexGt(statistic sql.Statistic, i int, val interface{}) (sql.Statistic, error) {
+func McvPrefixGt(statistic sql.Statistic, i int, val interface{}) (sql.Statistic, error) {
 	return statistic, nil
 }
 
-func McvIndexLt(statistic sql.Statistic, i int, val interface{}) (sql.Statistic, error) {
+func McvPrefixLt(statistic sql.Statistic, i int, val interface{}) (sql.Statistic, error) {
 	return statistic, nil
 }
 
-func McvIndexGte(statistic sql.Statistic, i int, val interface{}) (sql.Statistic, error) {
+func McvPrefixGte(statistic sql.Statistic, i int, val interface{}) (sql.Statistic, error) {
 	return statistic, nil
 }
 
-func McvIndexLte(statistic sql.Statistic, i int, val interface{}) (sql.Statistic, error) {
+func McvPrefixLte(statistic sql.Statistic, i int, val interface{}) (sql.Statistic, error) {
 	return statistic, nil
 }
 
-func McvIndexIsNull(statistic sql.Statistic, i int, val interface{}) (sql.Statistic, error) {
+func McvPrefixIsNull(statistic sql.Statistic, i int, val interface{}) (sql.Statistic, error) {
 	return statistic, nil
 }
 
-func McvIndexIsNotNull(statistic sql.Statistic, i int, val interface{}) (sql.Statistic, error) {
+func McvPrefixIsNotNull(statistic sql.Statistic, i int, val interface{}) (sql.Statistic, error) {
 	return statistic, nil
 }

@@ -91,38 +91,38 @@ func NewQualifierFromString(q string) (StatQualifier, error) {
 	if len(parts) < 3 {
 		return StatQualifier{}, fmt.Errorf("invalid qualifier string: '%s', expected '<database>.<table>.<index>'", q)
 	}
-	return StatQualifier{db: parts[0], table: parts[1], index: parts[2]}, nil
+	return StatQualifier{Database: parts[0], Tab: parts[1], Idx: parts[2]}, nil
 }
 
 func NewStatQualifier(db, table, index string) StatQualifier {
-	return StatQualifier{db: db, table: table, index: index}
+	return StatQualifier{Database: db, Tab: table, Idx: index}
 }
 
 // StatQualifier is the namespace hierarchy for a given statistic.
 // The qualifier and set of columns completely describes a unique stat.
 type StatQualifier struct {
-	db    string
-	table string
-	index string
+	Database string
+	Tab      string
+	Idx      string
 }
 
 func (q StatQualifier) String() string {
-	if q.index != "" {
-		return fmt.Sprintf("%s.%s.%s", q.db, q.table, q.index)
+	if q.Idx != "" {
+		return fmt.Sprintf("%s.%s.%s", q.Database, q.Tab, q.Idx)
 	}
-	return fmt.Sprintf("%s.%s", q.db, q.table)
+	return fmt.Sprintf("%s.%s", q.Database, q.Tab)
 }
 
 func (q StatQualifier) Db() string {
-	return q.db
+	return q.Database
 }
 
 func (q StatQualifier) Table() string {
-	return q.table
+	return q.Tab
 }
 
 func (q StatQualifier) Index() string {
-	return q.index
+	return q.Idx
 }
 
 // Histogram is a collection of non-overlapping buckets that

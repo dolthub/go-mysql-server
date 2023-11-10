@@ -70,12 +70,12 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 			return n, transform.SameTree, nil
 		}
 
-		var statistics []sql.Statistic
-		var err error
-		//statistics, err := a.Catalog.StatsProvider.GetTableStats(ctx, strings.ToLower(rt.Database().Name()), strings.ToLower(rt.Name()))
-		//if err != nil {
-		//	return n, transform.SameTree, err
-		//}
+		//var statistics []sql.Statistic
+		//var err error
+		statistics, err := a.Catalog.StatsProvider.GetTableStats(ctx, strings.ToLower(rt.Database().Name()), strings.ToLower(rt.Name()))
+		if err != nil {
+			return n, transform.SameTree, err
+		}
 
 		qualToStat := make(map[sql.StatQualifier]sql.Statistic)
 		for _, stat := range statistics {
@@ -1334,7 +1334,7 @@ func newUniformDistStatistic(dbName, tableName string, sch sql.Schema, idx sql.I
 	}
 	ret := stat.WithFuncDeps(fds)
 	ret = ret.WithColSet(idxCols)
-	return stat, nil
+	return ret, nil
 }
 
 func newConjCollector(s sql.Statistic, ordinals map[string]int) *conjCollector {
@@ -1424,6 +1424,9 @@ func (c *conjCollector) addEq(col string, val interface{}, nullSafe bool) error 
 
 func (c *conjCollector) addIneq(op indexScanOp, col string, val interface{}) error {
 	ord := c.ordinals[col]
+	if ord > 0 {
+		return nil
+	}
 	err := c.cmpFirstCol(op, val)
 	if err != nil {
 		return err
@@ -1464,17 +1467,17 @@ func (c *conjCollector) truncateMcvs(i int, op indexScanOp, val interface{}) err
 	var err error
 	switch op {
 	case indexScanOpGt:
-		c.stat, err = stats.McvIndexGt(c.stat, i, val)
+		c.stat, err = stats.McvPrefixGt(c.stat, i, val)
 	case indexScanOpGte:
-		c.stat, err = stats.McvIndexGte(c.stat, i, val)
+		c.stat, err = stats.McvPrefixGte(c.stat, i, val)
 	case indexScanOpLt:
-		c.stat, err = stats.McvIndexLt(c.stat, i, val)
+		c.stat, err = stats.McvPrefixLt(c.stat, i, val)
 	case indexScanOpLte:
-		c.stat, err = stats.McvIndexLte(c.stat, i, val)
+		c.stat, err = stats.McvPrefixLte(c.stat, i, val)
 	case indexScanOpIsNull:
-		c.stat, err = stats.McvIndexIsNull(c.stat, i, val)
+		c.stat, err = stats.McvPrefixIsNull(c.stat, i, val)
 	case indexScanOpIsNotNull:
-		c.stat, err = stats.McvIndexIsNotNull(c.stat, i, val)
+		c.stat, err = stats.McvPrefixIsNotNull(c.stat, i, val)
 	}
 	return err
 }

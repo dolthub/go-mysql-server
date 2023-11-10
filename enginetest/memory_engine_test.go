@@ -500,6 +500,10 @@ func TestStatistics(t *testing.T) {
 	enginetest.TestStatistics(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestStatisticIndexes(t *testing.T) {
+	enginetest.TestStatisticIndexes(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestSpatialInsertInto(t *testing.T) {
 	enginetest.TestSpatialInsertInto(t, enginetest.NewDefaultMemoryHarness())
 }

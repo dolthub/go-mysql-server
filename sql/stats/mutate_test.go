@@ -753,7 +753,7 @@ func TestPrefixGte(t *testing.T) {
 
 		statistic := &Statistic{Hist: buckets, Typs: tt.typs, fds: fds, colSet: colset}
 
-		t.Run(fmt.Sprintf("GTE bound: %#v", tt.vals), func(t *testing.T) {
+		t.Run(fmt.Sprintf("GTE bound: %v", tt.key), func(t *testing.T) {
 			res, err := PrefixGte(statistic, tt.key)
 			require.NoError(t, err)
 			bounds := collectBounds(res.(*Statistic))
@@ -826,7 +826,7 @@ func TestPrefixLt(t *testing.T) {
 
 		statistic := &Statistic{Hist: buckets, Typs: tt.typs, fds: fds, colSet: colset}
 
-		t.Run(fmt.Sprintf("LT bound: %#v", tt.vals), func(t *testing.T) {
+		t.Run(fmt.Sprintf("LT bound: %v", tt.key), func(t *testing.T) {
 
 			res, err := PrefixLt(statistic, tt.key)
 			require.NoError(t, err)
@@ -900,7 +900,7 @@ func TestPrefixLte(t *testing.T) {
 
 		statistic := &Statistic{Hist: buckets, Typs: tt.typs, fds: fds, colSet: colset}
 
-		t.Run(fmt.Sprintf("LTE bound: %d", tt.key), func(t *testing.T) {
+		t.Run(fmt.Sprintf("LTE bound: %v", tt.key), func(t *testing.T) {
 			res, err := PrefixLte(statistic, tt.key)
 			require.NoError(t, err)
 			bounds := collectBounds(res.(*Statistic))
