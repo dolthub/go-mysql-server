@@ -50,12 +50,18 @@ func PrefixKey(statistic sql.Statistic, key []interface{}, nullable []bool) (sql
 		// lowest index that func is true
 		// lowest index where bucketKey >= key
 		bucketKey := buckets[i].UpperBound()
-		for i, t := range statistic.Types() {
+		for i, _ := range key {
+			t := statistic.Types()[i]
 			cmp, err := nilSafeCmp(t, bucketKey[i], key[i])
 			if err != nil {
 				searchErr = err
 			}
-			if cmp < 0 {
+			switch cmp {
+			case 0:
+				// equal, keep searching for ineq
+			case 1:
+				return true
+			case -1:
 				// bucket upper range too low
 				return false
 			}
@@ -114,7 +120,8 @@ func UpdateCounts(statistic sql.Statistic) sql.Statistic {
 }
 
 func keysEqual(types []sql.Type, left, right []interface{}) (bool, error) {
-	for i, t := range types {
+	for i, _ := range right {
+		t := types[i]
 		cmp, err := t.Compare(left[i], right[i])
 		if err != nil {
 			return false, err
