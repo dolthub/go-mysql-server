@@ -14,8 +14,9 @@
 package stats
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
 	"sort"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 func Union(s1, s2 sql.Statistic) sql.Statistic {
