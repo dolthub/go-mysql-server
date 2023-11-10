@@ -82,8 +82,8 @@ func TestStatistics(t *testing.T, harness Harness) {
 	}
 }
 
-// TestStatisticIndexes tests index histogram costing
-func TestStatisticIndexes(t *testing.T, harness Harness) {
+// TestStatisticIndexFilters tests index histogram costing
+func TestStatisticIndexFilters(t *testing.T, harness Harness) {
 	for _, script := range queries.StatsIndexTests {
 		TestScript(t, harness, script)
 	}

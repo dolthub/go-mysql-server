@@ -121,7 +121,7 @@ func (b *Builder) buildAnalyzeTables(inScope *scope, n *ast.Analyze, query strin
 
 func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tableName string, sch sql.Schema, columns []string, types []sql.Type) (outScope *scope) {
 	outScope = inScope.push()
-	statisticJ := new(stats.StatisticJSON)
+	statistic := new(stats.Statistic)
 	using := b.buildScalar(inScope, n.Using)
 	if l, ok := using.(*expression.Literal); ok {
 		if typ, ok := l.Type().(sql.StringType); ok {
@@ -130,7 +130,7 @@ func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tab
 				b.handleErr(err)
 			}
 			if str, ok := val.(string); ok {
-				err := json.Unmarshal([]byte(str), statisticJ)
+				err := json.Unmarshal([]byte(str), statistic)
 				if err != nil {
 					err = ErrFailedToParseStats.New(err.Error())
 					b.handleErr(err)
@@ -139,7 +139,6 @@ func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tab
 
 		}
 	}
-	statistic := statisticJ.Statistic
 	if statistic == nil {
 		err := fmt.Errorf("no statistics found for update")
 		b.handleErr(err)

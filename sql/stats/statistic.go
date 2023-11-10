@@ -44,10 +44,6 @@ func NewStatistic(rowCount, distinctCount, nullCount, avgSize uint64, createdAt 
 	}
 }
 
-type StatisticJSON struct {
-	Statistic *Statistic
-}
-
 type Statistic struct {
 	RowCnt      uint64            `json:"row_count"`
 	DistinctCnt uint64            `json:"distinct_count"`

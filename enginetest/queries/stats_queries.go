@@ -179,12 +179,12 @@ var StatsIndexTests = []ScriptTest{
 			"create table xy (x int, y int, z varchar(36) default(uuid()), w varchar(10), key (z), key (y,w), key(x,y))",
 			"insert into xy (x,y,w) values (1, 1, 'a'), (2,1,'a'), (3,1,'b'),(4,2,'b'),(5,2,'c')",
 			`
-analyze table xy update histogram on (x,y) using data '{
-  "statistic": {
+analyze table xy update histogram on (x,y) using data
+'{
     "qualifier": {
-      "database": "mydb",
-      "table": "xy",
-      "index": "xy"
+        "database": "mydb",
+        "table": "xy",
+       "index": "xy"
     },
     "types:":["bigint","bigint"],
     "columns":["x", "y"],
@@ -194,25 +194,23 @@ analyze table xy update histogram on (x,y) using data '{
       {"upper_bound": [3,1], "row_count": 1},
       {"upper_bound": [4,2], "row_count": 1},
       {"upper_bound": [5,2], "row_count": 1}
-    ]
-  }
+]
 }'`,
 			`
-analyze table xy update histogram on (y,w) using data '{
-  "statistic": {
+analyze table xy update histogram on (y,w) using data '
+{
     "qualifier": {
-      "database": "mydb",
-      "table": "xy",
-      "index": "yw"
-    },    "types:":["bigint","varchar(10)"],
+        "database": "mydb",
+        "table": "xy",
+        "index": "yw"
+      },    "types:":["bigint","varchar(10)"],
     "columns":["y", "w"],
     "buckets":[
-      {"upper_bound": [1,"a"], "row_count": 2},
-      {"upper_bound": [1,"b"], "row_count": 1},
-      {"upper_bound": [2,"b"], "row_count": 1},
-      {"upper_bound": [2,"c"], "row_count": 1}
+        {"upper_bound": [1,"a"], "row_count": 2},
+        {"upper_bound": [1,"b"], "row_count": 1},
+        {"upper_bound": [2,"b"], "row_count": 1},
+        {"upper_bound": [2,"c"], "row_count": 1}
     ]
-  }
 }'`,
 		},
 		Assertions: []ScriptTestAssertion{
