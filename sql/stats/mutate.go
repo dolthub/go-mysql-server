@@ -141,7 +141,7 @@ func PrefixLt(statistic sql.Statistic, val interface{}) (sql.Statistic, error) {
 		// lowest index that func is true
 		bucketKey := buckets[i].UpperBound()
 		typ := statistic.Types()[0]
-		cmp, err := typ.Compare(bucketKey[0], val)
+		cmp, err := nilSafeCmp(typ, bucketKey[0], val)
 		if err != nil {
 			searchErr = err
 		}
@@ -151,11 +151,11 @@ func PrefixLt(statistic sql.Statistic, val interface{}) (sql.Statistic, error) {
 		return nil, searchErr
 	}
 	// inclusive of idx bucket
-	ret, err := statistic.WithHistogram(buckets[:idx+1])
+	ret, err := statistic.WithHistogram(buckets[:idx])
 	if err != nil {
 		return nil, err
 	}
-	return UpdateCounts(ret), nil
+	return PrefixIsNotNull(ret)
 }
 
 func PrefixGt(statistic sql.Statistic, val interface{}) (sql.Statistic, error) {
@@ -165,7 +165,7 @@ func PrefixGt(statistic sql.Statistic, val interface{}) (sql.Statistic, error) {
 		// lowest index that func is true
 		bucketKey := buckets[i].UpperBound()
 		typ := statistic.Types()[0]
-		cmp, err := typ.Compare(bucketKey[0], val)
+		cmp, err := nilSafeCmp(typ, bucketKey[0], val)
 		if err != nil {
 			searchErr = err
 		}
@@ -179,7 +179,7 @@ func PrefixGt(statistic sql.Statistic, val interface{}) (sql.Statistic, error) {
 	if err != nil {
 		return nil, err
 	}
-	return UpdateCounts(ret), nil
+	return PrefixIsNotNull(ret)
 }
 
 func PrefixLte(statistic sql.Statistic, val interface{}) (sql.Statistic, error) {
@@ -190,7 +190,7 @@ func PrefixLte(statistic sql.Statistic, val interface{}) (sql.Statistic, error) 
 		// lowest index that func is true
 		bucketKey := buckets[i].UpperBound()
 		typ := statistic.Types()[0]
-		cmp, err := typ.Compare(bucketKey[0], val)
+		cmp, err := nilSafeCmp(typ, bucketKey[0], val)
 		if err != nil {
 			searchErr = err
 		}
@@ -200,11 +200,11 @@ func PrefixLte(statistic sql.Statistic, val interface{}) (sql.Statistic, error) 
 		return nil, searchErr
 	}
 	// inclusive of idx bucket
-	ret, err := statistic.WithHistogram(buckets[:idx+1])
+	ret, err := statistic.WithHistogram(buckets[:idx])
 	if err != nil {
 		return nil, err
 	}
-	return UpdateCounts(ret), nil
+	return PrefixIsNotNull(ret)
 }
 
 func PrefixGte(statistic sql.Statistic, val interface{}) (sql.Statistic, error) {
@@ -214,7 +214,7 @@ func PrefixGte(statistic sql.Statistic, val interface{}) (sql.Statistic, error) 
 		// lowest index that func is true
 		bucketKey := buckets[i].UpperBound()
 		typ := statistic.Types()[0]
-		cmp, err := typ.Compare(bucketKey[0], val)
+		cmp, err := nilSafeCmp(typ, bucketKey[0], val)
 		if err != nil {
 			searchErr = err
 		}
@@ -228,7 +228,7 @@ func PrefixGte(statistic sql.Statistic, val interface{}) (sql.Statistic, error) 
 	if err != nil {
 		return nil, err
 	}
-	return UpdateCounts(ret), nil
+	return PrefixIsNotNull(ret)
 }
 
 func PrefixIsNull(statistic sql.Statistic) (sql.Statistic, error) {
@@ -237,17 +237,12 @@ func PrefixIsNull(statistic sql.Statistic) (sql.Statistic, error) {
 	idx := sort.Search(len(buckets), func(i int) bool {
 		// lowest index that func is true
 		bucketKey := buckets[i].UpperBound()
-		typ := statistic.Types()[0]
-		cmp, err := typ.Compare(bucketKey[0], nil)
-		if err != nil {
-			searchErr = err
-		}
-		return cmp > 0
+		return bucketKey[0] != nil
 	})
 	if searchErr != nil {
 		return nil, searchErr
 	}
-	// inclusive of idx bucket
+	// exclusive of idx bucket
 	ret, err := statistic.WithHistogram(buckets[:idx])
 	if err != nil {
 		return nil, err
@@ -261,18 +256,14 @@ func PrefixIsNotNull(statistic sql.Statistic) (sql.Statistic, error) {
 	idx := sort.Search(len(buckets), func(i int) bool {
 		// lowest index that func is true
 		bucketKey := buckets[i].UpperBound()
-		typ := statistic.Types()[0]
-		cmp, err := typ.Compare(bucketKey[0], nil)
-		if err != nil {
-			searchErr = err
-		}
-		return cmp <= 0
+		return bucketKey[0] != nil
+
 	})
 	if searchErr != nil {
 		return nil, searchErr
 	}
 	// inclusive of idx bucket
-	ret, err := statistic.WithHistogram(buckets[:idx])
+	ret, err := statistic.WithHistogram(buckets[idx:])
 	if err != nil {
 		return nil, err
 	}

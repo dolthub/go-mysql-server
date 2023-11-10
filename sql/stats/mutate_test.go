@@ -549,29 +549,364 @@ func TestPrefixKey(t *testing.T) {
 	}
 }
 
+func collectBounds(s *Statistic) [][]interface{} {
+	var bounds [][]interface{}
+	for _, b := range s.Histogram() {
+		bounds = append(bounds, b.UpperBound())
+	}
+	return bounds
+}
+
 // TODO these will use the same tests as above, just with different expected values
 func TestPrefixIsNull(t *testing.T) {
+	tests := []struct {
+		vals     [][]interface{}
+		key      []interface{}
+		expLower int
+		expUpper int
+		typs     []sql.Type
+	}{
+		{
+			vals:     [][]interface{}{{nil}, {2}, {3}, {4}},
+			expLower: 0,
+			expUpper: 1,
+			typs:     []sql.Type{types.Int64},
+		},
+		{
+			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			expLower: 0,
+			expUpper: 3,
+			typs:     []sql.Type{types.Int64},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("is null bound: %#v", tt.vals), func(t *testing.T) {
+			cols := sql.NewFastIntSet()
+			cols.AddRange(1, len(tt.typs))
+			colset := sql.NewColSetFromIntSet(cols)
+			fds := sql.NewTablescanFDs(colset, []sql.ColSet{colset}, nil, colset)
+			var buckets []*Bucket
+			for _, v := range tt.vals {
+				buckets = append(buckets, &Bucket{BoundVal: v})
+			}
 
+			statistic := &Statistic{Hist: buckets, Typs: tt.typs, fds: fds, colSet: colset}
+
+			res, err := PrefixIsNull(statistic)
+			require.NoError(t, err)
+			bounds := collectBounds(res.(*Statistic))
+			require.ElementsMatch(t, tt.vals[tt.expLower:tt.expUpper], bounds)
+		})
+	}
 }
 
 func TestPrefixIsNotNull(t *testing.T) {
+	tests := []struct {
+		vals     [][]interface{}
+		key      []interface{}
+		expLower int
+		expUpper int
+		typs     []sql.Type
+	}{
+		{
+			vals:     [][]interface{}{{nil}, {2}, {3}, {4}},
+			expLower: 1,
+			expUpper: 4,
+			typs:     []sql.Type{types.Int64},
+		},
+		{
+			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			expLower: 3,
+			expUpper: 6,
+			typs:     []sql.Type{types.Int64},
+		},
+	}
+	for _, tt := range tests {
+		cols := sql.NewFastIntSet()
+		cols.AddRange(1, len(tt.typs))
+		colset := sql.NewColSetFromIntSet(cols)
+		fds := sql.NewTablescanFDs(colset, []sql.ColSet{colset}, nil, colset)
 
+		var buckets []*Bucket
+		for _, v := range tt.vals {
+			buckets = append(buckets, &Bucket{BoundVal: v})
+		}
+
+		statistic := &Statistic{Hist: buckets, Typs: tt.typs, fds: fds, colSet: colset}
+
+		t.Run(fmt.Sprintf("is not null bound: %#v", tt.vals), func(t *testing.T) {
+			res, err := PrefixIsNotNull(statistic)
+			require.NoError(t, err)
+			bounds := collectBounds(res.(*Statistic))
+			require.ElementsMatch(t, tt.vals[tt.expLower:tt.expUpper], bounds)
+		})
+
+	}
 }
 
 func TestPrefixGt(t *testing.T) {
+	tests := []struct {
+		vals     [][]interface{}
+		key      interface{}
+		expLower int
+		expUpper int
+		typs     []sql.Type
+	}{
+		{
+			vals:     [][]interface{}{{nil}, {2}, {3}, {4}},
+			key:      2,
+			expLower: 2,
+			expUpper: 4,
+			typs:     []sql.Type{types.Int64},
+		},
+		{
+			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			key:      nil,
+			expLower: 3,
+			expUpper: 6,
+			typs:     []sql.Type{types.Int64},
+		},
+		{
+			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			key:      3,
+			expLower: 5,
+			expUpper: 6,
+			typs:     []sql.Type{types.Int64},
+		},
+		{
+			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			key:      4,
+			expLower: 6,
+			expUpper: 6,
+			typs:     []sql.Type{types.Int64},
+		},
+	}
+	for _, tt := range tests {
+		cols := sql.NewFastIntSet()
+		cols.AddRange(1, len(tt.typs))
+		colset := sql.NewColSetFromIntSet(cols)
+		fds := sql.NewTablescanFDs(colset, []sql.ColSet{colset}, nil, colset)
 
+		var buckets []*Bucket
+		for _, v := range tt.vals {
+			buckets = append(buckets, &Bucket{BoundVal: v})
+		}
+
+		statistic := &Statistic{Hist: buckets, Typs: tt.typs, fds: fds, colSet: colset}
+
+		t.Run(fmt.Sprintf("GT bound: %d", tt.key), func(t *testing.T) {
+			res, err := PrefixGt(statistic, tt.key)
+			require.NoError(t, err)
+			bounds := collectBounds(res.(*Statistic))
+			require.ElementsMatch(t, tt.vals[tt.expLower:tt.expUpper], bounds)
+		})
+	}
 }
 
 func TestPrefixGte(t *testing.T) {
+	tests := []struct {
+		vals     [][]interface{}
+		key      interface{}
+		expLower int
+		expUpper int
+		typs     []sql.Type
+	}{
+		{
+			vals:     [][]interface{}{{nil}, {2}, {3}, {4}},
+			key:      2,
+			expLower: 1,
+			expUpper: 4,
+			typs:     []sql.Type{types.Int64},
+		},
+		{
+			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			key:      3,
+			expLower: 4,
+			expUpper: 6,
+			typs:     []sql.Type{types.Int64},
+		},
+		{
+			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			key:      4,
+			expLower: 5,
+			expUpper: 6,
+			typs:     []sql.Type{types.Int64},
+		},
+		{
+			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			key:      5,
+			expLower: 6,
+			expUpper: 6,
+			typs:     []sql.Type{types.Int64},
+		},
+	}
+	for _, tt := range tests {
+		cols := sql.NewFastIntSet()
+		cols.AddRange(1, len(tt.typs))
+		colset := sql.NewColSetFromIntSet(cols)
+		fds := sql.NewTablescanFDs(colset, []sql.ColSet{colset}, nil, colset)
 
+		var buckets []*Bucket
+		for _, v := range tt.vals {
+			buckets = append(buckets, &Bucket{BoundVal: v})
+		}
+
+		statistic := &Statistic{Hist: buckets, Typs: tt.typs, fds: fds, colSet: colset}
+
+		t.Run(fmt.Sprintf("GTE bound: %#v", tt.vals), func(t *testing.T) {
+			res, err := PrefixGte(statistic, tt.key)
+			require.NoError(t, err)
+			bounds := collectBounds(res.(*Statistic))
+			require.ElementsMatch(t, tt.vals[tt.expLower:tt.expUpper], bounds)
+		})
+	}
 }
 
 func TestPrefixLt(t *testing.T) {
+	tests := []struct {
+		vals     [][]interface{}
+		key      interface{}
+		expLower int
+		expUpper int
+		typs     []sql.Type
+	}{
+		{
+			vals:     [][]interface{}{{nil}, {2}, {3}, {4}},
+			key:      2,
+			expLower: 1,
+			expUpper: 1,
+			typs:     []sql.Type{types.Int64},
+		},
+		{
+			vals:     [][]interface{}{{nil}, {2}, {3}, {4}},
+			key:      nil,
+			expLower: 1,
+			expUpper: 1,
+			typs:     []sql.Type{types.Int64},
+		},
+		{
+			vals:     [][]interface{}{{2}, {3}, {4}},
+			key:      2,
+			expLower: 0,
+			expUpper: 0,
+			typs:     []sql.Type{types.Int64},
+		},
+		{
+			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			key:      3,
+			expLower: 3,
+			expUpper: 4,
+			typs:     []sql.Type{types.Int64},
+		},
+		{
+			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			key:      4,
+			expLower: 3,
+			expUpper: 5,
+			typs:     []sql.Type{types.Int64},
+		},
+		{
+			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			key:      5,
+			expLower: 3,
+			expUpper: 6,
+			typs:     []sql.Type{types.Int64},
+		},
+	}
+	for _, tt := range tests {
+		cols := sql.NewFastIntSet()
+		cols.AddRange(1, len(tt.typs))
+		colset := sql.NewColSetFromIntSet(cols)
+		fds := sql.NewTablescanFDs(colset, []sql.ColSet{colset}, nil, colset)
 
+		var buckets []*Bucket
+		for _, v := range tt.vals {
+			buckets = append(buckets, &Bucket{BoundVal: v})
+		}
+
+		statistic := &Statistic{Hist: buckets, Typs: tt.typs, fds: fds, colSet: colset}
+
+		t.Run(fmt.Sprintf("LT bound: %#v", tt.vals), func(t *testing.T) {
+
+			res, err := PrefixLt(statistic, tt.key)
+			require.NoError(t, err)
+			bounds := collectBounds(res.(*Statistic))
+			require.ElementsMatch(t, tt.vals[tt.expLower:tt.expUpper], bounds)
+		})
+	}
 }
 
 func TestPrefixLte(t *testing.T) {
+	tests := []struct {
+		vals     [][]interface{}
+		key      interface{}
+		expLower int
+		expUpper int
+		typs     []sql.Type
+	}{
+		{
+			vals:     [][]interface{}{{nil}, {2}, {3}, {4}},
+			key:      2,
+			expLower: 1,
+			expUpper: 2,
+			typs:     []sql.Type{types.Int64},
+		},
+		{
+			vals:     [][]interface{}{{nil}, {2}, {3}, {4}},
+			key:      nil,
+			expLower: 1,
+			expUpper: 1,
+			typs:     []sql.Type{types.Int64},
+		},
+		{
+			vals:     [][]interface{}{{2}, {3}, {4}},
+			key:      2,
+			expLower: 0,
+			expUpper: 1,
+			typs:     []sql.Type{types.Int64},
+		},
+		{
+			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			key:      3,
+			expLower: 3,
+			expUpper: 5,
+			typs:     []sql.Type{types.Int64},
+		},
+		{
+			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			key:      4,
+			expLower: 3,
+			expUpper: 6,
+			typs:     []sql.Type{types.Int64},
+		},
+		{
+			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			key:      5,
+			expLower: 3,
+			expUpper: 6,
+			typs:     []sql.Type{types.Int64},
+		},
+	}
+	for _, tt := range tests {
+		cols := sql.NewFastIntSet()
+		cols.AddRange(1, len(tt.typs))
+		colset := sql.NewColSetFromIntSet(cols)
+		fds := sql.NewTablescanFDs(colset, []sql.ColSet{colset}, nil, colset)
 
+		var buckets []*Bucket
+		for _, v := range tt.vals {
+			buckets = append(buckets, &Bucket{BoundVal: v})
+		}
+
+		statistic := &Statistic{Hist: buckets, Typs: tt.typs, fds: fds, colSet: colset}
+
+		t.Run(fmt.Sprintf("LTE bound: %d", tt.key), func(t *testing.T) {
+			res, err := PrefixLte(statistic, tt.key)
+			require.NoError(t, err)
+			bounds := collectBounds(res.(*Statistic))
+			require.ElementsMatch(t, tt.vals[tt.expLower:tt.expUpper], bounds)
+		})
+	}
 }
 
 func TestUpdateCounts(t *testing.T) {
