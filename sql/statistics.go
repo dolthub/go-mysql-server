@@ -101,9 +101,9 @@ func NewStatQualifier(db, table, index string) StatQualifier {
 // StatQualifier is the namespace hierarchy for a given statistic.
 // The qualifier and set of columns completely describes a unique stat.
 type StatQualifier struct {
-	Database string
-	Tab      string
-	Idx      string
+	Database string `json:"database"`
+	Tab      string `json:"table"`
+	Idx      string `json:"index"`
 }
 
 func (q StatQualifier) String() string {

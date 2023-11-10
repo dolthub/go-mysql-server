@@ -49,18 +49,18 @@ type StatisticJSON struct {
 }
 
 type Statistic struct {
-	RowCnt      uint64    `json:"row_count"`
-	DistinctCnt uint64    `json:"distinct_count"`
-	NullCnt     uint64    `json:"null_count"`
-	AvgRowSize  uint64    `json:"avg_size"`
-	Created     time.Time `json:"created_at"`
-	Qual        sql.StatQualifier
-	Cols        []string        `json:"columns"`
-	Typs        []sql.Type      `json:"types"`
-	Hist        []*Bucket       `json:"buckets"`
-	IdxClass    uint8           `json:"index_class"`
-	fds         *sql.FuncDepSet `json:"-"`
-	colSet      sql.ColSet      `json:"-"`
+	RowCnt      uint64            `json:"row_count"`
+	DistinctCnt uint64            `json:"distinct_count"`
+	NullCnt     uint64            `json:"null_count"`
+	AvgRowSize  uint64            `json:"avg_size"`
+	Created     time.Time         `json:"created_at"`
+	Qual        sql.StatQualifier `json:"qualifier"`
+	Cols        []string          `json:"columns"`
+	Typs        []sql.Type        `json:"types"`
+	Hist        []*Bucket         `json:"buckets"`
+	IdxClass    uint8             `json:"index_class"`
+	fds         *sql.FuncDepSet   `json:"-"`
+	colSet      sql.ColSet        `json:"-"`
 }
 
 var _ sql.JSONWrapper = (*Statistic)(nil)

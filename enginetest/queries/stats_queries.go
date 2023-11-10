@@ -180,10 +180,10 @@ var StatsIndexTests = []ScriptTest{
 			`
 analyze table xy update histogram on (x,y) using data '{
   "statistic": {
-    "qual": {
+    "qualifier": {
       "database": "mydb",
-      "tab": "xy",
-      "idx": "xy"
+      "table": "xy",
+      "index": "xy"
     },
     "types:":["bigint","bigint"],
     "columns":["x", "y"],
@@ -199,10 +199,10 @@ analyze table xy update histogram on (x,y) using data '{
 			`
 analyze table xy update histogram on (y,w) using data '{
   "statistic": {
-    "qual": {
+    "qualifier": {
       "database": "mydb",
-      "tab": "xy",
-      "idx": "yw"
+      "table": "xy",
+      "index": "yw"
     },    "types:":["bigint","varchar(10)"],
     "columns":["y", "w"],
     "buckets":[
