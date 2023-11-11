@@ -17,7 +17,7 @@ package memo
 import (
 	"fmt"
 
-	"github.com/cespare/xxhash"
+	"github.com/cespare/xxhash/v2"
 )
 
 type ScalarExprId uint8
