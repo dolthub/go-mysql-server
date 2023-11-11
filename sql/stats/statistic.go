@@ -52,7 +52,7 @@ type Statistic struct {
 	Created     time.Time         `json:"created_at"`
 	Qual        sql.StatQualifier `json:"qualifier"`
 	Cols        []string          `json:"columns"`
-	Typs        []sql.Type        `json:"types"`
+	Typs        []sql.Type        `json:"-"`
 	Hist        []*Bucket         `json:"buckets"`
 	IdxClass    uint8             `json:"index_class"`
 	fds         *sql.FuncDepSet   `json:"-"`

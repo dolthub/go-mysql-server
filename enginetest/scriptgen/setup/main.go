@@ -44,7 +44,7 @@ type SetupScript []string
 type fileSetup struct {
 	path    string
 	file    *os.File
-	scanner *lineScanner
+	Scanner *lineScanner
 	data    Testdata
 	rewrite *bytes.Buffer
 }
@@ -57,7 +57,7 @@ func NewFileSetup(path string) (*fileSetup, error) {
 	return &fileSetup{
 		path:    path,
 		file:    file,
-		scanner: newLineScanner(file),
+		Scanner: newLineScanner(file),
 		rewrite: &bytes.Buffer{},
 	}, nil
 }
@@ -70,8 +70,8 @@ func (f *fileSetup) Data() Testdata {
 
 func (f *fileSetup) Next() (bool, error) {
 	f.data = Testdata{}
-	for f.scanner.Scan() {
-		line := f.scanner.Text()
+	for f.Scanner.Scan() {
+		line := f.Scanner.Text()
 		f.emit(line)
 
 		fields := strings.Fields(line)
@@ -83,13 +83,13 @@ func (f *fileSetup) Next() (bool, error) {
 			// Skip comment lines.
 			continue
 		}
-		f.data.pos = fmt.Sprintf("%s:%d", f.path, f.scanner.line)
+		f.data.pos = fmt.Sprintf("%s:%d", f.path, f.Scanner.line)
 		f.data.cmd = cmd
 
 		var buf bytes.Buffer
 		var separator bool
-		for f.scanner.Scan() {
-			line := f.scanner.Text()
+		for f.Scanner.Scan() {
+			line := f.Scanner.Text()
 			if strings.TrimSpace(line) == "" {
 				break
 			}
@@ -100,6 +100,9 @@ func (f *fileSetup) Next() (bool, error) {
 				break
 			}
 			buf.WriteString(line + "\n")
+		}
+		if f.Scanner.Err() != nil {
+			return false, f.Scanner.Err()
 		}
 
 		f.data.Sql = strings.TrimSpace(buf.String())
@@ -112,8 +115,8 @@ func (f *fileSetup) Next() (bool, error) {
 
 		if separator {
 			buf.Reset()
-			for f.scanner.Scan() {
-				line := f.scanner.Text()
+			for f.Scanner.Scan() {
+				line := f.Scanner.Text()
 				if strings.TrimSpace(line) == "" {
 					break
 				}
@@ -143,8 +146,12 @@ type lineScanner struct {
 }
 
 func newLineScanner(r io.Reader) *lineScanner {
+	buf := make([]byte, 0, 64*1024)
+	s := bufio.NewScanner(r)
+	s.Buffer(buf, 1024*1024)
+
 	return &lineScanner{
-		Scanner: bufio.NewScanner(r),
+		Scanner: s,
 		line:    0,
 	}
 }

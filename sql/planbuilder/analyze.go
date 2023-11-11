@@ -132,7 +132,7 @@ func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tab
 			if str, ok := val.(string); ok {
 				err := json.Unmarshal([]byte(str), statistic)
 				if err != nil {
-					err = ErrFailedToParseStats.New(err.Error())
+					err = ErrFailedToParseStats.New(err.Error(), str)
 					b.handleErr(err)
 				}
 			}
