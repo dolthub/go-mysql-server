@@ -184,17 +184,6 @@ func NewCreateTable(db sql.Database, name string, ifn IfNotExistsOption, temp Te
 	}
 }
 
-// NewCreateTableLike creates a new CreateTable node for CREATE TABLE LIKE statements
-func NewCreateTableLike(db sql.Database, name string, likeTable sql.Node, ifn IfNotExistsOption, temp TempTableOption) *CreateTable {
-	return &CreateTable{
-		ddlNode:     ddlNode{db},
-		name:        name,
-		ifNotExists: ifn,
-		like:        likeTable,
-		temporary:   temp,
-	}
-}
-
 // NewCreateTableSelect create a new CreateTable node for CREATE TABLE [AS] SELECT
 func NewCreateTableSelect(db sql.Database, name string, selectNode sql.Node, tableSpec *TableSpec, ifn IfNotExistsOption, temp TempTableOption) *CreateTable {
 	for _, s := range tableSpec.Schema.Schema {

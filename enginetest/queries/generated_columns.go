@@ -142,6 +142,41 @@ var GeneratedColumnTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "creating index on stored generated column",
+		SetUpScript: []string{
+			"create table t1 (a int primary key, b int as (a + 1) stored)",
+			"insert into t1(a) values (1), (2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "create index i1 on t1(b)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+						"  `a` int NOT NULL,\n" +
+						"  `b` int GENERATED ALWAYS AS ((a + 1)) STORED,\n" +
+						"  PRIMARY KEY (`a`),\n" +
+						"  KEY `i1` (`b`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "select * from t1 where b = 2 order by a",
+				Expected: []sql.Row{{1, 2}},
+			},
+			{
+				Query:    "select * from t1 order by a",
+				Expected: []sql.Row{{1, 2}, {2, 3}},
+			},
+			{
+				Query:    "select * from t1 order by b",
+				Expected: []sql.Row{{1, 2}, {2, 3}},
+			},
+		},
+	},
+	{
 		Name: "index on stored generated column and one non-generated column",
 		SetUpScript: []string{
 			"create table t1 (a int primary key, b int as (a + 1) stored, c int)",
@@ -398,6 +433,46 @@ var GeneratedColumnTests = []ScriptTest{
 					{"abc", "123", "abc123"},
 					{"def", nil, nil},
 					{"ghi", "", "ghi"},
+				},
+			},
+		},
+	},
+	{
+		Name: "physical columns added after virtual one",
+		SetUpScript: []string{
+			"create table t (pk int primary key, col1 int as (pk + 1));",
+			"insert into t (pk) values (1), (3)",
+			"alter table t add index idx1 (col1, pk);",
+			"alter table t add index idx2 (col1);",
+			"alter table t add column col2 int;",
+			"alter table t add column col3 int;",
+			"insert into t (pk, col2, col3) values (2, 4, 5);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t order by pk",
+				Expected: []sql.Row{
+					{1, 2, nil, nil},
+					{2, 3, 4, 5},
+					{3, 4, nil, nil},
+				},
+			},
+			{
+				Query: "select * from t where col1 = 2",
+				Expected: []sql.Row{
+					{1, 2, nil, nil},
+				},
+			},
+			{
+				Query: "select * from t where col1 = 3 and pk = 2",
+				Expected: []sql.Row{
+					{2, 3, 4, 5},
+				},
+			},
+			{
+				Query: "select * from t where pk = 2",
+				Expected: []sql.Row{
+					{2, 3, 4, 5},
 				},
 			},
 		},
