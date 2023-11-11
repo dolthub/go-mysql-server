@@ -196,8 +196,7 @@ analyze table xy update histogram on (x,y) using data
       {"upper_bound": [5,2], "row_count": 1}
 ]
 }'`,
-			`
-analyze table xy update histogram on (y,w) using data '
+			`analyze table xy update histogram on (y,w) using data '
 {
     "qualifier": {
         "database": "mydb",
@@ -212,13 +211,28 @@ analyze table xy update histogram on (y,w) using data '
         {"upper_bound": [2,"c"], "row_count": 1}
     ]
 }'`,
+			`analyze table xy update histogram on (z) using data '
+{
+    "qualifier": {
+        "database": "mydb",
+        "table": "xy",
+        "index": "z"
+      },    "types:":["varchar(36)"],
+    "columns":["z"],
+    "buckets":[
+        {"upper_bound": ["1"], "row_count": 1},
+        {"upper_bound": ["2"], "row_count": 1},
+        {"upper_bound": ["3"], "row_count": 1},
+        {"upper_bound": ["4"], "row_count": 1},
+		{"upper_bound": ["5"], "row_count": 1}
+    ]
+}'`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:              "select * from xy where x > 4 and y = 1 and w = 'a'",
-				Expected:           []sql.Row{},
-				CheckIndexedAccess: true,
-				IndexName:          "xy",
+				Query:           "select * from xy where x > 4 and y = 1 and w = 'a'",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"xy"},
 			},
 		},
 	},

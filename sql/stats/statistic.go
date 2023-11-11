@@ -134,7 +134,7 @@ func (s *Statistic) Histogram() sql.Histogram {
 	return buckets
 }
 
-func (s *Statistic) WithDistinct(i uint64) sql.Statistic {
+func (s *Statistic) WithDistinctCount(i uint64) sql.Statistic {
 	ret := *s
 	ret.DistinctCnt = i
 	return &ret
@@ -164,7 +164,7 @@ func (s *Statistic) WithHistogram(h sql.Histogram) (sql.Statistic, error) {
 	for _, b := range h {
 		sqlB, ok := b.(*Bucket)
 		if !ok {
-			return nil, fmt.Errorf(fmt.Sprintf("invalid bucket type: %T", b))
+			return nil, fmt.Errorf("invalid bucket type: %T", b)
 		}
 		ret.Hist = append(ret.Hist, sqlB)
 	}

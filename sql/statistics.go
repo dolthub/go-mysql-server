@@ -80,7 +80,7 @@ type MutableStatistic interface {
 	WithColSet(ColSet) Statistic
 	WithFuncDeps(*FuncDepSet) Statistic
 	WithHistogram(Histogram) (Statistic, error)
-	WithDistinct(uint64) Statistic
+	WithDistinctCount(uint64) Statistic
 	WithRowCount(uint64) Statistic
 	WithNullCount(uint64) Statistic
 	WithAvgSize(uint64) Statistic

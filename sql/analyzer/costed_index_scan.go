@@ -107,6 +107,18 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 		}
 		tableName := strings.ToLower(rt.UnderlyingTable().Name())
 
+		if len(qualToStat) > 0 {
+			// don't mix and match real and default stats
+			for _, idx := range indexes {
+				qual := sql.NewStatQualifier(dbName, tableName, strings.ToLower(idx.ID()))
+				_, ok := qualToStat[qual]
+				if !ok {
+					qualToStat = nil
+					break
+				}
+			}
+		}
+
 		for _, idx := range indexes {
 			qual := sql.NewStatQualifier(dbName, tableName, strings.ToLower(idx.ID()))
 			stat, ok := qualToStat[qual]

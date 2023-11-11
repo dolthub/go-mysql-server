@@ -129,8 +129,8 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 						assertion.ExpectedWarningMessageSubstring, assertion.SkipResultsCheck)
 				} else if assertion.SkipResultsCheck {
 					RunQuery(t, e, harness, assertion.Query)
-				} else if assertion.CheckIndexedAccess || assertion.IndexName != "" {
-					TestQueryWithIndexCheck(t, ctx, e, harness, assertion.Query, assertion.IndexName, assertion.Expected, assertion.ExpectedColumns, assertion.Bindings)
+				} else if assertion.CheckIndexedAccess {
+					TestQueryWithIndexCheck(t, ctx, e, harness, assertion.Query, assertion.Expected, assertion.ExpectedColumns, assertion.Bindings)
 				} else {
 					TestQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, assertion.ExpectedColumns, assertion.Bindings)
 				}
@@ -360,7 +360,7 @@ func GetFilterIndex(n sql.Node) sql.IndexLookup {
 	return lookup
 }
 
-func TestQueryWithIndexCheck(t *testing.T, ctx *sql.Context, e QueryEngine, harness Harness, q string, expIndex string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]*querypb.BindVariable) {
+func TestQueryWithIndexCheck(t *testing.T, ctx *sql.Context, e QueryEngine, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]*querypb.BindVariable) {
 	ctx = ctx.WithQuery(q)
 	require := require.New(t)
 	if len(bindings) > 0 {
@@ -371,12 +371,7 @@ func TestQueryWithIndexCheck(t *testing.T, ctx *sql.Context, e QueryEngine, harn
 	if !IsServerEngine(e) {
 		node, err := e.AnalyzeQuery(ctx, q)
 		require.NoError(err, "Unexpected error for query %s: %s", q, err)
-		if expIndex != "" {
-			lookup := GetFilterIndex(node)
-			require.Equal(strings.ToLower(expIndex), strings.ToLower(lookup.Index.ID()))
-		} else {
-			require.True(CheckIndexedAccess(node), "expected plan to have index, but found: %s", sql.DebugString(node))
-		}
+		require.True(CheckIndexedAccess(node), "expected plan to have index, but found: %s", sql.DebugString(node))
 	}
 
 	sch, iter, err := e.QueryWithBindings(ctx, q, nil, bindings)

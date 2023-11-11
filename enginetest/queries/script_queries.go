@@ -98,7 +98,6 @@ type ScriptTestAssertion struct {
 
 	// CheckIndexedAccess indicates whether we should verify the query plan uses an index
 	CheckIndexedAccess bool
-	IndexName          string
 }
 
 // ScriptTests are a set of test scripts to run.

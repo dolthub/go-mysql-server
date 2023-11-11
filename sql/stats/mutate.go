@@ -117,7 +117,7 @@ func UpdateCounts(statistic sql.Statistic) sql.Statistic {
 		distinctCount += b.DistinctCount()
 		nullCount += b.NullCount()
 	}
-	return statistic.WithRowCount(rowCount).WithDistinct(distinctCount).WithNullCount(nullCount)
+	return statistic.WithRowCount(rowCount).WithDistinctCount(distinctCount).WithNullCount(nullCount)
 }
 
 func keysEqual(types []sql.Type, left, right []interface{}) (bool, error) {
