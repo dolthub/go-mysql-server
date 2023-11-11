@@ -1912,7 +1912,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 			}
 
 			if shouldRebuild || indexCreateRequiresBuild(n) {
-				return buildIndex(ctx, ibt, indexDef)
+				return buildIndex(ctx, n, ibt, indexDef)
 			}
 		}
 
@@ -2031,7 +2031,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 }
 
 // buildIndex builds an index on a table, as a less expensive alternative to doing a complete table rewrite.
-func buildIndex(ctx *sql.Context, ibt sql.IndexBuildingTable, indexDef sql.IndexDef) error {
+func buildIndex(ctx *sql.Context, n *plan.AlterIndex, ibt sql.IndexBuildingTable, indexDef sql.IndexDef) error {
 	inserter, err := ibt.BuildIndex(ctx, indexDef)
 	if err != nil {
 		return err
@@ -2044,6 +2044,13 @@ func buildIndex(ctx *sql.Context, ibt sql.IndexBuildingTable, indexDef sql.Index
 
 	rowIter := sql.NewTableRowIter(ctx, ibt, partitions)
 
+	// Our table scan needs to include projections for virtual columns if there are any
+	isVirtual := ibt.Schema().HasVirtualColumns()
+	var projections []sql.Expression
+	if isVirtual {
+		projections = virtualTableProjections(n.TargetSchema(), ibt.Name())
+	}
+
 	for {
 		r, err := rowIter.Next(ctx)
 		if err == io.EOF {
@@ -2052,6 +2059,13 @@ func buildIndex(ctx *sql.Context, ibt sql.IndexBuildingTable, indexDef sql.Index
 			_ = inserter.DiscardChanges(ctx, err)
 			_ = inserter.Close(ctx)
 			return err
+		}
+
+		if isVirtual {
+			r, err = ProjectRow(ctx, projections, r)
+			if err != nil {
+				return err
+			}
 		}
 
 		err = inserter.Insert(ctx, r)
@@ -2068,6 +2082,38 @@ func buildIndex(ctx *sql.Context, ibt sql.IndexBuildingTable, indexDef sql.Index
 		return err
 	}
 	return nil
+}
+
+// virtualTableProjections returns the projections for a virtual table with the schema and name provided.
+// Typically virtual tables have their projections applied by the analyzer and row executor process, but this is
+// equivalent when we need it at runtime.
+func virtualTableProjections(schema sql.Schema, tableName string) []sql.Expression {
+	projections := make([]sql.Expression, len(schema))
+	for i, c := range schema {
+		if !c.Virtual {
+			projections[i] = expression.NewGetFieldWithTable(i, c.Type, c.DatabaseSource, tableName, c.Name, c.Nullable)
+		} else {
+			projections[i] = c.Generated
+		}
+	}
+
+	for i, p := range projections {
+		projections[i] = assignColumnIndexes(p, schema)
+	}
+
+	return projections
+}
+
+// assignColumnIndexes fixes the column indexes in the expression to match the schema given
+func assignColumnIndexes(e sql.Expression, schema sql.Schema) sql.Expression {
+	e, _, _ = transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		if gf, ok := e.(*expression.GetField); ok {
+			idx := schema.IndexOfColName(gf.Name())
+			return gf.WithIndex(idx), transform.NewTree, nil
+		}
+		return e, transform.SameTree, nil
+	})
+	return e
 }
 
 func rewriteTableForIndexCreate(ctx *sql.Context, n *plan.AlterIndex, table sql.Table, rwt sql.RewritableTable) error {

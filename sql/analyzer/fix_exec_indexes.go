@@ -232,7 +232,8 @@ func (s *idxScope) visitChildren(n sql.Node) error {
 		s.children = append(s.children, newSrc)
 		s.children = append(s.children, newDst)
 		s.childScopes = append(s.childScopes, dScope)
-	case *plan.Procedure:
+	case *plan.Procedure, *plan.CreateTable:
+		// do nothing
 	default:
 		for _, c := range n.Children() {
 			newC, cScope, err := assignIndexesHelper(c, s)
@@ -360,15 +361,6 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 		newScope.columns = append(newScope.columns, srcScope.columns[:len(srcScope.columns)/2]...)
 		for _, c := range n.Checks() {
 			newE := fixExprToScope(c.Expr, newScope)
-			newCheck := *c
-			newCheck.Expr = newE
-			s.checks = append(s.checks, &newCheck)
-		}
-	case *plan.CreateTable:
-		scope := s.copy()
-		scope.addSchema(n.CreateSchema.Schema)
-		for _, c := range n.Checks() {
-			newE := fixExprToScope(c.Expr, scope)
 			newCheck := *c
 			newCheck.Expr = newE
 			s.checks = append(s.checks, &newCheck)
