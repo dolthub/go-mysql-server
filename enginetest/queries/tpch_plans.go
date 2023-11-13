@@ -1805,33 +1805,9 @@ order by
 			"             │       │               │           └─ columns: [ps_partkey ps_suppkey ps_availqty ps_supplycost ps_comment]\n" +
 			"             │       │               └─ Filter\n" +
 			"             │       │                   ├─ AND\n" +
-			"             │       │                   │   ├─ AND\n" +
-			"             │       │                   │   │   ├─ AND\n" +
-			"             │       │                   │   │   │   ├─ AND\n" +
-			"             │       │                   │   │   │   │   ├─ AND\n" +
-			"             │       │                   │   │   │   │   │   ├─ AND\n" +
-			"             │       │                   │   │   │   │   │   │   ├─ AND\n" +
-			"             │       │                   │   │   │   │   │   │   │   ├─ GreaterThanOrEqual\n" +
-			"             │       │                   │   │   │   │   │   │   │   │   ├─ scalarSubq1.p_name:1!null\n" +
-			"             │       │                   │   │   │   │   │   │   │   │   └─ forest (longtext)\n" +
-			"             │       │                   │   │   │   │   │   │   │   └─ LessThanOrEqual\n" +
-			"             │       │                   │   │   │   │   │   │   │       ├─ scalarSubq1.p_name:1!null\n" +
-			"             │       │                   │   │   │   │   │   │   │       └─ forestÿ (longtext)\n" +
-			"             │       │                   │   │   │   │   │   │   └─ GreaterThanOrEqual\n" +
-			"             │       │                   │   │   │   │   │   │       ├─ scalarSubq1.p_name:1!null\n" +
-			"             │       │                   │   │   │   │   │   │       └─ forest (longtext)\n" +
-			"             │       │                   │   │   │   │   │   └─ LessThanOrEqual\n" +
-			"             │       │                   │   │   │   │   │       ├─ scalarSubq1.p_name:1!null\n" +
-			"             │       │                   │   │   │   │   │       └─ forestÿ (longtext)\n" +
-			"             │       │                   │   │   │   │   └─ GreaterThanOrEqual\n" +
-			"             │       │                   │   │   │   │       ├─ scalarSubq1.p_name:1!null\n" +
-			"             │       │                   │   │   │   │       └─ forest (longtext)\n" +
-			"             │       │                   │   │   │   └─ LessThanOrEqual\n" +
-			"             │       │                   │   │   │       ├─ scalarSubq1.p_name:1!null\n" +
-			"             │       │                   │   │   │       └─ forestÿ (longtext)\n" +
-			"             │       │                   │   │   └─ GreaterThanOrEqual\n" +
-			"             │       │                   │   │       ├─ scalarSubq1.p_name:1!null\n" +
-			"             │       │                   │   │       └─ forest (longtext)\n" +
+			"             │       │                   │   ├─ GreaterThanOrEqual\n" +
+			"             │       │                   │   │   ├─ scalarSubq1.p_name:1!null\n" +
+			"             │       │                   │   │   └─ forest (longtext)\n" +
 			"             │       │                   │   └─ LessThanOrEqual\n" +
 			"             │       │                   │       ├─ scalarSubq1.p_name:1!null\n" +
 			"             │       │                   │       └─ forestÿ (longtext)\n" +

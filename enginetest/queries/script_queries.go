@@ -105,6 +105,18 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		Name: "filter pushdown through join uppercase name",
+		SetUpScript: []string{
+			"create table A (A int primary key);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "select /*+ JOIN_ORDER(A, b) */ * from A join A b where a.A = 1 and b.A = 1",
+				ExpectedIndexes: []string{"primary", "primary"},
+			},
+		},
+	},
+	{
 		Name: "correctness test indexes",
 		SetUpScript: []string{
 			`
