@@ -52,7 +52,7 @@ type Statistic struct {
 	Created     time.Time         `json:"created_at"`
 	Qual        sql.StatQualifier `json:"qualifier"`
 	Cols        []string          `json:"columns"`
-	Typs        []sql.Type        `json:"types"`
+	Typs        []sql.Type        `json:"-"`
 	Hist        []*Bucket         `json:"buckets"`
 	IdxClass    uint8             `json:"index_class"`
 	fds         *sql.FuncDepSet   `json:"-"`
@@ -66,16 +66,20 @@ func (s *Statistic) FuncDeps() *sql.FuncDepSet {
 	return s.fds
 }
 
-func (s *Statistic) SetFuncDeps(fds *sql.FuncDepSet) {
-	s.fds = fds
+func (s *Statistic) WithFuncDeps(fds *sql.FuncDepSet) sql.Statistic {
+	ret := *s
+	ret.fds = fds
+	return &ret
 }
 
 func (s *Statistic) ColSet() sql.ColSet {
 	return s.colSet
 }
 
-func (s *Statistic) SetColSet(cols sql.ColSet) {
-	s.colSet = cols
+func (s *Statistic) WithColSet(cols sql.ColSet) sql.Statistic {
+	ret := *s
+	ret.colSet = cols
+	return &ret
 }
 
 func (s *Statistic) SetTypes(t []sql.Type) {
@@ -128,6 +132,43 @@ func (s *Statistic) Histogram() sql.Histogram {
 		buckets[i] = b
 	}
 	return buckets
+}
+
+func (s *Statistic) WithDistinctCount(i uint64) sql.Statistic {
+	ret := *s
+	ret.DistinctCnt = i
+	return &ret
+}
+
+func (s *Statistic) WithRowCount(i uint64) sql.Statistic {
+	ret := *s
+	ret.RowCnt = i
+	return &ret
+}
+
+func (s *Statistic) WithNullCount(i uint64) sql.Statistic {
+	ret := *s
+	ret.NullCnt = i
+	return &ret
+}
+
+func (s *Statistic) WithAvgSize(i uint64) sql.Statistic {
+	ret := *s
+	ret.AvgRowSize = i
+	return &ret
+}
+
+func (s *Statistic) WithHistogram(h sql.Histogram) (sql.Statistic, error) {
+	ret := *s
+	ret.Hist = nil
+	for _, b := range h {
+		sqlB, ok := b.(*Bucket)
+		if !ok {
+			return nil, fmt.Errorf("invalid bucket type: %T", b)
+		}
+		ret.Hist = append(ret.Hist, sqlB)
+	}
+	return &ret, nil
 }
 
 func (s *Statistic) IndexClass() sql.IndexClass {

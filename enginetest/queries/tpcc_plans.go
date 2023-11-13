@@ -208,124 +208,124 @@ SELECT i_price, i_name, i_data FROM item2 WHERE i_id = 2532`,
 	{
 		Query: `
 -- cycle 2
-UPDATE warehouse1 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
+UPDATE warehouse2 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Update\n" +
-			"     └─ UpdateSource(SET warehouse1.w_ytd:8 = (warehouse1.w_ytd:8 + 1767 (smallint)))\n" +
-			"         └─ IndexedTableAccess(warehouse1)\n" +
-			"             ├─ index: [warehouse1.w_id]\n" +
+			"     └─ UpdateSource(SET warehouse2.w_ytd:8 = (warehouse2.w_ytd:8 + 1767 (smallint)))\n" +
+			"         └─ IndexedTableAccess(warehouse2)\n" +
+			"             ├─ index: [warehouse2.w_id]\n" +
 			"             ├─ static: [{[1, 1]}]\n" +
 			"             └─ Table\n" +
-			"                 ├─ name: warehouse1\n" +
+			"                 ├─ name: warehouse2\n" +
 			"                 └─ columns: [w_id w_name w_street_1 w_street_2 w_city w_state w_zip w_tax w_ytd]\n" +
 			"",
 	},
 	{
-		Query: `SELECT w_street_1, w_street_2, w_city, w_state, w_zip, w_name FROM warehouse1 WHERE w_id = 1`,
+		Query: `SELECT w_street_1, w_street_2, w_city, w_state, w_zip, w_name FROM warehouse2 WHERE w_id = 1`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [warehouse1.w_street_1:2, warehouse1.w_street_2:3, warehouse1.w_city:4, warehouse1.w_state:5, warehouse1.w_zip:6, warehouse1.w_name:1]\n" +
-			" └─ IndexedTableAccess(warehouse1)\n" +
-			"     ├─ index: [warehouse1.w_id]\n" +
+			" ├─ columns: [warehouse2.w_street_1:2, warehouse2.w_street_2:3, warehouse2.w_city:4, warehouse2.w_state:5, warehouse2.w_zip:6, warehouse2.w_name:1]\n" +
+			" └─ IndexedTableAccess(warehouse2)\n" +
+			"     ├─ index: [warehouse2.w_id]\n" +
 			"     ├─ static: [{[1, 1]}]\n" +
 			"     └─ Table\n" +
-			"         ├─ name: warehouse1\n" +
+			"         ├─ name: warehouse2\n" +
 			"         └─ columns: [w_id w_name w_street_1 w_street_2 w_city w_state w_zip]\n" +
 			"",
 	},
 	{
-		Query: `UPDATE district1 SET d_ytd = d_ytd + 1767 WHERE d_w_id = 1 AND d_id= 8`,
+		Query: `UPDATE district2 SET d_ytd = d_ytd + 1767 WHERE d_w_id = 1 AND d_id= 8`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Update\n" +
-			"     └─ UpdateSource(SET district1.d_ytd:9 = (district1.d_ytd:9 + 1767 (smallint)))\n" +
-			"         └─ IndexedTableAccess(district1)\n" +
-			"             ├─ index: [district1.d_w_id,district1.d_id]\n" +
+			"     └─ UpdateSource(SET district2.d_ytd:9 = (district2.d_ytd:9 + 1767 (smallint)))\n" +
+			"         └─ IndexedTableAccess(district2)\n" +
+			"             ├─ index: [district2.d_w_id,district2.d_id]\n" +
 			"             ├─ static: [{[1, 1], [8, 8]}]\n" +
 			"             └─ Table\n" +
-			"                 ├─ name: district1\n" +
+			"                 ├─ name: district2\n" +
 			"                 └─ columns: [d_id d_w_id d_name d_street_1 d_street_2 d_city d_state d_zip d_tax d_ytd d_next_o_id]\n" +
 			"",
 	},
 	{
-		Query: `SELECT d_street_1, d_street_2, d_city, d_state, d_zip, d_name FROM district1 WHERE d_w_id = 1 AND d_id = 8`,
+		Query: `SELECT d_street_1, d_street_2, d_city, d_state, d_zip, d_name FROM district2 WHERE d_w_id = 1 AND d_id = 8`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [district1.d_street_1:3, district1.d_street_2:4, district1.d_city:5, district1.d_state:6, district1.d_zip:7, district1.d_name:2]\n" +
-			" └─ IndexedTableAccess(district1)\n" +
-			"     ├─ index: [district1.d_w_id,district1.d_id]\n" +
+			" ├─ columns: [district2.d_street_1:3, district2.d_street_2:4, district2.d_city:5, district2.d_state:6, district2.d_zip:7, district2.d_name:2]\n" +
+			" └─ IndexedTableAccess(district2)\n" +
+			"     ├─ index: [district2.d_w_id,district2.d_id]\n" +
 			"     ├─ static: [{[1, 1], [8, 8]}]\n" +
 			"     └─ Table\n" +
-			"         ├─ name: district1\n" +
+			"         ├─ name: district2\n" +
 			"         └─ columns: [d_id d_w_id d_name d_street_1 d_street_2 d_city d_state d_zip]\n" +
 			"",
 	},
 	{
-		Query: `SELECT count(c_id) namecnt FROM customer1 WHERE c_w_id = 1 AND c_d_id= 5 AND c_last='ESEEINGABLE'`,
+		Query: `SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 5 AND c_last='ESEEINGABLE'`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [count(customer1.c_id):0!null as namecnt]\n" +
+			" ├─ columns: [count(customer2.c_id):0!null as namecnt]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: COUNT(customer1.c_id:0!null)\n" +
+			"     ├─ select: COUNT(customer2.c_id:0!null)\n" +
 			"     ├─ group: \n" +
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
-			"         │   ├─ customer1.c_last:3\n" +
+			"         │   ├─ customer2.c_last:3\n" +
 			"         │   └─ ESEEINGABLE (longtext)\n" +
-			"         └─ IndexedTableAccess(customer1)\n" +
-			"             ├─ index: [customer1.c_w_id,customer1.c_d_id,customer1.c_id]\n" +
+			"         └─ IndexedTableAccess(customer2)\n" +
+			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
 			"             ├─ static: [{[1, 1], [5, 5], [NULL, ∞)}]\n" +
 			"             └─ Table\n" +
-			"                 ├─ name: customer1\n" +
+			"                 ├─ name: customer2\n" +
 			"                 └─ columns: [c_id c_d_id c_w_id c_last]\n" +
 			"",
 	},
 	{
-		Query: `SELECT c_id FROM customer1 WHERE c_w_id = 1 AND c_d_id= 5 AND c_last='ESEEINGABLE' ORDER BY c_first`,
+		Query: `SELECT c_id FROM customer2 WHERE c_w_id = 1 AND c_d_id= 5 AND c_last='ESEEINGABLE' ORDER BY c_first`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [customer1.c_id:0!null]\n" +
-			" └─ Sort(customer1.c_first:3 ASC nullsFirst)\n" +
+			" ├─ columns: [customer2.c_id:0!null]\n" +
+			" └─ Sort(customer2.c_first:3 ASC nullsFirst)\n" +
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
-			"         │   ├─ customer1.c_last:5\n" +
+			"         │   ├─ customer2.c_last:5\n" +
 			"         │   └─ ESEEINGABLE (longtext)\n" +
-			"         └─ IndexedTableAccess(customer1)\n" +
-			"             ├─ index: [customer1.c_w_id,customer1.c_d_id,customer1.c_id]\n" +
+			"         └─ IndexedTableAccess(customer2)\n" +
+			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
 			"             ├─ static: [{[1, 1], [5, 5], [NULL, ∞)}]\n" +
 			"             └─ Table\n" +
-			"                 ├─ name: customer1\n" +
+			"                 ├─ name: customer2\n" +
 			"                 └─ columns: [c_id c_d_id c_w_id c_first c_middle c_last c_street_1 c_street_2 c_city c_state c_zip c_phone c_since c_credit c_credit_lim c_discount c_balance c_ytd_payment c_payment_cnt c_delivery_cnt c_data]\n" +
 			"",
 	},
 	{
-		Query: `SELECT c_first, c_middle, c_last, c_street_1, c_street_2, c_city, c_state, c_zip, c_phone, c_credit, c_credit_lim, c_discount, c_balance, c_ytd_payment, c_since FROM customer1 WHERE c_w_id = 1 AND c_d_id= 5 AND c_id=1838 FOR UPDATE`,
+		Query: `SELECT c_first, c_middle, c_last, c_street_1, c_street_2, c_city, c_state, c_zip, c_phone, c_credit, c_credit_lim, c_discount, c_balance, c_ytd_payment, c_since FROM customer2 WHERE c_w_id = 1 AND c_d_id= 5 AND c_id=1838 FOR UPDATE`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [customer1.c_first:3, customer1.c_middle:4, customer1.c_last:5, customer1.c_street_1:6, customer1.c_street_2:7, customer1.c_city:8, customer1.c_state:9, customer1.c_zip:10, customer1.c_phone:11, customer1.c_credit:13, customer1.c_credit_lim:14, customer1.c_discount:15, customer1.c_balance:16, customer1.c_ytd_payment:17, customer1.c_since:12]\n" +
-			" └─ IndexedTableAccess(customer1)\n" +
-			"     ├─ index: [customer1.c_w_id,customer1.c_d_id,customer1.c_id]\n" +
+			" ├─ columns: [customer2.c_first:3, customer2.c_middle:4, customer2.c_last:5, customer2.c_street_1:6, customer2.c_street_2:7, customer2.c_city:8, customer2.c_state:9, customer2.c_zip:10, customer2.c_phone:11, customer2.c_credit:13, customer2.c_credit_lim:14, customer2.c_discount:15, customer2.c_balance:16, customer2.c_ytd_payment:17, customer2.c_since:12]\n" +
+			" └─ IndexedTableAccess(customer2)\n" +
+			"     ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
 			"     ├─ static: [{[1, 1], [5, 5], [1838, 1838]}]\n" +
 			"     └─ Table\n" +
-			"         ├─ name: customer1\n" +
+			"         ├─ name: customer2\n" +
 			"         └─ columns: [c_id c_d_id c_w_id c_first c_middle c_last c_street_1 c_street_2 c_city c_state c_zip c_phone c_since c_credit c_credit_lim c_discount c_balance c_ytd_payment]\n" +
 			"",
 	},
 	{
-		Query: `UPDATE customer1 SET c_balance=-1777.000000, c_ytd_payment=1777.000000 WHERE c_w_id = 1 AND c_d_id=5 AND c_id=1838`,
+		Query: `UPDATE customer2 SET c_balance=-1777.000000, c_ytd_payment=1777.000000 WHERE c_w_id = 1 AND c_d_id=5 AND c_id=1838`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Update\n" +
-			"     └─ UpdateSource(SET customer1.c_balance:16 = -1777.000000,SET customer1.c_ytd_payment:17 = 1777 (decimal(10,6)))\n" +
-			"         └─ IndexedTableAccess(customer1)\n" +
-			"             ├─ index: [customer1.c_w_id,customer1.c_d_id,customer1.c_id]\n" +
+			"     └─ UpdateSource(SET customer2.c_balance:16 = -1777.000000,SET customer2.c_ytd_payment:17 = 1777 (decimal(10,6)))\n" +
+			"         └─ IndexedTableAccess(customer2)\n" +
+			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
 			"             ├─ static: [{[1, 1], [5, 5], [1838, 1838]}]\n" +
 			"             └─ Table\n" +
-			"                 ├─ name: customer1\n" +
+			"                 ├─ name: customer2\n" +
 			"                 └─ columns: [c_id c_d_id c_w_id c_first c_middle c_last c_street_1 c_street_2 c_city c_state c_zip c_phone c_since c_credit c_credit_lim c_discount c_balance c_ytd_payment c_payment_cnt c_delivery_cnt c_data]\n" +
 			"",
 	},
 	{
-		Query: `INSERT INTO history1 (h_c_d_id, h_c_w_id, h_c_id, h_d_id, h_w_id, h_date, h_amount, h_data) VALUES (5,1,1838,8,1,NOW(),1767,'name-rqojn name-dnvgs ')`,
+		Query: `INSERT INTO history2 (h_c_d_id, h_c_w_id, h_c_id, h_d_id, h_w_id, h_date, h_amount, h_data) VALUES (5,1,1838,8,1,NOW(),1767,'name-rqojn name-dnvgs ')`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Insert(h_c_d_id, h_c_w_id, h_c_id, h_d_id, h_w_id, h_date, h_amount, h_data)\n" +
 			"     ├─ InsertDestination\n" +
 			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
-			"     │           ├─ name: history1\n" +
+			"     │           ├─ name: history2\n" +
 			"     │           └─ columns: [h_c_id h_c_d_id h_c_w_id h_d_id h_w_id h_date h_amount h_data]\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [h_c_id:2, h_c_d_id:0, h_c_w_id:1, h_d_id:3, h_w_id:4, h_date:5, h_amount:6, h_data:7]\n" +
@@ -335,21 +335,21 @@ UPDATE warehouse1 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 	{
 		Query: `
 -- cycle 3
-SELECT count(c_id) namecnt FROM customer3 WHERE c_w_id = 1 AND c_d_id= 1 AND c_last='PRIESEPRES'`,
+SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_last='PRIESEPRES'`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [count(customer3.c_id):0!null as namecnt]\n" +
+			" ├─ columns: [count(customer2.c_id):0!null as namecnt]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: COUNT(customer3.c_id:0!null)\n" +
+			"     ├─ select: COUNT(customer2.c_id:0!null)\n" +
 			"     ├─ group: \n" +
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
-			"         │   ├─ customer3.c_last:3\n" +
+			"         │   ├─ customer2.c_last:3\n" +
 			"         │   └─ PRIESEPRES (longtext)\n" +
-			"         └─ IndexedTableAccess(customer3)\n" +
-			"             ├─ index: [customer3.c_w_id,customer3.c_d_id,customer3.c_id]\n" +
+			"         └─ IndexedTableAccess(customer2)\n" +
+			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
 			"             ├─ static: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
 			"             └─ Table\n" +
-			"                 ├─ name: customer3\n" +
+			"                 ├─ name: customer2\n" +
 			"                 └─ columns: [c_id c_d_id c_w_id c_last]\n" +
 			"",
 	},
@@ -402,45 +402,47 @@ SELECT count(c_id) namecnt FROM customer3 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 	{
 		Query: `
 -- cycle 4
-SELECT d_next_o_id FROM district3 WHERE d_id = 5 AND d_w_id= 1`,
+SELECT d_next_o_id FROM district2 WHERE d_id = 5 AND d_w_id= 1`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [district3.d_next_o_id:2]\n" +
-			" └─ IndexedTableAccess(district3)\n" +
-			"     ├─ index: [district3.d_w_id,district3.d_id]\n" +
+			" ├─ columns: [district2.d_next_o_id:2]\n" +
+			" └─ IndexedTableAccess(district2)\n" +
+			"     ├─ index: [district2.d_w_id,district2.d_id]\n" +
 			"     ├─ static: [{[1, 1], [5, 5]}]\n" +
 			"     └─ Table\n" +
-			"         ├─ name: district3\n" +
+			"         ├─ name: district2\n" +
 			"         └─ columns: [d_id d_w_id d_next_o_id]\n" +
 			"",
 	},
 	{
-		Query: `SELECT COUNT(DISTINCT (s_i_id)) FROM order_line3, stock3 WHERE ol_w_id = 1 AND ol_d_id = 5 AND ol_o_id < 3003 AND ol_o_id >= 2983 AND s_w_id= 1 AND s_i_id=ol_i_id AND s_quantity < 18`,
+		Query: `SELECT COUNT(DISTINCT (s_i_id)) FROM order_line2, stock2 WHERE ol_w_id = 1 AND ol_d_id = 5 AND ol_o_id < 3003 AND ol_o_id >= 2983 AND s_w_id= 1 AND s_i_id=ol_i_id AND s_quantity < 18`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [countdistinct([stock3.s_i_id]):0!null as COUNT(DISTINCT (s_i_id))]\n" +
+			" ├─ columns: [countdistinct([stock2.s_i_id]):0!null as COUNT(DISTINCT (s_i_id))]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: COUNTDISTINCT([stock3.s_i_id])\n" +
+			"     ├─ select: COUNTDISTINCT([stock2.s_i_id])\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin\n" +
-			"         ├─ IndexedTableAccess(order_line3)\n" +
-			"         │   ├─ index: [order_line3.ol_w_id,order_line3.ol_d_id,order_line3.ol_o_id,order_line3.ol_number]\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ stock2.s_i_id:4!null\n" +
+			"         │   └─ order_line2.ol_i_id:3\n" +
+			"         ├─ IndexedTableAccess(order_line2)\n" +
+			"         │   ├─ index: [order_line2.ol_w_id,order_line2.ol_d_id,order_line2.ol_o_id,order_line2.ol_number]\n" +
 			"         │   ├─ static: [{[1, 1], [5, 5], [2983, 3003), [NULL, ∞)}]\n" +
 			"         │   └─ Table\n" +
-			"         │       ├─ name: order_line3\n" +
+			"         │       ├─ name: order_line2\n" +
 			"         │       └─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id]\n" +
-			"         └─ Filter\n" +
-			"             ├─ AND\n" +
-			"             │   ├─ Eq\n" +
-			"             │   │   ├─ stock3.s_w_id:1!null\n" +
-			"             │   │   └─ 1 (tinyint)\n" +
-			"             │   └─ LessThan\n" +
-			"             │       ├─ stock3.s_quantity:2\n" +
-			"             │       └─ 18 (tinyint)\n" +
-			"             └─ IndexedTableAccess(stock3)\n" +
-			"                 ├─ index: [stock3.s_w_id,stock3.s_i_id]\n" +
-			"                 ├─ keys: [1 order_line3.ol_i_id]\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: stock3\n" +
-			"                     └─ columns: [s_i_id s_w_id s_quantity]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: TUPLE(order_line2.ol_i_id:3)\n" +
+			"             ├─ right-key: TUPLE(stock2.s_i_id:0!null)\n" +
+			"             └─ Filter\n" +
+			"                 ├─ LessThan\n" +
+			"                 │   ├─ stock2.s_quantity:2\n" +
+			"                 │   └─ 18 (tinyint)\n" +
+			"                 └─ IndexedTableAccess(stock2)\n" +
+			"                     ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
+			"                     ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: stock2\n" +
+			"                         └─ columns: [s_i_id s_w_id s_quantity]\n" +
 			"",
 	},
 	{

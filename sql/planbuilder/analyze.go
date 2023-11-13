@@ -75,7 +75,8 @@ func (b *Builder) buildAnalyze(inScope *scope, n *ast.Analyze, query string) (ou
 
 	switch n.Action {
 	case ast.UpdateStr:
-		return b.buildAnalyzeUpdate(inScope, n, dbName, tableName, columns, types)
+		sch := tableScope.node.Schema()
+		return b.buildAnalyzeUpdate(inScope, n, dbName, tableName, sch, columns, types)
 	case ast.DropStr:
 		outScope = inScope.push()
 		outScope.node = plan.NewDropHistogram(dbName, tableName, columns).WithProvider(b.cat)
@@ -118,7 +119,7 @@ func (b *Builder) buildAnalyzeTables(inScope *scope, n *ast.Analyze, query strin
 	return
 }
 
-func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tableName string, columns []string, types []sql.Type) (outScope *scope) {
+func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tableName string, sch sql.Schema, columns []string, types []sql.Type) (outScope *scope) {
 	outScope = inScope.push()
 	statistic := new(stats.Statistic)
 	using := b.buildScalar(inScope, n.Using)
@@ -131,7 +132,7 @@ func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tab
 			if str, ok := val.(string); ok {
 				err := json.Unmarshal([]byte(str), statistic)
 				if err != nil {
-					err = ErrFailedToParseStats.New(err.Error())
+					err = ErrFailedToParseStats.New(err.Error(), str)
 					b.handleErr(err)
 				}
 			}
@@ -142,14 +143,28 @@ func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tab
 		err := fmt.Errorf("no statistics found for update")
 		b.handleErr(err)
 	}
-	var indexName string
-	if statistic.Qual.Index() == "" {
+	indexName := statistic.Qual.Idx
+	if indexName == "" {
 		indexName = "primary"
 	}
 	statistic.SetQualifier(sql.NewStatQualifier(dbName, tableName, indexName))
 	statistic.SetColumns(columns)
 	statistic.SetTypes(types)
-	// TODO make sure index has the given columns
-	outScope.node = plan.NewUpdateHistogram(dbName, tableName, indexName, columns, statistic).WithProvider(b.cat)
+
+	statCols := sql.NewFastIntSet()
+	for _, c := range columns {
+		i := sch.IndexOfColName(c)
+		statCols.Add(i + 1)
+	}
+	allCols := sql.NewFastIntSet()
+	allCols.AddRange(1, len(sch)+1)
+	statColset := sql.NewColSetFromIntSet(statCols)
+	allColset := sql.NewColSetFromIntSet(allCols)
+	// TODO find if underlying index has strict/lax key
+	fds := sql.NewTablescanFDs(allColset, nil, nil, allColset)
+	updatedStat := statistic.WithColSet(statColset).WithFuncDeps(fds)
+	updatedStat = stats.UpdateCounts(updatedStat)
+
+	outScope.node = plan.NewUpdateHistogram(dbName, tableName, indexName, columns, updatedStat).WithProvider(b.cat)
 	return outScope
 }

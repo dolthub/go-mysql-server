@@ -346,6 +346,20 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e QueryEngine, harness
 	validateEngine(t, ctx, harness, e)
 }
 
+func GetFilterIndex(n sql.Node) sql.IndexLookup {
+	var lookup sql.IndexLookup
+	transform.InspectUp(n, func(n sql.Node) bool {
+		switch n := n.(type) {
+		case *plan.IndexedTableAccess:
+			lookup = plan.GetIndexLookup(n)
+			return true
+		default:
+			return false
+		}
+	})
+	return lookup
+}
+
 func TestQueryWithIndexCheck(t *testing.T, ctx *sql.Context, e QueryEngine, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]*querypb.BindVariable) {
 	ctx = ctx.WithQuery(q)
 	require := require.New(t)
