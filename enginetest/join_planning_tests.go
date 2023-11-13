@@ -1609,7 +1609,7 @@ func evalIndexTest(t *testing.T, harness Harness, e QueryEngine, q string, index
 		}
 		var cmp []string
 		for _, i := range idxs {
-			cmp = append(cmp, i.ID())
+			cmp = append(cmp, strings.ToLower(i.ID()))
 		}
 		require.Equal(t, exp, cmp, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(a)))
 	})

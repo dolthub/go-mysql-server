@@ -1210,36 +1210,36 @@ WHERE
 	   AND
 	       SWCQV = 0
 	`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ Eq\n" +
-			" │   ├─ hu5a5.SWCQV:10!null\n" +
-			" │   └─ 0 (tinyint)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [hu5a5.id:0!null, HU5A5.TOFPN:1!null, HU5A5.I3VTA:2!null, HU5A5.SFJ6L:3, HU5A5.V5DPX:4!null, HU5A5.LJLUM:5!null, HU5A5.IDPK7:6!null, HU5A5.NO52D:7!null, HU5A5.ZRV3B:8!null, HU5A5.VYO5E:9, HU5A5.SWCQV:10!null, HU5A5.YKSSU:11, HU5A5.FHCYT:12]\n" +
-			"     └─ Filter\n" +
-			"         ├─ scalarSubq0.XMM6Q:13 IS NULL\n" +
-			"         └─ LeftOuterMergeJoin\n" +
-			"             ├─ cmp: Eq\n" +
-			"             │   ├─ hu5a5.id:0!null\n" +
-			"             │   └─ scalarSubq0.XMM6Q:13\n" +
-			"             ├─ IndexedTableAccess(HU5A5)\n" +
-			"             │   ├─ index: [HU5A5.id]\n" +
-			"             │   ├─ static: [{[NULL, ∞)}]\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: HU5A5\n" +
-			"             │       └─ columns: [id tofpn i3vta sfj6l v5dpx ljlum idpk7 no52d zrv3b vyo5e swcqv ykssu fhcyt]\n" +
-			"             └─ Project\n" +
-			"                 ├─ columns: [scalarSubq0.XMM6Q:7]\n" +
-			"                 └─ Filter\n" +
-			"                     ├─ NOT\n" +
-			"                     │   └─ scalarSubq0.XMM6Q:7 IS NULL\n" +
-			"                     └─ TableAlias(scalarSubq0)\n" +
-			"                         └─ IndexedTableAccess(FLQLP)\n" +
-			"                             ├─ index: [FLQLP.XMM6Q]\n" +
-			"                             ├─ static: [{[NULL, ∞)}]\n" +
-			"                             └─ Table\n" +
-			"                                 ├─ name: FLQLP\n" +
-			"                                 └─ columns: [id fz2r5 luevy m22qn ove3e nrurt oca7e xmm6q v5dpx s3q3y zrv3b fhcyt]\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [hu5a5.id:0!null, HU5A5.TOFPN:1!null, HU5A5.I3VTA:2!null, HU5A5.SFJ6L:3, HU5A5.V5DPX:4!null, HU5A5.LJLUM:5!null, HU5A5.IDPK7:6!null, HU5A5.NO52D:7!null, HU5A5.ZRV3B:8!null, HU5A5.VYO5E:9, hu5a5.SWCQV:10!null, HU5A5.YKSSU:11, HU5A5.FHCYT:12]\n" +
+			" └─ Filter\n" +
+			"     ├─ scalarSubq0.XMM6Q:13 IS NULL\n" +
+			"     └─ LeftOuterMergeJoin\n" +
+			"         ├─ cmp: Eq\n" +
+			"         │   ├─ hu5a5.id:0!null\n" +
+			"         │   └─ scalarSubq0.XMM6Q:13\n" +
+			"         ├─ Filter\n" +
+			"         │   ├─ Eq\n" +
+			"         │   │   ├─ hu5a5.SWCQV:10!null\n" +
+			"         │   │   └─ 0 (tinyint)\n" +
+			"         │   └─ IndexedTableAccess(HU5A5)\n" +
+			"         │       ├─ index: [HU5A5.id]\n" +
+			"         │       ├─ static: [{[NULL, ∞)}]\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: HU5A5\n" +
+			"         │           └─ columns: [id tofpn i3vta sfj6l v5dpx ljlum idpk7 no52d zrv3b vyo5e swcqv ykssu fhcyt]\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [scalarSubq0.XMM6Q:7]\n" +
+			"             └─ Filter\n" +
+			"                 ├─ NOT\n" +
+			"                 │   └─ scalarSubq0.XMM6Q:7 IS NULL\n" +
+			"                 └─ TableAlias(scalarSubq0)\n" +
+			"                     └─ IndexedTableAccess(FLQLP)\n" +
+			"                         ├─ index: [FLQLP.XMM6Q]\n" +
+			"                         ├─ static: [{[NULL, ∞)}]\n" +
+			"                         └─ Table\n" +
+			"                             ├─ name: FLQLP\n" +
+			"                             └─ columns: [id fz2r5 luevy m22qn ove3e nrurt oca7e xmm6q v5dpx s3q3y zrv3b fhcyt]\n" +
 			"",
 	},
 	{
