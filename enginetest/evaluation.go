@@ -39,14 +39,11 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// RunQuery runs the query given and asserts that it doesn't result in an error.
-func RunQuery(t *testing.T, e QueryEngine, harness Harness, query string) {
-	ctx := NewContext(harness)
-	RunQueryWithContext(t, e, harness, ctx, query)
-}
-
 // RunQueryWithContext runs the query given and asserts that it doesn't result in an error.
 func RunQueryWithContext(t *testing.T, e QueryEngine, harness Harness, ctx *sql.Context, query string) {
+	if ctx == nil {
+		ctx = NewContext(harness)
+	}
 	ctx = ctx.WithQuery(query)
 	sch, iter, err := e.Query(ctx, query)
 	require.NoError(t, err, "error running query %s: %v", query, err)
@@ -128,7 +125,7 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 						assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
 						assertion.ExpectedWarningMessageSubstring, assertion.SkipResultsCheck)
 				} else if assertion.SkipResultsCheck {
-					RunQuery(t, e, harness, assertion.Query)
+					RunQueryWithContext(t, e, harness, ctx, assertion.Query)
 				} else if assertion.CheckIndexedAccess {
 					TestQueryWithIndexCheck(t, ctx, e, harness, assertion.Query, assertion.Expected, assertion.ExpectedColumns, assertion.Bindings)
 				} else {

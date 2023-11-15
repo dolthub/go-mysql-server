@@ -470,9 +470,9 @@ func TestIndexQueryPlans(t *testing.T, harness Harness) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
 
-		RunQuery(t, e, harness, "CREATE DATABASE otherdb")
-		RunQuery(t, e, harness, `CREATE TABLE otherdb.a (x int, y int)`)
-		RunQuery(t, e, harness, `CREATE INDEX idx1 ON otherdb.a (y);`)
+		RunQueryWithContext(t, e, harness, ctx, "CREATE DATABASE otherdb")
+		RunQueryWithContext(t, e, harness, ctx, `CREATE TABLE otherdb.a (x int, y int)`)
+		RunQueryWithContext(t, e, harness, ctx, `CREATE INDEX idx1 ON otherdb.a (y);`)
 
 		TestQueryWithContext(t, ctx, e, harness, "SHOW INDEXES FROM otherdb.a", []sql.Row{
 			{"a", 1, "idx1", 1, "y", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
@@ -517,7 +517,7 @@ func TestVersionedQueries(t *testing.T, harness VersionedDBHarness) {
 	}
 }
 
-// Tests a variety of queries against databases and tables provided by the given harness.
+// TestVersionedQueriesPrepared tests a variety of queries against databases and tables provided by the given harness.
 func TestVersionedQueriesPrepared(t *testing.T, harness VersionedDBHarness) {
 	CreateVersionedTestData(t, harness)
 	e, err := harness.NewEngine(t)
@@ -558,7 +558,6 @@ func TestQueryPlan(t *testing.T, harness Harness, e QueryEngine, query, expected
 		}
 		assert.Equal(t, expectedPlan, cmp, "Unexpected result for query: "+query)
 	})
-
 }
 
 func TestQueryPlanWithEngine(t *testing.T, harness Harness, e QueryEngine, tt queries.QueryPlanTest, verbose bool) {
@@ -702,7 +701,7 @@ func TestReadOnly(t *testing.T, harness Harness, testStoredProcedures bool) {
 
 	for _, q := range workingQueries {
 		t.Run(q, func(t *testing.T) {
-			RunQuery(t, e, harness, q)
+			RunQueryWithContext(t, e, harness, nil, q)
 		})
 	}
 
@@ -1003,30 +1002,30 @@ func TestTruncate(t *testing.T, harness Harness) {
 	ctx := NewContext(harness)
 
 	t.Run("Standard TRUNCATE", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t1 (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX(v1))")
-		RunQuery(t, e, harness, "INSERT INTO t1 VALUES (1,1), (2,2), (3,3)")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t1 (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX(v1))")
+		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t1 VALUES (1,1), (2,2), (3,3)")
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t1 ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}, {int64(3), int64(3)}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "TRUNCATE t1", []sql.Row{{types.NewOkResult(3)}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t1 ORDER BY 1", []sql.Row{}, nil, nil)
 
-		RunQuery(t, e, harness, "INSERT INTO t1 VALUES (4,4), (5,5)")
+		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t1 VALUES (4,4), (5,5)")
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t1 WHERE v1 > 0 ORDER BY 1", []sql.Row{{int64(4), int64(4)}, {int64(5), int64(5)}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "TRUNCATE TABLE t1", []sql.Row{{types.NewOkResult(2)}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t1 ORDER BY 1", []sql.Row{}, nil, nil)
 	})
 
 	t.Run("Foreign Key References", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t2parent (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX (v1))")
-		RunQuery(t, e, harness, "CREATE TABLE t2child (pk BIGINT PRIMARY KEY, v1 BIGINT, "+
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t2parent (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX (v1))")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t2child (pk BIGINT PRIMARY KEY, v1 BIGINT, "+
 			"FOREIGN KEY (v1) REFERENCES t2parent (v1))")
 		AssertErrWithCtx(t, e, harness, ctx, "TRUNCATE t2parent", sql.ErrTruncateReferencedFromForeignKey)
 	})
 
 	t.Run("ON DELETE Triggers", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t3 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
-		RunQuery(t, e, harness, "CREATE TABLE t3i (pk BIGINT PRIMARY KEY, v1 BIGINT)")
-		RunQuery(t, e, harness, "CREATE TRIGGER trig_t3 BEFORE DELETE ON t3 FOR EACH ROW INSERT INTO t3i VALUES (old.pk, old.v1)")
-		RunQuery(t, e, harness, "INSERT INTO t3 VALUES (1,1), (3,3)")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t3 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t3i (pk BIGINT PRIMARY KEY, v1 BIGINT)")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TRIGGER trig_t3 BEFORE DELETE ON t3 FOR EACH ROW INSERT INTO t3i VALUES (old.pk, old.v1)")
+		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t3 VALUES (1,1), (3,3)")
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t3 ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(3), int64(3)}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "TRUNCATE t3", []sql.Row{{types.NewOkResult(2)}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t3 ORDER BY 1", []sql.Row{}, nil, nil)
@@ -1034,18 +1033,18 @@ func TestTruncate(t *testing.T, harness Harness) {
 	})
 
 	t.Run("auto_increment column", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t4 (pk BIGINT AUTO_INCREMENT PRIMARY KEY, v1 BIGINT)")
-		RunQuery(t, e, harness, "INSERT INTO t4(v1) VALUES (5), (6)")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t4 (pk BIGINT AUTO_INCREMENT PRIMARY KEY, v1 BIGINT)")
+		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t4(v1) VALUES (5), (6)")
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t4 ORDER BY 1", []sql.Row{{int64(1), int64(5)}, {int64(2), int64(6)}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "TRUNCATE t4", []sql.Row{{types.NewOkResult(2)}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t4 ORDER BY 1", []sql.Row{}, nil, nil)
-		RunQuery(t, e, harness, "INSERT INTO t4(v1) VALUES (7)")
+		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t4(v1) VALUES (7)")
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t4 ORDER BY 1", []sql.Row{{int64(1), int64(7)}}, nil, nil)
 	})
 
 	t.Run("Naked DELETE", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t5 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
-		RunQuery(t, e, harness, "INSERT INTO t5 VALUES (1,1), (2,2)")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t5 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
+		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t5 VALUES (1,1), (2,2)")
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t5 ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t5"
@@ -1072,11 +1071,11 @@ func TestTruncate(t *testing.T, harness Harness) {
 	})
 
 	t.Run("Naked DELETE with Foreign Key References", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t6parent (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX (v1))")
-		RunQuery(t, e, harness, "CREATE TABLE t6child (pk BIGINT PRIMARY KEY, v1 BIGINT, "+
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t6parent (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX (v1))")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t6child (pk BIGINT PRIMARY KEY, v1 BIGINT, "+
 			"CONSTRAINT fk_a123 FOREIGN KEY (v1) REFERENCES t6parent (v1))")
-		RunQuery(t, e, harness, "INSERT INTO t6parent VALUES (1,1), (2,2)")
-		RunQuery(t, e, harness, "INSERT INTO t6child VALUES (1,1), (2,2)")
+		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t6parent VALUES (1,1), (2,2)")
+		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t6child VALUES (1,1), (2,2)")
 
 		parsed, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, "DELETE FROM t6parent")
 		require.NoError(t, err)
@@ -1097,11 +1096,11 @@ func TestTruncate(t *testing.T, harness Harness) {
 	})
 
 	t.Run("Naked DELETE with ON DELETE Triggers", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t7 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
-		RunQuery(t, e, harness, "CREATE TABLE t7i (pk BIGINT PRIMARY KEY, v1 BIGINT)")
-		RunQuery(t, e, harness, "CREATE TRIGGER trig_t7 BEFORE DELETE ON t7 FOR EACH ROW INSERT INTO t7i VALUES (old.pk, old.v1)")
-		RunQuery(t, e, harness, "INSERT INTO t7 VALUES (1,1), (3,3)")
-		RunQuery(t, e, harness, "DELETE FROM t7 WHERE pk = 3")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t7 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t7i (pk BIGINT PRIMARY KEY, v1 BIGINT)")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TRIGGER trig_t7 BEFORE DELETE ON t7 FOR EACH ROW INSERT INTO t7i VALUES (old.pk, old.v1)")
+		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t7 VALUES (1,1), (3,3)")
+		RunQueryWithContext(t, e, harness, ctx, "DELETE FROM t7 WHERE pk = 3")
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t7 ORDER BY 1", []sql.Row{{int64(1), int64(1)}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t7i ORDER BY 1", []sql.Row{{int64(3), int64(3)}}, nil, nil)
 
@@ -1129,8 +1128,8 @@ func TestTruncate(t *testing.T, harness Harness) {
 	})
 
 	t.Run("Naked DELETE with auto_increment column", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t8 (pk BIGINT AUTO_INCREMENT PRIMARY KEY, v1 BIGINT)")
-		RunQuery(t, e, harness, "INSERT INTO t8(v1) VALUES (4), (5)")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t8 (pk BIGINT AUTO_INCREMENT PRIMARY KEY, v1 BIGINT)")
+		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t8(v1) VALUES (4), (5)")
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t8 ORDER BY 1", []sql.Row{{int64(1), int64(4)}, {int64(2), int64(5)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t8"
@@ -1153,13 +1152,13 @@ func TestTruncate(t *testing.T, harness Harness) {
 
 		TestQueryWithContext(t, ctx, e, harness, deleteStr, []sql.Row{{types.NewOkResult(2)}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t8 ORDER BY 1", []sql.Row{}, nil, nil)
-		RunQuery(t, e, harness, "INSERT INTO t8(v1) VALUES (6)")
+		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t8(v1) VALUES (6)")
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t8 ORDER BY 1", []sql.Row{{int64(3), int64(6)}}, nil, nil)
 	})
 
 	t.Run("DELETE with WHERE clause", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t9 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
-		RunQuery(t, e, harness, "INSERT INTO t9 VALUES (7,7), (8,8)")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t9 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
+		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t9 VALUES (7,7), (8,8)")
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t9 ORDER BY 1", []sql.Row{{int64(7), int64(7)}, {int64(8), int64(8)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t9 WHERE pk > 0"
@@ -1185,8 +1184,8 @@ func TestTruncate(t *testing.T, harness Harness) {
 	})
 
 	t.Run("DELETE with LIMIT clause", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t10 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
-		RunQuery(t, e, harness, "INSERT INTO t10 VALUES (8,8), (9,9)")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t10 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
+		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t10 VALUES (8,8), (9,9)")
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t10 ORDER BY 1", []sql.Row{{int64(8), int64(8)}, {int64(9), int64(9)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t10 LIMIT 1000"
@@ -1212,8 +1211,8 @@ func TestTruncate(t *testing.T, harness Harness) {
 	})
 
 	t.Run("DELETE with ORDER BY clause", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t11 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
-		RunQuery(t, e, harness, "INSERT INTO t11 VALUES (1,1), (9,9)")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t11 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
+		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t11 VALUES (1,1), (9,9)")
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t11 ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(9), int64(9)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t11 ORDER BY 1"
@@ -1240,10 +1239,10 @@ func TestTruncate(t *testing.T, harness Harness) {
 
 	t.Run("Multi-table DELETE", func(t *testing.T) {
 		t.Skip("Multi-table DELETE currently broken")
-		RunQuery(t, e, harness, "CREATE TABLE t12a (pk BIGINT PRIMARY KEY, v1 BIGINT)")
-		RunQuery(t, e, harness, "CREATE TABLE t12b (pk BIGINT PRIMARY KEY, v1 BIGINT)")
-		RunQuery(t, e, harness, "INSERT INTO t12a VALUES (1,1), (2,2)")
-		RunQuery(t, e, harness, "INSERT INTO t12b VALUES (1,1), (2,2)")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t12a (pk BIGINT PRIMARY KEY, v1 BIGINT)")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t12b (pk BIGINT PRIMARY KEY, v1 BIGINT)")
+		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t12a VALUES (1,1), (2,2)")
+		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t12b VALUES (1,1), (2,2)")
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t12a ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t12b ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}}, nil, nil)
 
@@ -2263,27 +2262,27 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 	t.Run("create table with blob column with null default", func(t *testing.T) {
 		ctx := NewContext(harness)
-		RunQuery(t, e, harness, "USE mydb")
+		RunQueryWithContext(t, e, harness, ctx, "USE mydb")
 		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t_blob_default_null(c BLOB DEFAULT NULL)",
 			[]sql.Row{{types.NewOkResult(0)}}, nil, nil)
 
-		RunQuery(t, e, harness, "INSERT INTO t_blob_default_null VALUES ()")
+		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t_blob_default_null VALUES ()")
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t_blob_default_null",
 			[]sql.Row{{nil}}, nil, nil)
 	})
 
 	t.Run("create table like works and can have keys removed", func(t *testing.T) {
 		ctx := NewContext(harness)
-		RunQuery(t, e, harness, "USE mydb")
-		RunQuery(t, e, harness, "CREATE TABLE test(pk int AUTO_INCREMENT PRIMARY KEY, val int)")
+		RunQueryWithContext(t, e, harness, ctx, "USE mydb")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE test(pk int AUTO_INCREMENT PRIMARY KEY, val int)")
 
-		RunQuery(t, e, harness, "CREATE TABLE test2 like test")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE test2 like test")
 
-		RunQuery(t, e, harness, "ALTER TABLE test2 modify pk int")
+		RunQueryWithContext(t, e, harness, ctx, "ALTER TABLE test2 modify pk int")
 		TestQueryWithContext(t, ctx, e, harness, "DESCRIBE test2", []sql.Row{{"pk", "int", "NO", "PRI", "NULL", ""},
 			{"val", "int", "YES", "", "NULL", ""}}, nil, nil)
 
-		RunQuery(t, e, harness, "ALTER TABLE test2 drop primary key")
+		RunQueryWithContext(t, e, harness, ctx, "ALTER TABLE test2 drop primary key")
 
 		TestQueryWithContext(t, ctx, e, harness, "DESCRIBE test2", []sql.Row{{"pk", "int", "NO", "", "NULL", ""},
 			{"val", "int", "YES", "", "NULL", ""}}, nil, nil)
@@ -2351,7 +2350,7 @@ func TestDropTable(t *testing.T, harness Harness) {
 		db, err := e.EngineAnalyzer().Catalog.Database(ctx, "mydb")
 		require.NoError(err)
 
-		RunQuery(t, e, harness, "CREATE DATABASE otherdb")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE DATABASE otherdb")
 		otherdb, err := e.EngineAnalyzer().Catalog.Database(ctx, "otherdb")
 
 		TestQueryWithContext(t, ctx, e, harness, "DROP TABLE mydb.one_pk", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
@@ -2360,8 +2359,8 @@ func TestDropTable(t *testing.T, harness Harness) {
 		require.NoError(err)
 		require.False(ok)
 
-		RunQuery(t, e, harness, "CREATE TABLE otherdb.table1 (pk1 integer primary key)")
-		RunQuery(t, e, harness, "CREATE TABLE otherdb.table2 (pk2 integer primary key)")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE otherdb.table1 (pk1 integer primary key)")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE otherdb.table2 (pk2 integer primary key)")
 
 		_, _, err = e.Query(ctx, "DROP TABLE otherdb.table1, mydb.one_pk_two_idx")
 		require.Error(err)
@@ -2410,13 +2409,13 @@ func TestDropTable(t *testing.T, harness Harness) {
 		db, err := e.EngineAnalyzer().Catalog.Database(ctx, "mydb")
 		require.NoError(err)
 
-		RunQuery(t, e, harness, "DROP DATABASE IF EXISTS otherdb")
-		RunQuery(t, e, harness, "CREATE DATABASE otherdb")
+		RunQueryWithContext(t, e, harness, ctx, "DROP DATABASE IF EXISTS otherdb")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE DATABASE otherdb")
 		otherdb, err := e.EngineAnalyzer().Catalog.Database(ctx, "otherdb")
 
-		RunQuery(t, e, harness, "CREATE TABLE tab1 (pk1 integer primary key, c1 text)")
-		RunQuery(t, e, harness, "CREATE TABLE otherdb.tab1 (other_pk1 integer primary key)")
-		RunQuery(t, e, harness, "CREATE TABLE otherdb.tab2 (other_pk2 integer primary key)")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE tab1 (pk1 integer primary key, c1 text)")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE otherdb.tab1 (other_pk1 integer primary key)")
+		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE otherdb.tab2 (other_pk2 integer primary key)")
 
 		_, _, err = e.Query(ctx, "DROP TABLE otherdb.tab1")
 		require.NoError(err)
@@ -2758,19 +2757,19 @@ func TestPkOrdinalsDML(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	ctx := NewContext(harness)
-	RunQuery(t, e, harness, "create table b (y char(6) primary key)")
-	RunQuery(t, e, harness, "insert into b values ('aaaaaa'),('bbbbbb'),('cccccc')")
+	RunQueryWithContext(t, e, harness, ctx, "create table b (y char(6) primary key)")
+	RunQueryWithContext(t, e, harness, ctx, "insert into b values ('aaaaaa'),('bbbbbb'),('cccccc')")
 	for _, tt := range dml {
 		t.Run(fmt.Sprintf("%s", tt.mutate), func(t *testing.T) {
-			defer RunQuery(t, e, harness, "DROP TABLE IF EXISTS a")
+			defer RunQueryWithContext(t, e, harness, ctx, "DROP TABLE IF EXISTS a")
 			if tt.create != "" {
-				RunQuery(t, e, harness, tt.create)
+				RunQueryWithContext(t, e, harness, ctx, tt.create)
 			}
 			if tt.insert != "" {
-				RunQuery(t, e, harness, tt.insert)
+				RunQueryWithContext(t, e, harness, ctx, tt.insert)
 			}
 			if tt.mutate != "" {
-				RunQuery(t, e, harness, tt.mutate)
+				RunQueryWithContext(t, e, harness, ctx, tt.mutate)
 			}
 			TestQueryWithContext(t, ctx, e, harness, tt.sel, tt.exp, nil, nil)
 		})
@@ -2893,13 +2892,13 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 	defer e.Close()
 	ctx := NewContext(harness)
 
-	RunQuery(t, e, harness, "CREATE TABLE empty_tbl (a int, b int)")
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE empty_tbl (a int, b int)")
 	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (order by b) FROM empty_tbl order by a`, []sql.Row{}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (order by b) FROM empty_tbl order by a`, []sql.Row{}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT a, percent_rank() over (order by b) FROM empty_tbl order by a`, []sql.Row{}, nil, nil)
 
-	RunQuery(t, e, harness, "CREATE TABLE results (name varchar(20), subject varchar(20), mark int)")
-	RunQuery(t, e, harness, "INSERT INTO results VALUES ('Pratibha', 'Maths', 100),('Ankita','Science',80),('Swarna','English',100),('Ankita','Maths',65),('Pratibha','Science',80),('Swarna','Science',50),('Pratibha','English',70),('Swarna','Maths',85),('Ankita','English',90)")
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE results (name varchar(20), subject varchar(20), mark int)")
+	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO results VALUES ('Pratibha', 'Maths', 100),('Ankita','Science',80),('Swarna','English',100),('Ankita','Maths',65),('Pratibha','Science',80),('Swarna','Science',50),('Pratibha','English',70),('Swarna','Maths',85),('Ankita','English',90)")
 
 	TestQueryWithContext(t, ctx, e, harness, `SELECT subject, name, mark, rank() OVER (partition by subject order by mark desc ) FROM results order by subject, mark desc, name`, []sql.Row{
 		{"English", "Swarna", 100, uint64(1)},
@@ -2937,8 +2936,8 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{"Science", "Swarna", 50, float64(1)},
 	}, nil, nil)
 
-	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER, c integer)")
-	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (0,0,0), (1,1,1), (2,2,0), (3,0,0), (4,1,0), (5,3,0)")
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER, c integer)")
+	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t1 VALUES (0,0,0), (1,1,1), (2,2,0), (3,0,0), (4,1,0), (5,3,0)")
 
 	TestQueryWithContext(t, ctx, e, harness, `SELECT a, percent_rank() over (order by b) FROM t1 order by a`, []sql.Row{
 		{0, 0.0},
@@ -3297,14 +3296,14 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 	AssertErr(t, e, harness, "SELECT a, lag(a, -1) over (partition by c) FROM t1", expression.ErrInvalidOffset)
 	AssertErr(t, e, harness, "SELECT a, lag(a, 's') over (partition by c) FROM t1", expression.ErrInvalidOffset)
 
-	RunQuery(t, e, harness, "CREATE TABLE t2 (a int, b int, c int)")
-	RunQuery(t, e, harness, "INSERT INTO t2 VALUES (1,1,1), (3,2,2), (7,4,5)")
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t2 (a int, b int, c int)")
+	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t2 VALUES (1,1,1), (3,2,2), (7,4,5)")
 	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_and(a), bit_or(b), bit_xor(c) FROM t2`, []sql.Row{
 		{uint64(1), uint64(7), uint64(6)},
 	}, nil, nil)
 
-	RunQuery(t, e, harness, "CREATE TABLE t3 (x varchar(100))")
-	RunQuery(t, e, harness, "INSERT INTO t3 VALUES ('these'), ('are'), ('strings')")
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t3 (x varchar(100))")
+	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t3 VALUES ('these'), ('are'), ('strings')")
 	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_and(x) from t3`, []sql.Row{
 		{uint64(0)},
 	}, nil, nil)
@@ -3315,7 +3314,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{uint64(0)},
 	}, nil, nil)
 
-	RunQuery(t, e, harness, "CREATE TABLE t4 (x int)")
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t4 (x int)")
 	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_and(x) from t4`, []sql.Row{
 		{^uint64(0)},
 	}, nil, nil)
@@ -3326,8 +3325,8 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{uint64(0)},
 	}, nil, nil)
 
-	RunQuery(t, e, harness, "CREATE TABLE t5 (a INTEGER, b INTEGER)")
-	RunQuery(t, e, harness, "INSERT INTO t5 VALUES (0,0), (0,1), (1,0), (1,1)")
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t5 (a INTEGER, b INTEGER)")
+	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t5 VALUES (0,0), (0,1), (1,0), (1,1)")
 
 	TestQueryWithContext(t, ctx, e, harness, `SELECT a, b, row_number() over (partition by a, b) FROM t5 order by a, b`, []sql.Row{
 		{0, 0, 1},
@@ -3343,8 +3342,8 @@ func TestWindowRowFrames(t *testing.T, harness Harness) {
 	defer e.Close()
 	ctx := NewContext(harness)
 
-	RunQuery(t, e, harness, "CREATE TABLE a (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER)")
-	RunQuery(t, e, harness, "INSERT INTO a VALUES (0,0,0), (1,1,0), (2,2,0), (3,0,0), (4,1,0), (5,3,0)")
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE a (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER)")
+	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO a VALUES (0,0,0), (1,1,0), (2,2,0), (3,0,0), (4,1,0), (5,3,0)")
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows unbounded preceding) FROM a order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(7)}}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows current row) FROM a order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(2)}, {float64(0)}, {float64(1)}, {float64(3)}}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows 2 preceding) FROM a order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}}, nil, nil)
@@ -3365,8 +3364,8 @@ func TestWindowRangeFrames(t *testing.T, harness Harness) {
 	defer e.Close()
 	ctx := NewContext(harness)
 
-	RunQuery(t, e, harness, "CREATE TABLE a (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER)")
-	RunQuery(t, e, harness, "INSERT INTO a VALUES (0,0,0), (1,1,0), (2,2,0), (3,0,0), (4,1,0), (5,3,0)")
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE a (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER)")
+	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO a VALUES (0,0,0), (1,1,0), (2,2,0), (3,0,0), (4,1,0), (5,3,0)")
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range unbounded preceding) FROM a order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(7)}}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range current row) FROM a order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(2)}, {float64(0)}, {float64(1)}, {float64(3)}}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range 2 preceding) FROM a order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}}, nil, nil)
@@ -3391,8 +3390,8 @@ func TestWindowRangeFrames(t *testing.T, harness Harness) {
 		[]sql.Row{{float64(0)}, {float64(2)}, {float64(2)}, {float64(0)}, {float64(2)}, {float64(3)}}, nil, nil)
 
 	// fixed frame size, 3 days
-	RunQuery(t, e, harness, "CREATE TABLE b (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER, date DATE)")
-	RunQuery(t, e, harness, "INSERT INTO b VALUES (0,0,0,'2022-01-26'), (1,0,0,'2022-01-27'), (2,0,0, '2022-01-28'), (3,1,0,'2022-01-29'), (4,1,0,'2022-01-30'), (5,3,0,'2022-01-31')")
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE b (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER, date DATE)")
+	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO b VALUES (0,0,0,'2022-01-26'), (1,0,0,'2022-01-27'), (2,0,0, '2022-01-28'), (3,1,0,'2022-01-29'), (4,1,0,'2022-01-30'), (5,3,0,'2022-01-31')")
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between interval 2 DAY preceding and interval 1 DAY preceding) FROM b order by x`, []sql.Row{{nil}, {float64(0)}, {float64(0)}, {float64(0)}, {float64(1)}, {float64(2)}}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between interval 1 DAY preceding and interval 1 DAY following) FROM b order by x`, []sql.Row{{float64(0)}, {float64(0)}, {float64(1)}, {float64(2)}, {float64(5)}, {float64(4)}}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between interval 1 DAY following and interval 2 DAY following) FROM b order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(2)}, {float64(4)}, {float64(3)}, {nil}}, nil, nil)
@@ -3402,8 +3401,8 @@ func TestWindowRangeFrames(t *testing.T, harness Harness) {
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between unbounded preceding and interval 1 DAY following) FROM b order by x`, []sql.Row{{float64(0)}, {float64(0)}, {float64(1)}, {float64(2)}, {float64(5)}, {float64(5)}}, nil, nil)
 
 	// variable range size, 1 or many days
-	RunQuery(t, e, harness, "CREATE TABLE c (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER, date DATE)")
-	RunQuery(t, e, harness, "INSERT INTO c VALUES (0,0,0,'2022-01-26'), (1,0,0,'2022-01-26'), (2,0,0, '2022-01-26'), (3,1,0,'2022-01-27'), (4,1,0,'2022-01-29'), (5,3,0,'2022-01-30'), (6,0,0, '2022-02-03'), (7,1,0,'2022-02-03'), (8,1,0,'2022-02-04'), (9,3,0,'2022-02-04')")
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE c (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER, date DATE)")
+	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO c VALUES (0,0,0,'2022-01-26'), (1,0,0,'2022-01-26'), (2,0,0, '2022-01-26'), (3,1,0,'2022-01-27'), (4,1,0,'2022-01-29'), (5,3,0,'2022-01-30'), (6,0,0, '2022-02-03'), (7,1,0,'2022-02-03'), (8,1,0,'2022-02-04'), (9,3,0,'2022-02-04')")
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between interval '2' DAY preceding and interval '1' DAY preceding) FROM c order by x`, []sql.Row{{nil}, {nil}, {nil}, {float64(0)}, {float64(1)}, {float64(1)}, {nil}, {nil}, {float64(1)}, {float64(1)}}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between interval '1' DAY preceding and interval '1' DAY following) FROM c order by x`, []sql.Row{{float64(1)}, {float64(1)}, {float64(1)}, {float64(1)}, {float64(4)}, {float64(4)}, {float64(5)}, {float64(5)}, {float64(5)}, {float64(5)}}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between interval '1' DAY preceding and current row) FROM c order by x`, []sql.Row{{float64(0)}, {float64(0)}, {float64(0)}, {float64(1)}, {float64(1)}, {float64(4)}, {float64(1)}, {float64(1)}, {float64(5)}, {float64(5)}}, nil, nil)
@@ -3422,8 +3421,8 @@ func TestNamedWindows(t *testing.T, harness Harness) {
 	defer e.Close()
 	ctx := NewContext(harness)
 
-	RunQuery(t, e, harness, "CREATE TABLE a (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER)")
-	RunQuery(t, e, harness, "INSERT INTO a VALUES (0,0,0), (1,1,0), (2,2,0), (3,0,0), (4,1,0), (5,3,0)")
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE a (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER)")
+	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO a VALUES (0,0,0), (1,1,0), (2,2,0), (3,0,0), (4,1,0), (5,3,0)")
 
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (w1) FROM a WINDOW w1 as (order by z) order by x`, []sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (w1) FROM a WINDOW w1 as (partition by z) order by x`, []sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}}, nil, nil)
@@ -3936,7 +3935,7 @@ func TestConcurrentTransactions(t *testing.T, harness Harness) {
 
 	pl := e.ProcessList
 
-	RunQuery(t, e, harness, `CREATE TABLE a (x int primary key, y int)`)
+	RunQueryWithContext(t, e, harness, nil, `CREATE TABLE a (x int primary key, y int)`)
 
 	clientSessionA := NewSession(harness)
 	clientSessionA.ProcessList = pl
@@ -4307,7 +4306,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		sql.RunWithNowFunc(func() time.Time {
 			return now
 		}, func() error {
-			RunQuery(t, e, harness, "insert into t10(pk) values (1)")
+			RunQueryWithContext(t, e, harness, nil, "insert into t10(pk) values (1)")
 			return nil
 		})
 		TestQueryWithContext(t, ctx, e, harness, "select * from t10 order by 1", []sql.Row{
@@ -4324,7 +4323,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t10zero(pk BIGINT PRIMARY KEY, v1 DATETIME DEFAULT '2020-01-01 01:02:03', v2 DATETIME DEFAULT 0,"+
 			"v3 TIMESTAMP DEFAULT '2020-01-01 01:02:03', v4 TIMESTAMP DEFAULT 0)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
 
-		RunQuery(t, e, harness, "insert into t10zero(pk) values (1)")
+		RunQueryWithContext(t, e, harness, ctx, "insert into t10zero(pk) values (1)")
 
 		// TODO: the string conversion does not transform to UTC like other NOW() calls, fix this
 		TestQueryWithContext(t, ctx, e, harness, "select * from t10zero order by 1", []sql.Row{{1, time.Date(2020, 1, 1, 1, 2, 3, 0, time.UTC), types.Datetime.Zero(), time.Date(2020, 1, 1, 1, 2, 3, 0, time.UTC), types.Timestamp.Zero()}}, nil, nil)
@@ -4340,7 +4339,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		sql.RunWithNowFunc(func() time.Time {
 			return now
 		}, func() error {
-			RunQuery(t, e, harness, "insert into t11(pk) values (1)")
+			RunQueryWithContext(t, e, harness, ctx, "insert into t11(pk) values (1)")
 			return nil
 		})
 
@@ -4352,7 +4351,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	t.Run("Table referenced with column", func(t *testing.T) {
 		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t28(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (t28.pk))", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
 
-		RunQuery(t, e, harness, "INSERT INTO t28 (pk) VALUES (1), (2)")
+		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t28 (pk) VALUES (1), (2)")
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t28 order by 1", []sql.Row{{1, 1}, {2, 2}}, nil, nil)
 
 		ctx := NewContext(harness)
@@ -4631,8 +4630,8 @@ func TestPrepared(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 
-	RunQuery(t, e, harness, "CREATE TABLE a (x int, y int, z int)")
-	RunQuery(t, e, harness, "INSERT INTO a VALUES (0,1,1), (1,1,1), (2,1,1), (3,2,2), (4,2,2)")
+	RunQueryWithContext(t, e, harness, nil, "CREATE TABLE a (x int, y int, z int)")
+	RunQueryWithContext(t, e, harness, nil, "INSERT INTO a VALUES (0,1,1), (1,1,1), (2,1,1), (3,2,2), (4,2,2)")
 	for _, tt := range qtests {
 		t.Run(fmt.Sprintf("%s", tt.Query), func(t *testing.T) {
 			ctx := NewContext(harness)
