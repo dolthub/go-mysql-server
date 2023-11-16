@@ -721,6 +721,41 @@ var SkippedInfoSchemaQueries = []QueryTest{
 
 var InfoSchemaScripts = []ScriptTest{
 	{
+		Name: "foreign key that references dropped table",
+		SetUpScript: []string{
+			"create table parent(a int primary key, b int);",
+			"create table child(c int primary key);",
+			"alter table child add foreign key (c) references parent(a);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select UNIQUE_CONSTRAINT_NAME from information_schema.referential_constraints where TABLE_NAME = 'child' and REFERENCED_TABLE_NAME = 'parent';",
+				Expected: []sql.Row{{"PRIMARY"}},
+			},
+			{
+				Query:    "select REFERENCED_COLUMN_NAME from information_schema.key_column_usage where TABLE_NAME = 'child' and REFERENCED_TABLE_NAME = 'parent';",
+				Expected: []sql.Row{{"a"}},
+			},
+			{
+				Query: "set foreign_key_checks=0;",
+			},
+			{
+				Query: "drop table parent;",
+			},
+			{
+				Query: "set foreign_key_checks=1;",
+			},
+			{
+				Query:    "select UNIQUE_CONSTRAINT_NAME from information_schema.referential_constraints where TABLE_NAME = 'child' and REFERENCED_TABLE_NAME = 'parent';",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "select REFERENCED_COLUMN_NAME from information_schema.key_column_usage where TABLE_NAME = 'child' and REFERENCED_TABLE_NAME = 'parent';",
+				Expected: []sql.Row{{"a"}},
+			},
+		},
+	},
+	{
 		Name: "query does not use optimization rule on LIKE clause because info_schema db charset is utf8mb3",
 		SetUpScript: []string{
 			"CREATE TABLE t1 (a int, condition_choose varchar(10));",

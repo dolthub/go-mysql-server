@@ -1226,31 +1226,32 @@ func referentialConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					}
 
 					refTbl, _, rerr := c.Table(ctx, referencedSchema, referencedTableName)
-					if rerr != nil {
+					if rerr == nil {
+						indexTable, iok := refTbl.(IndexAddressable)
+						if iok {
+							indexes, ierr := indexTable.GetIndexes(ctx)
+							if ierr != nil {
+
+							}
+							for _, index := range indexes {
+								if index.ID() != "PRIMARY" && !index.IsUnique() {
+									continue
+								}
+								colNames := getColumnNamesFromIndex(index, refTbl)
+								if len(colNames) == len(referencedCols) {
+									var hasAll = true
+									for _, colName := range colNames {
+										_, hasAll = referencedCols[colName]
+									}
+									if hasAll {
+										uniqueConstName = index.ID()
+									}
+								}
+							}
+						}
+					} else if !ErrTableNotFound.Is(rerr) {
+						// the referenced table can be dropped
 						return nil, rerr
-					}
-
-					indexTable, iok := refTbl.(IndexAddressable)
-					if iok {
-						indexes, ierr := indexTable.GetIndexes(ctx)
-						if ierr != nil {
-
-						}
-						for _, index := range indexes {
-							if index.ID() != "PRIMARY" && !index.IsUnique() {
-								continue
-							}
-							colNames := getColumnNamesFromIndex(index, refTbl)
-							if len(colNames) == len(referencedCols) {
-								var hasAll = true
-								for _, colName := range colNames {
-									_, hasAll = referencedCols[colName]
-								}
-								if hasAll {
-									uniqueConstName = index.ID()
-								}
-							}
-						}
 					}
 
 					rows = append(rows, Row{
