@@ -4214,7 +4214,7 @@ CREATE TABLE tab3 (
               UNIQUE KEY idx_tab2_2 (col3,col0,col4),
               UNIQUE KEY idx_tab2_3 (col1,col3)
             );`,
-            `insert into tab2 values ( 63, 587, 465.59 , 'aggxb', 303 , 763.91, 'tgpqr');`,
+			`insert into tab2 values ( 63, 587, 465.59 , 'aggxb', 303 , 763.91, 'tgpqr');`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{

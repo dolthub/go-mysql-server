@@ -16,10 +16,10 @@ package sql_test
 
 import (
 	"fmt"
-	"github.com/shopspring/decimal"
-"testing"
+	"testing"
 
-		"github.com/stretchr/testify/assert"
+	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -407,7 +407,7 @@ func TestRangeOverlapNulls(t *testing.T) {
 
 func TestComplexRange(t *testing.T) {
 	tests := []struct {
-		skip bool
+		skip   bool
 		ranges sql.RangeCollection
 	}{
 		{
@@ -484,7 +484,7 @@ func TestComplexRange(t *testing.T) {
 					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 1}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
 				),
 			},
-        },
+		},
 	}
 
 	for _, test := range tests {
@@ -503,7 +503,7 @@ func TestComplexRange(t *testing.T) {
 			ok, err := discreteRanges.Equals(verificationRanges)
 			require.NoError(t, err)
 			// TODO: need a way to either verify that the ranges cover the area, or that they're the same
-			for i := 0; i < len(discreteRanges) - 1; i++ {
+			for i := 0; i < len(discreteRanges)-1; i++ {
 				for j := i + 1; j < len(discreteRanges); j++ {
 					r1 := discreteRanges[i]
 					r2 := discreteRanges[j]
