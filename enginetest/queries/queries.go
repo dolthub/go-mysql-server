@@ -766,6 +766,10 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		Query:    "SELECT 1 % true",
+		Expected: []sql.Row{{"0"}},
+	},
+	{
 		Query:    "show full processlist",
 		Expected: []sql.Row{},
 	},

@@ -388,6 +388,15 @@ func convertToDecimalValue(val interface{}, isTimeType bool) interface{} {
 		val = convertTimeTypeToString(val)
 	}
 
+	switch v := val.(type) {
+	case bool:
+		val = 0
+		if v {
+			val = 1
+		}
+	default:
+	}
+
 	if _, ok := val.(decimal.Decimal); !ok {
 		p, s := GetPrecisionAndScale(val)
 		dtyp, err := types.CreateDecimalType(p, s)
