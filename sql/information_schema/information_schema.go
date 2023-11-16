@@ -1225,8 +1225,9 @@ func referentialConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 						onDelete = "NO ACTION"
 					}
 
-					refTbl, _, rerr := c.Table(ctx, referencedSchema, referencedTableName)
-					if rerr == nil {
+					// ErrTableNotFound is returned when the referenced table is dropped, so `unique_constraint_name` column will not be filled.
+					refTbl, _, refErr := c.Table(ctx, referencedSchema, referencedTableName)
+					if refErr == nil {
 						indexTable, iok := refTbl.(IndexAddressable)
 						if iok {
 							indexes, ierr := indexTable.GetIndexes(ctx)
@@ -1249,9 +1250,8 @@ func referentialConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 								}
 							}
 						}
-					} else if !ErrTableNotFound.Is(rerr) {
-						// the referenced table can be dropped
-						return nil, rerr
+					} else if !ErrTableNotFound.Is(refErr) {
+						return nil, refErr
 					}
 
 					rows = append(rows, Row{
