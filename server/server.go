@@ -129,6 +129,10 @@ func portInUse(hostPort string) bool {
 }
 
 func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handler mysql.Handler) (*Server, error) {
+	for _, option := range cfg.Options {
+		option(e, sm, handler)
+	}
+
 	if cfg.ConnReadTimeout < 0 {
 		cfg.ConnReadTimeout = 0
 	}
