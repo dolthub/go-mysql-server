@@ -1225,32 +1225,33 @@ func referentialConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 						onDelete = "NO ACTION"
 					}
 
-					refTbl, _, rerr := c.Table(ctx, referencedSchema, referencedTableName)
-					if rerr != nil {
-						return nil, rerr
-					}
+					// ErrTableNotFound is returned when the referenced table is dropped, so `unique_constraint_name` column will not be filled.
+					refTbl, _, refErr := c.Table(ctx, referencedSchema, referencedTableName)
+					if refErr == nil {
+						indexTable, iok := refTbl.(IndexAddressable)
+						if iok {
+							indexes, ierr := indexTable.GetIndexes(ctx)
+							if ierr != nil {
 
-					indexTable, iok := refTbl.(IndexAddressable)
-					if iok {
-						indexes, ierr := indexTable.GetIndexes(ctx)
-						if ierr != nil {
-
-						}
-						for _, index := range indexes {
-							if index.ID() != "PRIMARY" && !index.IsUnique() {
-								continue
 							}
-							colNames := getColumnNamesFromIndex(index, refTbl)
-							if len(colNames) == len(referencedCols) {
-								var hasAll = true
-								for _, colName := range colNames {
-									_, hasAll = referencedCols[colName]
+							for _, index := range indexes {
+								if index.ID() != "PRIMARY" && !index.IsUnique() {
+									continue
 								}
-								if hasAll {
-									uniqueConstName = index.ID()
+								colNames := getColumnNamesFromIndex(index, refTbl)
+								if len(colNames) == len(referencedCols) {
+									var hasAll = true
+									for _, colName := range colNames {
+										_, hasAll = referencedCols[colName]
+									}
+									if hasAll {
+										uniqueConstName = index.ID()
+									}
 								}
 							}
 						}
+					} else if !ErrTableNotFound.Is(refErr) {
+						return nil, refErr
 					}
 
 					rows = append(rows, Row{
