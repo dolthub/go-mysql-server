@@ -4209,6 +4209,34 @@ CREATE TABLE tab3 (
 			},
 		},
 	},
+	{
+		Name: "Complex Filter Index Scan",
+		SetUpScript: []string{
+			`CREATE TABLE tab2 (
+              pk int NOT NULL,
+              col0 int,
+              col1 float,
+              col2 text,
+              col3 int,
+              col4 float,
+              col5 text,
+              PRIMARY KEY (pk),
+              UNIQUE KEY idx_tab2_0 (col3,col4),
+              UNIQUE KEY idx_tab2_1 (col1,col4),
+              UNIQUE KEY idx_tab2_2 (col3,col0,col4),
+              UNIQUE KEY idx_tab2_3 (col1,col3)
+            );`,
+			`insert into tab2 values ( 63, 587, 465.59 , 'aggxb', 303 , 763.91, 'tgpqr');`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT pk FROM tab2 WHERE col4 IS NULL OR col0 > 560 AND (col3 < 848) OR (col3 > 883) OR (((col4 >= 539.78 AND col3 <= 953))) OR ((col3 IN (258)) OR (col3 IN (583,234,372)) AND col4 >= 488.43)",
+				Expected: []sql.Row{
+					{63},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
