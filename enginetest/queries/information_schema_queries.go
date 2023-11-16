@@ -743,7 +743,27 @@ var InfoSchemaScripts = []ScriptTest{
 				Query: "drop table parent;",
 			},
 			{
+				Query:    "insert into child values (1), (2);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "select * from child;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				Query:    "delete from child;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "select * from child;",
+				Expected: []sql.Row{},
+			},
+			{
 				Query: "set foreign_key_checks=1;",
+			},
+			{
+				Query:       "insert into child values (1), (2);",
+				ExpectedErr: sql.ErrForeignKeyNotResolved,
 			},
 			{
 				Query:    "select UNIQUE_CONSTRAINT_NAME from information_schema.referential_constraints where TABLE_NAME = 'child' and REFERENCED_TABLE_NAME = 'parent';",
