@@ -16,9 +16,10 @@ package sql_test
 
 import (
 	"fmt"
-	"testing"
+	"github.com/shopspring/decimal"
+"testing"
 
-	"github.com/stretchr/testify/assert"
+		"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -188,7 +189,6 @@ func TestRangeOverlapTwoColumns(t *testing.T) {
 				require.NoError(t, err)
 				rangeBool := evalRanges(t, discreteRanges, row)
 				assert.Equal(t, referenceBool, rangeBool, fmt.Sprintf("%v: DiscreteRanges: %s", row, discreteRanges.DebugString()))
-
 			}
 			discreteRanges, err = sql.SortRanges(discreteRanges...)
 			require.NoError(t, err)
@@ -400,6 +400,121 @@ func TestRangeOverlapNulls(t *testing.T) {
 			require.NoError(t, err)
 			ok, err := discreteRanges.Equals(verificationRanges)
 			require.NoError(t, err)
+			assert.True(t, ok)
+		})
+	}
+}
+
+func TestComplexRange(t *testing.T) {
+	tests := []struct {
+		skip bool
+		ranges sql.RangeCollection
+	}{
+		{
+			// derived from sqllogictest/index/in/100/slt_good_1.test:12655
+			ranges: sql.RangeCollection{
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveNull{}, Typ: types.Float32},
+				),
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.AboveNull{}, UpperBound: sql.Below{Key: int16(848)}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.Above{Key: int16(560)}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+				),
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.AboveNull{}, UpperBound: sql.Above{Key: 953}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: decimal.New(53978, -2)}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+				),
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: int16(234)}, UpperBound: sql.Above{Key: int16(234)}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: decimal.New(48843, -2)}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+				),
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: int16(258)}, UpperBound: sql.Above{Key: int16(258)}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+				),
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: int16(372)}, UpperBound: sql.Above{Key: int16(372)}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: decimal.New(48843, -2)}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+				),
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: int16(583)}, UpperBound: sql.Above{Key: int16(583)}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: decimal.New(48843, -2)}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+				),
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.Above{Key: int16(883)}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+				),
+			},
+		},
+		{
+			skip: true, // returns different ranges, which are non-overlapping, but not sure if they're still correct
+			ranges: sql.RangeCollection{
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 0}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 0}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 0}, UpperBound: sql.Above{Key: 0}, Typ: types.Int16},
+				),
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.Above{Key: 0}, UpperBound: sql.Below{Key: 5}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.Above{Key: 3}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 0}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
+				),
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 1}, UpperBound: sql.Above{Key: 1}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 0}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 0}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
+				),
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 2}, UpperBound: sql.Above{Key: 2}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 0}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 1}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
+				),
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 4}, UpperBound: sql.Above{Key: 4}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 0}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 1}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
+				),
+			},
+        },
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("Range: %s", test.ranges.DebugString()), func(t *testing.T) {
+			if test.skip {
+				t.Skip()
+			}
+			discreteRanges, err := sql.RemoveOverlappingRanges(test.ranges...)
+			require.NoError(t, err)
+			verificationRanges, err := removeOverlappingRangesVerification(test.ranges...)
+			require.NoError(t, err)
+			discreteRanges, err = sql.SortRanges(discreteRanges...)
+			require.NoError(t, err)
+			verificationRanges, err = sql.SortRanges(verificationRanges...)
+			require.NoError(t, err)
+			ok, err := discreteRanges.Equals(verificationRanges)
+			require.NoError(t, err)
+			// TODO: need a way to either verify that the ranges cover the area, or that they're the same
+			for i := 0; i < len(discreteRanges) - 1; i++ {
+				for j := i + 1; j < len(discreteRanges); j++ {
+					r1 := discreteRanges[i]
+					r2 := discreteRanges[j]
+					hasOverlap, err := r1.Overlaps(r2)
+					if hasOverlap {
+						t.Logf("Overlap: %s\n%s", r1.String(), r2.String())
+					}
+					assert.NoError(t, err)
+					assert.False(t, hasOverlap)
+				}
+			}
 			assert.True(t, ok)
 		})
 	}
