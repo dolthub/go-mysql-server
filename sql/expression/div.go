@@ -394,6 +394,7 @@ func convertToDecimalValue(val interface{}, isTimeType bool) interface{} {
 		if v {
 			val = 1
 		}
+	default:
 	}
 
 	if _, ok := val.(decimal.Decimal); !ok {
