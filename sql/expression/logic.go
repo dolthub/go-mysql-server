@@ -99,27 +99,29 @@ func (a *And) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	if lval != nil {
+		lvalBool, err := types.ConvertToBool(lval)
+		if err == nil && lvalBool == false {
+			return false, nil
+		}
+	}
 
 	rval, err := a.Right.Eval(ctx, row)
 	if err != nil {
 		return nil, err
+	}
+	if rval != nil {
+		rvalBool, err := types.ConvertToBool(rval)
+		if err == nil && rvalBool == false {
+			return false, nil
+		}
 	}
 
 	if lval == nil || rval == nil {
 		return nil, nil
 	}
 
-	lvalBool, err := types.ConvertToBool(lval)
-	if err != nil {
-		return nil, err
-	}
-
-	rvalBool, err := types.ConvertToBool(rval)
-	if err != nil {
-		return nil, err
-	}
-
-	return lvalBool && rvalBool, nil
+	return true, nil
 }
 
 // WithChildren implements the Expression interface.
@@ -192,32 +194,22 @@ func (o *Or) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	if lval != nil {
+		lval, err = types.ConvertToBool(lval)
+		if err == nil && lval.(bool) {
+			return true, nil
+		}
+	}
 
 	rval, err := o.Right.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-
-	if lval == nil && rval == nil {
-		return nil, nil
-	}
-
-	// nil is the same as false
-	if lval == nil {
-		lval = false
-	}
-	if rval == nil {
-		rval = false
-	}
-
-	lvalBool, err := types.ConvertToBool(lval)
-	if err != nil {
-		return nil, err
-	}
-
-	rvalBool, err := types.ConvertToBool(rval)
-	if err != nil {
-		return nil, err
+	if rval != nil {
+		rval, err = types.ConvertToBool(rval)
+		if err == nil && rval.(bool) {
+			return true, nil
+		}
 	}
 
 	// Can also be triggered by lval and rval not being bool types.
@@ -225,7 +217,8 @@ func (o *Or) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return false, nil
 	}
 
-	return lvalBool || rvalBool, nil
+	// (lval == nil && rval == nil) || (lval == false && rval == nil) || (lval == nil && rval == false)
+	return nil, nil
 }
 
 // WithChildren implements the Expression interface.
