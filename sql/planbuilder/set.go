@@ -153,7 +153,7 @@ func (b *Builder) setExprsToExpressions(inScope *scope, e ast.SetVarExprs) []sql
 		sysVarType, _ := setVar.Type().(sql.SystemVariableType)
 		innerExpr, ok := b.simplifySetExpr(setExpr.Name, setScope, setExpr.Expr, sysVarType)
 		if !ok {
-			innerExpr = b.buildScalar(inScope, setExpr.Expr)
+			innerExpr = b.buildScalar(inScope, setExpr.Expr, nil)
 		}
 
 		res[i] = expression.NewSetField(setVar, innerExpr)

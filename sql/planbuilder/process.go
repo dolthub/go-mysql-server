@@ -55,7 +55,7 @@ func (b *Builder) getInt64Value(inScope *scope, expr ast.Expr, errStr string) in
 // getInt64Literal returns an int64 *expression.Literal for the value given, or an unsupported error with the string
 // given if the expression doesn't represent an integer literal.
 func (b *Builder) getInt64Literal(inScope *scope, expr ast.Expr, errStr string) *expression.Literal {
-	e := b.buildScalar(inScope, expr)
+	e := b.buildScalar(inScope, expr, nil)
 
 	switch e := e.(type) {
 	case *expression.Literal:

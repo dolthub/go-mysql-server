@@ -174,7 +174,7 @@ func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []
 				// isolation (no access to the destination schema)
 				exprs[j] = assignColumnIndexes(exprs[j], reorderSchema(columnNames, destSchema))
 			default:
-				exprs[j] = b.buildScalar(inScope, e)
+				exprs[j] = b.buildScalar(inScope, e, nil)
 			}
 		}
 	}
@@ -193,22 +193,6 @@ func reorderSchema(names []string, schema sql.Schema) sql.Schema {
 	return newSch
 }
 
-func (b *Builder) buildValues(inScope *scope, v ast.Values) (outScope *scope) {
-	// TODO add literals to outScope?
-	exprTuples := make([][]sql.Expression, len(v))
-	for i, vt := range v {
-		exprs := make([]sql.Expression, len(vt))
-		exprTuples[i] = exprs
-		for j, e := range vt {
-			exprs[j] = b.buildScalar(inScope, e)
-		}
-	}
-
-	outScope = inScope.push()
-	outScope.node = plan.NewValues(exprTuples)
-	return
-}
-
 func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentExprs) []sql.Expression {
 	updateExprs := make([]sql.Expression, len(e))
 	var startAggCnt int
@@ -223,7 +207,7 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 	tableSch := inScope.node.Schema()
 
 	for i, updateExpr := range e {
-		colName := b.buildScalar(inScope, updateExpr.Name)
+		colName := b.buildScalar(inScope, updateExpr.Name, nil)
 
 		// Prevent update of generated columns
 		if gf, ok := colName.(*expression.GetField); ok {
@@ -236,7 +220,7 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 			}
 		}
 
-		innerExpr := b.buildScalar(inScope, updateExpr.Expr)
+		innerExpr := b.buildScalar(inScope, updateExpr.Expr, nil)
 		updateExprs[i] = expression.NewSetField(colName, innerExpr)
 		if inScope.groupBy != nil {
 			if len(inScope.groupBy.aggs) > startAggCnt {
@@ -282,7 +266,7 @@ func (b *Builder) buildOnDupUpdateExprs(combinedScope, destScope *scope, e ast.A
 	}
 	for i, updateExpr := range e {
 		colName := b.buildOnDupLeft(destScope, updateExpr.Name)
-		innerExpr := b.buildScalar(combinedScope, updateExpr.Expr)
+		innerExpr := b.buildScalar(combinedScope, updateExpr.Expr, nil)
 
 		res[i] = expression.NewSetField(colName, innerExpr)
 		if combinedScope.groupBy != nil {
@@ -613,7 +597,7 @@ func (b *Builder) buildCheckConstraint(inScope *scope, check *sql.CheckDefinitio
 		b.handleErr(err)
 	}
 
-	c := b.buildScalar(inScope, ae.Expr)
+	c := b.buildScalar(inScope, ae.Expr, nil)
 
 	return &sql.CheckConstraint{
 		Name:     check.Name,

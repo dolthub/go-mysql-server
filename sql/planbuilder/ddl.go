@@ -703,7 +703,7 @@ func (b *Builder) convertConstraintDefinition(inScope *scope, cd *ast.Constraint
 	} else if chConstraint, ok := cd.Details.(*ast.CheckConstraintDefinition); ok {
 		var c sql.Expression
 		if chConstraint.Expr != nil {
-			c = b.buildScalar(inScope, chConstraint.Expr)
+			c = b.buildScalar(inScope, chConstraint.Expr, nil)
 		}
 
 		return &sql.CheckConstraint{
@@ -910,7 +910,7 @@ func (b *Builder) buildDefaultExpression(inScope *scope, defaultExpr ast.Expr) *
 	if defaultExpr == nil {
 		return nil
 	}
-	parsedExpr := b.buildScalar(inScope, defaultExpr)
+	parsedExpr := b.buildScalar(inScope, defaultExpr, nil)
 
 	// Function expressions must be enclosed in parentheses (except for current_timestamp() and now())
 	_, isParenthesized := defaultExpr.(*ast.ParenExpr)
@@ -1274,7 +1274,7 @@ func (b *Builder) convertDefaultExpression(inScope *scope, defaultExpr ast.Expr,
 	if defaultExpr == nil {
 		return nil
 	}
-	resExpr := b.buildScalar(inScope, defaultExpr)
+	resExpr := b.buildScalar(inScope, defaultExpr, nil)
 
 	// Function expressions must be enclosed in parentheses (except for current_timestamp() and now())
 	_, isParenthesized := defaultExpr.(*ast.ParenExpr)

@@ -292,7 +292,7 @@ func (b *Builder) buildCreateEvent(inScope *scope, query string, c *ast.DDL) (ou
 }
 
 func (b *Builder) buildEventScheduleTimeSpec(inScope *scope, spec *ast.EventScheduleTimeSpec) (sql.Expression, []sql.Expression) {
-	ts := b.buildScalar(inScope, spec.EventTimestamp)
+	ts := b.buildScalar(inScope, spec.EventTimestamp, nil)
 	if len(spec.EventIntervals) == 0 {
 		return ts, nil
 	}

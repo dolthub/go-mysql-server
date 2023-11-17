@@ -126,21 +126,21 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 
 func (b *Builder) buildLimit(inScope *scope, limit *ast.Limit) sql.Expression {
 	if limit != nil {
-		l := b.buildScalar(inScope, limit.Rowcount)
-		return b.typeCoerceLiteral(l)
+		l := b.buildScalar(inScope, limit.Rowcount, nil)
+		return b.typeCoerceLiteral(l, types.Int64)
 	}
 	return nil
 }
 
-func (b *Builder) typeCoerceLiteral(e sql.Expression) sql.Expression {
+func (b *Builder) typeCoerceLiteral(e sql.Expression, typ sql.Type) sql.Expression {
 	// todo this should be in a module that can generically coerce to a type or type class
 	switch e := e.(type) {
 	case *expression.Literal:
-		val, _, err := types.Int64.Convert(e.Value())
+		val, _, err := typ.Convert(e.Value())
 		if err != nil {
 			err = fmt.Errorf("%s: %w", err.Error(), sql.ErrInvalidTypeForLimit.New(types.Int64, e.Type()))
 		}
-		return expression.NewLiteral(val, types.Int64)
+		return expression.NewLiteral(val, typ)
 	case *expression.BindVar:
 		return e
 	default:
@@ -152,8 +152,8 @@ func (b *Builder) typeCoerceLiteral(e sql.Expression) sql.Expression {
 
 func (b *Builder) buildOffset(inScope *scope, limit *ast.Limit) sql.Expression {
 	if limit != nil && limit.Offset != nil {
-		rowCount := b.buildScalar(inScope, limit.Offset)
-		rowCount = b.typeCoerceLiteral(rowCount)
+		rowCount := b.buildScalar(inScope, limit.Offset, nil)
+		rowCount = b.typeCoerceLiteral(rowCount, types.Int64)
 		// Check if offset starts at 0, if so, we can just remove the offset node.
 		// Only cast to int8, as a larger int type just means a non-zero offset.
 		if val, err := rowCount.Eval(b.ctx, nil); err == nil {

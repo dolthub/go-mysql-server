@@ -497,7 +497,7 @@ func injectBindVarsAndPrepare(
 			case sqlparser.HexNum, sqlparser.HexVal:
 				return false, nil
 			}
-			expr := b.ConvertVal(n)
+			expr := b.ConvertVal(n, nil)
 			var val interface{}
 			if l, ok := expr.(*expression.Literal); ok {
 				val, _, err = expr.Type().Promote().Convert(l.Value())

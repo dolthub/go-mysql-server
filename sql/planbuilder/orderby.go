@@ -125,7 +125,7 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 			// track order by col
 			// replace aggregations with refs
 			// pick up auxiliary cols
-			expr := b.buildScalar(fromScope, e)
+			expr := b.buildScalar(fromScope, e, nil)
 			_, ok := outScope.getExpr(expr.String(), true)
 			if ok {
 				continue

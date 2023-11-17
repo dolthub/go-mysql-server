@@ -214,7 +214,7 @@ func (b *Builder) buildCaseStatement(inScope *scope, n *ast.CaseStatement) (outS
 		outScope.node = plan.NewCaseStatement(nil, ifConditionals, elseBlock)
 		return outScope
 	} else {
-		caseExpr := b.buildScalar(inScope, n.Expr)
+		caseExpr := b.buildScalar(inScope, n.Expr, nil)
 		outScope.node = plan.NewCaseStatement(caseExpr, ifConditionals, elseBlock)
 		return outScope
 	}
@@ -223,7 +223,7 @@ func (b *Builder) buildCaseStatement(inScope *scope, n *ast.CaseStatement) (outS
 func (b *Builder) buildIfConditional(inScope *scope, n ast.IfStatementCondition) (outScope *scope) {
 	outScope = inScope.push()
 	block := b.buildBlock(inScope, n.Statements)
-	condition := b.buildScalar(inScope, n.Expr)
+	condition := b.buildScalar(inScope, n.Expr, types.Boolean)
 	outScope.node = plan.NewIfConditional(condition, block)
 	return outScope
 }
@@ -232,7 +232,7 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 	outScope = inScope.push()
 	params := make([]sql.Expression, len(c.Params))
 	for i, param := range c.Params {
-		expr := b.buildScalar(inScope, param)
+		expr := b.buildScalar(inScope, param, nil)
 		params[i] = expr
 	}
 
@@ -453,7 +453,7 @@ func (b *Builder) buildRepeat(inScope *scope, repeat *ast.Repeat) (outScope *sco
 	outScope.initProc()
 	outScope.proc.AddLabel(repeat.Label, true)
 	block := b.buildBlock(outScope, repeat.Statements)
-	expr := b.buildScalar(inScope, repeat.Condition)
+	expr := b.buildScalar(inScope, repeat.Condition, nil)
 	outScope.node = plan.NewRepeat(repeat.Label, expr, block)
 	return outScope
 }
@@ -463,7 +463,7 @@ func (b *Builder) buildWhile(inScope *scope, while *ast.While) (outScope *scope)
 	outScope.initProc()
 	outScope.proc.AddLabel(while.Label, true)
 	block := b.buildBlock(outScope, while.Statements)
-	expr := b.buildScalar(inScope, while.Condition)
+	expr := b.buildScalar(inScope, while.Condition, types.Boolean)
 	outScope.node = plan.NewWhile(while.Label, expr, block)
 	return outScope
 }

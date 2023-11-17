@@ -205,7 +205,7 @@ func (b *Builder) buildShowAllTriggers(inScope *scope, s *ast.Show) (outScope *s
 		dbName = s.ShowTablesOpt.DbName
 		if s.ShowTablesOpt.Filter != nil {
 			if s.ShowTablesOpt.Filter.Filter != nil {
-				filter = b.buildScalar(outScope, s.ShowTablesOpt.Filter.Filter)
+				filter = b.buildScalar(outScope, s.ShowTablesOpt.Filter.Filter, nil)
 			} else if s.ShowTablesOpt.Filter.Like != "" {
 				filter = expression.NewLike(
 					expression.NewGetField(2, types.LongText, "Table", false),
@@ -273,7 +273,7 @@ func (b *Builder) buildShowAllEvents(inScope *scope, s *ast.Show) (outScope *sco
 		dbName = s.ShowTablesOpt.DbName
 		if s.ShowTablesOpt.Filter != nil {
 			if s.ShowTablesOpt.Filter.Filter != nil {
-				filter = b.buildScalar(outScope, s.ShowTablesOpt.Filter.Filter)
+				filter = b.buildScalar(outScope, s.ShowTablesOpt.Filter.Filter, nil)
 			} else if s.ShowTablesOpt.Filter.Like != "" {
 				filter = expression.NewLike(
 					expression.NewGetField(1, types.LongText, "name", false),
@@ -332,7 +332,7 @@ func (b *Builder) buildShowProcedureStatus(inScope *scope, s *ast.Show) (outScop
 	}
 	if s.Filter != nil {
 		if s.Filter.Filter != nil {
-			filter = b.buildScalar(outScope, s.Filter.Filter)
+			filter = b.buildScalar(outScope, s.Filter.Filter, nil)
 		} else if s.Filter.Like != "" {
 			filter = expression.NewLike(
 				expression.NewGetField(1, types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default), "Name", false),
@@ -366,7 +366,7 @@ func (b *Builder) buildShowFunctionStatus(inScope *scope, s *ast.Show) (outScope
 
 	if s.Filter != nil {
 		if s.Filter.Filter != nil {
-			filter = b.buildScalar(outScope, s.Filter.Filter)
+			filter = b.buildScalar(outScope, s.Filter.Filter, nil)
 		} else if s.Filter.Like != "" {
 			filter = expression.NewLike(
 				expression.NewGetField(1, types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default), "Name", false),
@@ -411,7 +411,7 @@ func (b *Builder) buildShowTableStatus(inScope *scope, s *ast.Show) (outScope *s
 	var filter sql.Expression
 	if s.Filter != nil {
 		if s.Filter.Filter != nil {
-			filter = b.buildScalar(outScope, s.Filter.Filter)
+			filter = b.buildScalar(outScope, s.Filter.Filter, types.Boolean)
 		} else if s.Filter.Like != "" {
 			filter = expression.NewLike(
 				expression.NewGetField(0, types.LongText, "Name", false),
@@ -508,7 +508,7 @@ func (b *Builder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *sco
 	var like sql.Expression
 	if s.Filter != nil {
 		if s.Filter.Filter != nil {
-			filter = b.buildScalar(outScope, s.Filter.Filter)
+			filter = b.buildScalar(outScope, s.Filter.Filter, types.Boolean)
 		}
 		if s.Filter.Like != "" {
 			like = expression.NewLike(
@@ -582,7 +582,7 @@ func (b *Builder) buildAsOfExpr(inScope *scope, time ast.Expr) sql.Expression {
 		}
 	default:
 	}
-	return b.buildScalar(b.newScope(), time)
+	return b.buildScalar(b.newScope(), time, nil)
 }
 
 func (b *Builder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *scope) {
@@ -610,7 +610,7 @@ func (b *Builder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *sco
 
 	if s.ShowTablesOpt.Filter != nil {
 		if s.ShowTablesOpt.Filter.Filter != nil {
-			filter = b.buildScalar(outScope, s.ShowTablesOpt.Filter.Filter)
+			filter = b.buildScalar(outScope, s.ShowTablesOpt.Filter.Filter, types.Boolean)
 		} else if s.ShowTablesOpt.Filter.Like != "" {
 			filter = expression.NewLike(
 				expression.NewGetField(0, types.LongText, fmt.Sprintf("Tables_in_%s", dbName), false),
@@ -639,7 +639,7 @@ func (b *Builder) buildShowAllDatabases(inScope *scope, s *ast.Show) (outScope *
 	var filter sql.Expression
 	if s.Filter != nil {
 		if s.Filter.Filter != nil {
-			filter = b.buildScalar(outScope, s.Filter.Filter)
+			filter = b.buildScalar(outScope, s.Filter.Filter, types.Boolean)
 		} else if s.Filter.Like != "" {
 			filter = expression.NewLike(
 				expression.NewGetField(0, types.LongText, "Database", false),
@@ -721,7 +721,7 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 		}
 
 		if s.ShowTablesOpt.Filter.Filter != nil {
-			filter := b.buildScalar(outScope, s.ShowTablesOpt.Filter.Filter)
+			filter := b.buildScalar(outScope, s.ShowTablesOpt.Filter.Filter, types.Boolean)
 			node = plan.NewFilter(filter, node)
 		}
 	}
@@ -740,10 +740,10 @@ func (b *Builder) buildShowWarnings(inScope *scope, s *ast.Show) (outScope *scop
 	node = plan.ShowWarnings(b.ctx.Session.Warnings())
 	if s.Limit != nil {
 		if s.Limit.Offset != nil {
-			offset := b.buildScalar(inScope, s.Limit.Offset)
+			offset := b.buildScalar(inScope, s.Limit.Offset, nil)
 			node = plan.NewOffset(offset, node)
 		}
-		limit := b.buildScalar(inScope, s.Limit.Rowcount)
+		limit := b.buildScalar(inScope, s.Limit.Rowcount, nil)
 		node = plan.NewLimit(limit, node)
 	}
 
@@ -772,7 +772,7 @@ func (b *Builder) buildShowCollation(inScope *scope, s *ast.Show) (outScope *sco
 	}
 
 	if s.ShowCollationFilterOpt != nil {
-		filterExpr := b.buildScalar(outScope, s.ShowCollationFilterOpt)
+		filterExpr := b.buildScalar(outScope, s.ShowCollationFilterOpt, nil)
 		// TODO: once collations are properly implemented, we should better be able to handle utf8 -> utf8mb3 comparisons as they're aliases
 		filterExpr, _, _ = transform.Expr(filterExpr, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if exprLiteral, ok := expr.(*expression.Literal); ok {
@@ -828,7 +828,7 @@ func (b *Builder) buildShowStatus(inScope *scope, s *ast.Show) (outScope *scope)
 				nil,
 			)
 		} else if s.Filter.Filter != nil {
-			filter = b.buildScalar(outScope, s.Filter.Filter)
+			filter = b.buildScalar(outScope, s.Filter.Filter, types.Boolean)
 		}
 	}
 
@@ -855,7 +855,7 @@ func (b *Builder) buildShowCharset(inScope *scope, s *ast.Show) (outScope *scope
 	var filter sql.Expression
 	if s.Filter != nil {
 		if s.Filter.Filter != nil {
-			filter = b.buildScalar(outScope, s.Filter.Filter)
+			filter = b.buildScalar(outScope, s.Filter.Filter, types.Boolean)
 		} else if s.Filter.Like != "" {
 			filter = expression.NewLike(
 				expression.NewGetField(0, types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), "Charset", false),

@@ -36,31 +36,31 @@ func (b *Builder) buildWhere(inScope *scope, where *ast.Where) {
 	if where == nil {
 		return
 	}
-	filter := b.buildScalar(inScope, where.Expr)
+	filter := b.buildScalar(inScope, where.Expr, nil)
 	filterNode := plan.NewFilter(filter, inScope.node)
 	inScope.node = filterNode
 }
 
-func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
+func (b *Builder) buildScalar(inScope *scope, e ast.Expr, coerce sql.Type) sql.Expression {
 	switch v := e.(type) {
 	case *ast.Default:
 		return expression.WrapExpression(expression.NewDefaultColumn(v.ColName))
 	case *ast.SubstrExpr:
 		var name sql.Expression
 		if v.Name != nil {
-			name = b.buildScalar(inScope, v.Name)
+			name = b.buildScalar(inScope, v.Name, nil)
 		} else {
-			name = b.buildScalar(inScope, v.StrVal)
+			name = b.buildScalar(inScope, v.StrVal, nil)
 		}
-		start := b.buildScalar(inScope, v.From)
+		start := b.buildScalar(inScope, v.From, nil)
 
 		if v.To == nil {
 			return &function.Substring{Str: name, Start: start}
 		}
-		len := b.buildScalar(inScope, v.To)
+		len := b.buildScalar(inScope, v.To, types.Int64)
 		return &function.Substring{Str: name, Start: start, Len: len}
 	case *ast.CurTimeFuncExpr:
-		fsp := b.buildScalar(inScope, v.Fsp)
+		fsp := b.buildScalar(inScope, v.Fsp, types.Int64)
 
 		if inScope.parent.activeSubquery != nil {
 			inScope.parent.activeSubquery.markVolatile()
@@ -68,18 +68,22 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 
 		return &function.CurrTimestamp{Args: []sql.Expression{fsp}}
 	case *ast.TrimExpr:
-		pat := b.buildScalar(inScope, v.Pattern)
-		str := b.buildScalar(inScope, v.Str)
+		pat := b.buildScalar(inScope, v.Pattern, types.Text)
+		str := b.buildScalar(inScope, v.Str, types.Text)
 		return function.NewTrim(str, pat, v.Dir)
 	case *ast.ComparisonExpr:
-		return b.buildComparison(inScope, v)
+		return b.buildComparison(inScope, v, nil)
 	case *ast.IsExpr:
 		return b.buildIsExprToExpression(inScope, v)
 	case *ast.NotExpr:
-		c := b.buildScalar(inScope, v.Expr)
+		c := b.buildScalar(inScope, v.Expr, nil)
 		return expression.NewNot(c)
 	case *ast.SQLVal:
-		return b.ConvertVal(v)
+		val := b.ConvertVal(v, nil)
+		if coerce != nil && val.Type() != coerce {
+			val = expression.NewCoerceInternal(val, coerce)
+		}
+		return val
 	case ast.BoolVal:
 		return expression.NewLiteral(bool(v), types.Boolean)
 	case *ast.NullVal:
@@ -163,21 +167,21 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		// TODO this is an aggregation
 		return b.buildGroupConcat(inScope, v)
 	case *ast.ParenExpr:
-		return b.buildScalar(inScope, v.Expr)
+		return b.buildScalar(inScope, v.Expr, coerce)
 	case *ast.AndExpr:
-		lhs := b.buildScalar(inScope, v.Left)
-		rhs := b.buildScalar(inScope, v.Right)
+		lhs := b.buildScalar(inScope, v.Left, types.Boolean)
+		rhs := b.buildScalar(inScope, v.Right, types.Boolean)
 		return expression.NewAnd(lhs, rhs)
 	case *ast.OrExpr:
-		lhs := b.buildScalar(inScope, v.Left)
-		rhs := b.buildScalar(inScope, v.Right)
+		lhs := b.buildScalar(inScope, v.Left, types.Boolean)
+		rhs := b.buildScalar(inScope, v.Right, types.Boolean)
 		return expression.NewOr(lhs, rhs)
 	case *ast.XorExpr:
-		lhs := b.buildScalar(inScope, v.Left)
-		rhs := b.buildScalar(inScope, v.Right)
+		lhs := b.buildScalar(inScope, v.Left, types.Boolean)
+		rhs := b.buildScalar(inScope, v.Right, types.Boolean)
 		return expression.NewXor(lhs, rhs)
 	case *ast.ConvertUsingExpr:
-		expr := b.buildScalar(inScope, v.Expr)
+		expr := b.buildScalar(inScope, v.Expr, nil)
 		charset, err := sql.ParseCharacterSet(v.Type)
 		if err != nil {
 			b.handleErr(err)
@@ -202,7 +206,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 				b.handleErr(err)
 			}
 		}
-		expr := b.buildScalar(inScope, v.Expr)
+		expr := b.buildScalar(inScope, v.Expr, nil)
 		ret, err := b.f.buildConvert(expr, v.Type.Type, typeLength, typeScale)
 		if err != nil {
 			b.handleErr(err)
@@ -210,9 +214,9 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		return ret
 
 	case *ast.RangeCond:
-		val := b.buildScalar(inScope, v.Left)
-		lower := b.buildScalar(inScope, v.From)
-		upper := b.buildScalar(inScope, v.To)
+		val := b.buildScalar(inScope, v.Left, nil)
+		lower := b.buildScalar(inScope, v.From, val.Type())
+		upper := b.buildScalar(inScope, v.To, val.Type())
 
 		switch strings.ToLower(v.Operator) {
 		case ast.BetweenStr:
@@ -225,15 +229,19 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	case ast.ValTuple:
 		var exprs = make([]sql.Expression, len(v))
 		for i, e := range v {
-			expr := b.buildScalar(inScope, e)
+			expr := b.buildScalar(inScope, e, coerce)
 			exprs[i] = expr
 		}
 		return expression.NewTuple(exprs...)
 
 	case *ast.BinaryExpr:
-		return b.buildBinaryScalar(inScope, v)
+		e := b.buildBinaryScalar(inScope, v, nil)
+		if coerce != nil && e.Type() != coerce {
+			e = expression.NewCoerceInternal(e, coerce)
+		}
+		return e
 	case *ast.UnaryExpr:
-		return b.buildUnaryScalar(inScope, v)
+		return b.buildUnaryScalar(inScope, v, nil)
 	case *ast.Subquery:
 		sqScope := inScope.pushSubquery()
 		selectString := ast.String(v.Select)
@@ -248,11 +256,11 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	case *ast.CaseExpr:
 		return b.buildCaseExpr(inScope, v)
 	case *ast.IntervalExpr:
-		e := b.buildScalar(inScope, v.Expr)
+		e := b.buildScalar(inScope, v.Expr, types.Int64)
 		return expression.NewInterval(e, v.Unit)
 	case *ast.CollateExpr:
 		// handleCollateExpr is meant to handle generic text-returning expressions that should be reinterpreted as a different collation.
-		innerExpr := b.buildScalar(inScope, v.Expr)
+		innerExpr := b.buildScalar(inScope, v.Expr, types.Text)
 		//TODO: rename this from Charset to Collation
 		collation, err := sql.ParseCollation(nil, &v.Charset, false)
 		if err != nil {
@@ -280,7 +288,8 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 			}
 			return col.scalarGf()
 		} else {
-			col := b.buildScalar(inScope, v.Name)
+			// TODO coerce insert vals to target table types
+			col := b.buildScalar(inScope, v.Name, nil)
 			fn, err := b.cat.Function(b.ctx, "values")
 			if err != nil {
 				b.handleErr(err)
@@ -307,8 +316,8 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		)
 
 		unit = expression.NewLiteral(v.Unit, types.LongText)
-		expr1 = b.buildScalar(inScope, v.Expr1)
-		expr2 = b.buildScalar(inScope, v.Expr2)
+		expr1 = b.buildScalar(inScope, v.Expr1, nil)
+		expr2 = b.buildScalar(inScope, v.Expr2, nil)
 
 		if v.Name == "timestampdiff" {
 			return function.NewTimestampDiff(unit, expr1, expr2)
@@ -318,7 +327,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		return nil
 	case *ast.ExtractFuncExpr:
 		var unit sql.Expression = expression.NewLiteral(strings.ToUpper(v.Unit), types.LongText)
-		expr := b.buildScalar(inScope, v.Expr)
+		expr := b.buildScalar(inScope, v.Expr, nil)
 		return function.NewExtract(unit, expr)
 	case *ast.MatchExpr:
 		return b.buildMatchAgainst(inScope, v)
@@ -370,19 +379,19 @@ func (b *Builder) getJsonValueTypeLiteral(e sql.Expression) sql.Expression {
 	return expression.NewLiteral(typ.Zero(), typ)
 }
 
-func (b *Builder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Expression {
+func (b *Builder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr, coerce sql.Type) sql.Expression {
 	switch strings.ToLower(e.Operator) {
 	case ast.MinusStr:
-		expr := b.buildScalar(inScope, e.Expr)
+		expr := b.buildScalar(inScope, e.Expr, coerce)
 		return expression.NewUnaryMinus(expr)
 	case ast.PlusStr:
 		// Unary plus expressions do nothing (do not turn the expression positive). Just return the underlying expressio return b.buildScalar(inScope, e.Expr)
-		return b.buildScalar(inScope, e.Expr)
+		return b.buildScalar(inScope, e.Expr, coerce)
 	case ast.BangStr:
-		c := b.buildScalar(inScope, e.Expr)
+		c := b.buildScalar(inScope, e.Expr, coerce)
 		return expression.NewNot(c)
 	case ast.BinaryStr:
-		c := b.buildScalar(inScope, e.Expr)
+		c := b.buildScalar(inScope, e.Expr, coerce)
 		return expression.NewBinary(c)
 	default:
 		lowerOperator := strings.TrimSpace(strings.ToLower(e.Operator))
@@ -414,7 +423,8 @@ func (b *Builder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Express
 			}
 
 			// Character set introducers only work on string literals
-			expr := b.buildScalar(inScope, e.Expr)
+			expr := b.buildScalar(inScope, e.Expr, nil)
+			// TODO coerce this expression into types.Text
 			if _, ok := expr.(*expression.Literal); !ok || !types.IsText(expr.Type()) {
 				err := sql.ErrCharSetIntroducer.New()
 				b.handleErr(err)
@@ -449,9 +459,9 @@ func (b *Builder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Express
 	return nil
 }
 
-func (b *Builder) buildBinaryScalar(inScope *scope, be *ast.BinaryExpr) sql.Expression {
-	l := b.buildScalar(inScope, be.Left)
-	r := b.buildScalar(inScope, be.Right)
+func (b *Builder) buildBinaryScalar(inScope *scope, be *ast.BinaryExpr, coerce sql.Type) sql.Expression {
+	l := b.buildScalar(inScope, be.Left, coerce)
+	r := b.buildScalar(inScope, be.Right, coerce)
 
 	operator := strings.ToLower(be.Operator)
 	switch operator {
@@ -512,13 +522,13 @@ func (b *Builder) buildBinaryScalar(inScope *scope, be *ast.BinaryExpr) sql.Expr
 	return nil
 }
 
-func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Expression {
-	left := b.buildScalar(inScope, c.Left)
-	right := b.buildScalar(inScope, c.Right)
+func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr, coerce sql.Type) sql.Expression {
+	left := b.buildScalar(inScope, c.Left, nil)
+	right := b.buildScalar(inScope, c.Right, nil)
 
 	var escape sql.Expression = nil
 	if c.Escape != nil {
-		escape = b.buildScalar(inScope, c.Escape)
+		escape = b.buildScalar(inScope, c.Escape, types.Text)
 	}
 
 	switch strings.ToLower(c.Operator) {
@@ -577,16 +587,16 @@ func (b *Builder) buildCaseExpr(inScope *scope, e *ast.CaseExpr) sql.Expression 
 	var expr sql.Expression
 
 	if e.Expr != nil {
-		expr = b.buildScalar(inScope, e.Expr)
+		expr = b.buildScalar(inScope, e.Expr, nil)
 	}
 
 	var branches []expression.CaseBranch
 	for _, w := range e.Whens {
 		var cond sql.Expression
-		cond = b.buildScalar(inScope, w.Cond)
+		cond = b.buildScalar(inScope, w.Cond, types.Boolean)
 
 		var val sql.Expression
-		val = b.buildScalar(inScope, w.Val)
+		val = b.buildScalar(inScope, w.Val, nil)
 
 		branches = append(branches, expression.CaseBranch{
 			Cond:  cond,
@@ -596,14 +606,14 @@ func (b *Builder) buildCaseExpr(inScope *scope, e *ast.CaseExpr) sql.Expression 
 
 	var elseExpr sql.Expression
 	if e.Else != nil {
-		elseExpr = b.buildScalar(inScope, e.Else)
+		elseExpr = b.buildScalar(inScope, e.Else, nil)
 	}
 
 	return expression.NewCase(expr, branches, elseExpr)
 }
 
 func (b *Builder) buildIsExprToExpression(inScope *scope, c *ast.IsExpr) sql.Expression {
-	e := b.buildScalar(inScope, c.Expr)
+	e := b.buildScalar(inScope, c.Expr, nil)
 	switch strings.ToLower(c.Operator) {
 	case ast.IsNullStr:
 		return expression.NewIsNull(e)
@@ -624,78 +634,20 @@ func (b *Builder) buildIsExprToExpression(inScope *scope, c *ast.IsExpr) sql.Exp
 	return nil
 }
 
-func (b *Builder) binaryExprToExpression(inScope *scope, be *ast.BinaryExpr) (sql.Expression, error) {
-	l := b.buildScalar(inScope, be.Left)
-	r := b.buildScalar(inScope, be.Right)
-
-	operator := strings.ToLower(be.Operator)
-	switch operator {
-	case
-		ast.PlusStr,
-		ast.MinusStr,
-		ast.MultStr,
-		ast.DivStr,
-		ast.ShiftLeftStr,
-		ast.ShiftRightStr,
-		ast.BitAndStr,
-		ast.BitOrStr,
-		ast.BitXorStr,
-		ast.IntDivStr,
-		ast.ModStr:
-
-		_, lok := l.(*expression.Interval)
-		_, rok := r.(*expression.Interval)
-		if lok && be.Operator == "-" {
-			return nil, sql.ErrUnsupportedSyntax.New("subtracting from an interval")
-		} else if (lok || rok) && be.Operator != "+" && be.Operator != "-" {
-			return nil, sql.ErrUnsupportedSyntax.New("only + and - can be used to add or subtract intervals from dates")
-		} else if lok && rok {
-			return nil, sql.ErrUnsupportedSyntax.New("intervals cannot be added or subtracted from other intervals")
-		}
-
-		switch operator {
-		case ast.DivStr:
-			return expression.NewDiv(l, r), nil
-		case ast.ModStr:
-			return expression.NewMod(l, r), nil
-		case ast.BitAndStr, ast.BitOrStr, ast.BitXorStr, ast.ShiftRightStr, ast.ShiftLeftStr:
-			return expression.NewBitOp(l, r, be.Operator), nil
-		case ast.IntDivStr:
-			return expression.NewIntDiv(l, r), nil
-		default:
-			return expression.NewArithmetic(l, r, be.Operator), nil
-		}
-
-	case ast.JSONExtractOp, ast.JSONUnquoteExtractOp:
-		jsonExtract, err := json.NewJSONExtract(l, r)
-		if err != nil {
-			return nil, err
-		}
-
-		if operator == ast.JSONUnquoteExtractOp {
-			return json.NewJSONUnquote(jsonExtract), nil
-		}
-		return jsonExtract, nil
-
-	default:
-		return nil, sql.ErrUnsupportedFeature.New(be.Operator)
-	}
-}
-
-func (b *Builder) caseExprToExpression(inScope *scope, e *ast.CaseExpr) (sql.Expression, error) {
+func (b *Builder) caseExprToExpression(inScope *scope, e *ast.CaseExpr, coerce sql.Type) (sql.Expression, error) {
 	var expr sql.Expression
 
 	if e.Expr != nil {
-		expr = b.buildScalar(inScope, e.Expr)
+		expr = b.buildScalar(inScope, e.Expr, coerce)
 	}
 
 	var branches []expression.CaseBranch
 	for _, w := range e.Whens {
 		var cond sql.Expression
-		cond = b.buildScalar(inScope, w.Cond)
+		cond = b.buildScalar(inScope, w.Cond, types.Boolean)
 
 		var val sql.Expression
-		val = b.buildScalar(inScope, w.Val)
+		val = b.buildScalar(inScope, w.Val, nil)
 
 		branches = append(branches, expression.CaseBranch{
 			Cond:  cond,
@@ -705,14 +657,14 @@ func (b *Builder) caseExprToExpression(inScope *scope, e *ast.CaseExpr) (sql.Exp
 
 	var elseExpr sql.Expression
 	if e.Else != nil {
-		elseExpr = b.buildScalar(inScope, e.Else)
+		elseExpr = b.buildScalar(inScope, e.Else, coerce)
 	}
 
 	return expression.NewCase(expr, branches, elseExpr), nil
 }
 
 func (b *Builder) intervalExprToExpression(inScope *scope, e *ast.IntervalExpr) *expression.Interval {
-	expr := b.buildScalar(inScope, e.Expr)
+	expr := b.buildScalar(inScope, e.Expr, nil)
 	return expression.NewInterval(expr, e.Unit)
 }
 
@@ -752,7 +704,7 @@ func (b *Builder) convertInt(value string, base int) *expression.Literal {
 	return nil
 }
 
-func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
+func (b *Builder) ConvertVal(v *ast.SQLVal, coerce sql.Type) sql.Expression {
 	switch v.Type {
 	case ast.StrVal:
 		return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))
@@ -818,7 +770,7 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 				return expression.NewBindVar(name)
 			}
 			replacement := b.normalizeValArg(v)
-			return b.buildScalar(&scope{}, replacement)
+			return b.buildScalar(&scope{}, replacement, coerce)
 		}
 		return expression.NewBindVar(name)
 	case ast.BitVal:
@@ -876,7 +828,7 @@ func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expressio
 		}
 		cols[i] = gf
 	}
-	matchExpr := b.buildScalar(inScope, v.Expr)
+	matchExpr := b.buildScalar(inScope, v.Expr, types.Text)
 	var searchModifier fulltext.SearchModifier
 	var err error
 	switch v.Option {

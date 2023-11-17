@@ -55,6 +55,8 @@ func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pl
 					err = sql.ErrInvalidSyntax.New("negative limit")
 					return false
 				}
+			case *expression.CoerceInternal:
+
 			case *expression.BindVar:
 				return true
 			default:

@@ -12,28 +12,28 @@ func (b *Builder) getFrameStartNPreceding(inScope *scope, frame *ast.Frame) sql.
 	if frame == nil || frame.Extent.Start.Type != ast.ExprPreceding {
 		return nil
 	}
-	return b.buildScalar(inScope, frame.Extent.Start.Expr)
+	return b.buildScalar(inScope, frame.Extent.Start.Expr, nil)
 }
 
 func (b *Builder) getFrameEndNPreceding(inScope *scope, frame *ast.Frame) sql.Expression {
 	if frame == nil || frame.Extent.End == nil || frame.Extent.End.Type != ast.ExprPreceding {
 		return nil
 	}
-	return b.buildScalar(inScope, frame.Extent.End.Expr)
+	return b.buildScalar(inScope, frame.Extent.End.Expr, nil)
 }
 
 func (b *Builder) getFrameStartNFollowing(inScope *scope, frame *ast.Frame) sql.Expression {
 	if frame == nil || frame.Extent.Start.Type != ast.ExprFollowing {
 		return nil
 	}
-	return b.buildScalar(inScope, frame.Extent.Start.Expr)
+	return b.buildScalar(inScope, frame.Extent.Start.Expr, nil)
 }
 
 func (b *Builder) getFrameEndNFollowing(inScope *scope, frame *ast.Frame) sql.Expression {
 	if frame == nil || frame.Extent.End == nil || frame.Extent.End.Type != ast.ExprFollowing {
 		return nil
 	}
-	return b.buildScalar(inScope, frame.Extent.End.Expr)
+	return b.buildScalar(inScope, frame.Extent.End.Expr, nil)
 }
 
 func (b *Builder) getFrameStartCurrentRow(_ *scope, frame *ast.Frame) bool {

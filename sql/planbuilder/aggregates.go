@@ -140,7 +140,7 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 				col = projScope.cols[intIdx-1]
 			}
 		default:
-			expr := b.buildScalar(fromScope, e)
+			expr := b.buildScalar(fromScope, e, nil)
 			col = scopeColumn{
 				tableId:  sql.TableID{},
 				col:      expr.String(),
@@ -592,7 +592,7 @@ func (b *Builder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.Wind
 	var sortFields sql.SortFields
 	for _, c := range def.OrderBy {
 		// resolve col in fromScope
-		e := b.buildScalar(fromScope, c.Expr)
+		e := b.buildScalar(fromScope, c.Expr, nil)
 		so := sql.Ascending
 		if c.Direction == ast.DescScr {
 			so = sql.Descending
@@ -606,7 +606,7 @@ func (b *Builder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.Wind
 
 	partitions := make([]sql.Expression, len(def.PartitionBy))
 	for i, expr := range def.PartitionBy {
-		partitions[i] = b.buildScalar(fromScope, expr)
+		partitions[i] = b.buildScalar(fromScope, expr, nil)
 	}
 
 	frame := b.NewFrame(fromScope, def.Frame)
@@ -774,7 +774,7 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 		}
 	}
 	havingScope.groupBy = fromScope.groupBy
-	h := b.buildScalar(havingScope, having.Expr)
+	h := b.buildScalar(havingScope, having.Expr, types.Boolean)
 	outScope.node = plan.NewHaving(h, outScope.node)
 	return
 }

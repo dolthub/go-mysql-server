@@ -169,7 +169,7 @@ func (b *Builder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.
 		}
 		return expression.NewQualifiedStar(strings.ToLower(e.TableName.Name.String()))
 	case *ast.AliasedExpr:
-		expr := b.buildScalar(inScope, e.Expr)
+		expr := b.buildScalar(inScope, e.Expr, nil)
 		if !e.As.IsEmpty() {
 			return expression.NewAlias(e.As.String(), expr)
 		}
