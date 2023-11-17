@@ -268,6 +268,7 @@ func (tree *RangeColumnExprTree) insert(rang Range, colExprIdx int) error {
 					node = node.Left
 				}
 			} else if cmp > 0 {
+				node.MaxUpperbound, err = GetRangeCutMax(colExpr.Typ, node.MaxUpperbound, colExpr.UpperBound)
 				if node.Right == nil {
 					var inner *RangeColumnExprTree
 					if len(rang)-colExprIdx > 1 {
@@ -289,7 +290,6 @@ func (tree *RangeColumnExprTree) insert(rang Range, colExprIdx int) error {
 					insertedNode = node.Right
 					loop = false
 				} else {
-					node.MaxUpperbound, err = GetRangeCutMax(colExpr.Typ, node.MaxUpperbound, colExpr.UpperBound)
 					if err != nil {
 						return err
 					}
