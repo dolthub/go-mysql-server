@@ -15,13 +15,15 @@
 package server
 
 import (
-	sqle "github.com/dolthub/go-mysql-server"
+	"sort"
+
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
-	"sort"
+
+	sqle "github.com/dolthub/go-mysql-server"
 )
 
 func Intercept(h Interceptor) {
