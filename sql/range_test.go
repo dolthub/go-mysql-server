@@ -456,7 +456,42 @@ func TestComplexRange(t *testing.T) {
 			},
 		},
 		{
-			skip: true, // returns different ranges, which are non-overlapping, but not sure if they're still correct
+			// derived from index query plan test
+			// `SELECT * FROM comp_index_t2 WHERE (((v1>25 AND v2 BETWEEN 23 AND 54) OR (v1<>40 AND v3>90)) OR (v1<>7 AND v4<=78));`
+			ranges: sql.RangeCollection{
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.Above{Key: 25}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 23}, UpperBound: sql.Above{Key: 54}, Typ: types.Int32},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
+				),
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.Above{Key: 40}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
+					sql.RangeColumnExpr{LowerBound: sql.Above{Key: 90}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
+				),
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.AboveNull{}, UpperBound: sql.Below{Key: 40}, Typ: types.Int32},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
+					sql.RangeColumnExpr{LowerBound: sql.Above{Key: 90}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
+				),
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.Above{Key: 7}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
+					sql.RangeColumnExpr{LowerBound: sql.AboveNull{}, UpperBound: sql.Above{Key: 78}, Typ: types.Int32},
+				),
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.AboveNull{}, UpperBound: sql.Below{Key: 7}, Typ: types.Int32},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
+					sql.RangeColumnExpr{LowerBound: sql.AboveNull{}, UpperBound: sql.Above{Key: 78}, Typ: types.Int32},
+				),
+			},
+		},
+		{
 			ranges: sql.RangeCollection{
 				r(
 					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 0}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
@@ -502,6 +537,12 @@ func TestComplexRange(t *testing.T) {
 			require.NoError(t, err)
 			ok, err := discreteRanges.Equals(verificationRanges)
 			require.NoError(t, err)
+			assert.True(t, ok)
+			if !ok {
+				t.Logf("DiscreteRanges: %s", discreteRanges.DebugString())
+				t.Logf("VerificationRanges: %s", verificationRanges.DebugString())
+			}
+
 			// TODO: need a way to either verify that the ranges cover the area, or that they're the same
 			for i := 0; i < len(discreteRanges)-1; i++ {
 				for j := i + 1; j < len(discreteRanges); j++ {
@@ -515,7 +556,6 @@ func TestComplexRange(t *testing.T) {
 					assert.False(t, hasOverlap)
 				}
 			}
-			assert.True(t, ok)
 		})
 	}
 }

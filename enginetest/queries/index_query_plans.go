@@ -1575,7 +1575,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t1 WHERE ((((v1 BETWEEN 1 AND 11) OR (v1>2 AND v3<=93 AND v2 BETWEEN 28 AND 84)) OR (v1 BETWEEN 34 AND 52 AND v2=73)) OR (v1<>80 AND v2<=32 AND v3 BETWEEN 3 AND 7));`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t1)\n" +
 			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
-			" ├─ static: [{(NULL, 1), (NULL, 32], [3, 7]}, {[1, 11], [NULL, ∞), [NULL, ∞)}, {(11, 34), [28, 84], (NULL, 93]}, {(11, 52], (NULL, 28), [3, 7]}, {[34, 52], [28, 73), (NULL, 93]}, {[34, 52], [73, 73], [NULL, ∞)}, {[34, 52], (73, 84], (NULL, 93]}, {(52, 80), (NULL, 28), [3, 7]}, {(52, ∞), [28, 84], (NULL, 93]}, {(80, ∞), (NULL, 28), [3, 7]}]\n" +
+			" ├─ static: [{(NULL, 1), (NULL, 32], [3, 7]}, {[1, 11], [NULL, ∞), [NULL, ∞)}, {(11, 34), [28, 84], (NULL, 93]}, {(11, 80), (NULL, 28), [3, 7]}, {[34, 52], [28, 73), (NULL, 93]}, {[34, 52], [73, 73], [NULL, ∞)}, {[34, 52], (73, 84], (NULL, 93]}, {(52, ∞), [28, 84], (NULL, 93]}, {(80, ∞), (NULL, 28), [3, 7]}]\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t1\n" +
 			"     └─ columns: [pk v1 v2 v3]\n" +
@@ -6415,7 +6415,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t2 WHERE (((v1>25 AND v2 BETWEEN 23 AND 54) OR (v1<>40 AND v3>90)) OR (v1<>7 AND v4<=78));`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t2)\n" +
 			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			" ├─ static: [{(NULL, 7), [NULL, ∞), [NULL, 90], (NULL, 78]}, {(NULL, 40), [NULL, ∞), (90, ∞), [NULL, ∞)}, {(7, 25], [NULL, ∞), [NULL, 90], (NULL, 78]}, {(25, 40), [NULL, 23), [NULL, 90], (NULL, 78]}, {(25, 40), (54, ∞), [NULL, 90], (NULL, 78]}, {(25, ∞), [23, 54], [NULL, ∞), [NULL, ∞)}, {[40, 40], [NULL, 23), [NULL, ∞), (NULL, 78]}, {[40, 40], (54, ∞), [NULL, ∞), (NULL, 78]}, {(40, ∞), [NULL, 23), [NULL, 90], (NULL, 78]}, {(40, ∞), [NULL, 23), (90, ∞), [NULL, ∞)}, {(40, ∞), (54, ∞), [NULL, 90], (NULL, 78]}, {(40, ∞), (54, ∞), (90, ∞), [NULL, ∞)}]\n" +
+			" ├─ static: [{(NULL, 7), [NULL, ∞), [NULL, 90], (NULL, 78]}, {(NULL, 25], [NULL, ∞), (90, ∞), [NULL, ∞)}, {(7, 25], [NULL, ∞), [NULL, 90], (NULL, 78]}, {(25, 40), [NULL, 23), [NULL, 90], (NULL, 78]}, {(25, 40), [NULL, 23), (90, ∞), [NULL, ∞)}, {(25, 40), (54, ∞), [NULL, 90], (NULL, 78]}, {(25, 40), (54, ∞), (90, ∞), [NULL, ∞)}, {(25, ∞), [23, 54], [NULL, ∞), [NULL, ∞)}, {[40, 40], [NULL, 23), [NULL, ∞), (NULL, 78]}, {[40, 40], (54, ∞), [NULL, ∞), (NULL, 78]}, {(40, ∞), [NULL, 23), [NULL, 90], (NULL, 78]}, {(40, ∞), [NULL, 23), (90, ∞), [NULL, ∞)}, {(40, ∞), (54, ∞), [NULL, 90], (NULL, 78]}, {(40, ∞), (54, ∞), (90, ∞), [NULL, ∞)}]\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t2\n" +
 			"     └─ columns: [pk v1 v2 v3 v4]\n" +
@@ -6575,7 +6575,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t2 WHERE ((((v1>87) OR (v1>82 AND v4>=22)) OR (v1>=52 AND v2<>47 AND v3=37)) OR (v1<=14 AND v2<57 AND v3<10));`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t2)\n" +
 			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			" ├─ static: [{(NULL, 14], (NULL, 57), (NULL, 10), [NULL, ∞)}, {[52, 82], (NULL, 47), [37, 37], [NULL, ∞)}, {[52, 87], (47, ∞), [37, 37], [NULL, ∞)}, {(82, 87], [NULL, NULL], [NULL, ∞), [22, ∞)}, {(82, 87], (NULL, 47), [NULL, 37), [22, ∞)}, {(82, 87], (NULL, 47), [37, 37], [NULL, ∞)}, {(82, 87], (NULL, 47), (37, ∞), [22, ∞)}, {(82, 87], [47, 47], [NULL, ∞), [22, ∞)}, {(82, 87], (47, ∞), [NULL, 37), [22, ∞)}, {(82, 87], (47, ∞), (37, ∞), [22, ∞)}, {(87, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ static: [{(NULL, 14], (NULL, 57), (NULL, 10), [NULL, ∞)}, {[52, 87], (NULL, 47), [37, 37], [NULL, ∞)}, {[52, 87], (47, ∞), [37, 37], [NULL, ∞)}, {(82, 87], [NULL, NULL], [NULL, ∞), [22, ∞)}, {(82, 87], (NULL, 47), [NULL, 37), [22, ∞)}, {(82, 87], (NULL, 47), (37, ∞), [22, ∞)}, {(82, 87], [47, 47], [NULL, ∞), [22, ∞)}, {(82, 87], (47, ∞), [NULL, 37), [22, ∞)}, {(82, 87], (47, ∞), (37, ∞), [22, ∞)}, {(87, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t2\n" +
 			"     └─ columns: [pk v1 v2 v3 v4]\n" +

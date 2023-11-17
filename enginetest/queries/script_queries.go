@@ -4237,6 +4237,22 @@ CREATE TABLE tab3 (
 			},
 		},
 	},
+	{
+		Name: "Complex Filter Index Scan",
+		SetUpScript: []string{
+			"create table t (pk int primary key, v1 int, v2 int, v3 int, v4 int);",
+			"create index v_idx on t (v1, v2, v3, v4);",
+			"insert into t values (0, 26, 24, 91, 0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t where (((v1>25 and v2 between 23 and 54) or (v1<>40 and v3>90)) or (v1<>7 and v4<=78));",
+				Expected: []sql.Row{
+					{0, 26, 24, 91, 0},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

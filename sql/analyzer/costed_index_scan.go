@@ -153,6 +153,9 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 			b.leftover = append(b.leftover, leftover)
 		}
 		ranges, err := b.buildRangeCollection(root)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
 
 		var emptyLookup bool
 		if len(ranges) == 0 {
