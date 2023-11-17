@@ -16,7 +16,8 @@ package sql
 
 import (
 	"fmt"
-	"math"
+	"github.com/shopspring/decimal"
+"math"
 	"strconv"
 	"time"
 )
@@ -292,7 +293,13 @@ func EvaluateCondition(ctx *Context, cond Expression, row Row) (interface{}, err
 		return int(math.Round(float64(v.(float32)))) != 0, nil
 	case string:
 		parsed, err := strconv.ParseFloat(v.(string), 64)
-		return err == nil && int(parsed) != 0, nil
+		if err != nil {
+			ctx.Warn(1292, "Truncated incorrect DOUBLE value: '%s'", v.(string))
+			return false, nil
+		}
+		return int(parsed) != 0, nil
+	case decimal.Decimal:
+		return !b.IsZero(), nil
 	default:
 		return false, nil
 	}
