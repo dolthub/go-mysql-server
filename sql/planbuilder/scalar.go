@@ -80,7 +80,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr, coerce sql.Type) sql.E
 		return expression.NewNot(c)
 	case *ast.SQLVal:
 		val := b.ConvertVal(v, nil)
-		if coerce != nil && val.Type() != coerce {
+		if coerce != nil && val.Type().Promote() != coerce {
 			val = expression.NewCoerceInternal(val, coerce)
 		}
 		return val
@@ -260,7 +260,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr, coerce sql.Type) sql.E
 		return expression.NewInterval(e, v.Unit)
 	case *ast.CollateExpr:
 		// handleCollateExpr is meant to handle generic text-returning expressions that should be reinterpreted as a different collation.
-		innerExpr := b.buildScalar(inScope, v.Expr, types.Text)
+		innerExpr := b.buildScalar(inScope, v.Expr, nil)
 		//TODO: rename this from Charset to Collation
 		collation, err := sql.ParseCollation(nil, &v.Charset, false)
 		if err != nil {
@@ -593,7 +593,7 @@ func (b *Builder) buildCaseExpr(inScope *scope, e *ast.CaseExpr) sql.Expression 
 	var branches []expression.CaseBranch
 	for _, w := range e.Whens {
 		var cond sql.Expression
-		cond = b.buildScalar(inScope, w.Cond, types.Boolean)
+		cond = b.buildScalar(inScope, w.Cond, nil)
 
 		var val sql.Expression
 		val = b.buildScalar(inScope, w.Val, nil)

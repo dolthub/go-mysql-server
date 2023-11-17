@@ -23,7 +23,6 @@ import (
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/stats"
 )
@@ -123,22 +122,17 @@ func (b *Builder) buildAnalyzeTables(inScope *scope, n *ast.Analyze, query strin
 func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tableName string, sch sql.Schema, columns []string, typs []sql.Type) (outScope *scope) {
 	outScope = inScope.push()
 	statistic := new(stats.Statistic)
-	using := b.buildScalar(inScope, n.Using, types.Text)
-	if l, ok := using.(*expression.Literal); ok {
-		if typ, ok := l.Type().(sql.StringType); ok {
-			val, _, err := typ.Convert(l.Value())
+	using := b.buildScalar(inScope, n.Using, types.LongText)
+	if lit, err := using.Eval(nil, nil); err == nil {
+		if str, ok := lit.(string); ok {
+			err := json.Unmarshal([]byte(str), statistic)
 			if err != nil {
+				err = ErrFailedToParseStats.New(err.Error(), str)
 				b.handleErr(err)
 			}
-			if str, ok := val.(string); ok {
-				err := json.Unmarshal([]byte(str), statistic)
-				if err != nil {
-					err = ErrFailedToParseStats.New(err.Error(), str)
-					b.handleErr(err)
-				}
-			}
-
 		}
+	} else {
+		b.handleErr(err)
 	}
 	if statistic == nil {
 		err := fmt.Errorf("no statistics found for update")

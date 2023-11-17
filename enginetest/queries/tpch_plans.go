@@ -458,10 +458,10 @@ where
 			"         │   │   └─ AND\n" +
 			"         │   │       ├─ GreaterThanOrEqual\n" +
 			"         │   │       │   ├─ lineitem.l_discount:2!null\n" +
-			"         │   │       │   └─ 0.05 (decimal(3,2))\n" +
+			"         │   │       │   └─ 0.05 (decimal(15,2))\n" +
 			"         │   │       └─ LessThanOrEqual\n" +
 			"         │   │           ├─ lineitem.l_discount:2!null\n" +
-			"         │   │           └─ 0.07 (decimal(3,2))\n" +
+			"         │   │           └─ 0.07 (decimal(15,2))\n" +
 			"         │   └─ LessThan\n" +
 			"         │       ├─ lineitem.l_quantity:0!null\n" +
 			"         │       └─ 24 (tinyint)\n" +
@@ -553,10 +553,10 @@ order by
 			"                             │   │   │   │   │   ├─ AND\n" +
 			"                             │   │   │   │   │   │   ├─ GreaterThanOrEqual\n" +
 			"                             │   │   │   │   │   │   │   ├─ lineitem.l_shipdate:4!null\n" +
-			"                             │   │   │   │   │   │   │   └─ 1995-01-01 (longtext)\n" +
+			"                             │   │   │   │   │   │   │   └─ 1995-01-01 00:00:00 +0000 UTC (date)\n" +
 			"                             │   │   │   │   │   │   └─ LessThanOrEqual\n" +
 			"                             │   │   │   │   │   │       ├─ lineitem.l_shipdate:4!null\n" +
-			"                             │   │   │   │   │   │       └─ 1996-12-31 (longtext)\n" +
+			"                             │   │   │   │   │   │       └─ 1996-12-31 00:00:00 +0000 UTC (date)\n" +
 			"                             │   │   │   │   │   └─ Table\n" +
 			"                             │   │   │   │   │       ├─ name: lineitem\n" +
 			"                             │   │   │   │   │       └─ columns: [l_orderkey l_suppkey l_extendedprice l_discount l_shipdate]\n" +
@@ -676,10 +676,10 @@ order by
 			"                         │   │   │   │   │       ├─ AND\n" +
 			"                         │   │   │   │   │       │   ├─ GreaterThanOrEqual\n" +
 			"                         │   │   │   │   │       │   │   ├─ orders.o_orderdate:2!null\n" +
-			"                         │   │   │   │   │       │   │   └─ 1995-01-01 (longtext)\n" +
+			"                         │   │   │   │   │       │   │   └─ 1995-01-01 00:00:00 +0000 UTC (date)\n" +
 			"                         │   │   │   │   │       │   └─ LessThanOrEqual\n" +
 			"                         │   │   │   │   │       │       ├─ orders.o_orderdate:2!null\n" +
-			"                         │   │   │   │   │       │       └─ 1996-12-31 (longtext)\n" +
+			"                         │   │   │   │   │       │       └─ 1996-12-31 00:00:00 +0000 UTC (date)\n" +
 			"                         │   │   │   │   │       └─ IndexedTableAccess(orders)\n" +
 			"                         │   │   │   │   │           ├─ index: [orders.O_ORDERKEY]\n" +
 			"                         │   │   │   │   │           ├─ keys: [lineitem.l_orderkey]\n" +
@@ -1612,7 +1612,7 @@ where
 			"         │   │   │   │   │       │   └─ 1 (tinyint)\n" +
 			"         │   │   │   │   │       └─ LessThanOrEqual\n" +
 			"         │   │   │   │   │           ├─ part.p_size:8!null\n" +
-			"         │   │   │   │   │           └─ 5 (tinyint)\n" +
+			"         │   │   │   │   │           └─ 5 (int)\n" +
 			"         │   │   │   │   └─ IN\n" +
 			"         │   │   │   │       ├─ left: lineitem.l_shipmode:5!null\n" +
 			"         │   │   │   │       └─ right: TUPLE(AIR (longtext), AIR REG (longtext))\n" +
@@ -1682,7 +1682,7 @@ where
 			"         │       │   │       │   └─ 1 (tinyint)\n" +
 			"         │       │   │       └─ LessThanOrEqual\n" +
 			"         │       │   │           ├─ part.p_size:8!null\n" +
-			"         │       │   │           └─ 15 (tinyint)\n" +
+			"         │       │   │           └─ 15 (int)\n" +
 			"         │       │   └─ IN\n" +
 			"         │       │       ├─ left: lineitem.l_shipmode:5!null\n" +
 			"         │       │       └─ right: TUPLE(AIR (longtext), AIR REG (longtext))\n" +

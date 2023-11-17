@@ -131,10 +131,14 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 		// To match MySQL output format, transform the column names and wrap with backticks
 		for i, check := range checks {
 			checks[i].Expr, _, _ = transform.Expr(check.Expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				if t, ok := e.(*expression.GetField); ok {
-					return expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", t.Name())), transform.NewTree, nil
+				switch e := e.(type) {
+				case *expression.GetField:
+					return expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", e.Name())), transform.NewTree, nil
+				case *expression.CoerceInternal:
+					return e.Children()[0], transform.NewTree, nil
+				default:
+					return e, transform.SameTree, nil
 				}
-				return e, transform.SameTree, nil
 			})
 		}
 		showCreate = showCreate.WithChecks(checks).(*plan.ShowCreateTable)
@@ -855,7 +859,7 @@ func (b *Builder) buildShowCharset(inScope *scope, s *ast.Show) (outScope *scope
 	var filter sql.Expression
 	if s.Filter != nil {
 		if s.Filter.Filter != nil {
-			filter = b.buildScalar(outScope, s.Filter.Filter, types.Boolean)
+			filter = b.buildScalar(outScope, s.Filter.Filter, nil)
 		} else if s.Filter.Like != "" {
 			filter = expression.NewLike(
 				expression.NewGetField(0, types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), "Charset", false),

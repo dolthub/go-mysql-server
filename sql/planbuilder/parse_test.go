@@ -779,7 +779,7 @@ Project
  ├─ columns: [xy.x:1!null, sum(xy.x):4!null as sum(x)]
  └─ Sort(xy.x:1!null ASC nullsFirst)
      └─ Having
-         ├─ (xy.x:1!null + xy.y:2!null)
+         ├─ coerce((xy.x + xy.y)->tinyint(1))
          └─ GroupBy
              ├─ select: SUM(xy.x:1!null), xy.x:1!null, xy.y:2!null
              ├─ group: xy.x:1!null

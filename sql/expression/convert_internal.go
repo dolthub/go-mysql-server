@@ -50,9 +50,6 @@ func (c *CoerceInternal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	if !inRange {
 		ctx.Warn(0, "coercion %s to %s failed, out of range", val, c.typ)
 	}
-	if ret == nil {
-		print(row, val)
-	}
 	return ret, nil
 }
 

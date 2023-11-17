@@ -16,6 +16,7 @@ package planbuilder
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"strconv"
 	"strings"
 
@@ -704,6 +705,12 @@ func (b *Builder) convertConstraintDefinition(inScope *scope, cd *ast.Constraint
 		var c sql.Expression
 		if chConstraint.Expr != nil {
 			c = b.buildScalar(inScope, chConstraint.Expr, nil)
+			c, _, _ = transform.Expr(c, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				if e, _ := e.(*expression.CoerceInternal); e != nil {
+					return e.Children()[0], transform.NewTree, nil
+				}
+				return e, transform.SameTree, nil
+			})
 		}
 
 		return &sql.CheckConstraint{
