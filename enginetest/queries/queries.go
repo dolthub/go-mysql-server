@@ -770,7 +770,7 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"0"}},
 	},
 	{
-		Query:    "SELECT * from mytable where (1/1 and true)",
+		Query: "SELECT * from mytable where (1/1 and true)",
 		Expected: []sql.Row{
 			{1, "first row"},
 			{2, "second row"},

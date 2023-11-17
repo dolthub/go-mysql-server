@@ -16,10 +16,11 @@ package sql
 
 import (
 	"fmt"
-	"github.com/shopspring/decimal"
-"math"
+	"math"
 	"strconv"
 	"time"
+
+	"github.com/shopspring/decimal"
 )
 
 // Expression is a combination of one or more SQL expressions.
