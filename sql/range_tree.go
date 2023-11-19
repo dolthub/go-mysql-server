@@ -368,7 +368,28 @@ func (tree *RangeColumnExprTree) remove(rang Range, colExprIdx int) error {
 		}
 	}
 	tree.size--
+	tree.CalcMaxUpperBound()
 	return nil
+}
+
+func (tree *RangeColumnExprTree) CalcMaxUpperBound() {
+	if tree == nil {
+		return
+	}
+	tree.root.calcMaxUpperbound()
+}
+
+func (node *rangeColumnExprTreeNode) calcMaxUpperbound() RangeCut {
+	if node == nil {
+		return nil
+	}
+	node.Inner.CalcMaxUpperBound()
+	node.Left.calcMaxUpperbound()
+	node.MaxUpperbound = node.Right.calcMaxUpperbound()
+	if node.MaxUpperbound == nil {
+		node.MaxUpperbound = node.UpperBound
+	}
+	return node.MaxUpperbound
 }
 
 // GetRangeCollection returns every Range that this tree contains.
@@ -463,6 +484,7 @@ func (node *rangeColumnExprTreeNode) string(prefix string, isTail bool, sb *stri
 		UpperBound: node.UpperBound,
 		Typ:        typ,
 	}.DebugString())
+	sb.WriteString(" " + node.MaxUpperbound.String())
 	sb.WriteRune('\n')
 	if node.Left != nil {
 		newPrefix := prefix

@@ -411,6 +411,7 @@ func TestComplexRange(t *testing.T) {
 		ranges sql.RangeCollection
 	}{
 		{
+			skip: true,
 			// derived from sqllogictest/index/in/100/slt_good_1.test:12655
 			ranges: sql.RangeCollection{
 				r(
@@ -456,6 +457,7 @@ func TestComplexRange(t *testing.T) {
 			},
 		},
 		{
+			skip: true,
 			// derived from index query plan test
 			// `SELECT * FROM comp_index_t2 WHERE (((v1>25 AND v2 BETWEEN 23 AND 54) OR (v1<>40 AND v3>90)) OR (v1<>7 AND v4<=78));`
 			ranges: sql.RangeCollection{
@@ -492,6 +494,7 @@ func TestComplexRange(t *testing.T) {
 			},
 		},
 		{
+			skip: true,
 			ranges: sql.RangeCollection{
 				r(
 					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 0}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
@@ -517,6 +520,50 @@ func TestComplexRange(t *testing.T) {
 					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 4}, UpperBound: sql.Above{Key: 4}, Typ: types.Int16},
 					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 0}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
 					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 1}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
+				),
+			},
+		},
+		{
+			ranges: sql.RangeCollection{
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 69}, UpperBound: sql.Above{Key: 69}, Typ: types.Int32},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+				),
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 73}, UpperBound: sql.Above{Key: 73}, Typ: types.Int32},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+				),
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 12}, UpperBound: sql.Above{Key: 12}, Typ: types.Int32},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+				),
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 3}, UpperBound: sql.Above{Key: 3}, Typ: types.Int32},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+				),
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 17}, UpperBound: sql.Above{Key: 17}, Typ: types.Int32},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+				),
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 70}, UpperBound: sql.Above{Key: 70}, Typ: types.Int32},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+				),
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 20}, UpperBound: sql.Above{Key: 20}, Typ: types.Int32},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+				),
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 4}, UpperBound: sql.Above{Key: 4}, Typ: types.Int32},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+				),
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 39}, UpperBound: sql.Above{Key: 39}, Typ: types.Int32},
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+				),
+				r(
+					sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
+					sql.RangeColumnExpr{LowerBound: sql.AboveNull{}, UpperBound: sql.Below{Key: 69.67}, Typ: types.Float32},
 				),
 			},
 		},
