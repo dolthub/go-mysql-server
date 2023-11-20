@@ -411,7 +411,6 @@ func TestComplexRange(t *testing.T) {
 		ranges sql.RangeCollection
 	}{
 		{
-			skip: true,
 			// derived from sqllogictest/index/in/100/slt_good_1.test:12655
 			ranges: sql.RangeCollection{
 				r(
@@ -457,7 +456,6 @@ func TestComplexRange(t *testing.T) {
 			},
 		},
 		{
-			skip: true,
 			// derived from index query plan test
 			// `SELECT * FROM comp_index_t2 WHERE (((v1>25 AND v2 BETWEEN 23 AND 54) OR (v1<>40 AND v3>90)) OR (v1<>7 AND v4<=78));`
 			ranges: sql.RangeCollection{
@@ -494,7 +492,6 @@ func TestComplexRange(t *testing.T) {
 			},
 		},
 		{
-			skip: true,
 			ranges: sql.RangeCollection{
 				r(
 					sql.RangeColumnExpr{LowerBound: sql.Below{Key: 0}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
