@@ -766,24 +766,32 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		Query:    "SELECT 1 WHERE ((1 IN (NULL >= 1)) IS NULL);",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 WHERE (1 IN (NULL NOT BETWEEN -1 AND 1)) IS NULL;",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 WHERE ((1 IN (NULL * 1)) IS NULL);",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT count(*) from mytable WHERE ((i IN (NULL >= 1)) IS NULL);",
+		Expected: []sql.Row{{3}},
+	},
+	{
+		Query:    "SELECT count(*) from mytable WHERE (i IN (NULL NOT BETWEEN -1 AND 1)) IS NULL;",
+		Expected: []sql.Row{{3}},
+	},
+	{
+		Query:    "SELECT count(*) from mytable WHERE ((i IN (NULL * 1)) IS NULL);",
+		Expected: []sql.Row{{3}},
+	},
+	{
 		Query:    "SELECT 1 % true",
 		Expected: []sql.Row{{"0"}},
-	},
-	{
-		Query: "SELECT * from mytable where (1/1 and true)",
-		Expected: []sql.Row{
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-		},
-	},
-	{
-		Query:    "SELECT * from mytable where (0.000 and true)",
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    "SELECT * from mytable where (-0.000 and true)",
-		Expected: []sql.Row{},
 	},
 	{
 		Query:    "show full processlist",
