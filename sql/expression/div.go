@@ -399,6 +399,12 @@ func convertToDecimalValue(val interface{}, isTimeType bool) interface{} {
 
 	if _, ok := val.(decimal.Decimal); !ok {
 		p, s := GetPrecisionAndScale(val)
+		if p > types.DecimalTypeMaxPrecision {
+			p = types.DecimalTypeMaxPrecision
+		}
+		if s > types.DecimalTypeMaxScale {
+			s = types.DecimalTypeMaxScale
+		}
 		dtyp, err := types.CreateDecimalType(p, s)
 		if err != nil {
 			val = decimal.Zero
