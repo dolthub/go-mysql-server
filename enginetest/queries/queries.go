@@ -794,6 +794,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"0"}},
 	},
 	{
+		Query:    "SELECT * from mytable where (0.000 and true)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT * from mytable where (-0.000 and true)",
+		Expected: []sql.Row{},
+	},
+	{
 		Query:    "show full processlist",
 		Expected: []sql.Row{},
 	},
