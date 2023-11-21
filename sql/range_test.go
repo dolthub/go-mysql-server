@@ -827,15 +827,15 @@ func buildTestRangeTree(ranges []sql.Range) (*sql.RangeColumnExprTree, error) {
 }
 
 func TestRangeTreeInsert(t *testing.T) {
-	tests := []struct{
-		name string
+	tests := []struct {
+		name      string
 		setupRngs []sql.Range
-		setupExp string
-		rng sql.Range
-		exp string
+		setupExp  string
+		rng       sql.Range
+		exp       string
 	}{
 		{
-			name: "insert smallest",
+			name:      "insert smallest",
 			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11))},
 			setupExp: "RangeColumnExprTree\n" +
 				"│   ┌── [11, 11] max: >11 color: 1\n" +
@@ -851,7 +851,7 @@ func TestRangeTreeInsert(t *testing.T) {
 				"",
 		},
 		{
-			name: "insert largest",
+			name:      "insert largest",
 			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11))},
 			setupExp: "RangeColumnExprTree\n" +
 				"│   ┌── [11, 11] max: >11 color: 1\n" +
@@ -867,7 +867,7 @@ func TestRangeTreeInsert(t *testing.T) {
 				"",
 		},
 		{
-			name: "insert rebalance left child",
+			name:      "insert rebalance left child",
 			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11)), r(req(0))},
 			setupExp: "RangeColumnExprTree\n" +
 				"│   ┌── [11, 11] max: >11 color: 0\n" +
@@ -885,7 +885,7 @@ func TestRangeTreeInsert(t *testing.T) {
 				"",
 		},
 		{
-			name: "insert rebalance right child",
+			name:      "insert rebalance right child",
 			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11)), r(req(12))},
 			setupExp: "RangeColumnExprTree\n" +
 				"│       ┌── [12, 12] max: >12 color: 1\n" +
@@ -903,7 +903,7 @@ func TestRangeTreeInsert(t *testing.T) {
 				"",
 		},
 		{
-			name: "insert rebalance root from left",
+			name:      "insert rebalance root from left",
 			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11)), r(req(0)), r(req(1)), r(req(2)), r(req(4))},
 			setupExp: "RangeColumnExprTree\n" +
 				"│   ┌── [11, 11] max: >11 color: 0\n" +
@@ -927,7 +927,7 @@ func TestRangeTreeInsert(t *testing.T) {
 				"",
 		},
 		{
-			name: "insert rebalance root from right",
+			name:      "insert rebalance root from right",
 			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11)), r(req(8)), r(req(9)), r(req(10)), r(req(12))},
 			setupExp: "RangeColumnExprTree\n" +
 				"│           ┌── [12, 12] max: >12 color: 1\n" +
@@ -966,15 +966,15 @@ func TestRangeTreeInsert(t *testing.T) {
 }
 
 func TestRangeTreeRemove(t *testing.T) {
-	tests := []struct{
-		name string
+	tests := []struct {
+		name      string
 		setupRngs []sql.Range
-		setupExp string
-		rng sql.Range
-		exp string
+		setupExp  string
+		rng       sql.Range
+		exp       string
 	}{
 		{
-			name: "remove smallest",
+			name:      "remove smallest",
 			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11)), r(req(1)), r(req(5)), r(req(9)), r(req(13))},
 			setupExp: "RangeColumnExprTree\n" +
 				"│       ┌── [13, 13] max: >13 color: 1\n" +
@@ -996,7 +996,7 @@ func TestRangeTreeRemove(t *testing.T) {
 				"",
 		},
 		{
-			name: "remove largest",
+			name:      "remove largest",
 			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11)), r(req(1)), r(req(5)), r(req(9)), r(req(13))},
 			setupExp: "RangeColumnExprTree\n" +
 				"│       ┌── [13, 13] max: >13 color: 1\n" +
@@ -1018,7 +1018,7 @@ func TestRangeTreeRemove(t *testing.T) {
 				"",
 		},
 		{
-			name: "remove left parent",
+			name:      "remove left parent",
 			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11)), r(req(1)), r(req(5)), r(req(9)), r(req(13))},
 			setupExp: "RangeColumnExprTree\n" +
 				"│       ┌── [13, 13] max: >13 color: 1\n" +
@@ -1040,7 +1040,7 @@ func TestRangeTreeRemove(t *testing.T) {
 				"",
 		},
 		{
-			name: "remove right parent",
+			name:      "remove right parent",
 			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11)), r(req(1)), r(req(5)), r(req(9)), r(req(13))},
 			setupExp: "RangeColumnExprTree\n" +
 				"│       ┌── [13, 13] max: >13 color: 1\n" +
@@ -1062,7 +1062,7 @@ func TestRangeTreeRemove(t *testing.T) {
 				"",
 		},
 		{
-			name: "remove root",
+			name:      "remove root",
 			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11)), r(req(1)), r(req(5)), r(req(9)), r(req(13))},
 			setupExp: "RangeColumnExprTree\n" +
 				"│       ┌── [13, 13] max: >13 color: 1\n" +
@@ -1084,7 +1084,7 @@ func TestRangeTreeRemove(t *testing.T) {
 				"",
 		},
 		{
-			name: "remove rotate left",
+			name:      "remove rotate left",
 			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11)), r(req(1)), r(req(5))},
 			setupExp: "RangeColumnExprTree\n" +
 				"│   ┌── [11, 11] max: >11 color: 0\n" +
@@ -1102,7 +1102,7 @@ func TestRangeTreeRemove(t *testing.T) {
 				"",
 		},
 		{
-			name: "remove root",
+			name:      "remove root",
 			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11)), r(req(9)), r(req(13))},
 			setupExp: "RangeColumnExprTree\n" +
 				"│       ┌── [13, 13] max: >13 color: 1\n" +
