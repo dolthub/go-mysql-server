@@ -811,3 +811,325 @@ func and(expressions ...sql.Expression) sql.Expression {
 	}
 	return expression.NewAnd(expressions[0], and(expressions[1:]...))
 }
+
+func buildTestRangeTree(ranges []sql.Range) (*sql.RangeColumnExprTree, error) {
+	tree, err := sql.NewRangeColumnExprTree(ranges[0], []sql.Type{rangeType})
+	if err != nil {
+		return nil, err
+	}
+	for _, rng := range ranges[1:] {
+		err = tree.Insert(rng)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return tree, nil
+}
+
+func TestRangeTreeInsert(t *testing.T) {
+	tests := []struct{
+		name string
+		setupRngs []sql.Range
+		setupExp string
+		rng sql.Range
+		exp string
+	}{
+		{
+			name: "insert smallest",
+			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11))},
+			setupExp: "RangeColumnExprTree\n" +
+				"│   ┌── [11, 11] max: >11 color: 1\n" +
+				"└── [7, 7] max: >11 color: 0\n" +
+				"    └── [3, 3] max: >3 color: 1\n" +
+				"",
+			rng: r(req(0)),
+			exp: "RangeColumnExprTree\n" +
+				"│   ┌── [11, 11] max: >11 color: 0\n" +
+				"└── [7, 7] max: >11 color: 0\n" +
+				"    └── [3, 3] max: >3 color: 0\n" +
+				"        └── [0, 0] max: >0 color: 1\n" +
+				"",
+		},
+		{
+			name: "insert largest",
+			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11))},
+			setupExp: "RangeColumnExprTree\n" +
+				"│   ┌── [11, 11] max: >11 color: 1\n" +
+				"└── [7, 7] max: >11 color: 0\n" +
+				"    └── [3, 3] max: >3 color: 1\n" +
+				"",
+			rng: r(req(14)),
+			exp: "RangeColumnExprTree\n" +
+				"│       ┌── [14, 14] max: >14 color: 1\n" +
+				"│   ┌── [11, 11] max: >14 color: 0\n" +
+				"└── [7, 7] max: >14 color: 0\n" +
+				"    └── [3, 3] max: >3 color: 0\n" +
+				"",
+		},
+		{
+			name: "insert rebalance left child",
+			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11)), r(req(0))},
+			setupExp: "RangeColumnExprTree\n" +
+				"│   ┌── [11, 11] max: >11 color: 0\n" +
+				"└── [7, 7] max: >11 color: 0\n" +
+				"    └── [3, 3] max: >3 color: 0\n" +
+				"        └── [0, 0] max: >0 color: 1\n" +
+				"",
+			rng: r(req(1)),
+			exp: "RangeColumnExprTree\n" +
+				"│   ┌── [11, 11] max: >11 color: 0\n" +
+				"└── [7, 7] max: >11 color: 0\n" +
+				"    │   ┌── [3, 3] max: >3 color: 1\n" +
+				"    └── [1, 1] max: >3 color: 0\n" +
+				"        └── [0, 0] max: >0 color: 1\n" +
+				"",
+		},
+		{
+			name: "insert rebalance right child",
+			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11)), r(req(12))},
+			setupExp: "RangeColumnExprTree\n" +
+				"│       ┌── [12, 12] max: >12 color: 1\n" +
+				"│   ┌── [11, 11] max: >12 color: 0\n" +
+				"└── [7, 7] max: >12 color: 0\n" +
+				"    └── [3, 3] max: >3 color: 0\n" +
+				"",
+			rng: r(req(13)),
+			exp: "RangeColumnExprTree\n" +
+				"│       ┌── [13, 13] max: >13 color: 1\n" +
+				"│   ┌── [12, 12] max: >13 color: 0\n" +
+				"│   │   └── [11, 11] max: >11 color: 1\n" +
+				"└── [7, 7] max: >13 color: 0\n" +
+				"    └── [3, 3] max: >3 color: 0\n" +
+				"",
+		},
+		{
+			name: "insert rebalance root from left",
+			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11)), r(req(0)), r(req(1)), r(req(2)), r(req(4))},
+			setupExp: "RangeColumnExprTree\n" +
+				"│   ┌── [11, 11] max: >11 color: 0\n" +
+				"└── [7, 7] max: >11 color: 0\n" +
+				"    │       ┌── [4, 4] max: >4 color: 1" +
+				"\n    │   ┌── [3, 3] max: >4 color: 0\n" +
+				"    │   │   └── [2, 2] max: >2 color: 1\n" +
+				"    └── [1, 1] max: >4 color: 1\n" +
+				"        └── [0, 0] max: >0 color: 0\n" +
+				"",
+			rng: r(req(5)),
+			exp: "RangeColumnExprTree\n" +
+				"│       ┌── [11, 11] max: >11 color: 0\n" +
+				"│   ┌── [7, 7] max: >11 color: 1\n" +
+				"│   │   │   ┌── [5, 5] max: >5 color: 1\n" +
+				"│   │   └── [4, 4] max: >5 color: 0\n" +
+				"└── [3, 3] max: >11 color: 0\n" +
+				"    │   ┌── [2, 2] max: >2 color: 0\n" +
+				"    └── [1, 1] max: >2 color: 1\n" +
+				"        └── [0, 0] max: >0 color: 0\n" +
+				"",
+		},
+		{
+			name: "insert rebalance root from right",
+			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11)), r(req(8)), r(req(9)), r(req(10)), r(req(12))},
+			setupExp: "RangeColumnExprTree\n" +
+				"│           ┌── [12, 12] max: >12 color: 1\n" +
+				"│       ┌── [11, 11] max: >12 color: 0\n" +
+				"│       │   └── [10, 10] max: >10 color: 1\n" +
+				"│   ┌── [9, 9] max: >12 color: 1\n" +
+				"│   │   └── [8, 8] max: >8 color: 0\n" +
+				"└── [7, 7] max: >12 color: 0\n" +
+				"    └── [3, 3] max: >3 color: 0\n" +
+				"",
+			rng: r(req(13)),
+			exp: "RangeColumnExprTree\n" +
+				"│           ┌── [13, 13] max: >13 color: 1\n" +
+				"│       ┌── [12, 12] max: >13 color: 0\n" +
+				"│   ┌── [11, 11] max: >13 color: 1\n" +
+				"│   │   └── [10, 10] max: >10 color: 0\n" +
+				"└── [9, 9] max: >13 color: 0\n" +
+				"    │   ┌── [8, 8] max: >8 color: 0\n" +
+				"    └── [7, 7] max: >8 color: 1\n" +
+				"        └── [3, 3] max: >3 color: 0\n" +
+				"",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tree, err := buildTestRangeTree(test.setupRngs)
+			require.NoError(t, err)
+			assert.Equal(t, test.setupExp, tree.String())
+
+			err = tree.Insert(test.rng)
+			require.NoError(t, err)
+			assert.Equal(t, test.exp, tree.String())
+		})
+	}
+}
+
+func TestRangeTreeRemove(t *testing.T) {
+	tests := []struct{
+		name string
+		setupRngs []sql.Range
+		setupExp string
+		rng sql.Range
+		exp string
+	}{
+		{
+			name: "remove smallest",
+			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11)), r(req(1)), r(req(5)), r(req(9)), r(req(13))},
+			setupExp: "RangeColumnExprTree\n" +
+				"│       ┌── [13, 13] max: >13 color: 1\n" +
+				"│   ┌── [11, 11] max: >13 color: 0\n" +
+				"│   │   └── [9, 9] max: >9 color: 1\n" +
+				"└── [7, 7] max: >13 color: 0\n" +
+				"    │   ┌── [5, 5] max: >5 color: 1\n" +
+				"    └── [3, 3] max: >5 color: 0\n" +
+				"        └── [1, 1] max: >1 color: 1\n" +
+				"",
+			rng: r(req(1)),
+			exp: "RangeColumnExprTree\n" +
+				"│       ┌── [13, 13] max: >13 color: 1\n" +
+				"│   ┌── [11, 11] max: >13 color: 0\n" +
+				"│   │   └── [9, 9] max: >9 color: 1\n" +
+				"└── [7, 7] max: >13 color: 0\n" +
+				"    │   ┌── [5, 5] max: >5 color: 1\n" +
+				"    └── [3, 3] max: >5 color: 0\n" +
+				"",
+		},
+		{
+			name: "remove largest",
+			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11)), r(req(1)), r(req(5)), r(req(9)), r(req(13))},
+			setupExp: "RangeColumnExprTree\n" +
+				"│       ┌── [13, 13] max: >13 color: 1\n" +
+				"│   ┌── [11, 11] max: >13 color: 0\n" +
+				"│   │   └── [9, 9] max: >9 color: 1\n" +
+				"└── [7, 7] max: >13 color: 0\n" +
+				"    │   ┌── [5, 5] max: >5 color: 1\n" +
+				"    └── [3, 3] max: >5 color: 0\n" +
+				"        └── [1, 1] max: >1 color: 1\n" +
+				"",
+			rng: r(req(13)),
+			exp: "RangeColumnExprTree\n" +
+				"│   ┌── [11, 11] max: >11 color: 0\n" +
+				"│   │   └── [9, 9] max: >9 color: 1\n" +
+				"└── [7, 7] max: >11 color: 0\n" +
+				"    │   ┌── [5, 5] max: >5 color: 1\n" +
+				"    └── [3, 3] max: >5 color: 0\n" +
+				"        └── [1, 1] max: >1 color: 1\n" +
+				"",
+		},
+		{
+			name: "remove left parent",
+			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11)), r(req(1)), r(req(5)), r(req(9)), r(req(13))},
+			setupExp: "RangeColumnExprTree\n" +
+				"│       ┌── [13, 13] max: >13 color: 1\n" +
+				"│   ┌── [11, 11] max: >13 color: 0\n" +
+				"│   │   └── [9, 9] max: >9 color: 1\n" +
+				"└── [7, 7] max: >13 color: 0\n" +
+				"    │   ┌── [5, 5] max: >5 color: 1\n" +
+				"    └── [3, 3] max: >5 color: 0\n" +
+				"        └── [1, 1] max: >1 color: 1\n" +
+				"",
+			rng: r(req(3)),
+			exp: "RangeColumnExprTree\n" +
+				"│       ┌── [13, 13] max: >13 color: 1\n" +
+				"│   ┌── [11, 11] max: >13 color: 0\n" +
+				"│   │   └── [9, 9] max: >9 color: 1\n" +
+				"└── [7, 7] max: >13 color: 0\n" +
+				"    │   ┌── [5, 5] max: >5 color: 1\n" +
+				"    └── [1, 1] max: >5 color: 0\n" +
+				"",
+		},
+		{
+			name: "remove right parent",
+			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11)), r(req(1)), r(req(5)), r(req(9)), r(req(13))},
+			setupExp: "RangeColumnExprTree\n" +
+				"│       ┌── [13, 13] max: >13 color: 1\n" +
+				"│   ┌── [11, 11] max: >13 color: 0\n" +
+				"│   │   └── [9, 9] max: >9 color: 1\n" +
+				"└── [7, 7] max: >13 color: 0\n" +
+				"    │   ┌── [5, 5] max: >5 color: 1\n" +
+				"    └── [3, 3] max: >5 color: 0\n" +
+				"        └── [1, 1] max: >1 color: 1\n" +
+				"",
+			rng: r(req(11)),
+			exp: "RangeColumnExprTree\n" +
+				"│       ┌── [13, 13] max: >13 color: 1\n" +
+				"│   ┌── [9, 9] max: >13 color: 0\n" +
+				"└── [7, 7] max: >13 color: 0\n" +
+				"    │   ┌── [5, 5] max: >5 color: 1\n" +
+				"    └── [3, 3] max: >5 color: 0\n" +
+				"        └── [1, 1] max: >1 color: 1\n" +
+				"",
+		},
+		{
+			name: "remove root",
+			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11)), r(req(1)), r(req(5)), r(req(9)), r(req(13))},
+			setupExp: "RangeColumnExprTree\n" +
+				"│       ┌── [13, 13] max: >13 color: 1\n" +
+				"│   ┌── [11, 11] max: >13 color: 0\n" +
+				"│   │   └── [9, 9] max: >9 color: 1\n" +
+				"└── [7, 7] max: >13 color: 0\n" +
+				"    │   ┌── [5, 5] max: >5 color: 1\n" +
+				"    └── [3, 3] max: >5 color: 0\n" +
+				"        └── [1, 1] max: >1 color: 1\n" +
+				"",
+			rng: r(req(7)),
+			exp: "RangeColumnExprTree\n" +
+				"│       ┌── [13, 13] max: >13 color: 1\n" +
+				"│   ┌── [11, 11] max: >13 color: 0\n" +
+				"│   │   └── [9, 9] max: >9 color: 1\n" +
+				"└── [5, 5] max: >13 color: 0\n" +
+				"    └── [3, 3] max: >3 color: 0\n" +
+				"        └── [1, 1] max: >1 color: 1\n" +
+				"",
+		},
+		{
+			name: "remove rotate left",
+			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11)), r(req(1)), r(req(5))},
+			setupExp: "RangeColumnExprTree\n" +
+				"│   ┌── [11, 11] max: >11 color: 0\n" +
+				"└── [7, 7] max: >11 color: 0\n" +
+				"    │   ┌── [5, 5] max: >5 color: 1\n" +
+				"    └── [3, 3] max: >5 color: 0\n" +
+				"        └── [1, 1] max: >1 color: 1\n" +
+				"",
+			rng: r(req(11)),
+			exp: "RangeColumnExprTree\n" +
+				"│   ┌── [7, 7] max: >7 color: 0\n" +
+				"│   │   └── [5, 5] max: >5 color: 1\n" +
+				"└── [3, 3] max: >7 color: 0\n" +
+				"    └── [1, 1] max: >1 color: 0\n" +
+				"",
+		},
+		{
+			name: "remove root",
+			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11)), r(req(9)), r(req(13))},
+			setupExp: "RangeColumnExprTree\n" +
+				"│       ┌── [13, 13] max: >13 color: 1\n" +
+				"│   ┌── [11, 11] max: >13 color: 0\n" +
+				"│   │   └── [9, 9] max: >9 color: 1\n" +
+				"└── [7, 7] max: >13 color: 0\n" +
+				"    └── [3, 3] max: >3 color: 0\n" +
+				"",
+			rng: r(req(3)),
+			exp: "RangeColumnExprTree\n" +
+				"│   ┌── [13, 13] max: >13 color: 0\n" +
+				"└── [11, 11] max: >13 color: 0\n" +
+				"    │   ┌── [9, 9] max: >9 color: 1\n" +
+				"    └── [7, 7] max: >9 color: 0\n" +
+				"",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tree, err := buildTestRangeTree(test.setupRngs)
+			require.NoError(t, err)
+			assert.Equal(t, test.setupExp, tree.String())
+
+			err = tree.Remove(test.rng)
+			require.NoError(t, err)
+			assert.Equal(t, test.exp, tree.String())
+		})
+	}
+}

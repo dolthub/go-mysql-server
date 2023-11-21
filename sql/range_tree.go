@@ -336,7 +336,6 @@ func (tree *RangeColumnExprTree) remove(rang Range, colExprIdx int) error {
 		pred := node.Left.maximumNode()
 		node.LowerBound = pred.LowerBound
 		node.UpperBound = pred.UpperBound
-		node.MaxUpperbound = pred.MaxUpperbound
 		if pred.Inner != nil && pred.Inner.size > 0 {
 			node.Inner = pred.Inner
 		} else {
@@ -348,48 +347,37 @@ func (tree *RangeColumnExprTree) remove(rang Range, colExprIdx int) error {
 		if node.Right == nil {
 			child = node.Left
 		} else {
-			child = node.Right
+			child = node.Right // TODO: if node is being replaced by non-nil right child, no need to update max upperbound
 		}
 		if node.color == black {
 			node.color = child.nodeColor()
-			tree.removeBalance(node)
+			tree.removeBalance(node) // TODO: isn't this supposed to be called after?
 		}
 		tree.replaceNode(node, child)
 		if child != nil {
 			if node.Parent == nil {
 				child.color = black
-			} else {
-				parentMax, err := GetRangeCutMax(tree.typ, child.Parent.Left.maxUpperBound(), child.Parent.Right.maxUpperBound(), child.Parent.UpperBound)
-				if err != nil {
-					panic(err)
-				}
-				child.Parent.MaxUpperbound = parentMax
 			}
+		}
+
+		// propagate max upperbound updates up the tree
+		parent := node.Parent
+		for parent != nil {
+			// upperbound of left child has no impact on parent's upperbound
+			if child == parent.Left {
+				break
+			}
+			if child == nil {
+				parent.MaxUpperbound = parent.UpperBound
+			} else {
+				parent.MaxUpperbound = child.MaxUpperbound
+			}
+			child = parent
+			parent = parent.Parent
 		}
 	}
 	tree.size--
-	tree.CalcMaxUpperBound()
 	return nil
-}
-
-func (tree *RangeColumnExprTree) CalcMaxUpperBound() {
-	if tree == nil {
-		return
-	}
-	tree.root.calcMaxUpperbound()
-}
-
-func (node *rangeColumnExprTreeNode) calcMaxUpperbound() RangeCut {
-	if node == nil {
-		return nil
-	}
-	node.Inner.CalcMaxUpperBound()
-	node.Left.calcMaxUpperbound()
-	node.MaxUpperbound = node.Right.calcMaxUpperbound()
-	if node.MaxUpperbound == nil {
-		node.MaxUpperbound = node.UpperBound
-	}
-	return node.MaxUpperbound
 }
 
 // GetRangeCollection returns every Range that this tree contains.
@@ -484,7 +472,8 @@ func (node *rangeColumnExprTreeNode) string(prefix string, isTail bool, sb *stri
 		UpperBound: node.UpperBound,
 		Typ:        typ,
 	}.DebugString())
-	sb.WriteString(" " + node.MaxUpperbound.String())
+	sb.WriteString(fmt.Sprintf(" max: %s", node.MaxUpperbound.DebugString()))
+	sb.WriteString(fmt.Sprintf(" color: %d", node.color))
 	sb.WriteRune('\n')
 	if node.Left != nil {
 		newPrefix := prefix
@@ -543,16 +532,11 @@ func (tree *RangeColumnExprTree) rotateLeft(node *rangeColumnExprTreeNode) {
 	}
 	right.Left = node
 	node.Parent = right
-	nodeMax, err := GetRangeCutMax(tree.typ, node.Left.maxUpperBound(), node.Right.maxUpperBound(), node.UpperBound)
-	if err != nil {
-		panic(err)
+	if node.Right == nil { // TODO: right is always not nil?
+		node.MaxUpperbound = node.UpperBound
+	} else {
+		node.MaxUpperbound = node.Right.MaxUpperbound
 	}
-	node.MaxUpperbound = nodeMax
-	rightMax, err := GetRangeCutMax(tree.typ, node.UpperBound, right.UpperBound, right.Right.upperBound())
-	if err != nil {
-		panic(err)
-	}
-	right.MaxUpperbound = rightMax
 }
 
 // rotateRight performs a right rotation. This also updates the max upperbounds of each affected node.
@@ -565,19 +549,10 @@ func (tree *RangeColumnExprTree) rotateRight(node *rangeColumnExprTreeNode) {
 	}
 	left.Right = node
 	node.Parent = left
-	nodeMax, err := GetRangeCutMax(tree.typ, node.Left.maxUpperBound(), node.Right.maxUpperBound(), node.upperBound())
-	if err != nil {
-		panic(err)
-	}
-	node.MaxUpperbound = nodeMax
-	leftMax, err := GetRangeCutMax(tree.typ, node.UpperBound, left.UpperBound, left.Left.upperBound())
-	if err != nil {
-		panic(err)
-	}
-	left.MaxUpperbound = leftMax
+	left.MaxUpperbound = node.MaxUpperbound
 }
 
-// replaceNode replaces the old node with the new node.
+// replaceNode updates the parent to point to the new node, and the new node to point to the parent; it does not update the children
 func (tree *RangeColumnExprTree) replaceNode(old *rangeColumnExprTreeNode, new *rangeColumnExprTreeNode) {
 	if old.Parent == nil {
 		tree.root = new
