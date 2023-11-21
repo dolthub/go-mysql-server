@@ -786,6 +786,10 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{},
 	},
 	{
+		Query:    "SELECT 1 WHERE power(88.0447354000000000000000333333333,100) % 1;",
+		Expected: []sql.Row{},
+	},
+	{
 		Query:    "show full processlist",
 		Expected: []sql.Row{},
 	},
