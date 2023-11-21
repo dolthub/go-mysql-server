@@ -100,6 +100,9 @@ func (e *ExprGroup) updateBest(n RelExpr, grpCost float64) {
 func (e *ExprGroup) finalize(node sql.Node, input sql.Schema) (sql.Node, error) {
 	props := e.RelProps
 	var result = node
+	if props.sort != nil {
+		result = plan.NewSort(props.sort, result)
+	}
 	if props.limit != nil {
 		result = plan.NewLimit(props.limit, result)
 	}

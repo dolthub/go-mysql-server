@@ -15,6 +15,7 @@
 package memo
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"math/bits"
@@ -147,6 +148,16 @@ func NewJoinOrderBuilder(memo *Memo) *joinOrderBuilder {
 	}
 }
 
+var ErrUpsupportedReorderNode = errors.New("unsupported join reorder node")
+
+type reorderErr struct {
+	err error
+}
+
+func (j *joinOrderBuilder) handleErr(err error) {
+	panic(reorderErr{err})
+}
+
 // useFastReorder determines whether to skip the current brute force join planning and use an alternate
 // planning algorithm that analyzes the join tree to find a sequence that can be implemented purely as lookup joins.
 // Currently we only use it for large joins (20+ tables) with no join hints.
@@ -160,7 +171,18 @@ func (j *joinOrderBuilder) useFastReorder() bool {
 	return len(j.vertices) > 15
 }
 
-func (j *joinOrderBuilder) ReorderJoin(n sql.Node) {
+func (j *joinOrderBuilder) ReorderJoin(n sql.Node) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			switch r := r.(type) {
+			case reorderErr:
+				err = r.err
+			default:
+				panic(r)
+			}
+		}
+	}()
+
 	j.populateSubgraph(n)
 	if j.useFastReorder() {
 		j.buildSingleLookupPlan()
@@ -171,6 +193,7 @@ func (j *joinOrderBuilder) ReorderJoin(n sql.Node) {
 	// for the single-lookup plan, which would complicate things.
 	j.ensureClosure(j.m.root)
 	j.dbSube()
+	return
 }
 
 // populateSubgraph recursively tracks new join nodes as edges and new
@@ -183,10 +206,17 @@ func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet, *Ex
 	// build operator
 	switch n := n.(type) {
 	case *plan.Filter:
-		return j.buildFilter(n)
+		return j.buildFilter(n.Child, n.Expression)
+	case *plan.Having:
+		return j.buildFilter(n.Child, n.Cond)
 	case *plan.Limit:
 		_, _, group = j.populateSubgraph(n.Child)
 		group.RelProps.limit = n.Limit
+	case *plan.Project:
+		return j.buildProject(n)
+	case *plan.Sort:
+		_, _, group = j.populateSubgraph(n.Child)
+		group.RelProps.sort = n.SortFields
 	case *plan.Max1Row:
 		return j.buildMax1Row(n)
 	case *plan.JoinNode:
@@ -200,7 +230,8 @@ func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet, *Ex
 	case *plan.CachedResults:
 		return j.populateSubgraph(n.Child)
 	default:
-		panic(fmt.Sprintf("expected Nameable node, found: %T", n))
+		err := fmt.Errorf("%w: %T", ErrUpsupportedReorderNode, n)
+		j.handleErr(err)
 	}
 	return j.allVertices().difference(startV), j.allEdges().Difference(startE), group
 }
@@ -474,12 +505,12 @@ func (j *joinOrderBuilder) buildJoinOp(n *plan.JoinNode) *ExprGroup {
 	return group
 }
 
-func (j *joinOrderBuilder) buildFilter(n *plan.Filter) (vertexSet, edgeSet, *ExprGroup) {
+func (j *joinOrderBuilder) buildFilter(child sql.Node, filter sql.Expression) (vertexSet, edgeSet, *ExprGroup) {
 	// memoize child
-	childV, childE, childGrp := j.populateSubgraph(n.Child)
+	childV, childE, childGrp := j.populateSubgraph(child)
 	// memoize filter components for simple filters
 	var filterGroups []*ExprGroup
-	for _, f := range expression.SplitConjunction(n.Expression) {
+	for _, f := range expression.SplitConjunction(filter) {
 		filterGroups = append(filterGroups, j.m.MemoizeScalar(f))
 	}
 
@@ -488,6 +519,22 @@ func (j *joinOrderBuilder) buildFilter(n *plan.Filter) (vertexSet, edgeSet, *Exp
 	// filter will absorb child relation for join reordering
 	j.plans[childV] = filterGrp
 	return childV, childE, filterGrp
+}
+
+func (j *joinOrderBuilder) buildProject(n *plan.Project) (vertexSet, edgeSet, *ExprGroup) {
+	// memoize child
+	childV, childE, childGrp := j.populateSubgraph(n.Child)
+	// memoize filter components for simple filters
+	var filterGroups []*ExprGroup
+	for _, f := range n.Projections {
+		filterGroups = append(filterGroups, j.m.MemoizeScalar(f))
+	}
+
+	projGrp := j.m.MemoizeProject(nil, childGrp, filterGroups)
+
+	// filter will absorb child relation for join reordering
+	j.plans[childV] = projGrp
+	return childV, childE, projGrp
 }
 
 func (j *joinOrderBuilder) buildMax1Row(n *plan.Max1Row) (vertexSet, edgeSet, *ExprGroup) {
@@ -529,7 +576,8 @@ func (j *joinOrderBuilder) buildJoinLeaf(n sql.Node) *ExprGroup {
 	case *plan.SetOp:
 		rel = &SetOp{sourceBase: b, Table: n}
 	default:
-		panic(fmt.Sprintf("unrecognized join leaf: %T", n))
+		err := fmt.Errorf("%w: %T", ErrUpsupportedReorderNode, n)
+		j.handleErr(err)
 	}
 
 	j.vertices = append(j.vertices, rel)

@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -24,11 +25,12 @@ import (
 )
 
 type applyJoin struct {
-	l      sql.Expression
-	r      *plan.Subquery
-	op     plan.JoinType
-	filter sql.Expression
-	max1   bool
+	l        sql.Expression
+	r        *plan.Subquery
+	op       plan.JoinType
+	filter   sql.Expression
+	original sql.Expression
+	max1     bool
 }
 
 // transformJoinApply converts expression.Comparer with *plan.Subquery
@@ -65,6 +67,7 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 
 			var matches []applyJoin
 			var newFilters []sql.Expression
+			var aliases map[string]int
 
 			// separate decorrelation candidates
 			for _, e := range filters {
@@ -104,7 +107,7 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 				default:
 				}
 				if sq != nil && sq.CanCacheResults() {
-					matches = append(matches, applyJoin{l: l, r: sq, op: op, filter: joinF, max1: max1})
+					matches = append(matches, applyJoin{l: l, r: sq, op: op, filter: joinF, max1: max1, original: candE})
 				} else {
 					newFilters = append(newFilters, e)
 				}
@@ -122,31 +125,37 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 				//     normalized to match changes to (2).
 				subq := m.r
 
-				name := fmt.Sprintf("scalarSubq%d", applyId)
-				applyId++
-
-				sch := subq.Query.Schema()
-				var rightF sql.Expression
-				if len(sch) == 1 {
-					subqCol := subq.Query.Schema()[0]
-					rightF = expression.NewGetFieldWithTable(len(scope.Schema()), subqCol.Type, subqCol.DatabaseSource, name, subqCol.Name, subqCol.Nullable)
-				} else {
-					tup := make(expression.Tuple, len(sch))
-					for i, c := range sch {
-						tup[i] = expression.NewGetFieldWithTable(len(scope.Schema())+i, c.Type, c.DatabaseSource, name, c.Name, c.Nullable)
+				if aliases == nil {
+					aliases = make(map[string]int)
+					ta, err := getTableAliases(n, scope)
+					if err != nil {
+						return n, transform.SameTree, err
 					}
-					rightF = tup
+					for k, _ := range ta.aliases {
+						aliases[k] = 0
+					}
 				}
 
-				var newSubq sql.Node = plan.NewSubqueryAlias(name, subq.QueryString, subq.Query)
+				// two options
+				// 1) convert to exists, no new subquery, need new filter in subqe
+				// 2) convert to join, no new subquery, join filter, disambiguate
 
-				newSubq, err = simplifySubqExpr(newSubq)
+				newSubq, err := disambiguateTables(aliases, subq.Query)
 				if err != nil {
-					return nil, transform.SameTree, err
+					return ret, transform.SameTree, nil
 				}
-				if m.max1 {
-					newSubq = plan.NewMax1Row(newSubq, name)
+
+				rightF, ok, err := getHighestProjection(newSubq)
+				if err != nil {
+					return n, transform.SameTree, err
 				}
+				if !ok {
+					newFilters = append(newFilters, m.original)
+					continue
+				}
+				//if m.max1 {
+				//	newSubq = plan.NewMax1Row(newSubq, name)
+				//}
 
 				filter, err := m.filter.WithChildren(m.l, rightF)
 				if err != nil {
@@ -163,6 +172,9 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 			if len(newFilters) == 0 {
 				return ret, transform.NewTree, nil
 			}
+			if len(newFilters) == len(filters) {
+				return n, transform.SameTree, nil
+			}
 			return plan.NewFilter(expression.JoinAnd(newFilters...), ret), transform.NewTree, nil
 		})
 		if err != nil {
@@ -172,54 +184,103 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	return ret, transform.TreeIdentity(applyId == 0), nil
 }
 
-// simplifySubqExpr converts a subquery expression into a *plan.TableAlias
-// for scopes with only tables and getField projections or the original
-// node failing simplification.
-func simplifySubqExpr(n sql.Node) (sql.Node, error) {
-	sq, ok := n.(*plan.SubqueryAlias)
-	if !ok {
-		return n, nil
-	}
-	var tab sql.RenameableNode
-	var filters []sql.Expression
-	transform.InspectUp(sq.Child, func(n sql.Node) bool {
+func disambiguateTables(used map[string]int, n sql.Node) (sql.Node, error) {
+	duplicates := make(map[string]int)
+	n, _, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
-		case *plan.Sort, *plan.Distinct:
-		case *plan.TableAlias:
-			tab = n
-		case *plan.ResolvedTable:
-			if !plan.IsDualTable(n.Table) {
-				tab = n
+		case sql.RenameableNode:
+			name := strings.ToLower(n.Name())
+			if cnt, ok := used[name]; ok {
+				duplicates[name] = cnt + 1
+				return n.WithName(fmt.Sprintf("%s_%d", name, cnt+1)), transform.NewTree, nil
 			}
-		case *plan.Filter:
-			filters = append(filters, n.Expression)
-		case *plan.Project:
-			for _, f := range n.Projections {
-				transform.InspectExpr(f, func(e sql.Expression) bool {
-					switch e.(type) {
-					case *expression.GetField, *expression.Literal, *expression.Equals:
-					default:
-						tab = nil
-					}
-					return false
-				})
-			}
+			return n, transform.NewTree, nil
 		default:
-			tab = nil
+			return transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				switch e := e.(type) {
+				case *expression.GetField:
+					if cnt, ok := duplicates[strings.ToLower(e.Table())]; ok {
+						return e.WithTable(fmt.Sprintf("%s_%d", e.Table(), cnt)), transform.NewTree, nil
+					}
+				default:
+				}
+				return e, transform.NewTree, nil
+			})
 		}
-		return false
 	})
-	if tab != nil {
-		ret := tab.WithName(sq.Name())
-		if len(filters) > 0 {
-			filters, err := renameAliasesInExpressions(filters, tab.Name(), sq.Name())
-			if err != nil {
-				return nil, err
-			}
-			filter := expression.JoinAnd(filters...)
-			ret = plan.NewFilter(filter, ret)
-		}
-		return ret, nil
+	for k, v := range duplicates {
+		used[k] = v
 	}
-	return n, nil
+	return n, err
+}
+
+func getHighestProjection(rec sql.Node) (sql.Expression, bool, error) {
+	sch := rec.Schema()
+	for rec != nil {
+		if !sch.Equals(rec.Schema()) {
+			break
+		}
+		var proj []sql.Expression
+		switch n := rec.(type) {
+		case *plan.Project:
+			proj = n.Projections
+		case *plan.JoinNode:
+			left, ok, err := getHighestProjection(n.Left())
+			if err != nil {
+				return nil, false, err
+			}
+			if !ok {
+				return nil, false, nil
+			}
+			right, ok, err := getHighestProjection(n.Right())
+			if err != nil {
+				return nil, false, err
+			}
+			if !ok {
+				return nil, false, nil
+			}
+			switch e := left.(type) {
+			case expression.Tuple:
+				proj = append(proj, e.Children()...)
+			default:
+				proj = append(proj, e)
+			}
+			switch e := right.(type) {
+			case expression.Tuple:
+				proj = append(proj, e.Children()...)
+			default:
+				proj = append(proj, e)
+			}
+		case *plan.GroupBy:
+			proj = n.SelectedExprs
+		case *plan.Window:
+			proj = n.SelectExprs
+			// TODO tableIdNode
+		case sql.NameableNode:
+			proj = expression.SchemaToGetFields(sch)
+		default:
+			if len(n.Children()) == 1 {
+				rec = n.Children()[0]
+				continue
+			}
+		}
+		if proj == nil {
+			break
+		}
+		projCopy := make([]sql.Expression, len(proj))
+		copy(projCopy, proj)
+		for i, p := range projCopy {
+			if a, ok := p.(*expression.Alias); ok {
+				if a.Unreferencable() || a.Id() == 0 {
+					return nil, false, nil
+				}
+				projCopy[i] = expression.NewGetField(int(a.Id()), a.Type(), a.Name(), a.IsNullable())
+			}
+		}
+		if len(projCopy) == 1 {
+			return projCopy[0], true, nil
+		}
+		return expression.NewTuple(projCopy...), true, nil
+	}
+	return nil, false, fmt.Errorf("failed to find decorrelation projection")
 }

@@ -122,10 +122,17 @@ var _ sql.Table = (*JSONTable)(nil)
 var _ sql.Node = (*JSONTable)(nil)
 var _ sql.Expressioner = (*JSONTable)(nil)
 var _ sql.CollationCoercible = (*JSONTable)(nil)
+var _ sql.RenameableNode = (*JSONTable)(nil)
 
 // Name implements the sql.Table interface
 func (t *JSONTable) Name() string {
 	return t.TableName
+}
+
+func (t *JSONTable) WithName(s string) sql.Node {
+	ret := *t
+	ret.TableName = s
+	return &ret
 }
 
 func (t *JSONTable) IsReadOnly() bool {

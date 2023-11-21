@@ -96,9 +96,11 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	m := memo.NewMemo(ctx, a.Catalog, scope, len(scope.Schema()), a.Coster, a.Carder)
 
 	j := memo.NewJoinOrderBuilder(m)
-	j.ReorderJoin(n)
+	err := j.ReorderJoin(n)
+	if err != nil {
+		return n, nil
+	}
 
-	var err error
 	err = convertSemiToInnerJoin(a, m)
 	if err != nil {
 		return nil, err

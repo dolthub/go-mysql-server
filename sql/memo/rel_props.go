@@ -36,6 +36,7 @@ type relProps struct {
 
 	Distinct distinctOp
 	limit    sql.Expression
+	sort     sql.SortFields
 }
 
 func newRelProps(rel RelExpr) *relProps {
