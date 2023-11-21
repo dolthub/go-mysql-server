@@ -78,6 +78,8 @@ func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
 func applyUpdateExpressionsWithIgnore(ctx *sql.Context, updateExprs []sql.Expression, tableSchema sql.Schema, row sql.Row, ignore bool) (sql.Row, error) {
 	var secondPass []int
 
+	// TODO: look inside of schema to find all columns that use on update, and add those to the updateExprs
+
 	for i, updateExpr := range updateExprs {
 		defaultVal, isDefaultVal := defaultValFromSetExpression(updateExpr)
 		// Any generated columns must be projected into place so that the caller gets their newest values as well. We
