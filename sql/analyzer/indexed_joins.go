@@ -164,6 +164,10 @@ func addLookupJoins(m *memo.Memo) error {
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		var right *memo.ExprGroup
 		var join *memo.JoinBase
+
+		// ANTI_JOIN is not a valid lookup acceptor. We need to tell the
+		// difference between when the RHS relation is non-empty (return no
+		// rows), vs there are no lookup matches (return rows).
 		switch e := e.(type) {
 		case *memo.InnerJoin:
 			right = e.Right
@@ -173,9 +177,6 @@ func addLookupJoins(m *memo.Memo) error {
 			join = e.JoinBase
 		//TODO fullouterjoin
 		case *memo.SemiJoin:
-			right = e.Right
-			join = e.JoinBase
-		case *memo.AntiJoin:
 			right = e.Right
 			join = e.JoinBase
 		default:

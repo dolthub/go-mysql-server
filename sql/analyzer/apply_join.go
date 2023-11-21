@@ -258,6 +258,8 @@ func getHighestProjection(rec sql.Node) (sql.Expression, bool, error) {
 			// TODO tableIdNode
 		case sql.NameableNode:
 			proj = expression.SchemaToGetFields(sch)
+		case *plan.SetOp:
+			return nil, false, nil
 		default:
 			if len(n.Children()) == 1 {
 				rec = n.Children()[0]
