@@ -201,10 +201,15 @@ func newInMap(ctx *sql.Context, right Tuple, lType sql.Type) (map[uint64]sql.Exp
 
 		if el.Type() == types.Null {
 			hasNull = true
+			continue
 		}
 		i, err := el.Eval(ctx, sql.Row{})
 		if err != nil {
 			return nil, hasNull, err
+		}
+		if i == nil {
+			hasNull = true
+			continue
 		}
 
 		key, err := hashOfSimple(ctx, i, lType)
@@ -249,10 +254,6 @@ func hashOfSimple(ctx *sql.Context, i interface{}, t sql.Type) (uint64, error) {
 
 // Eval implements the Expression interface.
 func (hit *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if hit.hasNull {
-		return nil, nil
-	}
-
 	leftElems := types.NumColumns(hit.in.Left().Type().Promote())
 
 	leftVal, err := hit.in.Left().Eval(ctx, row)
@@ -271,6 +272,9 @@ func (hit *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 
 	right, ok := hit.cmp[key]
 	if !ok {
+		if hit.hasNull {
+			return nil, nil
+		}
 		return false, nil
 	}
 
