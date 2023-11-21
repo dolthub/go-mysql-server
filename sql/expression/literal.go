@@ -93,7 +93,7 @@ func (lit *Literal) String() string {
 	case decimal.Decimal:
 		return litVal.StringFixed(litVal.Exponent() * -1)
 	case []byte:
-		return "BLOB"
+		return fmt.Sprintf("0x%X", litVal)
 	case nil:
 		return "NULL"
 	default:

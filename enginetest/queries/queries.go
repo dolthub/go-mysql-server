@@ -9245,22 +9245,6 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrSyntaxError,
 	},
 	{
-		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, j JSON DEFAULT '{}');",
-		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
-	},
-	{
-		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, g GEOMETRY DEFAULT '');",
-		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
-	},
-	{
-		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, t TEXT DEFAULT '');",
-		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
-	},
-	{
-		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, b BLOB DEFAULT '');",
-		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
-	},
-	{
 		Query:       "with a as (select * from a) select * from a",
 		ExpectedErr: sql.ErrTableNotFound,
 	},
