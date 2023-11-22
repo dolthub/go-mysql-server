@@ -1192,13 +1192,17 @@ func (*DayName) CollationCoercibility(ctx *sql.Context) (collation sql.Collation
 func (d *DayName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := d.EvalChild(ctx, row)
 	if err != nil {
-		return nil, err
+		ctx.Warn(1292, "Incorrect datetime value: '%s'", val)
+		return nil, nil
 	}
 
-	if t, ok := val.(time.Time); ok {
-		return t.Weekday().String(), nil
+	t, ok := val.(time.Time)
+	if !ok {
+		ctx.Warn(1292, "Incorrect datetime value: '%s'", val)
+		return nil, nil
 	}
-	return nil, err
+
+	return t.Weekday().String(), nil
 }
 
 func (d *DayName) WithChildren(children ...sql.Expression) (sql.Expression, error) {

@@ -8446,6 +8446,20 @@ where exists (
 order by x, y;`,
 		Expected: []sql.Row{},
 	},
+	{
+		Query: "select dayname(123), dayname('abc')",
+		Expected: []sql.Row{
+			{nil, nil},
+		},
+	},
+	{
+		Query: "select * from mytable order by dayname(i)",
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
