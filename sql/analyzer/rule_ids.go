@@ -84,8 +84,8 @@ const (
 
 	// after default
 	hoistOutOfScopeFiltersId     // hoistOutOfScopeFilters
-	unnestInSubqueryId           // unnestInSubquery
-	hoistSelectExistsId          // hoistSelectExists
+	unnestInSubqueriesId         // unnestInSubqueries
+	unnestExistsSubqueriesId     // unnestExistsSubqueries
 	finalizeSubqueriesId         // finalizeSubqueries
 	finalizeUnionsId             // finalizeUnions
 	loadTriggersId               // loadTriggers

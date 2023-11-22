@@ -33,18 +33,19 @@ type applyJoin struct {
 	max1     bool
 }
 
-// unnestInSubquery converts expression.Comparer with an *plan.InSubquery
+// unnestInSubqueries converts expression.Comparer with an *plan.InSubquery
 // RHS into joins. The match conditions include: 1) subquery is cacheable,
 // 2) the top-level subquery projection is a get field with a sql.ColumnId
 // and sql.TableId (to support join reordering).
 // TODO decorrelate lhs too
 // TODO non-null-rejecting with dual table
-func unnestInSubquery(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	switch n.(type) {
 	case *plan.DeleteFrom, *plan.InsertInto:
 		return n, transform.SameTree, nil
 	}
-	var applyId int
+
+	var unnested bool
 
 	ret := n
 	var err error
@@ -159,6 +160,7 @@ func unnestInSubquery(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 				if c, ok := ret.(sql.CommentedNode); ok {
 					comment = c.Comment()
 				}
+				unnested = true
 				newJoin := plan.NewJoin(ret, newSubq, m.op, filter)
 				ret = newJoin.WithComment(comment)
 			}
@@ -175,7 +177,7 @@ func unnestInSubquery(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 			return n, transform.SameTree, err
 		}
 	}
-	return ret, transform.TreeIdentity(applyId == 0), nil
+	return ret, transform.TreeIdentity(unnested), nil
 }
 
 func disambiguateTables(used map[string]int, n sql.Node) (sql.Node, error) {

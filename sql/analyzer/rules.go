@@ -50,13 +50,13 @@ var DefaultRules = []Rule{
 	{pushdownSubqueryAliasFiltersId, pushdownSubqueryAliasFilters},
 	{pruneTablesId, pruneTables},
 	{validateCheckConstraintId, validateCheckConstraints},
-	{unnestInSubqueryId, unnestInSubquery},
+	{unnestInSubqueriesId, unnestInSubqueries},
 	{resolveSubqueriesId, resolveSubqueries},
 	{replaceCrossJoinsId, replaceCrossJoins},
 }
 
 var OnceAfterDefault = []Rule{
-	{hoistSelectExistsId, hoistSelectExists},
+	{unnestExistsSubqueriesId, unnestExistsSubqueries},
 	{moveJoinCondsToFilterId, moveJoinConditionsToFilter},
 	{finalizeUnionsId, finalizeUnions},
 	{loadTriggersId, loadTriggers},
