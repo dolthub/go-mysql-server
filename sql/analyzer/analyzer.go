@@ -406,7 +406,7 @@ func NewProcRuleSelector(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
 		case pruneTablesId,
-			transformJoinApplyId,
+			unnestInSubqueryId,
 
 			// once after default rules should only be run once
 			AutocommitId,
@@ -426,7 +426,7 @@ func NewResolveSubqueryExprSelector(sel RuleSelector) RuleSelector {
 			// skip recursive finalize rules
 			hoistOutOfScopeFiltersId,
 			hoistSelectExistsId,
-			transformJoinApplyId,
+			unnestInSubqueryId,
 			finalizeSubqueriesId,
 			assignExecIndexesId:
 			return false
@@ -476,7 +476,7 @@ func NewFinalizeUnionSel(sel RuleSelector) RuleSelector {
 func newInsertSourceSelector(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		case transformJoinApplyId,
+		case unnestInSubqueryId,
 			pushdownSubqueryAliasFiltersId:
 			return false
 		}

@@ -50,7 +50,7 @@ var DefaultRules = []Rule{
 	{pushdownSubqueryAliasFiltersId, pushdownSubqueryAliasFilters},
 	{pruneTablesId, pruneTables},
 	{validateCheckConstraintId, validateCheckConstraints},
-	{transformJoinApplyId, unnestInSubquery},
+	{unnestInSubqueryId, unnestInSubquery},
 	{resolveSubqueriesId, resolveSubqueries},
 	{replaceCrossJoinsId, replaceCrossJoins},
 }

@@ -84,7 +84,7 @@ const (
 
 	// after default
 	hoistOutOfScopeFiltersId     // hoistOutOfScopeFilters
-	transformJoinApplyId         // unnestInSubquery
+	unnestInSubqueryId           // unnestInSubquery
 	hoistSelectExistsId          // hoistSelectExists
 	finalizeSubqueriesId         // finalizeSubqueries
 	finalizeUnionsId             // finalizeUnions
