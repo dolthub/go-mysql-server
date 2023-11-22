@@ -950,6 +950,36 @@ func TestRangeTreeInsert(t *testing.T) {
 				"        └── [3, 3] max: Above[3] color: 0\n" +
 				"",
 		},
+		{
+			name:      "insert smallest",
+			setupRngs: []sql.Range{r(rcc(4, 6)), r(req(3)), r(req(11))},
+			setupExp: "RangeColumnExprTree\n" +
+				"│   ┌── [11, 11] max: Above[11] color: 1\n" +
+				"└── [4, 6] max: Above[11] color: 0\n" +
+				"    └── [3, 3] max: Above[3] color: 1\n" +
+				"",
+			rng: r(req(0)),
+			exp: "RangeColumnExprTree\n" +
+				"│   ┌── [11, 11] max: Above[11] color: 0\n" +
+				"└── [4, 6] max: Above[11] color: 0\n" +
+				"    └── [3, 3] max: Above[3] color: 0\n" +
+				"        └── [0, 0] max: Above[0] color: 1\n" +
+				"",
+		},
+		{
+			name:      "insert compare above and below",
+			setupRngs: []sql.Range{r(roo(4, 6)), r(req(4))},
+			setupExp: "RangeColumnExprTree\n" +
+				"└── (4, 6) max: Below[6] color: 0\n" +
+				"    └── [4, 4] max: Above[4] color: 1\n" +
+				"",
+			rng: r(req(6)),
+			exp: "RangeColumnExprTree\n" +
+				"│   ┌── [6, 6] max: Above[6] color: 1\n" +
+				"└── (4, 6) max: Above[6] color: 0\n" +
+				"    └── [4, 4] max: Above[4] color: 1\n" +
+				"",
+		},
 	}
 
 	for _, test := range tests {
@@ -1117,6 +1147,34 @@ func TestRangeTreeRemove(t *testing.T) {
 				"└── [11, 11] max: Above[13] color: 0\n" +
 				"    │   ┌── [9, 9] max: Above[9] color: 1\n" +
 				"    └── [7, 7] max: Above[9] color: 0\n" +
+				"",
+		},
+		{
+			name:      "remove ranges",
+			setupRngs: []sql.Range{r(roo(3, 5)), r(roo(1, 3)), r(roo(5, 7))},
+			setupExp: "RangeColumnExprTree\n" +
+				"│   ┌── (5, 7) max: Below[7] color: 1\n" +
+				"└── (3, 5) max: Below[7] color: 0\n" +
+				"    └── (1, 3) max: Below[3] color: 1\n" +
+				"",
+			rng: r(roo(1, 3)),
+			exp: "RangeColumnExprTree\n" +
+				"│   ┌── (5, 7) max: Below[7] color: 1\n" +
+				"└── (3, 5) max: Below[7] color: 0\n" +
+				"",
+		},
+		{
+			name:      "remove ranges",
+			setupRngs: []sql.Range{r(roo(3, 5)), r(roo(1, 3)), r(roo(5, 7))},
+			setupExp: "RangeColumnExprTree\n" +
+				"│   ┌── (5, 7) max: Below[7] color: 1\n" +
+				"└── (3, 5) max: Below[7] color: 0\n" +
+				"    └── (1, 3) max: Below[3] color: 1\n" +
+				"",
+			rng: r(roo(3, 5)),
+			exp: "RangeColumnExprTree\n" +
+				"│   ┌── (5, 7) max: Below[7] color: 1\n" +
+				"└── (1, 3) max: Below[7] color: 0\n" +
 				"",
 		},
 	}

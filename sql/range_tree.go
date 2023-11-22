@@ -532,7 +532,7 @@ func (tree *RangeColumnExprTree) rotateLeft(node *rangeColumnExprTreeNode) {
 	}
 	right.Left = node
 	node.Parent = right
-	if node.Right == nil { // TODO: right is always not nil?
+	if node.Right == nil {
 		node.MaxUpperbound = node.UpperBound
 	} else {
 		node.MaxUpperbound = node.Right.MaxUpperbound
