@@ -8459,7 +8459,7 @@ order by x, y;`,
 		},
 	},
 	{
-		Query: `select 1 where sin(0)`,
+		Query:    `select 1 where sin(0)`,
 		Expected: []sql.Row{},
 	},
 }
