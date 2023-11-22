@@ -33,12 +33,13 @@ type applyJoin struct {
 	max1     bool
 }
 
-// transformJoinApply converts expression.Comparer with *plan.Subquery
-// rhs into join trees, opportunistically merging correlated expressions
-// into the parent scopes where possible.
+// unnestInSubquery converts expression.Comparer with an *plan.InSubquery
+// RHS into joins. The match conditions include: 1) subquery is cacheable,
+// 2) the top-level subquery projection is a get field with a sql.ColumnId
+// and sql.TableId (to support join reordering).
 // TODO decorrelate lhs too
 // TODO non-null-rejecting with dual table
-func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func unnestInSubquery(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	switch n.(type) {
 	case *plan.DeleteFrom, *plan.InsertInto:
 		return n, transform.SameTree, nil
@@ -136,10 +137,6 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 					}
 				}
 
-				// two options
-				// 1) convert to exists, no new subquery, need new filter in subqe
-				// 2) convert to join, no new subquery, join filter, disambiguate
-
 				newSubq, err := disambiguateTables(aliases, subq.Query)
 				if err != nil {
 					return ret, transform.SameTree, nil
@@ -153,9 +150,6 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 					newFilters = append(newFilters, m.original)
 					continue
 				}
-				//if m.max1 {
-				//	newSubq = plan.NewMax1Row(newSubq, name)
-				//}
 
 				filter, err := m.filter.WithChildren(m.l, rightF)
 				if err != nil {
@@ -193,13 +187,15 @@ func disambiguateTables(used map[string]int, n sql.Node) (sql.Node, error) {
 			if cnt, ok := used[name]; ok {
 				duplicates[name] = cnt + 1
 				return n.WithName(fmt.Sprintf("%s_%d", name, cnt+1)), transform.NewTree, nil
+			} else {
+				duplicates[name] = 0
 			}
 			return n, transform.NewTree, nil
 		default:
 			return transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				switch e := e.(type) {
 				case *expression.GetField:
-					if cnt, ok := duplicates[strings.ToLower(e.Table())]; ok {
+					if cnt, ok := duplicates[strings.ToLower(e.Table())]; ok && cnt > 0 {
 						return e.WithTable(fmt.Sprintf("%s_%d", e.Table(), cnt)), transform.NewTree, nil
 					}
 				default:

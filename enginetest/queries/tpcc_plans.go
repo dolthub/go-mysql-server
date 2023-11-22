@@ -456,51 +456,38 @@ WHERE
   o_c_id = 20001 AND
   o_id = (SELECT MAX(o_id) FROM orders2 WHERE o_w_id = 1 AND o_d_id = 3 AND o_c_id = 20001)`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [orders2.o_id:1!null, orders2.o_entry_d:5, coalesce(orders2.o_carrier_id:6,0 (tinyint)) as COALESCE(o_carrier_id,0)]\n" +
-			" └─ LookupJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ orders2.o_id:1!null\n" +
-			"     │   └─ scalarSubq0.MAX(o_id):0!null\n" +
-			"     ├─ OrderedDistinct\n" +
-			"     │   └─ Max1Row\n" +
-			"     │       └─ SubqueryAlias\n" +
-			"     │           ├─ name: scalarSubq0\n" +
-			"     │           ├─ outerVisibility: false\n" +
-			"     │           ├─ isLateral: false\n" +
-			"     │           ├─ cacheable: true\n" +
-			"     │           └─ Project\n" +
-			"     │               ├─ columns: [max(orders2.o_id):0!null as MAX(o_id)]\n" +
-			"     │               └─ GroupBy\n" +
-			"     │                   ├─ select: MAX(orders2.o_id:0!null)\n" +
-			"     │                   ├─ group: \n" +
-			"     │                   └─ Filter\n" +
-			"     │                       ├─ Eq\n" +
-			"     │                       │   ├─ orders2.o_c_id:3\n" +
-			"     │                       │   └─ 20001 (smallint)\n" +
-			"     │                       └─ IndexedTableAccess(orders2)\n" +
-			"     │                           ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
-			"     │                           ├─ static: [{[1, 1], [3, 3], [NULL, ∞)}]\n" +
-			"     │                           └─ Table\n" +
-			"     │                               ├─ name: orders2\n" +
-			"     │                               └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
-			"     └─ Filter\n" +
-			"         ├─ AND\n" +
-			"         │   ├─ AND\n" +
-			"         │   │   ├─ Eq\n" +
-			"         │   │   │   ├─ orders2.o_w_id:2!null\n" +
-			"         │   │   │   └─ 1 (tinyint)\n" +
-			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ orders2.o_d_id:1!null\n" +
-			"         │   │       └─ 3 (tinyint)\n" +
-			"         │   └─ Eq\n" +
-			"         │       ├─ orders2.o_c_id:3\n" +
-			"         │       └─ 20001 (smallint)\n" +
-			"         └─ IndexedTableAccess(orders2)\n" +
-			"             ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
-			"             ├─ keys: [1 3 scalarSubq0.MAX(o_id)]\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: orders2\n" +
-			"                 └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id o_ol_cnt o_all_local]\n" +
+			" ├─ columns: [orders2.o_id:0!null, orders2.o_entry_d:4, coalesce(orders2.o_carrier_id:5,0 (tinyint)) as COALESCE(o_carrier_id,0)]\n" +
+			" └─ Filter\n" +
+			"     ├─ AND\n" +
+			"     │   ├─ Eq\n" +
+			"     │   │   ├─ orders2.o_id:0!null\n" +
+			"     │   │   └─ Subquery\n" +
+			"     │   │       ├─ cacheable: true\n" +
+			"     │   │       ├─ alias-string: select MAX(o_id) from orders2 where o_w_id = 1 and o_d_id = 3 and o_c_id = 20001\n" +
+			"     │   │       └─ Project\n" +
+			"     │   │           ├─ columns: [max(orders2.o_id):8!null as MAX(o_id)]\n" +
+			"     │   │           └─ GroupBy\n" +
+			"     │   │               ├─ select: MAX(orders2.o_id:8!null)\n" +
+			"     │   │               ├─ group: \n" +
+			"     │   │               └─ Filter\n" +
+			"     │   │                   ├─ Eq\n" +
+			"     │   │                   │   ├─ orders2.o_c_id:11\n" +
+			"     │   │                   │   └─ 20001 (smallint)\n" +
+			"     │   │                   └─ IndexedTableAccess(orders2)\n" +
+			"     │   │                       ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
+			"     │   │                       ├─ static: [{[1, 1], [3, 3], [NULL, ∞)}]\n" +
+			"     │   │                       └─ Table\n" +
+			"     │   │                           ├─ name: orders2\n" +
+			"     │   │                           └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
+			"     │   └─ Eq\n" +
+			"     │       ├─ orders2.o_c_id:3\n" +
+			"     │       └─ 20001 (smallint)\n" +
+			"     └─ IndexedTableAccess(orders2)\n" +
+			"         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
+			"         ├─ static: [{[1, 1], [3, 3], [NULL, ∞)}]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: orders2\n" +
+			"             └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id o_ol_cnt o_all_local]\n" +
 			"",
 	},
 	{

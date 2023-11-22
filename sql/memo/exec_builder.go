@@ -101,6 +101,9 @@ func (b *ExecBuilder) buildLookup(l *Lookup, input sql.Schema, children ...sql.N
 	case *plan.Distinct:
 		ret, err = b.buildLookup(l, input, n.Child)
 		ret = plan.NewDistinct(ret)
+	case *plan.OrderedDistinct:
+		ret, err = b.buildLookup(l, input, n.Child)
+		ret = plan.NewOrderedDistinct(ret)
 	case *plan.Filter:
 		ret, err = b.buildLookup(l, input, n.Child)
 		ret = plan.NewFilter(n.Expression, ret)
@@ -140,6 +143,9 @@ func (b *ExecBuilder) buildRangeHeap(sr *RangeHeap, leftSch, rightSch sql.Schema
 	case *plan.Distinct:
 		ret, err = b.buildRangeHeap(sr, leftSch, rightSch, n.Child)
 		ret = plan.NewDistinct(ret)
+	case *plan.OrderedDistinct:
+		ret, err = b.buildRangeHeap(sr, leftSch, rightSch, n.Child)
+		ret = plan.NewOrderedDistinct(ret)
 	case *plan.Filter:
 		ret, err = b.buildRangeHeap(sr, leftSch, rightSch, n.Child)
 		ret = plan.NewFilter(n.Expression, ret)
