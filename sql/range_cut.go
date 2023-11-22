@@ -24,8 +24,6 @@ type RangeCut interface {
 	Compare(RangeCut, Type) (int, error)
 	// String returns the RangeCut as a string for display purposes.
 	String() string
-	// DebugString returns the RangeCut as a string for display purposes.
-	DebugString() string
 	// TypeAsLowerBound returns the bound type if the calling RangeCut is the lower bound of a range.
 	TypeAsLowerBound() RangeBoundType
 	// TypeAsUpperBound returns the bound type if the calling RangeCut is the upper bound of a range.
@@ -159,11 +157,6 @@ func (a Above) String() string {
 	return fmt.Sprintf("Above[%v]", a.Key)
 }
 
-// DebugString implements RangeCut.
-func (a Above) DebugString() string {
-	return fmt.Sprintf(">%v", a.Key)
-}
-
 // TypeAsLowerBound implements RangeCut.
 func (Above) TypeAsLowerBound() RangeBoundType {
 	return Open
@@ -190,11 +183,6 @@ func (AboveAll) Compare(c RangeCut, typ Type) (int, error) {
 // String implements RangeCut.
 func (AboveAll) String() string {
 	return "AboveAll"
-}
-
-// DebugString implements RangeCut.
-func (AboveAll) DebugString() string {
-	return "∞"
 }
 
 // TypeAsLowerBound implements RangeCut.
@@ -244,11 +232,6 @@ func (b Below) String() string {
 	return fmt.Sprintf("Below[%v]", b.Key)
 }
 
-// DebugString implements RangeCut.
-func (b Below) DebugString() string {
-	return fmt.Sprintf("<%v", b.Key)
-}
-
 // TypeAsLowerBound implements RangeCut.
 func (Below) TypeAsLowerBound() RangeBoundType {
 	return Closed
@@ -280,11 +263,6 @@ func (AboveNull) String() string {
 	return "AboveNull"
 }
 
-// DebugString implements RangeCut.
-func (AboveNull) DebugString() string {
-	return ">NULL"
-}
-
 // TypeAsLowerBound implements RangeCut.
 func (AboveNull) TypeAsLowerBound() RangeBoundType {
 	return Open
@@ -313,11 +291,6 @@ func (BelowNull) Compare(c RangeCut, typ Type) (int, error) {
 // String implements RangeCut.
 func (BelowNull) String() string {
 	return "BelowNull"
-}
-
-// DebugString implements RangeCut.
-func (BelowNull) DebugString() string {
-	return "<NULL"
 }
 
 // TypeAsLowerBound implements RangeCut.

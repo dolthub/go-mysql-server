@@ -472,7 +472,7 @@ func (node *rangeColumnExprTreeNode) string(prefix string, isTail bool, sb *stri
 		UpperBound: node.UpperBound,
 		Typ:        typ,
 	}.DebugString())
-	sb.WriteString(fmt.Sprintf(" max: %s", node.MaxUpperbound.DebugString()))
+	sb.WriteString(fmt.Sprintf(" max: %s", node.MaxUpperbound.String()))
 	sb.WriteString(fmt.Sprintf(" color: %d", node.color))
 	sb.WriteRune('\n')
 	if node.Left != nil {
