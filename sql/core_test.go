@@ -46,7 +46,7 @@ var conditions = []struct {
 	{true, "1", types.LongText},
 	{false, "0", types.LongText},
 	{false, "foo", types.LongText},
-	{false, "0.5", types.LongText},
+	{true, "0.5", types.LongText},
 	{false, time.Duration(0), types.Timestamp},
 	{true, time.Duration(1), types.Timestamp},
 	{false, false, types.Boolean},
