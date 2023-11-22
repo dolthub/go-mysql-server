@@ -16,7 +16,7 @@ package sql
 
 import (
 	"fmt"
-		"strconv"
+	"strconv"
 	"time"
 
 	"github.com/shopspring/decimal"
