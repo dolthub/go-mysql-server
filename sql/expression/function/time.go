@@ -1195,8 +1195,10 @@ func (d *DayName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	t := val.(time.Time)
-	return t.Weekday().String(), nil
+	if t, ok := val.(time.Time); ok {
+		return t.Weekday().String(), nil
+	}
+	return nil, err
 }
 
 func (d *DayName) WithChildren(children ...sql.Expression) (sql.Expression, error) {
