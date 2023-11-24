@@ -71,7 +71,7 @@ func (f *If) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if e == nil {
 		asBool = false
 	} else {
-		asBool, err = types.ConvertToBool(e)
+		asBool, err = sql.ConvertToBool(ctx, e)
 		if err != nil {
 			return nil, err
 		}

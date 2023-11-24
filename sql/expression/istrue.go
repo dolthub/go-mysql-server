@@ -68,11 +68,10 @@ func (e *IsTrue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	var boolVal interface{}
 	if v == nil {
 		return false, nil
-	} else {
-		boolVal, err = types.ConvertToBool(v)
-		if err != nil {
-			return nil, err
-		}
+	}
+	boolVal, err = sql.ConvertToBool(ctx, v)
+	if err != nil {
+		return nil, err
 	}
 
 	if e.invert {
