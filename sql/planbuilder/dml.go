@@ -222,6 +222,8 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 
 	tableSch := inScope.node.Schema()
 
+	// TODO: need to build default here
+
 	for i, updateExpr := range e {
 		colName := b.buildScalar(inScope, updateExpr.Name)
 
@@ -237,6 +239,7 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 		}
 
 		innerExpr := b.buildScalar(inScope, updateExpr.Expr)
+		// TODO: if innerExpr is default, need to resolve
 		updateExprs[i] = expression.NewSetField(colName, innerExpr)
 		if inScope.groupBy != nil {
 			if len(inScope.groupBy.aggs) > startAggCnt {
@@ -405,6 +408,10 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 
 	ignore := u.Ignore != ""
 	update := plan.NewUpdate(outScope.node, ignore, updateExprs)
+
+	outScope.node.Schema()
+
+	// TODO: need to call sch = b.resolveSchemaDefaults(destScope, rt.Schema()) here
 
 	var checks []*sql.CheckConstraint
 	if join, ok := outScope.node.(*plan.JoinNode); ok {

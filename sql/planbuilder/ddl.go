@@ -1234,6 +1234,7 @@ func (b *Builder) resolveSchemaDefaults(inScope *scope, schema sql.Schema) sql.S
 	for _, col := range newSch {
 		col.Default = b.resolveColumnDefaultExpression(inScope, col, col.Default)
 		col.Generated = b.resolveColumnDefaultExpression(inScope, col, col.Generated)
+		col.OnUpdate = b.resolveColumnDefaultExpression(inScope, col, col.OnUpdate)
 	}
 	return newSch
 }

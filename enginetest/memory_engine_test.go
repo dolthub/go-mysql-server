@@ -203,14 +203,23 @@ func TestSingleScript(t *testing.T) {
 		{
 			Name: "delete me",
 			SetUpScript: []string{
-				"create table t (i int, t timestamp default current_timestamp on update current_timestamp);",
-				"insert into t(i) values (1);",
+				"create table t (i int default 100, tt timestamp default current_timestamp on update current_timestamp);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "update t set i = i + 1;",
+					Query: "insert into t(i) values (default);",
 					Expected: []sql.Row{},
 				},
+				{
+					Query: "update t set i = default;",
+					Expected: []sql.Row{},
+				},
+				//{
+				//	Query: "select * from t",
+				//	Expected: []sql.Row{
+				//		{2, nil},
+				//	},
+				//},
 			},
 		},
 	}
@@ -222,8 +231,8 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		engine.EngineAnalyzer().Debug = true
-		engine.EngineAnalyzer().Verbose = true
+		//engine.EngineAnalyzer().Debug = true
+		//engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
