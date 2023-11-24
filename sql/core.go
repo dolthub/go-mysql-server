@@ -249,6 +249,56 @@ type Lockable interface {
 	Unlock(ctx *Context, id uint32) error
 }
 
+// ConvertToBool converts a value to a boolean. nil is considered false.
+func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
+	switch b := v.(type) {
+	case bool:
+		return b, nil
+	case int:
+		return b != 0, nil
+	case int64:
+		return b != 0, nil
+	case int32:
+		return b != 0, nil
+	case int16:
+		return b != 0, nil
+	case int8:
+		return b != 0, nil
+	case uint:
+		return b != 0, nil
+	case uint64:
+		return b != 0, nil
+	case uint32:
+		return b != 0, nil
+	case uint16:
+		return b != 0, nil
+	case uint8:
+		return b != 0, nil
+	case time.Duration:
+		return b != 0, nil
+	case time.Time:
+		return b.UnixNano() != 0, nil
+	case float32:
+		return b != 0, nil
+	case float64:
+		return b != 0, nil
+	case string:
+		bFloat, err := strconv.ParseFloat(b, 64)
+		if err != nil {
+			// In MySQL, if the string does not represent a float then it's false
+			ctx.Warn(1292, "Truncated incorrect DOUBLE value: '%s'", v.(string))
+			return false, nil
+		}
+		return bFloat != 0, nil
+	case decimal.Decimal:
+		return !b.IsZero(), nil
+	case nil:
+		return false, fmt.Errorf("unable to cast nil to bool")
+	default:
+		return false, fmt.Errorf("unable to cast %#v of type %T to bool", v, v)
+	}
+}
+
 // EvaluateCondition evaluates a condition, which is an expression whose value
 // will be nil or coerced boolean.
 func EvaluateCondition(ctx *Context, cond Expression, row Row) (interface{}, error) {
@@ -259,50 +309,11 @@ func EvaluateCondition(ctx *Context, cond Expression, row Row) (interface{}, err
 	if v == nil {
 		return nil, nil
 	}
-
-	switch b := v.(type) {
-	case bool:
-		return b, nil
-	case int:
-		return b != int(0), nil
-	case int64:
-		return b != int64(0), nil
-	case int32:
-		return b != int32(0), nil
-	case int16:
-		return b != int16(0), nil
-	case int8:
-		return b != int8(0), nil
-	case uint:
-		return b != uint(0), nil
-	case uint64:
-		return b != uint64(0), nil
-	case uint32:
-		return b != uint32(0), nil
-	case uint16:
-		return b != uint16(0), nil
-	case uint8:
-		return b != uint8(0), nil
-	case time.Duration:
-		return int64(b) != 0, nil
-	case time.Time:
-		return b.UnixNano() != 0, nil
-	case float64:
-		return b != 0, nil
-	case float32:
-		return b != 0, nil
-	case string:
-		parsed, err := strconv.ParseFloat(v.(string), 64)
-		if err != nil {
-			ctx.Warn(1292, "Truncated incorrect DOUBLE value: '%s'", v.(string))
-			return false, nil
-		}
-		return parsed != 0, nil
-	case decimal.Decimal:
-		return !b.IsZero(), nil
-	default:
-		return false, nil
+	res, err := ConvertToBool(ctx, v)
+	if err != nil {
+		return nil, err
 	}
+	return res, nil
 }
 
 // IsFalse coerces EvaluateCondition interface{} response to boolean

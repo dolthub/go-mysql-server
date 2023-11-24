@@ -19,8 +19,7 @@ import (
 	"os"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/types"
-)
+	)
 
 const (
 	fakeReadCommittedEnvVar = "READ_COMMITTED_HACK"
@@ -100,7 +99,7 @@ func IsSessionAutocommit(ctx *sql.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return types.ConvertToBool(autoCommitSessionVar)
+	return sql.ConvertToBool(ctx, autoCommitSessionVar)
 }
 
 func ReadCommitted(ctx *sql.Context) bool {
