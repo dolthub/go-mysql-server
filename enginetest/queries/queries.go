@@ -8447,6 +8447,22 @@ order by x, y;`,
 		Expected: []sql.Row{},
 	},
 	{
+		Query: `select 1 where cos(2)`,
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query: `select 1 where sin(2)`,
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query:    `select 1 where sin(0)`,
+		Expected: []sql.Row{},
+	},
+	{
 		Query: "select dayname(123), dayname('abc')",
 		Expected: []sql.Row{
 			{nil, nil},

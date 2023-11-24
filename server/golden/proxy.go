@@ -33,7 +33,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type MySqlProxy struct {
@@ -325,7 +324,7 @@ func isSessionAutocommit(ctx *sql.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return types.ConvertToBool(autoCommitSessionVar)
+	return sql.ConvertToBool(ctx, autoCommitSessionVar)
 }
 
 func fetchMySqlRows(ctx *sql.Context, results *dsql.Rows, count int) (res *sqltypes.Result, more bool, err error) {
