@@ -19,7 +19,7 @@ import (
 	"os"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	)
+)
 
 const (
 	fakeReadCommittedEnvVar = "READ_COMMITTED_HACK"
