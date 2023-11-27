@@ -652,7 +652,7 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if err != nil {
 			return nil, err
 		}
-		result, _ = types.ConvertToBool(result)
+		result, _ = sql.ConvertToBool(ctx, result)
 		if result != true {
 			return i.Next(ctx)
 		}

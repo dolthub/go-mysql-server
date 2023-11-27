@@ -22,7 +22,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Resolving column defaults is a multi-phase process, with different analyzer rules for each phase.
@@ -232,18 +231,6 @@ func validateColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrap
 
 	if newDefault == nil {
 		return nil
-	}
-
-	// Some column types can only have a NULL for a literal default, must be an expression otherwise
-	isLiteralRestrictedType := types.IsTextBlob(col.Type) || types.IsJSON(col.Type) || types.IsGeometry(col.Type)
-	if isLiteralRestrictedType && newDefault.IsLiteral() {
-		lit, err := newDefault.Expr.Eval(ctx, nil)
-		if err != nil {
-			return err
-		}
-		if lit != nil {
-			return sql.ErrInvalidTextBlobColumnDefault.New()
-		}
 	}
 
 	var err error

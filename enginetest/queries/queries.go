@@ -8446,6 +8446,40 @@ where exists (
 order by x, y;`,
 		Expected: []sql.Row{},
 	},
+	{
+		Query: `select 1 where cos(2)`,
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query: `select 1 where sin(2)`,
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query:    `select 1 where sin(0)`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query: `select acos(-2)`,
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: `select asin(-2)`,
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: `select 1 % acos(-2)`,
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -9245,22 +9279,6 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrSyntaxError,
 	},
 	{
-		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, j JSON DEFAULT '{}');",
-		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
-	},
-	{
-		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, g GEOMETRY DEFAULT '');",
-		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
-	},
-	{
-		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, t TEXT DEFAULT '');",
-		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
-	},
-	{
-		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, b BLOB DEFAULT '');",
-		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
-	},
-	{
 		Query:       "with a as (select * from a) select * from a",
 		ExpectedErr: sql.ErrTableNotFound,
 	},
@@ -9398,6 +9416,10 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query:          "select * from mytable order by 999",
 		ExpectedErrStr: "column \"999\" could not be found in any table in scope",
+	},
+	{
+		Query:          `select cot(0)`,
+		ExpectedErrStr: "DOUBLE out of range for COT",
 	},
 }
 

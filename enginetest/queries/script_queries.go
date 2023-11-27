@@ -4253,6 +4253,22 @@ CREATE TABLE tab3 (
 			},
 		},
 	},
+	{
+		Name: "Complex Filter Index Scan",
+		SetUpScript: []string{
+			"create table t (pk integer primary key, col0 integer, col1 float);",
+			"create index idx on t (col0, col1);",
+			"insert into t values (0, 22, 1.23);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select pk, col0 from t where (col0 in (73,69)) or col0 in (4,12,3,17,70,20) or (col0 in (39) or (col1 < 69.67));",
+				Expected: []sql.Row{
+					{0, 22},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

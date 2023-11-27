@@ -276,8 +276,12 @@ func (t *Tan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	res := math.Tan(n.(float64))
+	if math.IsNaN(res) {
+		return nil, nil
+	}
 
-	return math.Tan(n.(float64)), nil
+	return res, nil
 }
 
 // WithChildren implements sql.Expression
@@ -326,7 +330,12 @@ func (a *Asin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	return math.Asin(n.(float64)), nil
+	res := math.Asin(n.(float64))
+	if math.IsNaN(res) {
+		return nil, nil
+	}
+
+	return res, nil
 }
 
 // WithChildren implements sql.Expression
@@ -375,7 +384,12 @@ func (a *Acos) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	return math.Acos(n.(float64)), nil
+	res := math.Acos(n.(float64))
+	if math.IsNaN(res) {
+		return nil, nil
+	}
+
+	return res, nil
 }
 
 // WithChildren implements sql.Expression
@@ -473,7 +487,17 @@ func (c *Cot) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	return 1.0 / math.Tan(n.(float64)), nil
+	tan := math.Tan(n.(float64))
+	if math.IsNaN(tan) {
+		return nil, nil
+	}
+
+	res := 1.0 / tan
+	if math.IsInf(res, 0) {
+		return nil, sql.ErrValueOutOfRange.New("DOUBLE", c.Name)
+	}
+
+	return res, nil
 }
 
 // WithChildren implements sql.Expression
