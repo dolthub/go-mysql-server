@@ -266,8 +266,6 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 			generated := b.resolveColumnDefaultExpression(inScope, col, col.Generated)
 			updateExprs = append(updateExprs, expression.NewSetField(colName, assignColumnIndexes(generated, tableSch)))
 		}
-
-		// TODO: we also need update expressions for OnUpdate columns
 	}
 
 	return updateExprs
