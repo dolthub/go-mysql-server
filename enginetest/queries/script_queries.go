@@ -4269,6 +4269,54 @@ CREATE TABLE tab3 (
 			},
 		},
 	},
+	{
+		Name: "update columns with default",
+		SetUpScript: []string{
+			"create table t (i int default 10, j varchar(128) default (concat('abc', 'def')));",
+			"insert into t values (100, 'a'), (200, 'b');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "update t set i = default where i = 100;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query: "select * from t order by i",
+				Expected: []sql.Row{
+					{10, "a"},
+					{200, "b"},
+				},
+			},
+			{
+				Query: "update t set j = default where i = 200;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query: "select * from t order by i",
+				Expected: []sql.Row{
+					{10, "a"},
+					{200, "abcdef"},
+				},
+			},
+			{
+				Query: "update t set i = default, j = default;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 2, Info: plan.UpdateInfo{Matched: 2, Updated: 2}}},
+				},
+			},
+			{
+				Query: "select * from t order by i",
+				Expected: []sql.Row{
+					{10, "abcdef"},
+					{10, "abcdef"},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
