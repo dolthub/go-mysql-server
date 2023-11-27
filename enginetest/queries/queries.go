@@ -8480,6 +8480,74 @@ order by x, y;`,
 			{nil},
 		},
 	},
+	{
+		Query: "select dayname(123), dayname('abc')",
+		Expected: []sql.Row{
+			{nil, nil},
+		},
+	},
+	{
+		Query: `
+select
+   dayname(id),
+   dayname(i8),
+   dayname(i16),
+   dayname(i32),
+   dayname(i64),
+   dayname(u8),
+   dayname(u16),
+   dayname(u32),
+   dayname(u64),
+   dayname(f32),
+   dayname(f64),
+   dayname(ti),
+   dayname(da),
+   dayname(te),
+   dayname(bo),
+   dayname(js),
+   dayname(bl),
+   dayname(e1),
+   dayname(s1)
+from typestable`,
+		Expected: []sql.Row{
+			{
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				"Tuesday",
+				"Tuesday",
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			},
+		},
+	},
+	{
+		// TODO: This goes past MySQL's range
+		Query: "select dayname('0000-00-00')",
+		Expected: []sql.Row{
+			{"Saturday"},
+		},
+	},
+	{
+		Query: "select * from mytable order by dayname(i)",
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
