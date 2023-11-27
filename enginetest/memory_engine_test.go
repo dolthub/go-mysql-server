@@ -208,7 +208,9 @@ func TestSingleScript(t *testing.T) {
 			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query: "insert into t(i) values (default);",
-					Expected: []sql.Row{},
+					Expected: []sql.Row{
+						{types.NewOkResult(1)},
+					},
 				},
 				{
 					Query: "update t set i = default;",

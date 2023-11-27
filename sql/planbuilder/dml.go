@@ -240,6 +240,9 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 
 		innerExpr := b.buildScalar(inScope, updateExpr.Expr)
 		// TODO: if innerExpr is default, need to resolve
+		//if _, ok := updateExpr.Expr.(*expression.DefaultColumn); ok {
+		//	b.
+		//}
 		updateExprs[i] = expression.NewSetField(colName, innerExpr)
 		if inScope.groupBy != nil {
 			if len(inScope.groupBy.aggs) > startAggCnt {
