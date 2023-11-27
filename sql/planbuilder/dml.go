@@ -236,8 +236,10 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 				b.handleErr(err)
 			}
 			// Replace update expressions with default
-			if colIdx >= 0 && tableSch[colIdx].Default != nil {
-				innerExpr = expression.WrapExpression(tableSch[colIdx].Default)
+			if _, ok := updateExpr.Expr.(*ast.Default); ok {
+				if colIdx >= 0 {
+					innerExpr = expression.WrapExpression(tableSch[colIdx].Default)
+				}
 			}
 		}
 

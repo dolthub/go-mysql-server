@@ -4274,6 +4274,8 @@ CREATE TABLE tab3 (
 		SetUpScript: []string{
 			"create table t (i int default 10, j varchar(128) default (concat('abc', 'def')));",
 			"insert into t values (100, 'a'), (200, 'b');",
+			"create table t2 (i int);",
+			"insert into t2 values (1), (2), (3);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -4313,6 +4315,20 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{
 					{10, "abcdef"},
 					{10, "abcdef"},
+				},
+			},
+			{
+				Query: "update t2 set i = default",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{Matched: 3, Updated: 3}}},
+				},
+			},
+			{
+				Query: "select * from t2",
+				Expected: []sql.Row{
+					{nil},
+					{nil},
+					{nil},
 				},
 			},
 		},
