@@ -8516,6 +8516,13 @@ from typestable`,
 		},
 	},
 	{
+		// TODO: This goes past MySQL's range
+		Query: "select dayname('0000-00-00')",
+		Expected: []sql.Row{
+			{"Saturday"},
+		},
+	},
+	{
 		Query: "select * from mytable order by dayname(i)",
 		Expected: []sql.Row{
 			{1, "first row"},

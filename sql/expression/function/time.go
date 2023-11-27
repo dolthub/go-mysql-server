@@ -1192,13 +1192,21 @@ func (*DayName) CollationCoercibility(ctx *sql.Context) (collation sql.Collation
 func (d *DayName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := d.EvalChild(ctx, row)
 	if err != nil {
-		ctx.Warn(1292, "Incorrect datetime value: '%s'", val)
+		ctx.Warn(1292, types.ErrConvertingToTime.New(val).Error())
 		return nil, nil
+	}
+
+	if s, ok := val.(string); ok {
+		val, _, err = types.DatetimeMaxPrecision.Convert(s)
+		if err != nil {
+			ctx.Warn(1292, types.ErrConvertingToTime.New(val).Error())
+			return nil, nil
+		}
 	}
 
 	t, ok := val.(time.Time)
 	if !ok {
-		ctx.Warn(1292, "Incorrect datetime value: '%s'", val)
+		ctx.Warn(1292, types.ErrConvertingToTime.New(val).Error())
 		return nil, nil
 	}
 
