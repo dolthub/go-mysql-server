@@ -199,18 +199,44 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "delete me",
+			Name: "physical columns added after virtual one",
 			SetUpScript: []string{
-				"CREATE TABLE `typestable` (\n  `id` bigint NOT NULL,\n  `i8` tinyint,\n  `i16` smallint,\n  `i32` int,\n  `i64` bigint,\n  `u8` tinyint unsigned,\n  `u16` smallint unsigned,\n  `u32` int unsigned,\n  `u64` bigint unsigned,\n  `f32` float,\n  `f64` double,\n  `ti` timestamp,\n  `da` date,\n  `te` varchar(20),\n  `bo` tinyint,\n  `js` json,\n  `bl` blob,\n  `e1` enum('', 'v1', 'v2'),\n  `s1` set('', 'v1', 'v2'),\n  PRIMARY KEY (`id`)\n)",
-				"insert into typestable values\n    (1,2,3,4,5,6,7,8,9,10.0,11.0,'2019-12-31T12:00:00Z','2019-12-31T00:00:00Z','fourteen', 0,null,null, '', '')",
+				"create table t (pk int primary key, col1 int as (pk + 1));",
+				"insert into t (pk) values (1), (3)",
+				"alter table t add index idx1 (col1, pk);",
+				"alter table t add index idx2 (col1);",
+				"alter table t add column col2 int;",
+				"alter table t add column col3 int;",
+				"insert into t (pk, col2, col3) values (2, 4, 5);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "select dayname(id), \n\tdayname(bo), \n\tdayname(s1) \nfrom typestable",
+					Query: "select * from t order by pk",
 					Expected: []sql.Row{
-
+						{1, 2, nil, nil},
+						{2, 3, 4, 5},
+						{3, 4, nil, nil},
+					},
+				},
+				{
+					Query: "select * from t where col1 = 2",
+					Expected: []sql.Row{
+						{1, 2, nil, nil},
+					},
+				},
+				{
+					Query: "select * from t where col1 = 3 and pk = 2",
+					Expected: []sql.Row{
+						{2, 3, 4, 5},
+					},
+				},
+				{
+					Query: "select * from t where pk = 2",
+					Expected: []sql.Row{
+						{2, 3, 4, 5},
 					},
 				},
 			},
@@ -224,64 +250,11 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
+		engine.EngineAnalyzer().Debug = true
+		engine.EngineAnalyzer().Verbose = true
+
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
-	//t.Skip()
-	//var scripts = []queries.ScriptTest{
-	//	{
-	//		Name: "physical columns added after virtual one",
-	//		SetUpScript: []string{
-	//			"create table t (pk int primary key, col1 int as (pk + 1));",
-	//			"insert into t (pk) values (1), (3)",
-	//			"alter table t add index idx1 (col1, pk);",
-	//			"alter table t add index idx2 (col1);",
-	//			"alter table t add column col2 int;",
-	//			"alter table t add column col3 int;",
-	//			"insert into t (pk, col2, col3) values (2, 4, 5);",
-	//		},
-	//		Assertions: []queries.ScriptTestAssertion{
-	//			{
-	//				Query: "select * from t order by pk",
-	//				Expected: []sql.Row{
-	//					{1, 2, nil, nil},
-	//					{2, 3, 4, 5},
-	//					{3, 4, nil, nil},
-	//				},
-	//			},
-	//			{
-	//				Query: "select * from t where col1 = 2",
-	//				Expected: []sql.Row{
-	//					{1, 2, nil, nil},
-	//				},
-	//			},
-	//			{
-	//				Query: "select * from t where col1 = 3 and pk = 2",
-	//				Expected: []sql.Row{
-	//					{2, 3, 4, 5},
-	//				},
-	//			},
-	//			{
-	//				Query: "select * from t where pk = 2",
-	//				Expected: []sql.Row{
-	//					{2, 3, 4, 5},
-	//				},
-	//			},
-	//		},
-	//	},
-	//}
-	//
-	//for _, test := range scripts {
-	//	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	//	harness.Setup(setup.MydbData, setup.Parent_childData)
-	//	engine, err := harness.NewEngine(t)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	engine.EngineAnalyzer().Debug = true
-	//	engine.EngineAnalyzer().Verbose = true
-	//
-	//	enginetest.TestScriptWithEngine(t, engine, harness, test)
-	//}
 }
 
 func TestUnbuildableIndex(t *testing.T) {
