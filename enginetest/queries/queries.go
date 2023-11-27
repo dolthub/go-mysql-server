@@ -8463,19 +8463,19 @@ order by x, y;`,
 		Expected: []sql.Row{},
 	},
 	{
-		Query:    `select acos(-2)`,
+		Query: `select acos(-2)`,
 		Expected: []sql.Row{
 			{nil},
 		},
 	},
 	{
-		Query:    `select asin(-2)`,
+		Query: `select asin(-2)`,
 		Expected: []sql.Row{
 			{nil},
 		},
 	},
 	{
-		Query:    `select 1 % acos(-2)`,
+		Query: `select 1 % acos(-2)`,
 		Expected: []sql.Row{
 			{nil},
 		},
@@ -9417,8 +9417,8 @@ var ErrorQueries = []QueryErrorTest{
 		Query:          "select * from mytable order by 999",
 		ExpectedErrStr: "column \"999\" could not be found in any table in scope",
 	},
-{
-		Query:    `select cot(0)`,
+	{
+		Query:          `select cot(0)`,
 		ExpectedErrStr: "DOUBLE out of range for COT",
 	},
 }
