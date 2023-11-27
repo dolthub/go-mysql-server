@@ -1165,13 +1165,13 @@ func (dtf *UnaryDatetimeFunc) Type() sql.Type {
 
 // DayName implements the DAYNAME function
 type DayName struct {
-	*UnaryDatetimeFunc
+	*UnaryFunc
 }
 
 var _ sql.FunctionExpression = (*DayName)(nil)
 
 func NewDayName(arg sql.Expression) sql.Expression {
-	return &DayName{NewUnaryDatetimeFunc(arg, "DAYNAME", types.Text)}
+	return &DayName{NewUnaryFunc(arg, "DAYNAME", types.Text)}
 }
 
 // FunctionName implements sql.FunctionExpression
