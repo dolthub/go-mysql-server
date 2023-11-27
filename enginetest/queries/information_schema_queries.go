@@ -23,6 +23,10 @@ import (
 
 var InfoSchemaQueries = []QueryTest{
 	{
+		Query:    "SHOW PLUGINS",
+		Expected: []sql.Row{},
+	},
+	{
 		Query:    "SHOW KEYS FROM `columns` FROM `information_schema`;",
 		Expected: []sql.Row{},
 	},
