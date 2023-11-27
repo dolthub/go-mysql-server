@@ -47,18 +47,18 @@ func (b *BaseBuilder) buildDropTrigger(ctx *sql.Context, n *plan.DropTrigger, ro
 	triggerDb, ok := n.Db.(sql.TriggerDatabase)
 	if !ok {
 		if n.IfExists {
-			return sql.RowsToRowIter(), nil
+			return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 		} else {
 			return nil, sql.ErrTriggerDoesNotExist.New(n.TriggerName)
 		}
 	}
 	err := triggerDb.DropTrigger(ctx, n.TriggerName)
 	if n.IfExists && sql.ErrTriggerDoesNotExist.Is(err) {
-		return sql.RowsToRowIter(), nil
+		return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 	} else if err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(), nil
+	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
 
 func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.Row) (sql.RowIter, error) {
@@ -181,9 +181,9 @@ func (b *BaseBuilder) buildCreateView(ctx *sql.Context, n *plan.CreateView, row 
 	// isUpdatable := GetIsUpdatableFromCreateView(cv)
 	creator, ok := n.Database().(sql.ViewDatabase)
 	if ok {
-		return sql.RowsToRowIter(), creator.CreateView(ctx, n.Name, n.Definition.TextDefinition, n.CreateViewString)
+		return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), creator.CreateView(ctx, n.Name, n.Definition.TextDefinition, n.CreateViewString)
 	} else {
-		return sql.RowsToRowIter(), registry.Register(n.Database().Name(), n.View())
+		return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), registry.Register(n.Database().Name(), n.View())
 	}
 }
 

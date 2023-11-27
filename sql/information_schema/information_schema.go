@@ -968,17 +968,6 @@ func eventsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		return nil, err
 	}
 	collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
-	if err != nil {
-		return nil, err
-	}
-	sysVal, err := ctx.Session.GetSessionVariable(ctx, "sql_mode")
-	if err != nil {
-		return nil, err
-	}
-	sqlMode, sok := sysVal.(string)
-	if !sok {
-		return nil, ErrSystemVariableCodeFail.New("sql_mode", sysVal)
-	}
 
 	for _, db := range c.AllDatabases(ctx) {
 		dbCollation := plan.GetDatabaseCollation(ctx, db)
@@ -1048,7 +1037,7 @@ func eventsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					at,                   // execute_at
 					intervalVal,          // interval_value
 					intervalField,        // interval_field
-					sqlMode,              // sql_mode
+					e.SqlMode,            // sql_mode
 					starts,               // starts
 					ends,                 // ends
 					status,               // status
@@ -1968,17 +1957,6 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		return nil, err
 	}
 
-	// TODO: This should be the SQL_MODE at the time the trigger was created, not the current session's SQL_MODE.
-	//       We track that information now, but this code needs to be refactored a bit in order to display it, since
-	//       trigger definitions are converted to trigger plan nodes and then used for generating output.
-	sysVal, err := ctx.Session.GetSessionVariable(ctx, "sql_mode")
-	if err != nil {
-		return nil, err
-	}
-	sqlMode, sok := sysVal.(string)
-	if !sok {
-		return nil, ErrSystemVariableCodeFail.New("sql_mode", sysVal)
-	}
 	privSet, _ := ctx.GetPrivilegeSet()
 	if privSet == nil {
 		return RowsToRowIter(rows...), nil
@@ -2001,7 +1979,8 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 			var triggerPlans []*plan.CreateTrigger
 			for _, trigger := range triggers {
-				parsedTrigger, err := planbuilder.ParseWithOptions(ctx, c, trigger.CreateStatement, NewSqlModeFromString(trigger.SqlMode).ParserOptions())
+				triggerSqlMode := NewSqlModeFromString(trigger.SqlMode)
+				parsedTrigger, err := planbuilder.ParseWithOptions(ctx, c, trigger.CreateStatement, triggerSqlMode.ParserOptions())
 				if err != nil {
 					return nil, err
 				}
@@ -2010,6 +1989,7 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					return nil, ErrTriggerCreateStatementInvalid.New(trigger.CreateStatement)
 				}
 				triggerPlan.CreatedAt = trigger.CreatedAt // Keep stored created time
+				triggerPlan.SqlMode = triggerSqlMode.String()
 				triggerPlans = append(triggerPlans, triggerPlan)
 			}
 
@@ -2073,7 +2053,7 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 							"OLD",                   // action_reference_old_row
 							"NEW",                   // action_reference_new_row
 							triggerPlan.CreatedAt,   // created
-							sqlMode,                 // sql_mode
+							triggerPlan.SqlMode,     // sql_mode
 							definer,                 // definer
 							characterSetClient,      // character_set_client
 							collationConnection,     // collation_connection

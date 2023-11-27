@@ -69,12 +69,17 @@ func TestVariableErrors(t *testing.T) {
 }
 
 func TestWarnings(t *testing.T) {
+	harness := enginetest.NewDefaultMemoryHarness()
+	if harness.IsUsingServer() {
+		t.Skip("depends on Warnings() method call on context")
+	}
 	t.Run("sequential", func(t *testing.T) {
-		enginetest.TestWarnings(t, enginetest.NewDefaultMemoryHarness())
+		enginetest.TestWarnings(t, harness)
 	})
 
+	harness = enginetest.NewMemoryHarness("parallel", 2, testNumPartitions, false, nil)
 	t.Run("parallel", func(t *testing.T) {
-		enginetest.TestWarnings(t, enginetest.NewMemoryHarness("parallel", 2, testNumPartitions, false, nil))
+		enginetest.TestWarnings(t, harness)
 	})
 }
 

@@ -1695,7 +1695,7 @@ func TestTriggers(t *testing.T, harness Harness) {
 
 		TestQueryWithContext(t, ctx, e, harness, "select * from mydb.a order by i", []sql.Row{{1, 1}, {2, 2}, {3, 3}}, nil, nil)
 
-		TestQueryWithContext(t, ctx, e, harness, "DROP TRIGGER mydb.trig", []sql.Row{}, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "DROP TRIGGER mydb.trig", []sql.Row{{types.OkResult{}}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "SHOW TRIGGERS FROM mydb", []sql.Row{}, nil, nil)
 	})
 }
@@ -2075,12 +2075,12 @@ func TestViews(t *testing.T, harness Harness) {
 	})
 
 	t.Run("create view with algorithm, definer, security defined", func(t *testing.T) {
-		TestQueryWithContext(t, ctx, e, harness, "CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW newview AS SELECT * FROM myview WHERE i = 1", []sql.Row{}, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW newview AS SELECT * FROM myview WHERE i = 1", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM newview ORDER BY i", []sql.Row{
 			sql.NewRow(int64(1), "first row"),
 		}, nil, nil)
 
-		TestQueryWithContext(t, ctx, e, harness, "CREATE OR REPLACE ALGORITHM=MERGE DEFINER=doltUser SQL SECURITY INVOKER VIEW newview AS SELECT * FROM myview WHERE i = 2", []sql.Row{}, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "CREATE OR REPLACE ALGORITHM=MERGE DEFINER=doltUser SQL SECURITY INVOKER VIEW newview AS SELECT * FROM myview WHERE i = 2", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM newview ORDER BY i", []sql.Row{
 			sql.NewRow(int64(2), "second row"),
 		}, nil, nil)
@@ -3536,6 +3536,8 @@ func TestVariables(t *testing.T, harness Harness) {
 	engine.EngineAnalyzer().Catalog.MySQLDb = mysql_db.CreateEmptyMySQLDb()
 
 	ctx1 := sql.NewEmptyContext()
+	err = CreateNewConnectionForServerEngine(ctx1, engine)
+	require.NoError(t, err)
 	for _, assertion := range []queries.ScriptTestAssertion{
 		{
 			Query:    "SELECT @@select_into_buffer_size",
@@ -3572,6 +3574,8 @@ func TestVariables(t *testing.T, harness Harness) {
 	}
 
 	ctx2 := sql.NewEmptyContext()
+	err = CreateNewConnectionForServerEngine(ctx2, engine)
+	require.NoError(t, err)
 	for _, assertion := range []queries.ScriptTestAssertion{
 		{
 			Query:    "SELECT @@select_into_buffer_size",
@@ -3703,6 +3707,7 @@ func mustBuildBindVariable(v interface{}) *query.BindVariable {
 	}
 	return ret
 }
+
 func TestPreparedStatements(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()

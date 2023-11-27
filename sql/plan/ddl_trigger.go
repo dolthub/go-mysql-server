@@ -40,6 +40,7 @@ type CreateTrigger struct {
 	BodyString          string
 	CreatedAt           time.Time
 	Definer             string
+	SqlMode             string
 }
 
 var _ sql.Node = (*CreateTrigger)(nil)

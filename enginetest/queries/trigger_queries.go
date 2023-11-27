@@ -1854,15 +1854,15 @@ end;`,
 			},
 			{
 				Query:    "drop trigger t4",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
 				Query:    "drop trigger t3",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
 				Query:    "drop trigger if exists t5",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
 				Query:       "drop trigger t5",
@@ -1877,7 +1877,7 @@ end;`,
 			},
 			{
 				Query:    "drop trigger if exists t2",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
 				Query: "select trigger_name from information_schema.triggers order by 1",

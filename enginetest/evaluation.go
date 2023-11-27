@@ -589,6 +589,28 @@ type CustomValueValidator interface {
 	Validate(interface{}) (bool, error)
 }
 
+func rowToSQL(s sql.Schema, row sql.Row) (sql.Row, error) {
+	if s == nil || len(s) == 0 || types.IsOkResult(row) {
+		return row, nil
+	}
+	newRow := sql.Row{}
+	for i, v := range row {
+		if v == nil {
+			newRow = append(newRow, nil)
+		} else if types.IsDecimal(s[i].Type) {
+			newRow = append(newRow, v)
+		} else {
+			c, _, err := s[i].Type.Convert(v)
+			if err != nil {
+				return nil, err
+			}
+			newRow = append(newRow, c)
+		}
+	}
+
+	return newRow, nil
+}
+
 func checkResults(
 	t *testing.T,
 	expected []sql.Row,
@@ -598,10 +620,6 @@ func checkResults(
 	q string,
 	e QueryEngine,
 ) {
-	if IsServerEngine(e) {
-		// TODO: do not check for result for now
-		return
-	}
 	widenedRows := WidenRows(sch, rows)
 	widenedExpected := WidenRows(sch, expected)
 
@@ -609,7 +627,8 @@ func checkResults(
 	orderBy := strings.Contains(upperQuery, "ORDER BY ")
 
 	// We replace all times for SHOW statements with the Unix epoch
-	if strings.HasPrefix(upperQuery, "SHOW ") {
+	// except for SHOW EVENTS,
+	if strings.HasPrefix(upperQuery, "SHOW ") && !strings.Contains(upperQuery, "EVENTS") {
 		for _, widenedRow := range widenedRows {
 			for i, val := range widenedRow {
 				if _, ok := val.(time.Time); ok {
@@ -630,6 +649,11 @@ func checkResults(
 				}
 			}
 		}
+	}
+
+	// SET statements do not return any row value over the wire
+	if IsServerEngine(e) && strings.HasPrefix(upperQuery, "SET ") && len(widenedRows) == 0 && len(widenedExpected) == 1 && len(widenedExpected[0]) == 0 {
+		widenedExpected = widenedRows
 	}
 
 	// Special case for custom values
@@ -655,13 +679,13 @@ func checkResults(
 				//  Current engine tests assert on go boolean type values. Should
 				//  remove this conversion in the future when we match the return
 				//  type for boolean results as MySQL.
-				if b, isBool := widenedExpected[i][j].(bool); isBool {
-					if b {
-						widenedExpected[i][j] = int64(1)
-					} else {
-						widenedExpected[i][j] = int64(0)
-					}
-				}
+				//if b, isBool := widenedExpected[i][j].(bool); isBool {
+				//	if b {
+				//		widenedExpected[i][j] = int64(1)
+				//	} else {
+				//		widenedExpected[i][j] = int64(0)
+				//	}
+				//}
 				// The result received from go sql driver does not have 'Info'
 				// data returned, so we set it to 'nil' for server engine tests only.
 				if okRes, ok := widenedExpected[i][j].(types.OkResult); ok {
@@ -672,6 +696,12 @@ func checkResults(
 					}
 					widenedExpected[i][j] = okResult
 				}
+			}
+		}
+		if IsServerEngine(e) {
+			convertedExpected, err := rowToSQL(sch, widenedExpected[i])
+			if err == nil {
+				widenedExpected[i] = convertedExpected
 			}
 		}
 	}
