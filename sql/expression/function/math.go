@@ -276,8 +276,12 @@ func (t *Tan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	res := math.Tan(n.(float64))
+	if math.IsNaN(res) {
+		return nil, nil
+	}
 
-	return math.Tan(n.(float64)), nil
+	return res, nil
 }
 
 // WithChildren implements sql.Expression
