@@ -220,23 +220,27 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 		startWinCnt = len(inScope.windowFuncs)
 	}
 
-	tableSch := inScope.node.Schema()
+	tableSch := b.resolveSchemaDefaults(inScope, inScope.node.Schema())
 
 	for i, updateExpr := range e {
 		colName := b.buildScalar(inScope, updateExpr.Name)
 
-		// Prevent update of generated columns
+		innerExpr := b.buildScalar(inScope, updateExpr.Expr)
 		if gf, ok := colName.(*expression.GetField); ok {
 			colIdx := tableSch.IndexOfColName(gf.Name())
 			// TODO: during trigger parsing the table in the node is unresolved, so we need this additional bounds check
 			//  This means that trigger execution will be able to update generated columns
+			// Prevent update of generated columns
 			if colIdx >= 0 && tableSch[colIdx].Generated != nil {
 				err := sql.ErrGeneratedColumnValue.New(tableSch[colIdx].Name, inScope.node.(sql.NameableNode).Name())
 				b.handleErr(err)
 			}
+			// Replace update expressions with default
+			if colIdx >= 0 && tableSch[colIdx].Default != nil {
+				innerExpr = expression.WrapExpression(tableSch[colIdx].Default)
+			}
 		}
 
-		innerExpr := b.buildScalar(inScope, updateExpr.Expr)
 		updateExprs[i] = expression.NewSetField(colName, innerExpr)
 		if inScope.groupBy != nil {
 			if len(inScope.groupBy.aggs) > startAggCnt {
@@ -260,6 +264,8 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 			generated := b.resolveColumnDefaultExpression(inScope, col, col.Generated)
 			updateExprs = append(updateExprs, expression.NewSetField(colName, assignColumnIndexes(generated, tableSch)))
 		}
+
+		// TODO: we also need update expressions for OnUpdate columns
 	}
 
 	return updateExprs
