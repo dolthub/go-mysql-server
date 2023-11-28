@@ -1032,7 +1032,6 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 
 	defaults := make([]ast.Expr, len(tableSpec.Columns))
 	generated := make([]ast.Expr, len(tableSpec.Columns))
-	updates := make([]ast.Expr, len(tableSpec.Columns))
 	var schema sql.Schema
 	for i, cd := range tableSpec.Columns {
 		// Use the table's collation if no character or collation was specified for the table
@@ -1043,7 +1042,6 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 		}
 		defaults[i] = cd.Type.Default
 		generated[i] = cd.Type.GeneratedExpr
-		updates[i] = cd.Type.OnUpdate
 
 		column := b.columnDefinitionToColumn(inScope, cd, tableSpec.Indexes)
 		column.DatabaseSource = db.Name()
