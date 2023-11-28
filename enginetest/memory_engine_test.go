@@ -204,24 +204,21 @@ func TestSingleScript(t *testing.T) {
 			Name: "delete me",
 			SetUpScript: []string{
 				"create table t (i int default 100, tt timestamp default current_timestamp on update current_timestamp);",
+				"insert into t values (1, null);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "insert into t(i) values (default);",
+					Query: "update t set i = i + 1;",
 					Expected: []sql.Row{
-						{types.NewOkResult(1)},
+						{newUpdateResult(1, 1)},
 					},
 				},
 				{
-					Query: "update t set i = default;",
-					Expected: []sql.Row{},
+					Query: "select * from t",
+					Expected: []sql.Row{
+						{2, nil},
+					},
 				},
-				//{
-				//	Query: "select * from t",
-				//	Expected: []sql.Row{
-				//		{2, nil},
-				//	},
-				//},
 			},
 		},
 	}

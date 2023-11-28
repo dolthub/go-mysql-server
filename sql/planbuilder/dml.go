@@ -269,6 +269,11 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 		}
 
 		// TODO: we also need update expressions for OnUpdate columns
+		if col.OnUpdate != nil {
+			colName := expression.NewGetFieldWithTable(i, col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
+			onUpdate := b.resolveColumnDefaultExpression(inScope, col, col.OnUpdate)
+			updateExprs = append(updateExprs, expression.NewSetField(colName, assignColumnIndexes(onUpdate, tableSch)))
+		}
 	}
 
 	return updateExprs
