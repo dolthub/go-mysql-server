@@ -235,7 +235,8 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 				err := sql.ErrGeneratedColumnValue.New(tableSch[colIdx].Name, inScope.node.(sql.NameableNode).Name())
 				b.handleErr(err)
 			}
-			// Replace update expressions with default
+
+			// Replace default with column default from resolved schema
 			if _, ok := updateExpr.Expr.(*ast.Default); ok {
 				if colIdx >= 0 {
 					innerExpr = expression.WrapExpression(tableSch[colIdx].Default)
