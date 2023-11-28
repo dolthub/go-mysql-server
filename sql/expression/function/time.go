@@ -1641,14 +1641,19 @@ func (t *Time) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// convert to date
 	date, err := types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(v)
+	if err == nil {
+		h, m, s := date.Clock()
+		us := date.Nanosecond() / 1000
+		return types.Timespan(1000000*(3600*h+60*m+s) + us), nil
+	}
+
+	// convert to time
+	val, _, err := types.Time.Convert(v)
 	if err != nil {
 		ctx.Warn(1292, err.Error())
 		return nil, nil
 	}
-
-	h, m, s := date.Clock()
-	us := date.Nanosecond() / 1000
-	return types.Timespan(1000000*(3600*h+60*m+s) + us), nil
+	return val, nil
 }
 
 // WithChildren implements the Expression interface.

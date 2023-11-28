@@ -242,6 +242,37 @@ func TestTime_Second(t *testing.T) {
 	}
 }
 
+func TestTime_Microsecond(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	f := NewMicrosecond(expression.NewGetField(0, types.LongText, "foo", false))
+	currTime := time.Now()
+
+	testCases := []struct {
+		name     string
+		row      sql.Row
+		expected interface{}
+		err      bool
+	}{
+		{"null date", sql.NewRow(nil), nil, false},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, true},
+		{"date as string", sql.NewRow(stringDate), uint64(0), false},
+		{"date as time", sql.NewRow(currTime), uint64(currTime.Nanosecond()) / uint64(time.Microsecond), false},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			val, err := f.Eval(ctx, tt.row)
+			if tt.err {
+				require.Error(err)
+			} else {
+				require.NoError(err)
+				require.Equal(tt.expected, val)
+			}
+		})
+	}
+}
+
 func TestTime_DayOfWeek(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	f := NewDayOfWeek(expression.NewGetField(0, types.LongText, "foo", false))
@@ -286,6 +317,36 @@ func TestTime_DayOfYear(t *testing.T) {
 		{"invalid type", sql.NewRow([]byte{0, 1, 2}), int32(1), false},
 		{"date as string", sql.NewRow(stringDate), int32(2), false},
 		{"date as time", sql.NewRow(time.Now()), int32(time.Now().UTC().YearDay()), false},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			val, err := f.Eval(ctx, tt.row)
+			if tt.err {
+				require.Error(err)
+			} else {
+				require.NoError(err)
+				require.Equal(tt.expected, val)
+			}
+		})
+	}
+}
+
+func TestTime_WeekOfYear(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	f := NewWeekOfYear(expression.NewGetField(0, types.LongText, "foo", false))
+
+	testCases := []struct {
+		name     string
+		row      sql.Row
+		expected interface{}
+		err      bool
+	}{
+		{"null date", sql.NewRow(nil), nil, false},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), int32(1), true},
+		{"date as string", sql.NewRow(stringDate), 1, false},
+		{"date as time", sql.NewRow(time.Now()), 48, false},
 	}
 
 	for _, tt := range testCases {
@@ -587,6 +648,72 @@ func TestTime(t *testing.T) {
 		{"null date", sql.NewRow(nil), nil, false},
 		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
 		{"time as string", sql.NewRow(stringDate), "14:15:16", false},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			val, err := f.Eval(ctx, tt.row)
+			if tt.err {
+				require.Error(err)
+			} else {
+				require.NoError(err)
+				if v, ok := val.(types.Timespan); ok {
+					require.Equal(tt.expected, v.String())
+				} else {
+					require.Equal(tt.expected, val)
+				}
+			}
+		})
+	}
+}
+
+func TestTime_DayName(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	f := NewDayName(expression.NewGetField(0, types.LongText, "foo", false))
+
+	testCases := []struct {
+		name     string
+		row      sql.Row
+		expected interface{}
+		err      bool
+	}{
+		{"null date", sql.NewRow(nil), nil, false},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
+		{"time as string", sql.NewRow(stringDate), "Tuesday", false},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			val, err := f.Eval(ctx, tt.row)
+			if tt.err {
+				require.Error(err)
+			} else {
+				require.NoError(err)
+				if v, ok := val.(types.Timespan); ok {
+					require.Equal(tt.expected, v.String())
+				} else {
+					require.Equal(tt.expected, val)
+				}
+			}
+		})
+	}
+}
+
+func TestTime_MonthName(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	f := NewMonthName(expression.NewGetField(0, types.LongText, "foo", false))
+
+	testCases := []struct {
+		name     string
+		row      sql.Row
+		expected interface{}
+		err      bool
+	}{
+		{"null date", sql.NewRow(nil), nil, false},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, true},
+		{"time as string", sql.NewRow(stringDate), "January", false},
 	}
 
 	for _, tt := range testCases {
