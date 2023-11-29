@@ -8548,6 +8548,10 @@ from typestable`,
 			{3, "third row"},
 		},
 	},
+	{
+		Query: "flush binary logs",
+		Expected: []sql.Row{},
+	},
 }
 
 var KeylessQueries = []QueryTest{
