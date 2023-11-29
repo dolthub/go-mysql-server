@@ -8560,7 +8560,7 @@ from typestable`,
 		},
 	},
 	{
-		Query: "flush binary logs",
+		Query:    "flush binary logs",
 		Expected: []sql.Row{},
 	},
 }
