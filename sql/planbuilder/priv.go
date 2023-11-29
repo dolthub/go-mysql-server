@@ -383,6 +383,9 @@ func (b *Builder) buildFlush(inScope *scope, f *ast.Flush) (outScope *scope) {
 	case "privileges":
 		node, _ := plan.NewFlushPrivileges(writesToBinlog).WithDatabase(b.resolveDb("mysql"))
 		outScope.node = node
+	case "binary logs":
+		node := plan.Nothing{}
+		outScope.node = node
 	default:
 		err := fmt.Errorf("%s not supported", f.Option.Name)
 		b.handleErr(err)
