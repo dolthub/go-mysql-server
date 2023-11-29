@@ -96,9 +96,11 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	m := memo.NewMemo(ctx, a.Catalog, scope, len(scope.Schema()), a.Coster, a.Carder)
 
 	j := memo.NewJoinOrderBuilder(m)
-	j.ReorderJoin(n)
+	err := j.ReorderJoin(n)
+	if err != nil {
+		return n, nil
+	}
 
-	var err error
 	err = convertSemiToInnerJoin(a, m)
 	if err != nil {
 		return nil, err
@@ -162,6 +164,10 @@ func addLookupJoins(m *memo.Memo) error {
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		var right *memo.ExprGroup
 		var join *memo.JoinBase
+
+		// ANTI_JOIN is not a valid lookup acceptor. We need to tell the
+		// difference between when the RHS relation is non-empty (return no
+		// rows), vs there are no lookup matches (return rows).
 		switch e := e.(type) {
 		case *memo.InnerJoin:
 			right = e.Right
@@ -171,9 +177,6 @@ func addLookupJoins(m *memo.Memo) error {
 			join = e.JoinBase
 		//TODO fullouterjoin
 		case *memo.SemiJoin:
-			right = e.Right
-			join = e.JoinBase
-		case *memo.AntiJoin:
 			right = e.Right
 			join = e.JoinBase
 		default:
@@ -355,7 +358,9 @@ func convertSemiToInnerJoin(a *Analyzer, m *memo.Memo) error {
 
 		// project is a new group
 		rightGrp := m.MemoizeProject(nil, semi.Right, projectExpressions)
-		rightGrp.RelProps.Distinct = memo.HashDistinctOp
+		if _, ok := semi.Right.First.(*memo.Distinct); !ok {
+			rightGrp.RelProps.Distinct = memo.HashDistinctOp
+		}
 
 		// join and its commute are a new group
 		joinGrp := m.MemoizeInnerJoin(nil, semi.Left, rightGrp, plan.JoinTypeInner, semi.Filter)
@@ -499,7 +504,9 @@ func addRightSemiJoins(m *memo.Memo) error {
 			}
 
 			rGroup := m.MemoizeProject(nil, semi.Right, projectExpressions)
-			rGroup.RelProps.Distinct = memo.HashDistinctOp
+			if _, ok := semi.Right.First.(*memo.Distinct); !ok {
+				rGroup.RelProps.Distinct = memo.HashDistinctOp
+			}
 
 			lookup := &memo.Lookup{
 				Index:    idx,

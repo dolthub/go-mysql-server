@@ -101,6 +101,9 @@ func (b *ExecBuilder) buildLookup(l *Lookup, input sql.Schema, children ...sql.N
 	case *plan.Distinct:
 		ret, err = b.buildLookup(l, input, n.Child)
 		ret = plan.NewDistinct(ret)
+	case *plan.OrderedDistinct:
+		ret, err = b.buildLookup(l, input, n.Child)
+		ret = plan.NewOrderedDistinct(ret)
 	case *plan.Filter:
 		ret, err = b.buildLookup(l, input, n.Child)
 		ret = plan.NewFilter(n.Expression, ret)
@@ -110,6 +113,9 @@ func (b *ExecBuilder) buildLookup(l *Lookup, input sql.Schema, children ...sql.N
 	case *plan.Limit:
 		ret, err = b.buildLookup(l, input, n.Child)
 		ret = plan.NewLimit(n.Limit, ret)
+	case *plan.Sort:
+		ret, err = b.buildLookup(l, input, n.Child)
+		ret = plan.NewSort(n.SortFields, ret)
 	default:
 		panic(fmt.Sprintf("unexpected lookup child %T", n))
 	}
@@ -137,6 +143,9 @@ func (b *ExecBuilder) buildRangeHeap(sr *RangeHeap, leftSch, rightSch sql.Schema
 	case *plan.Distinct:
 		ret, err = b.buildRangeHeap(sr, leftSch, rightSch, n.Child)
 		ret = plan.NewDistinct(ret)
+	case *plan.OrderedDistinct:
+		ret, err = b.buildRangeHeap(sr, leftSch, rightSch, n.Child)
+		ret = plan.NewOrderedDistinct(ret)
 	case *plan.Filter:
 		ret, err = b.buildRangeHeap(sr, leftSch, rightSch, n.Child)
 		ret = plan.NewFilter(n.Expression, ret)
@@ -146,6 +155,9 @@ func (b *ExecBuilder) buildRangeHeap(sr *RangeHeap, leftSch, rightSch sql.Schema
 	case *plan.Limit:
 		ret, err = b.buildRangeHeap(sr, leftSch, rightSch, n.Child)
 		ret = plan.NewLimit(n.Limit, ret)
+	case *plan.Sort:
+		ret, err = b.buildRangeHeap(sr, leftSch, rightSch, n.Child)
+		ret = plan.NewSort(n.SortFields, ret)
 	default:
 		var childNode sql.Node
 		if sr.MinIndex != nil {
@@ -314,6 +326,12 @@ func (b *ExecBuilder) buildIndexScan(i *IndexScan, input sql.Schema, children ..
 	case *plan.Filter:
 		ret, err = b.buildIndexScan(i, input, n.Child)
 		ret = plan.NewFilter(n.Expression, ret)
+	case *plan.Limit:
+		ret, err = b.buildIndexScan(i, input, n.Child)
+		ret = plan.NewLimit(n.Limit, ret)
+	case *plan.Sort:
+		ret, err = b.buildIndexScan(i, input, n.Child)
+		ret = plan.NewSort(n.SortFields, ret)
 	default:
 		return nil, fmt.Errorf("unexpected *indexScan child: %T", n)
 	}

@@ -86,6 +86,9 @@ var _ sql.CollationCoercible = (*OrderedDistinct)(nil)
 
 // NewOrderedDistinct creates a new OrderedDistinct node.
 func NewOrderedDistinct(child sql.Node) *OrderedDistinct {
+	if d, ok := child.(*OrderedDistinct); ok {
+		child = d.Child
+	}
 	return &OrderedDistinct{
 		UnaryNode: UnaryNode{Child: child},
 	}

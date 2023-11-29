@@ -84,8 +84,8 @@ const (
 
 	// after default
 	hoistOutOfScopeFiltersId     // hoistOutOfScopeFilters
-	transformJoinApplyId         // transformJoinApply
-	hoistSelectExistsId          // hoistSelectExists
+	unnestInSubqueriesId         // unnestInSubqueries
+	unnestExistsSubqueriesId     // unnestExistsSubqueries
 	finalizeSubqueriesId         // finalizeSubqueries
 	finalizeUnionsId             // finalizeUnions
 	loadTriggersId               // loadTriggers
@@ -107,6 +107,7 @@ const (
 	assignExecIndexesId          // assignExecIndexes
 	inlineSubqueryAliasRefsId    // inlineSubqueryAliasRefs
 	eraseProjectionId            // eraseProjection
+	flattenDistinctId            //flattenDistinct
 	replaceAggId                 // replaceAgg
 	replaceIdxSortId             // replaceIdxSort
 	insertTopNId                 // insertTopN

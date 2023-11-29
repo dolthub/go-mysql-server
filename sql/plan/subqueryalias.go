@@ -38,6 +38,7 @@ type SubqueryAlias struct {
 
 var _ sql.Node = (*SubqueryAlias)(nil)
 var _ sql.CollationCoercible = (*SubqueryAlias)(nil)
+var _ sql.RenameableNode = (*SubqueryAlias)(nil)
 
 // NewSubqueryAlias creates a new SubqueryAlias node.
 func NewSubqueryAlias(name, textDefinition string, node sql.Node) *SubqueryAlias {
@@ -57,7 +58,7 @@ func (sq *SubqueryAlias) AsView(createViewStmt string) *sql.View {
 // Name implements the Table interface.
 func (sq *SubqueryAlias) Name() string { return sq.name }
 
-func (sq *SubqueryAlias) WithName(n string) *SubqueryAlias {
+func (sq *SubqueryAlias) WithName(n string) sql.Node {
 	ret := *sq
 	ret.name = n
 	return &ret

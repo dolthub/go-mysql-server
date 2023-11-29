@@ -24,6 +24,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -239,11 +240,12 @@ type existsIter struct {
 
 	primaryRow sql.Row
 
-	parentRow sql.Row
-	scopeLen  int
-	rowSize   int
-	nullRej   bool
-	b         sql.NodeExecBuilder
+	parentRow         sql.Row
+	scopeLen          int
+	rowSize           int
+	nullRej           bool
+	rightIterNonEmpty bool
+	b                 sql.NodeExecBuilder
 }
 
 type existsState uint8
@@ -306,12 +308,20 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 					return nil, err
 				}
 			} else {
+				i.rightIterNonEmpty = true
 				nextState = esCompare
 			}
 		case esRightIterEOF:
 			if i.typ.IsSemi() {
 				// reset iter, no match
 				nextState = esIncLeft
+			} else if !i.rightIterNonEmpty && !isTrueLit(i.cond) {
+				// ANTI_JOIN with empty RHS is subject to special cases,
+				// the first two are a valid match.
+				//   1) If we matched no rows but rows were returned
+				//   2) No match and no rows returned, EXISTS check
+				//   3) No match and no rows returned, IN check
+				return nil, io.EOF
 			} else {
 				nextState = esRet
 			}
@@ -353,6 +363,13 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, fmt.Errorf("invalid exists join state")
 		}
 	}
+}
+
+func isTrueLit(e sql.Expression) bool {
+	if lit, ok := e.(*expression.Literal); ok {
+		return lit.Value() == true
+	}
+	return false
 }
 
 func (i *existsIter) removeParentRow(r sql.Row) sql.Row {
