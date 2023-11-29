@@ -47,17 +47,12 @@ func newRelProps(rel RelExpr) *relProps {
 		grp: rel.Group(),
 	}
 	switch r := rel.(type) {
-	case *EmptyTable:
-		p.outputCols = r.Table.Columns()
 	case *Max1Row:
 		p.populateFds()
 	case SourceRel:
 		p.outputCols = r.TableIdNode().Columns()
 	default:
 	}
-
-	// need to assign column ids
-	// TODO name resolution should replace assignColumnIds, then Fds can stay lazy
 
 	p.populateFds()
 	p.populateOutputTables()
@@ -98,10 +93,6 @@ func (p *relProps) populateFds() {
 		n := rel.TableIdNode()
 		all := n.Columns()
 
-		//start := len(rel.Group().m.Columns)
-		//rel.Group().m.assignColumnIds(rel)
-		//end := len(rel.Group().m.Columns)
-		//
 		sch := allTableCols(rel)
 		var notNull sql.ColSet
 		j := 0
@@ -360,7 +351,6 @@ func (p *relProps) populateOutputTables() {
 		p.tableNodes = make([]sql.TableIdNode, leftNodeCnt+rightNodeCnt)
 		copy(p.tableNodes, n.JoinPrivate().Left.RelProps.tableNodes)
 		copy(p.tableNodes[leftNodeCnt:], n.JoinPrivate().Right.RelProps.tableNodes)
-		//p.tableNodes = append(n.JoinPrivate().Left.RelProps.tableNodes, n.JoinPrivate().Right.RelProps.tableNodes...)
 	default:
 		panic(fmt.Sprintf("unhandled type: %T", n))
 	}

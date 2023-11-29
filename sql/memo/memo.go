@@ -639,6 +639,7 @@ func getProjectColset(p *Project) sql.ColSet {
 	}
 	return colset
 }
+
 func (m *Memo) ApplyHint(hint Hint) {
 	switch hint.Typ {
 	case HintTypeJoinOrder:

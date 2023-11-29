@@ -103,7 +103,6 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name strin
 			sq = sq.WithVolatile(sqScope.volatile())
 
 			tabId := cteScope.addTable(name)
-			// TODO modify scope to (1) add table name/id to cols, get colset for sq
 			var colset sql.ColSet
 			for i, c := range cteScope.cols {
 				c.tableId = tabId

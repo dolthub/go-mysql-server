@@ -105,10 +105,6 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	if err != nil {
 		return nil, err
 	}
-	err = convertSemiToInnerJoin(a, m)
-	if err != nil {
-		return nil, err
-	}
 	err = convertAntiToLeftJoin(m)
 	if err != nil {
 		return nil, err
@@ -381,8 +377,6 @@ func convertSemiToInnerJoin(a *Analyzer, m *memo.Memo) error {
 		leftCols := semi.Left.RelProps.OutputCols()
 		var projections []sql.Expression
 		for colId, hasNext := leftCols.Next(1); hasNext; colId, hasNext = leftCols.Next(colId + 1) {
-			// we have ids and need to get the table back?
-			// search in tables
 			var table sql.TableIdNode
 			for _, n := range semi.Left.RelProps.TableIdNodes() {
 				if n.Columns().Contains(colId) {

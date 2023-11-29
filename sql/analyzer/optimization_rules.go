@@ -67,17 +67,6 @@ func flattenDistinct(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	})
 }
 
-func moveFiltersToJoinCond(_ *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		if filter, ok := n.(*plan.Filter); ok {
-			if join, ok := filter.Child.(*plan.JoinNode); ok {
-				return plan.NewJoin(join.Left(), join.Right(), join.Op, expression.NewAnd(join.Filter, filter.Expression)), transform.NewTree, nil
-			}
-		}
-		return n, transform.SameTree, nil
-	})
-}
-
 // moveJoinConditionsToFilter looks for expressions in a join condition that reference only tables in the left or right
 // side of the join, and move those conditions to a new Filter node instead. If the join condition is empty after these
 // moves, the join is converted to a CrossJoin.

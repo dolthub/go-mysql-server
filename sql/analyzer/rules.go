@@ -58,7 +58,6 @@ var DefaultRules = []Rule{
 var OnceAfterDefault = []Rule{
 	{unnestExistsSubqueriesId, unnestExistsSubqueries},
 	{moveJoinCondsToFilterId, moveJoinConditionsToFilter},
-	//{moveFiltersToJoinCondId, moveFiltersToJoinCond},
 	{finalizeUnionsId, finalizeUnions},
 	{loadTriggersId, loadTriggers},
 	{processTruncateId, processTruncate},

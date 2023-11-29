@@ -544,11 +544,6 @@ func (j *joinOrderBuilder) buildMax1Row(n *plan.Max1Row) (vertexSet, edgeSet, *E
 	return childV, childE, max1Grp
 }
 
-type joinLeafNode interface {
-	sql.TableIdNode
-	sql.NameableNode
-}
-
 func (j *joinOrderBuilder) buildJoinLeaf(n sql.TableIdNode) *ExprGroup {
 	j.checkSize()
 

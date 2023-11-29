@@ -358,7 +358,6 @@ func isInjectiveLookup(idx *Index, joinBase *JoinBase, keyExprs []sql.Expression
 	var constCols sql.ColSet
 	for i, nullable := range nullMask {
 		cols, _, nullRej := getExprScalarProps(keyExprs[i])
-		//props := keyExprs[i].Group().ScalarProps()
 		onCols := joinFds.EquivalenceClosure(cols)
 		if !nullable {
 			if nullRej {
