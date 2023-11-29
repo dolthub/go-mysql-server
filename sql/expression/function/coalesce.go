@@ -58,13 +58,12 @@ func (c *Coalesce) Type() sql.Type {
 			continue
 		}
 		t := arg.Type()
-		if t == nil || t == types.Null {
-			continue
+		if t != nil && t != types.Null {
+			return t
 		}
-		return t
 	}
 
-	return nil
+	return types.Null
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

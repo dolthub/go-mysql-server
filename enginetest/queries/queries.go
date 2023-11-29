@@ -765,6 +765,16 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		Query:    "SELECT COALESCE (NULL, NULL)",
+		Expected: []sql.Row{{nil}},
+		ExpectedColumns: []*sql.Column{
+			{
+				Name: "COALESCE (NULL, NULL)",
+				Type: types.Null,
+			},
+		},
+	},
+	{
 		Query:    "SELECT 1 WHERE ((1 IN (NULL >= 1)) IS NULL);",
 		Expected: []sql.Row{{1}},
 	},
