@@ -52,8 +52,12 @@ func TestMemoGen(t *testing.T) {
           return strings.ToLower(r.Table.Name())
         }
 
-        func (r *tableScan) TableId() TableId {
+        func (r *tableScan) TableId() sql.TableId {
           return TableIdForSource(r.g.Id)
+        }
+
+        func (r *tableScan) TableIdNode() sql.TableIdNode {
+          return r.Table
         }
 
         func (r *tableScan) OutputCols() sql.Schema {
@@ -99,15 +103,15 @@ func TestMemoGen(t *testing.T) {
           }
         }
 
-        func buildRelExpr(b *ExecBuilder, r RelExpr, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+        func buildRelExpr(b *ExecBuilder, r RelExpr, children ...sql.Node) (sql.Node, error) {
           var result sql.Node
           var err error
 
           switch r := r.(type) {
           case *hashJoin:
-          result, err = b.buildHashJoin(r, input, children...)
+          result, err = b.buildHashJoin(r, children...)
           case *tableScan:
-          result, err = b.buildTableScan(r, input, children...)
+          result, err = b.buildTableScan(r, children...)
           default:
             panic(fmt.Sprintf("unknown RelExpr type: %T", r))
           }
@@ -116,7 +120,7 @@ func TestMemoGen(t *testing.T) {
             return nil, err
           }
 
-          result, err = r.Group().finalize(result, input)
+          result, err = r.Group().finalize(result)
           if err != nil {
             return nil, err
           }

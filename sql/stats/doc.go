@@ -5,7 +5,7 @@ package stats
 //
 // Statistics are used for optimizer transformations whose optimal plans
 // depends on the contents and shape of rows in a database, as opposed to
-// normalization transformations that always simplify and improve a plans
+// normalization transformations that always simplify and improve a plan's
 // runtime.
 //
 // The process of exploring the search space of query plans based on table

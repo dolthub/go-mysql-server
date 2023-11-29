@@ -67,6 +67,17 @@ func flattenDistinct(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	})
 }
 
+func moveFiltersToJoinCond(_ *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		if filter, ok := n.(*plan.Filter); ok {
+			if join, ok := filter.Child.(*plan.JoinNode); ok {
+				return plan.NewJoin(join.Left(), join.Right(), join.Op, expression.NewAnd(join.Filter, filter.Expression)), transform.NewTree, nil
+			}
+		}
+		return n, transform.SameTree, nil
+	})
+}
+
 // moveJoinConditionsToFilter looks for expressions in a join condition that reference only tables in the left or right
 // side of the join, and move those conditions to a new Filter node instead. If the join condition is empty after these
 // moves, the join is converted to a CrossJoin.
@@ -103,10 +114,10 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 				continue
 			}
 
-			if leftOnly := containsSources(leftSources, sources); leftOnly {
+			if sources.SubsetOf(leftSources) {
 				leftOnlyFilters = append(leftOnlyFilters, e)
 				filtersMoved++
-			} else if rightOnly := containsSources(rightSources, sources); rightOnly {
+			} else if sources.SubsetOf(rightSources) {
 				rightOnlyFilters = append(rightOnlyFilters, e)
 				filtersMoved++
 			} else {
@@ -137,7 +148,7 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 }
 
 // containsSources checks that all `needle` sources are contained inside `haystack`.
-func containsSources(haystack, needle []sql.TableID) bool {
+func containsSources(haystack, needle []sql.TableId) bool {
 	for _, s := range needle {
 		var found bool
 		for _, s2 := range haystack {
@@ -156,37 +167,29 @@ func containsSources(haystack, needle []sql.TableID) bool {
 }
 
 // nodeSources returns the set of column sources from the schema of the node given.
-func nodeSources(node sql.Node) []sql.TableID {
-	var sources = make(map[sql.TableID]struct{})
-	var result []sql.TableID
-
-	for _, col := range node.Schema() {
-		source := col.TableID()
-		if _, ok := sources[source]; !ok {
-			sources[source] = struct{}{}
-			result = append(result, source)
+func nodeSources(n sql.Node) sql.FastIntSet {
+	var tables sql.FastIntSet
+	transform.InspectUp(n, func(n sql.Node) bool {
+		tin, _ := n.(sql.TableIdNode)
+		if tin != nil {
+			tables.Add(int(tin.Id()))
 		}
-	}
-
-	return result
+		return false
+	})
+	return tables
 }
 
 // expressionSources returns the set of sources from any GetField expressions
 // in the expression given, and a boolean indicating whether the expression
 // is null rejecting from those sources.
-func expressionSources(expr sql.Expression) ([]sql.TableID, bool) {
-	var sources = make(map[sql.TableID]struct{})
-	var result []sql.TableID
+func expressionSources(expr sql.Expression) (sql.FastIntSet, bool) {
+	var tables sql.FastIntSet
 	var nullRejecting bool = true
 
 	sql.Inspect(expr, func(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.GetField:
-			source := e.TableID()
-			if _, ok := sources[source]; !ok {
-				sources[source] = struct{}{}
-				result = append(result, source)
-			}
+			tables.Add(int(e.TableId()))
 		case *expression.IsNull:
 			nullRejecting = false
 		case *expression.NullSafeEquals:
@@ -200,22 +203,18 @@ func expressionSources(expr sql.Expression) ([]sql.TableID, bool) {
 			}
 		case *plan.Subquery:
 			transform.InspectExpressions(e.Query, func(innerExpr sql.Expression) bool {
-				switch ie := innerExpr.(type) {
+				switch e := innerExpr.(type) {
 				case *expression.GetField:
-					source := ie.TableID()
-					if _, ok := sources[source]; !ok {
-						sources[source] = struct{}{}
-						result = append(result, source)
-					}
+					tables.Add(int(e.TableId()))
 				case *expression.IsNull:
 					nullRejecting = false
 				case *expression.NullSafeEquals:
 					nullRejecting = false
 				case *expression.Equals:
-					if lit, ok := ie.Left().(*expression.Literal); ok && lit.Value() == nil {
+					if lit, ok := e.Left().(*expression.Literal); ok && lit.Value() == nil {
 						nullRejecting = false
 					}
-					if lit, ok := ie.Right().(*expression.Literal); ok && lit.Value() == nil {
+					if lit, ok := e.Right().(*expression.Literal); ok && lit.Value() == nil {
 						nullRejecting = false
 					}
 				}
@@ -225,7 +224,7 @@ func expressionSources(expr sql.Expression) ([]sql.TableID, bool) {
 		return true
 	})
 
-	return result, nullRejecting
+	return tables, nullRejecting
 }
 
 // simplifyFilters simplifies the expressions in Filter nodes where possible. This involves removing redundant parts of AND

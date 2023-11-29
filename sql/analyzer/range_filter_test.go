@@ -1,48 +1,35 @@
 package analyzer
 
 import (
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/dolthub/go-mysql-server/sql/memo"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func variable(name string) *memo.ExprGroup {
-	return &memo.ExprGroup{Scalar: &memo.Bindvar{
-		Name: name,
-		Typ:  types.Int8,
-	}}
-}
-
-func literal(value int) *memo.ExprGroup {
-	return &memo.ExprGroup{Scalar: &memo.Literal{
-		Val: value,
-		Typ: types.Int8,
-	}}
-}
-
-func TestHintParsing(t *testing.T) {
+func TestGetRangeFilters(t *testing.T) {
 	tests := []struct {
 		name              string
-		filterExpressions []memo.ScalarExpr
+		filterExpressions []sql.Expression
 		expectedRanges    []rangeFilter
 	}{
 		{
 			name: "simple Between test",
-			filterExpressions: []memo.ScalarExpr{
-				&memo.Between{
-					Value: variable("x"),
-					Min:   literal(0),
-					Max:   literal(10),
-				},
+			filterExpressions: []sql.Expression{
+				expression.NewBetween(
+					expression.NewBindVar("x"),
+					expression.NewLiteral(0, types.Int64),
+					expression.NewLiteral(10, types.Int64),
+				),
 			},
 			expectedRanges: []rangeFilter{
 				{
-					value:              variable("x"),
-					min:                literal(0),
-					max:                literal(10),
+					value:              expression.NewBindVar("x"),
+					min:                expression.NewLiteral(0, types.Int64),
+					max:                expression.NewLiteral(10, types.Int64),
 					closedOnLowerBound: true,
 					closedOnUpperBound: true,
 				},
@@ -50,21 +37,21 @@ func TestHintParsing(t *testing.T) {
 		},
 		{
 			name: "simple less than / greater than test",
-			filterExpressions: []memo.ScalarExpr{
-				&memo.Gt{
-					Left:  variable("y"),
-					Right: literal(11),
-				},
-				&memo.Lt{
-					Left:  variable("y"),
-					Right: literal(20),
-				},
+			filterExpressions: []sql.Expression{
+				expression.NewGreaterThan(
+					expression.NewBindVar("y"),
+					expression.NewLiteral(11, types.Int64),
+				),
+				expression.NewLessThan(
+					expression.NewBindVar("y"),
+					expression.NewLiteral(20, types.Int64),
+				),
 			},
 			expectedRanges: []rangeFilter{
 				{
-					value:              variable("y"),
-					min:                literal(11),
-					max:                literal(20),
+					value:              expression.NewBindVar("y"),
+					min:                expression.NewLiteral(11, types.Int64),
+					max:                expression.NewLiteral(20, types.Int64),
 					closedOnLowerBound: false,
 					closedOnUpperBound: false,
 				},
@@ -72,21 +59,21 @@ func TestHintParsing(t *testing.T) {
 		},
 		{
 			name: "simple greater than / greater than test",
-			filterExpressions: []memo.ScalarExpr{
-				&memo.Geq{
-					Left:  variable("z"),
-					Right: literal(21),
-				},
-				&memo.Geq{
-					Left:  literal(30),
-					Right: variable("z"),
-				},
+			filterExpressions: []sql.Expression{
+				expression.NewGreaterThanOrEqual(
+					expression.NewBindVar("z"),
+					expression.NewLiteral(21, types.Int64),
+				),
+				expression.NewGreaterThanOrEqual(
+					expression.NewLiteral(30, types.Int64),
+					expression.NewBindVar("z"),
+				),
 			},
 			expectedRanges: []rangeFilter{
 				{
-					value:              variable("z"),
-					min:                literal(21),
-					max:                literal(30),
+					value:              expression.NewBindVar("z"),
+					min:                expression.NewLiteral(21, types.Int64),
+					max:                expression.NewLiteral(30, types.Int64),
 					closedOnLowerBound: true,
 					closedOnUpperBound: true,
 				},
@@ -94,36 +81,36 @@ func TestHintParsing(t *testing.T) {
 		},
 		{
 			name: "multiple ranges",
-			filterExpressions: []memo.ScalarExpr{
-				&memo.Leq{
-					Left:  variable("a"),
-					Right: literal(40),
-				},
-				&memo.Lt{
-					Left:  literal(31),
-					Right: variable("a"),
-				},
-				&memo.Lt{
-					Left:  variable("b"),
-					Right: literal(50),
-				},
-				&memo.Leq{
-					Left:  literal(41),
-					Right: variable("b"),
-				},
+			filterExpressions: []sql.Expression{
+				expression.NewLessThanOrEqual(
+					expression.NewBindVar("a"),
+					expression.NewLiteral(40, types.Int64),
+				),
+				expression.NewLessThan(
+					expression.NewLiteral(31, types.Int64),
+					expression.NewBindVar("a"),
+				),
+				expression.NewLessThan(
+					expression.NewBindVar("b"),
+					expression.NewLiteral(50, types.Int64),
+				),
+				expression.NewLessThanOrEqual(
+					expression.NewLiteral(41, types.Int64),
+					expression.NewBindVar("b"),
+				),
 			},
 			expectedRanges: []rangeFilter{
 				{
-					value:              variable("a"),
-					min:                literal(31),
-					max:                literal(40),
+					value:              expression.NewBindVar("a"),
+					min:                expression.NewLiteral(31, types.Int64),
+					max:                expression.NewLiteral(40, types.Int64),
 					closedOnLowerBound: false,
 					closedOnUpperBound: true,
 				},
 				{
-					value:              variable("b"),
-					min:                literal(41),
-					max:                literal(50),
+					value:              expression.NewBindVar("b"),
+					min:                expression.NewLiteral(41, types.Int64),
+					max:                expression.NewLiteral(50, types.Int64),
 					closedOnLowerBound: true,
 					closedOnUpperBound: false,
 				},

@@ -14,6 +14,7 @@ var _ sql.ExecSourceRel = PointLookupTable{}
 var _ sql.IndexAddressable = PointLookupTable{}
 var _ sql.IndexedTable = PointLookupTable{}
 var _ sql.TableNode = PointLookupTable{}
+var _ sql.TableIdNode = PointLookupTable{}
 
 // PointLookupTable is a table whose indexes only support point lookups but not range scans.
 // It's used for testing optimizations on indexes.
@@ -60,7 +61,7 @@ func (s PointLookupTable) GetIndexes(ctx *sql.Context) (indexes []sql.Index, err
 			Tbl:        nil,
 			TableName:  s.Name(),
 			Exprs: []sql.Expression{
-				expression.NewGetFieldWithTable(0, types.Int64, "", s.Name(), s.name, false),
+				expression.NewGetFieldWithTable(0, 0, types.Int64, s.db.Name(), s.Name(), s.name, false),
 			},
 			Name:         s.name,
 			Unique:       true,

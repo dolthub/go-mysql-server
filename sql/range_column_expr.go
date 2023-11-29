@@ -335,12 +335,33 @@ func (r RangeColumnExpr) String() string {
 
 // DebugString returns this RangeColumnExpr as a string for debugging purposes.
 func (r RangeColumnExpr) DebugString() string {
+	var lowerB interface{} = "-∞"
+	if RangeCutIsBinding(r.LowerBound) {
+		lowerB = GetRangeCutKey(r.LowerBound)
+	}
+	var upperB interface{} = "∞"
+	if RangeCutIsBinding(r.UpperBound) {
+		upperB = GetRangeCutKey(r.UpperBound)
+	}
+	switch v := lowerB.(type) {
+	case []byte:
+		lowerB = string(v)
+	}
+	switch v := upperB.(type) {
+	case []byte:
+		upperB = string(v)
+	}
+
 	sb := strings.Builder{}
 	switch r.LowerBound.(type) {
 	case Above:
-		sb.WriteString("(" + fmt.Sprint(GetRangeCutKey(r.LowerBound)))
+		lowerB := GetRangeCutKey(r.LowerBound)
+
+		sb.WriteString("(" + fmt.Sprint(lowerB))
 	case Below:
-		sb.WriteString("[" + fmt.Sprint(GetRangeCutKey(r.LowerBound)))
+		lowerB := GetRangeCutKey(r.LowerBound)
+
+		sb.WriteString("[" + fmt.Sprint(lowerB))
 	case AboveAll:
 		sb.WriteString("(∞")
 	case AboveNull:
@@ -351,9 +372,9 @@ func (r RangeColumnExpr) DebugString() string {
 	sb.WriteString(", ")
 	switch r.UpperBound.(type) {
 	case Above:
-		sb.WriteString(fmt.Sprint(GetRangeCutKey(r.UpperBound)) + "]")
+		sb.WriteString(fmt.Sprint(upperB) + "]")
 	case Below:
-		sb.WriteString(fmt.Sprint(GetRangeCutKey(r.UpperBound)) + ")")
+		sb.WriteString(fmt.Sprint(upperB) + ")")
 	case AboveAll:
 		sb.WriteString("∞)")
 	case AboveNull:

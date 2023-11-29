@@ -267,8 +267,9 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 		switch e := t.Expr.(type) {
 		case ast.TableName:
 			tableName := strings.ToLower(e.Name.String())
+			tAlias := strings.ToLower(t.As.String())
 			if cteScope := inScope.getCte(tableName); cteScope != nil {
-				outScope = cteScope.copy()
+				outScope = cteScope.copyCte(tAlias)
 				outScope.parent = inScope
 			} else {
 				var ok bool
@@ -277,11 +278,10 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 					b.handleErr(sql.ErrTableNotFound.New(tableName))
 				}
 			}
-			if t.As.String() != "" {
-				tAlias := strings.ToLower(t.As.String())
+			if tAlias != "" {
 				outScope.setTableAlias(tAlias)
 				var err error
-				outScope.node, err = b.f.buildTableAlias(tAlias, outScope.node)
+				outScope.node, err = b.f.buildTableAlias(tAlias, outScope.node.(sql.TableIdNode))
 				if err != nil {
 					b.handleErr(err)
 				}
@@ -303,7 +303,7 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 			var renameCols []string
 			if len(e.Columns) > 0 {
 				renameCols = columnsToStrings(e.Columns)
-				sq = sq.WithColumns(renameCols)
+				sq = sq.WithColumnNames(renameCols)
 			}
 
 			if len(renameCols) > 0 && len(fromScope.cols) != len(renameCols) {
@@ -312,25 +312,28 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 			}
 
 			outScope = inScope.push()
+			tabId := outScope.addTable(sq.Name())
+
 			scopeMapping := make(map[sql.ColumnId]sql.Expression)
+			var colSet sql.ColSet
 			for i, c := range fromScope.cols {
 				col := c.col
 				if len(renameCols) > 0 {
 					col = renameCols[i]
 				}
 				toId := outScope.newColumn(scopeColumn{
-					tableId: sql.TableID{
-						DatabaseName: c.tableId.DatabaseName,
-						TableName:    alias,
-					},
+					tableId:  tabId,
+					db:       c.db,
+					table:    alias,
 					col:      col,
 					id:       0,
 					typ:      c.typ,
 					nullable: c.nullable,
 				})
+				colSet.Add(sql.ColumnId(toId))
 				scopeMapping[sql.ColumnId(toId)] = c.scalarGf()
 			}
-			outScope.node = sq.WithScopeMapping(scopeMapping)
+			outScope.node = sq.WithScopeMapping(scopeMapping).WithColumns(colSet).WithId(tabId)
 			return
 		case *ast.ValuesStatement:
 			if t.As.IsEmpty() {
@@ -348,17 +351,20 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 
 			outScope = inScope.push()
 			vdt := plan.NewValueDerivedTable(plan.NewValues(exprTuples), t.As.String())
+			tableName := strings.ToLower(t.As.String())
+			tabId := outScope.addTable(tableName)
+			var cols sql.ColSet
 			for _, c := range vdt.Schema() {
-				outScope.newColumn(scopeColumn{col: c.Name, tableId: c.TableID(),
-					typ: c.Type, nullable: c.Nullable})
+				id := outScope.newColumn(scopeColumn{col: c.Name, db: c.DatabaseSource, table: tableName, typ: c.Type, nullable: c.Nullable})
+				cols.Add(sql.ColumnId(id))
 			}
 			var renameCols []string
 			if len(e.Columns) > 0 {
 				renameCols = columnsToStrings(e.Columns)
-				vdt = vdt.WithColumns(renameCols)
+				vdt = vdt.WithColumNames(renameCols)
 			}
-			b.renameSource(outScope, t.As.String(), renameCols)
-			outScope.node = vdt
+			b.renameSource(outScope, tableName, renameCols)
+			outScope.node = vdt.WithId(tabId).WithColumns(cols)
 			return
 		default:
 			b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(te)))
@@ -486,26 +492,30 @@ func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope
 
 	// Table Function must always have an alias, pick function name as alias if none is provided
 	var name string
-	var newAlias sql.Node
+	var newAlias sql.TableIdNode
 	if t.Alias.IsEmpty() {
 		name = t.Name
 		newAlias = plan.NewTableAlias(name, newInstance)
 	} else {
 		name = t.Alias.String()
-		newAlias, err = b.f.buildTableAlias(name, newInstance)
+		newAlias, err = b.f.buildTableAlias(name, newInstance.(sql.TableIdNode))
 		if err != nil {
 			b.handleErr(err)
 		}
 	}
 
-	outScope.node = newAlias
+	tabId := outScope.addTable(name)
+	var colset sql.ColSet
 	for _, c := range newAlias.Schema() {
-		outScope.newColumn(scopeColumn{
-			tableId: sql.NewTableID(database.Name(), name),
-			col:     c.Name,
-			typ:     c.Type,
+		id := outScope.newColumn(scopeColumn{
+			db:    database.Name(),
+			table: name,
+			col:   c.Name,
+			typ:   c.Type,
 		})
+		colset.Add(sql.ColumnId(id))
 	}
+	outScope.node = newAlias.WithColumns(colset).WithId(tabId)
 	return
 }
 
@@ -568,19 +578,22 @@ func (b *Builder) buildJSONTable(inScope *scope, t *ast.JSONTableExpr) (outScope
 	outScope = inScope.push()
 	outScope.ast = t
 
-	alias := t.Alias.String()
+	alias := strings.ToLower(t.Alias.String())
+	tabId := outScope.addTable(alias)
 	cols := b.buildJSONTableCols(inScope, t.Spec)
+	var colset sql.ColSet
 	var recFlatten func(col plan.JSONTableCol)
 	recFlatten = func(col plan.JSONTableCol) {
 		for _, col := range col.NestedCols {
 			recFlatten(col)
 		}
 		if col.Opts != nil {
-			outScope.newColumn(scopeColumn{
-				tableId: sql.NewAliasID(alias),
-				col:     col.Opts.Name,
-				typ:     col.Opts.Type,
+			id := outScope.newColumn(scopeColumn{
+				table: alias,
+				col:   col.Opts.Name,
+				typ:   col.Opts.Type,
 			})
+			colset.Add(sql.ColumnId(id))
 		}
 	}
 	for _, col := range cols {
@@ -588,9 +601,12 @@ func (b *Builder) buildJSONTable(inScope *scope, t *ast.JSONTableExpr) (outScope
 	}
 
 	var err error
-	if outScope.node, err = plan.NewJSONTable(data, t.Spec.Path, alias, cols); err != nil {
+	jt, err := plan.NewJSONTable(data, t.Spec.Path, alias, cols)
+	if err != nil {
 		b.handleErr(err)
 	}
+
+	outScope.node = jt.WithColumns(colset).WithId(tabId)
 	return outScope
 }
 
@@ -626,15 +642,24 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, name string, asof *ast.
 
 	if view := b.resolveView(name, database, asOfLit); view != nil {
 		outScope.node = view
+		tabId := outScope.addTable(strings.ToLower(view.Schema()[0].Name))
+		var cols sql.ColSet
 		for _, c := range view.Schema() {
-			outScope.newColumn(scopeColumn{
-				tableId:     sql.NewTableID(db, name),
+			id := outScope.newColumn(scopeColumn{
+				db:          db,
+				table:       name,
 				col:         strings.ToLower(c.Name),
 				originalCol: c.Name,
 				typ:         c.Type,
 				nullable:    c.Nullable,
 			})
+			cols.Add(sql.ColumnId(id))
 		}
+		if tin, ok := view.(sql.TableIdNode); ok {
+			// TODO should *sql.View implement TableIdNode?
+			outScope.node = tin.WithId(tabId).WithColumns(cols)
+		}
+
 		return outScope, true
 	}
 
@@ -669,17 +694,24 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, name string, asof *ast.
 	if ok {
 		rt.Table = ct.AssignCatalog(b.cat)
 	}
-	outScope.node = rt
+
+	tabId := outScope.addTable(strings.ToLower(tab.Name()))
+	var cols sql.ColSet
 
 	for _, c := range tab.Schema() {
-		outScope.newColumn(scopeColumn{
-			tableId:     sql.NewTableID(db, tab.Name()),
+		id := outScope.newColumn(scopeColumn{
+			db:          db,
+			table:       strings.ToLower(tab.Name()),
 			col:         strings.ToLower(c.Name),
 			originalCol: c.Name,
 			typ:         c.Type,
 			nullable:    c.Nullable,
 		})
+		cols.Add(sql.ColumnId(id))
 	}
+
+	rt = rt.WithId(tabId).WithColumns(cols).(*plan.ResolvedTable)
+	outScope.node = rt
 
 	if dt, _ := rt.Table.(sql.DynamicColumnsTable); dt != nil {
 		// the columns table has to resolve all columns in every table
@@ -694,7 +726,8 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, name string, asof *ast.
 		for i, c := range sch {
 			// bucket schema fragments into colsets for resolving defaults
 			newCol := scopeColumn{
-				tableId:     c.TableID(),
+				db:          c.DatabaseSource,
+				table:       c.Source,
 				col:         strings.ToLower(c.Name),
 				originalCol: c.Name,
 				typ:         c.Type,

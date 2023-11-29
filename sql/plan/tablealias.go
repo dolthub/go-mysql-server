@@ -23,6 +23,8 @@ type TableAlias struct {
 	*UnaryNode
 	name    string
 	comment string
+	id      sql.TableId
+	cols    sql.ColSet
 }
 
 var _ sql.RenameableNode = (*TableAlias)(nil)
@@ -31,7 +33,36 @@ var _ sql.CollationCoercible = (*TableAlias)(nil)
 
 // NewTableAlias returns a new Table alias node.
 func NewTableAlias(name string, node sql.Node) *TableAlias {
-	return &TableAlias{UnaryNode: &UnaryNode{Child: node}, name: name}
+	ret := &TableAlias{UnaryNode: &UnaryNode{Child: node}, name: name}
+	if tin, ok := node.(sql.TableIdNode); ok {
+		ret.id = tin.Id()
+		ret.cols = tin.Columns()
+	}
+	return ret
+}
+
+// WithId implements sql.TableIdNode
+func (t *TableAlias) WithId(id sql.TableId) sql.TableIdNode {
+	ret := *t
+	ret.id = id
+	return &ret
+}
+
+// Id implements sql.TableIdNode
+func (t *TableAlias) Id() sql.TableId {
+	return t.id
+}
+
+// WithColumns implements sql.TableIdNode
+func (t *TableAlias) WithColumns(set sql.ColSet) sql.TableIdNode {
+	ret := *t
+	ret.cols = set
+	return &ret
+}
+
+// Columns implements sql.TableIdNode
+func (t *TableAlias) Columns() sql.ColSet {
+	return t.cols
 }
 
 // Name implements the Nameable interface.
@@ -72,7 +103,11 @@ func (t *TableAlias) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
 	}
 
-	return NewTableAlias(t.name, children[0]).WithComment(t.Comment()), nil
+	ret := NewTableAlias(t.name, children[0])
+	ret.comment = t.comment
+	ret.cols = t.cols
+	ret.id = t.id
+	return ret, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.

@@ -53,6 +53,9 @@ type Column struct {
 	// Virtual column values will be provided for write operations, in case integrators need to use them to update
 	// indexes, but must not be returned in rows from tables that include them.
 	Virtual bool
+	// Ids that unique identify tables and column references
+	ColId ColumnId
+	TabId TableId
 }
 
 // Check ensures the value is correct for this column.
@@ -126,37 +129,13 @@ func (c Column) Copy() *Column {
 	return &c
 }
 
-// TableID returns the unique identifier of the column's source table.
-func (c *Column) TableID() TableID {
-	return NewTableID(c.DatabaseSource, c.Source)
-}
-
-// TableID is the unique identifier of a table or table alias in a multi-db environment.
+// TableId is the unique identifier of a table or table alias in a multi-db environment.
 // The long-term goal is to migrate all uses of table name strings to this and minimize places where we
 // construct/inspect TableIDs. By treating this as an opaque identifier, it will be easier to migrate to
 // a system where we compute IDs once during plan building.
 // For aliases, DatabaseName is nil.
-type TableID struct {
-	DatabaseName string
-	TableName    string
-}
+type TableId uint16
 
-// NewTableID returns a new TableID struct that uniquely identifies a table in a multi-db environment.
-func NewTableID(db, table string) TableID {
-	return TableID{
-		DatabaseName: strings.ToLower(db),
-		TableName:    strings.ToLower(table),
-	}
-}
-
-// NewAliasID returns a new TableID struct that uniquely identifies an alias that does not belong to a database.
-func NewAliasID(table string) TableID {
-	return TableID{
-		DatabaseName: "",
-		TableName:    strings.ToLower(table),
-	}
-}
-
-func (i TableID) IsEmpty() bool {
-	return i == TableID{}
+func (i TableId) IsEmpty() bool {
+	return i == 0
 }

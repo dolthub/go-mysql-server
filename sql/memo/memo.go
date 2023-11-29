@@ -38,12 +38,15 @@ type TableAndColumn struct {
 // an exprGroup, produce the same rows (possibly unordered) and schema.
 // Physical plans are stored in a linked list within an expression group.
 type Memo struct {
-	cnt         uint16
-	root        *ExprGroup
+	cnt  uint16
+	root *ExprGroup
+
+	// todo: deprecated
 	exprs       map[uint64]*ExprGroup
 	Columns     map[TableAndColumn]sql.ColumnId
 	ColumnNames map[sql.ColumnId]TableAndColumn
-	hints       *joinHints
+
+	hints *joinHints
 
 	c         Coster
 	s         Carder
@@ -107,11 +110,6 @@ func (m *Memo) AddColumnId(table, column string) {
 	newId := sql.ColumnId(len(m.Columns) + 1)
 	m.Columns[tableAndColumn] = newId
 	m.ColumnNames[newId] = tableAndColumn
-}
-
-func (m *Memo) GetTableAndColumn(id sql.ColumnId) (table, column string) {
-	tableAndColumn := m.ColumnNames[id]
-	return tableAndColumn.tableName, tableAndColumn.columnName
 }
 
 // TODO we need to remove this as soon as name resolution refactor is in
@@ -361,7 +359,7 @@ func (m *Memo) memoizeHidden(e sql.Expression) *ExprGroup {
 	return m.NewExprGroup(scalar)
 }
 
-func (m *Memo) MemoizeLeftJoin(grp, left, right *ExprGroup, op plan.JoinType, filter []ScalarExpr) *ExprGroup {
+func (m *Memo) MemoizeLeftJoin(grp, left, right *ExprGroup, op plan.JoinType, filter []sql.Expression) *ExprGroup {
 	newJoin := &LeftJoin{
 		JoinBase: &JoinBase{
 			relBase: &relBase{},
@@ -380,7 +378,7 @@ func (m *Memo) MemoizeLeftJoin(grp, left, right *ExprGroup, op plan.JoinType, fi
 	return grp
 }
 
-func (m *Memo) MemoizeInnerJoin(grp, left, right *ExprGroup, op plan.JoinType, filter []ScalarExpr) *ExprGroup {
+func (m *Memo) MemoizeInnerJoin(grp, left, right *ExprGroup, op plan.JoinType, filter []sql.Expression) *ExprGroup {
 	newJoin := &InnerJoin{
 		JoinBase: &JoinBase{
 			relBase: &relBase{},
@@ -399,7 +397,7 @@ func (m *Memo) MemoizeInnerJoin(grp, left, right *ExprGroup, op plan.JoinType, f
 	return grp
 }
 
-func (m *Memo) MemoizeLookupJoin(grp, left, right *ExprGroup, op plan.JoinType, filter []ScalarExpr, lookup *Lookup) *ExprGroup {
+func (m *Memo) MemoizeLookupJoin(grp, left, right *ExprGroup, op plan.JoinType, filter []sql.Expression, lookup *Lookup) *ExprGroup {
 	newJoin := &LookupJoin{
 		JoinBase: &JoinBase{
 			relBase: &relBase{},
@@ -420,7 +418,7 @@ func (m *Memo) MemoizeLookupJoin(grp, left, right *ExprGroup, op plan.JoinType, 
 	return grp
 }
 
-func (m *Memo) MemoizeRangeHeapJoin(grp, left, right *ExprGroup, op plan.JoinType, filter []ScalarExpr, rangeHeap *RangeHeap) *ExprGroup {
+func (m *Memo) MemoizeRangeHeapJoin(grp, left, right *ExprGroup, op plan.JoinType, filter []sql.Expression, rangeHeap *RangeHeap) *ExprGroup {
 	newJoin := &RangeHeapJoin{
 		JoinBase: &JoinBase{
 			relBase: &relBase{},
@@ -455,7 +453,7 @@ func NewTuple(m *Memo, filters []*ExprGroup) *ExprGroup {
 	return grp
 }
 
-func (m *Memo) MemoizeMergeJoin(grp, left, right *ExprGroup, lIdx, rIdx *IndexScan, op plan.JoinType, filter []ScalarExpr, swapCmp bool) *ExprGroup {
+func (m *Memo) MemoizeMergeJoin(grp, left, right *ExprGroup, lIdx, rIdx *IndexScan, op plan.JoinType, filter []sql.Expression, swapCmp bool) *ExprGroup {
 	rel := &MergeJoin{
 		JoinBase: &JoinBase{
 			relBase: &relBase{},
@@ -479,7 +477,7 @@ func (m *Memo) MemoizeMergeJoin(grp, left, right *ExprGroup, lIdx, rIdx *IndexSc
 	return grp
 }
 
-func (m *Memo) MemoizeProject(grp, child *ExprGroup, projections []*ExprGroup) *ExprGroup {
+func (m *Memo) MemoizeProject(grp, child *ExprGroup, projections []sql.Expression) *ExprGroup {
 	rel := &Project{
 		relBase:     &relBase{},
 		Child:       child,
@@ -493,7 +491,7 @@ func (m *Memo) MemoizeProject(grp, child *ExprGroup, projections []*ExprGroup) *
 	return grp
 }
 
-func (m *Memo) MemoizeFilter(grp, child *ExprGroup, filters []*ExprGroup) *ExprGroup {
+func (m *Memo) MemoizeFilter(grp, child *ExprGroup, filters []sql.Expression) *ExprGroup {
 	rel := &Filter{
 		relBase: &relBase{},
 		Child:   child,
@@ -625,11 +623,22 @@ func buildBestJoinPlan(b *ExecBuilder, grp *ExprGroup, input sql.Schema) (sql.No
 		if err != nil {
 			return nil, err
 		}
-		input = append(input, g.RelProps.OutputCols()...)
 	}
-	return b.buildRel(n, input, children...)
+	return b.buildRel(n, children...)
 }
 
+func getProjectColset(p *Project) sql.ColSet {
+	var colset sql.ColSet
+	for _, e := range p.Projections {
+		transform.InspectExpr(e, func(e sql.Expression) bool {
+			if gf, ok := e.(*expression.GetField); ok && gf.Id() > 0 {
+				colset.Add(gf.Id())
+			}
+			return false
+		})
+	}
+	return colset
+}
 func (m *Memo) ApplyHint(hint Hint) {
 	switch hint.Typ {
 	case HintTypeJoinOrder:
@@ -853,8 +862,8 @@ func (r *relBase) Cost() float64 {
 	return r.c
 }
 
-func TableIdForSource(id GroupId) TableId {
-	return TableId(id - 1)
+func TableIdForSource(id GroupId) sql.TableId {
+	return sql.TableId(id - 1)
 }
 
 type exprType interface {
@@ -896,9 +905,10 @@ type SourceRel interface {
 	// this to fix up expression indexes currently
 	OutputCols() sql.Schema
 	Name() string
-	TableId() TableId
+	TableId() sql.TableId
 	Indexes() []*Index
 	SetIndexes(indexes []*Index)
+	TableIdNode() sql.TableIdNode
 }
 
 type Index struct {
@@ -956,7 +966,7 @@ type JoinBase struct {
 	*relBase
 
 	Op     plan.JoinType
-	Filter []ScalarExpr
+	Filter []sql.Expression
 	Left   *ExprGroup
 	Right  *ExprGroup
 }
@@ -988,7 +998,7 @@ func (r *JoinBase) Copy() *JoinBase {
 
 type Lookup struct {
 	Index    *Index
-	KeyExprs []ScalarExpr
+	KeyExprs []sql.Expression
 	Nullmask []bool
 
 	Parent *JoinBase
@@ -1007,14 +1017,14 @@ type IndexScan struct {
 // a plan.IndexedTableAccess. Otherwise we use the expression to construct a plan.Sort.
 type RangeHeap struct {
 	ValueIndex *IndexScan
-	ValueExpr  *ScalarExpr
+	ValueExpr  sql.Expression
 
 	MinIndex *IndexScan
-	MinExpr  *ScalarExpr
+	MinExpr  sql.Expression
 
-	ValueCol                *ColRef
-	MinColRef               *ColRef
-	MaxColRef               *ColRef
+	ValueCol                *expression.GetField
+	MinColRef               *expression.GetField
+	MaxColRef               *expression.GetField
 	RangeClosedOnLowerBound bool
 	RangeClosedOnUpperBound bool
 	Parent                  *JoinBase
