@@ -388,7 +388,8 @@ func convertSemiToInnerJoin(a *Analyzer, m *memo.Memo) error {
 				return fmt.Errorf("table for column not found: %d", colId)
 			}
 
-			// todo: projection schema is not necessarily sequential
+			// projection schema is not necessarily sequential. but the columns
+			// from a single source should be sequential
 			firstCol, _ := table.Columns().Next(1)
 			col := table.Schema()[int(colId-firstCol)]
 

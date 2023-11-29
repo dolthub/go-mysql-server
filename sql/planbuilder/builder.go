@@ -159,12 +159,12 @@ func (b *Builder) newScope() *scope {
 
 func (b *Builder) Reset() {
 	b.colId = 0
+	b.tabId = 0
 	b.bindCtx = nil
 	b.currentDatabase = nil
 	b.procCtx = nil
 	b.multiDDL = false
 	b.insertActive = false
-	b.tabId = 0
 	b.triggerCtx = nil
 	b.viewCtx = nil
 	b.nesting = 0
