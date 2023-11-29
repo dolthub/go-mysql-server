@@ -8548,6 +8548,18 @@ from typestable`,
 			{3, "third row"},
 		},
 	},
+	{
+		Query: "select sqrt(-1) + 1",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: "select sqrt(-1) + 1",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
