@@ -45,6 +45,28 @@ func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 	})
 }
 
+func flattenDistinct(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		if d, ok := n.(*plan.Distinct); ok {
+			if d2, ok := d.Child.(*plan.Distinct); ok {
+				return d2, transform.NewTree, nil
+			}
+			if d2, ok := d.Child.(*plan.OrderedDistinct); ok {
+				return d2, transform.NewTree, nil
+			}
+		}
+		if d, ok := n.(*plan.OrderedDistinct); ok {
+			if d2, ok := d.Child.(*plan.Distinct); ok {
+				return plan.NewOrderedDistinct(d2.Child), transform.NewTree, nil
+			}
+			if d2, ok := d.Child.(*plan.OrderedDistinct); ok {
+				return d2, transform.NewTree, nil
+			}
+		}
+		return n, transform.SameTree, nil
+	})
+}
+
 // moveJoinConditionsToFilter looks for expressions in a join condition that reference only tables in the left or right
 // side of the join, and move those conditions to a new Filter node instead. If the join condition is empty after these
 // moves, the join is converted to a CrossJoin.
