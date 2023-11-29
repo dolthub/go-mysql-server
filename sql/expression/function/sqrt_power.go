@@ -90,7 +90,12 @@ func (s *Sqrt) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	return math.Sqrt(child.(float64)), nil
+	res := math.Sqrt(child.(float64))
+	if math.IsNaN(res) || math.IsInf(res, 0) {
+		return nil, nil
+	}
+
+	return res, nil
 }
 
 // Power is a function that returns value of X raised to the power of Y.
@@ -174,5 +179,10 @@ func (p *Power) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	return math.Pow(left.(float64), right.(float64)), nil
+	res := math.Pow(left.(float64), right.(float64))
+	if math.IsNaN(res) || math.IsInf(res, 0) {
+		return nil, nil
+	}
+
+	return res, nil
 }
