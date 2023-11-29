@@ -127,13 +127,12 @@ From xy;`,
 			"         ├─ columns: [xy.x:1!null, xy.y:2]\n" +
 			"         └─ LookupJoin\n" +
 			"             ├─ Distinct\n" +
-			"             │   └─ Distinct\n" +
-			"             │       └─ Project\n" +
-			"             │           ├─ columns: [uv.v:1]\n" +
-			"             │           └─ ProcessTable\n" +
-			"             │               └─ Table\n" +
-			"             │                   ├─ name: uv\n" +
-			"             │                   └─ columns: [u v]\n" +
+			"             │   └─ Project\n" +
+			"             │       ├─ columns: [uv.v:1]\n" +
+			"             │       └─ ProcessTable\n" +
+			"             │           └─ Table\n" +
+			"             │               ├─ name: uv\n" +
+			"             │               └─ columns: [u v]\n" +
 			"             └─ IndexedTableAccess(xy)\n" +
 			"                 ├─ index: [xy.y]\n" +
 			"                 ├─ keys: [uv.v]\n" +
@@ -153,14 +152,13 @@ From xy;`,
 			"         ├─ Eq\n" +
 			"         │   ├─ xy.y:2\n" +
 			"         │   └─ uv.u:0!null\n" +
-			"         ├─ Distinct\n" +
-			"         │   └─ OrderedDistinct\n" +
-			"         │       └─ Project\n" +
-			"         │           ├─ columns: [uv.u:0!null]\n" +
-			"         │           └─ ProcessTable\n" +
-			"         │               └─ Table\n" +
-			"         │                   ├─ name: uv\n" +
-			"         │                   └─ columns: [u v]\n" +
+			"         ├─ OrderedDistinct\n" +
+			"         │   └─ Project\n" +
+			"         │       ├─ columns: [uv.u:0!null]\n" +
+			"         │       └─ ProcessTable\n" +
+			"         │           └─ Table\n" +
+			"         │               ├─ name: uv\n" +
+			"         │               └─ columns: [u v]\n" +
 			"         └─ IndexedTableAccess(xy)\n" +
 			"             ├─ index: [xy.y]\n" +
 			"             ├─ keys: [uv.u]\n" +

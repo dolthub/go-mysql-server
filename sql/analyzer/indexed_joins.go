@@ -358,7 +358,9 @@ func convertSemiToInnerJoin(a *Analyzer, m *memo.Memo) error {
 
 		// project is a new group
 		rightGrp := m.MemoizeProject(nil, semi.Right, projectExpressions)
-		rightGrp.RelProps.Distinct = memo.HashDistinctOp
+		if _, ok := semi.Right.First.(*memo.Distinct); !ok {
+			rightGrp.RelProps.Distinct = memo.HashDistinctOp
+		}
 
 		// join and its commute are a new group
 		joinGrp := m.MemoizeInnerJoin(nil, semi.Left, rightGrp, plan.JoinTypeInner, semi.Filter)
@@ -502,7 +504,9 @@ func addRightSemiJoins(m *memo.Memo) error {
 			}
 
 			rGroup := m.MemoizeProject(nil, semi.Right, projectExpressions)
-			rGroup.RelProps.Distinct = memo.HashDistinctOp
+			if _, ok := semi.Right.First.(*memo.Distinct); !ok {
+				rGroup.RelProps.Distinct = memo.HashDistinctOp
+			}
 
 			lookup := &memo.Lookup{
 				Index:    idx,

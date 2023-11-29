@@ -70,6 +70,7 @@ var OnceAfterDefault = []Rule{
 	{replaceAggId, replaceAgg},
 	{replaceIdxSortId, replaceIdxSort},
 	{eraseProjectionId, eraseProjection},
+	{flattenDistinctId, flattenDistinct},
 	{insertTopNId, insertTopNNodes},
 	{applyHashInId, applyHashIn},
 	{assignRoutinesId, assignRoutines},

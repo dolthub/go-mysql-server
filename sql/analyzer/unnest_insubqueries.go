@@ -212,25 +212,28 @@ func disambiguateTables(used map[string]int, n sql.Node) (sql.Node, error) {
 	return n, err
 }
 
-func getHighestProjection(rec sql.Node) (sql.Expression, bool, error) {
-	sch := rec.Schema()
-	for rec != nil {
-		if !sch.Equals(rec.Schema()) {
+// getHighestProjection returns a set of projection expressions responsible
+// for the input node's schema, or false if an aggregate or set type is
+// found (which we cannot generate named projections for yet).
+func getHighestProjection(n sql.Node) (sql.Expression, bool, error) {
+	sch := n.Schema()
+	for n != nil {
+		if !sch.Equals(n.Schema()) {
 			break
 		}
 		var proj []sql.Expression
-		switch n := rec.(type) {
+		switch nn := n.(type) {
 		case *plan.Project:
-			proj = n.Projections
+			proj = nn.Projections
 		case *plan.JoinNode:
-			left, ok, err := getHighestProjection(n.Left())
+			left, ok, err := getHighestProjection(nn.Left())
 			if err != nil {
 				return nil, false, err
 			}
 			if !ok {
 				return nil, false, nil
 			}
-			right, ok, err := getHighestProjection(n.Right())
+			right, ok, err := getHighestProjection(nn.Right())
 			if err != nil {
 				return nil, false, err
 			}
@@ -250,17 +253,16 @@ func getHighestProjection(rec sql.Node) (sql.Expression, bool, error) {
 				proj = append(proj, e)
 			}
 		case *plan.GroupBy:
-			proj = n.SelectedExprs
+			proj = nn.SelectedExprs
 		case *plan.Window:
-			proj = n.SelectExprs
-			// TODO tableIdNode
+			proj = nn.SelectExprs
 		case sql.NameableNode:
 			proj = expression.SchemaToGetFields(sch)
 		case *plan.SetOp:
 			return nil, false, nil
 		default:
-			if len(n.Children()) == 1 {
-				rec = n.Children()[0]
+			if len(nn.Children()) == 1 {
+				n = nn.Children()[0]
 				continue
 			}
 		}

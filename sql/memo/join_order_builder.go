@@ -148,7 +148,7 @@ func NewJoinOrderBuilder(memo *Memo) *joinOrderBuilder {
 	}
 }
 
-var ErrUpsupportedReorderNode = errors.New("unsupported join reorder node")
+var ErrUnsupportedReorderNode = errors.New("unsupported join reorder node")
 
 type reorderErr struct {
 	err error
@@ -233,7 +233,7 @@ func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet, *Ex
 	case *plan.CachedResults:
 		return j.populateSubgraph(n.Child)
 	default:
-		err := fmt.Errorf("%w: %T", ErrUpsupportedReorderNode, n)
+		err := fmt.Errorf("%w: %T", ErrUnsupportedReorderNode, n)
 		j.handleErr(err)
 	}
 	return j.allVertices().difference(startV), j.allEdges().Difference(startE), group
@@ -579,7 +579,7 @@ func (j *joinOrderBuilder) buildJoinLeaf(n sql.Node) *ExprGroup {
 	case *plan.SetOp:
 		rel = &SetOp{sourceBase: b, Table: n}
 	default:
-		err := fmt.Errorf("%w: %T", ErrUpsupportedReorderNode, n)
+		err := fmt.Errorf("%w: %T", ErrUnsupportedReorderNode, n)
 		j.handleErr(err)
 	}
 
