@@ -2498,6 +2498,14 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemIntType("stored_program_definition_cache", 256, 524288, false),
 		Default:           int64(256),
 	},
+	"strict_mysql_compatibility": {
+		Name:              "strict_mysql_compatibility",
+		Scope:             sql.SystemVariableScope_Both,
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemBoolType("strict_mysql_compatibility"),
+		Default:           int8(0),
+	},
 	"super_read_only": {
 		Name:              "super_read_only",
 		Scope:             sql.SystemVariableScope_Global,

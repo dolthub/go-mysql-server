@@ -1031,7 +1031,6 @@ func (c *indexCoster) costIndexScanAnd(filter *iScanAnd, s sql.Statistic, ordina
 	}
 
 	return conj.stat, exact.Union(conj.applied), nil
-
 }
 
 func (c *indexCoster) costIndexScanOr(filter *iScanOr, s sql.Statistic, ordinals map[string]int) (sql.Statistic, bool, error) {

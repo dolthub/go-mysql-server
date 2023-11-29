@@ -3765,6 +3765,89 @@ var IndexPrefixQueries = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/7040
+		Name: "unique indexes on TEXT/BLOB columns with no prefix length (MariaDB Compatibility)",
+		SetUpScript: []string{
+			"create table t (pk int primary key, col1 text);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select @@strict_mysql_compatibility;",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:    "alter table t add unique key k1(col1);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "insert into t values (4, ''), (5, ' '), (8, '.'), (-1, '  ');",
+				Expected: []sql.Row{{types.NewOkResult(4)}},
+			},
+			{
+				Query:    "insert into t values (1, 'oneasdfasdf');",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "insert into t values (3, 'three');",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:          "insert into t values (2, 'oneasdfasdf');",
+				ExpectedErrStr: "duplicate unique key given: [oneasdfasdf]",
+			},
+			{
+				Query:              "select col1 from t where col1='oneasdfasdf';",
+				Expected:           []sql.Row{{"oneasdfasdf"}},
+				CheckIndexedAccess: true,
+				ExpectedIndexes:    []string{"k1"},
+			},
+			{
+				Query: "explain select * from t where col1 >= 'one';",
+				Expected: []sql.Row{
+					{"Filter"},
+					{" ├─ (t.col1 >= 'one')"},
+					{" └─ Table"},
+					{"     ├─ name: t"},
+					{"     └─ columns: [pk col1]"}},
+			},
+			{
+				// Indexes with a content-hashed BLOB/TEXT field cannot be used in range scans (only in point lookups)
+				Query:           "select * from t where col1 >= ' ' order by pk;",
+				ExpectedIndexes: []string{"primary"},
+				Expected:        []sql.Row{{-1, "  "}, {1, "oneasdfasdf"}, {3, "three"}, {5, " "}, {8, "."}},
+			},
+			{
+				Query:    "create table t2 (pk int primary key, col1 BLOB, unique key k1(col1));",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/7040
+		Name: "unique indexes on TEXT/BLOB columns with no prefix length (Strict MySQL Compatibility)",
+		SetUpScript: []string{
+			"create table t (pk int primary key, col1 text);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "set @@strict_mysql_compatibility = true;",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "select @@strict_mysql_compatibility;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:          "alter table t add unique key k1(col1);",
+				ExpectedErrStr: "blob/text column 'col1' used in key specification without a key length",
+			},
+			{
+				Query:          "create table t2 (pk int primary key, col1 BLOB, unique key k1(col1));",
+				ExpectedErrStr: "blob/text column 'col1' used in key specification without a key length",
+			},
+		},
+	},
+	{
 		Name:        "test prefix limits",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
