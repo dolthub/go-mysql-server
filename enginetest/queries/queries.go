@@ -832,8 +832,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		SkipServerEngine: true, // the type of column 'x' does not match
-		Query:            "select * from (select 1, 1) a(x,y) union select * from (select 1, NULL) b(x,y) union select * from (select 1,1) c(x,y);",
+		Query: "select * from (select 1, 1) a(x,y) union select * from (select 1, NULL) b(x,y) union select * from (select 1,1) c(x,y);",
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "x",
@@ -3010,9 +3009,8 @@ Select * from (
 		Expected: []sql.Row{{false}},
 	},
 	{
-		SkipServerEngine: true, // the type of the column does not match
-		Query:            `SELECT 'a' NOT IN ('b','c',null,'d')`,
-		Expected:         []sql.Row{{nil}},
+		Query:    `SELECT 'a' NOT IN ('b','c',null,'d')`,
+		Expected: []sql.Row{{nil}},
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "'a' NOT IN ('b','c',null,'d')",

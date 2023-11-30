@@ -40,6 +40,7 @@ import (
 )
 
 // RunQueryWithContext runs the query given and asserts that it doesn't result in an error.
+// If |ctx| is nil, this function creates new context using `NewContext()` method on given harness.
 func RunQueryWithContext(t *testing.T, e QueryEngine, harness Harness, ctx *sql.Context, query string) {
 	if ctx == nil {
 		ctx = NewContext(harness)
@@ -64,6 +65,9 @@ func IsServerEngine(e QueryEngine) bool {
 	return ok
 }
 
+// CreateNewConnectionForServerEngine creates a new connection in the server engine.
+// If there was an existing one, it gets closed before the new gets created.
+// This function should be called when needing to use new session for the server.
 func CreateNewConnectionForServerEngine(ctx *sql.Context, e QueryEngine) error {
 	if IsServerEngine(e) {
 		return e.(*ServerQueryEngine).NewConnection(ctx)
@@ -594,25 +598,33 @@ type CustomValueValidator interface {
 	Validate(interface{}) (bool, error)
 }
 
-func rowToSQL(s sql.Schema, row sql.Row, actualRow sql.Row) (sql.Row, error) {
-	if s == nil || len(s) == 0 || types.IsOkResult(row) {
-		return row, nil
+// rowToSQL converts some expected row values into appropriate types according to given valid schema.
+// |convertTime| is true if it is a `SHOW` statements, except for `SHOW EVENTS`. This is set earlier in `checkResult()` method.
+func rowToSQL(s sql.Schema, expectedRow sql.Row, actualRow sql.Row, convertTime bool) (sql.Row, error) {
+	if s == nil || len(s) == 0 || types.IsOkResult(expectedRow) {
+		return expectedRow, nil
 	}
 	newRow := sql.Row{}
-	for i, v := range row {
+	for i, v := range expectedRow {
 		if v == nil {
 			newRow = append(newRow, nil)
 		} else if types.IsDecimal(s[i].Type) {
 			newRow = append(newRow, v)
 		} else if types.IsEnum(s[i].Type) || types.IsSet(s[i].Type) {
-			// NOTE: engine tests use the index of the element, whereas over the wire tests use the string value
+			// engine tests use the index of the element, whereas over the wire tests use the string value
+			// TODO: need better check since the type received from go-sql-driver does not
+			//  provide data about its elements, we assume the result matches FOR NOW.
 			newRow = append(newRow, actualRow[i])
 		} else {
-			c, _, err := s[i].Type.Convert(v)
-			if err != nil {
-				return nil, err
+			if _, ok := v.(time.Time); ok && !convertTime {
+				newRow = append(newRow, v)
+			} else {
+				c, _, err := s[i].Type.Convert(v)
+				if err != nil {
+					return nil, err
+				}
+				newRow = append(newRow, c)
 			}
-			newRow = append(newRow, c)
 		}
 	}
 
@@ -634,13 +646,15 @@ func checkResults(
 	upperQuery := strings.ToUpper(q)
 	orderBy := strings.Contains(upperQuery, "ORDER BY ")
 
-	// We replace all times for SHOW statements with the Unix epoch
-	// except for SHOW EVENTS,
+	convertTime := true
+
+	// We replace all times for SHOW statements with the Unix epoch except for SHOW EVENTS
 	if strings.HasPrefix(upperQuery, "SHOW ") && !strings.Contains(upperQuery, "EVENTS") {
 		for _, widenedRow := range widenedRows {
 			for i, val := range widenedRow {
 				if _, ok := val.(time.Time); ok {
 					widenedRow[i] = time.Unix(0, 0).UTC()
+					convertTime = false
 				}
 			}
 		}
@@ -659,8 +673,11 @@ func checkResults(
 		}
 	}
 
-	// statements that do not return any row over the wire because of nil or empty schema causes row mismatch of single empty row vs no row
-	if IsServerEngine(e) && (sch == nil || len(sch) == 0) && len(widenedRows) == 0 && len(widenedExpected) == 1 && len(widenedExpected[0]) == 0 {
+	isServerEngine := IsServerEngine(e)
+
+	// if the sch is nil or empty, over the wire result is no row whereas single empty row is expected.
+	// This happens for SET and SELECT INTO statements.
+	if isServerEngine && (sch == nil || len(sch) == 0) && len(widenedRows) == 0 && len(widenedExpected) == 1 && len(widenedExpected[0]) == 0 {
 		widenedExpected = widenedRows
 	}
 
@@ -682,7 +699,7 @@ func checkResults(
 				widenedExpected[i][j] = actual // ensure it passes equality check later
 			}
 
-			if IsServerEngine(e) {
+			if isServerEngine {
 				// The result received from go sql driver does not have 'Info'
 				// data returned, so we set it to 'nil' for server engine tests only.
 				if okRes, ok := widenedExpected[i][j].(types.OkResult); ok {
@@ -695,11 +712,13 @@ func checkResults(
 				}
 			}
 		}
-		if IsServerEngine(e) && len(widenedRows) > i && len(widenedRows[i]) == len(widenedExpected[i]) {
-			convertedExpected, err := rowToSQL(sch, widenedExpected[i], widenedRows[i])
-			if err == nil {
-				widenedExpected[i] = convertedExpected
-			}
+
+		// this attempts to do what `rowToSQL()` method in `handler.go` on expected row
+		// because over the wire values gets converted to SQL values depending on the schema type.
+		if isServerEngine && len(widenedRows) > i && len(widenedRows[i]) == len(widenedExpected[i]) {
+			convertedExpected, err := rowToSQL(sch, widenedExpected[i], widenedRows[i], convertTime)
+			require.NoError(t, err)
+			widenedExpected[i] = convertedExpected
 		}
 	}
 
@@ -711,7 +730,7 @@ func checkResults(
 	}
 
 	// If the expected schema was given, test it as well
-	if expectedCols != nil && !IsServerEngine(e) {
+	if expectedCols != nil && !isServerEngine {
 		assert.Equal(t, simplifyResultSchema(expectedCols), simplifyResultSchema(sch))
 	}
 }

@@ -161,6 +161,8 @@ func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, pa
 		}
 	}
 
+	// the `;` at the end of the query gets stored in cache when preparing the statement,
+	// which cause it to be not removed for some data storage (e.g. `CREATE VIEW`). This causes inconsistency issue.
 	q := strings.TrimSpace(query)
 	// trim spaces and empty statements
 	q = strings.TrimRightFunc(q, func(r rune) bool {
@@ -204,6 +206,12 @@ func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, pa
 	return s.queryOrExec(stmt, parsed, q, args)
 }
 
+// queryOrExec function use `query()` or `exec()` method of go-sql-driver depending on the sql parser plan.
+// If |stmt| is nil, then we use the connection db to query/exec the given query statement because some queries cannot
+// be run as prepared.
+// TODO: for `EXECUTE` and `CALL` statements, it can be either query or exec depending on the statement that prepared or stored procedure holds.
+//
+//	for now, we use `query` to get the row results for these statements. For statements that needs `exec`, there will be no result.
 func (s *ServerQueryEngine) queryOrExec(stmt *gosql.Stmt, parsed sqlparser.Statement, query string, args []any) (sql.Schema, sql.RowIter, error) {
 	var err error
 	switch parsed.(type) {
