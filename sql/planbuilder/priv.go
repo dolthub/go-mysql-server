@@ -379,13 +379,23 @@ func (b *Builder) buildFlush(inScope *scope, f *ast.Flush) (outScope *scope) {
 		b.handleErr(err)
 	}
 
-	switch strings.ToLower(f.Option.Name) {
+	// MySQL docs: https://dev.mysql.com/doc/refman/8.0/en/flush.html
+	// Some opts should be no-ops, but we should support others, so have those be errors
+	opt := strings.ToLower(f.Option.Name)
+	if strings.HasPrefix(opt, "relay logs for channel") {
+		err := fmt.Errorf("%s not supported", f.Option.Name)
+		b.handleErr(err)
+	}
+	switch opt {
 	case "privileges":
 		node, _ := plan.NewFlushPrivileges(writesToBinlog).WithDatabase(b.resolveDb("mysql"))
 		outScope.node = node
-	case "binary logs":
+	case "binary logs", "engine logs":
 		node := plan.Nothing{}
 		outScope.node = node
+	case "error logs", "relay logs", "general logs", "slow logs", "status":
+		err := fmt.Errorf("%s not supported", f.Option.Name)
+		b.handleErr(err)
 	default:
 		err := fmt.Errorf("%s not supported", f.Option.Name)
 		b.handleErr(err)
