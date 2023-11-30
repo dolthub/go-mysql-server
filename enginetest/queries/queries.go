@@ -5355,21 +5355,21 @@ Select * from (
 		},
 	},
 	{
-		Query: `SELECT if(123 = 123, NULL, "b")`,
+		Query:    `SELECT if(123 = 123, NULL, "b")`,
 		Expected: []sql.Row{{nil}},
 		ExpectedColumns: []*sql.Column{
 			{Name: "if(123 = 123, NULL, \"b\")", Type: types.LongText},
 		},
 	},
 	{
-		Query: `SELECT if(123 = 123, NULL, NULL = 1)`,
+		Query:    `SELECT if(123 = 123, NULL, NULL = 1)`,
 		Expected: []sql.Row{{nil}},
 		ExpectedColumns: []*sql.Column{
 			{Name: "if(123 = 123, NULL, NULL = 1)", Type: types.Int64}, // TODO: this should be getting coerced to bool
 		},
 	},
 	{
-		Query: `SELECT if(123 = 123, NULL, NULL)`,
+		Query:    `SELECT if(123 = 123, NULL, NULL)`,
 		Expected: []sql.Row{{nil}},
 		ExpectedColumns: []*sql.Column{
 			{Name: "if(123 = 123, NULL, NULL)", Type: types.Null},
