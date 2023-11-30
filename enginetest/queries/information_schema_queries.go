@@ -981,17 +981,17 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 					"datetime_precision, character_set_name, collation_name, dtd_identifier, " +
 					"routine_body, external_name, external_language, parameter_style, is_deterministic, " +
 					"sql_data_access, sql_path, security_type, sql_mode, routine_comment, definer, " +
-					"character_set_client, collation_connection, database_collation FROM information_schema.routines",
+					"character_set_client, collation_connection, database_collation FROM information_schema.routines order by routine_name",
 				Expected: []sql.Row{
 					{"p1", "def", "mydb", "p1", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, nil, "SQL",
 						nil, "SQL", "SQL", "YES", "CONTAINS SQL", nil, "DEFINER", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES",
 						"hi", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
-					{"p2", "def", "mydb", "p2", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, nil, "SQL",
-						nil, "SQL", "SQL", "NO", "CONTAINS SQL", nil, "INVOKER", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES",
-						"", "user@%", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 					{"p12", "def", "foo", "p12", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, nil, "SQL",
 						nil, "SQL", "SQL", "YES", "CONTAINS SQL", nil, "DEFINER", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES",
 						"hello", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+					{"p2", "def", "mydb", "p2", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, nil, "SQL",
+						nil, "SQL", "SQL", "NO", "CONTAINS SQL", nil, "INVOKER", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES",
+						"", "user@%", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 					{"p21", "def", "mydb", "p21", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, nil, "SQL",
 						nil, "SQL", "SQL", "NO", "CONTAINS SQL", nil, "DEFINER", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES",
 						"", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},

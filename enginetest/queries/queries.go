@@ -31,11 +31,12 @@ import (
 )
 
 type QueryTest struct {
-	Query           string
-	Expected        []sql.Row
-	ExpectedColumns sql.Schema // only Name and Type matter here, because that's what we send on the wire
-	Bindings        map[string]*query.BindVariable
-	SkipPrepared    bool
+	Query            string
+	Expected         []sql.Row
+	ExpectedColumns  sql.Schema // only Name and Type matter here, because that's what we send on the wire
+	Bindings         map[string]*query.BindVariable
+	SkipPrepared     bool
+	SkipServerEngine bool
 }
 
 type QueryPlanTest struct {
@@ -766,8 +767,9 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
-		Query:    "show full processlist",
-		Expected: []sql.Row{},
+		SkipServerEngine: true,
+		Query:            "show full processlist",
+		Expected:         []sql.Row{},
 	},
 	{
 		Query: "select * from (select i, i2 from niltable) a(x,y) union select * from (select 1, NULL) b(x,y) union select * from (select i, i2 from niltable) c(x,y)",
@@ -791,7 +793,8 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "select * from (select 1, 1) a(x,y) union select * from (select 1, NULL) b(x,y) union select * from (select 1,1) c(x,y);",
+		SkipServerEngine: true, // the type of column 'x' does not match
+		Query:            "select * from (select 1, 1) a(x,y) union select * from (select 1, NULL) b(x,y) union select * from (select 1,1) c(x,y);",
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "x",
@@ -2968,8 +2971,9 @@ Select * from (
 		Expected: []sql.Row{{false}},
 	},
 	{
-		Query:    `SELECT 'a' NOT IN ('b','c',null,'d')`,
-		Expected: []sql.Row{{nil}},
+		SkipServerEngine: true, // the type of the column does not match
+		Query:            `SELECT 'a' NOT IN ('b','c',null,'d')`,
+		Expected:         []sql.Row{{nil}},
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "'a' NOT IN ('b','c',null,'d')",
@@ -4512,8 +4516,9 @@ Select * from (
 		Expected: []sql.Row{{-3.0}},
 	},
 	{
-		Query:    `SELECT CONVERT("-3.9876", FLOAT) FROM dual`,
-		Expected: []sql.Row{{float32(-3.9876)}},
+		SkipServerEngine: true, // the precision of expected and actual result does not match
+		Query:            `SELECT CONVERT("-3.9876", FLOAT) FROM dual`,
+		Expected:         []sql.Row{{float32(-3.9876)}},
 	},
 	{
 		Query:    "SELECT CAST(10.56789 as CHAR(3));",
@@ -4536,6 +4541,7 @@ Select * from (
 		Expected: []sql.Row{{"1234567893.1234567893"}},
 	},
 	{
+		SkipServerEngine: true, // currently, the server engine test returns the correct result of "10.00"
 		// In enginetests, the SQL wire conversion logic isn't used, which is what expands the DECIMAL(4,2) value
 		// from "10" to "10.00" to exactly match MySQL's result. So, here we see just "10", but through sql-server
 		// we'll see the correct "10.00" value. Ideally, the enginetests (and dolt sql) would also execute the
@@ -5534,6 +5540,8 @@ Select * from (
 		},
 	},
 	{
+		SkipServerEngine: true, // the order of the rows does not match
+		// NOTE: utf8_general_ci is collation of utf8mb3, which was deprecated and now removed in MySQL
 		Query: "SHOW COLLATION WHERE `Collation` IN ('binary', 'utf8_general_ci', 'utf8mb4_0900_ai_ci')",
 		Expected: []sql.Row{
 			{
@@ -7232,7 +7240,8 @@ Select * from (
 		},
 	},
 	{
-		Query: `SELECT JSON_OBJECT(JSON_OBJECT("foo", "bar"), 10);`,
+		SkipServerEngine: true, // the over the wire result need the double quotes to be escaped
+		Query:            `SELECT JSON_OBJECT(JSON_OBJECT("foo", "bar"), 10);`,
 		Expected: []sql.Row{
 			{types.MustJSON(`{"{\"foo\": \"bar\"}": 10}`)},
 		},
@@ -8607,6 +8616,11 @@ FROM mytable;`,
 			{3, "third row"},
 		},
 	},
+	{
+		// TODO: we do not return correct result in some cases. The method used: `GetIsUpdatableFromCreateView(cv *CreateView)`
+		Query:    "select TABLE_NAME, IS_UPDATABLE from information_schema.views where table_schema = 'mydb'",
+		Expected: []sql.Row{{"myview1", "YES"}, {"myview2", "YES"}, {"myview3", "NO"}, {"myview4", "NO"}, {"myview5", "YES"}},
+	},
 }
 
 var VersionedQueries = []QueryTest{
@@ -9504,6 +9518,7 @@ type WriteQueryTest struct {
 	SelectQuery         string
 	ExpectedSelect      []sql.Row
 	Bindings            map[string]*query.BindVariable
+	SkipServerEngine    bool
 }
 
 // GenericErrorQueryTest is a query test that is used to assert an error occurs for some query, without specifying what
@@ -9763,13 +9778,14 @@ var VersionedViewTests = []QueryTest{
 
 	// info schema support
 	{
-		Query: "select * from information_schema.views where table_schema = 'mydb'",
+		Query: "select TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME, VIEW_DEFINITION, CHECK_OPTION, DEFINER, SECURITY_TYPE, " +
+			"CHARACTER_SET_CLIENT, COLLATION_CONNECTION from information_schema.views where table_schema = 'mydb'",
 		Expected: []sql.Row{
-			sql.NewRow("def", "mydb", "myview1", "SELECT * FROM myhistorytable", "NONE", "YES", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
-			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview1 WHERE i = 1", "NONE", "YES", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
-			sql.NewRow("def", "mydb", "myview3", "SELECT i from myview1 union select s from myhistorytable", "NONE", "YES", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
-			sql.NewRow("def", "mydb", "myview4", "SELECT * FROM myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed) from myhistorytable)", "NONE", "NO", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
-			sql.NewRow("def", "mydb", "myview5", "SELECT * FROM (select * from myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed))) as sq", "NONE", "NO", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview1", "SELECT * FROM myhistorytable", "NONE", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview1 WHERE i = 1", "NONE", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview3", "SELECT i from myview1 union select s from myhistorytable", "NONE", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview4", "SELECT * FROM myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed) from myhistorytable)", "NONE", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview5", "SELECT * FROM (select * from myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed))) as sq", "NONE", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
 		},
 	},
 	{

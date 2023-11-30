@@ -47,18 +47,18 @@ func (b *BaseBuilder) buildDropTrigger(ctx *sql.Context, n *plan.DropTrigger, ro
 	triggerDb, ok := n.Db.(sql.TriggerDatabase)
 	if !ok {
 		if n.IfExists {
-			return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+			return rowIterWithOkResultWithZeroRowsAffected(), nil
 		} else {
 			return nil, sql.ErrTriggerDoesNotExist.New(n.TriggerName)
 		}
 	}
 	err := triggerDb.DropTrigger(ctx, n.TriggerName)
 	if n.IfExists && sql.ErrTriggerDoesNotExist.Is(err) {
-		return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+		return rowIterWithOkResultWithZeroRowsAffected(), nil
 	} else if err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
 func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.Row) (sql.RowIter, error) {
@@ -181,9 +181,9 @@ func (b *BaseBuilder) buildCreateView(ctx *sql.Context, n *plan.CreateView, row 
 	// isUpdatable := GetIsUpdatableFromCreateView(cv)
 	creator, ok := n.Database().(sql.ViewDatabase)
 	if ok {
-		return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), creator.CreateView(ctx, n.Name, n.Definition.TextDefinition, n.CreateViewString)
+		return rowIterWithOkResultWithZeroRowsAffected(), creator.CreateView(ctx, n.Name, n.Definition.TextDefinition, n.CreateViewString)
 	} else {
-		return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), registry.Register(n.Database().Name(), n.View())
+		return rowIterWithOkResultWithZeroRowsAffected(), registry.Register(n.Database().Name(), n.View())
 	}
 }
 
@@ -192,7 +192,7 @@ func (b *BaseBuilder) buildCreateCheck(ctx *sql.Context, n *plan.CreateCheck, ro
 	if err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
 func (b *BaseBuilder) buildAlterDefaultSet(ctx *sql.Context, n *plan.AlterDefaultSet, row sql.Row) (sql.RowIter, error) {
@@ -223,7 +223,7 @@ func (b *BaseBuilder) buildAlterDefaultSet(ctx *sql.Context, n *plan.AlterDefaul
 	}
 	newCol := &(*col)
 	newCol.Default = n.Default
-	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), alterable.ModifyColumn(ctx, n.ColumnName, newCol, nil)
+	return rowIterWithOkResultWithZeroRowsAffected(), alterable.ModifyColumn(ctx, n.ColumnName, newCol, nil)
 }
 
 func (b *BaseBuilder) buildDropCheck(ctx *sql.Context, n *plan.DropCheck, row sql.Row) (sql.RowIter, error) {
@@ -422,7 +422,7 @@ func (b *BaseBuilder) buildAlterDefaultDrop(ctx *sql.Context, n *plan.AlterDefau
 	}
 	newCol := &(*col)
 	newCol.Default = nil
-	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), alterable.ModifyColumn(ctx, n.ColumnName, newCol, nil)
+	return rowIterWithOkResultWithZeroRowsAffected(), alterable.ModifyColumn(ctx, n.ColumnName, newCol, nil)
 }
 
 func (b *BaseBuilder) buildDropView(ctx *sql.Context, n *plan.DropView, row sql.Row) (sql.RowIter, error) {
@@ -509,7 +509,7 @@ func (b *BaseBuilder) buildCreateUser(ctx *sql.Context, n *plan.CreateUser, row 
 	if err := mysqlDb.Persist(ctx, editor); err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
 func (b *BaseBuilder) buildAlterPK(ctx *sql.Context, n *plan.AlterPK, row sql.Row) (sql.RowIter, error) {
@@ -624,18 +624,18 @@ func (b *BaseBuilder) buildDropProcedure(ctx *sql.Context, n *plan.DropProcedure
 	procDb, ok := n.Db.(sql.StoredProcedureDatabase)
 	if !ok {
 		if n.IfExists {
-			return sql.RowsToRowIter(), nil
+			return rowIterWithOkResultWithZeroRowsAffected(), nil
 		} else {
 			return nil, sql.ErrStoredProceduresNotSupported.New(n.ProcedureName)
 		}
 	}
 	err := procDb.DropStoredProcedure(ctx, n.ProcedureName)
 	if n.IfExists && sql.ErrStoredProcedureDoesNotExist.Is(err) {
-		return sql.RowsToRowIter(), nil
+		return rowIterWithOkResultWithZeroRowsAffected(), nil
 	} else if err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(), nil
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
 func (b *BaseBuilder) buildDropDB(ctx *sql.Context, n *plan.DropDB, row sql.Row) (sql.RowIter, error) {
@@ -718,7 +718,7 @@ func (b *BaseBuilder) buildRenameColumn(ctx *sql.Context, n *plan.RenameColumn, 
 		}
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), alterable.ModifyColumn(ctx, n.ColumnName, col, nil)
+	return rowIterWithOkResultWithZeroRowsAffected(), alterable.ModifyColumn(ctx, n.ColumnName, col, nil)
 }
 
 func (b *BaseBuilder) buildAddColumn(ctx *sql.Context, n *plan.AddColumn, row sql.Row) (sql.RowIter, error) {
@@ -918,7 +918,7 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 		}
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
 func createIndexesForCreateTable(ctx *sql.Context, db sql.Database, tableNode sql.Table, idxes []*plan.IndexDefinition) (err error) {
@@ -1047,7 +1047,7 @@ func (b *BaseBuilder) buildAlterTableCollation(ctx *sql.Context, n *plan.AlterTa
 		return nil, sql.ErrAlterTableCollationNotSupported.New(tbl.Name())
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), alterable.ModifyDefaultCollation(ctx, n.Collation)
+	return rowIterWithOkResultWithZeroRowsAffected(), alterable.ModifyDefaultCollation(ctx, n.Collation)
 }
 
 func (b *BaseBuilder) buildCreateForeignKey(ctx *sql.Context, n *plan.CreateForeignKey, row sql.Row) (sql.RowIter, error) {
@@ -1097,5 +1097,9 @@ func (b *BaseBuilder) buildCreateForeignKey(ctx *sql.Context, n *plan.CreateFore
 		return nil, err
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
+}
+
+func rowIterWithOkResultWithZeroRowsAffected() sql.RowIter {
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0)))
 }

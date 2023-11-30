@@ -32,7 +32,8 @@ var StatisticsQueries = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT * FROM information_schema.column_statistics",
+				SkipResultCheckOnServerEngine: true, // the types of mcvCounts and mcvs are not identified over the wire result
+				Query:                         "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
 					{"mydb", "t", "i", stats.NewStatistic(3, 3, 0, 24, time.Now(), sql.NewStatQualifier("mydb", "t", "primary"), []string{"i"}, []sql.Type{types.Int64}, []*stats.Bucket{
 						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(1)}, nil, nil),
@@ -56,7 +57,8 @@ var StatisticsQueries = []ScriptTest{
 				Expected: []sql.Row{{"t", "histogram", "status", "OK"}},
 			},
 			{
-				Query: "SELECT * FROM information_schema.column_statistics",
+				SkipResultCheckOnServerEngine: true, // the types of mcvCounts and mcvs are not identified over the wire result
+				Query:                         "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
 					{"mydb", "t", "i", stats.NewStatistic(40, 40, 1, 0, time.Now(), sql.NewStatQualifier("mydb", "t", "primary"), []string{"i"}, []sql.Type{types.Int64}, []*stats.Bucket{
 						stats.NewHistogramBucket(20, 20, 0, 1, sql.Row{float64(50)}, nil, nil),
@@ -84,7 +86,8 @@ var StatisticsQueries = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT * FROM information_schema.column_statistics",
+				SkipResultCheckOnServerEngine: true, // the types of mcvCounts and mcvs are not identified over the wire result
+				Query:                         "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
 					{"mydb", "t", "i", stats.NewStatistic(3, 3, 0, 48, time.Now(), sql.NewStatQualifier("mydb", "t", "primary"), []string{"i"}, []sql.Type{types.Int64}, []*stats.Bucket{
 						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(1)}, nil, []sql.Row{}),
@@ -111,7 +114,8 @@ var StatisticsQueries = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT * FROM information_schema.column_statistics",
+				SkipResultCheckOnServerEngine: true, // the types of mcvCounts and mcvs are not identified over the wire result
+				Query:                         "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
 					{"mydb", "t", "i", stats.NewStatistic(4, 4, 0, 32, time.Now(), sql.NewStatQualifier("mydb", "t", "primary"), []string{"i"}, []sql.Type{types.Float64}, []*stats.Bucket{
 						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{float64(1.25)}, nil, []sql.Row{}),

@@ -159,6 +159,7 @@ var UpdateTests = []WriteQueryTest{
 			uint64(0)}},
 	},
 	{
+		SkipServerEngine:    true, // datetime returned is non-zero over the wire
 		WriteQuery:          "UPDATE typestable SET da = '0000-00-00', ti = '0000-00-00 00:00:00';",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM typestable;",

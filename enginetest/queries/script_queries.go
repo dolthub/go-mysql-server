@@ -93,6 +93,10 @@ type ScriptTestAssertion struct {
 	// in the test suite results.
 	Skip bool
 
+	// SkipResultCheckOnServerEngine is used when the result of over the wire test does not match the result from the engine test.
+	// It should be fixed in the future.
+	SkipResultCheckOnServerEngine bool
+
 	// Bindings are variable mappings only used for prepared tests
 	Bindings map[string]*querypb.BindVariable
 
@@ -3232,7 +3236,8 @@ CREATE TABLE tab3 (
 			},
 			// Assert that returned values are correct.
 			{
-				Query: "SELECT * from t order by pk;",
+				SkipResultCheckOnServerEngine: true, // the type differs on int16 vs int64 (for go sql driver, integer value always returned as int64)
+				Query:                         "SELECT * from t order by pk;",
 				Expected: []sql.Row{
 					{1, int16(1901)},
 					{2, int16(1901)},
@@ -3262,8 +3267,7 @@ CREATE TABLE tab3 (
 	{
 		Name: "INSERT IGNORE correctly truncates column data",
 		SetUpScript: []string{
-			`
-			CREATE TABLE t (
+			`CREATE TABLE t (
 				pk int primary key,
 				col1 boolean,
 				col2 integer,
@@ -3282,8 +3286,7 @@ CREATE TABLE tab3 (
 				col15 year,
 				col16 ENUM('first', 'second'),
 				col17 SET('a', 'b')
-			);
-			`,
+			);`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -3296,7 +3299,8 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				Query: "SELECT * from t",
+				SkipResultCheckOnServerEngine: true, // the type differs on int16 vs int64 (for go sql driver, integer value always returned as int64) AND the datetime returned is not non-zero
+				Query:                         "SELECT * from t",
 				Expected: []sql.Row{
 					{
 						1,
@@ -3509,8 +3513,12 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{0}, {0}, {70}},
 			},
 			{
-				Query:    "select d / 314990 from t order by d;",
-				Expected: []sql.Row{{"-0.01584177275469"}, {"0.00000634940792"}, {"70.91202260389219"}},
+				// TODO: we observed that if there is column decimal type, we use it as final result.
+				//  But it was incorrect, it only uses the scale as starting point and increments by the `divIntermediatePrecisionInc`
+				//  This test is correct, but the result received over the wire is incorrect as it converts the final result based on the column decimal type.
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "select d / 314990 from t order by d;",
+				Expected:                      []sql.Row{{"-0.01584177275469"}, {"0.00000634940792"}, {"70.91202260389219"}},
 			},
 		},
 	},
@@ -4896,7 +4904,8 @@ var PreparedScriptTests = []ScriptTest{
 				ExpectedErrStr: "bind variable not provided: 'v2'",
 			},
 			{
-				Query: "execute s using @a, @b",
+				SkipResultCheckOnServerEngine: true, // execute depends on prepare stmt for whether to use 'query' or 'exec' from go sql driver.
+				Query:                         "execute s using @a, @b",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 1}},
 				},
@@ -5418,14 +5427,16 @@ var CreateDatabaseScripts = []ScriptTest{
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: nil}}},
 			},
 			{
-				Query:    "SHOW WARNINGS /* 1 */",
-				Expected: []sql.Row{{"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"}},
+				SkipResultCheckOnServerEngine: true, // tracking issue here, https://github.com/dolthub/dolt/issues/6921. Also for when run with prepares, the warning is added twice
+				Query:                         "SHOW WARNINGS /* 1 */",
+				Expected:                      []sql.Row{{"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"}},
 			},
 			{
 				Query:    "CREATE DATABASE newtest1db DEFAULT COLLATE binary ENCRYPTION='Y'",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: nil}}},
 			},
 			{
+				SkipResultCheckOnServerEngine: true, // tracking issue here, https://github.com/dolthub/dolt/issues/6921.
 				// TODO: There should only be one warning (the warnings are not clearing for create database query) AND 'PREPARE' statements should not create warning from its query
 				Query:    "SHOW WARNINGS /* 2 */",
 				Expected: []sql.Row{{"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"}, {"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"}},

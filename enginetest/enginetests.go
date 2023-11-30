@@ -65,6 +65,9 @@ func TestQueries(t *testing.T, harness Harness) {
 					t.Skipf("Skipping query plan for %s", tt.Query)
 				}
 			}
+			if IsServerEngine(e) && tt.SkipServerEngine {
+				t.Skip("skipping for server engine")
+			}
 			TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 		})
 	}
@@ -276,6 +279,10 @@ func TestInfoSchema(t *testing.T, h Harness) {
 	t.Run("information_schema.processlist", func(t *testing.T) {
 		e := mustNewEngine(t, h)
 		defer e.Close()
+
+		if IsServerEngine(e) {
+			t.Skip("skipping for server engine as the processlist returned from server differs")
+		}
 		p := sqle.NewProcessList()
 		p.AddConnection(1, "localhost")
 
@@ -2013,7 +2020,7 @@ func TestStoredProcedures(t *testing.T, harness Harness) {
 				"DEFINER", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 		}, nil, nil)
 
-		TestQueryWithContext(t, ctx, e, harness, "DROP PROCEDURE mydb.p1", []sql.Row{}, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "DROP PROCEDURE mydb.p1", []sql.Row{{types.OkResult{}}}, nil, nil)
 
 		TestQueryWithContext(t, ctx, e, harness, "SHOW PROCEDURE STATUS", []sql.Row{
 			{"mydb", "p2", "PROCEDURE", "", time.Unix(0, 0).UTC(), time.Unix(0, 0).UTC(),

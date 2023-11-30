@@ -300,12 +300,8 @@ func (t DecimalType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 	// if the value is not part of valid table column, the result value should use its
 	// own precision and scale.
 	var val []byte
-	if t.definesColumn {
-		val = AppendAndSliceString(dest, value.Decimal.StringFixed(int32(t.scale)))
-	} else {
-		decStr := value.Decimal.StringFixed(value.Decimal.Exponent() * -1)
-		val = AppendAndSliceString(dest, decStr)
-	}
+	decStr := value.Decimal.StringFixed(value.Decimal.Exponent() * -1)
+	val = AppendAndSliceString(dest, decStr)
 
 	return sqltypes.MakeTrusted(sqltypes.Decimal, val), nil
 }
