@@ -177,6 +177,12 @@ func (i *IndexedTableAccess) Name() string {
 	return i.TableNode.Name()
 }
 
+func (i *IndexedTableAccess) WithName(s string) sql.Node {
+	ret := *i
+	ret.TableNode = i.TableNode.(sql.RenameableNode).WithName(s).(sql.TableNode)
+	return &ret
+}
+
 func (i *IndexedTableAccess) Database() sql.Database {
 	return i.TableNode.Database()
 }

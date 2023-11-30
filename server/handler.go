@@ -443,7 +443,7 @@ func isSessionAutocommit(ctx *sql.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return types.ConvertToBool(autoCommitSessionVar)
+	return sql.ConvertToBool(ctx, autoCommitSessionVar)
 }
 
 // Call doQuery and cast known errors to SQLError

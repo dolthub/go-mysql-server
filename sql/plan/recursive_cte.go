@@ -55,6 +55,7 @@ type RecursiveCte struct {
 
 var _ sql.Node = (*RecursiveCte)(nil)
 var _ sql.Nameable = (*RecursiveCte)(nil)
+var _ sql.RenameableNode = (*RecursiveCte)(nil)
 var _ sql.Expressioner = (*RecursiveCte)(nil)
 var _ sql.CollationCoercible = (*RecursiveCte)(nil)
 
@@ -70,6 +71,12 @@ func NewRecursiveCte(initial, recursive sql.Node, name string, outputCols []stri
 		},
 		name: name,
 	}
+}
+
+func (r *RecursiveCte) WithName(s string) sql.Node {
+	ret := *r
+	ret.name = s
+	return &ret
 }
 
 // Name implements sql.Nameable
@@ -210,7 +217,15 @@ type RecursiveTable struct {
 }
 
 var _ sql.Node = (*RecursiveTable)(nil)
+var _ sql.NameableNode = (*RecursiveTable)(nil)
+var _ sql.RenameableNode = (*RecursiveTable)(nil)
 var _ sql.CollationCoercible = (*RecursiveTable)(nil)
+
+func (r *RecursiveTable) WithName(s string) sql.Node {
+	ret := *r
+	r.name = s
+	return &ret
+}
 
 func (r *RecursiveTable) Resolved() bool {
 	return true

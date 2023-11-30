@@ -312,33 +312,33 @@ var JoinPlanningTests = []struct {
 		},
 		tests: []JoinPlanTest{
 			{
-				q:     "select /*+ LOOKUP_JOIN(scalarSubq0,xy) JOIN_ORDER(scalarSubq0,xy) */ * from xy where x = 1 and y in (select a from ab);",
+				q:     "select /*+ LOOKUP_JOIN(ab,xy) JOIN_ORDER(ab,xy) */ * from xy where x = 1 and y in (select a from ab);",
 				types: []plan.JoinType{plan.JoinTypeLookup},
 				exp:   []sql.Row{{1, 0}},
 			},
 			{
-				q:     "select /*+ LOOKUP_JOIN(xy,scalarSubq0) */ * from xy where x in (select b from ab where a in (0,1,2));",
+				q:     "select /*+ LOOKUP_JOIN(xy,ab) */ * from xy where x in (select b from ab where a in (0,1,2));",
 				types: []plan.JoinType{plan.JoinTypeLookup},
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
 				// TODO: RIGHT_SEMI_JOIN tuple equalities
-				q:     "select /*+ LOOKUP_JOIN(xy,scalarSubq0) */ * from xy where (x,y) in (select b,a from ab where a in (0,1,2));",
+				q:     "select /*+ LOOKUP_JOIN(xy,ab) */ * from xy where (x,y) in (select b,a from ab where a in (0,1,2));",
 				types: []plan.JoinType{plan.JoinTypeSemi},
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
-				q:     "select /*+ LOOKUP_JOIN(xy,scalarSubq0) */ * from xy where x in (select a from ab);",
+				q:     "select /*+ LOOKUP_JOIN(xy,ab) */ * from xy where x in (select a from ab);",
 				types: []plan.JoinType{plan.JoinTypeLookup},
 				exp:   []sql.Row{{2, 1}, {1, 0}, {0, 2}, {3, 3}},
 			},
 			{
-				q:     "select /*+ LOOKUP_JOIN(xy,scalarSubq0) */ * from xy where x in (select a from ab where a in (1,2));",
+				q:     "select /*+ LOOKUP_JOIN(xy,ab) */ * from xy where x in (select a from ab where a in (1,2));",
 				types: []plan.JoinType{plan.JoinTypeLookup},
 				exp:   []sql.Row{{2, 1}, {1, 0}},
 			},
 			{
-				q:     "select /*+ LOOKUP_JOIN(xy,scalarSubq0)  */* from xy where x in (select a from ab);",
+				q:     "select /*+ LOOKUP_JOIN(xy,ab)  */* from xy where x in (select a from ab);",
 				types: []plan.JoinType{plan.JoinTypeLookup},
 				exp:   []sql.Row{{2, 1}, {1, 0}, {0, 2}, {3, 3}},
 			},
@@ -359,13 +359,13 @@ var JoinPlanningTests = []struct {
 			},
 			{
 				q:     "select * from xy where x != (select r from rs where r = 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterMerge},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
 				// anti join will be cross-join-right, be passed non-nil parent row
 				q:     "select x,a from ab, (select * from xy where x != (select r from rs where r = 1) order by 1) sq where x = 2 and b = 2 order by 1,2;",
-				types: []plan.JoinType{plan.JoinTypeCrossHash, plan.JoinTypeLeftOuterHashExcludeNulls},
+				types: []plan.JoinType{plan.JoinTypeCrossHash, plan.JoinTypeLeftOuterLookup},
 				exp:   []sql.Row{{2, 0}, {2, 1}, {2, 2}},
 			},
 			{
@@ -380,25 +380,25 @@ select * from uv where u > (
   order by 1 limit 1
 )
 order by 1;`,
-				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeCrossHash, plan.JoinTypeLeftOuterHashExcludeNulls},
+				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeCrossHash, plan.JoinTypeLeftOuterMerge},
 				exp:   []sql.Row{{1, 1}, {2, 2}, {3, 2}},
 			},
 			{
 				// cast prevents scope merging
 				q:     "select * from xy where x != (select cast(r as signed) from rs where r = 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls},
+				types: []plan.JoinType{},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
 				// order by will be discarded
 				q:     "select * from xy where x != (select r from rs where r = 1 order by 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterMerge},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
 				// limit prevents scope merging
 				q:     "select * from xy where x != (select r from rs where r = 1 limit 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterMerge},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
@@ -430,7 +430,7 @@ order by 1;`,
 			//},
 			{
 				q:     "select * from xy where y-1 in (select cast(u as signed) from uv) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeHash},
+				types: []plan.JoinType{},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
@@ -445,19 +445,19 @@ order by 1;`,
 			},
 			{
 				q:     "select * from xy where x in (select u from uv join ab on u = a and a = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeLookup},
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeMerge},
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
 				// group by doesn't transform
 				q:     "select * from xy where y-1 in (select u from uv group by v having v = 2 order by 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeHash},
+				types: []plan.JoinType{plan.JoinTypeSemi},
 				exp:   []sql.Row{{3, 3}},
 			},
 			{
 				// window doesn't transform
 				q:     "select * from xy where y-1 in (select row_number() over (order by v) from uv) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeHash},
+				types: []plan.JoinType{},
 				exp:   []sql.Row{{0, 2}, {3, 3}},
 			},
 		},
@@ -509,17 +509,17 @@ HAVING count(v) >= 1)`,
 			},
 			{
 				q:     "select * from xy where y-1 = (select u from uv where v = 2 order by 1 limit 1);",
-				types: []plan.JoinType{plan.JoinTypeSemi},
+				types: []plan.JoinType{plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{3, 3}},
 			},
 			{
 				q:     "select * from xy where x != (select u from uv where v = 2 order by 1 limit 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeAnti},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterMerge},
 				exp:   []sql.Row{{0, 2}, {1, 0}, {3, 3}},
 			},
 			{
 				q:     "select * from xy where x != (select distinct u from uv where v = 2 order by 1 limit 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeAnti},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterMerge},
 				exp:   []sql.Row{{0, 2}, {1, 0}, {3, 3}},
 			},
 			{
@@ -579,7 +579,7 @@ WHERE EXISTS (
 select x from xy where
   not exists (select a from ab where a = x and a = 1) and
   not exists (select a from ab where a = x and a = 2)`,
-				types: []plan.JoinType{plan.JoinTypeAntiLookup, plan.JoinTypeLeftOuterMerge},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterLookup, plan.JoinTypeLeftOuterMerge},
 				exp:   []sql.Row{{0}, {3}},
 			},
 			{
@@ -631,27 +631,27 @@ FROM xy
 		tests: []JoinPlanTest{
 			{
 				q:     "select * from xy where y >= (select u from uv where u = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemi},
+				types: []plan.JoinType{plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{0, 2}, {3, 3}},
 			},
 			{
 				q:     "select * from xy where x <= (select u from uv where u = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemi},
+				types: []plan.JoinType{plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{0, 2}, {1, 0}, {2, 1}},
 			},
 			{
 				q:     "select * from xy where x < (select u from uv where u = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemi},
+				types: []plan.JoinType{plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{0, 2}, {1, 0}},
 			},
 			{
 				q:     "select * from xy where x > (select u from uv where u = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemi},
+				types: []plan.JoinType{plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{3, 3}},
 			},
 			{
 				q:     "select * from uv where v <=> (select u from uv where u = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemi},
+				types: []plan.JoinType{plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{2, 2}, {3, 2}},
 			},
 		},
@@ -672,7 +672,7 @@ FROM xy
 			},
 			{
 				q:     "select * from xy where x in (select 1 where 1 in (select 1 where 1 in (select 1 where x != 2)) and x = 1);",
-				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeSemi, plan.JoinTypeHash},
+				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeSemi, plan.JoinTypeLookup},
 				exp:   []sql.Row{{1, 0}},
 			},
 			{
@@ -754,39 +754,39 @@ where u in (select * from rec);`,
 		tests: []JoinPlanTest{
 			{
 				q:     "select * from xy where x in (select u from uv join ab on u = a and a = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeLookup},
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeMerge},
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
 				q: `select x from xy where x in (
 	select (select u from uv where u = sq.a)
     from (select a from ab) sq);`,
-				types: []plan.JoinType{plan.JoinTypeHash},
+				types: []plan.JoinType{},
 				exp:   []sql.Row{{0}, {1}, {2}, {3}},
 			},
 			{
 				q:     "select * from xy where y >= (select u from uv where u = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemi},
+				types: []plan.JoinType{plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{0, 2}, {3, 3}},
 			},
 			{
 				q:     "select * from xy where x <= (select u from uv where u = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemi},
+				types: []plan.JoinType{plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{0, 2}, {1, 0}, {2, 1}},
 			},
 			{
 				q:     "select * from xy where x < (select u from uv where u = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemi},
+				types: []plan.JoinType{plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{0, 2}, {1, 0}},
 			},
 			{
 				q:     "select * from xy where x > (select u from uv where u = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemi},
+				types: []plan.JoinType{plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{3, 3}},
 			},
 			{
 				q:     "select * from uv where v <=> (select u from uv where u = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemi},
+				types: []plan.JoinType{plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{2, 2}, {3, 2}},
 			},
 		},
@@ -803,7 +803,7 @@ where u in (select * from rec);`,
 		// write a bunch of left joins and make sure they are converted to anti joins
 		tests: []JoinPlanTest{
 			{
-				q:     "select /*+ HASH_JOIN(xy,scalarSubq0) */ * from xy where x not in (select a from empty_tbl) order by x",
+				q:     "select /*+ HASH_JOIN(xy,empty_tbl) */ * from xy where x not in (select a from empty_tbl) order by x",
 				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls},
 				exp: []sql.Row{
 					{0, 2},
@@ -813,7 +813,7 @@ where u in (select * from rec);`,
 				},
 			},
 			{
-				q:     "select /*+ HASH_JOIN(xy,scalarSubq0) */ * from xy where x not in (select v from uv) order by x",
+				q:     "select /*+ HASH_JOIN(xy,uv) */ * from xy where x not in (select v from uv) order by x",
 				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls},
 				exp: []sql.Row{
 					{0, 2},
@@ -821,7 +821,7 @@ where u in (select * from rec);`,
 				},
 			},
 			{
-				q:     "select /*+ HASH_JOIN(xy,scalarSubq0) */ * from xy where x not in (select v from uv where u = 2) order by x",
+				q:     "select /*+ HASH_JOIN(xy,uv) */ * from xy where x not in (select v from uv where u = 2) order by x",
 				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls},
 				exp: []sql.Row{
 					{0, 2},
@@ -830,7 +830,7 @@ where u in (select * from rec);`,
 				},
 			},
 			{
-				q:     "select /*+ HASH_JOIN(xy,scalarSubq0) */ * from xy where x != (select v from uv where u = 2) order by x",
+				q:     "select /*+ HASH_JOIN(xy,uv) */ * from xy where x != (select v from uv where u = 2) order by x",
 				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls},
 				exp: []sql.Row{
 					{0, 2},
@@ -849,7 +849,7 @@ where u in (select * from rec);`,
 				},
 			},
 			{
-				q:     "select /*+ MERGE_JOIN(xy,scalarSubq0) */ * from xy where x not in (select u from uv WHERE u = 2) order by x",
+				q:     "select /*+ MERGE_JOIN(xy,uv) */ * from xy where x not in (select u from uv WHERE u = 2) order by x",
 				types: []plan.JoinType{plan.JoinTypeLeftOuterMerge},
 				exp: []sql.Row{
 					{0, 2},
@@ -858,7 +858,7 @@ where u in (select * from rec);`,
 				},
 			},
 			{
-				q:     "select /*+ LEFT_OUTER_LOOKUP_JOIN(xy,scalarSubq0) */ * from xy where x not in (select u from uv WHERE u = 2) order by x",
+				q:     "select /*+ LEFT_OUTER_LOOKUP_JOIN(xy,uv) */ * from xy where x not in (select u from uv WHERE u = 2) order by x",
 				types: []plan.JoinType{plan.JoinTypeLeftOuterLookup},
 				exp: []sql.Row{
 					{0, 2},
@@ -914,8 +914,8 @@ where u in (select * from rec);`,
 				order: []string{"b", "c", "a"},
 			},
 			{
-				q:     "select /*+ JOIN_ORDER(b,scalarSubq0,a) */ 1 from xy a join xy b on a.x+3 = b.x WHERE a.x in (select u from uv c)",
-				order: []string{"b", "scalarSubq0", "a"},
+				q:     "select /*+ JOIN_ORDER(b,c,a) */ 1 from xy a join xy b on a.x+3 = b.x WHERE a.x in (select u from uv c)",
+				order: []string{"b", "c", "a"},
 			},
 		},
 	},
@@ -993,28 +993,28 @@ join uv d on d.u = c.x`,
 				order: []string{"a", "b", "c", "d"},
 			},
 			{
-				q: "select /*+ LOOKUP_JOIN(xy,scalarSubq0) */ 1 from xy where x not in (select u from uv)",
+				q: "select /*+ LOOKUP_JOIN(xy,uv) */ 1 from xy where x not in (select u from uv)",
 				// This should be JoinTypeSemiLookup, but for https://github.com/dolthub/go-mysql-server/issues/1894
-				types: []plan.JoinType{plan.JoinTypeAntiLookup},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterLookup},
 			},
 			{
-				q:     "select /*+ ANTI_JOIN(xy,scalarSubq0) */ 1 from xy where x not in (select u from uv)",
+				q:     "select /*+ ANTI_JOIN(xy,uv) */ 1 from xy where x not in (select u from uv)",
 				types: []plan.JoinType{plan.JoinTypeAnti},
 			},
 			{
-				q:     "select /*+ LOOKUP_JOIN(xy,scalarSubq0) */ 1 from xy where x in (select u from uv)",
+				q:     "select /*+ LOOKUP_JOIN(xy,uv) */ 1 from xy where x in (select u from uv)",
 				types: []plan.JoinType{plan.JoinTypeLookup},
 			},
 			{
-				q:     "select /*+ SEMI_JOIN(xy,scalarSubq0) */ 1 from xy where x in (select u from uv)",
+				q:     "select /*+ SEMI_JOIN(xy,uv) */ 1 from xy where x in (select u from uv)",
 				types: []plan.JoinType{plan.JoinTypeSemi},
 			},
 			{
-				q:     "select /*+ LOOKUP_JOIN(s,scalarSubq0) */ 1 from xy s where x in (select u from uv)",
+				q:     "select /*+ LOOKUP_JOIN(s,uv) */ 1 from xy s where x in (select u from uv)",
 				types: []plan.JoinType{plan.JoinTypeLookup},
 			},
 			{
-				q:     "select /*+ SEMI_JOIN(s,scalarSubq0) */ 1 from xy s where x in (select u from uv)",
+				q:     "select /*+ SEMI_JOIN(s,uv) */ 1 from xy s where x in (select u from uv)",
 				types: []plan.JoinType{plan.JoinTypeSemi},
 			},
 		},

@@ -65,14 +65,14 @@ func newAliasDisambiguator(n sql.Node, scope *plan.Scope) *aliasDisambiguator {
 	return &aliasDisambiguator{n: n, scope: scope}
 }
 
-// hoistSelectExists merges a WHERE EXISTS subquery scope with its outer
+// unnestExistsSubqueries merges a WHERE EXISTS subquery scope with its outer
 // scope when the subquery filters on columns from the outer scope.
 //
 // For example:
 // select * from a where exists (select 1 from b where a.x = b.x)
 // =>
 // select * from a semi join b on a.x = b.x
-func hoistSelectExists(
+func unnestExistsSubqueries(
 	ctx *sql.Context,
 	a *Analyzer,
 	n sql.Node,
@@ -80,16 +80,16 @@ func hoistSelectExists(
 	sel RuleSelector,
 ) (sql.Node, transform.TreeIdentity, error) {
 	aliasDisambig := newAliasDisambiguator(n, scope)
-	return hoistSelectExistsHelper(ctx, scope, a, n, aliasDisambig)
+	return unnestSelectExistsHelper(ctx, scope, a, n, aliasDisambig)
 }
 
-func hoistSelectExistsHelper(ctx *sql.Context, scope *plan.Scope, a *Analyzer, n sql.Node, aliasDisambig *aliasDisambiguator) (sql.Node, transform.TreeIdentity, error) {
+func unnestSelectExistsHelper(ctx *sql.Context, scope *plan.Scope, a *Analyzer, n sql.Node, aliasDisambig *aliasDisambiguator) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		f, ok := n.(*plan.Filter)
 		if !ok {
 			return n, transform.SameTree, nil
 		}
-		return hoistExistSubqueries(ctx, scope, a, f, aliasDisambig)
+		return unnestExistSubqueries(ctx, scope, a, f, aliasDisambig)
 	})
 }
 
@@ -108,10 +108,10 @@ func simplifyPartialJoinParents(n sql.Node) (sql.Node, bool) {
 	}
 }
 
-// hoistExistSubqueries scans a filter for [NOT] WHERE EXISTS, and then attempts to
+// unnestExistSubqueries scans a filter for [NOT] WHERE EXISTS, and then attempts to
 // extract the subquery, correlated filters, a modified outer scope (net subquery and filters),
 // and the new target joinType
-func hoistExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, filter *plan.Filter, aliasDisambig *aliasDisambiguator) (sql.Node, transform.TreeIdentity, error) {
+func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, filter *plan.Filter, aliasDisambig *aliasDisambiguator) (sql.Node, transform.TreeIdentity, error) {
 	ret := filter.Child
 	var retFilters []sql.Expression
 	same := transform.SameTree
@@ -154,7 +154,7 @@ func hoistExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, filt
 
 		// recurse
 		if s.inner != nil {
-			s.inner, _, err = hoistSelectExistsHelper(ctx, scope.NewScopeFromSubqueryExpression(filter, sq.Correlated()), a, s.inner, aliasDisambig)
+			s.inner, _, err = unnestSelectExistsHelper(ctx, scope.NewScopeFromSubqueryExpression(filter, sq.Correlated()), a, s.inner, aliasDisambig)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}

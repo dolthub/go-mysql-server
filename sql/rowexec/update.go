@@ -279,7 +279,7 @@ func (u *updateJoinIter) shouldUpdateDirectionalJoin(ctx *sql.Context, joinRow, 
 	if err != nil {
 		return true, err
 	}
-	if val.(bool) {
+	if v, ok := val.(bool); ok && v {
 		return true, nil
 	}
 

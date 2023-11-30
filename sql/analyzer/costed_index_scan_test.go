@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -830,4 +831,100 @@ func and2(expressions ...sql.Expression) sql.Expression {
 		return and2(expressions[1:]...)
 	}
 	return expression.NewAnd(expressions[0], and2(expressions[1:]...))
+}
+
+func TestIndexSearchable(t *testing.T) {
+	// we want to run costed index scan rule with the indexSearchableTable as input
+	input := plan.NewFilter(
+		expression.NewEquals(
+			expression.NewGetFieldWithTable(0, types.Int64, "mydb", "xy", "x", false),
+			expression.NewLiteral(1, types.Int64),
+		),
+		plan.NewResolvedTable(&indexSearchableTable{underlying: plan.NewDualSqlTable()}, nil, nil),
+	)
+
+	exp := `
+Filter
+ ├─ (xy.x = 1)
+ └─ IndexedTableAccess()
+     ├─ index: [xy.x]
+     └─ filters: [{[1, 1]}]
+`
+	res, same, err := costedIndexScans(nil, nil, input, nil, nil)
+	require.NoError(t, err)
+	require.False(t, bool(same))
+	require.Equal(t, strings.TrimSpace(exp), strings.TrimSpace(res.String()), "expected:\n%s,\nfound:\n%s\n", exp, res.String())
+}
+
+var xIdx = &dummyIdx{id: "primary", database: "mydb", table: "xy", expr: []sql.Expression{expression.NewGetFieldWithTable(0, types.Int64, "mydb", "xy", "x", false)}}
+
+type indexSearchableTable struct {
+	underlying sql.Table
+}
+
+var _ sql.IndexSearchableTable = (*indexSearchableTable)(nil)
+var _ sql.IndexAddressable = (*indexSearchableTable)(nil)
+var _ sql.IndexedTable = (*indexSearchableTable)(nil)
+
+func (i *indexSearchableTable) Name() string {
+	return i.underlying.Name()
+}
+
+func (i *indexSearchableTable) String() string {
+	return i.underlying.String()
+}
+
+func (i *indexSearchableTable) Schema() sql.Schema {
+	return i.underlying.Schema()
+}
+
+func (i *indexSearchableTable) Collation() sql.CollationID {
+	return i.underlying.Collation()
+}
+
+func (i *indexSearchableTable) Partitions(context *sql.Context) (sql.PartitionIter, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (i *indexSearchableTable) PartitionRows(context *sql.Context, partition sql.Partition) (sql.RowIter, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (i *indexSearchableTable) SkipIndexCosting() bool {
+	return true
+}
+
+func (i *indexSearchableTable) IndexWithPrefix(ctx *sql.Context, expressions []string) (sql.Index, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (i *indexSearchableTable) LookupForExpressions(ctx *sql.Context, exprs []sql.Expression) (sql.IndexLookup, error) {
+	if eq, ok := exprs[0].(*expression.Equals); ok {
+		if gf, ok := eq.Left().(*expression.GetField); ok && strings.EqualFold(gf.Name(), "x") {
+			if lit, ok := eq.Right().(*expression.Literal); ok {
+				ranges := sql.RangeCollection{{sql.ClosedRangeColumnExpr(lit.Value(), lit.Value(), lit.Type())}}
+				return sql.IndexLookup{Index: xIdx, Ranges: ranges}, nil
+			}
+		}
+	}
+	return sql.IndexLookup{}, nil
+}
+
+func (i *indexSearchableTable) IndexedAccess(lookup sql.IndexLookup) sql.IndexedTable {
+	return i
+}
+
+func (i *indexSearchableTable) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
+	return nil, nil
+}
+
+func (i *indexSearchableTable) PreciseMatch() bool {
+	return false
+}
+func (i *indexSearchableTable) LookupPartitions(context *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
+	//TODO implement me
+	panic("implement me")
 }

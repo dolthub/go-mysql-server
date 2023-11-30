@@ -76,6 +76,8 @@ func (b *Builder) buildShow(inScope *scope, s *ast.Show, query string) (outScope
 		return b.buildShowEngines(inScope, s)
 	case ast.KeywordString(ast.STATUS):
 		return b.buildShowStatus(inScope, s)
+	case ast.KeywordString(ast.PLUGINS):
+		return b.buildShowPlugins(inScope, s)
 	case "replica status":
 		outScope = inScope.push()
 		showRep := plan.NewShowReplicaStatus()
@@ -793,6 +795,17 @@ func (b *Builder) buildShowCollation(inScope *scope, s *ast.Show) (outScope *sco
 func (b *Builder) buildShowEngines(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	infoSchemaSelect, _, _, err := b.Parse("select * from information_schema.engines", false)
+	if err != nil {
+		b.handleErr(err)
+	}
+
+	outScope.node = infoSchemaSelect
+	return
+}
+
+func (b *Builder) buildShowPlugins(inScope *scope, s *ast.Show) (outScope *scope) {
+	outScope = inScope.push()
+	infoSchemaSelect, _, _, err := b.Parse("select * from information_schema.plugins", false)
 	if err != nil {
 		b.handleErr(err)
 	}

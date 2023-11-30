@@ -22,7 +22,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func (b *BaseBuilder) buildCaseStatement(ctx *sql.Context, n *plan.CaseStatement, row sql.Row) (sql.RowIter, error) {
@@ -80,7 +79,7 @@ func (b *BaseBuilder) buildIfElseBlock(ctx *sql.Context, n *plan.IfElseBlock, ro
 		}
 		var passedCondition bool
 		if condition != nil {
-			passedCondition, err = types.ConvertToBool(condition)
+			passedCondition, err = sql.ConvertToBool(ctx, condition)
 			if err != nil {
 				return nil, err
 			}
@@ -235,7 +234,7 @@ func (b *BaseBuilder) buildLoop(ctx *sql.Context, n *plan.Loop, row sql.Row) (sq
 		if err != nil {
 			return nil, err
 		}
-		conditionBool, err := types.ConvertToBool(condition)
+		conditionBool, err := sql.ConvertToBool(ctx, condition)
 		if err != nil {
 			return nil, err
 		}

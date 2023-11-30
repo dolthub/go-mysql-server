@@ -133,7 +133,7 @@ func (l *LogBase) Eval(
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(v))
 	}
-	return computeLog(val.(float64), l.base)
+	return computeLog(ctx, val.(float64), l.base)
 }
 
 // Log is a function that returns the natural logarithm of a value.
@@ -231,15 +231,17 @@ func (l *Log) Eval(
 	}
 
 	// rhs becomes value, lhs becomes base
-	return computeLog(rhs.(float64), lhs.(float64))
+	return computeLog(ctx, rhs.(float64), lhs.(float64))
 }
 
-func computeLog(v float64, base float64) (float64, error) {
+func computeLog(ctx *sql.Context, v float64, base float64) (interface{}, error) {
 	if v <= 0 {
-		return float64(0), ErrInvalidArgumentForLogarithm.New(v)
+		ctx.Warn(3020, ErrInvalidArgumentForLogarithm.New(v).Error())
+		return nil, nil
 	}
 	if base == float64(1) || base <= float64(0) {
-		return float64(0), ErrInvalidArgumentForLogarithm.New(base)
+		ctx.Warn(3020, ErrInvalidArgumentForLogarithm.New(base).Error())
+		return nil, nil
 	}
 	switch base {
 	case float64(2):

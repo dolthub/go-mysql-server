@@ -40,6 +40,7 @@ func TestSqrt(t *testing.T) {
 		{"valid string", sql.NewRow("9"), float64(3), false},
 		{"number is zero", sql.NewRow(0), float64(0), false},
 		{"positive number", sql.NewRow(8), float64(2.8284271247461903), false},
+		{"negative number", sql.NewRow(-1), nil, false},
 	}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -56,16 +57,6 @@ func TestSqrt(t *testing.T) {
 			}
 		})
 	}
-
-	// Test negative number
-	f = NewSqrt(
-		expression.NewGetField(0, types.Float64, "n", false),
-	)
-	require := require.New(t)
-	v, err := f.Eval(sql.NewEmptyContext(), []interface{}{float64(-4)})
-	require.NoError(err)
-	require.IsType(float64(0), v)
-	require.True(math.IsNaN(v.(float64)))
 }
 
 func TestPower(t *testing.T) {
@@ -87,6 +78,8 @@ func TestPower(t *testing.T) {
 		{"Exp is negative", types.Float64, sql.NewRow(2, -2), float64(0.25), false},
 		{"Base and exp are invalid strings", types.Float64, sql.NewRow("a", "b"), nil, true},
 		{"Base and exp are valid strings", types.Float64, sql.NewRow("2", "2"), float64(4), false},
+		{"positive inf", types.Float64, sql.NewRow(2, math.Inf(1)), nil, false},
+		{"negative inf", types.Float64, sql.NewRow(2, math.Inf(1)), nil, false},
 	}
 	for _, tt := range testCases {
 		f := NewPower(
@@ -107,20 +100,4 @@ func TestPower(t *testing.T) {
 			}
 		})
 	}
-
-	// Test inf numbers
-	f := NewPower(
-		expression.NewGetField(0, types.Float64, "", false),
-		expression.NewGetField(1, types.Float64, "", false),
-	)
-	require := require.New(t)
-	v, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(2, math.Inf(1)))
-	require.NoError(err)
-	require.IsType(float64(0), v)
-	require.True(math.IsInf(v.(float64), 1))
-
-	v, err = f.Eval(sql.NewEmptyContext(), sql.NewRow(math.Inf(1), 2))
-	require.NoError(err)
-	require.IsType(float64(0), v)
-	require.True(math.IsInf(v.(float64), 1))
 }

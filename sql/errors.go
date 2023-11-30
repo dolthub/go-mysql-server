@@ -134,9 +134,6 @@ var (
 	// ErrIncompatibleDefaultType is returned when a provided default cannot be coerced into the type of the column
 	ErrIncompatibleDefaultType = errors.NewKind("incompatible type for default value")
 
-	// ErrInvalidTextBlobColumnDefault is returned when a column of type text/blob (or related) has a literal default set.
-	ErrInvalidTextBlobColumnDefault = errors.NewKind("TEXT, BLOB, GEOMETRY, and JSON types may only have expression default values")
-
 	// ErrColumnDefaultDatetimeOnlyFunc is returned when a non datetime/timestamp column attempts to declare now/current_timestamp as a default value literal.
 	ErrColumnDefaultDatetimeOnlyFunc = errors.NewKind("only datetime/timestamp may declare default values of now()/current_timestamp() without surrounding parentheses")
 

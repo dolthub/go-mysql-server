@@ -1165,13 +1165,13 @@ func (dtf *UnaryDatetimeFunc) Type() sql.Type {
 
 // DayName implements the DAYNAME function
 type DayName struct {
-	*UnaryDatetimeFunc
+	*UnaryFunc
 }
 
 var _ sql.FunctionExpression = (*DayName)(nil)
 
 func NewDayName(arg sql.Expression) sql.Expression {
-	return &DayName{NewUnaryDatetimeFunc(arg, "DAYNAME", types.Text)}
+	return &DayName{NewUnaryFunc(arg, "DAYNAME", types.Text)}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -1192,10 +1192,24 @@ func (*DayName) CollationCoercibility(ctx *sql.Context) (collation sql.Collation
 func (d *DayName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := d.EvalChild(ctx, row)
 	if err != nil {
-		return nil, err
+		ctx.Warn(1292, types.ErrConvertingToTime.New(val).Error())
+		return nil, nil
 	}
 
-	t := val.(time.Time)
+	if s, ok := val.(string); ok {
+		val, _, err = types.DatetimeMaxPrecision.Convert(s)
+		if err != nil {
+			ctx.Warn(1292, types.ErrConvertingToTime.New(val).Error())
+			return nil, nil
+		}
+	}
+
+	t, ok := val.(time.Time)
+	if !ok {
+		ctx.Warn(1292, types.ErrConvertingToTime.New(val).Error())
+		return nil, nil
+	}
+
 	return t.Weekday().String(), nil
 }
 
@@ -1234,8 +1248,15 @@ func (m *Microsecond) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	t := val.(time.Time)
-	return uint64(t.Nanosecond()) / uint64(time.Microsecond), nil
+	switch v := val.(type) {
+	case time.Time:
+		return uint64(v.Nanosecond()) / uint64(time.Microsecond), nil
+	case nil:
+		return nil, nil
+	default:
+		ctx.Warn(1292, types.ErrConvertingToTime.New(val).Error())
+		return nil, nil
+	}
 }
 
 func (m *Microsecond) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -1273,8 +1294,15 @@ func (d *MonthName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	t := val.(time.Time)
-	return t.Month().String(), nil
+	switch v := val.(type) {
+	case time.Time:
+		return v.Month().String(), nil
+	case nil:
+		return nil, nil
+	default:
+		ctx.Warn(1292, types.ErrConvertingToTime.New(val).Error())
+		return nil, nil
+	}
 }
 
 func (d *MonthName) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -1312,8 +1340,15 @@ func (m *TimeToSec) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	t := val.(time.Time)
-	return uint64(t.Hour()*3600 + t.Minute()*60 + t.Second()), nil
+	switch v := val.(type) {
+	case time.Time:
+		return uint64(v.Hour()*3600 + v.Minute()*60 + v.Second()), nil
+	case nil:
+		return nil, nil
+	default:
+		ctx.Warn(1292, types.ErrConvertingToTime.New(val).Error())
+		return nil, nil
+	}
 }
 
 func (m *TimeToSec) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -1351,9 +1386,16 @@ func (m *WeekOfYear) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	t := val.(time.Time)
-	_, wk := t.ISOWeek()
-	return wk, nil
+	switch v := val.(type) {
+	case time.Time:
+		_, wk := v.ISOWeek()
+		return wk, nil
+	case nil:
+		return nil, nil
+	default:
+		ctx.Warn(1292, types.ErrConvertingToTime.New(val).Error())
+		return nil, nil
+	}
 }
 
 func (m *WeekOfYear) WithChildren(children ...sql.Expression) (sql.Expression, error) {

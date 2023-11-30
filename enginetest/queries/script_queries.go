@@ -4219,6 +4219,130 @@ CREATE TABLE tab3 (
 			},
 		},
 	},
+	{
+		Name: "Complex Filter Index Scan",
+		SetUpScript: []string{
+			`CREATE TABLE tab2 (
+              pk int NOT NULL,
+              col0 int,
+              col1 float,
+              col2 text,
+              col3 int,
+              col4 float,
+              col5 text,
+              PRIMARY KEY (pk),
+              UNIQUE KEY idx_tab2_0 (col3,col4),
+              UNIQUE KEY idx_tab2_1 (col1,col4),
+              UNIQUE KEY idx_tab2_2 (col3,col0,col4),
+              UNIQUE KEY idx_tab2_3 (col1,col3)
+            );`,
+			`insert into tab2 values ( 63, 587, 465.59 , 'aggxb', 303 , 763.91, 'tgpqr');`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT pk FROM tab2 WHERE col4 IS NULL OR col0 > 560 AND (col3 < 848) OR (col3 > 883) OR (((col4 >= 539.78 AND col3 <= 953))) OR ((col3 IN (258)) OR (col3 IN (583,234,372)) AND col4 >= 488.43)",
+				Expected: []sql.Row{
+					{63},
+				},
+			},
+		},
+	},
+	{
+		Name: "Complex Filter Index Scan",
+		SetUpScript: []string{
+			"create table t (pk int primary key, v1 int, v2 int, v3 int, v4 int);",
+			"create index v_idx on t (v1, v2, v3, v4);",
+			"insert into t values (0, 26, 24, 91, 0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t where (((v1>25 and v2 between 23 and 54) or (v1<>40 and v3>90)) or (v1<>7 and v4<=78));",
+				Expected: []sql.Row{
+					{0, 26, 24, 91, 0},
+				},
+			},
+		},
+	},
+	{
+		Name: "Complex Filter Index Scan",
+		SetUpScript: []string{
+			"create table t (pk integer primary key, col0 integer, col1 float);",
+			"create index idx on t (col0, col1);",
+			"insert into t values (0, 22, 1.23);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select pk, col0 from t where (col0 in (73,69)) or col0 in (4,12,3,17,70,20) or (col0 in (39) or (col1 < 69.67));",
+				Expected: []sql.Row{
+					{0, 22},
+				},
+			},
+		},
+	},
+	{
+		Name: "update columns with default",
+		SetUpScript: []string{
+			"create table t (i int default 10, j varchar(128) default (concat('abc', 'def')));",
+			"insert into t values (100, 'a'), (200, 'b');",
+			"create table t2 (i int);",
+			"insert into t2 values (1), (2), (3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "update t set i = default where i = 100;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query: "select * from t order by i",
+				Expected: []sql.Row{
+					{10, "a"},
+					{200, "b"},
+				},
+			},
+			{
+				Query: "update t set j = default where i = 200;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query: "select * from t order by i",
+				Expected: []sql.Row{
+					{10, "a"},
+					{200, "abcdef"},
+				},
+			},
+			{
+				Query: "update t set i = default, j = default;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 2, Info: plan.UpdateInfo{Matched: 2, Updated: 2}}},
+				},
+			},
+			{
+				Query: "select * from t order by i",
+				Expected: []sql.Row{
+					{10, "abcdef"},
+					{10, "abcdef"},
+				},
+			},
+			{
+				Query: "update t2 set i = default",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{Matched: 3, Updated: 3}}},
+				},
+			},
+			{
+				Query: "select * from t2",
+				Expected: []sql.Row{
+					{nil},
+					{nil},
+					{nil},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

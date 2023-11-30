@@ -56,7 +56,7 @@ func (e *Not) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	b, ok := v.(bool)
 	if !ok {
-		b, err = types.ConvertToBool(v)
+		b, err = sql.ConvertToBool(ctx, v)
 		if err != nil {
 			return nil, err
 		}
