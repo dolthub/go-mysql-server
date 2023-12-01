@@ -64,7 +64,7 @@ Project
          ├─ columns: [avg(cte.x):4, 1 (tinyint) as x]
          └─ GroupBy
              ├─ select: AVG(cte.x:2!null)
-             ├─ group:
+             ├─ group: 
              └─ SubqueryAlias
                  ├─ name: cte
                  ├─ outerVisibility: false
