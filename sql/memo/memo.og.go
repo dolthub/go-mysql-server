@@ -201,7 +201,7 @@ func (r *LateralJoin) JoinPrivate() *JoinBase {
 
 type TableScan struct {
 	*sourceBase
-	Table sql.TableIdNode
+	Table plan.TableIdNode
 }
 
 var _ RelExpr = (*TableScan)(nil)
@@ -219,7 +219,7 @@ func (r *TableScan) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
 }
 
-func (r *TableScan) TableIdNode() sql.TableIdNode {
+func (r *TableScan) TableIdNode() plan.TableIdNode {
 	return r.Table
 }
 
@@ -251,7 +251,7 @@ func (r *Values) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
 }
 
-func (r *Values) TableIdNode() sql.TableIdNode {
+func (r *Values) TableIdNode() plan.TableIdNode {
 	return r.Table
 }
 
@@ -283,7 +283,7 @@ func (r *TableAlias) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
 }
 
-func (r *TableAlias) TableIdNode() sql.TableIdNode {
+func (r *TableAlias) TableIdNode() plan.TableIdNode {
 	return r.Table
 }
 
@@ -315,7 +315,7 @@ func (r *RecursiveTable) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
 }
 
-func (r *RecursiveTable) TableIdNode() sql.TableIdNode {
+func (r *RecursiveTable) TableIdNode() plan.TableIdNode {
 	return r.Table
 }
 
@@ -347,7 +347,7 @@ func (r *RecursiveCte) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
 }
 
-func (r *RecursiveCte) TableIdNode() sql.TableIdNode {
+func (r *RecursiveCte) TableIdNode() plan.TableIdNode {
 	return r.Table
 }
 
@@ -379,7 +379,7 @@ func (r *SubqueryAlias) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
 }
 
-func (r *SubqueryAlias) TableIdNode() sql.TableIdNode {
+func (r *SubqueryAlias) TableIdNode() plan.TableIdNode {
 	return r.Table
 }
 
@@ -411,7 +411,7 @@ func (r *TableFunc) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
 }
 
-func (r *TableFunc) TableIdNode() sql.TableIdNode {
+func (r *TableFunc) TableIdNode() plan.TableIdNode {
 	return nil
 }
 
@@ -443,7 +443,7 @@ func (r *JSONTable) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
 }
 
-func (r *JSONTable) TableIdNode() sql.TableIdNode {
+func (r *JSONTable) TableIdNode() plan.TableIdNode {
 	return r.Table
 }
 
@@ -475,7 +475,7 @@ func (r *EmptyTable) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
 }
 
-func (r *EmptyTable) TableIdNode() sql.TableIdNode {
+func (r *EmptyTable) TableIdNode() plan.TableIdNode {
 	return r.Table
 }
 
@@ -507,7 +507,7 @@ func (r *SetOp) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
 }
 
-func (r *SetOp) TableIdNode() sql.TableIdNode {
+func (r *SetOp) TableIdNode() plan.TableIdNode {
 	return r.Table
 }
 

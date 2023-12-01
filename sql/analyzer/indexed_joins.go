@@ -377,7 +377,7 @@ func convertSemiToInnerJoin(a *Analyzer, m *memo.Memo) error {
 		leftCols := semi.Left.RelProps.OutputCols()
 		var projections []sql.Expression
 		for colId, hasNext := leftCols.Next(1); hasNext; colId, hasNext = leftCols.Next(colId + 1) {
-			var table sql.TableIdNode
+			var table plan.TableIdNode
 			for _, n := range semi.Left.RelProps.TableIdNodes() {
 				if n.Columns().Contains(colId) {
 					table = n
@@ -466,7 +466,7 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 		for colId, hasNext := leftCols.Next(1); hasNext; colId, hasNext = leftCols.Next(colId + 1) {
 			// we have ids and need to get the table back?
 			// search in tables
-			var table sql.TableIdNode
+			var table plan.TableIdNode
 			for _, n := range anti.Left.RelProps.TableIdNodes() {
 				if n.Columns().Contains(colId) {
 					table = n

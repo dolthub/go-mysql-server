@@ -19,7 +19,7 @@ type ValueDerivedTable struct {
 
 var _ sql.Node = (*ValueDerivedTable)(nil)
 var _ sql.CollationCoercible = (*ValueDerivedTable)(nil)
-var _ sql.TableIdNode = (*ValueDerivedTable)(nil)
+var _ TableIdNode = (*ValueDerivedTable)(nil)
 
 func NewValueDerivedTable(values *Values, name string) *ValueDerivedTable {
 	var s sql.Schema
@@ -30,7 +30,7 @@ func NewValueDerivedTable(values *Values, name string) *ValueDerivedTable {
 }
 
 // WithId implements sql.TableIdNode
-func (v *ValueDerivedTable) WithId(id sql.TableId) sql.TableIdNode {
+func (v *ValueDerivedTable) WithId(id sql.TableId) TableIdNode {
 	ret := *v
 	ret.id = id
 	return &ret
@@ -42,7 +42,7 @@ func (v *ValueDerivedTable) Id() sql.TableId {
 }
 
 // WithColumns implements sql.TableIdNode
-func (v *ValueDerivedTable) WithColumns(set sql.ColSet) sql.TableIdNode {
+func (v *ValueDerivedTable) WithColumns(set sql.ColSet) TableIdNode {
 	ret := *v
 	ret.cols = set
 	return &ret

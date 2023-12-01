@@ -811,7 +811,7 @@ type SimpleTableFunction struct {
 	cols            sql.ColSet
 }
 
-func (s SimpleTableFunction) WithId(id sql.TableId) sql.TableIdNode {
+func (s SimpleTableFunction) WithId(id sql.TableId) plan.TableIdNode {
 	s.id = id
 	return s
 }
@@ -820,7 +820,7 @@ func (s SimpleTableFunction) Id() sql.TableId {
 	return s.id
 }
 
-func (s SimpleTableFunction) WithColumns(set sql.ColSet) sql.TableIdNode {
+func (s SimpleTableFunction) WithColumns(set sql.ColSet) plan.TableIdNode {
 	s.cols = set
 	return s
 }

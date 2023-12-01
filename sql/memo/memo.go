@@ -909,7 +909,7 @@ type SourceRel interface {
 	TableId() sql.TableId
 	Indexes() []*Index
 	SetIndexes(indexes []*Index)
-	TableIdNode() sql.TableIdNode
+	TableIdNode() plan.TableIdNode
 }
 
 type Index struct {

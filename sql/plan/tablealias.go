@@ -34,7 +34,7 @@ var _ sql.CollationCoercible = (*TableAlias)(nil)
 // NewTableAlias returns a new Table alias node.
 func NewTableAlias(name string, node sql.Node) *TableAlias {
 	ret := &TableAlias{UnaryNode: &UnaryNode{Child: node}, name: name}
-	if tin, ok := node.(sql.TableIdNode); ok {
+	if tin, ok := node.(TableIdNode); ok {
 		ret.id = tin.Id()
 		ret.cols = tin.Columns()
 	}
@@ -42,7 +42,7 @@ func NewTableAlias(name string, node sql.Node) *TableAlias {
 }
 
 // WithId implements sql.TableIdNode
-func (t *TableAlias) WithId(id sql.TableId) sql.TableIdNode {
+func (t *TableAlias) WithId(id sql.TableId) TableIdNode {
 	ret := *t
 	ret.id = id
 	return &ret
@@ -54,7 +54,7 @@ func (t *TableAlias) Id() sql.TableId {
 }
 
 // WithColumns implements sql.TableIdNode
-func (t *TableAlias) WithColumns(set sql.ColSet) sql.TableIdNode {
+func (t *TableAlias) WithColumns(set sql.ColSet) TableIdNode {
 	ret := *t
 	ret.cols = set
 	return &ret

@@ -261,7 +261,7 @@ func getHighestProjection(n sql.Node) (sql.Expression, bool, error) {
 			proj = nn.SelectExprs
 		case *plan.SetOp:
 			return nil, false, nil
-		case sql.TableIdNode:
+		case plan.TableIdNode:
 			colset := nn.Columns()
 			idx := 0
 			sch := n.Schema()

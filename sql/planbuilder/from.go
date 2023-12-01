@@ -281,7 +281,7 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 			if tAlias != "" {
 				outScope.setTableAlias(tAlias)
 				var err error
-				outScope.node, err = b.f.buildTableAlias(tAlias, outScope.node.(sql.TableIdNode))
+				outScope.node, err = b.f.buildTableAlias(tAlias, outScope.node.(plan.TableIdNode))
 				if err != nil {
 					b.handleErr(err)
 				}
@@ -492,7 +492,7 @@ func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope
 
 	// Table Function must always have an alias, pick function name as alias if none is provided
 	var name string
-	var newAlias sql.TableIdNode
+	var newAlias plan.TableIdNode
 	if t.Alias.IsEmpty() {
 		name = t.Name
 		newAlias = plan.NewTableAlias(name, newInstance)
@@ -655,7 +655,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, name string, asof *ast.
 			})
 			cols.Add(sql.ColumnId(id))
 		}
-		if tin, ok := view.(sql.TableIdNode); ok {
+		if tin, ok := view.(plan.TableIdNode); ok {
 			// TODO should *sql.View implement TableIdNode?
 			outScope.node = tin.WithId(tabId).WithColumns(cols)
 		}

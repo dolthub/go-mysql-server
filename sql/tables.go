@@ -418,16 +418,6 @@ type TableNode interface {
 	UnderlyingTable() Table
 }
 
-// TableIdNode is a distinct source of rows associated with a table
-// identifier and set of column identifiers.
-type TableIdNode interface {
-	NameableNode
-	WithId(id TableId) TableIdNode
-	Id() TableId
-	WithColumns(ColSet) TableIdNode
-	Columns() ColSet
-}
-
 // MutableTableNode is a TableNode that can update its underlying table. Different methods are provided to accommodate
 // different use cases that require working with base-level tables v. wrappers on top of them. Some uses of these
 // methods might require that return values that implement all the same subinterfaces as the wrapped table, e.g.
