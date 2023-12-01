@@ -765,6 +765,10 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		Query:    "select 1 as x from xy having AVG(x) > 0",
+		Expected: []sql.Row{{1}},
+	},
+	{
 		Query:    "SELECT 1 WHERE ((1 IN (NULL >= 1)) IS NULL);",
 		Expected: []sql.Row{{1}},
 	},
