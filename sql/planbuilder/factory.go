@@ -164,7 +164,7 @@ func (f *factory) buildJoin(l, r sql.Node, op plan.JoinType, cond sql.Expression
 	return plan.NewJoin(l, r, op, cond), nil
 }
 
-func (f *factory) buildTableAlias(name string, child sql.TableIdNode) (sql.TableIdNode, error) {
+func (f *factory) buildTableAlias(name string, child sql.Node) (sql.TableIdNode, error) {
 	{
 		// deduplicate tableAlias->tableAlias and tableAlias->subqueryAlias
 		switch n := child.(type) {
@@ -172,8 +172,10 @@ func (f *factory) buildTableAlias(name string, child sql.TableIdNode) (sql.Table
 			return n.WithName(name).(sql.TableIdNode), nil
 		case *plan.SubqueryAlias:
 			return n.WithName(name).(sql.TableIdNode), nil
+		case sql.TableIdNode:
+			return plan.NewTableAlias(name, child).WithId(n.Id()).WithColumns(n.Columns()), nil
 		default:
-			return plan.NewTableAlias(name, child).WithId(child.Id()).WithColumns(child.Columns()), nil
+			return plan.NewTableAlias(name, child), nil
 		}
 	}
 }

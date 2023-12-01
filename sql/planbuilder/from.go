@@ -498,7 +498,7 @@ func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope
 		newAlias = plan.NewTableAlias(name, newInstance)
 	} else {
 		name = t.Alias.String()
-		newAlias, err = b.f.buildTableAlias(name, newInstance.(sql.TableIdNode))
+		newAlias, err = b.f.buildTableAlias(name, newInstance)
 		if err != nil {
 			b.handleErr(err)
 		}

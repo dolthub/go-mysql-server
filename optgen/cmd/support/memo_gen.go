@@ -17,15 +17,16 @@ type MemoExprs struct {
 }
 
 type ExprDef struct {
-	Name       string      `yaml:"name"`
-	SourceType string      `yaml:"sourceType"`
-	Join       bool        `yaml:"join"`
-	Attrs      [][2]string `yaml:"attrs"`
-	Unary      bool        `yaml:"unary"`
-	SkipExec   bool        `yaml:"skipExec"`
-	Scalar     bool        `yaml:"scalar"`
-	Binary     bool        `yaml:"binary"`
-	SkipName   bool        `yaml:"skipName"`
+	Name        string      `yaml:"name"`
+	SourceType  string      `yaml:"sourceType"`
+	Join        bool        `yaml:"join"`
+	Attrs       [][2]string `yaml:"attrs"`
+	Unary       bool        `yaml:"unary"`
+	SkipExec    bool        `yaml:"skipExec"`
+	Scalar      bool        `yaml:"scalar"`
+	Binary      bool        `yaml:"binary"`
+	SkipName    bool        `yaml:"skipName"`
+	SkipTableId bool        `yaml:"skipTableId"`
 }
 
 func DecodeMemoExprs(path string) (MemoExprs, error) {
@@ -161,7 +162,11 @@ func (g *MemoGen) genSourceRelInterface(define ExprDef) {
 	fmt.Fprintf(g.w, "}\n\n")
 
 	fmt.Fprintf(g.w, "func (r *%s) TableIdNode() sql.TableIdNode {\n", define.Name)
-	fmt.Fprintf(g.w, "  return r.Table\n")
+	if define.SkipTableId {
+		fmt.Fprintf(g.w, "  return nil\n")
+	} else {
+		fmt.Fprintf(g.w, "  return r.Table\n")
+	}
 	fmt.Fprintf(g.w, "}\n\n")
 
 	fmt.Fprintf(g.w, "func (r *%s) OutputCols() sql.Schema {\n", define.Name)

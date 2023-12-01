@@ -412,7 +412,7 @@ func (r *TableFunc) TableId() sql.TableId {
 }
 
 func (r *TableFunc) TableIdNode() sql.TableIdNode {
-	return r.Table
+	return nil
 }
 
 func (r *TableFunc) OutputCols() sql.Schema {

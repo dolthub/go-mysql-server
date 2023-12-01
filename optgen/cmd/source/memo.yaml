@@ -50,6 +50,7 @@ exprs:
   sourceType: "*plan.SubqueryAlias"
 - name: "TableFunc"
   sourceType: "sql.TableFunction"
+  skipTableId: true
 - name: "JSONTable"
   sourceType: "*plan.JSONTable"
 - name: "EmptyTable"

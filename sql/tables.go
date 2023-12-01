@@ -38,7 +38,6 @@ type TableFunction interface {
 	Expressioner
 	Databaser
 	Nameable
-	TableIdNode
 
 	// NewInstance calls the table function with the arguments provided, producing a Node
 	NewInstance(ctx *Context, db Database, args []Expression) (Node, error)
