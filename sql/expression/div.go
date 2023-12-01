@@ -334,16 +334,19 @@ func floatOrDecimalType(e sql.Expression, treatIntsAsFloats bool) sql.Type {
 	sql.Inspect(e, func(expr sql.Expression) bool {
 		switch c := expr.(type) {
 		case *GetField:
-			if treatIntsAsFloats && types.IsInteger(c.Type()) {
+			ct := c.Type()
+			if treatIntsAsFloats && types.IsInteger(ct) {
 				resType = types.Float64
 				return false
 			}
-			if types.IsFloat(c.Type()) {
+			if types.IsFloat(ct) {
 				resType = types.Float64
 				return false
 			}
-			if types.IsDecimal(c.Type()) {
-				decType = c.Type()
+			if types.IsDecimal(ct) {
+				dt := ct.(sql.DecimalType)
+				// creating new type with |defineColumn| field set to `false`
+				decType = types.MustCreateDecimalType(dt.Precision(), dt.Scale())
 			}
 		case *Literal:
 			if types.IsNumber(c.Type()) {

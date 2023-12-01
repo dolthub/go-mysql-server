@@ -3101,14 +3101,12 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{1.8181817787737895}, {1.6666666004392863}, {1.5384615948919735}},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // issue with decimal scale
-				Query:                         "select d/2 from decimals;",
-				Expected:                      []sql.Row{{"0.50000"}, {"1.00000"}, {"1.25000"}},
+				Query:    "select d/2 from decimals;",
+				Expected: []sql.Row{{"0.50000"}, {"1.00000"}, {"1.25000"}},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // issue with decimal scale
-				Query:                         "select 2/d from decimals;",
-				Expected:                      []sql.Row{{"2.0000"}, {"1.0000"}, {"0.8000"}},
+				Query:    "select 2/d from decimals;",
+				Expected: []sql.Row{{"2.0000"}, {"1.0000"}, {"0.8000"}},
 			},
 			{
 				Query: "select f/d from floats, decimals;",
