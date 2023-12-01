@@ -954,8 +954,8 @@ func addMergeJoins(m *memo.Memo) error {
 func getOnlyColumnId(e sql.Expression) sql.ColumnId {
 	var id sql.ColumnId
 	transform.InspectExpr(e, func(e sql.Expression) bool {
-		gf, _ := e.(*expression.GetField)
-		if gf != nil {
+		gf, ok := e.(*expression.GetField)
+		if ok {
 			id = gf.Id()
 			return true
 		}
@@ -967,8 +967,8 @@ func getOnlyColumnId(e sql.Expression) sql.ColumnId {
 func expressionReferencesOneColumn(e sql.Expression) bool {
 	var seen bool
 	return !transform.InspectExpr(e, func(e sql.Expression) bool {
-		gf, _ := e.(*expression.GetField)
-		if gf != nil && seen {
+		_, ok := e.(*expression.GetField)
+		if ok && seen {
 			return true
 		}
 		seen = true
@@ -978,8 +978,8 @@ func expressionReferencesOneColumn(e sql.Expression) bool {
 
 func expressionReferencesTable(e sql.Expression, id sql.TableId) bool {
 	return transform.InspectExpr(e, func(e sql.Expression) bool {
-		gf, _ := e.(*expression.GetField)
-		return gf != nil && gf.TableId() == id
+		gf, ok := e.(*expression.GetField)
+		return ok && gf.TableId() == id
 	})
 }
 

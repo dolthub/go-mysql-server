@@ -53,9 +53,6 @@ type Column struct {
 	// Virtual column values will be provided for write operations, in case integrators need to use them to update
 	// indexes, but must not be returned in rows from tables that include them.
 	Virtual bool
-	// Ids that unique identify tables and column references
-	ColId ColumnId
-	TabId TableId
 }
 
 // Check ensures the value is correct for this column.

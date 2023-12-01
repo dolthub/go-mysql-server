@@ -345,9 +345,9 @@ func (s *scope) replace() *scope {
 	}
 }
 
-// copyCte copies a scope, but increments the column and table ids
+// aliasCte copies a scope, but increments the column and table ids
 // for the new relation.
-func (s *scope) copyCte(alias string) *scope {
+func (s *scope) aliasCte(alias string) *scope {
 	if s == nil {
 		return nil
 	}

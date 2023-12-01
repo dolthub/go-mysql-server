@@ -893,15 +893,11 @@ type edge struct {
 func (e *edge) populateEdgeProps(tableIds []sql.TableId, edges []edge) {
 	var tables sql.FastIntSet
 	var cols sql.ColSet
-	var nullAccepting []sql.Expression
 	if len(e.filters) > 0 {
 		for _, e := range e.filters {
-			eCols, eTabs, nullRej := getExprScalarProps(e)
+			eCols, eTabs, _ := getExprScalarProps(e)
 			cols = cols.Union(eCols)
 			tables = tables.Union(eTabs)
-			if !nullRej {
-				nullAccepting = append(nullAccepting, e)
-			}
 		}
 	}
 

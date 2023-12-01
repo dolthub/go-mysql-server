@@ -269,7 +269,7 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 			tableName := strings.ToLower(e.Name.String())
 			tAlias := strings.ToLower(t.As.String())
 			if cteScope := inScope.getCte(tableName); cteScope != nil {
-				outScope = cteScope.copyCte(tAlias)
+				outScope = cteScope.aliasCte(tAlias)
 				outScope.parent = inScope
 			} else {
 				var ok bool

@@ -2084,7 +2084,8 @@ func virtualTableProjections(schema sql.Schema, tableName string) []sql.Expressi
 	projections := make([]sql.Expression, len(schema))
 	for i, c := range schema {
 		if !c.Virtual {
-			projections[i] = expression.NewGetFieldWithTable(int(c.ColId), int(c.TabId), c.Type, c.DatabaseSource, tableName, c.Name, c.Nullable)
+			// todo: if we really need colId/tableId we can get from scope
+			projections[i] = expression.NewGetFieldWithTable(i, 1, c.Type, c.DatabaseSource, tableName, c.Name, c.Nullable)
 		} else {
 			projections[i] = c.Generated
 		}

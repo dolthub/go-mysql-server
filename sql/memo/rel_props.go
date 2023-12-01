@@ -226,29 +226,13 @@ func getExprScalarProps(e sql.Expression) (sql.ColSet, sql.FastIntSet, bool) {
 		switch e := e.(type) {
 		case *expression.GetField:
 			cols.Add(e.Id())
+			tables.Add(int(e.TableId()))
 		case *expression.NullSafeEquals:
 			nullRej = false
-		}
-		gf, _ := e.(*expression.GetField)
-		if gf != nil {
-			cols.Add(gf.Id())
-			tables.Add(int(gf.TableId()))
 		}
 		return false
 	})
 	return cols, tables, nullRej
-}
-
-func exprIsNullRejecting(e sql.Expression) sql.ColSet {
-	var cols sql.ColSet
-	transform.InspectExpr(e, func(e sql.Expression) bool {
-		gf, _ := e.(*expression.GetField)
-		if gf != nil {
-			cols.Add(gf.Id())
-		}
-		return false
-	})
-	return cols
 }
 
 // allTableCols returns the full schema of a table ignoring
