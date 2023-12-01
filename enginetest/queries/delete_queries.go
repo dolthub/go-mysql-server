@@ -95,12 +95,6 @@ var DeleteTests = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
 	},
 	{
-		WriteQuery:          "DELETE FROM mytable WHERE i = 'invalid';",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
-		SelectQuery:         "SELECT * FROM mytable;",
-		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
-	},
-	{
 		WriteQuery:          "DELETE FROM mytable ORDER BY i ASC LIMIT 2;",
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable;",

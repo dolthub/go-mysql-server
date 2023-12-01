@@ -5238,7 +5238,7 @@ inner join pq on true
 			" │   └─ 2020-01-01 (longtext)\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.date_col]\n" +
-			"     ├─ static: [{[2020-01-01, 2020-01-01]}]\n" +
+			"     ├─ static: [{[2020-01-01 00:00:00 +0000 UTC, 2020-01-01 00:00:00 +0000 UTC]}]\n" +
 			"     └─ Table\n" +
 			"         ├─ name: datetime_table\n" +
 			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5252,7 +5252,7 @@ inner join pq on true
 			" │   └─ 2020-01-01 (longtext)\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.date_col]\n" +
-			"     ├─ static: [{(2020-01-01, ∞)}]\n" +
+			"     ├─ static: [{(2020-01-01 00:00:00 +0000 UTC, ∞)}]\n" +
 			"     └─ Table\n" +
 			"         ├─ name: datetime_table\n" +
 			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5266,7 +5266,7 @@ inner join pq on true
 			" │   └─ 2020-01-01 (longtext)\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.datetime_col]\n" +
-			"     ├─ static: [{[2020-01-01, 2020-01-01]}]\n" +
+			"     ├─ static: [{[2020-01-01 00:00:00 +0000 UTC, 2020-01-01 00:00:00 +0000 UTC]}]\n" +
 			"     └─ Table\n" +
 			"         ├─ name: datetime_table\n" +
 			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5280,7 +5280,7 @@ inner join pq on true
 			" │   └─ 2020-01-01 (longtext)\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.datetime_col]\n" +
-			"     ├─ static: [{(2020-01-01, ∞)}]\n" +
+			"     ├─ static: [{(2020-01-01 00:00:00 +0000 UTC, ∞)}]\n" +
 			"     └─ Table\n" +
 			"         ├─ name: datetime_table\n" +
 			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5294,7 +5294,7 @@ inner join pq on true
 			" │   └─ 2020-01-01 (longtext)\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.timestamp_col]\n" +
-			"     ├─ static: [{[2020-01-01, 2020-01-01]}]\n" +
+			"     ├─ static: [{[2020-01-01 00:00:00 +0000 UTC, 2020-01-01 00:00:00 +0000 UTC]}]\n" +
 			"     └─ Table\n" +
 			"         ├─ name: datetime_table\n" +
 			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5308,7 +5308,7 @@ inner join pq on true
 			" │   └─ 2020-01-01 (longtext)\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.timestamp_col]\n" +
-			"     ├─ static: [{(2020-01-01, ∞)}]\n" +
+			"     ├─ static: [{(2020-01-01 00:00:00 +0000 UTC, ∞)}]\n" +
 			"     └─ Table\n" +
 			"         ├─ name: datetime_table\n" +
 			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +

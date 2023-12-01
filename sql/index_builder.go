@@ -15,7 +15,9 @@
 package sql
 
 import (
-	"strings"
+	"github.com/shopspring/decimal"
+"math"
+"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
 )
@@ -54,6 +56,32 @@ func NewIndexBuilder(idx Index) *IndexBuilder {
 	}
 }
 
+func roundUpFloat(val interface{}) interface{} {
+	switch v := val.(type) {
+	case float32:
+		return float32(math.Ceil(float64(v)))
+	case float64:
+		return math.Ceil(v)
+	case decimal.Decimal:
+		return v.Ceil()
+	default:
+		return v
+	}
+}
+
+func roundDownFloat(val interface{}) interface{} {
+	switch v := val.(type) {
+	case float32:
+		return float32(math.Floor(float64(v)))
+	case float64:
+		return math.Floor(v)
+	case decimal.Decimal:
+		return v.Floor()
+	default:
+		return v
+	}
+}
+
 // Equals represents colExpr = key. For IN expressions, pass all of them in the same Equals call.
 func (b *IndexBuilder) Equals(ctx *Context, colExpr string, keys ...interface{}) *IndexBuilder {
 	if b.isInvalid {
@@ -67,6 +95,24 @@ func (b *IndexBuilder) Equals(ctx *Context, colExpr string, keys ...interface{})
 	}
 	potentialRanges := make([]RangeColumnExpr, len(keys))
 	for i, key := range keys {
+		// if converting from float to int results in rounding, then it's empty range
+		if t, ok := typ.(NumberType); ok && !t.IsFloat() {
+			switch key.(type) {
+			case float32, float64, decimal.Decimal:
+				lower := roundDownFloat(key)
+				upper := roundUpFloat(key)
+				if lower != upper {
+					potentialRanges[i] = EmptyRangeColumnExpr(typ)
+					continue
+				}
+			}
+		}
+		key, _, err := typ.Convert(key)
+		if err != nil {
+			b.isInvalid = true
+			b.err = err
+			return b
+		}
 		potentialRanges[i] = ClosedRangeColumnExpr(key, key, typ)
 	}
 	b.updateCol(ctx, colExpr, potentialRanges...)
@@ -84,6 +130,27 @@ func (b *IndexBuilder) NotEquals(ctx *Context, colExpr string, key interface{}) 
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
 		return b
 	}
+
+	// if converting from float to int results in rounding, then it's entire range
+	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
+		switch key.(type) {
+		case float32, float64, decimal.Decimal:
+			lower := roundDownFloat(key)
+			upper := roundUpFloat(key)
+			if lower != upper {
+				b.updateCol(ctx, colExpr, NotNullRangeColumnExpr(typ))
+				return b
+			}
+		}
+	}
+
+	key, _, err := typ.Convert(key)
+	if err != nil {
+		b.isInvalid = true
+		b.err = err
+		return b
+	}
+
 	b.updateCol(ctx, colExpr, GreaterThanRangeColumnExpr(key, typ), LessThanRangeColumnExpr(key, typ))
 	if !b.isInvalid {
 		ranges, err := SimplifyRangeColumn(b.ranges[colExpr]...)
@@ -112,6 +179,21 @@ func (b *IndexBuilder) GreaterThan(ctx *Context, colExpr string, key interface{}
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
 		return b
 	}
+
+	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
+		switch key.(type) {
+		case float32, float64, decimal.Decimal:
+			key = roundDownFloat(key)
+		}
+	}
+
+	key, _, err := typ.Convert(key)
+	if err != nil {
+		b.isInvalid = true
+		b.err = err
+		return b
+	}
+
 	b.updateCol(ctx, colExpr, GreaterThanRangeColumnExpr(key, typ))
 	return b
 }
@@ -127,7 +209,32 @@ func (b *IndexBuilder) GreaterOrEqual(ctx *Context, colExpr string, key interfac
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
 		return b
 	}
-	b.updateCol(ctx, colExpr, GreaterOrEqualRangeColumnExpr(key, typ))
+
+	var exclude bool
+	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
+		switch key.(type) {
+		case float32, float64, decimal.Decimal:
+			newKey := roundDownFloat(key)
+			exclude = newKey != key
+			key = newKey
+		}
+	}
+
+	key, _, err := typ.Convert(key)
+	if err != nil {
+		b.isInvalid = true
+		b.err = err
+		return b
+	}
+
+	var rangeColExpr RangeColumnExpr
+	if exclude {
+		rangeColExpr = GreaterThanRangeColumnExpr(key, typ)
+	} else {
+		rangeColExpr = GreaterOrEqualRangeColumnExpr(key, typ)
+	}
+	b.updateCol(ctx, colExpr, rangeColExpr)
+
 	return b
 }
 
@@ -142,6 +249,21 @@ func (b *IndexBuilder) LessThan(ctx *Context, colExpr string, key interface{}) *
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
 		return b
 	}
+
+	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
+		switch key.(type) {
+		case float32, float64, decimal.Decimal:
+			key = roundUpFloat(key)
+		}
+	}
+
+	key, _, err := typ.Convert(key)
+	if err != nil {
+		b.isInvalid = true
+		b.err = err
+		return b
+	}
+
 	b.updateCol(ctx, colExpr, LessThanRangeColumnExpr(key, typ))
 	return b
 }
@@ -157,7 +279,32 @@ func (b *IndexBuilder) LessOrEqual(ctx *Context, colExpr string, key interface{}
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
 		return b
 	}
-	b.updateCol(ctx, colExpr, LessOrEqualRangeColumnExpr(key, typ))
+
+	var exclude bool
+	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
+		switch key.(type) {
+		case float32, float64, decimal.Decimal:
+			newKey := roundUpFloat(key)
+			exclude = newKey != key
+			key = newKey
+		}
+	}
+
+	key, _, err := typ.Convert(key)
+	if err != nil {
+		b.isInvalid = true
+		b.err = err
+		return b
+	}
+
+	var rangeColExpr RangeColumnExpr
+	if exclude {
+		rangeColExpr = LessThanRangeColumnExpr(key, typ)
+	} else {
+		rangeColExpr = LessOrEqualRangeColumnExpr(key, typ)
+	}
+	b.updateCol(ctx, colExpr, rangeColExpr)
+
 	return b
 }
 

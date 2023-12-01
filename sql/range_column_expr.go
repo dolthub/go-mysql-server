@@ -16,12 +16,10 @@ package sql
 
 import (
 	"fmt"
-	"math"
-	"sort"
+		"sort"
 	"strings"
 
-	"github.com/shopspring/decimal"
-)
+	)
 
 // RangeType returns what a RangeColumnExpr represents, such as a GreaterThan on some column, or a column set between
 // two bounds.
@@ -97,84 +95,14 @@ func CustomRangeColumnExpr(lower, upper interface{}, lowerBound, upperBound Rang
 	}
 }
 
-func roundUpFloat(val interface{}) interface{} {
-	switch v := val.(type) {
-	case float32:
-		return float32(math.Ceil(float64(v)))
-	case float64:
-		return math.Ceil(v)
-	case decimal.Decimal:
-		return v.Ceil()
-	default:
-		return v
-	}
-}
-
-func roundDownFloat(val interface{}) interface{} {
-	switch v := val.(type) {
-	case float32:
-		return float32(math.Floor(float64(v)))
-	case float64:
-		return math.Floor(v)
-	case decimal.Decimal:
-		return v.Floor()
-	default:
-		return v
-	}
-}
-
-
-// roundFloatKey rounds a float key up or down
-func roundFloatKey(key interface{}, roundDown bool) int64 {
-	switch k := key.(type) {
-	case float32:
-		if roundDown {
-			return int64(math.Floor(float64(k)))
-		} else {
-			return int64(math.Ceil(float64(k)))
-		}
-	case float64:
-		if roundDown {
-			return int64(math.Floor(k))
-		} else {
-			return int64(math.Ceil(k))
-		}
-	case decimal.Decimal:
-		if roundDown {
-			return k.Floor().IntPart()
-		} else {
-			return k.Ceil().IntPart()
-		}
-	default:
-		panic(fmt.Errorf("unknown float type %T", k))
-	}
-}
-
 // LessThanRangeColumnExpr returns a RangeColumnExpr representing {x < u}.
 func LessThanRangeColumnExpr(upper interface{}, typ Type) RangeColumnExpr {
 	if upper == nil {
 		return EmptyRangeColumnExpr(typ)
 	}
-
-	var floatKey, intTyp bool
-	switch upper.(type) {
-	case float32, float64, decimal.Decimal:
-		floatKey = true
-	}
-	if t, ok := typ.(NumberType); ok {
-		intTyp = !t.IsFloat()
-	}
-	if intTyp && floatKey {
-		upper = roundUpFloat(upper)
-	}
-	conv, _, err := typ.Convert(upper)
-	if err != nil {
-		panic(err)
-	}
-
 	return RangeColumnExpr{
 		AboveNull{},
-		Below{Key: conv},
+		Below{Key: upper},
 		typ,
 	}
 }
@@ -184,35 +112,9 @@ func LessOrEqualRangeColumnExpr(upper interface{}, typ Type) RangeColumnExpr {
 	if upper == nil {
 		return EmptyRangeColumnExpr(typ)
 	}
-
-	var floatKey, intTyp bool
-	switch upper.(type) {
-	case float32, float64, decimal.Decimal:
-		floatKey = true
-	}
-	if t, ok := typ.(NumberType); ok {
-		intTyp = !t.IsFloat()
-	}
-	var useBelow bool
-	if intTyp && floatKey {
-		newUpper := roundUpFloat(upper)
-		useBelow = newUpper != upper
-		upper = newUpper
-	}
-	conv, _, err := typ.Convert(upper)
-	if err != nil {
-		panic(err)
-	}
-	var upperBound RangeCut
-	if useBelow {
-		upperBound = Below{Key: conv}
-	} else {
-		upperBound = Above{Key: conv}
-	}
-
 	return RangeColumnExpr{
 		AboveNull{},
-		upperBound,
+		Above{Key: upper},
 		typ,
 	}
 }
@@ -222,23 +124,8 @@ func GreaterThanRangeColumnExpr(lower interface{}, typ Type) RangeColumnExpr {
 	if lower == nil {
 		return EmptyRangeColumnExpr(typ)
 	}
-	var floatKey, intTyp bool
-	switch lower.(type) {
-	case float32, float64, decimal.Decimal:
-		floatKey = true
-	}
-	if t, ok := typ.(NumberType); ok {
-		intTyp = !t.IsFloat()
-	}
-	if intTyp && floatKey {
-		lower = roundDownFloat(lower)
-	}
-	conv, _, err := typ.Convert(lower)
-	if err != nil {
-		panic(err)
-	}
 	return RangeColumnExpr{
-		Above{Key: conv},
+		Above{Key: lower},
 		AboveAll{},
 		typ,
 	}
@@ -249,32 +136,8 @@ func GreaterOrEqualRangeColumnExpr(lower interface{}, typ Type) RangeColumnExpr 
 	if lower == nil {
 		return EmptyRangeColumnExpr(typ)
 	}
-	var floatKey, intTyp bool
-	switch lower.(type) {
-	case float32, float64, decimal.Decimal:
-		floatKey = true
-	}
-	if t, ok := typ.(NumberType); ok {
-		intTyp = !t.IsFloat()
-	}
-	var useBelow bool
-	if intTyp && floatKey {
-		newUpper := roundDownFloat(lower)
-		useBelow = newUpper != lower
-		lower = newUpper
-	}
-	conv, _, err := typ.Convert(lower)
-	if err != nil {
-		panic(err)
-	}
-	var lowerBound RangeCut
-	if useBelow {
-		lowerBound = Above{Key: conv}
-	} else {
-		lowerBound = Below{Key: conv}
-	}
 	return RangeColumnExpr{
-		lowerBound,
+		Below{Key: lower},
 		AboveAll{},
 		typ,
 	}
