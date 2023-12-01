@@ -41,11 +41,6 @@ type Memo struct {
 	cnt  uint16
 	root *ExprGroup
 
-	// todo: deprecated
-	exprs       map[uint64]*ExprGroup
-	Columns     map[TableAndColumn]sql.ColumnId
-	ColumnNames map[sql.ColumnId]TableAndColumn
-
 	hints *joinHints
 
 	c         Coster
@@ -60,17 +55,14 @@ type Memo struct {
 
 func NewMemo(ctx *sql.Context, stats sql.StatsProvider, s *plan.Scope, scopeLen int, cost Coster, card Carder) *Memo {
 	return &Memo{
-		Ctx:         ctx,
-		c:           cost,
-		s:           card,
-		statsProv:   stats,
-		scope:       s,
-		scopeLen:    scopeLen,
-		TableProps:  newTableProps(),
-		hints:       &joinHints{},
-		Columns:     make(map[TableAndColumn]sql.ColumnId),
-		ColumnNames: make(map[sql.ColumnId]TableAndColumn),
-		exprs:       make(map[uint64]*ExprGroup),
+		Ctx:        ctx,
+		c:          cost,
+		s:          card,
+		statsProv:  stats,
+		scope:      s,
+		scopeLen:   scopeLen,
+		TableProps: newTableProps(),
+		hints:      &joinHints{},
 	}
 }
 
@@ -99,264 +91,8 @@ func (m *Memo) memoizeSourceRel(rel SourceRel) *ExprGroup {
 	return grp
 }
 
-func (m *Memo) AddColumnId(table, column string) {
-	tableAndColumn := TableAndColumn{
-		tableName:  table,
-		columnName: column,
-	}
-	if m.Columns[tableAndColumn] != 0 {
-		return
-	}
-	newId := sql.ColumnId(len(m.Columns) + 1)
-	m.Columns[tableAndColumn] = newId
-	m.ColumnNames[newId] = tableAndColumn
-}
-
-// TODO we need to remove this as soon as name resolution refactor is in
-func (m *Memo) assignColumnIds(rel SourceRel) {
-	if rel.Name() == "" {
-		m.AddColumnId("", "1")
-	} else {
-		for _, c := range allTableCols(rel) {
-			var tableName string
-			if c.Source != "" {
-				tableName = strings.ToLower(c.Source)
-
-			} else {
-				tableName = strings.ToLower(rel.Name())
-			}
-			m.AddColumnId(tableName, strings.ToLower(c.Name))
-		}
-	}
-}
-
 func (m *Memo) getTableId(table string) (GroupId, bool) {
 	return m.TableProps.GetId(table)
-}
-
-func (m *Memo) getColumnId(table, name string) (sql.ColumnId, bool) {
-	id, ok := m.Columns[TableAndColumn{
-		tableName:  strings.ToLower(table),
-		columnName: strings.ToLower(name),
-	}]
-	return id, ok
-}
-
-func (m *Memo) PreexistingScalar(e ScalarExpr) *ExprGroup {
-	hash := InternExpr(e)
-	group, _ := m.exprs[hash]
-	return group
-}
-
-func (m *Memo) MemoizeScalar(e sql.Expression) *ExprGroup {
-	var scalar *ExprGroup
-	switch e := e.(type) {
-	case expression.ArithmeticOp:
-		scalar = m.memoizeArithmetic(e)
-	case expression.Comparer:
-		scalar = m.memoizeComparison(e)
-	case *expression.Literal:
-		scalar = m.memoizeLiteral(e)
-	case *expression.GetField:
-		scalar = m.MemoizeColRef(e)
-	case *expression.IsNull:
-		scalar = m.MemoizeIsNull(e.Child)
-	case *expression.And:
-		scalar = m.memoizeAnd(e)
-	case *expression.Or:
-		scalar = m.memoizeOr(e)
-	case *expression.BindVar:
-		scalar = m.memoizeBindvar(e)
-	case *expression.Between:
-		scalar = m.memoizeBetween(e)
-	default:
-		scalar = m.memoizeHidden(e)
-	}
-	hash := InternExpr(scalar.Scalar)
-	if hash != 0 {
-		m.exprs[hash] = scalar
-	}
-	return scalar
-}
-
-func (m *Memo) memoizeAnd(e *expression.And) *ExprGroup {
-	left := m.MemoizeScalar(e.Left)
-	right := m.MemoizeScalar(e.Right)
-	scalar := &And{scalarBase: &scalarBase{}, Left: left, Right: right}
-	grp := m.PreexistingScalar(scalar)
-	if grp != nil {
-		return grp
-	}
-	grp = m.NewExprGroup(scalar)
-	// TODO scalar props
-	return grp
-}
-
-func (m *Memo) memoizeOr(e *expression.Or) *ExprGroup {
-	left := m.MemoizeScalar(e.Left)
-	right := m.MemoizeScalar(e.Right)
-	scalar := &Or{scalarBase: &scalarBase{}, Left: left, Right: right}
-	grp := m.PreexistingScalar(scalar)
-	if grp != nil {
-		return grp
-	}
-	grp = m.NewExprGroup(scalar)
-	// TODO scalar props
-	return grp
-}
-
-func (m *Memo) memoizeLiteral(lit *expression.Literal) *ExprGroup {
-	scalar := &Literal{scalarBase: &scalarBase{}, Val: lit.Value(), Typ: lit.Type()}
-	grp := m.PreexistingScalar(scalar)
-	if grp != nil {
-		return grp
-	}
-	grp = m.NewExprGroup(scalar)
-	// TODO scalar props
-	return grp
-}
-
-func (m *Memo) MemoizeColRef(e *expression.GetField) *ExprGroup {
-	col, ok := m.getColumnId(e.Table(), e.Name())
-	if !ok {
-		panic("unreachable")
-	}
-	var table GroupId
-	if e.Table() != "" {
-		table, ok = m.getTableId(e.Table())
-		if !ok {
-			panic("unreachable")
-		}
-	}
-	scalar := &ColRef{scalarBase: &scalarBase{}, Col: col, Table: table, Gf: e}
-	grp := m.PreexistingScalar(scalar)
-	if grp != nil {
-		return grp
-	}
-	grp = m.NewExprGroup(scalar)
-	// TODO scalar props
-	// references table, col
-	return grp
-}
-
-func (m *Memo) memoizeArithmetic(comp expression.ArithmeticOp) *ExprGroup {
-	lGrp := m.MemoizeScalar(comp.LeftChild())
-	rGrp := m.MemoizeScalar(comp.RightChild())
-	var scalar ScalarExpr
-	var op ArithType
-	switch e := comp.(type) {
-	case *expression.Arithmetic:
-		switch e.Op {
-		case "+":
-			op = ArithTypePlus
-		case "-":
-			op = ArithTypeMinus
-		case "*":
-			op = ArithTypeMult
-		default:
-			panic(fmt.Sprintf("unsupported arithemtic type: %s", e.Op))
-		}
-	case *expression.Div:
-		op = ArithTypeDiv
-	case *expression.IntDiv:
-		op = ArithTypeIntDiv
-	case *expression.Mod:
-		op = ArithTypeIntDiv
-	default:
-		panic(fmt.Sprintf("unsupported type: %T", e))
-	}
-	scalar = &Arithmetic{scalarBase: &scalarBase{}, Left: lGrp, Right: rGrp, Op: op}
-	eGroup := m.PreexistingScalar(scalar)
-	if eGroup == nil {
-		eGroup = m.NewExprGroup(scalar)
-	}
-	return eGroup
-}
-
-func (m *Memo) memoizeComparison(comp expression.Comparer) *ExprGroup {
-	lGrp := m.MemoizeScalar(comp.Left())
-	rGrp := m.MemoizeScalar(comp.Right())
-	var scalar ScalarExpr
-	switch e := comp.(type) {
-	case *expression.Equals:
-		scalar = &Equal{scalarBase: &scalarBase{}, Left: lGrp, Right: rGrp}
-	case *expression.NullSafeEquals:
-		scalar = &NullSafeEq{scalarBase: &scalarBase{}, Left: lGrp, Right: rGrp}
-	case *expression.GreaterThan:
-		scalar = &Gt{scalarBase: &scalarBase{}, Left: lGrp, Right: rGrp}
-	case *expression.GreaterThanOrEqual:
-		scalar = &Geq{scalarBase: &scalarBase{}, Left: lGrp, Right: rGrp}
-	case *expression.LessThan:
-		scalar = &Lt{scalarBase: &scalarBase{}, Left: lGrp, Right: rGrp}
-	case *expression.LessThanOrEqual:
-		scalar = &Leq{scalarBase: &scalarBase{}, Left: lGrp, Right: rGrp}
-	case *expression.Regexp:
-		scalar = &Regexp{scalarBase: &scalarBase{}, Left: lGrp, Right: rGrp}
-	case *expression.InTuple:
-		scalar = &InTuple{scalarBase: &scalarBase{}, Left: lGrp, Right: rGrp}
-	default:
-		panic(fmt.Sprintf("unsupported type: %T", e))
-	}
-	eGroup := m.PreexistingScalar(scalar)
-	if eGroup == nil {
-		eGroup = m.NewExprGroup(scalar)
-	}
-	return eGroup
-}
-
-func (m *Memo) MemoizeIsNull(child sql.Expression) *ExprGroup {
-	childGrp := m.MemoizeScalar(child)
-
-	scalar := &IsNull{scalarBase: &scalarBase{}, Child: childGrp}
-	grp := m.PreexistingScalar(scalar)
-	if grp != nil {
-		return grp
-	}
-	grp = m.NewExprGroup(scalar)
-	// TODO scalar props
-	return grp
-}
-
-func (m *Memo) memoizeBindvar(e *expression.BindVar) *ExprGroup {
-	scalar := &Bindvar{scalarBase: &scalarBase{}, Name: e.Name, Typ: e.Typ}
-	grp := m.PreexistingScalar(scalar)
-	if grp != nil {
-		return grp
-	}
-	grp = m.NewExprGroup(scalar)
-	// TODO scalar props
-	return grp
-}
-
-func (m *Memo) memoizeBetween(e *expression.Between) *ExprGroup {
-	valueGrp := m.MemoizeScalar(e.Val)
-	minGrp := m.MemoizeScalar(e.Lower)
-	maxGrp := m.MemoizeScalar(e.Upper)
-	scalar := &Between{scalarBase: &scalarBase{}, Value: valueGrp, Min: minGrp, Max: maxGrp}
-	grp := m.PreexistingScalar(scalar)
-	if grp != nil {
-		return grp
-	}
-	grp = m.NewExprGroup(scalar)
-	// TODO scalar props
-	return grp
-}
-
-func (m *Memo) memoizeHidden(e sql.Expression) *ExprGroup {
-	var cols sql.ColSet
-	var tables sql.FastIntSet
-	transform.InspectExpr(e, func(e sql.Expression) bool {
-		switch e := e.(type) {
-		case *expression.GetField:
-			colRef := m.MemoizeScalar(e).Scalar.(*ColRef)
-			cols.Add(colRef.Col)
-			tables.Add(int(TableIdForSource(colRef.Table)))
-		default:
-		}
-		return false
-	})
-	scalar := &Hidden{scalarBase: &scalarBase{}, E: e, Cols: cols, Tables: tables}
-	return m.NewExprGroup(scalar)
 }
 
 func (m *Memo) MemoizeLeftJoin(grp, left, right *ExprGroup, op plan.JoinType, filter []sql.Expression) *ExprGroup {
@@ -436,20 +172,6 @@ func (m *Memo) MemoizeRangeHeapJoin(grp, left, right *ExprGroup, op plan.JoinTyp
 	}
 	newJoin.g = grp
 	grp.Prepend(newJoin)
-	return grp
-}
-
-func NewTuple(m *Memo, filters []*ExprGroup) *ExprGroup {
-	t := Tuple{
-		scalarBase: &scalarBase{},
-		Values:     filters,
-	}
-
-	grp := m.PreexistingScalar(&t)
-	if grp == nil {
-		grp = m.NewExprGroup(&t)
-	}
-
 	return grp
 }
 
@@ -700,9 +422,6 @@ func (m *Memo) String() string {
 		}
 		groups = newGroups
 	}
-	for _, e := range m.exprs {
-		exprs[int(TableIdForSource(e.Id))] = e.String()
-	}
 	b := strings.Builder{}
 	b.WriteString("memo:\n")
 	beg := "├──"
@@ -772,10 +491,6 @@ type Carder interface {
 	// EstimateCard returns the estimate row count outputs for a relational
 	// expression. Cardinality is an expression group property.
 	EstimateCard(*sql.Context, RelExpr, sql.StatsProvider) (float64, error)
-}
-
-type unaryScalarExpr interface {
-	child() ScalarExpr
 }
 
 // RelExpr wraps a sql.Node for use as a ExprGroup linked list node.
@@ -871,30 +586,6 @@ type exprType interface {
 	Group() *ExprGroup
 	Children() []*ExprGroup
 	SetGroup(g *ExprGroup)
-}
-
-// ScalarExpr is a sql.Expression equivalent. Both ScalarExpr
-// and RelExpr are embedded in Memo as *ExprGroup. ScalarExpr
-// will only have one implementation.
-// todo: do we need scalar expressions in the memo? or could
-// they be ref'd out
-type ScalarExpr interface {
-	fmt.Stringer
-	exprType
-	ExprId() ScalarExprId
-}
-
-type scalarBase struct {
-	// g is this relation's expression group
-	g *ExprGroup
-}
-
-func (r *scalarBase) Group() *ExprGroup {
-	return r.g
-}
-
-func (r *scalarBase) SetGroup(g *ExprGroup) {
-	r.g = g
 }
 
 // SourceRel represents a data source, like a tableScan, subqueryAlias,
@@ -1029,56 +720,4 @@ type RangeHeap struct {
 	RangeClosedOnLowerBound bool
 	RangeClosedOnUpperBound bool
 	Parent                  *JoinBase
-}
-
-// splitConjunction_memo breaks AND expressions into their left and right parts, recursively
-func SplitConjunction(e ScalarExpr) []ScalarExpr {
-	if e == nil {
-		return nil
-	}
-	a, ok := e.(*And)
-	if !ok {
-		return []ScalarExpr{e}
-	}
-
-	return append(
-		SplitConjunction(a.Left.Scalar),
-		SplitConjunction(a.Right.Scalar)...,
-	)
-}
-
-// splitDisjunction breaks OR expressions into their left and right parts, recursively
-func SplitDisjunction(e *Or) []ScalarExpr {
-	q := []ScalarExpr{e.Left.Scalar, e.Right.Scalar}
-	var ret []ScalarExpr
-	for len(q) > 0 {
-		next := q[0]
-		q = q[1:]
-		nextOr, ok := next.(*Or)
-		if !ok {
-			ret = append(ret, next)
-		} else {
-			q = append(q, nextOr.Left.Scalar, nextOr.Right.Scalar)
-		}
-	}
-	return ret
-}
-
-func ScalarToSqlCol(e *ExprGroup) *sql.Column {
-	switch e := e.Scalar.(type) {
-	case *ColRef:
-		return &sql.Column{
-			Name:     e.Gf.Name(),
-			Source:   e.Gf.Table(),
-			Type:     e.Gf.Type(),
-			Nullable: e.Gf.IsNullable(),
-		}
-	case *Literal:
-		return &sql.Column{
-			Name: fmt.Sprintf("%v", e.Val),
-			Type: e.Typ,
-		}
-	default:
-		return nil
-	}
 }

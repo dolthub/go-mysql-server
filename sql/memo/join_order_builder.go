@@ -952,7 +952,7 @@ func (e *edge) String() string {
 //
 // Refer to https://dl.acm.org/doi/10.1145/244810.244812 for more examples.
 // TODO implement this
-func (e *edge) nullRejectingTables(nullAccepting []ScalarExpr, allNames []string, allV vertexSet) vertexSet {
+func (e *edge) nullRejectingTables(nullAccepting []sql.Expression, allNames []string, allV vertexSet) vertexSet {
 	panic("not implemented")
 }
 

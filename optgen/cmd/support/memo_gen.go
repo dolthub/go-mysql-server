@@ -23,7 +23,6 @@ type ExprDef struct {
 	Attrs       [][2]string `yaml:"attrs"`
 	Unary       bool        `yaml:"unary"`
 	SkipExec    bool        `yaml:"skipExec"`
-	Scalar      bool        `yaml:"scalar"`
 	Binary      bool        `yaml:"binary"`
 	SkipName    bool        `yaml:"skipName"`
 	SkipTableId bool        `yaml:"skipTableId"`
@@ -55,11 +54,8 @@ func (g *MemoGen) Generate(defines GenDefs, w io.Writer) {
 	g.genImport()
 	for _, define := range g.defines {
 		g.genType(define)
-		if define.Scalar {
-			g.genScalarInterfaces(define)
-		} else {
-			g.genRelInterfaces(define)
-		}
+		g.genRelInterfaces(define)
+
 		g.genStringer(define)
 		if define.SourceType != "" {
 			g.genSourceRelInterface(define)
@@ -95,22 +91,12 @@ func (g *MemoGen) genType(define ExprDef) {
 	} else if define.Join {
 		fmt.Fprintf(g.w, "  *JoinBase\n")
 	} else if define.Unary {
-		if define.Scalar {
-			fmt.Fprintf(g.w, "  *scalarBase\n")
-		} else {
-			fmt.Fprintf(g.w, "  *relBase\n")
-		}
+		fmt.Fprintf(g.w, "  *relBase\n")
 		fmt.Fprintf(g.w, "  Child *ExprGroup\n")
 	} else if define.Binary {
-		if define.Scalar {
-			fmt.Fprintf(g.w, "  *scalarBase\n")
-		} else {
-			fmt.Fprintf(g.w, "  *relBase\n")
-		}
+		fmt.Fprintf(g.w, "  *relBase\n")
 		fmt.Fprintf(g.w, "  Left *ExprGroup\n")
 		fmt.Fprintf(g.w, "  Right *ExprGroup\n")
-	} else if define.Scalar {
-		fmt.Fprintf(g.w, "  *scalarBase\n")
 	}
 	for _, attr := range define.Attrs {
 		fmt.Fprintf(g.w, "  %s %s\n", strings.Title(attr[0]), attr[1])
@@ -161,7 +147,7 @@ func (g *MemoGen) genSourceRelInterface(define ExprDef) {
 	fmt.Fprintf(g.w, "  return TableIdForSource(r.g.Id)\n")
 	fmt.Fprintf(g.w, "}\n\n")
 
-	fmt.Fprintf(g.w, "func (r *%s) TableIdNode() sql.TableIdNode {\n", define.Name)
+	fmt.Fprintf(g.w, "func (r *%s) TableIdNode() plan.TableIdNode {\n", define.Name)
 	if define.SkipTableId {
 		fmt.Fprintf(g.w, "  return nil\n")
 	} else {
@@ -223,25 +209,6 @@ func (g *MemoGen) genFormatters(defines []ExprDef) {
 			fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s %%d %%d\", r.Left.Id, r.Right.Id)\n", loweredName)
 		} else if d.Unary {
 			fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: %%d\", r.Child.Id)\n", loweredName)
-		} else if d.Scalar {
-			switch d.Name {
-			case "Literal":
-				fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: %%v %%s\", r.Val, r.Typ)\n", loweredName)
-			case "ColRef":
-				fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: '%%s.%%s'\", r.Gf.Table(), r.Gf.Name())\n", loweredName)
-			case "Bindvar":
-				fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: %%s\", r.Name)\n", loweredName)
-			case "Between":
-				fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: %%d, %%d, %%d\", r.Value.Id, r.Min.Id, r.Max.Id)\n", loweredName)
-			case "Hidden":
-				fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: %%s\", r.E)\n", loweredName)
-			case "Tuple":
-				fmt.Fprintf(g.w, "    vals := make([]string, len(r.Values))\n")
-				fmt.Fprintf(g.w, "    for i, v := range r.Values {\n")
-				fmt.Fprintf(g.w, "      vals[i] = fmt.Sprintf(\"%%d\",v.Id)\n")
-				fmt.Fprintf(g.w, "    }\n")
-				fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: %%s\", strings.Join(vals, \" \"))\n", loweredName)
-			}
 		} else {
 			panic("unreachable")
 		}
@@ -257,7 +224,7 @@ func (g *MemoGen) genFormatters(defines []ExprDef) {
 	fmt.Fprintf(g.w, "  var err error\n\n")
 	fmt.Fprintf(g.w, "  switch r := r.(type) {\n")
 	for _, d := range defines {
-		if d.SkipExec || d.Scalar {
+		if d.SkipExec {
 			continue
 		}
 		fmt.Fprintf(g.w, "  case *%s:\n", d.Name)
@@ -274,20 +241,5 @@ func (g *MemoGen) genFormatters(defines []ExprDef) {
 	fmt.Fprintf(g.w, "    return nil, err\n")
 	fmt.Fprintf(g.w, "  }\n")
 	fmt.Fprintf(g.w, "  return result, nil\n")
-	fmt.Fprintf(g.w, "}\n\n")
-
-	// to sqlExpr
-	fmt.Fprintf(g.w, "func buildScalarExpr(b *ExecBuilder, r ScalarExpr, sch sql.Schema) (sql.Expression, error) {\n")
-	fmt.Fprintf(g.w, "  switch r := r.(type) {\n")
-	for _, d := range defines {
-		if d.SkipExec || !d.Scalar {
-			continue
-		}
-		fmt.Fprintf(g.w, "  case *%s:\n", d.Name)
-		fmt.Fprintf(g.w, "  return b.build%s(r, sch)\n", strings.Title(d.Name))
-	}
-	fmt.Fprintf(g.w, "  default:\n")
-	fmt.Fprintf(g.w, "    panic(fmt.Sprintf(\"unknown ScalarExpr type: %%T\", r))\n")
-	fmt.Fprintf(g.w, "  }\n")
 	fmt.Fprintf(g.w, "}\n\n")
 }

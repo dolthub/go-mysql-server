@@ -42,33 +42,3 @@ func dfsRelHelper(grp *ExprGroup, seen map[GroupId]struct{}, cb func(rel RelExpr
 	}
 	return nil
 }
-
-// DfsScalar walks scalar expression memo groups. Returning a HaltErr
-// short circuits the walk.
-func DfsScalar(e ScalarExpr, cb func(e ScalarExpr) error) error {
-	seen := make(map[GroupId]struct{})
-	err := dfsScalarHelper(e, seen, cb)
-	if errors.Is(err, HaltErr) {
-		return nil
-	}
-	return err
-}
-
-func dfsScalarHelper(e ScalarExpr, seen map[GroupId]struct{}, cb func(e ScalarExpr) error) error {
-	if _, ok := seen[e.Group().Id]; ok {
-		return nil
-	} else {
-		seen[e.Group().Id] = struct{}{}
-	}
-	for _, c := range e.Children() {
-		err := dfsScalarHelper(c.Scalar, seen, cb)
-		if err != nil {
-			return err
-		}
-	}
-	err := cb(e)
-	if err != nil {
-		return err
-	}
-	return nil
-}

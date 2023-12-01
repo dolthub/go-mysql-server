@@ -442,8 +442,6 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 			p := expression.NewLiteral(1, types.Int64)
 			projectExpressions = append(projectExpressions, p)
 			gf := expression.NewGetField(0, types.Int64, "1", true)
-			m.AddColumnId(gf.Table(), gf.Name())
-			m.MemoizeScalar(gf)
 			nullify = append(nullify, gf)
 		}
 		// project is a new group
