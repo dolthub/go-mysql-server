@@ -78,6 +78,7 @@ const (
 	resolveSubqueryExprsId         // resolveSubqueryExprs
 	replaceCrossJoinsId            // replaceCrossJoins
 	moveJoinCondsToFilterId        // moveJoinCondsToFilter
+	moveFiltersToJoinCondId        // moveFiltersToJoinCond
 	simplifyFiltersId              // simplifyFilters
 	pushNotFiltersId               // pushNotFilters
 	optimizeDistinctId             // optimizeDistinct

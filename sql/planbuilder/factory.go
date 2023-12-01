@@ -164,16 +164,16 @@ func (f *factory) buildJoin(l, r sql.Node, op plan.JoinType, cond sql.Expression
 	return plan.NewJoin(l, r, op, cond), nil
 }
 
-func (f *factory) buildTableAlias(name string, child sql.Node) (sql.Node, error) {
+func (f *factory) buildTableAlias(name string, child sql.TableIdNode) (sql.TableIdNode, error) {
 	{
 		// deduplicate tableAlias->tableAlias and tableAlias->subqueryAlias
 		switch n := child.(type) {
 		case *plan.TableAlias:
-			return n.WithName(name), nil
+			return n.WithName(name).(sql.TableIdNode), nil
 		case *plan.SubqueryAlias:
-			return n.WithName(name), nil
+			return n.WithName(name).(sql.TableIdNode), nil
 		default:
-			return plan.NewTableAlias(name, child), nil
+			return plan.NewTableAlias(name, child).WithId(child.Id()).WithColumns(child.Columns()), nil
 		}
 	}
 }

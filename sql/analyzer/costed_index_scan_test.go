@@ -206,9 +206,9 @@ var rangeType = types.Uint8
 
 func TestRangeBuilder(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	x := expression.NewGetFieldWithTable(0, rangeType, "mydb", "xyz", "x", true)
-	y := expression.NewGetFieldWithTable(1, rangeType, "mydb", "xyz", "y", true)
-	z := expression.NewGetFieldWithTable(2, rangeType, "mydb", "xyz", "z", true)
+	x := expression.NewGetFieldWithTable(0, 0, rangeType, "mydb", "xyz", "x", true)
+	y := expression.NewGetFieldWithTable(0, 1, rangeType, "mydb", "xyz", "y", true)
+	z := expression.NewGetFieldWithTable(0, 2, rangeType, "mydb", "xyz", "z", true)
 
 	tests := []struct {
 		filter sql.Expression
@@ -621,8 +621,8 @@ func TestRangeBuilder(t *testing.T) {
 }
 
 func TestRangeBuilderInclude(t *testing.T) {
-	x := expression.NewGetFieldWithTable(0, rangeType, "mydb", "xyz", "x", true)
-	y := expression.NewGetFieldWithTable(1, rangeType, "mydb", "xyz", "y", true)
+	x := expression.NewGetFieldWithTable(0, 0, rangeType, "mydb", "xyz", "x", true)
+	y := expression.NewGetFieldWithTable(0, 1, rangeType, "mydb", "xyz", "y", true)
 
 	tests := []struct {
 		name    string
@@ -837,7 +837,7 @@ func TestIndexSearchable(t *testing.T) {
 	// we want to run costed index scan rule with the indexSearchableTable as input
 	input := plan.NewFilter(
 		expression.NewEquals(
-			expression.NewGetFieldWithTable(0, types.Int64, "mydb", "xy", "x", false),
+			expression.NewGetFieldWithTable(0, 0, types.Int64, "mydb", "xy", "x", false),
 			expression.NewLiteral(1, types.Int64),
 		),
 		plan.NewResolvedTable(&indexSearchableTable{underlying: plan.NewDualSqlTable()}, nil, nil),
@@ -856,7 +856,7 @@ Filter
 	require.Equal(t, strings.TrimSpace(exp), strings.TrimSpace(res.String()), "expected:\n%s,\nfound:\n%s\n", exp, res.String())
 }
 
-var xIdx = &dummyIdx{id: "primary", database: "mydb", table: "xy", expr: []sql.Expression{expression.NewGetFieldWithTable(0, types.Int64, "mydb", "xy", "x", false)}}
+var xIdx = &dummyIdx{id: "primary", database: "mydb", table: "xy", expr: []sql.Expression{expression.NewGetFieldWithTable(0, 0, types.Int64, "mydb", "xy", "x", false)}}
 
 type indexSearchableTable struct {
 	underlying sql.Table

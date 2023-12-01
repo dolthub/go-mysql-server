@@ -181,7 +181,7 @@ func (o joinOrderHint) build(grp *ExprGroup) {
 	// convert global table order to hint order
 	inputs := grp.RelProps.InputTables()
 	for idx, ok := inputs.Next(0); ok; idx, ok = inputs.Next(idx + 1) {
-		if i, ok := o.order[GroupId(idx+1)]; ok {
+		if i, ok := o.order[GroupId(idx)]; ok {
 			// If group |idx+1| is a dependency of this table, record the
 			// ordinal position of that group given by the hint order.
 			s = s.add(i)
@@ -280,8 +280,8 @@ type joinOpHint struct {
 func newjoinOpHint(op HintType, left, right GroupId) joinOpHint {
 	return joinOpHint{
 		op: op,
-		l:  sql.NewFastIntSet(int(TableIdForSource(left))),
-		r:  sql.NewFastIntSet(int(TableIdForSource(right))),
+		l:  sql.NewFastIntSet(int(left)),
+		r:  sql.NewFastIntSet(int(right)),
 	}
 }
 
@@ -382,9 +382,11 @@ func (h joinHints) satisfiedBy(n RelExpr) bool {
 	}
 
 	for _, op := range h.ops {
-		if op.depsMatch(n) && op.typeMatches(n) {
-			return true
+		if op.depsMatch(n) {
+			if !op.typeMatches(n) {
+				return false
+			}
 		}
 	}
-	return false
+	return true
 }

@@ -156,8 +156,12 @@ func (g *MemoGen) genSourceRelInterface(define ExprDef) {
 	}
 	fmt.Fprintf(g.w, "}\n\n")
 
-	fmt.Fprintf(g.w, "func (r *%s) TableId() TableId {\n", define.Name)
+	fmt.Fprintf(g.w, "func (r *%s) TableId() sql.TableId {\n", define.Name)
 	fmt.Fprintf(g.w, "  return TableIdForSource(r.g.Id)\n")
+	fmt.Fprintf(g.w, "}\n\n")
+
+	fmt.Fprintf(g.w, "func (r *%s) TableIdNode() sql.TableIdNode {\n", define.Name)
+	fmt.Fprintf(g.w, "  return r.Table\n")
 	fmt.Fprintf(g.w, "}\n\n")
 
 	fmt.Fprintf(g.w, "func (r *%s) OutputCols() sql.Schema {\n", define.Name)
@@ -188,14 +192,10 @@ func (g *MemoGen) genUnaryGroupInterface(define ExprDef) {
 	fmt.Fprintf(g.w, "  return []*ExprGroup{r.Child}\n")
 	fmt.Fprintf(g.w, "}\n\n")
 
-	fmt.Fprintf(g.w, "func (r *%s) outputCols() sql.Schema {\n", define.Name)
+	fmt.Fprintf(g.w, "func (r *%s) outputCols() sql.ColSet {\n", define.Name)
 	switch define.Name {
 	case "Project":
-		fmt.Fprintf(g.w, "  var s = make(sql.Schema, len(r.Projections))\n")
-		fmt.Fprintf(g.w, "  for i, e := range r.Projections {\n")
-		fmt.Fprintf(g.w, "    s[i] = ScalarToSqlCol(e)\n")
-		fmt.Fprintf(g.w, "  }\n")
-		fmt.Fprintf(g.w, "  return s\n")
+		fmt.Fprintf(g.w, "  return getProjectColset(r)\n")
 
 	default:
 		fmt.Fprintf(g.w, "  return r.Child.RelProps.OutputCols()\n")
@@ -247,7 +247,7 @@ func (g *MemoGen) genFormatters(defines []ExprDef) {
 	fmt.Fprintf(g.w, "}\n\n")
 
 	// to sqlNode
-	fmt.Fprintf(g.w, "func buildRelExpr(b *ExecBuilder, r RelExpr, input sql.Schema, children ...sql.Node) (sql.Node, error) {\n")
+	fmt.Fprintf(g.w, "func buildRelExpr(b *ExecBuilder, r RelExpr, children ...sql.Node) (sql.Node, error) {\n")
 	fmt.Fprintf(g.w, "  var result sql.Node\n")
 	fmt.Fprintf(g.w, "  var err error\n\n")
 	fmt.Fprintf(g.w, "  switch r := r.(type) {\n")
@@ -256,7 +256,7 @@ func (g *MemoGen) genFormatters(defines []ExprDef) {
 			continue
 		}
 		fmt.Fprintf(g.w, "  case *%s:\n", d.Name)
-		fmt.Fprintf(g.w, "  result, err = b.build%s(r, input, children...)\n", strings.Title(d.Name))
+		fmt.Fprintf(g.w, "  result, err = b.build%s(r, children...)\n", strings.Title(d.Name))
 	}
 	fmt.Fprintf(g.w, "  default:\n")
 	fmt.Fprintf(g.w, "    panic(fmt.Sprintf(\"unknown RelExpr type: %%T\", r))\n")
@@ -264,7 +264,7 @@ func (g *MemoGen) genFormatters(defines []ExprDef) {
 	fmt.Fprintf(g.w, "  if err != nil {\n")
 	fmt.Fprintf(g.w, "    return nil, err\n")
 	fmt.Fprintf(g.w, "  }\n\n")
-	fmt.Fprintf(g.w, "  result, err = r.Group().finalize(result, input)\n")
+	fmt.Fprintf(g.w, "  result, err = r.Group().finalize(result)\n")
 	fmt.Fprintf(g.w, "  if err != nil {\n")
 	fmt.Fprintf(g.w, "    return nil, err\n")
 	fmt.Fprintf(g.w, "  }\n")

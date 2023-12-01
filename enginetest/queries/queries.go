@@ -8584,6 +8584,14 @@ from typestable`,
 			{nil},
 		},
 	},
+	{
+		Query:    "flush binary logs",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "flush engine logs",
+		Expected: []sql.Row{},
+	},
 }
 
 var KeylessQueries = []QueryTest{

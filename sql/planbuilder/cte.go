@@ -83,7 +83,7 @@ func (b *Builder) buildCte(inScope *scope, e ast.TableExpr, name string, columns
 	b.renameSource(cteScope, name, columns)
 	switch n := cteScope.node.(type) {
 	case *plan.SubqueryAlias:
-		cteScope.node = n.WithColumns(columns)
+		cteScope.node = n.WithColumnNames(columns)
 	}
 	return cteScope
 }
@@ -98,10 +98,19 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name strin
 		switch n := cteScope.node.(type) {
 		case *plan.SetOp:
 			sq := plan.NewSubqueryAlias(name, "", n)
-			sq = sq.WithColumns(columns)
+			sq = sq.WithColumnNames(columns)
 			sq = sq.WithCorrelated(sqScope.correlated())
 			sq = sq.WithVolatile(sqScope.volatile())
-			cteScope.node = sq
+
+			tabId := cteScope.addTable(name)
+			var colset sql.ColSet
+			for i, c := range cteScope.cols {
+				c.tableId = tabId
+				cteScope.cols[i] = c
+				colset.Add(sql.ColumnId(c.id))
+			}
+
+			cteScope.node = sq.WithId(tabId).WithColumns(colset)
 		}
 		return cteScope
 	}
@@ -121,6 +130,8 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name strin
 	var rInit sql.Node
 	var recSch sql.Schema
 	cteScope := leftScope.replace()
+	tableId := cteScope.addTable(name)
+	var cols sql.ColSet
 	scopeMapping := make(map[sql.ColumnId]sql.Expression)
 	{
 		rInit = leftScope.node
@@ -140,13 +151,15 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name strin
 		for i, c := range leftScope.cols {
 			c.typ = recSch[i].Type
 			c.scalar = nil
+			c.table = name
 			toId := cteScope.newColumn(c)
 			scopeMapping[sql.ColumnId(toId)] = c.scalarGf()
+			cols.Add(sql.ColumnId(toId))
 		}
 		b.renameSource(cteScope, name, columns)
 
 		rTable = plan.NewRecursiveTable(name, recSch)
-		cteScope.node = rTable
+		cteScope.node = rTable.WithId(tableId).WithColumns(cols)
 	}
 
 	rightInScope := inScope.replaceSubquery()
@@ -184,12 +197,14 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name strin
 	corr := leftSqScope.correlated().Union(rightInScope.correlated())
 	vol := leftSqScope.activeSubquery.volatile || rightInScope.activeSubquery.volatile
 
-	sq := plan.NewSubqueryAlias(name, "", rcte)
-	sq = sq.WithColumns(columns)
+	rcteId := rcte.WithId(tableId).WithColumns(cols)
+
+	sq := plan.NewSubqueryAlias(name, "", rcteId)
+	sq = sq.WithColumnNames(columns)
 	sq = sq.WithCorrelated(corr)
 	sq = sq.WithVolatile(vol)
 	sq = sq.WithScopeMapping(scopeMapping)
-	cteScope.node = sq
+	cteScope.node = sq.WithId(tableId).WithColumns(cols)
 	b.renameSource(cteScope, name, columns)
 	return cteScope
 }

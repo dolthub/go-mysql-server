@@ -128,7 +128,7 @@ func replaceAggregatesWithGetFieldProjections(_ *sql.Context, scope *plan.Scope,
 				newAggregates = append(newAggregates, e)
 				name, source := getNameAndSource(e)
 				newProjection[i] = expression.NewGetFieldWithTable(
-					scopeLen+len(newAggregates)-1, e.Type(), getField.Database(), source, name, e.IsNullable(),
+					scopeLen+len(newAggregates)-1, int(getField.TableId()), e.Type(), getField.Database(), source, name, e.IsNullable(),
 				)
 			} else {
 				newProjection[i] = e

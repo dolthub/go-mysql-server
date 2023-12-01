@@ -30,6 +30,8 @@ var SysbenchPlanTests = []QueryPlanTest{
 			"         │   └─ IndexedTableAccess(sbtest1)\n" +
 			"         │       ├─ index: [sbtest1.id]\n" +
 			"         │       ├─ static: [{[NULL, ∞)}]\n" +
+			"         │       ├─ colSet: (25-48)\n" +
+			"         │       ├─ tableId: 2\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: sbtest1\n" +
 			"         │           └─ columns: [id]\n" +
@@ -37,6 +39,8 @@ var SysbenchPlanTests = []QueryPlanTest{
 			"             └─ IndexedTableAccess(sbtest1)\n" +
 			"                 ├─ index: [sbtest1.id]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 ├─ colSet: (1-24)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: sbtest1\n" +
 			"                     └─ columns: [id small_int_col]\n" +
@@ -56,7 +60,9 @@ var SysbenchPlanTests = []QueryPlanTest{
 			"         └─ TableAlias(a)\n" +
 			"             └─ IndexedTableAccess(sbtest1)\n" +
 			"                 ├─ index: [sbtest1.id]\n" +
-			"                 ├─ keys: [b.int_col]\n" +
+			"                 ├─ keys: [b.int_col:1!null]\n" +
+			"                 ├─ colSet: (1-24)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: sbtest1\n" +
 			"                     └─ columns: [id small_int_col]\n" +
@@ -73,6 +79,8 @@ var SysbenchPlanTests = []QueryPlanTest{
 			"         └─ IndexedTableAccess(sbtest1)\n" +
 			"             ├─ index: [sbtest1.big_int_col]\n" +
 			"             ├─ static: [{(0, ∞)}]\n" +
+			"             ├─ colSet: (1-24)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: sbtest1\n" +
 			"                 └─ columns: [small_int_col big_int_col set_col year_col]\n" +
@@ -88,6 +96,8 @@ var SysbenchPlanTests = []QueryPlanTest{
 			"     └─ IndexedTableAccess(sbtest1)\n" +
 			"         ├─ index: [sbtest1.big_int_col]\n" +
 			"         ├─ static: [{(0, ∞)}]\n" +
+			"         ├─ colSet: (1-24)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: sbtest1\n" +
 			"             └─ columns: [id big_int_col]\n" +
@@ -98,6 +108,8 @@ var SysbenchPlanTests = []QueryPlanTest{
 		ExpectedPlan: "IndexedTableAccess(sbtest1)\n" +
 			" ├─ index: [sbtest1.big_int_col]\n" +
 			" ├─ static: [{(0, ∞)}]\n" +
+			" ├─ colSet: (1-24)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: sbtest1\n" +
 			"     └─ columns: [id tiny_int_col unsigned_tiny_int_col small_int_col unsigned_small_int_col medium_int_col unsigned_medium_int_col int_col unsigned_int_col big_int_col unsigned_big_int_col decimal_col float_col double_col bit_col char_col var_char_col enum_col set_col date_col time_col datetime_col timestamp_col year_col]\n" +

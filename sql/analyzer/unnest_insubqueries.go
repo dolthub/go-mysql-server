@@ -177,7 +177,7 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 			return n, transform.SameTree, err
 		}
 	}
-	return ret, transform.TreeIdentity(unnested), nil
+	return ret, transform.TreeIdentity(!unnested), nil
 }
 
 func disambiguateTables(used map[string]int, n sql.Node) (sql.Node, error) {
@@ -253,13 +253,23 @@ func getHighestProjection(n sql.Node) (sql.Expression, bool, error) {
 				proj = append(proj, e)
 			}
 		case *plan.GroupBy:
+			// todo(max): could make better effort to get column ids from these,
+			// but real fix is also giving synthesized projection column ids
+			// in binder
 			proj = nn.SelectedExprs
 		case *plan.Window:
 			proj = nn.SelectExprs
-		case sql.NameableNode:
-			proj = expression.SchemaToGetFields(sch)
 		case *plan.SetOp:
 			return nil, false, nil
+		case sql.TableIdNode:
+			colset := nn.Columns()
+			idx := 0
+			sch := n.Schema()
+			for id, hasNext := colset.Next(1); hasNext; id, hasNext = colset.Next(id + 1) {
+				col := sch[idx]
+				proj = append(proj, expression.NewGetFieldWithTable(int(id), int(id), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable))
+				idx++
+			}
 		default:
 			if len(nn.Children()) == 1 {
 				n = nn.Children()[0]

@@ -40,25 +40,16 @@ func TestHashJoins(t *testing.T) {
 			memo: `memo:
 ├── G1: (tablescan: ab)
 ├── G2: (tablescan: xy)
-├── G3: (colref: 'ab.a')
-├── G4: (colref: 'xy.x')
-├── G5: (equal 3 4)
-├── G6: (hashjoin 1 2) (hashjoin 2 1) (innerjoin 2 1) (innerjoin 1 2)
-├── G7: (tablescan: pq)
-├── G8: (colref: 'pq.p')
-├── G9: (equal 4 8)
-├── G10: (hashjoin 6 7) (hashjoin 1 18) (hashjoin 18 1) (hashjoin 2 17) (hashjoin 17 2) (hashjoin 7 6) (innerjoin 7 6) (innerjoin 17 2) (innerjoin 2 17) (innerjoin 18 1) (innerjoin 1 18) (innerjoin 6 7)
-├── G11: (tablescan: uv)
-├── G12: (colref: 'pq.q')
-├── G13: (colref: 'uv.u')
-├── G14: (equal 12 13)
-├── G15: (hashjoin 10 11) (hashjoin 1 21) (hashjoin 21 1) (hashjoin 2 20) (hashjoin 20 2) (hashjoin 6 19) (hashjoin 19 6) (hashjoin 11 10) (innerjoin 11 10) (innerjoin 19 6) (innerjoin 6 19) (innerjoin 20 2) (innerjoin 2 20) (innerjoin 21 1) (innerjoin 1 21) (innerjoin 10 11)
-├── G16: (equal 3 8)
-├── G17: (hashjoin 1 7) (hashjoin 7 1) (innerjoin 7 1) (innerjoin 1 7)
-├── G18: (hashjoin 2 7) (hashjoin 7 2) (innerjoin 7 2) (innerjoin 2 7)
-├── G19: (hashjoin 7 11) (hashjoin 11 7) (innerjoin 11 7) (innerjoin 7 11)
-├── G20: (hashjoin 1 19) (hashjoin 19 1) (hashjoin 17 11) (hashjoin 11 17) (innerjoin 11 17) (innerjoin 17 11) (innerjoin 19 1) (innerjoin 1 19)
-└── G21: (hashjoin 2 19) (hashjoin 19 2) (hashjoin 18 11) (hashjoin 11 18) (innerjoin 11 18) (innerjoin 18 11) (innerjoin 19 2) (innerjoin 2 19)
+├── G3: (hashjoin 1 2) (hashjoin 2 1) (innerjoin 2 1) (innerjoin 1 2)
+├── G4: (tablescan: pq)
+├── G5: (hashjoin 3 4) (hashjoin 1 9) (hashjoin 9 1) (hashjoin 2 8) (hashjoin 8 2) (hashjoin 4 3) (innerjoin 4 3) (innerjoin 8 2) (innerjoin 2 8) (innerjoin 9 1) (innerjoin 1 9) (innerjoin 3 4)
+├── G6: (tablescan: uv)
+├── G7: (hashjoin 5 6) (hashjoin 1 12) (hashjoin 12 1) (hashjoin 2 11) (hashjoin 11 2) (hashjoin 3 10) (hashjoin 10 3) (hashjoin 6 5) (innerjoin 6 5) (innerjoin 10 3) (innerjoin 3 10) (innerjoin 11 2) (innerjoin 2 11) (innerjoin 12 1) (innerjoin 1 12) (innerjoin 5 6)
+├── G8: (hashjoin 1 4) (hashjoin 4 1) (innerjoin 4 1) (innerjoin 1 4)
+├── G9: (hashjoin 2 4) (hashjoin 4 2) (innerjoin 4 2) (innerjoin 2 4)
+├── G10: (hashjoin 4 6) (hashjoin 6 4) (innerjoin 6 4) (innerjoin 4 6)
+├── G11: (hashjoin 1 10) (hashjoin 10 1) (hashjoin 8 6) (hashjoin 6 8) (innerjoin 6 8) (innerjoin 8 6) (innerjoin 10 1) (innerjoin 1 10)
+└── G12: (hashjoin 2 10) (hashjoin 10 2) (hashjoin 9 6) (hashjoin 6 9) (innerjoin 6 9) (innerjoin 9 6) (innerjoin 10 2) (innerjoin 2 10)
 `,
 		},
 	}
@@ -87,7 +78,7 @@ func uv(db *memory.Database) sql.Node {
 		{Name: "u", Type: types.Int64, Nullable: true},
 		{Name: "v", Type: types.Text, Nullable: true},
 	}, 0), nil)
-	return plan.NewResolvedTable(t, nil, nil)
+	return plan.NewResolvedTable(t, nil, nil).WithId(4).WithColumns(sql.NewColSet(7, 8))
 }
 
 func xy(db *memory.Database) sql.Node {
@@ -95,7 +86,7 @@ func xy(db *memory.Database) sql.Node {
 		{Name: "x", Type: types.Int64, Nullable: true},
 		{Name: "y", Type: types.Text, Nullable: true},
 	}, 0), nil)
-	return plan.NewResolvedTable(t, nil, nil)
+	return plan.NewResolvedTable(t, nil, nil).WithId(1).WithColumns(sql.NewColSet(1, 2))
 }
 
 func ab(db *memory.Database) sql.Node {
@@ -103,7 +94,7 @@ func ab(db *memory.Database) sql.Node {
 		{Name: "a", Type: types.Int64, Nullable: true},
 		{Name: "b", Type: types.Text, Nullable: true},
 	}, 0), nil)
-	return plan.NewResolvedTable(t, nil, nil)
+	return plan.NewResolvedTable(t, nil, nil).WithId(2).WithColumns(sql.NewColSet(3, 4))
 }
 
 func pq(db *memory.Database) sql.Node {
@@ -111,7 +102,7 @@ func pq(db *memory.Database) sql.Node {
 		{Name: "p", Type: types.Int64, Nullable: true},
 		{Name: "q", Type: types.Text, Nullable: true},
 	}, 0), nil)
-	return plan.NewResolvedTable(t, nil, nil)
+	return plan.NewResolvedTable(t, nil, nil).WithId(3).WithColumns(sql.NewColSet(5, 6))
 }
 
 func newEq(eq string) sql.Expression {
@@ -122,7 +113,45 @@ func newEq(eq string) sql.Expression {
 	left := strings.Split(vars[0], ".")
 	right := strings.Split(vars[1], ".")
 	return expression.NewEquals(
-		expression.NewGetFieldWithTable(0, types.Int64, "db", left[0], left[1], false),
-		expression.NewGetFieldWithTable(0, types.Int64, "db", right[0], right[1], false),
+		expression.NewGetFieldWithTable(colId(left[1]), tabId(left[0]), types.Int64, "db", left[0], left[1], false),
+		expression.NewGetFieldWithTable(colId(right[1]), tabId(right[0]), types.Int64, "db", right[0], right[1], false),
 	)
+}
+
+func colId(n string) int {
+	switch n {
+	case "x":
+		return 1
+	case "y":
+		return 2
+	case "a":
+		return 3
+	case "b":
+		return 4
+	case "p":
+		return 5
+	case "q":
+		return 6
+	case "u":
+		return 7
+	case "v":
+		return 8
+	default:
+		panic("unknown col")
+	}
+}
+
+func tabId(n string) int {
+	switch n {
+	case "xy":
+		return 1
+	case "ab":
+		return 2
+	case "pq":
+		return 3
+	case "uv":
+		return 4
+	default:
+		panic("unknown table")
+	}
 }

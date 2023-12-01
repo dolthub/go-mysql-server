@@ -178,6 +178,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 			sqlMode := sql.NewSqlModeFromString(trigger.SqlMode)
 			b.SetParserOptions(sqlMode.ParserOptions())
 			parsedTrigger, _, _, err = b.Parse(trigger.CreateStatement, false)
+			b.Reset()
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -199,6 +200,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 				b.TriggerCtx().Call = true
 				parsedTrigger, _, _, err = b.Parse(trigger.CreateStatement, false)
 				b.TriggerCtx().Call = false
+				b.Reset()
 				if err != nil {
 					return nil, transform.SameTree, err
 				}

@@ -136,8 +136,8 @@ func (r *ConcatJoin) JoinPrivate() *JoinBase {
 
 type HashJoin struct {
 	*JoinBase
-	RightAttrs []*ExprGroup
-	LeftAttrs  []*ExprGroup
+	RightAttrs []sql.Expression
+	LeftAttrs  []sql.Expression
 }
 
 var _ RelExpr = (*HashJoin)(nil)
@@ -201,7 +201,7 @@ func (r *LateralJoin) JoinPrivate() *JoinBase {
 
 type TableScan struct {
 	*sourceBase
-	Table sql.TableNode
+	Table sql.TableIdNode
 }
 
 var _ RelExpr = (*TableScan)(nil)
@@ -215,8 +215,12 @@ func (r *TableScan) Name() string {
 	return strings.ToLower(r.Table.Name())
 }
 
-func (r *TableScan) TableId() TableId {
+func (r *TableScan) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
+}
+
+func (r *TableScan) TableIdNode() sql.TableIdNode {
+	return r.Table
 }
 
 func (r *TableScan) OutputCols() sql.Schema {
@@ -243,8 +247,12 @@ func (r *Values) Name() string {
 	return strings.ToLower(r.Table.Name())
 }
 
-func (r *Values) TableId() TableId {
+func (r *Values) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
+}
+
+func (r *Values) TableIdNode() sql.TableIdNode {
+	return r.Table
 }
 
 func (r *Values) OutputCols() sql.Schema {
@@ -271,8 +279,12 @@ func (r *TableAlias) Name() string {
 	return strings.ToLower(r.Table.Name())
 }
 
-func (r *TableAlias) TableId() TableId {
+func (r *TableAlias) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
+}
+
+func (r *TableAlias) TableIdNode() sql.TableIdNode {
+	return r.Table
 }
 
 func (r *TableAlias) OutputCols() sql.Schema {
@@ -299,8 +311,12 @@ func (r *RecursiveTable) Name() string {
 	return strings.ToLower(r.Table.Name())
 }
 
-func (r *RecursiveTable) TableId() TableId {
+func (r *RecursiveTable) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
+}
+
+func (r *RecursiveTable) TableIdNode() sql.TableIdNode {
+	return r.Table
 }
 
 func (r *RecursiveTable) OutputCols() sql.Schema {
@@ -327,8 +343,12 @@ func (r *RecursiveCte) Name() string {
 	return strings.ToLower(r.Table.Name())
 }
 
-func (r *RecursiveCte) TableId() TableId {
+func (r *RecursiveCte) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
+}
+
+func (r *RecursiveCte) TableIdNode() sql.TableIdNode {
+	return r.Table
 }
 
 func (r *RecursiveCte) OutputCols() sql.Schema {
@@ -355,8 +375,12 @@ func (r *SubqueryAlias) Name() string {
 	return strings.ToLower(r.Table.Name())
 }
 
-func (r *SubqueryAlias) TableId() TableId {
+func (r *SubqueryAlias) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
+}
+
+func (r *SubqueryAlias) TableIdNode() sql.TableIdNode {
+	return r.Table
 }
 
 func (r *SubqueryAlias) OutputCols() sql.Schema {
@@ -383,8 +407,12 @@ func (r *TableFunc) Name() string {
 	return strings.ToLower(r.Table.Name())
 }
 
-func (r *TableFunc) TableId() TableId {
+func (r *TableFunc) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
+}
+
+func (r *TableFunc) TableIdNode() sql.TableIdNode {
+	return r.Table
 }
 
 func (r *TableFunc) OutputCols() sql.Schema {
@@ -411,8 +439,12 @@ func (r *JSONTable) Name() string {
 	return strings.ToLower(r.Table.Name())
 }
 
-func (r *JSONTable) TableId() TableId {
+func (r *JSONTable) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
+}
+
+func (r *JSONTable) TableIdNode() sql.TableIdNode {
+	return r.Table
 }
 
 func (r *JSONTable) OutputCols() sql.Schema {
@@ -439,8 +471,12 @@ func (r *EmptyTable) Name() string {
 	return strings.ToLower(r.Table.Name())
 }
 
-func (r *EmptyTable) TableId() TableId {
+func (r *EmptyTable) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
+}
+
+func (r *EmptyTable) TableIdNode() sql.TableIdNode {
+	return r.Table
 }
 
 func (r *EmptyTable) OutputCols() sql.Schema {
@@ -467,8 +503,12 @@ func (r *SetOp) Name() string {
 	return ""
 }
 
-func (r *SetOp) TableId() TableId {
+func (r *SetOp) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
+}
+
+func (r *SetOp) TableIdNode() sql.TableIdNode {
+	return r.Table
 }
 
 func (r *SetOp) OutputCols() sql.Schema {
@@ -482,7 +522,7 @@ func (r *SetOp) Children() []*ExprGroup {
 type Project struct {
 	*relBase
 	Child       *ExprGroup
-	Projections []*ExprGroup
+	Projections []sql.Expression
 }
 
 var _ RelExpr = (*Project)(nil)
@@ -495,12 +535,8 @@ func (r *Project) Children() []*ExprGroup {
 	return []*ExprGroup{r.Child}
 }
 
-func (r *Project) outputCols() sql.Schema {
-	var s = make(sql.Schema, len(r.Projections))
-	for i, e := range r.Projections {
-		s[i] = ScalarToSqlCol(e)
-	}
-	return s
+func (r *Project) outputCols() sql.ColSet {
+	return getProjectColset(r)
 }
 
 type Distinct struct {
@@ -518,7 +554,7 @@ func (r *Distinct) Children() []*ExprGroup {
 	return []*ExprGroup{r.Child}
 }
 
-func (r *Distinct) outputCols() sql.Schema {
+func (r *Distinct) outputCols() sql.ColSet {
 	return r.Child.RelProps.OutputCols()
 }
 
@@ -537,14 +573,14 @@ func (r *Max1Row) Children() []*ExprGroup {
 	return []*ExprGroup{r.Child}
 }
 
-func (r *Max1Row) outputCols() sql.Schema {
+func (r *Max1Row) outputCols() sql.ColSet {
 	return r.Child.RelProps.OutputCols()
 }
 
 type Filter struct {
 	*relBase
 	Child   *ExprGroup
-	Filters []*ExprGroup
+	Filters []sql.Expression
 }
 
 var _ RelExpr = (*Filter)(nil)
@@ -557,7 +593,7 @@ func (r *Filter) Children() []*ExprGroup {
 	return []*ExprGroup{r.Child}
 }
 
-func (r *Filter) outputCols() sql.Schema {
+func (r *Filter) outputCols() sql.ColSet {
 	return r.Child.RelProps.OutputCols()
 }
 
@@ -641,7 +677,7 @@ func (r *Not) Children() []*ExprGroup {
 	return []*ExprGroup{r.Child}
 }
 
-func (r *Not) outputCols() sql.Schema {
+func (r *Not) outputCols() sql.ColSet {
 	return r.Child.RelProps.OutputCols()
 }
 
@@ -885,7 +921,7 @@ func (r *IsNull) Children() []*ExprGroup {
 	return []*ExprGroup{r.Child}
 }
 
-func (r *IsNull) outputCols() sql.Schema {
+func (r *IsNull) outputCols() sql.ColSet {
 	return r.Child.RelProps.OutputCols()
 }
 
@@ -1051,61 +1087,61 @@ func FormatExpr(r exprType) string {
 	}
 }
 
-func buildRelExpr(b *ExecBuilder, r RelExpr, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+func buildRelExpr(b *ExecBuilder, r RelExpr, children ...sql.Node) (sql.Node, error) {
 	var result sql.Node
 	var err error
 
 	switch r := r.(type) {
 	case *CrossJoin:
-		result, err = b.buildCrossJoin(r, input, children...)
+		result, err = b.buildCrossJoin(r, children...)
 	case *InnerJoin:
-		result, err = b.buildInnerJoin(r, input, children...)
+		result, err = b.buildInnerJoin(r, children...)
 	case *LeftJoin:
-		result, err = b.buildLeftJoin(r, input, children...)
+		result, err = b.buildLeftJoin(r, children...)
 	case *SemiJoin:
-		result, err = b.buildSemiJoin(r, input, children...)
+		result, err = b.buildSemiJoin(r, children...)
 	case *AntiJoin:
-		result, err = b.buildAntiJoin(r, input, children...)
+		result, err = b.buildAntiJoin(r, children...)
 	case *LookupJoin:
-		result, err = b.buildLookupJoin(r, input, children...)
+		result, err = b.buildLookupJoin(r, children...)
 	case *RangeHeapJoin:
-		result, err = b.buildRangeHeapJoin(r, input, children...)
+		result, err = b.buildRangeHeapJoin(r, children...)
 	case *ConcatJoin:
-		result, err = b.buildConcatJoin(r, input, children...)
+		result, err = b.buildConcatJoin(r, children...)
 	case *HashJoin:
-		result, err = b.buildHashJoin(r, input, children...)
+		result, err = b.buildHashJoin(r, children...)
 	case *MergeJoin:
-		result, err = b.buildMergeJoin(r, input, children...)
+		result, err = b.buildMergeJoin(r, children...)
 	case *FullOuterJoin:
-		result, err = b.buildFullOuterJoin(r, input, children...)
+		result, err = b.buildFullOuterJoin(r, children...)
 	case *LateralJoin:
-		result, err = b.buildLateralJoin(r, input, children...)
+		result, err = b.buildLateralJoin(r, children...)
 	case *TableScan:
-		result, err = b.buildTableScan(r, input, children...)
+		result, err = b.buildTableScan(r, children...)
 	case *Values:
-		result, err = b.buildValues(r, input, children...)
+		result, err = b.buildValues(r, children...)
 	case *TableAlias:
-		result, err = b.buildTableAlias(r, input, children...)
+		result, err = b.buildTableAlias(r, children...)
 	case *RecursiveTable:
-		result, err = b.buildRecursiveTable(r, input, children...)
+		result, err = b.buildRecursiveTable(r, children...)
 	case *RecursiveCte:
-		result, err = b.buildRecursiveCte(r, input, children...)
+		result, err = b.buildRecursiveCte(r, children...)
 	case *SubqueryAlias:
-		result, err = b.buildSubqueryAlias(r, input, children...)
+		result, err = b.buildSubqueryAlias(r, children...)
 	case *TableFunc:
-		result, err = b.buildTableFunc(r, input, children...)
+		result, err = b.buildTableFunc(r, children...)
 	case *JSONTable:
-		result, err = b.buildJSONTable(r, input, children...)
+		result, err = b.buildJSONTable(r, children...)
 	case *EmptyTable:
-		result, err = b.buildEmptyTable(r, input, children...)
+		result, err = b.buildEmptyTable(r, children...)
 	case *SetOp:
-		result, err = b.buildSetOp(r, input, children...)
+		result, err = b.buildSetOp(r, children...)
 	case *Project:
-		result, err = b.buildProject(r, input, children...)
+		result, err = b.buildProject(r, children...)
 	case *Max1Row:
-		result, err = b.buildMax1Row(r, input, children...)
+		result, err = b.buildMax1Row(r, children...)
 	case *Filter:
-		result, err = b.buildFilter(r, input, children...)
+		result, err = b.buildFilter(r, children...)
 	default:
 		panic(fmt.Sprintf("unknown RelExpr type: %T", r))
 	}
@@ -1114,7 +1150,7 @@ func buildRelExpr(b *ExecBuilder, r RelExpr, input sql.Schema, children ...sql.N
 		return nil, err
 	}
 
-	result, err = r.Group().finalize(result, input)
+	result, err = r.Group().finalize(result)
 	if err != nil {
 		return nil, err
 	}

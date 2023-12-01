@@ -36,11 +36,16 @@ type SetOp struct {
 	Offset     sql.Expression
 	SortFields sql.SortFields
 	dispose    []sql.DisposeFunc
+	id         sql.TableId
+	cols       sql.ColSet
 }
 
 var _ sql.Node = (*SetOp)(nil)
 var _ sql.Expressioner = (*SetOp)(nil)
 var _ sql.CollationCoercible = (*SetOp)(nil)
+
+// var _ sql.NameableNode = (*SetOp)(nil)
+var _ sql.TableIdNode = (*SetOp)(nil)
 
 // NewSetOp creates a new SetOp node with the given children.
 func NewSetOp(setOpType int, left, right sql.Node, distinct bool, limit, offset sql.Expression, sortFields sql.SortFields) *SetOp {
@@ -52,6 +57,35 @@ func NewSetOp(setOpType int, left, right sql.Node, distinct bool, limit, offset 
 		SortFields: sortFields,
 		SetOpType:  setOpType,
 	}
+}
+
+func (s *SetOp) Name() string {
+	// TODO union should have its own name, table id, cols, etc
+	return ""
+}
+
+// WithId implements sql.TableIdNode
+func (s *SetOp) WithId(id sql.TableId) sql.TableIdNode {
+	ret := *s
+	ret.id = id
+	return &ret
+}
+
+// Id implements sql.TableIdNode
+func (s *SetOp) Id() sql.TableId {
+	return s.id
+}
+
+// WithColumns implements sql.TableIdNode
+func (s *SetOp) WithColumns(set sql.ColSet) sql.TableIdNode {
+	ret := *s
+	ret.cols = set
+	return &ret
+}
+
+// Columns implements sql.TableIdNode
+func (s *SetOp) Columns() sql.ColSet {
+	return s.cols
 }
 
 func (s *SetOp) AddDispose(f sql.DisposeFunc) {

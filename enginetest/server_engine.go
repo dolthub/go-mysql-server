@@ -608,7 +608,6 @@ func prepareBindingArgs(bindings map[string]*query.BindVariable) []any {
 	for i := 0; i < numBindVars; i++ {
 		args[i] = bindings[fmt.Sprintf("v%d", i+1)].Value
 	}
-
 	return args
 }
 

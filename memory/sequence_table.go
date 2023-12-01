@@ -23,6 +23,30 @@ type IntSequenceTable struct {
 	db   sql.Database
 	name string
 	Len  int64
+	id   sql.TableId
+	cols sql.ColSet
+}
+
+// WithId implements sql.TableIdNode
+func (s IntSequenceTable) WithId(id sql.TableId) sql.TableIdNode {
+	s.id = id
+	return s
+}
+
+// Id implements sql.TableIdNode
+func (s IntSequenceTable) Id() sql.TableId {
+	return s.id
+}
+
+// WithColumns implements sql.TableIdNode
+func (s IntSequenceTable) WithColumns(set sql.ColSet) sql.TableIdNode {
+	s.cols = set
+	return s
+}
+
+// Columns implements sql.TableIdNode
+func (s IntSequenceTable) Columns() sql.ColSet {
+	return s.cols
 }
 
 func (s IntSequenceTable) UnderlyingTable() sql.Table {
@@ -234,7 +258,7 @@ func (s IntSequenceTable) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 			Tbl:        nil,
 			TableName:  s.Name(),
 			Exprs: []sql.Expression{
-				expression.NewGetFieldWithTable(0, types.Int64, "", s.Name(), s.name, false),
+				expression.NewGetFieldWithTable(0, 0, types.Int64, s.db.Name(), s.Name(), s.name, false),
 			},
 			Name:         s.name,
 			Unique:       true,

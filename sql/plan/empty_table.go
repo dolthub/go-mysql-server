@@ -36,6 +36,32 @@ var _ sql.RenameableNode = (*EmptyTable)(nil)
 
 type EmptyTable struct {
 	schema sql.Schema
+	id     sql.TableId
+	cols   sql.ColSet
+}
+
+// WithId implements sql.TableIdNode
+func (e *EmptyTable) WithId(id sql.TableId) sql.TableIdNode {
+	ret := *e
+	ret.id = id
+	return &ret
+}
+
+// Id implements sql.TableIdNode
+func (e *EmptyTable) Id() sql.TableId {
+	return e.id
+}
+
+// WithColumns implements sql.TableIdNode
+func (e *EmptyTable) WithColumns(set sql.ColSet) sql.TableIdNode {
+	ret := *e
+	ret.cols = set
+	return &ret
+}
+
+// Columns implements sql.TableIdNode
+func (e *EmptyTable) Columns() sql.ColSet {
+	return e.cols
 }
 
 func (e *EmptyTable) WithName(s string) sql.Node {

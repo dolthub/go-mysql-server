@@ -23,7 +23,7 @@ import (
 // SubqueryAlias is a node that gives a subquery a name.
 type SubqueryAlias struct {
 	UnaryNode
-	Columns        []string
+	ColumnNames    []string
 	name           string
 	TextDefinition string
 	// OuterScopeVisibility is true when a SubqueryAlias (i.e. derived table) is contained in a subquery
@@ -34,6 +34,8 @@ type SubqueryAlias struct {
 	CacheableCTESource   bool
 	IsLateral            bool
 	ScopeMapping         map[sql.ColumnId]sql.Expression
+	id                   sql.TableId
+	cols                 sql.ColSet
 }
 
 var _ sql.Node = (*SubqueryAlias)(nil)
@@ -48,6 +50,30 @@ func NewSubqueryAlias(name, textDefinition string, node sql.Node) *SubqueryAlias
 		TextDefinition:       textDefinition,
 		OuterScopeVisibility: false,
 	}
+}
+
+// WithId implements sql.TableIdNode
+func (sq *SubqueryAlias) WithId(id sql.TableId) sql.TableIdNode {
+	ret := *sq
+	ret.id = id
+	return &ret
+}
+
+// Id implements sql.TableIdNode
+func (sq *SubqueryAlias) Id() sql.TableId {
+	return sq.id
+}
+
+// WithColumns implements sql.TableIdNode
+func (sq *SubqueryAlias) WithColumns(set sql.ColSet) sql.TableIdNode {
+	ret := *sq
+	ret.cols = set
+	return &ret
+}
+
+// Columns implements sql.TableIdNode
+func (sq *SubqueryAlias) Columns() sql.ColSet {
+	return sq.cols
 }
 
 // AsView returns the view wrapper for this subquery
@@ -75,8 +101,8 @@ func (sq *SubqueryAlias) Schema() sql.Schema {
 	for i, col := range childSchema {
 		c := *col
 		c.Source = sq.name
-		if len(sq.Columns) > 0 {
-			c.Name = sq.Columns[i]
+		if len(sq.ColumnNames) > 0 {
+			c.Name = sq.ColumnNames[i]
 		}
 		schema[i] = &c
 	}
@@ -153,18 +179,20 @@ func (sq *SubqueryAlias) String() string {
 func (sq *SubqueryAlias) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("SubqueryAlias")
-	children := make([]string, 5)
+	children := make([]string, 7)
 	children[0] = fmt.Sprintf("name: %s", sq.name)
 	children[1] = fmt.Sprintf("outerVisibility: %t", sq.OuterScopeVisibility)
 	children[2] = fmt.Sprintf("isLateral: %t", sq.IsLateral)
 	children[3] = fmt.Sprintf("cacheable: %t", sq.CanCacheResults())
-	children[4] = sql.DebugString(sq.Child)
+	children[4] = fmt.Sprintf("colSet: %s", sq.Columns())
+	children[5] = fmt.Sprintf("tableId: %d", sq.Id())
+	children[6] = sql.DebugString(sq.Child)
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
 
-func (sq *SubqueryAlias) WithColumns(columns []string) *SubqueryAlias {
+func (sq *SubqueryAlias) WithColumnNames(columns []string) *SubqueryAlias {
 	ret := *sq
-	ret.Columns = columns
+	ret.ColumnNames = columns
 	return &ret
 }

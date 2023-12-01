@@ -155,7 +155,6 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 				return e, transform.SameTree, nil
 			})
 			col := scopeColumn{
-				tableId:    sql.TableID{},
 				col:        expr.String(),
 				scalar:     expr,
 				typ:        expr.Type(),
