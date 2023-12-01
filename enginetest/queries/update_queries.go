@@ -109,6 +109,7 @@ var UpdateTests = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "updated"}},
 	},
 	{
+		SkipServerEngine:    true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
 		WriteQuery:          "UPDATE typestable SET ti = '2020-03-06 00:00:00';",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM typestable;",
@@ -134,6 +135,7 @@ var UpdateTests = []WriteQueryTest{
 			uint64(0)}},
 	},
 	{
+		SkipServerEngine:    true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
 		WriteQuery:          "UPDATE typestable SET ti = '2020-03-06 00:00:00', da = '2020-03-06';",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM typestable;",

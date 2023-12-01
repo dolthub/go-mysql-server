@@ -606,9 +606,11 @@ func rowToSQL(s sql.Schema, expectedRow sql.Row, actualRow sql.Row, convertTime 
 	}
 	newRow := sql.Row{}
 	for i, v := range expectedRow {
+		_, isTime := v.(time.Time)
+		_, isStr := v.(string)
 		if v == nil {
 			newRow = append(newRow, nil)
-		} else if types.IsDecimal(s[i].Type) {
+		} else if types.IsDecimal(s[i].Type) || (isTime && !convertTime) || (isStr && types.IsTextOnly(s[i].Type)) {
 			newRow = append(newRow, v)
 		} else if types.IsEnum(s[i].Type) || types.IsSet(s[i].Type) {
 			// engine tests use the index of the element, whereas over the wire tests use the string value
@@ -616,15 +618,11 @@ func rowToSQL(s sql.Schema, expectedRow sql.Row, actualRow sql.Row, convertTime 
 			//  provide data about its elements, we assume the result matches FOR NOW.
 			newRow = append(newRow, actualRow[i])
 		} else {
-			if _, ok := v.(time.Time); ok && !convertTime {
-				newRow = append(newRow, v)
-			} else {
-				c, _, err := s[i].Type.Convert(v)
-				if err != nil {
-					return nil, err
-				}
-				newRow = append(newRow, c)
+			c, _, err := s[i].Type.Convert(v)
+			if err != nil {
+				return nil, err
 			}
+			newRow = append(newRow, c)
 		}
 	}
 
