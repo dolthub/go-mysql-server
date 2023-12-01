@@ -4730,6 +4730,16 @@ Select * from (
 		},
 	},
 	{
+		Query:    "SELECT COALESCE (NULL, NULL)",
+		Expected: []sql.Row{{nil}},
+		ExpectedColumns: []*sql.Column{
+			{
+				Name: "COALESCE (NULL, NULL)",
+				Type: types.Null,
+			},
+		},
+	},
+	{
 		Query: "SELECT concat(s, i) FROM mytable",
 		Expected: []sql.Row{
 			{string("first row1")},
@@ -5349,9 +5359,24 @@ Select * from (
 		},
 	},
 	{
-		Query: `SELECT if(123 = 123, NULL, "b")`,
-		Expected: []sql.Row{
-			{nil},
+		Query:    `SELECT if(123 = 123, NULL, "b")`,
+		Expected: []sql.Row{{nil}},
+		ExpectedColumns: []*sql.Column{
+			{Name: "if(123 = 123, NULL, \"b\")", Type: types.LongText},
+		},
+	},
+	{
+		Query:    `SELECT if(123 = 123, NULL, NULL = 1)`,
+		Expected: []sql.Row{{nil}},
+		ExpectedColumns: []*sql.Column{
+			{Name: "if(123 = 123, NULL, NULL = 1)", Type: types.Int64}, // TODO: this should be getting coerced to bool
+		},
+	},
+	{
+		Query:    `SELECT if(123 = 123, NULL, NULL)`,
+		Expected: []sql.Row{{nil}},
+		ExpectedColumns: []*sql.Column{
+			{Name: "if(123 = 123, NULL, NULL)", Type: types.Null},
 		},
 	},
 	{
@@ -8565,6 +8590,14 @@ from typestable`,
 		Expected: []sql.Row{
 			{nil},
 		},
+	},
+	{
+		Query:    "flush binary logs",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "flush engine logs",
+		Expected: []sql.Row{},
 	},
 }
 
