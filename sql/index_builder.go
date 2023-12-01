@@ -15,10 +15,10 @@
 package sql
 
 import (
-	"github.com/shopspring/decimal"
-"math"
-"strings"
+	"math"
+	"strings"
 
+	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 )
 

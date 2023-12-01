@@ -16,10 +16,9 @@ package sql
 
 import (
 	"fmt"
-		"sort"
+	"sort"
 	"strings"
-
-	)
+)
 
 // RangeType returns what a RangeColumnExpr represents, such as a GreaterThan on some column, or a column set between
 // two bounds.
