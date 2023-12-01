@@ -215,7 +215,8 @@ func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, pa
 func (s *ServerQueryEngine) queryOrExec(stmt *gosql.Stmt, parsed sqlparser.Statement, query string, args []any) (sql.Schema, sql.RowIter, error) {
 	var err error
 	switch parsed.(type) {
-	case *sqlparser.Select, *sqlparser.SetOp, *sqlparser.Show, *sqlparser.Set, *sqlparser.Call, *sqlparser.Begin, *sqlparser.Use, *sqlparser.Load, *sqlparser.Execute, *sqlparser.Analyze:
+	// TODO: added `FLUSH` stmt here (should be `exec`) because we don't support `FLUSH BINARY LOGS` or `FLUSH ENGINE LOGS`, so nil schema is returned.
+	case *sqlparser.Select, *sqlparser.SetOp, *sqlparser.Show, *sqlparser.Set, *sqlparser.Call, *sqlparser.Begin, *sqlparser.Use, *sqlparser.Load, *sqlparser.Execute, *sqlparser.Analyze, *sqlparser.Flush:
 		var rows *gosql.Rows
 		if stmt != nil {
 			rows, err = stmt.Query(args...)
