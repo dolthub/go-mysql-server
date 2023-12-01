@@ -18,6 +18,9 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -120,7 +123,7 @@ func (c *coster) costTableAlias(ctx *sql.Context, n *TableAlias, s sql.StatsProv
 }
 
 func (c *coster) costScan(ctx *sql.Context, t *TableScan, s sql.StatsProvider) (float64, error) {
-	return c.costRead(ctx, t.Table.UnderlyingTable(), s)
+	return c.costRead(ctx, t.Table.(sql.TableNode).UnderlyingTable(), s)
 }
 
 func (c *coster) costRead(ctx *sql.Context, t sql.Table, s sql.StatsProvider) (float64, error) {
@@ -184,22 +187,22 @@ func (c *coster) costMergeJoin(_ *sql.Context, n *MergeJoin, _ sql.StatsProvider
 	l := n.Left.RelProps.card
 	r := n.Right.RelProps.card
 
-	comparer, ok := n.Filter[0].(*Equal)
+	comparer, ok := n.Filter[0].(*expression.Equals)
 	if !ok {
 		return 0, sql.ErrMergeJoinExpectsComparerFilters.New(n.Filter[0])
 	}
 
-	var leftCompareExprs []*ExprGroup
-	var rightCompareExprs []*ExprGroup
+	var leftCompareExprs []sql.Expression
+	var rightCompareExprs []sql.Expression
 
-	leftTuple, isTuple := comparer.Left.Scalar.(*Tuple)
+	leftTuple, isTuple := comparer.Left().(expression.Tuple)
 	if isTuple {
-		rightTuple, _ := comparer.Right.Scalar.(*Tuple)
-		leftCompareExprs = leftTuple.Values
-		rightCompareExprs = rightTuple.Values
+		rightTuple, _ := comparer.Right().(expression.Tuple)
+		leftCompareExprs = leftTuple.Children()
+		rightCompareExprs = rightTuple.Children()
 	} else {
-		leftCompareExprs = []*ExprGroup{comparer.Left}
-		rightCompareExprs = []*ExprGroup{comparer.Right}
+		leftCompareExprs = []sql.Expression{comparer.Left()}
+		rightCompareExprs = []sql.Expression{comparer.Right()}
 	}
 
 	if isInjectiveMerge(n, leftCompareExprs, rightCompareExprs) {
@@ -214,15 +217,15 @@ func (c *coster) costMergeJoin(_ *sql.Context, n *MergeJoin, _ sql.StatsProvider
 
 // isInjectiveMerge determines whether either of a merge join's child indexes returns only unique values for the merge
 // comparator.
-func isInjectiveMerge(n *MergeJoin, leftCompareExprs, rightCompareExprs []*ExprGroup) bool {
+func isInjectiveMerge(n *MergeJoin, leftCompareExprs, rightCompareExprs []sql.Expression) bool {
 	{
-		keyExprs, nullmask := keyExprsForIndexFromTupleComparison(n.Left.Id, n.InnerScan.Idx.Cols(), leftCompareExprs, rightCompareExprs)
+		keyExprs, nullmask := keyExprsForIndexFromTupleComparison(n.Left.RelProps.tableNodes[0].Id(), n.InnerScan.Idx.Cols(), leftCompareExprs, rightCompareExprs)
 		if isInjectiveLookup(n.InnerScan.Idx, n.JoinBase, keyExprs, nullmask) {
 			return true
 		}
 	}
 	{
-		keyExprs, nullmask := keyExprsForIndexFromTupleComparison(n.Right.Id, n.OuterScan.Idx.Cols(), leftCompareExprs, rightCompareExprs)
+		keyExprs, nullmask := keyExprsForIndexFromTupleComparison(n.Right.RelProps.tableNodes[0].Id(), n.OuterScan.Idx.Cols(), leftCompareExprs, rightCompareExprs)
 		if isInjectiveLookup(n.OuterScan.Idx, n.JoinBase, keyExprs, nullmask) {
 			return true
 		}
@@ -230,11 +233,11 @@ func isInjectiveMerge(n *MergeJoin, leftCompareExprs, rightCompareExprs []*ExprG
 	return false
 }
 
-func keyExprsForIndexFromTupleComparison(tableGrp GroupId, idxExprs []sql.ColumnId, leftExprs []*ExprGroup, rightExprs []*ExprGroup) ([]ScalarExpr, []bool) {
-	var keyExprs []ScalarExpr
+func keyExprsForIndexFromTupleComparison(tabId sql.TableId, idxExprs []sql.ColumnId, leftExprs []sql.Expression, rightExprs []sql.Expression) ([]sql.Expression, []bool) {
+	var keyExprs []sql.Expression
 	var nullmask []bool
 	for _, col := range idxExprs {
-		key, nullable := keyForExprFromTupleComparison(col, tableGrp, leftExprs, rightExprs)
+		key, nullable := keyForExprFromTupleComparison(col, tabId, leftExprs, rightExprs)
 		if key == nil {
 			break
 		}
@@ -249,25 +252,37 @@ func keyExprsForIndexFromTupleComparison(tableGrp GroupId, idxExprs []sql.Column
 
 // keyForExpr returns an equivalence or constant value to satisfy the
 // lookup index expression.
-func keyForExprFromTupleComparison(targetCol sql.ColumnId, tableGrp GroupId, leftExprs []*ExprGroup, rightExprs []*ExprGroup) (ScalarExpr, bool) {
+func keyForExprFromTupleComparison(targetCol sql.ColumnId, tabId sql.TableId, leftExprs []sql.Expression, rightExprs []sql.Expression) (sql.Expression, bool) {
 	for i, leftExpr := range leftExprs {
 		rightExpr := rightExprs[i]
 
-		var key ScalarExpr
-		if ref, ok := leftExpr.Scalar.(*ColRef); ok && ref.Col == targetCol {
-			key = rightExpr.Scalar
-		} else if ref, ok := rightExpr.Scalar.(*ColRef); ok && ref.Col == targetCol {
-			key = leftExpr.Scalar
+		var key sql.Expression
+		if ref, ok := leftExpr.(*expression.GetField); ok && ref.Id() == targetCol {
+			key = rightExpr
+		} else if ref, ok := rightExpr.(*expression.GetField); ok && ref.Id() == targetCol {
+			key = leftExpr
 		} else {
 			continue
 		}
 		// expression key can be arbitrarily complex (or simple), but cannot
 		// reference the lookup table
-		if !key.Group().ScalarProps().Tables.Contains(int(TableIdForSource(tableGrp))) {
+		if !exprReferencesTable(key, tabId) {
 			return key, false
 		}
+
 	}
 	return nil, false
+}
+
+// TODO need a way to map memo groups to table ids (or names if this doesn't work)
+func exprReferencesTable(e sql.Expression, tabId sql.TableId) bool {
+	return transform.InspectExpr(e, func(e sql.Expression) bool {
+		gf, _ := e.(*expression.GetField)
+		if gf != nil && gf.TableId() == tabId {
+			return true
+		}
+		return false
+	})
 }
 
 func (c *coster) costLookupJoin(_ *sql.Context, n *LookupJoin, _ sql.StatsProvider) (float64, error) {
@@ -333,7 +348,7 @@ func lookupJoinSelectivity(l *Lookup) float64 {
 
 // isInjectiveLookup returns whether every lookup with the given key expressions is guarenteed to return
 // at most one row.
-func isInjectiveLookup(idx *Index, joinBase *JoinBase, keyExprs []ScalarExpr, nullMask []bool) bool {
+func isInjectiveLookup(idx *Index, joinBase *JoinBase, keyExprs []sql.Expression, nullMask []bool) bool {
 	if !idx.SqlIdx().IsUnique() {
 		return false
 	}
@@ -343,10 +358,10 @@ func isInjectiveLookup(idx *Index, joinBase *JoinBase, keyExprs []ScalarExpr, nu
 	var notNull sql.ColSet
 	var constCols sql.ColSet
 	for i, nullable := range nullMask {
-		props := keyExprs[i].Group().ScalarProps()
-		onCols := joinFds.EquivalenceClosure(props.Cols)
+		cols, _, nullRej := getExprScalarProps(keyExprs[i])
+		onCols := joinFds.EquivalenceClosure(cols)
 		if !nullable {
-			if props.nullRejecting {
+			if nullRej {
 				// columns with nulls will be filtered out
 				// TODO double-checking nullRejecting might be redundant
 				notNull = notNull.Union(onCols)
@@ -492,7 +507,7 @@ func (c *carder) statsTableAlias(ctx *sql.Context, n *TableAlias, s sql.StatsPro
 }
 
 func (c *carder) statsScan(ctx *sql.Context, t *TableScan, s sql.StatsProvider) (float64, error) {
-	return c.statsRead(ctx, t.Table.UnderlyingTable(), t.Table.Database().Name(), s)
+	return c.statsRead(ctx, t.Table.(sql.TableNode).UnderlyingTable(), t.Table.(sql.TableNode).Database().Name(), s)
 }
 
 func (c *carder) statsRead(ctx *sql.Context, t sql.Table, db string, s sql.StatsProvider) (float64, error) {

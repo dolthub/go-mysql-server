@@ -24,8 +24,8 @@ exprs:
 - name: "HashJoin"
   join: true
   attrs:
-  - [rightAttrs, "[]*ExprGroup"]
-  - [leftAttrs, "[]*ExprGroup"]
+  - [rightAttrs, "[]sql.Expression"]
+  - [leftAttrs, "[]sql.Expression"]
 - name: "MergeJoin"
   join: true
   attrs:
@@ -37,7 +37,7 @@ exprs:
 - name: "LateralJoin"
   join: true
 - name: "TableScan"
-  sourceType: "sql.TableNode"
+  sourceType: "sql.TableIdNode"
 - name: "Values"
   sourceType: "*plan.ValueDerivedTable"
 - name: "TableAlias"
@@ -60,7 +60,7 @@ exprs:
 - name: "Project"
   unary: true
   attrs:
-  - [projections, "[]*ExprGroup"]
+  - [projections, "[]sql.Expression"]
 - name: "Distinct"
   unary:  true
   skipExec: true
@@ -71,7 +71,7 @@ exprs:
 - name: "Filter"
   unary: true
   attrs:
-  - [filters, "[]*ExprGroup"]
+  - [filters, "[]sql.Expression"]
 - name: "Equal"
   scalar: true
   binary: true

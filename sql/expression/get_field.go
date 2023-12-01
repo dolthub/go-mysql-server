@@ -25,13 +25,14 @@ import (
 
 // GetField is an expression to get the field of a table.
 type GetField struct {
-	database   string
+	db         string
 	table      string
 	fieldIndex int
 	// exprId lets the lifecycle of getFields be idempotent. We can re-index
 	// or re-apply scope/caching optimizations without worrying about losing
 	// the reference to the unique id.
 	exprId     sql.ColumnId
+	tableId    sql.TableId
 	name       string
 	fieldType  sql.Type
 	fieldType2 sql.Type2
@@ -44,14 +45,14 @@ var _ sql.CollationCoercible = (*GetField)(nil)
 
 // NewGetField creates a GetField expression.
 func NewGetField(index int, fieldType sql.Type, fieldName string, nullable bool) *GetField {
-	return NewGetFieldWithTable(index, fieldType, "", "", fieldName, nullable)
+	return NewGetFieldWithTable(index, 0, fieldType, "", "", fieldName, nullable)
 }
 
 // NewGetFieldWithTable creates a GetField expression with table name. The table name may be an alias.
-func NewGetFieldWithTable(index int, fieldType sql.Type, database, table, fieldName string, nullable bool) *GetField {
+func NewGetFieldWithTable(index, tableId int, fieldType sql.Type, db, table, fieldName string, nullable bool) *GetField {
 	fieldType2, _ := fieldType.(sql.Type2)
 	return &GetField{
-		database:   database,
+		db:         db,
 		table:      table,
 		fieldIndex: index,
 		fieldType:  fieldType,
@@ -59,6 +60,7 @@ func NewGetFieldWithTable(index int, fieldType sql.Type, database, table, fieldN
 		name:       fieldName,
 		nullable:   nullable,
 		exprId:     sql.ColumnId(index),
+		tableId:    sql.TableId(tableId),
 	}
 }
 
@@ -66,6 +68,10 @@ func NewGetFieldWithTable(index int, fieldType sql.Type, database, table, fieldN
 func (p *GetField) Index() int { return p.fieldIndex }
 
 func (p *GetField) Id() sql.ColumnId { return p.exprId }
+
+func (p *GetField) TableId() sql.TableId { return p.tableId }
+
+func (p *GetField) Database() string { return p.db }
 
 // Children implements the Expression interface.
 func (*GetField) Children() []sql.Expression {
@@ -75,11 +81,8 @@ func (*GetField) Children() []sql.Expression {
 // Table returns the name of the field table.
 func (p *GetField) Table() string { return p.table }
 
-// Database returns the name of table's database.
-func (p *GetField) Database() string { return p.database }
-
-func (p *GetField) TableID() sql.TableID {
-	return sql.NewTableID(p.database, p.table)
+func (p *GetField) TableID() sql.TableId {
+	return p.tableId
 }
 
 // WithTable returns a copy of this expression with the table given
@@ -182,7 +185,7 @@ func SchemaToGetFields(s sql.Schema) []sql.Expression {
 	ret := make([]sql.Expression, len(s))
 
 	for i, col := range s {
-		ret[i] = NewGetFieldWithTable(i, col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
+		ret[i] = NewGetFieldWithTable(i, 0, col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
 	}
 
 	return ret

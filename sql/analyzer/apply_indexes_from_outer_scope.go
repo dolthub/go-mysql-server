@@ -262,10 +262,10 @@ func getSubqueryIndexes(
 	for _, scopeTable := range tablesInScope {
 		indexCols := exprsByTable[scopeTable]
 		if indexCols != nil {
-			table := indexCols[0].comparandCol.TableID()
-			idx := ia.MatchingIndex(ctx, table, normalizeExpressions(tableAliases, extractComparands(indexCols)...)...)
+			col := indexCols[0].comparandCol
+			idx := ia.MatchingIndex(ctx, col.Table(), col.Database(), normalizeExpressions(tableAliases, extractComparands(indexCols)...)...)
 			if idx != nil {
-				result[table.TableName] = idx
+				result[indexCols[0].comparandCol.Table()] = idx
 			}
 		}
 	}

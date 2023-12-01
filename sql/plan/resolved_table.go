@@ -28,6 +28,51 @@ type ResolvedTable struct {
 	SqlDatabase sql.Database
 	AsOf        interface{}
 	comment     string
+	id          sql.TableId
+	cols        sql.ColSet
+}
+
+var _ sql.Node = (*ResolvedTable)(nil)
+var _ sql.TableNode = (*ResolvedTable)(nil)
+var _ sql.Databaser = (*ResolvedTable)(nil)
+var _ sql.CommentedNode = (*ResolvedTable)(nil)
+var _ sql.RenameableNode = (*ResolvedTable)(nil)
+var _ sql.CollationCoercible = (*ResolvedTable)(nil)
+var _ sql.MutableTableNode = (*ResolvedTable)(nil)
+var _ sql.TableIdNode = (*ResolvedTable)(nil)
+
+// NewResolvedTable creates a new instance of ResolvedTable.
+func NewResolvedTable(table sql.Table, db sql.Database, asOf interface{}) *ResolvedTable {
+	return &ResolvedTable{Table: table, SqlDatabase: db, AsOf: asOf}
+}
+
+// NewResolvedDualTable creates a new instance of ResolvedTable.
+func NewResolvedDualTable() *ResolvedTable {
+	return &ResolvedTable{Table: NewDualSqlTable(), SqlDatabase: memory.NewDatabase(""), AsOf: nil}
+}
+
+// WithId implements sql.TableIdNode
+func (t *ResolvedTable) WithId(id sql.TableId) sql.TableIdNode {
+	ret := *t
+	ret.id = id
+	return &ret
+}
+
+// Id implements sql.TableIdNode
+func (t *ResolvedTable) Id() sql.TableId {
+	return t.id
+}
+
+// WithColumns implements sql.TableIdNode
+func (t *ResolvedTable) WithColumns(set sql.ColSet) sql.TableIdNode {
+	ret := *t
+	ret.cols = set
+	return &ret
+}
+
+// Columns implements sql.TableIdNode
+func (t *ResolvedTable) Columns() sql.ColSet {
+	return t.cols
 }
 
 // UnderlyingTable returns the table wrapped by the ResolvedTable.
@@ -50,24 +95,6 @@ func (t *ResolvedTable) WithDatabase(database sql.Database) (sql.Node, error) {
 	newNode := *t
 	t.SqlDatabase = database
 	return &newNode, nil
-}
-
-var _ sql.Node = (*ResolvedTable)(nil)
-var _ sql.TableNode = (*ResolvedTable)(nil)
-var _ sql.Databaser = (*ResolvedTable)(nil)
-var _ sql.CommentedNode = (*ResolvedTable)(nil)
-var _ sql.RenameableNode = (*ResolvedTable)(nil)
-var _ sql.CollationCoercible = (*ResolvedTable)(nil)
-var _ sql.MutableTableNode = (*ResolvedTable)(nil)
-
-// NewResolvedTable creates a new instance of ResolvedTable.
-func NewResolvedTable(table sql.Table, db sql.Database, asOf interface{}) *ResolvedTable {
-	return &ResolvedTable{Table: table, SqlDatabase: db, AsOf: asOf}
-}
-
-// NewResolvedDualTable creates a new instance of ResolvedTable.
-func NewResolvedDualTable() *ResolvedTable {
-	return &ResolvedTable{Table: NewDualSqlTable(), SqlDatabase: memory.NewDatabase(""), AsOf: nil}
 }
 
 func (t *ResolvedTable) WithComment(s string) sql.Node {
@@ -137,6 +164,8 @@ func (t *ResolvedTable) DebugString() string {
 	if t.comment != "" {
 		additionalChildren = []string{fmt.Sprintf("comment: %s", t.comment)}
 	}
+
+	additionalChildren = append(additionalChildren, fmt.Sprintf("colSet: %s", t.Columns()), fmt.Sprintf("tableId: %d", t.Id()))
 
 	return TableDebugString(table, additionalChildren...)
 }

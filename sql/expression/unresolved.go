@@ -132,6 +132,26 @@ func NewUnresolvedTableFunction(name string, arguments []sql.Expression) *Unreso
 	}
 }
 
+func (utf *UnresolvedTableFunction) WithId(id sql.TableId) sql.TableIdNode {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (utf *UnresolvedTableFunction) Id() sql.TableId {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (utf *UnresolvedTableFunction) WithColumns(set sql.ColSet) sql.TableIdNode {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (utf *UnresolvedTableFunction) Columns() sql.ColSet {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (utf *UnresolvedTableFunction) WithName(s string) sql.Node {
 	ret := *utf
 	ret.name = s

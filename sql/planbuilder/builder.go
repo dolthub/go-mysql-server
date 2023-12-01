@@ -39,7 +39,7 @@ type Builder struct {
 	f               *factory
 	currentDatabase sql.Database
 	colId           columnId
-	tabId           tableId
+	tabId           sql.TableId
 	multiDDL        bool
 	viewCtx         *ViewContext
 	procCtx         *ProcContext
@@ -159,12 +159,12 @@ func (b *Builder) newScope() *scope {
 
 func (b *Builder) Reset() {
 	b.colId = 0
+	b.tabId = 0
 	b.bindCtx = nil
 	b.currentDatabase = nil
 	b.procCtx = nil
 	b.multiDDL = false
 	b.insertActive = false
-	b.tabId = 0
 	b.triggerCtx = nil
 	b.viewCtx = nil
 	b.nesting = 0
@@ -362,10 +362,10 @@ func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outSc
 func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualColumnTable {
 	tableScope := b.newScope()
 	schema := tab.Schema()
-
 	for _, c := range schema {
 		tableScope.newColumn(scopeColumn{
-			tableId:     sql.NewTableID(db, tab.Name()),
+			table:       strings.ToLower(tab.Name()),
+			db:          strings.ToLower(db),
 			col:         strings.ToLower(c.Name),
 			originalCol: c.Name,
 			typ:         c.Type,
@@ -373,10 +373,11 @@ func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualC
 		})
 	}
 
+	tableId := tableScope.tables[strings.ToLower(tab.Name())]
 	projections := make([]sql.Expression, len(schema))
 	for i, c := range schema {
 		if !c.Virtual {
-			projections[i] = expression.NewGetFieldWithTable(i, c.Type, c.DatabaseSource, tab.Name(), c.Name, c.Nullable)
+			projections[i] = expression.NewGetFieldWithTable(i, int(tableId), c.Type, db, tab.Name(), c.Name, c.Nullable)
 		} else {
 			projections[i] = b.resolveColumnDefaultExpression(tableScope, c, c.Generated)
 		}

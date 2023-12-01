@@ -38,6 +38,7 @@ type TableFunction interface {
 	Expressioner
 	Databaser
 	Nameable
+	TableIdNode
 
 	// NewInstance calls the table function with the arguments provided, producing a Node
 	NewInstance(ctx *Context, db Database, args []Expression) (Node, error)
@@ -416,6 +417,16 @@ type TableNode interface {
 	// UnderlyingTable returns the table that this node is wrapping, recursively unwrapping any further layers of
 	// wrapping to get to the base sql.Table.
 	UnderlyingTable() Table
+}
+
+// TableIdNode is a distinct source of rows associated with a table
+// identifier and set of column identifiers.
+type TableIdNode interface {
+	NameableNode
+	WithId(id TableId) TableIdNode
+	Id() TableId
+	WithColumns(ColSet) TableIdNode
+	Columns() ColSet
 }
 
 // MutableTableNode is a TableNode that can update its underlying table. Different methods are provided to accommodate

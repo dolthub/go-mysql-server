@@ -118,7 +118,8 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 	rt, _ := tableScope.node.(*plan.ResolvedTable)
 	for _, c := range tableScope.node.Schema() {
 		outScope.newColumn(scopeColumn{
-			tableId:  c.TableID(),
+			db:       c.DatabaseSource,
+			table:    c.Source,
 			col:      strings.ToLower(c.Name),
 			typ:      c.Type,
 			nullable: c.Nullable,
@@ -196,7 +197,8 @@ func (b *Builder) buildShowAllTriggers(inScope *scope, s *ast.Show) (outScope *s
 	outScope = inScope.push()
 	for _, c := range node.Schema() {
 		outScope.newColumn(scopeColumn{
-			tableId:  c.TableID(),
+			db:       c.DatabaseSource,
+			table:    c.Source,
 			col:      strings.ToLower(c.Name),
 			typ:      c.Type,
 			nullable: c.Nullable,
@@ -268,7 +270,10 @@ func (b *Builder) buildShowAllEvents(inScope *scope, s *ast.Show) (outScope *sco
 
 	var node sql.Node = showEvents
 	for _, c := range node.Schema() {
-		outScope.newColumn(scopeColumn{tableId: c.TableID(), col: c.Name, typ: c.Type, nullable: c.Nullable})
+		outScope.newColumn(scopeColumn{
+			db:    c.DatabaseSource,
+			table: c.Source,
+			col:   c.Name, typ: c.Type, nullable: c.Nullable})
 	}
 	var filter sql.Expression
 	if s.ShowTablesOpt != nil {
@@ -330,7 +335,10 @@ func (b *Builder) buildShowProcedureStatus(inScope *scope, s *ast.Show) (outScop
 
 	outScope = inScope.push()
 	for _, c := range node.Schema() {
-		outScope.newColumn(scopeColumn{tableId: c.TableID(), col: c.Name, typ: c.Type, nullable: c.Nullable})
+		outScope.newColumn(scopeColumn{
+			db:    c.DatabaseSource,
+			table: c.Source,
+			col:   c.Name, typ: c.Type, nullable: c.Nullable})
 	}
 	if s.Filter != nil {
 		if s.Filter.Filter != nil {
@@ -363,7 +371,10 @@ func (b *Builder) buildShowFunctionStatus(inScope *scope, s *ast.Show) (outScope
 
 	outScope = inScope.push()
 	for _, c := range node.Schema() {
-		outScope.newColumn(scopeColumn{tableId: c.TableID(), col: c.Name, typ: c.Type, nullable: c.Nullable})
+		outScope.newColumn(scopeColumn{
+			db:    c.DatabaseSource,
+			table: c.Source,
+			col:   c.Name, typ: c.Type, nullable: c.Nullable})
 	}
 
 	if s.Filter != nil {
@@ -403,7 +414,8 @@ func (b *Builder) buildShowTableStatus(inScope *scope, s *ast.Show) (outScope *s
 	outScope = inScope.push()
 	for _, c := range node.Schema() {
 		outScope.newColumn(scopeColumn{
-			tableId:  c.TableID(),
+			db:       c.DatabaseSource,
+			table:    c.Source,
 			col:      strings.ToLower(c.Name),
 			typ:      c.Type,
 			nullable: c.Nullable,
@@ -499,7 +511,8 @@ func (b *Builder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *sco
 	dummy := &plan.ShowVariables{}
 	for _, c := range dummy.Schema() {
 		outScope.newColumn(scopeColumn{
-			tableId:  c.TableID(),
+			db:       strings.ToLower(c.DatabaseSource),
+			table:    strings.ToLower(c.Source),
 			col:      strings.ToLower(c.Name),
 			typ:      c.Type,
 			nullable: c.Nullable,
@@ -607,7 +620,10 @@ func (b *Builder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *sco
 
 	showTabs := plan.NewShowTables(db, s.Full, asOf)
 	for _, c := range showTabs.Schema() {
-		outScope.newColumn(scopeColumn{tableId: c.TableID(), col: c.Name, typ: c.Type, nullable: c.Nullable})
+		outScope.newColumn(scopeColumn{
+			db:    strings.ToLower(c.DatabaseSource),
+			table: strings.ToLower(c.Source),
+			col:   c.Name, typ: c.Type, nullable: c.Nullable})
 	}
 
 	if s.ShowTablesOpt.Filter != nil {
@@ -636,7 +652,10 @@ func (b *Builder) buildShowAllDatabases(inScope *scope, s *ast.Show) (outScope *
 	showDbs.Catalog = b.cat
 	outScope = inScope.push()
 	for _, c := range showDbs.Schema() {
-		outScope.newColumn(scopeColumn{tableId: c.TableID(), col: c.Name, typ: c.Type, nullable: c.Nullable})
+		outScope.newColumn(scopeColumn{
+			db:    strings.ToLower(c.DatabaseSource),
+			table: strings.ToLower(c.Source),
+			col:   c.Name, typ: c.Type, nullable: c.Nullable})
 	}
 	var filter sql.Expression
 	if s.Filter != nil {
@@ -687,7 +706,8 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 
 	for _, c := range show.Schema() {
 		outScope.newColumn(scopeColumn{
-			tableId:  c.TableID(),
+			db:       strings.ToLower(c.DatabaseSource),
+			table:    strings.ToLower(c.Source),
 			col:      strings.ToLower(c.Name),
 			typ:      c.Type,
 			nullable: c.Nullable,
@@ -766,7 +786,8 @@ func (b *Builder) buildShowCollation(inScope *scope, s *ast.Show) (outScope *sco
 
 	for _, c := range node.Schema() {
 		outScope.newColumn(scopeColumn{
-			tableId:  c.TableID(),
+			db:       strings.ToLower(c.DatabaseSource),
+			table:    strings.ToLower(c.Source),
 			col:      strings.ToLower(c.Name),
 			typ:      c.Type,
 			nullable: c.Nullable,
@@ -825,7 +846,8 @@ func (b *Builder) buildShowStatus(inScope *scope, s *ast.Show) (outScope *scope)
 
 	for _, c := range node.Schema() {
 		outScope.newColumn(scopeColumn{
-			tableId:  c.TableID(),
+			db:       strings.ToLower(c.DatabaseSource),
+			table:    strings.ToLower(c.Source),
 			col:      strings.ToLower(c.Name),
 			typ:      c.Type,
 			nullable: c.Nullable,
@@ -862,7 +884,10 @@ func (b *Builder) buildShowCharset(inScope *scope, s *ast.Show) (outScope *scope
 
 	var node sql.Node = showCharset
 	for _, c := range node.Schema() {
-		outScope.newColumn(scopeColumn{tableId: c.TableID(), col: c.Name, typ: c.Type, nullable: c.Nullable})
+		outScope.newColumn(scopeColumn{
+			db:    strings.ToLower(c.DatabaseSource),
+			table: strings.ToLower(c.Source),
+			col:   c.Name, typ: c.Type, nullable: c.Nullable})
 	}
 
 	var filter sql.Expression

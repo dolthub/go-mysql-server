@@ -97,7 +97,7 @@ func (e *ExprGroup) updateBest(n RelExpr, grpCost float64) {
 	}
 }
 
-func (e *ExprGroup) finalize(node sql.Node, input sql.Schema) (sql.Node, error) {
+func (e *ExprGroup) finalize(node sql.Node) (sql.Node, error) {
 	props := e.RelProps
 	var result = node
 	if props.sort != nil {
