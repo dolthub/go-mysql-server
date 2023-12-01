@@ -39,7 +39,7 @@ var _ sql.CommentedNode = (*ResolvedTable)(nil)
 var _ sql.RenameableNode = (*ResolvedTable)(nil)
 var _ sql.CollationCoercible = (*ResolvedTable)(nil)
 var _ sql.MutableTableNode = (*ResolvedTable)(nil)
-var _ sql.TableIdNode = (*ResolvedTable)(nil)
+var _ TableIdNode = (*ResolvedTable)(nil)
 
 // NewResolvedTable creates a new instance of ResolvedTable.
 func NewResolvedTable(table sql.Table, db sql.Database, asOf interface{}) *ResolvedTable {
@@ -52,7 +52,7 @@ func NewResolvedDualTable() *ResolvedTable {
 }
 
 // WithId implements sql.TableIdNode
-func (t *ResolvedTable) WithId(id sql.TableId) sql.TableIdNode {
+func (t *ResolvedTable) WithId(id sql.TableId) TableIdNode {
 	ret := *t
 	ret.id = id
 	return &ret
@@ -64,7 +64,7 @@ func (t *ResolvedTable) Id() sql.TableId {
 }
 
 // WithColumns implements sql.TableIdNode
-func (t *ResolvedTable) WithColumns(set sql.ColSet) sql.TableIdNode {
+func (t *ResolvedTable) WithColumns(set sql.ColSet) TableIdNode {
 	ret := *t
 	ret.cols = set
 	return &ret
@@ -262,4 +262,14 @@ func (t ResolvedTable) ReplaceTable(table sql.Table) (sql.MutableTableNode, erro
 
 	t.Table = table
 	return &t, nil
+}
+
+// TableIdNode is a distinct source of rows associated with a table
+// identifier and set of column identifiers.
+type TableIdNode interface {
+	sql.NameableNode
+	WithId(id sql.TableId) TableIdNode
+	Id() sql.TableId
+	WithColumns(sql.ColSet) TableIdNode
+	Columns() sql.ColSet
 }

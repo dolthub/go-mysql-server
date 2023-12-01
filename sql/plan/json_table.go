@@ -124,11 +124,11 @@ var _ sql.Table = (*JSONTable)(nil)
 var _ sql.Node = (*JSONTable)(nil)
 var _ sql.Expressioner = (*JSONTable)(nil)
 var _ sql.CollationCoercible = (*JSONTable)(nil)
-var _ sql.TableIdNode = (*JSONTable)(nil)
+var _ TableIdNode = (*JSONTable)(nil)
 var _ sql.RenameableNode = (*JSONTable)(nil)
 
 // WithId implements sql.TableIdNode
-func (t *JSONTable) WithId(id sql.TableId) sql.TableIdNode {
+func (t *JSONTable) WithId(id sql.TableId) TableIdNode {
 	ret := *t
 	ret.id = id
 	return &ret
@@ -140,7 +140,7 @@ func (t *JSONTable) Id() sql.TableId {
 }
 
 // WithColumns implements sql.TableIdNode
-func (t *JSONTable) WithColumns(set sql.ColSet) sql.TableIdNode {
+func (t *JSONTable) WithColumns(set sql.ColSet) TableIdNode {
 	ret := *t
 	ret.colset = set
 	return &ret

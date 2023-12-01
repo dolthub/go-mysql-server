@@ -228,7 +228,7 @@ func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet, *Ex
 	case *plan.SetOp:
 		group = j.buildJoinLeaf(n)
 	case sql.NameableNode:
-		group = j.buildJoinLeaf(n.(sql.TableIdNode))
+		group = j.buildJoinLeaf(n.(plan.TableIdNode))
 	case *plan.StripRowNode:
 		return j.populateSubgraph(n.Child)
 	case *plan.CachedResults:
@@ -544,7 +544,7 @@ func (j *joinOrderBuilder) buildMax1Row(n *plan.Max1Row) (vertexSet, edgeSet, *E
 	return childV, childE, max1Grp
 }
 
-func (j *joinOrderBuilder) buildJoinLeaf(n sql.TableIdNode) *ExprGroup {
+func (j *joinOrderBuilder) buildJoinLeaf(n plan.TableIdNode) *ExprGroup {
 	j.checkSize()
 
 	var rel SourceRel
@@ -561,7 +561,7 @@ func (j *joinOrderBuilder) buildJoinLeaf(n sql.TableIdNode) *ExprGroup {
 	case *plan.RecursiveCte:
 		rel = &RecursiveCte{sourceBase: b, Table: n}
 	case *plan.IndexedTableAccess:
-		rel = &TableScan{sourceBase: b, Table: n.TableNode.(sql.TableIdNode)}
+		rel = &TableScan{sourceBase: b, Table: n.TableNode.(plan.TableIdNode)}
 	case *plan.ValueDerivedTable:
 		rel = &Values{sourceBase: b, Table: n}
 	case *plan.JSONTable:
@@ -952,7 +952,7 @@ func (e *edge) String() string {
 //
 // Refer to https://dl.acm.org/doi/10.1145/244810.244812 for more examples.
 // TODO implement this
-func (e *edge) nullRejectingTables(nullAccepting []ScalarExpr, allNames []string, allV vertexSet) vertexSet {
+func (e *edge) nullRejectingTables(nullAccepting []sql.Expression, allNames []string, allV vertexSet) vertexSet {
 	panic("not implemented")
 }
 

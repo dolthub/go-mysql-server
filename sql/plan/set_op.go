@@ -45,7 +45,7 @@ var _ sql.Expressioner = (*SetOp)(nil)
 var _ sql.CollationCoercible = (*SetOp)(nil)
 
 // var _ sql.NameableNode = (*SetOp)(nil)
-var _ sql.TableIdNode = (*SetOp)(nil)
+var _ TableIdNode = (*SetOp)(nil)
 
 // NewSetOp creates a new SetOp node with the given children.
 func NewSetOp(setOpType int, left, right sql.Node, distinct bool, limit, offset sql.Expression, sortFields sql.SortFields) *SetOp {
@@ -65,7 +65,7 @@ func (s *SetOp) Name() string {
 }
 
 // WithId implements sql.TableIdNode
-func (s *SetOp) WithId(id sql.TableId) sql.TableIdNode {
+func (s *SetOp) WithId(id sql.TableId) TableIdNode {
 	ret := *s
 	ret.id = id
 	return &ret
@@ -77,7 +77,7 @@ func (s *SetOp) Id() sql.TableId {
 }
 
 // WithColumns implements sql.TableIdNode
-func (s *SetOp) WithColumns(set sql.ColSet) sql.TableIdNode {
+func (s *SetOp) WithColumns(set sql.ColSet) TableIdNode {
 	ret := *s
 	ret.cols = set
 	return &ret
