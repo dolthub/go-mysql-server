@@ -1037,9 +1037,10 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 	generated := make([]ast.Expr, len(tableSpec.Columns))
 	var schema sql.Schema
 	for i, cd := range tableSpec.Columns {
+		sqlType := cd.Type.SQLType()
 		// Use the table's collation if no character or collation was specified for the table
 		if len(cd.Type.Charset) == 0 && len(cd.Type.Collate) == 0 {
-			if tableCollation != sql.Collation_Unspecified {
+			if tableCollation != sql.Collation_Unspecified && !types.IsBinary(sqlType) {
 				cd.Type.Collate = tableCollation.Name()
 			}
 		}
