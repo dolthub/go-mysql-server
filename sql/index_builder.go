@@ -98,10 +98,17 @@ func (b *IndexBuilder) Equals(ctx *Context, colExpr string, keys ...interface{})
 		// if converting from float to int results in rounding, then it's empty range
 		if t, ok := typ.(NumberType); ok && !t.IsFloat() {
 			switch key.(type) {
-			case float32, float64, decimal.Decimal:
+			case float32, float64:
 				lower := roundDownFloat(key)
 				upper := roundUpFloat(key)
 				if lower != upper {
+					potentialRanges[i] = EmptyRangeColumnExpr(typ)
+					continue
+				}
+			case decimal.Decimal:
+				lower := roundDownFloat(key)
+				upper := roundUpFloat(key)
+				if !lower.(decimal.Decimal).Equals(upper.(decimal.Decimal)) {
 					potentialRanges[i] = EmptyRangeColumnExpr(typ)
 					continue
 				}
