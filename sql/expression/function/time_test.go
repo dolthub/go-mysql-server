@@ -336,6 +336,8 @@ func TestTime_DayOfYear(t *testing.T) {
 func TestTime_WeekOfYear(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	f := NewWeekOfYear(expression.NewGetField(0, types.LongText, "foo", false))
+	currTime := time.Now()
+	_, week := currTime.ISOWeek()
 
 	testCases := []struct {
 		name     string
@@ -346,7 +348,7 @@ func TestTime_WeekOfYear(t *testing.T) {
 		{"null date", sql.NewRow(nil), nil, false},
 		{"invalid type", sql.NewRow([]byte{0, 1, 2}), int32(1), true},
 		{"date as string", sql.NewRow(stringDate), 1, false},
-		{"date as time", sql.NewRow(time.Now()), 48, false},
+		{"date as time", sql.NewRow(currTime), week, false},
 	}
 
 	for _, tt := range testCases {
