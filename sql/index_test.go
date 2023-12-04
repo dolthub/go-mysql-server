@@ -151,7 +151,6 @@ func TestRoundUpFloat(t *testing.T) {
 			val: decimal.NewFromFloat(math.MaxFloat64),
 			exp: decimal.NewFromFloat(math.MaxFloat64),
 		},
-
 	}
 
 	for _, test := range tests {
@@ -166,7 +165,6 @@ func TestRoundUpFloat(t *testing.T) {
 		})
 	}
 }
-
 
 func TestRoundDownFloat(t *testing.T) {
 	tests := []struct {
@@ -310,7 +308,6 @@ func TestRoundDownFloat(t *testing.T) {
 			val: decimal.NewFromFloat(math.MaxFloat64),
 			exp: decimal.NewFromFloat(math.MaxFloat64),
 		},
-
 	}
 
 	for _, test := range tests {
