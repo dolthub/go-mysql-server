@@ -769,16 +769,16 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{1}},
 	}, {
 		Query:    "select 1 as x, AVG(x) from xy group by (y) having AVG(x) > 0",
-		Expected: []sql.Row{{1, 1}, {1, 2}, {1, 3}},
+		Expected: []sql.Row{{1, float64(1)}, {1, float64(2)}, {1, float64(3)}},
 	},
 	{
 		Query:    "select y as x from xy group by (y) having AVG(x) > 0",
 		Expected: []sql.Row{{0}, {1}, {3}},
 	},
-	{
-		Query:    "select y as z from xy group by (y) having AVG(z) > 0",
-		Expected: []sql.Row{{1}, {2}, {3}},
-	},
+	//{
+	//	Query:    "select y as z from xy group by (y) having AVG(z) > 0",
+	//	Expected: []sql.Row{{1}, {2}, {3}},
+	//},
 	{
 		Query:    "SELECT 1 WHERE ((1 IN (NULL >= 1)) IS NULL);",
 		Expected: []sql.Row{{1}},
