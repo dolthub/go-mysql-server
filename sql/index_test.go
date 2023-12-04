@@ -155,7 +155,7 @@ func TestRoundUpFloat(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("round up: %v", test.val), func(t *testing.T) {
-			res := roundUpFloat(test.val)
+			res := ceil(test.val)
 			switch test.val.(type) {
 			case float32, float64:
 				assert.Equal(t, test.exp, res)
@@ -312,7 +312,7 @@ func TestRoundDownFloat(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("round down: %v", test.val), func(t *testing.T) {
-			res := roundDownFloat(test.val)
+			res := floor(test.val)
 			switch test.val.(type) {
 			case float32, float64:
 				assert.Equal(t, test.exp, res)
