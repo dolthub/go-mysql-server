@@ -56,7 +56,7 @@ func NewIndexBuilder(idx Index) *IndexBuilder {
 	}
 }
 
-func roundUpFloat(val interface{}) interface{} {
+func ceil(val interface{}) interface{} {
 	switch v := val.(type) {
 	case float32:
 		return float32(math.Ceil(float64(v)))
@@ -69,7 +69,7 @@ func roundUpFloat(val interface{}) interface{} {
 	}
 }
 
-func roundDownFloat(val interface{}) interface{} {
+func floor(val interface{}) interface{} {
 	switch v := val.(type) {
 	case float32:
 		return float32(math.Floor(float64(v)))
@@ -79,6 +79,19 @@ func roundDownFloat(val interface{}) interface{} {
 		return v.Floor()
 	default:
 		return v
+	}
+}
+
+func handleKeyConversion(key interface{}, typ Type, cb func(k, f, c interface{})) {
+	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
+		switch key.(type) {
+		case float32, float64:
+			cb(key, floor(key), ceil(key))
+		case decimal.Decimal:
+			cb(key, floor(key), ceil(key))
+		default:
+			cb(key, key, key)
+		}
 	}
 }
 
@@ -96,23 +109,20 @@ func (b *IndexBuilder) Equals(ctx *Context, colExpr string, keys ...interface{})
 	potentialRanges := make([]RangeColumnExpr, len(keys))
 	for i, key := range keys {
 		// if converting from float to int results in rounding, then it's empty range
-		if t, ok := typ.(NumberType); ok && !t.IsFloat() {
-			switch key.(type) {
+		var useEmptyRange bool
+		handleKeyConversion(key, typ, func(k, f, c interface{}) {
+			switch k.(type) {
 			case float32, float64:
-				lower := roundDownFloat(key)
-				upper := roundUpFloat(key)
-				if lower != upper {
-					potentialRanges[i] = EmptyRangeColumnExpr(typ)
-					continue
-				}
+				useEmptyRange = f != c
+				return
 			case decimal.Decimal:
-				lower := roundDownFloat(key)
-				upper := roundUpFloat(key)
-				if !lower.(decimal.Decimal).Equals(upper.(decimal.Decimal)) {
-					potentialRanges[i] = EmptyRangeColumnExpr(typ)
-					continue
-				}
+				useEmptyRange = !f.(decimal.Decimal).Equals(c.(decimal.Decimal))
+				return
 			}
+		})
+		if useEmptyRange {
+			potentialRanges[i] = EmptyRangeColumnExpr(typ)
+			continue
 		}
 		key, _, err := typ.Convert(key)
 		if err != nil {
@@ -139,23 +149,18 @@ func (b *IndexBuilder) NotEquals(ctx *Context, colExpr string, key interface{}) 
 	}
 
 	// if converting from float to int results in rounding, then it's entire range (excluding nulls)
-	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
-		switch key.(type) {
+	var useNotNullRange bool
+	handleKeyConversion(key, typ, func(k, f, c interface{}) {
+		switch k.(type) {
 		case float32, float64:
-			lower := roundDownFloat(key)
-			upper := roundUpFloat(key)
-			if lower != upper {
-				b.updateCol(ctx, colExpr, NotNullRangeColumnExpr(typ))
-				return b
-			}
+			useNotNullRange = f != c
 		case decimal.Decimal:
-			lower := roundDownFloat(key)
-			upper := roundUpFloat(key)
-			if !lower.(decimal.Decimal).Equals(upper.(decimal.Decimal)) {
-				b.updateCol(ctx, colExpr, NotNullRangeColumnExpr(typ))
-				return b
-			}
+			useNotNullRange = !f.(decimal.Decimal).Equals(c.(decimal.Decimal))
 		}
+	})
+	if useNotNullRange {
+		b.updateCol(ctx, colExpr, NotNullRangeColumnExpr(typ))
+		return b
 	}
 
 	key, _, err := typ.Convert(key)
@@ -194,12 +199,9 @@ func (b *IndexBuilder) GreaterThan(ctx *Context, colExpr string, key interface{}
 		return b
 	}
 
-	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
-		switch key.(type) {
-		case float32, float64, decimal.Decimal:
-			key = roundDownFloat(key)
-		}
-	}
+	handleKeyConversion(key, typ, func(k, f, c interface{}) {
+		key = f
+	})
 
 	key, _, err := typ.Convert(key)
 	if err != nil {
@@ -225,18 +227,15 @@ func (b *IndexBuilder) GreaterOrEqual(ctx *Context, colExpr string, key interfac
 	}
 
 	var exclude bool
-	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
+	handleKeyConversion(key, typ, func(k, f, c interface{}) {
 		switch key.(type) {
 		case float32, float64:
-			newKey := roundDownFloat(key)
-			exclude = newKey != key
-			key = newKey
+			exclude = k != f
 		case decimal.Decimal:
-			newKey := roundDownFloat(key)
-			exclude = !newKey.(decimal.Decimal).Equal(key.(decimal.Decimal))
-			key = newKey
+			exclude = !k.(decimal.Decimal).Equals(f.(decimal.Decimal))
 		}
-	}
+		key = f
+	})
 
 	key, _, err := typ.Convert(key)
 	if err != nil {
@@ -268,12 +267,9 @@ func (b *IndexBuilder) LessThan(ctx *Context, colExpr string, key interface{}) *
 		return b
 	}
 
-	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
-		switch key.(type) {
-		case float32, float64, decimal.Decimal:
-			key = roundUpFloat(key)
-		}
-	}
+	handleKeyConversion(key, typ, func(k, f, c interface{}) {
+		key = c
+	})
 
 	key, _, err := typ.Convert(key)
 	if err != nil {
@@ -299,18 +295,15 @@ func (b *IndexBuilder) LessOrEqual(ctx *Context, colExpr string, key interface{}
 	}
 
 	var exclude bool
-	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
-		switch key.(type) {
+	handleKeyConversion(key, typ, func(k, f, c interface{}) {
+		switch k.(type) {
 		case float32, float64:
-			newKey := roundUpFloat(key)
-			exclude = newKey != key
-			key = newKey
+			exclude = k != c
 		case decimal.Decimal:
-			newKey := roundUpFloat(key)
-			exclude = !newKey.(decimal.Decimal).Equal(key.(decimal.Decimal))
-			key = newKey
+			exclude = !k.(decimal.Decimal).Equals(c.(decimal.Decimal))
 		}
-	}
+		key = c
+	})
 
 	key, _, err := typ.Convert(key)
 	if err != nil {
