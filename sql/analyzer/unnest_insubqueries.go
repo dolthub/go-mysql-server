@@ -46,6 +46,7 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	}
 
 	var unnested bool
+	var aliases map[string]int
 
 	ret := n
 	var err error
@@ -69,7 +70,6 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 
 			var matches []applyJoin
 			var newFilters []sql.Expression
-			var aliases map[string]int
 
 			// separate decorrelation candidates
 			for _, e := range filters {
@@ -138,7 +138,8 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 					}
 				}
 
-				newSubq, err := disambiguateTables(aliases, subq.Query)
+				var newSubq sql.Node
+				newSubq, aliases, err = disambiguateTables(aliases, subq.Query)
 				if err != nil {
 					return ret, transform.SameTree, nil
 				}
@@ -180,24 +181,42 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	return ret, transform.TreeIdentity(!unnested), nil
 }
 
-func disambiguateTables(used map[string]int, n sql.Node) (sql.Node, error) {
-	duplicates := make(map[string]int)
-	n, _, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		switch n := n.(type) {
+func disambiguateTables(used map[string]int, n sql.Node) (sql.Node, map[string]int, error) {
+	rename := make(map[sql.TableId]string)
+	n, _, err := transform.NodeWithCtx(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		switch n := c.Node.(type) {
 		case sql.RenameableNode:
 			name := strings.ToLower(n.Name())
+			if _, ok := c.Parent.(sql.RenameableNode); ok {
+				// skip checking when: TableAlias(ResolvedTable)
+				return n, transform.SameTree, nil
+			}
 			if cnt, ok := used[name]; ok {
-				duplicates[name] = cnt + 1
-				return n.WithName(fmt.Sprintf("%s_%d", name, cnt+1)), transform.NewTree, nil
+				used[name] = cnt + 1
+				newName := name
+				for ok {
+					cnt++
+					newName = fmt.Sprintf("%s_%d", name, cnt)
+					_, ok = used[newName]
+
+				}
+				used[newName] = 0
+
+				tin, ok := n.(plan.TableIdNode)
+				if !ok {
+					return n, transform.SameTree, fmt.Errorf("expected sql.Renameable to implement plan.TableIdNode")
+				}
+				rename[tin.Id()] = newName
+				return n.WithName(newName), transform.NewTree, nil
 			} else {
-				duplicates[name] = 0
+				used[name] = 0
 			}
 			return n, transform.NewTree, nil
 		default:
 			return transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				switch e := e.(type) {
 				case *expression.GetField:
-					if cnt, ok := duplicates[strings.ToLower(e.Table())]; ok && cnt > 0 {
+					if cnt, ok := used[strings.ToLower(e.Table())]; ok && cnt > 0 {
 						return e.WithTable(fmt.Sprintf("%s_%d", e.Table(), cnt)), transform.NewTree, nil
 					}
 				default:
@@ -206,10 +225,35 @@ func disambiguateTables(used map[string]int, n sql.Node) (sql.Node, error) {
 			})
 		}
 	})
-	for k, v := range duplicates {
-		used[k] = v
+	if err != nil {
+		return nil, nil, err
 	}
-	return n, err
+	if len(rename) > 0 {
+		n, _, err = renameExpressionTables(n, rename)
+	}
+	return n, used, err
+}
+
+// renameExpressionTables renames table references recursively. We use
+// table ids to avoid improperly renaming tables in lower scopes with the
+// same name.
+func renameExpressionTables(n sql.Node, rename map[sql.TableId]string) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		switch e := e.(type) {
+		case *expression.GetField:
+			if to, ok := rename[e.TableId()]; ok {
+				return e.WithTable(to), transform.NewTree, nil
+			}
+		case *plan.Subquery:
+			newQ, same, err := renameExpressionTables(e.Query, rename)
+			if !same || err != nil {
+				return e, same, err
+			}
+			return e.WithQuery(newQ), transform.NewTree, nil
+		default:
+		}
+		return e, transform.NewTree, nil
+	})
 }
 
 // getHighestProjection returns a set of projection expressions responsible
