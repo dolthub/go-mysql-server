@@ -138,13 +138,20 @@ func (b *IndexBuilder) NotEquals(ctx *Context, colExpr string, key interface{}) 
 		return b
 	}
 
-	// if converting from float to int results in rounding, then it's entire range
+	// if converting from float to int results in rounding, then it's entire range (excluding nulls)
 	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
 		switch key.(type) {
-		case float32, float64, decimal.Decimal:
+		case float32, float64:
 			lower := roundDownFloat(key)
 			upper := roundUpFloat(key)
 			if lower != upper {
+				b.updateCol(ctx, colExpr, NotNullRangeColumnExpr(typ))
+				return b
+			}
+		case decimal.Decimal:
+			lower := roundDownFloat(key)
+			upper := roundUpFloat(key)
+			if !lower.(decimal.Decimal).Equals(upper.(decimal.Decimal)) {
 				b.updateCol(ctx, colExpr, NotNullRangeColumnExpr(typ))
 				return b
 			}
