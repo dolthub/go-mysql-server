@@ -777,7 +777,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "select y as z from xy group by (y) having AVG(z) > 0",
-		Expected: []sql.Row{{0}, {1}, {3}},
+		Expected: []sql.Row{{1}, {2}, {3}},
 	},
 	{
 		Query:    "SELECT 1 WHERE ((1 IN (NULL >= 1)) IS NULL);",
