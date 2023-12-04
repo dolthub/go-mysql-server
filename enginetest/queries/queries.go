@@ -767,6 +767,13 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "select 1 as x from xy having AVG(x) > 0",
 		Expected: []sql.Row{{1}},
+	}, {
+		Query:    "select 1 as x from xy group by (y) having AVG(x) > 0",
+		Expected: []sql.Row{{1}, {1}, {1}},
+	},
+	{
+		Query:    "select y as x from xy group by (y) having AVG(x) > 0",
+		Expected: []sql.Row{{0}, {1}, {3}},
 	},
 	{
 		Query:    "SELECT 1 WHERE ((1 IN (NULL >= 1)) IS NULL);",
@@ -3464,19 +3471,19 @@ Select * from (
 	},
 	{
 		Query:    `SELECT TRIM(mytable.s) AS s FROM mytable`,
-		Expected: []sql.Row{sql.Row{"first row"}, sql.Row{"second row"}, sql.Row{"third row"}},
+		Expected: []sql.Row{{"first row"}, {"second row"}, {"third row"}},
 	},
 	{
 		Query:    `SELECT TRIM("row" from mytable.s) AS s FROM mytable`,
-		Expected: []sql.Row{sql.Row{"first "}, sql.Row{"second "}, sql.Row{"third "}},
+		Expected: []sql.Row{{"first "}, {"second "}, {"third "}},
 	},
 	{
 		Query:    `SELECT TRIM(mytable.s from "first row") AS s FROM mytable`,
-		Expected: []sql.Row{sql.Row{""}, sql.Row{"first row"}, sql.Row{"first row"}},
+		Expected: []sql.Row{{""}, {"first row"}, {"first row"}},
 	},
 	{
 		Query:    `SELECT TRIM(mytable.s from mytable.s) AS s FROM mytable`,
-		Expected: []sql.Row{sql.Row{""}, sql.Row{""}, sql.Row{""}},
+		Expected: []sql.Row{{""}, {""}, {""}},
 	},
 	{
 		Query:    `SELECT TRIM("   foo   ")`,
