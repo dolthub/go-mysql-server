@@ -377,23 +377,31 @@ func convertSemiToInnerJoin(a *Analyzer, m *memo.Memo) error {
 		leftCols := semi.Left.RelProps.OutputCols()
 		var projections []sql.Expression
 		for colId, hasNext := leftCols.Next(1); hasNext; colId, hasNext = leftCols.Next(colId + 1) {
-			var table plan.TableIdNode
+			var srcNode plan.TableIdNode
 			for _, n := range semi.Left.RelProps.TableIdNodes() {
 				if n.Columns().Contains(colId) {
-					table = n
+					srcNode = n
 					break
 				}
 			}
-			if table == nil {
+			if srcNode == nil {
 				return fmt.Errorf("table for column not found: %d", colId)
 			}
 
-			// projection schema is not necessarily sequential. but the columns
-			// from a single source should be sequential
-			firstCol, _ := table.Columns().Next(1)
-			col := table.Schema()[int(colId-firstCol)]
+			sch := srcNode.Schema()
+			var table sql.Table
+			if tw, ok := srcNode.(sql.TableNode); ok {
+				table = tw.UnderlyingTable()
+			}
+			if pkt, ok := table.(sql.PrimaryKeyTable); ok {
+				sch = pkt.PrimaryKeySchema().Schema
+			}
 
-			projections = append(projections, expression.NewGetFieldWithTable(int(colId), int(table.Id()), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable))
+			firstCol, _ := srcNode.Columns().Next(1)
+			idx := int(colId - firstCol)
+			col := sch[idx]
+
+			projections = append(projections, expression.NewGetFieldWithTable(int(colId), int(srcNode.Id()), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable))
 
 		}
 
@@ -464,22 +472,31 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 		for colId, hasNext := leftCols.Next(1); hasNext; colId, hasNext = leftCols.Next(colId + 1) {
 			// we have ids and need to get the table back?
 			// search in tables
-			var table plan.TableIdNode
+			var srcNode plan.TableIdNode
 			for _, n := range anti.Left.RelProps.TableIdNodes() {
 				if n.Columns().Contains(colId) {
-					table = n
+					srcNode = n
 					break
 				}
 			}
-			if table == nil {
+			if srcNode == nil {
 				return fmt.Errorf("table for column not found: %d", colId)
 			}
 
-			// todo: projection schema is not necessarily sequential
-			firstCol, _ := table.Columns().Next(1)
-			col := table.Schema()[int(colId-firstCol)]
+			sch := srcNode.Schema()
+			var table sql.Table
+			if tw, ok := srcNode.(sql.TableNode); ok {
+				table = tw.UnderlyingTable()
+			}
+			if pkt, ok := table.(sql.PrimaryKeyTable); ok {
+				sch = pkt.PrimaryKeySchema().Schema
+			}
 
-			projections = append(projections, expression.NewGetFieldWithTable(int(colId), int(table.Id()), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable))
+			firstCol, _ := srcNode.Columns().Next(1)
+			idx := int(colId - firstCol)
+			col := sch[idx]
+
+			projections = append(projections, expression.NewGetFieldWithTable(int(colId), int(srcNode.Id()), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable))
 		}
 
 		if len(projections) == 0 {
