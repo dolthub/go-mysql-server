@@ -50,6 +50,8 @@ func newRelProps(rel RelExpr) *relProps {
 	switch r := rel.(type) {
 	case *Max1Row:
 		p.populateFds()
+	case *EmptyTable:
+		p.outputCols = r.TableIdNode().Columns()
 	case SourceRel:
 		n := r.TableIdNode()
 		if len(n.Schema()) == n.Columns().Len() {
