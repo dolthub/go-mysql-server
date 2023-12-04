@@ -181,6 +181,8 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	return ret, transform.TreeIdentity(!unnested), nil
 }
 
+// returns an updated sql.Node with aliases de-duplicated, and an
+// updated alias mapping with new conflicts and tables added.
 func disambiguateTables(used map[string]int, n sql.Node) (sql.Node, map[string]int, error) {
 	rename := make(map[sql.TableId]string)
 	n, _, err := transform.NodeWithCtx(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
