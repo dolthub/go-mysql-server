@@ -53,7 +53,7 @@ func NewSubqueryAlias(name, textDefinition string, node sql.Node) *SubqueryAlias
 }
 
 // WithId implements sql.TableIdNode
-func (sq *SubqueryAlias) WithId(id sql.TableId) sql.TableIdNode {
+func (sq *SubqueryAlias) WithId(id sql.TableId) TableIdNode {
 	ret := *sq
 	ret.id = id
 	return &ret
@@ -65,7 +65,7 @@ func (sq *SubqueryAlias) Id() sql.TableId {
 }
 
 // WithColumns implements sql.TableIdNode
-func (sq *SubqueryAlias) WithColumns(set sql.ColSet) sql.TableIdNode {
+func (sq *SubqueryAlias) WithColumns(set sql.ColSet) TableIdNode {
 	ret := *sq
 	ret.cols = set
 	return &ret

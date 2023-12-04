@@ -34,7 +34,7 @@ type relProps struct {
 	outputCols   sql.ColSet
 	inputTables  sql.FastIntSet
 	outputTables sql.FastIntSet
-	tableNodes   []sql.TableIdNode
+	tableNodes   []plan.TableIdNode
 
 	card float64
 
@@ -310,7 +310,7 @@ func (p *relProps) populateOutputTables() {
 	switch n := p.grp.First.(type) {
 	case SourceRel:
 		p.outputTables = sql.NewFastIntSet(int(n.TableIdNode().Id()))
-		p.tableNodes = []sql.TableIdNode{n.TableIdNode()}
+		p.tableNodes = []plan.TableIdNode{n.TableIdNode()}
 	case *AntiJoin:
 		p.outputTables = n.Left.RelProps.OutputTables()
 		p.tableNodes = n.Left.RelProps.TableIdNodes()
@@ -333,7 +333,7 @@ func (p *relProps) populateOutputTables() {
 		p.outputTables = n.JoinPrivate().Left.RelProps.OutputTables().Union(n.JoinPrivate().Right.RelProps.OutputTables())
 		leftNodeCnt := len(n.JoinPrivate().Left.RelProps.tableNodes)
 		rightNodeCnt := len(n.JoinPrivate().Right.RelProps.tableNodes)
-		p.tableNodes = make([]sql.TableIdNode, leftNodeCnt+rightNodeCnt)
+		p.tableNodes = make([]plan.TableIdNode, leftNodeCnt+rightNodeCnt)
 		copy(p.tableNodes, n.JoinPrivate().Left.RelProps.tableNodes)
 		copy(p.tableNodes[leftNodeCnt:], n.JoinPrivate().Right.RelProps.tableNodes)
 	default:
@@ -414,7 +414,7 @@ func (p *relProps) OutputTables() sql.FastIntSet {
 }
 
 // TableIdNodes returns a list of table id nodes in this relation
-func (p *relProps) TableIdNodes() []sql.TableIdNode {
+func (p *relProps) TableIdNodes() []plan.TableIdNode {
 	return p.tableNodes
 }
 

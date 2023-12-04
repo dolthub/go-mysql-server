@@ -41,7 +41,7 @@ type EmptyTable struct {
 }
 
 // WithId implements sql.TableIdNode
-func (e *EmptyTable) WithId(id sql.TableId) sql.TableIdNode {
+func (e *EmptyTable) WithId(id sql.TableId) TableIdNode {
 	ret := *e
 	ret.id = id
 	return &ret
@@ -53,7 +53,7 @@ func (e *EmptyTable) Id() sql.TableId {
 }
 
 // WithColumns implements sql.TableIdNode
-func (e *EmptyTable) WithColumns(set sql.ColSet) sql.TableIdNode {
+func (e *EmptyTable) WithColumns(set sql.ColSet) TableIdNode {
 	ret := *e
 	ret.cols = set
 	return &ret
