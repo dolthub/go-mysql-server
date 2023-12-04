@@ -768,11 +768,15 @@ var QueryTests = []QueryTest{
 		Query:    "select 1 as x from xy having AVG(x) > 0",
 		Expected: []sql.Row{{1}},
 	}, {
-		Query:    "select 1 as x from xy group by (y) having AVG(x) > 0",
-		Expected: []sql.Row{{1}, {1}, {1}},
+		Query:    "select 1 as x, AVG(x) from xy group by (y) having AVG(x) > 0",
+		Expected: []sql.Row{{1, 1}, {1, 2}, {1, 3}},
 	},
 	{
 		Query:    "select y as x from xy group by (y) having AVG(x) > 0",
+		Expected: []sql.Row{{0}, {1}, {3}},
+	},
+	{
+		Query:    "select y as z from xy group by (y) having AVG(z) > 0",
 		Expected: []sql.Row{{0}, {1}, {3}},
 	},
 	{
