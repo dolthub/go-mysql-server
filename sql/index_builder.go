@@ -213,9 +213,13 @@ func (b *IndexBuilder) GreaterOrEqual(ctx *Context, colExpr string, key interfac
 	var exclude bool
 	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
 		switch key.(type) {
-		case float32, float64, decimal.Decimal:
+		case float32, float64:
 			newKey := roundDownFloat(key)
 			exclude = newKey != key
+			key = newKey
+		case decimal.Decimal:
+			newKey := roundDownFloat(key)
+			exclude = !newKey.(decimal.Decimal).Equal(key.(decimal.Decimal))
 			key = newKey
 		}
 	}
@@ -283,9 +287,13 @@ func (b *IndexBuilder) LessOrEqual(ctx *Context, colExpr string, key interface{}
 	var exclude bool
 	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
 		switch key.(type) {
-		case float32, float64, decimal.Decimal:
+		case float32, float64:
 			newKey := roundUpFloat(key)
 			exclude = newKey != key
+			key = newKey
+		case decimal.Decimal:
+			newKey := roundUpFloat(key)
+			exclude = !newKey.(decimal.Decimal).Equal(key.(decimal.Decimal))
 			key = newKey
 		}
 	}
