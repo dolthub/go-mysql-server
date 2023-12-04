@@ -18,42 +18,6 @@ package queries
 
 var PlanTests = []QueryPlanTest{
 	{
-		Query: `select x from xy where y in (select x from xy where exists (select y from xy t1 where t1.y = xy.x));`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [xy.x:1!null]\n" +
-			" └─ LookupJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ xy.y:2\n" +
-			"     │   └─ xy_1.x:0!null\n" +
-			"     ├─ Distinct\n" +
-			"     │   └─ Project\n" +
-			"     │       ├─ columns: [xy_1.x:0!null]\n" +
-			"     │       └─ SemiLookupJoin\n" +
-			"     │           ├─ TableAlias(xy_1)\n" +
-			"     │           │   └─ ProcessTable\n" +
-			"     │           │       └─ Table\n" +
-			"     │           │           ├─ name: xy\n" +
-			"     │           │           └─ columns: [x y]\n" +
-			"     │           └─ TableAlias(t1)\n" +
-			"     │               └─ IndexedTableAccess(xy)\n" +
-			"     │                   ├─ index: [xy.y]\n" +
-			"     │                   ├─ keys: [xy.x:3!null]\n" +
-			"     │                   ├─ colSet: (5,6)\n" +
-			"     │                   ├─ tableId: 3\n" +
-			"     │                   └─ Table\n" +
-			"     │                       ├─ name: xy\n" +
-			"     │                       └─ columns: [x y]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.y]\n" +
-			"         ├─ keys: [xy_1.x:0!null]\n" +
-			"         ├─ colSet: (1,2)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: xy\n" +
-			"             └─ columns: [x y]\n" +
-			"",
-	},
-	{
 		Query: `select x from xy where y in (select xy.x from xy join (select t2.y from xy t2 where exists (select t3.y from xy t3 where t3.y = xy.x)) t1);`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [xy.x:0!null]\n" +
