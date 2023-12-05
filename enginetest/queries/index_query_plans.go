@@ -8925,7 +8925,7 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   └─ a (longtext)\n" +
 			" └─ IndexedTableAccess(comp_index_t3)\n" +
 			"     ├─ index: [comp_index_t3.v1]\n" +
-			"     ├─ static: [{[a, a]}]\n" +
+			"     ├─ static: [{[[97], [97]]}]\n" +
 			"     ├─ colSet: (1-3)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +

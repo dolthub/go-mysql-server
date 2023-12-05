@@ -18,6 +18,105 @@ package queries
 
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `select x from xy where y in (select xy.x from xy join (select t2.y from xy t2 where exists (select t3.y from xy t3 where t3.y = xy.x)) t1);`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [xy.x:0!null]\n" +
+			" └─ Filter\n" +
+			"     ├─ InSubquery\n" +
+			"     │   ├─ left: xy.y:1\n" +
+			"     │   └─ right: Subquery\n" +
+			"     │       ├─ cacheable: false\n" +
+			"     │       ├─ alias-string: select xy.x from xy join (select t2.y from xy as t2 where exists (select t3.y from xy as t3 where t3.y = xy.x)) as t1\n" +
+			"     │       └─ Project\n" +
+			"     │           ├─ columns: [xy.x:3!null]\n" +
+			"     │           └─ CrossHashJoin\n" +
+			"     │               ├─ SubqueryAlias\n" +
+			"     │               │   ├─ name: t1\n" +
+			"     │               │   ├─ outerVisibility: true\n" +
+			"     │               │   ├─ isLateral: false\n" +
+			"     │               │   ├─ cacheable: false\n" +
+			"     │               │   ├─ colSet: (9)\n" +
+			"     │               │   ├─ tableId: 5\n" +
+			"     │               │   └─ Project\n" +
+			"     │               │       ├─ columns: [t2.y:3]\n" +
+			"     │               │       └─ Filter\n" +
+			"     │               │           ├─ EXISTS Subquery\n" +
+			"     │               │           │   ├─ cacheable: false\n" +
+			"     │               │           │   ├─ alias-string: select t3.y from xy as t3 where t3.y = xy.x\n" +
+			"     │               │           │   └─ Project\n" +
+			"     │               │           │       ├─ columns: [t3.y:5]\n" +
+			"     │               │           │       └─ Filter\n" +
+			"     │               │           │           ├─ Eq\n" +
+			"     │               │           │           │   ├─ t3.y:5\n" +
+			"     │               │           │           │   └─ xy.x:0!null\n" +
+			"     │               │           │           └─ TableAlias(t3)\n" +
+			"     │               │           │               └─ IndexedTableAccess(xy)\n" +
+			"     │               │           │                   ├─ index: [xy.y]\n" +
+			"     │               │           │                   ├─ keys: [xy.x:0!null]\n" +
+			"     │               │           │                   ├─ colSet: (7,8)\n" +
+			"     │               │           │                   ├─ tableId: 4\n" +
+			"     │               │           │                   └─ Table\n" +
+			"     │               │           │                       ├─ name: xy\n" +
+			"     │               │           │                       └─ columns: [x y]\n" +
+			"     │               │           └─ TableAlias(t2)\n" +
+			"     │               │               └─ Table\n" +
+			"     │               │                   ├─ name: xy\n" +
+			"     │               │                   ├─ columns: [x y]\n" +
+			"     │               │                   ├─ colSet: (5,6)\n" +
+			"     │               │                   └─ tableId: 3\n" +
+			"     │               └─ HashLookup\n" +
+			"     │                   ├─ left-key: TUPLE()\n" +
+			"     │                   ├─ right-key: TUPLE()\n" +
+			"     │                   └─ Table\n" +
+			"     │                       ├─ name: xy\n" +
+			"     │                       ├─ columns: [x]\n" +
+			"     │                       ├─ colSet: (3,4)\n" +
+			"     │                       └─ tableId: 2\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: `select x from xy where y in (select x from xy where x in (select y from xy));`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [xy.x:1!null]\n" +
+			" └─ LookupJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ xy.y:2\n" +
+			"     │   └─ xy_1.x:0!null\n" +
+			"     ├─ Distinct\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [xy_1.x:0!null]\n" +
+			"     │       └─ SemiLookupJoin\n" +
+			"     │           ├─ TableAlias(xy_1)\n" +
+			"     │           │   └─ ProcessTable\n" +
+			"     │           │       └─ Table\n" +
+			"     │           │           ├─ name: xy\n" +
+			"     │           │           └─ columns: [x y]\n" +
+			"     │           └─ Project\n" +
+			"     │               ├─ columns: [xy_2.y:1]\n" +
+			"     │               └─ TableAlias(xy_2)\n" +
+			"     │                   └─ IndexedTableAccess(xy)\n" +
+			"     │                       ├─ index: [xy.y]\n" +
+			"     │                       ├─ keys: [xy_1.x:0!null]\n" +
+			"     │                       ├─ colSet: (5,6)\n" +
+			"     │                       ├─ tableId: 3\n" +
+			"     │                       └─ Table\n" +
+			"     │                           ├─ name: xy\n" +
+			"     │                           └─ columns: [x y]\n" +
+			"     └─ IndexedTableAccess(xy)\n" +
+			"         ├─ index: [xy.y]\n" +
+			"         ├─ keys: [xy_1.x:0!null]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x y]\n" +
+			"",
+	},
+	{
 		Query: `select * from xy join uv on (x = u and u  > 0) where u < 2`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [xy.x:2!null, xy.y:3, uv.u:0!null, uv.v:1]\n" +
@@ -5941,7 +6040,7 @@ inner join pq on true
 			" │   └─ 2020-01-01 (longtext)\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.date_col]\n" +
-			"     ├─ static: [{[2020-01-01, 2020-01-01]}]\n" +
+			"     ├─ static: [{[2020-01-01 00:00:00 +0000 UTC, 2020-01-01 00:00:00 +0000 UTC]}]\n" +
 			"     ├─ colSet: (1-5)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -5957,7 +6056,7 @@ inner join pq on true
 			" │   └─ 2020-01-01 (longtext)\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.date_col]\n" +
-			"     ├─ static: [{(2020-01-01, ∞)}]\n" +
+			"     ├─ static: [{(2020-01-01 00:00:00 +0000 UTC, ∞)}]\n" +
 			"     ├─ colSet: (1-5)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -5973,7 +6072,7 @@ inner join pq on true
 			" │   └─ 2020-01-01 (longtext)\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.datetime_col]\n" +
-			"     ├─ static: [{[2020-01-01, 2020-01-01]}]\n" +
+			"     ├─ static: [{[2020-01-01 00:00:00 +0000 UTC, 2020-01-01 00:00:00 +0000 UTC]}]\n" +
 			"     ├─ colSet: (1-5)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -5989,7 +6088,7 @@ inner join pq on true
 			" │   └─ 2020-01-01 (longtext)\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.datetime_col]\n" +
-			"     ├─ static: [{(2020-01-01, ∞)}]\n" +
+			"     ├─ static: [{(2020-01-01 00:00:00 +0000 UTC, ∞)}]\n" +
 			"     ├─ colSet: (1-5)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -6005,7 +6104,7 @@ inner join pq on true
 			" │   └─ 2020-01-01 (longtext)\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.timestamp_col]\n" +
-			"     ├─ static: [{[2020-01-01, 2020-01-01]}]\n" +
+			"     ├─ static: [{[2020-01-01 00:00:00 +0000 UTC, 2020-01-01 00:00:00 +0000 UTC]}]\n" +
 			"     ├─ colSet: (1-5)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -6021,7 +6120,7 @@ inner join pq on true
 			" │   └─ 2020-01-01 (longtext)\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.timestamp_col]\n" +
-			"     ├─ static: [{(2020-01-01, ∞)}]\n" +
+			"     ├─ static: [{(2020-01-01 00:00:00 +0000 UTC, ∞)}]\n" +
 			"     ├─ colSet: (1-5)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
