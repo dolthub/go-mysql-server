@@ -51,7 +51,6 @@ func newRelProps(rel RelExpr) *relProps {
 	case *Max1Row:
 		p.populateFds()
 	case *EmptyTable:
-		p.outputCols = r.TableIdNode().Columns()
 	case SourceRel:
 		n := r.TableIdNode()
 		if len(n.Schema()) == n.Columns().Len() {
@@ -112,6 +111,8 @@ func (p *relProps) populateFds() {
 		all := rel.Child.RelProps.FuncDeps().All()
 		notNull := rel.Child.RelProps.FuncDeps().NotNull()
 		fds = sql.NewMax1RowFDs(all, notNull)
+	case *EmptyTable:
+		fds = &sql.FuncDepSet{}
 	case SourceRel:
 		n := rel.TableIdNode()
 		all := n.Columns()
