@@ -780,6 +780,14 @@ var QueryTests = []QueryTest{
 	//	Expected: []sql.Row{{1}, {2}, {3}},
 	//},
 	{
+		Query:    "select x from xy where y in (select xy.x from xy join (select t2.y from xy t2 where exists (select t3.y from xy t3 where t3.y = xy.x)) t1) order by 1;",
+		Expected: []sql.Row{{0}, {1}, {2}, {3}},
+	},
+	{
+		Query:    "select x from xy where y in (select x from xy where x in (select y from xy)) order by 1;",
+		Expected: []sql.Row{{0}, {1}, {2}, {3}},
+	},
+	{
 		Query:    "SELECT 1 WHERE ((1 IN (NULL >= 1)) IS NULL);",
 		Expected: []sql.Row{{1}},
 	},

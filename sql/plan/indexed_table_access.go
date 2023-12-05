@@ -88,7 +88,7 @@ func NewIndexedAccessForTableNode(node sql.TableNode, lb *LookupBuilder) (*Index
 
 	var id sql.TableId
 	var cols sql.ColSet
-	if tin, ok := node.(sql.TableIdNode); ok {
+	if tin, ok := node.(TableIdNode); ok {
 		id = tin.Id()
 		cols = tin.Columns()
 	}
@@ -135,7 +135,7 @@ func NewStaticIndexedAccessForTableNode(node sql.TableNode, lookup sql.IndexLook
 
 	var id sql.TableId
 	var cols sql.ColSet
-	if tin, ok := node.(sql.TableIdNode); ok {
+	if tin, ok := node.(TableIdNode); ok {
 		id = tin.Id()
 		cols = tin.Columns()
 	}
@@ -162,7 +162,7 @@ func NewStaticIndexedAccessForFullTextTable(node sql.TableNode, lookup sql.Index
 }
 
 // WithId implements sql.TableIdNode
-func (i *IndexedTableAccess) WithId(id sql.TableId) sql.TableIdNode {
+func (i *IndexedTableAccess) WithId(id sql.TableId) TableIdNode {
 	ret := *i
 	ret.id = id
 	return &ret
@@ -174,7 +174,7 @@ func (i *IndexedTableAccess) Id() sql.TableId {
 }
 
 // WithColumns implements sql.TableIdNode
-func (i *IndexedTableAccess) WithColumns(set sql.ColSet) sql.TableIdNode {
+func (i *IndexedTableAccess) WithColumns(set sql.ColSet) TableIdNode {
 	ret := *i
 	ret.cols = set
 	return &ret

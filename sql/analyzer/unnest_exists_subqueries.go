@@ -201,6 +201,10 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 		}
 
 		outerFilters := s.joinFilters
+		if referencesOuterScope(outerFilters, scope) {
+			retFilters = append(retFilters, f)
+			continue
+		}
 
 		switch joinType {
 		case plan.JoinTypeAnti:
@@ -219,6 +223,22 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 		ret = plan.NewFilter(expression.JoinAnd(retFilters...), ret)
 	}
 	return ret, transform.NewTree, nil
+}
+
+// referencesOuterScope returns true if a filter in the set is from an outer scope
+func referencesOuterScope(filters []sql.Expression, scope *plan.Scope) bool {
+	if scope == nil {
+		return false
+	}
+	for _, e := range filters {
+		if transform.InspectExpr(e, func(e sql.Expression) bool {
+			gf, ok := e.(*expression.GetField)
+			return ok && scope.Correlated().Contains(gf.Id())
+		}) {
+			return true
+		}
+	}
+	return false
 }
 
 type hoistSubquery struct {

@@ -14,7 +14,6 @@ var _ sql.ExecSourceRel = PointLookupTable{}
 var _ sql.IndexAddressable = PointLookupTable{}
 var _ sql.IndexedTable = PointLookupTable{}
 var _ sql.TableNode = PointLookupTable{}
-var _ sql.TableIdNode = PointLookupTable{}
 
 // PointLookupTable is a table whose indexes only support point lookups but not range scans.
 // It's used for testing optimizations on indexes.

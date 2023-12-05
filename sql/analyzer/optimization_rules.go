@@ -159,7 +159,7 @@ func containsSources(haystack, needle []sql.TableId) bool {
 func nodeSources(n sql.Node) sql.FastIntSet {
 	var tables sql.FastIntSet
 	transform.InspectUp(n, func(n sql.Node) bool {
-		tin, _ := n.(sql.TableIdNode)
+		tin, _ := n.(plan.TableIdNode)
 		if tin != nil {
 			tables.Add(int(tin.Id()))
 		}

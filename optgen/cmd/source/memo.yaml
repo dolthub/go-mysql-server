@@ -37,7 +37,7 @@ exprs:
 - name: "LateralJoin"
   join: true
 - name: "TableScan"
-  sourceType: "sql.TableIdNode"
+  sourceType: "plan.TableIdNode"
 - name: "Values"
   sourceType: "*plan.ValueDerivedTable"
 - name: "TableAlias"
@@ -50,6 +50,7 @@ exprs:
   sourceType: "*plan.SubqueryAlias"
 - name: "TableFunc"
   sourceType: "sql.TableFunction"
+  skipTableId: true
 - name: "JSONTable"
   sourceType: "*plan.JSONTable"
 - name: "EmptyTable"
@@ -66,82 +67,7 @@ exprs:
   skipExec: true
 - name: "Max1Row"
   unary:  true
-
-# scalar
 - name: "Filter"
   unary: true
   attrs:
-  - [filters, "[]sql.Expression"]
-- name: "Equal"
-  scalar: true
-  binary: true
-- name: "Literal"
-  scalar: true
-  attrs:
-  - [val, "interface{}"]
-  - [typ, "sql.Type"]
-- name: "ColRef"
-  scalar: true
-  attrs:
-  - [col, "sql.ColumnId"]
-  - [table, "GroupId"]
-  - [gf, "*expression.GetField"]
-- name: "Not"
-  unary: true
-  scalar: true
-- name: "Or"
-  scalar: true
-  binary: true
-- name: "And"
-  scalar: true
-  binary: true
-- name: "InTuple"
-  scalar: true
-  binary: true
-- name: "Lt"
-  scalar: true
-  binary: true
-- name: "Leq"
-  scalar: true
-  binary: true
-- name: "Gt"
-  scalar: true
-  binary: true
-- name: "Geq"
-  scalar: true
-  binary: true
-- name: "NullSafeEq"
-  scalar: true
-  binary: true
-- name: "Regexp"
-  scalar: true
-  binary: true
-- name: "Arithmetic"
-  scalar: true
-  binary: true
-  attrs:
-  - [op, "ArithType"]
-- name: "Bindvar"
-  scalar: true
-  attrs:
-  - [name, "string"]
-  - [typ, "sql.Type"]
-- name: "IsNull"
-  scalar: true
-  unary: true
-- name: "Tuple"
-  scalar: true
-  attrs:
-  - [values, "[]*ExprGroup"]
-- name: "Between"
-  scalar: true
-  attrs:
-  - [Value, "*ExprGroup"]
-  - [Min, "*ExprGroup"]
-  - [Max, "*ExprGroup"]
-- name: "Hidden"
-  scalar: true
-  attrs:
-  - [e, "sql.Expression"]
-  - [cols, "sql.ColSet"]
-  - [tables, "sql.FastIntSet"]
+  - [ filters, "[]sql.Expression" ]
