@@ -79,8 +79,9 @@ func TestPopulateFDs(t *testing.T) {
 						{Name: "z", Source: "t", Type: types.Int64, Nullable: false},
 					}).(*plan.EmptyTable).WithId(1).WithColumns(sql.NewColSet(1, 2, 3)).(*plan.EmptyTable),
 			},
-			all:     sql.NewColSet(1, 2, 3),
-			notNull: sql.NewColSet(1, 2, 3),
+			// planning ignores empty tables for now
+			all:     sql.NewColSet(),
+			notNull: sql.NewColSet(),
 		},
 		{
 			name: "max1Row",

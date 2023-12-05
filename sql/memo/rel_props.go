@@ -50,8 +50,37 @@ func newRelProps(rel RelExpr) *relProps {
 	switch r := rel.(type) {
 	case *Max1Row:
 		p.populateFds()
+	case *EmptyTable:
+		if r.TableIdNode().Columns().Len() > 0 {
+			p.outputCols = r.TableIdNode().Columns()
+			p.populateFds()
+			p.populateOutputTables()
+			p.populateInputTables()
+			return p
+		}
+	case *SetOp:
 	case SourceRel:
-		p.outputCols = r.TableIdNode().Columns()
+		n := r.TableIdNode()
+		if len(n.Schema()) == n.Columns().Len() {
+			p.outputCols = r.TableIdNode().Columns()
+		} else {
+			// if the table is projected, capture subset of column ids
+			var tw sql.TableNode
+			var ok bool
+			for tw, ok = n.(sql.TableNode); !ok; tw, ok = n.Children()[0].(sql.TableNode) {
+			}
+
+			tin := tw.UnderlyingTable().(sql.PrimaryKeyTable)
+			firstCol, _ := n.Columns().Next(1)
+			sch := tin.PrimaryKeySchema().Schema
+
+			var colset sql.ColSet
+			for _, c := range n.Schema() {
+				i := sch.IndexOfColName(c.Name)
+				colset.Add(firstCol + sql.ColumnId(i))
+			}
+			p.outputCols = colset
+		}
 	default:
 	}
 
@@ -90,6 +119,8 @@ func (p *relProps) populateFds() {
 		all := rel.Child.RelProps.FuncDeps().All()
 		notNull := rel.Child.RelProps.FuncDeps().NotNull()
 		fds = sql.NewMax1RowFDs(all, notNull)
+	case *EmptyTable:
+		fds = &sql.FuncDepSet{}
 	case SourceRel:
 		n := rel.TableIdNode()
 		all := n.Columns()
@@ -389,8 +420,6 @@ func (p *relProps) outputColsForRel(r RelExpr) sql.ColSet {
 		return r.outputCols()
 	case *Max1Row:
 		return r.outputCols()
-	case SourceRel:
-		return r.TableIdNode().Columns()
 	default:
 		panic("unknown type")
 	}
