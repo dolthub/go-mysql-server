@@ -142,7 +142,7 @@ func (b *IndexBuilder) NotEquals(ctx *Context, colExpr string, key interface{}) 
 	case float32, float64:
 		if f != c {
 			b.updateCol(ctx, colExpr, NotNullRangeColumnExpr(typ))
-            return b
+			return b
 		}
 	case decimal.Decimal:
 		if !f.(decimal.Decimal).Equals(c.(decimal.Decimal)) {
