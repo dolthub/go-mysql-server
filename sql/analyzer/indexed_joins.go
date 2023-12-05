@@ -481,9 +481,6 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 				}
 			}
 			if srcNode == nil {
-				//return fmt.Errorf("table for column not found: %d", colId)
-				//col := srcNode.Schema()[colId]
-				//projections = append(projections, expression.NewGetFieldWithTable(int(colId), int(srcNode.Id()), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable))
 				break
 			}
 
