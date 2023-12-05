@@ -356,11 +356,9 @@ func (r RangeColumnExpr) DebugString() string {
 	switch r.LowerBound.(type) {
 	case Above:
 		lowerB := GetRangeCutKey(r.LowerBound)
-
 		sb.WriteString("(" + fmt.Sprint(lowerB))
 	case Below:
 		lowerB := GetRangeCutKey(r.LowerBound)
-
 		sb.WriteString("[" + fmt.Sprint(lowerB))
 	case AboveAll:
 		sb.WriteString("(∞")
@@ -372,8 +370,10 @@ func (r RangeColumnExpr) DebugString() string {
 	sb.WriteString(", ")
 	switch r.UpperBound.(type) {
 	case Above:
+		upperB := GetRangeCutKey(r.UpperBound)
 		sb.WriteString(fmt.Sprint(upperB) + "]")
 	case Below:
+		upperB := GetRangeCutKey(r.UpperBound)
 		sb.WriteString(fmt.Sprint(upperB) + ")")
 	case AboveAll:
 		sb.WriteString("∞)")
