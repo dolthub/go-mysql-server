@@ -3764,11 +3764,22 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 		},
 	},
+
+	// TODO: Join with a range scan on a BLOB/TEXT column... is that even possible?\n
+	// TODO: I think we have a bug with != -> It still uses the index, but does a range scan
+	//       before and after the value.
+	//       Actually... I think it works correctly! But.. do we need to test this explicitly? Probably?
+
+	// TODO: This might fit better with the index tests, instead of the index prefix tests (since there is no
+	//       prefix length being used in this example, the whole point is to skip prefix lengths).
+
 	{
 		// https://github.com/dolthub/dolt/issues/7040
-		Name: "unique indexes on TEXT/BLOB columns with no prefix length (MariaDB Compatibility)",
+		Name: "unique indexes on TEXT/BLOB columns with no prefix length (MariaDB compatibility)",
 		SetUpScript: []string{
 			"create table t (pk int primary key, col1 text);",
+			"create table j2 (pk int primary key, col1 varchar(100));",
+			"insert into j2 values (1, '100'), (2, '  '), (3, '300');",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -3780,7 +3791,7 @@ var IndexPrefixQueries = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "insert into t values (4, ''), (5, ' '), (8, '.'), (-1, '  ');",
+				Query:    "insert into t values (4, ''), (5, ' '), (8, NULL), (-1, '  ');",
 				Expected: []sql.Row{{types.NewOkResult(4)}},
 			},
 			{
@@ -3792,6 +3803,13 @@ var IndexPrefixQueries = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
+				Query:       "insert into t values (2, 'oneasdfasdf');",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				// Skipped until Dolt's implementation can return this error message with the raw
+				// content value, and not the hashed value.
+				Skip:           true,
 				Query:          "insert into t values (2, 'oneasdfasdf');",
 				ExpectedErrStr: "duplicate unique key given: [oneasdfasdf]",
 			},
@@ -3802,6 +3820,7 @@ var IndexPrefixQueries = []ScriptTest{
 				ExpectedIndexes:    []string{"k1"},
 			},
 			{
+				// Indexes with content-hashed fields are not eligible for use with range scans
 				Query: "explain select * from t where col1 >= 'one';",
 				Expected: []sql.Row{
 					{"Filter"},
@@ -3811,20 +3830,99 @@ var IndexPrefixQueries = []ScriptTest{
 					{"     └─ columns: [pk col1]"}},
 			},
 			{
-				// Indexes with a content-hashed BLOB/TEXT field cannot be used in range scans (only in point lookups)
+				// Indexes with a content-hashed BLOB/TEXT field cannot be used in range scans
 				Query:           "select * from t where col1 >= ' ' order by pk;",
 				ExpectedIndexes: []string{"primary"},
-				Expected:        []sql.Row{{-1, "  "}, {1, "oneasdfasdf"}, {3, "three"}, {5, " "}, {8, "."}},
+				Expected:        []sql.Row{{-1, "  "}, {1, "oneasdfasdf"}, {3, "three"}, {5, " "}},
 			},
 			{
+				// Assert we can create the index without a prefix, inline in a table definition, too
 				Query:    "create table t2 (pk int primary key, col1 BLOB, unique key k1(col1));",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// Assert that we do NOT use the index for a join on a range condition
+				Query: "explain select distinct j2.pk from j2 join t on t.col1 >= 'one';",
+				Expected: []sql.Row{
+					{"Distinct"},
+					{" └─ Project"},
+					{"     ├─ columns: [j2.pk]"},
+					{"     └─ InnerJoin"},
+					{"         ├─ Table"},
+					{"         │   └─ name: j2"},
+					{"         └─ Filter"},
+					{"             ├─ (t.col1 >= 'one')"},
+					{"             └─ Table"},
+					{"                 └─ name: t"}},
+			},
+			{
+				// Assert that we DO use the index for a join on an exact match condition
+				Query: "explain select distinct j2.pk from j2 join t on t.col1 = 'one';",
+				Expected: []sql.Row{
+					{"Distinct"},
+					{" └─ Project"},
+					{"     ├─ columns: [j2.pk]"},
+					{"     └─ LookupJoin"},
+					{"         ├─ Table"},
+					{"         │   └─ name: j2"},
+					{"         └─ Filter"},
+					{"             ├─ (t.col1 = 'one')"},
+					{"             └─ IndexedTableAccess(t)"},
+					{"                 ├─ index: [t.col1]"},
+					{"                 └─ keys: 'one'"}},
+			},
+			{
+				// Assert that indexes with hash-encoded fields are not used for ordering
+				Query: "explain select t.col1 from t order by t.col1;",
+				Expected: []sql.Row{
+					{"Project"},
+					{" ├─ columns: [t.col1]"},
+					{" └─ Sort(t.col1 ASC)"},
+					{"     └─ Table"},
+					{"         ├─ name: t"},
+					{"         └─ columns: [pk col1]"}},
+			},
+			{
+				// Assert that indexes with hash-encoded fields are not used for ordering
+				Query:           "select t.col1 from t order by t.col1;",
+				ExpectedIndexes: []string{},
+				Expected:        []sql.Row{{nil}, {""}, {" "}, {"  "}, {"oneasdfasdf"}, {"three"}},
+			},
+			{
+				// Assert that filters that transform the column value are not eligible to use the secondary index
+				Query:           "select col1 from t where concat(t.col1, ' ') = '  ';",
+				ExpectedIndexes: []string{},
+				Expected:        []sql.Row{{" "}},
+			},
+			{
+				// Assert that index use is valid for not equals comparisons
+				Query:           "select col1 from t where t.col1 != 'oneasdfasdf';",
+				ExpectedIndexes: []string{"k1"},
+				Expected:        []sql.Row{{""}, {" "}, {"  "}, {"three"}},
+			},
+			{
+				// Assert that index use is valid for is not null comparisons
+				Query:           "select col1 from t where t.col1 is not null;",
+				ExpectedIndexes: []string{"k1"},
+				Expected:        []sql.Row{{""}, {" "}, {"  "}, {"oneasdfasdf"}, {"three"}},
+			},
+			{
+				// Assert that index use is valid for null-safe comparisons
+				Query:           "select col1 from t where t.col1 <=> 'oneasdfasdf';",
+				ExpectedIndexes: []string{"k1"},
+				Expected:        []sql.Row{{"oneasdfasdf"}},
+			},
+			{
+				// Assert that index use is allowed for is null filter expressions
+				Query:           "select col1 from t where t.col1 is NULL",
+				ExpectedIndexes: []string{"k1"},
+				Expected:        []sql.Row{{nil}},
 			},
 		},
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/7040
-		Name: "unique indexes on TEXT/BLOB columns with no prefix length (Strict MySQL Compatibility)",
+		Name: "unique indexes on TEXT/BLOB columns with no prefix length (strict MySQL compatibility)",
 		SetUpScript: []string{
 			"create table t (pk int primary key, col1 text);",
 		},
