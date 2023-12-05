@@ -39,12 +39,8 @@ type RangeHeap struct {
 
 var _ sql.Node = (*RangeHeap)(nil)
 
-func NewRangeHeap(child sql.Node, lhsSchema sql.Schema, rhsSchema sql.Schema, value, min, max *expression.GetField, rangeIsClosedBelow, rangeIsClosedAbove bool) (*RangeHeap, error) {
-	maxColumnIndex := rhsSchema.IndexOf(max.Name(), max.Table())
+func NewRangeHeap(child sql.Node, value, min, max *expression.GetField, rangeIsClosedBelow, rangeIsClosedAbove bool) (*RangeHeap, error) {
 	newSr := &RangeHeap{
-		ValueColumnIndex:   lhsSchema.IndexOf(value.Name(), value.Table()),
-		MinColumnIndex:     rhsSchema.IndexOf(min.Name(), min.Table()),
-		MaxColumnIndex:     maxColumnIndex,
 		RangeIsClosedBelow: rangeIsClosedBelow,
 		RangeIsClosedAbove: rangeIsClosedAbove,
 		ValueColumnGf:      value,
@@ -57,6 +53,10 @@ func NewRangeHeap(child sql.Node, lhsSchema sql.Schema, rhsSchema sql.Schema, va
 
 func (s *RangeHeap) String() string {
 	return s.Child.String()
+}
+
+func (s *RangeHeap) DebugString() string {
+	return sql.DebugString(s.Child)
 }
 
 func (s *RangeHeap) IsReadOnly() bool {

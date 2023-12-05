@@ -13,10 +13,13 @@ type ValueDerivedTable struct {
 	name    string
 	columns []string
 	sch     sql.Schema
+	id      sql.TableId
+	cols    sql.ColSet
 }
 
 var _ sql.Node = (*ValueDerivedTable)(nil)
 var _ sql.CollationCoercible = (*ValueDerivedTable)(nil)
+var _ TableIdNode = (*ValueDerivedTable)(nil)
 
 func NewValueDerivedTable(values *Values, name string) *ValueDerivedTable {
 	var s sql.Schema
@@ -24,6 +27,30 @@ func NewValueDerivedTable(values *Values, name string) *ValueDerivedTable {
 		s = getSchema(values.ExpressionTuples)
 	}
 	return &ValueDerivedTable{Values: values, name: name, sch: s}
+}
+
+// WithId implements sql.TableIdNode
+func (v *ValueDerivedTable) WithId(id sql.TableId) TableIdNode {
+	ret := *v
+	ret.id = id
+	return &ret
+}
+
+// Id implements sql.TableIdNode
+func (v *ValueDerivedTable) Id() sql.TableId {
+	return v.id
+}
+
+// WithColumns implements sql.TableIdNode
+func (v *ValueDerivedTable) WithColumns(set sql.ColSet) TableIdNode {
+	ret := *v
+	ret.cols = set
+	return &ret
+}
+
+// Columns implements sql.TableIdNode
+func (v *ValueDerivedTable) Columns() sql.ColSet {
+	return v.cols
 }
 
 // Name implements sql.Nameable
@@ -120,7 +147,7 @@ func (v *ValueDerivedTable) DebugString() string {
 	return tp.String()
 }
 
-func (v ValueDerivedTable) WithColumns(columns []string) *ValueDerivedTable {
+func (v ValueDerivedTable) WithColumNames(columns []string) *ValueDerivedTable {
 	v.columns = columns
 	return &v
 }

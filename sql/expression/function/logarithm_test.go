@@ -37,8 +37,9 @@ func TestLn(t *testing.T) {
 		expected interface{}
 		err      *errors.Kind
 	}{
-		{"Input value is zero", types.Float64, sql.NewRow(0), nil, ErrInvalidArgumentForLogarithm},
-		{"Input value is negative", types.Float64, sql.NewRow(-1), nil, ErrInvalidArgumentForLogarithm},
+		{"Input value is null", types.Float64, sql.NewRow(nil), nil, nil},
+		{"Input value is zero", types.Float64, sql.NewRow(0), nil, nil},
+		{"Input value is negative", types.Float64, sql.NewRow(-1), nil, nil},
 		{"Input value is valid string", types.Float64, sql.NewRow("2"), float64(0.6931471805599453), nil},
 		{"Input value is invalid string", types.Float64, sql.NewRow("aaa"), nil, sql.ErrInvalidType},
 		{"Input value is valid float64", types.Float64, sql.NewRow(3), float64(1.0986122886681096), nil},
@@ -48,7 +49,7 @@ func TestLn(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		f := NewLogBaseFunc(math.E)(expression.NewGetField(0, tt.rowType, "", false))
+		f := NewLogBaseFunc(math.E)(expression.NewGetField(0, tt.rowType, "", true))
 		t.Run(tt.name, func(t *testing.T) {
 			t.Helper()
 			require := require.New(t)
@@ -56,20 +57,16 @@ func TestLn(t *testing.T) {
 			if tt.err != nil {
 				require.Error(err)
 				require.True(tt.err.Is(err))
+			} else if tt.expected == nil {
+				require.NoError(err)
+				require.Nil(result)
+				require.True(f.IsNullable())
 			} else {
 				require.NoError(err)
 				require.InEpsilonf(tt.expected, result, epsilon, fmt.Sprintf("Actual is: %v", result))
 			}
 		})
 	}
-
-	// Test Nil
-	f := NewLogBaseFunc(math.E)(expression.NewGetField(0, types.Float64, "", true))
-	require := require.New(t)
-	result, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(nil))
-	require.NoError(err)
-	require.Nil(result)
-	require.True(f.IsNullable())
 }
 
 func TestLog2(t *testing.T) {
@@ -80,8 +77,9 @@ func TestLog2(t *testing.T) {
 		expected interface{}
 		err      *errors.Kind
 	}{
-		{"Input value is zero", types.Float64, sql.NewRow(0), nil, ErrInvalidArgumentForLogarithm},
-		{"Input value is negative", types.Float64, sql.NewRow(-1), nil, ErrInvalidArgumentForLogarithm},
+		{"Input value is null", types.Float64, sql.NewRow(nil), nil, nil},
+		{"Input value is zero", types.Float64, sql.NewRow(0), nil, nil},
+		{"Input value is negative", types.Float64, sql.NewRow(-1), nil, nil},
 		{"Input value is valid string", types.Float64, sql.NewRow("2"), float64(1), nil},
 		{"Input value is invalid string", types.Float64, sql.NewRow("aaa"), nil, sql.ErrInvalidType},
 		{"Input value is valid float64", types.Float64, sql.NewRow(3), float64(1.5849625007211563), nil},
@@ -91,7 +89,7 @@ func TestLog2(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		f := NewLogBaseFunc(float64(2))(expression.NewGetField(0, tt.rowType, "", false))
+		f := NewLogBaseFunc(float64(2))(expression.NewGetField(0, tt.rowType, "", true))
 		t.Run(tt.name, func(t *testing.T) {
 			t.Helper()
 			require := require.New(t)
@@ -99,20 +97,16 @@ func TestLog2(t *testing.T) {
 			if tt.err != nil {
 				require.Error(err)
 				require.True(tt.err.Is(err))
+			} else if tt.expected == nil {
+				require.NoError(err)
+				require.Nil(result)
+				require.True(f.IsNullable())
 			} else {
 				require.NoError(err)
 				require.InEpsilonf(tt.expected, result, epsilon, fmt.Sprintf("Actual is: %v", result))
 			}
 		})
 	}
-
-	// Test Nil
-	f := NewLogBaseFunc(float64(2))(expression.NewGetField(0, types.Float64, "", true))
-	require := require.New(t)
-	result, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(nil))
-	require.NoError(err)
-	require.Nil(result)
-	require.True(f.IsNullable())
 }
 
 func TestLog10(t *testing.T) {
@@ -123,8 +117,9 @@ func TestLog10(t *testing.T) {
 		expected interface{}
 		err      *errors.Kind
 	}{
-		{"Input value is zero", types.Float64, sql.NewRow(0), nil, ErrInvalidArgumentForLogarithm},
-		{"Input value is negative", types.Float64, sql.NewRow(-1), nil, ErrInvalidArgumentForLogarithm},
+		{"Input value is null", types.Float64, sql.NewRow(0), nil, nil},
+		{"Input value is zero", types.Float64, sql.NewRow(0), nil, nil},
+		{"Input value is negative", types.Float64, sql.NewRow(-1), nil, nil},
 		{"Input value is valid string", types.Float64, sql.NewRow("2"), float64(0.3010299956639812), nil},
 		{"Input value is invalid string", types.Float64, sql.NewRow("aaa"), nil, sql.ErrInvalidType},
 		{"Input value is valid float64", types.Float64, sql.NewRow(3), float64(0.4771212547196624), nil},
@@ -134,7 +129,7 @@ func TestLog10(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		f := NewLogBaseFunc(float64(10))(expression.NewGetField(0, tt.rowType, "", false))
+		f := NewLogBaseFunc(float64(10))(expression.NewGetField(0, tt.rowType, "", true))
 		t.Run(tt.name, func(t *testing.T) {
 			t.Helper()
 			require := require.New(t)
@@ -142,20 +137,16 @@ func TestLog10(t *testing.T) {
 			if tt.err != nil {
 				require.Error(err)
 				require.True(tt.err.Is(err))
+			} else if tt.expected == nil {
+				require.NoError(err)
+				require.Nil(result)
+				require.True(f.IsNullable())
 			} else {
 				require.NoError(err)
 				require.InEpsilonf(tt.expected, result, epsilon, fmt.Sprintf("Actual is: %v", result))
 			}
 		})
 	}
-
-	// Test Nil
-	f := NewLogBaseFunc(float64(10))(expression.NewGetField(0, types.Float64, "", true))
-	require := require.New(t)
-	result, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(nil))
-	require.NoError(err)
-	require.Nil(result)
-	require.True(f.IsNullable())
 }
 
 func TestLogInvalidArguments(t *testing.T) {
@@ -177,14 +168,16 @@ func TestLog(t *testing.T) {
 		expected interface{}
 		err      *errors.Kind
 	}{
-		{"Input base is 1", []sql.Expression{expression.NewLiteral(float64(1), types.Float64), expression.NewLiteral(float64(10), types.Float64)}, nil, ErrInvalidArgumentForLogarithm},
-		{"Input base is zero", []sql.Expression{expression.NewLiteral(float64(0), types.Float64), expression.NewLiteral(float64(10), types.Float64)}, nil, ErrInvalidArgumentForLogarithm},
-		{"Input base is negative", []sql.Expression{expression.NewLiteral(float64(-5), types.Float64), expression.NewLiteral(float64(10), types.Float64)}, nil, ErrInvalidArgumentForLogarithm},
+		{"Input base is 1", []sql.Expression{expression.NewLiteral(float64(1), types.Float64), expression.NewLiteral(float64(10), types.Float64)}, nil, nil},
+		{"Input base is nil", []sql.Expression{expression.NewLiteral(nil, types.Float64), expression.NewLiteral(float64(10), types.Float64)}, nil, nil},
+		{"Input base is zero", []sql.Expression{expression.NewLiteral(float64(0), types.Float64), expression.NewLiteral(float64(10), types.Float64)}, nil, nil},
+		{"Input base is negative", []sql.Expression{expression.NewLiteral(float64(-5), types.Float64), expression.NewLiteral(float64(10), types.Float64)}, nil, nil},
 		{"Input base is valid string", []sql.Expression{expression.NewLiteral("4", types.LongText), expression.NewLiteral(float64(10), types.Float64)}, float64(1.6609640474436813), nil},
 		{"Input base is invalid string", []sql.Expression{expression.NewLiteral("bbb", types.LongText), expression.NewLiteral(float64(10), types.Float64)}, nil, sql.ErrInvalidType},
 
-		{"Input value is zero", []sql.Expression{expression.NewLiteral(float64(0), types.Float64)}, nil, ErrInvalidArgumentForLogarithm},
-		{"Input value is negative", []sql.Expression{expression.NewLiteral(float64(-9), types.Float64)}, nil, ErrInvalidArgumentForLogarithm},
+		{"Input value is null", []sql.Expression{expression.NewLiteral(nil, types.Float64)}, nil, nil},
+		{"Input value is zero", []sql.Expression{expression.NewLiteral(float64(0), types.Float64)}, nil, nil},
+		{"Input value is negative", []sql.Expression{expression.NewLiteral(float64(-9), types.Float64)}, nil, nil},
 		{"Input value is valid string", []sql.Expression{expression.NewLiteral("7", types.LongText)}, float64(1.9459101490553132), nil},
 		{"Input value is invalid string", []sql.Expression{expression.NewLiteral("766j", types.LongText)}, nil, sql.ErrInvalidType},
 
@@ -208,18 +201,13 @@ func TestLog(t *testing.T) {
 			if tt.err != nil {
 				require.Error(err)
 				require.True(tt.err.Is(err))
+			} else if tt.expected == nil {
+				require.NoError(err)
+				require.Nil(result)
 			} else {
 				require.NoError(err)
 				require.InEpsilonf(tt.expected, result, epsilon, fmt.Sprintf("Actual is: %v", result))
 			}
 		})
 	}
-
-	// Test Nil
-	f, _ := NewLog(expression.NewLiteral(nil, types.Float64))
-	require := require.New(t)
-	result, err := f.Eval(sql.NewEmptyContext(), nil)
-	require.NoError(err)
-	require.Nil(result)
-	require.True(f.IsNullable())
 }

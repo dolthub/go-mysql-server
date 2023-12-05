@@ -92,6 +92,10 @@ func (f *If) Type() sql.Type {
 	if types.IsText(typ1) || types.IsText(typ2) {
 		return types.Text
 	}
+
+	if typ1 == types.Null {
+		return typ2.Promote()
+	}
 	return typ1.Promote()
 }
 

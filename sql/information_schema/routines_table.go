@@ -42,27 +42,6 @@ var (
 	_ StatisticsTable = (*ColumnsTable)(nil)
 )
 
-var doltProcedureAliasSet = map[string]interface{}{
-	"dadd":                    nil,
-	"dbranch":                 nil,
-	"dcheckout":               nil,
-	"dclean":                  nil,
-	"dcherry_pick":            nil,
-	"dclone":                  nil,
-	"dcommit":                 nil,
-	"dfetch":                  nil,
-	"dgc":                     nil,
-	"dmerge":                  nil,
-	"dpull":                   nil,
-	"dpush":                   nil,
-	"dremote":                 nil,
-	"dreset":                  nil,
-	"drevert":                 nil,
-	"dtag":                    nil,
-	"dverify_constraints":     nil,
-	"dverify_all_constraints": nil,
-}
-
 func (r *routineTable) AssignCatalog(cat Catalog) Table {
 	r.catalog = cat
 	return r
@@ -169,10 +148,6 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 		}
 		dbCollation := plan.GetDatabaseCollation(ctx, db)
 		for _, procedure := range procedures {
-			// Skip dolt procedure aliases to show in this table
-			if _, isAlias := doltProcedureAliasSet[procedure.Name]; isAlias {
-				continue
-			}
 			// We skip external procedures if the variable to show them is set to false
 			if showExternalProcedures.(int8) == 0 && procedure.IsExternal() {
 				continue
@@ -276,10 +251,6 @@ func parametersRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) 
 			continue
 		}
 		for _, procedure := range procedures {
-			// Skip dolt procedure aliases to show in this table
-			if _, isAlias := doltProcedureAliasSet[procedure.Name]; isAlias {
-				continue
-			}
 			// We skip external procedures if the variable to show them is set to false
 			if showExternalProcedures.(int8) == 0 && procedure.IsExternal() {
 				continue

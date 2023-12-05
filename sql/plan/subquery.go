@@ -249,6 +249,14 @@ type Max1Row struct {
 
 var _ sql.Node = (*Max1Row)(nil)
 var _ sql.CollationCoercible = (*Max1Row)(nil)
+var _ sql.NameableNode = (*Max1Row)(nil)
+var _ sql.RenameableNode = (*Max1Row)(nil)
+
+func (m *Max1Row) WithName(s string) sql.Node {
+	ret := *m
+	ret.name = s
+	return &ret
+}
 
 func (m *Max1Row) Name() string {
 	return m.name

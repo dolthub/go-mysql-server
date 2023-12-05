@@ -50,13 +50,13 @@ var DefaultRules = []Rule{
 	{pushdownSubqueryAliasFiltersId, pushdownSubqueryAliasFilters},
 	{pruneTablesId, pruneTables},
 	{validateCheckConstraintId, validateCheckConstraints},
-	{transformJoinApplyId, transformJoinApply},
+	{unnestInSubqueriesId, unnestInSubqueries},
 	{resolveSubqueriesId, resolveSubqueries},
 	{replaceCrossJoinsId, replaceCrossJoins},
 }
 
 var OnceAfterDefault = []Rule{
-	{hoistSelectExistsId, hoistSelectExists},
+	{unnestExistsSubqueriesId, unnestExistsSubqueries},
 	{moveJoinCondsToFilterId, moveJoinConditionsToFilter},
 	{finalizeUnionsId, finalizeUnions},
 	{loadTriggersId, loadTriggers},
@@ -70,6 +70,7 @@ var OnceAfterDefault = []Rule{
 	{replaceAggId, replaceAgg},
 	{replaceIdxSortId, replaceIdxSort},
 	{eraseProjectionId, eraseProjection},
+	{flattenDistinctId, flattenDistinct},
 	{insertTopNId, insertTopNNodes},
 	{applyHashInId, applyHashIn},
 	{assignRoutinesId, assignRoutines},

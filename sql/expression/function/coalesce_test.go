@@ -41,7 +41,7 @@ func TestCoalesce(t *testing.T) {
 		{"coalesce(NULL, NULL, 3)", []sql.Expression{nil, nil, expression.NewLiteral(3, types.Int32)}, 3, types.Int32, false},
 		{"coalesce(NULL, NULL, '3')", []sql.Expression{nil, nil, expression.NewLiteral("3", types.LongText)}, "3", types.LongText, false},
 		{"coalesce(NULL, '2', 3)", []sql.Expression{nil, expression.NewLiteral("2", types.LongText), expression.NewLiteral(3, types.Int32)}, "2", types.LongText, false},
-		{"coalesce(NULL, NULL, NULL)", []sql.Expression{nil, nil, nil}, nil, nil, true},
+		{"coalesce(NULL, NULL, NULL)", []sql.Expression{nil, nil, nil}, nil, types.Null, true},
 	}
 
 	for _, tt := range testCases {
@@ -60,7 +60,7 @@ func TestComposeCoalasce(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	c1, err := NewCoalesce(nil)
 	require.NoError(t, err)
-	require.Equal(t, nil, c1.Type())
+	require.Equal(t, types.Null, c1.Type())
 	v, err := c1.Eval(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, nil, v)

@@ -765,6 +765,29 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		Query:    "select 1 as x from xy having AVG(x) > 0",
+		Expected: []sql.Row{{1}},
+	}, {
+		Query:    "select 1 as x, AVG(x) from xy group by (y) having AVG(x) > 0",
+		Expected: []sql.Row{{1, float64(1)}, {1, float64(2)}, {1, float64(3)}},
+	},
+	{
+		Query:    "select y as x from xy group by (y) having AVG(x) > 0",
+		Expected: []sql.Row{{0}, {1}, {3}},
+	},
+	//{
+	//	Query:    "select y as z from xy group by (y) having AVG(z) > 0",
+	//	Expected: []sql.Row{{1}, {2}, {3}},
+	//},
+	{
+		Query:    "select x from xy where y in (select xy.x from xy join (select t2.y from xy t2 where exists (select t3.y from xy t3 where t3.y = xy.x)) t1) order by 1;",
+		Expected: []sql.Row{{0}, {1}, {2}, {3}},
+	},
+	{
+		Query:    "select x from xy where y in (select x from xy where x in (select y from xy)) order by 1;",
+		Expected: []sql.Row{{0}, {1}, {2}, {3}},
+	},
+	{
 		Query:    "SELECT 1 WHERE ((1 IN (NULL >= 1)) IS NULL);",
 		Expected: []sql.Row{{1}},
 	},
@@ -3460,19 +3483,19 @@ Select * from (
 	},
 	{
 		Query:    `SELECT TRIM(mytable.s) AS s FROM mytable`,
-		Expected: []sql.Row{sql.Row{"first row"}, sql.Row{"second row"}, sql.Row{"third row"}},
+		Expected: []sql.Row{{"first row"}, {"second row"}, {"third row"}},
 	},
 	{
 		Query:    `SELECT TRIM("row" from mytable.s) AS s FROM mytable`,
-		Expected: []sql.Row{sql.Row{"first "}, sql.Row{"second "}, sql.Row{"third "}},
+		Expected: []sql.Row{{"first "}, {"second "}, {"third "}},
 	},
 	{
 		Query:    `SELECT TRIM(mytable.s from "first row") AS s FROM mytable`,
-		Expected: []sql.Row{sql.Row{""}, sql.Row{"first row"}, sql.Row{"first row"}},
+		Expected: []sql.Row{{""}, {"first row"}, {"first row"}},
 	},
 	{
 		Query:    `SELECT TRIM(mytable.s from mytable.s) AS s FROM mytable`,
-		Expected: []sql.Row{sql.Row{""}, sql.Row{""}, sql.Row{""}},
+		Expected: []sql.Row{{""}, {""}, {""}},
 	},
 	{
 		Query:    `SELECT TRIM("   foo   ")`,
@@ -4726,6 +4749,16 @@ Select * from (
 		},
 	},
 	{
+		Query:    "SELECT COALESCE (NULL, NULL)",
+		Expected: []sql.Row{{nil}},
+		ExpectedColumns: []*sql.Column{
+			{
+				Name: "COALESCE (NULL, NULL)",
+				Type: types.Null,
+			},
+		},
+	},
+	{
 		Query: "SELECT concat(s, i) FROM mytable",
 		Expected: []sql.Row{
 			{string("first row1")},
@@ -5345,9 +5378,24 @@ Select * from (
 		},
 	},
 	{
-		Query: `SELECT if(123 = 123, NULL, "b")`,
-		Expected: []sql.Row{
-			{nil},
+		Query:    `SELECT if(123 = 123, NULL, "b")`,
+		Expected: []sql.Row{{nil}},
+		ExpectedColumns: []*sql.Column{
+			{Name: "if(123 = 123, NULL, \"b\")", Type: types.LongText},
+		},
+	},
+	{
+		Query:    `SELECT if(123 = 123, NULL, NULL = 1)`,
+		Expected: []sql.Row{{nil}},
+		ExpectedColumns: []*sql.Column{
+			{Name: "if(123 = 123, NULL, NULL = 1)", Type: types.Int64}, // TODO: this should be getting coerced to bool
+		},
+	},
+	{
+		Query:    `SELECT if(123 = 123, NULL, NULL)`,
+		Expected: []sql.Row{{nil}},
+		ExpectedColumns: []*sql.Column{
+			{Name: "if(123 = 123, NULL, NULL)", Type: types.Null},
 		},
 	},
 	{
@@ -8546,6 +8594,26 @@ from typestable`,
 			{2, "second row"},
 			{3, "third row"},
 		},
+	},
+	{
+		Query: "select sqrt(-1) + 1",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: "select sqrt(-1) + 1",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query:    "flush binary logs",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "flush engine logs",
+		Expected: []sql.Row{},
 	},
 }
 

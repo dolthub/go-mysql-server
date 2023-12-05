@@ -222,7 +222,7 @@ func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 			Tbl:       table,
 			TableName: table.Name(),
 			Exprs: []sql.Expression{
-				expression.NewGetFieldWithTable(3, types.Int64, "db", "test-table", "foo", true)},
+				expression.NewGetFieldWithTable(1, 3, types.Int64, "", "test-table", "foo", true)},
 			Name:   "`qux`",
 			Unique: true,
 		},
@@ -232,8 +232,8 @@ func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 			TableName: "test-table",
 			Name:      "zug",
 			Exprs: []sql.Expression{
-				expression.NewGetFieldWithTable(4, types.Int64, "db", "test-table", "pok", true),
-				expression.NewGetFieldWithTable(3, types.Int64, "db", "test-table", "foo", true),
+				expression.NewGetFieldWithTable(1, 4, types.Int64, "", "test-table", "pok", true),
+				expression.NewGetFieldWithTable(1, 3, types.Int64, "", "test-table", "foo", true),
 			},
 			CommentStr: "test comment",
 		},

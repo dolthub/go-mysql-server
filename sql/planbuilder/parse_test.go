@@ -52,7 +52,79 @@ func TestPlanBuilder(t *testing.T) {
 
 	var tests = []planTest{
 		{
-			Query: `select x, x from xy order by x`,
+			Query: "with cte(x) as (select 1 as x) select 1 as x from cte having avg(x) > 0",
+			ExpectedPlan: `
+Project
+ ├─ columns: [1 (tinyint) as x]
+ └─ Having
+     ├─ GreaterThan
+     │   ├─ avg(cte.x):4
+     │   └─ 0 (tinyint)
+     └─ Project
+         ├─ columns: [avg(cte.x):4, 1 (tinyint) as x]
+         └─ GroupBy
+             ├─ select: AVG(cte.x:2!null)
+             ├─ group: 
+             └─ SubqueryAlias
+                 ├─ name: cte
+                 ├─ outerVisibility: false
+                 ├─ isLateral: false
+                 ├─ cacheable: true
+                 ├─ colSet: (2)
+                 ├─ tableId: 1
+                 └─ Project
+                     ├─ columns: [1 (tinyint) as x]
+                     └─ Table
+                         ├─ name: 
+                         ├─ columns: []
+                         ├─ colSet: ()
+                         └─ tableId: 0
+`,
+		},
+		{
+			Query: "select 1 as x from xy having AVG(x) > 0",
+			ExpectedPlan: `
+Project
+ ├─ columns: [1 (tinyint) as x]
+ └─ Having
+     ├─ GreaterThan
+     │   ├─ avg(xy.x):5
+     │   └─ 0 (tinyint)
+     └─ Project
+         ├─ columns: [avg(xy.x):5, 1 (tinyint) as x]
+         └─ GroupBy
+             ├─ select: AVG(xy.x:1!null)
+             ├─ group: 
+             └─ Table
+                 ├─ name: xy
+                 ├─ columns: [x y z]
+                 ├─ colSet: (1-3)
+                 └─ tableId: 1
+`,
+		},
+		{
+			Query: "select x as x from xy having avg(x) > 0",
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.x:1!null as x]
+ └─ Having
+     ├─ GreaterThan
+     │   ├─ avg(xy.x):5
+     │   └─ 0 (tinyint)
+     └─ Project
+         ├─ columns: [avg(xy.x):5, xy.x:1!null, xy.x:1!null as x]
+         └─ GroupBy
+             ├─ select: AVG(xy.x:1!null), xy.x:1!null
+             ├─ group: 
+             └─ Table
+                 ├─ name: xy
+                 ├─ columns: [x y z]
+                 ├─ colSet: (1-3)
+                 └─ tableId: 1
+`,
+		},
+		{
+			Query: "select x, x from xy order by x",
 			ExpectedPlan: `
 Project
  ├─ columns: [xy.x:1!null, xy.x:1!null]
@@ -61,11 +133,13 @@ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
-			Query: `select t1.x as x, t1.x as x from xy t1, xy t2 order by x;`,
+			Query: "select t1.x as x, t1.x as x from xy t1, xy t2 order by x;",
 			ExpectedPlan: `
 Project
  ├─ columns: [t1.x:1!null as x, t1.x:1!null as x]
@@ -76,11 +150,15 @@ Project
              ├─ TableAlias(t1)
              │   └─ Table
              │       ├─ name: xy
-             │       └─ columns: [x y z]
+             │       ├─ columns: [x y z]
+             │       ├─ colSet: (1-3)
+             │       └─ tableId: 1
              └─ TableAlias(t2)
                  └─ Table
                      ├─ name: xy
-                     └─ columns: [x y z]
+                     ├─ columns: [x y z]
+                     ├─ colSet: (4-6)
+                     └─ tableId: 2
 `,
 		},
 		{
@@ -104,11 +182,15 @@ Project
          ├─ TableAlias(a)
          │   └─ Table
          │       ├─ name: xy
-         │       └─ columns: [x y z]
+         │       ├─ columns: [x y z]
+         │       ├─ colSet: (1-3)
+         │       └─ tableId: 1
          └─ TableAlias(b)
              └─ Table
                  ├─ name: xy
-                 └─ columns: [x y z]
+                 ├─ columns: [x y z]
+                 ├─ colSet: (4-6)
+                 └─ tableId: 2
 `,
 		},
 		{
@@ -126,11 +208,15 @@ Project
          ├─ TableAlias(a)
          │   └─ Table
          │       ├─ name: xy
-         │       └─ columns: [x y z]
+         │       ├─ columns: [x y z]
+         │       ├─ colSet: (1-3)
+         │       └─ tableId: 1
          └─ TableAlias(b)
              └─ Table
                  ├─ name: xy
-                 └─ columns: [x y z]
+                 ├─ columns: [x y z]
+                 ├─ colSet: (4-6)
+                 └─ tableId: 2
 `,
 		},
 		{
@@ -143,11 +229,15 @@ Project
      ├─ outerVisibility: false
      ├─ isLateral: false
      ├─ cacheable: true
+     ├─ colSet: (4,5)
+     ├─ tableId: 2
      └─ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null]
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -161,7 +251,9 @@ Project
      │   └─ 2 (tinyint)
      └─ Table
          ├─ name: xy
-         └─ columns: [x y z]
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -175,7 +267,9 @@ Project
      │   └─ 2 (tinyint)
      └─ Table
          ├─ name: xy
-         └─ columns: [x y z]
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -189,7 +283,9 @@ Project
      │   └─ 2 (tinyint)
      └─ Table
          ├─ name: xy
-         └─ columns: [x y z]
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -203,7 +299,9 @@ Project
      │   └─ 2 (tinyint)
      └─ Table
          ├─ name: xy
-         └─ columns: [x y z]
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -217,7 +315,9 @@ Project
      │   └─ 2 (tinyint)
      └─ Table
          ├─ name: xy
-         └─ columns: [x y z]
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -232,7 +332,9 @@ Project
      └─ TableAlias(s)
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -251,10 +353,14 @@ Project
          ├─ TableAlias(s)
          │   └─ Table
          │       ├─ name: xy
-         │       └─ columns: [x y z]
+         │       ├─ columns: [x y z]
+         │       ├─ colSet: (1-3)
+         │       └─ tableId: 1
          └─ Table
              ├─ name: uv
-             └─ columns: [u v w]
+             ├─ columns: [u v w]
+             ├─ colSet: (4-6)
+             └─ tableId: 2
 `,
 		},
 		{
@@ -264,7 +370,9 @@ Project
  ├─ columns: [xy.y:2!null as x]
  └─ Table
      ├─ name: xy
-     └─ columns: [x y z]
+     ├─ columns: [x y z]
+     ├─ colSet: (1-3)
+     └─ tableId: 1
 `,
 		},
 		{
@@ -278,17 +386,23 @@ Project
      │   └─ s.u:7!null
      ├─ Table
      │   ├─ name: xy
-     │   └─ columns: [x y z]
+     │   ├─ columns: [x y z]
+     │   ├─ colSet: (1-3)
+     │   └─ tableId: 1
      └─ SubqueryAlias
          ├─ name: s
          ├─ outerVisibility: false
          ├─ isLateral: false
          ├─ cacheable: true
+         ├─ colSet: (7-9)
+         ├─ tableId: 3
          └─ Project
              ├─ columns: [uv.u:4!null, uv.v:5!null, uv.w:6!null]
              └─ Table
                  ├─ name: uv
-                 └─ columns: [u v w]
+                 ├─ columns: [u v w]
+                 ├─ colSet: (4-6)
+                 └─ tableId: 2
 `,
 		},
 		{
@@ -310,10 +424,14 @@ Project
      │               │   └─ uv.u:4!null
      │               └─ Table
      │                   ├─ name: uv
-     │                   └─ columns: [u v w]
+     │                   ├─ columns: [u v w]
+     │                   ├─ colSet: (4-6)
+     │                   └─ tableId: 2
      └─ Table
          ├─ name: xy
-         └─ columns: [x y z]
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -326,11 +444,15 @@ Project
      ├─ outerVisibility: false
      ├─ isLateral: false
      ├─ cacheable: true
+     ├─ colSet: (2)
+     ├─ tableId: 1
      └─ Project
          ├─ columns: [1 (tinyint)]
          └─ Table
              ├─ name: 
-             └─ columns: []
+             ├─ columns: []
+             ├─ colSet: ()
+             └─ tableId: 0
 `,
 		},
 		{
@@ -343,13 +465,17 @@ Project
      ├─ outerVisibility: false
      ├─ isLateral: false
      ├─ cacheable: true
+     ├─ colSet: (4)
+     ├─ tableId: 2
      └─ RecursiveCTE
          └─ Union distinct
              ├─ Project
              │   ├─ columns: [xy.x:1!null]
              │   └─ Table
              │       ├─ name: xy
-             │       └─ columns: [x y z]
+             │       ├─ columns: [x y z]
+             │       ├─ colSet: (1-3)
+             │       └─ tableId: 1
              └─ Project
                  ├─ columns: [cte.s:4!null]
                  └─ InnerJoin
@@ -359,7 +485,9 @@ Project
                      ├─ RecursiveTable(cte)
                      └─ Table
                          ├─ name: xy
-                         └─ columns: [x y z]
+                         ├─ columns: [x y z]
+                         ├─ colSet: (5-7)
+                         └─ tableId: 4
 `,
 		},
 		{
@@ -373,7 +501,9 @@ Project
          ├─ group: xy.x:1!null
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -387,7 +517,9 @@ Project
          ├─ group: xy.x:1!null
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -401,7 +533,9 @@ Project
          ├─ group: xy.y:2!null
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -414,7 +548,9 @@ Project
      ├─ group: 
      └─ Table
          ├─ name: xy
-         └─ columns: [x y z]
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -428,7 +564,9 @@ Project
          ├─ group: xy.y:2!null
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -442,7 +580,9 @@ Project
          ├─ group: xy.y:2!null
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -455,7 +595,9 @@ Project
      ├─ group: (xy.x:1!null + xy.z:3!null)
      └─ Table
          ├─ name: xy
-         └─ columns: [x y z]
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -468,7 +610,9 @@ Project
      ├─ group: (xy.x:1!null + xy.z:3!null)
      └─ Table
          ├─ name: xy
-         └─ columns: [x y z]
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -484,7 +628,9 @@ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -497,7 +643,9 @@ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -514,7 +662,9 @@ Project
              ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
              └─ Table
                  ├─ name: xy
-                 └─ columns: [x y z]
+                 ├─ columns: [x y z]
+                 ├─ colSet: (1-3)
+                 └─ tableId: 1
 `,
 		},
 		{
@@ -530,6 +680,8 @@ Project
          ├─ outerVisibility: false
          ├─ isLateral: false
          ├─ cacheable: true
+         ├─ colSet: (5)
+         ├─ tableId: 2
          └─ Project
              ├─ columns: [count(1):4!null as count(*)]
              └─ GroupBy
@@ -537,7 +689,9 @@ Project
                  ├─ group: 
                  └─ Table
                      ├─ name: xy
-                     └─ columns: [x y z]
+                     ├─ columns: [x y z]
+                     ├─ colSet: (1-3)
+                     └─ tableId: 1
 `,
 		},
 		{
@@ -550,6 +704,8 @@ Project
      ├─ outerVisibility: false
      ├─ isLateral: false
      ├─ cacheable: true
+     ├─ colSet: (6)
+     ├─ tableId: 2
      └─ Project
          ├─ columns: [count(1):4!null as s]
          └─ GroupBy
@@ -557,7 +713,9 @@ Project
              ├─ group: 
              └─ Table
                  ├─ name: xy
-                 └─ columns: [x y z]
+                 ├─ columns: [x y z]
+                 ├─ colSet: (1-3)
+                 └─ tableId: 1
 `,
 		},
 		{
@@ -570,7 +728,9 @@ Project
      ├─ group: xy.x:1!null, xy.y:2!null
      └─ Table
          ├─ name: xy
-         └─ columns: [x y z]
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -583,7 +743,9 @@ Project
      ├─ group: (xy.x:1!null + xy.y:2!null)
      └─ Table
          ├─ name: xy
-         └─ columns: [x y z]
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -596,7 +758,9 @@ Project
      ├─ group: (1 (tinyint) + 2 (tinyint))
      └─ Table
          ├─ name: xy
-         └─ columns: [x y z]
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -609,7 +773,9 @@ Project
      ├─ group: upper(xy.x)
      └─ Table
          ├─ name: xy
-         └─ columns: [x y z]
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -622,7 +788,9 @@ Project
      ├─ group: xy.y:2!null, xy.z:3!null
      └─ Table
          ├─ name: xy
-         └─ columns: [x y z]
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -640,7 +808,9 @@ Project
              ├─ group: xy.x:1!null
              └─ Table
                  ├─ name: xy
-                 └─ columns: [x y z]
+                 ├─ columns: [x y z]
+                 ├─ colSet: (1-3)
+                 └─ tableId: 1
 `,
 		},
 		{
@@ -654,7 +824,9 @@ Project
          ├─ group: xy.y:2!null
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -668,7 +840,9 @@ Project
          ├─ group: xy.y:2!null
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -682,7 +856,9 @@ Project
          ├─ group: xy.y:2!null
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -696,7 +872,9 @@ Project
          ├─ group: xy.y:2!null
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -714,7 +892,9 @@ Project
              ├─ group: xy.x:1!null
              └─ Table
                  ├─ name: xy
-                 └─ columns: [x y z]
+                 ├─ columns: [x y z]
+                 ├─ colSet: (1-3)
+                 └─ tableId: 1
 `,
 		},
 		{
@@ -732,7 +912,9 @@ Project
              ├─ group: xy.x:1!null
              └─ Table
                  ├─ name: xy
-                 └─ columns: [x y z]
+                 ├─ columns: [x y z]
+                 ├─ colSet: (1-3)
+                 └─ tableId: 1
 `,
 		},
 		{
@@ -750,7 +932,9 @@ Project
  │           │   └─ uv.u:4!null
  │           └─ Table
  │               ├─ name: uv
- │               └─ columns: [u v w]
+ │               ├─ columns: [u v w]
+ │               ├─ colSet: (4-6)
+ │               └─ tableId: 2
  │   as (select u from uv where x = u)]
  └─ GroupBy
      ├─ select: 
@@ -765,11 +949,15 @@ Project
      │           │   └─ uv.u:7!null
      │           └─ Table
      │               ├─ name: uv
-     │               └─ columns: [u v w]
+     │               ├─ columns: [u v w]
+     │               ├─ colSet: (7-9)
+     │               └─ tableId: 3
      │  , xy.x:1!null
      └─ Table
          ├─ name: xy
-         └─ columns: [x y z]
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -785,7 +973,9 @@ Project
              ├─ group: xy.x:1!null
              └─ Table
                  ├─ name: xy
-                 └─ columns: [x y z]
+                 ├─ columns: [x y z]
+                 ├─ colSet: (1-3)
+                 └─ tableId: 1
 `,
 		},
 		{
@@ -806,6 +996,8 @@ Project
      │               ├─ outerVisibility: false
      │               ├─ isLateral: false
      │               ├─ cacheable: false
+     │               ├─ colSet: (8)
+     │               ├─ tableId: 3
      │               └─ Project
      │                   ├─ columns: [uv.u:4!null as u]
      │                   └─ Filter
@@ -814,10 +1006,14 @@ Project
      │                       │   └─ xy.x:1!null
      │                       └─ Table
      │                           ├─ name: uv
-     │                           └─ columns: [u v w]
+     │                           ├─ columns: [u v w]
+     │                           ├─ colSet: (4-6)
+     │                           └─ tableId: 2
      └─ Table
          ├─ name: xy
-         └─ columns: [x y z]
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -838,6 +1034,8 @@ Project
      │               ├─ outerVisibility: false
      │               ├─ isLateral: false
      │               ├─ cacheable: false
+     │               ├─ colSet: (8)
+     │               ├─ tableId: 3
      │               └─ Project
      │                   ├─ columns: [uv.u:4!null as u]
      │                   └─ Filter
@@ -846,12 +1044,16 @@ Project
      │                       │   └─ xy.y:2!null
      │                       └─ Table
      │                           ├─ name: uv
-     │                           └─ columns: [u v w]
+     │                           ├─ columns: [u v w]
+     │                           ├─ colSet: (4-6)
+     │                           └─ tableId: 2
      └─ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -868,6 +1070,8 @@ Project
  │           ├─ outerVisibility: false
  │           ├─ isLateral: false
  │           ├─ cacheable: false
+ │           ├─ colSet: (8)
+ │           ├─ tableId: 3
  │           └─ Project
  │               ├─ columns: [uv.u:4!null as z]
  │               └─ Filter
@@ -876,13 +1080,17 @@ Project
  │                   │   └─ xy.y:2!null
  │                   └─ Table
  │                       ├─ name: uv
- │                       └─ columns: [u v w]
+ │                       ├─ columns: [u v w]
+ │                       ├─ colSet: (4-6)
+ │                       └─ tableId: 2
  │   as (SELECT dt.z FROM (SELECT uv.u AS z FROM uv WHERE uv.v = xy.y) dt)]
  └─ Project
      ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
      └─ Table
          ├─ name: xy
-         └─ columns: [x y z]
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -902,6 +1110,8 @@ Project
  │               ├─ outerVisibility: false
  │               ├─ isLateral: false
  │               ├─ cacheable: false
+ │               ├─ colSet: (8)
+ │               ├─ tableId: 3
  │               └─ Project
  │                   ├─ columns: [uv.u:4!null as z]
  │                   └─ Filter
@@ -910,13 +1120,17 @@ Project
  │                       │   └─ xy.y:2!null
  │                       └─ Table
  │                           ├─ name: uv
- │                           └─ columns: [u v w]
+ │                           ├─ columns: [u v w]
+ │                           ├─ colSet: (4-6)
+ │                           └─ tableId: 2
  │   as (SELECT max(dt.z) FROM (SELECT uv.u AS z FROM uv WHERE uv.v = xy.y) dt)]
  └─ Project
      ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
      └─ Table
          ├─ name: xy
-         └─ columns: [x y z]
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -936,6 +1150,8 @@ Project
  │               ├─ outerVisibility: false
  │               ├─ isLateral: false
  │               ├─ cacheable: false
+ │               ├─ colSet: (8)
+ │               ├─ tableId: 3
  │               └─ Project
  │                   ├─ columns: [uv.u:4!null as u]
  │                   └─ Filter
@@ -944,13 +1160,17 @@ Project
  │                       │   └─ xy.y:2!null
  │                       └─ Table
  │                           ├─ name: uv
- │                           └─ columns: [u v w]
+ │                           ├─ columns: [u v w]
+ │                           ├─ colSet: (4-6)
+ │                           └─ tableId: 2
  │   as (SELECT max(dt.u) FROM (SELECT uv.u AS u FROM uv WHERE uv.v = xy.y) dt)]
  └─ Project
      ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
      └─ Table
          ├─ name: xy
-         └─ columns: [x y z]
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -963,7 +1183,9 @@ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, xy.x:1!null as y]
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -976,7 +1198,9 @@ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, xy.y:2!null as x]
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -992,7 +1216,9 @@ Project
              ├─ group: 
              └─ Table
                  ├─ name: xy
-                 └─ columns: [x y z]
+                 ├─ columns: [x y z]
+                 ├─ colSet: (1-3)
+                 └─ tableId: 1
 `,
 		},
 		{
@@ -1011,7 +1237,9 @@ Project
              ├─ group: (1 (tinyint) + xy.x:1!null) as s
              └─ Table
                  ├─ name: xy
-                 └─ columns: [x y z]
+                 ├─ columns: [x y z]
+                 ├─ colSet: (1-3)
+                 └─ tableId: 1
 `,
 		},
 		{
@@ -1034,14 +1262,19 @@ Project
                  │   └─ (1 (tinyint) + uv.u:4!null)
                  ├─ Table
                  │   ├─ name: xy
-                 │   └─ columns: [x y z]
+                 │   ├─ columns: [x y z]
+                 │   ├─ colSet: (1-3)
+                 │   └─ tableId: 1
                  └─ Table
                      ├─ name: uv
-                     └─ columns: [u v w]
+                     ├─ columns: [u v w]
+                     ├─ colSet: (4-6)
+                     └─ tableId: 2
 `,
 		},
 		{
 			Query: `
+
 
 
 
@@ -1072,11 +1305,14 @@ Project
      ├─ xy.y:2!null
      └─ Table
          ├─ name: xy
-         └─ columns: [x y z]
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
 			Query: `
+
 
 
 
@@ -1116,11 +1352,14 @@ Project
              ├─ xy.x:1!null
              └─ Table
                  ├─ name: xy
-                 └─ columns: [x y z]
+                 ├─ columns: [x y z]
+                 ├─ colSet: (1-3)
+                 └─ tableId: 1
 `,
 		},
 		{
 			Query: `
+
 
 
 
@@ -1146,7 +1385,9 @@ Project
      ├─ xy.x:1!null
      └─ Table
          ├─ name: xy
-         └─ columns: [x y z]
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -1159,7 +1400,9 @@ Project
      ├─ xy.x:1!null
      └─ Table
          ├─ name: xy
-         └─ columns: [x y z]
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -1174,7 +1417,9 @@ Project
          ├─ xy.y:2!null
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -1188,7 +1433,9 @@ Project
          ├─ group: xy.x:1!null
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -1202,7 +1449,9 @@ Project
          ├─ group: xy.x:1!null
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -1216,7 +1465,9 @@ Project
          ├─ group: xy.x:1!null
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -1230,7 +1481,9 @@ Project
          ├─ group: xy.x:1!null
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -1244,7 +1497,9 @@ Project
          ├─ xy.x:1!null
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -1258,7 +1513,9 @@ Project
  │   as CAST(10.56789 as CHAR(3))]
  └─ Table
      ├─ name: 
-     └─ columns: []
+     ├─ columns: []
+     ├─ colSet: ()
+     └─ tableId: 0
 `,
 		},
 		{
@@ -1278,7 +1535,9 @@ Project
              │   └─ 1 (tinyint)
              └─ Table
                  ├─ name: xy
-                 └─ columns: [x y z]
+                 ├─ columns: [x y z]
+                 ├─ colSet: (1-3)
+                 └─ tableId: 1
 `,
 		},
 		{
@@ -1297,7 +1556,9 @@ Project
          ├─ xy.x:1!null
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -1317,12 +1578,16 @@ Project
      │           │   └─ s:5!null
      │           └─ Table
      │               ├─ name: xy
-     │               └─ columns: [x y z]
+     │               ├─ columns: [x y z]
+     │               ├─ colSet: (6-8)
+     │               └─ tableId: 2
      └─ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, (xy.x:1!null + xy.y:2!null) as s]
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -1341,11 +1606,14 @@ Project
              ├─ group: xy.x:1!null
              └─ Table
                  ├─ name: xy
-                 └─ columns: [x y z]
+                 ├─ columns: [x y z]
+                 ├─ colSet: (1-3)
+                 └─ tableId: 1
 `,
 		},
 		{
 			Query: `
+
 
 
 
@@ -1384,14 +1652,19 @@ Project
      │                       │   └─ uv.u:4!null
      │                       └─ Table
      │                           ├─ name: uv
-     │                           └─ columns: [u v w]
+     │                           ├─ columns: [u v w]
+     │                           ├─ colSet: (4-6)
+     │                           └─ tableId: 2
      └─ Table
          ├─ name: xy
-         └─ columns: [x y z]
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
 			Query: `
+
 
 
 
@@ -1421,6 +1694,8 @@ Project
      ├─ outerVisibility: false
      ├─ isLateral: false
      ├─ cacheable: true
+     ├─ colSet: (6,7)
+     ├─ tableId: 4
      └─ RecursiveCTE
          └─ Union all
              ├─ Project
@@ -1430,13 +1705,17 @@ Project
              │       ├─ outerVisibility: false
              │       ├─ isLateral: false
              │       ├─ cacheable: true
+             │       ├─ colSet: (2)
+             │       ├─ tableId: 1
              │       └─ RecursiveCTE
              │           └─ Union all
              │               ├─ Project
              │               │   ├─ columns: [1 (tinyint) as foo]
              │               │   └─ Table
              │               │       ├─ name: 
-             │               │       └─ columns: []
+             │               │       ├─ columns: []
+             │               │       ├─ colSet: ()
+             │               │       └─ tableId: 0
              │               └─ Project
              │                   ├─ columns: [(rt.foo:2!null + 1 (tinyint)) as foo]
              │                   └─ Filter
@@ -1457,13 +1736,17 @@ Project
                              ├─ outerVisibility: false
                              ├─ isLateral: false
                              ├─ cacheable: true
+                             ├─ colSet: (2)
+                             ├─ tableId: 1
                              └─ RecursiveCTE
                                  └─ Union all
                                      ├─ Project
                                      │   ├─ columns: [1 (tinyint) as foo]
                                      │   └─ Table
                                      │       ├─ name: 
-                                     │       └─ columns: []
+                                     │       ├─ columns: []
+                                     │       ├─ colSet: ()
+                                     │       └─ tableId: 0
                                      └─ Project
                                          ├─ columns: [(rt.foo:2!null + 1 (tinyint)) as foo]
                                          └─ Filter
@@ -1480,7 +1763,9 @@ Project
  ├─ columns: [xy.x:1!null as cOl, xy.y:2!null as COL]
  └─ Table
      ├─ name: xy
-     └─ columns: [x y z]
+     ├─ columns: [x y z]
+     ├─ colSet: (1-3)
+     └─ tableId: 1
 `,
 		},
 		{
@@ -1501,7 +1786,9 @@ Project
  │               ├─ group: xy.x:1!null as alias1
  │               └─ Table
  │                   ├─ name: 
- │                   └─ columns: []
+ │                   ├─ columns: []
+ │                   ├─ colSet: ()
+ │                   └─ tableId: 0
  │   as (SELECT alias1+1 group by alias1 having alias1 > 0)]
  └─ Project
      ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, xy.x:1!null as alias1]
@@ -1511,7 +1798,9 @@ Project
          │   └─ 1 (tinyint)
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -1528,7 +1817,9 @@ Project
          ├─ group: xy.x:1!null
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -1542,7 +1833,9 @@ Project
      └─ TableAlias(cor0)
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -1556,7 +1849,9 @@ Project
          └─ TableAlias(s)
              └─ Table
                  ├─ name: xy
-                 └─ columns: [x y z]
+                 ├─ columns: [x y z]
+                 ├─ colSet: (1-3)
+                 └─ tableId: 1
 `,
 		},
 		{
@@ -1570,17 +1865,22 @@ Project
  │       ├─ columns: [xy.x:1!null]
  │       └─ Table
  │           ├─ name: 
- │           └─ columns: []
+ │           ├─ columns: []
+ │           ├─ colSet: ()
+ │           └─ tableId: 0
  │   as (select x)]
  └─ Project
      ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, (xy.x:1!null + 1 (tinyint)) as x]
      └─ Table
          ├─ name: xy
-         └─ columns: [x y z]
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
 			Query: `
+
 
 
 
@@ -1606,12 +1906,16 @@ Project
              ├─ outerVisibility: false
              ├─ isLateral: false
              ├─ cacheable: true
+             ├─ colSet: (5)
+             ├─ tableId: 2
              └─ Project
                  ├─ columns: [tbl.x:1!null as fi]
                  └─ TableAlias(tbl)
                      └─ Table
                          ├─ name: xy
-                         └─ columns: [x y z]
+                         ├─ columns: [x y z]
+                         ├─ colSet: (1-3)
+                         └─ tableId: 1
 `,
 		},
 		{
@@ -1623,12 +1927,16 @@ Union distinct
  │   ├─ columns: [xy.y:2!null as k]
  │   └─ Table
  │       ├─ name: xy
- │       └─ columns: [x y z]
+ │       ├─ columns: [x y z]
+ │       ├─ colSet: (1-3)
+ │       └─ tableId: 1
  └─ Project
      ├─ columns: [xy.x:5!null]
      └─ Table
          ├─ name: xy
-         └─ columns: [x y z]
+         ├─ columns: [x y z]
+         ├─ colSet: (5-7)
+         └─ tableId: 2
 `,
 		},
 		{
@@ -1647,7 +1955,9 @@ Project
          ├─ xy.x:1!null
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -1661,7 +1971,9 @@ Project
  │       ├─ columns: [a:1!null]
  │       └─ Table
  │           ├─ name: 
- │           └─ columns: []
+ │           ├─ columns: []
+ │           ├─ colSet: ()
+ │           └─ tableId: 0
  │   as a]
  └─ Project
      ├─ columns: [1 (tinyint) as a, Subquery
@@ -1671,11 +1983,15 @@ Project
      │       ├─ columns: [a:1!null]
      │       └─ Table
      │           ├─ name: 
-     │           └─ columns: []
+     │           ├─ columns: []
+     │           ├─ colSet: ()
+     │           └─ tableId: 0
      │   as a]
      └─ Table
          ├─ name: 
-         └─ columns: []
+         ├─ columns: []
+         ├─ colSet: ()
+         └─ tableId: 0
 `,
 		},
 		{
@@ -1695,11 +2011,15 @@ Project
  │               ├─ outerVisibility: false
  │               ├─ isLateral: false
  │               ├─ cacheable: false
+ │               ├─ colSet: (6)
+ │               ├─ tableId: 2
  │               └─ Project
  │                   ├─ columns: [xy.x:1!null as a]
  │                   └─ Table
  │                       ├─ name: 
- │                       └─ columns: []
+ │                       ├─ columns: []
+ │                       ├─ colSet: ()
+ │                       └─ tableId: 0
  │   as a1]
  └─ Project
      ├─ columns: [max(xy.x):4!null, Subquery
@@ -1715,11 +2035,15 @@ Project
      │               ├─ outerVisibility: false
      │               ├─ isLateral: false
      │               ├─ cacheable: false
+     │               ├─ colSet: (6)
+     │               ├─ tableId: 2
      │               └─ Project
      │                   ├─ columns: [xy.x:1!null as a]
      │                   └─ Table
      │                       ├─ name: 
-     │                       └─ columns: []
+     │                       ├─ columns: []
+     │                       ├─ colSet: ()
+     │                       └─ tableId: 0
      │   as a1]
      └─ GroupBy
          ├─ select: MAX(xy.x:1!null)
@@ -1736,15 +2060,21 @@ Project
          │               ├─ outerVisibility: false
          │               ├─ isLateral: false
          │               ├─ cacheable: false
+         │               ├─ colSet: (6)
+         │               ├─ tableId: 2
          │               └─ Project
          │                   ├─ columns: [xy.x:1!null as a]
          │                   └─ Table
          │                       ├─ name: 
-         │                       └─ columns: []
+         │                       ├─ columns: []
+         │                       ├─ colSet: ()
+         │                       └─ tableId: 0
          │   as a1
          └─ Table
              ├─ name: xy
-             └─ columns: [x y z]
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -1754,7 +2084,9 @@ Project
  ├─ columns: [xy.x:1!null as s, xy.y:2!null as s]
  └─ Table
      ├─ name: xy
-     └─ columns: [x y z]
+     ├─ columns: [x y z]
+     ├─ colSet: (1-3)
+     └─ tableId: 1
 `,
 		},
 		{
@@ -1768,16 +2100,13 @@ Project
          └─ TableAlias(s)
              └─ Table
                  ├─ name: xy
-                 └─ columns: [x y z]
+                 ├─ columns: [x y z]
+                 ├─ colSet: (1-3)
+                 └─ tableId: 1
 `,
 		},
 		{
-			Query: "create table myTable (" +
-				"a int primary key, " +
-				"b int, " +
-				"c int as (a + b + 1), " +
-				"d int default (b + 1), " +
-				"check (b+d > 0));",
+			Query: "create table myTable (a int primary key, b int, c int as (a + b + 1), d int default (b + 1), check (b+d > 0));",
 			ExpectedPlan: `
 Create table myTable
  ├─ Columns

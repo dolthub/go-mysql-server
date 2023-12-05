@@ -406,7 +406,7 @@ func NewProcRuleSelector(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
 		case pruneTablesId,
-			transformJoinApplyId,
+			unnestInSubqueriesId,
 
 			// once after default rules should only be run once
 			AutocommitId,
@@ -425,8 +425,8 @@ func NewResolveSubqueryExprSelector(sel RuleSelector) RuleSelector {
 		case
 			// skip recursive finalize rules
 			hoistOutOfScopeFiltersId,
-			hoistSelectExistsId,
-			transformJoinApplyId,
+			unnestExistsSubqueriesId,
+			unnestInSubqueriesId,
 			finalizeSubqueriesId,
 			assignExecIndexesId:
 			return false
@@ -476,7 +476,7 @@ func NewFinalizeUnionSel(sel RuleSelector) RuleSelector {
 func newInsertSourceSelector(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		case transformJoinApplyId,
+		case unnestInSubqueriesId,
 			pushdownSubqueryAliasFiltersId:
 			return false
 		}
@@ -487,8 +487,6 @@ func newInsertSourceSelector(sel RuleSelector) RuleSelector {
 // Analyze applies the transformation rules to the node given. In the case of an error, the last successfully
 // transformed node is returned along with the error.
 func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *plan.Scope) (sql.Node, error) {
-	//a.Verbose = true
-	//a.Debug = true
 	n, _, err := a.analyzeWithSelector(ctx, n, scope, SelectAllBatches, DefaultRuleSelector)
 	return n, err
 }
