@@ -3764,15 +3764,6 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 		},
 	},
-
-	// TODO: Join with a range scan on a BLOB/TEXT column... is that even possible?\n
-	// TODO: I think we have a bug with != -> It still uses the index, but does a range scan
-	//       before and after the value.
-	//       Actually... I think it works correctly! But.. do we need to test this explicitly? Probably?
-
-	// TODO: This might fit better with the index tests, instead of the index prefix tests (since there is no
-	//       prefix length being used in this example, the whole point is to skip prefix lengths).
-
 	{
 		// https://github.com/dolthub/dolt/issues/7040
 		Name: "unique indexes on TEXT/BLOB columns with no prefix length (MariaDB compatibility)",
@@ -3917,6 +3908,61 @@ var IndexPrefixQueries = []ScriptTest{
 				Query:           "select col1 from t where t.col1 is NULL",
 				ExpectedIndexes: []string{"k1"},
 				Expected:        []sql.Row{{nil}},
+			},
+		},
+	},
+	{
+		Name: "unique indexes on multiple TEXT/BLOB columns with partial prefix lengths (MariaDB compatibility)",
+		SetUpScript: []string{
+			"create table t (pk int primary key, col1 text, col2 text, constraint uk1 unique key(col1, col2(3)));",
+			"insert into t value(1, 'one', 'one___'), (2, 'two', 'two___');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select @@strict_mysql_compatibility;",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:       "insert into t values (200, 'two', 'two___');",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:              "select col1, col2 from t where col1='one';",
+				Expected:           []sql.Row{{"one", "one___"}},
+				CheckIndexedAccess: true,
+				ExpectedIndexes:    []string{"uk1"},
+			},
+			{
+				// Indexes with content-hashed fields are not eligible for use with range scans
+				Query: "explain select * from t where col1 >= 'one';",
+				Expected: []sql.Row{
+					{"Filter"},
+					{" ├─ (t.col1 >= 'one')"},
+					{" └─ Table"},
+					{"     ├─ name: t"},
+					{"     └─ columns: [pk col1 col2]"}},
+			},
+			{
+				// Indexes with content-hashed fields are not eligible for use with range scans
+				Query: "explain select * from t where col2 >= 'one';",
+				Expected: []sql.Row{
+					{"Filter"},
+					{" ├─ (t.col2 >= 'one')"},
+					{" └─ Table"},
+					{"     ├─ name: t"},
+					{"     └─ columns: [pk col1 col2]"}},
+			},
+			{
+				// Indexes with a content-hashed BLOB/TEXT field cannot be used in range scans
+				Query:           "select * from t where col1 >= ' ' order by pk;",
+				ExpectedIndexes: []string{"primary"},
+				Expected:        []sql.Row{{1, "one", "one___"}, {2, "two", "two___"}},
+			},
+			{
+				// Indexes with a content-hashed BLOB/TEXT field cannot be used in range scans
+				Query:           "select * from t where col2 >= ' ' order by pk;",
+				ExpectedIndexes: []string{"primary"},
+				Expected:        []sql.Row{{1, "one", "one___"}, {2, "two", "two___"}},
 			},
 		},
 	},
