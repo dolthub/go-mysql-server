@@ -5941,7 +5941,7 @@ inner join pq on true
 			" │   └─ 2020-01-01 (longtext)\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.date_col]\n" +
-			"     ├─ static: [{[2020-01-01, 2020-01-01]}]\n" +
+			"     ├─ static: [{[2020-01-01 00:00:00 +0000 UTC, 2020-01-01 00:00:00 +0000 UTC]}]\n" +
 			"     ├─ colSet: (1-5)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -5957,7 +5957,7 @@ inner join pq on true
 			" │   └─ 2020-01-01 (longtext)\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.date_col]\n" +
-			"     ├─ static: [{(2020-01-01, ∞)}]\n" +
+			"     ├─ static: [{(2020-01-01 00:00:00 +0000 UTC, ∞)}]\n" +
 			"     ├─ colSet: (1-5)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -5973,7 +5973,7 @@ inner join pq on true
 			" │   └─ 2020-01-01 (longtext)\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.datetime_col]\n" +
-			"     ├─ static: [{[2020-01-01, 2020-01-01]}]\n" +
+			"     ├─ static: [{[2020-01-01 00:00:00 +0000 UTC, 2020-01-01 00:00:00 +0000 UTC]}]\n" +
 			"     ├─ colSet: (1-5)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -5989,7 +5989,7 @@ inner join pq on true
 			" │   └─ 2020-01-01 (longtext)\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.datetime_col]\n" +
-			"     ├─ static: [{(2020-01-01, ∞)}]\n" +
+			"     ├─ static: [{(2020-01-01 00:00:00 +0000 UTC, ∞)}]\n" +
 			"     ├─ colSet: (1-5)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -6005,7 +6005,7 @@ inner join pq on true
 			" │   └─ 2020-01-01 (longtext)\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.timestamp_col]\n" +
-			"     ├─ static: [{[2020-01-01, 2020-01-01]}]\n" +
+			"     ├─ static: [{[2020-01-01 00:00:00 +0000 UTC, 2020-01-01 00:00:00 +0000 UTC]}]\n" +
 			"     ├─ colSet: (1-5)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -6021,7 +6021,7 @@ inner join pq on true
 			" │   └─ 2020-01-01 (longtext)\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.timestamp_col]\n" +
-			"     ├─ static: [{(2020-01-01, ∞)}]\n" +
+			"     ├─ static: [{(2020-01-01 00:00:00 +0000 UTC, ∞)}]\n" +
 			"     ├─ colSet: (1-5)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
