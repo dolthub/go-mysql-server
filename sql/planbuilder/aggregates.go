@@ -310,6 +310,15 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 		e := b.selectExprToExpression(inScope, arg)
 		switch e := e.(type) {
 		case *expression.GetField:
+			if e.TableId() == 0 {
+				// aliases are not valid aggregate arguments, the alias must be masking a column
+				gf := b.selectExprToExpression(inScope.parent, arg)
+				var ok bool
+				e, ok = gf.(*expression.GetField)
+				if !ok || e.TableId() == 0 {
+					b.handleErr(fmt.Errorf("failed to resolve aggregate column argument: %s", gf))
+				}
+			}
 			args = append(args, e)
 			col := scopeColumn{tableId: e.TableID(), db: e.Database(), table: e.Table(), col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable()}
 			gb.addInCol(col)

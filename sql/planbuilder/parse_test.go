@@ -48,9 +48,81 @@ type planErrTest struct {
 func TestPlanBuilder(t *testing.T) {
 	var verbose, rewrite bool
 	//verbose = true
-	rewrite = true
+	//rewrite = true
 
 	var tests = []planTest{
+		{
+			Query: "with cte(x) as (select 1 as x) select 1 as x from cte having avg(x) > 0",
+			ExpectedPlan: `
+Project
+ ├─ columns: [1 (tinyint) as x]
+ └─ Having
+     ├─ GreaterThan
+     │   ├─ avg(cte.x):4
+     │   └─ 0 (tinyint)
+     └─ Project
+         ├─ columns: [avg(cte.x):4, 1 (tinyint) as x]
+         └─ GroupBy
+             ├─ select: AVG(cte.x:2!null)
+             ├─ group: 
+             └─ SubqueryAlias
+                 ├─ name: cte
+                 ├─ outerVisibility: false
+                 ├─ isLateral: false
+                 ├─ cacheable: true
+                 ├─ colSet: (2)
+                 ├─ tableId: 1
+                 └─ Project
+                     ├─ columns: [1 (tinyint) as x]
+                     └─ Table
+                         ├─ name: 
+                         ├─ columns: []
+                         ├─ colSet: ()
+                         └─ tableId: 0
+`,
+		},
+		{
+			Query: "select 1 as x from xy having AVG(x) > 0",
+			ExpectedPlan: `
+Project
+ ├─ columns: [1 (tinyint) as x]
+ └─ Having
+     ├─ GreaterThan
+     │   ├─ avg(xy.x):5
+     │   └─ 0 (tinyint)
+     └─ Project
+         ├─ columns: [avg(xy.x):5, 1 (tinyint) as x]
+         └─ GroupBy
+             ├─ select: AVG(xy.x:1!null)
+             ├─ group: 
+             └─ Table
+                 ├─ name: xy
+                 ├─ columns: [x y z]
+                 ├─ colSet: (1-3)
+                 └─ tableId: 1
+`,
+		},
+		{
+			Query: "select x as x from xy having avg(x) > 0",
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.x:1!null as x]
+ └─ Having
+     ├─ GreaterThan
+     │   ├─ avg(xy.x):5
+     │   └─ 0 (tinyint)
+     └─ Project
+         ├─ columns: [avg(xy.x):5, xy.x:1!null, xy.x:1!null as x]
+         └─ GroupBy
+             ├─ select: AVG(xy.x:1!null), xy.x:1!null
+             ├─ group: 
+             └─ Table
+                 ├─ name: xy
+                 ├─ columns: [x y z]
+                 ├─ colSet: (1-3)
+                 └─ tableId: 1
+`,
+		},
 		{
 			Query: "select x, x from xy order by x",
 			ExpectedPlan: `
