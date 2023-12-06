@@ -44,13 +44,15 @@ import (
 // [Rec] or [RecursiveCte] to share schema types.
 type RecursiveCte struct {
 	union *SetOp
-	// Columns used to name lazily-loaded schema fields
-	Columns []string
+	// ColumnNames used to name lazily-loaded schema fields
+	ColumnNames []string
 	// schema will match the types of [Init.Schema()], names of [Columns]
 	schema sql.Schema
 	// Working is a handle to our refreshable intermediate table
 	Working *RecursiveTable
 	name    string
+	id      sql.TableId
+	cols    sql.ColSet
 }
 
 var _ sql.Node = (*RecursiveCte)(nil)
@@ -58,10 +60,11 @@ var _ sql.Nameable = (*RecursiveCte)(nil)
 var _ sql.RenameableNode = (*RecursiveCte)(nil)
 var _ sql.Expressioner = (*RecursiveCte)(nil)
 var _ sql.CollationCoercible = (*RecursiveCte)(nil)
+var _ TableIdNode = (*RecursiveCte)(nil)
 
 func NewRecursiveCte(initial, recursive sql.Node, name string, outputCols []string, deduplicate bool, l sql.Expression, sf sql.SortFields) *RecursiveCte {
 	return &RecursiveCte{
-		Columns: outputCols,
+		ColumnNames: outputCols,
 		union: &SetOp{
 			SetOpType:  UnionType,
 			BinaryNode: BinaryNode{left: initial, right: recursive},
@@ -71,6 +74,30 @@ func NewRecursiveCte(initial, recursive sql.Node, name string, outputCols []stri
 		},
 		name: name,
 	}
+}
+
+// WithId implements sql.TableIdNode
+func (r *RecursiveCte) WithId(id sql.TableId) TableIdNode {
+	ret := *r
+	ret.id = id
+	return &ret
+}
+
+// Id implements sql.TableIdNode
+func (r *RecursiveCte) Id() sql.TableId {
+	return r.id
+}
+
+// WithColumns implements sql.TableIdNode
+func (r *RecursiveCte) WithColumns(set sql.ColSet) TableIdNode {
+	ret := *r
+	ret.cols = set
+	return &ret
+}
+
+// ColumnNames implements sql.TableIdNode
+func (r *RecursiveCte) Columns() sql.ColSet {
+	return r.cols
 }
 
 func (r *RecursiveCte) WithName(s string) sql.Node {
@@ -214,12 +241,39 @@ type RecursiveTable struct {
 	name   string
 	schema sql.Schema
 	Buf    []sql.Row
+	id     sql.TableId
+	cols   sql.ColSet
 }
 
 var _ sql.Node = (*RecursiveTable)(nil)
 var _ sql.NameableNode = (*RecursiveTable)(nil)
 var _ sql.RenameableNode = (*RecursiveTable)(nil)
+var _ TableIdNode = (*RecursiveTable)(nil)
 var _ sql.CollationCoercible = (*RecursiveTable)(nil)
+
+// WithId implements sql.TableIdNode
+func (r *RecursiveTable) WithId(id sql.TableId) TableIdNode {
+	// currently recursive table pointers need to be stable at execution time
+	r.id = id
+	return r
+}
+
+// Id implements sql.TableIdNode
+func (r *RecursiveTable) Id() sql.TableId {
+	return r.id
+}
+
+// WithColumns implements sql.TableIdNode
+func (r *RecursiveTable) WithColumns(set sql.ColSet) TableIdNode {
+	// currently recursive table pointers need to be stable at execution time
+	r.cols = set
+	return r
+}
+
+// Columns implements sql.TableIdNode
+func (r *RecursiveTable) Columns() sql.ColSet {
+	return r.cols
+}
 
 func (r *RecursiveTable) WithName(s string) sql.Node {
 	ret := *r

@@ -440,7 +440,7 @@ func (b *Builder) buildCreateView(inScope *scope, query string, c *ast.DDL) (out
 			err := sql.ErrInvalidColumnNumber.New(len(queryScope.cols), len(c.ViewSpec.Columns))
 			b.handleErr(err)
 		}
-		queryAlias = queryAlias.WithColumns(columnsToStrings(c.ViewSpec.Columns))
+		queryAlias = queryAlias.WithColumnNames(columnsToStrings(c.ViewSpec.Columns))
 	}
 
 	dbName := c.Table.Qualifier.String()

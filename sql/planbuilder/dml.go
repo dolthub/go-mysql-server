@@ -92,7 +92,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 			combinedScope.newColumn(srcScope.cols[i])
 		} else {
 			// check for VALUES refs
-			c.tableId.TableName = OnDupValuesPrefix
+			c.table = OnDupValuesPrefix
 			combinedScope.newColumn(c)
 		}
 	}
@@ -261,11 +261,14 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 
 	// We need additional update expressions for any generated columns and on update expressions, since they won't be part of the update
 	// expressions, but their value in the row must be updated before being passed to the integrator for storage.
-	for i, col := range tableSch {
-		if col.Generated != nil {
-			colName := expression.NewGetFieldWithTable(i, col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
-			generated := b.resolveColumnDefaultExpression(inScope, col, col.Generated)
-			updateExprs = append(updateExprs, expression.NewSetField(colName, assignColumnIndexes(generated, tableSch)))
+	if len(tableSch) > 0 {
+		tabId := inScope.tables[strings.ToLower(tableSch[0].Source)]
+		for i, col := range tableSch {
+			if col.Generated != nil {
+				colName := expression.NewGetFieldWithTable(i, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
+				generated := b.resolveColumnDefaultExpression(inScope, col, col.Generated)
+				updateExprs = append(updateExprs, expression.NewSetField(colName, assignColumnIndexes(generated, tableSch)))
+			}
 		}
 
 		if col.OnUpdate != nil {
@@ -445,7 +448,9 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 					tableScope := inScope.push()
 					for _, c := range rt.Schema() {
 						tableScope.addColumn(scopeColumn{
-							tableId:  sql.NewTableID(rt.SqlDatabase.Name(), n.Name()),
+							db:       rt.SqlDatabase.Name(),
+							table:    strings.ToLower(n.Name()),
+							tableId:  tableScope.tables[strings.ToLower(n.Name())],
 							col:      strings.ToLower(c.Name),
 							typ:      c.Type,
 							nullable: c.Nullable,

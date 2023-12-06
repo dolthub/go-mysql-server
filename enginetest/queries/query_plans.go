@@ -18,6 +18,105 @@ package queries
 
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `select x from xy where y in (select xy.x from xy join (select t2.y from xy t2 where exists (select t3.y from xy t3 where t3.y = xy.x)) t1);`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [xy.x:0!null]\n" +
+			" └─ Filter\n" +
+			"     ├─ InSubquery\n" +
+			"     │   ├─ left: xy.y:1\n" +
+			"     │   └─ right: Subquery\n" +
+			"     │       ├─ cacheable: false\n" +
+			"     │       ├─ alias-string: select xy.x from xy join (select t2.y from xy as t2 where exists (select t3.y from xy as t3 where t3.y = xy.x)) as t1\n" +
+			"     │       └─ Project\n" +
+			"     │           ├─ columns: [xy.x:3!null]\n" +
+			"     │           └─ CrossHashJoin\n" +
+			"     │               ├─ SubqueryAlias\n" +
+			"     │               │   ├─ name: t1\n" +
+			"     │               │   ├─ outerVisibility: true\n" +
+			"     │               │   ├─ isLateral: false\n" +
+			"     │               │   ├─ cacheable: false\n" +
+			"     │               │   ├─ colSet: (9)\n" +
+			"     │               │   ├─ tableId: 5\n" +
+			"     │               │   └─ Project\n" +
+			"     │               │       ├─ columns: [t2.y:3]\n" +
+			"     │               │       └─ Filter\n" +
+			"     │               │           ├─ EXISTS Subquery\n" +
+			"     │               │           │   ├─ cacheable: false\n" +
+			"     │               │           │   ├─ alias-string: select t3.y from xy as t3 where t3.y = xy.x\n" +
+			"     │               │           │   └─ Project\n" +
+			"     │               │           │       ├─ columns: [t3.y:5]\n" +
+			"     │               │           │       └─ Filter\n" +
+			"     │               │           │           ├─ Eq\n" +
+			"     │               │           │           │   ├─ t3.y:5\n" +
+			"     │               │           │           │   └─ xy.x:0!null\n" +
+			"     │               │           │           └─ TableAlias(t3)\n" +
+			"     │               │           │               └─ IndexedTableAccess(xy)\n" +
+			"     │               │           │                   ├─ index: [xy.y]\n" +
+			"     │               │           │                   ├─ keys: [xy.x:0!null]\n" +
+			"     │               │           │                   ├─ colSet: (7,8)\n" +
+			"     │               │           │                   ├─ tableId: 4\n" +
+			"     │               │           │                   └─ Table\n" +
+			"     │               │           │                       ├─ name: xy\n" +
+			"     │               │           │                       └─ columns: [x y]\n" +
+			"     │               │           └─ TableAlias(t2)\n" +
+			"     │               │               └─ Table\n" +
+			"     │               │                   ├─ name: xy\n" +
+			"     │               │                   ├─ columns: [x y]\n" +
+			"     │               │                   ├─ colSet: (5,6)\n" +
+			"     │               │                   └─ tableId: 3\n" +
+			"     │               └─ HashLookup\n" +
+			"     │                   ├─ left-key: TUPLE()\n" +
+			"     │                   ├─ right-key: TUPLE()\n" +
+			"     │                   └─ Table\n" +
+			"     │                       ├─ name: xy\n" +
+			"     │                       ├─ columns: [x]\n" +
+			"     │                       ├─ colSet: (3,4)\n" +
+			"     │                       └─ tableId: 2\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: `select x from xy where y in (select x from xy where x in (select y from xy));`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [xy.x:1!null]\n" +
+			" └─ LookupJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ xy.y:2\n" +
+			"     │   └─ xy_1.x:0!null\n" +
+			"     ├─ Distinct\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [xy_1.x:0!null]\n" +
+			"     │       └─ SemiLookupJoin\n" +
+			"     │           ├─ TableAlias(xy_1)\n" +
+			"     │           │   └─ ProcessTable\n" +
+			"     │           │       └─ Table\n" +
+			"     │           │           ├─ name: xy\n" +
+			"     │           │           └─ columns: [x y]\n" +
+			"     │           └─ Project\n" +
+			"     │               ├─ columns: [xy_2.y:1]\n" +
+			"     │               └─ TableAlias(xy_2)\n" +
+			"     │                   └─ IndexedTableAccess(xy)\n" +
+			"     │                       ├─ index: [xy.y]\n" +
+			"     │                       ├─ keys: [xy_1.x:0!null]\n" +
+			"     │                       ├─ colSet: (5,6)\n" +
+			"     │                       ├─ tableId: 3\n" +
+			"     │                       └─ Table\n" +
+			"     │                           ├─ name: xy\n" +
+			"     │                           └─ columns: [x y]\n" +
+			"     └─ IndexedTableAccess(xy)\n" +
+			"         ├─ index: [xy.y]\n" +
+			"         ├─ keys: [xy_1.x:0!null]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x y]\n" +
+			"",
+	},
+	{
 		Query: `select * from xy join uv on (x = u and u  > 0) where u < 2`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [xy.x:2!null, xy.y:3, uv.u:0!null, uv.v:1]\n" +
@@ -25,12 +124,16 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ IndexedTableAccess(uv)\n" +
 			"     │   ├─ index: [uv.u]\n" +
 			"     │   ├─ static: [{(0, 2)}]\n" +
+			"     │   ├─ colSet: (3,4)\n" +
+			"     │   ├─ tableId: 2\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: uv\n" +
 			"     │       └─ columns: [u v]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
-			"         ├─ keys: [uv.u]\n" +
+			"         ├─ keys: [uv.u:0!null]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
 			"             └─ columns: [x y]\n" +
@@ -62,13 +165,17 @@ From xy;`,
 			" │                       │   └─ uv.u:5!null\n" +
 			" │                       ├─ Table\n" +
 			" │                       │   ├─ name: xy\n" +
-			" │                       │   └─ columns: [x y]\n" +
+			" │                       │   ├─ columns: [x y]\n" +
+			" │                       │   ├─ colSet: (3,4)\n" +
+			" │                       │   └─ tableId: 2\n" +
 			" │                       └─ HashLookup\n" +
 			" │                           ├─ left-key: TUPLE(xy.x:3!null)\n" +
 			" │                           ├─ right-key: TUPLE(uv.u:3!null)\n" +
 			" │                           └─ Table\n" +
 			" │                               ├─ name: uv\n" +
-			" │                               └─ columns: [u]\n" +
+			" │                               ├─ columns: [u]\n" +
+			" │                               ├─ colSet: (5,6)\n" +
+			" │                               └─ tableId: 3\n" +
 			" │   THEN 1 (tinyint) ELSE 2 (tinyint) END as s]\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [xy.x:0!null, xy.y:1, CASE  WHEN xy.x:0!null IS NULL THEN 0 (tinyint) WHEN InSubquery\n" +
@@ -88,13 +195,17 @@ From xy;`,
 			"     │                       │   └─ uv.u:4!null\n" +
 			"     │                       ├─ Table\n" +
 			"     │                       │   ├─ name: xy\n" +
-			"     │                       │   └─ columns: [x y]\n" +
+			"     │                       │   ├─ columns: [x y]\n" +
+			"     │                       │   ├─ colSet: (3,4)\n" +
+			"     │                       │   └─ tableId: 2\n" +
 			"     │                       └─ HashLookup\n" +
 			"     │                           ├─ left-key: TUPLE(xy.x:2!null)\n" +
 			"     │                           ├─ right-key: TUPLE(uv.u:2!null)\n" +
 			"     │                           └─ Table\n" +
 			"     │                               ├─ name: uv\n" +
-			"     │                               └─ columns: [u]\n" +
+			"     │                               ├─ columns: [u]\n" +
+			"     │                               ├─ colSet: (5,6)\n" +
+			"     │                               └─ tableId: 3\n" +
 			"     │   THEN 1 (tinyint) ELSE 2 (tinyint) END as s]\n" +
 			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
@@ -111,6 +222,8 @@ From xy;`,
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.i]\n" +
 			"     ├─ static: [{[2, 2]}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +
@@ -135,7 +248,9 @@ From xy;`,
 			"             │               └─ columns: [u v]\n" +
 			"             └─ IndexedTableAccess(xy)\n" +
 			"                 ├─ index: [xy.y]\n" +
-			"                 ├─ keys: [uv.v]\n" +
+			"                 ├─ keys: [uv.v:0]\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: xy\n" +
 			"                     └─ columns: [x y]\n" +
@@ -161,7 +276,9 @@ From xy;`,
 			"         │               └─ columns: [u v]\n" +
 			"         └─ IndexedTableAccess(xy)\n" +
 			"             ├─ index: [xy.y]\n" +
-			"             ├─ keys: [uv.u]\n" +
+			"             ├─ keys: [uv.u:0!null]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: xy\n" +
 			"                 └─ columns: [x y]\n" +
@@ -253,6 +370,8 @@ From xy;`,
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
+			" ├─ colSet: (4)\n" +
+			" ├─ tableId: 2\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [count(1):0!null as count(*)]\n" +
 			"     └─ Project\n" +
@@ -332,6 +451,8 @@ WHERE
 			"         ├─ IndexedTableAccess(order_line1)\n" +
 			"         │   ├─ index: [order_line1.ol_w_id,order_line1.ol_d_id,order_line1.ol_o_id,order_line1.ol_number]\n" +
 			"         │   ├─ static: [{[5, 5], [2, 2], [2981, 3001), [NULL, ∞)}]\n" +
+			"         │   ├─ colSet: (1-10)\n" +
+			"         │   ├─ tableId: 1\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: order_line1\n" +
 			"         │       └─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id]\n" +
@@ -345,7 +466,9 @@ WHERE
 			"             │       └─ 15 (tinyint)\n" +
 			"             └─ IndexedTableAccess(stock1)\n" +
 			"                 ├─ index: [stock1.s_w_id,stock1.s_i_id]\n" +
-			"                 ├─ keys: [5 order_line1.ol_i_id]\n" +
+			"                 ├─ keys: [5 (tinyint) order_line1.ol_i_id:3]\n" +
+			"                 ├─ colSet: (11-27)\n" +
+			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: stock1\n" +
 			"                     └─ columns: [s_i_id s_w_id s_quantity]\n" +
@@ -367,6 +490,8 @@ WHERE
 			"     ├─ IndexedTableAccess(warehouse1)\n" +
 			"     │   ├─ index: [warehouse1.w_id]\n" +
 			"     │   ├─ static: [{[1, 1]}]\n" +
+			"     │   ├─ colSet: (22-30)\n" +
+			"     │   ├─ tableId: 2\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: warehouse1\n" +
 			"     │       └─ columns: [w_id w_tax]\n" +
@@ -380,7 +505,9 @@ WHERE
 			"         │       └─ 2327 (smallint)\n" +
 			"         └─ IndexedTableAccess(customer1)\n" +
 			"             ├─ index: [customer1.c_w_id,customer1.c_d_id,customer1.c_id]\n" +
-			"             ├─ keys: [warehouse1.w_id 2 2327]\n" +
+			"             ├─ keys: [warehouse1.w_id:0!null 2 (tinyint) 2327 (smallint)]\n" +
+			"             ├─ colSet: (1-21)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: customer1\n" +
 			"                 └─ columns: [c_id c_d_id c_w_id c_last c_credit c_discount]\n" +
@@ -398,6 +525,8 @@ WHERE
 			"     │   └─ IndexedTableAccess(asset)\n" +
 			"     │       ├─ index: [asset.orgId,asset.name,asset.val]\n" +
 			"     │       ├─ static: [{[NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			"     │       ├─ colSet: (6-10)\n" +
+			"     │       ├─ tableId: 2\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: asset\n" +
 			"     │           └─ columns: [id orgid assetid name val]\n" +
@@ -405,6 +534,8 @@ WHERE
 			"         └─ IndexedTableAccess(asset)\n" +
 			"             ├─ index: [asset.orgId,asset.name,asset.val]\n" +
 			"             ├─ static: [{[NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			"             ├─ colSet: (1-5)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: asset\n" +
 			"                 └─ columns: [id orgid assetid name val]\n" +
@@ -430,10 +561,10 @@ where
   color.orgId = 'org1';
 `,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [style.assetId:9]\n" +
+			" ├─ columns: [style.assetId:5]\n" +
 			" └─ LookupJoin\n" +
 			"     ├─ Eq\n" +
-			"     │   ├─ style.assetId:9\n" +
+			"     │   ├─ dimension.assetId:9\n" +
 			"     │   └─ color.assetId:1\n" +
 			"     ├─ LookupJoin\n" +
 			"     │   ├─ Filter\n" +
@@ -452,6 +583,8 @@ where
 			"     │   │       └─ IndexedTableAccess(asset)\n" +
 			"     │   │           ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
 			"     │   │           ├─ static: [{[org1, org1], [color, color], [NULL, ∞)}]\n" +
+			"     │   │           ├─ colSet: (11-15)\n" +
+			"     │   │           ├─ tableId: 3\n" +
 			"     │   │           └─ Table\n" +
 			"     │   │               ├─ name: asset\n" +
 			"     │   │               └─ columns: [orgid assetid name val]\n" +
@@ -459,18 +592,20 @@ where
 			"     │       ├─ AND\n" +
 			"     │       │   ├─ AND\n" +
 			"     │       │   │   ├─ Eq\n" +
-			"     │       │   │   │   ├─ dimension.val:3\n" +
-			"     │       │   │   │   └─ wide (longtext)\n" +
+			"     │       │   │   │   ├─ style.val:3\n" +
+			"     │       │   │   │   └─ curve (longtext)\n" +
 			"     │       │   │   └─ Eq\n" +
-			"     │       │   │       ├─ dimension.name:2\n" +
-			"     │       │   │       └─ dimension (longtext)\n" +
+			"     │       │   │       ├─ style.name:2\n" +
+			"     │       │   │       └─ style (longtext)\n" +
 			"     │       │   └─ Eq\n" +
-			"     │       │       ├─ dimension.orgId:0\n" +
+			"     │       │       ├─ style.orgId:0\n" +
 			"     │       │       └─ org1 (longtext)\n" +
-			"     │       └─ TableAlias(dimension)\n" +
+			"     │       └─ TableAlias(style)\n" +
 			"     │           └─ IndexedTableAccess(asset)\n" +
 			"     │               ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
-			"     │               ├─ keys: ['org1' 'dimension' color.assetId]\n" +
+			"     │               ├─ keys: [org1 (longtext) style (longtext) color.assetId:1]\n" +
+			"     │               ├─ colSet: (1-5)\n" +
+			"     │               ├─ tableId: 1\n" +
 			"     │               └─ Table\n" +
 			"     │                   ├─ name: asset\n" +
 			"     │                   └─ columns: [orgid assetid name val]\n" +
@@ -478,18 +613,20 @@ where
 			"         ├─ AND\n" +
 			"         │   ├─ AND\n" +
 			"         │   │   ├─ Eq\n" +
-			"         │   │   │   ├─ style.val:3\n" +
-			"         │   │   │   └─ curve (longtext)\n" +
+			"         │   │   │   ├─ dimension.val:3\n" +
+			"         │   │   │   └─ wide (longtext)\n" +
 			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ style.name:2\n" +
-			"         │   │       └─ style (longtext)\n" +
+			"         │   │       ├─ dimension.name:2\n" +
+			"         │   │       └─ dimension (longtext)\n" +
 			"         │   └─ Eq\n" +
-			"         │       ├─ style.orgId:0\n" +
+			"         │       ├─ dimension.orgId:0\n" +
 			"         │       └─ org1 (longtext)\n" +
-			"         └─ TableAlias(style)\n" +
+			"         └─ TableAlias(dimension)\n" +
 			"             └─ IndexedTableAccess(asset)\n" +
 			"                 ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
-			"                 ├─ keys: ['org1' 'style' dimension.assetId]\n" +
+			"                 ├─ keys: [org1 (longtext) dimension (longtext) style.assetId:5]\n" +
+			"                 ├─ colSet: (6-10)\n" +
+			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: asset\n" +
 			"                     └─ columns: [orgid assetid name val]\n" +
@@ -505,6 +642,8 @@ where
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ static: [{[1, 1]}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i s]\n" +
@@ -519,11 +658,15 @@ where
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (1)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [json_object('key1',1,'key2','abc') as JSON_OBJECT('key1', 1, 'key2', 'abc')]\n" +
 			"         └─ Table\n" +
 			"             ├─ name: \n" +
-			"             └─ columns: []\n" +
+			"             ├─ columns: []\n" +
+			"             ├─ colSet: ()\n" +
+			"             └─ tableId: 0\n" +
 			"",
 	},
 	{
@@ -535,11 +678,15 @@ where
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (1)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [json_object('key1',1,'key2','abc') as JSON_OBJECT('key1', 1, 'key2', 'abc')]\n" +
 			"         └─ Table\n" +
 			"             ├─ name: \n" +
-			"             └─ columns: []\n" +
+			"             ├─ columns: []\n" +
+			"             ├─ colSet: ()\n" +
+			"             └─ tableId: 0\n" +
 			"",
 	},
 	{
@@ -564,6 +711,8 @@ where
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
+			"         ├─ colSet: (7-9)\n" +
+			"         ├─ tableId: 3\n" +
 			"         └─ RecursiveCTE\n" +
 			"             └─ Union all\n" +
 			"                 ├─ Project\n" +
@@ -577,6 +726,8 @@ where
 			"                 │           ├─ IndexedTableAccess(parts)\n" +
 			"                 │           │   ├─ index: [parts.part,parts.sub_part]\n" +
 			"                 │           │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 │           │   ├─ colSet: (1-3)\n" +
+			"                 │           │   ├─ tableId: 1\n" +
 			"                 │           │   └─ Table\n" +
 			"                 │           │       ├─ name: parts\n" +
 			"                 │           │       └─ columns: [part sub_part quantity]\n" +
@@ -595,21 +746,22 @@ where
 			"                 │                           └─ IndexedTableAccess(parts)\n" +
 			"                 │                               ├─ index: [parts.part,parts.sub_part]\n" +
 			"                 │                               ├─ static: [{[pie, pie], [NULL, ∞)}]\n" +
+			"                 │                               ├─ colSet: (4-6)\n" +
+			"                 │                               ├─ tableId: 2\n" +
 			"                 │                               └─ Table\n" +
 			"                 │                                   ├─ name: parts\n" +
 			"                 │                                   └─ columns: [part sub_part quantity]\n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [p.sub_part:4!null, p.part:3!null, p.quantity:5!null]\n" +
-			"                     └─ HashJoin\n" +
-			"                         ├─ Eq\n" +
-			"                         │   ├─ p.part:3!null\n" +
-			"                         │   └─ pr.sub_part:0!null\n" +
+			"                     └─ LookupJoin\n" +
 			"                         ├─ TableAlias(pr)\n" +
 			"                         │   └─ RecursiveTable(included_parts)\n" +
-			"                         └─ HashLookup\n" +
-			"                             ├─ left-key: TUPLE(pr.sub_part:0!null)\n" +
-			"                             ├─ right-key: TUPLE(p.part:0!null)\n" +
-			"                             └─ TableAlias(p)\n" +
+			"                         └─ TableAlias(p)\n" +
+			"                             └─ IndexedTableAccess(parts)\n" +
+			"                                 ├─ index: [parts.part,parts.sub_part]\n" +
+			"                                 ├─ keys: [pr.sub_part:0!null]\n" +
+			"                                 ├─ colSet: (10-12)\n" +
+			"                                 ├─ tableId: 6\n" +
 			"                                 └─ Table\n" +
 			"                                     ├─ name: parts\n" +
 			"                                     └─ columns: [part sub_part quantity]\n" +
@@ -634,9 +786,13 @@ offset 2;`,
 			" │       ├─ outerVisibility: false\n" +
 			" │       ├─ isLateral: false\n" +
 			" │       ├─ cacheable: true\n" +
+			" │       ├─ colSet: (3,4)\n" +
+			" │       ├─ tableId: 2\n" +
 			" │       └─ Table\n" +
 			" │           ├─ name: xy\n" +
-			" │           └─ columns: [x y]\n" +
+			" │           ├─ columns: [x y]\n" +
+			" │           ├─ colSet: (1,2)\n" +
+			" │           └─ tableId: 1\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [sq2.u:0!null]\n" +
 			"     └─ SubqueryAlias\n" +
@@ -644,9 +800,13 @@ offset 2;`,
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
+			"         ├─ colSet: (7,8)\n" +
+			"         ├─ tableId: 4\n" +
 			"         └─ Table\n" +
 			"             ├─ name: uv\n" +
-			"             └─ columns: [u v]\n" +
+			"             ├─ columns: [u v]\n" +
+			"             ├─ colSet: (5,6)\n" +
+			"             └─ tableId: 3\n" +
 			"",
 	},
 	{
@@ -662,6 +822,8 @@ Select * from (
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
+			" ├─ colSet: (7)\n" +
+			" ├─ tableId: 6\n" +
 			" └─ Union distinct\n" +
 			"     ├─ Project\n" +
 			"     │   ├─ columns: [cte.s:0!null as s]\n" +
@@ -670,20 +832,26 @@ Select * from (
 			"     │       ├─ outerVisibility: false\n" +
 			"     │       ├─ isLateral: false\n" +
 			"     │       ├─ cacheable: true\n" +
+			"     │       ├─ colSet: (2)\n" +
+			"     │       ├─ tableId: 1\n" +
 			"     │       └─ RecursiveCTE\n" +
 			"     │           └─ Union distinct\n" +
 			"     │               ├─ Project\n" +
 			"     │               │   ├─ columns: [1 (tinyint)]\n" +
 			"     │               │   └─ Table\n" +
 			"     │               │       ├─ name: \n" +
-			"     │               │       └─ columns: []\n" +
+			"     │               │       ├─ columns: []\n" +
+			"     │               │       ├─ colSet: ()\n" +
+			"     │               │       └─ tableId: 0\n" +
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [xy.x:1!null]\n" +
 			"     │                   └─ LookupJoin\n" +
 			"     │                       ├─ RecursiveTable(cte)\n" +
 			"     │                       └─ IndexedTableAccess(xy)\n" +
 			"     │                           ├─ index: [xy.x]\n" +
-			"     │                           ├─ keys: [cte.s]\n" +
+			"     │                           ├─ keys: [cte.s:0!null]\n" +
+			"     │                           ├─ colSet: (3,4)\n" +
+			"     │                           ├─ tableId: 3\n" +
 			"     │                           └─ Table\n" +
 			"     │                               ├─ name: xy\n" +
 			"     │                               └─ columns: [x]\n" +
@@ -709,26 +877,34 @@ Select * from (
 			"                 │               ├─ outerVisibility: true\n" +
 			"                 │               ├─ isLateral: false\n" +
 			"                 │               ├─ cacheable: true\n" +
+			"                 │               ├─ colSet: (2)\n" +
+			"                 │               ├─ tableId: 1\n" +
 			"                 │               └─ RecursiveCTE\n" +
 			"                 │                   └─ Union distinct\n" +
 			"                 │                       ├─ Project\n" +
 			"                 │                       │   ├─ columns: [1 (tinyint)]\n" +
 			"                 │                       │   └─ Table\n" +
 			"                 │                       │       ├─ name: \n" +
-			"                 │                       │       └─ columns: []\n" +
+			"                 │                       │       ├─ columns: []\n" +
+			"                 │                       │       ├─ colSet: ()\n" +
+			"                 │                       │       └─ tableId: 0\n" +
 			"                 │                       └─ Project\n" +
 			"                 │                           ├─ columns: [xy.x:3!null]\n" +
 			"                 │                           └─ LookupJoin\n" +
 			"                 │                               ├─ RecursiveTable(cte)\n" +
 			"                 │                               └─ IndexedTableAccess(xy)\n" +
 			"                 │                                   ├─ index: [xy.x]\n" +
-			"                 │                                   ├─ keys: [cte.s]\n" +
+			"                 │                                   ├─ keys: [cte.s:2!null]\n" +
+			"                 │                                   ├─ colSet: (3,4)\n" +
+			"                 │                                   ├─ tableId: 3\n" +
 			"                 │                                   └─ Table\n" +
 			"                 │                                       ├─ name: xy\n" +
 			"                 │                                       └─ columns: [x]\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: xy\n" +
-			"                     └─ columns: [x y]\n" +
+			"                     ├─ columns: [x y]\n" +
+			"                     ├─ colSet: (5,6)\n" +
+			"                     └─ tableId: 5\n" +
 			"",
 	},
 	{
@@ -744,6 +920,8 @@ Select * from (
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
+			" ├─ colSet: (7)\n" +
+			" ├─ tableId: 6\n" +
 			" └─ Union distinct\n" +
 			"     ├─ Project\n" +
 			"     │   ├─ columns: [cte.s:0!null as s]\n" +
@@ -752,20 +930,26 @@ Select * from (
 			"     │       ├─ outerVisibility: false\n" +
 			"     │       ├─ isLateral: false\n" +
 			"     │       ├─ cacheable: true\n" +
+			"     │       ├─ colSet: (2)\n" +
+			"     │       ├─ tableId: 1\n" +
 			"     │       └─ RecursiveCTE\n" +
 			"     │           └─ Union distinct\n" +
 			"     │               ├─ Project\n" +
 			"     │               │   ├─ columns: [1 (tinyint)]\n" +
 			"     │               │   └─ Table\n" +
 			"     │               │       ├─ name: \n" +
-			"     │               │       └─ columns: []\n" +
+			"     │               │       ├─ columns: []\n" +
+			"     │               │       ├─ colSet: ()\n" +
+			"     │               │       └─ tableId: 0\n" +
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [xy.x:1!null]\n" +
 			"     │                   └─ LookupJoin\n" +
 			"     │                       ├─ RecursiveTable(cte)\n" +
 			"     │                       └─ IndexedTableAccess(xy)\n" +
 			"     │                           ├─ index: [xy.x]\n" +
-			"     │                           ├─ keys: [cte.s]\n" +
+			"     │                           ├─ keys: [cte.s:0!null]\n" +
+			"     │                           ├─ colSet: (3,4)\n" +
+			"     │                           ├─ tableId: 3\n" +
 			"     │                           └─ Table\n" +
 			"     │                               ├─ name: xy\n" +
 			"     │                               └─ columns: [x]\n" +
@@ -786,26 +970,34 @@ Select * from (
 			"                 │       ├─ outerVisibility: false\n" +
 			"                 │       ├─ isLateral: false\n" +
 			"                 │       ├─ cacheable: true\n" +
+			"                 │       ├─ colSet: (2)\n" +
+			"                 │       ├─ tableId: 1\n" +
 			"                 │       └─ RecursiveCTE\n" +
 			"                 │           └─ Union distinct\n" +
 			"                 │               ├─ Project\n" +
 			"                 │               │   ├─ columns: [1 (tinyint)]\n" +
 			"                 │               │   └─ Table\n" +
 			"                 │               │       ├─ name: \n" +
-			"                 │               │       └─ columns: []\n" +
+			"                 │               │       ├─ columns: []\n" +
+			"                 │               │       ├─ colSet: ()\n" +
+			"                 │               │       └─ tableId: 0\n" +
 			"                 │               └─ Project\n" +
 			"                 │                   ├─ columns: [xy.x:1!null]\n" +
 			"                 │                   └─ LookupJoin\n" +
 			"                 │                       ├─ RecursiveTable(cte)\n" +
 			"                 │                       └─ IndexedTableAccess(xy)\n" +
 			"                 │                           ├─ index: [xy.x]\n" +
-			"                 │                           ├─ keys: [cte.s]\n" +
+			"                 │                           ├─ keys: [cte.s:0!null]\n" +
+			"                 │                           ├─ colSet: (3,4)\n" +
+			"                 │                           ├─ tableId: 3\n" +
 			"                 │                           └─ Table\n" +
 			"                 │                               ├─ name: xy\n" +
 			"                 │                               └─ columns: [x]\n" +
 			"                 └─ IndexedTableAccess(xy)\n" +
 			"                     ├─ index: [xy.x]\n" +
-			"                     ├─ keys: [cte.s]\n" +
+			"                     ├─ keys: [cte.s:0!null]\n" +
+			"                     ├─ colSet: (5,6)\n" +
+			"                     ├─ tableId: 5\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: xy\n" +
 			"                         └─ columns: [x y]\n" +
@@ -822,7 +1014,9 @@ Select * from (
 			"     ├─ columns: [ab.a:0!null]\n" +
 			"     └─ IndexedTableAccess(ab)\n" +
 			"         ├─ index: [ab.a]\n" +
-			"         ├─ keys: [xy.x]\n" +
+			"         ├─ keys: [xy.x:0!null]\n" +
+			"         ├─ colSet: (3,4)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: ab\n" +
 			"             └─ columns: [a b]\n" +
@@ -846,18 +1040,24 @@ Select * from (
 			"     │           ├─ IndexedTableAccess(ab)\n" +
 			"     │           │   ├─ index: [ab.a]\n" +
 			"     │           │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │           │   ├─ colSet: (3,4)\n" +
+			"     │           │   ├─ tableId: 2\n" +
 			"     │           │   └─ Table\n" +
 			"     │           │       ├─ name: ab\n" +
 			"     │           │       └─ columns: [a]\n" +
 			"     │           └─ IndexedTableAccess(uv)\n" +
 			"     │               ├─ index: [uv.u]\n" +
 			"     │               ├─ static: [{[NULL, ∞)}]\n" +
+			"     │               ├─ colSet: (5,6)\n" +
+			"     │               ├─ tableId: 3\n" +
 			"     │               └─ Table\n" +
 			"     │                   ├─ name: uv\n" +
 			"     │                   └─ columns: [u]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
-			"         ├─ keys: [ab.a]\n" +
+			"         ├─ keys: [ab.a:0!null]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
 			"             └─ columns: [x y]\n" +
@@ -873,7 +1073,9 @@ Select * from (
 			" │   │       ├─ alias-string: select * from xy where not (u = 1)\n" +
 			" │   │       └─ Table\n" +
 			" │   │           ├─ name: xy\n" +
-			" │   │           └─ columns: [x y]\n" +
+			" │   │           ├─ columns: [x y]\n" +
+			" │   │           ├─ colSet: (5,6)\n" +
+			" │   │           └─ tableId: 3\n" +
 			" │   └─ Eq\n" +
 			" │       ├─ uv.u:0!null\n" +
 			" │       └─ 1 (tinyint)\n" +
@@ -910,7 +1112,9 @@ Select * from (
 			"     │           │       │   └─ sq.p:2!null\n" +
 			"     │           │       └─ IndexedTableAccess(uv)\n" +
 			"     │           │           ├─ index: [uv.u]\n" +
-			"     │           │           ├─ keys: [sq.p]\n" +
+			"     │           │           ├─ keys: [sq.p:2!null]\n" +
+			"     │           │           ├─ colSet: (6,7)\n" +
+			"     │           │           ├─ tableId: 4\n" +
 			"     │           │           └─ Table\n" +
 			"     │           │               ├─ name: uv\n" +
 			"     │           │               └─ columns: [u]\n" +
@@ -920,9 +1124,13 @@ Select * from (
 			"     │               ├─ outerVisibility: true\n" +
 			"     │               ├─ isLateral: false\n" +
 			"     │               ├─ cacheable: true\n" +
+			"     │               ├─ colSet: (5)\n" +
+			"     │               ├─ tableId: 3\n" +
 			"     │               └─ Table\n" +
 			"     │                   ├─ name: pq\n" +
-			"     │                   └─ columns: [p]\n" +
+			"     │                   ├─ columns: [p]\n" +
+			"     │                   ├─ colSet: (3,4)\n" +
+			"     │                   └─ tableId: 2\n" +
 			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
@@ -946,7 +1154,9 @@ Select * from (
 			"             │   └─ second (longtext)\n" +
 			"             └─ IndexedTableAccess(othertable)\n" +
 			"                 ├─ index: [othertable.s2,othertable.i2]\n" +
-			"                 ├─ keys: ['second' mytable.i]\n" +
+			"                 ├─ keys: [second (longtext) mytable.i:0!null]\n" +
+			"                 ├─ colSet: (3,4)\n" +
+			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: othertable\n" +
 			"                     └─ columns: [s2 i2]\n" +
@@ -969,12 +1179,16 @@ Select * from (
 			"             │       └─ IndexedTableAccess(othertable)\n" +
 			"             │           ├─ index: [othertable.i2]\n" +
 			"             │           ├─ static: [{[NULL, ∞)}]\n" +
+			"             │           ├─ colSet: (3,4)\n" +
+			"             │           ├─ tableId: 2\n" +
 			"             │           └─ Table\n" +
 			"             │               ├─ name: othertable\n" +
 			"             │               └─ columns: [s2 i2]\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
 			"                     └─ columns: [i s]\n" +
@@ -1015,6 +1229,8 @@ Select * from (
 			"     │   ├─ outerVisibility: false\n" +
 			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
+			"     │   ├─ colSet: (7-10)\n" +
+			"     │   ├─ tableId: 4\n" +
 			"     │   └─ MergeJoin\n" +
 			"     │       ├─ cmp: Eq\n" +
 			"     │       │   ├─ ab.a:0!null\n" +
@@ -1022,12 +1238,16 @@ Select * from (
 			"     │       ├─ IndexedTableAccess(ab)\n" +
 			"     │       │   ├─ index: [ab.a]\n" +
 			"     │       │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │       │   ├─ colSet: (3,4)\n" +
+			"     │       │   ├─ tableId: 2\n" +
 			"     │       │   └─ Table\n" +
 			"     │       │       ├─ name: ab\n" +
 			"     │       │       └─ columns: [a b]\n" +
 			"     │       └─ IndexedTableAccess(xy)\n" +
 			"     │           ├─ index: [xy.y]\n" +
 			"     │           ├─ static: [{[NULL, ∞)}]\n" +
+			"     │           ├─ colSet: (5,6)\n" +
+			"     │           ├─ tableId: 3\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: xy\n" +
 			"     │               └─ columns: [x y]\n" +
@@ -1049,12 +1269,16 @@ Select * from (
 			" ├─ IndexedTableAccess(ab)\n" +
 			" │   ├─ index: [ab.a]\n" +
 			" │   ├─ static: [{[NULL, ∞)}]\n" +
+			" │   ├─ colSet: (1,2)\n" +
+			" │   ├─ tableId: 1\n" +
 			" │   └─ Table\n" +
 			" │       ├─ name: ab\n" +
 			" │       └─ columns: [a b]\n" +
 			" └─ IndexedTableAccess(xy)\n" +
 			"     ├─ index: [xy.y]\n" +
 			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     ├─ colSet: (3,4)\n" +
+			"     ├─ tableId: 2\n" +
 			"     └─ Table\n" +
 			"         ├─ name: xy\n" +
 			"         └─ columns: [x y]\n" +
@@ -1070,12 +1294,16 @@ Select * from (
 			"     ├─ IndexedTableAccess(rs)\n" +
 			"     │   ├─ index: [rs.s]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (1,2)\n" +
+			"     │   ├─ tableId: 1\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: rs\n" +
 			"     │       └─ columns: [r s]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.y]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (3,4)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
 			"             └─ columns: [x y]\n" +
@@ -1090,12 +1318,16 @@ Select * from (
 			" ├─ IndexedTableAccess(rs)\n" +
 			" │   ├─ index: [rs.s]\n" +
 			" │   ├─ static: [{[NULL, ∞)}]\n" +
+			" │   ├─ colSet: (1,2)\n" +
+			" │   ├─ tableId: 1\n" +
 			" │   └─ Table\n" +
 			" │       ├─ name: rs\n" +
 			" │       └─ columns: [r s]\n" +
 			" └─ IndexedTableAccess(xy)\n" +
 			"     ├─ index: [xy.y]\n" +
 			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     ├─ colSet: (3,4)\n" +
+			"     ├─ tableId: 2\n" +
 			"     └─ Table\n" +
 			"         ├─ name: xy\n" +
 			"         └─ columns: [x y]\n" +
@@ -1158,13 +1390,17 @@ Select * from (
 			" │               │           │   └─ ab.a:0!null\n" +
 			" │               │           └─ IndexedTableAccess(uv)\n" +
 			" │               │               ├─ index: [uv.u]\n" +
-			" │               │               ├─ keys: [ab.a]\n" +
+			" │               │               ├─ keys: [ab.a:0!null]\n" +
+			" │               │               ├─ colSet: (5,6)\n" +
+			" │               │               ├─ tableId: 3\n" +
 			" │               │               └─ Table\n" +
 			" │               │                   ├─ name: uv\n" +
 			" │               │                   └─ columns: [u]\n" +
 			" │               └─ Table\n" +
 			" │                   ├─ name: xy\n" +
-			" │                   └─ columns: [x y]\n" +
+			" │                   ├─ columns: [x y]\n" +
+			" │                   ├─ colSet: (3,4)\n" +
+			" │                   └─ tableId: 2\n" +
 			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: ab\n" +
@@ -1193,10 +1429,14 @@ Select * from (
 			" │               │           │   └─ ab.a:0!null\n" +
 			" │               │           └─ Table\n" +
 			" │               │               ├─ name: uv\n" +
-			" │               │               └─ columns: [v]\n" +
+			" │               │               ├─ columns: [v]\n" +
+			" │               │               ├─ colSet: (5,6)\n" +
+			" │               │               └─ tableId: 3\n" +
 			" │               └─ Table\n" +
 			" │                   ├─ name: xy\n" +
-			" │                   └─ columns: [x y]\n" +
+			" │                   ├─ columns: [x y]\n" +
+			" │                   ├─ colSet: (3,4)\n" +
+			" │                   └─ tableId: 2\n" +
 			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: ab\n" +
@@ -1225,10 +1465,14 @@ Select * from (
 			" │               │           │   └─ ab.b:1\n" +
 			" │               │           └─ Table\n" +
 			" │               │               ├─ name: uv\n" +
-			" │               │               └─ columns: [v]\n" +
+			" │               │               ├─ columns: [v]\n" +
+			" │               │               ├─ colSet: (5,6)\n" +
+			" │               │               └─ tableId: 3\n" +
 			" │               └─ Table\n" +
 			" │                   ├─ name: xy\n" +
-			" │                   └─ columns: [x y]\n" +
+			" │                   ├─ columns: [x y]\n" +
+			" │                   ├─ colSet: (3,4)\n" +
+			" │                   └─ tableId: 2\n" +
 			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
 			"         ├─ name: ab\n" +
@@ -1262,10 +1506,14 @@ Select * from (
 			"             │               │           │   └─ ab.b:3\n" +
 			"             │               │           └─ Table\n" +
 			"             │               │               ├─ name: uv\n" +
-			"             │               │               └─ columns: [v]\n" +
+			"             │               │               ├─ columns: [v]\n" +
+			"             │               │               ├─ colSet: (7,8)\n" +
+			"             │               │               └─ tableId: 4\n" +
 			"             │               └─ Table\n" +
 			"             │                   ├─ name: xy\n" +
-			"             │                   └─ columns: [x y]\n" +
+			"             │                   ├─ columns: [x y]\n" +
+			"             │                   ├─ colSet: (5,6)\n" +
+			"             │                   └─ tableId: 3\n" +
 			"             └─ LookupJoin\n" +
 			"                 ├─ ProcessTable\n" +
 			"                 │   └─ Table\n" +
@@ -1273,7 +1521,9 @@ Select * from (
 			"                 │       └─ columns: [p q]\n" +
 			"                 └─ IndexedTableAccess(ab)\n" +
 			"                     ├─ index: [ab.a]\n" +
-			"                     ├─ keys: [pq.p]\n" +
+			"                     ├─ keys: [pq.p:0!null]\n" +
+			"                     ├─ colSet: (1,2)\n" +
+			"                     ├─ tableId: 1\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: ab\n" +
 			"                         └─ columns: [a b]\n" +
@@ -1297,7 +1547,9 @@ Select * from (
 			" │           │       └─ xy.x:0!null\n" +
 			" │           └─ IndexedTableAccess(uv)\n" +
 			" │               ├─ index: [uv.u]\n" +
-			" │               ├─ keys: [xy.x]\n" +
+			" │               ├─ keys: [xy.x:0!null]\n" +
+			" │               ├─ colSet: (5,6)\n" +
+			" │               ├─ tableId: 3\n" +
 			" │               └─ Table\n" +
 			" │                   ├─ name: uv\n" +
 			" │                   └─ columns: [u]\n" +
@@ -1319,7 +1571,9 @@ Select * from (
 			"         │           │       └─ xy.x:2!null\n" +
 			"         │           └─ IndexedTableAccess(uv)\n" +
 			"         │               ├─ index: [uv.u]\n" +
-			"         │               ├─ keys: [xy.x]\n" +
+			"         │               ├─ keys: [xy.x:2!null]\n" +
+			"         │               ├─ colSet: (5,6)\n" +
+			"         │               ├─ tableId: 3\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: uv\n" +
 			"         │                   └─ columns: [u]\n" +
@@ -1331,7 +1585,9 @@ Select * from (
 			"             │       └─ columns: [u v]\n" +
 			"             └─ IndexedTableAccess(xy)\n" +
 			"                 ├─ index: [xy.x]\n" +
-			"                 ├─ keys: [uv.v]\n" +
+			"                 ├─ keys: [uv.v:1]\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: xy\n" +
 			"                     └─ columns: [x y]\n" +
@@ -1345,6 +1601,8 @@ Select * from (
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (7,8)\n" +
+			"     ├─ tableId: 3\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [xy.y:1, Subquery\n" +
 			"         │   ├─ cacheable: false\n" +
@@ -1357,7 +1615,9 @@ Select * from (
 			"         │           │   └─ 1 (tinyint)\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: \n" +
-			"         │               └─ columns: []\n" +
+			"         │               ├─ columns: []\n" +
+			"         │               ├─ colSet: ()\n" +
+			"         │               └─ tableId: 0\n" +
 			"         │   as is_one]\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [xy.x:2!null, xy.y:3, uv.u:0!null, uv.v:1, Subquery\n" +
@@ -1371,15 +1631,21 @@ Select * from (
 			"             │           │   └─ 1 (tinyint)\n" +
 			"             │           └─ Table\n" +
 			"             │               ├─ name: \n" +
-			"             │               └─ columns: []\n" +
+			"             │               ├─ columns: []\n" +
+			"             │               ├─ colSet: ()\n" +
+			"             │               └─ tableId: 0\n" +
 			"             │   as is_one]\n" +
 			"             └─ LookupJoin\n" +
 			"                 ├─ Table\n" +
 			"                 │   ├─ name: uv\n" +
-			"                 │   └─ columns: [u v]\n" +
+			"                 │   ├─ columns: [u v]\n" +
+			"                 │   ├─ colSet: (3,4)\n" +
+			"                 │   └─ tableId: 2\n" +
 			"                 └─ IndexedTableAccess(xy)\n" +
 			"                     ├─ index: [xy.x]\n" +
-			"                     ├─ keys: [uv.v]\n" +
+			"                     ├─ keys: [uv.v:1]\n" +
+			"                     ├─ colSet: (1,2)\n" +
+			"                     ├─ tableId: 1\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: xy\n" +
 			"                         └─ columns: [x y]\n" +
@@ -1399,7 +1665,9 @@ Select * from (
 			" │           │   └─ 1 (tinyint)\n" +
 			" │           └─ Table\n" +
 			" │               ├─ name: \n" +
-			" │               └─ columns: []\n" +
+			" │               ├─ columns: []\n" +
+			" │               ├─ colSet: ()\n" +
+			" │               └─ tableId: 0\n" +
 			" │   as is_one]\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [xy.x:2!null, xy.y:3, uv.u:0!null, uv.v:1, Subquery\n" +
@@ -1413,7 +1681,9 @@ Select * from (
 			"     │           │   └─ 1 (tinyint)\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: \n" +
-			"     │               └─ columns: []\n" +
+			"     │               ├─ columns: []\n" +
+			"     │               ├─ colSet: ()\n" +
+			"     │               └─ tableId: 0\n" +
 			"     │   as is_one]\n" +
 			"     └─ LookupJoin\n" +
 			"         ├─ ProcessTable\n" +
@@ -1422,7 +1692,9 @@ Select * from (
 			"         │       └─ columns: [u v]\n" +
 			"         └─ IndexedTableAccess(xy)\n" +
 			"             ├─ index: [xy.x]\n" +
-			"             ├─ keys: [uv.v]\n" +
+			"             ├─ keys: [uv.v:1]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: xy\n" +
 			"                 └─ columns: [x y]\n" +
@@ -1438,9 +1710,13 @@ Select * from (
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
+			"         ├─ colSet: (3,4)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
-			"             └─ columns: [i s]\n" +
+			"             ├─ columns: [i s]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             └─ tableId: 1\n" +
 			"",
 	},
 	{
@@ -1458,6 +1734,8 @@ Select * from (
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (4)\n" +
+			"     ├─ tableId: 2\n" +
 			"     └─ RecursiveCTE\n" +
 			"         └─ Union distinct\n" +
 			"             ├─ Project\n" +
@@ -1469,6 +1747,8 @@ Select * from (
 			"             │       └─ IndexedTableAccess(bus_routes)\n" +
 			"             │           ├─ index: [bus_routes.origin,bus_routes.dst]\n" +
 			"             │           ├─ static: [{[New York, New York], [NULL, ∞)}]\n" +
+			"             │           ├─ colSet: (1,2)\n" +
+			"             │           ├─ tableId: 1\n" +
 			"             │           └─ Table\n" +
 			"             │               ├─ name: bus_routes\n" +
 			"             │               └─ columns: [origin]\n" +
@@ -1484,7 +1764,9 @@ Select * from (
 			"                         ├─ right-key: TUPLE(concat(bus_routes.origin:0!null,aa (longtext)))\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: bus_routes\n" +
-			"                             └─ columns: [origin dst]\n" +
+			"                             ├─ columns: [origin dst]\n" +
+			"                             ├─ colSet: (5,6)\n" +
+			"                             └─ tableId: 4\n" +
 			"",
 	},
 	{
@@ -1512,6 +1794,8 @@ Select * from (
 			"                         ├─ outerVisibility: false\n" +
 			"                         ├─ isLateral: false\n" +
 			"                         ├─ cacheable: true\n" +
+			"                         ├─ colSet: (9,10)\n" +
+			"                         ├─ tableId: 6\n" +
 			"                         └─ Project\n" +
 			"                             ├─ columns: [cte2.u:1!null, cte2.v:2]\n" +
 			"                             └─ HashJoin\n" +
@@ -1520,7 +1804,9 @@ Select * from (
 			"                                 │   └─ ab.b:0\n" +
 			"                                 ├─ Table\n" +
 			"                                 │   ├─ name: ab\n" +
-			"                                 │   └─ columns: [b]\n" +
+			"                                 │   ├─ columns: [b]\n" +
+			"                                 │   ├─ colSet: (7,8)\n" +
+			"                                 │   └─ tableId: 5\n" +
 			"                                 └─ HashLookup\n" +
 			"                                     ├─ left-key: TUPLE(ab.b:0)\n" +
 			"                                     ├─ right-key: TUPLE(cte2.u:0!null)\n" +
@@ -1529,6 +1815,8 @@ Select * from (
 			"                                         ├─ outerVisibility: false\n" +
 			"                                         ├─ isLateral: false\n" +
 			"                                         ├─ cacheable: true\n" +
+			"                                         ├─ colSet: (5,6)\n" +
+			"                                         ├─ tableId: 3\n" +
 			"                                         └─ Project\n" +
 			"                                             ├─ columns: [uv.u:1!null, uv.v:2]\n" +
 			"                                             └─ HashJoin\n" +
@@ -1537,7 +1825,9 @@ Select * from (
 			"                                                 │   └─ ab.b:0\n" +
 			"                                                 ├─ Table\n" +
 			"                                                 │   ├─ name: ab\n" +
-			"                                                 │   └─ columns: [b]\n" +
+			"                                                 │   ├─ columns: [b]\n" +
+			"                                                 │   ├─ colSet: (3,4)\n" +
+			"                                                 │   └─ tableId: 2\n" +
 			"                                                 └─ HashLookup\n" +
 			"                                                     ├─ left-key: TUPLE(ab.b:0)\n" +
 			"                                                     ├─ right-key: TUPLE(uv.u:0!null)\n" +
@@ -1548,6 +1838,8 @@ Select * from (
 			"                                                         └─ IndexedTableAccess(uv)\n" +
 			"                                                             ├─ index: [uv.u]\n" +
 			"                                                             ├─ static: [{[2, 2]}, {[3, 3]}]\n" +
+			"                                                             ├─ colSet: (1,2)\n" +
+			"                                                             ├─ tableId: 1\n" +
 			"                                                             └─ Table\n" +
 			"                                                                 ├─ name: uv\n" +
 			"                                                                 └─ columns: [u v]\n" +
@@ -1605,12 +1897,16 @@ Select * from (
 			"             ├─ IndexedTableAccess(uv)\n" +
 			"             │   ├─ index: [uv.u]\n" +
 			"             │   ├─ static: [{[-1, -1]}]\n" +
+			"             │   ├─ colSet: (3,4)\n" +
+			"             │   ├─ tableId: 2\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: uv\n" +
 			"             │       └─ columns: [u v]\n" +
 			"             └─ IndexedTableAccess(xy)\n" +
 			"                 ├─ index: [xy.y]\n" +
-			"                 ├─ keys: [uv.v]\n" +
+			"                 ├─ keys: [uv.v:2]\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: xy\n" +
 			"                     └─ columns: [x y]\n" +
@@ -1629,15 +1925,21 @@ Select * from (
 			"     │   ├─ outerVisibility: false\n" +
 			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
+			"     │   ├─ colSet: (11,12)\n" +
+			"     │   ├─ tableId: 6\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [xy.x:2!null, pq.q:1]\n" +
 			"     │       └─ LookupJoin\n" +
 			"     │           ├─ Table\n" +
 			"     │           │   ├─ name: pq\n" +
-			"     │           │   └─ columns: [p q]\n" +
+			"     │           │   ├─ columns: [p q]\n" +
+			"     │           │   ├─ colSet: (9,10)\n" +
+			"     │           │   └─ tableId: 5\n" +
 			"     │           └─ IndexedTableAccess(xy)\n" +
 			"     │               ├─ index: [xy.x]\n" +
-			"     │               ├─ keys: [pq.p]\n" +
+			"     │               ├─ keys: [pq.p:0!null]\n" +
+			"     │               ├─ colSet: (7,8)\n" +
+			"     │               ├─ tableId: 4\n" +
 			"     │               └─ Table\n" +
 			"     │                   ├─ name: xy\n" +
 			"     │                   └─ columns: [x]\n" +
@@ -1649,15 +1951,21 @@ Select * from (
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ isLateral: false\n" +
 			"             ├─ cacheable: true\n" +
+			"             ├─ colSet: (5,6)\n" +
+			"             ├─ tableId: 3\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [ab.a:2!null, uv.v:1]\n" +
 			"                 └─ LookupJoin\n" +
 			"                     ├─ Table\n" +
 			"                     │   ├─ name: uv\n" +
-			"                     │   └─ columns: [u v]\n" +
+			"                     │   ├─ columns: [u v]\n" +
+			"                     │   ├─ colSet: (3,4)\n" +
+			"                     │   └─ tableId: 2\n" +
 			"                     └─ IndexedTableAccess(ab)\n" +
 			"                         ├─ index: [ab.a]\n" +
-			"                         ├─ keys: [uv.u]\n" +
+			"                         ├─ keys: [uv.u:0!null]\n" +
+			"                         ├─ colSet: (1,2)\n" +
+			"                         ├─ tableId: 1\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: ab\n" +
 			"                             └─ columns: [a]\n" +
@@ -1677,14 +1985,18 @@ Select * from (
 			"     │   └─ TableAlias(t1)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.s,mytable.i]\n" +
-			"     │           ├─ keys: [t2.s t2.i]\n" +
+			"     │           ├─ keys: [t2.s:1!null t2.i:0!null]\n" +
+			"     │           ├─ colSet: (1,2)\n" +
+			"     │           ├─ tableId: 1\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: mytable\n" +
 			"     │               └─ columns: [i s]\n" +
 			"     └─ TableAlias(t3)\n" +
 			"         └─ IndexedTableAccess(othertable)\n" +
 			"             ├─ index: [othertable.i2]\n" +
-			"             ├─ keys: [t2.i]\n" +
+			"             ├─ keys: [t2.i:0!null]\n" +
+			"             ├─ colSet: (5,6)\n" +
+			"             ├─ tableId: 3\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: othertable\n" +
 			"                 └─ columns: [s2 i2]\n" +
@@ -1713,20 +2025,26 @@ Select * from (
 			"     └─ Concat\n" +
 			"         ├─ IndexedTableAccess(xy)\n" +
 			"         │   ├─ index: [xy.x]\n" +
-			"         │   ├─ keys: [(ab.a + 2)]\n" +
+			"         │   ├─ keys: [(ab.a:0!null + 3 (tinyint))]\n" +
+			"         │   ├─ colSet: (1,2)\n" +
+			"         │   ├─ tableId: 1\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: xy\n" +
 			"         │       └─ columns: [x]\n" +
 			"         └─ Concat\n" +
 			"             ├─ IndexedTableAccess(xy)\n" +
 			"             │   ├─ index: [xy.x]\n" +
-			"             │   ├─ keys: [(ab.a + 1)]\n" +
+			"             │   ├─ keys: [(ab.a:0!null + 2 (tinyint))]\n" +
+			"             │   ├─ colSet: (1,2)\n" +
+			"             │   ├─ tableId: 1\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: xy\n" +
 			"             │       └─ columns: [x]\n" +
 			"             └─ IndexedTableAccess(xy)\n" +
 			"                 ├─ index: [xy.x]\n" +
-			"                 ├─ keys: [(ab.a + 3)]\n" +
+			"                 ├─ keys: [(ab.a:0!null + 1 (tinyint))]\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: xy\n" +
 			"                     └─ columns: [x]\n" +
@@ -1751,10 +2069,14 @@ Select * from (
 			" │               │       ├─ columns: [uv.u:3!null]\n" +
 			" │               │       └─ Table\n" +
 			" │               │           ├─ name: uv\n" +
-			" │               │           └─ columns: [u v]\n" +
+			" │               │           ├─ columns: [u v]\n" +
+			" │               │           ├─ colSet: (5,6)\n" +
+			" │               │           └─ tableId: 3\n" +
 			" │               └─ IndexedTableAccess(ab)\n" +
 			" │                   ├─ index: [ab.a]\n" +
-			" │                   ├─ keys: [uv.u]\n" +
+			" │                   ├─ keys: [uv.u:3!null]\n" +
+			" │                   ├─ colSet: (3,4)\n" +
+			" │                   ├─ tableId: 2\n" +
 			" │                   └─ Table\n" +
 			" │                       ├─ name: ab\n" +
 			" │                       └─ columns: [a b]\n" +
@@ -1776,10 +2098,14 @@ Select * from (
 			"     │               │       ├─ columns: [uv.u:2!null]\n" +
 			"     │               │       └─ Table\n" +
 			"     │               │           ├─ name: uv\n" +
-			"     │               │           └─ columns: [u v]\n" +
+			"     │               │           ├─ columns: [u v]\n" +
+			"     │               │           ├─ colSet: (5,6)\n" +
+			"     │               │           └─ tableId: 3\n" +
 			"     │               └─ IndexedTableAccess(ab)\n" +
 			"     │                   ├─ index: [ab.a]\n" +
-			"     │                   ├─ keys: [uv.u]\n" +
+			"     │                   ├─ keys: [uv.u:2!null]\n" +
+			"     │                   ├─ colSet: (3,4)\n" +
+			"     │                   ├─ tableId: 2\n" +
 			"     │                   └─ Table\n" +
 			"     │                       ├─ name: ab\n" +
 			"     │                       └─ columns: [a b]\n" +
@@ -1797,9 +2123,13 @@ Select * from (
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
+			" ├─ colSet: (3,4)\n" +
+			" ├─ tableId: 2\n" +
 			" └─ Table\n" +
 			"     ├─ name: ab\n" +
-			"     └─ columns: [a b]\n" +
+			"     ├─ columns: [a b]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     └─ tableId: 1\n" +
 			"",
 	},
 	{
@@ -1810,6 +2140,8 @@ Select * from (
 			"     ├─ IndexedTableAccess(ab)\n" +
 			"     │   ├─ index: [ab.a]\n" +
 			"     │   ├─ static: [{[1, 1]}]\n" +
+			"     │   ├─ colSet: (1,2)\n" +
+			"     │   ├─ tableId: 1\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: ab\n" +
 			"     │       └─ columns: [a b]\n" +
@@ -1840,6 +2172,8 @@ Select * from (
 			"                 └─ IndexedTableAccess(ab)\n" +
 			"                     ├─ index: [ab.a]\n" +
 			"                     ├─ static: [{[1, 1]}]\n" +
+			"                     ├─ colSet: (3,4)\n" +
+			"                     ├─ tableId: 2\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: ab\n" +
 			"                         └─ columns: [a b]\n" +
@@ -1862,7 +2196,9 @@ Select * from (
 			" │           └─ columns: [a b]\n" +
 			" └─ Table\n" +
 			"     ├─ name: ab\n" +
-			"     └─ columns: [a b]\n" +
+			"     ├─ columns: [a b]\n" +
+			"     ├─ colSet: (3,4)\n" +
+			"     └─ tableId: 2\n" +
 			"",
 	},
 	{
@@ -1874,7 +2210,9 @@ Select * from (
 			" │       └─ columns: [u v]\n" +
 			" └─ IndexedTableAccess(ab)\n" +
 			"     ├─ index: [ab.a]\n" +
-			"     ├─ keys: [uv.u]\n" +
+			"     ├─ keys: [uv.u:0!null]\n" +
+			"     ├─ colSet: (3,4)\n" +
+			"     ├─ tableId: 2\n" +
 			"     └─ Table\n" +
 			"         ├─ name: ab\n" +
 			"         └─ columns: [a]\n" +
@@ -1917,7 +2255,9 @@ Select * from (
 			"         │       └─ columns: [a b]\n" +
 			"         └─ IndexedTableAccess(xy)\n" +
 			"             ├─ index: [xy.x]\n" +
-			"             ├─ keys: [ab.a]\n" +
+			"             ├─ keys: [ab.a:0!null]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: xy\n" +
 			"                 └─ columns: [x y]\n" +
@@ -1936,6 +2276,8 @@ Select * from (
 			"     │   ├─ outerVisibility: false\n" +
 			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
+			"     │   ├─ colSet: (12,13)\n" +
+			"     │   ├─ tableId: 3\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [count(1):0!null as u, 123 (tinyint) as v]\n" +
 			"     │       └─ Project\n" +
@@ -1963,6 +2305,8 @@ Select * from (
 			"     │   ├─ outerVisibility: false\n" +
 			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
+			"     │   ├─ colSet: (12,13)\n" +
+			"     │   ├─ tableId: 3\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [count(1):0!null as u, 123 (tinyint) as v]\n" +
 			"     │       └─ GroupBy\n" +
@@ -2032,6 +2376,8 @@ Select * from (
 			"     │       ├─ outerVisibility: true\n" +
 			"     │       ├─ isLateral: false\n" +
 			"     │       ├─ cacheable: true\n" +
+			"     │       ├─ colSet: (8,9)\n" +
+			"     │       ├─ tableId: 3\n" +
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [count(1):0!null as u, 123 (tinyint) as v]\n" +
 			"     │           └─ Project\n" +
@@ -2058,6 +2404,8 @@ Select * from (
 			" │       └─ IndexedTableAccess(mytable)\n" +
 			" │           ├─ index: [mytable.i]\n" +
 			" │           ├─ static: [{[1, 1]}]\n" +
+			" │           ├─ colSet: (2,3)\n" +
+			" │           ├─ tableId: 1\n" +
 			" │           └─ Table\n" +
 			" │               ├─ name: mytable\n" +
 			" │               └─ columns: [i]\n" +
@@ -2087,12 +2435,18 @@ Select * from (
 			"     │           ├─ outerVisibility: true\n" +
 			"     │           ├─ isLateral: false\n" +
 			"     │           ├─ cacheable: true\n" +
+			"     │           ├─ colSet: (3,4)\n" +
+			"     │           ├─ tableId: 2\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: ab\n" +
-			"     │               └─ columns: [a b]\n" +
+			"     │               ├─ columns: [a b]\n" +
+			"     │               ├─ colSet: (1,2)\n" +
+			"     │               └─ tableId: 1\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
-			"         ├─ keys: [cte.a]\n" +
+			"         ├─ keys: [cte.a:0!null]\n" +
+			"         ├─ colSet: (5,6)\n" +
+			"         ├─ tableId: 4\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
 			"             └─ columns: [x y]\n" +
@@ -2108,7 +2462,9 @@ Select * from (
 			"     │       └─ columns: [x y]\n" +
 			"     └─ IndexedTableAccess(ab)\n" +
 			"         ├─ index: [ab.a]\n" +
-			"         ├─ keys: [xy.x]\n" +
+			"         ├─ keys: [xy.x:0!null]\n" +
+			"         ├─ colSet: (3,4)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: ab\n" +
 			"             └─ columns: [a b]\n" +
@@ -2125,7 +2481,9 @@ Select * from (
 			"         │       └─ columns: [x y]\n" +
 			"         └─ IndexedTableAccess(ab)\n" +
 			"             ├─ index: [ab.a]\n" +
-			"             ├─ keys: [xy.x]\n" +
+			"             ├─ keys: [xy.x:0!null]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: ab\n" +
 			"                 └─ columns: [a b]\n" +
@@ -2146,6 +2504,8 @@ inner join xy on a = x;`,
 			" │   ├─ outerVisibility: false\n" +
 			" │   ├─ isLateral: false\n" +
 			" │   ├─ cacheable: true\n" +
+			" │   ├─ colSet: (7-10)\n" +
+			" │   ├─ tableId: 4\n" +
 			" │   └─ Project\n" +
 			" │       ├─ columns: [ab.a:0!null, ab.b:1, uv.u:2!null, uv.v:3]\n" +
 			" │       └─ HashJoin\n" +
@@ -2158,13 +2518,17 @@ inner join xy on a = x;`,
 			" │           │   │   └─ uv.u:2!null\n" +
 			" │           │   ├─ Table\n" +
 			" │           │   │   ├─ name: ab\n" +
-			" │           │   │   └─ columns: [a b]\n" +
+			" │           │   │   ├─ columns: [a b]\n" +
+			" │           │   │   ├─ colSet: (1,2)\n" +
+			" │           │   │   └─ tableId: 1\n" +
 			" │           │   └─ HashLookup\n" +
 			" │           │       ├─ left-key: TUPLE(ab.a:0!null)\n" +
 			" │           │       ├─ right-key: TUPLE(uv.u:0!null)\n" +
 			" │           │       └─ Table\n" +
 			" │           │           ├─ name: uv\n" +
-			" │           │           └─ columns: [u v]\n" +
+			" │           │           ├─ columns: [u v]\n" +
+			" │           │           ├─ colSet: (3,4)\n" +
+			" │           │           └─ tableId: 2\n" +
 			" │           └─ HashLookup\n" +
 			" │               ├─ left-key: TUPLE(uv.u:2!null)\n" +
 			" │               ├─ right-key: TUPLE(pq.p:0!null)\n" +
@@ -2173,10 +2537,14 @@ inner join xy on a = x;`,
 			" │                       ├─ columns: [pq.p:0!null]\n" +
 			" │                       └─ Table\n" +
 			" │                           ├─ name: pq\n" +
-			" │                           └─ columns: [p q]\n" +
+			" │                           ├─ columns: [p q]\n" +
+			" │                           ├─ colSet: (5,6)\n" +
+			" │                           └─ tableId: 3\n" +
 			" └─ IndexedTableAccess(xy)\n" +
 			"     ├─ index: [xy.x]\n" +
-			"     ├─ keys: [alias2.a]\n" +
+			"     ├─ keys: [alias2.a:0!null]\n" +
+			"     ├─ colSet: (11,12)\n" +
+			"     ├─ tableId: 5\n" +
 			"     └─ Table\n" +
 			"         ├─ name: xy\n" +
 			"         └─ columns: [x y]\n" +
@@ -2207,18 +2575,24 @@ where exists
 			"     │           ├─ IndexedTableAccess(uv)\n" +
 			"     │           │   ├─ index: [uv.u]\n" +
 			"     │           │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │           │   ├─ colSet: (3,4)\n" +
+			"     │           │   ├─ tableId: 2\n" +
 			"     │           │   └─ Table\n" +
 			"     │           │       ├─ name: uv\n" +
 			"     │           │       └─ columns: [u v]\n" +
 			"     │           └─ IndexedTableAccess(pq)\n" +
 			"     │               ├─ index: [pq.p]\n" +
 			"     │               ├─ static: [{[NULL, ∞)}]\n" +
+			"     │               ├─ colSet: (5,6)\n" +
+			"     │               ├─ tableId: 3\n" +
 			"     │               └─ Table\n" +
 			"     │                   ├─ name: pq\n" +
 			"     │                   └─ columns: [p q]\n" +
 			"     └─ IndexedTableAccess(ab)\n" +
 			"         ├─ index: [ab.a]\n" +
-			"         ├─ keys: [uv.u]\n" +
+			"         ├─ keys: [uv.u:0!null]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: ab\n" +
 			"             └─ columns: [a b]\n" +
@@ -2244,6 +2618,8 @@ where exists (select * from pq where a = p)
 			"     │   ├─ outerVisibility: false\n" +
 			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
+			"     │   ├─ colSet: (5,6)\n" +
+			"     │   ├─ tableId: 3\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [ab.a:0!null, ab.b:1]\n" +
 			"     │       └─ Filter\n" +
@@ -2254,7 +2630,9 @@ where exists (select * from pq where a = p)
 			"     │               │   └─ uv.u:2!null\n" +
 			"     │               ├─ Table\n" +
 			"     │               │   ├─ name: ab\n" +
-			"     │               │   └─ columns: [a b]\n" +
+			"     │               │   ├─ columns: [a b]\n" +
+			"     │               │   ├─ colSet: (1,2)\n" +
+			"     │               │   └─ tableId: 1\n" +
 			"     │               └─ HashLookup\n" +
 			"     │                   ├─ left-key: TUPLE(ab.a:0!null)\n" +
 			"     │                   ├─ right-key: TUPLE(uv.u:0!null)\n" +
@@ -2262,7 +2640,9 @@ where exists (select * from pq where a = p)
 			"     │                       ├─ columns: [uv.u:0!null]\n" +
 			"     │                       └─ Table\n" +
 			"     │                           ├─ name: uv\n" +
-			"     │                           └─ columns: [u v]\n" +
+			"     │                           ├─ columns: [u v]\n" +
+			"     │                           ├─ colSet: (3,4)\n" +
+			"     │                           └─ tableId: 2\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(alias1.a:0!null)\n" +
 			"         ├─ right-key: TUPLE(pq.p:0!null)\n" +
@@ -2294,7 +2674,9 @@ full join pq on a = p
 			"     │   │       └─ columns: [u v]\n" +
 			"     │   └─ IndexedTableAccess(ab)\n" +
 			"     │       ├─ index: [ab.a]\n" +
-			"     │       ├─ keys: [uv.u]\n" +
+			"     │       ├─ keys: [uv.u:0!null]\n" +
+			"     │       ├─ colSet: (1,2)\n" +
+			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: ab\n" +
 			"     │           └─ columns: [a b]\n" +
@@ -2321,18 +2703,24 @@ inner join pq on true
 			" │   │   ├─ outerVisibility: false\n" +
 			" │   │   ├─ isLateral: false\n" +
 			" │   │   ├─ cacheable: true\n" +
+			" │   │   ├─ colSet: (5-8)\n" +
+			" │   │   ├─ tableId: 3\n" +
 			" │   │   └─ Project\n" +
 			" │   │       ├─ columns: [ab.a:2!null, ab.b:3, xy.x:0!null, xy.y:1]\n" +
 			" │   │       └─ CrossHashJoin\n" +
 			" │   │           ├─ Table\n" +
 			" │   │           │   ├─ name: xy\n" +
-			" │   │           │   └─ columns: [x y]\n" +
+			" │   │           │   ├─ columns: [x y]\n" +
+			" │   │           │   ├─ colSet: (3,4)\n" +
+			" │   │           │   └─ tableId: 2\n" +
 			" │   │           └─ HashLookup\n" +
 			" │   │               ├─ left-key: TUPLE()\n" +
 			" │   │               ├─ right-key: TUPLE()\n" +
 			" │   │               └─ Table\n" +
 			" │   │                   ├─ name: ab\n" +
-			" │   │                   └─ columns: [a b]\n" +
+			" │   │                   ├─ columns: [a b]\n" +
+			" │   │                   ├─ colSet: (1,2)\n" +
+			" │   │                   └─ tableId: 1\n" +
 			" │   └─ HashLookup\n" +
 			" │       ├─ left-key: TUPLE()\n" +
 			" │       ├─ right-key: TUPLE()\n" +
@@ -2376,6 +2764,8 @@ inner join pq on true
 			"     │       │   ├─ outerVisibility: false\n" +
 			"     │       │   ├─ isLateral: false\n" +
 			"     │       │   ├─ cacheable: true\n" +
+			"     │       │   ├─ colSet: (5,6)\n" +
+			"     │       │   ├─ tableId: 3\n" +
 			"     │       │   └─ Project\n" +
 			"     │       │       ├─ columns: [ab.a:0!null, ab.b:1]\n" +
 			"     │       │       └─ Filter\n" +
@@ -2386,7 +2776,9 @@ inner join pq on true
 			"     │       │               │   └─ xy.x:2!null\n" +
 			"     │       │               ├─ Table\n" +
 			"     │       │               │   ├─ name: ab\n" +
-			"     │       │               │   └─ columns: [a b]\n" +
+			"     │       │               │   ├─ columns: [a b]\n" +
+			"     │       │               │   ├─ colSet: (1,2)\n" +
+			"     │       │               │   └─ tableId: 1\n" +
 			"     │       │               └─ HashLookup\n" +
 			"     │       │                   ├─ left-key: TUPLE(ab.a:0!null)\n" +
 			"     │       │                   ├─ right-key: TUPLE(xy.x:0!null)\n" +
@@ -2394,7 +2786,9 @@ inner join pq on true
 			"     │       │                       ├─ columns: [xy.x:0!null]\n" +
 			"     │       │                       └─ Table\n" +
 			"     │       │                           ├─ name: xy\n" +
-			"     │       │                           └─ columns: [x y]\n" +
+			"     │       │                           ├─ columns: [x y]\n" +
+			"     │       │                           ├─ colSet: (3,4)\n" +
+			"     │       │                           └─ tableId: 2\n" +
 			"     │       └─ HashLookup\n" +
 			"     │           ├─ left-key: TUPLE(alias1.a:0!null)\n" +
 			"     │           ├─ right-key: TUPLE(uv.u:0!null)\n" +
@@ -2429,6 +2823,8 @@ inner join pq on true
 			"         │       └─ IndexedTableAccess(mytable)\n" +
 			"         │           ├─ index: [mytable.i]\n" +
 			"         │           ├─ static: [{[NULL, ∞)}]\n" +
+			"         │           ├─ colSet: (3,4)\n" +
+			"         │           ├─ tableId: 2\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: mytable\n" +
 			"         │               └─ columns: [i]\n" +
@@ -2436,6 +2832,8 @@ inner join pq on true
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
 			"                     └─ columns: [i s]\n" +
@@ -2457,6 +2855,8 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(mytable)\n" +
 			"             │       ├─ index: [mytable.i]\n" +
 			"             │       ├─ static: [{[NULL, ∞)}]\n" +
+			"             │       ├─ colSet: (1,2)\n" +
+			"             │       ├─ tableId: 1\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: mytable\n" +
 			"             │           └─ columns: [i s]\n" +
@@ -2464,6 +2864,8 @@ inner join pq on true
 			"                 └─ IndexedTableAccess(mytable)\n" +
 			"                     ├─ index: [mytable.i]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
+			"                     ├─ colSet: (3,4)\n" +
+			"                     ├─ tableId: 2\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: mytable\n" +
 			"                         └─ columns: [i]\n" +
@@ -2502,19 +2904,25 @@ inner join pq on true
 			"             │   ├─ IndexedTableAccess(othertable)\n" +
 			"             │   │   ├─ index: [othertable.i2]\n" +
 			"             │   │   ├─ static: [{[NULL, ∞)}]\n" +
+			"             │   │   ├─ colSet: (3,4)\n" +
+			"             │   │   ├─ tableId: 2\n" +
 			"             │   │   └─ Table\n" +
 			"             │   │       ├─ name: othertable\n" +
 			"             │   │       └─ columns: [s2 i2]\n" +
 			"             │   └─ IndexedTableAccess(mytable)\n" +
 			"             │       ├─ index: [mytable.i]\n" +
 			"             │       ├─ static: [{[NULL, ∞)}]\n" +
+			"             │       ├─ colSet: (1,2)\n" +
+			"             │       ├─ tableId: 1\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: mytable\n" +
 			"             │           └─ columns: [i s]\n" +
 			"             └─ TableAlias(t4)\n" +
 			"                 └─ IndexedTableAccess(othertable)\n" +
 			"                     ├─ index: [othertable.i2]\n" +
-			"                     ├─ keys: [mytable.i]\n" +
+			"                     ├─ keys: [mytable.i:2!null]\n" +
+			"                     ├─ colSet: (5,6)\n" +
+			"                     ├─ tableId: 3\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: othertable\n" +
 			"                         └─ columns: [s2 i2]\n" +
@@ -2525,6 +2933,8 @@ inner join pq on true
 		ExpectedPlan: "IndexedTableAccess(one_pk)\n" +
 			" ├─ index: [one_pk.pk]\n" +
 			" ├─ static: [{[NULL, ∞)}]\n" +
+			" ├─ colSet: (1-6)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: one_pk\n" +
 			"     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -2535,6 +2945,8 @@ inner join pq on true
 		ExpectedPlan: "IndexedTableAccess(two_pk)\n" +
 			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			" ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-7)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: two_pk\n" +
 			"     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -2545,6 +2957,8 @@ inner join pq on true
 		ExpectedPlan: "IndexedTableAccess(two_pk)\n" +
 			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			" ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-7)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: two_pk\n" +
 			"     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -2559,6 +2973,8 @@ inner join pq on true
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ colSet: (1-7)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
 			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -2573,6 +2989,8 @@ inner join pq on true
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ colSet: (1-7)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
 			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -2587,6 +3005,8 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
 			"     │       ├─ static: [{[1, 1]}]\n" +
+			"     │       ├─ colSet: (3,4)\n" +
+			"     │       ├─ tableId: 2\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i]\n" +
@@ -2597,7 +3017,9 @@ inner join pq on true
 			"         └─ TableAlias(t1)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ keys: [(t2.i + 1)]\n" +
+			"                 ├─ keys: [(t2.i:0!null + 1 (tinyint))]\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
 			"                     └─ columns: [i]\n" +
@@ -2621,12 +3043,16 @@ inner join pq on true
 			"                 ├─ IndexedTableAccess(othertable)\n" +
 			"                 │   ├─ index: [othertable.i2]\n" +
 			"                 │   ├─ static: [{[NULL, ∞)}]\n" +
+			"                 │   ├─ colSet: (3,4)\n" +
+			"                 │   ├─ tableId: 2\n" +
 			"                 │   └─ Table\n" +
 			"                 │       ├─ name: othertable\n" +
 			"                 │       └─ columns: [i2]\n" +
 			"                 └─ IndexedTableAccess(mytable)\n" +
 			"                     ├─ index: [mytable.i]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
+			"                     ├─ colSet: (1,2)\n" +
+			"                     ├─ tableId: 1\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: mytable\n" +
 			"                         └─ columns: [i]\n" +
@@ -2640,6 +3066,8 @@ inner join pq on true
 			" └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"     ├─ index: [one_pk_two_idx.v1]\n" +
 			"     ├─ static: [{(NULL, 2)}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: one_pk_two_idx\n" +
 			"         └─ columns: [pk v1 v2]\n" +
@@ -2658,6 +3086,8 @@ inner join pq on true
 			" └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"     ├─ index: [one_pk_two_idx.v1]\n" +
 			"     ├─ static: [{[1, 1]}, {[2, 2]}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: one_pk_two_idx\n" +
 			"         └─ columns: [pk v1 v2]\n" +
@@ -2668,6 +3098,8 @@ inner join pq on true
 		ExpectedPlan: "IndexedTableAccess(one_pk_three_idx)\n" +
 			" ├─ index: [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3]\n" +
 			" ├─ static: [{(2, ∞), [3, 3], [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-4)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: one_pk_three_idx\n" +
 			"     └─ columns: [pk v1 v2 v3]\n" +
@@ -2678,6 +3110,8 @@ inner join pq on true
 		ExpectedPlan: "IndexedTableAccess(one_pk_three_idx)\n" +
 			" ├─ index: [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3]\n" +
 			" ├─ static: [{(2, ∞), [NULL, ∞), [3, 3]}]\n" +
+			" ├─ colSet: (1-4)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: one_pk_three_idx\n" +
 			"     └─ columns: [pk v1 v2 v3]\n" +
@@ -2700,12 +3134,16 @@ inner join pq on true
 			"                 ├─ IndexedTableAccess(mytable)\n" +
 			"                 │   ├─ index: [mytable.i]\n" +
 			"                 │   ├─ static: [{[2, 2]}]\n" +
+			"                 │   ├─ colSet: (1,2)\n" +
+			"                 │   ├─ tableId: 1\n" +
 			"                 │   └─ Table\n" +
 			"                 │       ├─ name: mytable\n" +
 			"                 │       └─ columns: [i]\n" +
 			"                 └─ IndexedTableAccess(othertable)\n" +
 			"                     ├─ index: [othertable.i2]\n" +
-			"                     ├─ keys: [mytable.i]\n" +
+			"                     ├─ keys: [mytable.i:0!null]\n" +
+			"                     ├─ colSet: (3,4)\n" +
+			"                     ├─ tableId: 2\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: othertable\n" +
 			"                         └─ columns: [i2]\n" +
@@ -2729,6 +3167,8 @@ inner join pq on true
 			"                 │   └─ IndexedTableAccess(mytable)\n" +
 			"                 │       ├─ index: [mytable.i]\n" +
 			"                 │       ├─ static: [{[1, 1]}]\n" +
+			"                 │       ├─ colSet: (5,6)\n" +
+			"                 │       ├─ tableId: 3\n" +
 			"                 │       └─ Table\n" +
 			"                 │           ├─ name: mytable\n" +
 			"                 │           └─ columns: [i]\n" +
@@ -2739,7 +3179,9 @@ inner join pq on true
 			"                     └─ TableAlias(t1)\n" +
 			"                         └─ IndexedTableAccess(mytable)\n" +
 			"                             ├─ index: [mytable.i]\n" +
-			"                             ├─ keys: [(t2.i + 1)]\n" +
+			"                             ├─ keys: [(t2.i:0!null + 1 (tinyint))]\n" +
+			"                             ├─ colSet: (3,4)\n" +
+			"                             ├─ tableId: 2\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: mytable\n" +
 			"                                 └─ columns: [i]\n" +
@@ -2757,6 +3199,8 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
 			"     │       ├─ static: [{[2, 2]}]\n" +
+			"     │       ├─ colSet: (1,2)\n" +
+			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i]\n" +
@@ -2767,7 +3211,9 @@ inner join pq on true
 			"         └─ TableAlias(t2)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ keys: [1]\n" +
+			"                 ├─ keys: [1 (tinyint)]\n" +
+			"                 ├─ colSet: (3,4)\n" +
+			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
 			"                     └─ columns: [i]\n" +
@@ -2782,6 +3228,8 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
 			"     │       ├─ static: [{[1, 1]}]\n" +
+			"     │       ├─ colSet: (3,4)\n" +
+			"     │       ├─ tableId: 2\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i]\n" +
@@ -2792,7 +3240,9 @@ inner join pq on true
 			"         └─ TableAlias(t1)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ keys: [(t2.i + 1)]\n" +
+			"                 ├─ keys: [(t2.i:0!null + 1 (tinyint))]\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
 			"                     └─ columns: [i]\n" +
@@ -2807,6 +3257,8 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
 			"     │       ├─ static: [{[1, 1]}]\n" +
+			"     │       ├─ colSet: (3,4)\n" +
+			"     │       ├─ tableId: 2\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i]\n" +
@@ -2817,7 +3269,9 @@ inner join pq on true
 			"         └─ TableAlias(t1)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ keys: [(t2.i + 1)]\n" +
+			"                 ├─ keys: [(t2.i:0!null + 1 (tinyint))]\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
 			"                     └─ columns: [i]\n" +
@@ -2832,6 +3286,8 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
 			"     │       ├─ static: [{[1, 1]}]\n" +
+			"     │       ├─ colSet: (3,4)\n" +
+			"     │       ├─ tableId: 2\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i]\n" +
@@ -2842,7 +3298,9 @@ inner join pq on true
 			"         └─ TableAlias(t1)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ keys: [(t2.i + 1)]\n" +
+			"                 ├─ keys: [(t2.i:0!null + 1 (tinyint))]\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
 			"                     └─ columns: [i]\n" +
@@ -2859,12 +3317,16 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(othertable)\n" +
 			"     │   ├─ index: [othertable.i2]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (3,4)\n" +
+			"     │   ├─ tableId: 2\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: othertable\n" +
 			"     │       └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i]\n" +
@@ -2889,13 +3351,17 @@ inner join pq on true
 			"     └─ Concat\n" +
 			"         ├─ IndexedTableAccess(mytable)\n" +
 			"         │   ├─ index: [mytable.s,mytable.i]\n" +
-			"         │   ├─ keys: [othertable.s2]\n" +
+			"         │   ├─ keys: [othertable.s2:0!null]\n" +
+			"         │   ├─ colSet: (1,2)\n" +
+			"         │   ├─ tableId: 1\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: mytable\n" +
 			"         │       └─ columns: [i s]\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
-			"             ├─ keys: [othertable.i2]\n" +
+			"             ├─ keys: [othertable.i2:1!null]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
 			"                 └─ columns: [i s]\n" +
@@ -2921,13 +3387,17 @@ inner join pq on true
 			"     └─ Concat\n" +
 			"         ├─ IndexedTableAccess(mytable)\n" +
 			"         │   ├─ index: [mytable.s,mytable.i]\n" +
-			"         │   ├─ keys: [ot.s2]\n" +
+			"         │   ├─ keys: [ot.s2:0!null]\n" +
+			"         │   ├─ colSet: (1,2)\n" +
+			"         │   ├─ tableId: 1\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: mytable\n" +
 			"         │       └─ columns: [i s]\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
-			"             ├─ keys: [ot.i2]\n" +
+			"             ├─ keys: [ot.i2:1!null]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
 			"                 └─ columns: [i s]\n" +
@@ -2953,12 +3423,16 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(othertable)\n" +
 			"         │   ├─ index: [othertable.s2]\n" +
 			"         │   ├─ keys: [SUBSTRING_INDEX(mytable.s, ' ', 1)]\n" +
+			"         │   ├─ colSet: (3,4)\n" +
+			"         │   ├─ tableId: 2\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: othertable\n" +
 			"         │       └─ columns: [s2 i2]\n" +
 			"         └─ IndexedTableAccess(othertable)\n" +
 			"             ├─ index: [othertable.i2]\n" +
-			"             ├─ keys: [mytable.i]\n" +
+			"             ├─ keys: [mytable.i:0!null]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: othertable\n" +
 			"                 └─ columns: [s2 i2]\n" +
@@ -2987,20 +3461,26 @@ inner join pq on true
 			"     └─ Concat\n" +
 			"         ├─ IndexedTableAccess(othertable)\n" +
 			"         │   ├─ index: [othertable.s2]\n" +
-			"         │   ├─ keys: [SUBSTRING_INDEX(mytable.s, ' ', 1)]\n" +
+			"         │   ├─ keys: [SUBSTRING_INDEX(mytable.s, ' ', 2)]\n" +
+			"         │   ├─ colSet: (3,4)\n" +
+			"         │   ├─ tableId: 2\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: othertable\n" +
 			"         │       └─ columns: [s2 i2]\n" +
 			"         └─ Concat\n" +
 			"             ├─ IndexedTableAccess(othertable)\n" +
-			"             │   ├─ index: [othertable.i2]\n" +
-			"             │   ├─ keys: [mytable.i]\n" +
+			"             │   ├─ index: [othertable.s2]\n" +
+			"             │   ├─ keys: [SUBSTRING_INDEX(mytable.s, ' ', 1)]\n" +
+			"             │   ├─ colSet: (3,4)\n" +
+			"             │   ├─ tableId: 2\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: othertable\n" +
 			"             │       └─ columns: [s2 i2]\n" +
 			"             └─ IndexedTableAccess(othertable)\n" +
-			"                 ├─ index: [othertable.s2]\n" +
-			"                 ├─ keys: [SUBSTRING_INDEX(mytable.s, ' ', 2)]\n" +
+			"                 ├─ index: [othertable.i2]\n" +
+			"                 ├─ keys: [mytable.i:0!null]\n" +
+			"                 ├─ colSet: (3,4)\n" +
+			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: othertable\n" +
 			"                     └─ columns: [s2 i2]\n" +
@@ -3018,12 +3498,16 @@ inner join pq on true
 			" │       ├─ IndexedTableAccess(othertable)\n" +
 			" │       │   ├─ index: [othertable.i2]\n" +
 			" │       │   ├─ static: [{[NULL, ∞)}]\n" +
+			" │       │   ├─ colSet: (3,4)\n" +
+			" │       │   ├─ tableId: 2\n" +
 			" │       │   └─ Table\n" +
 			" │       │       ├─ name: othertable\n" +
 			" │       │       └─ columns: [s2 i2]\n" +
 			" │       └─ IndexedTableAccess(mytable)\n" +
 			" │           ├─ index: [mytable.i]\n" +
 			" │           ├─ static: [{[NULL, ∞)}]\n" +
+			" │           ├─ colSet: (1,2)\n" +
+			" │           ├─ tableId: 1\n" +
 			" │           └─ Table\n" +
 			" │               ├─ name: mytable\n" +
 			" │               └─ columns: [i]\n" +
@@ -3036,12 +3520,16 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(othertable)\n" +
 			"         │   ├─ index: [othertable.i2]\n" +
 			"         │   ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   ├─ colSet: (7,8)\n" +
+			"         │   ├─ tableId: 4\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: othertable\n" +
 			"         │       └─ columns: [s2 i2]\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ colSet: (5,6)\n" +
+			"             ├─ tableId: 3\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
 			"                 └─ columns: [i]\n" +
@@ -3060,6 +3548,8 @@ inner join pq on true
 			"     │   ├─ outerVisibility: false\n" +
 			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
+			"     │   ├─ colSet: (5-7)\n" +
+			"     │   ├─ tableId: 3\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [mytable.i:2!null, othertable.i2:1!null, othertable.s2:0!null]\n" +
 			"     │       └─ MergeJoin\n" +
@@ -3069,12 +3559,16 @@ inner join pq on true
 			"     │           ├─ IndexedTableAccess(othertable)\n" +
 			"     │           │   ├─ index: [othertable.i2]\n" +
 			"     │           │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │           │   ├─ colSet: (3,4)\n" +
+			"     │           │   ├─ tableId: 2\n" +
 			"     │           │   └─ Table\n" +
 			"     │           │       ├─ name: othertable\n" +
 			"     │           │       └─ columns: [s2 i2]\n" +
 			"     │           └─ IndexedTableAccess(mytable)\n" +
 			"     │               ├─ index: [mytable.i]\n" +
 			"     │               ├─ static: [{[NULL, ∞)}]\n" +
+			"     │               ├─ colSet: (1,2)\n" +
+			"     │               ├─ tableId: 1\n" +
 			"     │               └─ Table\n" +
 			"     │                   ├─ name: mytable\n" +
 			"     │                   └─ columns: [i]\n" +
@@ -3101,6 +3595,8 @@ inner join pq on true
 			"     │   ├─ outerVisibility: false\n" +
 			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
+			"     │   ├─ colSet: (7-9)\n" +
+			"     │   ├─ tableId: 4\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [mytable.i:2!null, othertable.i2:1!null, othertable.s2:0!null]\n" +
 			"     │       └─ MergeJoin\n" +
@@ -3110,12 +3606,16 @@ inner join pq on true
 			"     │           ├─ IndexedTableAccess(othertable)\n" +
 			"     │           │   ├─ index: [othertable.i2]\n" +
 			"     │           │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │           │   ├─ colSet: (5,6)\n" +
+			"     │           │   ├─ tableId: 3\n" +
 			"     │           │   └─ Table\n" +
 			"     │           │       ├─ name: othertable\n" +
 			"     │           │       └─ columns: [s2 i2]\n" +
 			"     │           └─ IndexedTableAccess(mytable)\n" +
 			"     │               ├─ index: [mytable.i]\n" +
 			"     │               ├─ static: [{[NULL, ∞)}]\n" +
+			"     │               ├─ colSet: (3,4)\n" +
+			"     │               ├─ tableId: 2\n" +
 			"     │               └─ Table\n" +
 			"     │                   ├─ name: mytable\n" +
 			"     │                   └─ columns: [i]\n" +
@@ -3141,6 +3641,8 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(othertable)\n" +
 			"     │       ├─ index: [othertable.i2]\n" +
 			"     │       ├─ static: [{(0, ∞)}]\n" +
+			"     │       ├─ colSet: (1,2)\n" +
+			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: othertable\n" +
 			"     │           └─ columns: [s2 i2]\n" +
@@ -3149,6 +3651,8 @@ inner join pq on true
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
+			"         ├─ colSet: (7-9)\n" +
+			"         ├─ tableId: 4\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [mytable.i:2!null, othertable.i2:1!null, othertable.s2:0!null]\n" +
 			"             └─ LookupJoin\n" +
@@ -3161,10 +3665,14 @@ inner join pq on true
 			"                 │   │       └─ 0 (tinyint)\n" +
 			"                 │   └─ Table\n" +
 			"                 │       ├─ name: othertable\n" +
-			"                 │       └─ columns: [s2 i2]\n" +
+			"                 │       ├─ columns: [s2 i2]\n" +
+			"                 │       ├─ colSet: (5,6)\n" +
+			"                 │       └─ tableId: 3\n" +
 			"                 └─ IndexedTableAccess(mytable)\n" +
 			"                     ├─ index: [mytable.i]\n" +
-			"                     ├─ keys: [othertable.i2]\n" +
+			"                     ├─ keys: [othertable.i2:1!null]\n" +
+			"                     ├─ colSet: (3,4)\n" +
+			"                     ├─ tableId: 2\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: mytable\n" +
 			"                         └─ columns: [i]\n" +
@@ -3184,6 +3692,8 @@ inner join pq on true
 			" │   │   └─ IndexedTableAccess(one_pk)\n" +
 			" │   │       ├─ index: [one_pk.pk]\n" +
 			" │   │       ├─ static: [{[NULL, ∞)}]\n" +
+			" │   │       ├─ colSet: (1-6)\n" +
+			" │   │       ├─ tableId: 1\n" +
 			" │   │       └─ Table\n" +
 			" │   │           ├─ name: one_pk\n" +
 			" │   │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -3191,6 +3701,8 @@ inner join pq on true
 			" │       └─ IndexedTableAccess(one_pk)\n" +
 			" │           ├─ index: [one_pk.pk]\n" +
 			" │           ├─ static: [{[NULL, ∞)}]\n" +
+			" │           ├─ colSet: (7-12)\n" +
+			" │           ├─ tableId: 2\n" +
 			" │           └─ Table\n" +
 			" │               ├─ name: one_pk\n" +
 			" │               └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -3199,11 +3711,15 @@ inner join pq on true
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: false\n" +
+			"     ├─ colSet: (20,21)\n" +
+			"     ├─ tableId: 4\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [one_pk.pk:0!null, rand() as r]\n" +
 			"         └─ Table\n" +
 			"             ├─ name: one_pk\n" +
-			"             └─ columns: [pk]\n" +
+			"             ├─ columns: [pk]\n" +
+			"             ├─ colSet: (13-18)\n" +
+			"             └─ tableId: 3\n" +
 			"",
 	},
 	{
@@ -3220,6 +3736,8 @@ inner join pq on true
 			" │   │   └─ IndexedTableAccess(one_pk)\n" +
 			" │   │       ├─ index: [one_pk.pk]\n" +
 			" │   │       ├─ static: [{[NULL, ∞)}]\n" +
+			" │   │       ├─ colSet: (1-6)\n" +
+			" │   │       ├─ tableId: 1\n" +
 			" │   │       └─ Table\n" +
 			" │   │           ├─ name: one_pk\n" +
 			" │   │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -3227,6 +3745,8 @@ inner join pq on true
 			" │       └─ IndexedTableAccess(one_pk)\n" +
 			" │           ├─ index: [one_pk.pk]\n" +
 			" │           ├─ static: [{[NULL, ∞)}]\n" +
+			" │           ├─ colSet: (7-12)\n" +
+			" │           ├─ tableId: 2\n" +
 			" │           └─ Table\n" +
 			" │               ├─ name: one_pk\n" +
 			" │               └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -3235,11 +3755,15 @@ inner join pq on true
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: false\n" +
+			"     ├─ colSet: (20,21)\n" +
+			"     ├─ tableId: 4\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [one_pk.pk:0!null, rand() as r]\n" +
 			"         └─ Table\n" +
 			"             ├─ name: one_pk\n" +
-			"             └─ columns: [pk]\n" +
+			"             ├─ columns: [pk]\n" +
+			"             ├─ colSet: (13-18)\n" +
+			"             └─ tableId: 3\n" +
 			"",
 	},
 	{
@@ -3264,6 +3788,8 @@ inner join pq on true
 			"                 │   ├─ outerVisibility: false\n" +
 			"                 │   ├─ isLateral: false\n" +
 			"                 │   ├─ cacheable: true\n" +
+			"                 │   ├─ colSet: (9-11)\n" +
+			"                 │   ├─ tableId: 5\n" +
 			"                 │   └─ Project\n" +
 			"                 │       ├─ columns: [mytable.i:2!null, othertable.i2:1!null, othertable.s2:0!null]\n" +
 			"                 │       └─ MergeJoin\n" +
@@ -3273,12 +3799,16 @@ inner join pq on true
 			"                 │           ├─ IndexedTableAccess(othertable)\n" +
 			"                 │           │   ├─ index: [othertable.i2]\n" +
 			"                 │           │   ├─ static: [{[NULL, ∞)}]\n" +
+			"                 │           │   ├─ colSet: (7,8)\n" +
+			"                 │           │   ├─ tableId: 4\n" +
 			"                 │           │   └─ Table\n" +
 			"                 │           │       ├─ name: othertable\n" +
 			"                 │           │       └─ columns: [s2 i2]\n" +
 			"                 │           └─ IndexedTableAccess(mytable)\n" +
 			"                 │               ├─ index: [mytable.i]\n" +
 			"                 │               ├─ static: [{[NULL, ∞)}]\n" +
+			"                 │               ├─ colSet: (5,6)\n" +
+			"                 │               ├─ tableId: 3\n" +
 			"                 │               └─ Table\n" +
 			"                 │                   ├─ name: mytable\n" +
 			"                 │                   └─ columns: [i]\n" +
@@ -3302,12 +3832,16 @@ inner join pq on true
 			"     │   │   └─ IndexedTableAccess(mytable)\n" +
 			"     │   │       ├─ index: [mytable.i]\n" +
 			"     │   │       ├─ static: [{[1, 1]}]\n" +
+			"     │   │       ├─ colSet: (3,4)\n" +
+			"     │   │       ├─ tableId: 2\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: mytable\n" +
 			"     │   │           └─ columns: [i s]\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
-			"     │       ├─ keys: [selfjoin.i]\n" +
+			"     │       ├─ keys: [selfjoin.i:0!null]\n" +
+			"     │       ├─ colSet: (1,2)\n" +
+			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i s]\n" +
@@ -3328,12 +3862,16 @@ inner join pq on true
 			" ├─ IndexedTableAccess(othertable)\n" +
 			" │   ├─ index: [othertable.i2]\n" +
 			" │   ├─ static: [{[NULL, ∞)}]\n" +
+			" │   ├─ colSet: (3,4)\n" +
+			" │   ├─ tableId: 2\n" +
 			" │   └─ Table\n" +
 			" │       ├─ name: othertable\n" +
 			" │       └─ columns: [s2 i2]\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.i]\n" +
 			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i]\n" +
@@ -3350,12 +3888,16 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(mytable)\n" +
 			"     │   ├─ index: [mytable.i]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (3,4)\n" +
+			"     │   ├─ tableId: 2\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [i]\n" +
 			"     └─ IndexedTableAccess(othertable)\n" +
 			"         ├─ index: [othertable.i2]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: othertable\n" +
 			"             └─ columns: [s2 i2]\n" +
@@ -3372,12 +3914,16 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(mytable)\n" +
 			"     │   ├─ index: [mytable.i]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (3,4)\n" +
+			"     │   ├─ tableId: 2\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [i]\n" +
 			"     └─ IndexedTableAccess(othertable)\n" +
 			"         ├─ index: [othertable.i2]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: othertable\n" +
 			"             └─ columns: [s2 i2]\n" +
@@ -3394,12 +3940,16 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(mytable)\n" +
 			"     │   ├─ index: [mytable.i]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (3,4)\n" +
+			"     │   ├─ tableId: 2\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [i]\n" +
 			"     └─ IndexedTableAccess(othertable)\n" +
 			"         ├─ index: [othertable.i2]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: othertable\n" +
 			"             └─ columns: [s2 i2]\n" +
@@ -3417,12 +3967,16 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(mytable)\n" +
 			"         │   ├─ index: [mytable.i]\n" +
 			"         │   ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   ├─ colSet: (3,4)\n" +
+			"         │   ├─ tableId: 2\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: mytable\n" +
 			"         │       └─ columns: [i]\n" +
 			"         └─ IndexedTableAccess(othertable)\n" +
 			"             ├─ index: [othertable.i2]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: othertable\n" +
 			"                 └─ columns: [s2 i2]\n" +
@@ -3439,12 +3993,16 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(othertable)\n" +
 			"     │   ├─ index: [othertable.i2]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (3,4)\n" +
+			"     │   ├─ tableId: 2\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: othertable\n" +
 			"     │       └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i]\n" +
@@ -3459,12 +4017,16 @@ inner join pq on true
 			" ├─ IndexedTableAccess(othertable)\n" +
 			" │   ├─ index: [othertable.i2]\n" +
 			" │   ├─ static: [{[NULL, ∞)}]\n" +
+			" │   ├─ colSet: (3,4)\n" +
+			" │   ├─ tableId: 2\n" +
 			" │   └─ Table\n" +
 			" │       ├─ name: othertable\n" +
 			" │       └─ columns: [s2 i2]\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.i]\n" +
 			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i]\n" +
@@ -3483,12 +4045,16 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(othertable)\n" +
 			"     │   ├─ index: [othertable.i2]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (3,4)\n" +
+			"     │   ├─ tableId: 2\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: othertable\n" +
 			"     │       └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i s]\n" +
@@ -3509,12 +4075,16 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(othertable)\n" +
 			"     │   ├─ index: [othertable.i2]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (3,4)\n" +
+			"     │   ├─ tableId: 2\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: othertable\n" +
 			"     │       └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i s]\n" +
@@ -3533,12 +4103,16 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(othertable)\n" +
 			"     │   ├─ index: [othertable.i2]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (3,4)\n" +
+			"     │   ├─ tableId: 2\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: othertable\n" +
 			"     │       └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i s]\n" +
@@ -3558,12 +4132,16 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(othertable)\n" +
 			"     │   ├─ index: [othertable.i2]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (3,4)\n" +
+			"     │   ├─ tableId: 2\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: othertable\n" +
 			"     │       └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i s]\n" +
@@ -3583,12 +4161,16 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(othertable)\n" +
 			"     │   ├─ index: [othertable.i2]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (3,4)\n" +
+			"     │   ├─ tableId: 2\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: othertable\n" +
 			"     │       └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i s]\n" +
@@ -3614,9 +4196,13 @@ inner join pq on true
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ isLateral: false\n" +
 			"             ├─ cacheable: true\n" +
+			"             ├─ colSet: (5,6)\n" +
+			"             ├─ tableId: 3\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: othertable\n" +
-			"                 └─ columns: [s2 i2]\n" +
+			"                 ├─ columns: [s2 i2]\n" +
+			"                 ├─ colSet: (3,4)\n" +
+			"                 └─ tableId: 2\n" +
 			"",
 	},
 	{
@@ -3639,9 +4225,13 @@ inner join pq on true
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ isLateral: false\n" +
 			"             ├─ cacheable: true\n" +
+			"             ├─ colSet: (5,6)\n" +
+			"             ├─ tableId: 3\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: othertable\n" +
-			"                 └─ columns: [s2 i2]\n" +
+			"                 ├─ columns: [s2 i2]\n" +
+			"                 ├─ colSet: (3,4)\n" +
+			"                 └─ tableId: 2\n" +
 			"",
 	},
 	{
@@ -3657,9 +4247,13 @@ inner join pq on true
 			"     │   ├─ outerVisibility: false\n" +
 			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
+			"     │   ├─ colSet: (7,8)\n" +
+			"     │   ├─ tableId: 4\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: othertable\n" +
-			"     │       └─ columns: [s2 i2]\n" +
+			"     │       ├─ columns: [s2 i2]\n" +
+			"     │       ├─ colSet: (5,6)\n" +
+			"     │       └─ tableId: 3\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(othertable.i2:1!null)\n" +
 			"         ├─ right-key: TUPLE(mytable.i:0!null)\n" +
@@ -3668,9 +4262,13 @@ inner join pq on true
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ isLateral: false\n" +
 			"             ├─ cacheable: true\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i s]\n" +
+			"                 ├─ columns: [i s]\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 └─ tableId: 1\n" +
 			"",
 	},
 	{
@@ -3679,6 +4277,8 @@ inner join pq on true
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.s]\n" +
 			"     ├─ static: [{(NULL, ∞)}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +
@@ -3693,13 +4293,17 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.s]\n" +
 			"     │       ├─ static: [{(NULL, ∞)}]\n" +
+			"     │       ├─ colSet: (1,2)\n" +
+			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.s]\n" +
-			"             ├─ keys: [a.i]\n" +
+			"             ├─ keys: [a.i:0!null]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
 			"                 └─ columns: [s]\n" +
@@ -3717,6 +4321,8 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.s,mytable.i]\n" +
 			"     │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │       ├─ colSet: (3,4)\n" +
+			"     │       ├─ tableId: 2\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [s]\n" +
@@ -3727,6 +4333,8 @@ inner join pq on true
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
 			"                     └─ columns: [i s]\n" +
@@ -3746,13 +4354,17 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.s]\n" +
 			"     │           ├─ static: [{(NULL, 1)}, {(1, 2)}, {(2, 3)}, {(3, 4)}, {(4, ∞)}]\n" +
+			"     │           ├─ colSet: (1,2)\n" +
+			"     │           ├─ tableId: 1\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: mytable\n" +
 			"     │               └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.s]\n" +
-			"             ├─ keys: [a.i]\n" +
+			"             ├─ keys: [a.i:0!null]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
 			"                 └─ columns: [s]\n" +
@@ -3771,13 +4383,17 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
 			"     │           ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}, {[4, 4]}]\n" +
+			"     │           ├─ colSet: (1,2)\n" +
+			"     │           ├─ tableId: 1\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: mytable\n" +
 			"     │               └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.s]\n" +
-			"             ├─ keys: [a.i]\n" +
+			"             ├─ keys: [a.i:0!null]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
 			"                 └─ columns: [s]\n" +
@@ -3792,6 +4408,8 @@ inner join pq on true
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.i]\n" +
 			"     ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}, {[4, 4]}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +
@@ -3806,6 +4424,8 @@ inner join pq on true
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.i]\n" +
 			"     ├─ static: [{[1, 1]}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +
@@ -3820,6 +4440,8 @@ inner join pq on true
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.i]\n" +
 			"     ├─ static: [{[2, 2]}, {[3, 3]}, {[4, 4]}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +
@@ -3830,6 +4452,8 @@ inner join pq on true
 		ExpectedPlan: "IndexedTableAccess(mytable)\n" +
 			" ├─ index: [mytable.i]\n" +
 			" ├─ static: [{[3, 3]}]\n" +
+			" ├─ colSet: (1,2)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
@@ -3986,6 +4610,8 @@ inner join pq on true
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.s]\n" +
 			"     ├─ static: [{[first row, first row]}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +
@@ -4000,6 +4626,8 @@ inner join pq on true
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.s]\n" +
 			"     ├─ static: [{[FIRST ROW, FIRST ROW]}, {[second row, second row]}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +
@@ -4032,6 +4660,8 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │       ├─ colSet: (3,4)\n" +
+			"     │       ├─ tableId: 2\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i]\n" +
@@ -4039,6 +4669,8 @@ inner join pq on true
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
 			"                 └─ columns: [i s]\n" +
@@ -4065,13 +4697,17 @@ inner join pq on true
 			"         └─ Concat\n" +
 			"             ├─ IndexedTableAccess(mytable)\n" +
 			"             │   ├─ index: [mytable.i]\n" +
-			"             │   ├─ keys: [1]\n" +
+			"             │   ├─ keys: [1 (tinyint)]\n" +
+			"             │   ├─ colSet: (1,2)\n" +
+			"             │   ├─ tableId: 1\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: mytable\n" +
 			"             │       └─ columns: [i s]\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.s,mytable.i]\n" +
-			"                 ├─ keys: [b.i]\n" +
+			"                 ├─ keys: [b.i:0!null]\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
 			"                     └─ columns: [i s]\n" +
@@ -4099,7 +4735,9 @@ inner join pq on true
 			"     └─ TableAlias(b)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
-			"             └─ columns: [i s]\n" +
+			"             ├─ columns: [i s]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             └─ tableId: 2\n" +
 			"",
 	},
 	{
@@ -4120,7 +4758,9 @@ inner join pq on true
 			"     └─ TableAlias(b)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
-			"             └─ columns: [i s]\n" +
+			"             ├─ columns: [i s]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             └─ tableId: 2\n" +
 			"",
 	},
 	{
@@ -4139,7 +4779,9 @@ inner join pq on true
 			"     └─ TableAlias(b)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
-			"             └─ columns: [i]\n" +
+			"             ├─ columns: [i]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             └─ tableId: 2\n" +
 			"",
 	},
 	{
@@ -4160,7 +4802,9 @@ inner join pq on true
 			"         └─ TableAlias(a)\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i s]\n" +
+			"                 ├─ columns: [i s]\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 └─ tableId: 1\n" +
 			"",
 	},
 	{
@@ -4182,6 +4826,8 @@ inner join pq on true
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ static: [{[2, 2]}, {[7, 7]}, {[432, 432]}]\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
 			"                     └─ columns: [i s]\n" +
@@ -4211,6 +4857,8 @@ inner join pq on true
 			"     │   │   │   └─ IndexedTableAccess(mytable)\n" +
 			"     │   │   │       ├─ index: [mytable.i]\n" +
 			"     │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   │   │       ├─ colSet: (3,4)\n" +
+			"     │   │   │       ├─ tableId: 2\n" +
 			"     │   │   │       └─ Table\n" +
 			"     │   │   │           ├─ name: mytable\n" +
 			"     │   │   │           └─ columns: [i]\n" +
@@ -4218,13 +4866,17 @@ inner join pq on true
 			"     │   │       └─ IndexedTableAccess(mytable)\n" +
 			"     │   │           ├─ index: [mytable.i]\n" +
 			"     │   │           ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   │           ├─ colSet: (1,2)\n" +
+			"     │   │           ├─ tableId: 1\n" +
 			"     │   │           └─ Table\n" +
 			"     │   │               ├─ name: mytable\n" +
 			"     │   │               └─ columns: [i s]\n" +
 			"     │   └─ TableAlias(d)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ keys: [a.i]\n" +
+			"     │           ├─ keys: [a.i:1!null]\n" +
+			"     │           ├─ colSet: (7,8)\n" +
+			"     │           ├─ tableId: 4\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: mytable\n" +
 			"     │               └─ columns: [i]\n" +
@@ -4235,7 +4887,9 @@ inner join pq on true
 			"         └─ TableAlias(c)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ keys: [b.i]\n" +
+			"                 ├─ keys: [b.i:0!null]\n" +
+			"                 ├─ colSet: (5,6)\n" +
+			"                 ├─ tableId: 3\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
 			"                     └─ columns: [i]\n" +
@@ -4267,27 +4921,35 @@ inner join pq on true
 			"     │   │       └─ Concat\n" +
 			"     │   │           ├─ IndexedTableAccess(mytable)\n" +
 			"     │   │           │   ├─ index: [mytable.i]\n" +
-			"     │   │           │   ├─ keys: [2]\n" +
+			"     │   │           │   ├─ keys: [2 (tinyint)]\n" +
+			"     │   │           │   ├─ colSet: (5,6)\n" +
+			"     │   │           │   ├─ tableId: 3\n" +
 			"     │   │           │   └─ Table\n" +
 			"     │   │           │       ├─ name: mytable\n" +
 			"     │   │           │       └─ columns: [i]\n" +
 			"     │   │           └─ IndexedTableAccess(mytable)\n" +
 			"     │   │               ├─ index: [mytable.i]\n" +
-			"     │   │               ├─ keys: [d.s]\n" +
+			"     │   │               ├─ keys: [d.s:0!null]\n" +
+			"     │   │               ├─ colSet: (5,6)\n" +
+			"     │   │               ├─ tableId: 3\n" +
 			"     │   │               └─ Table\n" +
 			"     │   │                   ├─ name: mytable\n" +
 			"     │   │                   └─ columns: [i]\n" +
 			"     │   └─ TableAlias(a)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ keys: [c.i]\n" +
+			"     │           ├─ keys: [c.i:1!null]\n" +
+			"     │           ├─ colSet: (1,2)\n" +
+			"     │           ├─ tableId: 1\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: mytable\n" +
 			"     │               └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
-			"             ├─ keys: [a.i]\n" +
+			"             ├─ keys: [a.i:2!null]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
 			"                 └─ columns: [i]\n" +
@@ -4318,6 +4980,8 @@ inner join pq on true
 			"             │   │   └─ IndexedTableAccess(mytable)\n" +
 			"             │   │       ├─ index: [mytable.i]\n" +
 			"             │   │       ├─ static: [{[NULL, ∞)}]\n" +
+			"             │   │       ├─ colSet: (5,6)\n" +
+			"             │   │       ├─ tableId: 3\n" +
 			"             │   │       └─ Table\n" +
 			"             │   │           ├─ name: mytable\n" +
 			"             │   │           └─ columns: [i]\n" +
@@ -4325,13 +4989,17 @@ inner join pq on true
 			"             │       └─ IndexedTableAccess(mytable)\n" +
 			"             │           ├─ index: [mytable.i]\n" +
 			"             │           ├─ static: [{[NULL, ∞)}]\n" +
+			"             │           ├─ colSet: (1,2)\n" +
+			"             │           ├─ tableId: 1\n" +
 			"             │           └─ Table\n" +
 			"             │               ├─ name: mytable\n" +
 			"             │               └─ columns: [i s]\n" +
 			"             └─ TableAlias(b)\n" +
 			"                 └─ IndexedTableAccess(mytable)\n" +
 			"                     ├─ index: [mytable.i]\n" +
-			"                     ├─ keys: [a.i]\n" +
+			"                     ├─ keys: [a.i:1!null]\n" +
+			"                     ├─ colSet: (3,4)\n" +
+			"                     ├─ tableId: 2\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: mytable\n" +
 			"                         └─ columns: [i]\n" +
@@ -4349,6 +5017,8 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │       ├─ colSet: (3,4)\n" +
+			"     │       ├─ tableId: 2\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i]\n" +
@@ -4356,6 +5026,8 @@ inner join pq on true
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
 			"                 └─ columns: [i s]\n" +
@@ -4382,13 +5054,17 @@ inner join pq on true
 			"         └─ Concat\n" +
 			"             ├─ IndexedTableAccess(mytable)\n" +
 			"             │   ├─ index: [mytable.i]\n" +
-			"             │   ├─ keys: [b.s]\n" +
+			"             │   ├─ keys: [b.s:1!null]\n" +
+			"             │   ├─ colSet: (1,2)\n" +
+			"             │   ├─ tableId: 1\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: mytable\n" +
 			"             │       └─ columns: [i s]\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ keys: [b.i]\n" +
+			"                 ├─ keys: [b.i:0!null]\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
 			"                     └─ columns: [i s]\n" +
@@ -4416,7 +5092,9 @@ inner join pq on true
 			"     └─ TableAlias(b)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
-			"             └─ columns: [i s]\n" +
+			"             ├─ columns: [i s]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             └─ tableId: 2\n" +
 			"",
 	},
 	{
@@ -4437,7 +5115,9 @@ inner join pq on true
 			"     └─ TableAlias(b)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
-			"             └─ columns: [i s]\n" +
+			"             ├─ columns: [i s]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             └─ tableId: 2\n" +
 			"",
 	},
 	{
@@ -4456,7 +5136,9 @@ inner join pq on true
 			"     └─ TableAlias(b)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
-			"             └─ columns: [i]\n" +
+			"             ├─ columns: [i]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             └─ tableId: 2\n" +
 			"",
 	},
 	{
@@ -4477,7 +5159,9 @@ inner join pq on true
 			"         └─ TableAlias(a)\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i s]\n" +
+			"                 ├─ columns: [i s]\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 └─ tableId: 1\n" +
 			"",
 	},
 	{
@@ -4504,6 +5188,8 @@ inner join pq on true
 			"     │   │   │   └─ IndexedTableAccess(mytable)\n" +
 			"     │   │   │       ├─ index: [mytable.i]\n" +
 			"     │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   │   │       ├─ colSet: (3,4)\n" +
+			"     │   │   │       ├─ tableId: 2\n" +
 			"     │   │   │       └─ Table\n" +
 			"     │   │   │           ├─ name: mytable\n" +
 			"     │   │   │           └─ columns: [i]\n" +
@@ -4511,13 +5197,17 @@ inner join pq on true
 			"     │   │       └─ IndexedTableAccess(mytable)\n" +
 			"     │   │           ├─ index: [mytable.i]\n" +
 			"     │   │           ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   │           ├─ colSet: (1,2)\n" +
+			"     │   │           ├─ tableId: 1\n" +
 			"     │   │           └─ Table\n" +
 			"     │   │               ├─ name: mytable\n" +
 			"     │   │               └─ columns: [i s]\n" +
 			"     │   └─ TableAlias(d)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ keys: [a.i]\n" +
+			"     │           ├─ keys: [a.i:1!null]\n" +
+			"     │           ├─ colSet: (7,8)\n" +
+			"     │           ├─ tableId: 4\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: mytable\n" +
 			"     │               └─ columns: [i]\n" +
@@ -4528,7 +5218,9 @@ inner join pq on true
 			"         └─ TableAlias(c)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ keys: [b.i]\n" +
+			"                 ├─ keys: [b.i:0!null]\n" +
+			"                 ├─ colSet: (5,6)\n" +
+			"                 ├─ tableId: 3\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
 			"                     └─ columns: [i]\n" +
@@ -4560,27 +5252,35 @@ inner join pq on true
 			"     │   │       └─ Concat\n" +
 			"     │   │           ├─ IndexedTableAccess(mytable)\n" +
 			"     │   │           │   ├─ index: [mytable.i]\n" +
-			"     │   │           │   ├─ keys: [2]\n" +
+			"     │   │           │   ├─ keys: [2 (tinyint)]\n" +
+			"     │   │           │   ├─ colSet: (5,6)\n" +
+			"     │   │           │   ├─ tableId: 3\n" +
 			"     │   │           │   └─ Table\n" +
 			"     │   │           │       ├─ name: mytable\n" +
 			"     │   │           │       └─ columns: [i]\n" +
 			"     │   │           └─ IndexedTableAccess(mytable)\n" +
 			"     │   │               ├─ index: [mytable.i]\n" +
-			"     │   │               ├─ keys: [d.s]\n" +
+			"     │   │               ├─ keys: [d.s:0!null]\n" +
+			"     │   │               ├─ colSet: (5,6)\n" +
+			"     │   │               ├─ tableId: 3\n" +
 			"     │   │               └─ Table\n" +
 			"     │   │                   ├─ name: mytable\n" +
 			"     │   │                   └─ columns: [i]\n" +
 			"     │   └─ TableAlias(a)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ keys: [c.i]\n" +
+			"     │           ├─ keys: [c.i:1!null]\n" +
+			"     │           ├─ colSet: (1,2)\n" +
+			"     │           ├─ tableId: 1\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: mytable\n" +
 			"     │               └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
-			"             ├─ keys: [a.i]\n" +
+			"             ├─ keys: [a.i:2!null]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
 			"                 └─ columns: [i]\n" +
@@ -4608,6 +5308,8 @@ inner join pq on true
 			"             │   │   └─ IndexedTableAccess(mytable)\n" +
 			"             │   │       ├─ index: [mytable.s,mytable.i]\n" +
 			"             │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │   │       ├─ colSet: (5,6)\n" +
+			"             │   │       ├─ tableId: 3\n" +
 			"             │   │       └─ Table\n" +
 			"             │   │           ├─ name: mytable\n" +
 			"             │   │           └─ columns: [s]\n" +
@@ -4615,13 +5317,17 @@ inner join pq on true
 			"             │       └─ IndexedTableAccess(mytable)\n" +
 			"             │           ├─ index: [mytable.s]\n" +
 			"             │           ├─ static: [{[NULL, ∞)}]\n" +
+			"             │           ├─ colSet: (3,4)\n" +
+			"             │           ├─ tableId: 2\n" +
 			"             │           └─ Table\n" +
 			"             │               ├─ name: mytable\n" +
 			"             │               └─ columns: [i s]\n" +
 			"             └─ TableAlias(a)\n" +
 			"                 └─ IndexedTableAccess(mytable)\n" +
 			"                     ├─ index: [mytable.i]\n" +
-			"                     ├─ keys: [b.i]\n" +
+			"                     ├─ keys: [b.i:1!null]\n" +
+			"                     ├─ colSet: (1,2)\n" +
+			"                     ├─ tableId: 1\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: mytable\n" +
 			"                         └─ columns: [i s]\n" +
@@ -4636,13 +5342,17 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
 			"     │       ├─ static: [{[10, 20]}]\n" +
+			"     │       ├─ colSet: (1,2)\n" +
+			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.s]\n" +
-			"             ├─ keys: [a.i]\n" +
+			"             ├─ keys: [a.i:0!null]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
 			"                 └─ columns: [s]\n" +
@@ -4672,9 +5382,13 @@ inner join pq on true
 			"             │   ├─ outerVisibility: false\n" +
 			"             │   ├─ isLateral: false\n" +
 			"             │   ├─ cacheable: true\n" +
+			"             │   ├─ colSet: (7,8)\n" +
+			"             │   ├─ tableId: 4\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: mytable\n" +
-			"             │       └─ columns: [i s]\n" +
+			"             │       ├─ columns: [i s]\n" +
+			"             │       ├─ colSet: (5,6)\n" +
+			"             │       └─ tableId: 3\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: TUPLE(righttable.i:0!null, righttable.s:1!null)\n" +
 			"                 ├─ right-key: TUPLE(lefttable.i:0!null, lefttable.s:1!null)\n" +
@@ -4683,9 +5397,13 @@ inner join pq on true
 			"                     ├─ outerVisibility: false\n" +
 			"                     ├─ isLateral: false\n" +
 			"                     ├─ cacheable: true\n" +
+			"                     ├─ colSet: (3,4)\n" +
+			"                     ├─ tableId: 2\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: mytable\n" +
-			"                         └─ columns: [i s]\n" +
+			"                         ├─ columns: [i s]\n" +
+			"                         ├─ colSet: (1,2)\n" +
+			"                         └─ tableId: 1\n" +
 			"",
 	},
 	{
@@ -4701,9 +5419,13 @@ inner join pq on true
 			"     │   ├─ outerVisibility: false\n" +
 			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
+			"     │   ├─ colSet: (5,6)\n" +
+			"     │   ├─ tableId: 3\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: othertable\n" +
-			"     │       └─ columns: [s2 i2]\n" +
+			"     │       ├─ columns: [s2 i2]\n" +
+			"     │       ├─ colSet: (3,4)\n" +
+			"     │       └─ tableId: 2\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(othertable.i2:1!null)\n" +
 			"         ├─ right-key: TUPLE(mytable.i:0!null)\n" +
@@ -4724,9 +5446,13 @@ inner join pq on true
 			" │   ├─ outerVisibility: false\n" +
 			" │   ├─ isLateral: false\n" +
 			" │   ├─ cacheable: true\n" +
+			" │   ├─ colSet: (5,6)\n" +
+			" │   ├─ tableId: 3\n" +
 			" │   └─ Table\n" +
 			" │       ├─ name: othertable\n" +
-			" │       └─ columns: [s2 i2]\n" +
+			" │       ├─ columns: [s2 i2]\n" +
+			" │       ├─ colSet: (3,4)\n" +
+			" │       └─ tableId: 2\n" +
 			" └─ HashLookup\n" +
 			"     ├─ left-key: TUPLE(othertable.i2:1!null)\n" +
 			"     ├─ right-key: TUPLE(mytable.i:0!null)\n" +
@@ -4743,6 +5469,8 @@ inner join pq on true
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
+			" ├─ colSet: (3,4)\n" +
+			" ├─ tableId: 2\n" +
 			" └─ Filter\n" +
 			"     ├─ Eq\n" +
 			"     │   ├─ othertable.s2:0!null\n" +
@@ -4750,6 +5478,8 @@ inner join pq on true
 			"     └─ IndexedTableAccess(othertable)\n" +
 			"         ├─ index: [othertable.s2]\n" +
 			"         ├─ static: [{[a, a]}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: othertable\n" +
 			"             └─ columns: [s2 i2]\n" +
@@ -4762,16 +5492,22 @@ inner join pq on true
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
+			" ├─ colSet: (7,8)\n" +
+			" ├─ tableId: 4\n" +
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: othertable_two\n" +
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (5,6)\n" +
+			"     ├─ tableId: 3\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: othertable_one\n" +
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
+			"         ├─ colSet: (3,4)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Filter\n" +
 			"             ├─ Eq\n" +
 			"             │   ├─ othertable.s2:0!null\n" +
@@ -4779,6 +5515,8 @@ inner join pq on true
 			"             └─ IndexedTableAccess(othertable)\n" +
 			"                 ├─ index: [othertable.s2]\n" +
 			"                 ├─ static: [{[a, a]}]\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: othertable\n" +
 			"                     └─ columns: [s2 i2]\n" +
@@ -4795,6 +5533,8 @@ inner join pq on true
 			" │   ├─ outerVisibility: false\n" +
 			" │   ├─ isLateral: false\n" +
 			" │   ├─ cacheable: true\n" +
+			" │   ├─ colSet: (5,6)\n" +
+			" │   ├─ tableId: 3\n" +
 			" │   └─ Filter\n" +
 			" │       ├─ GreaterThan\n" +
 			" │       │   ├─ othertable.s2:0!null\n" +
@@ -4802,6 +5542,8 @@ inner join pq on true
 			" │       └─ IndexedTableAccess(othertable)\n" +
 			" │           ├─ index: [othertable.s2]\n" +
 			" │           ├─ static: [{(a, ∞)}]\n" +
+			" │           ├─ colSet: (3,4)\n" +
+			" │           ├─ tableId: 2\n" +
 			" │           └─ Table\n" +
 			" │               ├─ name: othertable\n" +
 			" │               └─ columns: [s2 i2]\n" +
@@ -4829,12 +5571,16 @@ inner join pq on true
 			"     │           └─ IndexedTableAccess(othertable)\n" +
 			"     │               ├─ index: [othertable.i2]\n" +
 			"     │               ├─ static: [{[NULL, ∞)}]\n" +
+			"     │               ├─ colSet: (3,4)\n" +
+			"     │               ├─ tableId: 2\n" +
 			"     │               └─ Table\n" +
 			"     │                   ├─ name: othertable\n" +
 			"     │                   └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i s]\n" +
@@ -4854,12 +5600,16 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(othertable)\n" +
 			"     │           ├─ index: [othertable.i2]\n" +
 			"     │           ├─ static: [{[NULL, ∞)}]\n" +
+			"     │           ├─ colSet: (3,4)\n" +
+			"     │           ├─ tableId: 2\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: othertable\n" +
 			"     │               └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i s]\n" +
@@ -4879,7 +5629,9 @@ inner join pq on true
 			" │           │   └─ othertable.i2:2!null\n" +
 			" │           └─ IndexedTableAccess(othertable)\n" +
 			" │               ├─ index: [othertable.i2]\n" +
-			" │               ├─ keys: [mytable.i]\n" +
+			" │               ├─ keys: [mytable.i:0!null]\n" +
+			" │               ├─ colSet: (3,4)\n" +
+			" │               ├─ tableId: 2\n" +
 			" │               └─ Table\n" +
 			" │                   ├─ name: othertable\n" +
 			" │                   └─ columns: [i2]\n" +
@@ -4896,13 +5648,17 @@ inner join pq on true
 			" │   └─ IndexedTableAccess(mytable)\n" +
 			" │       ├─ index: [mytable.i]\n" +
 			" │       ├─ static: [{(2, ∞)}]\n" +
+			" │       ├─ colSet: (1,2)\n" +
+			" │       ├─ tableId: 1\n" +
 			" │       └─ Table\n" +
 			" │           ├─ name: mytable\n" +
 			" │           └─ columns: [i s]\n" +
 			" └─ TableAlias(ot)\n" +
 			"     └─ IndexedTableAccess(othertable)\n" +
 			"         ├─ index: [othertable.i2]\n" +
-			"         ├─ keys: [mt.i]\n" +
+			"         ├─ keys: [mt.i:0!null]\n" +
+			"         ├─ colSet: (3,4)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: othertable\n" +
 			"             └─ columns: [s2 i2]\n" +
@@ -4922,7 +5678,9 @@ inner join pq on true
 			" └─ TableAlias(o)\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
-			"         ├─ keys: [mt.i]\n" +
+			"         ├─ keys: [mt.i:0!null]\n" +
+			"         ├─ colSet: (3-8)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: one_pk\n" +
 			"             └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -4939,7 +5697,9 @@ inner join pq on true
 			"     │       └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
-			"         ├─ keys: [(othertable.i2 - 1)]\n" +
+			"         ├─ keys: [(othertable.i2:1!null - 1 (tinyint))]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i]\n" +
@@ -4965,6 +5725,8 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(othertable)\n" +
 			"             │       ├─ index: [othertable.i2]\n" +
 			"             │       ├─ static: [{[NULL, ∞)}]\n" +
+			"             │       ├─ colSet: (5,6)\n" +
+			"             │       ├─ tableId: 3\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: othertable\n" +
 			"             │           └─ columns: [s2 i2]\n" +
@@ -4972,6 +5734,8 @@ inner join pq on true
 			"                 └─ IndexedTableAccess(mytable)\n" +
 			"                     ├─ index: [mytable.i]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
+			"                     ├─ colSet: (3,4)\n" +
+			"                     ├─ tableId: 2\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: mytable\n" +
 			"                         └─ columns: [i s]\n" +
@@ -4993,7 +5757,9 @@ inner join pq on true
 			"     └─ TableAlias(t2)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: reservedWordsTable\n" +
-			"             └─ columns: [timestamp]\n" +
+			"             ├─ columns: [timestamp]\n" +
+			"             ├─ colSet: (5-8)\n" +
+			"             └─ tableId: 2\n" +
 			"",
 	},
 	{
@@ -5007,12 +5773,16 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(two_pk)\n" +
 			"     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (7-13)\n" +
+			"     │   ├─ tableId: 2\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: two_pk\n" +
 			"     │       └─ columns: [pk1 pk2]\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (1-6)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: one_pk\n" +
 			"             └─ columns: [pk]\n" +
@@ -5056,6 +5826,8 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(two_pk)\n" +
 			"     │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │       ├─ colSet: (7-13)\n" +
+			"     │       ├─ tableId: 2\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: two_pk\n" +
 			"     │           └─ columns: [pk1 pk2]\n" +
@@ -5063,6 +5835,8 @@ inner join pq on true
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ colSet: (1-6)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk\n" +
 			"                 └─ columns: [pk]\n" +
@@ -5079,12 +5853,16 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(two_pk)\n" +
 			"     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (7-13)\n" +
+			"     │   ├─ tableId: 2\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: two_pk\n" +
 			"     │       └─ columns: [pk1 pk2]\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (1-6)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: one_pk\n" +
 			"             └─ columns: [pk]\n" +
@@ -5101,7 +5879,9 @@ inner join pq on true
 			"     │       └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ keys: [one_pk.pk one_pk.pk]\n" +
+			"         ├─ keys: [one_pk.pk:0!null one_pk.pk:0!null]\n" +
+			"         ├─ colSet: (7-13)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
 			"             └─ columns: [pk1 pk2]\n" +
@@ -5119,12 +5899,16 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   ├─ index: [one_pk.pk]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (1-6)\n" +
+			"     │   ├─ tableId: 1\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: one_pk\n" +
 			"     │       └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ colSet: (7-13)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
 			"             └─ columns: [pk1 pk2]\n" +
@@ -5141,7 +5925,9 @@ inner join pq on true
 			"     │       └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ keys: [one_pk.pk one_pk.pk]\n" +
+			"         ├─ keys: [one_pk.pk:0!null one_pk.pk:0!null]\n" +
+			"         ├─ colSet: (7-13)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
 			"             └─ columns: [pk1 pk2]\n" +
@@ -5158,12 +5944,16 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(two_pk)\n" +
 			"     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (7-13)\n" +
+			"     │   ├─ tableId: 2\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: two_pk\n" +
 			"     │       └─ columns: [pk1 pk2]\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (1-6)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: one_pk\n" +
 			"             └─ columns: [pk]\n" +
@@ -5176,9 +5966,13 @@ inner join pq on true
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
+			" ├─ colSet: (3,4)\n" +
+			" ├─ tableId: 2\n" +
 			" └─ IndexedTableAccess(othertable)\n" +
 			"     ├─ index: [othertable.i2]\n" +
 			"     ├─ static: [{[1, 1]}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: othertable\n" +
 			"         └─ columns: [s2 i2]\n" +
@@ -5191,9 +5985,13 @@ inner join pq on true
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
+			" ├─ colSet: (3,4)\n" +
+			" ├─ tableId: 2\n" +
 			" └─ IndexedTableAccess(othertable)\n" +
 			"     ├─ index: [othertable.i2]\n" +
 			"     ├─ static: [{[1, 1]}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: othertable\n" +
 			"         └─ columns: [s2 i2]\n" +
@@ -5204,6 +6002,8 @@ inner join pq on true
 		ExpectedPlan: "IndexedTableAccess(datetime_table)\n" +
 			" ├─ index: [datetime_table.date_col]\n" +
 			" ├─ static: [{[NULL, ∞)}]\n" +
+			" ├─ colSet: (1-5)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: datetime_table\n" +
 			"     └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5215,6 +6015,8 @@ inner join pq on true
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.date_col]\n" +
 			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     ├─ colSet: (1-5)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: datetime_table\n" +
 			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5238,7 +6040,9 @@ inner join pq on true
 			" │   └─ 2020-01-01 (longtext)\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.date_col]\n" +
-			"     ├─ static: [{[2020-01-01, 2020-01-01]}]\n" +
+			"     ├─ static: [{[2020-01-01 00:00:00 +0000 UTC, 2020-01-01 00:00:00 +0000 UTC]}]\n" +
+			"     ├─ colSet: (1-5)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: datetime_table\n" +
 			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5252,7 +6056,9 @@ inner join pq on true
 			" │   └─ 2020-01-01 (longtext)\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.date_col]\n" +
-			"     ├─ static: [{(2020-01-01, ∞)}]\n" +
+			"     ├─ static: [{(2020-01-01 00:00:00 +0000 UTC, ∞)}]\n" +
+			"     ├─ colSet: (1-5)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: datetime_table\n" +
 			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5266,7 +6072,9 @@ inner join pq on true
 			" │   └─ 2020-01-01 (longtext)\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.datetime_col]\n" +
-			"     ├─ static: [{[2020-01-01, 2020-01-01]}]\n" +
+			"     ├─ static: [{[2020-01-01 00:00:00 +0000 UTC, 2020-01-01 00:00:00 +0000 UTC]}]\n" +
+			"     ├─ colSet: (1-5)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: datetime_table\n" +
 			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5280,7 +6088,9 @@ inner join pq on true
 			" │   └─ 2020-01-01 (longtext)\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.datetime_col]\n" +
-			"     ├─ static: [{(2020-01-01, ∞)}]\n" +
+			"     ├─ static: [{(2020-01-01 00:00:00 +0000 UTC, ∞)}]\n" +
+			"     ├─ colSet: (1-5)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: datetime_table\n" +
 			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5294,7 +6104,9 @@ inner join pq on true
 			" │   └─ 2020-01-01 (longtext)\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.timestamp_col]\n" +
-			"     ├─ static: [{[2020-01-01, 2020-01-01]}]\n" +
+			"     ├─ static: [{[2020-01-01 00:00:00 +0000 UTC, 2020-01-01 00:00:00 +0000 UTC]}]\n" +
+			"     ├─ colSet: (1-5)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: datetime_table\n" +
 			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5308,7 +6120,9 @@ inner join pq on true
 			" │   └─ 2020-01-01 (longtext)\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
 			"     ├─ index: [datetime_table.timestamp_col]\n" +
-			"     ├─ static: [{(2020-01-01, ∞)}]\n" +
+			"     ├─ static: [{(2020-01-01 00:00:00 +0000 UTC, ∞)}]\n" +
+			"     ├─ colSet: (1-5)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: datetime_table\n" +
 			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5326,6 +6140,8 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(datetime_table)\n" +
 			"     │       ├─ index: [datetime_table.timestamp_col]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │       ├─ colSet: (6-10)\n" +
+			"     │       ├─ tableId: 2\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: datetime_table\n" +
 			"     │           └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5333,6 +6149,8 @@ inner join pq on true
 			"         └─ IndexedTableAccess(datetime_table)\n" +
 			"             ├─ index: [datetime_table.timestamp_col]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ colSet: (1-5)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: datetime_table\n" +
 			"                 └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5350,6 +6168,8 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(datetime_table)\n" +
 			"     │       ├─ index: [datetime_table.timestamp_col]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │       ├─ colSet: (6-10)\n" +
+			"     │       ├─ tableId: 2\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: datetime_table\n" +
 			"     │           └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5357,6 +6177,8 @@ inner join pq on true
 			"         └─ IndexedTableAccess(datetime_table)\n" +
 			"             ├─ index: [datetime_table.date_col]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ colSet: (1-5)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: datetime_table\n" +
 			"                 └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5374,6 +6196,8 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(datetime_table)\n" +
 			"     │       ├─ index: [datetime_table.timestamp_col]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │       ├─ colSet: (6-10)\n" +
+			"     │       ├─ tableId: 2\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: datetime_table\n" +
 			"     │           └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5381,6 +6205,8 @@ inner join pq on true
 			"         └─ IndexedTableAccess(datetime_table)\n" +
 			"             ├─ index: [datetime_table.datetime_col]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ colSet: (1-5)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: datetime_table\n" +
 			"                 └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5405,6 +6231,8 @@ inner join pq on true
 			"                 └─ IndexedTableAccess(datetime_table)\n" +
 			"                     ├─ index: [datetime_table.date_col]\n" +
 			"                     ├─ keys: [DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY))]\n" +
+			"                     ├─ colSet: (1-5)\n" +
+			"                     ├─ tableId: 1\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: datetime_table\n" +
 			"                         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5430,6 +6258,8 @@ inner join pq on true
 			"                     └─ IndexedTableAccess(datetime_table)\n" +
 			"                         ├─ index: [datetime_table.date_col]\n" +
 			"                         ├─ keys: [DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY))]\n" +
+			"                         ├─ colSet: (1-5)\n" +
+			"                         ├─ tableId: 1\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: datetime_table\n" +
 			"                             └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5455,6 +6285,8 @@ inner join pq on true
 			"                     └─ IndexedTableAccess(datetime_table)\n" +
 			"                         ├─ index: [datetime_table.date_col]\n" +
 			"                         ├─ keys: [DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY))]\n" +
+			"                         ├─ colSet: (1-5)\n" +
+			"                         ├─ tableId: 1\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: datetime_table\n" +
 			"                             └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
@@ -5490,19 +6322,25 @@ inner join pq on true
 			"     │   │   └─ IndexedTableAccess(two_pk)\n" +
 			"     │   │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   │       ├─ colSet: (14-20)\n" +
+			"     │   │       ├─ tableId: 3\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: two_pk\n" +
 			"     │   │           └─ columns: [pk1 pk2]\n" +
 			"     │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │       ├─ index: [one_pk.pk]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │       ├─ colSet: (1-6)\n" +
+			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: one_pk\n" +
 			"     │           └─ columns: [pk]\n" +
 			"     └─ TableAlias(tpk)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             ├─ keys: [one_pk.pk one_pk.pk]\n" +
+			"             ├─ keys: [one_pk.pk:2!null one_pk.pk:2!null]\n" +
+			"             ├─ colSet: (7-13)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
 			"                 └─ columns: [pk1 pk2]\n" +
@@ -5539,19 +6377,25 @@ inner join pq on true
 			"     │   │   └─ IndexedTableAccess(two_pk)\n" +
 			"     │   │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   │       ├─ colSet: (14-20)\n" +
+			"     │   │       ├─ tableId: 3\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: two_pk\n" +
 			"     │   │           └─ columns: [pk1 pk2]\n" +
 			"     │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │       ├─ index: [one_pk.pk]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │       ├─ colSet: (1-6)\n" +
+			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: one_pk\n" +
 			"     │           └─ columns: [pk]\n" +
 			"     └─ TableAlias(tpk)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             ├─ keys: [one_pk.pk one_pk.pk]\n" +
+			"             ├─ keys: [one_pk.pk:2!null one_pk.pk:2!null]\n" +
+			"             ├─ colSet: (7-13)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
 			"                 └─ columns: [pk1 pk2]\n" +
@@ -5573,19 +6417,25 @@ inner join pq on true
 			"     │   │   └─ IndexedTableAccess(two_pk)\n" +
 			"     │   │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   │       ├─ colSet: (7-13)\n" +
+			"     │   │       ├─ tableId: 2\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: two_pk\n" +
 			"     │   │           └─ columns: [pk1 pk2]\n" +
 			"     │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │       ├─ index: [one_pk.pk]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │       ├─ colSet: (1-6)\n" +
+			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: one_pk\n" +
 			"     │           └─ columns: [pk]\n" +
 			"     └─ TableAlias(tpk2)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             ├─ keys: [tpk.pk2 tpk.pk1]\n" +
+			"             ├─ keys: [tpk.pk2:1!null tpk.pk1:0!null]\n" +
+			"             ├─ colSet: (14-20)\n" +
+			"             ├─ tableId: 3\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
 			"                 └─ columns: [pk1 pk2]\n" +
@@ -5613,19 +6463,25 @@ inner join pq on true
 			"             │   │   └─ IndexedTableAccess(two_pk)\n" +
 			"             │   │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │   │       ├─ colSet: (7-13)\n" +
+			"             │   │       ├─ tableId: 2\n" +
 			"             │   │       └─ Table\n" +
 			"             │   │           ├─ name: two_pk\n" +
 			"             │   │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             │   └─ IndexedTableAccess(one_pk)\n" +
 			"             │       ├─ index: [one_pk.pk]\n" +
 			"             │       ├─ static: [{[NULL, ∞)}]\n" +
+			"             │       ├─ colSet: (1-6)\n" +
+			"             │       ├─ tableId: 1\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: one_pk\n" +
 			"             │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"             └─ TableAlias(tpk2)\n" +
 			"                 └─ IndexedTableAccess(two_pk)\n" +
 			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     ├─ keys: [(one_pk.pk - 1) one_pk.pk]\n" +
+			"                     ├─ keys: [(one_pk.pk:7!null - 1 (tinyint)) one_pk.pk:7!null]\n" +
+			"                     ├─ colSet: (14-20)\n" +
+			"                     ├─ tableId: 3\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: two_pk\n" +
 			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -5648,6 +6504,8 @@ inner join pq on true
 			"     │   ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   │   ├─ index: [one_pk.pk]\n" +
 			"     │   │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   │   ├─ colSet: (1-6)\n" +
+			"     │   │   ├─ tableId: 1\n" +
 			"     │   │   └─ Table\n" +
 			"     │   │       ├─ name: one_pk\n" +
 			"     │   │       └─ columns: [pk]\n" +
@@ -5655,13 +6513,17 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(two_pk)\n" +
 			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           ├─ colSet: (7-13)\n" +
+			"     │           ├─ tableId: 2\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: two_pk\n" +
 			"     │               └─ columns: [pk1 pk2]\n" +
 			"     └─ TableAlias(tpk2)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             ├─ keys: [tpk.pk2 tpk.pk1]\n" +
+			"             ├─ keys: [tpk.pk2:2!null tpk.pk1:1!null]\n" +
+			"             ├─ colSet: (14-20)\n" +
+			"             ├─ tableId: 3\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
 			"                 └─ columns: [pk1 pk2]\n" +
@@ -5684,6 +6546,8 @@ inner join pq on true
 			"     │   ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   │   ├─ index: [one_pk.pk]\n" +
 			"     │   │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   │   ├─ colSet: (1-6)\n" +
+			"     │   │   ├─ tableId: 1\n" +
 			"     │   │   └─ Table\n" +
 			"     │   │       ├─ name: one_pk\n" +
 			"     │   │       └─ columns: [pk]\n" +
@@ -5691,13 +6555,17 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(two_pk)\n" +
 			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           ├─ colSet: (7-13)\n" +
+			"     │           ├─ tableId: 2\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: two_pk\n" +
 			"     │               └─ columns: [pk1 pk2]\n" +
 			"     └─ TableAlias(tpk2)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             ├─ keys: [tpk.pk2 tpk.pk1]\n" +
+			"             ├─ keys: [tpk.pk2:2!null tpk.pk1:1!null]\n" +
+			"             ├─ colSet: (14-20)\n" +
+			"             ├─ tableId: 3\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
 			"                 └─ columns: [pk1 pk2]\n" +
@@ -5718,19 +6586,25 @@ inner join pq on true
 			"     │   │   └─ IndexedTableAccess(two_pk)\n" +
 			"     │   │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   │       ├─ colSet: (7-13)\n" +
+			"     │   │       ├─ tableId: 2\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: two_pk\n" +
 			"     │   │           └─ columns: [pk1 pk2]\n" +
 			"     │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │       ├─ index: [one_pk.pk]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │       ├─ colSet: (1-6)\n" +
+			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: one_pk\n" +
 			"     │           └─ columns: [pk]\n" +
 			"     └─ TableAlias(tpk2)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             ├─ keys: [tpk.pk2 tpk.pk1]\n" +
+			"             ├─ keys: [tpk.pk2:1!null tpk.pk1:0!null]\n" +
+			"             ├─ colSet: (14-20)\n" +
+			"             ├─ tableId: 3\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
 			"                 └─ columns: [pk1 pk2]\n" +
@@ -5766,12 +6640,16 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(two_pk)\n" +
 			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │       ├─ colSet: (7-13)\n" +
+			"             │       ├─ tableId: 2\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: two_pk\n" +
 			"             │           └─ columns: [pk1 pk2]\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 ├─ colSet: (1-6)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: one_pk\n" +
 			"                     └─ columns: [pk]\n" +
@@ -5786,7 +6664,9 @@ inner join pq on true
 			" │       └─ columns: [i]\n" +
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     ├─ keys: [(mytable.i - 1) (mytable.i - 2)]\n" +
+			"     ├─ keys: [(mytable.i:0!null - 1 (tinyint)) (mytable.i:0!null - 2 (tinyint))]\n" +
+			"     ├─ colSet: (3-9)\n" +
+			"     ├─ tableId: 2\n" +
 			"     └─ Table\n" +
 			"         ├─ name: two_pk\n" +
 			"         └─ columns: [pk1 pk2]\n" +
@@ -5803,12 +6683,16 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   ├─ index: [one_pk.pk]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (1-6)\n" +
+			"     │   ├─ tableId: 1\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: one_pk\n" +
 			"     │       └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ colSet: (7-13)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
 			"             └─ columns: [pk1 pk2]\n" +
@@ -5825,12 +6709,16 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   ├─ index: [one_pk.pk]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (1-6)\n" +
+			"     │   ├─ tableId: 1\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: one_pk\n" +
 			"     │       └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(niltable)\n" +
 			"         ├─ index: [niltable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (7-10)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: niltable\n" +
 			"             └─ columns: [i f]\n" +
@@ -5847,12 +6735,16 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(niltable)\n" +
 			"     │   ├─ index: [niltable.i]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (7-10)\n" +
+			"     │   ├─ tableId: 2\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: niltable\n" +
 			"     │       └─ columns: [i f]\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (1-6)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: one_pk\n" +
 			"             └─ columns: [pk]\n" +
@@ -5884,12 +6776,16 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(niltable)\n" +
 			"             │       ├─ index: [niltable.i]\n" +
 			"             │       ├─ static: [{[NULL, ∞)}]\n" +
+			"             │       ├─ colSet: (7-10)\n" +
+			"             │       ├─ tableId: 2\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: niltable\n" +
 			"             │           └─ columns: [i]\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 ├─ colSet: (1-6)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: one_pk\n" +
 			"                     └─ columns: [pk]\n" +
@@ -5908,12 +6804,16 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   ├─ index: [one_pk.pk]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (1-6)\n" +
+			"     │   ├─ tableId: 1\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: one_pk\n" +
 			"     │       └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(niltable)\n" +
 			"         ├─ index: [niltable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (7-10)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: niltable\n" +
 			"             └─ columns: [i f]\n" +
@@ -5933,12 +6833,16 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(niltable)\n" +
 			"     │   ├─ index: [niltable.i]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (7-10)\n" +
+			"     │   ├─ tableId: 2\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: niltable\n" +
 			"     │       └─ columns: [i f]\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (1-6)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: one_pk\n" +
 			"             └─ columns: [pk]\n" +
@@ -5958,12 +6862,16 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(one_pk)\n" +
 			"         │   ├─ index: [one_pk.pk]\n" +
 			"         │   ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   ├─ colSet: (1-6)\n" +
+			"         │   ├─ tableId: 1\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: one_pk\n" +
 			"         │       └─ columns: [pk]\n" +
 			"         └─ IndexedTableAccess(niltable)\n" +
 			"             ├─ index: [niltable.i]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ colSet: (7-10)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: niltable\n" +
 			"                 └─ columns: [i f]\n" +
@@ -5984,12 +6892,16 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(one_pk)\n" +
 			"         │   ├─ index: [one_pk.pk]\n" +
 			"         │   ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   ├─ colSet: (1-6)\n" +
+			"         │   ├─ tableId: 1\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: one_pk\n" +
 			"         │       └─ columns: [pk]\n" +
 			"         └─ IndexedTableAccess(niltable)\n" +
 			"             ├─ index: [niltable.i]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ colSet: (7-10)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: niltable\n" +
 			"                 └─ columns: [i i2 f]\n" +
@@ -6010,12 +6922,16 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(one_pk)\n" +
 			"         │   ├─ index: [one_pk.pk]\n" +
 			"         │   ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   ├─ colSet: (1-6)\n" +
+			"         │   ├─ tableId: 1\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: one_pk\n" +
 			"         │       └─ columns: [pk]\n" +
 			"         └─ IndexedTableAccess(niltable)\n" +
 			"             ├─ index: [niltable.i]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ colSet: (7-10)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: niltable\n" +
 			"                 └─ columns: [i f]\n" +
@@ -6036,12 +6952,16 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │       ├─ index: [one_pk.pk]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │       ├─ colSet: (1-6)\n" +
+			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: one_pk\n" +
 			"     │           └─ columns: [pk c1]\n" +
 			"     └─ IndexedTableAccess(niltable)\n" +
 			"         ├─ index: [niltable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (7-10)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: niltable\n" +
 			"             └─ columns: [i f]\n" +
@@ -6061,12 +6981,16 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(niltable)\n" +
 			"     │       ├─ index: [niltable.i]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │       ├─ colSet: (7-10)\n" +
+			"     │       ├─ tableId: 2\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: niltable\n" +
 			"     │           └─ columns: [i f]\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (1-6)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: one_pk\n" +
 			"             └─ columns: [pk]\n" +
@@ -6087,12 +7011,16 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │       ├─ index: [one_pk.pk]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │       ├─ colSet: (1-6)\n" +
+			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: one_pk\n" +
 			"     │           └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(niltable)\n" +
 			"         ├─ index: [niltable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (7-10)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: niltable\n" +
 			"             └─ columns: [i f]\n" +
@@ -6114,7 +7042,9 @@ inner join pq on true
 			"             └─ TableAlias(l)\n" +
 			"                 └─ IndexedTableAccess(niltable)\n" +
 			"                     ├─ index: [niltable.i2]\n" +
-			"                     ├─ keys: [r.i2]\n" +
+			"                     ├─ keys: [r.i2:1]\n" +
+			"                     ├─ colSet: (1-4)\n" +
+			"                     ├─ tableId: 1\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: niltable\n" +
 			"                         └─ columns: [i i2 b f]\n" +
@@ -6135,12 +7065,16 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(niltable)\n" +
 			"         │   ├─ index: [niltable.i]\n" +
 			"         │   ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   ├─ colSet: (7-10)\n" +
+			"         │   ├─ tableId: 2\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: niltable\n" +
 			"         │       └─ columns: [i f]\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ colSet: (1-6)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk\n" +
 			"                 └─ columns: [pk]\n" +
@@ -6157,12 +7091,16 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(two_pk)\n" +
 			"     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (7-13)\n" +
+			"     │   ├─ tableId: 2\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: two_pk\n" +
 			"     │       └─ columns: [pk1 pk2]\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (1-6)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: one_pk\n" +
 			"             └─ columns: [pk]\n" +
@@ -6179,12 +7117,16 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(two_pk)\n" +
 			"     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (7-13)\n" +
+			"     │   ├─ tableId: 2\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: two_pk\n" +
 			"     │       └─ columns: [pk1 pk2]\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (1-6)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: one_pk\n" +
 			"             └─ columns: [pk]\n" +
@@ -6205,6 +7147,8 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(two_pk)\n" +
 			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │       ├─ colSet: (8-14)\n" +
+			"             │       ├─ tableId: 2\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: two_pk\n" +
 			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -6212,6 +7156,8 @@ inner join pq on true
 			"                 └─ IndexedTableAccess(two_pk)\n" +
 			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"                     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                     ├─ colSet: (1-7)\n" +
+			"                     ├─ tableId: 1\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: two_pk\n" +
 			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -6233,7 +7179,9 @@ inner join pq on true
 			"             └─ TableAlias(a)\n" +
 			"                 └─ IndexedTableAccess(two_pk)\n" +
 			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     ├─ keys: [b.pk2 b.pk1]\n" +
+			"                     ├─ keys: [b.pk2:1!null b.pk1:0!null]\n" +
+			"                     ├─ colSet: (1-7)\n" +
+			"                     ├─ tableId: 1\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: two_pk\n" +
 			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -6254,6 +7202,8 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(two_pk)\n" +
 			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │       ├─ colSet: (8-14)\n" +
+			"             │       ├─ tableId: 2\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: two_pk\n" +
 			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -6261,6 +7211,8 @@ inner join pq on true
 			"                 └─ IndexedTableAccess(two_pk)\n" +
 			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"                     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                     ├─ colSet: (1-7)\n" +
+			"                     ├─ tableId: 1\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: two_pk\n" +
 			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -6281,6 +7233,8 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(two_pk)\n" +
 			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │       ├─ colSet: (8-14)\n" +
+			"             │       ├─ tableId: 2\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: two_pk\n" +
 			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -6288,6 +7242,8 @@ inner join pq on true
 			"                 └─ IndexedTableAccess(two_pk)\n" +
 			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"                     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                     ├─ colSet: (1-7)\n" +
+			"                     ├─ tableId: 1\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: two_pk\n" +
 			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -6308,6 +7264,8 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(two_pk)\n" +
 			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │       ├─ colSet: (8-14)\n" +
+			"             │       ├─ tableId: 2\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: two_pk\n" +
 			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -6315,6 +7273,8 @@ inner join pq on true
 			"                 └─ IndexedTableAccess(two_pk)\n" +
 			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"                     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                     ├─ colSet: (1-7)\n" +
+			"                     ├─ tableId: 1\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: two_pk\n" +
 			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -6336,7 +7296,9 @@ inner join pq on true
 			"             └─ TableAlias(a)\n" +
 			"                 └─ IndexedTableAccess(two_pk)\n" +
 			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     ├─ keys: [b.pk2 b.pk1]\n" +
+			"                     ├─ keys: [b.pk2:1!null b.pk1:0!null]\n" +
+			"                     ├─ colSet: (1-7)\n" +
+			"                     ├─ tableId: 1\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: two_pk\n" +
 			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -6356,12 +7318,16 @@ inner join pq on true
 			"             ├─ IndexedTableAccess(two_pk)\n" +
 			"             │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │   ├─ colSet: (7-13)\n" +
+			"             │   ├─ tableId: 2\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: two_pk\n" +
 			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 ├─ colSet: (1-6)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: one_pk\n" +
 			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -6382,6 +7348,8 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(two_pk)\n" +
 			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │       ├─ colSet: (7-13)\n" +
+			"             │       ├─ tableId: 2\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: two_pk\n" +
 			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -6389,6 +7357,8 @@ inner join pq on true
 			"                 └─ IndexedTableAccess(one_pk)\n" +
 			"                     ├─ index: [one_pk.pk]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
+			"                     ├─ colSet: (1-6)\n" +
+			"                     ├─ tableId: 1\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: one_pk\n" +
 			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -6409,6 +7379,8 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(two_pk)\n" +
 			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │       ├─ colSet: (7-13)\n" +
+			"             │       ├─ tableId: 2\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: two_pk\n" +
 			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -6416,6 +7388,8 @@ inner join pq on true
 			"                 └─ IndexedTableAccess(one_pk)\n" +
 			"                     ├─ index: [one_pk.pk]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
+			"                     ├─ colSet: (1-6)\n" +
+			"                     ├─ tableId: 1\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: one_pk\n" +
 			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -6436,6 +7410,8 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(two_pk)\n" +
 			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │       ├─ colSet: (7-13)\n" +
+			"             │       ├─ tableId: 2\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: two_pk\n" +
 			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -6443,6 +7419,8 @@ inner join pq on true
 			"                 └─ IndexedTableAccess(one_pk)\n" +
 			"                     ├─ index: [one_pk.pk]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
+			"                     ├─ colSet: (1-6)\n" +
+			"                     ├─ tableId: 1\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: one_pk\n" +
 			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -6462,12 +7440,16 @@ inner join pq on true
 			"             ├─ IndexedTableAccess(two_pk)\n" +
 			"             │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │   ├─ colSet: (7-13)\n" +
+			"             │   ├─ tableId: 2\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: two_pk\n" +
 			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 ├─ colSet: (1-6)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: one_pk\n" +
 			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -6482,6 +7464,8 @@ inner join pq on true
 			" └─ IndexedTableAccess(niltable)\n" +
 			"     ├─ index: [niltable.i2]\n" +
 			"     ├─ static: [{(∞, ∞)}]\n" +
+			"     ├─ colSet: (1-4)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: niltable\n" +
 			"         └─ columns: [i i2 b f]\n" +
@@ -6497,6 +7481,8 @@ inner join pq on true
 			" └─ IndexedTableAccess(niltable)\n" +
 			"     ├─ index: [niltable.i2]\n" +
 			"     ├─ static: [{(∞, ∞)}]\n" +
+			"     ├─ colSet: (1-4)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: niltable\n" +
 			"         └─ columns: [i i2 b f]\n" +
@@ -6511,6 +7497,8 @@ inner join pq on true
 			" └─ IndexedTableAccess(niltable)\n" +
 			"     ├─ index: [niltable.i2]\n" +
 			"     ├─ static: [{(∞, ∞)}]\n" +
+			"     ├─ colSet: (1-4)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: niltable\n" +
 			"         └─ columns: [i i2 b f]\n" +
@@ -6523,6 +7511,8 @@ inner join pq on true
 			" └─ IndexedTableAccess(niltable)\n" +
 			"     ├─ index: [niltable.i2]\n" +
 			"     ├─ static: [{[NULL, NULL]}]\n" +
+			"     ├─ colSet: (1-4)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: niltable\n" +
 			"         └─ columns: [i i2 b f]\n" +
@@ -6542,12 +7532,16 @@ inner join pq on true
 			"             ├─ IndexedTableAccess(one_pk)\n" +
 			"             │   ├─ index: [one_pk.pk]\n" +
 			"             │   ├─ static: [{[NULL, ∞)}]\n" +
+			"             │   ├─ colSet: (1-6)\n" +
+			"             │   ├─ tableId: 1\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: one_pk\n" +
 			"             │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"             └─ IndexedTableAccess(niltable)\n" +
 			"                 ├─ index: [niltable.i]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 ├─ colSet: (7-10)\n" +
+			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: niltable\n" +
 			"                     └─ columns: [i i2 b f]\n" +
@@ -6570,12 +7564,16 @@ inner join pq on true
 			"                 ├─ IndexedTableAccess(one_pk)\n" +
 			"                 │   ├─ index: [one_pk.pk]\n" +
 			"                 │   ├─ static: [{[NULL, ∞)}]\n" +
+			"                 │   ├─ colSet: (1-6)\n" +
+			"                 │   ├─ tableId: 1\n" +
 			"                 │   └─ Table\n" +
 			"                 │       ├─ name: one_pk\n" +
 			"                 │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"                 └─ IndexedTableAccess(niltable)\n" +
 			"                     ├─ index: [niltable.i]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
+			"                     ├─ colSet: (7-10)\n" +
+			"                     ├─ tableId: 2\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: niltable\n" +
 			"                         └─ columns: [i i2 b f]\n" +
@@ -6599,12 +7597,16 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(one_pk)\n" +
 			"             │       ├─ index: [one_pk.pk]\n" +
 			"             │       ├─ static: [{[NULL, ∞)}]\n" +
+			"             │       ├─ colSet: (1-6)\n" +
+			"             │       ├─ tableId: 1\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: one_pk\n" +
 			"             │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"             └─ IndexedTableAccess(niltable)\n" +
 			"                 ├─ index: [niltable.i]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 ├─ colSet: (7-10)\n" +
+			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: niltable\n" +
 			"                     └─ columns: [i i2 b f]\n" +
@@ -6624,12 +7626,16 @@ inner join pq on true
 			"             ├─ IndexedTableAccess(niltable)\n" +
 			"             │   ├─ index: [niltable.i]\n" +
 			"             │   ├─ static: [{[NULL, ∞)}]\n" +
+			"             │   ├─ colSet: (7-10)\n" +
+			"             │   ├─ tableId: 2\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: niltable\n" +
 			"             │       └─ columns: [i i2 b f]\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 ├─ colSet: (1-6)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: one_pk\n" +
 			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -6652,12 +7658,16 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(niltable)\n" +
 			"             │       ├─ index: [niltable.i]\n" +
 			"             │       ├─ static: [{[NULL, ∞)}]\n" +
+			"             │       ├─ colSet: (7-10)\n" +
+			"             │       ├─ tableId: 2\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: niltable\n" +
 			"             │           └─ columns: [i i2 b f]\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 ├─ colSet: (1-6)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: one_pk\n" +
 			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -6681,12 +7691,16 @@ inner join pq on true
 			"                 ├─ IndexedTableAccess(niltable)\n" +
 			"                 │   ├─ index: [niltable.i]\n" +
 			"                 │   ├─ static: [{[NULL, ∞)}]\n" +
+			"                 │   ├─ colSet: (7-10)\n" +
+			"                 │   ├─ tableId: 2\n" +
 			"                 │   └─ Table\n" +
 			"                 │       ├─ name: niltable\n" +
 			"                 │       └─ columns: [i i2 b f]\n" +
 			"                 └─ IndexedTableAccess(one_pk)\n" +
 			"                     ├─ index: [one_pk.pk]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
+			"                     ├─ colSet: (1-6)\n" +
+			"                     ├─ tableId: 1\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: one_pk\n" +
 			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -6709,12 +7723,16 @@ inner join pq on true
 			"             ├─ IndexedTableAccess(niltable)\n" +
 			"             │   ├─ index: [niltable.i]\n" +
 			"             │   ├─ static: [{[NULL, ∞)}]\n" +
+			"             │   ├─ colSet: (7-10)\n" +
+			"             │   ├─ tableId: 2\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: niltable\n" +
 			"             │       └─ columns: [i i2 b f]\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 ├─ colSet: (1-6)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: one_pk\n" +
 			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -6734,12 +7752,16 @@ inner join pq on true
 			"             ├─ IndexedTableAccess(two_pk)\n" +
 			"             │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │   ├─ colSet: (7-13)\n" +
+			"             │   ├─ tableId: 2\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: two_pk\n" +
 			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 ├─ colSet: (1-6)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: one_pk\n" +
 			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -6803,12 +7825,16 @@ inner join pq on true
 			"             ├─ IndexedTableAccess(one_pk)\n" +
 			"             │   ├─ index: [one_pk.pk]\n" +
 			"             │   ├─ static: [{[NULL, ∞)}]\n" +
+			"             │   ├─ colSet: (1-6)\n" +
+			"             │   ├─ tableId: 1\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: one_pk\n" +
 			"             │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"             └─ IndexedTableAccess(two_pk)\n" +
 			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"                 ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 ├─ colSet: (7-13)\n" +
+			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: two_pk\n" +
 			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -6828,12 +7854,16 @@ inner join pq on true
 			"             ├─ IndexedTableAccess(one_pk)\n" +
 			"             │   ├─ index: [one_pk.pk]\n" +
 			"             │   ├─ static: [{[NULL, ∞)}]\n" +
+			"             │   ├─ colSet: (1-6)\n" +
+			"             │   ├─ tableId: 1\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: one_pk\n" +
 			"             │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"             └─ IndexedTableAccess(two_pk)\n" +
 			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"                 ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 ├─ colSet: (7-13)\n" +
+			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: two_pk\n" +
 			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -6853,12 +7883,16 @@ inner join pq on true
 			"             ├─ IndexedTableAccess(two_pk)\n" +
 			"             │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │   ├─ colSet: (7-13)\n" +
+			"             │   ├─ tableId: 2\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: two_pk\n" +
 			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 ├─ colSet: (1-6)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: one_pk\n" +
 			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -6879,6 +7913,8 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(two_pk)\n" +
 			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │       ├─ colSet: (7-13)\n" +
+			"             │       ├─ tableId: 2\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: two_pk\n" +
 			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -6886,6 +7922,8 @@ inner join pq on true
 			"                 └─ IndexedTableAccess(one_pk)\n" +
 			"                     ├─ index: [one_pk.pk]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
+			"                     ├─ colSet: (1-6)\n" +
+			"                     ├─ tableId: 1\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: one_pk\n" +
 			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -6906,6 +7944,8 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(two_pk)\n" +
 			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │       ├─ colSet: (7-13)\n" +
+			"             │       ├─ tableId: 2\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: two_pk\n" +
 			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -6913,6 +7953,8 @@ inner join pq on true
 			"                 └─ IndexedTableAccess(one_pk)\n" +
 			"                     ├─ index: [one_pk.pk]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
+			"                     ├─ colSet: (1-6)\n" +
+			"                     ├─ tableId: 1\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: one_pk\n" +
 			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -7015,6 +8057,8 @@ inner join pq on true
 			"                     └─ IndexedTableAccess(one_pk)\n" +
 			"                         ├─ index: [one_pk.pk]\n" +
 			"                         ├─ static: [{[1, 1]}]\n" +
+			"                         ├─ colSet: (1-6)\n" +
+			"                         ├─ tableId: 1\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: one_pk\n" +
 			"                             └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -7032,6 +8076,8 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(two_pk)\n" +
 			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │       ├─ static: [{[1, 1], [1, 1]}]\n" +
+			"             │       ├─ colSet: (7-13)\n" +
+			"             │       ├─ tableId: 2\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: two_pk\n" +
 			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -7042,6 +8088,8 @@ inner join pq on true
 			"                     └─ IndexedTableAccess(one_pk)\n" +
 			"                         ├─ index: [one_pk.pk]\n" +
 			"                         ├─ static: [{[1, 1]}]\n" +
+			"                         ├─ colSet: (1-6)\n" +
+			"                         ├─ tableId: 1\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: one_pk\n" +
 			"                             └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -7066,6 +8114,8 @@ inner join pq on true
 			"     │   │           └─ IndexedTableAccess(mytable)\n" +
 			"     │   │               ├─ index: [mytable.i]\n" +
 			"     │   │               ├─ static: [{(2, ∞)}]\n" +
+			"     │   │               ├─ colSet: (3,4)\n" +
+			"     │   │               ├─ tableId: 2\n" +
 			"     │   │               └─ Table\n" +
 			"     │   │                   ├─ name: mytable\n" +
 			"     │   │                   └─ columns: [i]\n" +
@@ -7080,7 +8130,9 @@ inner join pq on true
 			"     │               │   └─ mt.i:0!null\n" +
 			"     │               └─ IndexedTableAccess(othertable)\n" +
 			"     │                   ├─ index: [othertable.i2]\n" +
-			"     │                   ├─ keys: [mt.i]\n" +
+			"     │                   ├─ keys: [mt.i:0!null]\n" +
+			"     │                   ├─ colSet: (5,6)\n" +
+			"     │                   ├─ tableId: 3\n" +
 			"     │                   └─ Table\n" +
 			"     │                       ├─ name: othertable\n" +
 			"     │                       └─ columns: [i2]\n" +
@@ -7110,7 +8162,9 @@ inner join pq on true
 			"     │   │           │   └─ mt.i:0!null\n" +
 			"     │   │           └─ IndexedTableAccess(mytable)\n" +
 			"     │   │               ├─ index: [mytable.i]\n" +
-			"     │   │               ├─ keys: [mt.i]\n" +
+			"     │   │               ├─ keys: [mt.i:0!null]\n" +
+			"     │   │               ├─ colSet: (3,4)\n" +
+			"     │   │               ├─ tableId: 2\n" +
 			"     │   │               └─ Table\n" +
 			"     │   │                   ├─ name: mytable\n" +
 			"     │   │                   └─ columns: [i]\n" +
@@ -7129,7 +8183,9 @@ inner join pq on true
 			"     │               │       └─ 2 (tinyint)\n" +
 			"     │               └─ IndexedTableAccess(othertable)\n" +
 			"     │                   ├─ index: [othertable.i2]\n" +
-			"     │                   ├─ keys: [mt.i]\n" +
+			"     │                   ├─ keys: [mt.i:0!null]\n" +
+			"     │                   ├─ colSet: (5,6)\n" +
+			"     │                   ├─ tableId: 3\n" +
 			"     │                   └─ Table\n" +
 			"     │                       ├─ name: othertable\n" +
 			"     │                       └─ columns: [i2]\n" +
@@ -7151,6 +8207,8 @@ inner join pq on true
 			" │       └─ IndexedTableAccess(one_pk)\n" +
 			" │           ├─ index: [one_pk.pk]\n" +
 			" │           ├─ static: [{[1, 1]}]\n" +
+			" │           ├─ colSet: (14-19)\n" +
+			" │           ├─ tableId: 3\n" +
 			" │           └─ Table\n" +
 			" │               ├─ name: one_pk\n" +
 			" │               └─ columns: [pk]\n" +
@@ -7175,6 +8233,8 @@ inner join pq on true
 			"                     └─ IndexedTableAccess(one_pk)\n" +
 			"                         ├─ index: [one_pk.pk]\n" +
 			"                         ├─ static: [{[1, 1]}]\n" +
+			"                         ├─ colSet: (1-6)\n" +
+			"                         ├─ tableId: 1\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: one_pk\n" +
 			"                             └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -7199,6 +8259,8 @@ inner join pq on true
 			"                 └─ IndexedTableAccess(othertable)\n" +
 			"                     ├─ index: [othertable.s2]\n" +
 			"                     ├─ static: [{(NULL, second)}, {(second, ∞)}]\n" +
+			"                     ├─ colSet: (1,2)\n" +
+			"                     ├─ tableId: 1\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: othertable\n" +
 			"                         └─ columns: [s2 i2]\n" +
@@ -7211,6 +8273,8 @@ inner join pq on true
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
+			" ├─ colSet: (5-7)\n" +
+			" ├─ tableId: 2\n" +
 			" └─ Filter\n" +
 			"     ├─ NOT\n" +
 			"     │   └─ Eq\n" +
@@ -7227,7 +8291,9 @@ inner join pq on true
 			"                     ├─ othertable.s2:0!null\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: othertable\n" +
-			"                         └─ columns: [s2 i2]\n" +
+			"                         ├─ columns: [s2 i2]\n" +
+			"                         ├─ colSet: (1,2)\n" +
+			"                         └─ tableId: 1\n" +
 			"",
 	},
 	{
@@ -7244,6 +8310,8 @@ inner join pq on true
 			"             └─ IndexedTableAccess(othertable)\n" +
 			"                 ├─ index: [othertable.i2]\n" +
 			"                 ├─ static: [{(NULL, 2)}, {(2, ∞)}]\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: othertable\n" +
 			"                     └─ columns: [s2 i2]\n" +
@@ -7256,6 +8324,8 @@ inner join pq on true
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
+			" ├─ colSet: (5-7)\n" +
+			" ├─ tableId: 2\n" +
 			" └─ Filter\n" +
 			"     ├─ Or\n" +
 			"     │   ├─ LessThan\n" +
@@ -7275,7 +8345,9 @@ inner join pq on true
 			"                     ├─ othertable.s2:0!null\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: othertable\n" +
-			"                         └─ columns: [s2 i2]\n" +
+			"                         ├─ columns: [s2 i2]\n" +
+			"                         ├─ colSet: (1,2)\n" +
+			"                         └─ tableId: 1\n" +
 			"",
 	},
 	{
@@ -7339,6 +8411,8 @@ inner join pq on true
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         ├─ static: [{[1, 1], [2, 2]}]\n" +
+			"         ├─ colSet: (1-7)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
 			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -7367,6 +8441,8 @@ inner join pq on true
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             ├─ static: [{[1, 1], [2, 2]}]\n" +
+			"             ├─ colSet: (1-7)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
 			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -7387,12 +8463,16 @@ inner join pq on true
 			"                     ├─ IndexedTableAccess(two_pk)\n" +
 			"                     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"                     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                     │   ├─ colSet: (7-13)\n" +
+			"                     │   ├─ tableId: 2\n" +
 			"                     │   └─ Table\n" +
 			"                     │       ├─ name: two_pk\n" +
 			"                     │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"                     └─ IndexedTableAccess(one_pk)\n" +
 			"                         ├─ index: [one_pk.pk]\n" +
 			"                         ├─ static: [{[NULL, ∞)}]\n" +
+			"                         ├─ colSet: (1-6)\n" +
+			"                         ├─ tableId: 1\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: one_pk\n" +
 			"                             └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -7415,9 +8495,13 @@ inner join pq on true
 			"                     │   ├─ outerVisibility: false\n" +
 			"                     │   ├─ isLateral: false\n" +
 			"                     │   ├─ cacheable: true\n" +
+			"                     │   ├─ colSet: (14-20)\n" +
+			"                     │   ├─ tableId: 3\n" +
 			"                     │   └─ Table\n" +
 			"                     │       ├─ name: two_pk\n" +
-			"                     │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                     │       ├─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                     │       ├─ colSet: (7-13)\n" +
+			"                     │       └─ tableId: 2\n" +
 			"                     └─ HashLookup\n" +
 			"                         ├─ left-key: TUPLE(t2.pk1:0!null)\n" +
 			"                         ├─ right-key: TUPLE(one_pk.pk:0!null)\n" +
@@ -7440,7 +8524,9 @@ inner join pq on true
 			"     └─ TableAlias(a)\n" +
 			"         └─ IndexedTableAccess(invert_pk)\n" +
 			"             ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
-			"             ├─ keys: [b.z]\n" +
+			"             ├─ keys: [b.z:0!null]\n" +
+			"             ├─ colSet: (1-3)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: invert_pk\n" +
 			"                 └─ columns: [x y z]\n" +
@@ -7463,7 +8549,9 @@ inner join pq on true
 			"         └─ TableAlias(a)\n" +
 			"             └─ IndexedTableAccess(invert_pk)\n" +
 			"                 ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
-			"                 ├─ keys: [b.z 2]\n" +
+			"                 ├─ keys: [b.z:0!null 2 (tinyint)]\n" +
+			"                 ├─ colSet: (1-3)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: invert_pk\n" +
 			"                     └─ columns: [x y z]\n" +
@@ -7474,6 +8562,8 @@ inner join pq on true
 		ExpectedPlan: "IndexedTableAccess(invert_pk)\n" +
 			" ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
 			" ├─ static: [{[0, 0], [NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-3)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: invert_pk\n" +
 			"     └─ columns: [x y z]\n" +
@@ -7484,6 +8574,8 @@ inner join pq on true
 		ExpectedPlan: "IndexedTableAccess(invert_pk)\n" +
 			" ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
 			" ├─ static: [{[0, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-3)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: invert_pk\n" +
 			"     └─ columns: [x y z]\n" +
@@ -7494,6 +8586,8 @@ inner join pq on true
 		ExpectedPlan: "IndexedTableAccess(invert_pk)\n" +
 			" ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
 			" ├─ static: [{[0, ∞), (NULL, 1), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-3)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: invert_pk\n" +
 			"     └─ columns: [x y z]\n" +
@@ -7504,6 +8598,8 @@ inner join pq on true
 		ExpectedPlan: "IndexedTableAccess(one_pk)\n" +
 			" ├─ index: [one_pk.pk]\n" +
 			" ├─ static: [{[1, 1]}]\n" +
+			" ├─ colSet: (1-6)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: one_pk\n" +
 			"     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -7529,11 +8625,15 @@ inner join pq on true
 			"     │       └─ TableAlias(a)\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: one_pk\n" +
-			"     │               └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     │               ├─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     │               ├─ colSet: (1-6)\n" +
+			"     │               └─ tableId: 1\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
-			"             ├─ keys: [c.pk]\n" +
+			"             ├─ keys: [c.pk:0!null]\n" +
+			"             ├─ colSet: (13-18)\n" +
+			"             ├─ tableId: 3\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk\n" +
 			"                 └─ columns: [pk]\n" +
@@ -7563,14 +8663,18 @@ inner join pq on true
 			"             ├─ TableAlias(c)\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: one_pk\n" +
-			"             │       └─ columns: [pk]\n" +
+			"             │       ├─ columns: [pk]\n" +
+			"             │       ├─ colSet: (7-12)\n" +
+			"             │       └─ tableId: 2\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: TUPLE()\n" +
 			"                 ├─ right-key: TUPLE()\n" +
 			"                 └─ TableAlias(a)\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: one_pk\n" +
-			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                         ├─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                         ├─ colSet: (1-6)\n" +
+			"                         └─ tableId: 1\n" +
 			"",
 	},
 	{
@@ -7586,6 +8690,8 @@ inner join pq on true
 			"     │   │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │   │       ├─ index: [one_pk.pk]\n" +
 			"     │   │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   │       ├─ colSet: (13-18)\n" +
+			"     │   │       ├─ tableId: 3\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: one_pk\n" +
 			"     │   │           └─ columns: [pk]\n" +
@@ -7593,13 +8699,17 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(one_pk)\n" +
 			"     │           ├─ index: [one_pk.pk]\n" +
 			"     │           ├─ static: [{[NULL, ∞)}]\n" +
+			"     │           ├─ colSet: (1-6)\n" +
+			"     │           ├─ tableId: 1\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: one_pk\n" +
 			"     │               └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"     └─ TableAlias(c)\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
-			"             ├─ keys: [b.pk]\n" +
+			"             ├─ keys: [b.pk:0!null]\n" +
+			"             ├─ colSet: (7-12)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk\n" +
 			"                 └─ columns: [pk]\n" +
@@ -7627,6 +8737,8 @@ inner join pq on true
 			"     │           │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │           │       ├─ index: [one_pk.pk]\n" +
 			"     │           │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │           │       ├─ colSet: (13-18)\n" +
+			"     │           │       ├─ tableId: 3\n" +
 			"     │           │       └─ Table\n" +
 			"     │           │           ├─ name: one_pk\n" +
 			"     │           │           └─ columns: [pk]\n" +
@@ -7634,13 +8746,17 @@ inner join pq on true
 			"     │               └─ IndexedTableAccess(one_pk)\n" +
 			"     │                   ├─ index: [one_pk.pk]\n" +
 			"     │                   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │                   ├─ colSet: (7-12)\n" +
+			"     │                   ├─ tableId: 2\n" +
 			"     │                   └─ Table\n" +
 			"     │                       ├─ name: one_pk\n" +
 			"     │                       └─ columns: [pk]\n" +
 			"     └─ TableAlias(d)\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
-			"             ├─ keys: [c.pk]\n" +
+			"             ├─ keys: [c.pk:6!null]\n" +
+			"             ├─ colSet: (19-24)\n" +
+			"             ├─ tableId: 4\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk\n" +
 			"                 └─ columns: [pk]\n" +
@@ -7659,9 +8775,13 @@ inner join pq on true
 			"     │   ├─ outerVisibility: false\n" +
 			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
+			"     │   ├─ colSet: (19-24)\n" +
+			"     │   ├─ tableId: 4\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: one_pk\n" +
-			"     │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     │       ├─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     │       ├─ colSet: (13-18)\n" +
+			"     │       └─ tableId: 3\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(b.pk:0!null)\n" +
 			"         ├─ right-key: TUPLE(c.pk:0!null)\n" +
@@ -7677,7 +8797,9 @@ inner join pq on true
 			"                 └─ TableAlias(a)\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: one_pk\n" +
-			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                         ├─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                         ├─ colSet: (1-6)\n" +
+			"                         └─ tableId: 1\n" +
 			"",
 	},
 	{
@@ -7702,7 +8824,9 @@ inner join pq on true
 			"         └─ TableAlias(ot)\n" +
 			"             └─ IndexedTableAccess(othertable)\n" +
 			"                 ├─ index: [othertable.i2]\n" +
-			"                 ├─ keys: [tabletest.i]\n" +
+			"                 ├─ keys: [tabletest.i:2!null]\n" +
+			"                 ├─ colSet: (5,6)\n" +
+			"                 ├─ tableId: 3\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: othertable\n" +
 			"                     └─ columns: [s2 i2]\n" +
@@ -7736,14 +8860,18 @@ inner join pq on true
 			"                 ├─ TableAlias(b)\n" +
 			"                 │   └─ Table\n" +
 			"                 │       ├─ name: one_pk_three_idx\n" +
-			"                 │       └─ columns: [pk]\n" +
+			"                 │       ├─ columns: [pk]\n" +
+			"                 │       ├─ colSet: (5-8)\n" +
+			"                 │       └─ tableId: 2\n" +
 			"                 └─ HashLookup\n" +
 			"                     ├─ left-key: TUPLE()\n" +
 			"                     ├─ right-key: TUPLE()\n" +
 			"                     └─ TableAlias(a)\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: one_pk_three_idx\n" +
-			"                             └─ columns: [pk]\n" +
+			"                             ├─ columns: [pk]\n" +
+			"                             ├─ colSet: (1-4)\n" +
+			"                             └─ tableId: 1\n" +
 			"",
 	},
 	{
@@ -7756,6 +8884,8 @@ inner join pq on true
 			"     │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     │   │       ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │   │       ├─ static: [{[0, 0]}]\n" +
+			"     │   │       ├─ colSet: (5-8)\n" +
+			"     │   │       ├─ tableId: 2\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: one_pk_three_idx\n" +
 			"     │   │           └─ columns: [pk]\n" +
@@ -7774,7 +8904,9 @@ inner join pq on true
 			"     └─ TableAlias(c)\n" +
 			"         └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"             ├─ index: [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3]\n" +
-			"             ├─ keys: [b.pk]\n" +
+			"             ├─ keys: [b.pk:0!null]\n" +
+			"             ├─ colSet: (9-12)\n" +
+			"             ├─ tableId: 3\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk_three_idx\n" +
 			"                 └─ columns: [v1 v2]\n" +
@@ -7801,18 +8933,24 @@ inner join pq on true
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ isLateral: false\n" +
 			"             ├─ cacheable: true\n" +
+			"             ├─ colSet: (5,6)\n" +
+			"             ├─ tableId: 3\n" +
 			"             └─ CrossHashJoin\n" +
 			"                 ├─ TableAlias(b)\n" +
 			"                 │   └─ Table\n" +
 			"                 │       ├─ name: mytable\n" +
-			"                 │       └─ columns: []\n" +
+			"                 │       ├─ columns: []\n" +
+			"                 │       ├─ colSet: (3,4)\n" +
+			"                 │       └─ tableId: 2\n" +
 			"                 └─ HashLookup\n" +
 			"                     ├─ left-key: TUPLE()\n" +
 			"                     ├─ right-key: TUPLE()\n" +
 			"                     └─ TableAlias(a)\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: mytable\n" +
-			"                             └─ columns: [i s]\n" +
+			"                             ├─ columns: [i s]\n" +
+			"                             ├─ colSet: (1,2)\n" +
+			"                             └─ tableId: 1\n" +
 			"",
 	},
 	{
@@ -7840,6 +8978,8 @@ inner join pq on true
 			"         │   │   └─ IndexedTableAccess(mytable)\n" +
 			"         │   │       ├─ index: [mytable.i]\n" +
 			"         │   │       ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │       ├─ colSet: (3,4)\n" +
+			"         │   │       ├─ tableId: 2\n" +
 			"         │   │       └─ Table\n" +
 			"         │   │           ├─ name: mytable\n" +
 			"         │   │           └─ columns: [i]\n" +
@@ -7847,13 +8987,17 @@ inner join pq on true
 			"         │       └─ IndexedTableAccess(mytable)\n" +
 			"         │           ├─ index: [mytable.i]\n" +
 			"         │           ├─ static: [{[NULL, ∞)}]\n" +
+			"         │           ├─ colSet: (1,2)\n" +
+			"         │           ├─ tableId: 1\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: mytable\n" +
 			"         │               └─ columns: [i s]\n" +
 			"         └─ TableAlias(c)\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i]\n" +
+			"                 ├─ columns: [i]\n" +
+			"                 ├─ colSet: (5,6)\n" +
+			"                 └─ tableId: 3\n" +
 			"",
 	},
 	{
@@ -7873,6 +9017,8 @@ inner join pq on true
 			"     │   │   │   └─ IndexedTableAccess(othertable)\n" +
 			"     │   │   │       ├─ index: [othertable.i2]\n" +
 			"     │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   │   │       ├─ colSet: (3,4)\n" +
+			"     │   │   │       ├─ tableId: 2\n" +
 			"     │   │   │       └─ Table\n" +
 			"     │   │   │           ├─ name: othertable\n" +
 			"     │   │   │           └─ columns: [s2 i2]\n" +
@@ -7880,6 +9026,8 @@ inner join pq on true
 			"     │   │       └─ IndexedTableAccess(mytable)\n" +
 			"     │   │           ├─ index: [mytable.i]\n" +
 			"     │   │           ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   │           ├─ colSet: (1,2)\n" +
+			"     │   │           ├─ tableId: 1\n" +
 			"     │   │           └─ Table\n" +
 			"     │   │               ├─ name: mytable\n" +
 			"     │   │               └─ columns: [i s]\n" +
@@ -7891,7 +9039,9 @@ inner join pq on true
 			"     └─ TableAlias(d)\n" +
 			"         └─ IndexedTableAccess(othertable)\n" +
 			"             ├─ index: [othertable.i2]\n" +
-			"             ├─ keys: [b.i2]\n" +
+			"             ├─ keys: [b.i2:1!null]\n" +
+			"             ├─ colSet: (7,8)\n" +
+			"             ├─ tableId: 4\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: othertable\n" +
 			"                 └─ columns: [i2]\n" +
@@ -7919,6 +9069,8 @@ inner join pq on true
 			"     │       │   └─ IndexedTableAccess(othertable)\n" +
 			"     │       │       ├─ index: [othertable.i2]\n" +
 			"     │       │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │       │       ├─ colSet: (3,4)\n" +
+			"     │       │       ├─ tableId: 2\n" +
 			"     │       │       └─ Table\n" +
 			"     │       │           ├─ name: othertable\n" +
 			"     │       │           └─ columns: [s2 i2]\n" +
@@ -7926,13 +9078,17 @@ inner join pq on true
 			"     │           └─ IndexedTableAccess(mytable)\n" +
 			"     │               ├─ index: [mytable.i]\n" +
 			"     │               ├─ static: [{[NULL, ∞)}]\n" +
+			"     │               ├─ colSet: (1,2)\n" +
+			"     │               ├─ tableId: 1\n" +
 			"     │               └─ Table\n" +
 			"     │                   ├─ name: mytable\n" +
 			"     │                   └─ columns: [i s]\n" +
 			"     └─ TableAlias(d)\n" +
 			"         └─ IndexedTableAccess(othertable)\n" +
 			"             ├─ index: [othertable.i2]\n" +
-			"             ├─ keys: [b.i2]\n" +
+			"             ├─ keys: [b.i2:2!null]\n" +
+			"             ├─ colSet: (7,8)\n" +
+			"             ├─ tableId: 4\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: othertable\n" +
 			"                 └─ columns: [i2]\n" +
@@ -7950,6 +9106,8 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     │       ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │       ├─ colSet: (4-7)\n" +
+			"     │       ├─ tableId: 2\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: one_pk_three_idx\n" +
 			"     │           └─ columns: [pk v3]\n" +
@@ -7957,6 +9115,8 @@ inner join pq on true
 			"         └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"             ├─ index: [one_pk_two_idx.v1]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ colSet: (1-3)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk_two_idx\n" +
 			"                 └─ columns: [pk v1]\n" +
@@ -7975,6 +9135,8 @@ inner join pq on true
 			"     │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     │   │       ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │   │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   │       ├─ colSet: (4-7)\n" +
+			"     │   │       ├─ tableId: 2\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: one_pk_three_idx\n" +
 			"     │   │           └─ columns: [pk v3]\n" +
@@ -7982,13 +9144,17 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"     │           ├─ index: [one_pk_two_idx.v1]\n" +
 			"     │           ├─ static: [{[NULL, ∞)}]\n" +
+			"     │           ├─ colSet: (1-3)\n" +
+			"     │           ├─ tableId: 1\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: one_pk_two_idx\n" +
 			"     │               └─ columns: [pk v1]\n" +
 			"     └─ TableAlias(k)\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
-			"             ├─ keys: [j.v3]\n" +
+			"             ├─ keys: [j.v3:1]\n" +
+			"             ├─ colSet: (8-13)\n" +
+			"             ├─ tableId: 3\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk\n" +
 			"                 └─ columns: [pk c1]\n" +
@@ -8006,6 +9172,8 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     │       ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │       ├─ colSet: (4-7)\n" +
+			"     │       ├─ tableId: 2\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: one_pk_three_idx\n" +
 			"     │           └─ columns: [pk v3]\n" +
@@ -8013,6 +9181,8 @@ inner join pq on true
 			"         └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"             ├─ index: [one_pk_two_idx.v1]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ colSet: (1-3)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk_two_idx\n" +
 			"                 └─ columns: [pk v1]\n" +
@@ -8031,6 +9201,8 @@ inner join pq on true
 			"     │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     │   │       ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │   │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   │       ├─ colSet: (4-7)\n" +
+			"     │   │       ├─ tableId: 2\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: one_pk_three_idx\n" +
 			"     │   │           └─ columns: [pk v3]\n" +
@@ -8038,13 +9210,17 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"     │           ├─ index: [one_pk_two_idx.v1]\n" +
 			"     │           ├─ static: [{[NULL, ∞)}]\n" +
+			"     │           ├─ colSet: (1-3)\n" +
+			"     │           ├─ tableId: 1\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: one_pk_two_idx\n" +
 			"     │               └─ columns: [pk v1]\n" +
 			"     └─ TableAlias(k)\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
-			"             ├─ keys: [j.v3]\n" +
+			"             ├─ keys: [j.v3:1]\n" +
+			"             ├─ colSet: (8-13)\n" +
+			"             ├─ tableId: 3\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk\n" +
 			"                 └─ columns: [pk c1]\n" +
@@ -8063,6 +9239,8 @@ inner join pq on true
 			"     │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     │   │       ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │   │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   │       ├─ colSet: (4-7)\n" +
+			"     │   │       ├─ tableId: 2\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: one_pk_three_idx\n" +
 			"     │   │           └─ columns: [pk v3]\n" +
@@ -8070,13 +9248,17 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"     │           ├─ index: [one_pk_two_idx.v1]\n" +
 			"     │           ├─ static: [{[NULL, ∞)}]\n" +
+			"     │           ├─ colSet: (1-3)\n" +
+			"     │           ├─ tableId: 1\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: one_pk_two_idx\n" +
 			"     │               └─ columns: [pk v1]\n" +
 			"     └─ TableAlias(k)\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
-			"             ├─ keys: [j.v3]\n" +
+			"             ├─ keys: [j.v3:1]\n" +
+			"             ├─ colSet: (8-13)\n" +
+			"             ├─ tableId: 3\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk\n" +
 			"                 └─ columns: [pk c1]\n" +
@@ -8102,6 +9284,8 @@ inner join pq on true
 			"     │   │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     │   │   │       ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   │   │       ├─ colSet: (7-10)\n" +
+			"     │   │   │       ├─ tableId: 3\n" +
 			"     │   │   │       └─ Table\n" +
 			"     │   │   │           ├─ name: one_pk_three_idx\n" +
 			"     │   │   │           └─ columns: [pk]\n" +
@@ -8109,6 +9293,8 @@ inner join pq on true
 			"     │   │       └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"     │   │           ├─ index: [one_pk_two_idx.v1]\n" +
 			"     │   │           ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   │           ├─ colSet: (4-6)\n" +
+			"     │   │           ├─ tableId: 2\n" +
 			"     │   │           └─ Table\n" +
 			"     │   │               ├─ name: one_pk_two_idx\n" +
 			"     │   │               └─ columns: [v1]\n" +
@@ -8131,6 +9317,8 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"             │       ├─ index: [one_pk_three_idx.pk]\n" +
 			"             │       ├─ static: [{[NULL, ∞)}]\n" +
+			"             │       ├─ colSet: (14-17)\n" +
+			"             │       ├─ tableId: 5\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: one_pk_three_idx\n" +
 			"             │           └─ columns: [pk v2]\n" +
@@ -8138,6 +9326,8 @@ inner join pq on true
 			"                 └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"                     ├─ index: [one_pk_two_idx.v1]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
+			"                     ├─ colSet: (11-13)\n" +
+			"                     ├─ tableId: 4\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: one_pk_two_idx\n" +
 			"                         └─ columns: [v1]\n" +
@@ -8178,7 +9368,9 @@ inner join pq on true
 			"             ├─ TableAlias(a)\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: one_pk_two_idx\n" +
-			"             │       └─ columns: [pk v1 v2]\n" +
+			"             │       ├─ columns: [pk v1 v2]\n" +
+			"             │       ├─ colSet: (1-3)\n" +
+			"             │       └─ tableId: 1\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: TUPLE(a.pk:3!null)\n" +
 			"                 ├─ right-key: TUPLE(i.pk:1!null)\n" +
@@ -8186,11 +9378,15 @@ inner join pq on true
 			"                     ├─ TableAlias(j)\n" +
 			"                     │   └─ Table\n" +
 			"                     │       ├─ name: one_pk_three_idx\n" +
-			"                     │       └─ columns: [v3]\n" +
+			"                     │       ├─ columns: [v3]\n" +
+			"                     │       ├─ colSet: (7-10)\n" +
+			"                     │       └─ tableId: 3\n" +
 			"                     └─ TableAlias(i)\n" +
 			"                         └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"                             ├─ index: [one_pk_two_idx.pk]\n" +
-			"                             ├─ keys: [j.v3]\n" +
+			"                             ├─ keys: [j.v3:6]\n" +
+			"                             ├─ colSet: (4-6)\n" +
+			"                             ├─ tableId: 2\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: one_pk_two_idx\n" +
 			"                                 └─ columns: [pk]\n" +
@@ -8205,13 +9401,17 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
 			"     │       ├─ static: [{(2, ∞)}]\n" +
+			"     │       ├─ colSet: (1,2)\n" +
+			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
-			"             ├─ keys: [a.i]\n" +
+			"             ├─ keys: [a.i:0!null]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
 			"                 └─ columns: [i]\n" +
@@ -8234,7 +9434,9 @@ inner join pq on true
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
-			"             ├─ keys: [a.i]\n" +
+			"             ├─ keys: [a.i:0!null]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
 			"                 └─ columns: [i]\n" +
@@ -8253,6 +9455,8 @@ inner join pq on true
 			" └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     ├─ index: [one_pk_three_idx.pk]\n" +
 			"     ├─ static: [{(NULL, 1)}]\n" +
+			"     ├─ colSet: (1-4)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: one_pk_three_idx\n" +
 			"         └─ columns: [pk v1 v2 v3]\n" +
@@ -8271,6 +9475,8 @@ inner join pq on true
 			" └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     ├─ index: [one_pk_three_idx.pk]\n" +
 			"     ├─ static: [{[1, 1]}]\n" +
+			"     ├─ colSet: (1-4)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: one_pk_three_idx\n" +
 			"         └─ columns: [pk v1 v2 v3]\n" +
@@ -8288,7 +9494,9 @@ inner join pq on true
 			" └─ TableAlias(b)\n" +
 			"     └─ IndexedTableAccess(niltable)\n" +
 			"         ├─ index: [niltable.i]\n" +
-			"         ├─ keys: [a.i]\n" +
+			"         ├─ keys: [a.i:0!null]\n" +
+			"         ├─ colSet: (3-6)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: niltable\n" +
 			"             └─ columns: [i i2 b f]\n" +
@@ -8307,7 +9515,9 @@ inner join pq on true
 			" └─ TableAlias(b)\n" +
 			"     └─ IndexedTableAccess(niltable)\n" +
 			"         ├─ index: [niltable.i]\n" +
-			"         ├─ keys: [a.i]\n" +
+			"         ├─ keys: [a.i:0!null]\n" +
+			"         ├─ colSet: (3-6)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: niltable\n" +
 			"             └─ columns: [i i2 b f]\n" +
@@ -8329,7 +9539,9 @@ inner join pq on true
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(niltable)\n" +
 			"             ├─ index: [niltable.i]\n" +
-			"             ├─ keys: [a.i]\n" +
+			"             ├─ keys: [a.i:0!null]\n" +
+			"             ├─ colSet: (3-6)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: niltable\n" +
 			"                 └─ columns: [i i2 b f]\n" +
@@ -8348,7 +9560,9 @@ inner join pq on true
 			" └─ TableAlias(b)\n" +
 			"     └─ IndexedTableAccess(niltable)\n" +
 			"         ├─ index: [niltable.i]\n" +
-			"         ├─ keys: [a.i]\n" +
+			"         ├─ keys: [a.i:0!null]\n" +
+			"         ├─ colSet: (3-6)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: niltable\n" +
 			"             └─ columns: [i i2 b f]\n" +
@@ -8406,12 +9620,16 @@ inner join pq on true
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
+			" ├─ colSet: (4)\n" +
+			" ├─ tableId: 3\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [1 (tinyint)]\n" +
 			"     └─ SemiJoin\n" +
 			"         ├─ Table\n" +
 			"         │   ├─ name: \n" +
-			"         │   └─ columns: []\n" +
+			"         │   ├─ columns: []\n" +
+			"         │   ├─ colSet: ()\n" +
+			"         │   └─ tableId: 0\n" +
 			"         └─ Filter\n" +
 			"             ├─ Eq\n" +
 			"             │   ├─ 1 (tinyint)\n" +
@@ -8421,17 +9639,23 @@ inner join pq on true
 			"                 ├─ outerVisibility: false\n" +
 			"                 ├─ isLateral: false\n" +
 			"                 ├─ cacheable: true\n" +
+			"                 ├─ colSet: (1)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Union distinct\n" +
 			"                     ├─ Project\n" +
 			"                     │   ├─ columns: [1 (tinyint)]\n" +
 			"                     │   └─ Table\n" +
 			"                     │       ├─ name: \n" +
-			"                     │       └─ columns: []\n" +
+			"                     │       ├─ columns: []\n" +
+			"                     │       ├─ colSet: ()\n" +
+			"                     │       └─ tableId: 0\n" +
 			"                     └─ Project\n" +
 			"                         ├─ columns: [2 (tinyint)]\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: \n" +
-			"                             └─ columns: []\n" +
+			"                             ├─ columns: []\n" +
+			"                             ├─ colSet: ()\n" +
+			"                             └─ tableId: 0\n" +
 			"",
 	},
 	{
@@ -8446,6 +9670,8 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(two_pk)\n" +
 			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             │       ├─ static: [{[1, 1], [1, 1]}]\n" +
+			"             │       ├─ colSet: (7-13)\n" +
+			"             │       ├─ tableId: 2\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: two_pk\n" +
 			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -8456,6 +9682,8 @@ inner join pq on true
 			"                     └─ IndexedTableAccess(one_pk)\n" +
 			"                         ├─ index: [one_pk.pk]\n" +
 			"                         ├─ static: [{[1, 1]}]\n" +
+			"                         ├─ colSet: (1-6)\n" +
+			"                         ├─ tableId: 1\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: one_pk\n" +
 			"                             └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -8470,33 +9698,45 @@ inner join pq on true
 			" │   ├─ outerVisibility: false\n" +
 			" │   ├─ isLateral: false\n" +
 			" │   ├─ cacheable: true\n" +
+			" │   ├─ colSet: (1)\n" +
+			" │   ├─ tableId: 1\n" +
 			" │   └─ Union distinct\n" +
 			" │       ├─ Project\n" +
 			" │       │   ├─ columns: [1 (tinyint)]\n" +
 			" │       │   └─ Table\n" +
 			" │       │       ├─ name: \n" +
-			" │       │       └─ columns: []\n" +
+			" │       │       ├─ columns: []\n" +
+			" │       │       ├─ colSet: ()\n" +
+			" │       │       └─ tableId: 0\n" +
 			" │       └─ Project\n" +
 			" │           ├─ columns: [2 (tinyint)]\n" +
 			" │           └─ Table\n" +
 			" │               ├─ name: \n" +
-			" │               └─ columns: []\n" +
+			" │               ├─ columns: []\n" +
+			" │               ├─ colSet: ()\n" +
+			" │               └─ tableId: 0\n" +
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: a\n" +
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (1)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Union distinct\n" +
 			"         ├─ Project\n" +
 			"         │   ├─ columns: [1 (tinyint)]\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: \n" +
-			"         │       └─ columns: []\n" +
+			"         │       ├─ columns: []\n" +
+			"         │       ├─ colSet: ()\n" +
+			"         │       └─ tableId: 0\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [2 (tinyint)]\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: \n" +
-			"                 └─ columns: []\n" +
+			"                 ├─ columns: []\n" +
+			"                 ├─ colSet: ()\n" +
+			"                 └─ tableId: 0\n" +
 			"",
 	},
 	{
@@ -8511,17 +9751,23 @@ inner join pq on true
 			" │       ├─ outerVisibility: false\n" +
 			" │       ├─ isLateral: false\n" +
 			" │       ├─ cacheable: true\n" +
+			" │       ├─ colSet: (1)\n" +
+			" │       ├─ tableId: 1\n" +
 			" │       └─ Union distinct\n" +
 			" │           ├─ Project\n" +
 			" │           │   ├─ columns: [1 (tinyint)]\n" +
 			" │           │   └─ Table\n" +
 			" │           │       ├─ name: \n" +
-			" │           │       └─ columns: []\n" +
+			" │           │       ├─ columns: []\n" +
+			" │           │       ├─ colSet: ()\n" +
+			" │           │       └─ tableId: 0\n" +
 			" │           └─ Project\n" +
 			" │               ├─ columns: [2 (tinyint)]\n" +
 			" │               └─ Table\n" +
 			" │                   ├─ name: \n" +
-			" │                   └─ columns: []\n" +
+			" │                   ├─ columns: []\n" +
+			" │                   ├─ colSet: ()\n" +
+			" │                   └─ tableId: 0\n" +
 			" └─ Having\n" +
 			"     ├─ GreaterThan\n" +
 			"     │   ├─ a.x:0!null\n" +
@@ -8531,17 +9777,23 @@ inner join pq on true
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
+			"         ├─ colSet: (1)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Union distinct\n" +
 			"             ├─ Project\n" +
 			"             │   ├─ columns: [1 (tinyint)]\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: \n" +
-			"             │       └─ columns: []\n" +
+			"             │       ├─ columns: []\n" +
+			"             │       ├─ colSet: ()\n" +
+			"             │       └─ tableId: 0\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [2 (tinyint)]\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: \n" +
-			"                     └─ columns: []\n" +
+			"                     ├─ columns: []\n" +
+			"                     ├─ colSet: ()\n" +
+			"                     └─ tableId: 0\n" +
 			"",
 	},
 	{
@@ -8556,17 +9808,23 @@ inner join pq on true
 			" │       ├─ outerVisibility: false\n" +
 			" │       ├─ isLateral: false\n" +
 			" │       ├─ cacheable: true\n" +
+			" │       ├─ colSet: (1)\n" +
+			" │       ├─ tableId: 1\n" +
 			" │       └─ Union distinct\n" +
 			" │           ├─ Project\n" +
 			" │           │   ├─ columns: [1 (tinyint)]\n" +
 			" │           │   └─ Table\n" +
 			" │           │       ├─ name: \n" +
-			" │           │       └─ columns: []\n" +
+			" │           │       ├─ columns: []\n" +
+			" │           │       ├─ colSet: ()\n" +
+			" │           │       └─ tableId: 0\n" +
 			" │           └─ Project\n" +
 			" │               ├─ columns: [2 (tinyint)]\n" +
 			" │               └─ Table\n" +
 			" │                   ├─ name: \n" +
-			" │                   └─ columns: []\n" +
+			" │                   ├─ columns: []\n" +
+			" │                   ├─ colSet: ()\n" +
+			" │                   └─ tableId: 0\n" +
 			" └─ Filter\n" +
 			"     ├─ GreaterThan\n" +
 			"     │   ├─ a.x:0!null\n" +
@@ -8576,17 +9834,23 @@ inner join pq on true
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
+			"         ├─ colSet: (1)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Union distinct\n" +
 			"             ├─ Project\n" +
 			"             │   ├─ columns: [1 (tinyint)]\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: \n" +
-			"             │       └─ columns: []\n" +
+			"             │       ├─ columns: []\n" +
+			"             │       ├─ colSet: ()\n" +
+			"             │       └─ tableId: 0\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [2 (tinyint)]\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: \n" +
-			"                     └─ columns: []\n" +
+			"                     ├─ columns: []\n" +
+			"                     ├─ colSet: ()\n" +
+			"                     └─ tableId: 0\n" +
 			"",
 	},
 	{
@@ -8597,17 +9861,23 @@ inner join pq on true
 			" │   ├─ outerVisibility: false\n" +
 			" │   ├─ isLateral: false\n" +
 			" │   ├─ cacheable: true\n" +
+			" │   ├─ colSet: (1)\n" +
+			" │   ├─ tableId: 1\n" +
 			" │   └─ Union distinct\n" +
 			" │       ├─ Project\n" +
 			" │       │   ├─ columns: [1 (tinyint)]\n" +
 			" │       │   └─ Table\n" +
 			" │       │       ├─ name: \n" +
-			" │       │       └─ columns: []\n" +
+			" │       │       ├─ columns: []\n" +
+			" │       │       ├─ colSet: ()\n" +
+			" │       │       └─ tableId: 0\n" +
 			" │       └─ Project\n" +
 			" │           ├─ columns: [2 (tinyint)]\n" +
 			" │           └─ Table\n" +
 			" │               ├─ name: \n" +
-			" │               └─ columns: []\n" +
+			" │               ├─ columns: []\n" +
+			" │               ├─ colSet: ()\n" +
+			" │               └─ tableId: 0\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: a.x:0!null\n" +
 			"     ├─ group: a.x:0!null\n" +
@@ -8616,17 +9886,23 @@ inner join pq on true
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
+			"         ├─ colSet: (1)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Union distinct\n" +
 			"             ├─ Project\n" +
 			"             │   ├─ columns: [1 (tinyint)]\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: \n" +
-			"             │       └─ columns: []\n" +
+			"             │       ├─ columns: []\n" +
+			"             │       ├─ colSet: ()\n" +
+			"             │       └─ tableId: 0\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [2 (tinyint)]\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: \n" +
-			"                     └─ columns: []\n" +
+			"                     ├─ columns: []\n" +
+			"                     ├─ colSet: ()\n" +
+			"                     └─ tableId: 0\n" +
 			"",
 	},
 	{
@@ -8638,33 +9914,45 @@ inner join pq on true
 			" │   ├─ outerVisibility: false\n" +
 			" │   ├─ isLateral: false\n" +
 			" │   ├─ cacheable: true\n" +
+			" │   ├─ colSet: (1)\n" +
+			" │   ├─ tableId: 1\n" +
 			" │   └─ Union distinct\n" +
 			" │       ├─ Project\n" +
 			" │       │   ├─ columns: [1 (tinyint)]\n" +
 			" │       │   └─ Table\n" +
 			" │       │       ├─ name: \n" +
-			" │       │       └─ columns: []\n" +
+			" │       │       ├─ columns: []\n" +
+			" │       │       ├─ colSet: ()\n" +
+			" │       │       └─ tableId: 0\n" +
 			" │       └─ Project\n" +
 			" │           ├─ columns: [2 (tinyint)]\n" +
 			" │           └─ Table\n" +
 			" │               ├─ name: \n" +
-			" │               └─ columns: []\n" +
+			" │               ├─ columns: []\n" +
+			" │               ├─ colSet: ()\n" +
+			" │               └─ tableId: 0\n" +
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: a\n" +
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (1)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Union distinct\n" +
 			"         ├─ Project\n" +
 			"         │   ├─ columns: [1 (tinyint)]\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: \n" +
-			"         │       └─ columns: []\n" +
+			"         │       ├─ columns: []\n" +
+			"         │       ├─ colSet: ()\n" +
+			"         │       └─ tableId: 0\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [2 (tinyint)]\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: \n" +
-			"                 └─ columns: []\n" +
+			"                 ├─ columns: []\n" +
+			"                 ├─ colSet: ()\n" +
+			"                 └─ tableId: 0\n" +
 			"",
 	},
 	{
@@ -8679,6 +9967,8 @@ inner join pq on true
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
+			"         ├─ colSet: (2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ RecursiveCTE\n" +
 			"             └─ Union all\n" +
 			"                 ├─ limit: 5\n" +
@@ -8686,7 +9976,9 @@ inner join pq on true
 			"                 │   ├─ columns: [1 (tinyint)]\n" +
 			"                 │   └─ Table\n" +
 			"                 │       ├─ name: \n" +
-			"                 │       └─ columns: []\n" +
+			"                 │       ├─ columns: []\n" +
+			"                 │       ├─ colSet: ()\n" +
+			"                 │       └─ tableId: 0\n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [(n.i:0!null + 1 (tinyint)) as i + 1]\n" +
 			"                     └─ Filter\n" +
@@ -8708,13 +10000,17 @@ inner join pq on true
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
+			"         ├─ colSet: (2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ RecursiveCTE\n" +
 			"             └─ Union all\n" +
 			"                 ├─ Project\n" +
 			"                 │   ├─ columns: [1 (tinyint)]\n" +
 			"                 │   └─ Table\n" +
 			"                 │       ├─ name: \n" +
-			"                 │       └─ columns: []\n" +
+			"                 │       ├─ columns: []\n" +
+			"                 │       ├─ colSet: ()\n" +
+			"                 │       └─ tableId: 0\n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [(n.i:0!null + 1 (tinyint)) as i + 1]\n" +
 			"                     └─ Having\n" +
@@ -8739,6 +10035,8 @@ inner join pq on true
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
+			"         ├─ colSet: (2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ RecursiveCTE\n" +
 			"             └─ Union all\n" +
 			"                 ├─ limit: 1\n" +
@@ -8746,7 +10044,9 @@ inner join pq on true
 			"                 │   ├─ columns: [1 (tinyint)]\n" +
 			"                 │   └─ Table\n" +
 			"                 │       ├─ name: \n" +
-			"                 │       └─ columns: []\n" +
+			"                 │       ├─ columns: []\n" +
+			"                 │       ├─ colSet: ()\n" +
+			"                 │       └─ tableId: 0\n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [(n.i:0!null + 1 (tinyint)) as i + 1]\n" +
 			"                     └─ Filter\n" +
@@ -8765,12 +10065,16 @@ inner join pq on true
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
+			" ├─ colSet: (4)\n" +
+			" ├─ tableId: 3\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [1 (tinyint)]\n" +
 			"     └─ SemiJoin\n" +
 			"         ├─ Table\n" +
 			"         │   ├─ name: \n" +
-			"         │   └─ columns: []\n" +
+			"         │   ├─ columns: []\n" +
+			"         │   ├─ colSet: ()\n" +
+			"         │   └─ tableId: 0\n" +
 			"         └─ Filter\n" +
 			"             ├─ Eq\n" +
 			"             │   ├─ 1 (tinyint)\n" +
@@ -8780,17 +10084,23 @@ inner join pq on true
 			"                 ├─ outerVisibility: false\n" +
 			"                 ├─ isLateral: false\n" +
 			"                 ├─ cacheable: true\n" +
+			"                 ├─ colSet: (1)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Union distinct\n" +
 			"                     ├─ Project\n" +
 			"                     │   ├─ columns: [1 (tinyint)]\n" +
 			"                     │   └─ Table\n" +
 			"                     │       ├─ name: \n" +
-			"                     │       └─ columns: []\n" +
+			"                     │       ├─ columns: []\n" +
+			"                     │       ├─ colSet: ()\n" +
+			"                     │       └─ tableId: 0\n" +
 			"                     └─ Project\n" +
 			"                         ├─ columns: [2 (tinyint)]\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: \n" +
-			"                             └─ columns: []\n" +
+			"                             ├─ columns: []\n" +
+			"                             ├─ colSet: ()\n" +
+			"                             └─ tableId: 0\n" +
 			"",
 	},
 	{
@@ -8808,17 +10118,23 @@ inner join pq on true
 			" │       ├─ outerVisibility: false\n" +
 			" │       ├─ isLateral: false\n" +
 			" │       ├─ cacheable: true\n" +
+			" │       ├─ colSet: (4)\n" +
+			" │       ├─ tableId: 1\n" +
 			" │       └─ Union distinct\n" +
 			" │           ├─ Project\n" +
 			" │           │   ├─ columns: [2 (tinyint)]\n" +
 			" │           │   └─ Table\n" +
 			" │           │       ├─ name: \n" +
-			" │           │       └─ columns: []\n" +
+			" │           │       ├─ columns: []\n" +
+			" │           │       ├─ colSet: ()\n" +
+			" │           │       └─ tableId: 0\n" +
 			" │           └─ Project\n" +
 			" │               ├─ columns: [3 (tinyint)]\n" +
 			" │               └─ Table\n" +
 			" │                   ├─ name: \n" +
-			" │                   └─ columns: []\n" +
+			" │                   ├─ columns: []\n" +
+			" │                   ├─ colSet: ()\n" +
+			" │                   └─ tableId: 0\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [4 (tinyint)]\n" +
 			"     └─ ProcessTable\n" +
@@ -8842,17 +10158,23 @@ inner join pq on true
 			" │       ├─ outerVisibility: false\n" +
 			" │       ├─ isLateral: false\n" +
 			" │       ├─ cacheable: true\n" +
+			" │       ├─ colSet: (4)\n" +
+			" │       ├─ tableId: 1\n" +
 			" │       └─ Union distinct\n" +
 			" │           ├─ Project\n" +
 			" │           │   ├─ columns: [2 (tinyint)]\n" +
 			" │           │   └─ Table\n" +
 			" │           │       ├─ name: \n" +
-			" │           │       └─ columns: []\n" +
+			" │           │       ├─ columns: []\n" +
+			" │           │       ├─ colSet: ()\n" +
+			" │           │       └─ tableId: 0\n" +
 			" │           └─ Project\n" +
 			" │               ├─ columns: [3 (tinyint)]\n" +
 			" │               └─ Table\n" +
 			" │                   ├─ name: \n" +
-			" │                   └─ columns: []\n" +
+			" │                   ├─ columns: []\n" +
+			" │                   ├─ colSet: ()\n" +
+			" │                   └─ tableId: 0\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [4 (tinyint)]\n" +
 			"     └─ ProcessTable\n" +
@@ -8873,6 +10195,8 @@ inner join pq on true
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
+			"         ├─ colSet: (6)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ RecursiveCTE\n" +
 			"             └─ Union distinct\n" +
 			"                 ├─ Union distinct\n" +
@@ -8881,28 +10205,38 @@ inner join pq on true
 			"                 │   │   │   ├─ columns: [1 (tinyint)]\n" +
 			"                 │   │   │   └─ Table\n" +
 			"                 │   │   │       ├─ name: \n" +
-			"                 │   │   │       └─ columns: []\n" +
+			"                 │   │   │       ├─ columns: []\n" +
+			"                 │   │   │       ├─ colSet: ()\n" +
+			"                 │   │   │       └─ tableId: 0\n" +
 			"                 │   │   └─ Project\n" +
 			"                 │   │       ├─ columns: [4 (tinyint)]\n" +
 			"                 │   │       └─ Table\n" +
 			"                 │   │           ├─ name: \n" +
-			"                 │   │           └─ columns: []\n" +
+			"                 │   │           ├─ columns: []\n" +
+			"                 │   │           ├─ colSet: ()\n" +
+			"                 │   │           └─ tableId: 0\n" +
 			"                 │   └─ SubqueryAlias\n" +
 			"                 │       ├─ name: b\n" +
 			"                 │       ├─ outerVisibility: false\n" +
 			"                 │       ├─ isLateral: false\n" +
 			"                 │       ├─ cacheable: true\n" +
+			"                 │       ├─ colSet: (5)\n" +
+			"                 │       ├─ tableId: 1\n" +
 			"                 │       └─ Union distinct\n" +
 			"                 │           ├─ Project\n" +
 			"                 │           │   ├─ columns: [2 (tinyint)]\n" +
 			"                 │           │   └─ Table\n" +
 			"                 │           │       ├─ name: \n" +
-			"                 │           │       └─ columns: []\n" +
+			"                 │           │       ├─ columns: []\n" +
+			"                 │           │       ├─ colSet: ()\n" +
+			"                 │           │       └─ tableId: 0\n" +
 			"                 │           └─ Project\n" +
 			"                 │               ├─ columns: [3 (tinyint)]\n" +
 			"                 │               └─ Table\n" +
 			"                 │                   ├─ name: \n" +
-			"                 │                   └─ columns: []\n" +
+			"                 │                   ├─ columns: []\n" +
+			"                 │                   ├─ colSet: ()\n" +
+			"                 │                   └─ tableId: 0\n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [(a.x:0!null + 1 (tinyint)) as x+1]\n" +
 			"                     └─ Filter\n" +
@@ -8921,32 +10255,44 @@ inner join pq on true
 			" │   │   ├─ outerVisibility: false\n" +
 			" │   │   ├─ isLateral: false\n" +
 			" │   │   ├─ cacheable: true\n" +
+			" │   │   ├─ colSet: (2)\n" +
+			" │   │   ├─ tableId: 1\n" +
 			" │   │   └─ Project\n" +
 			" │   │       ├─ columns: [1 (tinyint)]\n" +
 			" │   │       └─ Table\n" +
 			" │   │           ├─ name: \n" +
-			" │   │           └─ columns: []\n" +
+			" │   │           ├─ columns: []\n" +
+			" │   │           ├─ colSet: ()\n" +
+			" │   │           └─ tableId: 0\n" +
 			" │   └─ Sort(b.i:0!null DESC nullsFirst)\n" +
 			" │       └─ SubqueryAlias\n" +
 			" │           ├─ name: b\n" +
 			" │           ├─ outerVisibility: false\n" +
 			" │           ├─ isLateral: false\n" +
 			" │           ├─ cacheable: true\n" +
+			" │           ├─ colSet: (4)\n" +
+			" │           ├─ tableId: 3\n" +
 			" │           └─ Project\n" +
 			" │               ├─ columns: [2 (tinyint)]\n" +
 			" │               └─ Table\n" +
 			" │                   ├─ name: \n" +
-			" │                   └─ columns: []\n" +
+			" │                   ├─ columns: []\n" +
+			" │                   ├─ colSet: ()\n" +
+			" │                   └─ tableId: 0\n" +
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: a\n" +
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [1 (tinyint)]\n" +
 			"         └─ Table\n" +
 			"             ├─ name: \n" +
-			"             └─ columns: []\n" +
+			"             ├─ columns: []\n" +
+			"             ├─ colSet: ()\n" +
+			"             └─ tableId: 0\n" +
 			"",
 	},
 	{
@@ -8956,54 +10302,67 @@ inner join pq on true
 			" ├─ limit: 1\n" +
 			" ├─ Union distinct\n" +
 			" │   ├─ Project\n" +
-			" │   │   ├─ columns: [t1.j:1!null as k]\n" +
-			" │   │   └─ HashJoin\n" +
+			" │   │   ├─ columns: [t1.j:0!null as k]\n" +
+			" │   │   └─ InnerJoin\n" +
 			" │   │       ├─ Eq\n" +
-			" │   │       │   ├─ t1.j:1!null\n" +
-			" │   │       │   └─ t2.j:0!null\n" +
+			" │   │       │   ├─ t1.j:0!null\n" +
+			" │   │       │   └─ t2.j:1!null\n" +
 			" │   │       ├─ SubqueryAlias\n" +
-			" │   │       │   ├─ name: t2\n" +
+			" │   │       │   ├─ name: t1\n" +
 			" │   │       │   ├─ outerVisibility: false\n" +
 			" │   │       │   ├─ isLateral: false\n" +
 			" │   │       │   ├─ cacheable: true\n" +
+			" │   │       │   ├─ colSet: (2)\n" +
+			" │   │       │   ├─ tableId: 1\n" +
 			" │   │       │   └─ Project\n" +
 			" │   │       │       ├─ columns: [1 (tinyint)]\n" +
 			" │   │       │       └─ Table\n" +
 			" │   │       │           ├─ name: \n" +
-			" │   │       │           └─ columns: []\n" +
-			" │   │       └─ HashLookup\n" +
-			" │   │           ├─ left-key: TUPLE(t2.j:0!null)\n" +
-			" │   │           ├─ right-key: TUPLE(t1.j:0!null)\n" +
-			" │   │           └─ SubqueryAlias\n" +
-			" │   │               ├─ name: t1\n" +
-			" │   │               ├─ outerVisibility: false\n" +
-			" │   │               ├─ isLateral: false\n" +
-			" │   │               ├─ cacheable: true\n" +
-			" │   │               └─ Project\n" +
-			" │   │                   ├─ columns: [1 (tinyint)]\n" +
-			" │   │                   └─ Table\n" +
-			" │   │                       ├─ name: \n" +
-			" │   │                       └─ columns: []\n" +
+			" │   │       │           ├─ columns: []\n" +
+			" │   │       │           ├─ colSet: ()\n" +
+			" │   │       │           └─ tableId: 0\n" +
+			" │   │       └─ SubqueryAlias\n" +
+			" │   │           ├─ name: t2\n" +
+			" │   │           ├─ outerVisibility: false\n" +
+			" │   │           ├─ isLateral: false\n" +
+			" │   │           ├─ cacheable: true\n" +
+			" │   │           ├─ colSet: (2)\n" +
+			" │   │           ├─ tableId: 1\n" +
+			" │   │           └─ Project\n" +
+			" │   │               ├─ columns: [1 (tinyint)]\n" +
+			" │   │               └─ Table\n" +
+			" │   │                   ├─ name: \n" +
+			" │   │                   ├─ columns: []\n" +
+			" │   │                   ├─ colSet: ()\n" +
+			" │   │                   └─ tableId: 0\n" +
 			" │   └─ SubqueryAlias\n" +
 			" │       ├─ name: b\n" +
 			" │       ├─ outerVisibility: false\n" +
 			" │       ├─ isLateral: false\n" +
 			" │       ├─ cacheable: true\n" +
+			" │       ├─ colSet: (4)\n" +
+			" │       ├─ tableId: 3\n" +
 			" │       └─ Project\n" +
 			" │           ├─ columns: [2 (tinyint)]\n" +
 			" │           └─ Table\n" +
 			" │               ├─ name: \n" +
-			" │               └─ columns: []\n" +
+			" │               ├─ columns: []\n" +
+			" │               ├─ colSet: ()\n" +
+			" │               └─ tableId: 0\n" +
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: a\n" +
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [1 (tinyint)]\n" +
 			"         └─ Table\n" +
 			"             ├─ name: \n" +
-			"             └─ columns: []\n" +
+			"             ├─ columns: []\n" +
+			"             ├─ colSet: ()\n" +
+			"             └─ tableId: 0\n" +
 			"",
 	},
 	{
@@ -9013,96 +10372,123 @@ inner join pq on true
 			" ├─ limit: 2\n" +
 			" ├─ Union distinct\n" +
 			" │   ├─ Project\n" +
-			" │   │   ├─ columns: [t1.j:1!null as k]\n" +
-			" │   │   └─ HashJoin\n" +
+			" │   │   ├─ columns: [t1.j:0!null as k]\n" +
+			" │   │   └─ InnerJoin\n" +
 			" │   │       ├─ Eq\n" +
-			" │   │       │   ├─ t1.j:1!null\n" +
-			" │   │       │   └─ t2.j:0!null\n" +
+			" │   │       │   ├─ t1.j:0!null\n" +
+			" │   │       │   └─ t2.j:1!null\n" +
 			" │   │       ├─ SubqueryAlias\n" +
-			" │   │       │   ├─ name: t2\n" +
+			" │   │       │   ├─ name: t1\n" +
 			" │   │       │   ├─ outerVisibility: false\n" +
 			" │   │       │   ├─ isLateral: false\n" +
 			" │   │       │   ├─ cacheable: true\n" +
+			" │   │       │   ├─ colSet: (4)\n" +
+			" │   │       │   ├─ tableId: 1\n" +
 			" │   │       │   └─ Union distinct\n" +
 			" │   │       │       ├─ Union distinct\n" +
 			" │   │       │       │   ├─ Project\n" +
 			" │   │       │       │   │   ├─ columns: [1 (tinyint)]\n" +
 			" │   │       │       │   │   └─ Table\n" +
 			" │   │       │       │   │       ├─ name: \n" +
-			" │   │       │       │   │       └─ columns: []\n" +
+			" │   │       │       │   │       ├─ columns: []\n" +
+			" │   │       │       │   │       ├─ colSet: ()\n" +
+			" │   │       │       │   │       └─ tableId: 0\n" +
 			" │   │       │       │   └─ Project\n" +
 			" │   │       │       │       ├─ columns: [2 (tinyint)]\n" +
 			" │   │       │       │       └─ Table\n" +
 			" │   │       │       │           ├─ name: \n" +
-			" │   │       │       │           └─ columns: []\n" +
+			" │   │       │       │           ├─ columns: []\n" +
+			" │   │       │       │           ├─ colSet: ()\n" +
+			" │   │       │       │           └─ tableId: 0\n" +
 			" │   │       │       └─ Project\n" +
 			" │   │       │           ├─ columns: [3 (tinyint)]\n" +
 			" │   │       │           └─ Table\n" +
 			" │   │       │               ├─ name: \n" +
-			" │   │       │               └─ columns: []\n" +
-			" │   │       └─ HashLookup\n" +
-			" │   │           ├─ left-key: TUPLE(t2.j:0!null)\n" +
-			" │   │           ├─ right-key: TUPLE(t1.j:0!null)\n" +
-			" │   │           └─ SubqueryAlias\n" +
-			" │   │               ├─ name: t1\n" +
-			" │   │               ├─ outerVisibility: false\n" +
-			" │   │               ├─ isLateral: false\n" +
-			" │   │               ├─ cacheable: true\n" +
-			" │   │               └─ Union distinct\n" +
-			" │   │                   ├─ Union distinct\n" +
-			" │   │                   │   ├─ Project\n" +
-			" │   │                   │   │   ├─ columns: [1 (tinyint)]\n" +
-			" │   │                   │   │   └─ Table\n" +
-			" │   │                   │   │       ├─ name: \n" +
-			" │   │                   │   │       └─ columns: []\n" +
-			" │   │                   │   └─ Project\n" +
-			" │   │                   │       ├─ columns: [2 (tinyint)]\n" +
-			" │   │                   │       └─ Table\n" +
-			" │   │                   │           ├─ name: \n" +
-			" │   │                   │           └─ columns: []\n" +
-			" │   │                   └─ Project\n" +
-			" │   │                       ├─ columns: [3 (tinyint)]\n" +
-			" │   │                       └─ Table\n" +
-			" │   │                           ├─ name: \n" +
-			" │   │                           └─ columns: []\n" +
+			" │   │       │               ├─ columns: []\n" +
+			" │   │       │               ├─ colSet: ()\n" +
+			" │   │       │               └─ tableId: 0\n" +
+			" │   │       └─ SubqueryAlias\n" +
+			" │   │           ├─ name: t2\n" +
+			" │   │           ├─ outerVisibility: false\n" +
+			" │   │           ├─ isLateral: false\n" +
+			" │   │           ├─ cacheable: true\n" +
+			" │   │           ├─ colSet: (4)\n" +
+			" │   │           ├─ tableId: 1\n" +
+			" │   │           └─ Union distinct\n" +
+			" │   │               ├─ Union distinct\n" +
+			" │   │               │   ├─ Project\n" +
+			" │   │               │   │   ├─ columns: [1 (tinyint)]\n" +
+			" │   │               │   │   └─ Table\n" +
+			" │   │               │   │       ├─ name: \n" +
+			" │   │               │   │       ├─ columns: []\n" +
+			" │   │               │   │       ├─ colSet: ()\n" +
+			" │   │               │   │       └─ tableId: 0\n" +
+			" │   │               │   └─ Project\n" +
+			" │   │               │       ├─ columns: [2 (tinyint)]\n" +
+			" │   │               │       └─ Table\n" +
+			" │   │               │           ├─ name: \n" +
+			" │   │               │           ├─ columns: []\n" +
+			" │   │               │           ├─ colSet: ()\n" +
+			" │   │               │           └─ tableId: 0\n" +
+			" │   │               └─ Project\n" +
+			" │   │                   ├─ columns: [3 (tinyint)]\n" +
+			" │   │                   └─ Table\n" +
+			" │   │                       ├─ name: \n" +
+			" │   │                       ├─ columns: []\n" +
+			" │   │                       ├─ colSet: ()\n" +
+			" │   │                       └─ tableId: 0\n" +
 			" │   └─ SubqueryAlias\n" +
 			" │       ├─ name: b\n" +
 			" │       ├─ outerVisibility: false\n" +
 			" │       ├─ isLateral: false\n" +
 			" │       ├─ cacheable: true\n" +
+			" │       ├─ colSet: (7)\n" +
+			" │       ├─ tableId: 3\n" +
 			" │       └─ Union distinct\n" +
 			" │           ├─ Project\n" +
 			" │           │   ├─ columns: [2 (tinyint)]\n" +
 			" │           │   └─ Table\n" +
 			" │           │       ├─ name: \n" +
-			" │           │       └─ columns: []\n" +
+			" │           │       ├─ columns: []\n" +
+			" │           │       ├─ colSet: ()\n" +
+			" │           │       └─ tableId: 0\n" +
 			" │           └─ Project\n" +
 			" │               ├─ columns: [3 (tinyint)]\n" +
 			" │               └─ Table\n" +
 			" │                   ├─ name: \n" +
-			" │                   └─ columns: []\n" +
+			" │                   ├─ columns: []\n" +
+			" │                   ├─ colSet: ()\n" +
+			" │                   └─ tableId: 0\n" +
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: a\n" +
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (4)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Union distinct\n" +
 			"         ├─ Union distinct\n" +
 			"         │   ├─ Project\n" +
 			"         │   │   ├─ columns: [1 (tinyint)]\n" +
 			"         │   │   └─ Table\n" +
 			"         │   │       ├─ name: \n" +
-			"         │   │       └─ columns: []\n" +
+			"         │   │       ├─ columns: []\n" +
+			"         │   │       ├─ colSet: ()\n" +
+			"         │   │       └─ tableId: 0\n" +
 			"         │   └─ Project\n" +
 			"         │       ├─ columns: [2 (tinyint)]\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: \n" +
-			"         │           └─ columns: []\n" +
+			"         │           ├─ columns: []\n" +
+			"         │           ├─ colSet: ()\n" +
+			"         │           └─ tableId: 0\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [3 (tinyint)]\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: \n" +
-			"                 └─ columns: []\n" +
+			"                 ├─ columns: []\n" +
+			"                 ├─ colSet: ()\n" +
+			"                 └─ tableId: 0\n" +
 			"",
 	},
 	{
@@ -9116,31 +10502,43 @@ inner join pq on true
 			" │   │   ├─ outerVisibility: false\n" +
 			" │   │   ├─ isLateral: false\n" +
 			" │   │   ├─ cacheable: true\n" +
+			" │   │   ├─ colSet: (2)\n" +
+			" │   │   ├─ tableId: 1\n" +
 			" │   │   └─ Project\n" +
 			" │   │       ├─ columns: [1 (tinyint)]\n" +
 			" │   │       └─ Table\n" +
 			" │   │           ├─ name: \n" +
-			" │   │           └─ columns: []\n" +
+			" │   │           ├─ columns: []\n" +
+			" │   │           ├─ colSet: ()\n" +
+			" │   │           └─ tableId: 0\n" +
 			" │   └─ SubqueryAlias\n" +
 			" │       ├─ name: b\n" +
 			" │       ├─ outerVisibility: false\n" +
 			" │       ├─ isLateral: false\n" +
 			" │       ├─ cacheable: true\n" +
+			" │       ├─ colSet: (4)\n" +
+			" │       ├─ tableId: 3\n" +
 			" │       └─ Project\n" +
 			" │           ├─ columns: [2 (tinyint)]\n" +
 			" │           └─ Table\n" +
 			" │               ├─ name: \n" +
-			" │               └─ columns: []\n" +
+			" │               ├─ columns: []\n" +
+			" │               ├─ colSet: ()\n" +
+			" │               └─ tableId: 0\n" +
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: a\n" +
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [1 (tinyint)]\n" +
 			"         └─ Table\n" +
 			"             ├─ name: \n" +
-			"             └─ columns: []\n" +
+			"             ├─ columns: []\n" +
+			"             ├─ colSet: ()\n" +
+			"             └─ tableId: 0\n" +
 			"",
 	},
 	{
@@ -9154,31 +10552,43 @@ inner join pq on true
 			" │   │   ├─ outerVisibility: false\n" +
 			" │   │   ├─ isLateral: false\n" +
 			" │   │   ├─ cacheable: true\n" +
+			" │   │   ├─ colSet: (2)\n" +
+			" │   │   ├─ tableId: 1\n" +
 			" │   │   └─ Project\n" +
 			" │   │       ├─ columns: [1 (tinyint)]\n" +
 			" │   │       └─ Table\n" +
 			" │   │           ├─ name: \n" +
-			" │   │           └─ columns: []\n" +
+			" │   │           ├─ columns: []\n" +
+			" │   │           ├─ colSet: ()\n" +
+			" │   │           └─ tableId: 0\n" +
 			" │   └─ SubqueryAlias\n" +
 			" │       ├─ name: b\n" +
 			" │       ├─ outerVisibility: false\n" +
 			" │       ├─ isLateral: false\n" +
 			" │       ├─ cacheable: true\n" +
+			" │       ├─ colSet: (4)\n" +
+			" │       ├─ tableId: 3\n" +
 			" │       └─ Project\n" +
 			" │           ├─ columns: [2 (tinyint)]\n" +
 			" │           └─ Table\n" +
 			" │               ├─ name: \n" +
-			" │               └─ columns: []\n" +
+			" │               ├─ columns: []\n" +
+			" │               ├─ colSet: ()\n" +
+			" │               └─ tableId: 0\n" +
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: a\n" +
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [1 (tinyint)]\n" +
 			"         └─ Table\n" +
 			"             ├─ name: \n" +
-			"             └─ columns: []\n" +
+			"             ├─ columns: []\n" +
+			"             ├─ colSet: ()\n" +
+			"             └─ tableId: 0\n" +
 			"",
 	},
 	{
@@ -9190,31 +10600,43 @@ inner join pq on true
 			" │   │   ├─ outerVisibility: false\n" +
 			" │   │   ├─ isLateral: false\n" +
 			" │   │   ├─ cacheable: true\n" +
+			" │   │   ├─ colSet: (2)\n" +
+			" │   │   ├─ tableId: 1\n" +
 			" │   │   └─ Project\n" +
 			" │   │       ├─ columns: [1 (tinyint)]\n" +
 			" │   │       └─ Table\n" +
 			" │   │           ├─ name: \n" +
-			" │   │           └─ columns: []\n" +
+			" │   │           ├─ columns: []\n" +
+			" │   │           ├─ colSet: ()\n" +
+			" │   │           └─ tableId: 0\n" +
 			" │   └─ SubqueryAlias\n" +
 			" │       ├─ name: b\n" +
 			" │       ├─ outerVisibility: false\n" +
 			" │       ├─ isLateral: false\n" +
 			" │       ├─ cacheable: true\n" +
+			" │       ├─ colSet: (4)\n" +
+			" │       ├─ tableId: 3\n" +
 			" │       └─ Project\n" +
 			" │           ├─ columns: [1 (tinyint)]\n" +
 			" │           └─ Table\n" +
 			" │               ├─ name: \n" +
-			" │               └─ columns: []\n" +
+			" │               ├─ columns: []\n" +
+			" │               ├─ colSet: ()\n" +
+			" │               └─ tableId: 0\n" +
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: a\n" +
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [1 (tinyint)]\n" +
 			"         └─ Table\n" +
 			"             ├─ name: \n" +
-			"             └─ columns: []\n" +
+			"             ├─ columns: []\n" +
+			"             ├─ colSet: ()\n" +
+			"             └─ tableId: 0\n" +
 			"",
 	},
 	{
@@ -9242,17 +10664,21 @@ With c as (
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
+			" ├─ colSet: (12)\n" +
+			" ├─ tableId: 7\n" +
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: d\n" +
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (11)\n" +
+			"     ├─ tableId: 6\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [a.s:5!null]\n" +
 			"         └─ HashJoin\n" +
 			"             ├─ AND\n" +
 			"             │   ├─ Eq\n" +
-			"             │   │   ├─ b.i:2!null\n" +
+			"             │   │   ├─ b.I:2!null\n" +
 			"             │   │   └─ e.i:0!null\n" +
 			"             │   └─ Eq\n" +
 			"             │       ├─ a.i:4!null\n" +
@@ -9262,6 +10688,8 @@ With c as (
 			"             │   ├─ outerVisibility: false\n" +
 			"             │   ├─ isLateral: false\n" +
 			"             │   ├─ cacheable: true\n" +
+			"             │   ├─ colSet: (9,10)\n" +
+			"             │   ├─ tableId: 5\n" +
 			"             │   └─ Filter\n" +
 			"             │       ├─ HashIn\n" +
 			"             │       │   ├─ t1.I:0!null\n" +
@@ -9270,12 +10698,14 @@ With c as (
 			"             │           └─ IndexedTableAccess(mytable)\n" +
 			"             │               ├─ index: [mytable.i]\n" +
 			"             │               ├─ static: [{[2, 2]}, {[3, 3]}]\n" +
+			"             │               ├─ colSet: (7,8)\n" +
+			"             │               ├─ tableId: 4\n" +
 			"             │               └─ Table\n" +
 			"             │                   ├─ name: mytable\n" +
 			"             │                   └─ columns: [i s]\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: TUPLE(e.i:0!null, e.i:0!null)\n" +
-			"                 ├─ right-key: TUPLE(b.i:0!null, a.i:2!null)\n" +
+			"                 ├─ right-key: TUPLE(b.I:0!null, a.i:2!null)\n" +
 			"                 └─ HashJoin\n" +
 			"                     ├─ Eq\n" +
 			"                     │   ├─ a.i:4!null\n" +
@@ -9285,6 +10715,8 @@ With c as (
 			"                     │   ├─ outerVisibility: false\n" +
 			"                     │   ├─ isLateral: false\n" +
 			"                     │   ├─ cacheable: true\n" +
+			"                     │   ├─ colSet: (5,6)\n" +
+			"                     │   ├─ tableId: 3\n" +
 			"                     │   └─ Filter\n" +
 			"                     │       ├─ HashIn\n" +
 			"                     │       │   ├─ t2.i:0!null\n" +
@@ -9293,6 +10725,8 @@ With c as (
 			"                     │           └─ IndexedTableAccess(mytable)\n" +
 			"                     │               ├─ index: [mytable.i]\n" +
 			"                     │               ├─ static: [{[1, 1]}, {[2, 2]}]\n" +
+			"                     │               ├─ colSet: (3,4)\n" +
+			"                     │               ├─ tableId: 2\n" +
 			"                     │               └─ Table\n" +
 			"                     │                   ├─ name: mytable\n" +
 			"                     │                   └─ columns: [i s]\n" +
@@ -9302,7 +10736,9 @@ With c as (
 			"                         └─ TableAlias(a)\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: mytable\n" +
-			"                                 └─ columns: [i s]\n" +
+			"                                 ├─ columns: [i s]\n" +
+			"                                 ├─ colSet: (1,2)\n" +
+			"                                 └─ tableId: 1\n" +
 			"",
 	},
 	{
@@ -9312,6 +10748,8 @@ With c as (
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
+			" ├─ colSet: (3)\n" +
+			" ├─ tableId: 2\n" +
 			" └─ Filter\n" +
 			"     ├─ Eq\n" +
 			"     │   ├─ mytable.i:0!null\n" +
@@ -9319,7 +10757,9 @@ With c as (
 			"     └─ Limit(1)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
-			"             └─ columns: [i]\n" +
+			"             ├─ columns: [i]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             └─ tableId: 1\n" +
 			"",
 	},
 	{
@@ -9329,11 +10769,15 @@ With c as (
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
+			" ├─ colSet: (4)\n" +
+			" ├─ tableId: 3\n" +
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: sq1\n" +
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (3)\n" +
+			"     ├─ tableId: 2\n" +
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
 			"         │   ├─ mytable.i:0!null\n" +
@@ -9341,7 +10785,9 @@ With c as (
 			"         └─ Limit(1)\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i]\n" +
+			"                 ├─ columns: [i]\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 └─ tableId: 1\n" +
 			"",
 	},
 	{
@@ -9351,6 +10797,8 @@ With c as (
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
+			" ├─ colSet: (3)\n" +
+			" ├─ tableId: 2\n" +
 			" └─ Filter\n" +
 			"     ├─ Eq\n" +
 			"     │   ├─ mytable.i:0!null\n" +
@@ -9362,6 +10810,8 @@ With c as (
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
 			"                 ├─ reverse: true\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
 			"                     └─ columns: [i s]\n" +
@@ -9374,11 +10824,15 @@ With c as (
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
+			" ├─ colSet: (4)\n" +
+			" ├─ tableId: 3\n" +
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: sq1\n" +
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (3)\n" +
+			"     ├─ tableId: 2\n" +
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
 			"         │   ├─ mytable.i:0!null\n" +
@@ -9390,6 +10844,8 @@ With c as (
 			"                     ├─ index: [mytable.i]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
 			"                     ├─ reverse: true\n" +
+			"                     ├─ colSet: (1,2)\n" +
+			"                     ├─ tableId: 1\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: mytable\n" +
 			"                         └─ columns: [i s]\n" +
@@ -9403,9 +10859,13 @@ With c as (
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (3)\n" +
+			"     ├─ tableId: 2\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ static: [{(1, ∞)}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i]\n" +
@@ -9419,14 +10879,20 @@ With c as (
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (4)\n" +
+			"     ├─ tableId: 3\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: sq1\n" +
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
+			"         ├─ colSet: (3)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ static: [{(1, ∞)}]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
 			"                 └─ columns: [i]\n" +
@@ -9440,14 +10906,20 @@ With c as (
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (4)\n" +
+			"     ├─ tableId: 3\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: sq1\n" +
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
+			"         ├─ colSet: (3)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ static: [{(1, ∞)}]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
 			"                 └─ columns: [i]\n" +
@@ -9461,11 +10933,15 @@ With c as (
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (4)\n" +
+			"     ├─ tableId: 3\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: sq1\n" +
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
+			"         ├─ colSet: (3)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Filter\n" +
 			"             ├─ GreaterThan\n" +
 			"             │   ├─ mytable.i:0!null\n" +
@@ -9473,7 +10949,9 @@ With c as (
 			"             └─ Limit(1)\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
-			"                     └─ columns: [i]\n" +
+			"                     ├─ columns: [i]\n" +
+			"                     ├─ colSet: (1,2)\n" +
+			"                     └─ tableId: 1\n" +
 			"",
 	},
 	{
@@ -9483,6 +10961,8 @@ With c as (
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
+			" ├─ colSet: (9,10)\n" +
+			" ├─ tableId: 3\n" +
 			" └─ Filter\n" +
 			"     ├─ NOT\n" +
 			"     │   └─ Eq\n" +
@@ -9496,14 +10976,18 @@ With c as (
 			"                     ├─ TableAlias(a)\n" +
 			"                     │   └─ Table\n" +
 			"                     │       ├─ name: one_pk\n" +
-			"                     │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                     │       ├─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                     │       ├─ colSet: (1-6)\n" +
+			"                     │       └─ tableId: 1\n" +
 			"                     └─ HashLookup\n" +
 			"                         ├─ left-key: TUPLE()\n" +
 			"                         ├─ right-key: TUPLE()\n" +
 			"                         └─ TableAlias(b)\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: mytable\n" +
-			"                                 └─ columns: [i s]\n" +
+			"                                 ├─ columns: [i s]\n" +
+			"                                 ├─ colSet: (7,8)\n" +
+			"                                 └─ tableId: 2\n" +
 			"",
 	},
 	{
@@ -9513,6 +10997,8 @@ With c as (
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
+			" ├─ colSet: (9,10)\n" +
+			" ├─ tableId: 3\n" +
 			" └─ Filter\n" +
 			"     ├─ NOT\n" +
 			"     │   └─ Eq\n" +
@@ -9526,14 +11012,18 @@ With c as (
 			"                     ├─ TableAlias(a)\n" +
 			"                     │   └─ Table\n" +
 			"                     │       ├─ name: one_pk\n" +
-			"                     │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                     │       ├─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                     │       ├─ colSet: (1-6)\n" +
+			"                     │       └─ tableId: 1\n" +
 			"                     └─ HashLookup\n" +
 			"                         ├─ left-key: TUPLE()\n" +
 			"                         ├─ right-key: TUPLE()\n" +
 			"                         └─ TableAlias(b)\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: mytable\n" +
-			"                                 └─ columns: [i s]\n" +
+			"                                 ├─ columns: [i s]\n" +
+			"                                 ├─ colSet: (7,8)\n" +
+			"                                 └─ tableId: 2\n" +
 			"",
 	},
 	{
@@ -9546,10 +11036,14 @@ With c as (
 			"     │   ├─ outerVisibility: false\n" +
 			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
+			"     │   ├─ colSet: (10)\n" +
+			"     │   ├─ tableId: 4\n" +
 			"     │   └─ Limit(1)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
 			"     │           ├─ static: [{(1, ∞)}]\n" +
+			"     │           ├─ colSet: (8,9)\n" +
+			"     │           ├─ tableId: 3\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: mytable\n" +
 			"     │               └─ columns: [i]\n" +
@@ -9561,6 +11055,8 @@ With c as (
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ isLateral: false\n" +
 			"             ├─ cacheable: true\n" +
+			"             ├─ colSet: (7)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Filter\n" +
 			"                 ├─ GreaterThanOrEqual\n" +
 			"                 │   ├─ one_pk.pk:0!null\n" +
@@ -9569,6 +11065,8 @@ With c as (
 			"                     └─ IndexedTableAccess(one_pk)\n" +
 			"                         ├─ index: [one_pk.pk]\n" +
 			"                         ├─ static: [{(NULL, 2)}]\n" +
+			"                         ├─ colSet: (1-6)\n" +
+			"                         ├─ tableId: 1\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: one_pk\n" +
 			"                             └─ columns: [pk]\n" +
@@ -9618,6 +11116,8 @@ WHERE keyless.c0 IN (
 			"         │                   │   ├─ outerVisibility: true\n" +
 			"         │                   │   ├─ isLateral: false\n" +
 			"         │                   │   ├─ cacheable: true\n" +
+			"         │                   │   ├─ colSet: (6-8)\n" +
+			"         │                   │   ├─ tableId: 3\n" +
 			"         │                   │   └─ RecursiveCTE\n" +
 			"         │                   │       └─ Union all\n" +
 			"         │                   │           ├─ Project\n" +
@@ -9629,7 +11129,9 @@ WHERE keyless.c0 IN (
 			"         │                   │           │       └─ TableAlias(t1)\n" +
 			"         │                   │           │           └─ Table\n" +
 			"         │                   │           │               ├─ name: keyless\n" +
-			"         │                   │           │               └─ columns: [c0 c1]\n" +
+			"         │                   │           │               ├─ columns: [c0 c1]\n" +
+			"         │                   │           │               ├─ colSet: (3,4)\n" +
+			"         │                   │           │               └─ tableId: 2\n" +
 			"         │                   │           └─ Project\n" +
 			"         │                   │               ├─ columns: [(cte.depth:2!null + 1 (tinyint)) as cte.depth + 1, cte.i:3, (t2.c1:6 + 1 (tinyint)) as T2.c1 + 1]\n" +
 			"         │                   │               └─ HashJoin\n" +
@@ -9643,14 +11145,18 @@ WHERE keyless.c0 IN (
 			"         │                   │                       └─ TableAlias(t2)\n" +
 			"         │                   │                           └─ Table\n" +
 			"         │                   │                               ├─ name: keyless\n" +
-			"         │                   │                               └─ columns: [c0 c1]\n" +
+			"         │                   │                               ├─ columns: [c0 c1]\n" +
+			"         │                   │                               ├─ colSet: (9,10)\n" +
+			"         │                   │                               └─ tableId: 5\n" +
 			"         │                   └─ HashLookup\n" +
 			"         │                       ├─ left-key: TUPLE()\n" +
 			"         │                       ├─ right-key: TUPLE()\n" +
 			"         │                       └─ TableAlias(u0)\n" +
 			"         │                           └─ Table\n" +
 			"         │                               ├─ name: keyless\n" +
-			"         │                               └─ columns: [c0]\n" +
+			"         │                               ├─ columns: [c0]\n" +
+			"         │                               ├─ colSet: (11,12)\n" +
+			"         │                               └─ tableId: 7\n" +
 			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: keyless\n" +
@@ -9701,6 +11207,8 @@ WHERE keyless.c0 IN (
 			"         │                   │   ├─ outerVisibility: true\n" +
 			"         │                   │   ├─ isLateral: false\n" +
 			"         │                   │   ├─ cacheable: true\n" +
+			"         │                   │   ├─ colSet: (6-8)\n" +
+			"         │                   │   ├─ tableId: 3\n" +
 			"         │                   │   └─ RecursiveCTE\n" +
 			"         │                   │       └─ Union all\n" +
 			"         │                   │           ├─ Project\n" +
@@ -9712,7 +11220,9 @@ WHERE keyless.c0 IN (
 			"         │                   │           │       └─ TableAlias(t1)\n" +
 			"         │                   │           │           └─ Table\n" +
 			"         │                   │           │               ├─ name: keyless\n" +
-			"         │                   │           │               └─ columns: [c0 c1]\n" +
+			"         │                   │           │               ├─ columns: [c0 c1]\n" +
+			"         │                   │           │               ├─ colSet: (3,4)\n" +
+			"         │                   │           │               └─ tableId: 2\n" +
 			"         │                   │           └─ Project\n" +
 			"         │                   │               ├─ columns: [(cte.depth:2!null + 1 (tinyint)) as cte.depth + 1, cte.i:3, (t2.c1:6 + 1 (tinyint)) as T2.c1 + 1]\n" +
 			"         │                   │               └─ HashJoin\n" +
@@ -9726,14 +11236,18 @@ WHERE keyless.c0 IN (
 			"         │                   │                       └─ TableAlias(t2)\n" +
 			"         │                   │                           └─ Table\n" +
 			"         │                   │                               ├─ name: keyless\n" +
-			"         │                   │                               └─ columns: [c0 c1]\n" +
+			"         │                   │                               ├─ columns: [c0 c1]\n" +
+			"         │                   │                               ├─ colSet: (9,10)\n" +
+			"         │                   │                               └─ tableId: 5\n" +
 			"         │                   └─ HashLookup\n" +
 			"         │                       ├─ left-key: TUPLE()\n" +
 			"         │                       ├─ right-key: TUPLE()\n" +
 			"         │                       └─ TableAlias(u0)\n" +
 			"         │                           └─ Table\n" +
 			"         │                               ├─ name: keyless\n" +
-			"         │                               └─ columns: [c0]\n" +
+			"         │                               ├─ columns: [c0]\n" +
+			"         │                               ├─ colSet: (11,12)\n" +
+			"         │                               └─ tableId: 7\n" +
 			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: keyless\n" +
@@ -9748,6 +11262,8 @@ WHERE keyless.c0 IN (
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i s]\n" +
@@ -9761,6 +11277,8 @@ WHERE keyless.c0 IN (
 			"     ├─ index: [mytable.i]\n" +
 			"     ├─ static: [{[NULL, ∞)}]\n" +
 			"     ├─ reverse: true\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +
@@ -9773,6 +11291,8 @@ WHERE keyless.c0 IN (
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1-7)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: two_pk\n" +
 			"         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -9797,6 +11317,8 @@ WHERE keyless.c0 IN (
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"     ├─ reverse: true\n" +
+			"     ├─ colSet: (1-7)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: two_pk\n" +
 			"         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
@@ -9847,6 +11369,8 @@ WHERE keyless.c0 IN (
 			" └─ IndexedTableAccess(one_pk)\n" +
 			"     ├─ index: [one_pk.pk]\n" +
 			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     ├─ colSet: (1-6)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: one_pk\n" +
 			"         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
@@ -9876,13 +11400,17 @@ WHERE keyless.c0 IN (
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: true\n" +
 			"         ├─ cacheable: false\n" +
+			"         ├─ colSet: (5,6)\n" +
+			"         ├─ tableId: 3\n" +
 			"         └─ Filter\n" +
 			"             ├─ Eq\n" +
 			"             │   ├─ xy.y:1\n" +
 			"             │   └─ uv.u:2!null\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: uv\n" +
-			"                 └─ columns: [u v]\n" +
+			"                 ├─ columns: [u v]\n" +
+			"                 ├─ colSet: (3,4)\n" +
+			"                 └─ tableId: 2\n" +
 			"",
 	},
 	{
@@ -9892,6 +11420,8 @@ WHERE keyless.c0 IN (
 			" └─ IndexedTableAccess(xy)\n" +
 			"     ├─ index: [xy.x]\n" +
 			"     ├─ static: [{(0, 2]}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: xy\n" +
 			"         └─ columns: [x y]\n" +
@@ -9902,6 +11432,8 @@ WHERE keyless.c0 IN (
 		ExpectedPlan: "IndexedTableAccess(xy)\n" +
 			" ├─ index: [xy.y]\n" +
 			" ├─ static: [{(NULL, 1)}, {(2, ∞)}]\n" +
+			" ├─ colSet: (1,2)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: xy\n" +
 			"     └─ columns: [x y]\n" +
@@ -9913,6 +11445,8 @@ WHERE keyless.c0 IN (
 			" ├─ index: [xy.y]\n" +
 			" ├─ static: [{(2, ∞)}, {(NULL, 1)}]\n" +
 			" ├─ reverse: true\n" +
+			" ├─ colSet: (1,2)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: xy\n" +
 			"     └─ columns: [x y]\n" +
@@ -9927,6 +11461,8 @@ WHERE keyless.c0 IN (
 			" └─ IndexedTableAccess(xy)\n" +
 			"     ├─ index: [xy.x]\n" +
 			"     ├─ static: [{[0, 0]}, {[1, 1]}, {[3, 3]}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: xy\n" +
 			"         └─ columns: [x y]\n" +
@@ -9942,6 +11478,8 @@ WHERE keyless.c0 IN (
 			"     ├─ index: [xy.x]\n" +
 			"     ├─ static: [{[3, 3]}, {[1, 1]}, {[0, 0]}]\n" +
 			"     ├─ reverse: true\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: xy\n" +
 			"         └─ columns: [x y]\n" +
@@ -9956,6 +11494,8 @@ WHERE keyless.c0 IN (
 			" └─ IndexedTableAccess(xy)\n" +
 			"     ├─ index: [xy.y]\n" +
 			"     ├─ static: [{[0, 0]}, {[1, 1]}, {[3, 3]}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: xy\n" +
 			"         └─ columns: [x y]\n" +
@@ -9971,6 +11511,8 @@ WHERE keyless.c0 IN (
 			"     ├─ index: [xy.y]\n" +
 			"     ├─ static: [{[3, 3]}, {[1, 1]}, {[0, 0]}]\n" +
 			"     ├─ reverse: true\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: xy\n" +
 			"         └─ columns: [x y]\n" +
@@ -9981,6 +11523,8 @@ WHERE keyless.c0 IN (
 		ExpectedPlan: "IndexedTableAccess(xy_hasnull_idx)\n" +
 			" ├─ index: [xy_hasnull_idx.y]\n" +
 			" ├─ static: [{[NULL, ∞)}]\n" +
+			" ├─ colSet: (1,2)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: xy_hasnull_idx\n" +
 			"     └─ columns: [x y]\n" +
@@ -9992,6 +11536,8 @@ WHERE keyless.c0 IN (
 			" ├─ index: [xy_hasnull_idx.y]\n" +
 			" ├─ static: [{[NULL, ∞)}]\n" +
 			" ├─ reverse: true\n" +
+			" ├─ colSet: (1,2)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: xy_hasnull_idx\n" +
 			"     └─ columns: [x y]\n" +
@@ -10003,6 +11549,8 @@ WHERE keyless.c0 IN (
 			" ├─ index: [xy_hasnull_idx.y]\n" +
 			" ├─ static: [{(1, ∞)}, {(NULL, 1)}]\n" +
 			" ├─ reverse: true\n" +
+			" ├─ colSet: (1,2)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: xy_hasnull_idx\n" +
 			"     └─ columns: [x y]\n" +
@@ -10014,6 +11562,8 @@ WHERE keyless.c0 IN (
 			" ├─ index: [xy_hasnull_idx.y]\n" +
 			" ├─ static: [{(1, ∞)}, {[NULL, 1)}]\n" +
 			" ├─ reverse: true\n" +
+			" ├─ colSet: (1,2)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: xy_hasnull_idx\n" +
 			"     └─ columns: [x y]\n" +
@@ -10030,6 +11580,8 @@ WHERE keyless.c0 IN (
 			" └─ IndexedTableAccess(xy_hasnull_idx)\n" +
 			"     ├─ index: [xy_hasnull_idx.y]\n" +
 			"     ├─ static: [{[NULL, NULL]}, {[0, 0]}, {[2, 2]}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: xy_hasnull_idx\n" +
 			"         └─ columns: [x y]\n" +
@@ -10045,6 +11597,8 @@ WHERE keyless.c0 IN (
 			"         ├─ index: [xy_hasnull_idx.y]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
 			"         ├─ reverse: true\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy_hasnull_idx\n" +
 			"             └─ columns: [x y]\n" +
@@ -10060,6 +11614,8 @@ WHERE keyless.c0 IN (
 			"         ├─ index: [xy_hasnull_idx.y]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
 			"         ├─ reverse: true\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy_hasnull_idx\n" +
 			"             └─ columns: [x y]\n" +
@@ -10071,6 +11627,8 @@ WHERE keyless.c0 IN (
 			" ├─ index: [xy_hasnull_idx.y]\n" +
 			" ├─ static: [{[NULL, ∞)}]\n" +
 			" ├─ reverse: true\n" +
+			" ├─ colSet: (1,2)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: xy_hasnull_idx\n" +
 			"     └─ columns: [x y]\n" +
@@ -10085,6 +11643,8 @@ WHERE keyless.c0 IN (
 			"         ├─ index: [xy.x]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
 			"         ├─ reverse: true\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
 			"             └─ columns: [x]\n" +
@@ -10098,6 +11658,8 @@ WHERE keyless.c0 IN (
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
 			"             └─ columns: [x]\n" +
@@ -10125,6 +11687,8 @@ WHERE keyless.c0 IN (
 			"         ├─ index: [xy.x]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
 			"         ├─ reverse: true\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
 			"             └─ columns: [x]\n" +
@@ -10139,6 +11703,8 @@ WHERE keyless.c0 IN (
 			"         ├─ index: [xy.x]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
 			"         ├─ reverse: true\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
 			"             └─ columns: [x]\n" +
@@ -10153,6 +11719,8 @@ WHERE keyless.c0 IN (
 			"         ├─ index: [xy.x]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
 			"         ├─ reverse: true\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
 			"             └─ columns: [x]\n" +
@@ -10166,6 +11734,8 @@ WHERE keyless.c0 IN (
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
 			"         ├─ static: [{(0, ∞)}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
 			"             └─ columns: [x]\n" +
@@ -10180,6 +11750,8 @@ WHERE keyless.c0 IN (
 			"         ├─ index: [xy.x]\n" +
 			"         ├─ static: [{(NULL, 3)}]\n" +
 			"         ├─ reverse: true\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
 			"             └─ columns: [x]\n" +
@@ -10195,6 +11767,8 @@ WHERE keyless.c0 IN (
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.y]\n" +
 			"         ├─ static: [{(0, ∞)}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
 			"             └─ columns: [x y]\n" +
@@ -10210,6 +11784,8 @@ WHERE keyless.c0 IN (
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.y]\n" +
 			"         ├─ static: [{(NULL, 3)}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
 			"             └─ columns: [x y]\n" +
@@ -10222,6 +11798,8 @@ WHERE keyless.c0 IN (
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
+			" ├─ colSet: (4)\n" +
+			" ├─ tableId: 2\n" +
 			" └─ Limit(1)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [xy.x:0!null as max(x)]\n" +
@@ -10229,6 +11807,8 @@ WHERE keyless.c0 IN (
 			"             ├─ index: [xy.x]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
 			"             ├─ reverse: true\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: xy\n" +
 			"                 └─ columns: [x]\n" +
@@ -10243,6 +11823,8 @@ WHERE keyless.c0 IN (
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (4)\n" +
+			"     ├─ tableId: 2\n" +
 			"     └─ Limit(1)\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [xy.x:0!null as max(x)]\n" +
@@ -10250,6 +11832,8 @@ WHERE keyless.c0 IN (
 			"                 ├─ index: [xy.x]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
 			"                 ├─ reverse: true\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: xy\n" +
 			"                     └─ columns: [x]\n" +
@@ -10267,9 +11851,13 @@ WHERE keyless.c0 IN (
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
+			"         ├─ colSet: (3)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
-			"             └─ columns: [x]\n" +
+			"             ├─ columns: [x]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             └─ tableId: 1\n" +
 			"",
 	},
 	{
@@ -10299,7 +11887,9 @@ WHERE keyless.c0 IN (
 			"         │       └─ columns: [u]\n" +
 			"         └─ IndexedTableAccess(xy)\n" +
 			"             ├─ index: [xy.x]\n" +
-			"             ├─ keys: [uv.u]\n" +
+			"             ├─ keys: [uv.u:0!null]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: xy\n" +
 			"                 └─ columns: [x]\n" +
@@ -10336,23 +11926,31 @@ order by i;`,
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ isLateral: true\n" +
 			"             ├─ cacheable: true\n" +
+			"             ├─ colSet: (8)\n" +
+			"             ├─ tableId: 7\n" +
 			"             └─ SubqueryAlias\n" +
 			"                 ├─ name: cte\n" +
 			"                 ├─ outerVisibility: false\n" +
 			"                 ├─ isLateral: true\n" +
 			"                 ├─ cacheable: true\n" +
+			"                 ├─ colSet: (5)\n" +
+			"                 ├─ tableId: 3\n" +
 			"                 └─ RecursiveCTE\n" +
 			"                     └─ Union distinct\n" +
 			"                         ├─ Table\n" +
 			"                         │   ├─ name: xy\n" +
-			"                         │   └─ columns: [y]\n" +
+			"                         │   ├─ columns: [y]\n" +
+			"                         │   ├─ colSet: (3,4)\n" +
+			"                         │   └─ tableId: 2\n" +
 			"                         └─ Project\n" +
 			"                             ├─ columns: [xy.x:3!null]\n" +
 			"                             └─ LookupJoin\n" +
 			"                                 ├─ RecursiveTable(cte)\n" +
 			"                                 └─ IndexedTableAccess(xy)\n" +
 			"                                     ├─ index: [xy.x]\n" +
-			"                                     ├─ keys: [cte.a]\n" +
+			"                                     ├─ keys: [cte.a:2]\n" +
+			"                                     ├─ colSet: (6,7)\n" +
+			"                                     ├─ tableId: 5\n" +
 			"                                     └─ Table\n" +
 			"                                         ├─ name: xy\n" +
 			"                                         └─ columns: [x]\n" +
@@ -10394,17 +11992,23 @@ order by i;`,
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ isLateral: true\n" +
 			"             ├─ cacheable: true\n" +
+			"             ├─ colSet: (10)\n" +
+			"             ├─ tableId: 8\n" +
 			"             └─ SubqueryAlias\n" +
 			"                 ├─ name: cte\n" +
 			"                 ├─ outerVisibility: false\n" +
 			"                 ├─ isLateral: true\n" +
 			"                 ├─ cacheable: true\n" +
+			"                 ├─ colSet: (5)\n" +
+			"                 ├─ tableId: 3\n" +
 			"                 └─ RecursiveCTE\n" +
 			"                     └─ Union distinct\n" +
 			"                         ├─ limit: 3\n" +
 			"                         ├─ Table\n" +
 			"                         │   ├─ name: xy\n" +
-			"                         │   └─ columns: [y]\n" +
+			"                         │   ├─ columns: [y]\n" +
+			"                         │   ├─ colSet: (3,4)\n" +
+			"                         │   └─ tableId: 2\n" +
 			"                         └─ Project\n" +
 			"                             ├─ columns: [sqa1.x:2!null]\n" +
 			"                             └─ HashJoin\n" +
@@ -10416,9 +12020,13 @@ order by i;`,
 			"                                 │   ├─ outerVisibility: false\n" +
 			"                                 │   ├─ isLateral: true\n" +
 			"                                 │   ├─ cacheable: true\n" +
+			"                                 │   ├─ colSet: (8,9)\n" +
+			"                                 │   ├─ tableId: 6\n" +
 			"                                 │   └─ IndexedTableAccess(xy)\n" +
 			"                                 │       ├─ index: [xy.x]\n" +
 			"                                 │       ├─ static: [{[1, 1]}]\n" +
+			"                                 │       ├─ colSet: (6,7)\n" +
+			"                                 │       ├─ tableId: 5\n" +
 			"                                 │       └─ Table\n" +
 			"                                 │           ├─ name: xy\n" +
 			"                                 │           └─ columns: [x y]\n" +
@@ -10454,7 +12062,9 @@ order by xy.x, xy.y, uv.u, uv.v;`,
 			"         │                   │   └─ uv.u:4!null\n" +
 			"         │                   └─ IndexedTableAccess(uv)\n" +
 			"         │                       ├─ index: [uv.u]\n" +
-			"         │                       ├─ keys: [xy.x]\n" +
+			"         │                       ├─ keys: [xy.x:2!null]\n" +
+			"         │                       ├─ colSet: (5,6)\n" +
+			"         │                       ├─ tableId: 3\n" +
 			"         │                       └─ Table\n" +
 			"         │                           ├─ name: uv\n" +
 			"         │                           └─ columns: [u v]\n" +
@@ -10464,7 +12074,9 @@ order by xy.x, xy.y, uv.u, uv.v;`,
 			"         │       └─ columns: [u v]\n" +
 			"         └─ IndexedTableAccess(xy)\n" +
 			"             ├─ index: [xy.x]\n" +
-			"             ├─ keys: [uv.u]\n" +
+			"             ├─ keys: [uv.u:0!null]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: xy\n" +
 			"                 └─ columns: [x y]\n" +
@@ -10504,7 +12116,9 @@ where exists (
 			" │                   │       └─ ab.a:2!null\n" +
 			" │                   └─ Table\n" +
 			" │                       ├─ name: uv\n" +
-			" │                       └─ columns: [v]\n" +
+			" │                       ├─ columns: [v]\n" +
+			" │                       ├─ colSet: (5,6)\n" +
+			" │                       └─ tableId: 3\n" +
 			" ├─ TableAlias(ab2)\n" +
 			" │   └─ ProcessTable\n" +
 			" │       └─ Table\n" +
@@ -10512,7 +12126,9 @@ where exists (
 			" │           └─ columns: [a b]\n" +
 			" └─ Table\n" +
 			"     ├─ name: ab\n" +
-			"     └─ columns: [a b]\n" +
+			"     ├─ columns: [a b]\n" +
+			"     ├─ colSet: (3,4)\n" +
+			"     └─ tableId: 2\n" +
 			"",
 	},
 	{
@@ -10552,7 +12168,9 @@ order by x, y;
 			"     │                   │       └─ xy.x:2!null\n" +
 			"     │                   └─ Table\n" +
 			"     │                       ├─ name: uv\n" +
-			"     │                       └─ columns: [v]\n" +
+			"     │                       ├─ columns: [v]\n" +
+			"     │                       ├─ colSet: (5,6)\n" +
+			"     │                       └─ tableId: 3\n" +
 			"     ├─ TableAlias(xy2)\n" +
 			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
@@ -10560,7 +12178,9 @@ order by x, y;
 			"     │           └─ columns: [x y]\n" +
 			"     └─ Table\n" +
 			"         ├─ name: xy\n" +
-			"         └─ columns: [x y]\n" +
+			"         ├─ columns: [x y]\n" +
+			"         ├─ colSet: (3,4)\n" +
+			"         └─ tableId: 2\n" +
 			"",
 	},
 }

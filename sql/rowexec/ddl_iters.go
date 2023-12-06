@@ -634,7 +634,7 @@ func modifyColumnInSchema(schema sql.Schema, name string, column *sql.Column, or
 				if newSchemaIdx == -1 {
 					return nil, transform.SameTree, sql.ErrColumnNotFound.New(colName)
 				}
-				return expression.NewGetFieldWithTable(newSchemaIdx, gf.Type(), gf.Database(), gf.Table(), colName, gf.IsNullable()), transform.NewTree, nil
+				return expression.NewGetFieldWithTable(newSchemaIdx, int(gf.TableId()), gf.Type(), gf.Database(), gf.Table(), colName, gf.IsNullable()), transform.NewTree, nil
 			})
 			if err != nil {
 				return nil, nil, err
@@ -969,14 +969,7 @@ func GetColumnsAndPrepareExpressions(
 				seen[gf.Name()] = idx
 			}
 
-			return expression.NewGetFieldWithTable(
-				idx,
-				gf.Type(),
-				gf.Database(),
-				gf.Table(),
-				gf.Name(),
-				gf.IsNullable(),
-			), transform.NewTree, nil
+			return expression.NewGetFieldWithTable(idx, int(gf.TableId()), gf.Type(), gf.Database(), gf.Table(), gf.Name(), gf.IsNullable()), transform.NewTree, nil
 		})
 
 		if err != nil {
@@ -1476,7 +1469,7 @@ func addColumnToSchema(schema sql.Schema, column *sql.Column, order *sql.ColumnO
 						if idx < 0 {
 							return nil, transform.SameTree, sql.ErrTableColumnNotFound.New(schema[0].Source, s.Name())
 						}
-						return expression.NewGetFieldWithTable(idx, s.Type(), s.Database(), s.Table(), s.Name(), s.IsNullable()), transform.NewTree, nil
+						return expression.NewGetFieldWithTable(idx, 0, s.Type(), s.Database(), s.Table(), s.Name(), s.IsNullable()), transform.NewTree, nil
 					default:
 						return s, transform.SameTree, nil
 					}
@@ -2091,7 +2084,8 @@ func virtualTableProjections(schema sql.Schema, tableName string) []sql.Expressi
 	projections := make([]sql.Expression, len(schema))
 	for i, c := range schema {
 		if !c.Virtual {
-			projections[i] = expression.NewGetFieldWithTable(i, c.Type, c.DatabaseSource, tableName, c.Name, c.Nullable)
+			// todo: if we really need colId/tableId we can get from scope
+			projections[i] = expression.NewGetFieldWithTable(i, 1, c.Type, c.DatabaseSource, tableName, c.Name, c.Nullable)
 		} else {
 			projections[i] = c.Generated
 		}

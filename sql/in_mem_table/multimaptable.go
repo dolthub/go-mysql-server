@@ -89,6 +89,10 @@ func NewIndexedSetTable[V any](name string, schema sql.Schema, coll sql.Collatio
 	}
 }
 
+func (t *IndexedSetTable[V]) TableId() sql.TableId {
+	return 0
+}
+
 func (t *IndexedSetTable[V]) Set() IndexedSet[V] {
 	return t.set
 }

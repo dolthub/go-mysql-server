@@ -18,6 +18,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -28,9 +31,10 @@ type relProps struct {
 	grp *ExprGroup
 
 	fds          *sql.FuncDepSet
-	outputCols   sql.Schema
+	outputCols   sql.ColSet
 	inputTables  sql.FastIntSet
 	outputTables sql.FastIntSet
+	tableNodes   []plan.TableIdNode
 
 	card float64
 
@@ -44,36 +48,43 @@ func newRelProps(rel RelExpr) *relProps {
 		grp: rel.Group(),
 	}
 	switch r := rel.(type) {
-	case *EmptyTable:
-		p.outputCols = []*sql.Column{
-			{
-				Name:   "1",
-				Source: "",
-			},
-		}
 	case *Max1Row:
 		p.populateFds()
+	case *EmptyTable:
+		if r.TableIdNode().Columns().Len() > 0 {
+			p.outputCols = r.TableIdNode().Columns()
+			p.populateFds()
+			p.populateOutputTables()
+			p.populateInputTables()
+			return p
+		}
+	case *SetOp:
 	case SourceRel:
-		p.outputCols = r.OutputCols()
+		n := r.TableIdNode()
+		if len(n.Schema()) == n.Columns().Len() {
+			p.outputCols = r.TableIdNode().Columns()
+		} else {
+			// if the table is projected, capture subset of column ids
+			var tw sql.TableNode
+			var ok bool
+			for tw, ok = n.(sql.TableNode); !ok; tw, ok = n.Children()[0].(sql.TableNode) {
+			}
+
+			tin := tw.UnderlyingTable().(sql.PrimaryKeyTable)
+			firstCol, _ := n.Columns().Next(1)
+			sch := tin.PrimaryKeySchema().Schema
+
+			var colset sql.ColSet
+			for _, c := range n.Schema() {
+				i := sch.IndexOfColName(c.Name)
+				colset.Add(firstCol + sql.ColumnId(i))
+			}
+			p.outputCols = colset
+		}
 	default:
 	}
-	if r, ok := rel.(SourceRel); ok {
-		if r.Name() == "" {
-			p.outputCols = []*sql.Column{
-				{
-					Name:   "1",
-					Source: "",
-				},
-			}
-		} else {
-			p.outputCols = r.OutputCols()
-		}
-		// need to assign column ids
-		// TODO name resolution should replace assignColumnIds, then Fds can stay lazy
-		p.populateFds()
-	} else if _, ok := rel.(*Max1Row); ok {
-		p.populateFds()
-	}
+
+	p.populateFds()
 	p.populateOutputTables()
 	p.populateInputTables()
 	return p
@@ -108,20 +119,20 @@ func (p *relProps) populateFds() {
 		all := rel.Child.RelProps.FuncDeps().All()
 		notNull := rel.Child.RelProps.FuncDeps().NotNull()
 		fds = sql.NewMax1RowFDs(all, notNull)
+	case *EmptyTable:
+		fds = &sql.FuncDepSet{}
 	case SourceRel:
-		start := len(rel.Group().m.Columns)
-		rel.Group().m.assignColumnIds(rel)
-		end := len(rel.Group().m.Columns)
+		n := rel.TableIdNode()
+		all := n.Columns()
 
 		sch := allTableCols(rel)
-
-		var all sql.ColSet
 		var notNull sql.ColSet
-		for i := start; i < end; i++ {
-			all.Add(sql.ColumnId(i + 1))
-			if !sch[i-start].Nullable {
-				notNull.Add(sql.ColumnId(i + 1))
+		j := 0
+		for id, hasNext := all.Next(1); hasNext; id, hasNext = all.Next(id + 1) {
+			if !sch[j].Nullable {
+				notNull.Add(id)
 			}
+			j++
 		}
 
 		var indexes []sql.Index
@@ -138,7 +149,7 @@ func (p *relProps) populateFds() {
 			}
 			indexes, _ = indexableTable.GetIndexes(rel.Group().m.Ctx)
 		case *TableScan:
-			table := n.Table.UnderlyingTable()
+			table := n.Table.(sql.TableNode).UnderlyingTable()
 			indexableTable, ok := table.(sql.IndexAddressableTable)
 			if !ok {
 				break
@@ -146,6 +157,8 @@ func (p *relProps) populateFds() {
 			indexes, _ = indexableTable.GetIndexes(rel.Group().m.Ctx)
 		default:
 		}
+
+		firstCol, _ := all.Next(1)
 
 		var strictKeys []sql.ColSet
 		var laxKeys []sql.ColSet
@@ -156,12 +169,11 @@ func (p *relProps) populateFds() {
 			strict := true
 			normIdx := &Index{idx: idx, order: make([]sql.ColumnId, len(columns))}
 			for i, c := range columns {
-				colId := rel.Group().m.Columns[TableAndColumn{
-					tableName:  rel.Name(),
-					columnName: c,
-				}]
+				ord := sch.IndexOfColName(strings.ToLower(c))
+				idOffset := firstCol + sql.ColumnId(ord)
+				colId, _ := all.Next(idOffset)
 				if colId == 0 {
-					panic("unregistered column")
+					panic(fmt.Sprintf("colset invalid for join leaf: %s missing %d", all.String(), firstCol+sql.ColumnId(ord)))
 				}
 				normIdx.set.Add(colId)
 				normIdx.order[i] = colId
@@ -185,36 +197,36 @@ func (p *relProps) populateFds() {
 		var constant sql.ColSet
 		var equiv [][2]sql.ColumnId
 		for _, f := range rel.Filters {
-			switch f := f.Scalar.(type) {
-			case *Equal:
-				if l, ok := f.Left.Scalar.(*ColRef); ok {
-					switch r := f.Right.Scalar.(type) {
-					case *ColRef:
-						equiv = append(equiv, [2]sql.ColumnId{l.Col, r.Col})
-					case *Literal:
-						constant.Add(l.Col)
-						if r.Val != nil {
-							notNull.Add(l.Col)
+			switch f := f.(type) {
+			case *expression.Equals:
+				if l, ok := f.Left().(*expression.GetField); ok {
+					switch r := f.Right().(type) {
+					case *expression.GetField:
+						equiv = append(equiv, [2]sql.ColumnId{l.Id(), r.Id()})
+					case *expression.Literal:
+						constant.Add(l.Id())
+						if r.Value() != nil {
+							notNull.Add(l.Id())
 						}
 					}
 				}
-				if r, ok := f.Right.Scalar.(*ColRef); ok {
-					switch l := f.Left.Scalar.(type) {
-					case *ColRef:
-						equiv = append(equiv, [2]sql.ColumnId{l.Col, r.Col})
-					case *Literal:
-						constant.Add(r.Col)
-						if l.Val != nil {
-							notNull.Add(r.Col)
+				if r, ok := f.Right().(*expression.GetField); ok {
+					switch l := f.Left().(type) {
+					case *expression.GetField:
+						equiv = append(equiv, [2]sql.ColumnId{l.Id(), r.Id()})
+					case *expression.Literal:
+						constant.Add(r.Id())
+						if l.Value() != nil {
+							notNull.Add(r.Id())
 						}
 					}
 				}
-			case *Not:
-				child, ok := f.Child.Scalar.(*IsNull)
+			case *expression.Not:
+				child, ok := f.Child.(*expression.IsNull)
 				if ok {
-					col, ok := child.Child.Scalar.(*ColRef)
+					col, ok := child.Child.(*expression.GetField)
 					if ok {
-						notNull.Add(col.Col)
+						notNull.Add(col.Id())
 					}
 				}
 			}
@@ -223,7 +235,8 @@ func (p *relProps) populateFds() {
 	case *Project:
 		var projCols sql.ColSet
 		for _, e := range rel.Projections {
-			projCols = projCols.Union(e.scalarProps.Cols)
+			cols, _, _ := getExprScalarProps(e)
+			projCols = projCols.Union(cols)
 		}
 		fds = sql.NewProjectFDs(rel.Child.RelProps.FuncDeps(), projCols, false)
 	case *Distinct:
@@ -232,6 +245,25 @@ func (p *relProps) populateFds() {
 		panic(fmt.Sprintf("unsupported relProps type: %T", rel))
 	}
 	p.fds = fds
+}
+
+// getExprScalarProps returns bitsets of the column and table references,
+// and whether the expression is null rejecting.
+func getExprScalarProps(e sql.Expression) (sql.ColSet, sql.FastIntSet, bool) {
+	var cols sql.ColSet
+	var tables sql.FastIntSet
+	nullRej := true
+	transform.InspectExpr(e, func(e sql.Expression) bool {
+		switch e := e.(type) {
+		case *expression.GetField:
+			cols.Add(e.Id())
+			tables.Add(int(e.TableId()))
+		case *expression.NullSafeEquals:
+			nullRej = false
+		}
+		return false
+	})
+	return cols, tables, nullRej
 }
 
 // allTableCols returns the full schema of a table ignoring
@@ -246,7 +278,7 @@ func allTableCols(rel SourceRel) sql.Schema {
 		}
 		table = rt.UnderlyingTable()
 	case *TableScan:
-		table = rel.Table.UnderlyingTable()
+		table = rel.Table.(sql.TableNode).UnderlyingTable()
 	default:
 		return rel.OutputCols()
 	}
@@ -277,20 +309,20 @@ func allTableCols(rel SourceRel) sql.Schema {
 }
 
 // getEquivs collects column equivalencies in the format sql.EquivSet expects.
-func getEquivs(filters []ScalarExpr) [][2]sql.ColumnId {
+func getEquivs(filters []sql.Expression) [][2]sql.ColumnId {
 	var ret [][2]sql.ColumnId
 	for _, f := range filters {
-		var l, r *ColRef
+		var l, r *expression.GetField
 		switch f := f.(type) {
-		case *Equal:
-			l, _ = f.Left.Scalar.(*ColRef)
-			r, _ = f.Right.Scalar.(*ColRef)
-		case *NullSafeEq:
-			l, _ = f.Left.Scalar.(*ColRef)
-			r, _ = f.Right.Scalar.(*ColRef)
+		case *expression.Equals:
+			l, _ = f.Left().(*expression.GetField)
+			r, _ = f.Right().(*expression.GetField)
+		case *expression.NullSafeEquals:
+			l, _ = f.Left().(*expression.GetField)
+			r, _ = f.Right().(*expression.GetField)
 		}
 		if l != nil && r != nil {
-			ret = append(ret, [2]sql.ColumnId{l.Col, r.Col})
+			ret = append(ret, [2]sql.ColumnId{l.Id(), r.Id()})
 		}
 	}
 	return ret
@@ -308,21 +340,33 @@ func (p *relProps) FuncDeps() *sql.FuncDepSet {
 func (p *relProps) populateOutputTables() {
 	switch n := p.grp.First.(type) {
 	case SourceRel:
-		p.outputTables = sql.NewFastIntSet(int(n.TableId()))
+		p.outputTables = sql.NewFastIntSet(int(n.TableIdNode().Id()))
+		p.tableNodes = []plan.TableIdNode{n.TableIdNode()}
 	case *AntiJoin:
 		p.outputTables = n.Left.RelProps.OutputTables()
+		p.tableNodes = n.Left.RelProps.TableIdNodes()
 	case *SemiJoin:
 		p.outputTables = n.Left.RelProps.OutputTables()
+		p.tableNodes = n.Left.RelProps.TableIdNodes()
 	case *Distinct:
 		p.outputTables = n.Child.RelProps.OutputTables()
+		p.tableNodes = n.Child.RelProps.TableIdNodes()
 	case *Project:
 		p.outputTables = n.Child.RelProps.OutputTables()
+		p.tableNodes = n.Child.RelProps.TableIdNodes()
 	case *Filter:
 		p.outputTables = n.Child.RelProps.OutputTables()
+		p.tableNodes = n.Child.RelProps.TableIdNodes()
 	case *Max1Row:
 		p.outputTables = n.Child.RelProps.OutputTables()
+		p.tableNodes = n.Child.RelProps.TableIdNodes()
 	case JoinRel:
 		p.outputTables = n.JoinPrivate().Left.RelProps.OutputTables().Union(n.JoinPrivate().Right.RelProps.OutputTables())
+		leftNodeCnt := len(n.JoinPrivate().Left.RelProps.tableNodes)
+		rightNodeCnt := len(n.JoinPrivate().Right.RelProps.tableNodes)
+		p.tableNodes = make([]plan.TableIdNode, leftNodeCnt+rightNodeCnt)
+		copy(p.tableNodes, n.JoinPrivate().Left.RelProps.tableNodes)
+		copy(p.tableNodes[leftNodeCnt:], n.JoinPrivate().Right.RelProps.tableNodes)
 	default:
 		panic(fmt.Sprintf("unhandled type: %T", n))
 	}
@@ -334,7 +378,7 @@ func (p *relProps) populateOutputTables() {
 func (p *relProps) populateInputTables() {
 	switch n := p.grp.First.(type) {
 	case SourceRel:
-		p.inputTables = sql.NewFastIntSet(int(n.TableId()))
+		p.inputTables = sql.NewFastIntSet(int(p.grp.Id))
 	case *Distinct:
 		p.inputTables = n.Child.RelProps.InputTables()
 	case *Project:
@@ -354,7 +398,7 @@ func (p *relProps) populateOutputCols() {
 	p.outputCols = p.outputColsForRel(p.grp.Best)
 }
 
-func (p *relProps) outputColsForRel(r RelExpr) sql.Schema {
+func (p *relProps) outputColsForRel(r RelExpr) sql.ColSet {
 	switch r := r.(type) {
 	case *SemiJoin:
 		return r.Left.RelProps.OutputCols()
@@ -364,10 +408,10 @@ func (p *relProps) outputColsForRel(r RelExpr) sql.Schema {
 		if r.Op.IsPartial() {
 			return r.Left.RelProps.OutputCols()
 		} else {
-			return append(r.JoinPrivate().Left.RelProps.OutputCols(), r.JoinPrivate().Right.RelProps.OutputCols()...)
+			return r.JoinPrivate().Left.RelProps.OutputCols().Union(r.JoinPrivate().Right.RelProps.OutputCols())
 		}
 	case JoinRel:
-		return append(r.JoinPrivate().Left.RelProps.OutputCols(), r.JoinPrivate().Right.RelProps.OutputCols()...)
+		return r.JoinPrivate().Left.RelProps.OutputCols().Union(r.JoinPrivate().Right.RelProps.OutputCols())
 	case *Distinct:
 		return r.Child.RelProps.OutputCols()
 	case *Project:
@@ -376,17 +420,15 @@ func (p *relProps) outputColsForRel(r RelExpr) sql.Schema {
 		return r.outputCols()
 	case *Max1Row:
 		return r.outputCols()
-	case SourceRel:
-		return r.OutputCols()
 	default:
 		panic("unknown type")
 	}
-	return nil
+	return sql.ColSet{}
 }
 
 // OutputCols returns the output schema of a node
-func (p *relProps) OutputCols() sql.Schema {
-	if p.outputCols == nil {
+func (p *relProps) OutputCols() sql.ColSet {
+	if p.outputCols.Empty() {
 		if p.grp.Best == nil {
 			return p.outputColsForRel(p.grp.First)
 		}
@@ -398,6 +440,11 @@ func (p *relProps) OutputCols() sql.Schema {
 // OutputTables returns a bitmap of tables in the output schema of this node.
 func (p *relProps) OutputTables() sql.FastIntSet {
 	return p.outputTables
+}
+
+// TableIdNodes returns a list of table id nodes in this relation
+func (p *relProps) TableIdNodes() []plan.TableIdNode {
+	return p.tableNodes
 }
 
 // InputTables returns a bitmap of tables input into this node.
@@ -417,15 +464,17 @@ func sortedInputs(rel RelExpr) bool {
 			return true
 		}
 		inputs := sortedColsForRel(r.Child.Best)
-		outputs := r.outputCols()
+		outputs := r.Projections
 		i := 0
 		j := 0
-		for i < len(outputs) && j < len(inputs) {
+		for i < len(r.Projections) && j < len(inputs) {
+			out := transform.ExpressionToColumn(outputs[i], plan.AliasSubqueryString(outputs[i]))
+			in := inputs[j]
 			// i -> output idx (distinct)
 			// j -> input idx
 			// want to find matches for all i where j_i <= j_i+1
-			if strings.EqualFold(outputs[i].Name, inputs[j].Name) &&
-				strings.EqualFold(outputs[i].Source, inputs[j].Source) {
+			if strings.EqualFold(out.Name, in.Name) &&
+				strings.EqualFold(out.Source, in.Source) {
 				i++
 			} else {
 				// identical projections satisfied by same input
@@ -441,7 +490,7 @@ func sortedInputs(rel RelExpr) bool {
 func sortedColsForRel(rel RelExpr) sql.Schema {
 	switch r := rel.(type) {
 	case *TableScan:
-		tab, ok := r.Table.UnderlyingTable().(sql.PrimaryKeyTable)
+		tab, ok := r.Table.(sql.TableNode).UnderlyingTable().(sql.PrimaryKeyTable)
 		if ok {
 			ords := tab.PrimaryKeySchema().PkOrdinals
 			var pks sql.Schema

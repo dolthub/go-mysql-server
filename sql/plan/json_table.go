@@ -116,13 +116,40 @@ type JSONTable struct {
 	RootPath  string
 	Cols      []JSONTableCol
 	b         sql.NodeExecBuilder
+	id        sql.TableId
+	colset    sql.ColSet
 }
 
 var _ sql.Table = (*JSONTable)(nil)
 var _ sql.Node = (*JSONTable)(nil)
 var _ sql.Expressioner = (*JSONTable)(nil)
 var _ sql.CollationCoercible = (*JSONTable)(nil)
+var _ TableIdNode = (*JSONTable)(nil)
 var _ sql.RenameableNode = (*JSONTable)(nil)
+
+// WithId implements sql.TableIdNode
+func (t *JSONTable) WithId(id sql.TableId) TableIdNode {
+	ret := *t
+	ret.id = id
+	return &ret
+}
+
+// Id implements sql.TableIdNode
+func (t *JSONTable) Id() sql.TableId {
+	return t.id
+}
+
+// WithColumns implements sql.TableIdNode
+func (t *JSONTable) WithColumns(set sql.ColSet) TableIdNode {
+	ret := *t
+	ret.colset = set
+	return &ret
+}
+
+// Columns implements sql.TableIdNode
+func (t *JSONTable) Columns() sql.ColSet {
+	return t.colset
+}
 
 // Name implements the sql.Table interface
 func (t *JSONTable) Name() string {
@@ -263,7 +290,7 @@ func (t *JSONTable) WithExpressions(expression ...sql.Expression) (sql.Node, err
 }
 
 // NewJSONTable creates a new in memory table from the JSON formatted data, a jsonpath path string, and table spec.
-func NewJSONTable(dataExpr sql.Expression, path string, alias string, cols []JSONTableCol) (sql.Node, error) {
+func NewJSONTable(dataExpr sql.Expression, path string, alias string, cols []JSONTableCol) (*JSONTable, error) {
 	if _, ok := dataExpr.(*Subquery); ok {
 		return nil, sql.ErrInvalidArgument.New("JSON_TABLE")
 	}
