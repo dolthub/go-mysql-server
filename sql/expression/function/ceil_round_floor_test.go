@@ -128,7 +128,7 @@ func TestRound(t *testing.T) {
 		{
 			name:  "float64 is nil",
 			xExpr: expression.NewLiteral(nil, types.Null),
-			exp: nil,
+			exp:   nil,
 		},
 		{
 			name:  "float64 without d",
