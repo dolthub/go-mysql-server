@@ -154,6 +154,24 @@ func TestRound(t *testing.T) {
 			exp:   50.0,
 		},
 		{
+			name:  "float64 with negative d",
+			xExpr: expression.NewLiteral(52.855, types.Float64),
+			dExpr: expression.NewLiteral(-2, types.Int32),
+			exp:   100.0,
+		},
+		{
+			name:  "float64 with large d",
+			xExpr: expression.NewLiteral(1234567890.0987654321, types.Float64),
+			dExpr: expression.NewLiteral(999_999_999, types.Int32),
+			exp:   1234567890.0987654321,
+		},
+		{
+			name:  "float64 with large negative d",
+			xExpr: expression.NewLiteral(52.855, types.Float64),
+			dExpr: expression.NewLiteral(-999_999_999, types.Int32),
+			exp:   0.0,
+		},
+		{
 			name:  "float64 with float d",
 			xExpr: expression.NewLiteral(5.855, types.Float64),
 			dExpr: expression.NewLiteral(2.123, types.Float64),
