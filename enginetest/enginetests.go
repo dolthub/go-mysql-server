@@ -4246,6 +4246,7 @@ func TestOnUpdateTimestamp(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
+	ctx := NewContext(harness)
 
 	time1 := time.Date(
 		2000,     // year
@@ -4270,19 +4271,25 @@ func TestOnUpdateTimestamp(t *testing.T, harness Harness) {
 	)
 
 	// Set up table
-	ctx := NewContext(harness)
 	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t1 (id INT, ts TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
 	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t1(id) VALUES (1), (2), (3)")
 
-	okRes := []sql.Row{{types.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{Matched: 3, Updated: 3}}}}
-	ctx.SetQueryTime(time1)
-	TestQueryWithContext(t, ctx, e, harness, "UPDATE t1 SET id = 100", okRes, nil, nil)
+	sql.RunWithNowFunc(func() time.Time {
+		return time1
+	}, func() error {
+		RunQuery(t, e, harness, "UPDATE t1 SET id = 100")
+		return nil
+	})
 
 	exp1 := []sql.Row{{100, time1}, {100, time1}, {100, time1}}
 	TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t1", exp1, nil, nil)
 
-	ctx.SetQueryTime(time2)
-	TestQueryWithContext(t, ctx, e, harness, "UPDATE t1 SET id = 200", okRes, nil, nil)
+	sql.RunWithNowFunc(func() time.Time {
+		return time2
+	}, func() error {
+		RunQuery(t, e, harness, "UPDATE t1 SET id = 200")
+		return nil
+	})
 
 	exp2 := []sql.Row{{200, time2}, {200, time2}, {200, time2}}
 	TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t1", exp2, nil, nil)
