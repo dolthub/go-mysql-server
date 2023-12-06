@@ -4835,8 +4835,27 @@ CREATE TABLE tab3 (
 		SetUpScript: []string{
 			"create table t (i int, ts timestamp default null on update current_timestamp);",
 			"insert into t(i) values (1), (2), (3);",
+			"create table tt (i int, ts timestamp default null);",
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n  `i` int,\n  `ts` timestamp DEFAULT NULL ON UPDATE (CURRENT_TIMESTAMP())\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "alter table tt modify column ts timestamp default null on update current_timestamp;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table tt",
+				Expected: []sql.Row{
+					{"tt", "CREATE TABLE `tt` (\n  `i` int,\n  `ts` timestamp DEFAULT NULL ON UPDATE (CURRENT_TIMESTAMP())\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
 			{
 				Query: "select i from t where ts is not null;",
 				Expected: []sql.Row{},
