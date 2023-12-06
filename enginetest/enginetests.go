@@ -4271,11 +4271,11 @@ func TestOnUpdateTimestamp(t *testing.T, harness Harness) {
 
 	// Set up table
 	ctx := NewContext(harness)
-	ctx.SetQueryTime(time1)
 	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t1 (id INT, ts TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
 	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t1(id) VALUES (1), (2), (3)")
 
 	okRes := []sql.Row{{types.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{Matched: 3, Updated: 3}}}}
+	ctx.SetQueryTime(time1)
 	TestQueryWithContext(t, ctx, e, harness, "UPDATE t1 SET id = 100", okRes, nil, nil)
 
 	exp1 := []sql.Row{{100, time1}, {100, time1}, {100, time1}}
