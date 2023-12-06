@@ -4886,6 +4886,20 @@ CREATE TABLE tab3 (
 					{100},
 				},
 			},
+			{
+				Query: "update t set ts = timestamp('2000-1-23')",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{Matched: 3, Updated: 3}}},
+				},
+			},
+			{
+				Query: "select * from t;",
+				Expected: []sql.Row{
+					{100, time.Date(2000, time.January, 23, 0, 0, 0, 0, time.UTC)},
+					{100, time.Date(2000, time.January, 23, 0, 0, 0, 0, time.UTC)},
+					{100, time.Date(2000, time.January, 23, 0, 0, 0, 0, time.UTC)},
+				},
+			},
 		},
 	},
 }

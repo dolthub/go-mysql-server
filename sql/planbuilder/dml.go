@@ -270,9 +270,23 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 				updateExprs = append(updateExprs, expression.NewSetField(colName, assignColumnIndexes(generated, tableSch)))
 			}
 			if col.OnUpdate != nil {
+				// don't add if column is already being updated
 				colName := expression.NewGetFieldWithTable(i, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
-				onUpdate := b.resolveColumnDefaultExpression(inScope, col, col.OnUpdate)
-				updateExprs = append(updateExprs, expression.NewSetField(colName, assignColumnIndexes(onUpdate, tableSch)))
+				colExists := false
+				for _, expr := range updateExprs {
+					if setField, ok := expr.(*expression.SetField); ok {
+						if getField, ok := setField.Left.(*expression.GetField); ok {
+							if strings.EqualFold(getField.Name(), col.Name) {
+								colExists = true
+								continue
+							}
+						}
+					}
+				}
+				if !colExists {
+					onUpdate := b.resolveColumnDefaultExpression(inScope, col, col.OnUpdate)
+					updateExprs = append(updateExprs, expression.NewSetField(colName, assignColumnIndexes(onUpdate, tableSch)))
+				}
 			}
 		}
 	}
