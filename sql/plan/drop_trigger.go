@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -61,7 +63,7 @@ func (d *DropTrigger) String() string {
 
 // Schema implements the sql.Node interface.
 func (d *DropTrigger) Schema() sql.Schema {
-	return nil
+	return types.OkResultSchema
 }
 
 // Children implements the sql.Node interface.

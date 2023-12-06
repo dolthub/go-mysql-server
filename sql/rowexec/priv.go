@@ -21,7 +21,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func (b *BaseBuilder) buildFlushPrivileges(ctx *sql.Context, n *plan.FlushPrivileges, row sql.Row) (sql.RowIter, error) {
@@ -36,7 +35,7 @@ func (b *BaseBuilder) buildFlushPrivileges(ctx *sql.Context, n *plan.FlushPrivil
 		return nil, err
 	}
 
-	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
 func (b *BaseBuilder) buildDropUser(ctx *sql.Context, n *plan.DropUser, row sql.Row) (sql.RowIter, error) {
@@ -74,7 +73,7 @@ func (b *BaseBuilder) buildDropUser(ctx *sql.Context, n *plan.DropUser, row sql.
 	if err := mysqlDb.Persist(ctx, editor); err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
 func (b *BaseBuilder) buildRevokeRole(ctx *sql.Context, n *plan.RevokeRole, row sql.Row) (sql.RowIter, error) {
@@ -108,7 +107,7 @@ func (b *BaseBuilder) buildRevokeRole(ctx *sql.Context, n *plan.RevokeRole, row 
 	if err := mysqlDb.Persist(ctx, editor); err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
 func (b *BaseBuilder) buildDropRole(ctx *sql.Context, n *plan.DropRole, row sql.Row) (sql.RowIter, error) {
@@ -149,7 +148,7 @@ func (b *BaseBuilder) buildDropRole(ctx *sql.Context, n *plan.DropRole, row sql.
 	if err := mysqlDb.Persist(ctx, editor); err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
 func (b *BaseBuilder) buildRevokeProxy(ctx *sql.Context, n *plan.RevokeProxy, row sql.Row) (sql.RowIter, error) {
@@ -187,7 +186,7 @@ func (b *BaseBuilder) buildGrantRole(ctx *sql.Context, n *plan.GrantRole, row sq
 	if err := mysqlDb.Persist(ctx, editor); err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
 func (b *BaseBuilder) buildGrantProxy(ctx *sql.Context, n *plan.GrantProxy, row sql.Row) (sql.RowIter, error) {
@@ -274,7 +273,7 @@ func (b *BaseBuilder) buildRevoke(ctx *sql.Context, n *plan.Revoke, row sql.Row)
 	if err := mysqlDb.Persist(ctx, editor); err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
 func (b *BaseBuilder) buildRevokeAll(ctx *sql.Context, n *plan.RevokeAll, row sql.Row) (sql.RowIter, error) {
@@ -382,7 +381,7 @@ func (b *BaseBuilder) buildGrant(ctx *sql.Context, n *plan.Grant, row sql.Row) (
 		return nil, err
 	}
 
-	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
 func (b *BaseBuilder) buildCreateRole(ctx *sql.Context, n *plan.CreateRole, row sql.Row) (sql.RowIter, error) {
@@ -426,5 +425,5 @@ func (b *BaseBuilder) buildCreateRole(ctx *sql.Context, n *plan.CreateRole, row 
 	if err := mysqlDb.Persist(ctx, editor); err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
