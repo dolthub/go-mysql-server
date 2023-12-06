@@ -299,8 +299,6 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		res = tmp
 	} else if types.IsTextBlob(r.Left.Type()) {
 		res, _, err = types.Float64.Convert(tmp)
-	} else {
-		panic("unhandled type; implement")
 	}
 
 	return res, err
