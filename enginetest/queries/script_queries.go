@@ -4857,7 +4857,7 @@ CREATE TABLE tab3 (
 				},
 			},
 			{
-				Query: "select i from t where ts is not null;",
+				Query:    "select i from t where ts is not null;",
 				Expected: []sql.Row{},
 			},
 			{
