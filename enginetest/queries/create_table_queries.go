@@ -400,8 +400,9 @@ var CreateTableScriptTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				Query:    "select * from t1 order by pk",
-				Expected: []sql.Row{{1, MustParseTime(time.DateTime, "2020-01-01 00:00:00")}},
+				SkipResultCheckOnServerEngine: true, // the nanosecond is returned over the wire
+				Query:                         "select * from t1 order by pk",
+				Expected:                      []sql.Row{{1, MustParseTime(time.DateTime, "2020-01-01 00:00:00")}},
 			},
 			{
 				Query: "show create table t2",
@@ -417,8 +418,9 @@ var CreateTableScriptTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				Query:    "select * from t2 order by pk",
-				Expected: []sql.Row{{1, MustParseTime(time.RFC3339Nano, "2020-01-01T00:00:00.123000000Z")}},
+				SkipResultCheckOnServerEngine: true, // the nanosecond is returned over the wire
+				Query:                         "select * from t2 order by pk",
+				Expected:                      []sql.Row{{1, MustParseTime(time.RFC3339Nano, "2020-01-01T00:00:00.123000000Z")}},
 			},
 			{
 				Query: "show create table t3",
@@ -434,8 +436,9 @@ var CreateTableScriptTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				Query:    "select * from t3 order by pk",
-				Expected: []sql.Row{{1, MustParseTime(time.RFC3339Nano, "2020-01-01T00:00:00.123456000Z")}},
+				SkipResultCheckOnServerEngine: true, // the nanosecond is returned over the wire
+				Query:                         "select * from t3 order by pk",
+				Expected:                      []sql.Row{{1, MustParseTime(time.RFC3339Nano, "2020-01-01T00:00:00.123456000Z")}},
 			},
 			{
 				Query:       "create table t4 (pk int primary key, d TIMESTAMP(-1))",

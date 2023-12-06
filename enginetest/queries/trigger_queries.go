@@ -1854,15 +1854,15 @@ end;`,
 			},
 			{
 				Query:    "drop trigger t4",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
 				Query:    "drop trigger t3",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
 				Query:    "drop trigger if exists t5",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
 				Query:       "drop trigger t5",
@@ -1877,7 +1877,7 @@ end;`,
 			},
 			{
 				Query:    "drop trigger if exists t2",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
 				Query: "select trigger_name from information_schema.triggers order by 1",
@@ -2186,8 +2186,9 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
-				Query:    "CALL add_entry(4, 'aaa');",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 3}}},
+				SkipResultCheckOnServerEngine: true, // call depends on stored procedure stmt for whether to use 'query' or 'exec' from go sql driver.
+				Query:                         "CALL add_entry(4, 'aaa');",
+				Expected:                      []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 3}}},
 			},
 			{
 				Query:    "SELECT * FROM t0;",

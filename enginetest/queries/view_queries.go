@@ -43,7 +43,7 @@ CREATE TABLE tab1 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CREATE VIEW view_2_tab1_157 AS SELECT pk, col0 FROM tab1 WHERE NOT ((col0 IN (SELECT col3 FROM tab1 WHERE ((col0 IS NULL) OR col3 > 5 OR col3 <= 50 OR col1 < 83.11))) OR col0 > 75)",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
 				Query:    "select pk, col0 from view_2_tab1_157",
