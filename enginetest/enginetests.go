@@ -4278,7 +4278,8 @@ func TestOnUpdateTimestamp(t *testing.T, harness Harness) {
 	sql.RunWithNowFunc(func() time.Time {
 		return time1
 	}, func() error {
-		RunQuery(t, e, harness, "UPDATE t1 SET id = 100")
+		ctx.SetQueryTime(time1)
+		RunQueryWithContext(t, e, harness, ctx, "UPDATE t1 SET id = 100")
 		return nil
 	})
 
@@ -4288,7 +4289,8 @@ func TestOnUpdateTimestamp(t *testing.T, harness Harness) {
 	sql.RunWithNowFunc(func() time.Time {
 		return time2
 	}, func() error {
-		RunQuery(t, e, harness, "UPDATE t1 SET id = 200")
+		ctx.SetQueryTime(time2)
+		RunQueryWithContext(t, e, harness, ctx, "UPDATE t1 SET id = 200")
 		return nil
 	})
 
