@@ -240,55 +240,54 @@ func (r *Round) Children() []sql.Expression {
 
 // Eval implements the Expression interface.
 func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	xTemp, err := r.Left.Eval(ctx, row)
+	val, err := r.Left.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	if xTemp == nil {
+	if val == nil {
 		return nil, nil
 	}
 
 	decType := types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale)
-	xVal, _, err := decType.Convert(xTemp)
+	val, _, err = decType.Convert(val)
 	if err != nil {
 		// TODO: truncate
 		return nil, err
 	}
-	xDec := xVal.(decimal.Decimal)
 
-	dVal := int32(0)
+	prec := int32(0)
 	if r.Right != nil {
-		var dTemp interface{}
-		dTemp, err = r.Right.Eval(ctx, row)
+		var tmp interface{}
+		tmp, err = r.Right.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
 
-		if dTemp == nil {
+		if tmp == nil {
 			return nil, nil
 		}
 
-		if dTemp != nil {
-			dTemp, _, err = types.Int32.Convert(dTemp)
+		if tmp != nil {
+			tmp, _, err = types.Int32.Convert(tmp)
 			if err != nil {
 				// TODO: truncate
 				return nil, err
 			}
-			dVal = dTemp.(int32)
+			prec = tmp.(int32)
 			// MySQL cuts off at 30 for larger values
 			// TODO: these limits are fine only because we can't handle decimals larger than this
-			if dVal > types.DecimalTypeMaxPrecision {
-				dVal = types.DecimalTypeMaxPrecision
+			if prec > types.DecimalTypeMaxPrecision {
+				prec = types.DecimalTypeMaxPrecision
 			}
-			if dVal < -types.DecimalTypeMaxScale {
-				dVal = -types.DecimalTypeMaxScale
+			if prec < -types.DecimalTypeMaxScale {
+				prec = -types.DecimalTypeMaxScale
 			}
 		}
 	}
 
 	var res interface{}
-	tmp := xDec.Round(dVal)
+	tmp := val.(decimal.Decimal).Round(prec)
 	if types.IsSigned(r.Left.Type()) {
 		res, _, err = types.Int64.Convert(tmp)
 	} else if types.IsUnsigned(r.Left.Type()) {
