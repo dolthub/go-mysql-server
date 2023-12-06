@@ -4830,6 +4830,45 @@ CREATE TABLE tab3 (
 			},
 		},
 	},
+	{
+		Name: "on update timestamp",
+		SetUpScript: []string{
+			"create table t (i int, ts timestamp default null on update current_timestamp);",
+			"insert into t(i) values (1), (2), (3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i from t where ts is not null;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "update t set i = 10 where i = 1;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query: "select i from t where ts is not null;",
+				Expected: []sql.Row{
+					{10},
+				},
+			},
+			{
+				Query: "update t set i = 100",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{Matched: 3, Updated: 3}}},
+				},
+			},
+			{
+				Query: "select i from t where ts is not null;",
+				Expected: []sql.Row{
+					{100},
+					{100},
+					{100},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
