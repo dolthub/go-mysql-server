@@ -3764,9 +3764,9 @@ func TestWarnings(t *testing.T, harness Harness) {
 			SHOW WARNINGS
 			`,
 			Expected: []sql.Row{
-				{"", 3, ""},
-				{"", 2, ""},
-				{"", 1, ""},
+				{"Note", 1051, "Unknown table 'table3'"},
+				{"Note", 1051, "Unknown table 'table2'"},
+				{"Note", 1051, "Unknown table 'table1'"},
 			},
 		},
 		{
@@ -3774,7 +3774,7 @@ func TestWarnings(t *testing.T, harness Harness) {
 			SHOW WARNINGS LIMIT 1
 			`,
 			Expected: []sql.Row{
-				{"", 3, ""},
+				{"Note", 1051, "Unknown table 'table3'"},
 			},
 		},
 		{
@@ -3782,8 +3782,8 @@ func TestWarnings(t *testing.T, harness Harness) {
 			SHOW WARNINGS LIMIT 1,2
 			`,
 			Expected: []sql.Row{
-				{"", 2, ""},
-				{"", 1, ""},
+				{"Note", 1051, "Unknown table 'table2'"},
+				{"Note", 1051, "Unknown table 'table1'"},
 			},
 		},
 		{
@@ -3797,7 +3797,7 @@ func TestWarnings(t *testing.T, harness Harness) {
 			SHOW WARNINGS LIMIT 2,1
 			`,
 			Expected: []sql.Row{
-				{"", 1, ""},
+				{"Note", 1051, "Unknown table 'table1'"},
 			},
 		},
 		{
@@ -3805,9 +3805,9 @@ func TestWarnings(t *testing.T, harness Harness) {
 			SHOW WARNINGS LIMIT 10
 			`,
 			Expected: []sql.Row{
-				{"", 3, ""},
-				{"", 2, ""},
-				{"", 1, ""},
+				{"Note", 1051, "Unknown table 'table3'"},
+				{"Note", 1051, "Unknown table 'table2'"},
+				{"Note", 1051, "Unknown table 'table1'"},
 			},
 		},
 		{
@@ -3823,9 +3823,8 @@ func TestWarnings(t *testing.T, harness Harness) {
 	defer e.Close()
 	ctx := NewContext(harness)
 
-	ctx.Session.Warn(&sql.Warning{Code: 1})
-	ctx.Session.Warn(&sql.Warning{Code: 2})
-	ctx.Session.Warn(&sql.Warning{Code: 3})
+	// This will cause 3 warnings;
+	RunQueryWithContext(t, e, harness, ctx, "drop table if exists table1, table2, table3;")
 
 	for _, tt := range queries {
 		TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, nil, nil)
@@ -3842,17 +3841,8 @@ func TestClearWarnings(t *testing.T, harness Harness) {
 	err := CreateNewConnectionForServerEngine(ctx, e)
 	require.NoError(err)
 
-	sch, iter, err := e.Query(ctx, "-- some empty query as a comment")
-	require.NoError(err)
-	err = iter.Close(ctx)
-	require.NoError(err)
-
-	sch, iter, err = e.Query(ctx, "-- some empty query as a comment")
-	require.NoError(err)
-	err = iter.Close(ctx)
-	require.NoError(err)
-
-	sch, iter, err = e.Query(ctx, "-- some empty query as a comment")
+	// this query will cause 3 warnings.
+	sch, iter, err := e.Query(ctx, "drop table if exists table1, table2, table3;")
 	require.NoError(err)
 	err = iter.Close(ctx)
 	require.NoError(err)

@@ -80,7 +80,7 @@ func (cv *CreateView) IsReadOnly() bool {
 	return false
 }
 
-// Schema implements the Node interface. It always returns nil.
+// Schema implements the Node interface. It always returns Query OK result.
 func (cv *CreateView) Schema() sql.Schema {
 	return types.OkResultSchema
 }

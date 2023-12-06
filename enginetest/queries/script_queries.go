@@ -665,10 +665,10 @@ CREATE TABLE tab3 (
 				},
 			},
 			{
-				// TODO: currently was checking on incorrect result?? Over the wire test returns correct result
-				Skip:     true,
+				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
+				// enginetests returns the enum id, but the text representation is sent over the wire
 				Query:    "select * from t;",
-				Expected: []sql.Row{{"one", nil, nil}, {"two", "two", -2}},
+				Expected: []sql.Row{{"one", nil, nil}, {"two", uint64(2), -2}},
 			},
 		},
 	},
@@ -2126,9 +2126,10 @@ CREATE TABLE tab3 (
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
-				Query:                         "SELECT * FROM test;",
-				Expected:                      []sql.Row{{1, uint16(2), uint64(2)}, {2, uint16(1), uint64(1)}},
+				SkipResultCheckOnServerEngine: true, //unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
+				// enginetests returns the enum id, but the text representation is sent over the wire
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, uint16(2), uint64(2)}, {2, uint16(1), uint64(1)}},
 			},
 			{
 				Query:    "UPDATE test SET v1 = 3 WHERE v1 = 2;",
@@ -3101,12 +3102,12 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{1.8181817787737895}, {1.6666666004392863}, {1.5384615948919735}},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // issue with decimal scale
+				SkipResultCheckOnServerEngine: true, // tracking issue: https://github.com/dolthub/dolt/issues/7098
 				Query:                         "select d/2 from decimals;",
 				Expected:                      []sql.Row{{"0.50000"}, {"1.00000"}, {"1.25000"}},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // issue with decimal scale
+				SkipResultCheckOnServerEngine: true, // tracking issue: https://github.com/dolthub/dolt/issues/7098
 				Query:                         "select 2/d from decimals;",
 				Expected:                      []sql.Row{{"2.0000"}, {"1.0000"}, {"0.8000"}},
 			},
@@ -3524,7 +3525,7 @@ CREATE TABLE tab3 (
 				// TODO: we observed that if there is column decimal type, we use it as final result.
 				//  But it was incorrect, it only uses the scale as starting point and increments by the `divIntermediatePrecisionInc`
 				//  This test is correct, but the result received over the wire is incorrect as it converts the final result based on the column decimal type.
-				SkipResultCheckOnServerEngine: true,
+				SkipResultCheckOnServerEngine: true, // tracking issue: https://github.com/dolthub/dolt/issues/7098
 				Query:                         "select d / 314990 from t order by d;",
 				Expected:                      []sql.Row{{"-0.01584177275469"}, {"0.00000634940792"}, {"70.91202260389219"}},
 			},

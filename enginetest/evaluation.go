@@ -612,11 +612,6 @@ func rowToSQL(s sql.Schema, expectedRow sql.Row, actualRow sql.Row, convertTime 
 			newRow = append(newRow, nil)
 		} else if types.IsDecimal(s[i].Type) || (isTime && !convertTime) || (isStr && types.IsTextOnly(s[i].Type)) {
 			newRow = append(newRow, v)
-		} else if types.IsEnum(s[i].Type) || types.IsSet(s[i].Type) {
-			// engine tests use the index of the element, whereas over the wire tests use the string value
-			// TODO: need better check since the type received from go-sql-driver does not
-			//  provide data about its elements, we assume the result matches FOR NOW.
-			newRow = append(newRow, actualRow[i])
 		} else {
 			c, _, err := s[i].Type.Convert(v)
 			if err != nil {

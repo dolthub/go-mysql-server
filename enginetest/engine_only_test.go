@@ -71,7 +71,7 @@ func TestVariableErrors(t *testing.T) {
 func TestWarnings(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
 	if harness.IsUsingServer() {
-		t.Skip("depends on Warnings() method call on context")
+		t.Skip("tracking issue: https://github.com/dolthub/dolt/issues/692 and the one mentioned inside this issue as well")
 	}
 	t.Run("sequential", func(t *testing.T) {
 		enginetest.TestWarnings(t, harness)
@@ -87,7 +87,7 @@ func TestClearWarnings(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
 	if harness.IsUsingServer() {
 		// TODO: needs more investigation on this test
-		t.Skip("depends on Warnings() method call on context")
+		t.Skip("tracking issue: https://github.com/dolthub/dolt/issues/692 and the one mentioned inside this issue as well")
 	}
 	enginetest.TestClearWarnings(t, harness)
 }

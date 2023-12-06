@@ -5602,7 +5602,6 @@ Select * from (
 		},
 	},
 	{
-		SkipServerEngine: true, // the order of the rows does not match
 		// NOTE: utf8_general_ci is collation of utf8mb3, which was deprecated and now removed in MySQL
 		Query: "SHOW COLLATION WHERE `Collation` IN ('binary', 'utf8_general_ci', 'utf8mb4_0900_ai_ci')",
 		Expected: []sql.Row{

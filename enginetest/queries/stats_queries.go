@@ -32,7 +32,7 @@ var StatisticsQueries = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				SkipResultCheckOnServerEngine: true, // the types of mcvCounts and mcvs are not identified over the wire result
+				SkipResultCheckOnServerEngine: true, // the non-interface types are not identified over the wire result
 				Query:                         "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
 					{"mydb", "t", "i", stats.NewStatistic(3, 3, 0, 24, time.Now(), sql.NewStatQualifier("mydb", "t", "primary"), []string{"i"}, []sql.Type{types.Int64}, []*stats.Bucket{
@@ -57,7 +57,7 @@ var StatisticsQueries = []ScriptTest{
 				Expected: []sql.Row{{"t", "histogram", "status", "OK"}},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // the types of mcvCounts and mcvs are not identified over the wire result
+				SkipResultCheckOnServerEngine: true, // the non-interface types are not identified over the wire result
 				Query:                         "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
 					{"mydb", "t", "i", stats.NewStatistic(40, 40, 1, 0, time.Now(), sql.NewStatQualifier("mydb", "t", "primary"), []string{"i"}, []sql.Type{types.Int64}, []*stats.Bucket{
@@ -86,7 +86,7 @@ var StatisticsQueries = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				SkipResultCheckOnServerEngine: true, // the types of mcvCounts and mcvs are not identified over the wire result
+				SkipResultCheckOnServerEngine: true, // the non-interface types are not identified over the wire result
 				Query:                         "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
 					{"mydb", "t", "i", stats.NewStatistic(3, 3, 0, 48, time.Now(), sql.NewStatQualifier("mydb", "t", "primary"), []string{"i"}, []sql.Type{types.Int64}, []*stats.Bucket{
@@ -114,7 +114,7 @@ var StatisticsQueries = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				SkipResultCheckOnServerEngine: true, // the types of mcvCounts and mcvs are not identified over the wire result
+				SkipResultCheckOnServerEngine: true, // the non-interface types are not identified over the wire result
 				Query:                         "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
 					{"mydb", "t", "i", stats.NewStatistic(4, 4, 0, 32, time.Now(), sql.NewStatQualifier("mydb", "t", "primary"), []string{"i"}, []sql.Type{types.Float64}, []*stats.Bucket{
