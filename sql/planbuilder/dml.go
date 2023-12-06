@@ -437,8 +437,6 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 
 	outScope.node.Schema()
 
-	// TODO: need to call sch = b.resolveSchemaDefaults(destScope, rt.Schema()) here
-
 	var checks []*sql.CheckConstraint
 	if join, ok := outScope.node.(*plan.JoinNode); ok {
 		source := plan.NewUpdateSource(
