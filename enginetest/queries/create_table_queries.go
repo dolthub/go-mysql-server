@@ -228,6 +228,36 @@ var CreateTableQueries = []WriteQueryTest{
 		SelectQuery:         `select * from t1 order by i`,
 		ExpectedSelect:      []sql.Row{{"newfirst row", 1}, {"newsecond row", 2}, {"newthird row", 3}},
 	},
+	{
+		WriteQuery:          `CREATE TABLE t1 (pk varchar(10) primary key collate binary)`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         `SHOW CREATE TABLE t1`,
+		ExpectedSelect:      []sql.Row{sql.Row{"t1", "CREATE TABLE `t1` (\n  `pk` varbinary(10) NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+	},
+	{
+		WriteQuery:          `CREATE TABLE t1 (pk varchar(10) primary key charset binary)`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         `SHOW CREATE TABLE t1`,
+		ExpectedSelect:      []sql.Row{sql.Row{"t1", "CREATE TABLE `t1` (\n  `pk` varbinary(10) NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+	},
+	{
+		WriteQuery:          `CREATE TABLE t1 (pk varchar(10) primary key character set binary)`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         `SHOW CREATE TABLE t1`,
+		ExpectedSelect:      []sql.Row{sql.Row{"t1", "CREATE TABLE `t1` (\n  `pk` varbinary(10) NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+	},
+	{
+		WriteQuery:          `CREATE TABLE t1 (pk varchar(10) primary key charset binary collate binary)`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         `SHOW CREATE TABLE t1`,
+		ExpectedSelect:      []sql.Row{sql.Row{"t1", "CREATE TABLE `t1` (\n  `pk` varbinary(10) NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+	},
+	{
+		WriteQuery:          `CREATE TABLE t1 (pk varchar(10) primary key character set binary collate binary)`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         `SHOW CREATE TABLE t1`,
+		ExpectedSelect:      []sql.Row{sql.Row{"t1", "CREATE TABLE `t1` (\n  `pk` varbinary(10) NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+	},
 }
 
 var CreateTableScriptTests = []ScriptTest{
@@ -370,8 +400,9 @@ var CreateTableScriptTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				Query:    "select * from t1 order by pk",
-				Expected: []sql.Row{{1, MustParseTime(time.DateTime, "2020-01-01 00:00:00")}},
+				SkipResultCheckOnServerEngine: true, // the nanosecond is returned over the wire
+				Query:                         "select * from t1 order by pk",
+				Expected:                      []sql.Row{{1, MustParseTime(time.DateTime, "2020-01-01 00:00:00")}},
 			},
 			{
 				Query: "show create table t2",
@@ -387,8 +418,9 @@ var CreateTableScriptTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				Query:    "select * from t2 order by pk",
-				Expected: []sql.Row{{1, MustParseTime(time.RFC3339Nano, "2020-01-01T00:00:00.123000000Z")}},
+				SkipResultCheckOnServerEngine: true, // the nanosecond is returned over the wire
+				Query:                         "select * from t2 order by pk",
+				Expected:                      []sql.Row{{1, MustParseTime(time.RFC3339Nano, "2020-01-01T00:00:00.123000000Z")}},
 			},
 			{
 				Query: "show create table t3",
@@ -404,8 +436,9 @@ var CreateTableScriptTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				Query:    "select * from t3 order by pk",
-				Expected: []sql.Row{{1, MustParseTime(time.RFC3339Nano, "2020-01-01T00:00:00.123456000Z")}},
+				SkipResultCheckOnServerEngine: true, // the nanosecond is returned over the wire
+				Query:                         "select * from t3 order by pk",
+				Expected:                      []sql.Row{{1, MustParseTime(time.RFC3339Nano, "2020-01-01T00:00:00.123456000Z")}},
 			},
 			{
 				Query:       "create table t4 (pk int primary key, d TIMESTAMP(-1))",
@@ -493,6 +526,38 @@ var CreateTableScriptTests = []ScriptTest{
 			{
 				Query:       "create table t4 (abc int, def int, Abc int)",
 				ExpectedErr: sql.ErrDuplicateColumn,
+			},
+		},
+	},
+	{
+		Name: "valid character set and collation options",
+		SetUpScript: []string{
+			"create table parent (a int primary key)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       `CREATE TABLE t1 (pk varbinary(10) primary key collate utf8mb4_0900_bin)`,
+				ExpectedErr: types.ErrBinaryCollation,
+			},
+			{
+				Query:       `CREATE TABLE t1 (pk varbinary(10) primary key charset utf8mb4_0900_bin)`,
+				ExpectedErr: types.ErrCharacterSetOnInvalidType,
+			},
+			{
+				Query:       `CREATE TABLE t1 (pk varbinary(10) primary key character set utf8mb4)`,
+				ExpectedErr: types.ErrCharacterSetOnInvalidType,
+			},
+			{
+				Query:       `CREATE TABLE t1 (pk varbinary(10) primary key charset utf8mb4 collate utf8mb4_0900_bin)`,
+				ExpectedErr: types.ErrCharacterSetOnInvalidType,
+			},
+			{
+				Query:       `CREATE TABLE t1 (pk varbinary(10) primary key character set utf8mb4 collate utf8mb4_0900_bin)`,
+				ExpectedErr: types.ErrCharacterSetOnInvalidType,
+			},
+			{
+				Query:       `CREATE TABLE t1 (pk int primary key character set utf8mb4)`,
+				ExpectedErr: types.ErrCharacterSetOnInvalidType,
 			},
 		},
 	},

@@ -25,7 +25,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/stats"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -64,7 +63,7 @@ type updateHistogramIter struct {
 	db      string
 	table   string
 	columns []string
-	stats   *stats.Statistic
+	stats   sql.Statistic
 	prov    sql.StatsProvider
 	done    bool
 }

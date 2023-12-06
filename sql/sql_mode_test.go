@@ -29,7 +29,7 @@ func TestSqlMode(t *testing.T) {
 	assert.True(t, sqlMode.ModeEnabled("ONLY_FULL_GROUP_BY"))
 	assert.False(t, sqlMode.ModeEnabled("fake_mode"))
 	assert.True(t, sqlMode.ParserOptions().AnsiQuotes)
-	assert.Equal(t, "ONLY_FULL_GROUP_BY,ANSI", sqlMode.String())
+	assert.Equal(t, "ANSI,ONLY_FULL_GROUP_BY", sqlMode.String())
 
 	// Test a mixed case SQL_MODE string where only ANSI_QUOTES is enabled
 	sqlMode = NewSqlModeFromString("AnSi_quotEs")

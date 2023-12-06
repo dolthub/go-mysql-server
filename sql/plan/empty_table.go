@@ -32,9 +32,48 @@ var _ sql.Node = (*EmptyTable)(nil)
 var _ sql.CollationCoercible = (*EmptyTable)(nil)
 var _ sql.UpdatableTable = (*EmptyTable)(nil)
 var _ sql.DeletableTable = (*EmptyTable)(nil)
+var _ sql.RenameableNode = (*EmptyTable)(nil)
 
 type EmptyTable struct {
 	schema sql.Schema
+	id     sql.TableId
+	cols   sql.ColSet
+}
+
+// WithId implements sql.TableIdNode
+func (e *EmptyTable) WithId(id sql.TableId) TableIdNode {
+	ret := *e
+	ret.id = id
+	return &ret
+}
+
+// Id implements sql.TableIdNode
+func (e *EmptyTable) Id() sql.TableId {
+	return e.id
+}
+
+// WithColumns implements sql.TableIdNode
+func (e *EmptyTable) WithColumns(set sql.ColSet) TableIdNode {
+	ret := *e
+	ret.cols = set
+	return &ret
+}
+
+// Columns implements sql.TableIdNode
+func (e *EmptyTable) Columns() sql.ColSet {
+	return e.cols
+}
+
+func (e *EmptyTable) WithName(s string) sql.Node {
+	ret := *e
+	newSch := make(sql.Schema, len(ret.schema))
+	for i, c := range ret.schema {
+		newC := c.Copy()
+		newC.Source = s
+		newSch[i] = newC
+	}
+	ret.schema = newSch
+	return &ret
 }
 
 func (e *EmptyTable) Name() string {
@@ -43,6 +82,7 @@ func (e *EmptyTable) Name() string {
 	}
 	return e.schema[0].Source
 }
+
 func (e *EmptyTable) Schema() sql.Schema { return e.schema }
 func (*EmptyTable) Children() []sql.Node { return nil }
 func (*EmptyTable) Resolved() bool       { return true }

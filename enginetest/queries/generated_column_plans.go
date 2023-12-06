@@ -23,6 +23,8 @@ var GeneratedColumnPlanTests = []QueryPlanTest{
 			" └─ IndexedTableAccess(generated_stored_1)\n" +
 			"     ├─ index: [generated_stored_1.b]\n" +
 			"     ├─ static: [{[2, 2]}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: generated_stored_1\n" +
 			"         └─ columns: [a b]\n" +
@@ -34,6 +36,8 @@ var GeneratedColumnPlanTests = []QueryPlanTest{
 			" └─ IndexedTableAccess(generated_stored_2)\n" +
 			"     ├─ index: [generated_stored_2.b,generated_stored_2.c]\n" +
 			"     ├─ static: [{[2, 2], [3, 3]}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: generated_stored_2\n" +
 			"         └─ columns: [a b c]\n" +
@@ -46,6 +50,8 @@ var GeneratedColumnPlanTests = []QueryPlanTest{
 			"     └─ IndexedTableAccess(generated_stored_2)\n" +
 			"         ├─ index: [generated_stored_2.b,generated_stored_2.c]\n" +
 			"         ├─ static: [{[3, 3], [4, 4]}]\n" +
+			"         ├─ colSet: (1-3)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: generated_stored_2\n" +
 			"             └─ columns: [a b c]\n" +
@@ -59,6 +65,8 @@ var GeneratedColumnPlanTests = []QueryPlanTest{
 			"         └─ IndexedTableAccess(generated_stored_2)\n" +
 			"             ├─ index: [generated_stored_2.b,generated_stored_2.c]\n" +
 			"             ├─ static: [{[2, 2], [3, 3]}]\n" +
+			"             ├─ colSet: (1-3)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: generated_stored_2\n" +
 			"                 └─ columns: [a b c]\n" +
@@ -69,6 +77,8 @@ var GeneratedColumnPlanTests = []QueryPlanTest{
 		ExpectedPlan: "IndexedTableAccess(generated_virtual_1)\n" +
 			" ├─ index: [generated_virtual_1.c]\n" +
 			" ├─ static: [{[7, 7]}]\n" +
+			" ├─ colSet: (4-6)\n" +
+			" ├─ tableId: 2\n" +
 			" └─ VirtualColumnTable\n" +
 			"     ├─ name: generated_virtual_1\n" +
 			"     ├─ columns: [generated_virtual_1.a:0!null, generated_virtual_1.b:1, parenthesized((generated_virtual_1.a:0!null + generated_virtual_1.b:1))]\n" +
@@ -85,6 +95,8 @@ var GeneratedColumnPlanTests = []QueryPlanTest{
 			"         └─ IndexedTableAccess(generated_virtual_1)\n" +
 			"             ├─ index: [generated_virtual_1.c]\n" +
 			"             ├─ static: [{[3, 3]}]\n" +
+			"             ├─ colSet: (4-6)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ VirtualColumnTable\n" +
 			"                 ├─ name: generated_virtual_1\n" +
 			"                 ├─ columns: [generated_virtual_1.a:0!null, generated_virtual_1.b:1, parenthesized((generated_virtual_1.a:0!null + generated_virtual_1.b:1))]\n" +
@@ -100,6 +112,8 @@ var GeneratedColumnPlanTests = []QueryPlanTest{
 			"     └─ IndexedTableAccess(generated_virtual_1)\n" +
 			"         ├─ index: [generated_virtual_1.c]\n" +
 			"         ├─ static: [{[6, 6]}]\n" +
+			"         ├─ colSet: (4-6)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ VirtualColumnTable\n" +
 			"             ├─ name: generated_virtual_1\n" +
 			"             ├─ columns: [generated_virtual_1.a:0!null, generated_virtual_1.b:1, parenthesized((generated_virtual_1.a:0!null + generated_virtual_1.b:1))]\n" +
@@ -113,6 +127,8 @@ var GeneratedColumnPlanTests = []QueryPlanTest{
 		ExpectedPlan: "IndexedTableAccess(generated_virtual_keyless)\n" +
 			" ├─ index: [generated_virtual_keyless.v]\n" +
 			" ├─ static: [{[2, 2]}]\n" +
+			" ├─ colSet: (3,4)\n" +
+			" ├─ tableId: 2\n" +
 			" └─ VirtualColumnTable\n" +
 			"     ├─ name: generated_virtual_keyless\n" +
 			"     ├─ columns: [generated_virtual_keyless.j:0, parenthesized(json_unquote(json_extract(generated_virtual_keyless.j, '$.a')))]\n" +
@@ -129,6 +145,8 @@ var GeneratedColumnPlanTests = []QueryPlanTest{
 			"         └─ IndexedTableAccess(generated_virtual_keyless)\n" +
 			"             ├─ index: [generated_virtual_keyless.v]\n" +
 			"             ├─ static: [{[2, 2]}]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ VirtualColumnTable\n" +
 			"                 ├─ name: generated_virtual_keyless\n" +
 			"                 ├─ columns: [generated_virtual_keyless.j:0, parenthesized(json_unquote(json_extract(generated_virtual_keyless.j, '$.a')))]\n" +
@@ -144,6 +162,8 @@ var GeneratedColumnPlanTests = []QueryPlanTest{
 			"     └─ IndexedTableAccess(generated_virtual_keyless)\n" +
 			"         ├─ index: [generated_virtual_keyless.v]\n" +
 			"         ├─ static: [{[5, 5]}]\n" +
+			"         ├─ colSet: (3,4)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ VirtualColumnTable\n" +
 			"             ├─ name: generated_virtual_keyless\n" +
 			"             ├─ columns: [generated_virtual_keyless.j:0, parenthesized(json_unquote(json_extract(generated_virtual_keyless.j, '$.a')))]\n" +

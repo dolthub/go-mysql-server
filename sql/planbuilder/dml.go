@@ -92,7 +92,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 			combinedScope.newColumn(srcScope.cols[i])
 		} else {
 			// check for VALUES refs
-			c.tableId.TableName = OnDupValuesPrefix
+			c.table = OnDupValuesPrefix
 			combinedScope.newColumn(c)
 		}
 	}
@@ -220,23 +220,30 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 		startWinCnt = len(inScope.windowFuncs)
 	}
 
-	tableSch := inScope.node.Schema()
+	tableSch := b.resolveSchemaDefaults(inScope, inScope.node.Schema())
 
 	for i, updateExpr := range e {
 		colName := b.buildScalar(inScope, updateExpr.Name)
 
-		// Prevent update of generated columns
+		innerExpr := b.buildScalar(inScope, updateExpr.Expr)
 		if gf, ok := colName.(*expression.GetField); ok {
 			colIdx := tableSch.IndexOfColName(gf.Name())
 			// TODO: during trigger parsing the table in the node is unresolved, so we need this additional bounds check
 			//  This means that trigger execution will be able to update generated columns
+			// Prevent update of generated columns
 			if colIdx >= 0 && tableSch[colIdx].Generated != nil {
 				err := sql.ErrGeneratedColumnValue.New(tableSch[colIdx].Name, inScope.node.(sql.NameableNode).Name())
 				b.handleErr(err)
 			}
+
+			// Replace default with column default from resolved schema
+			if _, ok := updateExpr.Expr.(*ast.Default); ok {
+				if colIdx >= 0 {
+					innerExpr = expression.WrapExpression(tableSch[colIdx].Default)
+				}
+			}
 		}
 
-		innerExpr := b.buildScalar(inScope, updateExpr.Expr)
 		updateExprs[i] = expression.NewSetField(colName, innerExpr)
 		if inScope.groupBy != nil {
 			if len(inScope.groupBy.aggs) > startAggCnt {
@@ -254,11 +261,14 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 
 	// We need additional update expressions for any generated columns, since they won't be part of the update
 	// expressions, but their value in the row must be updated before being passed to the integrator for storage.
-	for i, col := range tableSch {
-		if col.Generated != nil {
-			colName := expression.NewGetFieldWithTable(i, col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
-			generated := b.resolveColumnDefaultExpression(inScope, col, col.Generated)
-			updateExprs = append(updateExprs, expression.NewSetField(colName, assignColumnIndexes(generated, tableSch)))
+	if len(tableSch) > 0 {
+		tabId := inScope.tables[strings.ToLower(tableSch[0].Source)]
+		for i, col := range tableSch {
+			if col.Generated != nil {
+				colName := expression.NewGetFieldWithTable(i, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
+				generated := b.resolveColumnDefaultExpression(inScope, col, col.Generated)
+				updateExprs = append(updateExprs, expression.NewSetField(colName, assignColumnIndexes(generated, tableSch)))
+			}
 		}
 	}
 
@@ -428,7 +438,9 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 					tableScope := inScope.push()
 					for _, c := range rt.Schema() {
 						tableScope.addColumn(scopeColumn{
-							tableId:  sql.NewTableID(rt.SqlDatabase.Name(), n.Name()),
+							db:       rt.SqlDatabase.Name(),
+							table:    strings.ToLower(n.Name()),
+							tableId:  tableScope.tables[strings.ToLower(n.Name())],
 							col:      strings.ToLower(c.Name),
 							typ:      c.Type,
 							nullable: c.Nullable,

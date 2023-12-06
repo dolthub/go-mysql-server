@@ -152,7 +152,7 @@ func TestValidateGroupByErr(t *testing.T) {
 		plan.NewResolvedTable(child, nil, nil),
 	)
 
-	err = sql.SystemVariables.SetGlobal("sql_mode", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY")
+	err = sql.SystemVariables.SetGlobal("sql_mode", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES")
 	require.NoError(err)
 	_, _, err = vr.Apply(ctx, nil, p, nil, DefaultRuleSelector)
 	require.Error(err)
@@ -518,8 +518,8 @@ func TestValidateIndexCreation(t *testing.T) {
 			plan.NewCreateIndex(
 				"idx", plan.NewResolvedTable(table, nil, nil),
 				[]sql.Expression{expression.NewEquals(
-					expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "a", false),
-					expression.NewGetFieldWithTable(0, types.Int64, "db", "bar", "b", false),
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "foo", "a", false),
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "bar", "b", false),
 				)},
 				"",
 				make(map[string]string),
@@ -531,8 +531,8 @@ func TestValidateIndexCreation(t *testing.T) {
 			plan.NewCreateIndex(
 				"idx", plan.NewResolvedTable(table, nil, nil),
 				[]sql.Expression{expression.NewEquals(
-					expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "a", false),
-					expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "c", false),
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "foo", "a", false),
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "foo", "c", false),
 				)},
 				"",
 				make(map[string]string),
@@ -544,8 +544,8 @@ func TestValidateIndexCreation(t *testing.T) {
 			plan.NewCreateIndex(
 				"idx", plan.NewResolvedTable(table, nil, nil),
 				[]sql.Expression{expression.NewEquals(
-					expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "a", false),
-					expression.NewGetFieldWithTable(0, types.Int64, "db", "foo", "b", false),
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "foo", "a", false),
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "foo", "b", false),
 				)},
 				"",
 				make(map[string]string),

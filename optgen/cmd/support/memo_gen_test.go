@@ -18,118 +18,89 @@ func TestMemoGen(t *testing.T) {
           "github.com/dolthub/go-mysql-server/sql"
           "github.com/dolthub/go-mysql-server/sql/plan"
         )
-
+        
         type HashJoin struct {
           *JoinBase
           InnerAttrs []sql.Expression
           OuterAttrs []sql.Expression
         }
-
+        
         var _ RelExpr = (*hashJoin)(nil)
         var _ JoinRel = (*hashJoin)(nil)
-
+        
         func (r *hashJoin) String() string {
           return FormatExpr(r)
         }
-
+        
         func (r *hashJoin) JoinPrivate() *JoinBase {
           return r.JoinBase
         }
-
+        
         type TableScan struct {
           *sourceBase
           Table *plan.TableNode
         }
-
+        
         var _ RelExpr = (*tableScan)(nil)
         var _ SourceRel = (*tableScan)(nil)
-
+        
         func (r *tableScan) String() string {
           return FormatExpr(r)
         }
-
+        
         func (r *tableScan) Name() string {
           return strings.ToLower(r.Table.Name())
         }
-
-        func (r *tableScan) TableId() TableId {
+        
+        func (r *tableScan) TableId() sql.TableId {
           return TableIdForSource(r.g.Id)
         }
-
+        
+        func (r *tableScan) TableIdNode() plan.TableIdNode {
+          return r.Table
+        }
+        
         func (r *tableScan) OutputCols() sql.Schema {
           return r.Table.Schema()
         }
-
+        
         func (r *tableScan) Children() []*ExprGroup {
           return nil
         }
-
-        type Equal struct {
-          *scalarBase
-          Left *ExprGroup
-          Right *ExprGroup
-          Left scalarExpr
-          Right scalarExpr
-        }
-
-        var _ ScalarExpr = (*equal)(nil)
-
-        func (r *equal) ExprId() ScalarExprId {
-          return ScalarExprEqual
-        }
-
-        func (r *equal) String() string {
-          return FormatExpr(r)
-        }
-
-        func (r *equal) Children() []*ExprGroup {
-          return []*ExprGroup{r.Left, r.Right}
-        }
-
+        
         func FormatExpr(r exprType) string {
           switch r := r.(type) {
           case *hashJoin:
             return fmt.Sprintf("hashjoin %d %d", r.Left.Id, r.Right.Id)
           case *tableScan:
             return fmt.Sprintf("tablescan: %s", r.Name())
-          case *equal:
-            return fmt.Sprintf("equal %d %d", r.Left.Id, r.Right.Id)
           default:
             panic(fmt.Sprintf("unknown RelExpr type: %T", r))
           }
         }
-
-        func buildRelExpr(b *ExecBuilder, r RelExpr, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+        
+        func buildRelExpr(b *ExecBuilder, r RelExpr, children ...sql.Node) (sql.Node, error) {
           var result sql.Node
           var err error
-
+        
           switch r := r.(type) {
           case *hashJoin:
-          result, err = b.buildHashJoin(r, input, children...)
+          result, err = b.buildHashJoin(r, children...)
           case *tableScan:
-          result, err = b.buildTableScan(r, input, children...)
+          result, err = b.buildTableScan(r, children...)
           default:
             panic(fmt.Sprintf("unknown RelExpr type: %T", r))
           }
-
+        
           if err != nil {
             return nil, err
           }
-
-          result, err = r.Group().finalize(result, input)
+        
+          result, err = r.Group().finalize(result)
           if err != nil {
             return nil, err
           }
           return result, nil
-        }
-
-        func buildScalarExpr(b *ExecBuilder, r ScalarExpr, sch sql.Schema) (sql.Expression, error) {
-          switch r := r.(type) {
-          case *equal:
-          return b.buildEqual(r, sch)
-          default:
-            panic(fmt.Sprintf("unknown ScalarExpr type: %T", r))
-          }
         }
 `,
 	}
@@ -147,15 +118,6 @@ func TestMemoGen(t *testing.T) {
 			{
 				Name:       "tableScan",
 				SourceType: "*plan.TableNode",
-			},
-			{
-				Name: "equal",
-				Attrs: [][2]string{
-					{"left", "scalarExpr"},
-					{"right", "scalarExpr"},
-				},
-				Scalar: true,
-				Binary: true,
 			},
 		},
 	}

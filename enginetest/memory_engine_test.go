@@ -199,7 +199,7 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	// t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
 			Name: "physical columns added after virtual one",
@@ -517,6 +517,10 @@ func TestGeneratedColumnPlans(t *testing.T) {
 
 func TestStatistics(t *testing.T) {
 	enginetest.TestStatistics(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestStatisticIndexFilters(t *testing.T) {
+	enginetest.TestStatisticIndexFilters(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestSpatialInsertInto(t *testing.T) {
@@ -912,44 +916,44 @@ func mergableIndexDriver(dbs []sql.Database) sql.IndexDriver {
 	return memory.NewIndexDriver("mydb", map[string][]sql.DriverIndex{
 		"mytable": {
 			newMergableIndex(dbs, "mytable",
-				expression.NewGetFieldWithTable(0, types.Int64, "db", "mytable", "i", false)),
+				expression.NewGetFieldWithTable(0, 1, types.Int64, "db", "mytable", "i", false)),
 			newMergableIndex(dbs, "mytable",
-				expression.NewGetFieldWithTable(1, types.Text, "db", "mytable", "s", false)),
+				expression.NewGetFieldWithTable(1, 1, types.Text, "db", "mytable", "s", false)),
 			newMergableIndex(dbs, "mytable",
-				expression.NewGetFieldWithTable(0, types.Int64, "db", "mytable", "i", false),
-				expression.NewGetFieldWithTable(1, types.Text, "db", "mytable", "s", false)),
+				expression.NewGetFieldWithTable(0, 1, types.Int64, "db", "mytable", "i", false),
+				expression.NewGetFieldWithTable(1, 1, types.Text, "db", "mytable", "s", false)),
 		},
 		"othertable": {
 			newMergableIndex(dbs, "othertable",
-				expression.NewGetFieldWithTable(0, types.Text, "db", "othertable", "s2", false)),
+				expression.NewGetFieldWithTable(0, 1, types.Text, "db", "othertable", "s2", false)),
 			newMergableIndex(dbs, "othertable",
-				expression.NewGetFieldWithTable(1, types.Text, "db", "othertable", "i2", false)),
+				expression.NewGetFieldWithTable(1, 1, types.Text, "db", "othertable", "i2", false)),
 			newMergableIndex(dbs, "othertable",
-				expression.NewGetFieldWithTable(0, types.Text, "db", "othertable", "s2", false),
-				expression.NewGetFieldWithTable(1, types.Text, "db", "othertable", "i2", false)),
+				expression.NewGetFieldWithTable(0, 1, types.Text, "db", "othertable", "s2", false),
+				expression.NewGetFieldWithTable(1, 1, types.Text, "db", "othertable", "i2", false)),
 		},
 		"bigtable": {
 			newMergableIndex(dbs, "bigtable",
-				expression.NewGetFieldWithTable(0, types.Text, "db", "bigtable", "t", false)),
+				expression.NewGetFieldWithTable(0, 1, types.Text, "db", "bigtable", "t", false)),
 		},
 		"floattable": {
 			newMergableIndex(dbs, "floattable",
-				expression.NewGetFieldWithTable(2, types.Text, "db", "floattable", "f64", false)),
+				expression.NewGetFieldWithTable(2, 1, types.Text, "db", "floattable", "f64", false)),
 		},
 		"niltable": {
 			newMergableIndex(dbs, "niltable",
-				expression.NewGetFieldWithTable(0, types.Int64, "db", "niltable", "i", false)),
+				expression.NewGetFieldWithTable(0, 1, types.Int64, "db", "niltable", "i", false)),
 			newMergableIndex(dbs, "niltable",
-				expression.NewGetFieldWithTable(1, types.Int64, "db", "niltable", "i2", true)),
+				expression.NewGetFieldWithTable(1, 1, types.Int64, "db", "niltable", "i2", true)),
 		},
 		"one_pk": {
 			newMergableIndex(dbs, "one_pk",
-				expression.NewGetFieldWithTable(0, types.Int8, "db", "one_pk", "pk", false)),
+				expression.NewGetFieldWithTable(0, 1, types.Int8, "db", "one_pk", "pk", false)),
 		},
 		"two_pk": {
 			newMergableIndex(dbs, "two_pk",
-				expression.NewGetFieldWithTable(0, types.Int8, "db", "two_pk", "pk1", false),
-				expression.NewGetFieldWithTable(1, types.Int8, "db", "two_pk", "pk2", false),
+				expression.NewGetFieldWithTable(0, 1, types.Int8, "db", "two_pk", "pk1", false),
+				expression.NewGetFieldWithTable(1, 1, types.Int8, "db", "two_pk", "pk2", false),
 			),
 		},
 	})

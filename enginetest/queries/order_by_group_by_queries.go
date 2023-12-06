@@ -233,13 +233,13 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			{
 				Query: "select @@global.sql_mode",
 				Expected: []sql.Row{
-					{"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"},
+					{"NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES"},
 				},
 			},
 			{
 				Query: "select @@session.sql_mode",
 				Expected: []sql.Row{
-					{"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"},
+					{"NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES"},
 				},
 			},
 			{
@@ -266,13 +266,13 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			{
 				Query: "select @@global.sql_mode",
 				Expected: []sql.Row{
-					{"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"},
+					{"NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES"},
 				},
 			},
 			{
 				Query: "select @@session.sql_mode",
 				Expected: []sql.Row{
-					{"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"},
+					{"NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES"},
 				},
 			},
 			{

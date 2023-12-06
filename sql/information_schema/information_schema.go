@@ -135,12 +135,12 @@ const (
 )
 
 var sqlModeSetType = types.MustCreateSetType([]string{
-	"REAL_AS_FLOAT", "PIPES_AS_CONCAT", "ANSI_QUOTES", "IGNORE_SPACE", "NOT_USED", "ONLY_FULL_GROUP_BY",
-	"NO_UNSIGNED_SUBTRACTION", "NO_DIR_IN_CREATE", "NOT_USED_9", "NOT_USED_10", "NOT_USED_11", "NOT_USED_12",
-	"NOT_USED_13", "NOT_USED_14", "NOT_USED_15", "NOT_USED_16", "NOT_USED_17", "NOT_USED_18", "ANSI",
-	"NO_AUTO_VALUE_ON_ZERO", "NO_BACKSLASH_ESCAPES", "STRICT_TRANS_TABLES", "STRICT_ALL_TABLES", "NO_ZERO_IN_DATE",
-	"NO_ZERO_DATE", "ALLOW_INVALID_DATES", "ERROR_FOR_DIVISION_BY_ZERO", "TRADITIONAL", "NOT_USED_29",
-	"HIGH_NOT_PRECEDENCE", "NO_ENGINE_SUBSTITUTION", "PAD_CHAR_TO_FULL_LENGTH", "TIME_TRUNCATE_FRACTIONAL"}, Collation_Information_Schema_Default)
+	"ALLOW_INVALID_DATES", "ANSI", "ANSI_QUOTES", "ERROR_FOR_DIVISION_BY_ZERO", "HIGH_NOT_PRECEDENCE",
+	"IGNORE_SPACE", "NOT_USED", "NOT_USED_10", "NOT_USED_11", "NOT_USED_12", "NOT_USED_13", "NOT_USED_14",
+	"NOT_USED_15", "NOT_USED_16", "NOT_USED_17", "NOT_USED_18", "NOT_USED_29", "NOT_USED_9", "NO_AUTO_VALUE_ON_ZERO",
+	"NO_BACKSLASH_ESCAPES", "NO_DIR_IN_CREATE", "NO_ENGINE_SUBSTITUTION", "NO_UNSIGNED_SUBTRACTION", "NO_ZERO_DATE",
+	"NO_ZERO_IN_DATE", "ONLY_FULL_GROUP_BY", "PAD_CHAR_TO_FULL_LENGTH", "PIPES_AS_CONCAT", "REAL_AS_FLOAT",
+	"STRICT_ALL_TABLES", "STRICT_TRANS_TABLES", "TIME_TRUNCATE_FRACTIONAL", "TRADITIONAL"}, Collation_Information_Schema_Default)
 
 var _ Database = (*informationSchemaDatabase)(nil)
 
@@ -968,17 +968,6 @@ func eventsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		return nil, err
 	}
 	collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
-	if err != nil {
-		return nil, err
-	}
-	sysVal, err := ctx.Session.GetSessionVariable(ctx, "sql_mode")
-	if err != nil {
-		return nil, err
-	}
-	sqlMode, sok := sysVal.(string)
-	if !sok {
-		return nil, ErrSystemVariableCodeFail.New("sql_mode", sysVal)
-	}
 
 	for _, db := range c.AllDatabases(ctx) {
 		dbCollation := plan.GetDatabaseCollation(ctx, db)
@@ -1048,7 +1037,7 @@ func eventsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					at,                   // execute_at
 					intervalVal,          // interval_value
 					intervalField,        // interval_field
-					sqlMode,              // sql_mode
+					e.SqlMode,            // sql_mode
 					starts,               // starts
 					ends,                 // ends
 					status,               // status
@@ -1225,32 +1214,33 @@ func referentialConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 						onDelete = "NO ACTION"
 					}
 
-					refTbl, _, rerr := c.Table(ctx, referencedSchema, referencedTableName)
-					if rerr != nil {
-						return nil, rerr
-					}
+					// ErrTableNotFound is returned when the referenced table is dropped, so `unique_constraint_name` column will not be filled.
+					refTbl, _, refErr := c.Table(ctx, referencedSchema, referencedTableName)
+					if refErr == nil {
+						indexTable, iok := refTbl.(IndexAddressable)
+						if iok {
+							indexes, ierr := indexTable.GetIndexes(ctx)
+							if ierr != nil {
 
-					indexTable, iok := refTbl.(IndexAddressable)
-					if iok {
-						indexes, ierr := indexTable.GetIndexes(ctx)
-						if ierr != nil {
-
-						}
-						for _, index := range indexes {
-							if index.ID() != "PRIMARY" && !index.IsUnique() {
-								continue
 							}
-							colNames := getColumnNamesFromIndex(index, refTbl)
-							if len(colNames) == len(referencedCols) {
-								var hasAll = true
-								for _, colName := range colNames {
-									_, hasAll = referencedCols[colName]
+							for _, index := range indexes {
+								if index.ID() != "PRIMARY" && !index.IsUnique() {
+									continue
 								}
-								if hasAll {
-									uniqueConstName = index.ID()
+								colNames := getColumnNamesFromIndex(index, refTbl)
+								if len(colNames) == len(referencedCols) {
+									var hasAll = true
+									for _, colName := range colNames {
+										_, hasAll = referencedCols[colName]
+									}
+									if hasAll {
+										uniqueConstName = index.ID()
+									}
 								}
 							}
 						}
+					} else if !ErrTableNotFound.Is(refErr) {
+						return nil, refErr
 					}
 
 					rows = append(rows, Row{
@@ -1968,17 +1958,6 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		return nil, err
 	}
 
-	// TODO: This should be the SQL_MODE at the time the trigger was created, not the current session's SQL_MODE.
-	//       We track that information now, but this code needs to be refactored a bit in order to display it, since
-	//       trigger definitions are converted to trigger plan nodes and then used for generating output.
-	sysVal, err := ctx.Session.GetSessionVariable(ctx, "sql_mode")
-	if err != nil {
-		return nil, err
-	}
-	sqlMode, sok := sysVal.(string)
-	if !sok {
-		return nil, ErrSystemVariableCodeFail.New("sql_mode", sysVal)
-	}
 	privSet, _ := ctx.GetPrivilegeSet()
 	if privSet == nil {
 		return RowsToRowIter(rows...), nil
@@ -2001,7 +1980,8 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 			var triggerPlans []*plan.CreateTrigger
 			for _, trigger := range triggers {
-				parsedTrigger, err := planbuilder.ParseWithOptions(ctx, c, trigger.CreateStatement, NewSqlModeFromString(trigger.SqlMode).ParserOptions())
+				triggerSqlMode := NewSqlModeFromString(trigger.SqlMode)
+				parsedTrigger, err := planbuilder.ParseWithOptions(ctx, c, trigger.CreateStatement, triggerSqlMode.ParserOptions())
 				if err != nil {
 					return nil, err
 				}
@@ -2010,6 +1990,7 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					return nil, ErrTriggerCreateStatementInvalid.New(trigger.CreateStatement)
 				}
 				triggerPlan.CreatedAt = trigger.CreatedAt // Keep stored created time
+				triggerPlan.SqlMode = triggerSqlMode.String()
 				triggerPlans = append(triggerPlans, triggerPlan)
 			}
 
@@ -2073,7 +2054,7 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 							"OLD",                   // action_reference_old_row
 							"NEW",                   // action_reference_new_row
 							triggerPlan.CreatedAt,   // created
-							sqlMode,                 // sql_mode
+							triggerPlan.SqlMode,     // sql_mode
 							definer,                 // definer
 							characterSetClient,      // character_set_client
 							collationConnection,     // collation_connection

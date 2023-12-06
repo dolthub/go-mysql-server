@@ -123,7 +123,7 @@ var AnsiQuotesTests = []ScriptTest{
 			},
 			{
 				Query:    `create view view1 as select public_keys."public", public_keys."count" from public_keys;`,
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    `show tables;`,

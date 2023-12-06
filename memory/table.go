@@ -638,7 +638,7 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if err != nil {
 			return nil, err
 		}
-		result, _ = types.ConvertToBool(result)
+		result, _ = sql.ConvertToBool(ctx, result)
 		if result != true {
 			return i.Next(ctx)
 		}
@@ -1346,7 +1346,7 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 		for i, expr := range memIndex.Exprs {
 			getField := expr.(*expression.GetField)
 			if strings.ToLower(getField.Name()) == nameLowercase {
-				memIndex.Exprs[i] = expression.NewGetFieldWithTable(newIdx, column.Type, getField.Database(), getField.Table(), column.Name, column.Nullable)
+				memIndex.Exprs[i] = expression.NewGetFieldWithTable(newIdx, int(getField.TableId()), column.Type, getField.Database(), getField.Table(), column.Name, column.Nullable)
 			}
 		}
 	}
@@ -1666,7 +1666,7 @@ func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 			for i, ord := range data.schema.PkOrdinals {
 				column := data.schema.Schema[ord]
 				idx, field := data.getColumnOrdinal(column.Name)
-				exprs[i] = expression.NewGetFieldWithTable(idx, field.Type, t.db.Name(), t.name, field.Name, field.Nullable)
+				exprs[i] = expression.NewGetFieldWithTable(idx, 0, field.Type, t.dbName(), t.name, field.Name, field.Nullable)
 			}
 			indexes = append(indexes, &Index{
 				DB:         t.dbName(),
@@ -1851,7 +1851,7 @@ func (t *Table) createIndex(data *TableData, name string, columns []sql.IndexCol
 	colNames := make([]string, len(columns))
 	for i, column := range columns {
 		idx, field := data.getColumnOrdinal(column.Name)
-		exprs[i] = expression.NewGetFieldWithTable(idx, field.Type, t.db.Name(), t.name, field.Name, field.Nullable)
+		exprs[i] = expression.NewGetFieldWithTable(idx, 0, field.Type, t.dbName(), t.name, field.Name, field.Nullable)
 		colNames[i] = column.Name
 	}
 

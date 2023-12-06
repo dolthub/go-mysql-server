@@ -15,16 +15,17 @@
 package queries
 
 import (
-	"time"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/stats"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var InfoSchemaQueries = []QueryTest{
+	{
+		Query:    "SHOW PLUGINS",
+		Expected: []sql.Row{},
+	},
 	{
 		Query:    "SHOW KEYS FROM `columns` FROM `information_schema`;",
 		Expected: []sql.Row{},
@@ -668,16 +669,16 @@ FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND INDEX_NAME='P
 	{
 		Query: "SELECT * FROM information_schema.st_spatial_reference_systems order by srs_id desc limit 10",
 		Expected: []sql.Row{
-			{`WGS 84 / TM 36 SE`, uint32(32766), `EPSG`, 32766, `PROJCS["WGS 84 / TM 36 SE",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",36,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32766"]]`, nil},
-			{`WGS 84 / UPS South (N,E)`, uint32(32761), `EPSG`, 32761, `PROJCS["WGS 84 / UPS South (N,E)",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Polar Stereographic (variant A)",AUTHORITY["EPSG","9810"]],PARAMETER["Latitude of natural origin",-90,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",0,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.994,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",2000000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",2000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["N",NORTH],AXIS["E",NORTH],AUTHORITY["EPSG","32761"]]`, nil},
-			{`WGS 84 / UTM zone 60S`, uint32(32760), `EPSG`, 32760, `PROJCS["WGS 84 / UTM zone 60S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",177,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32760"]]`, nil},
-			{`WGS 84 / UTM zone 59S`, uint32(32759), `EPSG`, 32759, `PROJCS["WGS 84 / UTM zone 59S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",171,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32759"]]`, nil},
-			{`WGS 84 / UTM zone 58S`, uint32(32758), `EPSG`, 32758, `PROJCS["WGS 84 / UTM zone 58S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",165,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32758"]]`, nil},
-			{`WGS 84 / UTM zone 57S`, uint32(32757), `EPSG`, 32757, `PROJCS["WGS 84 / UTM zone 57S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",159,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32757"]]`, nil},
-			{`WGS 84 / UTM zone 56S`, uint32(32756), `EPSG`, 32756, `PROJCS["WGS 84 / UTM zone 56S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",153,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32756"]]`, nil},
-			{`WGS 84 / UTM zone 55S`, uint32(32755), `EPSG`, 32755, `PROJCS["WGS 84 / UTM zone 55S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",147,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32755"]]`, nil},
-			{`WGS 84 / UTM zone 54S`, uint32(32754), `EPSG`, 32754, `PROJCS["WGS 84 / UTM zone 54S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",141,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32754"]]`, nil},
-			{`WGS 84 / UTM zone 53S`, uint32(32753), `EPSG`, 32753, `PROJCS["WGS 84 / UTM zone 53S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",135,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32753"]]`, nil},
+			{`WGS 84 / TM 36 SE`, uint32(32766), `EPSG`, uint32(32766), `PROJCS["WGS 84 / TM 36 SE",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",36,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32766"]]`, nil},
+			{`WGS 84 / UPS South (N,E)`, uint32(32761), `EPSG`, uint32(32761), `PROJCS["WGS 84 / UPS South (N,E)",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Polar Stereographic (variant A)",AUTHORITY["EPSG","9810"]],PARAMETER["Latitude of natural origin",-90,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",0,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.994,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",2000000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",2000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["N",NORTH],AXIS["E",NORTH],AUTHORITY["EPSG","32761"]]`, nil},
+			{`WGS 84 / UTM zone 60S`, uint32(32760), `EPSG`, uint32(32760), `PROJCS["WGS 84 / UTM zone 60S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",177,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32760"]]`, nil},
+			{`WGS 84 / UTM zone 59S`, uint32(32759), `EPSG`, uint32(32759), `PROJCS["WGS 84 / UTM zone 59S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",171,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32759"]]`, nil},
+			{`WGS 84 / UTM zone 58S`, uint32(32758), `EPSG`, uint32(32758), `PROJCS["WGS 84 / UTM zone 58S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",165,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32758"]]`, nil},
+			{`WGS 84 / UTM zone 57S`, uint32(32757), `EPSG`, uint32(32757), `PROJCS["WGS 84 / UTM zone 57S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",159,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32757"]]`, nil},
+			{`WGS 84 / UTM zone 56S`, uint32(32756), `EPSG`, uint32(32756), `PROJCS["WGS 84 / UTM zone 56S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",153,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32756"]]`, nil},
+			{`WGS 84 / UTM zone 55S`, uint32(32755), `EPSG`, uint32(32755), `PROJCS["WGS 84 / UTM zone 55S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",147,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32755"]]`, nil},
+			{`WGS 84 / UTM zone 54S`, uint32(32754), `EPSG`, uint32(32754), `PROJCS["WGS 84 / UTM zone 54S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",141,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32754"]]`, nil},
+			{`WGS 84 / UTM zone 53S`, uint32(32753), `EPSG`, uint32(32753), `PROJCS["WGS 84 / UTM zone 53S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",135,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32753"]]`, nil},
 		},
 	},
 	{
@@ -723,6 +724,61 @@ var SkippedInfoSchemaQueries = []QueryTest{
 }
 
 var InfoSchemaScripts = []ScriptTest{
+	{
+		Name: "foreign key that references dropped table",
+		SetUpScript: []string{
+			"create table parent(a int primary key, b int);",
+			"create table child(c int primary key);",
+			"alter table child add foreign key (c) references parent(a);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select UNIQUE_CONSTRAINT_NAME from information_schema.referential_constraints where TABLE_NAME = 'child' and REFERENCED_TABLE_NAME = 'parent';",
+				Expected: []sql.Row{{"PRIMARY"}},
+			},
+			{
+				Query:    "select REFERENCED_COLUMN_NAME from information_schema.key_column_usage where TABLE_NAME = 'child' and REFERENCED_TABLE_NAME = 'parent';",
+				Expected: []sql.Row{{"a"}},
+			},
+			{
+				Query: "set foreign_key_checks=0;",
+			},
+			{
+				Query: "drop table parent;",
+			},
+			{
+				Query:    "insert into child values (1), (2);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "select * from child;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				Query:    "delete from child;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "select * from child;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "set foreign_key_checks=1;",
+			},
+			{
+				Query:       "insert into child values (1), (2);",
+				ExpectedErr: sql.ErrForeignKeyNotResolved,
+			},
+			{
+				Query:    "select UNIQUE_CONSTRAINT_NAME from information_schema.referential_constraints where TABLE_NAME = 'child' and REFERENCED_TABLE_NAME = 'parent';",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "select REFERENCED_COLUMN_NAME from information_schema.key_column_usage where TABLE_NAME = 'child' and REFERENCED_TABLE_NAME = 'parent';",
+				Expected: []sql.Row{{"a"}},
+			},
+		},
+	},
 	{
 		Name: "query does not use optimization rule on LIKE clause because info_schema db charset is utf8mb3",
 		SetUpScript: []string{
@@ -861,9 +917,9 @@ character_set_client, collation_connection, database_collation
 FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 				Expected: []sql.Row{
 					{"def", "mydb", "trigger1", "INSERT", "def", "mydb", "aa", 1, nil, "SET NEW.x = NEW.x + 1", "ROW", "BEFORE", nil, nil, "OLD", "NEW",
-						"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", "dolt@localhost", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+						"NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES", "dolt@localhost", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 					{"def", "mydb", "trigger2", "INSERT", "def", "mydb", "aa", 2, nil, "SET NEW.y = NEW.y + 2", "ROW", "BEFORE", nil, nil, "OLD", "NEW",
-						"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", "root@localhost", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+						"NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES", "root@localhost", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 				},
 			},
 		},
@@ -984,19 +1040,19 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 					"datetime_precision, character_set_name, collation_name, dtd_identifier, " +
 					"routine_body, external_name, external_language, parameter_style, is_deterministic, " +
 					"sql_data_access, sql_path, security_type, sql_mode, routine_comment, definer, " +
-					"character_set_client, collation_connection, database_collation FROM information_schema.routines",
+					"character_set_client, collation_connection, database_collation FROM information_schema.routines order by routine_name",
 				Expected: []sql.Row{
 					{"p1", "def", "mydb", "p1", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, nil, "SQL",
-						nil, "SQL", "SQL", "YES", "CONTAINS SQL", nil, "DEFINER", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
+						nil, "SQL", "SQL", "YES", "CONTAINS SQL", nil, "DEFINER", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES",
 						"hi", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
-					{"p2", "def", "mydb", "p2", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, nil, "SQL",
-						nil, "SQL", "SQL", "NO", "CONTAINS SQL", nil, "INVOKER", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
-						"", "user@%", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 					{"p12", "def", "foo", "p12", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, nil, "SQL",
-						nil, "SQL", "SQL", "YES", "CONTAINS SQL", nil, "DEFINER", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
+						nil, "SQL", "SQL", "YES", "CONTAINS SQL", nil, "DEFINER", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES",
 						"hello", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+					{"p2", "def", "mydb", "p2", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, nil, "SQL",
+						nil, "SQL", "SQL", "NO", "CONTAINS SQL", nil, "INVOKER", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES",
+						"", "user@%", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 					{"p21", "def", "mydb", "p21", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, nil, "SQL",
-						nil, "SQL", "SQL", "NO", "CONTAINS SQL", nil, "DEFINER", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
+						nil, "SQL", "SQL", "NO", "CONTAINS SQL", nil, "DEFINER", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES",
 						"", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 				},
 			},
@@ -1411,7 +1467,7 @@ routine_comment, definer, character_set_client, collation_connection, database_c
 from information_schema.routines where routine_schema = 'mydb' and routine_type like 'PROCEDURE' order by routine_name;`,
 				Expected: []sql.Row{
 					{"count_i_from_mytable", "def", "mydb", "count_i_from_mytable", "PROCEDURE", "", "SQL", "SQL", "SQL", "NO",
-						"READS SQL DATA", "DEFINER", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
+						"READS SQL DATA", "DEFINER", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES",
 						"", "root@localhost", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 				},
 			},
@@ -1629,147 +1685,5 @@ var SkippedInfoSchemaScripts = []ScriptTest{
 				},
 			},
 		},
-	},
-}
-
-var StatisticsQueries = []ScriptTest{
-	{
-		Name: "analyze single int column",
-		SetUpScript: []string{
-			"CREATE TABLE t (i bigint primary key)",
-			"INSERT INTO t VALUES (1), (2), (3)",
-			"ANALYZE TABLE t",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "SELECT * FROM information_schema.column_statistics",
-				Expected: []sql.Row{
-					{"mydb", "t", "i", stats.NewStatistic(3, 3, 0, 24, time.Now(), sql.NewStatQualifier("mydb", "t", "primary"), []string{"i"}, []sql.Type{types.Int64}, []*stats.Bucket{
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(1)}, nil, nil),
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(2)}, nil, nil),
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(3)}, nil, nil),
-					}, sql.IndexClassDefault),
-					},
-				},
-			},
-		},
-	},
-	{
-		Name: "analyze update/drop",
-		SetUpScript: []string{
-			"CREATE TABLE t (i bigint primary key, j bigint, key(j))",
-			"INSERT INTO t VALUES (1, 4), (2, 5), (3, 6)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "analyze table t update histogram on (i) using data '{\"row_count\": 40, \"distinct_count\": 40, \"null_count\": 1, \"buckets\": [{\"row_count\": 20, \"distinct_count\": 20, \"upper_bound\": [50], \"bound_count\": 1}, {\"row_count\": 20, \"distinct_count\": 20, \"upper_bound\": [80], \"bound_count\": 1}]}'",
-				Expected: []sql.Row{{"t", "histogram", "status", "OK"}},
-			},
-			{
-				Query: "SELECT * FROM information_schema.column_statistics",
-				Expected: []sql.Row{
-					{"mydb", "t", "i", stats.NewStatistic(40, 40, 1, 0, time.Now(), sql.NewStatQualifier("mydb", "t", "primary"), []string{"i"}, []sql.Type{types.Int64}, []*stats.Bucket{
-						stats.NewHistogramBucket(20, 20, 0, 1, sql.Row{float64(50)}, nil, nil),
-						stats.NewHistogramBucket(20, 20, 0, 1, sql.Row{float64(80)}, nil, nil),
-					}, sql.IndexClassDefault),
-					},
-				},
-			},
-			{
-				Query:    "analyze table t drop histogram on (i)",
-				Expected: []sql.Row{{"t", "histogram", "status", "OK"}},
-			},
-			{
-				Query:    "SELECT * FROM information_schema.column_statistics",
-				Expected: []sql.Row{},
-			},
-		},
-	},
-	{
-		Name: "analyze two int columns",
-		SetUpScript: []string{
-			"CREATE TABLE t (i bigint primary key, j bigint, key(j))",
-			"INSERT INTO t VALUES (1, 4), (2, 5), (3, 6)",
-			"ANALYZE TABLE t",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "SELECT * FROM information_schema.column_statistics",
-				Expected: []sql.Row{
-					{"mydb", "t", "i", stats.NewStatistic(3, 3, 0, 48, time.Now(), sql.NewStatQualifier("mydb", "t", "primary"), []string{"i"}, []sql.Type{types.Int64}, []*stats.Bucket{
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(1)}, nil, []sql.Row{}),
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(2)}, nil, []sql.Row{}),
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(3)}, nil, []sql.Row{}),
-					}, sql.IndexClassDefault),
-					},
-					{"mydb", "t", "j", stats.NewStatistic(3, 3, 0, 48, time.Now(), sql.NewStatQualifier("mydb", "t", "j"), []string{"j"}, []sql.Type{types.Int64}, []*stats.Bucket{
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(4)}, nil, []sql.Row{}),
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(5)}, nil, []sql.Row{}),
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(6)}, nil, []sql.Row{}),
-					}, sql.IndexClassDefault),
-					},
-				},
-			},
-		},
-	},
-	{
-		Name: "analyze float columns",
-		SetUpScript: []string{
-			"CREATE TABLE t (i double primary key)",
-			"INSERT INTO t VALUES (1.25), (45.25), (7.5), (10.5)",
-			"ANALYZE TABLE t",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "SELECT * FROM information_schema.column_statistics",
-				Expected: []sql.Row{
-					{"mydb", "t", "i", stats.NewStatistic(4, 4, 0, 32, time.Now(), sql.NewStatQualifier("mydb", "t", "primary"), []string{"i"}, []sql.Type{types.Float64}, []*stats.Bucket{
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{float64(1.25)}, nil, []sql.Row{}),
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{float64(7.5)}, nil, []sql.Row{}),
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{float64(10.5)}, nil, []sql.Row{}),
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{float64(45.25)}, nil, []sql.Row{}),
-					}, sql.IndexClassDefault),
-					},
-				},
-			},
-		},
-	},
-	{
-		Name: "analyze empty table creates stats with 0s",
-		SetUpScript: []string{
-			"CREATE TABLE t (i float)",
-			"ANALYZE TABLE t",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT * FROM information_schema.column_statistics",
-				Expected: []sql.Row{},
-			},
-		},
-	},
-	{
-		Name: "analyze columns that can't be converted to float throws error",
-		SetUpScript: []string{
-			"CREATE TABLE t (t longtext)",
-			"INSERT INTO t VALUES ('not a number')",
-			"ANALYZE TABLE t",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT * FROM information_schema.column_statistics",
-				Expected: []sql.Row{},
-			},
-		},
-	},
-	{
-		Query: `
-		SELECT
-			COLUMN_NAME,
-			JSON_EXTRACT(HISTOGRAM, '$."number-of-buckets-specified"')
-		FROM information_schema.COLUMN_STATISTICS
-		WHERE SCHEMA_NAME = 'mydb'
-		AND TABLE_NAME = 'mytable'
-		`,
-		Expected: nil,
 	},
 }

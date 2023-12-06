@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -51,6 +52,7 @@ func LoadSqlMode(ctx *Context) *SqlMode {
 func NewSqlModeFromString(sqlModeString string) *SqlMode {
 	sqlModeString = strings.ToLower(sqlModeString)
 	elements := strings.Split(sqlModeString, ",")
+	sort.Strings(elements)
 	modes := map[string]struct{}{}
 	for _, element := range elements {
 		modes[element] = struct{}{}
@@ -58,7 +60,7 @@ func NewSqlModeFromString(sqlModeString string) *SqlMode {
 
 	return &SqlMode{
 		modes:      modes,
-		modeString: strings.ToUpper(sqlModeString),
+		modeString: strings.ToUpper(strings.Join(elements, ",")),
 	}
 }
 

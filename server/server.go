@@ -129,6 +129,10 @@ func portInUse(hostPort string) bool {
 }
 
 func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handler mysql.Handler) (*Server, error) {
+	for _, option := range cfg.Options {
+		option(e, sm, handler)
+	}
+
 	if cfg.ConnReadTimeout < 0 {
 		cfg.ConnReadTimeout = 0
 	}
@@ -199,7 +203,7 @@ func (s *Server) WarnIfLoadFileInsecure() {
 		if v == "" {
 			logrus.Warn("secure_file_priv is set to \"\", which is insecure.")
 			logrus.Warn("Any user with GRANT FILE privileges will be able to read any file which the sql-server process can read.")
-			logrus.Warn("Please consider restarting the server with secure_file_priv set to a safe (or non-existant) directory.")
+			logrus.Warn("Please consider restarting the server with secure_file_priv set to a safe (or non-existent) directory.")
 		}
 	}
 }

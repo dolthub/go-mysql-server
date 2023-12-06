@@ -41,5 +41,5 @@ var (
 
 	ErrOrderByBinding = errors.NewKind("bindings in sort clauses not supported yet")
 
-	ErrFailedToParseStats = errors.NewKind("failed to parse data: %s")
+	ErrFailedToParseStats = errors.NewKind("failed to parse data: %s\n%s")
 )

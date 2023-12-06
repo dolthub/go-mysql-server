@@ -71,6 +71,22 @@ func SplitConjunction(expr sql.Expression) []sql.Expression {
 	)
 }
 
+// SplitDisjunction breaks OR expressions into their left and right parts, recursively
+func SplitDisjunction(expr sql.Expression) []sql.Expression {
+	if expr == nil {
+		return nil
+	}
+	and, ok := expr.(*Or)
+	if !ok {
+		return []sql.Expression{expr}
+	}
+
+	return append(
+		SplitDisjunction(and.Left),
+		SplitDisjunction(and.Right)...,
+	)
+}
+
 func (a *And) String() string {
 	return fmt.Sprintf("(%s AND %s)", a.Left, a.Right)
 }
@@ -100,7 +116,7 @@ func (a *And) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if lval != nil {
-		lvalBool, err := types.ConvertToBool(lval)
+		lvalBool, err := sql.ConvertToBool(ctx, lval)
 		if err == nil && lvalBool == false {
 			return false, nil
 		}
@@ -111,7 +127,7 @@ func (a *And) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if rval != nil {
-		rvalBool, err := types.ConvertToBool(rval)
+		rvalBool, err := sql.ConvertToBool(ctx, rval)
 		if err == nil && rvalBool == false {
 			return false, nil
 		}
@@ -195,7 +211,7 @@ func (o *Or) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if lval != nil {
-		lval, err = types.ConvertToBool(lval)
+		lval, err = sql.ConvertToBool(ctx, lval)
 		if err == nil && lval.(bool) {
 			return true, nil
 		}
@@ -206,7 +222,7 @@ func (o *Or) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if rval != nil {
-		rval, err = types.ConvertToBool(rval)
+		rval, err = sql.ConvertToBool(ctx, rval)
 		if err == nil && rval.(bool) {
 			return true, nil
 		}
@@ -269,7 +285,7 @@ func (x *Xor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if lval == nil {
 		return nil, nil
 	}
-	lvalue, err := types.ConvertToBool(lval)
+	lvalue, err := sql.ConvertToBool(ctx, lval)
 	if err != nil {
 		return nil, err
 	}
@@ -281,7 +297,7 @@ func (x *Xor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if rval == nil {
 		return nil, nil
 	}
-	rvalue, err := types.ConvertToBool(rval)
+	rvalue, err := sql.ConvertToBool(ctx, rval)
 	if err != nil {
 		return nil, err
 	}

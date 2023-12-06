@@ -70,12 +70,24 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 			return n, transform.SameTree, nil
 		}
 
-		var statistics []sql.Statistic
-		var err error
-		//statistics, err := a.Catalog.StatsProvider.GetTableStats(ctx, strings.ToLower(rt.Database().Name()), strings.ToLower(rt.Name()))
-		//if err != nil {
-		//	return n, transform.SameTree, err
-		//}
+		if is, ok := rt.UnderlyingTable().(sql.IndexSearchableTable); ok && is.SkipIndexCosting() {
+			lookup, err := is.LookupForExpressions(ctx, expression.SplitConjunction(filter.Expression))
+			if err != nil {
+				return n, transform.SameTree, err
+			}
+			if lookup.IsEmpty() {
+				return n, transform.SameTree, nil
+			}
+			ret, err := plan.NewStaticIndexedAccessForTableNode(rt, lookup)
+			if err != nil {
+				return n, transform.SameTree, err
+			}
+			return plan.NewFilter(filter.Expression, ret), transform.NewTree, nil
+		}
+		statistics, err := a.Catalog.StatsProvider.GetTableStats(ctx, strings.ToLower(rt.Database().Name()), strings.ToLower(rt.Name()))
+		if err != nil {
+			return n, transform.SameTree, err
+		}
 
 		qualToStat := make(map[sql.StatQualifier]sql.Statistic)
 		for _, stat := range statistics {
@@ -106,6 +118,18 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 			dbName = strings.ToLower(dbTab.Database())
 		}
 		tableName := strings.ToLower(rt.UnderlyingTable().Name())
+
+		if len(qualToStat) > 0 {
+			// don't mix and match real and default stats
+			for _, idx := range indexes {
+				qual := sql.NewStatQualifier(dbName, tableName, strings.ToLower(idx.ID()))
+				_, ok := qualToStat[qual]
+				if !ok {
+					qualToStat = nil
+					break
+				}
+			}
+		}
 
 		for _, idx := range indexes {
 			qual := sql.NewStatQualifier(dbName, tableName, strings.ToLower(idx.ID()))
@@ -141,6 +165,9 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 			b.leftover = append(b.leftover, leftover)
 		}
 		ranges, err := b.buildRangeCollection(root)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
 
 		var emptyLookup bool
 		if len(ranges) == 0 {
@@ -1332,9 +1359,9 @@ func newUniformDistStatistic(dbName, tableName string, sch sql.Schema, idx sql.I
 	if err != nil {
 		return nil, err
 	}
-	stat.SetFuncDeps(fds)
-	stat.SetColSet(idxCols)
-	return stat, nil
+	ret := stat.WithFuncDeps(fds)
+	ret = ret.WithColSet(idxCols)
+	return ret, nil
 }
 
 func newConjCollector(s sql.Statistic, ordinals map[string]int) *conjCollector {
@@ -1359,31 +1386,33 @@ type conjCollector struct {
 	isFalse       bool
 }
 
-func (c *conjCollector) add(f *iScanLeaf) {
+func (c *conjCollector) add(f *iScanLeaf) error {
 	c.applied.Add(int(f.Id()))
+	var err error
 	switch f.Op() {
 	case indexScanOpNullSafeEq:
-		c.addEq(f.gf.Name(), f.litValue, true)
+		err = c.addEq(f.gf.Name(), f.litValue, true)
 	case indexScanOpEq:
-		c.addEq(f.gf.Name(), f.litValue, false)
+		err = c.addEq(f.gf.Name(), f.litValue, false)
 	case indexScanOpInSet:
 		// TODO cost UNION of equals
-		c.addEq(f.gf.Name(), f.setValues[0], false)
+		err = c.addEq(f.gf.Name(), f.setValues[0], false)
 	default:
-		c.addIneq(f.Op(), f.gf.Name(), f.litValue)
+		err = c.addIneq(f.Op(), f.gf.Name(), f.litValue)
 	}
+	return err
 }
 
-func (c *conjCollector) addEq(col string, val interface{}, nullSafe bool) {
+func (c *conjCollector) addEq(col string, val interface{}, nullSafe bool) error {
 	// make constant
 	ord := c.ordinals[col]
 	if c.constant.Contains(ord) {
 		if c.eqVals[ord] != val {
 			// FALSE filter
 			c.isFalse = true
-			return
+			return nil
 		}
-		return
+		return nil
 	}
 
 	c.constant.Add(ord)
@@ -1411,55 +1440,71 @@ func (c *conjCollector) addEq(col string, val interface{}, nullSafe bool) {
 		}
 
 		// truncate buckets
-		c.stat = stats.PrefixKey(c.stat, c.eqVals[:ord+1], c.nullable)
+		var err error
+		c.stat, err = stats.PrefixKey(c.stat, c.eqVals[:ord+1], c.nullable)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func (c *conjCollector) addIneq(op indexScanOp, col string, val interface{}) {
+func (c *conjCollector) addIneq(op indexScanOp, col string, val interface{}) error {
 	ord := c.ordinals[col]
-	c.cmpFirstCol(op, val)
-	c.truncateMcvs(ord, op, val)
+	if ord > 0 {
+		return nil
+	}
+	err := c.cmpFirstCol(op, val)
+	if err != nil {
+		return err
+	}
+	return c.truncateMcvs(ord, op, val)
 }
 
 // cmpFirstCol checks whether we should try to range truncate the first
 // column in the index
-func (c *conjCollector) cmpFirstCol(op indexScanOp, val interface{}) {
+func (c *conjCollector) cmpFirstCol(op indexScanOp, val interface{}) error {
 	// check if first col already constant
 	// otherwise attempt to truncate histogram
+	var err error
 	if c.constant.Contains(1) {
-		return
+		return nil
 	}
 	switch op {
 	case indexScanOpNotEq:
 		// todo notEq
+		c.stat, err = stats.PrefixGt(c.stat, val)
 	case indexScanOpGt:
-		c.stat = stats.PrefixGt(c.stat, val)
+		c.stat, err = stats.PrefixGt(c.stat, val)
 	case indexScanOpGte:
-		c.stat = stats.PrefixGte(c.stat, val)
+		c.stat, err = stats.PrefixGte(c.stat, val)
 	case indexScanOpLt:
-		c.stat = stats.PrefixLt(c.stat, val)
+		c.stat, err = stats.PrefixLt(c.stat, val)
 	case indexScanOpLte:
-		c.stat = stats.PrefixLte(c.stat, val)
+		c.stat, err = stats.PrefixLte(c.stat, val)
 	case indexScanOpIsNull:
-		c.stat = stats.PrefixIsNull(c.stat, val)
+		c.stat, err = stats.PrefixIsNull(c.stat)
 	case indexScanOpIsNotNull:
-		c.stat = stats.PrefixIsNotNull(c.stat, val)
+		c.stat, err = stats.PrefixIsNotNull(c.stat)
 	}
+	return err
 }
 
-func (c *conjCollector) truncateMcvs(i int, op indexScanOp, val interface{}) {
+func (c *conjCollector) truncateMcvs(i int, op indexScanOp, val interface{}) error {
+	var err error
 	switch op {
 	case indexScanOpGt:
-		c.stat = stats.McvIndexGt(c.stat, i, val)
+		c.stat, err = stats.McvPrefixGt(c.stat, i, val)
 	case indexScanOpGte:
-		c.stat = stats.McvIndexGte(c.stat, i, val)
+		c.stat, err = stats.McvPrefixGte(c.stat, i, val)
 	case indexScanOpLt:
-		c.stat = stats.McvIndexLt(c.stat, i, val)
+		c.stat, err = stats.McvPrefixLt(c.stat, i, val)
 	case indexScanOpLte:
-		c.stat = stats.McvIndexLte(c.stat, i, val)
+		c.stat, err = stats.McvPrefixLte(c.stat, i, val)
 	case indexScanOpIsNull:
-		c.stat = stats.McvIndexIsNull(c.stat, i, val)
+		c.stat, err = stats.McvPrefixIsNull(c.stat, i, val)
 	case indexScanOpIsNotNull:
-		c.stat = stats.McvIndexIsNotNull(c.stat, i, val)
+		c.stat, err = stats.McvPrefixIsNotNull(c.stat, i, val)
 	}
+	return err
 }

@@ -481,7 +481,16 @@ func RemoveOverlappingRanges(ranges ...Range) (RangeCollection, error) {
 		}
 	}
 
-	return rangeTree.GetRangeCollection()
+	rangeColl, err := rangeTree.GetRangeCollection()
+	if err != nil {
+		return nil, err
+	}
+
+	if err = validateRangeCollection(rangeColl); err != nil {
+		return nil, err
+	}
+
+	return rangeColl, nil
 }
 
 // SortRanges sorts the given ranges, returning a new slice of ranges.
@@ -497,4 +506,17 @@ func SortRanges(ranges ...Range) ([]Range, error) {
 		return cmp == -1
 	})
 	return sortedRanges, err
+}
+
+func validateRangeCollection(rangeColl RangeCollection) error {
+	for i := 0; i < len(rangeColl)-1; i++ {
+		for j := i + 1; j < len(rangeColl); j++ {
+			if ok, err := rangeColl[i].Overlaps(rangeColl[j]); err != nil {
+				return err
+			} else if ok {
+				return fmt.Errorf("overlapping ranges: %s and %s", rangeColl[i].String(), rangeColl[j].String())
+			}
+		}
+	}
+	return nil
 }

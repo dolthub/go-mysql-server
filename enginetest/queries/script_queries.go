@@ -93,6 +93,10 @@ type ScriptTestAssertion struct {
 	// in the test suite results.
 	Skip bool
 
+	// SkipResultCheckOnServerEngine is used when the result of over the wire test does not match the result from the engine test.
+	// It should be fixed in the future.
+	SkipResultCheckOnServerEngine bool
+
 	// Bindings are variable mappings only used for prepared tests
 	Bindings map[string]*querypb.BindVariable
 
@@ -104,6 +108,18 @@ type ScriptTestAssertion struct {
 // Unlike other engine tests, ScriptTests must be self-contained. No other tables are created outside the definition of
 // the tests.
 var ScriptTests = []ScriptTest{
+	{
+		Name: "filter pushdown through join uppercase name",
+		SetUpScript: []string{
+			"create table A (A int primary key);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "select /*+ JOIN_ORDER(A, b) */ * from A join A b where a.A = 1 and b.A = 1",
+				ExpectedIndexes: []string{"primary", "primary"},
+			},
+		},
+	},
 	{
 		Name: "correctness test indexes",
 		SetUpScript: []string{
@@ -649,6 +665,8 @@ CREATE TABLE tab3 (
 				},
 			},
 			{
+				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
+				// enginetests returns the enum id, but the text representation is sent over the wire
 				Query:    "select * from t;",
 				Expected: []sql.Row{{"one", nil, nil}, {"two", uint64(2), -2}},
 			},
@@ -699,6 +717,7 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 			{
+				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
 				// enginetests returns the enum id, but the text representation is sent over the wire
 				Query:    "SELECT * FROM enumtest1;",
 				Expected: []sql.Row{{1, uint64(1)}, {2, uint64(1)}, {3, uint64(2)}},
@@ -2107,6 +2126,8 @@ CREATE TABLE tab3 (
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				SkipResultCheckOnServerEngine: true, //unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
+				// enginetests returns the enum id, but the text representation is sent over the wire
 				Query:    "SELECT * FROM test;",
 				Expected: []sql.Row{{1, uint16(2), uint64(2)}, {2, uint16(1), uint64(1)}},
 			},
@@ -2115,16 +2136,18 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
-				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, uint16(3), uint64(2)}, {2, uint16(1), uint64(1)}},
+				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
+				Query:                         "SELECT * FROM test;",
+				Expected:                      []sql.Row{{1, uint16(3), uint64(2)}, {2, uint16(1), uint64(1)}},
 			},
 			{
 				Query:    "UPDATE test SET v2 = 3 WHERE 2 = v2;",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
-				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, uint16(3), uint64(3)}, {2, uint16(1), uint64(1)}},
+				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
+				Query:                         "SELECT * FROM test;",
+				Expected:                      []sql.Row{{1, uint16(3), uint64(3)}, {2, uint16(1), uint64(1)}},
 			},
 		},
 	},
@@ -3079,12 +3102,14 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{1.8181817787737895}, {1.6666666004392863}, {1.5384615948919735}},
 			},
 			{
-				Query:    "select d/2 from decimals;",
-				Expected: []sql.Row{{"0.50000"}, {"1.00000"}, {"1.25000"}},
+				SkipResultCheckOnServerEngine: true, // tracking issue: https://github.com/dolthub/dolt/issues/7098
+				Query:                         "select d/2 from decimals;",
+				Expected:                      []sql.Row{{"0.50000"}, {"1.00000"}, {"1.25000"}},
 			},
 			{
-				Query:    "select 2/d from decimals;",
-				Expected: []sql.Row{{"2.0000"}, {"1.0000"}, {"0.8000"}},
+				SkipResultCheckOnServerEngine: true, // tracking issue: https://github.com/dolthub/dolt/issues/7098
+				Query:                         "select 2/d from decimals;",
+				Expected:                      []sql.Row{{"2.0000"}, {"1.0000"}, {"0.8000"}},
 			},
 			{
 				Query: "select f/d from floats, decimals;",
@@ -3218,7 +3243,8 @@ CREATE TABLE tab3 (
 			},
 			// Assert that returned values are correct.
 			{
-				Query: "SELECT * from t order by pk;",
+				SkipResultCheckOnServerEngine: true, // the type differs on int16 vs int64 (for go sql driver, integer value always returned as int64)
+				Query:                         "SELECT * from t order by pk;",
 				Expected: []sql.Row{
 					{1, int16(1901)},
 					{2, int16(1901)},
@@ -3248,8 +3274,7 @@ CREATE TABLE tab3 (
 	{
 		Name: "INSERT IGNORE correctly truncates column data",
 		SetUpScript: []string{
-			`
-			CREATE TABLE t (
+			`CREATE TABLE t (
 				pk int primary key,
 				col1 boolean,
 				col2 integer,
@@ -3268,8 +3293,7 @@ CREATE TABLE tab3 (
 				col15 year,
 				col16 ENUM('first', 'second'),
 				col17 SET('a', 'b')
-			);
-			`,
+			);`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -3282,7 +3306,8 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				Query: "SELECT * from t",
+				SkipResultCheckOnServerEngine: true, // the type differs on int16 vs int64 (for go sql driver, integer value always returned as int64) AND the datetime returned is not non-zero
+				Query:                         "SELECT * from t",
 				Expected: []sql.Row{
 					{
 						1,
@@ -3390,7 +3415,8 @@ CREATE TABLE tab3 (
 				}}},
 			},
 			{
-				Query: "SELECT * FROM setenumtest ORDER BY pk;",
+				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
+				Query:                         "SELECT * FROM setenumtest ORDER BY pk;",
 				Expected: []sql.Row{
 					{1, uint16(1), uint64(1)},
 					{2, uint16(2), uint64(2)},
@@ -3407,7 +3433,8 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				Query: "SELECT * FROM setenumtest ORDER BY pk;",
+				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
+				Query:                         "SELECT * FROM setenumtest ORDER BY pk;",
 				Expected: []sql.Row{
 					{1, uint16(1), uint64(1)},
 					{2, uint16(2), uint64(2)},
@@ -3495,8 +3522,12 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{0}, {0}, {70}},
 			},
 			{
-				Query:    "select d / 314990 from t order by d;",
-				Expected: []sql.Row{{"-0.01584177275469"}, {"0.00000634940792"}, {"70.91202260389219"}},
+				// TODO: we observed that if there is column decimal type, we use it as final result.
+				//  But it was incorrect, it only uses the scale as starting point and increments by the `divIntermediatePrecisionInc`
+				//  This test is correct, but the result received over the wire is incorrect as it converts the final result based on the column decimal type.
+				SkipResultCheckOnServerEngine: true, // tracking issue: https://github.com/dolthub/dolt/issues/7098
+				Query:                         "select d / 314990 from t order by d;",
+				Expected:                      []sql.Row{{"-0.01584177275469"}, {"0.00000634940792"}, {"70.91202260389219"}},
 			},
 		},
 	},
@@ -4197,6 +4228,627 @@ CREATE TABLE tab3 (
 			},
 		},
 	},
+	{
+		Name: "Complex Filter Index Scan",
+		SetUpScript: []string{
+			`CREATE TABLE tab2 (
+              pk int NOT NULL,
+              col0 int,
+              col1 float,
+              col2 text,
+              col3 int,
+              col4 float,
+              col5 text,
+              PRIMARY KEY (pk),
+              UNIQUE KEY idx_tab2_0 (col3,col4),
+              UNIQUE KEY idx_tab2_1 (col1,col4),
+              UNIQUE KEY idx_tab2_2 (col3,col0,col4),
+              UNIQUE KEY idx_tab2_3 (col1,col3)
+            );`,
+			`insert into tab2 values ( 63, 587, 465.59 , 'aggxb', 303 , 763.91, 'tgpqr');`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT pk FROM tab2 WHERE col4 IS NULL OR col0 > 560 AND (col3 < 848) OR (col3 > 883) OR (((col4 >= 539.78 AND col3 <= 953))) OR ((col3 IN (258)) OR (col3 IN (583,234,372)) AND col4 >= 488.43)",
+				Expected: []sql.Row{
+					{63},
+				},
+			},
+		},
+	},
+	{
+		Name: "Complex Filter Index Scan",
+		SetUpScript: []string{
+			"create table t (pk int primary key, v1 int, v2 int, v3 int, v4 int);",
+			"create index v_idx on t (v1, v2, v3, v4);",
+			"insert into t values (0, 26, 24, 91, 0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t where (((v1>25 and v2 between 23 and 54) or (v1<>40 and v3>90)) or (v1<>7 and v4<=78));",
+				Expected: []sql.Row{
+					{0, 26, 24, 91, 0},
+				},
+			},
+		},
+	},
+	{
+		Name: "Complex Filter Index Scan",
+		SetUpScript: []string{
+			"create table t (pk integer primary key, col0 integer, col1 float);",
+			"create index idx on t (col0, col1);",
+			"insert into t values (0, 22, 1.23);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select pk, col0 from t where (col0 in (73,69)) or col0 in (4,12,3,17,70,20) or (col0 in (39) or (col1 < 69.67));",
+				Expected: []sql.Row{
+					{0, 22},
+				},
+			},
+		},
+	},
+	{
+		Name: "update columns with default",
+		SetUpScript: []string{
+			"create table t (i int default 10, j varchar(128) default (concat('abc', 'def')));",
+			"insert into t values (100, 'a'), (200, 'b');",
+			"create table t2 (i int);",
+			"insert into t2 values (1), (2), (3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "update t set i = default where i = 100;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query: "select * from t order by i",
+				Expected: []sql.Row{
+					{10, "a"},
+					{200, "b"},
+				},
+			},
+			{
+				Query: "update t set j = default where i = 200;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query: "select * from t order by i",
+				Expected: []sql.Row{
+					{10, "a"},
+					{200, "abcdef"},
+				},
+			},
+			{
+				Query: "update t set i = default, j = default;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 2, Info: plan.UpdateInfo{Matched: 2, Updated: 2}}},
+				},
+			},
+			{
+				Query: "select * from t order by i",
+				Expected: []sql.Row{
+					{10, "abcdef"},
+					{10, "abcdef"},
+				},
+			},
+			{
+				Query: "update t2 set i = default",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{Matched: 3, Updated: 3}}},
+				},
+			},
+			{
+				Query: "select * from t2",
+				Expected: []sql.Row{
+					{nil},
+					{nil},
+					{nil},
+				},
+			},
+		},
+	},
+	{
+		Name: "int index with float filter",
+		SetUpScript: []string{
+			"create table t0 (i int primary key);",
+			"insert into t0 values (-1), (0), (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t0 where i > 0.0 order by i;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i > 0.1 order by i;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i > 0.5 order by i;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i > 0.9 order by i;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query:    "select * from t0 where i > 1.0 order by i;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from t0 where i > 1.1 order by i;",
+				Expected: []sql.Row{},
+			},
+
+			{
+				Query: "select * from t0 where i > -0.0 order by i;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i > -0.1 order by i;",
+				Expected: []sql.Row{
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i > -0.5 order by i;",
+				Expected: []sql.Row{
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i > -0.9 order by i;",
+				Expected: []sql.Row{
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i > -1.0 order by i;",
+				Expected: []sql.Row{
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i > -1.1 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+
+			{
+				Query: "select * from t0 where i >= 0.0 order by i;",
+				Expected: []sql.Row{
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i >= 0.1 order by i;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i >= 0.5 order by i;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i >= 0.9 order by i;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i >= 1.0 order by i;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query:    "select * from t0 where i >= 1.1 order by i;",
+				Expected: []sql.Row{},
+			},
+
+			{
+				Query: "select * from t0 where i >= -0.0 order by i;",
+				Expected: []sql.Row{
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i >= -0.1 order by i;",
+				Expected: []sql.Row{
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i >= -0.5 order by i;",
+				Expected: []sql.Row{
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i >= -0.9 order by i;",
+				Expected: []sql.Row{
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i >= -1.0 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i >= -1.1 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+
+			{
+				Query: "select * from t0 where i < 0.0 order by i;",
+				Expected: []sql.Row{
+					{-1},
+				},
+			},
+			{
+				Query: "select * from t0 where i < 0.1 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+				},
+			},
+			{
+				Query: "select * from t0 where i < 0.5 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+				},
+			},
+			{
+				Query: "select * from t0 where i < 0.9 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+				},
+			},
+			{
+				Query: "select * from t0 where i < 1.0 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+				},
+			},
+			{
+				Query: "select * from t0 where i < 1.1 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+
+			{
+				Query: "select * from t0 where i < -0.0 order by i;",
+				Expected: []sql.Row{
+					{-1},
+				},
+			},
+			{
+				Query: "select * from t0 where i < -0.1 order by i;",
+				Expected: []sql.Row{
+					{-1},
+				},
+			},
+			{
+				Query: "select * from t0 where i < -0.5 order by i;",
+				Expected: []sql.Row{
+					{-1},
+				},
+			},
+			{
+				Query: "select * from t0 where i < -0.9 order by i;",
+				Expected: []sql.Row{
+					{-1},
+				},
+			},
+			{
+				Query:    "select * from t0 where i < -1.0 order by i;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from t0 where i < -1.1 order by i;",
+				Expected: []sql.Row{},
+			},
+
+			{
+				Query: "select * from t0 where i <= 0.0 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+				},
+			},
+			{
+				Query: "select * from t0 where i <= 0.1 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+				},
+			},
+			{
+				Query: "select * from t0 where i <= 0.5 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+				},
+			},
+			{
+				Query: "select * from t0 where i <= 0.9 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+				},
+			},
+			{
+				Query: "select * from t0 where i <= 1.0 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i <= 1.1 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+
+			{
+				Query: "select * from t0 where i <= -0.0 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+				},
+			},
+			{
+				Query: "select * from t0 where i <= -0.1 order by i;",
+				Expected: []sql.Row{
+					{-1},
+				},
+			},
+			{
+				Query: "select * from t0 where i <= -0.5 order by i;",
+				Expected: []sql.Row{
+					{-1},
+				},
+			},
+			{
+				Query: "select * from t0 where i <= -0.9 order by i;",
+				Expected: []sql.Row{
+					{-1},
+				},
+			},
+			{
+				Query: "select * from t0 where i <= -1.0 order by i;",
+				Expected: []sql.Row{
+					{-1},
+				},
+			},
+			{
+				Query:    "select * from t0 where i <= -1.1 order by i;",
+				Expected: []sql.Row{},
+			},
+
+			{
+				Query: "select * from t0 where i = 0.0 order by i;",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query:    "select * from t0 where i = 0.1 order by i;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from t0 where i = 0.5 order by i;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from t0 where i = 0.9 order by i;",
+				Expected: []sql.Row{},
+			},
+
+			{
+				Query: "select * from t0 where i = -0.0 order by i;",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query:    "select * from t0 where i = -0.1 order by i;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from t0 where i = -0.5 order by i;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from t0 where i = -0.9 order by i;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from t0 where i = -1.0 order by i;",
+				Expected: []sql.Row{
+					{-1},
+				},
+			},
+
+			{
+				Query: "select * from t0 where i != 0.0 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i != 0.1 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i != 0.5 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i != 0.9 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+
+			{
+				Query: "select * from t0 where i != -0.0 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i != -0.1 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i != -0.5 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i != -0.9 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i != -1.0 order by i;",
+				Expected: []sql.Row{
+					{0},
+					{1},
+				},
+			},
+
+			{
+				Query: "select * from t0 where i <= 0.0 and i >= 0.0 order by i;",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: "select * from t0 where i <= 0.1 or i >= 0.1 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i > 0.1 and i >= 0.1 order by i;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i > 0.1 or i >= 0.1 order by i;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+		},
+	},
+	{
+		Name: "int secondary index with float filter",
+		SetUpScript: []string{
+			"create table t0 (i int);",
+			"create index idx on t0(i);",
+			"insert into t0 values (null), (-1), (0), (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t0 where i >= 0.0 order by i;",
+				Expected: []sql.Row{
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i <= 0.0 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+				},
+			},
+			{
+				// cot(-939932070) = -1.1919623754564008
+				Query: "SELECT * from t0 where (cot(-939932070) < i);",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
@@ -4882,7 +5534,8 @@ var PreparedScriptTests = []ScriptTest{
 				ExpectedErrStr: "bind variable not provided: 'v2'",
 			},
 			{
-				Query: "execute s using @a, @b",
+				SkipResultCheckOnServerEngine: true, // execute depends on prepare stmt for whether to use 'query' or 'exec' from go sql driver.
+				Query:                         "execute s using @a, @b",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 1}},
 				},
@@ -5404,14 +6057,16 @@ var CreateDatabaseScripts = []ScriptTest{
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: nil}}},
 			},
 			{
-				Query:    "SHOW WARNINGS /* 1 */",
-				Expected: []sql.Row{{"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"}},
+				SkipResultCheckOnServerEngine: true, // tracking issue here, https://github.com/dolthub/dolt/issues/6921. Also for when run with prepares, the warning is added twice
+				Query:                         "SHOW WARNINGS /* 1 */",
+				Expected:                      []sql.Row{{"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"}},
 			},
 			{
 				Query:    "CREATE DATABASE newtest1db DEFAULT COLLATE binary ENCRYPTION='Y'",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: nil}}},
 			},
 			{
+				SkipResultCheckOnServerEngine: true, // tracking issue here, https://github.com/dolthub/dolt/issues/6921.
 				// TODO: There should only be one warning (the warnings are not clearing for create database query) AND 'PREPARE' statements should not create warning from its query
 				Query:    "SHOW WARNINGS /* 2 */",
 				Expected: []sql.Row{{"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"}, {"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"}},

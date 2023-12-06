@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -136,8 +135,8 @@ func (r *ConcatJoin) JoinPrivate() *JoinBase {
 
 type HashJoin struct {
 	*JoinBase
-	RightAttrs []*ExprGroup
-	LeftAttrs  []*ExprGroup
+	RightAttrs []sql.Expression
+	LeftAttrs  []sql.Expression
 }
 
 var _ RelExpr = (*HashJoin)(nil)
@@ -201,7 +200,7 @@ func (r *LateralJoin) JoinPrivate() *JoinBase {
 
 type TableScan struct {
 	*sourceBase
-	Table sql.TableNode
+	Table plan.TableIdNode
 }
 
 var _ RelExpr = (*TableScan)(nil)
@@ -215,8 +214,12 @@ func (r *TableScan) Name() string {
 	return strings.ToLower(r.Table.Name())
 }
 
-func (r *TableScan) TableId() TableId {
+func (r *TableScan) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
+}
+
+func (r *TableScan) TableIdNode() plan.TableIdNode {
+	return r.Table
 }
 
 func (r *TableScan) OutputCols() sql.Schema {
@@ -243,8 +246,12 @@ func (r *Values) Name() string {
 	return strings.ToLower(r.Table.Name())
 }
 
-func (r *Values) TableId() TableId {
+func (r *Values) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
+}
+
+func (r *Values) TableIdNode() plan.TableIdNode {
+	return r.Table
 }
 
 func (r *Values) OutputCols() sql.Schema {
@@ -271,8 +278,12 @@ func (r *TableAlias) Name() string {
 	return strings.ToLower(r.Table.Name())
 }
 
-func (r *TableAlias) TableId() TableId {
+func (r *TableAlias) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
+}
+
+func (r *TableAlias) TableIdNode() plan.TableIdNode {
+	return r.Table
 }
 
 func (r *TableAlias) OutputCols() sql.Schema {
@@ -299,8 +310,12 @@ func (r *RecursiveTable) Name() string {
 	return strings.ToLower(r.Table.Name())
 }
 
-func (r *RecursiveTable) TableId() TableId {
+func (r *RecursiveTable) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
+}
+
+func (r *RecursiveTable) TableIdNode() plan.TableIdNode {
+	return r.Table
 }
 
 func (r *RecursiveTable) OutputCols() sql.Schema {
@@ -327,8 +342,12 @@ func (r *RecursiveCte) Name() string {
 	return strings.ToLower(r.Table.Name())
 }
 
-func (r *RecursiveCte) TableId() TableId {
+func (r *RecursiveCte) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
+}
+
+func (r *RecursiveCte) TableIdNode() plan.TableIdNode {
+	return r.Table
 }
 
 func (r *RecursiveCte) OutputCols() sql.Schema {
@@ -355,8 +374,12 @@ func (r *SubqueryAlias) Name() string {
 	return strings.ToLower(r.Table.Name())
 }
 
-func (r *SubqueryAlias) TableId() TableId {
+func (r *SubqueryAlias) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
+}
+
+func (r *SubqueryAlias) TableIdNode() plan.TableIdNode {
+	return r.Table
 }
 
 func (r *SubqueryAlias) OutputCols() sql.Schema {
@@ -383,8 +406,12 @@ func (r *TableFunc) Name() string {
 	return strings.ToLower(r.Table.Name())
 }
 
-func (r *TableFunc) TableId() TableId {
+func (r *TableFunc) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
+}
+
+func (r *TableFunc) TableIdNode() plan.TableIdNode {
+	return nil
 }
 
 func (r *TableFunc) OutputCols() sql.Schema {
@@ -411,8 +438,12 @@ func (r *JSONTable) Name() string {
 	return strings.ToLower(r.Table.Name())
 }
 
-func (r *JSONTable) TableId() TableId {
+func (r *JSONTable) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
+}
+
+func (r *JSONTable) TableIdNode() plan.TableIdNode {
+	return r.Table
 }
 
 func (r *JSONTable) OutputCols() sql.Schema {
@@ -439,8 +470,12 @@ func (r *EmptyTable) Name() string {
 	return strings.ToLower(r.Table.Name())
 }
 
-func (r *EmptyTable) TableId() TableId {
+func (r *EmptyTable) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
+}
+
+func (r *EmptyTable) TableIdNode() plan.TableIdNode {
+	return r.Table
 }
 
 func (r *EmptyTable) OutputCols() sql.Schema {
@@ -467,8 +502,12 @@ func (r *SetOp) Name() string {
 	return ""
 }
 
-func (r *SetOp) TableId() TableId {
+func (r *SetOp) TableId() sql.TableId {
 	return TableIdForSource(r.g.Id)
+}
+
+func (r *SetOp) TableIdNode() plan.TableIdNode {
+	return r.Table
 }
 
 func (r *SetOp) OutputCols() sql.Schema {
@@ -482,7 +521,7 @@ func (r *SetOp) Children() []*ExprGroup {
 type Project struct {
 	*relBase
 	Child       *ExprGroup
-	Projections []*ExprGroup
+	Projections []sql.Expression
 }
 
 var _ RelExpr = (*Project)(nil)
@@ -495,12 +534,8 @@ func (r *Project) Children() []*ExprGroup {
 	return []*ExprGroup{r.Child}
 }
 
-func (r *Project) outputCols() sql.Schema {
-	var s = make(sql.Schema, len(r.Projections))
-	for i, e := range r.Projections {
-		s[i] = ScalarToSqlCol(e)
-	}
-	return s
+func (r *Project) outputCols() sql.ColSet {
+	return getProjectColset(r)
 }
 
 type Distinct struct {
@@ -518,7 +553,7 @@ func (r *Distinct) Children() []*ExprGroup {
 	return []*ExprGroup{r.Child}
 }
 
-func (r *Distinct) outputCols() sql.Schema {
+func (r *Distinct) outputCols() sql.ColSet {
 	return r.Child.RelProps.OutputCols()
 }
 
@@ -537,14 +572,14 @@ func (r *Max1Row) Children() []*ExprGroup {
 	return []*ExprGroup{r.Child}
 }
 
-func (r *Max1Row) outputCols() sql.Schema {
+func (r *Max1Row) outputCols() sql.ColSet {
 	return r.Child.RelProps.OutputCols()
 }
 
 type Filter struct {
 	*relBase
 	Child   *ExprGroup
-	Filters []*ExprGroup
+	Filters []sql.Expression
 }
 
 var _ RelExpr = (*Filter)(nil)
@@ -557,397 +592,8 @@ func (r *Filter) Children() []*ExprGroup {
 	return []*ExprGroup{r.Child}
 }
 
-func (r *Filter) outputCols() sql.Schema {
+func (r *Filter) outputCols() sql.ColSet {
 	return r.Child.RelProps.OutputCols()
-}
-
-type Equal struct {
-	*scalarBase
-	Left  *ExprGroup
-	Right *ExprGroup
-}
-
-var _ ScalarExpr = (*Equal)(nil)
-
-func (r *Equal) ExprId() ScalarExprId {
-	return ScalarExprEqual
-}
-
-func (r *Equal) String() string {
-	return FormatExpr(r)
-}
-
-func (r *Equal) Children() []*ExprGroup {
-	return []*ExprGroup{r.Left, r.Right}
-}
-
-type Literal struct {
-	*scalarBase
-	Val interface{}
-	Typ sql.Type
-}
-
-var _ ScalarExpr = (*Literal)(nil)
-
-func (r *Literal) ExprId() ScalarExprId {
-	return ScalarExprLiteral
-}
-
-func (r *Literal) String() string {
-	return FormatExpr(r)
-}
-
-func (r *Literal) Children() []*ExprGroup {
-	return nil
-}
-
-type ColRef struct {
-	*scalarBase
-	Col   sql.ColumnId
-	Table GroupId
-	Gf    *expression.GetField
-}
-
-var _ ScalarExpr = (*ColRef)(nil)
-
-func (r *ColRef) ExprId() ScalarExprId {
-	return ScalarExprColRef
-}
-
-func (r *ColRef) String() string {
-	return FormatExpr(r)
-}
-
-func (r *ColRef) Children() []*ExprGroup {
-	return nil
-}
-
-type Not struct {
-	*scalarBase
-	Child *ExprGroup
-}
-
-var _ ScalarExpr = (*Not)(nil)
-
-func (r *Not) ExprId() ScalarExprId {
-	return ScalarExprNot
-}
-
-func (r *Not) String() string {
-	return FormatExpr(r)
-}
-
-func (r *Not) Children() []*ExprGroup {
-	return []*ExprGroup{r.Child}
-}
-
-func (r *Not) outputCols() sql.Schema {
-	return r.Child.RelProps.OutputCols()
-}
-
-type Or struct {
-	*scalarBase
-	Left  *ExprGroup
-	Right *ExprGroup
-}
-
-var _ ScalarExpr = (*Or)(nil)
-
-func (r *Or) ExprId() ScalarExprId {
-	return ScalarExprOr
-}
-
-func (r *Or) String() string {
-	return FormatExpr(r)
-}
-
-func (r *Or) Children() []*ExprGroup {
-	return []*ExprGroup{r.Left, r.Right}
-}
-
-type And struct {
-	*scalarBase
-	Left  *ExprGroup
-	Right *ExprGroup
-}
-
-var _ ScalarExpr = (*And)(nil)
-
-func (r *And) ExprId() ScalarExprId {
-	return ScalarExprAnd
-}
-
-func (r *And) String() string {
-	return FormatExpr(r)
-}
-
-func (r *And) Children() []*ExprGroup {
-	return []*ExprGroup{r.Left, r.Right}
-}
-
-type InTuple struct {
-	*scalarBase
-	Left  *ExprGroup
-	Right *ExprGroup
-}
-
-var _ ScalarExpr = (*InTuple)(nil)
-
-func (r *InTuple) ExprId() ScalarExprId {
-	return ScalarExprInTuple
-}
-
-func (r *InTuple) String() string {
-	return FormatExpr(r)
-}
-
-func (r *InTuple) Children() []*ExprGroup {
-	return []*ExprGroup{r.Left, r.Right}
-}
-
-type Lt struct {
-	*scalarBase
-	Left  *ExprGroup
-	Right *ExprGroup
-}
-
-var _ ScalarExpr = (*Lt)(nil)
-
-func (r *Lt) ExprId() ScalarExprId {
-	return ScalarExprLt
-}
-
-func (r *Lt) String() string {
-	return FormatExpr(r)
-}
-
-func (r *Lt) Children() []*ExprGroup {
-	return []*ExprGroup{r.Left, r.Right}
-}
-
-type Leq struct {
-	*scalarBase
-	Left  *ExprGroup
-	Right *ExprGroup
-}
-
-var _ ScalarExpr = (*Leq)(nil)
-
-func (r *Leq) ExprId() ScalarExprId {
-	return ScalarExprLeq
-}
-
-func (r *Leq) String() string {
-	return FormatExpr(r)
-}
-
-func (r *Leq) Children() []*ExprGroup {
-	return []*ExprGroup{r.Left, r.Right}
-}
-
-type Gt struct {
-	*scalarBase
-	Left  *ExprGroup
-	Right *ExprGroup
-}
-
-var _ ScalarExpr = (*Gt)(nil)
-
-func (r *Gt) ExprId() ScalarExprId {
-	return ScalarExprGt
-}
-
-func (r *Gt) String() string {
-	return FormatExpr(r)
-}
-
-func (r *Gt) Children() []*ExprGroup {
-	return []*ExprGroup{r.Left, r.Right}
-}
-
-type Geq struct {
-	*scalarBase
-	Left  *ExprGroup
-	Right *ExprGroup
-}
-
-var _ ScalarExpr = (*Geq)(nil)
-
-func (r *Geq) ExprId() ScalarExprId {
-	return ScalarExprGeq
-}
-
-func (r *Geq) String() string {
-	return FormatExpr(r)
-}
-
-func (r *Geq) Children() []*ExprGroup {
-	return []*ExprGroup{r.Left, r.Right}
-}
-
-type NullSafeEq struct {
-	*scalarBase
-	Left  *ExprGroup
-	Right *ExprGroup
-}
-
-var _ ScalarExpr = (*NullSafeEq)(nil)
-
-func (r *NullSafeEq) ExprId() ScalarExprId {
-	return ScalarExprNullSafeEq
-}
-
-func (r *NullSafeEq) String() string {
-	return FormatExpr(r)
-}
-
-func (r *NullSafeEq) Children() []*ExprGroup {
-	return []*ExprGroup{r.Left, r.Right}
-}
-
-type Regexp struct {
-	*scalarBase
-	Left  *ExprGroup
-	Right *ExprGroup
-}
-
-var _ ScalarExpr = (*Regexp)(nil)
-
-func (r *Regexp) ExprId() ScalarExprId {
-	return ScalarExprRegexp
-}
-
-func (r *Regexp) String() string {
-	return FormatExpr(r)
-}
-
-func (r *Regexp) Children() []*ExprGroup {
-	return []*ExprGroup{r.Left, r.Right}
-}
-
-type Arithmetic struct {
-	*scalarBase
-	Left  *ExprGroup
-	Right *ExprGroup
-	Op    ArithType
-}
-
-var _ ScalarExpr = (*Arithmetic)(nil)
-
-func (r *Arithmetic) ExprId() ScalarExprId {
-	return ScalarExprArithmetic
-}
-
-func (r *Arithmetic) String() string {
-	return FormatExpr(r)
-}
-
-func (r *Arithmetic) Children() []*ExprGroup {
-	return []*ExprGroup{r.Left, r.Right}
-}
-
-type Bindvar struct {
-	*scalarBase
-	Name string
-	Typ  sql.Type
-}
-
-var _ ScalarExpr = (*Bindvar)(nil)
-
-func (r *Bindvar) ExprId() ScalarExprId {
-	return ScalarExprBindvar
-}
-
-func (r *Bindvar) String() string {
-	return FormatExpr(r)
-}
-
-func (r *Bindvar) Children() []*ExprGroup {
-	return nil
-}
-
-type IsNull struct {
-	*scalarBase
-	Child *ExprGroup
-}
-
-var _ ScalarExpr = (*IsNull)(nil)
-
-func (r *IsNull) ExprId() ScalarExprId {
-	return ScalarExprIsNull
-}
-
-func (r *IsNull) String() string {
-	return FormatExpr(r)
-}
-
-func (r *IsNull) Children() []*ExprGroup {
-	return []*ExprGroup{r.Child}
-}
-
-func (r *IsNull) outputCols() sql.Schema {
-	return r.Child.RelProps.OutputCols()
-}
-
-type Tuple struct {
-	*scalarBase
-	Values []*ExprGroup
-}
-
-var _ ScalarExpr = (*Tuple)(nil)
-
-func (r *Tuple) ExprId() ScalarExprId {
-	return ScalarExprTuple
-}
-
-func (r *Tuple) String() string {
-	return FormatExpr(r)
-}
-
-func (r *Tuple) Children() []*ExprGroup {
-	return nil
-}
-
-type Between struct {
-	*scalarBase
-	Value *ExprGroup
-	Min   *ExprGroup
-	Max   *ExprGroup
-}
-
-var _ ScalarExpr = (*Between)(nil)
-
-func (r *Between) ExprId() ScalarExprId {
-	return ScalarExprBetween
-}
-
-func (r *Between) String() string {
-	return FormatExpr(r)
-}
-
-func (r *Between) Children() []*ExprGroup {
-	return nil
-}
-
-type Hidden struct {
-	*scalarBase
-	E      sql.Expression
-	Cols   sql.ColSet
-	Tables sql.FastIntSet
-}
-
-var _ ScalarExpr = (*Hidden)(nil)
-
-func (r *Hidden) ExprId() ScalarExprId {
-	return ScalarExprHidden
-}
-
-func (r *Hidden) String() string {
-	return FormatExpr(r)
-}
-
-func (r *Hidden) Children() []*ExprGroup {
-	return nil
 }
 
 func FormatExpr(r exprType) string {
@@ -1004,108 +650,66 @@ func FormatExpr(r exprType) string {
 		return fmt.Sprintf("max1row: %d", r.Child.Id)
 	case *Filter:
 		return fmt.Sprintf("filter: %d", r.Child.Id)
-	case *Equal:
-		return fmt.Sprintf("equal %d %d", r.Left.Id, r.Right.Id)
-	case *Literal:
-		return fmt.Sprintf("literal: %v %s", r.Val, r.Typ)
-	case *ColRef:
-		return fmt.Sprintf("colref: '%s.%s'", r.Gf.Table(), r.Gf.Name())
-	case *Not:
-		return fmt.Sprintf("not: %d", r.Child.Id)
-	case *Or:
-		return fmt.Sprintf("or %d %d", r.Left.Id, r.Right.Id)
-	case *And:
-		return fmt.Sprintf("and %d %d", r.Left.Id, r.Right.Id)
-	case *InTuple:
-		return fmt.Sprintf("intuple %d %d", r.Left.Id, r.Right.Id)
-	case *Lt:
-		return fmt.Sprintf("lt %d %d", r.Left.Id, r.Right.Id)
-	case *Leq:
-		return fmt.Sprintf("leq %d %d", r.Left.Id, r.Right.Id)
-	case *Gt:
-		return fmt.Sprintf("gt %d %d", r.Left.Id, r.Right.Id)
-	case *Geq:
-		return fmt.Sprintf("geq %d %d", r.Left.Id, r.Right.Id)
-	case *NullSafeEq:
-		return fmt.Sprintf("nullsafeeq %d %d", r.Left.Id, r.Right.Id)
-	case *Regexp:
-		return fmt.Sprintf("regexp %d %d", r.Left.Id, r.Right.Id)
-	case *Arithmetic:
-		return fmt.Sprintf("arithmetic %d %d", r.Left.Id, r.Right.Id)
-	case *Bindvar:
-		return fmt.Sprintf("bindvar: %s", r.Name)
-	case *IsNull:
-		return fmt.Sprintf("isnull: %d", r.Child.Id)
-	case *Tuple:
-		vals := make([]string, len(r.Values))
-		for i, v := range r.Values {
-			vals[i] = fmt.Sprintf("%d", v.Id)
-		}
-		return fmt.Sprintf("tuple: %s", strings.Join(vals, " "))
-	case *Between:
-		return fmt.Sprintf("between: %d, %d, %d", r.Value.Id, r.Min.Id, r.Max.Id)
-	case *Hidden:
-		return fmt.Sprintf("hidden: %s", r.E)
 	default:
 		panic(fmt.Sprintf("unknown RelExpr type: %T", r))
 	}
 }
 
-func buildRelExpr(b *ExecBuilder, r RelExpr, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+func buildRelExpr(b *ExecBuilder, r RelExpr, children ...sql.Node) (sql.Node, error) {
 	var result sql.Node
 	var err error
 
 	switch r := r.(type) {
 	case *CrossJoin:
-		result, err = b.buildCrossJoin(r, input, children...)
+		result, err = b.buildCrossJoin(r, children...)
 	case *InnerJoin:
-		result, err = b.buildInnerJoin(r, input, children...)
+		result, err = b.buildInnerJoin(r, children...)
 	case *LeftJoin:
-		result, err = b.buildLeftJoin(r, input, children...)
+		result, err = b.buildLeftJoin(r, children...)
 	case *SemiJoin:
-		result, err = b.buildSemiJoin(r, input, children...)
+		result, err = b.buildSemiJoin(r, children...)
 	case *AntiJoin:
-		result, err = b.buildAntiJoin(r, input, children...)
+		result, err = b.buildAntiJoin(r, children...)
 	case *LookupJoin:
-		result, err = b.buildLookupJoin(r, input, children...)
+		result, err = b.buildLookupJoin(r, children...)
 	case *RangeHeapJoin:
-		result, err = b.buildRangeHeapJoin(r, input, children...)
+		result, err = b.buildRangeHeapJoin(r, children...)
 	case *ConcatJoin:
-		result, err = b.buildConcatJoin(r, input, children...)
+		result, err = b.buildConcatJoin(r, children...)
 	case *HashJoin:
-		result, err = b.buildHashJoin(r, input, children...)
+		result, err = b.buildHashJoin(r, children...)
 	case *MergeJoin:
-		result, err = b.buildMergeJoin(r, input, children...)
+		result, err = b.buildMergeJoin(r, children...)
 	case *FullOuterJoin:
-		result, err = b.buildFullOuterJoin(r, input, children...)
+		result, err = b.buildFullOuterJoin(r, children...)
 	case *LateralJoin:
-		result, err = b.buildLateralJoin(r, input, children...)
+		result, err = b.buildLateralJoin(r, children...)
 	case *TableScan:
-		result, err = b.buildTableScan(r, input, children...)
+		result, err = b.buildTableScan(r, children...)
 	case *Values:
-		result, err = b.buildValues(r, input, children...)
+		result, err = b.buildValues(r, children...)
 	case *TableAlias:
-		result, err = b.buildTableAlias(r, input, children...)
+		result, err = b.buildTableAlias(r, children...)
 	case *RecursiveTable:
-		result, err = b.buildRecursiveTable(r, input, children...)
+		result, err = b.buildRecursiveTable(r, children...)
 	case *RecursiveCte:
-		result, err = b.buildRecursiveCte(r, input, children...)
+		result, err = b.buildRecursiveCte(r, children...)
 	case *SubqueryAlias:
-		result, err = b.buildSubqueryAlias(r, input, children...)
+		result, err = b.buildSubqueryAlias(r, children...)
 	case *TableFunc:
-		result, err = b.buildTableFunc(r, input, children...)
+		result, err = b.buildTableFunc(r, children...)
 	case *JSONTable:
-		result, err = b.buildJSONTable(r, input, children...)
+		result, err = b.buildJSONTable(r, children...)
 	case *EmptyTable:
-		result, err = b.buildEmptyTable(r, input, children...)
+		result, err = b.buildEmptyTable(r, children...)
 	case *SetOp:
-		result, err = b.buildSetOp(r, input, children...)
+		result, err = b.buildSetOp(r, children...)
 	case *Project:
-		result, err = b.buildProject(r, input, children...)
+		result, err = b.buildProject(r, children...)
 	case *Max1Row:
-		result, err = b.buildMax1Row(r, input, children...)
+		result, err = b.buildMax1Row(r, children...)
 	case *Filter:
-		result, err = b.buildFilter(r, input, children...)
+		result, err = b.buildFilter(r, children...)
 	default:
 		panic(fmt.Sprintf("unknown RelExpr type: %T", r))
 	}
@@ -1114,54 +718,9 @@ func buildRelExpr(b *ExecBuilder, r RelExpr, input sql.Schema, children ...sql.N
 		return nil, err
 	}
 
-	result, err = r.Group().finalize(result, input)
+	result, err = r.Group().finalize(result)
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
-}
-
-func buildScalarExpr(b *ExecBuilder, r ScalarExpr, sch sql.Schema) (sql.Expression, error) {
-	switch r := r.(type) {
-	case *Equal:
-		return b.buildEqual(r, sch)
-	case *Literal:
-		return b.buildLiteral(r, sch)
-	case *ColRef:
-		return b.buildColRef(r, sch)
-	case *Not:
-		return b.buildNot(r, sch)
-	case *Or:
-		return b.buildOr(r, sch)
-	case *And:
-		return b.buildAnd(r, sch)
-	case *InTuple:
-		return b.buildInTuple(r, sch)
-	case *Lt:
-		return b.buildLt(r, sch)
-	case *Leq:
-		return b.buildLeq(r, sch)
-	case *Gt:
-		return b.buildGt(r, sch)
-	case *Geq:
-		return b.buildGeq(r, sch)
-	case *NullSafeEq:
-		return b.buildNullSafeEq(r, sch)
-	case *Regexp:
-		return b.buildRegexp(r, sch)
-	case *Arithmetic:
-		return b.buildArithmetic(r, sch)
-	case *Bindvar:
-		return b.buildBindvar(r, sch)
-	case *IsNull:
-		return b.buildIsNull(r, sch)
-	case *Tuple:
-		return b.buildTuple(r, sch)
-	case *Between:
-		return b.buildBetween(r, sch)
-	case *Hidden:
-		return b.buildHidden(r, sch)
-	default:
-		panic(fmt.Sprintf("unknown ScalarExpr type: %T", r))
-	}
 }

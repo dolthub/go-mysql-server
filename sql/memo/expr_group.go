@@ -25,13 +25,11 @@ import (
 // ExprGroup is a linked list of plans that return the same result set
 // defined by row count and schema.
 type ExprGroup struct {
-	m           *Memo
-	_children   []*ExprGroup
-	RelProps    *relProps
-	scalarProps *scalarProps
-	Scalar      ScalarExpr
-	First       RelExpr
-	Best        RelExpr
+	m         *Memo
+	_children []*ExprGroup
+	RelProps  *relProps
+	First     RelExpr
+	Best      RelExpr
 
 	Id GroupId
 
@@ -52,15 +50,8 @@ func newExprGroup(m *Memo, id GroupId, expr exprType) *ExprGroup {
 	case RelExpr:
 		grp.First = e
 		grp.RelProps = newRelProps(e)
-	case ScalarExpr:
-		grp.Scalar = e
-		grp.scalarProps = newScalarProps(e)
 	}
 	return grp
-}
-
-func (e *ExprGroup) ScalarProps() *scalarProps {
-	return e.scalarProps
 }
 
 // Prepend adds a new plan to an expression group at the beginning of
@@ -97,9 +88,12 @@ func (e *ExprGroup) updateBest(n RelExpr, grpCost float64) {
 	}
 }
 
-func (e *ExprGroup) finalize(node sql.Node, input sql.Schema) (sql.Node, error) {
+func (e *ExprGroup) finalize(node sql.Node) (sql.Node, error) {
 	props := e.RelProps
 	var result = node
+	if props.sort != nil {
+		result = plan.NewSort(props.sort, result)
+	}
 	if props.limit != nil {
 		result = plan.NewLimit(props.limit, result)
 	}
@@ -107,10 +101,6 @@ func (e *ExprGroup) finalize(node sql.Node, input sql.Schema) (sql.Node, error) 
 }
 
 func (e *ExprGroup) String() string {
-	if e.Scalar != nil {
-		return fmt.Sprintf("(%s)", FormatExpr(e.Scalar))
-	}
-
 	b := strings.Builder{}
 	n := e.First
 	sep := ""

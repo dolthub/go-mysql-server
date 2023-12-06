@@ -530,23 +530,62 @@ var ColumnDefaultTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Blob types can't define defaults with literals",
+		// Technically, MySQL does NOT allow BLOB/JSON/TEXT types to have a literal default value, and requires them
+		// to be specified as an expression (i.e. wrapped in parens). We diverge from this behavior and allow it, for
+		// compatibility with MariaDB. For more context, see: https://github.com/dolthub/dolt/issues/7033
+		Name: "BLOB types can define defaults with literals",
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:       "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 TEXT DEFAULT 'hi')",
-				ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
+				Query:    "CREATE TABLE t997(pk BIGINT PRIMARY KEY, v1 BLOB DEFAULT 0x61)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:       "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 LONGTEXT DEFAULT 'hi')",
-				ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
+				Query:    "INSERT INTO t997 VALUES(42, DEFAULT)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT * from t997",
+				Expected: []sql.Row{{42, []uint8{0x61}}},
+			},
+			{
+				Query:    "CREATE TABLE t998(pk BIGINT PRIMARY KEY, v1 TEXT DEFAULT 'hi')",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "INSERT INTO t998 VALUES(1, DEFAULT)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT * from t998",
+				Expected: []sql.Row{{1, "hi"}},
+			},
+			{
+				Query:    "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 LONGTEXT DEFAULT 'hi')",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "INSERT INTO t999 VALUES(10, DEFAULT)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT * from t999",
+				Expected: []sql.Row{{10, "hi"}},
 			},
 			{
 				Query:    "CREATE TABLE t34(pk INT PRIMARY KEY, v1 JSON)",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:       "ALTER TABLE t34 alter column v1 set default '{}'",
-				ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
+				Query:    "ALTER TABLE t34 alter column v1 set default '{}'",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "INSERT INTO t34 VALUES(100, DEFAULT)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT * from t34",
+				Expected: []sql.Row{{100, "{}"}},
 			},
 			{
 				Query:    "ALTER TABLE t34 alter column v1 set default ('{}')",
@@ -557,8 +596,8 @@ var ColumnDefaultTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:       "ALTER TABLE t35 alter column j set default '[]'",
-				ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
+				Query:    "ALTER TABLE t35 alter column j set default '[]'",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE t35 alter column j set default ('[]')",

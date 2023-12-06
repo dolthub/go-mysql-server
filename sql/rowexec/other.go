@@ -65,7 +65,7 @@ func (b *BaseBuilder) buildReleaser(ctx *sql.Context, n *plan.Releaser, row sql.
 }
 
 func (b *BaseBuilder) buildDeallocateQuery(ctx *sql.Context, n *plan.DeallocateQuery, row sql.Row) (sql.RowIter, error) {
-	return sql.RowsToRowIter(sql.NewRow(types.OkResult{})), nil
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
 func (b *BaseBuilder) buildFetch(ctx *sql.Context, n *plan.Fetch, row sql.Row) (sql.RowIter, error) {
@@ -418,7 +418,7 @@ func (b *BaseBuilder) buildUpdateHistogram(ctx *sql.Context, n *plan.UpdateHisto
 func (b *BaseBuilder) buildCreateSpatialRefSys(ctx *sql.Context, n *plan.CreateSpatialRefSys, row sql.Row) (sql.RowIter, error) {
 	if _, ok := types.SupportedSRIDs[n.SRID]; ok {
 		if n.IfNotExists {
-			return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
+			return rowIterWithOkResultWithZeroRowsAffected(), nil
 		}
 		if !n.OrReplace {
 			return nil, sql.ErrSpatialRefSysAlreadyExists.New(n.SRID)
@@ -434,5 +434,5 @@ func (b *BaseBuilder) buildCreateSpatialRefSys(ctx *sql.Context, n *plan.CreateS
 		Description:   n.SrsAttr.Description,
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }

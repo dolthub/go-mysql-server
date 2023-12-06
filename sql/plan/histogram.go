@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/stats"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-func NewUpdateHistogram(db, table, index string, cols []string, stats *stats.Statistic) *UpdateHistogram {
+func NewUpdateHistogram(db, table, index string, cols []string, stats sql.Statistic) *UpdateHistogram {
 	return &UpdateHistogram{db: db, cols: cols, index: index, table: table, stats: stats}
 }
 
@@ -19,7 +17,7 @@ type UpdateHistogram struct {
 	table string
 	index string
 	cols  []string
-	stats *stats.Statistic
+	stats sql.Statistic
 	prov  sql.StatsProvider
 }
 
@@ -41,7 +39,7 @@ func (u *UpdateHistogram) Cols() []string {
 	return u.cols
 }
 
-func (u *UpdateHistogram) Stats() *stats.Statistic {
+func (u *UpdateHistogram) Stats() sql.Statistic {
 	return u.stats
 }
 

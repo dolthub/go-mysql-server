@@ -18,6 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -79,8 +80,10 @@ func (cv *CreateView) IsReadOnly() bool {
 	return false
 }
 
-// Schema implements the Node interface. It always returns nil.
-func (cv *CreateView) Schema() sql.Schema { return nil }
+// Schema implements the Node interface. It always returns Query OK result.
+func (cv *CreateView) Schema() sql.Schema {
+	return types.OkResultSchema
+}
 
 // String implements the fmt.Stringer interface, using sql.TreePrinter to
 // generate the string.

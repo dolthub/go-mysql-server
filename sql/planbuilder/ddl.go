@@ -974,6 +974,7 @@ func (b *Builder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (outSco
 		b.handleErr(err)
 	}
 
+	tableId := outScope.tables[tblName]
 	cols := make([]sql.Expression, len(ddl.IndexSpec.Columns))
 	for i, col := range ddl.IndexSpec.Columns {
 		colName := strings.ToLower(col.Column.String())
@@ -981,7 +982,7 @@ func (b *Builder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (outSco
 		if !ok {
 			b.handleErr(sql.ErrColumnNotFound.New(colName))
 		}
-		cols[i] = expression.NewGetFieldWithTable(int(c.id), c.typ, c.tableId.DatabaseName, c.tableId.TableName, c.col, c.nullable)
+		cols[i] = expression.NewGetFieldWithTable(int(c.id), int(tableId), c.typ, c.db, c.table, c.col, c.nullable)
 	}
 
 	createIndex := plan.NewCreateIndex(
@@ -1030,13 +1031,16 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 		}
 	}
 
+	tabId := outScope.addTable(tableName)
+
 	defaults := make([]ast.Expr, len(tableSpec.Columns))
 	generated := make([]ast.Expr, len(tableSpec.Columns))
 	var schema sql.Schema
 	for i, cd := range tableSpec.Columns {
+		sqlType := cd.Type.SQLType()
 		// Use the table's collation if no character or collation was specified for the table
 		if len(cd.Type.Charset) == 0 && len(cd.Type.Collate) == 0 {
-			if tableCollation != sql.Collation_Unspecified {
+			if tableCollation != sql.Collation_Unspecified && !types.IsBinary(sqlType) {
 				cd.Type.Collate = tableCollation.Name()
 			}
 		}
@@ -1052,7 +1056,9 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 
 		schema = append(schema, column)
 		outScope.newColumn(scopeColumn{
-			tableId:  sql.NewTableID(db.Name(), tableName),
+			tableId:  tabId,
+			table:    tableName,
+			db:       db.Name(),
 			col:      strings.ToLower(column.Name),
 			typ:      column.Type,
 			nullable: column.Nullable,

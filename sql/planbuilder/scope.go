@@ -47,7 +47,7 @@ type scope struct {
 	// attributes that redirect to the left table intersection
 	redirectCol map[string]scopeColumn
 	// tables are the list of table definitions in this scope
-	tables map[string]tableId
+	tables map[string]sql.TableId
 	// ctes are common table expressions defined in this scope
 	// TODO these should be case-sensitive
 	ctes map[string]*scope
@@ -80,7 +80,7 @@ func (s *scope) resolveColumn(db, table, col string, checkParent bool) (scopeCol
 	var found scopeColumn
 	var foundCand bool
 	for _, c := range s.cols {
-		if strings.EqualFold(c.col, col) && (c.tableId.TableName == table || table == "") && (c.tableId.DatabaseName == db || db == "") {
+		if strings.EqualFold(c.col, col) && (strings.EqualFold(c.table, table) || table == "") && (strings.EqualFold(c.db, db) || db == "") {
 			if foundCand {
 				if found.equals(c) {
 					continue
@@ -92,13 +92,13 @@ func (s *scope) resolveColumn(db, table, col string, checkParent bool) (scopeCol
 						return c, true
 					}
 				}
-				if c.tableId.TableName == OnDupValuesPrefix {
+				if c.table == OnDupValuesPrefix {
 					return found, true
-				} else if found.tableId.TableName == OnDupValuesPrefix {
+				} else if found.table == OnDupValuesPrefix {
 					return c, true
 				}
-				err := sql.ErrAmbiguousColumnName.New(col, []string{c.tableId.TableName, found.tableId.TableName})
-				if c.tableId.TableName == "" {
+				err := sql.ErrAmbiguousColumnName.New(col, []string{c.table, found.table})
+				if c.table == "" {
 					err = sql.ErrAmbiguousColumnOrAliasName.New(c.col)
 				}
 				s.handleErr(err)
@@ -160,14 +160,14 @@ func (s *scope) triggerCol(table, col string) (scopeColumn, bool) {
 	}
 	for _, t := range s.b.TriggerCtx().UnresolvedTables {
 		if strings.EqualFold(t, table) {
-			col := scopeColumn{tableId: sql.NewTableID(dbName, table), col: col}
+			col := scopeColumn{db: dbName, table: table, col: col}
 			id := s.newColumn(col)
 			col.id = id
 			return col, true
 		}
 	}
 	if table == "" {
-		col := scopeColumn{tableId: sql.NewTableID(dbName, table), col: col}
+		col := scopeColumn{db: dbName, table: table, col: col}
 		id := s.newColumn(col)
 		col.id = id
 		return col, true
@@ -272,9 +272,9 @@ func (s *scope) setTableAlias(t string) {
 	for i := range s.cols {
 		beforeColStr := s.cols[i].String()
 		if oldTable == "" {
-			oldTable = s.cols[i].tableId.TableName
+			oldTable = s.cols[i].table
 		}
-		s.cols[i].tableId.TableName = t
+		s.cols[i].table = t
 		id, ok := s.getExpr(beforeColStr, true)
 		if ok {
 			// todo better way to do projections
@@ -288,7 +288,7 @@ func (s *scope) setTableAlias(t string) {
 	}
 	delete(s.tables, oldTable)
 	if s.tables == nil {
-		s.tables = make(map[string]tableId)
+		s.tables = make(map[string]sql.TableId)
 	}
 	s.tables[t] = id
 }
@@ -345,6 +345,26 @@ func (s *scope) replace() *scope {
 	}
 }
 
+// aliasCte copies a scope, but increments the column and table ids
+// for the new relation.
+func (s *scope) aliasCte(alias string) *scope {
+	if s == nil {
+		return nil
+	}
+	outScope := s.copy()
+	if _, ok := s.tables[alias]; ok || alias == "" {
+		return outScope
+	}
+	tabId := outScope.addTable(alias)
+	outScope.cols = nil
+	for _, c := range s.cols {
+		c.tableId = tabId
+		c.table = alias
+		outScope.addColumn(c)
+	}
+	return outScope
+}
+
 // copy produces an identical scope with copied references.
 func (s *scope) copy() *scope {
 	if s == nil {
@@ -356,7 +376,7 @@ func (s *scope) copy() *scope {
 		ret.node, _ = DeepCopyNode(s.node)
 	}
 	if s.tables != nil {
-		ret.tables = make(map[string]tableId, len(s.tables))
+		ret.tables = make(map[string]sql.TableId, len(s.tables))
 		for k, v := range s.tables {
 			ret.tables[k] = v
 		}
@@ -451,23 +471,28 @@ func (s *scope) addColumn(col scopeColumn) {
 func (s *scope) newColumn(col scopeColumn) columnId {
 	s.b.colId++
 	col.id = s.b.colId
+	if col.table != "" {
+		tabId := s.addTable(col.table)
+		col.tableId = tabId
+	}
 	s.addColumn(col)
-	s.addTable(col.tableId.TableName)
 	return col.id
 }
 
 // addTable records adds a table name defined in this scope
-func (s *scope) addTable(name string) {
+func (s *scope) addTable(name string) sql.TableId {
 	if name == "" {
-		return
+		return 0
 	}
+	name = strings.ToLower(name)
 	if s.tables == nil {
-		s.tables = make(map[string]tableId)
+		s.tables = make(map[string]sql.TableId)
 	}
 	if _, ok := s.tables[name]; !ok {
 		s.b.tabId++
 		s.tables[name] = s.b.tabId
 	}
+	return s.tables[name]
 }
 
 // addExtraColumn marks an auxiliary column used in an
@@ -497,7 +522,7 @@ func (s *scope) appendColumnsFromScope(src *scope) {
 		s.redirectCol[k] = v
 	}
 	if len(src.tables) > 0 && s.tables == nil {
-		s.tables = make(map[string]tableId)
+		s.tables = make(map[string]sql.TableId)
 	}
 	for k, v := range src.tables {
 		s.tables[k] = v
@@ -525,7 +550,9 @@ type scopeColumn struct {
 	id          columnId
 	typ         sql.Type
 	scalar      sql.Expression
-	tableId     sql.TableID
+	tableId     sql.TableId
+	db          string
+	table       string
 	col         string
 	originalCol string
 }
@@ -557,7 +584,7 @@ func (c scopeColumn) unwrapGetFieldAliasId() columnId {
 }
 
 func (c scopeColumn) withOriginal(col string) scopeColumn {
-	if c.tableId.DatabaseName != sql.InformationSchemaDatabaseName {
+	if !strings.EqualFold(c.db, sql.InformationSchemaDatabaseName) {
 		// info schema columns always presented as uppercase
 		c.originalCol = col
 	}
@@ -572,15 +599,15 @@ func (c scopeColumn) scalarGf() sql.Expression {
 		}
 	}
 	if c.originalCol != "" {
-		return expression.NewGetFieldWithTable(int(c.id), c.typ, c.tableId.DatabaseName, c.tableId.TableName, c.originalCol, c.nullable)
+		return expression.NewGetFieldWithTable(int(c.id), int(c.tableId), c.typ, c.db, c.table, c.originalCol, c.nullable)
 	}
-	return expression.NewGetFieldWithTable(int(c.id), c.typ, c.tableId.DatabaseName, c.tableId.TableName, c.col, c.nullable)
+	return expression.NewGetFieldWithTable(int(c.id), int(c.tableId), c.typ, c.db, c.table, c.col, c.nullable)
 }
 
 func (c scopeColumn) String() string {
-	if c.tableId.TableName == "" {
+	if c.table == "" {
 		return c.col
 	} else {
-		return fmt.Sprintf("%s.%s", c.tableId.TableName, c.col)
+		return fmt.Sprintf("%s.%s", c.table, c.col)
 	}
 }

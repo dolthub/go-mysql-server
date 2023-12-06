@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"reflect"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -111,7 +112,7 @@ func newFilterSet(filter sql.Expression, filtersByTable filtersByTable, tableAli
 // availableFiltersForTable returns the filters that are still available for the table given (not previously marked
 // handled)
 func (fs *filterSet) availableFiltersForTable(ctx *sql.Context, table string) []sql.Expression {
-	filters, ok := fs.filtersByTable[table]
+	filters, ok := fs.filtersByTable[strings.ToLower(table)]
 	if !ok {
 		return nil
 	}

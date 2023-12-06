@@ -21,6 +21,37 @@ import (
 
 var ViewScripts = []ScriptTest{
 	{
+		Name: "view of join with projections",
+		SetUpScript: []string{
+			`
+CREATE TABLE tab1 (
+  pk int NOT NULL,
+  col0 int,
+  col1 float,
+  col2 text,
+  col3 int,
+  col4 float,
+  col5 text,
+  PRIMARY KEY (pk),
+  KEY idx_tab1_0 (col0),
+  KEY idx_tab1_1 (col1),
+  KEY idx_tab1_3 (col3),
+  KEY idx_tab1_4 (col4)
+)`,
+			"insert into tab1 values (6, 0, 52.14, 'jxmel', 22, 2.27, 'pzxbn')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CREATE VIEW view_2_tab1_157 AS SELECT pk, col0 FROM tab1 WHERE NOT ((col0 IN (SELECT col3 FROM tab1 WHERE ((col0 IS NULL) OR col3 > 5 OR col3 <= 50 OR col1 < 83.11))) OR col0 > 75)",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "select pk, col0 from view_2_tab1_157",
+				Expected: []sql.Row{{6, 0}},
+			},
+		},
+	},
+	{
 		Name: "view with expression name",
 		SetUpScript: []string{
 			`create view v as select 2+2`,
