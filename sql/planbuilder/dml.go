@@ -269,12 +269,11 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 				generated := b.resolveColumnDefaultExpression(inScope, col, col.Generated)
 				updateExprs = append(updateExprs, expression.NewSetField(colName, assignColumnIndexes(generated, tableSch)))
 			}
-		}
-
-		if col.OnUpdate != nil {
-			colName := expression.NewGetFieldWithTable(i, col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
-			onUpdate := b.resolveColumnDefaultExpression(inScope, col, col.OnUpdate)
-			updateExprs = append(updateExprs, expression.NewSetField(colName, assignColumnIndexes(onUpdate, tableSch)))
+			if col.OnUpdate != nil {
+				colName := expression.NewGetFieldWithTable(i, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
+				onUpdate := b.resolveColumnDefaultExpression(inScope, col, col.OnUpdate)
+				updateExprs = append(updateExprs, expression.NewSetField(colName, assignColumnIndexes(onUpdate, tableSch)))
+			}
 		}
 	}
 
