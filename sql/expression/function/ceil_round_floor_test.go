@@ -128,11 +128,18 @@ func TestRound(t *testing.T) {
 		{
 			name:  "float64 is nil",
 			xExpr: expression.NewLiteral(nil, types.Null),
+			exp: nil,
 		},
 		{
 			name:  "float64 without d",
 			xExpr: expression.NewLiteral(5.8, types.Float64),
 			exp:   6.0,
+		},
+		{
+			name:  "float64 with nil d",
+			xExpr: expression.NewLiteral(5.855, types.Float64),
+			dExpr: expression.NewLiteral(nil, types.Null),
+			exp:   nil,
 		},
 		{
 			name:  "float64 with d",
@@ -591,21 +598,4 @@ func TestRound(t *testing.T) {
 			require.Equal(t, tt.exp, res)
 		})
 	}
-
-	// Test on invalid type return 0
-	//var args = make([]sql.Expression, 2)
-	//args[0] = expression.NewGetField(0, types.Blob, "", false)
-	//args[1] = expression.NewGetField(1, types.Int32, "", false)
-	//
-	//f, err := NewRound(args...)
-	//req := require.New(t)
-	//req.Nil(err)
-	//
-	//exprs := f.Children()
-	//req.True(len(exprs) > 0 && len(exprs) < 3)
-	//req.NotNil(exprs[0])
-	//
-	//result, err := f.Eval(sql.NewEmptyContext(), sql.NewRow([]byte{1, 2, 3}, 2))
-	//req.NoError(err)
-	//req.Equal(float64(66051), result)
 }

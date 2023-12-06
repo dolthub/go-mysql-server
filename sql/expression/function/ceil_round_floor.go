@@ -277,7 +277,7 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			}
 			dVal = dTemp.(int32)
 			// MySQL cuts off at 30 for larger values
-			// TODO: we can handle up to types.DecimalTypeMaxPrecision (65)
+			// TODO: these limits are fine only because we can't handle decimals larger than this
 			if dVal > types.DecimalTypeMaxPrecision {
 				dVal = types.DecimalTypeMaxPrecision
 			}
@@ -287,7 +287,6 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	// TODO: handle negatives separately??
 	var res interface{}
 	tmp := xDec.Round(dVal)
 	if types.IsSigned(r.Left.Type()) {
