@@ -3790,10 +3790,6 @@ var IndexPrefixQueries = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				Query:    "insert into t values (3, 'three');",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
 				Query:       "insert into t values (2, 'oneasdfasdf');",
 				ExpectedErr: sql.ErrUniqueKeyViolation,
 			},
@@ -3824,7 +3820,7 @@ var IndexPrefixQueries = []ScriptTest{
 				// Indexes with a content-hashed BLOB/TEXT field cannot be used in range scans
 				Query:           "select * from t where col1 >= ' ' order by pk;",
 				ExpectedIndexes: []string{"primary"},
-				Expected:        []sql.Row{{-1, "  "}, {1, "oneasdfasdf"}, {3, "three"}, {5, " "}},
+				Expected:        []sql.Row{{-1, "  "}, {1, "oneasdfasdf"}, {5, " "}},
 			},
 			{
 				// Assert we can create the index without a prefix, inline in a table definition, too
@@ -3877,7 +3873,7 @@ var IndexPrefixQueries = []ScriptTest{
 				// Assert that indexes with hash-encoded fields are not used for ordering
 				Query:           "select t.col1 from t order by t.col1;",
 				ExpectedIndexes: []string{},
-				Expected:        []sql.Row{{nil}, {""}, {" "}, {"  "}, {"oneasdfasdf"}, {"three"}},
+				Expected:        []sql.Row{{nil}, {""}, {" "}, {"  "}, {"oneasdfasdf"}},
 			},
 			{
 				// Assert that filters that transform the column value are not eligible to use the secondary index
@@ -3889,13 +3885,13 @@ var IndexPrefixQueries = []ScriptTest{
 				// Assert that index use is valid for not equals comparisons
 				Query:           "select col1 from t where t.col1 != 'oneasdfasdf';",
 				ExpectedIndexes: []string{"k1"},
-				Expected:        []sql.Row{{""}, {" "}, {"  "}, {"three"}},
+				Expected:        []sql.Row{{""}, {" "}, {"  "}},
 			},
 			{
-				// Assert that index use is valid for is not null comparisons
+				// Assert that index use is valid for is not null filter expressions
 				Query:           "select col1 from t where t.col1 is not null;",
 				ExpectedIndexes: []string{"k1"},
-				Expected:        []sql.Row{{""}, {" "}, {"  "}, {"oneasdfasdf"}, {"three"}},
+				Expected:        []sql.Row{{""}, {" "}, {"  "}, {"oneasdfasdf"}},
 			},
 			{
 				// Assert that index use is valid for null-safe comparisons
@@ -3944,6 +3940,12 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				// Indexes with content-hashed fields are not eligible for use with range scans
+				Query:           "select * from t where col1 >= 'one';",
+				ExpectedIndexes: []string{},
+				Expected:        []sql.Row{{1, "one", "one___"}, {2, "two", "two___"}},
+			},
+			{
+				// Indexes with content-hashed fields are not eligible for use with range scans
 				Query: "explain select * from t where col2 >= 'one';",
 				Expected: []sql.Row{
 					{"Filter"},
@@ -3953,13 +3955,31 @@ var IndexPrefixQueries = []ScriptTest{
 					{"     └─ columns: [pk col1 col2]"}},
 			},
 			{
+				// Indexes with content-hashed fields are not eligible for use with range scans
+				Query:           "select * from t where col2 >= 'one';",
+				ExpectedIndexes: []string{},
+				Expected:        []sql.Row{{1, "one", "one___"}, {2, "two", "two___"}},
+			},
+			{
 				// Indexes with a content-hashed BLOB/TEXT field cannot be used in range scans
+				Query:           "select count(*) from t where col1 >= ' ';",
+				ExpectedIndexes: []string{},
+				Expected:        []sql.Row{{2}},
+			},
+			{
+				// Indexes with a content-hashed BLOB/TEXT field cannot be used in range scans
+				Query:           "select count(*) from t where col2 >= ' ';",
+				ExpectedIndexes: []string{},
+				Expected:        []sql.Row{{2}},
+			},
+			{
+				// Indexes with a content-hashed BLOB/TEXT field cannot be used in ordered range scans
 				Query:           "select * from t where col1 >= ' ' order by pk;",
 				ExpectedIndexes: []string{"primary"},
 				Expected:        []sql.Row{{1, "one", "one___"}, {2, "two", "two___"}},
 			},
 			{
-				// Indexes with a content-hashed BLOB/TEXT field cannot be used in range scans
+				// Indexes with a content-hashed BLOB/TEXT field cannot be used in ordered range scans
 				Query:           "select * from t where col2 >= ' ' order by pk;",
 				ExpectedIndexes: []string{"primary"},
 				Expected:        []sql.Row{{1, "one", "one___"}, {2, "two", "two___"}},

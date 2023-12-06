@@ -1102,7 +1102,8 @@ func (c *indexCoster) costIndexScanLeaf(filter *iScanLeaf, s sql.Statistic, ordi
 		return nil, false, nil
 	}
 
-	// indexes with content-hashed fields can be used to test equality, but nothing else
+	// indexes with content-hashed fields can be used to test equality or compare with NULL,
+	// but can't be used for other comparisons, such as less than or greater than.
 	if indexHasContentHashedFieldForFilter(filter, idx) {
 		switch filter.op {
 		case indexScanOpEq, indexScanOpNotEq, indexScanOpNullSafeEq, indexScanOpIsNull, indexScanOpIsNotNull:
