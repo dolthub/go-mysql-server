@@ -19,7 +19,7 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/cespare/xxhash"
+	"github.com/cespare/xxhash/v2"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"

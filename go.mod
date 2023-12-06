@@ -1,7 +1,7 @@
 module github.com/dolthub/go-mysql-server
 
 require (
-	github.com/cespare/xxhash v1.1.0
+	github.com/cespare/xxhash/v2 v2.2.0
 	github.com/dolthub/flatbuffers/v23 v23.3.3-dh.2
 	github.com/dolthub/go-icu-regex v0.0.0-20230524105445-af7e7991c97e
 	github.com/dolthub/jsonpath v0.0.2-0.20230525180605-8dc13778fd72
