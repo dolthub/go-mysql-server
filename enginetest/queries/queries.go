@@ -8592,6 +8592,13 @@ from typestable`,
 		Query:    "flush engine logs",
 		Expected: []sql.Row{},
 	},
+	// TODO: this is the largest scale decimal we support, but it's not the largest MySQL supports
+	{
+		Query:    "select round(5e29, -30)",
+		Expected: []sql.Row{
+			{1e30},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
