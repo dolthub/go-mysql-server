@@ -107,6 +107,10 @@ func TestCurrentTimestamp(t *testing.T) {
 	enginetest.TestCurrentTimestamp(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestOnUpdateTimestamp(t *testing.T) {
+	enginetest.TestOnUpdateTimestamp(t, enginetest.NewDefaultMemoryHarness())
+}
+
 // TODO: it's not currently possible to test this via harness, because the underlying table implementations are added to
 // the database, rather than the wrapper tables. We need a better way of inspecting lock state to test this properly.
 // Also, currently locks are entirely implementation dependent, so there isn't much to test except that lock and unlock
