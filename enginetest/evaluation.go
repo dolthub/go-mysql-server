@@ -129,7 +129,7 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 						assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
 						assertion.ExpectedWarningMessageSubstring, assertion.SkipResultsCheck)
 				} else if assertion.SkipResultsCheck {
-					RunQueryWithContext(t, e, harness, ctx, assertion.Query)
+					RunQueryWithContext(t, e, harness, nil, assertion.Query)
 				} else if assertion.CheckIndexedAccess {
 					TestQueryWithIndexCheck(t, ctx, e, harness, assertion.Query, assertion.Expected, assertion.ExpectedColumns, assertion.Bindings)
 				} else {
