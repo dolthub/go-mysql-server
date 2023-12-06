@@ -15,10 +15,10 @@
 package function
 
 import (
+	"fmt"
+	"math"
 
-"fmt"
-"github.com/shopspring/decimal"
-"math"
+	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -302,7 +302,6 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	} else {
 		panic("unhandled type; implement")
 	}
-
 
 	return res, err
 }
