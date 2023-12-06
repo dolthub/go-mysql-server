@@ -812,6 +812,26 @@ var _ sql.ExecSourceRel = (*SimpleTableFunction)(nil)
 // When evaluated, returns a single row: {"foo", 123}
 type SimpleTableFunction struct {
 	returnedResults bool
+	id              sql.TableId
+	cols            sql.ColSet
+}
+
+func (s SimpleTableFunction) WithId(id sql.TableId) plan.TableIdNode {
+	s.id = id
+	return s
+}
+
+func (s SimpleTableFunction) Id() sql.TableId {
+	return s.id
+}
+
+func (s SimpleTableFunction) WithColumns(set sql.ColSet) plan.TableIdNode {
+	s.cols = set
+	return s
+}
+
+func (s SimpleTableFunction) Columns() sql.ColSet {
+	return s.cols
 }
 
 func (s SimpleTableFunction) NewInstance(_ *sql.Context, _ sql.Database, _ []sql.Expression) (sql.Node, error) {

@@ -1073,7 +1073,9 @@ WHERE cn.country_code = '[us]'
 			"         │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │           └─ Table\n" +
 			"         │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │               ├─ colSet: (12,13)\n" +
+			"         │   │   │   │               └─ tableId: 4\n" +
 			"         │   │   │   └─ TableAlias(mc)\n" +
 			"         │   │   │       └─ ProcessTable\n" +
 			"         │   │   │           └─ Table\n" +
@@ -1234,7 +1236,9 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │           └─ Table\n" +
 			"         │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │               ├─ colSet: (12,13)\n" +
+			"         │   │   │   │               └─ tableId: 4\n" +
 			"         │   │   │   └─ TableAlias(mc)\n" +
 			"         │   │   │       └─ ProcessTable\n" +
 			"         │   │   │           └─ Table\n" +
@@ -1388,7 +1392,9 @@ WHERE cn.country_code = '[us]'
 			"         │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │           └─ Table\n" +
 			"         │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │               ├─ colSet: (12,13)\n" +
+			"         │   │   │   │               └─ tableId: 4\n" +
 			"         │   │   │   └─ TableAlias(mc)\n" +
 			"         │   │   │       └─ ProcessTable\n" +
 			"         │   │   │           └─ Table\n" +
@@ -1546,7 +1552,9 @@ WHERE cn.country_code ='[de]'
 			"         │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │               ├─ colSet: (12,13)\n" +
+			"         │   │   │   │   │               └─ tableId: 4\n" +
 			"         │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │       ├─ Eq\n" +
 			"         │   │   │   │       │   ├─ kt.kind:1!null\n" +
@@ -1700,7 +1708,9 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │               ├─ colSet: (12,13)\n" +
+			"         │   │   │   │   │               └─ tableId: 4\n" +
 			"         │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │       ├─ Eq\n" +
 			"         │   │   │   │       │   ├─ kt.kind:1!null\n" +
@@ -1863,7 +1873,9 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │               ├─ colSet: (12,13)\n" +
+			"         │   │   │   │   │               └─ tableId: 4\n" +
 			"         │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │       ├─ Eq\n" +
 			"         │   │   │   │       │   ├─ kt.kind:1!null\n" +
@@ -2035,7 +2047,9 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │               ├─ colSet: (12,13)\n" +
+			"         │   │   │   │   │               └─ tableId: 4\n" +
 			"         │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │       ├─ Eq\n" +
 			"         │   │   │   │       │   ├─ kt.kind:1!null\n" +
@@ -2174,7 +2188,9 @@ WHERE it1.info = 'countries'
 			"         │   │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (3,4)\n" +
+			"         │   │   │   │   │   │               └─ tableId: 2\n" +
 			"         │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │       │   ├─ k.keyword:1!null\n" +
@@ -2335,7 +2351,9 @@ WHERE it1.info = 'countries'
 			"         │   │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (3,4)\n" +
+			"         │   │   │   │   │   │               └─ tableId: 2\n" +
 			"         │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │       │   ├─ k.keyword:1!null\n" +
@@ -2503,7 +2521,9 @@ WHERE it1.info = 'countries'
 			"         │   │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (3,4)\n" +
+			"         │   │   │   │   │   │               └─ tableId: 2\n" +
 			"         │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │       ├─ AND\n" +
 			"         │   │   │   │   │       │   ├─ NOT\n" +
@@ -3317,7 +3337,9 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │   │   └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │       └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │           ├─ index: [aka_name.person_id]\n" +
-			"         │   │   │   │   │   │           ├─ keys: [ci.person_id]\n" +
+			"         │   │   │   │   │   │           ├─ keys: [ci.person_id:0!null]\n" +
+			"         │   │   │   │   │   │           ├─ colSet: (1-8)\n" +
+			"         │   │   │   │   │   │           ├─ tableId: 1\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │               └─ columns: [person_id name]\n" +
@@ -3452,7 +3474,9 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │   │   └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │       └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │           ├─ index: [aka_name.person_id]\n" +
-			"         │   │   │   │   │   │           ├─ keys: [ci.person_id]\n" +
+			"         │   │   │   │   │   │           ├─ keys: [ci.person_id:0!null]\n" +
+			"         │   │   │   │   │   │           ├─ colSet: (1-8)\n" +
+			"         │   │   │   │   │   │           ├─ tableId: 1\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │               └─ columns: [person_id name]\n" +
@@ -3580,7 +3604,9 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │   │   └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │       └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │           ├─ index: [aka_name.person_id]\n" +
-			"         │   │   │   │   │   │           ├─ keys: [ci.person_id]\n" +
+			"         │   │   │   │   │   │           ├─ keys: [ci.person_id:0!null]\n" +
+			"         │   │   │   │   │   │           ├─ colSet: (1-8)\n" +
+			"         │   │   │   │   │   │           ├─ tableId: 1\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │               └─ columns: [person_id name]\n" +
@@ -3713,7 +3739,9 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │   │   └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │       └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │           ├─ index: [aka_name.person_id]\n" +
-			"         │   │   │   │   │   │           ├─ keys: [ci.person_id]\n" +
+			"         │   │   │   │   │   │           ├─ keys: [ci.person_id:0!null]\n" +
+			"         │   │   │   │   │   │           ├─ colSet: (1-8)\n" +
+			"         │   │   │   │   │   │           ├─ tableId: 1\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │               └─ columns: [person_id name]\n" +
@@ -4544,7 +4572,9 @@ WHERE ci.note IN ('(producer)',
 			"         │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │           └─ Table\n" +
 			"         │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │               ├─ colSet: (10,11)\n" +
+			"         │   │   │   │               └─ tableId: 3\n" +
 			"         │   │   │   └─ TableAlias(mi)\n" +
 			"         │   │   │       └─ ProcessTable\n" +
 			"         │   │   │           └─ Table\n" +
@@ -4678,7 +4708,9 @@ WHERE ci.note IN ('(writer)',
 			"         │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │           └─ Table\n" +
 			"         │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │               ├─ colSet: (10,11)\n" +
+			"         │   │   │   │               └─ tableId: 3\n" +
 			"         │   │   │   └─ Filter\n" +
 			"         │   │   │       ├─ AND\n" +
 			"         │   │   │       │   ├─ HashIn\n" +
@@ -4831,7 +4863,9 @@ WHERE ci.note IN ('(writer)',
 			"         │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │           └─ Table\n" +
 			"         │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │               ├─ colSet: (10,11)\n" +
+			"         │   │   │   │               └─ tableId: 3\n" +
 			"         │   │   │   └─ Filter\n" +
 			"         │   │   │       ├─ HashIn\n" +
 			"         │   │   │       │   ├─ mi.info:2!null\n" +
@@ -4980,7 +5014,9 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
+			"         │   │   │   │   │   │   │               ├─ keys: [ci.person_id:1!null]\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (1-8)\n" +
+			"         │   │   │   │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │   │                   └─ columns: [person_id]\n" +
@@ -5177,7 +5213,9 @@ WHERE ci.note = '(voice)'
 			"         │   │   │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
+			"         │   │   │   │   │   │   │               ├─ keys: [ci.person_id:1!null]\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (1-8)\n" +
+			"         │   │   │   │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │   │                   └─ columns: [person_id]\n" +
@@ -5374,7 +5412,9 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
+			"         │   │   │   │   │   │   │               ├─ keys: [ci.person_id:1!null]\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (1-8)\n" +
+			"         │   │   │   │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │   │                   └─ columns: [person_id]\n" +
@@ -5555,7 +5595,9 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
+			"         │   │   │   │   │   │   │               ├─ keys: [ci.person_id:1!null]\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (1-8)\n" +
+			"         │   │   │   │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │   │                   └─ columns: [person_id]\n" +
@@ -6097,7 +6139,9 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
 			"         │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │               ├─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (7,8)\n" +
+			"         │   │   │   │   │   │   │               └─ tableId: 3\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │       ├─ AND\n" +
 			"         │   │   │   │   │   │       │   ├─ NOT\n" +
@@ -6272,7 +6316,9 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
 			"         │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │               ├─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (7,8)\n" +
+			"         │   │   │   │   │   │   │               └─ tableId: 3\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │       ├─ AND\n" +
 			"         │   │   │   │   │   │       │   ├─ NOT\n" +
@@ -6451,7 +6497,9 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
 			"         │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │               ├─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (7,8)\n" +
+			"         │   │   │   │   │   │   │               └─ tableId: 3\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │       ├─ AND\n" +
 			"         │   │   │   │   │   │       │   ├─ NOT\n" +
@@ -7229,7 +7277,9 @@ WHERE cn.country_code != '[us]'
 			"         │   │   │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (12,13)\n" +
+			"         │   │   │   │   │   │   │               └─ tableId: 4\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │   │       │   ├─ k.keyword:1!null\n" +
@@ -7448,7 +7498,9 @@ WHERE cn.country_code != '[us]'
 			"         │   │   │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (12,13)\n" +
+			"         │   │   │   │   │   │   │               └─ tableId: 4\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │   │       │   ├─ k.keyword:1!null\n" +
@@ -7673,7 +7725,9 @@ WHERE cn.country_code != '[us]'
 			"         │   │   │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (12,13)\n" +
+			"         │   │   │   │   │   │   │               └─ tableId: 4\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │   │       │   ├─ k.keyword:1!null\n" +
@@ -7896,7 +7950,9 @@ WHERE cn.country_code != '[us]'
 			"         │   │   │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (12,13)\n" +
+			"         │   │   │   │   │   │   │               └─ tableId: 4\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │   │       │   ├─ k.keyword:1!null\n" +
@@ -8711,7 +8767,9 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
-			"         │   │   │   │   │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ keys: [ci.person_id:2!null]\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ colSet: (1-8)\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │   │   │   │                   └─ columns: [person_id]\n" +
@@ -8945,7 +9003,9 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
-			"         │   │   │   │   │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ keys: [ci.person_id:2!null]\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ colSet: (1-8)\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │   │   │   │                   └─ columns: [person_id]\n" +
@@ -9175,7 +9235,9 @@ WHERE ci.note IN ('(writer)',
 			"         │   │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (10,11)\n" +
+			"         │   │   │   │   │   │               └─ tableId: 3\n" +
 			"         │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │       │   ├─ k.keyword:1!null\n" +
@@ -9356,7 +9418,9 @@ WHERE ci.note IN ('(writer)',
 			"         │   │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (10,11)\n" +
+			"         │   │   │   │   │   │               └─ tableId: 3\n" +
 			"         │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │       │   ├─ k.keyword:1!null\n" +
@@ -9554,7 +9618,9 @@ WHERE ci.note IN ('(writer)',
 			"         │   │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (10,11)\n" +
+			"         │   │   │   │   │   │               └─ tableId: 3\n" +
 			"         │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │       │   ├─ k.keyword:1!null\n" +
@@ -9751,7 +9817,9 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
 			"         │   │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ colSet: (7,8)\n" +
+			"         │   │   │   │   │   │   │   │   │               └─ tableId: 3\n" +
 			"         │   │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │   │       ├─ AND\n" +
 			"         │   │   │   │   │   │   │   │       │   ├─ NOT\n" +
@@ -9971,7 +10039,9 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
 			"         │   │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ colSet: (7,8)\n" +
+			"         │   │   │   │   │   │   │   │   │               └─ tableId: 3\n" +
 			"         │   │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │   │       ├─ AND\n" +
 			"         │   │   │   │   │   │   │   │       │   ├─ NOT\n" +
@@ -10196,7 +10266,9 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
 			"         │   │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ colSet: (7,8)\n" +
+			"         │   │   │   │   │   │   │   │   │               └─ tableId: 3\n" +
 			"         │   │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │   │       ├─ AND\n" +
 			"         │   │   │   │   │   │   │   │       │   ├─ NOT\n" +
@@ -10436,7 +10508,9 @@ WHERE cct1.kind IN ('cast',
 			"         │   │   │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
 			"         │   │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ colSet: (7,8)\n" +
+			"         │   │   │   │   │   │   │   │   │               └─ tableId: 3\n" +
 			"         │   │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │   │       ├─ AND\n" +
 			"         │   │   │   │   │   │   │   │       │   ├─ NOT\n" +
@@ -10686,7 +10760,9 @@ WHERE cct1.kind IN ('cast',
 			"         │   │   │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
 			"         │   │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ colSet: (7,8)\n" +
+			"         │   │   │   │   │   │   │   │   │               └─ tableId: 3\n" +
 			"         │   │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │   │       ├─ AND\n" +
 			"         │   │   │   │   │   │   │   │       │   ├─ NOT\n" +
@@ -10940,7 +11016,9 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
 			"         │   │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ colSet: (7,8)\n" +
+			"         │   │   │   │   │   │   │   │   │               └─ tableId: 3\n" +
 			"         │   │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │   │       ├─ AND\n" +
 			"         │   │   │   │   │   │   │   │       │   ├─ NOT\n" +
@@ -11215,7 +11293,9 @@ WHERE cct1.kind = 'crew'
 			"         │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │               ├─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │               ├─ colSet: (7,8)\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │               └─ tableId: 3\n" +
 			"         │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │   │   │   │       ├─ NOT\n" +
 			"         │   │   │   │   │   │   │   │   │   │       │   └─ Eq\n" +
@@ -11247,7 +11327,9 @@ WHERE cct1.kind = 'crew'
 			"         │   │   │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (20,21)\n" +
+			"         │   │   │   │   │   │   │               └─ tableId: 7\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │   │       │   ├─ k.keyword:1!null\n" +
@@ -11498,7 +11580,9 @@ WHERE cct1.kind = 'crew'
 			"         │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │               ├─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │               ├─ colSet: (7,8)\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │               └─ tableId: 3\n" +
 			"         │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │   │   │   │       ├─ NOT\n" +
 			"         │   │   │   │   │   │   │   │   │   │       │   └─ Eq\n" +
@@ -11530,7 +11614,9 @@ WHERE cct1.kind = 'crew'
 			"         │   │   │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (20,21)\n" +
+			"         │   │   │   │   │   │   │               └─ tableId: 7\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │   │       │   ├─ k.keyword:1!null\n" +
@@ -11786,7 +11872,9 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │               ├─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │               ├─ colSet: (7,8)\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │               └─ tableId: 3\n" +
 			"         │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │   │   │   │       ├─ NOT\n" +
 			"         │   │   │   │   │   │   │   │   │   │       │   └─ Eq\n" +
@@ -11818,7 +11906,9 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (20,21)\n" +
+			"         │   │   │   │   │   │   │               └─ tableId: 7\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │   │       │   ├─ k.keyword:1!null\n" +
@@ -12100,7 +12190,9 @@ WHERE cct1.kind ='cast'
 			"         │   │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ colSet: (15,16)\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │   │   │               └─ tableId: 4\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │       ├─ Eq\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │       │   ├─ chn.name:1!null\n" +
@@ -12144,7 +12236,9 @@ WHERE cct1.kind ='cast'
 			"         │   │   │   │   │   │   │   │       └─ TableAlias(it3)\n" +
 			"         │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │   │               ├─ colSet: (40,41)\n" +
+			"         │   │   │   │   │   │   │   │               └─ tableId: 9\n" +
 			"         │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │       ├─ Eq\n" +
 			"         │   │   │   │   │   │   │       │   ├─ k.keyword:1!null\n" +
@@ -12437,7 +12531,9 @@ WHERE cct1.kind ='cast'
 			"         │   │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ colSet: (15,16)\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │   │   │               └─ tableId: 4\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │       ├─ Eq\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │       │   ├─ chn.name:1!null\n" +
@@ -12481,7 +12577,9 @@ WHERE cct1.kind ='cast'
 			"         │   │   │   │   │   │   │   │       └─ TableAlias(it3)\n" +
 			"         │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │   │               ├─ colSet: (40,41)\n" +
+			"         │   │   │   │   │   │   │   │               └─ tableId: 9\n" +
 			"         │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │       ├─ Eq\n" +
 			"         │   │   │   │   │   │   │       │   ├─ k.keyword:1!null\n" +
@@ -12770,7 +12868,9 @@ WHERE cct1.kind ='cast'
 			"         │   │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ colSet: (15,16)\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │   │   │               └─ tableId: 4\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(chn)\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │       └─ ProcessTable\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
@@ -12810,7 +12910,9 @@ WHERE cct1.kind ='cast'
 			"         │   │   │   │   │   │   │   │       └─ TableAlias(it3)\n" +
 			"         │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │   │               ├─ colSet: (40,41)\n" +
+			"         │   │   │   │   │   │   │   │               └─ tableId: 9\n" +
 			"         │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │       ├─ Eq\n" +
 			"         │   │   │   │   │   │   │       │   ├─ k.keyword:1!null\n" +
@@ -13369,7 +13471,9 @@ WHERE cct1.kind IN ('cast',
 			"         │   │   │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
 			"         │   │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ colSet: (7,8)\n" +
+			"         │   │   │   │   │   │   │   │   │               └─ tableId: 3\n" +
 			"         │   │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │   │   │   │       │   ├─ ci.note:2\n" +
@@ -13395,7 +13499,9 @@ WHERE cct1.kind IN ('cast',
 			"         │   │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (18,19)\n" +
+			"         │   │   │   │   │   │               └─ tableId: 6\n" +
 			"         │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │       │   ├─ k.keyword:1!null\n" +
@@ -13622,7 +13728,9 @@ WHERE cct1.kind IN ('cast',
 			"         │   │   │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
 			"         │   │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ colSet: (7,8)\n" +
+			"         │   │   │   │   │   │   │   │   │               └─ tableId: 3\n" +
 			"         │   │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │   │   │   │       │   ├─ ci.note:2\n" +
@@ -13648,7 +13756,9 @@ WHERE cct1.kind IN ('cast',
 			"         │   │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (18,19)\n" +
+			"         │   │   │   │   │   │               └─ tableId: 6\n" +
 			"         │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │       │   ├─ k.keyword:1!null\n" +
@@ -13886,7 +13996,9 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
 			"         │   │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ colSet: (7,8)\n" +
+			"         │   │   │   │   │   │   │   │   │               └─ tableId: 3\n" +
 			"         │   │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │   │   │   │       │   ├─ ci.note:2\n" +
@@ -13912,7 +14024,9 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (18,19)\n" +
+			"         │   │   │   │   │   │               └─ tableId: 6\n" +
 			"         │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │       │   ├─ k.keyword:1!null\n" +
@@ -14141,7 +14255,9 @@ WHERE ci.note IN ('(writer)',
 			"         │   │   │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (17,18)\n" +
+			"         │   │   │   │   │   │   │               └─ tableId: 4\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │   │       │   ├─ k.keyword:1!null\n" +
@@ -14380,7 +14496,9 @@ WHERE ci.note IN ('(writer)',
 			"         │   │   │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (17,18)\n" +
+			"         │   │   │   │   │   │   │               └─ tableId: 4\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │   │       │   ├─ k.keyword:1!null\n" +
@@ -14635,7 +14753,9 @@ WHERE ci.note IN ('(writer)',
 			"         │   │   │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (17,18)\n" +
+			"         │   │   │   │   │   │   │               └─ tableId: 4\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │   │       │   ├─ k.keyword:1!null\n" +
@@ -14763,7 +14883,9 @@ WHERE k.keyword ='10,000-mile-club'
 			"         └─ TableAlias(t2)\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: title\n" +
-			"                 └─ columns: [id title]\n" +
+			"                 ├─ columns: [id title]\n" +
+			"                 ├─ colSet: (25-36)\n" +
+			"                 └─ tableId: 6\n" +
 			"",
 	},
 	{
@@ -14848,7 +14970,9 @@ WHERE k.keyword ='character-name-in-title'
 			"         └─ TableAlias(t2)\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: title\n" +
-			"                 └─ columns: [id title]\n" +
+			"                 ├─ columns: [id title]\n" +
+			"                 ├─ colSet: (25-36)\n" +
+			"                 └─ tableId: 6\n" +
 			"",
 	},
 	{
@@ -15003,7 +15127,9 @@ WHERE cn1.country_code = '[us]'
 			"         │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(cn2)\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │       └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │           ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │           └─ columns: [id name]\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │   │           ├─ columns: [id name]\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │   │           ├─ colSet: (8-14)\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │   │           └─ tableId: 2\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │       ├─ Eq\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │       │   ├─ it1.info:1!null\n" +
@@ -15020,7 +15146,9 @@ WHERE cn1.country_code = '[us]'
 			"         │   │   │   │   │   │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │   │   │   │               ├─ colSet: (17,18)\n" +
+			"         │   │   │   │   │   │   │   │   │   │               └─ tableId: 4\n" +
 			"         │   │   │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │   │   │   │   │       │   ├─ kt1.kind:1!null\n" +
@@ -15037,7 +15165,9 @@ WHERE cn1.country_code = '[us]'
 			"         │   │   │   │   │   │   │   │       └─ TableAlias(kt2)\n" +
 			"         │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │               ├─ name: kind_type\n" +
-			"         │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │               ├─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │               ├─ colSet: (21,22)\n" +
+			"         │   │   │   │   │   │   │   │               └─ tableId: 6\n" +
 			"         │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │   │   │       │   ├─ lt.link:1!null\n" +
@@ -15055,7 +15185,9 @@ WHERE cn1.country_code = '[us]'
 			"         │   │   │   │   │   └─ TableAlias(mc2)\n" +
 			"         │   │   │   │   │       └─ Table\n" +
 			"         │   │   │   │   │           ├─ name: movie_companies\n" +
-			"         │   │   │   │   │           └─ columns: [movie_id company_id]\n" +
+			"         │   │   │   │   │           ├─ columns: [movie_id company_id]\n" +
+			"         │   │   │   │   │           ├─ colSet: (30-34)\n" +
+			"         │   │   │   │   │           └─ tableId: 9\n" +
 			"         │   │   │   │   └─ TableAlias(mi_idx1)\n" +
 			"         │   │   │   │       └─ ProcessTable\n" +
 			"         │   │   │   │           └─ Table\n" +
@@ -15068,7 +15200,9 @@ WHERE cn1.country_code = '[us]'
 			"         │   │   │       └─ TableAlias(mi_idx2)\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: movie_info_idx\n" +
-			"         │   │   │               └─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │               ├─ colSet: (40-44)\n" +
+			"         │   │   │               └─ tableId: 11\n" +
 			"         │   │   └─ TableAlias(ml)\n" +
 			"         │   │       └─ ProcessTable\n" +
 			"         │   │           └─ Table\n" +
@@ -15090,7 +15224,9 @@ WHERE cn1.country_code = '[us]'
 			"             └─ TableAlias(t2)\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: title\n" +
-			"                     └─ columns: [id title kind_id production_year]\n" +
+			"                     ├─ columns: [id title kind_id production_year]\n" +
+			"                     ├─ colSet: (61-72)\n" +
+			"                     └─ tableId: 14\n" +
 			"",
 	},
 	{
@@ -15243,7 +15379,9 @@ WHERE cn1.country_code = '[nl]'
 			"         │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(cn2)\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │       └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │           ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │           └─ columns: [id name]\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │   │           ├─ columns: [id name]\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │   │           ├─ colSet: (8-14)\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │   │           └─ tableId: 2\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │       ├─ Eq\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │       │   ├─ it1.info:1!null\n" +
@@ -15260,7 +15398,9 @@ WHERE cn1.country_code = '[nl]'
 			"         │   │   │   │   │   │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │   │   │   │               ├─ colSet: (17,18)\n" +
+			"         │   │   │   │   │   │   │   │   │   │               └─ tableId: 4\n" +
 			"         │   │   │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │   │   │   │   │       │   ├─ kt1.kind:1!null\n" +
@@ -15277,7 +15417,9 @@ WHERE cn1.country_code = '[nl]'
 			"         │   │   │   │   │   │   │   │       └─ TableAlias(kt2)\n" +
 			"         │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │               ├─ name: kind_type\n" +
-			"         │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │               ├─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │               ├─ colSet: (21,22)\n" +
+			"         │   │   │   │   │   │   │   │               └─ tableId: 6\n" +
 			"         │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │       ├─ lt.link LIKE '%follow%'\n" +
 			"         │   │   │   │   │   │   │       └─ TableAlias(lt)\n" +
@@ -15293,7 +15435,9 @@ WHERE cn1.country_code = '[nl]'
 			"         │   │   │   │   │   └─ TableAlias(mc2)\n" +
 			"         │   │   │   │   │       └─ Table\n" +
 			"         │   │   │   │   │           ├─ name: movie_companies\n" +
-			"         │   │   │   │   │           └─ columns: [movie_id company_id]\n" +
+			"         │   │   │   │   │           ├─ columns: [movie_id company_id]\n" +
+			"         │   │   │   │   │           ├─ colSet: (30-34)\n" +
+			"         │   │   │   │   │           └─ tableId: 9\n" +
 			"         │   │   │   │   └─ TableAlias(mi_idx1)\n" +
 			"         │   │   │   │       └─ ProcessTable\n" +
 			"         │   │   │   │           └─ Table\n" +
@@ -15306,7 +15450,9 @@ WHERE cn1.country_code = '[nl]'
 			"         │   │   │       └─ TableAlias(mi_idx2)\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: movie_info_idx\n" +
-			"         │   │   │               └─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │               ├─ colSet: (40-44)\n" +
+			"         │   │   │               └─ tableId: 11\n" +
 			"         │   │   └─ TableAlias(ml)\n" +
 			"         │   │       └─ ProcessTable\n" +
 			"         │   │           └─ Table\n" +
@@ -15324,7 +15470,9 @@ WHERE cn1.country_code = '[nl]'
 			"             └─ TableAlias(t2)\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: title\n" +
-			"                     └─ columns: [id title kind_id production_year]\n" +
+			"                     ├─ columns: [id title kind_id production_year]\n" +
+			"                     ├─ colSet: (61-72)\n" +
+			"                     └─ tableId: 14\n" +
 			"",
 	},
 	{
@@ -15482,7 +15630,9 @@ WHERE cn1.country_code != '[us]'
 			"         │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(cn2)\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │       └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │           ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │           └─ columns: [id name]\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │   │           ├─ columns: [id name]\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │   │           ├─ colSet: (8-14)\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │   │           └─ tableId: 2\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │       ├─ Eq\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │       │   ├─ it1.info:1!null\n" +
@@ -15499,7 +15649,9 @@ WHERE cn1.country_code != '[us]'
 			"         │   │   │   │   │   │   │   │   │   │       └─ TableAlias(it2)\n" +
 			"         │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │   │   │   │               ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │   │   │   │               ├─ colSet: (17,18)\n" +
+			"         │   │   │   │   │   │   │   │   │   │               └─ tableId: 4\n" +
 			"         │   │   │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │   │   │   │   │       │   ├─ kt1.kind:1!null\n" +
@@ -15516,7 +15668,9 @@ WHERE cn1.country_code != '[us]'
 			"         │   │   │   │   │   │   │   │       └─ TableAlias(kt2)\n" +
 			"         │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │               ├─ name: kind_type\n" +
-			"         │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │               ├─ columns: [id kind]\n" +
+			"         │   │   │   │   │   │   │   │               ├─ colSet: (21,22)\n" +
+			"         │   │   │   │   │   │   │   │               └─ tableId: 6\n" +
 			"         │   │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │   │       ├─ HashIn\n" +
 			"         │   │   │   │   │   │   │       │   ├─ lt.link:1!null\n" +
@@ -15534,7 +15688,9 @@ WHERE cn1.country_code != '[us]'
 			"         │   │   │   │   │   └─ TableAlias(mc2)\n" +
 			"         │   │   │   │   │       └─ Table\n" +
 			"         │   │   │   │   │           ├─ name: movie_companies\n" +
-			"         │   │   │   │   │           └─ columns: [movie_id company_id]\n" +
+			"         │   │   │   │   │           ├─ columns: [movie_id company_id]\n" +
+			"         │   │   │   │   │           ├─ colSet: (30-34)\n" +
+			"         │   │   │   │   │           └─ tableId: 9\n" +
 			"         │   │   │   │   └─ TableAlias(mi_idx1)\n" +
 			"         │   │   │   │       └─ ProcessTable\n" +
 			"         │   │   │   │           └─ Table\n" +
@@ -15547,7 +15703,9 @@ WHERE cn1.country_code != '[us]'
 			"         │   │   │       └─ TableAlias(mi_idx2)\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: movie_info_idx\n" +
-			"         │   │   │               └─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │               ├─ colSet: (40-44)\n" +
+			"         │   │   │               └─ tableId: 11\n" +
 			"         │   │   └─ TableAlias(ml)\n" +
 			"         │   │       └─ ProcessTable\n" +
 			"         │   │           └─ Table\n" +
@@ -15569,7 +15727,9 @@ WHERE cn1.country_code != '[us]'
 			"             └─ TableAlias(t2)\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: title\n" +
-			"                     └─ columns: [id title kind_id production_year]\n" +
+			"                     ├─ columns: [id title kind_id production_year]\n" +
+			"                     ├─ colSet: (61-72)\n" +
+			"                     └─ tableId: 14\n" +
 			"",
 	},
 	{
@@ -16955,7 +17115,9 @@ WHERE an.name LIKE '%a%'
 			"         │   │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
-			"         │   │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
+			"         │   │   │   │   │   │               ├─ keys: [ci.person_id:0!null]\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (1-8)\n" +
+			"         │   │   │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │                   └─ columns: [person_id name]\n" +
@@ -17125,7 +17287,9 @@ WHERE an.name LIKE '%a%'
 			"         │   │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
-			"         │   │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
+			"         │   │   │   │   │   │               ├─ keys: [ci.person_id:0!null]\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (1-8)\n" +
+			"         │   │   │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │                   └─ columns: [person_id name]\n" +
@@ -17301,7 +17465,9 @@ WHERE an.name IS NOT NULL
 			"         │   │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
-			"         │   │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
+			"         │   │   │   │   │   │               ├─ keys: [ci.person_id:0!null]\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (1-8)\n" +
+			"         │   │   │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │   │                   └─ columns: [person_id name]\n" +
@@ -17455,7 +17621,9 @@ WHERE ci.note ='(voice: English version)'
 			"         │   │   │   │   │   └─ TableAlias(an1)\n" +
 			"         │   │   │   │   │       └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │           ├─ index: [aka_name.person_id]\n" +
-			"         │   │   │   │   │           ├─ keys: [ci.person_id]\n" +
+			"         │   │   │   │   │           ├─ keys: [ci.person_id:0!null]\n" +
+			"         │   │   │   │   │           ├─ colSet: (1-8)\n" +
+			"         │   │   │   │   │           ├─ tableId: 1\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: aka_name\n" +
 			"         │   │   │   │   │               └─ columns: [person_id name]\n" +
@@ -17584,7 +17752,9 @@ WHERE ci.note ='(voice: English version)'
 			"         │   │   │   │   │   └─ TableAlias(an)\n" +
 			"         │   │   │   │   │       └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │           ├─ index: [aka_name.person_id]\n" +
-			"         │   │   │   │   │           ├─ keys: [ci.person_id]\n" +
+			"         │   │   │   │   │           ├─ keys: [ci.person_id:0!null]\n" +
+			"         │   │   │   │   │           ├─ colSet: (1-8)\n" +
+			"         │   │   │   │   │           ├─ tableId: 1\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: aka_name\n" +
 			"         │   │   │   │   │               └─ columns: [person_id name]\n" +
@@ -17727,7 +17897,9 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │   └─ TableAlias(a1)\n" +
 			"         │   │   │   │   │       └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │           ├─ index: [aka_name.person_id]\n" +
-			"         │   │   │   │   │           ├─ keys: [ci.person_id]\n" +
+			"         │   │   │   │   │           ├─ keys: [ci.person_id:0!null]\n" +
+			"         │   │   │   │   │           ├─ colSet: (1-8)\n" +
+			"         │   │   │   │   │           ├─ tableId: 1\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: aka_name\n" +
 			"         │   │   │   │   │               └─ columns: [person_id name]\n" +
@@ -17832,7 +18004,9 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │   └─ TableAlias(an1)\n" +
 			"         │   │   │   │   │       └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │           ├─ index: [aka_name.person_id]\n" +
-			"         │   │   │   │   │           ├─ keys: [ci.person_id]\n" +
+			"         │   │   │   │   │           ├─ keys: [ci.person_id:0!null]\n" +
+			"         │   │   │   │   │           ├─ colSet: (1-8)\n" +
+			"         │   │   │   │   │           ├─ tableId: 1\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: aka_name\n" +
 			"         │   │   │   │   │               └─ columns: [person_id name]\n" +
@@ -17963,7 +18137,9 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
-			"         │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
+			"         │   │   │   │   │               ├─ keys: [ci.person_id:2!null]\n" +
+			"         │   │   │   │   │               ├─ colSet: (1-8)\n" +
+			"         │   │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │                   └─ columns: [person_id name]\n" +
@@ -18113,7 +18289,9 @@ WHERE ci.note = '(voice)'
 			"         │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
-			"         │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
+			"         │   │   │   │   │               ├─ keys: [ci.person_id:2!null]\n" +
+			"         │   │   │   │   │               ├─ colSet: (1-8)\n" +
+			"         │   │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │                   └─ columns: [person_id name]\n" +
@@ -18261,7 +18439,9 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
-			"         │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
+			"         │   │   │   │   │               ├─ keys: [ci.person_id:2!null]\n" +
+			"         │   │   │   │   │               ├─ colSet: (1-8)\n" +
+			"         │   │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │                   └─ columns: [person_id name]\n" +
@@ -18394,7 +18574,9 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │       └─ TableAlias(an)\n" +
 			"         │   │   │   │   │           └─ IndexedTableAccess(aka_name)\n" +
 			"         │   │   │   │   │               ├─ index: [aka_name.person_id]\n" +
-			"         │   │   │   │   │               ├─ keys: [ci.person_id]\n" +
+			"         │   │   │   │   │               ├─ keys: [ci.person_id:2!null]\n" +
+			"         │   │   │   │   │               ├─ colSet: (1-8)\n" +
+			"         │   │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: aka_name\n" +
 			"         │   │   │   │   │                   └─ columns: [person_id name]\n" +

@@ -234,7 +234,7 @@ func (s IntSequenceTable) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 			Tbl:        nil,
 			TableName:  s.Name(),
 			Exprs: []sql.Expression{
-				expression.NewGetFieldWithTable(0, types.Int64, "", s.Name(), s.name, false),
+				expression.NewGetFieldWithTable(0, 0, types.Int64, s.db.Name(), s.Name(), s.name, false),
 			},
 			Name:         s.name,
 			Unique:       true,

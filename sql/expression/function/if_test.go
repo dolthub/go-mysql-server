@@ -60,5 +60,5 @@ func lit(n interface{}, typ sql.Type) sql.Expression {
 }
 
 func col(idx int, typ sql.Type, db, table, col string) sql.Expression {
-	return expression.NewGetFieldWithTable(idx, typ, db, table, col, false)
+	return expression.NewGetFieldWithTable(idx, 0, typ, db, table, col, false)
 }

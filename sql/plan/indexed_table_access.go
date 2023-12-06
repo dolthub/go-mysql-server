@@ -40,6 +40,8 @@ type IndexedTableAccess struct {
 	lookup    sql.IndexLookup
 	Table     sql.IndexedTable
 	Typ       itaType
+	id        sql.TableId
+	cols      sql.ColSet
 }
 
 var _ sql.Table = (*IndexedTableAccess)(nil)
@@ -84,11 +86,20 @@ func NewIndexedAccessForTableNode(node sql.TableNode, lb *LookupBuilder) (*Index
 		node = mtn
 	}
 
+	var id sql.TableId
+	var cols sql.ColSet
+	if tin, ok := node.(TableIdNode); ok {
+		id = tin.Id()
+		cols = tin.Columns()
+	}
+
 	return &IndexedTableAccess{
 		TableNode: node,
 		lb:        lb,
 		Table:     indexedTable,
 		Typ:       ItaTypeLookup,
+		id:        id,
+		cols:      cols,
 	}, nil
 }
 
@@ -122,11 +133,20 @@ func NewStaticIndexedAccessForTableNode(node sql.TableNode, lookup sql.IndexLook
 		node = mtn
 	}
 
+	var id sql.TableId
+	var cols sql.ColSet
+	if tin, ok := node.(TableIdNode); ok {
+		id = tin.Id()
+		cols = tin.Columns()
+	}
+
 	return &IndexedTableAccess{
 		TableNode: node,
 		lookup:    lookup,
 		Table:     indexedTable,
 		Typ:       ItaTypeStatic,
+		id:        id,
+		cols:      cols,
 	}, nil
 }
 
@@ -139,6 +159,30 @@ func NewStaticIndexedAccessForFullTextTable(node sql.TableNode, lookup sql.Index
 		Table:     ftTable,
 		Typ:       ItaTypeStatic,
 	}
+}
+
+// WithId implements sql.TableIdNode
+func (i *IndexedTableAccess) WithId(id sql.TableId) TableIdNode {
+	ret := *i
+	ret.id = id
+	return &ret
+}
+
+// Id implements sql.TableIdNode
+func (i *IndexedTableAccess) Id() sql.TableId {
+	return i.id
+}
+
+// WithColumns implements sql.TableIdNode
+func (i *IndexedTableAccess) WithColumns(set sql.ColSet) TableIdNode {
+	ret := *i
+	ret.cols = set
+	return &ret
+}
+
+// Columns implements sql.TableIdNode
+func (i *IndexedTableAccess) Columns() sql.ColSet {
+	return i.cols
 }
 
 func (i *IndexedTableAccess) IsStatic() bool {
@@ -307,12 +351,14 @@ func (i *IndexedTableAccess) DebugString() string {
 	} else {
 		var filters []string
 		for _, e := range i.lb.keyExprs {
-			filters = append(filters, e.String())
+			filters = append(filters, sql.DebugString(e))
 		}
 		if len(filters) > 0 {
 			children = append(children, fmt.Sprintf(fmt.Sprintf("keys: %v", filters)))
 		}
 	}
+
+	children = append(children, fmt.Sprintf("colSet: %s", i.Columns()), fmt.Sprintf("tableId: %d", i.Id()))
 
 	// TableWrappers may want to print their own debug info
 	if wrapper, ok := i.Table.(sql.TableWrapper); ok {

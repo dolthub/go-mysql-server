@@ -641,7 +641,6 @@ func prepareBindingArgs(bindings map[string]*query.BindVariable) []any {
 		k := fmt.Sprintf("v%d", i+1)
 		args[i] = convertVtQueryTypeToGoTypeValue(bindings[k])
 	}
-
 	return args
 }
 

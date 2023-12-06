@@ -57,7 +57,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 		builder = builder.NotEquals(ctx, "column_0", 2)
 		ranges := builder.Ranges(ctx)
 		assert.NotNil(t, ranges)
-		assert.Equal(t, sql.RangeCollection{sql.Range{sql.GreaterThanRangeColumnExpr(2, types.Int8)}, sql.Range{sql.LessThanRangeColumnExpr(2, types.Int8)}}, ranges)
+		assert.Equal(t, sql.RangeCollection{sql.Range{sql.GreaterThanRangeColumnExpr(int8(2), types.Int8)}, sql.Range{sql.LessThanRangeColumnExpr(int8(2), types.Int8)}}, ranges)
 	})
 
 	t.Run("NotEquals2,Equals2=(Inf,Inf)", func(t *testing.T) {
@@ -83,7 +83,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 		builder = builder.LessThan(ctx, "column_0", 4)
 		ranges := builder.Ranges(ctx)
 		assert.NotNil(t, ranges)
-		assert.Equal(t, sql.RangeCollection{sql.Range{sql.LessThanRangeColumnExpr(4, types.Int8)}}, ranges)
+		assert.Equal(t, sql.RangeCollection{sql.Range{sql.LessThanRangeColumnExpr(int8(4), types.Int8)}}, ranges)
 	})
 
 	t.Run("GT2,LT4=(2,4)", func(t *testing.T) {
@@ -92,7 +92,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 		builder = builder.LessThan(ctx, "column_0", 4)
 		ranges := builder.Ranges(ctx)
 		assert.NotNil(t, ranges)
-		assert.Equal(t, sql.RangeCollection{sql.Range{sql.OpenRangeColumnExpr(2, 4, types.Int8)}}, ranges)
+		assert.Equal(t, sql.RangeCollection{sql.Range{sql.OpenRangeColumnExpr(int8(2), int8(4), types.Int8)}}, ranges)
 	})
 
 	t.Run("GT2,GT6=(4,Inf)", func(t *testing.T) {
@@ -101,7 +101,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 		builder = builder.GreaterThan(ctx, "column_0", 6)
 		ranges := builder.Ranges(ctx)
 		assert.NotNil(t, ranges)
-		assert.Equal(t, sql.RangeCollection{sql.Range{sql.GreaterThanRangeColumnExpr(6, types.Int8)}}, ranges)
+		assert.Equal(t, sql.RangeCollection{sql.Range{sql.GreaterThanRangeColumnExpr(int8(6), types.Int8)}}, ranges)
 	})
 
 	t.Run("GT2,LT4,GT6=(Inf,Inf)", func(t *testing.T) {
@@ -120,7 +120,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 		builder = builder.NotEquals(ctx, "column_0", 4)
 		ranges := builder.Ranges(ctx)
 		assert.NotNil(t, ranges)
-		assert.Equal(t, sql.RangeCollection{sql.Range{sql.OpenRangeColumnExpr(2, 4, types.Int8)}, sql.Range{sql.GreaterThanRangeColumnExpr(4, types.Int8)}, sql.Range{sql.LessThanRangeColumnExpr(2, types.Int8)}}, ranges)
+		assert.Equal(t, sql.RangeCollection{sql.Range{sql.OpenRangeColumnExpr(int8(2), int8(4), types.Int8)}, sql.Range{sql.GreaterThanRangeColumnExpr(int8(4), types.Int8)}, sql.Range{sql.LessThanRangeColumnExpr(int8(2), types.Int8)}}, ranges)
 	})
 
 	t.Run("ThreeColumnCombine", func(t *testing.T) {
@@ -147,10 +147,10 @@ func TestIndexBuilderRanges(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, combined)
 			assert.Equal(t, sql.RangeCollection{
-				sql.Range{sql.LessThanRangeColumnExpr(1, types.Int8), sql.LessThanRangeColumnExpr(30, types.Int8), sql.AllRangeColumnExpr(types.Int8)},
-				sql.Range{sql.ClosedRangeColumnExpr(1, 47, types.Int8), sql.AllRangeColumnExpr(types.Int8), sql.AllRangeColumnExpr(types.Int8)},
-				sql.Range{sql.OpenRangeColumnExpr(47, 99, types.Int8), sql.LessThanRangeColumnExpr(30, types.Int8), sql.AllRangeColumnExpr(types.Int8)},
-				sql.Range{sql.GreaterOrEqualRangeColumnExpr(99, types.Int8), sql.LessThanRangeColumnExpr(66, types.Int8), sql.AllRangeColumnExpr(types.Int8)},
+				sql.Range{sql.LessThanRangeColumnExpr(int8(1), types.Int8), sql.LessThanRangeColumnExpr(int8(30), types.Int8), sql.AllRangeColumnExpr(types.Int8)},
+				sql.Range{sql.ClosedRangeColumnExpr(int8(1), int8(47), types.Int8), sql.AllRangeColumnExpr(types.Int8), sql.AllRangeColumnExpr(types.Int8)},
+				sql.Range{sql.OpenRangeColumnExpr(int8(47), int8(99), types.Int8), sql.LessThanRangeColumnExpr(int8(30), types.Int8), sql.AllRangeColumnExpr(types.Int8)},
+				sql.Range{sql.GreaterOrEqualRangeColumnExpr(int8(99), types.Int8), sql.LessThanRangeColumnExpr(int8(66), types.Int8), sql.AllRangeColumnExpr(types.Int8)},
 			}, combined)
 		}
 	})

@@ -766,6 +766,29 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		Query:    "select 1 as x from xy having AVG(x) > 0",
+		Expected: []sql.Row{{1}},
+	}, {
+		Query:    "select 1 as x, AVG(x) from xy group by (y) having AVG(x) > 0",
+		Expected: []sql.Row{{1, float64(1)}, {1, float64(2)}, {1, float64(3)}},
+	},
+	{
+		Query:    "select y as x from xy group by (y) having AVG(x) > 0",
+		Expected: []sql.Row{{0}, {1}, {3}},
+	},
+	//{
+	//	Query:    "select y as z from xy group by (y) having AVG(z) > 0",
+	//	Expected: []sql.Row{{1}, {2}, {3}},
+	//},
+	{
+		Query:    "select x from xy where y in (select xy.x from xy join (select t2.y from xy t2 where exists (select t3.y from xy t3 where t3.y = xy.x)) t1) order by 1;",
+		Expected: []sql.Row{{0}, {1}, {2}, {3}},
+	},
+	{
+		Query:    "select x from xy where y in (select x from xy where x in (select y from xy)) order by 1;",
+		Expected: []sql.Row{{0}, {1}, {2}, {3}},
+	},
+	{
 		Query:    "SELECT 1 WHERE ((1 IN (NULL >= 1)) IS NULL);",
 		Expected: []sql.Row{{1}},
 	},
@@ -3462,19 +3485,19 @@ Select * from (
 	},
 	{
 		Query:    `SELECT TRIM(mytable.s) AS s FROM mytable`,
-		Expected: []sql.Row{sql.Row{"first row"}, sql.Row{"second row"}, sql.Row{"third row"}},
+		Expected: []sql.Row{{"first row"}, {"second row"}, {"third row"}},
 	},
 	{
 		Query:    `SELECT TRIM("row" from mytable.s) AS s FROM mytable`,
-		Expected: []sql.Row{sql.Row{"first "}, sql.Row{"second "}, sql.Row{"third "}},
+		Expected: []sql.Row{{"first "}, {"second "}, {"third "}},
 	},
 	{
 		Query:    `SELECT TRIM(mytable.s from "first row") AS s FROM mytable`,
-		Expected: []sql.Row{sql.Row{""}, sql.Row{"first row"}, sql.Row{"first row"}},
+		Expected: []sql.Row{{""}, {"first row"}, {"first row"}},
 	},
 	{
 		Query:    `SELECT TRIM(mytable.s from mytable.s) AS s FROM mytable`,
-		Expected: []sql.Row{sql.Row{""}, sql.Row{""}, sql.Row{""}},
+		Expected: []sql.Row{{""}, {""}, {""}},
 	},
 	{
 		Query:    `SELECT TRIM("   foo   ")`,

@@ -170,19 +170,19 @@ func TestOrderHintBuilding(t *testing.T) {
 			exp: map[GroupId]vertexSet{
 				1:  testVertexSet(0),          // ab
 				2:  testVertexSet(1),          // xy
-				6:  testVertexSet(0, 1),       // ab x xy
-				7:  testVertexSet(2),          // pq
-				10: testVertexSet(0, 1, 2),    // ab x xy x pq
-				11: testVertexSet(3),          // uv
-				14: testVertexSet(0, 1, 2, 3), // ab x xy x pq x uv
-				18: testVertexSet(0, 2),       // ab x pq
-				19: testVertexSet(1, 2),       // xy x pq
-				20: testVertexSet(0, 3),       // ab x uv
-				21: testVertexSet(1, 3),       // xy x uv
-				22: testVertexSet(0, 1, 3),    //  (ab x xy) x uv
-				23: testVertexSet(2, 3),       // pq x uv
-				24: testVertexSet(0, 2, 3),    // uv x (ab x pq)
-				25: testVertexSet(1, 2, 3),    // xy x pq x uv
+				3:  testVertexSet(0, 1),       // ab x xy
+				4:  testVertexSet(2),          // pq
+				5:  testVertexSet(0, 1, 2),    // ab x xy x pq
+				6:  testVertexSet(3),          // uv
+				7:  testVertexSet(0, 1, 2, 3), // ab x xy x pq x uv
+				8:  testVertexSet(0, 2),       // ab x pq
+				9:  testVertexSet(1, 2),       // xy x pq
+				10: testVertexSet(0, 3),       // ab x uv
+				11: testVertexSet(1, 3),       // xy x uv
+				12: testVertexSet(0, 1, 3),    //  (ab x xy) x uv
+				13: testVertexSet(2, 3),       // pq x uv
+				14: testVertexSet(0, 2, 3),    // uv x (ab x pq)
+				15: testVertexSet(1, 2, 3),    // xy x pq x uv
 			},
 		},
 		{
@@ -192,19 +192,19 @@ func TestOrderHintBuilding(t *testing.T) {
 			exp: map[GroupId]vertexSet{
 				1:  testVertexSet(2),          // ab
 				2:  testVertexSet(1),          // xy
-				6:  testVertexSet(2, 1),       // ab x xy
-				7:  testVertexSet(0),          // pq
-				10: testVertexSet(2, 1, 0),    // ab x xy x pq
-				11: testVertexSet(3),          // uv
-				14: testVertexSet(2, 1, 0, 3), // ab x xy x pq x uv
-				18: testVertexSet(2, 0),       // ab x pq
-				19: testVertexSet(1, 0),       // xy x pq
-				20: testVertexSet(2, 3),       // ab x uv
-				21: testVertexSet(1, 3),       // xy x uv
-				22: testVertexSet(2, 1, 3),    // (ab x xy) x uv
-				23: testVertexSet(0, 3),       // pq x uv
-				24: testVertexSet(3, 2, 0),    // uv x (ab x pq)
-				25: testVertexSet(1, 0, 3),    // xy x pq x uv
+				3:  testVertexSet(2, 1),       // ab x xy
+				4:  testVertexSet(0),          // pq
+				5:  testVertexSet(2, 1, 0),    // ab x xy x pq
+				6:  testVertexSet(3),          // uv
+				7:  testVertexSet(2, 1, 0, 3), // ab x xy x pq x uv
+				8:  testVertexSet(2, 0),       // ab x pq
+				9:  testVertexSet(1, 0),       // xy x pq
+				10: testVertexSet(2, 3),       // ab x uv
+				11: testVertexSet(1, 3),       // xy x uv
+				12: testVertexSet(2, 1, 3),    // (ab x xy) x uv
+				13: testVertexSet(0, 3),       // pq x uv
+				14: testVertexSet(3, 2, 0),    // uv x (ab x pq)
+				15: testVertexSet(1, 0, 3),    // xy x pq x uv
 
 			},
 		},

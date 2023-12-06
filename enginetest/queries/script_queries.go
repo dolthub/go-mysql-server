@@ -4352,6 +4352,503 @@ CREATE TABLE tab3 (
 			},
 		},
 	},
+	{
+		Name: "int index with float filter",
+		SetUpScript: []string{
+			"create table t0 (i int primary key);",
+			"insert into t0 values (-1), (0), (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t0 where i > 0.0 order by i;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i > 0.1 order by i;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i > 0.5 order by i;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i > 0.9 order by i;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query:    "select * from t0 where i > 1.0 order by i;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from t0 where i > 1.1 order by i;",
+				Expected: []sql.Row{},
+			},
+
+			{
+				Query: "select * from t0 where i > -0.0 order by i;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i > -0.1 order by i;",
+				Expected: []sql.Row{
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i > -0.5 order by i;",
+				Expected: []sql.Row{
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i > -0.9 order by i;",
+				Expected: []sql.Row{
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i > -1.0 order by i;",
+				Expected: []sql.Row{
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i > -1.1 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+
+			{
+				Query: "select * from t0 where i >= 0.0 order by i;",
+				Expected: []sql.Row{
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i >= 0.1 order by i;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i >= 0.5 order by i;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i >= 0.9 order by i;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i >= 1.0 order by i;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query:    "select * from t0 where i >= 1.1 order by i;",
+				Expected: []sql.Row{},
+			},
+
+			{
+				Query: "select * from t0 where i >= -0.0 order by i;",
+				Expected: []sql.Row{
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i >= -0.1 order by i;",
+				Expected: []sql.Row{
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i >= -0.5 order by i;",
+				Expected: []sql.Row{
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i >= -0.9 order by i;",
+				Expected: []sql.Row{
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i >= -1.0 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i >= -1.1 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+
+			{
+				Query: "select * from t0 where i < 0.0 order by i;",
+				Expected: []sql.Row{
+					{-1},
+				},
+			},
+			{
+				Query: "select * from t0 where i < 0.1 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+				},
+			},
+			{
+				Query: "select * from t0 where i < 0.5 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+				},
+			},
+			{
+				Query: "select * from t0 where i < 0.9 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+				},
+			},
+			{
+				Query: "select * from t0 where i < 1.0 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+				},
+			},
+			{
+				Query: "select * from t0 where i < 1.1 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+
+			{
+				Query: "select * from t0 where i < -0.0 order by i;",
+				Expected: []sql.Row{
+					{-1},
+				},
+			},
+			{
+				Query: "select * from t0 where i < -0.1 order by i;",
+				Expected: []sql.Row{
+					{-1},
+				},
+			},
+			{
+				Query: "select * from t0 where i < -0.5 order by i;",
+				Expected: []sql.Row{
+					{-1},
+				},
+			},
+			{
+				Query: "select * from t0 where i < -0.9 order by i;",
+				Expected: []sql.Row{
+					{-1},
+				},
+			},
+			{
+				Query:    "select * from t0 where i < -1.0 order by i;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from t0 where i < -1.1 order by i;",
+				Expected: []sql.Row{},
+			},
+
+			{
+				Query: "select * from t0 where i <= 0.0 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+				},
+			},
+			{
+				Query: "select * from t0 where i <= 0.1 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+				},
+			},
+			{
+				Query: "select * from t0 where i <= 0.5 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+				},
+			},
+			{
+				Query: "select * from t0 where i <= 0.9 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+				},
+			},
+			{
+				Query: "select * from t0 where i <= 1.0 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i <= 1.1 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+
+			{
+				Query: "select * from t0 where i <= -0.0 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+				},
+			},
+			{
+				Query: "select * from t0 where i <= -0.1 order by i;",
+				Expected: []sql.Row{
+					{-1},
+				},
+			},
+			{
+				Query: "select * from t0 where i <= -0.5 order by i;",
+				Expected: []sql.Row{
+					{-1},
+				},
+			},
+			{
+				Query: "select * from t0 where i <= -0.9 order by i;",
+				Expected: []sql.Row{
+					{-1},
+				},
+			},
+			{
+				Query: "select * from t0 where i <= -1.0 order by i;",
+				Expected: []sql.Row{
+					{-1},
+				},
+			},
+			{
+				Query:    "select * from t0 where i <= -1.1 order by i;",
+				Expected: []sql.Row{},
+			},
+
+			{
+				Query: "select * from t0 where i = 0.0 order by i;",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query:    "select * from t0 where i = 0.1 order by i;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from t0 where i = 0.5 order by i;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from t0 where i = 0.9 order by i;",
+				Expected: []sql.Row{},
+			},
+
+			{
+				Query: "select * from t0 where i = -0.0 order by i;",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query:    "select * from t0 where i = -0.1 order by i;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from t0 where i = -0.5 order by i;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from t0 where i = -0.9 order by i;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from t0 where i = -1.0 order by i;",
+				Expected: []sql.Row{
+					{-1},
+				},
+			},
+
+			{
+				Query: "select * from t0 where i != 0.0 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i != 0.1 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i != 0.5 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i != 0.9 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+
+			{
+				Query: "select * from t0 where i != -0.0 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i != -0.1 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i != -0.5 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i != -0.9 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i != -1.0 order by i;",
+				Expected: []sql.Row{
+					{0},
+					{1},
+				},
+			},
+
+			{
+				Query: "select * from t0 where i <= 0.0 and i >= 0.0 order by i;",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: "select * from t0 where i <= 0.1 or i >= 0.1 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i > 0.1 and i >= 0.1 order by i;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i > 0.1 or i >= 0.1 order by i;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+		},
+	},
+	{
+		Name: "int secondary index with float filter",
+		SetUpScript: []string{
+			"create table t0 (i int);",
+			"create index idx on t0(i);",
+			"insert into t0 values (null), (-1), (0), (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t0 where i >= 0.0 order by i;",
+				Expected: []sql.Row{
+					{0},
+					{1},
+				},
+			},
+			{
+				Query: "select * from t0 where i <= 0.0 order by i;",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+				},
+			},
+			{
+				// cot(-939932070) = -1.1919623754564008
+				Query: "SELECT * from t0 where (cot(-939932070) < i);",
+				Expected: []sql.Row{
+					{-1},
+					{0},
+					{1},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

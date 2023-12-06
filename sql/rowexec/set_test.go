@@ -83,8 +83,8 @@ func TestPersistedSessionSetIterator(t *testing.T) {
 		{"persist var", "max_connections", 10, sql.SystemVariableScope_Persist, nil, int64(10), int64(10)},
 		{"persist only", "max_connections", 10, sql.SystemVariableScope_PersistOnly, nil, int64(151), int64(10)},
 		{"no persist", "auto_increment_increment", 3300, sql.SystemVariableScope_Global, nil, int64(3300), nil},
-		{"persist unknown variable", "nonexistant", 10, sql.SystemVariableScope_Persist, sql.ErrUnknownSystemVariable, nil, nil},
-		{"persist only unknown variable", "nonexistant", 10, sql.SystemVariableScope_PersistOnly, sql.ErrUnknownSystemVariable, nil, nil},
+		{"persist unknown variable", "nonexistent", 10, sql.SystemVariableScope_Persist, sql.ErrUnknownSystemVariable, nil, nil},
+		{"persist only unknown variable", "nonexistent", 10, sql.SystemVariableScope_PersistOnly, sql.ErrUnknownSystemVariable, nil, nil},
 	}
 
 	for _, test := range setTests {

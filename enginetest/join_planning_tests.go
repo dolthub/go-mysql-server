@@ -324,7 +324,7 @@ var JoinPlanningTests = []struct {
 			{
 				// TODO: RIGHT_SEMI_JOIN tuple equalities
 				q:     "select /*+ LOOKUP_JOIN(xy,ab) */ * from xy where (x,y) in (select b,a from ab where a in (0,1,2));",
-				types: []plan.JoinType{plan.JoinTypeSemi},
+				types: []plan.JoinType{plan.JoinTypeHash},
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
@@ -950,7 +950,7 @@ where u in (select * from rec);`,
 				order: []string{"a", "b", "c"},
 			},
 			{
-				q:     "select /*+ LOOKUP_JOIN(b,a) HASH_JOIN(b,c) */ 1 from xy a join uv b on a.x = b.u join xy c on b.u = c.x",
+				q:     "select /*+ JOIN_ORDER(b,c,a) LOOKUP_JOIN(b,a) HASH_JOIN(b,c) */ 1 from xy a join uv b on a.x = b.u join xy c on b.u = c.x",
 				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeHash},
 			},
 			{

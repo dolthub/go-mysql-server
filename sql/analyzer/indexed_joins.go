@@ -187,19 +187,19 @@ func addLookupJoins(m *memo.Memo) error {
 			return nil
 		}
 
-		tableGrp, indexes, extraFilters := lookupCandidates(right.First)
-		if or, ok := join.Filter[0].(*memo.Or); ok && len(join.Filter) == 1 {
+		tableId, indexes, extraFilters := lookupCandidates(right.First)
+		if or, ok := join.Filter[0].(*expression.Or); ok && len(join.Filter) == 1 {
 			// Special case disjoint filter. The execution plan will perform an index
 			// lookup for each predicate leaf in the OR tree.
 			// TODO: memoize equality expressions, index lookup, concat so that we
 			// can consider multiple index options. Otherwise the search space blows
 			// up.
-			conds := memo.SplitDisjunction(or)
+			conds := expression.SplitDisjunction(or)
 			var concat []*memo.Lookup
 			for _, on := range conds {
-				filters := memo.SplitConjunction(on)
+				filters := expression.SplitConjunction(on)
 				for _, idx := range indexes {
-					keyExprs, _, nullmask := keyExprsForIndex(tableGrp, idx.Cols(), append(filters, extraFilters...))
+					keyExprs, _, nullmask := keyExprsForIndex(tableId, idx.Cols(), append(filters, extraFilters...))
 					if keyExprs != nil {
 						concat = append(concat, &memo.Lookup{
 							Index:    idx,
@@ -226,7 +226,7 @@ func addLookupJoins(m *memo.Memo) error {
 		}
 
 		for _, idx := range indexes {
-			keyExprs, matchedFilters, nullmask := keyExprsForIndex(tableGrp, idx.Cols(), append(join.Filter, extraFilters...))
+			keyExprs, matchedFilters, nullmask := keyExprsForIndex(tableId, idx.Cols(), append(join.Filter, extraFilters...))
 			if keyExprs == nil {
 				continue
 			}
@@ -238,7 +238,7 @@ func addLookupJoins(m *memo.Memo) error {
 					Nullmask: nullmask,
 				},
 			}
-			var filters []memo.ScalarExpr
+			var filters []sql.Expression
 			for _, filter := range rel.Filter {
 				found := false
 				for _, matchedFilter := range matchedFilters {
@@ -262,9 +262,9 @@ func addLookupJoins(m *memo.Memo) error {
 // keyExprsForIndex returns a list of expression groups that compute a lookup
 // key into the given index. The key fields will either be equality filters
 // (from ON conditions) or constants.
-func keyExprsForIndex(tableGrp memo.GroupId, idxExprs []sql.ColumnId, filters []memo.ScalarExpr) (keyExprs, matchedFilters []memo.ScalarExpr, nullmask []bool) {
+func keyExprsForIndex(tableId sql.TableId, idxExprs []sql.ColumnId, filters []sql.Expression) (keyExprs, matchedFilters []sql.Expression, nullmask []bool) {
 	for _, col := range idxExprs {
-		key, filter, nullable := keyForExpr(col, tableGrp, filters)
+		key, filter, nullable := keyForExpr(col, tableId, filters)
 		if key == nil {
 			break
 		}
@@ -280,41 +280,49 @@ func keyExprsForIndex(tableGrp memo.GroupId, idxExprs []sql.ColumnId, filters []
 
 // keyForExpr returns an equivalence or constant value to satisfy the
 // lookup index expression.
-func keyForExpr(targetCol sql.ColumnId, tableGrp memo.GroupId, filters []memo.ScalarExpr) (key memo.ScalarExpr, filter memo.ScalarExpr, nullable bool) {
+func keyForExpr(targetCol sql.ColumnId, tableId sql.TableId, filters []sql.Expression) (key sql.Expression, filter sql.Expression, nullable bool) {
 	for _, f := range filters {
-		var left memo.ScalarExpr
-		var right memo.ScalarExpr
-		switch e := f.Group().Scalar.(type) {
-		case *memo.Equal:
-			left = e.Left.Scalar
-			right = e.Right.Scalar
-		case *memo.NullSafeEq:
+		var left sql.Expression
+		var right sql.Expression
+		switch e := f.(type) {
+		case *expression.Equals:
+			left = e.Left()
+			right = e.Right()
+		case *expression.NullSafeEquals:
 			nullable = true
-			left = e.Left.Scalar
-			right = e.Right.Scalar
+			left = e.Left()
+			right = e.Right()
 		default:
 		}
-		if ref, ok := left.(*memo.ColRef); ok && ref.Col == targetCol {
+		if ref, ok := left.(*expression.GetField); ok && ref.Id() == targetCol {
 			key = right
-		} else if ref, ok := right.(*memo.ColRef); ok && ref.Col == targetCol {
+		} else if ref, ok := right.(*expression.GetField); ok && ref.Id() == targetCol {
 			key = left
 		} else {
 			continue
 		}
 
-		if hidden, isHidden := key.(*memo.Hidden); isHidden {
-			if sq, isSubq := hidden.E.(*plan.Subquery); isSubq && !sq.Correlated().Empty() {
-				continue
-			}
+		if sq, ok := key.(*plan.Subquery); ok && !sq.Correlated().Empty() {
+			continue
 		}
 
 		// expression key can be arbitrarily complex (or simple), but cannot
 		// reference the lookup table
-		if !key.Group().ScalarProps().Tables.Contains(int(memo.TableIdForSource(tableGrp))) {
+		if !exprRefsTable(key, tableId) {
 			return key, f, nullable
 		}
 	}
 	return nil, nil, false
+}
+
+func exprRefsTable(e sql.Expression, tableId sql.TableId) bool {
+	return transform.InspectExpr(e, func(e sql.Expression) bool {
+		gf, _ := e.(*expression.GetField)
+		if gf != nil {
+			return gf.TableId() == tableId
+		}
+		return false
+	})
 }
 
 // convertSemiToInnerJoin adds inner join alternatives for semi joins.
@@ -331,29 +339,27 @@ func convertSemiToInnerJoin(a *Analyzer, m *memo.Memo) error {
 		}
 
 		rightOutTables := semi.Right.RelProps.OutputTables()
-		var projectExpressions []*memo.ExprGroup
-		onlyEquality := true
+		var projectExpressions []sql.Expression
+		var err error
 		for _, f := range semi.Filter {
-			_ = memo.DfsScalar(f, func(e memo.ScalarExpr) error {
+			if transform.InspectExpr(f, func(e sql.Expression) bool {
 				switch e := e.(type) {
-				case *memo.ColRef:
-					if rightOutTables.Contains(int(memo.TableIdForSource(e.Table))) {
-						projectExpressions = append(projectExpressions, e.Group())
+				case *expression.GetField:
+					if rightOutTables.Contains(int(e.TableId())) {
+						projectExpressions = append(projectExpressions, e)
 					}
-				case *memo.Literal, *memo.And, *memo.Or, *memo.Equal, *memo.Arithmetic, *memo.Bindvar:
+				case *expression.Literal, *expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic, *expression.BindVar, expression.Tuple:
 				default:
-					onlyEquality = false
-					return memo.HaltErr
+					return true
 				}
-				return nil
-			})
-			if !onlyEquality {
-				return nil
+				return false
+			}) {
+				return err
 			}
 		}
 		if len(projectExpressions) == 0 {
 			p := expression.NewLiteral(1, types.Int64)
-			projectExpressions = append(projectExpressions, m.MemoizeScalar(p))
+			projectExpressions = append(projectExpressions, p)
 		}
 
 		// project is a new group
@@ -369,18 +375,40 @@ func convertSemiToInnerJoin(a *Analyzer, m *memo.Memo) error {
 
 		// project belongs to the original group
 		leftCols := semi.Left.RelProps.OutputCols()
-		var projections []*memo.ExprGroup
-		for i := range leftCols {
-			col := leftCols[i]
-			if col.Name == "" && col.Source == "" {
-				continue
+		var projections []sql.Expression
+		for colId, hasNext := leftCols.Next(1); hasNext; colId, hasNext = leftCols.Next(colId + 1) {
+			var srcNode plan.TableIdNode
+			for _, n := range semi.Left.RelProps.TableIdNodes() {
+				if n.Columns().Contains(colId) {
+					srcNode = n
+					break
+				}
 			}
-			projections = append(projections, m.MemoizeScalar(expression.NewGetFieldWithTable(0, col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)))
+			if srcNode == nil {
+				break
+				return fmt.Errorf("table for column not found: %d", colId)
+			}
+
+			sch := srcNode.Schema()
+			var table sql.Table
+			if tw, ok := srcNode.(sql.TableNode); ok {
+				table = tw.UnderlyingTable()
+			}
+			if pkt, ok := table.(sql.PrimaryKeyTable); ok {
+				sch = pkt.PrimaryKeySchema().Schema
+			}
+
+			firstCol, _ := srcNode.Columns().Next(1)
+			idx := int(colId - firstCol)
+			col := sch[idx]
+
+			projections = append(projections, expression.NewGetFieldWithTable(int(colId), int(srcNode.Id()), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable))
+
 		}
 
 		if len(projections) == 0 {
 			p := expression.NewLiteral(1, types.Int64)
-			projections = []*memo.ExprGroup{m.MemoizeScalar(p)}
+			projections = []sql.Expression{p}
 		}
 
 		m.MemoizeProject(e.Group(), joinGrp, projections)
@@ -399,34 +427,30 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 		}
 
 		rightOutTables := anti.Right.RelProps.OutputTables()
-		var projectExpressions []*memo.ExprGroup
+		var projectExpressions []sql.Expression
 		var nullify []sql.Expression
-		onlyEquality := true
+		var err error
 		for _, f := range anti.Filter {
-			_ = memo.DfsScalar(f, func(e memo.ScalarExpr) error {
+			if transform.InspectExpr(f, func(e sql.Expression) bool {
 				switch e := e.(type) {
-				case *memo.ColRef:
-					if rightOutTables.Contains(int(memo.TableIdForSource(e.Table))) {
-						projectExpressions = append(projectExpressions, e.Group())
-						nullify = append(nullify, e.Gf)
+				case *expression.GetField:
+					if rightOutTables.Contains(int(e.TableId())) {
+						projectExpressions = append(projectExpressions, e)
+						nullify = append(nullify, e)
 					}
-				case *memo.Literal, *memo.And, *memo.Or, *memo.Equal, *memo.Arithmetic, *memo.Bindvar:
+				case *expression.Literal, *expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic, *expression.BindVar, expression.Tuple:
 				default:
-					onlyEquality = false
-					return memo.HaltErr
+					return true
 				}
-				return nil
-			})
-			if !onlyEquality {
-				return nil
+				return false
+			}) {
+				return err
 			}
 		}
 		if len(projectExpressions) == 0 {
 			p := expression.NewLiteral(1, types.Int64)
-			projectExpressions = append(projectExpressions, m.MemoizeScalar(p))
+			projectExpressions = append(projectExpressions, p)
 			gf := expression.NewGetField(0, types.Int64, "1", true)
-			m.AddColumnId(gf.Table(), gf.Name())
-			m.MemoizeScalar(gf)
 			nullify = append(nullify, gf)
 		}
 		// project is a new group
@@ -436,19 +460,49 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 		joinGrp := m.MemoizeLeftJoin(nil, anti.Left, rightGrp, plan.JoinTypeLeftOuterExcludeNulls, anti.Filter)
 
 		// drop null projected columns on right table
-		nullFilters := make([]*memo.ExprGroup, len(nullify))
+		nullFilters := make([]sql.Expression, len(nullify))
 		for i, e := range nullify {
-			nullFilters[i] = m.MemoizeIsNull(e)
+			nullFilters[i] = expression.NewIsNull(e)
 		}
 
 		filterGrp := m.MemoizeFilter(nil, joinGrp, nullFilters)
 
 		// project belongs to the original group
 		leftCols := anti.Left.RelProps.OutputCols()
-		projections := make([]*memo.ExprGroup, len(leftCols))
-		for i := range leftCols {
-			col := leftCols[i]
-			projections[i] = m.MemoizeColRef(expression.NewGetFieldWithTable(0, col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable))
+		var projections []sql.Expression
+		for colId, hasNext := leftCols.Next(1); hasNext; colId, hasNext = leftCols.Next(colId + 1) {
+			// we have ids and need to get the table back?
+			// search in tables
+			var srcNode plan.TableIdNode
+			for _, n := range anti.Left.RelProps.TableIdNodes() {
+				if n.Columns().Contains(colId) {
+					srcNode = n
+					break
+				}
+			}
+			if srcNode == nil {
+				break
+			}
+
+			sch := srcNode.Schema()
+			var table sql.Table
+			if tw, ok := srcNode.(sql.TableNode); ok {
+				table = tw.UnderlyingTable()
+			}
+			if pkt, ok := table.(sql.PrimaryKeyTable); ok {
+				sch = pkt.PrimaryKeySchema().Schema
+			}
+
+			firstCol, _ := srcNode.Columns().Next(1)
+			idx := int(colId - firstCol)
+			col := sch[idx]
+
+			projections = append(projections, expression.NewGetFieldWithTable(int(colId), int(srcNode.Id()), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable))
+		}
+
+		if len(projections) == 0 {
+			p := expression.NewLiteral(1, types.Int64)
+			projections = []sql.Expression{p}
 		}
 
 		m.MemoizeProject(e.Group(), filterGrp, projections)
@@ -469,27 +523,25 @@ func addRightSemiJoins(m *memo.Memo) error {
 		if len(semi.Filter) == 0 {
 			return nil
 		}
-		tableGrp, indexes, filters := lookupCandidates(semi.Left.First)
+		tableId, indexes, filters := lookupCandidates(semi.Left.First)
 		rightOutTables := semi.Right.RelProps.OutputTables()
 
-		var projectExpressions []*memo.ExprGroup
-		onlyEquality := true
+		var projectExpressions []sql.Expression
+		var err error
 		for _, f := range semi.Filter {
-			_ = memo.DfsScalar(f, func(e memo.ScalarExpr) error {
+			if transform.InspectExpr(f, func(e sql.Expression) bool {
 				switch e := e.(type) {
-				case *memo.ColRef:
-					if rightOutTables.Contains(int(memo.TableIdForSource(e.Table))) {
-						projectExpressions = append(projectExpressions, e.Group())
+				case *expression.GetField:
+					if rightOutTables.Contains(int(e.TableId())) {
+						projectExpressions = append(projectExpressions, e)
 					}
-				case *memo.Literal, *memo.And, *memo.Or, *memo.Equal, *memo.Arithmetic, *memo.Bindvar:
+				case *expression.Literal, *expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic, *expression.BindVar:
 				default:
-					onlyEquality = false
-					return memo.HaltErr
+					return true
 				}
-				return nil
-			})
-			if !onlyEquality {
-				return nil
+				return false
+			}) {
+				return err
 			}
 		}
 
@@ -498,7 +550,7 @@ func addRightSemiJoins(m *memo.Memo) error {
 				continue
 			}
 
-			keyExprs, _, nullmask := keyExprsForIndex(tableGrp, idx.Cols(), append(semi.Filter, filters...))
+			keyExprs, _, nullmask := keyExprsForIndex(tableId, idx.Cols(), append(semi.Filter, filters...))
 			if keyExprs == nil {
 				continue
 			}
@@ -522,8 +574,8 @@ func addRightSemiJoins(m *memo.Memo) error {
 // lookupCandidates extracts source relation information required to check for
 // index lookups, including the source relation GroupId, the list of Indexes,
 // and the list of table filters.
-func lookupCandidates(rel memo.RelExpr) (memo.GroupId, []*memo.Index, []memo.ScalarExpr) {
-	var filters []memo.ScalarExpr
+func lookupCandidates(rel memo.RelExpr) (sql.TableId, []*memo.Index, []sql.Expression) {
+	var filters []sql.Expression
 	for done := false; !done; {
 		switch n := rel.(type) {
 		case *memo.Distinct:
@@ -531,7 +583,7 @@ func lookupCandidates(rel memo.RelExpr) (memo.GroupId, []*memo.Index, []memo.Sca
 		case *memo.Filter:
 			rel = n.Child.First
 			for i := range n.Filters {
-				filters = append(filters, n.Filters[i].Scalar)
+				filters = append(filters, n.Filters[i])
 			}
 		case *memo.Project:
 			rel = n.Child.First
@@ -542,9 +594,11 @@ func lookupCandidates(rel memo.RelExpr) (memo.GroupId, []*memo.Index, []memo.Sca
 	}
 	switch n := rel.(type) {
 	case *memo.TableAlias:
-		return n.Group().Id, n.Indexes(), filters
+		tabId, _ := n.Group().RelProps.OutputTables().Next(1)
+		return sql.TableId(tabId), n.Indexes(), filters
 	case *memo.TableScan:
-		return n.Group().Id, n.Indexes(), filters
+		tabId, _ := n.Group().RelProps.OutputTables().Next(1)
+		return sql.TableId(tabId), n.Indexes(), filters
 	default:
 	}
 	return 0, nil, nil
@@ -588,18 +642,18 @@ func addHashJoins(m *memo.Memo) error {
 			return nil
 		}
 
-		var fromExpr, toExpr []*memo.ExprGroup
+		var fromExpr, toExpr []sql.Expression
 		for _, f := range join.Filter {
 			switch f := f.(type) {
-			case *memo.Equal:
-				if satisfiesScalarRefs(f.Left.Scalar, join.Left) &&
-					satisfiesScalarRefs(f.Right.Scalar, join.Right) {
-					fromExpr = append(fromExpr, f.Right)
-					toExpr = append(toExpr, f.Left)
-				} else if satisfiesScalarRefs(f.Right.Scalar, join.Left) &&
-					satisfiesScalarRefs(f.Left.Scalar, join.Right) {
-					fromExpr = append(fromExpr, f.Left)
-					toExpr = append(toExpr, f.Right)
+			case *expression.Equals:
+				if satisfiesScalarRefs(f.Left(), join.Left.RelProps.OutputTables()) &&
+					satisfiesScalarRefs(f.Right(), join.Right.RelProps.OutputTables()) {
+					fromExpr = append(fromExpr, f.Right())
+					toExpr = append(toExpr, f.Left())
+				} else if satisfiesScalarRefs(f.Right(), join.Left.RelProps.OutputTables()) &&
+					satisfiesScalarRefs(f.Left(), join.Right.RelProps.OutputTables()) {
+					fromExpr = append(fromExpr, f.Left())
+					toExpr = append(toExpr, f.Right())
 				} else {
 					return nil
 				}
@@ -619,23 +673,23 @@ func addHashJoins(m *memo.Memo) error {
 }
 
 type rangeFilter struct {
-	value, min, max                        *memo.ExprGroup
+	value, min, max                        sql.Expression
 	closedOnLowerBound, closedOnUpperBound bool
 }
 
 // getRangeFilters takes the filter expressions on a join and identifies "ranges" where a given expression
 // is constrained between two other expressions. (For instance, detecting "x > 5" and "x <= 10" and creating a range
 // object representing "5 < x <= 10". See range_filter_test.go for examples.
-func getRangeFilters(filters []memo.ScalarExpr) (ranges []rangeFilter) {
+func getRangeFilters(filters []sql.Expression) (ranges []rangeFilter) {
 	type candidateMap struct {
-		group    *memo.ExprGroup
+		group    sql.Expression
 		isClosed bool
 	}
-	lowerToUpper := make(map[uint64][]candidateMap)
-	upperToLower := make(map[uint64][]candidateMap)
+	lowerToUpper := make(map[string][]candidateMap)
+	upperToLower := make(map[string][]candidateMap)
 
-	findUpperBounds := func(value, min *memo.ExprGroup, closedOnLowerBound bool) {
-		for _, max := range lowerToUpper[memo.InternExpr(value.Scalar)] {
+	findUpperBounds := func(value, min sql.Expression, closedOnLowerBound bool) {
+		for _, max := range lowerToUpper[value.String()] {
 			ranges = append(ranges, rangeFilter{
 				value:              value,
 				min:                min,
@@ -645,8 +699,8 @@ func getRangeFilters(filters []memo.ScalarExpr) (ranges []rangeFilter) {
 		}
 	}
 
-	findLowerBounds := func(value, max *memo.ExprGroup, closedOnUpperBound bool) {
-		for _, min := range upperToLower[memo.InternExpr(value.Scalar)] {
+	findLowerBounds := func(value, max sql.Expression, closedOnUpperBound bool) {
+		for _, min := range upperToLower[value.String()] {
 			ranges = append(ranges, rangeFilter{
 				value:              value,
 				min:                min.group,
@@ -656,14 +710,14 @@ func getRangeFilters(filters []memo.ScalarExpr) (ranges []rangeFilter) {
 		}
 	}
 
-	addBounds := func(lower, upper *memo.ExprGroup, isClosed bool) {
-		lowerIntern := memo.InternExpr(lower.Scalar)
-		lowerToUpper[lowerIntern] = append(lowerToUpper[lowerIntern], candidateMap{
+	addBounds := func(lower, upper sql.Expression, isClosed bool) {
+		lowerStr := lower.String()
+		lowerToUpper[lowerStr] = append(lowerToUpper[lowerStr], candidateMap{
 			group:    upper,
 			isClosed: isClosed,
 		})
-		upperIntern := memo.InternExpr(upper.Scalar)
-		upperToLower[upperIntern] = append(upperToLower[upperIntern], candidateMap{
+		upperStr := upper.String()
+		upperToLower[upperStr] = append(upperToLower[upperStr], candidateMap{
 			group:    lower,
 			isClosed: isClosed,
 		})
@@ -671,24 +725,24 @@ func getRangeFilters(filters []memo.ScalarExpr) (ranges []rangeFilter) {
 
 	for _, filter := range filters {
 		switch f := filter.(type) {
-		case *memo.Between:
-			ranges = append(ranges, rangeFilter{f.Value, f.Min, f.Max, true, true})
-		case *memo.Gt:
-			findUpperBounds(f.Left, f.Right, false)
-			findLowerBounds(f.Right, f.Left, false)
-			addBounds(f.Right, f.Left, false)
-		case *memo.Geq:
-			findUpperBounds(f.Left, f.Right, true)
-			findLowerBounds(f.Right, f.Left, true)
-			addBounds(f.Right, f.Left, true)
-		case *memo.Lt:
-			findLowerBounds(f.Left, f.Right, false)
-			findUpperBounds(f.Right, f.Left, false)
-			addBounds(f.Left, f.Right, false)
-		case *memo.Leq:
-			findLowerBounds(f.Left, f.Right, true)
-			findUpperBounds(f.Right, f.Left, true)
-			addBounds(f.Left, f.Right, true)
+		case *expression.Between:
+			ranges = append(ranges, rangeFilter{f.Val, f.Lower, f.Upper, true, true})
+		case *expression.GreaterThan:
+			findUpperBounds(f.Left(), f.Right(), false)
+			findLowerBounds(f.Right(), f.Left(), false)
+			addBounds(f.Right(), f.Left(), false)
+		case *expression.GreaterThanOrEqual:
+			findUpperBounds(f.Left(), f.Right(), true)
+			findLowerBounds(f.Right(), f.Left(), true)
+			addBounds(f.Right(), f.Left(), true)
+		case *expression.LessThan:
+			findLowerBounds(f.Left(), f.Right(), false)
+			findUpperBounds(f.Right(), f.Left(), false)
+			addBounds(f.Left(), f.Right(), false)
+		case *expression.LessThanOrEqual:
+			findLowerBounds(f.Left(), f.Right(), true)
+			findUpperBounds(f.Right(), f.Left(), true)
+			addBounds(f.Left(), f.Right(), true)
 		}
 	}
 	return ranges
@@ -715,25 +769,24 @@ func addRangeHeapJoin(m *memo.Memo) error {
 		_, rIndexes, rFilters := lookupCandidates(join.Right.First)
 
 		for _, filter := range getRangeFilters(join.Filter) {
-
-			if !(satisfiesScalarRefs(filter.value.Scalar, join.Left) &&
-				satisfiesScalarRefs(filter.min.Scalar, join.Right) &&
-				satisfiesScalarRefs(filter.max.Scalar, join.Right)) {
+			if !(satisfiesScalarRefs(filter.value, join.Left.RelProps.OutputTables()) &&
+				satisfiesScalarRefs(filter.min, join.Right.RelProps.OutputTables()) &&
+				satisfiesScalarRefs(filter.max, join.Right.RelProps.OutputTables())) {
 				return nil
 			}
 			// For now, only match expressions that are exactly a column reference.
 			// TODO: We may be able to match more complicated expressions if they meet the necessary criteria, such as:
 			// - References exactly one column
 			// - Is monotonically increasing
-			valueColRef, ok := filter.value.Scalar.(*memo.ColRef)
+			valueColRef, ok := filter.value.(*expression.GetField)
 			if !ok {
 				return nil
 			}
-			minColRef, ok := filter.min.Scalar.(*memo.ColRef)
+			minColRef, ok := filter.min.(*expression.GetField)
 			if !ok {
 				return nil
 			}
-			maxColRef, ok := filter.max.Scalar.(*memo.ColRef)
+			maxColRef, ok := filter.max.(*expression.GetField)
 			if !ok {
 				return nil
 			}
@@ -754,8 +807,8 @@ func addRangeHeapJoin(m *memo.Memo) error {
 					rel.RangeHeap = &memo.RangeHeap{
 						ValueIndex:              lIdx,
 						MinIndex:                rIdx,
-						ValueExpr:               &filter.value.Scalar,
-						MinExpr:                 &filter.min.Scalar,
+						ValueExpr:               filter.value,
+						MinExpr:                 filter.min,
 						ValueCol:                valueColRef,
 						MinColRef:               minColRef,
 						MaxColRef:               maxColRef,
@@ -773,10 +826,18 @@ func addRangeHeapJoin(m *memo.Memo) error {
 }
 
 // satisfiesScalarRefs returns true if all GetFields in the expression
-// are columns provided by |grp|
-func satisfiesScalarRefs(e memo.ScalarExpr, grp *memo.ExprGroup) bool {
+// are columns provided by |tables|
+func satisfiesScalarRefs(e sql.Expression, tables sql.FastIntSet) bool {
 	// |grp| provides all tables referenced in |e|
-	return e.Group().ScalarProps().Tables.Difference(grp.RelProps.OutputTables()).Len() == 0
+	return !transform.InspectExpr(e, func(e sql.Expression) bool {
+		gf, _ := e.(*expression.GetField)
+		if gf != nil {
+			if !tables.Contains(int(gf.TableId())) {
+				return true
+			}
+		}
+		return false
+	})
 }
 
 // addMergeJoins will add merge join operators to join relations
@@ -800,53 +861,50 @@ func addMergeJoins(m *memo.Memo) error {
 			return nil
 		}
 
-		leftGrp, lIndexes, lFilters := lookupCandidates(join.Left.First)
-		rightGrp, rIndexes, rFilters := lookupCandidates(join.Right.First)
+		leftTabId, lIndexes, lFilters := lookupCandidates(join.Left.First)
+		rightTabId, rIndexes, rFilters := lookupCandidates(join.Right.First)
 
-		lAttrSource, _ := m.TableProps.GetTable(leftGrp)
-		if lAttrSource == "" {
+		if leftTabId == 0 || rightTabId == 0 {
 			return nil
 		}
 
 		eqFilters := make([]filterAndPosition, 0, len(join.Filter))
 		for filterPos, filter := range join.Filter {
 			switch eq := filter.(type) {
-			case *memo.Equal:
-				l := eq.Left
-				r := eq.Right
+			case *expression.Equals:
+				l := eq.Left()
+				r := eq.Right()
 
-				if l.ScalarProps().Cols.Len() != 1 ||
-					r.ScalarProps().Cols.Len() != 1 {
+				if !expressionReferencesOneColumn(l) ||
+					!expressionReferencesOneColumn(r) {
 					continue
 				}
 
 				// check that comparer is not non-decreasing
-				if !isWeaklyMonotonic(l.Scalar) || !isWeaklyMonotonic(r.Scalar) {
+				if !isWeaklyMonotonic(l) || !isWeaklyMonotonic(r) {
 					continue
 				}
 
 				var swap bool
-				if l.ScalarProps().Tables.Contains(int(memo.TableIdForSource(leftGrp))) &&
-					r.ScalarProps().Tables.Contains(int(memo.TableIdForSource(rightGrp))) {
-				} else if r.ScalarProps().Tables.Contains(int(memo.TableIdForSource(leftGrp))) &&
-					l.ScalarProps().Tables.Contains(int(memo.TableIdForSource(rightGrp))) {
+				if expressionReferencesTable(l, leftTabId) &&
+					expressionReferencesTable(r, rightTabId) {
+
+				} else if expressionReferencesTable(r, leftTabId) &&
+					expressionReferencesTable(l, rightTabId) {
 					swap = true
 					l, r = r, l
 				} else {
 					continue
 				}
+
 				if swap {
-					eqFilters = append(eqFilters, filterAndPosition{&memo.Equal{
-						Left:  eq.Right,
-						Right: eq.Left,
-					}, filterPos})
+					eqFilters = append(eqFilters, filterAndPosition{expression.NewEquals(eq.Right(), eq.Left()), filterPos})
 				} else {
 					eqFilters = append(eqFilters, filterAndPosition{eq, filterPos})
 				}
 			default:
 				continue
 			}
-
 		}
 
 		// For each lIndex:
@@ -866,14 +924,14 @@ func addMergeJoins(m *memo.Memo) error {
 						if d, ok := jb.Right.First.(*memo.Distinct); ok && rIndex.SqlIdx().IsUnique() {
 							jb.Right = d.Child
 						}
-						var compare memo.ScalarExpr
+						var compare sql.Expression
 						if len(matchedEqFilters) > 1 {
 							compare = combineIntoTuple(m, matchedEqFilters)
 						} else {
 							compare = matchedEqFilters[0].filter
 
 						}
-						newFilters := []memo.ScalarExpr{compare}
+						newFilters := []sql.Expression{compare}
 						for filterPos, filter := range join.Filter {
 							found := false
 							for _, filterAndPos := range matchedEqFilters {
@@ -887,8 +945,8 @@ func addMergeJoins(m *memo.Memo) error {
 						}
 
 						// To make the index scan, we need the first non-constant column in each index.
-						leftColId := getOnlyColumnId(matchedEqFilters[0].filter.Left)
-						rightColId := getOnlyColumnId(matchedEqFilters[0].filter.Right)
+						leftColId := getOnlyColumnId(matchedEqFilters[0].filter.Left())
+						rightColId := getOnlyColumnId(matchedEqFilters[0].filter.Right())
 						lIndexScan, success := makeIndexScan(lIndex, leftColId, lFilters)
 						if !success {
 							continue
@@ -909,27 +967,51 @@ func addMergeJoins(m *memo.Memo) error {
 
 // getOnlyColumnId returns the id of the only column referenced in an expression group. We only call this
 // on expressions that are already verified to have exactly one referenced column.
-func getOnlyColumnId(group *memo.ExprGroup) sql.ColumnId {
-	id, _ := group.ScalarProps().Cols.Next(1)
+func getOnlyColumnId(e sql.Expression) sql.ColumnId {
+	var id sql.ColumnId
+	transform.InspectExpr(e, func(e sql.Expression) bool {
+		gf, ok := e.(*expression.GetField)
+		if ok {
+			id = gf.Id()
+			return true
+		}
+		return false
+	})
 	return id
 }
 
-func combineIntoTuple(m *memo.Memo, filters []filterAndPosition) *memo.Equal {
-	var lFilters []*memo.ExprGroup
-	var rFilters []*memo.ExprGroup
+func expressionReferencesOneColumn(e sql.Expression) bool {
+	var seen bool
+	return !transform.InspectExpr(e, func(e sql.Expression) bool {
+		_, ok := e.(*expression.GetField)
+		if ok && seen {
+			return true
+		}
+		seen = true
+		return false
+	})
+}
+
+func expressionReferencesTable(e sql.Expression, id sql.TableId) bool {
+	return transform.InspectExpr(e, func(e sql.Expression) bool {
+		gf, ok := e.(*expression.GetField)
+		return ok && gf.TableId() == id
+	})
+}
+
+func combineIntoTuple(m *memo.Memo, filters []filterAndPosition) *expression.Equals {
+	var lFilters []sql.Expression
+	var rFilters []sql.Expression
 
 	for _, filter := range filters {
-		lFilters = append(lFilters, filter.filter.Left)
-		rFilters = append(rFilters, filter.filter.Right)
+		lFilters = append(lFilters, filter.filter.Left())
+		rFilters = append(rFilters, filter.filter.Right())
 	}
 
-	lGroup := memo.NewTuple(m, lFilters)
-	rGroup := memo.NewTuple(m, rFilters)
+	lGroup := expression.NewTuple(lFilters...)
+	rGroup := expression.NewTuple(rFilters...)
 
-	return &memo.Equal{
-		Left:  lGroup,
-		Right: rGroup,
-	}
+	return expression.NewEquals(lGroup, rGroup)
 }
 
 // rightIndexMatchesFilters checks whether the provided rIndex is a candidate for a merge join on the provided filters.
@@ -947,7 +1029,7 @@ func rightIndexMatchesFilters(rIndex *memo.Index, constants sql.ColSet, filters 
 			return false
 		}
 		matched := false
-		for getOnlyColumnId(filters[filterPos].filter.Right) == columnIds[columnPos] {
+		for getOnlyColumnId(filters[filterPos].filter.Right()) == columnIds[columnPos] {
 			matched = true
 			filterPos++
 			if filterPos >= len(filters) {
@@ -969,7 +1051,7 @@ func rightIndexMatchesFilters(rIndex *memo.Index, constants sql.ColSet, filters 
 
 // filterAndPosition stores a filter on a join, along with that filter's original index.
 type filterAndPosition struct {
-	filter *memo.Equal
+	filter *expression.Equals
 	pos    int
 }
 
@@ -983,7 +1065,7 @@ func matchedFiltersForLeftIndex(lIndex *memo.Index, constants sql.ColSet, filter
 		}
 		found := false
 		for _, filter := range filters {
-			if getOnlyColumnId(filter.filter.Left) == idxCol {
+			if getOnlyColumnId(filter.filter.Left()) == idxCol {
 				matchedFilters = append(matchedFilters, filter)
 				found = true
 				break
@@ -999,7 +1081,7 @@ func matchedFiltersForLeftIndex(lIndex *memo.Index, constants sql.ColSet, filter
 // sortedIndexScanForTableCol returns the first indexScan found for a relation
 // that provide a prefix for the joinFilters rel free attribute. I.e. the
 // indexScan will return the same rows as the rel, but sorted by |col|.
-func sortedIndexScansForTableCol(indexes []*memo.Index, targetCol *memo.ColRef, constants sql.ColSet, filters []memo.ScalarExpr) (ret []*memo.IndexScan) {
+func sortedIndexScansForTableCol(indexes []*memo.Index, targetCol *expression.GetField, constants sql.ColSet, filters []sql.Expression) (ret []*memo.IndexScan) {
 	// valid index prefix is (constants..., targetCol)
 	for _, idx := range indexes {
 		found := false
@@ -1009,7 +1091,7 @@ func sortedIndexScansForTableCol(indexes []*memo.Index, targetCol *memo.ColRef, 
 				// idxCol constant OK
 				continue
 			}
-			if idxCol == targetCol.Col {
+			if idxCol == targetCol.Id() {
 				found = true
 				matchedIdx = idxCol
 			} else {
@@ -1027,19 +1109,19 @@ func sortedIndexScansForTableCol(indexes []*memo.Index, targetCol *memo.ColRef, 
 	return ret
 }
 
-func makeIndexScan(idx *memo.Index, matchedIdx sql.ColumnId, filters []memo.ScalarExpr) (*memo.IndexScan, bool) {
+func makeIndexScan(idx *memo.Index, matchedIdx sql.ColumnId, filters []sql.Expression) (*memo.IndexScan, bool) {
 	rang := make(sql.Range, len(idx.Cols()))
 	var j int
 	for {
 		found := idx.Cols()[j] == matchedIdx
-		var lit *memo.Literal
+		var lit *expression.Literal
 		for _, f := range filters {
-			if eq, ok := f.(*memo.Equal); ok {
-				if l, ok := eq.Left.Scalar.(*memo.ColRef); ok && l.Col == idx.Cols()[j] {
-					lit, _ = eq.Right.Scalar.(*memo.Literal)
+			if eq, ok := f.(*expression.Equals); ok {
+				if l, ok := eq.Left().(*expression.GetField); ok && l.Id() == idx.Cols()[j] {
+					lit, _ = eq.Right().(*expression.Literal)
 				}
-				if r, ok := eq.Right.Scalar.(*memo.ColRef); ok && r.Col == idx.Cols()[j] {
-					lit, _ = eq.Left.Scalar.(*memo.Literal)
+				if r, ok := eq.Right().(*expression.GetField); ok && r.Id() == idx.Cols()[j] {
+					lit, _ = eq.Left().(*expression.Literal)
 				}
 				if lit != nil {
 					break
@@ -1049,7 +1131,7 @@ func makeIndexScan(idx *memo.Index, matchedIdx sql.ColumnId, filters []memo.Scal
 		if found && lit == nil {
 			break
 		}
-		rang[j] = sql.ClosedRangeColumnExpr(lit.Val, lit.Val, idx.SqlIdx().ColumnExpressionTypes()[j].Type)
+		rang[j] = sql.ClosedRangeColumnExpr(lit.Value(), lit.Value(), idx.SqlIdx().ColumnExpressionTypes()[j].Type)
 		j++
 		if found {
 			break
@@ -1083,26 +1165,22 @@ func makeIndexScan(idx *memo.Index, matchedIdx sql.ColumnId, filters []memo.Scal
 // A non-obvious non-monotonic function is `x+y`. The index `(x,y)`
 // will be non-increasing on (y), and so `x+y` can decrease.
 // TODO: stricter monotonic check
-func isWeaklyMonotonic(e memo.ScalarExpr) bool {
-	isMonotonic := true
-	memo.DfsScalar(e, func(e memo.ScalarExpr) error {
+func isWeaklyMonotonic(e sql.Expression) bool {
+	return !transform.InspectExpr(e, func(e sql.Expression) bool {
 		switch e := e.(type) {
-		case *memo.Arithmetic:
-			if e.Op == memo.ArithTypeMinus {
+		case expression.ArithmeticOp:
+			if e.Operator() == "-" {
 				// TODO minus can be OK if it's not on the GetField
-				isMonotonic = false
+				return true
 			}
-		case *memo.Equal, *memo.NullSafeEq, *memo.Literal, *memo.ColRef,
-			*memo.Tuple, *memo.IsNull, *memo.Bindvar:
+			return false
+		case *expression.Equals, *expression.NullSafeEquals, *expression.Literal, *expression.GetField,
+			*expression.Tuple, *expression.IsNull, *expression.BindVar:
+			return false
 		default:
-			isMonotonic = false
+			return true
 		}
-		if !isMonotonic {
-			return memo.HaltErr
-		}
-		return nil
 	})
-	return isMonotonic
 }
 
 // attrsRefSingleTableCol returns false if there are
