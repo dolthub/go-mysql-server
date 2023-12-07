@@ -3837,12 +3837,43 @@ var IndexPrefixQueries = []ScriptTest{
 				Query:           "select distinct j2.pk from j2 join t on t.col1 >= 'one';",
 				ExpectedIndexes: []string{},
 				Expected:        []sql.Row{{1}, {2}, {3}},
+				JoinTypes:       []plan.JoinType{plan.JoinTypeInner},
 			},
 			{
 				// Assert that we DO use the index for a join on an exact match condition
-				Query:           "select distinct j2.pk from j2 join t on t.col1 = '  ';",
+				Query:           "select distinct j2.pk from j2 join t on t.col1 = ' ';",
 				ExpectedIndexes: []string{"k1"},
 				Expected:        []sql.Row{{1}, {2}, {3}},
+				JoinTypes:       []plan.JoinType{plan.JoinTypeLookup},
+			},
+
+			{
+				// Assert that we DO use the index for a lookup join on an exact match condition
+				Query:           "select /*+ LOOKUP_JOIN(t,j2) */ distinct j2.pk from j2 join t on t.col1 = j2.col1;",
+				ExpectedIndexes: []string{"k1"},
+				Expected:        []sql.Row{{2}},
+				JoinTypes:       []plan.JoinType{plan.JoinTypeLookup},
+			},
+			{
+				// Assert that we do NOT use the index for a lookup join on a range condition
+				Query:           "select /*+ LOOKUP_JOIN(t,j2) */ distinct j2.pk from j2 join t on t.col1 >= j2.col1;",
+				ExpectedIndexes: []string{},
+				Expected:        []sql.Row{{1}, {2}, {3}},
+				JoinTypes:       []plan.JoinType{plan.JoinTypeInner},
+			},
+			{
+				// Assert that merge join is not available, since the index is not ordered (equality condition)
+				Query:           "select /*+ MERGE_JOIN(t,j2) */ distinct j2.pk from j2 join t on t.col1 = j2.col1;",
+				ExpectedIndexes: []string{"k1"},
+				Expected:        []sql.Row{{2}},
+				JoinTypes:       []plan.JoinType{plan.JoinTypeLookup},
+			},
+			{
+				// Assert that merge join is not available, since the index is not ordered (range condition)
+				Query:           "select /*+ MERGE_JOIN(t,j2) */ distinct j2.pk from j2 join t on t.col1 >= j2.col1;",
+				ExpectedIndexes: []string{},
+				Expected:        []sql.Row{{1}, {2}, {3}},
+				JoinTypes:       []plan.JoinType{plan.JoinTypeInner},
 			},
 			{
 				// Assert that indexes with hash-encoded fields are not used for ordering
