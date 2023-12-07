@@ -3808,13 +3808,9 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				// Indexes with content-hashed fields are not eligible for use with range scans
-				Query: "explain select * from t where col1 >= 'one';",
-				Expected: []sql.Row{
-					{"Filter"},
-					{" ├─ (t.col1 >= 'one')"},
-					{" └─ Table"},
-					{"     ├─ name: t"},
-					{"     └─ columns: [pk col1]"}},
+				Query:           "select * from t where col1 >= 'one';",
+				ExpectedIndexes: []string{},
+				Expected:        []sql.Row{{1, "oneasdfasdf"}},
 			},
 			{
 				// Indexes with a content-hashed BLOB/TEXT field cannot be used in range scans
@@ -3829,45 +3825,15 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				// Assert that we do NOT use the index for a join on a range condition
-				Query: "explain select distinct j2.pk from j2 join t on t.col1 >= 'one';",
-				Expected: []sql.Row{
-					{"Distinct"},
-					{" └─ Project"},
-					{"     ├─ columns: [j2.pk]"},
-					{"     └─ InnerJoin"},
-					{"         ├─ Table"},
-					{"         │   └─ name: j2"},
-					{"         └─ Filter"},
-					{"             ├─ (t.col1 >= 'one')"},
-					{"             └─ Table"},
-					{"                 └─ name: t"}},
+				Query:           "select distinct j2.pk from j2 join t on t.col1 >= 'one';",
+				ExpectedIndexes: []string{},
+				Expected:        []sql.Row{{1}, {2}, {3}},
 			},
 			{
 				// Assert that we DO use the index for a join on an exact match condition
-				Query: "explain select distinct j2.pk from j2 join t on t.col1 = 'one';",
-				Expected: []sql.Row{
-					{"Distinct"},
-					{" └─ Project"},
-					{"     ├─ columns: [j2.pk]"},
-					{"     └─ LookupJoin"},
-					{"         ├─ Table"},
-					{"         │   └─ name: j2"},
-					{"         └─ Filter"},
-					{"             ├─ (t.col1 = 'one')"},
-					{"             └─ IndexedTableAccess(t)"},
-					{"                 ├─ index: [t.col1]"},
-					{"                 └─ keys: 'one'"}},
-			},
-			{
-				// Assert that indexes with hash-encoded fields are not used for ordering
-				Query: "explain select t.col1 from t order by t.col1;",
-				Expected: []sql.Row{
-					{"Project"},
-					{" ├─ columns: [t.col1]"},
-					{" └─ Sort(t.col1 ASC)"},
-					{"     └─ Table"},
-					{"         ├─ name: t"},
-					{"         └─ columns: [pk col1]"}},
+				Query:           "select distinct j2.pk from j2 join t on t.col1 = '  ';",
+				ExpectedIndexes: []string{"k1"},
+				Expected:        []sql.Row{{1}, {2}, {3}},
 			},
 			{
 				// Assert that indexes with hash-encoded fields are not used for ordering
@@ -3930,29 +3896,9 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				// Indexes with content-hashed fields are not eligible for use with range scans
-				Query: "explain select * from t where col1 >= 'one';",
-				Expected: []sql.Row{
-					{"Filter"},
-					{" ├─ (t.col1 >= 'one')"},
-					{" └─ Table"},
-					{"     ├─ name: t"},
-					{"     └─ columns: [pk col1 col2]"}},
-			},
-			{
-				// Indexes with content-hashed fields are not eligible for use with range scans
 				Query:           "select * from t where col1 >= 'one';",
 				ExpectedIndexes: []string{},
 				Expected:        []sql.Row{{1, "one", "one___"}, {2, "two", "two___"}},
-			},
-			{
-				// Indexes with content-hashed fields are not eligible for use with range scans
-				Query: "explain select * from t where col2 >= 'one';",
-				Expected: []sql.Row{
-					{"Filter"},
-					{" ├─ (t.col2 >= 'one')"},
-					{" └─ Table"},
-					{"     ├─ name: t"},
-					{"     └─ columns: [pk col1 col2]"}},
 			},
 			{
 				// Indexes with content-hashed fields are not eligible for use with range scans
