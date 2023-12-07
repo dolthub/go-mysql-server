@@ -214,7 +214,15 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 	case *big.Rat:
 		return t.ConvertToNullDecimal(new(big.Float).SetRat(value))
 	case decimal.Decimal:
-		res = value
+		if t.definesColumn {
+			val, err := decimal.NewFromString(value.StringFixed(int32(t.scale)))
+			if err != nil {
+				return decimal.NullDecimal{}, err
+			}
+			res = val
+		} else {
+			res = value
+		}
 	case []uint8:
 		val, err := strconv.ParseFloat(string(value), 64)
 		if err != nil {
@@ -296,16 +304,7 @@ func (t DecimalType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 		return sqltypes.Value{}, err
 	}
 
-	// decimal type value for valid table column should use scale defined by the column.
-	// if the value is not part of valid table column, the result value should use its
-	// own precision and scale.
-	var val []byte
-	if t.definesColumn {
-		val = AppendAndSliceString(dest, value.Decimal.StringFixed(int32(t.scale)))
-	} else {
-		decStr := value.Decimal.StringFixed(value.Decimal.Exponent() * -1)
-		val = AppendAndSliceString(dest, decStr)
-	}
+	val := AppendAndSliceString(dest, t.DecimalValueStringFixed(value.Decimal))
 
 	return sqltypes.MakeTrusted(sqltypes.Decimal, val), nil
 }
@@ -351,4 +350,14 @@ func (t DecimalType_) Precision() uint8 {
 // Scale implements DecimalType interface.
 func (t DecimalType_) Scale() uint8 {
 	return t.scale
+}
+
+// DecimalValueStringFixed returns string value for the given decimal value. If decimal type value is for valid table column only,
+// it should use scale defined by the column. Otherwise, the result value should use its own precision and scale.
+func (t DecimalType_) DecimalValueStringFixed(v decimal.Decimal) string {
+	if t.definesColumn {
+		return v.StringFixed(int32(t.scale))
+	} else {
+		return v.StringFixed(v.Exponent() * -1)
+	}
 }

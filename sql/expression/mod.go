@@ -147,13 +147,13 @@ func (m *Mod) convertLeftRight(ctx *sql.Context, left interface{}, right interfa
 	if types.IsFloat(typ) {
 		left = convertValueToType(ctx, typ, left, lIsTimeType)
 	} else {
-		left = convertToDecimalValue(left, lIsTimeType)
+		left = convertToDecimalValue(typ, left, lIsTimeType)
 	}
 
 	if types.IsFloat(typ) {
 		right = convertValueToType(ctx, typ, right, rIsTimeType)
 	} else {
-		right = convertToDecimalValue(right, rIsTimeType)
+		right = convertToDecimalValue(typ, right, rIsTimeType)
 	}
 
 	return left, right

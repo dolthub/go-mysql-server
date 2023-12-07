@@ -218,13 +218,13 @@ func (d *Div) convertLeftRight(ctx *sql.Context, left interface{}, right interfa
 	if types.IsFloat(typ) {
 		left = convertValueToType(ctx, typ, left, lIsTimeType)
 	} else {
-		left = convertToDecimalValue(left, lIsTimeType)
+		left = convertToDecimalValue(typ, left, lIsTimeType)
 	}
 
 	if types.IsFloat(typ) {
 		right = convertValueToType(ctx, typ, right, rIsTimeType)
 	} else {
-		right = convertToDecimalValue(right, rIsTimeType)
+		right = convertToDecimalValue(typ, right, rIsTimeType)
 	}
 
 	return left, right
@@ -329,21 +329,28 @@ func (d *Div) determineResultType(outermostResult bool) sql.Type {
 // precision loss.
 func floatOrDecimalType(e sql.Expression, treatIntsAsFloats bool) sql.Type {
 	var resType sql.Type
-	var decType sql.Type
 	var maxWhole, maxFrac uint8
 	sql.Inspect(e, func(expr sql.Expression) bool {
 		switch c := expr.(type) {
 		case *GetField:
-			if treatIntsAsFloats && types.IsInteger(c.Type()) {
+			ct := c.Type()
+			if treatIntsAsFloats && types.IsInteger(ct) {
 				resType = types.Float64
 				return false
 			}
-			if types.IsFloat(c.Type()) {
+			if types.IsFloat(ct) {
 				resType = types.Float64
 				return false
 			}
-			if types.IsDecimal(c.Type()) {
-				decType = c.Type()
+			if types.IsDecimal(ct) {
+				dt := ct.(sql.DecimalType)
+				p, s := dt.Precision(), dt.Scale()
+				if cw := p - s; cw > maxWhole {
+					maxWhole = cw
+				}
+				if s > maxFrac {
+					maxFrac = s
+				}
 			}
 		case *Literal:
 			if types.IsNumber(c.Type()) {
@@ -366,10 +373,6 @@ func floatOrDecimalType(e sql.Expression, treatIntsAsFloats bool) sql.Type {
 		return resType
 	}
 
-	if decType != nil {
-		return decType
-	}
-
 	// defType is defined by evaluating all number literals available
 	defType, derr := types.CreateDecimalType(maxWhole+maxFrac, maxFrac)
 	if derr != nil {
@@ -383,7 +386,7 @@ func floatOrDecimalType(e sql.Expression, treatIntsAsFloats bool) sql.Type {
 // If the value is invalid, it returns decimal 0. This function
 // is used for 'div' or 'mod' arithmetic operation, which requires
 // the result value to have precise precision and scale.
-func convertToDecimalValue(val interface{}, isTimeType bool) interface{} {
+func convertToDecimalValue(t sql.Type, val interface{}, isTimeType bool) interface{} {
 	if isTimeType {
 		val = convertTimeTypeToString(val)
 	}
@@ -397,22 +400,41 @@ func convertToDecimalValue(val interface{}, isTimeType bool) interface{} {
 	default:
 	}
 
-	if _, ok := val.(decimal.Decimal); !ok {
-		p, s := GetPrecisionAndScale(val)
-		if p > types.DecimalTypeMaxPrecision {
-			p = types.DecimalTypeMaxPrecision
+	maxWhole := uint8(0)
+	maxFrac := uint8(0)
+	decimalTypeMaxWhole := uint8(types.DecimalTypeMaxPrecision - types.DecimalTypeMaxScale)
+
+	if types.IsDecimal(t) {
+		dt := t.(sql.DecimalType)
+		p, s := dt.Precision(), dt.Scale()
+		if cw := p - s; cw > decimalTypeMaxWhole {
+			maxWhole = decimalTypeMaxWhole
+		} else if cw > maxWhole {
+			maxWhole = cw
 		}
-		if s > types.DecimalTypeMaxScale {
-			s = types.DecimalTypeMaxScale
+		if s > maxFrac {
+			maxFrac = s
 		}
-		dtyp, err := types.CreateDecimalType(p, s)
-		if err != nil {
-			val = decimal.Zero
-		}
-		val, _, err = dtyp.Convert(val)
-		if err != nil {
-			val = decimal.Zero
-		}
+	}
+
+	p, s := GetPrecisionAndScale(val)
+	if cw := p - s; cw > decimalTypeMaxWhole {
+		maxWhole = decimalTypeMaxWhole
+	} else if cw > maxWhole {
+		maxWhole = cw
+	}
+	if s > types.DecimalTypeMaxScale {
+		maxFrac = types.DecimalTypeMaxScale
+	} else if s > maxFrac {
+		maxFrac = s
+	}
+	dtyp, err := types.CreateDecimalType(maxWhole+maxFrac, maxFrac)
+	if err != nil {
+		val = decimal.Zero
+	}
+	val, _, err = dtyp.Convert(val)
+	if err != nil {
+		val = decimal.Zero
 	}
 
 	return val
@@ -745,8 +767,8 @@ func (i *IntDiv) convertLeftRight(ctx *sql.Context, left interface{}, right inte
 		left = convertValueToType(ctx, typ, left, lIsTimeType)
 		right = convertValueToType(ctx, typ, right, rIsTimeType)
 	} else {
-		left = convertToDecimalValue(left, lIsTimeType)
-		right = convertToDecimalValue(right, rIsTimeType)
+		left = convertToDecimalValue(typ, left, lIsTimeType)
+		right = convertToDecimalValue(typ, right, rIsTimeType)
 	}
 
 	return left, right
