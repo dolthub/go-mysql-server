@@ -700,6 +700,17 @@ func validatePrefixLength(ctx *sql.Context, schCol *sql.Column, idxCol sql.Index
 		if !isUnique || strictMysqlCompatibility {
 			return sql.ErrInvalidBlobTextKey.New(schCol.Name)
 		}
+
+		// The hash we compute doesn't take into account the collation settings of the column, so in a
+		// case-insensitive collation, although "YES" and "yes" are equivalent, they will still generate
+		// different hashes which won't correctly identify a real uniqueness constraint violation.
+		stringType, ok := schCol.Type.(types.StringType)
+		if ok {
+			collation := stringType.Collation().Collation()
+			if !collation.IsCaseSensitive || !collation.IsAccentSensitive {
+				return sql.ErrCollationNotSupportedOnUniqueTextIndex.New()
+			}
+		}
 	}
 
 	return nil

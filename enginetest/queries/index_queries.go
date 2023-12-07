@@ -3948,6 +3948,26 @@ var IndexPrefixQueries = []ScriptTest{
 		},
 	},
 	{
+		Name: "case-insensitive collations are restricted for unique indexes on TEXT columns with no prefix length",
+		Assertions: []ScriptTestAssertion{
+			{
+				// Assert we can create the index without a prefix, inline in a table definition, too
+				Query:       "create table t1 (pk int primary key, col1 TEXT collate utf8mb3_general_ci, unique key k1(col1));",
+				ExpectedErr: sql.ErrCollationNotSupportedOnUniqueTextIndex,
+			},
+			{
+				// Assert we can create the index without a prefix, inline in a table definition, too
+				Query:    "create table t2 (pk int primary key, col1 TEXT collate utf8mb3_general_ci);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// Assert we can create the index without a prefix, inline in a table definition, too
+				Query:       "alter table t2 add unique key k1(col1);",
+				ExpectedErr: sql.ErrCollationNotSupportedOnUniqueTextIndex,
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/7040
 		Name: "unique indexes on TEXT/BLOB columns with no prefix length (strict MySQL compatibility)",
 		SetUpScript: []string{
