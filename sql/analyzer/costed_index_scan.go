@@ -1070,30 +1070,27 @@ func (c *indexCoster) costIndexScanOr(filter *iScanOr, s sql.Statistic, ordinals
 }
 
 // indexHasContentHashedFieldForFilter returns true if the given index |idx| has a content-hashed field that is used
-// by the given filter |filter|. Indexes with content-hashed fields can only be used for a subset of filter operations.
-func indexHasContentHashedFieldForFilter(filter *iScanLeaf, idx sql.Index) bool {
+// by the given filter |filter|. |ordinals| provides a mapping from filter expression to position in |idx|. Indexes
+// with content-hashed fields can only be used for a subset of filter operations.
+func indexHasContentHashedFieldForFilter(filter *iScanLeaf, idx sql.Index, ordinals map[string]int) bool {
 	// Only unique indexes are currently able to use content-hashed fields
 	if !idx.IsUnique() {
 		return false
 	}
 
-	for i, columnExpressionType := range idx.ColumnExpressionTypes() {
-		// Only TEXT/BLOB types can currently use content-hashes in indexes
-		if !types.IsTextBlob(columnExpressionType.Type) {
-			continue
-		}
+	i := ordinals[filter.gf.Name()]
+	columnExpressionType := idx.ColumnExpressionTypes()[i]
 
-		prefixLength := uint16(0)
-		if len(idx.PrefixLengths()) > i {
-			prefixLength = idx.PrefixLengths()[i]
-		}
-
-		if prefixLength == 0 && columnExpressionType.Expression == filter.normString() {
-			return true
-		}
+	// Only TEXT/BLOB types can currently use content-hashes in indexes
+	if !types.IsTextBlob(columnExpressionType.Type) {
+		return false
 	}
 
-	return false
+	prefixLength := uint16(0)
+	if len(idx.PrefixLengths()) > i {
+		prefixLength = idx.PrefixLengths()[i]
+	}
+	return prefixLength == 0
 }
 
 func (c *indexCoster) costIndexScanLeaf(filter *iScanLeaf, s sql.Statistic, ordinals map[string]int, idx sql.Index) (sql.Statistic, bool, error) {
@@ -1104,7 +1101,7 @@ func (c *indexCoster) costIndexScanLeaf(filter *iScanLeaf, s sql.Statistic, ordi
 
 	// indexes with content-hashed fields can be used to test equality or compare with NULL,
 	// but can't be used for other comparisons, such as less than or greater than.
-	if indexHasContentHashedFieldForFilter(filter, idx) {
+	if indexHasContentHashedFieldForFilter(filter, idx, ordinals) {
 		switch filter.op {
 		case indexScanOpEq, indexScanOpNotEq, indexScanOpNullSafeEq, indexScanOpIsNull, indexScanOpIsNotNull:
 		default:
@@ -1122,7 +1119,6 @@ func (c *indexCoster) costIndexScanLeaf(filter *iScanLeaf, s sql.Statistic, ordi
 		conj.add(filter)
 		return conj.stat, true, nil
 	}
-
 }
 
 func (c *indexCoster) costSpatial(filter *iScanLeaf, s sql.Statistic, ordinal int) (sql.Statistic, bool, error) {

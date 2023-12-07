@@ -3794,6 +3794,15 @@ var IndexPrefixQueries = []ScriptTest{
 				ExpectedErr: sql.ErrUniqueKeyViolation,
 			},
 			{
+				// Asserts that a subquery can correctly use the content-hashed index in a join. The index is valid here,
+				// because it is used to filter on the equality condition in the top level filter, the filter in the
+				// subquery is not done using the index.
+				Query:              "select pk from t where col1='oneasdfasdf' and exists (select pk from j2 where j2.col1 <= t.col1);",
+				Expected:           []sql.Row{{1}},
+				CheckIndexedAccess: true,
+				ExpectedIndexes:    []string{"k1"},
+			},
+			{
 				// Skipped until Dolt's implementation can return this error message with the raw
 				// content value, and not the hashed value.
 				Skip:           true,
@@ -3846,6 +3855,12 @@ var IndexPrefixQueries = []ScriptTest{
 				Query:           "select col1 from t where concat(t.col1, ' ') = '  ';",
 				ExpectedIndexes: []string{},
 				Expected:        []sql.Row{{" "}},
+			},
+			{
+				// Assert that different types that have to be coerced don't cause issues
+				Query:           "select col1 from t where t.col1 = POINT(42, 42);",
+				ExpectedIndexes: []string{"k1"},
+				Expected:        []sql.Row{},
 			},
 			{
 				// Assert that index use is valid for not equals comparisons
