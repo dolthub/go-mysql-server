@@ -4312,6 +4312,65 @@ func TestOnUpdateTimestamp(t *testing.T, harness Harness) {
 
 	exp = []sql.Row{{2, nil, nil}, {3, nil, nil}, {100, time.Date(2000, 1, 23, 0, 0, 0, 0, time.UTC), time1}}
 	TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t2", exp, nil, nil)
+
+	// Insert triggers that perform updates
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE tbl0 (id INT PRIMARY KEY)")
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE tbl1 (id INT, ts TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE tbl2 (id INT, ts TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO tbl1(id) VALUES (0)")
+	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO tbl2(id) VALUES (0)")
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TRIGGER TRIG1 BEFORE INSERT ON tbl0 FOR EACH ROW UPDATE tbl1 SET id = id + 1")
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TRIGGER TRIG2 AFTER INSERT ON tbl0 FOR EACH ROW UPDATE tbl2 SET id = id + 1")
+
+	sql.RunWithNowFunc(func() time.Time {
+		return time1
+	}, func() error {
+		ctx.SetQueryTime(time1)
+		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO tbl0(id) VALUES (1)")
+		return nil
+	})
+
+	exp = []sql.Row{{1, time1}}
+	TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM tbl1", exp, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM tbl2", exp, nil, nil)
+
+	// Update after trigger that performs updates
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE tbl3 (id INT, ts TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO tbl3(id) VALUES (0)")
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TRIGGER TRIG3 AFTER UPDATE ON tbl0 FOR EACH ROW UPDATE tbl3 SET id = id + 1")
+
+	sql.RunWithNowFunc(func() time.Time {
+		return time1
+	}, func() error {
+		ctx.SetQueryTime(time1)
+		RunQueryWithContext(t, e, harness, ctx, "UPDATE tbl0 SET id = 10")
+		return nil
+	})
+
+	exp = []sql.Row{{1, time1}}
+	TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM tbl3", exp, nil, nil)
+
+
+	// Foreign Key Cascade Update does NOT trigger on Update on child table
+	// TODO: this seems like a bug, but it matches MySQL behavior
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE parent (id INT PRIMARY KEY, ts TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE child (id INT PRIMARY KEY, ts TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, foreign key (id) references parent(id) ON UPDATE CASCADE)")
+	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO parent(id) VALUES (1)")
+	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO child(id) VALUES (1)")
+
+	sql.RunWithNowFunc(func() time.Time {
+		return time1
+	}, func() error {
+		ctx.SetQueryTime(time1)
+		RunQueryWithContext(t, e, harness, ctx, "UPDATE parent SET id = 10")
+		return nil
+	})
+
+	exp = []sql.Row{{10, time1}}
+	TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM parent", exp, nil, nil)
+
+	exp = []sql.Row{{10, nil}}
+	TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM child", exp, nil, nil)
 }
 
 func TestAddDropPks(t *testing.T, harness Harness) {
