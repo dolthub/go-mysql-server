@@ -112,6 +112,7 @@ var ScriptTests = []ScriptTest{
 		Name: "filter pushdown through join uppercase name",
 		SetUpScript: []string{
 			"create table A (A int primary key);",
+			"insert into A values (0),(1)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{

@@ -87,7 +87,8 @@ func (r *AntiJoin) JoinPrivate() *JoinBase {
 
 type LookupJoin struct {
 	*JoinBase
-	Lookup *Lookup
+	Lookup    *ExprGroup
+	Injective bool
 }
 
 var _ RelExpr = (*LookupJoin)(nil)
@@ -119,7 +120,7 @@ func (r *RangeHeapJoin) JoinPrivate() *JoinBase {
 
 type ConcatJoin struct {
 	*JoinBase
-	Concat []*Lookup
+	Concat []*ExprGroup
 }
 
 var _ RelExpr = (*ConcatJoin)(nil)
@@ -227,6 +228,40 @@ func (r *TableScan) OutputCols() sql.Schema {
 }
 
 func (r *TableScan) Children() []*ExprGroup {
+	return nil
+}
+
+type IndexScan struct {
+	*sourceBase
+	Table *plan.IndexedTableAccess
+	Index *Index
+	Alias string
+}
+
+var _ RelExpr = (*IndexScan)(nil)
+var _ SourceRel = (*IndexScan)(nil)
+
+func (r *IndexScan) String() string {
+	return FormatExpr(r)
+}
+
+func (r *IndexScan) Name() string {
+	return strings.ToLower(r.Table.Name())
+}
+
+func (r *IndexScan) TableId() sql.TableId {
+	return TableIdForSource(r.g.Id)
+}
+
+func (r *IndexScan) TableIdNode() plan.TableIdNode {
+	return r.Table
+}
+
+func (r *IndexScan) OutputCols() sql.Schema {
+	return r.Table.Schema()
+}
+
+func (r *IndexScan) Children() []*ExprGroup {
 	return nil
 }
 
@@ -624,6 +659,8 @@ func FormatExpr(r exprType) string {
 		return fmt.Sprintf("lateraljoin %d %d", r.Left.Id, r.Right.Id)
 	case *TableScan:
 		return fmt.Sprintf("tablescan: %s", r.Name())
+	case *IndexScan:
+		return fmt.Sprintf("indexscan: %s", r.Name())
 	case *Values:
 		return fmt.Sprintf("values: %s", r.Name())
 	case *TableAlias:
@@ -686,6 +723,8 @@ func buildRelExpr(b *ExecBuilder, r RelExpr, children ...sql.Node) (sql.Node, er
 		result, err = b.buildLateralJoin(r, children...)
 	case *TableScan:
 		result, err = b.buildTableScan(r, children...)
+	case *IndexScan:
+		result, err = b.buildIndexScan(r, children...)
 	case *Values:
 		result, err = b.buildValues(r, children...)
 	case *TableAlias:

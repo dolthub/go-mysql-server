@@ -89,6 +89,8 @@ func (b *ExecBuilder) buildLookup(l *Lookup, children ...sql.Node) (sql.Node, er
 	case *plan.Sort:
 		ret, err = b.buildLookup(l, n.Child)
 		ret = plan.NewSort(n.SortFields, ret)
+	case *plan.IndexedTableAccess:
+		ret, err = plan.NewIndexedAccessForTableNode(n.TableNode, plan.NewLookupBuilder(l.Index.SqlIdx(), l.KeyExprs, l.Nullmask))
 	default:
 		panic(fmt.Sprintf("unexpected lookup child %T", n))
 	}
@@ -100,7 +102,7 @@ func (b *ExecBuilder) buildLookup(l *Lookup, children ...sql.Node) (sql.Node, er
 
 func (b *ExecBuilder) buildLookupJoin(j *LookupJoin, children ...sql.Node) (sql.Node, error) {
 	left := children[0]
-	right, err := b.buildLookup(j.Lookup, children[1])
+	right, err := b.buildIndexScan(j.Lookup.First.(*IndexScan), children[1])
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +133,7 @@ func (b *ExecBuilder) buildRangeHeap(sr *RangeHeap, children ...sql.Node) (ret s
 	default:
 		var childNode sql.Node
 		if sr.MinIndex != nil {
-			childNode, err = b.buildIndexScan(sr.MinIndex, n)
+			childNode, err = b.buildIndexScan(sr.MinIndex, children[0])
 		} else {
 			sortExpr := sr.MinExpr
 			if err != nil {
@@ -166,7 +168,7 @@ func (b *ExecBuilder) buildRangeHeapJoin(j *RangeHeapJoin, children ...sql.Node)
 	var left sql.Node
 	var err error
 	if j.RangeHeap.ValueIndex != nil {
-		left, err = b.buildIndexScan(j.RangeHeap.ValueIndex, children[0])
+		left, err = b.buildIndexScan(j.RangeHeap.ValueIndex)
 		if err != nil {
 			return nil, err
 		}
@@ -201,12 +203,12 @@ func (b *ExecBuilder) buildConcatJoin(j *ConcatJoin, children ...sql.Node) (sql.
 		name = n.Name()
 	}
 
-	right, err := b.buildLookup(j.Concat[0], rightC)
+	right, err := b.buildIndexScan(j.Concat[0].First.(*IndexScan), children[1])
 	if err != nil {
 		return nil, err
 	}
 	for _, look := range j.Concat[1:] {
-		l, err := b.buildLookup(look, rightC)
+		l, err := b.buildIndexScan(look.First.(*IndexScan), children[1])
 		if err != nil {
 			return nil, err
 		}
@@ -250,16 +252,26 @@ func (b *ExecBuilder) buildHashJoin(j *HashJoin, children ...sql.Node) (sql.Node
 
 func (b *ExecBuilder) buildIndexScan(i *IndexScan, children ...sql.Node) (sql.Node, error) {
 	// need keyExprs for whole range for every dimension
-	l := sql.IndexLookup{Index: i.Idx.SqlIdx(), Ranges: sql.RangeCollection{i.Range}}
 
+	if len(children) == 0 {
+		if i.Alias != "" {
+			return plan.NewTableAlias(i.Alias, i.Table), nil
+		}
+		return i.Table, nil
+	}
 	var ret sql.Node
 	var err error
 	switch n := children[0].(type) {
 	case sql.TableNode:
-		ret, err = plan.NewStaticIndexedAccessForTableNode(n, l)
+		if i.Alias != "" {
+			ret = plan.NewTableAlias(i.Alias, i.Table)
+		} else {
+			ret = i.Table
+		}
 	case *plan.TableAlias:
-		ret, err = plan.NewStaticIndexedAccessForTableNode(n.Child.(sql.TableNode), l)
-		ret = plan.NewTableAlias(n.Name(), ret)
+		ret = plan.NewTableAlias(n.Name(), i.Table)
+	case *plan.IndexedTableAccess:
+		ret = i.Table
 	case *plan.Distinct:
 		ret, err = b.buildIndexScan(i, n.Child)
 		ret = plan.NewDistinct(ret)
@@ -301,17 +313,11 @@ func (b *ExecBuilder) buildMergeJoin(j *MergeJoin, children ...sql.Node) (sql.No
 	if err != nil {
 		return nil, err
 	}
-	if checkIndexTypeMismatch(j.InnerScan.Idx.SqlIdx(), j.InnerScan.Range) {
-		return nil, fmt.Errorf("index scan type mismatch")
-	}
-
 	outer, err := b.buildIndexScan(j.OuterScan, children[1])
 	if err != nil {
 		return nil, err
 	}
-	if checkIndexTypeMismatch(j.OuterScan.Idx.SqlIdx(), j.OuterScan.Range) {
-		return nil, fmt.Errorf("index scan type mismatch")
-	}
+
 	if j.SwapCmp {
 		switch cmp := j.Filter[0].(type) {
 		case *expression.Equals:

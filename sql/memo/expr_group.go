@@ -94,10 +94,58 @@ func (e *ExprGroup) finalize(node sql.Node) (sql.Node, error) {
 	if props.sort != nil {
 		result = plan.NewSort(props.sort, result)
 	}
-	if props.limit != nil {
-		result = plan.NewLimit(props.limit, result)
+	if props.Limit != nil {
+		result = plan.NewLimit(props.Limit, result)
 	}
 	return result, nil
+}
+
+// fixEnforcers edits the children of a new best plan to account
+// for implementation correctness, like conflicting table lookups
+// and sorting.
+func (e *ExprGroup) fixEnforcers() {
+	switch n := e.Best.(type) {
+	case *MergeJoin:
+		// todo: no ITA children that aren't the same index as sorting index
+		n.Left.fixItaConflict()
+		n.Right.fixItaConflict()
+	case *LookupJoin:
+		// no ITA children
+		n.Right.fixItaConflict()
+	}
+}
+
+// Update best to a DFS path to a tablescan
+func (e *ExprGroup) fixItaConflict() {
+	e.findTableScanPath()
+}
+
+func (e *ExprGroup) findTableScanPath() bool {
+	n := e.First
+	for n != nil {
+		src, ok := n.(SourceRel)
+		if !ok {
+			// not a source, try to find path through children
+			for _, c := range n.Children() {
+				if c.findTableScanPath() {
+					// found path, update best
+					e.Best = n
+					return true
+				}
+			}
+			n = n.Next()
+			continue
+		}
+		_, ok = src.(*IndexScan)
+		if ok {
+			n = n.Next()
+			continue
+		}
+		// is a source, not an indexScan
+		e.Best = n
+		return true
+	}
+	return false
 }
 
 func (e *ExprGroup) String() string {
