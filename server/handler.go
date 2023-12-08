@@ -622,6 +622,7 @@ func schemaToFields(ctx *sql.Context, s sql.Schema) []*query.Field {
 
 		fields[i] = &query.Field{
 			Name:         c.Name,
+			OrgName:      c.Name,
 			Type:         c.Type.Type(),
 			Charset:      charset,
 			ColumnLength: c.Type.MaxTextResponseByteLength(ctx),
