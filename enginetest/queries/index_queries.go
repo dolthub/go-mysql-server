@@ -3765,6 +3765,265 @@ var IndexPrefixQueries = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/7040
+		Name: "unique indexes on TEXT/BLOB columns with no prefix length (MariaDB compatibility)",
+		SetUpScript: []string{
+			"create table t (pk int primary key, col1 text);",
+			"create table j2 (pk int primary key, col1 varchar(100));",
+			"insert into j2 values (1, '100'), (2, '  '), (3, '300');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select @@strict_mysql_compatibility;",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:    "alter table t add unique key k1(col1);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "insert into t values (4, ''), (5, ' '), (8, NULL), (-1, '  ');",
+				Expected: []sql.Row{{types.NewOkResult(4)}},
+			},
+			{
+				Query:    "insert into t values (1, 'oneasdfasdf');",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:       "insert into t values (2, 'oneasdfasdf');",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				// Asserts that a subquery can correctly use the content-hashed index in a join. The index is valid here,
+				// because it is used to filter on the equality condition in the top level filter, the filter in the
+				// subquery is not done using the index.
+				Query:              "select pk from t where col1='oneasdfasdf' and exists (select pk from j2 where j2.col1 <= t.col1);",
+				Expected:           []sql.Row{{1}},
+				CheckIndexedAccess: true,
+				ExpectedIndexes:    []string{"k1"},
+			},
+			{
+				// Skipped until Dolt's implementation can return this error message with the raw
+				// content value, and not the hashed value.
+				Skip:           true,
+				Query:          "insert into t values (2, 'oneasdfasdf');",
+				ExpectedErrStr: "duplicate unique key given: [oneasdfasdf]",
+			},
+			{
+				Query:              "select col1 from t where col1='oneasdfasdf';",
+				Expected:           []sql.Row{{"oneasdfasdf"}},
+				CheckIndexedAccess: true,
+				ExpectedIndexes:    []string{"k1"},
+			},
+			{
+				// Indexes with content-hashed fields are not eligible for use with range scans
+				Query:           "select * from t where col1 >= 'one';",
+				ExpectedIndexes: []string{},
+				Expected:        []sql.Row{{1, "oneasdfasdf"}},
+			},
+			{
+				// Indexes with a content-hashed BLOB/TEXT field cannot be used in range scans
+				Query:           "select * from t where col1 >= ' ' order by pk;",
+				ExpectedIndexes: []string{"primary"},
+				Expected:        []sql.Row{{-1, "  "}, {1, "oneasdfasdf"}, {5, " "}},
+			},
+			{
+				// Assert we can create the index without a prefix, inline in a table definition, too
+				Query:    "create table t2 (pk int primary key, col1 BLOB, unique key k1(col1));",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// Assert that we do NOT use the index for a join on a range condition
+				Query:           "select distinct j2.pk from j2 join t on t.col1 >= 'one';",
+				ExpectedIndexes: []string{},
+				Expected:        []sql.Row{{1}, {2}, {3}},
+				JoinTypes:       []plan.JoinType{plan.JoinTypeInner},
+			},
+			{
+				// Assert that we DO use the index for a join on an exact match condition
+				Query:           "select distinct j2.pk from j2 join t on t.col1 = ' ';",
+				ExpectedIndexes: []string{"k1"},
+				Expected:        []sql.Row{{1}, {2}, {3}},
+				JoinTypes:       []plan.JoinType{plan.JoinTypeLookup},
+			},
+
+			{
+				// Assert that we DO use the index for a lookup join on an exact match condition
+				Query:           "select /*+ LOOKUP_JOIN(t,j2) */ distinct j2.pk from j2 join t on t.col1 = j2.col1;",
+				ExpectedIndexes: []string{"k1"},
+				Expected:        []sql.Row{{2}},
+				JoinTypes:       []plan.JoinType{plan.JoinTypeLookup},
+			},
+			{
+				// Assert that we do NOT use the index for a lookup join on a range condition
+				Query:           "select /*+ LOOKUP_JOIN(t,j2) */ distinct j2.pk from j2 join t on t.col1 >= j2.col1;",
+				ExpectedIndexes: []string{},
+				Expected:        []sql.Row{{1}, {2}, {3}},
+				JoinTypes:       []plan.JoinType{plan.JoinTypeInner},
+			},
+			{
+				// Assert that merge join is not available, since the index is not ordered (equality condition)
+				Query:           "select /*+ MERGE_JOIN(t,j2) */ distinct j2.pk from j2 join t on t.col1 = j2.col1;",
+				ExpectedIndexes: []string{"k1"},
+				Expected:        []sql.Row{{2}},
+				JoinTypes:       []plan.JoinType{plan.JoinTypeLookup},
+			},
+			{
+				// Assert that merge join is not available, since the index is not ordered (range condition)
+				Query:           "select /*+ MERGE_JOIN(t,j2) */ distinct j2.pk from j2 join t on t.col1 >= j2.col1;",
+				ExpectedIndexes: []string{},
+				Expected:        []sql.Row{{1}, {2}, {3}},
+				JoinTypes:       []plan.JoinType{plan.JoinTypeInner},
+			},
+			{
+				// Assert that indexes with hash-encoded fields are not used for ordering
+				Query:           "select t.col1 from t order by t.col1;",
+				ExpectedIndexes: []string{},
+				Expected:        []sql.Row{{nil}, {""}, {" "}, {"  "}, {"oneasdfasdf"}},
+			},
+			{
+				// Assert that filters that transform the column value are not eligible to use the secondary index
+				Query:           "select col1 from t where concat(t.col1, ' ') = '  ';",
+				ExpectedIndexes: []string{},
+				Expected:        []sql.Row{{" "}},
+			},
+			{
+				// Assert that different types that have to be coerced don't cause issues
+				Query:           "select col1 from t where t.col1 = POINT(42, 42);",
+				ExpectedIndexes: []string{"k1"},
+				Expected:        []sql.Row{},
+			},
+			{
+				// Assert that index use is valid for not equals comparisons
+				Query:           "select col1 from t where t.col1 != 'oneasdfasdf';",
+				ExpectedIndexes: []string{"k1"},
+				Expected:        []sql.Row{{""}, {" "}, {"  "}},
+			},
+			{
+				// Assert that index use is valid for is not null filter expressions
+				Query:           "select col1 from t where t.col1 is not null;",
+				ExpectedIndexes: []string{"k1"},
+				Expected:        []sql.Row{{""}, {" "}, {"  "}, {"oneasdfasdf"}},
+			},
+			{
+				// Assert that index use is valid for null-safe comparisons
+				Query:           "select col1 from t where t.col1 <=> 'oneasdfasdf';",
+				ExpectedIndexes: []string{"k1"},
+				Expected:        []sql.Row{{"oneasdfasdf"}},
+			},
+			{
+				// Assert that index use is allowed for is null filter expressions
+				Query:           "select col1 from t where t.col1 is NULL",
+				ExpectedIndexes: []string{"k1"},
+				Expected:        []sql.Row{{nil}},
+			},
+		},
+	},
+	{
+		Name: "unique indexes on multiple TEXT/BLOB columns with partial prefix lengths (MariaDB compatibility)",
+		SetUpScript: []string{
+			"create table t (pk int primary key, col1 text, col2 text, constraint uk1 unique key(col1, col2(3)));",
+			"insert into t value(1, 'one', 'one___'), (2, 'two', 'two___');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select @@strict_mysql_compatibility;",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:       "insert into t values (200, 'two', 'two___');",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:              "select col1, col2 from t where col1='one';",
+				Expected:           []sql.Row{{"one", "one___"}},
+				CheckIndexedAccess: true,
+				ExpectedIndexes:    []string{"uk1"},
+			},
+			{
+				// Indexes with content-hashed fields are not eligible for use with range scans
+				Query:           "select * from t where col1 >= 'one';",
+				ExpectedIndexes: []string{},
+				Expected:        []sql.Row{{1, "one", "one___"}, {2, "two", "two___"}},
+			},
+			{
+				// Indexes with content-hashed fields are not eligible for use with range scans
+				Query:           "select * from t where col2 >= 'one';",
+				ExpectedIndexes: []string{},
+				Expected:        []sql.Row{{1, "one", "one___"}, {2, "two", "two___"}},
+			},
+			{
+				// Indexes with a content-hashed BLOB/TEXT field cannot be used in range scans
+				Query:           "select count(*) from t where col1 >= ' ';",
+				ExpectedIndexes: []string{},
+				Expected:        []sql.Row{{2}},
+			},
+			{
+				// Indexes with a content-hashed BLOB/TEXT field cannot be used in range scans
+				Query:           "select count(*) from t where col2 >= ' ';",
+				ExpectedIndexes: []string{},
+				Expected:        []sql.Row{{2}},
+			},
+			{
+				// Indexes with a content-hashed BLOB/TEXT field cannot be used in ordered range scans
+				Query:           "select * from t where col1 >= ' ' order by pk;",
+				ExpectedIndexes: []string{"primary"},
+				Expected:        []sql.Row{{1, "one", "one___"}, {2, "two", "two___"}},
+			},
+			{
+				// Indexes with a content-hashed BLOB/TEXT field cannot be used in ordered range scans
+				Query:           "select * from t where col2 >= ' ' order by pk;",
+				ExpectedIndexes: []string{"primary"},
+				Expected:        []sql.Row{{1, "one", "one___"}, {2, "two", "two___"}},
+			},
+		},
+	},
+	{
+		Name: "case-insensitive collations are restricted for unique indexes on TEXT columns with no prefix length",
+		Assertions: []ScriptTestAssertion{
+			{
+				// Assert we can create the index without a prefix, inline in a table definition, too
+				Query:       "create table t1 (pk int primary key, col1 TEXT collate utf8mb3_general_ci, unique key k1(col1));",
+				ExpectedErr: sql.ErrCollationNotSupportedOnUniqueTextIndex,
+			},
+			{
+				// Assert we can create the index without a prefix, inline in a table definition, too
+				Query:    "create table t2 (pk int primary key, col1 TEXT collate utf8mb3_general_ci);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// Assert we can create the index without a prefix, inline in a table definition, too
+				Query:       "alter table t2 add unique key k1(col1);",
+				ExpectedErr: sql.ErrCollationNotSupportedOnUniqueTextIndex,
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/7040
+		Name: "unique indexes on TEXT/BLOB columns with no prefix length (strict MySQL compatibility)",
+		SetUpScript: []string{
+			"create table t (pk int primary key, col1 text);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "set @@strict_mysql_compatibility = true;",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "select @@strict_mysql_compatibility;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:          "alter table t add unique key k1(col1);",
+				ExpectedErrStr: "blob/text column 'col1' used in key specification without a key length",
+			},
+			{
+				Query:          "create table t2 (pk int primary key, col1 BLOB, unique key k1(col1));",
+				ExpectedErrStr: "blob/text column 'col1' used in key specification without a key length",
+			},
+		},
+	},
+	{
 		Name:        "test prefix limits",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{

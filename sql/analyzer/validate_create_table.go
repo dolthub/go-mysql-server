@@ -392,6 +392,20 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 	return newSch, nil
 }
 
+// isStrictMysqlCompatibilityEnabled returns true if the strict_mysql_compatibility SQL system variable has been
+// turned on in this session, otherwise it returns false, or any unexpected error querying the system variable.
+func isStrictMysqlCompatibilityEnabled(ctx *sql.Context) (bool, error) {
+	strictMysqlCompatibility, err := ctx.GetSessionVariable(ctx, "strict_mysql_compatibility")
+	if err != nil {
+		return false, err
+	}
+	i, ok := strictMysqlCompatibility.(int8)
+	if !ok {
+		return false, nil
+	}
+	return i == 1, nil
+}
+
 func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Schema, mc *plan.ModifyColumn, keyedColumns map[string]bool) (sql.Schema, error) {
 	table := mc.Table
 	nameable := table.(sql.Nameable)
@@ -425,6 +439,11 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 		return newSch, nil
 	}
 
+	strictMysqlCompatibility, err := isStrictMysqlCompatibilityEnabled(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	// any indexes that use this column must have a prefix length
 	ia, err := newIndexAnalyzerForNode(ctx, table)
 	if err != nil {
@@ -440,9 +459,14 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 			col := plan.GetColumnFromIndexExpr(expr, getTable(table))
 			if col.Name == mc.Column() {
 				if len(prefixLengths) == 0 || prefixLengths[i] == 0 {
-					return nil, sql.ErrInvalidBlobTextKey.New(col.Name)
+					// MariaDB allows BLOB and TEXT columns to be used in unique keys WITHOUT specifying
+					// a prefix length, but MySQL does not, so still throw an error if we are in strict
+					// MySQL compatibility mode.
+					if !index.IsFullText() && (!index.IsUnique() && !strictMysqlCompatibility) {
+						return nil, sql.ErrInvalidBlobTextKey.New(col.Name)
+					}
 				}
-				if types.IsTextOnly(newCol.Type) && prefixLengths[i]*4 > MaxBytePrefix {
+				if types.IsTextOnly(newCol.Type) && len(prefixLengths) > 0 && prefixLengths[i]*4 > MaxBytePrefix {
 					return nil, sql.ErrKeyTooLong.New()
 				}
 			}
@@ -567,7 +591,7 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 		if !ok {
 			return nil, sql.ErrKeyColumnDoesNotExist.New(badColName)
 		}
-		err = validateIndexType(ctx, ai.Columns, sch, ai.Constraint == sql.IndexConstraint_Fulltext)
+		err = validateIndexType(ctx, ai.Columns, sch, ai.Constraint)
 		if err != nil {
 			return nil, err
 		}
@@ -634,7 +658,15 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 }
 
 // validatePrefixLength handles all errors related to creating indexes with prefix lengths
-func validatePrefixLength(ctx *sql.Context, schCol *sql.Column, idxCol sql.IndexColumn) error {
+func validatePrefixLength(ctx *sql.Context, schCol *sql.Column, idxCol sql.IndexColumn, constraint sql.IndexConstraint) error {
+	isFullText := constraint == sql.IndexConstraint_Fulltext
+	isUnique := constraint == sql.IndexConstraint_Unique
+
+	// Prefix length is ignored for full text indexes
+	if isFullText {
+		return nil
+	}
+
 	// Throw prefix length error for non-string types with prefixes
 	if idxCol.Length > 0 && !types.IsText(schCol.Type) {
 		return sql.ErrInvalidIndexPrefix.New(schCol.Name)
@@ -657,27 +689,44 @@ func validatePrefixLength(ctx *sql.Context, schCol *sql.Column, idxCol sql.Index
 		return sql.ErrInvalidIndexPrefix.New(schCol.Name)
 	}
 
-	// Prefix length is only required for BLOB and TEXT columns
+	strictMysqlCompatibility, err := isStrictMysqlCompatibilityEnabled(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Prefix length is required for BLOB and TEXT columns.
 	if types.IsTextBlob(schCol.Type) && prefixByteLength == 0 {
-		return sql.ErrInvalidBlobTextKey.New(schCol.Name)
+		// MariaDB extends this behavior so that unique indexes don't require a prefix length.
+		if !isUnique || strictMysqlCompatibility {
+			return sql.ErrInvalidBlobTextKey.New(schCol.Name)
+		}
+
+		// The hash we compute doesn't take into account the collation settings of the column, so in a
+		// case-insensitive collation, although "YES" and "yes" are equivalent, they will still generate
+		// different hashes which won't correctly identify a real uniqueness constraint violation.
+		stringType, ok := schCol.Type.(types.StringType)
+		if ok {
+			collation := stringType.Collation().Collation()
+			if !collation.IsCaseSensitive || !collation.IsAccentSensitive {
+				return sql.ErrCollationNotSupportedOnUniqueTextIndex.New()
+			}
+		}
 	}
 
 	return nil
 }
 
 // validateIndexType prevents creating invalid indexes
-func validateIndexType(ctx *sql.Context, cols []sql.IndexColumn, sch sql.Schema, isFullText bool) error {
+func validateIndexType(ctx *sql.Context, cols []sql.IndexColumn, sch sql.Schema, constraint sql.IndexConstraint) error {
 	for _, idxCol := range cols {
 		idx := sch.IndexOfColName(idxCol.Name)
 		if idx == -1 {
 			return sql.ErrColumnNotFound.New(idxCol.Name)
 		}
 		schCol := sch[idx]
-		if !isFullText {
-			err := validatePrefixLength(ctx, schCol, idxCol)
-			if err != nil {
-				return err
-			}
+		err := validatePrefixLength(ctx, schCol, idxCol, constraint)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -820,11 +869,9 @@ func validateIndexes(ctx *sql.Context, tableSpec *plan.TableSpec) error {
 			if !ok {
 				return sql.ErrUnknownIndexColumn.New(idxCol.Name, idx.IndexName)
 			}
-			if !idx.IsFullText() {
-				err := validatePrefixLength(ctx, schCol, idxCol)
-				if err != nil {
-					return err
-				}
+			err := validatePrefixLength(ctx, schCol, idxCol, idx.Constraint)
+			if err != nil {
+				return err
 			}
 		}
 		if idx.Constraint == sql.IndexConstraint_Spatial {
@@ -910,7 +957,7 @@ func validatePrimaryKey(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 
 		for _, idxCol := range ai.Columns {
 			schCol := sch[sch.IndexOf(idxCol.Name, tableName)]
-			err := validatePrefixLength(ctx, schCol, idxCol)
+			err := validatePrefixLength(ctx, schCol, idxCol, sql.IndexConstraint_Primary)
 			if err != nil {
 				return nil, err
 			}

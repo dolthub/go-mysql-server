@@ -137,7 +137,7 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 			if !ok {
 				stat, err = uniformDistStatisticsForIndex(ctx, iat, idx)
 			}
-			err := c.cost(root, stat)
+			err := c.cost(root, stat, idx)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -267,8 +267,8 @@ type indexCoster struct {
 }
 
 // cost tries to build the lowest cardinality index scan for an expression
-// tree rooted at |f| on an index whose statistics are represented by |stats|.
-func (c *indexCoster) cost(f indexFilter, stat sql.Statistic) error {
+// tree rooted at |f| on the index |idx| whose statistics are represented by |stat|.
+func (c *indexCoster) cost(f indexFilter, stat sql.Statistic, idx sql.Index) error {
 	ordinals := ordinalsForStat(stat)
 
 	newStat := stat
@@ -278,13 +278,13 @@ func (c *indexCoster) cost(f indexFilter, stat sql.Statistic) error {
 
 	switch f := f.(type) {
 	case *iScanAnd:
-		newStat, filters, err = c.costIndexScanAnd(f, stat, ordinals)
+		newStat, filters, err = c.costIndexScanAnd(f, stat, ordinals, idx)
 		if err != nil {
 			return err
 		}
 
 	case *iScanOr:
-		newStat, ok, err = c.costIndexScanOr(f, stat, ordinals)
+		newStat, ok, err = c.costIndexScanOr(f, stat, ordinals, idx)
 		if err != nil {
 			return err
 		}
@@ -292,7 +292,7 @@ func (c *indexCoster) cost(f indexFilter, stat sql.Statistic) error {
 			filters.Add(int(f.id))
 		}
 	case *iScanLeaf:
-		newStat, ok, err = c.costIndexScanLeaf(f, stat, ordinals)
+		newStat, ok, err = c.costIndexScanLeaf(f, stat, ordinals, idx)
 		if err != nil {
 			return err
 		}
@@ -994,8 +994,7 @@ func ordinalsForStat(stat sql.Statistic) map[string]int {
 	return ret
 }
 
-func (c *indexCoster) costIndexScanAnd(filter *iScanAnd, s sql.Statistic, ordinals map[string]int) (sql.Statistic, sql.FastIntSet, error) {
-
+func (c *indexCoster) costIndexScanAnd(filter *iScanAnd, s sql.Statistic, ordinals map[string]int, idx sql.Index) (sql.Statistic, sql.FastIntSet, error) {
 	// first step finds the conjunctions that match index prefix columns.
 	// we divide into eqFilters and rangeFilters
 
@@ -1004,7 +1003,7 @@ func (c *indexCoster) costIndexScanAnd(filter *iScanAnd, s sql.Statistic, ordina
 
 	if len(filter.orChildren) > 0 {
 		for _, or := range filter.orChildren {
-			childStat, ok, err := c.costIndexScanOr(or.(*iScanOr), s, ordinals)
+			childStat, ok, err := c.costIndexScanOr(or.(*iScanOr), s, ordinals, idx)
 			if err != nil {
 				return nil, sql.FastIntSet{}, err
 			}
@@ -1031,10 +1030,9 @@ func (c *indexCoster) costIndexScanAnd(filter *iScanAnd, s sql.Statistic, ordina
 	}
 
 	return conj.stat, exact.Union(conj.applied), nil
-
 }
 
-func (c *indexCoster) costIndexScanOr(filter *iScanOr, s sql.Statistic, ordinals map[string]int) (sql.Statistic, bool, error) {
+func (c *indexCoster) costIndexScanOr(filter *iScanOr, s sql.Statistic, ordinals map[string]int, idx sql.Index) (sql.Statistic, bool, error) {
 	// OR just unions the statistics from each child?
 	// if one of the children is invalid, we balk and return false
 	// otherwise we union the buckets between the children
@@ -1043,7 +1041,7 @@ func (c *indexCoster) costIndexScanOr(filter *iScanOr, s sql.Statistic, ordinals
 	for _, child := range filter.children {
 		switch child := child.(type) {
 		case *iScanAnd:
-			childStat, ids, err := c.costIndexScanAnd(child, s, ordinals)
+			childStat, ids, err := c.costIndexScanAnd(child, s, ordinals, idx)
 			if err != nil {
 				return nil, false, err
 			}
@@ -1055,7 +1053,7 @@ func (c *indexCoster) costIndexScanOr(filter *iScanOr, s sql.Statistic, ordinals
 
 		case *iScanLeaf:
 			var ok bool
-			childStat, ok, err := c.costIndexScanLeaf(child, s, ordinals)
+			childStat, ok, err := c.costIndexScanLeaf(child, s, ordinals, idx)
 			if err != nil {
 				return nil, false, err
 			}
@@ -1071,10 +1069,44 @@ func (c *indexCoster) costIndexScanOr(filter *iScanOr, s sql.Statistic, ordinals
 	return ret, true, nil
 }
 
-func (c *indexCoster) costIndexScanLeaf(filter *iScanLeaf, s sql.Statistic, ordinals map[string]int) (sql.Statistic, bool, error) {
+// indexHasContentHashedFieldForFilter returns true if the given index |idx| has a content-hashed field that is used
+// by the given filter |filter|. |ordinals| provides a mapping from filter expression to position in |idx|. Indexes
+// with content-hashed fields can only be used for a subset of filter operations.
+func indexHasContentHashedFieldForFilter(filter *iScanLeaf, idx sql.Index, ordinals map[string]int) bool {
+	// Only unique indexes are currently able to use content-hashed fields
+	if !idx.IsUnique() {
+		return false
+	}
+
+	i := ordinals[filter.gf.Name()]
+	columnExpressionType := idx.ColumnExpressionTypes()[i]
+
+	// Only TEXT/BLOB types can currently use content-hashes in indexes
+	if !types.IsTextBlob(columnExpressionType.Type) {
+		return false
+	}
+
+	prefixLength := uint16(0)
+	if len(idx.PrefixLengths()) > i {
+		prefixLength = idx.PrefixLengths()[i]
+	}
+	return prefixLength == 0
+}
+
+func (c *indexCoster) costIndexScanLeaf(filter *iScanLeaf, s sql.Statistic, ordinals map[string]int, idx sql.Index) (sql.Statistic, bool, error) {
 	ord, ok := ordinals[strings.ToLower(filter.gf.Name())]
 	if !ok {
 		return nil, false, nil
+	}
+
+	// indexes with content-hashed fields can be used to test equality or compare with NULL,
+	// but can't be used for other comparisons, such as less than or greater than.
+	if indexHasContentHashedFieldForFilter(filter, idx, ordinals) {
+		switch filter.op {
+		case indexScanOpEq, indexScanOpNotEq, indexScanOpNullSafeEq, indexScanOpIsNull, indexScanOpIsNotNull:
+		default:
+			return nil, false, nil
+		}
 	}
 
 	switch filter.op {
@@ -1087,7 +1119,6 @@ func (c *indexCoster) costIndexScanLeaf(filter *iScanLeaf, s sql.Statistic, ordi
 		conj.add(filter)
 		return conj.stat, true, nil
 	}
-
 }
 
 func (c *indexCoster) costSpatial(filter *iScanLeaf, s sql.Statistic, ordinal int) (sql.Statistic, bool, error) {
