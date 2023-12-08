@@ -630,6 +630,9 @@ func schemaToFields(ctx *sql.Context, s sql.Schema) []*query.Field {
 		if types.IsDecimal(c.Type) {
 			decimalType := c.Type.(sql.DecimalType)
 			fields[i].Decimals = uint32(decimalType.Scale())
+		} else if types.IsDatetimeType(c.Type) {
+			dtType := c.Type.(sql.DatetimeType)
+			fields[i].Decimals = uint32(dtType.Precision())
 		}
 	}
 

@@ -161,7 +161,7 @@ func (b *BaseBuilder) buildDropForeignKey(ctx *sql.Context, n *plan.DropForeignK
 		return nil, err
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
 func (b *BaseBuilder) buildDropTable(ctx *sql.Context, n *plan.DropTable, row sql.Row) (sql.RowIter, error) {
@@ -226,7 +226,7 @@ func (b *BaseBuilder) buildDropTable(ctx *sql.Context, n *plan.DropTable, row sq
 		}
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
 func (b *BaseBuilder) buildTriggerRollback(ctx *sql.Context, n *plan.TriggerRollback, row sql.Row) (sql.RowIter, error) {
@@ -258,7 +258,7 @@ func (b *BaseBuilder) buildAlterIndex(ctx *sql.Context, n *plan.AlterIndex, row 
 		return nil, err
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
 func (b *BaseBuilder) buildTriggerBeginEndBlock(ctx *sql.Context, n *plan.TriggerBeginEndBlock, row sql.Row) (sql.RowIter, error) {

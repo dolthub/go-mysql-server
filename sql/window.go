@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cespare/xxhash"
+	"github.com/cespare/xxhash/v2"
 )
 
 func NewWindowDefinition(partitionBy []Expression, orderBy SortFields, frame WindowFrame, ref, name string) *WindowDefinition {

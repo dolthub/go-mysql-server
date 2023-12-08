@@ -281,7 +281,8 @@ END;`,
 				},
 			},
 			{
-				Query: "CALL p1(2)",
+				SkipResultCheckOnServerEngine: true, // tracking issue: https://github.com/dolthub/dolt/issues/6918
+				Query:                         "CALL p1(2)",
 				Expected: []sql.Row{
 					{
 						types.NewOkResult(2),
@@ -574,7 +575,8 @@ END;`,
 				},
 			},
 			{
-				Query: "CALL p3()",
+				SkipResultCheckOnServerEngine: true, // tracking issue: https://github.com/dolthub/dolt/issues/6918
+				Query:                         "CALL p3()",
 				Expected: []sql.Row{
 					{int64(1), "z", "d"},
 					{int64(2), "y", "e"},
@@ -590,7 +592,8 @@ END;`,
 				},
 			},
 			{
-				Query: "CALL p5()",
+				SkipResultCheckOnServerEngine: true, // tracking issue: https://github.com/dolthub/dolt/issues/6918
+				Query:                         "CALL p5()",
 				Expected: []sql.Row{
 					{int64(1), "z", "d"},
 					{int64(2), "y", "e"},
@@ -682,7 +685,8 @@ INSERT INTO items (item) VALUES (txt)`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "CALL add_item('A test item');",
+				SkipResultCheckOnServerEngine: true, // call depends on stored procedure stmt for whether to use 'query' or 'exec' from go sql driver.
+				Query:                         "CALL add_item('A test item');",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 1, InsertID: 1}},
 				},
@@ -738,7 +742,8 @@ END`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "CALL add_item(6);",
+				SkipResultCheckOnServerEngine: true, // call depends on stored procedure stmt for whether to use 'query' or 'exec' from go sql driver.
+				Query:                         "CALL add_item(6);",
 				Expected: []sql.Row{
 					{types.NewOkResult(3)},
 				},
@@ -786,15 +791,12 @@ END;`,
 	{
 		Name: "Subquery on SET user variable captures parameter",
 		SetUpScript: []string{
-			`CREATE PROCEDURE p1(x VARCHAR(20))
-BEGIN
-	SET @randomvar = (SELECT LENGTH(x));
-	SELECT @randomvar;
-END;`,
+			`CREATE PROCEDURE p1(x VARCHAR(20)) BEGIN SET @randomvar = (SELECT LENGTH(x)); SELECT @randomvar; END;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "CALL p1('hi')",
+				SkipResultCheckOnServerEngine: true, // the user var has null type, which returns nil value over the wire.
+				Query:                         "CALL p1('hi')",
 				Expected: []sql.Row{
 					{int64(2)},
 				},
@@ -1487,7 +1489,8 @@ END`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "call create_cal_entries_for_event('cb8ba301-6c27-4bf8-b99b-617082d72621');",
+				SkipResultCheckOnServerEngine: true, // call depends on stored procedure stmt for whether to use 'query' or 'exec' from go sql driver.
+				Query:                         "call create_cal_entries_for_event('cb8ba301-6c27-4bf8-b99b-617082d72621');",
 				Expected: []sql.Row{
 					{types.NewOkResult(1)},
 				},
@@ -2211,7 +2214,7 @@ var ProcedureDropTests = []ScriptTest{
 			},
 			{
 				Query:    "DROP PROCEDURE p1",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
 				Query:       "CALL p1",
@@ -2219,7 +2222,7 @@ var ProcedureDropTests = []ScriptTest{
 			},
 			{
 				Query:    "DROP PROCEDURE IF EXISTS p2",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
 				Query:       "CALL p2",
@@ -2231,7 +2234,7 @@ var ProcedureDropTests = []ScriptTest{
 			},
 			{
 				Query:    "DROP PROCEDURE IF EXISTS p4",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.OkResult{}}},
 			},
 		},
 	},

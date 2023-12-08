@@ -17,6 +17,8 @@ package plan
 import (
 	"fmt"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -75,7 +77,7 @@ func (c *Call) Schema() sql.Schema {
 	if c.Procedure != nil {
 		return c.Procedure.Schema()
 	}
-	return nil
+	return types.OkResultSchema
 }
 
 // Children implements the sql.Node interface.

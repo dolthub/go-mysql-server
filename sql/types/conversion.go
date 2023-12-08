@@ -21,8 +21,10 @@ import (
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/shopspring/decimal"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -116,8 +118,47 @@ func ApproximateTypeFromValue(val interface{}) sql.Type {
 	}
 }
 
+// IsBinary returns whether the type represents binary data.
+func IsBinary(sqlType query.Type) bool {
+	switch sqlType {
+	case sqltypes.Binary,
+		sqltypes.VarBinary,
+		sqltypes.Blob,
+		sqltypes.TypeJSON,
+		sqltypes.Geometry:
+		return true
+	}
+	return false
+}
+
+func allowsCharSet(sqlType query.Type) bool {
+	switch sqlType {
+	case sqltypes.VarChar,
+		sqltypes.Char,
+		sqltypes.Text,
+		sqltypes.Enum,
+		sqltypes.Set:
+		return true
+	}
+	return false
+}
+
+var ErrCharacterSetOnInvalidType = errors.NewKind("Only character columns, enums, and sets can have a CHARACTER SET option")
+
 // ColumnTypeToType gets the column type using the column definition.
 func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
+
+	sqlType := ct.SQLType()
+
+	if !allowsCharSet(sqlType) && len(ct.Charset) != 0 {
+		return nil, ErrCharacterSetOnInvalidType.New()
+	}
+
+	collate := ct.Collate
+	if IsBinary(sqlType) && collate == "" {
+		collate = sql.Collation_binary.Name()
+	}
+
 	switch strings.ToLower(ct.Type) {
 	case "boolean", "bool":
 		return Boolean, nil
@@ -206,29 +247,14 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 			}
 		}
 		return CreateBitType(uint8(length))
-	case "tinyblob":
-		return TinyBlob, nil
-	case "blob":
-		if ct.Length == nil {
-			return Blob, nil
-		}
-		length, err := strconv.ParseInt(string(ct.Length.Val), 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		return CreateBinary(sqltypes.Blob, length)
-	case "mediumblob":
-		return MediumBlob, nil
-	case "longblob":
-		return LongBlob, nil
-	case "tinytext":
-		collation, err := sql.ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
+	case "tinytext", "tinyblob":
+		collation, err := sql.ParseCollation(&ct.Charset, &collate, ct.BinaryCollate)
 		if err != nil {
 			return nil, err
 		}
 		return CreateString(sqltypes.Text, TinyTextBlobMax/collation.CharacterSet().MaxLength(), collation)
-	case "text":
-		collation, err := sql.ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
+	case "text", "blob":
+		collation, err := sql.ParseCollation(&ct.Charset, &collate, ct.BinaryCollate)
 		if err != nil {
 			return nil, err
 		}
@@ -240,20 +266,20 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 			return nil, err
 		}
 		return CreateString(sqltypes.Text, length, collation)
-	case "mediumtext", "long", "long varchar":
-		collation, err := sql.ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
+	case "mediumtext", "mediumblob", "long", "long varchar":
+		collation, err := sql.ParseCollation(&ct.Charset, &collate, ct.BinaryCollate)
 		if err != nil {
 			return nil, err
 		}
 		return CreateString(sqltypes.Text, MediumTextBlobMax/collation.CharacterSet().MaxLength(), collation)
-	case "longtext":
-		collation, err := sql.ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
+	case "longtext", "longblob":
+		collation, err := sql.ParseCollation(&ct.Charset, &collate, ct.BinaryCollate)
 		if err != nil {
 			return nil, err
 		}
 		return CreateString(sqltypes.Text, LongTextBlobMax/collation.CharacterSet().MaxLength(), collation)
-	case "char", "character":
-		collation, err := sql.ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
+	case "char", "character", "binary":
+		collation, err := sql.ParseCollation(&ct.Charset, &collate, ct.BinaryCollate)
 		if err != nil {
 			return nil, err
 		}
@@ -277,7 +303,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 		}
 		return CreateString(sqltypes.Char, length, sql.Collation_utf8mb3_general_ci)
 	case "varchar", "char varying", "character varying":
-		collation, err := sql.ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
+		collation, err := sql.ParseCollation(&ct.Charset, &collate, ct.BinaryCollate)
 		if err != nil {
 			return nil, err
 		}
@@ -305,17 +331,11 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 			return nil, err
 		}
 		return CreateString(sqltypes.VarChar, length, sql.Collation_utf8mb3_general_ci)
-	case "binary":
-		length := int64(1)
-		if ct.Length != nil {
-			var err error
-			length, err = strconv.ParseInt(string(ct.Length.Val), 10, 64)
-			if err != nil {
-				return nil, err
-			}
-		}
-		return CreateString(sqltypes.Binary, length, sql.Collation_binary)
 	case "varbinary":
+		collation, err := sql.ParseCollation(&ct.Charset, &collate, ct.BinaryCollate)
+		if err != nil {
+			return nil, err
+		}
 		if ct.Length == nil {
 			return nil, fmt.Errorf("VARBINARY requires a length")
 		}
@@ -327,7 +347,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 		if length > varcharVarbinaryMax {
 			return nil, ErrLengthTooLarge.New(length, varcharVarbinaryMax)
 		}
-		return CreateString(sqltypes.VarBinary, length, sql.Collation_binary)
+		return CreateString(sqltypes.VarBinary, length, collation)
 	case "year":
 		return Year, nil
 	case "date":
@@ -379,7 +399,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 
 		return CreateDatetimeType(sqltypes.Datetime, int(precision))
 	case "enum":
-		collation, err := sql.ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
+		collation, err := sql.ParseCollation(&ct.Charset, &collate, ct.BinaryCollate)
 		if err != nil {
 			return nil, err
 		}
@@ -388,7 +408,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 		}
 		return CreateEnumType(ct.EnumValues, collation)
 	case "set":
-		collation, err := sql.ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
+		collation, err := sql.ParseCollation(&ct.Charset, &collate, ct.BinaryCollate)
 		if err != nil {
 			return nil, err
 		}

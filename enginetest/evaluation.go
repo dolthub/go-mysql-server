@@ -39,14 +39,12 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// RunQuery runs the query given and asserts that it doesn't result in an error.
-func RunQuery(t *testing.T, e QueryEngine, harness Harness, query string) {
-	ctx := NewContext(harness)
-	RunQueryWithContext(t, e, harness, ctx, query)
-}
-
 // RunQueryWithContext runs the query given and asserts that it doesn't result in an error.
+// If |ctx| is nil, this function creates new context using `NewContext()` method on given harness.
 func RunQueryWithContext(t *testing.T, e QueryEngine, harness Harness, ctx *sql.Context, query string) {
+	if ctx == nil {
+		ctx = NewContext(harness)
+	}
 	ctx = ctx.WithQuery(query)
 	sch, iter, err := e.Query(ctx, query)
 	require.NoError(t, err, "error running query %s: %v", query, err)
@@ -67,6 +65,9 @@ func IsServerEngine(e QueryEngine) bool {
 	return ok
 }
 
+// CreateNewConnectionForServerEngine creates a new connection in the server engine.
+// If there was an existing one, it gets closed before the new gets created.
+// This function should be called when needing to use new session for the server.
 func CreateNewConnectionForServerEngine(ctx *sql.Context, e QueryEngine) error {
 	if IsServerEngine(e) {
 		return e.(*ServerQueryEngine).NewConnection(ctx)
@@ -128,11 +129,16 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 						assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
 						assertion.ExpectedWarningMessageSubstring, assertion.SkipResultsCheck)
 				} else if assertion.SkipResultsCheck {
-					RunQuery(t, e, harness, assertion.Query)
+					RunQueryWithContext(t, e, harness, nil, assertion.Query)
 				} else if assertion.CheckIndexedAccess {
 					TestQueryWithIndexCheck(t, ctx, e, harness, assertion.Query, assertion.Expected, assertion.ExpectedColumns, assertion.Bindings)
 				} else {
-					TestQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, assertion.ExpectedColumns, assertion.Bindings)
+					var expected = assertion.Expected
+					if IsServerEngine(e) && assertion.SkipResultCheckOnServerEngine {
+						// TODO: remove this check in the future
+						expected = nil
+					}
+					TestQueryWithContext(t, ctx, e, harness, assertion.Query, expected, assertion.ExpectedColumns, assertion.Bindings)
 				}
 				if assertion.ExpectedIndexes != nil {
 					evalIndexTest(t, harness, e, assertion.Query, assertion.ExpectedIndexes, assertion.Skip)
@@ -592,6 +598,32 @@ type CustomValueValidator interface {
 	Validate(interface{}) (bool, error)
 }
 
+// rowToSQL converts some expected row values into appropriate types according to given valid schema.
+// |convertTime| is true if it is a `SHOW` statements, except for `SHOW EVENTS`. This is set earlier in `checkResult()` method.
+func rowToSQL(s sql.Schema, expectedRow sql.Row, actualRow sql.Row, convertTime bool) (sql.Row, error) {
+	if s == nil || len(s) == 0 || types.IsOkResult(expectedRow) {
+		return expectedRow, nil
+	}
+	newRow := sql.Row{}
+	for i, v := range expectedRow {
+		_, isTime := v.(time.Time)
+		_, isStr := v.(string)
+		if v == nil {
+			newRow = append(newRow, nil)
+		} else if types.IsDecimal(s[i].Type) || (isTime && !convertTime) || (isStr && types.IsTextOnly(s[i].Type)) {
+			newRow = append(newRow, v)
+		} else {
+			c, _, err := s[i].Type.Convert(v)
+			if err != nil {
+				return nil, err
+			}
+			newRow = append(newRow, c)
+		}
+	}
+
+	return newRow, nil
+}
+
 func checkResults(
 	t *testing.T,
 	expected []sql.Row,
@@ -601,22 +633,21 @@ func checkResults(
 	q string,
 	e QueryEngine,
 ) {
-	if IsServerEngine(e) {
-		// TODO: do not check for result for now
-		return
-	}
 	widenedRows := WidenRows(sch, rows)
 	widenedExpected := WidenRows(sch, expected)
 
 	upperQuery := strings.ToUpper(q)
 	orderBy := strings.Contains(upperQuery, "ORDER BY ")
 
-	// We replace all times for SHOW statements with the Unix epoch
-	if strings.HasPrefix(upperQuery, "SHOW ") {
+	convertTime := true
+
+	// We replace all times for SHOW statements with the Unix epoch except for SHOW EVENTS
+	if strings.HasPrefix(upperQuery, "SHOW ") && !strings.Contains(upperQuery, "EVENTS") {
 		for _, widenedRow := range widenedRows {
 			for i, val := range widenedRow {
 				if _, ok := val.(time.Time); ok {
 					widenedRow[i] = time.Unix(0, 0).UTC()
+					convertTime = false
 				}
 			}
 		}
@@ -633,6 +664,14 @@ func checkResults(
 				}
 			}
 		}
+	}
+
+	isServerEngine := IsServerEngine(e)
+
+	// if the sch is nil or empty, over the wire result is no row whereas single empty row is expected.
+	// This happens for SET and SELECT INTO statements.
+	if isServerEngine && (sch == nil || len(sch) == 0) && len(widenedRows) == 0 && len(widenedExpected) == 1 && len(widenedExpected[0]) == 0 {
+		widenedExpected = widenedRows
 	}
 
 	// Special case for custom values
@@ -653,18 +692,7 @@ func checkResults(
 				widenedExpected[i][j] = actual // ensure it passes equality check later
 			}
 
-			if IsServerEngine(e) {
-				// TODO: in MySQL, boolean values sent over the wire are tinyint.
-				//  Current engine tests assert on go boolean type values. Should
-				//  remove this conversion in the future when we match the return
-				//  type for boolean results as MySQL.
-				if b, isBool := widenedExpected[i][j].(bool); isBool {
-					if b {
-						widenedExpected[i][j] = int64(1)
-					} else {
-						widenedExpected[i][j] = int64(0)
-					}
-				}
+			if isServerEngine {
 				// The result received from go sql driver does not have 'Info'
 				// data returned, so we set it to 'nil' for server engine tests only.
 				if okRes, ok := widenedExpected[i][j].(types.OkResult); ok {
@@ -677,6 +705,14 @@ func checkResults(
 				}
 			}
 		}
+
+		// this attempts to do what `rowToSQL()` method in `handler.go` on expected row
+		// because over the wire values gets converted to SQL values depending on the schema type.
+		if isServerEngine && len(widenedRows) > i && len(widenedRows[i]) == len(widenedExpected[i]) {
+			convertedExpected, err := rowToSQL(sch, widenedExpected[i], widenedRows[i], convertTime)
+			require.NoError(t, err)
+			widenedExpected[i] = convertedExpected
+		}
 	}
 
 	// .Equal gives better error messages than .ElementsMatch, so use it when possible
@@ -687,7 +723,7 @@ func checkResults(
 	}
 
 	// If the expected schema was given, test it as well
-	if expectedCols != nil {
+	if expectedCols != nil && !isServerEngine {
 		assert.Equal(t, simplifyResultSchema(expectedCols), simplifyResultSchema(sch))
 	}
 }
@@ -1021,7 +1057,11 @@ func RunWriteQueryTestWithEngine(t *testing.T, harness Harness, e QueryEngine, t
 		}
 		ctx := NewContext(harness)
 		TestQueryWithContext(t, ctx, e, harness, tt.WriteQuery, tt.ExpectedWriteResult, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, tt.SelectQuery, tt.ExpectedSelect, nil, nil)
+		expectedSelect := tt.ExpectedSelect
+		if IsServerEngine(e) && tt.SkipServerEngine {
+			expectedSelect = nil
+		}
+		TestQueryWithContext(t, ctx, e, harness, tt.SelectQuery, expectedSelect, nil, nil)
 	})
 }
 
