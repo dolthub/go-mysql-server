@@ -4919,6 +4919,10 @@ CREATE TABLE tab3 (
 					{100, time.Date(2000, time.January, 23, 0, 0, 0, 0, time.UTC)},
 				},
 			},
+			{
+				Query: "create table t1 (i int, j int on update current_timestamp)",
+				ExpectedErr: sql.ErrInvalidOnUpdate,
+			},
 		},
 	},
 }

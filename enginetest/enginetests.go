@@ -4272,19 +4272,19 @@ func TestOnUpdateTimestamp(t *testing.T, harness Harness) {
 	)
 
 	// Set up table
-	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t1 (id INT, ts TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t1 (id INT, ts TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, dt DATETIME ON UPDATE CURRENT_TIMESTAMP)")
 	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t1(id) VALUES (1), (2), (3)")
 
 	sql.RunWithNowFunc(func() time.Time {
 		return time1
 	}, func() error {
 		ctx.SetQueryTime(time1)
-		RunQueryWithContext(t, e, harness, ctx, "UPDATE t1 SET id = 100")
+		RunQueryWithContext(t, e, harness, ctx, "UPDATE t1 SET id = 100 WHERE id = 1")
 		return nil
 	})
 
-	exp1 := []sql.Row{{100, time1}, {100, time1}, {100, time1}}
-	TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t1", exp1, nil, nil)
+	exp := []sql.Row{{2, nil, nil}, {3, nil, nil}, {100, time1, time1}}
+	TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t1 ORDER BY id", exp, nil, nil)
 
 	sql.RunWithNowFunc(func() time.Time {
 		return time2
@@ -4294,8 +4294,24 @@ func TestOnUpdateTimestamp(t *testing.T, harness Harness) {
 		return nil
 	})
 
-	exp2 := []sql.Row{{200, time2}, {200, time2}, {200, time2}}
-	TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t1", exp2, nil, nil)
+	exp = []sql.Row{{200, time2, time2}, {200, time2, time2}, {200, time2, time2}}
+	TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t1", exp, nil, nil)
+
+	// A trigger that updates ts column will block any on updates
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t2 (id INT, ts TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, dt DATETIME ON UPDATE CURRENT_TIMESTAMP)")
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TRIGGER trig BEFORE UPDATE ON t2 FOR EACH ROW SET new.ts = TIMESTAMP('2000-1-23')")
+	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t2(id) VALUES (1), (2), (3)")
+
+	sql.RunWithNowFunc(func() time.Time {
+		return time1
+	}, func() error {
+		ctx.SetQueryTime(time1)
+		RunQueryWithContext(t, e, harness, ctx, "UPDATE t2 SET id = 100 WHERE id = 1")
+		return nil
+	})
+
+	exp = []sql.Row{{2, nil, nil}, {3, nil, nil}, {100, time.Date(2000, 1, 23, 0, 0, 0, 0, time.UTC), time1}}
+	TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t2", exp, nil, nil)
 }
 
 func TestAddDropPks(t *testing.T, harness Harness) {

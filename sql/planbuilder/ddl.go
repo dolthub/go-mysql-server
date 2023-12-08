@@ -1086,9 +1086,11 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 		}
 	}
 
-	// TODO: convert update expression
 	for i, def := range updates {
 		schema[i].OnUpdate = b.convertDefaultExpression(outScope, def, schema[i].Type, schema[i].Nullable)
+		if schema[i].OnUpdate != nil && !(types.IsDatetimeType(schema[i].Type) || types.IsTimestampType(schema[i].Type)) {
+			b.handleErr(sql.ErrInvalidOnUpdate.New(schema[i].Name))
+		}
 	}
 
 	return sql.NewPrimaryKeySchema(schema, getPkOrdinals(tableSpec)...), tableCollation

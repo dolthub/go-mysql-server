@@ -860,6 +860,8 @@ var (
 	// ErrGeneratedColumnWithDefault is returned when a column specifies both a default and a generated value
 	ErrGeneratedColumnWithDefault = errors.NewKind("Incorrect usage of DEFAULT and generated column")
 
+	ErrInvalidOnUpdate = errors.NewKind("Invalid ON UPDATE clause for '%s' column")
+
 	ErrInsertIntoMismatchValueCount = errors.NewKind("number of values does not match number of columns provided")
 
 	ErrInvalidTypeForLimit = errors.NewKind("invalid limit. expected %T, found %T")
