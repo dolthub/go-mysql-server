@@ -18,10 +18,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/fulltext"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/fulltext"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 const CommentPreventingIndexBuilding = "__FOR TESTING: I cannot be built__"
@@ -261,10 +261,24 @@ type ExpressionsIndex interface {
 }
 
 func (idx *Index) Order() sql.IndexOrder {
+	// If there are any hash-encoded fields, then we will not have a deterministic order
+	// Even though we don't actually hash hash-encoded fields in the in-memory implementation, we
+	// still honor this here so that we can test this behavior.
+	if len(idx.contentHashedFields()) > 0 {
+		return sql.IndexOrderNone
+	}
+
 	return sql.IndexOrderAsc
 }
 
 func (idx *Index) Reversible() bool {
+	// If there are any hash-encoded fields, then we will not have a deterministic order
+	// Even though we don't actually hash hash-encoded fields in the in-memory implementation, we
+	// still honor this here so that we can test this behavior.
+	if len(idx.contentHashedFields()) > 0 {
+		return false
+	}
+
 	return true
 }
 
@@ -283,4 +297,28 @@ func (idx *Index) columnIndexes(schema sql.Schema) []int {
 		indexes[i] = schema.IndexOfColName(gf.Name())
 	}
 	return indexes
+}
+
+// contentHashedFields returns a slice of field indexes in this secondary index that should be hashed, instead
+// of directly storing their content. This is only applicable to unique secondary indexes.
+func (idx *Index) contentHashedFields() (contentHashedFields []uint) {
+	if !idx.Unique {
+		return nil
+	}
+
+	for i, expr := range idx.Exprs {
+		if !types.IsTextBlob(expr.Type()) {
+			continue
+		}
+
+		prefixLength := uint16(0)
+		if len(idx.PrefixLens) > i {
+			prefixLength = idx.PrefixLens[i]
+		}
+		if prefixLength == 0 {
+			contentHashedFields = append(contentHashedFields, uint(i))
+		}
+	}
+
+	return contentHashedFields
 }

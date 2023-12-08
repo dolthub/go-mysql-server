@@ -54,7 +54,7 @@ type Table struct {
 	projectedSchema  sql.Schema
 	columns          []int
 
-	// fiters is used for primary index scans with an index lookup
+	// filters is used for primary index scans with an index lookup
 	filters []sql.Expression
 
 	db *BaseDatabase
