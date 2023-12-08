@@ -4920,15 +4920,15 @@ CREATE TABLE tab3 (
 				},
 			},
 			{
-				Query: "create table t1 (i int, j int on update (5))",
+				Query:          "create table t1 (i int, j int on update (5))",
 				ExpectedErrStr: "syntax error at position 42 near 'update'",
 			},
 			{
-				Query: "create table t1 (i int, j int on update current_timestamp)",
+				Query:       "create table t1 (i int, j int on update current_timestamp)",
 				ExpectedErr: sql.ErrInvalidOnUpdate,
 			},
 			{
-				Query: "create table t1 (i int, d date on update current_timestamp)",
+				Query:       "create table t1 (i int, d date on update current_timestamp)",
 				ExpectedErr: sql.ErrInvalidOnUpdate,
 			},
 		},
