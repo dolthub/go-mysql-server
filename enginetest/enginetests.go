@@ -4371,6 +4371,22 @@ func TestOnUpdateTimestamp(t *testing.T, harness Harness) {
 
 	exp = []sql.Row{{10, nil}}
 	TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM child", exp, nil, nil)
+
+	// Stored procedures
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t (id INT, ts TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t(id) VALUES (0)")
+	RunQueryWithContext(t, e, harness, ctx, "CREATE PROCEDURE p() UPDATE t SET id = id + 1")
+
+	sql.RunWithNowFunc(func() time.Time {
+		return time1
+	}, func() error {
+		ctx.SetQueryTime(time1)
+		RunQueryWithContext(t, e, harness, ctx, "call p()")
+		return nil
+	})
+
+	exp = []sql.Row{{1, time1}}
+	TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t", exp, nil, nil)
 }
 
 func TestAddDropPks(t *testing.T, harness Harness) {
