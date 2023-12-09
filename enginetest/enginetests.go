@@ -4350,7 +4350,6 @@ func TestOnUpdateTimestamp(t *testing.T, harness Harness) {
 	exp = []sql.Row{{1, time1}}
 	TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM tbl3", exp, nil, nil)
 
-
 	// Foreign Key Cascade Update does NOT trigger on Update on child table
 	// TODO: this seems like a bug, but it matches MySQL behavior
 	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE parent (id INT PRIMARY KEY, ts TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
