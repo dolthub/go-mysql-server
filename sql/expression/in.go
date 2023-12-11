@@ -101,14 +101,30 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				continue
 			}
 
-			right, err := convertOrTruncate(ctx, originalRight, typ)
-			if err != nil {
-				return nil, err
-			}
-
-			cmp, err := typ.Compare(left, right)
-			if err != nil {
-				return nil, err
+			var cmp int
+			if types.IsDecimal(el.Type()) || types.IsFloat(el.Type()) {
+				rtyp := el.Type().Promote()
+				left, err := convertOrTruncate(ctx, left, rtyp)
+				if err != nil {
+					return nil, err
+				}
+				right, err := convertOrTruncate(ctx, originalRight, rtyp)
+				if err != nil {
+					return nil, err
+				}
+				cmp, err = rtyp.Compare(left, right)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				right, err := convertOrTruncate(ctx, originalRight, typ)
+				if err != nil {
+					return nil, err
+				}
+				cmp, err = typ.Compare(left, right)
+				if err != nil {
+					return nil, err
+				}
 			}
 
 			if cmp == 0 {
