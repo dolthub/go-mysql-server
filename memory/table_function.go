@@ -21,23 +21,23 @@ type TableFunc struct {
 
 func (s TableFunc) NewInstance(_ *sql.Context, db sql.Database, args []sql.Expression) (sql.Node, error) {
 	if len(args) != 2 {
-		return nil, fmt.Errorf("sequence table expects 2 arguments: (name, len)")
+		return nil, fmt.Errorf("table_func table expects 2 arguments: (name, len)")
 	}
 	nameExp, ok := args[0].(*expression.Literal)
 	if !ok {
-		return nil, fmt.Errorf("sequence table expects arguments to be literal expressions")
+		return nil, fmt.Errorf("table_func table expects arguments to be literal expressions")
 	}
 	name, ok := nameExp.Value().(string)
 	if !ok {
-		return nil, fmt.Errorf("sequence table expects 1st argument to be column name")
+		return nil, fmt.Errorf("table_func table expects 1st argument to be column name")
 	}
 	valueExpr, ok := args[1].(*expression.Literal)
 	if !ok {
-		return nil, fmt.Errorf("sequence table expects arguments to be literal expressions")
+		return nil, fmt.Errorf("table_func table expects arguments to be literal expressions")
 	}
 	value, _, err := types.Int64.Convert(valueExpr.Value())
 	if !ok {
-		return nil, fmt.Errorf("%w; sequence table expects 2nd argument to be a sequence length integer", err)
+		return nil, fmt.Errorf("%w; table_func table expects 2nd argument to be a table_func length integer", err)
 	}
 	return TableFunc{db: db, name: name, value: value.(int64)}, nil
 }
@@ -56,7 +56,7 @@ func (s TableFunc) String() string {
 
 func (s TableFunc) DebugString() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("sequence")
+	_ = pr.WriteNode("table_func")
 	children := []string{
 		fmt.Sprintf("name: %s", s.name),
 		fmt.Sprintf("len: %d", s.value),
@@ -129,7 +129,7 @@ func (s TableFunc) Description() string {
 	return "table function"
 }
 
-var _ sql.RowIter = (*SequenceTableFnRowIter)(nil)
+var _ sql.RowIter = (*TableFunctionRowIter)(nil)
 
 type TableFunctionRowIter struct {
 	val  interface{}
