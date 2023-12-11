@@ -767,7 +767,8 @@ func addRangeHeapJoin(m *memo.Memo) error {
 
 		// TODO: allow filters on the right side
 		switch join.Right.First.(type) {
-		case *memo.Filter:
+		case *memo.TableScan, *memo.TableAlias, *memo.SubqueryAlias:
+		default:
 			return nil
 		}
 
