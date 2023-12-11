@@ -221,7 +221,7 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 	}
 
 	// create ranges, lookup, ITA for best indexScan
-	// TODO pass up FALSE filter information
+	// TODO: use FALSE filters to replace empty tables
 	lookup := sql.NewIndexLookup(idx, ranges, false, emptyLookup, idx.IsSpatial(), false)
 
 	var ret *plan.IndexedTableAccess
@@ -249,7 +249,6 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 	var retFilters []sql.Expression
 	if !iat.PreciseMatch() {
 		// cannot drop any filters
-		//itaGrp = m.MemoizeIta(nil, ret, aliasName, idx)
 		retFilters = filters
 	} else if len(b.leftover) > 0 {
 		// excluded from tree + not included in index scan => filter above scan
@@ -305,7 +304,7 @@ func addIndexScans(m *memo.Memo) error {
 					break
 				}
 			}
-			itaGroup := m.MemoizeIta(nil, ret, aliasName, idx)
+			itaGroup := m.MemoizeIndexScan(nil, ret, aliasName, idx)
 			m.MemoizeFilter(filter.Group(), itaGroup, filter.Filters)
 		} else {
 			sqlIndexes := make([]sql.Index, len(indexes))
@@ -326,10 +325,10 @@ func addIndexScans(m *memo.Memo) error {
 				}
 				var itaGrp *memo.ExprGroup
 				if len(filters) > 0 {
-					itaGrp = m.MemoizeIta(nil, ita, aliasName, idx)
+					itaGrp = m.MemoizeIndexScan(nil, ita, aliasName, idx)
 					m.MemoizeFilter(filter.Group(), itaGrp, filters)
 				} else {
-					itaGrp = m.MemoizeIta(filter.Group(), ita, aliasName, idx)
+					itaGrp = m.MemoizeIndexScan(filter.Group(), ita, aliasName, idx)
 				}
 				itaGrp.RelProps.SetStats(stat)
 			}

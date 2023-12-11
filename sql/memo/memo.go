@@ -138,7 +138,7 @@ func (m *Memo) MemoizeInnerJoin(grp, left, right *ExprGroup, op plan.JoinType, f
 }
 
 func (m *Memo) MemoizeLookupJoin(grp, left, right *ExprGroup, op plan.JoinType, filter []sql.Expression, lookup *IndexScan) *ExprGroup {
-	itaGrp := m.MemoizeIta(nil, lookup.Table, lookup.Alias, lookup.Index)
+	itaGrp := m.MemoizeIndexScan(nil, lookup.Table, lookup.Alias, lookup.Index)
 	itaGrp.Best = itaGrp.First
 	newJoin := &LookupJoin{
 		JoinBase: &JoinBase{
@@ -165,10 +165,12 @@ func (m *Memo) MemoizeLookupJoin(grp, left, right *ExprGroup, op plan.JoinType, 
 	return grp
 }
 
+// MemoizeConcatLookupJoin creates a lookup join over a set of disjunctions.
+// If a LOOKUP_JOIN simulates x = v1, a concat lookup performs x in (v1, v2, v3, ...)
 func (m *Memo) MemoizeConcatLookupJoin(grp, left, right *ExprGroup, op plan.JoinType, filter []sql.Expression, lookups []*IndexScan) *ExprGroup {
 	var itaGrps []*ExprGroup
 	for _, l := range lookups {
-		itaGrp := m.MemoizeIta(nil, l.Table, "", l.Index)
+		itaGrp := m.MemoizeIndexScan(nil, l.Table, "", l.Index)
 		itaGrp.Best = itaGrp.First
 		itaGrps = append(itaGrps, itaGrp)
 	}
@@ -257,7 +259,11 @@ func (m *Memo) MemoizeProject(grp, child *ExprGroup, projections []sql.Expressio
 	return grp
 }
 
-func (m *Memo) MemoizeIta(grp *ExprGroup, ita *plan.IndexedTableAccess, alias string, index *Index) *ExprGroup {
+// MemoizeIndexScan creates a source node that uses a specific index to
+// access data. IndexScans are either static and read a specific set of
+// ranges, or dynamic and use a lookup template that is iteratively
+// bound and executed during LOOKUP_JOINs.
+func (m *Memo) MemoizeIndexScan(grp *ExprGroup, ita *plan.IndexedTableAccess, alias string, index *Index) *ExprGroup {
 	rel := &IndexScan{
 		sourceBase: &sourceBase{relBase: &relBase{}},
 		Table:      ita,
@@ -356,7 +362,9 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 		n = n.Next()
 	}
 
-	grp.fixEnforcers()
+	// Certain "best" groups are incompatible.
+	grp.fixConflicts()
+
 	grp.Done = true
 	grp.RelProps.card, err = m.s.EstimateCard(m.Ctx, grp.Best, m.statsProv)
 	if err != nil {

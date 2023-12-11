@@ -291,12 +291,7 @@ func (c *coster) costLookupJoin(_ *sql.Context, n *LookupJoin, _ sql.StatsProvid
 	l := n.Left.RelProps.card
 	r := n.Right.RelProps.card
 	lookup := n.Lookup.First.(*IndexScan)
-	var sel float64
-	if isInjectiveLookup(lookup.Index, n.JoinBase, lookup.Table.Expressions(), lookup.Table.NullMask()) {
-		sel = 0
-	} else {
-		sel = lookupJoinSelectivity(lookup) * optimisticJoinSel
-	}
+	sel := lookupJoinSelectivity(lookup, n.JoinBase)
 	if sel == 0 {
 		return l*(cpuCostFactor+randIOCostFactor) - r*seqIOCostFactor - l*seqIOCostFactor, nil
 	}
@@ -320,7 +315,7 @@ func (c *coster) costRangeHeapJoin(_ *sql.Context, n *RangeHeapJoin, _ sql.Stats
 	return l * expectedNumberOfOverlappingJoins * (seqIOCostFactor), nil
 }
 
-func (c *coster) costLateralJoin(ctx *sql.Context, n *LateralJoin, _ sql.StatsProvider) (float64, error) {
+func (c *coster) costLateralJoin(_ *sql.Context, n *LateralJoin, _ sql.StatsProvider) (float64, error) {
 	l := n.Left.RelProps.card
 	r := n.Right.RelProps.card
 	return (l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor, nil
@@ -330,14 +325,8 @@ func (c *coster) costConcatJoin(_ *sql.Context, n *ConcatJoin, _ sql.StatsProvid
 	l := n.Left.RelProps.card
 	var sel float64
 	for _, l := range n.Concat {
-		var lSel float64
 		lookup := l.First.(*IndexScan)
-		if isInjectiveLookup(lookup.Index, n.JoinBase, lookup.Table.Expressions(), lookup.Table.NullMask()) {
-			lSel = 0
-		} else {
-			lSel = lookupJoinSelectivity(lookup) * optimisticJoinSel
-		}
-		sel += lSel
+		sel += lookupJoinSelectivity(lookup, n.JoinBase)
 	}
 	return l*sel*concatCostFactor*(randIOCostFactor+cpuCostFactor) - n.Right.RelProps.card*seqIOCostFactor, nil
 }
@@ -361,8 +350,11 @@ func (c *coster) costDistinct(_ *sql.Context, n *Distinct, _ sql.StatsProvider) 
 // lookupJoinSelectivity estimates the selectivity of a join condition with n lhs rows and m rhs rows.
 // A join with a selectivity of k will return k*(n*m) rows.
 // Special case: A join with a selectivity of 0 will return n rows.
-func lookupJoinSelectivity(l *IndexScan) float64 {
-	return math.Pow(perKeyCostReductionFactor, float64(len(l.Table.Expressions())))
+func lookupJoinSelectivity(l *IndexScan, joinBase *JoinBase) float64 {
+	if isInjectiveLookup(l.Index, joinBase, l.Table.Expressions(), l.Table.NullMask()) {
+		return 0
+	}
+	return math.Pow(perKeyCostReductionFactor, float64(len(l.Table.Expressions()))) * optimisticJoinSel
 }
 
 // isInjectiveLookup returns whether every lookup with the given key expressions is guarenteed to return
