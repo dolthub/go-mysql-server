@@ -21,6 +21,10 @@ import (
 
 var TableFunctionScriptTests = []ScriptTest{
 	{
+		Query:    "select * from sequence_table('y',2) seq1 where y in (select SEQ2.x from table_func('x', 1) seq2)",
+		Expected: []sql.Row{{1}},
+	},
+	{
 		Name:        "undefined table function",
 		Query:       "SELECT * from does_not_exist('q', 123);",
 		ExpectedErr: sql.ErrTableFunctionNotFound,
