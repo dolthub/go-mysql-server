@@ -1379,7 +1379,8 @@ func uniformDistStatisticsForIndex(ctx *sql.Context, iat sql.IndexAddressableTab
 	var rowCount uint64
 	var avgSize uint64
 	if st, ok := iat.(sql.StatisticsTable); ok {
-		rowCount, _, err := st.RowCount(ctx)
+		var err error
+		rowCount, _, err = st.RowCount(ctx)
 		if err != nil {
 			return nil, err
 
