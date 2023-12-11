@@ -478,12 +478,7 @@ func (c *carder) cardRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 		switch n := n.(type) {
 		case *LookupJoin:
 			lookup := n.Lookup.First.(*IndexScan)
-			var sel float64
-			if isInjectiveLookup(lookup.Index, n.JoinBase, lookup.Table.Expressions(), lookup.Table.NullMask()) {
-				sel = 0
-			} else {
-				sel = lookupJoinSelectivity(lookup) * optimisticJoinSel
-			}
+			sel := lookupJoinSelectivity(lookup, n.JoinBase)
 			if sel == 0 {
 				return n.Left.RelProps.card, nil
 			}
@@ -492,13 +487,7 @@ func (c *carder) cardRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 			var sel float64
 			for _, l := range n.Concat {
 				lookup := l.First.(*IndexScan)
-				var lSel float64
-				if isInjectiveLookup(lookup.Index, n.JoinBase, lookup.Table.Expressions(), lookup.Table.NullMask()) {
-					lSel = 0
-				} else {
-					lSel = lookupJoinSelectivity(lookup) * optimisticJoinSel
-				}
-				sel += lSel
+				sel += lookupJoinSelectivity(lookup, n.JoinBase)
 			}
 			return n.Left.RelProps.card * optimisticJoinSel * sel, nil
 		case *LateralJoin:
