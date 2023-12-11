@@ -763,13 +763,13 @@ func addRangeHeapJoin(m *memo.Memo) error {
 			return nil
 		}
 
-		// TODO: what is allowed?
-		switch e.Group().First.(type) {
+		join := e.(memo.JoinRel).JoinPrivate()
+
+		// TODO: allow filters on the right side
+		switch join.Right.First.(type) {
 		case *memo.Filter:
 			return nil
 		}
-
-		join := e.(memo.JoinRel).JoinPrivate()
 
 		_, lIndexes, lFilters := lookupCandidates(join.Left.First)
 		_, rIndexes, rFilters := lookupCandidates(join.Right.First)
