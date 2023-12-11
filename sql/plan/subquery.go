@@ -194,7 +194,7 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 func PrependRowInPlan(row sql.Row, lateral bool) func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 	return func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
-		case sql.Table, sql.Projector, *ValueDerivedTable, *TableCountLookup:
+		case sql.Table, sql.Projector, *ValueDerivedTable, *TableCountLookup, sql.TableFunction:
 			return NewPrependNode(n, row), transform.NewTree, nil
 		case *SetOp:
 			newSetOp := *n
