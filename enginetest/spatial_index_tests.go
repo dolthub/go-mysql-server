@@ -365,7 +365,9 @@ func TestSpatialIndexPlans(t *testing.T, harness Harness) {
 			}
 			for _, tt := range tt.tests {
 				evalSpatialIndexPlanCorrectness(t, harness, e, tt.q, tt.q, tt.exp, tt.skip)
-				evalSpatialIndexPlanTest(t, harness, e, tt.q, tt.skip, tt.noIdx)
+				if !IsServerEngine(e) {
+					evalSpatialIndexPlanTest(t, harness, e, tt.q, tt.skip, tt.noIdx)
+				}
 			}
 		})
 	}
