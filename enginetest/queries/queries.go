@@ -8628,6 +8628,18 @@ from typestable`,
 			{1e30},
 		},
 	},
+	{
+		Query: "select 1 in (null, 0.8)",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: "select -1 in (null, sin(5))",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
