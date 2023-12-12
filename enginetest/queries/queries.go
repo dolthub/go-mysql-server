@@ -8640,6 +8640,14 @@ from typestable`,
 			{nil},
 		},
 	},
+	{
+		Query: "select 1 where (1 in (null, 0.8))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query: "select * from mytable where (i in (null, 0.8, 1.5, 2.999))",
+		Expected: []sql.Row{},
+	},
 }
 
 var KeylessQueries = []QueryTest{
