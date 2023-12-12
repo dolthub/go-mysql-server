@@ -161,8 +161,7 @@ func (d *Div) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				finalScale = types.DecimalTypeMaxScale
 			}
 			if isOutermostArithmeticOp(d, 0, d.ops) {
-				res = res.Round(finalScale)
-				return res, nil
+				return res.Round(finalScale), nil
 			}
 			// TODO : need to pass finalScale if this div is the last div but not the last arithmetic op
 		}
