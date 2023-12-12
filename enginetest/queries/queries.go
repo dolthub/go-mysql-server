@@ -8645,6 +8645,10 @@ from typestable`,
 		Expected: []sql.Row{},
 	},
 	{
+		Query: "select -1 where (1 in (null, sin(5)))",
+		Expected: []sql.Row{},
+	},
+	{
 		Query: "select * from mytable where (i in (null, 0.8, 1.5, 2.999))",
 		Expected: []sql.Row{},
 	},

@@ -4849,6 +4849,42 @@ CREATE TABLE tab3 (
 			},
 		},
 	},
+	{
+		Name: "decimal and float in tuple",
+		SetUpScript: []string{
+			"create table t (d decimal(10, 3), f float);",
+			"insert into t values (0.8, 0.8);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t where (d in (null, 1));",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from t where (f in (null, 1));",
+				Expected: []sql.Row{},
+			},
+			{
+				// select count to avoid floating point comparison
+				Query: "select count(*) from t where (d in (null, 0.8));",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				// This actually matches MySQL behavior
+				Query: "select * from t where (f in (null, 0.8));",
+				Expected: []sql.Row{},
+			},
+			{
+				// select count to avoid floating point comparison
+				Query: "select count(*) from t where (f in (null, cast(0.8 as float)));",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
