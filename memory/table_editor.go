@@ -459,6 +459,7 @@ func (pke *pkTableEditAccumulator) Get(value sql.Row) (sql.Row, bool, error) {
 	for _, partition := range pke.table.partitions {
 		for _, partitionRow := range partition {
 			if columnsMatch(pkColIdxes, nil, partitionRow, value) {
+				pke.table.partitionMux.RUnlock()
 				return partitionRow, true, nil
 			}
 		}
