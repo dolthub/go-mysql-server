@@ -271,19 +271,8 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 			}
 			if col.OnUpdate != nil {
 				// don't add if column is already being updated
-				colName := expression.NewGetFieldWithTable(i, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
-				colExists := false
-				for _, expr := range updateExprs {
-					if setField, ok := expr.(*expression.SetField); ok {
-						if getField, ok := setField.Left.(*expression.GetField); ok {
-							if strings.EqualFold(getField.Name(), col.Name) {
-								colExists = true
-								continue
-							}
-						}
-					}
-				}
-				if !colExists {
+				if !isColumnUpdated(col, updateExprs) {
+					colName := expression.NewGetFieldWithTable(i, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
 					onUpdate := b.resolveColumnDefaultExpression(inScope, col, col.OnUpdate)
 					updateExprs = append(updateExprs, expression.NewSetField(colName, assignColumnIndexes(onUpdate, tableSch)))
 				}
@@ -292,6 +281,23 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 	}
 
 	return updateExprs
+}
+
+func isColumnUpdated(col *sql.Column, updateExprs []sql.Expression) bool {
+	for _, expr := range updateExprs {
+		sf, ok := expr.(*expression.SetField)
+		if !ok {
+			continue
+		}
+		gf, ok := sf.Left.(*expression.GetField)
+		if !ok {
+			continue
+		}
+		if strings.EqualFold(gf.Name(), col.Name) {
+			return true
+		}
+	}
+	return false
 }
 
 func (b *Builder) buildOnDupUpdateExprs(combinedScope, destScope *scope, e ast.AssignmentExprs) []sql.Expression {
@@ -434,8 +440,6 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 
 	ignore := u.Ignore != ""
 	update := plan.NewUpdate(outScope.node, ignore, updateExprs)
-
-	outScope.node.Schema()
 
 	var checks []*sql.CheckConstraint
 	if join, ok := outScope.node.(*plan.JoinNode); ok {

@@ -1086,8 +1086,8 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 		}
 	}
 
-	for i, def := range updates {
-		schema[i].OnUpdate = b.convertDefaultExpression(outScope, def, schema[i].Type, schema[i].Nullable)
+	for i, onUpdateExpr := range updates {
+		schema[i].OnUpdate = b.convertDefaultExpression(outScope, onUpdateExpr, schema[i].Type, schema[i].Nullable)
 		if schema[i].OnUpdate != nil && !(types.IsDatetimeType(schema[i].Type) || types.IsTimestampType(schema[i].Type)) {
 			b.handleErr(sql.ErrInvalidOnUpdate.New(schema[i].Name))
 		}
