@@ -40,8 +40,7 @@ func newRangeHeapJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinN
 
 	rhp, ok := j.Right().(*plan.RangeHeap)
 	if !ok {
-		print(rhp)
-		//return nil, errors.New("right side of join must be a range heap")
+		return nil, errors.New("right side of join must be a range heap")
 	}
 
 	return sql.NewSpanIter(span, &rangeHeapJoinIter{
@@ -52,8 +51,7 @@ func newRangeHeapJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinN
 		rowSize:       len(row) + len(j.Left().Schema()) + len(j.Right().Schema()),
 		scopeLen:      j.ScopeLen,
 		b:             b,
-		rangeHeapPlan: j.Right().(*plan.RangeHeap),
-		//rangeHeapPlan: rhp,
+		rangeHeapPlan: rhp,
 	}), nil
 }
 
