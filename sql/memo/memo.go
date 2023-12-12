@@ -768,14 +768,6 @@ func (r *LookupJoin) Children() []*ExprGroup {
 	return []*ExprGroup{r.Left, r.Right}
 }
 
-type Lookup struct {
-	Index    *Index
-	KeyExprs []sql.Expression
-	Nullmask []bool
-
-	Parent *JoinBase
-}
-
 // RangeHeap contains all the information necessary to construct a RangeHeap join.
 // Because both sides of the join can be implemented either by an index or a sorted node,
 // we require that exactly one of ValueIndex and ValueExpr is non-nil, and exactly one

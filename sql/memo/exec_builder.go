@@ -58,48 +58,6 @@ func (b *ExecBuilder) buildAntiJoin(j *AntiJoin, children ...sql.Node) (sql.Node
 	return plan.NewJoin(children[0], children[1], j.Op, filters), nil
 }
 
-func (b *ExecBuilder) buildLookup(l *Lookup, children ...sql.Node) (sql.Node, error) {
-	var ret sql.Node
-	var err error
-
-	if err != nil {
-		return nil, err
-	}
-	switch n := children[0].(type) {
-	case sql.TableNode:
-		ret, err = plan.NewIndexedAccessForTableNode(n, plan.NewLookupBuilder(l.Index.SqlIdx(), l.KeyExprs, l.Nullmask))
-	case *plan.TableAlias:
-		ret, err = plan.NewIndexedAccessForTableNode(n.Child.(sql.TableNode), plan.NewLookupBuilder(l.Index.SqlIdx(), l.KeyExprs, l.Nullmask))
-		ret = plan.NewTableAlias(n.Name(), ret)
-	case *plan.Distinct:
-		ret, err = b.buildLookup(l, n.Child)
-		ret = plan.NewDistinct(ret)
-	case *plan.OrderedDistinct:
-		ret, err = b.buildLookup(l, n.Child)
-		ret = plan.NewOrderedDistinct(ret)
-	case *plan.Filter:
-		ret, err = b.buildLookup(l, n.Child)
-		ret = plan.NewFilter(n.Expression, ret)
-	case *plan.Project:
-		ret, err = b.buildLookup(l, n.Child)
-		ret = plan.NewProject(n.Projections, ret)
-	case *plan.Limit:
-		ret, err = b.buildLookup(l, n.Child)
-		ret = plan.NewLimit(n.Limit, ret)
-	case *plan.Sort:
-		ret, err = b.buildLookup(l, n.Child)
-		ret = plan.NewSort(n.SortFields, ret)
-	case *plan.IndexedTableAccess:
-		ret, err = plan.NewIndexedAccessForTableNode(n.TableNode, plan.NewLookupBuilder(l.Index.SqlIdx(), l.KeyExprs, l.Nullmask))
-	default:
-		panic(fmt.Sprintf("unexpected lookup child %T", n))
-	}
-	if err != nil {
-		return nil, err
-	}
-	return ret, nil
-}
-
 func (b *ExecBuilder) buildLookupJoin(j *LookupJoin, children ...sql.Node) (sql.Node, error) {
 	left := children[0]
 	right, err := b.buildIndexScan(j.Lookup.First.(*IndexScan), children[1])
