@@ -202,28 +202,41 @@ func TestSingleScript(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "DECIMAL",
+			Name: "physical columns added after virtual one",
 			SetUpScript: []string{
-				`CREATE TABLE test (pk DECIMAL(5,0) PRIMARY KEY, v1 DECIMAL(25,5));`,
-				`INSERT INTO test VALUES (-75, "-2532.356"), (0, 0), (2547.2, 03325);`,
+				"create table t (pk int primary key, col1 int as (pk + 1));",
+				"insert into t (pk) values (1), (3)",
+				"alter table t add index idx1 (col1, pk);",
+				"alter table t add index idx2 (col1);",
+				"alter table t add column col2 int;",
+				"alter table t add column col3 int;",
+				"insert into t (pk, col2, col3) values (2, 4, 5);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    `SELECT v1, pk FROM test ORDER BY pk;`,
-					Expected: []sql.Row{{"-2532.35600", "-75"}, {"0.00000", "0"}, {"3325.00000", "2547"}},
-				},
-				{
-					Query:    `SELECT v1*2, v1+1.00, v1/2.0 FROM test ORDER BY pk;`,
-					Expected: []sql.Row{{"-5064.71200", "-74.00", "-1266.178000000"}, {"0.00000", "1.00", "0.000000000"}, {"6650.00000", "2548.00", "1662.500000000"}},
-				},
-				{
-					Query:    `SELECT ROUND(15.00, 1)`,
-					Expected: []sql.Row{{"15.0"}},
-				},
-				{
-					Query: "with recursive t (n) as (select sum(1) from dual union all select (2.00) from dual) select sum(n) from t;",
+					Query: "select * from t order by pk",
 					Expected: []sql.Row{
-						{"3.00"},
+						{1, 2, nil, nil},
+						{2, 3, 4, 5},
+						{3, 4, nil, nil},
+					},
+				},
+				{
+					Query: "select * from t where col1 = 2",
+					Expected: []sql.Row{
+						{1, 2, nil, nil},
+					},
+				},
+				{
+					Query: "select * from t where col1 = 3 and pk = 2",
+					Expected: []sql.Row{
+						{2, 3, 4, 5},
+					},
+				},
+				{
+					Query: "select * from t where pk = 2",
+					Expected: []sql.Row{
+						{2, 3, 4, 5},
 					},
 				},
 			},
@@ -232,12 +245,13 @@ func TestSingleScript(t *testing.T) {
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-		harness.Setup(setup.MydbData)
-		harness.UseServer()
+		harness.Setup(setup.MydbData, setup.Parent_childData)
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
 		}
+		engine.EngineAnalyzer().Debug = true
+		engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}

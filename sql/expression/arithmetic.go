@@ -259,7 +259,7 @@ func (a *Arithmetic) convertLeftRight(ctx *sql.Context, left interface{}, right 
 		if types.IsInteger(typ) || types.IsFloat(typ) || types.IsTime(typ) {
 			left = convertValueToType(ctx, typ, left, lIsTimeType)
 		} else {
-			left = convertToDecimalValue(typ, left, lIsTimeType)
+			left = convertToDecimalValue(left, lIsTimeType)
 		}
 	}
 
@@ -270,7 +270,7 @@ func (a *Arithmetic) convertLeftRight(ctx *sql.Context, left interface{}, right 
 		if types.IsInteger(typ) || types.IsFloat(typ) || types.IsTime(typ) {
 			right = convertValueToType(ctx, typ, right, rIsTimeType)
 		} else {
-			right = convertToDecimalValue(typ, right, rIsTimeType)
+			right = convertToDecimalValue(right, rIsTimeType)
 		}
 	}
 

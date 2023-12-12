@@ -660,11 +660,7 @@ func checkResults(
 		for _, widenedRow := range widenedRows {
 			for i, val := range widenedRow {
 				if d, ok := val.(decimal.Decimal); ok {
-					if len(sch) == len(widenedRow) && types.IsDecimal(sch[i].Type) {
-						widenedRow[i] = sch[i].Type.(types.DecimalType_).DecimalValueStringFixed(d)
-					} else {
-						widenedRow[i] = d.StringFixed(d.Exponent() * -1)
-					}
+					widenedRow[i] = d.StringFixed(d.Exponent() * -1)
 				}
 			}
 		}
