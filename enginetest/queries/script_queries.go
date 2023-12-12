@@ -4857,11 +4857,11 @@ CREATE TABLE tab3 (
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select * from t where (d in (null, 1));",
+				Query:    "select * from t where (d in (null, 1));",
 				Expected: []sql.Row{},
 			},
 			{
-				Query: "select * from t where (f in (null, 1));",
+				Query:    "select * from t where (f in (null, 1));",
 				Expected: []sql.Row{},
 			},
 			{
@@ -4873,7 +4873,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				// This actually matches MySQL behavior
-				Query: "select * from t where (f in (null, 0.8));",
+				Query:    "select * from t where (f in (null, 0.8));",
 				Expected: []sql.Row{},
 			},
 			{

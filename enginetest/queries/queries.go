@@ -8641,15 +8641,15 @@ from typestable`,
 		},
 	},
 	{
-		Query: "select 1 where (1 in (null, 0.8))",
+		Query:    "select 1 where (1 in (null, 0.8))",
 		Expected: []sql.Row{},
 	},
 	{
-		Query: "select -1 where (1 in (null, sin(5)))",
+		Query:    "select -1 where (1 in (null, sin(5)))",
 		Expected: []sql.Row{},
 	},
 	{
-		Query: "select * from mytable where (i in (null, 0.8, 1.5, 2.999))",
+		Query:    "select * from mytable where (i in (null, 0.8, 1.5, 2.999))",
 		Expected: []sql.Row{},
 	},
 }
