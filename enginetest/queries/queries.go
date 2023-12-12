@@ -8616,6 +8616,37 @@ from typestable`,
 		Query:    "flush engine logs",
 		Expected: []sql.Row{},
 	},
+	// TODO: this is the largest scale decimal we support, but it's not the largest MySQL supports
+	{
+		Query: "select round(5e29, -30)",
+		Expected: []sql.Row{
+			{1e30},
+		},
+	},
+	{
+		Query: "select 1 in (null, 0.8)",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: "select -1 in (null, sin(5))",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query:    "select 1 where (1 in (null, 0.8))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "select -1 where (1 in (null, sin(5)))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "select * from mytable where (i in (null, 0.8, 1.5, 2.999))",
+		Expected: []sql.Row{},
+	},
 }
 
 var KeylessQueries = []QueryTest{
