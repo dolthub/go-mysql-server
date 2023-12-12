@@ -1345,6 +1345,8 @@ func (t *Table) errIfDuplicateEntryExist(cols []string, idxName string) error {
 		return err
 	}
 	unique := make(map[uint64]struct{})
+	t.partitionMux.RLock()
+	defer t.partitionMux.RUnlock()
 	for _, partition := range t.partitions {
 		for _, row := range partition {
 			idxPrefixKey := projectOnRow(columnMapping, row)
@@ -1564,9 +1566,7 @@ func (t *Table) sortRows() {
 		t.partitionMux.RUnlock()
 	}
 
-	t.partitionMux.Lock()
-	sort.Sort(partitionssort{t.partitions, idx, less})
-	t.partitionMux.Unlock()
+	sort.Sort(partitionssort{&t.partitionMux, t.partitions, idx, less})
 }
 
 type partidx struct {
@@ -1575,9 +1575,10 @@ type partidx struct {
 }
 
 type partitionssort struct {
-	ps   map[string][]sql.Row
-	idx  []partidx
-	less func(l, r sql.Row) bool
+	partitionMux *sync.RWMutex
+	ps           map[string][]sql.Row
+	idx          []partidx
+	less         func(l, r sql.Row) bool
 }
 
 func (ps partitionssort) Len() int {
@@ -1587,15 +1588,21 @@ func (ps partitionssort) Len() int {
 func (ps partitionssort) Less(i, j int) bool {
 	lidx := ps.idx[i]
 	ridx := ps.idx[j]
+	ps.partitionMux.RLock()
 	lr := ps.ps[lidx.key][lidx.i]
 	rr := ps.ps[ridx.key][ridx.i]
+	ps.partitionMux.RUnlock()
 	return ps.less(lr, rr)
 }
 
 func (ps partitionssort) Swap(i, j int) {
+	ps.partitionMux.RLock()
 	lidx := ps.idx[i]
 	ridx := ps.idx[j]
+	ps.partitionMux.RUnlock()
+	ps.partitionMux.Lock()
 	ps.ps[lidx.key][lidx.i], ps.ps[ridx.key][ridx.i] = ps.ps[ridx.key][ridx.i], ps.ps[lidx.key][lidx.i]
+	ps.partitionMux.Unlock()
 }
 
 func copyschema(sch sql.Schema) sql.Schema {
@@ -1619,10 +1626,14 @@ func copyschema(sch sql.Schema) sql.Schema {
 }
 
 func newTable(t *Table, newSch sql.PrimaryKeySchema) (*Table, error) {
-	newTable := NewPartitionedTableWithCollation(t.name, newSch, t.fkColl, len(t.partitions), t.collation)
+	partitionCount, _ := t.PartitionCount(nil)
+
+	newTable := NewPartitionedTableWithCollation(t.name, newSch, t.fkColl, int(partitionCount), t.collation)
 	for _, partition := range t.partitions {
 		for _, partitionRow := range partition {
+			t.partitionMux.Lock()
 			err := newTable.Insert(sql.NewEmptyContext(), partitionRow)
+			t.partitionMux.Unlock()
 			if err != nil {
 				return nil, err
 			}

@@ -122,9 +122,7 @@ func (t *tableEditor) StatementComplete(ctx *sql.Context) error {
 			newRowSlice[i] = row.Copy()
 		}
 		t.table.partitionMux.RUnlock()
-		t.table.partitionMux.Lock()
 		t.initialPartitions[partStr] = newRowSlice
-		t.table.partitionMux.Unlock()
 		t.table.partitionMux.RLock()
 	}
 	t.table.partitionMux.RUnlock()
@@ -499,14 +497,18 @@ func (pke *pkTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefixLe
 // ApplyEdits implements the tableEditAccumulator interface.
 func (pke *pkTableEditAccumulator) ApplyEdits(ctx *sql.Context) error {
 	for _, val := range pke.deletes {
+		pke.table.partitionMux.Lock()
 		err := pke.deleteHelper(ctx, pke.table, val)
+		pke.table.partitionMux.Unlock()
 		if err != nil {
 			return err
 		}
 	}
 
 	for _, val := range pke.adds {
+		pke.table.partitionMux.Lock()
 		err := pke.insertHelper(ctx, pke.table, val)
+		pke.table.partitionMux.Unlock()
 		if err != nil {
 			return err
 		}
@@ -690,14 +692,18 @@ func (k *keylessTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefi
 // ApplyEdits implements the tableEditAccumulator interface.
 func (k *keylessTableEditAccumulator) ApplyEdits(ctx *sql.Context) error {
 	for _, val := range k.deletes {
+		k.table.partitionMux.Lock()
 		err := k.deleteHelper(ctx, k.table, val)
+		k.table.partitionMux.Unlock()
 		if err != nil {
 			return err
 		}
 	}
 
 	for _, val := range k.adds {
+		k.table.partitionMux.Lock()
 		err := k.insertHelper(ctx, k.table, val)
+		k.table.partitionMux.Unlock()
 		if err != nil {
 			return err
 		}
