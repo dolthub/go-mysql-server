@@ -1208,6 +1208,46 @@ join uv d on d.u = c.x`,
 					{5, 3, 5},
 				},
 			},
+			{
+				q:     "select * from vals join (select * from ranges where min >= 2 and max <= 5 limit 1) ranges on val between min and max",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{2, 2, 4},
+					{3, 2, 4},
+					{4, 2, 4},
+				},
+			},
+			{
+				q:     "select * from vals join (select * from ranges where min >= 2 and max <= 5) ranges on val between min and max limit 1",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{2, 2, 4},
+				},
+			},
+			{
+				q:     "select * from vals join (select * from ranges where min >= 2 and max <= 5 order by min, max asc) ranges on val between min and max",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{2, 2, 4},
+					{3, 2, 4},
+					{3, 3, 5},
+					{4, 2, 4},
+					{4, 3, 5},
+					{5, 3, 5},
+				},
+			},
+			{
+				q:     "select * from vals join (select distinct * from ranges where min >= 2 and max <= 5) ranges on val between min and max",
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{2, 2, 4},
+					{3, 2, 4},
+					{4, 2, 4},
+					{3, 3, 5},
+					{4, 3, 5},
+					{5, 3, 5},
+				},
+			},
 		},
 	},
 	{
