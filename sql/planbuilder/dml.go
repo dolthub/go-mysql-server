@@ -265,16 +265,16 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 		tabId := inScope.tables[strings.ToLower(tableSch[0].Source)]
 		for i, col := range tableSch {
 			if col.Generated != nil {
-				colName := expression.NewGetFieldWithTable(i, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
+				colGf := expression.NewGetFieldWithTable(i, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
 				generated := b.resolveColumnDefaultExpression(inScope, col, col.Generated)
-				updateExprs = append(updateExprs, expression.NewSetField(colName, assignColumnIndexes(generated, tableSch)))
+				updateExprs = append(updateExprs, expression.NewSetField(colGf, assignColumnIndexes(generated, tableSch)))
 			}
 			if col.OnUpdate != nil {
 				// don't add if column is already being updated
 				if !isColumnUpdated(col, updateExprs) {
-					colName := expression.NewGetFieldWithTable(i, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
+					colGf := expression.NewGetFieldWithTable(i, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
 					onUpdate := b.resolveColumnDefaultExpression(inScope, col, col.OnUpdate)
-					updateExprs = append(updateExprs, expression.NewSetField(colName, assignColumnIndexes(onUpdate, tableSch)))
+					updateExprs = append(updateExprs, expression.NewSetField(colGf, assignColumnIndexes(onUpdate, tableSch)))
 				}
 			}
 		}
