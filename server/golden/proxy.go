@@ -21,7 +21,6 @@ import (
 	"reflect"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -232,11 +231,7 @@ func (h MySqlProxy) processQuery(
 		if ri != 0 && ri < len(query) {
 			remainder = query[ri:]
 			query = query[:ri]
-			query = strings.TrimSpace(query)
-			// trim spaces and empty statements
-			query = strings.TrimRightFunc(query, func(r rune) bool {
-				return r == ';' || unicode.IsSpace(r)
-			})
+			query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
 		}
 	}
 
