@@ -665,8 +665,6 @@ CREATE TABLE tab3 (
 				},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
-				// enginetests returns the enum id, but the text representation is sent over the wire
 				Query:    "select * from t;",
 				Expected: []sql.Row{{"one", nil, nil}, {"two", uint64(2), -2}},
 			},
@@ -717,8 +715,6 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
-				// enginetests returns the enum id, but the text representation is sent over the wire
 				Query:    "SELECT * FROM enumtest1;",
 				Expected: []sql.Row{{1, uint64(1)}, {2, uint64(1)}, {3, uint64(2)}},
 			},
@@ -2126,8 +2122,6 @@ CREATE TABLE tab3 (
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				SkipResultCheckOnServerEngine: true, //unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
-				// enginetests returns the enum id, but the text representation is sent over the wire
 				Query:    "SELECT * FROM test;",
 				Expected: []sql.Row{{1, uint16(2), uint64(2)}, {2, uint16(1), uint64(1)}},
 			},
@@ -2136,18 +2130,16 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
-				Query:                         "SELECT * FROM test;",
-				Expected:                      []sql.Row{{1, uint16(3), uint64(2)}, {2, uint16(1), uint64(1)}},
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, uint16(3), uint64(2)}, {2, uint16(1), uint64(1)}},
 			},
 			{
 				Query:    "UPDATE test SET v2 = 3 WHERE 2 = v2;",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
-				Query:                         "SELECT * FROM test;",
-				Expected:                      []sql.Row{{1, uint16(3), uint64(3)}, {2, uint16(1), uint64(1)}},
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, uint16(3), uint64(3)}, {2, uint16(1), uint64(1)}},
 			},
 		},
 	},
@@ -3413,8 +3405,7 @@ CREATE TABLE tab3 (
 				}}},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
-				Query:                         "SELECT * FROM setenumtest ORDER BY pk;",
+				Query: "SELECT * FROM setenumtest ORDER BY pk;",
 				Expected: []sql.Row{
 					{1, uint16(1), uint64(1)},
 					{2, uint16(2), uint64(2)},
@@ -3431,8 +3422,7 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
-				Query:                         "SELECT * FROM setenumtest ORDER BY pk;",
+				Query: "SELECT * FROM setenumtest ORDER BY pk;",
 				Expected: []sql.Row{
 					{1, uint16(1), uint64(1)},
 					{2, uint16(2), uint64(2)},

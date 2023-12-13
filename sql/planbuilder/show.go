@@ -779,7 +779,7 @@ func (b *Builder) buildShowCollation(inScope *scope, s *ast.Show) (outScope *sco
 	// information_schema, with slightly different syntax and with some columns aliased.
 	// TODO: install information_schema automatically for all catalogs
 	node, _, _, err := b.Parse("select collation_name as `collation`, character_set_name as charset, id,"+
-		"is_default as `default`, is_compiled as compiled, sortlen, pad_attribute from information_schema.collations", false)
+		"is_default as `default`, is_compiled as compiled, sortlen, pad_attribute from information_schema.collations order by collation_name", false)
 	if err != nil {
 		b.handleErr(err)
 	}

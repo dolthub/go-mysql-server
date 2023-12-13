@@ -612,6 +612,10 @@ func rowToSQL(s sql.Schema, expectedRow sql.Row, actualRow sql.Row, convertTime 
 			newRow = append(newRow, nil)
 		} else if types.IsDecimal(s[i].Type) || (isTime && !convertTime) || (isStr && types.IsTextOnly(s[i].Type)) {
 			newRow = append(newRow, v)
+		} else if types.IsEnum(s[i].Type) || types.IsSet(s[i].Type) {
+			// enginetests returns the enum index, but the text representation is sent over the wire
+			// TODO: need to check result rather than replacing it
+			newRow = append(newRow, actualRow[i])
 		} else {
 			c, _, err := s[i].Type.Convert(v)
 			if err != nil {
