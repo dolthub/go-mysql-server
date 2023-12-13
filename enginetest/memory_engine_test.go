@@ -201,20 +201,42 @@ func newUpdateResult(matched, updated int) types.OkResult {
 func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
-		{ // We should not have many relevancy tests since the values are subject to change if/when the algorithm gets updated
-			Name: "Relevancy Ordering",
+		{
+			Name: "physical columns added after virtual one",
 			SetUpScript: []string{
-				"CREATE TABLE test (pk INT PRIMARY KEY, doc TEXT, FULLTEXT idx (doc)) COLLATE=utf8mb4_general_ci;",
-				"INSERT INTO test VALUES (2, 'g hhhh aaaab ooooo aaaa'), (1, 'bbbb ff cccc ddd eee'), (4, 'AAAA aaaa aaaac aaaa Aaaa aaaa'), (3, 'aaaA ff j kkkk llllllll');",
+				"create table t (pk int primary key, col1 int as (pk + 1));",
+				"insert into t (pk) values (1), (3)",
+				"alter table t add index idx1 (col1, pk);",
+				"alter table t add index idx2 (col1);",
+				"alter table t add column col2 int;",
+				"alter table t add column col3 int;",
+				"insert into t (pk, col2, col3) values (2, 4, 5);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "SELECT MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance DESC;",
+					Query: "select * from t order by pk",
 					Expected: []sql.Row{
-						{float32(5.9636202)},
-						{float32(4.0278959)},
-						{float32(3.3721533)},
-						{float32(0)},
+						{1, 2, nil, nil},
+						{2, 3, 4, 5},
+						{3, 4, nil, nil},
+					},
+				},
+				{
+					Query: "select * from t where col1 = 2",
+					Expected: []sql.Row{
+						{1, 2, nil, nil},
+					},
+				},
+				{
+					Query: "select * from t where col1 = 3 and pk = 2",
+					Expected: []sql.Row{
+						{2, 3, 4, 5},
+					},
+				},
+				{
+					Query: "select * from t where pk = 2",
+					Expected: []sql.Row{
+						{2, 3, 4, 5},
 					},
 				},
 			},
@@ -228,6 +250,8 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
+		engine.EngineAnalyzer().Debug = true
+		engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
