@@ -6245,9 +6245,10 @@ var DropDatabaseScripts = []ScriptTest{
 	},
 }
 
-var ZeroTime = time.Date(0000, 1, 1, 0, 0, 0, 0, time.UTC)
-var SetupTime = time.Date(2000, 1, 1, 12, 0, 0, 0, time.UTC)
-var QueryTime = time.Date(2023, 12, 15, 1, 30, 0, 0, time.UTC)
+var ZeroTime = time.Date(0000, time.January, 1, 0, 0, 0, 0, time.UTC)
+var SetupTime = time.Date(2000, time.January, 1, 12, 0, 0, 0, time.UTC)
+var QueryTime = time.Date(2023, time.December, 15, 1, 30, 0, 0, time.UTC)
+var OtherTime = time.Date(2020, time.October, 2, 0, 0, 0, 0, time.UTC)
 var OnUpdateExprScripts = []ScriptTest{
 	{
 		Name: "error cases",
@@ -6291,7 +6292,10 @@ var OnUpdateExprScripts = []ScriptTest{
 			{
 				Query: "show create table t",
 				Expected: []sql.Row{
-					{"t", "CREATE TABLE `t` (\n  `i` int,\n  `ts` timestamp DEFAULT 0 ON UPDATE (CURRENT_TIMESTAMP())\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int,\n" +
+						"  `ts` timestamp DEFAULT 0 ON UPDATE (CURRENT_TIMESTAMP())\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
@@ -6331,6 +6335,7 @@ var OnUpdateExprScripts = []ScriptTest{
 				},
 			},
 			{
+				// updating timestamp itself blocks on update
 				Query: "update t set ts = timestamp('2020-10-2')",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{Matched: 3, Updated: 3}}},
@@ -6339,9 +6344,9 @@ var OnUpdateExprScripts = []ScriptTest{
 			{
 				Query: "select * from t;",
 				Expected: []sql.Row{
-					{100, time.Date(2020, time.October, 2, 0, 0, 0, 0, time.UTC)},
-					{100, time.Date(2020, time.October, 2, 0, 0, 0, 0, time.UTC)},
-					{100, time.Date(2020, time.October, 2, 0, 0, 0, 0, time.UTC)},
+					{100, OtherTime},
+					{100, OtherTime},
+					{100, OtherTime},
 				},
 			},
 		},
@@ -6356,7 +6361,10 @@ var OnUpdateExprScripts = []ScriptTest{
 			{
 				Query: "show create table t",
 				Expected: []sql.Row{
-					{"t", "CREATE TABLE `t` (\n  `i` int,\n  `ts` timestamp\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int,\n" +
+						"  `ts` timestamp\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
@@ -6368,7 +6376,10 @@ var OnUpdateExprScripts = []ScriptTest{
 			{
 				Query: "show create table t",
 				Expected: []sql.Row{
-					{"t", "CREATE TABLE `t` (\n  `i` int,\n  `ts` timestamp DEFAULT 0 ON UPDATE (CURRENT_TIMESTAMP())\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int,\n" +
+						"  `ts` timestamp DEFAULT 0 ON UPDATE (CURRENT_TIMESTAMP())\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
@@ -6408,7 +6419,7 @@ var OnUpdateExprScripts = []ScriptTest{
 				},
 			},
 			{
-				Query: "update t set ts = timestamp('2000-1-23')",
+				Query: "update t set ts = timestamp('2020-10-2')",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{Matched: 3, Updated: 3}}},
 				},
@@ -6416,9 +6427,153 @@ var OnUpdateExprScripts = []ScriptTest{
 			{
 				Query: "select * from t;",
 				Expected: []sql.Row{
-					{100, time.Date(2000, time.January, 23, 0, 0, 0, 0, time.UTC)},
-					{100, time.Date(2000, time.January, 23, 0, 0, 0, 0, time.UTC)},
-					{100, time.Date(2000, time.January, 23, 0, 0, 0, 0, time.UTC)},
+					{100, OtherTime},
+					{100, OtherTime},
+					{100, OtherTime},
+				},
+			},
+		},
+	},
+	{
+		Name: "multiple columns case",
+		SetUpScript: []string{
+			"create table t (i int primary key, ts timestamp default 0 on update current_timestamp, dt datetime default 0 on update current_timestamp);",
+			"insert into t(i) values (1), (2), (3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int NOT NULL,\n" +
+						"  `ts` timestamp DEFAULT 0 ON UPDATE (CURRENT_TIMESTAMP()),\n" +
+						"  `dt` datetime DEFAULT 0 ON UPDATE (CURRENT_TIMESTAMP()),\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "select * from t order by i;",
+				Expected: []sql.Row{
+					{1, ZeroTime, ZeroTime},
+					{2, ZeroTime, ZeroTime},
+					{3, ZeroTime, ZeroTime},
+				},
+			},
+			{
+				Query: "update t set i = 10 where i = 1;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query: "select * from t order by i;",
+				Expected: []sql.Row{
+					{2, ZeroTime, ZeroTime},
+					{3, ZeroTime, ZeroTime},
+					{10, QueryTime, QueryTime},
+				},
+			},
+			{
+				Query: "update t set ts = timestamp('2020-10-2') where i = 2",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query: "select * from t order by i;",
+				Expected: []sql.Row{
+					{2, OtherTime, QueryTime},
+					{3, ZeroTime, ZeroTime},
+					{10, QueryTime, QueryTime},
+				},
+			},
+		},
+	},
+	{
+		// before update triggers that update the timestamp column block the on update
+		Name: "before update trigger",
+		SetUpScript: []string{
+			"create table t (i int primary key, ts timestamp default 0 on update current_timestamp, dt datetime default 0 on update current_timestamp);",
+			"create trigger trig before update on t for each row set new.ts = timestamp('2020-10-2');",
+			"insert into t(i) values (1), (2), (3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "update t set i = 10 where i = 1;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query: "select * from t order by i;",
+				Expected: []sql.Row{
+					{2, ZeroTime, ZeroTime},
+					{3, ZeroTime, ZeroTime},
+					{10, OtherTime, QueryTime},
+				},
+			},
+		},
+	},
+	{
+		// update triggers that update other tables do not block on update
+		Name: "after update trigger",
+		SetUpScript: []string{
+			"create table a (i int primary key);",
+			"create table b (i int, ts timestamp default 0 on update current_timestamp, dt datetime default 0 on update current_timestamp);",
+			"create trigger trig after update on a for each row update b set i = i + 1;",
+			"insert into a values (0);",
+			"insert into b(i) values (0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from b order by i;",
+				Expected: []sql.Row{
+					{0, ZeroTime, ZeroTime},
+				},
+			},
+			{
+				Query: "update a set i = 10;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query: "select * from b order by i;",
+				Expected: []sql.Row{
+					{1, QueryTime, QueryTime},
+				},
+			},
+		},
+	},
+	{
+		Name: "insert triggers",
+		SetUpScript: []string{
+			"create table t (i int primary key);",
+			"create table a (i int, ts timestamp default 0 on update current_timestamp, dt datetime default 0 on update current_timestamp);",
+			"create table b (i int, ts timestamp default 0 on update current_timestamp, dt datetime default 0 on update current_timestamp);",
+			"create trigger trigA after insert on t for each row update a set i = i + 1;",
+			"create trigger trigB before insert on t for each row update b set i = i + 1;",
+			"insert into a(i) values (0);",
+			"insert into b(i) values (0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t values (1);",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select * from a order by i;",
+				Expected: []sql.Row{
+					{1, QueryTime, QueryTime},
+				},
+			},
+			{
+				Query: "select * from b order by i;",
+				Expected: []sql.Row{
+					{1, QueryTime, QueryTime},
 				},
 			},
 		},
