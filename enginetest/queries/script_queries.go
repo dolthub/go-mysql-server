@@ -6244,10 +6244,3 @@ var DropDatabaseScripts = []ScriptTest{
 		},
 	},
 }
-
-
-
-
-
-
-
