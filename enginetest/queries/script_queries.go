@@ -6299,6 +6299,7 @@ var OnUpdateExprScripts = []ScriptTest{
 				},
 			},
 			{
+				SkipResultCheckOnServerEngine: true,
 				Query: "select * from t order by i;",
 				Expected: []sql.Row{
 					{1, ZeroTime},
@@ -6313,6 +6314,7 @@ var OnUpdateExprScripts = []ScriptTest{
 				},
 			},
 			{
+				SkipResultCheckOnServerEngine: true,
 				Query: "select * from t order by i;",
 				Expected: []sql.Row{
 					{2, ZeroTime},
@@ -6522,6 +6524,7 @@ var OnUpdateExprScripts = []ScriptTest{
 				},
 			},
 			{
+				SkipResultCheckOnServerEngine: true,
 				Query: "select * from t order by i;",
 				Expected: []sql.Row{
 					{1, ZeroTime, ZeroTime},
@@ -6536,6 +6539,7 @@ var OnUpdateExprScripts = []ScriptTest{
 				},
 			},
 			{
+				SkipResultCheckOnServerEngine: true,
 				Query: "select * from t order by i;",
 				Expected: []sql.Row{
 					{2, ZeroTime, ZeroTime},
@@ -6550,6 +6554,7 @@ var OnUpdateExprScripts = []ScriptTest{
 				},
 			},
 			{
+				SkipResultCheckOnServerEngine: true,
 				Query: "select * from t order by i;",
 				Expected: []sql.Row{
 					{2, OtherTime, QueryTime},
@@ -6575,6 +6580,7 @@ var OnUpdateExprScripts = []ScriptTest{
 				},
 			},
 			{
+				SkipResultCheckOnServerEngine: true,
 				Query: "select * from t order by i;",
 				Expected: []sql.Row{
 					{2, ZeroTime, ZeroTime},
@@ -6596,6 +6602,7 @@ var OnUpdateExprScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				SkipResultCheckOnServerEngine: true,
 				Query: "select * from b order by i;",
 				Expected: []sql.Row{
 					{0, ZeroTime, ZeroTime},
@@ -6664,6 +6671,7 @@ var OnUpdateExprScripts = []ScriptTest{
 				},
 			},
 			{
+				SkipResultCheckOnServerEngine: true,
 				Query: "select * from child;",
 				Expected: []sql.Row{
 					{10, ZeroTime},

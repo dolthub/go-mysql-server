@@ -4261,11 +4261,6 @@ func TestOnUpdateExprScripts(t *testing.T, harness Harness) {
 
 		t.Run(script.Name, func(t *testing.T) {
 			for _, statement := range script.SetUpScript {
-				if sh, ok := harness.(SkippingHarness); ok {
-					if sh.SkipQueryTest(statement) {
-						t.Skip()
-					}
-				}
 				sql.RunWithNowFunc(func() time.Time { return queries.SetupTime }, func() error {
 					ctx.WithQuery(statement)
 					ctx.SetQueryTime(queries.SetupTime)
@@ -4288,9 +4283,6 @@ func TestOnUpdateExprScripts(t *testing.T, harness Harness) {
 
 			for _, assertion := range script.Assertions {
 				t.Run(assertion.Query, func(t *testing.T) {
-					if sh, ok := harness.(SkippingHarness); ok && sh.SkipQueryTest(assertion.Query) {
-						t.Skip()
-					}
 					if assertion.Skip {
 						t.Skip()
 					}
