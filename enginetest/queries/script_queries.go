@@ -6352,6 +6352,75 @@ var OnUpdateExprScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "default time is current time",
+		SetUpScript: []string{
+			"create table t (i int, ts timestamp default current_timestamp on update current_timestamp);",
+			"insert into t(i) values (1), (2), (3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int,\n" +
+						"  `ts` timestamp DEFAULT (CURRENT_TIMESTAMP()) ON UPDATE (CURRENT_TIMESTAMP())\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "select * from t order by i;",
+				Expected: []sql.Row{
+					{1, SetupTime},
+					{2, SetupTime},
+					{3, SetupTime},
+				},
+			},
+			{
+				Query: "update t set i = 10 where i = 1;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query: "select * from t order by i;",
+				Expected: []sql.Row{
+					{2, SetupTime},
+					{3, SetupTime},
+					{10, QueryTime},
+				},
+			},
+			{
+				Query: "update t set i = 100",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{Matched: 3, Updated: 3}}},
+				},
+			},
+			{
+				Query: "select * from t order by i;",
+				Expected: []sql.Row{
+					{100, QueryTime},
+					{100, QueryTime},
+					{100, QueryTime},
+				},
+			},
+			{
+				// updating timestamp itself blocks on update
+				Query: "update t set ts = timestamp('2020-10-2')",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{Matched: 3, Updated: 3}}},
+				},
+			},
+			{
+				Query: "select * from t;",
+				Expected: []sql.Row{
+					{100, OtherTime},
+					{100, OtherTime},
+					{100, OtherTime},
+				},
+			},
+		},
+	},
+	{
 		Name: "alter table",
 		SetUpScript: []string{
 			"create table t (i int, ts timestamp);",
@@ -6574,6 +6643,52 @@ var OnUpdateExprScripts = []ScriptTest{
 				Query: "select * from b order by i;",
 				Expected: []sql.Row{
 					{1, QueryTime, QueryTime},
+				},
+			},
+		},
+	},
+	{
+		// Foreign Key Cascade Update does NOT trigger on update on child table
+		Name: "foreign key tests",
+		SetUpScript: []string{
+			"create table parent (i int primary key);",
+			"create table child (i int primary key, ts timestamp default 0 on update current_timestamp, foreign key (i) references parent(i) on update cascade);",
+			"insert into parent values (1);",
+			"insert into child(i) values (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "update parent set i = 10;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query: "select * from child;",
+				Expected: []sql.Row{
+					{10, ZeroTime},
+				},
+			},
+		},
+	},
+	{
+		Name: "stored procedure tests",
+		SetUpScript: []string{
+			"create table t (i int, ts timestamp default 0 on update current_timestamp);",
+			"insert into t(i) values (0);",
+			"create procedure p() update t set i = i + 1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "call p();",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query: "select * from t;",
+				Expected: []sql.Row{
+					{1, QueryTime},
 				},
 			},
 		},
