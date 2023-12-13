@@ -6690,7 +6690,7 @@ var OnUpdateExprScripts = []ScriptTest{
 			{
 				// call depends on stored procedure stmt for whether to use 'query' or 'exec' from go sql driver.
 				SkipResultCheckOnServerEngine: true,
-				Query: "call p();",
+				Query:                         "call p();",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
 				},
