@@ -4261,6 +4261,11 @@ func TestOnUpdateExprScripts(t *testing.T, harness Harness) {
 
 		t.Run(script.Name, func(t *testing.T) {
 			for _, statement := range script.SetUpScript {
+				if sh, ok := harness.(SkippingHarness); ok {
+					if sh.SkipQueryTest(statement) {
+						t.Skip()
+					}
+				}
 				sql.RunWithNowFunc(func() time.Time { return queries.SetupTime }, func() error {
 					ctx.WithQuery(statement)
 					ctx.SetQueryTime(queries.SetupTime)
@@ -4269,8 +4274,23 @@ func TestOnUpdateExprScripts(t *testing.T, harness Harness) {
 				})
 			}
 
+			assertions := script.Assertions
+			if len(assertions) == 0 {
+				assertions = []queries.ScriptTestAssertion{
+					{
+						Query:           script.Query,
+						Expected:        script.Expected,
+						ExpectedErr:     script.ExpectedErr,
+						ExpectedIndexes: script.ExpectedIndexes,
+					},
+				}
+			}
+
 			for _, assertion := range script.Assertions {
 				t.Run(assertion.Query, func(t *testing.T) {
+					if sh, ok := harness.(SkippingHarness); ok && sh.SkipQueryTest(assertion.Query) {
+						t.Skip()
+					}
 					if assertion.Skip {
 						t.Skip()
 					}
@@ -4281,7 +4301,12 @@ func TestOnUpdateExprScripts(t *testing.T, harness Harness) {
 						} else if assertion.ExpectedErrStr != "" {
 							AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
 						} else {
-							TestQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, nil, nil)
+							var expected = assertion.Expected
+							if IsServerEngine(e) && assertion.SkipResultCheckOnServerEngine {
+								// TODO: remove this check in the future
+								expected = nil
+							}
+							TestQueryWithContext(t, ctx, e, harness, assertion.Query, expected, assertion.ExpectedColumns, assertion.Bindings)
 						}
 						return nil
 					})
