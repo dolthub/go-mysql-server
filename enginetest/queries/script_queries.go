@@ -6268,7 +6268,7 @@ var OnUpdateExprScripts = []ScriptTest{
 				ExpectedErr: sql.ErrInvalidOnUpdate,
 			},
 			{
-				Query:       "alter table t modify column ts timestamp on update (5)",
+				Query:          "alter table t modify column ts timestamp on update (5)",
 				ExpectedErrStr: "syntax error at position 53 near 'update'",
 			},
 			{
