@@ -128,6 +128,7 @@ var InsertQueries = []WriteQueryTest{
 		}},
 	},
 	{
+		SkipServerEngine: true, // the datetime returned is not non-zero
 		WriteQuery: `INSERT INTO typestable VALUES (
 			999, -128, -32768, -2147483648, -9223372036854775808,
 			0, 0, 0, 0,
@@ -146,6 +147,7 @@ var InsertQueries = []WriteQueryTest{
 		}},
 	},
 	{
+		SkipServerEngine: true, // the datetime returned is not non-zero
 		WriteQuery: `INSERT INTO typestable SET
 			id = 999, i8 = -128, i16 = -32768, i32 = -2147483648, i64 = -9223372036854775808,
 			u8 = 0, u16 = 0, u32 = 0, u64 = 0,
@@ -164,6 +166,7 @@ var InsertQueries = []WriteQueryTest{
 		}},
 	},
 	{
+		SkipServerEngine: true, // the datetime returned is not non-zero
 		WriteQuery: `INSERT INTO typestable SET
 			id = 999, i8 = -128, i16 = -32768, i32 = -2147483648, i64 = -9223372036854775808,
 			u8 = 0, u16 = 0, u32 = 0, u64 = 0,
