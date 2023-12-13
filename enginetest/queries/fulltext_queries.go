@@ -464,8 +464,7 @@ var FulltextTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				SkipResultCheckOnServerEngine: true, // the float32 value does not match
-				Query:                         "SELECT MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance DESC;",
+				Query: "SELECT MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance DESC;",
 				Expected: []sql.Row{
 					{float32(5.9636202)},
 					{float32(4.0278959)},
@@ -474,8 +473,7 @@ var FulltextTests = []ScriptTest{
 				},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // the float32 value does not match
-				Query:                         "SELECT MATCH(doc) AGAINST('aaaa') AS relevance, pk FROM test ORDER BY relevance DESC;",
+				Query: "SELECT MATCH(doc) AGAINST('aaaa') AS relevance, pk FROM test ORDER BY relevance DESC;",
 				Expected: []sql.Row{
 					{float32(5.9636202), int32(4)},
 					{float32(4.0278959), int32(2)},
@@ -484,8 +482,7 @@ var FulltextTests = []ScriptTest{
 				},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // the float32 value does not match
-				Query:                         "SELECT pk, MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance ASC;",
+				Query: "SELECT pk, MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance ASC;",
 				Expected: []sql.Row{
 					{int32(1), float32(0)},
 					{int32(3), float32(3.3721533)},
@@ -494,8 +491,7 @@ var FulltextTests = []ScriptTest{
 				},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // the float32 value does not match
-				Query:                         "SELECT pk, doc, MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance DESC;",
+				Query: "SELECT pk, doc, MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance DESC;",
 				Expected: []sql.Row{
 					{int32(4), "AAAA aaaa aaaac aaaa Aaaa aaaa", float32(5.9636202)},
 					{int32(2), "g hhhh aaaab ooooo aaaa", float32(4.0278959)},
@@ -504,8 +500,7 @@ var FulltextTests = []ScriptTest{
 				},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // the float32 value does not match
-				Query:                         "SELECT pk, doc, MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance ASC;",
+				Query: "SELECT pk, doc, MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance ASC;",
 				Expected: []sql.Row{
 					{int32(1), "bbbb ff cccc ddd eee", float32(0)},
 					{int32(3), "aaaA ff j kkkk llllllll", float32(3.3721533)},
@@ -541,8 +536,7 @@ var FulltextTests = []ScriptTest{
 				},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // the float32 value does not match
-				Query:                         "SELECT pk, MATCH(doc) AGAINST('aaaa') AS relevance FROM test HAVING relevance > 4 ORDER BY relevance DESC;",
+				Query: "SELECT pk, MATCH(doc) AGAINST('aaaa') AS relevance FROM test HAVING relevance > 4 ORDER BY relevance DESC;",
 				Expected: []sql.Row{
 					{int32(4), float32(5.9636202)},
 					{int32(2), float32(4.0278959)},
@@ -575,8 +569,7 @@ var FulltextTests = []ScriptTest{
 				},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // the float32 value does not match
-				Query:                         "SELECT pk, MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance DESC;",
+				Query: "SELECT pk, MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance DESC;",
 				Expected: []sql.Row{
 					{int32(4), float32(5.9636202)},
 					{int32(2), float32(4.0278959)},

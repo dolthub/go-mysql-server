@@ -3233,8 +3233,7 @@ CREATE TABLE tab3 (
 			},
 			// Assert that returned values are correct.
 			{
-				SkipResultCheckOnServerEngine: true, // the type differs on int16 vs int64 (for go sql driver, integer value always returned as int64)
-				Query:                         "SELECT * from t order by pk;",
+				Query: "SELECT * from t order by pk;",
 				Expected: []sql.Row{
 					{1, int16(1901)},
 					{2, int16(1901)},
@@ -3296,7 +3295,7 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // the type differs on int16 vs int64 (for go sql driver, integer value always returned as int64) AND the datetime returned is not non-zero
+				SkipResultCheckOnServerEngine: true, // the datetime returned is not non-zero
 				Query:                         "SELECT * from t",
 				Expected: []sql.Row{
 					{

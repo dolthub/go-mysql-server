@@ -16,6 +16,7 @@ package enginetest
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -790,7 +791,8 @@ func WidenRow(sch sql.Schema, row sql.Row) sql.Row {
 		case uint32:
 			vw = uint64(x)
 		case float32:
-			vw = float64(x)
+			// casting it to float64 causes approximation, which doesn't work for server engine results.
+			vw, _ = strconv.ParseFloat(fmt.Sprintf("%v", v), 64)
 		default:
 			vw = v
 		}
