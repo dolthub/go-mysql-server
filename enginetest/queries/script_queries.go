@@ -6245,33 +6245,130 @@ var DropDatabaseScripts = []ScriptTest{
 	},
 }
 
+var ZeroTime = time.Date(0000, 1, 1, 0, 0, 0, 0, time.UTC)
 var SetupTime = time.Date(2000, 1, 1, 12, 0, 0, 0, time.UTC)
 var QueryTime = time.Date(2023, 12, 15, 1, 30, 0, 0, time.UTC)
 var OnUpdateExprScripts = []ScriptTest{
 	{
-		Name: "basic case and error cases",
+		Name: "error cases",
 		SetUpScript: []string{
-			"create table t (i int, ts timestamp default null on update current_timestamp);",
+			"create table t (i int, ts timestamp);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table tt (i int, j int on update (5))",
+				ExpectedErrStr: "syntax error at position 42 near 'update'",
+			},
+			{
+				Query:       "create table tt (i int, j int on update current_timestamp)",
+				ExpectedErr: sql.ErrInvalidOnUpdate,
+			},
+			{
+				Query:       "create table tt (i int, d date on update current_timestamp)",
+				ExpectedErr: sql.ErrInvalidOnUpdate,
+			},
+			{
+				Query:       "alter table t modify column ts timestamp on update (5)",
+				ExpectedErrStr: "syntax error at position 53 near 'update'",
+			},
+			{
+				Query:       "alter table t modify column t int on update current_timestamp",
+				ExpectedErr: sql.ErrInvalidOnUpdate,
+			},
+			{
+				Query:       "alter table t modify column t date on update current_timestamp",
+				ExpectedErr: sql.ErrInvalidOnUpdate,
+			},
+		},
+	},
+	{
+		Name: "basic case",
+		SetUpScript: []string{
+			"create table t (i int, ts timestamp default 0 on update current_timestamp);",
 			"insert into t(i) values (1), (2), (3);",
-			"create table tt (i int, ts timestamp default null);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create table t",
 				Expected: []sql.Row{
-					{"t", "CREATE TABLE `t` (\n  `i` int,\n  `ts` timestamp DEFAULT NULL ON UPDATE (CURRENT_TIMESTAMP())\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+					{"t", "CREATE TABLE `t` (\n  `i` int,\n  `ts` timestamp DEFAULT 0 ON UPDATE (CURRENT_TIMESTAMP())\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
-				Query: "alter table tt modify column ts timestamp default null on update current_timestamp;",
+				Query: "select * from t order by i;",
+				Expected: []sql.Row{
+					{1, ZeroTime},
+					{2, ZeroTime},
+					{3, ZeroTime},
+				},
+			},
+			{
+				Query: "update t set i = 10 where i = 1;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query: "select * from t order by i;",
+				Expected: []sql.Row{
+					{2, ZeroTime},
+					{3, ZeroTime},
+					{10, QueryTime},
+				},
+			},
+			{
+				Query: "update t set i = 100",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{Matched: 3, Updated: 3}}},
+				},
+			},
+			{
+				Query: "select * from t order by i;",
+				Expected: []sql.Row{
+					{100, QueryTime},
+					{100, QueryTime},
+					{100, QueryTime},
+				},
+			},
+			{
+				Query: "update t set ts = timestamp('2020-10-2')",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{Matched: 3, Updated: 3}}},
+				},
+			},
+			{
+				Query: "select * from t;",
+				Expected: []sql.Row{
+					{100, time.Date(2020, time.October, 2, 0, 0, 0, 0, time.UTC)},
+					{100, time.Date(2020, time.October, 2, 0, 0, 0, 0, time.UTC)},
+					{100, time.Date(2020, time.October, 2, 0, 0, 0, 0, time.UTC)},
+				},
+			},
+		},
+	},
+	{
+		Name: "alter table",
+		SetUpScript: []string{
+			"create table t (i int, ts timestamp);",
+			"insert into t(i) values (1), (2), (3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n  `i` int,\n  `ts` timestamp\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "alter table t modify column ts timestamp default 0 on update current_timestamp;",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Query: "show create table tt",
+				Query: "show create table t",
 				Expected: []sql.Row{
-					{"tt", "CREATE TABLE `tt` (\n  `i` int,\n  `ts` timestamp DEFAULT NULL ON UPDATE (CURRENT_TIMESTAMP())\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+					{"t", "CREATE TABLE `t` (\n  `i` int,\n  `ts` timestamp DEFAULT 0 ON UPDATE (CURRENT_TIMESTAMP())\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
@@ -6303,11 +6400,11 @@ var OnUpdateExprScripts = []ScriptTest{
 				},
 			},
 			{
-				Query: "select i from t where ts is not null;",
+				Query: "select * from t order by i;",
 				Expected: []sql.Row{
-					{100},
-					{100},
-					{100},
+					{100, QueryTime},
+					{100, QueryTime},
+					{100, QueryTime},
 				},
 			},
 			{
@@ -6323,18 +6420,6 @@ var OnUpdateExprScripts = []ScriptTest{
 					{100, time.Date(2000, time.January, 23, 0, 0, 0, 0, time.UTC)},
 					{100, time.Date(2000, time.January, 23, 0, 0, 0, 0, time.UTC)},
 				},
-			},
-			{
-				Query:          "create table t1 (i int, j int on update (5))",
-				ExpectedErrStr: "syntax error at position 42 near 'update'",
-			},
-			{
-				Query:       "create table t1 (i int, j int on update current_timestamp)",
-				ExpectedErr: sql.ErrInvalidOnUpdate,
-			},
-			{
-				Query:       "create table t1 (i int, d date on update current_timestamp)",
-				ExpectedErr: sql.ErrInvalidOnUpdate,
 			},
 		},
 	},
