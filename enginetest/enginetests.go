@@ -4402,7 +4402,7 @@ func TestOnUpdateExprScripts(t *testing.T, harness Harness) {
 		e := mustNewEngine(t, harness)
 		ctx := NewContext(harness)
 		for _, statement := range script.SetUpScript {
-			sql.RunWithNowFunc(func() time.Time {return queries.SetupTime}, func() error {
+			sql.RunWithNowFunc(func() time.Time { return queries.SetupTime }, func() error {
 				ctx.WithQuery(statement)
 				ctx.SetQueryTime(queries.SetupTime)
 				RunQueryWithContext(t, e, harness, ctx, statement)
@@ -4415,7 +4415,7 @@ func TestOnUpdateExprScripts(t *testing.T, harness Harness) {
 				if assertion.Skip {
 					t.Skip()
 				}
-				sql.RunWithNowFunc(func() time.Time {return queries.QueryTime}, func() error {
+				sql.RunWithNowFunc(func() time.Time { return queries.QueryTime }, func() error {
 					ctx.SetQueryTime(queries.QueryTime)
 					if assertion.ExpectedErr != nil {
 						AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
