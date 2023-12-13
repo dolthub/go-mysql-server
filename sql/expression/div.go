@@ -329,29 +329,36 @@ func (d *Div) determineResultType(outermostResult bool) sql.Type {
 // precision loss.
 func floatOrDecimalType(e sql.Expression, treatIntsAsFloats bool) sql.Type {
 	var resType sql.Type
-	var decType sql.Type
 	var maxWhole, maxFrac uint8
 	sql.Inspect(e, func(expr sql.Expression) bool {
 		switch c := expr.(type) {
 		case *GetField:
-			if treatIntsAsFloats && types.IsInteger(c.Type()) {
+			ct := c.Type()
+			if treatIntsAsFloats && types.IsInteger(ct) {
 				resType = types.Float64
 				return false
 			}
-			if types.IsFloat(c.Type()) {
+			if types.IsFloat(ct) {
 				resType = types.Float64
 				return false
 			}
-			if types.IsDecimal(c.Type()) {
-				decType = c.Type()
+			if types.IsDecimal(ct) {
+				dt := ct.(sql.DecimalType)
+				p, s := dt.Precision(), dt.Scale()
+				if whole := p - s; whole > maxWhole {
+					maxWhole = whole
+				}
+				if s > maxFrac {
+					maxFrac = s
+				}
 			}
 		case *Literal:
 			if types.IsNumber(c.Type()) {
 				l, err := c.Eval(nil, nil)
 				if err == nil {
 					p, s := GetPrecisionAndScale(l)
-					if cw := p - s; cw > maxWhole {
-						maxWhole = cw
+					if whole := p - s; whole > maxWhole {
+						maxWhole = whole
 					}
 					if s > maxFrac {
 						maxFrac = s
@@ -361,13 +368,8 @@ func floatOrDecimalType(e sql.Expression, treatIntsAsFloats bool) sql.Type {
 		}
 		return true
 	})
-
 	if resType == types.Float64 {
 		return resType
-	}
-
-	if decType != nil {
-		return decType
 	}
 
 	// defType is defined by evaluating all number literals available
@@ -387,7 +389,6 @@ func convertToDecimalValue(val interface{}, isTimeType bool) interface{} {
 	if isTimeType {
 		val = convertTimeTypeToString(val)
 	}
-
 	switch v := val.(type) {
 	case bool:
 		val = 0
