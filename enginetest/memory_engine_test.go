@@ -561,7 +561,6 @@ func TestUpdateErrors(t *testing.T) {
 }
 
 func TestOnUpdateExprScripts(t *testing.T) {
-	t.Skip()
 	enginetest.TestOnUpdateExprScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
