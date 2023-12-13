@@ -4256,6 +4256,9 @@ func TestOnUpdateExprScripts(t *testing.T, harness Harness) {
 		}
 		e := mustNewEngine(t, harness)
 		ctx := NewContext(harness)
+		err := CreateNewConnectionForServerEngine(ctx, e)
+		require.NoError(t, err, nil)
+
 		t.Run(script.Name, func(t *testing.T) {
 			for _, statement := range script.SetUpScript {
 				sql.RunWithNowFunc(func() time.Time { return queries.SetupTime }, func() error {
