@@ -6245,7 +6245,7 @@ var DropDatabaseScripts = []ScriptTest{
 	},
 }
 
-var SetupTime = time.Date(2000, 1, 1, 12, 0, 0 ,0, time.UTC)
+var SetupTime = time.Date(2000, 1, 1, 12, 0, 0, 0, time.UTC)
 var QueryTime = time.Date(2023, 12, 15, 1, 30, 0, 0, time.UTC)
 var OnUpdateExprScripts = []ScriptTest{
 	{
@@ -6275,7 +6275,7 @@ var OnUpdateExprScripts = []ScriptTest{
 				},
 			},
 			{
-				Query:    "select * from t order by i;",
+				Query: "select * from t order by i;",
 				Expected: []sql.Row{
 					{1, nil},
 					{2, nil},
