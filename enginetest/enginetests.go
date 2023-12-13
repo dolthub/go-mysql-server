@@ -4388,6 +4388,50 @@ func TestOnUpdateTimestamp(t *testing.T, harness Harness) {
 	TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t", exp, nil, nil)
 }
 
+func TestOnUpdateExprScripts(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.OnUpdateExprScripts {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(script.Name) {
+				t.Run(script.Name, func(t *testing.T) {
+					t.Skip(script.Name)
+				})
+				continue
+			}
+		}
+		e := mustNewEngine(t, harness)
+		ctx := NewContext(harness)
+		for _, statement := range script.SetUpScript {
+			sql.RunWithNowFunc(func() time.Time {return queries.SetupTime}, func() error {
+				ctx.WithQuery(statement)
+				ctx.SetQueryTime(queries.SetupTime)
+				RunQueryWithContext(t, e, harness, ctx, statement)
+				return nil
+			})
+		}
+
+		for _, assertion := range script.Assertions {
+			t.Run(assertion.Query, func(t *testing.T) {
+				if assertion.Skip {
+					t.Skip()
+				}
+				sql.RunWithNowFunc(func() time.Time {return queries.QueryTime}, func() error {
+					ctx.SetQueryTime(queries.QueryTime)
+					if assertion.ExpectedErr != nil {
+						AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
+					} else if assertion.ExpectedErrStr != "" {
+						AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
+					} else {
+						TestQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, nil, nil)
+					}
+					return nil
+				})
+			})
+		}
+		e.Close()
+	}
+}
+
 func TestAddDropPks(t *testing.T, harness Harness) {
 	for _, tt := range queries.AddDropPrimaryKeyScripts {
 		TestScript(t, harness, tt)
