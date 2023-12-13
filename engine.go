@@ -197,6 +197,7 @@ func (e *Engine) AnalyzeQuery(
 	ctx *sql.Context,
 	query string,
 ) (sql.Node, error) {
+	query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
 	parsed, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, query)
 	if err != nil {
 		return nil, err
@@ -209,8 +210,9 @@ func (e *Engine) PrepareQuery(
 	ctx *sql.Context,
 	query string,
 ) (sql.Node, error) {
-	sqlMode := sql.LoadSqlMode(ctx)
+	query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
 
+	sqlMode := sql.LoadSqlMode(ctx)
 	stmt, _, err := sqlparser.ParseOneWithOptions(query, sqlMode.ParserOptions())
 	if err != nil {
 		return nil, err
@@ -345,7 +347,7 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 // QueryWithBindings executes the query given with the bindings provided. If parsed is non-nil, it will be used
 // instead of parsing the query from text.
 func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
-	var err error
+	query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog)
 	if prep, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query); ok {
 		parsed = prep
@@ -356,18 +358,15 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 		if err != nil {
 			return nil, nil, err
 		}
-		prep, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
+		prep, ok = e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
 		if ok {
 			parsed = prep
 			binder.SetBindings(bindings)
 		}
 	}
-	if err != nil {
-		return nil, nil, err
-	}
 
 	// Give the integrator a chance to reject the session before proceeding
-	err = ctx.Session.ValidateSession(ctx)
+	err := ctx.Session.ValidateSession(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
