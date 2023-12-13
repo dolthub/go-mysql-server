@@ -24,7 +24,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"unicode"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -161,17 +160,9 @@ func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, pa
 		}
 	}
 
-	// the `;` at the end of the query gets stored in cache when preparing the statement,
-	// which cause it to be not removed for some data storage (e.g. `CREATE VIEW`). This causes inconsistency issue.
-	q := strings.TrimSpace(query)
-	// trim spaces and empty statements
-	q = strings.TrimRightFunc(q, func(r rune) bool {
-		return r == ';' || unicode.IsSpace(r)
-	})
-
 	var err error
 	if parsed == nil {
-		parsed, err = sqlparser.Parse(q)
+		parsed, err = sqlparser.Parse(query)
 		if err != nil {
 			// TODO: conn.Query() empty query does not error
 			if strings.HasSuffix(err.Error(), "empty statement") {
@@ -181,7 +172,7 @@ func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, pa
 			//  to use ParseWithOptions() method. Replacing double quotes
 			//  because the 'ANSI' mode is not on by default and will not
 			//  be set on the context after SET @@sql_mode = 'ANSI' query.
-			ansiQuery := strings.Replace(q, "\"", "`", -1)
+			ansiQuery := strings.Replace(query, "\"", "`", -1)
 			parsed, err = sqlparser.Parse(ansiQuery)
 			if err != nil {
 				return nil, nil, err
@@ -193,17 +184,17 @@ func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, pa
 	//  However, Dolt supports, but not go-sql-driver client
 	switch parsed.(type) {
 	case *sqlparser.Load, *sqlparser.Execute, *sqlparser.Prepare:
-		return s.queryOrExec(nil, parsed, q, []any{})
+		return s.queryOrExec(nil, parsed, query, []any{})
 	}
 
-	stmt, err := s.conn.Prepare(q)
+	stmt, err := s.conn.Prepare(query)
 	if err != nil {
 		return nil, nil, trimMySQLErrCodePrefix(err)
 	}
 
 	args := prepareBindingArgs(bindings)
 
-	return s.queryOrExec(stmt, parsed, q, args)
+	return s.queryOrExec(stmt, parsed, query, args)
 }
 
 // queryOrExec function use `query()` or `exec()` method of go-sql-driver depending on the sql parser plan.
