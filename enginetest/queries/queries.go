@@ -8647,6 +8647,14 @@ from typestable`,
 		Query:    "select * from mytable where (i in (null, 0.8, 1.5, 2.999))",
 		Expected: []sql.Row{},
 	},
+	{
+		Query:    "select * from mytable where (i BETWEEN (CASE 1 WHEN 2 THEN 1.0 ELSE (1||2) END) AND i)",
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
