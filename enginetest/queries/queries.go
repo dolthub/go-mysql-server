@@ -4576,7 +4576,7 @@ Select * from (
 		Expected: []sql.Row{{-3.0}},
 	},
 	{
-		SkipServerEngine: true, // the precision of expected and actual result does not match
+		SkipServerEngine: true, // the float32 value does not match
 		Query:            `SELECT CONVERT("-3.9876", FLOAT) FROM dual`,
 		Expected:         []sql.Row{{float32(-3.9876)}},
 	},
@@ -4601,13 +4601,8 @@ Select * from (
 		Expected: []sql.Row{{"1234567893.1234567893"}},
 	},
 	{
-		SkipServerEngine: true, // currently, the server engine test returns the correct result of "10.00"
-		// In enginetests, the SQL wire conversion logic isn't used, which is what expands the DECIMAL(4,2) value
-		// from "10" to "10.00" to exactly match MySQL's result. So, here we see just "10", but through sql-server
-		// we'll see the correct "10.00" value. Ideally, the enginetests (and dolt sql) would also execute the
-		// SQL wire conversion logic so that we don't have this inconsistency.
 		Query:    `SELECT CONVERT(10, DECIMAL(4,2))`,
-		Expected: []sql.Row{{"10"}},
+		Expected: []sql.Row{{"10.00"}},
 	},
 	{
 		Query: "SELECT CONVERT(-3, UNSIGNED) FROM mytable",
@@ -8627,6 +8622,30 @@ from typestable`,
 		Expected: []sql.Row{
 			{1e30},
 		},
+	},
+	{
+		Query: "select 1 in (null, 0.8)",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: "select -1 in (null, sin(5))",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query:    "select 1 where (1 in (null, 0.8))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "select -1 where (1 in (null, sin(5)))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "select * from mytable where (i in (null, 0.8, 1.5, 2.999))",
+		Expected: []sql.Row{},
 	},
 }
 

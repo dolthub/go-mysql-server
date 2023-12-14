@@ -101,14 +101,30 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				continue
 			}
 
-			right, err := convertOrTruncate(ctx, originalRight, typ)
-			if err != nil {
-				return nil, err
-			}
-
-			cmp, err := typ.Compare(left, right)
-			if err != nil {
-				return nil, err
+			var cmp int
+			if types.IsDecimal(el.Type()) || types.IsFloat(el.Type()) {
+				rtyp := el.Type().Promote()
+				left, err := convertOrTruncate(ctx, left, rtyp)
+				if err != nil {
+					return nil, err
+				}
+				right, err := convertOrTruncate(ctx, originalRight, rtyp)
+				if err != nil {
+					return nil, err
+				}
+				cmp, err = rtyp.Compare(left, right)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				right, err := convertOrTruncate(ctx, originalRight, typ)
+				if err != nil {
+					return nil, err
+				}
+				cmp, err = typ.Compare(left, right)
+				if err != nil {
+					return nil, err
+				}
 			}
 
 			if cmp == 0 {
@@ -194,12 +210,13 @@ func newInMap(ctx *sql.Context, right Tuple, lType sql.Type) (map[uint64]sql.Exp
 	lColumnCount := types.NumColumns(lType)
 
 	for _, el := range right {
-		rColumnCount := types.NumColumns(el.Type())
+		rType := el.Type().Promote()
+		rColumnCount := types.NumColumns(rType)
 		if rColumnCount != lColumnCount {
 			return nil, false, sql.ErrInvalidOperandColumns.New(lColumnCount, rColumnCount)
 		}
 
-		if el.Type() == types.Null {
+		if rType == types.Null {
 			hasNull = true
 			continue
 		}
@@ -212,7 +229,12 @@ func newInMap(ctx *sql.Context, right Tuple, lType sql.Type) (map[uint64]sql.Exp
 			continue
 		}
 
-		key, err := hashOfSimple(ctx, i, lType)
+		var key uint64
+		if types.IsDecimal(rType) || types.IsFloat(rType) {
+			key, err = hashOfSimple(ctx, i, rType)
+		} else {
+			key, err = hashOfSimple(ctx, i, lType)
+		}
 		if err != nil {
 			return nil, false, err
 		}

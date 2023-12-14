@@ -69,11 +69,7 @@ func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool, options 
 	span, ctx := ctx.Span("parse", trace.WithAttributes(attribute.String("query", query)))
 	defer span.End()
 
-	s := strings.TrimSpace(query)
-	// trim spaces and empty statements
-	s = strings.TrimRightFunc(s, func(r rune) bool {
-		return r == ';' || unicode.IsSpace(r)
-	})
+	s := RemoveSpaceAndDelimiter(query, ';')
 
 	var stmt ast.Statement
 	var err error
@@ -88,11 +84,7 @@ func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool, options 
 		stmt, ri, err = ast.ParseOneWithOptions(s, options)
 		if ri != 0 && ri < len(s) {
 			parsed = s[:ri]
-			parsed = strings.TrimSpace(parsed)
-			// trim spaces and empty statements
-			parsed = strings.TrimRightFunc(parsed, func(r rune) bool {
-				return r == ';' || unicode.IsSpace(r)
-			})
+			parsed = RemoveSpaceAndDelimiter(parsed, ';')
 			remainder = s[ri:]
 		}
 		return nil, parsed, remainder, err
@@ -132,11 +124,7 @@ func (b *Builder) Parse(query string, multi bool) (ret sql.Node, parsed, remaind
 	span, ctx := b.ctx.Span("parse", trace.WithAttributes(attribute.String("query", query)))
 	defer span.End()
 
-	s := strings.TrimSpace(query)
-	// trim spaces and empty statements
-	s = strings.TrimRightFunc(s, func(r rune) bool {
-		return r == ';' || unicode.IsSpace(r)
-	})
+	s := RemoveSpaceAndDelimiter(query, ';')
 
 	var stmt ast.Statement
 
@@ -148,11 +136,7 @@ func (b *Builder) Parse(query string, multi bool) (ret sql.Node, parsed, remaind
 		stmt, ri, err = ast.ParseOneWithOptions(s, b.parserOpts)
 		if ri != 0 && ri < len(s) {
 			parsed = s[:ri]
-			parsed = strings.TrimSpace(parsed)
-			// trim spaces and empty statements
-			parsed = strings.TrimRightFunc(parsed, func(r rune) bool {
-				return r == ';' || unicode.IsSpace(r)
-			})
+			parsed = RemoveSpaceAndDelimiter(parsed, ';')
 			remainder = s[ri:]
 		}
 	}
@@ -194,11 +178,7 @@ func ParseOnly(ctx *sql.Context, query string, multi bool) (ast.Statement, strin
 	sqlMode := sql.LoadSqlMode(ctx)
 	options := sqlMode.ParserOptions()
 
-	s := strings.TrimSpace(query)
-	// trim spaces and empty statements
-	s = strings.TrimRightFunc(s, func(r rune) bool {
-		return r == ';' || unicode.IsSpace(r)
-	})
+	s := RemoveSpaceAndDelimiter(query, ';')
 
 	var stmt ast.Statement
 	var parsed string
@@ -213,13 +193,18 @@ func ParseOnly(ctx *sql.Context, query string, multi bool) (ast.Statement, strin
 		stmt, ri, err = ast.ParseOneWithOptions(s, options)
 		if ri != 0 && ri < len(s) {
 			parsed = s[:ri]
-			parsed = strings.TrimSpace(parsed)
-			// trim spaces and empty statements
-			parsed = strings.TrimRightFunc(parsed, func(r rune) bool {
-				return r == ';' || unicode.IsSpace(r)
-			})
+			parsed = RemoveSpaceAndDelimiter(parsed, ';')
 			remainder = s[ri:]
 		}
 	}
 	return stmt, query, remainder, err
+}
+
+// RemoveSpaceAndDelimiter removes space characters and given delimiter characters from the given query.
+func RemoveSpaceAndDelimiter(query string, d rune) string {
+	query = strings.TrimSpace(query)
+	// trim spaces and empty statements
+	return strings.TrimRightFunc(query, func(r rune) bool {
+		return r == d || unicode.IsSpace(r)
+	})
 }

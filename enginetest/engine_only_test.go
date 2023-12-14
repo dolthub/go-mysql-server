@@ -650,7 +650,7 @@ func TestTableFunctions(t *testing.T) {
 	harness.Setup(setup.MydbData)
 
 	databaseProvider := harness.NewDatabaseProvider()
-	testDatabaseProvider := NewTestProvider(&databaseProvider, SimpleTableFunction{}, memory.IntSequenceTable{}, memory.PointLookupTable{})
+	testDatabaseProvider := NewTestProvider(&databaseProvider, SimpleTableFunction{}, memory.IntSequenceTable{}, memory.PointLookupTable{}, memory.TableFunc{})
 
 	engine := enginetest.NewEngineWithProvider(t, harness, testDatabaseProvider)
 	engine.EngineAnalyzer().ExecBuilder = rowexec.DefaultBuilder
