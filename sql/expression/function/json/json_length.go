@@ -17,7 +17,6 @@ package json
 import (
 	"encoding/json"
 	"fmt"
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/jsonpath"
 

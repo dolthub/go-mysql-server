@@ -17,7 +17,7 @@ package json
 import (
 	"encoding/json"
 	"fmt"
-		"strings"
+	"strings"
 
 	"github.com/dolthub/jsonpath"
 	"github.com/dolthub/vitess/go/sqltypes"

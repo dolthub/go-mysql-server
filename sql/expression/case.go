@@ -16,7 +16,6 @@ package expression
 
 import (
 	"bytes"
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
