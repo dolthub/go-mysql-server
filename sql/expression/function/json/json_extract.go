@@ -75,6 +75,7 @@ func (*JSONExtract) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span("function.JSONExtract")
 	defer span.End()
+
 	js, err := j.JSON.Eval(ctx, row)
 	if err != nil {
 		return nil, err
