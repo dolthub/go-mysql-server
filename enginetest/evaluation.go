@@ -602,7 +602,7 @@ type CustomValueValidator interface {
 // rowToSQL converts some expected row values into appropriate types according to given valid schema.
 // |convertTime| is true if it is a `SHOW` statements, except for `SHOW EVENTS`. This is set earlier in `checkResult()` method.
 func rowToSQL(s sql.Schema, expectedRow sql.Row, actualRow sql.Row, convertTime bool) (sql.Row, error) {
-	if s == nil || len(s) == 0 || types.IsOkResult(expectedRow) {
+	if types.IsOkResult(expectedRow) {
 		return expectedRow, nil
 	}
 	newRow := sql.Row{}
@@ -657,24 +657,34 @@ func checkResults(
 	}
 
 	isServerEngine := IsServerEngine(e)
+	isNilOrEmptySchema := sch == nil || len(sch) == 0
 
-	// The result from SELECT or WITH queries can be decimal.Decimal type.
-	// The exact expected value cannot be defined in enginetests, so convert the result to string format,
-	// which is the value we get on sql shell.
-	if strings.HasPrefix(upperQuery, "SELECT ") || strings.HasPrefix(upperQuery, "WITH ") || strings.HasPrefix(upperQuery, "CALL ") {
+	// The actual results from SELECT, WITH or CALL queries that need conversion before checking against expected results.
+	if strings.HasPrefix(upperQuery, "SELECT ") || strings.HasPrefix(upperQuery, "WITH ") || strings.HasPrefix(upperQuery, "CALL ") || strings.HasPrefix(upperQuery, "EXECUTE ") {
 		for _, widenedRow := range widenedRows {
 			for i, val := range widenedRow {
-				if d, ok := val.(decimal.Decimal); ok {
-					widenedRow[i] = d.StringFixed(d.Exponent() * -1)
-				} else if idxVal, ok := val.(uint64); ok && !isServerEngine && sch != nil && len(sch) == len(widenedRow) {
-					if enumType, y := sch[i].Type.(sql.EnumType); y {
-						el, exists := enumType.At(int(idxVal))
+				switch v := val.(type) {
+				case decimal.Decimal:
+					// The exact expected decimal type value cannot be defined in enginetests,
+					// so convert the result to string format, which is the value we get on sql shell.
+					widenedRow[i] = v.StringFixed(v.Exponent() * -1)
+				case uint64:
+					// index value of enum, in uint16, and bit value of set, in uint64, are cast/widened to uint64.
+
+					// enum and set type results from server engine are already in string type
+					if isServerEngine || isNilOrEmptySchema {
+						continue
+					}
+					// index value for enum and bit value for set types returned
+					// from enginetests need conversion to its string type value.
+					if types.IsEnum(sch[i].Type) {
+						el, exists := sch[i].Type.(sql.EnumType).At(int(v))
 						if !exists {
-							t.Errorf("Enum type element does not exist at index: %v", idxVal)
+							t.Errorf("Enum type element does not exist at index: %v", v)
 						}
 						widenedRow[i] = el
-					} else if setType, y := sch[i].Type.(sql.SetType); y {
-						el, err := setType.BitsToString(idxVal)
+					} else if types.IsSet(sch[i].Type) {
+						el, err := sch[i].Type.(sql.SetType).BitsToString(v)
 						require.NoError(t, err)
 						widenedRow[i] = el
 					}
@@ -685,13 +695,14 @@ func checkResults(
 
 	// if the sch is nil or empty, over the wire result is no row whereas single empty row is expected.
 	// This happens for SET and SELECT INTO statements.
-	if isServerEngine && (sch == nil || len(sch) == 0) && len(widenedRows) == 0 && len(widenedExpected) == 1 && len(widenedExpected[0]) == 0 {
+	if isServerEngine && isNilOrEmptySchema && len(widenedRows) == 0 && len(widenedExpected) == 1 && len(widenedExpected[0]) == 0 {
 		widenedExpected = widenedRows
 	}
 
-	// Special case for custom values
+	// The expected results that need  conversion before checking against actual results.
 	for i, row := range widenedExpected {
 		for j, field := range row {
+			// Special case for custom values
 			if cvv, isCustom := field.(CustomValueValidator); isCustom {
 				if i >= len(widenedRows) {
 					continue
@@ -722,8 +733,8 @@ func checkResults(
 		}
 
 		// this attempts to do what `rowToSQL()` method in `handler.go` on expected row
-		// because over the wire values gets converted to SQL values depending on the schema type.
-		if isServerEngine && len(widenedRows) > i && len(widenedRows[i]) == len(widenedExpected[i]) {
+		// because over the wire values gets converted to SQL values depending on the column types.
+		if isServerEngine && !isNilOrEmptySchema && len(widenedRows) > i && len(widenedRows[i]) == len(widenedExpected[i]) {
 			convertedExpected, err := rowToSQL(sch, widenedExpected[i], widenedRows[i], convertTime)
 			require.NoError(t, err)
 			widenedExpected[i] = convertedExpected
