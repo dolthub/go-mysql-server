@@ -599,32 +599,21 @@ type CustomValueValidator interface {
 	Validate(interface{}) (bool, error)
 }
 
-// rowToSQL converts some expected row values into appropriate types according to given valid schema.
-// |convertTime| is true if it is a `SHOW` statements, except for `SHOW EVENTS`. This is set earlier in `checkResult()` method.
-func rowToSQL(s sql.Schema, expectedRow sql.Row, actualRow sql.Row, convertTime bool) (sql.Row, error) {
-	if types.IsOkResult(expectedRow) {
-		return expectedRow, nil
-	}
-	newRow := sql.Row{}
-	for i, v := range expectedRow {
-		_, isTime := v.(time.Time)
-		_, isStr := v.(string)
-		if v == nil {
-			newRow = append(newRow, nil)
-		} else if types.IsDecimal(s[i].Type) || types.IsEnum(s[i].Type) || types.IsSet(s[i].Type) ||
-			s[i].Type.Type() == sqltypes.Year || (isTime && !convertTime) || (isStr && types.IsTextOnly(s[i].Type)) {
-			// cases where we don't want the result value to be converted
-			newRow = append(newRow, v)
-		} else {
-			c, _, err := s[i].Type.Convert(v)
-			if err != nil {
-				return nil, err
-			}
-			newRow = append(newRow, c)
-		}
-	}
+// toSQL converts the givennexpected value into appropriate type of given column.
+// |convertTime| is true if it is a `SHOW` statements, except for `SHOW EVENTS`.
+// This is set earlier in `checkResult()` method.
+func toSQL(c *sql.Column, expected any, convertTime bool) (any, error) {
+	_, isTime := expected.(time.Time)
+	_, isStr := expected.(string)
+	// cases where we don't want the result value to be converted
+	if expected == nil || types.IsDecimal(c.Type) || types.IsEnum(c.Type) || types.IsSet(c.Type) ||
+		c.Type.Type() == sqltypes.Year || (isTime && !convertTime) || (isStr && types.IsTextOnly(c.Type)) {
 
-	return newRow, nil
+		return expected, nil
+	} else {
+		val, _, err := c.Type.Convert(expected)
+		return val, err
+	}
 }
 
 func checkResults(
@@ -718,26 +707,26 @@ func checkResults(
 				widenedExpected[i][j] = actual // ensure it passes equality check later
 			}
 
-			if isServerEngine {
-				// The result received from go sql driver does not have 'Info'
-				// data returned, so we set it to 'nil' for server engine tests only.
-				if okRes, ok := widenedExpected[i][j].(types.OkResult); ok {
-					okResult := types.OkResult{
-						RowsAffected: okRes.RowsAffected,
-						InsertID:     okRes.InsertID,
-						Info:         nil,
-					}
-					widenedExpected[i][j] = okResult
-				}
+			if !isServerEngine || isNilOrEmptySchema {
+				continue
 			}
-		}
 
-		// this attempts to do what `rowToSQL()` method in `handler.go` on expected row
-		// because over the wire values gets converted to SQL values depending on the column types.
-		if isServerEngine && !isNilOrEmptySchema && len(widenedRows) > i && len(widenedRows[i]) == len(widenedExpected[i]) {
-			convertedExpected, err := rowToSQL(sch, widenedExpected[i], widenedRows[i], convertTime)
-			require.NoError(t, err)
-			widenedExpected[i] = convertedExpected
+			// The result received from go sql driver does not have 'Info'
+			// data returned, so we set it to 'nil' for server engine tests only.
+			if okRes, ok := widenedExpected[i][j].(types.OkResult); ok {
+				okResult := types.OkResult{
+					RowsAffected: okRes.RowsAffected,
+					InsertID:     okRes.InsertID,
+					Info:         nil,
+				}
+				widenedExpected[i][j] = okResult
+			} else {
+				// this attempts to do what `rowToSQL()` method in `handler.go` on expected row
+				// because over the wire values gets converted to SQL values depending on the column types.
+				convertedExpected, err := toSQL(sch[j], widenedExpected[i][j], convertTime)
+				require.NoError(t, err)
+				widenedExpected[i][j] = convertedExpected
+			}
 		}
 	}
 
