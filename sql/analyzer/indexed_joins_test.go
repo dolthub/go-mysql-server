@@ -59,7 +59,7 @@ func TestHashJoins(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := memo.NewMemo(ctx, nil, nil, 0, memo.NewDefaultCoster(), memo.NewDefaultCarder())
+			m := memo.NewMemo(ctx, newTestCatalog(db), nil, 0, memo.NewDefaultCoster())
 			j := memo.NewJoinOrderBuilder(m)
 			j.ReorderJoin(tt.plan)
 			addHashJoins(m)
@@ -78,7 +78,7 @@ func uv(db *memory.Database) sql.Node {
 		{Name: "u", Type: types.Int64, Nullable: true},
 		{Name: "v", Type: types.Text, Nullable: true},
 	}, 0), nil)
-	return plan.NewResolvedTable(t, nil, nil).WithId(4).WithColumns(sql.NewColSet(7, 8))
+	return plan.NewResolvedTable(t, db, nil).WithId(4).WithColumns(sql.NewColSet(7, 8))
 }
 
 func xy(db *memory.Database) sql.Node {
@@ -86,7 +86,7 @@ func xy(db *memory.Database) sql.Node {
 		{Name: "x", Type: types.Int64, Nullable: true},
 		{Name: "y", Type: types.Text, Nullable: true},
 	}, 0), nil)
-	return plan.NewResolvedTable(t, nil, nil).WithId(1).WithColumns(sql.NewColSet(1, 2))
+	return plan.NewResolvedTable(t, db, nil).WithId(1).WithColumns(sql.NewColSet(1, 2))
 }
 
 func ab(db *memory.Database) sql.Node {
@@ -94,7 +94,7 @@ func ab(db *memory.Database) sql.Node {
 		{Name: "a", Type: types.Int64, Nullable: true},
 		{Name: "b", Type: types.Text, Nullable: true},
 	}, 0), nil)
-	return plan.NewResolvedTable(t, nil, nil).WithId(2).WithColumns(sql.NewColSet(3, 4))
+	return plan.NewResolvedTable(t, db, nil).WithId(2).WithColumns(sql.NewColSet(3, 4))
 }
 
 func pq(db *memory.Database) sql.Node {
@@ -102,7 +102,7 @@ func pq(db *memory.Database) sql.Node {
 		{Name: "p", Type: types.Int64, Nullable: true},
 		{Name: "q", Type: types.Text, Nullable: true},
 	}, 0), nil)
-	return plan.NewResolvedTable(t, nil, nil).WithId(3).WithColumns(sql.NewColSet(5, 6))
+	return plan.NewResolvedTable(t, db, nil).WithId(3).WithColumns(sql.NewColSet(5, 6))
 }
 
 func newEq(eq string) sql.Expression {

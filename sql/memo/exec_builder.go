@@ -60,7 +60,7 @@ func (b *ExecBuilder) buildAntiJoin(j *AntiJoin, children ...sql.Node) (sql.Node
 
 func (b *ExecBuilder) buildLookupJoin(j *LookupJoin, children ...sql.Node) (sql.Node, error) {
 	left := children[0]
-	right, err := b.buildIndexScan(j.Lookup.First.(*IndexScan), children[1])
+	right, err := b.buildIndexScan(j.Lookup, children[1])
 	if err != nil {
 		return nil, err
 	}
@@ -161,12 +161,12 @@ func (b *ExecBuilder) buildConcatJoin(j *ConcatJoin, children ...sql.Node) (sql.
 		name = n.Name()
 	}
 
-	right, err := b.buildIndexScan(j.Concat[0].First.(*IndexScan), children[1])
+	right, err := b.buildIndexScan(j.Concat[0], children[1])
 	if err != nil {
 		return nil, err
 	}
 	for _, look := range j.Concat[1:] {
-		l, err := b.buildIndexScan(look.First.(*IndexScan), children[1])
+		l, err := b.buildIndexScan(look, children[1])
 		if err != nil {
 			return nil, err
 		}

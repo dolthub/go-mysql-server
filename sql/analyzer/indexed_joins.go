@@ -101,7 +101,7 @@ func inOrderReplanJoin(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sch sql
 }
 
 func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Scope) (sql.Node, error) {
-	m := memo.NewMemo(ctx, a.Catalog, scope, len(scope.Schema()), a.Coster, a.Carder)
+	m := memo.NewMemo(ctx, a.Catalog, scope, len(scope.Schema()), a.Coster)
 
 	j := memo.NewJoinOrderBuilder(m)
 	err := j.ReorderJoin(n)
@@ -614,7 +614,7 @@ func addRightSemiJoins(m *memo.Memo) error {
 }
 
 // lookupCandidates extracts source relation information required to check for
-// index lookups, including the source relation GroupId, the list of Indexes,
+// index lookups, including the source relation TableId, the list of Indexes,
 // and the list of table filters.
 func lookupCandidates(rel memo.RelExpr, limitOk bool) (sql.TableId, []*memo.Index, []sql.Expression) {
 	id, indexes, filters, _ := dfsLookupCandidates(rel, limitOk)
@@ -629,31 +629,31 @@ func dfsLookupCandidates(rel memo.RelExpr, limitOk bool) (sql.TableId, []*memo.I
 		// LOOKUP through a LIMIT is invalid
 		return 0, nil, nil, false
 	}
-	switch n := rel.(type) {
-	case *memo.TableAlias:
-		tabId, _ := n.Group().RelProps.OutputTables().Next(1)
-		return sql.TableId(tabId), n.Indexes(), nil, true
-	case *memo.TableScan:
-		tabId, _ := n.Group().RelProps.OutputTables().Next(1)
-		return sql.TableId(tabId), n.Indexes(), nil, true
-	case *memo.IndexScan:
-		return dfsLookupCandidates(rel.Next(), limitOk)
-	case *memo.Filter:
-		var rel memo.RelExpr = n
-		for ; rel != nil; rel = rel.Next() {
-			switch rel := rel.(type) {
-			case *memo.Filter:
-				id, indexes, filters, ok := dfsLookupCandidates(rel.Child.First, limitOk)
-				if ok {
-					return id, indexes, append(filters, n.Filters...), ok
-				}
+	for n := rel; n != nil; n = n.Next() {
+		switch n := n.(type) {
+		case *memo.TableAlias:
+			tabId, _ := n.Group().RelProps.OutputTables().Next(1)
+			return sql.TableId(tabId), n.Indexes(), nil, true
+		case *memo.TableScan:
+			tabId, _ := n.Group().RelProps.OutputTables().Next(1)
+			return sql.TableId(tabId), n.Indexes(), nil, true
+		case *memo.IndexScan:
+			// The presence of an indexScan suggests that there is a valid
+			// table lookup, but returning here would fail to return filters
+			// that have been pushed into the indexScan. Continue until we
+			// find the full Filter->Tablescan path.
+			continue
+		case *memo.Filter:
+			id, indexes, filters, ok := dfsLookupCandidates(n.Child.First, limitOk)
+			if ok {
+				return id, indexes, append(filters, n.Filters...), ok
 			}
+		case *memo.Distinct:
+			return dfsLookupCandidates(n.Child.First, limitOk)
+		case *memo.Project:
+			return dfsLookupCandidates(n.Child.First, limitOk)
+		default:
 		}
-	case *memo.Distinct:
-		return dfsLookupCandidates(n.Child.First, limitOk)
-	case *memo.Project:
-		return dfsLookupCandidates(n.Child.First, limitOk)
-	default:
 	}
 	return 0, nil, nil, false
 }
@@ -713,6 +713,10 @@ func addHashJoins(m *memo.Memo) error {
 			default:
 				return nil
 			}
+		}
+		switch join.Right.First.(type) {
+		case *memo.RecursiveTable:
+			return nil
 		}
 		rel := &memo.HashJoin{
 			JoinBase:   join.Copy(),

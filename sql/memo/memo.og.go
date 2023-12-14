@@ -87,7 +87,7 @@ func (r *AntiJoin) JoinPrivate() *JoinBase {
 
 type LookupJoin struct {
 	*JoinBase
-	Lookup    *ExprGroup
+	Lookup    *IndexScan
 	Injective bool
 }
 
@@ -120,7 +120,7 @@ func (r *RangeHeapJoin) JoinPrivate() *JoinBase {
 
 type ConcatJoin struct {
 	*JoinBase
-	Concat []*ExprGroup
+	Concat []*IndexScan
 }
 
 var _ RelExpr = (*ConcatJoin)(nil)
@@ -660,6 +660,9 @@ func FormatExpr(r exprType) string {
 	case *TableScan:
 		return fmt.Sprintf("tablescan: %s", r.Name())
 	case *IndexScan:
+		if r.Alias != "" {
+			return fmt.Sprintf("indexscan: %s", r.Alias)
+		}
 		return fmt.Sprintf("indexscan: %s", r.Name())
 	case *Values:
 		return fmt.Sprintf("values: %s", r.Name())

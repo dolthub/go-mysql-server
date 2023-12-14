@@ -168,12 +168,6 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 	var res decimal.Decimal
 
 	switch value := v.(type) {
-	case bool:
-		if value {
-			return t.ConvertToNullDecimal(decimal.NewFromInt(1))
-		} else {
-			return t.ConvertToNullDecimal(decimal.NewFromInt(0))
-		}
 	case int:
 		return t.ConvertToNullDecimal(int64(value))
 	case uint:
