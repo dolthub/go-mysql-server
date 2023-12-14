@@ -17,11 +17,12 @@ package expression
 import (
 	"bytes"
 	"fmt"
-	"go.opentelemetry.io/otel/trace"
 	"regexp"
 	"strings"
 	"sync"
 	"unicode/utf8"
+
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/internal/regex"
 	"github.com/dolthub/go-mysql-server/sql"

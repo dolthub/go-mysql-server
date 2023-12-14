@@ -16,8 +16,9 @@ package json
 
 import (
 	"fmt"
-	"go.opentelemetry.io/otel/trace"
 	"strings"
+
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -79,7 +80,6 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		span, ctx = ctx.Span("function.JSONExtract")
 		defer span.End()
 	}
-
 
 	js, err := j.JSON.Eval(ctx, row)
 	if err != nil {

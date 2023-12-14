@@ -17,11 +17,11 @@ package json
 import (
 	"encoding/json"
 	"fmt"
-	"go.opentelemetry.io/otel/trace"
 	"strings"
 
 	"github.com/dolthub/jsonpath"
 	"github.com/dolthub/vitess/go/sqltypes"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -89,7 +89,6 @@ func (j *JsonValue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		span, ctx = ctx.Span("function.JsonValue")
 		defer span.End()
 	}
-
 
 	js, err := j.JSON.Eval(ctx, row)
 	if err != nil {
