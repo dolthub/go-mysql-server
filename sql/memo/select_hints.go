@@ -163,12 +163,12 @@ func parseJoinHints(comment string) []Hint {
 //	{1: 010, 2: 100, 3: 001, 4: 110, 5: 111}
 type joinOrderHint struct {
 	groups map[GroupId]vertexSet
-	order  map[GroupId]uint64
+	order  map[sql.TableId]uint64
 	// cache avoids recomputing satisfiability for a RelExpr
 	cache map[uint64]bool
 }
 
-func newJoinOrderHint(order map[GroupId]uint64) *joinOrderHint {
+func newJoinOrderHint(order map[sql.TableId]uint64) *joinOrderHint {
 	return &joinOrderHint{
 		groups: make(map[GroupId]vertexSet),
 		cache:  make(map[uint64]bool),
@@ -181,7 +181,7 @@ func (o joinOrderHint) build(grp *ExprGroup) {
 	// convert global table order to hint order
 	inputs := grp.RelProps.InputTables()
 	for idx, ok := inputs.Next(0); ok; idx, ok = inputs.Next(idx + 1) {
-		if i, ok := o.order[GroupId(idx)]; ok {
+		if i, ok := o.order[sql.TableId(idx)]; ok {
 			// If group |idx+1| is a dependency of this table, record the
 			// ordinal position of that group given by the hint order.
 			s = s.add(i)
@@ -277,7 +277,7 @@ type joinOpHint struct {
 	l, r sql.FastIntSet
 }
 
-func newjoinOpHint(op HintType, left, right GroupId) joinOpHint {
+func newjoinOpHint(op HintType, left, right sql.TableId) joinOpHint {
 	return joinOpHint{
 		op: op,
 		l:  sql.NewFastIntSet(int(left)),

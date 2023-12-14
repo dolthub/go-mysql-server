@@ -87,7 +87,7 @@ func TestPopulateFDs(t *testing.T) {
 			name: "max1Row",
 			in: &Max1Row{
 				relBase: &relBase{},
-				Child: newExprGroup(NewMemo(nil, nil, nil, 0, nil, nil), 0, &TableScan{
+				Child: newExprGroup(NewMemo(nil, nil, nil, 0, nil), 0, &TableScan{
 					sourceBase: &sourceBase{relBase: &relBase{}},
 					Table: plan.NewResolvedTable(
 						&dummyTable{
@@ -117,7 +117,7 @@ func TestPopulateFDs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.in.SetGroup(&ExprGroup{First: tt.in, m: NewMemo(nil, nil, nil, 0, nil, nil)})
+			tt.in.SetGroup(&ExprGroup{First: tt.in, m: NewMemo(nil, nil, nil, 0, nil)})
 			props := newRelProps(tt.in)
 			require.Equal(t, tt.all, props.fds.All())
 			require.Equal(t, tt.notNull, props.fds.NotNull())

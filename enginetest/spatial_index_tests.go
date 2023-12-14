@@ -295,14 +295,15 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 		setup: []string{
 			"create table t1(g geometry not null srid 0, spatial index (g))",
 			"create table t2(g geometry not null srid 0, spatial index (g))",
-			"insert into t1 values (point(0,0))",
-			"insert into t2 values (point(0,0))",
+			"insert into t1 values (point(0,0)), (point(1,1))",
+			"insert into t2 values (point(0,0)), (point(1,1))",
 		},
 		tests: []SpatialIndexPlanTestAssertion{
 			{
 				q: "select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, point(0,0))",
 				exp: []sql.Row{
 					{"POINT(0 0)", "POINT(0 0)"},
+					{"POINT(0 0)", "POINT(1 1)"},
 				},
 			},
 			{
@@ -310,6 +311,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 				q:     "select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, t2.g)",
 				exp: []sql.Row{
 					{"POINT(0 0)", "POINT(0 0)"},
+					{"POINT(1 1)", "POINT(1 1)"},
 				},
 			},
 		},
@@ -365,7 +367,9 @@ func TestSpatialIndexPlans(t *testing.T, harness Harness) {
 			}
 			for _, tt := range tt.tests {
 				evalSpatialIndexPlanCorrectness(t, harness, e, tt.q, tt.q, tt.exp, tt.skip)
-				evalSpatialIndexPlanTest(t, harness, e, tt.q, tt.skip, tt.noIdx)
+				if !IsServerEngine(e) {
+					evalSpatialIndexPlanTest(t, harness, e, tt.q, tt.skip, tt.noIdx)
+				}
 			}
 		})
 	}
@@ -401,7 +405,7 @@ func evalSpatialIndexPlanTest(t *testing.T, harness Harness, e QueryEngine, quer
 		if noIdx {
 			require.False(t, hasIndex, "indextableaccess should not be in plan")
 		} else {
-			require.True(t, hasIndex, "indextableaccess node was missing from plan")
+			require.True(t, hasIndex, "indextableaccess node was missing from plan:\n %s", sql.DebugString(a))
 			require.True(t, hasRightOrder, "filter node was not above indextableaccess")
 		}
 	})

@@ -850,7 +850,7 @@ Filter
      ├─ index: [xy.x]
      └─ filters: [{[1, 1]}]
 `
-	res, same, err := costedIndexScans(nil, nil, input, nil, nil)
+	res, same, err := costedIndexScans(nil, nil, input)
 	require.NoError(t, err)
 	require.False(t, bool(same))
 	require.Equal(t, strings.TrimSpace(exp), strings.TrimSpace(res.String()), "expected:\n%s,\nfound:\n%s\n", exp, res.String())

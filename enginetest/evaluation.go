@@ -141,10 +141,10 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 					}
 					TestQueryWithContext(t, ctx, e, harness, assertion.Query, expected, assertion.ExpectedColumns, assertion.Bindings)
 				}
-				if assertion.ExpectedIndexes != nil {
+				if assertion.ExpectedIndexes != nil && !IsServerEngine(e) {
 					evalIndexTest(t, harness, e, assertion.Query, assertion.ExpectedIndexes, assertion.Skip)
 				}
-				if assertion.JoinTypes != nil {
+				if assertion.JoinTypes != nil && !IsServerEngine(e) {
 					evalJoinTypeTest(t, harness, e, assertion.Query, assertion.JoinTypes, assertion.Skip)
 				}
 			})

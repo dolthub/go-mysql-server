@@ -132,11 +132,9 @@ func (t MapCatalog) DropStats(ctx *Context, qual StatQualifier, cols []string) e
 }
 
 func (t MapCatalog) RowCount(ctx *Context, db, table string) (uint64, error) {
-	//TODO implement me
-	panic("implement me")
+	return 1, nil
 }
 
 func (t MapCatalog) DataLength(ctx *Context, db, table string) (uint64, error) {
-	//TODO implement me
-	panic("implement me")
+	return 1, nil
 }

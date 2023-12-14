@@ -49,6 +49,7 @@ var _ sql.Node = (*IndexedTableAccess)(nil)
 var _ sql.Nameable = (*IndexedTableAccess)(nil)
 var _ sql.Expressioner = (*IndexedTableAccess)(nil)
 var _ sql.CollationCoercible = (*IndexedTableAccess)(nil)
+var _ sql.TableNode = (*IndexedTableAccess)(nil)
 
 // NewIndexedAccessForTableNode creates an IndexedTableAccess node if the resolved table embeds
 // an IndexAddressableTable, otherwise returns an error.
@@ -159,6 +160,14 @@ func NewStaticIndexedAccessForFullTextTable(node sql.TableNode, lookup sql.Index
 		Table:     ftTable,
 		Typ:       ItaTypeStatic,
 	}
+}
+
+func (i *IndexedTableAccess) WithDatabase(database sql.Database) (sql.Node, error) {
+	return i, nil
+}
+
+func (i *IndexedTableAccess) UnderlyingTable() sql.Table {
+	return i.TableNode.UnderlyingTable()
 }
 
 // WithId implements sql.TableIdNode
@@ -379,6 +388,13 @@ func (i *IndexedTableAccess) Expressions() []sql.Expression {
 		return nil
 	}
 	return i.lb.Expressions()
+}
+
+func (i *IndexedTableAccess) NullMask() []bool {
+	if !i.lookup.IsEmpty() {
+		return nil
+	}
+	return i.lb.matchesNullMask
 }
 
 // WithExpressions implements sql.Expressioner

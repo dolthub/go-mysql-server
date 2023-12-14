@@ -18,11 +18,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/transform"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 type GroupId uint16
@@ -44,7 +43,6 @@ type Memo struct {
 	hints *joinHints
 
 	c         Coster
-	s         Carder
 	statsProv sql.StatsProvider
 	Ctx       *sql.Context
 	scope     *plan.Scope
@@ -53,11 +51,10 @@ type Memo struct {
 	TableProps *tableProps
 }
 
-func NewMemo(ctx *sql.Context, stats sql.StatsProvider, s *plan.Scope, scopeLen int, cost Coster, card Carder) *Memo {
+func NewMemo(ctx *sql.Context, stats sql.StatsProvider, s *plan.Scope, scopeLen int, cost Coster) *Memo {
 	return &Memo{
 		Ctx:        ctx,
 		c:          cost,
-		s:          card,
 		statsProv:  stats,
 		scope:      s,
 		scopeLen:   scopeLen,
@@ -68,6 +65,10 @@ func NewMemo(ctx *sql.Context, stats sql.StatsProvider, s *plan.Scope, scopeLen 
 
 func (m *Memo) Root() *ExprGroup {
 	return m.root
+}
+
+func (m *Memo) StatsProvider() sql.StatsProvider {
+	return m.statsProv
 }
 
 // newExprGroup creates a new logical expression group to encapsulate the
@@ -133,18 +134,44 @@ func (m *Memo) MemoizeInnerJoin(grp, left, right *ExprGroup, op plan.JoinType, f
 	return grp
 }
 
-func (m *Memo) MemoizeLookupJoin(grp, left, right *ExprGroup, op plan.JoinType, filter []sql.Expression, lookup *Lookup) *ExprGroup {
+func (m *Memo) MemoizeLookupJoin(grp, left, right *ExprGroup, op plan.JoinType, filter []sql.Expression, lookup *IndexScan) *ExprGroup {
 	newJoin := &LookupJoin{
 		JoinBase: &JoinBase{
 			relBase: &relBase{},
 			Left:    left,
 			Right:   right,
-			Op:      op,
+			Op:      op.AsLookup(),
 			Filter:  filter,
 		},
 		Lookup: lookup,
 	}
-	newJoin.Lookup.Parent = newJoin.JoinBase
+
+	if grp == nil {
+		return m.NewExprGroup(newJoin)
+	}
+	newJoin.g = grp
+	grp.Prepend(newJoin)
+
+	if isInjectiveLookup(lookup.Index, newJoin.JoinBase, lookup.Table.Expressions(), lookup.Table.NullMask()) {
+		newJoin.Injective = true
+	}
+
+	return grp
+}
+
+// MemoizeConcatLookupJoin creates a lookup join over a set of disjunctions.
+// If a LOOKUP_JOIN simulates x = v1, a concat lookup performs x in (v1, v2, v3, ...)
+func (m *Memo) MemoizeConcatLookupJoin(grp, left, right *ExprGroup, op plan.JoinType, filter []sql.Expression, lookups []*IndexScan) *ExprGroup {
+	newJoin := &ConcatJoin{
+		JoinBase: &JoinBase{
+			relBase: &relBase{},
+			Left:    left,
+			Right:   right,
+			Op:      op.AsLookup(),
+			Filter:  filter,
+		},
+		Concat: lookups,
+	}
 
 	if grp == nil {
 		return m.NewExprGroup(newJoin)
@@ -188,8 +215,6 @@ func (m *Memo) MemoizeMergeJoin(grp, left, right *ExprGroup, lIdx, rIdx *IndexSc
 		OuterScan: rIdx,
 		SwapCmp:   swapCmp,
 	}
-	rel.InnerScan.Parent = rel.JoinBase
-	rel.OuterScan.Parent = rel.JoinBase
 
 	if grp == nil {
 		return m.NewExprGroup(rel)
@@ -204,6 +229,25 @@ func (m *Memo) MemoizeProject(grp, child *ExprGroup, projections []sql.Expressio
 		relBase:     &relBase{},
 		Child:       child,
 		Projections: projections,
+	}
+	if grp == nil {
+		return m.NewExprGroup(rel)
+	}
+	rel.g = grp
+	grp.Prepend(rel)
+	return grp
+}
+
+// MemoizeIndexScan creates a source node that uses a specific index to
+// access data. IndexScans are either static and read a specific set of
+// ranges, or dynamic and use a lookup template that is iteratively
+// bound and executed during LOOKUP_JOINs.
+func (m *Memo) MemoizeIndexScan(grp *ExprGroup, ita *plan.IndexedTableAccess, alias string, index *Index) *ExprGroup {
+	rel := &IndexScan{
+		sourceBase: &sourceBase{relBase: &relBase{}},
+		Table:      ita,
+		Alias:      alias,
+		Index:      index,
 	}
 	if grp == nil {
 		return m.NewExprGroup(rel)
@@ -259,8 +303,28 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 	if grp.Done {
 		return nil
 	}
+
 	var err error
 	n := grp.First
+	if _, ok := n.(SourceRel); ok {
+		// We should order the search bottom-up so that physical operators
+		// always have their trees materialized. Until then, we always assume
+		// the indexScan child is faster than a filter option, and  reify
+		// between the two when a join operator is incompatible with the
+		// indexScan option.
+		grp.Done = true
+		grp.HintOk = true
+		grp.Best = grp.First
+		for ; n != nil; n = n.Next() {
+			if _, ok := n.(*IndexScan); ok {
+				grp.Best = n
+				break
+			}
+		}
+		grp.Best.SetDistinct(noDistinctOp)
+		return nil
+	}
+
 	for n != nil {
 		var cost float64
 		for _, g := range n.Children() {
@@ -281,10 +345,8 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 				n.SetDistinct(SortedDistinctOp)
 			} else {
 				n.SetDistinct(HashDistinctOp)
-				dCost, err = m.c.EstimateCost(m.Ctx, &Distinct{Child: grp}, m.statsProv)
-				if err != nil {
-					return err
-				}
+				d := &Distinct{Child: grp}
+				dCost = float64(statsForRel(d).RowCount())
 			}
 			relCost += dCost
 		} else {
@@ -297,8 +359,10 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 		n = n.Next()
 	}
 
+	// Certain "best" groups are incompatible.
+	grp.fixConflicts()
+
 	grp.Done = true
-	grp.RelProps.card, err = m.s.EstimateCard(m.Ctx, grp.Best, m.statsProv)
 	if err != nil {
 		return err
 	}
@@ -375,13 +439,14 @@ func (m *Memo) ApplyHint(hint Hint) {
 
 func (m *Memo) WithJoinOrder(tables []string) {
 	// order maps groupId -> table dependencies
-	order := make(map[GroupId]uint64)
+	order := make(map[sql.TableId]uint64)
 	for i, t := range tables {
-		id, ok := m.TableProps.GetId(t)
-		if !ok {
-			return
+		for _, n := range m.root.RelProps.TableIdNodes() {
+			if strings.EqualFold(t, n.Name()) {
+				order[n.Id()] = uint64(i)
+				break
+			}
 		}
-		order[id] = uint64(i)
 	}
 	hint := newJoinOrderHint(order)
 	hint.build(m.root)
@@ -391,9 +456,19 @@ func (m *Memo) WithJoinOrder(tables []string) {
 }
 
 func (m *Memo) WithJoinOp(op HintType, left, right string) {
-	lGrp, _ := m.TableProps.GetId(left)
-	rGrp, _ := m.TableProps.GetId(right)
-	hint := newjoinOpHint(op, lGrp, rGrp)
+	var lTab, rTab sql.TableId
+	for _, n := range m.root.RelProps.TableIdNodes() {
+		if strings.EqualFold(left, n.Name()) {
+			lTab = n.Id()
+		}
+		if strings.EqualFold(right, n.Name()) {
+			rTab = n.Id()
+		}
+	}
+	if lTab == 0 || rTab == 0 {
+		return
+	}
+	hint := newjoinOpHint(op, lTab, rTab)
 	if !hint.isValid() {
 		return
 	}
@@ -483,14 +558,6 @@ type Coster interface {
 	// operator, or an error. Cost is dependent on physical operator type,
 	// and the cardinality of inputs.
 	EstimateCost(*sql.Context, RelExpr, sql.StatsProvider) (float64, error)
-}
-
-// Carder types can estimate the cardinality (row count) of relational
-// expressions.
-type Carder interface {
-	// EstimateCard returns the estimate row count outputs for a relational
-	// expression. Cardinality is an expression group property.
-	EstimateCard(*sql.Context, RelExpr, sql.StatsProvider) (float64, error)
 }
 
 // RelExpr wraps a sql.Node for use as a ExprGroup linked list node.
@@ -688,18 +755,8 @@ func (r *JoinBase) Copy() *JoinBase {
 	}
 }
 
-type Lookup struct {
-	Index    *Index
-	KeyExprs []sql.Expression
-	Nullmask []bool
-
-	Parent *JoinBase
-}
-
-type IndexScan struct {
-	Idx    *Index
-	Range  sql.Range
-	Parent *JoinBase
+func (r *LookupJoin) Children() []*ExprGroup {
+	return []*ExprGroup{r.Left, r.Right}
 }
 
 // RangeHeap contains all the information necessary to construct a RangeHeap join.
