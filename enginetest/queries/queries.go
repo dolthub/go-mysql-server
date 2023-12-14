@@ -8648,7 +8648,7 @@ from typestable`,
 		Expected: []sql.Row{},
 	},
 	{
-		Query:    "select * from mytable where (i BETWEEN (CASE 1 WHEN 2 THEN 1.0 ELSE (1||2) END) AND i)",
+		Query: "select * from mytable where (i BETWEEN (CASE 1 WHEN 2 THEN 1.0 ELSE (1||2) END) AND i)",
 		Expected: []sql.Row{
 			{1, "first row"},
 			{2, "second row"},
