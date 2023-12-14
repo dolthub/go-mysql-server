@@ -330,7 +330,21 @@ func addIndexScans(m *memo.Memo) error {
 				} else {
 					itaGrp = m.MemoizeIndexScan(filter.Group(), ita, aliasName, idx)
 				}
-				itaGrp.RelProps.SetStats(stat)
+
+				// todo: we should always interpolate the estimated row count even
+				// if we are missing index statistics
+				if stat.RowCount() > 0 {
+					if stat.Histogram().IsEmpty() {
+						// if we don't have stats, set arbitrarily low non-zero row count
+						// to prefer indexScan over filter option
+						itaGrp.RelProps.SetStats(stat.WithRowCount(1))
+					} else {
+						itaGrp.RelProps.SetStats(stat)
+					}
+				}
+				if stat.FuncDeps().HasMax1Row() {
+					itaGrp.RelProps.SetStats(stat.WithRowCount(1))
+				}
 			}
 		}
 		return nil

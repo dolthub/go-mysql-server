@@ -269,7 +269,6 @@ func (ab *Builder) Build() *Analyzer {
 		Catalog:      NewCatalog(ab.provider),
 		Parallelism:  ab.parallelism,
 		Coster:       memo.NewDefaultCoster(),
-		Carder:       memo.NewDefaultCarder(),
 		ExecBuilder:  rowexec.DefaultBuilder,
 	}
 }
@@ -288,8 +287,6 @@ type Analyzer struct {
 	Batches []*Batch
 	// Catalog of databases and registered functions.
 	Catalog *Catalog
-	// Carder estimates the number of rows returned by a relational expression.
-	Carder memo.Carder
 	// Coster estimates the incremental CPU+memory cost for execution operators.
 	Coster memo.Coster
 	// ExecBuilder converts a sql.Node tree into an executable iterator.

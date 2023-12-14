@@ -16,6 +16,8 @@ package memo
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/stats"
+	"math"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -49,12 +51,11 @@ func newRelProps(rel RelExpr) *relProps {
 		grp: rel.Group(),
 	}
 	switch r := rel.(type) {
-	case *Max1Row:
-		p.populateFds()
 	case *EmptyTable:
 		if r.TableIdNode().Columns().Len() > 0 {
 			p.outputCols = r.TableIdNode().Columns()
 			p.populateFds()
+			p.stat = statsForRel(r)
 			p.populateOutputTables()
 			p.populateInputTables()
 			return p
@@ -91,6 +92,7 @@ func newRelProps(rel RelExpr) *relProps {
 	}
 
 	p.populateFds()
+	p.stat = statsForRel(rel)
 	p.populateOutputTables()
 	p.populateInputTables()
 	return p
@@ -110,6 +112,10 @@ func idxExprsColumns(idx sql.Index) []string {
 
 func (p *relProps) SetStats(s sql.Statistic) {
 	p.stat = s
+}
+
+func (p *relProps) GetStats() sql.Statistic {
+	return p.stat
 }
 
 func (p *relProps) populateFds() {
@@ -255,6 +261,104 @@ func (p *relProps) populateFds() {
 		panic(fmt.Sprintf("unsupported relProps type: %T", rel))
 	}
 	p.fds = fds
+}
+
+func statsForRel(rel RelExpr) sql.Statistic {
+	var stat sql.Statistic
+	switch rel := rel.(type) {
+	case JoinRel:
+		// different joins use different ways to estimate cardinality of outputs
+		jp := rel.JoinPrivate()
+		left := float64(jp.Left.RelProps.GetStats().RowCount())
+		right := float64(jp.Left.RelProps.GetStats().RowCount())
+
+		switch n := rel.(type) {
+		case *LookupJoin:
+			var card float64
+			if n.Injective {
+				card = n.Left.RelProps.card
+			} else {
+				sel := lookupJoinSelectivity(n.Lookup, n.JoinBase)
+				card = n.Left.RelProps.card * n.Right.RelProps.card * sel
+			}
+			return &stats.Statistic{RowCnt: uint64(card)}
+		case *ConcatJoin:
+			var sel float64
+			for _, l := range n.Concat {
+				lookup := l
+				sel += lookupJoinSelectivity(lookup, n.JoinBase)
+			}
+			card := n.Left.RelProps.card * optimisticJoinSel * sel
+			return &stats.Statistic{RowCnt: uint64(card)}
+		case *LateralJoin:
+			card := n.Left.RelProps.card * n.Right.RelProps.card
+			return &stats.Statistic{RowCnt: uint64(card)}
+		default:
+		}
+
+		switch {
+		case jp.Op.IsPartial():
+			return &stats.Statistic{RowCnt: uint64(left * right * optimisticJoinSel)}
+		case jp.Op.IsLeftOuter():
+			card := math.Max(jp.Left.RelProps.card, optimisticJoinSel*left*right)
+			return &stats.Statistic{RowCnt: uint64(card)}
+		case jp.Op.IsRightOuter():
+			card := math.Max(jp.Right.RelProps.card, optimisticJoinSel*jp.Left.RelProps.card*jp.Right.RelProps.card)
+			return &stats.Statistic{RowCnt: uint64(card)}
+		case jp.Op.IsDegenerate():
+			return &stats.Statistic{RowCnt: uint64(left * right)}
+		default:
+			card := optimisticJoinSel * left * right
+			return &stats.Statistic{RowCnt: uint64(card)}
+		}
+	case *Max1Row:
+		stat = &stats.Statistic{RowCnt: 1}
+
+	case *EmptyTable:
+		stat = &stats.Statistic{RowCnt: 0}
+
+	case *IndexScan:
+		// todo: stats to replace magic number
+		// index scans usually cheaper than subqueries
+		stat = &stats.Statistic{RowCnt: 10}
+
+	case *Values:
+		stat = &stats.Statistic{RowCnt: uint64(len(rel.Table.ExpressionTuples))}
+
+	case *TableFunc:
+		// todo: have table function do their own row count estimations
+		// table functions usually cheaper than subqueries
+		stat = &stats.Statistic{RowCnt: 10}
+
+	case SourceRel:
+		if tn, ok := rel.TableIdNode().(sql.TableNode); ok {
+			if prov := rel.Group().m.StatsProvider(); prov != nil {
+				if card, err := prov.RowCount(rel.Group().m.Ctx, tn.Database().Name(), tn.Name()); err == nil {
+					stat = &stats.Statistic{RowCnt: card}
+					break
+				}
+			}
+		}
+		stat = &stats.Statistic{RowCnt: 1000}
+
+	case *Filter:
+		card := float64(rel.Child.RelProps.GetStats().RowCount()) * defaultFilterSelectivity
+		stat = &stats.Statistic{RowCnt: uint64(card)}
+
+	case *Project:
+		stat = &stats.Statistic{RowCnt: rel.Child.RelProps.GetStats().RowCount()}
+
+	case *Distinct:
+		stat = &stats.Statistic{RowCnt: rel.Child.RelProps.GetStats().RowCount()}
+
+	case *SetOp:
+		// todo: costing full plan to carry cardinalities upwards
+		stat = &stats.Statistic{RowCnt: 1000}
+
+	default:
+		panic(fmt.Sprintf("unsupported relProps type: %T", rel))
+	}
+	return stat
 }
 
 // getExprScalarProps returns bitsets of the column and table references,

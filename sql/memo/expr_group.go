@@ -136,6 +136,8 @@ func (e *ExprGroup) fixTableScanPath() bool {
 				if c.fixTableScanPath() {
 					// found path, update best
 					e.Best = n
+					n.SetDistinct(noDistinctOp)
+					e.Done = true
 					return true
 				}
 			}
@@ -148,7 +150,10 @@ func (e *ExprGroup) fixTableScanPath() bool {
 			continue
 		}
 		// is a source, not an indexScan
+		n.SetDistinct(noDistinctOp)
 		e.Best = n
+		e.HintOk = true
+		e.Done = true
 		return true
 	}
 	return false

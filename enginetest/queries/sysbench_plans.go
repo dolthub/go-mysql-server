@@ -22,16 +22,23 @@ var SysbenchPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Limit(500)\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [a.id:1!null, a.small_int_col:2!null]\n" +
-			"     └─ LookupJoin\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: Eq\n" +
+			"         │   ├─ b.id:0!null\n" +
+			"         │   └─ a.id:1!null\n" +
 			"         ├─ TableAlias(b)\n" +
-			"         │   └─ ProcessTable\n" +
+			"         │   └─ IndexedTableAccess(sbtest1)\n" +
+			"         │       ├─ index: [sbtest1.id]\n" +
+			"         │       ├─ static: [{[NULL, ∞)}]\n" +
+			"         │       ├─ colSet: (25-48)\n" +
+			"         │       ├─ tableId: 2\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: sbtest1\n" +
 			"         │           └─ columns: [id]\n" +
 			"         └─ TableAlias(a)\n" +
 			"             └─ IndexedTableAccess(sbtest1)\n" +
 			"                 ├─ index: [sbtest1.id]\n" +
-			"                 ├─ keys: [b.id:0!null]\n" +
+			"                 ├─ static: [{[NULL, ∞)}]\n" +
 			"                 ├─ colSet: (1-24)\n" +
 			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +

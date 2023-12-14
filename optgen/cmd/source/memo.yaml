@@ -12,7 +12,7 @@ exprs:
 - name: "LookupJoin"
   join: true
   attrs:
-  - [lookup, "*ExprGroup"]
+  - [lookup, "*IndexScan"]
 - name: "RangeHeapJoin"
   join: true
   attrs:
@@ -20,7 +20,7 @@ exprs:
 - name: "ConcatJoin"
   join: true
   attrs:
-  - [concat, "[]*ExprGroup"]
+  - [concat, "[]*IndexScan"]
 - name: "HashJoin"
   join: true
   attrs:
