@@ -17,6 +17,7 @@ package expression
 import (
 	"bytes"
 	"fmt"
+	"go.opentelemetry.io/otel/trace"
 	"regexp"
 	"strings"
 	"sync"
@@ -79,8 +80,11 @@ func (l *Like) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 
 // Eval implements the sql.Expression interface.
 func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span("expression.Like")
-	defer span.End()
+	if ctx != nil {
+		var span trace.Span
+		span, ctx = ctx.Span("expression.Like")
+		defer span.End()
+	}
 
 	left, err := l.Left.Eval(ctx, row)
 	if err != nil || left == nil {

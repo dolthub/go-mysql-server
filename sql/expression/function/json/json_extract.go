@@ -16,6 +16,7 @@ package json
 
 import (
 	"fmt"
+	"go.opentelemetry.io/otel/trace"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -73,8 +74,12 @@ func (*JSONExtract) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 
 // Eval implements the sql.Expression interface.
 func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span("function.JSONExtract")
-	defer span.End()
+	if ctx != nil {
+		var span trace.Span
+		span, ctx = ctx.Span("function.JSONExtract")
+		defer span.End()
+	}
+
 
 	js, err := j.JSON.Eval(ctx, row)
 	if err != nil {

@@ -16,6 +16,7 @@ package expression
 
 import (
 	"bytes"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -157,8 +158,11 @@ func (c *Case) Children() []sql.Expression {
 
 // Eval implements the sql.Expression interface.
 func (c *Case) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span("expression.Case")
-	defer span.End()
+	if ctx != nil {
+		var span trace.Span
+		span, ctx = ctx.Span("expression.Case")
+		defer span.End()
+	}
 
 	t := c.Type()
 

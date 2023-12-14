@@ -17,6 +17,7 @@ package json
 import (
 	"encoding/json"
 	"fmt"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/jsonpath"
 
@@ -73,8 +74,11 @@ func (*JsonLength) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 
 // Eval implements the sql.Expression interface.
 func (j *JsonLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span("function.JsonLength")
-	defer span.End()
+	if ctx != nil {
+		var span trace.Span
+		span, ctx = ctx.Span("function.JsonLength")
+		defer span.End()
+	}
 
 	js, err := j.JSON.Eval(ctx, row)
 	if err != nil {
