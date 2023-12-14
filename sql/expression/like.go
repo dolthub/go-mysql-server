@@ -17,7 +17,7 @@ package expression
 import (
 	"bytes"
 	"fmt"
-		"regexp"
+	"regexp"
 	"strings"
 	"sync"
 	"unicode/utf8"
