@@ -87,7 +87,7 @@ var ReplaceQueries = []WriteQueryTest{
 			uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 			float32(math.MaxFloat32), float64(math.MaxFloat64),
 			sql.MustConvert(types.Timestamp.Convert("2037-04-05 12:51:36")), sql.MustConvert(types.Date.Convert("2231-11-07")),
-			"random text", sql.True, types.MustJSON(`{"key":"value"}`), []byte("blobdata"), uint(2), uint(4),
+			"random text", sql.True, types.MustJSON(`{"key":"value"}`), []byte("blobdata"), "v1", "v2",
 		}},
 	},
 	{
@@ -105,7 +105,7 @@ var ReplaceQueries = []WriteQueryTest{
 			uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 			float32(math.MaxFloat32), float64(math.MaxFloat64),
 			sql.MustConvert(types.Timestamp.Convert("2037-04-05 12:51:36")), sql.MustConvert(types.Date.Convert("2231-11-07")),
-			"random text", sql.True, types.MustJSON(`{"key":"value"}`), []byte("blobdata"), uint(2), uint(4),
+			"random text", sql.True, types.MustJSON(`{"key":"value"}`), []byte("blobdata"), "v1", "v2",
 		}},
 	},
 	{
@@ -124,7 +124,7 @@ var ReplaceQueries = []WriteQueryTest{
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
 			types.Timestamp.Zero(), types.Date.Zero(),
-			"", sql.False, types.MustJSON(`""`), []byte(""), uint(1), uint(0),
+			"", sql.False, types.MustJSON(`""`), []byte(""), "", "",
 		}},
 	},
 	{
@@ -143,7 +143,7 @@ var ReplaceQueries = []WriteQueryTest{
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
 			types.Timestamp.Zero(), types.Date.Zero(),
-			"", sql.False, types.MustJSON(`""`), []byte(""), uint(1), uint(0),
+			"", sql.False, types.MustJSON(`""`), []byte(""), "", "",
 		}},
 	},
 	{

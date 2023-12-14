@@ -130,8 +130,7 @@ var UpdateTests = []WriteQueryTest{
 			0,
 			nil,
 			nil,
-			uint64(1),
-			uint64(0)}},
+			"", ""}},
 	},
 	{
 		WriteQuery:          "UPDATE typestable SET ti = '2020-03-06 00:00:00', da = '2020-03-06';",
@@ -155,8 +154,7 @@ var UpdateTests = []WriteQueryTest{
 			0,
 			nil,
 			nil,
-			uint64(1),
-			uint64(0)}},
+			"", ""}},
 	},
 	{
 		SkipServerEngine:    true, // datetime returned is non-zero over the wire
@@ -181,8 +179,7 @@ var UpdateTests = []WriteQueryTest{
 			0,
 			nil,
 			nil,
-			uint64(1),
-			uint64(0)}},
+			"", ""}},
 	},
 	{
 		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET two_pk.c1 = two_pk.c1 + 1`,

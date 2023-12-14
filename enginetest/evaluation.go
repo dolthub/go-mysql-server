@@ -611,12 +611,10 @@ func rowToSQL(s sql.Schema, expectedRow sql.Row, actualRow sql.Row, convertTime 
 		_, isStr := v.(string)
 		if v == nil {
 			newRow = append(newRow, nil)
-		} else if types.IsDecimal(s[i].Type) || s[i].Type.Type() == sqltypes.Year || (isTime && !convertTime) || (isStr && types.IsTextOnly(s[i].Type)) {
+		} else if types.IsDecimal(s[i].Type) || types.IsEnum(s[i].Type) || types.IsSet(s[i].Type) ||
+			s[i].Type.Type() == sqltypes.Year || (isTime && !convertTime) || (isStr && types.IsTextOnly(s[i].Type)) {
+			// cases where we don't want the result value to be converted
 			newRow = append(newRow, v)
-		} else if types.IsEnum(s[i].Type) || types.IsSet(s[i].Type) {
-			// enginetests returns the enum index, but the text representation is sent over the wire
-			// TODO: need to check result rather than replacing it
-			newRow = append(newRow, actualRow[i])
 		} else {
 			c, _, err := s[i].Type.Convert(v)
 			if err != nil {
@@ -658,6 +656,8 @@ func checkResults(
 		}
 	}
 
+	isServerEngine := IsServerEngine(e)
+
 	// The result from SELECT or WITH queries can be decimal.Decimal type.
 	// The exact expected value cannot be defined in enginetests, so convert the result to string format,
 	// which is the value we get on sql shell.
@@ -666,12 +666,22 @@ func checkResults(
 			for i, val := range widenedRow {
 				if d, ok := val.(decimal.Decimal); ok {
 					widenedRow[i] = d.StringFixed(d.Exponent() * -1)
+				} else if idxVal, ok := val.(uint64); ok && !isServerEngine && sch != nil && len(sch) == len(widenedRow) {
+					if enumType, y := sch[i].Type.(sql.EnumType); y {
+						el, exists := enumType.At(int(idxVal))
+						if !exists {
+							t.Errorf("Enum type element does not exist at index: %v", idxVal)
+						}
+						widenedRow[i] = el
+					} else if setType, y := sch[i].Type.(sql.SetType); y {
+						el, err := setType.BitsToString(idxVal)
+						require.NoError(t, err)
+						widenedRow[i] = el
+					}
 				}
 			}
 		}
 	}
-
-	isServerEngine := IsServerEngine(e)
 
 	// if the sch is nil or empty, over the wire result is no row whereas single empty row is expected.
 	// This happens for SET and SELECT INTO statements.
