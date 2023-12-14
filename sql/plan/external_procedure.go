@@ -15,6 +15,8 @@
 package plan
 
 import (
+	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 
@@ -170,16 +172,82 @@ func (n *ExternalProcedure) processParam(ctx *sql.Context, funcParamType reflect
 		exprParamVal = val
 	case byteSliceType:
 	case intType:
+		convOk := false
 		if strconv.IntSize == 32 {
-			exprParamVal = int(exprParamVal.(int32))
+			if int32ExprParamVal, ok := exprParamVal.(int32); ok {
+				if int32ExprParamVal <= math.MaxInt32 && int32ExprParamVal >= math.MinInt32 {
+					exprParamVal = int(int32ExprParamVal)
+					convOk = true
+				}
+			}
 		} else {
-			exprParamVal = int(exprParamVal.(int64))
+			if int64ExprParamVal, ok := exprParamVal.(int64); ok {
+				if int64ExprParamVal >= math.MinInt && int64ExprParamVal <= math.MaxInt {
+					exprParamVal = int(int64ExprParamVal)
+					convOk = true
+				}
+			} else if int16ParamVal, ok := exprParamVal.(int16); ok {
+				if int16ParamVal >= math.MinInt16 && int16ParamVal <= math.MaxInt16 {
+					exprParamVal = int(int16ParamVal)
+					convOk = true
+				}
+			} else if int8ParamVal, ok := exprParamVal.(int8); ok {
+				if int8ParamVal >= math.MinInt8 && int8ParamVal <= math.MaxInt8 {
+					exprParamVal = int(int8ParamVal)
+					convOk = true
+				}
+			} else if intParamVal, ok := exprParamVal.(int); ok {
+				exprParamVal = intParamVal
+				convOk = true
+			}
 		}
+		if !convOk {
+			overflowErr := fmt.Errorf("expr value overflow %v", exprParamVal)
+			funcParamVal := reflect.New(funcParamType)
+			exprParamVal = int(-1)
+			funcParamVal.Elem().Set(reflect.ValueOf(exprParamVal))
+			return funcParamVal.Elem(), overflowErr
+		}
+
 	case uintType:
+		convOk := false
 		if strconv.IntSize == 64 {
-			exprParamVal = int(exprParamVal.(uint32))
+			if uint64Val, ok := exprParamVal.(uint64); ok {
+				if uint64Val <= math.MaxUint32 && uint64Val >= 0 && uint64Val <= math.MaxInt {
+					exprParamVal = int(uint64Val)
+					convOk = true
+				}
+			}
 		} else {
-			exprParamVal = int(exprParamVal.(uint64))
+			if uint32Val, ok := exprParamVal.(uint32); ok {
+				if uint32Val >= 0 && uint32Val <= math.MaxInt32 {
+					exprParamVal = int(uint32Val)
+					convOk = true
+				}
+			} else if uint16Val, ok := exprParamVal.(uint16); ok {
+				if uint16Val >= 0 && uint16Val <= math.MaxUint16 {
+					exprParamVal = int(uint16Val)
+					convOk = true
+				}
+			} else if uint8Val, ok := exprParamVal.(uint8); ok {
+				if uint8Val >= 0 && uint8Val <= math.MaxUint8 {
+					exprParamVal = int(uint8Val)
+					convOk = true
+				}
+			} else if uintVal, ok := exprParamVal.(uint); ok {
+				if uintVal >= 0 && uintVal <= math.MaxInt {
+					exprParamVal = int(uintVal)
+					convOk = true
+				}
+			}
+		}
+
+		if !convOk {
+			overflowErr := fmt.Errorf("expr value overflow %v", exprParamVal)
+			funcParamVal := reflect.New(funcParamType)
+			exprParamVal = int(-1)
+			funcParamVal.Elem().Set(reflect.ValueOf(exprParamVal))
+			return funcParamVal.Elem(), overflowErr
 		}
 	case decimalType:
 		exprParamVal = exprParamVal.(decimal.Decimal)

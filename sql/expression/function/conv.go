@@ -182,7 +182,11 @@ func convertFromBase(nVal string, fromBase interface{}) interface{} {
 	}
 
 	if negative {
-		return int64(result) * -1
+		if result > 0 && result <= math.MaxInt64 {
+			return int64(result) * -1
+		} else {
+			return nil
+		}
 	}
 
 	return result

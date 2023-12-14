@@ -16,6 +16,7 @@ package golden
 
 import (
 	dsql "database/sql"
+	"errors"
 	"fmt"
 	"math"
 	"reflect"
@@ -175,7 +176,11 @@ func (h MySqlProxy) ComMultiQuery(
 
 	remainder, err := h.processQuery(c, conn, query, true, callback)
 	if err != nil {
-		conn.Errorf("Failed to process MySQL results: %s", err)
+		if errors.Is(err, parse.ErrPasswordOptionsSensitive) {
+			conn.Errorf("Failed to process MySQL results: %s", errors.New("password options config issues"))
+		} else {
+			conn.Errorf("Failed to process MySQL results: %s", err)
+		}
 	}
 	return remainder, err
 }
@@ -194,7 +199,11 @@ func (h MySqlProxy) ComQuery(
 
 	_, err = h.processQuery(c, conn, query, false, callback)
 	if err != nil {
-		conn.Errorf("Failed to process MySQL results: %s", err)
+		if errors.Is(err, parse.ErrPasswordOptionsSensitive) {
+			conn.Errorf("Failed to process MySQL results: %s", errors.New("password options config issues"))
+		} else {
+			conn.Errorf("Failed to process MySQL results: %s", err)
+		}
 	}
 	return err
 }

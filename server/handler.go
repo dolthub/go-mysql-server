@@ -23,6 +23,8 @@ import (
 	"sync"
 	"time"
 
+	goerrors "errors"
+
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/netutil"
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -353,7 +355,11 @@ func (h *Handler) doQuery(
 	schema, rowIter, err := h.e.QueryNodeWithBindings(ctx, query, parsed, sqlBindings)
 	if err != nil {
 		if !strings.Contains(query, "TABLE_SCHEMA") {
-			ctx.GetLogger().WithError(err).Warn("error running query")
+			if goerrors.Is(err, parse.ErrPasswordOptionsSensitive) {
+				ctx.GetLogger().WithError(goerrors.New("password options config issues")).Warn("error running query")
+			} else {
+				ctx.GetLogger().WithError(err).Warn("error running query")
+			}
 		}
 		return remainder, err
 	}

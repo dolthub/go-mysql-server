@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -194,6 +195,10 @@ func CreateString(baseType query.Type, length int64, collation CollationID) (Str
 			// longTextBlobMax by anything over 1 would cause it to overflow.
 			maxResponseByteLength = maxByteLength * charsetMaxLength
 		}
+	}
+
+	if maxResponseByteLength > math.MaxUint32 {
+		return nil, fmt.Errorf("length of %v is greater than the maximum of uint32", maxResponseByteLength)
 	}
 
 	return stringType{baseType, maxCharLength, maxByteLength, uint32(maxResponseByteLength), collation}, nil

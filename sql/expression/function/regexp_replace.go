@@ -16,6 +16,7 @@ package function
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -161,8 +162,16 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		if err != nil {
 			return nil, err
 		}
-		// Convert to int
-		_pos = int(pos.(int32))
+		if int32Val, ok := pos.(int32); ok {
+			if int32Val < math.MaxInt32 && int32Val > math.MinInt32 {
+				// Convert to int
+				_pos = int(int32Val)
+			} else {
+				return nil, sql.ErrInvalidArgumentDetails.New(r.FunctionName(), fmt.Sprintf("%d", _pos))
+			}
+		} else {
+			return nil, sql.ErrInvalidArgumentDetails.New(r.FunctionName(), fmt.Sprintf("%d", _pos))
+		}
 	}
 
 	// Non-positive position throws incorrect parameter
@@ -194,8 +203,16 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 			return nil, err
 		}
 
-		// Convert to int
-		_occ = int(occ.(int32))
+		if int32Val, ok := occ.(int32); ok {
+			if int32Val < math.MaxInt32 && int32Val > math.MinInt32 {
+				// Convert to int
+				_occ = int(int32Val)
+			} else {
+				return nil, sql.ErrInvalidArgumentDetails.New(r.FunctionName(), fmt.Sprintf("%d", _pos))
+			}
+		} else {
+			return nil, sql.ErrInvalidArgumentDetails.New(r.FunctionName(), fmt.Sprintf("%d", _pos))
+		}
 	}
 
 	// MySQL interprets negative occurrences as first for some reason

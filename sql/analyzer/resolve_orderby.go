@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	errors "gopkg.in/src-d/go-errors.v1"
@@ -344,11 +345,25 @@ func resolveSortField(a *Analyzer, f sql.SortField, schema sql.Schema) (sql.Sort
 			return sql.SortField{}, transform.SameTree, err
 		}
 
+		var idx int
+
+		if int64Val, ok := v.(int64); ok {
+			if int64Val < 1 || int64Val > math.MaxInt {
+				return sql.SortField{}, transform.SameTree, ErrOrderByColumnIndex.New(v)
+			}
+			idx = int(int64Val) - 1
+		} else if uint64Val, ok := v.(uint64); ok {
+			if uint64Val < 1 || uint64Val > math.MaxInt {
+				return sql.SortField{}, transform.SameTree, ErrOrderByColumnIndex.New(v)
+			}
+			idx = int(uint64Val) - 1
+		} else {
+			return sql.SortField{}, transform.SameTree, ErrOrderByColumnIndex.New(v)
+		}
+
 		// column access is 1-indexed
-		idx := int(v.(int64)) - 1
 		if idx >= len(schema) || idx < 0 {
 			return sql.SortField{}, transform.SameTree, ErrOrderByColumnIndex.New(idx + 1)
-
 		}
 
 		// If there is more than one alias with this name, we can't handle it yet. This is because we rewrite

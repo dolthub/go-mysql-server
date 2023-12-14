@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -199,6 +200,9 @@ func (t enumType) Convert(v interface{}) (interface{}, error) {
 		return t.Convert(value.Decimal.IntPart())
 	case string:
 		if index := t.IndexOf(value); index != -1 {
+			if index > math.MaxUint16 {
+				return nil, ErrConvertingToEnum.New(v)
+			}
 			return uint16(index), nil
 		}
 	case []byte:

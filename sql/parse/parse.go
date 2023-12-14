@@ -18,6 +18,7 @@ import (
 	"encoding/hex"
 	goerrors "errors"
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -73,6 +74,9 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 func ParseOne(ctx *sql.Context, query string) (sql.Node, string, string, error) {
 	return parse(ctx, query, true)
 }
+
+var ErrPasswordOptionsSensitive = goerrors.New("password options sensitive")
+var ErrPasswordSensitive = goerrors.New("password sensitive")
 
 func parse(ctx *sql.Context, query string, multi bool) (sql.Node, string, string, error) {
 	span, ctx := ctx.Span("parse", trace.WithAttributes(attribute.String("query", query)))
@@ -274,7 +278,7 @@ func convertAnalyze(ctx *sql.Context, n *sqlparser.Analyze, query string) (sql.N
 
 func convertKill(ctx *sql.Context, kill *sqlparser.Kill) (*plan.Kill, error) {
 	connID64, err := getInt64Value(ctx, kill.ConnID, "Error parsing KILL, expected int literal")
-	if err != nil {
+	if err != nil || connID64 > math.MaxUint32 {
 		return nil, err
 	}
 	connID32 := uint32(connID64)
@@ -2446,7 +2450,7 @@ func convertCreateUser(ctx *sql.Context, n *sqlparser.CreateUser) (*plan.CreateU
 		var expirationTime *int64
 		if n.PasswordOptions.ExpirationTime != nil {
 			if val, err := strconv.ParseInt(string(n.PasswordOptions.ExpirationTime.Val), 10, 64); err != nil {
-				return nil, err
+				return nil, goerrors.Join(ErrPasswordOptionsSensitive, err)
 			} else {
 				expirationTime = &val
 			}
@@ -2454,7 +2458,7 @@ func convertCreateUser(ctx *sql.Context, n *sqlparser.CreateUser) (*plan.CreateU
 		var history *int64
 		if n.PasswordOptions.History != nil {
 			if val, err := strconv.ParseInt(string(n.PasswordOptions.History.Val), 10, 64); err != nil {
-				return nil, err
+				return nil, goerrors.Join(ErrPasswordOptionsSensitive, err)
 			} else {
 				history = &val
 			}
@@ -2462,7 +2466,7 @@ func convertCreateUser(ctx *sql.Context, n *sqlparser.CreateUser) (*plan.CreateU
 		var reuseInterval *int64
 		if n.PasswordOptions.ReuseInterval != nil {
 			if val, err := strconv.ParseInt(string(n.PasswordOptions.ReuseInterval.Val), 10, 64); err != nil {
-				return nil, err
+				return nil, goerrors.Join(ErrPasswordOptionsSensitive, err)
 			} else {
 				reuseInterval = &val
 			}
@@ -2470,7 +2474,7 @@ func convertCreateUser(ctx *sql.Context, n *sqlparser.CreateUser) (*plan.CreateU
 		var failedAttempts *int64
 		if n.PasswordOptions.FailedAttempts != nil {
 			if val, err := strconv.ParseInt(string(n.PasswordOptions.FailedAttempts.Val), 10, 64); err != nil {
-				return nil, err
+				return nil, goerrors.Join(ErrPasswordOptionsSensitive, err)
 			} else {
 				failedAttempts = &val
 			}
@@ -2478,7 +2482,7 @@ func convertCreateUser(ctx *sql.Context, n *sqlparser.CreateUser) (*plan.CreateU
 		var lockTime *int64
 		if n.PasswordOptions.LockTime != nil {
 			if val, err := strconv.ParseInt(string(n.PasswordOptions.LockTime.Val), 10, 64); err != nil {
-				return nil, err
+				return nil, goerrors.Join(ErrPasswordOptionsSensitive, err)
 			} else {
 				lockTime = &val
 			}

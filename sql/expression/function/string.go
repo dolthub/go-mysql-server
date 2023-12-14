@@ -17,6 +17,7 @@ package function
 import (
 	"encoding/hex"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -316,7 +317,10 @@ func binForNegativeInt64(n int64) string {
 
 	s := ""
 	for i := 7; i >= 0; i-- {
-		s += strconv.FormatInt(int64(bytes[i]), 2)
+		int64Val := int64(bytes[i])
+		if int64Val < math.MaxInt && int64Val > math.MinInt {
+			s += strconv.FormatInt(int64Val, 2)
+		}
 	}
 
 	return s

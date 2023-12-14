@@ -2,6 +2,7 @@ package dateparse
 
 import (
 	"fmt"
+	"math"
 	"time"
 )
 
@@ -76,7 +77,7 @@ func parseMonthAbbreviation(result *datetime, chars string) (rest string, _ erro
 
 func parseMonthNumeric(result *datetime, chars string) (rest string, _ error) {
 	num, rest, err := takeNumber(chars)
-	if err != nil {
+	if err != nil || num > math.MaxInt {
 		return "", err
 	}
 	month := time.Month(num)

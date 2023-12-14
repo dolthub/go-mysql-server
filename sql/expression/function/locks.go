@@ -16,6 +16,7 @@ package function
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -319,7 +320,19 @@ func (gl *GetLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, fmt.Errorf("illegal value for timeout %v", timeout)
 	}
 
-	err = gl.ls.Lock(ctx, lockName, time.Second*time.Duration(timeout.(int64)))
+	if uint64Timeout, ok := timeout.(uint64); ok {
+		if uint64Timeout > math.MaxInt64 {
+			return nil, fmt.Errorf("illegal value for timeout %v", timeout)
+		}
+		err = gl.ls.Lock(ctx, lockName, time.Second*time.Duration(uint64Timeout))
+	} else if int64Timeout, ok := timeout.(int64); ok {
+		if int64Timeout < 0 || int64Timeout > math.MaxInt64 {
+			return nil, fmt.Errorf("illegal value for timeout %v", timeout)
+		}
+		err = gl.ls.Lock(ctx, lockName, time.Second*time.Duration(int64Timeout))
+	} else {
+		return nil, fmt.Errorf("illegal value for timeout %v", timeout)
+	}
 
 	if err != nil {
 		if sql.ErrLockTimeout.Is(err) {

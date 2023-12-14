@@ -16,6 +16,7 @@ package function
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -786,11 +787,27 @@ func NewNow(args ...sql.Expression) (sql.Expression, error) {
 			return nil, err
 		}
 
-		n := int(precisionArg.(int32))
-		if n < 0 || n > 6 {
+		if int64Val, ok := precisionArg.(int64); ok {
+			if int64Val < 0 || int64Val > 6 {
+				return nil, sql.ErrInvalidType.New(args[0].Type().String())
+			}
+			n := int(int64Val)
+			precision = &n
+		} else if uint64Val, ok := precisionArg.(uint64); ok {
+			if uint64Val < 0 || uint64Val > 6 {
+				return nil, sql.ErrInvalidType.New(args[0].Type().String())
+			}
+			n := int(uint64Val)
+			precision = &n
+		} else if int32Val, ok := precisionArg.(int32); ok {
+			if int32Val < 0 || int32Val > 6 {
+				return nil, sql.ErrOutOfRange.New("precision", "now")
+			}
+			n := int(int32Val)
+			precision = &n
+		} else {
 			return nil, sql.ErrOutOfRange.New("precision", "now")
 		}
-		precision = &n
 	}
 
 	return &Now{precision}, nil
@@ -907,11 +924,27 @@ func NewUTCTimestamp(args ...sql.Expression) (sql.Expression, error) {
 			return nil, err
 		}
 
-		n := int(precisionArg.(int32))
-		if n < 0 || n > 6 {
+		if int64Val, ok := precisionArg.(int64); ok {
+			if int64Val < 0 || int64Val > 6 {
+				return nil, sql.ErrOutOfRange.New("precision", "utc_timestamp")
+			}
+			n := int(int64Val)
+			precision = &n
+		} else if uint64Val, ok := precisionArg.(uint64); ok {
+			if uint64Val < 0 || uint64Val > 6 {
+				return nil, sql.ErrOutOfRange.New("precision", "utc_timestamp")
+			}
+			n := int(uint64Val)
+			precision = &n
+		} else if int32Val, ok := precisionArg.(int32); ok {
+			if int32Val < 0 || int32Val > 6 {
+				return nil, sql.ErrOutOfRange.New("precision", "utc_timestamp")
+			}
+			n := int(int32Val)
+			precision = &n
+		} else {
 			return nil, sql.ErrOutOfRange.New("precision", "utc_timestamp")
 		}
-		precision = &n
 	}
 
 	return &UTCTimestamp{precision}, nil
@@ -1352,18 +1385,35 @@ func (c *CurrTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 
 	// Must receive integer, all other types throw syntax error
 	fsp := 0
-	switch val.(type) {
-	case int:
-		fsp = val.(int)
-	case int8:
-		fsp = int(val.(int8))
-	case int16:
-		fsp = int(val.(int16))
-	case int32:
-		fsp = int(val.(int32))
-	case int64:
-		fsp = int(val.(int64))
-	default:
+
+	if int64val, ok := val.(int64); ok {
+		if int64val > math.MaxInt || int64val < math.MinInt {
+			return nil, ErrInvalidArgumentType.New(c.FunctionName())
+		}
+		fsp = int(int64val)
+	} else if uint64Val, ok := val.(uint64); ok {
+		if uint64Val > math.MaxInt {
+			return nil, ErrInvalidArgumentType.New(c.FunctionName())
+		}
+		fsp = int(uint64Val)
+	} else if intVal, ok := val.(int); ok {
+		fsp = intVal
+	} else if int8Val, ok := val.(int8); ok {
+		if int8Val > math.MaxInt8 {
+			return nil, ErrInvalidArgumentType.New(c.FunctionName())
+		}
+		fsp = int(int8Val)
+	} else if int16Val, ok := val.(int16); ok {
+		if int16Val > math.MaxInt16 {
+			return nil, ErrInvalidArgumentType.New(c.FunctionName())
+		}
+		fsp = int(int16Val)
+	} else if int32Val, ok := val.(int32); ok {
+		if int32Val > math.MaxInt32 {
+			return nil, ErrInvalidArgumentType.New(c.FunctionName())
+		}
+		fsp = int(int32Val)
+	} else {
 		return nil, ErrInvalidArgumentType.New(c.FunctionName())
 	}
 

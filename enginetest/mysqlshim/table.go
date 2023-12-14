@@ -15,7 +15,9 @@
 package mysqlshim
 
 import (
+	"errors"
 	"fmt"
+	"math"
 	"math/rand"
 	"strings"
 
@@ -143,7 +145,16 @@ func (t Table) Truncate(ctx *sql.Context) (int, error) {
 		return 0, err
 	}
 	err = t.db.shim.Exec("", fmt.Sprintf("TRUNCATE TABLE `%s`;", t.name))
-	return int(rowCount.(int64)), err
+	if int64RowCount, ok := rowCount.(int64); ok {
+		if int64RowCount >= math.MinInt && int64RowCount <= math.MaxInt {
+			return int(int64RowCount), err
+		}
+	} else if uint64RowCount, ok := rowCount.(uint64); ok {
+		if uint64RowCount <= math.MaxInt {
+			return int(uint64RowCount), err
+		}
+	}
+	return 0, errors.New("unable to convers row count")
 }
 
 // AddColumn implements the interface sql.AlterableTable.

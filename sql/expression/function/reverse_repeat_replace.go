@@ -16,6 +16,7 @@ package function
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -156,10 +157,18 @@ func (r *Repeat) Eval(
 	if err != nil {
 		return nil, err
 	}
-	if count.(int32) < 0 {
+	if _, ok := count.(int64); ok {
+		return nil, ErrNegativeRepeatCount.New(count)
+	} else if _, ok := count.(uint64); ok {
+		return nil, ErrNegativeRepeatCount.New(count)
+	} else if countInt32, ok := count.(int32); ok {
+		if countInt32 < 0 || countInt32 > math.MaxInt32 {
+			return nil, ErrNegativeRepeatCount.New(count)
+		}
+		return strings.Repeat(str.(string), int(countInt32)), nil
+	} else {
 		return nil, ErrNegativeRepeatCount.New(count)
 	}
-	return strings.Repeat(str.(string), int(count.(int32))), nil
 }
 
 // Replace is a function that returns a string with all occurrences of fromStr replaced by the

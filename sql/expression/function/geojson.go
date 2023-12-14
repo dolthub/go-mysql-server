@@ -240,7 +240,20 @@ func getIntArg(ctx *sql.Context, row sql.Row, expr sql.Expression) (interface{},
 	if err != nil {
 		return nil, err
 	}
-	return int(x.(int64)), nil
+
+	if xInt64, ok := x.(int64); ok {
+		if xInt64 < math.MinInt || xInt64 > math.MaxInt {
+			return nil, fmt.Errorf("int64 out of range %v", x)
+		}
+		return int(xInt64), nil
+	} else if xUint64, ok := x.(uint64); ok {
+		if xUint64 < 0 || xUint64 > math.MaxInt {
+			return nil, fmt.Errorf("uint64 out of range %v", x)
+		}
+		return int(xUint64), nil
+	} else {
+		return nil, errors.New("received a unexpected type when it should be an int")
+	}
 }
 
 // Eval implements the sql.Expression interface.

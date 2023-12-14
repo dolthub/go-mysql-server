@@ -321,6 +321,11 @@ func stringToTimespan(s string) (Timespan, error) {
 		if len(remainStr) > 0 && remainStr[len(remainStr)-1:] >= "5" {
 			convertedMicroseconds++
 		}
+
+		if convertedMicroseconds > math.MaxInt32 {
+			return Timespan(0), ErrConvertingToTimeType.New(s)
+		}
+
 		microseconds = int32(convertedMicroseconds)
 	}
 
@@ -350,13 +355,14 @@ func stringToTimespan(s string) (Timespan, error) {
 	}
 
 	hmsHours, err := strconv.Atoi(hms[0])
-	if len(hms[0]) > 0 && err != nil {
+
+	if (len(hms[0]) > 0 && err != nil) || hmsHours > math.MaxInt16 {
 		return Timespan(0), ErrConvertingToTimeType.New(s)
 	}
 	hours = int16(hmsHours)
 
 	hmsMinutes, err := strconv.Atoi(hms[1])
-	if len(hms[1]) > 0 && err != nil {
+	if (len(hms[1]) > 0 && err != nil) || hmsMinutes > math.MaxInt8 {
 		return Timespan(0), ErrConvertingToTimeType.New(s)
 	} else if hmsMinutes >= 60 {
 		return Timespan(0), ErrConvertingToTimeType.New(s)
@@ -364,7 +370,7 @@ func stringToTimespan(s string) (Timespan, error) {
 	minutes = int8(hmsMinutes)
 
 	hmsSeconds, err := strconv.Atoi(hms[2])
-	if len(hms[2]) > 0 && err != nil {
+	if (len(hms[2]) > 0 && err != nil) || hmsSeconds > math.MaxInt8 {
 		return Timespan(0), ErrConvertingToTimeType.New(s)
 	} else if hmsSeconds >= 60 {
 		return Timespan(0), ErrConvertingToTimeType.New(s)

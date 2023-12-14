@@ -16,12 +16,14 @@ package expression
 
 import (
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	errors "gopkg.in/src-d/go-errors.v1"
+	"gopkg.in/src-d/go-vitess.v1/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -134,7 +136,23 @@ func (i *Interval) EvalDelta(ctx *sql.Context, row sql.Row) (*TimeDelta, error) 
 			return nil, err
 		}
 
-		num := val.(int64)
+		if uint64Val, ok := val.(uint64); ok {
+			// Bounds check.
+			if uint64Val > math.MaxInt64 {
+				return nil, sql.ErrOutOfRange.New(val, sqltypes.Int64)
+			}
+		}
+
+		var num int64
+		if int64Val, ok := val.(int64); ok {
+			if int64Val < math.MaxInt64 {
+				num = int64Val
+			}
+		} else if uint64Val, ok := val.(uint64); ok {
+			if uint64Val < math.MaxInt64 {
+				num = int64(uint64Val)
+			}
+		}
 
 		switch i.Unit {
 		case "DAY":

@@ -275,7 +275,9 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				if err != nil {
 					return nil, err
 				}
-				dVal = float64(val)
+				if val <= math.MaxUint64/2 && val >= 0 {
+					dVal = float64(val)
+				}
 			default:
 				dTemp, err = sql.Float64.Convert(dTemp)
 				if err == nil {
@@ -313,32 +315,36 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// round(585.5) / 100
 	// 586 / 100
 	// 5.86
-	switch xNum := xVal.(type) {
-	case float64:
-		return math.Round(xNum*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal), nil
-	case float32:
-		return float32(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
-	case int64:
-		return int64(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
-	case int32:
-		return int32(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
-	case int16:
-		return int16(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
-	case int8:
-		return int8(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
-	case uint64:
-		return uint64(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
-	case uint32:
-		return uint32(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
-	case uint16:
-		return uint16(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
-	case uint8:
-		return uint8(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
-	case int:
-		return int(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
-	case decimal.Decimal:
-		return xNum.Round(int32(dVal)), nil
-	default:
+	if float64XNum, ok := xVal.(float64); ok {
+		return math.Round(float64XNum*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal), nil
+	} else if float32XNum, ok := xVal.(float32); ok {
+		return float32(math.Round(float64(float32XNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
+	} else if int64XNum, ok := xVal.(int64); ok {
+		return int64(math.Round(float64(int64XNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
+	} else if int32XNum, ok := xVal.(int32); ok {
+		return int32(math.Round(float64(int32XNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
+	} else if int16XNum, ok := xVal.(int16); ok {
+		return int16(math.Round(float64(int16XNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
+	} else if int8XNum, ok := xVal.(int8); ok {
+		return int8(math.Round(float64(int8XNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
+	} else if uint64XNum, ok := xVal.(uint64); ok {
+		return uint64(math.Round(float64(uint64XNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
+	} else if uint32XNum, ok := xVal.(uint32); ok {
+		return uint32(math.Round(float64(uint32XNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
+	} else if uint16XNum, ok := xVal.(uint16); ok {
+		return uint16(math.Round(float64(uint16XNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
+	} else if uint8XNum, ok := xVal.(uint8); ok {
+		return uint8(math.Round(float64(uint8XNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
+	} else if intXNum, ok := xVal.(int); ok {
+		return int(math.Round(float64(intXNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
+	} else if decimalXNum, ok := xVal.(decimal.Decimal); ok {
+		dVal := decimalXNum.Round(0).IntPart()
+		if dVal <= math.MaxInt32 && dVal >= math.MinInt32 {
+			return int32(dVal), nil
+		} else {
+			return nil, sql.ErrInvalidType.New(r.Left.Type().String())
+		}
+	} else {
 		return nil, sql.ErrInvalidType.New(r.Left.Type().String())
 	}
 }

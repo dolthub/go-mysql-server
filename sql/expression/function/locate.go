@@ -16,6 +16,7 @@ package function
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -129,7 +130,12 @@ func (l *Locate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			if err != nil {
 				return nil, sql.ErrInvalidArgumentDetails.New("locate", "start must be an integer")
 			}
-			position = int(posInt.(int32))
+			if int32Pos, ok := posInt.(int32); ok {
+				if int32Pos <= math.MaxInt32 && int32Pos >= math.MinInt32 {
+					position = int(int32Pos)
+				}
+			}
+			return nil, sql.ErrInvalidArgumentDetails.New("locate", "start must be an integer")
 		}
 	}
 
