@@ -17,8 +17,7 @@ package json
 import (
 	"encoding/json"
 	"fmt"
-	"go.opentelemetry.io/otel/trace"
-	"strings"
+		"strings"
 
 	"github.com/dolthub/jsonpath"
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -84,11 +83,8 @@ func (*JsonValue) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 
 // Eval implements the sql.Expression interface.
 func (j *JsonValue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if ctx != nil {
-		var span trace.Span
-		span, ctx = ctx.Span("function.JsonValue")
-		defer span.End()
-	}
+	span, ctx := ctx.Span("function.JsonValue")
+	defer span.End()
 
 
 	js, err := j.JSON.Eval(ctx, row)

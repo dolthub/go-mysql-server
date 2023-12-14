@@ -74,11 +74,8 @@ func (*JsonLength) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 
 // Eval implements the sql.Expression interface.
 func (j *JsonLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if ctx != nil {
-		var span trace.Span
-		span, ctx = ctx.Span("function.JsonLength")
-		defer span.End()
-	}
+	span, ctx := ctx.Span("function.JsonLength")
+	defer span.End()
 
 	js, err := j.JSON.Eval(ctx, row)
 	if err != nil {
