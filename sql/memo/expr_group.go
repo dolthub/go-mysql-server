@@ -94,10 +94,64 @@ func (e *ExprGroup) finalize(node sql.Node) (sql.Node, error) {
 	if props.sort != nil {
 		result = plan.NewSort(props.sort, result)
 	}
-	if props.limit != nil {
-		result = plan.NewLimit(props.limit, result)
+	if props.Limit != nil {
+		result = plan.NewLimit(props.Limit, result)
 	}
 	return result, nil
+}
+
+// fixConflicts edits the children of a new best plan to account
+// for implementation correctness, like conflicting table lookups
+// and sorting. For example, a merge join with a filter child that
+// could alternatively be implemented as an indexScan should reject
+// the static indexScan to maintain the merge join's correctness.
+func (e *ExprGroup) fixConflicts() {
+	switch n := e.Best.(type) {
+	case *MergeJoin:
+		// todo: we should permit conflicting static indexScans with same index IDs
+		n.Left.findIndexScanConflict()
+		n.Right.findIndexScanConflict()
+	case *LookupJoin:
+		// LOOKUP_JOIN is more performant than INNER_JOIN with static indexScan
+		n.Right.findIndexScanConflict()
+	}
+}
+
+// findIndexScanConflict prevents indexScans from replacing filter nodes
+// for certain query plans that require different indexes or use indexes
+// in a special way.
+func (e *ExprGroup) findIndexScanConflict() {
+	e.fixTableScanPath()
+}
+
+// fixTableScanPath updates the intermediate group's |best| plan to
+// the path leading to a tableScan leaf.
+func (e *ExprGroup) fixTableScanPath() bool {
+	n := e.First
+	for n != nil {
+		src, ok := n.(SourceRel)
+		if !ok {
+			// not a source, try to find path through children
+			for _, c := range n.Children() {
+				if c.fixTableScanPath() {
+					// found path, update best
+					e.Best = n
+					return true
+				}
+			}
+			n = n.Next()
+			continue
+		}
+		_, ok = src.(*IndexScan)
+		if ok {
+			n = n.Next()
+			continue
+		}
+		// is a source, not an indexScan
+		e.Best = n
+		return true
+	}
+	return false
 }
 
 func (e *ExprGroup) String() string {

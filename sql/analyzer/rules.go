@@ -64,7 +64,6 @@ var OnceAfterDefault = []Rule{
 	{stripTableNameInDefaultsId, stripTableNamesFromColumnDefaults},
 	{pushFiltersId, pushFilters},
 	{optimizeJoinsId, optimizeJoins},
-	{generateIndexScansId, costedIndexScans},
 	{finalizeSubqueriesId, finalizeSubqueries},
 	{applyIndexesFromOuterScopeId, applyIndexesFromOuterScope},
 	{replaceAggId, replaceAgg},

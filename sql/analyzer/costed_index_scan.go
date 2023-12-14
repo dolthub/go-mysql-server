@@ -20,16 +20,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dolthub/go-mysql-server/sql/expression/function/spatial"
-	"github.com/dolthub/go-mysql-server/sql/fulltext"
-	"github.com/dolthub/go-mysql-server/sql/rowexec"
-	"github.com/dolthub/go-mysql-server/sql/types"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/spatial"
+	"github.com/dolthub/go-mysql-server/sql/fulltext"
+	"github.com/dolthub/go-mysql-server/sql/memo"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/stats"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // costedIndexScans matches a Filter-ResolvedTable pattern, and tries to
@@ -50,7 +50,7 @@ import (
 // fraction of its conjunctions into an indexScan, with the excluded
 // remaining in the parent filter. Much of the format conversions focus
 // on maintaining this invariant.
-func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		filter, ok := n.(*plan.Filter)
 		if !ok {
@@ -83,165 +83,257 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 				return n, transform.SameTree, err
 			}
 			return plan.NewFilter(filter.Expression, ret), transform.NewTree, nil
-		}
-		statistics, err := a.Catalog.StatsProvider.GetTableStats(ctx, strings.ToLower(rt.Database().Name()), strings.ToLower(rt.Name()))
-		if err != nil {
-			return n, transform.SameTree, err
-		}
-
-		qualToStat := make(map[sql.StatQualifier]sql.Statistic)
-		for _, stat := range statistics {
-			if prev, ok := qualToStat[stat.Qualifier()]; !ok || ok && len(stat.Columns()) > len(prev.Columns()) {
-				qualToStat[stat.Qualifier()] = stat
-			}
-		}
-
-		// flatten expression tree for costing
-		c := newIndexCoster(rt.Name())
-		root, leftover, imprecise := c.flatten(filter.Expression)
-		if root == nil {
-			return n, transform.SameTree, nil
-		}
-
-		iat, ok := rt.UnderlyingTable().(sql.IndexAddressableTable)
-		if !ok {
-			return n, transform.SameTree, nil
-		}
-		indexes, err := iat.GetIndexes(ctx)
-		if err != nil {
-			return n, transform.SameTree, err
-		}
-
-		// run each index through coster, save the cheapest
-		var dbName string
-		if dbTab, ok := rt.UnderlyingTable().(sql.Databaseable); ok {
-			dbName = strings.ToLower(dbTab.Database())
-		}
-		tableName := strings.ToLower(rt.UnderlyingTable().Name())
-
-		if len(qualToStat) > 0 {
-			// don't mix and match real and default stats
-			for _, idx := range indexes {
-				qual := sql.NewStatQualifier(dbName, tableName, strings.ToLower(idx.ID()))
-				_, ok := qualToStat[qual]
-				if !ok {
-					qualToStat = nil
-					break
-				}
-			}
-		}
-
-		for _, idx := range indexes {
-			qual := sql.NewStatQualifier(dbName, tableName, strings.ToLower(idx.ID()))
-			stat, ok := qualToStat[qual]
-			if !ok {
-				stat, err = uniformDistStatisticsForIndex(ctx, iat, idx)
-			}
-			err := c.cost(root, stat, idx)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-		}
-
-		if c.bestStat == nil || c.bestFilters.Empty() {
-			return n, transform.SameTree, nil
-		}
-
-		targetId := c.bestStat.Qualifier().Index()
-		var idx sql.Index
-		for _, i := range indexes {
-			if strings.EqualFold(i.ID(), targetId) {
-				idx = i
-				break
-			}
-		}
-		if idx == nil {
-			return n, transform.SameTree, fmt.Errorf("tried building indexScan with unknown statistic index: %s", targetId)
-		}
-
-		// separate |include| and |leftover| filters
-		b := newIndexScanRangeBuilder(ctx, idx, c.bestFilters, imprecise, c.idToExpr)
-		if leftover != nil {
-			b.leftover = append(b.leftover, leftover)
-		}
-		ranges, err := b.buildRangeCollection(root)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-
-		var emptyLookup bool
-		if len(ranges) == 0 {
-			emptyLookup = true
-		} else if len(ranges) == 1 {
-			emptyLookup, err = ranges[0].IsEmpty()
+		} else if iat, ok := rt.UnderlyingTable().(sql.IndexAddressableTable); ok {
+			indexes, err := iat.GetIndexes(ctx)
 			if err != nil {
 				return n, transform.SameTree, err
 			}
-			allRange := true
-			for i, r := range ranges[0] {
-				_, uok := r.UpperBound.(sql.AboveAll)
-				_, lok := r.LowerBound.(sql.BelowNull)
-				allRange = allRange && uok && lok
-				if i == 0 && allRange {
-					// no prefix restriction
-					return n, transform.SameTree, nil
-				}
+			ita, _, filters, err := getCostedIndexScan(ctx, a.Catalog, rt, indexes, expression.SplitConjunction(filter.Expression))
+			if err != nil || ita == nil {
+				return n, transform.SameTree, err
 			}
-			if allRange {
-				return n, transform.SameTree, nil
+			var ret sql.Node = ita
+			if aliasName != "" {
+				ret = plan.NewTableAlias(aliasName, ret)
 			}
-		}
-
-		if !idx.CanSupport(ranges...) {
-			return n, transform.SameTree, nil
-		}
-
-		if idx.IsSpatial() && len(ranges) > 1 {
-			// spatials don't support disjunct ranges
-			return n, transform.SameTree, nil
-		}
-
-		// create ranges, lookup, ITA for best indexScan
-		// TODO pass up FALSE filter information
-		lookup := sql.NewIndexLookup(idx, ranges, false, emptyLookup, idx.IsSpatial(), false)
-
-		var ret sql.Node
-		if idx.IsFullText() {
-			id, _ := c.bestFilters.Next(1)
-			ma := c.idToExpr[indexScanId(id)]
-			matchAgainst, ok := ma.(*expression.MatchAgainst)
-			if !ok {
-				return nil, transform.SameTree, fmt.Errorf("Full-Text index found in filter with unknown expression: %T", ma)
+			// excluded from tree + not included in index scan => filter above scan
+			if len(filters) > 0 {
+				ret = plan.NewFilter(expression.JoinAnd(filters...), ret)
 			}
-			if matchAgainst.KeyCols.Type == fulltext.KeyType_None {
-				return n, transform.SameTree, nil
-			}
-			ret = plan.NewStaticIndexedAccessForFullTextTable(rt, lookup, &rowexec.FulltextFilterTable{
-				MatchAgainst: matchAgainst,
-				Table:        rt,
-			})
-		} else {
-			ret, err = plan.NewStaticIndexedAccessForTableNode(rt, lookup)
-			if err != nil {
-				return n, transform.SameTree, nil
-			}
-		}
-
-		if aliasName != "" {
-			ret = plan.NewTableAlias(aliasName, ret)
-		}
-
-		if !iat.PreciseMatch() {
-			// cannot drop any filters
-			return plan.NewFilter(filter.Expression, ret), transform.NewTree, nil
-		}
-		if len(b.leftover) == 0 {
-			// pushed all filters into index
 			return ret, transform.NewTree, nil
 		}
+		return n, transform.SameTree, nil
+	})
+}
+
+func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.TableNode, indexes []sql.Index, filters []sql.Expression) (*plan.IndexedTableAccess, sql.Statistic, []sql.Expression, error) {
+	statistics, err := statsProv.GetTableStats(ctx, strings.ToLower(rt.Database().Name()), strings.ToLower(rt.Name()))
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	qualToStat := make(map[sql.StatQualifier]sql.Statistic)
+	for _, stat := range statistics {
+		if prev, ok := qualToStat[stat.Qualifier()]; !ok || ok && len(stat.Columns()) > len(prev.Columns()) {
+			qualToStat[stat.Qualifier()] = stat
+		}
+	}
+
+	// flatten expression tree for costing
+	c := newIndexCoster(rt.Name())
+	root, leftover, imprecise := c.flatten(expression.JoinAnd(filters...))
+	if root == nil {
+		return nil, nil, nil, err
+	}
+
+	iat, ok := rt.UnderlyingTable().(sql.IndexAddressableTable)
+	if !ok {
+		return nil, nil, nil, err
+	}
+
+	// run each index through coster, save the cheapest
+	var dbName string
+	if dbTab, ok := rt.UnderlyingTable().(sql.Databaseable); ok {
+		dbName = strings.ToLower(dbTab.Database())
+	}
+	tableName := strings.ToLower(rt.UnderlyingTable().Name())
+
+	if len(qualToStat) > 0 {
+		// don't mix and match real and default stats
+		for _, idx := range indexes {
+			qual := sql.NewStatQualifier(dbName, tableName, strings.ToLower(idx.ID()))
+			_, ok := qualToStat[qual]
+			if !ok {
+				qualToStat = nil
+				break
+			}
+		}
+	}
+
+	for _, idx := range indexes {
+		qual := sql.NewStatQualifier(dbName, tableName, strings.ToLower(idx.ID()))
+		stat, ok := qualToStat[qual]
+		if !ok {
+			stat, err = uniformDistStatisticsForIndex(ctx, iat, idx)
+		}
+		err := c.cost(root, stat, idx)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+	}
+
+	if c.bestStat == nil || c.bestFilters.Empty() {
+		return nil, nil, nil, err
+	}
+
+	targetId := c.bestStat.Qualifier().Index()
+	var idx sql.Index
+	for _, i := range indexes {
+		if strings.EqualFold(i.ID(), targetId) {
+			idx = i
+			break
+		}
+	}
+	if idx == nil {
+		return nil, nil, nil, fmt.Errorf("tried building indexScan with unknown statistic index: %s", targetId)
+	}
+
+	// separate |include| and |leftover| filters
+	b := newIndexScanRangeBuilder(ctx, idx, c.bestFilters, imprecise, c.idToExpr)
+	if leftover != nil {
+		b.leftover = append(b.leftover, leftover)
+	}
+	ranges, err := b.buildRangeCollection(root)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	var emptyLookup bool
+	if len(ranges) == 0 {
+		emptyLookup = true
+	} else if len(ranges) == 1 {
+		emptyLookup, err = ranges[0].IsEmpty()
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		allRange := true
+		for i, r := range ranges[0] {
+			_, uok := r.UpperBound.(sql.AboveAll)
+			_, lok := r.LowerBound.(sql.BelowNull)
+			allRange = allRange && uok && lok
+			if i == 0 && allRange {
+				// no prefix restriction
+				return nil, nil, nil, err
+			}
+		}
+		if allRange {
+			return nil, nil, nil, err
+		}
+	}
+
+	if !idx.CanSupport(ranges...) {
+		return nil, nil, nil, err
+	}
+
+	if idx.IsSpatial() && len(ranges) > 1 {
+		// spatials don't support disjunct ranges
+		return nil, nil, nil, err
+	}
+
+	// create ranges, lookup, ITA for best indexScan
+	// TODO: use FALSE filters to replace empty tables
+	lookup := sql.NewIndexLookup(idx, ranges, false, emptyLookup, idx.IsSpatial(), false)
+
+	var ret *plan.IndexedTableAccess
+	if idx.IsFullText() {
+		id, _ := c.bestFilters.Next(1)
+		ma := c.idToExpr[indexScanId(id)]
+		matchAgainst, ok := ma.(*expression.MatchAgainst)
+		if !ok {
+			return nil, nil, nil, fmt.Errorf("Full-Text index found in filter with unknown expression: %T", ma)
+		}
+		if matchAgainst.KeyCols.Type == fulltext.KeyType_None {
+			return nil, nil, nil, err
+		}
+		ret = plan.NewStaticIndexedAccessForFullTextTable(rt, lookup, &rowexec.FulltextFilterTable{
+			MatchAgainst: matchAgainst,
+			Table:        rt,
+		})
+	} else {
+		ret, err = plan.NewStaticIndexedAccessForTableNode(rt, lookup)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+	}
+
+	var retFilters []sql.Expression
+	if !iat.PreciseMatch() {
+		// cannot drop any filters
+		retFilters = filters
+	} else if len(b.leftover) > 0 {
 		// excluded from tree + not included in index scan => filter above scan
-		newFilter := expression.JoinAnd(b.leftover...)
-		return plan.NewFilter(newFilter, ret), transform.NewTree, nil
+		retFilters = b.leftover
+	}
+
+	return ret, c.bestStat, retFilters, nil
+}
+
+func addIndexScans(m *memo.Memo) error {
+	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
+		filter, ok := e.(*memo.Filter)
+		if !ok {
+			return nil
+		}
+
+		var rt sql.TableNode
+		var aliasName string
+		switch n := filter.Child.First.(type) {
+		case *memo.TableScan:
+			rt = n.Table.(sql.TableNode)
+		case *memo.TableAlias:
+			rt, ok = n.Table.Child.(sql.TableNode)
+			if !ok {
+				return nil
+			}
+			aliasName = n.Name()
+		default:
+			return nil
+		}
+
+		indexes := filter.Child.First.(memo.SourceRel).Indexes()
+
+		if is, ok := rt.UnderlyingTable().(sql.IndexSearchableTable); ok && is.SkipIndexCosting() {
+			lookup, err := is.LookupForExpressions(m.Ctx, filter.Filters)
+			if err != nil {
+				return err
+			}
+			if lookup.IsEmpty() {
+				return nil
+			}
+			ret, err := plan.NewStaticIndexedAccessForTableNode(rt, lookup)
+			if err != nil {
+				return err
+			}
+			// TODO add ITA to filter group
+			// todo memoize ITA
+			// we explicitly put ITA as child of filter group for this shortcut
+			var idx *memo.Index
+			for _, i := range indexes {
+				if i.SqlIdx().ID() == lookup.Index.ID() {
+					idx = i
+					break
+				}
+			}
+			itaGroup := m.MemoizeIndexScan(nil, ret, aliasName, idx)
+			m.MemoizeFilter(filter.Group(), itaGroup, filter.Filters)
+		} else {
+			sqlIndexes := make([]sql.Index, len(indexes))
+			for i, idx := range indexes {
+				sqlIndexes[i] = idx.SqlIdx()
+			}
+			ita, stat, filters, err := getCostedIndexScan(m.Ctx, m.StatsProvider(), rt, sqlIndexes, filter.Filters)
+			if err != nil {
+				return err
+			}
+			if ita != nil {
+				var idx *memo.Index
+				for _, i := range indexes {
+					if ita.Index().ID() == i.SqlIdx().ID() {
+						idx = i
+						break
+					}
+				}
+				var itaGrp *memo.ExprGroup
+				if len(filters) > 0 {
+					itaGrp = m.MemoizeIndexScan(nil, ita, aliasName, idx)
+					m.MemoizeFilter(filter.Group(), itaGrp, filters)
+				} else {
+					itaGrp = m.MemoizeIndexScan(filter.Group(), ita, aliasName, idx)
+				}
+				itaGrp.RelProps.SetStats(stat)
+			}
+		}
+		return nil
 	})
 }
 
@@ -1286,7 +1378,8 @@ func uniformDistStatisticsForIndex(ctx *sql.Context, iat sql.IndexAddressableTab
 	var rowCount uint64
 	var avgSize uint64
 	if st, ok := iat.(sql.StatisticsTable); ok {
-		rowCount, _, err := st.RowCount(ctx)
+		var err error
+		rowCount, _, err = st.RowCount(ctx)
 		if err != nil {
 			return nil, err
 

@@ -108,6 +108,8 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 		return c.costSetOp(ctx, n, s)
 	case *Filter:
 		return c.costFilter(ctx, n, s)
+	case *IndexScan:
+		return c.costIndexScan(ctx, n, s)
 	default:
 		panic(fmt.Sprintf("coster does not support type: %T", n))
 	}
@@ -219,14 +221,14 @@ func (c *coster) costMergeJoin(_ *sql.Context, n *MergeJoin, _ sql.StatsProvider
 // comparator.
 func isInjectiveMerge(n *MergeJoin, leftCompareExprs, rightCompareExprs []sql.Expression) bool {
 	{
-		keyExprs, nullmask := keyExprsForIndexFromTupleComparison(n.Left.RelProps.tableNodes[0].Id(), n.InnerScan.Idx.Cols(), leftCompareExprs, rightCompareExprs)
-		if isInjectiveLookup(n.InnerScan.Idx, n.JoinBase, keyExprs, nullmask) {
+		keyExprs, nullmask := keyExprsForIndexFromTupleComparison(n.Left.RelProps.tableNodes[0].Id(), n.InnerScan.Index.Cols(), leftCompareExprs, rightCompareExprs)
+		if isInjectiveLookup(n.InnerScan.Index, n.JoinBase, keyExprs, nullmask) {
 			return true
 		}
 	}
 	{
-		keyExprs, nullmask := keyExprsForIndexFromTupleComparison(n.Right.RelProps.tableNodes[0].Id(), n.OuterScan.Idx.Cols(), leftCompareExprs, rightCompareExprs)
-		if isInjectiveLookup(n.OuterScan.Idx, n.JoinBase, keyExprs, nullmask) {
+		keyExprs, nullmask := keyExprsForIndexFromTupleComparison(n.Right.RelProps.tableNodes[0].Id(), n.OuterScan.Index.Cols(), leftCompareExprs, rightCompareExprs)
+		if isInjectiveLookup(n.OuterScan.Index, n.JoinBase, keyExprs, nullmask) {
 			return true
 		}
 	}
@@ -288,11 +290,19 @@ func exprReferencesTable(e sql.Expression, tabId sql.TableId) bool {
 func (c *coster) costLookupJoin(_ *sql.Context, n *LookupJoin, _ sql.StatsProvider) (float64, error) {
 	l := n.Left.RelProps.card
 	r := n.Right.RelProps.card
-	sel := lookupJoinSelectivity(n.Lookup)
+	lookup := n.Lookup.First.(*IndexScan)
+	sel := lookupJoinSelectivity(lookup, n.JoinBase)
 	if sel == 0 {
-		return l*(cpuCostFactor+randIOCostFactor) - r*seqIOCostFactor, nil
+		return l*(cpuCostFactor+randIOCostFactor) - r*seqIOCostFactor - l*seqIOCostFactor, nil
 	}
-	return l*r*sel*(cpuCostFactor+randIOCostFactor) - r*seqIOCostFactor, nil
+	if l*r*sel < l {
+		// 1 - (total rows - covered rows / total rows)
+		// + 1 to differentiate from sel = 0 case
+		// + coverage so bigger prefix = better
+		idxCoverage := 1.0 - float64(len(lookup.Index.Cols())-len(lookup.Table.Expressions()))/float64(len(lookup.Index.Cols()))
+		return (l+1+idxCoverage)*(cpuCostFactor+randIOCostFactor) - r*seqIOCostFactor - l*seqIOCostFactor, nil
+	}
+	return l*r*sel*(cpuCostFactor+randIOCostFactor) - r*seqIOCostFactor - l*seqIOCostFactor, nil
 }
 
 func (c *coster) costRangeHeapJoin(_ *sql.Context, n *RangeHeapJoin, _ sql.StatsProvider) (float64, error) {
@@ -305,7 +315,7 @@ func (c *coster) costRangeHeapJoin(_ *sql.Context, n *RangeHeapJoin, _ sql.Stats
 	return l * expectedNumberOfOverlappingJoins * (seqIOCostFactor), nil
 }
 
-func (c *coster) costLateralJoin(ctx *sql.Context, n *LateralJoin, _ sql.StatsProvider) (float64, error) {
+func (c *coster) costLateralJoin(_ *sql.Context, n *LateralJoin, _ sql.StatsProvider) (float64, error) {
 	l := n.Left.RelProps.card
 	r := n.Right.RelProps.card
 	return (l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor, nil
@@ -315,7 +325,8 @@ func (c *coster) costConcatJoin(_ *sql.Context, n *ConcatJoin, _ sql.StatsProvid
 	l := n.Left.RelProps.card
 	var sel float64
 	for _, l := range n.Concat {
-		sel += lookupJoinSelectivity(l)
+		lookup := l.First.(*IndexScan)
+		sel += lookupJoinSelectivity(lookup, n.JoinBase)
 	}
 	return l*sel*concatCostFactor*(randIOCostFactor+cpuCostFactor) - n.Right.RelProps.card*seqIOCostFactor, nil
 }
@@ -339,11 +350,11 @@ func (c *coster) costDistinct(_ *sql.Context, n *Distinct, _ sql.StatsProvider) 
 // lookupJoinSelectivity estimates the selectivity of a join condition with n lhs rows and m rhs rows.
 // A join with a selectivity of k will return k*(n*m) rows.
 // Special case: A join with a selectivity of 0 will return n rows.
-func lookupJoinSelectivity(l *Lookup) float64 {
-	if isInjectiveLookup(l.Index, l.Parent, l.KeyExprs, l.Nullmask) {
+func lookupJoinSelectivity(l *IndexScan, joinBase *JoinBase) float64 {
+	if isInjectiveLookup(l.Index, joinBase, l.Table.Expressions(), l.Table.NullMask()) {
 		return 0
 	}
-	return math.Pow(perKeyCostReductionFactor, float64(len(l.KeyExprs)))
+	return math.Pow(perKeyCostReductionFactor, float64(len(l.Table.Expressions()))) * optimisticJoinSel
 }
 
 // isInjectiveLookup returns whether every lookup with the given key expressions is guarenteed to return
@@ -416,6 +427,11 @@ func (c *coster) costFilter(_ *sql.Context, f *Filter, _ sql.StatsProvider) (flo
 	// 1 unit of compute for each input row
 	return f.Child.RelProps.card * cpuCostFactor * float64(len(f.Filters)), nil
 }
+
+func (c *coster) costIndexScan(_ *sql.Context, f *IndexScan, _ sql.StatsProvider) (float64, error) {
+	return 0, nil
+}
+
 func NewDefaultCarder() Carder {
 	return &carder{}
 }
@@ -461,7 +477,8 @@ func (c *carder) cardRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 		jp := n.JoinPrivate()
 		switch n := n.(type) {
 		case *LookupJoin:
-			sel := lookupJoinSelectivity(n.Lookup) * optimisticJoinSel
+			lookup := n.Lookup.First.(*IndexScan)
+			sel := lookupJoinSelectivity(lookup, n.JoinBase)
 			if sel == 0 {
 				return n.Left.RelProps.card, nil
 			}
@@ -469,7 +486,8 @@ func (c *carder) cardRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 		case *ConcatJoin:
 			var sel float64
 			for _, l := range n.Concat {
-				sel += lookupJoinSelectivity(l)
+				lookup := l.First.(*IndexScan)
+				sel += lookupJoinSelectivity(lookup, n.JoinBase)
 			}
 			return n.Left.RelProps.card * optimisticJoinSel * sel, nil
 		case *LateralJoin:
@@ -492,6 +510,9 @@ func (c *carder) cardRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 		return n.Child.RelProps.card, nil
 	case *Filter:
 		return n.Child.RelProps.card * .75, nil
+	case *IndexScan:
+		//card := float64(n.Group().RelProps.stat.RowCount())
+		return c.statsRead(ctx, n.Table.TableNode.UnderlyingTable(), n.Table.TableNode.(sql.TableNode).Database().Name(), s)
 	default:
 		panic(fmt.Sprintf("unknown type %T", n))
 	}

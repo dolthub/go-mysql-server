@@ -354,12 +354,12 @@ var JoinPlanningTests = []struct {
 			},
 			{
 				q:     "select * from xy where x not in (select u from uv where u not in (select a from ab where a not in (select r from rs where r = 1))) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls, plan.JoinTypeLeftOuterHashExcludeNulls, plan.JoinTypeLeftOuterMerge},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls, plan.JoinTypeLeftOuterHashExcludeNulls, plan.JoinTypeLeftOuterLookup},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
 				q:     "select * from xy where x != (select r from rs where r = 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterMerge},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterLookup},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
@@ -380,7 +380,7 @@ select * from uv where u > (
   order by 1 limit 1
 )
 order by 1;`,
-				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeCrossHash, plan.JoinTypeLeftOuterMerge},
+				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeCrossHash, plan.JoinTypeLeftOuterLookup},
 				exp:   []sql.Row{{1, 1}, {2, 2}, {3, 2}},
 			},
 			{
@@ -392,7 +392,7 @@ order by 1;`,
 			{
 				// order by will be discarded
 				q:     "select * from xy where x != (select r from rs where r = 1 order by 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterMerge},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterLookup},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
@@ -409,7 +409,7 @@ order by 1;`,
 			{
 				// semi join will be right-side, be passed non-nil parent row
 				q:     "select x,a from ab, (select * from xy where x = (select r from rs where r = 1) order by 1) sq order by 1,2",
-				types: []plan.JoinType{plan.JoinTypeCrossHash, plan.JoinTypeLookup},
+				types: []plan.JoinType{plan.JoinTypeCrossHash, plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{1, 0}, {1, 1}, {1, 2}, {1, 3}},
 			},
 			//{
@@ -445,7 +445,7 @@ order by 1;`,
 			},
 			{
 				q:     "select * from xy where x in (select u from uv join ab on u = a and a = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeMerge},
+				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeLookup},
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
@@ -509,7 +509,7 @@ HAVING count(v) >= 1)`,
 			},
 			{
 				q:     "select * from xy where y-1 = (select u from uv where v = 2 order by 1 limit 1);",
-				types: []plan.JoinType{plan.JoinTypeSemiLookup},
+				types: []plan.JoinType{plan.JoinTypeSemi},
 				exp:   []sql.Row{{3, 3}},
 			},
 			{
@@ -537,7 +537,7 @@ HAVING count(v) >= 1)`,
       				EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
       				AND EXISTS (SELECT * FROM uv Alias2 WHERE Alias2.u = (xy.x + 2)));`,
 				// These should both be JoinTypeSemiLookup, but for https://github.com/dolthub/go-mysql-server/issues/1893
-				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeMerge},
+				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{0, 2}, {1, 0}},
 			},
 			{
@@ -545,7 +545,7 @@ HAVING count(v) >= 1)`,
       				EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
       				AND EXISTS (SELECT * FROM uv Alias1 WHERE Alias1.u = (xy.x + 2)));`,
 				// These should both be JoinTypeSemiLookup, but for https://github.com/dolthub/go-mysql-server/issues/1893
-				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeMerge},
+				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{0, 2}, {1, 0}},
 			},
 			{
@@ -579,7 +579,7 @@ WHERE EXISTS (
 select x from xy where
   not exists (select a from ab where a = x and a = 1) and
   not exists (select a from ab where a = x and a = 2)`,
-				types: []plan.JoinType{plan.JoinTypeLeftOuterLookup, plan.JoinTypeLeftOuterMerge},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterLookup, plan.JoinTypeLeftOuterLookup},
 				exp:   []sql.Row{{0}, {3}},
 			},
 			{
@@ -615,7 +615,7 @@ FROM xy
 			},
 			{
 				q:     `select * from xy where exists (select * from uv join ab on u = a)`,
-				types: []plan.JoinType{plan.JoinTypeCrossHash, plan.JoinTypeMerge},
+				types: []plan.JoinType{plan.JoinTypeCrossHash, plan.JoinTypeLookup},
 				exp:   []sql.Row{{0, 2}, {1, 0}, {2, 1}, {3, 3}},
 			},
 		},
@@ -754,7 +754,7 @@ where u in (select * from rec);`,
 		tests: []JoinPlanTest{
 			{
 				q:     "select * from xy where x in (select u from uv join ab on u = a and a = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeMerge},
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeLookup},
 				exp:   []sql.Row{{2, 1}},
 			},
 			{

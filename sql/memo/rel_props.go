@@ -36,10 +36,11 @@ type relProps struct {
 	outputTables sql.FastIntSet
 	tableNodes   []plan.TableIdNode
 
+	stat sql.Statistic
 	card float64
 
 	Distinct distinctOp
-	limit    sql.Expression
+	Limit    sql.Expression
 	sort     sql.SortFields
 }
 
@@ -70,9 +71,14 @@ func newRelProps(rel RelExpr) *relProps {
 			for tw, ok = n.(sql.TableNode); !ok; tw, ok = n.Children()[0].(sql.TableNode) {
 			}
 
-			tin := tw.UnderlyingTable().(sql.PrimaryKeyTable)
+			var sch sql.Schema
+			switch n := tw.UnderlyingTable().(type) {
+			case sql.PrimaryKeyTable:
+				sch = n.PrimaryKeySchema().Schema
+			default:
+				sch = n.Schema()
+			}
 			firstCol, _ := n.Columns().Next(1)
-			sch := tin.PrimaryKeySchema().Schema
 
 			var colset sql.ColSet
 			for _, c := range n.Schema() {
@@ -100,6 +106,10 @@ func idxExprsColumns(idx sql.Index) []string {
 		columns[i] = strings.ToLower(parts[1])
 	}
 	return columns
+}
+
+func (p *relProps) SetStats(s sql.Statistic) {
+	p.stat = s
 }
 
 func (p *relProps) populateFds() {
@@ -277,6 +287,8 @@ func allTableCols(rel SourceRel) sql.Schema {
 			break
 		}
 		table = rt.UnderlyingTable()
+	case *IndexScan:
+		table = rel.Table.TableNode.UnderlyingTable()
 	case *TableScan:
 		table = rel.Table.(sql.TableNode).UnderlyingTable()
 	default:
@@ -344,10 +356,18 @@ func (p *relProps) populateOutputTables() {
 		p.tableNodes = []plan.TableIdNode{n.TableIdNode()}
 	case *AntiJoin:
 		p.outputTables = n.Left.RelProps.OutputTables()
-		p.tableNodes = n.Left.RelProps.TableIdNodes()
+		leftNodeCnt := len(n.JoinPrivate().Left.RelProps.tableNodes)
+		rightNodeCnt := len(n.JoinPrivate().Right.RelProps.tableNodes)
+		p.tableNodes = make([]plan.TableIdNode, leftNodeCnt+rightNodeCnt)
+		copy(p.tableNodes, n.JoinPrivate().Left.RelProps.tableNodes)
+		copy(p.tableNodes[leftNodeCnt:], n.JoinPrivate().Right.RelProps.tableNodes)
 	case *SemiJoin:
 		p.outputTables = n.Left.RelProps.OutputTables()
-		p.tableNodes = n.Left.RelProps.TableIdNodes()
+		leftNodeCnt := len(n.JoinPrivate().Left.RelProps.tableNodes)
+		rightNodeCnt := len(n.JoinPrivate().Right.RelProps.tableNodes)
+		p.tableNodes = make([]plan.TableIdNode, leftNodeCnt+rightNodeCnt)
+		copy(p.tableNodes, n.JoinPrivate().Left.RelProps.tableNodes)
+		copy(p.tableNodes[leftNodeCnt:], n.JoinPrivate().Right.RelProps.tableNodes)
 	case *Distinct:
 		p.outputTables = n.Child.RelProps.OutputTables()
 		p.tableNodes = n.Child.RelProps.TableIdNodes()
@@ -378,7 +398,7 @@ func (p *relProps) populateOutputTables() {
 func (p *relProps) populateInputTables() {
 	switch n := p.grp.First.(type) {
 	case SourceRel:
-		p.inputTables = sql.NewFastIntSet(int(p.grp.Id))
+		p.inputTables = sql.NewFastIntSet(int(n.TableIdNode().Id()))
 	case *Distinct:
 		p.inputTables = n.Child.RelProps.InputTables()
 	case *Project:
@@ -420,6 +440,8 @@ func (p *relProps) outputColsForRel(r RelExpr) sql.ColSet {
 		return r.outputCols()
 	case *Max1Row:
 		return r.outputCols()
+	case *IndexScan:
+		return p.outputColsForRel(r.Next())
 	default:
 		panic("unknown type")
 	}
@@ -501,7 +523,7 @@ func sortedColsForRel(rel RelExpr) sql.Schema {
 		}
 	case *MergeJoin:
 		var ret sql.Schema
-		for _, e := range r.InnerScan.Idx.SqlIdx().Expressions() {
+		for _, e := range r.InnerScan.Table.Index().Expressions() {
 			// TODO columns can have "." characters, this will miss cases
 			parts := strings.Split(e, ".")
 			var name string
@@ -512,7 +534,7 @@ func sortedColsForRel(rel RelExpr) sql.Schema {
 			}
 			ret = append(ret, &sql.Column{
 				Name:     strings.ToLower(name),
-				Source:   strings.ToLower(r.InnerScan.Idx.SqlIdx().Table()),
+				Source:   strings.ToLower(r.InnerScan.Table.Name()),
 				Nullable: true},
 			)
 		}
