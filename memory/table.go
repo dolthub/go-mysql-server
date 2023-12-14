@@ -269,14 +269,15 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 
 	t.partitionMux.RLock()
 	rows, ok := t.partitions[string(partition.Key())]
-	t.partitionMux.RUnlock()
 	if !ok {
+		t.partitionMux.RUnlock()
 		return nil, sql.ErrPartitionNotFound.New(partition.Key())
 	}
 	// The slice could be altered by other operations taking place during iteration (such as deletion or insertion), so
 	// make a copy of the values as they exist when execution begins.
 	rowsCopy := make([]sql.Row, len(rows))
 	copy(rowsCopy, rows)
+	t.partitionMux.RUnlock()
 
 	return &tableIter{
 		rows:    rowsCopy,
