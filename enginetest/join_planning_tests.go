@@ -1695,7 +1695,7 @@ func evalJoinTypeTest(t *testing.T, harness Harness, e QueryEngine, query string
 
 		ctx := NewContext(harness)
 		ctx = ctx.WithQuery(query)
-		
+
 		a, err := analyzeQuery(ctx, e, query)
 		require.NoError(t, err)
 

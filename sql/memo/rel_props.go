@@ -16,15 +16,14 @@ package memo
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/stats"
 	"math"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/transform"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/stats"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // relProps are relational attributes shared by all plans in an expression
