@@ -4880,6 +4880,23 @@ CREATE TABLE tab3 (
 			},
 		},
 	},
+	{
+		Name: "resolve foreign key on indexed update",
+		SetUpScript: []string{
+			"set foreign_key_checks=0;",
+			"create table parent (i int primary key);",
+			"create table child (i int primary key, foreign key (i) references parent(i));",
+			"set foreign_key_checks=1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "update child set i = 1 where i = 1;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 0, Updated: 0}}},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
