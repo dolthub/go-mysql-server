@@ -4890,7 +4890,7 @@ CREATE TABLE tab3 (
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "update child set i = 1 where i = 1;",
+				Query: "update child set i = 1 where i = 1;",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 0, Updated: 0}}},
 				},
