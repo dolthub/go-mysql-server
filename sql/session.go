@@ -373,6 +373,10 @@ func (c *Context) Span(
 	opName string,
 	opts ...trace.SpanStartOption,
 ) (trace.Span, *Context) {
+	if c == nil {
+		return noopSpan, nil
+	}
+
 	if c.tracer == NoopTracer {
 		return noopSpan, c
 	}
