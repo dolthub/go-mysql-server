@@ -8647,6 +8647,12 @@ from typestable`,
 		Query:    "select * from mytable where (i in (null, 0.8, 1.5, 2.999))",
 		Expected: []sql.Row{},
 	},
+	{
+		Query: "select * from (select 'k' as k) sq join bigtable on t = k join xy where x between n and n;",
+		Expected: []sql.Row{
+			{"k", "k", 1, 1, 0},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
