@@ -749,7 +749,8 @@ func WidenRows(sch sql.Schema, rows []sql.Row, isExpected, isServerEngine bool) 
 	return widened, nil
 }
 
-// WidenRow returns a row with all values widened to their widest type
+// WidenRow returns a row with all values widened to their widest type.
+// This function also converts given values of DECIMAL, ENUM and SET types to string value, if applicable.
 func WidenRow(sch sql.Schema, row sql.Row, isExpected, isServerEngine bool) (sql.Row, error) {
 	widened := make(sql.Row, len(row))
 	for i, v := range row {
@@ -791,24 +792,34 @@ func WidenRow(sch sql.Schema, row sql.Row, isExpected, isServerEngine bool) (sql
 		if u, ok := vw.(uint64); ok && !isExpected && !isServerEngine {
 			// index value for enum and bit value for set types returned
 			// from enginetests need conversion to its string type value.
-			if types.IsEnum(sch[i].Type) {
-				el, exists := sch[i].Type.(sql.EnumType).At(int(u))
-				if !exists {
-					return nil, fmt.Errorf("enum type element does not exist at index: %v", v)
-
-				}
-				vw = el
-			} else if types.IsSet(sch[i].Type) {
-				el, err := sch[i].Type.(sql.SetType).BitsToString(u)
-				if err != nil {
-					return nil, err
-				}
-				vw = el
+			x, err := widenEnumSetValues(sch[i].Type, u)
+			if err != nil {
+				return nil, err
 			}
+			vw = x
 		}
 		widened[i] = vw
 	}
 	return widened, nil
+}
+
+// widenEnumSetValues converts given index or bit values to string value of ENUM or SET types.
+func widenEnumSetValues(t sql.Type, i uint64) (any, error) {
+	if types.IsEnum(t) {
+		el, exists := t.(sql.EnumType).At(int(i))
+		if !exists {
+			return nil, fmt.Errorf("enum type element does not exist at index: %v", i)
+
+		}
+		return el, nil
+	} else if types.IsSet(t) {
+		el, err := t.(sql.SetType).BitsToString(i)
+		if err != nil {
+			return nil, err
+		}
+		return el, nil
+	}
+	return i, nil
 }
 
 func widenJSONValues(val interface{}) sql.JSONWrapper {
