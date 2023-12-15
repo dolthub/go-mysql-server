@@ -23,7 +23,6 @@ import (
 	"time"
 
 	errors "gopkg.in/src-d/go-errors.v1"
-	"gopkg.in/src-d/go-vitess.v1/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -139,7 +138,7 @@ func (i *Interval) EvalDelta(ctx *sql.Context, row sql.Row) (*TimeDelta, error) 
 		if uint64Val, ok := val.(uint64); ok {
 			// Bounds check.
 			if uint64Val > math.MaxInt64 {
-				return nil, sql.ErrOutOfRange.New(val, sqltypes.Int64)
+				return nil, errInvalidIntervalFormat.New(i.Unit, val)
 			}
 		}
 
