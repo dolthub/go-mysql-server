@@ -1547,9 +1547,9 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 				})
 			} else if script.ExpectingErr {
 				t.Run(lastQuery, func(t *testing.T) {
-					sch, iter, err := engine.Query(ctx, lastQuery)
+					_, iter, err := engine.Query(ctx, lastQuery)
 					if err == nil {
-						_, err = sql.RowIterToRows(ctx, sch, iter)
+						_, err = sql.RowIterToRows(ctx, iter)
 					}
 					require.Error(t, err)
 					for _, errKind := range []*errors.Kind{
@@ -1567,7 +1567,7 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 				t.Run(lastQuery, func(t *testing.T) {
 					sch, iter, err := engine.Query(ctx, lastQuery)
 					require.NoError(t, err)
-					rows, err := sql.RowIterToRows(ctx, sch, iter)
+					rows, err := sql.RowIterToRows(ctx, iter)
 					require.NoError(t, err)
 					// See the comment on QuickPrivilegeTest for a more in-depth explanation, but essentially we treat
 					// nil in script.Expected as matching "any" non-error result.
@@ -2133,33 +2133,33 @@ func initializeViewsForVersionedViewsTests(t *testing.T, harness VersionedDBHarn
 	require := require.New(t)
 
 	ctx := NewContext(harness)
-	sch, iter, err := e.Query(ctx, "CREATE VIEW myview1 AS SELECT * FROM myhistorytable")
+	_, iter, err := e.Query(ctx, "CREATE VIEW myview1 AS SELECT * FROM myhistorytable")
 	require.NoError(err)
-	_, err = sql.RowIterToRows(ctx, sch, iter)
+	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
 	// nested views
-	sch, iter, err = e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview1 WHERE i = 1")
+	_, iter, err = e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview1 WHERE i = 1")
 	require.NoError(err)
-	_, err = sql.RowIterToRows(ctx, sch, iter)
+	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
 	// views with unions
-	sch, iter, err = e.Query(ctx, "CREATE VIEW myview3 AS SELECT i from myview1 union select s from myhistorytable")
+	_, iter, err = e.Query(ctx, "CREATE VIEW myview3 AS SELECT i from myview1 union select s from myhistorytable")
 	require.NoError(err)
-	_, err = sql.RowIterToRows(ctx, sch, iter)
+	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
 	// views with subqueries
-	sch, iter, err = e.Query(ctx, "CREATE VIEW myview4 AS SELECT * FROM myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed) from myhistorytable)")
+	_, iter, err = e.Query(ctx, "CREATE VIEW myview4 AS SELECT * FROM myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed) from myhistorytable)")
 	require.NoError(err)
-	_, err = sql.RowIterToRows(ctx, sch, iter)
+	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
 	// views with a subquery alias
-	sch, iter, err = e.Query(ctx, "CREATE VIEW myview5 AS SELECT * FROM (select * from myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed))) as sq")
+	_, iter, err = e.Query(ctx, "CREATE VIEW myview5 AS SELECT * FROM (select * from myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed))) as sq")
 	require.NoError(err)
-	_, err = sql.RowIterToRows(ctx, sch, iter)
+	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 }
 
@@ -3842,30 +3842,30 @@ func TestClearWarnings(t *testing.T, harness Harness) {
 	require.NoError(err)
 
 	// this query will cause 3 warnings.
-	sch, iter, err := e.Query(ctx, "drop table if exists table1, table2, table3;")
+	_, iter, err := e.Query(ctx, "drop table if exists table1, table2, table3;")
 	require.NoError(err)
 	err = iter.Close(ctx)
 	require.NoError(err)
 
-	sch, iter, err = e.Query(ctx, "SHOW WARNINGS")
+	_, iter, err = e.Query(ctx, "SHOW WARNINGS")
 	require.NoError(err)
-	rows, err := sql.RowIterToRows(ctx, sch, iter)
+	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 	err = iter.Close(ctx)
 	require.NoError(err)
 	require.Equal(3, len(rows))
 
-	sch, iter, err = e.Query(ctx, "SHOW WARNINGS LIMIT 1")
+	_, iter, err = e.Query(ctx, "SHOW WARNINGS LIMIT 1")
 	require.NoError(err)
-	rows, err = sql.RowIterToRows(ctx, sch, iter)
+	rows, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 	err = iter.Close(ctx)
 	require.NoError(err)
 	require.Equal(1, len(rows))
 
-	sch, iter, err = e.Query(ctx, "SELECT * FROM mytable LIMIT 1")
+	_, iter, err = e.Query(ctx, "SELECT * FROM mytable LIMIT 1")
 	require.NoError(err)
-	_, err = sql.RowIterToRows(ctx, sch, iter)
+	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 	err = iter.Close(ctx)
 	require.NoError(err)
@@ -3953,19 +3953,19 @@ func TestConcurrentTransactions(t *testing.T, harness Harness) {
 	// We want to add the query to the process list to represent the full workflow.
 	clientSessionA, err = pl.BeginQuery(clientSessionA, "INSERT INTO a VALUES (1,1)")
 	require.NoError(err)
-	sch, iter, err := e.Query(clientSessionA, "INSERT INTO a VALUES (1,1)")
+	_, iter, err := e.Query(clientSessionA, "INSERT INTO a VALUES (1,1)")
 	require.NoError(err)
 
 	clientSessionB, err = pl.BeginQuery(clientSessionB, "INSERT INTO a VALUES (2,2)")
 	require.NoError(err)
-	sch2, iter2, err := e.Query(clientSessionB, "INSERT INTO a VALUES (2,2)")
+	_, iter2, err := e.Query(clientSessionB, "INSERT INTO a VALUES (2,2)")
 	require.NoError(err)
 
-	rows, err := sql.RowIterToRows(clientSessionA, sch, iter)
+	rows, err := sql.RowIterToRows(clientSessionA, iter)
 	require.NoError(err)
 	require.Len(rows, 1)
 
-	rows, err = sql.RowIterToRows(clientSessionB, sch2, iter2)
+	rows, err = sql.RowIterToRows(clientSessionB, iter2)
 	require.NoError(err)
 	require.Len(rows, 1)
 }
@@ -4130,14 +4130,14 @@ func TestTracing(t *testing.T, harness Harness) {
 
 	sql.WithTracer(tracer)(ctx)
 
-	sch, iter, err := e.Query(ctx, `SELECT DISTINCT i
+	_, iter, err := e.Query(ctx, `SELECT DISTINCT i
 		FROM mytable
 		WHERE s = 'first row'
 		ORDER BY i DESC
 		LIMIT 1`)
 	require.NoError(t, err)
 
-	rows, err := sql.RowIterToRows(ctx, sch, iter)
+	rows, err := sql.RowIterToRows(ctx, iter)
 	require.Len(t, rows, 1)
 	require.NoError(t, err)
 
@@ -4734,10 +4734,10 @@ func TestCharsetCollationEngine(t *testing.T, harness Harness) {
 
 			for _, query := range script.Queries {
 				t.Run(query.Query, func(t *testing.T) {
-					sch, iter, err := engine.Query(ctx, query.Query)
+					_, iter, err := engine.Query(ctx, query.Query)
 					if query.Error || query.ErrKind != nil {
 						if err == nil {
-							_, err := sql.RowIterToRows(ctx, sch, iter)
+							_, err := sql.RowIterToRows(ctx, iter)
 							require.Error(t, err)
 							if query.ErrKind != nil {
 								require.True(t, query.ErrKind.Is(err))
@@ -4750,7 +4750,7 @@ func TestCharsetCollationEngine(t *testing.T, harness Harness) {
 						}
 					} else {
 						require.NoError(t, err)
-						rows, err := sql.RowIterToRows(ctx, sch, iter)
+						rows, err := sql.RowIterToRows(ctx, iter)
 						require.NoError(t, err)
 						require.Equal(t, query.Expected, rows)
 					}

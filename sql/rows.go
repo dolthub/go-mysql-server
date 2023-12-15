@@ -93,7 +93,7 @@ type RowIter interface {
 }
 
 // RowIterToRows converts a row iterator to a slice of rows.
-func RowIterToRows(ctx *Context, sch Schema, i RowIter) ([]Row, error) {
+func RowIterToRows(ctx *Context, i RowIter) ([]Row, error) {
 	var rows []Row
 	for {
 		row, err := i.Next(ctx)
