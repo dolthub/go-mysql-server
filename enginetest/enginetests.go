@@ -4243,6 +4243,73 @@ func TestCurrentTimestamp(t *testing.T, harness Harness) {
 	}
 }
 
+func TestOnUpdateExprScripts(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.OnUpdateExprScripts {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(script.Name) {
+				t.Run(script.Name, func(t *testing.T) {
+					t.Skip(script.Name)
+				})
+				continue
+			}
+		}
+		e := mustNewEngine(t, harness)
+		ctx := NewContext(harness)
+		err := CreateNewConnectionForServerEngine(ctx, e)
+		require.NoError(t, err, nil)
+
+		t.Run(script.Name, func(t *testing.T) {
+			for _, statement := range script.SetUpScript {
+				sql.RunWithNowFunc(func() time.Time { return queries.Jan1Noon }, func() error {
+					ctx.WithQuery(statement)
+					ctx.SetQueryTime(queries.Jan1Noon)
+					RunQueryWithContext(t, e, harness, ctx, statement)
+					return nil
+				})
+			}
+
+			assertions := script.Assertions
+			if len(assertions) == 0 {
+				assertions = []queries.ScriptTestAssertion{
+					{
+						Query:           script.Query,
+						Expected:        script.Expected,
+						ExpectedErr:     script.ExpectedErr,
+						ExpectedIndexes: script.ExpectedIndexes,
+					},
+				}
+			}
+
+			for _, assertion := range script.Assertions {
+				t.Run(assertion.Query, func(t *testing.T) {
+					if assertion.Skip {
+						t.Skip()
+					}
+					sql.RunWithNowFunc(func() time.Time { return queries.Dec15_1_30 }, func() error {
+						ctx.SetQueryTime(queries.Dec15_1_30)
+						if assertion.ExpectedErr != nil {
+							AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
+						} else if assertion.ExpectedErrStr != "" {
+							AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
+						} else {
+							var expected = assertion.Expected
+							if IsServerEngine(e) && assertion.SkipResultCheckOnServerEngine {
+								// TODO: remove this check in the future
+								expected = nil
+							}
+							TestQueryWithContext(t, ctx, e, harness, assertion.Query, expected, assertion.ExpectedColumns, assertion.Bindings)
+						}
+						return nil
+					})
+				})
+			}
+		})
+
+		e.Close()
+	}
+}
+
 func TestAddDropPks(t *testing.T, harness Harness) {
 	for _, tt := range queries.AddDropPrimaryKeyScripts {
 		TestScript(t, harness, tt)

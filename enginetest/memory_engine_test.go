@@ -560,6 +560,10 @@ func TestUpdateErrors(t *testing.T) {
 	enginetest.TestUpdateErrors(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
+func TestOnUpdateExprScripts(t *testing.T) {
+	enginetest.TestOnUpdateExprScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
 func TestSpatialUpdate(t *testing.T) {
 	enginetest.TestSpatialUpdate(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
