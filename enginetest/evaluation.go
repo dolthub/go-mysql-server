@@ -625,15 +625,8 @@ func checkResults(
 	q string,
 	e QueryEngine,
 ) {
-	isSE := IsServerEngine(e)
-	widenedRows, err := WidenRows(sch, rows, false, isSE)
-	if err != nil {
-		t.Error(err.Error())
-	}
-	widenedExpected, err := WidenRows(sch, expected, true, isSE)
-	if err != nil {
-		t.Error(err.Error())
-	}
+	widenedRows := WidenRows(sch, rows)
+	widenedExpected := WidenRows(sch, expected)
 
 	upperQuery := strings.ToUpper(q)
 	orderBy := strings.Contains(upperQuery, "ORDER BY ")
@@ -654,6 +647,40 @@ func checkResults(
 
 	isServerEngine := IsServerEngine(e)
 	isNilOrEmptySchema := sch == nil || len(sch) == 0
+
+	// The actual results from SELECT, WITH or CALL queries that need conversion before checking against expected results.
+	if strings.HasPrefix(upperQuery, "SELECT ") || strings.HasPrefix(upperQuery, "WITH ") || strings.HasPrefix(upperQuery, "CALL ") || strings.HasPrefix(upperQuery, "EXECUTE ") {
+		for _, widenedRow := range widenedRows {
+			for i, val := range widenedRow {
+				switch v := val.(type) {
+				case decimal.Decimal:
+					// The exact expected decimal type value cannot be defined in enginetests,
+					// so convert the result to string format, which is the value we get on sql shell.
+					widenedRow[i] = v.StringFixed(v.Exponent() * -1)
+				case uint64:
+					// index value of enum, in uint16, and bit value of set, in uint64, are cast/widened to uint64.
+
+					// enum and set type results from server engine are already in string type
+					if isServerEngine || isNilOrEmptySchema {
+						continue
+					}
+					// index value for enum and bit value for set types returned
+					// from enginetests need conversion to its string type value.
+					if types.IsEnum(sch[i].Type) {
+						el, exists := sch[i].Type.(sql.EnumType).At(int(v))
+						if !exists {
+							t.Errorf("Enum type element does not exist at index: %v", v)
+						}
+						widenedRow[i] = el
+					} else if types.IsSet(sch[i].Type) {
+						el, err := sch[i].Type.(sql.SetType).BitsToString(v)
+						require.NoError(t, err)
+						widenedRow[i] = el
+					}
+				}
+			}
+		}
+	}
 
 	// if the sch is nil or empty, over the wire result is no row whereas single empty row is expected.
 	// This happens for SET and SELECT INTO statements.
@@ -737,20 +764,16 @@ func simplifyResultSchema(s sql.Schema) []resultSchemaCol {
 // (and different database implementations). We may eventually decide that this undefined behavior is a problem, but
 // for now it's mostly just an issue when comparing results in tests. To get around this, we widen every type to its
 // widest value in actual and expected results.
-func WidenRows(sch sql.Schema, rows []sql.Row, isExpected, isServerEngine bool) ([]sql.Row, error) {
-	var err error
+func WidenRows(sch sql.Schema, rows []sql.Row) []sql.Row {
 	widened := make([]sql.Row, len(rows))
 	for i, row := range rows {
-		widened[i], err = WidenRow(sch, row, isExpected, isServerEngine)
-		if err != nil {
-			return nil, err
-		}
+		widened[i] = WidenRow(sch, row)
 	}
-	return widened, nil
+	return widened
 }
 
 // WidenRow returns a row with all values widened to their widest type
-func WidenRow(sch sql.Schema, row sql.Row, isExpected, isServerEngine bool) (sql.Row, error) {
+func WidenRow(sch sql.Schema, row sql.Row) sql.Row {
 	widened := make(sql.Row, len(row))
 	for i, v := range row {
 
@@ -780,35 +803,12 @@ func WidenRow(sch sql.Schema, row sql.Row, isExpected, isServerEngine bool) (sql
 		case float32:
 			// casting it to float64 causes approximation, which doesn't work for server engine results.
 			vw, _ = strconv.ParseFloat(fmt.Sprintf("%v", v), 64)
-		case decimal.Decimal:
-			// The exact expected decimal type value cannot be defined in enginetests,
-			// so convert the result to string format, which is the value we get on sql shell.
-			vw = x.StringFixed(x.Exponent() * -1)
 		default:
 			vw = v
 		}
-
-		if u, ok := vw.(uint64); ok && !isExpected && !isServerEngine {
-			// index value for enum and bit value for set types returned
-			// from enginetests need conversion to its string type value.
-			if types.IsEnum(sch[i].Type) {
-				el, exists := sch[i].Type.(sql.EnumType).At(int(u))
-				if !exists {
-					return nil, fmt.Errorf("enum type element does not exist at index: %v", v)
-
-				}
-				vw = el
-			} else if types.IsSet(sch[i].Type) {
-				el, err := sch[i].Type.(sql.SetType).BitsToString(u)
-				if err != nil {
-					return nil, err
-				}
-				vw = el
-			}
-		}
 		widened[i] = vw
 	}
-	return widened, nil
+	return widened
 }
 
 func widenJSONValues(val interface{}) sql.JSONWrapper {
