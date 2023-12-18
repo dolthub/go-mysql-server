@@ -15,6 +15,7 @@ import (
 	"golang.org/x/exp/rand"
 	"io"
 	"log"
+	"math"
 	"sort"
 	"testing"
 )
@@ -23,30 +24,157 @@ func init() {
 	rand.Seed(0)
 }
 
-func TestUniformDistributionJoin(t *testing.T) {
+type statsTest struct {
+	name       string
+	left       func(*sql.Context, *memory.Database, int, sql.TableId, sql.ColumnId) *plan.ResolvedTable
+	right      func(*sql.Context, *memory.Database, int, sql.TableId, sql.ColumnId) *plan.ResolvedTable
+	leftOrd    []int
+	rightOrd   []int
+	leftTypes  []sql.Type
+	rightTypes []sql.Type
+	err        float64
+}
 
+func TestNormDist(t *testing.T) {
 	tests := []struct {
-		name       string
-		left       func(*sql.Context, *memory.Database, int) *plan.ResolvedTable
-		right      func(*sql.Context, *memory.Database, int) *plan.ResolvedTable
-		leftOrd    []int
-		rightOrd   []int
-		leftTypes  []sql.Type
-		rightTypes []sql.Type
-		err        float64
+		name  string
+		mean1 float64
+		std1  float64
+		mean2 float64
+		std2  float64
 	}{
 		{
+			name:  "same table",
+			mean1: 0,
+			std1:  10,
+			mean2: 0,
+			std2:  10,
+		},
+		{
+			name:  "same mean, different std",
+			mean1: 0,
+			std1:  10,
+			mean2: 0,
+			std2:  2,
+		},
+		{
+			name:  "peaks don't overlap",
+			mean1: 10,
+			std1:  10,
+			mean2: -10,
+			std2:  10,
+		},
+	}
+
+	var statTests []statsTest
+	for _, t := range tests {
+		st := statsTest{
+			name: t.name,
+			left: func(ctx *sql.Context, db *memory.Database, cnt int, tab sql.TableId, col sql.ColumnId) *plan.ResolvedTable {
+				xyz := makeTable(db, fmt.Sprintf("xyz%d", tab), tab, col)
+				err := normalDistForTable(ctx, xyz, cnt, t.mean1, t.std1, int(tab))
+				if err != nil {
+					panic(err)
+				}
+				return xyz
+			},
+			right: func(ctx *sql.Context, db *memory.Database, cnt int, tab sql.TableId, col sql.ColumnId) *plan.ResolvedTable {
+				xyz := makeTable(db, fmt.Sprintf("xyz%d", tab), tab, col)
+				err := normalDistForTable(ctx, xyz, cnt, t.mean2, t.std2, int(tab))
+				if err != nil {
+					panic(err)
+				}
+				return xyz
+			},
+			leftOrd:    []int{1},
+			rightOrd:   []int{1},
+			leftTypes:  []sql.Type{types.Int64, types.Int64, types.Int64},
+			rightTypes: []sql.Type{types.Int64, types.Int64, types.Int64},
+			err:        .5,
+		}
+		statTests = append(statTests, st)
+	}
+
+	runSuite(t, statTests, 100, 5, true)
+	runSuite(t, statTests, 100, 10, true)
+	runSuite(t, statTests, 1000, 20, true)
+	runSuite(t, statTests, 500, 10, true)
+	runSuite(t, statTests, 500, 20, true)
+}
+
+func TestExpDist(t *testing.T) {
+	tests := []struct {
+		name    string
+		lambda1 float64
+		lambda2 float64
+	}{
+		{
+			name:    "same table",
+			lambda1: 1,
+			lambda2: 1,
+		},
+		{
+			name:    ".5/1.5",
+			lambda1: .5,
+			lambda2: 1.5,
+		},
+		{
+			name:    ".5/3",
+			lambda1: .5,
+			lambda2: 3,
+		},
+	}
+
+	var statTests []statsTest
+	for _, t := range tests {
+		st := statsTest{
+			name: t.name,
+			left: func(ctx *sql.Context, db *memory.Database, cnt int, tab sql.TableId, col sql.ColumnId) *plan.ResolvedTable {
+				xyz := makeTable(db, "xyz", tab, col)
+				err := expDistForTable(ctx, xyz, cnt, t.lambda1, int(tab))
+				if err != nil {
+					panic(err)
+				}
+				return xyz
+			},
+			right: func(ctx *sql.Context, db *memory.Database, cnt int, tab sql.TableId, col sql.ColumnId) *plan.ResolvedTable {
+				xyz := makeTable(db, "xyz", tab, col)
+				err := expDistForTable(ctx, xyz, cnt, t.lambda2, int(tab))
+				if err != nil {
+					panic(err)
+				}
+				return xyz
+			},
+			leftOrd:    []int{1},
+			rightOrd:   []int{1},
+			leftTypes:  []sql.Type{types.Int64, types.Int64, types.Int64},
+			rightTypes: []sql.Type{types.Int64, types.Int64, types.Int64},
+			err:        .5,
+		}
+		statTests = append(statTests, st)
+	}
+
+	runSuite(t, statTests, 1000, 5, false)
+	runSuite(t, statTests, 1000, 10, false)
+	runSuite(t, statTests, 1000, 20, false)
+	runSuite(t, statTests, 5000, 10, false)
+	runSuite(t, statTests, 5000, 20, false)
+}
+
+func TestMultiDist(t *testing.T) {
+	tests := []statsTest{
+		{
 			name: "uniform dist int",
-			left: func(ctx *sql.Context, db *memory.Database, cnt int) *plan.ResolvedTable {
-				xyz := makeTable(db, "xyz", 1, 1)
+			left: func(ctx *sql.Context, db *memory.Database, cnt int, tab sql.TableId, col sql.ColumnId) *plan.ResolvedTable {
+				xyz := makeTable(db, "xyz", tab, col)
 				err := uniformDistForTable(ctx, xyz, cnt)
 				if err != nil {
 					panic(err)
 				}
 				return xyz
 			},
-			right: func(ctx *sql.Context, db *memory.Database, cnt int) *plan.ResolvedTable {
-				wuv := makeTable(db, "wuv", 2, 4)
+			right: func(ctx *sql.Context, db *memory.Database, cnt int, tab sql.TableId, col sql.ColumnId) *plan.ResolvedTable {
+				wuv := makeTable(db, "wuv", tab, col)
 				err := uniformDistForTable(ctx, wuv, cnt)
 				if err != nil {
 					panic(err)
@@ -59,102 +187,42 @@ func TestUniformDistributionJoin(t *testing.T) {
 			rightTypes: []sql.Type{types.Int64, types.Int64, types.Int64},
 			err:        .01,
 		},
-		{
-			name: "normal dist int",
-			left: func(ctx *sql.Context, db *memory.Database, cnt int) *plan.ResolvedTable {
-				xyz := makeTable(db, "xyz", 1, 1)
-				err := normalDistForTable(ctx, xyz, cnt)
-				if err != nil {
-					panic(err)
-				}
-				return xyz
-			},
-			right: func(ctx *sql.Context, db *memory.Database, cnt int) *plan.ResolvedTable {
-				wuv := makeTable(db, "wuv", 2, 4)
-				err := normalDistForTable(ctx, wuv, cnt)
-				if err != nil {
-					panic(err)
-				}
-				return wuv
-			},
-			leftOrd:    []int{1},
-			rightOrd:   []int{1},
-			leftTypes:  []sql.Type{types.Int64, types.Int64, types.Int64},
-			rightTypes: []sql.Type{types.Int64, types.Int64, types.Int64},
-			err:        .01,
-		},
-		{
-			name: "normal dist int",
-			left: func(ctx *sql.Context, db *memory.Database, cnt int) *plan.ResolvedTable {
-				xyz := makeTable(db, "xyz", 1, 1)
-				err := normalDistForTable(ctx, xyz, cnt)
-				if err != nil {
-					panic(err)
-				}
-				return xyz
-			},
-			right: func(ctx *sql.Context, db *memory.Database, cnt int) *plan.ResolvedTable {
-				wuv := makeTable(db, "wuv", 2, 4)
-				err := normalDistForTable(ctx, wuv, cnt)
-				if err != nil {
-					panic(err)
-				}
-				return wuv
-			},
-			leftOrd:    []int{1},
-			rightOrd:   []int{1},
-			leftTypes:  []sql.Type{types.Int64, types.Int64, types.Int64},
-			rightTypes: []sql.Type{types.Int64, types.Int64, types.Int64},
-			err:        .01,
-		},
-		{
-			name: "exponential dist int",
-			left: func(ctx *sql.Context, db *memory.Database, cnt int) *plan.ResolvedTable {
-				xyz := makeTable(db, "xyz", 1, 1)
-				err := increasingHalfDistForTable(ctx, xyz, cnt)
-				if err != nil {
-					panic(err)
-				}
-				return xyz
-			},
-			right: func(ctx *sql.Context, db *memory.Database, cnt int) *plan.ResolvedTable {
-				wuv := makeTable(db, "wuv", 2, 4)
-				err := increasingHalfDistForTable(ctx, wuv, cnt)
-				if err != nil {
-					panic(err)
-				}
-				return wuv
-			},
-			leftOrd:    []int{1},
-			rightOrd:   []int{1},
-			leftTypes:  []sql.Type{types.Int64, types.Int64, types.Int64},
-			rightTypes: []sql.Type{types.Int64, types.Int64, types.Int64},
-			err:        3000,
-		},
 	}
 
+	runSuite(t, tests, 1000, 10, true)
+}
+
+func runSuite(t *testing.T, tests []statsTest, rowCnt, bucketCnt int, debug bool) {
 	db := memory.NewDatabase("test")
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			xyz := tt.left(ctx, db, 1000)
-			wuv := tt.left(ctx, db, 1000)
+		t.Run(fmt.Sprintf("%s: , rows: %d, buckets: %d", tt.name, rowCnt, bucketCnt), func(t *testing.T) {
+			xyz := tt.left(ctx, db, rowCnt, 1, 1)
+			wuv := tt.left(ctx, db, rowCnt, 2, sql.ColumnId(len(tt.leftTypes)+1))
 
 			// join the histograms on a particular field
-			exp, err := expectedResultSize(ctx, xyz, wuv, []sql.Expression{eq(1, 4)})
+			var joinOps []sql.Expression
+			for i, l := range tt.leftOrd {
+				r := tt.rightOrd[i]
+				joinOps = append(joinOps, eq(l, r+len(tt.leftTypes)))
+			}
+
+			exp, err := expectedResultSize(ctx, xyz, wuv, joinOps)
 			require.NoError(t, err)
 
 			// get histograms for tables
-			xHist, err := testHistogram(ctx, xyz, []int{1}, 10)
+			xHist, err := testHistogram(ctx, xyz, tt.leftOrd, bucketCnt)
 			require.NoError(t, err)
 
-			wHist, err := testHistogram(ctx, wuv, []int{1}, 10)
+			wHist, err := testHistogram(ctx, wuv, tt.rightOrd, bucketCnt)
 			require.NoError(t, err)
 
-			//log.Println(sql.Histogram(xHist).DebugString())
-			//log.Println(sql.Histogram(wHist).DebugString())
+			if debug {
+				log.Printf("xyz:\n%s\n", sql.Histogram(xHist).DebugString())
+				log.Printf("wuv:\n%s\n", sql.Histogram(wHist).DebugString())
+			}
 
 			lStat := &stats.Statistic{Typs: []sql.Type{types.Int64}}
 			for _, b := range xHist {
@@ -167,13 +235,17 @@ func TestUniformDistributionJoin(t *testing.T) {
 
 			res, err := stats.Join(lStat, rStat, []int{0}, []int{0})
 			require.NoError(t, err)
-			//log.Println(res.Histogram().DebugString())
+			if debug {
+				log.Printf("join:\n,%s\n", res.Histogram().DebugString())
+			}
 
 			delta := float64(exp-int(res.RowCount())) / float64(exp)
 			if delta < 0 {
 				delta = -delta
 			}
-			log.Println(res.RowCount(), exp, delta)
+			if debug {
+				log.Println(res.RowCount(), exp, delta)
+			}
 			require.Less(t, delta, tt.err)
 		})
 	}
@@ -332,12 +404,15 @@ func increasingHalfDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt in
 	return nil
 }
 
-func increasingLinearDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt int) error {
+func expDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt int, lambda float64, seed int) error {
+	rand.Seed(uint64(seed))
 	tab := rt.UnderlyingTable().(*memory.Table)
 	for i := 0; i < 2*cnt; i++ {
 		k := i
 		for j := 0; j < k; j++ {
-			row := sql.Row{int64(i), int64(k), int64(k)}
+			y := -math.Log2(rand.NormFloat64()) / lambda
+			z := -math.Log2(rand.NormFloat64()) / lambda
+			row := sql.Row{int64(i), int64(y), int64(z)}
 			err := tab.Insert(ctx, row)
 			if err != nil {
 				return err
@@ -348,11 +423,12 @@ func increasingLinearDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt 
 	return nil
 }
 
-func normalDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt int) error {
+func normalDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt int, mean, std float64, seed int) error {
+	rand.Seed(uint64(seed))
 	tab := rt.UnderlyingTable().(*memory.Table)
 	for i := 0; i < cnt; i++ {
-		y := rand.NormFloat64()*float64(cnt/4) + float64(cnt/2)
-		z := rand.NormFloat64()*float64(cnt/4) + float64(cnt/2)
+		y := rand.NormFloat64()*std + mean
+		z := rand.NormFloat64()*std + mean
 		row := sql.Row{int64(i), int64(y), int64(z)}
 		err := tab.Insert(ctx, row)
 		if err != nil {

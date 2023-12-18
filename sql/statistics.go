@@ -160,7 +160,7 @@ func (h Histogram) ToInterface() interface{} {
 func (h Histogram) DebugString() string {
 	var bounds []string
 	var cnts []int
-	var maxCnt int
+	var allCnt int
 	for _, bucket := range h {
 		cnt := int(bucket.RowCount())
 		var key []string
@@ -168,18 +168,16 @@ func (h Histogram) DebugString() string {
 			key = append(key, fmt.Sprintf("%v", v))
 		}
 		bounds = append(bounds, strings.Join(key, ","))
+		allCnt += cnt
 		cnts = append(cnts, cnt)
-		if cnt > maxCnt {
-			maxCnt = cnt
-		}
 	}
 
-	flatten := float64(maxCnt) / float64(10)
+	flatten := 50 / float64(allCnt)
 	b := strings.Builder{}
 	b.WriteString("histogram:\n")
 	for j, bound := range bounds {
 		b.WriteString(bound + ": ")
-		for i := 0; i < int(float64(cnts[j])/flatten); i++ {
+		for i := 0; i < int(float64(cnts[j])*flatten); i++ {
 			b.WriteString("*")
 		}
 		b.WriteString("\n")

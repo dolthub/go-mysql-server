@@ -18,6 +18,8 @@ func Join(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statistic, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("left", left.Histogram().DebugString())
+	fmt.Println("right", right.Histogram().DebugString())
 
 	var newBuckets []*Bucket
 	newCnt := uint64(0)
@@ -57,7 +59,7 @@ func Join(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statistic, error) {
 	// add MCVs and scale by selectivity
 }
 
-func coarseAlignmentSelectivity(s1, s2 sql.Statistic, lFields, rFields []int) (float64, error) {
+func coarseAlignment(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statistic, sql.Statistic, error) {
 	// find overlapping buckets
 	// one of first upper bounds is higher
 	// find bucket upper bound in other histogram that's just above
@@ -92,15 +94,17 @@ func coarseAlignmentSelectivity(s1, s2 sql.Statistic, lFields, rFields []int) (f
 	// lower bounds
 	firstCmp, err := cmp(s1.Histogram()[0].UpperBound(), s2.Histogram()[0].UpperBound())
 	if err != nil {
-		return 0, err
+		return nil, nil, err
 	}
 
+	var reverse bool
 	if firstCmp != 0 {
 		if firstCmp > 0 {
+			reverse = !reverse
 			s1, s2 = s2, s1
 		}
 		lowKey := s1.Histogram()[0].UpperBound()
-		s2, err = PrefixGte(s2, lowKey)
+		s2, err = PrefixGte(s2, lowKey[0])
 	}
 
 	// upper bounds
@@ -108,31 +112,36 @@ func coarseAlignmentSelectivity(s1, s2 sql.Statistic, lFields, rFields []int) (f
 		s1.Histogram()[len(s1.Histogram())-1].UpperBound(),
 		s2.Histogram()[len(s2.Histogram())-1].UpperBound())
 	if err != nil {
-		return 0, err
+		return nil, nil, err
 	}
 
 	if lastCmp != 0 {
 		if lastCmp > 0 {
+			reverse = !reverse
 			s1, s2 = s2, s1
 		}
 		highKey := s1.Histogram()[len(s1.Histogram())-1].UpperBound()
-		s2, err = PrefixLte(s2, highKey)
+		s2, err = PrefixLte(s2, highKey[0])
 	}
 
-	var cardEst float64
-	cardEst += float64(s1.Histogram()[0].RowCount() * s2.Histogram()[0].RowCount())
-
-	firstS1 := s1.Histogram()[0]
-	firstS2 := s2.Histogram()[0]
-	// count distinct in the two ranges
-	distinct := s1.DistinctCount() - firstS1.DistinctCount()
-	if s2Distinct := s2.DistinctCount() - firstS2.DistinctCount(); s2Distinct > distinct {
-		distinct = s2Distinct
+	if reverse {
+		s1, s2 = s2, s1
 	}
-
-	// freq = rows / distinct
-	cardEst += float64(s1.RowCount()-firstS1.RowCount()+s2.RowCount()-firstS2.RowCount()) / float64(distinct)
-	return cardEst, nil
+	return s1, s2, nil
+	//var cardEst float64
+	//cardEst += float64(s1.Histogram()[0].RowCount() * s2.Histogram()[0].RowCount())
+	//
+	//firstS1 := s1.Histogram()[0]
+	//firstS2 := s2.Histogram()[0]
+	//// count distinct in the two ranges
+	//distinct := s1.DistinctCount() - firstS1.DistinctCount()
+	//if s2Distinct := s2.DistinctCount() - firstS2.DistinctCount(); s2Distinct > distinct {
+	//	distinct = s2Distinct
+	//}
+	//
+	//// freq = rows / distinct
+	//cardEst += float64(s1.RowCount()-firstS1.RowCount()+s2.RowCount()-firstS2.RowCount()) / float64(distinct)
+	//return cardEst, nil
 }
 
 // maybe not returned in same order
@@ -185,6 +194,11 @@ func alignBuckets(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statistic, 
 	for state != sjStateEOF {
 		switch state {
 		case sjStateInit:
+
+			//s1, s2, err = coarseAlignment(s1, s2, lFields, rFields)
+			if len(s1.Histogram()) == 0 || len(s2.Histogram()) == 0 {
+				return s1, s2, nil
+			}
 			// TODO copy these
 			m := len(s1.Histogram()) - 1
 			leftStack = make([]sql.HistogramBucket, m)
@@ -236,14 +250,83 @@ func alignBuckets(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statistic, 
 
 		case sjStateCut:
 			// if string key, just cut in half
+			state = sjStateInc
+
 			if !numericTypes {
 				// find bound value, divide equally among segments
 				panic("")
 			}
 
-			// left is bigger than right, so cut on right boundary
+			if len(leftRes) == 0 {
+				// trying to cut L, first bucket of L < R
+				// extend L to match R
+				// steal from the next bucket
+				// calculate fraction of next bucket above R bound
+
+				// left is bigger than right and we have a previous bound, so cut on right boundary
+				// get left "distance"
+				peekR := rightStack[len(rightStack)-1]
+				rightStack = rightStack[:len(rightStack)-1]
+
+				// compress peek while upper bound still less than nextR.UpperBound()
+				keyCmp, err = cmp(peekR.UpperBound(), nextL.UpperBound())
+				if err != nil {
+					return nil, nil, err
+				}
+				for keyCmp < 0 {
+					// combine peekL and
+					nextR = NewHistogramBucket(
+						uint64(float64(nextL.RowCount())+float64(peekR.RowCount())),
+						uint64(float64(nextL.DistinctCount())+float64(peekR.DistinctCount())),
+						uint64(float64(nextL.NullCount())+float64(peekR.NullCount())),
+						peekR.BoundCount(), peekR.UpperBound(), peekR.McvCounts(), peekR.Mcvs())
+					peekR = rightStack[len(rightStack)-1]
+					rightStack = rightStack[:len(rightStack)-1]
+					keyCmp, err = cmp(peekR.UpperBound(), nextL.UpperBound())
+					if err != nil {
+						return nil, nil, err
+					}
+				}
+
+				// nextR < nextL < peekR
+				bucketMagnitude, err := euclideanDistance(nextR.UpperBound(), peekR.UpperBound())
+				if err != nil {
+					return nil, nil, err
+				}
+
+				// estimate midpoint
+				cutMagnitude, err := euclideanDistance(nextR.UpperBound(), nextL.UpperBound())
+				if err != nil {
+					return nil, nil, err
+				}
+
+				cutFrac := cutMagnitude / bucketMagnitude
+
+				// lastL -> nextR
+				firstHalf := NewHistogramBucket(
+					uint64(float64(nextR.RowCount())+float64(peekR.RowCount())*cutFrac),
+					uint64(float64(nextR.DistinctCount())+float64(peekR.DistinctCount())*cutFrac),
+					uint64(float64(nextR.NullCount())+float64(peekR.NullCount())*cutFrac),
+					1, nextL.UpperBound(), nil, nil)
+
+				// nextR -> nextL
+				secondHalf := NewHistogramBucket(
+					uint64(float64(peekR.RowCount())*(1-cutFrac)),
+					uint64(float64(peekR.DistinctCount())*(1-cutFrac)),
+					uint64(float64(peekR.NullCount())*(1-cutFrac)),
+					peekR.BoundCount(),
+					peekR.UpperBound(),
+					peekR.McvCounts(),
+					peekR.Mcvs())
+
+				nextR = firstHalf
+				rightStack = append(rightStack, secondHalf)
+				continue
+			}
+
+			// left is bigger than right and we have a previous bound, so cut on right boundary
 			// get left "distance"
-			bucketMagnitude, err := euclideanDistance(nextL.UpperBound(), leftStack[len(leftStack)-1].UpperBound())
+			bucketMagnitude, err := euclideanDistance(nextL.UpperBound(), leftRes[len(leftRes)-1].UpperBound())
 			if err != nil {
 				return nil, nil, err
 			}
@@ -275,7 +358,6 @@ func alignBuckets(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statistic, 
 
 			nextL = firstHalf
 			leftStack = append(leftStack, secondHalf)
-			state = sjStateInc
 
 		case sjStateInc:
 			leftRes = append(leftRes, nextL)
@@ -300,19 +382,52 @@ func alignBuckets(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statistic, 
 			}
 
 		case sjStateFinalize:
-			if nextL != nil {
-				leftRes = append(leftRes, nextL)
-			}
-			if nextR != nil {
-				rightRes = append(rightRes, nextR)
-			}
-			for _, b := range leftStack {
-				leftRes = append(leftRes, b)
-			}
-			for _, b := range rightStack {
-				rightRes = append(rightRes, b)
-			}
 			state = sjStateEOF
+
+			// count rows, count distinct in one with more buckets
+			// adjust compared to last bucket on other side
+			if nextL == nil && nextR == nil {
+				continue
+			}
+
+			if nextL == nil {
+				// swap so right side is nil
+				leftStack, rightStack = rightStack, leftStack
+				nextL, nextR = nextR, nextL
+				leftRes, rightRes = rightRes, leftRes
+				lFields, rFields = rFields, lFields
+				s1, s2 = s2, s1
+			}
+
+			leftStack = append(leftStack, nextL)
+			nextL = leftRes[len(leftRes)-1]
+			leftRes = leftRes[:len(leftRes)-1]
+			for len(leftStack) > 0 {
+				peekL := leftStack[len(leftStack)-1]
+				leftStack = leftStack[:len(leftStack)-1]
+				nextL = NewHistogramBucket(
+					uint64(float64(nextL.RowCount())+float64(peekL.RowCount())),
+					uint64(float64(nextL.DistinctCount())+float64(peekL.DistinctCount())),
+					uint64(float64(nextL.NullCount())+float64(peekL.NullCount())),
+					peekL.BoundCount(), peekL.UpperBound(), peekL.McvCounts(), peekL.Mcvs())
+			}
+			leftRes = append(leftRes, nextL)
+			nextL = nil
+
+			// update the last left bucket based on the
+
+			//if nextL != nil {
+			//	leftRes = append(leftRes, nextL)
+			//}
+			//if nextR != nil {
+			//	rightRes = append(rightRes, nextR)
+			//}
+			//for _, b := range leftStack {
+			//	leftRes = append(leftRes, b)
+			//}
+			//for _, b := range rightStack {
+			//	rightRes = append(rightRes, b)
+			//}
 		}
 	}
 
