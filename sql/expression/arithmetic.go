@@ -89,11 +89,6 @@ func NewMinus(left, right sql.Expression) *Arithmetic {
 	return NewArithmetic(left, right, sqlparser.MinusStr)
 }
 
-// NewMult creates a new Arithmetic * sql.Expression.
-func NewMult(left, right sql.Expression) *Arithmetic {
-	return NewArithmetic(left, right, sqlparser.MultStr)
-}
-
 func (a *Arithmetic) LeftChild() sql.Expression {
 	return a.Left
 }
@@ -164,7 +159,7 @@ func (a *Arithmetic) Type() sql.Type {
 		return types.Int64
 	}
 
-	return floatOrDecimalType(a, false)
+	return getFloatOrMaxDecimalType(a, false)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -505,68 +500,6 @@ func minus(lval, rval interface{}) (interface{}, error) {
 			return types.ValidateTime(r.Sub(l)), nil
 		case time.Time:
 			return l.Unix() - r.Unix(), nil
-		}
-	}
-
-	return nil, errUnableToCast.New(lval, rval)
-}
-
-func mult(lval, rval interface{}) (interface{}, error) {
-	switch l := lval.(type) {
-	case uint8:
-		switch r := rval.(type) {
-		case uint8:
-			return l * r, nil
-		}
-	case int8:
-		switch r := rval.(type) {
-		case int8:
-			return l * r, nil
-		}
-	case uint16:
-		switch r := rval.(type) {
-		case uint16:
-			return l * r, nil
-		}
-	case int16:
-		switch r := rval.(type) {
-		case int16:
-			return l * r, nil
-		}
-	case uint32:
-		switch r := rval.(type) {
-		case uint32:
-			return l * r, nil
-		}
-	case int32:
-		switch r := rval.(type) {
-		case int32:
-			return l * r, nil
-		}
-	case uint64:
-		switch r := rval.(type) {
-		case uint64:
-			return l * r, nil
-		}
-	case int64:
-		switch r := rval.(type) {
-		case int64:
-			return l * r, nil
-		}
-	case float32:
-		switch r := rval.(type) {
-		case float32:
-			return l * r, nil
-		}
-	case float64:
-		switch r := rval.(type) {
-		case float64:
-			return l * r, nil
-		}
-	case decimal.Decimal:
-		switch r := rval.(type) {
-		case decimal.Decimal:
-			return l.Mul(r), nil
 		}
 	}
 

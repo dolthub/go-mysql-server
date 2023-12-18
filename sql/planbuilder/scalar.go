@@ -490,6 +490,8 @@ func (b *Builder) buildBinaryScalar(inScope *scope, be *ast.BinaryExpr) sql.Expr
 			return expression.NewBitOp(l, r, be.Operator)
 		case ast.IntDivStr:
 			return expression.NewIntDiv(l, r)
+		case ast.MultStr:
+			return expression.NewMult(l, r)
 		default:
 			return expression.NewArithmetic(l, r, be.Operator)
 		}
