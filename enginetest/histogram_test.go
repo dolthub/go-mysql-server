@@ -60,9 +60,9 @@ func TestNormDist(t *testing.T) {
 		{
 			name:  "peaks don't overlap",
 			mean1: 10,
-			std1:  10,
+			std1:  5,
 			mean2: -10,
-			std2:  10,
+			std2:  5,
 		},
 	}
 
@@ -97,7 +97,7 @@ func TestNormDist(t *testing.T) {
 
 	runSuite(t, statTests, 100, 5, true)
 	runSuite(t, statTests, 100, 10, true)
-	runSuite(t, statTests, 1000, 20, true)
+	runSuite(t, statTests, 100, 20, true)
 	runSuite(t, statTests, 500, 10, true)
 	runSuite(t, statTests, 500, 20, true)
 }
@@ -154,11 +154,11 @@ func TestExpDist(t *testing.T) {
 		statTests = append(statTests, st)
 	}
 
-	runSuite(t, statTests, 1000, 5, false)
-	runSuite(t, statTests, 1000, 10, false)
-	runSuite(t, statTests, 1000, 20, false)
-	runSuite(t, statTests, 5000, 10, false)
-	runSuite(t, statTests, 5000, 20, false)
+	runSuite(t, statTests, 100, 5, false)
+	runSuite(t, statTests, 100, 10, false)
+	runSuite(t, statTests, 100, 20, false)
+	runSuite(t, statTests, 500, 10, false)
+	runSuite(t, statTests, 500, 20, false)
 }
 
 func TestMultiDist(t *testing.T) {

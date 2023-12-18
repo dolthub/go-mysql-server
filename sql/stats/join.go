@@ -195,14 +195,18 @@ func alignBuckets(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statistic, 
 		switch state {
 		case sjStateInit:
 
+			s1Hist := compressBuckets(s1.Histogram(), s1.Types())
+			s2Hist := compressBuckets(s2.Histogram(), s2.Types())
+
 			//s1, s2, err = coarseAlignment(s1, s2, lFields, rFields)
-			if len(s1.Histogram()) == 0 || len(s2.Histogram()) == 0 {
+			if len(s1Hist) == 0 || len(s2Hist) == 0 {
 				return s1, s2, nil
 			}
+
 			// TODO copy these
-			m := len(s1.Histogram()) - 1
+			m := len(s1Hist) - 1
 			leftStack = make([]sql.HistogramBucket, m)
-			for i, b := range s1.Histogram() {
+			for i, b := range s1Hist {
 				if i == 0 {
 					nextL = b
 					continue
@@ -210,10 +214,10 @@ func alignBuckets(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statistic, 
 				leftStack[m-i] = b
 			}
 
-			n := len(s1.Histogram()) - 1
+			n := len(s2Hist) - 1
 
 			rightStack = make([]sql.HistogramBucket, n)
-			for i, b := range s2.Histogram() {
+			for i, b := range s2Hist {
 				if i == 0 {
 					nextR = b
 					continue
@@ -413,21 +417,6 @@ func alignBuckets(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statistic, 
 			}
 			leftRes = append(leftRes, nextL)
 			nextL = nil
-
-			// update the last left bucket based on the
-
-			//if nextL != nil {
-			//	leftRes = append(leftRes, nextL)
-			//}
-			//if nextR != nil {
-			//	rightRes = append(rightRes, nextR)
-			//}
-			//for _, b := range leftStack {
-			//	leftRes = append(leftRes, b)
-			//}
-			//for _, b := range rightStack {
-			//	rightRes = append(rightRes, b)
-			//}
 		}
 	}
 
