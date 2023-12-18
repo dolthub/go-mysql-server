@@ -104,7 +104,7 @@ func (m *Mult) Type() sql.Type {
 		return types.Int64
 	}
 
-	return floatOrDecimalTypeForMult(m)
+	return floatOrDecimalTypeForMult(m.Left, m.Right)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -203,9 +203,9 @@ func (m *Mult) convertLeftRight(ctx *sql.Context, left interface{}, right interf
 
 // floatOrDecimalTypeForMult returns Float64 type if either left or right side is of type int or float.
 // Otherwise, it returns decimal type of sum of left and right sides' precisions and scales. E.g. `1.40 * 1.0 = 1.400`
-func floatOrDecimalTypeForMult(m *Mult) sql.Type {
-	lType := getFloatOrMaxDecimalType(m.Left, false)
-	rType := getFloatOrMaxDecimalType(m.Right, false)
+func floatOrDecimalTypeForMult(l, r sql.Expression) sql.Type {
+	lType := getFloatOrMaxDecimalType(l, false)
+	rType := getFloatOrMaxDecimalType(r, false)
 
 	if lType == types.Float64 || rType == types.Float64 {
 		return types.Float64
