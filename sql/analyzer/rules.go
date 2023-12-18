@@ -63,8 +63,6 @@ var OnceAfterDefault = []Rule{
 	{processTruncateId, processTruncate},
 	{stripTableNameInDefaultsId, stripTableNamesFromColumnDefaults},
 	{pushFiltersId, pushFilters},
-	{modifyUpdateExprsForJoinId, modifyUpdateExpressionsForJoin},
-	{applyFKsId, applyForeignKeys},
 	{optimizeJoinsId, optimizeJoins},
 	{finalizeSubqueriesId, finalizeSubqueries},
 	{applyIndexesFromOuterScopeId, applyIndexesFromOuterScope},
@@ -75,6 +73,8 @@ var OnceAfterDefault = []Rule{
 	{insertTopNId, insertTopNNodes},
 	{applyHashInId, applyHashIn},
 	{assignRoutinesId, assignRoutines},
+	{modifyUpdateExprsForJoinId, modifyUpdateExpressionsForJoin},
+	{applyFKsId, applyForeignKeys},
 }
 
 // DefaultValidationRules to apply while analyzing nodes.
