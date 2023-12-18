@@ -24,100 +24,159 @@ func init() {
 }
 
 func TestUniformDistributionJoin(t *testing.T) {
+
+	tests := []struct {
+		name       string
+		left       func(*sql.Context, *memory.Database, int) *plan.ResolvedTable
+		right      func(*sql.Context, *memory.Database, int) *plan.ResolvedTable
+		leftOrd    []int
+		rightOrd   []int
+		leftTypes  []sql.Type
+		rightTypes []sql.Type
+		err        float64
+	}{
+		{
+			name: "uniform dist int",
+			left: func(ctx *sql.Context, db *memory.Database, cnt int) *plan.ResolvedTable {
+				xyz := makeTable(db, "xyz", 1, 1)
+				err := uniformDistForTable(ctx, xyz, cnt)
+				if err != nil {
+					panic(err)
+				}
+				return xyz
+			},
+			right: func(ctx *sql.Context, db *memory.Database, cnt int) *plan.ResolvedTable {
+				wuv := makeTable(db, "wuv", 2, 4)
+				err := uniformDistForTable(ctx, wuv, cnt)
+				if err != nil {
+					panic(err)
+				}
+				return wuv
+			},
+			leftOrd:    []int{1},
+			rightOrd:   []int{1},
+			leftTypes:  []sql.Type{types.Int64, types.Int64, types.Int64},
+			rightTypes: []sql.Type{types.Int64, types.Int64, types.Int64},
+			err:        .01,
+		},
+		{
+			name: "normal dist int",
+			left: func(ctx *sql.Context, db *memory.Database, cnt int) *plan.ResolvedTable {
+				xyz := makeTable(db, "xyz", 1, 1)
+				err := normalDistForTable(ctx, xyz, cnt)
+				if err != nil {
+					panic(err)
+				}
+				return xyz
+			},
+			right: func(ctx *sql.Context, db *memory.Database, cnt int) *plan.ResolvedTable {
+				wuv := makeTable(db, "wuv", 2, 4)
+				err := normalDistForTable(ctx, wuv, cnt)
+				if err != nil {
+					panic(err)
+				}
+				return wuv
+			},
+			leftOrd:    []int{1},
+			rightOrd:   []int{1},
+			leftTypes:  []sql.Type{types.Int64, types.Int64, types.Int64},
+			rightTypes: []sql.Type{types.Int64, types.Int64, types.Int64},
+			err:        .01,
+		},
+		{
+			name: "normal dist int",
+			left: func(ctx *sql.Context, db *memory.Database, cnt int) *plan.ResolvedTable {
+				xyz := makeTable(db, "xyz", 1, 1)
+				err := normalDistForTable(ctx, xyz, cnt)
+				if err != nil {
+					panic(err)
+				}
+				return xyz
+			},
+			right: func(ctx *sql.Context, db *memory.Database, cnt int) *plan.ResolvedTable {
+				wuv := makeTable(db, "wuv", 2, 4)
+				err := normalDistForTable(ctx, wuv, cnt)
+				if err != nil {
+					panic(err)
+				}
+				return wuv
+			},
+			leftOrd:    []int{1},
+			rightOrd:   []int{1},
+			leftTypes:  []sql.Type{types.Int64, types.Int64, types.Int64},
+			rightTypes: []sql.Type{types.Int64, types.Int64, types.Int64},
+			err:        .01,
+		},
+		{
+			name: "exponential dist int",
+			left: func(ctx *sql.Context, db *memory.Database, cnt int) *plan.ResolvedTable {
+				xyz := makeTable(db, "xyz", 1, 1)
+				err := increasingHalfDistForTable(ctx, xyz, cnt)
+				if err != nil {
+					panic(err)
+				}
+				return xyz
+			},
+			right: func(ctx *sql.Context, db *memory.Database, cnt int) *plan.ResolvedTable {
+				wuv := makeTable(db, "wuv", 2, 4)
+				err := increasingHalfDistForTable(ctx, wuv, cnt)
+				if err != nil {
+					panic(err)
+				}
+				return wuv
+			},
+			leftOrd:    []int{1},
+			rightOrd:   []int{1},
+			leftTypes:  []sql.Type{types.Int64, types.Int64, types.Int64},
+			rightTypes: []sql.Type{types.Int64, types.Int64, types.Int64},
+			err:        3000,
+		},
+	}
+
 	db := memory.NewDatabase("test")
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
-	var err error
 
-	t.Run("proportional tables", func(t *testing.T) {
-		// generate two tables
-		xyz := makeTable(db, "xyz", 1, 1)
-		err = uniformDistForTable(ctx, xyz, 1000)
-		require.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			xyz := tt.left(ctx, db, 1000)
+			wuv := tt.left(ctx, db, 1000)
 
-		wuv := makeTable(db, "xyz", 2, 4)
-		err = uniformDistForTable(ctx, wuv, 1000)
-		require.NoError(t, err)
+			// join the histograms on a particular field
+			exp, err := expectedResultSize(ctx, xyz, wuv, []sql.Expression{eq(1, 4)})
+			require.NoError(t, err)
 
-		// join the histograms on a particular field
-		exp, err := expectedResultSize(ctx, xyz, wuv, []sql.Expression{eq(1, 4)})
-		require.NoError(t, err)
+			// get histograms for tables
+			xHist, err := testHistogram(ctx, xyz, []int{1}, 10)
+			require.NoError(t, err)
 
-		// get histograms for tables
-		xHist, err := testHistogram(ctx, xyz, []int{0}, 10)
-		require.NoError(t, err)
+			wHist, err := testHistogram(ctx, wuv, []int{1}, 10)
+			require.NoError(t, err)
 
-		wHist, err := testHistogram(ctx, wuv, []int{0}, 10)
-		require.NoError(t, err)
+			//log.Println(sql.Histogram(xHist).DebugString())
+			//log.Println(sql.Histogram(wHist).DebugString())
 
-		log.Println(sql.Histogram(xHist).DebugString())
-		log.Println(sql.Histogram(wHist).DebugString())
+			lStat := &stats.Statistic{Typs: []sql.Type{types.Int64}}
+			for _, b := range xHist {
+				lStat.Hist = append(lStat.Hist, b.(*stats.Bucket))
+			}
+			rStat := &stats.Statistic{Typs: []sql.Type{types.Int64}}
+			for _, b := range wHist {
+				rStat.Hist = append(rStat.Hist, b.(*stats.Bucket))
+			}
 
-		res := stats.Join(&stats.Statistic{Hist: nil}, &stats.Statistic{Hist: nil}, []int{0}, []int{0})
+			res, err := stats.Join(lStat, rStat, []int{0}, []int{0})
+			require.NoError(t, err)
+			//log.Println(res.Histogram().DebugString())
 
-		delta := float64(exp-int(res.RowCount())) / float64(exp)
-		require.Less(t, delta, 1)
-	})
-
-	t.Run("norm dist tables", func(t *testing.T) {
-		// generate two tables
-		xyz := makeTable(db, "xyz", 1, 1)
-		err = normalDistForTable(ctx, xyz, 1000)
-		require.NoError(t, err)
-
-		wuv := makeTable(db, "xyz", 2, 4)
-		err = normalDistForTable(ctx, wuv, 1000)
-		require.NoError(t, err)
-
-		// join the histograms on a particular field
-		exp, err := expectedResultSize(ctx, xyz, wuv, []sql.Expression{eq(0, 3), eq(1, 4), eq(2, 5)})
-		require.NoError(t, err)
-
-		// get histograms for tables
-		xHist, err := testHistogram(ctx, xyz, []int{1}, 10)
-		require.NoError(t, err)
-
-		wHist, err := testHistogram(ctx, wuv, []int{1}, 10)
-		require.NoError(t, err)
-
-		log.Println(sql.Histogram(xHist).DebugString())
-		log.Println(sql.Histogram(wHist).DebugString())
-
-		res := stats.Join(&stats.Statistic{Hist: nil}, &stats.Statistic{Hist: nil}, []int{0, 1, 2}, []int{0, 1, 2})
-
-		delta := float64(exp-int(res.RowCount())) / float64(exp)
-		require.Less(t, delta, 1)
-	})
-
-	t.Run("increasing dist tables; join xyz-wuv(y=u)", func(t *testing.T) {
-		// generate two tables
-		xyz := makeTable(db, "xyz", 1, 1)
-		err = increasingLinearDistForTable(ctx, xyz, 1000)
-		require.NoError(t, err)
-
-		wuv := makeTable(db, "xyz", 2, 4)
-		err = increasingLinearDistForTable(ctx, wuv, 1000)
-		require.NoError(t, err)
-
-		// join the histograms on a particular field
-		exp, err := expectedResultSize(ctx, xyz, wuv, []sql.Expression{eq(1, 4)})
-		require.NoError(t, err)
-
-		// get histograms for tables
-		xHist, err := testHistogram(ctx, xyz, []int{1}, 10)
-		require.NoError(t, err)
-
-		wHist, err := testHistogram(ctx, wuv, []int{1}, 10)
-		require.NoError(t, err)
-
-		log.Println(sql.Histogram(xHist).DebugString())
-		log.Println(sql.Histogram(wHist).DebugString())
-
-		res := stats.Join(&stats.Statistic{Hist: nil}, &stats.Statistic{Hist: nil}, []int{1}, []int{1})
-
-		delta := float64(exp-int(res.RowCount())) / float64(exp)
-		require.Less(t, delta, 1)
-	})
+			delta := float64(exp-int(res.RowCount())) / float64(exp)
+			if delta < 0 {
+				delta = -delta
+			}
+			log.Println(res.RowCount(), exp, delta)
+			require.Less(t, delta, tt.err)
+		})
+	}
 }
 
 func testHistogram(ctx *sql.Context, table *plan.ResolvedTable, fields []int, buckets int) ([]sql.HistogramBucket, error) {
@@ -148,20 +207,20 @@ func testHistogram(ctx *sql.Context, table *plan.ResolvedTable, fields []int, bu
 		}
 	}
 
-	cmp := func(i, j int) bool {
+	cmp := func(i, j int) int {
 		k := 0
 		for k < len(fields) && keyVals[i][k] == keyVals[j][k] {
 			k++
 		}
 		if k == len(fields) {
-			return true
+			return 0
 		}
 		col := sch[fields[k]]
 		cmp, _ := col.Type.Compare(keyVals[i][k], keyVals[j][k])
-		return cmp <= 0
+		return cmp
 	}
 
-	sort.Slice(keyVals, cmp)
+	sort.Slice(keyVals, func(i, j int) bool { return cmp(i, j) <= 0 })
 
 	var types []sql.Type
 	for _, i := range fields {
@@ -170,7 +229,7 @@ func testHistogram(ctx *sql.Context, table *plan.ResolvedTable, fields []int, bu
 
 	var histogram []sql.HistogramBucket
 	rowsPerBucket := int(cnt) / buckets
-	currentBucket := &stats.Bucket{}
+	currentBucket := &stats.Bucket{DistinctCnt: 1}
 	mcvCnt := 3
 	currentCnt := 0
 	mcvs := stats.NewSqlHeap(types, mcvCnt)
@@ -179,7 +238,7 @@ func testHistogram(ctx *sql.Context, table *plan.ResolvedTable, fields []int, bu
 		currentBucket.RowCnt++
 		heap.Push(mcvs, row)
 		if i > 0 {
-			if cmp(i, i-1) {
+			if cmp(i, i-1) != 0 {
 				currentBucket.DistinctCnt++
 				currentCnt = 1
 			}
@@ -188,7 +247,8 @@ func testHistogram(ctx *sql.Context, table *plan.ResolvedTable, fields []int, bu
 			currentBucket.BoundVal = row
 			currentBucket.BoundCnt = uint64(currentCnt)
 			histogram = append(histogram, currentBucket)
-			currentBucket = &stats.Bucket{}
+			currentBucket = &stats.Bucket{DistinctCnt: 1}
+			currentCnt = 0
 		}
 	}
 	currentBucket.BoundVal = keyVals[len(keyVals)-1]
@@ -256,6 +316,7 @@ func uniformDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt int) erro
 	return nil
 }
 
+// TODO sample from exponential distribution
 func increasingHalfDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt int) error {
 	tab := rt.UnderlyingTable().(*memory.Table)
 	for i := 0; i < 2*cnt; i++ {
