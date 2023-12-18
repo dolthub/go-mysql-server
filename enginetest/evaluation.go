@@ -600,7 +600,7 @@ type CustomValueValidator interface {
 }
 
 // toSQL converts the given expected value into appropriate type of given column.
-// |convertTime| is true if it is a `SHOW` statements, except for `SHOW EVENTS`.
+// |isZeroTime| is true if the query is any `SHOW` statement, except for `SHOW EVENTS`.
 // This is set earlier in `checkResult()` method.
 func toSQL(c *sql.Column, expected any, isZeroTime bool) (any, error) {
 	_, isTime := expected.(time.Time)
@@ -608,7 +608,6 @@ func toSQL(c *sql.Column, expected any, isZeroTime bool) (any, error) {
 	// cases where we don't want the result value to be converted
 	if expected == nil || types.IsDecimal(c.Type) || types.IsEnum(c.Type) || types.IsSet(c.Type) ||
 		c.Type.Type() == sqltypes.Year || (isTime && isZeroTime) || (isStr && types.IsTextOnly(c.Type)) {
-
 		return expected, nil
 	} else {
 		val, _, err := c.Type.Convert(expected)
