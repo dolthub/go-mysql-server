@@ -599,15 +599,15 @@ type CustomValueValidator interface {
 	Validate(interface{}) (bool, error)
 }
 
-// toSQL converts the givennexpected value into appropriate type of given column.
+// toSQL converts the given expected value into appropriate type of given column.
 // |convertTime| is true if it is a `SHOW` statements, except for `SHOW EVENTS`.
 // This is set earlier in `checkResult()` method.
-func toSQL(c *sql.Column, expected any, convertTime bool) (any, error) {
+func toSQL(c *sql.Column, expected any, isZeroTime bool) (any, error) {
 	_, isTime := expected.(time.Time)
 	_, isStr := expected.(string)
 	// cases where we don't want the result value to be converted
 	if expected == nil || types.IsDecimal(c.Type) || types.IsEnum(c.Type) || types.IsSet(c.Type) ||
-		c.Type.Type() == sqltypes.Year || (isTime && !convertTime) || (isStr && types.IsTextOnly(c.Type)) {
+		c.Type.Type() == sqltypes.Year || (isTime && isZeroTime) || (isStr && types.IsTextOnly(c.Type)) {
 
 		return expected, nil
 	} else {
@@ -631,39 +631,21 @@ func checkResults(
 	upperQuery := strings.ToUpper(q)
 	orderBy := strings.Contains(upperQuery, "ORDER BY ")
 
-	convertTime := true
-
-	// We replace all times for SHOW statements with the Unix epoch except for SHOW EVENTS
-	if strings.HasPrefix(upperQuery, "SHOW ") && !strings.Contains(upperQuery, "EVENTS") {
-		for _, widenedRow := range widenedRows {
-			for i, val := range widenedRow {
-				if _, ok := val.(time.Time); ok {
-					widenedRow[i] = time.Unix(0, 0).UTC()
-					convertTime = false
-				}
-			}
-		}
-	}
-
 	isServerEngine := IsServerEngine(e)
 	isNilOrEmptySchema := sch == nil || len(sch) == 0
+	// We replace all times for SHOW statements with the Unix epoch except for SHOW EVENTS
+	setZeroTime := strings.HasPrefix(upperQuery, "SHOW ") && !strings.Contains(upperQuery, "EVENTS")
 
-	// The actual results from SELECT, WITH or CALL queries that need conversion before checking against expected results.
-	if strings.HasPrefix(upperQuery, "SELECT ") || strings.HasPrefix(upperQuery, "WITH ") || strings.HasPrefix(upperQuery, "CALL ") || strings.HasPrefix(upperQuery, "EXECUTE ") {
-		for _, widenedRow := range widenedRows {
-			for i, val := range widenedRow {
-				switch v := val.(type) {
-				case decimal.Decimal:
-					// The exact expected decimal type value cannot be defined in enginetests,
-					// so convert the result to string format, which is the value we get on sql shell.
-					widenedRow[i] = v.StringFixed(v.Exponent() * -1)
-				case uint64:
-					// index value of enum, in uint16, and bit value of set, in uint64, are cast/widened to uint64.
-
-					// enum and set type results from server engine are already in string type
-					if isServerEngine || isNilOrEmptySchema {
-						continue
-					}
+	for _, widenedRow := range widenedRows {
+		for i, val := range widenedRow {
+			switch v := val.(type) {
+			case time.Time:
+				if setZeroTime {
+					widenedRow[i] = time.Unix(0, 0).UTC()
+				}
+			case uint64:
+				// index value of enum, in uint16, and bit value of set, in uint64, are cast/widened to uint64.
+				if !isServerEngine && !isNilOrEmptySchema {
 					// index value for enum and bit value for set types returned
 					// from enginetests need conversion to its string type value.
 					if types.IsEnum(sch[i].Type) {
@@ -723,7 +705,7 @@ func checkResults(
 			} else {
 				// this attempts to do what `rowToSQL()` method in `handler.go` on expected row
 				// because over the wire values gets converted to SQL values depending on the column types.
-				convertedExpected, err := toSQL(sch[j], widenedExpected[i][j], convertTime)
+				convertedExpected, err := toSQL(sch[j], widenedExpected[i][j], setZeroTime)
 				require.NoError(t, err)
 				widenedExpected[i][j] = convertedExpected
 			}
@@ -803,6 +785,10 @@ func WidenRow(sch sql.Schema, row sql.Row) sql.Row {
 		case float32:
 			// casting it to float64 causes approximation, which doesn't work for server engine results.
 			vw, _ = strconv.ParseFloat(fmt.Sprintf("%v", v), 64)
+		case decimal.Decimal:
+			// The exact expected decimal type value cannot be defined in enginetests,
+			// so convert the result to string format, which is the value we get on sql shell.
+			vw = x.StringFixed(x.Exponent() * -1)
 		default:
 			vw = v
 		}
