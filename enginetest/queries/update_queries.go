@@ -110,7 +110,6 @@ var UpdateTests = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "updated"}},
 	},
 	{
-		SkipServerEngine:    true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
 		WriteQuery:          "UPDATE typestable SET ti = '2020-03-06 00:00:00';",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM typestable;",
@@ -132,11 +131,9 @@ var UpdateTests = []WriteQueryTest{
 			0,
 			nil,
 			nil,
-			uint64(1),
-			uint64(0)}},
+			"", ""}},
 	},
 	{
-		SkipServerEngine:    true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
 		WriteQuery:          "UPDATE typestable SET ti = '2020-03-06 00:00:00', da = '2020-03-06';",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM typestable;",
@@ -158,8 +155,7 @@ var UpdateTests = []WriteQueryTest{
 			0,
 			nil,
 			nil,
-			uint64(1),
-			uint64(0)}},
+			"", ""}},
 	},
 	{
 		SkipServerEngine:    true, // datetime returned is non-zero over the wire
@@ -184,8 +180,7 @@ var UpdateTests = []WriteQueryTest{
 			0,
 			nil,
 			nil,
-			uint64(1),
-			uint64(0)}},
+			"", ""}},
 	},
 	{
 		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET two_pk.c1 = two_pk.c1 + 1`,

@@ -666,10 +666,8 @@ CREATE TABLE tab3 (
 				},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
-				// enginetests returns the enum id, but the text representation is sent over the wire
 				Query:    "select * from t;",
-				Expected: []sql.Row{{"one", nil, nil}, {"two", uint64(2), -2}},
+				Expected: []sql.Row{{"one", nil, nil}, {"two", "two", -2}},
 			},
 		},
 	},
@@ -718,10 +716,8 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
-				// enginetests returns the enum id, but the text representation is sent over the wire
 				Query:    "SELECT * FROM enumtest1;",
-				Expected: []sql.Row{{1, uint64(1)}, {2, uint64(1)}, {3, uint64(2)}},
+				Expected: []sql.Row{{1, "abc"}, {2, "abc"}, {3, "XYZ"}},
 			},
 			{
 				// enum values must match EXACTLY for case-sensitive collations
@@ -2127,28 +2123,24 @@ CREATE TABLE tab3 (
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				SkipResultCheckOnServerEngine: true, //unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
-				// enginetests returns the enum id, but the text representation is sent over the wire
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, uint16(2), uint64(2)}, {2, uint16(1), uint64(1)}},
+				Expected: []sql.Row{{1, "b", "b"}, {2, "a", "a"}},
 			},
 			{
 				Query:    "UPDATE test SET v1 = 3 WHERE v1 = 2;",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
-				Query:                         "SELECT * FROM test;",
-				Expected:                      []sql.Row{{1, uint16(3), uint64(2)}, {2, uint16(1), uint64(1)}},
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, "c", "b"}, {2, "a", "a"}},
 			},
 			{
 				Query:    "UPDATE test SET v2 = 3 WHERE 2 = v2;",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
-				Query:                         "SELECT * FROM test;",
-				Expected:                      []sql.Row{{1, uint16(3), uint64(3)}, {2, uint16(1), uint64(1)}},
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, "c", "a,b"}, {2, "a", "a"}},
 			},
 		},
 	},
@@ -3242,8 +3234,7 @@ CREATE TABLE tab3 (
 			},
 			// Assert that returned values are correct.
 			{
-				SkipResultCheckOnServerEngine: true, // the type differs on int16 vs int64 (for go sql driver, integer value always returned as int64)
-				Query:                         "SELECT * from t order by pk;",
+				Query: "SELECT * from t order by pk;",
 				Expected: []sql.Row{
 					{1, int16(1901)},
 					{2, int16(1901)},
@@ -3305,7 +3296,7 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // the type differs on int16 vs int64 (for go sql driver, integer value always returned as int64) AND the datetime returned is not non-zero
+				SkipResultCheckOnServerEngine: true, // the datetime returned is not non-zero
 				Query:                         "SELECT * from t",
 				Expected: []sql.Row{
 					{
@@ -3325,8 +3316,8 @@ CREATE TABLE tab3 (
 						time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC),
 						time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC),
 						0,
-						uint64(1), // 'first' value in enum
-						uint64(0), // empty set
+						"first",
+						"",
 					},
 				},
 			},
@@ -3414,13 +3405,12 @@ CREATE TABLE tab3 (
 				}}},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
-				Query:                         "SELECT * FROM setenumtest ORDER BY pk;",
+				Query: "SELECT * FROM setenumtest ORDER BY pk;",
 				Expected: []sql.Row{
-					{1, uint16(1), uint64(1)},
-					{2, uint16(2), uint64(2)},
-					{3, uint16(3), uint64(1)},
-					{4, uint16(1), uint64(3)},
+					{1, "a", "a"},
+					{2, "b", "b"},
+					{3, "c", "a"},
+					{4, "a", "a,b"},
 				},
 			},
 			{
@@ -3432,11 +3422,10 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
-				Query:                         "SELECT * FROM setenumtest ORDER BY pk;",
+				Query: "SELECT * FROM setenumtest ORDER BY pk;",
 				Expected: []sql.Row{
-					{1, uint16(1), uint64(1)},
-					{2, uint16(2), uint64(2)},
+					{1, "a", "a"},
+					{2, "b", "b"},
 				},
 			},
 		},

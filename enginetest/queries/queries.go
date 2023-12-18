@@ -4576,9 +4576,8 @@ Select * from (
 		Expected: []sql.Row{{-3.0}},
 	},
 	{
-		SkipServerEngine: true, // the float32 value does not match
-		Query:            `SELECT CONVERT("-3.9876", FLOAT) FROM dual`,
-		Expected:         []sql.Row{{float32(-3.9876)}},
+		Query:    `SELECT CONVERT("-3.9876", FLOAT) FROM dual`,
+		Expected: []sql.Row{{float32(-3.9876)}},
 	},
 	{
 		Query:    "SELECT CAST(10.56789 as CHAR(3));",
