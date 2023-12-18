@@ -18,7 +18,6 @@ import (
 	"errors"
 	"io"
 
-	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	sqlerr "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -350,9 +349,9 @@ func (f *rangeFramerBase) NewFramer(interval sql.WindowInterval) (sql.WindowFram
 	case f.startCurrentRow:
 		startInclusion = f.orderBy
 	case f.startNPreceding != nil:
-		startInclusion = expression.NewArithmetic(f.orderBy, f.startNPreceding, ast.MinusStr)
+		startInclusion = expression.NewMinus(f.orderBy, f.startNPreceding)
 	case f.startNFollowing != nil:
-		startInclusion = expression.NewArithmetic(f.orderBy, f.startNFollowing, ast.PlusStr)
+		startInclusion = expression.NewPlus(f.orderBy, f.startNFollowing)
 	}
 
 	// TODO: how to validate datetime, interval pair when they aren't type comparable
@@ -365,9 +364,9 @@ func (f *rangeFramerBase) NewFramer(interval sql.WindowInterval) (sql.WindowFram
 	case f.endCurrentRow:
 		endInclusion = f.orderBy
 	case f.endNPreceding != nil:
-		endInclusion = expression.NewArithmetic(f.orderBy, f.endNPreceding, ast.MinusStr)
+		endInclusion = expression.NewMinus(f.orderBy, f.endNPreceding)
 	case f.endNFollowing != nil:
-		endInclusion = expression.NewArithmetic(f.orderBy, f.endNFollowing, ast.PlusStr)
+		endInclusion = expression.NewPlus(f.orderBy, f.endNFollowing)
 	}
 
 	// TODO: how to validate datetime, interval pair when they aren't type comparable

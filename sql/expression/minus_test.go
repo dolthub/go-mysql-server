@@ -25,63 +25,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	_ "github.com/dolthub/go-mysql-server/sql/variables"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
-
-func TestPlus(t *testing.T) {
-	var testCases = []struct {
-		name        string
-		left, right float64
-		expected    string
-	}{
-		{"1 + 1", 1, 1, "2"},
-		{"-1 + 1", -1, 1, "0"},
-		{"0 + 0", 0, 0, "0"},
-		{"0.14159 + 3.0", 0.14159, 3.0, "3.14159"},
-	}
-
-	for _, tt := range testCases {
-		t.Run(tt.name, func(t *testing.T) {
-			require := require.New(t)
-			result, err := NewPlus(
-				NewLiteral(tt.left, types.Float64),
-				NewLiteral(tt.right, types.Float64),
-			).Eval(sql.NewEmptyContext(), sql.NewRow())
-			require.NoError(err)
-			r, ok := result.(decimal.Decimal)
-			assert.True(t, ok)
-			assert.Equal(t, tt.expected, r.StringFixed(r.Exponent()*-1))
-		})
-	}
-
-	require := require.New(t)
-	result, err := NewPlus(NewLiteral("2", types.LongText), NewLiteral(3, types.Float64)).
-		Eval(sql.NewEmptyContext(), sql.NewRow())
-	require.NoError(err)
-	require.Equal(5.0, result)
-}
-
-func TestPlusInterval(t *testing.T) {
-	require := require.New(t)
-
-	expected := time.Date(2018, time.May, 2, 0, 0, 0, 0, time.UTC)
-	op := NewPlus(
-		NewLiteral("2018-05-01", types.LongText),
-		NewInterval(NewLiteral(int64(1), types.Int64), "DAY"),
-	)
-
-	result, err := op.Eval(sql.NewEmptyContext(), nil)
-	require.NoError(err)
-	require.Equal(expected, result)
-
-	op = NewPlus(
-		NewInterval(NewLiteral(int64(1), types.Int64), "DAY"),
-		NewLiteral("2018-05-01", types.LongText),
-	)
-
-	result, err = op.Eval(sql.NewEmptyContext(), nil)
-	require.NoError(err)
-	require.Equal(expected, result)
-}
 
 func TestMinus(t *testing.T) {
 	var testCases = []struct {
@@ -130,77 +75,6 @@ func TestMinusInterval(t *testing.T) {
 	require.Equal(expected, result)
 }
 
-func TestMult(t *testing.T) {
-	var testCases = []struct {
-		name        string
-		left, right float64
-		expected    string
-	}{
-		{"1 * 1", 1, 1, "1"},
-		{"-1 * 1", -1, 1, "-1"},
-		{"0 * 0", 0, 0, "0"},
-		{"3.14159 * 3.0", 3.14159, 3.0, "9.42477"},
-	}
-
-	for _, tt := range testCases {
-		t.Run(tt.name, func(t *testing.T) {
-			require := require.New(t)
-			result, err := NewMult(
-				NewLiteral(tt.left, types.Float64),
-				NewLiteral(tt.right, types.Float64),
-			).Eval(sql.NewEmptyContext(), sql.NewRow())
-			require.NoError(err)
-			r, ok := result.(decimal.Decimal)
-			assert.True(t, ok)
-			assert.Equal(t, tt.expected, r.StringFixed(r.Exponent()*-1))
-		})
-	}
-
-	require := require.New(t)
-	result, err := NewMult(NewLiteral("10", types.LongText), NewLiteral("10", types.LongText)).
-		Eval(sql.NewEmptyContext(), sql.NewRow())
-	require.NoError(err)
-	require.Equal(100.0, result)
-}
-
-func TestMod(t *testing.T) {
-	var testCases = []struct {
-		name        string
-		left, right int64
-		expected    string
-		null        bool
-	}{
-		{"1 % 1", 1, 1, "0", false},
-		{"8 % 3", 8, 3, "2", false},
-		{"1 % 3", 1, 3, "1", false},
-		{"0 % -1024", 0, -1024, "0", false},
-		{"-1 % 2", -1, 2, "-1", false},
-		{"1 % -2", 1, -2, "1", false},
-		{"-1 % -2", -1, -2, "-1", false},
-		{"1 % 0", 1, 0, "0", true},
-		{"0 % 0", 0, 0, "0", true},
-		{"0.5 % 0.24", 0, 0, "0.02", true},
-	}
-
-	for _, tt := range testCases {
-		t.Run(tt.name, func(t *testing.T) {
-			require := require.New(t)
-			result, err := NewMod(
-				NewLiteral(tt.left, types.Int64),
-				NewLiteral(tt.right, types.Int64),
-			).Eval(sql.NewEmptyContext(), sql.NewRow())
-			require.NoError(err)
-			if tt.null {
-				require.Nil(result)
-			} else {
-				r, ok := result.(decimal.Decimal)
-				require.True(ok)
-				require.Equal(tt.expected, r.StringFixed(r.Exponent()*-1))
-			}
-		})
-	}
-}
-
 func TestAllFloat64(t *testing.T) {
 	var testCases = []struct {
 		op       string
@@ -223,17 +97,26 @@ func TestAllFloat64(t *testing.T) {
 			require := require.New(t)
 			var result interface{}
 			var err error
-			if tt.op == "/" {
+			switch tt.op {
+			case sqlparser.DivStr:
 				result, err = NewDiv(lval,
 					NewLiteral(tt.value, types.Float64),
 				).Eval(sql.NewEmptyContext(), sql.NewRow())
-			} else if tt.op == "%" {
+			case sqlparser.ModStr:
 				result, err = NewMod(lval,
 					NewLiteral(tt.value, types.Float64),
 				).Eval(sql.NewEmptyContext(), sql.NewRow())
-			} else {
-				result, err = NewArithmetic(lval,
-					NewLiteral(tt.value, types.Float64), tt.op,
+			case sqlparser.MinusStr:
+				result, err = NewMinus(lval,
+					NewLiteral(tt.value, types.Float64),
+				).Eval(sql.NewEmptyContext(), sql.NewRow())
+			case sqlparser.PlusStr:
+				result, err = NewPlus(lval,
+					NewLiteral(tt.value, types.Float64),
+				).Eval(sql.NewEmptyContext(), sql.NewRow())
+			case sqlparser.MultStr:
+				result, err = NewMult(lval,
+					NewLiteral(tt.value, types.Float64),
 				).Eval(sql.NewEmptyContext(), sql.NewRow())
 			}
 			require.NoError(err)

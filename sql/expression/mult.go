@@ -1,4 +1,4 @@
-// Copyright 2022 Dolthub, Inc.
+// Copyright 2023 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,13 +28,12 @@ var _ sql.CollationCoercible = (*Mult)(nil)
 // Mult expression represents "/" arithmetic operation
 type Mult struct {
 	BinaryExpression
-	Op  string
 	ops int32
 }
 
-// NewMult creates a new Mult / sql.Expression.
+// NewMult creates a new Mult * sql.Expression.
 func NewMult(left, right sql.Expression) *Mult {
-	a := &Mult{BinaryExpression{Left: left, Right: right}, sqlparser.MultStr, 0}
+	a := &Mult{BinaryExpression{Left: left, Right: right}, 0}
 	ops := countArithmeticOps(a)
 	setArithmeticOps(a, ops)
 	return a
@@ -142,42 +141,33 @@ func (m *Mult) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interf
 	var lval, rval interface{}
 	var err error
 
-	// division used with Interval error is caught at parsing the query
-	lval, err = m.Left.Eval(ctx, row)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// this operation is only done on the left value as the scale/fraction part of the leftmost value
-	// is used to calculate the scale of the final result. If the value is GetField of decimal type column
-	// the decimal value evaluated does not always match the scale of column type definition
-	if dt, ok := m.Left.Type().(sql.DecimalType); ok {
-		if dVal, ok := lval.(decimal.Decimal); ok {
-			ts := int32(dt.Scale())
-			if ts > dVal.Exponent()*-1 {
-				lval, err = decimal.NewFromString(dVal.StringFixed(ts))
-				if err != nil {
-					return nil, nil, err
-				}
-			}
+	if i, ok := m.Left.(*Interval); ok {
+		lval, err = i.EvalDelta(ctx, row)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else {
+		lval, err = m.Left.Eval(ctx, row)
+		if err != nil {
+			return nil, nil, err
 		}
 	}
 
-	rval, err = m.Right.Eval(ctx, row)
-	if err != nil {
-		return nil, nil, err
+	if i, ok := m.Right.(*Interval); ok {
+		rval, err = i.EvalDelta(ctx, row)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else {
+		rval, err = m.Right.Eval(ctx, row)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	return lval, rval, nil
 }
 
-// convertLeftRight returns the most appropriate type for left and right evaluated values,
-// which may or may not be converted from its original type.
-// It checks for float type column reference, then the both values converted to the same float type.
-// Integer column references are treated as floats internally for performance reason, but the final result
-// from the expression tree is converted to a Decimal in order to match MySQL's behavior.
-// The decimal types of left and right value does NOT need to be the same. Both the types
-// should be preservem.
 func (m *Mult) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}, error) {
 	typ := m.Type()
 

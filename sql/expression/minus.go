@@ -61,81 +61,70 @@ type ArithmeticOp interface {
 	Operator() string
 }
 
-var _ ArithmeticOp = (*Arithmetic)(nil)
-var _ sql.CollationCoercible = (*Arithmetic)(nil)
+var _ ArithmeticOp = (*Minus)(nil)
+var _ sql.CollationCoercible = (*Minus)(nil)
 
-// Arithmetic expressions include plus, minus and multiplication (+, -, *) operations.
-type Arithmetic struct {
+// Minus expressions include plus, minus and multiplication (+, -, *) operations.
+type Minus struct {
 	BinaryExpression
-	Op  string
 	ops int32
 }
 
-// NewArithmetic creates a new Arithmetic sql.Expression.
-func NewArithmetic(left, right sql.Expression, op string) *Arithmetic {
-	a := &Arithmetic{BinaryExpression{Left: left, Right: right}, op, 0}
+// NewMinus creates a new Minus sql.Expression.
+func NewMinus(left, right sql.Expression) *Minus {
+	a := &Minus{BinaryExpression{Left: left, Right: right}, 0}
 	ops := countArithmeticOps(a)
 	setArithmeticOps(a, ops)
 	return a
 }
 
-// NewPlus creates a new Arithmetic + sql.Expression.
-func NewPlus(left, right sql.Expression) *Arithmetic {
-	return NewArithmetic(left, right, sqlparser.PlusStr)
+func (m *Minus) LeftChild() sql.Expression {
+	return m.Left
 }
 
-// NewMinus creates a new Arithmetic - sql.Expression.
-func NewMinus(left, right sql.Expression) *Arithmetic {
-	return NewArithmetic(left, right, sqlparser.MinusStr)
+func (m *Minus) RightChild() sql.Expression {
+	return m.Right
 }
 
-func (a *Arithmetic) LeftChild() sql.Expression {
-	return a.Left
+func (m *Minus) Operator() string {
+	return sqlparser.MinusStr
 }
 
-func (a *Arithmetic) RightChild() sql.Expression {
-	return a.Right
+func (m *Minus) SetOpCount(i int32) {
+	m.ops = i
 }
 
-func (a *Arithmetic) Operator() string {
-	return a.Op
+func (m *Minus) String() string {
+	return fmt.Sprintf("(%s - %s)", m.Left, m.Right)
 }
 
-func (a *Arithmetic) SetOpCount(i int32) {
-	a.ops = i
-}
-
-func (a *Arithmetic) String() string {
-	return fmt.Sprintf("(%s %s %s)", a.Left, a.Op, a.Right)
-}
-
-func (a *Arithmetic) DebugString() string {
-	return fmt.Sprintf("(%s %s %s)", sql.DebugString(a.Left), a.Op, sql.DebugString(a.Right))
+func (m *Minus) DebugString() string {
+	return fmt.Sprintf("(%s - %s)", sql.DebugString(m.Left), sql.DebugString(m.Right))
 }
 
 // IsNullable implements the sql.Expression interface.
-func (a *Arithmetic) IsNullable() bool {
-	if types.IsDatetimeType(a.Type()) || types.IsTimestampType(a.Type()) {
+func (m *Minus) IsNullable() bool {
+	if types.IsDatetimeType(m.Type()) || types.IsTimestampType(m.Type()) {
 		return true
 	}
 
-	return a.BinaryExpression.IsNullable()
+	return m.BinaryExpression.IsNullable()
 }
 
 // Type returns the greatest type for given operation.
-func (a *Arithmetic) Type() sql.Type {
+func (m *Minus) Type() sql.Type {
 	//TODO: what if both BindVars? should be constant folded
-	rTyp := a.Right.Type()
+	rTyp := m.Right.Type()
 	if types.IsDeferredType(rTyp) {
 		return rTyp
 	}
-	lTyp := a.Left.Type()
+	lTyp := m.Left.Type()
 	if types.IsDeferredType(lTyp) {
 		return lTyp
 	}
 
 	// applies for + and - ops
-	if isInterval(a.Left) || isInterval(a.Right) {
+	if isInterval(m.Left) || isInterval(m.Right) {
 		// TODO: we might need to truncate precision here
 		return types.DatetimeMaxPrecision
 	}
@@ -159,32 +148,25 @@ func (a *Arithmetic) Type() sql.Type {
 		return types.Int64
 	}
 
-	return getFloatOrMaxDecimalType(a, false)
+	return getFloatOrMaxDecimalType(m, false)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
-func (*Arithmetic) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+func (*Minus) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
 }
 
 // WithChildren implements the Expression interface.
-func (a *Arithmetic) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (m *Minus) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
-		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 2)
+		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 2)
 	}
-	// sanity check
-	switch strings.ToLower(a.Op) {
-	case sqlparser.DivStr:
-		return NewDiv(children[0], children[1]), nil
-	case sqlparser.ModStr:
-		return NewMod(children[0], children[1]), nil
-	}
-	return NewArithmetic(children[0], children[1], a.Op), nil
+	return NewMinus(children[0], children[1]), nil
 }
 
 // Eval implements the Expression interface.
-func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	lval, rval, err := a.evalLeftRight(ctx, row)
+func (m *Minus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	lval, rval, err := m.evalLeftRight(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -193,46 +175,37 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	lval, rval, err = a.convertLeftRight(ctx, lval, rval)
+	lval, rval, err = m.convertLeftRight(ctx, lval, rval)
 	if err != nil {
 		return nil, err
 	}
 
-	switch strings.ToLower(a.Op) {
-	case sqlparser.PlusStr:
-		return plus(lval, rval)
-	case sqlparser.MinusStr:
-		return minus(lval, rval)
-	case sqlparser.MultStr:
-		return mult(lval, rval)
-	}
-
-	return nil, errUnableToEval.New(lval, a.Op, rval)
+	return minus(lval, rval)
 }
 
-func (a *Arithmetic) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interface{}, error) {
+func (m *Minus) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interface{}, error) {
 	var lval, rval interface{}
 	var err error
 
-	if i, ok := a.Left.(*Interval); ok {
+	if i, ok := m.Left.(*Interval); ok {
 		lval, err = i.EvalDelta(ctx, row)
 		if err != nil {
 			return nil, nil, err
 		}
 	} else {
-		lval, err = a.Left.Eval(ctx, row)
+		lval, err = m.Left.Eval(ctx, row)
 		if err != nil {
 			return nil, nil, err
 		}
 	}
 
-	if i, ok := a.Right.(*Interval); ok {
+	if i, ok := m.Right.(*Interval); ok {
 		rval, err = i.EvalDelta(ctx, row)
 		if err != nil {
 			return nil, nil, err
 		}
 	} else {
-		rval, err = a.Right.Eval(ctx, row)
+		rval, err = m.Right.Eval(ctx, row)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -241,11 +214,11 @@ func (a *Arithmetic) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, 
 	return lval, rval, nil
 }
 
-func (a *Arithmetic) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}, error) {
-	typ := a.Type()
+func (m *Minus) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}, error) {
+	typ := m.Type()
 
-	lIsTimeType := types.IsTime(a.Left.Type())
-	rIsTimeType := types.IsTime(a.Right.Type())
+	lIsTimeType := types.IsTime(m.Left.Type())
+	rIsTimeType := types.IsTime(m.Right.Type())
 
 	if i, ok := left.(*TimeDelta); ok {
 		left = i
@@ -363,80 +336,6 @@ func convertTimeTypeToString(val interface{}) interface{} {
 	return val
 }
 
-func plus(lval, rval interface{}) (interface{}, error) {
-	switch l := lval.(type) {
-	case uint8:
-		switch r := rval.(type) {
-		case uint8:
-			return l + r, nil
-		}
-	case int8:
-		switch r := rval.(type) {
-		case int8:
-			return l + r, nil
-		}
-	case uint16:
-		switch r := rval.(type) {
-		case uint16:
-			return l + r, nil
-		}
-	case int16:
-		switch r := rval.(type) {
-		case int16:
-			return l + r, nil
-		}
-	case uint32:
-		switch r := rval.(type) {
-		case uint32:
-			return l + r, nil
-		}
-	case int32:
-		switch r := rval.(type) {
-		case int32:
-			return l + r, nil
-		}
-	case uint64:
-		switch r := rval.(type) {
-		case uint64:
-			return l + r, nil
-		}
-	case int64:
-		switch r := rval.(type) {
-		case int64:
-			return l + r, nil
-		}
-	case float32:
-		switch r := rval.(type) {
-		case float32:
-			return l + r, nil
-		}
-	case float64:
-		switch r := rval.(type) {
-		case float64:
-			return l + r, nil
-		}
-	case decimal.Decimal:
-		switch r := rval.(type) {
-		case decimal.Decimal:
-			return l.Add(r), nil
-		}
-	case time.Time:
-		switch r := rval.(type) {
-		case *TimeDelta:
-			return types.ValidateTime(r.Add(l)), nil
-		case time.Time:
-			return l.Unix() + r.Unix(), nil
-		}
-	case *TimeDelta:
-		switch r := rval.(type) {
-		case time.Time:
-			return types.ValidateTime(l.Add(r)), nil
-		}
-	}
-
-	return nil, errUnableToCast.New(lval, rval)
-}
-
 func minus(lval, rval interface{}) (interface{}, error) {
 	switch l := lval.(type) {
 	case uint8:
@@ -506,7 +405,7 @@ func minus(lval, rval interface{}) (interface{}, error) {
 	return nil, errUnableToCast.New(lval, rval)
 }
 
-// UnaryMinus is an unary minus operator.
+// UnaryMinus is a unary minus operator.
 type UnaryMinus struct {
 	UnaryExpression
 }

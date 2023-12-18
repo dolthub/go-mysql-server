@@ -100,10 +100,9 @@ func TestReplaceExistingViewNative(t *testing.T) {
 	subqueryAlias := plan.NewSubqueryAlias("myview", "select i + 1 from mytable",
 		plan.NewProject(
 			[]sql.Expression{
-				expression.NewArithmetic(
+				expression.NewPlus(
 					expression.NewGetFieldWithTable(1, 1, types.Int32, "", "mytable", "i", true),
 					expression.NewLiteral(1, types.Int8),
-					"+",
 				),
 			},
 			plan.NewUnresolvedTable("mytable", ""),
