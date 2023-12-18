@@ -1035,6 +1035,7 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 
 	defaults := make([]ast.Expr, len(tableSpec.Columns))
 	generated := make([]ast.Expr, len(tableSpec.Columns))
+	updates := make([]ast.Expr, len(tableSpec.Columns))
 	var schema sql.Schema
 	for i, cd := range tableSpec.Columns {
 		sqlType := cd.Type.SQLType()
@@ -1046,6 +1047,7 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 		}
 		defaults[i] = cd.Type.Default
 		generated[i] = cd.Type.GeneratedExpr
+		updates[i] = cd.Type.OnUpdate
 
 		column := b.columnDefinitionToColumn(inScope, cd, tableSpec.Indexes)
 		column.DatabaseSource = db.Name()
@@ -1081,6 +1083,13 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 			schema[i].Generated.Parenthesized = true
 			schema[i].Generated.Literal = false
 			schema[i].Virtual = virtual
+		}
+	}
+
+	for i, onUpdateExpr := range updates {
+		schema[i].OnUpdate = b.convertDefaultExpression(outScope, onUpdateExpr, schema[i].Type, schema[i].Nullable)
+		if schema[i].OnUpdate != nil && !(types.IsDatetimeType(schema[i].Type) || types.IsTimestampType(schema[i].Type)) {
+			b.handleErr(sql.ErrInvalidOnUpdate.New(schema[i].Name))
 		}
 	}
 
@@ -1233,6 +1242,7 @@ func (b *Builder) resolveSchemaDefaults(inScope *scope, schema sql.Schema) sql.S
 	for _, col := range newSch {
 		col.Default = b.resolveColumnDefaultExpression(inScope, col, col.Default)
 		col.Generated = b.resolveColumnDefaultExpression(inScope, col, col.Generated)
+		col.OnUpdate = b.resolveColumnDefaultExpression(inScope, col, col.OnUpdate)
 	}
 	return newSch
 }

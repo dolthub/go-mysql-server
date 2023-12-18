@@ -284,6 +284,8 @@ func TestDecimalConvert(t *testing.T) {
 		expectedErr bool
 	}{
 		{1, 0, nil, nil, false},
+		{1, 0, true, "1", false},
+		{1, 0, false, "0", false},
 		{1, 0, byte(0), "0", false},
 		{1, 0, int8(3), "3", false},
 		{1, 0, "-3.7e0", "-4", false},

@@ -379,12 +379,23 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 				colDefaultStr = fmt.Sprintf("'%v'", v)
 			}
 		}
+		var onUpdateStr string
+		if col.OnUpdate != nil {
+			onUpdateStr = col.OnUpdate.String()
+			if onUpdateStr != "NULL" && col.OnUpdate.IsLiteral() && !types.IsTime(col.OnUpdate.Type()) && !types.IsText(col.OnUpdate.Type()) {
+				v, err := col.OnUpdate.Eval(ctx, nil)
+				if err != nil {
+					return "", err
+				}
+				onUpdateStr = fmt.Sprintf("'%v'", v)
+			}
+		}
 
 		if col.PrimaryKey && len(pkSchema.Schema) == 0 {
 			pkOrdinals = append(pkOrdinals, i)
 		}
 
-		colStmts[i] = sql.GenerateCreateTableColumnDefinition(col, colDefaultStr, tableCollation)
+		colStmts[i] = sql.GenerateCreateTableColumnDefinition(col, colDefaultStr, onUpdateStr, tableCollation)
 	}
 
 	for _, i := range pkOrdinals {

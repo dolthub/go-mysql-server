@@ -38,7 +38,7 @@ func GenerateCreateTableStatement(tblName string, colStmts []string, tblCharsetN
 
 // GenerateCreateTableColumnDefinition returns column definition string for 'CREATE TABLE' statement for given column.
 // This part comes first in the 'CREATE TABLE' statement.
-func GenerateCreateTableColumnDefinition(col *Column, colDefault string, tableCollation CollationID) string {
+func GenerateCreateTableColumnDefinition(col *Column, colDefault, onUpdate string, tableCollation CollationID) string {
 	var colTypeString string
 	if collationType, ok := col.Type.(TypeWithCollation); ok {
 		colTypeString = collationType.StringWithTableCollation(tableCollation)
@@ -70,6 +70,10 @@ func GenerateCreateTableColumnDefinition(col *Column, colDefault string, tableCo
 
 	if col.Default != nil && col.Generated == nil {
 		stmt = fmt.Sprintf("%s DEFAULT %s", stmt, colDefault)
+	}
+
+	if col.OnUpdate != nil {
+		stmt = fmt.Sprintf("%s ON UPDATE %s", stmt, onUpdate)
 	}
 
 	if col.Comment != "" {
