@@ -1,6 +1,7 @@
 package stats
 
 import (
+	"container/heap"
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -14,7 +15,33 @@ func Join(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statistic, error) {
 	// either 1) stepwise bucket alignment and comparison, subtract mcvs from distinct estimates
 	// or     2) direct compare first, do MCV card separately, and then range card as third
 
-	left, right, err := alignBuckets(s1, s2, lFields, rFields)
+	cmp := func(row1, row2 sql.Row) (int, error) {
+		var keyCmp int
+		for i, f := range lFields {
+			k1, _, err := s1.Types()[f].Promote().Convert(row1[f])
+			if err != nil {
+				return 0, fmt.Errorf("incompatible types")
+			}
+
+			k2, _, err := s2.Types()[f].Promote().Convert(row2[rFields[i]])
+			if err != nil {
+				return 0, fmt.Errorf("incompatible types")
+			}
+
+			cmp, err := s1.Types()[f].Promote().Compare(k1, k2)
+			if err != nil {
+				return 0, err
+			}
+			if cmp == 0 {
+				continue
+			}
+			keyCmp = cmp
+			break
+		}
+		return keyCmp, nil
+	}
+
+	left, right, err := alignBuckets(s1, s2, cmp)
 	if err != nil {
 		return nil, err
 	}
@@ -26,15 +53,41 @@ func Join(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statistic, error) {
 	for i := range left.Histogram() {
 		l := left.Histogram()[i]
 		r := right.Histogram()[i]
-		distinct := l.DistinctCount()
-		if r.DistinctCount() > distinct {
-			distinct = r.DistinctCount()
+		distinct := l.DistinctCount() - uint64(len(l.Mcvs()))
+		if cmp := r.DistinctCount() - uint64(len(r.Mcvs())); cmp > distinct {
+			distinct = cmp
 		}
+
+		lRows := l.RowCount()
+		for _, v := range l.McvCounts() {
+			lRows -= v
+		}
+		rRows := r.RowCount()
+		for _, v := range r.McvCounts() {
+			rRows -= v
+		}
+
+		rows := uint64(float64(lRows*rRows) / float64(distinct))
+
+		// TODO improve next mcvs
+		for i, key1 := range l.Mcvs() {
+			for j, key2 := range r.Mcvs() {
+				v, err := cmp(key1, key2)
+				if err != nil {
+					return nil, err
+				}
+				if v == 0 {
+					rows += l.McvCounts()[i] * r.McvCounts()[j]
+					break
+				}
+			}
+		}
+
+		newCnt += rows
 
 		mcvs := append(l.Mcvs(), r.Mcvs()...)
 		mcvCounts := append(l.McvCounts(), r.McvCounts()...)
-		rows := uint64(float64(l.RowCount()*r.RowCount()) / float64(distinct))
-		newCnt += rows
+
 		newBucket := NewHistogramBucket(
 			rows,
 			distinct,
@@ -145,34 +198,8 @@ func coarseAlignment(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statisti
 }
 
 // maybe not returned in same order
-func alignBuckets(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statistic, sql.Statistic, error) {
+func alignBuckets(s1, s2 sql.Statistic, cmp func(sql.Row, sql.Row) (int, error)) (sql.Statistic, sql.Statistic, error) {
 	// walk the buckets, interpolate new buckets and sizes
-
-	cmp := func(row1, row2 sql.Row) (int, error) {
-		var keyCmp int
-		for i, f := range lFields {
-			k1, _, err := s1.Types()[f].Promote().Convert(row1[f])
-			if err != nil {
-				return 0, fmt.Errorf("incompatible types")
-			}
-
-			k2, _, err := s2.Types()[f].Promote().Convert(row2[rFields[i]])
-			if err != nil {
-				return 0, fmt.Errorf("incompatible types")
-			}
-
-			cmp, err := s1.Types()[f].Promote().Compare(k1, k2)
-			if err != nil {
-				return 0, err
-			}
-			if cmp == 0 {
-				continue
-			}
-			keyCmp = cmp
-			break
-		}
-		return keyCmp, nil
-	}
 
 	var numericTypes bool = true
 	for _, t := range s1.Types() {
@@ -195,8 +222,14 @@ func alignBuckets(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statistic, 
 		switch state {
 		case sjStateInit:
 
-			s1Hist := compressBuckets(s1.Histogram(), s1.Types())
-			s2Hist := compressBuckets(s2.Histogram(), s2.Types())
+			s1Hist, err := compressBuckets(s1.Histogram(), s1.Types())
+			if err != nil {
+				return nil, nil, err
+			}
+			s2Hist, err := compressBuckets(s2.Histogram(), s2.Types())
+			if err != nil {
+				return nil, nil, err
+			}
 
 			//s1, s2, err = coarseAlignment(s1, s2, lFields, rFields)
 			if len(s1Hist) == 0 || len(s2Hist) == 0 {
@@ -248,7 +281,6 @@ func alignBuckets(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statistic, 
 			leftStack, rightStack = rightStack, leftStack
 			nextL, nextR = nextR, nextL
 			leftRes, rightRes = rightRes, leftRes
-			lFields, rFields = rFields, lFields
 			s1, s2 = s2, s1
 			state = sjStateCut
 
@@ -399,7 +431,6 @@ func alignBuckets(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statistic, 
 				leftStack, rightStack = rightStack, leftStack
 				nextL, nextR = nextR, nextL
 				leftRes, rightRes = rightRes, leftRes
-				lFields, rFields = rFields, lFields
 				s1, s2 = s2, s1
 			}
 
@@ -420,13 +451,11 @@ func alignBuckets(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statistic, 
 		}
 	}
 
-	leftRes = compressBuckets(leftRes, s1.Types())
 	newS1, err := s1.WithHistogram(leftRes)
 	if err != nil {
 		return nil, nil, err
 	}
-	rightRes = compressBuckets(rightRes, s2.Types())
-	newS2, err := s1.WithHistogram(rightRes)
+	newS2, err := s2.WithHistogram(rightRes)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -434,22 +463,64 @@ func alignBuckets(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statistic, 
 	return newS1, newS2, nil
 }
 
+func mergeMcvs(mcvs1, mcvs2 []sql.Row, mcvCnts1, mcvCnts2 []uint64, cmp func(sql.Row, sql.Row) (int, error)) ([]sql.Row, []uint64, error) {
+	if len(mcvs1) < len(mcvs2) {
+		// mcvs2 is low
+		mcvs1, mcvs2 = mcvs2, mcvs1
+		mcvCnts1, mcvCnts2 = mcvCnts2, mcvCnts1
+	}
+	if len(mcvs2) > 1<<6 {
+		return nil, nil, nil
+	}
+	ret := NewSqlHeap(len(mcvs2))
+	seen := make(map[int]bool)
+	for i, row1 := range mcvs1 {
+		matched := -1
+		for j, row2 := range mcvs2 {
+			c, err := cmp(row1, row2)
+			if err != nil {
+				return nil, nil, err
+			}
+			if c == 0 {
+				matched = j
+				break
+			}
+		}
+		if matched > 0 {
+			seen[matched] = true
+			heap.Push(ret, NewHeapRow(mcvs1[i], int(mcvCnts1[i]+mcvCnts2[matched])))
+		} else {
+			heap.Push(ret, NewHeapRow(mcvs1[i], int(mcvCnts1[i])))
+		}
+	}
+	for j := range mcvs2 {
+		if !seen[j] {
+			heap.Push(ret, NewHeapRow(mcvs2[j], int(mcvCnts2[j])))
+
+		}
+	}
+	return ret.Array(), ret.Counts(), nil
+}
+
 // compress buckets folds buckets with one element into the previous
 // bucket when the bounds keys match.
-func compressBuckets(h sql.Histogram, types []sql.Type) sql.Histogram {
-	cmp := func(l, r sql.Row) int {
+func compressBuckets(h sql.Histogram, types []sql.Type) (sql.Histogram, error) {
+	cmp := func(l, r sql.Row) (int, error) {
 		for i := range l {
-			cmp, _ := types[i].Compare(l[i], r[i])
+			cmp, err := types[i].Compare(l[i], r[i])
+			if err != nil {
+				return 0, err
+			}
 			switch cmp {
 			case 0:
 				continue
 			case -1:
-				return -1
+				return -1, nil
 			case 1:
-				return 1
+				return 1, nil
 			}
 		}
-		return 0
+		return 0, nil
 	}
 	j := 0
 	i := 0
@@ -457,21 +528,32 @@ func compressBuckets(h sql.Histogram, types []sql.Type) sql.Histogram {
 	for i < len(h) {
 		j = i + 1
 		h[k] = h[i]
-		for j < len(h) && h[j].DistinctCount() == 1 && cmp(h[k].UpperBound(), h[j].UpperBound()) == 0 {
+		if j >= len(h) {
+			break
+		}
+		mcvs, mcvCnts, err := mergeMcvs(h[i].Mcvs(), h[j].Mcvs(), h[i].McvCounts(), h[j].McvCounts(), cmp)
+		if err != nil {
+			return nil, err
+		}
+		eq, err := cmp(h[k].UpperBound(), h[j].UpperBound())
+		if err != nil {
+			return nil, err
+		}
+		for j < len(h) && h[j].DistinctCount() == 1 && eq == 0 {
 			h[k] = NewHistogramBucket(
-				h[i].RowCount()+h[k].RowCount(),
-				h[j].DistinctCount(),
-				h[i].NullCount()+h[j].NullCount(),
-				h[i].BoundCount()+h[j].BoundCount(),
-				h[i].UpperBound(),
-				// TODO MCVs
-				nil, nil)
+				h[k].RowCount()+h[j].RowCount(),
+				h[k].DistinctCount(),
+				h[k].NullCount()+h[j].NullCount(),
+				h[k].BoundCount()+h[j].BoundCount(),
+				h[k].UpperBound(),
+				mcvCnts,
+				mcvs)
 			j++
 		}
 		i = j
 		k++
 	}
-	return h[:k]
+	return h[:k], nil
 }
 
 type sjState int8

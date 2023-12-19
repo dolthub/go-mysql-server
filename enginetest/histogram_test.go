@@ -119,8 +119,8 @@ func TestExpDist(t *testing.T) {
 			lambda2: 1.5,
 		},
 		{
-			name:    ".5/3",
-			lambda1: .5,
+			name:    ".25/3",
+			lambda1: .25,
 			lambda2: 3,
 		},
 	}
@@ -138,7 +138,7 @@ func TestExpDist(t *testing.T) {
 				return xyz
 			},
 			right: func(ctx *sql.Context, db *memory.Database, cnt int, tab sql.TableId, col sql.ColumnId) *plan.ResolvedTable {
-				xyz := makeTable(db, "xyz", tab, col)
+				xyz := makeTable(db, "wuv", tab, col)
 				err := expDistForTable(ctx, xyz, cnt, t.lambda2, int(tab))
 				if err != nil {
 					panic(err)
@@ -154,11 +154,11 @@ func TestExpDist(t *testing.T) {
 		statTests = append(statTests, st)
 	}
 
-	runSuite(t, statTests, 100, 5, false)
-	runSuite(t, statTests, 100, 10, false)
-	runSuite(t, statTests, 100, 20, false)
-	runSuite(t, statTests, 500, 10, false)
-	runSuite(t, statTests, 500, 20, false)
+	runSuite(t, statTests, 100, 5, true)
+	runSuite(t, statTests, 100, 10, true)
+	runSuite(t, statTests, 100, 20, true)
+	runSuite(t, statTests, 500, 10, true)
+	runSuite(t, statTests, 500, 20, true)
 }
 
 func TestMultiDist(t *testing.T) {
@@ -193,14 +193,14 @@ func TestMultiDist(t *testing.T) {
 }
 
 func runSuite(t *testing.T, tests []statsTest, rowCnt, bucketCnt int, debug bool) {
-	db := memory.NewDatabase("test")
-	pro := memory.NewDBProvider(db)
-	ctx := newContext(pro)
-
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%s: , rows: %d, buckets: %d", tt.name, rowCnt, bucketCnt), func(t *testing.T) {
+			db := memory.NewDatabase("test")
+			pro := memory.NewDBProvider(db)
+			ctx := newContext(pro)
+
 			xyz := tt.left(ctx, db, rowCnt, 1, 1)
-			wuv := tt.left(ctx, db, rowCnt, 2, sql.ColumnId(len(tt.leftTypes)+1))
+			wuv := tt.right(ctx, db, rowCnt, 2, sql.ColumnId(len(tt.leftTypes)+1))
 
 			// join the histograms on a particular field
 			var joinOps []sql.Expression
@@ -233,7 +233,7 @@ func runSuite(t *testing.T, tests []statsTest, rowCnt, bucketCnt int, debug bool
 				rStat.Hist = append(rStat.Hist, b.(*stats.Bucket))
 			}
 
-			res, err := stats.Join(lStat, rStat, []int{0}, []int{0})
+			res, err := stats.Join(stats.UpdateCounts(lStat), stats.UpdateCounts(rStat), []int{0}, []int{0})
 			require.NoError(t, err)
 			if debug {
 				log.Printf("join:\n,%s\n", res.Histogram().DebugString())
@@ -304,27 +304,32 @@ func testHistogram(ctx *sql.Context, table *plan.ResolvedTable, fields []int, bu
 	currentBucket := &stats.Bucket{DistinctCnt: 1}
 	mcvCnt := 3
 	currentCnt := 0
-	mcvs := stats.NewSqlHeap(types, mcvCnt)
+	mcvs := stats.NewSqlHeap(mcvCnt)
 	for i, row := range keyVals {
 		currentCnt++
 		currentBucket.RowCnt++
-		heap.Push(mcvs, row)
 		if i > 0 {
 			if cmp(i, i-1) != 0 {
 				currentBucket.DistinctCnt++
+				heap.Push(mcvs, stats.NewHeapRow(keyVals[i-1], currentCnt))
 				currentCnt = 1
 			}
 		}
 		if currentBucket.RowCnt > uint64(rowsPerBucket) {
 			currentBucket.BoundVal = row
 			currentBucket.BoundCnt = uint64(currentCnt)
+			currentBucket.McvVals = mcvs.Array()
+			currentBucket.McvsCnt = mcvs.Counts()
 			histogram = append(histogram, currentBucket)
 			currentBucket = &stats.Bucket{DistinctCnt: 1}
+			mcvs = stats.NewSqlHeap(mcvCnt)
 			currentCnt = 0
 		}
 	}
 	currentBucket.BoundVal = keyVals[len(keyVals)-1]
 	currentBucket.BoundCnt = uint64(currentCnt)
+	currentBucket.McvVals = mcvs.Array()
+	currentBucket.McvsCnt = mcvs.Counts()
 	histogram = append(histogram, currentBucket)
 	return histogram, nil
 }
@@ -356,6 +361,7 @@ func newContext(provider *memory.DbProvider) *sql.Context {
 
 func expectedResultSize(ctx *sql.Context, t1, t2 *plan.ResolvedTable, filters []sql.Expression) (int, error) {
 	j := plan.NewJoin(t1, t2, plan.JoinTypeInner, expression.JoinAnd(filters...))
+	fmt.Println(sql.DebugString(j))
 	i, err := rowexec.DefaultBuilder.Build(ctx, j, nil)
 	if err != nil {
 		return 0, err
@@ -407,17 +413,13 @@ func increasingHalfDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt in
 func expDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt int, lambda float64, seed int) error {
 	rand.Seed(uint64(seed))
 	tab := rt.UnderlyingTable().(*memory.Table)
-	for i := 0; i < 2*cnt; i++ {
-		k := i
-		for j := 0; j < k; j++ {
-			y := -math.Log2(rand.NormFloat64()) / lambda
-			z := -math.Log2(rand.NormFloat64()) / lambda
-			row := sql.Row{int64(i), int64(y), int64(z)}
-			err := tab.Insert(ctx, row)
-			if err != nil {
-				return err
-			}
-			i++
+	for i := 0; i < cnt; i++ {
+		y := -math.Log2(rand.NormFloat64()) / lambda
+		z := -math.Log2(rand.NormFloat64()) / lambda
+		row := sql.Row{int64(i), int64(y), int64(z)}
+		err := tab.Insert(ctx, row)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
