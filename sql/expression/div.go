@@ -19,6 +19,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -50,13 +51,17 @@ type Div struct {
 	// divScale is number of continuous division operations; this value will be available of all layers
 	divScale int32
 	// leftmostScale is a length of scale of the leftmost value in continuous division operation
-	leftmostScale               int32
+	leftmostScale               atomic.Int32
 	curIntermediatePrecisionInc int
 }
 
 // NewDiv creates a new Div / sql.Expression.
 func NewDiv(left, right sql.Expression) *Div {
-	a := &Div{BinaryExpression{Left: left, Right: right}, 0, 0, 0, 0}
+	a := &Div{
+		BinaryExpression:            BinaryExpression{Left: left, Right: right},
+		curIntermediatePrecisionInc: 0,
+	}
+	a.leftmostScale.Store(0)
 	divs := countDivs(a)
 	setDivs(a, divs)
 	ops := countArithmeticOps(a)
@@ -124,11 +129,11 @@ func (d *Div) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 // Eval implements the Expression interface.
 func (d *Div) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// we need to get the scale of the leftmost value of all continuous division
-	// for the final result rounding precision. This only is able to happens in the
+	// for the final result rounding precision. This only is able to happen in the
 	// outermost layer, which is where we use this value to round the final result.
 	// we do not round the value until it's the last division operation.
 	if isOutermostDiv(d, 0, d.divScale) {
-		d.leftmostScale = getScaleOfLeftmostValue(ctx, row, d, 0, d.divScale)
+		d.leftmostScale.Store(getScaleOfLeftmostValue(ctx, row, d, 0, d.divScale))
 	}
 
 	lval, rval, err := d.evalLeftRight(ctx, row)
@@ -156,7 +161,7 @@ func (d *Div) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 		if res, ok := result.(decimal.Decimal); ok {
-			finalScale := d.divScale*int32(divPrecisionIncrement) + d.leftmostScale
+			finalScale := d.leftmostScale.Load() + d.divScale*int32(divPrecisionIncrement)
 			if finalScale > types.DecimalTypeMaxScale {
 				finalScale = types.DecimalTypeMaxScale
 			}
@@ -277,7 +282,7 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 				d.curIntermediatePrecisionInc += int(math.Ceil(float64(r.Exponent()*-1) / float64(divIntermediatePrecisionInc)))
 			}
 
-			storedScale := d.leftmostScale + int32(d.curIntermediatePrecisionInc*divIntermediatePrecisionInc)
+			storedScale := d.leftmostScale.Load() + int32(d.curIntermediatePrecisionInc*divIntermediatePrecisionInc)
 			l = l.Truncate(storedScale)
 			r = r.Truncate(storedScale)
 
@@ -343,7 +348,7 @@ func floatOrDecimalTypeForDiv(e sql.Expression, treatIntsAsFloats bool) sql.Type
 	maxFrac := s
 
 	div := e.(*Div)
-	finalScale := div.divScale*int32(divPrecisionIncrement) + div.leftmostScale
+	finalScale := div.leftmostScale.Load() + div.divScale*int32(divPrecisionIncrement)
 
 	if finalScale > types.DecimalTypeMaxScale {
 		finalScale = types.DecimalTypeMaxScale
