@@ -212,7 +212,7 @@ func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet, *Ex
 		return j.buildFilter(n.Child, n.Cond)
 	case *plan.Limit:
 		_, _, group = j.populateSubgraph(n.Child)
-		group.RelProps.limit = n.Limit
+		group.RelProps.Limit = n.Limit
 	case *plan.Project:
 		return j.buildProject(n)
 	case *plan.Sort:

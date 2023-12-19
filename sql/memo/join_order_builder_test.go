@@ -185,7 +185,7 @@ func TestJoinOrderBuilder(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			j := NewJoinOrderBuilder(NewMemo(newContext(pro), nil, nil, 0, NewDefaultCoster(), NewDefaultCarder()))
+			j := NewJoinOrderBuilder(NewMemo(newContext(pro), nil, nil, 0, NewDefaultCoster()))
 			j.forceFastDFSLookupForTest = tt.forceFastReorder
 			j.ReorderJoin(tt.in)
 			require.Equal(t, tt.plans, j.m.String())
@@ -367,7 +367,7 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			b := NewJoinOrderBuilder(NewMemo(newContext(pro), nil, nil, 0, NewDefaultCoster(), NewDefaultCarder()))
+			b := NewJoinOrderBuilder(NewMemo(newContext(pro), nil, nil, 0, NewDefaultCoster()))
 			b.populateSubgraph(tt.join)
 			edgesEq(t, tt.expEdges, b.edges)
 		})
@@ -671,7 +671,7 @@ func TestEnsureClosure(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			b := NewJoinOrderBuilder(NewMemo(newContext(pro), nil, nil, 0, NewDefaultCoster(), NewDefaultCarder()))
+			b := NewJoinOrderBuilder(NewMemo(newContext(pro), nil, nil, 0, NewDefaultCoster()))
 			b.populateSubgraph(tt.in)
 			beforeLen := len(b.edges)
 			b.ensureClosure(b.m.Root())
@@ -694,7 +694,7 @@ func tableNode(db *memory.Database, name string) sql.Node {
 	t.EnablePrimaryKeyIndexes()
 	tabId, colId := getIds([]string{name, "x"})
 	colset := sql.NewColSet(sql.ColumnId(colId), sql.ColumnId(colId+1), sql.ColumnId(colId+2))
-	return plan.NewResolvedTable(t, nil, nil).WithId(sql.TableId(tabId)).WithColumns(colset)
+	return plan.NewResolvedTable(t, db, nil).WithId(sql.TableId(tabId)).WithColumns(colset)
 }
 
 func newVertexSet(s string) vertexSet {

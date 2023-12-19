@@ -3841,7 +3841,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				// Assert that we DO use the index for a join on an exact match condition
-				Query:           "select distinct j2.pk from j2 join t on t.col1 = ' ';",
+				Query:           "select /*+ LOOKUP_JOIN(t,j2) */ distinct j2.pk from j2 join t on t.col1 = ' ';",
 				ExpectedIndexes: []string{"k1"},
 				Expected:        []sql.Row{{1}, {2}, {3}},
 				JoinTypes:       []plan.JoinType{plan.JoinTypeLookup},

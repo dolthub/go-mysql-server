@@ -16,13 +16,14 @@ package memo
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/transform"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/stats"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // relProps are relational attributes shared by all plans in an expression
@@ -36,10 +37,11 @@ type relProps struct {
 	outputTables sql.FastIntSet
 	tableNodes   []plan.TableIdNode
 
+	stat sql.Statistic
 	card float64
 
 	Distinct distinctOp
-	limit    sql.Expression
+	Limit    sql.Expression
 	sort     sql.SortFields
 }
 
@@ -48,12 +50,11 @@ func newRelProps(rel RelExpr) *relProps {
 		grp: rel.Group(),
 	}
 	switch r := rel.(type) {
-	case *Max1Row:
-		p.populateFds()
 	case *EmptyTable:
 		if r.TableIdNode().Columns().Len() > 0 {
 			p.outputCols = r.TableIdNode().Columns()
 			p.populateFds()
+			p.stat = statsForRel(r)
 			p.populateOutputTables()
 			p.populateInputTables()
 			return p
@@ -70,9 +71,14 @@ func newRelProps(rel RelExpr) *relProps {
 			for tw, ok = n.(sql.TableNode); !ok; tw, ok = n.Children()[0].(sql.TableNode) {
 			}
 
-			tin := tw.UnderlyingTable().(sql.PrimaryKeyTable)
+			var sch sql.Schema
+			switch n := tw.UnderlyingTable().(type) {
+			case sql.PrimaryKeyTable:
+				sch = n.PrimaryKeySchema().Schema
+			default:
+				sch = n.Schema()
+			}
 			firstCol, _ := n.Columns().Next(1)
-			sch := tin.PrimaryKeySchema().Schema
 
 			var colset sql.ColSet
 			for _, c := range n.Schema() {
@@ -85,6 +91,7 @@ func newRelProps(rel RelExpr) *relProps {
 	}
 
 	p.populateFds()
+	p.stat = statsForRel(rel)
 	p.populateOutputTables()
 	p.populateInputTables()
 	return p
@@ -100,6 +107,14 @@ func idxExprsColumns(idx sql.Index) []string {
 		columns[i] = strings.ToLower(parts[1])
 	}
 	return columns
+}
+
+func (p *relProps) SetStats(s sql.Statistic) {
+	p.stat = s
+}
+
+func (p *relProps) GetStats() sql.Statistic {
+	return p.stat
 }
 
 func (p *relProps) populateFds() {
@@ -247,6 +262,104 @@ func (p *relProps) populateFds() {
 	p.fds = fds
 }
 
+func statsForRel(rel RelExpr) sql.Statistic {
+	var stat sql.Statistic
+	switch rel := rel.(type) {
+	case JoinRel:
+		// different joins use different ways to estimate cardinality of outputs
+		jp := rel.JoinPrivate()
+		left := float64(jp.Left.RelProps.GetStats().RowCount())
+		right := float64(jp.Left.RelProps.GetStats().RowCount())
+
+		switch n := rel.(type) {
+		case *LookupJoin:
+			var card float64
+			if n.Injective {
+				card = n.Left.RelProps.card
+			} else {
+				sel := lookupJoinSelectivity(n.Lookup, n.JoinBase)
+				card = n.Left.RelProps.card * n.Right.RelProps.card * sel
+			}
+			return &stats.Statistic{RowCnt: uint64(card)}
+		case *ConcatJoin:
+			var sel float64
+			for _, l := range n.Concat {
+				lookup := l
+				sel += lookupJoinSelectivity(lookup, n.JoinBase)
+			}
+			card := n.Left.RelProps.card * optimisticJoinSel * sel
+			return &stats.Statistic{RowCnt: uint64(card)}
+		case *LateralJoin:
+			card := n.Left.RelProps.card * n.Right.RelProps.card
+			return &stats.Statistic{RowCnt: uint64(card)}
+		default:
+		}
+
+		switch {
+		case jp.Op.IsPartial():
+			return &stats.Statistic{RowCnt: uint64(left * right * optimisticJoinSel)}
+		case jp.Op.IsLeftOuter():
+			card := math.Max(jp.Left.RelProps.card, optimisticJoinSel*left*right)
+			return &stats.Statistic{RowCnt: uint64(card)}
+		case jp.Op.IsRightOuter():
+			card := math.Max(jp.Right.RelProps.card, optimisticJoinSel*jp.Left.RelProps.card*jp.Right.RelProps.card)
+			return &stats.Statistic{RowCnt: uint64(card)}
+		case jp.Op.IsDegenerate():
+			return &stats.Statistic{RowCnt: uint64(left * right)}
+		default:
+			card := optimisticJoinSel * left * right
+			return &stats.Statistic{RowCnt: uint64(card)}
+		}
+	case *Max1Row:
+		stat = &stats.Statistic{RowCnt: 1}
+
+	case *EmptyTable:
+		stat = &stats.Statistic{RowCnt: 0}
+
+	case *IndexScan:
+		// todo: stats to replace magic number
+		// index scans usually cheaper than subqueries
+		stat = &stats.Statistic{RowCnt: 10}
+
+	case *Values:
+		stat = &stats.Statistic{RowCnt: uint64(len(rel.Table.ExpressionTuples))}
+
+	case *TableFunc:
+		// todo: have table function do their own row count estimations
+		// table functions usually cheaper than subqueries
+		stat = &stats.Statistic{RowCnt: 10}
+
+	case SourceRel:
+		if tn, ok := rel.TableIdNode().(sql.TableNode); ok {
+			if prov := rel.Group().m.StatsProvider(); prov != nil {
+				if card, err := prov.RowCount(rel.Group().m.Ctx, tn.Database().Name(), tn.Name()); err == nil {
+					stat = &stats.Statistic{RowCnt: card}
+					break
+				}
+			}
+		}
+		stat = &stats.Statistic{RowCnt: 1000}
+
+	case *Filter:
+		card := float64(rel.Child.RelProps.GetStats().RowCount()) * defaultFilterSelectivity
+		stat = &stats.Statistic{RowCnt: uint64(card)}
+
+	case *Project:
+		stat = &stats.Statistic{RowCnt: rel.Child.RelProps.GetStats().RowCount()}
+
+	case *Distinct:
+		stat = &stats.Statistic{RowCnt: rel.Child.RelProps.GetStats().RowCount()}
+
+	case *SetOp:
+		// todo: costing full plan to carry cardinalities upwards
+		stat = &stats.Statistic{RowCnt: 1000}
+
+	default:
+		panic(fmt.Sprintf("unsupported relProps type: %T", rel))
+	}
+	return stat
+}
+
 // getExprScalarProps returns bitsets of the column and table references,
 // and whether the expression is null rejecting.
 func getExprScalarProps(e sql.Expression) (sql.ColSet, sql.FastIntSet, bool) {
@@ -277,6 +390,8 @@ func allTableCols(rel SourceRel) sql.Schema {
 			break
 		}
 		table = rt.UnderlyingTable()
+	case *IndexScan:
+		table = rel.Table.TableNode.UnderlyingTable()
 	case *TableScan:
 		table = rel.Table.(sql.TableNode).UnderlyingTable()
 	default:
@@ -344,10 +459,18 @@ func (p *relProps) populateOutputTables() {
 		p.tableNodes = []plan.TableIdNode{n.TableIdNode()}
 	case *AntiJoin:
 		p.outputTables = n.Left.RelProps.OutputTables()
-		p.tableNodes = n.Left.RelProps.TableIdNodes()
+		leftNodeCnt := len(n.JoinPrivate().Left.RelProps.tableNodes)
+		rightNodeCnt := len(n.JoinPrivate().Right.RelProps.tableNodes)
+		p.tableNodes = make([]plan.TableIdNode, leftNodeCnt+rightNodeCnt)
+		copy(p.tableNodes, n.JoinPrivate().Left.RelProps.tableNodes)
+		copy(p.tableNodes[leftNodeCnt:], n.JoinPrivate().Right.RelProps.tableNodes)
 	case *SemiJoin:
 		p.outputTables = n.Left.RelProps.OutputTables()
-		p.tableNodes = n.Left.RelProps.TableIdNodes()
+		leftNodeCnt := len(n.JoinPrivate().Left.RelProps.tableNodes)
+		rightNodeCnt := len(n.JoinPrivate().Right.RelProps.tableNodes)
+		p.tableNodes = make([]plan.TableIdNode, leftNodeCnt+rightNodeCnt)
+		copy(p.tableNodes, n.JoinPrivate().Left.RelProps.tableNodes)
+		copy(p.tableNodes[leftNodeCnt:], n.JoinPrivate().Right.RelProps.tableNodes)
 	case *Distinct:
 		p.outputTables = n.Child.RelProps.OutputTables()
 		p.tableNodes = n.Child.RelProps.TableIdNodes()
@@ -378,7 +501,7 @@ func (p *relProps) populateOutputTables() {
 func (p *relProps) populateInputTables() {
 	switch n := p.grp.First.(type) {
 	case SourceRel:
-		p.inputTables = sql.NewFastIntSet(int(p.grp.Id))
+		p.inputTables = sql.NewFastIntSet(int(n.TableIdNode().Id()))
 	case *Distinct:
 		p.inputTables = n.Child.RelProps.InputTables()
 	case *Project:
@@ -420,6 +543,8 @@ func (p *relProps) outputColsForRel(r RelExpr) sql.ColSet {
 		return r.outputCols()
 	case *Max1Row:
 		return r.outputCols()
+	case *IndexScan:
+		return p.outputColsForRel(r.Next())
 	default:
 		panic("unknown type")
 	}
@@ -501,7 +626,7 @@ func sortedColsForRel(rel RelExpr) sql.Schema {
 		}
 	case *MergeJoin:
 		var ret sql.Schema
-		for _, e := range r.InnerScan.Idx.SqlIdx().Expressions() {
+		for _, e := range r.InnerScan.Table.Index().Expressions() {
 			// TODO columns can have "." characters, this will miss cases
 			parts := strings.Split(e, ".")
 			var name string
@@ -512,7 +637,7 @@ func sortedColsForRel(rel RelExpr) sql.Schema {
 			}
 			ret = append(ret, &sql.Column{
 				Name:     strings.ToLower(name),
-				Source:   strings.ToLower(r.InnerScan.Idx.SqlIdx().Table()),
+				Source:   strings.ToLower(r.InnerScan.Table.Name()),
 				Nullable: true},
 			)
 		}

@@ -42,7 +42,15 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 
 	_, isUpdate := n.(*plan.Update)
 
-	return inOrderReplanJoin(ctx, a, scope, nil, n, isUpdate)
+	ret, same, err := inOrderReplanJoin(ctx, a, scope, nil, n, isUpdate)
+	if err != nil {
+		return n, transform.SameTree, err
+	}
+	if same {
+		// try index plans only
+		return costedIndexScans(ctx, a, n)
+	}
+	return ret, transform.NewTree, nil
 }
 
 // inOrderReplanJoin replans the first join node found
@@ -93,7 +101,7 @@ func inOrderReplanJoin(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sch sql
 }
 
 func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Scope) (sql.Node, error) {
-	m := memo.NewMemo(ctx, a.Catalog, scope, len(scope.Schema()), a.Coster, a.Carder)
+	m := memo.NewMemo(ctx, a.Catalog, scope, len(scope.Schema()), a.Coster)
 
 	j := memo.NewJoinOrderBuilder(m)
 	err := j.ReorderJoin(n)
@@ -101,7 +109,11 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 		return n, nil
 	}
 
-	err = convertSemiToInnerJoin(a, m)
+	err = addIndexScans(m)
+	if err != nil {
+		return nil, err
+	}
+	err = convertSemiToInnerJoin(m)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +199,24 @@ func addLookupJoins(m *memo.Memo) error {
 			return nil
 		}
 
-		tableId, indexes, extraFilters := lookupCandidates(right.First)
+		tableId, indexes, extraFilters := lookupCandidates(right.First, false)
+
+		var rt sql.TableNode
+		var aliasName string
+		switch n := right.RelProps.TableIdNodes()[0].(type) {
+		case sql.TableNode:
+			rt = n
+		case *plan.TableAlias:
+			var ok bool
+			rt, ok = n.Child.(sql.TableNode)
+			if !ok {
+				return nil
+			}
+			aliasName = n.Name()
+		default:
+			return nil
+		}
+
 		if or, ok := join.Filter[0].(*expression.Or); ok && len(join.Filter) == 1 {
 			// Special case disjoint filter. The execution plan will perform an index
 			// lookup for each predicate leaf in the OR tree.
@@ -195,17 +224,22 @@ func addLookupJoins(m *memo.Memo) error {
 			// can consider multiple index options. Otherwise the search space blows
 			// up.
 			conds := expression.SplitDisjunction(or)
-			var concat []*memo.Lookup
+			var concat []*memo.IndexScan
 			for _, on := range conds {
 				filters := expression.SplitConjunction(on)
 				for _, idx := range indexes {
 					keyExprs, _, nullmask := keyExprsForIndex(tableId, idx.Cols(), append(filters, extraFilters...))
 					if keyExprs != nil {
-						concat = append(concat, &memo.Lookup{
-							Index:    idx,
-							KeyExprs: keyExprs,
-							Nullmask: nullmask,
-						})
+						ita, err := plan.NewIndexedAccessForTableNode(rt, plan.NewLookupBuilder(idx.SqlIdx(), keyExprs, nullmask))
+						if err != nil {
+							return err
+						}
+						lookup := &memo.IndexScan{
+							Table: ita,
+							Index: idx,
+							Alias: aliasName,
+						}
+						concat = append(concat, lookup)
 						break
 					}
 				}
@@ -213,15 +247,7 @@ func addLookupJoins(m *memo.Memo) error {
 			if len(concat) != len(conds) {
 				return nil
 			}
-			rel := &memo.ConcatJoin{
-				JoinBase: join.Copy(),
-				Concat:   concat,
-			}
-			for _, l := range concat {
-				l.Parent = rel.JoinBase
-			}
-			rel.Op = rel.Op.AsLookup()
-			e.Group().Prepend(rel)
+			m.MemoizeConcatLookupJoin(e.Group(), join.Left, join.Right, join.Op, join.Filter, concat)
 			return nil
 		}
 
@@ -230,16 +256,18 @@ func addLookupJoins(m *memo.Memo) error {
 			if keyExprs == nil {
 				continue
 			}
-			rel := &memo.LookupJoin{
-				JoinBase: join.Copy(),
-				Lookup: &memo.Lookup{
-					Index:    idx,
-					KeyExprs: keyExprs,
-					Nullmask: nullmask,
-				},
+			ita, err := plan.NewIndexedAccessForTableNode(rt, plan.NewLookupBuilder(idx.SqlIdx(), keyExprs, nullmask))
+			if err != nil {
+				return err
 			}
+			lookup := &memo.IndexScan{
+				Table: ita,
+				Alias: aliasName,
+				Index: idx,
+			}
+
 			var filters []sql.Expression
-			for _, filter := range rel.Filter {
+			for _, filter := range join.Filter {
 				found := false
 				for _, matchedFilter := range matchedFilters {
 					if filter == matchedFilter {
@@ -250,10 +278,8 @@ func addLookupJoins(m *memo.Memo) error {
 					filters = append(filters, filter)
 				}
 			}
-			rel.Filter = filters
-			rel.Op = rel.Op.AsLookup()
-			rel.Lookup.Parent = rel.JoinBase
-			e.Group().Prepend(rel)
+
+			m.MemoizeLookupJoin(e.Group(), join.Left, join.Right, join.Op, filters, lookup)
 		}
 		return nil
 	})
@@ -331,7 +357,7 @@ func exprRefsTable(e sql.Expression, tableId sql.TableId) bool {
 // Ref section 2.1.1 of:
 // https://www.researchgate.net/publication/221311318_Cost-Based_Query_Transformation_in_Oracle
 // TODO: need more elegant way to extend the number of groups, interner
-func convertSemiToInnerJoin(a *Analyzer, m *memo.Memo) error {
+func convertSemiToInnerJoin(m *memo.Memo) error {
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		semi, ok := e.(*memo.SemiJoin)
 		if !ok {
@@ -523,7 +549,18 @@ func addRightSemiJoins(m *memo.Memo) error {
 		if len(semi.Filter) == 0 {
 			return nil
 		}
-		tableId, indexes, filters := lookupCandidates(semi.Left.First)
+		tableId, indexes, filters := lookupCandidates(semi.Left.First, false)
+		leftTab := semi.Left.RelProps.TableIdNodes()[0]
+		var aliasName string
+		var leftRt sql.TableNode
+		switch n := leftTab.(type) {
+		case *plan.TableAlias:
+			aliasName = n.Name()
+			leftRt = n.Child.(sql.TableNode)
+		case sql.TableNode:
+			leftRt = n
+		}
+
 		rightOutTables := semi.Right.RelProps.OutputTables()
 
 		var projectExpressions []sql.Expression
@@ -560,10 +597,15 @@ func addRightSemiJoins(m *memo.Memo) error {
 				rGroup.RelProps.Distinct = memo.HashDistinctOp
 			}
 
-			lookup := &memo.Lookup{
-				Index:    idx,
-				KeyExprs: keyExprs,
-				Nullmask: nullmask,
+			ita, err := plan.NewIndexedAccessForTableNode(leftRt, plan.NewLookupBuilder(idx.SqlIdx(), keyExprs, nullmask))
+			if err != nil {
+				return err
+			}
+
+			lookup := &memo.IndexScan{
+				Table: ita,
+				Alias: aliasName,
+				Index: idx,
 			}
 			m.MemoizeLookupJoin(e.Group(), rGroup, semi.Left, plan.JoinTypeLookup, semi.Filter, lookup)
 		}
@@ -572,37 +614,48 @@ func addRightSemiJoins(m *memo.Memo) error {
 }
 
 // lookupCandidates extracts source relation information required to check for
-// index lookups, including the source relation GroupId, the list of Indexes,
+// index lookups, including the source relation TableId, the list of Indexes,
 // and the list of table filters.
-func lookupCandidates(rel memo.RelExpr) (sql.TableId, []*memo.Index, []sql.Expression) {
-	var filters []sql.Expression
-	for done := false; !done; {
-		switch n := rel.(type) {
-		case *memo.Distinct:
-			rel = n.Child.First
+func lookupCandidates(rel memo.RelExpr, limitOk bool) (sql.TableId, []*memo.Index, []sql.Expression) {
+	id, indexes, filters, _ := dfsLookupCandidates(rel, limitOk)
+	return id, indexes, filters
+}
+
+func dfsLookupCandidates(rel memo.RelExpr, limitOk bool) (sql.TableId, []*memo.Index, []sql.Expression, bool) {
+	if rel == nil {
+		return 0, nil, nil, false
+	}
+	if !limitOk && rel.Group().RelProps.Limit != nil {
+		// LOOKUP through a LIMIT is invalid
+		return 0, nil, nil, false
+	}
+	for n := rel; n != nil; n = n.Next() {
+		switch n := n.(type) {
+		case *memo.TableAlias:
+			tabId, _ := n.Group().RelProps.OutputTables().Next(1)
+			return sql.TableId(tabId), n.Indexes(), nil, true
+		case *memo.TableScan:
+			tabId, _ := n.Group().RelProps.OutputTables().Next(1)
+			return sql.TableId(tabId), n.Indexes(), nil, true
+		case *memo.IndexScan:
+			// The presence of an indexScan suggests that there is a valid
+			// table lookup, but returning here would fail to return filters
+			// that have been pushed into the indexScan. Continue until we
+			// find the full Filter->Tablescan path.
+			continue
 		case *memo.Filter:
-			rel = n.Child.First
-			for i := range n.Filters {
-				filters = append(filters, n.Filters[i])
+			id, indexes, filters, ok := dfsLookupCandidates(n.Child.First, limitOk)
+			if ok {
+				return id, indexes, append(filters, n.Filters...), ok
 			}
+		case *memo.Distinct:
+			return dfsLookupCandidates(n.Child.First, limitOk)
 		case *memo.Project:
-			rel = n.Child.First
+			return dfsLookupCandidates(n.Child.First, limitOk)
 		default:
-			done = true
 		}
-
 	}
-	switch n := rel.(type) {
-	case *memo.TableAlias:
-		tabId, _ := n.Group().RelProps.OutputTables().Next(1)
-		return sql.TableId(tabId), n.Indexes(), filters
-	case *memo.TableScan:
-		tabId, _ := n.Group().RelProps.OutputTables().Next(1)
-		return sql.TableId(tabId), n.Indexes(), filters
-	default:
-	}
-	return 0, nil, nil
-
+	return 0, nil, nil, false
 }
 
 func addCrossHashJoins(m *memo.Memo) error {
@@ -660,6 +713,10 @@ func addHashJoins(m *memo.Memo) error {
 			default:
 				return nil
 			}
+		}
+		switch join.Right.First.(type) {
+		case *memo.RecursiveTable:
+			return nil
 		}
 		rel := &memo.HashJoin{
 			JoinBase:   join.Copy(),
@@ -772,8 +829,11 @@ func addRangeHeapJoin(m *memo.Memo) error {
 			return nil
 		}
 
-		_, lIndexes, lFilters := lookupCandidates(join.Left.First)
-		_, rIndexes, rFilters := lookupCandidates(join.Right.First)
+		_, lIndexes, lFilters := lookupCandidates(join.Left.First, true)
+		_, rIndexes, rFilters := lookupCandidates(join.Right.First, true)
+
+		leftTab := join.Left.RelProps.TableIdNodes()[0]
+		rightTab := join.Right.RelProps.TableIdNodes()[0]
 
 		for _, filter := range getRangeFilters(join.Filter) {
 			if !(satisfiesScalarRefs(filter.value, join.Left.RelProps.OutputTables()) &&
@@ -798,12 +858,18 @@ func addRangeHeapJoin(m *memo.Memo) error {
 				return nil
 			}
 
-			leftIndexScans := sortedIndexScansForTableCol(lIndexes, valueColRef, join.Left.RelProps.FuncDeps().Constants(), lFilters)
+			leftIndexScans, err := sortedIndexScansForTableCol(leftTab, lIndexes, valueColRef, join.Left.RelProps.FuncDeps().Constants(), lFilters)
+			if err != nil {
+				return err
+			}
 			if leftIndexScans == nil {
 				leftIndexScans = []*memo.IndexScan{nil}
 			}
 			for _, lIdx := range leftIndexScans {
-				rightIndexScans := sortedIndexScansForTableCol(rIndexes, minColRef, join.Right.RelProps.FuncDeps().Constants(), rFilters)
+				rightIndexScans, err := sortedIndexScansForTableCol(rightTab, rIndexes, minColRef, join.Right.RelProps.FuncDeps().Constants(), rFilters)
+				if err != nil {
+					return err
+				}
 				if rightIndexScans == nil {
 					rightIndexScans = []*memo.IndexScan{nil}
 				}
@@ -868,12 +934,15 @@ func addMergeJoins(m *memo.Memo) error {
 			return nil
 		}
 
-		leftTabId, lIndexes, lFilters := lookupCandidates(join.Left.First)
-		rightTabId, rIndexes, rFilters := lookupCandidates(join.Right.First)
+		leftTabId, lIndexes, lFilters := lookupCandidates(join.Left.First, true)
+		rightTabId, rIndexes, rFilters := lookupCandidates(join.Right.First, true)
 
 		if leftTabId == 0 || rightTabId == 0 {
 			return nil
 		}
+
+		leftTab := join.Left.RelProps.TableIdNodes()[0]
+		rightTab := join.Right.RelProps.TableIdNodes()[0]
 
 		eqFilters := make([]filterAndPosition, 0, len(join.Filter))
 		for filterPos, filter := range join.Filter {
@@ -954,11 +1023,17 @@ func addMergeJoins(m *memo.Memo) error {
 						// To make the index scan, we need the first non-constant column in each index.
 						leftColId := getOnlyColumnId(matchedEqFilters[0].filter.Left())
 						rightColId := getOnlyColumnId(matchedEqFilters[0].filter.Right())
-						lIndexScan, success := makeIndexScan(lIndex, leftColId, lFilters)
+						lIndexScan, success, err := makeIndexScan(leftTab, lIndex, leftColId, lFilters)
+						if err != nil {
+							return err
+						}
 						if !success {
 							continue
 						}
-						rIndexScan, success := makeIndexScan(rIndex, rightColId, rFilters)
+						rIndexScan, success, err := makeIndexScan(rightTab, rIndex, rightColId, rFilters)
+						if err != nil {
+							return err
+						}
 						if !success {
 							continue
 						}
@@ -1088,7 +1163,7 @@ func matchedFiltersForLeftIndex(lIndex *memo.Index, constants sql.ColSet, filter
 // sortedIndexScanForTableCol returns the first indexScan found for a relation
 // that provide a prefix for the joinFilters rel free attribute. I.e. the
 // indexScan will return the same rows as the rel, but sorted by |col|.
-func sortedIndexScansForTableCol(indexes []*memo.Index, targetCol *expression.GetField, constants sql.ColSet, filters []sql.Expression) (ret []*memo.IndexScan) {
+func sortedIndexScansForTableCol(tab plan.TableIdNode, indexes []*memo.Index, targetCol *expression.GetField, constants sql.ColSet, filters []sql.Expression) (ret []*memo.IndexScan, err error) {
 	// valid index prefix is (constants..., targetCol)
 	for _, idx := range indexes {
 		found := false
@@ -1108,15 +1183,18 @@ func sortedIndexScansForTableCol(indexes []*memo.Index, targetCol *expression.Ge
 		if !found {
 			continue
 		}
-		indexScan, success := makeIndexScan(idx, matchedIdx, filters)
+		indexScan, success, err := makeIndexScan(tab, idx, matchedIdx, filters)
+		if err != nil {
+			return nil, err
+		}
 		if success {
 			ret = append(ret, indexScan)
 		}
 	}
-	return ret
+	return ret, nil
 }
 
-func makeIndexScan(idx *memo.Index, matchedIdx sql.ColumnId, filters []sql.Expression) (*memo.IndexScan, bool) {
+func makeIndexScan(tab plan.TableIdNode, idx *memo.Index, matchedIdx sql.ColumnId, filters []sql.Expression) (*memo.IndexScan, bool, error) {
 	rang := make(sql.Range, len(idx.Cols()))
 	var j int
 	for {
@@ -1151,12 +1229,44 @@ func makeIndexScan(idx *memo.Index, matchedIdx sql.ColumnId, filters []sql.Expre
 	}
 
 	if !idx.SqlIdx().CanSupport(rang) {
-		return nil, false
+		return nil, false, nil
 	}
+
+	for i, typ := range idx.SqlIdx().ColumnExpressionTypes() {
+		if !types.Null.Equals(rang[i].Typ) && !typ.Type.Equals(rang[i].Typ) {
+			return nil, false, nil
+		}
+	}
+
+	l := sql.IndexLookup{Index: idx.SqlIdx(), Ranges: sql.RangeCollection{rang}}
+
+	var tn sql.TableNode
+	var alias string
+	switch n := tab.(type) {
+	case sql.TableNode:
+		tn = n
+	case *plan.TableAlias:
+		child := n.Child
+		alias = n.Name()
+		var ok bool
+		tn, ok = child.(sql.TableNode)
+		if !ok {
+			return nil, false, fmt.Errorf("expected child of TableAlias to be sql.TableNode, found: %T", child)
+		}
+	default:
+		return nil, false, fmt.Errorf("expected sql.TableNode, found: %T", n)
+	}
+
+	ret, err := plan.NewStaticIndexedAccessForTableNode(tn, l)
+	if err != nil {
+		return nil, false, err
+	}
+
 	return &memo.IndexScan{
-		Idx:   idx,
-		Range: rang,
-	}, true
+		Table: ret,
+		Index: idx,
+		Alias: alias,
+	}, true, nil
 }
 
 // isWeaklyMonotonic is a weak test of whether an expression

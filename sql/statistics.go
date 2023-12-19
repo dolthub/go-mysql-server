@@ -130,6 +130,10 @@ func (q StatQualifier) Index() string {
 // Note that a non-unique key can cross bucket boundaries.
 type Histogram []HistogramBucket
 
+func (h Histogram) IsEmpty() bool {
+	return len(h) == 0
+}
+
 func (h Histogram) ToInterface() interface{} {
 	ret := make([]interface{}, len(h))
 	for i, b := range h {

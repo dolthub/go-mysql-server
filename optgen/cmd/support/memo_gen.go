@@ -203,6 +203,11 @@ func (g *MemoGen) genFormatters(defines []ExprDef) {
 	for _, d := range defines {
 		loweredName := strings.ToLower(d.Name)
 		fmt.Fprintf(g.w, "  case *%s:\n", d.Name)
+		if loweredName == "indexscan" {
+			fmt.Fprintf(g.w, "    if r.Alias != \"\" {\n")
+			fmt.Fprintf(g.w, "      return fmt.Sprintf(\"%s: %%s\", r.Alias)\n", loweredName)
+			fmt.Fprintf(g.w, "    }\n")
+		}
 		if d.SourceType != "" {
 			fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: %%s\", r.Name())\n", loweredName)
 		} else if d.Join || d.Binary {

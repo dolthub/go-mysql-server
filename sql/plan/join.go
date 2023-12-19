@@ -180,7 +180,7 @@ func (i JoinType) IsPlaceholder() bool {
 
 func (i JoinType) IsLookup() bool {
 	switch i {
-	case JoinTypeLookup, JoinTypeLeftOuterLookup, JoinTypeAntiLookup:
+	case JoinTypeLookup, JoinTypeLeftOuterLookup, JoinTypeAntiLookup, JoinTypeSemiLookup:
 		return true
 	default:
 		return false
