@@ -8654,6 +8654,12 @@ from typestable`,
 			{3, "third row"},
 		},
 	},
+	{
+		Query: "select * from (select 'k' as k) sq join bigtable on t = k join xy where x between n and n;",
+		Expected: []sql.Row{
+			{"k", "k", 1, 1, 0},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{

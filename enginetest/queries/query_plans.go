@@ -12109,4 +12109,52 @@ order by x, y;
 			"         └─ tableId: 2\n" +
 			"",
 	},
+	{
+		Query: "select * from (select 'k' as k) sq join bigtable on t = k join xy where x between n and n;",
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [sq.k:0!null, bigtable.t:3!null, bigtable.n:4, xy.x:1!null, xy.y:2]\n" +
+			" └─ HashJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ bigtable.t:3!null\n" +
+			"     │   └─ sq.k:0!null\n" +
+			"     ├─ SubqueryAlias\n" +
+			"     │   ├─ name: sq\n" +
+			"     │   ├─ outerVisibility: false\n" +
+			"     │   ├─ isLateral: false\n" +
+			"     │   ├─ cacheable: true\n" +
+			"     │   ├─ colSet: (2)\n" +
+			"     │   ├─ tableId: 1\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [k (longtext) as k]\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: \n" +
+			"     │           ├─ columns: []\n" +
+			"     │           ├─ colSet: ()\n" +
+			"     │           └─ tableId: 0\n" +
+			"     └─ HashLookup\n" +
+			"         ├─ left-key: TUPLE(sq.k:0!null)\n" +
+			"         ├─ right-key: TUPLE(bigtable.t:2!null)\n" +
+			"         └─ RangeHeapJoin\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ GreaterThanOrEqual\n" +
+			"             │   │   ├─ xy.x:1!null\n" +
+			"             │   │   └─ bigtable.n:4\n" +
+			"             │   └─ LessThanOrEqual\n" +
+			"             │       ├─ xy.x:1!null\n" +
+			"             │       └─ bigtable.n:4\n" +
+			"             ├─ IndexedTableAccess(xy)\n" +
+			"             │   ├─ index: [xy.x]\n" +
+			"             │   ├─ static: [{[NULL, ∞)}]\n" +
+			"             │   ├─ colSet: (5,6)\n" +
+			"             │   ├─ tableId: 3\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: xy\n" +
+			"             │       └─ columns: [x y]\n" +
+			"             └─ Sort(bigtable.n:1 ASC nullsLast)\n" +
+			"                 └─ ProcessTable\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: bigtable\n" +
+			"                         └─ columns: [t n]\n" +
+			"",
+	},
 }

@@ -259,9 +259,8 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 			s.expressions = append(s.expressions, fixExprToScope(e, scopes...))
 		}
 	case *plan.RangeHeap:
-		siblingScope := s.lateralScopes[len(s.lateralScopes)-1]
 		// value indexes other side of join
-		newValue := fixExprToScope(n.ValueColumnGf, siblingScope)
+		newValue := fixExprToScope(n.ValueColumnGf, s.lateralScopes...)
 		// min/are this child
 		newMin := fixExprToScope(n.MinColumnGf, s.childScopes...)
 		newMax := fixExprToScope(n.MaxColumnGf, s.childScopes...)

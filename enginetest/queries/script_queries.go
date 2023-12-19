@@ -4869,6 +4869,29 @@ CREATE TABLE tab3 (
 			},
 		},
 	},
+	{
+		Name: "subquery with range heap join",
+		SetUpScript: []string{
+			"create table a (i int primary key, start int, end int, name varchar(32));",
+			"insert into a values (1, 603000, 605001, 'test');",
+			"create table b (i int primary key);",
+			"insert into b values (600000), (605000), (608000);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select a.i from (select 'test' as name) sq join a on sq.name = a.name join b on b.i between a.start and a.end;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select * from (select 'test' as name, 1 as x, 2 as y, 3 as z) sq join a on sq.name = a.name join b on b.i between a.start and a.end;",
+				Expected: []sql.Row{
+					{"test", 1, 2, 3, 1, 603000, 605001, "test", 605000},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
