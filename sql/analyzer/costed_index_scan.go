@@ -285,14 +285,15 @@ func addIndexScans(m *memo.Memo) error {
 		if is, ok := rt.UnderlyingTable().(sql.IndexSearchableTable); ok && is.SkipIndexCosting() {
 			lookup, err := is.LookupForExpressions(m.Ctx, filter.Filters)
 			if err != nil {
-				return err
+				m.HandleErr(err)
 			}
 			if lookup.IsEmpty() {
 				return nil
 			}
 			ret, err := plan.NewStaticIndexedAccessForTableNode(rt, lookup)
 			if err != nil {
-				return err
+				m.HandleErr(err)
+
 			}
 			// TODO add ITA to filter group
 			// todo memoize ITA
@@ -313,7 +314,7 @@ func addIndexScans(m *memo.Memo) error {
 			}
 			ita, stat, filters, err := getCostedIndexScan(m.Ctx, m.StatsProvider(), rt, sqlIndexes, filter.Filters)
 			if err != nil {
-				return err
+				m.HandleErr(err)
 			}
 			if ita != nil {
 				var idx *memo.Index

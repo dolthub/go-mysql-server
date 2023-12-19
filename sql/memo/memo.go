@@ -63,6 +63,14 @@ func NewMemo(ctx *sql.Context, stats sql.StatsProvider, s *plan.Scope, scopeLen 
 	}
 }
 
+type MemoErr struct {
+	Err error
+}
+
+func (m *Memo) HandleErr(err error) {
+	panic(MemoErr{Err: err})
+}
+
 func (m *Memo) Root() *ExprGroup {
 	return m.root
 }
@@ -399,7 +407,7 @@ func (m *Memo) BestRootPlan(ctx *sql.Context) (sql.Node, error) {
 // tree node with a recursive DFS.
 func buildBestJoinPlan(b *ExecBuilder, grp *ExprGroup, input sql.Schema) (sql.Node, error) {
 	if !grp.Done {
-		panic("expected expression group plans to be fixed")
+		return nil, fmt.Errorf("expected expression group plans to be fixed")
 	}
 	n := grp.Best
 	var err error
@@ -534,21 +542,6 @@ func (p *tableProps) GetTable(id GroupId) (string, bool) {
 func (p *tableProps) GetId(n string) (GroupId, bool) {
 	id, ok := p.nameToGrp[strings.ToLower(n)]
 	return id, ok
-}
-
-func (p *tableProps) getTableNames(f sql.FastIntSet) []string {
-	var names []string
-	for idx, ok := f.Next(0); ok; idx, ok = f.Next(idx + 1) {
-		if ok {
-			groupId := GroupId(idx + 1)
-			table, ok := p.GetTable(groupId)
-			if !ok {
-				panic(fmt.Sprintf("table not found for group %d", groupId))
-			}
-			names = append(names, table)
-		}
-	}
-	return names
 }
 
 // Coster types can estimate the CPU and memory cost of physical execution
