@@ -218,6 +218,17 @@ func (e *Engine) PrepareQuery(
 		return nil, err
 	}
 
+	return e.PrepareParsedQuery(ctx, query, stmt)
+}
+
+// PrepareParsedQuery returns a partially analyzed query for the parsed statement provided
+func (e *Engine) PrepareParsedQuery(
+		ctx *sql.Context,
+		query string,
+		stmt sqlparser.Statement,
+) (sql.Node, error) {
+	query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
+
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog)
 	node, err := binder.BindOnly(stmt, query)
 
@@ -228,6 +239,7 @@ func (e *Engine) PrepareQuery(
 	e.PreparedDataCache.CacheStmt(ctx.Session.ID(), query, stmt)
 	return node, nil
 }
+
 
 // Query executes a query.
 func (e *Engine) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter, error) {
@@ -344,8 +356,8 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 	return res, nil
 }
 
-// QueryWithBindings executes the query given with the bindings provided. If parsed is non-nil, it will be used
-// instead of parsing the query from text.
+// QueryWithBindings executes the query given with the bindings provided.
+// If parsed is non-nil, it will be used instead of parsing the query from text.
 func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
 	query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog)
@@ -353,6 +365,10 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 		parsed = prep
 		binder.SetBindings(bindings)
 	} else if len(bindings) > 0 {
+		// This means that we have bindings but no prepared statement cached, which occurs in tests and in the the 
+		// dolthub/driver package
+		// We prepare the statement, then attach bindings to it.
+		// TODO: pull this out into its own method for this specific use case
 		parsed = nil
 		_, err := e.PrepareQuery(ctx, query)
 		if err != nil {

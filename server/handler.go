@@ -73,6 +73,7 @@ type Handler struct {
 }
 
 var _ mysql.Handler = (*Handler)(nil)
+var _ mysql.ExtendedHandler = (*Handler)(nil)
 
 // NewConnection reports that a new connection has been established.
 func (h *Handler) NewConnection(c *mysql.Conn) {
@@ -117,11 +118,43 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string, prepare *mysql.Prepare
 		return nil, nil
 	}
 	switch analyzed.(type) {
+	// TODO: what is with this
 	case *plan.InsertInto, *plan.Update, *plan.UpdateJoin, *plan.DeleteFrom:
 		return nil, nil
 	}
+	
 	return schemaToFields(ctx, analyzed.Schema()), nil
 }
+
+func (h *Handler) ComPrepareParsed(c *mysql.Conn, query string, parsed sqlparser.Statement, prepare *mysql.PrepareData) ([]*query.Field, error) {
+	logrus.WithField("query", query).
+		WithField("paramsCount", prepare.ParamsCount).
+		WithField("statementId", prepare.StatementID).Debugf("preparing query")
+
+	ctx, err := h.sm.NewContextWithQuery(c, query)
+	if err != nil {
+		return nil, err
+	}
+	
+	analyzed, err := h.e.PrepareParsedQuery(ctx, query, parsed)
+	if err != nil {
+		logrus.WithField("query", query).Errorf("unable to prepare query: %s", err.Error())
+		err := sql.CastSQLError(err)
+		return nil, err
+	}
+
+	if types.IsOkResultSchema(analyzed.Schema()) {
+		return nil, nil
+	}
+	switch analyzed.(type) {
+	// TODO: what is with this
+	case *plan.InsertInto, *plan.Update, *plan.UpdateJoin, *plan.DeleteFrom:
+		return nil, nil
+	}
+
+	return schemaToFields(ctx, analyzed.Schema()), nil
+}
+
 
 func (h *Handler) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
 	_, err := h.errorWrappedDoQuery(c, prepare.PrepareStmt, nil, MultiStmtModeOff, prepare.BindVars, func(res *sqltypes.Result, more bool) error {
@@ -216,7 +249,8 @@ func (h *Handler) doQuery(
 	var remainder string
 	var prequery string
 	if parsed == nil {
-		if _, ok := h.e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query); mode == MultiStmtModeOn && !ok {
+		_, inPreparedCache := h.e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
+		if mode == MultiStmtModeOn && !inPreparedCache {
 			parsed, prequery, remainder, err = planbuilder.ParseOnly(ctx, query, true)
 			if prequery != "" {
 				query = prequery
