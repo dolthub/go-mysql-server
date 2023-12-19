@@ -314,8 +314,7 @@ func (d *Div) determineResultType(outermostResult bool) sql.Type {
 	// integers, we prefer float types internally, since the performance is orders of magnitude faster to divide
 	// floats than to divide Decimals, but if this is the outermost division operation, we need to
 	// return a decimal in order to match MySQL's results exactly.
-	finalScale := d.divScale*int32(divPrecisionIncrement) + d.leftmostScale
-	return floatOrDecimalTypeForDiv(d, !outermostResult, finalScale)
+	return floatOrDecimalTypeForDiv(d, !outermostResult)
 }
 
 // floatOrDecimalTypeForDiv returns either Float64 or Decimal type depending on column reference,
@@ -326,7 +325,7 @@ func (d *Div) determineResultType(outermostResult bool) sql.Type {
 // Otherwise, the return type is always decimal. The expression and evaluated types
 // are used to determine appropriate Decimal type to return that will not result in
 // precision loss.
-func floatOrDecimalTypeForDiv(e sql.Expression, treatIntsAsFloats bool, finalScale int32) sql.Type {
+func floatOrDecimalTypeForDiv(e sql.Expression, treatIntsAsFloats bool) sql.Type {
 	t := getFloatOrMaxDecimalType(e, treatIntsAsFloats)
 
 	if t == types.Float64 {
@@ -342,6 +341,9 @@ func floatOrDecimalTypeForDiv(e sql.Expression, treatIntsAsFloats bool, finalSca
 	p, s := t.(types.DecimalType_).Precision(), t.(types.DecimalType_).Scale()
 	maxWhole := p - s
 	maxFrac := s
+
+	div := e.(*Div)
+	finalScale := div.divScale*int32(divPrecisionIncrement) + div.leftmostScale
 
 	if finalScale > types.DecimalTypeMaxScale {
 		finalScale = types.DecimalTypeMaxScale
