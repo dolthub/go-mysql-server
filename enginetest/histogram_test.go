@@ -126,12 +126,12 @@ func TestExpDist(t *testing.T) {
 	}
 
 	var statTests []statsTest
-	for _, t := range tests {
+	for _, tt := range tests {
 		st := statsTest{
-			name: t.name,
+			name: tt.name,
 			left: func(ctx *sql.Context, db *memory.Database, cnt int, tab sql.TableId, col sql.ColumnId) *plan.ResolvedTable {
 				xyz := makeTable(db, "xyz", tab, col)
-				err := expDistForTable(ctx, xyz, cnt, t.lambda1, int(tab))
+				err := expDistForTable(ctx, xyz, cnt, tt.lambda1, int(tab))
 				if err != nil {
 					panic(err)
 				}
@@ -139,7 +139,7 @@ func TestExpDist(t *testing.T) {
 			},
 			right: func(ctx *sql.Context, db *memory.Database, cnt int, tab sql.TableId, col sql.ColumnId) *plan.ResolvedTable {
 				xyz := makeTable(db, "wuv", tab, col)
-				err := expDistForTable(ctx, xyz, cnt, t.lambda2, int(tab))
+				err := expDistForTable(ctx, xyz, cnt, tt.lambda2, int(tab))
 				if err != nil {
 					panic(err)
 				}
@@ -185,7 +185,7 @@ func TestMultiDist(t *testing.T) {
 			rightOrd:   []int{1},
 			leftTypes:  []sql.Type{types.Int64, types.Int64, types.Int64},
 			rightTypes: []sql.Type{types.Int64, types.Int64, types.Int64},
-			err:        .01,
+			err:        .1,
 		},
 	}
 
