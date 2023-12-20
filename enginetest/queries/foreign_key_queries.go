@@ -1236,7 +1236,82 @@ var ForeignKeyTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Delayed foreign key resolution",
+		Name: "Delayed foreign key resolution: update",
+		SetUpScript: []string{
+			"set foreign_key_checks=0;",
+			"create table delayed_parent(pk int primary key);",
+			"create table delayed_child(pk int primary key, foreign key(pk) references delayed_parent(pk));",
+			"insert into delayed_parent values (10), (20);",
+			"insert into delayed_child values (1), (20);",
+			"set foreign_key_checks=1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// No-op update bad to bad should not cause constraint violation
+				Skip: true,
+				Query:    "update delayed_child set pk=1 where pk=1;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 0}}},
+				},
+			},
+			{
+				// Update on non-existent row should not cause constraint violation
+				Query:    "update delayed_child set pk=3 where pk=3;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 0, Updated: 0}}},
+				},
+			},
+			{
+				// No-op update good to good should not cause constraint violation
+				Query:    "update delayed_child set pk=20 where pk=20;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 0}}},
+				},
+			},
+			{
+				// Updating bad value to good value still fails
+				Query: "update delayed_child set pk=10 where pk=1;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+		},
+	},
+	{
+		Name: "Delayed foreign key resolution: delete",
+		SetUpScript: []string{
+			"set foreign_key_checks=0;",
+			"create table delayed_parent(pk int primary key);",
+			"create table delayed_child(pk int primary key, foreign key(pk) references delayed_parent(pk));",
+			"insert into delayed_parent values (10), (20);",
+			"insert into delayed_child values (1), (20);",
+			"set foreign_key_checks=1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// No-op update good to good should not cause constraint violation
+				//Skip:     true,
+				Query:    "delete from delayed_child where false;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 0}},
+				},
+			},
+			{
+				Query:    "delete from delayed_child where pk = 20;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query:    "delete from delayed_child where pk = 1;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+		},
+	},
+	{
+		Name: "Delayed foreign key resolution insert",
 		SetUpScript: []string{
 			"SET FOREIGN_KEY_CHECKS=0;",
 			"CREATE TABLE delayed_child (pk INT PRIMARY KEY, v1 INT, CONSTRAINT fk_delayed FOREIGN KEY (v1) REFERENCES delayed_parent(v1));",
@@ -1259,7 +1334,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:       "INSERT INTO delayed_child VALUES (2, 3);",
-				ExpectedErr: sql.ErrForeignKeyNotResolved,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query:    "INSERT INTO delayed_parent VALUES (1, 2), (2, 3);",
