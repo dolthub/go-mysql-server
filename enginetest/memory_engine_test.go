@@ -214,7 +214,7 @@ func TestSingleScript(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "select * from t order by pk",
+					Query:       "select * from t order by pk",
 					Expected: []sql.Row{
 						{1, 2, nil, nil},
 						{2, 3, 4, 5},

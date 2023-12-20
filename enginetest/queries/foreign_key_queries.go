@@ -1248,22 +1248,22 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				// No-op update bad to bad should not cause constraint violation
-				Skip: true,
-				Query:    "update delayed_child set pk=1 where pk=1;",
+				Skip:  true,
+				Query: "update delayed_child set pk=1 where pk=1;",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 0}}},
 				},
 			},
 			{
 				// Update on non-existent row should not cause constraint violation
-				Query:    "update delayed_child set pk=3 where pk=3;",
+				Query: "update delayed_child set pk=3 where pk=3;",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 0, Updated: 0}}},
 				},
 			},
 			{
 				// No-op update good to good should not cause constraint violation
-				Query:    "update delayed_child set pk=20 where pk=20;",
+				Query: "update delayed_child set pk=20 where pk=20;",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 0}}},
 				},
@@ -1290,19 +1290,19 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				// No-op update good to good should not cause constraint violation
-				Query:    "delete from delayed_child where false;",
+				Query: "delete from delayed_child where false;",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 0}},
 				},
 			},
 			{
-				Query:    "delete from delayed_child where pk = 20;",
+				Query: "delete from delayed_child where pk = 20;",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 1}},
 				},
 			},
 			{
-				Query:    "delete from delayed_child where pk = 1;",
+				Query: "delete from delayed_child where pk = 1;",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 1}},
 				},
