@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -100,14 +101,26 @@ func inOrderReplanJoin(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sch sql
 
 }
 
-func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Scope) (sql.Node, error) {
+func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Scope) (ret sql.Node, err error) {
 	m := memo.NewMemo(ctx, a.Catalog, scope, len(scope.Schema()), a.Coster)
 
+	defer func() {
+		if r := recover(); r != nil {
+			switch r := r.(type) {
+			case memo.MemoErr:
+				err = r.Err
+				if errors.Is(err, memo.ErrUnsupportedReorderNode) {
+					err = nil
+					ret = n
+				}
+			default:
+				panic(r)
+			}
+		}
+	}()
+
 	j := memo.NewJoinOrderBuilder(m)
-	err := j.ReorderJoin(n)
-	if err != nil {
-		return n, nil
-	}
+	j.ReorderJoin(n)
 
 	err = addIndexScans(m)
 	if err != nil {

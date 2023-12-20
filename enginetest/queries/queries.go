@@ -4576,9 +4576,8 @@ Select * from (
 		Expected: []sql.Row{{-3.0}},
 	},
 	{
-		SkipServerEngine: true, // the float32 value does not match
-		Query:            `SELECT CONVERT("-3.9876", FLOAT) FROM dual`,
-		Expected:         []sql.Row{{float32(-3.9876)}},
+		Query:    `SELECT CONVERT("-3.9876", FLOAT) FROM dual`,
+		Expected: []sql.Row{{float32(-3.9876)}},
 	},
 	{
 		Query:    "SELECT CAST(10.56789 as CHAR(3));",
@@ -8646,6 +8645,20 @@ from typestable`,
 	{
 		Query:    "select * from mytable where (i in (null, 0.8, 1.5, 2.999))",
 		Expected: []sql.Row{},
+	},
+	{
+		Query: "select * from mytable where (i BETWEEN (CASE 1 WHEN 2 THEN 1.0 ELSE (1||2) END) AND i)",
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
+		Query: "select * from (select 'k' as k) sq join bigtable on t = k join xy where x between n and n;",
+		Expected: []sql.Row{
+			{"k", "k", 1, 1, 0},
+		},
 	},
 }
 

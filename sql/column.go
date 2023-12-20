@@ -53,6 +53,8 @@ type Column struct {
 	// Virtual column values will be provided for write operations, in case integrators need to use them to update
 	// indexes, but must not be returned in rows from tables that include them.
 	Virtual bool
+	// OnUpdate contains the on update value of the column or nil if it was not explicitly defined.
+	OnUpdate *ColumnDefaultValue
 }
 
 // Check ensures the value is correct for this column.

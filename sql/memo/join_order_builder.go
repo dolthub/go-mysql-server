@@ -151,14 +151,6 @@ func NewJoinOrderBuilder(memo *Memo) *joinOrderBuilder {
 
 var ErrUnsupportedReorderNode = errors.New("unsupported join reorder node")
 
-type reorderErr struct {
-	err error
-}
-
-func (j *joinOrderBuilder) handleErr(err error) {
-	panic(reorderErr{err})
-}
-
 // useFastReorder determines whether to skip the current brute force join planning and use an alternate
 // planning algorithm that analyzes the join tree to find a sequence that can be implemented purely as lookup joins.
 // Currently we only use it for large joins (20+ tables) with no join hints.
@@ -172,18 +164,7 @@ func (j *joinOrderBuilder) useFastReorder() bool {
 	return len(j.vertices) > 15
 }
 
-func (j *joinOrderBuilder) ReorderJoin(n sql.Node) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			switch r := r.(type) {
-			case reorderErr:
-				err = r.err
-			default:
-				panic(r)
-			}
-		}
-	}()
-
+func (j *joinOrderBuilder) ReorderJoin(n sql.Node) {
 	j.populateSubgraph(n)
 	if j.useFastReorder() {
 		j.buildSingleLookupPlan()
@@ -235,7 +216,7 @@ func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet, *Ex
 		return j.populateSubgraph(n.Child)
 	default:
 		err := fmt.Errorf("%w: %T", ErrUnsupportedReorderNode, n)
-		j.handleErr(err)
+		j.m.HandleErr(err)
 	}
 	return j.allVertices().difference(startV), j.allEdges().Difference(startE), group
 }
@@ -574,7 +555,7 @@ func (j *joinOrderBuilder) buildJoinLeaf(n plan.TableIdNode) *ExprGroup {
 		rel = &SetOp{sourceBase: b, Table: n}
 	default:
 		err := fmt.Errorf("%w: %T", ErrUnsupportedReorderNode, n)
-		j.handleErr(err)
+		j.m.HandleErr(err)
 	}
 
 	j.vertices = append(j.vertices, rel)
