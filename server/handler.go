@@ -155,6 +155,10 @@ func (h *Handler) ComPrepareParsed(c *mysql.Conn, query string, parsed sqlparser
 	return schemaToFields(ctx, analyzed.Schema()), nil
 }
 
+func (h *Handler) ComBind(c *mysql.Conn, query string, parsed sqlparser.Statement, prepare *mysql.PrepareData) ([]*query.Field, error) {
+	// TODO implement me
+	panic("implement me")
+}
 
 func (h *Handler) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
 	_, err := h.errorWrappedDoQuery(c, prepare.PrepareStmt, nil, MultiStmtModeOff, prepare.BindVars, func(res *sqltypes.Result, more bool) error {

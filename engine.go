@@ -71,16 +71,21 @@ type TemporaryUser struct {
 	Password string
 }
 
-// PreparedDataCache manages all the prepared data for every session for every query for an engine
+// PreparedDataCache manages all the prepared data for every session for every query for an engine.
+// There are two types of caching supported:
+// 1. Prepared statements for MySQL, which are stored as sqlparser.Statements
+// 2. Prepared statements for Postgres, which are stored as sql.Nodes
+// TODO (next): figure out the right layer for this information to be stored and passed
 type PreparedDataCache struct {
-	data map[uint32]map[string]sqlparser.Statement
-	mu   *sync.Mutex
+	statements map[uint32]map[string]sqlparser.Statement
+	plans map[uint32]map[string]sql.Node
+	mu         *sync.Mutex
 }
 
 func NewPreparedDataCache() *PreparedDataCache {
 	return &PreparedDataCache{
-		data: make(map[uint32]map[string]sqlparser.Statement),
-		mu:   &sync.Mutex{},
+		statements: make(map[uint32]map[string]sqlparser.Statement),
+		mu:         &sync.Mutex{},
 	}
 }
 
@@ -89,7 +94,7 @@ func NewPreparedDataCache() *PreparedDataCache {
 func (p *PreparedDataCache) GetCachedStmt(sessId uint32, query string) (sqlparser.Statement, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if sessData, ok := p.data[sessId]; ok {
+	if sessData, ok := p.statements[sessId]; ok {
 		data, ok := sessData[query]
 		return data, ok
 	}
@@ -100,34 +105,34 @@ func (p *PreparedDataCache) GetCachedStmt(sessId uint32, query string) (sqlparse
 func (p *PreparedDataCache) GetSessionData(sessId uint32) map[string]sqlparser.Statement {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	return p.data[sessId]
+	return p.statements[sessId]
 }
 
 // DeleteSessionData clears a session along with all prepared queries for that session
 func (p *PreparedDataCache) DeleteSessionData(sessId uint32) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	delete(p.data, sessId)
+	delete(p.statements, sessId)
 }
 
 // CacheStmt saves the prepared node and associates a ctx.SessionId and query to it
 func (p *PreparedDataCache) CacheStmt(sessId uint32, query string, stmt sqlparser.Statement) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if _, ok := p.data[sessId]; !ok {
-		p.data[sessId] = make(map[string]sqlparser.Statement)
+	if _, ok := p.statements[sessId]; !ok {
+		p.statements[sessId] = make(map[string]sqlparser.Statement)
 	}
-	p.data[sessId][query] = stmt
+	p.statements[sessId][query] = stmt
 }
 
 // UncacheStmt removes the prepared node associated with a ctx.SessionId and query to it
 func (p *PreparedDataCache) UncacheStmt(sessId uint32, query string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if _, ok := p.data[sessId]; !ok {
+	if _, ok := p.statements[sessId]; !ok {
 		return
 	}
-	delete(p.data[sessId], query)
+	delete(p.statements[sessId], query)
 }
 
 // Engine is a SQL engine.
