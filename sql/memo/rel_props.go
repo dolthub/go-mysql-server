@@ -188,7 +188,8 @@ func (p *relProps) populateFds() {
 				idOffset := firstCol + sql.ColumnId(ord)
 				colId, _ := all.Next(idOffset)
 				if colId == 0 {
-					panic(fmt.Sprintf("colset invalid for join leaf: %s missing %d", all.String(), firstCol+sql.ColumnId(ord)))
+					err := fmt.Errorf("colset invalid for join leaf: %s missing %d", all.String(), firstCol+sql.ColumnId(ord))
+					p.grp.m.HandleErr(err)
 				}
 				normIdx.set.Add(colId)
 				normIdx.order[i] = colId
@@ -257,7 +258,7 @@ func (p *relProps) populateFds() {
 	case *Distinct:
 		fds = sql.NewProjectFDs(rel.Child.RelProps.FuncDeps(), rel.Child.RelProps.FuncDeps().All(), true)
 	default:
-		panic(fmt.Sprintf("unsupported relProps type: %T", rel))
+		rel.Group().m.HandleErr(fmt.Errorf("unsupported relProps type: %T", rel))
 	}
 	p.fds = fds
 }
@@ -355,7 +356,7 @@ func statsForRel(rel RelExpr) sql.Statistic {
 		stat = &stats.Statistic{RowCnt: 1000}
 
 	default:
-		panic(fmt.Sprintf("unsupported relProps type: %T", rel))
+		rel.Group().m.HandleErr(fmt.Errorf("unsupported relProps type: %T", rel))
 	}
 	return stat
 }
@@ -491,7 +492,8 @@ func (p *relProps) populateOutputTables() {
 		copy(p.tableNodes, n.JoinPrivate().Left.RelProps.tableNodes)
 		copy(p.tableNodes[leftNodeCnt:], n.JoinPrivate().Right.RelProps.tableNodes)
 	default:
-		panic(fmt.Sprintf("unhandled type: %T", n))
+		n.Group().m.HandleErr(fmt.Errorf("unhandled type: %T", n))
+
 	}
 }
 
@@ -513,7 +515,8 @@ func (p *relProps) populateInputTables() {
 	case JoinRel:
 		p.inputTables = n.JoinPrivate().Left.RelProps.InputTables().Union(n.JoinPrivate().Right.RelProps.InputTables())
 	default:
-		panic(fmt.Sprintf("unhandled type: %T", n))
+		err := fmt.Errorf("unhandled type: %T", n)
+		n.Group().m.HandleErr(err)
 	}
 }
 
@@ -546,7 +549,8 @@ func (p *relProps) outputColsForRel(r RelExpr) sql.ColSet {
 	case *IndexScan:
 		return p.outputColsForRel(r.Next())
 	default:
-		panic("unknown type")
+		err := fmt.Errorf("unknown type for rel output cols: %T", r)
+		p.grp.m.HandleErr(err)
 	}
 	return sql.ColSet{}
 }
