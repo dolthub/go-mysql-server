@@ -199,97 +199,62 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "resolve foreign key on indexed update",
+			Name: "physical columns added after virtual one",
 			SetUpScript: []string{
-				"set foreign_key_checks=0;",
-				"create table parent (i int primary key);",
-				"create table child (i int primary key, foreign key (i) references parent(i));",
-				"set foreign_key_checks=1;",
+				"create table t (pk int primary key, col1 int as (pk + 1));",
+				"insert into t (pk) values (1), (3)",
+				"alter table t add index idx1 (col1, pk);",
+				"alter table t add index idx2 (col1);",
+				"alter table t add column col2 int;",
+				"alter table t add column col3 int;",
+				"insert into t (pk, col2, col3) values (2, 4, 5);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "insert into child values (1);",
-					ExpectedErr: sql.ErrForeignKeyChildViolation,
+					Query: "select * from t order by pk",
+					Expected: []sql.Row{
+						{1, 2, nil, nil},
+						{2, 3, 4, 5},
+						{3, 4, nil, nil},
+					},
 				},
-				//{
-				//	Query: "update child set i = 1 where i = 1;",
-				//	Expected: []sql.Row{
-				//		{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 0, Updated: 0}}},
-				//	},
-				//},
+				{
+					Query: "select * from t where col1 = 2",
+					Expected: []sql.Row{
+						{1, 2, nil, nil},
+					},
+				},
+				{
+					Query: "select * from t where col1 = 3 and pk = 2",
+					Expected: []sql.Row{
+						{2, 3, 4, 5},
+					},
+				},
+				{
+					Query: "select * from t where pk = 2",
+					Expected: []sql.Row{
+						{2, 3, 4, 5},
+					},
+				},
 			},
 		},
 	}
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-		harness.Setup(setup.MydbData)
+		harness.Setup(setup.MydbData, setup.Parent_childData)
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
 		}
+		engine.EngineAnalyzer().Debug = true
+		engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
-
-	//t.Skip()
-	//var scripts = []queries.ScriptTest{
-	//	{
-	//		Name: "physical columns added after virtual one",
-	//		SetUpScript: []string{
-	//			"create table t (pk int primary key, col1 int as (pk + 1));",
-	//			"insert into t (pk) values (1), (3)",
-	//			"alter table t add index idx1 (col1, pk);",
-	//			"alter table t add index idx2 (col1);",
-	//			"alter table t add column col2 int;",
-	//			"alter table t add column col3 int;",
-	//			"insert into t (pk, col2, col3) values (2, 4, 5);",
-	//		},
-	//		Assertions: []queries.ScriptTestAssertion{
-	//			{
-	//				Query: "select * from t order by pk",
-	//				Expected: []sql.Row{
-	//					{1, 2, nil, nil},
-	//					{2, 3, 4, 5},
-	//					{3, 4, nil, nil},
-	//				},
-	//			},
-	//			{
-	//				Query: "select * from t where col1 = 2",
-	//				Expected: []sql.Row{
-	//					{1, 2, nil, nil},
-	//				},
-	//			},
-	//			{
-	//				Query: "select * from t where col1 = 3 and pk = 2",
-	//				Expected: []sql.Row{
-	//					{2, 3, 4, 5},
-	//				},
-	//			},
-	//			{
-	//				Query: "select * from t where pk = 2",
-	//				Expected: []sql.Row{
-	//					{2, 3, 4, 5},
-	//				},
-	//			},
-	//		},
-	//	},
-	//}
-	//
-	//for _, test := range scripts {
-	//	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	//	harness.Setup(setup.MydbData, setup.Parent_childData)
-	//	engine, err := harness.NewEngine(t)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	engine.EngineAnalyzer().Debug = true
-	//	engine.EngineAnalyzer().Verbose = true
-	//
-	//	enginetest.TestScriptWithEngine(t, engine, harness, test)
-	//}
 }
 
 func TestUnbuildableIndex(t *testing.T) {

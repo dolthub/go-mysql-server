@@ -1290,7 +1290,6 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				// No-op update good to good should not cause constraint violation
-				//Skip:     true,
 				Query:    "delete from delayed_child where false;",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 0}},
