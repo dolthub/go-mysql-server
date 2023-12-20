@@ -21,6 +21,24 @@ import (
 
 var ColumnDefaultTests = []ScriptTest{
 	{
+		Name: "update join ambiguous column",
+		SetUpScript: []string{
+			"CREATE TABLE t1(name varchar(10) primary key, cnt int, hash varchar(100) NOT NULL DEFAULT (concat('id00',md5(name))))",
+			"INSERT INTO t1 (name, cnt) VALUES ('one', 1), ('two', 2)",
+			"create view t2 as SELECT name, cnt, hash from t1 where name in ('one', 'two')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "update t1 n inner join t2 m on n.name = m.name set n.cnt =m.cnt+1;",
+				Expected: []sql.Row{{newUpdateResult(2, 2)}},
+			},
+			{
+				Query:    "select name, cnt from t1",
+				Expected: []sql.Row{{"one", 2}, {"two", 3}},
+			},
+		},
+	},
+	{
 		Name: "Standard default literal",
 		SetUpScript: []string{
 			"CREATE TABLE t1(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT 2)",

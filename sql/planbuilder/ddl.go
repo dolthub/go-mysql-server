@@ -1238,12 +1238,50 @@ func (b *Builder) modifySchemaTarget(inScope *scope, n sql.SchemaTarget, rt *pla
 }
 
 func (b *Builder) resolveSchemaDefaults(inScope *scope, schema sql.Schema) sql.Schema {
-	newSch := schema.Copy()
-	for _, col := range newSch {
-		col.Default = b.resolveColumnDefaultExpression(inScope, col, col.Default)
-		col.Generated = b.resolveColumnDefaultExpression(inScope, col, col.Generated)
-		col.OnUpdate = b.resolveColumnDefaultExpression(inScope, col, col.OnUpdate)
+	if len(schema) == 0 {
+		return nil
 	}
+	if len(inScope.cols) < len(schema) {
+		// alter statements only add definitions for modified columns
+		resolveScope := inScope.replace()
+		for _, col := range schema {
+			resolveScope.newColumn(scopeColumn{
+				db:       col.DatabaseSource,
+				table:    strings.ToLower(col.Source),
+				col:      strings.ToLower(col.Name),
+				typ:      col.Type,
+				nullable: col.Nullable,
+			})
+		}
+		inScope = resolveScope
+	}
+
+	newSch := schema.Copy()
+	// updateDefaults piece-wise resolves table default expressions
+	updateDefaults := func(start, end int) {
+		subScope := inScope.replace()
+		for i := start; i < end; i++ {
+			subScope.addColumn(inScope.cols[i])
+		}
+		for _, col := range newSch[start:end] {
+			col.Default = b.resolveColumnDefaultExpression(subScope, col, col.Default)
+			col.Generated = b.resolveColumnDefaultExpression(subScope, col, col.Generated)
+			col.OnUpdate = b.resolveColumnDefaultExpression(subScope, col, col.OnUpdate)
+		}
+	}
+
+	var i int = 1
+	var prevI int = 0
+	for i < len(newSch) {
+		if strings.EqualFold(newSch[i-1].Source, newSch[i].Source) && strings.EqualFold(newSch[i-1].DatabaseSource, newSch[i].DatabaseSource) {
+			i++
+			continue
+		}
+		updateDefaults(prevI, i)
+		prevI = i
+		i++
+	}
+	updateDefaults(prevI, i)
 	return newSch
 }
 
