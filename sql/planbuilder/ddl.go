@@ -1238,13 +1238,61 @@ func (b *Builder) modifySchemaTarget(inScope *scope, n sql.SchemaTarget, rt *pla
 }
 
 func (b *Builder) resolveSchemaDefaults(inScope *scope, schema sql.Schema) sql.Schema {
+	if len(schema) == 0 {
+		return nil
+	}
+	if len(inScope.cols) < len(schema) {
+		// alter statements only add definitions for modified columns
+		// backfill rest of columns
+		resolveScope := inScope.replace()
+		for _, col := range schema {
+			resolveScope.newColumn(scopeColumn{
+				db:       col.DatabaseSource,
+				table:    strings.ToLower(col.Source),
+				col:      strings.ToLower(col.Name),
+				typ:      col.Type,
+				nullable: col.Nullable,
+			})
+		}
+		inScope = resolveScope
+	}
+
 	newSch := schema.Copy()
-	for _, col := range newSch {
-		col.Default = b.resolveColumnDefaultExpression(inScope, col, col.Default)
-		col.Generated = b.resolveColumnDefaultExpression(inScope, col, col.Generated)
-		col.OnUpdate = b.resolveColumnDefaultExpression(inScope, col, col.OnUpdate)
+	for _, part := range partitionTableColumns(newSch) {
+		start := part[0]
+		end := part[1]
+		subScope := inScope.replace()
+		for i := start; i < end; i++ {
+			subScope.addColumn(inScope.cols[i])
+		}
+		for _, col := range newSch[start:end] {
+			col.Default = b.resolveColumnDefaultExpression(subScope, col, col.Default)
+			col.Generated = b.resolveColumnDefaultExpression(subScope, col, col.Generated)
+			col.OnUpdate = b.resolveColumnDefaultExpression(subScope, col, col.OnUpdate)
+		}
 	}
 	return newSch
+}
+
+// partitionTableColumns splits a sql.Schema into a list
+// of [2]int{start,end} ranges that each partition the tables
+// included in the schema.
+func partitionTableColumns(sch sql.Schema) [][2]int {
+	var ret [][2]int
+	var i int = 1
+	var prevI int = 0
+	for i < len(sch) {
+		if strings.EqualFold(sch[i-1].Source, sch[i].Source) &&
+			strings.EqualFold(sch[i-1].DatabaseSource, sch[i].DatabaseSource) {
+			i++
+			continue
+		}
+		ret = append(ret, [2]int{prevI, i})
+		prevI = i
+		i++
+	}
+	ret = append(ret, [2]int{prevI, i})
+	return ret
 }
 
 func (b *Builder) resolveColumnDefaultExpression(inScope *scope, columnDef *sql.Column, colDefault *sql.ColumnDefaultValue) *sql.ColumnDefaultValue {

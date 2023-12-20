@@ -21,6 +21,42 @@ import (
 
 var ColumnDefaultTests = []ScriptTest{
 	{
+		Name: "update join ambiguous default",
+		SetUpScript: []string{
+			"CREATE TABLE t1(name varchar(10) primary key, cnt int, hash varchar(100) NOT NULL DEFAULT (concat('id00',md5(name))))",
+			"INSERT INTO t1 (name, cnt) VALUES ('one', 1), ('two', 2)",
+			"create view t2 as SELECT name, cnt, hash from t1 where name in ('one', 'two')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "update t1 n inner join t2 m on n.name = m.name set n.cnt =m.cnt+1;",
+				Expected: []sql.Row{{newUpdateResult(2, 2)}},
+			},
+			{
+				Query:    "select name, cnt from t1",
+				Expected: []sql.Row{{"one", 2}, {"two", 3}},
+			},
+		},
+	},
+	{
+		Name: "update join ambiguous generated column",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (x int primary key, y int generated always as (x + 1) virtual)",
+			"INSERT INTO t1 (x) values (1), (2), (3)",
+			"create view t2 as SELECT x, y from t1",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "update t1 n inner join t2 m on n.y = m.y set n.x =n.y where n.x = 3;",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "select * from t1",
+				Expected: []sql.Row{{1, 2}, {2, 3}, {4, 5}},
+			},
+		},
+	},
+	{
 		Name: "Standard default literal",
 		SetUpScript: []string{
 			"CREATE TABLE t1(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT 2)",
