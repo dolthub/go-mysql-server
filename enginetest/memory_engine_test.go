@@ -210,7 +210,7 @@ func TestSingleScript(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "insert into child values (1);",
+					Query:       "insert into child values (1);",
 					ExpectedErr: sql.ErrForeignKeyChildViolation,
 				},
 				//{
