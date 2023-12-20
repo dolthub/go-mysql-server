@@ -1243,6 +1243,7 @@ func (b *Builder) resolveSchemaDefaults(inScope *scope, schema sql.Schema) sql.S
 	}
 	if len(inScope.cols) < len(schema) {
 		// alter statements only add definitions for modified columns
+		// backfill rest of columns
 		resolveScope := inScope.replace()
 		for _, col := range schema {
 			resolveScope.newColumn(scopeColumn{
@@ -1257,8 +1258,9 @@ func (b *Builder) resolveSchemaDefaults(inScope *scope, schema sql.Schema) sql.S
 	}
 
 	newSch := schema.Copy()
-	// updateDefaults piece-wise resolves table default expressions
-	updateDefaults := func(start, end int) {
+	for _, part := range partitionTableColumns(newSch) {
+		start := part[0]
+		end := part[1]
 		subScope := inScope.replace()
 		for i := start; i < end; i++ {
 			subScope.addColumn(inScope.cols[i])
@@ -1269,20 +1271,28 @@ func (b *Builder) resolveSchemaDefaults(inScope *scope, schema sql.Schema) sql.S
 			col.OnUpdate = b.resolveColumnDefaultExpression(subScope, col, col.OnUpdate)
 		}
 	}
+	return newSch
+}
 
+// partitionTableColumns splits a sql.Schema into a list
+// of [2]int{start,end} ranges that each partition the tables
+// included in the schema.
+func partitionTableColumns(sch sql.Schema) [][2]int {
+	var ret [][2]int
 	var i int = 1
 	var prevI int = 0
-	for i < len(newSch) {
-		if strings.EqualFold(newSch[i-1].Source, newSch[i].Source) && strings.EqualFold(newSch[i-1].DatabaseSource, newSch[i].DatabaseSource) {
+	for i < len(sch) {
+		if strings.EqualFold(sch[i-1].Source, sch[i].Source) &&
+			strings.EqualFold(sch[i-1].DatabaseSource, sch[i].DatabaseSource) {
 			i++
 			continue
 		}
-		updateDefaults(prevI, i)
+		ret = append(ret, [2]int{prevI, i})
 		prevI = i
 		i++
 	}
-	updateDefaults(prevI, i)
-	return newSch
+	ret = append(ret, [2]int{prevI, i})
+	return ret
 }
 
 func (b *Builder) resolveColumnDefaultExpression(inScope *scope, columnDef *sql.Column, colDefault *sql.ColumnDefaultValue) *sql.ColumnDefaultValue {
