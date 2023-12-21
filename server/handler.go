@@ -126,7 +126,7 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string, prepare *mysql.Prepare
 	return schemaToFields(ctx, analyzed.Schema()), nil
 }
 
-func (h *Handler) ComPrepareParsed(c *mysql.Conn, query string, parsed sqlparser.Statement, prepare *mysql.PrepareData) ([]*query.Field, error) {
+func (h *Handler) ComPrepareParsed(c *mysql.Conn, statementKey, query string, parsed sqlparser.Statement, prepare *mysql.PrepareData) ([]*query.Field, error) {
 	logrus.WithField("query", query).
 		WithField("paramsCount", prepare.ParamsCount).
 		WithField("statementId", prepare.StatementID).Debugf("preparing query")
@@ -136,7 +136,7 @@ func (h *Handler) ComPrepareParsed(c *mysql.Conn, query string, parsed sqlparser
 		return nil, err
 	}
 	
-	analyzed, err := h.e.PrepareParsedQuery(ctx, query, parsed)
+	analyzed, err := h.e.PrepareParsedQuery(ctx, statementKey, query, parsed)
 	if err != nil {
 		logrus.WithField("query", query).Errorf("unable to prepare query: %s", err.Error())
 		err := sql.CastSQLError(err)
@@ -155,7 +155,12 @@ func (h *Handler) ComPrepareParsed(c *mysql.Conn, query string, parsed sqlparser
 	return schemaToFields(ctx, analyzed.Schema()), nil
 }
 
-func (h *Handler) ComBind(c *mysql.Conn, query string, parsed sqlparser.Statement, prepare *mysql.PrepareData) ([]*query.Field, error) {
+func (h *Handler) ComBind(c *mysql.Conn, statementKey, query string, parsed sqlparser.Statement, prepare *mysql.PrepareData) ([]*query.Field, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (h *Handler) ComExecuteBound(c *mysql.Conn, statementKey, query string, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
 	// TODO implement me
 	panic("implement me")
 }

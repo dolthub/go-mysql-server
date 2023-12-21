@@ -75,7 +75,6 @@ type TemporaryUser struct {
 // There are two types of caching supported:
 // 1. Prepared statements for MySQL, which are stored as sqlparser.Statements
 // 2. Prepared statements for Postgres, which are stored as sql.Nodes
-// TODO (next): figure out the right layer for this information to be stored and passed
 type PreparedDataCache struct {
 	statements map[uint32]map[string]sqlparser.Statement
 	plans map[uint32]map[string]sql.Node
@@ -89,8 +88,8 @@ func NewPreparedDataCache() *PreparedDataCache {
 	}
 }
 
-// GetCachedStmt will retrieve the prepared sql.Node associated with the ctx.SessionId and query if it exists
-// it will return nil, false if the query does not exist
+// GetCachedStmt retrieves the prepared statement associated with the ctx.SessionId and query. Returns nil, false if 
+// the query does not exist
 func (p *PreparedDataCache) GetCachedStmt(sessId uint32, query string) (sqlparser.Statement, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -101,8 +100,20 @@ func (p *PreparedDataCache) GetCachedStmt(sessId uint32, query string) (sqlparse
 	return nil, false
 }
 
-// GetSessionData returns all the prepared queries for a particular session
-func (p *PreparedDataCache) GetSessionData(sessId uint32) map[string]sqlparser.Statement {
+// GetCachedPlan retrieves the prepared sql.Node associated with the ctx.SessionId and query if it exists
+// it will return nil, false if the query does not exist
+func (p *PreparedDataCache) GetCachedPlan(sessId uint32, query string) (sql.Node, bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if sessData, ok := p.plans[sessId]; ok {
+		data, ok := sessData[query]
+		return data, ok
+	}
+	return nil, false
+}
+
+// CachedStatementsForSession returns all the prepared queries for a particular session
+func (p *PreparedDataCache) CachedStatementsForSession(sessId uint32) map[string]sqlparser.Statement {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.statements[sessId]
@@ -113,9 +124,10 @@ func (p *PreparedDataCache) DeleteSessionData(sessId uint32) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	delete(p.statements, sessId)
+	delete(p.plans, sessId)
 }
 
-// CacheStmt saves the prepared node and associates a ctx.SessionId and query to it
+// CacheStmt saves the parsed statement and associates a ctx.SessionId and query to it
 func (p *PreparedDataCache) CacheStmt(sessId uint32, query string, stmt sqlparser.Statement) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -125,14 +137,23 @@ func (p *PreparedDataCache) CacheStmt(sessId uint32, query string, stmt sqlparse
 	p.statements[sessId][query] = stmt
 }
 
+// CachePlan saves the prepared node and associates a ctx.SessionId and query to it
+func (p *PreparedDataCache) CachePlan(sessId uint32, query string, plan sql.Node) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if _, ok := p.plans[sessId]; !ok {
+		p.plans[sessId] = make(map[string]sql.Node)
+	}
+	p.plans[sessId][query] = plan
+}
+
 // UncacheStmt removes the prepared node associated with a ctx.SessionId and query to it
 func (p *PreparedDataCache) UncacheStmt(sessId uint32, query string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if _, ok := p.statements[sessId]; !ok {
-		return
+	if _, ok := p.statements[sessId]; ok {
+		delete(p.statements[sessId], query)
 	}
-	delete(p.statements[sessId], query)
 }
 
 // Engine is a SQL engine.
@@ -223,17 +244,15 @@ func (e *Engine) PrepareQuery(
 		return nil, err
 	}
 
-	return e.PrepareParsedQuery(ctx, query, stmt)
+	return e.PrepareParsedQuery(ctx, query, query, stmt)
 }
 
 // PrepareParsedQuery returns a partially analyzed query for the parsed statement provided
 func (e *Engine) PrepareParsedQuery(
 		ctx *sql.Context,
-		query string,
+		statementKey, query string,
 		stmt sqlparser.Statement,
 ) (sql.Node, error) {
-	query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
-
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog)
 	node, err := binder.BindOnly(stmt, query)
 
@@ -241,7 +260,7 @@ func (e *Engine) PrepareParsedQuery(
 		return nil, err
 	}
 
-	e.PreparedDataCache.CacheStmt(ctx.Session.ID(), query, stmt)
+	e.PreparedDataCache.CacheStmt(ctx.Session.ID(), statementKey, stmt)
 	return node, nil
 }
 
