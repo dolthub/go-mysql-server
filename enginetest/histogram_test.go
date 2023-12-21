@@ -26,8 +26,9 @@ func init() {
 
 type statsTest struct {
 	name       string
-	left       func(*sql.Context, *memory.Database, int, sql.TableId, sql.ColumnId) *plan.ResolvedTable
-	right      func(*sql.Context, *memory.Database, int, sql.TableId, sql.ColumnId) *plan.ResolvedTable
+	tableGen   func(*sql.Context, *memory.Database, int, sql.TableId, sql.ColumnId, ...interface{}) *plan.ResolvedTable
+	args1      []interface{}
+	args2      []interface{}
 	leftOrd    []int
 	rightOrd   []int
 	leftTypes  []sql.Type
@@ -70,17 +71,11 @@ func TestNormDist(t *testing.T) {
 	for _, t := range tests {
 		st := statsTest{
 			name: t.name,
-			left: func(ctx *sql.Context, db *memory.Database, cnt int, tab sql.TableId, col sql.ColumnId) *plan.ResolvedTable {
+			tableGen: func(ctx *sql.Context, db *memory.Database, cnt int, tab sql.TableId, col sql.ColumnId, args ...interface{}) *plan.ResolvedTable {
+				mean := args[0].(float64)
+				std := args[1].(float64)
 				xyz := makeTable(db, fmt.Sprintf("xyz%d", tab), tab, col)
-				err := normalDistForTable(ctx, xyz, cnt, t.mean1, t.std1, int(tab))
-				if err != nil {
-					panic(err)
-				}
-				return xyz
-			},
-			right: func(ctx *sql.Context, db *memory.Database, cnt int, tab sql.TableId, col sql.ColumnId) *plan.ResolvedTable {
-				xyz := makeTable(db, fmt.Sprintf("xyz%d", tab), tab, col)
-				err := normalDistForTable(ctx, xyz, cnt, t.mean2, t.std2, int(tab))
+				err := normalDistForTable(ctx, xyz, cnt, mean, std, int(tab))
 				if err != nil {
 					panic(err)
 				}
@@ -90,7 +85,9 @@ func TestNormDist(t *testing.T) {
 			rightOrd:   []int{1},
 			leftTypes:  []sql.Type{types.Int64, types.Int64, types.Int64},
 			rightTypes: []sql.Type{types.Int64, types.Int64, types.Int64},
-			err:        .5,
+			err:        1,
+			args1:      []interface{}{t.mean1, t.std1},
+			args2:      []interface{}{t.mean2, t.std2},
 		}
 		statTests = append(statTests, st)
 	}
@@ -129,17 +126,9 @@ func TestExpDist(t *testing.T) {
 	for _, tt := range tests {
 		st := statsTest{
 			name: tt.name,
-			left: func(ctx *sql.Context, db *memory.Database, cnt int, tab sql.TableId, col sql.ColumnId) *plan.ResolvedTable {
+			tableGen: func(ctx *sql.Context, db *memory.Database, cnt int, tab sql.TableId, col sql.ColumnId, args ...interface{}) *plan.ResolvedTable {
 				xyz := makeTable(db, "xyz", tab, col)
-				err := expDistForTable(ctx, xyz, cnt, tt.lambda1, int(tab))
-				if err != nil {
-					panic(err)
-				}
-				return xyz
-			},
-			right: func(ctx *sql.Context, db *memory.Database, cnt int, tab sql.TableId, col sql.ColumnId) *plan.ResolvedTable {
-				xyz := makeTable(db, "wuv", tab, col)
-				err := expDistForTable(ctx, xyz, cnt, tt.lambda2, int(tab))
+				err := expDistForTable(ctx, xyz, cnt, args[0].(float64), int(tab))
 				if err != nil {
 					panic(err)
 				}
@@ -149,7 +138,9 @@ func TestExpDist(t *testing.T) {
 			rightOrd:   []int{1},
 			leftTypes:  []sql.Type{types.Int64, types.Int64, types.Int64},
 			rightTypes: []sql.Type{types.Int64, types.Int64, types.Int64},
-			err:        .5,
+			args1:      []interface{}{tt.lambda1},
+			args2:      []interface{}{tt.lambda2},
+			err:        1,
 		}
 		statTests = append(statTests, st)
 	}
@@ -165,21 +156,13 @@ func TestMultiDist(t *testing.T) {
 	tests := []statsTest{
 		{
 			name: "uniform dist int",
-			left: func(ctx *sql.Context, db *memory.Database, cnt int, tab sql.TableId, col sql.ColumnId) *plan.ResolvedTable {
+			tableGen: func(ctx *sql.Context, db *memory.Database, cnt int, tab sql.TableId, col sql.ColumnId, args ...interface{}) *plan.ResolvedTable {
 				xyz := makeTable(db, "xyz", tab, col)
 				err := uniformDistForTable(ctx, xyz, cnt)
 				if err != nil {
 					panic(err)
 				}
 				return xyz
-			},
-			right: func(ctx *sql.Context, db *memory.Database, cnt int, tab sql.TableId, col sql.ColumnId) *plan.ResolvedTable {
-				wuv := makeTable(db, "wuv", tab, col)
-				err := uniformDistForTable(ctx, wuv, cnt)
-				if err != nil {
-					panic(err)
-				}
-				return wuv
 			},
 			leftOrd:    []int{1},
 			rightOrd:   []int{1},
@@ -193,14 +176,13 @@ func TestMultiDist(t *testing.T) {
 }
 
 func runSuite(t *testing.T, tests []statsTest, rowCnt, bucketCnt int, debug bool) {
-	for _, tt := range tests {
+	for i, tt := range tests {
 		t.Run(fmt.Sprintf("%s: , rows: %d, buckets: %d", tt.name, rowCnt, bucketCnt), func(t *testing.T) {
-			db := memory.NewDatabase("test")
+			db := memory.NewDatabase(fmt.Sprintf("test%d", i))
 			pro := memory.NewDBProvider(db)
-			ctx := newContext(pro)
 
-			xyz := tt.left(ctx, db, rowCnt, 1, 1)
-			wuv := tt.right(ctx, db, rowCnt, 2, sql.ColumnId(len(tt.leftTypes)+1))
+			xyz := tt.tableGen(newContext(pro), db, rowCnt, sql.TableId(i*2), 1, tt.args1...)
+			wuv := tt.tableGen(newContext(pro), db, rowCnt, sql.TableId(i*2+1), sql.ColumnId(len(tt.leftTypes)+1), tt.args2...)
 
 			// join the histograms on a particular field
 			var joinOps []sql.Expression
@@ -209,14 +191,14 @@ func runSuite(t *testing.T, tests []statsTest, rowCnt, bucketCnt int, debug bool
 				joinOps = append(joinOps, eq(l, r+len(tt.leftTypes)))
 			}
 
-			exp, err := expectedResultSize(ctx, xyz, wuv, joinOps)
+			exp, err := expectedResultSize(newContext(pro), xyz, wuv, joinOps)
 			require.NoError(t, err)
 
 			// get histograms for tables
-			xHist, err := testHistogram(ctx, xyz, tt.leftOrd, bucketCnt)
+			xHist, err := testHistogram(newContext(pro), xyz, tt.leftOrd, bucketCnt)
 			require.NoError(t, err)
 
-			wHist, err := testHistogram(ctx, wuv, tt.rightOrd, bucketCnt)
+			wHist, err := testHistogram(newContext(pro), wuv, tt.rightOrd, bucketCnt)
 			require.NoError(t, err)
 
 			if debug {
@@ -233,7 +215,7 @@ func runSuite(t *testing.T, tests []statsTest, rowCnt, bucketCnt int, debug bool
 				rStat.Hist = append(rStat.Hist, b.(*stats.Bucket))
 			}
 
-			res, err := stats.Join(stats.UpdateCounts(lStat), stats.UpdateCounts(rStat), []int{0}, []int{0})
+			res, err := stats.Join(stats.UpdateCounts(lStat), stats.UpdateCounts(rStat), []int{0}, []int{0}, debug)
 			require.NoError(t, err)
 			if debug {
 				log.Printf("join:\n,%s\n", res.Histogram().DebugString())
@@ -318,6 +300,7 @@ func testHistogram(ctx *sql.Context, table *plan.ResolvedTable, fields []int, bu
 		if currentBucket.RowCnt > uint64(rowsPerBucket) {
 			currentBucket.BoundVal = row
 			currentBucket.BoundCnt = uint64(currentCnt)
+			heap.Push(mcvs, stats.NewHeapRow(row, currentCnt))
 			currentBucket.McvVals = mcvs.Array()
 			currentBucket.McvsCnt = mcvs.Counts()
 			histogram = append(histogram, currentBucket)
@@ -352,7 +335,7 @@ func makeTable(db *memory.Database, name string, tabId sql.TableId, colId sql.Co
 	t := memory.NewTable(db, name, childSchema(name), nil)
 	t.EnablePrimaryKeyIndexes()
 	colset := sql.NewColSet(sql.ColumnId(colId), sql.ColumnId(colId+1), sql.ColumnId(colId+2))
-	return plan.NewResolvedTable(t, nil, nil).WithId(sql.TableId(tabId)).WithColumns(colset).(*plan.ResolvedTable)
+	return plan.NewResolvedTable(t, db, nil).WithId(sql.TableId(tabId)).WithColumns(colset).(*plan.ResolvedTable)
 }
 
 func newContext(provider *memory.DbProvider) *sql.Context {

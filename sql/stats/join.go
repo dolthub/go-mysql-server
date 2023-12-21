@@ -5,16 +5,15 @@ import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"log"
 	"math"
 	"time"
 )
 
-func Join(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statistic, error) {
-	// alignment algo
-	// find the minimum buckets that overlap
-	// either 1) stepwise bucket alignment and comparison, subtract mcvs from distinct estimates
-	// or     2) direct compare first, do MCV card separately, and then range card as third
-
+// Join performs an alignment algorithm on two sets of statistics, and then
+// pairwise estiamtes bucket cardinalities by joining MCVs directly and
+// assuming key uniformity otherwise.
+func Join(s1, s2 sql.Statistic, lFields, rFields []int, debug bool) (sql.Statistic, error) {
 	cmp := func(row1, row2 sql.Row) (int, error) {
 		var keyCmp int
 		for i, f := range lFields {
@@ -41,12 +40,14 @@ func Join(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statistic, error) {
 		return keyCmp, nil
 	}
 
-	left, right, err := alignBuckets(s1, s2, cmp)
+	left, right, err := AlignBuckets(s1, s2, cmp)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("left", left.Histogram().DebugString())
-	fmt.Println("right", right.Histogram().DebugString())
+	if debug {
+		log.Println("left", left.Histogram().DebugString())
+		log.Println("right", right.Histogram().DebugString())
+	}
 
 	var newBuckets []*Bucket
 	newCnt := uint64(0)
@@ -60,16 +61,23 @@ func Join(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statistic, error) {
 
 		lRows := l.RowCount()
 		for _, v := range l.McvCounts() {
+			if v > lRows {
+				lRows = 0
+				break
+			}
 			lRows -= v
 		}
 		rRows := r.RowCount()
 		for _, v := range r.McvCounts() {
+			if v > rRows {
+				rRows = 0
+				break
+			}
 			rRows -= v
 		}
 
 		rows := uint64(float64(lRows*rRows) / float64(distinct))
 
-		// TODO improve next mcvs
 		for i, key1 := range l.Mcvs() {
 			for j, key2 := range r.Mcvs() {
 				v, err := cmp(key1, key2)
@@ -109,15 +117,11 @@ func Join(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statistic, error) {
 
 	resStat := NewStatistic(0, 0, 0, s1.AvgSize(), time.Now(), s1.Qualifier(), s1.Columns(), s1.Types(), newBuckets, s1.IndexClass())
 	return UpdateCounts(resStat), nil
-	// add MCVs and scale by selectivity
 }
 
+// TODO this should match MCVS of first matchign bucket, and then do range
+// Selinger for the range of values that overlap.
 func coarseAlignment(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statistic, sql.Statistic, error) {
-	// find overlapping buckets
-	// one of first upper bounds is higher
-	// find bucket upper bound in other histogram that's just above
-	// do same thing for last key
-
 	cmp := func(row1, row2 sql.Row) (int, error) {
 		var keyCmp int
 		for i, f := range lFields {
@@ -181,26 +185,14 @@ func coarseAlignment(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statisti
 		s1, s2 = s2, s1
 	}
 	return s1, s2, nil
-	//var cardEst float64
-	//cardEst += float64(s1.Histogram()[0].RowCount() * s2.Histogram()[0].RowCount())
-	//
-	//firstS1 := s1.Histogram()[0]
-	//firstS2 := s2.Histogram()[0]
-	//// count distinct in the two ranges
-	//distinct := s1.DistinctCount() - firstS1.DistinctCount()
-	//if s2Distinct := s2.DistinctCount() - firstS2.DistinctCount(); s2Distinct > distinct {
-	//	distinct = s2Distinct
-	//}
-	//
-	//// freq = rows / distinct
-	//cardEst += float64(s1.RowCount()-firstS1.RowCount()+s2.RowCount()-firstS2.RowCount()) / float64(distinct)
-	//return cardEst, nil
 }
 
-// maybe not returned in same order
-func alignBuckets(s1, s2 sql.Statistic, cmp func(sql.Row, sql.Row) (int, error)) (sql.Statistic, sql.Statistic, error) {
-	// walk the buckets, interpolate new buckets and sizes
-
+// AlignBuckets produces two histograms with the same number of buckets.
+// For every misaligned pair of sorted buckets, cut the one with the
+// higher bound value into two smaller buckets. We currently squash the
+// ends of histograms to match bound conditions.
+// TODO ends, squash? discard?
+func AlignBuckets(s1, s2 sql.Statistic, cmp func(sql.Row, sql.Row) (int, error)) (sql.Statistic, sql.Statistic, error) {
 	var numericTypes bool = true
 	for _, t := range s1.Types() {
 		if _, ok := t.(sql.NumberType); !ok {
@@ -231,12 +223,10 @@ func alignBuckets(s1, s2 sql.Statistic, cmp func(sql.Row, sql.Row) (int, error))
 				return nil, nil, err
 			}
 
-			//s1, s2, err = coarseAlignment(s1, s2, lFields, rFields)
 			if len(s1Hist) == 0 || len(s2Hist) == 0 {
 				return s1, s2, nil
 			}
 
-			// TODO copy these
 			m := len(s1Hist) - 1
 			leftStack = make([]sql.HistogramBucket, m)
 			for i, b := range s1Hist {
@@ -248,7 +238,6 @@ func alignBuckets(s1, s2 sql.Statistic, cmp func(sql.Row, sql.Row) (int, error))
 			}
 
 			n := len(s2Hist) - 1
-
 			rightStack = make([]sql.HistogramBucket, n)
 			for i, b := range s2Hist {
 				if i == 0 {
@@ -257,7 +246,9 @@ func alignBuckets(s1, s2 sql.Statistic, cmp func(sql.Row, sql.Row) (int, error))
 				}
 				rightStack[n-i] = b
 			}
+
 			state = sjStateCmp
+
 		case sjStateCmp:
 			keyCmp, err = cmp(nextL.UpperBound(), nextR.UpperBound())
 			if err != nil {
@@ -285,10 +276,10 @@ func alignBuckets(s1, s2 sql.Statistic, cmp func(sql.Row, sql.Row) (int, error))
 			state = sjStateCut
 
 		case sjStateCut:
-			// if string key, just cut in half
 			state = sjStateInc
 
 			if !numericTypes {
+				// TODO divide equally for string types
 				// find bound value, divide equally among segments
 				panic("")
 			}
@@ -299,29 +290,23 @@ func alignBuckets(s1, s2 sql.Statistic, cmp func(sql.Row, sql.Row) (int, error))
 				// steal from the next bucket
 				// calculate fraction of next bucket above R bound
 
-				// left is bigger than right and we have a previous bound, so cut on right boundary
-				// get left "distance"
-				peekR := rightStack[len(rightStack)-1]
-				rightStack = rightStack[:len(rightStack)-1]
-
-				// compress peek while upper bound still less than nextR.UpperBound()
-				keyCmp, err = cmp(peekR.UpperBound(), nextL.UpperBound())
-				if err != nil {
-					return nil, nil, err
-				}
-				for keyCmp < 0 {
-					// combine peekL and
-					nextR = NewHistogramBucket(
-						uint64(float64(nextL.RowCount())+float64(peekR.RowCount())),
-						uint64(float64(nextL.DistinctCount())+float64(peekR.DistinctCount())),
-						uint64(float64(nextL.NullCount())+float64(peekR.NullCount())),
-						peekR.BoundCount(), peekR.UpperBound(), peekR.McvCounts(), peekR.Mcvs())
+				var peekR sql.HistogramBucket
+				for len(rightStack) > 0 {
 					peekR = rightStack[len(rightStack)-1]
 					rightStack = rightStack[:len(rightStack)-1]
 					keyCmp, err = cmp(peekR.UpperBound(), nextL.UpperBound())
 					if err != nil {
 						return nil, nil, err
 					}
+					if keyCmp > 0 {
+						break
+					}
+
+					nextR = NewHistogramBucket(
+						uint64(float64(nextR.RowCount())+float64(peekR.RowCount())),
+						uint64(float64(nextR.DistinctCount())+float64(peekR.DistinctCount())),
+						uint64(float64(nextR.NullCount())+float64(peekR.NullCount())),
+						peekR.BoundCount(), peekR.UpperBound(), peekR.McvCounts(), peekR.Mcvs())
 				}
 
 				// nextR < nextL < peekR
@@ -463,14 +448,13 @@ func alignBuckets(s1, s2 sql.Statistic, cmp func(sql.Row, sql.Row) (int, error))
 	return newS1, newS2, nil
 }
 
+// mergeMcvs combines two sets of most common values, merging the bound keys
+// with the same value and keeping the top k of the merge result.
 func mergeMcvs(mcvs1, mcvs2 []sql.Row, mcvCnts1, mcvCnts2 []uint64, cmp func(sql.Row, sql.Row) (int, error)) ([]sql.Row, []uint64, error) {
 	if len(mcvs1) < len(mcvs2) {
 		// mcvs2 is low
 		mcvs1, mcvs2 = mcvs2, mcvs1
 		mcvCnts1, mcvCnts2 = mcvCnts2, mcvCnts1
-	}
-	if len(mcvs2) > 1<<6 {
-		return nil, nil, nil
 	}
 	ret := NewSqlHeap(len(mcvs2))
 	seen := make(map[int]bool)
@@ -570,6 +554,8 @@ const (
 	sjStateEOF
 )
 
+// euclideanDistance is a pairwise sum of squares distance between
+// two numeric types.
 func euclideanDistance(row1, row2 sql.Row) (float64, error) {
 	var distSq float64
 	for i := range row1 {
