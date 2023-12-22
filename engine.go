@@ -384,25 +384,25 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 // If parsed is non-nil, it will be used instead of parsing the query from text.
 func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
 	query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
-	binder := planbuilder.New(ctx, e.Analyzer.Catalog)
-	if prep, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query); ok {
-		parsed = prep
-		binder.SetBindings(bindings)
-	} else if len(bindings) > 0 {
-		// This means that we have bindings but no prepared statement cached, which occurs in tests and in the the 
-		// dolthub/driver package
-		// We prepare the statement, then attach bindings to it.
+	preparedAst, preparedDataFound := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
+
+	// This means that we have bindings but no prepared statement cached, which occurs in tests and in the 
+	// dolthub/driver package. We prepare the statement from the query string in this case
+	if !preparedDataFound && len(bindings) > 0 {
 		// TODO: pull this out into its own method for this specific use case
 		parsed = nil
 		_, err := e.PrepareQuery(ctx, query)
 		if err != nil {
 			return nil, nil, err
 		}
-		prep, ok = e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
-		if ok {
-			parsed = prep
-			binder.SetBindings(bindings)
-		}
+		
+		preparedAst, preparedDataFound = e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
+	}
+
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog)
+	if preparedDataFound {
+		parsed = preparedAst
+		binder.SetBindings(bindings)
 	}
 
 	// Give the integrator a chance to reject the session before proceeding
@@ -508,7 +508,9 @@ func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node) (sq
 	}
 }
 
-// bindQuery binds any bind variables to the plan node given and returns it
+// bindQuery binds any bind variables to the plan node or query given and returns it.
+// |parsed| is the parsed AST without bindings applied, if the statement was previously parsed / prepared. 
+// If it wasn't (|parsed| is nil), then the query is parsed. 
 func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable, err error, binder *planbuilder.Builder) (sql.Node, error) {
 	var bound sql.Node
 	if parsed == nil {
