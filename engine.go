@@ -384,29 +384,15 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 // If parsed is non-nil, it will be used instead of parsing the query from text.
 func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
 	query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
-	preparedAst, preparedDataFound := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
-
-	// This means that we have bindings but no prepared statement cached, which occurs in tests and in the 
-	// dolthub/driver package. We prepare the statement from the query string in this case
-	if !preparedDataFound && len(bindings) > 0 {
-		// TODO: pull this out into its own method for this specific use case
-		parsed = nil
-		_, err := e.PrepareQuery(ctx, query)
-		if err != nil {
-			return nil, nil, err
-		}
-		
-		preparedAst, preparedDataFound = e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
-	}
-
-	binder := planbuilder.New(ctx, e.Analyzer.Catalog)
-	if preparedDataFound {
-		parsed = preparedAst
-		binder.SetBindings(bindings)
+	
+	parsed, binder, err := e.preparedStatement(ctx, query, parsed, bindings)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// Give the integrator a chance to reject the session before proceeding
-	err := ctx.Session.ValidateSession(ctx)
+	// TODO: this check doesn't belong here
+	err = ctx.Session.ValidateSession(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -458,6 +444,31 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 	iter = rowexec.AddExpressionCloser(analyzed, iter)
 
 	return analyzed.Schema(), iter, nil
+}
+
+func (e *Engine) preparedStatement(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sqlparser.Statement, *planbuilder.Builder, error) {
+	preparedAst, preparedDataFound := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
+
+	// This means that we have bindings but no prepared statement cached, which occurs in tests and in the 
+	// dolthub/driver package. We prepare the statement from the query string in this case
+	if !preparedDataFound && len(bindings) > 0 {
+		// TODO: pull this out into its own method for this specific use case
+		parsed = nil
+		_, err := e.PrepareQuery(ctx, query)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		preparedAst, preparedDataFound = e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
+	}
+
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog)
+	if preparedDataFound {
+		parsed = preparedAst
+		binder.SetBindings(bindings)
+	}
+	
+	return parsed, binder, nil
 }
 
 func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node) (sql.Node, error) {
