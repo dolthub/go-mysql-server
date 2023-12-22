@@ -93,14 +93,7 @@ type Chain interface {
 	// the first call to callback. So the Handler should not
 	// hang on to the byte slice.
 	ComQuery(c *mysql.Conn, query string, callback func(res *sqltypes.Result, more bool) error) error
-
-	// ComParsedQuery is called when a connection receives a
-	// query that has already been parsed. Note the contents
-	// of the query slice may change after the first call to
-	// callback. So the Handler should not hang on to the byte
-	// slice.
-	ComParsedQuery(c *mysql.Conn, query string, parsed sqlparser.Statement, callback func(res *sqltypes.Result, more bool) error) error
-
+	
 	// ComMultiQuery is called when a connection receives a query and the
 	// client supports MULTI_STATEMENT. It should process the first
 	// statement in |query| and return the remainder. It will be called
@@ -160,10 +153,6 @@ func (ih *interceptorHandler) ComInitDB(c *mysql.Conn, schemaName string) error 
 
 func (ih *interceptorHandler) ComQuery(c *mysql.Conn, query string, callback func(res *sqltypes.Result, more bool) error) error {
 	return ih.c.ComQuery(c, query, callback)
-}
-
-func (ih *interceptorHandler) ComParsedQuery(c *mysql.Conn, query string, parsed ast.Statement, callback func(res *sqltypes.Result, more bool) error) error {
-	return ih.c.ComParsedQuery(c, query, parsed, callback)
 }
 
 func (ih *interceptorHandler) ComMultiQuery(c *mysql.Conn, query string, callback func(res *sqltypes.Result, more bool) error) (string, error) {

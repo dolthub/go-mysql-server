@@ -416,126 +416,14 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 		return nil, nil, err
 	}
 
+	bound, err := e.bindQuery(ctx, query, parsed, bindings, err, binder)
 	if err != nil {
-		err2 := clearAutocommitTransaction(ctx)
-		if err2 != nil {
-			return nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
-		}
 		return nil, nil, err
 	}
-	var bound sql.Node
-	if parsed == nil {
-		bound, err = binder.ParseOne(query)
-		if err != nil {
-			err2 := clearAutocommitTransaction(ctx)
-			if err2 != nil {
-				return nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
-			}
-			return nil, nil, err
-		}
-	} else {
-		bound, err = binder.BindOnly(parsed, query)
-		if err != nil {
-			return nil, nil, err
-		}
-	}
 
-	switch n := bound.(type) {
-	case *plan.ExecuteQuery:
-		prep, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), n.Name)
-		if !ok {
-			err := sql.ErrUnknownPreparedStatement.New(n.Name)
-			return nil, nil, err
-		}
-		// todo validate expected and actual args -- not just count, by name
-		//if prep.ArgCount() < 1 {
-		//	return nil, nil, fmt.Errorf("invalid bind variable count: expected %d, found %d", prep.ArgCount(), len(bindings))
-		//}
-		for i, name := range n.BindVars {
-			if bindings == nil {
-				bindings = make(map[string]*querypb.BindVariable)
-			}
-			if strings.HasPrefix(name.String(), "@") {
-				t, val, err := ctx.GetUserVariable(ctx, strings.TrimPrefix(name.String(), "@"))
-				if err != nil {
-					return nil, nil, err
-				}
-				if val != nil {
-					val, _, err = t.Promote().Convert(val)
-					if err != nil {
-						return nil, nil, err
-					}
-				}
-				bindings[fmt.Sprintf("v%d", i+1)], err = sqltypes.BuildBindVariable(val)
-				if err != nil {
-					return nil, nil, err
-				}
-			} else {
-				bindings[fmt.Sprintf("v%d", i)] = sqltypes.StringBindVariable(name.String())
-			}
-		}
-		binder.SetBindings(bindings)
-		bound, err = binder.BindOnly(prep, query)
-		if err != nil {
-			err2 := clearAutocommitTransaction(ctx)
-			if err2 != nil {
-				return nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
-			}
-
-			return nil, nil, err
-		}
-	}
-
-	// TODO: eventually, we should have this logic be in the RowIter() of the respective plans
-	// along with a new rule that handles analysis
-	var analyzed sql.Node
-	switch n := bound.(type) {
-	case *plan.PrepareQuery:
-		sqlMode := sql.LoadSqlMode(ctx)
-
-		// we have to name-resolve to check for structural errors, but we do
-		// not to cache the name-bound query yet.
-		//todo(max): improve name resolution so we can cache post name-binding.
-		// this involves expression memoization, which currently screws up aggregation
-		// and order by aliases
-		prepStmt, _, err := sqlparser.ParseOneWithOptions(query, sqlMode.ParserOptions())
-		if err != nil {
-			return nil, nil, err
-		}
-		prepare, ok := prepStmt.(*sqlparser.Prepare)
-		if !ok {
-			return nil, nil, fmt.Errorf("expected PREPARE ast")
-		}
-		cacheStmt, _, err := sqlparser.ParseOneWithOptions(prepare.Expr, sqlMode.ParserOptions())
-		if err != nil && strings.HasPrefix(prepare.Expr, "@") {
-			val, err := expression.NewUserVar(strings.TrimPrefix(prepare.Expr, "@")).Eval(ctx, nil)
-			if err != nil {
-				return nil, nil, err
-			}
-			valStr, ok := val.(string)
-			if !ok {
-				return nil, nil, fmt.Errorf("invalid query for PREPARE: %s", val)
-			}
-			cacheStmt, _, err = sqlparser.ParseOneWithOptions(valStr, sqlMode.ParserOptions())
-			if err != nil {
-				return nil, nil, err
-			}
-		} else if err != nil {
-			return nil, nil, err
-		}
-		e.PreparedDataCache.CacheStmt(ctx.Session.ID(), n.Name, cacheStmt)
-		analyzed = bound
-	case *plan.DeallocateQuery:
-		if _, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), n.Name); !ok {
-			return nil, nil, sql.ErrUnknownPreparedStatement.New(n.Name)
-		}
-		e.PreparedDataCache.UncacheStmt(ctx.Session.ID(), n.Name)
-		analyzed = bound
-	default:
-		analyzed, err = e.analyzeQuery(ctx, query, bound)
-		if err != nil {
-			return nil, nil, err
-		}
+	analyzed, err := e.analyzeNode(ctx, query, bound)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	if bindCtx := binder.BindCtx(); bindCtx != nil {
@@ -570,6 +458,130 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 	iter = rowexec.AddExpressionCloser(analyzed, iter)
 
 	return analyzed.Schema(), iter, nil
+}
+
+func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node) (sql.Node, error) {
+	switch n := bound.(type) {
+	case *plan.PrepareQuery:
+		sqlMode := sql.LoadSqlMode(ctx)
+
+		// we have to name-resolve to check for structural errors, but we do
+		// not to cache the name-bound query yet.
+		// todo(max): improve name resolution so we can cache post name-binding.
+		// this involves expression memoization, which currently screws up aggregation
+		// and order by aliases
+		prepStmt, _, err := sqlparser.ParseOneWithOptions(query, sqlMode.ParserOptions())
+		if err != nil {
+			return nil, nil
+		}
+		prepare, ok := prepStmt.(*sqlparser.Prepare)
+		if !ok {
+			return nil, nil
+		}
+		cacheStmt, _, err := sqlparser.ParseOneWithOptions(prepare.Expr, sqlMode.ParserOptions())
+		if err != nil && strings.HasPrefix(prepare.Expr, "@") {
+			val, err := expression.NewUserVar(strings.TrimPrefix(prepare.Expr, "@")).Eval(ctx, nil)
+			if err != nil {
+				return nil, nil
+			}
+			valStr, ok := val.(string)
+			if !ok {
+				return nil, nil
+			}
+			cacheStmt, _, err = sqlparser.ParseOneWithOptions(valStr, sqlMode.ParserOptions())
+			if err != nil {
+				return nil, nil
+			}
+		} else if err != nil {
+			return nil, nil
+		}
+		e.PreparedDataCache.CacheStmt(ctx.Session.ID(), n.Name, cacheStmt)
+		return bound, nil
+	case *plan.DeallocateQuery:
+		if _, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), n.Name); !ok {
+			return nil, nil
+		}
+		e.PreparedDataCache.UncacheStmt(ctx.Session.ID(), n.Name)
+		return bound, nil
+	default:
+		return e.Analyzer.Analyze(ctx, bound, nil)
+	}
+}
+
+// bindQuery binds any bind variables to the plan node given and returns it
+func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable, err error, binder *planbuilder.Builder) (sql.Node, error) {
+	var bound sql.Node
+	if parsed == nil {
+		bound, err = binder.ParseOne(query)
+		if err != nil {
+			clearAutocommitErr := clearAutocommitTransaction(ctx)
+			if clearAutocommitErr != nil {
+				return nil, errors.Wrap(err, "unable to clear autocommit transaction: "+clearAutocommitErr.Error())
+			}
+			return nil, nil
+		}
+	} else {
+		bound, err = binder.BindOnly(parsed, query)
+		if err != nil {
+			return nil, nil
+		}
+	}
+	
+	// ExecuteQuery nodes have their own special var binding step 
+	eq, ok := bound.(*plan.ExecuteQuery)
+	if ok {
+		return e.bindExecuteQueryNode(ctx, query, eq, bindings, binder)
+	}
+
+	return bound, nil
+}
+
+// bindExecuteQueryNode returns the 
+func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.ExecuteQuery, bindings map[string]*querypb.BindVariable, binder *planbuilder.Builder) (sql.Node, error) {
+	prep, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), eq.Name)
+	if !ok {
+		return nil, sql.ErrUnknownPreparedStatement.New(eq.Name)
+	}
+	// todo validate expected and actual args -- not just count, by name
+	// if prep.ArgCount() < 1 {
+	//	return nil, nil, fmt.Errorf("invalid bind variable count: expected %d, found %d", prep.ArgCount(), len(bindings))
+	// }
+	for i, name := range eq.BindVars {
+		if bindings == nil {
+			bindings = make(map[string]*querypb.BindVariable)
+		}
+		if strings.HasPrefix(name.String(), "@") {
+			t, val, err := ctx.GetUserVariable(ctx, strings.TrimPrefix(name.String(), "@"))
+			if err != nil {
+				return nil, nil
+			}
+			if val != nil {
+				val, _, err = t.Promote().Convert(val)
+				if err != nil {
+					return nil, nil
+				}
+			}
+			bindings[fmt.Sprintf("v%d", i+1)], err = sqltypes.BuildBindVariable(val)
+			if err != nil {
+				return nil, nil
+			}
+		} else {
+			bindings[fmt.Sprintf("v%d", i)] = sqltypes.StringBindVariable(name.String())
+		}
+	}
+	binder.SetBindings(bindings)
+	
+	bound, err := binder.BindOnly(prep, query)
+	if err != nil {
+		clearAutocommitErr := clearAutocommitTransaction(ctx)
+		if clearAutocommitErr != nil {
+			return nil, errors.Wrap(err, "unable to clear autocommit transaction: "+clearAutocommitErr.Error())
+		}
+
+		return nil, err
+	}
+
+	return bound, nil
 }
 
 // clearAutocommitTransaction unsets the transaction from the current session if it is an implicitly
@@ -628,20 +640,6 @@ func countBindVars(node sql.Node) int {
 		return true
 	})
 	return len(bindVars)
-}
-
-func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node) (sql.Node, error) {
-	var (
-		analyzed sql.Node
-		err      error
-	)
-
-	analyzed, err = e.Analyzer.Analyze(ctx, parsed, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return analyzed, nil
 }
 
 func (e *Engine) beginTransaction(ctx *sql.Context) error {

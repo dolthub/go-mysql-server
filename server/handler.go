@@ -155,7 +155,7 @@ func (h *Handler) ComPrepareParsed(c *mysql.Conn, statementKey, query string, pa
 	return schemaToFields(ctx, analyzed.Schema()), nil
 }
 
-func (h *Handler) ComBind(c *mysql.Conn, statementKey, query string, parsed sqlparser.Statement, prepare *mysql.PrepareData) ([]*query.Field, error) {
+func (h *Handler) ComBind(c *mysql.Conn, statementKey, query string, prepare *mysql.PrepareData) ([]*query.Field, error) {
 	// TODO implement me
 	panic("implement me")
 }
