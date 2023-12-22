@@ -518,12 +518,12 @@ func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Stat
 			if clearAutocommitErr != nil {
 				return nil, errors.Wrap(err, "unable to clear autocommit transaction: "+clearAutocommitErr.Error())
 			}
-			return nil, nil
+			return nil, err
 		}
 	} else {
 		bound, err = binder.BindOnly(parsed, query)
 		if err != nil {
-			return nil, nil
+			return nil, err
 		}
 	}
 	
