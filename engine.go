@@ -389,7 +389,7 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 	if err != nil {
 		return nil, nil, err
 	}
-
+	
 	// Give the integrator a chance to reject the session before proceeding
 	// TODO: this check doesn't belong here
 	err = ctx.Session.ValidateSession(ctx)
@@ -422,16 +422,7 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 	if err != nil {
 		return nil, nil, err
 	}
-
-	if err != nil {
-		err2 := clearAutocommitTransaction(ctx)
-		if err2 != nil {
-			return nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
-		}
-
-		return nil, nil, err
-	}
-
+	
 	iter, err := e.Analyzer.ExecBuilder.Build(ctx, analyzed, nil)
 	if err != nil {
 		err2 := clearAutocommitTransaction(ctx)
@@ -444,6 +435,52 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 	iter = rowexec.AddExpressionCloser(analyzed, iter)
 
 	return analyzed.Schema(), iter, nil
+}
+
+// BoundQueryPlan returns query plan for the given statement with the given bindings applied
+func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sql.Node, error) {
+	if parsed == nil {
+		return nil, errors.New("parsed statement must not be nil")
+	}
+	
+	query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
+
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog)
+	binder.SetBindings(bindings)
+
+	// Begin a transaction if necessary (no-op if one is in flight)
+	err := e.beginTransaction(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: we need to be more principled about when to clear auto commit transactions here
+	bound, err := e.bindQuery(ctx, query, parsed, bindings, err, binder)
+	if err != nil {
+		err2 := clearAutocommitTransaction(ctx)
+		if err2 != nil {
+			return nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
+		}
+
+		return nil, err
+	}
+
+	analyzed, err := e.analyzeNode(ctx, query, bound)
+	if err != nil {
+		err2 := clearAutocommitTransaction(ctx)
+		if err2 != nil {
+			return nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
+		}
+		return nil, err
+	}
+
+	if bindCtx := binder.BindCtx(); bindCtx != nil {
+		if unused := bindCtx.UnusedBindings(); len(unused) > 0 {
+			return nil, fmt.Errorf("invalid arguments. expected: %d, found: %d", len(bindCtx.Bindings)-len(unused), len(bindCtx.Bindings))
+		}
+	}
+	
+	return analyzed, nil
 }
 
 func (e *Engine) preparedStatement(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sqlparser.Statement, *planbuilder.Builder, error) {

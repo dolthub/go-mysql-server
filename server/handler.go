@@ -16,6 +16,7 @@ package server
 
 import (
 	"encoding/base64"
+	"fmt"
 	"io"
 	"net"
 	"regexp"
@@ -155,9 +156,25 @@ func (h *Handler) ComPrepareParsed(c *mysql.Conn, statementKey, query string, pa
 	return schemaToFields(ctx, analyzed.Schema()), nil
 }
 
+// TODO: do we need two separate keys for the two caches?
 func (h *Handler) ComBind(c *mysql.Conn, statementKey, query string, prepare *mysql.PrepareData) ([]*query.Field, error) {
-	// TODO implement me
-	panic("implement me")
+	ctx, err := h.sm.NewContextWithQuery(c, query)
+	if err != nil {
+		return nil, err
+	}
+	
+	preparedStmt, isPreprared := h.e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), statementKey)
+	if !isPreprared {
+		return nil, fmt.Errorf("prepared statement not found")
+	}
+
+	queryPlan, err := h.e.BoundQueryPlan(ctx, query, preparedStmt, prepare.BindVars)
+	if err != nil {
+		return nil, err
+	}
+	
+	h.e.PreparedDataCache.CachePlan(ctx.Session.ID(), statementKey, queryPlan)
+	return schemaToFields(ctx, queryPlan.Schema()), nil
 }
 
 func (h *Handler) ComExecuteBound(c *mysql.Conn, statementKey, query string, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
