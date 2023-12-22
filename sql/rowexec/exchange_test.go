@@ -34,9 +34,10 @@ func TestExchange(t *testing.T) {
 	children := plan.NewProject(
 		[]sql.Expression{
 			expression.NewGetField(0, types.Text, "partition", false),
-			expression.NewPlus(
+			expression.NewArithmetic(
 				expression.NewGetField(1, types.Int64, "val", false),
 				expression.NewLiteral(int64(1), types.Int64),
+				"+",
 			),
 		},
 		plan.NewFilter(
@@ -80,9 +81,10 @@ func TestExchangeCancelled(t *testing.T) {
 	children := plan.NewProject(
 		[]sql.Expression{
 			expression.NewGetField(0, types.Text, "partition", false),
-			expression.NewPlus(
+			expression.NewArithmetic(
 				expression.NewGetField(1, types.Int64, "val", false),
 				expression.NewLiteral(int64(1), types.Int64),
+				"+",
 			),
 		},
 		plan.NewFilter(

@@ -374,7 +374,7 @@ func convertSemiToInnerJoin(m *memo.Memo) error {
 					if rightOutTables.Contains(int(e.TableId())) {
 						projectExpressions = append(projectExpressions, e)
 					}
-				case *expression.Literal, *expression.And, *expression.Or, *expression.Equals, expression.ArithmeticOp, *expression.BindVar, expression.Tuple:
+				case *expression.Literal, *expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic, *expression.BindVar, expression.Tuple:
 				default:
 					return true
 				}
@@ -464,7 +464,7 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 						projectExpressions = append(projectExpressions, e)
 						nullify = append(nullify, e)
 					}
-				case *expression.Literal, *expression.And, *expression.Or, *expression.Equals, expression.ArithmeticOp, *expression.BindVar, expression.Tuple:
+				case *expression.Literal, *expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic, *expression.BindVar, expression.Tuple:
 				default:
 					return true
 				}
@@ -572,7 +572,7 @@ func addRightSemiJoins(m *memo.Memo) error {
 					if rightOutTables.Contains(int(e.TableId())) {
 						projectExpressions = append(projectExpressions, e)
 					}
-				case *expression.Literal, *expression.And, *expression.Or, *expression.Equals, expression.ArithmeticOp, *expression.BindVar:
+				case *expression.Literal, *expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic, *expression.BindVar:
 				default:
 					return true
 				}

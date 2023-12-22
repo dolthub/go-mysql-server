@@ -440,9 +440,13 @@ func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pla
 			return false
 		}
 
-		switch e.(type) {
-		case *function.DateAdd, *function.DateSub, *expression.Minus, *expression.Plus:
+		switch e := e.(type) {
+		case *function.DateAdd, *function.DateSub:
 			return false
+		case *expression.Arithmetic:
+			if e.Op == "+" || e.Op == "-" {
+				return false
+			}
 		case *expression.Interval:
 			invalid = true
 		}
