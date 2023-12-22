@@ -472,34 +472,34 @@ func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node) (sq
 		// and order by aliases
 		prepStmt, _, err := sqlparser.ParseOneWithOptions(query, sqlMode.ParserOptions())
 		if err != nil {
-			return nil, nil
+			return nil, err
 		}
 		prepare, ok := prepStmt.(*sqlparser.Prepare)
 		if !ok {
-			return nil, nil
+			return nil, fmt.Errorf("expected *sqlparser.Prepare, found %T", prepStmt)
 		}
 		cacheStmt, _, err := sqlparser.ParseOneWithOptions(prepare.Expr, sqlMode.ParserOptions())
 		if err != nil && strings.HasPrefix(prepare.Expr, "@") {
 			val, err := expression.NewUserVar(strings.TrimPrefix(prepare.Expr, "@")).Eval(ctx, nil)
 			if err != nil {
-				return nil, nil
+				return nil, err
 			}
 			valStr, ok := val.(string)
 			if !ok {
-				return nil, nil
+				return nil, fmt.Errorf("expected string, found %T", val)
 			}
 			cacheStmt, _, err = sqlparser.ParseOneWithOptions(valStr, sqlMode.ParserOptions())
 			if err != nil {
-				return nil, nil
+				return nil, err
 			}
 		} else if err != nil {
-			return nil, nil
+			return nil, err
 		}
 		e.PreparedDataCache.CacheStmt(ctx.Session.ID(), n.Name, cacheStmt)
 		return bound, nil
 	case *plan.DeallocateQuery:
 		if _, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), n.Name); !ok {
-			return nil, nil
+			return nil, sql.ErrUnknownPreparedStatement.New(n.Name)
 		}
 		e.PreparedDataCache.UncacheStmt(ctx.Session.ID(), n.Name)
 		return bound, nil
