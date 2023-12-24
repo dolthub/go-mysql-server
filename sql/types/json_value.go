@@ -37,19 +37,19 @@ type JsonArray = []interface{}
 type MutableJSON interface {
 	// Insert Adds the value at the given path, only if it is not present. Updated value returned, and bool indicating if
 	// a change was made.
-	Insert(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error)
+	Insert(path string, val sql.JSONWrapper) (MutableJSON, bool, error)
 	// Remove the value at the given path. Updated value returned, and bool indicating if a change was made.
-	Remove(ctx *sql.Context, path string) (MutableJSON, bool, error)
+	Remove(path string) (MutableJSON, bool, error)
 	// Set the value at the given path. Updated value returned, and bool indicating if a change was made.
-	Set(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error)
+	Set(path string, val sql.JSONWrapper) (MutableJSON, bool, error)
 	// Replace the value at the given path with the new value. If the path does not exist, no modification is made.
-	Replace(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error)
+	Replace(path string, val sql.JSONWrapper) (MutableJSON, bool, error)
 	// ArrayInsert inserts into the array object referenced by the given path. If the path does not exist, no modification is made.
-	ArrayInsert(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error)
+	ArrayInsert(path string, val sql.JSONWrapper) (MutableJSON, bool, error)
 	// ArrayAppend appends to an  array object referenced by the given path. If the path does not exist, no modification is made,
 	// or if the path exists and is not an array, the element will be converted into an array and the element will be
 	// appended to it.
-	ArrayAppend(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error)
+	ArrayAppend(path string, val sql.JSONWrapper) (MutableJSON, bool, error)
 }
 
 type JSONDocument struct {
@@ -546,36 +546,36 @@ func jsonObjectDeterministicOrder(a, b JsonObject, inter []string) (int, error) 
 	return strings.Compare(aa, bb), nil
 }
 
-func (doc JSONDocument) Insert(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
+func (doc JSONDocument) Insert(path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
 	path = strings.TrimSpace(path)
-	return doc.unwrapAndExecute(ctx, path, val, INSERT)
+	return doc.unwrapAndExecute(path, val, INSERT)
 }
 
-func (doc JSONDocument) Remove(ctx *sql.Context, path string) (MutableJSON, bool, error) {
+func (doc JSONDocument) Remove(path string) (MutableJSON, bool, error) {
 	path = strings.TrimSpace(path)
 	if path == "$" {
 		return nil, false, fmt.Errorf("The path expression '$' is not allowed in this context.")
 	}
 
-	return doc.unwrapAndExecute(ctx, path, nil, REMOVE)
+	return doc.unwrapAndExecute(path, nil, REMOVE)
 }
 
-func (doc JSONDocument) Set(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
+func (doc JSONDocument) Set(path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
 	path = strings.TrimSpace(path)
-	return doc.unwrapAndExecute(ctx, path, val, SET)
+	return doc.unwrapAndExecute(path, val, SET)
 }
 
-func (doc JSONDocument) Replace(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
+func (doc JSONDocument) Replace(path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
 	path = strings.TrimSpace(path)
-	return doc.unwrapAndExecute(ctx, path, val, REPLACE)
+	return doc.unwrapAndExecute(path, val, REPLACE)
 }
 
-func (doc JSONDocument) ArrayAppend(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
+func (doc JSONDocument) ArrayAppend(path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
 	path = strings.TrimSpace(path)
-	return doc.unwrapAndExecute(ctx, path, val, ARRAY_APPEND)
+	return doc.unwrapAndExecute(path, val, ARRAY_APPEND)
 }
 
-func (doc JSONDocument) ArrayInsert(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
+func (doc JSONDocument) ArrayInsert(path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
 	path = strings.TrimSpace(path)
 
 	if path == "$" {
@@ -583,7 +583,7 @@ func (doc JSONDocument) ArrayInsert(ctx *sql.Context, path string, val sql.JSONW
 		return nil, false, fmt.Errorf("Path expression is not a path to a cell in an array: $")
 	}
 
-	return doc.unwrapAndExecute(ctx, path, val, ARRAY_INSERT)
+	return doc.unwrapAndExecute(path, val, ARRAY_INSERT)
 }
 
 const (
@@ -597,7 +597,7 @@ const (
 
 // unwrapAndExecute unwraps the JSONDocument and executes the given path on the unwrapped value. The path string passed
 // in at this point should be unmodified.
-func (doc JSONDocument) unwrapAndExecute(ctx *sql.Context, path string, val sql.JSONWrapper, mode int) (MutableJSON, bool, error) {
+func (doc JSONDocument) unwrapAndExecute(path string, val sql.JSONWrapper, mode int) (MutableJSON, bool, error) {
 	if path == "" {
 		return nil, false, fmt.Errorf("Invalid JSON path expression. Empty path")
 	}
