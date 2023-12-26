@@ -51,6 +51,7 @@ type Div struct {
 	// divScale is number of continuous division operations; this value will be available of all layers
 	divScale int32
 	// leftmostScale is a length of scale of the leftmost value in continuous division operation
+	// It is accessed concurrently read in the .Type() and written in the .Eval() methods.
 	leftmostScale               atomic.Int32
 	curIntermediatePrecisionInc int
 }
