@@ -121,7 +121,16 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		if !ok {
 			return n, transform.SameTree, nil
 		}
-		fkEditor, err := getForeignKeyEditor(ctx, a, tbl, cache, fkChain, false)
+		// re-resolve the table to get foreign key modifiable table
+		tbl2, _, err := a.Catalog.Table(ctx, n.Database(), tbl.Name())
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		modTbl, ok := tbl2.(sql.ForeignKeyTable)
+		if !ok {
+			return n, transform.SameTree, nil
+		}
+		fkEditor, err := getForeignKeyEditor(ctx, a, modTbl, cache, fkChain, false)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
