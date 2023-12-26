@@ -531,14 +531,14 @@ func floatOrDecimalTypeForMult(l, r sql.Expression) sql.Type {
 	rScale := rType.(types.DecimalType_).Scale()
 
 	maxWhole := (lPrec - lScale) + (rPrec - rScale)
-	maxFrac := lScale + rScale
+	maxScale := lScale + rScale
 	if maxWhole > types.DecimalTypeMaxPrecision {
 		maxWhole = types.DecimalTypeMaxPrecision
 	}
-	if maxFrac > types.DecimalTypeMaxScale {
-		maxFrac = types.DecimalTypeMaxScale
+	if maxScale > types.DecimalTypeMaxScale {
+		maxScale = types.DecimalTypeMaxScale
 	}
-	return types.MustCreateDecimalType(maxWhole+maxFrac, maxFrac)
+	return types.MustCreateDecimalType(maxWhole+maxScale, maxScale)
 }
 
 func mult(lval, rval interface{}) (interface{}, error) {

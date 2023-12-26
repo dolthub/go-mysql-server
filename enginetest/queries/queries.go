@@ -8723,6 +8723,13 @@ var KeylessQueries = []QueryTest{
 
 // BrokenQueries are queries that are known to be broken in the engine.
 var BrokenQueries = []QueryTest{
+	// https://github.com/dolthub/dolt/issues/7207
+	{
+		Query: "select 0 in (1/100000);",
+		Expected: []sql.Row{
+			{false},
+		},
+	},
 	// union and aggregation typing are tricky
 	{
 		Query: "with recursive t (n) as (select sum('1') from dual union all select (2.00) from dual) select sum(n) from t;",
