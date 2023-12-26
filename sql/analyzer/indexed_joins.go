@@ -138,11 +138,15 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	if err != nil {
 		return nil, err
 	}
-	err = addCrossHashJoins(m)
+
+	err = addLookupJoins(m)
 	if err != nil {
 		return nil, err
 	}
-	err = addLookupJoins(m)
+
+	memo.CardMemoGroups(m.Root())
+
+	err = addCrossHashJoins(m)
 	if err != nil {
 		return nil, err
 	}

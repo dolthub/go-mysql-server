@@ -236,6 +236,7 @@ type IndexScan struct {
 	Table *plan.IndexedTableAccess
 	Index *Index
 	Alias string
+	Stats sql.Statistic
 }
 
 var _ RelExpr = (*IndexScan)(nil)

@@ -43,6 +43,7 @@ exprs:
   attrs:
   - [index, "*Index"]
   - [Alias, "string"]
+  - [Stats, "sql.Statistic"]
 - name: "Values"
   sourceType: "*plan.ValueDerivedTable"
 - name: "TableAlias"

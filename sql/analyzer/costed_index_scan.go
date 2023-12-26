@@ -154,7 +154,7 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 		qual := sql.NewStatQualifier(dbName, tableName, strings.ToLower(idx.ID()))
 		stat, ok := qualToStat[qual]
 		if !ok {
-			stat, err = uniformDistStatisticsForIndex(ctx, iat, idx)
+			stat, err = uniformDistStatisticsForIndex(ctx, statsProv, iat, idx)
 		}
 		err := c.cost(root, stat, idx)
 		if err != nil {
@@ -305,7 +305,7 @@ func addIndexScans(m *memo.Memo) error {
 					break
 				}
 			}
-			itaGroup := m.MemoizeIndexScan(nil, ret, aliasName, idx)
+			itaGroup := m.MemoizeIndexScan(nil, ret, aliasName, idx, nil)
 			m.MemoizeFilter(filter.Group(), itaGroup, filter.Filters)
 		} else {
 			sqlIndexes := make([]sql.Index, len(indexes))
@@ -326,25 +326,10 @@ func addIndexScans(m *memo.Memo) error {
 				}
 				var itaGrp *memo.ExprGroup
 				if len(filters) > 0 {
-					itaGrp = m.MemoizeIndexScan(nil, ita, aliasName, idx)
+					itaGrp = m.MemoizeIndexScan(nil, ita, aliasName, idx, stat)
 					m.MemoizeFilter(filter.Group(), itaGrp, filters)
 				} else {
-					itaGrp = m.MemoizeIndexScan(filter.Group(), ita, aliasName, idx)
-				}
-
-				// todo: we should always interpolate the estimated row count even
-				// if we are missing index statistics
-				if stat.RowCount() > 0 {
-					if stat.Histogram().IsEmpty() {
-						// if we don't have stats, set arbitrarily low non-zero row count
-						// to prefer indexScan over filter option
-						itaGrp.RelProps.SetStats(stat.WithRowCount(1))
-					} else {
-						itaGrp.RelProps.SetStats(stat)
-					}
-				}
-				if stat.FuncDeps().HasMax1Row() {
-					itaGrp.RelProps.SetStats(stat.WithRowCount(1))
+					itaGrp = m.MemoizeIndexScan(filter.Group(), ita, aliasName, idx, stat)
 				}
 			}
 		}
@@ -1389,15 +1374,19 @@ func newLeaf(id indexScanId, e sql.Expression, underlying string) (*iScanLeaf, b
 const dummyNotUniqueDistinct = .90
 const dummyNotUniqueNull = .03
 
-func uniformDistStatisticsForIndex(ctx *sql.Context, iat sql.IndexAddressableTable, idx sql.Index) (sql.Statistic, error) {
+func uniformDistStatisticsForIndex(ctx *sql.Context, statsProv sql.StatsProvider, iat sql.IndexAddressableTable, idx sql.Index) (sql.Statistic, error) {
 	var rowCount uint64
 	var avgSize uint64
+
+	rowCount, _ = statsProv.RowCount(ctx, idx.Database(), idx.Table())
+
 	if st, ok := iat.(sql.StatisticsTable); ok {
-		var err error
-		rowCount, _, err = st.RowCount(ctx)
+		rCnt, _, err := st.RowCount(ctx)
 		if err != nil {
 			return nil, err
-
+		}
+		if rowCount == 0 {
+			rowCount = rCnt
 		}
 		if rowCount > 0 {
 			dataSize, err := st.DataLength(ctx)

@@ -250,12 +250,13 @@ func (m *Memo) MemoizeProject(grp, child *ExprGroup, projections []sql.Expressio
 // access data. IndexScans are either static and read a specific set of
 // ranges, or dynamic and use a lookup template that is iteratively
 // bound and executed during LOOKUP_JOINs.
-func (m *Memo) MemoizeIndexScan(grp *ExprGroup, ita *plan.IndexedTableAccess, alias string, index *Index) *ExprGroup {
+func (m *Memo) MemoizeIndexScan(grp *ExprGroup, ita *plan.IndexedTableAccess, alias string, index *Index, stat sql.Statistic) *ExprGroup {
 	rel := &IndexScan{
 		sourceBase: &sourceBase{relBase: &relBase{}},
 		Table:      ita,
 		Alias:      alias,
 		Index:      index,
+		Stats:      stat,
 	}
 	if grp == nil {
 		return m.NewExprGroup(rel)

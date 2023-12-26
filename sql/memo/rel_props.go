@@ -16,7 +16,6 @@ package memo
 
 import (
 	"fmt"
-	"math"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -54,7 +53,6 @@ func newRelProps(rel RelExpr) *relProps {
 		if r.TableIdNode().Columns().Len() > 0 {
 			p.outputCols = r.TableIdNode().Columns()
 			p.populateFds()
-			p.stat = statsForRel(r)
 			p.populateOutputTables()
 			p.populateInputTables()
 			return p
@@ -91,7 +89,6 @@ func newRelProps(rel RelExpr) *relProps {
 	}
 
 	p.populateFds()
-	p.stat = statsForRel(rel)
 	p.populateOutputTables()
 	p.populateInputTables()
 	return p
@@ -263,54 +260,49 @@ func (p *relProps) populateFds() {
 	p.fds = fds
 }
 
+func CardMemoGroups(g *ExprGroup) {
+	if g.RelProps.stat != nil {
+		return
+	}
+	// lookup joins and index scans will be first, if any
+	for _, g := range g.children() {
+		CardMemoGroups(g)
+	}
+	s := statsForRel(g.First)
+	g.RelProps.SetStats(s)
+}
+
 func statsForRel(rel RelExpr) sql.Statistic {
 	var stat sql.Statistic
 	switch rel := rel.(type) {
 	case JoinRel:
 		// different joins use different ways to estimate cardinality of outputs
 		jp := rel.JoinPrivate()
-		left := float64(jp.Left.RelProps.GetStats().RowCount())
-		right := float64(jp.Left.RelProps.GetStats().RowCount())
+		left := jp.Left.RelProps.GetStats()
+		right := jp.Left.RelProps.GetStats()
 
 		switch n := rel.(type) {
 		case *LookupJoin:
-			var card float64
 			if n.Injective {
-				card = n.Left.RelProps.card
-			} else {
-				sel := lookupJoinSelectivity(n.Lookup, n.JoinBase)
-				card = n.Left.RelProps.card * n.Right.RelProps.card * sel
+				return left
 			}
-			return &stats.Statistic{RowCnt: uint64(card)}
-		case *ConcatJoin:
-			var sel float64
-			for _, l := range n.Concat {
-				lookup := l
-				sel += lookupJoinSelectivity(lookup, n.JoinBase)
-			}
-			card := n.Left.RelProps.card * optimisticJoinSel * sel
-			return &stats.Statistic{RowCnt: uint64(card)}
-		case *LateralJoin:
-			card := n.Left.RelProps.card * n.Right.RelProps.card
-			return &stats.Statistic{RowCnt: uint64(card)}
 		default:
 		}
 
-		switch {
-		case jp.Op.IsPartial():
-			return &stats.Statistic{RowCnt: uint64(left * right * optimisticJoinSel)}
-		case jp.Op.IsLeftOuter():
-			card := math.Max(jp.Left.RelProps.card, optimisticJoinSel*left*right)
-			return &stats.Statistic{RowCnt: uint64(card)}
-		case jp.Op.IsRightOuter():
-			card := math.Max(jp.Right.RelProps.card, optimisticJoinSel*jp.Left.RelProps.card*jp.Right.RelProps.card)
-			return &stats.Statistic{RowCnt: uint64(card)}
-		case jp.Op.IsDegenerate():
-			return &stats.Statistic{RowCnt: uint64(left * right)}
-		default:
-			card := optimisticJoinSel * left * right
-			return &stats.Statistic{RowCnt: uint64(card)}
+		distinct := left.DistinctCount()
+		if right.DistinctCount() > distinct {
+			distinct = right.DistinctCount()
 		}
+		if distinct == 0 {
+			m := float64(left.RowCount())
+			if cmp := float64(left.RowCount()); cmp > m {
+				m = cmp
+			}
+			distinct = uint64(m * .80)
+		}
+		card := float64(left.RowCount()*right.RowCount()) / float64(distinct)
+		return &stats.Statistic{RowCnt: uint64(card)}
+
 	case *Max1Row:
 		stat = &stats.Statistic{RowCnt: 1}
 
@@ -318,9 +310,14 @@ func statsForRel(rel RelExpr) sql.Statistic {
 		stat = &stats.Statistic{RowCnt: 0}
 
 	case *IndexScan:
-		// todo: stats to replace magic number
-		// index scans usually cheaper than subqueries
-		stat = &stats.Statistic{RowCnt: 10}
+		if rel.Stats != nil {
+			if len(rel.Stats.Histogram()) > 0 {
+				return rel.Stats
+			} else if rel.Stats.RowCount() > 0 {
+				return rel.Stats.WithRowCount(rel.Stats.RowCount() / 2).WithDistinctCount(rel.Stats.DistinctCount() / 2)
+			}
+		}
+		stat = &stats.Statistic{RowCnt: 1}
 
 	case *Values:
 		stat = &stats.Statistic{RowCnt: uint64(len(rel.Table.ExpressionTuples))}
@@ -346,10 +343,10 @@ func statsForRel(rel RelExpr) sql.Statistic {
 		stat = &stats.Statistic{RowCnt: uint64(card)}
 
 	case *Project:
-		stat = &stats.Statistic{RowCnt: rel.Child.RelProps.GetStats().RowCount()}
+		stat = rel.Child.RelProps.GetStats()
 
 	case *Distinct:
-		stat = &stats.Statistic{RowCnt: rel.Child.RelProps.GetStats().RowCount()}
+		stat = rel.Child.RelProps.GetStats()
 
 	case *SetOp:
 		// todo: costing full plan to carry cardinalities upwards
