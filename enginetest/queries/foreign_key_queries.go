@@ -1333,7 +1333,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:       "INSERT INTO delayed_child VALUES (2, 3);",
-				ExpectedErr: sql.ErrForeignKeyChildViolation,
+				ExpectedErr: sql.ErrForeignKeyNotResolved,
 			},
 			{
 				Query:    "INSERT INTO delayed_parent VALUES (1, 2), (2, 3);",
