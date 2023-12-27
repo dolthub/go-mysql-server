@@ -932,7 +932,7 @@ func (n *Now) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if !ok {
 			return nil, fmt.Errorf("invalid time zone: %s", sessionTimeZone)
 		}
-		tt := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), 0, t.Location())
+		tt := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), 0, time.UTC)
 		return tt, nil
 	}
 

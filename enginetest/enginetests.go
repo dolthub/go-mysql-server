@@ -4379,7 +4379,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 			return nil
 		})
 		TestQueryWithContext(t, ctx, e, harness, "select * from t10 order by 1", []sql.Row{
-			{1, now, now.Truncate(time.Second), now, now.Truncate(time.Second)},
+			{1, now.Truncate(time.Second), now.Truncate(time.Second), now.Truncate(time.Second), now.Truncate(time.Second)},
 		}, nil, nil)
 	})
 

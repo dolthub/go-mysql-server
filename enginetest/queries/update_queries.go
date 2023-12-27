@@ -806,7 +806,7 @@ var OnUpdateExprScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{"t", "CREATE TABLE `t` (\n" +
 						"  `i` int,\n" +
-						"  `ts` timestamp DEFAULT 0 ON UPDATE (CURRENT_TIMESTAMP())\n" +
+						"  `ts` timestamp DEFAULT 0 ON UPDATE CURRENT_TIMESTAMP\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
@@ -877,7 +877,7 @@ var OnUpdateExprScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{"t", "CREATE TABLE `t` (\n" +
 						"  `i` int,\n" +
-						"  `ts` timestamp DEFAULT (CURRENT_TIMESTAMP()) ON UPDATE (CURRENT_TIMESTAMP())\n" +
+						"  `ts` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
@@ -961,7 +961,7 @@ var OnUpdateExprScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{"t", "CREATE TABLE `t` (\n" +
 						"  `i` int,\n" +
-						"  `ts` timestamp DEFAULT 0 ON UPDATE (CURRENT_TIMESTAMP())\n" +
+						"  `ts` timestamp DEFAULT 0 ON UPDATE CURRENT_TIMESTAMP\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
@@ -1029,8 +1029,8 @@ var OnUpdateExprScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{"t", "CREATE TABLE `t` (\n" +
 						"  `i` int NOT NULL,\n" +
-						"  `ts` timestamp DEFAULT 0 ON UPDATE (CURRENT_TIMESTAMP()),\n" +
-						"  `dt` datetime DEFAULT 0 ON UPDATE (CURRENT_TIMESTAMP()),\n" +
+						"  `ts` timestamp DEFAULT 0 ON UPDATE CURRENT_TIMESTAMP,\n" +
+						"  `dt` datetime DEFAULT 0 ON UPDATE CURRENT_TIMESTAMP,\n" +
 						"  PRIMARY KEY (`i`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
