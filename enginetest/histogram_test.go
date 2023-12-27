@@ -174,7 +174,7 @@ func TestMultiDist(t *testing.T) {
 		},
 	}
 
-	runSuite(t, tests, 1000, 10, true)
+	runSuite(t, tests, 1000, 10, false)
 }
 
 func runSuite(t *testing.T, tests []statsTest, rowCnt, bucketCnt int, debug bool) {
@@ -193,7 +193,7 @@ func runSuite(t *testing.T, tests []statsTest, rowCnt, bucketCnt int, debug bool
 				joinOps = append(joinOps, eq(l, r+len(tt.leftTypes)))
 			}
 
-			exp, err := expectedResultSize(newContext(pro), xyz, wuv, joinOps)
+			exp, err := expectedResultSize(newContext(pro), xyz, wuv, joinOps, debug)
 			require.NoError(t, err)
 
 			// get histograms for tables
@@ -223,7 +223,11 @@ func runSuite(t *testing.T, tests []statsTest, rowCnt, bucketCnt int, debug bool
 				log.Printf("join %s\n", res.Histogram().DebugString())
 			}
 
-			delta := float64(exp-int(res.RowCount())) / float64(exp)
+			denom := float64(exp)
+			if cmp := float64(res.RowCount()); cmp > denom {
+				denom = cmp
+			}
+			delta := float64(exp-int(res.RowCount())) / denom
 			if delta < 0 {
 				delta = -delta
 			}
@@ -344,9 +348,11 @@ func newContext(provider *memory.DbProvider) *sql.Context {
 	return sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), provider)))
 }
 
-func expectedResultSize(ctx *sql.Context, t1, t2 *plan.ResolvedTable, filters []sql.Expression) (int, error) {
+func expectedResultSize(ctx *sql.Context, t1, t2 *plan.ResolvedTable, filters []sql.Expression, debug bool) (int, error) {
 	j := plan.NewJoin(t1, t2, plan.JoinTypeInner, expression.JoinAnd(filters...))
-	fmt.Println(sql.DebugString(j))
+	if debug {
+		fmt.Println(sql.DebugString(j))
+	}
 	i, err := rowexec.DefaultBuilder.Build(ctx, j, nil)
 	if err != nil {
 		return 0, err

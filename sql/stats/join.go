@@ -227,6 +227,14 @@ func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sq
 	var err error
 	var reverse bool
 
+	swap := func() {
+		leftStack, rightStack = rightStack, leftStack
+		nextL, nextR = nextR, nextL
+		leftRes, rightRes = rightRes, leftRes
+		h1, h2 = h2, h1
+		reverse = !reverse
+	}
+
 	var state sjState = sjStateInit
 	for state != sjStateEOF {
 		switch state {
@@ -300,12 +308,8 @@ func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sq
 
 		case sjStateCutRight:
 			// switch to make left the cut target
-			leftStack, rightStack = rightStack, leftStack
-			nextL, nextR = nextR, nextL
-			leftRes, rightRes = rightRes, leftRes
-			h1, h2 = h2, h1
+			swap()
 			state = sjStateCut
-			reverse = !reverse
 
 		case sjStateCut:
 			state = sjStateInc
@@ -354,7 +358,7 @@ func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sq
 				if bucketMagnitude == 0 {
 					//rightStack = append(rightStack, nextR)
 					peekR = nil
-					//state = sjStateFinalize
+					//state = sjStateExhaust
 					continue
 				}
 
@@ -442,10 +446,10 @@ func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sq
 			state = sjStateCmp
 
 			if nextL == nil || nextR == nil {
-				state = sjStateFinalize
+				state = sjStateExhaust
 			}
 
-		case sjStateFinalize:
+		case sjStateExhaust:
 			state = sjStateEOF
 
 			// count rows, count distinct in one with more buckets
@@ -456,11 +460,7 @@ func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sq
 
 			if nextL == nil {
 				// swap so right side is nil
-				leftStack, rightStack = rightStack, leftStack
-				nextL, nextR = nextR, nextL
-				leftRes, rightRes = rightRes, leftRes
-				h1, h2 = h2, h1
-				reverse = !reverse
+				swap()
 			}
 
 			leftStack = append(leftStack, nextL)
@@ -477,6 +477,7 @@ func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sq
 			}
 			leftRes = append(leftRes, nextL)
 			nextL = nil
+
 		}
 	}
 
@@ -596,7 +597,8 @@ const (
 	sjStateCutRight
 	sjStateCut
 	sjStateInc
-	sjStateFinalize
+	sjStateExhaust
+	sjStateTrimOverhang
 	sjStateEOF
 )
 

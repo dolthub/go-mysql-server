@@ -7,7 +7,7 @@ import (
 	"math/rand"
 )
 
-func NewNormDistIter(colCnt, rowCnt int, std, mean float64) sql.RowIter {
+func NewNormDistIter(colCnt, rowCnt int, mean, std float64) sql.RowIter {
 	return &normDistIter{cols: colCnt, cnt: rowCnt, std: std, mean: mean}
 }
 
