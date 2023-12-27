@@ -2,10 +2,12 @@ package stats
 
 import (
 	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestBinMerge(t *testing.T) {
