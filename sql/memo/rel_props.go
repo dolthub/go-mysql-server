@@ -261,10 +261,12 @@ func (p *relProps) populateFds() {
 }
 
 func CardMemoGroups(g *ExprGroup) {
+	// card checking is called after indexScans and lookups joins are generated,
+	// both of which have metadata that makes cardinality estimation more
+	// accurate.
 	if g.RelProps.stat != nil {
 		return
 	}
-	// lookup joins and index scans will be first, if any
 	for _, g := range g.children() {
 		CardMemoGroups(g)
 	}
@@ -295,11 +297,13 @@ func statsForRel(rel RelExpr) sql.Statistic {
 		}
 		if distinct == 0 {
 			m := float64(left.RowCount())
-			if cmp := float64(left.RowCount()); cmp > m {
+			if cmp := float64(right.RowCount()); cmp > m {
 				m = cmp
 			}
 			distinct = uint64(m * .80)
 		}
+		// Selinger estimation, cartesian join with the assumption that the
+		// side with fewer distinct values is surjective into the larger set
 		card := float64(left.RowCount()*right.RowCount()) / float64(distinct)
 		return &stats.Statistic{RowCnt: uint64(card)}
 
