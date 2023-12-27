@@ -147,7 +147,12 @@ func (e *ColumnDefaultValue) String() string {
 	if e.Literal {
 		return e.Expr.String()
 	} else {
-		return fmt.Sprintf("(%s)", e.Expr.String())
+		// There's a special case for NOW()
+		str := e.Expr.String()
+		if str == "NOW()" {
+			return "CURRENT_TIMESTAMP"
+		}
+		return fmt.Sprintf("(%s)", str)
 	}
 }
 

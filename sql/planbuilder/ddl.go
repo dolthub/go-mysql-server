@@ -1352,7 +1352,7 @@ func (b *Builder) convertDefaultExpression(inScope *scope, defaultExpr ast.Expr,
 	} else if !isParenthesized {
 		if _, ok := resExpr.(sql.FunctionExpression); ok {
 			switch resExpr.(type) {
-			case *function.Now, *function.CurrTimestamp:
+			case *function.Now:
 				// Datetime and Timestamp columns allow now and current_timestamp to not be enclosed in parens,
 				// but they still need to be treated as function expressions
 				isLiteral = false

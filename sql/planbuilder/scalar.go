@@ -66,7 +66,12 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 			inScope.parent.activeSubquery.markVolatile()
 		}
 
-		return &function.CurrTimestamp{Args: []sql.Expression{fsp}}
+		n, err := function.NewNow(fsp)
+		if err != nil {
+			b.handleErr(err)
+		}
+
+		return n
 	case *ast.TrimExpr:
 		pat := b.buildScalar(inScope, v.Pattern)
 		str := b.buildScalar(inScope, v.Str)
