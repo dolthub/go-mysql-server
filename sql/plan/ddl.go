@@ -304,13 +304,13 @@ func (c *CreateTable) CreateForeignKeys(ctx *sql.Context, tableNode sql.Table) e
 				fkParentTbl = fkTbl
 			}
 			// If foreign_key_checks are true, then the referenced tables will be populated
-			err = ResolveForeignKey(ctx, fkTbl, fkParentTbl, *fkDef, true, true)
+			err = ResolveForeignKey(ctx, fkTbl, fkParentTbl, *fkDef, true, true, true)
 			if err != nil {
 				return err
 			}
 		} else {
 			// If foreign_key_checks are true, then the referenced tables will be populated
-			err = ResolveForeignKey(ctx, fkTbl, nil, *fkDef, true, false)
+			err = ResolveForeignKey(ctx, fkTbl, nil, *fkDef, true, false, false)
 			if err != nil {
 				return err
 			}

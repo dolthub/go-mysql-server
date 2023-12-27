@@ -87,12 +87,12 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		}
 		var fkEditor *plan.ForeignKeyEditor
 		if n.IsReplace || len(n.OnDupExprs) > 0 {
-			fkEditor, err = getForeignKeyEditor(ctx, a, tbl, cache, fkChain)
+			fkEditor, err = getForeignKeyEditor(ctx, a, tbl, cache, fkChain, true)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
 		} else {
-			fkEditor, err = getForeignKeyReferences(ctx, a, tbl, cache, fkChain)
+			fkEditor, err = getForeignKeyReferences(ctx, a, tbl, cache, fkChain, true)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -121,7 +121,16 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		if !ok {
 			return n, transform.SameTree, nil
 		}
-		fkEditor, err := getForeignKeyEditor(ctx, a, tbl, cache, fkChain)
+		// re-resolve the table to get foreign key modifiable table
+		tbl2, _, err := a.Catalog.Table(ctx, n.Database(), tbl.Name())
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		modTbl, ok := tbl2.(sql.ForeignKeyTable)
+		if !ok {
+			return n, transform.SameTree, nil
+		}
+		fkEditor, err := getForeignKeyEditor(ctx, a, modTbl, cache, fkChain, false)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -156,7 +165,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 			if !ok {
 				continue
 			}
-			fkEditor, err := getForeignKeyRefActions(ctx, a, tbl, cache, fkChain, nil)
+			fkEditor, err := getForeignKeyRefActions(ctx, a, tbl, cache, fkChain, nil, false)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -203,16 +212,16 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 }
 
 // getForeignKeyEditor merges both getForeignKeyReferences and getForeignKeyRefActions and returns a single editor.
-func getForeignKeyEditor(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTable, cache *foreignKeyCache, fkChain foreignKeyChain) (*plan.ForeignKeyEditor, error) {
-	fkEditor, err := getForeignKeyReferences(ctx, a, tbl, cache, fkChain)
+func getForeignKeyEditor(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTable, cache *foreignKeyCache, fkChain foreignKeyChain, checkRows bool) (*plan.ForeignKeyEditor, error) {
+	fkEditor, err := getForeignKeyReferences(ctx, a, tbl, cache, fkChain, checkRows)
 	if err != nil {
 		return nil, err
 	}
-	return getForeignKeyRefActions(ctx, a, tbl, cache, fkChain, fkEditor)
+	return getForeignKeyRefActions(ctx, a, tbl, cache, fkChain, fkEditor, checkRows)
 }
 
 // getForeignKeyReferences returns an editor containing only the references for the given table.
-func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTable, cache *foreignKeyCache, fkChain foreignKeyChain) (*plan.ForeignKeyEditor, error) {
+func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTable, cache *foreignKeyCache, fkChain foreignKeyChain, checkRows bool) (*plan.ForeignKeyEditor, error) {
 	var updater sql.ForeignKeyEditor
 	fks, err := tbl.GetDeclaredForeignKeys(ctx)
 	if err != nil {
@@ -256,7 +265,7 @@ func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 
 		// Resolve the foreign key if it has not been resolved yet
 		if !fk.IsResolved {
-			err = plan.ResolveForeignKey(ctx, tbl, parentTbl, fk, false, true)
+			err = plan.ResolveForeignKey(ctx, tbl, parentTbl, fk, false, true, checkRows)
 			if err != nil {
 				return nil, sql.ErrForeignKeyNotResolved.New(fk.Database, fk.Table, fk.Name,
 					strings.Join(fk.Columns, "`, `"), fk.ParentTable, strings.Join(fk.ParentColumns, "`, `"))
@@ -301,7 +310,7 @@ func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 // getForeignKeyRefActions adds referential actions to enforce on the given table. If this is being called after
 // getForeignKeyReferences, then that foreign key editor should be passed in. Otherwise, nil should be passed in.
 // This also handles caching of the foreign key editor (when the editor does not have any references).
-func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTable, cache *foreignKeyCache, fkChain foreignKeyChain, fkEditor *plan.ForeignKeyEditor) (*plan.ForeignKeyEditor, error) {
+func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTable, cache *foreignKeyCache, fkChain foreignKeyChain, fkEditor *plan.ForeignKeyEditor, checkRows bool) (*plan.ForeignKeyEditor, error) {
 	fks, err := tbl.GetReferencedForeignKeys(ctx)
 	if err != nil {
 		return nil, err
@@ -356,7 +365,7 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 
 		// Resolve the foreign key if it has not been resolved yet
 		if !fk.IsResolved {
-			err = plan.ResolveForeignKey(ctx, childTbl, tbl, fk, false, true)
+			err = plan.ResolveForeignKey(ctx, childTbl, tbl, fk, false, true, checkRows)
 			if err != nil {
 				return nil, sql.ErrForeignKeyNotResolved.New(fk.Database, fk.Table, fk.Name,
 					strings.Join(fk.Columns, "`, `"), fk.ParentTable, strings.Join(fk.ParentColumns, "`, `"))
@@ -382,7 +391,7 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 			return nil, err
 		}
 
-		childEditor, err := getForeignKeyEditor(ctx, a, childTbl, cache, fkChain.AddForeignKey(fk.Name))
+		childEditor, err := getForeignKeyEditor(ctx, a, childTbl, cache, fkChain.AddForeignKey(fk.Name), checkRows)
 		if err != nil {
 			return nil, err
 		}
