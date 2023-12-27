@@ -184,7 +184,7 @@ func (h Histogram) DebugString() string {
 		for i := 0; i < int(float64(cnts[j])*flatten); i++ {
 			b.WriteString("*")
 		}
-		b.WriteString("\n")
+		fmt.Fprintf(&b, "(%d)\n", cnts[j])
 	}
 	return b.String()
 }

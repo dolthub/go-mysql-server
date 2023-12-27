@@ -3,6 +3,7 @@ package enginetest
 import (
 	"container/heap"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -15,7 +16,6 @@ import (
 	"golang.org/x/exp/rand"
 	"io"
 	"log"
-	"math"
 	"sort"
 	"testing"
 )
@@ -92,11 +92,12 @@ func TestNormDist(t *testing.T) {
 		statTests = append(statTests, st)
 	}
 
-	runSuite(t, statTests, 100, 5, true)
-	runSuite(t, statTests, 100, 10, true)
-	runSuite(t, statTests, 100, 20, true)
-	runSuite(t, statTests, 500, 10, true)
-	runSuite(t, statTests, 500, 20, true)
+	debug := false
+	runSuite(t, statTests, 100, 5, debug)
+	runSuite(t, statTests, 100, 10, debug)
+	runSuite(t, statTests, 100, 20, debug)
+	runSuite(t, statTests, 500, 10, debug)
+	runSuite(t, statTests, 500, 20, debug)
 }
 
 func TestExpDist(t *testing.T) {
@@ -145,11 +146,12 @@ func TestExpDist(t *testing.T) {
 		statTests = append(statTests, st)
 	}
 
-	runSuite(t, statTests, 100, 5, true)
-	runSuite(t, statTests, 100, 10, true)
-	runSuite(t, statTests, 100, 20, true)
-	runSuite(t, statTests, 500, 10, true)
-	runSuite(t, statTests, 500, 20, true)
+	debug := false
+	runSuite(t, statTests, 100, 5, debug)
+	runSuite(t, statTests, 100, 10, debug)
+	runSuite(t, statTests, 100, 20, debug)
+	runSuite(t, statTests, 500, 10, debug)
+	runSuite(t, statTests, 500, 20, debug)
 }
 
 func TestMultiDist(t *testing.T) {
@@ -218,7 +220,7 @@ func runSuite(t *testing.T, tests []statsTest, rowCnt, bucketCnt int, debug bool
 			res, err := stats.Join(stats.UpdateCounts(lStat), stats.UpdateCounts(rStat), []int{0}, []int{0}, debug)
 			require.NoError(t, err)
 			if debug {
-				log.Printf("join:\n,%s\n", res.Histogram().DebugString())
+				log.Printf("join %s\n", res.Histogram().DebugString())
 			}
 
 			delta := float64(exp-int(res.RowCount())) / float64(exp)
@@ -396,14 +398,22 @@ func increasingHalfDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt in
 func expDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt int, lambda float64, seed int) error {
 	rand.Seed(uint64(seed))
 	tab := rt.UnderlyingTable().(*memory.Table)
-	for i := 0; i < cnt; i++ {
-		y := -math.Log2(rand.NormFloat64()) / lambda
-		z := -math.Log2(rand.NormFloat64()) / lambda
-		row := sql.Row{int64(i), int64(y), int64(z)}
-		err := tab.Insert(ctx, row)
+	iter := stats.NewExpDistIter(2, cnt, lambda)
+	var i int
+	for {
+		val, err := iter.Next(ctx)
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		row := sql.Row{int64(i)}
+		for _, v := range val {
+			row = append(row, int64(v.(float64)))
+		}
+		err = tab.Insert(ctx, row)
 		if err != nil {
 			return err
 		}
+		i++
 	}
 	return nil
 }
@@ -411,14 +421,22 @@ func expDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt int, lambda f
 func normalDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt int, mean, std float64, seed int) error {
 	rand.Seed(uint64(seed))
 	tab := rt.UnderlyingTable().(*memory.Table)
-	for i := 0; i < cnt; i++ {
-		y := rand.NormFloat64()*std + mean
-		z := rand.NormFloat64()*std + mean
-		row := sql.Row{int64(i), int64(y), int64(z)}
-		err := tab.Insert(ctx, row)
+	iter := stats.NewNormDistIter(2, cnt, mean, std)
+	var i int
+	for {
+		val, err := iter.Next(ctx)
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		row := sql.Row{int64(i)}
+		for _, v := range val {
+			row = append(row, int64(v.(float64)))
+		}
+		err = tab.Insert(ctx, row)
 		if err != nil {
 			return err
 		}
+		i++
 	}
 	return nil
 }
