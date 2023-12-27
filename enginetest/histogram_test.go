@@ -236,7 +236,7 @@ func runSuite(t *testing.T, tests []statsTest, rowCnt, bucketCnt int, debug bool
 			if debug {
 				log.Println(res.RowCount(), exp, delta)
 			}
-			require.Less(t, delta, tt.err)
+			require.Less(t, delta, tt.err, "%d/%d/%.2f\nleft %s\nright %s", res.RowCount(), exp, delta, sql.Histogram(xHist).DebugString(), sql.Histogram(wHist).DebugString())
 		})
 	}
 }
