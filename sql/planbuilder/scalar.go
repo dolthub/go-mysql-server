@@ -690,7 +690,7 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 		return b.convertInt(string(v.Val), 10)
 	case ast.FloatVal:
 		// any float value is parsed as decimal except when the value has scientific notation
-		ogVal := string(v.Val)
+		ogVal := strings.ToLower(string(v.Val))
 		if strings.Contains(ogVal, "e") {
 			val, err := strconv.ParseFloat(string(v.Val), 64)
 			if err != nil {

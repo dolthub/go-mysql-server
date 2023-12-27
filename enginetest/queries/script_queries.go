@@ -148,6 +148,21 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
+		Name: "update exponential parsing",
+		SetUpScript: []string{
+			"create table a (a int primary key, b double);",
+			"insert into a values (0, 0.0),(1, 1.0)",
+			"update a set b = 5.0E-5 where a = 0",
+			"update a set b = 5.0e-5 where a = 1",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from a",
+				Expected: []sql.Row{{0, .00005}, {1, .00005}},
+			},
+		},
+	},
+	{
 		Name: "set op schema merge",
 		SetUpScript: []string{
 			"create table `left` (i int primary key, j mediumint, k varchar(20));",
