@@ -3,11 +3,12 @@ package stats
 import (
 	"container/heap"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"log"
 	"math"
 	"time"
+
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Join performs an alignment algorithm on two sets of statistics, and then

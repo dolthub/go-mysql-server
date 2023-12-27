@@ -5,6 +5,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"log"
+	"sort"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/rand"
+
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -12,12 +20,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/stats"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/rand"
-	"io"
-	"log"
-	"sort"
-	"testing"
 )
 
 func init() {
