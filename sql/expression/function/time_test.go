@@ -517,14 +517,14 @@ func TestDate(t *testing.T) {
 func TestNow(t *testing.T) {
 	f, _ := NewNow(expression.NewGetField(0, types.LongText, "foo", false))
 	date := time.Date(
-		2021,     // year
-		1,        // month
-		1,        // day
-		8,        // hour
-		30,       // min
-		15,       // sec
+		2021,      // year
+		1,         // month
+		1,         // day
+		8,         // hour
+		30,        // min
+		15,        // sec
 		123456789, // nsec
-		time.UTC, // location (UTC)
+		time.UTC,  // location (UTC)
 	)
 
 	testCases := []struct {
