@@ -532,8 +532,8 @@ func floatOrDecimalTypeForMult(l, r sql.Expression) sql.Type {
 
 	maxWhole := (lPrec - lScale) + (rPrec - rScale)
 	maxScale := lScale + rScale
-	if maxWhole > types.DecimalTypeMaxPrecision {
-		maxWhole = types.DecimalTypeMaxPrecision
+	if maxWhole > types.DecimalTypeMaxPrecision-types.DecimalTypeMaxScale {
+		maxWhole = types.DecimalTypeMaxPrecision - types.DecimalTypeMaxScale
 	}
 	if maxScale > types.DecimalTypeMaxScale {
 		maxScale = types.DecimalTypeMaxScale
