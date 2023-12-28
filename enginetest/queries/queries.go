@@ -4620,6 +4620,12 @@ Select * from (
 		Expected: []sql.Row{{false, true}},
 	},
 	{
+		Query: "SELECT MAX(CAST(NULL AS DECIMAL)) * 82",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
 		Query: "SELECT '3' > 2 FROM tabletest",
 		Expected: []sql.Row{
 			{true},
