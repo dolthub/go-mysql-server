@@ -781,6 +781,18 @@ var OnUpdateExprScripts = []ScriptTest{
 				ExpectedErr: sql.ErrInvalidOnUpdate,
 			},
 			{
+				Query:       "create table tt (i int, ts timestamp on update now(1))",
+				ExpectedErr: sql.ErrInvalidOnUpdate,
+			},
+			{
+				Query:       "create table tt (i int, ts timestamp on update current_timestamp(1))",
+				ExpectedErr: sql.ErrInvalidOnUpdate,
+			},
+			{
+				Query:       "create table tt (i int, ts timestamp on update current_timestamp(100))",
+				ExpectedErr: sql.ErrInvalidOnUpdate,
+			},
+			{
 				Query:          "alter table t modify column ts timestamp on update (5)",
 				ExpectedErrStr: "syntax error at position 53 near 'update'",
 			},

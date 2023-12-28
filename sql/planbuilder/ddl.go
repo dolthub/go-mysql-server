@@ -1088,7 +1088,50 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 
 	for i, onUpdateExpr := range updates {
 		schema[i].OnUpdate = b.convertDefaultExpression(outScope, onUpdateExpr, schema[i].Type, schema[i].Nullable)
-		if schema[i].OnUpdate != nil && !(types.IsDatetimeType(schema[i].Type) || types.IsTimestampType(schema[i].Type)) {
+		if schema[i].OnUpdate == nil {
+			continue
+		}
+		if !(types.IsDatetimeType(schema[i].Type) || types.IsTimestampType(schema[i].Type)) {
+			b.handleErr(sql.ErrInvalidOnUpdate.New(schema[i].Name))
+		}
+		now, ok := schema[i].OnUpdate.Expr.(*function.Now)
+		if !ok {
+			continue
+		}
+		children := now.Children()
+		if len(children) == 0 {
+			continue
+		}
+		lit, isLit := children[0].(*expression.Literal)
+		if !isLit {
+			continue
+		}
+		val, err := lit.Eval(nil, nil)
+		if err != nil {
+			b.handleErr(err)
+		}
+		var prec int
+		switch v := val.(type) {
+		case int8:
+			prec = int(v)
+		case int16:
+			prec = int(v)
+		case int32:
+			prec = int(v)
+		case int64:
+			prec = int(v)
+		case uint8:
+			prec = int(v)
+		case uint16:
+			prec = int(v)
+		case uint32:
+			prec = int(v)
+		case uint64:
+			prec = int(v)
+		default:
+			b.handleErr(sql.ErrInvalidOnUpdate.New(schema[i].Name))
+		}
+		if prec != 0 {
 			b.handleErr(sql.ErrInvalidOnUpdate.New(schema[i].Name))
 		}
 	}
