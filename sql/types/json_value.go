@@ -71,7 +71,7 @@ func (doc JSONDocument) JSONString() (string, error) {
 func (doc JSONDocument) String() string {
 	result, err := doc.JSONString()
 	if err != nil {
-		return fmt.Sprintf("(Error marshalling JSON: %s)", err.Error())
+		return fmt.Sprintf("(Error marshalling JSON: %s, %s)", doc.Val, err.Error())
 	}
 	return result
 }
