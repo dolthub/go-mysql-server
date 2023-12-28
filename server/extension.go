@@ -92,13 +92,13 @@ type Chain interface {
 	// Note the contents of the query slice may change after
 	// the first call to callback. So the Handler should not
 	// hang on to the byte slice.
-	ComQuery(c *mysql.Conn, query string, callback func(res *sqltypes.Result, more bool) error) error
+	ComQuery(c *mysql.Conn, query string, callback mysql.ResultSpoolFn) error
 	
 	// ComMultiQuery is called when a connection receives a query and the
 	// client supports MULTI_STATEMENT. It should process the first
 	// statement in |query| and return the remainder. It will be called
 	// multiple times until the remainder is |""|.
-	ComMultiQuery(c *mysql.Conn, query string, callback func(res *sqltypes.Result, more bool) error) (string, error)
+	ComMultiQuery(c *mysql.Conn, query string, callback  mysql.ResultSpoolFn) (string, error)
 
 	// ComPrepare is called when a connection receives a prepared
 	// statement query.
@@ -114,15 +114,11 @@ type chainInterceptor struct {
 	c Chain
 }
 
-func (ci *chainInterceptor) ComQuery(c *mysql.Conn, query string, callback func(res *sqltypes.Result, more bool) error) error {
+func (ci *chainInterceptor) ComQuery(c *mysql.Conn, query string, callback mysql.ResultSpoolFn) error {
 	return ci.i.Query(ci.c, c, query, callback)
 }
 
-func (ci *chainInterceptor) ComParsedQuery(c *mysql.Conn, query string, parsed ast.Statement, callback func(res *sqltypes.Result, more bool) error) error {
-	return ci.i.ParsedQuery(ci.c, c, query, parsed, callback)
-}
-
-func (ci *chainInterceptor) ComMultiQuery(c *mysql.Conn, query string, callback func(res *sqltypes.Result, more bool) error) (string, error) {
+func (ci *chainInterceptor) ComMultiQuery(c *mysql.Conn, query string, callback  mysql.ResultSpoolFn) (string, error) {
 	return ci.i.MultiQuery(ci.c, c, query, callback)
 }
 
@@ -151,11 +147,11 @@ func (ih *interceptorHandler) ComInitDB(c *mysql.Conn, schemaName string) error 
 	return ih.h.ComInitDB(c, schemaName)
 }
 
-func (ih *interceptorHandler) ComQuery(c *mysql.Conn, query string, callback func(res *sqltypes.Result, more bool) error) error {
+func (ih *interceptorHandler) ComQuery(c *mysql.Conn, query string, callback mysql.ResultSpoolFn) error {
 	return ih.c.ComQuery(c, query, callback)
 }
 
-func (ih *interceptorHandler) ComMultiQuery(c *mysql.Conn, query string, callback func(res *sqltypes.Result, more bool) error) (string, error) {
+func (ih *interceptorHandler) ComMultiQuery(c *mysql.Conn, query string, callback  mysql.ResultSpoolFn) (string, error) {
 	return ih.c.ComMultiQuery(c, query, callback)
 }
 
