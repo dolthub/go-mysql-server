@@ -263,7 +263,9 @@ func (h *Handler) doQuery(
 	c *mysql.Conn,
 	query string,
 	parsed sqlparser.Statement,
+	analyzedPlan sql.Node,
 	mode MultiStmtMode,
+	queryExec QueryExecutor,
 	bindings map[string]*query.BindVariable,
 	callback func(*sqltypes.Result, bool) error,
 ) (string, error) {
@@ -322,7 +324,8 @@ func (h *Handler) doQuery(
 		}
 	}()
 
-	schema, rowIter, err := h.e.QueryWithBindings(ctx, query, parsed, bindings)
+	// TODO (next): this method needs a function param that produces the following elements, rather than hard-coding 
+	schema, rowIter, err := queryExec(ctx, query, parsed, analyzedPlan, bindings)
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
 		return remainder, err
@@ -520,7 +523,32 @@ func (h *Handler) errorWrappedDoQuery(
 		h.sel.QueryStarted()
 	}
 
-	remainder, err := h.doQuery(c, query, parsed, mode, bindings, callback)
+	remainder, err := h.doQuery(c, query, parsed, nil, mode, h.executeQuery, bindings, callback)
+	if err != nil {
+		err = sql.CastSQLError(err)
+	}
+
+	if h.sel != nil {
+		h.sel.QueryCompleted(err == nil, time.Since(start))
+	}
+
+	return remainder, err
+}
+
+// Call doQuery and cast known errors to SQLError
+func (h *Handler) errorWrappedComExec(
+		c *mysql.Conn,
+		query string,
+		analyzedPlan sql.Node,
+		callback func(*sqltypes.Result, bool) error,
+) (string, error) {
+	start := time.Now()
+	if h.sel != nil {
+		h.sel.QueryStarted()
+	}
+
+	remainder, err := h.doQuery(c, query, nil, analyzedPlan, MultiStmtModeOff, h.executeBoundPlan, nil, callback)
+	
 	if err != nil {
 		err = sql.CastSQLError(err)
 	}
@@ -725,4 +753,38 @@ func observeQuery(ctx *sql.Context, query string) func(err error) {
 
 		span.End()
 	}
+}
+
+// QueryExecutor is a function that executes a query and returns the result as a schema and iterator. Either of 
+// |parsed| or |analyzed| can be nil depending on the use case
+type QueryExecutor func(
+		ctx *sql.Context,
+		query string,
+		parsed sqlparser.Statement,
+		analyzed sql.Node,
+		bindings map[string]*query.BindVariable,
+) (sql.Schema, sql.RowIter, error)
+
+// executeQuery is a QueryExecutor that calls QueryWithBindings on the given engine using the given query and parsed 
+// statement, which may be nil.
+func (h *Handler) executeQuery(
+	ctx *sql.Context,
+	query string,
+	parsed sqlparser.Statement,
+	_ sql.Node,
+	bindings map[string]*query.BindVariable,
+) (sql.Schema, sql.RowIter, error) {
+	return h.e.QueryWithBindings(ctx, query, parsed, bindings)
+}
+
+// executeQuery is a QueryExecutor that calls QueryWithBindings on the given engine using the given query and parsed 
+// statement, which may be nil.
+func (h *Handler) executeBoundPlan(
+		ctx *sql.Context,
+		query string,
+		_ sqlparser.Statement,
+		plan sql.Node,
+		_ map[string]*query.BindVariable,
+) (sql.Schema, sql.RowIter, error) {
+	return h.e.PrepQueryPlanForExecution(ctx, query, plan)
 }

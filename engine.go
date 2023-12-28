@@ -437,6 +437,40 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 	return analyzed.Schema(), iter, nil
 }
 
+// PrepQueryPlanForExecution prepares a query plan for execution and returns the result schema with a row iterator to
+// begin spooling results
+func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, query string, plan sql.Node) (sql.Schema, sql.RowIter, error) {
+	// Give the integrator a chance to reject the session before proceeding
+	// TODO: this check doesn't belong here
+	err := ctx.Session.ValidateSession(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = e.beginTransaction(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	
+	err = e.readOnlyCheck(plan)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	iter, err := e.Analyzer.ExecBuilder.Build(ctx, plan, nil)
+	if err != nil {
+		err2 := clearAutocommitTransaction(ctx)
+		if err2 != nil {
+			return nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
+		}
+
+		return nil, nil, err
+	}
+	iter = rowexec.AddExpressionCloser(plan, iter)
+
+	return plan.Schema(), iter, nil
+}
+
 // BoundQueryPlan returns query plan for the given statement with the given bindings applied
 func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sql.Node, error) {
 	if parsed == nil {
