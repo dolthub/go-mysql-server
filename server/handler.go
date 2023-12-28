@@ -127,33 +127,34 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string, prepare *mysql.Prepare
 	return schemaToFields(ctx, analyzed.Schema()), nil
 }
 
-func (h *Handler) ComPrepareParsed(c *mysql.Conn, statementKey, query string, parsed sqlparser.Statement, prepare *mysql.PrepareData) ([]*query.Field, error) {
+func (h *Handler) ComPrepareParsed(c *mysql.Conn, statementKey, query string, parsed sqlparser.Statement, prepare *mysql.PrepareData) (mysql.QueryPlan, []*query.Field, error) {
 	logrus.WithField("query", query).
 		WithField("paramsCount", prepare.ParamsCount).
 		WithField("statementId", prepare.StatementID).Debugf("preparing query")
 
 	ctx, err := h.sm.NewContextWithQuery(c, query)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	
 	analyzed, err := h.e.PrepareParsedQuery(ctx, statementKey, query, parsed)
 	if err != nil {
 		logrus.WithField("query", query).Errorf("unable to prepare query: %s", err.Error())
 		err := sql.CastSQLError(err)
-		return nil, err
+		return nil, nil, err
 	}
 
 	if types.IsOkResultSchema(analyzed.Schema()) {
-		return nil, nil
+		return nil, nil, err
 	}
 	switch analyzed.(type) {
 	// TODO: what is with this
 	case *plan.InsertInto, *plan.Update, *plan.UpdateJoin, *plan.DeleteFrom:
-		return nil, nil
+		return nil, nil, err
 	}
 
-	return schemaToFields(ctx, analyzed.Schema()), nil
+	fields := schemaToFields(ctx, analyzed.Schema())
+	return analyzed, fields, nil
 }
 
 // TODO: do we need two separate keys for the two caches?
