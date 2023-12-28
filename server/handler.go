@@ -177,9 +177,19 @@ func (h *Handler) ComBind(c *mysql.Conn, statementKey, query string, prepare *my
 	return schemaToFields(ctx, queryPlan.Schema()), nil
 }
 
-func (h *Handler) ComExecuteBound(c *mysql.Conn, statementKey, query string, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
-	// TODO implement me
-	panic("implement me")
+// TOOD: get rid of prepare data?
+func (h *Handler) ComExecuteBound(c *mysql.Conn, statementKey, query string, prepare *mysql.PrepareData, callback mysql.ResultSpoolFn) error {
+	ctx, err := h.sm.NewContextWithQuery(c, query)
+	if err != nil {
+		return err
+	}
+
+	plan, ok := h.e.PreparedDataCache.GetCachedPlan(ctx.Session.ID(), statementKey)
+	if !ok {
+		return fmt.Errorf("prepared statement not found")
+	}
+
+	return h.errorWrappedComExec(c, query, plan, callback)
 }
 
 func (h *Handler) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
@@ -231,7 +241,7 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 func (h *Handler) ComMultiQuery(
 	c *mysql.Conn,
 	query string,
-	callback func(*sqltypes.Result, bool) error,
+	callback mysql.ResultSpoolFn,
 ) (string, error) {
 	return h.errorWrappedDoQuery(c, query, nil, MultiStmtModeOn, nil, callback)
 }
@@ -240,7 +250,7 @@ func (h *Handler) ComMultiQuery(
 func (h *Handler) ComQuery(
 	c *mysql.Conn,
 	query string,
-	callback func(*sqltypes.Result, bool) error,
+	callback mysql.ResultSpoolFn,
 ) error {
 	_, err := h.errorWrappedDoQuery(c, query, nil, MultiStmtModeOff, nil, callback)
 	return err
@@ -251,7 +261,7 @@ func (h *Handler) ComParsedQuery(
 	c *mysql.Conn,
 	query string,
 	parsed sqlparser.Statement,
-	callback func(*sqltypes.Result, bool) error,
+	callback mysql.ResultSpoolFn,
 ) error {
 	_, err := h.errorWrappedDoQuery(c, query, parsed, MultiStmtModeOff, nil, callback)
 	return err
@@ -541,13 +551,13 @@ func (h *Handler) errorWrappedComExec(
 		query string,
 		analyzedPlan sql.Node,
 		callback func(*sqltypes.Result, bool) error,
-) (string, error) {
+) error {
 	start := time.Now()
 	if h.sel != nil {
 		h.sel.QueryStarted()
 	}
 
-	remainder, err := h.doQuery(c, query, nil, analyzedPlan, MultiStmtModeOff, h.executeBoundPlan, nil, callback)
+	_, err := h.doQuery(c, query, nil, analyzedPlan, MultiStmtModeOff, h.executeBoundPlan, nil, callback)
 	
 	if err != nil {
 		err = sql.CastSQLError(err)
@@ -557,7 +567,7 @@ func (h *Handler) errorWrappedComExec(
 		h.sel.QueryCompleted(err == nil, time.Since(start))
 	}
 
-	return remainder, err
+	return err
 }
 
 // Periodically polls the connection socket to determine if it is has been closed by the client, returning an error
