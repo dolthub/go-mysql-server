@@ -67,6 +67,70 @@ func TestNormDist(t *testing.T) {
 			mean2: -10,
 			std2:  5,
 		},
+		//
+		{
+			name:  "same mean, different std1",
+			mean1: 1,
+			std1:  10,
+			mean2: 0,
+			std2:  2,
+		},
+		{
+			name:  "same mean, different std2",
+			mean1: 0,
+			std1:  8,
+			mean2: 0,
+			std2:  2,
+		},
+		{
+			name:  "same mean, different std3",
+			mean1: 0,
+			std1:  7,
+			mean2: 0,
+			std2:  2,
+		},
+		{
+			name:  "same mean, different std4",
+			mean1: 1,
+			std1:  7,
+			mean2: 0,
+			std2:  2,
+		},
+		{
+			name:  "same mean, different std5",
+			mean1: 2,
+			std1:  7,
+			mean2: 0,
+			std2:  2,
+		},
+		{
+			name:  "same mean, different std6",
+			mean1: 3,
+			std1:  7,
+			mean2: 0,
+			std2:  2,
+		},
+		{
+			name:  "same mean, different std7",
+			mean1: 4,
+			std1:  7,
+			mean2: 0,
+			std2:  2,
+		},
+		{
+			name:  "same mean, different std8",
+			mean1: 4,
+			std1:  7,
+			mean2: 0,
+			std2:  3,
+		},
+		{
+			name:  "same mean, different std9",
+			mean1: 5,
+			std1:  7,
+			mean2: 0,
+			std2:  3,
+		},
 	}
 
 	var statTests []statsTest
