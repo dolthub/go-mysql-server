@@ -67,6 +67,15 @@ func (doc JSONDocument) JSONString() (string, error) {
 	return marshalToMySqlString(doc.Val)
 }
 
+// JSONDocument implements the fmt.Stringer interface.
+func (doc JSONDocument) String() string {
+	result, err := doc.JSONString()
+	if err != nil {
+		return fmt.Sprintf("(Error marshalling JSON: %s)", err.Error())
+	}
+	return result
+}
+
 var _ sql.JSONWrapper = JSONDocument{}
 var _ MutableJSON = JSONDocument{}
 
