@@ -3,10 +3,11 @@ package stats
 import (
 	"container/heap"
 	"fmt"
-	"github.com/pkg/errors"
 	"log"
 	"math"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
