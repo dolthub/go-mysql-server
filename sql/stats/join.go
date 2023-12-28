@@ -118,7 +118,10 @@ func joinAlignedStats(left, right sql.Histogram, cmp func(sql.Row, sql.Row) (int
 			maxDistinct = rDistinct
 			minDistinct = lDistinct
 		}
-		rows += uint64(float64(lRows*rRows) / float64(maxDistinct))
+		fmt.Println(lRows, rRows, maxDistinct)
+		if maxDistinct > 0 {
+			rows += uint64(float64(lRows*rRows) / float64(maxDistinct))
+		}
 
 		newCnt += rows
 
