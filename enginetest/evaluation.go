@@ -89,7 +89,7 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 					t.Skip()
 				}
 			}
-			ctx.WithQuery(statement)
+			ctx = ctx.WithQuery(statement)
 			RunQueryWithContext(t, e, harness, ctx, statement)
 		}
 
