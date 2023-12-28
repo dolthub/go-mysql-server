@@ -8663,6 +8663,14 @@ from typestable`,
 		},
 	},
 	{
+		Query: "select * from mytable where (i BETWEEN ('' BETWEEN '' AND ('' OR '#')) AND i)",
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
 		Query: "select * from (select 'k' as k) sq join bigtable on t = k join xy where x between n and n;",
 		Expected: []sql.Row{
 			{"k", "k", 1, 1, 0},

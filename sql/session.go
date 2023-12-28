@@ -416,6 +416,9 @@ func (c *Context) Error(code int, msg string, args ...interface{}) {
 
 // Warn adds a warning to the session.
 func (c *Context) Warn(code int, msg string, args ...interface{}) {
+	if c == nil || c.Session == nil {
+		return
+	}
 	c.Session.Warn(&Warning{
 		Level:   "Warning",
 		Code:    code,
