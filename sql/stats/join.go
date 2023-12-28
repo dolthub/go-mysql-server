@@ -3,6 +3,7 @@ package stats
 import (
 	"container/heap"
 	"fmt"
+	"github.com/pkg/errors"
 	"log"
 	"math"
 	"time"
@@ -10,6 +11,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
+
+var ErrJoinStringStatistics = errors.New("joining string histograms is unsupported")
 
 // Join performs an alignment algorithm on two sets of statistics, and then
 // pairwise estiamtes bucket cardinalities by joining MCVs directly and
@@ -64,6 +67,10 @@ func Join(s1, s2 sql.Statistic, lFields, rFields []int, debug bool) (sql.Statist
 	return UpdateCounts(ret), nil
 }
 
+// joinAlignedStats assumes |left| and |right| have the same number of
+// buckets, and will use uniform distribution assumptions between pairwise
+// buckets to estimate the join cardinality. MCVs adjust the estimates to
+// account for outliers.
 func joinAlignedStats(left, right sql.Histogram, cmp func(sql.Row, sql.Row) (int, error)) ([]*Bucket, error) {
 	var newBuckets []*Bucket
 	newCnt := uint64(0)
@@ -111,14 +118,14 @@ func joinAlignedStats(left, right sql.Histogram, cmp func(sql.Row, sql.Row) (int
 			rDistinct = 0
 		}
 
-		// Selinger method on rest of bucket
+		// Selinger method on rest of buckets
 		maxDistinct := lDistinct
 		minDistinct := rDistinct
 		if rDistinct > maxDistinct {
 			maxDistinct = rDistinct
 			minDistinct = lDistinct
 		}
-		fmt.Println(lRows, rRows, maxDistinct)
+
 		if maxDistinct > 0 {
 			rows += uint64(float64(lRows*rRows) / float64(maxDistinct))
 		}
@@ -139,79 +146,11 @@ func joinAlignedStats(left, right sql.Histogram, cmp func(sql.Row, sql.Row) (int
 	return newBuckets, nil
 }
 
-// TODO this should match MCVS of first matchign bucket, and then do range
-// Selinger for the range of values that overlap.
-func coarseAlignment(s1, s2 sql.Statistic, lFields, rFields []int) (sql.Statistic, sql.Statistic, error) {
-	cmp := func(row1, row2 sql.Row) (int, error) {
-		var keyCmp int
-		for i, f := range lFields {
-			k1, ok, err := s1.Types()[f].Promote().Convert(row1[f])
-			if !ok || err != nil {
-				return 0, fmt.Errorf("incompatible types")
-			}
-
-			k2, ok, err := s2.Types()[f].Promote().Convert(row2[rFields[i]])
-			if !ok || err != nil {
-				return 0, fmt.Errorf("incompatible types")
-			}
-
-			cmp, err := s1.Types()[f].Promote().Compare(k1, k2)
-			if err != nil {
-				return 0, err
-			}
-			if cmp == 0 {
-				continue
-			}
-			keyCmp = cmp
-			break
-		}
-		return keyCmp, nil
-	}
-
-	// lower bounds
-	firstCmp, err := cmp(s1.Histogram()[0].UpperBound(), s2.Histogram()[0].UpperBound())
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var reverse bool
-	if firstCmp != 0 {
-		if firstCmp > 0 {
-			reverse = !reverse
-			s1, s2 = s2, s1
-		}
-		lowKey := s1.Histogram()[0].UpperBound()
-		s2, err = PrefixGte(s2, lowKey[0])
-	}
-
-	// upper bounds
-	lastCmp, err := cmp(
-		s1.Histogram()[len(s1.Histogram())-1].UpperBound(),
-		s2.Histogram()[len(s2.Histogram())-1].UpperBound())
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if lastCmp != 0 {
-		if lastCmp > 0 {
-			reverse = !reverse
-			s1, s2 = s2, s1
-		}
-		highKey := s1.Histogram()[len(s1.Histogram())-1].UpperBound()
-		s2, err = PrefixLte(s2, highKey[0])
-	}
-
-	if reverse {
-		s1, s2 = s2, s1
-	}
-	return s1, s2, nil
-}
-
 // AlignBuckets produces two histograms with the same number of buckets.
-// For every misaligned pair of sorted buckets, cut the one with the
-// higher bound value into two smaller buckets. We currently squash the
-// ends of histograms to match bound conditions.
-// TODO ends, squash? discard?
+// Start by using upper bound keys to truncate histogram with a larger
+// keyspace. Then for every misaligned pair of buckets, cut the one with the
+// higher bound value on the smaller's key. We use a linear interpolation
+// to divide keys when splitting.
 func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sql.Row, sql.Row) (int, error)) (sql.Histogram, sql.Histogram, error) {
 	var numericTypes bool = true
 	for _, t := range s1Types {
@@ -219,6 +158,13 @@ func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sq
 			numericTypes = false
 			break
 		}
+	}
+
+	if !numericTypes {
+		// todo(max): distance between two strings is difficult,
+		// but we could cut equal fractions depending on total
+		// cuts for a bucket
+		return nil, nil, ErrJoinStringStatistics
 	}
 
 	var leftRes sql.Histogram
@@ -243,6 +189,7 @@ func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sq
 	for state != sjStateEOF {
 		switch state {
 		case sjStateInit:
+			// preprocess buckets, reverse into stacks
 
 			s1Hist, err := mergeOverlappingBuckets(h1, s1Types)
 			if err != nil {
@@ -318,12 +265,6 @@ func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sq
 		case sjStateCut:
 			state = sjStateInc
 
-			if !numericTypes {
-				// TODO divide equally for string types
-				// find bound value, divide equally among segments
-				panic("")
-			}
-
 			if len(leftRes) == 0 {
 				// trying to cut L, first bucket of L < R
 				// extend L to match R
@@ -360,9 +301,7 @@ func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sq
 				}
 
 				if bucketMagnitude == 0 {
-					//rightStack = append(rightStack, nextR)
 					peekR = nil
-					//state = sjStateExhaust
 					continue
 				}
 
@@ -456,8 +395,6 @@ func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sq
 		case sjStateExhaust:
 			state = sjStateEOF
 
-			// count rows, count distinct in one with more buckets
-			// adjust compared to last bucket on other side
 			if nextL == nil && nextR == nil {
 				continue
 			}
@@ -467,6 +404,7 @@ func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sq
 				swap()
 			}
 
+			// squash the trailing buckets into one
 			leftStack = append(leftStack, nextL)
 			nextL = leftRes[len(leftRes)-1]
 			leftRes = leftRes[:len(leftRes)-1]
@@ -530,7 +468,7 @@ func mergeMcvs(mcvs1, mcvs2 []sql.Row, mcvCnts1, mcvCnts2 []uint64, cmp func(sql
 }
 
 // mergeOverlappingBuckets folds bins with one element into the previous
-// bucket when the bounds keys match.
+// bucket when the bound keys match.
 func mergeOverlappingBuckets(h sql.Histogram, types []sql.Type) (sql.Histogram, error) {
 	cmp := func(l, r sql.Row) (int, error) {
 		for i := range l {
@@ -602,7 +540,6 @@ const (
 	sjStateCut
 	sjStateInc
 	sjStateExhaust
-	sjStateTrimOverhang
 	sjStateEOF
 )
 
