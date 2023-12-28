@@ -286,7 +286,7 @@ func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 		bFloat, err := strconv.ParseFloat(b, 64)
 		if err != nil {
 			// In MySQL, if the string does not represent a float then it's false
-			ctx.Warn(1292, "Truncated incorrect DOUBLE value: '%s'", v.(string))
+			ctx.Warn(1292, "Truncated incorrect DOUBLE value: '%s'", b)
 			return false, nil
 		}
 		return bFloat != 0, nil
