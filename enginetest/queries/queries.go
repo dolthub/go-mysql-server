@@ -8637,6 +8637,12 @@ from typestable`,
 		},
 	},
 	{
+		Query: "select 1 where (round('')) union all select 1 where (not (round(''))) union all select 1 where ((round('')) is null);",
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
 		Query: "select 1 in (null, 0.8)",
 		Expected: []sql.Row{
 			{nil},
