@@ -813,7 +813,7 @@ var OnUpdateExprScripts = []ScriptTest{
 				ExpectedErr: sql.ErrInvalidOnUpdate,
 			},
 			{
-				Query:       "select current_timestamp(i) from t",
+				Query:          "select current_timestamp(i) from t",
 				ExpectedErrStr: "syntax error at position 27 near 'i'",
 			},
 		},
