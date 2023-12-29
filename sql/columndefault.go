@@ -149,7 +149,7 @@ func (e *ColumnDefaultValue) String() string {
 	} else {
 		// There's a special case for NOW()
 		str := e.Expr.String()
-		if str == "NOW()" {
+		if str == "NOW()" || str == "NOW(0)" {
 			return "CURRENT_TIMESTAMP"
 		}
 		return fmt.Sprintf("(%s)", str)
