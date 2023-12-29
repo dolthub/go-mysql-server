@@ -891,6 +891,7 @@ func (*Now) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, 
 	return sql.Collation_binary, 5
 }
 
+// String implements the sql.Expression interface.
 func (n *Now) String() string {
 	if n.prec == nil {
 		return "NOW()"
@@ -1461,63 +1462,90 @@ func (m *WeekOfYear) WithChildren(children ...sql.Expression) (sql.Expression, e
 }
 
 type CurrTime struct {
-	NoArgFunc
+	prec sql.Expression
 }
 
 func (c CurrTime) IsNonDeterministic() bool {
 	return true
 }
 
-var _ sql.FunctionExpression = CurrTime{}
-var _ sql.CollationCoercible = CurrTime{}
+var _ sql.FunctionExpression = (*CurrTime)(nil)
+var _ sql.CollationCoercible = (*CurrTime)(nil)
+
+func NewCurrTime(args ...sql.Expression) (sql.Expression, error) {
+	c := &CurrTime{}
+	// parser should make it impossible to pass in more than one argument
+	if len(args) > 0 {
+		c.prec = args[0]
+	}
+	return c, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (c *CurrTime) FunctionName() string {
+	return "current_time"
+}
 
 // Description implements sql.FunctionExpression
-func (c CurrTime) Description() string {
+func (c *CurrTime) Description() string {
 	return "returns the current time."
 }
 
+// Type implements the sql.Expression interface.
+func (c *CurrTime) Type() sql.Type {
+	return types.TimestampMaxPrecision
+}
+
 // CollationCoercibility implements the interface sql.CollationCoercible.
-func (CurrTime) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+func (*CurrTime) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
 }
 
-func NewCurrTime() sql.Expression {
-	return CurrTime{
-		NoArgFunc: NoArgFunc{"curtime", types.LongText},
+// String implements the sql.Expression interface.
+func (c *CurrTime) String() string {
+	if c.prec == nil {
+		return "CURRENT_TIME()"
 	}
+
+	return fmt.Sprintf("CURRENT_TIME(%s)", c.prec.String())
 }
 
-func NewCurrentTime() sql.Expression {
-	return CurrTime{
-		NoArgFunc: NoArgFunc{"current_time", types.LongText},
+// IsNullable implements the sql.Expression interface.
+func (c *CurrTime) IsNullable() bool { return false }
+
+// Resolved implements the sql.Expression interface.
+func (c *CurrTime) Resolved() bool {
+	if c.prec == nil {
+		return true
 	}
+	return c.prec.Resolved()
 }
 
-func currTimeLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
-	newNow, err := NewNow()
-	if err != nil {
-		return nil, err
+// Children implements the sql.Expression interface.
+func (c *CurrTime) Children() []sql.Expression {
+	if c.prec == nil {
+		return nil
 	}
-
-	result, err := newNow.Eval(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if t, ok := result.(time.Time); ok {
-		return fmt.Sprintf("%02d:%02d:%02d", t.Hour(), t.Minute(), t.Second()), nil
-	} else {
-		return nil, fmt.Errorf("unexpected type %T for NOW() result", result)
-	}
+	return []sql.Expression{c.prec}
 }
 
 // Eval implements sql.Expression
-func (c CurrTime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return currTimeLogic(ctx, row)
+func (c *CurrTime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	newNow, err := NewNow(c.prec)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := newNow.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 // WithChildren implements sql.Expression
-func (c CurrTime) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (c *CurrTime) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NoArgFuncWithChildren(c, children)
 }
 
