@@ -67,6 +67,7 @@ var (
 		"2006-01-02",
 		"2006-1-2",
 		"2006-1-2 15:4:5.999999",
+		"15:04:05",
 		time.RFC3339,
 		time.RFC3339Nano,
 		"2006-01-02T15:04:05",
@@ -228,7 +229,7 @@ func (t datetimeType) ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
 	}
 	switch value := v.(type) {
 	case string:
-		if value == zeroDateStr || value == zeroTimestampDatetimeStr {
+		if value == zeroDateStr || value == zeroTimestampDatetimeStr || value == zeroTimestampStr {
 			return zeroTime, nil
 		}
 		// TODO: consider not using time.Parse if we want to match MySQL exactly ('2010-06-03 11:22.:.:.:.:' is a valid timestamp)
