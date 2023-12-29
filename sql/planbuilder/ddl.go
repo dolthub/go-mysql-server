@@ -929,6 +929,7 @@ func (b *Builder) buildDefaultExpression(inScope *scope, defaultExpr ast.Expr) *
 				isLiteral = false
 			} else {
 				// All other functions must *always* be enclosed in parens
+				// TODO: remove this
 				err := sql.ErrSyntaxError.New("column default function expressions must be enclosed in parentheses")
 				b.handleErr(err)
 			}
@@ -1401,6 +1402,7 @@ func (b *Builder) convertDefaultExpression(inScope *scope, defaultExpr ast.Expr,
 				isLiteral = false
 			default:
 				// All other functions must *always* be enclosed in parens
+				// TODO: remove this
 				err := sql.ErrSyntaxError.New("column default function expressions must be enclosed in parentheses")
 				b.handleErr(err)
 			}
