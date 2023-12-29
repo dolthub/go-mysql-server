@@ -927,6 +927,7 @@ func (n *Now) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// If no arguments, just return with 0 precision
+	// The way the parser is implemented 0 should always be passed in; have this here just in case
 	if n.prec == nil {
 		t, ok := gmstime.ConvertTimeZone(ctx.QueryTime(), gmstime.SystemTimezoneOffset(), sessionTimeZone)
 		if !ok {
@@ -936,9 +937,8 @@ func (n *Now) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return tt, nil
 	}
 
-	// If argument is null
+	// Should syntax error before this; check anyway
 	if types.IsNull(n.prec) {
-		// TODO: this is supposed to be a syntax error, make sure it does that instead
 		return nil, ErrTimeUnexpectedlyNil.New(n.FunctionName())
 	}
 
@@ -948,17 +948,15 @@ func (n *Now) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	// If null, throw syntax error
+	// Should syntax error before this; check anyway
 	if prec == nil {
-		// TODO: this is supposed to be a syntax error, make sure it does that instead
 		return nil, ErrTimeUnexpectedlyNil.New(n.FunctionName())
 	}
 
-	// Must receive integer, all other types throw syntax error
-	// TODO: this is supposed to be a syntax error, make sure it does that instead
+	// Must receive integer
+	// Should syntax error before this; check anyway
 	var fsp int
 	switch p := prec.(type) {
-	// TODO: unsigned ints
 	case int:
 		fsp = p
 	case int8:
@@ -969,6 +967,16 @@ func (n *Now) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		fsp = int(p)
 	case int64:
 		fsp = int(p)
+	case uint:
+		fsp = int(p)
+	case uint8:
+		fsp = int(p)
+	case uint16:
+		fsp = int(p)
+	case uint32:
+		fsp = int(p)
+	case uint64:
+		fsp = int(p)
 	default:
 		return nil, sql.ErrInvalidArgumentType.New(n.FunctionName())
 	}
@@ -977,7 +985,7 @@ func (n *Now) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if fsp > maxCurrTimestampPrecision {
 		return nil, ErrTooHighPrecision.New(fsp, n.FunctionName(), maxCurrTimestampPrecision)
 	} else if fsp < 0 {
-		// TODO: this is supposed to be a syntax error, make sure it does that instead
+		// Should syntax error before this; check anyway
 		return nil, sql.ErrInvalidArgumentType.New(n.FunctionName())
 	}
 
