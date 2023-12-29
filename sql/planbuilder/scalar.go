@@ -59,19 +59,6 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		}
 		len := b.buildScalar(inScope, v.To)
 		return &function.Substring{Str: name, Start: start, Len: len}
-	case *ast.CurTimeFuncExpr:
-		fsp := b.buildScalar(inScope, v.Fsp)
-
-		if inScope.parent.activeSubquery != nil {
-			inScope.parent.activeSubquery.markVolatile()
-		}
-
-		n, err := function.NewNow(fsp)
-		if err != nil {
-			b.handleErr(err)
-		}
-
-		return n
 	case *ast.TrimExpr:
 		pat := b.buildScalar(inScope, v.Pattern)
 		str := b.buildScalar(inScope, v.Str)
