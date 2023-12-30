@@ -942,3 +942,36 @@ func parseIndex(indexStr string, lastIndex int, cursor *int) (*parseIndexResult,
 
 	return &parseIndexResult{index: val, overflow: overflow}, nil
 }
+
+type JSONIter struct {
+	doc  *JsonObject
+	keys []string
+	idx  int
+}
+
+func NewJSONIter(json JsonObject) JSONIter {
+	json = maps.Clone(json)
+	keys := maps.Keys(json)
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+	return JSONIter{
+		doc:  &json,
+		keys: keys,
+		idx:  0,
+	}
+}
+
+func (iter *JSONIter) Next() (key string, value interface{}, err error) {
+	if iter.idx >= len(iter.keys) {
+		return "", nil, io.EOF
+	}
+	key = iter.keys[iter.idx]
+	iter.idx++
+	value = (*iter.doc)[key]
+	return key, value, nil
+}
+
+func (iter *JSONIter) HasNext() bool {
+	return iter.idx < len(iter.keys)
+}
