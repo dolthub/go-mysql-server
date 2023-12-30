@@ -31,6 +31,9 @@ type JSONStringer interface {
 	JSONString() (string, error)
 }
 
+type JsonObject = map[string]interface{}
+type JsonArray = []interface{}
+
 type MutableJSON interface {
 	// Insert Adds the value at the given path, only if it is not present. Updated value returned, and bool indicating if
 	// a change was made.
@@ -156,7 +159,7 @@ func ContainsJSON(a, b interface{}) (interface{}, error) {
 	switch a := a.(type) {
 	case []interface{}:
 		return containsJSONArray(a, b)
-	case map[string]interface{}:
+	case JsonObject:
 		return containsJSONObject(a, b)
 	case bool:
 		return containsJSONBool(a, b)
@@ -232,15 +235,15 @@ func containsJSONArray(a []interface{}, b interface{}) (bool, error) {
 //	select json_contains('{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}', '{"a": [2, 4]}'); => true
 //	select json_contains('{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}', '[2]'); => false
 //	select json_contains('{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}', '2'); => false
-func containsJSONObject(a map[string]interface{}, b interface{}) (bool, error) {
-	_, isMap := b.(map[string]interface{})
+func containsJSONObject(a JsonObject, b interface{}) (bool, error) {
+	_, isMap := b.(JsonObject)
 	if !isMap {
 		// If b is a scalar or an array, json_contains always returns false when
 		// testing containment in a JSON object
 		return false, nil
 	}
 
-	for key, bvalue := range b.(map[string]interface{}) {
+	for key, bvalue := range b.(JsonObject) {
 		avalue, ok := a[key]
 		if !ok {
 			return false, nil
@@ -349,7 +352,7 @@ func CompareJSON(a, b interface{}) (int, error) {
 		return compareJSONBool(a, b)
 	case []interface{}:
 		return compareJSONArray(a, b)
-	case map[string]interface{}:
+	case JsonObject:
 		return compareJSONObject(a, b)
 	case string:
 		return compareJSONString(a, b)
@@ -423,7 +426,7 @@ func compareJSONArray(a []interface{}, b interface{}) (int, error) {
 	}
 }
 
-func compareJSONObject(a map[string]interface{}, b interface{}) (int, error) {
+func compareJSONObject(a JsonObject, b interface{}) (int, error) {
 	switch b := b.(type) {
 	case
 		bool,
@@ -431,7 +434,7 @@ func compareJSONObject(a map[string]interface{}, b interface{}) (int, error) {
 		// a is lower precedence
 		return -1, nil
 
-	case map[string]interface{}:
+	case JsonObject:
 		// Two JSON objects are equal if they have the same set of keys, and each key has the same value in both
 		// objects. The order of two objects that are not equal is unspecified but deterministic.
 		inter := jsonObjectKeyIntersection(a, b)
@@ -460,7 +463,7 @@ func compareJSONString(a string, b interface{}) (int, error) {
 	case
 		bool,
 		[]interface{},
-		map[string]interface{}:
+		JsonObject:
 		// a is lower precedence
 		return -1, nil
 
@@ -478,7 +481,7 @@ func compareJSONNumber(a float64, b interface{}) (int, error) {
 	case
 		bool,
 		[]interface{},
-		map[string]interface{},
+		JsonObject,
 		string:
 		// a is lower precedence
 		return -1, nil
@@ -498,7 +501,7 @@ func compareJSONNumber(a float64, b interface{}) (int, error) {
 	}
 }
 
-func jsonObjectKeyIntersection(a, b map[string]interface{}) (ks []string) {
+func jsonObjectKeyIntersection(a, b JsonObject) (ks []string) {
 	for key := range a {
 		if _, ok := b[key]; ok {
 			ks = append(ks, key)
@@ -508,7 +511,7 @@ func jsonObjectKeyIntersection(a, b map[string]interface{}) (ks []string) {
 	return
 }
 
-func jsonObjectDeterministicOrder(a, b map[string]interface{}, inter []string) (int, error) {
+func jsonObjectDeterministicOrder(a, b JsonObject, inter []string) (int, error) {
 	if len(a) > len(b) {
 		return 1, nil
 	}
@@ -666,7 +669,7 @@ func walkPathAndUpdate(path string, doc interface{}, val interface{}, mode int, 
 	if path[0] == '.' {
 		path = path[1:]
 		*cursor = *cursor + 1
-		strMap, ok := doc.(map[string]interface{})
+		strMap, ok := doc.(JsonObject)
 		if !ok {
 			// json_array_insert is the only function that produces an error when the path is to an object which
 			// lookup fails in this way. All other functions return the document unchanged. Go figure.
@@ -697,9 +700,9 @@ func walkPathAndUpdate(path string, doc interface{}, val interface{}, mode int, 
 	}
 }
 
-// updateObject Take a map[string]interface{} and update the value at the given path. If we are not at the end of the path,
+// updateObject Take a JsonObject and update the value at the given path. If we are not at the end of the path,
 // the object is looked up and the walkPathAndUpdate function is called recursively.
-func updateObject(path string, doc map[string]interface{}, val interface{}, mode int, cursor *int) (interface{}, bool, *parseErr) {
+func updateObject(path string, doc JsonObject, val interface{}, mode int, cursor *int) (interface{}, bool, *parseErr) {
 	name, remainingPath, err := parseNameAfterDot(path, cursor)
 	if err != nil {
 		return nil, false, err
