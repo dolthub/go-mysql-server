@@ -244,7 +244,7 @@ var CollationCoercionTests = []CollationCoercionTest{
 		Coercibility: 5,
 	},
 	{
-		Parameters:   `CURRENT_TIME() != '12:34:56'`,
+		Parameters:   `CURRENT_TIME() != '26:27:28'`,
 		Collation:    sql.Collation_binary,
 		Coercibility: 5,
 	},

@@ -1541,7 +1541,12 @@ func (c *CurrTime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	return result, nil
+	if t, ok := result.(time.Time); ok {
+		// TODO: this is wrong, we need to include nanoseconds
+		return fmt.Sprintf("%02d:%02d:%02d", t.Hour(), t.Minute(), t.Second()), nil
+	} else {
+		return nil, fmt.Errorf("unexpected type %T for NOW() result", result)
+	}
 }
 
 // WithChildren implements sql.Expression

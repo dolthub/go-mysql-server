@@ -32,8 +32,6 @@ const zeroDateStr = "0000-00-00"
 
 const zeroTimestampDatetimeStr = "0000-00-00 00:00:00"
 
-const zeroTimestampStr = "00:00:00.000000"
-
 var (
 	// ErrConvertingToTime is thrown when a value cannot be converted to a Time
 	ErrConvertingToTime = errors.NewKind("Incorrect datetime value: '%s'")
@@ -229,7 +227,7 @@ func (t datetimeType) ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
 	}
 	switch value := v.(type) {
 	case string:
-		if value == zeroDateStr || value == zeroTimestampDatetimeStr || value == zeroTimestampStr {
+		if value == zeroDateStr || value == zeroTimestampDatetimeStr {
 			return zeroTime, nil
 		}
 		// TODO: consider not using time.Parse if we want to match MySQL exactly ('2010-06-03 11:22.:.:.:.:' is a valid timestamp)
@@ -400,9 +398,9 @@ func (t datetimeType) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes.
 	case sqltypes.Timestamp:
 		typ = sqltypes.Timestamp
 		if vt.Equal(zeroTime) {
-			val = vt.Format(zeroTimestampStr)
+			val = vt.Format(zeroTimestampDatetimeStr)
 		} else {
-			val = vt.Format(sql.TimestampLayout)
+			val = vt.Format(sql.TimestampDatetimeLayout)
 		}
 	default:
 		panic(sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime"))
