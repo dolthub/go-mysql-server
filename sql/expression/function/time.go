@@ -1493,7 +1493,7 @@ func (c *CurrTime) Description() string {
 
 // Type implements the sql.Expression interface.
 func (c *CurrTime) Type() sql.Type {
-	return types.TimestampMaxPrecision
+	return types.Time
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
