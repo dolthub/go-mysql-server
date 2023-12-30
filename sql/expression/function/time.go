@@ -929,6 +929,9 @@ func (n *Now) Children() []sql.Expression { return nil }
 
 // Eval implements the sql.Expression interface.
 func (n *Now) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
+	if ctx == nil {
+		return nil, fmt.Errorf("cannot Eval Now with nil context")
+	}
 	t := ctx.QueryTime()
 	// TODO: Now should return a string formatted depending on context.  This code handles string formatting
 	// and should be enabled at the time we fix the return type
