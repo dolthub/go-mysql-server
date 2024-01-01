@@ -471,6 +471,14 @@ var JsonSetTests = []JsonMutationTest{
 		changed:   true,
 	},
 	{
+		desc:      "object field name can contain escaped quotes",
+		doc:       `{"\"a\"": {}}`,
+		path:      `$."\"a\""`,
+		value:     `42`,
+		resultVal: `{"\"a\"": 42 }`,
+		changed:   true,
+	},
+	{
 		desc:      "Object field can be set to null",
 		doc:       `{"a": {}}`,
 		path:      `$."a"`,
@@ -734,6 +742,14 @@ var JsonInsertTests = []JsonMutationTest{
 		path:      `$."a"`,
 		value:     `42`,
 		resultVal: `{"a": {} }`,
+		changed:   false,
+	},
+	{
+		desc:      "object field name can contain escaped quotes",
+		doc:       `{"\"a\"": {}}`,
+		path:      `$."\"a\""`,
+		value:     `42`,
+		resultVal: `{"\"a\"": {} }`,
 		changed:   false,
 	},
 	{

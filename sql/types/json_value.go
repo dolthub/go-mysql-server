@@ -760,6 +760,25 @@ func updateObject(path string, doc JsonObject, val interface{}, mode int, cursor
 // compiled regex used to parse the name of a field after a '.' in a JSON path.
 var regex = regexp.MustCompile(`^(\w+)(.*)$`)
 
+// findNextUnescapedOccurrence finds the first unescaped occurrence of the provided byte in the string.
+// This can be used to find an ASCII codepoint without any risk of false positives. This is because strings
+// are UTF-8, and bytes in the ASCII range (<128) cannot appear as part of a multi-byte codepoint.
+func findNextUnescapedOccurrence(path string, target byte) int {
+	index := 0
+	for {
+		if index >= len(path) {
+			return -1
+		}
+		if path[index] == '\\' {
+			index++
+		} else if path[index] == target {
+			break
+		}
+		index++
+	}
+	return index
+}
+
 // parseNameAfterDot parses the json path immediately after a '.'. It returns the name of the field and the remaining path,
 // and modifies the cursor to point to the end of the parsed path.
 func parseNameAfterDot(path string, cursor *int) (name string, remainingPath string, err *parseErr) {
@@ -768,11 +787,13 @@ func parseNameAfterDot(path string, cursor *int) (name string, remainingPath str
 	}
 
 	if path[0] == '"' {
-		right := strings.Index(path[1:], "\"")
+		right := findNextUnescapedOccurrence(path[1:], '"')
 		if right < 0 {
 			return "", "", &parseErr{msg: "Invalid JSON path expression. '\"' expected", character: *cursor}
 		}
 		name = path[1 : right+1]
+		// if the name in the path contains escaped double quotes, unescape them.
+		name = strings.Replace(name, `\"`, `"`, -1)
 		remainingPath = path[right+2:]
 		*cursor = *cursor + right + 2
 	} else {
