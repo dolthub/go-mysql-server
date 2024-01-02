@@ -996,6 +996,40 @@ func (b *Builder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (outSco
 	return
 }
 
+// validateOnUpdateExprs ensures that the Time functions used for OnUpdate for columns is correct
+func validateOnUpdateExprs(col *sql.Column) error {
+	if col.OnUpdate == nil {
+		return nil
+	}
+	if !(types.IsDatetimeType(col.Type) || types.IsTimestampType(col.Type)) {
+		return sql.ErrInvalidOnUpdate.New(col.Name)
+	}
+	now, ok := col.OnUpdate.Expr.(*function.Now)
+	if !ok {
+		return nil
+	}
+	children := now.Children()
+	if len(children) == 0 {
+		return nil
+	}
+	lit, isLit := children[0].(*expression.Literal)
+	if !isLit {
+		return nil
+	}
+	val, err := lit.Eval(nil, nil)
+	if err != nil {
+		return err
+	}
+	prec, ok := types.CoalesceInt(val)
+	if !ok {
+		return sql.ErrInvalidOnUpdate.New(col.Name)
+	}
+	if prec != 0 {
+		return sql.ErrInvalidOnUpdate.New(col.Name)
+	}
+	return nil
+}
+
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec
 func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, tableName string, tableSpec *ast.TableSpec, forceInvalidCollation bool) (sql.PrimaryKeySchema, sql.CollationID) {
 	// todo: somewhere downstream updates an ALTER MODIY column's type collation
@@ -1088,51 +1122,9 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 
 	for i, onUpdateExpr := range updates {
 		schema[i].OnUpdate = b.convertDefaultExpression(outScope, onUpdateExpr, schema[i].Type, schema[i].Nullable)
-		if schema[i].OnUpdate == nil {
-			continue
-		}
-		if !(types.IsDatetimeType(schema[i].Type) || types.IsTimestampType(schema[i].Type)) {
-			b.handleErr(sql.ErrInvalidOnUpdate.New(schema[i].Name))
-		}
-		now, ok := schema[i].OnUpdate.Expr.(*function.Now)
-		if !ok {
-			continue
-		}
-		children := now.Children()
-		if len(children) == 0 {
-			continue
-		}
-		lit, isLit := children[0].(*expression.Literal)
-		if !isLit {
-			continue
-		}
-		val, err := lit.Eval(nil, nil)
+		err := validateOnUpdateExprs(schema[i])
 		if err != nil {
 			b.handleErr(err)
-		}
-		var prec int
-		switch v := val.(type) {
-		case int8:
-			prec = int(v)
-		case int16:
-			prec = int(v)
-		case int32:
-			prec = int(v)
-		case int64:
-			prec = int(v)
-		case uint8:
-			prec = int(v)
-		case uint16:
-			prec = int(v)
-		case uint32:
-			prec = int(v)
-		case uint64:
-			prec = int(v)
-		default:
-			b.handleErr(sql.ErrInvalidOnUpdate.New(schema[i].Name))
-		}
-		if prec != 0 {
-			b.handleErr(sql.ErrInvalidOnUpdate.New(schema[i].Name))
 		}
 	}
 

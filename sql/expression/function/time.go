@@ -961,29 +961,8 @@ func (n *Now) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// Must receive integer
 	// Should syntax error before this; check anyway
-	var fsp int
-	switch p := prec.(type) {
-	case int:
-		fsp = p
-	case int8:
-		fsp = int(p)
-	case int16:
-		fsp = int(p)
-	case int32:
-		fsp = int(p)
-	case int64:
-		fsp = int(p)
-	case uint:
-		fsp = int(p)
-	case uint8:
-		fsp = int(p)
-	case uint16:
-		fsp = int(p)
-	case uint32:
-		fsp = int(p)
-	case uint64:
-		fsp = int(p)
-	default:
+	fsp, ok := types.CoalesceInt(prec)
+	if !ok {
 		return nil, sql.ErrInvalidArgumentType.New(n.FunctionName())
 	}
 
