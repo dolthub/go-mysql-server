@@ -146,7 +146,7 @@ func (doc JSONDocument) Value() (driver.Value, error) {
 }
 
 func ConcatenateJSONValues(ctx *sql.Context, vals ...sql.JSONWrapper) (sql.JSONWrapper, error) {
-	arr := make([]interface{}, len(vals))
+	arr := make(JsonArray, len(vals))
 	for i, v := range vals {
 		arr[i] = v.ToInterface()
 	}
@@ -159,7 +159,7 @@ func ContainsJSON(a, b interface{}) (interface{}, error) {
 	}
 
 	switch a := a.(type) {
-	case []interface{}:
+	case JsonArray:
 		return containsJSONArray(a, b)
 	case JsonObject:
 		return containsJSONObject(a, b)
@@ -194,9 +194,9 @@ func containsJSONBool(a bool, b interface{}) (bool, error) {
 //	select json_contains('[1, [1, 2, 3], 10]', '[1, 10]'); => true
 //	select json_contains('[1, [1, 2, 3, 10]]', '[1, 10]'); => true
 //	select json_contains('[1, [1, 2, 3], [10]]', '[1, [10]]'); => true
-func containsJSONArray(a []interface{}, b interface{}) (bool, error) {
-	if _, ok := b.([]interface{}); ok {
-		for _, bb := range b.([]interface{}) {
+func containsJSONArray(a JsonArray, b interface{}) (bool, error) {
+	if _, ok := b.(JsonArray); ok {
+		for _, bb := range b.(JsonArray) {
 			contains, err := containsJSONArray(a, bb)
 			if err != nil {
 				return false, err
@@ -352,7 +352,7 @@ func CompareJSON(a, b interface{}) (int, error) {
 	switch a := a.(type) {
 	case bool:
 		return compareJSONBool(a, b)
-	case []interface{}:
+	case JsonArray:
 		return compareJSONArray(a, b)
 	case JsonObject:
 		return compareJSONObject(a, b)
@@ -391,13 +391,13 @@ func compareJSONBool(a bool, b interface{}) (int, error) {
 	}
 }
 
-func compareJSONArray(a []interface{}, b interface{}) (int, error) {
+func compareJSONArray(a JsonArray, b interface{}) (int, error) {
 	switch b := b.(type) {
 	case bool:
 		// a is lower precedence
 		return -1, nil
 
-	case []interface{}:
+	case JsonArray:
 		// Two JSON arrays are equal if they have the same length and values in corresponding positions in the arrays
 		// are equal. If the arrays are not equal, their order is determined by the elements in the first position
 		// where there is a difference. The array with the smaller value in that position is ordered first.
@@ -432,7 +432,7 @@ func compareJSONObject(a JsonObject, b interface{}) (int, error) {
 	switch b := b.(type) {
 	case
 		bool,
-		[]interface{}:
+		JsonArray:
 		// a is lower precedence
 		return -1, nil
 
@@ -464,7 +464,7 @@ func compareJSONString(a string, b interface{}) (int, error) {
 	switch b := b.(type) {
 	case
 		bool,
-		[]interface{},
+		JsonArray,
 		JsonObject:
 		// a is lower precedence
 		return -1, nil
@@ -482,7 +482,7 @@ func compareJSONNumber(a float64, b interface{}) (int, error) {
 	switch b := b.(type) {
 	case
 		bool,
-		[]interface{},
+		JsonArray,
 		JsonObject,
 		string:
 		// a is lower precedence
@@ -652,12 +652,12 @@ func walkPathAndUpdate(path string, doc interface{}, val interface{}, mode int, 
 		case INSERT:
 			return doc, false, nil
 		case ARRAY_APPEND:
-			if arr, ok := doc.([]interface{}); ok {
+			if arr, ok := doc.(JsonArray); ok {
 				doc = append(arr, val)
 				return doc, true, nil
 			} else {
 				// Otherwise, turn it into an array and append to it, and append to it.
-				doc = []interface{}{doc, val}
+				doc = JsonArray{doc, val}
 				return doc, true, nil
 			}
 		case ARRAY_INSERT, REMOVE:
@@ -692,7 +692,7 @@ func walkPathAndUpdate(path string, doc interface{}, val interface{}, mode int, 
 		remaining := path[right+1:]
 		indexString := path[1:right]
 
-		if arr, ok := doc.([]interface{}); ok {
+		if arr, ok := doc.(JsonArray); ok {
 			return updateArray(indexString, remaining, arr, val, mode, cursor)
 		} else {
 			return updateObjectTreatAsArray(indexString, doc, val, mode, cursor)
@@ -814,7 +814,7 @@ func parseNameAfterDot(path string, cursor *int) (name string, remainingPath str
 // updateArray will update an array element appropriately when the path element is an array. This includes parsing
 // the special indexes. If there are more elements in the path after this element look up, the update will be performed
 // by the walkPathAndUpdate function.
-func updateArray(indexString string, remaining string, arr []interface{}, val interface{}, mode int, cursor *int) (interface{}, bool, *parseErr) {
+func updateArray(indexString string, remaining string, arr JsonArray, val interface{}, mode int, cursor *int) (interface{}, bool, *parseErr) {
 	index, err := parseIndex(indexString, len(arr)-1, cursor)
 	if err != nil {
 		return nil, false, err
@@ -836,7 +836,7 @@ func updateArray(indexString string, remaining string, arr []interface{}, val in
 				arr = append(arr[:index.index], arr[index.index+1:]...)
 				updated = true
 			} else if mode == ARRAY_INSERT {
-				newArr := make([]interface{}, len(arr)+1)
+				newArr := make(JsonArray, len(arr)+1)
 				copy(newArr, arr[:index.index])
 				newArr[index.index] = val
 				copy(newArr[index.index+1:], arr[index.index:])
@@ -876,7 +876,7 @@ func updateObjectTreatAsArray(indexString string, doc interface{}, val interface
 	if parsedIndex.underflow {
 		if mode == SET || mode == INSERT {
 			// SET and INSERT convert {}, to [val, {}]
-			var newArr = make([]interface{}, 0, 2)
+			var newArr = make(JsonArray, 0, 2)
 			newArr = append(newArr, val)
 			newArr = append(newArr, doc)
 			return newArr, true, nil
@@ -884,7 +884,7 @@ func updateObjectTreatAsArray(indexString string, doc interface{}, val interface
 	} else if parsedIndex.overflow {
 		if mode == SET || mode == INSERT {
 			// SET and INSERT convert {}, to [{}, val]
-			var newArr = make([]interface{}, 0, 2)
+			var newArr = make(JsonArray, 0, 2)
 			newArr = append(newArr, doc)
 			newArr = append(newArr, val)
 			return newArr, true, nil
@@ -893,7 +893,7 @@ func updateObjectTreatAsArray(indexString string, doc interface{}, val interface
 		return val, true, nil
 	} else if mode == ARRAY_APPEND {
 		// ARRAY APPEND converts {}, to [{}, val] - Does nothing in the over/underflow cases.
-		var newArr = make([]interface{}, 0, 2)
+		var newArr = make(JsonArray, 0, 2)
 		newArr = append(newArr, doc)
 		newArr = append(newArr, val)
 		return newArr, true, nil
