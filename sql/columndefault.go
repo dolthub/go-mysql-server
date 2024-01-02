@@ -16,7 +16,6 @@ package sql
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/expression/function"
 )
 
 // ColumnDefaultValue is an expression representing the default value of a column. May represent both a default literal
@@ -142,18 +141,17 @@ func (e *ColumnDefaultValue) String() string {
 		return ""
 	}
 
-	// There's a special case for NOW()
-	_, ok := e.Expr.(*function.Now)
-	if ok {
-		return "CURRENT_TIMESTAMP"
-	}
-
 	// https://dev.mysql.com/doc/refman/8.0/en/data-type-defaults.html
 	// The default value specified in a DEFAULT clause can be a literal constant or an expression. With one exception,
 	// enclose expression default values within parentheses to distinguish them from literal constant default values.
 	str := e.Expr.String()
 	if e.Literal {
 		return str
+	}
+
+	// There's a special case for NOW()
+	if str == "NOW()" || str == "NOW(0)" {
+		return "CURRENT_TIMESTAMP"
 	}
 
 	return fmt.Sprintf("(%s)", str)
