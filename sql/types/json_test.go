@@ -1330,3 +1330,55 @@ func TestRemoveRoot(t *testing.T) {
 	assert.Equal(t, "The path expression '$' is not allowed in this context.", err.Error())
 	assert.Equal(t, false, changed)
 }
+
+type jsonIterKV struct {
+	key   string
+	value interface{}
+}
+
+type jsonIterTest struct {
+	name          string
+	doc           JsonObject
+	expectedPairs []jsonIterKV
+}
+
+var jsonIterTests = []jsonIterTest{
+	{
+		name:          "empty object",
+		doc:           JsonObject{},
+		expectedPairs: []jsonIterKV{},
+	},
+	{
+		name: "iterate over keys in sorted order",
+		doc:  JsonObject{"b": 1, "a": 2},
+		expectedPairs: []jsonIterKV{
+			{key: "a", value: 2},
+			{key: "b", value: 1},
+		},
+	},
+	{
+		name: "keys use lexicographic order, not key-length order",
+		doc:  JsonObject{"b": 1, "aa": 2},
+		expectedPairs: []jsonIterKV{
+			{key: "aa", value: 2},
+			{key: "b", value: 1},
+		},
+	},
+}
+
+func TestJsonIter(t *testing.T) {
+	for _, test := range jsonIterTests {
+		t.Run(test.name, func(t *testing.T) {
+			iter := NewJSONIter(test.doc)
+			pairs := make([]jsonIterKV, 0)
+			for iter.HasNext() {
+				var pair jsonIterKV
+				var err error
+				pair.key, pair.value, err = iter.Next()
+				require.NoError(t, err)
+				pairs = append(pairs, pair)
+			}
+			require.Equal(t, test.expectedPairs, pairs)
+		})
+	}
+}
