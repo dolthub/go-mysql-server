@@ -287,6 +287,10 @@ var joinOpTests = []struct {
 		},
 		tests: []JoinOpTests{
 			{
+				Query:    `SELECT * from xy join uv on x = u and y = NOW()`,
+				Expected: []sql.Row{},
+			},
+			{
 				Query: `SELECT xy.x, xy.y
 					FROM xy
 					WHERE EXISTS (
