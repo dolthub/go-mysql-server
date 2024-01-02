@@ -17,7 +17,6 @@ package types
 import (
 	"database/sql/driver"
 	"fmt"
-	"golang.org/x/exp/maps"
 	"io"
 	"regexp"
 	"sort"
@@ -25,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/jsonpath"
+	"golang.org/x/exp/maps"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
