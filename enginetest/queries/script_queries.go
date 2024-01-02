@@ -4924,6 +4924,31 @@ CREATE TABLE tab3 (
 			},
 		},
 	},
+	{
+		Name: "between type conversion",
+		SetUpScript: []string{
+			"create table t0(c0 bool);",
+            "create table t1(c1 bool);",
+            "insert into t0 (c0) values (1);",
+            "insert into t1 (c1) values (false), (true);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT t0.c0, t1.c1 FROM t0 LEFT  JOIN t1 ON true;",
+				Expected: []sql.Row{
+					{1, 0},
+					{1, 1},
+				},
+			},
+			{
+				Query: "SELECT t0.c0, t1.c1 FROM t0 LEFT  JOIN t1 ON ('a' NOT BETWEEN false AND false) WHERE 1 UNION ALL SELECT t0.c0, t1.c1 FROM t0 LEFT  JOIN t1 ON ('a' NOT BETWEEN false AND false) WHERE (NOT 1) UNION ALL SELECT t0.c0, t1.c1 FROM t0 LEFT  JOIN t1 ON ('a' NOT BETWEEN false AND false) WHERE (1 IS NULL);",
+				Expected: []sql.Row{
+					{1, nil},
+				},
+			},
+		},
+	},
+
 }
 
 var SpatialScriptTests = []ScriptTest{

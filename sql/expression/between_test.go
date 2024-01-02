@@ -46,8 +46,10 @@ func TestBetween(t *testing.T) {
 		{"val is between lower and upper", sql.NewRow(2, 1, 3), true, false},
 		{"val is less than lower", sql.NewRow(0, 1, 3), false, false},
 		{"val is more than upper", sql.NewRow(4, 1, 3), false, false},
-		{"val type is different than lower", sql.NewRow(4, "lower", 3), false, true},
-		{"val type is different than upper", sql.NewRow(4, 1, "upper"), false, true},
+		{"val type is different than lower", sql.NewRow(4, "lower", 3), false, false},
+		{"val type is different than upper", sql.NewRow(4, 1, "upper"), false, false},
+		{"val type is different than lower", sql.NewRow(2, "lower", 3), true, false},
+		{"val type is different than upper", sql.NewRow(0, 0, "upper"), true, false},
 	}
 
 	for _, tt := range testCases {
