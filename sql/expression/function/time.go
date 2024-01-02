@@ -925,6 +925,7 @@ func (n *Now) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if ctx == nil {
 		return nil, fmt.Errorf("cannot Eval Now with nil context")
 	}
+
 	// The timestamp must be in the session time zone
 	sessionTimeZone, err := SessionTimeZone(ctx)
 	if err != nil {
