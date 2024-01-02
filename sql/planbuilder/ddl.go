@@ -925,11 +925,10 @@ func (b *Builder) buildDefaultExpression(inScope *scope, defaultExpr ast.Expr) *
 		if f, ok := parsedExpr.(*expression.UnresolvedFunction); ok {
 			// Datetime and Timestamp columns allow now and current_timestamp to not be enclosed in parens,
 			// but they still need to be treated as function expressions
-			if f.Name() == "now" || f.Name() == "current_timestamp" || f.Name() == "localtime" || f.Name() == "localtimestamp" {
+			switch strings.ToLower(f.Name()) {
+			case "now", "current_timestamp", "localtime", "localtimestamp":
 				isLiteral = false
-			} else {
-				// All other functions must *always* be enclosed in parens
-				// MySQL just throws a syntax error, but this is more descriptive
+			default:
 				err := sql.ErrSyntaxError.New("column default function expressions must be enclosed in parentheses")
 				b.handleErr(err)
 			}
@@ -1402,7 +1401,6 @@ func (b *Builder) convertDefaultExpression(inScope *scope, defaultExpr ast.Expr,
 				isLiteral = false
 			default:
 				// All other functions must *always* be enclosed in parens
-				// TODO: remove this
 				err := sql.ErrSyntaxError.New("column default function expressions must be enclosed in parentheses")
 				b.handleErr(err)
 			}
