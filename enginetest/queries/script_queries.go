@@ -4928,9 +4928,9 @@ CREATE TABLE tab3 (
 		Name: "between type conversion",
 		SetUpScript: []string{
 			"create table t0(c0 bool);",
-            "create table t1(c1 bool);",
-            "insert into t0 (c0) values (1);",
-            "insert into t1 (c1) values (false), (true);",
+			"create table t1(c1 bool);",
+			"insert into t0 (c0) values (1);",
+			"insert into t1 (c1) values (false), (true);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -4948,7 +4948,6 @@ CREATE TABLE tab3 (
 			},
 		},
 	},
-
 }
 
 var SpatialScriptTests = []ScriptTest{
