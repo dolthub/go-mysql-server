@@ -990,7 +990,7 @@ func (n *Now) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	nano := precision * (t.Nanosecond() / precision)
 
 	// Generate a new timestamp
-	tt := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), nano, t.Location())
+	tt := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), nano, time.UTC)
 
 	return tt, nil
 }
