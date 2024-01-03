@@ -336,7 +336,11 @@ func convertOrTruncate(ctx *sql.Context, i interface{}, t sql.Type) (interface{}
 		Message: fmt.Sprintf("Truncated incorrect %s value: %v", t.String(), i),
 		Code:    1292,
 	}
-	ctx.Session.Warn(&warning)
+
+	if ctx != nil && ctx.Session != nil {
+		ctx.Session.Warn(&warning)
+	}
+
 	return t.Zero(), nil
 }
 
