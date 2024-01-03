@@ -485,9 +485,9 @@ var ColumnDefaultTests = []ScriptTest{
 				Query: "desc t33",
 				Expected: []sql.Row{
 					{"pk", "varchar(100)", "NO", "PRI", "(replace(uuid(), '-', ''))", "DEFAULT_GENERATED"},
-					{"v1_new", "timestamp(6)", "YES", "", "(NOW())", "DEFAULT_GENERATED"},
+					{"v1_new", "timestamp(6)", "YES", "", "CURRENT_TIMESTAMP", "DEFAULT_GENERATED"},
 					{"v2", "varchar(100)", "YES", "", "NULL", ""},
-					{"v3", "datetime(6)", "YES", "", "(CURRENT_TIMESTAMP())", "DEFAULT_GENERATED"},
+					{"v3", "datetime(6)", "YES", "", "CURRENT_TIMESTAMP", "DEFAULT_GENERATED"},
 				},
 			},
 			{
