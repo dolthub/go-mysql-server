@@ -449,8 +449,6 @@ func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, query string, plan 
 }
 
 // BoundQueryPlan returns query plan for the given statement with the given bindings applied
-// TODO: right now we return a Node from Parse, but bind takes an AST. We need to return an AST and fields from Parse,
-//  which we pass here. Then bind returns a Node.
 func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sql.Node, error) {
 	if parsed == nil {
 		return nil, errors.New("parsed statement must not be nil")

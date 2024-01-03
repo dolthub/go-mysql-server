@@ -166,7 +166,7 @@ func (h *Handler) ComBind(c *mysql.Conn, query string, parsedQuery mysql.ParsedQ
 	
 	stmt, ok := parsedQuery.(sqlparser.Statement)
 	if !ok {
-		return nil, nil, fmt.Errorf("parsed query is not a sql.Node")
+		return nil, nil, fmt.Errorf("parsedQuery must be a sqlparser.Statement, but got %T", parsedQuery)
 	}
 	
 	queryPlan, err := h.e.BoundQueryPlan(ctx, query, stmt, prepare.BindVars)
@@ -180,7 +180,7 @@ func (h *Handler) ComBind(c *mysql.Conn, query string, parsedQuery mysql.ParsedQ
 func (h *Handler) ComExecuteBound(c *mysql.Conn, query string, boundQuery mysql.BoundQuery, callback mysql.ResultSpoolFn) error {
 	plan, ok := boundQuery.(sql.Node)
 	if !ok {
-		return fmt.Errorf("bound query is not a sql.Node")
+		return fmt.Errorf("boundQuery must be a sql.Node, but got %T", boundQuery)
 	}
 	
 	return h.errorWrappedComExec(c, query, plan, callback)
