@@ -150,11 +150,15 @@ func (h *Handler) ComPrepareParsed(c *mysql.Conn, query string, parsed sqlparser
 		return nil, nil, err
 	}
 
-	if nodeReturnsOkResultSchema(analyzed) || types.IsOkResultSchema(analyzed.Schema()) {
-		return nil, nil, err
+	var fields []*querypb.Field
+	// The return result fields should only be directly translated if it doesn't correspond to an OK result.
+	// See comment in ComPrepare 
+	if !(nodeReturnsOkResultSchema(analyzed) || types.IsOkResultSchema(analyzed.Schema())) {
+		fields = nil
+	} else {
+		fields = schemaToFields(ctx, analyzed.Schema())
 	}
-
-	fields := schemaToFields(ctx, analyzed.Schema())
+	
 	return analyzed, fields, nil
 }
 
