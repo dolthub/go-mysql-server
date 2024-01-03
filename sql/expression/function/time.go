@@ -1099,7 +1099,8 @@ func (ut *UTCTimestamp) Children() []sql.Expression { return nil }
 func (ut *UTCTimestamp) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 	t := ctx.QueryTime()
 	// TODO: UTC Timestamp needs to also handle precision arguments
-	tt := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), 0, t.Location())
+	nano := 1000 * (t.Nanosecond() / 1000)
+	tt := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), nano, t.Location())
 	return tt.UTC(), nil
 }
 

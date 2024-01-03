@@ -3732,7 +3732,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				// When the session's time zone is set to UTC, NOW() and UTC_TIMESTAMP() should return the same value
-				Query:    `select @@time_zone, NOW() = UTC_TIMESTAMP();`,
+				Query:    `select @@time_zone, NOW(6) = UTC_TIMESTAMP();`,
 				Expected: []sql.Row{{"+00:00", true}},
 			},
 			{
@@ -3746,7 +3746,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				// When the session's time zone is set to +2:00, NOW() should report two hours ahead of UTC_TIMESTAMP()
-				Query:    `select @@time_zone, TIMESTAMPDIFF(MINUTE, NOW(), UTC_TIMESTAMP());`,
+				Query:    `select @@time_zone, TIMESTAMPDIFF(MINUTE, NOW(6), UTC_TIMESTAMP());`,
 				Expected: []sql.Row{{"+02:00", -120}},
 			},
 			{
