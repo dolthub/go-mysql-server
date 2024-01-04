@@ -731,13 +731,8 @@ func addHashJoins(m *memo.Memo) error {
 		case *memo.RecursiveTable:
 			return nil
 		}
-		rel := &memo.HashJoin{
-			JoinBase:   join.Copy(),
-			LeftAttrs:  toExpr,
-			RightAttrs: fromExpr,
-		}
-		rel.Op = rel.Op.AsHash()
-		e.Group().Prepend(rel)
+
+		m.MemoizeHashJoin(e.Group(), join, toExpr, fromExpr)
 		return nil
 	})
 }

@@ -33,6 +33,7 @@ type relProps struct {
 
 	fds          *sql.FuncDepSet
 	outputCols   sql.ColSet
+	reqIdxCols   sql.ColSet
 	inputTables  sql.FastIntSet
 	outputTables sql.FastIntSet
 	tableNodes   []plan.TableIdNode
@@ -64,6 +65,29 @@ func newRelProps(rel RelExpr) *relProps {
 		n := r.TableIdNode()
 		if len(n.Schema()) == n.Columns().Len() {
 			p.outputCols = r.TableIdNode().Columns()
+
+			firstCol, _ := n.Columns().Next(1)
+
+			var table sql.Table
+			switch n := n.(type) {
+			case *plan.TableAlias:
+				if tn, ok := n.Child.(sql.TableNode); ok {
+					table = tn.UnderlyingTable()
+				}
+			case sql.TableNode:
+				table = n.UnderlyingTable()
+			}
+			var requiredIndexCols sql.ColSet
+			if table != nil {
+				if irt, ok := table.(sql.IndexRequired); ok {
+					cols := irt.RequiredPredicates()
+					for _, c := range cols {
+						i := n.Schema().IndexOfColName(c)
+						requiredIndexCols.Add(firstCol + sql.ColumnId(i))
+					}
+				}
+			}
+			p.reqIdxCols = requiredIndexCols
 		} else {
 			// if the table is projected, capture subset of column ids
 			var tw sql.TableNode
@@ -86,10 +110,21 @@ func newRelProps(rel RelExpr) *relProps {
 				colset.Add(firstCol + sql.ColumnId(i))
 			}
 			p.outputCols = colset
+
+			var requiredIndexCols sql.ColSet
+			if irt, ok := n.(sql.IndexRequired); ok {
+				cols := irt.RequiredPredicates()
+				for _, c := range cols {
+					i := sch.IndexOfColName(c)
+					requiredIndexCols.Add(firstCol + sql.ColumnId(i))
+				}
+			}
+			p.reqIdxCols = requiredIndexCols
 		}
 	default:
 	}
 
+	p.populateRequiredIdxCols()
 	p.populateFds()
 	p.stat = statsForRel(rel)
 	p.populateOutputTables()
@@ -115,6 +150,17 @@ func (p *relProps) SetStats(s sql.Statistic) {
 
 func (p *relProps) GetStats() sql.Statistic {
 	return p.stat
+}
+
+func (p *relProps) populateRequiredIdxCols() {
+	switch rel := p.grp.First.(type) {
+	case *Distinct:
+		p.reqIdxCols = rel.Child.RelProps.reqIdxCols
+	case *Project:
+		p.reqIdxCols = rel.Child.RelProps.reqIdxCols
+	case *Filter:
+		p.reqIdxCols = rel.Child.RelProps.reqIdxCols
+	}
 }
 
 func (p *relProps) populateFds() {
