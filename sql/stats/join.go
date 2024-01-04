@@ -16,8 +16,8 @@ import (
 var ErrJoinStringStatistics = errors.New("joining string histograms is unsupported")
 
 // Join performs an alignment algorithm on two sets of statistics, and then
-// pairwise estiamtes bucket cardinalities by joining MCVs directly and
-// assuming key uniformity otherwise.
+// pairwise estimates bucket cardinalities by joining MCVs directly and
+// assuming key uniformity otherwise. Only numeric types are supported.
 func Join(s1, s2 sql.Statistic, lFields, rFields []int, debug bool) (sql.Statistic, error) {
 	cmp := func(row1, row2 sql.Row) (int, error) {
 		var keyCmp int
@@ -71,7 +71,8 @@ func Join(s1, s2 sql.Statistic, lFields, rFields []int, debug bool) (sql.Statist
 // joinAlignedStats assumes |left| and |right| have the same number of
 // buckets, and will use uniform distribution assumptions between pairwise
 // buckets to estimate the join cardinality. MCVs adjust the estimates to
-// account for outliers.
+// account for outlier keys that are a disproportionately high fraction of
+// the index.
 func joinAlignedStats(left, right sql.Histogram, cmp func(sql.Row, sql.Row) (int, error)) ([]*Bucket, error) {
 	var newBuckets []*Bucket
 	newCnt := uint64(0)
@@ -177,7 +178,9 @@ func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sq
 	for state != sjStateEOF {
 		switch state {
 		case sjStateInit:
-			// preprocess buckets, reverse into stacks
+			// Merge adjacent overlapping buckets within each histogram.
+			// Truncate non-overlapping tail buckets between left and right.
+			// Reverse the buckets into stacks.
 
 			s1Hist, err := mergeOverlappingBuckets(h1, s1Types)
 			if err != nil {
@@ -252,12 +255,16 @@ func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sq
 
 		case sjStateCut:
 			state = sjStateInc
+			// The left bucket is longer than the right bucket.
+			// In the default case, we will cut the left bucket on
+			// the right boundary, and put the right remainder back
+			// on the stack.
 
 			if len(leftRes) == 0 {
-				// trying to cut L, first bucket of L < R
-				// extend L to match R
-				// steal from the next bucket
-				// calculate fraction of next bucket above R bound
+				// It is difficult to cut the first bucket because the
+				// lower bound is negative infinity. We instead extend the
+				// smaller side (right) by stealing form its precedeccors
+				// up to the left cutpoint.
 
 				if len(rightStack) == 0 {
 					continue
@@ -265,6 +272,7 @@ func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sq
 
 				var peekR sql.HistogramBucket
 				for len(rightStack) > 0 {
+					// several right buckets might be less than the left cutpoint
 					peekR = rightStack[len(rightStack)-1]
 					rightStack = rightStack[:len(rightStack)-1]
 					keyCmp, err = cmp(peekR.UpperBound(), nextL.UpperBound())
@@ -323,7 +331,6 @@ func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sq
 				continue
 			}
 
-			// left is bigger than right and we have a previous bound, so cut on right boundary
 			// get left "distance"
 			bucketMagnitude, err := euclideanDistance(nextL.UpperBound(), leftRes[len(leftRes)-1].UpperBound())
 			if err != nil {
@@ -393,6 +400,7 @@ func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sq
 			}
 
 			// squash the trailing buckets into one
+			// TODO: cut the left side on the right's final bound when there is >1 left
 			leftStack = append(leftStack, nextL)
 			nextL = leftRes[len(leftRes)-1]
 			leftRes = leftRes[:len(leftRes)-1]
@@ -475,43 +483,38 @@ func mergeOverlappingBuckets(h sql.Histogram, types []sql.Type) (sql.Histogram, 
 		}
 		return 0, nil
 	}
-	j := 0
+	// |k| is the write position, |i| is the compare position
+	// |k| <= |i|
 	i := 0
 	k := 0
 	for i < len(h) {
-		j = i + 1
 		h[k] = h[i]
-		if j >= len(h) {
+		i++
+		if i >= len(h) {
 			k++
 			break
 		}
-		mcvs, mcvCnts, err := mergeMcvs(h[i].Mcvs(), h[j].Mcvs(), h[i].McvCounts(), h[j].McvCounts(), cmp)
+		mcvs, mcvCnts, err := mergeMcvs(h[i].Mcvs(), h[i-1].Mcvs(), h[i].McvCounts(), h[i-1].McvCounts(), cmp)
 		if err != nil {
 			return nil, err
 		}
-		eq, err := cmp(h[k].UpperBound(), h[j].UpperBound())
-		if err != nil {
-			return nil, err
-		}
-		for j < len(h) && h[j].DistinctCount() == 1 && eq == 0 {
-			h[k] = NewHistogramBucket(
-				h[k].RowCount()+h[j].RowCount(),
-				h[k].DistinctCount(),
-				h[k].NullCount()+h[j].NullCount(),
-				h[k].BoundCount()+h[j].BoundCount(),
-				h[k].UpperBound(),
-				mcvCnts,
-				mcvs)
-			j++
-			if j >= len(h) {
-				break
-			}
-			eq, err = cmp(h[k].UpperBound(), h[j].UpperBound())
+		for ; i < len(h) && h[i].DistinctCount() == 1; i++ {
+			eq, err := cmp(h[k].UpperBound(), h[i].UpperBound())
 			if err != nil {
 				return nil, err
 			}
+			if eq != 0 {
+				break
+			}
+			h[k] = NewHistogramBucket(
+				h[k].RowCount()+h[i].RowCount(),
+				h[k].DistinctCount(),
+				h[k].NullCount()+h[i].NullCount(),
+				h[k].BoundCount()+h[i].BoundCount(),
+				h[k].UpperBound(),
+				mcvCnts,
+				mcvs)
 		}
-		i = j
 		k++
 	}
 	return h[:k], nil
@@ -531,7 +534,7 @@ const (
 	sjStateEOF
 )
 
-// euclideanDistance is a pairwise sum of squares distance between
+// euclideanDistance is a vectorwise sum of squares distance between
 // two numeric types.
 func euclideanDistance(row1, row2 sql.Row) (float64, error) {
 	var distSq float64

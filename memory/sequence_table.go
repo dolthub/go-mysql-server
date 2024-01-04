@@ -166,7 +166,6 @@ type sequencePartition struct {
 }
 
 func (s sequencePartition) Key() []byte {
-
 	return binary.LittleEndian.AppendUint64(binary.LittleEndian.AppendUint64(nil, uint64(s.min)), uint64(s.max))
 }
 
