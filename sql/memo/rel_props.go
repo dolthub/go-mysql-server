@@ -16,6 +16,7 @@ package memo
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -291,20 +292,16 @@ func statsForRel(rel RelExpr) sql.Statistic {
 		default:
 		}
 
-		distinct := left.DistinctCount()
-		if right.DistinctCount() > distinct {
-			distinct = right.DistinctCount()
-		}
+		distinct := math.Max(float64(left.DistinctCount()), float64(right.DistinctCount()))
 		if distinct == 0 {
-			m := float64(left.RowCount())
-			if cmp := float64(right.RowCount()); cmp > m {
-				m = cmp
-			}
-			distinct = uint64(m * .80)
+			m := math.Max(float64(left.RowCount()), float64(right.RowCount()))
+			distinct = m * .80
 		}
-		// Selinger estimation, cartesian join with the assumption that the
-		// side with fewer distinct values is surjective into the larger set
-		card := float64(left.RowCount()*right.RowCount()) / float64(distinct)
+
+		// Assume that the smaller set is surjective onto the larger set, and at least one of the sets is uniformly distributed.
+		// If so, then the odds that a random element of each set matches can be computed as:
+		selectivity := 1.0 / float64(distinct)
+		card := float64(left.RowCount()*right.RowCount()) * selectivity
 		return &stats.Statistic{RowCnt: uint64(card)}
 
 	case *Max1Row:
