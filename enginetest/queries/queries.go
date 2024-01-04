@@ -6973,7 +6973,12 @@ Select * from (
 			{"-108"},
 		},
 	},
-
+	{
+		Query: "SELECT CASE WHEN COUNT( * ) THEN 10.0 * CAST(2012 AS UNSIGNED) + CAST(82 AS CHAR) END;",
+		Expected: []sql.Row{
+			{20202.0},
+		},
+	},
 	{
 		Query:    "SELECT 2.0 + CAST(5 AS DECIMAL)",
 		Expected: []sql.Row{{"7.0"}},
