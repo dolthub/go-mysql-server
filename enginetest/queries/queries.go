@@ -6968,6 +6968,13 @@ Select * from (
 		},
 	},
 	{
+		Query: "SELECT CASE WHEN COUNT( * ) THEN 10 * CAST(-19 AS SIGNED ) + CAST(82 AS DECIMAL) END;",
+		Expected: []sql.Row{
+			{"-108"},
+		},
+	},
+
+	{
 		Query:    "SELECT 2.0 + CAST(5 AS DECIMAL)",
 		Expected: []sql.Row{{"7.0"}},
 	},
