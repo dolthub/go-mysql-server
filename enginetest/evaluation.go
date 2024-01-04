@@ -89,7 +89,7 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 					t.Skip()
 				}
 			}
-			ctx.WithQuery(statement)
+			ctx = ctx.WithQuery(statement)
 			RunQueryWithContext(t, e, harness, ctx, statement)
 		}
 
@@ -124,7 +124,7 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 				if assertion.ExpectedErr != nil {
 					AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
 				} else if assertion.ExpectedErrStr != "" {
-					AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
+					AssertErrWithCtx(t, e, harness, ctx, assertion.Query, nil, assertion.ExpectedErrStr)
 				} else if assertion.ExpectedWarning != 0 {
 					AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query,
 						assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
@@ -215,9 +215,9 @@ func TestScriptWithEnginePrepared(t *testing.T, e QueryEngine, harness Harness, 
 				ctx = th.NewSession()
 			}
 			if assertion.ExpectedErr != nil {
-				AssertErrPrepared(t, e, harness, assertion.Query, assertion.ExpectedErr)
+				AssertErrPreparedWithCtx(t, e, harness, ctx, assertion.Query, assertion.ExpectedErr)
 			} else if assertion.ExpectedErrStr != "" {
-				AssertErrPrepared(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
+				AssertErrPreparedWithCtx(t, e, harness, ctx, assertion.Query, nil, assertion.ExpectedErrStr)
 			} else if assertion.ExpectedWarning != 0 {
 				AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query,
 					assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,

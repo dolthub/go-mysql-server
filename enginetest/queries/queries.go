@@ -4612,6 +4612,20 @@ Select * from (
 		},
 	},
 	{
+		Query:    "select 0 in (1 / 1000), 0 in (1 / 1000, 0), 0.001 in (1 / 1000, 0), 0.0001 in (1 / 1000, 0);",
+		Expected: []sql.Row{{false, true, true, false}},
+	},
+	{
+		Query:    "select 0 in (0.01 * 0.30), 1 in (1.0 * 1)",
+		Expected: []sql.Row{{false, true}},
+	},
+	{
+		Query: "SELECT MAX(CAST(NULL AS DECIMAL)) * 82",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
 		Query: "SELECT '3' > 2 FROM tabletest",
 		Expected: []sql.Row{
 			{true},
@@ -8623,6 +8637,12 @@ from typestable`,
 		},
 	},
 	{
+		Query: "select 1 where (round('')) union all select 1 where (not (round(''))) union all select 1 where ((round('')) is null);",
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
 		Query: "select 1 in (null, 0.8)",
 		Expected: []sql.Row{
 			{nil},
@@ -8648,6 +8668,14 @@ from typestable`,
 	},
 	{
 		Query: "select * from mytable where (i BETWEEN (CASE 1 WHEN 2 THEN 1.0 ELSE (1||2) END) AND i)",
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
+		Query: "select * from mytable where (i BETWEEN ('' BETWEEN '' AND ('' OR '#')) AND i)",
 		Expected: []sql.Row{
 			{1, "first row"},
 			{2, "second row"},
@@ -8728,6 +8756,13 @@ var KeylessQueries = []QueryTest{
 
 // BrokenQueries are queries that are known to be broken in the engine.
 var BrokenQueries = []QueryTest{
+	// https://github.com/dolthub/dolt/issues/7207
+	{
+		Query: "select 0 in (1/100000);",
+		Expected: []sql.Row{
+			{false},
+		},
+	},
 	// union and aggregation typing are tricky
 	{
 		Query: "with recursive t (n) as (select sum('1') from dual union all select (2.00) from dual) select sum(n) from t;",

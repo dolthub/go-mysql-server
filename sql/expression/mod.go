@@ -89,7 +89,7 @@ func (m *Mod) Type() sql.Type {
 
 	// for division operation, it's either float or decimal.Decimal type
 	// except invalid value will result it either 0 or nil
-	return floatOrDecimalType(m, false)
+	return getFloatOrMaxDecimalType(m, false)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

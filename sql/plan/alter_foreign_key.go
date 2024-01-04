@@ -117,7 +117,9 @@ func (p *CreateForeignKey) String() string {
 
 // ResolveForeignKey verifies the foreign key definition and resolves the foreign key, creating indexes and validating
 // data as necessary.
-func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.ForeignKeyTable, fkDef sql.ForeignKeyConstraint, shouldAdd, fkChecks bool) error {
+// fkChecks - whether to check the foreign key against the data in the table
+// checkRows - whether to check the existing rows in the table against the foreign key
+func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.ForeignKeyTable, fkDef sql.ForeignKeyConstraint, shouldAdd, fkChecks, checkRows bool) error {
 	if t, ok := tbl.(sql.TemporaryTable); ok && t.IsTemporary() {
 		return sql.ErrTemporaryTablesForeignKeySupport.New()
 	}
@@ -223,8 +225,10 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 			},
 		}
 
-		if err := reference.CheckTable(ctx, tbl); err != nil {
-			return err
+		if checkRows {
+			if err := reference.CheckTable(ctx, tbl); err != nil {
+				return err
+			}
 		}
 	}
 

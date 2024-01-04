@@ -164,7 +164,11 @@ func (a *Arithmetic) Type() sql.Type {
 		return types.Int64
 	}
 
-	return floatOrDecimalType(a, false)
+	if a.Op == sqlparser.MultStr {
+		return floatOrDecimalTypeForMult(a.Left, a.Right)
+	} else {
+		return getFloatOrMaxDecimalType(a, false)
+	}
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -509,6 +513,32 @@ func minus(lval, rval interface{}) (interface{}, error) {
 	}
 
 	return nil, errUnableToCast.New(lval, rval)
+}
+
+// floatOrDecimalTypeForMult returns Float64 type if either left or right side is of type int or float.
+// Otherwise, it returns decimal type of sum of left and right sides' precisions and scales. E.g. `1.40 * 1.0 = 1.400`
+func floatOrDecimalTypeForMult(l, r sql.Expression) sql.Type {
+	lType := getFloatOrMaxDecimalType(l, false)
+	rType := getFloatOrMaxDecimalType(r, false)
+
+	if lType == types.Float64 || rType == types.Float64 {
+		return types.Float64
+	}
+
+	lPrec := lType.(types.DecimalType_).Precision()
+	lScale := lType.(types.DecimalType_).Scale()
+	rPrec := rType.(types.DecimalType_).Precision()
+	rScale := rType.(types.DecimalType_).Scale()
+
+	maxWhole := (lPrec - lScale) + (rPrec - rScale)
+	maxScale := lScale + rScale
+	if maxWhole > types.DecimalTypeMaxPrecision-types.DecimalTypeMaxScale {
+		maxWhole = types.DecimalTypeMaxPrecision - types.DecimalTypeMaxScale
+	}
+	if maxScale > types.DecimalTypeMaxScale {
+		maxScale = types.DecimalTypeMaxScale
+	}
+	return types.MustCreateDecimalType(maxWhole+maxScale, maxScale)
 }
 
 func mult(lval, rval interface{}) (interface{}, error) {

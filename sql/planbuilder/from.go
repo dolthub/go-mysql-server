@@ -617,7 +617,7 @@ func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf
 func (b *Builder) buildResolvedTable(inScope *scope, db, name string, asof *ast.AsOf) (outScope *scope, ok bool) {
 	outScope = inScope.push()
 
-	if b.ViewCtx().DbName != "" {
+	if db == "" && b.ViewCtx().DbName != "" {
 		db = b.ViewCtx().DbName
 	} else if db == "" {
 		db = b.ctx.GetCurrentDatabase()

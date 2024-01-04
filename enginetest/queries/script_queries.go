@@ -148,6 +148,21 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
+		Name: "update exponential parsing",
+		SetUpScript: []string{
+			"create table a (a int primary key, b double);",
+			"insert into a values (0, 0.0),(1, 1.0)",
+			"update a set b = 5.0E-5 where a = 0",
+			"update a set b = 5.0e-5 where a = 1",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from a",
+				Expected: []sql.Row{{0, .00005}, {1, .00005}},
+			},
+		},
+	},
+	{
 		Name: "set op schema merge",
 		SetUpScript: []string{
 			"create table `left` (i int primary key, j mediumint, k varchar(20));",
@@ -4888,6 +4903,23 @@ CREATE TABLE tab3 (
 				Query: "select * from (select 'test' as name, 1 as x, 2 as y, 3 as z) sq join a on sq.name = a.name join b on b.i between a.start and a.end;",
 				Expected: []sql.Row{
 					{"test", 1, 2, 3, 1, 603000, 605001, "test", 605000},
+				},
+			},
+		},
+	},
+	{
+		Name: "resolve foreign key on indexed update",
+		SetUpScript: []string{
+			"set foreign_key_checks=0;",
+			"create table parent (i int primary key);",
+			"create table child (i int primary key, foreign key (i) references parent(i));",
+			"set foreign_key_checks=1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "update child set i = 1 where i = 1;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 0, Updated: 0}}},
 				},
 			},
 		},

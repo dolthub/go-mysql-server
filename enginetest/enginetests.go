@@ -4262,7 +4262,7 @@ func TestOnUpdateExprScripts(t *testing.T, harness Harness) {
 		t.Run(script.Name, func(t *testing.T) {
 			for _, statement := range script.SetUpScript {
 				sql.RunWithNowFunc(func() time.Time { return queries.Jan1Noon }, func() error {
-					ctx.WithQuery(statement)
+					ctx = ctx.WithQuery(statement)
 					ctx.SetQueryTime(queries.Jan1Noon)
 					RunQueryWithContext(t, e, harness, ctx, statement)
 					return nil
