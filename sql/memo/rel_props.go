@@ -160,7 +160,6 @@ func (p *relProps) populateRequiredIdxCols() {
 		p.reqIdxCols = rel.Child.RelProps.reqIdxCols
 	case *Filter:
 		p.reqIdxCols = rel.Child.RelProps.reqIdxCols
-	default:
 	}
 }
 

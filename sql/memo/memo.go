@@ -143,7 +143,9 @@ func (m *Memo) MemoizeInnerJoin(grp, left, right *ExprGroup, op plan.JoinType, f
 }
 
 func (m *Memo) MemoizeLookupJoin(grp, left, right *ExprGroup, op plan.JoinType, filter []sql.Expression, lookup *IndexScan) *ExprGroup {
-	if left.RelProps.reqIdxCols.Union(right.RelProps.reqIdxCols).Difference(lookup.Index.set).Len() > 0 {
+	if right.RelProps.reqIdxCols.Difference(lookup.Index.set).Len() > 0 {
+		// the index lookup does not cover the requested RHS indexScan columns,
+		// so this physical plan is invalid.
 		return grp
 	}
 	newJoin := &LookupJoin{
@@ -172,6 +174,8 @@ func (m *Memo) MemoizeLookupJoin(grp, left, right *ExprGroup, op plan.JoinType, 
 
 func (m *Memo) MemoizeHashJoin(grp *ExprGroup, join *JoinBase, toExpr, fromExpr []sql.Expression) *ExprGroup {
 	if join.Right.RelProps.reqIdxCols.Len() > 0 {
+		// HASH_JOIN's RHS will be a table scan, so this physical
+		// plan will not provide the requested indexScan
 		return grp
 	}
 	newJoin := &HashJoin{
