@@ -105,27 +105,14 @@ func joinAlignedStats(left, right sql.Histogram, cmp func(sql.Row, sql.Row) (int
 		}
 
 		// true up negative approximations
-		if lRows < 0 {
-			lRows = 0
-		}
-		if rRows < 0 {
-			rRows = 0
-		}
-
-		if lDistinct < 0 {
-			lDistinct = 0
-		}
-		if rDistinct < 0 {
-			rDistinct = 0
-		}
+		lRows = floatMax(lRows, 0)
+		rRows = floatMax(rRows, 0)
+		lDistinct = floatMax(lDistinct, 0)
+		rDistinct = floatMax(rDistinct, 0)
 
 		// Selinger method on rest of buckets
-		maxDistinct := lDistinct
-		minDistinct := rDistinct
-		if rDistinct > maxDistinct {
-			maxDistinct = rDistinct
-			minDistinct = lDistinct
-		}
+		maxDistinct := floatMax(lDistinct, rDistinct)
+		minDistinct := floatMin(lDistinct, rDistinct)
 
 		if maxDistinct > 0 {
 			rows += uint64(float64(lRows*rRows) / float64(maxDistinct))
