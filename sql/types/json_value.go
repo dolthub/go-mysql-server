@@ -17,12 +17,14 @@ package types
 import (
 	"database/sql/driver"
 	"fmt"
+	"io"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/dolthub/jsonpath"
+	"golang.org/x/exp/maps"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -31,22 +33,25 @@ type JSONStringer interface {
 	JSONString() (string, error)
 }
 
+type JsonObject = map[string]interface{}
+type JsonArray = []interface{}
+
 type MutableJSON interface {
 	// Insert Adds the value at the given path, only if it is not present. Updated value returned, and bool indicating if
 	// a change was made.
-	Insert(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error)
+	Insert(path string, val sql.JSONWrapper) (MutableJSON, bool, error)
 	// Remove the value at the given path. Updated value returned, and bool indicating if a change was made.
-	Remove(ctx *sql.Context, path string) (MutableJSON, bool, error)
+	Remove(path string) (MutableJSON, bool, error)
 	// Set the value at the given path. Updated value returned, and bool indicating if a change was made.
-	Set(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error)
+	Set(path string, val sql.JSONWrapper) (MutableJSON, bool, error)
 	// Replace the value at the given path with the new value. If the path does not exist, no modification is made.
-	Replace(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error)
+	Replace(path string, val sql.JSONWrapper) (MutableJSON, bool, error)
 	// ArrayInsert inserts into the array object referenced by the given path. If the path does not exist, no modification is made.
-	ArrayInsert(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error)
+	ArrayInsert(path string, val sql.JSONWrapper) (MutableJSON, bool, error)
 	// ArrayAppend appends to an  array object referenced by the given path. If the path does not exist, no modification is made,
 	// or if the path exists and is not an array, the element will be converted into an array and the element will be
 	// appended to it.
-	ArrayAppend(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error)
+	ArrayAppend(path string, val sql.JSONWrapper) (MutableJSON, bool, error)
 }
 
 type JSONDocument struct {
@@ -141,7 +146,7 @@ func (doc JSONDocument) Value() (driver.Value, error) {
 }
 
 func ConcatenateJSONValues(ctx *sql.Context, vals ...sql.JSONWrapper) (sql.JSONWrapper, error) {
-	arr := make([]interface{}, len(vals))
+	arr := make(JsonArray, len(vals))
 	for i, v := range vals {
 		arr[i] = v.ToInterface()
 	}
@@ -154,9 +159,9 @@ func ContainsJSON(a, b interface{}) (interface{}, error) {
 	}
 
 	switch a := a.(type) {
-	case []interface{}:
+	case JsonArray:
 		return containsJSONArray(a, b)
-	case map[string]interface{}:
+	case JsonObject:
 		return containsJSONObject(a, b)
 	case bool:
 		return containsJSONBool(a, b)
@@ -189,9 +194,9 @@ func containsJSONBool(a bool, b interface{}) (bool, error) {
 //	select json_contains('[1, [1, 2, 3], 10]', '[1, 10]'); => true
 //	select json_contains('[1, [1, 2, 3, 10]]', '[1, 10]'); => true
 //	select json_contains('[1, [1, 2, 3], [10]]', '[1, [10]]'); => true
-func containsJSONArray(a []interface{}, b interface{}) (bool, error) {
-	if _, ok := b.([]interface{}); ok {
-		for _, bb := range b.([]interface{}) {
+func containsJSONArray(a JsonArray, b interface{}) (bool, error) {
+	if _, ok := b.(JsonArray); ok {
+		for _, bb := range b.(JsonArray) {
 			contains, err := containsJSONArray(a, bb)
 			if err != nil {
 				return false, err
@@ -232,15 +237,15 @@ func containsJSONArray(a []interface{}, b interface{}) (bool, error) {
 //	select json_contains('{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}', '{"a": [2, 4]}'); => true
 //	select json_contains('{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}', '[2]'); => false
 //	select json_contains('{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}', '2'); => false
-func containsJSONObject(a map[string]interface{}, b interface{}) (bool, error) {
-	_, isMap := b.(map[string]interface{})
+func containsJSONObject(a JsonObject, b interface{}) (bool, error) {
+	_, isMap := b.(JsonObject)
 	if !isMap {
 		// If b is a scalar or an array, json_contains always returns false when
 		// testing containment in a JSON object
 		return false, nil
 	}
 
-	for key, bvalue := range b.(map[string]interface{}) {
+	for key, bvalue := range b.(JsonObject) {
 		avalue, ok := a[key]
 		if !ok {
 			return false, nil
@@ -347,9 +352,9 @@ func CompareJSON(a, b interface{}) (int, error) {
 	switch a := a.(type) {
 	case bool:
 		return compareJSONBool(a, b)
-	case []interface{}:
+	case JsonArray:
 		return compareJSONArray(a, b)
-	case map[string]interface{}:
+	case JsonObject:
 		return compareJSONObject(a, b)
 	case string:
 		return compareJSONString(a, b)
@@ -386,13 +391,13 @@ func compareJSONBool(a bool, b interface{}) (int, error) {
 	}
 }
 
-func compareJSONArray(a []interface{}, b interface{}) (int, error) {
+func compareJSONArray(a JsonArray, b interface{}) (int, error) {
 	switch b := b.(type) {
 	case bool:
 		// a is lower precedence
 		return -1, nil
 
-	case []interface{}:
+	case JsonArray:
 		// Two JSON arrays are equal if they have the same length and values in corresponding positions in the arrays
 		// are equal. If the arrays are not equal, their order is determined by the elements in the first position
 		// where there is a difference. The array with the smaller value in that position is ordered first.
@@ -423,15 +428,15 @@ func compareJSONArray(a []interface{}, b interface{}) (int, error) {
 	}
 }
 
-func compareJSONObject(a map[string]interface{}, b interface{}) (int, error) {
+func compareJSONObject(a JsonObject, b interface{}) (int, error) {
 	switch b := b.(type) {
 	case
 		bool,
-		[]interface{}:
+		JsonArray:
 		// a is lower precedence
 		return -1, nil
 
-	case map[string]interface{}:
+	case JsonObject:
 		// Two JSON objects are equal if they have the same set of keys, and each key has the same value in both
 		// objects. The order of two objects that are not equal is unspecified but deterministic.
 		inter := jsonObjectKeyIntersection(a, b)
@@ -459,8 +464,8 @@ func compareJSONString(a string, b interface{}) (int, error) {
 	switch b := b.(type) {
 	case
 		bool,
-		[]interface{},
-		map[string]interface{}:
+		JsonArray,
+		JsonObject:
 		// a is lower precedence
 		return -1, nil
 
@@ -477,8 +482,8 @@ func compareJSONNumber(a float64, b interface{}) (int, error) {
 	switch b := b.(type) {
 	case
 		bool,
-		[]interface{},
-		map[string]interface{},
+		JsonArray,
+		JsonObject,
 		string:
 		// a is lower precedence
 		return -1, nil
@@ -498,7 +503,7 @@ func compareJSONNumber(a float64, b interface{}) (int, error) {
 	}
 }
 
-func jsonObjectKeyIntersection(a, b map[string]interface{}) (ks []string) {
+func jsonObjectKeyIntersection(a, b JsonObject) (ks []string) {
 	for key := range a {
 		if _, ok := b[key]; ok {
 			ks = append(ks, key)
@@ -508,7 +513,7 @@ func jsonObjectKeyIntersection(a, b map[string]interface{}) (ks []string) {
 	return
 }
 
-func jsonObjectDeterministicOrder(a, b map[string]interface{}, inter []string) (int, error) {
+func jsonObjectDeterministicOrder(a, b JsonObject, inter []string) (int, error) {
 	if len(a) > len(b) {
 		return 1, nil
 	}
@@ -543,36 +548,36 @@ func jsonObjectDeterministicOrder(a, b map[string]interface{}, inter []string) (
 	return strings.Compare(aa, bb), nil
 }
 
-func (doc JSONDocument) Insert(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
+func (doc JSONDocument) Insert(path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
 	path = strings.TrimSpace(path)
-	return doc.unwrapAndExecute(ctx, path, val, INSERT)
+	return doc.unwrapAndExecute(path, val, INSERT)
 }
 
-func (doc JSONDocument) Remove(ctx *sql.Context, path string) (MutableJSON, bool, error) {
+func (doc JSONDocument) Remove(path string) (MutableJSON, bool, error) {
 	path = strings.TrimSpace(path)
 	if path == "$" {
 		return nil, false, fmt.Errorf("The path expression '$' is not allowed in this context.")
 	}
 
-	return doc.unwrapAndExecute(ctx, path, nil, REMOVE)
+	return doc.unwrapAndExecute(path, nil, REMOVE)
 }
 
-func (doc JSONDocument) Set(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
+func (doc JSONDocument) Set(path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
 	path = strings.TrimSpace(path)
-	return doc.unwrapAndExecute(ctx, path, val, SET)
+	return doc.unwrapAndExecute(path, val, SET)
 }
 
-func (doc JSONDocument) Replace(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
+func (doc JSONDocument) Replace(path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
 	path = strings.TrimSpace(path)
-	return doc.unwrapAndExecute(ctx, path, val, REPLACE)
+	return doc.unwrapAndExecute(path, val, REPLACE)
 }
 
-func (doc JSONDocument) ArrayAppend(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
+func (doc JSONDocument) ArrayAppend(path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
 	path = strings.TrimSpace(path)
-	return doc.unwrapAndExecute(ctx, path, val, ARRAY_APPEND)
+	return doc.unwrapAndExecute(path, val, ARRAY_APPEND)
 }
 
-func (doc JSONDocument) ArrayInsert(ctx *sql.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
+func (doc JSONDocument) ArrayInsert(path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
 	path = strings.TrimSpace(path)
 
 	if path == "$" {
@@ -580,7 +585,7 @@ func (doc JSONDocument) ArrayInsert(ctx *sql.Context, path string, val sql.JSONW
 		return nil, false, fmt.Errorf("Path expression is not a path to a cell in an array: $")
 	}
 
-	return doc.unwrapAndExecute(ctx, path, val, ARRAY_INSERT)
+	return doc.unwrapAndExecute(path, val, ARRAY_INSERT)
 }
 
 const (
@@ -594,7 +599,7 @@ const (
 
 // unwrapAndExecute unwraps the JSONDocument and executes the given path on the unwrapped value. The path string passed
 // in at this point should be unmodified.
-func (doc JSONDocument) unwrapAndExecute(ctx *sql.Context, path string, val sql.JSONWrapper, mode int) (MutableJSON, bool, error) {
+func (doc JSONDocument) unwrapAndExecute(path string, val sql.JSONWrapper, mode int) (MutableJSON, bool, error) {
 	if path == "" {
 		return nil, false, fmt.Errorf("Invalid JSON path expression. Empty path")
 	}
@@ -647,12 +652,12 @@ func walkPathAndUpdate(path string, doc interface{}, val interface{}, mode int, 
 		case INSERT:
 			return doc, false, nil
 		case ARRAY_APPEND:
-			if arr, ok := doc.([]interface{}); ok {
+			if arr, ok := doc.(JsonArray); ok {
 				doc = append(arr, val)
 				return doc, true, nil
 			} else {
 				// Otherwise, turn it into an array and append to it, and append to it.
-				doc = []interface{}{doc, val}
+				doc = JsonArray{doc, val}
 				return doc, true, nil
 			}
 		case ARRAY_INSERT, REMOVE:
@@ -666,7 +671,7 @@ func walkPathAndUpdate(path string, doc interface{}, val interface{}, mode int, 
 	if path[0] == '.' {
 		path = path[1:]
 		*cursor = *cursor + 1
-		strMap, ok := doc.(map[string]interface{})
+		strMap, ok := doc.(JsonObject)
 		if !ok {
 			// json_array_insert is the only function that produces an error when the path is to an object which
 			// lookup fails in this way. All other functions return the document unchanged. Go figure.
@@ -687,7 +692,7 @@ func walkPathAndUpdate(path string, doc interface{}, val interface{}, mode int, 
 		remaining := path[right+1:]
 		indexString := path[1:right]
 
-		if arr, ok := doc.([]interface{}); ok {
+		if arr, ok := doc.(JsonArray); ok {
 			return updateArray(indexString, remaining, arr, val, mode, cursor)
 		} else {
 			return updateObjectTreatAsArray(indexString, doc, val, mode, cursor)
@@ -697,9 +702,9 @@ func walkPathAndUpdate(path string, doc interface{}, val interface{}, mode int, 
 	}
 }
 
-// updateObject Take a map[string]interface{} and update the value at the given path. If we are not at the end of the path,
+// updateObject Take a JsonObject and update the value at the given path. If we are not at the end of the path,
 // the object is looked up and the walkPathAndUpdate function is called recursively.
-func updateObject(path string, doc map[string]interface{}, val interface{}, mode int, cursor *int) (interface{}, bool, *parseErr) {
+func updateObject(path string, doc JsonObject, val interface{}, mode int, cursor *int) (interface{}, bool, *parseErr) {
 	name, remainingPath, err := parseNameAfterDot(path, cursor)
 	if err != nil {
 		return nil, false, err
@@ -757,6 +762,25 @@ func updateObject(path string, doc map[string]interface{}, val interface{}, mode
 // compiled regex used to parse the name of a field after a '.' in a JSON path.
 var regex = regexp.MustCompile(`^(\w+)(.*)$`)
 
+// findNextUnescapedOccurrence finds the first unescaped occurrence of the provided byte in the string.
+// This can be used to find an ASCII codepoint without any risk of false positives. This is because strings
+// are UTF-8, and bytes in the ASCII range (<128) cannot appear as part of a multi-byte codepoint.
+func findNextUnescapedOccurrence(path string, target byte) int {
+	index := 0
+	for {
+		if index >= len(path) {
+			return -1
+		}
+		if path[index] == '\\' {
+			index++
+		} else if path[index] == target {
+			break
+		}
+		index++
+	}
+	return index
+}
+
 // parseNameAfterDot parses the json path immediately after a '.'. It returns the name of the field and the remaining path,
 // and modifies the cursor to point to the end of the parsed path.
 func parseNameAfterDot(path string, cursor *int) (name string, remainingPath string, err *parseErr) {
@@ -765,11 +789,13 @@ func parseNameAfterDot(path string, cursor *int) (name string, remainingPath str
 	}
 
 	if path[0] == '"' {
-		right := strings.Index(path[1:], "\"")
+		right := findNextUnescapedOccurrence(path[1:], '"')
 		if right < 0 {
 			return "", "", &parseErr{msg: "Invalid JSON path expression. '\"' expected", character: *cursor}
 		}
 		name = path[1 : right+1]
+		// if the name in the path contains escaped double quotes, unescape them.
+		name = strings.Replace(name, `\"`, `"`, -1)
 		remainingPath = path[right+2:]
 		*cursor = *cursor + right + 2
 	} else {
@@ -788,7 +814,7 @@ func parseNameAfterDot(path string, cursor *int) (name string, remainingPath str
 // updateArray will update an array element appropriately when the path element is an array. This includes parsing
 // the special indexes. If there are more elements in the path after this element look up, the update will be performed
 // by the walkPathAndUpdate function.
-func updateArray(indexString string, remaining string, arr []interface{}, val interface{}, mode int, cursor *int) (interface{}, bool, *parseErr) {
+func updateArray(indexString string, remaining string, arr JsonArray, val interface{}, mode int, cursor *int) (interface{}, bool, *parseErr) {
 	index, err := parseIndex(indexString, len(arr)-1, cursor)
 	if err != nil {
 		return nil, false, err
@@ -810,7 +836,7 @@ func updateArray(indexString string, remaining string, arr []interface{}, val in
 				arr = append(arr[:index.index], arr[index.index+1:]...)
 				updated = true
 			} else if mode == ARRAY_INSERT {
-				newArr := make([]interface{}, len(arr)+1)
+				newArr := make(JsonArray, len(arr)+1)
 				copy(newArr, arr[:index.index])
 				newArr[index.index] = val
 				copy(newArr[index.index+1:], arr[index.index:])
@@ -850,7 +876,7 @@ func updateObjectTreatAsArray(indexString string, doc interface{}, val interface
 	if parsedIndex.underflow {
 		if mode == SET || mode == INSERT {
 			// SET and INSERT convert {}, to [val, {}]
-			var newArr = make([]interface{}, 0, 2)
+			var newArr = make(JsonArray, 0, 2)
 			newArr = append(newArr, val)
 			newArr = append(newArr, doc)
 			return newArr, true, nil
@@ -858,7 +884,7 @@ func updateObjectTreatAsArray(indexString string, doc interface{}, val interface
 	} else if parsedIndex.overflow {
 		if mode == SET || mode == INSERT {
 			// SET and INSERT convert {}, to [{}, val]
-			var newArr = make([]interface{}, 0, 2)
+			var newArr = make(JsonArray, 0, 2)
 			newArr = append(newArr, doc)
 			newArr = append(newArr, val)
 			return newArr, true, nil
@@ -867,7 +893,7 @@ func updateObjectTreatAsArray(indexString string, doc interface{}, val interface
 		return val, true, nil
 	} else if mode == ARRAY_APPEND {
 		// ARRAY APPEND converts {}, to [{}, val] - Does nothing in the over/underflow cases.
-		var newArr = make([]interface{}, 0, 2)
+		var newArr = make(JsonArray, 0, 2)
 		newArr = append(newArr, doc)
 		newArr = append(newArr, val)
 		return newArr, true, nil
@@ -938,4 +964,37 @@ func parseIndex(indexStr string, lastIndex int, cursor *int) (*parseIndexResult,
 	}
 
 	return &parseIndexResult{index: val, overflow: overflow}, nil
+}
+
+type JSONIter struct {
+	doc  *JsonObject
+	keys []string
+	idx  int
+}
+
+func NewJSONIter(json JsonObject) JSONIter {
+	json = maps.Clone(json)
+	keys := maps.Keys(json)
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+	return JSONIter{
+		doc:  &json,
+		keys: keys,
+		idx:  0,
+	}
+}
+
+func (iter *JSONIter) Next() (key string, value interface{}, err error) {
+	if iter.idx >= len(iter.keys) {
+		return "", nil, io.EOF
+	}
+	key = iter.keys[iter.idx]
+	iter.idx++
+	value = (*iter.doc)[key]
+	return key, value, nil
+}
+
+func (iter *JSONIter) HasNext() bool {
+	return iter.idx < len(iter.keys)
 }

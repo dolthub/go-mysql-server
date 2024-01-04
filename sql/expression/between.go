@@ -69,76 +69,9 @@ func (b *Between) Resolved() bool {
 
 // Eval implements the Expression interface.
 func (b *Between) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	typ := b.Val.Type().Promote()
-
-	val, err := b.Val.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	if val == nil {
-		return nil, nil
-	}
-
-	val, _, err = typ.Convert(val)
-	if err != nil {
-		return nil, err
-	}
-
-	lower, err := b.Lower.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	if lower != nil {
-		lower, _, err = typ.Convert(lower)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	upper, err := b.Upper.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	if upper != nil {
-		upper, _, err = typ.Convert(upper)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if lower == nil && upper == nil {
-		return nil, nil
-	}
-
-	cmpLower, err := typ.Compare(val, lower)
-	if err != nil {
-		return nil, err
-	}
-
-	cmpUpper, err := typ.Compare(val, upper)
-	if err != nil {
-		return nil, err
-	}
-
-	if lower != nil && upper == nil {
-		if cmpLower >= 0 {
-			return nil, nil
-		} else {
-			return false, nil
-		}
-	}
-	if upper != nil && lower == nil {
-		if cmpUpper <= 0 {
-			return nil, nil
-		} else {
-			return false, nil
-		}
-	}
-
-	return cmpLower >= 0 && cmpUpper <= 0, nil
+	// TODO: Delete Between expression entirely?
+	// Reuse type conversion logic in comparison expressions by creating a logically equivalent expression
+	return NewAnd(NewLessThanOrEqual(b.Lower, b.Val), NewGreaterThanOrEqual(b.Upper, b.Val)).Eval(ctx, row)
 }
 
 // WithChildren implements the Expression interface.

@@ -43,7 +43,7 @@ topic.
 1. Stand-in for MySQL in a golang test environment, using the built-in
    `memory` database implementation.
 
-2. Providing access to aribtrary data sources with SQL queries by
+2. Providing access to arbitrary data sources with SQL queries by
    implementing a handful of interfaces. The most complete real-world
    implementation is [Dolt](https://github.com/dolthub/dolt).
 

@@ -131,6 +131,8 @@ func (h *Handler) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, call
 }
 
 func (h *Handler) ComResetConnection(c *mysql.Conn) {
+	logrus.WithField("connectionId", c.ConnectionID).Debug("COM_RESET_CONNECTION command received")
+
 	// TODO: handle reset logic
 }
 

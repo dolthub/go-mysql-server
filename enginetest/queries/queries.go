@@ -8688,6 +8688,15 @@ from typestable`,
 			{"k", "k", 1, 1, 0},
 		},
 	},
+	{
+		Query: "select * from xy inner join uv on (xy.x in (false in ('asdf')));",
+		Expected: []sql.Row{
+			{1, 0, 0, 1},
+			{1, 0, 1, 1},
+			{1, 0, 2, 2},
+			{1, 0, 3, 2},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{

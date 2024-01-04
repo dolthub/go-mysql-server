@@ -3732,7 +3732,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				// When the session's time zone is set to UTC, NOW() and UTC_TIMESTAMP() should return the same value
-				Query:    `select @@time_zone, NOW() = UTC_TIMESTAMP();`,
+				Query:    `select @@time_zone, NOW(6) = UTC_TIMESTAMP();`,
 				Expected: []sql.Row{{"+00:00", true}},
 			},
 			{
@@ -3746,7 +3746,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				// When the session's time zone is set to +2:00, NOW() should report two hours ahead of UTC_TIMESTAMP()
-				Query:    `select @@time_zone, TIMESTAMPDIFF(MINUTE, NOW(), UTC_TIMESTAMP());`,
+				Query:    `select @@time_zone, TIMESTAMPDIFF(MINUTE, NOW(6), UTC_TIMESTAMP());`,
 				Expected: []sql.Row{{"+02:00", -120}},
 			},
 			{
@@ -4920,6 +4920,30 @@ CREATE TABLE tab3 (
 				Query: "update child set i = 1 where i = 1;",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 0, Updated: 0}}},
+				},
+			},
+		},
+	},
+	{
+		Name: "between type conversion",
+		SetUpScript: []string{
+			"create table t0(c0 bool);",
+			"create table t1(c1 bool);",
+			"insert into t0 (c0) values (1);",
+			"insert into t1 (c1) values (false), (true);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT t0.c0, t1.c1 FROM t0 LEFT  JOIN t1 ON true;",
+				Expected: []sql.Row{
+					{1, 0},
+					{1, 1},
+				},
+			},
+			{
+				Query: "SELECT t0.c0, t1.c1 FROM t0 LEFT  JOIN t1 ON ('a' NOT BETWEEN false AND false) WHERE 1 UNION ALL SELECT t0.c0, t1.c1 FROM t0 LEFT  JOIN t1 ON ('a' NOT BETWEEN false AND false) WHERE (NOT 1) UNION ALL SELECT t0.c0, t1.c1 FROM t0 LEFT  JOIN t1 ON ('a' NOT BETWEEN false AND false) WHERE (1 IS NULL);",
+				Expected: []sql.Row{
+					{1, nil},
 				},
 			},
 		},
