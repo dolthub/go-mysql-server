@@ -4885,6 +4885,21 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
+		Name: "floats in tuple are properly hashed",
+		SetUpScript: []string{
+			"create table t (b bool);",
+			"insert into t values (false);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t where (b in (-''));",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+		},
+	},
+	{
 		Name: "subquery with range heap join",
 		SetUpScript: []string{
 			"create table a (i int primary key, start int, end int, name varchar(32));",

@@ -488,6 +488,36 @@ func TestHashInTuple(t *testing.T) {
 			result: false,
 		},
 		{
+			name: "right values contain zero floats that are equal to the left value",
+			left: expression.NewLiteral(0, types.Uint64),
+			right: expression.NewTuple(
+				expression.NewLiteral(0.0, types.Float64),
+				expression.NewLiteral(1.23, types.Float64),
+			),
+			row:    nil,
+			result: true,
+		},
+		{
+			name: "right values contain floats that are equal to the left value",
+			left: expression.NewLiteral(1, types.Uint64),
+			right: expression.NewTuple(
+				expression.NewLiteral(1.0, types.Float64),
+				expression.NewLiteral(1.23, types.Float64),
+			),
+			row:    nil,
+			result: true,
+		},
+		{
+			name: "right values contain decimals that are equal to the left value",
+			left: expression.NewLiteral(1, types.Uint64),
+			right: expression.NewTuple(
+				expression.NewLiteral(1.0, types.MustCreateDecimalType(10, 5)),
+				expression.NewLiteral(1.23, types.MustCreateDecimalType(10, 5)),
+			),
+			row:    nil,
+			result: true,
+		},
+		{
 			name: "right values contain a different, coercible type, and left value is zero value",
 			left: expression.NewLiteral(0, types.Uint64),
 			right: expression.NewTuple(
