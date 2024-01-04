@@ -4892,7 +4892,7 @@ CREATE TABLE tab3 (
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select * from t where (b in (-''));",
+				Query: "select * from t where (b in (-''));",
 				Expected: []sql.Row{
 					{0},
 				},
