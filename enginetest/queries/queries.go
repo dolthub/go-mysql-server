@@ -813,6 +813,10 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{3}},
 	},
 	{
+		Query:    "SELECT count(*) from mytable WHERE (i IN (-''));",
+		Expected: []sql.Row{{0}},
+	},
+	{
 		Query:    "SELECT 1 % true",
 		Expected: []sql.Row{{"0"}},
 	},
