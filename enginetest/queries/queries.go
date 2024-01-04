@@ -6968,6 +6968,24 @@ Select * from (
 		},
 	},
 	{
+		Query: "SELECT CASE WHEN COUNT( * ) THEN 10 * CAST(-19 AS SIGNED ) + CAST(82 AS DECIMAL) END;",
+		Expected: []sql.Row{
+			{"-108"},
+		},
+	},
+	{
+		Query: "SELECT CASE WHEN COUNT( * ) THEN 10.0 * CAST(2012 AS UNSIGNED) + CAST(82 AS CHAR) END;",
+		Expected: []sql.Row{
+			{20202.0},
+		},
+	},
+	{
+		Query: "SELECT CASE WHEN COUNT( * ) THEN 10.0 * CAST(1234 AS DATE) + CAST(82 AS CHAR) END;",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
 		Query:    "SELECT 2.0 + CAST(5 AS DECIMAL)",
 		Expected: []sql.Row{{"7.0"}},
 	},

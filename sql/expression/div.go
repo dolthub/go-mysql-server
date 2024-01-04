@@ -389,6 +389,16 @@ func getFloatOrMaxDecimalType(e sql.Expression, treatIntsAsFloats bool) sql.Type
 					maxFrac = s
 				}
 			}
+		case *Convert:
+			if c.cachedDecimalType != nil {
+				p, s := GetPrecisionAndScale(c.cachedDecimalType)
+				if whole := p - s; whole > maxWhole {
+					maxWhole = whole
+				}
+				if s > maxFrac {
+					maxFrac = s
+				}
+			}
 		case *Literal:
 			if types.IsNumber(c.Type()) {
 				l, err := c.Eval(nil, nil)
