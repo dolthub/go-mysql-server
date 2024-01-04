@@ -143,6 +143,9 @@ func (m *Memo) MemoizeInnerJoin(grp, left, right *ExprGroup, op plan.JoinType, f
 }
 
 func (m *Memo) MemoizeLookupJoin(grp, left, right *ExprGroup, op plan.JoinType, filter []sql.Expression, lookup *IndexScan) *ExprGroup {
+	if left.RelProps.reqIdxCols.Union(right.RelProps.reqIdxCols).Difference(lookup.Index.set).Len() > 0 {
+		return grp
+	}
 	newJoin := &LookupJoin{
 		JoinBase: &JoinBase{
 			relBase: &relBase{},
@@ -163,6 +166,26 @@ func (m *Memo) MemoizeLookupJoin(grp, left, right *ExprGroup, op plan.JoinType, 
 	if isInjectiveLookup(lookup.Index, newJoin.JoinBase, lookup.Table.Expressions(), lookup.Table.NullMask()) {
 		newJoin.Injective = true
 	}
+
+	return grp
+}
+
+func (m *Memo) MemoizeHashJoin(grp *ExprGroup, join *JoinBase, toExpr, fromExpr []sql.Expression) *ExprGroup {
+	if join.Right.RelProps.reqIdxCols.Len() > 0 {
+		return grp
+	}
+	newJoin := &HashJoin{
+		JoinBase:   join.Copy(),
+		LeftAttrs:  toExpr,
+		RightAttrs: fromExpr,
+	}
+	newJoin.Op = newJoin.Op.AsHash()
+
+	if grp == nil {
+		return m.NewExprGroup(newJoin)
+	}
+	newJoin.g = grp
+	grp.Prepend(newJoin)
 
 	return grp
 }

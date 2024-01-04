@@ -111,6 +111,15 @@ type IndexAddressable interface {
 	PreciseMatch() bool
 }
 
+// IndexRequired tables cannot be executed without index lookups on certain
+// columns. Join planning uses this interface to maintain plan correctness
+// for these nodes
+type IndexRequired interface {
+	IndexAddressable
+	// RequiredPredicates returns a list of columns that need IndexedTableAccess
+	RequiredPredicates() []string
+}
+
 // IndexAddressableTable is a table that can be accessed through an index
 type IndexAddressableTable interface {
 	Table
