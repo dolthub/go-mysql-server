@@ -954,6 +954,10 @@ func (t TestProvider) Function(_ *sql.Context, name string) (sql.Function, error
 	return nil, sql.ErrFunctionNotFound.New(name)
 }
 
+func (t TestProvider) WithTableFunctions(funcs []sql.TableFunction) (sql.TableFunctionProvider, error) {
+	return t, nil
+}
+
 func (t TestProvider) TableFunction(_ *sql.Context, name string) (sql.TableFunction, error) {
 	if tf, ok := t.tableFunctions[strings.ToLower(name)]; ok {
 		return tf, nil
