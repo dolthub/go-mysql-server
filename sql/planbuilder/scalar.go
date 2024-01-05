@@ -515,8 +515,8 @@ func (b *Builder) buildBinaryScalar(inScope *scope, be *ast.BinaryExpr) sql.Expr
 func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Expression {
 	left := b.buildScalar(inScope, c.Left)
 	right := b.buildScalar(inScope, c.Right)
-	
-	// If one side of the comparison is a bindvar and the other is a column expression, then assign the type of 
+
+	// If one side of the comparison is a bindvar and the other is a column expression, then assign the type of
 	// the column to the bindvar
 	if leftBind, ok := c.Left.(*ast.SQLVal); ok && b.shouldAssignBindvarType(leftBind) {
 		leftBindVar := left.(*expression.BindVar)
@@ -592,11 +592,11 @@ func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Exp
 func hasColumnType(e sql.Expression) (sql.Type, bool) {
 	var typ sql.Type
 	sql.Inspect(e, func(e sql.Expression) bool {
-	if col, ok := e.(*expression.GetField); ok {
+		if col, ok := e.(*expression.GetField); ok {
 			typ = col.Type()
 			return false
 		}
-		return true	
+		return true
 	})
 	return typ, typ != nil
 }

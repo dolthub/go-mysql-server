@@ -93,12 +93,12 @@ type Chain interface {
 	// the first call to callback. So the Handler should not
 	// hang on to the byte slice.
 	ComQuery(c *mysql.Conn, query string, callback mysql.ResultSpoolFn) error
-	
+
 	// ComMultiQuery is called when a connection receives a query and the
 	// client supports MULTI_STATEMENT. It should process the first
 	// statement in |query| and return the remainder. It will be called
 	// multiple times until the remainder is |""|.
-	ComMultiQuery(c *mysql.Conn, query string, callback  mysql.ResultSpoolFn) (string, error)
+	ComMultiQuery(c *mysql.Conn, query string, callback mysql.ResultSpoolFn) (string, error)
 
 	// ComPrepare is called when a connection receives a prepared
 	// statement query.
@@ -118,7 +118,7 @@ func (ci *chainInterceptor) ComQuery(c *mysql.Conn, query string, callback mysql
 	return ci.i.Query(ci.c, c, query, callback)
 }
 
-func (ci *chainInterceptor) ComMultiQuery(c *mysql.Conn, query string, callback  mysql.ResultSpoolFn) (string, error) {
+func (ci *chainInterceptor) ComMultiQuery(c *mysql.Conn, query string, callback mysql.ResultSpoolFn) (string, error) {
 	return ci.i.MultiQuery(ci.c, c, query, callback)
 }
 
@@ -151,7 +151,7 @@ func (ih *interceptorHandler) ComQuery(c *mysql.Conn, query string, callback mys
 	return ih.c.ComQuery(c, query, callback)
 }
 
-func (ih *interceptorHandler) ComMultiQuery(c *mysql.Conn, query string, callback  mysql.ResultSpoolFn) (string, error) {
+func (ih *interceptorHandler) ComMultiQuery(c *mysql.Conn, query string, callback mysql.ResultSpoolFn) (string, error) {
 	return ih.c.ComMultiQuery(c, query, callback)
 }
 
