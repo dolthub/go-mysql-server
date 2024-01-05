@@ -16,7 +16,9 @@ package rowexec
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 
@@ -51,6 +53,26 @@ func (b *BaseBuilder) buildShowCharset(ctx *sql.Context, n *plan.ShowCharset, ro
 }
 
 func (b *BaseBuilder) buildDescribeQuery(ctx *sql.Context, n *plan.DescribeQuery, row sql.Row) (sql.RowIter, error) {
+	if n.Analyze {
+		if !n.IsReadOnly() {
+			return nil, errors.New("cannot analyze statement that could have side effects")
+		}
+		// Iterate over the child until its exhausted, in order to populate the stats.
+		childIter, err := b.Build(ctx, n.Child, row)
+		if err != nil {
+			return nil, err
+		}
+		for {
+			_, err := childIter.Next(ctx)
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	var rows []sql.Row
 	var formatString string
 	if n.Format == "debug" {
