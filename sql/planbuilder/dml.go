@@ -178,7 +178,7 @@ func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []
 			case *ast.SQLVal:
 				// In the case of an unknown bindvar, give it a target type of the column it's targeting.
 				// We only do this for simple bindvars in tuples, not expressions that contain bindvars.
-				if e.Type == ast.ValArg && (b.bindCtx == nil || b.bindCtx.resolveOnly) {
+				if b.shouldAssignBindvarType(e) {
 					name := strings.TrimPrefix(string(e.Val), ":")
 					bindVar := expression.NewBindVar(name)
 					bindVar.Typ = reorderSchema(columnNames, destSchema)[j].Type
@@ -195,6 +195,10 @@ func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []
 	outScope = inScope.push()
 	outScope.node = plan.NewValues(exprTuples)
 	return
+}
+
+func (b *Builder) shouldAssignBindvarType(e *ast.SQLVal) bool {
+	return e.Type == ast.ValArg && (b.bindCtx == nil || b.bindCtx.resolveOnly)
 }
 
 // reorderSchema returns the schemas columns in the order specified by names
