@@ -16,8 +16,7 @@ var _ sql.IndexedTable = RequiredLookupTable{}
 var _ sql.TableNode = RequiredLookupTable{}
 var _ sql.IndexRequired = RequiredLookupTable{}
 
-// RequiredLookupTable is a table whose indexes only support point lookups but not range scans.
-// It's used for testing optimizations on indexes.
+// RequiredLookupTable is a table that will error if not executed as an index lookup
 type RequiredLookupTable struct {
 	indexOk bool
 	IntSequenceTable
