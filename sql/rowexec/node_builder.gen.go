@@ -23,7 +23,15 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func (b *BaseBuilder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (iter sql.RowIter, err error) {
+	iter, err = b.buildNodeExecNoAnalyze(ctx, n, row)
+	if explainable, ok := n.(sql.Explainable); ok {
+		iter = sql.NewCountingRowIter(iter, explainable)
+	}
+	return
+}
+
+func (b *BaseBuilder) buildNodeExecNoAnalyze(ctx *sql.Context, n sql.Node, row sql.Row) (sql.RowIter, error) {
 	switch n := n.(type) {
 	case *plan.CreateForeignKey:
 		return b.buildCreateForeignKey(ctx, n, row)

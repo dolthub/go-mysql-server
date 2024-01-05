@@ -62,3 +62,25 @@ func (e *ExplainStats) SetExplainStats(newStats ExplainStats) {
 func (e *ExplainStats) GetExplainStats() *ExplainStats {
 	return e
 }
+
+type CountingRowIter struct {
+	RowIter
+	Stats *ExplainStats
+}
+
+func NewCountingRowIter(iter RowIter, explainable Explainable) CountingRowIter {
+	stats := explainable.GetExplainStats()
+	stats.NumberOfIterations++
+	return CountingRowIter{
+		RowIter: iter,
+		Stats:   stats,
+	}
+}
+
+func (c CountingRowIter) Next(ctx *Context) (Row, error) {
+	res, err := c.RowIter.Next(ctx)
+	if err == nil {
+		c.Stats.ActualRowCount++
+	}
+	return res, err
+}
