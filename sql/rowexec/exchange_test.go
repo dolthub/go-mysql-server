@@ -184,7 +184,7 @@ func (p partitionable) PartitionRows(_ *sql.Context, part sql.Partition) (sql.Ro
 	return &partitionRows{part, int32(p.rowsPerPartition)}, nil
 }
 
-func (partitionable) Schema() sql.Schema {
+func (partitionable) Schema(_ *sql.Context) sql.Schema {
 	return sql.Schema{
 		{Name: "partition", Type: types.Text, Source: "foo"},
 		{Name: "val", Type: types.Int64, Source: "foo"},

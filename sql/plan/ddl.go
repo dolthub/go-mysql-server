@@ -55,7 +55,7 @@ func (c *ddlNode) Database() sql.Database {
 }
 
 // Schema implements the Node interface.
-func (*ddlNode) Schema() sql.Schema {
+func (*ddlNode) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -231,7 +231,7 @@ func (c *CreateTable) WithDatabase(db sql.Database) (sql.Node, error) {
 }
 
 // Schema implements the sql.Node interface.
-func (c *CreateTable) Schema() sql.Schema {
+func (c *CreateTable) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -616,7 +616,7 @@ func (d *DropTable) IsReadOnly() bool {
 }
 
 // Schema implements the sql.Expression interface.
-func (d *DropTable) Schema() sql.Schema {
+func (d *DropTable) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 

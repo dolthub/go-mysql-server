@@ -45,7 +45,7 @@ func NewDropUser(ifExists bool, users []UserName) *DropUser {
 }
 
 // Schema implements the interface sql.Node.
-func (n *DropUser) Schema() sql.Schema {
+func (n *DropUser) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 

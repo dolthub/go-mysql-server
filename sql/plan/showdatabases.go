@@ -47,7 +47,7 @@ func (*ShowDatabases) IsReadOnly() bool {
 }
 
 // Schema implements the Node interface.
-func (*ShowDatabases) Schema() sql.Schema {
+func (*ShowDatabases) Schema(_ *sql.Context) sql.Schema {
 	return sql.Schema{{
 		Name:     "Database",
 		Type:     types.LongText,

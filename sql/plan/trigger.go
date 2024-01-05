@@ -76,8 +76,8 @@ func (t *TriggerExecutor) DebugString() string {
 	return pr.String()
 }
 
-func (t *TriggerExecutor) Schema() sql.Schema {
-	return t.left.Schema()
+func (t *TriggerExecutor) Schema(ctx *sql.Context) sql.Schema {
+	return t.left.Schema(ctx)
 }
 
 func (t *TriggerExecutor) WithChildren(children ...sql.Node) (sql.Node, error) {

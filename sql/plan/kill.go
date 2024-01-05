@@ -80,7 +80,7 @@ func (*Kill) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 	return sql.Collation_binary, 7
 }
 
-func (k *Kill) Schema() sql.Schema {
+func (k *Kill) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 

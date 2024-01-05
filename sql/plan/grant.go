@@ -41,7 +41,7 @@ var _ sql.Databaser = (*Grant)(nil)
 var _ sql.CollationCoercible = (*Grant)(nil)
 
 // Schema implements the interface sql.Node.
-func (n *Grant) Schema() sql.Schema {
+func (n *Grant) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -560,7 +560,7 @@ func NewGrantRole(roles []UserName, users []UserName, withAdmin bool) *GrantRole
 }
 
 // Schema implements the interface sql.Node.
-func (n *GrantRole) Schema() sql.Schema {
+func (n *GrantRole) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -673,7 +673,7 @@ func NewGrantProxy(on UserName, to []UserName, withGrant bool) *GrantProxy {
 }
 
 // Schema implements the interface sql.Node.
-func (n *GrantProxy) Schema() sql.Schema {
+func (n *GrantProxy) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 

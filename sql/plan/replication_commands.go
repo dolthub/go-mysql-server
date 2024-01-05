@@ -86,7 +86,7 @@ func (c *ChangeReplicationSource) String() string {
 	return sb.String()
 }
 
-func (c *ChangeReplicationSource) Schema() sql.Schema {
+func (c *ChangeReplicationSource) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 
@@ -160,7 +160,7 @@ func (c *ChangeReplicationFilter) String() string {
 	return sb.String()
 }
 
-func (c *ChangeReplicationFilter) Schema() sql.Schema {
+func (c *ChangeReplicationFilter) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 
@@ -220,7 +220,7 @@ func (s *StartReplica) String() string {
 	return "START REPLICA"
 }
 
-func (s *StartReplica) Schema() sql.Schema {
+func (s *StartReplica) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 
@@ -280,7 +280,7 @@ func (s *StopReplica) String() string {
 	return "STOP REPLICA"
 }
 
-func (s *StopReplica) Schema() sql.Schema {
+func (s *StopReplica) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 
@@ -348,7 +348,7 @@ func (r *ResetReplica) String() string {
 	return sb.String()
 }
 
-func (r *ResetReplica) Schema() sql.Schema {
+func (r *ResetReplica) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 

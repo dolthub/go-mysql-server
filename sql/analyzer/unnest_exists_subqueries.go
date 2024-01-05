@@ -179,7 +179,7 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 			case plan.JoinTypeAnti:
 				// ret will be all rows
 			case plan.JoinTypeSemi:
-				ret = plan.NewEmptyTableWithSchema(ret.Schema())
+				ret = plan.NewEmptyTableWithSchema(ret.Schema(ctx))
 			default:
 				return filter, transform.SameTree, fmt.Errorf("hoistSelectExists failed on unexpected join type")
 			}

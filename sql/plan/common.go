@@ -44,8 +44,8 @@ type UnaryNode struct {
 }
 
 // Schema implements the Node interface.
-func (n *UnaryNode) Schema() sql.Schema {
-	return n.Child.Schema()
+func (n *UnaryNode) Schema(ctx *sql.Context) sql.Schema {
+	return n.Child.Schema(ctx)
 }
 
 // Resolved implements the Resolvable interface.

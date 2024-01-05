@@ -57,8 +57,8 @@ func (n *ForeignKeyHandler) DebugString() string {
 }
 
 // Schema implements the interface sql.Node.
-func (n *ForeignKeyHandler) Schema() sql.Schema {
-	return n.OriginalNode.Schema()
+func (n *ForeignKeyHandler) Schema(ctx *sql.Context) sql.Schema {
+	return n.OriginalNode.Schema(ctx)
 }
 
 func (n *ForeignKeyHandler) IsReadOnly() bool {

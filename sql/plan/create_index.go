@@ -92,7 +92,7 @@ func (c *CreateIndex) IsReadOnly() bool {
 }
 
 // Schema implements the Node interface.
-func (c *CreateIndex) Schema() sql.Schema { return nil }
+func (c *CreateIndex) Schema(_ *sql.Context) sql.Schema { return nil }
 
 func (c *CreateIndex) String() string {
 	var exprs = make([]string, len(c.Exprs))

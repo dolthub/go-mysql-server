@@ -78,8 +78,8 @@ func (c *CaseStatement) DebugString() string {
 }
 
 // Schema implements the interface sql.Node.
-func (c *CaseStatement) Schema() sql.Schema {
-	return c.IfElse.Schema()
+func (c *CaseStatement) Schema(ctx *sql.Context) sql.Schema {
+	return c.IfElse.Schema(ctx)
 }
 
 // Children implements the interface sql.Node.
@@ -150,7 +150,7 @@ func (e ElseCaseError) String() string {
 }
 
 // Schema implements the interface sql.Node.
-func (e ElseCaseError) Schema() sql.Schema {
+func (e ElseCaseError) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 

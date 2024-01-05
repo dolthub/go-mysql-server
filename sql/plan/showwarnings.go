@@ -59,7 +59,7 @@ func (ShowWarnings) IsReadOnly() bool {
 }
 
 // Schema returns a new Schema reference for "SHOW VARIABLES" query.
-func (ShowWarnings) Schema() sql.Schema {
+func (ShowWarnings) Schema(_ *sql.Context) sql.Schema {
 	return sql.Schema{
 		&sql.Column{Name: "Level", Type: types.LongText, Nullable: false},
 		&sql.Column{Name: "Code", Type: types.Int32, Nullable: true},

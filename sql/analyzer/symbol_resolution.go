@@ -82,7 +82,7 @@ func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *plan.Scope, sel R
 	pruneWalk = func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
-			return pruneTableCols(n, parentCols, parentStars, unqualifiedStar)
+			return pruneTableCols(ctx, n, parentCols, parentStars, unqualifiedStar)
 		case *plan.JoinNode:
 			if n.JoinType().IsPhysical() || n.JoinType().IsUsing() {
 				return n, transform.SameTree, nil
@@ -94,7 +94,7 @@ func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *plan.Scope, sel R
 			}
 			if _, ok := n.Right().(*plan.JSONTable); ok {
 				outerCols, outerStars, outerUnq := gatherOuterCols(n.Right())
-				aliasCols, aliasStars := gatherTableAlias(n.Right(), parentCols, parentStars, unqualifiedStar)
+				aliasCols, aliasStars := gatherTableAlias(ctx, n.Right(), parentCols, parentStars, unqualifiedStar)
 				push(outerCols, outerStars, outerUnq)
 				push(aliasCols, aliasStars, false)
 			}
@@ -114,7 +114,7 @@ func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *plan.Scope, sel R
 		// is equal and opposite we are usually fine. In the cases we aren't, we
 		// already do not handle nested aliasing well.
 		outerCols, outerStars, outerUnq := gatherOuterCols(n)
-		aliasCols, aliasStars := gatherTableAlias(n, parentCols, parentStars, unqualifiedStar)
+		aliasCols, aliasStars := gatherTableAlias(ctx, n, parentCols, parentStars, unqualifiedStar)
 		push(outerCols, outerStars, outerUnq)
 		push(aliasCols, aliasStars, false)
 
@@ -187,12 +187,7 @@ func findMatchAgainstExpr(n sql.Node) *expression.MatchAgainst {
 // to prune and return a new table node. We prune a column if no
 // parent references the column, no parent projections this table as a
 // qualified star, and no parent projects an unqualified star.
-func pruneTableCols(
-	n *plan.ResolvedTable,
-	parentCols map[tableCol]int,
-	parentStars map[string]struct{},
-	unqualifiedStar bool,
-) (sql.Node, transform.TreeIdentity, error) {
+func pruneTableCols(ctx *sql.Context, n *plan.ResolvedTable, parentCols map[tableCol]int, parentStars map[string]struct{}, unqualifiedStar bool) (sql.Node, transform.TreeIdentity, error) {
 	table := getTable(n)
 	ptab, ok := table.(sql.ProjectedTable)
 	if !ok || table.Name() == plan.DualTableName {
@@ -229,7 +224,7 @@ func pruneTableCols(
 
 	cols := make([]string, 0)
 	source := strings.ToLower(table.Name())
-	for _, col := range table.Schema() {
+	for _, col := range table.Schema(ctx) {
 		c := tableCol{table: strings.ToLower(source), col: strings.ToLower(col.Name)}
 		if selectStar || parentCols[c] > 0 || virtualColDeps[c] > 0 {
 			cols = append(cols, c.col)
@@ -295,12 +290,7 @@ func gatherOuterCols(n sql.Node) ([]tableCol, []string, bool) {
 // aliased columns qualified with the base table name,
 // and stars if applicable.
 // TODO: we don't have any tests with the unqualified condition
-func gatherTableAlias(
-	n sql.Node,
-	parentCols map[tableCol]int,
-	parentStars map[string]struct{},
-	unqualifiedStar bool,
-) ([]tableCol, []string) {
+func gatherTableAlias(ctx *sql.Context, n sql.Node, parentCols map[tableCol]int, parentStars map[string]struct{}, unqualifiedStar bool) ([]tableCol, []string) {
 	var cols []tableCol
 	var nodeStars []string
 	switch n := n.(type) {
@@ -314,7 +304,7 @@ func gatherTableAlias(
 		if unqualifiedStar {
 			starred = true
 		}
-		for _, col := range n.Schema() {
+		for _, col := range n.Schema(ctx) {
 			baseCol := tableCol{table: strings.ToLower(base), col: strings.ToLower(col.Name)}
 			aliasCol := tableCol{table: strings.ToLower(alias), col: strings.ToLower(col.Name)}
 			if starred || parentCols[aliasCol] > 0 {

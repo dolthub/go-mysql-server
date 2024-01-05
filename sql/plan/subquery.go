@@ -270,8 +270,8 @@ func (m *Max1Row) Resolved() bool {
 	return m.Child.Resolved()
 }
 
-func (m *Max1Row) Schema() sql.Schema {
-	return m.Child.Schema()
+func (m *Max1Row) Schema(ctx *sql.Context) sql.Schema {
+	return m.Child.Schema(ctx)
 }
 
 func (m *Max1Row) Children() []sql.Node {
@@ -361,7 +361,7 @@ func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 		return nil, err
 	}
 
-	returnsTuple := len(s.Query.Schema()) > 1
+	returnsTuple := len(s.Query.Schema(ctx)) > 1
 
 	// Reduce the result row to the size of the expected schema. This means chopping off the first len(row) columns.
 	col := len(row)
@@ -509,9 +509,9 @@ func (s *Subquery) Resolved() bool {
 
 // Type implements the Expression interface.
 func (s *Subquery) Type() sql.Type {
-	qs := s.Query.Schema()
+	qs := s.Query.Schema(nil) // TODO-CTX
 	if len(qs) == 1 {
-		return s.Query.Schema()[0].Type
+		return s.Query.Schema(nil)[0].Type // TODO-CTX
 	}
 	ts := make([]sql.Type, len(qs))
 	for i, c := range qs {

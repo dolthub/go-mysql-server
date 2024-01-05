@@ -35,7 +35,7 @@ func NewValues(tuples [][]sql.Expression) *Values {
 }
 
 // Schema implements the Node interface.
-func (p *Values) Schema() sql.Schema {
+func (p *Values) Schema(_ *sql.Context) sql.Schema {
 	if len(p.ExpressionTuples) == 0 {
 		return nil
 	}

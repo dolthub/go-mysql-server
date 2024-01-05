@@ -529,7 +529,7 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 	}
 	iter = rowexec.AddExpressionCloser(analyzed, iter)
 
-	return analyzed.Schema(), iter, nil
+	return analyzed.Schema(ctx), iter, nil
 }
 
 // clearAutocommitTransaction unsets the transaction from the current session if it is an implicitly
@@ -713,7 +713,7 @@ func (e *Engine) executeEvent(ctx *sql.Context, dbName, createEventStatement, us
 
 	// Drain the iterate to execute the event body/definition
 	// NOTE: No row data is returned for an event; we just need to execute the statements
-	_, err = sql.RowIterToRows(ctx, definitionNode.Schema(), iter)
+	_, err = sql.RowIterToRows(ctx, definitionNode.Schema(ctx), iter)
 	return err
 }
 

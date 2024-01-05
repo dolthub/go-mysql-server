@@ -286,7 +286,7 @@ func (a *AddColumn) WithDatabase(db sql.Database) (sql.Node, error) {
 }
 
 // Schema implements the sql.Node interface.
-func (a *AddColumn) Schema() sql.Schema {
+func (a *AddColumn) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -571,7 +571,7 @@ func (d *DropColumn) Validate(ctx *sql.Context, tbl sql.Table) error {
 	return nil
 }
 
-func (d *DropColumn) Schema() sql.Schema {
+func (d *DropColumn) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -715,7 +715,7 @@ func (r *RenameColumn) Resolved() bool {
 	return r.Table.Resolved() && r.ddlNode.Resolved() && r.targetSchema.Resolved()
 }
 
-func (r *RenameColumn) Schema() sql.Schema {
+func (r *RenameColumn) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -821,7 +821,7 @@ func (m *ModifyColumn) Order() *sql.ColumnOrder {
 }
 
 // Schema implements the sql.Node interface.
-func (m *ModifyColumn) Schema() sql.Schema {
+func (m *ModifyColumn) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -1001,7 +1001,7 @@ func (atc *AlterTableCollation) Resolved() bool {
 }
 
 // Schema implements the interface sql.Node.
-func (atc *AlterTableCollation) Schema() sql.Schema {
+func (atc *AlterTableCollation) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 

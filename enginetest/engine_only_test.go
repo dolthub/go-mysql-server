@@ -274,7 +274,7 @@ func TestShowProcessList(t *testing.T) {
 
 	iter, err := rowexec.DefaultBuilder.Build(ctx, n, nil)
 	require.NoError(err)
-	rows, err := sql.RowIterToRows(ctx, n.Schema(), iter)
+	rows, err := sql.RowIterToRows(ctx, n.Schema(ctx), iter)
 	require.NoError(err)
 
 	expected := []sql.Row{
@@ -857,7 +857,7 @@ func (s SimpleTableFunction) String() string {
 	return "SimpleTableFunction"
 }
 
-func (s SimpleTableFunction) Schema() sql.Schema {
+func (s SimpleTableFunction) Schema(_ *sql.Context) sql.Schema {
 	schema := []*sql.Column{
 		&sql.Column{
 			Name: "one",

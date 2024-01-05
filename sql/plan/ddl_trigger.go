@@ -91,7 +91,7 @@ func (c *CreateTrigger) IsReadOnly() bool {
 	return false
 }
 
-func (c *CreateTrigger) Schema() sql.Schema {
+func (c *CreateTrigger) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 

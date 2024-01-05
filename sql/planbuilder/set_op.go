@@ -143,7 +143,7 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 }
 
 func (b *Builder) mergeSetOpSchemas(u *plan.SetOp) sql.Node {
-	ls, rs := u.Left().Schema(), u.Right().Schema()
+	ls, rs := u.Left().Schema(b.ctx), u.Right().Schema(b.ctx)
 	if len(ls) != len(rs) {
 		err := ErrUnionSchemasDifferentLength.New(len(ls), len(rs))
 		b.handleErr(err)

@@ -61,9 +61,9 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 	}
 
 	dest := destScope.node
-	sch := dest.Schema()
+	sch := dest.Schema(b.ctx)
 	if rt != nil {
-		sch = b.resolveSchemaDefaults(destScope, rt.Schema())
+		sch = b.resolveSchemaDefaults(destScope, rt.Schema(b.ctx))
 	}
 
 	ld := plan.NewLoadData(bool(d.Local), d.Infile, sch, columnsToStrings(d.Columns), d.Fields, d.Lines, ignoreNumVal, d.IgnoreOrReplace)

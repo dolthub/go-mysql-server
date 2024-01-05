@@ -53,8 +53,8 @@ func (t *ProcedureResolvedTable) String() string {
 }
 
 // Schema implements the sql.Node interface.
-func (t *ProcedureResolvedTable) Schema() sql.Schema {
-	return t.ResolvedTable.Schema()
+func (t *ProcedureResolvedTable) Schema(ctx *sql.Context) sql.Schema {
+	return t.ResolvedTable.Schema(ctx)
 }
 
 // Collation implements the sql.Table interface.

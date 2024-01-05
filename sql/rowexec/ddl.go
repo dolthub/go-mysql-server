@@ -117,7 +117,7 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 		return nil, scanner.Err()
 	}
 
-	sch := n.Schema()
+	sch := n.Schema(ctx)
 	source := sch[0].Source // Schema will always have at least one column
 	columnNames := n.ColumnNames
 	if len(columnNames) == 0 {
@@ -212,7 +212,7 @@ func (b *BaseBuilder) buildAlterDefaultSet(ctx *sql.Context, n *plan.AlterDefaul
 	}
 	loweredColName := strings.ToLower(n.ColumnName)
 	var col *sql.Column
-	for _, schCol := range alterable.Schema() {
+	for _, schCol := range alterable.Schema(ctx) {
 		if strings.ToLower(schCol.Name) == loweredColName {
 			col = schCol
 			break
@@ -410,7 +410,7 @@ func (b *BaseBuilder) buildAlterDefaultDrop(ctx *sql.Context, n *plan.AlterDefau
 	alterable, ok := table.(sql.AlterableTable)
 	loweredColName := strings.ToLower(n.ColumnName)
 	var col *sql.Column
-	for _, schCol := range alterable.Schema() {
+	for _, schCol := range alterable.Schema(ctx) {
 		if strings.ToLower(schCol.Name) == loweredColName {
 			col = schCol
 			break
@@ -531,12 +531,12 @@ func (b *BaseBuilder) buildAlterPK(ctx *sql.Context, n *plan.AlterPK, row sql.Ro
 
 	switch n.Action {
 	case plan.PrimaryKeyAction_Create:
-		if plan.HasPrimaryKeys(pkAlterable) {
+		if plan.HasPrimaryKeys(ctx, pkAlterable) {
 			return sql.RowsToRowIter(), sql.ErrMultiplePrimaryKeysDefined.New()
 		}
 
 		for _, c := range n.Columns {
-			if !pkAlterable.Schema().Contains(c.Name, pkAlterable.Name()) {
+			if !pkAlterable.Schema(ctx).Contains(c.Name, pkAlterable.Name()) {
 				return sql.RowsToRowIter(), sql.ErrKeyColumnDoesNotExist.New(c.Name)
 			}
 		}

@@ -39,7 +39,7 @@ func NewInto(child sql.Node, variables []sql.Expression) *Into {
 }
 
 // Schema implements the Node interface.
-func (i *Into) Schema() sql.Schema {
+func (i *Into) Schema(_ *sql.Context) sql.Schema {
 	// SELECT INTO does not return results directly (only through SQL vars or files),
 	// so it's result schema is always empty.
 	return nil

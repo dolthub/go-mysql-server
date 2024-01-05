@@ -129,7 +129,7 @@ func TestEvalFilter(t *testing.T) {
 					expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "bar", false),
 					lit(5)),
 			),
-			plan.NewEmptyTableWithSchema(inner.Schema()),
+			plan.NewEmptyTableWithSchema(inner.Schema(ctx)),
 		},
 		{
 			and(
@@ -138,7 +138,7 @@ func TestEvalFilter(t *testing.T) {
 					lit(5)),
 				eq(lit(5), lit(4)),
 			),
-			plan.NewEmptyTableWithSchema(inner.Schema()),
+			plan.NewEmptyTableWithSchema(inner.Schema(ctx)),
 		},
 		{
 			and(
@@ -198,7 +198,7 @@ func TestEvalFilter(t *testing.T) {
 				eq(lit(5), lit(4)),
 				eq(lit(5), lit(4)),
 			),
-			plan.NewEmptyTableWithSchema(inner.Schema()),
+			plan.NewEmptyTableWithSchema(inner.Schema(ctx)),
 		},
 	}
 

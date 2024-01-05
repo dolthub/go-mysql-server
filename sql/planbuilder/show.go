@@ -116,7 +116,7 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 		b.handleErr(err)
 	}
 	rt, _ := tableScope.node.(*plan.ResolvedTable)
-	for _, c := range tableScope.node.Schema() {
+	for _, c := range tableScope.node.Schema(b.ctx) {
 		outScope.newColumn(scopeColumn{
 			db:       c.DatabaseSource,
 			table:    c.Source,
@@ -195,7 +195,7 @@ func (b *Builder) buildShowAllTriggers(inScope *scope, s *ast.Show) (outScope *s
 	var node sql.Node = plan.NewShowTriggers(db)
 
 	outScope = inScope.push()
-	for _, c := range node.Schema() {
+	for _, c := range node.Schema(b.ctx) {
 		outScope.newColumn(scopeColumn{
 			db:       c.DatabaseSource,
 			table:    c.Source,
@@ -269,7 +269,7 @@ func (b *Builder) buildShowAllEvents(inScope *scope, s *ast.Show) (outScope *sco
 	showEvents.Events = b.loadAllEventDefinitions(db)
 
 	var node sql.Node = showEvents
-	for _, c := range node.Schema() {
+	for _, c := range node.Schema(b.ctx) {
 		outScope.newColumn(scopeColumn{
 			db:    c.DatabaseSource,
 			table: c.Source,
@@ -334,7 +334,7 @@ func (b *Builder) buildShowProcedureStatus(inScope *scope, s *ast.Show) (outScop
 	}
 
 	outScope = inScope.push()
-	for _, c := range node.Schema() {
+	for _, c := range node.Schema(b.ctx) {
 		outScope.newColumn(scopeColumn{
 			db:    c.DatabaseSource,
 			table: c.Source,
@@ -370,7 +370,7 @@ func (b *Builder) buildShowFunctionStatus(inScope *scope, s *ast.Show) (outScope
 	}
 
 	outScope = inScope.push()
-	for _, c := range node.Schema() {
+	for _, c := range node.Schema(b.ctx) {
 		outScope.newColumn(scopeColumn{
 			db:    c.DatabaseSource,
 			table: c.Source,
@@ -412,7 +412,7 @@ func (b *Builder) buildShowTableStatus(inScope *scope, s *ast.Show) (outScope *s
 	var node sql.Node = showStatus
 
 	outScope = inScope.push()
-	for _, c := range node.Schema() {
+	for _, c := range node.Schema(b.ctx) {
 		outScope.newColumn(scopeColumn{
 			db:       c.DatabaseSource,
 			table:    c.Source,
@@ -509,7 +509,7 @@ func (b *Builder) getInfoSchemaIndexes(rt *plan.ResolvedTable) []sql.Index {
 func (b *Builder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	dummy := &plan.ShowVariables{}
-	for _, c := range dummy.Schema() {
+	for _, c := range dummy.Schema(b.ctx) {
 		outScope.newColumn(scopeColumn{
 			db:       strings.ToLower(c.DatabaseSource),
 			table:    strings.ToLower(c.Source),
@@ -619,7 +619,7 @@ func (b *Builder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *sco
 	db := b.resolveDb(dbName)
 
 	showTabs := plan.NewShowTables(db, s.Full, asOf)
-	for _, c := range showTabs.Schema() {
+	for _, c := range showTabs.Schema(b.ctx) {
 		outScope.newColumn(scopeColumn{
 			db:    strings.ToLower(c.DatabaseSource),
 			table: strings.ToLower(c.Source),
@@ -651,7 +651,7 @@ func (b *Builder) buildShowAllDatabases(inScope *scope, s *ast.Show) (outScope *
 	showDbs := plan.NewShowDatabases()
 	showDbs.Catalog = b.cat
 	outScope = inScope.push()
-	for _, c := range showDbs.Schema() {
+	for _, c := range showDbs.Schema(b.ctx) {
 		outScope.newColumn(scopeColumn{
 			db:    strings.ToLower(c.DatabaseSource),
 			table: strings.ToLower(c.Source),
@@ -704,7 +704,7 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 
 	show := plan.NewShowColumns(full, table)
 
-	for _, c := range show.Schema() {
+	for _, c := range show.Schema(b.ctx) {
 		outScope.newColumn(scopeColumn{
 			db:       strings.ToLower(c.DatabaseSource),
 			table:    strings.ToLower(c.Source),
@@ -721,7 +721,7 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 		node = b.modifySchemaTarget(tableScope, show, t)
 	case *plan.SubqueryAlias:
 		var err error
-		node, err = show.WithTargetSchema(t.Schema())
+		node, err = show.WithTargetSchema(t.Schema(b.ctx))
 		if err != nil {
 			b.handleErr(err)
 		}
@@ -784,7 +784,7 @@ func (b *Builder) buildShowCollation(inScope *scope, s *ast.Show) (outScope *sco
 		b.handleErr(err)
 	}
 
-	for _, c := range node.Schema() {
+	for _, c := range node.Schema(b.ctx) {
 		outScope.newColumn(scopeColumn{
 			db:       strings.ToLower(c.DatabaseSource),
 			table:    strings.ToLower(c.Source),
@@ -844,7 +844,7 @@ func (b *Builder) buildShowStatus(inScope *scope, s *ast.Show) (outScope *scope)
 		node = plan.NewShowStatus(plan.ShowStatusModifier_Session)
 	}
 
-	for _, c := range node.Schema() {
+	for _, c := range node.Schema(b.ctx) {
 		outScope.newColumn(scopeColumn{
 			db:       strings.ToLower(c.DatabaseSource),
 			table:    strings.ToLower(c.Source),
@@ -858,7 +858,7 @@ func (b *Builder) buildShowStatus(inScope *scope, s *ast.Show) (outScope *scope)
 	if s.Filter != nil {
 		if s.Filter.Like != "" {
 			filter = expression.NewLike(
-				expression.NewGetField(0, node.Schema()[0].Type, plan.ShowStatusVariableCol, false),
+				expression.NewGetField(0, node.Schema(b.ctx)[0].Type, plan.ShowStatusVariableCol, false),
 				expression.NewLiteral(s.Filter.Like, types.LongText),
 				nil,
 			)
@@ -883,7 +883,7 @@ func (b *Builder) buildShowCharset(inScope *scope, s *ast.Show) (outScope *scope
 	showCharset.CharacterSetTable = b.resolveTable("character_sets", "information_schema", nil)
 
 	var node sql.Node = showCharset
-	for _, c := range node.Schema() {
+	for _, c := range node.Schema(b.ctx) {
 		outScope.newColumn(scopeColumn{
 			db:    strings.ToLower(c.DatabaseSource),
 			table: strings.ToLower(c.Source),

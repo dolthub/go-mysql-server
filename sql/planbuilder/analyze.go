@@ -75,7 +75,7 @@ func (b *Builder) buildAnalyze(inScope *scope, n *ast.Analyze, query string) (ou
 
 	switch n.Action {
 	case ast.UpdateStr:
-		sch := tableScope.node.Schema()
+		sch := tableScope.node.Schema(b.ctx)
 		return b.buildAnalyzeUpdate(inScope, n, dbName, tableName, sch, columns, types)
 	case ast.DropStr:
 		outScope = inScope.push()

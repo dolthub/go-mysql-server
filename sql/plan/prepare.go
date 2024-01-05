@@ -36,7 +36,7 @@ func NewPrepareQuery(name string, child sql.Node) *PrepareQuery {
 }
 
 // Schema implements the Node interface.
-func (p *PrepareQuery) Schema() sql.Schema {
+func (p *PrepareQuery) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -104,7 +104,7 @@ func NewExecuteQuery(name string, bindVars ...sql.Expression) *ExecuteQuery {
 }
 
 // Schema implements the Node interface.
-func (p *ExecuteQuery) Schema() sql.Schema {
+func (p *ExecuteQuery) Schema(_ *sql.Context) sql.Schema {
 	panic("ExecuteQuery methods shouldn't be used")
 }
 
@@ -159,7 +159,7 @@ func NewDeallocateQuery(name string) *DeallocateQuery {
 }
 
 // Schema implements the Node interface.
-func (p *DeallocateQuery) Schema() sql.Schema {
+func (p *DeallocateQuery) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 

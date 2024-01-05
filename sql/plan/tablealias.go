@@ -86,8 +86,8 @@ func (t *TableAlias) Comment() string {
 
 // Schema implements the Node interface. TableAlias alters the schema of its child element to rename the source of
 // columns to the alias.
-func (t *TableAlias) Schema() sql.Schema {
-	childSchema := t.Child.Schema()
+func (t *TableAlias) Schema(ctx *sql.Context) sql.Schema {
+	childSchema := t.Child.Schema(ctx)
 	copy := make(sql.Schema, len(childSchema))
 	for i, col := range childSchema {
 		colCopy := *col

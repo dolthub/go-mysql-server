@@ -65,7 +65,7 @@ var _ sql.SchemaTarget = (*ShowColumns)(nil)
 var _ sql.CollationCoercible = (*ShowColumns)(nil)
 
 // Schema implements the sql.Node interface.
-func (s *ShowColumns) Schema() sql.Schema {
+func (s *ShowColumns) Schema(_ *sql.Context) sql.Schema {
 	if s.Full {
 		return showColumnsFullSchema
 	}
@@ -168,7 +168,7 @@ func (s *ShowColumns) DebugString() string {
 // GetColumnFromIndexExpr returns column from the table given using the expression string given, in the form
 // "table.column". Returns nil if the expression doesn't represent a column.
 func GetColumnFromIndexExpr(expr string, table sql.Table) *sql.Column {
-	for _, col := range table.Schema() {
+	for _, col := range table.Schema(nil) { // TODO-CTX
 		if col.Source+"."+col.Name == expr {
 			return col
 		}

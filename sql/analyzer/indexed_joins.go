@@ -95,14 +95,14 @@ func inOrderReplanJoin(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sch sql
 		return nil, transform.SameTree, fmt.Errorf("failed to replan join: %w", err)
 	}
 	if isUpdate {
-		ret = plan.NewProject(expression.SchemaToGetFields(n.Schema()), ret)
+		ret = plan.NewProject(expression.SchemaToGetFields(n.Schema(ctx)), ret)
 	}
 	return ret, transform.NewTree, nil
 
 }
 
 func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Scope) (ret sql.Node, err error) {
-	m := memo.NewMemo(ctx, a.Catalog, scope, len(scope.Schema()), a.Coster)
+	m := memo.NewMemo(ctx, a.Catalog, scope, len(scope.Schema(ctx)), a.Coster)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -126,11 +126,11 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	if err != nil {
 		return nil, err
 	}
-	err = convertSemiToInnerJoin(m)
+	err = convertSemiToInnerJoin(ctx, m)
 	if err != nil {
 		return nil, err
 	}
-	err = convertAntiToLeftJoin(m)
+	err = convertAntiToLeftJoin(ctx, m)
 	if err != nil {
 		return nil, err
 	}
@@ -370,7 +370,7 @@ func exprRefsTable(e sql.Expression, tableId sql.TableId) bool {
 // Ref section 2.1.1 of:
 // https://www.researchgate.net/publication/221311318_Cost-Based_Query_Transformation_in_Oracle
 // TODO: need more elegant way to extend the number of groups, interner
-func convertSemiToInnerJoin(m *memo.Memo) error {
+func convertSemiToInnerJoin(ctx *sql.Context, m *memo.Memo) error {
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		semi, ok := e.(*memo.SemiJoin)
 		if !ok {
@@ -428,7 +428,7 @@ func convertSemiToInnerJoin(m *memo.Memo) error {
 				return fmt.Errorf("table for column not found: %d", colId)
 			}
 
-			sch := srcNode.Schema()
+			sch := srcNode.Schema(ctx)
 			var table sql.Table
 			if tw, ok := srcNode.(sql.TableNode); ok {
 				table = tw.UnderlyingTable()
@@ -458,7 +458,7 @@ func convertSemiToInnerJoin(m *memo.Memo) error {
 
 // convertAntiToLeftJoin adds left join alternatives for anti join
 // ANTI_JOIN(left, right) => PROJECT(left sch) -> FILTER(right attr IS NULL) -> LEFT_JOIN(left, right)
-func convertAntiToLeftJoin(m *memo.Memo) error {
+func convertAntiToLeftJoin(ctx *sql.Context, m *memo.Memo) error {
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		anti, ok := e.(*memo.AntiJoin)
 		if !ok {
@@ -523,7 +523,7 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 				break
 			}
 
-			sch := srcNode.Schema()
+			sch := srcNode.Schema(ctx)
 			var table sql.Table
 			if tw, ok := srcNode.(sql.TableNode); ok {
 				table = tw.UnderlyingTable()

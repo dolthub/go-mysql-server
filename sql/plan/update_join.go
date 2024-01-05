@@ -110,8 +110,8 @@ func (u *updatableJoinTable) String() string {
 }
 
 // Schema implements the sql.UpdatableTable interface.
-func (u *updatableJoinTable) Schema() sql.Schema {
-	return u.joinNode.Schema()
+func (u *updatableJoinTable) Schema(ctx *sql.Context) sql.Schema {
+	return u.joinNode.Schema(ctx)
 }
 
 // Collation implements the sql.Table interface.
@@ -123,8 +123,8 @@ func (u *updatableJoinTable) Collation() sql.CollationID {
 func (u *updatableJoinTable) Updater(ctx *sql.Context) sql.RowUpdater {
 	return &updatableJoinUpdater{
 		updaterMap: u.updaters,
-		schemaMap:  RecreateTableSchemaFromJoinSchema(u.joinNode.Schema()),
-		joinSchema: u.joinNode.Schema(),
+		schemaMap:  RecreateTableSchemaFromJoinSchema(u.joinNode.Schema(ctx)),
+		joinSchema: u.joinNode.Schema(ctx),
 	}
 }
 

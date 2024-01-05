@@ -102,7 +102,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		}
 		nn, err := n.WithChildren(&plan.ForeignKeyHandler{
 			Table:        tbl,
-			Sch:          insertableDest.Schema(),
+			Sch:          insertableDest.Schema(ctx),
 			OriginalNode: n.Destination,
 			Editor:       fkEditor,
 			AllUpdaters:  fkChain.GetUpdaters(),
@@ -139,7 +139,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		}
 		nn, err := n.WithChildren(&plan.ForeignKeyHandler{
 			Table:        tbl,
-			Sch:          updateDest.Schema(),
+			Sch:          updateDest.Schema(ctx),
 			OriginalNode: n.Child,
 			Editor:       fkEditor,
 			AllUpdaters:  fkChain.GetUpdaters(),
@@ -175,7 +175,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 
 			foreignKeyHandlers[i] = &plan.ForeignKeyHandler{
 				Table:        tbl,
-				Sch:          deleteDest.Schema(),
+				Sch:          deleteDest.Schema(ctx),
 				OriginalNode: targets[i],
 				Editor:       fkEditor,
 				AllUpdaters:  fkChain.GetUpdaters(),
@@ -248,7 +248,7 @@ func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 	}
 	fkChain = fkChain.AddTable(fks[0].ParentDatabase, fks[0].ParentTable).AddTableUpdater(fks[0].ParentDatabase, fks[0].ParentTable, updater)
 
-	tblSch := tbl.Schema()
+	tblSch := tbl.Schema(ctx)
 	fkEditor := &plan.ForeignKeyEditor{
 		Schema:     tblSch,
 		Editor:     updater,
@@ -329,7 +329,7 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 		return cachedFkEditor, nil
 	}
 	// No matching editor was cached, so we either create a new one or add to the existing one
-	tblSch := tbl.Schema()
+	tblSch := tbl.Schema(ctx)
 	if fkEditor == nil {
 		fkEditor = &plan.ForeignKeyEditor{
 			Schema:     tblSch,
@@ -385,7 +385,7 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 		if err != nil {
 			return nil, err
 		}
-		childTblSch := childTbl.Schema()
+		childTblSch := childTbl.Schema(ctx)
 		childParentMapping, err := plan.GetChildParentMapping(tblSch, childTblSch, fk)
 		if err != nil {
 			return nil, err

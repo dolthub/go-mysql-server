@@ -343,10 +343,10 @@ func validateSchemaSource(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 	case *plan.TableAlias:
 		// table aliases should not be validated
 		if child, ok := n.Child.(*plan.ResolvedTable); ok {
-			return n, transform.SameTree, validateSchema(child)
+			return n, transform.SameTree, validateSchema(ctx, child)
 		}
 	case *plan.ResolvedTable:
-		return n, transform.SameTree, validateSchema(n)
+		return n, transform.SameTree, validateSchema(ctx, n)
 	}
 	return n, transform.SameTree, nil
 }
@@ -360,7 +360,7 @@ func validateIndexCreation(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pla
 		return n, transform.SameTree, nil
 	}
 
-	schema := ci.Table.Schema()
+	schema := ci.Table.Schema(ctx)
 	table := schema[0].Source
 
 	var unknownColumns []string
@@ -383,8 +383,8 @@ func validateIndexCreation(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pla
 	return n, transform.SameTree, nil
 }
 
-func validateSchema(t *plan.ResolvedTable) error {
-	for _, col := range t.Schema() {
+func validateSchema(ctx *sql.Context, t *plan.ResolvedTable) error {
+	for _, col := range t.Schema(ctx) {
 		if col.Source == "" {
 			return analyzererrors.ErrValidationSchemaSource.New()
 		}
@@ -399,8 +399,8 @@ func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 	var firstmismatch []string
 	transform.Inspect(n, func(n sql.Node) bool {
 		if u, ok := n.(*plan.SetOp); ok {
-			ls := u.Left().Schema()
-			rs := u.Right().Schema()
+			ls := u.Left().Schema(ctx)
+			rs := u.Right().Schema(ctx)
 			if len(ls) != len(rs) {
 				firstmismatch = []string{
 					fmt.Sprintf("%d columns", len(ls)),
@@ -610,7 +610,7 @@ func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *p
 			return true
 		}
 
-		outerScopeRowLen := len(scope.Schema()) + len(Schemas(n.Children()))
+		outerScopeRowLen := len(scope.Schema(ctx)) + len(Schemas(n.Children()))
 		transform.Inspect(s.Query, func(n sql.Node) bool {
 			if n == nil {
 				return true

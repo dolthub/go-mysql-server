@@ -224,7 +224,7 @@ func (r *TableScan) TableIdNode() plan.TableIdNode {
 }
 
 func (r *TableScan) OutputCols() sql.Schema {
-	return r.Table.Schema()
+	return r.Table.Schema(nil) // TODO-CTX
 }
 
 func (r *TableScan) Children() []*ExprGroup {
@@ -258,7 +258,7 @@ func (r *IndexScan) TableIdNode() plan.TableIdNode {
 }
 
 func (r *IndexScan) OutputCols() sql.Schema {
-	return r.Table.Schema()
+	return r.Table.Schema(nil) // TODO-CTX
 }
 
 func (r *IndexScan) Children() []*ExprGroup {
@@ -290,7 +290,7 @@ func (r *Values) TableIdNode() plan.TableIdNode {
 }
 
 func (r *Values) OutputCols() sql.Schema {
-	return r.Table.Schema()
+	return r.Table.Schema(nil) // TODO-CTX
 }
 
 func (r *Values) Children() []*ExprGroup {
@@ -322,7 +322,7 @@ func (r *TableAlias) TableIdNode() plan.TableIdNode {
 }
 
 func (r *TableAlias) OutputCols() sql.Schema {
-	return r.Table.Schema()
+	return r.Table.Schema(nil) // TODO-CTX
 }
 
 func (r *TableAlias) Children() []*ExprGroup {
@@ -354,7 +354,7 @@ func (r *RecursiveTable) TableIdNode() plan.TableIdNode {
 }
 
 func (r *RecursiveTable) OutputCols() sql.Schema {
-	return r.Table.Schema()
+	return r.Table.Schema(nil) // TODO-CTX
 }
 
 func (r *RecursiveTable) Children() []*ExprGroup {
@@ -386,7 +386,7 @@ func (r *RecursiveCte) TableIdNode() plan.TableIdNode {
 }
 
 func (r *RecursiveCte) OutputCols() sql.Schema {
-	return r.Table.Schema()
+	return r.Table.Schema(nil) // TODO-CTX
 }
 
 func (r *RecursiveCte) Children() []*ExprGroup {
@@ -418,7 +418,7 @@ func (r *SubqueryAlias) TableIdNode() plan.TableIdNode {
 }
 
 func (r *SubqueryAlias) OutputCols() sql.Schema {
-	return r.Table.Schema()
+	return r.Table.Schema(nil) // TODO-CTX
 }
 
 func (r *SubqueryAlias) Children() []*ExprGroup {
@@ -450,7 +450,7 @@ func (r *TableFunc) TableIdNode() plan.TableIdNode {
 }
 
 func (r *TableFunc) OutputCols() sql.Schema {
-	return r.Table.Schema()
+	return r.Table.Schema(nil) // TODO-CTX
 }
 
 func (r *TableFunc) Children() []*ExprGroup {
@@ -482,7 +482,7 @@ func (r *JSONTable) TableIdNode() plan.TableIdNode {
 }
 
 func (r *JSONTable) OutputCols() sql.Schema {
-	return r.Table.Schema()
+	return r.Table.Schema(nil) // TODO-CTX
 }
 
 func (r *JSONTable) Children() []*ExprGroup {
@@ -514,7 +514,7 @@ func (r *EmptyTable) TableIdNode() plan.TableIdNode {
 }
 
 func (r *EmptyTable) OutputCols() sql.Schema {
-	return r.Table.Schema()
+	return r.Table.Schema(nil) // TODO-CTX
 }
 
 func (r *EmptyTable) Children() []*ExprGroup {
@@ -546,7 +546,7 @@ func (r *SetOp) TableIdNode() plan.TableIdNode {
 }
 
 func (r *SetOp) OutputCols() sql.Schema {
-	return r.Table.Schema()
+	return r.Table.Schema(nil) // TODO-CTX
 }
 
 func (r *SetOp) Children() []*ExprGroup {

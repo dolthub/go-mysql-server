@@ -72,7 +72,7 @@ func (*ShowTables) Children() []sql.Node {
 }
 
 // Schema implements the Node interface.
-func (p *ShowTables) Schema() sql.Schema {
+func (p *ShowTables) Schema(_ *sql.Context) sql.Schema {
 	var sch sql.Schema
 	colName := fmt.Sprintf("Tables_in_%s", p.Database().Name())
 	sch = sql.Schema{

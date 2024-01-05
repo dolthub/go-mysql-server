@@ -924,7 +924,7 @@ func columnsExtensionsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 		dbName := db.Name()
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 			tblName := t.Name()
-			for _, col := range t.Schema() {
+			for _, col := range t.Schema(ctx) {
 				rows = append(rows, Row{
 					"def",    // table_catalog
 					dbName,   // table_schema
@@ -1382,7 +1382,7 @@ func stGeometryColumnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 			tblName := t.Name()
 
-			for _, col := range t.Schema() {
+			for _, col := range t.Schema(ctx) {
 				s, ok := col.Type.(SpatialColumnType)
 				if !ok {
 					continue
@@ -2675,12 +2675,12 @@ func (c *informationSchemaTable) Database() string {
 }
 
 // Schema implements the sql.Table interface.
-func (t *informationSchemaTable) Schema() Schema {
+func (t *informationSchemaTable) Schema(_ *Context) Schema {
 	return t.schema
 }
 
-func (t *informationSchemaTable) DataLength(_ *Context) (uint64, error) {
-	return uint64(len(t.Schema()) * int(types.Text.MaxByteLength()) * defaultInfoSchemaRowCount), nil
+func (t *informationSchemaTable) DataLength(ctx *Context) (uint64, error) {
+	return uint64(len(t.Schema(ctx)) * int(types.Text.MaxByteLength()) * defaultInfoSchemaRowCount), nil
 }
 
 func (t *informationSchemaTable) RowCount(ctx *Context) (uint64, bool, error) {
@@ -2718,7 +2718,7 @@ func (t *informationSchemaTable) PartitionRows(ctx *Context, partition Partition
 
 // PartitionCount implements the sql.PartitionCounter interface.
 func (t *informationSchemaTable) String() string {
-	return printTable(t.Name(), t.Schema())
+	return printTable(t.Name(), t.Schema(nil)) // TODO-CTX
 }
 
 // Key implements Partition  interface

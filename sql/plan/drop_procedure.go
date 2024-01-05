@@ -60,7 +60,7 @@ func (d *DropProcedure) String() string {
 }
 
 // Schema implements the sql.Node interface.
-func (d *DropProcedure) Schema() sql.Schema {
+func (d *DropProcedure) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 

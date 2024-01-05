@@ -75,7 +75,7 @@ func (s IntSequenceTable) DebugString() string {
 	return pr.String()
 }
 
-func (s IntSequenceTable) Schema() sql.Schema {
+func (s IntSequenceTable) Schema(_ *sql.Context) sql.Schema {
 	schema := []*sql.Column{
 		{
 			DatabaseSource: s.db.Name(),
@@ -196,22 +196,22 @@ func (s IntSequenceTable) PartitionRows(ctx *sql.Context, partition sql.Partitio
 }
 
 // LookupPartitions is a sql.IndexedTable interface function that takes an index lookup and returns the set of corresponding partitions.
-func (s IntSequenceTable) LookupPartitions(context *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
+func (s IntSequenceTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
 	lowerBound := lookup.Ranges[0][0].LowerBound
 	below, ok := lowerBound.(sql.Below)
 	if !ok {
-		return s.Partitions(context)
+		return s.Partitions(ctx)
 	}
 	upperBound := lookup.Ranges[0][0].UpperBound
 	above, ok := upperBound.(sql.Above)
 	if !ok {
-		return s.Partitions(context)
+		return s.Partitions(ctx)
 	}
-	min, _, err := s.Schema()[0].Type.Convert(below.Key)
+	min, _, err := s.Schema(ctx)[0].Type.Convert(below.Key)
 	if err != nil {
 		return nil, err
 	}
-	max, _, err := s.Schema()[0].Type.Convert(above.Key)
+	max, _, err := s.Schema(ctx)[0].Type.Convert(above.Key)
 	if err != nil {
 		return nil, err
 	}

@@ -184,7 +184,7 @@ func (utf *UnresolvedTableFunction) WithExpressions(expression ...sql.Expression
 }
 
 // Schema implements the Node interface
-func (utf *UnresolvedTableFunction) Schema() sql.Schema {
+func (utf *UnresolvedTableFunction) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 

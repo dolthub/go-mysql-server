@@ -91,7 +91,7 @@ func (d *DeclareHandler) DebugString() string {
 }
 
 // Schema implements the interface sql.Node.
-func (d *DeclareHandler) Schema() sql.Schema {
+func (d *DeclareHandler) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 

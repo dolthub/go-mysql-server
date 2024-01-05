@@ -70,7 +70,7 @@ func (s *ShowTriggers) Children() []sql.Node {
 }
 
 // Schema implements the sql.Node interface.
-func (s *ShowTriggers) Schema() sql.Schema {
+func (s *ShowTriggers) Schema(_ *sql.Context) sql.Schema {
 	return showTriggersSchema
 }
 

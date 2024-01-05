@@ -55,8 +55,8 @@ func (t *tableEditor) String() string {
 	return t.editedTable.String()
 }
 
-func (t *tableEditor) Schema() sql.Schema {
-	return t.editedTable.Schema()
+func (t *tableEditor) Schema(ctx *sql.Context) sql.Schema {
+	return t.editedTable.Schema(ctx)
 }
 
 func (t *tableEditor) Collation() sql.CollationID {
@@ -199,7 +199,7 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 
 // Delete the given row from the table.
 func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
-	if err := checkRow(t.editedTable.Schema(), row); err != nil {
+	if err := checkRow(t.editedTable.Schema(ctx), row); err != nil {
 		return err
 	}
 
@@ -213,10 +213,10 @@ func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 
 // Update updates the given row in the table.
 func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) error {
-	if err := checkRow(t.editedTable.Schema(), oldRow); err != nil {
+	if err := checkRow(t.editedTable.Schema(ctx), oldRow); err != nil {
 		return err
 	}
-	if err := checkRow(t.editedTable.Schema(), newRow); err != nil {
+	if err := checkRow(t.editedTable.Schema(ctx), newRow); err != nil {
 		return err
 	}
 

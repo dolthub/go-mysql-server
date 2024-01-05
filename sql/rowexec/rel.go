@@ -45,7 +45,7 @@ func (b *BaseBuilder) buildTopN(ctx *sql.Context, n *plan.TopN, row sql.Row) (sq
 	if err != nil {
 		return nil, err
 	}
-	return sql.NewSpanIter(span, newTopRowsIter(n.Fields, limit, n.CalcFoundRows, i, len(n.Child.Schema()))), nil
+	return sql.NewSpanIter(span, newTopRowsIter(n.Fields, limit, n.CalcFoundRows, i, len(n.Child.Schema(ctx)))), nil
 }
 
 func (b *BaseBuilder) buildValueDerivedTable(ctx *sql.Context, n *plan.ValueDerivedTable, row sql.Row) (sql.RowIter, error) {
@@ -59,12 +59,12 @@ func (b *BaseBuilder) buildValueDerivedTable(ctx *sql.Context, n *plan.ValueDeri
 				return nil, err
 			}
 			// cast all row values to the most permissive type
-			vals[j], _, err = n.Schema()[j].Type.Convert(p)
+			vals[j], _, err = n.Schema(ctx)[j].Type.Convert(p)
 			if err != nil {
 				return nil, err
 			}
 			// decimalType.Convert() does not use the given type precision and scale information
-			if t, ok := n.Schema()[j].Type.(sql.DecimalType); ok {
+			if t, ok := n.Schema(ctx)[j].Type.(sql.DecimalType); ok {
 				vals[j] = vals[j].(decimal.Decimal).Round(int32(t.Scale()))
 			}
 		}
@@ -299,7 +299,7 @@ func (b *BaseBuilder) buildOrderedDistinct(ctx *sql.Context, n *plan.OrderedDist
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, newOrderedDistinctIter(it, n.Child.Schema())), nil
+	return sql.NewSpanIter(span, newOrderedDistinctIter(it, n.Child.Schema(ctx))), nil
 }
 
 func (b *BaseBuilder) buildWith(ctx *sql.Context, n *plan.With, row sql.Row) (sql.RowIter, error) {
@@ -450,7 +450,7 @@ func (b *BaseBuilder) buildRecursiveCte(ctx *sql.Context, n *plan.RecursiveCte, 
 		if err != nil {
 			return nil, err
 		}
-		iter = newTopRowsIter(n.Union().SortFields, limit, false, iter, len(n.Union().Schema()))
+		iter = newTopRowsIter(n.Union().SortFields, limit, false, iter, len(n.Union().Schema(ctx)))
 	} else if n.Union().Limit != nil {
 		limit, err := getInt64Value(ctx, n.Union().Limit)
 		if err != nil {
@@ -755,7 +755,7 @@ func (b *BaseBuilder) buildSetOp(ctx *sql.Context, s *plan.SetOp, row sql.Row) (
 		if err != nil {
 			return nil, err
 		}
-		iter = newTopRowsIter(s.SortFields, limit, false, iter, len(s.Schema()))
+		iter = newTopRowsIter(s.SortFields, limit, false, iter, len(s.Schema(ctx)))
 	} else if s.Limit != nil {
 		limit, err := getInt64Value(ctx, s.Limit)
 		if err != nil {

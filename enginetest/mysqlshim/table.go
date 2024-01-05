@@ -70,12 +70,12 @@ func (t Table) String() string {
 }
 
 // Schema implements the interface sql.Table.
-func (t Table) Schema() sql.Schema {
+func (t Table) Schema(ctx *sql.Context) sql.Schema {
 	createTable, err := t.getCreateTable()
 	if err != nil {
 		panic(err)
 	}
-	return createTable.Schema()
+	return createTable.Schema(ctx)
 }
 
 // Collation implements the interface sql.Table.
@@ -120,22 +120,22 @@ func (t Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Row
 
 // Inserter implements the interface sql.InsertableTable.
 func (t Table) Inserter(ctx *sql.Context) sql.RowInserter {
-	return &tableEditor{t, t.Schema()}
+	return &tableEditor{t, t.Schema(ctx)}
 }
 
 // Updater implements the interface sql.UpdatableTable.
 func (t Table) Updater(ctx *sql.Context) sql.RowUpdater {
-	return &tableEditor{t, t.Schema()}
+	return &tableEditor{t, t.Schema(ctx)}
 }
 
 // Deleter implements the interface sql.DeletableTable.
 func (t Table) Deleter(ctx *sql.Context) sql.RowDeleter {
-	return &tableEditor{t, t.Schema()}
+	return &tableEditor{t, t.Schema(ctx)}
 }
 
 // Replacer implements the interface sql.ReplaceableTable.
 func (t Table) Replacer(ctx *sql.Context) sql.RowReplacer {
-	return &tableEditor{t, t.Schema()}
+	return &tableEditor{t, t.Schema(ctx)}
 }
 
 // Truncate implements the interface sql.TruncateableTable.
@@ -304,7 +304,7 @@ func (t Table) SetForeignKeyResolved(ctx *sql.Context, fkName string) error {
 
 // GetForeignKeyEditor implements the interface sql.ForeignKeyTable.
 func (t Table) GetForeignKeyEditor(ctx *sql.Context) sql.ForeignKeyEditor {
-	return &tableEditor{t, t.Schema()}
+	return &tableEditor{t, t.Schema(ctx)}
 }
 
 // CreateCheck implements the interface sql.CheckAlterableTable.

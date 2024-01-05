@@ -117,7 +117,7 @@ func NewAlterDisableEnableKeys(db sql.Database, table sql.Node, disableKeys bool
 }
 
 // Schema implements the Node interface.
-func (p *AlterIndex) Schema() sql.Schema {
+func (p *AlterIndex) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 

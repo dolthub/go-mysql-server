@@ -77,7 +77,7 @@ func (sv *ShowVariables) String() string {
 }
 
 // Schema returns a new Schema reference for "SHOW VARIABLES" query.
-func (*ShowVariables) Schema() sql.Schema {
+func (*ShowVariables) Schema(_ *sql.Context) sql.Schema {
 	return sql.Schema{
 		&sql.Column{Name: "Variable_name", Type: types.LongText, Nullable: false},
 		&sql.Column{Name: "Value", Type: types.LongText, Nullable: true},

@@ -135,8 +135,8 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name strin
 	scopeMapping := make(map[sql.ColumnId]sql.Expression)
 	{
 		rInit = leftScope.node
-		recSch = make(sql.Schema, len(rInit.Schema()))
-		for i, c := range rInit.Schema() {
+		recSch = make(sql.Schema, len(rInit.Schema(b.ctx)))
+		for i, c := range rInit.Schema(b.ctx) {
 			newC := c.Copy()
 			if len(columns) > 0 {
 				newC.Name = columns[i]

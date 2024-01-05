@@ -40,8 +40,8 @@ func (r *Releaser) Children() []sql.Node {
 	return []sql.Node{r.Child}
 }
 
-func (r *Releaser) Schema() sql.Schema {
-	return r.Child.Schema()
+func (r *Releaser) Schema(ctx *sql.Context) sql.Schema {
+	return r.Child.Schema(ctx)
 }
 
 func (r *Releaser) WithChildren(children ...sql.Node) (sql.Node, error) {

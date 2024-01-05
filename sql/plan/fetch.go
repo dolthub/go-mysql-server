@@ -72,7 +72,7 @@ func (f *Fetch) DebugString() string {
 }
 
 // Schema implements the interface sql.Node.
-func (f *Fetch) Schema() sql.Schema {
+func (f *Fetch) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 

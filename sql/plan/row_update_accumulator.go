@@ -54,7 +54,7 @@ func (r RowUpdateAccumulator) Child() sql.Node {
 	return r.UnaryNode.Child
 }
 
-func (r RowUpdateAccumulator) Schema() sql.Schema {
+func (r RowUpdateAccumulator) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 

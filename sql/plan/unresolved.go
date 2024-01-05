@@ -89,7 +89,7 @@ func (*UnresolvedTable) Resolved() bool {
 func (*UnresolvedTable) Children() []sql.Node { return nil }
 
 // Schema implements the Node interface.
-func (*UnresolvedTable) Schema() sql.Schema { return nil }
+func (*UnresolvedTable) Schema(_ *sql.Context) sql.Schema { return nil }
 
 // RowIter implements the RowIter interface.
 func (*UnresolvedTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {

@@ -88,7 +88,7 @@ func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *
 	}
 
 	trigTable := getResolvedTable(ct.Table)
-	sch := trigTable.Schema()
+	sch := trigTable.Schema(ctx)
 	colsList := make(map[string]struct{})
 	for _, c := range sch {
 		colsList[c.Name] = struct{}{}

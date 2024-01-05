@@ -70,7 +70,7 @@ func (s *ShowCreateProcedure) Children() []sql.Node {
 }
 
 // Schema implements the sql.Node interface.
-func (s *ShowCreateProcedure) Schema() sql.Schema {
+func (s *ShowCreateProcedure) Schema(_ *sql.Context) sql.Schema {
 	return showCreateProcedureSchema
 }
 

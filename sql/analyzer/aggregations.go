@@ -86,10 +86,10 @@ func flattenedGroupBy(ctx *sql.Context, scope *plan.Scope, projection, grouping 
 // There are two basic kinds of aggregation expressions:
 // 1) Passthrough columns from scope input relation.
 // 2) Synthesized columns from in-scope aggregation relation.
-func replaceAggregatesWithGetFieldProjections(_ *sql.Context, scope *plan.Scope, projection []sql.Expression) (projections, aggregations []sql.Expression, identity transform.TreeIdentity, err error) {
+func replaceAggregatesWithGetFieldProjections(ctx *sql.Context, scope *plan.Scope, projection []sql.Expression) (projections, aggregations []sql.Expression, identity transform.TreeIdentity, err error) {
 	var newProjection = make([]sql.Expression, len(projection))
 	var newAggregates []sql.Expression
-	scopeLen := len(scope.Schema())
+	scopeLen := len(scope.Schema(ctx))
 	aggPassthrough := make(map[string]struct{})
 	/* every aggregation creates one pass-through reference into parent */
 	for i, p := range projection {

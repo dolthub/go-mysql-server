@@ -72,7 +72,7 @@ func (s *ShowTableStatus) Children() []sql.Node { return nil }
 func (s *ShowTableStatus) Resolved() bool { return true }
 
 // Schema implements the sql.Node interface.
-func (s *ShowTableStatus) Schema() sql.Schema { return showTableStatusSchema }
+func (s *ShowTableStatus) Schema(_ *sql.Context) sql.Schema { return showTableStatusSchema }
 
 func (s *ShowTableStatus) String() string {
 	return "SHOW TABLE STATUS"

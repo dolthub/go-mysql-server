@@ -63,7 +63,7 @@ func (u *UpdateHistogram) String() string {
 	return fmt.Sprintf("update histogram  %s.(%s) using %s", u.table, strings.Join(u.cols, ","), statBytes)
 }
 
-func (u *UpdateHistogram) Schema() sql.Schema {
+func (u *UpdateHistogram) Schema(_ *sql.Context) sql.Schema {
 	return analyzeSchema
 }
 
@@ -126,7 +126,7 @@ func (d *DropHistogram) String() string {
 	return fmt.Sprintf("drop histogram %s.(%s)", d.table, strings.Join(d.cols, ","))
 }
 
-func (d *DropHistogram) Schema() sql.Schema {
+func (d *DropHistogram) Schema(_ *sql.Context) sql.Schema {
 	return analyzeSchema
 }
 

@@ -188,7 +188,7 @@ func (s *Signal) DebugString() string {
 }
 
 // Schema implements the sql.Node interface.
-func (s *Signal) Schema() sql.Schema {
+func (s *Signal) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 
@@ -326,7 +326,7 @@ func (s *SignalName) String() string {
 }
 
 // Schema implements the sql.Node interface.
-func (s *SignalName) Schema() sql.Schema {
+func (s *SignalName) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 

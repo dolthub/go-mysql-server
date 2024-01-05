@@ -32,6 +32,8 @@ func TestGroupBySchema(t *testing.T) {
 	require := require.New(t)
 
 	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
 	child := memory.NewTable(db.BaseDatabase, "test", sql.PrimaryKeySchema{}, nil)
 	agg := []sql.Expression{
 		expression.NewAlias("c1", expression.NewLiteral("s", types.LongText)),
@@ -41,7 +43,7 @@ func TestGroupBySchema(t *testing.T) {
 	require.Equal(sql.Schema{
 		{Name: "c1", Type: types.LongText},
 		{Name: "c2", Type: types.Int64},
-	}, gb.Schema())
+	}, gb.Schema(ctx))
 }
 
 func TestGroupByResolved(t *testing.T) {

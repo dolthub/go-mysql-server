@@ -50,7 +50,7 @@ func (t *TableCountLookup) String() string {
 	return fmt.Sprintf("table_count(%s) as %s", t.table.Name(), t.aliasName)
 }
 
-func (t *TableCountLookup) Schema() sql.Schema {
+func (t *TableCountLookup) Schema(_ *sql.Context) sql.Schema {
 	return sql.Schema{{
 		Name:     t.aliasName,
 		Type:     types.Int64,

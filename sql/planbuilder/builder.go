@@ -361,7 +361,7 @@ func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outSc
 // generated columns
 func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualColumnTable {
 	tableScope := b.newScope()
-	schema := tab.Schema()
+	schema := tab.Schema(b.ctx)
 	for _, c := range schema {
 		tableScope.newColumn(scopeColumn{
 			table:       strings.ToLower(tab.Name()),

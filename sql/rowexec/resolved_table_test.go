@@ -120,7 +120,7 @@ func (*dummyTable) Insert(*sql.Context, sql.Row) error {
 	panic("not implemented")
 }
 
-func (t *dummyTable) Schema() sql.Schema { return t.schema }
+func (t *dummyTable) Schema(_ *sql.Context) sql.Schema { return t.schema }
 
 func (t *dummyTable) Collation() sql.CollationID { return sql.Collation_Default }
 

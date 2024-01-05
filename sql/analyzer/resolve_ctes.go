@@ -24,11 +24,11 @@ const maxCteDepth = 5
 
 // schemaLength returns the length of a node's schema without actually accessing it. Useful when a node isn't yet
 // resolved, so Schema() could fail.
-func schemaLength(node sql.Node) int {
+func schemaLength(ctx *sql.Context, node sql.Node) int {
 	if node.Resolved() {
 		// a resolved node might have folded projections into a table scan
 		// and lack the distinct top-level nodes below
-		return len(node.Schema())
+		return len(node.Schema(ctx))
 	}
 	schemaLen := 0
 	transform.Inspect(node, func(node sql.Node) bool {
@@ -43,7 +43,7 @@ func schemaLength(node sql.Node) int {
 			schemaLen = len(node.SelectExprs)
 			return false
 		case *plan.JoinNode:
-			schemaLen = schemaLength(node.Left()) + schemaLength(node.Right())
+			schemaLen = schemaLength(ctx, node.Left()) + schemaLength(ctx, node.Right())
 			return false
 		default:
 			return true

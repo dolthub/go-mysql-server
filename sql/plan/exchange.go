@@ -100,8 +100,8 @@ func (ExchangePartition) Children() []sql.Node { return nil }
 func (ExchangePartition) Resolved() bool   { return true }
 func (ExchangePartition) IsReadOnly() bool { return true }
 
-func (p *ExchangePartition) Schema() sql.Schema {
-	return p.Table.Schema()
+func (p *ExchangePartition) Schema(ctx *sql.Context) sql.Schema {
+	return p.Table.Schema(ctx)
 }
 
 // WithChildren implements the Node interface.

@@ -52,7 +52,7 @@ func TestTableAlias(t *testing.T) {
 	require.Equal(sql.Schema{
 		{Name: "a", Source: "foo", Type: types.Text, Nullable: true},
 		{Name: "b", Source: "foo", Type: types.Text, Nullable: true},
-	}, alias.Schema())
+	}, alias.Schema(ctx))
 	iter, err := DefaultBuilder.Build(ctx, alias, nil)
 	require.NoError(err)
 

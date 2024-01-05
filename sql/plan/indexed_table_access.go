@@ -206,8 +206,8 @@ func (i *IndexedTableAccess) IsReadOnly() bool {
 	return true
 }
 
-func (i *IndexedTableAccess) Schema() sql.Schema {
-	return i.TableNode.Schema()
+func (i *IndexedTableAccess) Schema(ctx *sql.Context) sql.Schema {
+	return i.TableNode.Schema(ctx)
 }
 
 func (i *IndexedTableAccess) Collation() sql.CollationID {

@@ -208,7 +208,7 @@ func (t *JSONTable) FlattenSchema(cols []JSONTableCol) sql.Schema {
 }
 
 // Schema implements the sql.Table interface
-func (t *JSONTable) Schema() sql.Schema {
+func (t *JSONTable) Schema(_ *sql.Context) sql.Schema {
 	return t.FlattenSchema(t.Cols)
 }
 

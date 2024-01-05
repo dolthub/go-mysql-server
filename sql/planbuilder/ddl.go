@@ -337,7 +337,7 @@ func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 			})
 		}
 	}
-	origSch := likeTable.Schema()
+	origSch := likeTable.Schema(b.ctx)
 	newSch := make(sql.Schema, len(origSch))
 	for i, col := range origSch {
 		tempCol := *col
@@ -867,7 +867,7 @@ func (b *Builder) buildAlterDefault(inScope *scope, ddl *ast.DDL, table *plan.Re
 	outScope = inScope
 	switch strings.ToLower(ddl.DefaultSpec.Action) {
 	case ast.SetStr:
-		for _, c := range table.Schema() {
+		for _, c := range table.Schema(b.ctx) {
 			if strings.EqualFold(c.Name, ddl.DefaultSpec.Column.String()) {
 				defaultExpr := b.convertDefaultExpression(inScope, ddl.DefaultSpec.Value, c.Type, c.Nullable)
 				defSet := plan.NewAlterDefaultSet(table.Database(), table, ddl.DefaultSpec.Column.String(), defaultExpr)
@@ -1264,7 +1264,7 @@ func (b *Builder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinit
 }
 
 func (b *Builder) modifySchemaTarget(inScope *scope, n sql.SchemaTarget, rt *plan.ResolvedTable) sql.Node {
-	targSchema := b.resolveSchemaDefaults(inScope, rt.Schema())
+	targSchema := b.resolveSchemaDefaults(inScope, rt.Schema(b.ctx))
 	ret, err := n.WithTargetSchema(targSchema)
 	if err != nil {
 		b.handleErr(err)

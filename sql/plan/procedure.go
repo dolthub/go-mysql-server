@@ -147,8 +147,8 @@ func (p *Procedure) DebugString() string {
 }
 
 // Schema implements the sql.Node interface.
-func (p *Procedure) Schema() sql.Schema {
-	return p.Body.Schema()
+func (p *Procedure) Schema(ctx *sql.Context) sql.Schema {
+	return p.Body.Schema(ctx)
 }
 
 // Children implements the sql.Node interface.

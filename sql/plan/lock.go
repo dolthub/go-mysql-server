@@ -66,7 +66,7 @@ func (t *LockTables) Resolved() bool {
 }
 
 // Schema implements the sql.Node interface.
-func (t *LockTables) Schema() sql.Schema { return nil }
+func (t *LockTables) Schema(_ *sql.Context) sql.Schema { return nil }
 
 func (t *LockTables) String() string {
 	var children = make([]string, len(t.Locks))
@@ -142,7 +142,7 @@ func (t *UnlockTables) Resolved() bool { return true }
 func (t *UnlockTables) IsReadOnly() bool { return true }
 
 // Schema implements the sql.Node interface.
-func (t *UnlockTables) Schema() sql.Schema { return nil }
+func (t *UnlockTables) Schema(_ *sql.Context) sql.Schema { return nil }
 
 // RowIter implements the sql.Node interface.
 func (t *UnlockTables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {

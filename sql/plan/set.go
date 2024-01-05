@@ -84,7 +84,7 @@ func (s *Set) Expressions() []sql.Expression {
 }
 
 // Schema implements the sql.Node interface.
-func (s *Set) Schema() sql.Schema {
+func (s *Set) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 

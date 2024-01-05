@@ -874,8 +874,8 @@ func (i *indexSearchableTable) String() string {
 	return i.underlying.String()
 }
 
-func (i *indexSearchableTable) Schema() sql.Schema {
-	return i.underlying.Schema()
+func (i *indexSearchableTable) Schema(ctx *sql.Context) sql.Schema {
+	return i.underlying.Schema(ctx)
 }
 
 func (i *indexSearchableTable) Collation() sql.CollationID {

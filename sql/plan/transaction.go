@@ -47,7 +47,7 @@ func (transactionNode) IsReadOnly() bool {
 }
 
 // Schema implements the sql.Node interface.
-func (transactionNode) Schema() sql.Schema {
+func (transactionNode) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 

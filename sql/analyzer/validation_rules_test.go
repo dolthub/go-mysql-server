@@ -759,7 +759,7 @@ var _ sql.CollationCoercible = dummyNode{}
 func (n dummyNode) String() string                                   { return "dummynode" }
 func (n dummyNode) Resolved() bool                                   { return n.resolved }
 func (dummyNode) IsReadOnly() bool                                   { return true }
-func (dummyNode) Schema() sql.Schema                                 { return nil }
+func (dummyNode) Schema(_ *sql.Context) sql.Schema                   { return nil }
 func (dummyNode) Children() []sql.Node                               { return nil }
 func (dummyNode) RowIter(*sql.Context, sql.Row) (sql.RowIter, error) { return nil, nil }
 func (dummyNode) WithChildren(...sql.Node) (sql.Node, error)         { return nil, nil }

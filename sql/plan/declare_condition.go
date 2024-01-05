@@ -60,7 +60,7 @@ func (d *DeclareCondition) String() string {
 }
 
 // Schema implements the sql.Node interface.
-func (d *DeclareCondition) Schema() sql.Schema {
+func (d *DeclareCondition) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 

@@ -105,7 +105,7 @@ func (t *IndexedSetTable[V]) String() string {
 	return t.Name()
 }
 
-func (t *IndexedSetTable[V]) Schema() sql.Schema {
+func (t *IndexedSetTable[V]) Schema(_ *sql.Context) sql.Schema {
 	return t.schema
 }
 
@@ -210,7 +210,7 @@ func (t *MultiIndexedSetTable[V]) String() string {
 	return t.Name()
 }
 
-func (t *MultiIndexedSetTable[V]) Schema() sql.Schema {
+func (t *MultiIndexedSetTable[V]) Schema(_ *sql.Context) sql.Schema {
 	return t.schema
 }
 

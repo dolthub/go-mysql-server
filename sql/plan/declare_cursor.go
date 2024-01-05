@@ -62,8 +62,8 @@ func (d *DeclareCursor) DebugString() string {
 }
 
 // Schema implements the interface sql.Node.
-func (d *DeclareCursor) Schema() sql.Schema {
-	return d.Select.Schema()
+func (d *DeclareCursor) Schema(ctx *sql.Context) sql.Schema {
+	return d.Select.Schema(ctx)
 }
 
 // Children implements the interface sql.Node.

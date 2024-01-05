@@ -109,11 +109,11 @@ func (ii *InsertInto) Dispose() {
 // Schema implements the sql.Node interface.
 // Insert nodes return rows that are inserted. Replaces return a concatenation of the deleted row and the inserted row.
 // If no row was deleted, the value of those columns is nil.
-func (ii *InsertInto) Schema() sql.Schema {
+func (ii *InsertInto) Schema(ctx *sql.Context) sql.Schema {
 	if ii.IsReplace {
-		return append(ii.Destination.Schema(), ii.Destination.Schema()...)
+		return append(ii.Destination.Schema(ctx), ii.Destination.Schema(ctx)...)
 	}
-	return ii.Destination.Schema()
+	return ii.Destination.Schema(ctx)
 }
 
 func (ii *InsertInto) Children() []sql.Node {
@@ -206,7 +206,7 @@ func (id *InsertDestination) DebugString() string {
 	return pr.String()
 }
 
-func (id *InsertDestination) Schema() sql.Schema {
+func (id *InsertDestination) Schema(_ *sql.Context) sql.Schema {
 	return id.Sch
 }
 

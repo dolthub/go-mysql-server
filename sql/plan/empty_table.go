@@ -83,11 +83,11 @@ func (e *EmptyTable) Name() string {
 	return e.schema[0].Source
 }
 
-func (e *EmptyTable) Schema() sql.Schema { return e.schema }
-func (*EmptyTable) Children() []sql.Node { return nil }
-func (*EmptyTable) Resolved() bool       { return true }
-func (*EmptyTable) IsReadOnly() bool     { return true }
-func (e *EmptyTable) String() string     { return "EmptyTable" }
+func (e *EmptyTable) Schema(_ *sql.Context) sql.Schema { return e.schema }
+func (*EmptyTable) Children() []sql.Node               { return nil }
+func (*EmptyTable) Resolved() bool                     { return true }
+func (*EmptyTable) IsReadOnly() bool                   { return true }
+func (e *EmptyTable) String() string                   { return "EmptyTable" }
 
 // RowIter implements the sql.Node interface.
 func (*EmptyTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {

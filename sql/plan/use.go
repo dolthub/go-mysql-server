@@ -62,7 +62,7 @@ func (u *Use) IsReadOnly() bool {
 }
 
 // Schema implements the sql.Node interface.
-func (Use) Schema() sql.Schema { return nil }
+func (Use) Schema(_ *sql.Context) sql.Schema { return nil }
 
 // RowIter implements the sql.Node interface.
 func (u *Use) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {

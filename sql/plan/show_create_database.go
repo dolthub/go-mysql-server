@@ -58,7 +58,7 @@ func (s *ShowCreateDatabase) WithDatabase(db sql.Database) (sql.Node, error) {
 }
 
 // Schema implements the sql.Node interface.
-func (s *ShowCreateDatabase) Schema() sql.Schema {
+func (s *ShowCreateDatabase) Schema(_ *sql.Context) sql.Schema {
 	return showCreateDatabaseSchema
 }
 

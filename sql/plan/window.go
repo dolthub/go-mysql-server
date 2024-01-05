@@ -76,7 +76,7 @@ func (w *Window) DebugString() string {
 }
 
 // Schema implements sql.Node
-func (w *Window) Schema() sql.Schema {
+func (w *Window) Schema(_ *sql.Context) sql.Schema {
 	var s = make(sql.Schema, len(w.SelectExprs))
 	for i, e := range w.SelectExprs {
 		s[i] = transform.ExpressionToColumn(e, AliasSubqueryString(e))

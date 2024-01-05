@@ -44,7 +44,7 @@ func (f *factory) buildProject(p *plan.Project, subquery bool) (sql.Node, error)
 	{
 		// todo generalize this. proj->proj with subquery expression alias
 		// references are one problem.
-		if sqa, _ := p.Child.(*plan.SubqueryAlias); sqa != nil && p.Schema().Equals(sqa.Schema()) {
+		if sqa, _ := p.Child.(*plan.SubqueryAlias); sqa != nil && p.Schema(f.ctx).Equals(sqa.Schema(f.ctx)) {
 			f.log("eliminated projection")
 			return sqa, nil
 		}
@@ -142,11 +142,11 @@ func (f *factory) buildJoin(l, r sql.Node, op plan.JoinType, cond sql.Expression
 		// fold empty joins
 		if _, empty := l.(*plan.EmptyTable); empty {
 			f.log("folded empty table join")
-			return plan.NewEmptyTableWithSchema(append(l.Schema(), r.Schema()...)), nil
+			return plan.NewEmptyTableWithSchema(append(l.Schema(f.ctx), r.Schema(f.ctx)...)), nil
 		}
 		if _, empty := r.(*plan.EmptyTable); empty && !op.IsLeftOuter() {
 			f.log("folded empty table join")
-			return plan.NewEmptyTableWithSchema(append(l.Schema(), r.Schema()...)), nil
+			return plan.NewEmptyTableWithSchema(append(l.Schema(f.ctx), r.Schema(f.ctx)...)), nil
 		}
 	}
 

@@ -35,7 +35,7 @@ var _ sql.Databaser = (*ShowGrants)(nil)
 var _ sql.CollationCoercible = (*ShowGrants)(nil)
 
 // Schema implements the interface sql.Node.
-func (n *ShowGrants) Schema() sql.Schema {
+func (n *ShowGrants) Schema(_ *sql.Context) sql.Schema {
 	user := n.For
 	if user == nil {
 		user = &UserName{

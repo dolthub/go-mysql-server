@@ -40,7 +40,7 @@ func NewRenameUser(oldNames []UserName, newNames []UserName) *RenameUser {
 }
 
 // Schema implements the interface sql.Node.
-func (n *RenameUser) Schema() sql.Schema {
+func (n *RenameUser) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 

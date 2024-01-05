@@ -66,7 +66,7 @@ type Node interface {
 	Resolvable
 	fmt.Stringer
 	// Schema of the node.
-	Schema() Schema
+	Schema(*Context) Schema
 	// Children nodes.
 	Children() []Node
 	// WithChildren returns a copy of the node with children replaced.

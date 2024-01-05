@@ -32,7 +32,7 @@ func NewDescribe(child sql.Node) *Describe {
 }
 
 // Schema implements the Node interface.
-func (d *Describe) Schema() sql.Schema {
+func (d *Describe) Schema(_ *sql.Context) sql.Schema {
 	return sql.Schema{{
 		Name: "name",
 		Type: VarChar25000,
@@ -121,7 +121,7 @@ func NewDescribeQuery(format string, child sql.Node) *DescribeQuery {
 }
 
 // Schema implements the Node interface.
-func (d *DescribeQuery) Schema() sql.Schema {
+func (d *DescribeQuery) Schema(_ *sql.Context) sql.Schema {
 	return DescribeSchema
 }
 

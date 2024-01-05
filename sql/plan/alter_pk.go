@@ -83,7 +83,7 @@ func (a *AlterPK) String() string {
 	return fmt.Sprintf("alter table %s %s primary key", a.Table.String(), action)
 }
 
-func (a *AlterPK) Schema() sql.Schema {
+func (a *AlterPK) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -114,8 +114,8 @@ func (a AlterPK) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	return &a, nil
 }
 
-func HasPrimaryKeys(table sql.Table) bool {
-	for _, c := range table.Schema() {
+func HasPrimaryKeys(ctx *sql.Context, table sql.Table) bool {
+	for _, c := range table.Schema(ctx) {
 		if c.PrimaryKey {
 			return true
 		}

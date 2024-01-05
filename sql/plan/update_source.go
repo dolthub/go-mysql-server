@@ -60,8 +60,8 @@ func (u *UpdateSource) WithExpressions(newExprs ...sql.Expression) (sql.Node, er
 }
 
 // Schema implements sql.Node. The schema of an update is a concatenation of the old and new rows.
-func (u *UpdateSource) Schema() sql.Schema {
-	return append(u.Child.Schema(), u.Child.Schema()...)
+func (u *UpdateSource) Schema(ctx *sql.Context) sql.Schema {
+	return append(u.Child.Schema(ctx), u.Child.Schema(ctx)...)
 }
 
 // Resolved implements the Resolvable interface.
@@ -99,9 +99,9 @@ func (u *UpdateSource) DebugString() string {
 	return pr.String()
 }
 
-func (u *UpdateSource) GetChildSchema() (sql.Schema, error) {
+func (u *UpdateSource) GetChildSchema(ctx *sql.Context) (sql.Schema, error) {
 	if nodeHasJoin(u.Child) {
-		return u.Child.Schema(), nil
+		return u.Child.Schema(ctx), nil
 	}
 
 	table, err := GetUpdatable(u.Child)
@@ -109,7 +109,7 @@ func (u *UpdateSource) GetChildSchema() (sql.Schema, error) {
 		return nil, err
 	}
 
-	return table.Schema(), nil
+	return table.Schema(ctx), nil
 }
 
 func nodeHasJoin(node sql.Node) bool {

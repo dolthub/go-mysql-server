@@ -377,20 +377,20 @@ func (j *JoinNode) JoinType() JoinType {
 }
 
 // Schema implements the Node interface.
-func (j *JoinNode) Schema() sql.Schema {
+func (j *JoinNode) Schema(ctx *sql.Context) sql.Schema {
 	switch {
 	case j.Op.IsLeftOuter():
-		return append(j.left.Schema(), makeNullable(j.right.Schema())...)
+		return append(j.left.Schema(ctx), makeNullable(j.right.Schema(ctx))...)
 	case j.Op.IsRightOuter():
-		return append(makeNullable(j.left.Schema()), j.right.Schema()...)
+		return append(makeNullable(j.left.Schema(ctx)), j.right.Schema(ctx)...)
 	case j.Op.IsFullOuter():
-		return append(makeNullable(j.left.Schema()), makeNullable(j.right.Schema())...)
+		return append(makeNullable(j.left.Schema(ctx)), makeNullable(j.right.Schema(ctx))...)
 	case j.Op.IsPartial():
-		return j.Left().Schema()
+		return j.Left().Schema(ctx)
 	case j.Op.IsUsing():
 		panic("NaturalJoin is a placeholder, Schema called")
 	default:
-		return append(j.left.Schema(), j.right.Schema()...)
+		return append(j.left.Schema(ctx), j.right.Schema(ctx)...)
 	}
 }
 

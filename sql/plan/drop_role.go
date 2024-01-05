@@ -44,7 +44,7 @@ var _ sql.Databaser = (*DropRole)(nil)
 var _ sql.CollationCoercible = (*DropRole)(nil)
 
 // Schema implements the interface sql.Node.
-func (n *DropRole) Schema() sql.Schema {
+func (n *DropRole) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 

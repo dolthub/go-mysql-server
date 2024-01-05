@@ -50,7 +50,7 @@ func (c *CreateDB) String() string {
 	return fmt.Sprintf("%s database%s %v", sqlparser.CreateStr, ifNotExists, c.DbName)
 }
 
-func (c *CreateDB) Schema() sql.Schema {
+func (c *CreateDB) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -115,7 +115,7 @@ func (d *DropDB) String() string {
 	return fmt.Sprintf("%s database%s %v", sqlparser.DropStr, ifExists, d.DbName)
 }
 
-func (d *DropDB) Schema() sql.Schema {
+func (d *DropDB) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -180,7 +180,7 @@ func (c *AlterDB) String() string {
 }
 
 // Schema implements the interface sql.Node.
-func (c *AlterDB) Schema() sql.Schema {
+func (c *AlterDB) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 

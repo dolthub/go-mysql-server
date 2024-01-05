@@ -71,7 +71,7 @@ func (n *CreateSpatialRefSys) String() string {
 }
 
 // Schema implements the interface sql.Node
-func (n *CreateSpatialRefSys) Schema() sql.Schema {
+func (n *CreateSpatialRefSys) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 

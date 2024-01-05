@@ -63,7 +63,7 @@ func newRelProps(rel RelExpr) *relProps {
 	case *SetOp:
 	case SourceRel:
 		n := r.TableIdNode()
-		if len(n.Schema()) == n.Columns().Len() {
+		if len(n.Schema(nil)) == n.Columns().Len() { // TODO-CTX
 			p.outputCols = r.TableIdNode().Columns()
 
 			firstCol, _ := n.Columns().Next(1)
@@ -82,7 +82,7 @@ func newRelProps(rel RelExpr) *relProps {
 				if irt, ok := table.(sql.IndexRequired); ok {
 					cols := irt.RequiredPredicates()
 					for _, c := range cols {
-						i := n.Schema().IndexOfColName(c)
+						i := n.Schema(nil).IndexOfColName(c) // TODO-CTX
 						requiredIndexCols.Add(firstCol + sql.ColumnId(i))
 					}
 				}
@@ -100,12 +100,12 @@ func newRelProps(rel RelExpr) *relProps {
 			case sql.PrimaryKeyTable:
 				sch = n.PrimaryKeySchema().Schema
 			default:
-				sch = n.Schema()
+				sch = n.Schema(nil) // TODO-CTX
 			}
 			firstCol, _ := n.Columns().Next(1)
 
 			var colset sql.ColSet
-			for _, c := range n.Schema() {
+			for _, c := range n.Schema(nil) { // TODO-CTX
 				i := sch.IndexOfColName(c.Name)
 				colset.Add(firstCol + sql.ColumnId(i))
 			}

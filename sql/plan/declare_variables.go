@@ -58,7 +58,7 @@ func (d *DeclareVariables) String() string {
 }
 
 // Schema implements the interface sql.Node.
-func (d *DeclareVariables) Schema() sql.Schema {
+func (d *DeclareVariables) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 

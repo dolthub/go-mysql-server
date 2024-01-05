@@ -37,8 +37,8 @@ func (n *TransformedNamedNode) Name() string {
 	return n.name
 }
 
-func (n *TransformedNamedNode) Schema() sql.Schema {
-	return n.Child.Schema()
+func (n *TransformedNamedNode) Schema(ctx *sql.Context) sql.Schema {
+	return n.Child.Schema(ctx)
 }
 
 func (n *TransformedNamedNode) IsReadOnly() bool {

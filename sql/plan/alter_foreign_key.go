@@ -85,7 +85,7 @@ func (*CreateForeignKey) CollationCoercibility(ctx *sql.Context) (collation sql.
 }
 
 // Schema implements the interface sql.Node.
-func (p *CreateForeignKey) Schema() sql.Schema {
+func (p *CreateForeignKey) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -136,7 +136,7 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 	// Make sure that all columns are valid, in the table, and there are no duplicates
 	cols := make(map[string]*sql.Column)
 	seenCols := make(map[string]struct{})
-	for _, col := range tbl.Schema() {
+	for _, col := range tbl.Schema(ctx) {
 		lowerColName := strings.ToLower(col.Name)
 		cols[lowerColName] = col
 	}
@@ -162,7 +162,7 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 	if fkChecks {
 		parentCols := make(map[string]*sql.Column)
 		seenCols = make(map[string]struct{})
-		for _, col := range refTbl.Schema() {
+		for _, col := range refTbl.Schema(ctx) {
 			lowerColName := strings.ToLower(col.Name)
 			parentCols[lowerColName] = col
 		}
@@ -209,7 +209,7 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		var selfCols map[string]int
 		if fkDef.IsSelfReferential() {
 			selfCols = make(map[string]int)
-			for i, col := range tbl.Schema() {
+			for i, col := range tbl.Schema(ctx) {
 				selfCols[strings.ToLower(col.Name)] = i
 			}
 		}
@@ -219,7 +219,7 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 			RowMapper: ForeignKeyRowMapper{
 				Index:          refTblIndex,
 				Updater:        refTbl.GetForeignKeyEditor(ctx),
-				SourceSch:      tbl.Schema(),
+				SourceSch:      tbl.Schema(ctx),
 				IndexPositions: indexPositions,
 				AppendTypes:    appendTypes,
 			},
@@ -347,7 +347,7 @@ func (*DropForeignKey) CollationCoercibility(ctx *sql.Context) (collation sql.Co
 }
 
 // Schema implements the interface sql.Node.
-func (p *DropForeignKey) Schema() sql.Schema {
+func (p *DropForeignKey) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -403,7 +403,7 @@ func FindForeignKeyColMapping(
 
 	localSchTypeMap := make(map[string]sql.Type)
 	localSchPositionMap := make(map[string]int)
-	for i, col := range localTbl.Schema() {
+	for i, col := range localTbl.Schema(ctx) {
 		colName := strings.ToLower(col.Name)
 		localSchTypeMap[colName] = col.Type
 		localSchPositionMap[colName] = i

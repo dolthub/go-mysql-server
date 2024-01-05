@@ -43,7 +43,7 @@ var _ sql.Node = (*CreateRole)(nil)
 var _ sql.CollationCoercible = (*CreateRole)(nil)
 
 // Schema implements the interface sql.Node.
-func (n *CreateRole) Schema() sql.Schema {
+func (n *CreateRole) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 

@@ -585,7 +585,7 @@ func (b *BaseBuilder) buildShowTriggers(ctx *sql.Context, n *plan.ShowTriggers, 
 }
 
 func (b *BaseBuilder) buildDescribe(ctx *sql.Context, n *plan.Describe, row sql.Row) (sql.RowIter, error) {
-	return &describeIter{schema: n.Child.Schema()}, nil
+	return &describeIter{schema: n.Child.Schema(ctx)}, nil
 }
 
 func (b *BaseBuilder) buildShowDatabases(ctx *sql.Context, n *plan.ShowDatabases, row sql.Row) (sql.RowIter, error) {

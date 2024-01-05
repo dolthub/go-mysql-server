@@ -103,7 +103,7 @@ func (b *Block) DebugString() string {
 }
 
 // Schema implements the sql.Node interface.
-func (b *Block) Schema() sql.Schema {
+func (b *Block) Schema(_ *sql.Context) sql.Schema {
 	return b.rowIterSch
 }
 

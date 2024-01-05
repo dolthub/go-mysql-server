@@ -54,7 +54,7 @@ func (o *Open) String() string {
 }
 
 // Schema implements the interface sql.Node.
-func (o *Open) Schema() sql.Schema {
+func (o *Open) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 

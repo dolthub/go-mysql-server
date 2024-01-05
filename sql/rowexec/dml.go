@@ -28,7 +28,7 @@ import (
 )
 
 func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row sql.Row) (sql.RowIter, error) {
-	dstSchema := ii.Destination.Schema()
+	dstSchema := ii.Destination.Schema(ctx)
 
 	insertable, err := plan.GetInsertable(ii.Destination)
 	if err != nil {
@@ -92,7 +92,7 @@ func (b *BaseBuilder) buildDeleteFrom(ctx *sql.Context, n *plan.DeleteFrom, row 
 
 	targets := n.GetDeleteTargets()
 	schemaPositionDeleters := make([]schemaPositionDeleter, len(targets))
-	schema := n.Child.Schema()
+	schema := n.Child.Schema(ctx)
 
 	for i, target := range targets {
 		deletable, err := plan.GetDeletable(target)
@@ -137,7 +137,7 @@ func (b *BaseBuilder) buildUpdate(ctx *sql.Context, n *plan.Update, row sql.Row)
 		return nil, err
 	}
 
-	return newUpdateIter(iter, updatable.Schema(), updater, n.Checks(), n.Ignore), nil
+	return newUpdateIter(iter, updatable.Schema(ctx), updater, n.Checks(), n.Ignore), nil
 }
 
 func (b *BaseBuilder) buildDropForeignKey(ctx *sql.Context, n *plan.DropForeignKey, row sql.Row) (sql.RowIter, error) {
@@ -311,9 +311,9 @@ func (b *BaseBuilder) buildRowUpdateAccumulator(ctx *sql.Context, n *plan.RowUpd
 	case plan.UpdateTypeReplace:
 		rowHandler = &replaceRowHandler{}
 	case plan.UpdateTypeDuplicateKeyUpdate:
-		rowHandler = &onDuplicateUpdateHandler{schema: n.Child().Schema(), clientFoundRowsCapability: clientFoundRowsToggled}
+		rowHandler = &onDuplicateUpdateHandler{schema: n.Child().Schema(ctx), clientFoundRowsCapability: clientFoundRowsToggled}
 	case plan.UpdateTypeUpdate:
-		schema := n.Child().Schema()
+		schema := n.Child().Schema(ctx)
 		// the schema of the update node is a self-concatenation of the underlying table's, so split it in half for new /
 		// old row comparison purposes
 		rowHandler = &updateRowHandler{schema: schema[:len(schema)/2], clientFoundRowsCapability: clientFoundRowsToggled}
@@ -325,7 +325,7 @@ func (b *BaseBuilder) buildRowUpdateAccumulator(ctx *sql.Context, n *plan.RowUpd
 		transform.Inspect(n.Child(), func(node sql.Node) bool {
 			switch node.(type) {
 			case *plan.JoinNode, *plan.Project:
-				schema = node.Schema()
+				schema = node.Schema(ctx)
 				return false
 			case *plan.UpdateJoin:
 				updaterMap = node.(*plan.UpdateJoin).Updaters
@@ -389,7 +389,7 @@ func (b *BaseBuilder) buildTruncate(ctx *sql.Context, n *plan.Truncate, row sql.
 	if err != nil {
 		return nil, err
 	}
-	for _, col := range truncatable.Schema() {
+	for _, col := range truncatable.Schema(ctx) {
 		if col.AutoIncrement {
 			aiTable, ok := truncatable.(sql.AutoIncrementTable)
 			if ok {
@@ -421,7 +421,7 @@ func (b *BaseBuilder) buildUpdateSource(ctx *sql.Context, n *plan.UpdateSource, 
 		return nil, err
 	}
 
-	schema, err := n.GetChildSchema()
+	schema, err := n.GetChildSchema(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -442,7 +442,7 @@ func (b *BaseBuilder) buildUpdateJoin(ctx *sql.Context, n *plan.UpdateJoin, row 
 
 	return &updateJoinIter{
 		updateSourceIter: ji,
-		joinSchema:       n.Child.(*plan.UpdateSource).Child.Schema(),
+		joinSchema:       n.Child.(*plan.UpdateSource).Child.Schema(ctx),
 		updaters:         n.Updaters,
 		caches:           make(map[string]sql.KeyValueCache),
 		disposals:        make(map[string]sql.DisposeFunc),

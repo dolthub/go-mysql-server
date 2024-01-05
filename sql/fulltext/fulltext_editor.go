@@ -74,9 +74,9 @@ var _ sql.TableEditor = TableEditor{}
 // CreateEditor returns a TableEditor that will handle the transformation of rows destined for the parent table to the
 // FULLTEXT tables.
 func CreateEditor(ctx *sql.Context, parent sql.Table, config EditableTable, indexes ...TableSet) (editor TableEditor, err error) {
-	parentSch := parent.Schema()
+	parentSch := parent.Schema(ctx)
 	// Verify that the schema for the config table is correct
-	if err = validateSchema(config.Name(), parentSch, config.Schema(), SchemaConfig, KeyColumns{}); err != nil {
+	if err = validateSchema(config.Name(), parentSch, config.Schema(ctx), SchemaConfig, KeyColumns{}); err != nil {
 		return TableEditor{}, err
 	}
 
@@ -94,16 +94,16 @@ func CreateEditor(ctx *sql.Context, parent sql.Table, config EditableTable, inde
 			return TableEditor{}, err
 		}
 		// Verify that the schema for the word tables are correct
-		if err = validateSchema(index.Position.Name(), parentSch, index.Position.Schema(), SchemaPosition, keyCols); err != nil {
+		if err = validateSchema(index.Position.Name(), parentSch, index.Position.Schema(ctx), SchemaPosition, keyCols); err != nil {
 			return TableEditor{}, err
 		}
-		if err = validateSchema(index.DocCount.Name(), parentSch, index.DocCount.Schema(), SchemaDocCount, keyCols); err != nil {
+		if err = validateSchema(index.DocCount.Name(), parentSch, index.DocCount.Schema(ctx), SchemaDocCount, keyCols); err != nil {
 			return TableEditor{}, err
 		}
-		if err = validateSchema(index.GlobalCount.Name(), parentSch, index.GlobalCount.Schema(), SchemaGlobalCount, KeyColumns{}); err != nil {
+		if err = validateSchema(index.GlobalCount.Name(), parentSch, index.GlobalCount.Schema(ctx), SchemaGlobalCount, KeyColumns{}); err != nil {
 			return TableEditor{}, err
 		}
-		if err = validateSchema(index.RowCount.Name(), parentSch, index.RowCount.Schema(), SchemaRowCount, KeyColumns{}); err != nil {
+		if err = validateSchema(index.RowCount.Name(), parentSch, index.RowCount.Schema(ctx), SchemaRowCount, KeyColumns{}); err != nil {
 			return TableEditor{}, err
 		}
 		// Map each indexes' columns to their respective table columns
@@ -122,26 +122,26 @@ func CreateEditor(ctx *sql.Context, parent sql.Table, config EditableTable, inde
 			Position: IndexSingleEditor{
 				Editor: index.Position.Inserter(ctx).(sql.TableEditor),
 				Index:  nil,
-				Schema: index.Position.Schema(),
+				Schema: index.Position.Schema(ctx),
 			},
 			DocCount: IndexSingleEditor{
 				Editor: index.DocCount.Inserter(ctx).(sql.TableEditor),
 				Index:  nil,
-				Schema: index.DocCount.Schema(),
+				Schema: index.DocCount.Schema(ctx),
 			},
 			GlobalCount: IndexSingleEditor{
 				Editor: index.GlobalCount.Inserter(ctx).(sql.TableEditor),
 				Index:  nil,
-				Schema: index.GlobalCount.Schema(),
+				Schema: index.GlobalCount.Schema(ctx),
 			},
 			RowCount: IndexSingleEditor{
 				Editor: index.RowCount.Inserter(ctx).(sql.TableEditor),
 				Index:  nil,
-				Schema: index.RowCount.Schema(),
+				Schema: index.RowCount.Schema(ctx),
 			},
 			SourceCols: sourceCols,
 			KeyCols:    keyCols,
-			Collation:  GetCollationFromSchema(ctx, index.DocCount.Schema()),
+			Collation:  GetCollationFromSchema(ctx, index.DocCount.Schema(ctx)),
 		}
 
 		// Separately check that the editor is compatible with foreign keys, since we take advantage of the same functions
@@ -197,7 +197,7 @@ func CreateEditor(ctx *sql.Context, parent sql.Table, config EditableTable, inde
 		Config: IndexSingleEditor{
 			Editor: config.Inserter(ctx).(sql.TableEditor),
 			Index:  nil,
-			Schema: config.Schema(),
+			Schema: config.Schema(ctx),
 		},
 		Indexes: editorIndexes,
 	}, nil

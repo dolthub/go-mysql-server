@@ -52,7 +52,7 @@ func (t *mysqlTable) String() string {
 }
 
 // Schema implements the interface sql.Table.
-func (t *mysqlTable) Schema() sql.Schema {
+func (t *mysqlTable) Schema(_ *sql.Context) sql.Schema {
 	return t.sch.Copy()
 }
 

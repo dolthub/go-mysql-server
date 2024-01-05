@@ -81,7 +81,7 @@ func (cv *CreateView) IsReadOnly() bool {
 }
 
 // Schema implements the Node interface. It always returns Query OK result.
-func (cv *CreateView) Schema() sql.Schema {
+func (cv *CreateView) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 

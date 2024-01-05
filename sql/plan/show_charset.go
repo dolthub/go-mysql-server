@@ -68,7 +68,7 @@ func (sc *ShowCharset) String() string {
 }
 
 // Note how this Schema differs in order from the information_schema.character_sets table.
-func (sc *ShowCharset) Schema() sql.Schema {
+func (sc *ShowCharset) Schema(_ *sql.Context) sql.Schema {
 	return sql.Schema{
 		{Name: "Charset", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
 		{Name: "Description", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},

@@ -48,7 +48,7 @@ func newMergeJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode,
 		return nil, err
 	}
 
-	fullRow := make(sql.Row, len(row)+len(j.Left().Schema())+len(j.Right().Schema()))
+	fullRow := make(sql.Row, len(row)+len(j.Left().Schema(ctx))+len(j.Right().Schema(ctx)))
 	fullRow[0] = row
 	if len(row) > 0 {
 		copy(fullRow[0:], row[:])
@@ -75,8 +75,8 @@ func newMergeJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode,
 		fullRow:     fullRow,
 		scopeLen:    j.ScopeLen,
 		parentLen:   len(row) - j.ScopeLen,
-		leftRowLen:  len(j.Left().Schema()),
-		rightRowLen: len(j.Right().Schema()),
+		leftRowLen:  len(j.Left().Schema(ctx)),
+		rightRowLen: len(j.Right().Schema(ctx)),
 	}
 	return iter, nil
 }

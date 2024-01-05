@@ -283,7 +283,7 @@ func transformUpWithPrefixSchemaHelper(c Context, s SelectorFunc, f CtxFunc) (sq
 				newChildren[i] = child
 			}
 			if child.Resolved() && childPrefix != nil {
-				cs := child.Schema()
+				cs := child.Schema(nil) // TODO-CTX
 				childPrefix = append(childPrefix, cs...)
 			} else {
 				childPrefix = nil

@@ -23,7 +23,7 @@ type Table interface {
 	Nameable
 	fmt.Stringer
 	// Schema returns the table's schema.
-	Schema() Schema
+	Schema(*Context) Schema
 	// Collation returns the table's collation.
 	Collation() CollationID
 	// Partitions returns the table's partitions in an iterator.

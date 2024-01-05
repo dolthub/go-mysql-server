@@ -66,8 +66,8 @@ func (ic *IfConditional) DebugString() string {
 }
 
 // Schema implements the sql.Node interface.
-func (ic *IfConditional) Schema() sql.Schema {
-	return ic.Body.Schema()
+func (ic *IfConditional) Schema(ctx *sql.Context) sql.Schema {
+	return ic.Body.Schema(ctx)
 }
 
 // Children implements the sql.Node interface.
@@ -189,7 +189,7 @@ func (ieb *IfElseBlock) DebugString() string {
 }
 
 // Schema implements the sql.Node interface.
-func (ieb *IfElseBlock) Schema() sql.Schema {
+func (ieb *IfElseBlock) Schema(_ *sql.Context) sql.Schema {
 	// NOTE: nil schema causes no result for over the wire clients
 	return nil
 }

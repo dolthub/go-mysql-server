@@ -50,7 +50,7 @@ func (c *Close) String() string {
 }
 
 // Schema implements the interface sql.Node.
-func (c *Close) Schema() sql.Schema {
+func (c *Close) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 

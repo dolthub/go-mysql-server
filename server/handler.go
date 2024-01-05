@@ -113,14 +113,14 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string, prepare *mysql.Prepare
 		return nil, err
 	}
 
-	if types.IsOkResultSchema(analyzed.Schema()) {
+	if types.IsOkResultSchema(analyzed.Schema(ctx)) {
 		return nil, nil
 	}
 	switch analyzed.(type) {
 	case *plan.InsertInto, *plan.Update, *plan.UpdateJoin, *plan.DeleteFrom:
 		return nil, nil
 	}
-	return schemaToFields(ctx, analyzed.Schema()), nil
+	return schemaToFields(ctx, analyzed.Schema(ctx)), nil
 }
 
 func (h *Handler) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {

@@ -268,7 +268,7 @@ func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (
 				return err
 			}
 			subIterNode := s
-			subIterSch := s.Schema()
+			subIterSch := s.Schema(ctx)
 			if blockSubIter, ok := subIter.(plan.BlockRowIter); ok {
 				subIterNode = blockSubIter.RepresentingNode()
 				subIterSch = blockSubIter.Schema()
@@ -335,7 +335,7 @@ func (b *BaseBuilder) buildTableCopier(ctx *sql.Context, n *plan.TableCopier, ro
 		return nil, fmt.Errorf("TableCopier only accepts CreateTable or TableNode as the destination")
 	}
 
-	return n.CopyTableOver(ctx, n.Source.Schema()[0].Source, drt.Name())
+	return n.CopyTableOver(ctx, n.Source.Schema(ctx)[0].Source, drt.Name())
 }
 
 func (b *BaseBuilder) buildUnresolvedTable(ctx *sql.Context, n *plan.UnresolvedTable, row sql.Row) (sql.RowIter, error) {

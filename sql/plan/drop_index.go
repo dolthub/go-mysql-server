@@ -57,7 +57,7 @@ func (d *DropIndex) Resolved() bool { return d.Table.Resolved() }
 func (d *DropIndex) IsReadOnly() bool { return false }
 
 // Schema implements the Node interface.
-func (d *DropIndex) Schema() sql.Schema { return nil }
+func (d *DropIndex) Schema(_ *sql.Context) sql.Schema { return nil }
 
 // Children implements the Node interface.
 func (d *DropIndex) Children() []sql.Node { return []sql.Node{d.Table} }

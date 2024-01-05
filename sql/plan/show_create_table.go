@@ -137,7 +137,7 @@ func (sc ShowCreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, er
 }
 
 // Schema implements the Node interface.
-func (sc *ShowCreateTable) Schema() sql.Schema {
+func (sc *ShowCreateTable) Schema(_ *sql.Context) sql.Schema {
 	switch sc.Child.(type) {
 	case *SubqueryAlias:
 		return sql.Schema{

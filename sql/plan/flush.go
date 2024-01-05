@@ -91,7 +91,7 @@ func (f *FlushPrivileges) Resolved() bool {
 func (*FlushPrivileges) Children() []sql.Node { return nil }
 
 // Schema implements the sql.Node interface.
-func (*FlushPrivileges) Schema() sql.Schema { return types.OkResultSchema }
+func (*FlushPrivileges) Schema(_ *sql.Context) sql.Schema { return types.OkResultSchema }
 
 // Database implements the sql.Databaser interface.
 func (f *FlushPrivileges) Database() sql.Database {

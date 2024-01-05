@@ -42,7 +42,7 @@ var _ sql.Databaser = (*CreateUser)(nil)
 var _ sql.CollationCoercible = (*CreateUser)(nil)
 
 // Schema implements the interface sql.Node.
-func (n *CreateUser) Schema() sql.Schema {
+func (n *CreateUser) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 

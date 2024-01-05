@@ -37,9 +37,9 @@ func NewConcat(left, right sql.Node) *Concat {
 	}
 }
 
-func (c *Concat) Schema() sql.Schema {
-	ls := c.left.Schema()
-	rs := c.right.Schema()
+func (c *Concat) Schema(ctx *sql.Context) sql.Schema {
+	ls := c.left.Schema(ctx)
+	rs := c.right.Schema(ctx)
 	ret := make([]*sql.Column, len(ls))
 	for i := range ls {
 		c := *ls[i]

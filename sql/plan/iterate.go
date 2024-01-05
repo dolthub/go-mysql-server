@@ -51,7 +51,7 @@ func (i *Iterate) String() string {
 }
 
 // Schema implements the interface sql.Node.
-func (i *Iterate) Schema() sql.Schema {
+func (i *Iterate) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 

@@ -24,9 +24,9 @@ import (
 // comparisonSatisfiesJoinCondition checks a) whether a comparison is a valid join predicate,
 // and b) whether the Left/Right children of a comparison expression covers the dependency trees
 // of a plan.CrossJoin's children.
-func comparisonSatisfiesJoinCondition(expr expression.Comparer, j *plan.JoinNode) bool {
-	lCols := j.Left().Schema()
-	rCols := j.Right().Schema()
+func comparisonSatisfiesJoinCondition(ctx *sql.Context, expr expression.Comparer, j *plan.JoinNode) bool {
+	lCols := j.Left().Schema(ctx)
+	rCols := j.Right().Schema(ctx)
 
 	var re, le *expression.GetField
 	switch e := expr.(type) {
@@ -56,11 +56,11 @@ func comparisonSatisfiesJoinCondition(expr expression.Comparer, j *plan.JoinNode
 // expressionCoversJoin checks whether a subexpressions's comparison predicate
 // satisfies the join condition. The input conjunctions have already been split,
 // so we do not care which predicate satisfies the expression.
-func expressionCoversJoin(c sql.Expression, j *plan.JoinNode) (found bool) {
+func expressionCoversJoin(ctx *sql.Context, c sql.Expression, j *plan.JoinNode) (found bool) {
 	return transform.InspectExpr(c, func(expr sql.Expression) bool {
 		switch e := expr.(type) {
 		case expression.Comparer:
-			return comparisonSatisfiesJoinCondition(e, j)
+			return comparisonSatisfiesJoinCondition(ctx, e, j)
 		}
 		return false
 	})
@@ -92,7 +92,7 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 
 			joinConjs := make([]int, 0, len(predicates))
 			for i, c := range predicates {
-				if expressionCoversJoin(c, cj) {
+				if expressionCoversJoin(ctx, c, cj) {
 					joinConjs = append(joinConjs, i)
 				}
 			}

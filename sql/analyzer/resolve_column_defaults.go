@@ -56,7 +56,7 @@ func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.S
 		switch node := n.(type) {
 		case *plan.AlterDefaultSet:
 			table := getResolvedTable(node)
-			sch := table.Schema()
+			sch := table.Schema(ctx)
 			index := sch.IndexOfColName(node.ColumnName)
 			if index == -1 {
 				return nil, transform.SameTree, sql.ErrColumnNotFound.New(node.ColumnName)

@@ -313,7 +313,7 @@ func (n *testNode) String() string {
 	return ""
 }
 
-func (n *testNode) Schema() sql.Schema {
+func (n *testNode) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 

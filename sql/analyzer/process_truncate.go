@@ -72,7 +72,7 @@ func deleteToTruncate(ctx *sql.Context, a *Analyzer, deletePlan *plan.DeleteFrom
 	tblName := strings.ToLower(tbl.Name())
 
 	// auto_increment behaves differently for TRUNCATE and DELETE
-	for _, col := range tbl.Schema() {
+	for _, col := range tbl.Schema(ctx) {
 		if col.AutoIncrement {
 			return deletePlan, transform.SameTree, nil
 		}

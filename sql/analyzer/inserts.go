@@ -73,7 +73,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 			source = StripPassthroughNodes(source)
 		}
 
-		dstSchema := insertable.Schema()
+		dstSchema := insertable.Schema(ctx)
 
 		// normalize the column name
 		columnNames := make([]string, len(insert.ColumnNames))
@@ -94,13 +94,13 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 			}
 		}
 
-		err = validateValueCount(columnNames, source)
+		err = validateValueCount(ctx, columnNames, source)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
 
 		// The schema of the destination node and the underlying table differ subtly in terms of defaults
-		project, autoAutoIncrement, err := wrapRowSource(ctx, source, insertable, insert.Destination.Schema(), columnNames)
+		project, autoAutoIncrement, err := wrapRowSource(ctx, source, insertable, insert.Destination.Schema(ctx), columnNames)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -187,7 +187,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 		}
 	}
 
-	err := validateRowSource(insertSource, projExprs)
+	err := validateRowSource(ctx, insertSource, projExprs)
 	if err != nil {
 		return nil, false, err
 	}
@@ -242,7 +242,7 @@ func validGeneratedColumnValue(idx int, source sql.Node) bool {
 	}
 }
 
-func validateValueCount(columnNames []string, values sql.Node) error {
+func validateValueCount(ctx *sql.Context, columnNames []string, values sql.Node) error {
 	if exchange, ok := values.(*plan.Exchange); ok {
 		values = exchange.Child
 	}
@@ -257,14 +257,14 @@ func validateValueCount(columnNames []string, values sql.Node) error {
 	case *plan.LoadData:
 		dataColLen := len(node.ColumnNames)
 		if dataColLen == 0 {
-			dataColLen = len(node.Schema())
+			dataColLen = len(node.Schema(ctx))
 		}
 		if len(columnNames) != dataColLen {
 			return sql.ErrInsertIntoMismatchValueCount.New()
 		}
 	default:
 		// Parser assures us that this will be some form of SelectStatement, so no need to type check it
-		if len(columnNames) != len(values.Schema()) {
+		if len(columnNames) != len(values.Schema(ctx)) {
 			return sql.ErrInsertIntoMismatchValueCount.New()
 		}
 	}
@@ -300,7 +300,7 @@ func assertCompatibleSchemas(projExprs []sql.Expression, schema sql.Schema) erro
 	return nil
 }
 
-func validateRowSource(values sql.Node, projExprs []sql.Expression) error {
+func validateRowSource(ctx *sql.Context, values sql.Node, projExprs []sql.Expression) error {
 	if exchange, ok := values.(*plan.Exchange); ok {
 		values = exchange.Child
 	}
@@ -311,6 +311,6 @@ func validateRowSource(values sql.Node, projExprs []sql.Expression) error {
 		return nil
 	default:
 		// Parser assures us that this will be some form of SelectStatement, so no need to type check it
-		return assertCompatibleSchemas(projExprs, n.Schema())
+		return assertCompatibleSchemas(projExprs, n.Schema(ctx))
 	}
 }

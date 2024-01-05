@@ -50,7 +50,7 @@ func TestProject(t *testing.T) {
 	schema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col2", Type: types.Text, Nullable: true},
 	})
-	require.Equal(schema.Schema, p.Schema())
+	require.Equal(schema.Schema, p.Schema(ctx))
 	iter, err := DefaultBuilder.Build(ctx, p, nil)
 	require.NoError(err)
 	require.NotNil(iter)
@@ -69,7 +69,7 @@ func TestProject(t *testing.T) {
 	require.Nil(row)
 
 	p = plan.NewProject(nil, plan.NewResolvedTable(child, nil, nil))
-	require.Equal(0, len(p.Schema()))
+	require.Equal(0, len(p.Schema(ctx)))
 
 	p = plan.NewProject([]sql.Expression{
 		expression.NewAlias("foo", expression.NewGetField(1, types.Text, "col2", true)),
@@ -77,7 +77,7 @@ func TestProject(t *testing.T) {
 	schema = sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "foo", Type: types.Text, Nullable: true},
 	})
-	require.Equal(schema.Schema, p.Schema())
+	require.Equal(schema.Schema, p.Schema(ctx))
 }
 
 func BenchmarkProject(b *testing.B) {

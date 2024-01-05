@@ -36,7 +36,7 @@ func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 
 	return transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		project, ok := node.(*plan.Project)
-		if ok && project.Schema().CaseSensitiveEquals(project.Child.Schema()) {
+		if ok && project.Schema(ctx).CaseSensitiveEquals(project.Child.Schema(ctx)) {
 			a.Log("project erased")
 			return project.Child, transform.NewTree, nil
 		}
@@ -353,7 +353,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 		}
 
 		if isFalse(e) {
-			emptyTable := plan.NewEmptyTableWithSchema(filter.Schema())
+			emptyTable := plan.NewEmptyTableWithSchema(filter.Schema(ctx))
 			return emptyTable, transform.NewTree, nil
 		}
 

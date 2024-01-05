@@ -31,7 +31,7 @@ type StrExpr struct {
 
 var _ sql.Node = (*StrExpr)(nil)
 
-func (s *StrExpr) Schema() sql.Schema {
+func (s *StrExpr) Schema(_ *sql.Context) sql.Schema {
 	//TODO implement me
 	panic("implement me")
 }

@@ -73,7 +73,7 @@ func (c *ColumnsTable) String() string {
 }
 
 // Schema implements the sql.Table interface.
-func (c *ColumnsTable) Schema() sql.Schema {
+func (c *ColumnsTable) Schema(_ *sql.Context) sql.Schema {
 	return columnsSchema
 }
 
@@ -92,8 +92,8 @@ func (c *ColumnsTable) Database() string {
 	return sql.InformationSchemaDatabaseName
 }
 
-func (c *ColumnsTable) DataLength(_ *sql.Context) (uint64, error) {
-	return uint64(len(c.Schema()) * int(types.Text.MaxByteLength()) * defaultColumnsTableRowCount), nil
+func (c *ColumnsTable) DataLength(ctx *sql.Context) (uint64, error) {
+	return uint64(len(c.Schema(ctx)) * int(types.Text.MaxByteLength()) * defaultColumnsTableRowCount), nil
 }
 
 func (c *ColumnsTable) RowCount(ctx *sql.Context) (uint64, bool, error) {
@@ -140,7 +140,7 @@ func (c *ColumnsTable) AllColumns(ctx *sql.Context) (sql.Schema, error) {
 
 	for _, db := range c.catalog.AllDatabases(ctx) {
 		err := sql.DBTableIter(ctx, db, func(t sql.Table) (cont bool, err error) {
-			tableSch := t.Schema()
+			tableSch := t.Schema(ctx)
 			for i := range tableSch {
 				newCol := tableSch[i].Copy()
 				newCol.DatabaseSource = db.Name()

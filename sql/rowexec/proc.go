@@ -63,7 +63,7 @@ func (b *BaseBuilder) buildCaseIter(ctx *sql.Context, row sql.Row, iterNode sql.
 	}
 	return &ifElseIter{
 		branchIter: branchIter,
-		sch:        bodyNode.Schema(),
+		sch:        bodyNode.Schema(ctx),
 		branchNode: bodyNode,
 	}, nil
 }
@@ -105,7 +105,7 @@ func (b *BaseBuilder) buildIfElseBlock(ctx *sql.Context, n *plan.IfElseBlock, ro
 		}
 		return &ifElseIter{
 			branchIter: branchIter,
-			sch:        ifConditional.Body.Schema(),
+			sch:        ifConditional.Body.Schema(ctx),
 			branchNode: ifConditional.Body,
 		}, nil
 	}
@@ -128,7 +128,7 @@ func (b *BaseBuilder) buildIfElseBlock(ctx *sql.Context, n *plan.IfElseBlock, ro
 	}
 	return &ifElseIter{
 		branchIter: branchIter,
-		sch:        n.Else.Schema(),
+		sch:        n.Else.Schema(ctx),
 		branchNode: n.Else,
 	}, nil
 }
@@ -262,7 +262,7 @@ func (b *BaseBuilder) buildLoop(ctx *sql.Context, n *plan.Loop, row sql.Row) (sq
 		includeResultSet := false
 
 		var subIterNode sql.Node = n.Block
-		subIterSch := n.Block.Schema()
+		subIterSch := n.Block.Schema(ctx)
 		if blockRowIter, ok := loopBodyIter.(plan.BlockRowIter); ok {
 			subIterNode = blockRowIter.RepresentingNode()
 			subIterSch = blockRowIter.Schema()

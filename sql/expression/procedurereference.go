@@ -181,7 +181,7 @@ func (ppr *ProcedureReference) FetchCursor(ctx *sql.Context, name string) (sql.R
 				return nil, nil, sql.ErrCursorNotOpen.New(name)
 			}
 			row, err := cursorRefVal.RowIter.Next(ctx)
-			return row, cursorRefVal.SelectStmt.Schema(), err
+			return row, cursorRefVal.SelectStmt.Schema(ctx), err
 		}
 		scope = scope.Parent
 	}

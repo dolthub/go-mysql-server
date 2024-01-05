@@ -2229,7 +2229,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 			{Name: "b", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Nullable: false, DatabaseSource: "mydb", Source: "t11"},
 		}
 
-		require.Equal(t, s, testTable.Schema())
+		require.Equal(t, s, testTable.Schema(ctx))
 	})
 
 	t.Run("CREATE TABLE with multiple unnamed indexes", func(t *testing.T) {
@@ -4426,7 +4426,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		ctx := NewContext(harness)
 		t28, _, err := e.EngineAnalyzer().Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t28")
 		require.NoError(t, err)
-		sch := t28.Schema()
+		sch := t28.Schema(ctx)
 		require.Len(t, sch, 2)
 		require.Equal(t, "v1", sch[1].Name)
 		require.NotContains(t, sch[1].Default.String(), "t28")

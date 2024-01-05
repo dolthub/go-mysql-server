@@ -183,7 +183,7 @@ func (a *AlterEvent) Resolved() bool {
 }
 
 // Schema implements the sql.Node interface.
-func (a *AlterEvent) Schema() sql.Schema {
+func (a *AlterEvent) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 

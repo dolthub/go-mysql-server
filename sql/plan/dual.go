@@ -29,7 +29,7 @@ func IsDualTable(t sql.Table) bool {
 	if t == nil {
 		return false
 	}
-	return strings.ToLower(t.Name()) == DualTableName && t.Schema().Equals(memory.DualTableSchema.Schema)
+	return strings.ToLower(t.Name()) == DualTableName && t.Schema(nil).Equals(memory.DualTableSchema.Schema) // TODO-CTX
 }
 
 var dualTable = func() sql.Table {

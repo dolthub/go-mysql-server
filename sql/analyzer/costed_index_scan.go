@@ -1418,7 +1418,7 @@ func uniformDistStatisticsForIndex(ctx *sql.Context, iat sql.IndexAddressableTab
 	if pkt, ok := iat.(sql.PrimaryKeyTable); ok {
 		sch = pkt.PrimaryKeySchema().Schema
 	} else {
-		sch = iat.Schema()
+		sch = iat.Schema(ctx)
 	}
 
 	return newUniformDistStatistic(dbName, tableName, sch, idx, rowCount, avgSize)

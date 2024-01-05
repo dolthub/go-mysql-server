@@ -144,7 +144,7 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 					return ret, transform.SameTree, nil
 				}
 
-				rightF, ok, err := getHighestProjection(newSubq)
+				rightF, ok, err := getHighestProjection(ctx, newSubq)
 				if err != nil {
 					return n, transform.SameTree, err
 				}
@@ -261,10 +261,10 @@ func renameExpressionTables(n sql.Node, rename map[sql.TableId]string) (sql.Node
 // getHighestProjection returns a set of projection expressions responsible
 // for the input node's schema, or false if an aggregate or set type is
 // found (which we cannot generate named projections for yet).
-func getHighestProjection(n sql.Node) (sql.Expression, bool, error) {
-	sch := n.Schema()
+func getHighestProjection(ctx *sql.Context, n sql.Node) (sql.Expression, bool, error) {
+	sch := n.Schema(ctx)
 	for n != nil {
-		if !sch.Equals(n.Schema()) {
+		if !sch.Equals(n.Schema(ctx)) {
 			break
 		}
 		var proj []sql.Expression
@@ -272,14 +272,14 @@ func getHighestProjection(n sql.Node) (sql.Expression, bool, error) {
 		case *plan.Project:
 			proj = nn.Projections
 		case *plan.JoinNode:
-			left, ok, err := getHighestProjection(nn.Left())
+			left, ok, err := getHighestProjection(ctx, nn.Left())
 			if err != nil {
 				return nil, false, err
 			}
 			if !ok {
 				return nil, false, nil
 			}
-			right, ok, err := getHighestProjection(nn.Right())
+			right, ok, err := getHighestProjection(ctx, nn.Right())
 			if err != nil {
 				return nil, false, err
 			}
@@ -310,7 +310,7 @@ func getHighestProjection(n sql.Node) (sql.Expression, bool, error) {
 		case plan.TableIdNode:
 			colset := nn.Columns()
 			idx := 0
-			sch := n.Schema()
+			sch := n.Schema(ctx)
 			for id, hasNext := colset.Next(1); hasNext; id, hasNext = colset.Next(id + 1) {
 				col := sch[idx]
 				proj = append(proj, expression.NewGetFieldWithTable(int(id), int(id), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable))

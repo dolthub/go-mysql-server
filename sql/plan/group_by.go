@@ -63,7 +63,7 @@ func (g *GroupBy) IsReadOnly() bool {
 }
 
 // Schema implements the Node interface.
-func (g *GroupBy) Schema() sql.Schema {
+func (g *GroupBy) Schema(_ *sql.Context) sql.Schema {
 	var s = make(sql.Schema, len(g.SelectedExprs))
 	for i, e := range g.SelectedExprs {
 		var name string

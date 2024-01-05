@@ -52,8 +52,8 @@ func (f *FulltextFilterTable) String() string {
 }
 
 // Schema implements the interface sql.IndexedTable.
-func (f *FulltextFilterTable) Schema() sql.Schema {
-	return f.Table.Schema()
+func (f *FulltextFilterTable) Schema(ctx *sql.Context) sql.Schema {
+	return f.Table.Schema(ctx)
 }
 
 // Collation implements the interface sql.IndexedTable.
@@ -87,7 +87,7 @@ func (f *FulltextFilterTable) PartitionRows(ctx *sql.Context, partition sql.Part
 			return nil, fmt.Errorf("expected WORD to be a string, but had type `%T`", words)
 		}
 	}
-	collation := fulltext.GetCollationFromSchema(ctx, f.MatchAgainst.DocCountTable.Schema())
+	collation := fulltext.GetCollationFromSchema(ctx, f.MatchAgainst.DocCountTable.Schema(ctx))
 	parser, err := fulltext.NewDefaultParser(ctx, collation, wordsStr)
 	if err != nil {
 		return nil, err
@@ -203,7 +203,7 @@ func (f *fulltextFilterTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 					return nil, io.EOF
 				}
 				lookup := sql.IndexLookup{Ranges: []sql.Range{{
-					sql.ClosedRangeColumnExpr(word, word, f.matchAgainst.DocCountTable.Schema()[0].Type),
+					sql.ClosedRangeColumnExpr(word, word, f.matchAgainst.DocCountTable.Schema(ctx)[0].Type),
 				}}, Index: f.docCountIndex}
 
 				docCountData := f.matchAgainst.DocCountTable.IndexedAccess(lookup)
@@ -235,7 +235,7 @@ func (f *fulltextFilterTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 			// Get the key so that we may get rows from the parent table
 			ranges := make(sql.Range, len(docRow)-2)
 			for i, val := range docRow[1 : len(docRow)-1] {
-				ranges[i] = sql.ClosedRangeColumnExpr(val, val, f.matchAgainst.DocCountTable.Schema()[i+1].Type)
+				ranges[i] = sql.ClosedRangeColumnExpr(val, val, f.matchAgainst.DocCountTable.Schema(ctx)[i+1].Type)
 			}
 			lookup := sql.IndexLookup{Ranges: []sql.Range{ranges}, Index: f.parentIndex}
 

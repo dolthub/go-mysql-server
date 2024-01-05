@@ -70,7 +70,7 @@ func (n *ShowIndexes) IsReadOnly() bool {
 }
 
 // Schema implements the Node interface.
-func (n *ShowIndexes) Schema() sql.Schema {
+func (n *ShowIndexes) Schema(_ *sql.Context) sql.Schema {
 	return sql.Schema{
 		&sql.Column{Name: "Table", Type: types.LongText},
 		&sql.Column{Name: "Non_unique", Type: types.Int32},

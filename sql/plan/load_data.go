@@ -66,7 +66,7 @@ func (l *LoadData) String() string {
 	return pr.String()
 }
 
-func (l *LoadData) Schema() sql.Schema {
+func (l *LoadData) Schema(_ *sql.Context) sql.Schema {
 	return l.DestSch
 }
 

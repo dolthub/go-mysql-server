@@ -144,7 +144,7 @@ func (r *RecursiveCte) WithWorking(t *RecursiveTable) *RecursiveCte {
 }
 
 // Schema implements sql.Node
-func (r *RecursiveCte) Schema() sql.Schema {
+func (r *RecursiveCte) Schema(_ *sql.Context) sql.Schema {
 	return r.schema
 }
 
@@ -297,7 +297,7 @@ func (r *RecursiveTable) String() string {
 	return fmt.Sprintf("RecursiveTable(%s)", r.name)
 }
 
-func (r *RecursiveTable) Schema() sql.Schema {
+func (r *RecursiveTable) Schema(_ *sql.Context) sql.Schema {
 	return r.schema
 }
 

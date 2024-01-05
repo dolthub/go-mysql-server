@@ -66,7 +66,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 		// them all in now that the destination is resolved.
 		// TODO: setting the plan field directly is not great
 		if len(columns) == 0 && len(destScope.cols) > 0 && rt != nil {
-			schema := rt.Schema()
+			schema := rt.Schema(b.ctx)
 			columns = make([]string, len(schema))
 			for i, col := range schema {
 				// Tables with any generated column must always supply a column list, so this is always an error
@@ -77,9 +77,9 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 			}
 		}
 	}
-	sch := destScope.node.Schema()
+	sch := destScope.node.Schema(b.ctx)
 	if rt != nil {
-		sch = b.resolveSchemaDefaults(destScope, rt.Schema())
+		sch = b.resolveSchemaDefaults(destScope, rt.Schema(b.ctx))
 	}
 	srcScope := b.insertRowsToNode(inScope, i.Rows, columns, sch)
 
@@ -220,7 +220,7 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 		startWinCnt = len(inScope.windowFuncs)
 	}
 
-	tableSch := b.resolveSchemaDefaults(inScope, inScope.node.Schema())
+	tableSch := b.resolveSchemaDefaults(inScope, inScope.node.Schema(b.ctx))
 
 	for i, updateExpr := range e {
 		colName := b.buildScalar(inScope, updateExpr.Name)
@@ -462,7 +462,7 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 				if _, ok := updaters[n.Name()]; ok {
 					rt := getResolvedTable(n)
 					tableScope := inScope.push()
-					for _, c := range rt.Schema() {
+					for _, c := range rt.Schema(b.ctx) {
 						tableScope.addColumn(scopeColumn{
 							db:       rt.SqlDatabase.Name(),
 							table:    strings.ToLower(n.Name()),
@@ -511,7 +511,7 @@ func rowUpdatersByTable(ctx *sql.Context, node sql.Node, ij sql.Node) (map[strin
 			return nil, plan.ErrUpdateForTableNotSupported.New(tableToBeUpdated)
 		}
 
-		keyless := sql.IsKeyless(updatable.Schema())
+		keyless := sql.IsKeyless(updatable.Schema(ctx))
 		if keyless {
 			return nil, sql.ErrUnsupportedFeature.New("error: keyless tables unsupported for UPDATE JOIN")
 		}

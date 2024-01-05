@@ -73,9 +73,9 @@ func (c *Call) IsReadOnly() bool {
 }
 
 // Schema implements the sql.Node interface.
-func (c *Call) Schema() sql.Schema {
+func (c *Call) Schema(ctx *sql.Context) sql.Schema {
 	if c.Procedure != nil {
-		return c.Procedure.Schema()
+		return c.Procedure.Schema(ctx)
 	}
 	return types.OkResultSchema
 }

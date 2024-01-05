@@ -233,7 +233,7 @@ func (t Table) Database() string {
 }
 
 // Schema implements the sql.Table interface.
-func (t *Table) Schema() sql.Schema {
+func (t *Table) Schema(_ *sql.Context) sql.Schema {
 	if t.projectedSchema != nil {
 		return t.projectedSchema
 	}

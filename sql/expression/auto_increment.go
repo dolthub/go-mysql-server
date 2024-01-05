@@ -47,7 +47,7 @@ func NewAutoIncrement(ctx *sql.Context, table sql.Table, given sql.Expression) (
 	}
 
 	var autoCol *sql.Column
-	for _, c := range autoTbl.Schema() {
+	for _, c := range autoTbl.Schema(ctx) {
 		if c.AutoIncrement {
 			autoCol = c
 			break

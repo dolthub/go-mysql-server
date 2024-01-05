@@ -92,9 +92,9 @@ func (s *SetOp) AddDispose(f sql.DisposeFunc) {
 	s.dispose = append(s.dispose, f)
 }
 
-func (s *SetOp) Schema() sql.Schema {
-	ls := s.left.Schema()
-	rs := s.right.Schema()
+func (s *SetOp) Schema(ctx *sql.Context) sql.Schema {
+	ls := s.left.Schema(ctx)
+	rs := s.right.Schema(ctx)
 	ret := make([]*sql.Column, len(ls))
 	for i := range ls {
 		c := *ls[i]

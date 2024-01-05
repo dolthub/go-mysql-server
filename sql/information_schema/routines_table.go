@@ -58,8 +58,8 @@ func (r *routineTable) Database() string {
 	return InformationSchemaDatabaseName
 }
 
-func (r *routineTable) DataLength(_ *Context) (uint64, error) {
-	return uint64(len(r.Schema()) * int(types.Text.MaxByteLength()) * defaultRoutinesTableRowCount), nil
+func (r *routineTable) DataLength(ctx *Context) (uint64, error) {
+	return uint64(len(r.Schema(ctx)) * int(types.Text.MaxByteLength()) * defaultRoutinesTableRowCount), nil
 }
 
 func (r *routineTable) RowCount(ctx *Context) (uint64, bool, error) {
@@ -72,7 +72,7 @@ func (r *routineTable) Name() string {
 }
 
 // Schema implements the sql.Table interface.
-func (r *routineTable) Schema() Schema {
+func (r *routineTable) Schema(_ *Context) Schema {
 	return r.schema
 }
 
@@ -82,7 +82,7 @@ func (r *routineTable) Collation() CollationID {
 }
 
 func (r *routineTable) String() string {
-	return printTable(r.Name(), r.Schema())
+	return printTable(r.Name(), r.Schema(nil)) // TODO-CTX
 }
 
 func (r *routineTable) Partitions(context *Context) (PartitionIter, error) {

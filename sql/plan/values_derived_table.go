@@ -59,7 +59,7 @@ func (v *ValueDerivedTable) Name() string {
 }
 
 // Schema implements the Node interface.
-func (v *ValueDerivedTable) Schema() sql.Schema {
+func (v *ValueDerivedTable) Schema(_ *sql.Context) sql.Schema {
 	if len(v.ExpressionTuples) == 0 {
 		return nil
 	}

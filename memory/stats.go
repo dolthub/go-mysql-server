@@ -55,7 +55,7 @@ func (s *StatsProv) RefreshTableStats(ctx *sql.Context, table sql.Table, db stri
 	}
 
 	ordinals := make(map[string]int)
-	for i, c := range table.Schema() {
+	for i, c := range table.Schema(ctx) {
 		ordinals[strings.ToLower(c.Name)] = i
 	}
 
@@ -100,7 +100,7 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 		}
 	}
 
-	sch := table.Schema()
+	sch := table.Schema(ctx)
 	for key, ordinals := range keys {
 		keyVals := make([]sql.Row, len(sample))
 		for i, row := range sample {

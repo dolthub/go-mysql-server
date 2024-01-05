@@ -68,7 +68,7 @@ func TestCrossJoin(t *testing.T) {
 		plan.NewResolvedTable(rtable, nil, nil),
 	)
 
-	require.Equal(resultSchema, j.Schema())
+	require.Equal(resultSchema, j.Schema(ctx))
 
 	iter, err := DefaultBuilder.Build(ctx, j, nil)
 	require.NoError(err)

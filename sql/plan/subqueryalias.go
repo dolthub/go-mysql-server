@@ -95,8 +95,8 @@ func (sq *SubqueryAlias) IsReadOnly() bool {
 }
 
 // Schema implements the Node interface.
-func (sq *SubqueryAlias) Schema() sql.Schema {
-	childSchema := sq.Child.Schema()
+func (sq *SubqueryAlias) Schema(ctx *sql.Context) sql.Schema {
+	childSchema := sq.Child.Schema(ctx)
 	schema := make(sql.Schema, len(childSchema))
 	for i, col := range childSchema {
 		c := *col

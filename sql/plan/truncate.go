@@ -79,7 +79,7 @@ func (p *Truncate) DatabaseName() string {
 }
 
 // Schema implements the Node interface.
-func (p *Truncate) Schema() sql.Schema {
+func (p *Truncate) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 

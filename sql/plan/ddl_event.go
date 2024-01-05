@@ -103,7 +103,7 @@ func (c *CreateEvent) IsReadOnly() bool {
 }
 
 // Schema implements the sql.Node interface.
-func (c *CreateEvent) Schema() sql.Schema {
+func (c *CreateEvent) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 
@@ -609,7 +609,7 @@ func (d *DropEvent) String() string {
 }
 
 // Schema implements the sql.Node interface.
-func (d *DropEvent) Schema() sql.Schema {
+func (d *DropEvent) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 

@@ -31,7 +31,7 @@ func NewShowPrivileges() *ShowPrivileges {
 }
 
 // Schema implements the interface sql.Node.
-func (n *ShowPrivileges) Schema() sql.Schema {
+func (n *ShowPrivileges) Schema(_ *sql.Context) sql.Schema {
 	return sql.Schema{
 		&sql.Column{Name: "Privilege", Type: types.LongText},
 		&sql.Column{Name: "Context", Type: types.LongText},

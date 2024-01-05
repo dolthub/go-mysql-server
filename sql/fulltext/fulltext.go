@@ -224,7 +224,7 @@ func GetKeyColumns(ctx *sql.Context, parent sql.Table) (KeyColumns, []*sql.Colum
 			}
 
 			// Create a map from schema column expression to position
-			parentSch := parent.Schema()
+			parentSch := parent.Schema(ctx)
 			parentColMap := GetParentColumnMap(parentSch)
 
 			// Map from expression to position
@@ -547,7 +547,7 @@ func CreateFulltextIndexes(ctx *sql.Context, database Database, parent sql.Table
 	if _, ok = fulltextAlterable.(sql.StatisticsTable); !ok {
 		return sql.ErrFullTextNotSupported.New()
 	}
-	tblSch := parent.Schema()
+	tblSch := parent.Schema(ctx)
 
 	// Grab the key columns, which we will share among all indexes
 	keyCols, insertCols, err := GetKeyColumns(ctx, fulltextAlterable)

@@ -32,7 +32,7 @@ func NewAnalyze(names []sql.Table) *AnalyzeTable {
 
 // Schema implements the interface sql.Node.
 // TODO: should be |Tables|Op|Msg_type|Msg_text|
-func (n *AnalyzeTable) Schema() sql.Schema {
+func (n *AnalyzeTable) Schema(_ *sql.Context) sql.Schema {
 	return analyzeSchema
 }
 

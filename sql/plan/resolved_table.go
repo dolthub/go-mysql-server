@@ -183,8 +183,8 @@ func TableDebugString(table sql.Table, additionalChildren ...string) string {
 			columns[i] = strings.ToLower(c)
 		}
 	} else {
-		columns = make([]string, len(table.Schema()))
-		for i, c := range table.Schema() {
+		columns = make([]string, len(table.Schema(nil))) // TODO-CTX
+		for i, c := range table.Schema(nil) {            // TODO-CTX
 			columns[i] = strings.ToLower(c.Name)
 		}
 	}

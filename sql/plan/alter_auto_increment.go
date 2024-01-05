@@ -73,7 +73,7 @@ func (p *AlterAutoIncrement) CollationCoercibility(ctx *sql.Context) (collation 
 	return sql.Collation_binary, 7
 }
 
-func (p *AlterAutoIncrement) Schema() sql.Schema { return nil }
+func (p *AlterAutoIncrement) Schema(_ *sql.Context) sql.Schema { return nil }
 
 func (p AlterAutoIncrement) String() string {
 	pr := sql.NewTreePrinter()

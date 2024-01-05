@@ -69,7 +69,7 @@ func rowUpdatersByTable(ctx *sql.Context, node sql.Node, ij sql.Node) (map[strin
 			return nil, plan.ErrUpdateForTableNotSupported.New(tableToBeUpdated)
 		}
 
-		keyless := sql.IsKeyless(updatable.Schema())
+		keyless := sql.IsKeyless(updatable.Schema(ctx))
 		if keyless {
 			return nil, sql.ErrUnsupportedFeature.New("error: keyless tables unsupported for UPDATE JOIN")
 		}

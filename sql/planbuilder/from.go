@@ -354,7 +354,7 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 			tableName := strings.ToLower(t.As.String())
 			tabId := outScope.addTable(tableName)
 			var cols sql.ColSet
-			for _, c := range vdt.Schema() {
+			for _, c := range vdt.Schema(b.ctx) {
 				id := outScope.newColumn(scopeColumn{col: c.Name, db: c.DatabaseSource, table: tableName, typ: c.Type, nullable: c.Nullable})
 				cols.Add(sql.ColumnId(id))
 			}
@@ -506,7 +506,7 @@ func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope
 
 	tabId := outScope.addTable(name)
 	var colset sql.ColSet
-	for _, c := range newAlias.Schema() {
+	for _, c := range newAlias.Schema(b.ctx) {
 		id := outScope.newColumn(scopeColumn{
 			db:    database.Name(),
 			table: name,
@@ -642,9 +642,9 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, name string, asof *ast.
 
 	if view := b.resolveView(name, database, asOfLit); view != nil {
 		outScope.node = view
-		tabId := outScope.addTable(strings.ToLower(view.Schema()[0].Name))
+		tabId := outScope.addTable(strings.ToLower(view.Schema(b.ctx)[0].Name))
 		var cols sql.ColSet
-		for _, c := range view.Schema() {
+		for _, c := range view.Schema(b.ctx) {
 			id := outScope.newColumn(scopeColumn{
 				db:          db,
 				table:       name,
@@ -685,7 +685,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, name string, asof *ast.
 	}
 
 	// TODO: this is maybe too broad for this method, we don't need this for some statements
-	if tab.Schema().HasVirtualColumns() {
+	if tab.Schema(b.ctx).HasVirtualColumns() {
 		tab = b.buildVirtualTableScan(db, tab)
 	}
 
@@ -698,7 +698,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, name string, asof *ast.
 	tabId := outScope.addTable(strings.ToLower(tab.Name()))
 	var cols sql.ColSet
 
-	for _, c := range tab.Schema() {
+	for _, c := range tab.Schema(b.ctx) {
 		id := outScope.newColumn(scopeColumn{
 			db:          db,
 			table:       strings.ToLower(tab.Name()),

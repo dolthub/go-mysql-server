@@ -51,7 +51,7 @@ func (s *ShowReplicaStatus) String() string {
 	return "SHOW REPLICA STATUS"
 }
 
-func (s *ShowReplicaStatus) Schema() sql.Schema {
+func (s *ShowReplicaStatus) Schema(_ *sql.Context) sql.Schema {
 	return sql.Schema{
 		{Name: "Replica_IO_State", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
 		{Name: "Source_Host", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 255), Default: nil, Nullable: false},

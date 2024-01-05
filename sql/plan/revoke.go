@@ -38,7 +38,7 @@ var _ sql.Databaser = (*Revoke)(nil)
 var _ sql.CollationCoercible = (*Revoke)(nil)
 
 // Schema implements the interface sql.Node.
-func (n *Revoke) Schema() sql.Schema {
+func (n *Revoke) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -440,7 +440,7 @@ func NewRevokeAll(users []UserName) *RevokeAll {
 }
 
 // Schema implements the interface sql.Node.
-func (n *RevokeAll) Schema() sql.Schema {
+func (n *RevokeAll) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -514,7 +514,7 @@ func NewRevokeRole(roles []UserName, users []UserName) *RevokeRole {
 }
 
 // Schema implements the interface sql.Node.
-func (n *RevokeRole) Schema() sql.Schema {
+func (n *RevokeRole) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -626,7 +626,7 @@ func NewRevokeProxy(on UserName, from []UserName) *RevokeProxy {
 }
 
 // Schema implements the interface sql.Node.
-func (n *RevokeProxy) Schema() sql.Schema {
+func (n *RevokeProxy) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 

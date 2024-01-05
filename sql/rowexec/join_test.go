@@ -30,6 +30,9 @@ import (
 
 func TestJoinSchema(t *testing.T) {
 	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
 	t1 := plan.NewResolvedTable(memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo", Type: types.Int64},
 	}), nil), nil, nil)
@@ -40,7 +43,7 @@ func TestJoinSchema(t *testing.T) {
 
 	t.Run("inner", func(t *testing.T) {
 		j := plan.NewInnerJoin(t1, t2, nil)
-		result := j.Schema()
+		result := j.Schema(ctx)
 
 		require.Equal(t, sql.Schema{
 			{Name: "a", Source: "foo", Type: types.Int64},
@@ -50,7 +53,7 @@ func TestJoinSchema(t *testing.T) {
 
 	t.Run("left", func(t *testing.T) {
 		j := plan.NewLeftOuterJoin(t1, t2, nil)
-		result := j.Schema()
+		result := j.Schema(ctx)
 
 		require.Equal(t, sql.Schema{
 			{Name: "a", Source: "foo", Type: types.Int64},
@@ -60,7 +63,7 @@ func TestJoinSchema(t *testing.T) {
 
 	t.Run("right", func(t *testing.T) {
 		j := plan.NewRightOuterJoin(t1, t2, nil)
-		result := j.Schema()
+		result := j.Schema(ctx)
 
 		require.Equal(t, sql.Schema{
 			{Name: "a", Source: "foo", Type: types.Int64, Nullable: true},

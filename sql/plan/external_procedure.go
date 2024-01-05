@@ -54,7 +54,7 @@ func (n *ExternalProcedure) String() string {
 }
 
 // Schema implements the interface sql.Node.
-func (n *ExternalProcedure) Schema() sql.Schema {
+func (n *ExternalProcedure) Schema(_ *sql.Context) sql.Schema {
 	return n.ExternalStoredProcedureDetails.Schema
 }
 

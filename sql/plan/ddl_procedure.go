@@ -84,7 +84,7 @@ func (c *CreateProcedure) IsReadOnly() bool {
 }
 
 // Schema implements the sql.Node interface.
-func (c *CreateProcedure) Schema() sql.Schema {
+func (c *CreateProcedure) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 

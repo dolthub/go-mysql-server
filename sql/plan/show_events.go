@@ -75,7 +75,7 @@ func (s *ShowEvents) Children() []sql.Node {
 }
 
 // Schema implements the sql.Node interface.
-func (s *ShowEvents) Schema() sql.Schema {
+func (s *ShowEvents) Schema(_ *sql.Context) sql.Schema {
 	return showEventsSchema
 }
 

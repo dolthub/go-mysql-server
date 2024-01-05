@@ -48,7 +48,7 @@ func newRangeHeapJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinN
 		primary:       l,
 		cond:          j.Filter,
 		joinType:      j.Op,
-		rowSize:       len(row) + len(j.Left().Schema()) + len(j.Right().Schema()),
+		rowSize:       len(row) + len(j.Left().Schema(ctx)) + len(j.Right().Schema(ctx)),
 		scopeLen:      j.ScopeLen,
 		b:             b,
 		rangeHeapPlan: rhp,
@@ -224,7 +224,7 @@ func (iter *rangeHeapJoinIter) initializeHeap(ctx *sql.Context, builder sql.Node
 		return err
 	}
 	iter.activeRanges = nil
-	iter.rangeHeapPlan.ComparisonType = iter.rangeHeapPlan.Schema()[iter.rangeHeapPlan.MaxColumnIndex].Type
+	iter.rangeHeapPlan.ComparisonType = iter.rangeHeapPlan.Schema(ctx)[iter.rangeHeapPlan.MaxColumnIndex].Type
 
 	iter.pendingRow, err = iter.childRowIter.Next(ctx)
 	if err == io.EOF {

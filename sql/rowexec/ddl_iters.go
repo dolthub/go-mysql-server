@@ -484,7 +484,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		}}
 	}
 
-	oldPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema())
+	oldPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema(ctx))
 	newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, newSch, renames...)
 
 	rewriteRequired := false
@@ -1020,14 +1020,14 @@ func (c *createPkIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return sql.NewRow(types.NewOkResult(0)), nil
 }
 
-func (c createPkIter) Close(context *sql.Context) error {
+func (c createPkIter) Close(_ *sql.Context) error {
 	return nil
 }
 
 func (c *createPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) error {
 	newSchema := addKeyToSchema(rwt.Name(), c.targetSchema, c.columns)
 
-	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), newSchema
+	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema(ctx)), newSchema
 
 	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, nil, nil, c.columns)
 	if err != nil {
@@ -1131,7 +1131,7 @@ func (d *dropPkIter) Close(context *sql.Context) error {
 func (d *dropPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) error {
 	newSchema := dropKeyFromSchema(d.targetSchema)
 
-	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), newSchema
+	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema(ctx)), newSchema
 
 	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, nil, nil, nil)
 	if err != nil {
@@ -1252,7 +1252,7 @@ func (i *addColumnIter) UpdateRowsWithDefaults(ctx *sql.Context, table sql.Table
 		return err
 	}
 
-	schema := updatable.Schema()
+	schema := updatable.Schema(ctx)
 	idx := -1
 	for j, col := range schema {
 		if col.Name == i.a.Column().Name {
@@ -1331,7 +1331,7 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 		return false, err
 	}
 
-	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), sql.SchemaToPrimaryKeySchema(rwt, newSch)
+	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema(ctx)), sql.SchemaToPrimaryKeySchema(rwt, newSch)
 
 	rewriteRequired := false
 	if i.a.Column().Default != nil || i.a.Column().Generated != nil || !i.a.Column().Nullable || i.a.Column().AutoIncrement {
@@ -1618,7 +1618,7 @@ func (i *dropColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable)
 		return false, err
 	}
 
-	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), sql.SchemaToPrimaryKeySchema(rwt, newSch)
+	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema(ctx)), sql.SchemaToPrimaryKeySchema(rwt, newSch)
 	droppedColIdx := oldPkSchema.IndexOf(i.d.Column, i.alterable.Name())
 
 	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, oldPkSchema.Schema[droppedColIdx], nil)
@@ -1826,7 +1826,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 
 		// Make sure that all columns are valid, in the table, and there are no duplicates
 		seenCols := make(map[string]bool)
-		for _, col := range indexable.Schema() {
+		for _, col := range indexable.Schema(ctx) {
 			seenCols[strings.ToLower(col.Name)] = false
 		}
 		for _, indexCol := range n.Columns {
@@ -2038,7 +2038,7 @@ func buildIndex(ctx *sql.Context, n *plan.AlterIndex, ibt sql.IndexBuildingTable
 	rowIter := sql.NewTableRowIter(ctx, ibt, partitions)
 
 	// Our table scan needs to include projections for virtual columns if there are any
-	isVirtual := ibt.Schema().HasVirtualColumns()
+	isVirtual := ibt.Schema(ctx).HasVirtualColumns()
 	var projections []sql.Expression
 	if isVirtual {
 		projections = virtualTableProjections(n.TargetSchema(), ibt.Name())
@@ -2190,7 +2190,7 @@ func (b *BaseBuilder) executeAlterAutoInc(ctx *sql.Context, n *plan.AlterAutoInc
 	}
 
 	// No-op if the table doesn't already have an auto increment column.
-	if !autoTbl.Schema().HasAutoIncrement() {
+	if !autoTbl.Schema(ctx).HasAutoIncrement() {
 		return nil
 	}
 

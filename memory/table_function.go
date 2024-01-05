@@ -65,7 +65,7 @@ func (s TableFunc) DebugString() string {
 	return pr.String()
 }
 
-func (s TableFunc) Schema() sql.Schema {
+func (s TableFunc) Schema(_ *sql.Context) sql.Schema {
 	schema := []*sql.Column{
 		{
 			DatabaseSource: s.db.Name(),

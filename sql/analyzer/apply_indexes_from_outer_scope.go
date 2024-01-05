@@ -292,7 +292,7 @@ func tablesInScope(scope *plan.Scope) []string {
 func Schemas(nodes []sql.Node) sql.Schema {
 	var schema sql.Schema
 	for _, n := range nodes {
-		schema = append(schema, n.Schema()...)
+		schema = append(schema, n.Schema(nil)...) // TODO-CTX
 	}
 	return schema
 }

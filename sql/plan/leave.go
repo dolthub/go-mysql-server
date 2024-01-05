@@ -46,7 +46,7 @@ func (l *Leave) String() string {
 }
 
 // Schema implements the interface sql.Node.
-func (l *Leave) Schema() sql.Schema {
+func (l *Leave) Schema(_ *sql.Context) sql.Schema {
 	return nil
 }
 

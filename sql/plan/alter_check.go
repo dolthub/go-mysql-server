@@ -118,7 +118,7 @@ func (c *CreateCheck) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 	return sql.Collation_binary, 7
 }
 
-func (c *CreateCheck) Schema() sql.Schema { return nil }
+func (c *CreateCheck) Schema(_ *sql.Context) sql.Schema { return nil }
 
 func (c CreateCheck) String() string {
 	pr := sql.NewTreePrinter()
@@ -158,7 +158,7 @@ func (d *DropCheck) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 	return sql.Collation_binary, 7
 }
 
-func (d *DropCheck) Schema() sql.Schema { return nil }
+func (d *DropCheck) Schema(_ *sql.Context) sql.Schema { return nil }
 
 func (d *DropCheck) IsReadOnly() bool { return false }
 
