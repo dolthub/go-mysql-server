@@ -16,13 +16,12 @@ package enginetest
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/memory"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/sql/memo"
-
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/memo"
 )
 
 type JoinOpTests struct {
