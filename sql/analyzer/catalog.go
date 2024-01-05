@@ -81,6 +81,20 @@ func (c *Catalog) GetBinlogReplicaController() binlogreplication.BinlogReplicaCo
 	return c.BinlogReplicaController
 }
 
+func (c *Catalog) WithTableFunctions(fns []sql.TableFunction) (sql.TableFunctionProvider, error) {
+	if tfp, ok := c.DbProvider.(sql.TableFunctionProvider); !ok {
+		return nil, fmt.Errorf("catalog does not implement sql.TableFunctionProvider")
+	} else {
+		ret := *c
+		newProv, err := tfp.WithTableFunctions(fns)
+		if err != nil {
+			return nil, err
+		}
+		ret.DbProvider = newProv.(sql.DatabaseProvider)
+		return &ret, nil
+	}
+}
+
 func (c *Catalog) AllDatabases(ctx *sql.Context) []sql.Database {
 	var dbs []sql.Database
 	dbs = append(dbs, c.InfoSchema)

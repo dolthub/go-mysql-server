@@ -15,6 +15,7 @@
 package test
 
 import (
+	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -64,6 +65,20 @@ func (c *Catalog) RemoveDatabase(ctx *sql.Context, dbName string) error {
 		return mut.DropDatabase(ctx, dbName)
 	} else {
 		return sql.ErrImmutableDatabaseProvider.New()
+	}
+}
+
+func (c *Catalog) WithTableFunctions(fns []sql.TableFunction) (sql.TableFunctionProvider, error) {
+	if tfp, ok := c.provider.(sql.TableFunctionProvider); !ok {
+		return nil, fmt.Errorf("catalog does not implement sql.TableFunctionProvider")
+	} else {
+		ret := *c
+		newProv, err := tfp.WithTableFunctions(fns)
+		if err != nil {
+			return nil, err
+		}
+		ret.provider = newProv.(sql.DatabaseProvider)
+		return &ret, nil
 	}
 }
 
