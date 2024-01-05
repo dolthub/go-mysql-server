@@ -39,8 +39,8 @@ var biasedCosters = map[string]memo.Coster{
 	"rangeHeap": memo.NewRangeHeapBiasedCoster(),
 }
 
-func TestJoinOps(t *testing.T, harness Harness) {
-	for _, tt := range joinOpTests {
+func TestJoinOps(t *testing.T, harness Harness, tests []joinOpTest) {
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := mustNewEngine(t, harness)
 			defer e.Close()
@@ -56,16 +56,18 @@ func TestJoinOps(t *testing.T, harness Harness) {
 				}
 			}
 
-			tfp, ok := e.EngineAnalyzer().Catalog.DbProvider.(sql.TableFunctionProvider)
-			if !ok {
-				t.Errorf("these tests require the sql.DatabaseProvider to implement sql.TableFunctionProvider")
-			}
+			if _, ok := e.EngineAnalyzer().Catalog.DbProvider.(*memory.DbProvider); ok {
+				tfp, ok := e.EngineAnalyzer().Catalog.DbProvider.(sql.TableFunctionProvider)
+				if !ok {
+					t.Errorf("these tests require the sql.DatabaseProvider to implement sql.TableFunctionProvider")
+				}
 
-			newPro, err := tfp.WithTableFunctions([]sql.TableFunction{memory.RequiredLookupTable{}})
-			if err != nil {
-				t.Errorf(err.Error())
+				newPro, err := tfp.WithTableFunctions([]sql.TableFunction{memory.RequiredLookupTable{}})
+				if err != nil {
+					t.Errorf(err.Error())
+				}
+				e.EngineAnalyzer().Catalog.DbProvider = newPro.(sql.DatabaseProvider)
 			}
-			e.EngineAnalyzer().Catalog.DbProvider = newPro.(sql.DatabaseProvider)
 
 			for k, c := range biasedCosters {
 				e.EngineAnalyzer().Coster = c
@@ -77,11 +79,36 @@ func TestJoinOps(t *testing.T, harness Harness) {
 	}
 }
 
-var joinOpTests = []struct {
+type joinOpTest struct {
 	name  string
 	setup [][]string
 	tests []JoinOpTests
-}{
+}
+
+var EngineOnlyJoinOpTests = []joinOpTest{
+	{
+		name: "required indexes avoid invalid plans",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table xy (x int primary key, y int, unique index y_idx(y));",
+				"CREATE table uv (u int primary key, v int);",
+				"insert into xy values (1,0), (2,1), (0,2), (3,3);",
+				"insert into uv values (0,1), (1,1), (2,2), (3,2);",
+				`analyze table xy update histogram on x using data '{"row_count":1000}'`,
+				`analyze table uv update histogram on u using data '{"row_count":1000}'`,
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select * from xy left join required_lookup_table('s', 2) on x = s",
+				Expected: []sql.Row{{0, 2, 0}, {1, 0, 1}, {2, 1, nil}, {3, 3, nil}},
+			},
+		},
+	},
+}
+
+var DefaultJoinOpTests = []joinOpTest{
 	{
 		name: "required indexes avoid invalid plans",
 		setup: [][]string{
