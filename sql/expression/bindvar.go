@@ -27,7 +27,7 @@ type BindVar struct {
 var _ sql.Expression = (*BindVar)(nil)
 var _ sql.CollationCoercible = (*BindVar)(nil)
 
-func NewBindVar(name string) sql.Expression {
+func NewBindVar(name string) *BindVar {
 	return &BindVar{Name: name, Typ: types.NewDeferredType(name)}
 }
 
