@@ -14,7 +14,10 @@
 
 package sql
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type Explainable interface {
 	GetAnalyzeString() string
@@ -83,4 +86,38 @@ func (c CountingRowIter) Next(ctx *Context) (Row, error) {
 		c.Stats.ActualRowCount++
 	}
 	return res, err
+}
+
+type Describable interface {
+	Describe(options DescribeOptions) string
+}
+
+func Describe(n fmt.Stringer, options DescribeOptions) string {
+	if d, ok := n.(Describable); ok {
+		return d.Describe(options)
+	}
+	if d, ok := n.(DebugStringer); ok && options.Debug {
+		return d.DebugString()
+	}
+	return n.String()
+}
+
+type DescribeOptions struct {
+	Analyze   bool
+	Estimates bool
+	Debug     bool
+}
+
+func (d DescribeOptions) String() string {
+	result := ""
+	if d.Analyze {
+		result = result + "analyze,"
+	} else if d.Estimates {
+		result = result + "estimates,"
+	}
+	if d.Debug {
+		result = result + "debug,"
+	}
+	result = strings.TrimSuffix(result, ",")
+	return result
 }
