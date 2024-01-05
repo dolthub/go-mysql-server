@@ -53,7 +53,7 @@ func (b *BaseBuilder) buildShowCharset(ctx *sql.Context, n *plan.ShowCharset, ro
 }
 
 func (b *BaseBuilder) buildDescribeQuery(ctx *sql.Context, n *plan.DescribeQuery, row sql.Row) (sql.RowIter, error) {
-	if n.Analyze {
+	if n.Format.Analyze {
 		if !n.IsReadOnly() {
 			return nil, errors.New("cannot analyze statement that could have side effects")
 		}
@@ -74,12 +74,7 @@ func (b *BaseBuilder) buildDescribeQuery(ctx *sql.Context, n *plan.DescribeQuery
 	}
 
 	var rows []sql.Row
-	var formatString string
-	if n.Format == "debug" {
-		formatString = sql.DebugString(n.Child)
-	} else {
-		formatString = n.Child.String()
-	}
+	formatString := sql.Describe(n.Child, n.Format)
 
 	for _, l := range strings.Split(formatString, "\n") {
 		if strings.TrimSpace(l) != "" {

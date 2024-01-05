@@ -15,6 +15,7 @@
 package planbuilder
 
 import (
+	"github.com/dolthub/go-mysql-server/sql"
 	"strings"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -25,17 +26,26 @@ import (
 func (b *Builder) buildExplain(inScope *scope, n *sqlparser.Explain) (outScope *scope) {
 	outScope = inScope.push()
 	childScope := b.build(inScope, n.Statement, "")
-	explainFmt := sqlparser.TreeStr
-	switch strings.ToLower(n.ExplainFormat) {
-	case "", sqlparser.TreeStr:
-	// tree format, do nothing
-	case "debug":
-		explainFmt = "debug"
-	default:
-		err := errInvalidDescribeFormat.New(n.ExplainFormat, "tree")
-		b.handleErr(err)
+
+	describeOptions := sql.DescribeOptions{
+		Analyze: n.Analyze,
 	}
 
-	outScope.node = plan.NewDescribeQuery(explainFmt, n.Analyze, childScope.node)
+	formatFlags := strings.Split(n.ExplainFormat, "_")
+	for _, flag := range formatFlags {
+		switch strings.ToLower(flag) {
+		case "", sqlparser.TreeStr:
+		// tree format, do nothing
+		case "debug":
+			describeOptions.Debug = true
+		case "estimates":
+			describeOptions.Estimates = true
+		default:
+			err := errInvalidDescribeFormat.New(n.ExplainFormat, "tree")
+			b.handleErr(err)
+		}
+	}
+
+	outScope.node = plan.NewDescribeQuery(describeOptions, childScope.node)
 	return outScope
 }
