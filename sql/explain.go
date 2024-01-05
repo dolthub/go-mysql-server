@@ -19,17 +19,20 @@ import "fmt"
 type Explainable interface {
 	GetAnalyzeString() string
 	SetExplainStats(stats ExplainStats)
+	GetExplainStats() *ExplainStats
 }
 
 type ExplainStats struct {
-	HasStats bool
-	RowCount uint64
-	Cost     float64
+	HasStats           bool
+	EstimatedRowCount  uint64
+	ActualRowCount     uint64
+	NumberOfIterations uint64
+	Cost               float64
 }
 
 // GetEstimatedRowCount implements Explainable
 func (e ExplainStats) GetEstimatedRowCount() uint64 {
-	return e.RowCount
+	return e.EstimatedRowCount
 }
 
 // GetEstimatedCost implements Explainable
@@ -42,10 +45,20 @@ func (e *ExplainStats) GetAnalyzeString() string {
 	if !e.HasStats {
 		return "(No stats)"
 	}
-	return fmt.Sprintf("(cost=%v rows=%v)", e.Cost, e.RowCount)
+	estimatedStats := fmt.Sprintf("(estimated cost=%v rows=%v)", e.Cost, e.EstimatedRowCount)
+	if e.NumberOfIterations == 0 {
+		return estimatedStats
+	}
+	averageRowCount := float64(e.ActualRowCount) / float64(e.NumberOfIterations)
+	actualStats := fmt.Sprintf("(actual rows=%v loops=%v)", averageRowCount, e.NumberOfIterations)
+	return fmt.Sprintf("%s %s", estimatedStats, actualStats)
 }
 
 func (e *ExplainStats) SetExplainStats(newStats ExplainStats) {
 	*e = newStats
 	e.HasStats = true
+}
+
+func (e *ExplainStats) GetExplainStats() *ExplainStats {
+	return e
 }

@@ -666,8 +666,8 @@ func (r *relBase) Cost() float64 {
 
 func ExplainStats(r RelExpr) *sql.ExplainStats {
 	return &sql.ExplainStats{
-		RowCount: r.Group().RelProps.GetStats().RowCount(),
-		Cost:     r.Cost(),
+		EstimatedRowCount: r.Group().RelProps.GetStats().RowCount(),
+		Cost:              r.Cost(),
 	}
 }
 
