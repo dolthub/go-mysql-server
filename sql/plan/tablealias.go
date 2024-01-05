@@ -27,6 +27,7 @@ type TableAlias struct {
 	cols    sql.ColSet
 }
 
+var _ TableIdNode = (*TableAlias)(nil)
 var _ sql.RenameableNode = (*TableAlias)(nil)
 var _ sql.CommentedNode = (*TableAlias)(nil)
 var _ sql.CollationCoercible = (*TableAlias)(nil)

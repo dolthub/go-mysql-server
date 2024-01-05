@@ -374,7 +374,13 @@ func statsForRel(rel RelExpr) sql.Statistic {
 		stat = &stats.Statistic{RowCnt: 10}
 
 	case SourceRel:
-		if tn, ok := rel.TableIdNode().(sql.TableNode); ok {
+		var tn sql.TableNode
+		if ta, ok := rel.(*TableAlias); ok {
+			tn, _ = ta.Table.Child.(sql.TableNode)
+		} else {
+			tn, _ = rel.TableIdNode().(sql.TableNode)
+		}
+		if tn != nil {
 			if prov := rel.Group().m.StatsProvider(); prov != nil {
 				if card, err := prov.RowCount(rel.Group().m.Ctx, tn.Database().Name(), tn.Name()); err == nil {
 					stat = &stats.Statistic{RowCnt: card}
