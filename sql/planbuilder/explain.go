@@ -36,6 +36,6 @@ func (b *Builder) buildExplain(inScope *scope, n *sqlparser.Explain) (outScope *
 		b.handleErr(err)
 	}
 
-	outScope.node = plan.NewDescribeQuery(explainFmt, childScope.node)
+	outScope.node = plan.NewDescribeQuery(explainFmt, n.Analyze, childScope.node)
 	return outScope
 }

@@ -75,7 +75,8 @@ func (d Describe) String() string {
 // DescribeQuery returns the description of the query plan.
 type DescribeQuery struct {
 	UnaryNode
-	Format string
+	Format  string
+	Analyze bool
 }
 
 var _ sql.Node = (*DescribeQuery)(nil)
@@ -116,8 +117,8 @@ var DescribeSchema = sql.Schema{
 }
 
 // NewDescribeQuery creates a new DescribeQuery node.
-func NewDescribeQuery(format string, child sql.Node) *DescribeQuery {
-	return &DescribeQuery{UnaryNode{Child: child}, format}
+func NewDescribeQuery(format string, analyze bool, child sql.Node) *DescribeQuery {
+	return &DescribeQuery{UnaryNode{Child: child}, format, analyze}
 }
 
 // Schema implements the Node interface.
@@ -150,5 +151,7 @@ func (d *DescribeQuery) Query() sql.Node {
 
 // WithQuery returns a copy of this node with the query node given
 func (d *DescribeQuery) WithQuery(child sql.Node) sql.Node {
-	return NewDescribeQuery(d.Format, child)
+	res := *d
+	res.Child = child
+	return &res
 }

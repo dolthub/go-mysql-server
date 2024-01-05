@@ -79,7 +79,7 @@ func TestDescribeQuery(t *testing.T) {
 		{Source: "foo", Name: "b", Type: types.Text},
 	}), nil)
 
-	node := plan.NewDescribeQuery("tree", plan.NewProject(
+	node := plan.NewDescribeQuery("tree", false, plan.NewProject(
 		[]sql.Expression{
 			expression.NewGetFieldWithTable(1, 0, types.Text, "", "foo", "a", false),
 			expression.NewGetFieldWithTable(1, 1, types.Text, "", "foo", "b", false),
