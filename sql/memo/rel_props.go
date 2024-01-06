@@ -38,7 +38,6 @@ type relProps struct {
 	tableNodes   []plan.TableIdNode
 
 	stat sql.Statistic
-	card float64
 
 	Distinct distinctOp
 	Limit    sql.Expression

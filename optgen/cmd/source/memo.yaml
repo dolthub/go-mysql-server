@@ -13,6 +13,7 @@ exprs:
   join: true
   attrs:
   - [lookup, "*IndexScan"]
+  - [injective, "bool"]
 - name: "RangeHeapJoin"
   join: true
   attrs:

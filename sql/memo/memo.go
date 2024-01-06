@@ -574,8 +574,6 @@ type relBase struct {
 	n RelExpr
 	// c is this relation's cost while costing and plan reify are separate
 	c float64
-	// cnt is this relations output row count
-	cnt float64
 	// d indicates a RelExpr should be checked for distinctness
 	d distinctOp
 }
