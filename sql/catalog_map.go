@@ -27,11 +27,6 @@ func (t MapCatalog) TableFunction(ctx *Context, name string) (TableFunction, err
 	return nil, fmt.Errorf("table func not found")
 }
 
-func (t MapCatalog) WithTableFunctions(fns []TableFunction) (TableFunctionProvider, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (t MapCatalog) ExternalStoredProcedure(ctx *Context, name string, numOfParams int) (*ExternalStoredProcedureDetails, error) {
 	//TODO implement me
 	panic("implement me")

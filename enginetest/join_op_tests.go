@@ -56,17 +56,8 @@ func TestJoinOps(t *testing.T, harness Harness, tests []joinOpTest) {
 				}
 			}
 
-			if _, ok := e.EngineAnalyzer().Catalog.DbProvider.(*memory.DbProvider); ok {
-				tfp, ok := e.EngineAnalyzer().Catalog.DbProvider.(sql.TableFunctionProvider)
-				if !ok {
-					t.Errorf("these tests require the sql.DatabaseProvider to implement sql.TableFunctionProvider")
-				}
-
-				newPro, err := tfp.WithTableFunctions([]sql.TableFunction{memory.RequiredLookupTable{}})
-				if err != nil {
-					t.Errorf(err.Error())
-				}
-				e.EngineAnalyzer().Catalog.DbProvider = newPro.(sql.DatabaseProvider)
+			if pro, ok := e.EngineAnalyzer().Catalog.DbProvider.(*memory.DbProvider); ok {
+				e.EngineAnalyzer().Catalog.DbProvider = pro.WithTableFunctions([]sql.TableFunction{memory.RequiredLookupTable{}})
 			}
 
 			for k, c := range biasedCosters {
