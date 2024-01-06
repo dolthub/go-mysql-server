@@ -14,8 +14,8 @@ var _ sql.CollationCoercible = ExponentialDistTable{}
 var _ sql.ExecSourceRel = ExponentialDistTable{}
 var _ sql.TableNode = ExponentialDistTable{}
 
-// ExponentialDistTable a simple table function that returns a sequence
-// of integers.
+// ExponentialDistTable a simple table function that returns samples
+// from a parameterized exponential distribution.
 type ExponentialDistTable struct {
 	db     sql.Database
 	name   string
@@ -29,32 +29,32 @@ func (s ExponentialDistTable) UnderlyingTable() sql.Table {
 }
 
 func (s ExponentialDistTable) NewInstance(_ *sql.Context, db sql.Database, args []sql.Expression) (sql.Node, error) {
-	if len(args) != 2 {
-		return nil, fmt.Errorf("sequence table expects 2 arguments: (name, len)")
+	if len(args) != 4 {
+		return nil, fmt.Errorf("exponential_dist table expects 2 arguments: (name, cols, rows, lambda)")
 	}
 	colCntLit, ok := args[0].(*expression.Literal)
 	if !ok {
-		return nil, fmt.Errorf("distribution_gen table expects arguments to be literal expressions")
+		return nil, fmt.Errorf("exponential_dist table expects arguments to be literal expressions")
 	}
 	colCnt, ok := colCntLit.Value().(int64)
 	if !ok {
-		return nil, fmt.Errorf("distribution_gen table expects 1st argument to be column count")
+		return nil, fmt.Errorf("exponential_dist table expects 1st argument to be column count")
 	}
 	rowCntLit, ok := args[1].(*expression.Literal)
 	if !ok {
-		return nil, fmt.Errorf("distribution_gen table expects arguments to be literal expressions")
+		return nil, fmt.Errorf("exponential_dist table expects arguments to be literal expressions")
 	}
 	rowCnt, ok := rowCntLit.Value().(int64)
 	if !ok {
-		return nil, fmt.Errorf("distribution_gen table expects 2nd argument to be row count")
+		return nil, fmt.Errorf("exponential_dist table expects 2nd argument to be row count")
 	}
 	lambdaLit, ok := args[2].(*expression.Literal)
 	if !ok {
-		return nil, fmt.Errorf("distribution_gen table expects arguments to be literal expressions")
+		return nil, fmt.Errorf("exponential_dist table expects arguments to be literal expressions")
 	}
 	lambda, inBounds, _ := types.Float64.Convert(lambdaLit.Value())
 	if !inBounds {
-		return nil, fmt.Errorf("distribution_gen table expects 3rd argument to be row count")
+		return nil, fmt.Errorf("exponential_dist table expects 3rd argument to be row count")
 	}
 	return ExponentialDistTable{db: db, colCnt: int(colCnt), rowCnt: int(rowCnt), lambda: lambda.(float64)}, nil
 }
@@ -73,7 +73,7 @@ func (s ExponentialDistTable) String() string {
 
 func (s ExponentialDistTable) DebugString() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("sequence")
+	_ = pr.WriteNode("normal_dist")
 	children := []string{
 		fmt.Sprintf("columns: %s", s.colCnt),
 		fmt.Sprintf("rows: %s", s.rowCnt),
@@ -139,11 +139,11 @@ func (s ExponentialDistTable) WithDatabase(_ sql.Database) (sql.Node, error) {
 }
 
 func (s ExponentialDistTable) Name() string {
-	return "sequence_table"
+	return "exponential_dist"
 }
 
 func (s ExponentialDistTable) Description() string {
-	return "sequence"
+	return "exponential distribution"
 }
 
 var _ sql.RowIter = (*SequenceTableFnRowIter)(nil)

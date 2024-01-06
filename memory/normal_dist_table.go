@@ -14,8 +14,8 @@ var _ sql.CollationCoercible = NormalDistTable{}
 var _ sql.ExecSourceRel = NormalDistTable{}
 var _ sql.TableNode = NormalDistTable{}
 
-// NormalDistTable a simple table function that returns a sequence
-// of integers.
+// NormalDistTable a simple table function that returns samples
+// from a parameterized normal distribution.
 type NormalDistTable struct {
 	db     sql.Database
 	name   string
@@ -30,40 +30,40 @@ func (s NormalDistTable) UnderlyingTable() sql.Table {
 }
 
 func (s NormalDistTable) NewInstance(_ *sql.Context, db sql.Database, args []sql.Expression) (sql.Node, error) {
-	if len(args) != 2 {
-		return nil, fmt.Errorf("sequence table expects 2 arguments: (name, len)")
+	if len(args) != 5 {
+		return nil, fmt.Errorf("normal_dist table expects 2 arguments: (name, cols, rows, mean, std)")
 	}
 	colCntLit, ok := args[0].(*expression.Literal)
 	if !ok {
-		return nil, fmt.Errorf("distribution_gen table expects arguments to be literal expressions")
+		return nil, fmt.Errorf("normal_dist table expects arguments to be literal expressions")
 	}
 	colCnt, ok := colCntLit.Value().(int64)
 	if !ok {
-		return nil, fmt.Errorf("distribution_gen table expects 1st argument to be column count")
+		return nil, fmt.Errorf("normal_dist table expects 1st argument to be column count")
 	}
 	rowCntLit, ok := args[1].(*expression.Literal)
 	if !ok {
-		return nil, fmt.Errorf("distribution_gen table expects arguments to be literal expressions")
+		return nil, fmt.Errorf("normal_dist table expects arguments to be literal expressions")
 	}
 	rowCnt, ok := rowCntLit.Value().(int64)
 	if !ok {
-		return nil, fmt.Errorf("distribution_gen table expects 2nd argument to be row count")
+		return nil, fmt.Errorf("normal_dist table expects 2nd argument to be row count")
 	}
 	meanLit, ok := args[2].(*expression.Literal)
 	if !ok {
-		return nil, fmt.Errorf("distribution_gen table expects arguments to be literal expressions")
+		return nil, fmt.Errorf("normal_dist table expects arguments to be literal expressions")
 	}
 	mean, inBounds, _ := types.Float64.Convert(meanLit.Value())
 	if !inBounds {
-		return nil, fmt.Errorf("distribution_gen table expects 3rd argument to be row count")
+		return nil, fmt.Errorf("normal_dist table expects 3rd argument to be row count")
 	}
 	stdLit, ok := args[3].(*expression.Literal)
 	if !ok {
-		return nil, fmt.Errorf("distribution_gen table expects arguments to be literal expressions")
+		return nil, fmt.Errorf("normal_dist table expects arguments to be literal expressions")
 	}
 	std, inBounds, _ := types.Float64.Convert(stdLit.Value())
 	if !inBounds {
-		return nil, fmt.Errorf("distribution_gen table expects 4th1 argument to be row count")
+		return nil, fmt.Errorf("normal_dist table expects 4th argument to be row count")
 	}
 
 	return NormalDistTable{db: db, colCnt: int(colCnt), rowCnt: int(rowCnt), mean: mean.(float64), std: std.(float64)}, nil
@@ -83,7 +83,7 @@ func (s NormalDistTable) String() string {
 
 func (s NormalDistTable) DebugString() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("sequence")
+	_ = pr.WriteNode("normal_dist")
 	children := []string{
 		fmt.Sprintf("columns: %s", s.colCnt),
 		fmt.Sprintf("rows: %s", s.rowCnt),
@@ -150,11 +150,11 @@ func (s NormalDistTable) WithDatabase(_ sql.Database) (sql.Node, error) {
 }
 
 func (s NormalDistTable) Name() string {
-	return "sequence_table"
+	return "normal_dist"
 }
 
 func (s NormalDistTable) Description() string {
-	return "sequence"
+	return "normal distribution"
 }
 
 var _ sql.RowIter = (*SequenceTableFnRowIter)(nil)
