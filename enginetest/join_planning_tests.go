@@ -1246,7 +1246,7 @@ join uv d on d.u = c.x`,
 			},
 			{
 				q:     "select * from vals where exists (select * from vals join ranges on val between min and max where min >= 2 and max <= 5)",
-				types: []plan.JoinType{plan.JoinTypeCrossHash, plan.JoinTypeInner},
+				types: []plan.JoinType{plan.JoinTypeCross, plan.JoinTypeInner},
 				exp: []sql.Row{
 					{0},
 					{1},

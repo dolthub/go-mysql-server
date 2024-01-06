@@ -4855,64 +4855,53 @@ inner join pq on true
 	{
 		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i AND c.i = d.i AND c.i = 2`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.i:1!null, a.s:2!null]\n" +
-			" └─ InnerJoin\n" +
+			" ├─ columns: [a.i:2!null, a.s:3!null]\n" +
+			" └─ LookupJoin\n" +
 			"     ├─ AND\n" +
-			"     │   ├─ AND\n" +
-			"     │   │   ├─ AND\n" +
-			"     │   │   │   ├─ Eq\n" +
-			"     │   │   │   │   ├─ b.i:0!null\n" +
-			"     │   │   │   │   └─ c.i:3!null\n" +
-			"     │   │   │   └─ Eq\n" +
-			"     │   │   │       ├─ a.i:1!null\n" +
-			"     │   │   │       └─ c.i:3!null\n" +
-			"     │   │   └─ Eq\n" +
-			"     │   │       ├─ a.i:1!null\n" +
-			"     │   │       └─ d.i:4!null\n" +
+			"     │   ├─ Eq\n" +
+			"     │   │   ├─ b.i:4!null\n" +
+			"     │   │   └─ c.i:0!null\n" +
 			"     │   └─ Eq\n" +
-			"     │       ├─ b.i:0!null\n" +
-			"     │       └─ d.i:4!null\n" +
-			"     ├─ MergeJoin\n" +
-			"     │   ├─ cmp: Eq\n" +
-			"     │   │   ├─ b.i:0!null\n" +
-			"     │   │   └─ a.i:1!null\n" +
-			"     │   ├─ TableAlias(b)\n" +
-			"     │   │   └─ IndexedTableAccess(mytable)\n" +
-			"     │   │       ├─ index: [mytable.i]\n" +
-			"     │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │       ├─ colSet: (3,4)\n" +
-			"     │   │       ├─ tableId: 2\n" +
-			"     │   │       └─ Table\n" +
-			"     │   │           ├─ name: mytable\n" +
-			"     │   │           └─ columns: [i]\n" +
+			"     │       ├─ b.i:4!null\n" +
+			"     │       └─ d.i:1!null\n" +
+			"     ├─ LookupJoin\n" +
+			"     │   ├─ LookupJoin\n" +
+			"     │   │   ├─ TableAlias(c)\n" +
+			"     │   │   │   └─ IndexedTableAccess(mytable)\n" +
+			"     │   │   │       ├─ index: [mytable.i]\n" +
+			"     │   │   │       ├─ static: [{[2, 2]}]\n" +
+			"     │   │   │       ├─ colSet: (5,6)\n" +
+			"     │   │   │       ├─ tableId: 3\n" +
+			"     │   │   │       └─ Table\n" +
+			"     │   │   │           ├─ name: mytable\n" +
+			"     │   │   │           └─ columns: [i]\n" +
+			"     │   │   └─ TableAlias(d)\n" +
+			"     │   │       └─ IndexedTableAccess(mytable)\n" +
+			"     │   │           ├─ index: [mytable.i]\n" +
+			"     │   │           ├─ keys: [c.i:0!null]\n" +
+			"     │   │           ├─ colSet: (7,8)\n" +
+			"     │   │           ├─ tableId: 4\n" +
+			"     │   │           └─ Table\n" +
+			"     │   │               ├─ name: mytable\n" +
+			"     │   │               └─ columns: [i]\n" +
 			"     │   └─ TableAlias(a)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ static: [{[NULL, ∞)}]\n" +
+			"     │           ├─ keys: [c.i:0!null]\n" +
 			"     │           ├─ colSet: (1,2)\n" +
 			"     │           ├─ tableId: 1\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: mytable\n" +
 			"     │               └─ columns: [i s]\n" +
-			"     └─ LookupJoin\n" +
-			"         ├─ TableAlias(c)\n" +
-			"         │   └─ IndexedTableAccess(mytable)\n" +
-			"         │       ├─ index: [mytable.i]\n" +
-			"         │       ├─ static: [{[2, 2]}]\n" +
-			"         │       ├─ colSet: (5,6)\n" +
-			"         │       ├─ tableId: 3\n" +
-			"         │       └─ Table\n" +
-			"         │           ├─ name: mytable\n" +
-			"         │           └─ columns: [i]\n" +
-			"         └─ TableAlias(d)\n" +
-			"             └─ IndexedTableAccess(mytable)\n" +
-			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ keys: [c.i:3!null]\n" +
-			"                 ├─ colSet: (7,8)\n" +
-			"                 ├─ tableId: 4\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: mytable\n" +
-			"                     └─ columns: [i]\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
+			"             ├─ keys: [a.i:2!null]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             ├─ tableId: 2\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -5191,64 +5180,53 @@ inner join pq on true
 	{
 		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b CROSS JOIN mytable c CROSS JOIN mytable d where a.i = b.i AND b.i = c.i AND c.i = d.i AND c.i = 2`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.i:1!null, a.s:2!null]\n" +
-			" └─ InnerJoin\n" +
+			" ├─ columns: [a.i:2!null, a.s:3!null]\n" +
+			" └─ LookupJoin\n" +
 			"     ├─ AND\n" +
-			"     │   ├─ AND\n" +
-			"     │   │   ├─ AND\n" +
-			"     │   │   │   ├─ Eq\n" +
-			"     │   │   │   │   ├─ b.i:0!null\n" +
-			"     │   │   │   │   └─ c.i:3!null\n" +
-			"     │   │   │   └─ Eq\n" +
-			"     │   │   │       ├─ a.i:1!null\n" +
-			"     │   │   │       └─ c.i:3!null\n" +
-			"     │   │   └─ Eq\n" +
-			"     │   │       ├─ a.i:1!null\n" +
-			"     │   │       └─ d.i:4!null\n" +
+			"     │   ├─ Eq\n" +
+			"     │   │   ├─ b.i:4!null\n" +
+			"     │   │   └─ c.i:0!null\n" +
 			"     │   └─ Eq\n" +
-			"     │       ├─ b.i:0!null\n" +
-			"     │       └─ d.i:4!null\n" +
-			"     ├─ MergeJoin\n" +
-			"     │   ├─ cmp: Eq\n" +
-			"     │   │   ├─ b.i:0!null\n" +
-			"     │   │   └─ a.i:1!null\n" +
-			"     │   ├─ TableAlias(b)\n" +
-			"     │   │   └─ IndexedTableAccess(mytable)\n" +
-			"     │   │       ├─ index: [mytable.i]\n" +
-			"     │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │       ├─ colSet: (3,4)\n" +
-			"     │   │       ├─ tableId: 2\n" +
-			"     │   │       └─ Table\n" +
-			"     │   │           ├─ name: mytable\n" +
-			"     │   │           └─ columns: [i]\n" +
+			"     │       ├─ b.i:4!null\n" +
+			"     │       └─ d.i:1!null\n" +
+			"     ├─ LookupJoin\n" +
+			"     │   ├─ LookupJoin\n" +
+			"     │   │   ├─ TableAlias(c)\n" +
+			"     │   │   │   └─ IndexedTableAccess(mytable)\n" +
+			"     │   │   │       ├─ index: [mytable.i]\n" +
+			"     │   │   │       ├─ static: [{[2, 2]}]\n" +
+			"     │   │   │       ├─ colSet: (5,6)\n" +
+			"     │   │   │       ├─ tableId: 3\n" +
+			"     │   │   │       └─ Table\n" +
+			"     │   │   │           ├─ name: mytable\n" +
+			"     │   │   │           └─ columns: [i]\n" +
+			"     │   │   └─ TableAlias(d)\n" +
+			"     │   │       └─ IndexedTableAccess(mytable)\n" +
+			"     │   │           ├─ index: [mytable.i]\n" +
+			"     │   │           ├─ keys: [c.i:0!null]\n" +
+			"     │   │           ├─ colSet: (7,8)\n" +
+			"     │   │           ├─ tableId: 4\n" +
+			"     │   │           └─ Table\n" +
+			"     │   │               ├─ name: mytable\n" +
+			"     │   │               └─ columns: [i]\n" +
 			"     │   └─ TableAlias(a)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ static: [{[NULL, ∞)}]\n" +
+			"     │           ├─ keys: [c.i:0!null]\n" +
 			"     │           ├─ colSet: (1,2)\n" +
 			"     │           ├─ tableId: 1\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: mytable\n" +
 			"     │               └─ columns: [i s]\n" +
-			"     └─ LookupJoin\n" +
-			"         ├─ TableAlias(c)\n" +
-			"         │   └─ IndexedTableAccess(mytable)\n" +
-			"         │       ├─ index: [mytable.i]\n" +
-			"         │       ├─ static: [{[2, 2]}]\n" +
-			"         │       ├─ colSet: (5,6)\n" +
-			"         │       ├─ tableId: 3\n" +
-			"         │       └─ Table\n" +
-			"         │           ├─ name: mytable\n" +
-			"         │           └─ columns: [i]\n" +
-			"         └─ TableAlias(d)\n" +
-			"             └─ IndexedTableAccess(mytable)\n" +
-			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ keys: [c.i:3!null]\n" +
-			"                 ├─ colSet: (7,8)\n" +
-			"                 ├─ tableId: 4\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: mytable\n" +
-			"                     └─ columns: [i]\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
+			"             ├─ keys: [a.i:2!null]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             ├─ tableId: 2\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i]\n" +
 			"",
 	},
 	{
