@@ -117,7 +117,7 @@ func TestJoinPlanning(t *testing.T) {
 
 // TestJoinOps runs join-specific tests for merge
 func TestJoinOps(t *testing.T) {
-	enginetest.TestJoinOps(t, enginetest.NewDefaultMemoryHarness())
+	enginetest.TestJoinOps(t, enginetest.NewDefaultMemoryHarness(), enginetest.DefaultJoinOpTests)
 }
 
 // TestJSONTableQueries runs the canonical test queries against a single threaded index enabled harness.
