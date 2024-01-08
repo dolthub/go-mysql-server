@@ -64,6 +64,14 @@ func ceil(val interface{}) interface{} {
 		return math.Ceil(v)
 	case decimal.Decimal:
 		return v.Ceil()
+	case string:
+		dec, err := decimal.NewFromString(v)
+		if err != nil {
+			return v
+		}
+		return ceil(dec)
+	case []byte:
+		return ceil(string(v))
 	default:
 		return v
 	}
@@ -77,6 +85,14 @@ func floor(val interface{}) interface{} {
 		return math.Floor(v)
 	case decimal.Decimal:
 		return v.Floor()
+	case string:
+		dec, err := decimal.NewFromString(v)
+		if err != nil {
+			return v
+		}
+		return floor(dec)
+	case []byte:
+		return floor(string(v))
 	default:
 		return v
 	}

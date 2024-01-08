@@ -8719,6 +8719,14 @@ from typestable`,
 			{1, 0, 3, 2},
 		},
 	},
+	{
+		Query: "select * from mytable where i > '-0.5';",
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
