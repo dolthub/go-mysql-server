@@ -69,7 +69,7 @@ func TestNormDist(t *testing.T) {
 		},
 		//
 		{
-			name:  "same mean, different std1",
+			name:  "similar mean, different std1",
 			mean1: 1,
 			std1:  10,
 			mean2: 0,
@@ -90,42 +90,42 @@ func TestNormDist(t *testing.T) {
 			std2:  2,
 		},
 		{
-			name:  "same mean, different std4",
+			name:  "similar mean, different std4",
 			mean1: 1,
 			std1:  7,
 			mean2: 0,
 			std2:  2,
 		},
 		{
-			name:  "same mean, different std5",
+			name:  "similar mean, different std5",
 			mean1: 2,
 			std1:  7,
 			mean2: 0,
 			std2:  2,
 		},
 		{
-			name:  "same mean, different std6",
+			name:  "similar mean, different std6",
 			mean1: 3,
 			std1:  7,
 			mean2: 0,
 			std2:  2,
 		},
 		{
-			name:  "same mean, different std7",
+			name:  "similar mean, different std7",
 			mean1: 4,
 			std1:  7,
 			mean2: 0,
 			std2:  2,
 		},
 		{
-			name:  "same mean, different std8",
+			name:  "similar mean, different std8",
 			mean1: 4,
 			std1:  7,
 			mean2: 0,
 			std2:  3,
 		},
 		{
-			name:  "same mean, different std9",
+			name:  "similar mean, different std9",
 			mean1: 5,
 			std1:  7,
 			mean2: 0,
@@ -159,11 +159,11 @@ func TestNormDist(t *testing.T) {
 	}
 
 	debug := false
-	runSuite(t, statTests, 100, 5, debug)
-	runSuite(t, statTests, 100, 10, debug)
-	runSuite(t, statTests, 100, 20, debug)
-	runSuite(t, statTests, 500, 10, debug)
-	runSuite(t, statTests, 500, 20, debug)
+	runStatsSuite(t, statTests, 100, 5, debug)
+	runStatsSuite(t, statTests, 100, 10, debug)
+	runStatsSuite(t, statTests, 100, 20, debug)
+	runStatsSuite(t, statTests, 500, 10, debug)
+	runStatsSuite(t, statTests, 500, 20, debug)
 }
 
 func TestExpDist(t *testing.T) {
@@ -213,11 +213,11 @@ func TestExpDist(t *testing.T) {
 	}
 
 	debug := false
-	runSuite(t, statTests, 100, 5, debug)
-	runSuite(t, statTests, 100, 10, debug)
-	runSuite(t, statTests, 100, 20, debug)
-	runSuite(t, statTests, 500, 10, debug)
-	runSuite(t, statTests, 500, 20, debug)
+	runStatsSuite(t, statTests, 100, 5, debug)
+	runStatsSuite(t, statTests, 100, 10, debug)
+	runStatsSuite(t, statTests, 100, 20, debug)
+	runStatsSuite(t, statTests, 500, 10, debug)
+	runStatsSuite(t, statTests, 500, 20, debug)
 }
 
 func TestMultiDist(t *testing.T) {
@@ -240,10 +240,14 @@ func TestMultiDist(t *testing.T) {
 		},
 	}
 
-	runSuite(t, tests, 1000, 10, false)
+	runStatsSuite(t, tests, 1000, 10, false)
 }
 
-func runSuite(t *testing.T, tests []statsTest, rowCnt, bucketCnt int, debug bool) {
+// runStatsSuite will parse each statsTest and (1) generate 2 tables for a
+// join, (2) compute histograms for the tables on the join index, (3) use
+// the stats join algo to simulate a join estimate, and (4) compare the
+// estimate to the actual result set count.
+func runStatsSuite(t *testing.T, tests []statsTest, rowCnt, bucketCnt int, debug bool) {
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("%s: , rows: %d, buckets: %d", tt.name, rowCnt, bucketCnt), func(t *testing.T) {
 			db := memory.NewDatabase(fmt.Sprintf("test%d", i))
@@ -300,6 +304,9 @@ func runSuite(t *testing.T, tests []statsTest, rowCnt, bucketCnt int, debug bool
 			if debug {
 				log.Println(res.RowCount(), exp, delta)
 			}
+			// This compares the error percentage for our estimate to an
+			// error threshold specified in the statTest. The error bounds
+			// are loose and mostly useful for debugging at this point.
 			require.Less(t, delta, tt.err, "%d/%d/%.2f\nleft %s\nright %s", res.RowCount(), exp, delta, sql.Histogram(xHist).DebugString(), sql.Histogram(wHist).DebugString())
 		})
 	}

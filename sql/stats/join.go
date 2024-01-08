@@ -15,9 +15,10 @@ import (
 
 var ErrJoinStringStatistics = errors.New("joining string histograms is unsupported")
 
-// Join performs an alignment algorithm on two sets of statistics, and then
-// pairwise estimates bucket cardinalities by joining MCVs directly and
-// assuming key uniformity otherwise. Only numeric types are supported.
+// Join performs an alignment algorithm on two sets of statistics, and
+// then pairwise estimates bucket cardinalities by joining most common
+// values (mcvs) directly and assuming key uniformity otherwise. Only
+// numeric types are supported.
 func Join(s1, s2 sql.Statistic, lFields, rFields []int, debug bool) (sql.Statistic, error) {
 	cmp := func(row1, row2 sql.Row) (int, error) {
 		var keyCmp int
@@ -70,9 +71,9 @@ func Join(s1, s2 sql.Statistic, lFields, rFields []int, debug bool) (sql.Statist
 
 // joinAlignedStats assumes |left| and |right| have the same number of
 // buckets, and will use uniform distribution assumptions between pairwise
-// buckets to estimate the join cardinality. MCVs adjust the estimates to
-// account for outlier keys that are a disproportionately high fraction of
-// the index.
+// buckets to estimate the join cardinality. Most common values (mcvs) adjust
+// the estimates to account for outlier keys that are a disproportionately
+// high fraction of the index.
 func joinAlignedStats(left, right sql.Histogram, cmp func(sql.Row, sql.Row) (int, error)) ([]*Bucket, error) {
 	var newBuckets []*Bucket
 	newCnt := uint64(0)
