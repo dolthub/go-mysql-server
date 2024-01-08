@@ -164,7 +164,7 @@ func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 		tableName := strings.ToLower(t.Name.String())
 		if c.IfExists {
 			_, _, err := b.cat.Table(b.ctx, dbName, tableName)
-			if sql.ErrTableNotFound.Is(err) {
+			if sql.ErrTableNotFound.Is(err) && b.ctx != nil && b.ctx.Session != nil {
 				b.ctx.Session.Warn(&sql.Warning{
 					Level:   "Note",
 					Code:    mysql.ERBadTable,
@@ -1436,7 +1436,7 @@ func (b *Builder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
 			} else if ccType == "collate" {
 				val := cc.Value
 				collationStr = &val
-			} else {
+			} else if b.ctx != nil && b.ctx.Session != nil {
 				b.ctx.Session.Warn(&sql.Warning{
 					Level:   "Warning",
 					Code:    mysql.ERNotSupportedYet,

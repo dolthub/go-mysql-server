@@ -42,11 +42,13 @@ var (
 )
 
 func arithmeticWarning(ctx *sql.Context, errCode int, errMsg string) {
-	ctx.Session.Warn(&sql.Warning{
-		Level:   "Warning",
-		Code:    errCode,
-		Message: errMsg,
-	})
+	if ctx != nil && ctx.Session != nil {
+		ctx.Session.Warn(&sql.Warning{
+			Level:   "Warning",
+			Code:    errCode,
+			Message: errMsg,
+		})
+	}
 }
 
 // ArithmeticOp implements an arithmetic expression. Since we had separate expressions

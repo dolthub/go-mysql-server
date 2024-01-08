@@ -267,7 +267,7 @@ func (c *CreateEvent) WithEventScheduler(scheduler sql.EventScheduler) sql.Node 
 // of this CREATE EVENT statement.
 func (c *CreateEvent) GetEventDefinition(ctx *sql.Context, eventCreationTime, lastAltered, lastExecuted time.Time, tz string) (sql.EventDefinition, error) {
 	// TODO: support DISABLE ON SLAVE event status
-	if c.Status == sql.EventStatus_DisableOnSlave {
+	if c.Status == sql.EventStatus_DisableOnSlave && ctx != nil && ctx.Session != nil {
 		ctx.Session.Warn(&sql.Warning{
 			Level:   "Warning",
 			Code:    mysql.ERNotSupportedYet,
@@ -394,7 +394,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if c.event.HasExecuteAt {
 		// If the event execution time is in the past and is set.
 		if c.event.ExecuteAt.Sub(c.event.CreatedAt).Seconds() <= -1 {
-			if c.event.OnCompletionPreserve {
+			if c.event.OnCompletionPreserve && ctx != nil && ctx.Session != nil {
 				// If ON COMPLETION PRESERVE is defined, the event is disabled.
 				c.event.Status = sql.EventStatus_Disable.String()
 				_, err = c.eventDb.UpdateEvent(ctx, c.event.Name, c.event)
@@ -634,7 +634,7 @@ func (d *DropEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	}
 
 	err := eventDb.DropEvent(ctx, d.EventName)
-	if d.IfExists && sql.ErrEventDoesNotExist.Is(err) {
+	if d.IfExists && sql.ErrEventDoesNotExist.Is(err) && ctx != nil && ctx.Session != nil {
 		ctx.Session.Warn(&sql.Warning{
 			Level:   "Note",
 			Code:    1305,

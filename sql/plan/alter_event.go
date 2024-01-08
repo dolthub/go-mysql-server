@@ -306,7 +306,7 @@ func (a *AlterEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	}
 	if a.AlterStatus {
 		// TODO: support DISABLE ON SLAVE event status
-		if a.Status == sql.EventStatus_DisableOnSlave {
+		if a.Status == sql.EventStatus_DisableOnSlave && ctx != nil && ctx.Session != nil {
 			ctx.Session.Warn(&sql.Warning{
 				Level:   "Warning",
 				Code:    mysql.ERNotSupportedYet,
@@ -441,7 +441,7 @@ func (a *alterEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if (a.event.HasExecuteAt || a.event.HasEnds) && eventEndingTime.Sub(a.event.LastAltered).Seconds() < 0 {
 		// If the event execution/end time is altered and in the past.
 		if a.alterSchedule {
-			if a.event.OnCompletionPreserve {
+			if a.event.OnCompletionPreserve && ctx != nil && ctx.Session != nil {
 				// If ON COMPLETION PRESERVE is defined, the event is disabled.
 				a.event.Status = sql.EventStatus_Disable.String()
 				ctx.Session.Warn(&sql.Warning{
