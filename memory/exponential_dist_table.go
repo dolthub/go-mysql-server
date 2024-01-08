@@ -75,9 +75,9 @@ func (s ExponentialDistTable) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("normal_dist")
 	children := []string{
-		fmt.Sprintf("columns: %s", s.colCnt),
-		fmt.Sprintf("rows: %s", s.rowCnt),
-		fmt.Sprintf("lambda: %s", s.lambda),
+		fmt.Sprintf("columns: %d", s.colCnt),
+		fmt.Sprintf("rows: %d", s.rowCnt),
+		fmt.Sprintf("lambda: %f.2", s.lambda),
 	}
 	_ = pr.WriteChildren(children...)
 	return pr.String()

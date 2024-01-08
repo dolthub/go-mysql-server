@@ -85,10 +85,10 @@ func (s NormalDistTable) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("normal_dist")
 	children := []string{
-		fmt.Sprintf("columns: %s", s.colCnt),
-		fmt.Sprintf("rows: %s", s.rowCnt),
-		fmt.Sprintf("mean: %s", s.mean),
-		fmt.Sprintf("std: %s", s.std),
+		fmt.Sprintf("columns: %d", s.colCnt),
+		fmt.Sprintf("rows: %d", s.rowCnt),
+		fmt.Sprintf("mean: %.2f", s.mean),
+		fmt.Sprintf("std: %.2f", s.std),
 	}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
