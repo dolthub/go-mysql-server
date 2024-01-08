@@ -284,16 +284,21 @@ var ctxNowFunc = time.Now
 var ctxNowFuncMutex = &sync.Mutex{}
 
 func RunWithNowFunc(nowFunc func() time.Time, fn func() error) error {
-	ctxNowFuncMutex.Lock()
-	defer ctxNowFuncMutex.Unlock()
-
-	initialNow := ctxNowFunc
-	ctxNowFunc = nowFunc
+	oldNowFunc := swapNowFunc(nowFunc)
 	defer func() {
-		ctxNowFunc = initialNow
+		swapNowFunc(oldNowFunc)
 	}()
 
 	return fn()
+}
+
+func swapNowFunc(newNowFunc func() time.Time) func() time.Time {
+	ctxNowFuncMutex.Lock()
+	defer ctxNowFuncMutex.Unlock()
+
+	oldNowFunc := ctxNowFunc
+	ctxNowFunc = newNowFunc
+	return oldNowFunc
 }
 
 func Now() time.Time {

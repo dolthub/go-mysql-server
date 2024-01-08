@@ -823,7 +823,13 @@ const maxCurrTimestampPrecision = 6
 
 // Now is a function that returns the current time.
 type Now struct {
+	// prec stores the requested precision for fractional seconds.
 	prec sql.Expression
+	// alwaysUseExactTime controls whether the NOW() function gets the current time, or
+	// uses a cached value that records the starting time of the query. By default, a
+	// cached time is used, but in some cases (such as the SYSDATE() function), the func
+	// needs to always return the exact current time of each function invocation().
+	alwaysUseExactTime bool
 }
 
 func (n *Now) IsNonDeterministic() bool {
@@ -932,10 +938,17 @@ func (n *Now) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	// For NOW(), we use the cached QueryTime, so that all NOW() calls in a query return the same value.
+	// SYSDATE() requires that we use the *exact* current time, and not use the cached version.
+	currentTime := ctx.QueryTime()
+	if n.alwaysUseExactTime {
+		currentTime = sql.Now()
+	}
+
 	// If no arguments, just return with 0 precision
 	// The way the parser is implemented 0 should always be passed in; have this here just in case
 	if n.prec == nil {
-		t, ok := gmstime.ConvertTimeZone(ctx.QueryTime(), gmstime.SystemTimezoneOffset(), sessionTimeZone)
+		t, ok := gmstime.ConvertTimeZone(currentTime, gmstime.SystemTimezoneOffset(), sessionTimeZone)
 		if !ok {
 			return nil, fmt.Errorf("invalid time zone: %s", sessionTimeZone)
 		}
@@ -975,7 +988,7 @@ func (n *Now) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Get the timestamp
-	t, ok := gmstime.ConvertTimeZone(ctx.QueryTime(), gmstime.SystemTimezoneOffset(), sessionTimeZone)
+	t, ok := gmstime.ConvertTimeZone(currentTime, gmstime.SystemTimezoneOffset(), sessionTimeZone)
 	if !ok {
 		return nil, fmt.Errorf("invalid time zone: %s", sessionTimeZone)
 	}
@@ -998,6 +1011,17 @@ func (n *Now) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // WithChildren implements the Expression interface.
 func (n *Now) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewNow(children...)
+}
+
+// NewSysdate returns a new SYSDATE() function, using the supplied |args| for an
+// optional value for fractional second precision. The SYSDATE() function is a synonym
+// for NOW(), but does NOT use the query's cached start time, and instead always returns
+// the current time, even when executed multiple times in a query or stored procedure.
+// https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_sysdate
+func NewSysdate(args ...sql.Expression) (sql.Expression, error) {
+	n, err := NewNow(args...)
+	n.(*Now).alwaysUseExactTime = true
+	return n, err
 }
 
 // SessionTimeZone returns a MySQL timezone offset string for the value of @@session_time_zone. If the session
