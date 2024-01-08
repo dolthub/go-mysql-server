@@ -131,6 +131,8 @@ func (h *Handler) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, call
 }
 
 func (h *Handler) ComResetConnection(c *mysql.Conn) {
+	logrus.WithField("connectionId", c.ConnectionID).Debug("COM_RESET_CONNECTION command received")
+
 	// TODO: handle reset logic
 }
 
@@ -623,6 +625,9 @@ func schemaToFields(ctx *sql.Context, s sql.Schema) []*query.Field {
 		fields[i] = &query.Field{
 			Name:         c.Name,
 			OrgName:      c.Name,
+			Table:        c.Source,
+			OrgTable:     c.Source,
+			Database:     c.DatabaseSource,
 			Type:         c.Type.Type(),
 			Charset:      charset,
 			ColumnLength: c.Type.MaxTextResponseByteLength(ctx),

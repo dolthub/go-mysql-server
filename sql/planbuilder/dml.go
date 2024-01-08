@@ -259,20 +259,45 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 		}
 	}
 
-	// We need additional update expressions for any generated columns, since they won't be part of the update
+	// We need additional update expressions for any generated columns and on update expressions, since they won't be part of the update
 	// expressions, but their value in the row must be updated before being passed to the integrator for storage.
 	if len(tableSch) > 0 {
 		tabId := inScope.tables[strings.ToLower(tableSch[0].Source)]
 		for i, col := range tableSch {
 			if col.Generated != nil {
-				colName := expression.NewGetFieldWithTable(i, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
+				colGf := expression.NewGetFieldWithTable(i, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
 				generated := b.resolveColumnDefaultExpression(inScope, col, col.Generated)
-				updateExprs = append(updateExprs, expression.NewSetField(colName, assignColumnIndexes(generated, tableSch)))
+				updateExprs = append(updateExprs, expression.NewSetField(colGf, assignColumnIndexes(generated, tableSch)))
+			}
+			if col.OnUpdate != nil {
+				// don't add if column is already being updated
+				if !isColumnUpdated(col, updateExprs) {
+					colGf := expression.NewGetFieldWithTable(i, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
+					onUpdate := b.resolveColumnDefaultExpression(inScope, col, col.OnUpdate)
+					updateExprs = append(updateExprs, expression.NewSetField(colGf, assignColumnIndexes(onUpdate, tableSch)))
+				}
 			}
 		}
 	}
 
 	return updateExprs
+}
+
+func isColumnUpdated(col *sql.Column, updateExprs []sql.Expression) bool {
+	for _, expr := range updateExprs {
+		sf, ok := expr.(*expression.SetField)
+		if !ok {
+			continue
+		}
+		gf, ok := sf.Left.(*expression.GetField)
+		if !ok {
+			continue
+		}
+		if strings.EqualFold(gf.Name(), col.Name) {
+			return true
+		}
+	}
+	return false
 }
 
 func (b *Builder) buildOnDupUpdateExprs(combinedScope, destScope *scope, e ast.AssignmentExprs) []sql.Expression {
@@ -390,6 +415,7 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	outScope = b.buildFrom(inScope, u.TableExprs)
 
+	// default expressions only resolve to target table
 	updateExprs := b.assignmentExprsToExpressions(outScope, u.Exprs)
 
 	b.buildWhere(outScope, u.Where)

@@ -117,7 +117,7 @@ func TestJoinPlanning(t *testing.T) {
 
 // TestJoinOps runs join-specific tests for merge
 func TestJoinOps(t *testing.T) {
-	enginetest.TestJoinOps(t, enginetest.NewDefaultMemoryHarness())
+	enginetest.TestJoinOps(t, enginetest.NewDefaultMemoryHarness(), enginetest.DefaultJoinOpTests)
 }
 
 // TestJSONTableQueries runs the canonical test queries against a single threaded index enabled harness.
@@ -558,6 +558,10 @@ func TestUpdateIgnore(t *testing.T) {
 func TestUpdateErrors(t *testing.T) {
 	// TODO different errors
 	enginetest.TestUpdateErrors(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestOnUpdateExprScripts(t *testing.T) {
+	enginetest.TestOnUpdateExprScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
 func TestSpatialUpdate(t *testing.T) {

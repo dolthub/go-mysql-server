@@ -346,23 +346,44 @@ func (c *Context) ApplyOpts(opts ...ContextOption) {
 func NewEmptyContext() *Context { return NewContext(context.TODO()) }
 
 // Pid returns the process id associated with this context.
-func (c *Context) Pid() uint64 { return c.pid }
+func (c *Context) Pid() uint64 {
+	if c == nil {
+		return 0
+	}
+	return c.pid
+}
 
 // Query returns the query string associated with this context.
-func (c *Context) Query() string { return c.query }
+func (c *Context) Query() string {
+	if c == nil {
+		return ""
+	}
+	return c.query
+}
 
-func (c Context) WithQuery(q string) *Context {
-	c.query = q
-	return &c
+func (c *Context) WithQuery(q string) *Context {
+	if c == nil {
+		return nil
+	}
+
+	nc := *c
+	nc.query = q
+	return &nc
 }
 
 // QueryTime returns the time.Time when the context associated with this query was created
 func (c *Context) QueryTime() time.Time {
+	if c == nil {
+		return time.Time{}
+	}
 	return c.queryTime
 }
 
 // SetQueryTime updates the queryTime to the given time
 func (c *Context) SetQueryTime(t time.Time) {
+	if c == nil {
+		return
+	}
 	c.queryTime = t
 }
 
@@ -373,7 +394,11 @@ func (c *Context) Span(
 	opName string,
 	opts ...trace.SpanStartOption,
 ) (trace.Span, *Context) {
-	if c.tracer == NoopTracer {
+	if c == nil {
+		return noopSpan, nil
+	}
+
+	if c.tracer == nil || c.tracer == NoopTracer {
 		return noopSpan, c
 	}
 
@@ -384,6 +409,10 @@ func (c *Context) Span(
 // NewSubContext creates a new sub-context with the current context as parent. Returns the resulting context.CancelFunc
 // as well as the new *sql.Context, which be used to cancel the new context before the parent is finished.
 func (c *Context) NewSubContext() (*Context, context.CancelFunc) {
+	if c == nil {
+		return nil, nil
+	}
+
 	ctx, cancelFunc := context.WithCancel(c.Context)
 
 	return c.WithContext(ctx), cancelFunc
@@ -391,6 +420,10 @@ func (c *Context) NewSubContext() (*Context, context.CancelFunc) {
 
 // WithContext returns a new context with the given underlying context.
 func (c *Context) WithContext(ctx context.Context) *Context {
+	if c == nil {
+		return nil
+	}
+
 	nc := *c
 	nc.Context = ctx
 	return &nc
@@ -398,11 +431,18 @@ func (c *Context) WithContext(ctx context.Context) *Context {
 
 // RootSpan returns the root span, if any.
 func (c *Context) RootSpan() trace.Span {
+	if c == nil {
+		return noopSpan
+	}
 	return c.rootSpan
 }
 
 // Error adds an error as warning to the session.
 func (c *Context) Error(code int, msg string, args ...interface{}) {
+	if c == nil || c.Session == nil {
+		return
+	}
+
 	c.Session.Warn(&Warning{
 		Level:   "Error",
 		Code:    code,
@@ -412,6 +452,9 @@ func (c *Context) Error(code int, msg string, args ...interface{}) {
 
 // Warn adds a warning to the session.
 func (c *Context) Warn(code int, msg string, args ...interface{}) {
+	if c == nil || c.Session == nil {
+		return
+	}
 	c.Session.Warn(&Warning{
 		Level:   "Warning",
 		Code:    code,
@@ -419,18 +462,25 @@ func (c *Context) Warn(code int, msg string, args ...interface{}) {
 	})
 }
 
-// Terminate the connection associated with |connID|.
+// KillConnection terminates the connection associated with |connID|.
 func (c *Context) KillConnection(connID uint32) error {
+	if c == nil || c.services.KillConnection == nil {
+		return nil
+	}
+
 	if c.services.KillConnection != nil {
 		return c.services.KillConnection(connID)
 	}
 	return nil
 }
 
-// Load the remote file |filename| from the client. Returns a |ReadCloser| for
-// the file's contents. Returns an error if this functionality is not
-// supported.
+// LoadInfile loads the remote file |filename| from the client. Returns a |ReadCloser| for
+// the file's contents. Returns an error if this functionality is not supported.
 func (c *Context) LoadInfile(filename string) (io.ReadCloser, error) {
+	if c == nil || c.services.LoadInfile == nil {
+		return nil, ErrUnsupportedFeature.New("LOAD DATA LOCAL INFILE ...")
+	}
+
 	if c.services.LoadInfile != nil {
 		return c.services.LoadInfile(filename)
 	}
@@ -438,12 +488,20 @@ func (c *Context) LoadInfile(filename string) (io.ReadCloser, error) {
 }
 
 func (c *Context) NewErrgroup() (*errgroup.Group, *Context) {
+	if c == nil {
+		return nil, nil
+	}
+
 	eg, egCtx := errgroup.WithContext(c.Context)
 	return eg, c.WithContext(egCtx)
 }
 
 // NewCtxWithClient returns a new Context with the given [client]
 func (c *Context) NewCtxWithClient(client Client) *Context {
+	if c == nil {
+		return nil
+	}
+
 	nc := *c
 	nc.Session.SetClient(client)
 	nc.Session.SetPrivilegeSet(nil, 0)

@@ -171,7 +171,6 @@ func (s sequencePartition) Key() []byte {
 
 // Partitions is a sql.Table interface function that returns a partition of the data. This data has a single partition.
 func (s IntSequenceTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
-
 	return sql.PartitionsToPartitionIter(&sequencePartition{min: 0, max: int64(s.Len) - 1}), nil
 }
 

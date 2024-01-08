@@ -148,6 +148,21 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
+		Name: "update exponential parsing",
+		SetUpScript: []string{
+			"create table a (a int primary key, b double);",
+			"insert into a values (0, 0.0),(1, 1.0)",
+			"update a set b = 5.0E-5 where a = 0",
+			"update a set b = 5.0e-5 where a = 1",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from a",
+				Expected: []sql.Row{{0, .00005}, {1, .00005}},
+			},
+		},
+	},
+	{
 		Name: "set op schema merge",
 		SetUpScript: []string{
 			"create table `left` (i int primary key, j mediumint, k varchar(20));",
@@ -666,10 +681,8 @@ CREATE TABLE tab3 (
 				},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
-				// enginetests returns the enum id, but the text representation is sent over the wire
 				Query:    "select * from t;",
-				Expected: []sql.Row{{"one", nil, nil}, {"two", uint64(2), -2}},
+				Expected: []sql.Row{{"one", nil, nil}, {"two", "two", -2}},
 			},
 		},
 	},
@@ -718,10 +731,8 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
-				// enginetests returns the enum id, but the text representation is sent over the wire
 				Query:    "SELECT * FROM enumtest1;",
-				Expected: []sql.Row{{1, uint64(1)}, {2, uint64(1)}, {3, uint64(2)}},
+				Expected: []sql.Row{{1, "abc"}, {2, "abc"}, {3, "XYZ"}},
 			},
 			{
 				// enum values must match EXACTLY for case-sensitive collations
@@ -2127,28 +2138,24 @@ CREATE TABLE tab3 (
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				SkipResultCheckOnServerEngine: true, //unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
-				// enginetests returns the enum id, but the text representation is sent over the wire
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, uint16(2), uint64(2)}, {2, uint16(1), uint64(1)}},
+				Expected: []sql.Row{{1, "b", "b"}, {2, "a", "a"}},
 			},
 			{
 				Query:    "UPDATE test SET v1 = 3 WHERE v1 = 2;",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
-				Query:                         "SELECT * FROM test;",
-				Expected:                      []sql.Row{{1, uint16(3), uint64(2)}, {2, uint16(1), uint64(1)}},
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, "c", "b"}, {2, "a", "a"}},
 			},
 			{
 				Query:    "UPDATE test SET v2 = 3 WHERE 2 = v2;",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
-				Query:                         "SELECT * FROM test;",
-				Expected:                      []sql.Row{{1, uint16(3), uint64(3)}, {2, uint16(1), uint64(1)}},
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, "c", "a,b"}, {2, "a", "a"}},
 			},
 		},
 	},
@@ -3242,8 +3249,7 @@ CREATE TABLE tab3 (
 			},
 			// Assert that returned values are correct.
 			{
-				SkipResultCheckOnServerEngine: true, // the type differs on int16 vs int64 (for go sql driver, integer value always returned as int64)
-				Query:                         "SELECT * from t order by pk;",
+				Query: "SELECT * from t order by pk;",
 				Expected: []sql.Row{
 					{1, int16(1901)},
 					{2, int16(1901)},
@@ -3305,7 +3311,7 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // the type differs on int16 vs int64 (for go sql driver, integer value always returned as int64) AND the datetime returned is not non-zero
+				SkipResultCheckOnServerEngine: true, // the datetime returned is not non-zero
 				Query:                         "SELECT * from t",
 				Expected: []sql.Row{
 					{
@@ -3325,8 +3331,8 @@ CREATE TABLE tab3 (
 						time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC),
 						time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC),
 						0,
-						uint64(1), // 'first' value in enum
-						uint64(0), // empty set
+						"first",
+						"",
 					},
 				},
 			},
@@ -3414,13 +3420,12 @@ CREATE TABLE tab3 (
 				}}},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
-				Query:                         "SELECT * FROM setenumtest ORDER BY pk;",
+				Query: "SELECT * FROM setenumtest ORDER BY pk;",
 				Expected: []sql.Row{
-					{1, uint16(1), uint64(1)},
-					{2, uint16(2), uint64(2)},
-					{3, uint16(3), uint64(1)},
-					{4, uint16(1), uint64(3)},
+					{1, "a", "a"},
+					{2, "b", "b"},
+					{3, "c", "a"},
+					{4, "a", "a,b"},
 				},
 			},
 			{
@@ -3432,11 +3437,10 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // unskip when identifying SET and ENUM column types is resolved in go-sql-driver/mysql.
-				Query:                         "SELECT * FROM setenumtest ORDER BY pk;",
+				Query: "SELECT * FROM setenumtest ORDER BY pk;",
 				Expected: []sql.Row{
-					{1, uint16(1), uint64(1)},
-					{2, uint16(2), uint64(2)},
+					{1, "a", "a"},
+					{2, "b", "b"},
 				},
 			},
 		},
@@ -3728,7 +3732,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				// When the session's time zone is set to UTC, NOW() and UTC_TIMESTAMP() should return the same value
-				Query:    `select @@time_zone, NOW() = UTC_TIMESTAMP();`,
+				Query:    `select @@time_zone, NOW(6) = UTC_TIMESTAMP();`,
 				Expected: []sql.Row{{"+00:00", true}},
 			},
 			{
@@ -3742,7 +3746,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				// When the session's time zone is set to +2:00, NOW() should report two hours ahead of UTC_TIMESTAMP()
-				Query:    `select @@time_zone, TIMESTAMPDIFF(MINUTE, NOW(), UTC_TIMESTAMP());`,
+				Query:    `select @@time_zone, TIMESTAMPDIFF(MINUTE, NOW(6), UTC_TIMESTAMP());`,
 				Expected: []sql.Row{{"+02:00", -120}},
 			},
 			{
@@ -4876,6 +4880,85 @@ CREATE TABLE tab3 (
 				Query: "select count(*) from t where (f in (null, cast(0.8 as float)));",
 				Expected: []sql.Row{
 					{1},
+				},
+			},
+		},
+	},
+	{
+		Name: "floats in tuple are properly hashed",
+		SetUpScript: []string{
+			"create table t (b bool);",
+			"insert into t values (false);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t where (b in (-''));",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+		},
+	},
+	{
+		Name: "subquery with range heap join",
+		SetUpScript: []string{
+			"create table a (i int primary key, start int, end int, name varchar(32));",
+			"insert into a values (1, 603000, 605001, 'test');",
+			"create table b (i int primary key);",
+			"insert into b values (600000), (605000), (608000);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select a.i from (select 'test' as name) sq join a on sq.name = a.name join b on b.i between a.start and a.end;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select * from (select 'test' as name, 1 as x, 2 as y, 3 as z) sq join a on sq.name = a.name join b on b.i between a.start and a.end;",
+				Expected: []sql.Row{
+					{"test", 1, 2, 3, 1, 603000, 605001, "test", 605000},
+				},
+			},
+		},
+	},
+	{
+		Name: "resolve foreign key on indexed update",
+		SetUpScript: []string{
+			"set foreign_key_checks=0;",
+			"create table parent (i int primary key);",
+			"create table child (i int primary key, foreign key (i) references parent(i));",
+			"set foreign_key_checks=1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "update child set i = 1 where i = 1;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 0, Updated: 0}}},
+				},
+			},
+		},
+	},
+	{
+		Name: "between type conversion",
+		SetUpScript: []string{
+			"create table t0(c0 bool);",
+			"create table t1(c1 bool);",
+			"insert into t0 (c0) values (1);",
+			"insert into t1 (c1) values (false), (true);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT t0.c0, t1.c1 FROM t0 LEFT  JOIN t1 ON true;",
+				Expected: []sql.Row{
+					{1, 0},
+					{1, 1},
+				},
+			},
+			{
+				Query: "SELECT t0.c0, t1.c1 FROM t0 LEFT  JOIN t1 ON ('a' NOT BETWEEN false AND false) WHERE 1 UNION ALL SELECT t0.c0, t1.c1 FROM t0 LEFT  JOIN t1 ON ('a' NOT BETWEEN false AND false) WHERE (NOT 1) UNION ALL SELECT t0.c0, t1.c1 FROM t0 LEFT  JOIN t1 ON ('a' NOT BETWEEN false AND false) WHERE (1 IS NULL);",
+				Expected: []sql.Row{
+					{1, nil},
 				},
 			},
 		},

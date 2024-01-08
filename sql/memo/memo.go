@@ -63,6 +63,14 @@ func NewMemo(ctx *sql.Context, stats sql.StatsProvider, s *plan.Scope, scopeLen 
 	}
 }
 
+type MemoErr struct {
+	Err error
+}
+
+func (m *Memo) HandleErr(err error) {
+	panic(MemoErr{Err: err})
+}
+
 func (m *Memo) Root() *ExprGroup {
 	return m.root
 }
@@ -135,6 +143,11 @@ func (m *Memo) MemoizeInnerJoin(grp, left, right *ExprGroup, op plan.JoinType, f
 }
 
 func (m *Memo) MemoizeLookupJoin(grp, left, right *ExprGroup, op plan.JoinType, filter []sql.Expression, lookup *IndexScan) *ExprGroup {
+	if right.RelProps.reqIdxCols.Difference(lookup.Index.set).Len() > 0 {
+		// the index lookup does not cover the requested RHS indexScan columns,
+		// so this physical plan is invalid.
+		return grp
+	}
 	newJoin := &LookupJoin{
 		JoinBase: &JoinBase{
 			relBase: &relBase{},
@@ -155,6 +168,28 @@ func (m *Memo) MemoizeLookupJoin(grp, left, right *ExprGroup, op plan.JoinType, 
 	if isInjectiveLookup(lookup.Index, newJoin.JoinBase, lookup.Table.Expressions(), lookup.Table.NullMask()) {
 		newJoin.Injective = true
 	}
+
+	return grp
+}
+
+func (m *Memo) MemoizeHashJoin(grp *ExprGroup, join *JoinBase, toExpr, fromExpr []sql.Expression) *ExprGroup {
+	if join.Right.RelProps.reqIdxCols.Len() > 0 {
+		// HASH_JOIN's RHS will be a table scan, so this physical
+		// plan will not provide the requested indexScan
+		return grp
+	}
+	newJoin := &HashJoin{
+		JoinBase:   join.Copy(),
+		LeftAttrs:  toExpr,
+		RightAttrs: fromExpr,
+	}
+	newJoin.Op = newJoin.Op.AsHash()
+
+	if grp == nil {
+		return m.NewExprGroup(newJoin)
+	}
+	newJoin.g = grp
+	grp.Prepend(newJoin)
 
 	return grp
 }
@@ -242,12 +277,13 @@ func (m *Memo) MemoizeProject(grp, child *ExprGroup, projections []sql.Expressio
 // access data. IndexScans are either static and read a specific set of
 // ranges, or dynamic and use a lookup template that is iteratively
 // bound and executed during LOOKUP_JOINs.
-func (m *Memo) MemoizeIndexScan(grp *ExprGroup, ita *plan.IndexedTableAccess, alias string, index *Index) *ExprGroup {
+func (m *Memo) MemoizeIndexScan(grp *ExprGroup, ita *plan.IndexedTableAccess, alias string, index *Index, stat sql.Statistic) *ExprGroup {
 	rel := &IndexScan{
 		sourceBase: &sourceBase{relBase: &relBase{}},
 		Table:      ita,
 		Alias:      alias,
 		Index:      index,
+		Stats:      stat,
 	}
 	if grp == nil {
 		return m.NewExprGroup(rel)
@@ -399,7 +435,7 @@ func (m *Memo) BestRootPlan(ctx *sql.Context) (sql.Node, error) {
 // tree node with a recursive DFS.
 func buildBestJoinPlan(b *ExecBuilder, grp *ExprGroup, input sql.Schema) (sql.Node, error) {
 	if !grp.Done {
-		panic("expected expression group plans to be fixed")
+		return nil, fmt.Errorf("expected expression group plans to be fixed")
 	}
 	n := grp.Best
 	var err error
@@ -536,21 +572,6 @@ func (p *tableProps) GetId(n string) (GroupId, bool) {
 	return id, ok
 }
 
-func (p *tableProps) getTableNames(f sql.FastIntSet) []string {
-	var names []string
-	for idx, ok := f.Next(0); ok; idx, ok = f.Next(idx + 1) {
-		if ok {
-			groupId := GroupId(idx + 1)
-			table, ok := p.GetTable(groupId)
-			if !ok {
-				panic(fmt.Sprintf("table not found for group %d", groupId))
-			}
-			names = append(names, table)
-		}
-	}
-	return names
-}
-
 // Coster types can estimate the CPU and memory cost of physical execution
 // operators.
 type Coster interface {
@@ -580,8 +601,6 @@ type relBase struct {
 	n RelExpr
 	// c is this relation's cost while costing and plan reify are separate
 	c float64
-	// cnt is this relations output row count
-	cnt float64
 	// d indicates a RelExpr should be checked for distinctness
 	d distinctOp
 }
