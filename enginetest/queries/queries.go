@@ -781,6 +781,10 @@ var QueryTests = []QueryTest{
 	//	Expected: []sql.Row{{1}, {2}, {3}},
 	//},
 	{
+		Query:    "SELECT * FROM mytable t0 INNER JOIN mytable t1 ON (t1.i IN (((true)%(''))));",
+		Expected: []sql.Row{},
+	},
+	{
 		Query:    "select x from xy where y in (select xy.x from xy join (select t2.y from xy t2 where exists (select t3.y from xy t3 where t3.y = xy.x)) t1) order by 1;",
 		Expected: []sql.Row{{0}, {1}, {2}, {3}},
 	},

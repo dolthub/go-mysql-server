@@ -186,9 +186,10 @@ Or
 		},
 	}
 
+	ctx := sql.NewEmptyContext()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := newIndexCoster("xyz")
+			c := newIndexCoster(ctx, "xyz")
 			root, leftover, _ := c.flatten(tt.in)
 			costTree := formatIndexFilter(root)
 			require.Equal(t, strings.TrimSpace(tt.exp), strings.TrimSpace(costTree), costTree)
@@ -569,7 +570,7 @@ func TestRangeBuilder(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", tt.filter.String(), tt.exp.DebugString()), func(t *testing.T) {
 
-			c := newIndexCoster(testTable)
+			c := newIndexCoster(ctx, testTable)
 			root, _, _ := c.flatten(tt.filter)
 
 			var idx sql.Index
@@ -680,7 +681,7 @@ func TestRangeBuilderInclude(t *testing.T) {
 			//t.Skip("todo add tests and implement")
 
 			// TODO make index
-			c := newIndexCoster("xyz")
+			c := newIndexCoster(ctx, "xyz")
 			root, _, _ := c.flatten(tt.in)
 			b := newIndexScanRangeBuilder(ctx, dummy1, tt.include, sql.FastIntSet{}, c.idToExpr)
 			cmpRanges, err := b.buildRangeCollection(root)

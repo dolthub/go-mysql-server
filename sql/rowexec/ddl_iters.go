@@ -2012,11 +2012,13 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 	case plan.IndexAction_Rename:
 		return indexable.RenameIndex(ctx, n.PreviousIndexName, n.IndexName)
 	case plan.IndexAction_DisableEnableKeys:
-		ctx.Session.Warn(&sql.Warning{
-			Level:   "Warning",
-			Code:    mysql.ERNotSupportedYet,
-			Message: "'disable/enable keys' feature is not supported yet",
-		})
+		if ctx != nil && ctx.Session != nil {
+			ctx.Session.Warn(&sql.Warning{
+				Level:   "Warning",
+				Code:    mysql.ERNotSupportedYet,
+				Message: "'disable/enable keys' feature is not supported yet",
+			})
+		}
 		return nil
 	default:
 		return plan.ErrIndexActionNotImplemented.New(n.Action)

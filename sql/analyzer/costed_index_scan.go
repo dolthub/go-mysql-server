@@ -120,7 +120,7 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 	}
 
 	// flatten expression tree for costing
-	c := newIndexCoster(rt.Name())
+	c := newIndexCoster(ctx, rt.Name())
 	root, leftover, imprecise := c.flatten(expression.JoinAnd(filters...))
 	if root == nil {
 		return nil, nil, nil, err
@@ -337,8 +337,9 @@ func addIndexScans(m *memo.Memo) error {
 	})
 }
 
-func newIndexCoster(underlyingName string) *indexCoster {
+func newIndexCoster(ctx *sql.Context, underlyingName string) *indexCoster {
 	return &indexCoster{
+		ctx:            ctx,
 		i:              1,
 		idToExpr:       make(map[indexScanId]sql.Expression),
 		underlyingName: underlyingName,
@@ -346,7 +347,8 @@ func newIndexCoster(underlyingName string) *indexCoster {
 }
 
 type indexCoster struct {
-	i indexScanId
+	ctx *sql.Context
+	i   indexScanId
 	// idToExpr is a record of conj decomposition so we can remove duplicates later
 	idToExpr map[indexScanId]sql.Expression
 	// bestStat is the lowest cardinality indexScan option
@@ -558,7 +560,7 @@ func (c *indexCoster) flatten(e sql.Expression) (indexFilter, sql.Expression, sq
 
 	default:
 		c.idToExpr[c.i] = e
-		leaf, ok := newLeaf(c.i, e, c.underlyingName)
+		leaf, ok := newLeaf(c.ctx, c.i, e, c.underlyingName)
 		c.i++
 		if !ok {
 			return nil, e, sql.FastIntSet{}
@@ -599,7 +601,7 @@ func (c *indexCoster) flattenAnd(e *expression.And, and *iScanAnd) (sql.FastIntS
 			}
 		default:
 			c.idToExpr[c.i] = e
-			leaf, ok := newLeaf(c.i, e, c.underlyingName)
+			leaf, ok := newLeaf(c.ctx, c.i, e, c.underlyingName)
 			if !ok {
 				invalid.Add(int(c.i))
 			} else {
@@ -639,7 +641,7 @@ func (c *indexCoster) flattenOr(e *expression.Or, or *iScanOr) (bool, bool) {
 			imprecise = imprecise || imp
 		default:
 			c.idToExpr[c.i] = e
-			leaf, ok := newLeaf(c.i, e, c.underlyingName)
+			leaf, ok := newLeaf(c.ctx, c.i, e, c.underlyingName)
 			if !ok {
 				return false, false
 			} else {
@@ -1260,7 +1262,7 @@ func (o indexScanOp) swap() indexScanOp {
 	}
 }
 
-func newLeaf(id indexScanId, e sql.Expression, underlying string) (*iScanLeaf, bool) {
+func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying string) (*iScanLeaf, bool) {
 	var op indexScanOp
 	var left sql.Expression
 	var right sql.Expression
@@ -1354,7 +1356,7 @@ func newLeaf(id indexScanId, e sql.Expression, underlying string) (*iScanLeaf, b
 		tup := right.(expression.Tuple)
 		var litSet []interface{}
 		for _, lit := range tup {
-			value, err := lit.Eval(nil, nil)
+			value, err := lit.Eval(ctx, nil)
 			if err != nil {
 				return nil, false
 			}
@@ -1363,7 +1365,7 @@ func newLeaf(id indexScanId, e sql.Expression, underlying string) (*iScanLeaf, b
 		return &iScanLeaf{id: id, gf: gf, op: op, setValues: litSet, underlying: underlying}, true
 	}
 
-	value, err := right.Eval(nil, nil)
+	value, err := right.Eval(ctx, nil)
 	if err != nil {
 		return nil, false
 	}
