@@ -134,20 +134,32 @@ func (in *InSubquery) WithChildren(children ...sql.Expression) (sql.Expression, 
 	return NewInSubquery(children[0], children[1]), nil
 }
 
-func (in *InSubquery) String() string {
+// Describe implements the sql.Describable interface
+func (in *InSubquery) Describe(options sql.DescribeOptions) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("InSubquery")
-	children := []string{fmt.Sprintf("left: %s", in.Left), fmt.Sprintf("right: %s", in.Right)}
+	children := []string{fmt.Sprintf("left: %s", sql.Describe(in.Left, options)),
+		fmt.Sprintf("right: %s", sql.Describe(in.Right, options))}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
 
+// String implements the fmt.Stringer interface
+func (in *InSubquery) String() string {
+	return in.Describe(sql.DescribeOptions{
+		Analyze:   false,
+		Estimates: false,
+		Debug:     false,
+	})
+}
+
+// DebugString implements the sql.DebugStringer interface
 func (in *InSubquery) DebugString() string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("InSubquery")
-	children := []string{fmt.Sprintf("left: %s", sql.DebugString(in.Left)), fmt.Sprintf("right: %s", sql.DebugString(in.Right))}
-	_ = pr.WriteChildren(children...)
-	return pr.String()
+	return in.Describe(sql.DescribeOptions{
+		Analyze:   false,
+		Estimates: false,
+		Debug:     true,
+	})
 }
 
 // Children implements the Expression interface.
