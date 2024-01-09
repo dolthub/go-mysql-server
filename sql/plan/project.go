@@ -62,29 +62,35 @@ func (p *Project) IsReadOnly() bool {
 	return p.Child.IsReadOnly()
 }
 
-func (p *Project) String() string {
+// Describe implements the sql.Describable interface.
+func (p *Project) Describe(options sql.DescribeOptions) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Project")
 	var exprs = make([]string, len(p.Projections))
 	for i, expr := range p.Projections {
-		exprs[i] = expr.String()
+		exprs[i] = sql.Describe(expr, options)
 	}
 	columns := fmt.Sprintf("columns: [%s]", strings.Join(exprs, ", "))
-	_ = pr.WriteChildren(columns, p.Child.String())
+	_ = pr.WriteChildren(columns, sql.Describe(p.Child, options))
 	return pr.String()
 }
 
-func (p *Project) DebugString() string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("Project")
-	var exprs = make([]string, len(p.Projections))
-	for i, expr := range p.Projections {
-		exprs[i] = sql.DebugString(expr)
-	}
-	columns := fmt.Sprintf("columns: [%s]", strings.Join(exprs, ", "))
-	_ = pr.WriteChildren(columns, sql.DebugString(p.Child))
+// String implements the fmt.Stringer interface.
+func (p *Project) String() string {
+	return p.Describe(sql.DescribeOptions{
+		Analyze:   false,
+		Estimates: false,
+		Debug:     false,
+	})
+}
 
-	return pr.String()
+// DebugString implements the sql.DebugStringer interface.
+func (p *Project) DebugString() string {
+	return p.Describe(sql.DescribeOptions{
+		Analyze:   false,
+		Estimates: false,
+		Debug:     true,
+	})
 }
 
 // Expressions implements the Expressioner interface.
