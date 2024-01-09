@@ -409,6 +409,12 @@ func TestAnsiQuotesSqlModePrepared(t *testing.T, harness Harness) {
 	}
 }
 
+var DebugQueryPlan = sql.DescribeOptions{
+	Analyze:   false,
+	Estimates: false,
+	Debug:     true,
+}
+
 // TestQueryPlans tests generating the correct query plans for various queries using databases and tables provided by
 // the given harness.
 func TestQueryPlans(t *testing.T, harness Harness, planTests []queries.QueryPlanTest) {
@@ -416,7 +422,7 @@ func TestQueryPlans(t *testing.T, harness Harness, planTests []queries.QueryPlan
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range planTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, DebugQueryPlan)
 	}
 }
 
@@ -425,7 +431,7 @@ func TestIntegrationPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.IntegrationPlanTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, DebugQueryPlan)
 	}
 }
 
@@ -434,7 +440,7 @@ func TestImdbPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.ImdbPlanTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, DebugQueryPlan)
 	}
 }
 
@@ -443,7 +449,7 @@ func TestTpchPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.TpchPlanTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, DebugQueryPlan)
 	}
 }
 
@@ -452,7 +458,7 @@ func TestTpccPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.TpccPlanTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, DebugQueryPlan)
 	}
 }
 
@@ -461,7 +467,7 @@ func TestTpcdsPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.TpcdsPlanTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, DebugQueryPlan)
 	}
 }
 
@@ -542,7 +548,7 @@ func TestVersionedQueriesPrepared(t *testing.T, harness VersionedDBHarness) {
 }
 
 // TestQueryPlan analyzes the query given and asserts that its printed plan matches the expected one.
-func TestQueryPlan(t *testing.T, harness Harness, e QueryEngine, query, expectedPlan string, verbose bool) {
+func TestQueryPlan(t *testing.T, harness Harness, e QueryEngine, query, expectedPlan string, options sql.DescribeOptions) {
 	t.Run(query, func(t *testing.T) {
 		ctx := NewContext(harness)
 		parsed, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, query)
@@ -557,12 +563,7 @@ func TestQueryPlan(t *testing.T, harness Harness, e QueryEngine, query, expected
 			}
 		}
 
-		var cmp string
-		if verbose {
-			cmp = sql.DebugString(ExtractQueryNode(node))
-		} else {
-			cmp = ExtractQueryNode(node).String()
-		}
+		cmp := sql.Describe(ExtractQueryNode(node), options)
 		assert.Equal(t, expectedPlan, cmp, "Unexpected result for query: "+query)
 	})
 }
@@ -1388,7 +1389,7 @@ func TestGeneratedColumnPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.GeneratedColumnPlanTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, DebugQueryPlan)
 	}
 }
 
