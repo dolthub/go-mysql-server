@@ -19,13 +19,13 @@ import (
 	"strings"
 )
 
-type Explainable interface {
-	GetAnalyzeString(options DescribeOptions) string
-	SetExplainStats(stats ExplainStats)
-	GetExplainStats() *ExplainStats
+type WithDescribeStats interface {
+	GetDescribeStatsString(options DescribeOptions) string
+	SetDescribeStats(stats DescribeStats)
+	getDescribeStats() *DescribeStats
 }
 
-type ExplainStats struct {
+type DescribeStats struct {
 	HasStats           bool
 	EstimatedRowCount  uint64
 	ActualRowCount     uint64
@@ -33,18 +33,18 @@ type ExplainStats struct {
 	Cost               float64
 }
 
-// GetEstimatedRowCount implements Explainable
-func (e ExplainStats) GetEstimatedRowCount() uint64 {
+// GetEstimatedRowCount implements WithDescribeStats
+func (e DescribeStats) GetEstimatedRowCount() uint64 {
 	return e.EstimatedRowCount
 }
 
-// GetEstimatedCost implements Explainable
-func (e ExplainStats) GetEstimatedCost() float64 {
+// GetEstimatedCost implements WithDescribeStats
+func (e DescribeStats) GetEstimatedCost() float64 {
 	return e.Cost
 }
 
-// GetAnalyzeString implements Explainable
-func (e *ExplainStats) GetAnalyzeString(options DescribeOptions) string {
+// GetDescribeStatsString implements WithDescribeStats
+func (e *DescribeStats) GetDescribeStatsString(options DescribeOptions) string {
 	if !e.HasStats {
 		return "(No stats)"
 	}
@@ -57,22 +57,22 @@ func (e *ExplainStats) GetAnalyzeString(options DescribeOptions) string {
 	return fmt.Sprintf("%s %s", estimatedStats, actualStats)
 }
 
-func (e *ExplainStats) SetExplainStats(newStats ExplainStats) {
+func (e *DescribeStats) SetDescribeStats(newStats DescribeStats) {
 	*e = newStats
 	e.HasStats = true
 }
 
-func (e *ExplainStats) GetExplainStats() *ExplainStats {
+func (e *DescribeStats) getDescribeStats() *DescribeStats {
 	return e
 }
 
 type CountingRowIter struct {
 	RowIter
-	Stats *ExplainStats
+	Stats *DescribeStats
 }
 
-func NewCountingRowIter(iter RowIter, explainable Explainable) CountingRowIter {
-	stats := explainable.GetExplainStats()
+func NewCountingRowIter(iter RowIter, describable WithDescribeStats) CountingRowIter {
+	stats := describable.getDescribeStats()
 	stats.NumberOfIterations++
 	return CountingRowIter{
 		RowIter: iter,
@@ -119,5 +119,8 @@ func (d DescribeOptions) String() string {
 		result = result + "debug,"
 	}
 	result = strings.TrimSuffix(result, ",")
+	if result == "" {
+		return "tree"
+	}
 	return result
 }

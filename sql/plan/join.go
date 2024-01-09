@@ -285,7 +285,7 @@ func (i JoinType) AsLateral() JoinType {
 // JoinNode contains all the common data fields and implements the common sql.Node getters for all join types.
 type JoinNode struct {
 	BinaryNode
-	sql.ExplainStats
+	sql.DescribeStats
 	Filter     sql.Expression
 	Op         JoinType
 	CommentStr string
@@ -453,7 +453,7 @@ func (j *JoinNode) Describe(options sql.DescribeOptions) string {
 	}
 	children = append(children, sql.Describe(j.left, options), sql.Describe(j.right, options))
 	if options.Estimates {
-		pr.WriteNode("%s %s", j.Op, j.GetAnalyzeString(options))
+		pr.WriteNode("%s %s", j.Op, j.GetDescribeStatsString(options))
 	} else {
 		pr.WriteNode("%s", j.Op)
 	}

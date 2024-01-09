@@ -25,8 +25,8 @@ import (
 
 func (b *BaseBuilder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (iter sql.RowIter, err error) {
 	iter, err = b.buildNodeExecNoAnalyze(ctx, n, row)
-	if explainable, ok := n.(sql.Explainable); ok {
-		iter = sql.NewCountingRowIter(iter, explainable)
+	if withDescribeStats, ok := n.(sql.WithDescribeStats); ok {
+		iter = sql.NewCountingRowIter(iter, withDescribeStats)
 	}
 	return
 }
