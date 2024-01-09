@@ -20,7 +20,7 @@ import (
 )
 
 type Explainable interface {
-	GetAnalyzeString() string
+	GetAnalyzeString(options DescribeOptions) string
 	SetExplainStats(stats ExplainStats)
 	GetExplainStats() *ExplainStats
 }
@@ -44,12 +44,12 @@ func (e ExplainStats) GetEstimatedCost() float64 {
 }
 
 // GetAnalyzeString implements Explainable
-func (e *ExplainStats) GetAnalyzeString() string {
+func (e *ExplainStats) GetAnalyzeString(options DescribeOptions) string {
 	if !e.HasStats {
 		return "(No stats)"
 	}
-	estimatedStats := fmt.Sprintf("(estimated cost=%v rows=%v)", e.Cost, e.EstimatedRowCount)
-	if e.NumberOfIterations == 0 {
+	estimatedStats := fmt.Sprintf("(estimated cost=%.3f rows=%v)", e.Cost, e.EstimatedRowCount)
+	if !options.Analyze || e.NumberOfIterations == 0 {
 		return estimatedStats
 	}
 	averageRowCount := float64(e.ActualRowCount) / float64(e.NumberOfIterations)
