@@ -52,6 +52,24 @@ import (
 	"github.com/dolthub/go-mysql-server/test"
 )
 
+// ExecuteNode iterates over a node's iterator until it's exhausted.
+// This is useful for populating actual row counts for `DESCRIBE ANALYZE`.
+func ExecuteNode(ctx *sql.Context, engine QueryEngine, node sql.Node) error {
+	iter, err := engine.EngineAnalyzer().ExecBuilder.Build(ctx, node, nil)
+	if err != nil {
+		return nil
+	}
+	for {
+		_, err := iter.Next(ctx)
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+	}
+}
+
 // TestQueries tests a variety of queries against databases and tables provided by the given harness.
 func TestQueries(t *testing.T, harness Harness) {
 	harness.Setup(setup.SimpleSetup...)
@@ -421,8 +439,29 @@ func TestQueryPlans(t *testing.T, harness Harness, planTests []queries.QueryPlan
 	harness.Setup(setup.PlanSetup...)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
+	runTestWithDescribeOptions := func(t *testing.T, query, expectedPlan string, options sql.DescribeOptions) {
+		TestQueryPlanWithName(t, options.String(), harness, e, query, expectedPlan, options)
+	}
 	for _, tt := range planTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, DebugQueryPlan)
+		t.Run(tt.Query, func(t *testing.T) {
+			runTestWithDescribeOptions(t, tt.Query, tt.ExpectedPlan, sql.DescribeOptions{
+				Debug: true,
+			})
+			if tt.ExpectedEstimates != "" {
+				runTestWithDescribeOptions(t, tt.Query, tt.ExpectedEstimates, sql.DescribeOptions{
+					Debug:     true,
+					Estimates: true,
+				})
+			}
+			if tt.ExpectedAnalysis != "" {
+				runTestWithDescribeOptions(t, tt.Query, tt.ExpectedAnalysis, sql.DescribeOptions{
+					Debug:     true,
+					Estimates: true,
+					Analyze:   true,
+				})
+			}
+		})
+
 	}
 }
 
@@ -549,7 +588,11 @@ func TestVersionedQueriesPrepared(t *testing.T, harness VersionedDBHarness) {
 
 // TestQueryPlan analyzes the query given and asserts that its printed plan matches the expected one.
 func TestQueryPlan(t *testing.T, harness Harness, e QueryEngine, query, expectedPlan string, options sql.DescribeOptions) {
-	t.Run(query, func(t *testing.T) {
+	TestQueryPlanWithName(t, query, harness, e, query, expectedPlan, options)
+}
+
+func TestQueryPlanWithName(t *testing.T, name string, harness Harness, e QueryEngine, query, expectedPlan string, options sql.DescribeOptions) {
+	t.Run(name, func(t *testing.T) {
 		ctx := NewContext(harness)
 		parsed, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, query)
 		require.NoError(t, err)
@@ -561,6 +604,13 @@ func TestQueryPlan(t *testing.T, harness Harness, e QueryEngine, query, expected
 			if sh.SkipQueryTest(query) {
 				t.Skipf("Skipping query plan for %s", query)
 			}
+		}
+
+		// If iterating over the node won't have side effects,
+		// do it in order to populate actual stats data.
+		if node.IsReadOnly() {
+			err = ExecuteNode(ctx, e, node)
+			require.NoError(t, err)
 		}
 
 		cmp := sql.Describe(ExtractQueryNode(node), options)

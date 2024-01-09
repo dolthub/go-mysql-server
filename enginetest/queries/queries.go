@@ -39,9 +39,11 @@ type QueryTest struct {
 }
 
 type QueryPlanTest struct {
-	Query        string
-	ExpectedPlan string
-	Skip         bool
+	Query             string
+	ExpectedPlan      string
+	ExpectedEstimates string
+	ExpectedAnalysis  string
+	Skip              bool
 }
 
 // QueryPlanTODOs are queries where the query planner produces a correct (results) but suboptimal plan.
