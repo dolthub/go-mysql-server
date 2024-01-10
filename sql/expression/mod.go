@@ -34,12 +34,23 @@ type Mod struct {
 	ops int32
 }
 
+var _ sql.FunctionExpression = (*Mod)(nil)
+var _ sql.CollationCoercible = (*Mod)(nil)
+
 // NewMod creates a new Mod sql.Expression.
 func NewMod(left, right sql.Expression) *Mod {
 	a := &Mod{BinaryExpression{Left: left, Right: right}, 0}
 	ops := countArithmeticOps(a)
 	setArithmeticOps(a, ops)
 	return a
+}
+
+func (m *Mod) FunctionName() string {
+	return "mod"
+}
+
+func (m *Mod) Description() string {
+	return "returns the remainder of the first argument divided by the second argument"
 }
 
 func (m *Mod) LeftChild() sql.Expression {

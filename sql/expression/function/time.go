@@ -1568,12 +1568,20 @@ type Time struct {
 	expression.UnaryExpression
 }
 
-var _ sql.Expression = (*Time)(nil)
+var _ sql.FunctionExpression = (*Time)(nil)
 var _ sql.CollationCoercible = (*Time)(nil)
 
 // NewTime returns a new Date node.
 func NewTime(time sql.Expression) sql.Expression {
 	return &Time{expression.UnaryExpression{Child: time}}
+}
+
+func (t *Time) FunctionName() string {
+	return "time"
+}
+
+func (t *Time) Description() string {
+	return "extracts the time part of a time or datetime expression and returns it as a string"
 }
 
 func (t *Time) String() string {
