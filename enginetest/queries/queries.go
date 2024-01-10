@@ -8737,6 +8737,12 @@ from typestable`,
 			{3, "third row"},
 		},
 	},
+	{
+		Query: "select case when 1 then 59 + 81 / 1 end;",
+		Expected: []sql.Row{
+			{"140.0000"},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
