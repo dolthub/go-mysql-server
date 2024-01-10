@@ -297,7 +297,7 @@ func isValidSortFieldOrder(sfs sql.SortFields) bool {
 	return true
 }
 
-// hasOverlapping checks if the ranges in a RangeCollection that are part of the sortfield exprs are non-overlapping
+// hasOverlapping checks if the ranges in a RangeCollection that are part of the sortfield exprs are overlapping
 // This function assumes that the sort field exprs are a valid prefix of the index columns
 func hasOverlapping(sfExprs []sql.Expression, ranges sql.RangeCollection) bool {
 	for si := range sfExprs {
