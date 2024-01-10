@@ -513,7 +513,7 @@ func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Exp
 }
 
 // annotateBindvarsWithTypeInfo assigns the type of the column expression the bindvar on left and right, if possible.
-// This only works if one side of the comparison is a bindvar and the other is a column expression. 
+// This only works if one side of the comparison is a bindvar and the other is a column expression.
 // Otherwise, |left| and |right| are returned unchanged.
 func (b *Builder) annotateBindvarsWithTypeInfo(c *ast.ComparisonExpr, left sql.Expression, right sql.Expression) (sql.Expression, sql.Expression) {
 	if leftBind, ok := c.Left.(*ast.SQLVal); ok && b.shouldAssignBindvarType(leftBind) {
