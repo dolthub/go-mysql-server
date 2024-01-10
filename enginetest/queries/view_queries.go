@@ -21,6 +21,23 @@ import (
 
 var ViewScripts = []ScriptTest{
 	{
+		Name: "multi database view",
+		SetUpScript: []string{
+			`Create database base;`,
+			`Create database live;`,
+			"Create table base.xy (x int primary key, y int);",
+			"Insert into base.xy values (1, 2);",
+			"use live",
+			"create view xy as select base.xy.x AS x, base.xy.y AS y from base.xy;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * from live.xy;",
+				Expected: []sql.Row{{1, 2}},
+			},
+		},
+	},
+	{
 		Name: "view of join with projections",
 		SetUpScript: []string{
 			`

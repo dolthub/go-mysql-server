@@ -781,6 +781,26 @@ var OnUpdateExprScripts = []ScriptTest{
 				ExpectedErr: sql.ErrInvalidOnUpdate,
 			},
 			{
+				Query:       "create table tt (i int, ts timestamp on update now(1))",
+				ExpectedErr: sql.ErrInvalidOnUpdate,
+			},
+			{
+				Query:       "create table tt (i int, ts timestamp on update current_timestamp(1))",
+				ExpectedErr: sql.ErrInvalidOnUpdate,
+			},
+			{
+				Query:       "create table tt (i int, ts timestamp on update current_timestamp(100))",
+				ExpectedErr: sql.ErrInvalidOnUpdate,
+			},
+			{
+				Query:       "create table tt (i int, ts timestamp on update localtime(1))",
+				ExpectedErr: sql.ErrInvalidOnUpdate,
+			},
+			{
+				Query:       "create table tt (i int, ts timestamp on update localtimestamp(1))",
+				ExpectedErr: sql.ErrInvalidOnUpdate,
+			},
+			{
 				Query:          "alter table t modify column ts timestamp on update (5)",
 				ExpectedErrStr: "syntax error at position 53 near 'update'",
 			},
@@ -791,6 +811,10 @@ var OnUpdateExprScripts = []ScriptTest{
 			{
 				Query:       "alter table t modify column t date on update current_timestamp",
 				ExpectedErr: sql.ErrInvalidOnUpdate,
+			},
+			{
+				Query:          "select current_timestamp(i) from t",
+				ExpectedErrStr: "syntax error at position 27 near 'i'",
 			},
 		},
 	},
@@ -806,7 +830,7 @@ var OnUpdateExprScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{"t", "CREATE TABLE `t` (\n" +
 						"  `i` int,\n" +
-						"  `ts` timestamp DEFAULT 0 ON UPDATE (CURRENT_TIMESTAMP())\n" +
+						"  `ts` timestamp DEFAULT 0 ON UPDATE CURRENT_TIMESTAMP\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
@@ -877,7 +901,7 @@ var OnUpdateExprScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{"t", "CREATE TABLE `t` (\n" +
 						"  `i` int,\n" +
-						"  `ts` timestamp DEFAULT (CURRENT_TIMESTAMP()) ON UPDATE (CURRENT_TIMESTAMP())\n" +
+						"  `ts` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
@@ -961,7 +985,7 @@ var OnUpdateExprScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{"t", "CREATE TABLE `t` (\n" +
 						"  `i` int,\n" +
-						"  `ts` timestamp DEFAULT 0 ON UPDATE (CURRENT_TIMESTAMP())\n" +
+						"  `ts` timestamp DEFAULT 0 ON UPDATE CURRENT_TIMESTAMP\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
@@ -1029,8 +1053,8 @@ var OnUpdateExprScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{"t", "CREATE TABLE `t` (\n" +
 						"  `i` int NOT NULL,\n" +
-						"  `ts` timestamp DEFAULT 0 ON UPDATE (CURRENT_TIMESTAMP()),\n" +
-						"  `dt` datetime DEFAULT 0 ON UPDATE (CURRENT_TIMESTAMP()),\n" +
+						"  `ts` timestamp DEFAULT 0 ON UPDATE CURRENT_TIMESTAMP,\n" +
+						"  `dt` datetime DEFAULT 0 ON UPDATE CURRENT_TIMESTAMP,\n" +
 						"  PRIMARY KEY (`i`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
@@ -1211,6 +1235,254 @@ var OnUpdateExprScripts = []ScriptTest{
 				Query: "select * from t;",
 				Expected: []sql.Row{
 					{1, Dec15_1_30},
+				},
+			},
+		},
+	},
+	{
+		Name: "now() synonyms",
+		SetUpScript: []string{
+			"create table t (i int, ts timestamp);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "create table t1 (i int, ts timestamp on update now())",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t1;",
+				Expected: []sql.Row{
+					{"t1", "CREATE TABLE `t1` (\n" +
+						"  `i` int,\n" +
+						"  `ts` timestamp ON UPDATE CURRENT_TIMESTAMP\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "create table t2 (i int, ts timestamp on update now(0))",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t2;",
+				Expected: []sql.Row{
+					{"t2", "CREATE TABLE `t2` (\n" +
+						"  `i` int,\n" +
+						"  `ts` timestamp ON UPDATE CURRENT_TIMESTAMP\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "create table t3 (i int, ts timestamp on update localtime)",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t3;",
+				Expected: []sql.Row{
+					{"t3", "CREATE TABLE `t3` (\n" +
+						"  `i` int,\n" +
+						"  `ts` timestamp ON UPDATE CURRENT_TIMESTAMP\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "create table t4 (i int, ts timestamp on update localtime())",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t4;",
+				Expected: []sql.Row{
+					{"t4", "CREATE TABLE `t4` (\n" +
+						"  `i` int,\n" +
+						"  `ts` timestamp ON UPDATE CURRENT_TIMESTAMP\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "create table t5 (i int, ts timestamp on update localtime(0))",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t5;",
+				Expected: []sql.Row{
+					{"t5", "CREATE TABLE `t5` (\n" +
+						"  `i` int,\n" +
+						"  `ts` timestamp ON UPDATE CURRENT_TIMESTAMP\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "create table t6 (i int, ts timestamp on update localtimestamp)",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t6;",
+				Expected: []sql.Row{
+					{"t6", "CREATE TABLE `t6` (\n" +
+						"  `i` int,\n" +
+						"  `ts` timestamp ON UPDATE CURRENT_TIMESTAMP\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "create table t7 (i int, ts timestamp on update localtimestamp())",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t7;",
+				Expected: []sql.Row{
+					{"t7", "CREATE TABLE `t7` (\n" +
+						"  `i` int,\n" +
+						"  `ts` timestamp ON UPDATE CURRENT_TIMESTAMP\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "create table t8 (i int, ts timestamp on update localtimestamp(0))",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t8;",
+				Expected: []sql.Row{
+					{"t8", "CREATE TABLE `t8` (\n" +
+						"  `i` int,\n" +
+						"  `ts` timestamp ON UPDATE CURRENT_TIMESTAMP\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "alter table t modify column ts timestamp on update now()",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int,\n" +
+						"  `ts` timestamp ON UPDATE CURRENT_TIMESTAMP\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "alter table t modify column ts timestamp on update now(0)",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int,\n" +
+						"  `ts` timestamp ON UPDATE CURRENT_TIMESTAMP\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "alter table t modify column ts timestamp on update localtime",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int,\n" +
+						"  `ts` timestamp ON UPDATE CURRENT_TIMESTAMP\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "alter table t modify column ts timestamp on update localtime()",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int,\n" +
+						"  `ts` timestamp ON UPDATE CURRENT_TIMESTAMP\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "alter table t modify column ts timestamp on update localtime(0)",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int,\n" +
+						"  `ts` timestamp ON UPDATE CURRENT_TIMESTAMP\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "alter table t modify column ts timestamp on update localtimestamp",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int,\n" +
+						"  `ts` timestamp ON UPDATE CURRENT_TIMESTAMP\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "alter table t modify column ts timestamp on update localtimestamp()",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int,\n" +
+						"  `ts` timestamp ON UPDATE CURRENT_TIMESTAMP\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "alter table t modify column ts timestamp on update localtimestamp(0)",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int,\n" +
+						"  `ts` timestamp ON UPDATE CURRENT_TIMESTAMP\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 		},

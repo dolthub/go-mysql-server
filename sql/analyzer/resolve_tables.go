@@ -37,7 +37,7 @@ func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 				return nil, transform.SameTree, sql.ErrDropTableNotSupported.New(t.Database().Name())
 			}
 		case *plan.UnresolvedTable:
-			if dt.IfExists() {
+			if dt.IfExists() && ctx != nil && ctx.Session != nil {
 				ctx.Session.Warn(&sql.Warning{
 					Level:   "Note",
 					Code:    mysql.ERBadTable,

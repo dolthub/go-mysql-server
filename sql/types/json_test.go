@@ -471,6 +471,14 @@ var JsonSetTests = []JsonMutationTest{
 		changed:   true,
 	},
 	{
+		desc:      "object field name can contain escaped quotes",
+		doc:       `{"\"a\"": {}}`,
+		path:      `$."\"a\""`,
+		value:     `42`,
+		resultVal: `{"\"a\"": 42 }`,
+		changed:   true,
+	},
+	{
 		desc:      "Object field can be set to null",
 		doc:       `{"a": {}}`,
 		path:      `$."a"`,
@@ -585,7 +593,7 @@ func TestJsonSet(t *testing.T) {
 		t.Run("JSON set: "+test.desc, func(t *testing.T) {
 			doc := MustJSON(test.doc)
 			val := MustJSON(test.value)
-			res, changed, err := doc.Set(sql.NewEmptyContext(), test.path, val)
+			res, changed, err := doc.Set(test.path, val)
 			require.NoError(t, err)
 			assert.Equal(t, MustJSON(test.resultVal), res)
 			assert.Equal(t, test.changed, changed)
@@ -737,6 +745,14 @@ var JsonInsertTests = []JsonMutationTest{
 		changed:   false,
 	},
 	{
+		desc:      "object field name can contain escaped quotes",
+		doc:       `{"\"a\"": {}}`,
+		path:      `$."\"a\""`,
+		value:     `42`,
+		resultVal: `{"\"a\"": {} }`,
+		changed:   false,
+	},
+	{
 		desc:      "array treated as an object is a no op",
 		doc:       `[1, 2, 3]`,
 		path:      `$.a`,
@@ -768,7 +784,7 @@ func TestJsonInsert(t *testing.T) {
 		t.Run("JSON insert: "+test.desc, func(t *testing.T) {
 			doc := MustJSON(test.doc)
 			val := MustJSON(test.value)
-			res, changed, err := doc.Insert(sql.NewEmptyContext(), test.path, val)
+			res, changed, err := doc.Insert(test.path, val)
 			require.NoError(t, err)
 			assert.Equal(t, MustJSON(test.resultVal), res)
 			assert.Equal(t, test.changed, changed)
@@ -863,7 +879,7 @@ func TestJsonRemove(t *testing.T) {
 	for _, test := range JsonRemoveTests {
 		t.Run("JSON remove: "+test.desc, func(t *testing.T) {
 			doc := MustJSON(test.doc)
-			res, changed, err := doc.Remove(sql.NewEmptyContext(), test.path)
+			res, changed, err := doc.Remove(test.path)
 			require.NoError(t, err)
 			assert.Equal(t, MustJSON(test.resultVal), res)
 			assert.Equal(t, test.changed, changed)
@@ -1029,7 +1045,7 @@ func TestJsonReplace(t *testing.T) {
 		t.Run("JSON replace: "+test.desc, func(t *testing.T) {
 			doc := MustJSON(test.doc)
 			val := MustJSON(test.value)
-			res, changed, err := doc.Replace(sql.NewEmptyContext(), test.path, val)
+			res, changed, err := doc.Replace(test.path, val)
 			require.NoError(t, err)
 			assert.Equal(t, MustJSON(test.resultVal), res)
 			assert.Equal(t, test.changed, changed)
@@ -1117,7 +1133,7 @@ func TestJsonArrayAppend(t *testing.T) {
 		t.Run("JSON array append: "+test.desc, func(t *testing.T) {
 			doc := MustJSON(test.doc)
 			val := MustJSON(test.value)
-			res, changed, err := doc.ArrayAppend(sql.NewEmptyContext(), test.path, val)
+			res, changed, err := doc.ArrayAppend(test.path, val)
 			require.NoError(t, err)
 			assert.Equal(t, MustJSON(test.resultVal), res)
 			assert.Equal(t, test.changed, changed)
@@ -1195,7 +1211,7 @@ func TestJsonArrayInsert(t *testing.T) {
 		t.Run("JSON array insert: "+test.desc, func(t *testing.T) {
 			doc := MustJSON(test.doc)
 			val := MustJSON(test.value)
-			res, changed, err := doc.ArrayInsert(sql.NewEmptyContext(), test.path, val)
+			res, changed, err := doc.ArrayInsert(test.path, val)
 			require.NoError(t, err)
 			assert.Equal(t, MustJSON(test.resultVal), res)
 			assert.Equal(t, test.changed, changed)
@@ -1263,7 +1279,7 @@ func TestJsonPathErrors(t *testing.T) {
 
 	for _, test := range JsonPathParseErrTests {
 		t.Run("JSON Path: "+test.desc, func(t *testing.T) {
-			_, changed, err := doc.Set(sql.NewEmptyContext(), test.path, MustJSON(`{"a": 42}`))
+			_, changed, err := doc.Set(test.path, MustJSON(`{"a": 42}`))
 			assert.Equal(t, false, changed)
 			require.Error(t, err)
 			assert.Equal(t, test.expectErrStr, err.Error())
@@ -1296,7 +1312,7 @@ func TestJsonInsertErrors(t *testing.T) {
 
 	for _, test := range JsonArrayInsertErrors {
 		t.Run("JSON Path: "+test.desc, func(t *testing.T) {
-			_, changed, err := doc.ArrayInsert(sql.NewEmptyContext(), test.path, MustJSON(`{"a": 42}`))
+			_, changed, err := doc.ArrayInsert(test.path, MustJSON(`{"a": 42}`))
 			assert.Equal(t, false, changed)
 			require.Error(t, err)
 			assert.Equal(t, test.expectErrStr, err.Error())
@@ -1308,9 +1324,61 @@ func TestRemoveRoot(t *testing.T) {
 	// Fairly special case situation which doesn't mesh with our other tests. MySQL returns a specfic message when you
 	// attempt to remove the root document.
 	doc := MustJSON(`{"a": 1, "b": 2}`)
-	_, changed, err := doc.Remove(sql.NewEmptyContext(), "$")
+	_, changed, err := doc.Remove("$")
 
 	require.Error(t, err)
 	assert.Equal(t, "The path expression '$' is not allowed in this context.", err.Error())
 	assert.Equal(t, false, changed)
+}
+
+type jsonIterKV struct {
+	key   string
+	value interface{}
+}
+
+type jsonIterTest struct {
+	name          string
+	doc           JsonObject
+	expectedPairs []jsonIterKV
+}
+
+var jsonIterTests = []jsonIterTest{
+	{
+		name:          "empty object",
+		doc:           JsonObject{},
+		expectedPairs: []jsonIterKV{},
+	},
+	{
+		name: "iterate over keys in sorted order",
+		doc:  JsonObject{"b": 1, "a": 2},
+		expectedPairs: []jsonIterKV{
+			{key: "a", value: 2},
+			{key: "b", value: 1},
+		},
+	},
+	{
+		name: "keys use lexicographic order, not key-length order",
+		doc:  JsonObject{"b": 1, "aa": 2},
+		expectedPairs: []jsonIterKV{
+			{key: "aa", value: 2},
+			{key: "b", value: 1},
+		},
+	},
+}
+
+func TestJsonIter(t *testing.T) {
+	for _, test := range jsonIterTests {
+		t.Run(test.name, func(t *testing.T) {
+			iter := NewJSONIter(test.doc)
+			pairs := make([]jsonIterKV, 0)
+			for iter.HasNext() {
+				var pair jsonIterKV
+				var err error
+				pair.key, pair.value, err = iter.Next()
+				require.NoError(t, err)
+				pairs = append(pairs, pair)
+			}
+			require.Equal(t, test.expectedPairs, pairs)
+		})
+	}
 }

@@ -199,6 +199,10 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 	case float64:
 		return t.ConvertToNullDecimal(decimal.NewFromFloat(value))
 	case string:
+		// TODO: implement truncation here
+		if len(value) == 0 {
+			return t.ConvertToNullDecimal(decimal.NewFromInt(0))
+		}
 		var err error
 		res, err = decimal.NewFromString(value)
 		if err != nil {

@@ -120,7 +120,7 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 	}
 
 	// flatten expression tree for costing
-	c := newIndexCoster(rt.Name())
+	c := newIndexCoster(ctx, rt.Name())
 	root, leftover, imprecise := c.flatten(expression.JoinAnd(filters...))
 	if root == nil {
 		return nil, nil, nil, err
@@ -154,7 +154,7 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 		qual := sql.NewStatQualifier(dbName, tableName, strings.ToLower(idx.ID()))
 		stat, ok := qualToStat[qual]
 		if !ok {
-			stat, err = uniformDistStatisticsForIndex(ctx, iat, idx)
+			stat, err = uniformDistStatisticsForIndex(ctx, statsProv, iat, idx)
 		}
 		err := c.cost(root, stat, idx)
 		if err != nil {
@@ -305,7 +305,7 @@ func addIndexScans(m *memo.Memo) error {
 					break
 				}
 			}
-			itaGroup := m.MemoizeIndexScan(nil, ret, aliasName, idx)
+			itaGroup := m.MemoizeIndexScan(nil, ret, aliasName, idx, nil)
 			m.MemoizeFilter(filter.Group(), itaGroup, filter.Filters)
 		} else {
 			sqlIndexes := make([]sql.Index, len(indexes))
@@ -326,25 +326,10 @@ func addIndexScans(m *memo.Memo) error {
 				}
 				var itaGrp *memo.ExprGroup
 				if len(filters) > 0 {
-					itaGrp = m.MemoizeIndexScan(nil, ita, aliasName, idx)
+					itaGrp = m.MemoizeIndexScan(nil, ita, aliasName, idx, stat)
 					m.MemoizeFilter(filter.Group(), itaGrp, filters)
 				} else {
-					itaGrp = m.MemoizeIndexScan(filter.Group(), ita, aliasName, idx)
-				}
-
-				// todo: we should always interpolate the estimated row count even
-				// if we are missing index statistics
-				if stat.RowCount() > 0 {
-					if stat.Histogram().IsEmpty() {
-						// if we don't have stats, set arbitrarily low non-zero row count
-						// to prefer indexScan over filter option
-						itaGrp.RelProps.SetStats(stat.WithRowCount(1))
-					} else {
-						itaGrp.RelProps.SetStats(stat)
-					}
-				}
-				if stat.FuncDeps().HasMax1Row() {
-					itaGrp.RelProps.SetStats(stat.WithRowCount(1))
+					itaGrp = m.MemoizeIndexScan(filter.Group(), ita, aliasName, idx, stat)
 				}
 			}
 		}
@@ -352,8 +337,9 @@ func addIndexScans(m *memo.Memo) error {
 	})
 }
 
-func newIndexCoster(underlyingName string) *indexCoster {
+func newIndexCoster(ctx *sql.Context, underlyingName string) *indexCoster {
 	return &indexCoster{
+		ctx:            ctx,
 		i:              1,
 		idToExpr:       make(map[indexScanId]sql.Expression),
 		underlyingName: underlyingName,
@@ -361,7 +347,8 @@ func newIndexCoster(underlyingName string) *indexCoster {
 }
 
 type indexCoster struct {
-	i indexScanId
+	ctx *sql.Context
+	i   indexScanId
 	// idToExpr is a record of conj decomposition so we can remove duplicates later
 	idToExpr map[indexScanId]sql.Expression
 	// bestStat is the lowest cardinality indexScan option
@@ -573,7 +560,7 @@ func (c *indexCoster) flatten(e sql.Expression) (indexFilter, sql.Expression, sq
 
 	default:
 		c.idToExpr[c.i] = e
-		leaf, ok := newLeaf(c.i, e, c.underlyingName)
+		leaf, ok := newLeaf(c.ctx, c.i, e, c.underlyingName)
 		c.i++
 		if !ok {
 			return nil, e, sql.FastIntSet{}
@@ -614,7 +601,7 @@ func (c *indexCoster) flattenAnd(e *expression.And, and *iScanAnd) (sql.FastIntS
 			}
 		default:
 			c.idToExpr[c.i] = e
-			leaf, ok := newLeaf(c.i, e, c.underlyingName)
+			leaf, ok := newLeaf(c.ctx, c.i, e, c.underlyingName)
 			if !ok {
 				invalid.Add(int(c.i))
 			} else {
@@ -654,7 +641,7 @@ func (c *indexCoster) flattenOr(e *expression.Or, or *iScanOr) (bool, bool) {
 			imprecise = imprecise || imp
 		default:
 			c.idToExpr[c.i] = e
-			leaf, ok := newLeaf(c.i, e, c.underlyingName)
+			leaf, ok := newLeaf(c.ctx, c.i, e, c.underlyingName)
 			if !ok {
 				return false, false
 			} else {
@@ -1275,7 +1262,7 @@ func (o indexScanOp) swap() indexScanOp {
 	}
 }
 
-func newLeaf(id indexScanId, e sql.Expression, underlying string) (*iScanLeaf, bool) {
+func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying string) (*iScanLeaf, bool) {
 	var op indexScanOp
 	var left sql.Expression
 	var right sql.Expression
@@ -1369,7 +1356,7 @@ func newLeaf(id indexScanId, e sql.Expression, underlying string) (*iScanLeaf, b
 		tup := right.(expression.Tuple)
 		var litSet []interface{}
 		for _, lit := range tup {
-			value, err := lit.Eval(nil, nil)
+			value, err := lit.Eval(ctx, nil)
 			if err != nil {
 				return nil, false
 			}
@@ -1378,7 +1365,7 @@ func newLeaf(id indexScanId, e sql.Expression, underlying string) (*iScanLeaf, b
 		return &iScanLeaf{id: id, gf: gf, op: op, setValues: litSet, underlying: underlying}, true
 	}
 
-	value, err := right.Eval(nil, nil)
+	value, err := right.Eval(ctx, nil)
 	if err != nil {
 		return nil, false
 	}
@@ -1389,15 +1376,19 @@ func newLeaf(id indexScanId, e sql.Expression, underlying string) (*iScanLeaf, b
 const dummyNotUniqueDistinct = .90
 const dummyNotUniqueNull = .03
 
-func uniformDistStatisticsForIndex(ctx *sql.Context, iat sql.IndexAddressableTable, idx sql.Index) (sql.Statistic, error) {
+func uniformDistStatisticsForIndex(ctx *sql.Context, statsProv sql.StatsProvider, iat sql.IndexAddressableTable, idx sql.Index) (sql.Statistic, error) {
 	var rowCount uint64
 	var avgSize uint64
+
+	rowCount, _ = statsProv.RowCount(ctx, idx.Database(), idx.Table())
+
 	if st, ok := iat.(sql.StatisticsTable); ok {
-		var err error
-		rowCount, _, err = st.RowCount(ctx)
+		rCnt, _, err := st.RowCount(ctx)
 		if err != nil {
 			return nil, err
-
+		}
+		if rowCount == 0 {
+			rowCount = rCnt
 		}
 		if rowCount > 0 {
 			dataSize, err := st.DataLength(ctx)

@@ -332,11 +332,13 @@ func convertDataAndWarn(ctx *sql.Context, tableSchema sql.Schema, row sql.Row, c
 	sqlerr := sql.CastSQLError(err)
 
 	// Add a warning instead
-	ctx.Session.Warn(&sql.Warning{
-		Level:   "Note",
-		Code:    sqlerr.Num,
-		Message: err.Error(),
-	})
+	if ctx != nil && ctx.Session != nil {
+		ctx.Session.Warn(&sql.Warning{
+			Level:   "Note",
+			Code:    sqlerr.Num,
+			Message: err.Error(),
+		})
+	}
 
 	return row
 }
@@ -348,11 +350,13 @@ func warnOnIgnorableError(ctx *sql.Context, row sql.Row, err error) error {
 			sqlerr := sql.CastSQLError(err)
 
 			// Add a warning instead
-			ctx.Session.Warn(&sql.Warning{
-				Level:   "Note",
-				Code:    sqlerr.Num,
-				Message: err.Error(),
-			})
+			if ctx != nil && ctx.Session != nil {
+				ctx.Session.Warn(&sql.Warning{
+					Level:   "Note",
+					Code:    sqlerr.Num,
+					Message: err.Error(),
+				})
+			}
 
 			// In this case the default value gets updated so return nil
 			if sql.ErrInsertIntoNonNullableDefaultNullColumn.Is(err) {

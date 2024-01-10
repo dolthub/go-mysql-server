@@ -16,6 +16,7 @@ package expression
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/cespare/xxhash/v2"
 
@@ -267,7 +268,24 @@ func hashOfSimple(ctx *sql.Context, i interface{}, t sql.Type) (uint64, error) {
 			return 0, err
 		}
 
-		if _, err := hash.Write([]byte(fmt.Sprintf("%v,", x))); err != nil {
+		// Remove trailing 0s from floats
+		var s string
+		switch v := x.(type) {
+		case float32:
+			s = strconv.FormatFloat(float64(v), 'f', -1, 32)
+			if s == "-0" {
+				s = "0"
+			}
+		case float64:
+			s = strconv.FormatFloat(v, 'f', -1, 64)
+			if s == "-0" {
+				s = "0"
+			}
+		default:
+			s = fmt.Sprintf("%v", v)
+		}
+
+		if _, err := hash.Write([]byte(fmt.Sprintf("%s,", s))); err != nil {
 			return 0, err
 		}
 		return hash.Sum64(), nil
@@ -336,7 +354,11 @@ func convertOrTruncate(ctx *sql.Context, i interface{}, t sql.Type) (interface{}
 		Message: fmt.Sprintf("Truncated incorrect %s value: %v", t.String(), i),
 		Code:    1292,
 	}
-	ctx.Session.Warn(&warning)
+
+	if ctx != nil && ctx.Session != nil {
+		ctx.Session.Warn(&warning)
+	}
+
 	return t.Zero(), nil
 }
 

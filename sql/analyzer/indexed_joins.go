@@ -138,11 +138,15 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	if err != nil {
 		return nil, err
 	}
-	err = addCrossHashJoins(m)
+
+	err = addLookupJoins(m)
 	if err != nil {
 		return nil, err
 	}
-	err = addLookupJoins(m)
+
+	memo.CardMemoGroups(m.Root())
+
+	err = addCrossHashJoins(m)
 	if err != nil {
 		return nil, err
 	}
@@ -731,13 +735,8 @@ func addHashJoins(m *memo.Memo) error {
 		case *memo.RecursiveTable:
 			return nil
 		}
-		rel := &memo.HashJoin{
-			JoinBase:   join.Copy(),
-			LeftAttrs:  toExpr,
-			RightAttrs: fromExpr,
-		}
-		rel.Op = rel.Op.AsHash()
-		e.Group().Prepend(rel)
+
+		m.MemoizeHashJoin(e.Group(), join, toExpr, fromExpr)
 		return nil
 	})
 }

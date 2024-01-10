@@ -13,6 +13,7 @@ exprs:
   join: true
   attrs:
   - [lookup, "*IndexScan"]
+  - [injective, "bool"]
 - name: "RangeHeapJoin"
   join: true
   attrs:
@@ -43,6 +44,7 @@ exprs:
   attrs:
   - [index, "*Index"]
   - [Alias, "string"]
+  - [Stats, "sql.Statistic"]
 - name: "Values"
   sourceType: "*plan.ValueDerivedTable"
 - name: "TableAlias"

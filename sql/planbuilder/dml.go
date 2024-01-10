@@ -432,6 +432,7 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	outScope = b.buildFrom(inScope, u.TableExprs)
 
+	// default expressions only resolve to target table
 	updateExprs := b.assignmentExprsToExpressions(outScope, u.Exprs)
 
 	b.buildWhere(outScope, u.Where)

@@ -122,7 +122,7 @@ func (j JSONRemove) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if _, ok := path.(string); !ok {
 			return nil, fmt.Errorf("Invalid JSON path expression")
 		}
-		doc, _, err = doc.Remove(ctx, path.(string))
+		doc, _, err = doc.Remove(path.(string))
 		if err != nil {
 			return nil, err
 		}

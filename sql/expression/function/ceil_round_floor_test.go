@@ -515,6 +515,11 @@ func TestRound(t *testing.T) {
 		},
 
 		{
+			name:  "empty text int",
+			xExpr: expression.NewLiteral("", types.Text),
+			exp:   0.0,
+		},
+		{
 			name:  "text int without d",
 			xExpr: expression.NewLiteral("5", types.Text),
 			exp:   5.0,

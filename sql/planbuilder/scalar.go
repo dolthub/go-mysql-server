@@ -59,14 +59,6 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		}
 		len := b.buildScalar(inScope, v.To)
 		return &function.Substring{Str: name, Start: start, Len: len}
-	case *ast.CurTimeFuncExpr:
-		fsp := b.buildScalar(inScope, v.Fsp)
-
-		if inScope.parent.activeSubquery != nil {
-			inScope.parent.activeSubquery.markVolatile()
-		}
-
-		return &function.CurrTimestamp{Args: []sql.Expression{fsp}}
 	case *ast.TrimExpr:
 		pat := b.buildScalar(inScope, v.Pattern)
 		str := b.buildScalar(inScope, v.Str)
@@ -450,66 +442,11 @@ func (b *Builder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Express
 }
 
 func (b *Builder) buildBinaryScalar(inScope *scope, be *ast.BinaryExpr) sql.Expression {
-	l := b.buildScalar(inScope, be.Left)
-	r := b.buildScalar(inScope, be.Right)
-
-	operator := strings.ToLower(be.Operator)
-	switch operator {
-	case
-		ast.PlusStr,
-		ast.MinusStr,
-		ast.MultStr,
-		ast.DivStr,
-		ast.ShiftLeftStr,
-		ast.ShiftRightStr,
-		ast.BitAndStr,
-		ast.BitOrStr,
-		ast.BitXorStr,
-		ast.IntDivStr,
-		ast.ModStr:
-
-		_, lok := l.(*expression.Interval)
-		_, rok := r.(*expression.Interval)
-		if lok && be.Operator == "-" {
-			err := sql.ErrUnsupportedSyntax.New("subtracting from an interval")
-			b.handleErr(err)
-		} else if (lok || rok) && be.Operator != "+" && be.Operator != "-" {
-			err := sql.ErrUnsupportedSyntax.New("only + and - can be used to add or subtract intervals from dates")
-			b.handleErr(err)
-		} else if lok && rok {
-			err := sql.ErrUnsupportedSyntax.New("intervals cannot be added or subtracted from other intervals")
-			b.handleErr(err)
-		}
-
-		switch strings.ToLower(be.Operator) {
-		case ast.DivStr:
-			return expression.NewDiv(l, r)
-		case ast.ModStr:
-			return expression.NewMod(l, r)
-		case ast.BitAndStr, ast.BitOrStr, ast.BitXorStr, ast.ShiftRightStr, ast.ShiftLeftStr:
-			return expression.NewBitOp(l, r, be.Operator)
-		case ast.IntDivStr:
-			return expression.NewIntDiv(l, r)
-		default:
-			return expression.NewArithmetic(l, r, be.Operator)
-		}
-
-	case ast.JSONExtractOp, ast.JSONUnquoteExtractOp:
-		jsonExtract, err := json.NewJSONExtract(l, r)
-		if err != nil {
-			b.handleErr(err)
-		}
-
-		if operator == ast.JSONUnquoteExtractOp {
-			return json.NewJSONUnquote(jsonExtract)
-		}
-		return jsonExtract
-
-	default:
-		err := sql.ErrUnsupportedFeature.New(be.Operator)
+	expr, err := b.binaryExprToExpression(inScope, be)
+	if err != nil {
 		b.handleErr(err)
 	}
-	return nil
+	return expr
 }
 
 func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Expression {
@@ -608,32 +545,11 @@ func hasColumnType(e sql.Expression) (sql.Type, bool) {
 }
 
 func (b *Builder) buildCaseExpr(inScope *scope, e *ast.CaseExpr) sql.Expression {
-	var expr sql.Expression
-
-	if e.Expr != nil {
-		expr = b.buildScalar(inScope, e.Expr)
+	expr, err := b.caseExprToExpression(inScope, e)
+	if err != nil {
+		b.handleErr(err)
 	}
-
-	var branches []expression.CaseBranch
-	for _, w := range e.Whens {
-		var cond sql.Expression
-		cond = b.buildScalar(inScope, w.Cond)
-
-		var val sql.Expression
-		val = b.buildScalar(inScope, w.Val)
-
-		branches = append(branches, expression.CaseBranch{
-			Cond:  cond,
-			Value: val,
-		})
-	}
-
-	var elseExpr sql.Expression
-	if e.Else != nil {
-		elseExpr = b.buildScalar(inScope, e.Else)
-	}
-
-	return expression.NewCase(expr, branches, elseExpr)
+	return expr
 }
 
 func (b *Builder) buildIsExprToExpression(inScope *scope, c *ast.IsExpr) sql.Expression {
@@ -696,8 +612,14 @@ func (b *Builder) binaryExprToExpression(inScope *scope, be *ast.BinaryExpr) (sq
 			return expression.NewBitOp(l, r, be.Operator), nil
 		case ast.IntDivStr:
 			return expression.NewIntDiv(l, r), nil
+		case ast.MultStr:
+			return expression.NewMult(l, r), nil
+		case ast.PlusStr:
+			return expression.NewPlus(l, r), nil
+		case ast.MinusStr:
+			return expression.NewMinus(l, r), nil
 		default:
-			return expression.NewArithmetic(l, r, be.Operator), nil
+			return nil, sql.ErrUnsupportedSyntax.New("unsupported operator: %s", be.Operator)
 		}
 
 	case ast.JSONExtractOp, ast.JSONUnquoteExtractOp:
@@ -794,7 +716,7 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 		return b.convertInt(string(v.Val), 10)
 	case ast.FloatVal:
 		// any float value is parsed as decimal except when the value has scientific notation
-		ogVal := string(v.Val)
+		ogVal := strings.ToLower(string(v.Val))
 		if strings.Contains(ogVal, "e") {
 			val, err := strconv.ParseFloat(string(v.Val), 64)
 			if err != nil {

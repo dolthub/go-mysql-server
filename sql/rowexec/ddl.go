@@ -373,7 +373,7 @@ func (b *BaseBuilder) buildCreateDB(ctx *sql.Context, n *plan.CreateDB, row sql.
 	rows := []sql.Row{{types.OkResult{RowsAffected: 1}}}
 
 	if exists {
-		if n.IfNotExists {
+		if n.IfNotExists && ctx != nil && ctx.Session != nil {
 			ctx.Session.Warn(&sql.Warning{
 				Level:   "Note",
 				Code:    mysql.ERDbCreateExists,
@@ -641,7 +641,7 @@ func (b *BaseBuilder) buildDropProcedure(ctx *sql.Context, n *plan.DropProcedure
 func (b *BaseBuilder) buildDropDB(ctx *sql.Context, n *plan.DropDB, row sql.Row) (sql.RowIter, error) {
 	exists := n.Catalog.HasDatabase(ctx, n.DbName)
 	if !exists {
-		if n.IfExists {
+		if n.IfExists && ctx != nil && ctx.Session != nil {
 			ctx.Session.Warn(&sql.Warning{
 				Level:   "Note",
 				Code:    mysql.ERDbDropExists,
@@ -1092,7 +1092,7 @@ func (b *BaseBuilder) buildCreateForeignKey(ctx *sql.Context, n *plan.CreateFore
 		return nil, err
 	}
 
-	err = plan.ResolveForeignKey(ctx, fkTbl, refFkTbl, *n.FkDef, true, fkChecks.(int8) == 1)
+	err = plan.ResolveForeignKey(ctx, fkTbl, refFkTbl, *n.FkDef, true, fkChecks.(int8) == 1, true)
 	if err != nil {
 		return nil, err
 	}

@@ -645,6 +645,10 @@ func TestShowCharset(t *testing.T) {
 	}
 }
 
+func TestEngineJoinOps(t *testing.T) {
+	enginetest.TestJoinOps(t, enginetest.NewDefaultMemoryHarness(), enginetest.EngineOnlyJoinOpTests)
+}
+
 func TestTableFunctions(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
 	harness.Setup(setup.MydbData)

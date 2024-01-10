@@ -50,7 +50,7 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 					return plan.NewFilter(expression.JoinAnd(node.Expression, f.Expression), f.Child), transform.NewTree, nil
 				}
 				return node, transform.SameTree, nil
-			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable:
+			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, sql.TableFunction:
 				table, same, err := pushdownFiltersToAboveTable(ctx, a, node.(sql.NameableNode), scope, filters)
 				if err != nil {
 					return nil, transform.SameTree, err

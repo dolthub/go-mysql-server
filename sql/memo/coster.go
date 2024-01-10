@@ -67,7 +67,8 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 		r := float64(jp.Right.RelProps.GetStats().RowCount())
 		switch {
 		case jp.Op.IsInner():
-			return (l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor, nil
+			// arbitrary +1 penalty, prefer lookup
+			return (l*r+1)*seqIOCostFactor + (l*r)*cpuCostFactor, nil
 		case jp.Op.IsDegenerate():
 			return ((l*r)*seqIOCostFactor + (l*r)*cpuCostFactor) * degeneratePenalty, nil
 		case jp.Op.IsHash():

@@ -4262,7 +4262,7 @@ func TestOnUpdateExprScripts(t *testing.T, harness Harness) {
 		t.Run(script.Name, func(t *testing.T) {
 			for _, statement := range script.SetUpScript {
 				sql.RunWithNowFunc(func() time.Time { return queries.Jan1Noon }, func() error {
-					ctx.WithQuery(statement)
+					ctx = ctx.WithQuery(statement)
 					ctx.SetQueryTime(queries.Jan1Noon)
 					RunQueryWithContext(t, e, harness, ctx, statement)
 					return nil
@@ -4379,7 +4379,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 			return nil
 		})
 		TestQueryWithContext(t, ctx, e, harness, "select * from t10 order by 1", []sql.Row{
-			{1, now, now.Truncate(time.Second), now, now.Truncate(time.Second)},
+			{1, now.Truncate(time.Second), now.Truncate(time.Second), now.Truncate(time.Second), now.Truncate(time.Second)},
 		}, nil, nil)
 	})
 
