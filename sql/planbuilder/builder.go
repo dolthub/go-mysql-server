@@ -202,7 +202,7 @@ func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outSc
 		if query == "" {
 			b.handleErr(sql.ErrUnsupportedFeature.New("SHOW in subquery"))
 		}
-		return b.buildShow(inScope, n, query)
+		return b.buildShow(inScope, n)
 	case *ast.DDL:
 		return b.buildDDL(inScope, query, n)
 	case *ast.AlterTable:

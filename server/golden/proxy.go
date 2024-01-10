@@ -170,7 +170,7 @@ func (h MySqlProxy) ConnectionClosed(c *mysql.Conn) {
 func (h MySqlProxy) ComMultiQuery(
 	c *mysql.Conn,
 	query string,
-	callback func(*sqltypes.Result, bool) error,
+	callback mysql.ResultSpoolFn,
 ) (string, error) {
 	conn, err := h.getConn(c.ConnectionID)
 	if err != nil {
@@ -189,7 +189,7 @@ func (h MySqlProxy) ComMultiQuery(
 func (h MySqlProxy) ComQuery(
 	c *mysql.Conn,
 	query string,
-	callback func(*sqltypes.Result, bool) error,
+	callback mysql.ResultSpoolFn,
 ) error {
 	conn, err := h.getConn(c.ConnectionID)
 	if err != nil {

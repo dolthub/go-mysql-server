@@ -132,6 +132,7 @@ func (b *Builder) insertRowsToNode(inScope *scope, ir ast.InsertRows, columnName
 
 func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []string, destSchema sql.Schema) (outScope *scope) {
 	columnDefaultValues := make([]*sql.ColumnDefaultValue, len(columnNames))
+
 	for i, columnName := range columnNames {
 		index := destSchema.IndexOfColName(columnName)
 		if index == -1 {
@@ -141,6 +142,7 @@ func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []
 			err := plan.ErrInsertIntoNonexistentColumn.New(columnName)
 			b.handleErr(err)
 		}
+
 		columnDefaultValues[i] = destSchema[index].Default
 		if columnDefaultValues[i] == nil && destSchema[index].Generated != nil {
 			columnDefaultValues[i] = destSchema[index].Generated
@@ -173,6 +175,17 @@ func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []
 				// explicit DEFAULT values need their column indexes assigned early, since we analyze the insert values in
 				// isolation (no access to the destination schema)
 				exprs[j] = assignColumnIndexes(exprs[j], reorderSchema(columnNames, destSchema))
+			case *ast.SQLVal:
+				// In the case of an unknown bindvar, give it a target type of the column it's targeting.
+				// We only do this for simple bindvars in tuples, not expressions that contain bindvars.
+				if b.shouldAssignBindvarType(e) {
+					name := strings.TrimPrefix(string(e.Val), ":")
+					bindVar := expression.NewBindVar(name)
+					bindVar.Typ = reorderSchema(columnNames, destSchema)[j].Type
+					exprs[j] = bindVar
+				} else {
+					exprs[j] = b.buildScalar(inScope, e)
+				}
 			default:
 				exprs[j] = b.buildScalar(inScope, e)
 			}
@@ -182,6 +195,10 @@ func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []
 	outScope = inScope.push()
 	outScope.node = plan.NewValues(exprTuples)
 	return
+}
+
+func (b *Builder) shouldAssignBindvarType(e *ast.SQLVal) bool {
+	return e.Type == ast.ValArg && (b.bindCtx == nil || b.bindCtx.resolveOnly)
 }
 
 // reorderSchema returns the schemas columns in the order specified by names
@@ -241,6 +258,16 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 				if colIdx >= 0 {
 					innerExpr = expression.WrapExpression(tableSch[colIdx].Default)
 				}
+			}
+		}
+
+		// In the case of an unknown bindvar, give it a target type of the column it's targeting.
+		// We only do this for simple bindvars in tuples, not expressions that contain bindvars.
+		if innerSqlVal, ok := updateExpr.Expr.(*ast.SQLVal); ok && b.shouldAssignBindvarType(innerSqlVal) {
+			if typ, ok := hasColumnType(colName); ok {
+				rightBindVar := innerExpr.(*expression.BindVar)
+				rightBindVar.Typ = typ
+				innerExpr = rightBindVar
 			}
 		}
 

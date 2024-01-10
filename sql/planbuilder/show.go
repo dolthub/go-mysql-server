@@ -30,7 +30,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *Builder) buildShow(inScope *scope, s *ast.Show, query string) (outScope *scope) {
+func (b *Builder) buildShow(inScope *scope, s *ast.Show) (outScope *scope) {
 	showType := strings.ToLower(s.Type)
 	switch showType {
 	case "processlist":

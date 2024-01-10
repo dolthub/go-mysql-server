@@ -71,63 +71,66 @@ type TemporaryUser struct {
 	Password string
 }
 
-// PreparedDataCache manages all the prepared data for every session for every query for an engine
+// PreparedDataCache manages all the prepared data for every session for every query for an engine.
+// There are two types of caching supported:
+// 1. Prepared statements for MySQL, which are stored as sqlparser.Statements
+// 2. Prepared statements for Postgres, which are stored as sql.Nodes
+// TODO: move this into the session
 type PreparedDataCache struct {
-	data map[uint32]map[string]sqlparser.Statement
-	mu   *sync.Mutex
+	statements map[uint32]map[string]sqlparser.Statement
+	mu         *sync.Mutex
 }
 
 func NewPreparedDataCache() *PreparedDataCache {
 	return &PreparedDataCache{
-		data: make(map[uint32]map[string]sqlparser.Statement),
-		mu:   &sync.Mutex{},
+		statements: make(map[uint32]map[string]sqlparser.Statement),
+		mu:         &sync.Mutex{},
 	}
 }
 
-// GetCachedStmt will retrieve the prepared sql.Node associated with the ctx.SessionId and query if it exists
-// it will return nil, false if the query does not exist
+// GetCachedStmt retrieves the prepared statement associated with the ctx.SessionId and query. Returns nil, false if
+// the query does not exist
 func (p *PreparedDataCache) GetCachedStmt(sessId uint32, query string) (sqlparser.Statement, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if sessData, ok := p.data[sessId]; ok {
+	if sessData, ok := p.statements[sessId]; ok {
 		data, ok := sessData[query]
 		return data, ok
 	}
 	return nil, false
 }
 
-// GetSessionData returns all the prepared queries for a particular session
-func (p *PreparedDataCache) GetSessionData(sessId uint32) map[string]sqlparser.Statement {
+// CachedStatementsForSession returns all the prepared queries for a particular session
+func (p *PreparedDataCache) CachedStatementsForSession(sessId uint32) map[string]sqlparser.Statement {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	return p.data[sessId]
+	return p.statements[sessId]
 }
 
 // DeleteSessionData clears a session along with all prepared queries for that session
 func (p *PreparedDataCache) DeleteSessionData(sessId uint32) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	delete(p.data, sessId)
+	delete(p.statements, sessId)
 }
 
-// CacheStmt saves the prepared node and associates a ctx.SessionId and query to it
+// CacheStmt saves the parsed statement and associates a ctx.SessionId and query to it
 func (p *PreparedDataCache) CacheStmt(sessId uint32, query string, stmt sqlparser.Statement) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if _, ok := p.data[sessId]; !ok {
-		p.data[sessId] = make(map[string]sqlparser.Statement)
+	if _, ok := p.statements[sessId]; !ok {
+		p.statements[sessId] = make(map[string]sqlparser.Statement)
 	}
-	p.data[sessId][query] = stmt
+	p.statements[sessId][query] = stmt
 }
 
 // UncacheStmt removes the prepared node associated with a ctx.SessionId and query to it
 func (p *PreparedDataCache) UncacheStmt(sessId uint32, query string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if _, ok := p.data[sessId]; !ok {
-		return
+	if _, ok := p.statements[sessId]; ok {
+		delete(p.statements[sessId], query)
 	}
-	delete(p.data[sessId], query)
 }
 
 // Engine is a SQL engine.
@@ -218,6 +221,15 @@ func (e *Engine) PrepareQuery(
 		return nil, err
 	}
 
+	return e.PrepareParsedQuery(ctx, query, query, stmt)
+}
+
+// PrepareParsedQuery returns a partially analyzed query for the parsed statement provided
+func (e *Engine) PrepareParsedQuery(
+	ctx *sql.Context,
+	statementKey, query string,
+	stmt sqlparser.Statement,
+) (sql.Node, error) {
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog)
 	node, err := binder.BindOnly(stmt, query)
 
@@ -225,7 +237,7 @@ func (e *Engine) PrepareQuery(
 		return nil, err
 	}
 
-	e.PreparedDataCache.CacheStmt(ctx.Session.ID(), query, stmt)
+	e.PreparedDataCache.CacheStmt(ctx.Session.ID(), statementKey, stmt)
 	return node, nil
 }
 
@@ -344,29 +356,19 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 	return res, nil
 }
 
-// QueryWithBindings executes the query given with the bindings provided. If parsed is non-nil, it will be used
-// instead of parsing the query from text.
+// QueryWithBindings executes the query given with the bindings provided.
+// If parsed is non-nil, it will be used instead of parsing the query from text.
 func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
 	query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
-	binder := planbuilder.New(ctx, e.Analyzer.Catalog)
-	if prep, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query); ok {
-		parsed = prep
-		binder.SetBindings(bindings)
-	} else if len(bindings) > 0 {
-		parsed = nil
-		_, err := e.PrepareQuery(ctx, query)
-		if err != nil {
-			return nil, nil, err
-		}
-		prep, ok = e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
-		if ok {
-			parsed = prep
-			binder.SetBindings(bindings)
-		}
+
+	parsed, binder, err := e.preparedStatement(ctx, query, parsed, bindings)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// Give the integrator a chance to reject the session before proceeding
-	err := ctx.Session.ValidateSession(ctx)
+	// TODO: this check doesn't belong here
+	err = ctx.Session.ValidateSession(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -376,126 +378,14 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 		return nil, nil, err
 	}
 
+	bound, err := e.bindQuery(ctx, query, parsed, bindings, err, binder)
 	if err != nil {
-		err2 := clearAutocommitTransaction(ctx)
-		if err2 != nil {
-			return nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
-		}
 		return nil, nil, err
 	}
-	var bound sql.Node
-	if parsed == nil {
-		bound, err = binder.ParseOne(query)
-		if err != nil {
-			err2 := clearAutocommitTransaction(ctx)
-			if err2 != nil {
-				return nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
-			}
-			return nil, nil, err
-		}
-	} else {
-		bound, err = binder.BindOnly(parsed, query)
-		if err != nil {
-			return nil, nil, err
-		}
-	}
 
-	switch n := bound.(type) {
-	case *plan.ExecuteQuery:
-		prep, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), n.Name)
-		if !ok {
-			err := sql.ErrUnknownPreparedStatement.New(n.Name)
-			return nil, nil, err
-		}
-		// todo validate expected and actual args -- not just count, by name
-		//if prep.ArgCount() < 1 {
-		//	return nil, nil, fmt.Errorf("invalid bind variable count: expected %d, found %d", prep.ArgCount(), len(bindings))
-		//}
-		for i, name := range n.BindVars {
-			if bindings == nil {
-				bindings = make(map[string]*querypb.BindVariable)
-			}
-			if strings.HasPrefix(name.String(), "@") {
-				t, val, err := ctx.GetUserVariable(ctx, strings.TrimPrefix(name.String(), "@"))
-				if err != nil {
-					return nil, nil, err
-				}
-				if val != nil {
-					val, _, err = t.Promote().Convert(val)
-					if err != nil {
-						return nil, nil, err
-					}
-				}
-				bindings[fmt.Sprintf("v%d", i+1)], err = sqltypes.BuildBindVariable(val)
-				if err != nil {
-					return nil, nil, err
-				}
-			} else {
-				bindings[fmt.Sprintf("v%d", i)] = sqltypes.StringBindVariable(name.String())
-			}
-		}
-		binder.SetBindings(bindings)
-		bound, err = binder.BindOnly(prep, query)
-		if err != nil {
-			err2 := clearAutocommitTransaction(ctx)
-			if err2 != nil {
-				return nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
-			}
-
-			return nil, nil, err
-		}
-	}
-
-	// TODO: eventually, we should have this logic be in the RowIter() of the respective plans
-	// along with a new rule that handles analysis
-	var analyzed sql.Node
-	switch n := bound.(type) {
-	case *plan.PrepareQuery:
-		sqlMode := sql.LoadSqlMode(ctx)
-
-		// we have to name-resolve to check for structural errors, but we do
-		// not to cache the name-bound query yet.
-		//todo(max): improve name resolution so we can cache post name-binding.
-		// this involves expression memoization, which currently screws up aggregation
-		// and order by aliases
-		prepStmt, _, err := sqlparser.ParseOneWithOptions(query, sqlMode.ParserOptions())
-		if err != nil {
-			return nil, nil, err
-		}
-		prepare, ok := prepStmt.(*sqlparser.Prepare)
-		if !ok {
-			return nil, nil, fmt.Errorf("expected PREPARE ast")
-		}
-		cacheStmt, _, err := sqlparser.ParseOneWithOptions(prepare.Expr, sqlMode.ParserOptions())
-		if err != nil && strings.HasPrefix(prepare.Expr, "@") {
-			val, err := expression.NewUserVar(strings.TrimPrefix(prepare.Expr, "@")).Eval(ctx, nil)
-			if err != nil {
-				return nil, nil, err
-			}
-			valStr, ok := val.(string)
-			if !ok {
-				return nil, nil, fmt.Errorf("invalid query for PREPARE: %s", val)
-			}
-			cacheStmt, _, err = sqlparser.ParseOneWithOptions(valStr, sqlMode.ParserOptions())
-			if err != nil {
-				return nil, nil, err
-			}
-		} else if err != nil {
-			return nil, nil, err
-		}
-		e.PreparedDataCache.CacheStmt(ctx.Session.ID(), n.Name, cacheStmt)
-		analyzed = bound
-	case *plan.DeallocateQuery:
-		if _, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), n.Name); !ok {
-			return nil, nil, sql.ErrUnknownPreparedStatement.New(n.Name)
-		}
-		e.PreparedDataCache.UncacheStmt(ctx.Session.ID(), n.Name)
-		analyzed = bound
-	default:
-		analyzed, err = e.analyzeQuery(ctx, query, bound)
-		if err != nil {
-			return nil, nil, err
-		}
+	analyzed, err := e.analyzeNode(ctx, query, bound)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	if bindCtx := binder.BindCtx(); bindCtx != nil {
@@ -506,15 +396,6 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 
 	err = e.readOnlyCheck(analyzed)
 	if err != nil {
-		return nil, nil, err
-	}
-
-	if err != nil {
-		err2 := clearAutocommitTransaction(ctx)
-		if err2 != nil {
-			return nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
-		}
-
 		return nil, nil, err
 	}
 
@@ -530,6 +411,237 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 	iter = rowexec.AddExpressionCloser(analyzed, iter)
 
 	return analyzed.Schema(), iter, nil
+}
+
+// PrepQueryPlanForExecution prepares a query plan for execution and returns the result schema with a row iterator to
+// begin spooling results
+func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, query string, plan sql.Node) (sql.Schema, sql.RowIter, error) {
+	// Give the integrator a chance to reject the session before proceeding
+	// TODO: this check doesn't belong here
+	err := ctx.Session.ValidateSession(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = e.beginTransaction(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = e.readOnlyCheck(plan)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	iter, err := e.Analyzer.ExecBuilder.Build(ctx, plan, nil)
+	if err != nil {
+		err2 := clearAutocommitTransaction(ctx)
+		if err2 != nil {
+			return nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
+		}
+
+		return nil, nil, err
+	}
+	iter = rowexec.AddExpressionCloser(plan, iter)
+
+	return plan.Schema(), iter, nil
+}
+
+// BoundQueryPlan returns query plan for the given statement with the given bindings applied
+func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sql.Node, error) {
+	if parsed == nil {
+		return nil, errors.New("parsed statement must not be nil")
+	}
+
+	query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
+
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog)
+	binder.SetBindings(bindings)
+
+	// Begin a transaction if necessary (no-op if one is in flight)
+	err := e.beginTransaction(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: we need to be more principled about when to clear auto commit transactions here
+	bound, err := e.bindQuery(ctx, query, parsed, bindings, err, binder)
+	if err != nil {
+		err2 := clearAutocommitTransaction(ctx)
+		if err2 != nil {
+			return nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
+		}
+
+		return nil, err
+	}
+
+	analyzed, err := e.analyzeNode(ctx, query, bound)
+	if err != nil {
+		err2 := clearAutocommitTransaction(ctx)
+		if err2 != nil {
+			return nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
+		}
+		return nil, err
+	}
+
+	if bindCtx := binder.BindCtx(); bindCtx != nil {
+		if unused := bindCtx.UnusedBindings(); len(unused) > 0 {
+			return nil, fmt.Errorf("invalid arguments. expected: %d, found: %d", len(bindCtx.Bindings)-len(unused), len(bindCtx.Bindings))
+		}
+	}
+
+	return analyzed, nil
+}
+
+func (e *Engine) preparedStatement(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sqlparser.Statement, *planbuilder.Builder, error) {
+	preparedAst, preparedDataFound := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
+
+	// This means that we have bindings but no prepared statement cached, which occurs in tests and in the
+	// dolthub/driver package. We prepare the statement from the query string in this case
+	if !preparedDataFound && len(bindings) > 0 {
+		// TODO: pull this out into its own method for this specific use case
+		parsed = nil
+		_, err := e.PrepareQuery(ctx, query)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		preparedAst, preparedDataFound = e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
+	}
+
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog)
+	if preparedDataFound {
+		parsed = preparedAst
+		binder.SetBindings(bindings)
+	}
+
+	return parsed, binder, nil
+}
+
+func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node) (sql.Node, error) {
+	switch n := bound.(type) {
+	case *plan.PrepareQuery:
+		sqlMode := sql.LoadSqlMode(ctx)
+
+		// we have to name-resolve to check for structural errors, but we do
+		// not to cache the name-bound query yet.
+		// todo(max): improve name resolution so we can cache post name-binding.
+		// this involves expression memoization, which currently screws up aggregation
+		// and order by aliases
+		prepStmt, _, err := sqlparser.ParseOneWithOptions(query, sqlMode.ParserOptions())
+		if err != nil {
+			return nil, err
+		}
+		prepare, ok := prepStmt.(*sqlparser.Prepare)
+		if !ok {
+			return nil, fmt.Errorf("expected *sqlparser.Prepare, found %T", prepStmt)
+		}
+		cacheStmt, _, err := sqlparser.ParseOneWithOptions(prepare.Expr, sqlMode.ParserOptions())
+		if err != nil && strings.HasPrefix(prepare.Expr, "@") {
+			val, err := expression.NewUserVar(strings.TrimPrefix(prepare.Expr, "@")).Eval(ctx, nil)
+			if err != nil {
+				return nil, err
+			}
+			valStr, ok := val.(string)
+			if !ok {
+				return nil, fmt.Errorf("expected string, found %T", val)
+			}
+			cacheStmt, _, err = sqlparser.ParseOneWithOptions(valStr, sqlMode.ParserOptions())
+			if err != nil {
+				return nil, err
+			}
+		} else if err != nil {
+			return nil, err
+		}
+		e.PreparedDataCache.CacheStmt(ctx.Session.ID(), n.Name, cacheStmt)
+		return bound, nil
+	case *plan.DeallocateQuery:
+		if _, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), n.Name); !ok {
+			return nil, sql.ErrUnknownPreparedStatement.New(n.Name)
+		}
+		e.PreparedDataCache.UncacheStmt(ctx.Session.ID(), n.Name)
+		return bound, nil
+	default:
+		return e.Analyzer.Analyze(ctx, bound, nil)
+	}
+}
+
+// bindQuery binds any bind variables to the plan node or query given and returns it.
+// |parsed| is the parsed AST without bindings applied, if the statement was previously parsed / prepared.
+// If it wasn't (|parsed| is nil), then the query is parsed.
+func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable, err error, binder *planbuilder.Builder) (sql.Node, error) {
+	var bound sql.Node
+	if parsed == nil {
+		bound, err = binder.ParseOne(query)
+		if err != nil {
+			clearAutocommitErr := clearAutocommitTransaction(ctx)
+			if clearAutocommitErr != nil {
+				return nil, errors.Wrap(err, "unable to clear autocommit transaction: "+clearAutocommitErr.Error())
+			}
+			return nil, err
+		}
+	} else {
+		bound, err = binder.BindOnly(parsed, query)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// ExecuteQuery nodes have their own special var binding step
+	eq, ok := bound.(*plan.ExecuteQuery)
+	if ok {
+		return e.bindExecuteQueryNode(ctx, query, eq, bindings, binder)
+	}
+
+	return bound, nil
+}
+
+// bindExecuteQueryNode returns the
+func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.ExecuteQuery, bindings map[string]*querypb.BindVariable, binder *planbuilder.Builder) (sql.Node, error) {
+	prep, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), eq.Name)
+	if !ok {
+		return nil, sql.ErrUnknownPreparedStatement.New(eq.Name)
+	}
+	// todo validate expected and actual args -- not just count, by name
+	// if prep.ArgCount() < 1 {
+	//	return nil, nil, fmt.Errorf("invalid bind variable count: expected %d, found %d", prep.ArgCount(), len(bindings))
+	// }
+	for i, name := range eq.BindVars {
+		if bindings == nil {
+			bindings = make(map[string]*querypb.BindVariable)
+		}
+		if strings.HasPrefix(name.String(), "@") {
+			t, val, err := ctx.GetUserVariable(ctx, strings.TrimPrefix(name.String(), "@"))
+			if err != nil {
+				return nil, nil
+			}
+			if val != nil {
+				val, _, err = t.Promote().Convert(val)
+				if err != nil {
+					return nil, nil
+				}
+			}
+			bindings[fmt.Sprintf("v%d", i+1)], err = sqltypes.BuildBindVariable(val)
+			if err != nil {
+				return nil, nil
+			}
+		} else {
+			bindings[fmt.Sprintf("v%d", i)] = sqltypes.StringBindVariable(name.String())
+		}
+	}
+	binder.SetBindings(bindings)
+
+	bound, err := binder.BindOnly(prep, query)
+	if err != nil {
+		clearAutocommitErr := clearAutocommitTransaction(ctx)
+		if clearAutocommitErr != nil {
+			return nil, errors.Wrap(err, "unable to clear autocommit transaction: "+clearAutocommitErr.Error())
+		}
+
+		return nil, err
+	}
+
+	return bound, nil
 }
 
 // clearAutocommitTransaction unsets the transaction from the current session if it is an implicitly
@@ -588,20 +700,6 @@ func countBindVars(node sql.Node) int {
 		return true
 	})
 	return len(bindVars)
-}
-
-func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node) (sql.Node, error) {
-	var (
-		analyzed sql.Node
-		err      error
-	)
-
-	analyzed, err = e.Analyzer.Analyze(ctx, parsed, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return analyzed, nil
 }
 
 func (e *Engine) beginTransaction(ctx *sql.Context) error {

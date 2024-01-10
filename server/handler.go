@@ -16,6 +16,7 @@ package server
 
 import (
 	"encoding/base64"
+	"fmt"
 	"io"
 	"net"
 	"regexp"
@@ -25,7 +26,7 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/netutil"
 	"github.com/dolthub/vitess/go/sqltypes"
-	"github.com/dolthub/vitess/go/vt/proto/query"
+	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/go-kit/kit/metrics/discard"
 	"github.com/sirupsen/logrus"
@@ -73,6 +74,7 @@ type Handler struct {
 }
 
 var _ mysql.Handler = (*Handler)(nil)
+var _ mysql.ExtendedHandler = (*Handler)(nil)
 
 // NewConnection reports that a new connection has been established.
 func (h *Handler) NewConnection(c *mysql.Conn) {
@@ -92,7 +94,7 @@ func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) error {
 
 // ComPrepare parses, partially analyzes, and caches a prepared statement's plan
 // with the given [c.ConnectionID].
-func (h *Handler) ComPrepare(c *mysql.Conn, query string, prepare *mysql.PrepareData) ([]*query.Field, error) {
+func (h *Handler) ComPrepare(c *mysql.Conn, query string, prepare *mysql.PrepareData) ([]*querypb.Field, error) {
 	logrus.WithField("query", query).
 		WithField("paramsCount", prepare.ParamsCount).
 		WithField("statementId", prepare.StatementID).Debugf("preparing query")
@@ -113,14 +115,79 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string, prepare *mysql.Prepare
 		return nil, err
 	}
 
-	if types.IsOkResultSchema(analyzed.Schema()) {
+	// A nil result signals to the handler that the query is not a SELECT statement.
+	if nodeReturnsOkResultSchema(analyzed) || types.IsOkResultSchema(analyzed.Schema()) {
 		return nil, nil
 	}
-	switch analyzed.(type) {
-	case *plan.InsertInto, *plan.Update, *plan.UpdateJoin, *plan.DeleteFrom:
-		return nil, nil
-	}
+
 	return schemaToFields(ctx, analyzed.Schema()), nil
+}
+
+// These nodes will eventually return an OK result, but their intermediate forms here return a different schema
+// than they will at execution time.
+func nodeReturnsOkResultSchema(node sql.Node) bool {
+	switch node.(type) {
+	case *plan.InsertInto, *plan.Update, *plan.UpdateJoin, *plan.DeleteFrom:
+		return true
+	}
+	return false
+}
+
+func (h *Handler) ComPrepareParsed(c *mysql.Conn, query string, parsed sqlparser.Statement, prepare *mysql.PrepareData) (mysql.ParsedQuery, []*querypb.Field, error) {
+	logrus.WithField("query", query).
+		WithField("paramsCount", prepare.ParamsCount).
+		WithField("statementId", prepare.StatementID).Debugf("preparing query")
+
+	ctx, err := h.sm.NewContextWithQuery(c, query)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	analyzed, err := h.e.PrepareParsedQuery(ctx, query, query, parsed)
+	if err != nil {
+		logrus.WithField("query", query).Errorf("unable to prepare query: %s", err.Error())
+		err := sql.CastSQLError(err)
+		return nil, nil, err
+	}
+
+	var fields []*querypb.Field
+	// The return result fields should only be directly translated if it doesn't correspond to an OK result.
+	// See comment in ComPrepare
+	if !(nodeReturnsOkResultSchema(analyzed) || types.IsOkResultSchema(analyzed.Schema())) {
+		fields = nil
+	} else {
+		fields = schemaToFields(ctx, analyzed.Schema())
+	}
+
+	return analyzed, fields, nil
+}
+
+func (h *Handler) ComBind(c *mysql.Conn, query string, parsedQuery mysql.ParsedQuery, prepare *mysql.PrepareData) (mysql.BoundQuery, []*querypb.Field, error) {
+	ctx, err := h.sm.NewContextWithQuery(c, query)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	stmt, ok := parsedQuery.(sqlparser.Statement)
+	if !ok {
+		return nil, nil, fmt.Errorf("parsedQuery must be a sqlparser.Statement, but got %T", parsedQuery)
+	}
+
+	queryPlan, err := h.e.BoundQueryPlan(ctx, query, stmt, prepare.BindVars)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return queryPlan, schemaToFields(ctx, queryPlan.Schema()), nil
+}
+
+func (h *Handler) ComExecuteBound(c *mysql.Conn, query string, boundQuery mysql.BoundQuery, callback mysql.ResultSpoolFn) error {
+	plan, ok := boundQuery.(sql.Node)
+	if !ok {
+		return fmt.Errorf("boundQuery must be a sql.Node, but got %T", boundQuery)
+	}
+
+	return h.errorWrappedComExec(c, query, plan, callback)
 }
 
 func (h *Handler) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
@@ -174,7 +241,7 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 func (h *Handler) ComMultiQuery(
 	c *mysql.Conn,
 	query string,
-	callback func(*sqltypes.Result, bool) error,
+	callback mysql.ResultSpoolFn,
 ) (string, error) {
 	return h.errorWrappedDoQuery(c, query, nil, MultiStmtModeOn, nil, callback)
 }
@@ -183,7 +250,7 @@ func (h *Handler) ComMultiQuery(
 func (h *Handler) ComQuery(
 	c *mysql.Conn,
 	query string,
-	callback func(*sqltypes.Result, bool) error,
+	callback mysql.ResultSpoolFn,
 ) error {
 	_, err := h.errorWrappedDoQuery(c, query, nil, MultiStmtModeOff, nil, callback)
 	return err
@@ -194,7 +261,7 @@ func (h *Handler) ComParsedQuery(
 	c *mysql.Conn,
 	query string,
 	parsed sqlparser.Statement,
-	callback func(*sqltypes.Result, bool) error,
+	callback mysql.ResultSpoolFn,
 ) error {
 	_, err := h.errorWrappedDoQuery(c, query, parsed, MultiStmtModeOff, nil, callback)
 	return err
@@ -206,8 +273,10 @@ func (h *Handler) doQuery(
 	c *mysql.Conn,
 	query string,
 	parsed sqlparser.Statement,
+	analyzedPlan sql.Node,
 	mode MultiStmtMode,
-	bindings map[string]*query.BindVariable,
+	queryExec QueryExecutor,
+	bindings map[string]*querypb.BindVariable,
 	callback func(*sqltypes.Result, bool) error,
 ) (string, error) {
 	ctx, err := h.sm.NewContext(c)
@@ -218,7 +287,8 @@ func (h *Handler) doQuery(
 	var remainder string
 	var prequery string
 	if parsed == nil {
-		if _, ok := h.e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query); mode == MultiStmtModeOn && !ok {
+		_, inPreparedCache := h.e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
+		if mode == MultiStmtModeOn && !inPreparedCache {
 			parsed, prequery, remainder, err = planbuilder.ParseOnly(ctx, query, true)
 			if prequery != "" {
 				query = prequery
@@ -264,7 +334,8 @@ func (h *Handler) doQuery(
 		}
 	}()
 
-	schema, rowIter, err := h.e.QueryWithBindings(ctx, query, parsed, bindings)
+	// TODO (next): this method needs a function param that produces the following elements, rather than hard-coding
+	schema, rowIter, err := queryExec(ctx, query, parsed, analyzedPlan, bindings)
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
 		return remainder, err
@@ -454,7 +525,7 @@ func (h *Handler) errorWrappedDoQuery(
 	query string,
 	parsed sqlparser.Statement,
 	mode MultiStmtMode,
-	bindings map[string]*query.BindVariable,
+	bindings map[string]*querypb.BindVariable,
 	callback func(*sqltypes.Result, bool) error,
 ) (string, error) {
 	start := time.Now()
@@ -462,7 +533,7 @@ func (h *Handler) errorWrappedDoQuery(
 		h.sel.QueryStarted()
 	}
 
-	remainder, err := h.doQuery(c, query, parsed, mode, bindings, callback)
+	remainder, err := h.doQuery(c, query, parsed, nil, mode, h.executeQuery, bindings, callback)
 	if err != nil {
 		err = sql.CastSQLError(err)
 	}
@@ -472,6 +543,31 @@ func (h *Handler) errorWrappedDoQuery(
 	}
 
 	return remainder, err
+}
+
+// Call doQuery and cast known errors to SQLError
+func (h *Handler) errorWrappedComExec(
+	c *mysql.Conn,
+	query string,
+	analyzedPlan sql.Node,
+	callback func(*sqltypes.Result, bool) error,
+) error {
+	start := time.Now()
+	if h.sel != nil {
+		h.sel.QueryStarted()
+	}
+
+	_, err := h.doQuery(c, query, nil, analyzedPlan, MultiStmtModeOff, h.executeBoundPlan, nil, callback)
+
+	if err != nil {
+		err = sql.CastSQLError(err)
+	}
+
+	if h.sel != nil {
+		h.sel.QueryCompleted(err == nil, time.Since(start))
+	}
+
+	return err
 }
 
 // Periodically polls the connection socket to determine if it is has been closed by the client, returning an error
@@ -605,9 +701,9 @@ func row2ToSQL(s sql.Schema, row sql.Row2) ([]sqltypes.Value, error) {
 	return o, nil
 }
 
-func schemaToFields(ctx *sql.Context, s sql.Schema) []*query.Field {
+func schemaToFields(ctx *sql.Context, s sql.Schema) []*querypb.Field {
 	charSetResults := ctx.GetCharacterSetResults()
-	fields := make([]*query.Field, len(s))
+	fields := make([]*querypb.Field, len(s))
 	for i, c := range s {
 		charset := uint32(sql.Collation_Default.CharacterSet())
 		if collatedType, ok := c.Type.(sql.TypeWithCollation); ok {
@@ -622,7 +718,7 @@ func schemaToFields(ctx *sql.Context, s sql.Schema) []*query.Field {
 			charset = uint32(charSetResults)
 		}
 
-		fields[i] = &query.Field{
+		fields[i] = &querypb.Field{
 			Name:         c.Name,
 			OrgName:      c.Name,
 			Table:        c.Source,
@@ -670,4 +766,38 @@ func observeQuery(ctx *sql.Context, query string) func(err error) {
 
 		span.End()
 	}
+}
+
+// QueryExecutor is a function that executes a query and returns the result as a schema and iterator. Either of
+// |parsed| or |analyzed| can be nil depending on the use case
+type QueryExecutor func(
+	ctx *sql.Context,
+	query string,
+	parsed sqlparser.Statement,
+	analyzed sql.Node,
+	bindings map[string]*querypb.BindVariable,
+) (sql.Schema, sql.RowIter, error)
+
+// executeQuery is a QueryExecutor that calls QueryWithBindings on the given engine using the given query and parsed
+// statement, which may be nil.
+func (h *Handler) executeQuery(
+	ctx *sql.Context,
+	query string,
+	parsed sqlparser.Statement,
+	_ sql.Node,
+	bindings map[string]*querypb.BindVariable,
+) (sql.Schema, sql.RowIter, error) {
+	return h.e.QueryWithBindings(ctx, query, parsed, bindings)
+}
+
+// executeQuery is a QueryExecutor that calls QueryWithBindings on the given engine using the given query and parsed
+// statement, which may be nil.
+func (h *Handler) executeBoundPlan(
+	ctx *sql.Context,
+	query string,
+	_ sqlparser.Statement,
+	plan sql.Node,
+	_ map[string]*querypb.BindVariable,
+) (sql.Schema, sql.RowIter, error) {
+	return h.e.PrepQueryPlanForExecution(ctx, query, plan)
 }

@@ -540,11 +540,11 @@ func TestServerEventListener(t *testing.T) {
 	query := "SELECT ?"
 	_, err = handler.ComPrepare(conn3, query, samplePrepareData)
 	require.NoError(err)
-	require.Equal(1, len(e.PreparedDataCache.GetSessionData(conn3.ConnectionID)))
+	require.Equal(1, len(e.PreparedDataCache.CachedStatementsForSession(conn3.ConnectionID)))
 	require.NotNil(e.PreparedDataCache.GetCachedStmt(conn3.ConnectionID, query))
 
 	handler.ConnectionClosed(conn3)
-	require.Equal(0, len(e.PreparedDataCache.GetSessionData(conn3.ConnectionID)))
+	require.Equal(0, len(e.PreparedDataCache.CachedStatementsForSession(conn3.ConnectionID)))
 }
 
 func TestHandlerKill(t *testing.T) {

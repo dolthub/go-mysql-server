@@ -94,7 +94,7 @@ func (v Validator) ConnectionClosed(c *mysql.Conn) {
 func (v Validator) ComMultiQuery(
 	c *mysql.Conn,
 	query string,
-	callback func(*sqltypes.Result, bool) error,
+	callback mysql.ResultSpoolFn,
 ) (string, error) {
 	ag := newResultAggregator(callback)
 	var remainder string
@@ -122,7 +122,7 @@ func (v Validator) ComMultiQuery(
 func (v Validator) ComQuery(
 	c *mysql.Conn,
 	query string,
-	callback func(*sqltypes.Result, bool) error,
+	callback mysql.ResultSpoolFn,
 ) error {
 	ag := newResultAggregator(callback)
 	eg, _ := errgroup.WithContext(context.Background())
