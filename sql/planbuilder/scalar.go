@@ -516,21 +516,7 @@ func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Exp
 	left := b.buildScalar(inScope, c.Left)
 	right := b.buildScalar(inScope, c.Right)
 	
-	// If one side of the comparison is a bindvar and the other is a column expression, then assign the type of 
-	// the column to the bindvar
-	if leftBind, ok := c.Left.(*ast.SQLVal); ok && b.shouldAssignBindvarType(leftBind) {
-		leftBindVar := left.(*expression.BindVar)
-		if typ, ok := hasColumnType(right); ok {
-			leftBindVar.Typ = typ
-			left = leftBindVar
-		}
-	} else if rightBind, ok := c.Right.(*ast.SQLVal); ok && b.shouldAssignBindvarType(rightBind) {
-		rightBindVar := right.(*expression.BindVar)
-		if typ, ok := hasColumnType(left); ok {
-			rightBindVar.Typ = typ
-			right = rightBindVar
-		}
-	}
+	left, right = b.annotateBindvarsWithTypeInfo(c, left, right)
 
 	var escape sql.Expression = nil
 	if c.Escape != nil {
@@ -587,6 +573,26 @@ func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Exp
 		b.handleErr(err)
 	}
 	return nil
+}
+
+// annotateBindvarsWithTypeInfo assigns the type of the column expression the bindvar on left and right, if possible.
+// This only works if one side of the comparison is a bindvar and the other is a column expression. 
+// Otherwise, |left| and |right| are returned unchanged.
+func (b *Builder) annotateBindvarsWithTypeInfo(c *ast.ComparisonExpr, left sql.Expression, right sql.Expression) (sql.Expression, sql.Expression) {
+	if leftBind, ok := c.Left.(*ast.SQLVal); ok && b.shouldAssignBindvarType(leftBind) {
+		leftBindVar := left.(*expression.BindVar)
+		if typ, ok := hasColumnType(right); ok {
+			leftBindVar.Typ = typ
+			left = leftBindVar
+		}
+	} else if rightBind, ok := c.Right.(*ast.SQLVal); ok && b.shouldAssignBindvarType(rightBind) {
+		rightBindVar := right.(*expression.BindVar)
+		if typ, ok := hasColumnType(left); ok {
+			rightBindVar.Typ = typ
+			right = rightBindVar
+		}
+	}
+	return left, right
 }
 
 func hasColumnType(e sql.Expression) (sql.Type, bool) {
