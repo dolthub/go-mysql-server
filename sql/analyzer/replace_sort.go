@@ -46,7 +46,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 
 		// if the resulting ranges are overlapping, we cannot drop the sort node
 		// it is possible we end up with blocks rows that intersect
-		if !isNonOverlapping(sfExprs, lookup.Ranges) {
+		if hasOverlapping(sfExprs, lookup.Ranges) {
 			return n, transform.SameTree, nil
 		}
 
@@ -297,19 +297,19 @@ func isValidSortFieldOrder(sfs sql.SortFields) bool {
 	return true
 }
 
-// isNonOverlapping checks if the ranges in a RangeCollection that are part of the sortfield exprs are non-overlapping
+// hasOverlapping checks if the ranges in a RangeCollection that are part of the sortfield exprs are non-overlapping
 // This function assumes that the sort field exprs are a valid prefix of the index columns
-func isNonOverlapping(sfExprs []sql.Expression, ranges sql.RangeCollection) bool {
+func hasOverlapping(sfExprs []sql.Expression, ranges sql.RangeCollection) bool {
 	for si := range sfExprs {
 		for ri := 0; ri < len(ranges)-1; ri++ {
 			for rj := ri + 1; rj < len(ranges); rj++ {
 				if _, overlaps, _ := ranges[ri][si].Overlaps(ranges[rj][si]); overlaps {
-					return false
+					return true
 				}
 			}
 		}
 	}
-	return true
+	return false
 }
 
 // getPKIndex returns the primary key index of an IndexAddressableTable
