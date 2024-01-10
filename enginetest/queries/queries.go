@@ -8755,7 +8755,6 @@ from typestable`,
 			{"12.0000"},
 		},
 	},
-
 }
 
 var KeylessQueries = []QueryTest{
