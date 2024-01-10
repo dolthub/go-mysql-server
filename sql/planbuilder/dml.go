@@ -261,6 +261,16 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 			}
 		}
 
+		// In the case of an unknown bindvar, give it a target type of the column it's targeting.
+		// We only do this for simple bindvars in tuples, not expressions that contain bindvars.
+		if innerSqlVal, ok := updateExpr.Expr.(*ast.SQLVal); ok && b.shouldAssignBindvarType(innerSqlVal) {
+			if typ, ok := hasColumnType(colName); ok {
+				rightBindVar := innerExpr.(*expression.BindVar)
+				rightBindVar.Typ = typ
+				innerExpr = rightBindVar
+			}
+		}
+
 		updateExprs[i] = expression.NewSetField(colName, innerExpr)
 		if inScope.groupBy != nil {
 			if len(inScope.groupBy.aggs) > startAggCnt {
