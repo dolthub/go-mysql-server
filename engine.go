@@ -88,7 +88,7 @@ func NewPreparedDataCache() *PreparedDataCache {
 	}
 }
 
-// GetCachedStmt retrieves the prepared statement associated with the ctx.SessionId and query. Returns nil, false if 
+// GetCachedStmt retrieves the prepared statement associated with the ctx.SessionId and query. Returns nil, false if
 // the query does not exist
 func (p *PreparedDataCache) GetCachedStmt(sessId uint32, query string) (sqlparser.Statement, bool) {
 	p.mu.Lock()
@@ -226,9 +226,9 @@ func (e *Engine) PrepareQuery(
 
 // PrepareParsedQuery returns a partially analyzed query for the parsed statement provided
 func (e *Engine) PrepareParsedQuery(
-		ctx *sql.Context,
-		statementKey, query string,
-		stmt sqlparser.Statement,
+	ctx *sql.Context,
+	statementKey, query string,
+	stmt sqlparser.Statement,
 ) (sql.Node, error) {
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog)
 	node, err := binder.BindOnly(stmt, query)
@@ -240,7 +240,6 @@ func (e *Engine) PrepareParsedQuery(
 	e.PreparedDataCache.CacheStmt(ctx.Session.ID(), statementKey, stmt)
 	return node, nil
 }
-
 
 // Query executes a query.
 func (e *Engine) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter, error) {
@@ -361,12 +360,12 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 // If parsed is non-nil, it will be used instead of parsing the query from text.
 func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
 	query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
-	
+
 	parsed, binder, err := e.preparedStatement(ctx, query, parsed, bindings)
 	if err != nil {
 		return nil, nil, err
 	}
-	
+
 	// Give the integrator a chance to reject the session before proceeding
 	// TODO: this check doesn't belong here
 	err = ctx.Session.ValidateSession(ctx)
@@ -399,7 +398,7 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 	if err != nil {
 		return nil, nil, err
 	}
-	
+
 	iter, err := e.Analyzer.ExecBuilder.Build(ctx, analyzed, nil)
 	if err != nil {
 		err2 := clearAutocommitTransaction(ctx)
@@ -428,7 +427,7 @@ func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, query string, plan 
 	if err != nil {
 		return nil, nil, err
 	}
-	
+
 	err = e.readOnlyCheck(plan)
 	if err != nil {
 		return nil, nil, err
@@ -453,7 +452,7 @@ func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser
 	if parsed == nil {
 		return nil, errors.New("parsed statement must not be nil")
 	}
-	
+
 	query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
 
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog)
@@ -490,14 +489,14 @@ func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser
 			return nil, fmt.Errorf("invalid arguments. expected: %d, found: %d", len(bindCtx.Bindings)-len(unused), len(bindCtx.Bindings))
 		}
 	}
-	
+
 	return analyzed, nil
 }
 
 func (e *Engine) preparedStatement(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sqlparser.Statement, *planbuilder.Builder, error) {
 	preparedAst, preparedDataFound := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
 
-	// This means that we have bindings but no prepared statement cached, which occurs in tests and in the 
+	// This means that we have bindings but no prepared statement cached, which occurs in tests and in the
 	// dolthub/driver package. We prepare the statement from the query string in this case
 	if !preparedDataFound && len(bindings) > 0 {
 		// TODO: pull this out into its own method for this specific use case
@@ -515,7 +514,7 @@ func (e *Engine) preparedStatement(ctx *sql.Context, query string, parsed sqlpar
 		parsed = preparedAst
 		binder.SetBindings(bindings)
 	}
-	
+
 	return parsed, binder, nil
 }
 
@@ -568,8 +567,8 @@ func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node) (sq
 }
 
 // bindQuery binds any bind variables to the plan node or query given and returns it.
-// |parsed| is the parsed AST without bindings applied, if the statement was previously parsed / prepared. 
-// If it wasn't (|parsed| is nil), then the query is parsed. 
+// |parsed| is the parsed AST without bindings applied, if the statement was previously parsed / prepared.
+// If it wasn't (|parsed| is nil), then the query is parsed.
 func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable, err error, binder *planbuilder.Builder) (sql.Node, error) {
 	var bound sql.Node
 	if parsed == nil {
@@ -587,8 +586,8 @@ func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Stat
 			return nil, err
 		}
 	}
-	
-	// ExecuteQuery nodes have their own special var binding step 
+
+	// ExecuteQuery nodes have their own special var binding step
 	eq, ok := bound.(*plan.ExecuteQuery)
 	if ok {
 		return e.bindExecuteQueryNode(ctx, query, eq, bindings, binder)
@@ -597,7 +596,7 @@ func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Stat
 	return bound, nil
 }
 
-// bindExecuteQueryNode returns the 
+// bindExecuteQueryNode returns the
 func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.ExecuteQuery, bindings map[string]*querypb.BindVariable, binder *planbuilder.Builder) (sql.Node, error) {
 	prep, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), eq.Name)
 	if !ok {
@@ -631,7 +630,7 @@ func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.E
 		}
 	}
 	binder.SetBindings(bindings)
-	
+
 	bound, err := binder.BindOnly(prep, query)
 	if err != nil {
 		clearAutocommitErr := clearAutocommitTransaction(ctx)

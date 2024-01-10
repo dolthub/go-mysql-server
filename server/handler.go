@@ -119,11 +119,11 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string, prepare *mysql.Prepare
 	if nodeReturnsOkResultSchema(analyzed) || types.IsOkResultSchema(analyzed.Schema()) {
 		return nil, nil
 	}
-	
+
 	return schemaToFields(ctx, analyzed.Schema()), nil
 }
 
-// These nodes will eventually return an OK result, but their intermediate forms here return a different schema 
+// These nodes will eventually return an OK result, but their intermediate forms here return a different schema
 // than they will at execution time.
 func nodeReturnsOkResultSchema(node sql.Node) bool {
 	switch node.(type) {
@@ -142,7 +142,7 @@ func (h *Handler) ComPrepareParsed(c *mysql.Conn, query string, parsed sqlparser
 	if err != nil {
 		return nil, nil, err
 	}
-	
+
 	analyzed, err := h.e.PrepareParsedQuery(ctx, query, query, parsed)
 	if err != nil {
 		logrus.WithField("query", query).Errorf("unable to prepare query: %s", err.Error())
@@ -152,13 +152,13 @@ func (h *Handler) ComPrepareParsed(c *mysql.Conn, query string, parsed sqlparser
 
 	var fields []*querypb.Field
 	// The return result fields should only be directly translated if it doesn't correspond to an OK result.
-	// See comment in ComPrepare 
+	// See comment in ComPrepare
 	if !(nodeReturnsOkResultSchema(analyzed) || types.IsOkResultSchema(analyzed.Schema())) {
 		fields = nil
 	} else {
 		fields = schemaToFields(ctx, analyzed.Schema())
 	}
-	
+
 	return analyzed, fields, nil
 }
 
@@ -167,17 +167,17 @@ func (h *Handler) ComBind(c *mysql.Conn, query string, parsedQuery mysql.ParsedQ
 	if err != nil {
 		return nil, nil, err
 	}
-	
+
 	stmt, ok := parsedQuery.(sqlparser.Statement)
 	if !ok {
 		return nil, nil, fmt.Errorf("parsedQuery must be a sqlparser.Statement, but got %T", parsedQuery)
 	}
-	
+
 	queryPlan, err := h.e.BoundQueryPlan(ctx, query, stmt, prepare.BindVars)
 	if err != nil {
 		return nil, nil, err
 	}
-	
+
 	return queryPlan, schemaToFields(ctx, queryPlan.Schema()), nil
 }
 
@@ -186,7 +186,7 @@ func (h *Handler) ComExecuteBound(c *mysql.Conn, query string, boundQuery mysql.
 	if !ok {
 		return fmt.Errorf("boundQuery must be a sql.Node, but got %T", boundQuery)
 	}
-	
+
 	return h.errorWrappedComExec(c, query, plan, callback)
 }
 
@@ -332,7 +332,7 @@ func (h *Handler) doQuery(
 		}
 	}()
 
-	// TODO (next): this method needs a function param that produces the following elements, rather than hard-coding 
+	// TODO (next): this method needs a function param that produces the following elements, rather than hard-coding
 	schema, rowIter, err := queryExec(ctx, query, parsed, analyzedPlan, bindings)
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
@@ -545,10 +545,10 @@ func (h *Handler) errorWrappedDoQuery(
 
 // Call doQuery and cast known errors to SQLError
 func (h *Handler) errorWrappedComExec(
-		c *mysql.Conn,
-		query string,
-		analyzedPlan sql.Node,
-		callback func(*sqltypes.Result, bool) error,
+	c *mysql.Conn,
+	query string,
+	analyzedPlan sql.Node,
+	callback func(*sqltypes.Result, bool) error,
 ) error {
 	start := time.Now()
 	if h.sel != nil {
@@ -556,7 +556,7 @@ func (h *Handler) errorWrappedComExec(
 	}
 
 	_, err := h.doQuery(c, query, nil, analyzedPlan, MultiStmtModeOff, h.executeBoundPlan, nil, callback)
-	
+
 	if err != nil {
 		err = sql.CastSQLError(err)
 	}
@@ -763,17 +763,17 @@ func observeQuery(ctx *sql.Context, query string) func(err error) {
 	}
 }
 
-// QueryExecutor is a function that executes a query and returns the result as a schema and iterator. Either of 
+// QueryExecutor is a function that executes a query and returns the result as a schema and iterator. Either of
 // |parsed| or |analyzed| can be nil depending on the use case
 type QueryExecutor func(
-		ctx *sql.Context,
-		query string,
-		parsed sqlparser.Statement,
-		analyzed sql.Node,
-		bindings map[string]*querypb.BindVariable,
+	ctx *sql.Context,
+	query string,
+	parsed sqlparser.Statement,
+	analyzed sql.Node,
+	bindings map[string]*querypb.BindVariable,
 ) (sql.Schema, sql.RowIter, error)
 
-// executeQuery is a QueryExecutor that calls QueryWithBindings on the given engine using the given query and parsed 
+// executeQuery is a QueryExecutor that calls QueryWithBindings on the given engine using the given query and parsed
 // statement, which may be nil.
 func (h *Handler) executeQuery(
 	ctx *sql.Context,
@@ -785,14 +785,14 @@ func (h *Handler) executeQuery(
 	return h.e.QueryWithBindings(ctx, query, parsed, bindings)
 }
 
-// executeQuery is a QueryExecutor that calls QueryWithBindings on the given engine using the given query and parsed 
+// executeQuery is a QueryExecutor that calls QueryWithBindings on the given engine using the given query and parsed
 // statement, which may be nil.
 func (h *Handler) executeBoundPlan(
-		ctx *sql.Context,
-		query string,
-		_ sqlparser.Statement,
-		plan sql.Node,
-		_ map[string]*querypb.BindVariable,
+	ctx *sql.Context,
+	query string,
+	_ sqlparser.Statement,
+	plan sql.Node,
+	_ map[string]*querypb.BindVariable,
 ) (sql.Schema, sql.RowIter, error) {
 	return h.e.PrepQueryPlanForExecution(ctx, query, plan)
 }

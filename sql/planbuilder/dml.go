@@ -132,7 +132,7 @@ func (b *Builder) insertRowsToNode(inScope *scope, ir ast.InsertRows, columnName
 
 func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []string, destSchema sql.Schema) (outScope *scope) {
 	columnDefaultValues := make([]*sql.ColumnDefaultValue, len(columnNames))
-	
+
 	for i, columnName := range columnNames {
 		index := destSchema.IndexOfColName(columnName)
 		if index == -1 {
@@ -142,7 +142,7 @@ func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []
 			err := plan.ErrInsertIntoNonexistentColumn.New(columnName)
 			b.handleErr(err)
 		}
-		
+
 		columnDefaultValues[i] = destSchema[index].Default
 		if columnDefaultValues[i] == nil && destSchema[index].Generated != nil {
 			columnDefaultValues[i] = destSchema[index].Generated
