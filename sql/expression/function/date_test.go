@@ -67,6 +67,64 @@ func TestDateAdd(t *testing.T) {
 	require.Nil(result)
 }
 
+// MySQL's SUBDATE function is just syntactic sugar on top of DATE_SUB. The first param is the date, and the
+// second is the value to subtract. If the second param is an interval type, it gets passed to DATE_SUB as-is. If
+// it is not an explicit interval, the interval period is assumed to be "DAY".
+func TestSubDate(t *testing.T) {
+	require := require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	// Not enough params
+	_, err := NewSubDate()
+	require.Error(err)
+
+	// Not enough params
+	_, err = NewSubDate(expression.NewLiteral("2018-05-02", types.LongText))
+	require.Error(err)
+
+	// If the second argument is NOT an interval, then it's assumed to be a day interval
+	f, err := NewSubDate(
+		expression.NewLiteral("2018-05-02", types.LongText),
+		expression.NewLiteral(int64(1), types.Int64))
+	require.NoError(err)
+	expected := time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)
+	result, err := f.Eval(ctx, sql.Row{})
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	// If the second argument is an interval, then SUBDATE works exactly like DATE_SUB
+	f, err = NewSubDate(
+		expression.NewGetField(0, types.Text, "foo", false),
+		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
+	require.NoError(err)
+	result, err = f.Eval(ctx, sql.Row{"2018-05-02"})
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	// If the interval param is NULL, then NULL is returned
+	f2, err := NewSubDate(
+		expression.NewLiteral("2018-05-02", types.LongText),
+		expression.NewGetField(0, types.Int64, "foo", true))
+	result, err = f2.Eval(ctx, sql.Row{nil})
+	require.NoError(err)
+	require.Nil(result)
+
+	// If the date param is NULL, then NULL is returned
+	result, err = f.Eval(ctx, sql.Row{nil})
+	require.NoError(err)
+	require.Nil(result)
+
+	// If a time is passed (and no date) then NULL is returned
+	result, err = f.Eval(ctx, sql.Row{"12:00:56"})
+	require.NoError(err)
+	require.Nil(result)
+
+	// If an invalid date is passed, then NULL is returned
+	result, err = f.Eval(ctx, sql.Row{"asdasdasd"})
+	require.NoError(err)
+	require.Nil(result)
+}
+
 func TestDateSub(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()

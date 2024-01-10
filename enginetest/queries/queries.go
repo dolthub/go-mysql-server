@@ -4214,6 +4214,14 @@ Select * from (
 		Expected: nil,
 	},
 	{
+		Query:    "SELECT id FROM typestable WHERE da >= subdate('2020-01-01', INTERVAL 1 DAY)",
+		Expected: []sql.Row{{int64(1)}},
+	},
+	{
+		Query:    "SELECT id FROM typestable WHERE da >= subdate('2020-01-01', 1)",
+		Expected: []sql.Row{{int64(1)}},
+	},
+	{
 		Query: `SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM othertable) othertable_one) othertable_two) othertable_three WHERE s2 = 'first'`,
 		Expected: []sql.Row{
 			{"first", int64(3)},

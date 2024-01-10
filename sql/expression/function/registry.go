@@ -199,6 +199,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "soundex", Fn: NewSoundex},
 	sql.Function1{Name: "sqrt", Fn: NewSqrt},
 	sql.FunctionN{Name: "str_to_date", Fn: NewStrToDate},
+	sql.FunctionN{Name: "subdate", Fn: NewSubDate},
 	sql.Function2{Name: "point", Fn: spatial.NewPoint},
 	sql.FunctionN{Name: "linestring", Fn: spatial.NewLineString},
 	sql.FunctionN{Name: "polygon", Fn: spatial.NewPolygon},
