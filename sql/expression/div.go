@@ -388,9 +388,6 @@ func getFloatOrMaxDecimalType(e sql.Expression, treatIntsAsFloats bool) sql.Type
 				if s > maxFrac {
 					maxFrac = s
 				}
-				if maxWhole == 2 {
-					print()
-				}
 			}
 		case *Convert:
 			if c.cachedDecimalType != nil {
@@ -400,9 +397,6 @@ func getFloatOrMaxDecimalType(e sql.Expression, treatIntsAsFloats bool) sql.Type
 				}
 				if s > maxFrac {
 					maxFrac = s
-				}
-				if maxWhole == 2 {
-					print()
 				}
 			}
 		case *Literal:
@@ -417,9 +411,6 @@ func getFloatOrMaxDecimalType(e sql.Expression, treatIntsAsFloats bool) sql.Type
 						maxFrac = s
 					}
 				}
-			}
-			if maxWhole == 2 {
-				print()
 			}
 		}
 		return true
