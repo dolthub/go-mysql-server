@@ -15,9 +15,7 @@
 package function
 
 import (
-	"github.com/shopspring/decimal"
-
-	"github.com/dolthub/go-mysql-server/sql"
+		"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -55,20 +53,10 @@ func (s *Space) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// TODO: better truncate integer handling
-	var v interface{}
-	switch val := val.(type) {
-	case float32:
-		v = int64(val)
-	case float64:
-		v = int64(val)
-	case decimal.Decimal:
-		v = val.IntPart()
-	default:
-		v, _, err = types.Int64.Convert(val)
-		if err != nil {
-			ctx.Warn(1292, "Truncated incorrect INTEGER value: '%v'", val)
-			v = int64(0)
-		}
+	v, _, err := types.Int64.Convert(val)
+	if err != nil {
+		ctx.Warn(1292, "Truncated incorrect INTEGER value: '%v'", val)
+		v = int64(0)
 	}
 
 	num := int(v.(int64))

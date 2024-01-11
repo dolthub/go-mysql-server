@@ -65,20 +65,38 @@ func TestSpace(t *testing.T) {
 		},
 		{
 			name: "float32 rounds down",
-			arg:  expression.NewLiteral(float32(1.99), types.Float32),
+			arg:  expression.NewLiteral(float32(1.1), types.Float32),
 			exp:  " ",
 			err:  false,
 		},
 		{
 			name: "float64 rounds down",
-			arg:  expression.NewLiteral(1.99, types.Float64),
+			arg:  expression.NewLiteral(1.1, types.Float64),
 			exp:  " ",
 			err:  false,
 		},
 		{
 			name: "decimal rounds down",
-			arg:  expression.NewLiteral(decimal.NewFromFloat(1.99), types.DecimalType_{}),
+			arg:  expression.NewLiteral(decimal.NewFromFloat(1.1), types.DecimalType_{}),
 			exp:  " ",
+			err:  false,
+		},
+		{
+			name: "float32 rounds up",
+			arg:  expression.NewLiteral(float32(1.99), types.Float32),
+			exp:  "  ",
+			err:  false,
+		},
+		{
+			name: "float64 rounds up",
+			arg:  expression.NewLiteral(1.99, types.Float64),
+			exp:  "  ",
+			err:  false,
+		},
+		{
+			name: "decimal rounds up",
+			arg:  expression.NewLiteral(decimal.NewFromFloat(1.99), types.DecimalType_{}),
+			exp:  "  ",
 			err:  false,
 		},
 		{
