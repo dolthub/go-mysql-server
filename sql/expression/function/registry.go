@@ -208,6 +208,7 @@ var BuiltIns = []sql.Function{
 	sql.FunctionN{Name: "multipolygon", Fn: spatial.NewMultiPolygon},
 	sql.FunctionN{Name: "geometrycollection", Fn: spatial.NewGeomColl},
 	sql.FunctionN{Name: "geomcollection", Fn: spatial.NewGeomColl},
+	sql.Function1{Name: "space", Fn: NewSpace},
 	sql.Function1{Name: "st_area", Fn: spatial.NewArea},
 	sql.Function1{Name: "st_asbinary", Fn: spatial.NewAsWKB},
 	sql.FunctionN{Name: "st_asgeojson", Fn: spatial.NewAsGeoJSON},

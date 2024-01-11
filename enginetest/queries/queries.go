@@ -8786,6 +8786,30 @@ from typestable`,
 			{7, 7, 7},
 		},
 	},
+	{
+		Query: "select length(space(i)) from mytable;",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{3},
+		},
+	},
+	{
+		Query: "select concat(space(i), 'a') from mytable;",
+		Expected: []sql.Row{
+			{" a"},
+			{"  a"},
+			{"   a"},
+		},
+	},
+	{
+		Query: "select space(i * 2) from mytable;",
+		Expected: []sql.Row{
+			{"  "},
+			{"    "},
+			{"      "},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
