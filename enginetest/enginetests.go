@@ -449,13 +449,11 @@ func TestQueryPlans(t *testing.T, harness Harness, planTests []queries.QueryPlan
 			})
 			if tt.ExpectedEstimates != "" {
 				runTestWithDescribeOptions(t, tt.Query, tt.ExpectedEstimates, sql.DescribeOptions{
-					Debug:     true,
 					Estimates: true,
 				})
 			}
 			if tt.ExpectedAnalysis != "" {
 				runTestWithDescribeOptions(t, tt.Query, tt.ExpectedAnalysis, sql.DescribeOptions{
-					Debug:     true,
 					Estimates: true,
 					Analyze:   true,
 				})

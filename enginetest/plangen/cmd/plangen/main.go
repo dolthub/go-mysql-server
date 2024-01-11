@@ -190,17 +190,13 @@ func generatePlansForSuite(spec PlanSpec, w *bytes.Buffer) error {
 
 			_, _ = w.WriteString(`ExpectedPlan: `)
 			emitPlanString(sql.Describe(enginetest.ExtractQueryNode(node), sql.DescribeOptions{
-				Analyze:   false,
-				Estimates: false,
-				Debug:     true,
+				Debug: true,
 			}))
 
 			if node.IsReadOnly() {
 				_, _ = w.WriteString(`ExpectedEstimates: `)
 				emitPlanString(sql.Describe(enginetest.ExtractQueryNode(node), sql.DescribeOptions{
-					Analyze:   false,
 					Estimates: true,
-					Debug:     true,
 				}))
 				err = enginetest.ExecuteNode(ctx, engine, node)
 				if err != nil {
@@ -210,7 +206,6 @@ func generatePlansForSuite(spec PlanSpec, w *bytes.Buffer) error {
 				emitPlanString(sql.Describe(enginetest.ExtractQueryNode(node), sql.DescribeOptions{
 					Analyze:   true,
 					Estimates: true,
-					Debug:     true,
 				}))
 			}
 		} else {
