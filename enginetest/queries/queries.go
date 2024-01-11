@@ -4222,6 +4222,18 @@ Select * from (
 		Expected: []sql.Row{{int64(1)}},
 	},
 	{
+		Query:    "SELECT subdate(da, i32) from typestable;",
+		Expected: []sql.Row{{time.Date(2019, time.December, 27, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT subdate(da, concat(u32)) from typestable;",
+		Expected: []sql.Row{{time.Date(2019, time.December, 23, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT subdate(da, f32/10) from typestable;",
+		Expected: []sql.Row{{time.Date(2019, time.December, 30, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
 		Query: `SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM othertable) othertable_one) othertable_two) othertable_three WHERE s2 = 'first'`,
 		Expected: []sql.Row{
 			{"first", int64(3)},
