@@ -8787,6 +8787,30 @@ from typestable`,
 		},
 	},
 	{
+		Query: "select length(space(i)) from mytable;",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{3},
+		},
+	},
+	{
+		Query: "select concat(space(i), 'a') from mytable;",
+		Expected: []sql.Row{
+			{" a"},
+			{"  a"},
+			{"   a"},
+		},
+	},
+	{
+		Query: "select space(i * 2) from mytable;",
+		Expected: []sql.Row{
+			{"  "},
+			{"    "},
+			{"      "},
+		},
+	},
+	{
 		Query: "select i + pi() from mytable;",
 		Expected: []sql.Row{
 			{"4.141592653589793"},
