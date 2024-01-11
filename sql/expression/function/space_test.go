@@ -15,9 +15,9 @@
 package function
 
 import (
-	"github.com/shopspring/decimal"
-"testing"
+	"testing"
 
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -26,7 +26,7 @@ import (
 )
 
 func TestSpace(t *testing.T) {
-	tests := []struct{
+	tests := []struct {
 		name string
 		arg  sql.Expression
 		exp  interface{}
