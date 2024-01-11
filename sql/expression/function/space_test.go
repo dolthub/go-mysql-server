@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2024 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -131,6 +131,7 @@ func TestSpace(t *testing.T) {
 		},
 		{
 			// we don't do truncation yet
+			// https://github.com/dolthub/dolt/issues/7302
 			name: "scientific string is truncated",
 			arg:  expression.NewLiteral("1e1", types.Text),
 			exp:  "",
