@@ -129,6 +129,26 @@ func (d *DateAdd) String() string {
 	return fmt.Sprintf("%s(%s,%s)", d.FunctionName(), d.Date, d.Interval)
 }
 
+// NewSubDate returns a new function expression, or an error if one couldn't be created. The SUBDATE
+// function is a synonym for DATE_SUB, with the one exception that if the second argument is NOT an
+// explicitly declared interval, then the value is used and the interval period is assumed to be DAY.
+// In either case, this function will actually return a *DateSub struct.
+func NewSubDate(args ...sql.Expression) (sql.Expression, error) {
+	if len(args) != 2 {
+		return nil, sql.ErrInvalidArgumentNumber.New("SUBDATE", 2, len(args))
+	}
+
+	// If the interval is explicitly specified, then we simply pass it all to DateSub
+	i, ok := args[1].(*expression.Interval)
+	if ok {
+		return &DateSub{args[0], i}, nil
+	}
+
+	// Otherwise, the interval period is assumed to be DAY
+	i = expression.NewInterval(args[1], "DAY")
+	return &DateSub{args[0], i}, nil
+}
+
 // DateSub subtracts an interval from a date.
 type DateSub struct {
 	Date     sql.Expression
