@@ -8787,7 +8787,8 @@ from typestable`,
 		Expected: []sql.Row{
 			{"  "},
 			{"    "},
-			{"    gi
+			{"      "},
+		},
 	},
 }
 
