@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2020-2024 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -282,4 +282,38 @@ func TestMod(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPi(t *testing.T) {
+	tests := []struct {
+		name string
+		exp  interface{}
+	}{
+		{
+			name: "call pi",
+			exp:  math.Pi,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := sql.NewEmptyContext()
+			pi := NewPi()
+			res, err := pi.Eval(ctx, nil)
+			require.NoError(t, err)
+			assert.Equal(t, test.exp, res)
+		})
+	}
+
+	var res interface{}
+	var err error
+	sin := NewSin(NewPi())
+	res, err = sin.Eval(nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, 1.2246467991473515e-16, res)
+
+	cos := NewCos(NewPi())
+	res, err = cos.Eval(nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, -1.0, res)
 }

@@ -8810,6 +8810,14 @@ from typestable`,
 			{"      "},
 		},
 	},
+	{
+		Query: "select i + pi() from mytable;",
+		Expected: []sql.Row{
+			{"4.141592653589793"},
+			{"5.141592653589793"},
+			{"6.141592653589793"},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
