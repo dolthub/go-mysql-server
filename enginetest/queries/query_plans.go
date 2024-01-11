@@ -12189,4 +12189,17 @@ order by x, y;
 			"                     └─ tableId: 0\n" +
 			"",
 	},
+	{
+		Query: "select * from one_pk_two_idx where v1 < 4 and v2 < 2 or v2 > 3 order by v1",
+		ExpectedPlan: "Sort(one_pk_two_idx.v1:1 ASC nullsFirst)\n" +
+			" └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"     ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"     ├─ static: [{[NULL, ∞), (3, ∞)}, {(NULL, 4), (NULL, 2)}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: one_pk_two_idx\n" +
+			"         └─ columns: [pk v1 v2]\n" +
+			"",
+	},
 }

@@ -8755,6 +8755,17 @@ from typestable`,
 			{"12.0000"},
 		},
 	},
+	{
+		Query: "select * from one_pk_two_idx where v1 < 4 and v2 < 2 or v2 > 3 order by v1",
+		Expected: []sql.Row{
+			{0, 0, 0},
+			{1, 1, 1},
+			{4, 4, 4},
+			{5, 5, 5},
+			{6, 6, 6},
+			{7, 7, 7},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
