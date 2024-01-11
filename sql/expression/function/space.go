@@ -15,10 +15,8 @@
 package function
 
 import (
-
-"github.com/dolthub/go-mysql-server/sql"
-"github.com/dolthub/go-mysql-server/sql/types"
-"time"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Space implements the sql function "space" which returns a string with the number of spaces specified by the argument
