@@ -291,7 +291,7 @@ func TestPi(t *testing.T) {
 	}{
 		{
 			name: "call pi",
-			exp: math.Pi,
+			exp:  math.Pi,
 		},
 	}
 

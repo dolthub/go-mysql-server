@@ -809,8 +809,7 @@ func NewMod(args ...sql.Expression) (sql.Expression, error) {
 	return expression.NewMod(args[0], args[1]), nil
 }
 
-type Pi struct {}
-
+type Pi struct{}
 
 func NewPi() sql.Expression {
 	return &Pi{}
