@@ -35,7 +35,7 @@ func NewSpace(arg sql.Expression) sql.Expression {
 
 // Description implements sql.FunctionExpression
 func (s *Space) Description() string {
-	return "returns the numeric value of the leftmost character."
+	return "return a string of the specified number of spaces."
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
