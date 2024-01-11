@@ -808,3 +808,63 @@ func NewMod(args ...sql.Expression) (sql.Expression, error) {
 
 	return expression.NewMod(args[0], args[1]), nil
 }
+
+type Pi struct {}
+
+
+func NewPi() sql.Expression {
+	return &Pi{}
+}
+
+var _ sql.FunctionExpression = &Pi{}
+var _ sql.CollationCoercible = &Pi{}
+
+// FunctionName implements sql.FunctionExpression
+func (p *Pi) FunctionName() string {
+	return "pi"
+}
+
+// Description implements sql.FunctionExpression
+func (p *Pi) Description() string {
+	return "return the value of pi."
+}
+
+// Resolved implements sql.Expression
+func (p *Pi) Resolved() bool {
+	return true
+}
+
+// String implements sql.Expression
+func (p *Pi) String() string {
+	return fmt.Sprintf("%s()", p.FunctionName())
+}
+
+// Type implements sql.Expression
+func (p *Pi) Type() sql.Type {
+	return types.Float64
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (p *Pi) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
+
+// IsNullable implements sql.Expression
+func (p *Pi) IsNullable() bool {
+	return false
+}
+
+// Eval implements sql.Expression
+func (p *Pi) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return math.Pi, nil
+}
+
+// Children implements sql.Expression
+func (p *Pi) Children() []sql.Expression {
+	return nil
+}
+
+// WithChildren implements sql.Expression
+func (p *Pi) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return sql.NillaryWithChildren(p, children...)
+}
