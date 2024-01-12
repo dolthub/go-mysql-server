@@ -85,7 +85,6 @@ func (a *Ascii) WithChildren(children ...sql.Expression) (sql.Expression, error)
 	return NewAscii(children[0]), nil
 }
 
-
 // Ord implements the sql function "ord" which returns the numeric value of the leftmost character
 type Ord struct {
 	*UnaryFunc
@@ -134,7 +133,7 @@ func (o *Ord) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// convert into ord
 	var res int64
 	for i, c := range b {
-		res += int64(c) << (8*(len(b)-1-i))
+		res += int64(c) << (8 * (len(b) - 1 - i))
 	}
 
 	return res, nil
