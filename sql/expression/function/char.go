@@ -80,13 +80,13 @@ func (c *Char) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 	return sql.Collation_binary, 5
 }
 
+// char converts num into a byte array
+// This function is essentially converting the number to base 256
 func char(num uint32) []byte {
-	res := []byte{}
-	for num > 0 {
-		res = append([]byte{byte(num % 256)}, res...)
-		num = num / 256
+	if num == 0 {
+		return []byte{}
 	}
-	return res
+	return append(char(num >> 8), byte(num & 255))
 }
 
 // Eval implements the sql.Expression interface
