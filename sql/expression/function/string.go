@@ -63,18 +63,6 @@ func (a *Ascii) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	switch x := val.(type) {
-	case bool:
-		if x {
-			val = 1
-		} else {
-			val = 0
-		}
-
-	case time.Time:
-		val = x.Year()
-	}
-
 	x, _, err := types.Text.Convert(val)
 
 	if err != nil {
