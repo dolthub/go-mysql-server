@@ -145,6 +145,8 @@ func joinAlignedStats(left, right sql.Histogram, cmp func(sql.Row, sql.Row) (int
 // keyspace. Then for every misaligned pair of buckets, cut the one with the
 // higher bound value on the smaller's key. We use a linear interpolation
 // to divide keys when splitting.
+// todo: add lower bound for the whole statistic so that we can split the first
+// bucket more easily.
 func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sql.Row, sql.Row) (int, error)) (sql.Histogram, sql.Histogram, error) {
 	var numericTypes bool = true
 	for _, t := range s1Types {
