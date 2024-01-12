@@ -20,6 +20,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 // Char implements the sql function "char" which returns the character for each integer passed
@@ -62,7 +63,7 @@ func (c *Char) String() string {
 
 // Type implements sql.Expression
 func (c *Char) Type() sql.Type {
-	return types.LongBlob
+	return types.MustCreateBinary(sqltypes.VarBinary, 0)
 }
 
 // IsNullable implements sql.Expression
@@ -72,7 +73,7 @@ func (c *Char) IsNullable() bool {
 
 // Description implements sql.FunctionExpression
 func (c *Char) Description() string {
-	return "returns the numeric value of the leftmost character."
+	return "interprets each argument N as an integer and returns a string consisting of the characters given by the code values of those integers."
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
