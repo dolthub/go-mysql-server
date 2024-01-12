@@ -8819,11 +8819,17 @@ from typestable`,
 		},
 	},
 	{
-		Query: "select char(i, i + 10, pi()) from mytable",
+		Query: "select char(i, i + 10, pi()) from mytable;",
 		Expected: []sql.Row{
 			{[]byte{0x01, 0x0B, 0x03}},
 			{[]byte{0x02, 0x0C, 0x03}},
 			{[]byte{0x03, 0x0D, 0x03}},
+		},
+	},
+	{
+		Query: "select char(97, 98, 99 using utf8mb4);",
+		Expected: []sql.Row{
+			{[]byte{97, 98, 99}},
 		},
 	},
 }
