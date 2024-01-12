@@ -63,13 +63,17 @@ func (a *Ascii) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	x, _, err := types.Text.Convert(val)
+	str, _, err := types.Text.Convert(val)
 
 	if err != nil {
 		return nil, err
 	}
 
-	s := x.(string)
+	s := str.(string)
+	if len(s) == 0 {
+		return uint8(0), nil
+	}
+
 	return s[0], nil
 }
 
@@ -120,6 +124,9 @@ func (o *Ord) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	s := str.(string)
+	if len(s) == 0 {
+		return int64(0), nil
+	}
 
 	// get the leftmost unicode code point as bytes
 	b := []byte(string([]rune(s)[0]))
