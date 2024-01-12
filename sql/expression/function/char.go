@@ -86,7 +86,7 @@ func char(num uint32) []byte {
 	if num == 0 {
 		return []byte{}
 	}
-	return append(char(num >> 8), byte(num & 255))
+	return append(char(num>>8), byte(num&255))
 }
 
 // Eval implements the sql.Expression interface
