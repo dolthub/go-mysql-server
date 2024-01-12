@@ -89,6 +89,9 @@ func joinAlignedStats(left, right sql.Histogram, cmp func(sql.Row, sql.Row) (int
 		var rows uint64
 
 		// mcvs counted in isolation
+		// todo: should we assume non-match MCVs in smaller set
+		// contribute MCV count * average frequency from the larger?
+		var mcvMatch int
 		for i, key1 := range l.Mcvs() {
 			for j, key2 := range r.Mcvs() {
 				v, err := cmp(key1, key2)
@@ -101,6 +104,7 @@ func joinAlignedStats(left, right sql.Histogram, cmp func(sql.Row, sql.Row) (int
 					rRows -= float64(r.McvCounts()[j])
 					lDistinct--
 					rDistinct--
+					mcvMatch++
 					break
 				}
 			}
@@ -128,7 +132,7 @@ func joinAlignedStats(left, right sql.Histogram, cmp func(sql.Row, sql.Row) (int
 
 		newBucket := NewHistogramBucket(
 			rows,
-			uint64(minDistinct),
+			uint64(minDistinct)+uint64(mcvMatch), // matched mcvs contribute back to result distinct count
 			uint64(float64(l.NullCount()*r.NullCount())/float64(maxDistinct)),
 			l.BoundCount()*r.BoundCount(), l.UpperBound(), mcvCounts, mcvs)
 		newBuckets = append(newBuckets, newBucket)
@@ -348,16 +352,16 @@ func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sq
 
 			// lastL -> nextR
 			firstHalf := NewHistogramBucket(
-				uint64(float64(nextL.RowCount())*cutFrac),
-				uint64(float64(nextL.DistinctCount())*cutFrac),
-				uint64(float64(nextL.NullCount())*cutFrac),
+				uint64(float64(nextL.RowCount())*(1-cutFrac)),
+				uint64(float64(nextL.DistinctCount())*(1-cutFrac)),
+				uint64(float64(nextL.NullCount())*(1-cutFrac)),
 				1, nextR.UpperBound(), nil, nil)
 
 			// nextR -> nextL
 			secondHalf := NewHistogramBucket(
-				uint64(float64(nextL.RowCount())*(1-cutFrac)),
-				uint64(float64(nextL.DistinctCount())*(1-cutFrac)),
-				uint64(float64(nextL.NullCount())*(1-cutFrac)),
+				uint64(float64(nextL.RowCount())*cutFrac),
+				uint64(float64(nextL.DistinctCount())*cutFrac),
+				uint64(float64(nextL.NullCount())*cutFrac),
 				nextL.BoundCount(),
 				nextL.UpperBound(),
 				nextL.McvCounts(),

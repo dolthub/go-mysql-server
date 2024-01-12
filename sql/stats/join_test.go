@@ -131,8 +131,8 @@ func TestBinAlignment(t *testing.T) {
 			},
 			expLeft: []sql.HistogramBucket{
 				&Bucket{RowCnt: 12, DistinctCnt: 12, BoundVal: sql.Row{10}, BoundCnt: 1},
-				&Bucket{RowCnt: 6, DistinctCnt: 6, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 1, DistinctCnt: 1, BoundVal: sql.Row{50}, BoundCnt: 1},
+				&Bucket{RowCnt: 2, DistinctCnt: 2, BoundVal: sql.Row{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 6, DistinctCnt: 6, BoundVal: sql.Row{50}, BoundCnt: 1},
 			},
 			expRight: []sql.HistogramBucket{
 				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{10}, BoundCnt: 1},
@@ -317,13 +317,24 @@ func TestJoin(t *testing.T) {
 		},
 		{
 			left: []sql.HistogramBucket{
+				&Bucket{RowCnt: 20, DistinctCnt: 11, BoundVal: sql.Row{10}, McvVals: []sql.Row{{1}, {2}}, McvsCnt: []uint64{5, 5}, BoundCnt: 1},
+			},
+			right: []sql.HistogramBucket{
+				&Bucket{RowCnt: 10, DistinctCnt: 6, BoundVal: sql.Row{10}, McvVals: []sql.Row{{2}}, McvsCnt: []uint64{4}, BoundCnt: 1},
+			},
+			exp: []sql.HistogramBucket{
+				&Bucket{RowCnt: 29, DistinctCnt: 6, BoundVal: sql.Row{10}, BoundCnt: 1},
+			},
+		},
+		{
+			left: []sql.HistogramBucket{
 				&Bucket{RowCnt: 20, DistinctCnt: 10, BoundVal: sql.Row{10}, McvVals: []sql.Row{{1}, {2}}, McvsCnt: []uint64{5, 5}, BoundCnt: 1},
 			},
 			right: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{10}, McvVals: []sql.Row{{2}}, McvsCnt: []uint64{4}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 6, BoundVal: sql.Row{10}, McvVals: []sql.Row{{3}}, McvsCnt: []uint64{4}, BoundCnt: 1},
 			},
 			exp: []sql.HistogramBucket{
-				&Bucket{RowCnt: 30, DistinctCnt: 9, BoundVal: sql.Row{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 20, DistinctCnt: 6, BoundVal: sql.Row{10}, BoundCnt: 1},
 			},
 		},
 		{
