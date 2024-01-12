@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2020-2024 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -91,6 +91,66 @@ func (a *Ascii) WithChildren(children ...sql.Expression) (sql.Expression, error)
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 1)
 	}
 	return NewAscii(children[0]), nil
+}
+
+
+// Ord implements the sql function "ord" which returns the numeric value of the leftmost character
+type Ord struct {
+	*UnaryFunc
+}
+
+var _ sql.FunctionExpression = (*Ord)(nil)
+var _ sql.CollationCoercible = (*Ord)(nil)
+
+func NewOrd(arg sql.Expression) sql.Expression {
+	return &Ord{NewUnaryFunc(arg, "ORD", types.Int64)}
+}
+
+// Description implements sql.FunctionExpression
+func (o *Ord) Description() string {
+	return "return character code for leftmost character of the argument."
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (o *Ord) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
+
+// Eval implements the sql.Expression interface
+func (o *Ord) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	val, err := o.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if val == nil {
+		return nil, nil
+	}
+
+	str, _, err := types.Text.Convert(val)
+	if err != nil {
+		return nil, err
+	}
+	s := str.(string)
+
+	// get the leftmost unicode code point as bytes
+	b := []byte(string([]rune(s)[0]))
+
+	// convert into ord
+	var res int64
+	for i, c := range b {
+		res += int64(c) << (8*(len(b)-1-i))
+	}
+
+	return res, nil
+}
+
+// WithChildren implements the sql.Expression interface
+func (o *Ord) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(o, len(children), 1)
+	}
+	return NewOrd(children[0]), nil
 }
 
 // Hex implements the sql function "hex" which returns the hexadecimal representation of the string or numeric value
