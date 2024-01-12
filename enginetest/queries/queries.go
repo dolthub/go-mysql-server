@@ -8818,6 +8818,14 @@ from typestable`,
 			{"6.141592653589793"},
 		},
 	},
+	{
+		Query: "select char(i, i + 10, pi()) from mytable",
+		Expected: []sql.Row{
+			{[]byte{0x01, 0x0B, 0x03}},
+			{[]byte{0x02, 0x0C, 0x03}},
+			{[]byte{0x03, 0x0D, 0x03}},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
