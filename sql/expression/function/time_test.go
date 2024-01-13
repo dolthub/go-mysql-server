@@ -92,6 +92,38 @@ func TestTime_Month(t *testing.T) {
 	}
 }
 
+func TestTime_Quarter(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	f := NewQuarter(expression.NewGetField(0, types.LongText, "foo", false))
+
+	testCases := []struct {
+		name     string
+		row      sql.Row
+		expected interface{}
+		err      bool
+	}{
+		{"null date", sql.NewRow(nil), nil, false},
+		{"1", sql.NewRow(1), int32(1), false},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), int32(1), false},
+		{"date as string", sql.NewRow(stringDate), int32(1), false},
+		{"another date as string", sql.NewRow("2008-08-01"), int32(3), false},
+		{"date as time", sql.NewRow(time.Now()), int32(time.Now().UTC().Month()), false},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			val, err := f.Eval(ctx, tt.row)
+			if tt.err {
+				require.Error(err)
+			} else {
+				require.NoError(err)
+				require.Equal(tt.expected, val)
+			}
+		})
+	}
+}
+
 func TestTime_Day(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	f := NewDay(expression.NewGetField(0, types.LongText, "foo", false))
