@@ -115,7 +115,6 @@ func (y *Year) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 	return NewYear(children[0]), nil
 }
 
-
 type Quarter struct {
 	expression.UnaryExpression
 }
@@ -159,7 +158,7 @@ func (q *Quarter) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	return mon.(int32) / 3 + 1, nil
+	return mon.(int32)/3 + 1, nil
 }
 
 // WithChildren implements the Expression interface.
@@ -169,8 +168,6 @@ func (q *Quarter) WithChildren(children ...sql.Expression) (sql.Expression, erro
 	}
 	return NewQuarter(children[0]), nil
 }
-
-
 
 // Month is a function that returns the month of a date.
 type Month struct {
