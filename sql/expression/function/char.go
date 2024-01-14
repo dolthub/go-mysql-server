@@ -26,7 +26,8 @@ import (
 // Char implements the sql function "char" which returns the character for each integer passed
 type Char struct {
 	// TODO: support using (charset/collation) clause
-	args []sql.Expression
+	args      []sql.Expression
+	Collation sql.CollationID
 }
 
 var _ sql.FunctionExpression = (*Char)(nil)
@@ -63,7 +64,10 @@ func (c *Char) String() string {
 
 // Type implements sql.Expression
 func (c *Char) Type() sql.Type {
-	return types.MustCreateBinary(sqltypes.VarBinary, 0)
+	if c.Collation == sql.Collation_binary || c.Collation == sql.Collation_Unspecified {
+		return types.MustCreateString(sqltypes.VarBinary, int64(len(c.args) * 4), sql.Collation_binary)
+	}
+	return types.MustCreateString(sqltypes.VarChar, int64(len(c.args) * 16), c.Collation)
 }
 
 // IsNullable implements sql.Expression
