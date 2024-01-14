@@ -8818,6 +8818,14 @@ from typestable`,
 			{"6.141592653589793"},
 		},
 	},
+	{
+		Query: "select atan(i), atan2(i, i + 2) from mytable;",
+		Expected: []sql.Row{
+			{math.Atan2(1, 1), math.Atan2(1, 3)},
+			{math.Atan2(2, 1), math.Atan2(2, 4)},
+			{math.Atan2(3, 1), math.Atan2(3, 5)},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{

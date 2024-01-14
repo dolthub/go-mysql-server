@@ -173,7 +173,8 @@ func TestCRC32(t *testing.T) {
 func TestTrigFunctions(t *testing.T) {
 	asin := sql.Function1{Name: "asin", Fn: NewAsin}
 	acos := sql.Function1{Name: "acos", Fn: NewAcos}
-	atan := sql.Function1{Name: "atan", Fn: NewAtan}
+	atan := sql.FunctionN{Name: "atan", Fn: NewAtan}
+	atan2 := sql.FunctionN{Name: "atan2", Fn: NewAtan}
 	sin := sql.Function1{Name: "sin", Fn: NewSin}
 	cos := sql.Function1{Name: "cos", Fn: NewCos}
 	tan := sql.Function1{Name: "tan", Fn: NewTan}
@@ -202,12 +203,19 @@ func TestTrigFunctions(t *testing.T) {
 		assert.NoError(t, err)
 		acosVal, err := acos.Fn(expression.NewLiteral(cosF, nil)).Eval(nil, nil)
 		assert.NoError(t, err)
-		atanVal, err := atan.Fn(expression.NewLiteral(tanF, nil)).Eval(nil, nil)
+		atanFn, err := atan.Fn(expression.NewLiteral(tanF, nil))
+		assert.NoError(t, err)
+		atanVal, err := atanFn.Eval(nil, nil)
+		assert.NoError(t, err)
+		atan2Fn, err := atan2.Fn(expression.NewLiteral(tanF, nil), expression.NewLiteral(tanF-1, nil))
+		assert.NoError(t, err)
+		atan2Val, err := atan2Fn.Eval(nil, nil)
 		assert.NoError(t, err)
 
 		assert.True(t, withinRoundingErr(math.Asin(sinF), asinVal.(float64)))
 		assert.True(t, withinRoundingErr(math.Acos(cosF), acosVal.(float64)))
 		assert.True(t, withinRoundingErr(math.Atan(tanF), atanVal.(float64)))
+		assert.True(t, withinRoundingErr(math.Atan2(tanF, tanF-1), atan2Val.(float64)))
 	}
 }
 
