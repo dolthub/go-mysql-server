@@ -18,9 +18,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/vitess/go/sqltypes"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 // Char implements the sql function "char" which returns the character for each integer passed
@@ -65,9 +66,9 @@ func (c *Char) String() string {
 // Type implements sql.Expression
 func (c *Char) Type() sql.Type {
 	if c.Collation == sql.Collation_binary || c.Collation == sql.Collation_Unspecified {
-		return types.MustCreateString(sqltypes.VarBinary, int64(len(c.args) * 4), sql.Collation_binary)
+		return types.MustCreateString(sqltypes.VarBinary, int64(len(c.args)*4), sql.Collation_binary)
 	}
-	return types.MustCreateString(sqltypes.VarChar, int64(len(c.args) * 16), c.Collation)
+	return types.MustCreateString(sqltypes.VarChar, int64(len(c.args)*16), c.Collation)
 }
 
 // IsNullable implements sql.Expression
