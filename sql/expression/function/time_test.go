@@ -102,12 +102,46 @@ func TestTime_Quarter(t *testing.T) {
 		expected interface{}
 		err      bool
 	}{
-		{"null date", sql.NewRow(nil), nil, false},
-		{"1", sql.NewRow(1), int32(1), false},
-		{"invalid type", sql.NewRow([]byte{0, 1, 2}), int32(1), false},
-		{"date as string", sql.NewRow(stringDate), int32(1), false},
-		{"another date as string", sql.NewRow("2008-08-01"), int32(3), false},
-		{"date as time", sql.NewRow(time.Now()), int32(time.Now().UTC().Month()), false},
+		{
+			name: "null date",
+			row: sql.NewRow(nil),
+			expected: nil,
+		},
+		{
+			name: "1",
+			row: sql.NewRow(1),
+			expected: int32(1),
+		},
+		{
+			name: "1.1",
+			row: sql.NewRow(1.1),
+			expected: int32(1),
+		},
+		{
+			name: "3.9",
+			row: sql.NewRow(3.9),
+			expected: int32(2),
+		},
+		{
+			name: "invalid type",
+			row: sql.NewRow([]byte{0, 1, 2}),
+			expected: int32(1),
+		},
+		{
+			name: "date as string",
+			row: sql.NewRow(stringDate),
+			expected: int32(1),
+		},
+		{
+			name: "another date as string",
+			row: sql.NewRow("2008-08-01"),
+			expected: int32(3),
+		},
+		{
+			name: "date as time",
+			row: sql.NewRow(time.Now()),
+			expected: int32(time.Now().UTC().Month()),
+		},
 	}
 
 	for _, tt := range testCases {
