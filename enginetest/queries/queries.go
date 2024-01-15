@@ -8818,6 +8818,14 @@ from typestable`,
 			{"6.141592653589793"},
 		},
 	},
+	{
+		Query: "select bit_count(i), bit_count(-20 * i) from mytable;",
+		Expected: []sql.Row{
+			{1, 61},
+			{1, 60},
+			{2, 59},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
