@@ -103,43 +103,43 @@ func TestTime_Quarter(t *testing.T) {
 		err      bool
 	}{
 		{
-			name: "null date",
-			row: sql.NewRow(nil),
+			name:     "null date",
+			row:      sql.NewRow(nil),
 			expected: nil,
 		},
 		{
-			name: "1",
-			row: sql.NewRow(1),
+			name:     "1",
+			row:      sql.NewRow(1),
 			expected: int32(1),
 		},
 		{
-			name: "1.1",
-			row: sql.NewRow(1.1),
+			name:     "1.1",
+			row:      sql.NewRow(1.1),
 			expected: int32(1),
 		},
 		{
-			name: "3.9",
-			row: sql.NewRow(3.9),
+			name:     "3.9",
+			row:      sql.NewRow(3.9),
 			expected: int32(2),
 		},
 		{
-			name: "invalid type",
-			row: sql.NewRow([]byte{0, 1, 2}),
+			name:     "invalid type",
+			row:      sql.NewRow([]byte{0, 1, 2}),
 			expected: int32(1),
 		},
 		{
-			name: "date as string",
-			row: sql.NewRow(stringDate),
+			name:     "date as string",
+			row:      sql.NewRow(stringDate),
 			expected: int32(1),
 		},
 		{
-			name: "another date as string",
-			row: sql.NewRow("2008-08-01"),
+			name:     "another date as string",
+			row:      sql.NewRow("2008-08-01"),
 			expected: int32(3),
 		},
 		{
-			name: "date as time",
-			row: sql.NewRow(time.Now()),
+			name:     "date as time",
+			row:      sql.NewRow(time.Now()),
 			expected: int32(time.Now().UTC().Month()),
 		},
 	}
