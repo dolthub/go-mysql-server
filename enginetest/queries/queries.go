@@ -8818,6 +8818,14 @@ from typestable`,
 			{"6.141592653589793"},
 		},
 	},
+	{
+		Query: "select exp(i) from mytable;",
+		Expected: []sql.Row{
+			{math.Exp(1)},
+			{math.Exp(2)},
+			{math.Exp(3)},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
