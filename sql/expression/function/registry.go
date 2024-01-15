@@ -43,6 +43,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "bin", Fn: NewBin},
 	sql.FunctionN{Name: "bin_to_uuid", Fn: NewBinToUUID},
 	sql.Function1{Name: "bit_and", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewBitAnd(e) }},
+	sql.Function1{Name: "bit_count", Fn: NewBitCount},
 	sql.Function1{Name: "bit_length", Fn: NewBitlength},
 	sql.Function1{Name: "bit_or", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewBitOr(e) }},
 	sql.Function1{Name: "bit_xor", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewBitXor(e) }},
