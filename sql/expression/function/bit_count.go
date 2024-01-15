@@ -16,8 +16,9 @@ package function
 
 import (
 	"fmt"
-			"github.com/dolthub/go-mysql-server/sql"
-		"github.com/dolthub/go-mysql-server/sql/types"
+
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // BitCount returns the smallest integer value not less than X.
