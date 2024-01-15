@@ -8818,6 +8818,14 @@ from typestable`,
 			{"6.141592653589793"},
 		},
 	},
+	{
+		Query: "select elt(i, 'a', 'b') from mytable;",
+		Expected: []sql.Row{
+			{"a"},
+			{"b"},
+			{nil},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
