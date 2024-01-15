@@ -8826,6 +8826,12 @@ from typestable`,
 			{2, 59},
 		},
 	},
+	{
+		Query: "select bit_count(binary 123456878901234567890);",
+		Expected: []sql.Row{
+			{73},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{

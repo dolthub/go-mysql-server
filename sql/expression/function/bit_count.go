@@ -66,6 +66,15 @@ func (b *BitCount) WithChildren(children ...sql.Expression) (sql.Expression, err
 	return NewBitCount(children[0]), nil
 }
 
+func countBits(n uint64) int32 {
+	var res int32
+	for n != 0 {
+		res += int32(n & 1)
+		n >>= 1
+	}
+	return res
+}
+
 // Eval implements the Expression interface.
 func (b *BitCount) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if b.Child == nil {
@@ -81,18 +90,21 @@ func (b *BitCount) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	num, _, err := types.Int64.Convert(child)
-	if err != nil {
-		ctx.Warn(1292, "Truncated incorrect INTEGER value: '%v'", child)
-		num = int64(0)
-	}
-
-	// Must convert to unsigned because shifting a negative signed value fills with 1s
-	n := uint64(num.(int64))
 	var res int32
-	for n != 0 {
-		res += int32(n & 1)
-		n >>= 1
+	switch val := child.(type) {
+	case []byte:
+		for _, v := range val {
+			res += countBits(uint64(v))
+		}
+	default:
+		num, _, err := types.Int64.Convert(child)
+		if err != nil {
+			ctx.Warn(1292, "Truncated incorrect INTEGER value: '%v'", child)
+			num = int64(0)
+		}
+
+		// Must convert to unsigned because shifting a negative signed value fills with 1s
+		res = countBits(uint64(num.(int64)))
 	}
 
 	return res, nil
