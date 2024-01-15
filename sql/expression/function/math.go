@@ -890,12 +890,12 @@ func (e *Exp) Type() sql.Type {
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
-func (e *Exp)CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+func (e *Exp) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
 }
 
 // Eval implements the Expression interface.
-func (e *Exp) Eval( ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (e *Exp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if e.Child == nil {
 		return nil, nil
 	}
