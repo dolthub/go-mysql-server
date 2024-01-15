@@ -67,6 +67,10 @@ func (b *BitCount) WithChildren(children ...sql.Expression) (sql.Expression, err
 
 // Eval implements the Expression interface.
 func (b *BitCount) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	if b.Child == nil {
+		return nil, nil
+	}
+
 	child, err := b.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -78,10 +82,12 @@ func (b *BitCount) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	num, _, err := types.Int64.Convert(child)
 	if err != nil {
-		return nil, err
+		ctx.Warn(1292, "Truncated incorrect INTEGER value: '%v'", child)
+		num = int64(0)
 	}
 
-	n := num.(int64)
+	// Must convert to unsigned because shifting a negative signed value fills with 1s
+	n := uint64(num.(int64))
 	var res int32
 	for n != 0 {
 		res += int32(n & 1)
