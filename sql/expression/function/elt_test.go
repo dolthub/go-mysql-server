@@ -17,7 +17,7 @@ package function
 import (
 	"testing"
 
-		"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -38,7 +38,7 @@ func TestElt(t *testing.T) {
 				nil,
 				nil,
 			},
-			exp:  nil,
+			exp: nil,
 		},
 		{
 			name: "zero returns null",
@@ -46,7 +46,7 @@ func TestElt(t *testing.T) {
 				expression.NewLiteral(0, types.Int32),
 				expression.NewLiteral("foo", types.Text),
 			},
-			exp:  nil,
+			exp: nil,
 		},
 		{
 			name: "negative returns null",
@@ -54,7 +54,7 @@ func TestElt(t *testing.T) {
 				expression.NewLiteral(-10, types.Int32),
 				expression.NewLiteral("foo", types.Text),
 			},
-			exp:  nil,
+			exp: nil,
 		},
 		{
 			name: "too large returns null",
@@ -62,7 +62,7 @@ func TestElt(t *testing.T) {
 				expression.NewLiteral(100, types.Int32),
 				expression.NewLiteral("foo", types.Text),
 			},
-			exp:  nil,
+			exp: nil,
 		},
 		{
 			name: "simple case",
@@ -70,7 +70,7 @@ func TestElt(t *testing.T) {
 				expression.NewLiteral(1, types.Int32),
 				expression.NewLiteral("foo", types.Text),
 			},
-			exp:  "foo",
+			exp: "foo",
 		},
 		{
 			name: "simple case again",
@@ -80,7 +80,7 @@ func TestElt(t *testing.T) {
 				expression.NewLiteral("foo2", types.Text),
 				expression.NewLiteral("foo3", types.Text),
 			},
-			exp:  "foo3",
+			exp: "foo3",
 		},
 		{
 			name: "index is float",
@@ -90,7 +90,7 @@ func TestElt(t *testing.T) {
 				expression.NewLiteral("foo2", types.Text),
 				expression.NewLiteral("foo3", types.Text),
 			},
-			exp:  "foo3",
+			exp: "foo3",
 		},
 		{
 			name: "index is valid string",
@@ -100,7 +100,7 @@ func TestElt(t *testing.T) {
 				expression.NewLiteral("foo2", types.Text),
 				expression.NewLiteral("foo3", types.Text),
 			},
-			exp:  "foo2",
+			exp: "foo2",
 		},
 		{
 			name: "args are cast to string",
@@ -110,7 +110,7 @@ func TestElt(t *testing.T) {
 				expression.NewLiteral("foo2", types.Text),
 				expression.NewLiteral(123, types.Int32),
 			},
-			exp:  "123",
+			exp: "123",
 		},
 		{
 			// we don't do truncation yet
