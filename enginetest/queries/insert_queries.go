@@ -832,6 +832,25 @@ var SpatialInsertQueries = []WriteQueryTest{
 
 var InsertScripts = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/7322
+		Name: "issue 7322: values expression is subquery",
+		SetUpScript: []string{
+			"create table xy (x int auto_increment primary key, y varchar(50) not null)",
+			"create table uv (u int auto_increment primary key, v varchar(50) not null, x_id int, constraint u_x_fk foreign key (x_id) references xy (x))",
+			"insert into xy values (1,'admin'), (2, 'standard')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO uv(v, x_id) VALUES ('test', (SELECT x FROM xy WHERE y = 'admin'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+			},
+			{
+				Query:    "select * from uv",
+				Expected: []sql.Row{{1, "test", 1}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/6675
 		Name: "issue 6675: on duplicate rearranged getfield indexes from select source",
 		SetUpScript: []string{
