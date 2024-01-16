@@ -6051,6 +6051,10 @@ Select * from (
 		Expected: []sql.Row{{9}, {10}, {9}},
 	},
 	{
+		Query:    "select octet_length(s) from mytable order by i",
+		Expected: []sql.Row{{9}, {10}, {9}},
+	},
+	{
 		Query:    "select char_length(s) from mytable order by i",
 		Expected: []sql.Row{{9}, {10}, {9}},
 	},
