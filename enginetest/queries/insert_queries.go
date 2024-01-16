@@ -845,6 +845,10 @@ var InsertScripts = []ScriptTest{
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
 			},
 			{
+				Query:       "INSERT INTO uv(v, x_id) VALUES ('test', (SELECT x FROM xy WHERE x > 0));",
+				ExpectedErr: sql.ErrExpectedSingleRow,
+			},
+			{
 				Query:    "select * from uv",
 				Expected: []sql.Row{{1, "test", 1}},
 			},
