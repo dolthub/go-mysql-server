@@ -69,7 +69,7 @@ func (f *Field) CollationCoercibility(ctx *sql.Context) (sql.CollationID, byte) 
 
 // IsNullable implements the Expression interface.
 func (f *Field) IsNullable() bool {
-	return true
+	return false
 }
 
 // String implements the Stringer interface.
