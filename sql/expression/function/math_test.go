@@ -325,3 +325,103 @@ func TestPi(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, -1.0, res)
 }
+
+func TestExp(t *testing.T) {
+	tests := []struct {
+		name string
+		arg  sql.Expression
+		exp  interface{}
+		err  bool
+		skip bool
+	}{
+		{
+			name: "null argument",
+			arg:  nil,
+			exp:  nil,
+		},
+		{
+			name: "zero",
+			arg:  expression.NewLiteral(int64(0), types.Int64),
+			exp:  math.Exp(0),
+		},
+		{
+			name: "one",
+			arg:  expression.NewLiteral(int64(1), types.Int64),
+			exp:  math.Exp(1),
+		},
+		{
+			name: "ten",
+			arg:  expression.NewLiteral(int64(10), types.Int64),
+			exp:  math.Exp(10),
+		},
+		{
+			name: "negative",
+			arg:  expression.NewLiteral(int64(-1), types.Int64),
+			exp:  math.Exp(-1),
+		},
+		{
+			name: "float64 1.1",
+			arg:  expression.NewLiteral(1.1, types.Float64),
+			exp:  math.Exp(1.1),
+		},
+		{
+			name: "decimal 1.1",
+			arg:  expression.NewLiteral(decimal.NewFromFloat(1.1), types.DecimalType_{}),
+			exp:  math.Exp(1.1),
+		},
+		{
+			name: "float64 -12.34",
+			arg:  expression.NewLiteral(-12.34, types.Float64),
+			exp:  math.Exp(-12.34),
+		},
+		{
+			name: "decimal is -12.34",
+			arg:  expression.NewLiteral(decimal.NewFromFloat(-12.34), types.DecimalType_{}),
+			exp:  math.Exp(-12.34),
+		},
+		{
+			name: "invalid string is 0",
+			arg:  expression.NewLiteral("notanumber", types.Text),
+			exp:  math.Exp(0),
+		},
+		{
+			name: "empty string",
+			arg:  expression.NewLiteral("", types.Text),
+			exp:  math.Exp(0),
+		},
+		{
+			name: "numerical string",
+			arg:  expression.NewLiteral("10", types.Text),
+			exp:  math.Exp(10),
+		},
+		{
+			// we don't do truncation yet
+			// https://github.com/dolthub/dolt/issues/7302
+			name: "scientific string is truncated",
+			arg:  expression.NewLiteral("1e1", types.Text),
+			exp:  "",
+			err:  false,
+			skip: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.skip {
+				t.Skip()
+			}
+
+			ctx := sql.NewEmptyContext()
+			f := NewExp(tt.arg)
+
+			res, err := f.Eval(ctx, nil)
+			if tt.err {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.exp, res)
+		})
+	}
+}
