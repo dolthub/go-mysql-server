@@ -69,8 +69,8 @@ func (b *BitCount) WithChildren(children ...sql.Expression) (sql.Expression, err
 func countBits(n uint64) int32 {
 	var res int32
 	for n != 0 {
-		res += int32(n & 1)
-		n >>= 1
+		res++
+		n &= n - 1
 	}
 	return res
 }
