@@ -158,7 +158,7 @@ func (q *Quarter) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	return mon.(int32)/3 + 1, nil
+	return (mon.(int32) - 1) / 3 + 1, nil
 }
 
 // WithChildren implements the Expression interface.

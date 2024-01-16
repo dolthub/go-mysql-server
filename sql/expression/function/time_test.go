@@ -118,11 +118,6 @@ func TestTime_Quarter(t *testing.T) {
 			expected: int32(1),
 		},
 		{
-			name:     "3.9",
-			row:      sql.NewRow(3.9),
-			expected: int32(2),
-		},
-		{
 			name:     "invalid type",
 			row:      sql.NewRow([]byte{0, 1, 2}),
 			expected: int32(1),
@@ -136,6 +131,66 @@ func TestTime_Quarter(t *testing.T) {
 			name:     "another date as string",
 			row:      sql.NewRow("2008-08-01"),
 			expected: int32(3),
+		},
+		{
+			name:     "january",
+			row:      sql.NewRow("2008-01-01"),
+			expected: int32(1),
+		},
+		{
+			name:     "february",
+			row:      sql.NewRow("2008-02-01"),
+			expected: int32(1),
+		},
+		{
+			name:     "march",
+			row:      sql.NewRow("2008-03-01"),
+			expected: int32(1),
+		},
+		{
+			name:     "april",
+			row:      sql.NewRow("2008-04-01"),
+			expected: int32(2),
+		},
+		{
+			name:     "may",
+			row:      sql.NewRow("2008-05-01"),
+			expected: int32(2),
+		},
+		{
+			name:     "june",
+			row:      sql.NewRow("2008-06-01"),
+			expected: int32(2),
+		},
+		{
+			name:     "july",
+			row:      sql.NewRow("2008-07-01"),
+			expected: int32(3),
+		},
+		{
+			name:     "august",
+			row:      sql.NewRow("2008-08-01"),
+			expected: int32(3),
+		},
+		{
+			name:     "septemeber",
+			row:      sql.NewRow("2008-09-01"),
+			expected: int32(3),
+		},
+		{
+			name:     "october",
+			row:      sql.NewRow("2008-10-01"),
+			expected: int32(4),
+		},
+		{
+			name:     "november",
+			row:      sql.NewRow("2008-11-01"),
+			expected: int32(4),
+		},
+		{
+			name:     "december",
+			row:      sql.NewRow("2008-12-01"),
+			expected: int32(4),
 		},
 		{
 			name:     "date as time",
