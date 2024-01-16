@@ -52,24 +52,6 @@ import (
 	"github.com/dolthub/go-mysql-server/test"
 )
 
-// ExecuteNode iterates over a node's iterator until it's exhausted.
-// This is useful for populating actual row counts for `DESCRIBE ANALYZE`.
-func ExecuteNode(ctx *sql.Context, engine QueryEngine, node sql.Node) error {
-	iter, err := engine.EngineAnalyzer().ExecBuilder.Build(ctx, node, nil)
-	if err != nil {
-		return nil
-	}
-	for {
-		_, err := iter.Next(ctx)
-		if err == io.EOF {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-	}
-}
-
 // TestQueries tests a variety of queries against databases and tables provided by the given harness.
 func TestQueries(t *testing.T, harness Harness) {
 	harness.Setup(setup.SimpleSetup...)
@@ -5307,5 +5289,47 @@ func TestSQLLogicTests(t *testing.T, harness Harness) {
 			}
 		}
 		TestScript(t, harness, script)
+	}
+}
+
+// ExecuteNode builds an iterator and then drains it.
+// This is useful for populating actual row counts for `DESCRIBE ANALYZE`.
+func ExecuteNode(ctx *sql.Context, engine QueryEngine, node sql.Node) error {
+	iter, err := engine.EngineAnalyzer().ExecBuilder.Build(ctx, node, nil)
+	if err != nil {
+		return err
+	}
+	return DrainIterator(ctx, iter)
+}
+
+func DrainIterator(ctx *sql.Context, iter sql.RowIter) error {
+	if iter == nil {
+		return nil
+	}
+
+	for {
+		_, err := iter.Next(ctx)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+	}
+
+	return iter.Close(ctx)
+}
+
+// This shouldn't be necessary -- the fact that an iterator can return an error but not clean up after itself in all
+// cases is a bug.
+func DrainIteratorIgnoreErrors(ctx *sql.Context, iter sql.RowIter) {
+	if iter == nil {
+		return
+	}
+
+	for {
+		_, err := iter.Next(ctx)
+		if err == io.EOF {
+			return
+		}
 	}
 }
