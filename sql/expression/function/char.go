@@ -26,7 +26,6 @@ import (
 
 // Char implements the sql function "char" which returns the character for each integer passed
 type Char struct {
-	// TODO: support using (charset/collation) clause
 	args      []sql.Expression
 	Collation sql.CollationID
 }
@@ -122,7 +121,12 @@ func (c *Char) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		res = append(res, char(v.(uint32))...)
 	}
 
-	return res, nil
+	result, _, err := c.Type().Convert(res)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 // Children implements sql.Expression

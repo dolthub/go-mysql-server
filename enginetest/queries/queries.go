@@ -8829,7 +8829,7 @@ from typestable`,
 	{
 		Query: "select char(97, 98, 99 using utf8mb4);",
 		Expected: []sql.Row{
-			{[]byte{97, 98, 99}},
+			{"abc"},
 		},
 	},
 }
