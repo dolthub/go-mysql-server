@@ -17,7 +17,7 @@ package function
 import (
 	"testing"
 
-		"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -38,7 +38,7 @@ func TestField(t *testing.T) {
 				nil,
 				nil,
 			},
-			exp:  int32(0),
+			exp: int32(0),
 		},
 		{
 			name: "not found",
@@ -46,7 +46,7 @@ func TestField(t *testing.T) {
 				expression.NewLiteral("abc", types.Text),
 				expression.NewLiteral("def", types.Text),
 			},
-			exp:  int32(0),
+			exp: int32(0),
 		},
 		{
 			name: "simple case",
@@ -56,7 +56,7 @@ func TestField(t *testing.T) {
 				expression.NewLiteral("def", types.Int32),
 				expression.NewLiteral("xyz", types.Int32),
 			},
-			exp:  int32(1),
+			exp: int32(1),
 		},
 		{
 			name: "simple case again",
@@ -66,7 +66,7 @@ func TestField(t *testing.T) {
 				expression.NewLiteral("def", types.Int32),
 				expression.NewLiteral("xyz", types.Int32),
 			},
-			exp:  int32(2),
+			exp: int32(2),
 		},
 		{
 			name: "index is int",
@@ -76,7 +76,7 @@ func TestField(t *testing.T) {
 				expression.NewLiteral("8", types.Text),
 				expression.NewLiteral("10", types.Text),
 			},
-			exp:  int32(3),
+			exp: int32(3),
 		},
 		{
 			name: "index is float",
@@ -86,7 +86,7 @@ func TestField(t *testing.T) {
 				expression.NewLiteral("2.9", types.Text),
 				expression.NewLiteral("3", types.Text),
 			},
-			exp:  int32(2),
+			exp: int32(2),
 		},
 		{
 			name: "scientific string is truncated",
@@ -94,7 +94,7 @@ func TestField(t *testing.T) {
 				expression.NewLiteral(1e2, types.Int32),
 				expression.NewLiteral("100", types.Text),
 			},
-			exp:  int32(1),
+			exp: int32(1),
 		},
 	}
 
