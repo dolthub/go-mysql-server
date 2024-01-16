@@ -8826,6 +8826,14 @@ from typestable`,
 			{nil},
 		},
 	},
+	{
+		Query: "select field(i, '1', '2', '3') from mytable;",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{3},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{

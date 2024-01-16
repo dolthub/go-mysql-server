@@ -83,6 +83,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "degrees", Fn: NewDegrees},
 	sql.FunctionN{Name: "elt", Fn: NewElt},
 	sql.Function2{Name: "extract", Fn: NewExtract},
+	sql.FunctionN{Name: "field", Fn: NewField},
 	sql.Function2{Name: "find_in_set", Fn: NewFindInSet},
 	sql.Function1{Name: "first", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewFirst(e) }},
 	sql.Function1{Name: "floor", Fn: NewFloor},
