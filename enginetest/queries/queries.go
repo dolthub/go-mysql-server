@@ -8819,6 +8819,36 @@ from typestable`,
 		},
 	},
 	{
+		Query: "select exp(i) from mytable;",
+		Expected: []sql.Row{
+			{math.Exp(1)},
+			{math.Exp(2)},
+			{math.Exp(3)},
+		},
+	},
+	{
+		Query: "select bit_count(i), bit_count(-20 * i) from mytable;",
+		Expected: []sql.Row{
+			{1, 61},
+			{1, 60},
+			{2, 59},
+		},
+	},
+	{
+		Query: "select bit_count(binary 123456878901234567890);",
+		Expected: []sql.Row{
+			{73},
+		},
+	},
+	{
+		Query: "select atan(i), atan2(i, i + 2) from mytable;",
+		Expected: []sql.Row{
+			{math.Atan2(1, 1), math.Atan2(1, 3)},
+			{math.Atan2(2, 1), math.Atan2(2, 4)},
+			{math.Atan2(3, 1), math.Atan2(3, 5)},
+		},
+	},
+	{
 		Query: "select ord(s), ord(concat('asdf', s)) from mytable;",
 		Expected: []sql.Row{
 			{102, 97},
