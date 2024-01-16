@@ -8826,6 +8826,20 @@ from typestable`,
 			{math.Exp(3)},
 		},
 	},
+	{
+		Query: "select bit_count(i), bit_count(-20 * i) from mytable;",
+		Expected: []sql.Row{
+			{1, 61},
+			{1, 60},
+			{2, 59},
+		},
+	},
+	{
+		Query: "select bit_count(binary 123456878901234567890);",
+		Expected: []sql.Row{
+			{73},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
