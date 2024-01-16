@@ -104,7 +104,7 @@ func (e *Elt) Children() []sql.Expression {
 // Eval implements the Expression interface.
 func (e *Elt) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if e.args[0] == nil {
-		return nil,	nil
+		return nil, nil
 	}
 
 	index, err := e.args[0].Eval(ctx, row)
