@@ -8848,6 +8848,22 @@ from typestable`,
 			{math.Atan2(3, 1), math.Atan2(3, 5)},
 		},
 	},
+	{
+		Query: "select elt(i, 'a', 'b') from mytable;",
+		Expected: []sql.Row{
+			{"a"},
+			{"b"},
+			{nil},
+		},
+	},
+	{
+		Query: "select field(i, '1', '2', '3') from mytable;",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{3},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
