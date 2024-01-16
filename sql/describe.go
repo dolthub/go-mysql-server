@@ -92,6 +92,8 @@ type Describable interface {
 	Describe(options DescribeOptions) string
 }
 
+// Describe produces a human-readable string for |n|, based on the values set in |options|.
+// For |n| to benefit from |options|, it must implement `sql.Describable`.
 func Describe(n fmt.Stringer, options DescribeOptions) string {
 	if d, ok := n.(Describable); ok {
 		return d.Describe(options)
