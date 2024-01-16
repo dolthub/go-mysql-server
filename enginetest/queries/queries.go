@@ -8849,6 +8849,22 @@ from typestable`,
 		},
 	},
 	{
+		Query: "select elt(i, 'a', 'b') from mytable;",
+		Expected: []sql.Row{
+			{"a"},
+			{"b"},
+			{nil},
+		},
+	},
+	{
+		Query: "select field(i, '1', '2', '3') from mytable;",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{3},
+		},
+	},
+	{
 		Query: "select ord(s), ord(concat('asdf', s)) from mytable;",
 		Expected: []sql.Row{
 			{102, 97},
