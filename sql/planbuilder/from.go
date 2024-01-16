@@ -322,13 +322,14 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 					col = renameCols[i]
 				}
 				toId := outScope.newColumn(scopeColumn{
-					tableId:  tabId,
-					db:       c.db,
-					table:    alias,
-					col:      col,
-					id:       0,
-					typ:      c.typ,
-					nullable: c.nullable,
+					tableId:     tabId,
+					db:          c.db,
+					table:       alias,
+					col:         col,
+					originalCol: c.originalCol,
+					id:          0,
+					typ:         c.typ,
+					nullable:    c.nullable,
 				})
 				colSet.Add(sql.ColumnId(toId))
 				scopeMapping[sql.ColumnId(toId)] = c.scalarGf()
