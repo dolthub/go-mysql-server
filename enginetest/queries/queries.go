@@ -8819,6 +8819,14 @@ from typestable`,
 		},
 	},
 	{
+		Query: "select exp(i) from mytable;",
+		Expected: []sql.Row{
+			{math.Exp(1)},
+			{math.Exp(2)},
+			{math.Exp(3)},
+		},
+	},
+	{
 		Query: "select bit_count(i), bit_count(-20 * i) from mytable;",
 		Expected: []sql.Row{
 			{1, 61},
