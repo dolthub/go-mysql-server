@@ -51,7 +51,7 @@ func (f *Field) Description() string {
 
 // Type implements the Expression interface.
 func (f *Field) Type() sql.Type {
-	return types.Int32
+	return types.Int64
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -104,7 +104,7 @@ func (f *Field) Children() []sql.Expression {
 // Eval implements the Expression interface.
 func (f *Field) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if f.args[0] == nil {
-		return int32(0), nil
+		return int64(0), nil
 	}
 
 	key, err := f.args[0].Eval(ctx, row)
@@ -113,7 +113,7 @@ func (f *Field) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if key == nil {
-		return int32(0), nil
+		return int64(0), nil
 	}
 
 	key, _, err = types.Text.Convert(key)
@@ -142,9 +142,9 @@ func (f *Field) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 		if strings.EqualFold(key.(string), val.(string)) {
-			return int32(i), nil
+			return int64(i), nil
 		}
 	}
 
-	return int32(0), nil
+	return int64(0), nil
 }
