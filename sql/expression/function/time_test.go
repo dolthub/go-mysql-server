@@ -195,7 +195,7 @@ func TestTime_Quarter(t *testing.T) {
 		{
 			name:     "date as time",
 			row:      sql.NewRow(time.Now()),
-			expected: int32((time.Now().UTC().Month() - 1)/3 + 1),
+			expected: int32((time.Now().UTC().Month()-1)/3 + 1),
 		},
 	}
 
