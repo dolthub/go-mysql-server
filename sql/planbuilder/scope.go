@@ -59,6 +59,9 @@ type scope struct {
 	// exprs collects unique expression ids for reference
 	exprs map[string]columnId
 	proc  *procCtx
+	// ignore ambiguous column errors
+	isGroupBy bool
+	isHaving  bool
 }
 
 func (s *scope) resolveColumn(db, table, col string, checkParent bool) (scopeColumn, bool) {
@@ -105,6 +108,10 @@ func (s *scope) resolveColumn(db, table, col string, checkParent bool) (scopeCol
 			}
 			found = c
 			foundCand = true
+
+			if s.isGroupBy || s.isHaving {
+				break
+			}
 		}
 	}
 	if foundCand {

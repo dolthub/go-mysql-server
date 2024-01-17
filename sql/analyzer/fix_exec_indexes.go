@@ -70,6 +70,8 @@ type idxScope struct {
 	children      []sql.Node
 	expressions   []sql.Expression
 	checks        sql.CheckConstraints
+	isHaving      bool
+	isGroupBy     bool
 }
 
 func (s *idxScope) addSchema(sch sql.Schema) {
@@ -107,6 +109,16 @@ func unqualify(s string) string {
 }
 
 func (s *idxScope) getIdx(n string) (int, bool) {
+	// Special case for group by and having
+	if s.isGroupBy || s.isHaving {
+		for i := 0; i < len(s.columns); i++ {
+			if strings.EqualFold(n, s.columns[i]) {
+				return i, true
+			}
+		}
+		return -1, false
+	}
+
 	// We match the column closet to our current scope. We have already
 	// resolved columns, so there will be no in-scope collisions.
 	if isQualified(n) {
@@ -364,6 +376,21 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 			newCheck.Expr = newE
 			s.checks = append(s.checks, &newCheck)
 		}
+	case *plan.Having:
+		newScope := &idxScope{}
+		for _, scope := range s.parentScopes {
+			newScope.addScope(scope)
+		}
+		for _, scope := range s.childScopes {
+			newScope.addScope(scope)
+		}
+		newScope.isHaving = true
+		defer func() {
+			newScope.isHaving = false
+		}()
+		for _, e := range n.Expressions() {
+			s.expressions = append(s.expressions, fixExprToScope(e, newScope))
+		}
 	default:
 		if ne, ok := n.(sql.Expressioner); ok {
 			scope := append(s.parentScopes, s.childScopes...)
@@ -433,6 +460,12 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 	newScope := &idxScope{}
 	for _, s := range scopes {
 		newScope.addScope(s)
+		if s.isGroupBy {
+			newScope.isGroupBy = true
+		}
+		if s.isHaving {
+			newScope.isHaving = true
+		}
 	}
 	ret, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
@@ -441,6 +474,9 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 			//  queries where the columns being selected are only found in subqueries. Conversely, we actually want to ignore
 			//  this error for the case of DEFAULT in a `plan.Values`, since we analyze the insert source in isolation (we
 			//  don't have the destination schema, and column references in default values are determined in the build phase)
+			if e.String() == "col2" {
+				print()
+			}
 			idx, _ := newScope.getIdx(e.String())
 			if idx >= 0 {
 				return e.WithIndex(idx), transform.NewTree, nil

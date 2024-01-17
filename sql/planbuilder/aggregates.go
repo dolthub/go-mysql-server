@@ -99,6 +99,15 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 		fromScope.initGroupBy()
 	}
 	g := fromScope.groupBy
+
+	fromScope.isGroupBy = true
+	projScope.isGroupBy = true
+
+	defer func() {
+		fromScope.isGroupBy = false
+		projScope.isGroupBy = false
+	}()
+
 	for _, e := range groupby {
 		var col scopeColumn
 		switch e := e.(type) {
@@ -709,6 +718,14 @@ func (b *Builder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) 
 		return
 	}
 
+	projScope.isHaving = true
+	fromScope.isHaving = true
+
+	defer func() {
+		projScope.isHaving = false
+		fromScope.isHaving = false
+	}()
+
 	ast.Walk(func(node ast.SQLNode) (bool, error) {
 		switch n := node.(type) {
 		case *ast.Subquery:
@@ -731,6 +748,7 @@ func (b *Builder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) 
 				// references projection alias
 				break
 			}
+
 			c, ok = fromScope.resolveColumn(dbName, tblName, colName, true)
 			if !ok {
 				err := sql.ErrColumnNotFound.New(n.Name)
@@ -782,6 +800,7 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 		}
 	}
 	havingScope.groupBy = fromScope.groupBy
+	havingScope.isHaving = true
 	h := b.buildScalar(havingScope, having.Expr)
 	outScope.node = plan.NewHaving(h, outScope.node)
 	return
