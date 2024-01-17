@@ -284,9 +284,6 @@ func hashOfSimple(ctx *sql.Context, i interface{}, t sql.Type) (uint64, error) {
 		}
 	}
 
-	// Append comma
-	str += ","
-
 	// Collated strings that are equivalent may have different runes, so we must make them hash to the same value
 	return coll.HashToUint(str)
 }
