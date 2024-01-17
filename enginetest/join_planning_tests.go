@@ -128,7 +128,7 @@ var JoinPlanningTests = []struct {
 			},
 			{
 				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = s-1 order by 1, 3",
-				types: []plan.JoinType{plan.JoinTypeHash},
+				types: []plan.JoinType{plan.JoinTypeLookup},
 				exp:   []sql.Row{{4, 4, 3, 3}, {5, 4, 3, 3}},
 			},
 			//{
@@ -334,7 +334,7 @@ var JoinPlanningTests = []struct {
 			},
 			{
 				q:     "select /*+ LOOKUP_JOIN(xy,ab) */ * from xy where x in (select a from ab where a in (1,2));",
-				types: []plan.JoinType{plan.JoinTypeLookup},
+				types: []plan.JoinType{plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{2, 1}, {1, 0}},
 			},
 			{
@@ -349,7 +349,7 @@ var JoinPlanningTests = []struct {
 			},
 			{
 				q:     "select * from xy where y+1 not in (select u from uv);",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterLookup},
 				exp:   []sql.Row{{3, 3}},
 			},
 			{
@@ -403,13 +403,13 @@ order by 1;`,
 			},
 			{
 				q:     "select * from xy where y-1 in (select u from uv) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeHash},
+				types: []plan.JoinType{plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
 				// semi join will be right-side, be passed non-nil parent row
 				q:     "select x,a from ab, (select * from xy where x = (select r from rs where r = 1) order by 1) sq order by 1,2",
-				types: []plan.JoinType{plan.JoinTypeCrossHash, plan.JoinTypeLookup},
+				types: []plan.JoinType{plan.JoinTypeCrossHash, plan.JoinTypeMerge},
 				exp:   []sql.Row{{1, 0}, {1, 1}, {1, 2}, {1, 3}},
 			},
 			//{
@@ -435,7 +435,7 @@ order by 1;`,
 			},
 			{
 				q:     "select * from xy where y-1 in (select u from uv order by 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeHash},
+				types: []plan.JoinType{plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
@@ -445,7 +445,7 @@ order by 1;`,
 			},
 			{
 				q:     "select * from xy where x in (select u from uv join ab on u = a and a = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeMerge},
+				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeLookup},
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
@@ -750,7 +750,7 @@ where u in (select * from rec);`,
 		tests: []JoinPlanTest{
 			{
 				q:     "select * from xy where x in (select u from uv join ab on u = a and a = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeMerge},
+				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeLookup},
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
@@ -1007,7 +1007,7 @@ join uv d on d.u = c.x`,
 			},
 			{
 				q:     "select /*+ LOOKUP_JOIN(s,uv) */ 1 from xy s where x in (select u from uv)",
-				types: []plan.JoinType{plan.JoinTypeLookup},
+				types: []plan.JoinType{plan.JoinTypeSemiLookup},
 			},
 			{
 				q:     "select /*+ SEMI_JOIN(s,uv) */ 1 from xy s where x in (select u from uv)",
@@ -1739,6 +1739,9 @@ func evalMergeCmpTest(t *testing.T, harness Harness, e QueryEngine, tt JoinPlanT
 		ctx := NewContext(harness)
 		ctx = ctx.WithQuery(tt.q)
 
+		//e.EngineAnalyzer().Verbose = true
+		//e.EngineAnalyzer().Debug = true
+
 		a, err := analyzeQuery(ctx, e, tt.q)
 		require.NoError(t, err)
 
@@ -1761,6 +1764,8 @@ func evalIndexTest(t *testing.T, harness Harness, e QueryEngine, q string, index
 		ctx := NewContext(harness)
 		ctx = ctx.WithQuery(q)
 
+		e.EngineAnalyzer().Verbose = true
+		e.EngineAnalyzer().Debug = true
 		a, err := analyzeQuery(ctx, e, q)
 		require.NoError(t, err)
 

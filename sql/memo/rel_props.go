@@ -15,7 +15,9 @@
 package memo
 
 import (
+	"errors"
 	"fmt"
+	"log"
 	"math"
 	"strings"
 
@@ -329,12 +331,53 @@ func statsForRel(rel RelExpr) sql.Statistic {
 		left := jp.Left.RelProps.GetStats()
 		right := jp.Left.RelProps.GetStats()
 
-		switch n := rel.(type) {
-		case *LookupJoin:
-			if n.Injective {
-				return left
+		var injective bool
+		var mergeStats sql.Statistic
+		var n RelExpr = rel
+		var done bool
+		var err error
+		for n != nil && !done {
+			switch n := n.(type) {
+			case *LookupJoin:
+				injective = injective || n.Injective
+			case *MergeJoin:
+				// get stats for left/right index
+				var leftChildStats, rightChildStats sql.Statistic
+				if lIdx, ok := n.Left.Best.(*IndexScan); ok {
+					leftChildStats = lIdx.Stats
+				}
+				if rIdx, ok := n.Right.Best.(*IndexScan); ok {
+					rightChildStats = rIdx.Stats
+				}
+
+				// single prefix always safe for merge join
+				mergeStats, err = getJoinStats(n.InnerScan.Stats, n.OuterScan.Stats, leftChildStats, rightChildStats, 1)
+				if n.InnerScan.Stats != nil {
+					log.Println(n.InnerScan.Stats.Histogram().DebugString())
+					log.Println(n.OuterScan.Stats.Histogram().DebugString())
+					log.Println(mergeStats.Histogram().DebugString())
+					log.Println(n.InnerScan.Table.Name(), n.OuterScan.Table.Name(), mergeStats.RowCount())
+				}
+				if err != nil {
+					n.Group().m.HandleErr(err)
+				}
+			default:
+				done = true
 			}
-		default:
+			n = n.Next()
+		}
+
+		emptyStats := stats.Empty(mergeStats)
+		if emptyStats && injective {
+			return left
+		} else if !emptyStats && injective {
+			if left.RowCount() <= mergeStats.RowCount() {
+				return left
+			} else {
+				return mergeStats
+			}
+		} else if !emptyStats {
+			return mergeStats
 		}
 
 		distinct := math.Max(float64(left.DistinctCount()), float64(right.DistinctCount()))
@@ -359,8 +402,13 @@ func statsForRel(rel RelExpr) sql.Statistic {
 		if rel.Stats != nil {
 			if len(rel.Stats.Histogram()) > 0 {
 				return rel.Stats
+			} else if rel.Stats.FuncDeps().HasMax1Row() {
+				return rel.Stats
 			} else if rel.Stats.RowCount() > 0 {
-				return rel.Stats.WithRowCount(rel.Stats.RowCount() / 2).WithDistinctCount(rel.Stats.DistinctCount() / 2)
+				// don't accidentally round to zero
+				newRows := uint64(math.Max(1, float64(rel.Stats.RowCount())/2))
+				newDistinct := uint64(math.Max(1, float64(rel.Stats.DistinctCount())/2))
+				return rel.Stats.WithRowCount(newRows).WithDistinctCount(newDistinct)
 			}
 		}
 		stat = &stats.Statistic{RowCnt: 1}
@@ -402,6 +450,36 @@ func statsForRel(rel RelExpr) sql.Statistic {
 		rel.Group().m.HandleErr(fmt.Errorf("unsupported relProps type: %T", rel))
 	}
 	return stat
+}
+
+// indexCoverageAdjustment returns an integer offset grading the favorability
+// of index scans. Negative numbers are better, positive numbers are worse.
+// This is crude and only exists to maintain backwards compatibility in the
+// absence of injectivity or histogram statistics.
+func indexCoverageAdjustment(lookup *IndexScan) float64 {
+	// TODO two indexes each missing one column, choose the longer one
+	total := float64(len(lookup.Index.Cols()))
+	filled := float64(len(lookup.Table.Expressions()))
+	missing := total - filled
+	return math.Max(0, 12.0+missing-(3*filled))
+}
+
+func getJoinStats(rightIdx, leftIdx, leftChild, rightChild sql.Statistic, prefixCnt int) (sql.Statistic, error) {
+	if stats.Empty(rightIdx) || stats.Empty(leftIdx) {
+		return nil, nil
+	}
+	// if either child is not nil, try to interpolate join index stats from child
+	if !stats.Empty(leftChild) {
+		leftIdx = stats.InterpolateNewCounts(leftChild, leftIdx)
+	}
+	if !stats.Empty(rightChild) {
+		rightIdx = stats.InterpolateNewCounts(rightChild, rightIdx)
+	}
+	stat, err := stats.Join(leftIdx, rightIdx, prefixCnt, false)
+	if errors.Is(err, stats.ErrJoinStringStatistics) {
+		return nil, nil
+	}
+	return stat, nil
 }
 
 // getExprScalarProps returns bitsets of the column and table references,

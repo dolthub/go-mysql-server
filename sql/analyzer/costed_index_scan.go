@@ -1483,7 +1483,7 @@ func newUniformDistStatistic(dbName, tableName string, sch sql.Schema, idx sql.I
 	}
 
 	qual := sql.NewStatQualifier(dbName, tableName, strings.ToLower(idx.ID()))
-	stat := stats.NewStatistic(rowCount, distinctCount, nullCount, avgSize, time.Now(), qual, cols, types, nil, class)
+	stat := stats.NewStatistic(rowCount, distinctCount, nullCount, avgSize, time.Now(), qual, cols, types, nil, class, nil)
 
 	fds, idxCols, err := indexFds(tableName, sch, idx)
 	if err != nil {

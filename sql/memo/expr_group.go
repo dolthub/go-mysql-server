@@ -167,6 +167,11 @@ func (e *ExprGroup) String() string {
 		b.WriteString(sep)
 		b.WriteString(fmt.Sprintf("(%s", FormatExpr(n)))
 		if e.Best != nil {
+			cost := n.Cost()
+			if cost == 0 {
+				// if source relation we want the cardinality
+				cost = float64(n.Group().RelProps.GetStats().RowCount())
+			}
 			b.WriteString(fmt.Sprintf(" %.1f", n.Cost()))
 
 			childCost := 0.0

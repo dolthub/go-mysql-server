@@ -251,10 +251,33 @@ func (m *Memo) MemoizeMergeJoin(grp, left, right *ExprGroup, lIdx, rIdx *IndexSc
 		SwapCmp:   swapCmp,
 	}
 
+	comparer, ok := filter[0].(*expression.Equals)
+	if !ok {
+		err := sql.ErrMergeJoinExpectsComparerFilters.New(filter[0])
+		m.HandleErr(err)
+	}
+
+	var leftCompareExprs []sql.Expression
+	var rightCompareExprs []sql.Expression
+
+	leftTuple, isTuple := comparer.Left().(expression.Tuple)
+	if isTuple {
+		rightTuple, _ := comparer.Right().(expression.Tuple)
+		leftCompareExprs = leftTuple.Children()
+		rightCompareExprs = rightTuple.Children()
+	} else {
+		leftCompareExprs = []sql.Expression{comparer.Left()}
+		rightCompareExprs = []sql.Expression{comparer.Right()}
+	}
+
 	if grp == nil {
-		return m.NewExprGroup(rel)
+		grp = m.NewExprGroup(rel)
+		rel.Injective = isInjectiveMerge(rel, leftCompareExprs, rightCompareExprs)
+		return grp
 	}
 	rel.g = grp
+	rel.Injective = isInjectiveMerge(rel, leftCompareExprs, rightCompareExprs)
+	rel.CmpCnt = len(leftCompareExprs)
 	grp.Prepend(rel)
 	return grp
 }

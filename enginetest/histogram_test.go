@@ -287,7 +287,7 @@ func runStatsSuite(t *testing.T, tests []statsTest, rowCnt, bucketCnt int, debug
 				rStat.Hist = append(rStat.Hist, b.(*stats.Bucket))
 			}
 
-			res, err := stats.Join(stats.UpdateCounts(lStat), stats.UpdateCounts(rStat), []int{0}, []int{0}, debug)
+			res, err := stats.Join(stats.UpdateCounts(lStat), stats.UpdateCounts(rStat), 1, debug)
 			require.NoError(t, err)
 			if debug {
 				log.Printf("join %s\n", res.Histogram().DebugString())
@@ -304,6 +304,7 @@ func runStatsSuite(t *testing.T, tests []statsTest, rowCnt, bucketCnt int, debug
 			if debug {
 				log.Println(res.RowCount(), exp, delta)
 			}
+
 			// This compares the error percentage for our estimate to an
 			// error threshold specified in the statTest. The error bounds
 			// are loose and mostly useful for debugging at this point.
@@ -508,7 +509,7 @@ func normalDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt int, mean,
 			break
 		}
 		row := sql.Row{int64(i)}
-		for _, v := range val {
+		for _, v := range val[1:] {
 			row = append(row, int64(v.(float64)))
 		}
 		err = tab.Insert(ctx, row)

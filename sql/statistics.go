@@ -74,6 +74,7 @@ type Statistic interface {
 	IndexClass() IndexClass
 	FuncDeps() *FuncDepSet
 	ColSet() ColSet
+	LowerBound() Row
 }
 
 type MutableStatistic interface {
@@ -137,16 +138,17 @@ func (h Histogram) IsEmpty() bool {
 func (h Histogram) ToInterface() interface{} {
 	ret := make([]interface{}, len(h))
 	for i, b := range h {
-		upperBound := make([]interface{}, len(b.UpperBound()))
-		for i, v := range b.UpperBound() {
-			upperBound[i] = v
+		var upperBound Row
+		for _, v := range b.UpperBound() {
+			upperBound = append(upperBound, v)
 		}
-		mcvs := make([][]interface{}, len(b.Mcvs()))
+		mcvs := make([]Row, len(b.Mcvs()))
 		for i, mcv := range b.Mcvs() {
-			mcvs[i] = make([]interface{}, len(mcv))
-			for j, v := range mcv {
-				mcvs[i][j] = v
+			var row Row
+			for _, v := range mcv {
+				row = append(row, v)
 			}
+			mcvs[i] = row
 		}
 		ret[i] = map[string]interface{}{
 			"row_count":      b.RowCount(),

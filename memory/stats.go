@@ -148,7 +148,7 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 			return err
 		}
 
-		s.colStats[key] = stats.NewStatistic(rowCount, rowCount, 0, dataLen, time.Now(), qual, cols, types, buckets, sql.IndexClassDefault)
+		s.colStats[key] = stats.NewStatistic(rowCount, rowCount, 0, dataLen, time.Now(), qual, cols, types, buckets, sql.IndexClassDefault, nil)
 	}
 	return nil
 }

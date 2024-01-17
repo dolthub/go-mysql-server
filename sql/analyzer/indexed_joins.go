@@ -144,6 +144,11 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 		return nil, err
 	}
 
+	err = addMergeJoins(m)
+	if err != nil {
+		return nil, err
+	}
+
 	memo.CardMemoGroups(m.Root())
 
 	err = addCrossHashJoins(m)
@@ -151,10 +156,6 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 		return nil, err
 	}
 	err = addHashJoins(m)
-	if err != nil {
-		return nil, err
-	}
-	err = addMergeJoins(m)
 	if err != nil {
 		return nil, err
 	}
@@ -870,7 +871,7 @@ func addRangeHeapJoin(m *memo.Memo) error {
 				return nil
 			}
 
-			leftIndexScans, err := sortedIndexScansForTableCol(leftTab, lIndexes, valueColRef, join.Left.RelProps.FuncDeps().Constants(), lFilters)
+			leftIndexScans, err := sortedIndexScansForTableCol(m.Ctx, m.StatsProvider(), leftTab, lIndexes, valueColRef, join.Left.RelProps.FuncDeps().Constants(), lFilters)
 			if err != nil {
 				return err
 			}
@@ -878,7 +879,7 @@ func addRangeHeapJoin(m *memo.Memo) error {
 				leftIndexScans = []*memo.IndexScan{nil}
 			}
 			for _, lIdx := range leftIndexScans {
-				rightIndexScans, err := sortedIndexScansForTableCol(rightTab, rIndexes, minColRef, join.Right.RelProps.FuncDeps().Constants(), rFilters)
+				rightIndexScans, err := sortedIndexScansForTableCol(m.Ctx, m.StatsProvider(), rightTab, rIndexes, minColRef, join.Right.RelProps.FuncDeps().Constants(), rFilters)
 				if err != nil {
 					return err
 				}
@@ -1035,14 +1036,14 @@ func addMergeJoins(m *memo.Memo) error {
 						// To make the index scan, we need the first non-constant column in each index.
 						leftColId := getOnlyColumnId(matchedEqFilters[0].filter.Left())
 						rightColId := getOnlyColumnId(matchedEqFilters[0].filter.Right())
-						lIndexScan, success, err := makeIndexScan(leftTab, lIndex, leftColId, lFilters)
+						lIndexScan, success, err := makeIndexScan(m.Ctx, m.StatsProvider(), leftTab, lIndex, leftColId, lFilters)
 						if err != nil {
 							return err
 						}
 						if !success {
 							continue
 						}
-						rIndexScan, success, err := makeIndexScan(rightTab, rIndex, rightColId, rFilters)
+						rIndexScan, success, err := makeIndexScan(m.Ctx, m.StatsProvider(), rightTab, rIndex, rightColId, rFilters)
 						if err != nil {
 							return err
 						}
@@ -1175,7 +1176,7 @@ func matchedFiltersForLeftIndex(lIndex *memo.Index, constants sql.ColSet, filter
 // sortedIndexScanForTableCol returns the first indexScan found for a relation
 // that provide a prefix for the joinFilters rel free attribute. I.e. the
 // indexScan will return the same rows as the rel, but sorted by |col|.
-func sortedIndexScansForTableCol(tab plan.TableIdNode, indexes []*memo.Index, targetCol *expression.GetField, constants sql.ColSet, filters []sql.Expression) (ret []*memo.IndexScan, err error) {
+func sortedIndexScansForTableCol(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.TableIdNode, indexes []*memo.Index, targetCol *expression.GetField, constants sql.ColSet, filters []sql.Expression) (ret []*memo.IndexScan, err error) {
 	// valid index prefix is (constants..., targetCol)
 	for _, idx := range indexes {
 		found := false
@@ -1195,7 +1196,7 @@ func sortedIndexScansForTableCol(tab plan.TableIdNode, indexes []*memo.Index, ta
 		if !found {
 			continue
 		}
-		indexScan, success, err := makeIndexScan(tab, idx, matchedIdx, filters)
+		indexScan, success, err := makeIndexScan(ctx, statsProv, tab, idx, matchedIdx, filters)
 		if err != nil {
 			return nil, err
 		}
@@ -1206,7 +1207,7 @@ func sortedIndexScansForTableCol(tab plan.TableIdNode, indexes []*memo.Index, ta
 	return ret, nil
 }
 
-func makeIndexScan(tab plan.TableIdNode, idx *memo.Index, matchedIdx sql.ColumnId, filters []sql.Expression) (*memo.IndexScan, bool, error) {
+func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.TableIdNode, idx *memo.Index, matchedIdx sql.ColumnId, filters []sql.Expression) (*memo.IndexScan, bool, error) {
 	rang := make(sql.Range, len(idx.Cols()))
 	var j int
 	for {
@@ -1274,10 +1275,18 @@ func makeIndexScan(tab plan.TableIdNode, idx *memo.Index, matchedIdx sql.ColumnI
 		return nil, false, err
 	}
 
+	var cols []string
+	tablePrefix := fmt.Sprintf("%s.", tn.Name())
+	for _, e := range idx.SqlIdx().Expressions() {
+		cols = append(cols, strings.TrimPrefix(e, tablePrefix))
+	}
+	stats, _ := statsProv.GetStats(ctx, sql.NewStatQualifier(tn.Database().Name(), tn.Name(), idx.SqlIdx().ID()), cols)
+
 	return &memo.IndexScan{
 		Table: ret,
 		Index: idx,
 		Alias: alias,
+		Stats: stats,
 	}, true, nil
 }
 

@@ -279,7 +279,7 @@ func TestBinAlignment(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("alignment test %d", i), func(t *testing.T) {
-			lCmp, rCmp, err := AlignBuckets(tt.left, tt.right, []sql.Type{types.Int64}, []sql.Type{types.Int64}, cmp)
+			lCmp, rCmp, err := AlignBuckets(tt.left, tt.right, nil, nil, []sql.Type{types.Int64}, []sql.Type{types.Int64}, cmp)
 			require.NoError(t, err)
 			compareHist(t, tt.expLeft, lCmp)
 			compareHist(t, tt.expRight, rCmp)
