@@ -4967,7 +4967,7 @@ CREATE TABLE tab3 (
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Skip: true,
+				Skip:  true,
 				Query: "select * from t where (v in (0.0, 123));",
 				Expected: []sql.Row{
 					{"0"},
@@ -4977,7 +4977,7 @@ CREATE TABLE tab3 (
 				},
 			},
 			{
-				Skip: true,
+				Skip:  true,
 				Query: "select * from t_idx where (v in (0.0, 123));",
 				Expected: []sql.Row{
 					{"0"},
