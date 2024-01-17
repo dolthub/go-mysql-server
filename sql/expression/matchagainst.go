@@ -325,7 +325,7 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 		if err != nil {
 			return 0, err
 		}
-		docCountRows, err := sql.RowIterToRows(ctx, nil, sql.NewTableRowIter(ctx, editorData, partIter))
+		docCountRows, err := sql.RowIterToRows(ctx, sql.NewTableRowIter(ctx, editorData, partIter))
 		if err != nil {
 			return 0, err
 		}
@@ -357,7 +357,7 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 		if err != nil {
 			return 0, err
 		}
-		globalCountRows, err := sql.RowIterToRows(ctx, nil, sql.NewTableRowIter(ctx, editorData, partIter))
+		globalCountRows, err := sql.RowIterToRows(ctx, sql.NewTableRowIter(ctx, editorData, partIter))
 		if err != nil {
 			return 0, err
 		}
@@ -383,7 +383,7 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 		if err != nil {
 			return 0, err
 		}
-		rowCountRows, err := sql.RowIterToRows(ctx, nil, sql.NewTableRowIter(ctx, editorData, partIter))
+		rowCountRows, err := sql.RowIterToRows(ctx, sql.NewTableRowIter(ctx, editorData, partIter))
 		if err != nil {
 			return 0, err
 		}

@@ -161,6 +161,34 @@ func (h Histogram) ToInterface() interface{} {
 	return ret
 }
 
+func (h Histogram) DebugString() string {
+	var bounds []string
+	var cnts []int
+	var allCnt int
+	for _, bucket := range h {
+		cnt := int(bucket.RowCount())
+		var key []string
+		for _, v := range bucket.UpperBound() {
+			key = append(key, fmt.Sprintf("%v", v))
+		}
+		bounds = append(bounds, strings.Join(key, ","))
+		allCnt += cnt
+		cnts = append(cnts, cnt)
+	}
+
+	flatten := 50 / float64(allCnt)
+	b := strings.Builder{}
+	b.WriteString("histogram:\n")
+	for j, bound := range bounds {
+		b.WriteString(bound + ": ")
+		for i := 0; i < int(float64(cnts[j])*flatten); i++ {
+			b.WriteString("*")
+		}
+		fmt.Fprintf(&b, "(%d)\n", cnts[j])
+	}
+	return b.String()
+}
+
 // HistogramBucket contains statistics for a fragment of an
 // index's keyspace.
 type HistogramBucket interface {
