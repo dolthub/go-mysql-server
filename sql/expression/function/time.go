@@ -50,7 +50,9 @@ func getDate(ctx *sql.Context,
 
 	date, err := types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(val)
 	if err != nil {
-		date = types.DatetimeMaxPrecision.Zero().(time.Time)
+		ctx.Warn(1292, "Incorrect datetime value: '%s'", val)
+		return nil, nil
+		//date = types.DatetimeMaxPrecision.Zero().(time.Time)
 	}
 
 	return date, nil
@@ -113,6 +115,60 @@ func (y *Year) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 		return nil, sql.ErrInvalidChildrenNumber.New(y, len(children), 1)
 	}
 	return NewYear(children[0]), nil
+}
+
+type Quarter struct {
+	expression.UnaryExpression
+}
+
+var _ sql.FunctionExpression = (*Quarter)(nil)
+var _ sql.CollationCoercible = (*Quarter)(nil)
+
+// NewQuarter creates a new Month UDF.
+func NewQuarter(date sql.Expression) sql.Expression {
+	return &Quarter{expression.UnaryExpression{Child: date}}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (q *Quarter) FunctionName() string {
+	return "quarter"
+}
+
+// Description implements sql.FunctionExpression
+func (q *Quarter) Description() string {
+	return "returns the quarter of the given date."
+}
+
+func (q *Quarter) String() string { return fmt.Sprintf("%s(%s)", q.FunctionName(), q.Child) }
+
+// Type implements the Expression interface.
+func (q *Quarter) Type() sql.Type { return types.Int32 }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (q *Quarter) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
+
+// Eval implements the Expression interface.
+func (q *Quarter) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	mon, err := getDatePart(ctx, q.UnaryExpression, row, month)
+	if err != nil {
+		return nil, err
+	}
+
+	if mon == nil {
+		return nil, nil
+	}
+
+	return (mon.(int32)-1)/3 + 1, nil
+}
+
+// WithChildren implements the Expression interface.
+func (q *Quarter) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(q, len(children), 1)
+	}
+	return NewQuarter(children[0]), nil
 }
 
 // Month is a function that returns the month of a date.
@@ -549,6 +605,9 @@ func (d *YearWeek) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	date, err := getDate(ctx, expression.UnaryExpression{Child: d.date}, row)
 	if err != nil {
 		return nil, err
+	}
+	if date == nil {
+		return nil, nil
 	}
 	yyyy, ok := year(date).(int32)
 	if !ok {
