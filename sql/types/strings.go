@@ -330,8 +330,14 @@ func ConvertToString(v interface{}, t sql.StringType) (string, error) {
 		}
 	case float64:
 		val = strconv.FormatFloat(s, 'f', -1, 64)
+		if val == "-0" {
+			val = "0"
+		}
 	case float32:
 		val = strconv.FormatFloat(float64(s), 'f', -1, 32)
+		if val == "-0" {
+			val = "0"
+		}
 	case int:
 		val = strconv.FormatInt(int64(s), 10)
 	case int8:
