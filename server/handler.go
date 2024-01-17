@@ -718,6 +718,20 @@ func schemaToFields(ctx *sql.Context, s sql.Schema) []*querypb.Field {
 			charset = uint32(charSetResults)
 		}
 
+		var flags querypb.MySqlFlag
+		if !c.Nullable {
+			flags = flags | querypb.MySqlFlag_NOT_NULL_FLAG
+		}
+		if c.AutoIncrement {
+			flags = flags | querypb.MySqlFlag_AUTO_INCREMENT_FLAG
+		}
+		if c.PrimaryKey {
+			flags = flags | querypb.MySqlFlag_PRI_KEY_FLAG
+		}
+		if types.IsUnsigned(c.Type) {
+			flags = flags | querypb.MySqlFlag_UNSIGNED_FLAG
+		}
+
 		fields[i] = &querypb.Field{
 			Name:         c.Name,
 			OrgName:      c.Name,
@@ -727,6 +741,7 @@ func schemaToFields(ctx *sql.Context, s sql.Schema) []*querypb.Field {
 			Type:         c.Type.Type(),
 			Charset:      charset,
 			ColumnLength: c.Type.MaxTextResponseByteLength(ctx),
+			Flags:        uint32(flags),
 		}
 
 		if types.IsDecimal(c.Type) {
