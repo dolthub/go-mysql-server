@@ -31,12 +31,29 @@ func TestAsciiFunc(t *testing.T) {
 	f := sql.Function1{Name: "ascii", Fn: NewAscii}
 	tf := NewTestFactory(f.Fn)
 	tf.AddSucceeding(nil, nil)
+	tf.AddSucceeding(uint8(0), "")
 	tf.AddSucceeding(uint8(115), "string")
 	tf.AddSucceeding(uint8(49), true)
 	tf.AddSucceeding(uint8(50), time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC))
 	tf.AddSignedVariations(uint8(48), 0)
 	tf.AddUnsignedVariations(uint8(48), 0)
 	tf.AddFloatVariations(uint8(54), 6.0)
+	tf.Test(t, nil, nil)
+}
+
+func TestOrdFunc(t *testing.T) {
+	f := sql.Function1{Name: "ord", Fn: NewOrd}
+	tf := NewTestFactory(f.Fn)
+	tf.AddSucceeding(nil, nil)
+	tf.AddSucceeding(int64(0), "")
+	tf.AddSucceeding(int64(115), "string")
+	tf.AddSucceeding(int64(49826), "¢")
+	tf.AddSucceeding(int64(49838), "®®")
+	tf.AddSucceeding(int64(49), true)
+	tf.AddSucceeding(int64(50), time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC))
+	tf.AddSignedVariations(int64(48), 0)
+	tf.AddUnsignedVariations(int64(48), 0)
+	tf.AddFloatVariations(int64(54), 6.0)
 	tf.Test(t, nil, nil)
 }
 

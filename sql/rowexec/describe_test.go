@@ -97,7 +97,7 @@ func TestDescribeQuery(t *testing.T) {
 	iter, err := DefaultBuilder.Build(ctx, node, nil)
 	require.NoError(err)
 
-	rows, err := sql.RowIterToRows(ctx, nil, iter)
+	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
 	expected := []sql.Row{

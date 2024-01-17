@@ -137,19 +137,11 @@ func keysEqual(types []sql.Type, left, right []interface{}) (bool, error) {
 func PrefixLt(statistic sql.Statistic, val interface{}) (sql.Statistic, error) {
 	// first bucket whose upper bound is greater than val
 	buckets := []sql.HistogramBucket(statistic.Histogram())
-	var searchErr error
-	idx := sort.Search(len(buckets), func(i int) bool {
-		// lowest index that func is true
-		bucketKey := buckets[i].UpperBound()
-		typ := statistic.Types()[0]
-		cmp, err := nilSafeCmp(typ, bucketKey[0], val)
-		if err != nil {
-			searchErr = err
-		}
-		return cmp >= 0
+	idx, err := PrefixLtHist(statistic.Histogram(), sql.Row{val}, func(i, j sql.Row) (int, error) {
+		return nilSafeCmp(statistic.Types()[0], i[0], j[0])
 	})
-	if searchErr != nil {
-		return nil, searchErr
+	if err != nil {
+		return nil, err
 	}
 	// inclusive of idx bucket
 	ret, err := statistic.WithHistogram(buckets[:idx])
@@ -186,19 +178,11 @@ func PrefixGt(statistic sql.Statistic, val interface{}) (sql.Statistic, error) {
 func PrefixLte(statistic sql.Statistic, val interface{}) (sql.Statistic, error) {
 	// first bucket whose upper bound is greater than val
 	buckets := []sql.HistogramBucket(statistic.Histogram())
-	var searchErr error
-	idx := sort.Search(len(buckets), func(i int) bool {
-		// lowest index that func is true
-		bucketKey := buckets[i].UpperBound()
-		typ := statistic.Types()[0]
-		cmp, err := nilSafeCmp(typ, bucketKey[0], val)
-		if err != nil {
-			searchErr = err
-		}
-		return cmp > 0
+	idx, err := PrefixLteHist(statistic.Histogram(), sql.Row{val}, func(i, j sql.Row) (int, error) {
+		return nilSafeCmp(statistic.Types()[0], i[0], j[0])
 	})
-	if searchErr != nil {
-		return nil, searchErr
+	if err != nil {
+		return nil, err
 	}
 	// inclusive of idx bucket
 	ret, err := statistic.WithHistogram(buckets[:idx])
@@ -206,6 +190,34 @@ func PrefixLte(statistic sql.Statistic, val interface{}) (sql.Statistic, error) 
 		return nil, err
 	}
 	return PrefixIsNotNull(ret)
+}
+
+func PrefixLteHist(h sql.Histogram, target sql.Row, cmp func(sql.Row, sql.Row) (int, error)) (int, error) {
+	var searchErr error
+	idx := sort.Search(len(h), func(i int) bool {
+		// lowest index that func is true
+		bucketKey := h[i].UpperBound()
+		cmp, err := cmp(bucketKey, target)
+		if err != nil {
+			searchErr = err
+		}
+		return cmp > 0
+	})
+	return idx, searchErr
+}
+
+func PrefixLtHist(h sql.Histogram, target sql.Row, cmp func(sql.Row, sql.Row) (int, error)) (int, error) {
+	var searchErr error
+	idx := sort.Search(len(h), func(i int) bool {
+		// lowest index that func is true
+		bucketKey := h[i].UpperBound()
+		cmp, err := cmp(bucketKey, target)
+		if err != nil {
+			searchErr = err
+		}
+		return cmp >= 0
+	})
+	return idx, searchErr
 }
 
 func PrefixGte(statistic sql.Statistic, val interface{}) (sql.Statistic, error) {

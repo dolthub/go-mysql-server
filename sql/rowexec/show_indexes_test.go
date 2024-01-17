@@ -100,7 +100,7 @@ func TestShowIndexes(t *testing.T) {
 			rowIter, err := DefaultBuilder.Build(ctx, showIdxs, nil)
 			assert.NoError(t, err)
 
-			rows, err := sql.RowIterToRows(ctx, nil, rowIter)
+			rows, err := sql.RowIterToRows(ctx, rowIter)
 			assert.NoError(t, err)
 			assert.Len(t, rows, len(expressions))
 

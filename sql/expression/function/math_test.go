@@ -173,7 +173,8 @@ func TestCRC32(t *testing.T) {
 func TestTrigFunctions(t *testing.T) {
 	asin := sql.Function1{Name: "asin", Fn: NewAsin}
 	acos := sql.Function1{Name: "acos", Fn: NewAcos}
-	atan := sql.Function1{Name: "atan", Fn: NewAtan}
+	atan := sql.FunctionN{Name: "atan", Fn: NewAtan}
+	atan2 := sql.FunctionN{Name: "atan2", Fn: NewAtan}
 	sin := sql.Function1{Name: "sin", Fn: NewSin}
 	cos := sql.Function1{Name: "cos", Fn: NewCos}
 	tan := sql.Function1{Name: "tan", Fn: NewTan}
@@ -202,12 +203,19 @@ func TestTrigFunctions(t *testing.T) {
 		assert.NoError(t, err)
 		acosVal, err := acos.Fn(expression.NewLiteral(cosF, nil)).Eval(nil, nil)
 		assert.NoError(t, err)
-		atanVal, err := atan.Fn(expression.NewLiteral(tanF, nil)).Eval(nil, nil)
+		atanFn, err := atan.Fn(expression.NewLiteral(tanF, nil))
+		assert.NoError(t, err)
+		atanVal, err := atanFn.Eval(nil, nil)
+		assert.NoError(t, err)
+		atan2Fn, err := atan2.Fn(expression.NewLiteral(tanF, nil), expression.NewLiteral(tanF-1, nil))
+		assert.NoError(t, err)
+		atan2Val, err := atan2Fn.Eval(nil, nil)
 		assert.NoError(t, err)
 
 		assert.True(t, withinRoundingErr(math.Asin(sinF), asinVal.(float64)))
 		assert.True(t, withinRoundingErr(math.Acos(cosF), acosVal.(float64)))
 		assert.True(t, withinRoundingErr(math.Atan(tanF), atanVal.(float64)))
+		assert.True(t, withinRoundingErr(math.Atan2(tanF, tanF-1), atan2Val.(float64)))
 	}
 }
 
@@ -316,4 +324,104 @@ func TestPi(t *testing.T) {
 	res, err = cos.Eval(nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, -1.0, res)
+}
+
+func TestExp(t *testing.T) {
+	tests := []struct {
+		name string
+		arg  sql.Expression
+		exp  interface{}
+		err  bool
+		skip bool
+	}{
+		{
+			name: "null argument",
+			arg:  nil,
+			exp:  nil,
+		},
+		{
+			name: "zero",
+			arg:  expression.NewLiteral(int64(0), types.Int64),
+			exp:  math.Exp(0),
+		},
+		{
+			name: "one",
+			arg:  expression.NewLiteral(int64(1), types.Int64),
+			exp:  math.Exp(1),
+		},
+		{
+			name: "ten",
+			arg:  expression.NewLiteral(int64(10), types.Int64),
+			exp:  math.Exp(10),
+		},
+		{
+			name: "negative",
+			arg:  expression.NewLiteral(int64(-1), types.Int64),
+			exp:  math.Exp(-1),
+		},
+		{
+			name: "float64 1.1",
+			arg:  expression.NewLiteral(1.1, types.Float64),
+			exp:  math.Exp(1.1),
+		},
+		{
+			name: "decimal 1.1",
+			arg:  expression.NewLiteral(decimal.NewFromFloat(1.1), types.DecimalType_{}),
+			exp:  math.Exp(1.1),
+		},
+		{
+			name: "float64 -12.34",
+			arg:  expression.NewLiteral(-12.34, types.Float64),
+			exp:  math.Exp(-12.34),
+		},
+		{
+			name: "decimal is -12.34",
+			arg:  expression.NewLiteral(decimal.NewFromFloat(-12.34), types.DecimalType_{}),
+			exp:  math.Exp(-12.34),
+		},
+		{
+			name: "invalid string is 0",
+			arg:  expression.NewLiteral("notanumber", types.Text),
+			exp:  math.Exp(0),
+		},
+		{
+			name: "empty string",
+			arg:  expression.NewLiteral("", types.Text),
+			exp:  math.Exp(0),
+		},
+		{
+			name: "numerical string",
+			arg:  expression.NewLiteral("10", types.Text),
+			exp:  math.Exp(10),
+		},
+		{
+			// we don't do truncation yet
+			// https://github.com/dolthub/dolt/issues/7302
+			name: "scientific string is truncated",
+			arg:  expression.NewLiteral("1e1", types.Text),
+			exp:  "",
+			err:  false,
+			skip: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.skip {
+				t.Skip()
+			}
+
+			ctx := sql.NewEmptyContext()
+			f := NewExp(tt.arg)
+
+			res, err := f.Eval(ctx, nil)
+			if tt.err {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.exp, res)
+		})
+	}
 }
