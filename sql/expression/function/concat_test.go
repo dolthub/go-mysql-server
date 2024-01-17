@@ -35,7 +35,7 @@ func TestConcat(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal("foo5true", v)
+		require.Equal("foo51", v)
 	})
 
 	t.Run("some argument is nil", func(t *testing.T) {

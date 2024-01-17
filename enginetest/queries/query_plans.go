@@ -12190,7 +12190,7 @@ order by x, y;
 			"",
 	},
 	{
-		Query: "select * from one_pk_two_idx where v1 < 4 and v2 < 2 or v2 > 3 order by v1",
+		Query: `select * from one_pk_two_idx where v1 < 4 and v2 < 2 or v2 > 3 order by v1`,
 		ExpectedPlan: "Sort(one_pk_two_idx.v1:1 ASC nullsFirst)\n" +
 			" └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"     ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +

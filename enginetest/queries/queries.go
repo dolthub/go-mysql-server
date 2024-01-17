@@ -6051,6 +6051,10 @@ Select * from (
 		Expected: []sql.Row{{9}, {10}, {9}},
 	},
 	{
+		Query:    "select octet_length(s) from mytable order by i",
+		Expected: []sql.Row{{9}, {10}, {9}},
+	},
+	{
 		Query:    "select char_length(s) from mytable order by i",
 		Expected: []sql.Row{{9}, {10}, {9}},
 	},
@@ -7393,7 +7397,7 @@ Select * from (
 	{
 		Query: `SELECT JSON_OBJECT(true, 10);`,
 		Expected: []sql.Row{
-			{types.MustJSON(`{"true": 10}`)},
+			{types.MustJSON(`{"1": 10}`)},
 		},
 	},
 	{
@@ -8816,6 +8820,74 @@ from typestable`,
 			{"4.141592653589793"},
 			{"5.141592653589793"},
 			{"6.141592653589793"},
+		},
+	},
+	{
+		Query: "select exp(i) from mytable;",
+		Expected: []sql.Row{
+			{math.Exp(1)},
+			{math.Exp(2)},
+			{math.Exp(3)},
+		},
+	},
+	{
+		Query: "select bit_count(i), bit_count(-20 * i) from mytable;",
+		Expected: []sql.Row{
+			{1, 61},
+			{1, 60},
+			{2, 59},
+		},
+	},
+	{
+		Query: "select bit_count(binary 123456878901234567890);",
+		Expected: []sql.Row{
+			{73},
+		},
+	},
+	{
+		Query: "select atan(i), atan2(i, i + 2) from mytable;",
+		Expected: []sql.Row{
+			{math.Atan2(1, 1), math.Atan2(1, 3)},
+			{math.Atan2(2, 1), math.Atan2(2, 4)},
+			{math.Atan2(3, 1), math.Atan2(3, 5)},
+		},
+	},
+	{
+		Query: "select elt(i, 'a', 'b') from mytable;",
+		Expected: []sql.Row{
+			{"a"},
+			{"b"},
+			{nil},
+		},
+	},
+	{
+		Query: "select field(i, '1', '2', '3') from mytable;",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{3},
+		},
+	},
+	{
+		Query: "select ord(s), ord(concat('asdf', s)) from mytable;",
+		Expected: []sql.Row{
+			{102, 97},
+			{115, 97},
+			{116, 97},
+		},
+	},
+	{
+		Query: "select char(i, i + 10, pi()) from mytable;",
+		Expected: []sql.Row{
+			{[]byte{0x01, 0x0B, 0x03}},
+			{[]byte{0x02, 0x0C, 0x03}},
+			{[]byte{0x03, 0x0D, 0x03}},
+		},
+	},
+	{
+		Query: "select char(97, 98, 99 using utf8mb4);",
+		Expected: []sql.Row{
+			{"abc"},
 		},
 	},
 }

@@ -65,6 +65,12 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		// TriggerExecutor has already been analyzed
 		if _, ok := insert.Source.(*plan.TriggerExecutor); !ok {
 			// Analyze the source of the insert independently
+			if _, ok := insert.Source.(*plan.Values); ok {
+				scope = scope.NewScope(plan.NewProject(
+					expression.SchemaToGetFields(insert.Source.Schema()[:len(insert.ColumnNames)]),
+					plan.NewSubqueryAlias("dummy", "", insert.Source),
+				))
+			}
 			source, _, err = a.analyzeWithSelector(ctx, insert.Source, scope, SelectAllBatches, newInsertSourceSelector(sel))
 			if err != nil {
 				return nil, transform.SameTree, err
