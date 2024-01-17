@@ -4957,6 +4957,38 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
+		Name: "strings vs decimals with trailing 0s in IN exprs",
+		SetUpScript: []string{
+			"create table t (v varchar(100));",
+			"insert into t values ('0'), ('0.0'), ('123'), ('123.0');",
+			"create table t_idx (v varchar(100));",
+			"create index idx on t_idx(v);",
+			"insert into t_idx values ('0'), ('0.0'), ('123'), ('123.0');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Skip: true,
+				Query: "select * from t where (v in (0.0, 123));",
+				Expected: []sql.Row{
+					{"0"},
+					{"0.0"},
+					{"123"},
+					{"123.0"},
+				},
+			},
+			{
+				Skip: true,
+				Query: "select * from t_idx where (v in (0.0, 123));",
+				Expected: []sql.Row{
+					{"0"},
+					{"0.0"},
+					{"123"},
+					{"123.0"},
+				},
+			},
+		},
+	},
+	{
 		Name: "subquery with range heap join",
 		SetUpScript: []string{
 			"create table a (i int primary key, start int, end int, name varchar(32));",
