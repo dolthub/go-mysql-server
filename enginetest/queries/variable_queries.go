@@ -79,7 +79,7 @@ var VariableQueries = []ScriptTest{
 				Expected: []sql.Row{{1073741824}},
 				ExpectedColumns: sql.Schema{
 					{
-						Name: "@@SESSION.max_allowed_packet",
+						Name: "@@session.max_allowed_packet",
 						Type: types.Uint64,
 					},
 				},
@@ -89,7 +89,17 @@ var VariableQueries = []ScriptTest{
 				Expected: []sql.Row{{1073741824}},
 				ExpectedColumns: sql.Schema{
 					{
-						Name: "@@GLOBAL.max_allowed_packet",
+						Name: "@@global.max_allowed_packet",
+						Type: types.Uint64,
+					},
+				},
+			},
+			{
+				Query:    "select @@GLoBAL.max_allowed_packet;",
+				Expected: []sql.Row{{1073741824}},
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "@@GLoBAL.max_allowed_packet",
 						Type: types.Uint64,
 					},
 				},
