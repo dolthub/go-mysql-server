@@ -25,17 +25,22 @@ import (
 // SystemVar is an expression that returns the value of a system variable. It's also used as the expression on the left
 // hand side of a SET statement for a system variable.
 type SystemVar struct {
-	Name      string
-	Collation sql.CollationID
-	Scope     sql.SystemVariableScope
+	Name           string
+	Collation      sql.CollationID
+	Scope          sql.SystemVariableScope
+	SpecifiedScope string
 }
 
 var _ sql.Expression = (*SystemVar)(nil)
 var _ sql.CollationCoercible = (*SystemVar)(nil)
 
-// NewSystemVar creates a new SystemVar expression.
-func NewSystemVar(name string, scope sql.SystemVariableScope) *SystemVar {
-	return &SystemVar{name, sql.CollationID(0), scope}
+// NewSystemVar creates a new SystemVar expression for the system variable named |name| with the specified |scope|.
+// The |specifiedScope| parameter indicates the exact scope that was specified in the original reference to this
+// system variable, and is used to ensure we output a column name in a result set that exactly matches how the
+// system variable was originally referenced. If the |specifiedScope| parameter is empty, then the scope was not
+// originally specified and any scope has been inferred.
+func NewSystemVar(name string, scope sql.SystemVariableScope, specifiedScope string) *SystemVar {
+	return &SystemVar{name, sql.CollationID(0), scope, specifiedScope}
 }
 
 // Children implements the sql.Expression interface.
@@ -100,13 +105,11 @@ func (v *SystemVar) Resolved() bool { return true }
 
 // String implements the sql.Expression interface.
 func (v *SystemVar) String() string {
-	switch v.Scope {
-	case sql.SystemVariableScope_Session:
-		return fmt.Sprintf("@@SESSION.%s", v.Name)
-	case sql.SystemVariableScope_Global:
-		return fmt.Sprintf("@@GLOBAL.%s", v.Name)
-	default: // should never happen
-		return fmt.Sprintf("@@UNKNOWN(%v).%s", v.Scope, v.Name)
+	// If the scope wasn't explicitly provided, then don't include it in the string representation
+	if v.SpecifiedScope == "" {
+		return fmt.Sprintf("@@%s", v.Name)
+	} else {
+		return fmt.Sprintf("@@%s.%s", v.SpecifiedScope, v.Name)
 	}
 }
 
