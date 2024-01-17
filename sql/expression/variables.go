@@ -28,14 +28,16 @@ type SystemVar struct {
 	Name      string
 	Collation sql.CollationID
 	Scope     sql.SystemVariableScope
+	Explicit  bool
 }
 
 var _ sql.Expression = (*SystemVar)(nil)
 var _ sql.CollationCoercible = (*SystemVar)(nil)
 
-// NewSystemVar creates a new SystemVar expression.
-func NewSystemVar(name string, scope sql.SystemVariableScope) *SystemVar {
-	return &SystemVar{name, sql.CollationID(0), scope}
+// NewSystemVar creates a new SystemVar expression for the system variable named |name| with the specified |scope|.
+// When |explicit| is true, it indicates that the variable scope was explicitly specified, and not inferred.
+func NewSystemVar(name string, scope sql.SystemVariableScope, explicit bool) *SystemVar {
+	return &SystemVar{name, sql.CollationID(0), scope, explicit}
 }
 
 // Children implements the sql.Expression interface.
@@ -100,6 +102,11 @@ func (v *SystemVar) Resolved() bool { return true }
 
 // String implements the sql.Expression interface.
 func (v *SystemVar) String() string {
+	// If the scope wasn't explicitly provided, then don't include it in the string representation
+	if v.Explicit == false {
+		return fmt.Sprintf("@@%s", v.Name)
+	}
+
 	switch v.Scope {
 	case sql.SystemVariableScope_Session:
 		return fmt.Sprintf("@@SESSION.%s", v.Name)

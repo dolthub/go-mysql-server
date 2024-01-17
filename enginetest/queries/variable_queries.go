@@ -18,6 +18,7 @@ import (
 	"math"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var VariableQueries = []ScriptTest{
@@ -58,6 +59,41 @@ var VariableQueries = []ScriptTest{
 		Query: "SELECT @@join_complexity_limit",
 		Expected: []sql.Row{
 			{uint64(2)},
+		},
+	},
+	{
+		Name: "variable scope is included in returned column name when explicitly provided",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select @@max_allowed_packet;",
+				Expected: []sql.Row{{1073741824}},
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "@@max_allowed_packet",
+						Type: types.Uint64,
+					},
+				},
+			},
+			{
+				Query:    "select @@session.max_allowed_packet;",
+				Expected: []sql.Row{{1073741824}},
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "@@SESSION.max_allowed_packet",
+						Type: types.Uint64,
+					},
+				},
+			},
+			{
+				Query:    "select @@global.max_allowed_packet;",
+				Expected: []sql.Row{{1073741824}},
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "@@GLOBAL.max_allowed_packet",
+						Type: types.Uint64,
+					},
+				},
+			},
 		},
 	},
 	{

@@ -1372,7 +1372,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
 		SetVarHintApplies: false,
-		Type:              types.NewSystemIntType("max_allowed_packet", 1024, 1073741824, false),
+		Type:              types.NewSystemUintType("max_allowed_packet", 1024, 1073741824),
 		Default:           int64(1073741824),
 	},
 	"max_connect_errors": {
