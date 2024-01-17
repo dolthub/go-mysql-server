@@ -1785,7 +1785,7 @@ func evalJoinCorrectness(t *testing.T, harness Harness, e QueryEngine, name, q s
 		sch, iter, err := e.QueryWithBindings(ctx, q, nil, nil)
 		require.NoError(t, err, "Unexpected error for query %s: %s", q, err)
 
-		rows, err := sql.RowIterToRows(ctx, sch, iter)
+		rows, err := sql.RowIterToRows(ctx, iter)
 		require.NoError(t, err, "Unexpected error for query %s: %s", q, err)
 
 		if exp != nil {

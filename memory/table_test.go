@@ -232,7 +232,7 @@ func TestTable(t *testing.T) {
 				require.NoError(err)
 
 				var rows []sql.Row
-				rows, err = sql.RowIterToRows(ctx, table.Schema(), iter)
+				rows, err = sql.RowIterToRows(ctx, iter)
 				require.NoError(err)
 
 				expected := table.GetPartition(string(p.Key()))
@@ -370,7 +370,7 @@ func getAllRows(t *testing.T, ctx *sql.Context, table sql.Table) []sql.Row {
 		iter, err := table.PartitionRows(ctx, p)
 		require.NoError(err)
 
-		rows, err := sql.RowIterToRows(ctx, table.Schema(), iter)
+		rows, err := sql.RowIterToRows(ctx, iter)
 		require.NoError(err)
 
 		allRows = append(allRows, rows...)

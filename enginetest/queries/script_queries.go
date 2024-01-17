@@ -4963,6 +4963,96 @@ CREATE TABLE tab3 (
 			},
 		},
 	},
+	{
+		Name: "case sensitive subquery column names",
+		SetUpScript: []string{
+			"create table t(ABC int, dEF int);",
+			"insert into t values (1, 2);",
+		},
+
+		Assertions: []ScriptTestAssertion{
+			{
+				ExpectedColumns: sql.Schema{
+					{Name: "ABC", Type: types.Int32},
+					{Name: "dEF", Type: types.Int32},
+				},
+				Query: "select * from t ",
+				Expected: []sql.Row{
+					{1, 2},
+				},
+			},
+			{
+				ExpectedColumns: sql.Schema{
+					{Name: "ABC", Type: types.Int32},
+					{Name: "dEF", Type: types.Int32},
+				},
+				Query: "select * from (select * from t) sqa",
+				Expected: []sql.Row{
+					{1, 2},
+				},
+			},
+		},
+	},
+	{
+		Name: "bool and string",
+		SetUpScript: []string{
+			"CREATE TABLE t0(c0 BOOL, PRIMARY KEY(c0));",
+			"INSERT INTO t0 (c0) VALUES (true);",
+			"CREATE TABLE t1(c1 VARCHAR(500));",
+			"INSERT INTO t1 (c1) VALUES (true);",
+		},
+
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM t1, t0;",
+				Expected: []sql.Row{
+					{"1", 1},
+				},
+			},
+			{
+				Query: "SELECT (t1.c1 = t0.c0) FROM t1, t0;",
+				Expected: []sql.Row{
+					{true},
+				},
+			},
+			{
+				Query: "SELECT * FROM t1, t0 WHERE t1.c1 = t0.c0;",
+				Expected: []sql.Row{
+					{"1", 1},
+				},
+			},
+		},
+	},
+	{
+		Name: "bool and int",
+		SetUpScript: []string{
+			"CREATE TABLE t0(c0 INTEGER, PRIMARY KEY(c0));",
+			"INSERT INTO t0 (c0) VALUES (true);",
+			"CREATE TABLE t1(c1 VARCHAR(500));",
+			"INSERT INTO t1 (c1) VALUES (true);",
+		},
+
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM t1, t0;",
+				Expected: []sql.Row{
+					{"1", 1},
+				},
+			},
+			{
+				Query: "SELECT (t1.c1 = t0.c0) FROM t1, t0;",
+				Expected: []sql.Row{
+					{true},
+				},
+			},
+			{
+				Query: "SELECT * FROM t1, t0 WHERE t1.c1 = t0.c0;",
+				Expected: []sql.Row{
+					{"1", 1},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

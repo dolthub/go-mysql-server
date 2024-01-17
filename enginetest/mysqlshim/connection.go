@@ -134,7 +134,7 @@ func (m *MySQLShim) QueryRows(db string, query string) ([]sql.Row, error) {
 	}
 	iter := newMySQLIter(rows)
 	defer iter.Close(ctx)
-	allRows, err := sql.RowIterToRows(ctx, nil, iter)
+	allRows, err := sql.RowIterToRows(ctx, iter)
 	if err != nil {
 		return nil, err
 	}
