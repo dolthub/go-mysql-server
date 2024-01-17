@@ -194,7 +194,7 @@ func BenchmarkInnerJoin(b *testing.B) {
 			iter, err := DefaultBuilder.Build(ctx, n1, nil)
 			require.NoError(err)
 
-			rows, err := sql.RowIterToRows(ctx, nil, iter)
+			rows, err := sql.RowIterToRows(ctx, iter)
 			require.NoError(err)
 
 			require.Equal(expected, rows)
@@ -208,7 +208,7 @@ func BenchmarkInnerJoin(b *testing.B) {
 			iter, err := DefaultBuilder.Build(ctx, n1, nil)
 			require.NoError(err)
 
-			rows, err := sql.RowIterToRows(ctx, nil, iter)
+			rows, err := sql.RowIterToRows(ctx, iter)
 			require.NoError(err)
 
 			require.Equal(expected, rows)
@@ -222,7 +222,7 @@ func BenchmarkInnerJoin(b *testing.B) {
 			iter, err := DefaultBuilder.Build(ctx, n2, nil)
 			require.NoError(err)
 
-			rows, err := sql.RowIterToRows(ctx, nil, iter)
+			rows, err := sql.RowIterToRows(ctx, iter)
 			require.NoError(err)
 
 			require.Equal(expected, rows)
@@ -256,7 +256,7 @@ func TestLeftJoin(t *testing.T) {
 
 	iter, err := DefaultBuilder.Build(ctx, j, nil)
 	require.NoError(err)
-	rows, err := sql.RowIterToRows(ctx, nil, iter)
+	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 	require.ElementsMatch([]sql.Row{
 		{"col1_1", "col2_1", int32(1), int64(2), "col1_2", "col2_2", int32(3), int64(4)},

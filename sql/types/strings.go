@@ -323,7 +323,11 @@ func ConvertToString(v interface{}, t sql.StringType) (string, error) {
 	var val string
 	switch s := v.(type) {
 	case bool:
-		val = strconv.FormatBool(s)
+		if s {
+			val = "1"
+		} else {
+			val = "0"
+		}
 	case float64:
 		val = strconv.FormatFloat(s, 'f', -1, 64)
 	case float32:

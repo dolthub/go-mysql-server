@@ -7397,7 +7397,7 @@ Select * from (
 	{
 		Query: `SELECT JSON_OBJECT(true, 10);`,
 		Expected: []sql.Row{
-			{types.MustJSON(`{"true": 10}`)},
+			{types.MustJSON(`{"1": 10}`)},
 		},
 	},
 	{
@@ -8866,6 +8866,14 @@ from typestable`,
 			{1},
 			{2},
 			{3},
+		},
+	},
+	{
+		Query: "select ord(s), ord(concat('asdf', s)) from mytable;",
+		Expected: []sql.Row{
+			{102, 97},
+			{115, 97},
+			{116, 97},
 		},
 	},
 }

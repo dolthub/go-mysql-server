@@ -69,7 +69,7 @@ func TestShowVariablesWithLike(t *testing.T) {
 	it, err := DefaultBuilder.Build(context, sv, nil)
 	require.NoError(t, err)
 
-	rows, err := sql.RowIterToRows(context, nil, it)
+	rows, err := sql.RowIterToRows(context, it)
 	require.NoError(t, err)
 
 	expectedRows := []sql.Row{
@@ -89,7 +89,7 @@ func TestShowVariablesWithLike(t *testing.T) {
 	it2, err := DefaultBuilder.Build(context, sv2, nil)
 	require.NoError(t, err)
 
-	rows2, err := sql.RowIterToRows(context, nil, it2)
+	rows2, err := sql.RowIterToRows(context, it2)
 	require.NoError(t, err)
 
 	expectedRows2 := []sql.Row{
@@ -111,7 +111,7 @@ func TestShowVariablesWithWhere(t *testing.T) {
 	it, err := DefaultBuilder.Build(context, sv, nil)
 	require.NoError(t, err)
 
-	rows, err := sql.RowIterToRows(context, nil, it)
+	rows, err := sql.RowIterToRows(context, it)
 	require.NoError(t, err)
 
 	expectedRows := []sql.Row{

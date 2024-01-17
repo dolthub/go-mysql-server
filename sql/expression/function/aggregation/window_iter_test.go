@@ -94,7 +94,7 @@ func TestWindowIter(t *testing.T) {
 			ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
 
 			i := NewWindowIter(tt.PartitionIters, tt.OutputOrdinals, mustNewRowIter(t, db, ctx))
-			res, err := sql.RowIterToRows(ctx, nil, i)
+			res, err := sql.RowIterToRows(ctx, i)
 			require.NoError(t, err)
 			require.Equal(t, tt.Expected, res)
 		})
