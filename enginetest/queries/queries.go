@@ -8890,6 +8890,12 @@ from typestable`,
 			{"abc"},
 		},
 	},
+	{
+		Query: "select 0 as col1, 1 as col2, 2 as col2 group by col2 having col2 = 1",
+		Expected: []sql.Row{
+			{0, 1, 2},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
