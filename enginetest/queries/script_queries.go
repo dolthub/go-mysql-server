@@ -4921,6 +4921,42 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
+		Name: "strings in tuple are properly hashed",
+		SetUpScript: []string{
+			"create table t (v varchar(100));",
+			"insert into t values (false);",
+			"create table t_idx (v varchar(100));",
+			"create index idx on t_idx(v);",
+			"insert into t_idx values (false);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t where (v in (-''));",
+				Expected: []sql.Row{
+					{"0"},
+				},
+			},
+			{
+				Query: "select * from t where (v in (false/'1'));",
+				Expected: []sql.Row{
+					{"0"},
+				},
+			},
+			{
+				Query: "select * from t_idx where (v in (-''));",
+				Expected: []sql.Row{
+					{"0"},
+				},
+			},
+			{
+				Query: "select * from t_idx where (v in (false/'1'));",
+				Expected: []sql.Row{
+					{"0"},
+				},
+			},
+		},
+	},
+	{
 		Name: "subquery with range heap join",
 		SetUpScript: []string{
 			"create table a (i int primary key, start int, end int, name varchar(32));",
