@@ -50,7 +50,9 @@ func getDate(ctx *sql.Context,
 
 	date, err := types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(val)
 	if err != nil {
-		date = types.DatetimeMaxPrecision.Zero().(time.Time)
+		ctx.Warn(1292, "Incorrect datetime value: '%s'", val)
+		return nil, nil
+		//date = types.DatetimeMaxPrecision.Zero().(time.Time)
 	}
 
 	return date, nil
