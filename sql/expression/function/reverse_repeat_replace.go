@@ -101,7 +101,7 @@ var ErrNegativeRepeatCount = errors.NewKind("negative Repeat count: %v")
 
 // Repeat is a function that returns the string repeated n times.
 type Repeat struct {
-	expression.BinaryExpression
+	expression.BinaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*Repeat)(nil)
@@ -109,7 +109,7 @@ var _ sql.CollationCoercible = (*Repeat)(nil)
 
 // NewRepeat creates a new Repeat expression.
 func NewRepeat(str sql.Expression, count sql.Expression) sql.Expression {
-	return &Repeat{expression.BinaryExpression{Left: str, Right: count}}
+	return &Repeat{expression.BinaryExpressionStub{LeftChild: str, RightChild: count}}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -123,7 +123,7 @@ func (r *Repeat) Description() string {
 }
 
 func (r *Repeat) String() string {
-	return fmt.Sprintf("repeat(%s, %s)", r.Left, r.Right)
+	return fmt.Sprintf("repeat(%s, %s)", r.LeftChild, r.RightChild)
 }
 
 // Type implements the Expression interface.
@@ -133,8 +133,8 @@ func (r *Repeat) Type() sql.Type {
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (r *Repeat) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	leftCollation, leftCoercibility := sql.GetCoercibility(ctx, r.Left)
-	rightCollation, rightCoercibility := sql.GetCoercibility(ctx, r.Right)
+	leftCollation, leftCoercibility := sql.GetCoercibility(ctx, r.LeftChild)
+	rightCollation, rightCoercibility := sql.GetCoercibility(ctx, r.RightChild)
 	return sql.ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
 }
 
@@ -152,7 +152,7 @@ func (r *Repeat) Eval(
 	row sql.Row,
 ) (interface{}, error) {
 	//TODO: handle collations
-	str, err := r.Left.Eval(ctx, row)
+	str, err := r.LeftChild.Eval(ctx, row)
 	if str == nil || err != nil {
 		return nil, err
 	}
@@ -162,7 +162,7 @@ func (r *Repeat) Eval(
 		return nil, err
 	}
 
-	count, err := r.Right.Eval(ctx, row)
+	count, err := r.RightChild.Eval(ctx, row)
 	if count == nil || err != nil {
 		return nil, err
 	}

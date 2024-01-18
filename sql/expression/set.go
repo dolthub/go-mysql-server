@@ -27,7 +27,7 @@ var errCannotSetField = errors.NewKind("Expected GetField expression on left but
 
 // SetField updates the value of a field or a system variable
 type SetField struct {
-	BinaryExpression
+	BinaryExpressionStub
 }
 
 var _ sql.Expression = (*SetField)(nil)
@@ -35,39 +35,39 @@ var _ sql.CollationCoercible = (*SetField)(nil)
 
 // NewSetField creates a new SetField expression.
 func NewSetField(left, expr sql.Expression) sql.Expression {
-	return &SetField{BinaryExpression{Left: left, Right: expr}}
+	return &SetField{BinaryExpressionStub{LeftChild: left, RightChild: expr}}
 }
 
 func (s *SetField) String() string {
-	return fmt.Sprintf("SET %s = %s", s.Left, s.Right)
+	return fmt.Sprintf("SET %s = %s", s.LeftChild, s.RightChild)
 }
 
 func (s *SetField) DebugString() string {
-	return fmt.Sprintf("SET %s = %s", sql.DebugString(s.Left), sql.DebugString(s.Right))
+	return fmt.Sprintf("SET %s = %s", sql.DebugString(s.LeftChild), sql.DebugString(s.RightChild))
 }
 
 // Type implements the Expression interface.
 func (s *SetField) Type() sql.Type {
-	return s.Left.Type()
+	return s.LeftChild.Type()
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (s *SetField) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	return sql.GetCoercibility(ctx, s.Left)
+	return sql.GetCoercibility(ctx, s.LeftChild)
 }
 
 // Eval implements the Expression interface.
 // Returns a copy of the given row with an updated value.
 func (s *SetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	getField, ok := s.Left.(*GetField)
+	getField, ok := s.LeftChild.(*GetField)
 	if !ok {
-		return nil, errCannotSetField.New(s.Left)
+		return nil, errCannotSetField.New(s.LeftChild)
 	}
 
 	if getField.fieldIndex < 0 || getField.fieldIndex >= len(row) {
 		return nil, ErrIndexOutOfBounds.New(getField.fieldIndex, len(row))
 	}
-	val, err := s.Right.Eval(ctx, row)
+	val, err := s.RightChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}

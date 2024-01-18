@@ -64,11 +64,11 @@ func PreciseComparison(e sql.Expression) bool {
 }
 
 type comparison struct {
-	BinaryExpression
+	BinaryExpressionStub
 }
 
 func newComparison(left, right sql.Expression) comparison {
-	return comparison{BinaryExpression{left, right}}
+	return comparison{BinaryExpressionStub{left, right}}
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -260,10 +260,10 @@ func (*comparison) Type() sql.Type {
 }
 
 // Left implements Comparer interface
-func (c *comparison) Left() sql.Expression { return c.BinaryExpression.Left }
+func (c *comparison) Left() sql.Expression { return c.BinaryExpressionStub.LeftChild }
 
 // Right implements Comparer interface
-func (c *comparison) Right() sql.Expression { return c.BinaryExpression.Right }
+func (c *comparison) Right() sql.Expression { return c.BinaryExpressionStub.RightChild }
 
 // Equals is a comparison that checks an expression is equal to another.
 type Equals struct {
