@@ -644,6 +644,9 @@ var (
 	// ErrUserCreationFailure is returned when attempting to create a user and it fails for any reason.
 	ErrUserCreationFailure = errors.NewKind("Operation CREATE USER failed for %s")
 
+	// ErrUserAlterFailure is returned when attempting to alter a user and it fails for any reason.
+	ErrUserAlterFailure = errors.NewKind("Operation ALTER USER failed for %s")
+
 	// ErrRoleCreationFailure is returned when attempting to create a role and it fails for any reason.
 	ErrRoleCreationFailure = errors.NewKind("Operation CREATE ROLE failed for %s")
 
