@@ -8968,8 +8968,8 @@ inner join pq on true
 		Query: `SELECT a.* FROM mytable a WHERE a.s is not null`,
 		ExpectedPlan: "TableAlias(a)\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.s]\n" +
-			"     ├─ static: [{(NULL, ∞)}]\n" +
+			"     ├─ index: [mytable.s,mytable.i]\n" +
+			"     ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
 			"     ├─ colSet: (1,2)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -8978,14 +8978,14 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "TableAlias(a)\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.s]\n" +
-			"     ├─ filters: [{(NULL, ∞)}]\n" +
+			"     ├─ index: [mytable.s,mytable.i]\n" +
+			"     ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
 			"     └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "TableAlias(a)\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.s]\n" +
-			"     ├─ filters: [{(NULL, ∞)}]\n" +
+			"     ├─ index: [mytable.s,mytable.i]\n" +
+			"     ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
 			"     └─ columns: [i s]\n" +
 			"",
 	},
@@ -8996,8 +8996,8 @@ inner join pq on true
 			" └─ LookupJoin\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
-			"     │       ├─ index: [mytable.s]\n" +
-			"     │       ├─ static: [{(NULL, ∞)}]\n" +
+			"     │       ├─ index: [mytable.s,mytable.i]\n" +
+			"     │       ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
 			"     │       ├─ colSet: (1,2)\n" +
 			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
@@ -9018,8 +9018,8 @@ inner join pq on true
 			" └─ LookupJoin (estimated cost=2.310 rows=1)\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
-			"     │       ├─ index: [mytable.s]\n" +
-			"     │       ├─ filters: [{(NULL, ∞)}]\n" +
+			"     │       ├─ index: [mytable.s,mytable.i]\n" +
+			"     │       ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
 			"     │       └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
@@ -9032,8 +9032,8 @@ inner join pq on true
 			" └─ LookupJoin (estimated cost=2.310 rows=1) (actual rows=0 loops=1)\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
-			"     │       ├─ index: [mytable.s]\n" +
-			"     │       ├─ filters: [{(NULL, ∞)}]\n" +
+			"     │       ├─ index: [mytable.s,mytable.i]\n" +
+			"     │       ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
 			"     │       └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
@@ -9057,8 +9057,8 @@ inner join pq on true
 			"     │           └─ columns: [s]\n" +
 			"     └─ TableAlias(a)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.s]\n" +
-			"             ├─ static: [{(NULL, ∞)}]\n" +
+			"             ├─ index: [mytable.s,mytable.i]\n" +
+			"             ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
 			"             ├─ colSet: (1,2)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
@@ -9075,8 +9075,8 @@ inner join pq on true
 			"     │       └─ columns: [s]\n" +
 			"     └─ TableAlias(a)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.s]\n" +
-			"             ├─ filters: [{(NULL, ∞)}]\n" +
+			"             ├─ index: [mytable.s,mytable.i]\n" +
+			"             ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
 			"             └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
@@ -9089,8 +9089,8 @@ inner join pq on true
 			"     │       └─ columns: [s]\n" +
 			"     └─ TableAlias(a)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.s]\n" +
-			"             ├─ filters: [{(NULL, ∞)}]\n" +
+			"             ├─ index: [mytable.s,mytable.i]\n" +
+			"             ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
 			"             └─ columns: [i s]\n" +
 			"",
 	},
@@ -9106,8 +9106,8 @@ inner join pq on true
 			"     │   │       └─ TUPLE(1 (longtext), 2 (longtext), 3 (longtext), 4 (longtext))\n" +
 			"     │   └─ TableAlias(a)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.s]\n" +
-			"     │           ├─ static: [{(NULL, 1)}, {(1, 2)}, {(2, 3)}, {(3, 4)}, {(4, ∞)}]\n" +
+			"     │           ├─ index: [mytable.s,mytable.i]\n" +
+			"     │           ├─ static: [{(NULL, 1), [NULL, ∞)}, {(1, 2), [NULL, ∞)}, {(2, 3), [NULL, ∞)}, {(3, 4), [NULL, ∞)}, {(4, ∞), [NULL, ∞)}]\n" +
 			"     │           ├─ colSet: (1,2)\n" +
 			"     │           ├─ tableId: 1\n" +
 			"     │           └─ Table\n" +
@@ -9130,8 +9130,8 @@ inner join pq on true
 			"     │   ├─ (NOT((a.s HASH IN ('1', '2', '3', '4'))))\n" +
 			"     │   └─ TableAlias(a)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.s]\n" +
-			"     │           ├─ filters: [{(NULL, 1)}, {(1, 2)}, {(2, 3)}, {(3, 4)}, {(4, ∞)}]\n" +
+			"     │           ├─ index: [mytable.s,mytable.i]\n" +
+			"     │           ├─ filters: [{(NULL, 1), [NULL, ∞)}, {(1, 2), [NULL, ∞)}, {(2, 3), [NULL, ∞)}, {(3, 4), [NULL, ∞)}, {(4, ∞), [NULL, ∞)}]\n" +
 			"     │           └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
@@ -9146,8 +9146,8 @@ inner join pq on true
 			"     │   ├─ (NOT((a.s HASH IN ('1', '2', '3', '4'))))\n" +
 			"     │   └─ TableAlias(a)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.s]\n" +
-			"     │           ├─ filters: [{(NULL, 1)}, {(1, 2)}, {(2, 3)}, {(3, 4)}, {(4, ∞)}]\n" +
+			"     │           ├─ index: [mytable.s,mytable.i]\n" +
+			"     │           ├─ filters: [{(NULL, 1), [NULL, ∞)}, {(1, 2), [NULL, ∞)}, {(2, 3), [NULL, ∞)}, {(3, 4), [NULL, ∞)}, {(4, ∞), [NULL, ∞)}]\n" +
 			"     │           └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
@@ -19578,16 +19578,12 @@ inner join pq on true
 	{
 		Query: `SELECT * from one_pk_three_idx where pk < 1 and v1 = 1 and v2 = 1`,
 		ExpectedPlan: "Filter\n" +
-			" ├─ AND\n" +
-			" │   ├─ Eq\n" +
-			" │   │   ├─ one_pk_three_idx.v1:1\n" +
-			" │   │   └─ 1 (tinyint)\n" +
-			" │   └─ Eq\n" +
-			" │       ├─ one_pk_three_idx.v2:2\n" +
-			" │       └─ 1 (tinyint)\n" +
+			" ├─ LessThan\n" +
+			" │   ├─ one_pk_three_idx.pk:0!null\n" +
+			" │   └─ 1 (tinyint)\n" +
 			" └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"     ├─ index: [one_pk_three_idx.pk]\n" +
-			"     ├─ static: [{(NULL, 1)}]\n" +
+			"     ├─ index: [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3]\n" +
+			"     ├─ static: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
 			"     ├─ colSet: (1-4)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -19595,17 +19591,17 @@ inner join pq on true
 			"         └─ columns: [pk v1 v2 v3]\n" +
 			"",
 		ExpectedEstimates: "Filter\n" +
-			" ├─ ((one_pk_three_idx.v1 = 1) AND (one_pk_three_idx.v2 = 1))\n" +
+			" ├─ (one_pk_three_idx.pk < 1)\n" +
 			" └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"     ├─ index: [one_pk_three_idx.pk]\n" +
-			"     ├─ filters: [{(NULL, 1)}]\n" +
+			"     ├─ index: [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3]\n" +
+			"     ├─ filters: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
 			"     └─ columns: [pk v1 v2 v3]\n" +
 			"",
 		ExpectedAnalysis: "Filter\n" +
-			" ├─ ((one_pk_three_idx.v1 = 1) AND (one_pk_three_idx.v2 = 1))\n" +
+			" ├─ (one_pk_three_idx.pk < 1)\n" +
 			" └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"     ├─ index: [one_pk_three_idx.pk]\n" +
-			"     ├─ filters: [{(NULL, 1)}]\n" +
+			"     ├─ index: [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3]\n" +
+			"     ├─ filters: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
 			"     └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
@@ -25634,6 +25630,18 @@ order by x, y;
 			"     └─ Table\n" +
 			"         ├─ name: one_pk_two_idx\n" +
 			"         └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Sort(one_pk_two_idx.v1 ASC)\n" +
+			" └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"     ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"     ├─ filters: [{[NULL, ∞), (3, ∞)}, {(NULL, 4), (NULL, 2)}]\n" +
+			"     └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedAnalysis: "Sort(one_pk_two_idx.v1 ASC)\n" +
+			" └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"     ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"     ├─ filters: [{[NULL, ∞), (3, ∞)}, {(NULL, 4), (NULL, 2)}]\n" +
+			"     └─ columns: [pk v1 v2]\n" +
 			"",
 	},
 }
