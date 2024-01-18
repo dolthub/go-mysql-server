@@ -328,13 +328,12 @@ func statsForRel(rel RelExpr) sql.Statistic {
 		// different joins use different ways to estimate cardinality of outputs
 		jp := rel.JoinPrivate()
 		left := jp.Left.RelProps.GetStats()
-		right := jp.Left.RelProps.GetStats()
+		right := jp.Right.RelProps.GetStats()
 
 		var injective bool
 		var mergeStats sql.Statistic
 		var n RelExpr = rel
 		var done bool
-		var err error
 		for n != nil && !done {
 			switch n := n.(type) {
 			case *LookupJoin:
@@ -350,9 +349,14 @@ func statsForRel(rel RelExpr) sql.Statistic {
 				}
 
 				// single prefix always safe for merge join
-				mergeStats, err = getJoinStats(n.InnerScan.Stats, n.OuterScan.Stats, leftChildStats, rightChildStats, 1)
+				mStat, err := getJoinStats(n.InnerScan.Stats, n.OuterScan.Stats, leftChildStats, rightChildStats, 1)
 				if err != nil {
 					n.Group().m.HandleErr(err)
+				}
+				if mergeStats == nil {
+					mergeStats = mStat
+				} else if mStat != nil && mStat.RowCount() < mergeStats.RowCount() {
+					mergeStats = mStat
 				}
 			default:
 				done = true
@@ -412,7 +416,7 @@ func statsForRel(rel RelExpr) sql.Statistic {
 	case *TableFunc:
 		// todo: have table function do their own row count estimations
 		// table functions usually cheaper than subqueries
-		stat = &stats.Statistic{RowCnt: 10}
+		stat = &stats.Statistic{RowCnt: defaultTableSize / 2}
 
 	case SourceRel:
 		var tableName string
@@ -427,15 +431,15 @@ func statsForRel(rel RelExpr) sql.Statistic {
 				tableName = tn.Name()
 			}
 		default:
-			return &stats.Statistic{RowCnt: 1000}
+			return &stats.Statistic{RowCnt: defaultTableSize}
 		}
 		if prov := rel.Group().m.StatsProvider(); prov != nil {
-			if card, err := prov.RowCount(rel.Group().m.Ctx, dbName, tableName); err == nil {
+			if card, err := prov.RowCount(rel.Group().m.Ctx, dbName, strings.ToLower(tableName)); err == nil {
 				return &stats.Statistic{RowCnt: card}
 				break
 			}
 		}
-		return &stats.Statistic{RowCnt: 1000}
+		return &stats.Statistic{RowCnt: defaultTableSize}
 
 	case *Filter:
 		card := float64(rel.Child.RelProps.GetStats().RowCount()) * defaultFilterSelectivity
@@ -449,7 +453,7 @@ func statsForRel(rel RelExpr) sql.Statistic {
 
 	case *SetOp:
 		// todo: costing full plan to carry cardinalities upwards
-		stat = &stats.Statistic{RowCnt: 1000}
+		stat = &stats.Statistic{RowCnt: defaultTableSize * 2}
 
 	default:
 		rel.Group().m.HandleErr(fmt.Errorf("unsupported relProps type: %T", rel))

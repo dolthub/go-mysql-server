@@ -109,10 +109,10 @@ order by
 			" ├─ columns: [supplier.s_acctbal:14!null, supplier.s_name:10!null, nation.n_name:22!null, part.p_partkey:0!null, part.p_mfgr:2!null, supplier.s_address:11!null, supplier.s_phone:13!null, supplier.s_comment:15!null]\n" +
 			" └─ Sort(supplier.s_acctbal:14!null DESC nullsFirst, nation.n_name:22!null ASC nullsFirst, supplier.s_name:10!null ASC nullsFirst, part.p_partkey:0!null ASC nullsFirst)\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [part.P_PARTKEY:14!null, part.P_NAME:15!null, part.P_MFGR:16!null, part.P_BRAND:17!null, part.P_TYPE:18!null, part.P_SIZE:19!null, part.P_CONTAINER:20!null, part.P_RETAILPRICE:21!null, part.P_COMMENT:22!null, supplier.S_SUPPKEY:0!null, supplier.S_NAME:1!null, supplier.S_ADDRESS:2!null, supplier.S_NATIONKEY:3!null, supplier.S_PHONE:4!null, supplier.S_ACCTBAL:5!null, supplier.S_COMMENT:6!null, partsupp.PS_PARTKEY:23!null, partsupp.PS_SUPPKEY:24!null, partsupp.PS_AVAILQTY:25!null, partsupp.PS_SUPPLYCOST:26!null, partsupp.PS_COMMENT:27!null, nation.N_NATIONKEY:7!null, nation.N_NAME:8!null, nation.N_REGIONKEY:9!null, nation.N_COMMENT:10, region.R_REGIONKEY:11!null, region.R_NAME:12!null, region.R_COMMENT:13]\n" +
+			"         ├─ columns: [part.P_PARTKEY:0!null, part.P_NAME:1!null, part.P_MFGR:2!null, part.P_BRAND:3!null, part.P_TYPE:4!null, part.P_SIZE:5!null, part.P_CONTAINER:6!null, part.P_RETAILPRICE:7!null, part.P_COMMENT:8!null, supplier.S_SUPPKEY:14!null, supplier.S_NAME:15!null, supplier.S_ADDRESS:16!null, supplier.S_NATIONKEY:17!null, supplier.S_PHONE:18!null, supplier.S_ACCTBAL:19!null, supplier.S_COMMENT:20!null, partsupp.PS_PARTKEY:9!null, partsupp.PS_SUPPKEY:10!null, partsupp.PS_AVAILQTY:11!null, partsupp.PS_SUPPLYCOST:12!null, partsupp.PS_COMMENT:13!null, nation.N_NATIONKEY:21!null, nation.N_NAME:22!null, nation.N_REGIONKEY:23!null, nation.N_COMMENT:24, region.R_REGIONKEY:25!null, region.R_NAME:26!null, region.R_COMMENT:27]\n" +
 			"         └─ Filter\n" +
 			"             ├─ Eq\n" +
-			"             │   ├─ partsupp.ps_supplycost:26!null\n" +
+			"             │   ├─ partsupp.ps_supplycost:12!null\n" +
 			"             │   └─ Subquery\n" +
 			"             │       ├─ cacheable: false\n" +
 			"             │       ├─ alias-string: select min(ps_supplycost) from partsupp, supplier, nation, region where p_partkey = ps_partkey and s_suppkey = ps_suppkey and s_nationkey = n_nationkey and n_regionkey = r_regionkey and r_name = 'EUROPE'\n" +
@@ -123,7 +123,7 @@ order by
 			"             │               ├─ group: \n" +
 			"             │               └─ Filter\n" +
 			"             │                   ├─ Eq\n" +
-			"             │                   │   ├─ part.p_partkey:14!null\n" +
+			"             │                   │   ├─ part.p_partkey:0!null\n" +
 			"             │                   │   └─ partsupp.ps_partkey:28!null\n" +
 			"             │                   └─ LookupJoin\n" +
 			"             │                       ├─ LookupJoin\n" +
@@ -161,58 +161,56 @@ order by
 			"             │                               └─ Table\n" +
 			"             │                                   ├─ name: region\n" +
 			"             │                                   └─ columns: [r_regionkey r_name]\n" +
-			"             └─ HashJoin\n" +
-			"                 ├─ Eq\n" +
-			"                 │   ├─ supplier.s_suppkey:0!null\n" +
-			"                 │   └─ partsupp.ps_suppkey:24!null\n" +
+			"             └─ LookupJoin\n" +
 			"                 ├─ LookupJoin\n" +
 			"                 │   ├─ LookupJoin\n" +
-			"                 │   │   ├─ ProcessTable\n" +
-			"                 │   │   │   └─ Table\n" +
-			"                 │   │   │       ├─ name: supplier\n" +
-			"                 │   │   │       └─ columns: [s_suppkey s_name s_address s_nationkey s_phone s_acctbal s_comment]\n" +
-			"                 │   │   └─ IndexedTableAccess(nation)\n" +
-			"                 │   │       ├─ index: [nation.N_NATIONKEY]\n" +
-			"                 │   │       ├─ keys: [supplier.s_nationkey:3!null]\n" +
-			"                 │   │       ├─ colSet: (22-25)\n" +
-			"                 │   │       ├─ tableId: 4\n" +
+			"                 │   │   ├─ LookupJoin\n" +
+			"                 │   │   │   ├─ Filter\n" +
+			"                 │   │   │   │   ├─ AND\n" +
+			"                 │   │   │   │   │   ├─ Eq\n" +
+			"                 │   │   │   │   │   │   ├─ part.p_size:5!null\n" +
+			"                 │   │   │   │   │   │   └─ 15 (tinyint)\n" +
+			"                 │   │   │   │   │   └─ part.p_type LIKE '%BRASS'\n" +
+			"                 │   │   │   │   └─ ProcessTable\n" +
+			"                 │   │   │   │       └─ Table\n" +
+			"                 │   │   │   │           ├─ name: part\n" +
+			"                 │   │   │   │           └─ columns: [p_partkey p_name p_mfgr p_brand p_type p_size p_container p_retailprice p_comment]\n" +
+			"                 │   │   │   └─ IndexedTableAccess(partsupp)\n" +
+			"                 │   │   │       ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
+			"                 │   │   │       ├─ keys: [part.p_partkey:0!null]\n" +
+			"                 │   │   │       ├─ colSet: (17-21)\n" +
+			"                 │   │   │       ├─ tableId: 3\n" +
+			"                 │   │   │       └─ Table\n" +
+			"                 │   │   │           ├─ name: partsupp\n" +
+			"                 │   │   │           └─ columns: [ps_partkey ps_suppkey ps_availqty ps_supplycost ps_comment]\n" +
+			"                 │   │   └─ IndexedTableAccess(supplier)\n" +
+			"                 │   │       ├─ index: [supplier.S_SUPPKEY]\n" +
+			"                 │   │       ├─ keys: [partsupp.ps_suppkey:10!null]\n" +
+			"                 │   │       ├─ colSet: (10-16)\n" +
+			"                 │   │       ├─ tableId: 2\n" +
 			"                 │   │       └─ Table\n" +
-			"                 │   │           ├─ name: nation\n" +
-			"                 │   │           └─ columns: [n_nationkey n_name n_regionkey n_comment]\n" +
-			"                 │   └─ Filter\n" +
-			"                 │       ├─ Eq\n" +
-			"                 │       │   ├─ region.r_name:1!null\n" +
-			"                 │       │   └─ EUROPE (longtext)\n" +
-			"                 │       └─ IndexedTableAccess(region)\n" +
-			"                 │           ├─ index: [region.R_REGIONKEY]\n" +
-			"                 │           ├─ keys: [nation.n_regionkey:9!null]\n" +
-			"                 │           ├─ colSet: (26-28)\n" +
-			"                 │           ├─ tableId: 5\n" +
-			"                 │           └─ Table\n" +
-			"                 │               ├─ name: region\n" +
-			"                 │               └─ columns: [r_regionkey r_name r_comment]\n" +
-			"                 └─ HashLookup\n" +
-			"                     ├─ left-key: TUPLE(supplier.s_suppkey:0!null)\n" +
-			"                     ├─ right-key: TUPLE(partsupp.ps_suppkey:10!null)\n" +
-			"                     └─ LookupJoin\n" +
-			"                         ├─ Filter\n" +
-			"                         │   ├─ AND\n" +
-			"                         │   │   ├─ Eq\n" +
-			"                         │   │   │   ├─ part.p_size:5!null\n" +
-			"                         │   │   │   └─ 15 (tinyint)\n" +
-			"                         │   │   └─ part.p_type LIKE '%BRASS'\n" +
-			"                         │   └─ ProcessTable\n" +
-			"                         │       └─ Table\n" +
-			"                         │           ├─ name: part\n" +
-			"                         │           └─ columns: [p_partkey p_name p_mfgr p_brand p_type p_size p_container p_retailprice p_comment]\n" +
-			"                         └─ IndexedTableAccess(partsupp)\n" +
-			"                             ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
-			"                             ├─ keys: [part.p_partkey:14!null]\n" +
-			"                             ├─ colSet: (17-21)\n" +
-			"                             ├─ tableId: 3\n" +
-			"                             └─ Table\n" +
-			"                                 ├─ name: partsupp\n" +
-			"                                 └─ columns: [ps_partkey ps_suppkey ps_availqty ps_supplycost ps_comment]\n" +
+			"                 │   │           ├─ name: supplier\n" +
+			"                 │   │           └─ columns: [s_suppkey s_name s_address s_nationkey s_phone s_acctbal s_comment]\n" +
+			"                 │   └─ IndexedTableAccess(nation)\n" +
+			"                 │       ├─ index: [nation.N_NATIONKEY]\n" +
+			"                 │       ├─ keys: [supplier.s_nationkey:17!null]\n" +
+			"                 │       ├─ colSet: (22-25)\n" +
+			"                 │       ├─ tableId: 4\n" +
+			"                 │       └─ Table\n" +
+			"                 │           ├─ name: nation\n" +
+			"                 │           └─ columns: [n_nationkey n_name n_regionkey n_comment]\n" +
+			"                 └─ Filter\n" +
+			"                     ├─ Eq\n" +
+			"                     │   ├─ region.r_name:1!null\n" +
+			"                     │   └─ EUROPE (longtext)\n" +
+			"                     └─ IndexedTableAccess(region)\n" +
+			"                         ├─ index: [region.R_REGIONKEY]\n" +
+			"                         ├─ keys: [nation.n_regionkey:23!null]\n" +
+			"                         ├─ colSet: (26-28)\n" +
+			"                         ├─ tableId: 5\n" +
+			"                         └─ Table\n" +
+			"                             ├─ name: region\n" +
+			"                             └─ columns: [r_regionkey r_name r_comment]\n" +
 			"",
 	},
 	{
@@ -1451,60 +1449,53 @@ order by
 			"         └─ GroupBy\n" +
 			"             ├─ select: COUNTDISTINCT([partsupp.ps_suppkey]), part.p_brand:8!null, part.p_type:9!null, part.p_size:10!null\n" +
 			"             ├─ group: part.p_brand:8!null, part.p_type:9!null, part.p_size:10!null\n" +
-			"             └─ Project\n" +
-			"                 ├─ columns: [partsupp.PS_PARTKEY:9!null, partsupp.PS_SUPPKEY:10!null, partsupp.PS_AVAILQTY:11!null, partsupp.PS_SUPPLYCOST:12!null, partsupp.PS_COMMENT:13!null, part.P_PARTKEY:0!null, part.P_NAME:1!null, part.P_MFGR:2!null, part.P_BRAND:3!null, part.P_TYPE:4!null, part.P_SIZE:5!null, part.P_CONTAINER:6!null, part.P_RETAILPRICE:7!null, part.P_COMMENT:8!null]\n" +
+			"             └─ LookupJoin\n" +
+			"                 ├─ Project\n" +
+			"                 │   ├─ columns: [partsupp.PS_PARTKEY:0!null, partsupp.PS_SUPPKEY:1!null, partsupp.PS_AVAILQTY:2!null, partsupp.PS_SUPPLYCOST:3!null, partsupp.PS_COMMENT:4!null]\n" +
+			"                 │   └─ Filter\n" +
+			"                 │       ├─ supplier.s_suppkey:5!null IS NULL\n" +
+			"                 │       └─ LeftOuterLookupJoin\n" +
+			"                 │           ├─ ProcessTable\n" +
+			"                 │           │   └─ Table\n" +
+			"                 │           │       ├─ name: partsupp\n" +
+			"                 │           │       └─ columns: [ps_partkey ps_suppkey ps_availqty ps_supplycost ps_comment]\n" +
+			"                 │           └─ Project\n" +
+			"                 │               ├─ columns: [supplier.s_suppkey:0!null]\n" +
+			"                 │               └─ Filter\n" +
+			"                 │                   ├─ supplier.s_comment LIKE '%Customer%Complaints%'\n" +
+			"                 │                   └─ IndexedTableAccess(supplier)\n" +
+			"                 │                       ├─ index: [supplier.S_SUPPKEY]\n" +
+			"                 │                       ├─ keys: [partsupp.ps_suppkey:1!null]\n" +
+			"                 │                       ├─ colSet: (15-21)\n" +
+			"                 │                       ├─ tableId: 3\n" +
+			"                 │                       └─ Table\n" +
+			"                 │                           ├─ name: supplier\n" +
+			"                 │                           └─ columns: [s_suppkey s_name s_address s_nationkey s_phone s_acctbal s_comment]\n" +
 			"                 └─ Filter\n" +
-			"                     ├─ supplier.s_suppkey:14!null IS NULL\n" +
-			"                     └─ LeftOuterLookupJoin\n" +
-			"                         ├─ MergeJoin\n" +
-			"                         │   ├─ cmp: Eq\n" +
-			"                         │   │   ├─ part.p_partkey:0!null\n" +
-			"                         │   │   └─ partsupp.ps_partkey:9!null\n" +
-			"                         │   ├─ Filter\n" +
-			"                         │   │   ├─ AND\n" +
-			"                         │   │   │   ├─ AND\n" +
-			"                         │   │   │   │   ├─ NOT\n" +
-			"                         │   │   │   │   │   └─ Eq\n" +
-			"                         │   │   │   │   │       ├─ part.p_brand:3!null\n" +
-			"                         │   │   │   │   │       └─ Brand#45 (longtext)\n" +
-			"                         │   │   │   │   └─ Or\n" +
-			"                         │   │   │   │       ├─ LessThan\n" +
-			"                         │   │   │   │       │   ├─ part.p_type:4!null\n" +
-			"                         │   │   │   │       │   └─ MEDIUM POLISHED (longtext)\n" +
-			"                         │   │   │   │       └─ GreaterThan\n" +
-			"                         │   │   │   │           ├─ part.p_type:4!null\n" +
-			"                         │   │   │   │           └─ MEDIUM POLISHEDÿ (longtext)\n" +
-			"                         │   │   │   └─ HashIn\n" +
-			"                         │   │   │       ├─ part.p_size:5!null\n" +
-			"                         │   │   │       └─ TUPLE(49 (tinyint), 14 (tinyint), 23 (tinyint), 45 (tinyint), 19 (tinyint), 3 (tinyint), 36 (tinyint), 9 (tinyint))\n" +
-			"                         │   │   └─ IndexedTableAccess(part)\n" +
-			"                         │   │       ├─ index: [part.P_PARTKEY]\n" +
-			"                         │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                         │   │       ├─ colSet: (6-14)\n" +
-			"                         │   │       ├─ tableId: 2\n" +
-			"                         │   │       └─ Table\n" +
-			"                         │   │           ├─ name: part\n" +
-			"                         │   │           └─ columns: [p_partkey p_name p_mfgr p_brand p_type p_size p_container p_retailprice p_comment]\n" +
-			"                         │   └─ IndexedTableAccess(partsupp)\n" +
-			"                         │       ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
-			"                         │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                         │       ├─ colSet: (1-5)\n" +
-			"                         │       ├─ tableId: 1\n" +
-			"                         │       └─ Table\n" +
-			"                         │           ├─ name: partsupp\n" +
-			"                         │           └─ columns: [ps_partkey ps_suppkey ps_availqty ps_supplycost ps_comment]\n" +
-			"                         └─ Project\n" +
-			"                             ├─ columns: [supplier.s_suppkey:0!null]\n" +
-			"                             └─ Filter\n" +
-			"                                 ├─ supplier.s_comment LIKE '%Customer%Complaints%'\n" +
-			"                                 └─ IndexedTableAccess(supplier)\n" +
-			"                                     ├─ index: [supplier.S_SUPPKEY]\n" +
-			"                                     ├─ keys: [partsupp.ps_suppkey:10!null]\n" +
-			"                                     ├─ colSet: (15-21)\n" +
-			"                                     ├─ tableId: 3\n" +
-			"                                     └─ Table\n" +
-			"                                         ├─ name: supplier\n" +
-			"                                         └─ columns: [s_suppkey s_name s_address s_nationkey s_phone s_acctbal s_comment]\n" +
+			"                     ├─ AND\n" +
+			"                     │   ├─ AND\n" +
+			"                     │   │   ├─ NOT\n" +
+			"                     │   │   │   └─ Eq\n" +
+			"                     │   │   │       ├─ part.p_brand:3!null\n" +
+			"                     │   │   │       └─ Brand#45 (longtext)\n" +
+			"                     │   │   └─ Or\n" +
+			"                     │   │       ├─ LessThan\n" +
+			"                     │   │       │   ├─ part.p_type:4!null\n" +
+			"                     │   │       │   └─ MEDIUM POLISHED (longtext)\n" +
+			"                     │   │       └─ GreaterThan\n" +
+			"                     │   │           ├─ part.p_type:4!null\n" +
+			"                     │   │           └─ MEDIUM POLISHEDÿ (longtext)\n" +
+			"                     │   └─ HashIn\n" +
+			"                     │       ├─ part.p_size:5!null\n" +
+			"                     │       └─ TUPLE(49 (tinyint), 14 (tinyint), 23 (tinyint), 45 (tinyint), 19 (tinyint), 3 (tinyint), 36 (tinyint), 9 (tinyint))\n" +
+			"                     └─ IndexedTableAccess(part)\n" +
+			"                         ├─ index: [part.P_PARTKEY]\n" +
+			"                         ├─ keys: [partsupp.ps_partkey:0!null]\n" +
+			"                         ├─ colSet: (6-14)\n" +
+			"                         ├─ tableId: 2\n" +
+			"                         └─ Table\n" +
+			"                             ├─ name: part\n" +
+			"                             └─ columns: [p_partkey p_name p_mfgr p_brand p_type p_size p_container p_retailprice p_comment]\n" +
 			"",
 	},
 	{
