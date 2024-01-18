@@ -46,7 +46,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		if !(b.bindCtx == nil || b.bindCtx.resolveOnly) {
 			return
 		}
-		
+
 		if be, ok := ex.(expression.BinaryExpression); ok {
 			left := be.Left()
 			right := be.Right()
@@ -64,7 +64,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			ex, _ = be.WithChildren(left, right)
 		}
 	}()
-	
+
 	switch v := e.(type) {
 	case *ast.Default:
 		return expression.WrapExpression(expression.NewDefaultColumn(v.ColName))

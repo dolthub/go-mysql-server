@@ -58,7 +58,7 @@ type BinaryExpressionStub struct {
 	RightChild sql.Expression
 }
 
-// BinaryExpression is an expression that has two children 
+// BinaryExpression is an expression that has two children
 type BinaryExpression interface {
 	sql.Expression
 	Left() sql.Expression
