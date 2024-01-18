@@ -353,23 +353,23 @@ func (b *BaseBuilder) buildSet(ctx *sql.Context, n *plan.Set, row sql.Row) (sql.
 			return nil, fmt.Errorf("unsupported type for set: %T", v)
 		}
 
-		switch left := setField.Left.(type) {
+		switch left := setField.LeftChild.(type) {
 		case *expression.SystemVar:
-			err := setSystemVar(ctx, left, setField.Right, row)
+			err := setSystemVar(ctx, left, setField.RightChild, row)
 			if err != nil {
 				return nil, err
 			}
 		case *expression.UserVar:
-			err := setUserVar(ctx, left, setField.Right, row)
+			err := setUserVar(ctx, left, setField.RightChild, row)
 			if err != nil {
 				return nil, err
 			}
 		case *expression.ProcedureParam:
-			value, err := setField.Right.Eval(ctx, row)
+			value, err := setField.RightChild.Eval(ctx, row)
 			if err != nil {
 				return nil, err
 			}
-			err = left.Set(value, setField.Right.Type())
+			err = left.Set(value, setField.RightChild.Type())
 			if err != nil {
 				return nil, err
 			}

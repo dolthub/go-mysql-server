@@ -24,7 +24,7 @@ import (
 
 // StrCmp compares two strings
 type StrCmp struct {
-	expression.BinaryExpression
+	expression.BinaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*StrCmp)(nil)
@@ -33,9 +33,9 @@ var _ sql.CollationCoercible = (*StrCmp)(nil)
 // NewStrCmp creates a new NewStrCmp UDF.
 func NewStrCmp(e1, e2 sql.Expression) sql.Expression {
 	return &StrCmp{
-		expression.BinaryExpression{
-			Left:  e1,
-			Right: e2,
+		expression.BinaryExpressionStub{
+			LeftChild:  e1,
+			RightChild: e2,
 		},
 	}
 }
@@ -57,13 +57,13 @@ func (s *StrCmp) Type() sql.Type {
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (s *StrCmp) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	leftCollation, leftCoercibility := sql.GetCoercibility(ctx, s.Left)
-	rightCollation, rightCoercibility := sql.GetCoercibility(ctx, s.Right)
+	leftCollation, leftCoercibility := sql.GetCoercibility(ctx, s.LeftChild)
+	rightCollation, rightCoercibility := sql.GetCoercibility(ctx, s.RightChild)
 	return sql.ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
 }
 
 func (s *StrCmp) String() string {
-	return fmt.Sprintf("%s(%s,%s)", s.FunctionName(), s.Left, s.Right)
+	return fmt.Sprintf("%s(%s,%s)", s.FunctionName(), s.LeftChild, s.RightChild)
 }
 
 // WithChildren implements the Expression interface.
@@ -75,11 +75,11 @@ func (s *StrCmp) WithChildren(children ...sql.Expression) (sql.Expression, error
 }
 
 func (s *StrCmp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if s.Left == nil || s.Right == nil {
+	if s.LeftChild == nil || s.RightChild == nil {
 		return nil, nil
 	}
 
-	expr1, err := s.Left.Eval(ctx, row)
+	expr1, err := s.LeftChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func (s *StrCmp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	expr2, err := s.Right.Eval(ctx, row)
+	expr2, err := s.RightChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}

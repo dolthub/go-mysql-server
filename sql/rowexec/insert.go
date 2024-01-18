@@ -222,7 +222,7 @@ func getFieldIndexFromUpdateExpr(updateExpr sql.Expression) (int, bool) {
 		return 0, false
 	}
 
-	getField, ok := setField.Left.(*expression.GetField)
+	getField, ok := setField.LeftChild.(*expression.GetField)
 	if !ok {
 		return 0, false
 	}

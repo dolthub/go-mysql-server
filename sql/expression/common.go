@@ -32,7 +32,7 @@ func IsBinary(e sql.Expression) bool {
 	return len(e.Children()) == 2
 }
 
-// UnaryExpression is an expression that has only one children.
+// UnaryExpression is an expression that has only one child.
 type UnaryExpression struct {
 	Child sql.Expression
 }
@@ -52,25 +52,40 @@ func (p *UnaryExpression) IsNullable() bool {
 	return p.Child.IsNullable()
 }
 
-// BinaryExpression is an expression that has two children.
-type BinaryExpression struct {
-	Left  sql.Expression
-	Right sql.Expression
+// BinaryExpressionStub is an expression that has two children.
+type BinaryExpressionStub struct {
+	LeftChild  sql.Expression
+	RightChild sql.Expression
+}
+
+// BinaryExpression is an expression that has two children 
+type BinaryExpression interface {
+	sql.Expression
+	Left() sql.Expression
+	Right() sql.Expression
+}
+
+func (p *BinaryExpressionStub) Left() sql.Expression {
+	return p.LeftChild
+}
+
+func (p *BinaryExpressionStub) Right() sql.Expression {
+	return p.RightChild
 }
 
 // Children implements the Expression interface.
-func (p *BinaryExpression) Children() []sql.Expression {
-	return []sql.Expression{p.Left, p.Right}
+func (p *BinaryExpressionStub) Children() []sql.Expression {
+	return []sql.Expression{p.LeftChild, p.RightChild}
 }
 
 // Resolved implements the Expression interface.
-func (p *BinaryExpression) Resolved() bool {
-	return p.Left.Resolved() && p.Right.Resolved()
+func (p *BinaryExpressionStub) Resolved() bool {
+	return p.LeftChild.Resolved() && p.RightChild.Resolved()
 }
 
 // IsNullable returns whether the expression can be null.
-func (p *BinaryExpression) IsNullable() bool {
-	return p.Left.IsNullable() || p.Right.IsNullable()
+func (p *BinaryExpressionStub) IsNullable() bool {
+	return p.LeftChild.IsNullable() || p.RightChild.IsNullable()
 }
 
 type NaryExpression struct {

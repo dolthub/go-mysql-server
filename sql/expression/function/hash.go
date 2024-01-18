@@ -142,7 +142,7 @@ func (f *SHA1) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 // SHA2 function returns the SHA-224/256/384/512 hash of the input.
 // https://dev.mysql.com/doc/refman/8.0/en/encryption-functions.html#function_sha2
 type SHA2 struct {
-	expression.BinaryExpression
+	expression.BinaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*SHA2)(nil)
@@ -150,7 +150,7 @@ var _ sql.CollationCoercible = (*SHA2)(nil)
 
 // NewSHA2 returns a new SHA2 function expression
 func NewSHA2(arg, count sql.Expression) sql.Expression {
-	return &SHA2{expression.BinaryExpression{Left: arg, Right: count}}
+	return &SHA2{expression.BinaryExpressionStub{LeftChild: arg, RightChild: count}}
 }
 
 // Description implements sql.FunctionExpression
@@ -165,14 +165,14 @@ func (*SHA2) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 
 // Eval implements sql.Expression
 func (f *SHA2) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	arg, err := f.Left.Eval(ctx, row)
+	arg, err := f.LeftChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 	if arg == nil {
 		return nil, nil
 	}
-	countArg, err := f.Right.Eval(ctx, row)
+	countArg, err := f.RightChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -217,7 +217,7 @@ func (f *SHA2) FunctionName() string {
 
 // String implements sql.Expression
 func (f *SHA2) String() string {
-	return fmt.Sprintf("%s(%s,%s)", f.FunctionName(), f.Left, f.Right)
+	return fmt.Sprintf("%s(%s,%s)", f.FunctionName(), f.LeftChild, f.RightChild)
 }
 
 // Type implements sql.Expression

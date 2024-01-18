@@ -69,7 +69,7 @@ func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *
 
 		switch e := e.(type) {
 		case *expression.SetField:
-			switch left := e.Left.(type) {
+			switch left := e.LeftChild.(type) {
 			case column:
 				if strings.ToLower(left.Table()) == "old" {
 					err = sql.ErrInvalidUpdateOfOldRow.New()

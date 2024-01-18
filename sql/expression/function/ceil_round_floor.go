@@ -198,7 +198,7 @@ func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // digits of it's integer part set to 0. If d is not specified or nil/null
 // it defaults to 0.
 type Round struct {
-	expression.BinaryExpression
+	expression.BinaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*Round)(nil)
@@ -216,7 +216,7 @@ func NewRound(args ...sql.Expression) (sql.Expression, error) {
 		right = args[1]
 	}
 
-	return &Round{expression.BinaryExpression{Left: args[0], Right: right}}, nil
+	return &Round{expression.BinaryExpressionStub{LeftChild: args[0], RightChild: right}}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -231,16 +231,16 @@ func (r *Round) Description() string {
 
 // Children implements the Expression interface.
 func (r *Round) Children() []sql.Expression {
-	if r.Right == nil {
-		return []sql.Expression{r.Left}
+	if r.RightChild == nil {
+		return []sql.Expression{r.LeftChild}
 	}
 
-	return r.BinaryExpression.Children()
+	return r.BinaryExpressionStub.Children()
 }
 
 // Eval implements the Expression interface.
 func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	val, err := r.Left.Eval(ctx, row)
+	val, err := r.LeftChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -257,9 +257,9 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	prec := int32(0)
-	if r.Right != nil {
+	if r.RightChild != nil {
 		var tmp interface{}
-		tmp, err = r.Right.Eval(ctx, row)
+		tmp, err = r.RightChild.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
@@ -288,15 +288,15 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	var res interface{}
 	tmp := val.(decimal.Decimal).Round(prec)
-	if types.IsSigned(r.Left.Type()) {
+	if types.IsSigned(r.LeftChild.Type()) {
 		res, _, err = types.Int64.Convert(tmp)
-	} else if types.IsUnsigned(r.Left.Type()) {
+	} else if types.IsUnsigned(r.LeftChild.Type()) {
 		res, _, err = types.Uint64.Convert(tmp)
-	} else if types.IsFloat(r.Left.Type()) {
+	} else if types.IsFloat(r.LeftChild.Type()) {
 		res, _, err = types.Float64.Convert(tmp)
-	} else if types.IsDecimal(r.Left.Type()) {
+	} else if types.IsDecimal(r.LeftChild.Type()) {
 		res = tmp
-	} else if types.IsTextBlob(r.Left.Type()) {
+	} else if types.IsTextBlob(r.LeftChild.Type()) {
 		res, _, err = types.Float64.Convert(tmp)
 	}
 
@@ -305,25 +305,25 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // IsNullable implements the Expression interface.
 func (r *Round) IsNullable() bool {
-	return r.Left.IsNullable()
+	return r.LeftChild.IsNullable()
 }
 
 func (r *Round) String() string {
-	if r.Right == nil {
-		return fmt.Sprintf("%s(%s,0)", r.FunctionName(), r.Left.String())
+	if r.RightChild == nil {
+		return fmt.Sprintf("%s(%s,0)", r.FunctionName(), r.LeftChild.String())
 	}
 
-	return fmt.Sprintf("%s(%s,%s)", r.FunctionName(), r.Left.String(), r.Right.String())
+	return fmt.Sprintf("%s(%s,%s)", r.FunctionName(), r.LeftChild.String(), r.RightChild.String())
 }
 
 // Resolved implements the Expression interface.
 func (r *Round) Resolved() bool {
-	return r.Left.Resolved() && (r.Right == nil || r.Right.Resolved())
+	return r.LeftChild.Resolved() && (r.RightChild == nil || r.RightChild.Resolved())
 }
 
 // Type implements the Expression interface.
 func (r *Round) Type() sql.Type {
-	leftChildType := r.Left.Type()
+	leftChildType := r.LeftChild.Type()
 	if types.IsNumber(leftChildType) {
 		return leftChildType
 	}

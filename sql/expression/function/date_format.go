@@ -251,7 +251,7 @@ func formatDate(format string, t time.Time) (string, error) {
 
 // DateFormat function returns a string representation of the date specified in the format specified
 type DateFormat struct {
-	expression.BinaryExpression
+	expression.BinaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*DateFormat)(nil)
@@ -270,20 +270,20 @@ func (f *DateFormat) Description() string {
 // NewDateFormat returns a new DateFormat UDF
 func NewDateFormat(ex, value sql.Expression) sql.Expression {
 	return &DateFormat{
-		expression.BinaryExpression{
-			Left:  ex,
-			Right: value,
+		expression.BinaryExpressionStub{
+			LeftChild:  ex,
+			RightChild: value,
 		},
 	}
 }
 
 // Eval implements the Expression interface.
 func (f *DateFormat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if f.Left == nil || f.Right == nil {
+	if f.LeftChild == nil || f.RightChild == nil {
 		return nil, nil
 	}
 
-	left, err := f.Left.Eval(ctx, row)
+	left, err := f.LeftChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -300,7 +300,7 @@ func (f *DateFormat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	t := timeVal.(time.Time)
 
-	right, err := f.Right.Eval(ctx, row)
+	right, err := f.RightChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -330,17 +330,17 @@ func (*DateFormat) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 
 // IsNullable implements the Expression interface.
 func (f *DateFormat) IsNullable() bool {
-	if types.IsNull(f.Left) {
-		if types.IsNull(f.Right) {
+	if types.IsNull(f.LeftChild) {
+		if types.IsNull(f.RightChild) {
 			return true
 		}
-		return f.Right.IsNullable()
+		return f.RightChild.IsNullable()
 	}
-	return f.Left.IsNullable()
+	return f.LeftChild.IsNullable()
 }
 
 func (f *DateFormat) String() string {
-	return fmt.Sprintf("date_format(%s, %s)", f.Left, f.Right)
+	return fmt.Sprintf("date_format(%s, %s)", f.LeftChild, f.RightChild)
 }
 
 // WithChildren implements the Expression interface.

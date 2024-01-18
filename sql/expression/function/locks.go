@@ -269,7 +269,7 @@ func IsUsedLockFunc(ctx *sql.Context, ls *sql.LockSubsystem, lockName string) (i
 
 // GetLock is a SQL function implementing get_lock
 type GetLock struct {
-	expression.BinaryExpression
+	expression.BinaryExpressionStub
 	ls *sql.LockSubsystem
 }
 
@@ -279,7 +279,7 @@ var _ sql.CollationCoercible = (*GetLock)(nil)
 // CreateNewGetLock returns a new GetLock object
 func CreateNewGetLock(ls *sql.LockSubsystem) func(e1, e2 sql.Expression) sql.Expression {
 	return func(e1, e2 sql.Expression) sql.Expression {
-		return &GetLock{expression.BinaryExpression{e1, e2}, ls}
+		return &GetLock{expression.BinaryExpressionStub{e1, e2}, ls}
 	}
 }
 
@@ -295,11 +295,11 @@ func (gl *GetLock) Description() string {
 
 // Eval implements the Expression interface.
 func (gl *GetLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if gl.Left == nil {
+	if gl.LeftChild == nil {
 		return nil, nil
 	}
 
-	leftVal, err := gl.Left.Eval(ctx, row)
+	leftVal, err := gl.LeftChild.Eval(ctx, row)
 
 	if err != nil {
 		return nil, err
@@ -309,11 +309,11 @@ func (gl *GetLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	if gl.Right == nil {
+	if gl.RightChild == nil {
 		return nil, nil
 	}
 
-	rightVal, err := gl.Right.Eval(ctx, row)
+	rightVal, err := gl.RightChild.Eval(ctx, row)
 
 	if err != nil {
 		return nil, err
@@ -323,14 +323,14 @@ func (gl *GetLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	s, ok := gl.Left.Type().(sql.StringType)
+	s, ok := gl.LeftChild.Type().(sql.StringType)
 	if !ok {
-		return nil, ErrIllegalLockNameArgType.New(gl.Left.Type().String(), gl.FunctionName())
+		return nil, ErrIllegalLockNameArgType.New(gl.LeftChild.Type().String(), gl.FunctionName())
 	}
 
 	lockName, err := types.ConvertToString(leftVal, s)
 	if err != nil {
-		return nil, fmt.Errorf("%w; %s", ErrIllegalLockNameArgType.New(gl.Left.Type().String(), gl.FunctionName()), err)
+		return nil, fmt.Errorf("%w; %s", ErrIllegalLockNameArgType.New(gl.LeftChild.Type().String(), gl.FunctionName()), err)
 	}
 
 	timeout, _, err := types.Int64.Convert(rightVal)
@@ -354,7 +354,7 @@ func (gl *GetLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // String implements the fmt.Stringer interface.
 func (gl *GetLock) String() string {
-	return fmt.Sprintf("get_lock(%s, %s)", gl.Left.String(), gl.Right.String())
+	return fmt.Sprintf("get_lock(%s, %s)", gl.LeftChild.String(), gl.RightChild.String())
 }
 
 // IsNullable implements the Expression interface.
@@ -368,7 +368,7 @@ func (gl *GetLock) WithChildren(children ...sql.Expression) (sql.Expression, err
 		return nil, sql.ErrInvalidChildrenNumber.New(gl, len(children), 1)
 	}
 
-	return &GetLock{expression.BinaryExpression{Left: children[0], Right: children[1]}, gl.ls}, nil
+	return &GetLock{expression.BinaryExpressionStub{LeftChild: children[0], RightChild: children[1]}, gl.ls}, nil
 }
 
 // Type implements the Expression interface.

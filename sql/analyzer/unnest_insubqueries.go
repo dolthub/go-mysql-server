@@ -97,8 +97,8 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 				var max1 bool
 				switch e := candE.(type) {
 				case *plan.InSubquery:
-					sq, _ = e.Right.(*plan.Subquery)
-					l = e.Left
+					sq, _ = e.RightChild.(*plan.Subquery)
+					l = e.LeftChild
 
 					joinF = expression.NewEquals(nil, nil)
 				case expression.Comparer:

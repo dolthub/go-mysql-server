@@ -87,7 +87,7 @@ func getTablesToBeUpdated(node sql.Node) map[string]struct{} {
 	transform.InspectExpressions(node, func(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.SetField:
-			gf := e.Left.(*expression.GetField)
+			gf := e.LeftChild.(*expression.GetField)
 			ret[gf.Table()] = struct{}{}
 			return false
 		}

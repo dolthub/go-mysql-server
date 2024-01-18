@@ -25,7 +25,7 @@ import (
 
 // FindInSet takes out the specified unit(s) from the time expression.
 type FindInSet struct {
-	expression.BinaryExpression
+	expression.BinaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*FindInSet)(nil)
@@ -34,9 +34,9 @@ var _ sql.CollationCoercible = (*FindInSet)(nil)
 // NewFindInSet creates a new FindInSet expression.
 func NewFindInSet(e1, e2 sql.Expression) sql.Expression {
 	return &FindInSet{
-		expression.BinaryExpression{
-			Left:  e1,
-			Right: e2,
+		expression.BinaryExpressionStub{
+			LeftChild:  e1,
+			RightChild: e2,
 		},
 	}
 }
@@ -60,7 +60,7 @@ func (*FindInSet) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 }
 
 func (f *FindInSet) String() string {
-	return fmt.Sprintf("%s(%s from %s)", f.FunctionName(), f.Left, f.Right)
+	return fmt.Sprintf("%s(%s from %s)", f.FunctionName(), f.LeftChild, f.RightChild)
 }
 
 // WithChildren implements the Expression interface.
@@ -73,16 +73,16 @@ func (f *FindInSet) WithChildren(children ...sql.Expression) (sql.Expression, er
 
 // Eval implements the Expression interface.
 func (f *FindInSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if f.Left == nil || f.Right == nil {
+	if f.LeftChild == nil || f.RightChild == nil {
 		return nil, nil
 	}
 
-	left, err := f.Left.Eval(ctx, row)
+	left, err := f.LeftChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	right, err := f.Right.Eval(ctx, row)
+	right, err := f.RightChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func (f *FindInSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	var r string
-	rType := f.Right.Type()
+	rType := f.RightChild.Type()
 	if setType, ok := rType.(types.SetType); ok {
 		// TODO: set type should take advantage of bit arithmetic
 		r, err = setType.BitsToString(right.(uint64))
@@ -124,8 +124,8 @@ func (f *FindInSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		r = rVal.(string)
 	}
 
-	leftColl, leftCoer := sql.GetCoercibility(ctx, f.Left)
-	rightColl, rightCoer := sql.GetCoercibility(ctx, f.Right)
+	leftColl, leftCoer := sql.GetCoercibility(ctx, f.LeftChild)
+	rightColl, rightCoer := sql.GetCoercibility(ctx, f.RightChild)
 	collPref, _ := sql.ResolveCoercibility(leftColl, leftCoer, rightColl, rightCoer)
 
 	strType := types.CreateLongText(collPref)

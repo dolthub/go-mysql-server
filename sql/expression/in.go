@@ -26,7 +26,7 @@ import (
 
 // InTuple is an expression that checks an expression is inside a list of expressions.
 type InTuple struct {
-	BinaryExpression
+	BinaryExpressionStub
 }
 
 // We implement Comparer because we have a Left() and a Right(), but we can't be Compare()d
@@ -47,16 +47,16 @@ func (*InTuple) CollationCoercibility(ctx *sql.Context) (collation sql.Collation
 }
 
 func (in *InTuple) Left() sql.Expression {
-	return in.BinaryExpression.Left
+	return in.BinaryExpressionStub.LeftChild
 }
 
 func (in *InTuple) Right() sql.Expression {
-	return in.BinaryExpression.Right
+	return in.BinaryExpressionStub.RightChild
 }
 
 // NewInTuple creates an InTuple expression.
 func NewInTuple(left sql.Expression, right sql.Expression) *InTuple {
-	return &InTuple{BinaryExpression{left, right}}
+	return &InTuple{BinaryExpressionStub{left, right}}
 }
 
 // Eval implements the Expression interface.
