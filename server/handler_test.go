@@ -257,7 +257,7 @@ func TestHandlerComPrepare(t *testing.T) {
 			name:      "select statement returns non-nil schema",
 			statement: "select c1 from test where c1 > ?",
 			expected: []*query.Field{
-				{Name: "c1", OrgName: "c1", Table: "test", OrgTable: "test", Type: query.Type_INT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 11},
+				{Name: "c1", OrgName: "c1", Table: "test", OrgTable: "test", Type: query.Type_INT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 11, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
 			},
 		},
 		{
@@ -324,7 +324,7 @@ func TestHandlerComPrepareExecute(t *testing.T) {
 				},
 			},
 			schema: []*query.Field{
-				{Name: "c1", OrgName: "c1", Table: "test", OrgTable: "test", Type: query.Type_INT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 11},
+				{Name: "c1", OrgName: "c1", Table: "test", OrgTable: "test", Type: query.Type_INT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 11, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
 			},
 			expected: []sql.Row{
 				{0}, {1}, {2}, {3}, {4},
@@ -402,7 +402,7 @@ func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 				},
 			},
 			schema: []*query.Field{
-				{Name: "c1", OrgName: "c1", Table: "test", OrgTable: "test", Type: query.Type_INT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 11},
+				{Name: "c1", OrgName: "c1", Table: "test", OrgTable: "test", Type: query.Type_INT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 11, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
 			},
 			expected: []sql.Row{
 				{0}, {1}, {2}, {3}, {4},
@@ -663,57 +663,57 @@ func TestSchemaToFields(t *testing.T) {
 
 	expected := []*query.Field{
 		// Blob, Text, and JSON Types
-		{Name: "tinyblob", OrgName: "tinyblob", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 255},
-		{Name: "blob", OrgName: "blob", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 65_535},
-		{Name: "mediumblob", OrgName: "mediumblob", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 16_777_215},
-		{Name: "longblob", OrgName: "longblob", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 4_294_967_295},
-		{Name: "tinytext", OrgName: "tinytext", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_TEXT, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 1020},
-		{Name: "text", OrgName: "text", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_TEXT, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 262_140},
-		{Name: "mediumtext", OrgName: "mediumtext", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_TEXT, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 67_108_860},
-		{Name: "longtext", OrgName: "longtext", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_TEXT, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 4_294_967_295},
-		{Name: "json", OrgName: "json", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_JSON, Charset: mysql.CharacterSetBinary, ColumnLength: 4_294_967_295},
+		{Name: "tinyblob", OrgName: "tinyblob", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 255, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "blob", OrgName: "blob", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 65_535, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "mediumblob", OrgName: "mediumblob", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 16_777_215, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "longblob", OrgName: "longblob", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 4_294_967_295, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "tinytext", OrgName: "tinytext", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_TEXT, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 1020, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "text", OrgName: "text", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_TEXT, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 262_140, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "mediumtext", OrgName: "mediumtext", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_TEXT, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 67_108_860, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "longtext", OrgName: "longtext", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_TEXT, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 4_294_967_295, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "json", OrgName: "json", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_JSON, Charset: mysql.CharacterSetBinary, ColumnLength: 4_294_967_295, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
 
 		// Geometry Types
-		{Name: "geometry", OrgName: "geometry", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetBinary, ColumnLength: 4_294_967_295},
-		{Name: "point", OrgName: "point", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetBinary, ColumnLength: 4_294_967_295},
-		{Name: "polygon", OrgName: "polygon", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetBinary, ColumnLength: 4_294_967_295},
-		{Name: "linestring", OrgName: "linestring", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetBinary, ColumnLength: 4_294_967_295},
+		{Name: "geometry", OrgName: "geometry", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetBinary, ColumnLength: 4_294_967_295, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "point", OrgName: "point", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetBinary, ColumnLength: 4_294_967_295, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "polygon", OrgName: "polygon", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetBinary, ColumnLength: 4_294_967_295, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "linestring", OrgName: "linestring", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetBinary, ColumnLength: 4_294_967_295, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
 
 		// Integer Types
-		{Name: "uint8", OrgName: "uint8", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_UINT8, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 3},
-		{Name: "int8", OrgName: "int8", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_INT8, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 4},
-		{Name: "uint16", OrgName: "uint16", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_UINT16, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 5},
-		{Name: "int16", OrgName: "int16", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_INT16, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 6},
-		{Name: "uint24", OrgName: "uint24", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_UINT24, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 8},
-		{Name: "int24", OrgName: "int24", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_INT24, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 9},
-		{Name: "uint32", OrgName: "uint32", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_UINT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 10},
-		{Name: "int32", OrgName: "int32", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_INT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 11},
-		{Name: "uint64", OrgName: "uint64", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_UINT64, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 20},
-		{Name: "int64", OrgName: "int64", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_INT64, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 20},
+		{Name: "uint8", OrgName: "uint8", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_UINT8, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 3, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG | query.MySqlFlag_UNSIGNED_FLAG)},
+		{Name: "int8", OrgName: "int8", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_INT8, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 4, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "uint16", OrgName: "uint16", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_UINT16, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 5, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG | query.MySqlFlag_UNSIGNED_FLAG)},
+		{Name: "int16", OrgName: "int16", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_INT16, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 6, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "uint24", OrgName: "uint24", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_UINT24, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 8, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG | query.MySqlFlag_UNSIGNED_FLAG)},
+		{Name: "int24", OrgName: "int24", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_INT24, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 9, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "uint32", OrgName: "uint32", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_UINT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 10, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG | query.MySqlFlag_UNSIGNED_FLAG)},
+		{Name: "int32", OrgName: "int32", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_INT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 11, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "uint64", OrgName: "uint64", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_UINT64, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 20, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG | query.MySqlFlag_UNSIGNED_FLAG)},
+		{Name: "int64", OrgName: "int64", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_INT64, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 20, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
 
 		// Floating Point and Decimal Types
-		{Name: "float32", OrgName: "float32", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_FLOAT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 12},
-		{Name: "float64", OrgName: "float64", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_FLOAT64, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 22},
-		{Name: "decimal10_0", OrgName: "decimal10_0", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_DECIMAL, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 11, Decimals: 0},
-		{Name: "decimal60_30", OrgName: "decimal60_30", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_DECIMAL, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 62, Decimals: 30},
+		{Name: "float32", OrgName: "float32", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_FLOAT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 12, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "float64", OrgName: "float64", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_FLOAT64, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 22, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "decimal10_0", OrgName: "decimal10_0", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_DECIMAL, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 11, Decimals: 0, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "decimal60_30", OrgName: "decimal60_30", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_DECIMAL, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 62, Decimals: 30, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
 
 		// Char, Binary, and Bit Types
-		{Name: "varchar50", OrgName: "varchar50", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_VARCHAR, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 50 * 4},
-		{Name: "varbinary12345", OrgName: "varbinary12345", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_VARBINARY, Charset: mysql.CharacterSetBinary, ColumnLength: 12345},
-		{Name: "binary123", OrgName: "binary123", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_BINARY, Charset: mysql.CharacterSetBinary, ColumnLength: 123},
-		{Name: "char123", OrgName: "char123", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_CHAR, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 123 * 4},
-		{Name: "bit12", OrgName: "bit12", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_BIT, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 12},
+		{Name: "varchar50", OrgName: "varchar50", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_VARCHAR, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 50 * 4, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "varbinary12345", OrgName: "varbinary12345", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_VARBINARY, Charset: mysql.CharacterSetBinary, ColumnLength: 12345, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "binary123", OrgName: "binary123", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_BINARY, Charset: mysql.CharacterSetBinary, ColumnLength: 123, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "char123", OrgName: "char123", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_CHAR, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 123 * 4, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "bit12", OrgName: "bit12", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_BIT, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 12, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
 
 		// Dates
-		{Name: "datetime", OrgName: "datetime", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_DATETIME, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 26},
-		{Name: "timestamp", OrgName: "timestamp", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_TIMESTAMP, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 26},
-		{Name: "date", OrgName: "date", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_DATE, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 10},
-		{Name: "time", OrgName: "time", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_TIME, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 17},
-		{Name: "year", OrgName: "year", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_YEAR, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 4},
+		{Name: "datetime", OrgName: "datetime", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_DATETIME, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 26, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "timestamp", OrgName: "timestamp", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_TIMESTAMP, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 26, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "date", OrgName: "date", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_DATE, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 10, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "time", OrgName: "time", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_TIME, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 17, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "year", OrgName: "year", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_YEAR, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 4, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
 
 		// Set and Enum Types
-		{Name: "set", OrgName: "set", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_SET, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 72},
-		{Name: "enum", OrgName: "enum", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_ENUM, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 20},
+		{Name: "set", OrgName: "set", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_SET, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 72, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "enum", OrgName: "enum", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_ENUM, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 20, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
 	}
 
 	require.Equal(len(schema), len(expected))

@@ -133,18 +133,18 @@ func TestLocks(t *testing.T) {
 
 	ctx := enginetest.NewContext(harness)
 	ctx.SetCurrentDatabase("db")
-	sch, iter, err := engine.Query(ctx, "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
+	_, iter, err := engine.Query(ctx, "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
 	require.NoError(err)
 
-	_, err = sql.RowIterToRows(ctx, sch, iter)
+	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
 	ctx = enginetest.NewContext(harness)
 	ctx.SetCurrentDatabase("db")
-	sch, iter, err = engine.Query(ctx, "UNLOCK TABLES")
+	_, iter, err = engine.Query(ctx, "UNLOCK TABLES")
 	require.NoError(err)
 
-	_, err = sql.RowIterToRows(ctx, sch, iter)
+	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
 	require.Equal(1, t1.readLocks)
@@ -184,10 +184,10 @@ func TestRootSpanFinish(t *testing.T) {
 	sql.WithRootSpan(fakeSpan)(sqlCtx)
 	sqlCtx = sqlCtx.WithContext(ctx)
 
-	sch, iter, err := e.Query(sqlCtx, "SELECT 1")
+	_, iter, err := e.Query(sqlCtx, "SELECT 1")
 	require.NoError(t, err)
 
-	_, err = sql.RowIterToRows(sqlCtx, sch, iter)
+	_, err = sql.RowIterToRows(sqlCtx, iter)
 	require.NoError(t, err)
 
 	require.True(t, fakeSpan.finished)
@@ -274,7 +274,7 @@ func TestShowProcessList(t *testing.T) {
 
 	iter, err := rowexec.DefaultBuilder.Build(ctx, n, nil)
 	require.NoError(err)
-	rows, err := sql.RowIterToRows(ctx, n.Schema(), iter)
+	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
 	expected := []sql.Row{
@@ -351,7 +351,7 @@ func TestTrackProcess(t *testing.T) {
 
 	iter, err := rowexec.DefaultBuilder.Build(ctx, proc, nil)
 	require.NoError(err)
-	_, err = sql.RowIterToRows(ctx, nil, iter)
+	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
 	procs := ctx.ProcessList.Processes()
@@ -654,7 +654,14 @@ func TestTableFunctions(t *testing.T) {
 	harness.Setup(setup.MydbData)
 
 	databaseProvider := harness.NewDatabaseProvider()
-	testDatabaseProvider := NewTestProvider(&databaseProvider, SimpleTableFunction{}, memory.IntSequenceTable{}, memory.PointLookupTable{}, memory.TableFunc{})
+	testDatabaseProvider := NewTestProvider(
+		&databaseProvider,
+		SimpleTableFunction{},
+		memory.IntSequenceTable{},
+		memory.PointLookupTable{},
+		memory.TableFunc{},
+		memory.ExponentialDistTable{},
+		memory.NormalDistTable{})
 
 	engine := enginetest.NewEngineWithProvider(t, harness, testDatabaseProvider)
 	engine.EngineAnalyzer().ExecBuilder = rowexec.DefaultBuilder
@@ -747,17 +754,17 @@ func TestCollationCoercion(t *testing.T) {
 		collationQuery := fmt.Sprintf(`SELECT COLLATION(%s) FROM temp_tbl LIMIT 1;`, test.Parameters)
 		for i, query := range []string{coercibilityQuery, collationQuery} {
 			t.Run(query, func(t *testing.T) {
-				sch, iter, err := engine.Query(ctx, query)
+				_, iter, err := engine.Query(ctx, query)
 				if test.Error {
 					if err == nil {
-						_, err := sql.RowIterToRows(ctx, sch, iter)
+						_, err := sql.RowIterToRows(ctx, iter)
 						require.Error(t, err)
 					} else {
 						require.Error(t, err)
 					}
 				} else {
 					require.NoError(t, err)
-					rows, err := sql.RowIterToRows(ctx, sch, iter)
+					rows, err := sql.RowIterToRows(ctx, iter)
 					require.NoError(t, err)
 					require.Equal(t, 1, len(rows))
 					require.Equal(t, 1, len(rows[0]))
@@ -793,9 +800,9 @@ func TestRegex(t *testing.T) {
 				enginetest.TestQueryWithContext(t, ctx, engine, harness, tt.Query, tt.Expected, nil, nil)
 			} else {
 				newCtx := ctx.WithQuery(tt.Query)
-				sch, iter, err := engine.Query(newCtx, tt.Query)
+				_, iter, err := engine.Query(newCtx, tt.Query)
 				if err == nil {
-					_, err = sql.RowIterToRows(newCtx, sch, iter)
+					_, err = sql.RowIterToRows(newCtx, iter)
 					require.Error(t, err)
 				}
 			}

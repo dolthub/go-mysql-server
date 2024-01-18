@@ -127,6 +127,11 @@ func (t systemSetType) Equals(otherType sql.Type) bool {
 	return false
 }
 
+// MaxTextResponseByteLength implements the Type interface
+func (t systemSetType) MaxTextResponseByteLength(ctx *sql.Context) uint32 {
+	return t.UnderlyingType().MaxTextResponseByteLength(ctx)
+}
+
 // Promote implements the Type interface.
 func (t systemSetType) Promote() sql.Type {
 	return t

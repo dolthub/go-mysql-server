@@ -1031,14 +1031,14 @@ func convertToUint32(t NumberTypeImpl_, v interface{}) (uint32, sql.ConvertInRan
 		return uint32(v), sql.InRange, nil
 	case int32:
 		if v < 0 {
-			return uint32(math.MaxUint32 + uint(v)), sql.OutOfRange, nil
+			return uint32(math.MaxUint32 - uint(-v-1)), sql.OutOfRange, nil
 		} else if int(v) > math.MaxUint32 {
 			return uint32(math.MaxUint32), sql.OutOfRange, nil
 		}
 		return uint32(v), sql.InRange, nil
 	case int64:
 		if v < 0 {
-			return uint32(math.MaxUint32 + uint(v)), sql.OutOfRange, nil
+			return uint32(math.MaxUint32 - uint(-v-1)), sql.OutOfRange, nil
 		} else if v > math.MaxUint32 {
 			return uint32(math.MaxUint32), sql.OutOfRange, nil
 		}

@@ -43,7 +43,7 @@ func TestTime_Year(t *testing.T) {
 		expected interface{}
 		err      bool
 	}{
-		{"invalid type", sql.NewRow([]byte{0, 1, 2}), int32(0), false},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
 		{"date as string", sql.NewRow(stringDate), int32(2007), false},
 		{"date as time", sql.NewRow(time.Now()), int32(time.Now().UTC().Year()), false},
 	}
@@ -73,9 +73,130 @@ func TestTime_Month(t *testing.T) {
 		err      bool
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
-		{"invalid type", sql.NewRow([]byte{0, 1, 2}), int32(1), false},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
 		{"date as string", sql.NewRow(stringDate), int32(1), false},
 		{"date as time", sql.NewRow(time.Now()), int32(time.Now().UTC().Month()), false},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			val, err := f.Eval(ctx, tt.row)
+			if tt.err {
+				require.Error(err)
+			} else {
+				require.NoError(err)
+				require.Equal(tt.expected, val)
+			}
+		})
+	}
+}
+
+func TestTime_Quarter(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	f := NewQuarter(expression.NewGetField(0, types.LongText, "foo", false))
+
+	testCases := []struct {
+		name     string
+		row      sql.Row
+		expected interface{}
+		err      bool
+	}{
+		{
+			name:     "null date",
+			row:      sql.NewRow(nil),
+			expected: nil,
+		},
+		{
+			name:     "1",
+			row:      sql.NewRow(1),
+			expected: nil,
+		},
+		{
+			name:     "1.1",
+			row:      sql.NewRow(1.1),
+			expected: nil,
+		},
+		{
+			name:     "invalid type",
+			row:      sql.NewRow([]byte{0, 1, 2}),
+			expected: nil,
+		},
+		{
+			name:     "date as string",
+			row:      sql.NewRow(stringDate),
+			expected: int32(1),
+		},
+		{
+			name:     "another date as string",
+			row:      sql.NewRow("2008-08-01"),
+			expected: int32(3),
+		},
+		{
+			name:     "january",
+			row:      sql.NewRow("2008-01-01"),
+			expected: int32(1),
+		},
+		{
+			name:     "february",
+			row:      sql.NewRow("2008-02-01"),
+			expected: int32(1),
+		},
+		{
+			name:     "march",
+			row:      sql.NewRow("2008-03-01"),
+			expected: int32(1),
+		},
+		{
+			name:     "april",
+			row:      sql.NewRow("2008-04-01"),
+			expected: int32(2),
+		},
+		{
+			name:     "may",
+			row:      sql.NewRow("2008-05-01"),
+			expected: int32(2),
+		},
+		{
+			name:     "june",
+			row:      sql.NewRow("2008-06-01"),
+			expected: int32(2),
+		},
+		{
+			name:     "july",
+			row:      sql.NewRow("2008-07-01"),
+			expected: int32(3),
+		},
+		{
+			name:     "august",
+			row:      sql.NewRow("2008-08-01"),
+			expected: int32(3),
+		},
+		{
+			name:     "septemeber",
+			row:      sql.NewRow("2008-09-01"),
+			expected: int32(3),
+		},
+		{
+			name:     "october",
+			row:      sql.NewRow("2008-10-01"),
+			expected: int32(4),
+		},
+		{
+			name:     "november",
+			row:      sql.NewRow("2008-11-01"),
+			expected: int32(4),
+		},
+		{
+			name:     "december",
+			row:      sql.NewRow("2008-12-01"),
+			expected: int32(4),
+		},
+		{
+			name:     "date as time",
+			row:      sql.NewRow(time.Now()),
+			expected: int32((time.Now().UTC().Month()-1)/3 + 1),
+		},
 	}
 
 	for _, tt := range testCases {
@@ -103,7 +224,7 @@ func TestTime_Day(t *testing.T) {
 		err      bool
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
-		{"invalid type", sql.NewRow([]byte{0, 1, 2}), int32(1), false},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
 		{"date as string", sql.NewRow(stringDate), int32(2), false},
 		{"date as time", sql.NewRow(time.Now()), int32(time.Now().UTC().Day()), false},
 	}
@@ -133,7 +254,7 @@ func TestTime_Weekday(t *testing.T) {
 		err      bool
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
-		{"invalid type", sql.NewRow([]byte{0, 1, 2}), int32(5), false},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
 		{"date as string", sql.NewRow(stringDate), int32(1), false},
 		{"date as time", sql.NewRow(time.Now()), int32(time.Now().UTC().Weekday()+6) % 7, false},
 	}
@@ -163,7 +284,7 @@ func TestTime_Hour(t *testing.T) {
 		err      bool
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
-		{"invalid type", sql.NewRow([]byte{0, 1, 2}), int32(0), false},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
 		{"date as string", sql.NewRow(stringDate), int32(14), false},
 		{"date as time", sql.NewRow(time.Now()), int32(time.Now().UTC().Hour()), false},
 	}
@@ -193,7 +314,7 @@ func TestTime_Minute(t *testing.T) {
 		err      bool
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
-		{"invalid type", sql.NewRow([]byte{0, 1, 2}), int32(0), false},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
 		{"date as string", sql.NewRow(stringDate), int32(15), false},
 		{"date as time", sql.NewRow(time.Now()), int32(time.Now().UTC().Minute()), false},
 	}
@@ -223,7 +344,7 @@ func TestTime_Second(t *testing.T) {
 		err      bool
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
-		{"invalid type", sql.NewRow([]byte{0, 1, 2}), int32(0), false},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
 		{"date as string", sql.NewRow(stringDate), int32(16), false},
 		{"date as time", sql.NewRow(time.Now()), int32(time.Now().UTC().Second()), false},
 	}
@@ -284,7 +405,7 @@ func TestTime_DayOfWeek(t *testing.T) {
 		err      bool
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
-		{"invalid type", sql.NewRow([]byte{0, 1, 2}), int32(7), false},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
 		{"date as string", sql.NewRow(stringDate), int32(3), false},
 		{"date as time", sql.NewRow(time.Now()), int32(time.Now().UTC().Weekday() + 1), false},
 	}
@@ -314,7 +435,7 @@ func TestTime_DayOfYear(t *testing.T) {
 		err      bool
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
-		{"invalid type", sql.NewRow([]byte{0, 1, 2}), int32(1), false},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
 		{"date as string", sql.NewRow(stringDate), int32(2), false},
 		{"date as time", sql.NewRow(time.Now()), int32(time.Now().UTC().YearDay()), false},
 	}
@@ -376,8 +497,8 @@ func TestYearWeek(t *testing.T) {
 		expected interface{}
 		err      bool
 	}{
-		{"null date", sql.NewRow(nil), nil, true},
-		{"invalid type", sql.NewRow([]byte{0, 1, 2}), int32(1), false},
+		{"null date", sql.NewRow(nil), nil, false},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
 		{"date as string", sql.NewRow(stringDate), int32(200653), false},
 	}
 
@@ -495,7 +616,7 @@ func TestDate(t *testing.T) {
 		err      bool
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
-		{"invalid type", sql.NewRow([]byte{0, 1, 2}), types.Date.Zero().(time.Time).Format("2006-01-02"), false},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
 		{"date as string", sql.NewRow(stringDate), "2007-01-02", false},
 		{"date as time", sql.NewRow(time.Now().UTC()), time.Now().UTC().Format("2006-01-02"), false},
 	}

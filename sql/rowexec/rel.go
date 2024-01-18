@@ -540,7 +540,7 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 	if err != nil {
 		return nil, err
 	}
-	rows, err := sql.RowIterToRows(ctx, nil, rowIter)
+	rows, err := sql.RowIterToRows(ctx, rowIter)
 	if err != nil {
 		return nil, err
 	}

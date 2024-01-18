@@ -198,6 +198,25 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			b.handleErr(err)
 		}
 		return expression.NewConvertUsing(expr, charset)
+	case *ast.CharExpr:
+		args := make([]sql.Expression, len(v.Exprs))
+		for i, e := range v.Exprs {
+			args[i] = b.selectExprToExpression(inScope, e)
+		}
+
+		f, err := function.NewChar(args...)
+		if err != nil {
+			b.handleErr(err)
+		}
+
+		collId, err := sql.ParseCollation(&v.Type, nil, true)
+		if err != nil {
+			b.handleErr(err)
+		}
+
+		charFunc := f.(*function.Char)
+		charFunc.Collation = collId
+		return charFunc
 	case *ast.ConvertExpr:
 		var err error
 		typeLength := 0

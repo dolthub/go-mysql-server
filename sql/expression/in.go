@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/cespare/xxhash/v2"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -250,46 +248,44 @@ func hashOfSimple(ctx *sql.Context, i interface{}, t sql.Type) (uint64, error) {
 		return 0, nil
 	}
 
-	// Collated strings that are equivalent may have different runes, so we must make them hash to the same value
+	var str string
+	coll := sql.Collation_Default
 	if types.IsTextOnly(t) {
-		if str, ok := i.(string); ok {
-			return t.(sql.StringType).Collation().HashToUint(str)
+		coll = t.(sql.StringType).Collation()
+		if s, ok := i.(string); ok {
+			str = s
 		} else {
 			converted, err := convertOrTruncate(ctx, i, t)
 			if err != nil {
 				return 0, err
 			}
-			return t.(sql.StringType).Collation().HashToUint(converted.(string))
+			str = converted.(string)
 		}
 	} else {
-		hash := xxhash.New()
 		x, err := convertOrTruncate(ctx, i, t.Promote())
 		if err != nil {
 			return 0, err
 		}
 
 		// Remove trailing 0s from floats
-		var s string
 		switch v := x.(type) {
 		case float32:
-			s = strconv.FormatFloat(float64(v), 'f', -1, 32)
-			if s == "-0" {
-				s = "0"
+			str = strconv.FormatFloat(float64(v), 'f', -1, 32)
+			if str == "-0" {
+				str = "0"
 			}
 		case float64:
-			s = strconv.FormatFloat(v, 'f', -1, 64)
-			if s == "-0" {
-				s = "0"
+			str = strconv.FormatFloat(v, 'f', -1, 64)
+			if str == "-0" {
+				str = "0"
 			}
 		default:
-			s = fmt.Sprintf("%v", v)
+			str = fmt.Sprintf("%v", v)
 		}
-
-		if _, err := hash.Write([]byte(fmt.Sprintf("%s,", s))); err != nil {
-			return 0, err
-		}
-		return hash.Sum64(), nil
 	}
+
+	// Collated strings that are equivalent may have different runes, so we must make them hash to the same value
+	return coll.HashToUint(str)
 }
 
 // Eval implements the Expression interface.

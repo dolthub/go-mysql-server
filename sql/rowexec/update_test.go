@@ -87,7 +87,7 @@ func TestUpdateIgnoreConversions(t *testing.T) {
 			ri, err := DefaultBuilder.Build(ctx, updatePlan, nil)
 			require.NoError(t, err)
 
-			_, err = sql.RowIterToRows(ctx, sch.Schema, ri)
+			_, err = sql.RowIterToRows(ctx, ri)
 			require.NoError(t, err)
 
 			// Run a SELECT to see the updated data
@@ -98,7 +98,7 @@ func TestUpdateIgnoreConversions(t *testing.T) {
 			ri, err = DefaultBuilder.Build(ctx, selectPlan, nil)
 			require.NoError(t, err)
 
-			rows, err := sql.RowIterToRows(ctx, sch.Schema, ri)
+			rows, err := sql.RowIterToRows(ctx, ri)
 			require.NoError(t, err)
 
 			require.Equal(t, 1, len(rows))

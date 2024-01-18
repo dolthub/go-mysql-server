@@ -516,7 +516,7 @@ func (TableEditor) getRowCount(ctx *sql.Context, ie IndexEditors, hash string) (
 	if err != nil {
 		return 0, 0, err
 	}
-	rows, err := sql.RowIterToRows(ctx, nil, sql.NewTableRowIter(ctx, editorData, partIter))
+	rows, err := sql.RowIterToRows(ctx, sql.NewTableRowIter(ctx, editorData, partIter))
 	if err != nil {
 		return 0, 0, err
 	}
@@ -538,7 +538,7 @@ func (TableEditor) updateGlobalCount(ctx *sql.Context, ie IndexEditors, word str
 	if err != nil {
 		return err
 	}
-	rows, err := sql.RowIterToRows(ctx, nil, sql.NewTableRowIter(ctx, editorData, partIter))
+	rows, err := sql.RowIterToRows(ctx, sql.NewTableRowIter(ctx, editorData, partIter))
 	if err != nil {
 		return err
 	}
