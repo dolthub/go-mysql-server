@@ -381,7 +381,7 @@ func (c *indexCoster) cost(f indexFilter, stat sql.Statistic, idx sql.Index) err
 		}
 
 	case *iScanOr:
-		newStat, ok, prefix, err = c.costIndexScanOr(f, stat, ordinals, idx)
+		newStat, ok, err = c.costIndexScanOr(f, stat, ordinals, idx)
 		if err != nil {
 			return err
 		}
@@ -1096,6 +1096,11 @@ func ordinalsForStat(stat sql.Statistic) map[string]int {
 	return ret
 }
 
+// costIndexScanAnd applies (1) series of disjunctions and (2) a set of
+// conjunctions to an index represented by a statistic. We return the
+// updated statistic, the subset of applicable filters, the maximum prefix
+// key created by a subset of equality filters (from conjunction only),
+// or an error if applicable.
 func (c *indexCoster) costIndexScanAnd(filter *iScanAnd, s sql.Statistic, ordinals map[string]int, idx sql.Index) (sql.Statistic, sql.FastIntSet, int, error) {
 	// first step finds the conjunctions that match index prefix columns.
 	// we divide into eqFilters and rangeFilters
@@ -1105,7 +1110,7 @@ func (c *indexCoster) costIndexScanAnd(filter *iScanAnd, s sql.Statistic, ordina
 
 	if len(filter.orChildren) > 0 {
 		for _, or := range filter.orChildren {
-			childStat, ok, _, err := c.costIndexScanOr(or.(*iScanOr), s, ordinals, idx)
+			childStat, ok, err := c.costIndexScanOr(or.(*iScanOr), s, ordinals, idx)
 			if err != nil {
 				return nil, sql.FastIntSet{}, 0, err
 			}
@@ -1134,7 +1139,7 @@ func (c *indexCoster) costIndexScanAnd(filter *iScanAnd, s sql.Statistic, ordina
 	return conj.stat, exact.Union(conj.applied), conj.missingPrefix, nil
 }
 
-func (c *indexCoster) costIndexScanOr(filter *iScanOr, s sql.Statistic, ordinals map[string]int, idx sql.Index) (sql.Statistic, bool, int, error) {
+func (c *indexCoster) costIndexScanOr(filter *iScanOr, s sql.Statistic, ordinals map[string]int, idx sql.Index) (sql.Statistic, bool, error) {
 	// OR just unions the statistics from each child?
 	// if one of the children is invalid, we balk and return false
 	// otherwise we union the buckets between the children
@@ -1144,11 +1149,11 @@ func (c *indexCoster) costIndexScanOr(filter *iScanOr, s sql.Statistic, ordinals
 		case *iScanAnd:
 			childStat, ids, _, err := c.costIndexScanAnd(child, s, ordinals, idx)
 			if err != nil {
-				return nil, false, 0, err
+				return nil, false, err
 			}
 			if ids.Len() != 1 || !ids.Contains(int(child.Id())) {
 				// scan option missed some filters
-				return nil, false, 0, nil
+				return nil, false, nil
 			}
 			ret = stats.Union(s, childStat)
 
@@ -1156,18 +1161,18 @@ func (c *indexCoster) costIndexScanOr(filter *iScanOr, s sql.Statistic, ordinals
 			var ok bool
 			childStat, ok, _, err := c.costIndexScanLeaf(child, s, ordinals, idx)
 			if err != nil {
-				return nil, false, 0, err
+				return nil, false, err
 			}
 			if !ok {
-				return nil, false, 0, nil
+				return nil, false, nil
 			}
 			ret = stats.Union(s, childStat)
 
 		default:
-			return nil, false, 0, fmt.Errorf("invalid *iScanOr child: %T", child)
+			return nil, false, fmt.Errorf("invalid *iScanOr child: %T", child)
 		}
 	}
-	return ret, true, 0, nil
+	return ret, true, nil
 }
 
 // indexHasContentHashedFieldForFilter returns true if the given index |idx| has a content-hashed field that is used
@@ -1194,6 +1199,9 @@ func indexHasContentHashedFieldForFilter(filter *iScanLeaf, idx sql.Index, ordin
 	return prefixLength == 0
 }
 
+// costIndexScanLeaf tries to apply a leaf filter to an index represented
+// by a statistic, returning the updated statistic, whether the filter was
+// applicable, and the maximum prefix key (0 or 1 for a leaf).
 func (c *indexCoster) costIndexScanLeaf(filter *iScanLeaf, s sql.Statistic, ordinals map[string]int, idx sql.Index) (sql.Statistic, bool, int, error) {
 	ord, ok := ordinals[strings.ToLower(filter.gf.Name())]
 	if !ok {
