@@ -11356,7 +11356,7 @@ WHERE
 			" │                           └─ columns: [id]\n" +
 			" │   END as M6T2N, mjr3d.GE5EL as GE5EL, mjr3d.F7A4Q as F7A4Q, mjr3d.CC4AX as CC4AX, mjr3d.SL76B as SL76B, aac.BTXC5 as YEBDJ, mjr3d.PSMU6]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.PSMU6, mjr3d.M22QN, mjr3d.GE5EL, mjr3d.F7A4Q, mjr3d.ESFVY, mjr3d.CC4AX, mjr3d.SL76B, mjr3d.QNI57, mjr3d.TDEIU, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, mf.FTQLQ, mf.LUEVY, mf.M22QN, aac.id, aac.btxc5, aac.fhcyt, mf.FTQLQ as T4IBQ, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
+			"     ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.PSMU6, mjr3d.M22QN, mjr3d.GE5EL, mjr3d.F7A4Q, mjr3d.ESFVY, mjr3d.CC4AX, mjr3d.SL76B, mjr3d.QNI57, mjr3d.TDEIU, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, mf.FTQLQ, mf.LUEVY, mf.M22QN, aac.id, aac.BTXC5, aac.FHCYT, mf.FTQLQ as T4IBQ, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
 			"     │   ├─ cacheable: false\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [ei.M6T2N]\n" +
@@ -11705,7 +11705,7 @@ WHERE
 			" │                           └─ columns: [id]\n" +
 			" │   END as M6T2N, mjr3d.GE5EL as GE5EL, mjr3d.F7A4Q as F7A4Q, mjr3d.CC4AX as CC4AX, mjr3d.SL76B as SL76B, aac.BTXC5 as YEBDJ, mjr3d.PSMU6]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.PSMU6, mjr3d.M22QN, mjr3d.GE5EL, mjr3d.F7A4Q, mjr3d.ESFVY, mjr3d.CC4AX, mjr3d.SL76B, mjr3d.QNI57, mjr3d.TDEIU, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, mf.FTQLQ, mf.LUEVY, mf.M22QN, aac.id, aac.btxc5, aac.fhcyt, mf.FTQLQ as T4IBQ, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
+			"     ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.PSMU6, mjr3d.M22QN, mjr3d.GE5EL, mjr3d.F7A4Q, mjr3d.ESFVY, mjr3d.CC4AX, mjr3d.SL76B, mjr3d.QNI57, mjr3d.TDEIU, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, mf.FTQLQ, mf.LUEVY, mf.M22QN, aac.id, aac.BTXC5, aac.FHCYT, mf.FTQLQ as T4IBQ, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
 			"     │   ├─ cacheable: false\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [ei.M6T2N]\n" +
