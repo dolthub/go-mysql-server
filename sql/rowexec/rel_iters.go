@@ -571,7 +571,7 @@ func defaultValFromProjectExpr(e sql.Expression) (*sql.ColumnDefaultValue, bool)
 
 func defaultValFromSetExpression(e sql.Expression) (*sql.ColumnDefaultValue, bool) {
 	if sf, ok := e.(*expression.SetField); ok {
-		return defaultValFromProjectExpr(sf.Right)
+		return defaultValFromProjectExpr(sf.RightChild)
 	}
 	return nil, false
 }

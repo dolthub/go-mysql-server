@@ -30,7 +30,7 @@ var _ sql.CollationCoercible = (*Mod)(nil)
 
 // Mod expression represents "%" arithmetic operation
 type Mod struct {
-	BinaryExpression
+	BinaryExpressionStub
 	ops int32
 }
 
@@ -39,7 +39,7 @@ var _ sql.CollationCoercible = (*Mod)(nil)
 
 // NewMod creates a new Mod sql.Expression.
 func NewMod(left, right sql.Expression) *Mod {
-	a := &Mod{BinaryExpression{Left: left, Right: right}, 0}
+	a := &Mod{BinaryExpressionStub{LeftChild: left, RightChild: right}, 0}
 	ops := countArithmeticOps(a)
 	setArithmeticOps(a, ops)
 	return a
@@ -53,14 +53,6 @@ func (m *Mod) Description() string {
 	return "returns the remainder of the first argument divided by the second argument"
 }
 
-func (m *Mod) LeftChild() sql.Expression {
-	return m.Left
-}
-
-func (m *Mod) RightChild() sql.Expression {
-	return m.Right
-}
-
 func (m *Mod) Operator() string {
 	return sqlparser.ModStr
 }
@@ -70,26 +62,26 @@ func (m *Mod) SetOpCount(i int32) {
 }
 
 func (m *Mod) String() string {
-	return fmt.Sprintf("(%s %% %s)", m.Left, m.Right)
+	return fmt.Sprintf("(%s %% %s)", m.LeftChild, m.RightChild)
 }
 
 func (m *Mod) DebugString() string {
-	return fmt.Sprintf("(%s %% %s)", sql.DebugString(m.Left), sql.DebugString(m.Right))
+	return fmt.Sprintf("(%s %% %s)", sql.DebugString(m.LeftChild), sql.DebugString(m.RightChild))
 }
 
 // IsNullable implements the sql.Expression interface.
 func (m *Mod) IsNullable() bool {
-	return m.BinaryExpression.IsNullable()
+	return m.BinaryExpressionStub.IsNullable()
 }
 
 // Type returns the greatest type for given operation.
 func (m *Mod) Type() sql.Type {
 	//TODO: what if both BindVars? should be constant folded
-	rTyp := m.Right.Type()
+	rTyp := m.RightChild.Type()
 	if types.IsDeferredType(rTyp) {
 		return rTyp
 	}
-	lTyp := m.Left.Type()
+	lTyp := m.LeftChild.Type()
 	if types.IsDeferredType(lTyp) {
 		return lTyp
 	}
@@ -137,12 +129,12 @@ func (m *Mod) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 	var err error
 
 	// mod used with Interval error is caught at parsing the query
-	lval, err = m.Left.Eval(ctx, row)
+	lval, err = m.LeftChild.Eval(ctx, row)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	rval, err = m.Right.Eval(ctx, row)
+	rval, err = m.RightChild.Eval(ctx, row)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -152,8 +144,8 @@ func (m *Mod) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 
 func (m *Mod) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}) {
 	typ := m.Type()
-	lIsTimeType := types.IsTime(m.Left.Type())
-	rIsTimeType := types.IsTime(m.Right.Type())
+	lIsTimeType := types.IsTime(m.LeftChild.Type())
+	rIsTimeType := types.IsTime(m.RightChild.Type())
 
 	if types.IsFloat(typ) {
 		left = convertValueToType(ctx, typ, left, lIsTimeType)

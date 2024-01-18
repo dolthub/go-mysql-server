@@ -46,7 +46,7 @@ var _ sql.CollationCoercible = (*Div)(nil)
 
 // Div expression represents "/" arithmetic operation
 type Div struct {
-	BinaryExpression
+	BinaryExpressionStub
 	ops int32
 	// divScale is number of continuous division operations; this value will be available of all layers
 	divScale int32
@@ -59,7 +59,7 @@ type Div struct {
 // NewDiv creates a new Div / sql.Expression.
 func NewDiv(left, right sql.Expression) *Div {
 	a := &Div{
-		BinaryExpression:            BinaryExpression{Left: left, Right: right},
+		BinaryExpressionStub:        BinaryExpressionStub{LeftChild: left, RightChild: right},
 		curIntermediatePrecisionInc: 0,
 	}
 	a.leftmostScale.Store(0)
@@ -68,14 +68,6 @@ func NewDiv(left, right sql.Expression) *Div {
 	ops := countArithmeticOps(a)
 	setArithmeticOps(a, ops)
 	return a
-}
-
-func (d *Div) LeftChild() sql.Expression {
-	return d.Left
-}
-
-func (d *Div) RightChild() sql.Expression {
-	return d.Right
 }
 
 func (d *Div) Operator() string {
@@ -87,16 +79,16 @@ func (d *Div) SetOpCount(i int32) {
 }
 
 func (d *Div) String() string {
-	return fmt.Sprintf("(%s / %s)", d.Left, d.Right)
+	return fmt.Sprintf("(%s / %s)", d.LeftChild, d.RightChild)
 }
 
 func (d *Div) DebugString() string {
-	return fmt.Sprintf("(%s / %s)", sql.DebugString(d.Left), sql.DebugString(d.Right))
+	return fmt.Sprintf("(%s / %s)", sql.DebugString(d.LeftChild), sql.DebugString(d.RightChild))
 }
 
 // IsNullable implements the sql.Expression interface.
 func (d *Div) IsNullable() bool {
-	return d.BinaryExpression.IsNullable()
+	return d.BinaryExpressionStub.IsNullable()
 }
 
 // Type returns the result type for this division expression. For nested division expressions, we prefer sending
@@ -181,7 +173,7 @@ func (d *Div) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 	var err error
 
 	// division used with Interval error is caught at parsing the query
-	lval, err = d.Left.Eval(ctx, row)
+	lval, err = d.LeftChild.Eval(ctx, row)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -189,7 +181,7 @@ func (d *Div) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 	// this operation is only done on the left value as the scale/fraction part of the leftmost value
 	// is used to calculate the scale of the final result. If the value is GetField of decimal type column
 	// the decimal value evaluated does not always match the scale of column type definition
-	if dt, ok := d.Left.Type().(sql.DecimalType); ok {
+	if dt, ok := d.LeftChild.Type().(sql.DecimalType); ok {
 		if dVal, ok := lval.(decimal.Decimal); ok {
 			ts := int32(dt.Scale())
 			if ts > dVal.Exponent()*-1 {
@@ -201,7 +193,7 @@ func (d *Div) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 		}
 	}
 
-	rval, err = d.Right.Eval(ctx, row)
+	rval, err = d.RightChild.Eval(ctx, row)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -218,8 +210,8 @@ func (d *Div) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 // should be preserved.
 func (d *Div) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}) {
 	typ := d.internalType()
-	lIsTimeType := types.IsTime(d.Left.Type())
-	rIsTimeType := types.IsTime(d.Right.Type())
+	lIsTimeType := types.IsTime(d.LeftChild.Type())
+	rIsTimeType := types.IsTime(d.RightChild.Type())
 
 	if types.IsFloat(typ) {
 		left = convertValueToType(ctx, typ, left, lIsTimeType)
@@ -303,11 +295,11 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 // in order to match MySQL's behavior.
 func (d *Div) determineResultType(outermostResult bool) sql.Type {
 	//TODO: what if both BindVars? should be constant folded
-	rTyp := d.Right.Type()
+	rTyp := d.RightChild.Type()
 	if types.IsDeferredType(rTyp) {
 		return rTyp
 	}
-	lTyp := d.Left.Type()
+	lTyp := d.LeftChild.Type()
 	if types.IsDeferredType(lTyp) {
 		return lTyp
 	}
@@ -482,11 +474,11 @@ func countDivs(e sql.Expression) int32 {
 	}
 
 	if a, ok := e.(*Div); ok {
-		return countDivs(a.Left) + 1
+		return countDivs(a.LeftChild) + 1
 	}
 
 	if a, ok := e.(ArithmeticOp); ok {
-		return countDivs(a.LeftChild())
+		return countDivs(a.Left())
 	}
 
 	return 0
@@ -502,13 +494,13 @@ func setDivs(e sql.Expression, dScale int32) {
 
 	if a, ok := e.(*Div); ok {
 		a.divScale = dScale
-		setDivs(a.Left, dScale)
-		setDivs(a.Right, dScale)
+		setDivs(a.LeftChild, dScale)
+		setDivs(a.RightChild, dScale)
 	}
 
 	if a, ok := e.(ArithmeticOp); ok {
-		setDivs(a.LeftChild(), dScale)
-		setDivs(a.RightChild(), dScale)
+		setDivs(a.Left(), dScale)
+		setDivs(a.Right(), dScale)
 	}
 
 	return
@@ -524,14 +516,14 @@ func getScaleOfLeftmostValue(ctx *sql.Context, row sql.Row, e sql.Expression, d,
 	if a, ok := e.(*Div); ok {
 		d = d + 1
 		if d == dScale {
-			lval, err := a.Left.Eval(ctx, row)
+			lval, err := a.LeftChild.Eval(ctx, row)
 			if err != nil {
 				return 0
 			}
 			_, s := GetPrecisionAndScale(lval)
 			// the leftmost value can be row value of decimal type column
 			// the evaluated value does not always match the scale of column type definition
-			typ := a.Left.Type()
+			typ := a.LeftChild.Type()
 			if dt, dok := typ.(sql.DecimalType); dok {
 				ts := dt.Scale()
 				if ts > s {
@@ -540,7 +532,7 @@ func getScaleOfLeftmostValue(ctx *sql.Context, row sql.Row, e sql.Expression, d,
 			}
 			return int32(s)
 		} else {
-			return getScaleOfLeftmostValue(ctx, row, a.Left, d, dScale)
+			return getScaleOfLeftmostValue(ctx, row, a.LeftChild, d, dScale)
 		}
 	}
 
@@ -568,10 +560,10 @@ func isOutermostDiv(e sql.Expression, d, dScale int32) bool {
 		if d == dScale {
 			return true
 		} else {
-			return isOutermostDiv(a.Left, d, dScale)
+			return isOutermostDiv(a.LeftChild, d, dScale)
 		}
 	} else if a, ok := e.(ArithmeticOp); ok {
-		return isOutermostDiv(a.LeftChild(), d, dScale)
+		return isOutermostDiv(a.Left(), d, dScale)
 	}
 
 	return false
@@ -637,21 +629,21 @@ func getPrecInc(e sql.Expression, cur int) int {
 		if d.curIntermediatePrecisionInc > cur {
 			return d.curIntermediatePrecisionInc
 		}
-		l := getPrecInc(d.Left, cur)
+		l := getPrecInc(d.LeftChild, cur)
 		if l > cur {
 			cur = l
 		}
-		r := getPrecInc(d.Right, cur)
+		r := getPrecInc(d.RightChild, cur)
 		if r > cur {
 			cur = r
 		}
 		return cur
 	} else if d, ok := e.(ArithmeticOp); ok {
-		l := getPrecInc(d.LeftChild(), cur)
+		l := getPrecInc(d.Left(), cur)
 		if l > cur {
 			cur = l
 		}
-		r := getPrecInc(d.RightChild(), cur)
+		r := getPrecInc(d.Right(), cur)
 		if r > cur {
 			cur = r
 		}
@@ -666,24 +658,16 @@ var _ sql.CollationCoercible = (*IntDiv)(nil)
 
 // IntDiv expression represents integer "div" arithmetic operation
 type IntDiv struct {
-	BinaryExpression
+	BinaryExpressionStub
 	ops int32
 }
 
 // NewIntDiv creates a new IntDiv 'div' sql.Expression.
 func NewIntDiv(left, right sql.Expression) *IntDiv {
-	a := &IntDiv{BinaryExpression{Left: left, Right: right}, 0}
+	a := &IntDiv{BinaryExpressionStub{LeftChild: left, RightChild: right}, 0}
 	ops := countArithmeticOps(a)
 	setArithmeticOps(a, ops)
 	return a
-}
-
-func (i *IntDiv) LeftChild() sql.Expression {
-	return i.Left
-}
-
-func (i *IntDiv) RightChild() sql.Expression {
-	return i.Right
 }
 
 func (i *IntDiv) Operator() string {
@@ -695,22 +679,22 @@ func (i *IntDiv) SetOpCount(i2 int32) {
 }
 
 func (i *IntDiv) String() string {
-	return fmt.Sprintf("(%s div %s)", i.Left, i.Right)
+	return fmt.Sprintf("(%s div %s)", i.LeftChild, i.RightChild)
 }
 
 func (i *IntDiv) DebugString() string {
-	return fmt.Sprintf("(%s div %s)", sql.DebugString(i.Left), sql.DebugString(i.Right))
+	return fmt.Sprintf("(%s div %s)", sql.DebugString(i.LeftChild), sql.DebugString(i.RightChild))
 }
 
 // IsNullable implements the sql.Expression interface.
 func (i *IntDiv) IsNullable() bool {
-	return i.BinaryExpression.IsNullable()
+	return i.BinaryExpressionStub.IsNullable()
 }
 
 // Type returns the greatest type for given operation.
 func (i *IntDiv) Type() sql.Type {
-	lTyp := i.Left.Type()
-	rTyp := i.Right.Type()
+	lTyp := i.LeftChild.Type()
+	rTyp := i.RightChild.Type()
 
 	if types.IsUnsigned(lTyp) || types.IsUnsigned(rTyp) {
 		return types.Uint64
@@ -753,12 +737,12 @@ func (i *IntDiv) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, inte
 	var err error
 
 	// int division used with Interval error is caught at parsing the query
-	lval, err = i.Left.Eval(ctx, row)
+	lval, err = i.LeftChild.Eval(ctx, row)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	rval, err = i.Right.Eval(ctx, row)
+	rval, err = i.RightChild.Eval(ctx, row)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -774,7 +758,7 @@ func (i *IntDiv) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, inte
 // should be preserved.
 func (i *IntDiv) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}) {
 	var typ sql.Type
-	lTyp, rTyp := i.Left.Type(), i.Right.Type()
+	lTyp, rTyp := i.LeftChild.Type(), i.RightChild.Type()
 	lIsTimeType := types.IsTime(lTyp)
 	rIsTimeType := types.IsTime(rTyp)
 

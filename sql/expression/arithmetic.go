@@ -57,8 +57,7 @@ func arithmeticWarning(ctx *sql.Context, errCode int, errMsg string) {
 // Arithmetic expression in the future.
 type ArithmeticOp interface {
 	sql.Expression
-	LeftChild() sql.Expression
-	RightChild() sql.Expression
+	BinaryExpression
 	SetOpCount(int32)
 	Operator() string
 }
@@ -68,14 +67,14 @@ var _ sql.CollationCoercible = (*Arithmetic)(nil)
 
 // Arithmetic expressions include plus, minus and multiplication (+, -, *) operations.
 type Arithmetic struct {
-	BinaryExpression
+	BinaryExpressionStub
 	Op  string
 	ops int32
 }
 
 // NewArithmetic creates a new Arithmetic sql.Expression.
 func NewArithmetic(left, right sql.Expression, op string) *Arithmetic {
-	a := &Arithmetic{BinaryExpression{Left: left, Right: right}, op, 0}
+	a := &Arithmetic{BinaryExpressionStub{LeftChild: left, RightChild: right}, op, 0}
 	ops := countArithmeticOps(a)
 	setArithmeticOps(a, ops)
 	return a
@@ -96,14 +95,6 @@ func NewMult(left, right sql.Expression) *Arithmetic {
 	return NewArithmetic(left, right, sqlparser.MultStr)
 }
 
-func (a *Arithmetic) LeftChild() sql.Expression {
-	return a.Left
-}
-
-func (a *Arithmetic) RightChild() sql.Expression {
-	return a.Right
-}
-
 func (a *Arithmetic) Operator() string {
 	return a.Op
 }
@@ -113,11 +104,11 @@ func (a *Arithmetic) SetOpCount(i int32) {
 }
 
 func (a *Arithmetic) String() string {
-	return fmt.Sprintf("(%s %s %s)", a.Left, a.Op, a.Right)
+	return fmt.Sprintf("(%s %s %s)", a.LeftChild, a.Op, a.RightChild)
 }
 
 func (a *Arithmetic) DebugString() string {
-	return fmt.Sprintf("(%s %s %s)", sql.DebugString(a.Left), a.Op, sql.DebugString(a.Right))
+	return fmt.Sprintf("(%s %s %s)", sql.DebugString(a.LeftChild), a.Op, sql.DebugString(a.RightChild))
 }
 
 // IsNullable implements the sql.Expression interface.
@@ -126,23 +117,23 @@ func (a *Arithmetic) IsNullable() bool {
 		return true
 	}
 
-	return a.BinaryExpression.IsNullable()
+	return a.BinaryExpressionStub.IsNullable()
 }
 
 // Type returns the greatest type for given operation.
 func (a *Arithmetic) Type() sql.Type {
 	//TODO: what if both BindVars? should be constant folded
-	rTyp := a.Right.Type()
+	rTyp := a.RightChild.Type()
 	if types.IsDeferredType(rTyp) {
 		return rTyp
 	}
-	lTyp := a.Left.Type()
+	lTyp := a.LeftChild.Type()
 	if types.IsDeferredType(lTyp) {
 		return lTyp
 	}
 
 	// applies for + and - ops
-	if isInterval(a.Left) || isInterval(a.Right) {
+	if isInterval(a.LeftChild) || isInterval(a.RightChild) {
 		// TODO: we might need to truncate precision here
 		return types.DatetimeMaxPrecision
 	}
@@ -167,7 +158,7 @@ func (a *Arithmetic) Type() sql.Type {
 	}
 
 	if a.Op == sqlparser.MultStr {
-		return floatOrDecimalTypeForMult(a.Left, a.Right)
+		return floatOrDecimalTypeForMult(a.LeftChild, a.RightChild)
 	} else {
 		return getFloatOrMaxDecimalType(a, false)
 	}
@@ -225,25 +216,25 @@ func (a *Arithmetic) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, 
 	var lval, rval interface{}
 	var err error
 
-	if i, ok := a.Left.(*Interval); ok {
+	if i, ok := a.LeftChild.(*Interval); ok {
 		lval, err = i.EvalDelta(ctx, row)
 		if err != nil {
 			return nil, nil, err
 		}
 	} else {
-		lval, err = a.Left.Eval(ctx, row)
+		lval, err = a.LeftChild.Eval(ctx, row)
 		if err != nil {
 			return nil, nil, err
 		}
 	}
 
-	if i, ok := a.Right.(*Interval); ok {
+	if i, ok := a.RightChild.(*Interval); ok {
 		rval, err = i.EvalDelta(ctx, row)
 		if err != nil {
 			return nil, nil, err
 		}
 	} else {
-		rval, err = a.Right.Eval(ctx, row)
+		rval, err = a.RightChild.Eval(ctx, row)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -255,8 +246,8 @@ func (a *Arithmetic) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, 
 func (a *Arithmetic) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}, error) {
 	typ := a.Type()
 
-	lIsTimeType := types.IsTime(a.Left.Type())
-	rIsTimeType := types.IsTime(a.Right.Type())
+	lIsTimeType := types.IsTime(a.LeftChild.Type())
+	rIsTimeType := types.IsTime(a.RightChild.Type())
 
 	if i, ok := left.(*TimeDelta); ok {
 		left = i
@@ -296,7 +287,7 @@ func countArithmeticOps(e sql.Expression) int32 {
 	}
 
 	if a, ok := e.(ArithmeticOp); ok {
-		return countDivs(a.LeftChild()) + 1
+		return countDivs(a.Left()) + 1
 	}
 
 	return 0
@@ -311,8 +302,8 @@ func setArithmeticOps(e sql.Expression, opScale int32) {
 
 	if a, ok := e.(ArithmeticOp); ok {
 		a.SetOpCount(opScale)
-		setDivs(a.LeftChild(), opScale)
-		setDivs(a.RightChild(), opScale)
+		setDivs(a.Left(), opScale)
+		setDivs(a.Right(), opScale)
 	}
 
 	return
@@ -330,7 +321,7 @@ func isOutermostArithmeticOp(e sql.Expression, d, dScale int32) bool {
 		if d == dScale {
 			return true
 		} else {
-			return isOutermostDiv(a.LeftChild(), d, dScale)
+			return isOutermostDiv(a.Left(), d, dScale)
 		}
 	}
 

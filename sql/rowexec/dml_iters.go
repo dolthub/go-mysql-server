@@ -133,7 +133,7 @@ func shouldUseTriggerStatementForReturnRow(stmt sql.Node) bool {
 		switch logic := n.(type) {
 		case *plan.Set:
 			for _, expr := range logic.Exprs {
-				sql.Inspect(expr.(*expression.SetField).Left, func(e sql.Expression) bool {
+				sql.Inspect(expr.(*expression.SetField).LeftChild, func(e sql.Expression) bool {
 					if _, ok := e.(*expression.GetField); ok {
 						hasSetField = true
 						return false
@@ -239,7 +239,7 @@ func shouldUseLogicResult(logic sql.Node, row sql.Row) (bool, sql.Row) {
 	case *plan.Set:
 		hasSetField := false
 		for _, expr := range logic.Exprs {
-			sql.Inspect(expr.(*expression.SetField).Left, func(e sql.Expression) bool {
+			sql.Inspect(expr.(*expression.SetField).LeftChild, func(e sql.Expression) bool {
 				if _, ok := e.(*expression.GetField); ok {
 					hasSetField = true
 					return false
@@ -256,7 +256,7 @@ func shouldUseLogicResult(logic sql.Node, row sql.Row) (bool, sql.Row) {
 				return true
 			}
 			for _, expr := range set.Exprs {
-				sql.Inspect(expr.(*expression.SetField).Left, func(e sql.Expression) bool {
+				sql.Inspect(expr.(*expression.SetField).LeftChild, func(e sql.Expression) bool {
 					if _, ok := e.(*expression.GetField); ok {
 						hasSetField = true
 						return false

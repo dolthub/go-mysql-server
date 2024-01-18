@@ -304,6 +304,25 @@ func (b *Builder) buildEventScheduleTimeSpec(inScope *scope, spec *ast.EventSche
 	return ts, intervals
 }
 
+func (b *Builder) buildAlterUser(inScope *scope, _ string, c *ast.DDL) (outScope *scope) {
+	database := b.resolveDb("mysql")
+	accountWithAuth := ast.AccountWithAuth{AccountName: c.User, Auth1: c.Authentication}
+	user := b.buildAuthenticatedUser(accountWithAuth)
+
+	if c.Authentication.RandomPassword {
+		b.handleErr(fmt.Errorf("random password generation is not currently supported; " +
+			"you can request support at https://github.com/dolthub/dolt/issues/new"))
+	}
+
+	outScope = inScope.push()
+	outScope.node = &plan.AlterUser{
+		IfExists: c.IfExists,
+		User:     user,
+		MySQLDb:  database,
+	}
+	return outScope
+}
+
 func (b *Builder) buildAlterEvent(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
 	eventSpec := c.EventSpec
 

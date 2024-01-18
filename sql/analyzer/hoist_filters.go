@@ -85,7 +85,7 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, corr sql.ColSet) (s
 			var sq *plan.Subquery
 			switch e := e.(type) {
 			case *plan.InSubquery:
-				sq, _ = e.Right.(*plan.Subquery)
+				sq, _ = e.RightChild.(*plan.Subquery)
 			case *plan.ExistsSubquery:
 				sq = e.Query
 			default:

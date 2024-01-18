@@ -244,50 +244,50 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 					expression.NewLessThanOrEqual(e.Val, e.Upper),
 				), transform.NewTree, nil
 			case *expression.Or:
-				if isTrue(e.Left) {
-					return e.Left, transform.NewTree, nil
+				if isTrue(e.LeftChild) {
+					return e.LeftChild, transform.NewTree, nil
 				}
 
-				if isTrue(e.Right) {
-					return e.Right, transform.NewTree, nil
+				if isTrue(e.RightChild) {
+					return e.RightChild, transform.NewTree, nil
 				}
 
-				if isFalse(e.Left) {
-					return e.Right, transform.NewTree, nil
+				if isFalse(e.LeftChild) {
+					return e.RightChild, transform.NewTree, nil
 				}
 
-				if isFalse(e.Right) {
-					return e.Left, transform.NewTree, nil
+				if isFalse(e.RightChild) {
+					return e.LeftChild, transform.NewTree, nil
 				}
 
 				return e, transform.SameTree, nil
 			case *expression.And:
-				if isFalse(e.Left) {
-					return e.Left, transform.NewTree, nil
+				if isFalse(e.LeftChild) {
+					return e.LeftChild, transform.NewTree, nil
 				}
 
-				if isFalse(e.Right) {
-					return e.Right, transform.NewTree, nil
+				if isFalse(e.RightChild) {
+					return e.RightChild, transform.NewTree, nil
 				}
 
-				if isTrue(e.Left) {
-					return e.Right, transform.NewTree, nil
+				if isTrue(e.LeftChild) {
+					return e.RightChild, transform.NewTree, nil
 				}
 
-				if isTrue(e.Right) {
-					return e.Left, transform.NewTree, nil
+				if isTrue(e.RightChild) {
+					return e.LeftChild, transform.NewTree, nil
 				}
 
 				return e, transform.SameTree, nil
 			case *expression.Like:
 				// if the charset is not utf8mb4, the last character used in optimization rule does not work
-				coll, _ := sql.GetCoercibility(ctx, e.Left)
+				coll, _ := sql.GetCoercibility(ctx, e.LeftChild)
 				charset := coll.CharacterSet()
 				if charset != sql.CharacterSet_utf8mb4 {
 					return e, transform.SameTree, nil
 				}
 				// TODO: maybe more cases to simplify
-				r, ok := e.Right.(*expression.Literal)
+				r, ok := e.RightChild.(*expression.Literal)
 				if !ok {
 					return e, transform.SameTree, nil
 				}
@@ -310,7 +310,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 				// if there are also no multiple character wildcards, this is just a plain equals
 				numWild := strings.Count(valStr, "%") - strings.Count(valStr, "\\%")
 				if numWild == 0 {
-					return expression.NewEquals(e.Left, e.Right), transform.NewTree, nil
+					return expression.NewEquals(e.LeftChild, e.RightChild), transform.NewTree, nil
 				}
 				// if there are many multiple character wildcards, don't simplify
 				if numWild != 1 {
@@ -328,10 +328,10 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 					return e, transform.SameTree, nil
 				}
 				valStr = valStr[:len(valStr)-1]
-				newRightLower := expression.NewLiteral(valStr, e.Right.Type())
+				newRightLower := expression.NewLiteral(valStr, e.RightChild.Type())
 				valStr += string(byte(255)) // append largest possible character as upper bound
-				newRightUpper := expression.NewLiteral(valStr, e.Right.Type())
-				newExpr := expression.NewAnd(expression.NewGreaterThanOrEqual(e.Left, newRightLower), expression.NewLessThanOrEqual(e.Left, newRightUpper))
+				newRightUpper := expression.NewLiteral(valStr, e.RightChild.Type())
+				newExpr := expression.NewAnd(expression.NewGreaterThanOrEqual(e.LeftChild, newRightLower), expression.NewLessThanOrEqual(e.LeftChild, newRightUpper))
 				return newExpr, transform.NewTree, nil
 			case *expression.Literal, expression.Tuple, *expression.Interval, *expression.CollatedExpression, *expression.MatchAgainst:
 				return e, transform.SameTree, nil
@@ -435,14 +435,14 @@ func pushNotFiltersHelper(e sql.Expression) (sql.Expression, error) {
 	// NOT(AND(left,right))=>OR(NOT(left), NOT(right))
 	if not, _ := e.(*expression.Not); not != nil {
 		if f, _ := not.Child.(*expression.And); f != nil {
-			return pushNotFiltersHelper(expression.NewOr(expression.NewNot(f.Left), expression.NewNot(f.Right)))
+			return pushNotFiltersHelper(expression.NewOr(expression.NewNot(f.LeftChild), expression.NewNot(f.RightChild)))
 		}
 	}
 
 	// NOT(OR(left,right))=>AND(NOT(left), NOT(right))
 	if not, _ := e.(*expression.Not); not != nil {
 		if f, _ := not.Child.(*expression.Or); f != nil {
-			return pushNotFiltersHelper(expression.NewAnd(expression.NewNot(f.Left), expression.NewNot(f.Right)))
+			return pushNotFiltersHelper(expression.NewAnd(expression.NewNot(f.LeftChild), expression.NewNot(f.RightChild)))
 		}
 	}
 

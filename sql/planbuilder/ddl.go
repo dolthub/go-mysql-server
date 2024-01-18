@@ -137,6 +137,8 @@ func (b *Builder) buildDDL(inScope *scope, query string, c *ast.DDL) (outScope *
 	case ast.AlterStr:
 		if c.EventSpec != nil {
 			return b.buildAlterEvent(inScope, query, c)
+		} else if !c.User.IsEmpty() {
+			return b.buildAlterUser(inScope, query, c)
 		}
 		b.handleErr(sql.ErrUnsupportedFeature.New(ast.String(c)))
 	case ast.RenameStr:
