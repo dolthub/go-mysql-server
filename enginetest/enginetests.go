@@ -409,14 +409,39 @@ func TestAnsiQuotesSqlModePrepared(t *testing.T, harness Harness) {
 	}
 }
 
+var DebugQueryPlan = sql.DescribeOptions{
+	Analyze:   false,
+	Estimates: false,
+	Debug:     true,
+}
+
 // TestQueryPlans tests generating the correct query plans for various queries using databases and tables provided by
 // the given harness.
 func TestQueryPlans(t *testing.T, harness Harness, planTests []queries.QueryPlanTest) {
 	harness.Setup(setup.PlanSetup...)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
+	runTestWithDescribeOptions := func(t *testing.T, query, expectedPlan string, options sql.DescribeOptions) {
+		TestQueryPlanWithName(t, options.String(), harness, e, query, expectedPlan, options)
+	}
 	for _, tt := range planTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
+		t.Run(tt.Query, func(t *testing.T) {
+			runTestWithDescribeOptions(t, tt.Query, tt.ExpectedPlan, sql.DescribeOptions{
+				Debug: true,
+			})
+			if tt.ExpectedEstimates != "" {
+				runTestWithDescribeOptions(t, tt.Query, tt.ExpectedEstimates, sql.DescribeOptions{
+					Estimates: true,
+				})
+			}
+			if tt.ExpectedAnalysis != "" {
+				runTestWithDescribeOptions(t, tt.Query, tt.ExpectedAnalysis, sql.DescribeOptions{
+					Estimates: true,
+					Analyze:   true,
+				})
+			}
+		})
+
 	}
 }
 
@@ -425,7 +450,7 @@ func TestIntegrationPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.IntegrationPlanTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, DebugQueryPlan)
 	}
 }
 
@@ -434,7 +459,7 @@ func TestImdbPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.ImdbPlanTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, DebugQueryPlan)
 	}
 }
 
@@ -443,7 +468,7 @@ func TestTpchPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.TpchPlanTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, DebugQueryPlan)
 	}
 }
 
@@ -452,7 +477,7 @@ func TestTpccPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.TpccPlanTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, DebugQueryPlan)
 	}
 }
 
@@ -461,7 +486,7 @@ func TestTpcdsPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.TpcdsPlanTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, DebugQueryPlan)
 	}
 }
 
@@ -542,8 +567,12 @@ func TestVersionedQueriesPrepared(t *testing.T, harness VersionedDBHarness) {
 }
 
 // TestQueryPlan analyzes the query given and asserts that its printed plan matches the expected one.
-func TestQueryPlan(t *testing.T, harness Harness, e QueryEngine, query, expectedPlan string, verbose bool) {
-	t.Run(query, func(t *testing.T) {
+func TestQueryPlan(t *testing.T, harness Harness, e QueryEngine, query, expectedPlan string, options sql.DescribeOptions) {
+	TestQueryPlanWithName(t, query, harness, e, query, expectedPlan, options)
+}
+
+func TestQueryPlanWithName(t *testing.T, name string, harness Harness, e QueryEngine, query, expectedPlan string, options sql.DescribeOptions) {
+	t.Run(name, func(t *testing.T) {
 		ctx := NewContext(harness)
 		parsed, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, query)
 		require.NoError(t, err)
@@ -557,12 +586,14 @@ func TestQueryPlan(t *testing.T, harness Harness, e QueryEngine, query, expected
 			}
 		}
 
-		var cmp string
-		if verbose {
-			cmp = sql.DebugString(ExtractQueryNode(node))
-		} else {
-			cmp = ExtractQueryNode(node).String()
+		// If iterating over the node won't have side effects,
+		// do it in order to populate actual stats data.
+		if node.IsReadOnly() {
+			err = ExecuteNode(ctx, e, node)
+			require.NoError(t, err)
 		}
+
+		cmp := sql.Describe(ExtractQueryNode(node), options)
 		assert.Equal(t, expectedPlan, cmp, "Unexpected result for query: "+query)
 	})
 }
@@ -1388,7 +1419,7 @@ func TestGeneratedColumnPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.GeneratedColumnPlanTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, DebugQueryPlan)
 	}
 }
 
@@ -5258,5 +5289,47 @@ func TestSQLLogicTests(t *testing.T, harness Harness) {
 			}
 		}
 		TestScript(t, harness, script)
+	}
+}
+
+// ExecuteNode builds an iterator and then drains it.
+// This is useful for populating actual row counts for `DESCRIBE ANALYZE`.
+func ExecuteNode(ctx *sql.Context, engine QueryEngine, node sql.Node) error {
+	iter, err := engine.EngineAnalyzer().ExecBuilder.Build(ctx, node, nil)
+	if err != nil {
+		return err
+	}
+	return DrainIterator(ctx, iter)
+}
+
+func DrainIterator(ctx *sql.Context, iter sql.RowIter) error {
+	if iter == nil {
+		return nil
+	}
+
+	for {
+		_, err := iter.Next(ctx)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+	}
+
+	return iter.Close(ctx)
+}
+
+// This shouldn't be necessary -- the fact that an iterator can return an error but not clean up after itself in all
+// cases is a bug.
+func DrainIteratorIgnoreErrors(ctx *sql.Context, iter sql.RowIter) {
+	if iter == nil {
+		return
+	}
+
+	for {
+		_, err := iter.Next(ctx)
+		if err == io.EOF {
+			return
+		}
 	}
 }

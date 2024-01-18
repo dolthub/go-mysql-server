@@ -664,6 +664,13 @@ func (r *relBase) Cost() float64 {
 	return r.c
 }
 
+func DescribeStats(r RelExpr) *sql.DescribeStats {
+	return &sql.DescribeStats{
+		EstimatedRowCount: r.Group().RelProps.GetStats().RowCount(),
+		Cost:              r.Cost(),
+	}
+}
+
 func TableIdForSource(id GroupId) sql.TableId {
 	return sql.TableId(id - 1)
 }

@@ -53,9 +53,14 @@ func (t *TransactionCommittingNode) String() string {
 	return t.Child().String()
 }
 
-// String implements the sql.Node interface.
+// DebugString implements the sql.DebugStringer interface.
 func (t *TransactionCommittingNode) DebugString() string {
 	return sql.DebugString(t.Child())
+}
+
+// Describe implements the sql.Describable interface.
+func (t *TransactionCommittingNode) Describe(options sql.DescribeOptions) string {
+	return sql.Describe(t.Child(), options)
 }
 
 func (t *TransactionCommittingNode) IsReadOnly() bool {

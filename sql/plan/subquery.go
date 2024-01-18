@@ -75,6 +75,12 @@ func NewStripRowNode(child sql.Node, numCols int) sql.Node {
 	return &StripRowNode{UnaryNode: UnaryNode{child}, NumCols: numCols}
 }
 
+// Describe implements the sql.Describable interface
+func (srn *StripRowNode) Describe(options sql.DescribeOptions) string {
+	return sql.Describe(srn.Child, options)
+}
+
+// String implements the fmt.Stringer interface
 func (srn *StripRowNode) String() string {
 	return srn.Child.String()
 }
@@ -83,6 +89,7 @@ func (srn *StripRowNode) IsReadOnly() bool {
 	return srn.Child.IsReadOnly()
 }
 
+// DebugString implements the sql.DebugStringer interface
 func (srn *StripRowNode) DebugString() string {
 	return sql.DebugString(srn.Child)
 }

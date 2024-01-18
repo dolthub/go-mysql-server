@@ -75,7 +75,7 @@ func (d Describe) String() string {
 // DescribeQuery returns the description of the query plan.
 type DescribeQuery struct {
 	UnaryNode
-	Format string
+	Format sql.DescribeOptions
 }
 
 var _ sql.Node = (*DescribeQuery)(nil)
@@ -116,7 +116,7 @@ var DescribeSchema = sql.Schema{
 }
 
 // NewDescribeQuery creates a new DescribeQuery node.
-func NewDescribeQuery(format string, child sql.Node) *DescribeQuery {
+func NewDescribeQuery(format sql.DescribeOptions, child sql.Node) *DescribeQuery {
 	return &DescribeQuery{UnaryNode{Child: child}, format}
 }
 
@@ -125,22 +125,31 @@ func (d *DescribeQuery) Schema() sql.Schema {
 	return DescribeSchema
 }
 
-func (d *DescribeQuery) String() string {
+func (d *DescribeQuery) Describe(options sql.DescribeOptions) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("DescribeQuery(format=%s)", d.Format)
-	if d.Format == "debug" {
-		_ = pr.WriteChildren(sql.DebugString(d.Child))
-	} else {
-		_ = pr.WriteChildren(d.Child.String())
-	}
+	options.Estimates = d.Format.Estimates || options.Estimates
+	options.Analyze = d.Format.Analyze || options.Analyze
+	options.Debug = d.Format.Debug || options.Debug
+	_ = pr.WriteChildren(sql.Describe(d.Child, options))
+
 	return pr.String()
 }
 
+func (d *DescribeQuery) String() string {
+	return d.Describe(sql.DescribeOptions{
+		Analyze:   false,
+		Estimates: false,
+		Debug:     false,
+	})
+}
+
 func (d *DescribeQuery) DebugString() string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("DescribeQuery(format=%s)", d.Format)
-	_ = pr.WriteChildren(sql.DebugString(d.Child))
-	return pr.String()
+	return d.Describe(sql.DescribeOptions{
+		Analyze:   false,
+		Estimates: false,
+		Debug:     true,
+	})
 }
 
 // Query returns the query node being described
@@ -150,5 +159,7 @@ func (d *DescribeQuery) Query() sql.Node {
 
 // WithQuery returns a copy of this node with the query node given
 func (d *DescribeQuery) WithQuery(child sql.Node) sql.Node {
-	return NewDescribeQuery(d.Format, child)
+	res := *d
+	res.Child = child
+	return &res
 }
