@@ -39,11 +39,11 @@ func (a *AlterUser) Schema() sql.Schema {
 
 // String implements the interface sql.Node.
 func (a *AlterUser) String() string {
-	ifNotExists := ""
+	ifExists := ""
 	if a.IfExists {
-		ifNotExists = "IfExists: "
+		ifExists = "IfExists: "
 	}
-	return fmt.Sprintf("AlterUser(%s%s)", ifNotExists, a.User.String(""))
+	return fmt.Sprintf("AlterUser(%s%s)", ifExists, a.User.String(""))
 }
 
 // Database implements the interface sql.Databaser.

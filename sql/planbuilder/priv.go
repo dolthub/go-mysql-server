@@ -162,6 +162,7 @@ func (b *Builder) buildAuthenticatedUser(user ast.AccountWithAuth) plan.Authenti
 			authUser.Auth1 = plan.NewDefaultAuthentication(user.Auth1.Password)
 		}
 	}
+	// We do not support Auth2, Auth3, or AuthInitial, so error out if they are set, since nothing reads them
 	if user.Auth2 != nil || user.Auth3 != nil || user.AuthInitial != nil {
 		err := fmt.Errorf(`multi-factor authentication is not yet supported`)
 		b.handleErr(err)

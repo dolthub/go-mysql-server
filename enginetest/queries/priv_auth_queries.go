@@ -2208,6 +2208,12 @@ var ServerAuthTests = []ServerAuthenticationTest{
 				Password:    "",
 				Query:       "ALTER USER IF EXISTS nobody@localhost IDENTIFIED BY 'password';",
 				ExpectedErr: false,
+			}, {
+				Username:       "root",
+				Password:       "",
+				Query:          "ALTER USER nobody@localhost IDENTIFIED BY 'password';",
+				ExpectedErr:    true,
+				ExpectedErrStr: "Error 1105 (HY000): Operation ALTER USER failed for 'nobody'@'localhost'",
 			},
 
 			// RANDOM PASSWORD is not supported yet, so an error should be returned
