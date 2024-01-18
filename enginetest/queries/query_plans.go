@@ -12202,4 +12202,21 @@ order by x, y;
 			"         └─ columns: [pk v1 v2]\n" +
 			"",
 	},
+	{
+		Query: `select 0 as col1, 1 as col2, 2 as col2 group by col2 having col2 = 1`,
+		ExpectedPlan: "Having\n" +
+			" ├─ Eq\n" +
+			" │   ├─ col2:1!null\n" +
+			" │   └─ 1 (tinyint)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [0 (tinyint) as col1, 1 (tinyint) as col2, 2 (tinyint) as col2]\n" +
+			"     └─ GroupBy\n" +
+			"         ├─ select: \n" +
+			"         ├─ group: 1 (tinyint) as col2\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: \n" +
+			"                 └─ columns: []\n" +
+			"",
+	},
 }
