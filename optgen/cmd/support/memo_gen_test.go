@@ -96,6 +96,9 @@ func TestMemoGen(t *testing.T) {
             return nil, err
           }
         
+          if withDescribeStats, ok := result.(sql.WithDescribeStats); ok {
+            withDescribeStats.SetDescribeStats(*DescribeStats(r))
+          }
           result, err = r.Group().finalize(result)
           if err != nil {
             return nil, err

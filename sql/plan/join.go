@@ -285,6 +285,7 @@ func (i JoinType) AsLateral() JoinType {
 // JoinNode contains all the common data fields and implements the common sql.Node getters for all join types.
 type JoinNode struct {
 	BinaryNode
+	sql.DescribeStats
 	Filter     sql.Expression
 	Op         JoinType
 	CommentStr string
@@ -429,7 +430,10 @@ func (j *JoinNode) WithComment(comment string) sql.Node {
 	return &ret
 }
 
-func (j *JoinNode) String() string {
+var _ sql.Describable = (*JoinNode)(nil)
+
+// Describe implements sql.Describable
+func (j *JoinNode) Describe(options sql.DescribeOptions) string {
 	pr := sql.NewTreePrinter()
 	var children []string
 	if j.Filter != nil {
@@ -438,43 +442,41 @@ func (j *JoinNode) String() string {
 		if !isLiteral || literal.Value() != true {
 			if j.Op.IsMerge() {
 				filters := expression.SplitConjunction(j.Filter)
-				children = append(children, fmt.Sprintf("cmp: %s", filters[0]))
+				children = append(children, fmt.Sprintf("cmp: %s", sql.Describe(filters[0], options)))
 				if len(filters) > 1 {
-					children = append(children, fmt.Sprintf("sel: %s", expression.JoinAnd(filters[1:]...)))
+					children = append(children, fmt.Sprintf("sel: %s", sql.Describe(expression.JoinAnd(filters[1:]...), options)))
 				}
 			} else {
-				children = append(children, j.Filter.String())
+				children = append(children, sql.Describe(j.Filter, options))
 			}
 		}
 	}
-	children = append(children, j.left.String(), j.right.String())
-	pr.WriteNode("%s", j.Op)
+	children = append(children, sql.Describe(j.left, options), sql.Describe(j.right, options))
+	if options.Estimates {
+		pr.WriteNode("%s %s", j.Op, j.GetDescribeStatsString(options))
+	} else {
+		pr.WriteNode("%s", j.Op)
+	}
 	pr.WriteChildren(children...)
 	return pr.String()
 }
 
+// String implements fmt.Stringer
+func (j *JoinNode) String() string {
+	return j.Describe(sql.DescribeOptions{
+		Analyze:   false,
+		Estimates: false,
+		Debug:     false,
+	})
+}
+
+// DebugString implements sql.DebugStringer
 func (j *JoinNode) DebugString() string {
-	pr := sql.NewTreePrinter()
-	var children []string
-	if j.Filter != nil {
-		// Don't print a filter that's always true, it's just noise.
-		literal, isLiteral := j.Filter.(*expression.Literal)
-		if !isLiteral || literal.Value() != true {
-			if j.Op.IsMerge() {
-				filters := expression.SplitConjunction(j.Filter)
-				children = append(children, fmt.Sprintf("cmp: %s", sql.DebugString(filters[0])))
-				if len(filters) > 1 {
-					children = append(children, fmt.Sprintf("sel: %s", sql.DebugString(expression.JoinAnd(filters[1:]...))))
-				}
-			} else {
-				children = append(children, sql.DebugString(j.Filter))
-			}
-		}
-	}
-	children = append(children, sql.DebugString(j.left), sql.DebugString(j.right))
-	pr.WriteNode("%s", j.Op)
-	pr.WriteChildren(children...)
-	return pr.String()
+	return j.Describe(sql.DescribeOptions{
+		Analyze:   false,
+		Estimates: false,
+		Debug:     true,
+	})
 }
 
 func NewInnerJoin(left, right sql.Node, cond sql.Expression) *JoinNode {

@@ -61,6 +61,15 @@ func (d *Distinct) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 	return sql.GetCoercibility(ctx, d.Child)
 }
 
+// Describe implements sql.Describable
+func (d Distinct) Describe(options sql.DescribeOptions) string {
+	p := sql.NewTreePrinter()
+	_ = p.WriteNode("Distinct")
+	_ = p.WriteChildren(sql.Describe(d.Child, options))
+	return p.String()
+}
+
+// String implements fmt.Stringer
 func (d Distinct) String() string {
 	p := sql.NewTreePrinter()
 	_ = p.WriteNode("Distinct")
@@ -68,6 +77,7 @@ func (d Distinct) String() string {
 	return p.String()
 }
 
+// DebugString implements sql.DebugStringer
 func (d Distinct) DebugString() string {
 	p := sql.NewTreePrinter()
 	_ = p.WriteNode("Distinct")

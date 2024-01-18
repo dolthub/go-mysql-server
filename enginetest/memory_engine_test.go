@@ -303,7 +303,7 @@ func TestQueryPlanTODOs(t *testing.T) {
 	}
 	for _, tt := range queries.QueryPlanTODOs {
 		t.Run(tt.Query, func(t *testing.T) {
-			enginetest.TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, false)
+			enginetest.TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, enginetest.DebugQueryPlan)
 		})
 	}
 }

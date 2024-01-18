@@ -763,6 +763,9 @@ func buildRelExpr(b *ExecBuilder, r RelExpr, children ...sql.Node) (sql.Node, er
 		return nil, err
 	}
 
+	if withDescribeStats, ok := result.(sql.WithDescribeStats); ok {
+		withDescribeStats.SetDescribeStats(*DescribeStats(r))
+	}
 	result, err = r.Group().finalize(result)
 	if err != nil {
 		return nil, err
