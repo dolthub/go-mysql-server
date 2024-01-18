@@ -175,7 +175,7 @@ func (b *Builder) buildCreateUser(inScope *scope, n *ast.CreateUser) (outScope *
 	outScope = inScope.push()
 	authUsers := make([]plan.AuthenticatedUser, len(n.Users))
 	for i, user := range n.Users {
-		if user.Auth1.RandomPassword {
+		if user.Auth1 != nil && user.Auth1.RandomPassword {
 			b.handleErr(fmt.Errorf("random password generation is not currently supported; " +
 				"you can request support at https://github.com/dolthub/dolt/issues/new"))
 		}
