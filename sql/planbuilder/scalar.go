@@ -43,7 +43,7 @@ func (b *Builder) buildWhere(inScope *scope, where *ast.Where) {
 
 func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 	defer func() {
-		if b.bindCtx != nil || !b.bindCtx.resolveOnly {
+		if !(b.bindCtx == nil || b.bindCtx.resolveOnly) {
 			return
 		}
 		
