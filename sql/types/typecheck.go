@@ -186,5 +186,9 @@ func IsTuple(t sql.Type) bool {
 
 // IsUnsigned checks if t is an unsigned type.
 func IsUnsigned(t sql.Type) bool {
+	if svt, ok := t.(sql.SystemVariableType); ok {
+		t = svt.UnderlyingType()
+	}
+
 	return t == Uint8 || t == Uint16 || t == Uint24 || t == Uint32 || t == Uint64
 }

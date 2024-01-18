@@ -185,6 +185,7 @@ var JoinPlanningTests = []struct {
 		},
 	},
 	{
+		// todo: rewrite implementing new stats interface
 		name: "merge join large and small table",
 		setup: []string{
 			"CREATE table xy (x int primary key, y int, index y_idx(y));",
@@ -445,7 +446,7 @@ order by 1;`,
 			},
 			{
 				q:     "select * from xy where x in (select u from uv join ab on u = a and a = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeLookup},
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeMerge},
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
@@ -750,7 +751,7 @@ where u in (select * from rec);`,
 		tests: []JoinPlanTest{
 			{
 				q:     "select * from xy where x in (select u from uv join ab on u = a and a = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeLookup},
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeMerge},
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
@@ -1739,9 +1740,6 @@ func evalMergeCmpTest(t *testing.T, harness Harness, e QueryEngine, tt JoinPlanT
 		ctx := NewContext(harness)
 		ctx = ctx.WithQuery(tt.q)
 
-		//e.EngineAnalyzer().Verbose = true
-		//e.EngineAnalyzer().Debug = true
-
 		a, err := analyzeQuery(ctx, e, tt.q)
 		require.NoError(t, err)
 
@@ -1764,8 +1762,6 @@ func evalIndexTest(t *testing.T, harness Harness, e QueryEngine, q string, index
 		ctx := NewContext(harness)
 		ctx = ctx.WithQuery(q)
 
-		e.EngineAnalyzer().Verbose = true
-		e.EngineAnalyzer().Debug = true
 		a, err := analyzeQuery(ctx, e, q)
 		require.NoError(t, err)
 

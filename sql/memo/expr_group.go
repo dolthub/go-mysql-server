@@ -115,6 +115,10 @@ func (e *ExprGroup) fixConflicts() {
 		// LOOKUP_JOIN is more performant than INNER_JOIN with static indexScan
 		n.Right.findIndexScanConflict()
 	}
+
+	for _, g := range e.Best.Children() {
+		g.fixConflicts()
+	}
 }
 
 // findIndexScanConflict prevents indexScans from replacing filter nodes
@@ -136,7 +140,7 @@ func (e *ExprGroup) fixTableScanPath() bool {
 				if c.fixTableScanPath() {
 					// found path, update best
 					e.Best = n
-					n.SetDistinct(noDistinctOp)
+					n.SetDistinct(NoDistinctOp)
 					e.Done = true
 					return true
 				}
@@ -150,7 +154,7 @@ func (e *ExprGroup) fixTableScanPath() bool {
 			continue
 		}
 		// is a source, not an indexScan
-		n.SetDistinct(noDistinctOp)
+		n.SetDistinct(NoDistinctOp)
 		e.Best = n
 		e.HintOk = true
 		e.Done = true

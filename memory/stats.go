@@ -122,7 +122,7 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 		})
 
 		// quick and dirty histogram buckets
-		bucketCnt := 10
+		bucketCnt := 20
 		if len(keyVals) < bucketCnt {
 			bucketCnt = len(keyVals)
 		}
@@ -157,7 +157,7 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 // Algorithm L from: https://dl.acm.org/doi/pdf/10.1145/198429.198435
 func (s *StatsProv) reservoirSample(ctx *sql.Context, table sql.Table) ([]sql.Row, error) {
 	// read through table
-	var maxQueue float64 = 100
+	var maxQueue float64 = 1000
 	var queue []sql.Row
 	partIter, err := table.Partitions(ctx)
 	if err != nil {

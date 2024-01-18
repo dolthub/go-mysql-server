@@ -164,6 +164,12 @@ func (s *Statistic) WithAvgSize(i uint64) sql.Statistic {
 	return &ret
 }
 
+func (s *Statistic) WithLowerBound(r sql.Row) sql.Statistic {
+	ret := *s
+	ret.LowerBnd = r
+	return &ret
+}
+
 func (s *Statistic) WithHistogram(h sql.Histogram) (sql.Statistic, error) {
 	ret := *s
 	ret.Hist = nil

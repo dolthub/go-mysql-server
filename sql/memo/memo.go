@@ -346,7 +346,14 @@ func (m *Memo) MemoizeMax1Row(grp, child *ExprGroup) *ExprGroup {
 // OptimizeRoot finds the implementation for the root expression
 // that has the lowest cost.
 func (m *Memo) OptimizeRoot() error {
-	return m.optimizeMemoGroup(m.root)
+	err := m.optimizeMemoGroup(m.root)
+	if err != nil {
+		return err
+	}
+
+	// Certain "best" groups are incompatible.
+	m.root.fixConflicts()
+	return nil
 }
 
 // optimizeMemoGroup recursively builds the lowest cost plan for memo
@@ -368,19 +375,13 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 	if _, ok := n.(SourceRel); ok {
 		// We should order the search bottom-up so that physical operators
 		// always have their trees materialized. Until then, we always assume
-		// the indexScan child is faster than a filter option, and  reify
-		// between the two when a join operator is incompatible with the
-		// indexScan option.
+		// the indexScan child is faster than a filter option, and  correct
+		//  when a chosen join operator is incompatible with the indexScan
+		//  option.
 		grp.Done = true
 		grp.HintOk = true
 		grp.Best = grp.First
-		for ; n != nil; n = n.Next() {
-			if _, ok := n.(*IndexScan); ok {
-				grp.Best = n
-				break
-			}
-		}
-		grp.Best.SetDistinct(noDistinctOp)
+		grp.Best.SetDistinct(NoDistinctOp)
 		return nil
 	}
 
@@ -409,7 +410,7 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 			}
 			relCost += dCost
 		} else {
-			n.SetDistinct(noDistinctOp)
+			n.SetDistinct(NoDistinctOp)
 		}
 
 		n.SetCost(relCost)
@@ -417,9 +418,6 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 		m.updateBest(grp, n, cost)
 		n = n.Next()
 	}
-
-	// Certain "best" groups are incompatible.
-	grp.fixConflicts()
 
 	grp.Done = true
 	if err != nil {
@@ -492,6 +490,8 @@ func (m *Memo) ApplyHint(hint Hint) {
 	case HintTypeJoinFixedOrder:
 	case HintTypeInnerJoin, HintTypeMergeJoin, HintTypeLookupJoin, HintTypeHashJoin, HintTypeSemiJoin, HintTypeAntiJoin, HintTypeLeftOuterLookupJoin:
 		m.WithJoinOp(hint.Typ, hint.Args[0], hint.Args[1])
+	case HintTypeLeftDeep:
+		m.hints.leftDeep = true
 	default:
 	}
 }
@@ -646,7 +646,7 @@ type distinctOp uint8
 
 const (
 	unknownDistinctOp distinctOp = iota
-	noDistinctOp
+	NoDistinctOp
 	SortedDistinctOp
 	HashDistinctOp
 )

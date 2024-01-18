@@ -153,19 +153,11 @@ func PrefixLt(statistic sql.Statistic, val interface{}) (sql.Statistic, error) {
 
 func PrefixGt(statistic sql.Statistic, val interface{}) (sql.Statistic, error) {
 	buckets := []sql.HistogramBucket(statistic.Histogram())
-	var searchErr error
-	idx := sort.Search(len(buckets), func(i int) bool {
-		// lowest index that func is true
-		bucketKey := buckets[i].UpperBound()
-		typ := statistic.Types()[0]
-		cmp, err := nilSafeCmp(typ, bucketKey[0], val)
-		if err != nil {
-			searchErr = err
-		}
-		return cmp > 0
+	idx, err := PrefixGtHist(statistic.Histogram(), sql.Row{val}, func(i, j sql.Row) (int, error) {
+		return nilSafeCmp(statistic.Types()[0], i[0], j[0])
 	})
-	if searchErr != nil {
-		return nil, searchErr
+	if err != nil {
+		return nil, err
 	}
 	// inclusive of idx bucket
 	ret, err := statistic.WithHistogram(buckets[idx:])
@@ -220,21 +212,42 @@ func PrefixLtHist(h sql.Histogram, target sql.Row, cmp func(sql.Row, sql.Row) (i
 	return idx, searchErr
 }
 
-func PrefixGte(statistic sql.Statistic, val interface{}) (sql.Statistic, error) {
-	buckets := []sql.HistogramBucket(statistic.Histogram())
+func PrefixGtHist(h sql.Histogram, target sql.Row, cmp func(sql.Row, sql.Row) (int, error)) (int, error) {
 	var searchErr error
-	idx := sort.Search(len(buckets), func(i int) bool {
+	idx := sort.Search(len(h), func(i int) bool {
 		// lowest index that func is true
-		bucketKey := buckets[i].UpperBound()
-		typ := statistic.Types()[0]
-		cmp, err := nilSafeCmp(typ, bucketKey[0], val)
+		// lowest index that is less than key
+		bucketKey := h[i].UpperBound()
+		cmp, err := cmp(bucketKey, target)
+		if err != nil {
+			searchErr = err
+		}
+		return cmp > 0
+	})
+	return idx, searchErr
+}
+
+func PrefixGteHist(h sql.Histogram, target sql.Row, cmp func(sql.Row, sql.Row) (int, error)) (int, error) {
+	var searchErr error
+	idx := sort.Search(len(h), func(i int) bool {
+		// lowest index that func is true
+		bucketKey := h[i].UpperBound()
+		cmp, err := cmp(bucketKey, target)
 		if err != nil {
 			searchErr = err
 		}
 		return cmp >= 0
 	})
-	if searchErr != nil {
-		return nil, searchErr
+	return idx, searchErr
+}
+
+func PrefixGte(statistic sql.Statistic, val interface{}) (sql.Statistic, error) {
+	buckets := []sql.HistogramBucket(statistic.Histogram())
+	idx, err := PrefixGteHist(statistic.Histogram(), sql.Row{val}, func(i, j sql.Row) (int, error) {
+		return nilSafeCmp(statistic.Types()[0], i[0], j[0])
+	})
+	if err != nil {
+		return nil, err
 	}
 	// inclusive of idx bucket
 	ret, err := statistic.WithHistogram(buckets[idx:])

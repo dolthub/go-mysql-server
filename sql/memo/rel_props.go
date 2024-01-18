@@ -17,7 +17,6 @@ package memo
 import (
 	"errors"
 	"fmt"
-	"log"
 	"math"
 	"strings"
 
@@ -343,21 +342,15 @@ func statsForRel(rel RelExpr) sql.Statistic {
 			case *MergeJoin:
 				// get stats for left/right index
 				var leftChildStats, rightChildStats sql.Statistic
-				if lIdx, ok := n.Left.Best.(*IndexScan); ok {
+				if lIdx, ok := n.Left.First.(*IndexScan); ok {
 					leftChildStats = lIdx.Stats
 				}
-				if rIdx, ok := n.Right.Best.(*IndexScan); ok {
+				if rIdx, ok := n.Right.First.(*IndexScan); ok {
 					rightChildStats = rIdx.Stats
 				}
 
 				// single prefix always safe for merge join
 				mergeStats, err = getJoinStats(n.InnerScan.Stats, n.OuterScan.Stats, leftChildStats, rightChildStats, 1)
-				if n.InnerScan.Stats != nil {
-					log.Println(n.InnerScan.Stats.Histogram().DebugString())
-					log.Println(n.OuterScan.Stats.Histogram().DebugString())
-					log.Println(mergeStats.Histogram().DebugString())
-					log.Println(n.InnerScan.Table.Name(), n.OuterScan.Table.Name(), mergeStats.RowCount())
-				}
 				if err != nil {
 					n.Group().m.HandleErr(err)
 				}
@@ -402,7 +395,7 @@ func statsForRel(rel RelExpr) sql.Statistic {
 		if rel.Stats != nil {
 			if len(rel.Stats.Histogram()) > 0 {
 				return rel.Stats
-			} else if rel.Stats.FuncDeps().HasMax1Row() {
+			} else if fds := rel.Stats.FuncDeps(); fds != nil && fds.HasMax1Row() {
 				return rel.Stats
 			} else if rel.Stats.RowCount() > 0 {
 				// don't accidentally round to zero
@@ -422,15 +415,27 @@ func statsForRel(rel RelExpr) sql.Statistic {
 		stat = &stats.Statistic{RowCnt: 10}
 
 	case SourceRel:
-		if tn, ok := rel.TableIdNode().(sql.TableNode); ok {
-			if prov := rel.Group().m.StatsProvider(); prov != nil {
-				if card, err := prov.RowCount(rel.Group().m.Ctx, tn.Database().Name(), tn.Name()); err == nil {
-					stat = &stats.Statistic{RowCnt: card}
-					break
-				}
+		var tableName string
+		var dbName string
+		switch tn := rel.TableIdNode().(type) {
+		case sql.TableNode:
+			tableName = tn.Name()
+			dbName = tn.Database().Name()
+		case *plan.TableAlias:
+			if tn, ok := tn.Child.(sql.TableNode); ok {
+				dbName = tn.Database().Name()
+				tableName = tn.Name()
+			}
+		default:
+			return &stats.Statistic{RowCnt: 1000}
+		}
+		if prov := rel.Group().m.StatsProvider(); prov != nil {
+			if card, err := prov.RowCount(rel.Group().m.Ctx, dbName, tableName); err == nil {
+				return &stats.Statistic{RowCnt: card}
+				break
 			}
 		}
-		stat = &stats.Statistic{RowCnt: 1000}
+		return &stats.Statistic{RowCnt: 1000}
 
 	case *Filter:
 		card := float64(rel.Child.RelProps.GetStats().RowCount()) * defaultFilterSelectivity
@@ -464,21 +469,22 @@ func indexCoverageAdjustment(lookup *IndexScan) float64 {
 	return math.Max(0, 12.0+missing-(3*filled))
 }
 
-func getJoinStats(rightIdx, leftIdx, leftChild, rightChild sql.Statistic, prefixCnt int) (sql.Statistic, error) {
+func getJoinStats(leftIdx, rightIdx, leftChild, rightChild sql.Statistic, prefixCnt int) (sql.Statistic, error) {
 	if stats.Empty(rightIdx) || stats.Empty(leftIdx) {
 		return nil, nil
 	}
 	// if either child is not nil, try to interpolate join index stats from child
 	if !stats.Empty(leftChild) {
-		leftIdx = stats.InterpolateNewCounts(leftChild, leftIdx)
+		leftIdx = stats.InterpolateNewCounts(leftIdx, leftChild)
 	}
 	if !stats.Empty(rightChild) {
-		rightIdx = stats.InterpolateNewCounts(rightChild, rightIdx)
+		rightIdx = stats.InterpolateNewCounts(rightIdx, rightChild)
 	}
 	stat, err := stats.Join(leftIdx, rightIdx, prefixCnt, false)
 	if errors.Is(err, stats.ErrJoinStringStatistics) {
 		return nil, nil
 	}
+
 	return stat, nil
 }
 

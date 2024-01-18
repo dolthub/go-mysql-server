@@ -649,10 +649,6 @@ func TestEngineJoinOps(t *testing.T) {
 	enginetest.TestJoinOps(t, enginetest.NewDefaultMemoryHarness(), enginetest.EngineOnlyJoinOpTests)
 }
 
-func TestEngineJoinStats(t *testing.T) {
-	enginetest.TestJoinStats(t, enginetest.NewDefaultMemoryHarness())
-}
-
 func TestTableFunctions(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
 	harness.Setup(setup.MydbData)

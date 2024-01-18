@@ -85,6 +85,7 @@ type MutableStatistic interface {
 	WithRowCount(uint64) Statistic
 	WithNullCount(uint64) Statistic
 	WithAvgSize(uint64) Statistic
+	WithLowerBound(Row) Statistic
 }
 
 func NewQualifierFromString(q string) (StatQualifier, error) {

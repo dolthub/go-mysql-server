@@ -36,6 +36,7 @@ const (
 	biasFactor                = 1e5
 	defaultFilterSelectivity  = .75
 	perKeyCostReductionFactor = 0.5
+	defaultTableSize          = 100
 )
 
 func NewDefaultCoster() Coster {
@@ -63,8 +64,8 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 		return float64(n.Child.RelProps.GetStats().RowCount()) * cpuCostFactor * float64(len(n.Filters)), nil
 	case JoinRel:
 		jp := n.JoinPrivate()
-		lBest := float64(jp.Left.RelProps.GetStats().RowCount())
-		rBest := float64(jp.Right.RelProps.GetStats().RowCount())
+		lBest := math.Max(1, float64(jp.Left.RelProps.GetStats().RowCount()))
+		rBest := math.Max(1, float64(jp.Right.RelProps.GetStats().RowCount()))
 
 		// if a child is an index scan, the table scan will be more expensive
 		var err error
@@ -74,13 +75,13 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 		if iScan, ok := jp.Left.Best.(*IndexScan); ok {
 			lTableScan, err = s.RowCount(ctx, iScan.Table.Database().Name(), iScan.Table.Name())
 			if err != nil {
-				return 0, err
+				lTableScan = defaultTableSize
 			}
 		}
 		if iScan, ok := jp.Right.Best.(*IndexScan); ok {
 			rTableScan, err = s.RowCount(ctx, iScan.Table.Database().Name(), iScan.Table.Name())
 			if err != nil {
-				return 0, err
+				rTableScan = defaultTableSize
 			}
 		}
 
@@ -128,7 +129,7 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 					rowCount = math.Max(0, rowCount+float64(indexCoverageAdjustment(n.Lookup)))
 				}
 
-				return rowCount * (seqIOCostFactor + cpuCostFactor + randIOCostFactor), nil
+				return math.Max(lBest, rowCount) * (seqIOCostFactor + cpuCostFactor + randIOCostFactor), nil
 			case *ConcatJoin:
 				return c.costConcatJoin(ctx, n, s)
 			}
