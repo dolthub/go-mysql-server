@@ -1118,6 +1118,18 @@ func (c *indexCoster) costIndexScanAnd(filter *iScanAnd, s sql.Statistic, ordina
 		}
 	}
 
+	if conj.missingPrefix < conj.applied.Len() {
+		// Any columns after the missingPrefix index do not contribute
+		// an equality lookup.
+		for i := conj.missingPrefix; i < len(s.Columns()); i++ {
+			if colFilters, ok := filter.leafChildren[s.Columns()[i]]; ok {
+				for _, f := range colFilters {
+					conj.applied.Remove(int(f.id))
+				}
+			}
+		}
+	}
+
 	if exact.Len()+conj.applied.Len() == filter.childCnt() {
 		// matched all filters
 		return conj.stat, sql.NewFastIntSet(int(filter.id)), nil
