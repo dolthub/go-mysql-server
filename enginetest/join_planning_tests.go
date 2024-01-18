@@ -335,7 +335,7 @@ var JoinPlanningTests = []struct {
 			},
 			{
 				q:     "select /*+ LOOKUP_JOIN(xy,ab) */ * from xy where x in (select a from ab where a in (1,2));",
-				types: []plan.JoinType{plan.JoinTypeSemiLookup},
+				types: []plan.JoinType{plan.JoinTypeLookup},
 				exp:   []sql.Row{{2, 1}, {1, 0}},
 			},
 			{
@@ -350,7 +350,7 @@ var JoinPlanningTests = []struct {
 			},
 			{
 				q:     "select * from xy where y+1 not in (select u from uv);",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterLookup},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls},
 				exp:   []sql.Row{{3, 3}},
 			},
 			{
@@ -534,7 +534,7 @@ HAVING count(v) >= 1)`,
 			},
 			{
 				q:     "select * from xy where x in (select cnt from (select count(u) as cnt from uv group by v having cnt > 0) sq) order by 1,2;",
-				types: []plan.JoinType{plan.JoinTypeHash},
+				types: []plan.JoinType{plan.JoinTypeLookup},
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
@@ -576,7 +576,7 @@ WHERE EXISTS (
 select x from xy where
   not exists (select a from ab where a = x and a = 1) and
   not exists (select a from ab where a = x and a = 2)`,
-				types: []plan.JoinType{plan.JoinTypeLeftOuterLookup, plan.JoinTypeLeftOuterMerge},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls, plan.JoinTypeLeftOuterMerge},
 				exp:   []sql.Row{{0}, {3}},
 			},
 			{
@@ -587,7 +587,7 @@ select * from xy where x in (
     )
     SELECT u FROM uv, tree where u = s
 )`,
-				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeHash},
+				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeHash},
 				exp:   []sql.Row{{1, 0}},
 			},
 			{
@@ -751,7 +751,7 @@ where u in (select * from rec);`,
 		tests: []JoinPlanTest{
 			{
 				q:     "select * from xy where x in (select u from uv join ab on u = a and a = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeMerge},
+				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeMerge},
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
@@ -1894,6 +1894,8 @@ func evalJoinOrder(t *testing.T, harness Harness, e QueryEngine, q string, exp [
 		ctx := NewContext(harness)
 		ctx = ctx.WithQuery(q)
 
+		//e.EngineAnalyzer().Verbose = true
+		//e.EngineAnalyzer().Debug = true
 		a, err := analyzeQuery(ctx, e, q)
 		require.NoError(t, err)
 

@@ -85,7 +85,7 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 			}
 		}
 
-		rowCount := float64(n.Group().RelProps.GetStats().RowCount())
+		selfJoinCard := float64(n.Group().RelProps.GetStats().RowCount())
 
 		switch {
 		case jp.Op.IsInner():
@@ -99,7 +99,7 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 				cost := lBest * (rBest / 2.0) * (seqIOCostFactor + cpuCostFactor)
 				return cost * .5, nil
 			}
-			return lBest*(seqIOCostFactor+cpuCostFactor) + float64(rTableScan)*(seqIOCostFactor+memCostFactor) + rowCount*cpuCostFactor, nil
+			return lBest*(seqIOCostFactor+cpuCostFactor) + float64(rTableScan)*(seqIOCostFactor+memCostFactor) + selfJoinCard*cpuCostFactor, nil
 
 		case jp.Op.IsLateral():
 			return (lBest*rBest-1)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor, nil
@@ -118,7 +118,10 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 				rowCount += mergeCmtAdjustment
 			}
 
-			return float64(lTableScan+rTableScan)*(seqIOCostFactor+cpuCostFactor) + rowCount*cpuCostFactor, nil
+			// cost is full left scan + full rightScan plus compute/memory overhead
+			// for this merge filter's cardinality
+			// TODO: estimate memory overhead
+			return float64(lTableScan+rTableScan)*(seqIOCostFactor+cpuCostFactor) + cpuCostFactor*rowCount, nil
 		case jp.Op.IsLookup():
 			// TODO added overhead for right lookups
 			switch n := n.(type) {
@@ -126,10 +129,12 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 				if !n.Injective {
 					// partial index completion is undesirable
 					// TODO don't do this whe we have stats
-					rowCount = math.Max(0, rowCount+float64(indexCoverageAdjustment(n.Lookup)))
+					selfJoinCard = math.Max(0, selfJoinCard+float64(indexCoverageAdjustment(n.Lookup)))
 				}
 
-				return math.Max(lBest, rowCount) * (seqIOCostFactor + cpuCostFactor + randIOCostFactor), nil
+				// read the whole left table and randIO into table equivalent to
+				// this join's output cardinality estimate
+				return lBest*seqIOCostFactor + selfJoinCard*(randIOCostFactor+seqIOCostFactor), nil
 			case *ConcatJoin:
 				return c.costConcatJoin(ctx, n, s)
 			}

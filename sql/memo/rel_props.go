@@ -488,7 +488,6 @@ func getJoinStats(leftIdx, rightIdx, leftChild, rightChild sql.Statistic, prefix
 	if errors.Is(err, stats.ErrJoinStringStatistics) {
 		return nil, nil
 	}
-
 	return stat, nil
 }
 
