@@ -147,30 +147,39 @@ func convertPrivilegeLevel(privLevel ast.PrivilegeLevel) plan.PrivilegeLevel {
 	}
 }
 
+func (b *Builder) buildAuthenticatedUser(user ast.AccountWithAuth) plan.AuthenticatedUser {
+	authUser := plan.AuthenticatedUser{
+		UserName: convertAccountName(user.AccountName)[0],
+	}
+	if user.Auth1 != nil {
+		authUser.Identity = user.Auth1.Identity
+		if user.Auth1.Plugin == "mysql_native_password" && len(user.Auth1.Password) > 0 {
+			authUser.Auth1 = plan.AuthenticationMysqlNativePassword(user.Auth1.Password)
+		} else if len(user.Auth1.Plugin) > 0 {
+			authUser.Auth1 = plan.NewOtherAuthentication(user.Auth1.Password, user.Auth1.Plugin)
+		} else {
+			// We default to using the password, even if it's empty
+			authUser.Auth1 = plan.NewDefaultAuthentication(user.Auth1.Password)
+		}
+	}
+	if user.Auth2 != nil || user.Auth3 != nil || user.AuthInitial != nil {
+		err := fmt.Errorf(`multi-factor authentication is not yet supported`)
+		b.handleErr(err)
+	}
+	//TODO: figure out how to represent the remaining authentication methods and multi-factor auth
+
+	return authUser
+}
+
 func (b *Builder) buildCreateUser(inScope *scope, n *ast.CreateUser) (outScope *scope) {
 	outScope = inScope.push()
 	authUsers := make([]plan.AuthenticatedUser, len(n.Users))
 	for i, user := range n.Users {
-		authUser := plan.AuthenticatedUser{
-			UserName: convertAccountName(user.AccountName)[0],
+		if user.Auth1.RandomPassword {
+			b.handleErr(fmt.Errorf("random password generation is not currently supported; " +
+				"you can request support at https://github.com/dolthub/dolt/issues/new"))
 		}
-		if user.Auth1 != nil {
-			authUser.Identity = user.Auth1.Identity
-			if user.Auth1.Plugin == "mysql_native_password" && len(user.Auth1.Password) > 0 {
-				authUser.Auth1 = plan.AuthenticationMysqlNativePassword(user.Auth1.Password)
-			} else if len(user.Auth1.Plugin) > 0 {
-				authUser.Auth1 = plan.NewOtherAuthentication(user.Auth1.Password, user.Auth1.Plugin)
-			} else {
-				// We default to using the password, even if it's empty
-				authUser.Auth1 = plan.NewDefaultAuthentication(user.Auth1.Password)
-			}
-		}
-		if user.Auth2 != nil || user.Auth3 != nil || user.AuthInitial != nil {
-			err := fmt.Errorf(`multi-factor authentication is not yet supported`)
-			b.handleErr(err)
-		}
-		//TODO: figure out how to represent the remaining authentication methods and multi-factor auth
-		authUsers[i] = authUser
+		authUsers[i] = b.buildAuthenticatedUser(user)
 	}
 	var tlsOptions *plan.TLSOptions
 	if n.TLSOptions != nil {

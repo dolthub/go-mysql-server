@@ -452,7 +452,57 @@ func (b *BaseBuilder) buildDropView(ctx *sql.Context, n *plan.DropView, row sql.
 	return sql.RowsToRowIter(), nil
 }
 
-func (b *BaseBuilder) buildCreateUser(ctx *sql.Context, n *plan.CreateUser, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildAlterUser(ctx *sql.Context, a *plan.AlterUser, _ sql.Row) (sql.RowIter, error) {
+	mysqlDb, ok := a.MySQLDb.(*mysql_db.MySQLDb)
+	if !ok {
+		return nil, sql.ErrDatabaseNotFound.New("mysql")
+	}
+	editor := mysqlDb.Editor()
+	defer editor.Close()
+
+	user := a.User
+	// replace empty host with any host
+	if user.UserName.Host == "" {
+		user.UserName.Host = "%"
+	}
+
+	userPk := mysql_db.UserPrimaryKey{
+		Host: user.UserName.Host,
+		User: user.UserName.Name,
+	}
+	previousUserEntry, ok := editor.GetUser(userPk)
+	if !ok {
+		if a.IfExists {
+			return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+		}
+		return nil, sql.ErrUserAlterFailure.New(user.UserName.String("'"))
+	}
+
+	plugin := "mysql_native_password"
+	password := ""
+	if user.Auth1 != nil {
+		plugin = user.Auth1.Plugin()
+		password = user.Auth1.Password()
+	}
+	if plugin != "mysql_native_password" {
+		if err := mysqlDb.VerifyPlugin(plugin); err != nil {
+			return nil, sql.ErrUserAlterFailure.New(err)
+		}
+	}
+
+	previousUserEntry.Plugin = plugin
+	previousUserEntry.Password = password
+	previousUserEntry.PasswordLastChanged = time.Now().UTC()
+	editor.PutUser(previousUserEntry)
+
+	if err := mysqlDb.Persist(ctx, editor); err != nil {
+		return nil, err
+	}
+
+	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+}
+
+func (b *BaseBuilder) buildCreateUser(ctx *sql.Context, n *plan.CreateUser, _ sql.Row) (sql.RowIter, error) {
 	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")

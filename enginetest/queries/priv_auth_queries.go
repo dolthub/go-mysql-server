@@ -2148,6 +2148,160 @@ func (p *NoopPlaintextPlugin) Authenticate(db *mysql_db.MySQLDb, user string, us
 // root account is used with any queries in the SetUpScript, along as being set to the context passed to SetUpFunc.
 var ServerAuthTests = []ServerAuthenticationTest{
 	{
+		Name: "ALTER USER can change passwords",
+		Assertions: []ServerAuthenticationTestAssertion{
+			// Create test users, privileges, etc
+			{
+				Username:    "root",
+				Password:    "",
+				Query:       "CREATE TABLE mydb.test (pk BIGINT PRIMARY KEY);",
+				ExpectedErr: false,
+			}, {
+				// Create a user with CREATE USER privileges
+				Username:    "root",
+				Password:    "",
+				Query:       "CREATE USER `createUserUser`@`localhost` IDENTIFIED BY '';",
+				ExpectedErr: false,
+			}, {
+				Username:    "root",
+				Password:    "",
+				Query:       "GRANT CREATE USER ON *.* TO `createUserUser`@`localhost`;",
+				ExpectedErr: false,
+			}, {
+				// Create a user with UPDATE privileges on the mysql database
+				Username:    "root",
+				Password:    "",
+				Query:       "CREATE USER `updateUser`@`localhost` IDENTIFIED BY '';",
+				ExpectedErr: false,
+			}, {
+				Username:    "root",
+				Password:    "",
+				Query:       "GRANT UPDATE ON mysql.* TO `updateUser`@`localhost`;",
+				ExpectedErr: false,
+			}, {
+				// Create a regular user named user1 with SELECT privileges
+				Username:    "root",
+				Password:    "",
+				Query:       "CREATE USER `user1`@`localhost` IDENTIFIED BY '';",
+				ExpectedErr: false,
+			}, {
+				Username:    "root",
+				Password:    "",
+				Query:       "GRANT SELECT ON *.* TO `user1`@`localhost`;",
+				ExpectedErr: false,
+			}, {
+				// Create a regular user named user2 with SELECT privileges
+				Username:    "root",
+				Password:    "",
+				Query:       "CREATE USER `user2`@`localhost` IDENTIFIED BY '';",
+				ExpectedErr: false,
+			}, {
+				Username:    "root",
+				Password:    "",
+				Query:       "GRANT SELECT ON *.* TO `user2`@`localhost`;",
+				ExpectedErr: false,
+			},
+
+			// When IF EXISTS is specified, an error isn't returned if the user doesn't exist
+			{
+				Username:    "root",
+				Password:    "",
+				Query:       "ALTER USER IF EXISTS nobody@localhost IDENTIFIED BY 'password';",
+				ExpectedErr: false,
+			},
+
+			// RANDOM PASSWORD is not supported yet, so an error should be returned
+			{
+				Username:    "root",
+				Password:    "",
+				Query:       "ALTER USER user2@localhost IDENTIFIED BY RANDOM PASSWORD;",
+				ExpectedErr: true,
+				ExpectedErrStr: "Error 1105 (HY000): random password generation is not currently supported; " +
+					"you can request support at https://github.com/dolthub/dolt/issues/new",
+			},
+
+			// root super user can change other account passwords
+			{
+				Username:    "root",
+				Password:    "",
+				Query:       "ALTER USER `user1`@`localhost` IDENTIFIED BY 'password1';",
+				ExpectedErr: false,
+			}, {
+				Username:    "user1",
+				Password:    "",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: true,
+			}, {
+				Username:    "user1",
+				Password:    "password1",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: false,
+			},
+
+			// Accounts with the CREATE USER privilege can change other account passwords
+			{
+				Username:    "createUserUser",
+				Password:    "",
+				Query:       "ALTER USER `user1`@`localhost` IDENTIFIED BY 'password2';",
+				ExpectedErr: false,
+			}, {
+				Username:    "user1",
+				Password:    "",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: true,
+			}, {
+				Username:    "user1",
+				Password:    "password2",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: false,
+			},
+
+			// Accounts with the UPDATE privilege on the mysql db can change other account passwords
+			{
+				Username:    "updateUser",
+				Password:    "",
+				Query:       "ALTER USER `user2`@`localhost` IDENTIFIED BY 'password3';",
+				ExpectedErr: false,
+			}, {
+				Username:    "user2",
+				Password:    "",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: true,
+			}, {
+				Username:    "user2",
+				Password:    "password3",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: false,
+			},
+
+			// Accounts can change their own password
+			{
+				Username:    "user1",
+				Password:    "password2",
+				Query:       "ALTER USER `user1`@`localhost` IDENTIFIED BY 'password4';",
+				ExpectedErr: false,
+			}, {
+				Username:    "user1",
+				Password:    "",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: true,
+			}, {
+				Username:    "user1",
+				Password:    "password4",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: false,
+			},
+
+			// Accounts CANNOT change another account's password (without the CREATE USER or UPDATE privilege)
+			{
+				Username:    "user1",
+				Password:    "password2",
+				Query:       "ALTER USER `user2`@`localhost` IDENTIFIED BY 'password5';",
+				ExpectedErr: true,
+			},
+		},
+	},
+	{
 		Name: "DROP USER reports correct string for missing address",
 		Assertions: []ServerAuthenticationTestAssertion{
 			{
@@ -2155,6 +2309,19 @@ var ServerAuthTests = []ServerAuthenticationTest{
 				Password:       "",
 				Query:          "DROP USER xyz;",
 				ExpectedErrStr: "Error 1105 (HY000): Operation DROP USER failed for 'xyz'@'%'",
+			},
+		},
+	},
+	{
+		Name: "CREATE USER with a random password is not supported",
+		Assertions: []ServerAuthenticationTestAssertion{
+			{
+				Username:    "root",
+				Password:    "",
+				Query:       "CREATE USER foo1@localhost IDENTIFIED BY RANDOM PASSWORD;",
+				ExpectedErr: true,
+				ExpectedErrStr: "Error 1105 (HY000): random password generation is not currently supported; " +
+					"you can request support at https://github.com/dolthub/dolt/issues/new",
 			},
 		},
 	},

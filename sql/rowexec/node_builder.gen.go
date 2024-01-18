@@ -185,6 +185,8 @@ func (b *BaseBuilder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (
 		return b.buildDeferredAsOfTable(ctx, n, row)
 	case *plan.CreateUser:
 		return b.buildCreateUser(ctx, n, row)
+	case *plan.AlterUser:
+		return b.buildAlterUser(ctx, n, row)
 	case *plan.DropView:
 		return b.buildDropView(ctx, n, row)
 	case *plan.GroupBy:
