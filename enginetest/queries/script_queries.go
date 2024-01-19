@@ -5208,6 +5208,16 @@ CREATE TABLE tab3 (
 						limit 100`,
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 8, Info: plan.UpdateInfo{Matched: 10, Updated: 8}}}},
 			},
+			// do without limit to use `plan.Sort` instead of `plan.TopN`
+			{
+				Query: `update joinparent as jp 
+							left join joinchild as jc on jc.parent_id = jp.id
+								set jp.archived = 0, jp.archived_at = null, 
+									jc.archived = 0, jc.archived_at = null
+						where jp.id > 0 and jp.name != "never"
+						order by jp.name`,
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 8, Info: plan.UpdateInfo{Matched: 10, Updated: 8}}}},
+			},
 		},
 	},
 }
