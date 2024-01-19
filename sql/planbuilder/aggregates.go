@@ -364,6 +364,7 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 	}
 
 	aggType := agg.Type()
+	// TODO: these should be decimal
 	if name == "avg" || name == "sum" {
 		aggType = types.Float64
 	}

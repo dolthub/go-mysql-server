@@ -154,6 +154,9 @@ func (c *Convert) Type() sql.Type {
 		return types.DatetimeMaxPrecision
 	case ConvertToDecimal:
 		if c.cachedDecimalType == nil {
+			if c.typeLength == 0 {
+				c.typeLength = 10
+			}
 			c.cachedDecimalType = createConvertedDecimalType(c.typeLength, c.typeScale, true)
 		}
 		return c.cachedDecimalType
@@ -329,7 +332,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type, typeLengt
 		dt := createConvertedDecimalType(typeLength, typeScale, false)
 		d, _, err := dt.Convert(value)
 		if err != nil {
-			return "0", nil
+			return d, nil
 		}
 		return d, nil
 	case ConvertToFloat:
@@ -426,7 +429,7 @@ func truncateConvertedValue(val interface{}, typeLength int) (interface{}, error
 // used in places where an error cannot be returned (e.g. Node.Type() implementations), hence why it logs an error
 // instead of returning one.
 func createConvertedDecimalType(length, scale int, logErrors bool) sql.DecimalType {
-	if length > 0 && scale > 0 {
+	if length > 0 {
 		dt, err := types.CreateColumnDecimalType(uint8(length), uint8(scale))
 		if err != nil {
 			if logErrors {

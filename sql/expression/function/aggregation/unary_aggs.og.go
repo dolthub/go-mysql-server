@@ -844,6 +844,7 @@ func NewSum(e sql.Expression) *Sum {
 }
 
 func (a *Sum) Type() sql.Type {
+	// TODO: should be Decimal
 	return a.Child.Type()
 }
 

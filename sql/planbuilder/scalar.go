@@ -236,6 +236,11 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 				b.handleErr(err)
 			}
 		}
+
+		if typeScale > typeLength {
+			// TODO: error
+		}
+
 		expr := b.buildScalar(inScope, v.Expr)
 		ret, err := b.f.buildConvert(expr, v.Type.Type, typeLength, typeScale)
 		if err != nil {

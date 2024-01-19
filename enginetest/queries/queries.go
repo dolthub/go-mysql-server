@@ -2331,13 +2331,13 @@ Select * from (
 	{
 		Query: "with recursive t (n) as (select sum(1) from dual union all select (2.00) from dual) select sum(n) from t;",
 		Expected: []sql.Row{
-			{"3.00"},
+			{"3"},
 		},
 	},
 	{
 		Query: "with recursive t (n) as (select sum(1) from dual union all select (2.00/3.0) from dual) select sum(n) from t;",
 		Expected: []sql.Row{
-			{"1.666667"},
+			{"2"},
 		},
 	},
 	{
@@ -4626,6 +4626,42 @@ Select * from (
 	{
 		Query:    "SELECT CAST('abcdef' as BINARY(30));",
 		Expected: []sql.Row{{[]byte("abcdef")}},
+	},
+	{
+		Query: "SELECT CAST(1 AS DECIMAL) / 9;",
+		Expected: []sql.Row{
+			{"0.1111"},
+		},
+	},
+	{
+		Query: "SELECT CAST(43210.01234 AS DECIMAL);",
+		Expected: []sql.Row{
+			{"43210"},
+		},
+	},
+	{
+		Query: "SELECT CAST(9876543210.01234 AS DECIMAL);",
+		Expected: []sql.Row{
+			{"9876543210"},
+		},
+	},
+	{
+		Query: "SELECT CAST(98765432100000.01234 AS DECIMAL);",
+		Expected: []sql.Row{
+			{"9999999999"},
+		},
+	},
+	{
+		Query: "SELECT CAST(-98765432100000.01234 AS DECIMAL);",
+		Expected: []sql.Row{
+			{"-9999999999"},
+		},
+	},
+	{
+		Query: "SELECT CAST(98765432100000.01234 AS DECIMAL(10, 2));",
+		Expected: []sql.Row{
+			{"99999999.99"},
+		},
 	},
 	{
 		Query:    `SELECT CONVERT(10.12345, DECIMAL(4,2))`,

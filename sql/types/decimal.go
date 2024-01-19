@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"strings"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -258,7 +259,11 @@ func (t DecimalType_) BoundsCheck(v decimal.Decimal) (decimal.Decimal, sql.Conve
 	// TODO add shortcut for common case
 	// ex: certain num of bits fast tracks OK
 	if !v.Abs().LessThan(t.exclusiveUpperBound) {
-		return decimal.Decimal{}, sql.InRange, ErrConvertToDecimalLimit.New()
+		retVal, _ := decimal.NewFromString(fmt.Sprintf("%s.%s", strings.Repeat("9", int(t.precision-t.scale)), strings.Repeat("9", int(t.scale))))
+		if v.IsNegative() {
+			retVal = retVal.Neg()
+		}
+		return retVal, sql.OutOfRange, ErrConvertToDecimalLimit.New()
 	}
 	return v, sql.InRange, nil
 }
