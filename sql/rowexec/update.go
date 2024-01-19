@@ -17,7 +17,6 @@ package rowexec
 import (
 	"errors"
 	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -256,9 +255,36 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 }
 
+func toJoinNode(node sql.Node) *plan.JoinNode {
+	switch n := node.(type) {
+	case *plan.JoinNode:
+		return n
+	case *plan.TopN:
+		return toJoinNode(n.Child)
+	case *plan.Filter:
+		return toJoinNode(n.Child)
+	case *plan.Project:
+		return toJoinNode(n.Child)
+	case *plan.Limit:
+		return toJoinNode(n.Child)
+	case *plan.Offset:
+		return toJoinNode(n.Child)
+	case *plan.Sort:
+		return toJoinNode(n.Child)
+	case *plan.Distinct:
+		return toJoinNode(n.Child)
+	case *plan.Having:
+		return toJoinNode(n.Child)
+	case *plan.Window:
+		return toJoinNode(n.Child)
+	default:
+		return nil
+	}
+}
+
 func isRightOrLeftJoin(node sql.Node) bool {
-	jn, ok := node.(*plan.JoinNode)
-	if !ok {
+	jn := toJoinNode(node)
+	if jn == nil {
 		return false
 	}
 	return jn.JoinType().IsLeftOuter()
@@ -269,8 +295,8 @@ func isRightOrLeftJoin(node sql.Node) bool {
 // the left or right side of the join (given the direction). A row of all nils that does not pass condition 1 must not
 // be part of the update operation. This is follows the logic as established in the joinIter.
 func (u *updateJoinIter) shouldUpdateDirectionalJoin(ctx *sql.Context, joinRow, tableRow sql.Row) (bool, error) {
-	jn := u.joinNode.(*plan.JoinNode)
-	if !jn.JoinType().IsLeftOuter() {
+	jn := toJoinNode(u.joinNode)
+	if jn == nil || !jn.JoinType().IsLeftOuter() {
 		return true, fmt.Errorf("expected left join")
 	}
 
