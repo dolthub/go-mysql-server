@@ -9123,6 +9123,13 @@ FROM mytable;`,
 		Query:    "select TABLE_NAME, IS_UPDATABLE from information_schema.views where table_schema = 'mydb'",
 		Expected: []sql.Row{{"myview1", "YES"}, {"myview2", "YES"}, {"myview3", "NO"}, {"myview4", "NO"}, {"myview5", "YES"}},
 	},
+	{
+		// This should through a duplicate column error
+		Query: "select * from (select 0 as col1, 1 as col2, 2 as col2 group by col2 having col2 = 1) sq;",
+		Expected: []sql.Row{
+			{0, 1, 2},
+		},
+	},
 }
 
 var VersionedQueries = []QueryTest{
