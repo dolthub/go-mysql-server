@@ -12165,7 +12165,7 @@ order by x, y;
 			"     │   │   └─ Table\n" +
 			"     │   │       ├─ name: xy\n" +
 			"     │   │       └─ columns: [x y]\n" +
-			"     │   └─ Sort(bigtable.n:1 ASC nullsLast)\n" +
+			"     │   └─ Sort(bigtable.n:1 ASC nullsFirst)\n" +
 			"     │       └─ ProcessTable\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: bigtable\n" +
