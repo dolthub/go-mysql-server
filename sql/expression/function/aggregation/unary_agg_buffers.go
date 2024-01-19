@@ -419,6 +419,7 @@ func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
 
 	var str string
 	for _, val := range value.(sql.Row) {
+		// skip nil values
 		if val == nil {
 			return nil
 		}

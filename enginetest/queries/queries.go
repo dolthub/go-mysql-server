@@ -8898,6 +8898,12 @@ from typestable`,
 			{3},
 		},
 	},
+	{
+		Query: "select count(distinct null);",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
