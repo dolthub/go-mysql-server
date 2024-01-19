@@ -282,6 +282,20 @@ func toJoinNode(node sql.Node) *plan.JoinNode {
 	}
 }
 
+func isIndexedAccess(node sql.Node) bool {
+	switch n := node.(type) {
+	case *plan.Filter:
+		return isIndexedAccess(n.Child)
+	case *plan.TableAlias:
+		return isIndexedAccess(n.Child)
+	case *plan.JoinNode:
+		return isIndexedAccess(n.Left())
+	case *plan.IndexedTableAccess:
+		return true
+	}
+	return false
+}
+
 func isRightOrLeftJoin(node sql.Node) bool {
 	jn := toJoinNode(node)
 	if jn == nil {
@@ -305,7 +319,7 @@ func (u *updateJoinIter) shouldUpdateDirectionalJoin(ctx *sql.Context, joinRow, 
 	if err != nil {
 		return true, err
 	}
-	if v, ok := val.(bool); ok && v {
+	if v, ok := val.(bool); ok && v && !isIndexedAccess(jn) {
 		return true, nil
 	}
 
