@@ -8892,6 +8892,12 @@ from typestable`,
 			{"abc"},
 		},
 	},
+	{
+		Query: "select count(distinct cast(i as decimal)) from mytable;",
+		Expected: []sql.Row{
+			{3},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
