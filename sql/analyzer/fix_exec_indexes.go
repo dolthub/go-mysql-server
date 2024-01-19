@@ -355,8 +355,8 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 			}
 			// left uses destination schema
 			// right uses |rightSchema|
-			newLeft := fixExprToScope(set.Left, dstScope)
-			newRight := fixExprToScope(set.Right, rightScope)
+			newLeft := fixExprToScope(set.LeftChild, dstScope)
+			newRight := fixExprToScope(set.RightChild, rightScope)
 			s.expressions = append(s.expressions, expression.NewSetField(newLeft, newRight))
 		}
 		for _, c := range n.Checks() {

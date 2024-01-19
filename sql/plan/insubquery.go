@@ -26,7 +26,7 @@ import (
 // instead of the expression package, because Subquery is itself in the plan package (because it functions more like a
 // plan node than an expression in its evaluation).
 type InSubquery struct {
-	expression.BinaryExpression
+	expression.BinaryExpressionStub
 }
 
 var _ sql.Expression = (*InSubquery)(nil)
@@ -44,15 +44,15 @@ func (*InSubquery) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 
 // NewInSubquery creates an InSubquery expression.
 func NewInSubquery(left sql.Expression, right sql.Expression) *InSubquery {
-	return &InSubquery{expression.BinaryExpression{Left: left, Right: right}}
+	return &InSubquery{expression.BinaryExpressionStub{LeftChild: left, RightChild: right}}
 }
 
 var nilKey, _ = sql.HashOf(sql.NewRow(nil))
 
 // Eval implements the Expression interface.
 func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	typ := in.Left.Type().Promote()
-	left, err := in.Left.Eval(ctx, row)
+	typ := in.LeftChild.Type().Promote()
+	left, err := in.LeftChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	switch right := in.Right.(type) {
+	switch right := in.RightChild.(type) {
 	case *Subquery:
 		if types.NumColumns(typ) != types.NumColumns(right.Type()) {
 			return nil, sql.ErrInvalidOperandColumns.New(types.NumColumns(typ), types.NumColumns(right.Type()))
@@ -134,30 +134,42 @@ func (in *InSubquery) WithChildren(children ...sql.Expression) (sql.Expression, 
 	return NewInSubquery(children[0], children[1]), nil
 }
 
-func (in *InSubquery) String() string {
+// Describe implements the sql.Describable interface
+func (in *InSubquery) Describe(options sql.DescribeOptions) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("InSubquery")
-	children := []string{fmt.Sprintf("left: %s", in.Left), fmt.Sprintf("right: %s", in.Right)}
+	children := []string{fmt.Sprintf("left: %s", sql.Describe(in.Left(), options)),
+		fmt.Sprintf("right: %s", sql.Describe(in.Right(), options))}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
 
+// String implements the fmt.Stringer interface
+func (in *InSubquery) String() string {
+	return in.Describe(sql.DescribeOptions{
+		Analyze:   false,
+		Estimates: false,
+		Debug:     false,
+	})
+}
+
+// DebugString implements the sql.DebugStringer interface
 func (in *InSubquery) DebugString() string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("InSubquery")
-	children := []string{fmt.Sprintf("left: %s", sql.DebugString(in.Left)), fmt.Sprintf("right: %s", sql.DebugString(in.Right))}
-	_ = pr.WriteChildren(children...)
-	return pr.String()
+	return in.Describe(sql.DescribeOptions{
+		Analyze:   false,
+		Estimates: false,
+		Debug:     true,
+	})
 }
 
 // Children implements the Expression interface.
 func (in *InSubquery) Children() []sql.Expression {
-	return []sql.Expression{in.Left, in.Right}
+	return []sql.Expression{in.LeftChild, in.RightChild}
 }
 
 // Dispose implements sql.Disposable
 func (in *InSubquery) Dispose() {
-	if sq, ok := in.Right.(*Subquery); ok {
+	if sq, ok := in.RightChild.(*Subquery); ok {
 		sq.Dispose()
 	}
 }

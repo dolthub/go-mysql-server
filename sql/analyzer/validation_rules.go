@@ -922,11 +922,11 @@ func validateExprSem(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 func validateSem(e sql.Expression) error {
 	switch e := e.(type) {
 	case *expression.And:
-		if err := logicalSem(e.BinaryExpression); err != nil {
+		if err := logicalSem(e.BinaryExpressionStub); err != nil {
 			return err
 		}
 	case *expression.Or:
-		if err := logicalSem(e.BinaryExpression); err != nil {
+		if err := logicalSem(e.BinaryExpressionStub); err != nil {
 			return err
 		}
 	default:
@@ -934,11 +934,11 @@ func validateSem(e sql.Expression) error {
 	return nil
 }
 
-func logicalSem(e expression.BinaryExpression) error {
-	if lc := fds(e.Left); lc != 1 {
+func logicalSem(e expression.BinaryExpressionStub) error {
+	if lc := fds(e.LeftChild); lc != 1 {
 		return sql.ErrInvalidOperandColumns.New(1, lc)
 	}
-	if rc := fds(e.Right); rc != 1 {
+	if rc := fds(e.RightChild); rc != 1 {
 		return sql.ErrInvalidOperandColumns.New(1, rc)
 	}
 	return nil

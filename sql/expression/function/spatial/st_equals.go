@@ -24,7 +24,7 @@ import (
 
 // STEquals is a function that returns the STEquals of a LineString
 type STEquals struct {
-	expression.BinaryExpression
+	expression.BinaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*STEquals)(nil)
@@ -32,9 +32,9 @@ var _ sql.FunctionExpression = (*STEquals)(nil)
 // NewSTEquals creates a new STEquals expression.
 func NewSTEquals(g1, g2 sql.Expression) sql.Expression {
 	return &STEquals{
-		expression.BinaryExpression{
-			Left:  g1,
-			Right: g2,
+		expression.BinaryExpressionStub{
+			LeftChild:  g1,
+			RightChild: g2,
 		},
 	}
 }
@@ -55,7 +55,7 @@ func (s *STEquals) Type() sql.Type {
 }
 
 func (s *STEquals) String() string {
-	return fmt.Sprintf("ST_EQUALS(%s, %s)", s.Left, s.Right)
+	return fmt.Sprintf("ST_EQUALS(%s, %s)", s.LeftChild, s.RightChild)
 }
 
 // WithChildren implements the Expression interface.
@@ -74,11 +74,11 @@ func isEqual(g1 types.GeometryValue, g2 types.GeometryValue) bool {
 
 // Eval implements the sql.Expression interface.
 func (s *STEquals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	geom1, err := s.Left.Eval(ctx, row)
+	geom1, err := s.LeftChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	geom2, err := s.Right.Eval(ctx, row)
+	geom2, err := s.RightChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}

@@ -24,7 +24,7 @@ import (
 
 // NullIf function compares two expressions and returns NULL if they are equal. Otherwise, the first expression is returned.
 type NullIf struct {
-	expression.BinaryExpression
+	expression.BinaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*NullIf)(nil)
@@ -33,9 +33,9 @@ var _ sql.CollationCoercible = (*NullIf)(nil)
 // NewNullIf returns a new NULLIF UDF
 func NewNullIf(ex1, ex2 sql.Expression) sql.Expression {
 	return &NullIf{
-		expression.BinaryExpression{
-			Left:  ex1,
-			Right: ex2,
+		expression.BinaryExpressionStub{
+			LeftChild:  ex1,
+			RightChild: ex2,
 		},
 	}
 }
@@ -52,11 +52,11 @@ func (f *NullIf) Description() string {
 
 // Eval implements the Expression interface.
 func (f *NullIf) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if types.IsNull(f.Left) && types.IsNull(f.Right) {
+	if types.IsNull(f.LeftChild) && types.IsNull(f.RightChild) {
 		return nil, nil
 	}
 
-	val, err := expression.NewEquals(f.Left, f.Right).Eval(ctx, row)
+	val, err := expression.NewEquals(f.LeftChild, f.RightChild).Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -64,24 +64,24 @@ func (f *NullIf) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	return f.Left.Eval(ctx, row)
+	return f.LeftChild.Eval(ctx, row)
 }
 
 // Type implements the Expression interface.
 func (f *NullIf) Type() sql.Type {
-	if types.IsNull(f.Left) {
+	if types.IsNull(f.LeftChild) {
 		return types.Null
 	}
 
-	return f.Left.Type()
+	return f.LeftChild.Type()
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (f *NullIf) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	if types.IsNull(f.Left) {
+	if types.IsNull(f.LeftChild) {
 		return sql.Collation_binary, 6
 	}
-	return sql.GetCoercibility(ctx, f.Left)
+	return sql.GetCoercibility(ctx, f.LeftChild)
 }
 
 // IsNullable implements the Expression interface.
@@ -90,7 +90,7 @@ func (f *NullIf) IsNullable() bool {
 }
 
 func (f *NullIf) String() string {
-	return fmt.Sprintf("%s(%s,%s)", f.FunctionName(), f.Left, f.Right)
+	return fmt.Sprintf("%s(%s,%s)", f.FunctionName(), f.LeftChild, f.RightChild)
 }
 
 // WithChildren implements the Expression interface.

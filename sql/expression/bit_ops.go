@@ -30,7 +30,7 @@ import (
 // BitOp expressions include BIT -AND, -OR and -XOR (&, | and ^) operations
 // https://dev.mysql.com/doc/refman/8.0/en/bit-functions.html
 type BitOp struct {
-	BinaryExpression
+	BinaryExpressionStub
 	Op string
 }
 
@@ -39,7 +39,7 @@ var _ sql.CollationCoercible = (*BitOp)(nil)
 
 // NewBitOp creates a new BitOp sql.Expression.
 func NewBitOp(left, right sql.Expression, op string) *BitOp {
-	return &BitOp{BinaryExpression{Left: left, Right: right}, op}
+	return &BitOp{BinaryExpressionStub{LeftChild: left, RightChild: right}, op}
 }
 
 // NewBitAnd creates a new BitOp & sql.Expression.
@@ -68,25 +68,25 @@ func NewShiftRight(left, right sql.Expression) *BitOp {
 }
 
 func (b *BitOp) String() string {
-	return fmt.Sprintf("(%s %s %s)", b.Left, b.Op, b.Right)
+	return fmt.Sprintf("(%s %s %s)", b.LeftChild, b.Op, b.RightChild)
 }
 
 func (b *BitOp) DebugString() string {
-	return fmt.Sprintf("(%s %s %s)", sql.DebugString(b.Left), b.Op, sql.DebugString(b.Right))
+	return fmt.Sprintf("(%s %s %s)", sql.DebugString(b.LeftChild), b.Op, sql.DebugString(b.RightChild))
 }
 
 // IsNullable implements the sql.Expression interface.
 func (b *BitOp) IsNullable() bool {
-	return b.BinaryExpression.IsNullable()
+	return b.BinaryExpressionStub.IsNullable()
 }
 
 // Type returns the greatest type for given operation.
 func (b *BitOp) Type() sql.Type {
-	rTyp := b.Right.Type()
+	rTyp := b.RightChild.Type()
 	if types.IsDeferredType(rTyp) {
 		return rTyp
 	}
-	lTyp := b.Left.Type()
+	lTyp := b.LeftChild.Type()
 	if types.IsDeferredType(lTyp) {
 		return lTyp
 	}
@@ -154,12 +154,12 @@ func (b *BitOp) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, inter
 	var err error
 
 	// bit ops used with Interval error is caught at parsing the query
-	lval, err = b.Left.Eval(ctx, row)
+	lval, err = b.LeftChild.Eval(ctx, row)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	rval, err = b.Right.Eval(ctx, row)
+	rval, err = b.RightChild.Eval(ctx, row)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -170,8 +170,8 @@ func (b *BitOp) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, inter
 func (b *BitOp) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}, error) {
 	typ := b.Type()
 
-	left = convertValueToType(ctx, typ, left, types.IsTime(b.Left.Type()))
-	right = convertValueToType(ctx, typ, right, types.IsTime(b.Right.Type()))
+	left = convertValueToType(ctx, typ, left, types.IsTime(b.LeftChild.Type()))
+	right = convertValueToType(ctx, typ, right, types.IsTime(b.RightChild.Type()))
 
 	return left, right, nil
 }

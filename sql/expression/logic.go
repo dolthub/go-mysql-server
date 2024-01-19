@@ -23,7 +23,7 @@ import (
 
 // And checks whether two expressions are true.
 type And struct {
-	BinaryExpression
+	BinaryExpressionStub
 }
 
 var _ sql.Expression = (*And)(nil)
@@ -31,7 +31,7 @@ var _ sql.CollationCoercible = (*And)(nil)
 
 // NewAnd creates a new And expression.
 func NewAnd(left, right sql.Expression) sql.Expression {
-	return &And{BinaryExpression{Left: left, Right: right}}
+	return &And{BinaryExpressionStub{LeftChild: left, RightChild: right}}
 }
 
 // JoinAnd joins several expressions with And.
@@ -66,8 +66,8 @@ func SplitConjunction(expr sql.Expression) []sql.Expression {
 	}
 
 	return append(
-		SplitConjunction(and.Left),
-		SplitConjunction(and.Right)...,
+		SplitConjunction(and.LeftChild),
+		SplitConjunction(and.RightChild)...,
 	)
 }
 
@@ -82,19 +82,19 @@ func SplitDisjunction(expr sql.Expression) []sql.Expression {
 	}
 
 	return append(
-		SplitDisjunction(and.Left),
-		SplitDisjunction(and.Right)...,
+		SplitDisjunction(and.LeftChild),
+		SplitDisjunction(and.RightChild)...,
 	)
 }
 
 func (a *And) String() string {
-	return fmt.Sprintf("(%s AND %s)", a.Left, a.Right)
+	return fmt.Sprintf("(%s AND %s)", a.LeftChild, a.RightChild)
 }
 
 func (a *And) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("AND")
-	children := []string{sql.DebugString(a.Left), sql.DebugString(a.Right)}
+	children := []string{sql.DebugString(a.LeftChild), sql.DebugString(a.RightChild)}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
@@ -111,7 +111,7 @@ func (*And) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, 
 
 // Eval implements the Expression interface.
 func (a *And) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	lval, err := a.Left.Eval(ctx, row)
+	lval, err := a.LeftChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func (a *And) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	rval, err := a.Right.Eval(ctx, row)
+	rval, err := a.RightChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +150,7 @@ func (a *And) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 
 // Or checks whether one of the two given expressions is true.
 type Or struct {
-	BinaryExpression
+	BinaryExpressionStub
 }
 
 var _ sql.Expression = (*Or)(nil)
@@ -158,7 +158,7 @@ var _ sql.CollationCoercible = (*Or)(nil)
 
 // NewOr creates a new Or expression.
 func NewOr(left, right sql.Expression) sql.Expression {
-	return &Or{BinaryExpression{Left: left, Right: right}}
+	return &Or{BinaryExpressionStub{LeftChild: left, RightChild: right}}
 }
 
 // JoinOr joins several expressions with Or.
@@ -183,13 +183,13 @@ func JoinOr(exprs ...sql.Expression) sql.Expression {
 }
 
 func (o *Or) String() string {
-	return fmt.Sprintf("(%s OR %s)", o.Left, o.Right)
+	return fmt.Sprintf("(%s OR %s)", o.LeftChild, o.RightChild)
 }
 
 func (o *Or) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Or")
-	children := []string{sql.DebugString(o.Left), sql.DebugString(o.Right)}
+	children := []string{sql.DebugString(o.LeftChild), sql.DebugString(o.RightChild)}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
@@ -206,7 +206,7 @@ func (*Or) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, c
 
 // Eval implements the Expression interface.
 func (o *Or) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	lval, err := o.Left.Eval(ctx, row)
+	lval, err := o.LeftChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -217,7 +217,7 @@ func (o *Or) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	rval, err := o.Right.Eval(ctx, row)
+	rval, err := o.RightChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -247,7 +247,7 @@ func (o *Or) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 
 // Xor checks whether only one of the two given expressions is true.
 type Xor struct {
-	BinaryExpression
+	BinaryExpressionStub
 }
 
 var _ sql.Expression = (*Xor)(nil)
@@ -255,15 +255,15 @@ var _ sql.CollationCoercible = (*Xor)(nil)
 
 // NewXor creates a new Xor expression.
 func NewXor(left, right sql.Expression) sql.Expression {
-	return &Xor{BinaryExpression{Left: left, Right: right}}
+	return &Xor{BinaryExpressionStub{LeftChild: left, RightChild: right}}
 }
 
 func (x *Xor) String() string {
-	return fmt.Sprintf("(%s XOR %s)", x.Left, x.Right)
+	return fmt.Sprintf("(%s XOR %s)", x.LeftChild, x.RightChild)
 }
 
 func (x *Xor) DebugString() string {
-	return fmt.Sprintf("%s XOR %s", sql.DebugString(x.Left), sql.DebugString(x.Right))
+	return fmt.Sprintf("%s XOR %s", sql.DebugString(x.LeftChild), sql.DebugString(x.RightChild))
 }
 
 // Type implements the Expression interface.
@@ -278,7 +278,7 @@ func (*Xor) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, 
 
 // Eval implements the Expression interface.
 func (x *Xor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	lval, err := x.Left.Eval(ctx, row)
+	lval, err := x.LeftChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -290,7 +290,7 @@ func (x *Xor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	rval, err := x.Right.Eval(ctx, row)
+	rval, err := x.RightChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}

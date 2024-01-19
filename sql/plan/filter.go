@@ -72,20 +72,31 @@ func (f *Filter) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	return NewFilter(exprs[0], f.Child), nil
 }
 
-func (f *Filter) String() string {
+// Describe implements the sql.Describable interface
+func (f *Filter) Describe(options sql.DescribeOptions) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Filter")
-	children := []string{f.Expression.String(), f.Child.String()}
+	children := []string{sql.Describe(f.Expression, options), sql.Describe(f.Child, options)}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
 
+// String implements the fmt.Stringer interface
+func (f *Filter) String() string {
+	return f.Describe(sql.DescribeOptions{
+		Analyze:   false,
+		Estimates: false,
+		Debug:     false,
+	})
+}
+
+// DebugString implements the sql.DebugStringer interface
 func (f *Filter) DebugString() string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("Filter")
-	children := []string{sql.DebugString(f.Expression), sql.DebugString(f.Child)}
-	_ = pr.WriteChildren(children...)
-	return pr.String()
+	return f.Describe(sql.DescribeOptions{
+		Analyze:   false,
+		Estimates: false,
+		Debug:     true,
+	})
 }
 
 // Expressions implements the Expressioner interface.
