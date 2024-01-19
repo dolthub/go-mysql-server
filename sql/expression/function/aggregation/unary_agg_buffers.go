@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/mitchellh/hashstructure"
+	"github.com/cespare/xxhash/v2"
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -417,12 +417,26 @@ func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		value = val
 	}
 
-	hash, err := hashstructure.Hash(value, nil)
-	if err != nil {
-		return fmt.Errorf("count distinct unable to hash value: %s", err)
+	var str string
+	for _, val := range value.([]interface{}) {
+		v, _, err := types.Text.Convert(val)
+		if err != nil {
+			return err
+		}
+		vv, ok := v.(string)
+		if !ok {
+			return fmt.Errorf("count distinct unable to hash value: %s", err)
+		}
+		str += vv + ","
 	}
 
-	c.seen[hash] = struct{}{}
+	hash := xxhash.New()
+	_, err := hash.WriteString(str)
+	if err != nil {
+		return err
+	}
+	h := hash.Sum64()
+	c.seen[h] = struct{}{}
 
 	return nil
 }
