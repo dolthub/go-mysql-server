@@ -8893,6 +8893,18 @@ from typestable`,
 		},
 	},
 	{
+		Query: "select count(distinct cast(i as decimal)) from mytable;",
+		Expected: []sql.Row{
+			{3},
+		},
+	},
+	{
+		Query: "select count(distinct null);",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
 		Query: "select 0 as col1, 1 as col2, 2 as col2 group by col2 having col2 = 1",
 		Expected: []sql.Row{
 			{0, 1, 2},
