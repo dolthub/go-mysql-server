@@ -122,6 +122,31 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "missing indexes",
+		SetUpScript: []string{
+			`
+create table t (
+  id varchar(500),
+  from_ varchar(500),
+  to_ varchar(500),
+  key (to_, from_),
+  Primary key (id, from_, to_)
+);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "select * from t where to_ = 'L1' and from_ = 'L2'",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"to_from_"},
+			},
+			{
+				Query:           "select * from t where BIN_TO_UUID(id) = '0' and  to_ = 'L1' and from_ = 'L2'",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"to_from_"},
+			},
+		},
+	},
+	{
 		Name: "correctness test indexes",
 		SetUpScript: []string{
 			`
