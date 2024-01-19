@@ -178,6 +178,8 @@ type StatsPlanTest struct {
 
 var StatsIndexTests = []ScriptTest{
 	{
+		// todo deprecate: this is wrong, full prefix match is preferable
+		// if not index statistics should be used to indicate
 		Name: "choose range over full prefix match",
 		SetUpScript: []string{
 			"create table xy (x int, y int, z varchar(36) default(uuid()), w varchar(10), key (z), key (y,w), key(x,y))",
@@ -236,7 +238,7 @@ analyze table xy update histogram on (x,y) using data
 			{
 				Query:           "select * from xy where x > 4 and y = 1 and w = 'a'",
 				Expected:        []sql.Row{},
-				ExpectedIndexes: []string{"xy"},
+				ExpectedIndexes: []string{"yw"},
 			},
 		},
 	},
