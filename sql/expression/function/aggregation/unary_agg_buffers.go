@@ -419,6 +419,9 @@ func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
 
 	var str string
 	for _, val := range value.(sql.Row) {
+		if val == nil {
+			return nil
+		}
 		v, _, err := types.Text.Convert(val)
 		if err != nil {
 			return err
