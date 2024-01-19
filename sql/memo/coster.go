@@ -85,7 +85,7 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 			}
 		}
 
-		selfJoinCard := float64(n.Group().RelProps.GetStats().RowCount())
+		selfJoinCard := math.Max(1, float64(n.Group().RelProps.GetStats().RowCount()))
 
 		switch {
 		case jp.Op.IsInner():
@@ -107,7 +107,6 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 		case jp.Op.IsMerge():
 			// TODO memory overhead when not injective
 			// TODO lose index scan benefits, need to read whole table
-			rowCount := float64(n.Group().RelProps.GetStats().RowCount())
 
 			if !n.(*MergeJoin).Injective {
 				// Injective is guarenteed to never iterate over multiple rows in memory.
@@ -115,13 +114,13 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 				// Each comparison reduces the expected number of collisions on the comparator.
 				// TODO: better cost estimate for memory overhead
 				mergeCmtAdjustment := math.Max(0, 4-float64(n.(*MergeJoin).CmpCnt))
-				rowCount += mergeCmtAdjustment
+				selfJoinCard += mergeCmtAdjustment
 			}
 
 			// cost is full left scan + full rightScan plus compute/memory overhead
 			// for this merge filter's cardinality
 			// TODO: estimate memory overhead
-			return float64(lTableScan+rTableScan)*(seqIOCostFactor+cpuCostFactor) + cpuCostFactor*rowCount, nil
+			return float64(lTableScan+rTableScan)*(seqIOCostFactor+cpuCostFactor) + cpuCostFactor*selfJoinCard, nil
 		case jp.Op.IsLookup():
 			// TODO added overhead for right lookups
 			switch n := n.(type) {

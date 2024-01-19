@@ -88,6 +88,9 @@ var JoinStatTests = []struct {
 		},
 	},
 	{
+		// there is a trade-off for these where we either pick the first table
+		// first if card(b) < card(axc), or we choose (axc) if its intermediate
+		// result cardinality is smaller than filtered (b).
 		name: "test table orders with filters and normal distributions",
 		setup: []string{
 			"create table u0 (a int primary key, b int, c int, key (b,c))",
@@ -95,9 +98,9 @@ var JoinStatTests = []struct {
 			"create table u0_2 (a int primary key, b int, c int, key (b,c))",
 			"insert into u0_2 select * from normal_dist(2, 2000, 0, 5)",
 			"create table `u-15` (a int primary key, b int, c int, key (b,c))",
-			"insert into `u-15` select * from normal_dist(2, 2000, -15, 5)",
+			"insert into `u-15` select * from normal_dist(2, 2000, -10, 5)",
 			"create table `u+15` (a int primary key, b int, c int, key (b,c))",
-			"insert into `u+15` select * from normal_dist(2, 2000, 15, 5)",
+			"insert into `u+15` select * from normal_dist(2, 2000, 10, 5)",
 			"analyze table u0",
 			"analyze table u0_2",
 			"analyze table `u-15`",
@@ -106,27 +109,27 @@ var JoinStatTests = []struct {
 		tests: []JoinPlanTest{
 			{
 				// axc is smallest join, a is smallest table
-				q:     "select /*+ LEFT_DEEP */  count(*) from u0 b join `u-15` a on a.b = b.b join `u+15` c on a.b = c.b where a.b > 0",
+				q:     "select /*+ LEFT_DEEP */  count(*) from u0 b join `u-15` a on a.b = b.b join `u+15` c on a.b = c.b where a.b > 2",
 				order: []string{"a", "c", "b"},
 			},
 			{
 				// b is smallest table, bxc is smallest b-connected join
 				// due to b < 0 filter and positive c skew
-				q:     "select /*+ LEFT_DEEP */  count(*) from u0 b join `u-15` a on a.b = b.b join `u+15` c on a.b = c.b where b.b < 0",
+				q:     "select /*+ LEFT_DEEP */  count(*) from u0 b join `u-15` a on a.b = b.b join `u+15` c on a.b = c.b where b.b < -2",
 				order: []string{"b", "c", "a"},
 			},
 			{
-				q:     "select /*+ LEFT_DEEP */ count(*) from u0 b join `u-15` a on a.b = b.b join `u+15` c on a.b = c.b where b.b < 0",
+				q:     "select /*+ LEFT_DEEP */ count(*) from u0 b join `u-15` a on a.b = b.b join `u+15` c on a.b = c.b where b.b < -2",
 				order: []string{"b", "c", "a"},
 			},
 			{
 				// b is smallest table, bxa is smallest b-connected join
 				// due to b > 0 filter and negative c skew
-				q:     "select /*+ LEFT_DEEP */ count(*) from `u-15` a join u0 b on a.b = b.b join `u+15` c on a.b = c.b where b.b > 0",
+				q:     "select /*+ LEFT_DEEP */ count(*) from `u-15` a join u0 b on a.b = b.b join `u+15` c on a.b = c.b where b.b > 2",
 				order: []string{"b", "a", "c"},
 			},
 			{
-				q:     "select /*+ LEFT_DEEP */ count(*) from u0 b join `u-15` a on a.b = b.b join `u+15` c on a.b = c.b where b.b > 0",
+				q:     "select /*+ LEFT_DEEP */ count(*) from u0 b join `u-15` a on a.b = b.b join `u+15` c on a.b = c.b where b.b > 2",
 				order: []string{"b", "a", "c"},
 			},
 		},
