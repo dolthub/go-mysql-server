@@ -5200,9 +5200,10 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `update joinparent as jp 
-							left join joinchild as jc on jc.parent_id = jp.id 
+							left join joinchild as jc on jc.parent_id = jp.id
 								set jp.archived = jp.id, jp.archived_at = now(), 
 									jc.archived = jc.id, jc.archived_at = now()
+						where jp.id > 0 and jp.name != "never"
 						order by jp.name
 						limit 100`,
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 8, Info: plan.UpdateInfo{Matched: 10, Updated: 8}}}},
