@@ -5167,6 +5167,27 @@ CREATE TABLE tab3 (
 			},
 		},
 	},
+	{
+		Name: "count distinct decimals",
+		SetUpScript: []string{
+			"create table t (i int, j int)",
+			"insert into t values (1, 11), (11, 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select count(distinct i, j) from t;",
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+			{
+				Query: "select count(distinct cast(i as decimal), cast(j as decimal)) from t;",
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
