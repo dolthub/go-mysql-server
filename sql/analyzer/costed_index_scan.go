@@ -1562,29 +1562,18 @@ func (c *conjCollector) addEq(col string, val interface{}, nullSafe bool) error 
 		return nil
 	}
 
-	c.constant.Add(ord)
+	c.constant.Add(ord + 1)
 	c.eqVals[ord] = val
 	c.nullable[ord] = nullSafe
 
 	if ord == c.missingPrefix {
-		// we are interested in the cases where the index prefix
-		// key is extended
-		if ord == len(c.eqVals)-1 {
-			// full prefix
-			c.missingPrefix++
-		} else {
-			// extended prefix
-			// find new and truncate
-			_, hasNext := c.constant.Next(c.missingPrefix + 1)
-			if !hasNext {
-				c.missingPrefix++
-			} else {
-				nextFilled, _ := c.constant.Next(c.missingPrefix + 2)
-				// convert from bit position to index is -1
-				// convert from next filled to first missing is -1
-				c.missingPrefix = nextFilled - 2
-			}
+		last := ord
+		for next, hasNext := c.constant.Next(last + 1); hasNext && next == last+1; next, hasNext = c.constant.Next(next + 1) {
+			// In first loop, next is always last+1 because we just added ord.
+			// Keep iterating while consecutive bits are set, end on gap.
+			last = next
 		}
+		c.missingPrefix = last
 
 		// truncate buckets
 		var err error
