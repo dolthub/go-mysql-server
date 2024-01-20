@@ -36,6 +36,7 @@ const (
 	biasFactor                = 1e5
 	defaultFilterSelectivity  = .75
 	perKeyCostReductionFactor = 0.5
+	defaultTableSize          = 100
 )
 
 func NewDefaultCoster() Coster {
@@ -63,79 +64,94 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 		return float64(n.Child.RelProps.GetStats().RowCount()) * cpuCostFactor * float64(len(n.Filters)), nil
 	case JoinRel:
 		jp := n.JoinPrivate()
-		l := float64(jp.Left.RelProps.GetStats().RowCount())
-		r := float64(jp.Right.RelProps.GetStats().RowCount())
+		lBest := math.Max(1, float64(jp.Left.RelProps.GetStats().RowCount()))
+		rBest := math.Max(1, float64(jp.Right.RelProps.GetStats().RowCount()))
+
+		// if a child is an index scan, the table scan will be more expensive
+		var err error
+		lTableScan := uint64(lBest)
+		rTableScan := uint64(rBest)
+
+		if iScan, ok := jp.Left.Best.(*IndexScan); ok {
+			lTableScan, err = s.RowCount(ctx, iScan.Table.Database().Name(), iScan.Table.Name())
+			if err != nil {
+				lTableScan = defaultTableSize
+			}
+		}
+		if iScan, ok := jp.Right.Best.(*IndexScan); ok {
+			rTableScan, err = s.RowCount(ctx, iScan.Table.Database().Name(), iScan.Table.Name())
+			if err != nil {
+				rTableScan = defaultTableSize
+			}
+		}
+
+		selfJoinCard := math.Max(1, float64(n.Group().RelProps.GetStats().RowCount()))
+
 		switch {
 		case jp.Op.IsInner():
 			// arbitrary +1 penalty, prefer lookup
-			return (l*r+1)*seqIOCostFactor + (l*r)*cpuCostFactor, nil
+			return (lBest*rBest+1)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor, nil
 		case jp.Op.IsDegenerate():
-			return ((l*r)*seqIOCostFactor + (l*r)*cpuCostFactor) * degeneratePenalty, nil
+			return ((lBest*rBest)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor) * degeneratePenalty, nil
 		case jp.Op.IsHash():
+			// TODO hash has to load whole table into memory, really bad for big right sides
 			if jp.Op.IsPartial() {
-				cost := l * (r / 2.0) * (seqIOCostFactor + cpuCostFactor)
+				cost := lBest * (rBest / 2.0) * (seqIOCostFactor + cpuCostFactor)
 				return cost * .5, nil
 			}
-			return l*(seqIOCostFactor+cpuCostFactor) + r*(seqIOCostFactor+memCostFactor) + optimisticJoinSel*l*r*cpuCostFactor, nil
+			return lBest*(seqIOCostFactor+cpuCostFactor) + float64(rTableScan)*(seqIOCostFactor+memCostFactor) + selfJoinCard*cpuCostFactor, nil
+
 		case jp.Op.IsLateral():
-			return (l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor, nil
+			return (lBest*rBest-1)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor, nil
+
 		case jp.Op.IsMerge():
-			return c.costMergeJoin(ctx, n.(*MergeJoin), s)
+			// TODO memory overhead when not injective
+			// TODO lose index scan benefits, need to read whole table
+
+			if !n.(*MergeJoin).Injective {
+				// Injective is guarenteed to never iterate over multiple rows in memory.
+				// Otherwise O(k) where k is the key with the highest number of matches.
+				// Each comparison reduces the expected number of collisions on the comparator.
+				// TODO: better cost estimate for memory overhead
+				mergeCmtAdjustment := math.Max(0, 4-float64(n.(*MergeJoin).CmpCnt))
+				selfJoinCard += mergeCmtAdjustment
+			}
+
+			// cost is full left scan + full rightScan plus compute/memory overhead
+			// for this merge filter's cardinality
+			// TODO: estimate memory overhead
+			return float64(lTableScan+rTableScan)*(seqIOCostFactor+cpuCostFactor) + cpuCostFactor*selfJoinCard, nil
 		case jp.Op.IsLookup():
+			// TODO added overhead for right lookups
 			switch n := n.(type) {
 			case *LookupJoin:
-				return c.costLookupJoin(ctx, n, s)
+				if !n.Injective {
+					// partial index completion is undesirable
+					// TODO don't do this whe we have stats
+					selfJoinCard = math.Max(0, selfJoinCard+float64(indexCoverageAdjustment(n.Lookup)))
+				}
+
+				// read the whole left table and randIO into table equivalent to
+				// this join's output cardinality estimate
+				return lBest*seqIOCostFactor + selfJoinCard*(randIOCostFactor+seqIOCostFactor), nil
 			case *ConcatJoin:
 				return c.costConcatJoin(ctx, n, s)
 			}
 		case jp.Op.IsRange():
-			expectedNumberOfOverlappingJoins := r * perKeyCostReductionFactor
-			return l * expectedNumberOfOverlappingJoins * (seqIOCostFactor), nil
+			expectedNumberOfOverlappingJoins := rBest * perKeyCostReductionFactor
+			return lBest * expectedNumberOfOverlappingJoins * (seqIOCostFactor), nil
 		case jp.Op.IsPartial():
-			return l*seqIOCostFactor + l*(r/2.0)*(seqIOCostFactor+cpuCostFactor), nil
+			return lBest*seqIOCostFactor + lBest*(rBest/2.0)*(seqIOCostFactor+cpuCostFactor), nil
 		case jp.Op.IsFullOuter():
-			return ((l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor) * degeneratePenalty, nil
+			return ((lBest*rBest-1)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor) * degeneratePenalty, nil
 		case jp.Op.IsLeftOuter():
-			return (l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor, nil
+			return (lBest*rBest-1)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor, nil
 		default:
 		}
 		return 0, fmt.Errorf("unhandled join type: %T (%s)", n, jp.Op)
 	default:
 		panic(fmt.Sprintf("coster does not support type: %T", n))
 	}
-}
-
-func (c *coster) costMergeJoin(_ *sql.Context, n *MergeJoin, _ sql.StatsProvider) (float64, error) {
-
-	l := float64(n.Left.RelProps.GetStats().RowCount())
-	r := float64(n.Right.RelProps.GetStats().RowCount())
-
-	comparer, ok := n.Filter[0].(*expression.Equals)
-	if !ok {
-		return 0, sql.ErrMergeJoinExpectsComparerFilters.New(n.Filter[0])
-	}
-
-	var leftCompareExprs []sql.Expression
-	var rightCompareExprs []sql.Expression
-
-	leftTuple, isTuple := comparer.Left().(expression.Tuple)
-	if isTuple {
-		rightTuple, _ := comparer.Right().(expression.Tuple)
-		leftCompareExprs = leftTuple.Children()
-		rightCompareExprs = rightTuple.Children()
-	} else {
-		leftCompareExprs = []sql.Expression{comparer.Left()}
-		rightCompareExprs = []sql.Expression{comparer.Right()}
-	}
-
-	if isInjectiveMerge(n, leftCompareExprs, rightCompareExprs) {
-		// We're guarenteed that the execution will never need to iterate over multiple rows in memory.
-		return (l + r) * (seqIOCostFactor + cpuCostFactor), nil
-	}
-
-	// Each comparison reduces the expected number of collisions on the comparator.
-	selectivity := math.Pow(perKeyCostReductionFactor, float64(len(leftCompareExprs)))
-	return l + r + (l+r+l*r*selectivity)*cpuCostFactor, nil
 }
 
 // isInjectiveMerge determines whether either of a merge join's child indexes returns only unique values for the merge
@@ -206,24 +222,6 @@ func exprReferencesTable(e sql.Expression, tabId sql.TableId) bool {
 		}
 		return false
 	})
-}
-
-func (c *coster) costLookupJoin(_ *sql.Context, n *LookupJoin, _ sql.StatsProvider) (float64, error) {
-	l := float64(n.Left.RelProps.GetStats().RowCount())
-	r := float64(n.Right.RelProps.GetStats().RowCount())
-	lookup := n.Lookup
-	if n.Injective {
-		return l * (seqIOCostFactor + cpuCostFactor + randIOCostFactor), nil
-	}
-	sel := lookupJoinSelectivity(lookup, n.JoinBase)
-	if l*r*sel < l {
-		// 1 - (total rows - covered rows / total rows)
-		// + 1 to differentiate from sel = 0 case
-		// + coverage so bigger prefix = better
-		idxCoverage := 1.0 - float64(len(lookup.Index.Cols())-len(lookup.Table.Expressions()))/float64(len(lookup.Index.Cols()))
-		return l*seqIOCostFactor + (l+1+idxCoverage)*(cpuCostFactor+randIOCostFactor), nil
-	}
-	return l*seqIOCostFactor + l*r*sel*(cpuCostFactor+randIOCostFactor), nil
 }
 
 func (c *coster) costConcatJoin(_ *sql.Context, n *ConcatJoin, _ sql.StatsProvider) (float64, error) {

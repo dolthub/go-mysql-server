@@ -31,6 +31,7 @@ func (d *normDistIter) Next(*sql.Context) (sql.Row, error) {
 	}
 	d.i++
 	var ret sql.Row
+	ret = append(ret, d.i)
 	for i := 0; i < d.cols; i++ {
 		ret = append(ret, rand.NormFloat64()*d.std+d.mean)
 	}

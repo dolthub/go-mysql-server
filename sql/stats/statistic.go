@@ -29,7 +29,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func NewStatistic(rowCount, distinctCount, nullCount, avgSize uint64, createdAt time.Time, qualifier sql.StatQualifier, columns []string, types []sql.Type, histogram []*Bucket, class sql.IndexClass) *Statistic {
+func NewStatistic(rowCount, distinctCount, nullCount, avgSize uint64, createdAt time.Time, qualifier sql.StatQualifier, columns []string, types []sql.Type, histogram []*Bucket, class sql.IndexClass, lowerBound sql.Row) *Statistic {
 	return &Statistic{
 		RowCnt:      rowCount,
 		DistinctCnt: distinctCount,
@@ -41,6 +41,7 @@ func NewStatistic(rowCount, distinctCount, nullCount, avgSize uint64, createdAt 
 		Typs:        types,
 		Hist:        histogram,
 		IdxClass:    uint8(class),
+		LowerBnd:    lowerBound,
 	}
 }
 
@@ -55,6 +56,7 @@ type Statistic struct {
 	Typs        []sql.Type        `json:"-"`
 	Hist        []*Bucket         `json:"buckets"`
 	IdxClass    uint8             `json:"index_class"`
+	LowerBnd    sql.Row           `json:"lower_bound"`
 	fds         *sql.FuncDepSet   `json:"-"`
 	colSet      sql.ColSet        `json:"-"`
 }
@@ -70,6 +72,10 @@ func (s *Statistic) WithFuncDeps(fds *sql.FuncDepSet) sql.Statistic {
 	ret := *s
 	ret.fds = fds
 	return &ret
+}
+
+func (s *Statistic) LowerBound() sql.Row {
+	return s.LowerBnd
 }
 
 func (s *Statistic) ColSet() sql.ColSet {
@@ -158,6 +164,12 @@ func (s *Statistic) WithAvgSize(i uint64) sql.Statistic {
 	return &ret
 }
 
+func (s *Statistic) WithLowerBound(r sql.Row) sql.Statistic {
+	ret := *s
+	ret.LowerBnd = r
+	return &ret
+}
+
 func (s *Statistic) WithHistogram(h sql.Histogram) (sql.Statistic, error) {
 	ret := *s
 	ret.Hist = nil
@@ -237,7 +249,7 @@ type Bucket struct {
 	RowCnt      uint64    `json:"row_count"`
 	DistinctCnt uint64    `json:"distinct_count"`
 	NullCnt     uint64    `json:"null_count"`
-	McvsCnt     []uint64  `json:"mcvs_count"`
+	McvsCnt     []uint64  `json:"mcv_counts"`
 	BoundCnt    uint64    `json:"bound_count"`
 	BoundVal    sql.Row   `json:"upper_bound"`
 	McvVals     []sql.Row `json:"mcvs"`
