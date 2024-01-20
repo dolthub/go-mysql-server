@@ -337,9 +337,14 @@ func statsForRel(rel RelExpr) sql.Statistic {
 		for n != nil && !done {
 			switch n := n.(type) {
 			case *LookupJoin:
-				injective = injective || n.Injective
+				if n.Injective {
+					injective = true
+					done = true
+				}
 			case *MergeJoin:
-				// get stats for left/right index
+				// If the children have filtered index scan execution options, we can
+				// transfer the filter selectivity estimates from the range scans to
+				// the merge join indexes.
 				var leftChildStats, rightChildStats sql.Statistic
 				if lIdx, ok := n.Left.First.(*IndexScan); ok {
 					leftChildStats = lIdx.Stats
@@ -348,14 +353,18 @@ func statsForRel(rel RelExpr) sql.Statistic {
 					rightChildStats = rIdx.Stats
 				}
 
-				// single prefix always safe for merge join
-				mStat, err := getJoinStats(n.InnerScan.Stats, n.OuterScan.Stats, leftChildStats, rightChildStats, 1)
+				// merge join indexes have to be sorted on the prefix, so at
+				// least the length-1 prefix are comparable.
+				// todo: better way to find the complete prefix match
+				prefixLen := 1
+				mStat, err := getJoinStats(n.InnerScan.Stats, n.OuterScan.Stats, leftChildStats, rightChildStats, prefixLen)
 				if err != nil {
 					n.Group().m.HandleErr(err)
 				}
 				if mergeStats == nil {
 					mergeStats = mStat
 				} else if mStat != nil && mStat.RowCount() < mergeStats.RowCount() {
+					// keep the most restrictive join cardinality estimation
 					mergeStats = mStat
 				}
 			default:
