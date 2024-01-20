@@ -1286,7 +1286,7 @@ join uv d on d.u = c.x`,
 				},
 			},
 			{
-				q:     "select * from vals where exists (select * from ranges where val between min and max order by 1);",
+				q:     "select * from vals where exists (select * from ranges where val between min and max order by 1) order by 1;",
 				types: []plan.JoinType{plan.JoinTypeSemi},
 				exp: []sql.Row{
 					{0},
