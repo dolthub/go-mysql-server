@@ -122,18 +122,19 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 		})
 
 		// quick and dirty histogram buckets
-		bucketCnt := 10
+		bucketCnt := 20
 		if len(keyVals) < bucketCnt {
 			bucketCnt = len(keyVals)
 		}
 		offset := len(keyVals) / bucketCnt
+		perBucket := int(rowCount) / bucketCnt
 		buckets := make([]*stats.Bucket, bucketCnt)
 		for i := range buckets {
 			var upperBound []interface{}
 			for _, v := range keyVals[i*offset] {
 				upperBound = append(upperBound, v)
 			}
-			buckets[i] = stats.NewHistogramBucket(uint64(offset), uint64(offset), 0, 1, upperBound, nil, nil)
+			buckets[i] = stats.NewHistogramBucket(uint64(perBucket), uint64(perBucket), 0, 1, upperBound, nil, nil)
 		}
 
 		var cols []string
@@ -148,7 +149,7 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 			return err
 		}
 
-		s.colStats[key] = stats.NewStatistic(rowCount, rowCount, 0, dataLen, time.Now(), qual, cols, types, buckets, sql.IndexClassDefault)
+		s.colStats[key] = stats.NewStatistic(rowCount, rowCount, 0, dataLen, time.Now(), qual, cols, types, buckets, sql.IndexClassDefault, nil)
 	}
 	return nil
 }
@@ -157,7 +158,7 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 // Algorithm L from: https://dl.acm.org/doi/pdf/10.1145/198429.198435
 func (s *StatsProv) reservoirSample(ctx *sql.Context, table sql.Table) ([]sql.Row, error) {
 	// read through table
-	var maxQueue float64 = 100
+	var maxQueue float64 = 4000
 	var queue []sql.Row
 	partIter, err := table.Partitions(ctx)
 	if err != nil {

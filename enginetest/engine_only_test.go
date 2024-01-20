@@ -654,7 +654,7 @@ func TestTableFunctions(t *testing.T) {
 	harness.Setup(setup.MydbData)
 
 	databaseProvider := harness.NewDatabaseProvider()
-	testDatabaseProvider := NewTestProvider(
+	testDatabaseProvider := enginetest.NewTestProvider(
 		&databaseProvider,
 		SimpleTableFunction{},
 		memory.IntSequenceTable{},
@@ -941,36 +941,6 @@ func (itr *SimpleTableFunctionRowIter) Next(_ *sql.Context) (sql.Row, error) {
 
 func (itr *SimpleTableFunctionRowIter) Close(_ *sql.Context) error {
 	return nil
-}
-
-var _ sql.FunctionProvider = (*TestProvider)(nil)
-
-type TestProvider struct {
-	sql.MutableDatabaseProvider
-	tableFunctions map[string]sql.TableFunction
-}
-
-func NewTestProvider(dbProvider *sql.MutableDatabaseProvider, tf ...sql.TableFunction) *TestProvider {
-	tfs := make(map[string]sql.TableFunction)
-	for _, tf := range tf {
-		tfs[strings.ToLower(tf.Name())] = tf
-	}
-	return &TestProvider{
-		*dbProvider,
-		tfs,
-	}
-}
-
-func (t TestProvider) Function(_ *sql.Context, name string) (sql.Function, error) {
-	return nil, sql.ErrFunctionNotFound.New(name)
-}
-
-func (t TestProvider) TableFunction(_ *sql.Context, name string) (sql.TableFunction, error) {
-	if tf, ok := t.tableFunctions[strings.ToLower(name)]; ok {
-		return tf, nil
-	}
-
-	return nil, sql.ErrTableFunctionNotFound.New(name)
 }
 
 func TestTimestampBindingsCanBeConverted(t *testing.T) {

@@ -937,7 +937,7 @@ analyze table WGSDC update histogram on (id) using data '{"row_count": 68}';
 ----
 
 exec
-analyze table SZW6V update histogram on (id) using data '{"row_count": 0}';
+analyze table SZW6V update histogram on (id) using data '{"row_count": 1}';
 ----
 
 exec

@@ -13,6 +13,11 @@ type MapCatalog struct {
 
 var _ Catalog = MapCatalog{}
 
+func (t MapCatalog) WithTableFunctions(fns ...TableFunction) (TableFunctionProvider, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (t MapCatalog) Function(ctx *Context, name string) (Function, error) {
 	if f, ok := t.Funcs[name]; ok {
 		return f, nil

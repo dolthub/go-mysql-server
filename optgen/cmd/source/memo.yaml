@@ -33,6 +33,8 @@ exprs:
   - [innerScan, "*IndexScan"]
   - [outerScan, "*IndexScan"]
   - [swapCmp, "bool"]
+  - [injective, "bool"]
+  - [cmpCnt, "int"]
 - name: "FullOuterJoin"
   join: true
 - name: "LateralJoin"
