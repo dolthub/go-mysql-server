@@ -307,6 +307,9 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 
 	var args []sql.Expression
 	for _, arg := range e.Exprs {
+		if _, ok := arg.(*ast.AliasedExpr); ok {
+			print()
+		}
 		e := b.selectExprToExpression(inScope, arg)
 		switch e := e.(type) {
 		case *expression.GetField:
@@ -775,12 +778,45 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 	if fromScope.groupBy == nil {
 		fromScope.initGroupBy()
 	}
+	// Having specifies conditions on groups. If not group by is present, all rows implicitly form a single aggregate group.
 	havingScope := fromScope.push()
-	for _, c := range projScope.cols {
-		if c.tableId.IsEmpty() {
-			havingScope.newColumn(c)
+
+	_, isJoin := fromScope.node.(*plan.JoinNode)
+	if isJoin {
+		// The rules seem to change when we are in a join
+
+		// TODO: which columns are in the having scope?
+		//   The ones in group by
+		//
+
+		// Add columns from groupBy scope
+		for _, c := range fromScope.groupBy.inCols {
+			havingScope.addColumn(c)
+		}
+
+		// TODO: and that's it?
+	} else {
+		for _, c := range projScope.cols {
+			// If there are conflicting aliases in the projScope, we prioritize the fromScope
+			found := false
+			for _, cc := range fromScope.cols {
+				if c.col == cc.col {
+					havingScope.addColumn(cc)
+					found = true
+					break
+				}
+			}
+			// When we are not in a join, the having scope can see the projScope
+			if !found && c.tableId.IsEmpty() {
+				havingScope.newColumn(c)
+			}
 		}
 	}
+
+	// TODO: these rules seem to only apply to group by/having over join
+	// TODO: we don't actually care about what is in projScope
+	//   we care about is having scope references something not in group by scope
+
 	havingScope.groupBy = fromScope.groupBy
 	h := b.buildScalar(havingScope, having.Expr)
 	outScope.node = plan.NewHaving(h, outScope.node)
