@@ -1244,33 +1244,33 @@ Project
 		},
 		{
 			Query: "select (1+x) s from xy join uv on (1+x) = (1+u) group by 1 having s = 1",
-			ExpectedPlan: `
-Project
- ├─ columns: [(1 (tinyint) + xy.x:1!null) as s]
- └─ Having
-     ├─ Eq
-     │   ├─ s:8!null
-     │   └─ 1 (tinyint)
-     └─ Project
-         ├─ columns: [xy.x:1!null, (1 (tinyint) + xy.x:1!null) as s]
-         └─ GroupBy
-             ├─ select: xy.x:1!null
-             ├─ group: (1 (tinyint) + xy.x:1!null) as s
-             └─ InnerJoin
-                 ├─ Eq
-                 │   ├─ (1 (tinyint) + xy.x:1!null)
-                 │   └─ (1 (tinyint) + uv.u:4!null)
-                 ├─ Table
-                 │   ├─ name: xy
-                 │   ├─ columns: [x y z]
-                 │   ├─ colSet: (1-3)
-                 │   └─ tableId: 1
-                 └─ Table
-                     ├─ name: uv
-                     ├─ columns: [u v w]
-                     ├─ colSet: (4-6)
-                     └─ tableId: 2
-`,
+			ExpectedPlan: "\n" +
+				"Project\n" +
+				" ├─ columns: [(1 (tinyint) + xy.x:1!null) as s]\n" +
+				" └─ Having\n" +
+				"     ├─ Eq\n" +
+				"     │   ├─ s:7!null\n" +
+				"     │   └─ 1 (tinyint)\n" +
+				"     └─ Project\n" +
+				"         ├─ columns: [xy.x:1!null, (1 (tinyint) + xy.x:1!null) as s]\n" +
+				"         └─ GroupBy\n" +
+				"             ├─ select: xy.x:1!null\n" +
+				"             ├─ group: (1 (tinyint) + xy.x:1!null) as s\n" +
+				"             └─ InnerJoin\n" +
+				"                 ├─ Eq\n" +
+				"                 │   ├─ (1 (tinyint) + xy.x:1!null)\n" +
+				"                 │   └─ (1 (tinyint) + uv.u:4!null)\n" +
+				"                 ├─ Table\n" +
+				"                 │   ├─ name: xy\n" +
+				"                 │   ├─ columns: [x y z]\n" +
+				"                 │   ├─ colSet: (1-3)\n" +
+				"                 │   └─ tableId: 1\n" +
+				"                 └─ Table\n" +
+				"                     ├─ name: uv\n" +
+				"                     ├─ columns: [u v w]\n" +
+				"                     ├─ colSet: (4-6)\n" +
+				"                     └─ tableId: 2\n" +
+				"",
 		},
 		{
 			Query: `
@@ -1327,35 +1327,36 @@ Project
 			from xy
 			having x > 1;
 			`,
-			ExpectedPlan: `
-Project
- ├─ columns: [(xy.x:1!null + 1 (tinyint)) as x, sum
- │   ├─ over ( partition by xy.y order by xy.x asc)
- │   └─ xy.x
- │  :5!null as sum]
- └─ Having
-     ├─ GreaterThan
-     │   ├─ x:7!null
-     │   └─ 1 (tinyint)
-     └─ Project
-         ├─ columns: [sum
-         │   ├─ over ( partition by xy.y order by xy.x asc)
-         │   └─ xy.x
-         │  :5!null, xy.x:1!null, (xy.x:1!null + 1 (tinyint)) as x, sum
-         │   ├─ over ( partition by xy.y order by xy.x asc)
-         │   └─ xy.x
-         │  :5!null as sum]
-         └─ Window
-             ├─ SUM
-             │   ├─ over ( partition by xy.y order by xy.x ASC)
-             │   └─ xy.x:1!null
-             ├─ xy.x:1!null
-             └─ Table
-                 ├─ name: xy
-                 ├─ columns: [x y z]
-                 ├─ colSet: (1-3)
-                 └─ tableId: 1
-`,
+			ExpectedPlan: "\n" +
+				"Project\n" +
+				" ├─ columns: [(xy.x:1!null + 1 (tinyint)) as x, sum\n" +
+				" │   ├─ over ( partition by xy.y order by xy.x asc)\n" +
+				" │   └─ xy.x\n" +
+				" │  :5!null as sum]\n" +
+				" └─ Having\n" +
+				"     ├─ GreaterThan\n" +
+				"     │   ├─ xy.x:1!null\n" +
+				"     │   └─ 1 (tinyint)\n" +
+				"     └─ Project\n" +
+				"         ├─ columns: [sum\n" +
+				"         │   ├─ over ( partition by xy.y order by xy.x asc)\n" +
+				"         │   └─ xy.x\n" +
+				"         │  :5!null, xy.x:1!null, (xy.x:1!null + 1 (tinyint)) as x, sum\n" +
+				"         │   ├─ over ( partition by xy.y order by xy.x asc)\n" +
+				"         │   └─ xy.x\n" +
+				"         │  :5!null as sum]\n" +
+				"         └─ Window\n" +
+				"             ├─ SUM\n" +
+				"             │   ├─ over ( partition by xy.y order by xy.x ASC)\n" +
+				"             │   └─ xy.x:1!null\n" +
+				"             ├─ xy.x:1!null\n" +
+				"             └─ Table\n" +
+				"                 ├─ name: xy\n" +
+				"                 ├─ columns: [x y z]\n" +
+				"                 ├─ colSet: (1-3)\n" +
+				"                 └─ tableId: 1\n" +
+				"",
+
 		},
 		{
 			Query: `
