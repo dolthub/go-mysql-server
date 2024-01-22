@@ -1268,24 +1268,7 @@ Project
 `,
 		},
 		{
-			Query: `
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-			select
+			Query: `select
 			x,
 			x*y,
 			ROW_NUMBER() OVER(PARTITION BY x) AS row_num1,
@@ -1313,24 +1296,7 @@ Project
 `,
 		},
 		{
-			Query: `
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-			select
+			Query: `select
 			x+1 as x,
 			sum(x) OVER(PARTITION BY y ORDER BY x) AS sum
 			from xy
@@ -1368,22 +1334,6 @@ Project
 		},
 		{
 			Query: `
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 			SELECT
 			x,
 			ROW_NUMBER() OVER w AS 'row_number',
@@ -1628,24 +1578,7 @@ Project
 `,
 		},
 		{
-			Query: `
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-			SELECT x
+			Query: `SELECT x
 			FROM xy
 			WHERE EXISTS (SELECT count(u) AS count_1
 			FROM uv
@@ -1686,24 +1619,7 @@ Project
 `,
 		},
 		{
-			Query: `
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-			WITH RECURSIVE
+			Query: `WITH RECURSIVE
 			rt (foo) AS (
 			SELECT 1 as foo
 			UNION ALL
@@ -1909,23 +1825,7 @@ Project
 `,
 		},
 		{
-			Query: `
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-SELECT fi, COUNT(*) FROM (
+			Query: `SELECT fi, COUNT(*) FROM (
 			SELECT tbl.x AS fi
 			FROM xy tbl
 		) t
