@@ -2473,18 +2473,18 @@ Project
                  ├─ colSet: (4-6)
                  └─ tableId: 2
 `,
-	},
-	{
-		Skip: true,
-		Query: "select x + 1 as xx from xy join uv on (x = u) group by xx having x = 123; -- should error",
-	},
-	{
-		Skip: true,
-		Query: "select x + 1 as xx from xy join uv on (x = u) having x = 123; -- should error",
-	},
-	{
-		Query: "select x +1  as xx from xy join uv on (x = u) group by x having avg(x) = 123;",
-		ExpectedPlan: `
+		},
+		{
+			Skip:  true,
+			Query: "select x + 1 as xx from xy join uv on (x = u) group by xx having x = 123; -- should error",
+		},
+		{
+			Skip:  true,
+			Query: "select x + 1 as xx from xy join uv on (x = u) having x = 123; -- should error",
+		},
+		{
+			Query: "select x +1  as xx from xy join uv on (x = u) group by x having avg(x) = 123;",
+			ExpectedPlan: `
 Project
  ├─ columns: [(xy.x:1!null + 1 (tinyint)) as xx]
  └─ Having
@@ -2511,12 +2511,12 @@ Project
                      ├─ colSet: (4-6)
                      └─ tableId: 2
 `,
-	},
-	{
-		Skip: true,
-		Query: "select x + 1 as xx from xy join uv on (x = u) group by xx having avg(xx) = 123;",
-	},
-}
+		},
+		{
+			Skip:  true,
+			Query: "select x + 1 as xx from xy join uv on (x = u) group by xx having avg(xx) = 123;",
+		},
+	}
 
 	var w *bufio.Writer
 	var outputPath string
