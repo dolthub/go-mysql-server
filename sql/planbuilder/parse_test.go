@@ -1356,7 +1356,6 @@ Project
 				"                 ├─ colSet: (1-3)\n" +
 				"                 └─ tableId: 1\n" +
 				"",
-
 		},
 		{
 			Query: `
