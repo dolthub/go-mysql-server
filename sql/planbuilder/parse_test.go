@@ -162,6 +162,11 @@ Project
 `,
 		},
 		{
+			Query: "analyze table xy update histogram on (x, y) using data '{\"row_count\": 40, \"distinct_count\": 40, \"null_count\": 1, \"columns\": [\"x\", \"y\"], \"histogram\": [{\"row_count\": 20, \"upper_bound\": [50.0]}, {\"row_count\": 20, \"upper_bound\": [80.0]}]}'",
+			ExpectedPlan: `
+update histogram  xy.(x,y) using {"statistic":{"avg_size":0,"buckets":[],"columns":["x","y"],"created_at":"0001-01-01T00:00:00Z","distinct_count":40,"null_count":40,"qualifier":"mydb.xy.primary","row_count":40,"types:":["bigint","bigint"]}}`,
+		},
+		{
 			Query: "SELECT b.y as s1, a.y as s2, first_value(a.z) over (partition by a.y) from xy a join xy b on a.y = b.y",
 			ExpectedPlan: `
 Project
