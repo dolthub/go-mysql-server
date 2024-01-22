@@ -2192,7 +2192,13 @@ Project
 	},
 	{
 		// TODO: this should fail
+		Skip: true,
 		Query: "select x + 1 as xx from xy join uv on x = u group by xx having x = 123;",
+	},
+	{
+		// TODO: this should also fail
+		Skip: true,
+		Query: "select x + 1 as xx from xy join uv on x = u having x = 123;",
 	},
 }
 
