@@ -45,22 +45,6 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 			return nil, transform.SameTree, err
 		}
 
-		if insert.IsReplace {
-			var ok bool
-			_, ok = insertable.(sql.ReplaceableTable)
-			if !ok {
-				return nil, transform.SameTree, plan.ErrReplaceIntoNotSupported.New()
-			}
-		}
-
-		if len(insert.OnDupExprs) > 0 {
-			var ok bool
-			_, ok = insertable.(sql.UpdatableTable)
-			if !ok {
-				return nil, transform.SameTree, plan.ErrOnDuplicateKeyUpdateNotSupported.New()
-			}
-		}
-
 		source := insert.Source
 		// TriggerExecutor has already been analyzed
 		if _, ok := insert.Source.(*plan.TriggerExecutor); !ok {
@@ -93,16 +77,6 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 			for i, f := range dstSchema {
 				columnNames[i] = f.Name
 			}
-		} else {
-			err = validateColumns(table.Name(), columnNames, dstSchema, source)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-		}
-
-		err = validateValueCount(columnNames, source)
-		if err != nil {
-			return nil, transform.SameTree, err
 		}
 
 		// The schema of the destination node and the underlying table differ subtly in terms of defaults

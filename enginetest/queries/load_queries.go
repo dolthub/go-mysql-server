@@ -43,8 +43,7 @@ var LoadDataScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"'",
-
+				Query:          "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"'",
 				ExpectedErrStr: "Check constraint \"loadtable_chk_1\" violated",
 			},
 		},
@@ -275,11 +274,11 @@ var LoadDataErrorScripts = []ScriptTest{
 	{
 		Name: "Load data with unknown columns throws an error",
 		SetUpScript: []string{
-			"create table loadtable(pk int primary key)",
+			"create table loadtable(pk int primary key, i int)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:       "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"' (bad)",
+				Query:       "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"' (pk, fake_col, i)",
 				ExpectedErr: plan.ErrInsertIntoNonexistentColumn,
 			},
 		},
