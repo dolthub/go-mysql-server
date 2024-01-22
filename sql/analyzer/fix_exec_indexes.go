@@ -366,9 +366,6 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 		}
 	default:
 		if ne, ok := n.(sql.Expressioner); ok {
-			if _, ok := n.(*plan.Having); ok {
-				print()
-			}
 			scope := append(s.parentScopes, s.childScopes...)
 			for _, e := range ne.Expressions() {
 				// default nodes can't see lateral join nodes, unless we're in lateral

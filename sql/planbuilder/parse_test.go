@@ -2121,6 +2121,26 @@ Create table myTable
          ENFORCED
 `,
 		},
+		{
+			Query: "SELECT x as y FROM xy GROUP BY x HAVING AVG(-y) IS NOT NULL",
+			ExpectedPlan: "\n" +
+				"Project\n" +
+				" ├─ columns: [xy.x:1!null as y]\n" +
+				" └─ Having\n" +
+				"     ├─ NOT\n" +
+				"     │   └─ avg(-xy.y):5 IS NULL\n" +
+				"     └─ Project\n" +
+				"         ├─ columns: [avg(-xy.y):5, xy.x:1!null, xy.x:1!null as y]\n" +
+				"         └─ GroupBy\n" +
+				"             ├─ select: AVG(-xy.y), xy.x:1!null\n" +
+				"             ├─ group: xy.x:1!null\n" +
+				"             └─ Table\n" +
+				"                 ├─ name: xy\n" +
+				"                 ├─ columns: [x y z]\n" +
+				"                 ├─ colSet: (1-3)\n" +
+				"                 └─ tableId: 1\n" +
+				"",
+		},
 	}
 
 	var w *bufio.Writer
