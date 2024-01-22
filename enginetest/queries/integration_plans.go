@@ -134,7 +134,7 @@ WHERE
 			"     │   ├─ outerVisibility: false\n" +
 			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
-			"     │   ├─ colSet: (45-48)\n" +
+			"     │   ├─ colSet: (44-47)\n" +
 			"     │   ├─ tableId: 4\n" +
 			"     │   └─ Filter\n" +
 			"     │       ├─ AND\n" +
@@ -219,7 +219,7 @@ WHERE
 			"         └─ IndexedTableAccess(E2I7U)\n" +
 			"             ├─ index: [E2I7U.ZH72S]\n" +
 			"             ├─ keys: [cl3dt.ZH72S:0]\n" +
-			"             ├─ colSet: (49-65)\n" +
+			"             ├─ colSet: (48-64)\n" +
 			"             ├─ tableId: 5\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: E2I7U\n" +
@@ -1278,7 +1278,7 @@ WHERE
 			"     │   ├─ outerVisibility: false\n" +
 			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
-			"     │   ├─ colSet: (48-51)\n" +
+			"     │   ├─ colSet: (47-50)\n" +
 			"     │   ├─ tableId: 4\n" +
 			"     │   └─ Filter\n" +
 			"     │       ├─ AND\n" +
@@ -1363,7 +1363,7 @@ WHERE
 			"         └─ IndexedTableAccess(E2I7U)\n" +
 			"             ├─ index: [E2I7U.ZH72S]\n" +
 			"             ├─ keys: [cl3dt.ZH72S:0]\n" +
-			"             ├─ colSet: (52-68)\n" +
+			"             ├─ colSet: (51-67)\n" +
 			"             ├─ tableId: 5\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: E2I7U\n" +
@@ -3166,7 +3166,7 @@ WHERE
 			"     │   ├─ outerVisibility: false\n" +
 			"     │   ├─ isLateral: false\n" +
 			"     │   ├─ cacheable: true\n" +
-			"     │   ├─ colSet: (44-47)\n" +
+			"     │   ├─ colSet: (43-46)\n" +
 			"     │   ├─ tableId: 4\n" +
 			"     │   └─ Filter\n" +
 			"     │       ├─ AND\n" +
@@ -3251,7 +3251,7 @@ WHERE
 			"         └─ IndexedTableAccess(E2I7U)\n" +
 			"             ├─ index: [E2I7U.ZH72S]\n" +
 			"             ├─ keys: [cl3dt.ZH72S:0]\n" +
-			"             ├─ colSet: (48-64)\n" +
+			"             ├─ colSet: (47-63)\n" +
 			"             ├─ tableId: 5\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: E2I7U\n" +
