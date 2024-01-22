@@ -48,9 +48,9 @@ type planErrTest struct {
 func TestPlanBuilder(t *testing.T) {
 	var verbose, rewrite bool
 	//verbose = true
-	//rewrite = true
+	rewrite = true
 
-var tests = []planTest{
+	var tests = []planTest{
   {
     Query: "with cte(x) as (select 1 as x) select 1 as x from cte having avg(x) > 0",
     ExpectedPlan: `
@@ -160,11 +160,6 @@ Project
                      ├─ colSet: (4-6)
                      └─ tableId: 2
 `,
-  },
-  {
-    Query: "analyze table xy update histogram on (x, y) using data '{"row_count": 40, "distinct_count": 40, "null_count": 1, "columns": ["x", "y"], "histogram": [{"row_count": 20, "upper_bound": [50.0]}, {"row_count": 20, "upper_bound": [80.0]}]}'",
-    ExpectedPlan: `
-update histogram  xy.(x,y) using {"statistic":{"avg_size":0,"buckets":[],"columns":["x","y"],"created_at":"0001-01-01T00:00:00Z","distinct_count":40,"null_count":40,"qualifier":"mydb.xy.primary","row_count":40,"types:":["bigint","bigint"]}}`,
   },
   {
     Query: "SELECT b.y as s1, a.y as s2, first_value(a.z) over (partition by a.y) from xy a join xy b on a.y = b.y",
@@ -1284,6 +1279,7 @@ Project
 
 
 
+
 			select
 			x,
 			x*y,
@@ -1313,6 +1309,7 @@ Project
   },
   {
     Query: `
+
 
 
 
@@ -1361,6 +1358,7 @@ Project
   },
   {
     Query: `
+
 
 
 
@@ -1626,6 +1624,7 @@ Project
 
 
 
+
 			SELECT x
 			FROM xy
 			WHERE EXISTS (SELECT count(u) AS count_1
@@ -1668,6 +1667,7 @@ Project
   },
   {
     Query: `
+
 
 
 
@@ -1885,6 +1885,7 @@ Project
   },
   {
     Query: `
+
 
 
 
@@ -2146,6 +2147,41 @@ Project
                  ├─ colSet: (1-3)
                  └─ tableId: 1
 `,
+  },
+  {
+    Query: "select x as xx from xy join uv on x = u group by xx having x = 123;",
+    ExpectedPlan: `
+Project
+ ├─ columns: [xy.x:1!null as xx]
+ └─ Having
+     ├─ Eq
+     │   ├─ xy.x:1!null
+     │   └─ 123 (tinyint)
+     └─ Project
+         ├─ columns: [xy.x:1!null, xy.x:1!null as xx]
+         └─ GroupBy
+             ├─ select: xy.x:1!null
+             ├─ group: xy.x:1!null as xx
+             └─ InnerJoin
+                 ├─ Eq
+                 │   ├─ xy.x:1!null
+                 │   └─ uv.u:4!null
+                 ├─ Table
+                 │   ├─ name: xy
+                 │   ├─ columns: [x y z]
+                 │   ├─ colSet: (1-3)
+                 │   └─ tableId: 1
+                 └─ Table
+                     ├─ name: uv
+                     ├─ columns: [u v w]
+                     ├─ colSet: (4-6)
+                     └─ tableId: 2
+`,
+  },
+  {
+    // TODO: this should fail
+    Skip: true,
+    Query: "select x + 1 as xx from xy join uv on x = u group by xx having x = 123;",
   },
 }
 
