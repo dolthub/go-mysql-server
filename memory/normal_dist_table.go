@@ -30,23 +30,23 @@ func (s NormalDistTable) UnderlyingTable() sql.Table {
 }
 
 func (s NormalDistTable) NewInstance(_ *sql.Context, db sql.Database, args []sql.Expression) (sql.Node, error) {
-	if len(args) != 5 {
-		return nil, fmt.Errorf("normal_dist table expects 2 arguments: (name, cols, rows, mean, std)")
+	if len(args) != 4 {
+		return nil, fmt.Errorf("normal_dist table expects 4 arguments: (cols, rows, mean, std)")
 	}
 	colCntLit, ok := args[0].(*expression.Literal)
 	if !ok {
 		return nil, fmt.Errorf("normal_dist table expects arguments to be literal expressions")
 	}
-	colCnt, ok := colCntLit.Value().(int64)
-	if !ok {
+	colCnt, inBounds, _ := types.Int64.Convert(colCntLit.Value())
+	if !inBounds {
 		return nil, fmt.Errorf("normal_dist table expects 1st argument to be column count")
 	}
 	rowCntLit, ok := args[1].(*expression.Literal)
 	if !ok {
 		return nil, fmt.Errorf("normal_dist table expects arguments to be literal expressions")
 	}
-	rowCnt, ok := rowCntLit.Value().(int64)
-	if !ok {
+	rowCnt, inBounds, _ := types.Int64.Convert(rowCntLit.Value())
+	if !inBounds {
 		return nil, fmt.Errorf("normal_dist table expects 2nd argument to be row count")
 	}
 	meanLit, ok := args[2].(*expression.Literal)
@@ -66,7 +66,7 @@ func (s NormalDistTable) NewInstance(_ *sql.Context, db sql.Database, args []sql
 		return nil, fmt.Errorf("normal_dist table expects 4th argument to be row count")
 	}
 
-	return NormalDistTable{db: db, colCnt: int(colCnt), rowCnt: int(rowCnt), mean: mean.(float64), std: std.(float64)}, nil
+	return NormalDistTable{db: db, colCnt: int(colCnt.(int64)), rowCnt: int(rowCnt.(int64)), mean: mean.(float64), std: std.(float64)}, nil
 }
 
 func (s NormalDistTable) Resolved() bool {
@@ -95,16 +95,16 @@ func (s NormalDistTable) DebugString() string {
 }
 
 func (s NormalDistTable) Schema() sql.Schema {
-	schema := []*sql.Column{
-		{
+	var sch sql.Schema
+	for i := 0; i < s.colCnt+1; i++ {
+		sch = append(sch, &sql.Column{
 			DatabaseSource: s.db.Name(),
 			Source:         s.Name(),
-			Name:           s.name,
+			Name:           fmt.Sprintf("col%d", i),
 			Type:           types.Int64,
-		},
+		})
 	}
-
-	return schema
+	return sch
 }
 
 func (s NormalDistTable) Children() []sql.Node {

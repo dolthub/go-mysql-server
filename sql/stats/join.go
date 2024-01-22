@@ -19,21 +19,21 @@ var ErrJoinStringStatistics = errors.New("joining string histograms is unsupport
 // then pairwise estimates bucket cardinalities by joining most common
 // values (mcvs) directly and assuming key uniformity otherwise. Only
 // numeric types are supported.
-func Join(s1, s2 sql.Statistic, lFields, rFields []int, debug bool) (sql.Statistic, error) {
+func Join(s1, s2 sql.Statistic, prefixCnt int, debug bool) (sql.Statistic, error) {
 	cmp := func(row1, row2 sql.Row) (int, error) {
 		var keyCmp int
-		for i, f := range lFields {
-			k1, _, err := s1.Types()[f].Promote().Convert(row1[f])
+		for i := 0; i < prefixCnt; i++ {
+			k1, _, err := s1.Types()[i].Promote().Convert(row1[i])
 			if err != nil {
 				return 0, fmt.Errorf("incompatible types")
 			}
 
-			k2, _, err := s2.Types()[f].Promote().Convert(row2[rFields[i]])
+			k2, _, err := s2.Types()[i].Promote().Convert(row2[i])
 			if err != nil {
 				return 0, fmt.Errorf("incompatible types")
 			}
 
-			cmp, err := s1.Types()[f].Promote().Compare(k1, k2)
+			cmp, err := s1.Types()[i].Promote().Compare(k1, k2)
 			if err != nil {
 				return 0, err
 			}
@@ -55,7 +55,7 @@ func Join(s1, s2 sql.Statistic, lFields, rFields []int, debug bool) (sql.Statist
 		return nil, err
 	}
 
-	s1AliHist, s2AliHist, err := AlignBuckets(s1Buckets, s2Buckets, s1.Types(), s2.Types(), cmp)
+	s1AliHist, s2AliHist, err := AlignBuckets(s1Buckets, s2Buckets, s1.LowerBound(), s2.LowerBound(), s1.Types()[:prefixCnt], s2.Types()[:prefixCnt], cmp)
 	if err != nil {
 		return nil, err
 	}
@@ -65,12 +65,11 @@ func Join(s1, s2 sql.Statistic, lFields, rFields []int, debug bool) (sql.Statist
 	}
 
 	newHist, err := joinAlignedStats(s1AliHist, s2AliHist, cmp)
-	ret := NewStatistic(0, 0, 0, s1.AvgSize(), time.Now(), s1.Qualifier(), s1.Columns(), s1.Types(), newHist, s1.IndexClass())
+	ret := NewStatistic(0, 0, 0, s1.AvgSize(), time.Now(), s1.Qualifier(), s1.Columns(), s1.Types(), newHist, s1.IndexClass(), nil)
 	return UpdateCounts(ret), nil
 }
 
 // joinAlignedStats assumes |left| and |right| have the same number of
-// buckets, and will use uniform distribution assumptions between pairwise
 // buckets to estimate the join cardinality. Most common values (mcvs) adjust
 // the estimates to account for outlier keys that are a disproportionately
 // high fraction of the index.
@@ -111,14 +110,14 @@ func joinAlignedStats(left, right sql.Histogram, cmp func(sql.Row, sql.Row) (int
 		}
 
 		// true up negative approximations
-		lRows = floatMax(lRows, 0)
-		rRows = floatMax(rRows, 0)
-		lDistinct = floatMax(lDistinct, 0)
-		rDistinct = floatMax(rDistinct, 0)
+		lRows = math.Max(lRows, 0)
+		rRows = math.Max(rRows, 0)
+		lDistinct = math.Max(lDistinct, 0)
+		rDistinct = math.Max(rDistinct, 0)
 
 		// Selinger method on rest of buckets
-		maxDistinct := floatMax(lDistinct, rDistinct)
-		minDistinct := floatMin(lDistinct, rDistinct)
+		maxDistinct := math.Max(lDistinct, rDistinct)
+		minDistinct := math.Min(lDistinct, rDistinct)
 
 		if maxDistinct > 0 {
 			rows += uint64(float64(lRows*rRows) / float64(maxDistinct))
@@ -145,9 +144,7 @@ func joinAlignedStats(left, right sql.Histogram, cmp func(sql.Row, sql.Row) (int
 // keyspace. Then for every misaligned pair of buckets, cut the one with the
 // higher bound value on the smaller's key. We use a linear interpolation
 // to divide keys when splitting.
-// todo: add lower bound for the whole statistic so that we can split the first
-// bucket more easily.
-func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sql.Row, sql.Row) (int, error)) (sql.Histogram, sql.Histogram, error) {
+func AlignBuckets(h1, h2 sql.Histogram, lBound1, lBound2 sql.Row, s1Types, s2Types []sql.Type, cmp func(sql.Row, sql.Row) (int, error)) (sql.Histogram, sql.Histogram, error) {
 	var numericTypes bool = true
 	for _, t := range s1Types {
 		if _, ok := t.(sql.NumberType); !ok {
@@ -201,7 +198,13 @@ func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sq
 			s1Last := s1Hist[len(s1Hist)-1].UpperBound()
 			s2Last := s2Hist[len(s2Hist)-1].UpperBound()
 			idx1, err := PrefixLtHist(s1Hist, s2Last, cmp)
+			if err != nil {
+				return nil, nil, err
+			}
 			idx2, err := PrefixLtHist(s2Hist, s1Last, cmp)
+			if err != nil {
+				return nil, nil, err
+			}
 			if idx1 < len(s1Hist) {
 				idx1++
 			}
@@ -210,6 +213,25 @@ func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sq
 			}
 			s1Hist = s1Hist[:idx1]
 			s2Hist = s2Hist[:idx2]
+
+			if lBound2 != nil {
+				idx, err := PrefixGteHist(s1Hist, lBound2, cmp)
+				if err != nil {
+					return nil, nil, err
+				}
+				s1Hist = s1Hist[idx:]
+			}
+			if lBound1 != nil {
+				idx, err := PrefixGteHist(s2Hist, lBound1, cmp)
+				if err != nil {
+					return nil, nil, err
+				}
+				s2Hist = s2Hist[idx:]
+			}
+
+			if len(s1Hist) == 0 || len(s2Hist) == 0 {
+				return nil, nil, nil
+			}
 
 			if len(s1Hist) == 0 || len(s2Hist) == 0 {
 				return nil, nil, nil
@@ -298,7 +320,7 @@ func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sq
 				}
 
 				// nextR < nextL < peekR
-				bucketMagnitude, err := euclideanDistance(nextR.UpperBound(), peekR.UpperBound())
+				bucketMagnitude, err := euclideanDistance(nextR.UpperBound(), peekR.UpperBound(), len(s1Types))
 				if err != nil {
 					return nil, nil, err
 				}
@@ -309,7 +331,7 @@ func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sq
 				}
 
 				// estimate midpoint
-				cutMagnitude, err := euclideanDistance(nextR.UpperBound(), nextL.UpperBound())
+				cutMagnitude, err := euclideanDistance(nextR.UpperBound(), nextL.UpperBound(), len(s1Types))
 				if err != nil {
 					return nil, nil, err
 				}
@@ -339,13 +361,13 @@ func AlignBuckets(h1, h2 sql.Histogram, s1Types, s2Types []sql.Type, cmp func(sq
 			}
 
 			// get left "distance"
-			bucketMagnitude, err := euclideanDistance(nextL.UpperBound(), leftRes[len(leftRes)-1].UpperBound())
+			bucketMagnitude, err := euclideanDistance(nextL.UpperBound(), leftRes[len(leftRes)-1].UpperBound(), len(s1Types))
 			if err != nil {
 				return nil, nil, err
 			}
 
 			// estimate midpoint
-			cutMagnitude, err := euclideanDistance(nextL.UpperBound(), nextR.UpperBound())
+			cutMagnitude, err := euclideanDistance(nextL.UpperBound(), nextR.UpperBound(), len(s1Types))
 			if err != nil {
 				return nil, nil, err
 			}
@@ -440,6 +462,10 @@ func mergeMcvs(mcvs1, mcvs2 []sql.Row, mcvCnts1, mcvCnts2 []uint64, cmp func(sql
 		mcvs1, mcvs2 = mcvs2, mcvs1
 		mcvCnts1, mcvCnts2 = mcvCnts2, mcvCnts1
 	}
+	if len(mcvs2) == 0 {
+		return mcvs1, mcvCnts1, nil
+	}
+
 	ret := NewSqlHeap(len(mcvs2))
 	seen := make(map[int]bool)
 	for i, row1 := range mcvs1 {
@@ -474,7 +500,7 @@ func mergeMcvs(mcvs1, mcvs2 []sql.Row, mcvCnts1, mcvCnts2 []uint64, cmp func(sql
 // bucket when the bound keys match.
 func mergeOverlappingBuckets(h sql.Histogram, types []sql.Type) (sql.Histogram, error) {
 	cmp := func(l, r sql.Row) (int, error) {
-		for i := range l {
+		for i := 0; i < len(types); i++ {
 			cmp, err := types[i].Compare(l[i], r[i])
 			if err != nil {
 				return 0, err
@@ -543,9 +569,9 @@ const (
 
 // euclideanDistance is a vectorwise sum of squares distance between
 // two numeric types.
-func euclideanDistance(row1, row2 sql.Row) (float64, error) {
+func euclideanDistance(row1, row2 sql.Row, prefixLen int) (float64, error) {
 	var distSq float64
-	for i := range row1 {
+	for i := 0; i < prefixLen; i++ {
 		v1, _, err := types.Float64.Convert(row1[i])
 		if err != nil {
 			return 0, err

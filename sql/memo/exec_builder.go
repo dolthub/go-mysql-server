@@ -100,7 +100,7 @@ func (b *ExecBuilder) buildRangeHeap(sr *RangeHeap, children ...sql.Node) (ret s
 			sf := []sql.SortField{{
 				Column:       sortExpr,
 				Order:        sql.Ascending,
-				NullOrdering: sql.NullsLast, // Due to https://github.com/dolthub/go-mysql-server/issues/1903
+				NullOrdering: sql.NullsFirst,
 			}}
 			childNode = plan.NewSort(sf, n)
 		}
@@ -135,7 +135,7 @@ func (b *ExecBuilder) buildRangeHeapJoin(j *RangeHeapJoin, children ...sql.Node)
 		sf := []sql.SortField{{
 			Column:       sortExpr,
 			Order:        sql.Ascending,
-			NullOrdering: sql.NullsLast, // Due to https://github.com/dolthub/go-mysql-server/issues/1903
+			NullOrdering: sql.NullsFirst,
 		}}
 		left = plan.NewSort(sf, children[0])
 	}
@@ -363,7 +363,7 @@ func (b *ExecBuilder) buildDistinct(n sql.Node, d distinctOp) (sql.Node, error) 
 		return plan.NewDistinct(n), nil
 	case SortedDistinctOp:
 		return plan.NewOrderedDistinct(n), nil
-	case noDistinctOp:
+	case NoDistinctOp:
 		return n, nil
 	default:
 		return nil, fmt.Errorf("unexpected distinct operator: %d", d)

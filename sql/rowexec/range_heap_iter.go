@@ -215,9 +215,6 @@ func (iter *rangeHeapJoinIter) Close(ctx *sql.Context) (err error) {
 	return err
 }
 
-type rangeHeapRowIterProvider struct {
-}
-
 func (iter *rangeHeapJoinIter) initializeHeap(ctx *sql.Context, builder sql.NodeExecBuilder, primaryRow sql.Row) (err error) {
 	iter.childRowIter, err = builder.Build(ctx, iter.rangeHeapPlan.Child, primaryRow)
 	if err != nil {
@@ -235,11 +232,10 @@ func (iter *rangeHeapJoinIter) initializeHeap(ctx *sql.Context, builder sql.Node
 }
 
 func (iter *rangeHeapJoinIter) getActiveRanges(ctx *sql.Context, _ sql.NodeExecBuilder, row sql.Row) (sql.RowIter, error) {
-
 	// Remove rows from the heap if we've advanced beyond their max value.
 	for iter.Len() > 0 {
 		maxValue := iter.Peek()
-		compareResult, err := iter.rangeHeapPlan.ComparisonType.Compare(row[iter.rangeHeapPlan.ValueColumnIndex], maxValue)
+		compareResult, err := compareNullsFirst(iter.rangeHeapPlan.ComparisonType, row[iter.rangeHeapPlan.ValueColumnIndex], maxValue)
 		if err != nil {
 			return nil, err
 		}
@@ -258,7 +254,7 @@ func (iter *rangeHeapJoinIter) getActiveRanges(ctx *sql.Context, _ sql.NodeExecB
 	// Advance the child iterator until we encounter a row whose min value is beyond the range.
 	for iter.pendingRow != nil {
 		minValue := iter.pendingRow[iter.rangeHeapPlan.MinColumnIndex]
-		compareResult, err := iter.rangeHeapPlan.ComparisonType.Compare(row[iter.rangeHeapPlan.ValueColumnIndex], minValue)
+		compareResult, err := compareNullsFirst(iter.rangeHeapPlan.ComparisonType, row[iter.rangeHeapPlan.ValueColumnIndex], minValue)
 		if err != nil {
 			return nil, err
 		}
@@ -289,13 +285,31 @@ func (iter *rangeHeapJoinIter) getActiveRanges(ctx *sql.Context, _ sql.NodeExecB
 	return sql.RowsToRowIter(iter.activeRanges...), nil
 }
 
+// When managing the heap, consider all NULLs to come before any non-NULLS.
+// This is consistent with the order received if either child node is an index.
+// Note: We could get the same behavior by simply excluding values and ranges containing NULL,
+// but this is forward compatible if we ever want to convert joins with null-safe conditions into RangeHeapJoins.
+func compareNullsFirst(comparisonType sql.Type, a, b interface{}) (int, error) {
+	if a == nil {
+		if b == nil {
+			return 0, nil
+		} else {
+			return -1, nil
+		}
+	}
+	if b == nil {
+		return 1, nil
+	}
+	return comparisonType.Compare(a, b)
+}
+
 func (iter rangeHeapJoinIter) Len() int { return len(iter.activeRanges) }
 
 func (iter *rangeHeapJoinIter) Less(i, j int) bool {
 	lhs := iter.activeRanges[i][iter.rangeHeapPlan.MaxColumnIndex]
 	rhs := iter.activeRanges[j][iter.rangeHeapPlan.MaxColumnIndex]
 	// compareResult will be 0 if lhs==rhs, -1 if lhs < rhs, and +1 if lhs > rhs.
-	compareResult, err := iter.rangeHeapPlan.ComparisonType.Compare(lhs, rhs)
+	compareResult, err := compareNullsFirst(iter.rangeHeapPlan.ComparisonType, lhs, rhs)
 	if iter.err == nil && err != nil {
 		iter.err = err
 	}

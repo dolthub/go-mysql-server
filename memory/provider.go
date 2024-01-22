@@ -57,14 +57,14 @@ func NewDBProviderWithOpts(opts ...ProviderOption) sql.MutableDatabaseProvider {
 	return pro
 }
 
-func (pro *DbProvider) WithTableFunctions(fns []sql.TableFunction) sql.DatabaseProvider {
+func (pro *DbProvider) WithTableFunctions(fns ...sql.TableFunction) (sql.TableFunctionProvider, error) {
 	funcs := make(map[string]sql.TableFunction)
 	for _, fn := range fns {
 		funcs[strings.ToLower(fn.Name())] = fn
 	}
 	cp := *pro
 	cp.tableFunctions = funcs
-	return &cp
+	return &cp, nil
 }
 
 // WithOption modifies the provider with the given option
