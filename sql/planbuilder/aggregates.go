@@ -776,29 +776,52 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 		fromScope.initGroupBy()
 	}
 	// Having specifies conditions on groups. If not group by is present, all rows implicitly form a single aggregate group.
-	havingScope := fromScope.push()
+	havingScope := fromScope.push() // TODO: we should not be including the entire fromScope
 
-	_, isJoin := fromScope.node.(*plan.JoinNode)
-	if isJoin {
-		// Add columns from groupBy scope
-		for _, c := range fromScope.groupBy.inCols {
-			havingScope.addColumn(c)
+	for _, c := range projScope.cols {
+		// If there are conflicting aliases in the projScope, we prioritize the fromScope
+		found := false
+		for _, cc := range fromScope.cols {
+			if c.col == cc.col {
+				havingScope.addColumn(cc)
+				found = true
+				break
+			}
 		}
-	} else {
-		for _, c := range projScope.cols {
-			// If there are conflicting aliases in the projScope, we prioritize the fromScope
-			found := false
-			for _, cc := range fromScope.cols {
-				if c.col == cc.col {
-					havingScope.addColumn(cc)
-					found = true
-					break
-				}
-			}
-			// When we are not in a join, the having scope can see the projScope
-			if !found && c.tableId.IsEmpty() {
+		if found {
+			continue
+		}
+
+		alias, isAlias := c.scalar.(*expression.Alias)
+		if !isAlias {
+			// TODO: error?
+			continue
+		}
+
+		// Aliased GetFields are allowed in having clauses regardless of weather they are in the group by
+		_, isGetField := alias.Child.(*expression.GetField)
+		if isGetField {
+			havingScope.newColumn(c)
+			continue
+		}
+
+		// Aliased expression is allowed if there is no group by (it is implicitly a single group)
+		if len(fromScope.groupBy.inCols) == 0 {
+			havingScope.newColumn(c)
+			continue
+		}
+
+		// Aliased expressions are allowed in having clauses if they are in the group by
+		for _, cc := range fromScope.groupBy.inCols {
+			if c.col == cc.col {
 				havingScope.newColumn(c)
+				found = true
+				break
 			}
+		}
+
+		if found {
+			continue
 		}
 	}
 
