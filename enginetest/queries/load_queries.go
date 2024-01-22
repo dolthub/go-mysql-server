@@ -278,7 +278,15 @@ var LoadDataErrorScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				Query:       "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"' (fake_col, pk, i)",
+				ExpectedErr: plan.ErrInsertIntoNonexistentColumn,
+			},
+			{
 				Query:       "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"' (pk, fake_col, i)",
+				ExpectedErr: plan.ErrInsertIntoNonexistentColumn,
+			},
+			{
+				Query:       "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"' (pk, i, fake_col)",
 				ExpectedErr: plan.ErrInsertIntoNonexistentColumn,
 			},
 		},
