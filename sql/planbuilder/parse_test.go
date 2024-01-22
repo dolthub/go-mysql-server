@@ -48,7 +48,7 @@ type planErrTest struct {
 func TestPlanBuilder(t *testing.T) {
 	var verbose, rewrite bool
 	//verbose = true
-	rewrite = true
+	//rewrite = true
 
 	var tests = []planTest{
 	{
@@ -1284,6 +1284,7 @@ Project
 
 
 
+
 			select
 			x,
 			x*y,
@@ -1328,6 +1329,7 @@ Project
 
 
 
+
 			select
 			x+1 as x,
 			sum(x) OVER(PARTITION BY y ORDER BY x) AS sum
@@ -1342,7 +1344,7 @@ Project
  │  :5!null as sum]
  └─ Having
      ├─ GreaterThan
-     │   ├─ xy.x:1!null
+     │   ├─ x:7!null
      │   └─ 1 (tinyint)
      └─ Project
          ├─ columns: [sum
@@ -1366,6 +1368,7 @@ Project
 	},
 	{
 		Query: `
+
 
 
 
@@ -1641,6 +1644,7 @@ Project
 
 
 
+
 			SELECT x
 			FROM xy
 			WHERE EXISTS (SELECT count(u) AS count_1
@@ -1683,6 +1687,7 @@ Project
 	},
 	{
 		Query: `
+
 
 
 
@@ -1905,6 +1910,7 @@ Project
 	},
 	{
 		Query: `
+
 
 
 
@@ -2475,6 +2481,40 @@ Project
 	{
 		Skip: true,
 		Query: "select x + 1 as xx from xy join uv on (x = u) having x = 123; -- should error",
+	},
+	{
+		Query: "select x +1  as xx from xy join uv on (x = u) group by x having avg(x) = 123;",
+		ExpectedPlan: `
+Project
+ ├─ columns: [(xy.x:1!null + 1 (tinyint)) as xx]
+ └─ Having
+     ├─ Eq
+     │   ├─ avg(xy.x):8
+     │   └─ 123 (tinyint)
+     └─ Project
+         ├─ columns: [avg(xy.x):8, xy.x:1!null, (xy.x:1!null + 1 (tinyint)) as xx]
+         └─ GroupBy
+             ├─ select: AVG(xy.x:1!null), xy.x:1!null
+             ├─ group: xy.x:1!null
+             └─ InnerJoin
+                 ├─ Eq
+                 │   ├─ xy.x:1!null
+                 │   └─ uv.u:4!null
+                 ├─ Table
+                 │   ├─ name: xy
+                 │   ├─ columns: [x y z]
+                 │   ├─ colSet: (1-3)
+                 │   └─ tableId: 1
+                 └─ Table
+                     ├─ name: uv
+                     ├─ columns: [u v w]
+                     ├─ colSet: (4-6)
+                     └─ tableId: 2
+`,
+	},
+	{
+		Skip: true,
+		Query: "select x + 1 as xx from xy join uv on (x = u) group by xx having avg(xx) = 123;",
 	},
 }
 
