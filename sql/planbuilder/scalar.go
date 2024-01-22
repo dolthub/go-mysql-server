@@ -242,7 +242,12 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			b.handleErr(err)
 		}
 		return ret
-
+	case ast.DoltgresInjectedExpr:
+		if expr, ok := v.Expression.(sql.Expression); ok {
+			return expr
+		}
+		b.handleErr(fmt.Errorf("Doltgres injected expression is not a valid expression"))
+		return nil
 	case *ast.RangeCond:
 		val := b.buildScalar(inScope, v.Left)
 		lower := b.buildScalar(inScope, v.From)

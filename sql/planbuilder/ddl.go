@@ -1495,6 +1495,17 @@ func (b *Builder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
 }
 
 func ParseColumnTypeString(columnType string) (sql.Type, error) {
+	if strings.HasPrefix(columnType, "custom_") {
+		id, err := strconv.ParseUint(columnType[7:], 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		c, ok := types.DeserializeCustomType(uint8(id))
+		if !ok {
+			return nil, fmt.Errorf("unable to parse a custom type that does not have a corresponding id: `%d`", id)
+		}
+		return c, nil
+	}
 	parsed, err := ast.Parse(fmt.Sprintf("create table t(a %s)", columnType))
 	if err != nil {
 		return nil, err
