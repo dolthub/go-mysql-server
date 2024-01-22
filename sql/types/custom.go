@@ -24,7 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-//TODO: doc
+// TODO: doc
 type Custom interface {
 	sql.Type
 	GetStructure() CustomStructure
@@ -36,7 +36,7 @@ type Custom interface {
 	SerializeType() uint8
 }
 
-//TODO: doc
+// TODO: doc
 type CustomFunctions struct {
 	Compare                   func(c Custom, v1 any, v2 any) (int, error)
 	Convert                   func(c Custom, val any) (any, sql.ConvertInRange, error)
@@ -50,21 +50,21 @@ type CustomFunctions struct {
 	String                    func(c Custom) string
 }
 
-//TODO: doc
+// TODO: doc
 type CustomStructure interface {
 	SerializeValue(c Custom, val any) ([]byte, error)
 	DeserializeValue(c Custom, val []byte) (any, error)
 	FormatValue(c Custom, val any) (string, error)
 }
 
-//TODO: doc
+// TODO: doc
 type customDefinition struct {
 	id        uint8
 	functions customFunctionRefs
 	structure CustomStructure
 }
 
-//TODO: doc
+// TODO: doc
 type customFunctionRefs struct {
 	Compare                   uint32
 	Convert                   uint32
@@ -96,7 +96,7 @@ var (
 
 var _ Custom = customDefinition{}
 
-//TODO: doc
+// TODO: doc
 func RegisterCustomType(defaultStructure CustomStructure, functions CustomFunctions) Custom {
 	customTypeMutex.Lock()
 	defer customTypeMutex.Unlock()
@@ -134,7 +134,7 @@ func RegisterCustomType(defaultStructure CustomStructure, functions CustomFuncti
 	return c
 }
 
-//TODO: doc
+// TODO: doc
 func DeserializeCustomType(serializedType uint8) (Custom, bool) {
 	customTypeMutex.RLock()
 	defer customTypeMutex.RUnlock()
