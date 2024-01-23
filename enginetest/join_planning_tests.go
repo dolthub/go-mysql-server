@@ -19,6 +19,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
@@ -35,8 +36,11 @@ type JoinPlanTest struct {
 	indexes       []string
 	mergeCompares []string
 	exp           []sql.Row
-	order         []string
-	skipOld       bool
+	// order is a list of acceptable join plan orders.
+	// used for statistics test plans that are unlikely but otherwise
+	// cause flakes in CI for lack of seed control.
+	order   [][]string
+	skipOld bool
 }
 
 var JoinPlanningTests = []struct {
@@ -896,23 +900,23 @@ where u in (select * from rec);`,
 		tests: []JoinPlanTest{
 			{
 				q:     "select /*+ JOIN_ORDER(b, c, a) */ 1 from xy a join xy b on a.x+3 = b.x join xy c on a.x+3 = c.x and a.x+3 = b.x",
-				order: []string{"b", "c", "a"},
+				order: [][]string{{"b", "c", "a"}},
 			},
 			{
 				q:     "select /*+ JOIN_ORDER(a, c, b) */ 1 from xy a join xy b on a.x+3 = b.x join xy c on a.x+3 = c.x and a.x+3 = b.x",
-				order: []string{"a", "c", "b"},
+				order: [][]string{{"a", "c", "b"}},
 			},
 			{
 				q:     "select /*+ JOIN_ORDER(a,c,b) */ 1 from xy a join xy b on a.x+3 = b.x WHERE EXISTS (select 1 from uv c where c.u = a.x+2)",
-				order: []string{"a", "c", "b"},
+				order: [][]string{{"a", "c", "b"}},
 			},
 			{
 				q:     "select /*+ JOIN_ORDER(b,c,a) */ 1 from xy a join xy b on a.x+3 = b.x WHERE EXISTS (select 1 from uv c where c.u = a.x+2)",
-				order: []string{"b", "c", "a"},
+				order: [][]string{{"b", "c", "a"}},
 			},
 			{
 				q:     "select /*+ JOIN_ORDER(b,c,a) */ 1 from xy a join xy b on a.x+3 = b.x WHERE a.x in (select u from uv c)",
-				order: []string{"b", "c", "a"},
+				order: [][]string{{"b", "c", "a"}},
 			},
 		},
 	},
@@ -944,7 +948,7 @@ where u in (select * from rec);`,
 			{
 				q:     "select /*+ JOIN_ORDER(a,b,c) HASH_JOIN(a,b) HASH_JOIN(b,c) */ 1 from xy a join uv b on a.x = b.u join xy c on b.u = c.x",
 				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeHash},
-				order: []string{"a", "b", "c"},
+				order: [][]string{{"a", "b", "c"}},
 			},
 			{
 				q:     "select /*+ JOIN_ORDER(b,c,a) LOOKUP_JOIN(b,a) HASH_JOIN(b,c) */ 1 from xy a join uv b on a.x = b.u join xy c on b.u = c.x",
@@ -957,17 +961,17 @@ where u in (select * from rec);`,
 			{
 				q:     "select /*+ JOIN_ORDER(b,c,a) LOOKUP_JOIN(b,a) MERGE_JOIN(b,c) */ 1 from xy a join uv b on a.x = b.u join xy c on b.u = c.x",
 				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeMerge},
-				order: []string{"b", "c", "a"},
+				order: [][]string{{"b", "c", "a"}},
 			},
 			{
 				q:     "select /*+ JOIN_ORDER(a,b,c) LOOKUP_JOIN(b,a) HASH_JOIN(b,c) */ 1 from xy a join uv b on a.x = b.u join xy c on b.u = c.x",
 				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeLookup},
-				order: []string{"a", "b", "c"},
+				order: [][]string{{"a", "b", "c"}},
 			},
 			{
 				q:     "select /*+ JOIN_ORDER(c,a,b) MERGE_JOIN(a,b) HASH_JOIN(b,c) */ 1 from xy a join uv b on a.x = b.u join xy c on b.u = c.x",
 				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeMerge},
-				order: []string{"c", "a", "b"},
+				order: [][]string{{"c", "a", "b"}},
 			},
 			{
 				q: `
@@ -977,7 +981,7 @@ join uv b on a.x = b.u
 join xy c on a.x = c.x
 join uv d on d.u = c.x`,
 				types: []plan.JoinType{plan.JoinTypeInner, plan.JoinTypeMerge, plan.JoinTypeMerge},
-				order: []string{"d", "c", "b", "a"},
+				order: [][]string{{"d", "c", "b", "a"}},
 			},
 			{
 				q: `
@@ -987,7 +991,7 @@ join uv b on a.x = b.u
 join xy c on a.x = c.x
 join uv d on d.u = c.x`,
 				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeHash, plan.JoinTypeMerge},
-				order: []string{"a", "b", "c", "d"},
+				order: [][]string{{"a", "b", "c", "d"}},
 			},
 			{
 				q: "select /*+ LOOKUP_JOIN(xy,uv) */ 1 from xy where x not in (select u from uv)",
@@ -1895,7 +1899,7 @@ func collectIndexes(n sql.Node) []sql.Index {
 	return indexes
 }
 
-func evalJoinOrder(t *testing.T, harness Harness, e QueryEngine, q string, exp []string, skipOld bool) {
+func evalJoinOrder(t *testing.T, harness Harness, e QueryEngine, q string, exp [][]string, skipOld bool) {
 	t.Run(q+" join order", func(t *testing.T) {
 		ctx := NewContext(harness)
 		ctx = ctx.WithQuery(q)
@@ -1904,7 +1908,12 @@ func evalJoinOrder(t *testing.T, harness Harness, e QueryEngine, q string, exp [
 		require.NoError(t, err)
 
 		cmp := collectJoinOrder(a)
-		require.Equal(t, exp, cmp, fmt.Sprintf("expected order '%s' found '%s'\ndetail:\n%s", strings.Join(exp, ","), strings.Join(cmp, ","), sql.DebugString(a)))
+		for _, expCand := range exp {
+			if assert.ObjectsAreEqual(expCand, cmp) {
+				return
+			}
+		}
+		assert.Failf(t, "expected order %s found '%s'\ndetail:\n%s", fmt.Sprintf("%#v", exp), strings.Join(cmp, ","), sql.DebugString(a))
 	})
 }
 
@@ -1915,7 +1924,7 @@ func collectJoinOrder(n sql.Node) []string {
 	case *plan.JoinNode:
 		order = append(order, collectJoinOrder(n.Left())...)
 		order = append(order, collectJoinOrder(n.Right())...)
-	case *plan.TableAlias:
+	case plan.TableIdNode:
 		order = append(order, n.Name())
 	default:
 		children := n.Children()
