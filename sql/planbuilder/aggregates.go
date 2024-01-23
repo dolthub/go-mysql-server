@@ -790,6 +790,7 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 					case *expression.GetField:
 						if strings.EqualFold(c.col, e.Name()) {
 							found = true
+							havingScope.addColumn(cc)
 							return true
 						}
 					default:
@@ -830,6 +831,11 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 		}
 
 		if found {
+			continue
+		}
+
+		if c.tableId.IsEmpty() {
+			havingScope.newColumn(c)
 			continue
 		}
 	}
