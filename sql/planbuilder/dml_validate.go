@@ -23,6 +23,9 @@ import (
 
 func (b *Builder) validateInsert(ins *plan.InsertInto) {
 	table := getResolvedTable(ins.Destination)
+	if table == nil {
+		return
+	}
 
 	insertable, err := plan.GetInsertable(table)
 	if err != nil {
