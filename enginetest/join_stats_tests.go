@@ -167,7 +167,7 @@ var JoinStatTests = []struct {
 			{
 				q: "select * from uv join xy on y = v",
 				// we don't care what the order is, just don't error in join planning
-				order: [][]string{{"xy", "uv"}},
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
 			},
 		},
 	},
@@ -184,7 +184,7 @@ var JoinStatTests = []struct {
 			{
 				q: "select * from uv join xy on u = x",
 				// we don't care what the order is, just don't error in join planning
-				order: [][]string{{"xy", "uv"}},
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
 			},
 		},
 	},
