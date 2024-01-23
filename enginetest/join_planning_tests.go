@@ -1298,20 +1298,17 @@ join uv d on d.u = c.x`,
 					{6},
 				},
 			},
-			/*
-				Disabled because of https://github.com/dolthub/go-mysql-server/issues/2277
-					{
-						q:     "select * from vals where exists (select * from ranges where val between min and max limit 1 offset 1);",
-						types: []plan.JoinType{plan.JoinTypeSemi},
-						exp: []sql.Row{
-							{1},
-							{2},
-							{3},
-							{4},
-							{5},
-						},
-					},
-			*/
+			{
+				q:     "select * from vals where exists (select * from ranges where val between min and max limit 1 offset 1);",
+				types: []plan.JoinType{}, // This expression cannot be optimized into a join.
+				exp: []sql.Row{
+					{1},
+					{2},
+					{3},
+					{4},
+					{5},
+				},
+			},
 			{
 				q:     "select * from vals where exists (select * from ranges where val between min and max having val > 1);",
 				types: []plan.JoinType{},
@@ -1672,6 +1669,8 @@ func TestJoinPlanning(t *testing.T, harness Harness) {
 		t.Run(tt.name, func(t *testing.T) {
 			harness.Setup([]setup.SetupScript{setup.MydbData[0], tt.setup})
 			e := mustNewEngine(t, harness)
+			// e.EngineAnalyzer().Debug = true
+			// e.EngineAnalyzer().Verbose = true
 			defer e.Close()
 			for _, tt := range tt.tests {
 				if tt.types != nil {
