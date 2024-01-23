@@ -201,12 +201,12 @@ var JoinStatTests = []struct {
 			{
 				q: "select * from uv join xy on y = v",
 				// we don't care what the order is, just don't error in join planning
-				order: [][]string{{"xy", "uv"}},
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
 			},
 			{
 				q: "select * from uv join xy on x = u and y = v",
 				// we don't care what the order is, just don't error in join planning
-				order: [][]string{{"xy", "uv"}},
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
 			},
 			{
 				q: "select * from uv join xy on y = v where x in ('text1', 'text2')",
@@ -216,7 +216,7 @@ var JoinStatTests = []struct {
 			{
 				q: "select * from uv join xy on y = v where x > 'text2'",
 				// we don't care what the order is, just don't error in join planning
-				order: [][]string{{"xy", "uv"}},
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
 			},
 		},
 	},
@@ -233,7 +233,7 @@ var JoinStatTests = []struct {
 			{
 				q: "select * from uv join xy on y = v and y = w and y = u",
 				// we don't care what the order is, just don't error in join planning
-				order: [][]string{{"xy", "uv"}},
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
 			},
 		},
 	},
@@ -250,7 +250,7 @@ var JoinStatTests = []struct {
 			{
 				q: "select * from uv join xy on y = a and y = b and y = c and y = d and y = e and y = f and y = g and y = h and y = i and y = j",
 				// we don't care what the order is, just don't error in join planning
-				order: [][]string{{"xy", "uv"}},
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
 			},
 		},
 	},
@@ -267,17 +267,17 @@ var JoinStatTests = []struct {
 			{
 				q: "select * from uv join xy on y = v",
 				// we don't care what the order is, just don't error in join planning
-				order: [][]string{{"xy", "uv"}},
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
 			},
 			{
 				q: "select * from uv join xy on y = u",
 				// we don't care what the order is, just don't error in join planning
-				order: [][]string{{"xy", "uv"}},
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
 			},
 			{
 				q: "select * from uv join xy on y = w",
 				// we don't care what the order is, just don't error in join planning
-				order: [][]string{{"xy", "uv"}},
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
 			},
 		},
 	},
@@ -294,17 +294,17 @@ var JoinStatTests = []struct {
 			{
 				q: "select * from uv join xy on y = v",
 				// we don't care what the order is, just don't error in join planning
-				order: [][]string{{"xy", "uv"}},
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
 			},
 			{
 				q: "select * from uv join xy on y = u",
 				// we don't care what the order is, just don't error in join planning
-				order: [][]string{{"xy", "uv"}},
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
 			},
 			{
 				q: "select * from uv join xy on y = w",
 				// we don't care what the order is, just don't error in join planning
-				order: [][]string{{"xy", "uv"}},
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
 			},
 		},
 	},
@@ -321,17 +321,17 @@ var JoinStatTests = []struct {
 			{
 				q: "select * from uv join xy on y = v",
 				// we don't care what the order is, just don't error in join planning
-				order: [][]string{{"xy", "uv"}},
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
 			},
 			{
 				q: "select * from uv join xy on y = u",
 				// we don't care what the order is, just don't error in join planning
-				order: [][]string{{"xy", "uv"}},
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
 			},
 			{
 				q: "select * from uv join xy on y = w",
 				// we don't care what the order is, just don't error in join planning
-				order: [][]string{{"xy", "uv"}},
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
 			},
 		},
 	},
