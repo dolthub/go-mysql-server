@@ -17,6 +17,7 @@ package rowexec
 import (
 	"errors"
 	"fmt"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
