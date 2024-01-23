@@ -83,7 +83,7 @@ var JoinStatTests = []struct {
 		},
 	},
 	{
-		name: "test table orders with normal distributions",
+		name: "test table orders with exponential distributions",
 		setup: []string{
 			"create table mid (a int primary key, b int, c int, key (b,c))",
 			"insert into mid select * from normal_dist(2, 1000, 9, 1)",
