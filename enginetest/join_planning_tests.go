@@ -16,10 +16,10 @@ package enginetest
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
