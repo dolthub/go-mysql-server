@@ -5217,6 +5217,8 @@ CREATE TABLE tab3 (
 						where jp.id > 0 and jp.name != "never"
 						order by jp.name`,
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 8, Info: plan.UpdateInfo{Matched: 10, Updated: 8}}}},
+			},
+		},
 	},
 	{
 		Name: "count distinct decimals",
