@@ -100,6 +100,17 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 		}
 	}
 
+	indexes := make(map[string]sql.Index)
+	if iat, ok := table.(sql.IndexAddressableTable); ok {
+		idxs, err := iat.GetIndexes(ctx)
+		if err != nil {
+			return err
+		}
+		for _, idx := range idxs {
+			indexes[strings.ToLower(idx.ID())] = idx
+		}
+	}
+
 	sch := table.Schema()
 	for key, ordinals := range keys {
 		keyVals := make([]sql.Row, len(sample))
@@ -137,6 +148,7 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 			buckets[i] = stats.NewHistogramBucket(uint64(perBucket), uint64(perBucket), 0, 1, upperBound, nil, nil)
 		}
 
+		// columns and types
 		var cols []string
 		var types []sql.Type
 		for _, i := range ordinals {
@@ -149,7 +161,16 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 			return err
 		}
 
-		s.colStats[key] = stats.NewStatistic(rowCount, rowCount, 0, dataLen, time.Now(), qual, cols, types, buckets, sql.IndexClassDefault, nil)
+		stat := stats.NewStatistic(rowCount, rowCount, 0, dataLen, time.Now(), qual, cols, types, buckets, sql.IndexClassDefault, nil)
+
+		// functional dependencies
+		fds, idxCols, err := stats.IndexFds(table.Name(), sch, indexes[strings.ToLower(qual.Index())])
+		if err != nil {
+			return err
+		}
+		ret := stat.WithFuncDeps(fds)
+		ret = ret.WithColSet(idxCols)
+		s.colStats[key] = ret
 	}
 	return nil
 }
