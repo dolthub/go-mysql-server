@@ -15,10 +15,11 @@
 package planbuilder
 
 import (
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"strings"
 )
 
 func (b *Builder) validateInsert(ins *plan.InsertInto) {
