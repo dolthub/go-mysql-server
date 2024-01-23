@@ -31,8 +31,13 @@ func (d *normDistIter) Next(*sql.Context) (sql.Row, error) {
 	}
 	d.i++
 	var ret sql.Row
+	ret = append(ret, d.i)
 	for i := 0; i < d.cols; i++ {
-		ret = append(ret, rand.NormFloat64()*d.std+d.mean)
+		val := rand.NormFloat64()*d.std + d.mean
+		if math.IsNaN(val) || math.IsInf(val, 0) {
+			val = math.MaxInt
+		}
+		ret = append(ret, val)
 	}
 	return ret, nil
 }
@@ -56,8 +61,13 @@ func (d *expDistIter) Next(*sql.Context) (sql.Row, error) {
 	}
 	d.i++
 	var ret sql.Row
+	ret = append(ret, d.i)
 	for i := 0; i < d.cols; i++ {
-		ret = append(ret, -math.Log2(rand.NormFloat64())/d.lambda)
+		val := -math.Log2(rand.NormFloat64()) / d.lambda
+		if math.IsNaN(val) || math.IsInf(val, 0) {
+			val = math.MaxInt32
+		}
+		ret = append(ret, val)
 	}
 	return ret, nil
 }

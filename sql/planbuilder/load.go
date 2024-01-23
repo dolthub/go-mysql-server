@@ -69,7 +69,7 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 	ld := plan.NewLoadData(bool(d.Local), d.Infile, sch, columnsToStrings(d.Columns), d.Fields, d.Lines, ignoreNumVal, d.IgnoreOrReplace)
 	outScope = inScope.push()
 	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), ld, ld.IsReplace, ld.ColumnNames, nil, ld.IsIgnore)
-
+	b.validateInsert(ins)
 	outScope.node = ins
 	if rt != nil {
 		checks := b.loadChecksFromTable(destScope, rt.Table)

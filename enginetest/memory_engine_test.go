@@ -120,6 +120,10 @@ func TestJoinOps(t *testing.T) {
 	enginetest.TestJoinOps(t, enginetest.NewDefaultMemoryHarness(), enginetest.DefaultJoinOpTests)
 }
 
+func TestJoinStats(t *testing.T) {
+	enginetest.TestJoinStats(t, enginetest.NewDefaultMemoryHarness())
+}
+
 // TestJSONTableQueries runs the canonical test queries against a single threaded index enabled harness.
 func TestJSONTableQueries(t *testing.T) {
 	enginetest.TestJSONTableQueries(t, enginetest.NewDefaultMemoryHarness())

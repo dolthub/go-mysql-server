@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -57,7 +59,9 @@ func TestJoinOps(t *testing.T, harness Harness, tests []joinOpTest) {
 			}
 
 			if pro, ok := e.EngineAnalyzer().Catalog.DbProvider.(*memory.DbProvider); ok {
-				e.EngineAnalyzer().Catalog.DbProvider = pro.WithTableFunctions([]sql.TableFunction{memory.RequiredLookupTable{}})
+				newProv, err := pro.WithTableFunctions(memory.RequiredLookupTable{})
+				require.NoError(t, err)
+				e.EngineAnalyzer().Catalog.DbProvider = newProv.(sql.DatabaseProvider)
 			}
 
 			for k, c := range biasedCosters {

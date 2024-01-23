@@ -156,6 +156,8 @@ type MergeJoin struct {
 	InnerScan *IndexScan
 	OuterScan *IndexScan
 	SwapCmp   bool
+	Injective bool
+	CmpCnt    int
 }
 
 var _ RelExpr = (*MergeJoin)(nil)

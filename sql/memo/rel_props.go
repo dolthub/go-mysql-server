@@ -15,6 +15,7 @@
 package memo
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -327,14 +328,62 @@ func statsForRel(rel RelExpr) sql.Statistic {
 		// different joins use different ways to estimate cardinality of outputs
 		jp := rel.JoinPrivate()
 		left := jp.Left.RelProps.GetStats()
-		right := jp.Left.RelProps.GetStats()
+		right := jp.Right.RelProps.GetStats()
 
-		switch n := rel.(type) {
-		case *LookupJoin:
-			if n.Injective {
-				return left
+		var injective bool
+		var mergeStats sql.Statistic
+		var n RelExpr = rel
+		var done bool
+		for n != nil && !done {
+			switch n := n.(type) {
+			case *LookupJoin:
+				if n.Injective {
+					injective = true
+					done = true
+				}
+			case *MergeJoin:
+				// If the children have filtered index scan execution options, we can
+				// transfer the filter selectivity estimates from the range scans to
+				// the merge join indexes.
+				var leftChildStats, rightChildStats sql.Statistic
+				if lIdx, ok := n.Left.First.(*IndexScan); ok {
+					leftChildStats = lIdx.Stats
+				}
+				if rIdx, ok := n.Right.First.(*IndexScan); ok {
+					rightChildStats = rIdx.Stats
+				}
+
+				// merge join indexes have to be sorted on the prefix, so at
+				// least the length-1 prefix are comparable.
+				// todo: better way to find the complete prefix match
+				prefixLen := 1
+				mStat, err := getJoinStats(n.InnerScan.Stats, n.OuterScan.Stats, leftChildStats, rightChildStats, prefixLen)
+				if err != nil {
+					n.Group().m.HandleErr(err)
+				}
+				if mergeStats == nil {
+					mergeStats = mStat
+				} else if mStat != nil && mStat.RowCount() < mergeStats.RowCount() {
+					// keep the most restrictive join cardinality estimation
+					mergeStats = mStat
+				}
+			default:
+				done = true
 			}
-		default:
+			n = n.Next()
+		}
+
+		emptyStats := stats.Empty(mergeStats)
+		if emptyStats && injective {
+			return left
+		} else if !emptyStats && injective {
+			if left.RowCount() <= mergeStats.RowCount() {
+				return left
+			} else {
+				return mergeStats
+			}
+		} else if !emptyStats {
+			return mergeStats
 		}
 
 		distinct := math.Max(float64(left.DistinctCount()), float64(right.DistinctCount()))
@@ -359,8 +408,13 @@ func statsForRel(rel RelExpr) sql.Statistic {
 		if rel.Stats != nil {
 			if len(rel.Stats.Histogram()) > 0 {
 				return rel.Stats
+			} else if fds := rel.Stats.FuncDeps(); fds != nil && fds.HasMax1Row() {
+				return rel.Stats
 			} else if rel.Stats.RowCount() > 0 {
-				return rel.Stats.WithRowCount(rel.Stats.RowCount() / 2).WithDistinctCount(rel.Stats.DistinctCount() / 2)
+				// don't accidentally round to zero
+				newRows := uint64(math.Max(1, float64(rel.Stats.RowCount())/2))
+				newDistinct := uint64(math.Max(1, float64(rel.Stats.DistinctCount())/2))
+				return rel.Stats.WithRowCount(newRows).WithDistinctCount(newDistinct)
 			}
 		}
 		stat = &stats.Statistic{RowCnt: 1}
@@ -371,18 +425,30 @@ func statsForRel(rel RelExpr) sql.Statistic {
 	case *TableFunc:
 		// todo: have table function do their own row count estimations
 		// table functions usually cheaper than subqueries
-		stat = &stats.Statistic{RowCnt: 10}
+		stat = &stats.Statistic{RowCnt: defaultTableSize / 2}
 
 	case SourceRel:
-		if tn, ok := rel.TableIdNode().(sql.TableNode); ok {
-			if prov := rel.Group().m.StatsProvider(); prov != nil {
-				if card, err := prov.RowCount(rel.Group().m.Ctx, tn.Database().Name(), tn.Name()); err == nil {
-					stat = &stats.Statistic{RowCnt: card}
-					break
-				}
+		var tableName string
+		var dbName string
+		switch tn := rel.TableIdNode().(type) {
+		case sql.TableNode:
+			tableName = tn.Name()
+			dbName = tn.Database().Name()
+		case *plan.TableAlias:
+			if tn, ok := tn.Child.(sql.TableNode); ok {
+				dbName = tn.Database().Name()
+				tableName = tn.Name()
+			}
+		default:
+			return &stats.Statistic{RowCnt: defaultTableSize}
+		}
+		if prov := rel.Group().m.StatsProvider(); prov != nil {
+			if card, err := prov.RowCount(rel.Group().m.Ctx, dbName, strings.ToLower(tableName)); err == nil {
+				return &stats.Statistic{RowCnt: card}
+				break
 			}
 		}
-		stat = &stats.Statistic{RowCnt: 1000}
+		return &stats.Statistic{RowCnt: defaultTableSize}
 
 	case *Filter:
 		card := float64(rel.Child.RelProps.GetStats().RowCount()) * defaultFilterSelectivity
@@ -396,12 +462,42 @@ func statsForRel(rel RelExpr) sql.Statistic {
 
 	case *SetOp:
 		// todo: costing full plan to carry cardinalities upwards
-		stat = &stats.Statistic{RowCnt: 1000}
+		stat = &stats.Statistic{RowCnt: defaultTableSize * 2}
 
 	default:
 		rel.Group().m.HandleErr(fmt.Errorf("unsupported relProps type: %T", rel))
 	}
 	return stat
+}
+
+// indexCoverageAdjustment returns an integer offset grading the favorability
+// of index scans. Negative numbers are better, positive numbers are worse.
+// This is crude and only exists to maintain backwards compatibility in the
+// absence of injectivity or histogram statistics.
+func indexCoverageAdjustment(lookup *IndexScan) float64 {
+	// TODO two indexes each missing one column, choose the longer one
+	total := float64(len(lookup.Index.Cols()))
+	filled := float64(len(lookup.Table.Expressions()))
+	missing := total - filled
+	return math.Max(0, 12.0+missing-(3*filled))
+}
+
+func getJoinStats(leftIdx, rightIdx, leftChild, rightChild sql.Statistic, prefixCnt int) (sql.Statistic, error) {
+	if stats.Empty(rightIdx) || stats.Empty(leftIdx) {
+		return nil, nil
+	}
+	// if either child is not nil, try to interpolate join index stats from child
+	if !stats.Empty(leftChild) {
+		leftIdx = stats.InterpolateNewCounts(leftIdx, leftChild)
+	}
+	if !stats.Empty(rightChild) {
+		rightIdx = stats.InterpolateNewCounts(rightIdx, rightChild)
+	}
+	stat, err := stats.Join(leftIdx, rightIdx, prefixCnt, false)
+	if errors.Is(err, stats.ErrJoinStringStatistics) {
+		return nil, nil
+	}
+	return stat, nil
 }
 
 // getExprScalarProps returns bitsets of the column and table references,

@@ -1,15 +1,46 @@
 package stats
 
-func floatMin(i, j float64) float64 {
-	if i < j {
-		return i
-	}
-	return j
+import (
+	"math"
+
+	"github.com/dolthub/go-mysql-server/sql"
+)
+
+func Empty(s sql.Statistic) bool {
+	return s == nil || len(s.Histogram()) == 0
 }
 
-func floatMax(i, j float64) float64 {
-	if i > j {
-		return i
+func InterpolateNewCounts(from, to sql.Statistic) sql.Statistic {
+	if Empty(from) {
+		return to
+	} else if Empty(from) {
+		return to
 	}
-	return j
+	if from.Qualifier().String() == to.Qualifier().String() {
+		return to
+	}
+
+	if to.DistinctCount() < from.DistinctCount() {
+		// invalid use of interpolate
+		return to
+	}
+
+	filterSelectivity := float64(to.DistinctCount()) / float64(from.DistinctCount())
+
+	newHist := make([]*Bucket, len(from.Histogram()))
+	for i, h := range from.Histogram() {
+		newMcvs := make([]uint64, len(h.McvCounts()))
+		for i, cnt := range h.McvCounts() {
+			newMcvs[i] = uint64(math.Max(1, float64(cnt)*filterSelectivity))
+		}
+		newHist[i] = NewHistogramBucket(
+			uint64(math.Max(1, float64(h.RowCount())*filterSelectivity)),
+			uint64(math.Max(1, float64(h.DistinctCount())*filterSelectivity)),
+			uint64(math.Max(1, float64(h.NullCount())*filterSelectivity)),
+			uint64(math.Max(1, float64(h.BoundCount())*filterSelectivity)),
+			h.UpperBound(),
+			h.McvCounts(),
+			h.Mcvs())
+	}
+	return UpdateCounts(NewStatistic(0, 0, 0, from.AvgSize(), from.CreatedAt(), from.Qualifier(), from.Columns(), from.Types(), newHist, from.IndexClass(), from.LowerBound()))
 }

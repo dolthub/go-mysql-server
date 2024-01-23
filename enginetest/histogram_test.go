@@ -141,7 +141,7 @@ func TestNormDist(t *testing.T) {
 				mean := args[0].(float64)
 				std := args[1].(float64)
 				xyz := makeTable(db, fmt.Sprintf("xyz%d", tab), tab, col)
-				err := normalDistForTable(ctx, xyz, cnt, mean, std, int(tab))
+				err := normalDistForTable(ctx, xyz, cnt, mean, std)
 				if err != nil {
 					panic(err)
 				}
@@ -195,7 +195,7 @@ func TestExpDist(t *testing.T) {
 			name: tt.name,
 			tableGen: func(ctx *sql.Context, db *memory.Database, cnt int, tab sql.TableId, col sql.ColumnId, args ...interface{}) *plan.ResolvedTable {
 				xyz := makeTable(db, "xyz", tab, col)
-				err := expDistForTable(ctx, xyz, cnt, args[0].(float64), int(tab))
+				err := expDistForTable(ctx, xyz, cnt, args[0].(float64))
 				if err != nil {
 					panic(err)
 				}
@@ -287,7 +287,7 @@ func runStatsSuite(t *testing.T, tests []statsTest, rowCnt, bucketCnt int, debug
 				rStat.Hist = append(rStat.Hist, b.(*stats.Bucket))
 			}
 
-			res, err := stats.Join(stats.UpdateCounts(lStat), stats.UpdateCounts(rStat), []int{0}, []int{0}, debug)
+			res, err := stats.Join(stats.UpdateCounts(lStat), stats.UpdateCounts(rStat), 1, debug)
 			require.NoError(t, err)
 			if debug {
 				log.Printf("join %s\n", res.Histogram().DebugString())
@@ -304,6 +304,7 @@ func runStatsSuite(t *testing.T, tests []statsTest, rowCnt, bucketCnt int, debug
 			if debug {
 				log.Println(res.RowCount(), exp, delta)
 			}
+
 			// This compares the error percentage for our estimate to an
 			// error threshold specified in the statTest. The error bounds
 			// are loose and mostly useful for debugging at this point.
@@ -474,8 +475,7 @@ func increasingHalfDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt in
 	return nil
 }
 
-func expDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt int, lambda float64, seed int) error {
-	rand.Seed(uint64(seed))
+func expDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt int, lambda float64) error {
 	tab := rt.UnderlyingTable().(*memory.Table)
 	iter := stats.NewExpDistIter(2, cnt, lambda)
 	var i int
@@ -484,8 +484,8 @@ func expDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt int, lambda f
 		if errors.Is(err, io.EOF) {
 			break
 		}
-		row := sql.Row{int64(i)}
-		for _, v := range val {
+		row := sql.Row{int64(val[0].(int))}
+		for _, v := range val[1:] {
 			row = append(row, int64(v.(float64)))
 		}
 		err = tab.Insert(ctx, row)
@@ -497,8 +497,7 @@ func expDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt int, lambda f
 	return nil
 }
 
-func normalDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt int, mean, std float64, seed int) error {
-	rand.Seed(uint64(seed))
+func normalDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt int, mean, std float64) error {
 	tab := rt.UnderlyingTable().(*memory.Table)
 	iter := stats.NewNormDistIter(2, cnt, mean, std)
 	var i int
@@ -508,7 +507,7 @@ func normalDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt int, mean,
 			break
 		}
 		row := sql.Row{int64(i)}
-		for _, v := range val {
+		for _, v := range val[1:] {
 			row = append(row, int64(v.(float64)))
 		}
 		err = tab.Insert(ctx, row)

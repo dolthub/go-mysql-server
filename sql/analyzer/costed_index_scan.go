@@ -326,8 +326,18 @@ func addIndexScans(m *memo.Memo) error {
 				}
 				var itaGrp *memo.ExprGroup
 				if len(filters) > 0 {
+					// set the indexed path as best. correct for cases where
+					// indexScan is incompatible with best join operator
 					itaGrp = m.MemoizeIndexScan(nil, ita, aliasName, idx, stat)
-					m.MemoizeFilter(filter.Group(), itaGrp, filters)
+					itaGrp.Best = itaGrp.First
+					itaGrp.Done = true
+					itaGrp.HintOk = true
+					itaGrp.Best.SetDistinct(memo.NoDistinctOp)
+					fGrp := m.MemoizeFilter(filter.Group(), itaGrp, filters)
+					fGrp.Best = fGrp.First
+					fGrp.Done = true
+					fGrp.HintOk = true
+					fGrp.Best.SetDistinct(memo.NoDistinctOp)
 				} else {
 					itaGrp = m.MemoizeIndexScan(filter.Group(), ita, aliasName, idx, stat)
 				}
@@ -1500,7 +1510,7 @@ func newUniformDistStatistic(dbName, tableName string, sch sql.Schema, idx sql.I
 	}
 
 	qual := sql.NewStatQualifier(dbName, tableName, strings.ToLower(idx.ID()))
-	stat := stats.NewStatistic(rowCount, distinctCount, nullCount, avgSize, time.Now(), qual, cols, types, nil, class)
+	stat := stats.NewStatistic(rowCount, distinctCount, nullCount, avgSize, time.Now(), qual, cols, types, nil, class, nil)
 
 	fds, idxCols, err := indexFds(tableName, sch, idx)
 	if err != nil {
@@ -1562,29 +1572,18 @@ func (c *conjCollector) addEq(col string, val interface{}, nullSafe bool) error 
 		return nil
 	}
 
-	c.constant.Add(ord)
+	c.constant.Add(ord + 1)
 	c.eqVals[ord] = val
 	c.nullable[ord] = nullSafe
 
 	if ord == c.missingPrefix {
-		// we are interested in the cases where the index prefix
-		// key is extended
-		if ord == len(c.eqVals)-1 {
-			// full prefix
-			c.missingPrefix++
-		} else {
-			// extended prefix
-			// find new and truncate
-			_, hasNext := c.constant.Next(c.missingPrefix + 1)
-			if !hasNext {
-				c.missingPrefix++
-			} else {
-				nextFilled, _ := c.constant.Next(c.missingPrefix + 2)
-				// convert from bit position to index is -1
-				// convert from next filled to first missing is -1
-				c.missingPrefix = nextFilled - 2
-			}
+		last := ord
+		for next, hasNext := c.constant.Next(last + 1); hasNext && next == last+1; next, hasNext = c.constant.Next(next + 1) {
+			// In first loop, next is always last+1 because we just added ord.
+			// Keep iterating while consecutive bits are set, end on gap.
+			last = next
 		}
+		c.missingPrefix = last
 
 		// truncate buckets
 		var err error

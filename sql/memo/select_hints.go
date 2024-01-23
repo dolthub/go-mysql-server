@@ -40,6 +40,7 @@ const (
 	HintTypeInnerJoin                                // INNER_JOIN
 	HintTypeLeftOuterLookupJoin                      // LEFT_OUTER_LOOKUP_JOIN
 	HintTypeNoIndexConditionPushDown                 // NO_ICP
+	HintTypeLeftDeep                                 // LEFT_DEEP
 )
 
 type Hint struct {
@@ -78,6 +79,8 @@ func newHint(joinTyp string, args []string) Hint {
 		typ = HintTypeLeftOuterLookupJoin
 	case "no_icp":
 		typ = HintTypeNoIndexConditionPushDown
+	case "left_deep":
+		typ = HintTypeLeftDeep
 	default:
 		typ = HintTypeUnknown
 	}
@@ -105,6 +108,8 @@ func (h Hint) valid() bool {
 	case HintTypeLeftOuterLookupJoin:
 		return len(h.Args) == 2
 	case HintTypeNoIndexConditionPushDown:
+		return len(h.Args) == 0
+	case HintTypeLeftDeep:
 		return len(h.Args) == 0
 	case HintTypeUnknown:
 		return false
@@ -365,8 +370,9 @@ func (o joinOpHint) typeMatches(n RelExpr) bool {
 // joinHints wraps a collection of join hints. The memo
 // interfaces with this object during costing.
 type joinHints struct {
-	ops   []joinOpHint
-	order *joinOrderHint
+	ops      []joinOpHint
+	order    *joinOrderHint
+	leftDeep bool
 }
 
 // satisfiedBy returns whether a RelExpr satisfies every join hint. This
@@ -375,6 +381,14 @@ type joinHints struct {
 func (h joinHints) satisfiedBy(n RelExpr) bool {
 	if h.order != nil && !h.order.satisfiesOrder(n) {
 		return false
+	}
+
+	if h.leftDeep {
+		if j, ok := n.(JoinRel); ok {
+			if j.JoinPrivate().Right.RelProps.InputTables().Len() > 1 {
+				return false
+			}
+		}
 	}
 
 	if h.ops == nil {

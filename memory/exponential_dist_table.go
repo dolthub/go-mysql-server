@@ -29,24 +29,24 @@ func (s ExponentialDistTable) UnderlyingTable() sql.Table {
 }
 
 func (s ExponentialDistTable) NewInstance(_ *sql.Context, db sql.Database, args []sql.Expression) (sql.Node, error) {
-	if len(args) != 4 {
-		return nil, fmt.Errorf("exponential_dist table expects 2 arguments: (name, cols, rows, lambda)")
+	if len(args) != 3 {
+		return nil, fmt.Errorf("exponential_dist table expects 2 arguments: (cols, rows, lambda)")
 	}
 	colCntLit, ok := args[0].(*expression.Literal)
 	if !ok {
-		return nil, fmt.Errorf("exponential_dist table expects arguments to be literal expressions")
+		return nil, fmt.Errorf("normal_dist table expects arguments to be literal expressions")
 	}
-	colCnt, ok := colCntLit.Value().(int64)
-	if !ok {
-		return nil, fmt.Errorf("exponential_dist table expects 1st argument to be column count")
+	colCnt, inBounds, _ := types.Int64.Convert(colCntLit.Value())
+	if !inBounds {
+		return nil, fmt.Errorf("normal_dist table expects 1st argument to be column count")
 	}
 	rowCntLit, ok := args[1].(*expression.Literal)
 	if !ok {
-		return nil, fmt.Errorf("exponential_dist table expects arguments to be literal expressions")
+		return nil, fmt.Errorf("normal_dist table expects arguments to be literal expressions")
 	}
-	rowCnt, ok := rowCntLit.Value().(int64)
-	if !ok {
-		return nil, fmt.Errorf("exponential_dist table expects 2nd argument to be row count")
+	rowCnt, inBounds, _ := types.Int64.Convert(rowCntLit.Value())
+	if !inBounds {
+		return nil, fmt.Errorf("normal_dist table expects 2nd argument to be row count")
 	}
 	lambdaLit, ok := args[2].(*expression.Literal)
 	if !ok {
@@ -56,7 +56,7 @@ func (s ExponentialDistTable) NewInstance(_ *sql.Context, db sql.Database, args 
 	if !inBounds {
 		return nil, fmt.Errorf("exponential_dist table expects 3rd argument to be row count")
 	}
-	return ExponentialDistTable{db: db, colCnt: int(colCnt), rowCnt: int(rowCnt), lambda: lambda.(float64)}, nil
+	return ExponentialDistTable{db: db, colCnt: int(colCnt.(int64)), rowCnt: int(rowCnt.(int64)), lambda: lambda.(float64)}, nil
 }
 
 func (s ExponentialDistTable) Resolved() bool {
@@ -84,16 +84,16 @@ func (s ExponentialDistTable) DebugString() string {
 }
 
 func (s ExponentialDistTable) Schema() sql.Schema {
-	schema := []*sql.Column{
-		{
+	var sch sql.Schema
+	for i := 0; i < s.colCnt+1; i++ {
+		sch = append(sch, &sql.Column{
 			DatabaseSource: s.db.Name(),
 			Source:         s.Name(),
-			Name:           s.name,
+			Name:           fmt.Sprintf("col%d", i),
 			Type:           types.Int64,
-		},
+		})
 	}
-
-	return schema
+	return sch
 }
 
 func (s ExponentialDistTable) Children() []sql.Node {
