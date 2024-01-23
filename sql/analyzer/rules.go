@@ -89,7 +89,6 @@ var DefaultValidationRules = []Rule{
 	{validateSubqueryColumnsId, validateSubqueryColumns},
 	{validateUnionSchemasMatchId, validateUnionSchemasMatch},
 	{validateAggregationsId, validateAggregations},
-	{validateInsertsId, validateInserts},
 }
 
 var OnceAfterAll = []Rule{

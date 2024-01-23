@@ -137,7 +137,6 @@ const (
 	validateUnionSchemasMatchId // validateUnionSchemasMatch
 	validateAggregationsId      // validateAggregations
 	validateDeleteFromId        // validateDeleteFrom
-	validateInsertsId           // validateInserts
 
 	// after all
 	cacheSubqueryResultsId        // cacheSubqueryResults

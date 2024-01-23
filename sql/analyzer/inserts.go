@@ -175,29 +175,6 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 	return plan.NewProject(projExprs, insertSource), autoAutoIncrement, nil
 }
 
-func validateColumns(tableName string, columnNames []string, dstSchema sql.Schema, source sql.Node) error {
-	dstColNames := make(map[string]*sql.Column)
-	for _, dstCol := range dstSchema {
-		dstColNames[strings.ToLower(dstCol.Name)] = dstCol
-	}
-	usedNames := make(map[string]struct{})
-	for i, columnName := range columnNames {
-		dstCol, exists := dstColNames[columnName]
-		if !exists {
-			return plan.ErrInsertIntoNonexistentColumn.New(columnName)
-		}
-		if dstCol.Generated != nil && !validGeneratedColumnValue(i, source) {
-			return sql.ErrGeneratedColumnValue.New(dstCol.Name, tableName)
-		}
-		if _, exists := usedNames[columnName]; !exists {
-			usedNames[columnName] = struct{}{}
-		} else {
-			return plan.ErrInsertIntoDuplicateColumn.New(columnName)
-		}
-	}
-	return nil
-}
-
 // validGeneratedColumnValue returns true if the column is a generated column and the source node is not a values node.
 // Explicit default values (`DEFAULT`) are the only valid values to specify for a generated column
 func validGeneratedColumnValue(idx int, source sql.Node) bool {
@@ -220,35 +197,6 @@ func validGeneratedColumnValue(idx int, source sql.Node) bool {
 	default:
 		return false
 	}
-}
-
-func validateValueCount(columnNames []string, values sql.Node) error {
-	if exchange, ok := values.(*plan.Exchange); ok {
-		values = exchange.Child
-	}
-
-	switch node := values.(type) {
-	case *plan.Values:
-		for _, exprTuple := range node.ExpressionTuples {
-			if len(exprTuple) != len(columnNames) {
-				return sql.ErrInsertIntoMismatchValueCount.New()
-			}
-		}
-	case *plan.LoadData:
-		dataColLen := len(node.ColumnNames)
-		if dataColLen == 0 {
-			dataColLen = len(node.Schema())
-		}
-		if len(columnNames) != dataColLen {
-			return sql.ErrInsertIntoMismatchValueCount.New()
-		}
-	default:
-		// Parser assures us that this will be some form of SelectStatement, so no need to type check it
-		if len(columnNames) != len(values.Schema()) {
-			return sql.ErrInsertIntoMismatchValueCount.New()
-		}
-	}
-	return nil
 }
 
 func assertCompatibleSchemas(projExprs []sql.Expression, schema sql.Schema) error {
