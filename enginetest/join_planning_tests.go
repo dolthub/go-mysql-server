@@ -36,8 +36,11 @@ type JoinPlanTest struct {
 	indexes       []string
 	mergeCompares []string
 	exp           []sql.Row
-	order         [][]string
-	skipOld       bool
+	// order is a list of acceptable join plan orders.
+	// used for statistics test plans that are unlikely but otherwise
+	// cause flakes in CI for lack of seed control.
+	order   [][]string
+	skipOld bool
 }
 
 var JoinPlanningTests = []struct {
@@ -1911,7 +1914,6 @@ func evalJoinOrder(t *testing.T, harness Harness, e QueryEngine, q string, exp [
 			}
 		}
 		assert.Failf(t, "expected order %s found '%s'\ndetail:\n%s", fmt.Sprintf("%#v", exp), strings.Join(cmp, ","), sql.DebugString(a))
-		//require.Equal(t, exp, cmp, fmt.Sprintf("expected order '%s' found '%s'\ndetail:\n%s", strings.Join(exp, ","), strings.Join(cmp, ","), sql.DebugString(a)))
 	})
 }
 
