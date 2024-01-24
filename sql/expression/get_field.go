@@ -108,9 +108,6 @@ func (p *GetField) Resolved() bool {
 
 // Name implements the Nameable interface.
 func (p *GetField) Name() string {
-	if p.backTickNames {
-		return p.name
-	}
 	return p.name
 }
 
@@ -158,7 +155,10 @@ func (p *GetField) WithChildren(children ...sql.Expression) (sql.Expression, err
 
 func (p *GetField) String() string {
 	if p.table == "" {
-		return p.Name()
+		if p.backTickNames {
+			return fmt.Sprintf("`%s`", p.name)
+		}
+		return p.name
 	}
 	return fmt.Sprintf("%s.%s", p.table, p.name)
 }
