@@ -107,6 +107,9 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	dest := destScope.node
 
 	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), srcScope.node, isReplace, columns, onDupExprs, ignore)
+
+	b.validateInsert(ins)
+
 	outScope = destScope
 	outScope.node = ins
 	if rt != nil {

@@ -5168,6 +5168,59 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
+		Name: "update with left join with some missing rows",
+		SetUpScript: []string{
+			`create table joinparent (
+				id int not null auto_increment,
+				name varchar(128) not null,
+				archived int default 0 not null,
+				archived_at datetime null,
+				primary key (id)
+			);`,
+			`insert into joinparent (name) values
+				('first'),
+				('second'),
+				('third'),
+				('fourth'),
+				('fifth');`,
+			`create index joinparent_archived on joinparent (archived, archived_at);`,
+			`create table joinchild (
+				id int not null auto_increment,
+				name varchar(128) not null,
+				parent_id int not null,
+				archived int default 0 not null,
+				archived_at datetime null,
+				primary key (id),
+				constraint joinchild_parent unique (parent_id, id, archived));`,
+			`insert into joinchild (name, parent_id) values
+				('first', 4),
+				('second', 3),
+				('third', 2);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `update joinparent as jp 
+							left join joinchild as jc on jc.parent_id = jp.id
+								set jp.archived = jp.id, jp.archived_at = now(), 
+									jc.archived = jc.id, jc.archived_at = now()
+						where jp.id > 0 and jp.name != "never"
+						order by jp.name
+						limit 100`,
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 8, Info: plan.UpdateInfo{Matched: 10, Updated: 8}}}},
+			},
+			// do without limit to use `plan.Sort` instead of `plan.TopN`
+			{
+				Query: `update joinparent as jp 
+							left join joinchild as jc on jc.parent_id = jp.id
+								set jp.archived = 0, jp.archived_at = null, 
+									jc.archived = 0, jc.archived_at = null
+						where jp.id > 0 and jp.name != "never"
+						order by jp.name`,
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 8, Info: plan.UpdateInfo{Matched: 10, Updated: 8}}}},
+			},
+		},
+	},
+	{
 		Name: "count distinct decimals",
 		SetUpScript: []string{
 			"create table t (i int, j int)",

@@ -256,9 +256,50 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 }
 
+func toJoinNode(node sql.Node) *plan.JoinNode {
+	switch n := node.(type) {
+	case *plan.JoinNode:
+		return n
+	case *plan.TopN:
+		return toJoinNode(n.Child)
+	case *plan.Filter:
+		return toJoinNode(n.Child)
+	case *plan.Project:
+		return toJoinNode(n.Child)
+	case *plan.Limit:
+		return toJoinNode(n.Child)
+	case *plan.Offset:
+		return toJoinNode(n.Child)
+	case *plan.Sort:
+		return toJoinNode(n.Child)
+	case *plan.Distinct:
+		return toJoinNode(n.Child)
+	case *plan.Having:
+		return toJoinNode(n.Child)
+	case *plan.Window:
+		return toJoinNode(n.Child)
+	default:
+		return nil
+	}
+}
+
+func isIndexedAccess(node sql.Node) bool {
+	switch n := node.(type) {
+	case *plan.Filter:
+		return isIndexedAccess(n.Child)
+	case *plan.TableAlias:
+		return isIndexedAccess(n.Child)
+	case *plan.JoinNode:
+		return isIndexedAccess(n.Left())
+	case *plan.IndexedTableAccess:
+		return true
+	}
+	return false
+}
+
 func isRightOrLeftJoin(node sql.Node) bool {
-	jn, ok := node.(*plan.JoinNode)
-	if !ok {
+	jn := toJoinNode(node)
+	if jn == nil {
 		return false
 	}
 	return jn.JoinType().IsLeftOuter()
@@ -269,8 +310,8 @@ func isRightOrLeftJoin(node sql.Node) bool {
 // the left or right side of the join (given the direction). A row of all nils that does not pass condition 1 must not
 // be part of the update operation. This is follows the logic as established in the joinIter.
 func (u *updateJoinIter) shouldUpdateDirectionalJoin(ctx *sql.Context, joinRow, tableRow sql.Row) (bool, error) {
-	jn := u.joinNode.(*plan.JoinNode)
-	if !jn.JoinType().IsLeftOuter() {
+	jn := toJoinNode(u.joinNode)
+	if jn == nil || !jn.JoinType().IsLeftOuter() {
 		return true, fmt.Errorf("expected left join")
 	}
 
@@ -279,7 +320,7 @@ func (u *updateJoinIter) shouldUpdateDirectionalJoin(ctx *sql.Context, joinRow, 
 	if err != nil {
 		return true, err
 	}
-	if v, ok := val.(bool); ok && v {
+	if v, ok := val.(bool); ok && v && !isIndexedAccess(jn) {
 		return true, nil
 	}
 
