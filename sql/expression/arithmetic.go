@@ -104,7 +104,7 @@ func (a *Arithmetic) SetOpCount(i int32) {
 }
 
 func (a *Arithmetic) String() string {
-	return fmt.Sprintf("(%s %s %s)", a.LeftChild, a.Op, a.RightChild)
+	return fmt.Sprintf("(%s %s %s)", a.LeftChild.String(), a.Op, a.RightChild.String())
 }
 
 func (a *Arithmetic) DebugString() string {

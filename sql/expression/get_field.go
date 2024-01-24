@@ -37,6 +37,8 @@ type GetField struct {
 	fieldType  sql.Type
 	fieldType2 sql.Type2
 	nullable   bool
+
+	backTickNames bool
 }
 
 var _ sql.Expression = (*GetField)(nil)
@@ -105,7 +107,9 @@ func (p *GetField) Resolved() bool {
 }
 
 // Name implements the Nameable interface.
-func (p *GetField) Name() string { return p.name }
+func (p *GetField) Name() string {
+	return p.name
+}
 
 // IsNullable returns whether the field is nullable or not.
 func (p *GetField) IsNullable() bool {
@@ -151,6 +155,9 @@ func (p *GetField) WithChildren(children ...sql.Expression) (sql.Expression, err
 
 func (p *GetField) String() string {
 	if p.table == "" {
+		if p.backTickNames {
+			return fmt.Sprintf("`%s`", p.name)
+		}
 		return p.name
 	}
 	return fmt.Sprintf("%s.%s", p.table, p.name)
@@ -172,6 +179,18 @@ func (p *GetField) WithIndex(n int) sql.Expression {
 	p2 := *p
 	p2.fieldIndex = n
 	return &p2
+}
+
+// WithBackTickNames returns a copy of this expression with the backtick names flag set to the given value.
+func (p *GetField) WithBackTickNames(backtick bool) *GetField {
+	p2 := *p
+	p2.backTickNames = backtick
+	return &p2
+}
+
+// IsBackTickNames returns whether the field name should be quoted with backticks.
+func (p *GetField) IsBackTickNames() bool {
+	return p.backTickNames
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
