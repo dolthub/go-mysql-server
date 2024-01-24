@@ -2409,7 +2409,7 @@ order by
 			"             │       └─ Project\n" +
 			"             │           ├─ columns: [max(revenue0.total_revenue):9!null as max(total_revenue)]\n" +
 			"             │           └─ GroupBy\n" +
-			"             │               ├─ select: MAX(revenue0.total_revenue:10!null)\n" +
+			"             │               ├─ select: MAX(revenue0.total_revenue:1!null)\n" +
 			"             │               ├─ group: \n" +
 			"             │               └─ SubqueryAlias\n" +
 			"             │                   ├─ name: revenue0\n" +
