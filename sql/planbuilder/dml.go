@@ -373,7 +373,7 @@ func (b *Builder) buildOnDupLeft(inScope *scope, e ast.Expr) sql.Expression {
 		dbName := strings.ToLower(e.Qualifier.Qualifier.String())
 		tblName := strings.ToLower(e.Qualifier.Name.String())
 		colName := strings.ToLower(e.Name.String())
-		c, ok := inScope.resolveColumn(dbName, tblName, colName, true)
+		c, ok := inScope.resolveColumn(dbName, tblName, colName, true, false)
 		if !ok {
 			if tblName != "" && !inScope.hasTable(tblName) {
 				b.handleErr(sql.ErrTableNotFound.New(tblName))

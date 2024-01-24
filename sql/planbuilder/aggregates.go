@@ -108,9 +108,9 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 			dbName := strings.ToLower(e.Qualifier.Qualifier.String())
 			tblName := strings.ToLower(e.Qualifier.Name.String())
 			colName := strings.ToLower(e.Name.String())
-			col, ok = fromScope.resolveColumn(dbName, tblName, colName, true)
+			col, ok = fromScope.resolveColumn(dbName, tblName, colName, true, false)
 			if !ok {
-				col, ok = projScope.resolveColumn(dbName, tblName, colName, true)
+				col, ok = projScope.resolveColumn(dbName, tblName, colName, true, true)
 			}
 
 			if !ok {
@@ -728,12 +728,12 @@ func (b *Builder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) 
 			dbName := strings.ToLower(n.Qualifier.Qualifier.String())
 			tblName := strings.ToLower(n.Qualifier.Name.String())
 			colName := strings.ToLower(n.Name.String())
-			c, ok := projScope.resolveColumn(dbName, tblName, colName, false)
+			c, ok := projScope.resolveColumn(dbName, tblName, colName, false, true)
 			if ok {
 				// references projection alias
 				break
 			}
-			c, ok = fromScope.resolveColumn(dbName, tblName, colName, true)
+			c, ok = fromScope.resolveColumn(dbName, tblName, colName, true, false)
 			if !ok {
 				err := sql.ErrColumnNotFound.New(n.Name)
 				b.handleErr(err)
@@ -811,20 +811,20 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 		// Aliased GetFields are allowed in having clauses regardless of weather they are in the group by
 		_, isGetField := alias.Child.(*expression.GetField)
 		if isGetField {
-			havingScope.newColumn(c)
+			havingScope.addColumn(c)
 			continue
 		}
 
 		// Aliased expression is allowed if there is no group by (it is implicitly a single group)
 		if len(fromScope.groupBy.inCols) == 0 {
-			havingScope.newColumn(c)
+			havingScope.addColumn(c)
 			continue
 		}
 
 		// Aliased expressions are allowed in having clauses if they are in the group by
 		for _, cc := range fromScope.groupBy.inCols {
 			if c.col == cc.col {
-				havingScope.newColumn(c)
+				havingScope.addColumn(c)
 				found = true
 				break
 			}
@@ -835,7 +835,7 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 		}
 
 		if c.tableId.IsEmpty() {
-			havingScope.newColumn(c)
+			havingScope.addColumn(c)
 			continue
 		}
 	}

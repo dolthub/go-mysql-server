@@ -64,7 +64,7 @@ func (b *Builder) buildAnalyze(inScope *scope, n *ast.Analyze, query string) (ou
 	columns := make([]string, len(n.Columns))
 	types := make([]sql.Type, len(n.Columns))
 	for i, c := range n.Columns {
-		col, ok := tableScope.resolveColumn(dbName, tableName, c.Lowered(), false)
+		col, ok := tableScope.resolveColumn(dbName, tableName, c.Lowered(), false, false)
 		if !ok {
 			err := sql.ErrTableColumnNotFound.New(tableName, c.Lowered())
 			b.handleErr(err)

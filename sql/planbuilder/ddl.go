@@ -980,7 +980,7 @@ func (b *Builder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (outSco
 	cols := make([]sql.Expression, len(ddl.IndexSpec.Columns))
 	for i, col := range ddl.IndexSpec.Columns {
 		colName := strings.ToLower(col.Column.String())
-		c, ok := inScope.resolveColumn(dbName, tblName, colName, true)
+		c, ok := inScope.resolveColumn(dbName, tblName, colName, true, false)
 		if !ok {
 			b.handleErr(sql.ErrColumnNotFound.New(colName))
 		}

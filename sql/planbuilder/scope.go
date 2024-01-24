@@ -61,7 +61,7 @@ type scope struct {
 	proc  *procCtx
 }
 
-func (s *scope) resolveColumn(db, table, col string, checkParent bool) (scopeColumn, bool) {
+func (s *scope) resolveColumn(db, table, col string, checkParent, chooseFirst bool) (scopeColumn, bool) {
 	// procedure params take precedence
 	if table == "" && checkParent && s.procActive() {
 		col, ok := s.proc.GetVar(col)
@@ -103,6 +103,9 @@ func (s *scope) resolveColumn(db, table, col string, checkParent bool) (scopeCol
 				}
 				s.handleErr(err)
 			}
+			if chooseFirst || s.groupBy != nil {
+				return c, true
+			}
 			found = c
 			foundCand = true
 		}
@@ -112,7 +115,7 @@ func (s *scope) resolveColumn(db, table, col string, checkParent bool) (scopeCol
 	}
 
 	if s.groupBy != nil {
-		if c, ok := s.groupBy.outScope.resolveColumn(db, table, col, false); ok {
+		if c, ok := s.groupBy.outScope.resolveColumn(db, table, col, false, false); ok {
 			return c, true
 		}
 	}
@@ -128,7 +131,7 @@ func (s *scope) resolveColumn(db, table, col string, checkParent bool) (scopeCol
 		return scopeColumn{}, false
 	}
 
-	c, foundCand := s.parent.resolveColumn(db, table, col, true)
+	c, foundCand := s.parent.resolveColumn(db, table, col, true, false)
 	if !foundCand {
 		return scopeColumn{}, false
 	}

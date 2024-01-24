@@ -193,11 +193,11 @@ func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.
 	for _, col := range te.Condition.Using {
 		colName := col.String()
 		// Every column in the USING clause must be in both tables.
-		lCol, ok := left.resolveColumn("", "", colName, false)
+		lCol, ok := left.resolveColumn("", "", colName, false, false)
 		if !ok {
 			b.handleErr(sql.ErrUnknownColumn.New(colName, "from clause"))
 		}
-		rCol, ok := right.resolveColumn("", "", colName, false)
+		rCol, ok := right.resolveColumn("", "", colName, false, false)
 		if !ok {
 			b.handleErr(sql.ErrUnknownColumn.New(colName, "from clause"))
 		}
