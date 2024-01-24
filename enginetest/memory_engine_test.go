@@ -205,9 +205,8 @@ func newUpdateResult(matched, updated int) types.OkResult {
 func TestSingleScript(t *testing.T) {
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "physical columns added after virtual one",
-			SetUpScript: []string{
-			},
+			Name:        "physical columns added after virtual one",
+			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query: "create table test (`ABC def` text, xyz text, id varchar(255) generated always as (concat(`ABC def`, \"_\", xyz)) stored);",
