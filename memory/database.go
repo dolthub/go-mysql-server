@@ -16,7 +16,8 @@ package memory
 
 import (
 	"fmt"
-	"strings"
+	"github.com/dolthub/go-mysql-server/sql/transform"
+"strings"
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -227,14 +228,41 @@ func (d *BaseDatabase) AddTable(name string, t MemTable) {
 	d.tables[name] = t
 }
 
+func BacktickDefaultColumnValueNames(sch sql.Schema) sql.Schema {
+	backtickFunc := func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		switch e := expr.(type) {
+		case *expression.GetField:
+			return e.WithName(fmt.Sprintf("`%s`", e.Name())), transform.NewTree, nil
+		default:
+			return expr, transform.SameTree, nil
+		}
+	}
+	for _, col := range sch {
+		if col.Default != nil {
+			newExpr, _, _ := transform.Expr(col.Default.Expr, backtickFunc)
+			col.Default.Expr = newExpr
+		}
+		if col.Generated != nil {
+			newExpr, _, _ := transform.Expr(col.Generated.Expr, backtickFunc)
+			col.Generated.Expr = newExpr
+		}
+		if col.OnUpdate != nil {
+			newExpr, _, _ := transform.Expr(col.OnUpdate.Expr, backtickFunc)
+			col.OnUpdate.Expr = newExpr
+		}
+	}
+	return sch
+}
+
 // CreateTable creates a table with the given name and schema
-func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.PrimaryKeySchema, collation sql.CollationID) error {
+func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, sch sql.PrimaryKeySchema, collation sql.CollationID) error {
 	_, ok := d.tables[name]
 	if ok {
 		return sql.ErrTableAlreadyExists.New(name)
 	}
 
-	table := NewTableWithCollation(d, name, schema, d.fkColl, collation)
+	sch.Schema = BacktickDefaultColumnValueNames(sch.Schema)
+	table := NewTableWithCollation(d, name, sch, d.fkColl, collation)
 	table.db = d
 	if d.primaryKeyIndexes {
 		table.EnablePrimaryKeyIndexes()
@@ -254,6 +282,7 @@ func (d *BaseDatabase) CreateIndexedTable(ctx *sql.Context, name string, sch sql
 		return sql.ErrTableAlreadyExists.New(name)
 	}
 
+	sch.Schema = BacktickDefaultColumnValueNames(sch.Schema)
 	table := NewTableWithCollation(d, name, sch, d.fkColl, collation)
 	table.db = d
 	if d.primaryKeyIndexes {

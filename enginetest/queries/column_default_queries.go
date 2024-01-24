@@ -94,9 +94,73 @@ var ColumnDefaultTests = []ScriptTest{
 				Expected: []sql.Row{{"t2",
 					"CREATE TABLE `t2` (\n" +
 						"  `pk` bigint NOT NULL,\n" +
-						"  `v1` smallint DEFAULT (greatest(pk,2)),\n" +
+						"  `v1` smallint DEFAULT (greatest(`pk`,2)),\n" +
 						"  PRIMARY KEY (`pk`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "default column references other columns with spaces",
+		SetUpScript: []string{
+			"create table tt (`col 1` int, `col 2` int);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "create table t (`col 1` int, `col 2` int, `col 3` int default (`col 1` + `col 2` + pow(`col 1`, `col 2`)));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `col 1` int,\n" +
+						"  `col 2` int,\n" +
+						"  `col 3` int DEFAULT (((`col 1` + `col 2`) + power(`col 1`, `col 2`)))\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "insert into t (`col 1`, `col 2`) values (1, 2);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 2, 4},
+				},
+			},
+			{
+				Query: "alter table tt add column `col 3` int default (`col 1` + `col 2` + pow(`col 1`, `col 2`));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table tt",
+				Expected: []sql.Row{
+					{"tt", "CREATE TABLE `tt` (\n" +
+						"  `col 1` int,\n" +
+						"  `col 2` int,\n" +
+						"  `col 3` int DEFAULT (((`col 1` + `col 2`) + power(`col 1`, `col 2`)))\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "insert into tt (`col 1`, `col 2`) values (1, 2);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from tt",
+				Expected: []sql.Row{
+					{1, 2, 4},
+				},
 			},
 		},
 	},
@@ -417,7 +481,7 @@ var ColumnDefaultTests = []ScriptTest{
 				Expected: []sql.Row{{"t29", "CREATE TABLE `t29` (\n" +
 					"  `pk` bigint NOT NULL,\n" +
 					"  `v1y` bigint,\n" +
-					"  `v2` bigint DEFAULT ((v1y + 1)),\n" +
+					"  `v2` bigint DEFAULT ((`v1y` + 1)),\n" +
 					"  PRIMARY KEY (`pk`)\n" +
 					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},

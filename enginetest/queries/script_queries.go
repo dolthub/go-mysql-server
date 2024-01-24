@@ -2446,7 +2446,7 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{
 					{"t4", "CREATE TABLE `t4` (\n" +
 						"  `a` int DEFAULT (floor(1)),\n" +
-						"  `b` int DEFAULT (coalesce(a,10))\n" +
+						"  `b` int DEFAULT (coalesce(`a`,10))\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
