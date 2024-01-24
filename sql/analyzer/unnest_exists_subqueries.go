@@ -262,47 +262,51 @@ func decorrelateOuterCols(sqChild sql.Node, aliasDisambig *aliasDisambiguator, c
 	var joinFilters []sql.Expression
 	var filtersToKeep []sql.Expression
 	var emptyScope bool
+	var cantDecorrelate bool
 	n, _, _ := transform.Node(sqChild, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if emptyScope {
 			return n, transform.SameTree, nil
 		}
-		if _, ok := n.(*plan.EmptyTable); ok {
+		switch f := n.(type) {
+		case *plan.Offset:
+			cantDecorrelate = true
+			return n, transform.SameTree, nil
+		case *plan.EmptyTable:
 			emptyScope = true
 			return n, transform.SameTree, nil
-		}
-		f, ok := n.(*plan.Filter)
-		if !ok {
-			return n, transform.SameTree, nil
-		}
-		filters := expression.SplitConjunction(f.Expression)
-		for _, f := range filters {
-			outerRef := transform.InspectExpr(f, func(e sql.Expression) bool {
-				if gf, ok := e.(*expression.GetField); ok && corr.Contains(gf.Id()) {
-					return true
-				}
-				if sq, ok := e.(*plan.Subquery); ok {
-					if !sq.Correlated().Intersection(corr).Empty() {
+		case *plan.Filter:
+			filters := expression.SplitConjunction(f.Expression)
+			for _, f := range filters {
+				outerRef := transform.InspectExpr(f, func(e sql.Expression) bool {
+					if gf, ok := e.(*expression.GetField); ok && corr.Contains(gf.Id()) {
 						return true
 					}
+					if sq, ok := e.(*plan.Subquery); ok {
+						if !sq.Correlated().Intersection(corr).Empty() {
+							return true
+						}
+					}
+					return false
+				})
+
+				// based on the GetField analysis, decide where to put the filter
+				if outerRef {
+					joinFilters = append(joinFilters, f)
+				} else {
+					filtersToKeep = append(filtersToKeep, f)
 				}
-				return false
-			})
-
-			// based on the GetField analysis, decide where to put the filter
-			if outerRef {
-				joinFilters = append(joinFilters, f)
-			} else {
-				filtersToKeep = append(filtersToKeep, f)
 			}
-		}
 
-		// avoid updating the tree if we don't move any filters
-		if len(filtersToKeep) == len(filters) {
-			filtersToKeep = nil
-			return f, transform.SameTree, nil
-		}
+			// avoid updating the tree if we don't move any filters
+			if len(filtersToKeep) == len(filters) {
+				filtersToKeep = nil
+				return f, transform.SameTree, nil
+			}
 
-		return f.Child, transform.NewTree, nil
+			return f.Child, transform.NewTree, nil
+		default:
+			return n, transform.SameTree, nil
+		}
 	})
 
 	if emptyScope {
@@ -310,6 +314,11 @@ func decorrelateOuterCols(sqChild sql.Node, aliasDisambig *aliasDisambiguator, c
 			emptyScope: true,
 		}, nil
 	}
+
+	if cantDecorrelate {
+		return nil, nil
+	}
+
 	nodeAliases, err := getTableAliases(n, nil)
 	if err != nil {
 		return nil, err
