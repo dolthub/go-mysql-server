@@ -117,6 +117,7 @@ func (s *idxScope) getIdxId(id sql.ColumnId, name string) (int, bool) {
 			return i, true
 		}
 	}
+	// todo: fix places where this is necessary
 	return s.getIdx(name)
 }
 
@@ -511,7 +512,6 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 			//  queries where the columns being selected are only found in subqueries. Conversely, we actually want to ignore
 			//  this error for the case of DEFAULT in a `plan.Values`, since we analyze the insert source in isolation (we
 			//  don't have the destination schema, and column references in default values are determined in the build phase)
-			//idx, _ := newScope.getIdx(e.String())
 			idx, _ := newScope.getIdxId(e.Id(), e.String())
 			if idx >= 0 {
 				return e.WithIndex(idx), transform.NewTree, nil

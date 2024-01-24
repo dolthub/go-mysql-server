@@ -1573,7 +1573,7 @@ where
 			"                             └─ IndexedTableAccess(parts)\n" +
 			"                                 ├─ index: [parts.part,parts.sub_part]\n" +
 			"                                 ├─ keys: [pr.sub_part:0!null]\n" +
-			"                                 ├─ colSet: (10-12)\n" +
+			"                                 ├─ colSet: (13-15)\n" +
 			"                                 ├─ tableId: 6\n" +
 			"                                 └─ Table\n" +
 			"                                     ├─ name: parts\n" +

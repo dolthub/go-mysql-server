@@ -185,7 +185,7 @@ func SchemaToGetFields(s sql.Schema) []sql.Expression {
 	ret := make([]sql.Expression, len(s))
 
 	for i, col := range s {
-		ret[i] = NewGetFieldWithTable(i, 0, col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
+		ret[i] = NewGetFieldWithTable(i+1, 0, col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
 	}
 
 	return ret

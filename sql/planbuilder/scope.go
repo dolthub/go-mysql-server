@@ -358,13 +358,38 @@ func (s *scope) aliasCte(alias string) *scope {
 	if _, ok := s.tables[alias]; ok || alias == "" {
 		return outScope
 	}
+
+	sq, _ := outScope.node.(*plan.SubqueryAlias)
+
 	tabId := outScope.addTable(alias)
 	outScope.cols = nil
+	var colSet sql.ColSet
+	scopeMapping := make(map[sql.ColumnId]sql.Expression)
 	for _, c := range s.cols {
-		c.tableId = tabId
-		c.table = alias
-		outScope.newColumn(c)
+		id := outScope.newColumn(scopeColumn{
+			tableId:     tabId,
+			db:          c.db,
+			table:       alias,
+			col:         c.col,
+			originalCol: c.originalCol,
+			id:          0,
+			typ:         c.typ,
+			nullable:    c.nullable,
+		})
+		colSet.Add(sql.ColumnId(id))
+		// todo double scope mapping
+		if sq != nil {
+			scopeMapping[sql.ColumnId(id)] = sq.ScopeMapping[sql.ColumnId(c.id)]
+		}
 	}
+
+	if sq != nil {
+		outScope.node = sq.WithScopeMapping(scopeMapping).WithColumns(colSet).WithId(tabId)
+	} else {
+		// recursive table?
+		//outScope.node = WithColumns(colSet).WithId(tabId)
+	}
+
 	return outScope
 }
 
