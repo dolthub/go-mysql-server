@@ -33,7 +33,7 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
-						"  `b` int GENERATED ALWAYS AS ((a + 1)) STORED,\n" +
+						"  `b` int GENERATED ALWAYS AS ((`a` + 1)) STORED,\n" +
 						"  PRIMARY KEY (`a`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
@@ -102,7 +102,7 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
-						"  `b` int GENERATED ALWAYS AS ((a + 1)) STORED,\n" +
+						"  `b` int GENERATED ALWAYS AS ((`a` + 1)) STORED,\n" +
 						"  PRIMARY KEY (`a`),\n" +
 						"  KEY `i1` (`b`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
@@ -157,7 +157,7 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
-						"  `b` int GENERATED ALWAYS AS ((a + 1)) STORED,\n" +
+						"  `b` int GENERATED ALWAYS AS ((`a` + 1)) STORED,\n" +
 						"  PRIMARY KEY (`a`),\n" +
 						"  KEY `i1` (`b`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
@@ -191,7 +191,7 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
-						"  `b` int GENERATED ALWAYS AS ((a + 1)) STORED,\n" +
+						"  `b` int GENERATED ALWAYS AS ((`a` + 1)) STORED,\n" +
 						"  `c` int,\n" +
 						"  PRIMARY KEY (`a`),\n" +
 						"  KEY `i1` (`b`,`c`)\n" +
@@ -252,9 +252,73 @@ var GeneratedColumnTests = []ScriptTest{
 					"CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
 						"  `b` int,\n" +
-						"  `c` int GENERATED ALWAYS AS ((a + b)) STORED,\n" +
+						"  `c` int GENERATED ALWAYS AS ((`a` + `b`)) STORED,\n" +
 						"  PRIMARY KEY (`a`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "stored generated column with spaces",
+		SetUpScript: []string{
+			"create table tt (`col 1` int, `col 2` int);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "create table t (`col 1` int, `col 2` int, `col 3` int generated always as (`col 1` + `col 2` + pow(`col 1`, `col 2`)) stored);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `col 1` int,\n" +
+						"  `col 2` int,\n" +
+						"  `col 3` int GENERATED ALWAYS AS (((`col 1` + `col 2`) + power(`col 1`, `col 2`))) STORED\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "insert into t (`col 1`, `col 2`) values (1, 2);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 2, 4},
+				},
+			},
+			{
+				Query: "alter table tt add column `col 3` int generated always as (`col 1` + `col 2` + pow(`col 1`, `col 2`)) stored;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table tt",
+				Expected: []sql.Row{
+					{"tt", "CREATE TABLE `tt` (\n" +
+						"  `col 1` int,\n" +
+						"  `col 2` int,\n" +
+						"  `col 3` int GENERATED ALWAYS AS (((`col 1` + `col 2`) + power(`col 1`, `col 2`))) STORED\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "insert into tt (`col 1`, `col 2`) values (1, 2);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from tt",
+				Expected: []sql.Row{
+					{1, 2, 4},
+				},
 			},
 		},
 	},

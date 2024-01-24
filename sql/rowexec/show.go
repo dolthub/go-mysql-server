@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	gmstime "github.com/dolthub/go-mysql-server/internal/time"
+	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -722,12 +723,13 @@ func (b *BaseBuilder) buildShowIndexes(ctx *sql.Context, n *plan.ShowIndexes, ro
 }
 
 func (b *BaseBuilder) buildShowCreateTable(ctx *sql.Context, n *plan.ShowCreateTable, row sql.Row) (sql.RowIter, error) {
+	targetSchema := memory.BacktickDefaultColumnValueNames(n.TargetSchema())
 	return &showCreateTablesIter{
 		table:    n.Child,
 		isView:   n.IsView,
 		indexes:  n.Indexes,
 		checks:   n.Checks(),
-		schema:   n.TargetSchema(),
+		schema:   targetSchema,
 		pkSchema: n.PrimaryKeySchema,
 	}, nil
 }
