@@ -107,7 +107,7 @@ var ColumnDefaultTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "create table t (`col 1` int, `col 2` int, `col 3` int default (`col 1` + `col 2` + pow(`col 1`, `col 2`)));",
+				Query: "create table t (`col 1` int, `col 2` int, `col 3` int default (`col 1` + `col 2` + pow(`col 1`, `col 2`)));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
