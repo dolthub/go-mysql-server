@@ -3496,18 +3496,8 @@ Select * from (
 		},
 	},
 	{
-		Query:    `SELECT SUBSTRING_INDEX(mytable.s, "d", 1) AS s FROM mytable INNER JOIN othertable ON (SUBSTRING_INDEX(mytable.s, "d", 1) = SUBSTRING_INDEX(othertable.s2, "d", 1)) GROUP BY 1 HAVING s = 'secon';`,
+		Query:    `SELECT SUBSTRING_INDEX(mytable.s, "d", 1) AS s FROM mytable INNER JOIN othertable ON (SUBSTRING_INDEX(mytable.s, "d", 1) = SUBSTRING_INDEX(othertable.s2, "d", 1)) GROUP BY 1 HAVING s = 'secon'`,
 		Expected: []sql.Row{{"secon"}},
-	},
-	{
-		Query:    `SELECT SUBSTRING_INDEX(mytable.s, "d", 1) AS ss FROM mytable INNER JOIN othertable ON (SUBSTRING_INDEX(mytable.s, "d", 1) = SUBSTRING_INDEX(othertable.s2, "d", 1)) GROUP BY s HAVING s = 'secon';`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query: `SELECT SUBSTRING_INDEX(mytable.s, "d", 1) AS ss FROM mytable INNER JOIN othertable ON (SUBSTRING_INDEX(mytable.s, "d", 1) = SUBSTRING_INDEX(othertable.s2, "d", 1)) GROUP BY ss HAVING ss = 'secon';`,
-		Expected: []sql.Row{
-			{"secon"},
-		},
 	},
 	{
 		Query:    `SELECT TRIM(mytable.s) AS s FROM mytable`,

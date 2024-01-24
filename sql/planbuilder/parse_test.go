@@ -1273,7 +1273,17 @@ Project
 `,
 		},
 		{
-			Query: `select
+			Query: `
+
+
+
+
+
+
+
+
+
+			select
 			x,
 			x*y,
 			ROW_NUMBER() OVER(PARTITION BY x) AS row_num1,
@@ -1301,7 +1311,17 @@ Project
 `,
 		},
 		{
-			Query: `select
+			Query: `
+
+
+
+
+
+
+
+
+
+			select
 			x+1 as x,
 			sum(x) OVER(PARTITION BY y ORDER BY x) AS sum
 			from xy
@@ -1339,6 +1359,15 @@ Project
 		},
 		{
 			Query: `
+
+
+
+
+
+
+
+
+
 			SELECT
 			x,
 			ROW_NUMBER() OVER w AS 'row_number',
@@ -1583,7 +1612,17 @@ Project
 `,
 		},
 		{
-			Query: `SELECT x
+			Query: `
+
+
+
+
+
+
+
+
+
+			SELECT x
 			FROM xy
 			WHERE EXISTS (SELECT count(u) AS count_1
 			FROM uv
@@ -1624,7 +1663,17 @@ Project
 `,
 		},
 		{
-			Query: `WITH RECURSIVE
+			Query: `
+
+
+
+
+
+
+
+
+
+			WITH RECURSIVE
 			rt (foo) AS (
 			SELECT 1 as foo
 			UNION ALL
@@ -1830,7 +1879,16 @@ Project
 `,
 		},
 		{
-			Query: `SELECT fi, COUNT(*) FROM (
+			Query: `
+
+
+
+
+
+
+
+
+SELECT fi, COUNT(*) FROM (
 			SELECT tbl.x AS fi
 			FROM xy tbl
 		) t
@@ -2063,364 +2121,6 @@ Create table myTable
          ENFORCED
 `,
 		},
-		{
-			Query: "SELECT x as y FROM xy GROUP BY x HAVING AVG(-y) IS NOT NULL",
-			ExpectedPlan: `
-Project
- ├─ columns: [xy.x:1!null as y]
- └─ Having
-     ├─ NOT
-     │   └─ avg(-xy.y):5 IS NULL
-     └─ Project
-         ├─ columns: [avg(-xy.y):5, xy.x:1!null, xy.x:1!null as y]
-         └─ GroupBy
-             ├─ select: AVG(-xy.y), xy.x:1!null
-             ├─ group: xy.x:1!null
-             └─ Table
-                 ├─ name: xy
-                 ├─ columns: [x y z]
-                 ├─ colSet: (1-3)
-                 └─ tableId: 1
-`,
-		},
-		{
-			Query: "select x as xx from xy group by xx having xx = 123;",
-			ExpectedPlan: `
-Project
- ├─ columns: [xy.x:1!null as xx]
- └─ Having
-     ├─ Eq
-     │   ├─ xx:5!null
-     │   └─ 123 (tinyint)
-     └─ Project
-         ├─ columns: [xy.x:1!null, xy.x:1!null as xx]
-         └─ GroupBy
-             ├─ select: xy.x:1!null
-             ├─ group: xy.x:1!null as xx
-             └─ Table
-                 ├─ name: xy
-                 ├─ columns: [x y z]
-                 ├─ colSet: (1-3)
-                 └─ tableId: 1
-`,
-		},
-		{
-			Query: "select x as xx from xy having xx = 123;",
-			ExpectedPlan: `
-Project
- ├─ columns: [xy.x:1!null as xx]
- └─ Having
-     ├─ Eq
-     │   ├─ xx:5!null
-     │   └─ 123 (tinyint)
-     └─ Project
-         ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, xy.x:1!null as xx]
-         └─ Table
-             ├─ name: xy
-             ├─ columns: [x y z]
-             ├─ colSet: (1-3)
-             └─ tableId: 1
-`,
-		},
-		{
-			Query: "select x as xx from xy group by xx having x = 123;",
-			ExpectedPlan: `
-Project
- ├─ columns: [xy.x:1!null as xx]
- └─ Having
-     ├─ Eq
-     │   ├─ xy.x:1!null
-     │   └─ 123 (tinyint)
-     └─ Project
-         ├─ columns: [xy.x:1!null, xy.x:1!null as xx]
-         └─ GroupBy
-             ├─ select: xy.x:1!null
-             ├─ group: xy.x:1!null as xx
-             └─ Table
-                 ├─ name: xy
-                 ├─ columns: [x y z]
-                 ├─ colSet: (1-3)
-                 └─ tableId: 1
-`,
-		},
-		{
-			Query: "select x as xx from xy having x = 123;",
-			ExpectedPlan: `
-Project
- ├─ columns: [xy.x:1!null as xx]
- └─ Having
-     ├─ Eq
-     │   ├─ xy.x:1!null
-     │   └─ 123 (tinyint)
-     └─ Project
-         ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, xy.x:1!null as xx]
-         └─ Table
-             ├─ name: xy
-             ├─ columns: [x y z]
-             ├─ colSet: (1-3)
-             └─ tableId: 1
-`,
-		},
-		{
-			Query: "select x + 1 as xx from xy group by xx having xx = 123;",
-			ExpectedPlan: `
-Project
- ├─ columns: [(xy.x:1!null + 1 (tinyint)) as xx]
- └─ Having
-     ├─ Eq
-     │   ├─ xx:5!null
-     │   └─ 123 (tinyint)
-     └─ Project
-         ├─ columns: [xy.x:1!null, (xy.x:1!null + 1 (tinyint)) as xx]
-         └─ GroupBy
-             ├─ select: xy.x:1!null
-             ├─ group: (xy.x:1!null + 1 (tinyint)) as xx
-             └─ Table
-                 ├─ name: xy
-                 ├─ columns: [x y z]
-                 ├─ colSet: (1-3)
-                 └─ tableId: 1
-`,
-		},
-		{
-			Query: "select x + 1 as xx from xy having xx = 123;",
-			ExpectedPlan: `
-Project
- ├─ columns: [(xy.x:1!null + 1 (tinyint)) as xx]
- └─ Having
-     ├─ Eq
-     │   ├─ xx:5!null
-     │   └─ 123 (tinyint)
-     └─ Project
-         ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, (xy.x:1!null + 1 (tinyint)) as xx]
-         └─ Table
-             ├─ name: xy
-             ├─ columns: [x y z]
-             ├─ colSet: (1-3)
-             └─ tableId: 1
-`,
-		},
-		{
-			Skip:  true,
-			Query: "select x + 1 as xx from xy group by xx having x = 123; -- should error",
-		},
-		{
-			Skip:  true,
-			Query: "select x + 1 as xx from xy having x = 123; -- should error",
-		},
-		{
-			Query: "select x as xx from xy join uv on (x = u) group by xx having xx = 123;",
-			ExpectedPlan: `
-Project
- ├─ columns: [xy.x:1!null as xx]
- └─ Having
-     ├─ Eq
-     │   ├─ xx:8!null
-     │   └─ 123 (tinyint)
-     └─ Project
-         ├─ columns: [xy.x:1!null, xy.x:1!null as xx]
-         └─ GroupBy
-             ├─ select: xy.x:1!null
-             ├─ group: xy.x:1!null as xx
-             └─ InnerJoin
-                 ├─ Eq
-                 │   ├─ xy.x:1!null
-                 │   └─ uv.u:4!null
-                 ├─ Table
-                 │   ├─ name: xy
-                 │   ├─ columns: [x y z]
-                 │   ├─ colSet: (1-3)
-                 │   └─ tableId: 1
-                 └─ Table
-                     ├─ name: uv
-                     ├─ columns: [u v w]
-                     ├─ colSet: (4-6)
-                     └─ tableId: 2
-`,
-		},
-		{
-			Query: "select x as xx from xy join uv on (x = u) having xx = 123;",
-			ExpectedPlan: `
-Project
- ├─ columns: [xy.x:1!null as xx]
- └─ Having
-     ├─ Eq
-     │   ├─ xx:8!null
-     │   └─ 123 (tinyint)
-     └─ Project
-         ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, uv.u:4!null, uv.v:5!null, uv.w:6!null, xy.x:1!null as xx]
-         └─ InnerJoin
-             ├─ Eq
-             │   ├─ xy.x:1!null
-             │   └─ uv.u:4!null
-             ├─ Table
-             │   ├─ name: xy
-             │   ├─ columns: [x y z]
-             │   ├─ colSet: (1-3)
-             │   └─ tableId: 1
-             └─ Table
-                 ├─ name: uv
-                 ├─ columns: [u v w]
-                 ├─ colSet: (4-6)
-                 └─ tableId: 2
-`,
-		},
-		{
-			Query: "select x as xx from xy join uv on (x = u) group by xx having x = 123;",
-			ExpectedPlan: `
-Project
- ├─ columns: [xy.x:1!null as xx]
- └─ Having
-     ├─ Eq
-     │   ├─ xy.x:1!null
-     │   └─ 123 (tinyint)
-     └─ Project
-         ├─ columns: [xy.x:1!null, xy.x:1!null as xx]
-         └─ GroupBy
-             ├─ select: xy.x:1!null
-             ├─ group: xy.x:1!null as xx
-             └─ InnerJoin
-                 ├─ Eq
-                 │   ├─ xy.x:1!null
-                 │   └─ uv.u:4!null
-                 ├─ Table
-                 │   ├─ name: xy
-                 │   ├─ columns: [x y z]
-                 │   ├─ colSet: (1-3)
-                 │   └─ tableId: 1
-                 └─ Table
-                     ├─ name: uv
-                     ├─ columns: [u v w]
-                     ├─ colSet: (4-6)
-                     └─ tableId: 2
-`,
-		},
-		{
-			Query: "select x as xx from xy join uv on (x = u) having x = 123;",
-			ExpectedPlan: `
-Project
- ├─ columns: [xy.x:1!null as xx]
- └─ Having
-     ├─ Eq
-     │   ├─ xy.x:1!null
-     │   └─ 123 (tinyint)
-     └─ Project
-         ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, uv.u:4!null, uv.v:5!null, uv.w:6!null, xy.x:1!null as xx]
-         └─ InnerJoin
-             ├─ Eq
-             │   ├─ xy.x:1!null
-             │   └─ uv.u:4!null
-             ├─ Table
-             │   ├─ name: xy
-             │   ├─ columns: [x y z]
-             │   ├─ colSet: (1-3)
-             │   └─ tableId: 1
-             └─ Table
-                 ├─ name: uv
-                 ├─ columns: [u v w]
-                 ├─ colSet: (4-6)
-                 └─ tableId: 2
-`,
-		},
-		{
-			Query: "select x + 1 as xx from xy join uv on (x = u) group by xx having xx = 123;",
-			ExpectedPlan: `
-Project
- ├─ columns: [(xy.x:1!null + 1 (tinyint)) as xx]
- └─ Having
-     ├─ Eq
-     │   ├─ xx:8!null
-     │   └─ 123 (tinyint)
-     └─ Project
-         ├─ columns: [xy.x:1!null, (xy.x:1!null + 1 (tinyint)) as xx]
-         └─ GroupBy
-             ├─ select: xy.x:1!null
-             ├─ group: (xy.x:1!null + 1 (tinyint)) as xx
-             └─ InnerJoin
-                 ├─ Eq
-                 │   ├─ xy.x:1!null
-                 │   └─ uv.u:4!null
-                 ├─ Table
-                 │   ├─ name: xy
-                 │   ├─ columns: [x y z]
-                 │   ├─ colSet: (1-3)
-                 │   └─ tableId: 1
-                 └─ Table
-                     ├─ name: uv
-                     ├─ columns: [u v w]
-                     ├─ colSet: (4-6)
-                     └─ tableId: 2
-`,
-		},
-		{
-			Query: "select x + 1 as xx from xy join uv on (x = u) having xx = 123;",
-			ExpectedPlan: `
-Project
- ├─ columns: [(xy.x:1!null + 1 (tinyint)) as xx]
- └─ Having
-     ├─ Eq
-     │   ├─ xx:8!null
-     │   └─ 123 (tinyint)
-     └─ Project
-         ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, uv.u:4!null, uv.v:5!null, uv.w:6!null, (xy.x:1!null + 1 (tinyint)) as xx]
-         └─ InnerJoin
-             ├─ Eq
-             │   ├─ xy.x:1!null
-             │   └─ uv.u:4!null
-             ├─ Table
-             │   ├─ name: xy
-             │   ├─ columns: [x y z]
-             │   ├─ colSet: (1-3)
-             │   └─ tableId: 1
-             └─ Table
-                 ├─ name: uv
-                 ├─ columns: [u v w]
-                 ├─ colSet: (4-6)
-                 └─ tableId: 2
-`,
-		},
-		{
-			Skip:  true,
-			Query: "select x + 1 as xx from xy join uv on (x = u) group by xx having x = 123; -- should error",
-		},
-		{
-			Skip:  true,
-			Query: "select x + 1 as xx from xy join uv on (x = u) having x = 123; -- should error",
-		},
-		{
-			Query: "select x +1  as xx from xy join uv on (x = u) group by x having avg(x) = 123;",
-			ExpectedPlan: `
-Project
- ├─ columns: [(xy.x:1!null + 1 (tinyint)) as xx]
- └─ Having
-     ├─ Eq
-     │   ├─ avg(xy.x):8
-     │   └─ 123 (tinyint)
-     └─ Project
-         ├─ columns: [avg(xy.x):8, xy.x:1!null, (xy.x:1!null + 1 (tinyint)) as xx]
-         └─ GroupBy
-             ├─ select: AVG(xy.x:1!null), xy.x:1!null
-             ├─ group: xy.x:1!null
-             └─ InnerJoin
-                 ├─ Eq
-                 │   ├─ xy.x:1!null
-                 │   └─ uv.u:4!null
-                 ├─ Table
-                 │   ├─ name: xy
-                 │   ├─ columns: [x y z]
-                 │   ├─ colSet: (1-3)
-                 │   └─ tableId: 1
-                 └─ Table
-                     ├─ name: uv
-                     ├─ columns: [u v w]
-                     ├─ colSet: (4-6)
-                     └─ tableId: 2
-`,
-		},
-		{
-			Skip:  true,
-			Query: "select x + 1 as xx from xy join uv on (x = u) group by xx having avg(xx) = 123;",
-		},
 	}
 
 	var w *bufio.Writer
@@ -2457,16 +2157,6 @@ Project
 	for _, tt := range tests {
 		t.Run(tt.Query, func(t *testing.T) {
 			if tt.Skip {
-				if rewrite {
-					w.WriteString("\t{\n")
-					w.WriteString(fmt.Sprintf("\t\tSkip: true,\n"))
-					if strings.Contains(tt.Query, "\n") {
-						w.WriteString(fmt.Sprintf("\t\tQuery: `\n%s`,\n", tt.Query))
-					} else {
-						w.WriteString(fmt.Sprintf("\t\tQuery: \"%s\",\n", tt.Query))
-					}
-					w.WriteString("\t},\n")
-				}
 				t.Skip()
 			}
 			stmt, err := sqlparser.Parse(tt.Query)
@@ -2477,14 +2167,14 @@ Project
 			plan := sql.DebugString(outScope.node)
 
 			if rewrite {
-				w.WriteString("\t{\n")
+				w.WriteString("  {\n")
 				if strings.Contains(tt.Query, "\n") {
-					w.WriteString(fmt.Sprintf("\t\tQuery: `\n%s`,\n", tt.Query))
+					w.WriteString(fmt.Sprintf("    Query: `\n%s`,\n", tt.Query))
 				} else {
-					w.WriteString(fmt.Sprintf("\t\tQuery: \"%s\",\n", tt.Query))
+					w.WriteString(fmt.Sprintf("    Query: \"%s\",\n", tt.Query))
 				}
-				w.WriteString(fmt.Sprintf("\t\tExpectedPlan: `\n%s`,\n", plan))
-				w.WriteString("\t},\n")
+				w.WriteString(fmt.Sprintf("    ExpectedPlan: `\n%s`,\n", plan))
+				w.WriteString("  },\n")
 			}
 			if verbose {
 				print(plan)
