@@ -768,6 +768,12 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		Query: "select 0 as col1, 1 as col2, 2 as col2 group by col2 having col2 = 1",
+		Expected: []sql.Row{
+			{0, 1, 2},
+		},
+	},
+	{
 		// Assert that SYSDATE() returns different times on each call in a query (unlike NOW())
 		// Using the maximum precision for fractional seconds, lets us see a difference.
 		Query:    "select now() = sysdate(), sleep(0.1), now(6) < sysdate(6);",

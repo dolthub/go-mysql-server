@@ -66,6 +66,7 @@ type idxScope struct {
 	parentScopes  []*idxScope
 	lateralScopes []*idxScope
 	childScopes   []*idxScope
+	ids           []sql.ColumnId
 	columns       []string
 	children      []sql.Node
 	expressions   []sql.Expression
@@ -84,6 +85,7 @@ func (s *idxScope) addSchema(sch sql.Schema) {
 
 func (s *idxScope) addScope(other *idxScope) {
 	s.columns = append(s.columns, other.columns...)
+	s.ids = append(s.ids, other.ids...)
 }
 
 func (s *idxScope) addLateral(other *idxScope) {
@@ -104,6 +106,18 @@ func unqualify(s string) string {
 		return strings.Split(s, ".")[1]
 	}
 	return s
+}
+
+func (s *idxScope) getIdxId(id sql.ColumnId, name string) (int, bool) {
+	if len(s.ids) != len(s.columns) {
+		return s.getIdx(name)
+	}
+	for i, c := range s.ids {
+		if c == id {
+			return i, true
+		}
+	}
+	return s.getIdx(name)
 }
 
 func (s *idxScope) getIdx(n string) (int, bool) {
@@ -156,10 +170,16 @@ func (s *idxScope) copy() *idxScope {
 		varsCopy = make([]string, len(s.columns))
 		copy(varsCopy, s.columns)
 	}
+	var idsCopy []sql.ColumnId
+	if len(s.ids) > 0 {
+		idsCopy = make([]sql.ColumnId, len(s.ids))
+		copy(idsCopy, s.ids)
+	}
 	return &idxScope{
 		lateralScopes: lateralCopy,
 		parentScopes:  parentCopy,
 		columns:       varsCopy,
+		ids:           idsCopy,
 	}
 }
 
@@ -390,6 +410,56 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 		return nn.WithChecks(s.checks), nil
 	default:
 		// child scopes don't account for projections
+		switch n := n.(type) {
+		case *plan.Project:
+			for _, e := range n.Projections {
+				switch e := e.(type) {
+				case *expression.GetField:
+					s.ids = append(s.ids, e.Id())
+				case *expression.Alias:
+					s.ids = append(s.ids, e.Id())
+				}
+			}
+		case *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.SubqueryAlias, *plan.RecursiveTable, *plan.RecursiveCte, *plan.SetOp:
+			cols := n.(plan.TableIdNode).Columns()
+			if tn, ok := n.(sql.TableNode); ok {
+				if pkt, ok := tn.UnderlyingTable().(sql.PrimaryKeyTable); ok && len(pkt.PrimaryKeySchema().Schema) != len(n.Schema()) {
+					firstcol, _ := cols.Next(1)
+					for _, c := range n.Schema() {
+						ord := pkt.PrimaryKeySchema().IndexOfColName(c.Name)
+						colId := firstcol + sql.ColumnId(ord)
+						s.ids = append(s.ids, colId)
+					}
+					break
+				}
+			}
+			// todo table aliases do not implement table node but columns returned need to be limited to the projected set
+			cols.ForEach(func(col sql.ColumnId) {
+				s.ids = append(s.ids, col)
+			})
+		case *plan.Window:
+			for _, e := range n.SelectExprs {
+				switch e := e.(type) {
+				case *expression.GetField:
+					s.ids = append(s.ids, e.Id())
+				case *expression.Alias:
+					s.ids = append(s.ids, e.Id())
+				}
+			}
+		case *plan.GroupBy:
+			for _, e := range n.SelectedExprs {
+				switch e := e.(type) {
+				case *expression.GetField:
+					s.ids = append(s.ids, e.Id())
+				case *expression.Alias:
+					s.ids = append(s.ids, e.Id())
+				}
+			}
+		default:
+			for _, cs := range s.childScopes {
+				s.ids = append(s.ids, cs.ids...)
+			}
+		}
 		s.addSchema(n.Schema())
 		var err error
 		if s.children != nil {
@@ -441,7 +511,8 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 			//  queries where the columns being selected are only found in subqueries. Conversely, we actually want to ignore
 			//  this error for the case of DEFAULT in a `plan.Values`, since we analyze the insert source in isolation (we
 			//  don't have the destination schema, and column references in default values are determined in the build phase)
-			idx, _ := newScope.getIdx(e.String())
+			//idx, _ := newScope.getIdx(e.String())
+			idx, _ := newScope.getIdxId(e.Id(), e.String())
 			if idx >= 0 {
 				return e.WithIndex(idx), transform.NewTree, nil
 			}

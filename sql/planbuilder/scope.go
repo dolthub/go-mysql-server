@@ -363,7 +363,7 @@ func (s *scope) aliasCte(alias string) *scope {
 	for _, c := range s.cols {
 		c.tableId = tabId
 		c.table = alias
-		outScope.addColumn(c)
+		outScope.newColumn(c)
 	}
 	return outScope
 }
