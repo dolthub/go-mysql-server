@@ -125,6 +125,18 @@ func NewPartitionedTableRevision(db *BaseDatabase, name string, schema sql.Prima
 	return &TableRevision{tbl}
 }
 
+func stripTblNames(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	switch e := e.(type) {
+	case *expression.GetField:
+		// strip table names
+		ne := expression.NewGetField(e.Index(), e.Type(), e.Name(), e.IsNullable())
+		ne = ne.WithBackTickNames(e.IsBackTickNames())
+		return ne, transform.NewTree, nil
+	default:
+	}
+	return e, transform.SameTree, nil
+}
+
 // NewPartitionedTableWithCollation creates a new Table with the given name, schema, number of partitions, and collation.
 func NewPartitionedTableWithCollation(db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, numPartitions int, collation sql.CollationID) *Table {
 	var keys [][]byte
@@ -150,35 +162,23 @@ func NewPartitionedTableWithCollation(db *BaseDatabase, name string, schema sql.
 		}
 	}
 
-	stripTblNamesFunc := func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		switch e := e.(type) {
-		case *expression.GetField:
-			// strip table names
-			ne := expression.NewGetField(e.Index(), e.Type(), e.Name(), e.IsNullable())
-			ne = ne.WithBackTickNames(e.IsBackTickNames())
-			return ne, transform.NewTree, nil
-		default:
-		}
-		return e, transform.SameTree, nil
-	}
-
 	newSchema := make(sql.Schema, len(schema.Schema))
 	for i, c := range schema.Schema {
 		cCopy := c.Copy()
 		if cCopy.Default != nil {
-			newDef, _, _ := transform.Expr(cCopy.Default, stripTblNamesFunc)
+			newDef, _, _ := transform.Expr(cCopy.Default, stripTblNames)
 			defStr := newDef.String()
 			unrDef := sql.NewUnresolvedColumnDefaultValue(defStr)
 			cCopy.Default = unrDef
 		}
 		if cCopy.Generated != nil {
-			newDef, _, _ := transform.Expr(cCopy.Generated, stripTblNamesFunc)
+			newDef, _, _ := transform.Expr(cCopy.Generated, stripTblNames)
 			defStr := newDef.String()
 			unrDef := sql.NewUnresolvedColumnDefaultValue(defStr)
 			cCopy.Generated = unrDef
 		}
 		if cCopy.OnUpdate != nil {
-			newDef, _, _ := transform.Expr(cCopy.OnUpdate, stripTblNamesFunc)
+			newDef, _, _ := transform.Expr(cCopy.OnUpdate, stripTblNames)
 			defStr := newDef.String()
 			unrDef := sql.NewUnresolvedColumnDefaultValue(defStr)
 			cCopy.OnUpdate = unrDef
