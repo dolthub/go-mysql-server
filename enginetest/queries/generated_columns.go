@@ -265,7 +265,7 @@ var GeneratedColumnTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "create table t (`col 1` int, `col 2` int, `col 3` int generated always as (`col 1` + `col 2` + pow(`col 1`, `col 2`)) stored);",
+				Query: "create table t (`col 1` int, `col 2` int, `col 3` int generated always as (`col 1` + `col 2` + pow(`col 1`, `col 2`)) stored);",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
