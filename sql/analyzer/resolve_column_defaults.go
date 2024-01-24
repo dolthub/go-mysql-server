@@ -321,7 +321,6 @@ func backtickDefaultColumnValueNames(ctx *sql.Context, _ *Analyzer, n sql.Node, 
 	span, ctx := ctx.Span("backtickDefaultColumnValueNames")
 	defer span.End()
 
-	// TODO: need to do this for ShowCreateTable as well
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch node := n.(type) {
 		case *plan.AlterDefaultSet:
