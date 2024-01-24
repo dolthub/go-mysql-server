@@ -110,6 +110,7 @@ func unqualify(s string) string {
 
 func (s *idxScope) getIdxId(id sql.ColumnId, name string) (int, bool) {
 	if len(s.ids) != len(s.columns) {
+		// todo: fix places where ids are not captured
 		return s.getIdx(name)
 	}
 	for i, c := range s.ids {
