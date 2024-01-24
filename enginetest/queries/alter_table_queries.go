@@ -1156,7 +1156,7 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `pk` varchar(20) NOT NULL,\n" +
-						"  `v` varchar(20) NOT NULL DEFAULT (concat(pk,'-foo')),\n" +
+						"  `v` varchar(20) NOT NULL DEFAULT (concat(`pk`,'-foo')),\n" +
 						"  PRIMARY KEY (`pk`,`v`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
@@ -1181,7 +1181,7 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `pk` varchar(20) NOT NULL,\n" +
-						"  `v` varchar(20) NOT NULL DEFAULT (concat(pk,'-foo')),\n" +
+						"  `v` varchar(20) NOT NULL DEFAULT (concat(`pk`,'-foo')),\n" +
 						"  PRIMARY KEY (`pk`),\n" +
 						"  KEY `myidx` (`v`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
@@ -1243,7 +1243,7 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `pk` varchar(20) NOT NULL,\n" +
-						"  `v` varchar(20) NOT NULL DEFAULT (concat(pk,'-foo'))\n" +
+						"  `v` varchar(20) NOT NULL DEFAULT (concat(`pk`,'-foo'))\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},

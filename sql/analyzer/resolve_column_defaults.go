@@ -316,3 +316,101 @@ func stripTableNamesFromDefault(e *expression.Wrapper) (sql.Expression, transfor
 	nd.Expr = newExpr
 	return expression.WrapExpression(&nd), transform.NewTree, nil
 }
+
+func backtickDefaultColumnValueNames(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	span, ctx := ctx.Span("backtickDefaultColumnValueNames")
+	defer span.End()
+
+	// TODO: need to do this for ShowCreateTable as well
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		switch node := n.(type) {
+		case *plan.AlterDefaultSet:
+			eWrapper := expression.WrapExpression(node.Default)
+			newExpr, same, err := backtickDefault(eWrapper)
+			if err != nil {
+				return node, transform.SameTree, err
+			}
+			if same {
+				return node, transform.SameTree, nil
+			}
+
+			newNode, err := node.WithDefault(newExpr)
+			if err != nil {
+				return node, transform.SameTree, err
+			}
+			return newNode, transform.NewTree, nil
+		case sql.SchemaTarget:
+			return transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, transform.SameTree, nil
+				}
+
+				return backtickDefault(eWrapper)
+			})
+		case *plan.ResolvedTable:
+			ct, ok := node.Table.(*information_schema.ColumnsTable)
+			if !ok {
+				return node, transform.SameTree, nil
+			}
+
+			allColumns, err := ct.AllColumns(ctx)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			allDefaults, same, err := transform.Exprs(transform.WrappedColumnDefaults(allColumns), func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, transform.SameTree, nil
+				}
+
+				return backtickDefault(eWrapper)
+			})
+
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			if !same {
+				node.Table, err = ct.WithColumnDefaults(allDefaults)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				return node, transform.NewTree, err
+			}
+
+			return node, transform.SameTree, err
+		default:
+			return node, transform.SameTree, nil
+		}
+	})
+}
+
+func backtickDefault(wrap *expression.Wrapper) (sql.Expression, transform.TreeIdentity, error) {
+	newDefault, ok := wrap.Unwrap().(*sql.ColumnDefaultValue)
+	if !ok {
+		return wrap, transform.SameTree, nil
+	}
+
+	if newDefault == nil {
+		return wrap, transform.SameTree, nil
+	}
+
+	newExpr, same, err := transform.Expr(newDefault.Expr, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		if e, isGf := expr.(*expression.GetField); isGf {
+			return e.WithBackTickNames(true), transform.NewTree, nil
+		}
+		return expr, transform.SameTree, nil
+	})
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+	if same {
+		return wrap, transform.SameTree, nil
+	}
+
+	nd := *newDefault
+	nd.Expr = newExpr
+	return expression.WrapExpression(&nd), transform.NewTree, nil
+}
