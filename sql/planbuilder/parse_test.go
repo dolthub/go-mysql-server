@@ -48,7 +48,7 @@ type planErrTest struct {
 func TestPlanBuilder(t *testing.T) {
 	var verbose, rewrite bool
 	//verbose = true
-	rewrite = true
+	//rewrite = true
 
 	var tests = []planTest{
 		{
@@ -183,9 +183,9 @@ Project
 `,
 		},
 		{
-			Query: `analyze table xy
-update histogram on (x, y) using data '{"row_count": 40, "distinct_count": 40, "null_count": 1, "columns": ["x", "y"], "histogram": [{"row_count": 20, "upper_bound": [50.0]}, {"row_count": 20, "upper_bound": [80.0]}]}'
-`,
+			Query: `
+	analyze table xy
+update histogram on (x, y) using data '{"row_count": 40, "distinct_count": 40, "null_count": 1, "columns": ["x", "y"], "histogram": [{"row_count": 20, "upper_bound": [50.0]}, {"row_count": 20, "upper_bound": [80.0]}]}'`,
 			ExpectedPlan: `
 update histogram  xy.(x,y) using {"statistic":{"avg_size":0,"buckets":[],"columns":["x","y"],"created_at":"0001-01-01T00:00:00Z","distinct_count":40,"null_count":40,"qualifier":"mydb.xy.primary","row_count":40,"types:":["bigint","bigint"]}}`,
 		},
@@ -1297,13 +1297,12 @@ Project
 		},
 		{
 			Query: `
-select
+	select
 			x,
 			x*y,
 			ROW_NUMBER() OVER(PARTITION BY x) AS row_num1,
 			sum(x) OVER(PARTITION BY y ORDER BY x) AS sum
-			from xy
-			`,
+			from xy`,
 			ExpectedPlan: `
 Project
  ├─ columns: [xy.x:1!null, (xy.x:1!null * xy.y:2!null) as x*y, row_number() over ( partition by xy.x rows between unbounded preceding and unbounded following):4!null as row_num1, sum
@@ -1325,12 +1324,12 @@ Project
 `,
 		},
 		{
-			Query: `select
+			Query: `
+	select
 			x+1 as x,
 			sum(x) OVER(PARTITION BY y ORDER BY x) AS sum
 			from xy
-			having x > 1;
-			`,
+			having x > 1;`,
 			ExpectedPlan: `
 Project
  ├─ columns: [(xy.x:1!null + 1 (tinyint)) as x, sum
@@ -1363,8 +1362,7 @@ Project
 		},
 		{
 			Query: `
-
-			SELECT
+	SELECT
 			x,
 			ROW_NUMBER() OVER w AS 'row_number',
 			RANK()       OVER w AS 'rank',
@@ -1609,7 +1607,7 @@ Project
 		},
 		{
 			Query: `
-SELECT x
+	SELECT x
 			FROM xy
 			WHERE EXISTS (SELECT count(u) AS count_1
 			FROM uv
@@ -1651,7 +1649,7 @@ Project
 		},
 		{
 			Query: `
-WITH RECURSIVE
+	WITH RECURSIVE
 			rt (foo) AS (
 			SELECT 1 as foo
 			UNION ALL
@@ -1858,7 +1856,7 @@ Project
 		},
 		{
 			Query: `
-SELECT fi, COUNT(*) FROM (
+	SELECT fi, COUNT(*) FROM (
 			SELECT tbl.x AS fi
 			FROM xy tbl
 		) t
@@ -2489,9 +2487,9 @@ Project
 					w.WriteString("\t{\n")
 					w.WriteString(fmt.Sprintf("\t\tSkip: true,\n"))
 					if strings.Contains(tt.Query, "\n") {
-						w.WriteString(fmt.Sprintf("\t\tQuery: `\n%s`,\n", tt.Query))
+						w.WriteString(fmt.Sprintf("\t\tQuery: `\n\t%s`,\n", strings.TrimSpace(tt.Query)))
 					} else {
-						w.WriteString(fmt.Sprintf("\t\tQuery: \"%s\",\n", tt.Query))
+						w.WriteString(fmt.Sprintf("\t\tQuery: \"%s\",\n", strings.TrimSpace(tt.Query)))
 					}
 					w.WriteString("\t},\n")
 				}
@@ -2507,9 +2505,9 @@ Project
 			if rewrite {
 				w.WriteString("\t{\n")
 				if strings.Contains(tt.Query, "\n") {
-					w.WriteString(fmt.Sprintf("\t\tQuery: `\n%s`,\n", tt.Query))
+					w.WriteString(fmt.Sprintf("\t\tQuery: `\n\t%s`,\n", strings.TrimSpace(tt.Query)))
 				} else {
-					w.WriteString(fmt.Sprintf("\t\tQuery: \"%s\",\n", tt.Query))
+					w.WriteString(fmt.Sprintf("\t\tQuery: \"%s\",\n", strings.TrimSpace(tt.Query)))
 				}
 				w.WriteString(fmt.Sprintf("\t\tExpectedPlan: `\n%s`,\n", plan))
 				w.WriteString("\t},\n")
