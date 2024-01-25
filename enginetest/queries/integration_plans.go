@@ -10427,7 +10427,7 @@ WHERE
 			" │               ├─ isLateral: false\n" +
 			" │               ├─ cacheable: true\n" +
 			" │               ├─ colSet: (223,224)\n" +
-			" │               ├─ tableId: 25\n" +
+			" │               ├─ tableId: 27\n" +
 			" │               └─ Project\n" +
 			" │                   ├─ columns: [noxn3.id:35!null, (row_number() over ( order by noxn3.id asc):34!null - 1 (tinyint)) as M6T2N]\n" +
 			" │                   └─ Window\n" +
@@ -10455,7 +10455,7 @@ WHERE
 			" │               ├─ isLateral: false\n" +
 			" │               ├─ cacheable: true\n" +
 			" │               ├─ colSet: (225,226)\n" +
-			" │               ├─ tableId: 26\n" +
+			" │               ├─ tableId: 28\n" +
 			" │               └─ Project\n" +
 			" │                   ├─ columns: [noxn3.id:35!null, (row_number() over ( order by noxn3.id asc):34!null - 1 (tinyint)) as M6T2N]\n" +
 			" │                   └─ Window\n" +
@@ -10485,7 +10485,7 @@ WHERE
 			"     │               ├─ isLateral: false\n" +
 			"     │               ├─ cacheable: true\n" +
 			"     │               ├─ colSet: (223,224)\n" +
-			"     │               ├─ tableId: 25\n" +
+			"     │               ├─ tableId: 27\n" +
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [noxn3.id:28!null, (row_number() over ( order by noxn3.id asc):27!null - 1 (tinyint)) as M6T2N]\n" +
 			"     │                   └─ Window\n" +
@@ -10513,7 +10513,7 @@ WHERE
 			"     │               ├─ isLateral: false\n" +
 			"     │               ├─ cacheable: true\n" +
 			"     │               ├─ colSet: (225,226)\n" +
-			"     │               ├─ tableId: 26\n" +
+			"     │               ├─ tableId: 28\n" +
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [noxn3.id:28!null, (row_number() over ( order by noxn3.id asc):27!null - 1 (tinyint)) as M6T2N]\n" +
 			"     │                   └─ Window\n" +
@@ -10575,7 +10575,7 @@ WHERE
 			"         │   │   │   │   │                               ├─ index: [NOXN3.BRQP2]\n" +
 			"         │   │   │   │   │                               ├─ keys: [mjr3d.BJUF2:1!null]\n" +
 			"         │   │   │   │   │                               ├─ colSet: (132-141)\n" +
-			"         │   │   │   │   │                               ├─ tableId: 16\n" +
+			"         │   │   │   │   │                               ├─ tableId: 18\n" +
 			"         │   │   │   │   │                               └─ Table\n" +
 			"         │   │   │   │   │                                   ├─ name: NOXN3\n" +
 			"         │   │   │   │   │                                   └─ columns: [id brqp2]\n" +
@@ -10600,7 +10600,7 @@ WHERE
 			"         │   │   │   │                               ├─ index: [NOXN3.BRQP2]\n" +
 			"         │   │   │   │                               ├─ keys: [mjr3d.FJDP5:0!null]\n" +
 			"         │   │   │   │                               ├─ colSet: (142-151)\n" +
-			"         │   │   │   │                               ├─ tableId: 17\n" +
+			"         │   │   │   │                               ├─ tableId: 19\n" +
 			"         │   │   │   │                               └─ Table\n" +
 			"         │   │   │   │                                   ├─ name: NOXN3\n" +
 			"         │   │   │   │                                   └─ columns: [id brqp2]\n" +
@@ -10626,7 +10626,7 @@ WHERE
 			"         │   │   │                               ├─ index: [NOXN3.BRQP2]\n" +
 			"         │   │   │                               ├─ keys: [mjr3d.BJUF2:1!null]\n" +
 			"         │   │   │                               ├─ colSet: (152-161)\n" +
-			"         │   │   │                               ├─ tableId: 18\n" +
+			"         │   │   │                               ├─ tableId: 20\n" +
 			"         │   │   │                               └─ Table\n" +
 			"         │   │   │                                   ├─ name: NOXN3\n" +
 			"         │   │   │                                   └─ columns: [id brqp2]\n" +
@@ -10636,7 +10636,7 @@ WHERE
 			"         │   │   │   ├─ isLateral: false\n" +
 			"         │   │   │   ├─ cacheable: true\n" +
 			"         │   │   │   ├─ colSet: (111-121)\n" +
-			"         │   │   │   ├─ tableId: 14\n" +
+			"         │   │   │   ├─ tableId: 16\n" +
 			"         │   │   │   └─ Union distinct\n" +
 			"         │   │   │       ├─ Project\n" +
 			"         │   │   │       │   ├─ columns: [jchir.FJDP5:0!null, jchir.BJUF2:1!null, jchir.PSMU6:2!null, jchir.M22QN:3!null, jchir.GE5EL:4, jchir.F7A4Q:5, jchir.ESFVY:6!null, jchir.CC4AX:7, jchir.SL76B:8!null, convert\n" +
@@ -11008,12 +11008,12 @@ WHERE
 			"         │           ├─ isLateral: false\n" +
 			"         │           ├─ cacheable: true\n" +
 			"         │           ├─ colSet: (219-221)\n" +
-			"         │           ├─ tableId: 24\n" +
+			"         │           ├─ tableId: 26\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: TPXBU\n" +
 			"         │               ├─ columns: [id btxc5 fhcyt]\n" +
 			"         │               ├─ colSet: (216-218)\n" +
-			"         │               └─ tableId: 23\n" +
+			"         │               └─ tableId: 25\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: TUPLE(sn.BRQP2:12!null, mjr3d.M22QN:3!null, aac.id:21!null)\n" +
 			"             ├─ right-key: TUPLE(mf.LUEVY:1!null, mf.M22QN:2!null, mf.M22QN:2!null)\n" +
@@ -11023,7 +11023,7 @@ WHERE
 			"                 ├─ isLateral: false\n" +
 			"                 ├─ cacheable: true\n" +
 			"                 ├─ colSet: (213-215)\n" +
-			"                 ├─ tableId: 22\n" +
+			"                 ├─ tableId: 24\n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [cla.FTQLQ:3!null, mf.LUEVY:5!null, mf.M22QN:6!null]\n" +
 			"                     └─ LookupJoin\n" +
@@ -11036,7 +11036,7 @@ WHERE
 			"                         │   │       ├─ index: [THNTS.IXUXU]\n" +
 			"                         │   │       ├─ static: [{[NULL, ∞)}]\n" +
 			"                         │   │       ├─ colSet: (192-195)\n" +
-			"                         │   │       ├─ tableId: 20\n" +
+			"                         │   │       ├─ tableId: 22\n" +
 			"                         │   │       └─ Table\n" +
 			"                         │   │           ├─ name: THNTS\n" +
 			"                         │   │           └─ columns: [id ixuxu]\n" +
@@ -11049,7 +11049,7 @@ WHERE
 			"                         │               ├─ index: [YK2GW.id]\n" +
 			"                         │               ├─ static: [{[NULL, ∞)}]\n" +
 			"                         │               ├─ colSet: (162-191)\n" +
-			"                         │               ├─ tableId: 19\n" +
+			"                         │               ├─ tableId: 21\n" +
 			"                         │               └─ Table\n" +
 			"                         │                   ├─ name: YK2GW\n" +
 			"                         │                   └─ columns: [id ftqlq]\n" +
@@ -11058,7 +11058,7 @@ WHERE
 			"                                 ├─ index: [HGMQ6.GXLUB]\n" +
 			"                                 ├─ keys: [bs.id:0!null]\n" +
 			"                                 ├─ colSet: (196-212)\n" +
-			"                                 ├─ tableId: 21\n" +
+			"                                 ├─ tableId: 23\n" +
 			"                                 └─ Table\n" +
 			"                                     ├─ name: HGMQ6\n" +
 			"                                     └─ columns: [gxlub luevy m22qn]\n" +
@@ -21017,11 +21017,13 @@ WHERE
 			"             │                   │       │           │               │                       ├─ name: E2I7U\n" +
 			"             │                   │       │           │               │                       └─ columns: [dkcaj tw55n]\n" +
 			"             │                   │       │           │               │   END]\n" +
-			"             │                   │       │           │               └─ Table\n" +
-			"             │                   │       │           │                   ├─ name: \n" +
-			"             │                   │       │           │                   ├─ columns: []\n" +
-			"             │                   │       │           │                   ├─ colSet: ()\n" +
-			"             │                   │       │           │                   └─ tableId: 0\n" +
+			"             │                   │       │           │               └─ Project\n" +
+			"             │                   │       │           │                   ├─ columns: [:39!null]\n" +
+			"             │                   │       │           │                   └─ Table\n" +
+			"             │                   │       │           │                       ├─ name: \n" +
+			"             │                   │       │           │                       ├─ columns: []\n" +
+			"             │                   │       │           │                       ├─ colSet: ()\n" +
+			"             │                   │       │           │                       └─ tableId: 0\n" +
 			"             │                   │       │           └─ IndexedTableAccess(SFEGG)\n" +
 			"             │                   │       │               ├─ index: [SFEGG.NO52D,SFEGG.VYO5E,SFEGG.DKCAJ]\n" +
 			"             │                   │       │               ├─ keys: [uct.NO52D:7]\n" +
@@ -21123,11 +21125,13 @@ WHERE
 			"             │                   │           │           │               │                       ├─ name: E2I7U\n" +
 			"             │                   │           │           │               │                       └─ columns: [dkcaj tw55n]\n" +
 			"             │                   │           │           │               │   END]\n" +
-			"             │                   │           │           │               └─ Table\n" +
-			"             │                   │           │           │                   ├─ name: \n" +
-			"             │                   │           │           │                   ├─ columns: []\n" +
-			"             │                   │           │           │                   ├─ colSet: ()\n" +
-			"             │                   │           │           │                   └─ tableId: 0\n" +
+			"             │                   │           │           │               └─ Project\n" +
+			"             │                   │           │           │                   ├─ columns: [:27!null]\n" +
+			"             │                   │           │           │                   └─ Table\n" +
+			"             │                   │           │           │                       ├─ name: \n" +
+			"             │                   │           │           │                       ├─ columns: []\n" +
+			"             │                   │           │           │                       ├─ colSet: ()\n" +
+			"             │                   │           │           │                       └─ tableId: 0\n" +
 			"             │                   │           │           └─ IndexedTableAccess(SFEGG)\n" +
 			"             │                   │           │               ├─ index: [SFEGG.NO52D,SFEGG.VYO5E,SFEGG.DKCAJ]\n" +
 			"             │                   │           │               ├─ keys: [uct.NO52D:7]\n" +

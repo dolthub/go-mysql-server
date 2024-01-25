@@ -192,7 +192,10 @@ func (s *SetOp) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 2)
 	}
-	return NewSetOp(s.SetOpType, children[0], children[1], s.Distinct, s.Limit, s.Offset, s.SortFields), nil
+	ret := *s
+	ret.left = children[0]
+	ret.right = children[1]
+	return &ret, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.

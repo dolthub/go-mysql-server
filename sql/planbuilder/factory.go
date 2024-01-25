@@ -96,12 +96,8 @@ func containsSubqueryExpr(exprs []sql.Expression) bool {
 
 func aliasTrackAndReplace(adj map[sql.ColumnId]sql.Expression, e sql.Expression) (sql.Expression, error) {
 	var id sql.ColumnId
-	switch e := e.(type) {
-	case *expression.Alias:
-		id = e.Id()
-	case *expression.GetField:
-		id = sql.ColumnId(e.Index())
-	default:
+	if ide, ok := e.(sql.IdExpression); ok {
+		id = ide.Id()
 	}
 	newE, _, err := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {

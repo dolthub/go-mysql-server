@@ -195,7 +195,7 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 		switch e := col.scalar.(type) {
 		case *expression.Alias:
 			if !e.Unreferencable() {
-				aliases = append(aliases, e.WithId(sql.ColumnId(col.id)))
+				aliases = append(aliases, e.WithId(sql.ColumnId(col.id)).(*expression.Alias))
 			}
 		default:
 		}
@@ -277,6 +277,11 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 			col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
 			id := gb.outScope.newColumn(col)
 			col.id = id
+
+			agg = agg.WithId(sql.ColumnId(id)).(sql.Aggregation)
+			gb.outScope.cols[len(gb.outScope.cols)-1].scalar = agg
+			col.scalar = agg
+
 			gb.addAggStr(col)
 			return col.scalarGf()
 		}
@@ -299,6 +304,11 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 
 			col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
 			id := gb.outScope.newColumn(col)
+
+			agg = agg.WithId(sql.ColumnId(id)).(*aggregation.JsonArray)
+			gb.outScope.cols[len(gb.outScope.cols)-1].scalar = agg
+			col.scalar = agg
+
 			col.id = id
 			gb.addAggStr(col)
 			return col.scalarGf()
@@ -337,7 +347,7 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 		}
 	}
 
-	var agg sql.Expression
+	var agg sql.Aggregation
 	if e.Distinct && name == "count" {
 		agg = aggregation.NewCountDistinct(args...)
 	} else {
@@ -358,8 +368,14 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 			b.handleErr(err)
 		}
 
-		agg, err = f.NewInstance(args)
+		newInst, err := f.NewInstance(args)
 		if err != nil {
+			b.handleErr(err)
+		}
+		var ok bool
+		agg, ok = newInst.(sql.Aggregation)
+		if !ok {
+			err := fmt.Errorf("expected function to be aggregation: %s", f.FunctionName())
 			b.handleErr(err)
 		}
 	}
@@ -378,6 +394,11 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 
 	col := scopeColumn{col: aggName, scalar: agg, typ: aggType, nullable: agg.IsNullable()}
 	id := gb.outScope.newColumn(col)
+
+	agg = agg.WithId(sql.ColumnId(id)).(sql.Aggregation)
+	gb.outScope.cols[len(gb.outScope.cols)-1].scalar = agg
+	col.scalar = agg
+
 	col.id = id
 	gb.addAggStr(col)
 	return col.scalarGf()
@@ -430,6 +451,11 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 	col := scopeColumn{col: aggName, scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
 
 	id := gb.outScope.newColumn(col)
+
+	agg = agg.WithId(sql.ColumnId(id)).(*aggregation.GroupConcat)
+	gb.outScope.cols[len(gb.outScope.cols)-1].scalar = agg
+	col.scalar = agg
+
 	gb.addAggStr(col)
 	col.id = id
 	return col.scalarGf()
@@ -461,7 +487,7 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 		args = append(args, e)
 	}
 
-	var win sql.Expression
+	var win sql.WindowAdaptableExpression
 	if name == "count" {
 		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
 			win = aggregation.NewCount(expression.NewLiteral(1, types.Int64))
@@ -473,7 +499,13 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 			b.handleErr(err)
 		}
 
-		win, err = f.NewInstance(args)
+		newInst, err := f.NewInstance(args)
+		var ok bool
+		win, ok = newInst.(sql.WindowAdaptableExpression)
+		if !ok {
+			err := fmt.Errorf("function is not a window adaptable exprssion: %s", f.FunctionName())
+			b.handleErr(err)
+		}
 		if err != nil {
 			b.handleErr(err)
 		}
@@ -488,6 +520,9 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 	col := scopeColumn{col: strings.ToLower(win.String()), scalar: win, typ: win.Type(), nullable: win.IsNullable()}
 	id := inScope.newColumn(col)
 	col.id = id
+	win = win.WithId(sql.ColumnId(id)).(sql.WindowAdaptableExpression)
+	inScope.cols[len(inScope.cols)-1].scalar = win
+	col.scalar = win
 	inScope.windowFuncs = append(inScope.windowFuncs, col)
 	return col.scalarGf()
 }
@@ -520,7 +555,7 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 		switch e := col.scalar.(type) {
 		case *expression.Alias:
 			if !e.Unreferencable() {
-				aliases = append(aliases, e.WithId(sql.ColumnId(col.id)))
+				aliases = append(aliases, e.WithId(sql.ColumnId(col.id)).(*expression.Alias))
 			}
 		default:
 		}
@@ -747,9 +782,11 @@ func (b *Builder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) 
 
 func (b *Builder) buildInnerProj(fromScope, projScope *scope) *scope {
 	outScope := fromScope
-	proj := make([]sql.Expression, len(fromScope.cols))
-	for i, c := range fromScope.cols {
-		proj[i] = c.scalarGf()
+	var proj []sql.Expression
+	for _, c := range fromScope.cols {
+		//if c.col != "" {
+		proj = append(proj, c.scalarGf())
+		//}
 	}
 
 	// eval aliases in project scope
@@ -757,7 +794,7 @@ func (b *Builder) buildInnerProj(fromScope, projScope *scope) *scope {
 		switch e := col.scalar.(type) {
 		case *expression.Alias:
 			if !e.Unreferencable() {
-				proj = append(proj, e.WithId(sql.ColumnId(col.id)))
+				proj = append(proj, e.WithId(sql.ColumnId(col.id)).(*expression.Alias))
 			}
 		}
 	}

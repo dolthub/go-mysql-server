@@ -133,12 +133,18 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 			}
 			offset = n.Offset
 		}
-		leftScope.node = plan.NewSetOp(n.SetOpType, n.Left(), n.Right(), n.Distinct, nil, nil, nil)
+		leftScope.node = plan.NewSetOp(n.SetOpType, n.Left(), n.Right(), n.Distinct, nil, nil, nil).WithColumns(n.Columns()).WithId(n.Id())
 	}
 
-	ret := plan.NewSetOp(setOpType, leftScope.node, rightScope.node, distinct, limit, offset, sortFields)
+	var cols sql.ColSet
+	for _, c := range leftScope.cols {
+		cols.Add(sql.ColumnId(c.id))
+	}
+	b.tabId++
+	tabId := b.tabId
+	ret := plan.NewSetOp(setOpType, leftScope.node, rightScope.node, distinct, limit, offset, sortFields).WithId(tabId).WithColumns(cols)
 	outScope = leftScope
-	outScope.node = b.mergeSetOpSchemas(ret)
+	outScope.node = b.mergeSetOpSchemas(ret.(*plan.SetOp))
 	return
 }
 
@@ -148,13 +154,17 @@ func (b *Builder) mergeSetOpSchemas(u *plan.SetOp) sql.Node {
 		err := ErrUnionSchemasDifferentLength.New(len(ls), len(rs))
 		b.handleErr(err)
 	}
+
+	leftIds := colIdsForRel(u.Left())
+	rightIds := colIdsForRel(u.Right())
+
 	les, res := make([]sql.Expression, len(ls)), make([]sql.Expression, len(rs))
 	hasdiff := false
 	var err error
 	for i := range ls {
 		// todo: proj col ids should align with input column ids
-		les[i] = expression.NewGetFieldWithTable(i+1, 0, ls[i].Type, ls[i].DatabaseSource, ls[i].Source, ls[i].Name, ls[i].Nullable)
-		res[i] = expression.NewGetFieldWithTable(i+1, 0, rs[i].Type, rs[i].DatabaseSource, rs[i].Source, rs[i].Name, rs[i].Nullable)
+		les[i] = expression.NewGetFieldWithTable(int(leftIds[i]), 0, ls[i].Type, ls[i].DatabaseSource, ls[i].Source, ls[i].Name, ls[i].Nullable)
+		res[i] = expression.NewGetFieldWithTable(int(rightIds[i]), 0, rs[i].Type, rs[i].DatabaseSource, rs[i].Source, rs[i].Name, rs[i].Nullable)
 		if reflect.DeepEqual(ls[i].Type, rs[i].Type) {
 			continue
 		}
@@ -182,4 +192,40 @@ func (b *Builder) mergeSetOpSchemas(u *plan.SetOp) sql.Node {
 		}
 	}
 	return ret
+}
+
+func colIdsForRel(n sql.Node) []sql.ColumnId {
+	var ids []sql.ColumnId
+	switch n := n.(type) {
+	case *plan.Project:
+		for _, p := range n.Projections {
+			if ide, ok := p.(sql.IdExpression); ok {
+				ids = append(ids, ide.Id())
+			} else {
+				ids = append(ids, 0)
+			}
+		}
+		return ids
+	case plan.TableIdNode:
+		cols := n.Columns()
+		if tn, ok := n.(sql.TableNode); ok {
+			if pkt, ok := tn.UnderlyingTable().(sql.PrimaryKeyTable); ok && len(pkt.PrimaryKeySchema().Schema) != len(n.Schema()) {
+				firstcol, _ := cols.Next(1)
+				for _, c := range n.Schema() {
+					ord := pkt.PrimaryKeySchema().IndexOfColName(c.Name)
+					colId := firstcol + sql.ColumnId(ord)
+					ids = append(ids, colId)
+				}
+				return ids
+			}
+		}
+		// todo table aliases do not implement table node but columns returned need to be limited to the projected set
+		cols.ForEach(func(col sql.ColumnId) {
+			ids = append(ids, col)
+		})
+		return ids
+	default:
+		return colIdsForRel(n.Children()[0])
+	}
+	return nil
 }

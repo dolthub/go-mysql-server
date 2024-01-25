@@ -32,6 +32,7 @@ func assignExecIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 	s := &idxScope{}
 	if !scope.IsEmpty() {
 		// triggers
+		s.triggerScope = true
 		s.addSchema(scope.Schema())
 		s = s.push()
 	}
@@ -71,6 +72,7 @@ type idxScope struct {
 	children      []sql.Node
 	expressions   []sql.Expression
 	checks        sql.CheckConstraints
+	triggerScope  bool
 }
 
 func (s *idxScope) addSchema(sch sql.Schema) {
@@ -109,8 +111,8 @@ func unqualify(s string) string {
 }
 
 func (s *idxScope) getIdxId(id sql.ColumnId, name string) (int, bool) {
-	if len(s.ids) != len(s.columns) {
-		// todo: fix places where ids are not captured
+	if s.triggerScope || id == 0 {
+		// todo: add expr ids for trigger columns and procedure params
 		return s.getIdx(name)
 	}
 	for i, c := range s.ids {
@@ -411,18 +413,22 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 		nn.OnDupExprs = s.expressions
 		return nn.WithChecks(s.checks), nil
 	default:
+
 		// child scopes don't account for projections
 		switch n := n.(type) {
 		case *plan.Project:
 			for _, e := range n.Projections {
-				switch e := e.(type) {
-				case *expression.GetField:
-					s.ids = append(s.ids, e.Id())
-				case *expression.Alias:
-					s.ids = append(s.ids, e.Id())
+				if ide, ok := e.(sql.IdExpression); ok {
+					s.ids = append(s.ids, ide.Id())
+				} else {
+					s.ids = append(s.ids, 0)
 				}
 			}
-		case *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.SubqueryAlias, *plan.RecursiveTable, *plan.RecursiveCte, *plan.SetOp:
+		case *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.SubqueryAlias, *plan.RecursiveTable, *plan.RecursiveCte, *plan.SetOp, *plan.ValueDerivedTable, *plan.JSONTable:
+			if rt, ok := n.(*plan.ResolvedTable); ok && plan.IsDualTable(rt.Table) {
+				s.ids = append(s.ids, 0)
+				break
+			}
 			cols := n.(plan.TableIdNode).Columns()
 			if tn, ok := n.(sql.TableNode); ok {
 				if pkt, ok := tn.UnderlyingTable().(sql.PrimaryKeyTable); ok && len(pkt.PrimaryKeySchema().Schema) != len(n.Schema()) {
@@ -439,29 +445,40 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 			cols.ForEach(func(col sql.ColumnId) {
 				s.ids = append(s.ids, col)
 			})
+
 		case *plan.Window:
 			for _, e := range n.SelectExprs {
-				switch e := e.(type) {
-				case *expression.GetField:
-					s.ids = append(s.ids, e.Id())
-				case *expression.Alias:
-					s.ids = append(s.ids, e.Id())
+				if ide, ok := e.(sql.IdExpression); ok {
+					s.ids = append(s.ids, ide.Id())
 				}
 			}
 		case *plan.GroupBy:
 			for _, e := range n.SelectedExprs {
-				switch e := e.(type) {
-				case *expression.GetField:
-					s.ids = append(s.ids, e.Id())
-				case *expression.Alias:
-					s.ids = append(s.ids, e.Id())
+				if ide, ok := e.(sql.IdExpression); ok {
+					s.ids = append(s.ids, ide.Id())
 				}
 			}
+		case *plan.TableCountLookup:
+			s.ids = append(s.ids, n.Id())
+		case *plan.JoinNode:
+			if n.Op.IsPartial() {
+				s.ids = append(s.ids, s.childScopes[0].ids...)
+			} else {
+				s.ids = append(s.ids, s.childScopes[0].ids...)
+				s.ids = append(s.ids, s.childScopes[1].ids...)
+			}
+		case *plan.ShowStatus:
+			for i := range n.Schema() {
+				s.ids = append(s.ids, sql.ColumnId(i+1))
+			}
+		case *plan.Concat:
+			s.ids = append(s.ids, s.childScopes[0].ids...)
 		default:
 			for _, cs := range s.childScopes {
 				s.ids = append(s.ids, cs.ids...)
 			}
 		}
+
 		s.addSchema(n.Schema())
 		var err error
 		if s.children != nil {
@@ -504,6 +521,7 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 	newScope := &idxScope{}
 	for _, s := range scopes {
+		newScope.triggerScope = newScope.triggerScope || s.triggerScope
 		newScope.addScope(s)
 	}
 	ret, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {

@@ -105,7 +105,7 @@ func (e *Alias) Unreferencable() bool {
 	return e.unreferencable
 }
 
-func (e *Alias) WithId(id sql.ColumnId) *Alias {
+func (e *Alias) WithId(id sql.ColumnId) sql.IdExpression {
 	ret := *e
 	ret.id = id
 	return &ret

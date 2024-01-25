@@ -2930,7 +2930,7 @@ order by
 			"                 ├─ columns: [lineitem_1.l_orderkey:1!null]\n" +
 			"                 └─ Having\n" +
 			"                     ├─ GreaterThan\n" +
-			"                     │   ├─ sum(lineitem.l_quantity):50!null\n" +
+			"                     │   ├─ sum(lineitem.l_quantity):0!null\n" +
 			"                     │   └─ 300 (smallint)\n" +
 			"                     └─ GroupBy\n" +
 			"                         ├─ select: SUM(lineitem_1.l_quantity:4!null), lineitem_1.l_orderkey:0!null, lineitem_1.L_QUANTITY:4!null\n" +

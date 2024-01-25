@@ -30,6 +30,7 @@ type Lag struct {
 	expression.NaryExpression
 	offset int
 	pos    int
+	id     sql.ColumnId
 }
 
 var _ sql.FunctionExpression = (*Lag)(nil)
@@ -61,6 +62,18 @@ func NewLag(e ...sql.Expression) (*Lag, error) {
 		return &Lag{NaryExpression: expression.NaryExpression{ChildExpressions: []sql.Expression{e[0], e[2]}}, offset: offset}, nil
 	}
 	return nil, sql.ErrInvalidArgumentNumber.New("LAG", "1, 2, or 3", len(e))
+}
+
+// Id implements the Aggregation interface
+func (l *Lag) Id() sql.ColumnId {
+	return l.id
+}
+
+// WithId implements the Aggregation interface
+func (l *Lag) WithId(id sql.ColumnId) sql.IdExpression {
+	ret := *l
+	ret.id = id
+	return &ret
 }
 
 // Description implements sql.FunctionExpression

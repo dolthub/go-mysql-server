@@ -42,6 +42,7 @@ type GetField struct {
 var _ sql.Expression = (*GetField)(nil)
 var _ sql.Expression2 = (*GetField)(nil)
 var _ sql.CollationCoercible = (*GetField)(nil)
+var _ sql.IdExpression = (*GetField)(nil)
 
 // NewGetField creates a GetField expression.
 func NewGetField(index int, fieldType sql.Type, fieldName string, nullable bool) *GetField {
@@ -68,6 +69,12 @@ func NewGetFieldWithTable(index, tableId int, fieldType sql.Type, db, table, fie
 func (p *GetField) Index() int { return p.fieldIndex }
 
 func (p *GetField) Id() sql.ColumnId { return p.exprId }
+
+func (p *GetField) WithId(id sql.ColumnId) sql.IdExpression {
+	ret := *p
+	ret.exprId = id
+	return &ret
+}
 
 func (p *GetField) TableId() sql.TableId { return p.tableId }
 

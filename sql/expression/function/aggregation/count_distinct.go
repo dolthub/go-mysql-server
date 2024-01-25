@@ -28,6 +28,7 @@ type CountDistinct struct {
 	expression.NaryExpression
 	window *sql.WindowDefinition
 	typ    sql.Type
+	id     sql.ColumnId
 }
 
 var _ sql.FunctionExpression = (*CountDistinct)(nil)
@@ -54,6 +55,18 @@ func (*CountDistinct) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 // IsNullable implements the Expression interface.
 func (a *CountDistinct) IsNullable() bool {
 	return false
+}
+
+// Id implements the Aggregation interface
+func (a *CountDistinct) Id() sql.ColumnId {
+	return a.id
+}
+
+// WithId implements the Aggregation interface
+func (a *CountDistinct) WithId(id sql.ColumnId) sql.IdExpression {
+	ret := *a
+	ret.id = id
+	return &ret
 }
 
 // Eval implements the Expression interface.

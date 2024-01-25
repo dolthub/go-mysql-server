@@ -902,10 +902,12 @@ From xy;`,
 			" │           ├─ columns: [uv.COUNT(1):1!null as COUNT(1)]\n" +
 			" │           └─ table_count(uv) as COUNT(1)\n" +
 			" │   as (select count(*) from uv)]\n" +
-			" └─ ProcessTable\n" +
-			"     └─ Table\n" +
-			"         ├─ name: \n" +
-			"         └─ columns: []\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [:0!null]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: \n" +
+			"             └─ columns: []\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [Subquery\n" +
@@ -923,8 +925,10 @@ From xy;`,
 			" │           ├─ columns: [uv.COUNT(1) as COUNT(1)]\n" +
 			" │           └─ table_count(uv) as COUNT(1)\n" +
 			" │   as (select count(*) from uv)]\n" +
-			" └─ Table\n" +
-			"     └─ name: \n" +
+			" └─ Project\n" +
+			"     ├─ columns: []\n" +
+			"     └─ Table\n" +
+			"         └─ name: \n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [Subquery\n" +
@@ -942,8 +946,10 @@ From xy;`,
 			" │           ├─ columns: [uv.COUNT(1) as COUNT(1)]\n" +
 			" │           └─ table_count(uv) as COUNT(1)\n" +
 			" │   as (select count(*) from uv)]\n" +
-			" └─ Table\n" +
-			"     └─ name: \n" +
+			" └─ Project\n" +
+			"     ├─ columns: []\n" +
+			"     └─ Table\n" +
+			"         └─ name: \n" +
 			"",
 	},
 	{
@@ -1764,7 +1770,7 @@ Select * from (
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
 			" ├─ colSet: (7)\n" +
-			" ├─ tableId: 6\n" +
+			" ├─ tableId: 7\n" +
 			" └─ Union distinct\n" +
 			"     ├─ Project\n" +
 			"     │   ├─ columns: [cte.s:0!null as s]\n" +
@@ -1982,7 +1988,7 @@ Select * from (
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
 			" ├─ colSet: (7)\n" +
-			" ├─ tableId: 6\n" +
+			" ├─ tableId: 7\n" +
 			" └─ Union distinct\n" +
 			"     ├─ Project\n" +
 			"     │   ├─ columns: [cte.s:0!null as s]\n" +
@@ -20251,7 +20257,7 @@ inner join pq on true
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
 			" ├─ colSet: (4)\n" +
-			" ├─ tableId: 3\n" +
+			" ├─ tableId: 4\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [1 (tinyint)]\n" +
 			"     └─ SemiJoin\n" +
@@ -20270,7 +20276,7 @@ inner join pq on true
 			"                 ├─ isLateral: false\n" +
 			"                 ├─ cacheable: true\n" +
 			"                 ├─ colSet: (1)\n" +
-			"                 ├─ tableId: 1\n" +
+			"                 ├─ tableId: 2\n" +
 			"                 └─ Union distinct\n" +
 			"                     ├─ Project\n" +
 			"                     │   ├─ columns: [1 (tinyint)]\n" +
@@ -20408,7 +20414,7 @@ inner join pq on true
 			" │   ├─ isLateral: false\n" +
 			" │   ├─ cacheable: true\n" +
 			" │   ├─ colSet: (1)\n" +
-			" │   ├─ tableId: 1\n" +
+			" │   ├─ tableId: 2\n" +
 			" │   └─ Union distinct\n" +
 			" │       ├─ Project\n" +
 			" │       │   ├─ columns: [1 (tinyint)]\n" +
@@ -20430,7 +20436,7 @@ inner join pq on true
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     ├─ colSet: (1)\n" +
-			"     ├─ tableId: 1\n" +
+			"     ├─ tableId: 2\n" +
 			"     └─ Union distinct\n" +
 			"         ├─ Project\n" +
 			"         │   ├─ columns: [1 (tinyint)]\n" +
@@ -20523,7 +20529,7 @@ inner join pq on true
 			" │       ├─ isLateral: false\n" +
 			" │       ├─ cacheable: true\n" +
 			" │       ├─ colSet: (1)\n" +
-			" │       ├─ tableId: 1\n" +
+			" │       ├─ tableId: 2\n" +
 			" │       └─ Union distinct\n" +
 			" │           ├─ Project\n" +
 			" │           │   ├─ columns: [1 (tinyint)]\n" +
@@ -20549,7 +20555,7 @@ inner join pq on true
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         ├─ colSet: (1)\n" +
-			"         ├─ tableId: 1\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Union distinct\n" +
 			"             ├─ Project\n" +
 			"             │   ├─ columns: [1 (tinyint)]\n" +
@@ -20644,7 +20650,7 @@ inner join pq on true
 			" │       ├─ isLateral: false\n" +
 			" │       ├─ cacheable: true\n" +
 			" │       ├─ colSet: (1)\n" +
-			" │       ├─ tableId: 1\n" +
+			" │       ├─ tableId: 2\n" +
 			" │       └─ Union distinct\n" +
 			" │           ├─ Project\n" +
 			" │           │   ├─ columns: [1 (tinyint)]\n" +
@@ -20670,7 +20676,7 @@ inner join pq on true
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         ├─ colSet: (1)\n" +
-			"         ├─ tableId: 1\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Union distinct\n" +
 			"             ├─ Project\n" +
 			"             │   ├─ columns: [1 (tinyint)]\n" +
@@ -20765,7 +20771,7 @@ inner join pq on true
 			" │   ├─ isLateral: false\n" +
 			" │   ├─ cacheable: true\n" +
 			" │   ├─ colSet: (1)\n" +
-			" │   ├─ tableId: 1\n" +
+			" │   ├─ tableId: 2\n" +
 			" │   └─ Union distinct\n" +
 			" │       ├─ Project\n" +
 			" │       │   ├─ columns: [1 (tinyint)]\n" +
@@ -20790,7 +20796,7 @@ inner join pq on true
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         ├─ colSet: (1)\n" +
-			"         ├─ tableId: 1\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Union distinct\n" +
 			"             ├─ Project\n" +
 			"             │   ├─ columns: [1 (tinyint)]\n" +
@@ -20884,7 +20890,7 @@ inner join pq on true
 			" │   ├─ isLateral: false\n" +
 			" │   ├─ cacheable: true\n" +
 			" │   ├─ colSet: (1)\n" +
-			" │   ├─ tableId: 1\n" +
+			" │   ├─ tableId: 2\n" +
 			" │   └─ Union distinct\n" +
 			" │       ├─ Project\n" +
 			" │       │   ├─ columns: [1 (tinyint)]\n" +
@@ -20906,7 +20912,7 @@ inner join pq on true
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     ├─ colSet: (1)\n" +
-			"     ├─ tableId: 1\n" +
+			"     ├─ tableId: 2\n" +
 			"     └─ Union distinct\n" +
 			"         ├─ Project\n" +
 			"         │   ├─ columns: [1 (tinyint)]\n" +
@@ -21237,7 +21243,7 @@ inner join pq on true
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
 			" ├─ colSet: (4)\n" +
-			" ├─ tableId: 3\n" +
+			" ├─ tableId: 4\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [1 (tinyint)]\n" +
 			"     └─ SemiJoin\n" +
@@ -21256,7 +21262,7 @@ inner join pq on true
 			"                 ├─ isLateral: false\n" +
 			"                 ├─ cacheable: true\n" +
 			"                 ├─ colSet: (1)\n" +
-			"                 ├─ tableId: 1\n" +
+			"                 ├─ tableId: 2\n" +
 			"                 └─ Union distinct\n" +
 			"                     ├─ Project\n" +
 			"                     │   ├─ columns: [1 (tinyint)]\n" +
@@ -21344,7 +21350,7 @@ inner join pq on true
 			" │       ├─ isLateral: false\n" +
 			" │       ├─ cacheable: true\n" +
 			" │       ├─ colSet: (4)\n" +
-			" │       ├─ tableId: 1\n" +
+			" │       ├─ tableId: 2\n" +
 			" │       └─ Union distinct\n" +
 			" │           ├─ Project\n" +
 			" │           │   ├─ columns: [2 (tinyint)]\n" +
@@ -21434,7 +21440,7 @@ inner join pq on true
 			" │       ├─ isLateral: false\n" +
 			" │       ├─ cacheable: true\n" +
 			" │       ├─ colSet: (4)\n" +
-			" │       ├─ tableId: 1\n" +
+			" │       ├─ tableId: 2\n" +
 			" │       └─ Union distinct\n" +
 			" │           ├─ Project\n" +
 			" │           │   ├─ columns: [2 (tinyint)]\n" +
@@ -21521,7 +21527,7 @@ inner join pq on true
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         ├─ colSet: (6)\n" +
-			"         ├─ tableId: 2\n" +
+			"         ├─ tableId: 5\n" +
 			"         └─ RecursiveCTE\n" +
 			"             └─ Union distinct\n" +
 			"                 ├─ Union distinct\n" +
@@ -21546,7 +21552,7 @@ inner join pq on true
 			"                 │       ├─ isLateral: false\n" +
 			"                 │       ├─ cacheable: true\n" +
 			"                 │       ├─ colSet: (5)\n" +
-			"                 │       ├─ tableId: 1\n" +
+			"                 │       ├─ tableId: 3\n" +
 			"                 │       └─ Union distinct\n" +
 			"                 │           ├─ Project\n" +
 			"                 │           │   ├─ columns: [2 (tinyint)]\n" +
@@ -21953,7 +21959,7 @@ inner join pq on true
 			" │   │       │   ├─ isLateral: false\n" +
 			" │   │       │   ├─ cacheable: true\n" +
 			" │   │       │   ├─ colSet: (9)\n" +
-			" │   │       │   ├─ tableId: 6\n" +
+			" │   │       │   ├─ tableId: 9\n" +
 			" │   │       │   └─ Union distinct\n" +
 			" │   │       │       ├─ Union distinct\n" +
 			" │   │       │       │   ├─ Project\n" +
@@ -21986,7 +21992,7 @@ inner join pq on true
 			" │   │               ├─ isLateral: false\n" +
 			" │   │               ├─ cacheable: true\n" +
 			" │   │               ├─ colSet: (8)\n" +
-			" │   │               ├─ tableId: 5\n" +
+			" │   │               ├─ tableId: 8\n" +
 			" │   │               └─ Union distinct\n" +
 			" │   │                   ├─ Union distinct\n" +
 			" │   │                   │   ├─ Project\n" +
@@ -22016,7 +22022,7 @@ inner join pq on true
 			" │       ├─ isLateral: false\n" +
 			" │       ├─ cacheable: true\n" +
 			" │       ├─ colSet: (7)\n" +
-			" │       ├─ tableId: 3\n" +
+			" │       ├─ tableId: 6\n" +
 			" │       └─ Union distinct\n" +
 			" │           ├─ Project\n" +
 			" │           │   ├─ columns: [2 (tinyint)]\n" +
@@ -22038,7 +22044,7 @@ inner join pq on true
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     ├─ colSet: (4)\n" +
-			"     ├─ tableId: 1\n" +
+			"     ├─ tableId: 3\n" +
 			"     └─ Union distinct\n" +
 			"         ├─ Union distinct\n" +
 			"         │   ├─ Project\n" +
