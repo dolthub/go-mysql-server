@@ -524,36 +524,39 @@ SELECT SUM(x) FROM xy WHERE x IN (
 					{"not found", 4, nil},
 				},
 			},
-			//{
-			//	Query: `SELECT
-			//"testing" AS s,
-			//(SELECT max(i)
-			// FROM (SELECT * FROM mytable) mytable
-			// RIGHT JOIN
-			//	((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
-			//	 UNION ALL
-			//	 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
-			//	ON i2 = i) AS rj
-			//FROM DUAL`,
-			//	Expected: []sql.Row{
-			//		{"testing", 3},
-			//	},
-			//},
-			//{
-			//	Query: `SELECT
-			//"testing" AS s,
-			//(SELECT max(i2)
-			// FROM (SELECT * FROM mytable) mytable
-			// RIGHT JOIN
-			//	((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
-			//	 UNION ALL
-			//	 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
-			//	ON i2 = i) AS rj
-			//FROM DUAL`,
-			//	Expected: []sql.Row{
-			//		{"testing", 4},
-			//	},
-			//},
+			// re: https://github.com/dolthub/go-mysql-server/pull/2292
+			{
+				Query: `SELECT
+			"testing" AS s,
+			(SELECT max(i)
+			FROM (SELECT * FROM mytable) mytable
+			RIGHT JOIN
+				((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
+				 UNION ALL
+				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
+				ON i2 = i) AS rj
+			FROM DUAL`,
+				Expected: []sql.Row{
+					{"testing", 3},
+				},
+				Skip: true,
+			},
+			{
+				Query: `SELECT
+			"testing" AS s,
+			(SELECT max(i2)
+			FROM (SELECT * FROM mytable) mytable
+			RIGHT JOIN
+				((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
+				 UNION ALL
+				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
+				ON i2 = i) AS rj
+			FROM DUAL`,
+				Expected: []sql.Row{
+					{"testing", 4},
+				},
+				Skip: true,
+			},
 			{
 				Query: "SELECT substring(mytable.s, 1, 5) AS s FROM mytable INNER JOIN othertable ON (substring(mytable.s, 1, 5) = SUBSTRING(othertable.s2, 1, 5)) GROUP BY 1",
 				Expected: []sql.Row{
