@@ -154,6 +154,187 @@ var JoinStatTests = []struct {
 			},
 		},
 	},
+	{
+		name: "partial stats don't error",
+		setup: []string{
+			"create table xy (x int primary key, y int, key(y))",
+			"insert into xy select col0, col1 from normal_dist(1, 10, 0,10)",
+			"create table uv (u int primary key, v  int, key(v))",
+			"insert into uv select col0, col1 from normal_dist(1, 20, 0,10)",
+			"analyze table xy",
+		},
+		tests: []JoinPlanTest{
+			{
+				q: "select * from uv join xy on y = v",
+				// we don't care what the order is, just don't error in join planning
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
+			},
+		},
+	},
+	{
+		name: "varchar column doesn't error",
+		setup: []string{
+			"create table xy (x varchar(10) primary key, y int)",
+			"insert into xy select concat('text', col0), col1 from normal_dist(1, 10, 0,10)",
+			"create table uv (u varchar(10) primary key, v  int)",
+			"insert into uv select concat('text', col0), col1 from normal_dist(1, 20, 0,10)",
+			"analyze table xy, uv",
+		},
+		tests: []JoinPlanTest{
+			{
+				q: "select * from uv join xy on u = x",
+				// we don't care what the order is, just don't error in join planning
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
+			},
+		},
+	},
+	{
+		name: "varchar column doesn't prevent valid prefix",
+		setup: []string{
+			"create table xy (x varchar(10) primary key, y int, key (y,x))",
+			"insert into xy select concat('text', col0), col1 from normal_dist(1, 10, 0,10)",
+			"create table uv (u varchar(10) primary key, v  int, key (v,u))",
+			"insert into uv select concat('text', col0), col1 from normal_dist(1, 20, 0,10)",
+			"analyze table xy, uv",
+		},
+		tests: []JoinPlanTest{
+			{
+				q: "select * from uv join xy on y = v",
+				// we don't care what the order is, just don't error in join planning
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
+			},
+			{
+				q: "select * from uv join xy on x = u and y = v",
+				// we don't care what the order is, just don't error in join planning
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
+			},
+			{
+				q: "select * from uv join xy on y = v where x in ('text1', 'text2')",
+				// we don't care what the order is, just don't error in join planning
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
+			},
+			{
+				q: "select * from uv join xy on y = v where x > 'text2'",
+				// we don't care what the order is, just don't error in join planning
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
+			},
+		},
+	},
+	{
+		name: "index ordinals not in order",
+		setup: []string{
+			"create table xy (x int primary key, y int, key (y,x))",
+			"insert into xy select col0, col1 from normal_dist(1, 10, 0,10)",
+			"create table uv (u int primary key, v  int, w int, key (v,w,u))",
+			"insert into uv select col0, col1, col2 from normal_dist(2, 20, 0,10)",
+			"analyze table xy, uv",
+		},
+		tests: []JoinPlanTest{
+			{
+				q: "select * from uv join xy on y = v and y = w and y = u",
+				// we don't care what the order is, just don't error in join planning
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
+			},
+		},
+	},
+	{
+		name: "absurdly long index",
+		setup: []string{
+			"create table xy (x int primary key, y int, key (y,x))",
+			"insert into xy select col0, col1 from normal_dist(1, 10, 0,10)",
+			"create table uv (a int primary key, b  int, c int, d int, e int, f int, g int, h int, i int, j int, key (a,b,c,d,e,f,g,h,i,j))",
+			"insert into uv select * from normal_dist(9, 20, 0,10)",
+			"analyze table xy, uv",
+		},
+		tests: []JoinPlanTest{
+			{
+				q: "select * from uv join xy on y = a and y = b and y = c and y = d and y = e and y = f and y = g and y = h and y = i and y = j",
+				// we don't care what the order is, just don't error in join planning
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
+			},
+		},
+	},
+	{
+		name: "int type mismatch doesn't error",
+		setup: []string{
+			"create table xy (x int primary key, y int, key (y,x))",
+			"insert into xy select col0, col1 from normal_dist(1, 10, 0,10)",
+			"create table uv (u double primary key, v  float, w decimal, key (v,u), key(w))",
+			"insert into uv select col0, col1, col2 from normal_dist(2, 20, 0,10)",
+			"analyze table xy, uv",
+		},
+		tests: []JoinPlanTest{
+			{
+				q: "select * from uv join xy on y = v",
+				// we don't care what the order is, just don't error in join planning
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
+			},
+			{
+				q: "select * from uv join xy on y = u",
+				// we don't care what the order is, just don't error in join planning
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
+			},
+			{
+				q: "select * from uv join xy on y = w",
+				// we don't care what the order is, just don't error in join planning
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
+			},
+		},
+	},
+	{
+		name: "float type mismatch doesn't error",
+		setup: []string{
+			"create table xy (x double primary key, y double, key (y,x))",
+			"insert into xy select col0, col1 from normal_dist(1, 10, 0,10)",
+			"create table uv (u double primary key, v  double, w decimal, key (v,u), key(w))",
+			"insert into uv select col0, col1, col2 from normal_dist(2, 20, 0,10)",
+			"analyze table xy, uv",
+		},
+		tests: []JoinPlanTest{
+			{
+				q: "select * from uv join xy on y = v",
+				// we don't care what the order is, just don't error in join planning
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
+			},
+			{
+				q: "select * from uv join xy on y = u",
+				// we don't care what the order is, just don't error in join planning
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
+			},
+			{
+				q: "select * from uv join xy on y = w",
+				// we don't care what the order is, just don't error in join planning
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
+			},
+		},
+	},
+	{
+		name: "decimal type mismatch doesn't error",
+		setup: []string{
+			"create table xy (x decimal primary key, y decimal, key (y,x))",
+			"insert into xy select col0, col1 from normal_dist(1, 10, 0,10)",
+			"create table uv (u double primary key, v  double, w decimal, key (v,u), key(w))",
+			"insert into uv select col0, col1, col2 from normal_dist(2, 20, 0,10)",
+			"analyze table xy, uv",
+		},
+		tests: []JoinPlanTest{
+			{
+				q: "select * from uv join xy on y = v",
+				// we don't care what the order is, just don't error in join planning
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
+			},
+			{
+				q: "select * from uv join xy on y = u",
+				// we don't care what the order is, just don't error in join planning
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
+			},
+			{
+				q: "select * from uv join xy on y = w",
+				// we don't care what the order is, just don't error in join planning
+				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
+			},
+		},
+	},
 }
 
 func NewTestProvider(dbProvider *sql.MutableDatabaseProvider, tf ...sql.TableFunction) *TestProvider {

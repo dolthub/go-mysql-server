@@ -115,6 +115,10 @@ func (q StatQualifier) String() string {
 	return fmt.Sprintf("%s.%s", q.Database, q.Tab)
 }
 
+func (q StatQualifier) Empty() bool {
+	return q.Idx == "" || q.Tab == "" || q.Database == ""
+}
+
 func (q StatQualifier) Db() string {
 	return q.Database
 }
