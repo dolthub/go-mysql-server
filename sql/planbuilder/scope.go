@@ -385,11 +385,7 @@ func (s *scope) aliasCte(alias string) *scope {
 
 	if sq != nil {
 		outScope.node = sq.WithScopeMapping(scopeMapping).WithColumns(colSet).WithId(tabId)
-	} else {
-		// recursive table?
-		//outScope.node = WithColumns(colSet).WithId(tabId)
 	}
-
 	return outScope
 }
 

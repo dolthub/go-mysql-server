@@ -42,13 +42,6 @@ func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 				a.Log("project erased")
 				return project.Child, transform.NewTree, nil
 			}
-			//if p2, ok := project.Child.(*plan.Project); ok {
-			//	if gf, ok := p2.Projections[0].(*expression.GetField); ok && gf.Id() == 0 && project.Schema().CaseSensitiveEquals(p2.Schema()[1:]) {
-			//		// special case where we can't output a dual table column
-			//		var newProj []sql.
-			//		return plan.NewProject(project.Projections, project.Child), transform.NewTree, nil
-			//	}
-			//}
 		}
 
 		return node, transform.SameTree, nil

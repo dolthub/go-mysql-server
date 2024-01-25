@@ -414,7 +414,7 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 		return nn.WithChecks(s.checks), nil
 	default:
 
-		// child scopes don't account for projections
+		// fill in column ids
 		switch n := n.(type) {
 		case *plan.Project:
 			for _, e := range n.Projections {
@@ -441,7 +441,6 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 					break
 				}
 			}
-			// todo table aliases do not implement table node but columns returned need to be limited to the projected set
 			cols.ForEach(func(col sql.ColumnId) {
 				s.ids = append(s.ids, col)
 			})

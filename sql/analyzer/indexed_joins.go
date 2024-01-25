@@ -95,7 +95,6 @@ func inOrderReplanJoin(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sch sql
 		return nil, transform.SameTree, fmt.Errorf("failed to replan join: %w", err)
 	}
 	if isUpdate {
-
 		ret = plan.NewProject(expression.SchemaToGetFields(n.Schema()), ret)
 	}
 	return ret, transform.NewTree, nil

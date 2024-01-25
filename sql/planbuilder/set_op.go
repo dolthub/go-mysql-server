@@ -194,6 +194,8 @@ func (b *Builder) mergeSetOpSchemas(u *plan.SetOp) sql.Node {
 	return ret
 }
 
+// colIdsForRel returns the padded column set returned by a node,
+// with 0's filled in for non-aliasable columns
 func colIdsForRel(n sql.Node) []sql.ColumnId {
 	var ids []sql.ColumnId
 	switch n := n.(type) {
@@ -219,7 +221,6 @@ func colIdsForRel(n sql.Node) []sql.ColumnId {
 				return ids
 			}
 		}
-		// todo table aliases do not implement table node but columns returned need to be limited to the projected set
 		cols.ForEach(func(col sql.ColumnId) {
 			ids = append(ids, col)
 		})

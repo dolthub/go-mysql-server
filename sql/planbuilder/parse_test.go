@@ -183,11 +183,7 @@ Project
 `,
 		},
 		{
-			Query: `
-
-
-
-analyze table xy
+			Query: `analyze table xy
 update histogram on (x, y) using data '{"row_count": 40, "distinct_count": 40, "null_count": 1, "columns": ["x", "y"], "histogram": [{"row_count": 20, "upper_bound": [50.0]}, {"row_count": 20, "upper_bound": [80.0]}]}'
 `,
 			ExpectedPlan: `
@@ -1301,10 +1297,6 @@ Project
 		},
 		{
 			Query: `
-
-
-
-
 select
 			x,
 			x*y,
@@ -1333,12 +1325,7 @@ Project
 `,
 		},
 		{
-			Query: `
-
-
-
-
-select
+			Query: `select
 			x+1 as x,
 			sum(x) OVER(PARTITION BY y ORDER BY x) AS sum
 			from xy
@@ -1376,10 +1363,6 @@ Project
 		},
 		{
 			Query: `
-
-
-
-
 
 			SELECT
 			x,
@@ -1626,10 +1609,6 @@ Project
 		},
 		{
 			Query: `
-
-
-
-
 SELECT x
 			FROM xy
 			WHERE EXISTS (SELECT count(u) AS count_1
@@ -1672,10 +1651,6 @@ Project
 		},
 		{
 			Query: `
-
-
-
-
 WITH RECURSIVE
 			rt (foo) AS (
 			SELECT 1 as foo
@@ -1883,10 +1858,6 @@ Project
 		},
 		{
 			Query: `
-
-
-
-
 SELECT fi, COUNT(*) FROM (
 			SELECT tbl.x AS fi
 			FROM xy tbl
