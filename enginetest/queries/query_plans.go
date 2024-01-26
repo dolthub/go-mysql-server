@@ -25933,4 +25933,21 @@ order by x, y;
 			"     └─ columns: [pk v1 v2]\n" +
 			"",
 	},
+	{
+		Query: `SELECT /*+ LOOKUP_JOIN(xy,mytable) JOIN_ORDER(xy,mytable) */ * FROM xy INNER JOIN mytable ON ((xy.x)=(mytable.s));`,
+		ExpectedPlan: "LookupJoin\n" +
+			" ├─ ProcessTable\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: xy\n" +
+			" │       └─ columns: [x y]\n" +
+			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.s]\n" +
+			"     ├─ keys: [xy.x:0!null]\n" +
+			"     ├─ colSet: (3,4)\n" +
+			"     ├─ tableId: 2\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
+			"",
+	},
 }
