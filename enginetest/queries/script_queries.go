@@ -5241,6 +5241,43 @@ CREATE TABLE tab3 (
 			},
 		},
 	},
+	{
+		Name: "range query convert int to string zero value",
+		SetUpScript: []string{
+			`CREATE TABLE t0(c0 VARCHAR(500));`,
+			`INSERT INTO t0(c0) VALUES ('a');`,
+			`INSERT INTO t0(c0) VALUES ('1');`,
+			`CREATE TABLE t1(c0 INTEGER, PRIMARY KEY(c0));`,
+			`INSERT INTO t1(c0) VALUES (0);`,
+			`INSERT INTO t1(c0) VALUES (1);`,
+			`INSERT INTO t1(c0) VALUES (2);`,
+
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT /*+ LOOKUP_JOIN(t0,t1) JOIN_ORDER(t0,t1) */ * FROM t1 INNER  JOIN t0 ON ((t0.c0)=(t1.c0));",
+				Expected: []sql.Row{
+					{0, "a"},
+					{1, "1"},
+				},
+			},
+			{
+				Query:    "INSERT INTO t0(c0) VALUES ('2abc');",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Skip: true,
+				Query:    "SELECT /*+ LOOKUP_JOIN(t0,t1) JOIN_ORDER(t0,t1) */ * FROM t1 INNER  JOIN t0 ON ((t0.c0)=(t1.c0));",
+				Expected: []sql.Row{
+					{0, "a"},
+					{1, "1"},
+					{2, "2abc"},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
