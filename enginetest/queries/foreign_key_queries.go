@@ -346,6 +346,18 @@ var ForeignKeyTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "DROP SELF REFERENCED TABLE",
+		SetUpScript: []string{
+			"create table t ( i int primary key, j int, index(j), foreign key (j) references t(i));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "DROP TABLE t;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
+	{
 		Name: "Indexes used by foreign keys can't be dropped",
 		SetUpScript: []string{
 			"ALTER TABLE child ADD INDEX v1 (v1);",
