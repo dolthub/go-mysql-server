@@ -5251,25 +5251,24 @@ CREATE TABLE tab3 (
 			`INSERT INTO t1(c0) VALUES (0);`,
 			`INSERT INTO t1(c0) VALUES (1);`,
 			`INSERT INTO t1(c0) VALUES (2);`,
-
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "SELECT /*+ LOOKUP_JOIN(t0,t1) JOIN_ORDER(t0,t1) */ * FROM t1 INNER  JOIN t0 ON ((t0.c0)=(t1.c0));",
+				Query: "SELECT /*+ LOOKUP_JOIN(t0,t1) JOIN_ORDER(t0,t1) */ * FROM t1 INNER  JOIN t0 ON ((t0.c0)=(t1.c0));",
 				Expected: []sql.Row{
 					{0, "a"},
 					{1, "1"},
 				},
 			},
 			{
-				Query:    "INSERT INTO t0(c0) VALUES ('2abc');",
+				Query: "INSERT INTO t0(c0) VALUES ('2abc');",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 1}},
 				},
 			},
 			{
-				Skip: true,
-				Query:    "SELECT /*+ LOOKUP_JOIN(t0,t1) JOIN_ORDER(t0,t1) */ * FROM t1 INNER  JOIN t0 ON ((t0.c0)=(t1.c0));",
+				Skip:  true,
+				Query: "SELECT /*+ LOOKUP_JOIN(t0,t1) JOIN_ORDER(t0,t1) */ * FROM t1 INNER  JOIN t0 ON ((t0.c0)=(t1.c0));",
 				Expected: []sql.Row{
 					{0, "a"},
 					{1, "1"},
