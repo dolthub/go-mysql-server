@@ -302,8 +302,6 @@ func setArithmeticOps(e sql.Expression, opScale int32) {
 
 	if a, ok := e.(ArithmeticOp); ok {
 		a.SetOpCount(opScale)
-		setDivs(a.Left(), opScale)
-		setDivs(a.Right(), opScale)
 	}
 
 	return
