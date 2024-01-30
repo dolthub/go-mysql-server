@@ -65,6 +65,12 @@ func (c *Coalesce) Type() sql.Type {
 			continue
 		}
 
+		// special case for float64s
+		if t == types.Float64 {
+			typ = types.Float64
+			continue
+		}
+
 		if t != nil && t != types.Null {
 			convType := expression.GetConvertToType(typ, t)
 			switch convType {

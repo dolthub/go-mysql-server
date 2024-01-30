@@ -134,6 +134,15 @@ func TestCoalesce(t *testing.T) {
 			typ:      types.Float64,
 			nullable: false,
 		},
+		{
+			name: "coalesce(float64(2.0))",
+			input: []sql.Expression{
+				expression.NewLiteral(2, types.Float64),
+			},
+			expected: 2,
+			typ:      types.Float64,
+			nullable: false,
+		},
 	}
 
 	for _, tt := range testCases {
