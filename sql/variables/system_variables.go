@@ -2136,7 +2136,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Scope:             sql.SystemVariableScope_Persist,
 		Dynamic:           false,
 		SetVarHintApplies: false,
-		Type:              types.Blob,
+		Type:              types.Text,
 		Default:           uuid.New().String(),
 	},
 	"session_track_gtids": {
