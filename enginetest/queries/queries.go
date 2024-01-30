@@ -8923,7 +8923,7 @@ from typestable`,
 	{
 		Query: "select length(@@server_uuid)",
 		Expected: []sql.Row{
-			{"36"},
+			{36},
 		},
 	},
 }
