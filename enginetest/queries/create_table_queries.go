@@ -23,6 +23,29 @@ import (
 
 var CreateTableQueries = []WriteQueryTest{
 	{
+		WriteQuery:          `create table tableWithComment (pk int) COMMENT 'Table Comments Work!'`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         "SHOW CREATE TABLE tableWithComment",
+		ExpectedSelect:      []sql.Row{{"tableWithComment", "CREATE TABLE `tableWithComment` (\n  `pk` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin COMMENT='Table Comments Work!'"}},
+	},
+	{
+		WriteQuery:          `create table tableWithComment (pk int) COMMENT "~!@ #$ %^ &* ()"`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         "SHOW CREATE TABLE tableWithComment",
+		ExpectedSelect:      []sql.Row{{"tableWithComment", "CREATE TABLE `tableWithComment` (\n  `pk` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin COMMENT='~!@ #$ %^ &* ()'"}},
+	},
+	// TODO: We can't support this comment yet because of how table options are currently parsed in Vitess.
+	//       We need to change vitess to parse the table options into structured data, instead of putting them
+	//       back into a string that has to be reparsed in GMS. Specifically, we lose the information on what
+	//       the original quote character was, so we can't tell if the comment was single or double quoted, which
+	//       means we can't properly escape and reparse the comment.
+	//{
+	//	WriteQuery:          `create table tableWithComment (pk int) COMMENT "'"`,
+	//	ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+	//	SelectQuery:         "SHOW CREATE TABLE tableWithComment",
+	//	ExpectedSelect:      []sql.Row{{"tableWithComment", "CREATE TABLE `tableWithComment` (\n  `pk` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin COMMENT=''''"}},
+	//},
+	{
 		WriteQuery:          `create table floattypedefs (a float(10), b float(10, 2), c double(10, 2))`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
 		SelectQuery:         "SHOW CREATE TABLE floattypedefs",

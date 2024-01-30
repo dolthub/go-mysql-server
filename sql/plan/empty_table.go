@@ -123,6 +123,11 @@ func (e *EmptyTable) Collation() sql.CollationID {
 	return sql.Collation_Default
 }
 
+// Comment implements the sql.Table interface.
+func (e *EmptyTable) Comment() string {
+	return ""
+}
+
 // Partitions implements the sql.UpdatableTable interface.
 func (e *EmptyTable) Partitions(_ *sql.Context) (sql.PartitionIter, error) {
 	return &emptyTablePartitionIter{}, nil

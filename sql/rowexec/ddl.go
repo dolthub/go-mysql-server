@@ -879,6 +879,7 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 		if !ok {
 			return sql.RowsToRowIter(), sql.ErrTemporaryTableNotSupported.New()
 		}
+		// TODO: Add in n.Comment
 		err = creatable.CreateTemporaryTable(ctx, n.Name(), n.CreateSchema, n.Collation)
 	} else {
 		switch creatable := maybePrivDb.(type) {
@@ -907,10 +908,10 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 				if !ok {
 					return sql.RowsToRowIter(), sql.ErrCreateTableNotSupported.New(n.Db.Name())
 				}
-				err = creatable.CreateTable(ctx, n.Name(), n.CreateSchema, n.Collation)
+				err = creatable.CreateTable(ctx, n.Name(), n.CreateSchema, n.Collation, n.Comment)
 			}
 		case sql.TableCreator:
-			err = creatable.CreateTable(ctx, n.Name(), n.CreateSchema, n.Collation)
+			err = creatable.CreateTable(ctx, n.Name(), n.CreateSchema, n.Collation, n.Comment)
 		default:
 			return sql.RowsToRowIter(), sql.ErrCreateTableNotSupported.New(n.Db.Name())
 		}

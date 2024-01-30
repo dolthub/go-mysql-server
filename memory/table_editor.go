@@ -63,6 +63,10 @@ func (t *tableEditor) Collation() sql.CollationID {
 	return t.editedTable.Collation()
 }
 
+func (t *tableEditor) Comment() string {
+	return t.editedTable.Comment()
+}
+
 func (t *tableEditor) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 	return t.editedTable.Partitions(ctx)
 }

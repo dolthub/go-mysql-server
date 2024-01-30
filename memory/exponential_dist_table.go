@@ -122,6 +122,11 @@ func (ExponentialDistTable) Collation() sql.CollationID {
 	return sql.Collation_Default
 }
 
+// Comment implements the sql.Table interface.
+func (s ExponentialDistTable) Comment() string {
+	return ""
+}
+
 func (s ExponentialDistTable) Expressions() []sql.Expression {
 	return []sql.Expression{}
 }

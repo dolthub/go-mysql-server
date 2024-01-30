@@ -83,6 +83,11 @@ func (t Table) Collation() sql.CollationID {
 	return sql.Collation_Default
 }
 
+// Comment implements the interface sql.Table.
+func (t Table) Comment() string {
+	return ""
+}
+
 // Pks implements sql.PrimaryKeyAlterableTable
 func (t Table) Pks() []sql.IndexColumn {
 	createTable, err := t.getCreateTable()

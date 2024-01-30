@@ -27,9 +27,16 @@ var (
 
 	ErrPrimaryKeyOnNullField = errors.NewKind("All parts of PRIMARY KEY must be NOT NULL")
 
+	// TODO: WHy do we do this regex matching? Change this comment and explain the TODO
+	//       Seems like this would be cleaner if we split the options into a slice, instead of one string, and maybe even a new TableOption struct type?
+	//       Also... why is this in errors.go ?
 	tableCharsetOptionRegex = regexp.MustCompile(`(?i)(DEFAULT)?\s+CHARACTER\s+SET((\s*=?\s*)|\s+)([A-Za-z0-9_]+)`)
 
 	tableCollationOptionRegex = regexp.MustCompile(`(?i)(DEFAULT)?\s+COLLATE((\s*=?\s*)|\s+)([A-Za-z0-9_]+)`)
+
+	// TODO: Need to support double quotes, too...
+	//       Maybe this would be easier in vitess to just parse them there?
+	tableCommentOptionRegex = regexp.MustCompile(`(?i)\s+COMMENT((\s*=?\s*)|\s+)('([^']+)')`)
 
 	// ErrUnionSchemasDifferentLength is returned when the two sides of a
 	// UNION do not have the same number of columns in their schemas.

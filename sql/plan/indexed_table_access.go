@@ -214,6 +214,10 @@ func (i *IndexedTableAccess) Collation() sql.CollationID {
 	return i.TableNode.Collation()
 }
 
+func (i *IndexedTableAccess) Comment() string {
+	return i.TableNode.Comment()
+}
+
 func (i *IndexedTableAccess) Children() []sql.Node {
 	return nil
 }

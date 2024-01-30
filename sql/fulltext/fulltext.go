@@ -609,7 +609,7 @@ func CreateFulltextIndexes(ctx *sql.Context, database Database, parent sql.Table
 			if err != nil {
 				return err
 			}
-			err = database.CreateTable(ctx, tableNames.Config, sql.NewPrimaryKeySchema(configSch), sql.Collation_Default)
+			err = database.CreateTable(ctx, tableNames.Config, sql.NewPrimaryKeySchema(configSch), sql.Collation_Default, "")
 			if err != nil {
 				return err
 			}
@@ -620,7 +620,7 @@ func CreateFulltextIndexes(ctx *sql.Context, database Database, parent sql.Table
 		if err != nil {
 			return err
 		}
-		err = database.CreateTable(ctx, tableNames.Position, sql.NewPrimaryKeySchema(positionSch), sql.Collation_Default)
+		err = database.CreateTable(ctx, tableNames.Position, sql.NewPrimaryKeySchema(positionSch), sql.Collation_Default, "")
 		if err != nil {
 			return err
 		}
@@ -628,7 +628,7 @@ func CreateFulltextIndexes(ctx *sql.Context, database Database, parent sql.Table
 		if err != nil {
 			return err
 		}
-		err = database.CreateTable(ctx, tableNames.DocCount, sql.NewPrimaryKeySchema(docCountSch), sql.Collation_Default)
+		err = database.CreateTable(ctx, tableNames.DocCount, sql.NewPrimaryKeySchema(docCountSch), sql.Collation_Default, "")
 		if err != nil {
 			return err
 		}
@@ -636,7 +636,7 @@ func CreateFulltextIndexes(ctx *sql.Context, database Database, parent sql.Table
 		if err != nil {
 			return err
 		}
-		err = database.CreateTable(ctx, tableNames.GlobalCount, sql.NewPrimaryKeySchema(globalCountSch), sql.Collation_Default)
+		err = database.CreateTable(ctx, tableNames.GlobalCount, sql.NewPrimaryKeySchema(globalCountSch), sql.Collation_Default, "")
 		if err != nil {
 			return err
 		}
@@ -644,7 +644,7 @@ func CreateFulltextIndexes(ctx *sql.Context, database Database, parent sql.Table
 		if err != nil {
 			return err
 		}
-		err = database.CreateTable(ctx, tableNames.RowCount, sql.NewPrimaryKeySchema(rowCountSch), sql.Collation_Default)
+		err = database.CreateTable(ctx, tableNames.RowCount, sql.NewPrimaryKeySchema(rowCountSch), sql.Collation_Default, "")
 		if err != nil {
 			return err
 		}

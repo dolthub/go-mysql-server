@@ -26,13 +26,22 @@ import (
 
 // GenerateCreateTableStatement returns 'CREATE TABLE' statement with given table names
 // and column definition statements in order and the collation and character set names for the table
-func GenerateCreateTableStatement(tblName string, colStmts []string, tblCharsetName, tblCollName string) string {
+func GenerateCreateTableStatement(tblName string, colStmts []string, tblCharsetName, tblCollName string, comment string) string {
+	commentString := ""
+	if comment != "" {
+		// Escape any single quotes in the comment
+		// TODO: This isn't actually needed, because of how we currently parse table options in vitess
+		comment = strings.ReplaceAll(comment, "'", "''")
+		commentString = fmt.Sprintf(" COMMENT='%s'", comment)
+	}
+
 	return fmt.Sprintf(
-		"CREATE TABLE %s (\n%s\n) ENGINE=InnoDB DEFAULT CHARSET=%s COLLATE=%s",
+		"CREATE TABLE %s (\n%s\n) ENGINE=InnoDB DEFAULT CHARSET=%s COLLATE=%s%s",
 		QuoteIdentifier(tblName),
 		strings.Join(colStmts, ",\n"),
 		tblCharsetName,
 		tblCollName,
+		commentString,
 	)
 }
 

@@ -185,6 +185,10 @@ func (t *dummyTable) Schema() sql.Schema { return t.schema.Schema }
 
 func (t *dummyTable) Collation() sql.CollationID { return sql.Collation_Default }
 
+func (t *dummyTable) Comment() string {
+	return ""
+}
+
 func (t *dummyTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 	panic("not implemented")
 }

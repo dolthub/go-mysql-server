@@ -195,6 +195,10 @@ func (partitionable) Collation() sql.CollationID {
 	return sql.Collation_Default
 }
 
+func (p *partitionable) Comment() string {
+	return ""
+}
+
 func (partitionable) Name() string { return "partitionable" }
 
 type Partition string

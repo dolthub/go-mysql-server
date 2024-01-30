@@ -115,6 +115,11 @@ func (IntSequenceTable) Collation() sql.CollationID {
 	return sql.Collation_Default
 }
 
+// Comment implements the sql.Table interface.
+func (s IntSequenceTable) Comment() string {
+	return ""
+}
+
 func (s IntSequenceTable) Expressions() []sql.Expression {
 	return []sql.Expression{}
 }

@@ -26,6 +26,8 @@ type Table interface {
 	Schema() Schema
 	// Collation returns the table's collation.
 	Collation() CollationID
+	// Comment returns the table's optional comment.
+	Comment() string
 	// Partitions returns the table's partitions in an iterator.
 	Partitions(*Context) (PartitionIter, error)
 	// PartitionRows returns the rows in the given partition, which was returned by Partitions.
