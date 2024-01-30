@@ -553,7 +553,6 @@ func TypesEqual(a, b sql.Type) bool {
 	}
 }
 
-
 func BiggerType(a, b sql.Type) sql.Type {
 	if a == nil && b == nil {
 		return nil
