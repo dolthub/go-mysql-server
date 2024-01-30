@@ -87,6 +87,7 @@ type Alias struct {
 }
 
 var _ sql.Expression = (*Alias)(nil)
+var _ sql.IdExpression = (*Alias)(nil)
 var _ sql.CollationCoercible = (*Alias)(nil)
 
 // NewAlias returns a new Alias node.

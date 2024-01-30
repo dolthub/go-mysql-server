@@ -21018,7 +21018,7 @@ WHERE
 			"             │                   │       │           │               │                       └─ columns: [dkcaj tw55n]\n" +
 			"             │                   │       │           │               │   END]\n" +
 			"             │                   │       │           │               └─ Project\n" +
-			"             │                   │       │           │                   ├─ columns: [:39!null]\n" +
+			"             │                   │       │           │                   ├─ columns: [dual.:39!null]\n" +
 			"             │                   │       │           │                   └─ Table\n" +
 			"             │                   │       │           │                       ├─ name: \n" +
 			"             │                   │       │           │                       ├─ columns: []\n" +
@@ -21126,7 +21126,7 @@ WHERE
 			"             │                   │           │           │               │                       └─ columns: [dkcaj tw55n]\n" +
 			"             │                   │           │           │               │   END]\n" +
 			"             │                   │           │           │               └─ Project\n" +
-			"             │                   │           │           │                   ├─ columns: [:27!null]\n" +
+			"             │                   │           │           │                   ├─ columns: [dual.:27!null]\n" +
 			"             │                   │           │           │                   └─ Table\n" +
 			"             │                   │           │           │                       ├─ name: \n" +
 			"             │                   │           │           │                       ├─ columns: []\n" +

@@ -61,6 +61,9 @@ type scope struct {
 	proc  *procCtx
 }
 
+// resolveColumn matches a variable use to a column definition with a unique
+// expression id. |chooseFirst| is indicated for accepting ambiguous having and
+// group by columns.
 func (s *scope) resolveColumn(db, table, col string, checkParent, chooseFirst bool) (scopeColumn, bool) {
 	// procedure params take precedence
 	if table == "" && checkParent && s.procActive() {

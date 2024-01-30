@@ -416,8 +416,8 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 
 		// fill in column ids
 		switch n := n.(type) {
-		case *plan.Project:
-			for _, e := range n.Projections {
+		case sql.Projector:
+			for _, e := range n.ProjectedExprs() {
 				if ide, ok := e.(sql.IdExpression); ok {
 					s.ids = append(s.ids, ide.Id())
 				} else {
@@ -445,18 +445,6 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 				s.ids = append(s.ids, col)
 			})
 
-		case *plan.Window:
-			for _, e := range n.SelectExprs {
-				if ide, ok := e.(sql.IdExpression); ok {
-					s.ids = append(s.ids, ide.Id())
-				}
-			}
-		case *plan.GroupBy:
-			for _, e := range n.SelectedExprs {
-				if ide, ok := e.(sql.IdExpression); ok {
-					s.ids = append(s.ids, ide.Id())
-				}
-			}
 		case *plan.TableCountLookup:
 			s.ids = append(s.ids, n.Id())
 		case *plan.JoinNode:

@@ -211,6 +211,7 @@ func SchemaToGetFields(s sql.Schema) []sql.Expression {
 	ret := make([]sql.Expression, len(s))
 
 	for i, col := range s {
+		// 0 id represents the dual table column
 		ret[i] = NewGetFieldWithTable(i+1, 0, col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
 	}
 

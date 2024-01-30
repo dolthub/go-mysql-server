@@ -903,7 +903,7 @@ From xy;`,
 			" │           └─ table_count(uv) as COUNT(1)\n" +
 			" │   as (select count(*) from uv)]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [:0!null]\n" +
+			"     ├─ columns: [dual.:0!null]\n" +
 			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: \n" +
@@ -926,7 +926,7 @@ From xy;`,
 			" │           └─ table_count(uv) as COUNT(1)\n" +
 			" │   as (select count(*) from uv)]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: []\n" +
+			"     ├─ columns: [dual.]\n" +
 			"     └─ Table\n" +
 			"         └─ name: \n" +
 			"",
@@ -947,7 +947,7 @@ From xy;`,
 			" │           └─ table_count(uv) as COUNT(1)\n" +
 			" │   as (select count(*) from uv)]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: []\n" +
+			"     ├─ columns: [dual.]\n" +
 			"     └─ Table\n" +
 			"         └─ name: \n" +
 			"",
@@ -25972,6 +25972,24 @@ order by x, y;
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +
+			"",
+		ExpectedEstimates: "LookupJoin (estimated cost=3300.000 rows=1000)\n" +
+			" ├─ Table\n" +
+			" │   ├─ name: xy\n" +
+			" │   └─ columns: [x y]\n" +
+			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.s]\n" +
+			"     ├─ columns: [i s]\n" +
+			"     └─ keys: xy.x\n" +
+			"",
+		ExpectedAnalysis: "LookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
+			" ├─ Table\n" +
+			" │   ├─ name: xy\n" +
+			" │   └─ columns: [x y]\n" +
+			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.s]\n" +
+			"     ├─ columns: [i s]\n" +
+			"     └─ keys: xy.x\n" +
 			"",
 	},
 }

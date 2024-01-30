@@ -784,9 +784,7 @@ func (b *Builder) buildInnerProj(fromScope, projScope *scope) *scope {
 	outScope := fromScope
 	var proj []sql.Expression
 	for _, c := range fromScope.cols {
-		//if c.col != "" {
 		proj = append(proj, c.scalarGf())
-		//}
 	}
 
 	// eval aliases in project scope

@@ -35,7 +35,7 @@ func (b *Builder) buildFrom(inScope *scope, te ast.TableExprs) (outScope *scope)
 		outScope.ast = te
 		outScope.node = plan.NewResolvedDualTable()
 		// new unreferenceable column to mirror empty table schema
-		outScope.addColumn(scopeColumn{})
+		outScope.addColumn(scopeColumn{table: "dual"})
 		return
 	}
 

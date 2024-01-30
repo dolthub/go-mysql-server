@@ -1944,7 +1944,7 @@ Project
  │           └─ tableId: 0
  │   as a]
  └─ Project
-     ├─ columns: [:0!null, 1 (tinyint) as a, Subquery
+     ├─ columns: [dual.:0!null, 1 (tinyint) as a, Subquery
      │   ├─ cacheable: false
      │   ├─ alias-string: select a
      │   └─ Project
