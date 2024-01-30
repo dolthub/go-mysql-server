@@ -14,13 +14,24 @@ type TableCountLookup struct {
 	db        sql.Database
 	table     sql.StatisticsTable
 	cnt       uint64
+	id        sql.ColumnId
 }
 
-func NewTableCount(aliasName string, db sql.Database, table sql.StatisticsTable, cnt uint64) sql.Node {
-	return &TableCountLookup{aliasName: aliasName, db: db, table: table, cnt: cnt}
+func NewTableCount(aliasName string, db sql.Database, table sql.StatisticsTable, cnt uint64, id sql.ColumnId) sql.Node {
+	return &TableCountLookup{aliasName: aliasName, db: db, table: table, cnt: cnt, id: id}
 }
 
 var _ sql.Node = (*TableCountLookup)(nil)
+
+func (t *TableCountLookup) Id() sql.ColumnId {
+	return t.id
+}
+
+func (t *TableCountLookup) WithId(id sql.ColumnId) *TableCountLookup {
+	ret := *t
+	ret.id = t.id
+	return &ret
+}
 
 func (t *TableCountLookup) Name() string {
 	return t.aliasName

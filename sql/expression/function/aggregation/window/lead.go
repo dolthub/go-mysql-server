@@ -30,6 +30,7 @@ type Lead struct {
 	expression.NaryExpression
 	offset int
 	pos    int
+	id     sql.ColumnId
 }
 
 var _ sql.FunctionExpression = (*Lead)(nil)
@@ -61,6 +62,18 @@ func NewLead(e ...sql.Expression) (*Lead, error) {
 		return &Lead{NaryExpression: expression.NaryExpression{ChildExpressions: []sql.Expression{e[0], e[2]}}, offset: offset}, nil
 	}
 	return nil, sql.ErrInvalidArgumentNumber.New("LEAD", "1, 2, or 3", len(e))
+}
+
+// Id implements sql.IdExpression
+func (l *Lead) Id() sql.ColumnId {
+	return l.id
+}
+
+// WithId implements sql.IdExpression
+func (l *Lead) WithId(id sql.ColumnId) sql.IdExpression {
+	ret := *l
+	ret.id = id
+	return &ret
 }
 
 // Description implements sql.FunctionExpression

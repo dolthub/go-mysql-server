@@ -25,6 +25,7 @@ import (
 type PercentRank struct {
 	window *sql.WindowDefinition
 	pos    int
+	id     sql.ColumnId
 }
 
 var _ sql.FunctionExpression = (*PercentRank)(nil)
@@ -34,6 +35,18 @@ var _ sql.CollationCoercible = (*PercentRank)(nil)
 
 func NewPercentRank() sql.Expression {
 	return &PercentRank{}
+}
+
+// Id implements sql.IdExpression
+func (p *PercentRank) Id() sql.ColumnId {
+	return p.id
+}
+
+// WithId implements sql.IdExpression
+func (p *PercentRank) WithId(id sql.ColumnId) sql.IdExpression {
+	ret := *p
+	ret.id = id
+	return &ret
 }
 
 // Description implements sql.FunctionExpression

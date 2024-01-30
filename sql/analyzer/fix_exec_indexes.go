@@ -32,6 +32,7 @@ func assignExecIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 	s := &idxScope{}
 	if !scope.IsEmpty() {
 		// triggers
+		s.triggerScope = true
 		s.addSchema(scope.Schema())
 		s = s.push()
 	}
@@ -66,10 +67,12 @@ type idxScope struct {
 	parentScopes  []*idxScope
 	lateralScopes []*idxScope
 	childScopes   []*idxScope
+	ids           []sql.ColumnId
 	columns       []string
 	children      []sql.Node
 	expressions   []sql.Expression
 	checks        sql.CheckConstraints
+	triggerScope  bool
 }
 
 func (s *idxScope) addSchema(sch sql.Schema) {
@@ -84,6 +87,7 @@ func (s *idxScope) addSchema(sch sql.Schema) {
 
 func (s *idxScope) addScope(other *idxScope) {
 	s.columns = append(s.columns, other.columns...)
+	s.ids = append(s.ids, other.ids...)
 }
 
 func (s *idxScope) addLateral(other *idxScope) {
@@ -104,6 +108,20 @@ func unqualify(s string) string {
 		return strings.Split(s, ".")[1]
 	}
 	return s
+}
+
+func (s *idxScope) getIdxId(id sql.ColumnId, name string) (int, bool) {
+	if s.triggerScope || id == 0 {
+		// todo: add expr ids for trigger columns and procedure params
+		return s.getIdx(name)
+	}
+	for i, c := range s.ids {
+		if c == id {
+			return i, true
+		}
+	}
+	// todo: fix places where this is necessary
+	return s.getIdx(name)
 }
 
 func (s *idxScope) getIdx(n string) (int, bool) {
@@ -156,10 +174,16 @@ func (s *idxScope) copy() *idxScope {
 		varsCopy = make([]string, len(s.columns))
 		copy(varsCopy, s.columns)
 	}
+	var idsCopy []sql.ColumnId
+	if len(s.ids) > 0 {
+		idsCopy = make([]sql.ColumnId, len(s.ids))
+		copy(idsCopy, s.ids)
+	}
 	return &idxScope{
 		lateralScopes: lateralCopy,
 		parentScopes:  parentCopy,
 		columns:       varsCopy,
+		ids:           idsCopy,
 	}
 }
 
@@ -389,7 +413,59 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 		nn.OnDupExprs = s.expressions
 		return nn.WithChecks(s.checks), nil
 	default:
-		// child scopes don't account for projections
+
+		// fill in column ids
+		switch n := n.(type) {
+		case sql.Projector:
+			for _, e := range n.ProjectedExprs() {
+				if ide, ok := e.(sql.IdExpression); ok {
+					s.ids = append(s.ids, ide.Id())
+				} else {
+					s.ids = append(s.ids, 0)
+				}
+			}
+		case *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.SubqueryAlias, *plan.RecursiveTable, *plan.RecursiveCte, *plan.SetOp, *plan.ValueDerivedTable, *plan.JSONTable:
+			if rt, ok := n.(*plan.ResolvedTable); ok && plan.IsDualTable(rt.Table) {
+				s.ids = append(s.ids, 0)
+				break
+			}
+			cols := n.(plan.TableIdNode).Columns()
+			if tn, ok := n.(sql.TableNode); ok {
+				if pkt, ok := tn.UnderlyingTable().(sql.PrimaryKeyTable); ok && len(pkt.PrimaryKeySchema().Schema) != len(n.Schema()) {
+					firstcol, _ := cols.Next(1)
+					for _, c := range n.Schema() {
+						ord := pkt.PrimaryKeySchema().IndexOfColName(c.Name)
+						colId := firstcol + sql.ColumnId(ord)
+						s.ids = append(s.ids, colId)
+					}
+					break
+				}
+			}
+			cols.ForEach(func(col sql.ColumnId) {
+				s.ids = append(s.ids, col)
+			})
+
+		case *plan.TableCountLookup:
+			s.ids = append(s.ids, n.Id())
+		case *plan.JoinNode:
+			if n.Op.IsPartial() {
+				s.ids = append(s.ids, s.childScopes[0].ids...)
+			} else {
+				s.ids = append(s.ids, s.childScopes[0].ids...)
+				s.ids = append(s.ids, s.childScopes[1].ids...)
+			}
+		case *plan.ShowStatus:
+			for i := range n.Schema() {
+				s.ids = append(s.ids, sql.ColumnId(i+1))
+			}
+		case *plan.Concat:
+			s.ids = append(s.ids, s.childScopes[0].ids...)
+		default:
+			for _, cs := range s.childScopes {
+				s.ids = append(s.ids, cs.ids...)
+			}
+		}
+
 		s.addSchema(n.Schema())
 		var err error
 		if s.children != nil {
@@ -432,6 +508,7 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 	newScope := &idxScope{}
 	for _, s := range scopes {
+		newScope.triggerScope = newScope.triggerScope || s.triggerScope
 		newScope.addScope(s)
 	}
 	ret, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
@@ -441,7 +518,7 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 			//  queries where the columns being selected are only found in subqueries. Conversely, we actually want to ignore
 			//  this error for the case of DEFAULT in a `plan.Values`, since we analyze the insert source in isolation (we
 			//  don't have the destination schema, and column references in default values are determined in the build phase)
-			idx, _ := newScope.getIdx(e.String())
+			idx, _ := newScope.getIdxId(e.Id(), e.String())
 			if idx >= 0 {
 				return e.WithIndex(idx), transform.NewTree, nil
 			}

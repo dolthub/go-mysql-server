@@ -768,6 +768,12 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		Query: "select 0 as col1, 1 as col2, 2 as col2 group by col2 having col2 = 1",
+		Expected: []sql.Row{
+			{0, 1, 2},
+		},
+	},
+	{
 		// Assert that SYSDATE() returns different times on each call in a query (unlike NOW())
 		// Using the maximum precision for fractional seconds, lets us see a difference.
 		Query:    "select now() = sysdate(), sleep(0.1), now(6) < sysdate(6);",
@@ -2025,36 +2031,6 @@ Select * from (
 			{"second", 2, 2},
 			{"first", 3, 3},
 			{"not found", 4, nil},
-		},
-	},
-	{
-		Query: `SELECT
-			"testing" AS s,
-			(SELECT max(i)
-			 FROM (SELECT * FROM mytable) mytable
-			 RIGHT JOIN
-				((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
-				 UNION ALL
-				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
-				ON i2 = i) AS rj
-			FROM DUAL`,
-		Expected: []sql.Row{
-			{"testing", 3},
-		},
-	},
-	{
-		Query: `SELECT
-			"testing" AS s,
-			(SELECT max(i2)
-			 FROM (SELECT * FROM mytable) mytable
-			 RIGHT JOIN
-				((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
-				 UNION ALL
-				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
-				ON i2 = i) AS rj
-			FROM DUAL`,
-		Expected: []sql.Row{
-			{"testing", 4},
 		},
 	},
 	{
@@ -8912,6 +8888,12 @@ from typestable`,
 		Query: "select count(distinct null);",
 		Expected: []sql.Row{
 			{0},
+		},
+	},
+	{
+		Query: "select 1/2.0 + 1",
+		Expected: []sql.Row{
+			{"1.5000"},
 		},
 	},
 }

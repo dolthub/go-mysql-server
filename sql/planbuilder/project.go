@@ -88,7 +88,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 			outScope.addColumn(scopeColumn{tableId: inScope.tables[e.Table()], table: e.Table(), db: e.Database(), col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable(), id: id})
 		case *expression.Star:
 			tableName := strings.ToLower(e.Table)
-			if tableName == "" && len(inScope.cols) == 0 {
+			if tableName == "" && len(inScope.cols) == 1 && inScope.cols[0].col == "" && inScope.cols[0].table == "dual" {
 				err := sql.ErrNoTablesUsed.New()
 				b.handleErr(err)
 			}
@@ -147,6 +147,9 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 			} else {
 				id := outScope.newColumn(col)
 				col.id = id
+				e = e.WithId(sql.ColumnId(id)).(*expression.Alias)
+				outScope.cols[len(outScope.cols)-1].scalar = e
+				col.scalar = e
 				tempScope.addColumn(col)
 			}
 			exprs = append(exprs, e)

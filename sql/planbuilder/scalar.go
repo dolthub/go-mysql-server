@@ -103,7 +103,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		dbName := strings.ToLower(v.Qualifier.Qualifier.String())
 		tblName := strings.ToLower(v.Qualifier.Name.String())
 		colName := strings.ToLower(v.Name.String())
-		c, ok := inScope.resolveColumn(dbName, tblName, colName, true)
+		c, ok := inScope.resolveColumn(dbName, tblName, colName, true, false)
 		if !ok {
 			sysVar, scope, ok := b.buildSysVar(v, ast.SetScope_None)
 			if ok {
@@ -307,7 +307,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			dbName := strings.ToLower(v.Name.Qualifier.Qualifier.String())
 			tblName := strings.ToLower(v.Name.Qualifier.Name.String())
 			colName := strings.ToLower(v.Name.Name.String())
-			col, ok := inScope.resolveColumn(dbName, tblName, colName, false)
+			col, ok := inScope.resolveColumn(dbName, tblName, colName, false, false)
 			if !ok {
 				err := fmt.Errorf("expected ON DUPLICATE KEY ... VALUES() to reference a column, found: %s", v.Name.String())
 				b.handleErr(err)

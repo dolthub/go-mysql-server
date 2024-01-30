@@ -61,6 +61,7 @@ func (g *AggGen) Generate(defines GenDefs, w io.Writer) {
 		g.genAggStringer(define)
 		g.genAggWithWindow(define)
 		g.genAggWithChildren(define)
+		g.genAggWithId(define)
 		g.genAggNewBuffer(define)
 		g.genAggWindowConstructor(define)
 	}
@@ -138,6 +139,13 @@ func (g *AggGen) genAggWithChildren(define AggDef) {
 	fmt.Fprintf(g.w, "func (a *%s) WithChildren(children ...sql.Expression) (sql.Expression, error) {\n", define.Name)
 	fmt.Fprintf(g.w, "    res, err := a.unaryAggBase.WithChildren(children...)\n")
 	fmt.Fprintf(g.w, "    return &%s{unaryAggBase: *res.(*unaryAggBase)}, err\n", define.Name)
+	fmt.Fprintf(g.w, "}\n\n")
+}
+
+func (g *AggGen) genAggWithId(define AggDef) {
+	fmt.Fprintf(g.w, "func (a *%s) WithId(id sql.ColumnId) sql.IdExpression {\n", define.Name)
+	fmt.Fprintf(g.w, "    res := a.unaryAggBase.WithId(id)\n")
+	fmt.Fprintf(g.w, "    return &%s{unaryAggBase: *res.(*unaryAggBase)}\n", define.Name)
 	fmt.Fprintf(g.w, "}\n\n")
 }
 

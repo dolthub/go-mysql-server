@@ -25,6 +25,7 @@ import (
 type DenseRank struct {
 	window *sql.WindowDefinition
 	pos    int
+	id     sql.ColumnId
 }
 
 var _ sql.FunctionExpression = (*DenseRank)(nil)
@@ -34,6 +35,18 @@ var _ sql.CollationCoercible = (*DenseRank)(nil)
 
 func NewDenseRank() sql.Expression {
 	return &DenseRank{}
+}
+
+// Id implements sql.IdExpression
+func (p *DenseRank) Id() sql.ColumnId {
+	return p.id
+}
+
+// WithId implements sql.IdExpression
+func (p *DenseRank) WithId(id sql.ColumnId) sql.IdExpression {
+	ret := *p
+	ret.id = id
+	return &ret
 }
 
 // Description implements sql.FunctionExpression

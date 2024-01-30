@@ -406,7 +406,7 @@ func (b *Builder) buildFetchCursor(inScope *scope, fetchCursor *ast.FetchCursor)
 	outScope = inScope.push()
 	exprs := make([]sql.Expression, len(fetchCursor.Variables))
 	for i, v := range fetchCursor.Variables {
-		col, ok := inScope.resolveColumn("", "", strings.ToLower(v), true)
+		col, ok := inScope.resolveColumn("", "", strings.ToLower(v), true, false)
 		if !ok {
 			err := sql.ErrColumnNotFound.New(v)
 			b.handleErr(err)
@@ -527,7 +527,7 @@ func (b *Builder) buildSignal(inScope *scope, s *ast.Signal) (outScope *scope) {
 				si.StrValue = val
 			case *ast.ColName:
 				var ref sql.Expression
-				c, ok := inScope.resolveColumn("", "", v.Name.Lowered(), true)
+				c, ok := inScope.resolveColumn("", "", v.Name.Lowered(), true, false)
 				if ok {
 					ref = c.scalarGf()
 				} else {
