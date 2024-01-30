@@ -8920,6 +8920,12 @@ from typestable`,
 			{"1.5000"},
 		},
 	},
+	{
+		Query: "select length(@@server_uuid)",
+		Expected: []sql.Row{
+			{"36"},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
