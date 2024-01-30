@@ -995,6 +995,7 @@ func (b *Builder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (outSco
 		config,
 	)
 	createIndex.Catalog = b.cat
+	outScope.node = createIndex
 	return
 }
 
