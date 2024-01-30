@@ -15,9 +15,9 @@
 package function
 
 import (
-	"github.com/shopspring/decimal"
-"testing"
+	"testing"
 
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -46,7 +46,7 @@ func TestCoalesce(t *testing.T) {
 				expression.NewLiteral(3, types.Int32),
 			},
 			expected: 1,
-			typ: types.Int32,
+			typ:      types.Int32,
 			nullable: false,
 		},
 		{
@@ -57,7 +57,7 @@ func TestCoalesce(t *testing.T) {
 				expression.NewLiteral(3, types.Int32),
 			},
 			expected: 3,
-			typ: types.Int32,
+			typ:      types.Int32,
 			nullable: false,
 		},
 		{
@@ -68,7 +68,7 @@ func TestCoalesce(t *testing.T) {
 				expression.NewLiteral("3", types.LongText),
 			},
 			expected: "3",
-			typ: types.LongText,
+			typ:      types.LongText,
 			nullable: false,
 		},
 		{
@@ -79,7 +79,7 @@ func TestCoalesce(t *testing.T) {
 				expression.NewLiteral(3, types.Int32),
 			},
 			expected: "2",
-			typ: types.LongText,
+			typ:      types.LongText,
 			nullable: false,
 		},
 		{
@@ -90,7 +90,7 @@ func TestCoalesce(t *testing.T) {
 				nil,
 			},
 			expected: nil,
-			typ: types.Null,
+			typ:      types.Null,
 			nullable: true,
 		},
 		{
@@ -99,10 +99,9 @@ func TestCoalesce(t *testing.T) {
 				expression.NewLiteral(1, types.Int32),
 				expression.NewLiteral(decimal.NewFromFloat(2.0), types.MustCreateDecimalType(10, 0)),
 				expression.NewLiteral("3", types.LongText),
-
 			},
 			expected: 1,
-			typ: types.LongText,
+			typ:      types.LongText,
 			nullable: false,
 		},
 		{
@@ -112,7 +111,7 @@ func TestCoalesce(t *testing.T) {
 				expression.NewLiteral(2, types.Uint32),
 			},
 			expected: 1,
-			typ: types.MustCreateDecimalType(20, 0),
+			typ:      types.MustCreateDecimalType(20, 0),
 			nullable: false,
 		},
 		{
@@ -122,7 +121,7 @@ func TestCoalesce(t *testing.T) {
 				expression.NewLiteral(2, types.Uint32),
 			},
 			expected: 1,
-			typ: types.MustCreateDecimalType(20, 0),
+			typ:      types.MustCreateDecimalType(20, 0),
 			nullable: false,
 		},
 		{
@@ -132,7 +131,7 @@ func TestCoalesce(t *testing.T) {
 				expression.NewLiteral(2, types.Float64),
 			},
 			expected: 1,
-			typ: types.Float64,
+			typ:      types.Float64,
 			nullable: false,
 		},
 	}
