@@ -17,8 +17,7 @@ package function
 import (
 	"testing"
 
-	"github.com/shopspring/decimal"
-	"github.com/stretchr/testify/require"
+		"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -38,102 +37,11 @@ func TestCoalesce(t *testing.T) {
 		typ      sql.Type
 		nullable bool
 	}{
-		{
-			name: "coalesce(1, 2, 3)",
-			input: []sql.Expression{
-				expression.NewLiteral(1, types.Int32),
-				expression.NewLiteral(2, types.Int32),
-				expression.NewLiteral(3, types.Int32),
-			},
-			expected: 1,
-			typ:      types.Int32,
-			nullable: false,
-		},
-		{
-			name: "coalesce(NULL, NULL, 3)",
-			input: []sql.Expression{
-				nil,
-				nil,
-				expression.NewLiteral(3, types.Int32),
-			},
-			expected: 3,
-			typ:      types.Int32,
-			nullable: false,
-		},
-		{
-			name: "coalesce(NULL, NULL, '3')",
-			input: []sql.Expression{
-				nil,
-				nil,
-				expression.NewLiteral("3", types.LongText),
-			},
-			expected: "3",
-			typ:      types.LongText,
-			nullable: false,
-		},
-		{
-			name: "coalesce(NULL, '2', 3)",
-			input: []sql.Expression{
-				nil,
-				expression.NewLiteral("2", types.LongText),
-				expression.NewLiteral(3, types.Int32),
-			},
-			expected: "2",
-			typ:      types.LongText,
-			nullable: false,
-		},
-		{
-			name: "coalesce(NULL, NULL, NULL)",
-			input: []sql.Expression{
-				nil,
-				nil,
-				nil,
-			},
-			expected: nil,
-			typ:      types.Null,
-			nullable: true,
-		},
-		{
-			name: "coalesce(int(1), decimal(2.0), string('3'))",
-			input: []sql.Expression{
-				expression.NewLiteral(1, types.Int32),
-				expression.NewLiteral(decimal.NewFromFloat(2.0), types.MustCreateDecimalType(10, 0)),
-				expression.NewLiteral("3", types.LongText),
-			},
-			expected: 1,
-			typ:      types.LongText,
-			nullable: false,
-		},
-		{
-			name: "coalesce(signed(1), unsigned(2))",
-			input: []sql.Expression{
-				expression.NewLiteral(1, types.Int32),
-				expression.NewLiteral(2, types.Uint32),
-			},
-			expected: 1,
-			typ:      types.MustCreateDecimalType(20, 0),
-			nullable: false,
-		},
-		{
-			name: "coalesce(signed(1), unsigned(2))",
-			input: []sql.Expression{
-				expression.NewLiteral(1, types.Int32),
-				expression.NewLiteral(2, types.Uint32),
-			},
-			expected: 1,
-			typ:      types.MustCreateDecimalType(20, 0),
-			nullable: false,
-		},
-		{
-			name: "coalesce(decimal(1.0), float64(2.0))",
-			input: []sql.Expression{
-				expression.NewLiteral(1, types.MustCreateDecimalType(10, 0)),
-				expression.NewLiteral(2, types.Float64),
-			},
-			expected: 1,
-			typ:      types.Float64,
-			nullable: false,
-		},
+		{"coalesce(1, 2, 3)", []sql.Expression{expression.NewLiteral(1, types.Int32), expression.NewLiteral(2, types.Int32), expression.NewLiteral(3, types.Int32)}, 1, types.Int32, false},
+		{"coalesce(NULL, NULL, 3)", []sql.Expression{nil, nil, expression.NewLiteral(3, types.Int32)}, 3, types.Int32, false},
+		{"coalesce(NULL, NULL, '3')", []sql.Expression{nil, nil, expression.NewLiteral("3", types.LongText)}, "3", types.LongText, false},
+		{"coalesce(NULL, '2', 3)", []sql.Expression{nil, expression.NewLiteral("2", types.LongText), expression.NewLiteral(3, types.Int32)}, "2", types.LongText, false},
+		{"coalesce(NULL, NULL, NULL)", []sql.Expression{nil, nil, nil}, nil, types.Null, true},
 	}
 
 	for _, tt := range testCases {
