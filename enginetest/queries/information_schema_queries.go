@@ -990,7 +990,7 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 				Expected: []sql.Row{
 					{"test_table", "pk", nil, "NO"},
 					{"test_table", "col2", "length('he`Llo')", "YES"},
-					{"test_table", "col3", "greatest(pk,2)", "YES"},
+					{"test_table", "col3", "greatest(`pk`,2)", "YES"},
 					{"test_table", "col4", "(5 + 5)", "YES"},
 					{"test_table", "col5", "CURRENT_TIMESTAMP", "YES"},
 					{"test_table", "create_time", "CURRENT_TIMESTAMP(6)", "NO"},

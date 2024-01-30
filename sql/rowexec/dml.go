@@ -184,8 +184,11 @@ func (b *BaseBuilder) buildDropTable(ctx *sql.Context, n *plan.DropTable, row sq
 				if err != nil {
 					return nil, err
 				}
-				if len(parentFks) > 0 {
-					return nil, sql.ErrForeignKeyDropTable.New(fkTable.Name(), parentFks[0].Name)
+				for i, fk := range parentFks {
+					// ignore self referential foreign keys
+					if fk.Table != fk.ParentTable {
+						return nil, sql.ErrForeignKeyDropTable.New(fkTable.Name(), parentFks[i].Name)
+					}
 				}
 			}
 			fks, err := fkTable.GetDeclaredForeignKeys(ctx)

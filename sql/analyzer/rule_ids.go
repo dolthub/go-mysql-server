@@ -139,10 +139,11 @@ const (
 	validateDeleteFromId        // validateDeleteFrom
 
 	// after all
-	cacheSubqueryResultsId        // cacheSubqueryResults
-	cacheSubqueryAliasesInJoinsId // cacheSubqueryAliasesInJoins
-	AutocommitId                  // addAutocommitNode
-	TrackProcessId                // trackProcess
-	parallelizeId                 // parallelize
-	clearWarningsId               // clearWarnings
+	cacheSubqueryResultsId           // cacheSubqueryResults
+	cacheSubqueryAliasesInJoinsId    // cacheSubqueryAliasesInJoins
+	backtickDefaulColumnValueNamesId // backtickDefaulColumnValueNames
+	AutocommitId                     // addAutocommitNode
+	TrackProcessId                   // trackProcess
+	parallelizeId                    // parallelize
+	clearWarningsId                  // clearWarnings
 )

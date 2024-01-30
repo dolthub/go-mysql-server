@@ -2446,7 +2446,7 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{
 					{"t4", "CREATE TABLE `t4` (\n" +
 						"  `a` int DEFAULT (floor(1)),\n" +
-						"  `b` int DEFAULT (coalesce(a,10))\n" +
+						"  `b` int DEFAULT (coalesce(`a`,10))\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
@@ -2886,7 +2886,7 @@ CREATE TABLE tab3 (
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
 					{"pk", "int", "NO", "PRI", "NULL", ""},
-					{"val", "int", "YES", "", "((pk * 2))", "DEFAULT_GENERATED"}, // TODO: MySQL would return (`pk` * 2)
+					{"val", "int", "YES", "", "((`pk` * 2))", "DEFAULT_GENERATED"},
 				},
 			},
 		},
@@ -3646,7 +3646,7 @@ CREATE TABLE tab3 (
 			{
 				Query: "select COLUMN_NAME, DATA_TYPE from INFORMATION_SCHEMA.COLUMNS where TABLE_NAME='c';",
 				Expected: []sql.Row{
-					{"coalesce(NULL,1)", "tinyint"},
+					{"coalesce(NULL,1)", "int"},
 				},
 			},
 		},
@@ -5237,6 +5237,42 @@ CREATE TABLE tab3 (
 				Query: "select count(distinct cast(i as decimal), cast(j as decimal)) from t;",
 				Expected: []sql.Row{
 					{2},
+				},
+			},
+		},
+	},
+	{
+		Name: "range query convert int to string zero value",
+		SetUpScript: []string{
+			`CREATE TABLE t0(c0 VARCHAR(500));`,
+			`INSERT INTO t0(c0) VALUES ('a');`,
+			`INSERT INTO t0(c0) VALUES ('1');`,
+			`CREATE TABLE t1(c0 INTEGER, PRIMARY KEY(c0));`,
+			`INSERT INTO t1(c0) VALUES (0);`,
+			`INSERT INTO t1(c0) VALUES (1);`,
+			`INSERT INTO t1(c0) VALUES (2);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT /*+ LOOKUP_JOIN(t0,t1) JOIN_ORDER(t0,t1) */ * FROM t1 INNER  JOIN t0 ON ((t0.c0)=(t1.c0));",
+				Expected: []sql.Row{
+					{0, "a"},
+					{1, "1"},
+				},
+			},
+			{
+				Query: "INSERT INTO t0(c0) VALUES ('2abc');",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "SELECT /*+ LOOKUP_JOIN(t0,t1) JOIN_ORDER(t0,t1) */ * FROM t1 INNER  JOIN t0 ON ((t0.c0)=(t1.c0));",
+				Expected: []sql.Row{
+					{0, "a"},
+					{1, "1"},
+					{2, "2abc"},
 				},
 			},
 		},
