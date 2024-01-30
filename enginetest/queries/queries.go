@@ -8914,6 +8914,12 @@ from typestable`,
 			{0},
 		},
 	},
+	{
+		Query: "select 1/2.0 + 1",
+		Expected: []sql.Row{
+			{"1.5000"},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
