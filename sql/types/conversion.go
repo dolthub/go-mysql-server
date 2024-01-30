@@ -552,3 +552,76 @@ func TypesEqual(a, b sql.Type) bool {
 		return a == b
 	}
 }
+
+func BiggerType(a, b sql.Type) sql.Type {
+	if a == nil && b == nil {
+		return nil
+	}
+	if a != nil && b == nil {
+		return a
+	}
+	if a == nil && b != nil {
+		return b
+	}
+
+	if a != Null && b == Null {
+		return a
+	}
+	if a == Null && b != Null {
+		return b
+	}
+
+	if TypesEqual(a, b) {
+		return a
+	}
+
+	if IsText(a) || IsText(b) {
+		return LongText
+	}
+
+	if a == Float64 || b == Float64 {
+		return Float64
+	}
+
+	if (IsDecimal(a) && (b == Float32)) || ((a == Float32) && IsDecimal(b)) {
+		return Float64
+	}
+
+	if IsDecimal(a) && IsDecimal(b) {
+		da, db := a.(DecimalType_), b.(DecimalType_)
+		var prec, scale uint8
+		if da.Precision() > db.Precision() {
+			prec = da.Precision()
+		} else {
+			prec = db.Precision()
+		}
+		if da.Scale() > db.Scale() {
+			scale = da.Scale()
+		} else {
+			scale = db.Scale()
+		}
+		return MustCreateDecimalType(prec, scale)
+	}
+
+	if IsDecimal(a) {
+		return a
+	}
+
+	if IsDecimal(b) {
+		return b
+	}
+
+	if (IsSigned(a) && IsUnsigned(b)) || (IsUnsigned(a) && IsSigned(b)) {
+		return MustCreateDecimalType(20, 0)
+	}
+
+	if IsSigned(a) && IsSigned(b) {
+		return Int64
+	}
+
+	if IsUnsigned(a) && IsUnsigned(b) {
+		return Uint64
+	}
+
+	return a
+}

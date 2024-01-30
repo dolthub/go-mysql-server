@@ -53,17 +53,18 @@ func (c *Coalesce) Description() string {
 // Type implements the sql.Expression interface.
 // The return type of Type() is the aggregated type of the argument types.
 func (c *Coalesce) Type() sql.Type {
+	typ := types.Null
 	for _, arg := range c.args {
 		if arg == nil {
 			continue
 		}
 		t := arg.Type()
 		if t != nil && t != types.Null {
-			return t
+			typ = types.BiggerType(typ, t)
 		}
 	}
 
-	return types.Null
+	return typ
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
