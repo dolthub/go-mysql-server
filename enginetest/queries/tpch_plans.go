@@ -1880,12 +1880,12 @@ order by
 			"         │               │   ├─ Table\n" +
 			"         │               │   │   ├─ name: partsupp\n" +
 			"         │               │   │   ├─ columns: [ps_suppkey]\n" +
-			"         │               │   │   ├─ colSet: (20-24)\n" +
+			"         │               │   │   ├─ colSet: (19-23)\n" +
 			"         │               │   │   └─ tableId: 4\n" +
 			"         │               │   └─ IndexedTableAccess(supplier)\n" +
 			"         │               │       ├─ index: [supplier.S_SUPPKEY]\n" +
 			"         │               │       ├─ keys: [partsupp.ps_suppkey:5!null]\n" +
-			"         │               │       ├─ colSet: (25-31)\n" +
+			"         │               │       ├─ colSet: (24-30)\n" +
 			"         │               │       ├─ tableId: 5\n" +
 			"         │               │       └─ Table\n" +
 			"         │               │           ├─ name: supplier\n" +
@@ -1900,7 +1900,7 @@ order by
 			"         │                       └─ Table\n" +
 			"         │                           ├─ name: nation\n" +
 			"         │                           ├─ columns: [n_nationkey n_name]\n" +
-			"         │                           ├─ colSet: (32-35)\n" +
+			"         │                           ├─ colSet: (31-34)\n" +
 			"         │                           └─ tableId: 6\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null, partsupp.ps_partkey:1!null, partsupp.PS_SUPPLYCOST:2!null, partsupp.PS_AVAILQTY:3!null, sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null as value]\n" +
@@ -2409,7 +2409,7 @@ order by
 			"             │       └─ Project\n" +
 			"             │           ├─ columns: [max(revenue0.total_revenue):9!null as max(total_revenue)]\n" +
 			"             │           └─ GroupBy\n" +
-			"             │               ├─ select: MAX(revenue0.total_revenue:10!null)\n" +
+			"             │               ├─ select: MAX(revenue0.total_revenue:1!null)\n" +
 			"             │               ├─ group: \n" +
 			"             │               └─ SubqueryAlias\n" +
 			"             │                   ├─ name: revenue0\n" +
@@ -2930,7 +2930,7 @@ order by
 			"                 ├─ columns: [lineitem_1.l_orderkey:1!null]\n" +
 			"                 └─ Having\n" +
 			"                     ├─ GreaterThan\n" +
-			"                     │   ├─ sum(lineitem.l_quantity):50!null\n" +
+			"                     │   ├─ sum(lineitem.l_quantity):0!null\n" +
 			"                     │   └─ 300 (smallint)\n" +
 			"                     └─ GroupBy\n" +
 			"                         ├─ select: SUM(lineitem_1.l_quantity:4!null), lineitem_1.l_orderkey:0!null, lineitem_1.L_QUANTITY:4!null\n" +

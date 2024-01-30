@@ -55,6 +55,7 @@ type WindowFunction interface {
 // WindowAdaptableExpression is an Expression that can be executed as a window aggregation
 type WindowAdaptableExpression interface {
 	Expression
+	IdExpression
 
 	// NewEvalable constructs an executable aggregation WindowFunction
 	NewWindowFunction() (WindowFunction, error)
@@ -62,6 +63,12 @@ type WindowAdaptableExpression interface {
 	WithWindow(window *WindowDefinition) WindowAdaptableExpression
 	// Window returns this expression's window
 	Window() *WindowDefinition
+}
+
+type IdExpression interface {
+	Expression
+	Id() ColumnId
+	WithId(ColumnId) IdExpression
 }
 
 // WindowFramer is responsible for tracking window frame indices for partition rows.

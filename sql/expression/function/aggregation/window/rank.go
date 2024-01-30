@@ -25,6 +25,7 @@ import (
 type Rank struct {
 	window *sql.WindowDefinition
 	pos    int
+	id     sql.ColumnId
 }
 
 var _ sql.FunctionExpression = (*Rank)(nil)
@@ -34,6 +35,18 @@ var _ sql.CollationCoercible = (*Rank)(nil)
 
 func NewRank() sql.Expression {
 	return &Rank{}
+}
+
+// Id implements sql.IdExpression
+func (p *Rank) Id() sql.ColumnId {
+	return p.id
+}
+
+// WithId implements sql.IdExpression
+func (p *Rank) WithId(id sql.ColumnId) sql.IdExpression {
+	ret := *p
+	ret.id = id
+	return &ret
 }
 
 // Description implements sql.FunctionExpression

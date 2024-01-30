@@ -25,6 +25,7 @@ import (
 type RowNumber struct {
 	window *sql.WindowDefinition
 	pos    int
+	id     sql.ColumnId
 }
 
 var _ sql.FunctionExpression = (*RowNumber)(nil)
@@ -34,6 +35,18 @@ var _ sql.CollationCoercible = (*RowNumber)(nil)
 
 func NewRowNumber() sql.Expression {
 	return &RowNumber{}
+}
+
+// Id implements sql.IdExpression
+func (r *RowNumber) Id() sql.ColumnId {
+	return r.id
+}
+
+// WithId implements sql.IdExpression
+func (r *RowNumber) WithId(id sql.ColumnId) sql.IdExpression {
+	ret := *r
+	ret.id = id
+	return &ret
 }
 
 // Description implements sql.FunctionExpression

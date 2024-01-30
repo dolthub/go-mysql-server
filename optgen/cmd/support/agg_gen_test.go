@@ -88,6 +88,11 @@ func TestAggGen(t *testing.T) {
             return &Test{unaryAggBase: *res.(*unaryAggBase)}, err
         }
 
+        func (a *Test) WithId(id sql.ColumnId) sql.IdExpression {
+            res := a.unaryAggBase.WithId(id)
+            return &Test{unaryAggBase: *res.(*unaryAggBase)}
+        }
+
         func (a *Test) NewBuffer() (sql.AggregationBuffer, error) {
             child, err := transform.Clone(a.Child)
             if err != nil {

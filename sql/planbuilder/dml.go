@@ -295,14 +295,14 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 		tabId := inScope.tables[strings.ToLower(tableSch[0].Source)]
 		for i, col := range tableSch {
 			if col.Generated != nil {
-				colGf := expression.NewGetFieldWithTable(i, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
+				colGf := expression.NewGetFieldWithTable(i+1, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
 				generated := b.resolveColumnDefaultExpression(inScope, col, col.Generated)
 				updateExprs = append(updateExprs, expression.NewSetField(colGf, assignColumnIndexes(generated, tableSch)))
 			}
 			if col.OnUpdate != nil {
 				// don't add if column is already being updated
 				if !isColumnUpdated(col, updateExprs) {
-					colGf := expression.NewGetFieldWithTable(i, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
+					colGf := expression.NewGetFieldWithTable(i+1, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
 					onUpdate := b.resolveColumnDefaultExpression(inScope, col, col.OnUpdate)
 					updateExprs = append(updateExprs, expression.NewSetField(colGf, assignColumnIndexes(onUpdate, tableSch)))
 				}
@@ -373,7 +373,7 @@ func (b *Builder) buildOnDupLeft(inScope *scope, e ast.Expr) sql.Expression {
 		dbName := strings.ToLower(e.Qualifier.Qualifier.String())
 		tblName := strings.ToLower(e.Qualifier.Name.String())
 		colName := strings.ToLower(e.Name.String())
-		c, ok := inScope.resolveColumn(dbName, tblName, colName, true)
+		c, ok := inScope.resolveColumn(dbName, tblName, colName, true, false)
 		if !ok {
 			if tblName != "" && !inScope.hasTable(tblName) {
 				b.handleErr(sql.ErrTableNotFound.New(tblName))

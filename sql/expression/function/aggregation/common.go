@@ -33,6 +33,7 @@ type unaryAggBase struct {
 	functionName string
 	description  string
 	typ          sql.Type
+	id           sql.ColumnId
 }
 
 var _ sql.Aggregation = (*unaryAggBase)(nil)
@@ -63,6 +64,18 @@ func (a *unaryAggBase) String() string {
 
 func (a *unaryAggBase) Type() sql.Type {
 	return a.typ
+}
+
+// Id implements the Aggregation interface
+func (a *unaryAggBase) Id() sql.ColumnId {
+	return a.id
+}
+
+// WithId implements the Aggregation interface
+func (a *unaryAggBase) WithId(id sql.ColumnId) sql.IdExpression {
+	ret := *a
+	ret.id = id
+	return &ret
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

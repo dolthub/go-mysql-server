@@ -69,6 +69,11 @@ func (a *AnyValue) WithChildren(children ...sql.Expression) (sql.Expression, err
 	return &AnyValue{unaryAggBase: *res.(*unaryAggBase)}, err
 }
 
+func (a *AnyValue) WithId(id sql.ColumnId) sql.IdExpression {
+	res := a.unaryAggBase.WithId(id)
+	return &AnyValue{unaryAggBase: *res.(*unaryAggBase)}
+}
+
 func (a *AnyValue) NewBuffer() (sql.AggregationBuffer, error) {
 	child, err := transform.Clone(a.Child)
 	if err != nil {
@@ -141,6 +146,11 @@ func (a *Avg) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpres
 func (a *Avg) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	res, err := a.unaryAggBase.WithChildren(children...)
 	return &Avg{unaryAggBase: *res.(*unaryAggBase)}, err
+}
+
+func (a *Avg) WithId(id sql.ColumnId) sql.IdExpression {
+	res := a.unaryAggBase.WithId(id)
+	return &Avg{unaryAggBase: *res.(*unaryAggBase)}
 }
 
 func (a *Avg) NewBuffer() (sql.AggregationBuffer, error) {
@@ -217,6 +227,11 @@ func (a *BitAnd) WithChildren(children ...sql.Expression) (sql.Expression, error
 	return &BitAnd{unaryAggBase: *res.(*unaryAggBase)}, err
 }
 
+func (a *BitAnd) WithId(id sql.ColumnId) sql.IdExpression {
+	res := a.unaryAggBase.WithId(id)
+	return &BitAnd{unaryAggBase: *res.(*unaryAggBase)}
+}
+
 func (a *BitAnd) NewBuffer() (sql.AggregationBuffer, error) {
 	child, err := transform.Clone(a.Child)
 	if err != nil {
@@ -289,6 +304,11 @@ func (a *BitOr) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpr
 func (a *BitOr) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	res, err := a.unaryAggBase.WithChildren(children...)
 	return &BitOr{unaryAggBase: *res.(*unaryAggBase)}, err
+}
+
+func (a *BitOr) WithId(id sql.ColumnId) sql.IdExpression {
+	res := a.unaryAggBase.WithId(id)
+	return &BitOr{unaryAggBase: *res.(*unaryAggBase)}
 }
 
 func (a *BitOr) NewBuffer() (sql.AggregationBuffer, error) {
@@ -365,6 +385,11 @@ func (a *BitXor) WithChildren(children ...sql.Expression) (sql.Expression, error
 	return &BitXor{unaryAggBase: *res.(*unaryAggBase)}, err
 }
 
+func (a *BitXor) WithId(id sql.ColumnId) sql.IdExpression {
+	res := a.unaryAggBase.WithId(id)
+	return &BitXor{unaryAggBase: *res.(*unaryAggBase)}
+}
+
 func (a *BitXor) NewBuffer() (sql.AggregationBuffer, error) {
 	child, err := transform.Clone(a.Child)
 	if err != nil {
@@ -437,6 +462,11 @@ func (a *Count) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpr
 func (a *Count) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	res, err := a.unaryAggBase.WithChildren(children...)
 	return &Count{unaryAggBase: *res.(*unaryAggBase)}, err
+}
+
+func (a *Count) WithId(id sql.ColumnId) sql.IdExpression {
+	res := a.unaryAggBase.WithId(id)
+	return &Count{unaryAggBase: *res.(*unaryAggBase)}
 }
 
 func (a *Count) NewBuffer() (sql.AggregationBuffer, error) {
@@ -513,6 +543,11 @@ func (a *First) WithChildren(children ...sql.Expression) (sql.Expression, error)
 	return &First{unaryAggBase: *res.(*unaryAggBase)}, err
 }
 
+func (a *First) WithId(id sql.ColumnId) sql.IdExpression {
+	res := a.unaryAggBase.WithId(id)
+	return &First{unaryAggBase: *res.(*unaryAggBase)}
+}
+
 func (a *First) NewBuffer() (sql.AggregationBuffer, error) {
 	child, err := transform.Clone(a.Child)
 	if err != nil {
@@ -585,6 +620,11 @@ func (a *JsonArray) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptable
 func (a *JsonArray) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	res, err := a.unaryAggBase.WithChildren(children...)
 	return &JsonArray{unaryAggBase: *res.(*unaryAggBase)}, err
+}
+
+func (a *JsonArray) WithId(id sql.ColumnId) sql.IdExpression {
+	res := a.unaryAggBase.WithId(id)
+	return &JsonArray{unaryAggBase: *res.(*unaryAggBase)}
 }
 
 func (a *JsonArray) NewBuffer() (sql.AggregationBuffer, error) {
@@ -661,6 +701,11 @@ func (a *Last) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 	return &Last{unaryAggBase: *res.(*unaryAggBase)}, err
 }
 
+func (a *Last) WithId(id sql.ColumnId) sql.IdExpression {
+	res := a.unaryAggBase.WithId(id)
+	return &Last{unaryAggBase: *res.(*unaryAggBase)}
+}
+
 func (a *Last) NewBuffer() (sql.AggregationBuffer, error) {
 	child, err := transform.Clone(a.Child)
 	if err != nil {
@@ -733,6 +778,11 @@ func (a *Max) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpres
 func (a *Max) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	res, err := a.unaryAggBase.WithChildren(children...)
 	return &Max{unaryAggBase: *res.(*unaryAggBase)}, err
+}
+
+func (a *Max) WithId(id sql.ColumnId) sql.IdExpression {
+	res := a.unaryAggBase.WithId(id)
+	return &Max{unaryAggBase: *res.(*unaryAggBase)}
 }
 
 func (a *Max) NewBuffer() (sql.AggregationBuffer, error) {
@@ -809,6 +859,11 @@ func (a *Min) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return &Min{unaryAggBase: *res.(*unaryAggBase)}, err
 }
 
+func (a *Min) WithId(id sql.ColumnId) sql.IdExpression {
+	res := a.unaryAggBase.WithId(id)
+	return &Min{unaryAggBase: *res.(*unaryAggBase)}
+}
+
 func (a *Min) NewBuffer() (sql.AggregationBuffer, error) {
 	child, err := transform.Clone(a.Child)
 	if err != nil {
@@ -881,6 +936,11 @@ func (a *Sum) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpres
 func (a *Sum) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	res, err := a.unaryAggBase.WithChildren(children...)
 	return &Sum{unaryAggBase: *res.(*unaryAggBase)}, err
+}
+
+func (a *Sum) WithId(id sql.ColumnId) sql.IdExpression {
+	res := a.unaryAggBase.WithId(id)
+	return &Sum{unaryAggBase: *res.(*unaryAggBase)}
 }
 
 func (a *Sum) NewBuffer() (sql.AggregationBuffer, error) {
