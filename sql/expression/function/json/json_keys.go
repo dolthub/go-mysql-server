@@ -48,7 +48,7 @@ func NewJSONKeys(args ...sql.Expression) (sql.Expression, error) {
 		return &JSONKeys{args[0], expression.NewLiteral("$", types.Text)}, nil
 	}
 	if len(args) == 2 {
-		return &JSONKeys{args[0], args[2]}, nil
+		return &JSONKeys{args[0], args[1]}, nil
 	}
 	return nil, sql.ErrInvalidArgumentNumber.New("JSON_VALID", "1 or 2", len(args))
 }
@@ -119,7 +119,7 @@ func (j *JSONKeys) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	switch v := js.(type) {
 	case map[string]any:
-		var res []string
+		res := make([]string, 0)
 		for k := range v {
 			res = append(res, k)
 		}
@@ -129,7 +129,13 @@ func (j *JSONKeys) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			}
 			return res[i] < res[j]
 		})
-		return res, nil
+		result, _, err := types.JSON.Convert(res)
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
+	case string:
+		return nil, sql.ErrInvalidJson.New(v)
 	default:
 		return nil, nil
 	}

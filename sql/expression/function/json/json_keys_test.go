@@ -15,7 +15,8 @@
 package json
 
 import (
-	"strings"
+	"github.com/dolthub/go-mysql-server/sql/types"
+"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -35,20 +36,75 @@ func TestJSONKeys(t *testing.T) {
 		f   sql.Expression
 		row sql.Row
 		exp interface{}
+		err bool
 	}{
-		{f1, sql.Row{`null`}, nil},
-		{f1, sql.Row{`1`}, 1},
-		{f1, sql.Row{`[1]`}, 1},
-		{f1, sql.Row{`"fjsadflkd"`}, 1},
-		{f1, sql.Row{`[1, false]`}, 2},
-		{f1, sql.Row{`[1, {"a": 1}]`}, 2},
-		{f1, sql.Row{`{"a": 1}`}, 1},
-		{f2, sql.Row{`{"a": [1, false]}`, "$.a"}, 2},
-		{f2, sql.Row{`{"a": [1, {"a": 1}]}`, "$.a"}, 2},
-		{f2, sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.b"}, 2},
-		{f2, sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.b[0]"}, 1},
-		{f2, sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.c.d"}, 1},
-		{f2, sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.d"}, nil},
+		{
+			f:   f1,
+			row: sql.Row{`null`},
+			exp: nil,
+		},
+		{
+			f:   f1,
+			row: sql.Row{`1`},
+			exp: nil,
+		},
+		{
+			f:   f1,
+			row: sql.Row{`[1]`},
+			exp: nil,
+		},
+		{
+			f:   f1,
+			row: sql.Row{`{}`},
+			exp: types.MustJSON(`[]`),
+		},
+		{
+			f:   f1,
+			row: sql.Row{`"fjsadflkd"`},
+			err: true,
+		},
+		{
+			f:   f1,
+			row: sql.Row{`{"a": 1}`},
+			exp: types.MustJSON(`["a"]`),
+		},
+		{
+			f:   f1,
+			row: sql.Row{`{"aa": 1, "bb": 2, "c": 3}`},
+			exp: types.MustJSON(`["c", "aa", "bb"]`),
+		},
+
+
+		{
+			f:   f2,
+			row: sql.Row{`{"a": [1, false]}`, "$"},
+			exp: types.MustJSON(`["a"]`),
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{"a": {"a": 1}}`, "$.a"},
+			exp: types.MustJSON(`["a"]`),
+		},
+		{
+			f:   f2,
+			row: sql.Row{`[1, 2, {"a": 1, "b": {"c": 30}}]`, "$[2]"},
+			exp: types.MustJSON(`["a", "b"]`),
+		},
+		{
+			f:   f2,
+			row: sql.Row{`[1, 2, {"a": 1, "b": {"c": {"d": 100}}}]`, "$[2].b.c"},
+			exp: types.MustJSON(`["d"]`),
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{"a": 1, "b": {"c": {"d": "foo"}}}`, "$.b.c"},
+			exp: types.MustJSON(`["d"]`),
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.d"},
+			exp: nil,
+		},
 	}
 
 	for _, tt := range testCases {
@@ -59,7 +115,12 @@ func TestJSONKeys(t *testing.T) {
 		t.Run(strings.Join(args, ", "), func(t *testing.T) {
 			require := require.New(t)
 			// any error case will result in output of 'false' value
-			result, _ := tt.f.Eval(sql.NewEmptyContext(), tt.row)
+			result, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
+			if tt.err {
+				require.Error(err)
+			} else {
+				require.NoError(err)
+			}
 			require.Equal(tt.exp, result)
 		})
 	}
