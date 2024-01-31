@@ -113,7 +113,6 @@ func TestJSONKeys(t *testing.T) {
 		}
 		t.Run(strings.Join(args, ", "), func(t *testing.T) {
 			require := require.New(t)
-			// any error case will result in output of 'false' value
 			result, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
 			if tt.err {
 				require.Error(err)
