@@ -1703,6 +1703,15 @@ Select * from (
 		},
 	},
 	{
+		Query: `SELECT JSON_KEYS(c3) FROM jsontable`,
+		Expected: []sql.Row{
+			{types.MustJSON(`["a"]`)},
+			{types.MustJSON(`["b"]`)},
+			{types.MustJSON(`["c"]`)},
+			{types.MustJSON(`["d"]`)},
+		},
+	},
+	{
 		Query: `SELECT CONCAT(JSON_OBJECT('aa', JSON_OBJECT('bb', 123, 'y', 456), 'z', JSON_OBJECT('cc', 321, 'x', 654)), "")`,
 		Expected: []sql.Row{
 			{`{"z": {"x": 654, "cc": 321}, "aa": {"y": 456, "bb": 123}}`},
@@ -9846,6 +9855,14 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
+		Query:       "SELECT json_keys() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       "SELECT json_length() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
 		Query:       `SELECT JSON_VALID()`,
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
@@ -9932,14 +9949,6 @@ var BrokenErrorQueries = []QueryErrorTest{
 	// Unimplemented JSON functions
 	{
 		Query:       "SELECT json_depth() FROM dual;",
-		ExpectedErr: sql.ErrInvalidArgumentNumber,
-	},
-	{
-		Query:       "SELECT json_keys() FROM dual;",
-		ExpectedErr: sql.ErrInvalidArgumentNumber,
-	},
-	{
-		Query:       "SELECT json_length() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
