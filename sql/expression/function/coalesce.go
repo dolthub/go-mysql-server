@@ -69,6 +69,11 @@ func (c *Coalesce) Type() sql.Type {
 			convType := expression.GetConvertToType(typ, t)
 			switch convType {
 			case expression.ConvertToChar:
+				// special case for float64s
+				if (t == types.Float64 || typ == types.Float64) && !types.IsText(t) && !types.IsText(typ) {
+					typ = types.Float64
+					continue
+				}
 				// Can't get any larger than this
 				return types.LongText
 			case expression.ConvertToDecimal:
