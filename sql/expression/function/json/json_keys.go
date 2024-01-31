@@ -50,22 +50,17 @@ func NewJSONKeys(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) == 2 {
 		return &JSONKeys{args[0], args[1]}, nil
 	}
-	return nil, sql.ErrInvalidArgumentNumber.New("JSON_VALID", "1 or 2", len(args))
+	return nil, sql.ErrInvalidArgumentNumber.New("JSON_KEYS", "1 or 2", len(args))
 }
 
 // FunctionName implements sql.FunctionExpression
 func (j *JSONKeys) FunctionName() string {
-	return "json_valid"
+	return "json_keys"
 }
 
 // Description implements sql.FunctionExpression
 func (j *JSONKeys) Description() string {
-	return "returns whether JSON value is valid."
-}
-
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j *JSONKeys) IsUnsupported() bool {
-	return false
+	return "returns the keys from the top-level value of a JSON object as a JSON array."
 }
 
 // Resolved implements the sql.Expression interface.
@@ -75,7 +70,7 @@ func (j *JSONKeys) Resolved() bool {
 
 // String implements the sql.Expression interface.
 func (j *JSONKeys) String() string {
-	return fmt.Sprintf("%s(%s)", j.Description(), j.JSON.String())
+	return fmt.Sprintf("%s(%s, %s)", j.FunctionName(), j.JSON.String(), j.Path.String())
 }
 
 // Type implements the sql.Expression interface.
@@ -148,8 +143,5 @@ func (j *JSONKeys) Children() []sql.Expression {
 
 // WithChildren implements the Expression interface.
 func (j *JSONKeys) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(j.Children()) != len(children) {
-		return nil, fmt.Errorf("json_valid did not receive the correct amount of args")
-	}
 	return NewJSONKeys(children...)
 }
