@@ -58,13 +58,13 @@ func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 						}
 						if rt != nil && !sql.IsKeyless(rt.Table.Schema()) {
 							if statsTable, ok := rt.Table.(sql.StatisticsTable); ok {
-								cnt, exact, err := statsTable.RowCount(ctx)
+								rowCnt, exact, err := statsTable.RowCount(ctx)
 								if err == nil && exact {
 									return plan.NewProject(
 										[]sql.Expression{
-											expression.NewAlias(name, expression.NewGetFieldWithTable(0, 0, types.Int64, rt.Database().Name(), statsTable.Name(), name, false)),
+											expression.NewAlias(name, expression.NewGetFieldWithTable(int(cnt.Id()), 0, types.Int64, rt.Database().Name(), statsTable.Name(), name, false)).WithId(cnt.Id()),
 										},
-										plan.NewTableCount(name, rt.SqlDatabase, statsTable, cnt),
+										plan.NewTableCount(name, rt.SqlDatabase, statsTable, rowCnt, cnt.Id()),
 									), transform.NewTree, nil
 								}
 							}

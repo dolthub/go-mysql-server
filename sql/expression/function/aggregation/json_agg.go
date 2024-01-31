@@ -34,6 +34,7 @@ type JSONObjectAgg struct {
 	key    sql.Expression
 	value  sql.Expression
 	window *sql.WindowDefinition
+	id     sql.ColumnId
 }
 
 var _ sql.FunctionExpression = (*JSONObjectAgg)(nil)
@@ -44,6 +45,18 @@ var _ sql.CollationCoercible = (*JSONObjectAgg)(nil)
 // NewJSONObjectAgg creates a new JSONObjectAgg function.
 func NewJSONObjectAgg(key, value sql.Expression) sql.Expression {
 	return &JSONObjectAgg{key: key, value: value}
+}
+
+// Id implements the Aggregation interface
+func (j *JSONObjectAgg) Id() sql.ColumnId {
+	return j.id
+}
+
+// WithId implements the Aggregation interface
+func (j *JSONObjectAgg) WithId(id sql.ColumnId) sql.IdExpression {
+	ret := *j
+	ret.id = id
+	return &ret
 }
 
 // FunctionName implements sql.FunctionExpression

@@ -931,7 +931,7 @@ from
 			"         │   ├─ outerVisibility: false\n" +
 			"         │   ├─ isLateral: false\n" +
 			"         │   ├─ cacheable: true\n" +
-			"         │   ├─ colSet: (19-22)\n" +
+			"         │   ├─ colSet: (18-21)\n" +
 			"         │   ├─ tableId: 3\n" +
 			"         │   └─ Limit(1)\n" +
 			"         │       └─ Project\n" +

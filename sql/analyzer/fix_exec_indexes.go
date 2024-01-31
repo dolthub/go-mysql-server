@@ -32,6 +32,7 @@ func assignExecIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 	s := &idxScope{}
 	if !scope.IsEmpty() {
 		// triggers
+		s.triggerScope = true
 		s.addSchema(scope.Schema())
 		s = s.push()
 	}
@@ -66,10 +67,12 @@ type idxScope struct {
 	parentScopes  []*idxScope
 	lateralScopes []*idxScope
 	childScopes   []*idxScope
+	ids           []sql.ColumnId
 	columns       []string
 	children      []sql.Node
 	expressions   []sql.Expression
 	checks        sql.CheckConstraints
+	triggerScope  bool
 }
 
 func (s *idxScope) addSchema(sch sql.Schema) {
@@ -84,6 +87,7 @@ func (s *idxScope) addSchema(sch sql.Schema) {
 
 func (s *idxScope) addScope(other *idxScope) {
 	s.columns = append(s.columns, other.columns...)
+	s.ids = append(s.ids, other.ids...)
 }
 
 func (s *idxScope) addLateral(other *idxScope) {
@@ -104,6 +108,20 @@ func unqualify(s string) string {
 		return strings.Split(s, ".")[1]
 	}
 	return s
+}
+
+func (s *idxScope) getIdxId(id sql.ColumnId, name string) (int, bool) {
+	if s.triggerScope || id == 0 {
+		// todo: add expr ids for trigger columns and procedure params
+		return s.getIdx(name)
+	}
+	for i, c := range s.ids {
+		if c == id {
+			return i, true
+		}
+	}
+	// todo: fix places where this is necessary
+	return s.getIdx(name)
 }
 
 func (s *idxScope) getIdx(n string) (int, bool) {
@@ -156,10 +174,16 @@ func (s *idxScope) copy() *idxScope {
 		varsCopy = make([]string, len(s.columns))
 		copy(varsCopy, s.columns)
 	}
+	var idsCopy []sql.ColumnId
+	if len(s.ids) > 0 {
+		idsCopy = make([]sql.ColumnId, len(s.ids))
+		copy(idsCopy, s.ids)
+	}
 	return &idxScope{
 		lateralScopes: lateralCopy,
 		parentScopes:  parentCopy,
 		columns:       varsCopy,
+		ids:           idsCopy,
 	}
 }
 
@@ -389,7 +413,8 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 		nn.OnDupExprs = s.expressions
 		return nn.WithChecks(s.checks), nil
 	default:
-		// child scopes don't account for projections
+		s.ids = columnIdsForNode(n)
+
 		s.addSchema(n.Schema())
 		var err error
 		if s.children != nil {
@@ -429,9 +454,84 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 	}
 }
 
+// columnIdsForNode collects the column ids of a node's return schema.
+// Projector nodes can return a subset of the full sql.PrimaryTableSchema.
+// todo: pruning projections should update plan.TableIdNode .Columns()
+// to avoid schema/column discontinuities.
+func columnIdsForNode(n sql.Node) []sql.ColumnId {
+	var ret []sql.ColumnId
+	switch n := n.(type) {
+	case sql.Projector:
+		for _, e := range n.ProjectedExprs() {
+			if ide, ok := e.(sql.IdExpression); ok {
+				ret = append(ret, ide.Id())
+			} else {
+				ret = append(ret, 0)
+			}
+		}
+	case *plan.TableCountLookup:
+		ret = append(ret, n.Id())
+	case *plan.TableAlias:
+		// Table alias's child either exposes 1) child ids or 2) is custom
+		// table function. We currently do not update table columns in response
+		// to table pruning, so we need to manually distinguish these cases.
+		// todo: prune columns should update column ids and table alias ids
+		switch n.Child.(type) {
+		case sql.TableFunction:
+			// todo: table functions that implement sql.Projector are not going
+			// to work. Need to fix prune.
+			n.Columns().ForEach(func(col sql.ColumnId) {
+				ret = append(ret, col)
+			})
+		default:
+			ret = append(ret, columnIdsForNode(n.Child)...)
+		}
+	case plan.TableIdNode:
+		if rt, ok := n.(*plan.ResolvedTable); ok && plan.IsDualTable(rt.Table) {
+			ret = append(ret, 0)
+			break
+		}
+
+		cols := n.(plan.TableIdNode).Columns()
+		if tn, ok := n.(sql.TableNode); ok {
+			if pkt, ok := tn.UnderlyingTable().(sql.PrimaryKeyTable); ok && len(pkt.PrimaryKeySchema().Schema) != len(n.Schema()) {
+				firstcol, _ := cols.Next(1)
+				for _, c := range n.Schema() {
+					ord := pkt.PrimaryKeySchema().IndexOfColName(c.Name)
+					colId := firstcol + sql.ColumnId(ord)
+					ret = append(ret, colId)
+				}
+				break
+			}
+		}
+		cols.ForEach(func(col sql.ColumnId) {
+			ret = append(ret, col)
+		})
+	case *plan.JoinNode:
+		if n.Op.IsPartial() {
+			ret = append(ret, columnIdsForNode(n.Left())...)
+		} else {
+			ret = append(ret, columnIdsForNode(n.Left())...)
+			ret = append(ret, columnIdsForNode(n.Right())...)
+		}
+	case *plan.ShowStatus:
+		for i := range n.Schema() {
+			ret = append(ret, sql.ColumnId(i+1))
+		}
+	case *plan.Concat:
+		ret = append(ret, columnIdsForNode(n.Left())...)
+	default:
+		for _, c := range n.Children() {
+			ret = append(ret, columnIdsForNode(c)...)
+		}
+	}
+	return ret
+}
+
 func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 	newScope := &idxScope{}
 	for _, s := range scopes {
+		newScope.triggerScope = newScope.triggerScope || s.triggerScope
 		newScope.addScope(s)
 	}
 	ret, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
@@ -441,7 +541,7 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 			//  queries where the columns being selected are only found in subqueries. Conversely, we actually want to ignore
 			//  this error for the case of DEFAULT in a `plan.Values`, since we analyze the insert source in isolation (we
 			//  don't have the destination schema, and column references in default values are determined in the build phase)
-			idx, _ := newScope.getIdx(e.String())
+			idx, _ := newScope.getIdxId(e.Id(), e.String())
 			if idx >= 0 {
 				return e.WithIndex(idx), transform.NewTree, nil
 			}

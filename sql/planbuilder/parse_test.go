@@ -52,6 +52,27 @@ func TestPlanBuilder(t *testing.T) {
 
 	var tests = []planTest{
 		{
+			Query: "select 0 as col1, 1 as col2, 2 as col2 group by col2 having col2 = 1",
+			ExpectedPlan: `
+Project
+ ├─ columns: [0 (tinyint) as col1, 1 (tinyint) as col2, 2 (tinyint) as col2]
+ └─ Having
+     ├─ Eq
+     │   ├─ col2:2!null
+     │   └─ 1 (tinyint)
+     └─ Project
+         ├─ columns: [0 (tinyint) as col1, 1 (tinyint) as col2, 2 (tinyint) as col2]
+         └─ GroupBy
+             ├─ select: 
+             ├─ group: 1 (tinyint) as col2
+             └─ Table
+                 ├─ name: 
+                 ├─ columns: []
+                 ├─ colSet: ()
+                 └─ tableId: 0
+`,
+		},
+		{
 			Query: "with cte(x) as (select 1 as x) select 1 as x from cte having avg(x) > 0",
 			ExpectedPlan: `
 Project
@@ -162,7 +183,9 @@ Project
 `,
 		},
 		{
-			Query: "analyze table xy update histogram on (x, y) using data '{\"row_count\": 40, \"distinct_count\": 40, \"null_count\": 1, \"columns\": [\"x\", \"y\"], \"histogram\": [{\"row_count\": 20, \"upper_bound\": [50.0]}, {\"row_count\": 20, \"upper_bound\": [80.0]}]}'",
+			Query: `
+	analyze table xy
+update histogram on (x, y) using data '{"row_count": 40, "distinct_count": 40, "null_count": 1, "columns": ["x", "y"], "histogram": [{"row_count": 20, "upper_bound": [50.0]}, {"row_count": 20, "upper_bound": [80.0]}]}'`,
 			ExpectedPlan: `
 update histogram  xy.(x,y) using {"statistic":{"avg_size":0,"buckets":[],"columns":["x","y"],"created_at":"0001-01-01T00:00:00Z","distinct_count":40,"null_count":40,"qualifier":"mydb.xy.primary","row_count":40,"types:":["bigint","bigint"]}}`,
 		},
@@ -1228,7 +1251,7 @@ Project
  ├─ columns: [(1 (tinyint) + xy.x:1!null) as s]
  └─ Having
      ├─ Eq
-     │   ├─ s:5!null
+     │   ├─ s:4!null
      │   └─ 1 (tinyint)
      └─ Project
          ├─ columns: [xy.x:1!null, (1 (tinyint) + xy.x:1!null) as s]
@@ -1249,7 +1272,7 @@ Project
  ├─ columns: [(1 (tinyint) + xy.x:1!null) as s]
  └─ Having
      ├─ Eq
-     │   ├─ s:8!null
+     │   ├─ s:7!null
      │   └─ 1 (tinyint)
      └─ Project
          ├─ columns: [xy.x:1!null, (1 (tinyint) + xy.x:1!null) as s]
@@ -1273,13 +1296,13 @@ Project
 `,
 		},
 		{
-			Query: `select
+			Query: `
+	select
 			x,
 			x*y,
 			ROW_NUMBER() OVER(PARTITION BY x) AS row_num1,
 			sum(x) OVER(PARTITION BY y ORDER BY x) AS sum
-			from xy
-			`,
+			from xy`,
 			ExpectedPlan: `
 Project
  ├─ columns: [xy.x:1!null, (xy.x:1!null * xy.y:2!null) as x*y, row_number() over ( partition by xy.x rows between unbounded preceding and unbounded following):4!null as row_num1, sum
@@ -1301,12 +1324,12 @@ Project
 `,
 		},
 		{
-			Query: `select
+			Query: `
+	select
 			x+1 as x,
 			sum(x) OVER(PARTITION BY y ORDER BY x) AS sum
 			from xy
-			having x > 1;
-			`,
+			having x > 1;`,
 			ExpectedPlan: `
 Project
  ├─ columns: [(xy.x:1!null + 1 (tinyint)) as x, sum
@@ -1315,7 +1338,7 @@ Project
  │  :5!null as sum]
  └─ Having
      ├─ GreaterThan
-     │   ├─ x:7!null
+     │   ├─ x:4!null
      │   └─ 1 (tinyint)
      └─ Project
          ├─ columns: [sum
@@ -1339,7 +1362,7 @@ Project
 		},
 		{
 			Query: `
-			SELECT
+	SELECT
 			x,
 			ROW_NUMBER() OVER w AS 'row_number',
 			RANK()       OVER w AS 'rank',
@@ -1496,7 +1519,7 @@ Project
  ├─ columns: [(xy.x:1!null + xy.y:2!null) as X]
  └─ Having
      ├─ GreaterThan
-     │   ├─ x:5!null
+     │   ├─ x:4!null
      │   └─ 1 (tinyint)
      └─ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, (xy.x:1!null + xy.y:2!null) as X]
@@ -1542,15 +1565,15 @@ Project
      │   ├─ cacheable: false
      │   ├─ alias-string: select * from xy where y = s
      │   └─ Project
-     │       ├─ columns: [xy.x:6!null, xy.y:7!null, xy.z:8!null]
+     │       ├─ columns: [xy.x:5!null, xy.y:6!null, xy.z:7!null]
      │       └─ Filter
      │           ├─ Eq
-     │           │   ├─ xy.y:7!null
-     │           │   └─ s:5!null
+     │           │   ├─ xy.y:6!null
+     │           │   └─ s:4!null
      │           └─ Table
      │               ├─ name: xy
      │               ├─ columns: [x y z]
-     │               ├─ colSet: (6-8)
+     │               ├─ colSet: (5-7)
      │               └─ tableId: 2
      └─ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, (xy.x:1!null + xy.y:2!null) as s]
@@ -1583,7 +1606,8 @@ Project
 `,
 		},
 		{
-			Query: `SELECT x
+			Query: `
+	SELECT x
 			FROM xy
 			WHERE EXISTS (SELECT count(u) AS count_1
 			FROM uv
@@ -1624,7 +1648,8 @@ Project
 `,
 		},
 		{
-			Query: `WITH RECURSIVE
+			Query: `
+	WITH RECURSIVE
 			rt (foo) AS (
 			SELECT 1 as foo
 			UNION ALL
@@ -1830,7 +1855,8 @@ Project
 `,
 		},
 		{
-			Query: `SELECT fi, COUNT(*) FROM (
+			Query: `
+	SELECT fi, COUNT(*) FROM (
 			SELECT tbl.x AS fi
 			FROM xy tbl
 		) t
@@ -1918,7 +1944,7 @@ Project
  │           └─ tableId: 0
  │   as a]
  └─ Project
-     ├─ columns: [1 (tinyint) as a, Subquery
+     ├─ columns: [dual.:0!null, 1 (tinyint) as a, Subquery
      │   ├─ cacheable: false
      │   ├─ alias-string: select a
      │   └─ Project
@@ -2090,7 +2116,7 @@ Project
  ├─ columns: [xy.x:1!null as xx]
  └─ Having
      ├─ Eq
-     │   ├─ xx:5!null
+     │   ├─ xx:4!null
      │   └─ 123 (tinyint)
      └─ Project
          ├─ columns: [xy.x:1!null, xy.x:1!null as xx]
@@ -2111,7 +2137,7 @@ Project
  ├─ columns: [xy.x:1!null as xx]
  └─ Having
      ├─ Eq
-     │   ├─ xx:5!null
+     │   ├─ xx:4!null
      │   └─ 123 (tinyint)
      └─ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, xy.x:1!null as xx]
@@ -2168,7 +2194,7 @@ Project
  ├─ columns: [(xy.x:1!null + 1 (tinyint)) as xx]
  └─ Having
      ├─ Eq
-     │   ├─ xx:5!null
+     │   ├─ xx:4!null
      │   └─ 123 (tinyint)
      └─ Project
          ├─ columns: [xy.x:1!null, (xy.x:1!null + 1 (tinyint)) as xx]
@@ -2189,7 +2215,7 @@ Project
  ├─ columns: [(xy.x:1!null + 1 (tinyint)) as xx]
  └─ Having
      ├─ Eq
-     │   ├─ xx:5!null
+     │   ├─ xx:4!null
      │   └─ 123 (tinyint)
      └─ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, (xy.x:1!null + 1 (tinyint)) as xx]
@@ -2215,7 +2241,7 @@ Project
  ├─ columns: [xy.x:1!null as xx]
  └─ Having
      ├─ Eq
-     │   ├─ xx:8!null
+     │   ├─ xx:7!null
      │   └─ 123 (tinyint)
      └─ Project
          ├─ columns: [xy.x:1!null, xy.x:1!null as xx]
@@ -2245,7 +2271,7 @@ Project
  ├─ columns: [xy.x:1!null as xx]
  └─ Having
      ├─ Eq
-     │   ├─ xx:8!null
+     │   ├─ xx:7!null
      │   └─ 123 (tinyint)
      └─ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, uv.u:4!null, uv.v:5!null, uv.w:6!null, xy.x:1!null as xx]
@@ -2329,7 +2355,7 @@ Project
  ├─ columns: [(xy.x:1!null + 1 (tinyint)) as xx]
  └─ Having
      ├─ Eq
-     │   ├─ xx:8!null
+     │   ├─ xx:7!null
      │   └─ 123 (tinyint)
      └─ Project
          ├─ columns: [xy.x:1!null, (xy.x:1!null + 1 (tinyint)) as xx]
@@ -2359,7 +2385,7 @@ Project
  ├─ columns: [(xy.x:1!null + 1 (tinyint)) as xx]
  └─ Having
      ├─ Eq
-     │   ├─ xx:8!null
+     │   ├─ xx:7!null
      │   └─ 123 (tinyint)
      └─ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, uv.u:4!null, uv.v:5!null, uv.w:6!null, (xy.x:1!null + 1 (tinyint)) as xx]
@@ -2461,9 +2487,9 @@ Project
 					w.WriteString("\t{\n")
 					w.WriteString(fmt.Sprintf("\t\tSkip: true,\n"))
 					if strings.Contains(tt.Query, "\n") {
-						w.WriteString(fmt.Sprintf("\t\tQuery: `\n%s`,\n", tt.Query))
+						w.WriteString(fmt.Sprintf("\t\tQuery: `\n\t%s`,\n", strings.TrimSpace(tt.Query)))
 					} else {
-						w.WriteString(fmt.Sprintf("\t\tQuery: \"%s\",\n", tt.Query))
+						w.WriteString(fmt.Sprintf("\t\tQuery: \"%s\",\n", strings.TrimSpace(tt.Query)))
 					}
 					w.WriteString("\t},\n")
 				}
@@ -2479,9 +2505,9 @@ Project
 			if rewrite {
 				w.WriteString("\t{\n")
 				if strings.Contains(tt.Query, "\n") {
-					w.WriteString(fmt.Sprintf("\t\tQuery: `\n%s`,\n", tt.Query))
+					w.WriteString(fmt.Sprintf("\t\tQuery: `\n\t%s`,\n", strings.TrimSpace(tt.Query)))
 				} else {
-					w.WriteString(fmt.Sprintf("\t\tQuery: \"%s\",\n", tt.Query))
+					w.WriteString(fmt.Sprintf("\t\tQuery: \"%s\",\n", strings.TrimSpace(tt.Query)))
 				}
 				w.WriteString(fmt.Sprintf("\t\tExpectedPlan: `\n%s`,\n", plan))
 				w.WriteString("\t},\n")

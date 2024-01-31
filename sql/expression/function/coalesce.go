@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Coalesce returns the first non-NULL value in the list, or NULL if there are no non-NULL values.
@@ -53,17 +53,61 @@ func (c *Coalesce) Description() string {
 // Type implements the sql.Expression interface.
 // The return type of Type() is the aggregated type of the argument types.
 func (c *Coalesce) Type() sql.Type {
+	typ := types.Null
 	for _, arg := range c.args {
 		if arg == nil {
 			continue
 		}
 		t := arg.Type()
+		// special case for signed and unsigned integers
+		if (types.IsSigned(typ) && types.IsUnsigned(t)) || (types.IsUnsigned(typ) && types.IsSigned(t)) {
+			typ = types.MustCreateDecimalType(20, 0)
+			continue
+		}
+
 		if t != nil && t != types.Null {
-			return t
+			convType := expression.GetConvertToType(typ, t)
+			switch convType {
+			case expression.ConvertToChar:
+				// special case for float64s
+				if (t == types.Float64 || typ == types.Float64) && !types.IsText(t) && !types.IsText(typ) {
+					typ = types.Float64
+					continue
+				}
+				// Can't get any larger than this
+				return types.LongText
+			case expression.ConvertToDecimal:
+				if typ == types.Float64 || t == types.Float64 {
+					typ = types.Float64
+				} else if types.IsDecimal(t) {
+					typ = t
+				} else if !types.IsDecimal(typ) {
+					typ = types.MustCreateDecimalType(10, 0)
+				}
+			case expression.ConvertToUnsigned:
+				if typ == types.Uint64 || t == types.Uint64 {
+					typ = types.Uint64
+				} else {
+					typ = types.Uint32
+				}
+			case expression.ConvertToSigned:
+				if typ == types.Int64 || t == types.Int64 {
+					typ = types.Int64
+				} else {
+					typ = types.Int32
+				}
+			case expression.ConvertToFloat:
+				if typ == types.Float64 || t == types.Float64 {
+					typ = types.Float64
+				} else {
+					typ = types.Float32
+				}
+			default:
+			}
 		}
 	}
 
-	return types.Null
+	return typ
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

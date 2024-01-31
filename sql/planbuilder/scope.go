@@ -61,7 +61,10 @@ type scope struct {
 	proc  *procCtx
 }
 
-func (s *scope) resolveColumn(db, table, col string, checkParent bool) (scopeColumn, bool) {
+// resolveColumn matches a variable use to a column definition with a unique
+// expression id. |chooseFirst| is indicated for accepting ambiguous having and
+// group by columns.
+func (s *scope) resolveColumn(db, table, col string, checkParent, chooseFirst bool) (scopeColumn, bool) {
 	// procedure params take precedence
 	if table == "" && checkParent && s.procActive() {
 		col, ok := s.proc.GetVar(col)
@@ -103,6 +106,9 @@ func (s *scope) resolveColumn(db, table, col string, checkParent bool) (scopeCol
 				}
 				s.handleErr(err)
 			}
+			if chooseFirst || s.groupBy != nil {
+				return c, true
+			}
 			found = c
 			foundCand = true
 		}
@@ -112,7 +118,7 @@ func (s *scope) resolveColumn(db, table, col string, checkParent bool) (scopeCol
 	}
 
 	if s.groupBy != nil {
-		if c, ok := s.groupBy.outScope.resolveColumn(db, table, col, false); ok {
+		if c, ok := s.groupBy.outScope.resolveColumn(db, table, col, false, false); ok {
 			return c, true
 		}
 	}
@@ -128,7 +134,7 @@ func (s *scope) resolveColumn(db, table, col string, checkParent bool) (scopeCol
 		return scopeColumn{}, false
 	}
 
-	c, foundCand := s.parent.resolveColumn(db, table, col, true)
+	c, foundCand := s.parent.resolveColumn(db, table, col, true, false)
 	if !foundCand {
 		return scopeColumn{}, false
 	}
@@ -355,12 +361,33 @@ func (s *scope) aliasCte(alias string) *scope {
 	if _, ok := s.tables[alias]; ok || alias == "" {
 		return outScope
 	}
+
+	sq, _ := outScope.node.(*plan.SubqueryAlias)
+
 	tabId := outScope.addTable(alias)
 	outScope.cols = nil
+	var colSet sql.ColSet
+	scopeMapping := make(map[sql.ColumnId]sql.Expression)
 	for _, c := range s.cols {
-		c.tableId = tabId
-		c.table = alias
-		outScope.addColumn(c)
+		id := outScope.newColumn(scopeColumn{
+			tableId:     tabId,
+			db:          c.db,
+			table:       alias,
+			col:         c.col,
+			originalCol: c.originalCol,
+			id:          0,
+			typ:         c.typ,
+			nullable:    c.nullable,
+		})
+		colSet.Add(sql.ColumnId(id))
+		// todo double scope mapping
+		if sq != nil {
+			scopeMapping[sql.ColumnId(id)] = sq.ScopeMapping[sql.ColumnId(c.id)]
+		}
+	}
+
+	if sq != nil {
+		outScope.node = sq.WithScopeMapping(scopeMapping).WithColumns(colSet).WithId(tabId)
 	}
 	return outScope
 }

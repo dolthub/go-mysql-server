@@ -129,7 +129,7 @@ func (b *Builder) setExprsToExpressions(inScope *scope, e ast.SetVarExprs) []sql
 		var setScope ast.SetScope
 
 		tblName := strings.ToLower(setExpr.Name.Qualifier.String())
-		c, ok := inScope.resolveColumn("", tblName, strings.ToLower(setExpr.Name.Name.String()), true)
+		c, ok := inScope.resolveColumn("", tblName, strings.ToLower(setExpr.Name.Name.String()), true, false)
 		var setVar sql.Expression
 		if ok {
 			setVar = c.scalarGf()

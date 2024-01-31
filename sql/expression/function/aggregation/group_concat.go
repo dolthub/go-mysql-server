@@ -34,6 +34,7 @@ type GroupConcat struct {
 	maxLen      int
 	returnType  sql.Type
 	window      *sql.WindowDefinition
+	id          sql.ColumnId
 }
 
 var _ sql.FunctionExpression = &GroupConcat{}
@@ -56,6 +57,18 @@ func (g *GroupConcat) Description() string {
 
 func NewGroupConcat(distinct string, orderBy sql.SortFields, separator string, selectExprs []sql.Expression, maxLen int) *GroupConcat {
 	return &GroupConcat{distinct: distinct, sf: orderBy, separator: separator, selectExprs: selectExprs, maxLen: maxLen}
+}
+
+// Id implements the Aggregation interface
+func (a *GroupConcat) Id() sql.ColumnId {
+	return a.id
+}
+
+// WithId implements the Aggregation interface
+func (a *GroupConcat) WithId(id sql.ColumnId) sql.IdExpression {
+	ret := *a
+	ret.id = id
+	return &ret
 }
 
 // WithWindow implements sql.Aggregation
