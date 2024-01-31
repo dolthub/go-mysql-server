@@ -65,7 +65,7 @@ func (j *JSONKeys) Description() string {
 
 // Resolved implements the sql.Expression interface.
 func (j *JSONKeys) Resolved() bool {
-	return j.JSON.Resolved()
+	return j.JSON.Resolved() && j.Path.Resolved()
 }
 
 // String implements the sql.Expression interface.
@@ -129,8 +129,6 @@ func (j *JSONKeys) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 		return result, nil
-	case string:
-		return nil, sql.ErrInvalidJson.New(v)
 	default:
 		return nil, nil
 	}

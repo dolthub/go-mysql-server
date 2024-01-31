@@ -15,15 +15,16 @@
 package json
 
 import (
-	"strings"
+	"fmt"
+"github.com/dolthub/go-mysql-server/sql/types"
+"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/types"
-)
+	)
 
 func TestJSONKeys(t *testing.T) {
 	_, err := NewJSONKeys()
@@ -40,8 +41,18 @@ func TestJSONKeys(t *testing.T) {
 	}{
 		{
 			f:   f1,
+			row: sql.Row{nil},
+			exp: nil,
+		},
+		{
+			f:   f1,
 			row: sql.Row{`null`},
 			exp: nil,
+		},
+		{
+			f:   f1,
+			row: sql.Row{1},
+			err: true,
 		},
 		{
 			f:   f1,
@@ -60,8 +71,13 @@ func TestJSONKeys(t *testing.T) {
 		},
 		{
 			f:   f1,
-			row: sql.Row{`"fjsadflkd"`},
+			row: sql.Row{`badjson`},
 			err: true,
+		},
+		{
+			f:   f1,
+			row: sql.Row{`"doublestringisvalidjson"`},
+			exp: nil,
 		},
 		{
 			f:   f1,
@@ -81,8 +97,8 @@ func TestJSONKeys(t *testing.T) {
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{"a": {"a": 1}}`, "$.a"},
-			exp: types.MustJSON(`["a"]`),
+			row: sql.Row{`{"a": {"z": 1}}`, "$.a"},
+			exp: types.MustJSON(`["z"]`),
 		},
 		{
 			f:   f2,
@@ -109,7 +125,7 @@ func TestJSONKeys(t *testing.T) {
 	for _, tt := range testCases {
 		var args []string
 		for _, a := range tt.row {
-			args = append(args, a.(string))
+			args = append(args, fmt.Sprintf("%v", a))
 		}
 		t.Run(strings.Join(args, ", "), func(t *testing.T) {
 			require := require.New(t)
