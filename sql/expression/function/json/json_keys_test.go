@@ -15,14 +15,14 @@
 package json
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/types"
-"strings"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestJSONKeys(t *testing.T) {
@@ -73,7 +73,6 @@ func TestJSONKeys(t *testing.T) {
 			row: sql.Row{`{"aa": 1, "bb": 2, "c": 3}`},
 			exp: types.MustJSON(`["c", "aa", "bb"]`),
 		},
-
 
 		{
 			f:   f2,
