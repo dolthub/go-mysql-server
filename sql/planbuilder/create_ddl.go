@@ -462,7 +462,7 @@ func (b *Builder) buildCreateView(inScope *scope, query string, c *ast.DDL) (out
 		queryAlias = queryAlias.WithColumnNames(columnsToStrings(c.ViewSpec.Columns))
 	}
 
-	dbName := c.Table.Qualifier.String()
+	dbName := c.ViewSpec.ViewName.Qualifier.String()
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
 	}
