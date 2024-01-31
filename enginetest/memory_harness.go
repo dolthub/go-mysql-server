@@ -41,7 +41,7 @@ type MemoryHarness struct {
 	parallelism               int
 	numTablePartitions        int
 	readonly                  bool
-	provider                  *memory.DbProvider
+	provider                  sql.DatabaseProvider
 	indexDriverInitializer    IndexDriverInitializer
 	driver                    sql.IndexDriver
 	nativeIndexSupport        bool
@@ -282,7 +282,7 @@ func (m *MemoryHarness) IndexDriver(dbs []sql.Database) sql.IndexDriver {
 func (m *MemoryHarness) newDatabase(name string) sql.Database {
 	ctx := m.NewContext()
 
-	err := m.getProvider().CreateDatabase(ctx, name)
+	err := m.getProvider().(*memory.DbProvider).CreateDatabase(ctx, name)
 	if err != nil {
 		panic(err)
 	}
@@ -291,7 +291,13 @@ func (m *MemoryHarness) newDatabase(name string) sql.Database {
 	return db
 }
 
-func (m *MemoryHarness) getProvider() *memory.DbProvider {
+func (m *MemoryHarness) WithProvider(provider sql.DatabaseProvider) *MemoryHarness {
+	ret := *m
+	ret.provider = provider
+	return &ret
+}
+
+func (m *MemoryHarness) getProvider() sql.DatabaseProvider {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -309,7 +315,7 @@ func (m *MemoryHarness) NewDatabaseProvider() sql.MutableDatabaseProvider {
 }
 
 func (m *MemoryHarness) Provider() *memory.DbProvider {
-	return m.getProvider()
+	return m.getProvider().(*memory.DbProvider)
 }
 
 func (m *MemoryHarness) NewDatabases(names ...string) []sql.Database {
