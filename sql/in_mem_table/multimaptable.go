@@ -113,10 +113,6 @@ func (t *IndexedSetTable[V]) Collation() sql.CollationID {
 	return t.coll
 }
 
-func (t *IndexedSetTable[V]) Comment() string {
-	return ""
-}
-
 func (t *IndexedSetTable[V]) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 	return sql.PartitionsToPartitionIter(partition{}), nil
 }
@@ -220,10 +216,6 @@ func (t *MultiIndexedSetTable[V]) Schema() sql.Schema {
 
 func (t *MultiIndexedSetTable[V]) Collation() sql.CollationID {
 	return t.coll
-}
-
-func (t *MultiIndexedSetTable[V]) Comment() string {
-	return ""
 }
 
 func (t *MultiIndexedSetTable[V]) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {

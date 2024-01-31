@@ -82,10 +82,6 @@ func (c *ColumnsTable) Collation() sql.CollationID {
 	return sql.Collation_Information_Schema_Default
 }
 
-func (c *ColumnsTable) Comment() string {
-	return ""
-}
-
 // Name implements the sql.Table interface.
 func (c *ColumnsTable) Name() string {
 	return ColumnsTableName

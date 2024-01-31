@@ -884,7 +884,10 @@ func (i *indexSearchableTable) Collation() sql.CollationID {
 }
 
 func (i *indexSearchableTable) Comment() string {
-	return i.underlying.Comment()
+	if ct, ok := i.underlying.(sql.CommentedTable); ok {
+		return ct.Comment()
+	}
+	return ""
 }
 
 func (i *indexSearchableTable) Partitions(context *sql.Context) (sql.PartitionIter, error) {

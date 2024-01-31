@@ -27,12 +27,10 @@ import (
 // GenerateCreateTableStatement returns 'CREATE TABLE' statement with given table names
 // and column definition statements in order and the collation and character set names for the table
 func GenerateCreateTableStatement(tblName string, colStmts []string, tblCharsetName, tblCollName string, comment string) string {
-	commentString := ""
 	if comment != "" {
-		// Escape any single quotes in the comment
-		// TODO: This isn't actually needed, because of how we currently parse table options in vitess
+		// Escape any single quotes in the comment and add the COMMENT keyword
 		comment = strings.ReplaceAll(comment, "'", "''")
-		commentString = fmt.Sprintf(" COMMENT='%s'", comment)
+		comment = fmt.Sprintf(" COMMENT='%s'", comment)
 	}
 
 	return fmt.Sprintf(
@@ -41,7 +39,7 @@ func GenerateCreateTableStatement(tblName string, colStmts []string, tblCharsetN
 		strings.Join(colStmts, ",\n"),
 		tblCharsetName,
 		tblCollName,
-		commentString,
+		comment,
 	)
 }
 

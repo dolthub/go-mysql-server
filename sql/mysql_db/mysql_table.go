@@ -61,11 +61,6 @@ func (t *mysqlTable) Collation() sql.CollationID {
 	return sql.Collation_utf8mb3_bin
 }
 
-// Comment implements the sql.Table interface.
-func (t *mysqlTable) Comment() string {
-	return ""
-}
-
 // Partitions implements the interface sql.Table.
 func (t *mysqlTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 	return sql.PartitionsToPartitionIter(dummyPartition{}), nil

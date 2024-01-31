@@ -217,11 +217,6 @@ func (t *JSONTable) Collation() sql.CollationID {
 	return sql.Collation_Default
 }
 
-// Comment implements the sql.Table interface.
-func (t *JSONTable) Comment() string {
-	return ""
-}
-
 // Partitions implements the sql.Table interface
 func (t *JSONTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 	// TODO: this does Nothing

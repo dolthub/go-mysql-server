@@ -65,6 +65,7 @@ var _ MemTable = (*Table)(nil)
 var _ sql.InsertableTable = (*Table)(nil)
 var _ sql.UpdatableTable = (*Table)(nil)
 var _ sql.DeletableTable = (*Table)(nil)
+var _ sql.CommentedTable = (*Table)(nil)
 var _ sql.ReplaceableTable = (*Table)(nil)
 var _ sql.TruncateableTable = (*Table)(nil)
 var _ sql.AlterableTable = (*Table)(nil)
@@ -137,7 +138,8 @@ func stripTblNames(e sql.Expression) (sql.Expression, transform.TreeIdentity, er
 	return e, transform.SameTree, nil
 }
 
-// NewPartitionedTableWithCollation creates a new Table with the given name, schema, number of partitions, and collation.
+// NewPartitionedTableWithCollation creates a new Table with the given name, schema, number of partitions, collation,
+// and comment.
 func NewPartitionedTableWithCollation(db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, numPartitions int, collation sql.CollationID, comment string) *Table {
 	var keys [][]byte
 	var partitions = map[string][]sql.Row{}
@@ -234,7 +236,7 @@ func (t *Table) Collation() sql.CollationID {
 	return t.data.collation
 }
 
-// Comment implements the sql.Table interface.
+// Comment implements the sql.CommentedTable interface.
 func (t Table) Comment() string {
 	return t.data.comment
 }

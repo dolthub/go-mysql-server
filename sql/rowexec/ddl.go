@@ -879,7 +879,6 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 		if !ok {
 			return sql.RowsToRowIter(), sql.ErrTemporaryTableNotSupported.New()
 		}
-		// TODO: Add in n.Comment
 		err = creatable.CreateTemporaryTable(ctx, n.Name(), n.CreateSchema, n.Collation)
 	} else {
 		switch creatable := maybePrivDb.(type) {

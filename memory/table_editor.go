@@ -40,6 +40,7 @@ type tableEditor struct {
 }
 
 var _ sql.Table = (*tableEditor)(nil)
+var _ sql.CommentedTable = (*tableEditor)(nil)
 var _ sql.RowReplacer = (*tableEditor)(nil)
 var _ sql.RowUpdater = (*tableEditor)(nil)
 var _ sql.RowInserter = (*tableEditor)(nil)

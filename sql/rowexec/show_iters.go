@@ -454,7 +454,12 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		}
 	}
 
-	return sql.GenerateCreateTableStatement(table.Name(), colStmts, table.Collation().CharacterSet().Name(), table.Collation().Name(), table.Comment()), nil
+	comment := ""
+	if commentedTable, ok := table.(sql.CommentedTable); ok {
+		comment = commentedTable.Comment()
+	}
+
+	return sql.GenerateCreateTableStatement(table.Name(), colStmts, table.Collation().CharacterSet().Name(), table.Collation().Name(), comment), nil
 }
 
 func produceCreateViewStatement(view *plan.SubqueryAlias) string {

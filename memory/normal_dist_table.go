@@ -133,11 +133,6 @@ func (NormalDistTable) Collation() sql.CollationID {
 	return sql.Collation_Default
 }
 
-// Comment implements the sql.Table interface.
-func (s NormalDistTable) Comment() string {
-	return ""
-}
-
 func (s NormalDistTable) Expressions() []sql.Expression {
 	return []sql.Expression{}
 }

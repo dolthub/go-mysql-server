@@ -27,16 +27,15 @@ var (
 
 	ErrPrimaryKeyOnNullField = errors.NewKind("All parts of PRIMARY KEY must be NOT NULL")
 
-	// TODO: WHy do we do this regex matching? Change this comment and explain the TODO
-	//       Seems like this would be cleaner if we split the options into a slice, instead of one string, and maybe even a new TableOption struct type?
-	//       Also... why is this in errors.go ?
-	tableCharsetOptionRegex = regexp.MustCompile(`(?i)(DEFAULT)?\s+CHARACTER\s+SET((\s*=?\s*)|\s+)([A-Za-z0-9_]+)`)
-
+	// TODO: We parse table options in Vitess, but we return them to GMS as a single string, so GMS has to reparse
+	//       table options using these regexes. It would be cleaner for Vitess to parse them into structures so that
+	//       GMS could just pull out the data it needs, without having to regex it out from a single string. Because
+	//       of how the original quotes are lost and single quotes are always used, we also currently lose some info
+	//       about the original statement – notably, we can't parse comments that contain single quotes because Vitess
+	//       strips the original double quotes and sends the comment string to GMS wrapped in single quotes.
+	tableCharsetOptionRegex   = regexp.MustCompile(`(?i)(DEFAULT)?\s+CHARACTER\s+SET((\s*=?\s*)|\s+)([A-Za-z0-9_]+)`)
 	tableCollationOptionRegex = regexp.MustCompile(`(?i)(DEFAULT)?\s+COLLATE((\s*=?\s*)|\s+)([A-Za-z0-9_]+)`)
-
-	// TODO: Need to support double quotes, too...
-	//       Maybe this would be easier in vitess to just parse them there?
-	tableCommentOptionRegex = regexp.MustCompile(`(?i)\s+COMMENT((\s*=?\s*)|\s+)('([^']+)')`)
+	tableCommentOptionRegex   = regexp.MustCompile(`(?i)\s+COMMENT((\s*=?\s*)|\s+)('([^']+)')`)
 
 	// ErrUnionSchemasDifferentLength is returned when the two sides of a
 	// UNION do not have the same number of columns in their schemas.

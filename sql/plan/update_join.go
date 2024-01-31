@@ -119,11 +119,6 @@ func (u *updatableJoinTable) Collation() sql.CollationID {
 	return sql.Collation_Default
 }
 
-// Comment implements the sql.Table interface.
-func (u *updatableJoinTable) Comment() string {
-	return ""
-}
-
 // Updater implements the sql.UpdatableTable interface.
 func (u *updatableJoinTable) Updater(ctx *sql.Context) sql.RowUpdater {
 	return &updatableJoinUpdater{

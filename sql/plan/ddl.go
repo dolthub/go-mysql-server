@@ -181,7 +181,7 @@ func NewCreateTable(db sql.Database, name string, ifn IfNotExistsOption, temp Te
 		checks:       tableSpec.ChDefs,
 		IdxDefs:      tableSpec.IdxDefs,
 		Collation:    tableSpec.Collation,
-		Comment:      tableSpec.Comment, // TODO: Could make Comment() a method instead
+		Comment:      tableSpec.Comment,
 		ifNotExists:  ifn,
 		temporary:    temp,
 	}

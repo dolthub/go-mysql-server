@@ -62,7 +62,7 @@ func (t *ProcedureResolvedTable) Collation() sql.CollationID {
 	return t.ResolvedTable.Collation()
 }
 
-// Comment implements the sql.Table interface.
+// Comment implements the sql.CommentedTable interface.
 func (t *ProcedureResolvedTable) Comment() string {
 	return t.ResolvedTable.Comment()
 }

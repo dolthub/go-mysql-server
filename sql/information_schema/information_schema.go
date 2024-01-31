@@ -2692,11 +2692,6 @@ func (t *informationSchemaTable) Collation() CollationID {
 	return Collation_Information_Schema_Default
 }
 
-// Comment implements the sql.Table interface.
-func (t *informationSchemaTable) Comment() string {
-	return ""
-}
-
 func (t *informationSchemaTable) AssignCatalog(cat Catalog) Table {
 	t.catalog = cat
 	return t

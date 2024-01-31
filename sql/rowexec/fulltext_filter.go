@@ -61,11 +61,6 @@ func (f *FulltextFilterTable) Collation() sql.CollationID {
 	return f.Table.Collation()
 }
 
-// Comment implements the interface sql.Table.
-func (f *FulltextFilterTable) Comment() string {
-	return f.Table.Comment()
-}
-
 // Partitions implements the interface sql.IndexedTable.
 func (f *FulltextFilterTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 	if f.MatchAgainst.KeyCols.Type == fulltext.KeyType_None {

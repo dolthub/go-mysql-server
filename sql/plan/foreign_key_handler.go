@@ -75,15 +75,6 @@ func (n *ForeignKeyHandler) Collation() sql.CollationID {
 	return originalTable.Collation()
 }
 
-// Comment implements the sql.Table interface.
-func (n *ForeignKeyHandler) Comment() string {
-	originalTable, ok := n.OriginalNode.(sql.Table)
-	if !ok {
-		return ""
-	}
-	return originalTable.Comment()
-}
-
 // Children implements the interface sql.Node.
 func (n *ForeignKeyHandler) Children() []sql.Node {
 	return []sql.Node{n.OriginalNode}

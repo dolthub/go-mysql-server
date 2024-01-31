@@ -129,7 +129,6 @@ type TemporaryTableCreator interface {
 	Database
 	// CreateTemporaryTable creates the table with the given name and schema. If a temporary table with that name already exists, must
 	// return sql.ErrTableAlreadyExists
-	// TODO: should this have a Comment param added to it...
 	CreateTemporaryTable(ctx *Context, name string, schema PrimaryKeySchema, collation CollationID) error
 }
 

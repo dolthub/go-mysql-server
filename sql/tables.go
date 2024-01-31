@@ -26,8 +26,6 @@ type Table interface {
 	Schema() Schema
 	// Collation returns the table's collation.
 	Collation() CollationID
-	// Comment returns the table's optional comment.
-	Comment() string
 	// Partitions returns the table's partitions in an iterator.
 	Partitions(*Context) (PartitionIter, error)
 	// PartitionRows returns the rows in the given partition, which was returned by Partitions.
@@ -85,6 +83,13 @@ type FilteredTable interface {
 	HandledFilters(filters []Expression) []Expression
 	// WithFilters returns a table with the given filter expressions applied.
 	WithFilters(ctx *Context, filters []Expression) Table
+}
+
+// CommentedTable is a table that has a comment on it.
+type CommentedTable interface {
+	Table
+	// Comment returns the table's optional comment.
+	Comment() string
 }
 
 // ProjectedTable is a table that can return only a subset of its columns from RowIter. This provides a very large

@@ -81,11 +81,6 @@ func (r *routineTable) Collation() CollationID {
 	return Collation_Information_Schema_Default
 }
 
-// Comment implements the sql.Table interface.
-func (r *routineTable) Comment() string {
-	return ""
-}
-
 func (r *routineTable) String() string {
 	return printTable(r.Name(), r.Schema())
 }
