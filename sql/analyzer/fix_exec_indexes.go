@@ -413,58 +413,7 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 		nn.OnDupExprs = s.expressions
 		return nn.WithChecks(s.checks), nil
 	default:
-
-		// fill in column ids
-		switch n := n.(type) {
-		case sql.Projector:
-			for _, e := range n.ProjectedExprs() {
-				if ide, ok := e.(sql.IdExpression); ok {
-					s.ids = append(s.ids, ide.Id())
-				} else {
-					s.ids = append(s.ids, 0)
-				}
-			}
-		case *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.SubqueryAlias, *plan.RecursiveTable, *plan.RecursiveCte, *plan.SetOp, *plan.ValueDerivedTable, *plan.JSONTable:
-			if rt, ok := n.(*plan.ResolvedTable); ok && plan.IsDualTable(rt.Table) {
-				s.ids = append(s.ids, 0)
-				break
-			}
-			cols := n.(plan.TableIdNode).Columns()
-			if tn, ok := n.(sql.TableNode); ok {
-				if pkt, ok := tn.UnderlyingTable().(sql.PrimaryKeyTable); ok && len(pkt.PrimaryKeySchema().Schema) != len(n.Schema()) {
-					firstcol, _ := cols.Next(1)
-					for _, c := range n.Schema() {
-						ord := pkt.PrimaryKeySchema().IndexOfColName(c.Name)
-						colId := firstcol + sql.ColumnId(ord)
-						s.ids = append(s.ids, colId)
-					}
-					break
-				}
-			}
-			cols.ForEach(func(col sql.ColumnId) {
-				s.ids = append(s.ids, col)
-			})
-
-		case *plan.TableCountLookup:
-			s.ids = append(s.ids, n.Id())
-		case *plan.JoinNode:
-			if n.Op.IsPartial() {
-				s.ids = append(s.ids, s.childScopes[0].ids...)
-			} else {
-				s.ids = append(s.ids, s.childScopes[0].ids...)
-				s.ids = append(s.ids, s.childScopes[1].ids...)
-			}
-		case *plan.ShowStatus:
-			for i := range n.Schema() {
-				s.ids = append(s.ids, sql.ColumnId(i+1))
-			}
-		case *plan.Concat:
-			s.ids = append(s.ids, s.childScopes[0].ids...)
-		default:
-			for _, cs := range s.childScopes {
-				s.ids = append(s.ids, cs.ids...)
-			}
-		}
+		s.ids = columnIdsForNode(n)
 
 		s.addSchema(n.Schema())
 		var err error
@@ -503,6 +452,80 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 		}
 		return n, nil
 	}
+}
+
+// columnIdsForNode collects the column ids of a node's return schema.
+// Projector nodes can return a subset of the full sql.PrimaryTableSchema.
+// todo: pruning projections should update plan.TableIdNode .Columns()
+// to avoid schema/column discontinuities.
+func columnIdsForNode(n sql.Node) []sql.ColumnId {
+	var ret []sql.ColumnId
+	switch n := n.(type) {
+	case sql.Projector:
+		for _, e := range n.ProjectedExprs() {
+			if ide, ok := e.(sql.IdExpression); ok {
+				ret = append(ret, ide.Id())
+			} else {
+				ret = append(ret, 0)
+			}
+		}
+	case *plan.TableCountLookup:
+		ret = append(ret, n.Id())
+	case *plan.TableAlias:
+		// Table alias's child either exposes 1) child ids or 2) is custom
+		// table function. We currently do not update table columns in response
+		// to table pruning, so we need to manually distinguish these cases.
+		// todo: prune columns should update column ids and table alias ids
+		switch n.Child.(type) {
+		case sql.TableFunction:
+			// todo: table functions that implement sql.Projector are not going
+			// to work. Need to fix prune.
+			n.Columns().ForEach(func(col sql.ColumnId) {
+				ret = append(ret, col)
+			})
+		default:
+			ret = append(ret, columnIdsForNode(n.Child)...)
+		}
+	case plan.TableIdNode:
+		if rt, ok := n.(*plan.ResolvedTable); ok && plan.IsDualTable(rt.Table) {
+			ret = append(ret, 0)
+			break
+		}
+
+		cols := n.(plan.TableIdNode).Columns()
+		if tn, ok := n.(sql.TableNode); ok {
+			if pkt, ok := tn.UnderlyingTable().(sql.PrimaryKeyTable); ok && len(pkt.PrimaryKeySchema().Schema) != len(n.Schema()) {
+				firstcol, _ := cols.Next(1)
+				for _, c := range n.Schema() {
+					ord := pkt.PrimaryKeySchema().IndexOfColName(c.Name)
+					colId := firstcol + sql.ColumnId(ord)
+					ret = append(ret, colId)
+				}
+				break
+			}
+		}
+		cols.ForEach(func(col sql.ColumnId) {
+			ret = append(ret, col)
+		})
+	case *plan.JoinNode:
+		if n.Op.IsPartial() {
+			ret = append(ret, columnIdsForNode(n.Left())...)
+		} else {
+			ret = append(ret, columnIdsForNode(n.Left())...)
+			ret = append(ret, columnIdsForNode(n.Right())...)
+		}
+	case *plan.ShowStatus:
+		for i := range n.Schema() {
+			ret = append(ret, sql.ColumnId(i+1))
+		}
+	case *plan.Concat:
+		ret = append(ret, columnIdsForNode(n.Left())...)
+	default:
+		for _, c := range n.Children() {
+			ret = append(ret, columnIdsForNode(c)...)
+		}
+	}
+	return ret
 }
 
 func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {

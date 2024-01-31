@@ -664,10 +664,13 @@ func TestTableFunctions(t *testing.T) {
 		memory.NormalDistTable{})
 
 	engine := enginetest.NewEngineWithProvider(t, harness, testDatabaseProvider)
+	harness = harness.WithProvider(engine.Analyzer.Catalog.DbProvider)
+
 	engine.EngineAnalyzer().ExecBuilder = rowexec.DefaultBuilder
 
 	engine, err := enginetest.RunSetupScripts(harness.NewContext(), engine, setup.MydbData, true)
 	require.NoError(t, err)
+	_ = harness.NewSession()
 
 	for _, test := range queries.TableFunctionScriptTests {
 		enginetest.TestScriptWithEngine(t, engine, harness, test)

@@ -21,6 +21,16 @@ import (
 
 var TableFunctionScriptTests = []ScriptTest{
 	{
+		SetUpScript: []string{
+			"create database if not exists mydb",
+			"use mydb",
+			"create table xy (x int primary key, y int)",
+			"insert into xy values (0,1), (1,2), (2,3)",
+		},
+		Query:    "select y from table_func('z',2) join xy t on y = z",
+		Expected: []sql.Row{{2}},
+	},
+	{
 		Query:    "select * from sequence_table('y',2) seq1 where y in (select SEQ2.x from table_func('x', 1) seq2)",
 		Expected: []sql.Row{{1}},
 	},
