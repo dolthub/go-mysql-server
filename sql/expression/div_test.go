@@ -121,6 +121,7 @@ func TestDiv(t *testing.T) {
 // TestDivUsesFloatsInternally tests that division expression trees internally use floating point types when operating
 // on integers, but when returning the final result from the expression tree, it is returned as a Decimal.
 func TestDivUsesFloatsInternally(t *testing.T) {
+	t.Skip("Fast, but sometimes wrong. Consider removing or finding some way of selectively enabling it.")
 	bottomDiv := NewDiv(
 		NewGetField(0, types.Int32, "", false),
 		NewGetField(1, types.Int64, "", false))
