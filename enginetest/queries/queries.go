@@ -4087,6 +4087,14 @@ Select * from (
 		Expected: []sql.Row{{true}},
 	},
 	{
+		Query: `SELECT 96 / 51 * 51 > 96;`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query: `SELECT 96 / 51 * 51 = 95.999999991;`,
+		Expected: []sql.Row{{true}},
+	},
+	{
 		Query:    `select 64 / 77 * 77;`,
 		Expected: []sql.Row{{"64.0000"}},
 	},

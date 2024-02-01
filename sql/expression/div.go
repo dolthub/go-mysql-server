@@ -359,7 +359,6 @@ func getFloatOrMaxDecimalType(e sql.Expression, treatIntsAsFloats bool) sql.Type
 		case *GetField:
 			ct := c.Type()
 			if treatIntsAsFloats && types.IsInteger(ct) {
-				resType = types.Float64
 				return false
 			}
 			// If there is float type column reference, the result type is always float.
