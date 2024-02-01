@@ -4063,10 +4063,12 @@ Select * from (
 		Expected: []sql.Row{{"0.0720000000"}},
 	},
 	{
-		// https://github.com/dolthub/dolt/issues/4931
-		// The current output is "0.07200000000000"
 		Query:    "select 2000.0 / 250000000.0 * (24.0 * 6.0 * 6.25 * 10.0);",
 		Expected: []sql.Row{{"0.0720000000"}},
+	},
+	{
+		Query: `select 100 / 35600.00 * 35600.00;`,
+		Expected: []sql.Row{{"99.999973"}},
 	},
 	{
 		Query:    `select 64 / 77 * 77;`,
