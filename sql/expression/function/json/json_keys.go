@@ -15,8 +15,10 @@
 package json
 
 import (
-	"fmt"
-	"sort"
+	"errors"
+"fmt"
+	errorKinds "gopkg.in/src-d/go-errors.v1"
+"sort"
 
 	"github.com/dolthub/jsonpath"
 
@@ -109,7 +111,10 @@ func (j *JSONKeys) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	js, err := jsonpath.JsonPathLookup(doc.Val, path)
 	if err != nil {
-		return nil, nil
+		if errors.Is(err, jsonpath.ErrKeyError) {
+			return nil, nil
+		}
+		return nil, err
 	}
 
 	switch v := js.(type) {
