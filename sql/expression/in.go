@@ -54,6 +54,8 @@ func (in *InTuple) Right() sql.Expression {
 
 // NewInTuple creates an InTuple expression.
 func NewInTuple(left sql.Expression, right sql.Expression) *InTuple {
+	setArithmeticOps(left, -1)
+	setArithmeticOps(right, -1)
 	return &InTuple{BinaryExpressionStub{left, right}}
 }
 
@@ -76,10 +78,10 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// also if no match is found in the list and one of the expressions in the list is NULL.
 	rightNull := false
 
-	left, _, err = typ.Convert(left)
-	if err != nil {
-		return nil, err
-	}
+	//left, _, err = typ.Convert(left)
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	switch right := in.Right().(type) {
 	case Tuple:
