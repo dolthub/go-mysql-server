@@ -15,10 +15,10 @@
 package json
 
 import (
-	"errors"
-"fmt"
-	errorKinds "gopkg.in/src-d/go-errors.v1"
-"sort"
+	"fmt"
+	"sort"
+
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/jsonpath"
 

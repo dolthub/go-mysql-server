@@ -120,6 +120,11 @@ func TestJSONKeys(t *testing.T) {
 			row: sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.d"},
 			exp: nil,
 		},
+		{
+			f:   f2,
+			row: sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$["},
+			err: true,
+		},
 	}
 
 	for _, tt := range testCases {
