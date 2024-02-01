@@ -110,7 +110,10 @@ type ReadOnlyDatabase interface {
 // TableCreator is a Database that can create new tables.
 type TableCreator interface {
 	Database
-	// CreateTable creates the table with the given name, schema, collation, and comment.
+	// CreateTable creates the table with the given name, schema, collation, and comment. Integrators are
+	// responsible for persisting all provided table metadata. Comment may be optionally persisted, and if
+	// so, sql.Table implementations should also implement sql.CommentedTable so that the comment may be
+	// retrieved.
 	CreateTable(ctx *Context, name string, schema PrimaryKeySchema, collation CollationID, comment string) error
 }
 
