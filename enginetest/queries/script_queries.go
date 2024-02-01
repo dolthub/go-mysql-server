@@ -5277,6 +5277,28 @@ CREATE TABLE tab3 (
 			},
 		},
 	},
+	{
+		Name: "no decimal rounding in comparison",
+		SetUpScript: []string{
+			"CREATE TABLE tab2(col0 INTEGER, col1 INTEGER, col2 INTEGER);",
+			"INSERT INTO tab2 VALUES(46,51,23);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT * FROM tab2 WHERE ((col0 / col1) * col1) - col2 != col2;`,
+				Expected: []sql.Row{
+					{46, 51, 23},
+				},
+			},
+			{
+				Query: `SELECT col0, col1, col2, ((col0 / col1) * col1) - col2 = col2 from tab2;`,
+				Expected: []sql.Row{
+					{46, 51, 23, false},
+				},
+			},
+		},
+	},
+
 }
 
 var SpatialScriptTests = []ScriptTest{

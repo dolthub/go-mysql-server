@@ -68,6 +68,8 @@ type comparison struct {
 }
 
 func newComparison(left, right sql.Expression) comparison {
+	setArithmeticOps(left, -1)
+	setArithmeticOps(right, -1)
 	return comparison{BinaryExpressionStub{left, right}}
 }
 
