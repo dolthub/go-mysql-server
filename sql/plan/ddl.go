@@ -116,6 +116,7 @@ type TableSpec struct {
 	ChDefs    []*sql.CheckConstraint
 	IdxDefs   []*IndexDefinition
 	Collation sql.CollationID
+	Comment   string
 }
 
 func (c *TableSpec) WithSchema(schema sql.PrimaryKeySchema) *TableSpec {
@@ -153,6 +154,7 @@ type CreateTable struct {
 	checks       sql.CheckConstraints
 	IdxDefs      []*IndexDefinition
 	Collation    sql.CollationID
+	Comment      string
 	like         sql.Node
 	temporary    TempTableOption
 	selectNode   sql.Node
@@ -179,6 +181,7 @@ func NewCreateTable(db sql.Database, name string, ifn IfNotExistsOption, temp Te
 		checks:       tableSpec.ChDefs,
 		IdxDefs:      tableSpec.IdxDefs,
 		Collation:    tableSpec.Collation,
+		Comment:      tableSpec.Comment,
 		ifNotExists:  ifn,
 		temporary:    temp,
 	}
@@ -494,6 +497,7 @@ func (c *CreateTable) TableSpec() *TableSpec {
 	ret = ret.WithIndices(c.IdxDefs)
 	ret = ret.WithCheckConstraints(c.checks)
 	ret.Collation = c.Collation
+	ret.Comment = c.Comment
 
 	return ret
 }

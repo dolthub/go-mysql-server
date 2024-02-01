@@ -214,6 +214,13 @@ func (i *IndexedTableAccess) Collation() sql.CollationID {
 	return i.TableNode.Collation()
 }
 
+func (i *IndexedTableAccess) Comment() string {
+	if ct, ok := i.Table.(sql.CommentedTable); ok {
+		return ct.Comment()
+	}
+	return ""
+}
+
 func (i *IndexedTableAccess) Children() []sql.Node {
 	return nil
 }

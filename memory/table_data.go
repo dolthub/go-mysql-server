@@ -33,6 +33,7 @@ import (
 type TableData struct {
 	dbName    string
 	tableName string
+	comment   string
 
 	// Schema / config data
 	schema                  sql.PrimaryKeySchema

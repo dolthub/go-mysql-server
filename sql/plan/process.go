@@ -200,6 +200,8 @@ type ProcessTable struct {
 	OnRowNext        NamedNotifyFunc
 }
 
+var _ sql.CommentedTable = (*ProcessTable)(nil)
+
 // NewProcessTable returns a new ProcessTable.
 func NewProcessTable(t sql.Table, onPartitionDone, onPartitionStart, OnRowNext NamedNotifyFunc) *ProcessTable {
 	return &ProcessTable{t, onPartitionDone, onPartitionStart, OnRowNext}
@@ -208,6 +210,14 @@ func NewProcessTable(t sql.Table, onPartitionDone, onPartitionStart, OnRowNext N
 // Underlying implements sql.TableWrapper interface.
 func (t *ProcessTable) Underlying() sql.Table {
 	return t.Table
+}
+
+// Comment implements sql.CommentedTable interface.
+func (t *ProcessTable) Comment() string {
+	if ct, ok := t.Table.(sql.CommentedTable); ok {
+		return ct.Comment()
+	}
+	return ""
 }
 
 // PartitionRows implements the sql.Table interface.
