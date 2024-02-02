@@ -77,7 +77,7 @@ func (d Database) GetTableNames(ctx *sql.Context) ([]string, error) {
 }
 
 // CreateTable implements the interface sql.TableCreator.
-func (d Database) CreateTable(ctx *sql.Context, name string, schema sql.PrimaryKeySchema, collation sql.CollationID) error {
+func (d Database) CreateTable(ctx *sql.Context, name string, schema sql.PrimaryKeySchema, collation sql.CollationID, comment string) error {
 	colStmts := make([]string, len(schema.Schema))
 	var primaryKeyCols []string
 	for i, col := range schema.Schema {
@@ -103,8 +103,8 @@ func (d Database) CreateTable(ctx *sql.Context, name string, schema sql.PrimaryK
 		primaryKey := fmt.Sprintf("  PRIMARY KEY (`%s`)", strings.Join(primaryKeyCols, "`,`"))
 		colStmts = append(colStmts, primaryKey)
 	}
-	return d.shim.Exec(d.name, fmt.Sprintf("CREATE TABLE `%s` (\n%s\n) ENGINE=InnoDB DEFAULT COLLATE=%s;",
-		name, strings.Join(colStmts, ",\n"), sql.Collation_Default.String()))
+	return d.shim.Exec(d.name, fmt.Sprintf("CREATE TABLE `%s` (\n%s\n) ENGINE=InnoDB DEFAULT COLLATE=%s COMMENT='%s';",
+		name, strings.Join(colStmts, ",\n"), sql.Collation_Default.String(), comment))
 }
 
 // DropTable implements the interface sql.TableDropper.

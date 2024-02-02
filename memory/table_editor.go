@@ -40,6 +40,7 @@ type tableEditor struct {
 }
 
 var _ sql.Table = (*tableEditor)(nil)
+var _ sql.CommentedTable = (*tableEditor)(nil)
 var _ sql.RowReplacer = (*tableEditor)(nil)
 var _ sql.RowUpdater = (*tableEditor)(nil)
 var _ sql.RowInserter = (*tableEditor)(nil)
@@ -61,6 +62,10 @@ func (t *tableEditor) Schema() sql.Schema {
 
 func (t *tableEditor) Collation() sql.CollationID {
 	return t.editedTable.Collation()
+}
+
+func (t *tableEditor) Comment() string {
+	return t.editedTable.Comment()
 }
 
 func (t *tableEditor) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {

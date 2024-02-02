@@ -23,6 +23,24 @@ import (
 
 var CreateTableQueries = []WriteQueryTest{
 	{
+		WriteQuery:          `create table tableWithComment (pk int) COMMENT 'Table Comments Work!'`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         "SHOW CREATE TABLE tableWithComment",
+		ExpectedSelect:      []sql.Row{{"tableWithComment", "CREATE TABLE `tableWithComment` (\n  `pk` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin COMMENT='Table Comments Work!'"}},
+	},
+	{
+		WriteQuery:          `create table tableWithComment (pk int) COMMENT='Table Comments=Still Work'`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         "SHOW CREATE TABLE tableWithComment",
+		ExpectedSelect:      []sql.Row{{"tableWithComment", "CREATE TABLE `tableWithComment` (\n  `pk` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin COMMENT='Table Comments=Still Work'"}},
+	},
+	{
+		WriteQuery:          `create table tableWithComment (pk int) COMMENT "~!@ #$ %^ &* ()"`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         "SHOW CREATE TABLE tableWithComment",
+		ExpectedSelect:      []sql.Row{{"tableWithComment", "CREATE TABLE `tableWithComment` (\n  `pk` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin COMMENT='~!@ #$ %^ &* ()'"}},
+	},
+	{
 		WriteQuery:          `create table floattypedefs (a float(10), b float(10, 2), c double(10, 2))`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
 		SelectQuery:         "SHOW CREATE TABLE floattypedefs",
@@ -647,6 +665,18 @@ var CreateTableAutoIncrementTests = []ScriptTest{
 }
 
 var BrokenCreateTableQueries = []WriteQueryTest{
+	{
+		// TODO: We don't support table comments that contain single quotes due to how table options are parsed.
+		//       Vitess parses them, but turns any double quotes into single quotes and puts all table options back
+		//       into a string that GMS has to reparse. This means we can't tell if the single quote is the end of
+		//       the quoted string, or if it was a single quote inside of double quotes and needs to be escaped.
+		//       To fix this, Vitess should return the parsed table options as structured data, instead of as a
+		//       single string.
+		WriteQuery:          `create table tableWithComment (pk int) COMMENT "'"`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         "SHOW CREATE TABLE tableWithComment",
+		ExpectedSelect:      []sql.Row{{"tableWithComment", "CREATE TABLE `tableWithComment` (\n  `pk` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin COMMENT=''''"}},
+	},
 	{
 		WriteQuery:          `create table t1 (b blob, primary key(b(1)))`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},

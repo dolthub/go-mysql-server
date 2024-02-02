@@ -228,7 +228,7 @@ func (d *BaseDatabase) AddTable(name string, t MemTable) {
 }
 
 // CreateTable creates a table with the given name and schema
-func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.PrimaryKeySchema, collation sql.CollationID) error {
+func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.PrimaryKeySchema, collation sql.CollationID, comment string) error {
 	_, ok := d.tables[name]
 	if ok {
 		return sql.ErrTableAlreadyExists.New(name)
@@ -236,6 +236,7 @@ func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.Pri
 
 	table := NewTableWithCollation(d, name, schema, d.fkColl, collation)
 	table.db = d
+	table.data.comment = comment
 	if d.primaryKeyIndexes {
 		table.EnablePrimaryKeyIndexes()
 	}

@@ -65,6 +65,7 @@ var _ MemTable = (*Table)(nil)
 var _ sql.InsertableTable = (*Table)(nil)
 var _ sql.UpdatableTable = (*Table)(nil)
 var _ sql.DeletableTable = (*Table)(nil)
+var _ sql.CommentedTable = (*Table)(nil)
 var _ sql.ReplaceableTable = (*Table)(nil)
 var _ sql.TruncateableTable = (*Table)(nil)
 var _ sql.AlterableTable = (*Table)(nil)
@@ -91,7 +92,7 @@ func NewTable(db MemoryDatabase, name string, schema sql.PrimaryKeySchema, fkCol
 	if db != nil {
 		baseDatabase = db.Database()
 	}
-	return NewPartitionedTableWithCollation(baseDatabase, name, schema, fkColl, 0, sql.Collation_Default)
+	return NewPartitionedTableWithCollation(baseDatabase, name, schema, fkColl, 0, sql.Collation_Default, "")
 }
 
 // NewLocalTable returns a table suitable to use for transient non-memory applications
@@ -101,26 +102,26 @@ func NewLocalTable(db MemoryDatabase, name string, schema sql.PrimaryKeySchema, 
 	if db != nil {
 		baseDatabase = db.Database()
 	}
-	tbl := NewPartitionedTableWithCollation(baseDatabase, name, schema, fkColl, 0, sql.Collation_Default)
+	tbl := NewPartitionedTableWithCollation(baseDatabase, name, schema, fkColl, 0, sql.Collation_Default, "")
 	tbl.ignoreSessionData = true
 	return tbl
 }
 
 // NewTableWithCollation creates a new Table with the given name, schema, and collation.
 func NewTableWithCollation(db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, collation sql.CollationID) *Table {
-	return NewPartitionedTableWithCollation(db, name, schema, fkColl, 0, collation)
+	return NewPartitionedTableWithCollation(db, name, schema, fkColl, 0, collation, "")
 }
 
 // NewPartitionedTable creates a new Table with the given name, schema and number of partitions. Assigns the default
 // collation, therefore if a different collation is desired, please use NewPartitionedTableWithCollation.
 func NewPartitionedTable(db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, numPartitions int) *Table {
-	return NewPartitionedTableWithCollation(db, name, schema, fkColl, numPartitions, sql.Collation_Default)
+	return NewPartitionedTableWithCollation(db, name, schema, fkColl, numPartitions, sql.Collation_Default, "")
 }
 
 // NewPartitionedTable creates a new Table with the given name, schema and number of partitions. Assigns the default
 // collation, therefore if a different collation is desired, please use NewPartitionedTableWithCollation.
 func NewPartitionedTableRevision(db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, numPartitions int) *TableRevision {
-	tbl := NewPartitionedTableWithCollation(db, name, schema, fkColl, numPartitions, sql.Collation_Default)
+	tbl := NewPartitionedTableWithCollation(db, name, schema, fkColl, numPartitions, sql.Collation_Default, "")
 	tbl.ignoreSessionData = true
 	return &TableRevision{tbl}
 }
@@ -137,8 +138,9 @@ func stripTblNames(e sql.Expression) (sql.Expression, transform.TreeIdentity, er
 	return e, transform.SameTree, nil
 }
 
-// NewPartitionedTableWithCollation creates a new Table with the given name, schema, number of partitions, and collation.
-func NewPartitionedTableWithCollation(db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, numPartitions int, collation sql.CollationID) *Table {
+// NewPartitionedTableWithCollation creates a new Table with the given name, schema, number of partitions, collation,
+// and comment.
+func NewPartitionedTableWithCollation(db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, numPartitions int, collation sql.CollationID, comment string) *Table {
 	var keys [][]byte
 	var partitions = map[string][]sql.Row{}
 
@@ -198,6 +200,7 @@ func NewPartitionedTableWithCollation(db *BaseDatabase, name string, schema sql.
 		data: &TableData{
 			dbName:                dbName,
 			tableName:             name,
+			comment:               comment,
 			schema:                schema,
 			fkColl:                fkColl,
 			collation:             collation,
@@ -231,6 +234,11 @@ func (t *Table) Schema() sql.Schema {
 // Collation implements the sql.Table interface.
 func (t *Table) Collation() sql.CollationID {
 	return t.data.collation
+}
+
+// Comment implements the sql.CommentedTable interface.
+func (t Table) Comment() string {
+	return t.data.comment
 }
 
 func (t Table) IgnoreSessionData() bool {
