@@ -4076,7 +4076,7 @@ Select * from (
 		Expected: []sql.Row{{"0.0720000000"}},
 	},
 	{
-		Query: `select 100 / 35600.00 * 35600.00;`,
+		Query:    `select 100 / 35600.00 * 35600.00;`,
 		Expected: []sql.Row{{"99.999973"}},
 	},
 	{
