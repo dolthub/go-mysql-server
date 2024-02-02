@@ -524,8 +524,19 @@ func minus(lval, rval interface{}) (interface{}, error) {
 // floatOrDecimalTypeForMult returns Float64 type if either left or right side is of type int or float.
 // Otherwise, it returns decimal type of sum of left and right sides' precisions and scales. E.g. `1.40 * 1.0 = 1.400`
 func floatOrDecimalTypeForMult(l, r sql.Expression) sql.Type {
-	lType := getFloatOrMaxDecimalType(l, false)
-	rType := getFloatOrMaxDecimalType(r, false)
+	var lType sql.Type
+	if ldiv, ok := l.(*Div); ok {
+		lType = ldiv.determineResultType(isOutermostDiv(ldiv, 0, ldiv.divScale))
+	} else {
+		lType = getFloatOrMaxDecimalType(l, false)
+	}
+
+	var rType sql.Type
+	if rdiv, ok := r.(*Div); ok {
+		rType = rdiv.determineResultType(isOutermostDiv(rdiv, 0, rdiv.divScale))
+	} else {
+		rType = getFloatOrMaxDecimalType(r, false)
+	}
 
 	if lType == types.Float64 || rType == types.Float64 {
 		return types.Float64

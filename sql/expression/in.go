@@ -104,7 +104,7 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 			var cmp int
 			if types.IsDecimal(el.Type()) || types.IsFloat(el.Type()) {
-				rtyp := el.Type().Promote()
+				rtyp := el.Type()
 				left, err := convertOrTruncate(ctx, left, rtyp)
 				if err != nil {
 					return nil, err

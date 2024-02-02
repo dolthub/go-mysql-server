@@ -5280,12 +5280,20 @@ CREATE TABLE tab3 (
 	{
 		Name: "no decimal rounding in comparison",
 		SetUpScript: []string{
+			"CREATE TABLE tab0(col0 INTEGER, col1 INTEGER, col2 INTEGER);",
+			"INSERT INTO tab0 VALUES(97,1,99);",
 			"CREATE TABLE tab1(col0 INTEGER, col1 INTEGER, col2 INTEGER);",
 			"INSERT INTO tab1 VALUES(51,14,96);",
 			"CREATE TABLE tab2(col0 INTEGER, col1 INTEGER, col2 INTEGER);",
 			"INSERT INTO tab2 VALUES(46,51,23);",
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT * FROM tab0 WHERE NOT col1 IN (col1 / col2 * 50);`,
+				Expected: []sql.Row{
+					{97, 1, 99},
+				},
+			},
 			{
 				Query: `SELECT col2 / col0 * col0 > col2 from tab1;`,
 				Expected: []sql.Row{

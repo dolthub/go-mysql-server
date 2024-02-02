@@ -4092,6 +4092,14 @@ Select * from (
 		Expected: []sql.Row{{false}},
 	},
 	{
+		Query: `SELECT 1 IN (1 / 9 * 5);`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query: `SELECT 1 IN (1 / 99 * 50);`,
+		Expected: []sql.Row{{false}},
+	},
+	{
 		Query: `select 1 / 3 * 3 in (0.999999999);`,
 		Expected: []sql.Row{{true}},
 	},
