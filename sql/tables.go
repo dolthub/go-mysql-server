@@ -85,6 +85,13 @@ type FilteredTable interface {
 	WithFilters(ctx *Context, filters []Expression) Table
 }
 
+// CommentedTable is a table that has a comment on it.
+type CommentedTable interface {
+	Table
+	// Comment returns the table's optional comment.
+	Comment() string
+}
+
 // ProjectedTable is a table that can return only a subset of its columns from RowIter. This provides a very large
 // efficiency gain during table scans. Tables that implement this interface must return only the projected columns
 // in future calls to Schema.

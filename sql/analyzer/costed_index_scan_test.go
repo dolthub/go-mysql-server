@@ -883,6 +883,13 @@ func (i *indexSearchableTable) Collation() sql.CollationID {
 	return i.underlying.Collation()
 }
 
+func (i *indexSearchableTable) Comment() string {
+	if ct, ok := i.underlying.(sql.CommentedTable); ok {
+		return ct.Comment()
+	}
+	return ""
+}
+
 func (i *indexSearchableTable) Partitions(context *sql.Context) (sql.PartitionIter, error) {
 	//TODO implement me
 	panic("implement me")

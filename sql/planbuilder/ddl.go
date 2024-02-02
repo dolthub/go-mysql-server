@@ -235,7 +235,7 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 		qualifier = b.ctx.GetCurrentDatabase()
 	}
 	database := b.resolveDb(qualifier)
-	schema, collation := b.tableSpecToSchema(inScope, outScope, database, strings.ToLower(c.Table.Name.String()), c.TableSpec, false)
+	schema, collation, comment := b.tableSpecToSchema(inScope, outScope, database, strings.ToLower(c.Table.Name.String()), c.TableSpec, false)
 	fkDefs, chDefs := b.buildConstraintsDefs(outScope, c.Table, c.TableSpec)
 
 	schema.Schema = assignColumnIndexesInSchema(schema.Schema)
@@ -247,6 +247,7 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 		FkDefs:    fkDefs,
 		ChDefs:    chDefs,
 		Collation: collation,
+		Comment:   comment,
 	}
 
 	if c.OptSelect != nil {
@@ -380,6 +381,7 @@ func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 		IdxDefs:   idxDefs,
 		ChDefs:    checkDefs,
 		Collation: likeTable.Collation(),
+		Comment:   likeTable.Comment(),
 	}
 
 	qualifier := ct.Table.Qualifier.String()
@@ -518,7 +520,7 @@ func (b *Builder) buildAlterTableColumnAction(inScope *scope, ddl *ast.DDL, tabl
 	outScope = inScope
 	switch strings.ToLower(ddl.ColumnAction) {
 	case ast.AddStr:
-		sch, _ := b.tableSpecToSchema(inScope, outScope, table.Database(), ddl.Table.Name.String(), ddl.TableSpec, true)
+		sch, _, _ := b.tableSpecToSchema(inScope, outScope, table.Database(), ddl.Table.Name.String(), ddl.TableSpec, true)
 		outScope.node = plan.NewAddColumnResolved(table, *sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder))
 	case ast.DropStr:
 		drop := plan.NewDropColumnResolved(table, ddl.Column.String())
@@ -532,7 +534,7 @@ func (b *Builder) buildAlterTableColumnAction(inScope *scope, ddl *ast.DDL, tabl
 		// modify adds a new column maybe with same name
 		// make new hierarchy so it resolves before old column
 		outScope = inScope.push()
-		sch, _ := b.tableSpecToSchema(inScope, outScope, table.Database(), ddl.Table.Name.String(), ddl.TableSpec, true)
+		sch, _, _ := b.tableSpecToSchema(inScope, outScope, table.Database(), ddl.Table.Name.String(), ddl.TableSpec, true)
 		modifyCol := plan.NewModifyColumnResolved(table, ddl.Column.String(), *sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder))
 		outScope.node = modifyCol
 	default:
@@ -1032,11 +1034,12 @@ func validateOnUpdateExprs(col *sql.Column) error {
 	return nil
 }
 
-// TableSpecToSchema creates a sql.Schema from a parsed TableSpec
-func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, tableName string, tableSpec *ast.TableSpec, forceInvalidCollation bool) (sql.PrimaryKeySchema, sql.CollationID) {
+// TableSpecToSchema creates a sql.Schema from a parsed TableSpec and returns the parsed primary key schema, collation ID, and table comment.
+func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, tableName string, tableSpec *ast.TableSpec, forceInvalidCollation bool) (sql.PrimaryKeySchema, sql.CollationID, string) {
 	// todo: somewhere downstream updates an ALTER MODIY column's type collation
 	// to match the underlying. That only happens if the type stays unspecified.
 	tableCollation := sql.Collation_Unspecified
+	tableComment := ""
 	if !forceInvalidCollation {
 		tableCollation = sql.Collation_Default
 		if cdb, _ := db.(sql.CollatedDatabase); cdb != nil {
@@ -1045,24 +1048,28 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 		if len(tableSpec.Options) > 0 {
 			charsetSubmatches := tableCharsetOptionRegex.FindStringSubmatch(tableSpec.Options)
 			collationSubmatches := tableCollationOptionRegex.FindStringSubmatch(tableSpec.Options)
+			commentSubmatches := tableCommentOptionRegex.FindStringSubmatch(tableSpec.Options)
 			if len(charsetSubmatches) == 5 && len(collationSubmatches) == 5 {
 				var err error
 				tableCollation, err = sql.ParseCollation(&charsetSubmatches[4], &collationSubmatches[4], false)
 				if err != nil {
-					return sql.PrimaryKeySchema{}, sql.Collation_Unspecified
+					return sql.PrimaryKeySchema{}, sql.Collation_Unspecified, ""
 				}
 			} else if len(charsetSubmatches) == 5 {
 				charset, err := sql.ParseCharacterSet(charsetSubmatches[4])
 				if err != nil {
-					return sql.PrimaryKeySchema{}, sql.Collation_Unspecified
+					return sql.PrimaryKeySchema{}, sql.Collation_Unspecified, ""
 				}
 				tableCollation = charset.DefaultCollation()
 			} else if len(collationSubmatches) == 5 {
 				var err error
 				tableCollation, err = sql.ParseCollation(nil, &collationSubmatches[4], false)
 				if err != nil {
-					return sql.PrimaryKeySchema{}, sql.Collation_Unspecified
+					return sql.PrimaryKeySchema{}, sql.Collation_Unspecified, ""
 				}
+			}
+			if len(commentSubmatches) == 5 {
+				tableComment = commentSubmatches[4]
 			}
 		}
 	}
@@ -1107,7 +1114,7 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 		schema[i].Default = b.convertDefaultExpression(outScope, def, schema[i].Type, schema[i].Nullable)
 		if def != nil && generated[i] != nil {
 			b.handleErr(sql.ErrGeneratedColumnWithDefault.New())
-			return sql.PrimaryKeySchema{}, sql.Collation_Unspecified
+			return sql.PrimaryKeySchema{}, sql.Collation_Unspecified, ""
 		}
 	}
 
@@ -1130,7 +1137,7 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 		}
 	}
 
-	return sql.NewPrimaryKeySchema(schema, getPkOrdinals(tableSpec)...), tableCollation
+	return sql.NewPrimaryKeySchema(schema, getPkOrdinals(tableSpec)...), tableCollation, tableComment
 }
 
 // jsonTableSpecToSchemaHelper creates a sql.Schema from a parsed TableSpec

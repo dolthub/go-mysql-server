@@ -26,13 +26,20 @@ import (
 
 // GenerateCreateTableStatement returns 'CREATE TABLE' statement with given table names
 // and column definition statements in order and the collation and character set names for the table
-func GenerateCreateTableStatement(tblName string, colStmts []string, tblCharsetName, tblCollName string) string {
+func GenerateCreateTableStatement(tblName string, colStmts []string, tblCharsetName, tblCollName string, comment string) string {
+	if comment != "" {
+		// Escape any single quotes in the comment and add the COMMENT keyword
+		comment = strings.ReplaceAll(comment, "'", "''")
+		comment = fmt.Sprintf(" COMMENT='%s'", comment)
+	}
+
 	return fmt.Sprintf(
-		"CREATE TABLE %s (\n%s\n) ENGINE=InnoDB DEFAULT CHARSET=%s COLLATE=%s",
+		"CREATE TABLE %s (\n%s\n) ENGINE=InnoDB DEFAULT CHARSET=%s COLLATE=%s%s",
 		QuoteIdentifier(tblName),
 		strings.Join(colStmts, ",\n"),
 		tblCharsetName,
 		tblCollName,
+		comment,
 	)
 }
 

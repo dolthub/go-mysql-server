@@ -907,10 +907,10 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 				if !ok {
 					return sql.RowsToRowIter(), sql.ErrCreateTableNotSupported.New(n.Db.Name())
 				}
-				err = creatable.CreateTable(ctx, n.Name(), n.CreateSchema, n.Collation)
+				err = creatable.CreateTable(ctx, n.Name(), n.CreateSchema, n.Collation, n.Comment)
 			}
 		case sql.TableCreator:
-			err = creatable.CreateTable(ctx, n.Name(), n.CreateSchema, n.Collation)
+			err = creatable.CreateTable(ctx, n.Name(), n.CreateSchema, n.Collation, n.Comment)
 		default:
 			return sql.RowsToRowIter(), sql.ErrCreateTableNotSupported.New(n.Db.Name())
 		}
