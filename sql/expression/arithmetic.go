@@ -215,7 +215,7 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Decimals must be rounded
-	if res, ok := result.(decimal.Decimal); ok && isOutermostArithmeticOp(a, 0, a.ops) {
+	if res, ok := result.(decimal.Decimal); ok && isOutermostArithmeticOp(a, a.ops) {
 		finalScale, hasDiv := getFinalScale(a)
 		if hasDiv {
 			return res.Round(finalScale), nil
