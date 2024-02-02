@@ -200,16 +200,29 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	var result interface{}
 	switch strings.ToLower(a.Op) {
 	case sqlparser.PlusStr:
-		return plus(lval, rval)
+		result, err = plus(lval, rval)
 	case sqlparser.MinusStr:
-		return minus(lval, rval)
+		result, err = minus(lval, rval)
 	case sqlparser.MultStr:
-		return mult(lval, rval)
+		result, err = mult(lval, rval)
 	}
 
-	return nil, errUnableToEval.New(lval, a.Op, rval)
+	if err != nil {
+		return nil, err
+	}
+
+	// Decimals must be rounded
+	if res, ok := result.(decimal.Decimal); ok && isOutermostArithmeticOp(a, a.ops) {
+		finalScale, hasDiv := getFinalScale(a)
+		if hasDiv {
+			return res.Round(finalScale), nil
+		}
+	}
+
+	return result, nil
 }
 
 func (a *Arithmetic) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interface{}, error) {
@@ -279,7 +292,7 @@ func isInterval(expr sql.Expression) bool {
 	return ok
 }
 
-// countArithmeticOps returns the number of arithmetic operators in order on the left child node of the current node.
+// countArithmeticOps returns the number of arithmetic operators under the current node.
 // This lets us count how many arithmetic operators used one after the other
 func countArithmeticOps(e sql.Expression) int32 {
 	if e == nil {
@@ -287,7 +300,7 @@ func countArithmeticOps(e sql.Expression) int32 {
 	}
 
 	if a, ok := e.(ArithmeticOp); ok {
-		return countDivs(a.Left()) + 1
+		return countArithmeticOps(a.Left()) + countArithmeticOps(a.Right()) + 1
 	}
 
 	return 0
@@ -302,6 +315,8 @@ func setArithmeticOps(e sql.Expression, opScale int32) {
 
 	if a, ok := e.(ArithmeticOp); ok {
 		a.SetOpCount(opScale)
+		setArithmeticOps(a.Left(), opScale)
+		setArithmeticOps(a.Right(), opScale)
 	}
 
 	return
@@ -309,21 +324,8 @@ func setArithmeticOps(e sql.Expression, opScale int32) {
 
 // isOutermostArithmeticOp return whether the expression we're currently on is
 // the last arithmetic operation of all continuous arithmetic operations.
-func isOutermostArithmeticOp(e sql.Expression, d, dScale int32) bool {
-	if e == nil {
-		return false
-	}
-
-	if a, ok := e.(ArithmeticOp); ok {
-		d = d + 1
-		if d == dScale {
-			return true
-		} else {
-			return isOutermostDiv(a.Left(), d, dScale)
-		}
-	}
-
-	return false
+func isOutermostArithmeticOp(e sql.Expression, opScale int32) bool {
+	return opScale == countArithmeticOps(e)
 }
 
 // convertValueToType returns |val| converted into type |typ|. If the value is
