@@ -154,7 +154,7 @@ func (d *Div) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 		if res, ok := result.(decimal.Decimal); ok {
-			if isOutermostArithmeticOp(d, 0, d.ops) {
+			if isOutermostArithmeticOp(d, d.ops) {
 				finalScale, _ := getFinalScale(d)
 				return res.Round(finalScale), nil
 			}

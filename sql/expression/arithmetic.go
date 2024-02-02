@@ -324,21 +324,8 @@ func setArithmeticOps(e sql.Expression, opScale int32) {
 
 // isOutermostArithmeticOp return whether the expression we're currently on is
 // the last arithmetic operation of all continuous arithmetic operations.
-func isOutermostArithmeticOp(e sql.Expression, op, opScale int32) bool {
+func isOutermostArithmeticOp(e sql.Expression, opScale int32) bool {
 	return opScale == countArithmeticOps(e)
-	if e == nil {
-		return false
-	}
-
-	if a, ok := e.(ArithmeticOp); ok {
-		op = op + 1
-		if op == opScale {
-			return true
-		}
-		return isOutermostArithmeticOp(a.Left(), op, opScale)
-	}
-
-	return false
 }
 
 // convertValueToType returns |val| converted into type |typ|. If the value is
