@@ -155,7 +155,7 @@ func (i *groupByGroupingIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
-	return	row, nil
+	return row, nil
 }
 
 func (i *groupByGroupingIter) compute(ctx *sql.Context) error {

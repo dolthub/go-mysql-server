@@ -5328,9 +5328,8 @@ CREATE TABLE tab3 (
 				},
 			},
 			{
-				Query: `select col2-100 as col0 from tab2 group by 1 having col0 > 0;`,
-				Expected: []sql.Row{
-				},
+				Query:    `select col2-100 as col0 from tab2 group by 1 having col0 > 0;`,
+				Expected: []sql.Row{},
 			},
 			{
 				Query: `select col0, count(col0) as c from tab2 group by col0 having c > 0;`,
@@ -5389,19 +5388,19 @@ CREATE TABLE tab3 (
 				},
 			},
 			{
-				Query: `SELECT col0+1 as a FROM tab2 HAVING col0 = a;`,
+				Query:       `SELECT col0+1 as a FROM tab2 HAVING col0 = a;`,
 				ExpectedErr: sql.ErrColumnNotFound,
 			},
 			{
-				Query: `select col2-100 as asdf from tab2 group by 1 having col0 > 0;`,
+				Query:       `select col2-100 as asdf from tab2 group by 1 having col0 > 0;`,
 				ExpectedErr: sql.ErrColumnNotFound,
 			},
 			{
-				Query: `SELECT -col2 AS col0 FROM tab2 HAVING col2 > -col0;`,
+				Query:       `SELECT -col2 AS col0 FROM tab2 HAVING col2 > -col0;`,
 				ExpectedErr: sql.ErrColumnNotFound,
 			},
 			{
-				Query: `insert into tab2(col2) select sin(col2) from tab2 group by 1 having col2 > 1;`,
+				Query:       `insert into tab2(col2) select sin(col2) from tab2 group by 1 having col2 > 1;`,
 				ExpectedErr: sql.ErrColumnNotFound,
 			},
 		},
