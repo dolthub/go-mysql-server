@@ -91,7 +91,11 @@ func (i *groupByIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
-	return evalBuffers(ctx, i.buf)
+	row, err := evalBuffers(ctx, i.buf)
+	if err != nil {
+		return nil, err
+	}
+	return row, nil
 }
 
 func (i *groupByIter) Close(ctx *sql.Context) error {
@@ -145,7 +149,13 @@ func (i *groupByGroupingIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 	i.pos++
-	return evalBuffers(ctx, buffers)
+
+	row, err := evalBuffers(ctx, buffers)
+	if err != nil {
+		return nil, err
+	}
+
+	return	row, nil
 }
 
 func (i *groupByGroupingIter) compute(ctx *sql.Context) error {

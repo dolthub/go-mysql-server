@@ -763,18 +763,19 @@ func (b *Builder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) 
 			dbName := strings.ToLower(n.Qualifier.Qualifier.String())
 			tblName := strings.ToLower(n.Qualifier.Name.String())
 			colName := strings.ToLower(n.Name.String())
-			c, ok := projScope.resolveColumn(dbName, tblName, colName, false, true)
+			c, ok := fromScope.resolveColumn(dbName, tblName, colName, true, false)
+			if ok {
+				c.scalar = expression.NewGetFieldWithTable(int(c.id), 0, c.typ, c.db, c.table, c.col, c.nullable)
+				fromScope.addExtraColumn(c)
+				break
+			}
+			c, ok = projScope.resolveColumn(dbName, tblName, colName, false, true)
 			if ok {
 				// references projection alias
 				break
 			}
-			c, ok = fromScope.resolveColumn(dbName, tblName, colName, true, false)
-			if !ok {
-				err := sql.ErrColumnNotFound.New(n.Name)
-				b.handleErr(err)
-			}
-			c.scalar = expression.NewGetFieldWithTable(int(c.id), 0, c.typ, c.db, c.table, c.col, c.nullable)
-			fromScope.addExtraColumn(c)
+			err := sql.ErrColumnNotFound.New(n.Name)
+			b.handleErr(err)
 		}
 		return true, nil
 	}, having.Expr)
@@ -812,66 +813,54 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 	if fromScope.groupBy == nil {
 		fromScope.initGroupBy()
 	}
-	// Having specifies conditions on groups. If not group by is present, all rows implicitly form a single aggregate group.
-	havingScope := fromScope.push() // TODO: we should not be including the entire fromScope
+
+	havingScope := b.newScope()
+	if fromScope.parent != nil {
+		havingScope.parent = fromScope.parent
+	}
+	for _, c := range fromScope.groupBy.inCols {
+		if !havingScope.colset.Contains(sql.ColumnId(c.id)) {
+			havingScope.addColumn(c)
+		}
+	}
+
+	for _, c := range fromScope.groupBy.aggregations() {
+		transform.InspectExpr(c.scalar, func(e sql.Expression) bool {
+			switch e := e.(type) {
+			case *expression.GetField:
+				for _, cc := range fromScope.cols {
+					if strings.EqualFold(cc.col, e.Name()) {
+						if !havingScope.colset.Contains(sql.ColumnId(c.id)) {
+							havingScope.addColumn(cc)
+							break
+						}
+					}
+				}
+			default:
+			}
+			return false
+		})
+	}
 
 	for _, c := range projScope.cols {
-		// if a projection overrides a column used in an aggregation, don't use projection
-		found := false
-		if fromScope.groupBy != nil && fromScope.groupBy.hasAggs() {
-			for _, cc := range fromScope.groupBy.aggregations() {
-				transform.InspectExpr(cc.scalar, func(e sql.Expression) bool {
-					switch e := e.(type) {
-					case *expression.GetField:
-						if strings.EqualFold(c.col, e.Name()) {
-							found = true
-							havingScope.addColumn(cc)
-							return true
-						}
-					default:
-					}
-					return false
-				})
-			}
-		}
-		if found {
-			continue
+		if !havingScope.colset.Contains(sql.ColumnId(c.id)) {
+			havingScope.addColumn(c)
 		}
 
+		// The unaliased column is allowed in having clauses regardless if it is just an aliased getfield and not an expression
 		alias, isAlias := c.scalar.(*expression.Alias)
 		if !isAlias {
 			continue
 		}
-
-		// Aliased GetFields are allowed in having clauses regardless of weather they are in the group by
-		_, isGetField := alias.Child.(*expression.GetField)
-		if isGetField {
-			havingScope.addColumn(c)
+		gf, isGetField := alias.Child.(*expression.GetField)
+		if !isGetField {
 			continue
 		}
-
-		// Aliased expression is allowed if there is no group by (it is implicitly a single group)
-		if len(fromScope.groupBy.inCols) == 0 {
-			havingScope.addColumn(c)
-			continue
-		}
-
-		// Aliased expressions are allowed in having clauses if they are in the group by
-		for _, cc := range fromScope.groupBy.inCols {
-			if c.col == cc.col {
-				havingScope.addColumn(c)
-				found = true
+		for _, cc := range fromScope.cols {
+			if strings.EqualFold(cc.col, gf.Name()) {
+				havingScope.addColumn(cc)
 				break
 			}
-		}
-
-		if found {
-			continue
-		}
-
-		if c.tableId.IsEmpty() {
-			havingScope.addColumn(c)
-			continue
 		}
 	}
 
