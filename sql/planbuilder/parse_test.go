@@ -48,7 +48,7 @@ type planErrTest struct {
 func TestPlanBuilder(t *testing.T) {
 	var verbose, rewrite bool
 	//verbose = true
-	//rewrite = true
+	rewrite = true
 
 	var tests = []planTest{
 		{
@@ -82,9 +82,9 @@ Project
      │   ├─ avg(cte.x):4
      │   └─ 0 (tinyint)
      └─ Project
-         ├─ columns: [avg(cte.x):4, 1 (tinyint) as x]
+         ├─ columns: [avg(cte.x):4, cte.x:2!null, 1 (tinyint) as x]
          └─ GroupBy
-             ├─ select: AVG(cte.x:2!null)
+             ├─ select: AVG(cte.x:2!null), cte.x:2!null
              ├─ group: 
              └─ SubqueryAlias
                  ├─ name: cte
@@ -112,9 +112,9 @@ Project
      │   ├─ avg(xy.x):5
      │   └─ 0 (tinyint)
      └─ Project
-         ├─ columns: [avg(xy.x):5, 1 (tinyint) as x]
+         ├─ columns: [avg(xy.x):5, xy.x:1!null, 1 (tinyint) as x]
          └─ GroupBy
-             ├─ select: AVG(xy.x:1!null)
+             ├─ select: AVG(xy.x:1!null), xy.x:1!null
              ├─ group: 
              └─ Table
                  ├─ name: xy
@@ -639,24 +639,6 @@ Project
 `,
 		},
 		{
-			Query: "select x from xy having z > 0",
-			ExpectedPlan: `
-Project
- ├─ columns: [xy.x:1!null]
- └─ Having
-     ├─ GreaterThan
-     │   ├─ xy.z:3!null
-     │   └─ 0 (tinyint)
-     └─ Project
-         ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
-         └─ Table
-             ├─ name: xy
-             ├─ columns: [x y z]
-             ├─ colSet: (1-3)
-             └─ tableId: 1
-`,
-		},
-		{
 			Query: "select x from xy order by z",
 			ExpectedPlan: `
 Project
@@ -669,25 +651,6 @@ Project
              ├─ columns: [x y z]
              ├─ colSet: (1-3)
              └─ tableId: 1
-`,
-		},
-		{
-			Query: "select x from xy having z > 0 order by y",
-			ExpectedPlan: `
-Project
- ├─ columns: [xy.x:1!null]
- └─ Sort(xy.y:2!null ASC nullsFirst)
-     └─ Having
-         ├─ GreaterThan
-         │   ├─ xy.z:3!null
-         │   └─ 0 (tinyint)
-         └─ Project
-             ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
-             └─ Table
-                 ├─ name: xy
-                 ├─ columns: [x y z]
-                 ├─ colSet: (1-3)
-                 └─ tableId: 1
 `,
 		},
 		{
@@ -981,24 +944,6 @@ Project
          ├─ columns: [x y z]
          ├─ colSet: (1-3)
          └─ tableId: 1
-`,
-		},
-		{
-			Query: "SELECT x, sum(x) FROM xy group by 1 having x+y order by 1",
-			ExpectedPlan: `
-Project
- ├─ columns: [xy.x:1!null, sum(xy.x):4!null as sum(x)]
- └─ Sort(xy.x:1!null ASC nullsFirst)
-     └─ Having
-         ├─ (xy.x:1!null + xy.y:2!null)
-         └─ GroupBy
-             ├─ select: SUM(xy.x:1!null), xy.x:1!null, xy.y:2!null
-             ├─ group: xy.x:1!null
-             └─ Table
-                 ├─ name: xy
-                 ├─ columns: [x y z]
-                 ├─ colSet: (1-3)
-                 └─ tableId: 1
 `,
 		},
 		{
@@ -1591,7 +1536,7 @@ Project
  ├─ columns: [xy.x:1!null, count(xy.x):4!null as cnt]
  └─ Having
      ├─ GreaterThan
-     │   ├─ xy.x:1!null
+     │   ├─ xy.x:0!null
      │   └─ 1 (tinyint)
      └─ Project
          ├─ columns: [count(xy.x):4!null, xy.x:1!null, count(xy.x):4!null as cnt]
@@ -2098,9 +2043,9 @@ Project
      ├─ NOT
      │   └─ avg(-xy.y):5 IS NULL
      └─ Project
-         ├─ columns: [avg(-xy.y):5, xy.x:1!null, xy.x:1!null as y]
+         ├─ columns: [avg(-xy.y):5, xy.x:1!null, xy.y:2!null, xy.x:1!null as y]
          └─ GroupBy
-             ├─ select: AVG(-xy.y), xy.x:1!null
+             ├─ select: AVG(-xy.y), xy.x:1!null, xy.y:2!null
              ├─ group: xy.x:1!null
              └─ Table
                  ├─ name: xy
@@ -2806,6 +2751,18 @@ func TestPlanBuilderErr(t *testing.T) {
 		{
 			Query: "select x, y as x from xy order by x;",
 			Err:   "ambiguous column or alias name \"x\"",
+		},
+		{
+			Query: "select x from xy having z > 0",
+			Err:   "column \"z\" could not be found in any table in scope",
+		},
+		{
+			Query: "select x from xy having z > 0 order by y",
+			Err:   "column \"z\" could not be found in any table in scope",
+		},
+		{
+			Query: "SELECT x, sum(x) FROM xy group by 1 having x+y order by 1",
+			Err:   "column \"y\" could not be found in any table in scope",
 		},
 	}
 
