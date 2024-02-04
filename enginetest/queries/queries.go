@@ -3485,6 +3485,10 @@ Select * from (
 		Expected: []sql.Row{{"secon"}},
 	},
 	{
+		Query:    `SELECT SUBSTRING_INDEX(mytable.s, "d", 1) AS s FROM mytable INNER JOIN othertable ON (SUBSTRING_INDEX(mytable.s, "d", 1) = SUBSTRING_INDEX(othertable.s2, "d", 1)) GROUP BY s HAVING s = 'secon';`,
+		Expected: []sql.Row{},
+	},
+	{
 		Query:    `SELECT SUBSTRING_INDEX(mytable.s, "d", 1) AS ss FROM mytable INNER JOIN othertable ON (SUBSTRING_INDEX(mytable.s, "d", 1) = SUBSTRING_INDEX(othertable.s2, "d", 1)) GROUP BY s HAVING s = 'secon';`,
 		Expected: []sql.Row{},
 	},
@@ -4078,6 +4082,14 @@ Select * from (
 	{
 		Query:    `select 100 / 35600.00 * 35600.00;`,
 		Expected: []sql.Row{{"99.999973"}},
+	},
+	{
+		Query:    `select 64 / 77 * 77;`,
+		Expected: []sql.Row{{"64.0000"}},
+	},
+	{
+		Query:    `select (1 / 3) * (1 / 3);`,
+		Expected: []sql.Row{{"0.11111111"}},
 	},
 	{
 		Query: `select 1 / 3 * 3 = 1;`,

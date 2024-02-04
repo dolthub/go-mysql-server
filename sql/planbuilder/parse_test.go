@@ -48,7 +48,7 @@ type planErrTest struct {
 func TestPlanBuilder(t *testing.T) {
 	var verbose, rewrite bool
 	//verbose = true
-	//rewrite = true
+	rewrite = true
 
 	var tests = []planTest{
 		{
@@ -82,9 +82,9 @@ Project
      │   ├─ avg(cte.x):4
      │   └─ 0 (tinyint)
      └─ Project
-         ├─ columns: [avg(cte.x):4, 1 (tinyint) as x]
+         ├─ columns: [avg(cte.x):4, cte.x:2!null, 1 (tinyint) as x]
          └─ GroupBy
-             ├─ select: AVG(cte.x:2!null)
+             ├─ select: AVG(cte.x:2!null), cte.x:2!null
              ├─ group: 
              └─ SubqueryAlias
                  ├─ name: cte
@@ -112,9 +112,9 @@ Project
      │   ├─ avg(xy.x):5
      │   └─ 0 (tinyint)
      └─ Project
-         ├─ columns: [avg(xy.x):5, 1 (tinyint) as x]
+         ├─ columns: [avg(xy.x):5, xy.x:1!null, 1 (tinyint) as x]
          └─ GroupBy
-             ├─ select: AVG(xy.x:1!null)
+             ├─ select: AVG(xy.x:1!null), xy.x:1!null
              ├─ group: 
              └─ Table
                  ├─ name: xy
@@ -639,24 +639,6 @@ Project
 `,
 		},
 		{
-			Query: "select x from xy having z > 0",
-			ExpectedPlan: `
-Project
- ├─ columns: [xy.x:1!null]
- └─ Having
-     ├─ GreaterThan
-     │   ├─ xy.z:3!null
-     │   └─ 0 (tinyint)
-     └─ Project
-         ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
-         └─ Table
-             ├─ name: xy
-             ├─ columns: [x y z]
-             ├─ colSet: (1-3)
-             └─ tableId: 1
-`,
-		},
-		{
 			Query: "select x from xy order by z",
 			ExpectedPlan: `
 Project
@@ -669,25 +651,6 @@ Project
              ├─ columns: [x y z]
              ├─ colSet: (1-3)
              └─ tableId: 1
-`,
-		},
-		{
-			Query: "select x from xy having z > 0 order by y",
-			ExpectedPlan: `
-Project
- ├─ columns: [xy.x:1!null]
- └─ Sort(xy.y:2!null ASC nullsFirst)
-     └─ Having
-         ├─ GreaterThan
-         │   ├─ xy.z:3!null
-         │   └─ 0 (tinyint)
-         └─ Project
-             ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
-             └─ Table
-                 ├─ name: xy
-                 ├─ columns: [x y z]
-                 ├─ colSet: (1-3)
-                 └─ tableId: 1
 `,
 		},
 		{
@@ -901,26 +864,6 @@ Project
 `,
 		},
 		{
-			Query: "SELECT x, sum(x) FROM xy group by 1 having avg(y) > 1 order by 1",
-			ExpectedPlan: `
-Project
- ├─ columns: [xy.x:1!null, sum(xy.x):4!null as sum(x)]
- └─ Sort(xy.x:1!null ASC nullsFirst)
-     └─ Having
-         ├─ GreaterThan
-         │   ├─ avg(xy.y):5
-         │   └─ 1 (tinyint)
-         └─ GroupBy
-             ├─ select: AVG(xy.y:2!null), SUM(xy.x:1!null), xy.x:1!null, xy.y:2!null
-             ├─ group: xy.x:1!null
-             └─ Table
-                 ├─ name: xy
-                 ├─ columns: [x y z]
-                 ├─ colSet: (1-3)
-                 └─ tableId: 1
-`,
-		},
-		{
 			Query: "SELECT x, sum(x) FROM xy group by 1 having avg(x) > 1 order by 2",
 			ExpectedPlan: `
 Project
@@ -938,6 +881,25 @@ Project
                  ├─ columns: [x y z]
                  ├─ colSet: (1-3)
                  └─ tableId: 1
+`,
+		},
+		{
+			Query: "SELECT x, sum(y * z) FROM xy group by x having sum(y * z) > 1",
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.x:1!null, sum((xy.y * xy.z)):4!null as sum(y * z)]
+ └─ Having
+     ├─ GreaterThan
+     │   ├─ sum((xy.y * xy.z)):4!null
+     │   └─ 1 (tinyint)
+     └─ GroupBy
+         ├─ select: SUM((xy.y:2!null * xy.z:3!null)), xy.x:1!null, xy.y:2!null, xy.z:3!null
+         ├─ group: xy.x:1!null
+         └─ Table
+             ├─ name: xy
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -981,24 +943,6 @@ Project
          ├─ columns: [x y z]
          ├─ colSet: (1-3)
          └─ tableId: 1
-`,
-		},
-		{
-			Query: "SELECT x, sum(x) FROM xy group by 1 having x+y order by 1",
-			ExpectedPlan: `
-Project
- ├─ columns: [xy.x:1!null, sum(xy.x):4!null as sum(x)]
- └─ Sort(xy.x:1!null ASC nullsFirst)
-     └─ Having
-         ├─ (xy.x:1!null + xy.y:2!null)
-         └─ GroupBy
-             ├─ select: SUM(xy.x:1!null), xy.x:1!null, xy.y:2!null
-             ├─ group: xy.x:1!null
-             └─ Table
-                 ├─ name: xy
-                 ├─ columns: [x y z]
-                 ├─ colSet: (1-3)
-                 └─ tableId: 1
 `,
 		},
 		{
@@ -1591,7 +1535,7 @@ Project
  ├─ columns: [xy.x:1!null, count(xy.x):4!null as cnt]
  └─ Having
      ├─ GreaterThan
-     │   ├─ xy.x:1!null
+     │   ├─ xy.x:0!null
      │   └─ 1 (tinyint)
      └─ Project
          ├─ columns: [count(xy.x):4!null, xy.x:1!null, count(xy.x):4!null as cnt]
@@ -2098,9 +2042,9 @@ Project
      ├─ NOT
      │   └─ avg(-xy.y):5 IS NULL
      └─ Project
-         ├─ columns: [avg(-xy.y):5, xy.x:1!null, xy.x:1!null as y]
+         ├─ columns: [avg(-xy.y):5, xy.x:1!null, xy.y:2!null, xy.x:1!null as y]
          └─ GroupBy
-             ├─ select: AVG(-xy.y), xy.x:1!null
+             ├─ select: AVG(-xy.y), xy.x:1!null, xy.y:2!null
              ├─ group: xy.x:1!null
              └─ Table
                  ├─ name: xy
@@ -2227,12 +2171,106 @@ Project
 `,
 		},
 		{
-			Skip:  true,
-			Query: "select x + 1 as xx from xy group by xx having x = 123; -- should error",
+			Query: "select x as xx from xy group by x having x = xx;",
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.x:1!null as xx]
+ └─ Having
+     ├─ Eq
+     │   ├─ xy.x:1!null
+     │   └─ xx:4!null
+     └─ Project
+         ├─ columns: [xy.x:1!null, xy.x:1!null as xx]
+         └─ GroupBy
+             ├─ select: xy.x:1!null
+             ├─ group: xy.x:1!null
+             └─ Table
+                 ├─ name: xy
+                 ├─ columns: [x y z]
+                 ├─ colSet: (1-3)
+                 └─ tableId: 1
+`,
 		},
 		{
-			Skip:  true,
-			Query: "select x + 1 as xx from xy having x = 123; -- should error",
+			Query: "select x as xx from xy group by xx having x = xx;",
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.x:1!null as xx]
+ └─ Having
+     ├─ Eq
+     │   ├─ xy.x:1!null
+     │   └─ xx:4!null
+     └─ Project
+         ├─ columns: [xy.x:1!null, xy.x:1!null as xx]
+         └─ GroupBy
+             ├─ select: xy.x:1!null
+             ├─ group: xy.x:1!null as xx
+             └─ Table
+                 ├─ name: xy
+                 ├─ columns: [x y z]
+                 ├─ colSet: (1-3)
+                 └─ tableId: 1
+`,
+		},
+		{
+			Query: "select x as xx from xy group by x, xx having x = xx;",
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.x:1!null as xx]
+ └─ Having
+     ├─ Eq
+     │   ├─ xy.x:1!null
+     │   └─ xx:4!null
+     └─ Project
+         ├─ columns: [xy.x:1!null, xy.x:1!null as xx]
+         └─ GroupBy
+             ├─ select: xy.x:1!null
+             ├─ group: xy.x:1!null, xy.x:1!null as xx
+             └─ Table
+                 ├─ name: xy
+                 ├─ columns: [x y z]
+                 ├─ colSet: (1-3)
+                 └─ tableId: 1
+`,
+		},
+		{
+			Query: "select x as xx from xy having x = xx;",
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.x:1!null as xx]
+ └─ Having
+     ├─ Eq
+     │   ├─ xy.x:1!null
+     │   └─ xx:4!null
+     └─ Project
+         ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, xy.x:1!null as xx]
+         └─ Table
+             ├─ name: xy
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
+`,
+		},
+		{
+			Query: "select -x as y from xy group by x, y having -x > y;",
+			ExpectedPlan: `
+Project
+ ├─ columns: [-xy.x as y]
+ └─ Having
+     ├─ GreaterThan
+     │   ├─ -xy.x
+     │   └─ xy.y:2!null
+     └─ Project
+         ├─ columns: [xy.x:1!null, xy.y:2!null, -xy.x as y]
+         └─ GroupBy
+             ├─ select: xy.x:1!null, xy.y:2!null
+             ├─ group: xy.x:1!null, xy.y:2!null
+             └─ Table
+                 ├─ name: xy
+                 ├─ columns: [x y z]
+                 ├─ colSet: (1-3)
+                 └─ tableId: 1
+`,
 		},
 		{
 			Query: "select x as xx from xy join uv on (x = u) group by xx having xx = 123;",
@@ -2404,14 +2442,6 @@ Project
                  ├─ colSet: (4-6)
                  └─ tableId: 2
 `,
-		},
-		{
-			Skip:  true,
-			Query: "select x + 1 as xx from xy join uv on (x = u) group by xx having x = 123; -- should error",
-		},
-		{
-			Skip:  true,
-			Query: "select x + 1 as xx from xy join uv on (x = u) having x = 123; -- should error",
 		},
 		{
 			Query: "select x +1  as xx from xy join uv on (x = u) group by x having avg(x) = 123;",
@@ -2806,6 +2836,26 @@ func TestPlanBuilderErr(t *testing.T) {
 		{
 			Query: "select x, y as x from xy order by x;",
 			Err:   "ambiguous column or alias name \"x\"",
+		},
+		{
+			Query: "select x from xy having z > 0",
+			Err:   "column \"z\" could not be found in any table in scope",
+		},
+		{
+			Query: "select x from xy having z > 0 order by y",
+			Err:   "column \"z\" could not be found in any table in scope",
+		},
+		{
+			Query: "SELECT x, sum(x) FROM xy group by 1 having x+y order by 1",
+			Err:   "column \"y\" could not be found in any table in scope",
+		},
+		{
+			Query: "select x + 1 as xx from xy join uv on (x = u) group by xx having x = 123;",
+			Err:   "column \"x\" could not be found in any table in scope",
+		},
+		{
+			Query: "select x + 1 as xx from xy join uv on (x = u) having x = 123;",
+			Err:   "column \"x\" could not be found in any table in scope",
 		},
 	}
 
