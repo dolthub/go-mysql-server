@@ -805,6 +805,16 @@ func (b *Builder) buildInnerProj(fromScope, projScope *scope) *scope {
 	return outScope
 }
 
+// getMatchingCol returns the column in cols that matches the name, if it exists
+func getMatchingCol(cols []scopeColumn, name string) (scopeColumn, bool) {
+	for _, c := range cols {
+		if strings.EqualFold(c.col, name) {
+			return c, true
+		}
+	}
+	return scopeColumn{}, false
+}
+
 func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast.Where) {
 	// expressions in having can be from aggOut or projScop
 	if having == nil {
@@ -818,35 +828,35 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 	if fromScope.parent != nil {
 		havingScope.parent = fromScope.parent
 	}
+
+	// add columns from fromScope referenced in the groupBy
 	for _, c := range fromScope.groupBy.inCols {
 		if !havingScope.colset.Contains(sql.ColumnId(c.id)) {
 			havingScope.addColumn(c)
 		}
 	}
 
+	// add columns from fromScope referenced in any aggregate expressions
 	for _, c := range fromScope.groupBy.aggregations() {
 		transform.InspectExpr(c.scalar, func(e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:
-				for _, cc := range fromScope.cols {
-					if strings.EqualFold(cc.col, e.Name()) {
-						if !havingScope.colset.Contains(sql.ColumnId(c.id)) {
-							havingScope.addColumn(cc)
-							break
-						}
-					}
+				col, found := getMatchingCol(fromScope.cols, e.Name())
+				if found && !havingScope.colset.Contains(sql.ColumnId(col.id)) {
+					havingScope.addColumn(col)
 				}
-			default:
 			}
 			return false
 		})
 	}
 
+	// Add columns from projScope referenced in any aggregate expressions, that are not already in the havingScope
+	// This prevents aliases with the same name from overriding columns in the fromScope
+	// Additionally, the original name from plain aliases (not expressions) are added to havingScope
 	for _, c := range projScope.cols {
 		if !havingScope.colset.Contains(sql.ColumnId(c.id)) {
 			havingScope.addColumn(c)
 		}
-
 		// The unaliased column is allowed in having clauses regardless if it is just an aliased getfield and not an expression
 		alias, isAlias := c.scalar.(*expression.Alias)
 		if !isAlias {
@@ -856,11 +866,9 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 		if !isGetField {
 			continue
 		}
-		for _, cc := range fromScope.cols {
-			if strings.EqualFold(cc.col, gf.Name()) {
-				havingScope.addColumn(cc)
-				break
-			}
+		col, found := getMatchingCol(fromScope.cols, gf.Name())
+		if found && !havingScope.colset.Contains(sql.ColumnId(col.id)) {
+			havingScope.addColumn(col)
 		}
 	}
 
