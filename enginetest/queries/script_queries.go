@@ -5454,7 +5454,6 @@ CREATE TABLE tab3 (
 			},
 		},
 	},
-
 }
 
 var SpatialScriptTests = []ScriptTest{

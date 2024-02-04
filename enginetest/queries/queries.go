@@ -4092,35 +4092,35 @@ Select * from (
 		Expected: []sql.Row{{"0.11111111"}},
 	},
 	{
-		Query: `select 1 / 3 * 3 = 1;`,
+		Query:    `select 1 / 3 * 3 = 1;`,
 		Expected: []sql.Row{{false}},
 	},
 	{
-		Query: `select 1 / 3 * 3 = 0.999999999;`,
+		Query:    `select 1 / 3 * 3 = 0.999999999;`,
 		Expected: []sql.Row{{true}},
 	},
 	{
-		Query: `select 1 / 3 * 3 in (1);`,
+		Query:    `select 1 / 3 * 3 in (1);`,
 		Expected: []sql.Row{{false}},
 	},
 	{
-		Query: `SELECT 1 IN (1 / 9 * 5);`,
+		Query:    `SELECT 1 IN (1 / 9 * 5);`,
 		Expected: []sql.Row{{false}},
 	},
 	{
-		Query: `SELECT 1 IN (1 / 99 * 50);`,
+		Query:    `SELECT 1 IN (1 / 99 * 50);`,
 		Expected: []sql.Row{{false}},
 	},
 	{
-		Query: `select 1 / 3 * 3 in (0.999999999);`,
+		Query:    `select 1 / 3 * 3 in (0.999999999);`,
 		Expected: []sql.Row{{true}},
 	},
 	{
-		Query: `SELECT 96 / 51 * 51 > 96;`,
+		Query:    `SELECT 96 / 51 * 51 > 96;`,
 		Expected: []sql.Row{{false}},
 	},
 	{
-		Query: `SELECT 96 / 51 * 51 = 95.999999991;`,
+		Query:    `SELECT 96 / 51 * 51 = 95.999999991;`,
 		Expected: []sql.Row{{true}},
 	},
 	{
