@@ -2837,6 +2837,28 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
+		Name: "issue 7458: proc params as limit values",
+		SetUpScript: []string{
+			"create table t (i int primary key);",
+			"insert into t values (0), (1), (2), (3)",
+			"CREATE PROCEDURE limited(the_limit INT, the_offset INT) SELECT * FROM t LIMIT the_limit OFFSET the_offset",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "call limited(1,0)",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:    "call limited(2,0)",
+				Expected: []sql.Row{{0}, {1}},
+			},
+			{
+				Query:    "call limited(2,2)",
+				Expected: []sql.Row{{2}, {3}},
+			},
+		},
+	},
+	{
 		Name: "failed conversion shows warning",
 		Assertions: []ScriptTestAssertion{
 			{

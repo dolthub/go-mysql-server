@@ -126,8 +126,20 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 
 func (b *Builder) buildLimit(inScope *scope, limit *ast.Limit) sql.Expression {
 	if limit != nil {
-		l := b.buildScalar(inScope, limit.Rowcount)
-		return b.typeCoerceLiteral(l)
+		switch e := limit.Rowcount.(type) {
+		case *ast.ColName:
+			if inScope.procActive() {
+				if col, ok := inScope.proc.GetVar(e.String()); ok {
+					// proc param is OK
+					return col.scalarGf()
+				}
+			}
+			err := fmt.Errorf("limit expression expected to be numeric or prodecure parameter, found invalid column: %s", e.String())
+			b.handleErr(err)
+		default:
+			l := b.buildScalar(inScope, limit.Rowcount)
+			return b.typeCoerceLiteral(l)
+		}
 	}
 	return nil
 }
@@ -152,16 +164,28 @@ func (b *Builder) typeCoerceLiteral(e sql.Expression) sql.Expression {
 
 func (b *Builder) buildOffset(inScope *scope, limit *ast.Limit) sql.Expression {
 	if limit != nil && limit.Offset != nil {
-		rowCount := b.buildScalar(inScope, limit.Offset)
-		rowCount = b.typeCoerceLiteral(rowCount)
-		// Check if offset starts at 0, if so, we can just remove the offset node.
-		// Only cast to int8, as a larger int type just means a non-zero offset.
-		if val, err := rowCount.Eval(b.ctx, nil); err == nil {
-			if v, ok := val.(int64); ok && v == 0 {
-				return nil
+		switch e := limit.Offset.(type) {
+		case *ast.ColName:
+			if inScope.procActive() {
+				if col, ok := inScope.proc.GetVar(e.String()); ok {
+					// proc param is OK
+					return col.scalarGf()
+				}
 			}
+			err := fmt.Errorf("offset expression expected to be numeric or prodecure parameter, found invalid column: %s", e.String())
+			b.handleErr(err)
+		default:
+			rowCount := b.buildScalar(inScope, limit.Offset)
+			rowCount = b.typeCoerceLiteral(rowCount)
+			// Check if offset starts at 0, if so, we can just remove the offset node.
+			// Only cast to int8, as a larger int type just means a non-zero offset.
+			if val, err := rowCount.Eval(b.ctx, nil); err == nil {
+				if v, ok := val.(int64); ok && v == 0 {
+					return nil
+				}
+			}
+			return rowCount
 		}
-		return rowCount
 	}
 	return nil
 }
