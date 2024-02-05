@@ -143,3 +143,8 @@ func (t MapCatalog) RowCount(ctx *Context, db, table string) (uint64, error) {
 func (t MapCatalog) DataLength(ctx *Context, db, table string) (uint64, error) {
 	return 1, nil
 }
+
+func (t MapCatalog) DropDbStats(ctx *Context, db string) error {
+	//TODO implement me
+	panic("implement me")
+}

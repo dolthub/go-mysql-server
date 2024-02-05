@@ -43,6 +43,8 @@ type StatsProvider interface {
 	GetStats(ctx *Context, qual StatQualifier, cols []string) (Statistic, bool)
 	// DropStats deletes a set of column statistics
 	DropStats(ctx *Context, qual StatQualifier, cols []string) error
+	// DropAllStats deletes all database statistics
+	DropDbStats(ctx *Context, db string) error
 	// RowCount returns the number of rows in a table
 	RowCount(ctx *Context, db, table string) (uint64, error)
 	// DataLength returns the estimated size of each row in the table

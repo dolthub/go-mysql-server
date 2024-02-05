@@ -44,6 +44,10 @@ type Catalog struct {
 	locks sessionLocks
 }
 
+func (c *Catalog) DropDbStats(ctx *sql.Context, db string) error {
+	return c.StatsProvider.DropDbStats(ctx, db)
+}
+
 var _ sql.Catalog = (*Catalog)(nil)
 var _ sql.FunctionProvider = (*Catalog)(nil)
 var _ sql.TableFunctionProvider = (*Catalog)(nil)
