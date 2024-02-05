@@ -1331,6 +1331,139 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		// In addition to using ALTER TABLE DROP PRIMARY KEY, MySQL also supports dropping a primary key by
+		// referring to it with the 'PRIMARY' name.
+		Name: "Drop auto-increment primary key as named index",
+		SetUpScript: []string{
+			"create table t (id int primary key AUTO_INCREMENT, c1 varchar(255));",
+			"insert into t (c1) values ('one');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Without a supporting index, we should get an error
+				Query:       "DROP INDEX `PRIMARY` ON t;",
+				ExpectedErr: sql.ErrWrongAutoKey,
+			},
+			{
+				Query:    "ALTER TABLE t ADD UNIQUE KEY id (id);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "DROP INDEX `PRIMARY` ON t;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table t;",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `c1` varchar(255),\n  UNIQUE KEY `id` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "SELECT * FROM t;",
+				Expected: []sql.Row{{1, "one"}},
+			},
+		},
+	},
+	{
+		Name: "Drop auto-increment primary key with supporting unique index",
+		SetUpScript: []string{
+			"create table t (id int primary key AUTO_INCREMENT, c1 varchar(255));",
+			"insert into t (c1) values ('one');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Without a supporting index, we can't drop the PK because of the auto_increment property
+				Query:       "ALTER TABLE t DROP PRIMARY KEY;",
+				ExpectedErr: sql.ErrWrongAutoKey,
+			},
+			{
+				// Adding a unique index on the pk column allows us to drop the PK
+				Query:    "ALTER TABLE t ADD UNIQUE KEY id (id);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE t DROP PRIMARY KEY;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table t;",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `c1` varchar(255),\n  UNIQUE KEY `id` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{1, "one"}},
+			},
+		},
+	},
+	{
+		Name: "Drop auto-increment primary key with supporting non-unique index",
+		SetUpScript: []string{
+			"create table t (id int primary key AUTO_INCREMENT, c1 varchar(255));",
+			"insert into t (c1) values ('one');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Without a supporting index, we cannot drop the PK
+				Query:       "ALTER TABLE t DROP PRIMARY KEY;",
+				ExpectedErr: sql.ErrWrongAutoKey,
+			},
+			{
+				// Adding an index on the PK columns allows us to drop the PK
+				Query:    "ALTER TABLE t ADD KEY id (id);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE t DROP PRIMARY KEY;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table t;",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `c1` varchar(255),\n  KEY `id` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{1, "one"}},
+			},
+		},
+	},
+	{
+		Name: "Drop multi-column, auto-increment primary key with supporting non-unique index",
+		SetUpScript: []string{
+			"create table t (id1 int AUTO_INCREMENT, id2 int not null, c1 varchar(255), primary key (id1, id2));",
+			"insert into t (id2, c1) values (-1, 'one');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE t DROP PRIMARY KEY;",
+				ExpectedErr: sql.ErrWrongAutoKey,
+			},
+			{
+				// Adding an index that doesn't start with the auto_increment column doesn't allow us to drop the PK
+				Query:    "ALTER TABLE t ADD KEY c1id1 (c1, id1);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:       "ALTER TABLE t DROP PRIMARY KEY;",
+				ExpectedErr: sql.ErrWrongAutoKey,
+			},
+			{
+				// Adding a supporting key (i.e the first column is the auto_increment column) allows us to drop the PK
+				Query:    "ALTER TABLE t ADD KEY id1c1 (id1, c1);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE t DROP PRIMARY KEY;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{1, -1, "one"}},
+			},
+			{
+				Query:    "show create table t;",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `id1` int NOT NULL AUTO_INCREMENT,\n  `id2` int NOT NULL,\n  `c1` varchar(255),\n  KEY `c1id1` (`c1`,`id1`),\n  KEY `id1c1` (`id1`,`c1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
 }
 
 var AddColumnScripts = []ScriptTest{

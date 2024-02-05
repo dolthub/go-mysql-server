@@ -453,7 +453,7 @@ func (i *modifyColumnIter) Close(context *sql.Context) error {
 	return nil
 }
 
-// rewriteTable rewrites the table given if required or requested, and returns the whether it was rewritten
+// rewriteTable rewrites the table given if required or requested, and returns whether it was rewritten
 func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
 	oldColIdx := i.m.TargetSchema().IndexOfColName(i.m.Column())
 	if oldColIdx == -1 {
