@@ -212,6 +212,69 @@ func TestHandlerOutput(t *testing.T) {
 	})
 }
 
+// TestHandlerComReset asserts that the Handler.ComResetConnection method correctly clears all session
+// state (e.g. table locks, prepared statements, user variables, session variables), and keeps the current
+// database selected.
+func TestHandlerComResetConnection(t *testing.T) {
+	e, pro := setupMemDB(require.New(t))
+	dummyConn := newConn(1)
+	dbFunc := pro.Database
+
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
+			testSessionBuilder(pro),
+			sql.NoopTracer,
+			dbFunc,
+			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
+			"foo",
+		),
+	}
+	handler.NewConnection(dummyConn)
+	handler.ComInitDB(dummyConn, "test")
+
+	prepareData := &mysql.PrepareData{
+		StatementID: 0,
+		PrepareStmt: "select 42 + ? from dual",
+		ParamsCount: 0,
+		ParamsType:  nil,
+		ColumnNames: nil,
+		BindVars: map[string]*query.BindVariable{
+			"v1": {Type: query.Type_INT8, Value: []byte("5")},
+		},
+	}
+
+	// Create a prepared statement, a table lock, and a user var in the current session
+	_, err := handler.ComPrepare(dummyConn, prepareData.PrepareStmt, prepareData)
+	require.NoError(t, err)
+	_, cached := e.PreparedDataCache.GetCachedStmt(dummyConn.ConnectionID, prepareData.PrepareStmt)
+	require.True(t, cached)
+	err = handler.ComQuery(dummyConn, "SET @userVar = 42;", func(res *sqltypes.Result, more bool) error {
+		return nil
+	})
+	require.NoError(t, err)
+
+	// Reset the connection to clear all session state
+	err = handler.ComResetConnection(dummyConn)
+	require.NoError(t, err)
+
+	// Assert that the session is clean – the selected database should not change, and all session state
+	// such as user vars, session vars, prepared statements, table locks, and temporary tables should be cleared.
+	err = handler.ComQuery(dummyConn, "SELECT database()", func(res *sqltypes.Result, more bool) error {
+		require.Equal(t, "test", res.Rows[0][0].ToString())
+		return nil
+	})
+	require.NoError(t, err)
+	_, cached = e.PreparedDataCache.GetCachedStmt(dummyConn.ConnectionID, prepareData.PrepareStmt)
+	require.False(t, cached)
+	err = handler.ComQuery(dummyConn, "SELECT @userVar;", func(res *sqltypes.Result, more bool) error {
+		require.True(t, res.Rows[0][0].IsNull())
+		return nil
+	})
+	require.NoError(t, err)
+}
+
 func TestHandlerComPrepare(t *testing.T) {
 	e, pro := setupMemDB(require.New(t))
 	dummyConn := newConn(1)
@@ -1025,9 +1088,6 @@ func testServer(t *testing.T, ready chan struct{}, port string, breakConn bool) 
 }
 func okTestServer(t *testing.T, ready chan struct{}, port string) {
 	testServer(t, ready, port, false)
-}
-func brokenTestServer(t *testing.T, ready chan struct{}, port string) {
-	testServer(t, ready, port, true)
 }
 
 // This session builder is used as dummy mysql Conn is not complete and
