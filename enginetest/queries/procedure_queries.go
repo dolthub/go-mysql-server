@@ -715,15 +715,15 @@ END;`,
 			{
 				Query: "CALL p1(3, 4)",
 				Expected: []sql.Row{
-					{"4", "6"},
-					{"3", "4"},
+					{4, 6},
+					{3, 4},
 				},
 			},
 			{
 				Query: "CALL p2(5, 6)",
 				Expected: []sql.Row{
-					{"6", "8"},
-					{"5", "6"},
+					{6, 8},
+					{5, 6},
 				},
 			},
 		},
@@ -1150,6 +1150,36 @@ END;`,
 				Expected: []sql.Row{
 					{1, 2},
 				},
+			},
+		},
+	},
+	{
+		Name: "issue 7458: proc params as limit values",
+		SetUpScript: []string{
+			"create table t (i int primary key);",
+			"insert into t values (0), (1), (2), (3)",
+			"CREATE PROCEDURE limited(the_limit int, the_offset bigint) SELECT * FROM t LIMIT the_limit OFFSET the_offset",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "call limited(1,0)",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:    "call limited(2,0)",
+				Expected: []sql.Row{{0}, {1}},
+			},
+			{
+				Query:    "call limited(2,2)",
+				Expected: []sql.Row{{2}, {3}},
+			},
+			{
+				Query:          "CREATE PROCEDURE limited_inv(the_limit CHAR(3), the_offset INT) SELECT * FROM t LIMIT the_limit OFFSET the_offset",
+				ExpectedErrStr: "the variable 'the_limit' has a non-integer based type: char(3) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin",
+			},
+			{
+				Query:          "CREATE PROCEDURE limited_inv(the_limit float, the_offset INT) SELECT * FROM t LIMIT the_limit OFFSET the_offset",
+				ExpectedErrStr: "the variable 'the_limit' has a non-integer based type: float",
 			},
 		},
 	},
