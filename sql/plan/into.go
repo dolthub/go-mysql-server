@@ -25,7 +25,7 @@ import (
 // variables given
 type Into struct {
 	UnaryNode
-	IntoVars []sql.Expression
+	IntoVars          []sql.Expression
 	Outfile, Dumpfile string
 }
 
