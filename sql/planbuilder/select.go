@@ -126,7 +126,49 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 
 func (b *Builder) buildLimit(inScope *scope, limit *ast.Limit) sql.Expression {
 	if limit != nil {
-		l := b.buildScalar(inScope, limit.Rowcount)
+		return b.buildLimitVal(inScope, limit.Rowcount)
+	}
+	return nil
+}
+
+func (b *Builder) buildOffset(inScope *scope, limit *ast.Limit) sql.Expression {
+	if limit != nil && limit.Offset != nil {
+		e := b.buildLimitVal(inScope, limit.Offset)
+		if lit, ok := e.(*expression.Literal); ok {
+			// Check if offset starts at 0, if so, we can just remove the offset node.
+			// Only cast to int8, as a larger int type just means a non-zero offset.
+			if val, err := lit.Eval(b.ctx, nil); err == nil {
+				if v, ok := val.(int64); ok && v == 0 {
+					return nil
+				}
+			}
+		}
+		return e
+	}
+	return nil
+}
+
+// buildLimitVal resolves a literal numeric type or a numeric
+// prodecure parameter
+func (b *Builder) buildLimitVal(inScope *scope, e ast.Expr) sql.Expression {
+	switch e := e.(type) {
+	case *ast.ColName:
+		if inScope.procActive() {
+			if col, ok := inScope.proc.GetVar(e.String()); ok {
+				// proc param is OK
+				if pp, ok := col.scalarGf().(*expression.ProcedureParam); ok {
+					if !pp.Type().Promote().Equals(types.Int64) {
+						err := fmt.Errorf("the variable '%s' has a non-integer based type: %s", pp.Name(), pp.Type().String())
+						b.handleErr(err)
+					}
+					return pp
+				}
+			}
+		}
+		err := fmt.Errorf("limit expression expected to be numeric or prodecure parameter, found invalid column: %s", e.String())
+		b.handleErr(err)
+	default:
+		l := b.buildScalar(inScope, e)
 		return b.typeCoerceLiteral(l)
 	}
 	return nil
@@ -146,22 +188,6 @@ func (b *Builder) typeCoerceLiteral(e sql.Expression) sql.Expression {
 	default:
 		err := sql.ErrInvalidTypeForLimit.New(expression.Literal{}, e)
 		b.handleErr(err)
-	}
-	return nil
-}
-
-func (b *Builder) buildOffset(inScope *scope, limit *ast.Limit) sql.Expression {
-	if limit != nil && limit.Offset != nil {
-		rowCount := b.buildScalar(inScope, limit.Offset)
-		rowCount = b.typeCoerceLiteral(rowCount)
-		// Check if offset starts at 0, if so, we can just remove the offset node.
-		// Only cast to int8, as a larger int type just means a non-zero offset.
-		if val, err := rowCount.Eval(b.ctx, nil); err == nil {
-			if v, ok := val.(int64); ok && v == 0 {
-				return nil
-			}
-		}
-		return rowCount
 	}
 	return nil
 }
