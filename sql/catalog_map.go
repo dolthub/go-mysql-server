@@ -144,7 +144,7 @@ func (t MapCatalog) DataLength(ctx *Context, db, table string) (uint64, error) {
 	return 1, nil
 }
 
-func (t MapCatalog) DropDbStats(ctx *Context, db string) error {
+func (t MapCatalog) DropDbStats(ctx *Context, db string, flush bool) error {
 	//TODO implement me
 	panic("implement me")
 }

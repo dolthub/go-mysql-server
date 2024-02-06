@@ -294,7 +294,7 @@ func (s *StatsProv) DataLength(ctx *sql.Context, db, table string) (uint64, erro
 	return size, nil
 }
 
-func (s *StatsProv) DropDbStats(ctx *sql.Context, db string) error {
+func (s *StatsProv) DropDbStats(ctx *sql.Context, db string, flush bool) error {
 	for key, _ := range s.colStats {
 		if strings.HasPrefix(string(key), db) {
 			delete(s.colStats, key)

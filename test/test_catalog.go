@@ -209,7 +209,7 @@ func (c *Catalog) DataLength(ctx *sql.Context, db, table string) (uint64, error)
 	panic("implement me")
 }
 
-func (c *Catalog) DropDbStats(ctx *sql.Context, db string) error {
+func (c *Catalog) DropDbStats(ctx *sql.Context, db string, flush bool) error {
 	//TODO implement me
 	panic("implement me")
 }
