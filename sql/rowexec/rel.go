@@ -539,30 +539,20 @@ func validateOutfile(dir interface{}, fileStr string) error {
 		return nil
 	}
 	if _, relErr := filepath.Rel(dir.(string), fileStr); relErr != nil {
-		return fmt.Errorf("%s", "the MySQL server is running with the --secure-file-priv option so it cannot execute this statement")
+		return sql.ErrSecureFilePriv.New()
 	}
 	return nil
 }
 
 func createIfNotExists(fileStr string) (*os.File, error) {
 	if _, fErr := os.Stat(fileStr); fErr == nil {
-		return nil, fmt.Errorf("error: file already exists")
+		return nil, sql.ErrFileExists.New(fileStr)
 	}
 	file, fileErr := os.Create(fileStr)
 	if fileErr != nil {
 		return nil, fileErr
 	}
 	return file, nil
-}
-
-func writeRow(file *os.File, row sql.Row) {
-	for i, val := range row {
-		if i != 0 {
-			file.WriteString("\t")
-		}
-		file.WriteString(fmt.Sprintf("%v", val))
-	}
-	file.WriteString("\n")
 }
 
 func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sql.RowIter, error) {
