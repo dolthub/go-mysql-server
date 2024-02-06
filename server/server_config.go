@@ -16,6 +16,7 @@ package server
 
 import (
 	"crypto/tls"
+	"net"
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -43,6 +44,9 @@ type Config struct {
 	Protocol string
 	// Address of the server.
 	Address string
+	// Custom listener for the mysql server. Use this if you don't want ports or unix sockets to be opened automatically.
+	// This can be useful in testing by using a pure go net.Conn implementation.
+	Listener net.Listener
 	// Tracer to use in the server. By default, a noop tracer will be used if
 	// no tracer is provided.
 	Tracer trace.Tracer

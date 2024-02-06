@@ -796,13 +796,16 @@ func (db *MySQLDb) Salt() ([]byte, error) {
 func (db *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, addr net.Addr) (mysql.Getter, error) {
 	var host string
 	var err error
-	if addr.Network() == "unix" {
+	switch addr.Network() {
+	case "unix":
 		host = "localhost"
-	} else {
+	case "tcp", "udp":
 		host, _, err = net.SplitHostPort(addr.String())
 		if err != nil {
 			return nil, err
 		}
+	default:
+		host = addr.String()
 	}
 
 	rd := db.Reader()
@@ -832,13 +835,16 @@ func (db *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, a
 func (db *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.Getter, error) {
 	var host string
 	var err error
-	if addr.Network() == "unix" {
+	switch addr.Network() {
+	case "unix":
 		host = "localhost"
-	} else {
+	case "tcp", "udp":
 		host, _, err = net.SplitHostPort(addr.String())
 		if err != nil {
 			return nil, err
 		}
+	default:
+		host = addr.String()
 	}
 
 	rd := db.Reader()
