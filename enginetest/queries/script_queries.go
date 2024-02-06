@@ -1269,7 +1269,7 @@ CREATE TABLE tab3 (
 				ExpectedErr: sql.ErrFileExists,
 			},
 			{
-				Query:    `SELECT id INTO DUMPFILE 'baddump.out' FROM tab1 ORDER BY id DESC LIMIT 15`,
+				Query:       `SELECT id INTO DUMPFILE 'baddump.out' FROM tab1 ORDER BY id DESC LIMIT 15`,
 				ExpectedErr: sql.ErrMoreThanOneRow,
 			},
 			{
