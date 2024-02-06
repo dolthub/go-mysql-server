@@ -1357,8 +1357,12 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `c1` varchar(255),\n  UNIQUE KEY `id` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
+				Query:    "insert into t (c1) values('two');",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
+			},
+			{
 				Query:    "select * from t;",
-				Expected: []sql.Row{{1, "one"}},
+				Expected: []sql.Row{{1, "one"}, {2, "two"}},
 			},
 		},
 	},
@@ -1388,8 +1392,12 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `c1` varchar(255),\n  KEY `id` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
+				Query:    "insert into t (c1) values('two');",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
+			},
+			{
 				Query:    "select * from t;",
-				Expected: []sql.Row{{1, "one"}},
+				Expected: []sql.Row{{1, "one"}, {2, "two"}},
 			},
 		},
 	},
@@ -1423,8 +1431,12 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
+				Query:    "insert into t (id2, c1) values(-2, 'two');",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
+			},
+			{
 				Query:    "select * from t;",
-				Expected: []sql.Row{{1, -1, "one"}},
+				Expected: []sql.Row{{1, -1, "one"}, {2, -2, "two"}},
 			},
 			{
 				Query:    "show create table t;",
