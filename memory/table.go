@@ -215,11 +215,11 @@ func NewPartitionedTableWithCollation(db *BaseDatabase, name string, schema sql.
 }
 
 // Name implements the sql.Table interface.
-func (t Table) Name() string {
+func (t *Table) Name() string {
 	return t.name
 }
 
-func (t Table) Database() string {
+func (t *Table) Database() string {
 	return t.dbName()
 }
 
@@ -237,11 +237,11 @@ func (t *Table) Collation() sql.CollationID {
 }
 
 // Comment implements the sql.CommentedTable interface.
-func (t Table) Comment() string {
+func (t *Table) Comment() string {
 	return t.data.comment
 }
 
-func (t Table) IgnoreSessionData() bool {
+func (t *Table) IgnoreSessionData() bool {
 	return t.ignoreSessionData
 }
 
@@ -2158,7 +2158,7 @@ func normalizeSchemaForRewrite(newSch sql.PrimaryKeySchema) sql.PrimaryKeySchema
 func (t *Table) DropPrimaryKey(ctx *sql.Context) error {
 	data := t.sessionTableData(ctx)
 
-	err := t.validatePrimaryKeyDrop(ctx, t.PrimaryKeySchema())
+	err := sql.ValidatePrimaryKeyDrop(ctx, t, t.PrimaryKeySchema())
 	if err != nil {
 		return err
 	}
@@ -2206,7 +2206,7 @@ func columnInFkRelationship(col string, fkc []sql.ForeignKeyConstraint) (string,
 
 var errColumnNotFound = errors.NewKind("could not find column %s")
 
-func (t Table) ShouldRewriteTable(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column) bool {
+func (t *Table) ShouldRewriteTable(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column) bool {
 	return orderChanged(oldSchema, newSchema, oldColumn, newColumn) ||
 		isColumnDrop(oldSchema, newSchema) ||
 		isPrimaryKeyChange(oldSchema, newSchema)
@@ -2229,10 +2229,10 @@ func isColumnDrop(oldSchema sql.PrimaryKeySchema, newSchema sql.PrimaryKeySchema
 	return len(oldSchema.Schema) > len(newSchema.Schema)
 }
 
-func (t Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, _, _ *sql.Column, idxCols []sql.IndexColumn) (sql.RowInserter, error) {
+func (t *Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, _, _ *sql.Column, idxCols []sql.IndexColumn) (sql.RowInserter, error) {
 	// TODO: this is insufficient: we need prevent dropping any index that is used by a primary key (or the engine does)
 	if isPrimaryKeyDrop(oldSchema, newSchema) {
-		err := t.validatePrimaryKeyDrop(ctx, oldSchema)
+		err := sql.ValidatePrimaryKeyDrop(ctx, t, oldSchema)
 		if err != nil {
 			return nil, err
 		}
@@ -2260,58 +2260,6 @@ func validatePrimaryKeyChange(ctx *sql.Context, oldSchema sql.PrimaryKeySchema, 
 		}
 	}
 
-	return nil
-}
-
-// validatePrimaryKeyDrop validates that a primary key may be dropped. If any validation error is returned, then it
-// means it is not valid to drop this table's primary key. Validation includes checking for PK columns with the
-// auto_increment property, in which case, MySQL requires that another index exists on the table where the first
-// column in the index is the auto_increment column from the primary key.
-// https://dev.mysql.com/doc/refman/8.0/en/innodb-auto-increment-handling.html
-func (t Table) validatePrimaryKeyDrop(ctx *sql.Context, oldSchema sql.PrimaryKeySchema) error {
-	// If the primary key doesn't have an auto_increment option set, then we don't validate anything else
-	autoIncrementColumn := findPrimaryKeyAutoIncrementColumn(oldSchema)
-	if autoIncrementColumn == nil {
-		return nil
-	}
-
-	// If there is an auto_increment option set, then we need to verify that there is still a supporting index,
-	// meaning the index is prefixed with the primary key column that contains the auto_increment option.
-	indexes, err := t.GetIndexes(ctx)
-	if err != nil {
-		return err
-	}
-
-	for _, idx := range indexes {
-		// Don't bother considering FullText or Spatial indexes, since these aren't valid
-		// on auto_increment int columns anyway.
-		if idx.IsFullText() || idx.IsSpatial() {
-			continue
-		}
-
-		// Skip the primary key index, since we're trying to delete it
-		if strings.ToLower(idx.ID()) == "primary" {
-			continue
-		}
-
-		if idx.Expressions()[0] == autoIncrementColumn.Source+"."+autoIncrementColumn.Name {
-			// By this point, we've verified that it's valid to drop the table's primary key
-			return nil
-		}
-	}
-
-	// We've searched all indexes and couldn't find one supporting the auto_increment column, so we error out.
-	return sql.ErrWrongAutoKey.New()
-}
-
-// findPrimaryKeyAutoIncrementColumn returns the first column in the primary key that has the auto_increment option,
-// otherwise it returns null if no primary key columns are defined with the auto_increment option.
-func findPrimaryKeyAutoIncrementColumn(schema sql.PrimaryKeySchema) *sql.Column {
-	for _, ordinal := range schema.PkOrdinals {
-		if schema.Schema[ordinal].AutoIncrement {
-			return schema.Schema[ordinal]
-		}
-	}
 	return nil
 }
 
@@ -2387,12 +2335,12 @@ func hasNullForAnyCols(row sql.Row, cols []int) bool {
 	return false
 }
 
-func (t Table) ShouldBuildIndex(ctx *sql.Context, indexDef sql.IndexDef) (bool, error) {
+func (t *Table) ShouldBuildIndex(ctx *sql.Context, indexDef sql.IndexDef) (bool, error) {
 	// We always want help building new indexes
 	return true, nil
 }
 
-func (t Table) BuildIndex(ctx *sql.Context, indexDef sql.IndexDef) (sql.RowInserter, error) {
+func (t *Table) BuildIndex(ctx *sql.Context, indexDef sql.IndexDef) (sql.RowInserter, error) {
 	data := t.sessionTableData(ctx)
 	_, ok := data.indexes[indexDef.Name]
 	if !ok {

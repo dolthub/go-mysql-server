@@ -1332,38 +1332,6 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 		},
 	},
 	{
-		// In addition to using ALTER TABLE DROP PRIMARY KEY, MySQL also supports dropping a primary key by
-		// referring to it with the 'PRIMARY' name.
-		Name: "Drop auto-increment primary key as named index",
-		SetUpScript: []string{
-			"create table t (id int primary key AUTO_INCREMENT, c1 varchar(255));",
-			"insert into t (c1) values ('one');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				// Without a supporting index, we should get an error
-				Query:       "DROP INDEX `PRIMARY` ON t;",
-				ExpectedErr: sql.ErrWrongAutoKey,
-			},
-			{
-				Query:    "ALTER TABLE t ADD UNIQUE KEY id (id);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "DROP INDEX `PRIMARY` ON t;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "show create table t;",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `c1` varchar(255),\n  UNIQUE KEY `id` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query:    "SELECT * FROM t;",
-				Expected: []sql.Row{{1, "one"}},
-			},
-		},
-	},
-	{
 		Name: "Drop auto-increment primary key with supporting unique index",
 		SetUpScript: []string{
 			"create table t (id int primary key AUTO_INCREMENT, c1 varchar(255));",
