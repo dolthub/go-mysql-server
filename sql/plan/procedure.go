@@ -210,7 +210,7 @@ func (p *Procedure) ExtendVariadic(ctx *sql.Context, length int) *Procedure {
 					Type:      variadicParam.Type,
 					Variadic:  variadicParam.Variadic,
 				}
-				newParams[i] = expression.NewProcedureParam(paramName)
+				newParams[i] = expression.NewProcedureParam(paramName, variadicParam.Type)
 			}
 		}
 	}
