@@ -259,6 +259,7 @@ func NewProcedureReference() *ProcedureReference {
 type ProcedureParam struct {
 	name       string
 	pRef       *ProcedureReference
+	typ        sql.Type
 	hasBeenSet bool
 }
 
@@ -266,8 +267,8 @@ var _ sql.Expression = (*ProcedureParam)(nil)
 var _ sql.CollationCoercible = (*ProcedureParam)(nil)
 
 // NewProcedureParam creates a new ProcedureParam expression.
-func NewProcedureParam(name string) *ProcedureParam {
-	return &ProcedureParam{name: strings.ToLower(name)}
+func NewProcedureParam(name string, typ sql.Type) *ProcedureParam {
+	return &ProcedureParam{name: strings.ToLower(name), typ: typ}
 }
 
 // Children implements the sql.Expression interface.
@@ -287,7 +288,7 @@ func (*ProcedureParam) IsNullable() bool {
 
 // Type implements the sql.Expression interface.
 func (pp *ProcedureParam) Type() sql.Type {
-	return pp.pRef.GetVariableType(pp.name)
+	return pp.typ
 }
 
 // CollationCoercibility implements the sql.CollationCoercible interface.

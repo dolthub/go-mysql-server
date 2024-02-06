@@ -5277,6 +5277,134 @@ CREATE TABLE tab3 (
 			},
 		},
 	},
+	{
+		Name: "group by having with conflicting aliases test",
+		SetUpScript: []string{
+			"CREATE TABLE tab2(col0 INTEGER, col1 INTEGER, col2 INTEGER);",
+			"INSERT INTO tab2 VALUES(15,61,87);",
+			"INSERT INTO tab2 VALUES(91,59,79);",
+			"INSERT INTO tab2 VALUES(92,41,58);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT - col2 AS col0 FROM tab2 GROUP BY col0, col2 HAVING NOT + + col2 <= - col0;`,
+				Expected: []sql.Row{
+					{-87},
+					{-79},
+					{-58},
+				},
+			},
+			{
+				Query: `SELECT -col2 AS col0 FROM tab2 GROUP BY col0, col2 HAVING NOT col2 <= - col0;`,
+				Expected: []sql.Row{
+					{-87},
+					{-79},
+					{-58},
+				},
+			},
+			{
+				Query: `SELECT -col2 AS col0 FROM tab2 GROUP BY col0, col2 HAVING col2 > -col0;`,
+				Expected: []sql.Row{
+					{-87},
+					{-79},
+					{-58},
+				},
+			},
+			{
+				Query: `SELECT 500 * col2 AS col0 FROM tab2 GROUP BY col0, col2 HAVING col2 > -col0;`,
+				Expected: []sql.Row{
+					{43500},
+					{39500},
+					{29000},
+				},
+			},
+
+			{
+				Query: `select col2-100 as col0 from tab2 group by col0 having col0 > 0;`,
+				Expected: []sql.Row{
+					{-13},
+					{-21},
+					{-42},
+				},
+			},
+			{
+				Query:    `select col2-100 as col0 from tab2 group by 1 having col0 > 0;`,
+				Expected: []sql.Row{},
+			},
+			{
+				Query: `select col0, count(col0) as c from tab2 group by col0 having c > 0;`,
+				Expected: []sql.Row{
+					{15, 1},
+					{91, 1},
+					{92, 1},
+				},
+			},
+			{
+				Query: `SELECT col0 as a FROM tab2 GROUP BY a HAVING col0 = a;`,
+				Expected: []sql.Row{
+					{15},
+					{91},
+					{92},
+				},
+			},
+			{
+				Query: `SELECT col0 as a FROM tab2 GROUP BY col0 HAVING col0 = a;`,
+				Expected: []sql.Row{
+					{15},
+					{91},
+					{92},
+				},
+			},
+			{
+				Query: `SELECT col0 as a FROM tab2 GROUP BY col0, a HAVING col0 = a;`,
+				Expected: []sql.Row{
+					{15},
+					{91},
+					{92},
+				},
+			},
+			{
+				Query: `SELECT col0 as a FROM tab2 HAVING col0 = a;`,
+				Expected: []sql.Row{
+					{15},
+					{91},
+					{92},
+				},
+			},
+			{
+				Query: `select col0, (select col1 having col0 > 0) as asdf from tab2 where col0 < 1000;`,
+				Expected: []sql.Row{
+					{15, 61},
+					{91, 59},
+					{92, 41},
+				},
+			},
+			{
+				Query: `select col0, sum(col1 * col2) as val from tab2 group by col0 having sum(col1 * col2) > 0;`,
+				Expected: []sql.Row{
+					{15, 5307.0},
+					{91, 4661.0},
+					{92, 2378.0},
+				},
+			},
+			{
+				Query:       `SELECT col0+1 as a FROM tab2 HAVING col0 = a;`,
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+			{
+				Query:       `select col2-100 as asdf from tab2 group by 1 having col0 > 0;`,
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+			{
+				Query:       `SELECT -col2 AS col0 FROM tab2 HAVING col2 > -col0;`,
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+			{
+				Query:       `insert into tab2(col2) select sin(col2) from tab2 group by 1 having col2 > 1;`,
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

@@ -196,7 +196,7 @@ func (b *Builder) buildCreateProcedure(inScope *scope, query string, c *ast.DDL)
 		// populate inScope with the procedure parameters. this will be
 		// subject maybe a bug where an inner procedure has access to
 		// outer procedure parameters.
-		inScope.proc.AddVar(expression.NewProcedureParam(strings.ToLower(p.Name)))
+		inScope.proc.AddVar(expression.NewProcedureParam(strings.ToLower(p.Name), p.Type))
 	}
 	bodyStr := strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
 
