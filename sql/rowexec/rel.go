@@ -623,12 +623,10 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 		}
 		defer file.Close()
 		if rowNum == 1 {
-			for i, val := range rows[0] {
-				if i != 0 {
-					file.WriteString("\t")
-				}
+			for _, val := range rows[0] {
 				file.WriteString(fmt.Sprintf("%v", val))
 			}
+			file.WriteString("\n")
 		}
 		return sql.RowsToRowIter(), nil
 	}
