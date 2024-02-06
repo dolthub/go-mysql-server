@@ -19,6 +19,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"reflect"
 
 	"github.com/dolthub/jsonpath"
@@ -532,6 +534,37 @@ func (b *BaseBuilder) populateMax1Results(ctx *sql.Context, n *plan.Max1Row, row
 	return nil
 }
 
+func validateOutfile(dir interface{}, fileStr string) error {
+	if dir == nil || dir == "" {
+		return nil
+	}
+	if _, relErr := filepath.Rel(dir.(string), fileStr); relErr != nil {
+		return fmt.Errorf("%s", "the MySQL server is running with the --secure-file-priv option so it cannot execute this statement")
+	}
+	return nil
+}
+
+func createIfNotExists(fileStr string) (*os.File, error) {
+	if _, fErr := os.Stat(fileStr); fErr == nil {
+		return nil, fmt.Errorf("error: file already exists")
+	}
+	file, fileErr := os.Create(fileStr)
+	if fileErr != nil {
+		return nil, fileErr
+	}
+	return file, nil
+}
+
+func writeRow(file *os.File, row sql.Row) {
+	for i, val := range row {
+		if i != 0 {
+			file.WriteString("\t")
+		}
+		file.WriteString(fmt.Sprintf("%v", val))
+	}
+	file.WriteString("\n")
+}
+
 func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Into")
 	defer span.End()
@@ -545,10 +578,61 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 		return nil, err
 	}
 
+	var dir interface{}
+	if n.Outfile != "" || n.Dumpfile != "" {
+		var ok bool
+		_, dir, ok = sql.SystemVariables.GetGlobal("secure_file_priv")
+		if !ok {
+			return nil, fmt.Errorf("error: secure_file_priv variable was not found")
+		}
+	}
+
+	if n.Outfile != "" {
+		if fileErr := validateOutfile(dir, n.Outfile); fileErr != nil {
+			return nil, err
+		}
+		file, fileErr := createIfNotExists(n.Outfile)
+		if fileErr != nil {
+			return nil, fileErr
+		}
+		defer file.Close()
+		for _, row := range rows {
+			for i, val := range row {
+				if i != 0 {
+					file.WriteString("\t")
+				}
+				file.WriteString(fmt.Sprintf("%v", val))
+			}
+			file.WriteString("\n")
+		}
+		return sql.RowsToRowIter(), nil
+	}
+
 	rowNum := len(rows)
 	if rowNum > 1 {
 		return nil, sql.ErrMoreThanOneRow.New()
 	}
+
+	if n.Dumpfile != "" {
+		if fileErr := validateOutfile(dir, n.Dumpfile); fileErr != nil {
+			return nil, err
+		}
+		file, fileErr := createIfNotExists(n.Dumpfile)
+		if fileErr != nil {
+			return nil, fileErr
+		}
+		defer file.Close()
+		if rowNum == 1 {
+			for i, val := range rows[0] {
+				if i != 0 {
+					file.WriteString("\t")
+				}
+				file.WriteString(fmt.Sprintf("%v", val))
+			}
+		}
+		return sql.RowsToRowIter(), nil
+	}
+
 	if rowNum == 0 {
 		// a warning with error code 1329 occurs (No data), and make no change to variables
 		return sql.RowsToRowIter(sql.Row{}), nil
@@ -558,7 +642,6 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 	}
 
 	var rowValues = make([]interface{}, len(rows[0]))
-
 	copy(rowValues, rows[0])
 
 	for j, v := range n.IntoVars {

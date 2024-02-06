@@ -26,15 +26,18 @@ import (
 type Into struct {
 	UnaryNode
 	IntoVars []sql.Expression
+	Outfile, Dumpfile string
 }
 
 var _ sql.Node = (*Into)(nil)
 var _ sql.CollationCoercible = (*Into)(nil)
 
-func NewInto(child sql.Node, variables []sql.Expression) *Into {
+func NewInto(child sql.Node, variables []sql.Expression, Outfile, Dumpfile string) *Into {
 	return &Into{
 		UnaryNode: UnaryNode{child},
 		IntoVars:  variables,
+		Outfile:   Outfile,
+		Dumpfile:  Dumpfile,
 	}
 }
 
@@ -55,7 +58,7 @@ func (i *Into) String() string {
 	for j, v := range i.IntoVars {
 		vars[j] = fmt.Sprintf(v.String())
 	}
-	_ = p.WriteNode("Into(%s)", strings.Join(vars, ", "))
+	_ = p.WriteNode("Into(%s, Outfile %s, Dumpfile %s)", strings.Join(vars, ", "), i.Outfile, i.Dumpfile)
 	_ = p.WriteChildren(i.Child.String())
 	return p.String()
 }
@@ -66,7 +69,7 @@ func (i *Into) DebugString() string {
 	for j, v := range i.IntoVars {
 		vars[j] = sql.DebugString(v)
 	}
-	_ = p.WriteNode("Into(%s)", strings.Join(vars, ", "))
+	_ = p.WriteNode("Into(%s, Outfile %s, Dumpfile %s)", strings.Join(vars, ", "), i.Outfile, i.Dumpfile)
 	_ = p.WriteChildren(sql.DebugString(i.Child))
 	return p.String()
 }
@@ -75,8 +78,7 @@ func (i *Into) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
-
-	return NewInto(children[0], i.IntoVars), nil
+	return NewInto(children[0], i.IntoVars, i.Outfile, i.Dumpfile), nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
@@ -94,8 +96,7 @@ func (i *Into) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(i.IntoVars) {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(exprs), len(i.IntoVars))
 	}
-
-	return NewInto(i.Child, exprs), nil
+	return NewInto(i.Child, exprs, i.Outfile, i.Dumpfile), nil
 }
 
 // Expressions implements the sql.Expressioner interface.

@@ -626,8 +626,8 @@ func getTablesToBeUpdated(node sql.Node) map[string]struct{} {
 
 func (b *Builder) buildInto(inScope *scope, into *ast.Into) {
 	if into.Outfile != "" || into.Dumpfile != "" {
-		err := sql.ErrUnsupportedSyntax.New("select into files is not supported yet")
-		b.handleErr(err)
+		inScope.node = plan.NewInto(inScope.node, nil, into.Outfile, into.Dumpfile)
+		return
 	}
 
 	vars := make([]sql.Expression, len(into.Variables))
@@ -643,7 +643,7 @@ func (b *Builder) buildInto(inScope *scope, into *ast.Into) {
 			vars[i] = col.scalarGf()
 		}
 	}
-	inScope.node = plan.NewInto(inScope.node, vars)
+	inScope.node = plan.NewInto(inScope.node, vars, "", "")
 }
 
 func (b *Builder) loadChecksFromTable(inScope *scope, table sql.Table) []*sql.CheckConstraint {
