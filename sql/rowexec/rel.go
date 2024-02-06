@@ -579,15 +579,15 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 
 	if n.Outfile != "" {
 		if fileErr := validateOutfile(dir, n.Outfile); fileErr != nil {
-			return nil, err
+			return nil, fileErr
 		}
 		file, fileErr := createIfNotExists(n.Outfile)
 		if fileErr != nil {
 			return nil, fileErr
 		}
 		defer file.Close()
-		for _, row := range rows {
-			for i, val := range row {
+		for _, r := range rows {
+			for i, val := range r {
 				if i != 0 {
 					file.WriteString("\t")
 				}
@@ -595,7 +595,7 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 			}
 			file.WriteString("\n")
 		}
-		return sql.RowsToRowIter(), nil
+		return sql.RowsToRowIter(sql.Row{}), nil
 	}
 
 	rowNum := len(rows)
@@ -618,7 +618,7 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 			}
 			file.WriteString("\n")
 		}
-		return sql.RowsToRowIter(), nil
+		return sql.RowsToRowIter(sql.Row{}), nil
 	}
 
 	if rowNum == 0 {
