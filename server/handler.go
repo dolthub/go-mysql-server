@@ -15,6 +15,7 @@
 package server
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -197,10 +198,32 @@ func (h *Handler) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, call
 	return err
 }
 
-func (h *Handler) ComResetConnection(c *mysql.Conn) {
+// ComResetConnection implements the mysql.Handler interface.
+//
+// This command resets the connection's session, clearing out any cached prepared statements, locks, user and
+// session variables. The currently selected database is preserved.
+//
+// The COM_RESET command can be sent manually through the mysql client by issuing the "resetconnection" (or "\x")
+// client command.
+func (h *Handler) ComResetConnection(c *mysql.Conn) error {
 	logrus.WithField("connectionId", c.ConnectionID).Debug("COM_RESET_CONNECTION command received")
 
-	// TODO: handle reset logic
+	// Grab the currently selected database name
+	s := h.sm.session(c)
+	db := s.GetCurrentDatabase()
+
+	// Dispose of the connection's current session
+	h.maybeReleaseAllLocks(c)
+	h.e.CloseSession(c.ConnectionID)
+
+	// Create a new session and set the current database
+	err := h.sm.NewSession(context.Background(), c)
+	if err != nil {
+		return err
+	}
+	s = h.sm.session(c)
+	s.SetCurrentDatabase(db)
+	return nil
 }
 
 func (h *Handler) ParserOptionsForConnection(c *mysql.Conn) (sqlparser.ParserOptions, error) {
@@ -222,6 +245,14 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 	defer h.sm.RemoveConn(c)
 	defer h.e.CloseSession(c.ConnectionID)
 
+	h.maybeReleaseAllLocks(c)
+
+	logrus.WithField(sql.ConnectionIdLogField, c.ConnectionID).Infof("ConnectionClosed")
+}
+
+// maybeReleaseAllLocks makes a best effort attempt to release all locks on the given connection. If the attempt fails,
+// an error is logged but not returned.
+func (h *Handler) maybeReleaseAllLocks(c *mysql.Conn) {
 	if ctx, err := h.sm.NewContextWithQuery(c, ""); err != nil {
 		logrus.Errorf("unable to release all locks on session close: %s", err)
 		logrus.Errorf("unable to unlock tables on session close: %s", err)
@@ -234,8 +265,6 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 			logrus.Errorf("unable to unlock tables on session close: %s", err)
 		}
 	}
-
-	logrus.WithField(sql.ConnectionIdLogField, c.ConnectionID).Infof("ConnectionClosed")
 }
 
 func (h *Handler) ComMultiQuery(
