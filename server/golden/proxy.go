@@ -149,8 +149,8 @@ func (h MySqlProxy) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, ca
 }
 
 // ComResetConnection implements mysql.Handler.
-func (h MySqlProxy) ComResetConnection(c *mysql.Conn) {
-	return
+func (h MySqlProxy) ComResetConnection(_ *mysql.Conn) error {
+	return nil
 }
 
 // ConnectionClosed implements mysql.Handler.

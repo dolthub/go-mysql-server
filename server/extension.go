@@ -167,8 +167,8 @@ func (ih *interceptorHandler) WarningCount(c *mysql.Conn) uint16 {
 	return ih.h.WarningCount(c)
 }
 
-func (ih *interceptorHandler) ComResetConnection(c *mysql.Conn) {
-	ih.h.ComResetConnection(c)
+func (ih *interceptorHandler) ComResetConnection(c *mysql.Conn) error {
+	return ih.h.ComResetConnection(c)
 }
 
 func (ih *interceptorHandler) ParserOptionsForConnection(c *mysql.Conn) (ast.ParserOptions, error) {
