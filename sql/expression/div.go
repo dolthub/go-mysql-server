@@ -154,14 +154,10 @@ func (d *Div) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 		if res, ok := result.(decimal.Decimal); ok {
-			finalScale := d.leftmostScale.Load() + d.divScale*int32(divPrecisionIncrement)
-			if finalScale > types.DecimalTypeMaxScale {
-				finalScale = types.DecimalTypeMaxScale
-			}
-			if isOutermostArithmeticOp(d, 0, d.ops) {
+			if isOutermostArithmeticOp(d, d.ops) {
+				finalScale, _ := getFinalScale(d)
 				return res.Round(finalScale), nil
 			}
-			// TODO : need to pass finalScale if this div is the last div but not the last arithmetic op
 		}
 	}
 
@@ -404,6 +400,11 @@ func getFloatOrMaxDecimalType(e sql.Expression, treatIntsAsFloats bool) sql.Type
 					}
 				}
 			}
+		case sql.FunctionExpression:
+			// Mod.Type() calls this, so ignore it for infinite loop
+			if c.FunctionName() != "mod" {
+				resType = c.Type()
+			}
 		}
 		return true
 	})
@@ -492,13 +493,10 @@ func setDivs(e sql.Expression, dScale int32) {
 		return
 	}
 
-	if a, ok := e.(*Div); ok {
-		a.divScale = dScale
-		setDivs(a.LeftChild, dScale)
-		setDivs(a.RightChild, dScale)
-	}
-
-	if a, ok := e.(ArithmeticOp); ok {
+	if a, isArithmeticOp := e.(ArithmeticOp); isArithmeticOp {
+		if d, ok := a.(*Div); ok {
+			d.divScale = dScale
+		}
 		setDivs(a.Left(), dScale)
 		setDivs(a.Right(), dScale)
 	}
@@ -559,14 +557,65 @@ func isOutermostDiv(e sql.Expression, d, dScale int32) bool {
 		d = d + 1
 		if d == dScale {
 			return true
-		} else {
-			return isOutermostDiv(a.LeftChild, d, dScale)
 		}
-	} else if a, ok := e.(ArithmeticOp); ok {
+		return isOutermostDiv(a.LeftChild, d, dScale)
+	}
+
+	if a, ok := e.(ArithmeticOp); ok {
 		return isOutermostDiv(a.Left(), d, dScale)
 	}
 
 	return false
+}
+
+// getFinalScale returns the final scale of the result value.
+// it traverses both the left and right nodes looking for Div nodes
+func getFinalScale(e sql.Expression) (int32, bool) {
+	if e == nil {
+		return 0, false
+	}
+
+	if d, isDiv := e.(*Div); isDiv {
+		finalScale := d.leftmostScale.Load() + d.divScale*int32(divPrecisionIncrement)
+		if finalScale > types.DecimalTypeMaxScale {
+			finalScale = types.DecimalTypeMaxScale
+		}
+		return finalScale, true
+	}
+
+	if a, isArith := e.(*Arithmetic); isArith {
+		leftScale, leftHasDiv := getFinalScale(a.Left())
+		rightScale, rightHasDiv := getFinalScale(a.Right())
+		var finalScale int32
+		switch a.Operator() {
+		case sqlparser.PlusStr, sqlparser.MinusStr:
+			if leftScale > rightScale {
+				finalScale = leftScale
+			} else {
+				finalScale = rightScale
+			}
+		case sqlparser.MultStr:
+			finalScale = leftScale + rightScale
+		}
+		if finalScale > types.DecimalTypeMaxScale {
+			finalScale = types.DecimalTypeMaxScale
+		}
+		return finalScale, leftHasDiv || rightHasDiv
+	}
+
+	s := uint8(0)
+	if lit, isLit := e.(*Literal); isLit {
+		_, s = GetPrecisionAndScale(lit.value)
+	}
+	typ := e.Type()
+	if dt, dok := typ.(sql.DecimalType); dok {
+		ts := dt.Scale()
+		if ts > s {
+			s = ts
+		}
+	}
+
+	return int32(s), false
 }
 
 // GetDecimalPrecisionAndScale returns precision and scale for given string formatted float/double number.

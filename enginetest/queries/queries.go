@@ -3485,6 +3485,10 @@ Select * from (
 		Expected: []sql.Row{{"secon"}},
 	},
 	{
+		Query:    `SELECT SUBSTRING_INDEX(mytable.s, "d", 1) AS s FROM mytable INNER JOIN othertable ON (SUBSTRING_INDEX(mytable.s, "d", 1) = SUBSTRING_INDEX(othertable.s2, "d", 1)) GROUP BY s HAVING s = 'secon';`,
+		Expected: []sql.Row{},
+	},
+	{
 		Query:    `SELECT SUBSTRING_INDEX(mytable.s, "d", 1) AS ss FROM mytable INNER JOIN othertable ON (SUBSTRING_INDEX(mytable.s, "d", 1) = SUBSTRING_INDEX(othertable.s2, "d", 1)) GROUP BY s HAVING s = 'secon';`,
 		Expected: []sql.Row{},
 	},
@@ -4070,6 +4074,22 @@ Select * from (
 	{
 		Query:    "select 2000.0 * (24.0 * 6.0 * 6.25 * 10.0) / 250000000.0;",
 		Expected: []sql.Row{{"0.0720000000"}},
+	},
+	{
+		Query:    "select 2000.0 / 250000000.0 * (24.0 * 6.0 * 6.25 * 10.0);",
+		Expected: []sql.Row{{"0.0720000000"}},
+	},
+	{
+		Query:    `select 100 / 35600.00 * 35600.00;`,
+		Expected: []sql.Row{{"99.999973"}},
+	},
+	{
+		Query:    `select 64 / 77 * 77;`,
+		Expected: []sql.Row{{"64.0000"}},
+	},
+	{
+		Query:    `select (1 / 3) * (1 / 3);`,
+		Expected: []sql.Row{{"0.11111111"}},
 	},
 	{
 		Query:    "select 1/2/3/4/5/6;",
@@ -8814,9 +8834,25 @@ from typestable`,
 	{
 		Query: "select i + pi() from mytable;",
 		Expected: []sql.Row{
-			{"4.141592653589793"},
-			{"5.141592653589793"},
-			{"6.141592653589793"},
+			{4.141592653589793},
+			{5.141592653589793},
+			{6.141592653589793},
+		},
+	},
+	{
+		Query: "select i * pi() from mytable;",
+		Expected: []sql.Row{
+			{3.141592653589793},
+			{6.283185307179586},
+			{9.42477796076938},
+		},
+	},
+	{
+		Query: "select i / pi() from mytable;",
+		Expected: []sql.Row{
+			{0.3183098861837907},
+			{0.6366197723675814},
+			{0.954929658551372},
 		},
 	},
 	{
@@ -9089,12 +9125,6 @@ var BrokenQueries = []QueryTest{
 	{
 		Query:    "SELECT STR_TO_DATE('2013 32 Tuesday', '%X %V %W')", // Tuesday of 32th week
 		Expected: []sql.Row{{"2013-08-13"}},
-	},
-	{
-		// https://github.com/dolthub/dolt/issues/4931
-		// The current output is "0.07200000000000"
-		Query:    "select 2000.0 / 250000000.0 * (24.0 * 6.0 * 6.25 * 10.0);",
-		Expected: []sql.Row{{"0.0720000000"}},
 	},
 	{
 		// This panics
