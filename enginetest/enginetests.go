@@ -5351,12 +5351,12 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:  "outfile.txt",
 			query: "select * from mytable into outfile 'outfile.txt';",
-			exp: "1\tfirst row\n2\tsecond row\n3\tthird row\n",
+			exp:   "1\tfirst row\n2\tsecond row\n3\tthird row\n",
 		},
 		{
 			file:  "dumpfile.txt",
 			query: "select * from mytable limit 1 into dumpfile 'dumpfile.txt';",
-			exp: "1first row",
+			exp:   "1first row",
 		},
 	}
 
