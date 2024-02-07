@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"reflect"
 	"strings"
 	"sync"
@@ -5329,4 +5330,64 @@ func DrainIteratorIgnoreErrors(ctx *sql.Context, iter sql.RowIter) {
 			return
 		}
 	}
+}
+
+func TestSelectIntoFile(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData, setup.MytableData, setup.EmptytableData)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+
+	ctx := NewContext(harness)
+	err := CreateNewConnectionForServerEngine(ctx, e)
+	require.NoError(t, err, nil)
+
+	tests := []struct {
+		file  string
+		query string
+		exp   string
+		err   *errors.Kind
+		skip  bool
+	}{
+		{
+			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt';",
+			exp: "1\tfirst row\n2\tsecond row\n3\tthird row\n",
+		},
+		{
+			file:  "dumpfile.txt",
+			query: "select * from mytable limit 1 into dumpfile 'dumpfile.txt';",
+			exp: "1first row",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.query, func(t *testing.T) {
+			if tt.skip {
+				t.Skip()
+			}
+			if tt.err != nil {
+				AssertErrWithCtx(t, e, harness, ctx, tt.query, tt.err)
+				return
+			}
+			TestQueryWithContext(t, ctx, e, harness, tt.query, nil, nil, nil)
+			res, err := os.ReadFile(tt.file)
+			require.NoError(t, err)
+			require.Equal(t, tt.exp, string(res))
+			os.Remove(tt.file)
+		})
+	}
+
+	// remove tmp directory from previously failed runs
+	exists := "exists.txt"
+	if _, existsErr := os.Stat(exists); existsErr == nil {
+		err = os.Remove(exists)
+		require.NoError(t, err)
+	}
+	f, err := os.Create(exists)
+	require.NoError(t, err)
+	f.Close()
+	defer os.Remove(exists)
+
+	AssertErrWithCtx(t, e, harness, ctx, "SELECT * FROM mytable INTO OUTFILE './exists.txt'", sql.ErrFileExists)
+	AssertErrWithCtx(t, e, harness, ctx, "SELECT * FROM mytable INTO DUMPFILE './exists.txt'", sql.ErrFileExists)
 }

@@ -1265,10 +1265,6 @@ CREATE TABLE tab3 (
 				ExpectedErr: sql.ErrMoreThanOneRow,
 			},
 			{
-				Query:       `SELECT 1 INTO OUTFILE 'memory_engine_test.go'`,
-				ExpectedErr: sql.ErrFileExists,
-			},
-			{
 				Query:       `SELECT id INTO DUMPFILE 'baddump.out' FROM tab1 ORDER BY id DESC LIMIT 15`,
 				ExpectedErr: sql.ErrMoreThanOneRow,
 			},

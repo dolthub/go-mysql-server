@@ -1018,3 +1018,7 @@ func TestSQLLogicTestFiles(t *testing.T) {
 	}
 	logictest.RunTestFiles(h, paths...)
 }
+
+func TestSelectIntoFile(t *testing.T) {
+	enginetest.TestSelectIntoFile(t, enginetest.NewDefaultMemoryHarness())
+}

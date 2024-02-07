@@ -578,10 +578,14 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 	}
 
 	if n.Outfile != "" {
-		if fileErr := validateOutfile(dir, n.Outfile); fileErr != nil {
+		fileAbsPath, filePathErr := filepath.Abs(n.Outfile)
+		if filePathErr != nil {
+			return nil, filePathErr
+		}
+		if fileErr := validateOutfile(dir, fileAbsPath); fileErr != nil {
 			return nil, fileErr
 		}
-		file, fileErr := createIfNotExists(n.Outfile)
+		file, fileErr := createIfNotExists(fileAbsPath)
 		if fileErr != nil {
 			return nil, fileErr
 		}
@@ -604,10 +608,14 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 	}
 
 	if n.Dumpfile != "" {
-		if fileErr := validateOutfile(dir, n.Dumpfile); fileErr != nil {
+		fileAbsPath, filePathErr := filepath.Abs(n.Dumpfile)
+		if filePathErr != nil {
+			return nil, filePathErr
+		}
+		if fileErr := validateOutfile(dir, fileAbsPath); fileErr != nil {
 			return nil, err
 		}
-		file, fileErr := createIfNotExists(n.Dumpfile)
+		file, fileErr := createIfNotExists(fileAbsPath)
 		if fileErr != nil {
 			return nil, fileErr
 		}
@@ -616,7 +624,6 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 			for _, val := range rows[0] {
 				file.WriteString(fmt.Sprintf("%v", val))
 			}
-			file.WriteString("\n")
 		}
 		return sql.RowsToRowIter(sql.Row{}), nil
 	}
