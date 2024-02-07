@@ -147,7 +147,9 @@ var ErrCharacterSetOnInvalidType = errors.NewKind("Only character columns, enums
 
 // ColumnTypeToType gets the column type using the column definition.
 func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
-
+	if resolvedType, ok := ct.ResolvedType.(sql.Type); ok {
+		return resolvedType, nil
+	}
 	sqlType := ct.SQLType()
 
 	if !allowsCharSet(sqlType) && len(ct.Charset) != 0 {
