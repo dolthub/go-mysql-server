@@ -925,7 +925,7 @@ func getTableIndexColumns(ctx *sql.Context, table sql.Node) (map[string]bool, er
 }
 
 // getTableIndexNames returns the names of indexes associated with a table.
-func getTableIndexNames(ctx *sql.Context, a *Analyzer, table sql.Node) ([]string, error) {
+func getTableIndexNames(ctx *sql.Context, _ *Analyzer, table sql.Node) ([]string, error) {
 	ia, err := newIndexAnalyzerForNode(ctx, table)
 	if err != nil {
 		return nil, err
@@ -936,6 +936,10 @@ func getTableIndexNames(ctx *sql.Context, a *Analyzer, table sql.Node) ([]string
 
 	for i, index := range indexes {
 		names[i] = index.ID()
+	}
+
+	if hasPrimaryKeys(table.Schema()) {
+		names = append(names, "PRIMARY")
 	}
 
 	return names, nil
