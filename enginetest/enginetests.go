@@ -5389,5 +5389,5 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 	defer os.Remove(exists)
 
 	AssertErrWithCtx(t, e, harness, ctx, "SELECT * FROM mytable INTO OUTFILE './exists.txt'", sql.ErrFileExists)
-	AssertErrWithCtx(t, e, harness, ctx, "SELECT * FROM mytable INTO DUMPFILE './exists.txt'", sql.ErrFileExists)
+	AssertErrWithCtx(t, e, harness, ctx, "SELECT * FROM mytable LIMIT 1 INTO DUMPFILE './exists.txt'", sql.ErrFileExists)
 }
