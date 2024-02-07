@@ -215,11 +215,11 @@ func NewPartitionedTableWithCollation(db *BaseDatabase, name string, schema sql.
 }
 
 // Name implements the sql.Table interface.
-func (t Table) Name() string {
+func (t *Table) Name() string {
 	return t.name
 }
 
-func (t Table) Database() string {
+func (t *Table) Database() string {
 	return t.dbName()
 }
 
@@ -237,11 +237,11 @@ func (t *Table) Collation() sql.CollationID {
 }
 
 // Comment implements the sql.CommentedTable interface.
-func (t Table) Comment() string {
+func (t *Table) Comment() string {
 	return t.data.comment
 }
 
-func (t Table) IgnoreSessionData() bool {
+func (t *Table) IgnoreSessionData() bool {
 	return t.ignoreSessionData
 }
 
@@ -1925,6 +1925,10 @@ func (t *Table) CreateIndex(ctx *sql.Context, idx sql.IndexDef) error {
 
 // DropIndex implements sql.IndexAlterableTable
 func (t *Table) DropIndex(ctx *sql.Context, name string) error {
+	if strings.ToLower(name) == "primary" {
+		return t.DropPrimaryKey(ctx)
+	}
+
 	data := t.sessionTableData(ctx)
 
 	for idxName := range data.indexes {
@@ -2154,9 +2158,9 @@ func normalizeSchemaForRewrite(newSch sql.PrimaryKeySchema) sql.PrimaryKeySchema
 func (t *Table) DropPrimaryKey(ctx *sql.Context) error {
 	data := t.sessionTableData(ctx)
 
-	// Must drop auto increment property before dropping primary key
-	if data.schema.HasAutoIncrement() {
-		return sql.ErrWrongAutoKey.New()
+	err := sql.ValidatePrimaryKeyDrop(ctx, t, t.PrimaryKeySchema())
+	if err != nil {
+		return err
 	}
 
 	pks := make([]*sql.Column, 0)
@@ -2202,7 +2206,7 @@ func columnInFkRelationship(col string, fkc []sql.ForeignKeyConstraint) (string,
 
 var errColumnNotFound = errors.NewKind("could not find column %s")
 
-func (t Table) ShouldRewriteTable(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column) bool {
+func (t *Table) ShouldRewriteTable(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column) bool {
 	return orderChanged(oldSchema, newSchema, oldColumn, newColumn) ||
 		isColumnDrop(oldSchema, newSchema) ||
 		isPrimaryKeyChange(oldSchema, newSchema)
@@ -2225,10 +2229,13 @@ func isColumnDrop(oldSchema sql.PrimaryKeySchema, newSchema sql.PrimaryKeySchema
 	return len(oldSchema.Schema) > len(newSchema.Schema)
 }
 
-func (t Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column, idxCols []sql.IndexColumn) (sql.RowInserter, error) {
+func (t *Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, _, _ *sql.Column, idxCols []sql.IndexColumn) (sql.RowInserter, error) {
 	// TODO: this is insufficient: we need prevent dropping any index that is used by a primary key (or the engine does)
-	if isPrimaryKeyDrop(oldSchema, newSchema) && primaryKeyIsAutoincrement(oldSchema) {
-		return nil, sql.ErrWrongAutoKey.New()
+	if isPrimaryKeyDrop(oldSchema, newSchema) {
+		err := sql.ValidatePrimaryKeyDrop(ctx, t, oldSchema)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if isPrimaryKeyChange(oldSchema, newSchema) {
@@ -2254,15 +2261,6 @@ func validatePrimaryKeyChange(ctx *sql.Context, oldSchema sql.PrimaryKeySchema, 
 	}
 
 	return nil
-}
-
-func primaryKeyIsAutoincrement(schema sql.PrimaryKeySchema) bool {
-	for _, ordinal := range schema.PkOrdinals {
-		if schema.Schema[ordinal].AutoIncrement {
-			return true
-		}
-	}
-	return false
 }
 
 func isPrimaryKeyDrop(oldSchema sql.PrimaryKeySchema, newSchema sql.PrimaryKeySchema) bool {
@@ -2337,12 +2335,12 @@ func hasNullForAnyCols(row sql.Row, cols []int) bool {
 	return false
 }
 
-func (t Table) ShouldBuildIndex(ctx *sql.Context, indexDef sql.IndexDef) (bool, error) {
+func (t *Table) ShouldBuildIndex(ctx *sql.Context, indexDef sql.IndexDef) (bool, error) {
 	// We always want help building new indexes
 	return true, nil
 }
 
-func (t Table) BuildIndex(ctx *sql.Context, indexDef sql.IndexDef) (sql.RowInserter, error) {
+func (t *Table) BuildIndex(ctx *sql.Context, indexDef sql.IndexDef) (sql.RowInserter, error) {
 	data := t.sessionTableData(ctx)
 	_, ok := data.indexes[indexDef.Name]
 	if !ok {
