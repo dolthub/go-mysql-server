@@ -40,7 +40,7 @@ const (
 
 type procCtx struct {
 	s          *scope
-	handler    *plan.DeclareHandler
+	handlers   []*plan.DeclareHandler
 	conditions map[string]*plan.DeclareCondition
 	vars       map[string]scopeColumn
 	cursors    map[string]struct{}
@@ -119,15 +119,11 @@ func (p *procCtx) HasCursor(name string) bool {
 
 func (p *procCtx) AddHandler(h *plan.DeclareHandler) {
 	p.NewState(dsHandler)
-	if p.handler != nil {
-		err := sql.ErrDeclareHandlerDuplicate.New()
-		p.s.b.handleErr(err)
-	}
-	p.handler = h
+	p.handlers = append(p.handlers, h)
 }
 
 func (p *procCtx) HasHandler(name string) bool {
-	return p.handler != nil
+	return p.handlers != nil
 }
 
 func (p *procCtx) AddLabel(label string, isLoop bool) {
@@ -347,26 +343,38 @@ func (b *Builder) buildDeclareCursor(inScope *scope, d *ast.Declare) (outScope *
 func (b *Builder) buildDeclareHandler(inScope *scope, d *ast.Declare, query string) (outScope *scope) {
 	outScope = inScope.push()
 	dHandler := d.Handler
-	//TODO: support other condition values besides NOT FOUND
-	if len(dHandler.ConditionValues) != 1 || dHandler.ConditionValues[0].ValueType != ast.DeclareHandlerCondition_NotFound {
+	if len(dHandler.ConditionValues) != 1 {
 		err := sql.ErrUnsupportedSyntax.New(ast.String(d))
 		b.handleErr(err)
 	}
+
+	var cond expression.HandlerCondition
+
+	switch dHandler.ConditionValues[0].ValueType {
+	case ast.DeclareHandlerCondition_NotFound:
+		cond = expression.HandlerCondition{Type: expression.HandlerConditionNotFound}
+	case ast.DeclareHandlerCondition_SqlException:
+		cond = expression.HandlerCondition{Type: expression.HandlerConditionSqlException}
+	default:
+		err := sql.ErrUnsupportedSyntax.New(ast.String(d))
+		b.handleErr(err)
+	}
+
 	stmtScope := b.build(inScope, dHandler.Statement, query)
 
-	var action plan.DeclareHandlerAction
+	var action expression.DeclareHandlerAction
 	switch dHandler.Action {
 	case ast.DeclareHandlerAction_Continue:
-		action = plan.DeclareHandlerAction_Continue
+		action = expression.DeclareHandlerAction_Continue
 	case ast.DeclareHandlerAction_Exit:
-		action = plan.DeclareHandlerAction_Exit
+		action = expression.DeclareHandlerAction_Exit
 	case ast.DeclareHandlerAction_Undo:
-		action = plan.DeclareHandlerAction_Undo
+		action = expression.DeclareHandlerAction_Undo
 	default:
 		err := fmt.Errorf("unknown DECLARE ... HANDLER action: %v", dHandler.Action)
 		b.handleErr(err)
 	}
-	if action == plan.DeclareHandlerAction_Undo {
+	if action == expression.DeclareHandlerAction_Undo {
 		err := sql.ErrDeclareHandlerUndo.New()
 		b.handleErr(err)
 	}
@@ -374,6 +382,7 @@ func (b *Builder) buildDeclareHandler(inScope *scope, d *ast.Declare, query stri
 	handler := &plan.DeclareHandler{
 		Action:    action,
 		Statement: stmtScope.node,
+		Condition: cond,
 	}
 
 	inScope.proc.AddHandler(handler)

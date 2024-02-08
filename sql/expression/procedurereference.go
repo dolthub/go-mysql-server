@@ -47,8 +47,9 @@ type procedureCursorReferenceValue struct {
 type procedureHandlerReferenceValue struct {
 	Stmt        sql.Node
 	IsExit      bool
+	Action      DeclareHandlerAction
+	Cond        HandlerCondition
 	ScopeHeight int
-	//TODO: support more than just NOT FOUND
 }
 
 // ProcedureReferencable indicates that a sql.Node takes a *ProcedureReference returns a new copy with the reference set.
@@ -83,10 +84,11 @@ func (ppr *ProcedureReference) InitializeCursor(name string, selectStmt sql.Node
 }
 
 // InitializeHandler sets the given handler's statement.
-func (ppr *ProcedureReference) InitializeHandler(stmt sql.Node, returnsExitError bool) {
+func (ppr *ProcedureReference) InitializeHandler(stmt sql.Node, action DeclareHandlerAction, cond HandlerCondition) {
 	ppr.InnermostScope.Handlers = append(ppr.InnermostScope.Handlers, &procedureHandlerReferenceValue{
 		Stmt:        stmt,
-		IsExit:      returnsExitError,
+		Cond:        cond,
+		Action:      action,
 		ScopeHeight: ppr.height,
 	})
 }
@@ -401,4 +403,33 @@ var _ error = ProcedureBlockExitError(0)
 // Error implements the error interface.
 func (b ProcedureBlockExitError) Error() string {
 	return "Block that EXIT handler was declared in could somehow not be found"
+}
+
+type HandlerConditionType uint8
+
+const (
+	HandlerConditionUnknown HandlerConditionType = iota
+	HandlerConditionNotFound
+	HandlerConditionSqlException
+)
+
+type HandlerCondition struct {
+	SqlStatePrefix string
+	Type           HandlerConditionType
+}
+
+type DeclareHandlerAction byte
+
+const (
+	DeclareHandlerAction_Continue DeclareHandlerAction = iota
+	DeclareHandlerAction_Exit
+	DeclareHandlerAction_Undo
+)
+
+func (c *HandlerCondition) Matches(err error) bool {
+	if _, ok := err.(ProcedureBlockExitError); ok {
+		return c.Type == HandlerConditionNotFound
+	} else {
+		return c.Type == HandlerConditionSqlException
+	}
 }

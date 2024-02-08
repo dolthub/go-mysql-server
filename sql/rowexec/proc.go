@@ -137,14 +137,47 @@ func (b *BaseBuilder) buildBeginEndBlock(ctx *sql.Context, n *plan.BeginEndBlock
 	n.Pref.PushScope()
 	rowIter, err := b.buildNodeExec(ctx, n.Block, row)
 	if err != nil {
-		if exitErr, ok := err.(expression.ProcedureBlockExitError); ok && n.Pref.CurrentHeight() == int(exitErr) {
-			err = nil
-		} else if controlFlow, ok := err.(loopError); ok && strings.ToLower(controlFlow.Label) == strings.ToLower(n.Label) {
+		if controlFlow, ok := err.(loopError); ok && strings.ToLower(controlFlow.Label) == strings.ToLower(n.Label) {
 			if controlFlow.IsExit {
 				err = nil
 			} else {
 				err = fmt.Errorf("encountered ITERATE on BEGIN...END, which should should have been caught by the analyzer")
 			}
+		} else {
+			scope := n.Pref.InnermostScope
+			for i := len(scope.Handlers) - 1; i >= 0; i-- {
+				if !scope.Handlers[i].Cond.Matches(err) {
+					continue
+				}
+				originalScope := n.Pref.InnermostScope
+				defer func() {
+					n.Pref.InnermostScope = originalScope
+				}()
+				n.Pref.InnermostScope = scope
+				handlerRefVal := scope.Handlers[i]
+
+				handlerRowIter, err := b.buildNodeExec(ctx, handlerRefVal.Stmt, nil)
+				if err != nil {
+					return sql.RowsToRowIter(), err
+				}
+				defer handlerRowIter.Close(ctx)
+
+				for {
+					_, err := handlerRowIter.Next(ctx)
+					if err == io.EOF {
+						break
+					} else if err != nil {
+						return sql.RowsToRowIter(), err
+					}
+				}
+				if scope.Handlers[i].Action == expression.DeclareHandlerAction_Exit {
+					return sql.RowsToRowIter(), nil
+				}
+				return sql.RowsToRowIter(), io.EOF
+			}
+		}
+		if err == io.EOF {
+			return sql.RowsToRowIter(), nil
 		}
 		if nErr := n.Pref.PopScope(ctx); err == nil && nErr != nil {
 			err = nErr

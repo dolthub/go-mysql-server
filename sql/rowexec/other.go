@@ -71,39 +71,7 @@ func (b *BaseBuilder) buildDeallocateQuery(ctx *sql.Context, n *plan.DeallocateQ
 func (b *BaseBuilder) buildFetch(ctx *sql.Context, n *plan.Fetch, row sql.Row) (sql.RowIter, error) {
 	row, sch, err := n.Pref.FetchCursor(ctx, n.Name)
 	if err == io.EOF {
-		scope := n.Pref.InnermostScope
-		for scope != nil {
-			for i := len(scope.Handlers) - 1; i >= 0; i-- {
-				//TODO: handle more than NOT FOUND handlers, handlers should check if the error applies to them first
-				originalScope := n.Pref.InnermostScope
-				defer func() {
-					n.Pref.InnermostScope = originalScope
-				}()
-				n.Pref.InnermostScope = scope
-				handlerRefVal := scope.Handlers[i]
-
-				handlerRowIter, err := b.buildNodeExec(ctx, handlerRefVal.Stmt, nil)
-				if err != nil {
-					return sql.RowsToRowIter(), err
-				}
-				defer handlerRowIter.Close(ctx)
-
-				for {
-					_, err := handlerRowIter.Next(ctx)
-					if err == io.EOF {
-						break
-					} else if err != nil {
-						return sql.RowsToRowIter(), err
-					}
-				}
-				if handlerRefVal.IsExit {
-					return sql.RowsToRowIter(), expression.ProcedureBlockExitError(handlerRefVal.ScopeHeight)
-				}
-				return sql.RowsToRowIter(), io.EOF
-			}
-			scope = scope.Parent
-		}
-		return sql.RowsToRowIter(), err
+		return sql.RowsToRowIter(), expression.ProcedureBlockExitError(0)
 	} else if err != nil {
 		return nil, err
 	}

@@ -21,20 +21,12 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-type DeclareHandlerAction byte
-
-const (
-	DeclareHandlerAction_Continue DeclareHandlerAction = iota
-	DeclareHandlerAction_Exit
-	DeclareHandlerAction_Undo
-)
-
 // DeclareHandler represents the DECLARE ... HANDLER statement.
 type DeclareHandler struct {
-	Action    DeclareHandlerAction
+	Action    expression.DeclareHandlerAction
 	Statement sql.Node
 	Pref      *expression.ProcedureReference
-	//TODO: implement other conditions besides NOT FOUND
+	Condition expression.HandlerCondition
 }
 
 var _ sql.Node = (*DeclareHandler)(nil)
@@ -43,13 +35,14 @@ var _ sql.DebugStringer = (*DeclareHandler)(nil)
 var _ expression.ProcedureReferencable = (*DeclareHandler)(nil)
 
 // NewDeclareHandler returns a new *DeclareHandler node.
-func NewDeclareHandler(action DeclareHandlerAction, statement sql.Node) (*DeclareHandler, error) {
-	if action == DeclareHandlerAction_Undo {
+func NewDeclareHandler(action expression.DeclareHandlerAction, statement sql.Node, cond expression.HandlerCondition) (*DeclareHandler, error) {
+	if action == expression.DeclareHandlerAction_Undo {
 		return nil, sql.ErrDeclareHandlerUndo.New()
 	}
 	return &DeclareHandler{
 		Action:    action,
 		Statement: statement,
+		Condition: cond,
 	}, nil
 }
 
@@ -66,11 +59,11 @@ func (d *DeclareHandler) IsReadOnly() bool {
 func (d *DeclareHandler) String() string {
 	var action string
 	switch d.Action {
-	case DeclareHandlerAction_Continue:
+	case expression.DeclareHandlerAction_Continue:
 		action = "CONTINUE"
-	case DeclareHandlerAction_Exit:
+	case expression.DeclareHandlerAction_Exit:
 		action = "EXIT"
-	case DeclareHandlerAction_Undo:
+	case expression.DeclareHandlerAction_Undo:
 		action = "UNDO"
 	}
 	return fmt.Sprintf("DECLARE %s HANDLER FOR NOT FOUND %s", action, d.Statement.String())
@@ -80,11 +73,11 @@ func (d *DeclareHandler) String() string {
 func (d *DeclareHandler) DebugString() string {
 	var action string
 	switch d.Action {
-	case DeclareHandlerAction_Continue:
+	case expression.DeclareHandlerAction_Continue:
 		action = "CONTINUE"
-	case DeclareHandlerAction_Exit:
+	case expression.DeclareHandlerAction_Exit:
 		action = "EXIT"
-	case DeclareHandlerAction_Undo:
+	case expression.DeclareHandlerAction_Undo:
 		action = "UNDO"
 	}
 	return fmt.Sprintf("DECLARE %s HANDLER FOR NOT FOUND %s", action, sql.DebugString(d.Statement))
