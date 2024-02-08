@@ -5458,7 +5458,37 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 				"\"5\",\\N,\"1\",\"5\"\n" +
 				"\"6\",\"6\",\"0\",\"6\"\n",
 		},
+		{
+			file:  "./subdir/outfile.txt",
+			query: "select * from mytable into outfile './subdir/outfile.txt';",
+			exp: "" +
+				"1\tfirst row\n" +
+				"2\tsecond row\n" +
+				"3\tthird row\n",
+		},
+		{
+			file:  "../outfile.txt",
+			query: "select * from mytable into outfile '../outfile.txt';",
+			err:   sql.ErrSecureFilePriv,
+		},
 	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		wd = "/dev/null"
+	}
+	err = sql.SystemVariables.AssignValues(map[string]interface{}{
+		"secure_file_priv": wd,
+	})
+
+	subdir := "subdir"
+	if _, subErr := os.Stat(subdir); subErr == nil {
+		subErr = os.RemoveAll(subdir)
+		require.NoError(t, subErr)
+	}
+	err = os.Mkdir(subdir, 0640)
+	require.NoError(t, err)
+	defer os.RemoveAll(subdir)
 
 	for _, tt := range tests {
 		t.Run(tt.query, func(t *testing.T) {
@@ -5485,9 +5515,9 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		err = os.Remove(exists)
 		require.NoError(t, err)
 	}
-	f, err := os.Create(exists)
+	file, err := os.Create(exists)
 	require.NoError(t, err)
-	f.Close()
+	file.Close()
 	defer os.Remove(exists)
 
 	AssertErrWithCtx(t, e, harness, ctx, "SELECT * FROM mytable INTO OUTFILE './exists.txt'", sql.ErrFileExists)

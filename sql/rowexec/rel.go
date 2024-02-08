@@ -535,21 +535,39 @@ func (b *BaseBuilder) populateMax1Results(ctx *sql.Context, n *plan.Max1Row, row
 	return nil
 }
 
-func validateOutfile(dir interface{}, fileStr string) error {
-	if dir == nil || dir == "" {
+// validateOutfile ensures that fileStr is under secureFileDir or a subdirectory of secureFileDir
+func validateOutfile(secureFileDir interface{}, fileStr string) error {
+	if secureFileDir == nil || secureFileDir == "" {
 		return nil
 	}
-	if _, relErr := filepath.Rel(dir.(string), fileStr); relErr != nil {
-		return sql.ErrSecureFilePriv.New()
+	sStat, err := os.Stat(secureFileDir.(string))
+	if err != nil {
+		return err
 	}
-	return nil
+	fStat, err := os.Stat(filepath.Dir(fileStr))
+	if err != nil {
+		return err
+	}
+	if os.SameFile(sStat, fStat) {
+		return nil
+	}
+
+	fileAbsPath, filePathErr := filepath.Abs(fileStr)
+	if filePathErr != nil {
+		return filePathErr
+	}
+	secureFileDirAbsPath, _ := filepath.Abs(secureFileDir.(string))
+	if strings.HasPrefix(fileAbsPath, secureFileDirAbsPath) {
+		return nil
+	}
+	return sql.ErrSecureFilePriv.New()
 }
 
 func createIfNotExists(fileStr string) (*os.File, error) {
 	if _, fErr := os.Stat(fileStr); fErr == nil {
 		return nil, sql.ErrFileExists.New(fileStr)
 	}
-	file, fileErr := os.Create(fileStr)
+	file, fileErr := os.OpenFile(fileStr, os.O_RDWR | os.O_CREATE | os.O_EXCL, 0640)
 	if fileErr != nil {
 		return nil, fileErr
 	}
@@ -569,30 +587,27 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 		return nil, err
 	}
 
-	var dir interface{}
+	var secureFileDir interface{}
 	if n.Outfile != "" || n.Dumpfile != "" {
 		var ok bool
-		_, dir, ok = sql.SystemVariables.GetGlobal("secure_file_priv")
+		_, secureFileDir, ok = sql.SystemVariables.GetGlobal("secure_file_priv")
 		if !ok {
 			return nil, fmt.Errorf("error: secure_file_priv variable was not found")
 		}
 	}
 
 	if n.Outfile != "" {
-		// TODO: validate delimiters
-		fileAbsPath, filePathErr := filepath.Abs(n.Outfile)
-		if filePathErr != nil {
-			return nil, filePathErr
-		}
-		if fileErr := validateOutfile(dir, fileAbsPath); fileErr != nil {
+		// TODO: MySQL has relative paths from the "data dir"
+		if fileErr := validateOutfile(secureFileDir, n.Outfile); fileErr != nil {
 			return nil, fileErr
 		}
-		file, fileErr := createIfNotExists(fileAbsPath)
+		file, fileErr := createIfNotExists(n.Outfile)
 		if fileErr != nil {
 			return nil, fileErr
 		}
 		defer file.Close()
 
+		// TODO: validate delimiters
 		sch := n.Child.Schema()
 		for _, r := range rows {
 			file.WriteString(n.LinesStartingBy)
@@ -605,14 +620,13 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 					continue
 				}
 				if !n.FieldsEnclosedByOpt || types.IsText(sch[i].Type) {
-					strVal, ok := val.(string)
-					if !ok {
-						file.WriteString(fmt.Sprintf("%s%v%s", n.FieldsEnclosedBy, val, n.FieldsEnclosedBy))
-					} else {
+					if strVal, ok := val.(string); ok {
 						if n.LinesTerminatedBy != "" {
 							strVal = strings.Replace(strVal, n.LinesTerminatedBy, n.FieldsEscapedBy+n.LinesTerminatedBy, -1)
 						}
 						file.WriteString(fmt.Sprintf("%s%v%s", n.FieldsEnclosedBy, strVal, n.FieldsEnclosedBy))
+					} else {
+						file.WriteString(fmt.Sprintf("%s%v%s", n.FieldsEnclosedBy, val, n.FieldsEnclosedBy))
 					}
 				} else {
 					file.WriteString(fmt.Sprintf("%v", val))
@@ -629,14 +643,10 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 	}
 
 	if n.Dumpfile != "" {
-		fileAbsPath, filePathErr := filepath.Abs(n.Dumpfile)
-		if filePathErr != nil {
-			return nil, filePathErr
-		}
-		if fileErr := validateOutfile(dir, fileAbsPath); fileErr != nil {
+		if fileErr := validateOutfile(secureFileDir, n.Dumpfile); fileErr != nil {
 			return nil, err
 		}
-		file, fileErr := createIfNotExists(fileAbsPath)
+		file, fileErr := createIfNotExists(n.Dumpfile)
 		if fileErr != nil {
 			return nil, fileErr
 		}
