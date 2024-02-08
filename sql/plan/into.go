@@ -43,26 +43,33 @@ type Into struct {
 var _ sql.Node = (*Into)(nil)
 var _ sql.CollationCoercible = (*Into)(nil)
 
+// Default values as defined here: https://dev.mysql.com/doc/refman/8.0/en/load-data.html
+const (
+	defaultFieldsTerminatedBy  = "\t"
+	defaultFieldsEnclosedBy    = ""
+	defaultFieldsEnclosedByOpt = false
+	defaultFieldsEscapedBy     = "\\"
+	defaultLinesStartingBy     = ""
+	defaultLinesTerminatedBy   = "\n"
+)
+
 func NewInto(
 	child sql.Node,
 	variables []sql.Expression,
-	outfile, dumpfile, charset, fieldsTerminatedBy, fieldsEnclosedBy, fieldsEscapedBy, linesStartingBy, linesTerminatedBy string,
-	fieldsEnclosedByOpt bool) *Into {
+	outfile, dumpfile string) *Into {
 	return &Into{
 		UnaryNode: UnaryNode{child},
 		IntoVars:  variables,
 		Dumpfile:  dumpfile,
 		Outfile:   outfile,
 
-		Charset: charset,
+		FieldsTerminatedBy:  defaultFieldsTerminatedBy,
+		FieldsEnclosedBy:    defaultFieldsEnclosedBy,
+		FieldsEnclosedByOpt: defaultFieldsEnclosedByOpt,
+		FieldsEscapedBy:     defaultFieldsEscapedBy,
 
-		FieldsTerminatedBy:  fieldsTerminatedBy,
-		FieldsEnclosedBy:    fieldsEnclosedBy,
-		FieldsEnclosedByOpt: fieldsEnclosedByOpt,
-		FieldsEscapedBy:     fieldsEscapedBy,
-
-		LinesStartingBy:   linesStartingBy,
-		LinesTerminatedBy: linesTerminatedBy,
+		LinesStartingBy:   defaultLinesStartingBy,
+		LinesTerminatedBy: defaultLinesTerminatedBy,
 	}
 }
 
@@ -103,8 +110,9 @@ func (i *Into) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
-	i.Child = children[0]
-	return i, nil
+	ni := *i
+	ni.Child = children[0]
+	return &ni, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
@@ -122,8 +130,9 @@ func (i *Into) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(i.IntoVars) {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(exprs), len(i.IntoVars))
 	}
-	i.IntoVars = exprs
-	return i, nil
+	ni := *i
+	ni.IntoVars = exprs
+	return &ni, nil
 }
 
 // Expressions implements the sql.Expressioner interface.

@@ -93,6 +93,7 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 			dir = ""
 		}
 
+		// TODO: check that file is under the secure_file_priv directory
 		fileName := filepath.Join(dir.(string), n.File)
 		file, err := os.Open(fileName)
 		if err != nil {

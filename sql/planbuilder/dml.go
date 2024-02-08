@@ -624,85 +624,49 @@ func getTablesToBeUpdated(node sql.Node) map[string]struct{} {
 	return ret
 }
 
-// Default values as defined here: https://dev.mysql.com/doc/refman/8.0/en/load-data.html
-// TODO: maybe move somewhere else
-const (
-	defaultFieldsTerminatedBy  = "\t"
-	defaultFieldsEnclosedBy    = ""
-	defaultFieldsEnclosedByOpt = false
-	defaultFieldsEscapedBy     = "\\"
-	defaultLinesStartingBy     = ""
-	defaultLinesTerminatedBy   = "\n"
-)
-
 func (b *Builder) buildInto(inScope *scope, into *ast.Into) {
 	if into.Dumpfile != "" {
-		inScope.node = plan.NewInto(
-			inScope.node,
-			nil,
-			"", into.Dumpfile,
-			"",
-			"", "", "",
-			"", "",
-			false,
-		)
+		inScope.node = plan.NewInto(inScope.node,nil,"", into.Dumpfile)
 		return
 	}
 
 	if into.Outfile != "" {
-		fieldsTerminatedBy := defaultFieldsTerminatedBy
-		fieldsEnclosedBy := defaultFieldsEnclosedBy
-		fieldsEnclosedByOpt := defaultFieldsEnclosedByOpt
-		fieldsEscapedBy := defaultFieldsEscapedBy
-		linesStartingBy := defaultLinesStartingBy
-		linesTerminatedBy := defaultLinesTerminatedBy
+		intoNode := plan.NewInto(inScope.node, nil, into.Outfile, "")
 
-		// TODO: deal with charset
 		if into.Charset != "" {
+			// TODO: deal with charset; error for now
+			intoNode.Charset = into.Charset
+			b.handleErr(sql.ErrUnsupportedFeature.New("CHARSET in INTO OUTFILE"))
 		}
 
 		if into.Fields != nil {
 			if into.Fields.TerminatedBy != nil && len(into.Fields.TerminatedBy.Val) != 0 {
-				fieldsTerminatedBy = string(into.Fields.TerminatedBy.Val)
+				intoNode.FieldsTerminatedBy = string(into.Fields.TerminatedBy.Val)
 			}
 			if into.Fields.EnclosedBy != nil {
-				fieldsEnclosedBy = string(into.Fields.EnclosedBy.Delim.Val)
+				intoNode.FieldsEnclosedBy = string(into.Fields.EnclosedBy.Delim.Val)
+				if len(intoNode.FieldsEnclosedBy) > 1 {
+					b.handleErr(sql.ErrUnexpectedSeparator.New())
+				}
 				if into.Fields.EnclosedBy.Optionally {
-					fieldsEnclosedByOpt = true
+					intoNode.FieldsEnclosedByOpt = true
 				}
 			}
 			if into.Fields.EscapedBy != nil {
-				fieldsEscapedBy = string(into.Fields.EscapedBy.Val)
+				intoNode.FieldsEscapedBy = string(into.Fields.EscapedBy.Val)
 			}
 		}
 
 		if into.Lines != nil {
 			if into.Lines.StartingBy != nil {
-				linesStartingBy = string(into.Lines.StartingBy.Val)
+				intoNode.LinesStartingBy = string(into.Lines.StartingBy.Val)
 			}
 			if into.Lines.TerminatedBy != nil {
-				linesTerminatedBy = string(into.Lines.TerminatedBy.Val)
+				intoNode.LinesTerminatedBy = string(into.Lines.TerminatedBy.Val)
 			}
 		}
 
-		if len(fieldsEnclosedBy) > 1 {
-			b.handleErr(sql.ErrUnexpectedSeparator.New())
-		}
-
-		// create into node
-		inScope.node = plan.NewInto(
-			inScope.node,
-			nil,
-			into.Outfile,
-			"",
-			into.Charset,
-			fieldsTerminatedBy,
-			fieldsEnclosedBy,
-			fieldsEscapedBy,
-			linesStartingBy,
-			linesTerminatedBy,
-			fieldsEnclosedByOpt,
-		)
+		inScope.node = intoNode
 		return
 	}
 
@@ -719,14 +683,7 @@ func (b *Builder) buildInto(inScope *scope, into *ast.Into) {
 			vars[i] = col.scalarGf()
 		}
 	}
-	inScope.node = plan.NewInto(
-		inScope.node, vars,
-		"", "",
-		"",
-		"", "", "",
-		"", "",
-		false,
-	)
+	inScope.node = plan.NewInto(inScope.node, vars,"", "")
 }
 
 func (b *Builder) loadChecksFromTable(inScope *scope, table sql.Table) []*sql.CheckConstraint {

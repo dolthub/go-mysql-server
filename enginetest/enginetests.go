@@ -5480,6 +5480,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 	err = sql.SystemVariables.AssignValues(map[string]interface{}{
 		"secure_file_priv": wd,
 	})
+	require.NoError(t, err)
 
 	subdir := "subdir"
 	if _, subErr := os.Stat(subdir); subErr == nil {
