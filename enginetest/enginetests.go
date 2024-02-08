@@ -5341,7 +5341,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 	err := CreateNewConnectionForServerEngine(ctx, e)
 	require.NoError(t, err, nil)
 
-	tests := []struct{
+	tests := []struct {
 		file  string
 		query string
 		exp   string
@@ -5351,7 +5351,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:  "outfile.txt",
 			query: "select * from mytable into outfile 'outfile.txt';",
-			exp:   "" +
+			exp: "" +
 				"1\tfirst row\n" +
 				"2\tsecond row\n" +
 				"3\tthird row\n",
@@ -5364,7 +5364,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:  "outfile.txt",
 			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',';",
-			exp:   "" +
+			exp: "" +
 				"1,first row\n" +
 				"2,second row\n" +
 				"3,third row\n",
@@ -5372,7 +5372,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:  "outfile.txt",
 			query: "select * from mytable into outfile 'outfile.txt' fields terminated by '$$';",
-			exp:   "" +
+			exp: "" +
 				"1$$first row\n" +
 				"2$$second row\n" +
 				"3$$third row\n",
@@ -5380,7 +5380,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:  "outfile.txt",
 			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' optionally enclosed by '\"';",
-			exp:   "" +
+			exp: "" +
 				"1,\"first row\"\n" +
 				"2,\"second row\"\n" +
 				"3,\"third row\"\n",
@@ -5393,7 +5393,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:  "outfile.txt",
 			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' enclosed by '\"';",
-			exp:   "" +
+			exp: "" +
 				"\"1\",\"first row\"\n" +
 				"\"2\",\"second row\"\n" +
 				"\"3\",\"third row\"\n",
@@ -5401,7 +5401,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:  "outfile.txt",
 			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by ';';",
-			exp:   "" +
+			exp: "" +
 				"1,first row;" +
 				"2,second row;" +
 				"3,third row;",
@@ -5409,7 +5409,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:  "outfile.txt",
 			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by 'r';",
-			exp:   "" +
+			exp: "" +
 				"1,fi\\rst \\rowr" +
 				"2,second \\rowr" +
 				"3,thi\\rd \\rowr",
@@ -5417,7 +5417,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:  "outfile.txt",
 			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines starting by 'r';",
-			exp:   "" +
+			exp: "" +
 				"r1,first row\n" +
 				"r2,second row\n" +
 				"r3,third row\n",
@@ -5425,7 +5425,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:  "outfile.txt",
 			query: "select * from mytable into outfile 'outfile.txt' fields terminated by '';",
-			exp:   "" +
+			exp: "" +
 				"1\tfirst row\n" +
 				"2\tsecond row\n" +
 				"3\tthird row\n",
@@ -5433,7 +5433,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:  "outfile.txt",
 			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by '';",
-			exp:   "" +
+			exp: "" +
 				"1,first row" +
 				"2,second row" +
 				"3,third row",
@@ -5441,7 +5441,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:  "outfile.txt",
 			query: "select * from niltable into outfile 'outfile.txt';",
-			exp:   "1\t\\N\t\\N\t\\N\n" +
+			exp: "1\t\\N\t\\N\t\\N\n" +
 				"2\t2\t1\t\\N\n" +
 				"3\t\\N\t0\t\\N\n" +
 				"4\t4\t\\N\t4\n" +
@@ -5451,7 +5451,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:  "outfile.txt",
 			query: "select * from niltable into outfile 'outfile.txt' fields terminated by ',' enclosed by '\"';",
-			exp:   "\"1\",\\N,\\N,\\N\n" +
+			exp: "\"1\",\\N,\\N,\\N\n" +
 				"\"2\",\"2\",\"1\",\\N\n" +
 				"\"3\",\\N,\"0\",\\N\n" +
 				"\"4\",\"4\",\\N,\"4\"\n" +

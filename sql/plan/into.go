@@ -36,8 +36,8 @@ type Into struct {
 	FieldsEnclosedByOpt bool
 	FieldsEscapedBy     string
 
-	LinesStartingBy    string
-	LinesTerminatedBy  string
+	LinesStartingBy   string
+	LinesTerminatedBy string
 }
 
 var _ sql.Node = (*Into)(nil)
@@ -61,8 +61,8 @@ func NewInto(
 		FieldsEnclosedByOpt: fieldsEnclosedByOpt,
 		FieldsEscapedBy:     fieldsEscapedBy,
 
-		LinesStartingBy:    linesStartingBy,
-		LinesTerminatedBy:  linesTerminatedBy,
+		LinesStartingBy:   linesStartingBy,
+		LinesTerminatedBy: linesTerminatedBy,
 	}
 }
 

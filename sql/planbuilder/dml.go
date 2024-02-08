@@ -627,12 +627,12 @@ func getTablesToBeUpdated(node sql.Node) map[string]struct{} {
 // Default values as defined here: https://dev.mysql.com/doc/refman/8.0/en/load-data.html
 // TODO: maybe move somewhere else
 const (
-	defaultFieldsTerminatedBy = "\t"
-	defaultFieldsEnclosedBy   = ""
-	defaultFieldsEnclosedByOpt   = false
-	defaultFieldsEscapedBy    = "\\"
-	defaultLinesStartingBy    = ""
-	defaultLinesTerminatedBy  = "\n"
+	defaultFieldsTerminatedBy  = "\t"
+	defaultFieldsEnclosedBy    = ""
+	defaultFieldsEnclosedByOpt = false
+	defaultFieldsEscapedBy     = "\\"
+	defaultLinesStartingBy     = ""
+	defaultLinesTerminatedBy   = "\n"
 )
 
 func (b *Builder) buildInto(inScope *scope, into *ast.Into) {
@@ -641,8 +641,8 @@ func (b *Builder) buildInto(inScope *scope, into *ast.Into) {
 			inScope.node,
 			nil,
 			"", into.Dumpfile,
-			"" ,
-			"" ,"", "" ,
+			"",
+			"", "", "",
 			"", "",
 			false,
 		)
@@ -658,7 +658,8 @@ func (b *Builder) buildInto(inScope *scope, into *ast.Into) {
 		linesTerminatedBy := defaultLinesTerminatedBy
 
 		// TODO: deal with charset
-		if into.Charset != "" {}
+		if into.Charset != "" {
+		}
 
 		if into.Fields != nil {
 			if into.Fields.TerminatedBy != nil && len(into.Fields.TerminatedBy.Val) != 0 {
