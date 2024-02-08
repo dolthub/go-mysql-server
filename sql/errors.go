@@ -725,6 +725,9 @@ var (
 	// ErrFileExists is returned when a file already exists
 	ErrFileExists = errors.NewKind("File '%s' already exists")
 
+	// ErrUnexpectedSeparator is returned when an invalid separator is used
+	ErrUnexpectedSeparator = errors.NewKind("Field separator argument is not what is expected; check the manual")
+
 	// ErrNotMatchingSRID is returned for SRID values not matching
 	ErrNotMatchingSRID = errors.NewKind("The SRID of the geometry is %v, but the SRID of the column is %v. Consider changing the SRID of the geometry or the SRID property of the column.")
 

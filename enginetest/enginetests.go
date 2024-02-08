@@ -5351,12 +5351,68 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:  "outfile.txt",
 			query: "select * from mytable into outfile 'outfile.txt';",
-			exp:   "1\tfirst row\n2\tsecond row\n3\tthird row\n",
+			exp:   "" +
+				"1\tfirst row\n" +
+				"2\tsecond row\n" +
+				"3\tthird row\n",
 		},
 		{
 			file:  "dumpfile.txt",
 			query: "select * from mytable limit 1 into dumpfile 'dumpfile.txt';",
 			exp:   "1first row",
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',';",
+			exp:   "" +
+				"1,first row\n" +
+				"2,second row\n" +
+				"3,third row\n",
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt' fields terminated by '$$';",
+			exp:   "" +
+				"1$$first row\n" +
+				"2$$second row\n" +
+				"3$$third row\n",
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' optionally enclosed by '\"';",
+			exp:   "" +
+				"1,\"first row\"\n" +
+				"2,\"second row\"\n" +
+				"3,\"third row\"\n",
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' optionally enclosed by '$$';",
+			err:   sql.ErrUnexpectedSeparator,
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' enclosed by '\"';",
+			exp:   "" +
+				"\"1\",\"first row\"\n" +
+				"\"2\",\"second row\"\n" +
+				"\"3\",\"third row\"\n",
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by ';';",
+			exp:   "" +
+				"1,first row;" +
+				"2,second row;" +
+				"3,third row;",
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by 'r';",
+			exp:   "" +
+				"1,fi\\rst \\rowr" +
+				"2,second \\rowr" +
+				"3,thi\\rd \\rowr",
 		},
 	}
 
@@ -5369,6 +5425,8 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 				AssertErrWithCtx(t, e, harness, ctx, tt.query, tt.err)
 				return
 			}
+			// in case there are any residual files from previous runs
+			os.Remove(tt.file)
 			TestQueryWithContext(t, ctx, e, harness, tt.query, nil, nil, nil)
 			res, err := os.ReadFile(tt.file)
 			require.NoError(t, err)

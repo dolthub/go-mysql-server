@@ -45,6 +45,7 @@ type LoadData struct {
 var _ sql.Node = (*LoadData)(nil)
 var _ sql.CollationCoercible = (*LoadData)(nil)
 
+// TODO: use logic from planbuilder
 // Default values as defined here: https://dev.mysql.com/doc/refman/8.0/en/load-data.html
 const (
 	defaultFieldsTerminatedByDelim = "\t"

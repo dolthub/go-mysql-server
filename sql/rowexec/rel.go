@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 
 	"github.com/dolthub/jsonpath"
 	"github.com/shopspring/decimal"
@@ -578,6 +579,7 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 	}
 
 	if n.Outfile != "" {
+		// TODO: validate delimiters
 		fileAbsPath, filePathErr := filepath.Abs(n.Outfile)
 		if filePathErr != nil {
 			return nil, filePathErr
@@ -590,14 +592,29 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 			return nil, fileErr
 		}
 		defer file.Close()
+
+		sch := n.Child.Schema()
 		for _, r := range rows {
+			file.WriteString(n.LinesStartingBy)
 			for i, val := range r {
 				if i != 0 {
-					file.WriteString("\t")
+					file.WriteString(n.FieldsTerminatedBy)
 				}
-				file.WriteString(fmt.Sprintf("%v", val))
+				if !n.FieldsEnclosedByOpt || types.IsText(sch[i].Type) {
+					// TODO: check for escapes
+					strVal, ok := val.(string)
+					if !ok {
+						// TODO
+						file.WriteString(fmt.Sprintf("%s%v%s", n.FieldsEnclosedBy, val, n.FieldsEnclosedBy))
+					} else {
+						strVal = strings.Replace(strVal, n.LinesTerminatedBy, n.FieldsEscapedBy+n.LinesTerminatedBy, -1)
+						file.WriteString(fmt.Sprintf("%s%v%s", n.FieldsEnclosedBy, strVal, n.FieldsEnclosedBy))
+					}
+				} else {
+					file.WriteString(fmt.Sprintf("%v", val))
+				}
 			}
-			file.WriteString("\n")
+			file.WriteString(n.LinesTerminatedBy)
 		}
 		return sql.RowsToRowIter(sql.Row{}), nil
 	}

@@ -66,6 +66,7 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 		sch = b.resolveSchemaDefaults(destScope, rt.Schema())
 	}
 
+	// TODO: charset missing
 	ld := plan.NewLoadData(bool(d.Local), d.Infile, sch, columnsToStrings(d.Columns), d.Fields, d.Lines, ignoreNumVal, d.IgnoreOrReplace)
 	outScope = inScope.push()
 	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), ld, ld.IsReplace, ld.ColumnNames, nil, ld.IsIgnore)
