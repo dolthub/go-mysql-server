@@ -543,6 +543,10 @@ func TestLoadDataFailing(t *testing.T) {
 	enginetest.TestLoadDataFailing(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestSelectIntoFile(t *testing.T) {
+	enginetest.TestSelectIntoFile(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestReplaceInto(t *testing.T) {
 	enginetest.TestReplaceInto(t, enginetest.NewDefaultMemoryHarness())
 }
@@ -1017,8 +1021,4 @@ func TestSQLLogicTestFiles(t *testing.T) {
 		"./sqllogictest/testdata/join/subquery_correlated.txt",
 	}
 	logictest.RunTestFiles(h, paths...)
-}
-
-func TestSelectIntoFile(t *testing.T) {
-	enginetest.TestSelectIntoFile(t, enginetest.NewDefaultMemoryHarness())
 }
