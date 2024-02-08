@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/url"
 	"sort"
 	"strings"
 	"sync"
@@ -767,11 +768,11 @@ func (db *MySQLDb) AuthMethod(user, addr string) (string, error) {
 	if addr == "@" || addr == "" {
 		host = "localhost"
 	} else {
-		splitHost, _, err := net.SplitHostPort(addr)
+		addrUrl, err := url.Parse(addr)
 		if err != nil {
 			return "", err
 		}
-		host = splitHost
+		host = addrUrl.Hostname()
 	}
 
 	rd := db.Reader()
@@ -795,17 +796,14 @@ func (db *MySQLDb) Salt() ([]byte, error) {
 // ValidateHash implements the interface mysql.AuthServer. This is called when the method used is "mysql_native_password".
 func (db *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, addr net.Addr) (mysql.Getter, error) {
 	var host string
-	var err error
-	switch addr.Network() {
-	case "unix":
+	if addr.Network() == "unix" {
 		host = "localhost"
-	case "tcp", "udp":
-		host, _, err = net.SplitHostPort(addr.String())
+	} else {
+		addrUrl, err := url.Parse(addr.String())
 		if err != nil {
 			return nil, err
 		}
-	default:
-		host = addr.String()
+		host = addrUrl.Hostname()
 	}
 
 	rd := db.Reader()
@@ -834,17 +832,14 @@ func (db *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, a
 // Negotiate implements the interface mysql.AuthServer. This is called when the method used is not "mysql_native_password".
 func (db *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.Getter, error) {
 	var host string
-	var err error
-	switch addr.Network() {
-	case "unix":
+	if addr.Network() == "unix" {
 		host = "localhost"
-	case "tcp", "udp":
-		host, _, err = net.SplitHostPort(addr.String())
+	} else {
+		addrUrl, err := url.Parse(addr.String())
 		if err != nil {
 			return nil, err
 		}
-	default:
-		host = addr.String()
+		host = addrUrl.Hostname()
 	}
 
 	rd := db.Reader()
