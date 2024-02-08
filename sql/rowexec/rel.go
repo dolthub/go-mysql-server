@@ -600,14 +600,18 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 				if i != 0 {
 					file.WriteString(n.FieldsTerminatedBy)
 				}
+				if val == nil {
+					file.WriteString("\\N")
+					continue
+				}
 				if !n.FieldsEnclosedByOpt || types.IsText(sch[i].Type) {
-					// TODO: check for escapes
 					strVal, ok := val.(string)
 					if !ok {
-						// TODO
 						file.WriteString(fmt.Sprintf("%s%v%s", n.FieldsEnclosedBy, val, n.FieldsEnclosedBy))
 					} else {
-						strVal = strings.Replace(strVal, n.LinesTerminatedBy, n.FieldsEscapedBy+n.LinesTerminatedBy, -1)
+						if n.LinesTerminatedBy != "" {
+							strVal = strings.Replace(strVal, n.LinesTerminatedBy, n.FieldsEscapedBy+n.LinesTerminatedBy, -1)
+						}
 						file.WriteString(fmt.Sprintf("%s%v%s", n.FieldsEnclosedBy, strVal, n.FieldsEnclosedBy))
 					}
 				} else {

@@ -661,7 +661,7 @@ func (b *Builder) buildInto(inScope *scope, into *ast.Into) {
 		if into.Charset != "" {}
 
 		if into.Fields != nil {
-			if into.Fields.TerminatedBy != nil {
+			if into.Fields.TerminatedBy != nil && len(into.Fields.TerminatedBy.Val) != 0 {
 				fieldsTerminatedBy = string(into.Fields.TerminatedBy.Val)
 			}
 			if into.Fields.EnclosedBy != nil {

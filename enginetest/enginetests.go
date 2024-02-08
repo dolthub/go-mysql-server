@@ -5333,7 +5333,7 @@ func DrainIteratorIgnoreErrors(ctx *sql.Context, iter sql.RowIter) {
 }
 
 func TestSelectIntoFile(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData, setup.MytableData, setup.EmptytableData)
+	harness.Setup(setup.MydbData, setup.MytableData, setup.EmptytableData, setup.NiltableData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 
@@ -5341,7 +5341,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 	err := CreateNewConnectionForServerEngine(ctx, e)
 	require.NoError(t, err, nil)
 
-	tests := []struct {
+	tests := []struct{
 		file  string
 		query string
 		exp   string
@@ -5413,6 +5413,50 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 				"1,fi\\rst \\rowr" +
 				"2,second \\rowr" +
 				"3,thi\\rd \\rowr",
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines starting by 'r';",
+			exp:   "" +
+				"r1,first row\n" +
+				"r2,second row\n" +
+				"r3,third row\n",
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt' fields terminated by '';",
+			exp:   "" +
+				"1\tfirst row\n" +
+				"2\tsecond row\n" +
+				"3\tthird row\n",
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by '';",
+			exp:   "" +
+				"1,first row" +
+				"2,second row" +
+				"3,third row",
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from niltable into outfile 'outfile.txt';",
+			exp:   "1\t\\N\t\\N\t\\N\n" +
+				"2\t2\t1\t\\N\n" +
+				"3\t\\N\t0\t\\N\n" +
+				"4\t4\t\\N\t4\n" +
+				"5\t\\N\t1\t5\n" +
+				"6\t6\t0\t6\n",
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from niltable into outfile 'outfile.txt' fields terminated by ',' enclosed by '\"';",
+			exp:   "\"1\",\\N,\\N,\\N\n" +
+				"\"2\",\"2\",\"1\",\\N\n" +
+				"\"3\",\\N,\"0\",\\N\n" +
+				"\"4\",\"4\",\\N,\"4\"\n" +
+				"\"5\",\\N,\"1\",\"5\"\n" +
+				"\"6\",\"6\",\"0\",\"6\"\n",
 		},
 	}
 
