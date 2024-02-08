@@ -423,7 +423,7 @@ const (
 
 func (c *HandlerCondition) Matches(err error) bool {
 	if errors.Is(err, FetchEOF) {
-		return c.Type == HandlerConditionNotFound || c.Type == HandlerConditionSqlException
+		return c.Type == HandlerConditionNotFound
 	} else {
 		return c.Type == HandlerConditionSqlException
 	}

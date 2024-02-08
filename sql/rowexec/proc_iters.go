@@ -76,9 +76,7 @@ func (b *beginEndIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	row, err := b.rowIter.Next(ctx)
 	if err != nil {
-		if errors.Is(err, expression.FetchEOF) {
-			err = io.EOF
-		} else if controlFlow, ok := err.(loopError); ok && strings.ToLower(controlFlow.Label) == strings.ToLower(b.Label) {
+		if controlFlow, ok := err.(loopError); ok && strings.ToLower(controlFlow.Label) == strings.ToLower(b.Label) {
 			if controlFlow.IsExit {
 				err = nil
 			} else {
@@ -87,6 +85,9 @@ func (b *beginEndIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 		if nErr := b.Pref.PopScope(ctx); nErr != nil && err == io.EOF {
 			err = nErr
+		}
+		if errors.Is(err, expression.FetchEOF) {
+			err = io.EOF
 		}
 		return nil, err
 	}

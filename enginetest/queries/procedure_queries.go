@@ -1271,7 +1271,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CALL eof();",
-				Expected: []sql.Row{{7}},
+				Expected: []sql.Row{},
 			},
 			{
 				Query:    "CALL duplicate_key();",

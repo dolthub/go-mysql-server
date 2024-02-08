@@ -15,6 +15,7 @@
 package rowexec
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -176,11 +177,16 @@ func (b *BaseBuilder) buildBeginEndBlock(ctx *sql.Context, n *plan.BeginEndBlock
 				return sql.RowsToRowIter(), io.EOF
 			}
 		}
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return sql.RowsToRowIter(), nil
 		}
 		if nErr := n.Pref.PopScope(ctx); err == nil && nErr != nil {
 			err = nErr
+		}
+		if errors.Is(err, expression.FetchEOF) && n.Pref.CurrentHeight() == 1 {
+			// Don't return the fetch error in the first BEGIN block, though MySQL returns:
+			// ERROR 1329 (02000): No data - zero rows fetched, selected, or processed
+			return sql.RowsToRowIter(), nil
 		}
 		return sql.RowsToRowIter(), err
 	}
@@ -215,7 +221,10 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 			return nil, err
 		}
 	}
+
 	n.Pref.PushScope()
+	defer n.Pref.PopScope(ctx)
+
 	innerIter, err := b.buildNodeExec(ctx, n.Procedure, row)
 	if err != nil {
 		return nil, err
