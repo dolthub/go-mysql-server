@@ -62,13 +62,8 @@ func (b *BaseBuilder) buildDropTrigger(ctx *sql.Context, n *plan.DropTrigger, ro
 }
 
 func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.Row) (sql.RowIter, error) {
-	// Start the parsing by grabbing all the config variables.
-	err := n.SetParsingValues()
-	if err != nil {
-		return nil, err
-	}
-
 	var reader io.ReadCloser
+	var err error
 
 	if n.Local {
 		_, localInfile, ok := sql.SystemVariables.GetGlobal("local_infile")
@@ -138,12 +133,14 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 		scanner:                 scanner,
 		columnCount:             len(n.ColumnNames), // Needs to be the original column count
 		fieldToColumnMap:        fieldToColumnMap,
-		fieldsTerminatedByDelim: n.FieldsTerminatedByDelim,
-		fieldsEnclosedByDelim:   n.FieldsEnclosedByDelim,
-		fieldsOptionallyDelim:   n.FieldsOptionallyDelim,
-		fieldsEscapedByDelim:    n.FieldsEscapedByDelim,
-		linesTerminatedByDelim:  n.LinesTerminatedByDelim,
-		linesStartingByDelim:    n.LinesStartingByDelim,
+
+		fieldsTerminatedBy:  n.FieldsTerminatedBy,
+		fieldsEnclosedBy:    n.FieldsEnclosedBy,
+		fieldsEnclosedByOpt: n.FieldsEnclosedByOpt,
+		fieldsEscapedBy:     n.FieldsEscapedBy,
+
+		linesTerminatedBy: n.LinesTerminatedBy,
+		linesStartingBy:   n.LinesStartingBy,
 	}, nil
 }
 

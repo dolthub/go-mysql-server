@@ -654,6 +654,9 @@ func (b *Builder) buildInto(inScope *scope, into *ast.Into) {
 			}
 			if into.Fields.EscapedBy != nil {
 				intoNode.FieldsEscapedBy = string(into.Fields.EscapedBy.Val)
+				if len(intoNode.FieldsEscapedBy) > 1 {
+					b.handleErr(sql.ErrUnexpectedSeparator.New())
+				}
 			}
 		}
 

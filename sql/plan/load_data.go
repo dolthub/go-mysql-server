@@ -15,8 +15,7 @@
 package plan
 
 import (
-	"fmt"
-	"strings"
+		"strings"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -29,32 +28,23 @@ type LoadData struct {
 	DestSch                 sql.Schema
 	ColumnNames             []string
 	ResponsePacketSent      bool
-	Fields                  *sqlparser.Fields
-	Lines                   *sqlparser.Lines
 	IgnoreNum               int64
 	IsIgnore                bool
 	IsReplace               bool
-	FieldsTerminatedByDelim string
-	FieldsEnclosedByDelim   string
-	FieldsOptionallyDelim   bool
-	FieldsEscapedByDelim    string
-	LinesTerminatedByDelim  string
-	LinesStartingByDelim    string
+
+	Charset string
+
+	FieldsTerminatedBy  string
+	FieldsEnclosedBy    string
+	FieldsEnclosedByOpt bool
+	FieldsEscapedBy     string
+
+	LinesStartingBy   string
+	LinesTerminatedBy string
 }
 
 var _ sql.Node = (*LoadData)(nil)
 var _ sql.CollationCoercible = (*LoadData)(nil)
-
-// TODO: use logic from planbuilder
-// Default values as defined here: https://dev.mysql.com/doc/refman/8.0/en/load-data.html
-const (
-	defaultFieldsTerminatedByDelim = "\t"
-	defaultFieldsEnclosedByDelim   = ""
-	defaultFieldsOptionallyDelim   = false
-	defaultFieldsEscapedByDelim    = "\\"
-	defaultLinesTerminatedByDelim  = "\n"
-	defaultLinesStartingByDelim    = ""
-)
 
 func (l *LoadData) Resolved() bool {
 	return l.DestSch.Resolved()
@@ -86,8 +76,8 @@ func (l *LoadData) SplitLines(data []byte, atEOF bool) (advance int, token []byt
 	}
 
 	// Find the index of the LINES TERMINATED BY delim.
-	if i := strings.Index(string(data), l.LinesTerminatedByDelim); i >= 0 {
-		return i + len(l.LinesTerminatedByDelim), data[0:i], nil
+	if i := strings.Index(string(data), l.LinesTerminatedBy); i >= 0 {
+		return i + len(l.LinesTerminatedBy), data[0:i], nil
 	}
 
 	// If at end of file with data return the data.
@@ -98,58 +88,12 @@ func (l *LoadData) SplitLines(data []byte, atEOF bool) (advance int, token []byt
 	return
 }
 
-// SetParsingValues parses the LoadData object to get the delimiter into FIELDS and LINES terms.
-func (l *LoadData) SetParsingValues() error {
-	if l.Lines != nil {
-		ll := l.Lines
-		if ll.StartingBy != nil {
-			l.LinesStartingByDelim = string(ll.StartingBy.Val)
-		}
-		if ll.TerminatedBy != nil {
-			l.LinesTerminatedByDelim = string(ll.TerminatedBy.Val)
-		}
-	}
-
-	if l.Fields != nil {
-		lf := l.Fields
-
-		if lf.TerminatedBy != nil {
-			l.FieldsTerminatedByDelim = string(lf.TerminatedBy.Val)
-		}
-
-		if lf.EscapedBy != nil {
-			if len(string(lf.EscapedBy.Val)) > 1 {
-				return sql.ErrLoadDataCharacterLength.New(fmt.Sprintf("LOAD DATA ESCAPED BY %s", lf.EscapedBy))
-			}
-
-			l.FieldsEscapedByDelim = string(lf.EscapedBy.Val)
-		}
-
-		if lf.EnclosedBy != nil {
-			lfe := lf.EnclosedBy
-
-			if lfe.Optionally {
-				l.FieldsOptionallyDelim = true
-			}
-
-			if lfe.Delim != nil {
-				if len(string(lfe.Delim.Val)) > 1 {
-					return sql.ErrLoadDataCharacterLength.New("LOAD DATA ENCLOSED BY")
-				}
-
-				l.FieldsEnclosedByDelim = string(lfe.Delim.Val)
-			}
-		}
-	}
-
-	return nil
-}
-
 func (l *LoadData) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 0)
 	}
-	return l, nil
+	nl := *l
+	return &nl, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
@@ -162,7 +106,7 @@ func (*LoadData) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 	return sql.Collation_binary, 7
 }
 
-func NewLoadData(local bool, file string, destSch sql.Schema, cols []string, fields *sqlparser.Fields, lines *sqlparser.Lines, ignoreNum int64, ignoreOrReplace string) *LoadData {
+func NewLoadData(local bool, file string, destSch sql.Schema, cols []string, ignoreNum int64, ignoreOrReplace string) *LoadData {
 	isReplace := ignoreOrReplace == sqlparser.ReplaceStr
 	isIgnore := ignoreOrReplace == sqlparser.IgnoreStr || (local && !isReplace)
 	return &LoadData{
@@ -170,16 +114,16 @@ func NewLoadData(local bool, file string, destSch sql.Schema, cols []string, fie
 		File:                    file,
 		DestSch:                 destSch,
 		ColumnNames:             cols,
-		Fields:                  fields,
-		Lines:                   lines,
 		IgnoreNum:               ignoreNum,
 		IsIgnore:                isIgnore,
 		IsReplace:               isReplace,
-		LinesStartingByDelim:    defaultLinesStartingByDelim,
-		LinesTerminatedByDelim:  defaultLinesTerminatedByDelim,
-		FieldsEnclosedByDelim:   defaultFieldsEnclosedByDelim,
-		FieldsTerminatedByDelim: defaultFieldsTerminatedByDelim,
-		FieldsOptionallyDelim:   defaultFieldsOptionallyDelim,
-		FieldsEscapedByDelim:    defaultFieldsEscapedByDelim,
+
+		FieldsTerminatedBy:  defaultFieldsTerminatedBy,
+		FieldsEnclosedBy:    defaultFieldsEnclosedBy,
+		FieldsEnclosedByOpt: defaultFieldsEnclosedByOpt,
+		FieldsEscapedBy:     defaultFieldsEscapedBy,
+
+		LinesStartingBy:   defaultLinesStartingBy,
+		LinesTerminatedBy: defaultLinesTerminatedBy,
 	}
 }

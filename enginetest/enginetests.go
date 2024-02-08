@@ -5392,6 +5392,11 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		},
 		{
 			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' escaped by '$$';",
+			err:   sql.ErrUnexpectedSeparator,
+		},
+		{
+			file:  "outfile.txt",
 			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' enclosed by '\"';",
 			exp: "" +
 				"\"1\",\"first row\"\n" +
@@ -5459,6 +5464,26 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 				"\"6\",\"6\",\"0\",\"6\"\n",
 		},
 		{
+			file:  "outfile.txt",
+			query: "select * from niltable into outfile 'outfile.txt' fields terminated by ',' escaped by '$';",
+			exp: "1,$N,$N,$N\n" +
+				"2,2,1,$N\n" +
+				"3,$N,0,$N\n" +
+				"4,4,$N,4\n" +
+				"5,$N,1,5\n" +
+				"6,6,0,6\n",
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from niltable into outfile 'outfile.txt' fields terminated by ',' escaped by '';",
+			exp: "1,NULL,NULL,NULL\n" +
+				"2,2,1,NULL\n" +
+				"3,NULL,0,NULL\n" +
+				"4,4,NULL,4\n" +
+				"5,NULL,1,5\n" +
+				"6,6,0,6\n",
+		},
+		{
 			file:  "./subdir/outfile.txt",
 			query: "select * from mytable into outfile './subdir/outfile.txt';",
 			exp: "" +
@@ -5470,6 +5495,11 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 			file:  "../outfile.txt",
 			query: "select * from mytable into outfile '../outfile.txt';",
 			err:   sql.ErrSecureFilePriv,
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt' charset binary;",
+			err:   sql.ErrUnsupportedFeature,
 		},
 	}
 

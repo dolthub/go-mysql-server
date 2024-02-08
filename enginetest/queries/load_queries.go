@@ -299,7 +299,7 @@ var LoadDataErrorScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ESCAPED BY 'xx' (pk)",
-				ExpectedErr: sql.ErrLoadDataCharacterLength,
+				ExpectedErr: sql.ErrUnexpectedSeparator,
 			},
 		},
 	},
@@ -311,7 +311,7 @@ var LoadDataErrorScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY 'xx' (pk)",
-				ExpectedErr: sql.ErrLoadDataCharacterLength,
+				ExpectedErr: sql.ErrUnexpectedSeparator,
 			},
 		},
 	},
