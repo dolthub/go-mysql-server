@@ -5,9 +5,11 @@ import (
 	"database/sql"
 	"net"
 	"testing"
+	"time"
 
 	vsql "github.com/dolthub/vitess/go/mysql"
 	"github.com/go-sql-driver/mysql"
+	"github.com/stretchr/testify/require"
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/memory"
@@ -44,14 +46,7 @@ func TestSeverCustomListener(t *testing.T) {
 		return memory.NewSession(gsql.NewBaseSessionWithClientServer(addr, client, c.ConnectionID), pro), nil
 	}
 	s, err := server.NewServer(cfg, engine, sessionBuilder, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	go func() {
-		if err = s.Start(); err != nil {
-			panic(err)
-		}
-	}()
+	require.NoError(t, err)
 
 	networkName := "testNetwork"
 	// wire up go-mysql-driver to the listener
@@ -66,28 +61,33 @@ func TestSeverCustomListener(t *testing.T) {
 		User:                 "root",
 		AllowNativePasswords: true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
+	// start go-mysql-server
+	go func() {
+		err := s.Start()
+		require.NoError(t, err)
+	}()
 
 	// open the db, ping it, and run some execs/queries
 	db := sql.OpenDB(driver)
-	err = db.Ping()
-	if err != nil {
-		t.Fatal(err)
+
+	var pingErr error
+	for i := 0; i < 3; i++ {
+		if pingErr = db.Ping(); pingErr == nil {
+			break
+		}
+		time.Sleep(time.Second)
 	}
+	require.NoError(t, err)
 
 	_, err = db.Exec("CREATE TABLE table1 (id int)")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	row := db.QueryRow("SHOW TABLES")
 	var tableName string
 	err = row.Scan(&tableName)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if tableName != "table1" {
 		t.Fatalf("expected to find table1, but got %s", tableName)
 	}
