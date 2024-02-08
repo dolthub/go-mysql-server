@@ -567,7 +567,7 @@ func createIfNotExists(fileStr string) (*os.File, error) {
 	if _, fErr := os.Stat(fileStr); fErr == nil {
 		return nil, sql.ErrFileExists.New(fileStr)
 	}
-	file, fileErr := os.OpenFile(fileStr, os.O_RDWR | os.O_CREATE | os.O_EXCL, 0640)
+	file, fileErr := os.OpenFile(fileStr, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0640)
 	if fileErr != nil {
 		return nil, fileErr
 	}
