@@ -15,6 +15,7 @@
 package expression
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -395,15 +396,9 @@ func (upp *UnresolvedProcedureParam) WithChildren(children ...sql.Expression) (s
 	return upp, nil
 }
 
-// ProcedureBlockExitError contains the scope height that should exit.
-type ProcedureBlockExitError int
-
-var _ error = ProcedureBlockExitError(0)
-
-// Error implements the error interface.
-func (b ProcedureBlockExitError) Error() string {
-	return "Block that EXIT handler was declared in could somehow not be found"
-}
+// FetchEOF is a special EOF error that lets the loop implementation
+// differentiate between this io.EOF
+var FetchEOF = errors.New("exhausted fetch iterator")
 
 type HandlerConditionType uint8
 
@@ -427,8 +422,8 @@ const (
 )
 
 func (c *HandlerCondition) Matches(err error) bool {
-	if _, ok := err.(ProcedureBlockExitError); ok {
-		return c.Type == HandlerConditionNotFound
+	if errors.Is(err, FetchEOF) {
+		return c.Type == HandlerConditionNotFound || c.Type == HandlerConditionSqlException
 	} else {
 		return c.Type == HandlerConditionSqlException
 	}

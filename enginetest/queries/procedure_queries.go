@@ -1237,6 +1237,53 @@ END;`,
 		},
 	},
 	{
+		Name: "SQLEXCEPTION declare handler",
+		SetUpScript: []string{
+			`DROP TABLE IF EXISTS t1;`,
+			`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
+			`CREATE PROCEDURE eof()
+BEGIN
+	DECLARE a, b INT DEFAULT 1;
+    DECLARE cur1 CURSOR FOR SELECT * FROM t1;
+    OPEN cur1;
+    BEGIN
+		DECLARE EXIT HANDLER FOR SQLEXCEPTION SET a = 7;
+		tloop: LOOP
+			FETCH cur1 INTO b;
+            IF a > 1000 THEN
+				LEAVE tloop;
+            END IF;
+		END LOOP;
+    END;
+    CLOSE cur1;
+    SELECT a;
+END;`,
+			`CREATE PROCEDURE duplicate_key()
+BEGIN
+	DECLARE a, b INT DEFAULT 1;
+    BEGIN
+		DECLARE EXIT HANDLER FOR SQLEXCEPTION SET a = 7;
+		INSERT INTO t1 values (0);
+    END;
+    SELECT a;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL eof();",
+				Expected: []sql.Row{{7}},
+			},
+			{
+				Query:    "CALL duplicate_key();",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "CALL duplicate_key();",
+				Expected: []sql.Row{{7}},
+			},
+		},
+	},
+	{
 		Name: "DECLARE HANDLERs exit according to the block they were declared in",
 		SetUpScript: []string{
 			`DROP TABLE IF EXISTS t1;`,

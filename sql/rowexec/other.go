@@ -71,7 +71,7 @@ func (b *BaseBuilder) buildDeallocateQuery(ctx *sql.Context, n *plan.DeallocateQ
 func (b *BaseBuilder) buildFetch(ctx *sql.Context, n *plan.Fetch, row sql.Row) (sql.RowIter, error) {
 	row, sch, err := n.Pref.FetchCursor(ctx, n.Name)
 	if err == io.EOF {
-		return sql.RowsToRowIter(), expression.ProcedureBlockExitError(0)
+		return sql.RowsToRowIter(), expression.FetchEOF
 	} else if err != nil {
 		return nil, err
 	}
