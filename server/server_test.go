@@ -79,7 +79,7 @@ func TestSeverCustomListener(t *testing.T) {
 		}
 		time.Sleep(time.Second)
 	}
-	require.NoError(t, err)
+	require.NoError(t, pingErr)
 
 	_, err = db.Exec("CREATE TABLE table1 (id int)")
 	require.NoError(t, err)
