@@ -774,6 +774,7 @@ func (db *MySQLDb) AuthMethod(user, addr string) (string, error) {
 			} else {
 				return "", err
 			}
+		} else {
 			host = splitHost
 		}
 	}
