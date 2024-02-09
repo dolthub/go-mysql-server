@@ -15,6 +15,7 @@
 package rowexec
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -137,17 +138,55 @@ func (b *BaseBuilder) buildBeginEndBlock(ctx *sql.Context, n *plan.BeginEndBlock
 	n.Pref.PushScope()
 	rowIter, err := b.buildNodeExec(ctx, n.Block, row)
 	if err != nil {
-		if exitErr, ok := err.(expression.ProcedureBlockExitError); ok && n.Pref.CurrentHeight() == int(exitErr) {
-			err = nil
-		} else if controlFlow, ok := err.(loopError); ok && strings.ToLower(controlFlow.Label) == strings.ToLower(n.Label) {
+		if controlFlow, ok := err.(loopError); ok && strings.ToLower(controlFlow.Label) == strings.ToLower(n.Label) {
 			if controlFlow.IsExit {
 				err = nil
 			} else {
 				err = fmt.Errorf("encountered ITERATE on BEGIN...END, which should should have been caught by the analyzer")
 			}
+		} else {
+			scope := n.Pref.InnermostScope
+			for i := len(scope.Handlers) - 1; i >= 0; i-- {
+				if !scope.Handlers[i].Cond.Matches(err) {
+					continue
+				}
+				originalScope := n.Pref.InnermostScope
+				defer func() {
+					n.Pref.InnermostScope = originalScope
+				}()
+				n.Pref.InnermostScope = scope
+				handlerRefVal := scope.Handlers[i]
+
+				handlerRowIter, err := b.buildNodeExec(ctx, handlerRefVal.Stmt, nil)
+				if err != nil {
+					return sql.RowsToRowIter(), err
+				}
+				defer handlerRowIter.Close(ctx)
+
+				for {
+					_, err := handlerRowIter.Next(ctx)
+					if err == io.EOF {
+						break
+					} else if err != nil {
+						return sql.RowsToRowIter(), err
+					}
+				}
+				if scope.Handlers[i].Action == expression.DeclareHandlerAction_Exit {
+					return sql.RowsToRowIter(), nil
+				}
+				return sql.RowsToRowIter(), io.EOF
+			}
+		}
+		if errors.Is(err, io.EOF) {
+			return sql.RowsToRowIter(), nil
 		}
 		if nErr := n.Pref.PopScope(ctx); err == nil && nErr != nil {
 			err = nErr
+		}
+		if errors.Is(err, expression.FetchEOF) && n.Pref.CurrentHeight() == 1 {
+			// Don't return the fetch error in the first BEGIN block, though MySQL returns:
+			// ERROR 1329 (02000): No data - zero rows fetched, selected, or processed
+			return sql.RowsToRowIter(), nil
 		}
 		return sql.RowsToRowIter(), err
 	}
@@ -182,7 +221,10 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 			return nil, err
 		}
 	}
+
 	n.Pref.PushScope()
+	defer n.Pref.PopScope(ctx)
+
 	innerIter, err := b.buildNodeExec(ctx, n.Procedure, row)
 	if err != nil {
 		return nil, err
