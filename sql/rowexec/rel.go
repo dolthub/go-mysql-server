@@ -608,7 +608,6 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 		}
 		defer file.Close()
 
-		// TODO: validate delimiters
 		sch := n.Child.Schema()
 		for _, r := range rows {
 			file.WriteString(n.LinesStartingBy)
