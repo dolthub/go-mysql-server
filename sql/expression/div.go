@@ -304,13 +304,52 @@ func (d *Div) determineResultType(outermostResult bool) sql.Type {
 		return types.Float64
 	}
 
-	// For division operations, the result type is always either a float or decimal.Decimal. When working with
-	// integers, we prefer float types internally, since the performance is orders of magnitude faster to divide
-	// floats than to divide Decimals, but if this is the outermost division operation, we need to
-	// return a decimal in order to match MySQL's results exactly.
-	return floatOrDecimalTypeForDiv(d, !outermostResult)
+	if !outermostResult && types.IsNumber(lTyp) && types.IsNumber(rTyp) {
+		// TODO: does this mean we're never using float optimization?
+		//return types.Float64
+	}
+
+	// numerical outermost results from here on
+
+	if types.IsFloat(lTyp) || types.IsFloat(rTyp) {
+		return types.Float64
+	}
+
+	if types.IsInteger(lTyp) {
+		// TODO: determine precision?
+		if d.ops == -1 {
+			return types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, 9)
+		}
+		return types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, divPrecisionIncrement)
+	}
+
+	if types.IsDecimal(lTyp) {
+		// TODO: better verify this
+		lPrec, lScale := lTyp.(types.DecimalType_).Precision(), lTyp.(types.DecimalType_).Scale()
+		lPrec = lPrec + divPrecisionIncrement
+		lScale = lScale + divPrecisionIncrement
+		if d.ops == -1 {
+			lScale = (lScale / 9 + 1) * 9
+			if lScale > types.DecimalTypeMaxScale {
+				lScale = types.DecimalTypeMaxScale
+			}
+			return types.MustCreateDecimalType(lPrec, lScale)
+		}
+
+		if lPrec > types.DecimalTypeMaxPrecision {
+			lPrec = types.DecimalTypeMaxPrecision
+		}
+		if lScale > types.DecimalTypeMaxScale {
+			lScale = types.DecimalTypeMaxScale
+		}
+		return types.MustCreateDecimalType(lPrec, lScale)
+	}
+
+	// TODO: missing cases
+	return lTyp
 }
 
+// TODO: this is unused now, consider deleting
 // floatOrDecimalTypeForDiv returns either Float64 or Decimal type depending on column reference,
 // left and right expression types and left and right evaluated types.
 // If |treatIntsAsFloats| is true, then integers are treated as floats instead of Decimals. This
@@ -328,24 +367,31 @@ func floatOrDecimalTypeForDiv(e sql.Expression, treatIntsAsFloats bool) sql.Type
 
 	// if not float, it must be decimal type
 	if treatIntsAsFloats {
-		return t
+		//return t
 	}
 
 	// for Div expression, if it's the outermostResult, then add the additional scales for the final result
-	p, s := t.(types.DecimalType_).Precision(), t.(types.DecimalType_).Scale()
-	maxWhole := p - s
-	maxFrac := s
+	prec, scale := t.(types.DecimalType_).Precision(), t.(types.DecimalType_).Scale()
+	maxWhole := prec - scale
+	maxScale := scale
 
 	div := e.(*Div)
 	finalScale := div.leftmostScale.Load() + div.divScale*int32(divPrecisionIncrement)
 
-	if finalScale > types.DecimalTypeMaxScale {
-		finalScale = types.DecimalTypeMaxScale
-	} else if uint8(finalScale) > maxFrac {
-		maxFrac = uint8(finalScale)
+	if uint8(finalScale) > maxScale {
+		maxScale = uint8(finalScale)
 	}
 
-	return types.MustCreateDecimalType(maxWhole+maxFrac, maxFrac)
+	if maxScale > types.DecimalTypeMaxScale {
+		maxScale = types.DecimalTypeMaxScale
+	}
+
+	prec = maxWhole + maxScale
+	if prec > types.DecimalTypeMaxPrecision {
+		prec = types.DecimalTypeMaxPrecision
+	}
+
+	return types.MustCreateDecimalType(prec, maxScale)
 }
 
 // getFloatOrMaxDecimalType returns either Float64 or Decimal type with max precision and scale
@@ -499,6 +545,12 @@ func setDivs(e sql.Expression, dScale int32) {
 		}
 		setDivs(a.Left(), dScale)
 		setDivs(a.Right(), dScale)
+	}
+
+	if tup, ok := e.(Tuple); ok {
+		for _, expr := range tup {
+			setDivs(expr, dScale)
+		}
 	}
 
 	return

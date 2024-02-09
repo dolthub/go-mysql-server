@@ -54,6 +54,10 @@ func (in *InTuple) Right() sql.Expression {
 
 // NewInTuple creates an InTuple expression.
 func NewInTuple(left sql.Expression, right sql.Expression) *InTuple {
+	setArithmeticOps(left, -1)
+	setArithmeticOps(right, -1)
+	setDivs(left, -1)
+	setDivs(right, -1)
 	return &InTuple{BinaryExpressionStub{left, right}}
 }
 
@@ -61,12 +65,12 @@ func NewInTuple(left sql.Expression, right sql.Expression) *InTuple {
 func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	typ := in.Left().Type().Promote()
 	leftElems := types.NumColumns(typ)
-	left, err := in.Left().Eval(ctx, row)
+	originalLeft, err := in.Left().Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	if left == nil {
+	if originalLeft == nil {
 		return nil, nil
 	}
 
@@ -76,7 +80,7 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// also if no match is found in the list and one of the expressions in the list is NULL.
 	rightNull := false
 
-	left, _, err = typ.Convert(left)
+	left, _, err := typ.Convert(originalLeft)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +105,8 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			}
 
 			var cmp int
-			if types.IsDecimal(el.Type()) || types.IsFloat(el.Type()) {
+			elType := el.Type()
+			if types.IsDecimal(elType) || types.IsFloat(elType) {
 				rtyp := el.Type().Promote()
 				left, err := convertOrTruncate(ctx, left, rtyp)
 				if err != nil {

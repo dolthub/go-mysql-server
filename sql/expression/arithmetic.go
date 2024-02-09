@@ -157,11 +157,61 @@ func (a *Arithmetic) Type() sql.Type {
 		return types.Int64
 	}
 
-	if a.Op == sqlparser.MultStr {
-		return floatOrDecimalTypeForMult(a.LeftChild, a.RightChild)
-	} else {
-		return getFloatOrMaxDecimalType(a, false)
+	// TODO: special cases for div, intdiv, and mod?
+
+	if types.IsDecimal(lTyp) && !types.IsDecimal(rTyp) {
+		return lTyp
 	}
+
+	if types.IsDecimal(rTyp) && !types.IsDecimal(lTyp) {
+		return rTyp
+	}
+
+	if types.IsDecimal(lTyp) && types.IsDecimal(rTyp) {
+		lPrec := lTyp.(types.DecimalType_).Precision()
+		lScale := lTyp.(types.DecimalType_).Scale()
+		rPrec := rTyp.(types.DecimalType_).Precision()
+		rScale := rTyp.(types.DecimalType_).Scale()
+
+		var prec, scale uint8
+		if lPrec > rPrec {
+			prec = lPrec
+		} else {
+			prec = rPrec
+		}
+
+		switch a.Op {
+		case sqlparser.PlusStr, sqlparser.MinusStr:
+			if lScale > rScale {
+				scale = lScale
+			} else {
+				scale = rScale
+			}
+			prec = prec + scale
+		case sqlparser.MultStr:
+			scale = lScale+rScale
+			prec = prec + scale
+		case sqlparser.DivStr:
+			if lScale > rScale {
+				scale = lScale
+			} else {
+				scale = rScale
+			}
+			scale = scale + divPrecisionIncrement
+			prec = prec + divPrecisionIncrement
+		}
+
+		if prec > types.DecimalTypeMaxPrecision {
+			prec = types.DecimalTypeMaxPrecision
+		}
+		if scale > types.DecimalTypeMaxScale {
+			scale = types.DecimalTypeMaxScale
+		}
+
+		return types.MustCreateDecimalType(prec, scale)
+	}
+
+	return getFloatOrMaxDecimalType(a, false)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -215,10 +265,16 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Decimals must be rounded
-	if res, ok := result.(decimal.Decimal); ok && isOutermostArithmeticOp(a, a.ops) {
-		finalScale, hasDiv := getFinalScale(a)
-		if hasDiv {
-			return res.Round(finalScale), nil
+	if res, ok := result.(decimal.Decimal); ok {
+		if isOutermostArithmeticOp(a, a.ops) {
+			finalScale, hasDiv := getFinalScale(a)
+			if hasDiv {
+				return res.Round(finalScale), nil
+			}
+		}
+		// In comparisons, we need to truncate decimals to have scale of 9
+		if a.ops == -1 {
+			result = res.Truncate(9)
 		}
 	}
 
@@ -317,6 +373,12 @@ func setArithmeticOps(e sql.Expression, opScale int32) {
 		a.SetOpCount(opScale)
 		setArithmeticOps(a.Left(), opScale)
 		setArithmeticOps(a.Right(), opScale)
+	}
+
+	if tup, ok := e.(Tuple); ok {
+		for _, expr := range tup {
+			setArithmeticOps(expr, opScale)
+		}
 	}
 
 	return

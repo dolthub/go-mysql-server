@@ -203,45 +203,127 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "physical columns added after virtual one",
+			Name: "delete me",
 			SetUpScript: []string{
-				"create table t (pk int primary key, col1 int as (pk + 1));",
-				"insert into t (pk) values (1), (3)",
-				"alter table t add index idx1 (col1, pk);",
-				"alter table t add index idx2 (col1);",
-				"alter table t add column col2 int;",
-				"alter table t add column col3 int;",
-				"insert into t (pk, col2, col3) values (2, 4, 5);",
+				"CREATE TABLE tab0(col0 INTEGER, col1 INTEGER, col2 INTEGER);",
+                "INSERT INTO tab0 VALUES(97,1,99);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "select * from t order by pk",
+					Query: "select 1 / 1",
 					Expected: []sql.Row{
-						{1, 2, nil, nil},
-						{2, 3, 4, 5},
-						{3, 4, nil, nil},
+						{"1.0000"},
+					},
+				},
+
+				{
+					Query: "select 1 / 3 * 3;",
+					Expected: []sql.Row{
+						{"1.0000"},
 					},
 				},
 				{
-					Query: "select * from t where col1 = 2",
+					Query: "select 1 / 3 * 3 = 0.999999999;",
 					Expected: []sql.Row{
-						{1, 2, nil, nil},
+						{true},
 					},
 				},
 				{
-					Query: "select * from t where col1 = 3 and pk = 2",
+					Query: "SELECT col2 IN ( 98 + col0 / 99 ) from tab0;",
 					Expected: []sql.Row{
-						{2, 3, 4, 5},
+						{false},
 					},
 				},
 				{
-					Query: "select * from t where pk = 2",
+					Query: "SELECT col2 IN ( 98 + 97 / 99 ) from tab0;",
 					Expected: []sql.Row{
-						{2, 3, 4, 5},
+						{false},
 					},
+				},
+				{
+					Query: "SELECT 99 IN ( 98 + 97 / 99 );",
+					Expected: []sql.Row{
+						{false},
+					},
+				},
+				{
+					Query: "SELECT 1 IN ( 97 / 99 );",
+					Expected: []sql.Row{
+						{false},
+					},
+				},
+
+				{
+					Query: "SELECT * FROM tab0 WHERE col2 IN ( 98 + 97 / 99 );",
+					Expected: []sql.Row{
+					},
+				},
+				{
+					Query: "SELECT ALL * FROM tab0 AS cor0 WHERE col2 IN ( 39 + + 89, col0 + + col1 + + ( - ( - col0 ) ) / col2, + ( col0 ) + - 99, + col1, + col2 * - + col2 * - 12 + col1 + - 66 );",
+					Expected: []sql.Row{
+					},
+				},
+
+
+				{
+					Query:    `SELECT 1 IN (1 / 9 * 5);`,
+					Expected: []sql.Row{{false}},
+				},
+				{
+					Query:    `select 1 / 3 * 3 = 1;`,
+					Expected: []sql.Row{{false}},
+				},
+				{
+					Query:    `select 1 / 3 * 3 = 0.999999999;`,
+					Expected: []sql.Row{{true}},
+				},
+
+				{
+					Query:    `select 1 / 3 * 3 in (1);`,
+					Expected: []sql.Row{{false}},
+				},
+				{
+					Query:    `select 1 in (1 / 3 * 3);`,
+					Expected: []sql.Row{{false}},
+				},
+				{
+					Query:    `SELECT 1 IN (1 / 9 * 5);`,
+					Expected: []sql.Row{{false}},
+				},
+				{
+					Query:    `SELECT 1 / 9 * 5 IN (1);`,
+					Expected: []sql.Row{{false}},
+				},
+				{
+					Query:    `SELECT 1 / 9 * 5 IN (1 / 9 * 5);`,
+					Expected: []sql.Row{{true}},
+				},
+
+				{
+					Query:    `SELECT 1 IN (1 / 99 * 50);`,
+					Expected: []sql.Row{{false}},
+				},
+				{
+					Query:    `select 1 / 3 * 3 in (0.999999999);`,
+					Expected: []sql.Row{{true}},
+				},
+				{
+					Query:    `SELECT 96 / 51 * 51 > 96;`,
+					Expected: []sql.Row{{false}},
+				},
+				{
+					Query:    `SELECT 96 / 51 * 51 = 95.999999991;`,
+					Expected: []sql.Row{{true}},
+				},
+				{
+					Query:    `select 64 / 77 * 77;`,
+					Expected: []sql.Row{{"64.0000"}},
+				},
+				{
+					Query:    `select (1 / 3) * (1 / 3);`,
+					Expected: []sql.Row{{"0.11111111"}},
 				},
 			},
 		},
@@ -254,8 +336,8 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		engine.EngineAnalyzer().Debug = true
-		engine.EngineAnalyzer().Verbose = true
+		//engine.EngineAnalyzer().Debug = true
+		//engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}

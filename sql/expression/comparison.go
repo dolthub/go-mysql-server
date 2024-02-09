@@ -68,6 +68,11 @@ type comparison struct {
 }
 
 func newComparison(left, right sql.Expression) comparison {
+	// TODO: somewhat hacky way to disable rounding for comparisons
+	setArithmeticOps(left, -1)
+	setArithmeticOps(right, -1)
+	setDivs(left, -1)
+	setDivs(right, -1)
 	return comparison{BinaryExpressionStub{left, right}}
 }
 

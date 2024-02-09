@@ -867,10 +867,10 @@ where
 			"         │   │   └─ AND\n" +
 			"         │   │       ├─ GreaterThanOrEqual\n" +
 			"         │   │       │   ├─ lineitem.l_discount:2!null\n" +
-			"         │   │       │   └─ 0.05 (decimal(3,2))\n" +
+			"         │   │       │   └─ 0.05 (decimal(5,2))\n" +
 			"         │   │       └─ LessThanOrEqual\n" +
 			"         │   │           ├─ lineitem.l_discount:2!null\n" +
-			"         │   │           └─ 0.07 (decimal(3,2))\n" +
+			"         │   │           └─ 0.07 (decimal(5,2))\n" +
 			"         │   └─ LessThan\n" +
 			"         │       ├─ lineitem.l_quantity:0!null\n" +
 			"         │       └─ 24 (tinyint)\n" +
