@@ -625,9 +625,52 @@ func getTablesToBeUpdated(node sql.Node) map[string]struct{} {
 }
 
 func (b *Builder) buildInto(inScope *scope, into *ast.Into) {
-	if into.Outfile != "" || into.Dumpfile != "" {
-		err := sql.ErrUnsupportedSyntax.New("select into files is not supported yet")
-		b.handleErr(err)
+	if into.Dumpfile != "" {
+		inScope.node = plan.NewInto(inScope.node, nil, "", into.Dumpfile)
+		return
+	}
+
+	if into.Outfile != "" {
+		intoNode := plan.NewInto(inScope.node, nil, into.Outfile, "")
+
+		if into.Charset != "" {
+			// TODO: deal with charset; error for now
+			intoNode.Charset = into.Charset
+			b.handleErr(sql.ErrUnsupportedFeature.New("CHARSET in INTO OUTFILE"))
+		}
+
+		if into.Fields != nil {
+			if into.Fields.TerminatedBy != nil && len(into.Fields.TerminatedBy.Val) != 0 {
+				intoNode.FieldsTerminatedBy = string(into.Fields.TerminatedBy.Val)
+			}
+			if into.Fields.EnclosedBy != nil {
+				intoNode.FieldsEnclosedBy = string(into.Fields.EnclosedBy.Delim.Val)
+				if len(intoNode.FieldsEnclosedBy) > 1 {
+					b.handleErr(sql.ErrUnexpectedSeparator.New())
+				}
+				if into.Fields.EnclosedBy.Optionally {
+					intoNode.FieldsEnclosedByOpt = true
+				}
+			}
+			if into.Fields.EscapedBy != nil {
+				intoNode.FieldsEscapedBy = string(into.Fields.EscapedBy.Val)
+				if len(intoNode.FieldsEscapedBy) > 1 {
+					b.handleErr(sql.ErrUnexpectedSeparator.New())
+				}
+			}
+		}
+
+		if into.Lines != nil {
+			if into.Lines.StartingBy != nil {
+				intoNode.LinesStartingBy = string(into.Lines.StartingBy.Val)
+			}
+			if into.Lines.TerminatedBy != nil {
+				intoNode.LinesTerminatedBy = string(into.Lines.TerminatedBy.Val)
+			}
+		}
+
+		inScope.node = intoNode
+		return
 	}
 
 	vars := make([]sql.Expression, len(into.Variables))
@@ -643,7 +686,7 @@ func (b *Builder) buildInto(inScope *scope, into *ast.Into) {
 			vars[i] = col.scalarGf()
 		}
 	}
-	inScope.node = plan.NewInto(inScope.node, vars)
+	inScope.node = plan.NewInto(inScope.node, vars, "", "")
 }
 
 func (b *Builder) loadChecksFromTable(inScope *scope, table sql.Table) []*sql.CheckConstraint {

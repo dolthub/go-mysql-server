@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -62,13 +61,8 @@ func (b *BaseBuilder) buildDropTrigger(ctx *sql.Context, n *plan.DropTrigger, ro
 }
 
 func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.Row) (sql.RowIter, error) {
-	// Start the parsing by grabbing all the config variables.
-	err := n.SetParsingValues()
-	if err != nil {
-		return nil, err
-	}
-
 	var reader io.ReadCloser
+	var err error
 
 	if n.Local {
 		_, localInfile, ok := sql.SystemVariables.GetGlobal("local_infile")
@@ -85,18 +79,17 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 			return nil, err
 		}
 	} else {
-		_, dir, ok := sql.SystemVariables.GetGlobal("secure_file_priv")
+		_, secureFileDir, ok := sql.SystemVariables.GetGlobal("secure_file_priv")
 		if !ok {
 			return nil, fmt.Errorf("error: secure_file_priv variable was not found")
 		}
-		if dir == nil {
-			dir = ""
-		}
 
-		fileName := filepath.Join(dir.(string), n.File)
-		file, err := os.Open(fileName)
-		if err != nil {
+		if err = isUnderSecureFileDir(secureFileDir, n.File); err != nil {
 			return nil, sql.ErrLoadDataCannotOpen.New(err.Error())
+		}
+		file, fileErr := os.Open(n.File)
+		if fileErr != nil {
+			return nil, sql.ErrLoadDataCannotOpen.New(fileErr.Error())
 		}
 		reader = file
 	}
@@ -132,17 +125,19 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 	}
 
 	return &loadDataIter{
-		destSch:                 n.DestSch,
-		reader:                  reader,
-		scanner:                 scanner,
-		columnCount:             len(n.ColumnNames), // Needs to be the original column count
-		fieldToColumnMap:        fieldToColumnMap,
-		fieldsTerminatedByDelim: n.FieldsTerminatedByDelim,
-		fieldsEnclosedByDelim:   n.FieldsEnclosedByDelim,
-		fieldsOptionallyDelim:   n.FieldsOptionallyDelim,
-		fieldsEscapedByDelim:    n.FieldsEscapedByDelim,
-		linesTerminatedByDelim:  n.LinesTerminatedByDelim,
-		linesStartingByDelim:    n.LinesStartingByDelim,
+		destSch:          n.DestSch,
+		reader:           reader,
+		scanner:          scanner,
+		columnCount:      len(n.ColumnNames), // Needs to be the original column count
+		fieldToColumnMap: fieldToColumnMap,
+
+		fieldsTerminatedBy:  n.FieldsTerminatedBy,
+		fieldsEnclosedBy:    n.FieldsEnclosedBy,
+		fieldsEnclosedByOpt: n.FieldsEnclosedByOpt,
+		fieldsEscapedBy:     n.FieldsEscapedBy,
+
+		linesTerminatedBy: n.LinesTerminatedBy,
+		linesStartingBy:   n.LinesStartingBy,
 	}, nil
 }
 

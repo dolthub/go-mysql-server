@@ -19,7 +19,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"reflect"
+	"strings"
 
 	"github.com/dolthub/jsonpath"
 	"github.com/shopspring/decimal"
@@ -532,6 +535,46 @@ func (b *BaseBuilder) populateMax1Results(ctx *sql.Context, n *plan.Max1Row, row
 	return nil
 }
 
+// isUnderSecureFileDir ensures that fileStr is under secureFileDir or a subdirectory of secureFileDir, errors otherwise
+func isUnderSecureFileDir(secureFileDir interface{}, fileStr string) error {
+	if secureFileDir == nil || secureFileDir == "" {
+		return nil
+	}
+	sStat, err := os.Stat(secureFileDir.(string))
+	if err != nil {
+		return err
+	}
+	fStat, err := os.Stat(filepath.Dir(fileStr))
+	if err != nil {
+		return err
+	}
+	if os.SameFile(sStat, fStat) {
+		return nil
+	}
+
+	fileAbsPath, filePathErr := filepath.Abs(fileStr)
+	if filePathErr != nil {
+		return filePathErr
+	}
+	secureFileDirAbsPath, _ := filepath.Abs(secureFileDir.(string))
+	if strings.HasPrefix(fileAbsPath, secureFileDirAbsPath) {
+		return nil
+	}
+	return sql.ErrSecureFilePriv.New()
+}
+
+// createIfNotExists creates a file if it does not exist, errors otherwise
+func createIfNotExists(fileStr string) (*os.File, error) {
+	if _, fErr := os.Stat(fileStr); fErr == nil {
+		return nil, sql.ErrFileExists.New(fileStr)
+	}
+	file, fileErr := os.OpenFile(fileStr, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0640)
+	if fileErr != nil {
+		return nil, fileErr
+	}
+	return file, nil
+}
+
 func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Into")
 	defer span.End()
@@ -545,10 +588,81 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 		return nil, err
 	}
 
+	var secureFileDir interface{}
+	if n.Outfile != "" || n.Dumpfile != "" {
+		var ok bool
+		_, secureFileDir, ok = sql.SystemVariables.GetGlobal("secure_file_priv")
+		if !ok {
+			return nil, fmt.Errorf("error: secure_file_priv variable was not found")
+		}
+	}
+
+	if n.Outfile != "" {
+		// TODO: MySQL has relative paths from the "data dir"
+		if err = isUnderSecureFileDir(secureFileDir, n.Outfile); err != nil {
+			return nil, err
+		}
+		file, fileErr := createIfNotExists(n.Outfile)
+		if fileErr != nil {
+			return nil, fileErr
+		}
+		defer file.Close()
+
+		sch := n.Child.Schema()
+		for _, r := range rows {
+			file.WriteString(n.LinesStartingBy)
+			for i, val := range r {
+				if i != 0 {
+					file.WriteString(n.FieldsTerminatedBy)
+				}
+				if val == nil {
+					if len(n.FieldsEscapedBy) == 0 {
+						file.WriteString("NULL")
+					} else {
+						file.WriteString(fmt.Sprintf("%sN", n.FieldsEscapedBy))
+					}
+					continue
+				}
+				if !n.FieldsEnclosedByOpt || types.IsText(sch[i].Type) {
+					if strVal, ok := val.(string); ok {
+						if len(n.LinesTerminatedBy) != 0 {
+							strVal = strings.Replace(strVal, n.LinesTerminatedBy, n.FieldsEscapedBy+n.LinesTerminatedBy, -1)
+						}
+						file.WriteString(fmt.Sprintf("%s%v%s", n.FieldsEnclosedBy, strVal, n.FieldsEnclosedBy))
+					} else {
+						file.WriteString(fmt.Sprintf("%s%v%s", n.FieldsEnclosedBy, val, n.FieldsEnclosedBy))
+					}
+				} else {
+					file.WriteString(fmt.Sprintf("%v", val))
+				}
+			}
+			file.WriteString(n.LinesTerminatedBy)
+		}
+		return sql.RowsToRowIter(sql.Row{}), nil
+	}
+
 	rowNum := len(rows)
 	if rowNum > 1 {
 		return nil, sql.ErrMoreThanOneRow.New()
 	}
+
+	if n.Dumpfile != "" {
+		if err = isUnderSecureFileDir(secureFileDir, n.Dumpfile); err != nil {
+			return nil, err
+		}
+		file, fileErr := createIfNotExists(n.Dumpfile)
+		if fileErr != nil {
+			return nil, fileErr
+		}
+		defer file.Close()
+		if rowNum == 1 {
+			for _, val := range rows[0] {
+				file.WriteString(fmt.Sprintf("%v", val))
+			}
+		}
+		return sql.RowsToRowIter(sql.Row{}), nil
+	}
+
 	if rowNum == 0 {
 		// a warning with error code 1329 occurs (No data), and make no change to variables
 		return sql.RowsToRowIter(sql.Row{}), nil
@@ -558,7 +672,6 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 	}
 
 	var rowValues = make([]interface{}, len(rows[0]))
-
 	copy(rowValues, rows[0])
 
 	for j, v := range n.IntoVars {
