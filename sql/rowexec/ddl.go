@@ -85,7 +85,7 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 		}
 
 		if err = isUnderSecureFileDir(secureFileDir, n.File); err != nil {
-			return nil, err
+			return nil, sql.ErrLoadDataCannotOpen.New(err.Error())
 		}
 		file, fileErr := os.Open(n.File)
 		if fileErr != nil {
