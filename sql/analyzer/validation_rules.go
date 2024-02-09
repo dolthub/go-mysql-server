@@ -55,7 +55,7 @@ func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pl
 					err = sql.ErrInvalidSyntax.New("negative limit")
 					return false
 				}
-			case *expression.BindVar:
+			case *expression.BindVar, *expression.ProcedureParam:
 				return true
 			default:
 				err = sql.ErrInvalidType.New(e.Type().String())
@@ -81,7 +81,7 @@ func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pl
 					err = sql.ErrInvalidSyntax.New("negative offset")
 					return false
 				}
-			case *expression.BindVar:
+			case *expression.BindVar, *expression.ProcedureParam:
 				return true
 			default:
 				err = sql.ErrInvalidType.New(e.Type().String())

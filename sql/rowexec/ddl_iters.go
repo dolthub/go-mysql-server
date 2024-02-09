@@ -38,17 +38,19 @@ import (
 )
 
 type loadDataIter struct {
-	scanner                 *bufio.Scanner
-	destSch                 sql.Schema
-	reader                  io.ReadCloser
-	columnCount             int
-	fieldToColumnMap        []int
-	fieldsTerminatedByDelim string
-	fieldsEnclosedByDelim   string
-	fieldsOptionallyDelim   bool
-	fieldsEscapedByDelim    string
-	linesTerminatedByDelim  string
-	linesStartingByDelim    string
+	scanner          *bufio.Scanner
+	destSch          sql.Schema
+	reader           io.ReadCloser
+	columnCount      int
+	fieldToColumnMap []int
+
+	fieldsTerminatedBy  string
+	fieldsEnclosedBy    string
+	fieldsEnclosedByOpt bool
+	fieldsEscapedBy     string
+
+	linesStartingBy   string
+	linesTerminatedBy string
 }
 
 func (l loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error) {
@@ -103,17 +105,17 @@ func (l loadDataIter) Close(ctx *sql.Context) error {
 
 // parseLinePrefix searches for the delim defined by linesStartingByDelim.
 func (l loadDataIter) parseLinePrefix(line string) string {
-	if l.linesStartingByDelim == "" {
+	if l.linesStartingBy == "" {
 		return line
 	}
 
-	prefixIndex := strings.Index(line, l.linesStartingByDelim)
+	prefixIndex := strings.Index(line, l.linesStartingBy)
 
 	// The prefix wasn't found so we need to skip this line.
 	if prefixIndex < 0 {
 		return ""
 	} else {
-		return line[prefixIndex+len(l.linesStartingByDelim):]
+		return line[prefixIndex+len(l.linesStartingBy):]
 	}
 }
 
@@ -125,13 +127,13 @@ func (l loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expressi
 	}
 
 	// Step 2: Split the lines into fields given the delim
-	fields := strings.Split(line, l.fieldsTerminatedByDelim)
+	fields := strings.Split(line, l.fieldsTerminatedBy)
 
 	// Step 3: Go through each field and see if it was enclosed by something
 	// TODO: Support the OPTIONALLY parameter.
-	if l.fieldsEnclosedByDelim != "" {
+	if l.fieldsEnclosedBy != "" {
 		for i, field := range fields {
-			if string(field[0]) == l.fieldsEnclosedByDelim && string(field[len(field)-1]) == l.fieldsEnclosedByDelim {
+			if string(field[0]) == l.fieldsEnclosedBy && string(field[len(field)-1]) == l.fieldsEnclosedBy {
 				fields[i] = field[1 : len(field)-1]
 			} else {
 				return nil, fmt.Errorf("error: field not properly enclosed")
@@ -140,7 +142,7 @@ func (l loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expressi
 	}
 
 	//Step 4: Handle the ESCAPED BY parameter.
-	if l.fieldsEscapedByDelim != "" {
+	if l.fieldsEscapedBy != "" {
 		for i, field := range fields {
 			if field == "\\N" {
 				fields[i] = "NULL"
@@ -149,7 +151,7 @@ func (l loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expressi
 			} else if field == "\\0" {
 				fields[i] = fmt.Sprintf("%c", 0) // ASCII 0
 			} else {
-				fields[i] = strings.ReplaceAll(field, l.fieldsEscapedByDelim, "")
+				fields[i] = strings.ReplaceAll(field, l.fieldsEscapedBy, "")
 			}
 		}
 	}
@@ -453,7 +455,7 @@ func (i *modifyColumnIter) Close(context *sql.Context) error {
 	return nil
 }
 
-// rewriteTable rewrites the table given if required or requested, and returns the whether it was rewritten
+// rewriteTable rewrites the table given if required or requested, and returns whether it was rewritten
 func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
 	oldColIdx := i.m.TargetSchema().IndexOfColName(i.m.Column())
 	if oldColIdx == -1 {

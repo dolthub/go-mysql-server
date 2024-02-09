@@ -23,12 +23,15 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func (b *BaseBuilder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (iter sql.RowIter, err error) {
-	iter, err = b.buildNodeExecNoAnalyze(ctx, n, row)
+func (b *BaseBuilder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (sql.RowIter, error) {
+	iter, err := b.buildNodeExecNoAnalyze(ctx, n, row)
+	if err != nil {
+		return nil, err
+	}
 	if withDescribeStats, ok := n.(sql.WithDescribeStats); ok {
 		iter = sql.NewCountingRowIter(iter, withDescribeStats)
 	}
-	return
+	return iter, nil
 }
 
 func (b *BaseBuilder) buildNodeExecNoAnalyze(ctx *sql.Context, n sql.Node, row sql.Row) (sql.RowIter, error) {

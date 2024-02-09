@@ -14,7 +14,10 @@
 
 package sql
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type IndexDef struct {
 	Name       string
@@ -185,4 +188,56 @@ type OrderedIndex interface {
 type ColumnExpressionType struct {
 	Expression string
 	Type       Type
+}
+
+// ValidatePrimaryKeyDrop validates that a primary key may be dropped. If any validation error is returned, then it
+// means it is not valid to drop this table's primary key. Validation includes checking for PK columns with the
+// auto_increment property, in which case, MySQL requires that another index exists on the table where the first
+// column in the index is the auto_increment column from the primary key.
+// https://dev.mysql.com/doc/refman/8.0/en/innodb-auto-increment-handling.html
+func ValidatePrimaryKeyDrop(ctx *Context, t IndexAddressableTable, oldSchema PrimaryKeySchema) error {
+	// If the primary key doesn't have an auto_increment option set, then we don't validate anything else
+	autoIncrementColumn := findPrimaryKeyAutoIncrementColumn(oldSchema)
+	if autoIncrementColumn == nil {
+		return nil
+	}
+
+	// If there is an auto_increment option set, then we need to verify that there is still a supporting index,
+	// meaning the index is prefixed with the primary key column that contains the auto_increment option.
+	indexes, err := t.GetIndexes(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, idx := range indexes {
+		// Don't bother considering FullText or Spatial indexes, since these aren't valid
+		// on auto_increment int columns anyway.
+		if idx.IsFullText() || idx.IsSpatial() {
+			continue
+		}
+
+		// Skip the primary key index, since we're trying to delete it
+		if strings.ToLower(idx.ID()) == "primary" {
+			continue
+		}
+
+		if idx.Expressions()[0] == autoIncrementColumn.Source+"."+autoIncrementColumn.Name {
+			// By this point, we've verified that it's valid to drop the table's primary key
+			return nil
+		}
+	}
+
+	// We've searched all indexes and couldn't find one supporting the auto_increment column, so we error out.
+	return ErrWrongAutoKey.New()
+}
+
+// findPrimaryKeyAutoIncrementColumn returns the first column in the primary key that has the auto_increment option,
+// otherwise it returns null if no primary key columns are defined with the auto_increment option.
+func findPrimaryKeyAutoIncrementColumn(schema PrimaryKeySchema) *Column {
+	for _, ordinal := range schema.PkOrdinals {
+		if schema.Schema[ordinal].AutoIncrement {
+			return schema.Schema[ordinal]
+		}
+	}
+	return nil
 }

@@ -81,8 +81,8 @@ func (v Validator) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, cal
 	return fmt.Errorf("ComStmtExecute unsupported")
 }
 
-func (v Validator) ComResetConnection(c *mysql.Conn) {
-	return
+func (v Validator) ComResetConnection(_ *mysql.Conn) error {
+	return nil
 }
 
 // ConnectionClosed reports that a connection has been closed.

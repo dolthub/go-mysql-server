@@ -66,7 +66,45 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 		sch = b.resolveSchemaDefaults(destScope, rt.Schema())
 	}
 
-	ld := plan.NewLoadData(bool(d.Local), d.Infile, sch, columnsToStrings(d.Columns), d.Fields, d.Lines, ignoreNumVal, d.IgnoreOrReplace)
+	ld := plan.NewLoadData(bool(d.Local), d.Infile, sch, columnsToStrings(d.Columns), ignoreNumVal, d.IgnoreOrReplace)
+
+	if d.Charset != "" {
+		// TODO: deal with charset; ignore for now
+		ld.Charset = d.Charset
+	}
+
+	if d.Fields != nil {
+		if d.Fields.TerminatedBy != nil && len(d.Fields.TerminatedBy.Val) != 0 {
+			ld.FieldsTerminatedBy = string(d.Fields.TerminatedBy.Val)
+		}
+
+		if d.Fields.EnclosedBy != nil {
+			ld.FieldsEnclosedBy = string(d.Fields.EnclosedBy.Delim.Val)
+			if len(ld.FieldsEnclosedBy) > 1 {
+				b.handleErr(sql.ErrUnexpectedSeparator.New())
+			}
+			if d.Fields.EnclosedBy.Optionally {
+				ld.FieldsEnclosedByOpt = true
+			}
+		}
+
+		if d.Fields.EscapedBy != nil {
+			ld.FieldsEscapedBy = string(d.Fields.EscapedBy.Val)
+			if len(ld.FieldsEscapedBy) > 1 {
+				b.handleErr(sql.ErrUnexpectedSeparator.New())
+			}
+		}
+	}
+
+	if d.Lines != nil {
+		if d.Lines.StartingBy != nil {
+			ld.LinesStartingBy = string(d.Lines.StartingBy.Val)
+		}
+		if d.Lines.TerminatedBy != nil {
+			ld.LinesTerminatedBy = string(d.Lines.TerminatedBy.Val)
+		}
+	}
+
 	outScope = inScope.push()
 	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), ld, ld.IsReplace, ld.ColumnNames, nil, ld.IsIgnore)
 	b.validateInsert(ins)

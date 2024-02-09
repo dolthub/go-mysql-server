@@ -242,7 +242,20 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			b.handleErr(err)
 		}
 		return ret
-
+	case ast.InjectedExpr:
+		resolvedChildren := make([]any, len(v.Children))
+		for i, child := range v.Children {
+			resolvedChildren[i] = b.buildScalar(inScope, child)
+		}
+		expr, err := v.Expression.WithResolvedChildren(resolvedChildren)
+		if err != nil {
+			b.handleErr(err)
+		}
+		if sqlExpr, ok := expr.(sql.Expression); ok {
+			return sqlExpr
+		}
+		b.handleErr(fmt.Errorf("Injected expression does not resolve to a valid expression"))
+		return nil
 	case *ast.RangeCond:
 		val := b.buildScalar(inScope, v.Left)
 		lower := b.buildScalar(inScope, v.From)

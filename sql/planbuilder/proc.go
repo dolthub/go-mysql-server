@@ -324,7 +324,7 @@ func (b *Builder) buildDeclareVariables(inScope *scope, d *ast.Declare) (outScop
 	for i, variable := range dVars.Names {
 		varName := strings.ToLower(variable.String())
 		names[i] = varName
-		param := expression.NewProcedureParam(varName)
+		param := expression.NewProcedureParam(varName, typ)
 		inScope.proc.AddVar(param)
 		inScope.newColumn(scopeColumn{col: varName, typ: typ, scalar: param})
 	}

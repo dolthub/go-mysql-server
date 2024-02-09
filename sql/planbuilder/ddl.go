@@ -1081,11 +1081,13 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 	updates := make([]ast.Expr, len(tableSpec.Columns))
 	var schema sql.Schema
 	for i, cd := range tableSpec.Columns {
-		sqlType := cd.Type.SQLType()
-		// Use the table's collation if no character or collation was specified for the table
-		if len(cd.Type.Charset) == 0 && len(cd.Type.Collate) == 0 {
-			if tableCollation != sql.Collation_Unspecified && !types.IsBinary(sqlType) {
-				cd.Type.Collate = tableCollation.Name()
+		if cd.Type.ResolvedType == nil {
+			sqlType := cd.Type.SQLType()
+			// Use the table's collation if no character or collation was specified for the table
+			if len(cd.Type.Charset) == 0 && len(cd.Type.Collate) == 0 {
+				if tableCollation != sql.Collation_Unspecified && !types.IsBinary(sqlType) {
+					cd.Type.Collate = tableCollation.Name()
+				}
 			}
 		}
 		defaults[i] = cd.Type.Default
@@ -1501,7 +1503,23 @@ func (b *Builder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
 	return outScope
 }
 
+// ExtendedTypeTag is primarily used by ParseColumnTypeString when parsing strings representing extended types
+const ExtendedTypeTag = "extended_"
+
 func ParseColumnTypeString(columnType string) (sql.Type, error) {
+	if strings.HasPrefix(columnType, ExtendedTypeTag) {
+		columnType = columnType[len(ExtendedTypeTag):]
+		// If the pipe character "|" is present, then we ignore all information after it (including the pipe), as it
+		// represents a comment
+		if pipeIdx := strings.Index(columnType, "|"); pipeIdx != -1 {
+			columnType = columnType[:pipeIdx]
+		}
+		c, err := types.DeserializeTypeFromString(columnType)
+		if err != nil {
+			return nil, err
+		}
+		return c, nil
+	}
 	parsed, err := ast.Parse(fmt.Sprintf("create table t(a %s)", columnType))
 	if err != nil {
 		return nil, err
