@@ -208,7 +208,7 @@ func TestSingleScript(t *testing.T) {
 			Name: "delete me",
 			SetUpScript: []string{
 				"CREATE TABLE tab0(col0 INTEGER, col1 INTEGER, col2 INTEGER);",
-                "INSERT INTO tab0 VALUES(97,1,99);",
+				"INSERT INTO tab0 VALUES(97,1,99);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
@@ -256,16 +256,13 @@ func TestSingleScript(t *testing.T) {
 				},
 
 				{
-					Query: "SELECT * FROM tab0 WHERE col2 IN ( 98 + 97 / 99 );",
-					Expected: []sql.Row{
-					},
+					Query:    "SELECT * FROM tab0 WHERE col2 IN ( 98 + 97 / 99 );",
+					Expected: []sql.Row{},
 				},
 				{
-					Query: "SELECT ALL * FROM tab0 AS cor0 WHERE col2 IN ( 39 + + 89, col0 + + col1 + + ( - ( - col0 ) ) / col2, + ( col0 ) + - 99, + col1, + col2 * - + col2 * - 12 + col1 + - 66 );",
-					Expected: []sql.Row{
-					},
+					Query:    "SELECT ALL * FROM tab0 AS cor0 WHERE col2 IN ( 39 + + 89, col0 + + col1 + + ( - ( - col0 ) ) / col2, + ( col0 ) + - 99, + col1, + col2 * - + col2 * - 12 + col1 + - 66 );",
+					Expected: []sql.Row{},
 				},
-
 
 				{
 					Query:    `SELECT 1 IN (1 / 9 * 5);`,
