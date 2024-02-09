@@ -626,7 +626,7 @@ func getTablesToBeUpdated(node sql.Node) map[string]struct{} {
 
 func (b *Builder) buildInto(inScope *scope, into *ast.Into) {
 	if into.Dumpfile != "" {
-		inScope.node = plan.NewInto(inScope.node,nil,"", into.Dumpfile)
+		inScope.node = plan.NewInto(inScope.node, nil, "", into.Dumpfile)
 		return
 	}
 
@@ -686,7 +686,7 @@ func (b *Builder) buildInto(inScope *scope, into *ast.Into) {
 			vars[i] = col.scalarGf()
 		}
 	}
-	inScope.node = plan.NewInto(inScope.node, vars,"", "")
+	inScope.node = plan.NewInto(inScope.node, vars, "", "")
 }
 
 func (b *Builder) loadChecksFromTable(inScope *scope, table sql.Table) []*sql.CheckConstraint {
