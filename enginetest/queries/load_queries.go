@@ -266,8 +266,8 @@ var LoadDataErrorScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:       "LOAD DATA INFILE '/x/ytx' INTO TABLE loadtable",
-				ExpectedErr: sql.ErrLoadDataCannotOpen,
+				Query:       "LOAD DATA INFILE './bad/doesnotexist.txt' INTO TABLE loadtable",
+				ExpectedErrStr: "CreateFile bad: The system cannot find the file specified.",
 			},
 		},
 	},

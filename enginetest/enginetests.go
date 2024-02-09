@@ -888,14 +888,32 @@ func TestSpatialInsertInto(t *testing.T, harness Harness) {
 	}
 }
 
+// setSecureFilePriv sets the secure_file_priv system variable to the current working directory.
+func setSecureFilePriv() error {
+	wd, err := os.Getwd()
+	if err != nil {
+		wd = "/dev/null"
+	}
+	return sql.SystemVariables.AssignValues(map[string]interface{}{
+		"secure_file_priv": wd,
+	})
+}
+
 func TestLoadData(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
+
+	require.NoError(t, setSecureFilePriv())
+	TestQuery(t, harness, "select @@secure_file_priv != '';", []sql.Row{{true}}, nil, nil)
+
 	for _, script := range queries.LoadDataScripts {
 		TestScript(t, harness, script)
 	}
 }
 
 func TestLoadDataErrors(t *testing.T, harness Harness) {
+	require.NoError(t, setSecureFilePriv())
+	TestQuery(t, harness, "select @@secure_file_priv != '';", []sql.Row{{true}}, nil, nil)
+
 	for _, script := range queries.LoadDataErrorScripts {
 		TestScript(t, harness, script)
 	}
@@ -903,9 +921,230 @@ func TestLoadDataErrors(t *testing.T, harness Harness) {
 
 func TestLoadDataFailing(t *testing.T, harness Harness) {
 	t.Skip()
+
+	require.NoError(t, setSecureFilePriv())
+	TestQuery(t, harness, "select @@secure_file_priv != '';", []sql.Row{{true}}, nil, nil)
+
 	for _, script := range queries.LoadDataFailingScripts {
 		TestScript(t, harness, script)
 	}
+}
+
+func TestSelectIntoFile(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData, setup.MytableData, setup.EmptytableData, setup.NiltableData)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+
+	ctx := NewContext(harness)
+	err := CreateNewConnectionForServerEngine(ctx, e)
+	require.NoError(t, err, nil)
+
+	require.NoError(t, setSecureFilePriv())
+	TestQuery(t, harness, "select @@secure_file_priv != '';", []sql.Row{{true}}, nil, nil)
+
+	tests := []struct {
+		file  string
+		query string
+		exp   string
+		err   *errors.Kind
+		skip  bool
+	}{
+		{
+			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt';",
+			exp: "" +
+				"1\tfirst row\n" +
+				"2\tsecond row\n" +
+				"3\tthird row\n",
+		},
+		{
+			file:  "dumpfile.txt",
+			query: "select * from mytable limit 1 into dumpfile 'dumpfile.txt';",
+			exp:   "1first row",
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',';",
+			exp: "" +
+				"1,first row\n" +
+				"2,second row\n" +
+				"3,third row\n",
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt' fields terminated by '$$';",
+			exp: "" +
+				"1$$first row\n" +
+				"2$$second row\n" +
+				"3$$third row\n",
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' optionally enclosed by '\"';",
+			exp: "" +
+				"1,\"first row\"\n" +
+				"2,\"second row\"\n" +
+				"3,\"third row\"\n",
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' optionally enclosed by '$$';",
+			err:   sql.ErrUnexpectedSeparator,
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' escaped by '$$';",
+			err:   sql.ErrUnexpectedSeparator,
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' enclosed by '\"';",
+			exp: "" +
+				"\"1\",\"first row\"\n" +
+				"\"2\",\"second row\"\n" +
+				"\"3\",\"third row\"\n",
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by ';';",
+			exp: "" +
+				"1,first row;" +
+				"2,second row;" +
+				"3,third row;",
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by 'r';",
+			exp: "" +
+				"1,fi\\rst \\rowr" +
+				"2,second \\rowr" +
+				"3,thi\\rd \\rowr",
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines starting by 'r';",
+			exp: "" +
+				"r1,first row\n" +
+				"r2,second row\n" +
+				"r3,third row\n",
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt' fields terminated by '';",
+			exp: "" +
+				"1\tfirst row\n" +
+				"2\tsecond row\n" +
+				"3\tthird row\n",
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by '';",
+			exp: "" +
+				"1,first row" +
+				"2,second row" +
+				"3,third row",
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from niltable into outfile 'outfile.txt';",
+			exp: "1\t\\N\t\\N\t\\N\n" +
+				"2\t2\t1\t\\N\n" +
+				"3\t\\N\t0\t\\N\n" +
+				"4\t4\t\\N\t4\n" +
+				"5\t\\N\t1\t5\n" +
+				"6\t6\t0\t6\n",
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from niltable into outfile 'outfile.txt' fields terminated by ',' enclosed by '\"';",
+			exp: "\"1\",\\N,\\N,\\N\n" +
+				"\"2\",\"2\",\"1\",\\N\n" +
+				"\"3\",\\N,\"0\",\\N\n" +
+				"\"4\",\"4\",\\N,\"4\"\n" +
+				"\"5\",\\N,\"1\",\"5\"\n" +
+				"\"6\",\"6\",\"0\",\"6\"\n",
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from niltable into outfile 'outfile.txt' fields terminated by ',' escaped by '$';",
+			exp: "1,$N,$N,$N\n" +
+				"2,2,1,$N\n" +
+				"3,$N,0,$N\n" +
+				"4,4,$N,4\n" +
+				"5,$N,1,5\n" +
+				"6,6,0,6\n",
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from niltable into outfile 'outfile.txt' fields terminated by ',' escaped by '';",
+			exp: "1,NULL,NULL,NULL\n" +
+				"2,2,1,NULL\n" +
+				"3,NULL,0,NULL\n" +
+				"4,4,NULL,4\n" +
+				"5,NULL,1,5\n" +
+				"6,6,0,6\n",
+		},
+		{
+			file:  "./subdir/outfile.txt",
+			query: "select * from mytable into outfile './subdir/outfile.txt';",
+			exp: "" +
+				"1\tfirst row\n" +
+				"2\tsecond row\n" +
+				"3\tthird row\n",
+		},
+		{
+			file:  "../outfile.txt",
+			query: "select * from mytable into outfile '../outfile.txt';",
+			err:   sql.ErrSecureFilePriv,
+		},
+		{
+			file:  "outfile.txt",
+			query: "select * from mytable into outfile 'outfile.txt' charset binary;",
+			err:   sql.ErrUnsupportedFeature,
+		},
+	}
+
+	subdir := "subdir"
+	if _, subErr := os.Stat(subdir); subErr == nil {
+		subErr = os.RemoveAll(subdir)
+		require.NoError(t, subErr)
+	}
+	err = os.Mkdir(subdir, 0777)
+	require.NoError(t, err)
+	defer os.RemoveAll(subdir)
+
+	for _, tt := range tests {
+		t.Run(tt.query, func(t *testing.T) {
+			if tt.skip {
+				t.Skip()
+			}
+			if tt.err != nil {
+				AssertErrWithCtx(t, e, harness, ctx, tt.query, tt.err)
+				return
+			}
+			// in case there are any residual files from previous runs
+			os.Remove(tt.file)
+			TestQueryWithContext(t, ctx, e, harness, tt.query, nil, nil, nil)
+			res, err := os.ReadFile(tt.file)
+			require.NoError(t, err)
+			require.Equal(t, tt.exp, string(res))
+			os.Remove(tt.file)
+		})
+	}
+
+	// remove tmp directory from previously failed runs
+	exists := "exists.txt"
+	if _, existsErr := os.Stat(exists); existsErr == nil {
+		err = os.Remove(exists)
+		require.NoError(t, err)
+	}
+	file, err := os.Create(exists)
+	require.NoError(t, err)
+	file.Close()
+	defer os.Remove(exists)
+
+	AssertErrWithCtx(t, e, harness, ctx, "SELECT * FROM mytable INTO OUTFILE './exists.txt'", sql.ErrFileExists)
+	AssertErrWithCtx(t, e, harness, ctx, "SELECT * FROM mytable LIMIT 1 INTO DUMPFILE './exists.txt'", sql.ErrFileExists)
 }
 
 func TestReplaceInto(t *testing.T, harness Harness) {
@@ -5330,227 +5569,4 @@ func DrainIteratorIgnoreErrors(ctx *sql.Context, iter sql.RowIter) {
 			return
 		}
 	}
-}
-
-func TestSelectIntoFile(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData, setup.MytableData, setup.EmptytableData, setup.NiltableData)
-	e := mustNewEngine(t, harness)
-	defer e.Close()
-
-	ctx := NewContext(harness)
-	err := CreateNewConnectionForServerEngine(ctx, e)
-	require.NoError(t, err, nil)
-
-	tests := []struct {
-		file  string
-		query string
-		exp   string
-		err   *errors.Kind
-		skip  bool
-	}{
-		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt';",
-			exp: "" +
-				"1\tfirst row\n" +
-				"2\tsecond row\n" +
-				"3\tthird row\n",
-		},
-		{
-			file:  "dumpfile.txt",
-			query: "select * from mytable limit 1 into dumpfile 'dumpfile.txt';",
-			exp:   "1first row",
-		},
-		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',';",
-			exp: "" +
-				"1,first row\n" +
-				"2,second row\n" +
-				"3,third row\n",
-		},
-		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by '$$';",
-			exp: "" +
-				"1$$first row\n" +
-				"2$$second row\n" +
-				"3$$third row\n",
-		},
-		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' optionally enclosed by '\"';",
-			exp: "" +
-				"1,\"first row\"\n" +
-				"2,\"second row\"\n" +
-				"3,\"third row\"\n",
-		},
-		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' optionally enclosed by '$$';",
-			err:   sql.ErrUnexpectedSeparator,
-		},
-		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' escaped by '$$';",
-			err:   sql.ErrUnexpectedSeparator,
-		},
-		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' enclosed by '\"';",
-			exp: "" +
-				"\"1\",\"first row\"\n" +
-				"\"2\",\"second row\"\n" +
-				"\"3\",\"third row\"\n",
-		},
-		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by ';';",
-			exp: "" +
-				"1,first row;" +
-				"2,second row;" +
-				"3,third row;",
-		},
-		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by 'r';",
-			exp: "" +
-				"1,fi\\rst \\rowr" +
-				"2,second \\rowr" +
-				"3,thi\\rd \\rowr",
-		},
-		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines starting by 'r';",
-			exp: "" +
-				"r1,first row\n" +
-				"r2,second row\n" +
-				"r3,third row\n",
-		},
-		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by '';",
-			exp: "" +
-				"1\tfirst row\n" +
-				"2\tsecond row\n" +
-				"3\tthird row\n",
-		},
-		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by '';",
-			exp: "" +
-				"1,first row" +
-				"2,second row" +
-				"3,third row",
-		},
-		{
-			file:  "outfile.txt",
-			query: "select * from niltable into outfile 'outfile.txt';",
-			exp: "1\t\\N\t\\N\t\\N\n" +
-				"2\t2\t1\t\\N\n" +
-				"3\t\\N\t0\t\\N\n" +
-				"4\t4\t\\N\t4\n" +
-				"5\t\\N\t1\t5\n" +
-				"6\t6\t0\t6\n",
-		},
-		{
-			file:  "outfile.txt",
-			query: "select * from niltable into outfile 'outfile.txt' fields terminated by ',' enclosed by '\"';",
-			exp: "\"1\",\\N,\\N,\\N\n" +
-				"\"2\",\"2\",\"1\",\\N\n" +
-				"\"3\",\\N,\"0\",\\N\n" +
-				"\"4\",\"4\",\\N,\"4\"\n" +
-				"\"5\",\\N,\"1\",\"5\"\n" +
-				"\"6\",\"6\",\"0\",\"6\"\n",
-		},
-		{
-			file:  "outfile.txt",
-			query: "select * from niltable into outfile 'outfile.txt' fields terminated by ',' escaped by '$';",
-			exp: "1,$N,$N,$N\n" +
-				"2,2,1,$N\n" +
-				"3,$N,0,$N\n" +
-				"4,4,$N,4\n" +
-				"5,$N,1,5\n" +
-				"6,6,0,6\n",
-		},
-		{
-			file:  "outfile.txt",
-			query: "select * from niltable into outfile 'outfile.txt' fields terminated by ',' escaped by '';",
-			exp: "1,NULL,NULL,NULL\n" +
-				"2,2,1,NULL\n" +
-				"3,NULL,0,NULL\n" +
-				"4,4,NULL,4\n" +
-				"5,NULL,1,5\n" +
-				"6,6,0,6\n",
-		},
-		{
-			file:  "./subdir/outfile.txt",
-			query: "select * from mytable into outfile './subdir/outfile.txt';",
-			exp: "" +
-				"1\tfirst row\n" +
-				"2\tsecond row\n" +
-				"3\tthird row\n",
-		},
-		{
-			file:  "../outfile.txt",
-			query: "select * from mytable into outfile '../outfile.txt';",
-			err:   sql.ErrSecureFilePriv,
-		},
-		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' charset binary;",
-			err:   sql.ErrUnsupportedFeature,
-		},
-	}
-
-	wd, err := os.Getwd()
-	if err != nil {
-		wd = "/dev/null"
-	}
-	err = sql.SystemVariables.AssignValues(map[string]interface{}{
-		"secure_file_priv": wd,
-	})
-	require.NoError(t, err)
-
-	subdir := "subdir"
-	if _, subErr := os.Stat(subdir); subErr == nil {
-		subErr = os.RemoveAll(subdir)
-		require.NoError(t, subErr)
-	}
-	err = os.Mkdir(subdir, 0640)
-	require.NoError(t, err)
-	defer os.RemoveAll(subdir)
-
-	for _, tt := range tests {
-		t.Run(tt.query, func(t *testing.T) {
-			if tt.skip {
-				t.Skip()
-			}
-			if tt.err != nil {
-				AssertErrWithCtx(t, e, harness, ctx, tt.query, tt.err)
-				return
-			}
-			// in case there are any residual files from previous runs
-			os.Remove(tt.file)
-			TestQueryWithContext(t, ctx, e, harness, tt.query, nil, nil, nil)
-			res, err := os.ReadFile(tt.file)
-			require.NoError(t, err)
-			require.Equal(t, tt.exp, string(res))
-			os.Remove(tt.file)
-		})
-	}
-
-	// remove tmp directory from previously failed runs
-	exists := "exists.txt"
-	if _, existsErr := os.Stat(exists); existsErr == nil {
-		err = os.Remove(exists)
-		require.NoError(t, err)
-	}
-	file, err := os.Create(exists)
-	require.NoError(t, err)
-	file.Close()
-	defer os.Remove(exists)
-
-	AssertErrWithCtx(t, e, harness, ctx, "SELECT * FROM mytable INTO OUTFILE './exists.txt'", sql.ErrFileExists)
-	AssertErrWithCtx(t, e, harness, ctx, "SELECT * FROM mytable LIMIT 1 INTO DUMPFILE './exists.txt'", sql.ErrFileExists)
 }

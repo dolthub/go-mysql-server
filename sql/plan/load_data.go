@@ -110,13 +110,13 @@ func NewLoadData(local bool, file string, destSch sql.Schema, cols []string, ign
 	isReplace := ignoreOrReplace == sqlparser.ReplaceStr
 	isIgnore := ignoreOrReplace == sqlparser.IgnoreStr || (local && !isReplace)
 	return &LoadData{
-		Local:                   local,
-		File:                    file,
-		DestSch:                 destSch,
-		ColumnNames:             cols,
-		IgnoreNum:               ignoreNum,
-		IsIgnore:                isIgnore,
-		IsReplace:               isReplace,
+		Local:       local,
+		File:        file,
+		DestSch:     destSch,
+		ColumnNames: cols,
+		IgnoreNum:   ignoreNum,
+		IsIgnore:    isIgnore,
+		IsReplace:   isReplace,
 
 		FieldsTerminatedBy:  defaultFieldsTerminatedBy,
 		FieldsEnclosedBy:    defaultFieldsEnclosedBy,

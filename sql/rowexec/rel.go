@@ -535,8 +535,8 @@ func (b *BaseBuilder) populateMax1Results(ctx *sql.Context, n *plan.Max1Row, row
 	return nil
 }
 
-// validateOutfile ensures that fileStr is under secureFileDir or a subdirectory of secureFileDir
-func validateOutfile(secureFileDir interface{}, fileStr string) error {
+// isUnderSecureFileDir ensures that fileStr is under secureFileDir or a subdirectory of secureFileDir, errors otherwise
+func isUnderSecureFileDir(secureFileDir interface{}, fileStr string) error {
 	if secureFileDir == nil || secureFileDir == "" {
 		return nil
 	}
@@ -563,6 +563,7 @@ func validateOutfile(secureFileDir interface{}, fileStr string) error {
 	return sql.ErrSecureFilePriv.New()
 }
 
+// createIfNotExists creates a file if it does not exist, errors otherwise
 func createIfNotExists(fileStr string) (*os.File, error) {
 	if _, fErr := os.Stat(fileStr); fErr == nil {
 		return nil, sql.ErrFileExists.New(fileStr)
@@ -598,8 +599,8 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 
 	if n.Outfile != "" {
 		// TODO: MySQL has relative paths from the "data dir"
-		if fileErr := validateOutfile(secureFileDir, n.Outfile); fileErr != nil {
-			return nil, fileErr
+		if err = isUnderSecureFileDir(secureFileDir, n.Outfile); err != nil {
+			return nil, err
 		}
 		file, fileErr := createIfNotExists(n.Outfile)
 		if fileErr != nil {
@@ -647,7 +648,7 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 	}
 
 	if n.Dumpfile != "" {
-		if fileErr := validateOutfile(secureFileDir, n.Dumpfile); fileErr != nil {
+		if err = isUnderSecureFileDir(secureFileDir, n.Dumpfile); err != nil {
 			return nil, err
 		}
 		file, fileErr := createIfNotExists(n.Dumpfile)

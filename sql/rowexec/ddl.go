@@ -19,8 +19,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
-	"strings"
+		"strings"
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -80,19 +79,17 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 			return nil, err
 		}
 	} else {
-		_, dir, ok := sql.SystemVariables.GetGlobal("secure_file_priv")
+		_, secureFileDir, ok := sql.SystemVariables.GetGlobal("secure_file_priv")
 		if !ok {
 			return nil, fmt.Errorf("error: secure_file_priv variable was not found")
 		}
-		if dir == nil {
-			dir = ""
-		}
 
-		// TODO: check that file is under the secure_file_priv directory
-		fileName := filepath.Join(dir.(string), n.File)
-		file, err := os.Open(fileName)
-		if err != nil {
-			return nil, sql.ErrLoadDataCannotOpen.New(err.Error())
+		if err = isUnderSecureFileDir(secureFileDir, n.File); err != nil {
+			return nil, err
+		}
+		file, fileErr := os.Open(n.File)
+		if fileErr != nil {
+			return nil, sql.ErrLoadDataCannotOpen.New(fileErr.Error())
 		}
 		reader = file
 	}
