@@ -38,11 +38,11 @@ import (
 )
 
 type loadDataIter struct {
-	scanner                 *bufio.Scanner
-	destSch                 sql.Schema
-	reader                  io.ReadCloser
-	columnCount             int
-	fieldToColumnMap        []int
+	scanner          *bufio.Scanner
+	destSch          sql.Schema
+	reader           io.ReadCloser
+	columnCount      int
+	fieldToColumnMap []int
 
 	fieldsTerminatedBy  string
 	fieldsEnclosedBy    string

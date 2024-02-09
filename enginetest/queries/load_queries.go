@@ -266,7 +266,7 @@ var LoadDataErrorScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:       "LOAD DATA INFILE './bad/doesnotexist.txt' INTO TABLE loadtable",
+				Query:          "LOAD DATA INFILE './bad/doesnotexist.txt' INTO TABLE loadtable",
 				ExpectedErrStr: "CreateFile bad: The system cannot find the file specified.",
 			},
 		},

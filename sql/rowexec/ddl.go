@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-		"strings"
+	"strings"
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -125,11 +125,11 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 	}
 
 	return &loadDataIter{
-		destSch:                 n.DestSch,
-		reader:                  reader,
-		scanner:                 scanner,
-		columnCount:             len(n.ColumnNames), // Needs to be the original column count
-		fieldToColumnMap:        fieldToColumnMap,
+		destSch:          n.DestSch,
+		reader:           reader,
+		scanner:          scanner,
+		columnCount:      len(n.ColumnNames), // Needs to be the original column count
+		fieldToColumnMap: fieldToColumnMap,
 
 		fieldsTerminatedBy:  n.FieldsTerminatedBy,
 		fieldsEnclosedBy:    n.FieldsEnclosedBy,
