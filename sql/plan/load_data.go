@@ -15,7 +15,7 @@
 package plan
 
 import (
-		"strings"
+	"strings"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -23,14 +23,14 @@ import (
 )
 
 type LoadData struct {
-	Local                   bool
-	File                    string
-	DestSch                 sql.Schema
-	ColumnNames             []string
-	ResponsePacketSent      bool
-	IgnoreNum               int64
-	IsIgnore                bool
-	IsReplace               bool
+	Local              bool
+	File               string
+	DestSch            sql.Schema
+	ColumnNames        []string
+	ResponsePacketSent bool
+	IgnoreNum          int64
+	IsIgnore           bool
+	IsReplace          bool
 
 	Charset string
 
