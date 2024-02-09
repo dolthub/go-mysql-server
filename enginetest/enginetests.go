@@ -892,7 +892,7 @@ func TestSpatialInsertInto(t *testing.T, harness Harness) {
 func setSecureFilePriv() error {
 	wd, err := os.Getwd()
 	if err != nil {
-		wd = "/dev/null"
+		wd = "./"
 	}
 	return sql.SystemVariables.AssignValues(map[string]interface{}{
 		"secure_file_priv": wd,
