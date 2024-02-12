@@ -189,7 +189,7 @@ func (a *Arithmetic) Type() sql.Type {
 			}
 			prec = prec + scale
 		case sqlparser.MultStr:
-			scale = lScale+rScale
+			scale = lScale + rScale
 			prec = prec + scale
 		case sqlparser.DivStr:
 			if lScale > rScale {
