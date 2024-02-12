@@ -47,7 +47,8 @@ func (s StrToDate) String() string {
 
 // Type returns the expression type.
 func (s StrToDate) Type() sql.Type {
-	return types.DatetimeMaxPrecision
+	// TODO: needs to take into account precision
+	return types.Datetime
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

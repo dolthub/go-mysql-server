@@ -134,30 +134,52 @@ func (a *Arithmetic) Type() sql.Type {
 
 	// applies for + and - ops
 	if isInterval(a.LeftChild) || isInterval(a.RightChild) {
-		// TODO: we might need to truncate precision here
-		return types.DatetimeMaxPrecision
+		// TODO: need to use the precision stored in datetimeType
+		// return MustCreateDatetimeType(sqltypes.Datetime, ...)
+		return types.Datetime
 	}
 
-	if types.IsTime(lTyp) && types.IsTime(rTyp) {
-		return types.Int64
-	}
-
-	if !types.IsNumber(lTyp) || !types.IsNumber(rTyp) {
+	if types.IsText(lTyp) || types.IsText(rTyp) {
 		return types.Float64
+	}
+
+	if types.IsJSON(lTyp) || types.IsJSON(rTyp) {
+		return types.Float64
+	}
+
+	if types.IsFloat(lTyp) || types.IsFloat(rTyp) {
+		return types.Float64
+	}
+
+	// Datetimes are decimals, unless they have precision 0
+	if types.IsDatetimeType(lTyp) {
+		if dtType, ok := lTyp.(sql.DatetimeType); ok {
+			scale := uint8(dtType.Precision())
+			if scale == 0 {
+				lTyp = types.Int64
+			} else {
+				lTyp = types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, scale)
+			}
+		}
+	}
+	if types.IsDatetimeType(rTyp) {
+		if dtType, ok := rTyp.(sql.DatetimeType); ok {
+			scale := uint8(dtType.Precision())
+			if scale == 0 {
+				rTyp = types.Int64
+			} else {
+				rTyp = types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, scale)
+			}
+		}
 	}
 
 	if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
 		return types.Uint64
-	} else if types.IsSigned(lTyp) && types.IsSigned(rTyp) {
-		return types.Int64
 	}
 
-	// if one is uint and the other is int of any size, then use int64
 	if types.IsInteger(lTyp) && types.IsInteger(rTyp) {
 		return types.Int64
 	}
-
-	// TODO: special cases for div, intdiv, and mod?
 
 	if types.IsDecimal(lTyp) && !types.IsDecimal(rTyp) {
 		return lTyp
@@ -173,6 +195,7 @@ func (a *Arithmetic) Type() sql.Type {
 		rPrec := rTyp.(types.DecimalType_).Precision()
 		rScale := rTyp.(types.DecimalType_).Scale()
 
+		// TODO: determine real precision
 		var prec, scale uint8
 		if lPrec > rPrec {
 			prec = lPrec
@@ -191,14 +214,6 @@ func (a *Arithmetic) Type() sql.Type {
 		case sqlparser.MultStr:
 			scale = lScale + rScale
 			prec = prec + scale
-		case sqlparser.DivStr:
-			if lScale > rScale {
-				scale = lScale
-			} else {
-				scale = rScale
-			}
-			scale = scale + divPrecisionIncrement
-			prec = prec + divPrecisionIncrement
 		}
 
 		if prec > types.DecimalTypeMaxPrecision {
@@ -211,7 +226,8 @@ func (a *Arithmetic) Type() sql.Type {
 		return types.MustCreateDecimalType(prec, scale)
 	}
 
-	return getFloatOrMaxDecimalType(a, false)
+	// When in doubt return float64
+	return types.Float64
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

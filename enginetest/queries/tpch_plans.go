@@ -52,7 +52,7 @@ order by
 			"             └─ Filter\n" +
 			"                 ├─ LessThanOrEqual\n" +
 			"                 │   ├─ lineitem.l_shipdate:6!null\n" +
-			"                 │   └─ 1998-09-02 00:00:00 +0000 UTC (datetime(6))\n" +
+			"                 │   └─ 1998-09-02 00:00:00 +0000 UTC (datetime)\n" +
 			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: lineitem\n" +
@@ -574,7 +574,7 @@ order by
 			"                         │   │   └─ 1993-07-01 (longtext)\n" +
 			"                         │   └─ LessThan\n" +
 			"                         │       ├─ orders.o_orderdate:4!null\n" +
-			"                         │       └─ 1993-10-01 00:00:00 +0000 UTC (datetime(6))\n" +
+			"                         │       └─ 1993-10-01 00:00:00 +0000 UTC (datetime)\n" +
 			"                         └─ IndexedTableAccess(orders)\n" +
 			"                             ├─ index: [orders.O_ORDERKEY]\n" +
 			"                             ├─ static: [{[NULL, ∞)}]\n" +
@@ -702,7 +702,7 @@ order by
 			"                 │   │   │   │       │   │   └─ 1994-01-01 (longtext)\n" +
 			"                 │   │   │   │       │   └─ LessThan\n" +
 			"                 │   │   │   │       │       ├─ orders.o_orderdate:2!null\n" +
-			"                 │   │   │   │       │       └─ 1995-01-01 00:00:00 +0000 UTC (datetime(6))\n" +
+			"                 │   │   │   │       │       └─ 1995-01-01 00:00:00 +0000 UTC (datetime)\n" +
 			"                 │   │   │   │       └─ IndexedTableAccess(orders)\n" +
 			"                 │   │   │   │           ├─ index: [orders.O_ORDERKEY]\n" +
 			"                 │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
@@ -863,7 +863,7 @@ where
 			"         │   │   │   │   └─ 1994-01-01 (longtext)\n" +
 			"         │   │   │   └─ LessThan\n" +
 			"         │   │   │       ├─ lineitem.l_shipdate:3!null\n" +
-			"         │   │   │       └─ 1995-01-01 00:00:00 +0000 UTC (datetime(6))\n" +
+			"         │   │   │       └─ 1995-01-01 00:00:00 +0000 UTC (datetime)\n" +
 			"         │   │   └─ AND\n" +
 			"         │   │       ├─ GreaterThanOrEqual\n" +
 			"         │   │       │   ├─ lineitem.l_discount:2!null\n" +
@@ -1738,7 +1738,7 @@ order by
 			"                 │   │       │   │   └─ 1993-10-01 (longtext)\n" +
 			"                 │   │       │   └─ LessThan\n" +
 			"                 │   │       │       ├─ orders.o_orderdate:2!null\n" +
-			"                 │   │       │       └─ 1994-01-01 00:00:00 +0000 UTC (datetime(6))\n" +
+			"                 │   │       │       └─ 1994-01-01 00:00:00 +0000 UTC (datetime)\n" +
 			"                 │   │       └─ IndexedTableAccess(orders)\n" +
 			"                 │   │           ├─ index: [orders.O_ORDERKEY]\n" +
 			"                 │   │           ├─ static: [{[NULL, ∞)}]\n" +
@@ -2109,7 +2109,7 @@ order by
 			"                 │   │   │       └─ 1994-01-01 (longtext)\n" +
 			"                 │   │   └─ LessThan\n" +
 			"                 │   │       ├─ lineitem.l_receiptdate:3!null\n" +
-			"                 │   │       └─ 1995-01-01 00:00:00 +0000 UTC (datetime(6))\n" +
+			"                 │   │       └─ 1995-01-01 00:00:00 +0000 UTC (datetime)\n" +
 			"                 │   └─ IndexedTableAccess(lineitem)\n" +
 			"                 │       ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
 			"                 │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
@@ -2315,7 +2315,7 @@ where
 			"         │   │   │   └─ 1995-09-01 (longtext)\n" +
 			"         │   │   └─ LessThan\n" +
 			"         │   │       ├─ lineitem.l_shipdate:3!null\n" +
-			"         │   │       └─ 1995-10-01 00:00:00 +0000 UTC (datetime(6))\n" +
+			"         │   │       └─ 1995-10-01 00:00:00 +0000 UTC (datetime)\n" +
 			"         │   └─ ProcessTable\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: lineitem\n" +
@@ -2430,7 +2430,7 @@ order by
 			"             │                               │   │   └─ 1996-01-01 (longtext)\n" +
 			"             │                               │   └─ LessThan\n" +
 			"             │                               │       ├─ lineitem.l_shipdate:12!null\n" +
-			"             │                               │       └─ 1996-04-01 00:00:00 +0000 UTC (datetime(6))\n" +
+			"             │                               │       └─ 1996-04-01 00:00:00 +0000 UTC (datetime)\n" +
 			"             │                               └─ Table\n" +
 			"             │                                   ├─ name: lineitem\n" +
 			"             │                                   ├─ columns: [l_suppkey l_extendedprice l_discount l_shipdate]\n" +
@@ -2456,7 +2456,7 @@ order by
 			"                 │               │   │   └─ 1996-01-01 (longtext)\n" +
 			"                 │               │   └─ LessThan\n" +
 			"                 │               │       ├─ lineitem.l_shipdate:3!null\n" +
-			"                 │               │       └─ 1996-04-01 00:00:00 +0000 UTC (datetime(6))\n" +
+			"                 │               │       └─ 1996-04-01 00:00:00 +0000 UTC (datetime)\n" +
 			"                 │               └─ Table\n" +
 			"                 │                   ├─ name: lineitem\n" +
 			"                 │                   ├─ columns: [l_suppkey l_extendedprice l_discount l_shipdate]\n" +
@@ -3311,7 +3311,7 @@ order by
 			"             │   │           │                   │   │       └─ 1994-01-01 (longtext)\n" +
 			"             │   │           │                   │   └─ LessThan\n" +
 			"             │   │           │                   │       ├─ lineitem.l_shipdate:8!null\n" +
-			"             │   │           │                   │       └─ 1995-01-01 00:00:00 +0000 UTC (datetime(6))\n" +
+			"             │   │           │                   │       └─ 1995-01-01 00:00:00 +0000 UTC (datetime)\n" +
 			"             │   │           │                   └─ Table\n" +
 			"             │   │           │                       ├─ name: lineitem\n" +
 			"             │   │           │                       ├─ columns: [l_partkey l_suppkey l_quantity l_shipdate]\n" +

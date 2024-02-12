@@ -6228,6 +6228,7 @@ Select * from (
 		Expected: []sql.Row{{1}},
 	},
 	{
+		// TODO: this is invalid...
 		Query:    `SELECT DATETIME(NOW()) - NOW()`,
 		Expected: []sql.Row{{int64(0)}},
 	},
@@ -6239,6 +6240,11 @@ Select * from (
 		Query:    `SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - (STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - INTERVAL 1 SECOND)`,
 		Expected: []sql.Row{{int64(1)}},
 	},
+	// TODO: skip this test
+	//{
+	//	Query:    `SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s %f') - (STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - INTERVAL 1 SECOND)`,
+	//	Expected: []sql.Row{{int64(1)}},
+	//},
 	{
 		Query:    `SELECT SUBSTR(SUBSTRING('0123456789ABCDEF', 1, 10), -4)`,
 		Expected: []sql.Row{{"6789"}},

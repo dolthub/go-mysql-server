@@ -304,7 +304,7 @@ func (d *Div) determineResultType(outermostResult bool) sql.Type {
 		return types.Float64
 	}
 
-	if types.IsBinaryType(lTyp) || types.IsBinaryType(rTyp) {
+	if types.IsJSON(lTyp) || types.IsJSON(rTyp) {
 		return types.Float64
 	}
 
@@ -326,7 +326,6 @@ func (d *Div) determineResultType(outermostResult bool) sql.Type {
 	}
 
 	if types.IsDecimal(lTyp) {
-		// TODO: better verify this
 		prec, scale := lTyp.(types.DecimalType_).Precision(), lTyp.(types.DecimalType_).Scale()
 		scale = scale + divPrecisionIncrement
 		if d.ops == -1 {
