@@ -330,10 +330,6 @@ func (d *Div) determineResultType(outermostResult bool) sql.Type {
 		lScale = lScale + divPrecisionIncrement
 		if d.ops == -1 {
 			lScale = (lScale / 9 + 1) * 9
-			if lScale > types.DecimalTypeMaxScale {
-				lScale = types.DecimalTypeMaxScale
-			}
-			return types.MustCreateDecimalType(lPrec, lScale)
 		}
 
 		if lPrec > types.DecimalTypeMaxPrecision {
