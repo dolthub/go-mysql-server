@@ -304,45 +304,52 @@ func (d *Div) determineResultType(outermostResult bool) sql.Type {
 		return types.Float64
 	}
 
-	if !outermostResult && types.IsNumber(lTyp) && types.IsNumber(rTyp) {
-		// TODO: does this mean we're never using float optimization?
-		//return types.Float64
+	if types.IsBinaryType(lTyp) || types.IsBinaryType(rTyp) {
+		return types.Float64
 	}
-
-	// numerical outermost results from here on
 
 	if types.IsFloat(lTyp) || types.IsFloat(rTyp) {
 		return types.Float64
 	}
 
-	if types.IsInteger(lTyp) {
-		// TODO: determine precision?
-		if d.ops == -1 {
-			return types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, 9)
+	// Decimal only results from here on
+
+	if types.IsDatetimeType(lTyp) {
+		if dtType, ok := lTyp.(sql.DatetimeType); ok {
+			scale := uint8(dtType.Precision() + divPrecisionIncrement)
+			if scale > types.DecimalTypeMaxScale {
+				scale = types.DecimalTypeMaxScale
+			}
+			// TODO: determine actual precision
+			return types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, scale)
 		}
-		return types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, divPrecisionIncrement)
 	}
 
 	if types.IsDecimal(lTyp) {
 		// TODO: better verify this
-		lPrec, lScale := lTyp.(types.DecimalType_).Precision(), lTyp.(types.DecimalType_).Scale()
-		lPrec = lPrec + divPrecisionIncrement
-		lScale = lScale + divPrecisionIncrement
+		prec, scale := lTyp.(types.DecimalType_).Precision(), lTyp.(types.DecimalType_).Scale()
+		scale = scale + divPrecisionIncrement
 		if d.ops == -1 {
-			lScale = (lScale/9 + 1) * 9
+			scale = (scale/9 + 1) * 9
+			prec = prec + scale
+		} else {
+			prec = prec + divPrecisionIncrement
 		}
 
-		if lPrec > types.DecimalTypeMaxPrecision {
-			lPrec = types.DecimalTypeMaxPrecision
+		if prec > types.DecimalTypeMaxPrecision {
+			prec = types.DecimalTypeMaxPrecision
 		}
-		if lScale > types.DecimalTypeMaxScale {
-			lScale = types.DecimalTypeMaxScale
+		if scale > types.DecimalTypeMaxScale {
+			scale = types.DecimalTypeMaxScale
 		}
-		return types.MustCreateDecimalType(lPrec, lScale)
+		return types.MustCreateDecimalType(prec, scale)
 	}
 
-	// TODO: missing cases
-	return lTyp
+	// All other types are treated as if they were integers
+	if d.ops == -1 {
+		return types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, 9)
+	}
+	return types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, divPrecisionIncrement)
 }
 
 // TODO: this is unused now, consider deleting
