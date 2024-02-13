@@ -16,13 +16,13 @@ package expression
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/sqltypes"
-"gopkg.in/src-d/go-errors.v1"
 	"testing"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -164,7 +164,7 @@ func TestDiv(t *testing.T) {
 		},
 		{
 			// MySQL treats float32 a little differently
-			skip: true,
+			skip:  true,
 			left:  NewLiteral(3.14159, types.Float32),
 			right: NewLiteral(3.0, types.Float32),
 			exp:   1.0471967061360676,
@@ -310,7 +310,7 @@ func TestDiv(t *testing.T) {
 			}
 			require.NoError(err)
 			if dec, ok := result.(decimal.Decimal); ok {
-				result = dec.StringFixed(dec.Exponent()*-1)
+				result = dec.StringFixed(dec.Exponent() * -1)
 			}
 			assert.Equal(t, tt.exp, result)
 		})

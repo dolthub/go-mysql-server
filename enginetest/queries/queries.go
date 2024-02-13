@@ -2761,15 +2761,15 @@ Select * from (
 		Expected: []sql.Row{{false}},
 	},
 	{
-		Query: "select 1 / 3 * 3 in (0.999999999);",
+		Query:    "select 1 / 3 * 3 in (0.999999999);",
 		Expected: []sql.Row{{true}},
 	},
 	{
-		Query: "SELECT 99 NOT IN ( 98 + 97 / 99 );",
+		Query:    "SELECT 99 NOT IN ( 98 + 97 / 99 );",
 		Expected: []sql.Row{{true}},
 	},
 	{
-		Query: "SELECT 1 NOT IN ( 97 / 99 );",
+		Query:    "SELECT 1 NOT IN ( 97 / 99 );",
 		Expected: []sql.Row{{true}},
 	},
 	{

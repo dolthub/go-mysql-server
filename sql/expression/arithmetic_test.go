@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,7 +28,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	_ "github.com/dolthub/go-mysql-server/sql/variables"
-	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 func TestPlus(t *testing.T) {
@@ -186,7 +186,7 @@ func TestPlus(t *testing.T) {
 			result, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(err)
 			if dec, ok := result.(decimal.Decimal); ok {
-				result = dec.StringFixed(dec.Exponent()*-1)
+				result = dec.StringFixed(dec.Exponent() * -1)
 			}
 			assert.Equal(t, tt.exp, result)
 		})
@@ -344,7 +344,7 @@ func TestMinus(t *testing.T) {
 			result, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(err)
 			if dec, ok := result.(decimal.Decimal); ok {
-				result = dec.StringFixed(dec.Exponent()*-1)
+				result = dec.StringFixed(dec.Exponent() * -1)
 			}
 			assert.Equal(t, tt.exp, result)
 		})
@@ -459,7 +459,7 @@ func TestMult(t *testing.T) {
 		},
 		{
 			// MySQL throws out of range
-			skip: true,
+			skip:  true,
 			left:  NewLiteral("2001-01-01 12:00:00", types.Datetime),
 			right: NewLiteral("2001-01-01 12:00:00", types.Datetime),
 			err:   sql.ErrValueOutOfRange,
@@ -515,7 +515,7 @@ func TestMult(t *testing.T) {
 			}
 			require.NoError(err)
 			if dec, ok := result.(decimal.Decimal); ok {
-				result = dec.StringFixed(dec.Exponent()*-1)
+				result = dec.StringFixed(dec.Exponent() * -1)
 			}
 			assert.Equal(t, tt.exp, result)
 		})
