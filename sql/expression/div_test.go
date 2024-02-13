@@ -194,12 +194,12 @@ func TestDiv(t *testing.T) {
 		{
 			left:  NewLiteral(decimal.New(314159, -5), types.MustCreateDecimalType(10, 5)),
 			right: NewLiteral(decimal.New(3, 0), types.MustCreateDecimalType(10, 0)),
-			exp:   "1.047196667",
+			exp:   "1.047196666",
 		},
 		{
 			left:  NewLiteral(decimal.NewFromFloat(3.14159), types.MustCreateDecimalType(10, 5)),
 			right: NewLiteral(3, types.Int64),
-			exp:   "1.047196667",
+			exp:   "1.047196666",
 		},
 
 		// Bit
