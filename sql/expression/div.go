@@ -312,6 +312,11 @@ func (d *Div) determineResultType(outermostResult bool) sql.Type {
 		return types.Float64
 	}
 
+	// TODO: see if we can actually do this
+	//if !outermostResult {
+	//	return types.Float64
+	//}
+
 	// Decimal only results from here on
 
 	if types.IsDatetimeType(lTyp) {
