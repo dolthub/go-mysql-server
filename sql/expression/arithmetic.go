@@ -309,10 +309,6 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				return res.Round(finalScale), nil
 			}
 		}
-		// In comparisons, we need to truncate decimals to have scale of 9
-		if a.ops == -1 {
-			result = res.Truncate(9)
-		}
 	}
 
 	return result, nil

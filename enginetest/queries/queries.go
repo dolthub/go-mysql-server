@@ -2552,6 +2552,10 @@ Select * from (
 		Expected: []sql.Row{{int64(2)}, {int64(3)}, {int64(4)}},
 	},
 	{
+		Query:    `select (1 / 3) * (1 / 3);`,
+		Expected: []sql.Row{{"0.11111111"}},
+	},
+	{
 		Query: "select 1 / 3 * 3;",
 		Expected: []sql.Row{
 			{"1.0000"},
@@ -4153,6 +4157,177 @@ Select * from (
 		Query:    "select 1/2/3%4/5/6;",
 		Expected: []sql.Row{{"0.0055555555555556"}},
 	},
+
+	// check that internal precision is preserved in comparisons
+	{
+		// 0 scale + 0 scale = 9 scale
+		Query:    "select 1 / 3 = 0.333333333;",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		// 0 scale + 1 scale = 9 scale
+		Query:    "select 1 / 3.0 = 0.333333333;",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		// 0 scale + 6 scale = 18 scale
+		Query:    "select 1 / 3.000000 = 0.333333333333333333;",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		// 0 scale + 15 scale = 27 scale
+		Query:    "select 1 / 3.000000000000000 = 0.333333333333333333333333333;",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		// 0 scale + 24 scale = 36 scale
+		Query:    "select 1 / 3.000000000000000000000000 = 0.333333333333333333333333333333333333;",
+		Expected: []sql.Row{{true}},
+	},
+
+	{
+		// 1 scale + 0 scale = 9 scale
+		Query:    "select 1.0 / 3 = 0.333333333;",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		// 1 scale + 1 scale = 18 scale
+		Query:    "select 1.0 / 3.0 = 0.333333333333333333;",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		// 1 scale + 10 scale = 27 scale
+		Query:    "select 1.0 / 3.0000000000 = 0.333333333333333333333333333;",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		// 1 scale + 19 scale = 36 scale
+		Query:    "select 1.0 / 3.0000000000000000000 = 0.333333333333333333333333333333333333;",
+		Expected: []sql.Row{{true}},
+	},
+
+	{
+		// 6 scale + 8 scale = 18 scale
+		Query:    "select 1.000000 / 3.00000000 = 0.333333333333333333;",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		// 6 scale + 9 scale = 27 scale
+		Query:    "select 1.000000 / 3.000000000 = 0.333333333333333333333333333;",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		// 6 scale + 17 scale = 27 scale
+		Query:    "select 1.000000 / 3.00000000000000000 = 0.333333333333333333333333333;",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		// 6 scale + 18 scale = 36 scale
+		Query:    "select 1.000000 / 3.000000000000000000 = 0.333333333333333333333333333333333333;",
+		Expected: []sql.Row{{true}},
+	},
+
+	{
+		// 7 scale + 7 scale = 18 scale
+		Query:    "select 1.0000000 / 3.0000000 = 0.333333333333333333;",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		// 7 scale + 8 scale = 27 scale
+		Query:    "select 1.0000000 / 3.00000000 = 0.333333333333333333333333333;",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		// 7 scale + 16 scale = 27 scale
+		Query:    "select 1.0000000 / 3.0000000000000000 = 0.333333333333333333333333333;",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		// 7 scale + 15 scale = 36 scale
+		Query:    "select 1.0000000 / 3.00000000000000000 = 0.333333333333333333333333333333333333;",
+		Expected: []sql.Row{{true}},
+	},
+
+	{
+		// 8 scale + 6 scale = 18 scale
+		Query:    "select 1.00000000 / 3.000000 = 0.333333333333333333;",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		// 8 scale + 7 scale = 27 scale
+		Query:    "select 1.00000000 / 3.0000000 = 0.333333333333333333333333333;",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		// 8 scale + 15 scale = 27 scale
+		Query:    "select 1.00000000 / 3.000000000000000 = 0.333333333333333333333333333;",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		// 8 scale + 14 scale = 36 scale
+		Query:    "select 1.00000000 / 3.0000000000000000 = 0.333333333333333333333333333333333333;",
+		Expected: []sql.Row{{true}},
+	},
+
+	{
+		// 9 scale + 5 scale = 18 scale
+		Query:    "select 1.000000000 / 3.00000 = 0.333333333333333333;",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		// 9 scale + 6 scale = 27 scale
+		Query:    "select 1.000000000 / 3.000000 = 0.333333333333333333333333333;",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		// 9 scale + 14 scale = 27 scale
+		Query:    "select 1.000000000 / 3.00000000000000 = 0.333333333333333333333333333;",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		// 9 scale + 13 scale = 36 scale
+		Query:    "select 1.000000000 / 3.000000000000000 = 0.333333333333333333333333333333333333;",
+		Expected: []sql.Row{{true}},
+	},
+
+	{
+		// 10 scale + 1 scale = 27 scale
+		Query:    "select 1.0000000000 / 3.0 = 0.333333333333333333333333333;",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		// 10 scale + 10 scale = 36 scale
+		Query:    "select 1.0000000000 / 3.0000000000 = 0.333333333333333333333333333333333333;",
+		Expected: []sql.Row{{true}},
+	},
+
+	// check that decimal internal precision is preserved in casts
+	{
+		// 0 scale + 0 scale = 9 scale
+		Query:    "select cast(1 / 3 as decimal(65,30));",
+		Expected: []sql.Row{{"0.333333333000000000000000000000"}},
+	},
+	{
+		// 0 scale + 1 scale = 9 scale
+		Query:    "select cast(1 / 3.0 as decimal(65,30));",
+		Expected: []sql.Row{{"0.333333333000000000000000000000"}},
+	},
+	{
+		// 0 scale + 6 scale = 18 scale
+		Query:    "select cast(1 / 3.000000 as decimal(65,30));",
+		Expected: []sql.Row{{"0.333333333333333333000000000000"}},
+	},
+	{
+		// 0 scale + 15 scale = 27 scale
+		Query:    "select cast(1 / 3.000000000000000 as decimal(65,30));",
+		Expected: []sql.Row{{"0.333333333333333333333333333000"}},
+	},
+	{
+		// 0 scale + 24 scale = 36 scale
+		Query:    "select cast(1 / 3.000000000000000000000000 as decimal(65,30));",
+		Expected: []sql.Row{{"0.333333333333333333333333333333"}},
+	},
+
 	{
 		Query:    "select 0.05 % 0.024;",
 		Expected: []sql.Row{{"0.002"}},

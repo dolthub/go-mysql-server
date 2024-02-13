@@ -34,10 +34,10 @@ var ErrIntDivDataOutOfRange = errors.NewKind("BIGINT value is out of range (%s D
 
 // '4 scales' are added to scale of the number on the left side of division operator at every division operation.
 // The default value is 4, and it can be set using sysvar https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_div_precision_increment
-const divPrecisionIncrement = 4
+const divPrecInc = 4
 
 // '9 scales' are added for every non-integer divider(right side).
-const divIntermediatePrecisionInc = 9
+const divIntPrecInc = 9
 
 const ERDivisionByZero = 1365
 
@@ -252,32 +252,24 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 				return nil, nil
 			}
 
-			if d.curIntermediatePrecisionInc == 0 {
-				d.curIntermediatePrecisionInc = getPrecInc(d, 0)
-				// if the first dividend / the leftmost value is non int value,
-				// then curIntermediatePrecisionInc gets additional increment per every 9 scales
-				if d.curIntermediatePrecisionInc == 0 {
-					if !isIntOr1(l) {
-						d.curIntermediatePrecisionInc = int(math.Ceil(float64(l.Exponent()*-1) / float64(divIntermediatePrecisionInc)))
-					}
+			lScale, rScale := -1 * l.Exponent(), -1 * r.Exponent()
+			inc := int32(math.Ceil(float64(lScale + rScale + divPrecInc) / divIntPrecInc))
+			if lScale != 0 && rScale != 0 {
+				lInc := int32(math.Ceil(float64(lScale) / divIntPrecInc))
+				rInc := int32(math.Ceil(float64(rScale) / divIntPrecInc))
+				inc2 := lInc + rInc
+				if inc2 > inc {
+					inc = inc2
 				}
 			}
-
-			// for every divider we increment the curIntermediatePrecisionInc per every 9 scales
-			// for 0 scaled number, we increment 1
-			if r.Exponent() == 0 {
-				d.curIntermediatePrecisionInc += 1
-			} else {
-				d.curIntermediatePrecisionInc += int(math.Ceil(float64(r.Exponent()*-1) / float64(divIntermediatePrecisionInc)))
-			}
-
-			storedScale := d.leftmostScale.Load() + int32(d.curIntermediatePrecisionInc*divIntermediatePrecisionInc)
-			l = l.Truncate(storedScale)
-			r = r.Truncate(storedScale)
+			scale := inc * divIntPrecInc
+			l = l.Truncate(scale)
+			r = r.Truncate(scale)
 
 			// give it buffer of 2 additional scale to avoid the result to be rounded
-			divRes := l.DivRound(r, storedScale+2)
-			return divRes.Truncate(storedScale), nil
+			res := l.DivRound(r, scale + 2)
+			res = res.Truncate(scale)
+			return res, nil
 		}
 	}
 
@@ -321,7 +313,7 @@ func (d *Div) determineResultType(outermostResult bool) sql.Type {
 
 	if types.IsDatetimeType(lTyp) {
 		if dtType, ok := lTyp.(sql.DatetimeType); ok {
-			scale := uint8(dtType.Precision() + divPrecisionIncrement)
+			scale := uint8(dtType.Precision() + divPrecInc)
 			if scale > types.DecimalTypeMaxScale {
 				scale = types.DecimalTypeMaxScale
 			}
@@ -332,12 +324,12 @@ func (d *Div) determineResultType(outermostResult bool) sql.Type {
 
 	if types.IsDecimal(lTyp) {
 		prec, scale := lTyp.(types.DecimalType_).Precision(), lTyp.(types.DecimalType_).Scale()
-		scale = scale + divPrecisionIncrement
+		scale = scale + divPrecInc
 		if d.ops == -1 {
 			scale = (scale/9 + 1) * 9
 			prec = prec + scale
 		} else {
-			prec = prec + divPrecisionIncrement
+			prec = prec + divPrecInc
 		}
 
 		if prec > types.DecimalTypeMaxPrecision {
@@ -353,7 +345,7 @@ func (d *Div) determineResultType(outermostResult bool) sql.Type {
 	if d.ops == -1 {
 		return types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, 9)
 	}
-	return types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, divPrecisionIncrement)
+	return types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, divPrecInc)
 }
 
 // TODO: this is unused now, consider deleting
@@ -383,7 +375,7 @@ func floatOrDecimalTypeForDiv(e sql.Expression, treatIntsAsFloats bool) sql.Type
 	maxScale := scale
 
 	div := e.(*Div)
-	finalScale := div.leftmostScale.Load() + div.divScale*int32(divPrecisionIncrement)
+	finalScale := div.leftmostScale.Load() + div.divScale*int32(divPrecInc)
 
 	if uint8(finalScale) > maxScale {
 		maxScale = uint8(finalScale)
@@ -635,7 +627,7 @@ func getFinalScale(e sql.Expression) (int32, bool) {
 	}
 
 	if d, isDiv := e.(*Div); isDiv {
-		finalScale := d.leftmostScale.Load() + d.divScale*int32(divPrecisionIncrement)
+		finalScale := d.leftmostScale.Load() + d.divScale*int32(divPrecInc)
 		if finalScale > types.DecimalTypeMaxScale {
 			finalScale = types.DecimalTypeMaxScale
 		}
