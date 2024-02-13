@@ -782,7 +782,8 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "select 1 as x from xy having AVG(x) > 0",
 		Expected: []sql.Row{{1}},
-	}, {
+	},
+	{
 		Query:    "select 1 as x, AVG(x) from xy group by (y) having AVG(x) > 0",
 		Expected: []sql.Row{{1, float64(1)}, {1, float64(2)}, {1, float64(3)}},
 	},
@@ -2551,6 +2552,31 @@ Select * from (
 		Expected: []sql.Row{{int64(2)}, {int64(3)}, {int64(4)}},
 	},
 	{
+		Query: "select 1 / 3 * 3;",
+		Expected: []sql.Row{
+			{"1.0000"},
+		},
+	},
+	{
+		Query: "select 1 / 3 * 3 = 0.999999999;",
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: "select 1.00000 / 3 * 3 = 0.999999999;",
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	// TODO: fix this
+	//{
+	//	Query: "select 1.000000 / 3 * 3 = 0.999999999999999999;",
+	//	Expected: []sql.Row{
+	//		{true},
+	//	},
+	//},
+	{
 		Query:    "SELECT i div 2 FROM mytable order by 1;",
 		Expected: []sql.Row{{int64(0)}, {int64(1)}, {int64(1)}},
 	},
@@ -2733,6 +2759,30 @@ Select * from (
 	{
 		Query:    "SELECT 'HOMER' IN (1.0)",
 		Expected: []sql.Row{{false}},
+	},
+	{
+		Query: "select 1 / 3 * 3 in (0.999999999);",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query: "SELECT 99 NOT IN ( 98 + 97 / 99 );",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query: "SELECT 1 NOT IN ( 97 / 99 );",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `SELECT 1 NOT IN (1 / 9 * 5);`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `SELECT 1 / 9 * 5 NOT IN (1);`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `SELECT 1 / 9 * 5 IN (1 / 9 * 5);`,
+		Expected: []sql.Row{{true}},
 	},
 	{
 		Query:    `SELECT * FROM mytable WHERE i in (CAST(NULL AS SIGNED), 2, 3, 4)`,

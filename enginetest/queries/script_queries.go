@@ -5401,6 +5401,12 @@ CREATE TABLE tab3 (
 			},
 		},
 	},
+	//{
+	//	Name: "dividing has different rounding behavior",
+	//	SetUpScript: []string{
+	//
+	//	},
+	//},
 }
 
 var SpatialScriptTests = []ScriptTest{
