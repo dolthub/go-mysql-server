@@ -252,8 +252,8 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 				return nil, nil
 			}
 
-			lScale, rScale := -1 * l.Exponent(), -1 * r.Exponent()
-			inc := int32(math.Ceil(float64(lScale + rScale + divPrecInc) / divIntPrecInc))
+			lScale, rScale := -1*l.Exponent(), -1*r.Exponent()
+			inc := int32(math.Ceil(float64(lScale+rScale+divPrecInc) / divIntPrecInc))
 			if lScale != 0 && rScale != 0 {
 				lInc := int32(math.Ceil(float64(lScale) / divIntPrecInc))
 				rInc := int32(math.Ceil(float64(rScale) / divIntPrecInc))
@@ -267,7 +267,7 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 			r = r.Truncate(scale)
 
 			// give it buffer of 2 additional scale to avoid the result to be rounded
-			res := l.DivRound(r, scale + 2)
+			res := l.DivRound(r, scale+2)
 			res = res.Truncate(scale)
 			return res, nil
 		}
