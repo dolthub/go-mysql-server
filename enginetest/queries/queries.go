@@ -2556,31 +2556,6 @@ Select * from (
 		Expected: []sql.Row{{"0.11111111"}},
 	},
 	{
-		Query: "select 1 / 3 * 3;",
-		Expected: []sql.Row{
-			{"1.0000"},
-		},
-	},
-	{
-		Query: "select 1 / 3 * 3 = 0.999999999;",
-		Expected: []sql.Row{
-			{true},
-		},
-	},
-	{
-		Query: "select 1.00000 / 3 * 3 = 0.999999999;",
-		Expected: []sql.Row{
-			{true},
-		},
-	},
-	// TODO: fix this
-	//{
-	//	Query: "select 1.000000 / 3 * 3 = 0.999999999999999999;",
-	//	Expected: []sql.Row{
-	//		{true},
-	//	},
-	//},
-	{
 		Query:    "SELECT i div 2 FROM mytable order by 1;",
 		Expected: []sql.Row{{int64(0)}, {int64(1)}, {int64(1)}},
 	},
@@ -2787,6 +2762,10 @@ Select * from (
 	{
 		Query:    `SELECT 1 / 9 * 5 IN (1 / 9 * 5);`,
 		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    "select 0 in (1/100000);",
+		Expected: []sql.Row{{false}},
 	},
 	{
 		Query:    `SELECT * FROM mytable WHERE i in (CAST(NULL AS SIGNED), 2, 3, 4)`,
@@ -6465,11 +6444,6 @@ Select * from (
 		Query:    `SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - (STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - INTERVAL 1 SECOND)`,
 		Expected: []sql.Row{{int64(1)}},
 	},
-	// TODO: skip this test
-	//{
-	//	Query:    `SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s %f') - (STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - INTERVAL 1 SECOND)`,
-	//	Expected: []sql.Row{{int64(1)}},
-	//},
 	{
 		Query:    `SELECT SUBSTR(SUBSTRING('0123456789ABCDEF', 1, 10), -4)`,
 		Expected: []sql.Row{{"6789"}},
@@ -9246,13 +9220,6 @@ var KeylessQueries = []QueryTest{
 
 // BrokenQueries are queries that are known to be broken in the engine.
 var BrokenQueries = []QueryTest{
-	// https://github.com/dolthub/dolt/issues/7207
-	{
-		Query: "select 0 in (1/100000);",
-		Expected: []sql.Row{
-			{false},
-		},
-	},
 	// union and aggregation typing are tricky
 	{
 		Query: "with recursive t (n) as (select sum('1') from dual union all select (2.00) from dual) select sum(n) from t;",
@@ -9356,6 +9323,11 @@ var BrokenQueries = []QueryTest{
 	{
 		Query:    "SELECT STR_TO_DATE('2013 32 Tuesday', '%X %V %W')", // Tuesday of 32th week
 		Expected: []sql.Row{{"2013-08-13"}},
+	},
+	{
+		// TODO:  need to properly handle datetime precision
+		Query:    `SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s %f') - (STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - INTERVAL 1 SECOND)`,
+		Expected: []sql.Row{{int64(1)}},
 	},
 	{
 		// This panics

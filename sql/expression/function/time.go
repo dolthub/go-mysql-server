@@ -948,7 +948,7 @@ func (n *Now) Description() string {
 
 // Type implements the sql.Expression interface.
 func (n *Now) Type() sql.Type {
-	// TODO: This should be types.NewDatetime(n.prec)
+	// TODO: precision
 	if n.prec == nil {
 		return types.Datetime
 	}

@@ -47,7 +47,7 @@ func (s StrToDate) String() string {
 
 // Type returns the expression type.
 func (s StrToDate) Type() sql.Type {
-	// TODO: needs to take into account precision
+	// TODO: precision
 	return types.Datetime
 }
 

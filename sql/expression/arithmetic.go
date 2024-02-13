@@ -134,7 +134,7 @@ func (a *Arithmetic) Type() sql.Type {
 
 	// applies for + and - ops
 	if isInterval(a.LeftChild) || isInterval(a.RightChild) {
-		// TODO: need to use the precision stored in datetimeType
+		// TODO: need to use the precision stored in datetimeType; something like
 		// return MustCreateDatetimeType(sqltypes.Datetime, ...)
 		return types.Datetime
 	}
@@ -172,7 +172,7 @@ func (a *Arithmetic) Type() sql.Type {
 		rTyp = types.Int64
 	}
 
-	// Datetimes are decimals, unless they have precision 0
+	// Datetime(0) is treated as Int64, otherwise as Decimal
 	if types.IsDatetimeType(lTyp) {
 		if dtType, ok := lTyp.(sql.DatetimeType); ok {
 			scale := uint8(dtType.Precision())
@@ -216,7 +216,6 @@ func (a *Arithmetic) Type() sql.Type {
 		rPrec := rTyp.(types.DecimalType_).Precision()
 		rScale := rTyp.(types.DecimalType_).Scale()
 
-		// TODO: determine real precision
 		var prec, scale uint8
 		if lPrec > rPrec {
 			prec = lPrec
