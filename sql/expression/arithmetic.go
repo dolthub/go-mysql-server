@@ -151,6 +151,27 @@ func (a *Arithmetic) Type() sql.Type {
 		return types.Float64
 	}
 
+	if types.IsYear(lTyp) && types.IsYear(rTyp) {
+		// MySQL just returns the largest int that fits
+		return types.Uint64
+	}
+
+	// Bit types are integers
+	if types.IsBit(lTyp) {
+		lTyp = types.Int64
+	}
+	if types.IsBit(rTyp) {
+		rTyp = types.Int64
+	}
+
+	// Dates are Integers
+	if types.IsDateType(lTyp) {
+		lTyp = types.Int64
+	}
+	if types.IsDateType(rTyp) {
+		rTyp = types.Int64
+	}
+
 	// Datetimes are decimals, unless they have precision 0
 	if types.IsDatetimeType(lTyp) {
 		if dtType, ok := lTyp.(sql.DatetimeType); ok {
